@@ -1,12 +1,11 @@
-// PL-007 Workspace Primitive — `rig workspace` CLI surface.
+// PL-007 工作区原语——`rig workspace` CLI 接口。
 //
-// Verbs:
-//   - `rig workspace validate` (slice-01) — walks a workspace root,
-//     parses each .md file's YAML frontmatter, emits a structured gap
-//     report. Advisory only — never modifies. curate-steward consumes.
-//   - `rig workspace doctor` (slice-21 FR-5; +1 check OPR.0.4.4.23) — runs
-//     the 8-check workspace-readiness diagnostic against the daemon's
-//     resolved workspace (or a --workspace override). Reports state + fix-hints.
+// 动词：
+//   - `rig workspace validate`（slice-01）——遍历工作区根目录，
+//     解析每个 .md 文件的 YAML frontmatter，输出结构化 gap
+//     报告。仅供参考——绝不修改。由 curate-steward 消费。
+//   - `rig workspace doctor`（slice-21 FR-5；+1 检查 OPR.0.4.4.23）——对后台服务
+//     解析出的工作区（或 --workspace 覆盖）跑 8 项工作区就绪诊断。报告状态 + 修复提示。
 
 import { Command } from "commander";
 import { DaemonClient } from "../client.js";
@@ -48,18 +47,17 @@ async function withClient<T>(
   return fn(client);
 }
 
-// release-0.3.2 slice 01 BC repair — strict-int validator for
-// --max-files. Rejects `12abc`, `abc`, `0`, `-1`, etc. with a 3-part
-// fact/consequence/action error; does NOT call the daemon on invalid
-// input. Keeps positive cases (`10000`, `12`, etc.) flowing through.
+// release-0.3.2 slice 01 BC 修复——--max-files 的严格整数校验器。
+// 用三段式 fact/consequence/action 错误拒绝 `12abc`、`abc`、`0`、`-1` 等；
+// 输入非法时不调用后台服务。合法用例（`10000`、`12` 等）照常通过。
 export function parseMaxFilesStrict(raw: string): number {
   if (!/^[1-9][0-9]*$/.test(raw)) {
     const err = new Error(
-      `--max-files must be a positive integer (got "${raw}").`,
+      `--max-files 必须是正整数（收到 "${raw}"）。`,
     ) as Error & { fact: string; consequence: string; action: string };
-    err.fact = `--max-files must be a positive integer (got "${raw}").`;
-    err.consequence = "rig workspace validate did not run; daemon was not contacted.";
-    err.action = "Pass a positive integer like --max-files 10000.";
+    err.fact = `--max-files 必须是正整数（收到 "${raw}"）。`;
+    err.consequence = "rig workspace validate 未运行；未联系后台服务。";
+    err.action = "请传一个正整数，例如 --max-files 10000。";
     throw err;
   }
   return Number.parseInt(raw, 10);
@@ -69,14 +67,14 @@ function emit3PartError(json: boolean, fact: string, consequence: string, action
   if (json) {
     console.log(JSON.stringify({ ok: false, error: { fact, consequence, action } }, null, 2));
   } else {
-    process.stderr.write(`Error: ${fact}\n${consequence}\n${action}\n`);
+    process.stderr.write(`错误：${fact}\n${consequence}\n${action}\n`);
   }
   process.exitCode = 1;
 }
 
 export function workspaceCommand(depsOverride?: WorkspaceDeps): Command {
   const cmd = new Command("workspace").description(
-    "PL-007 Workspace Primitive — typed-kind tooling. `validate` walks a root and reports frontmatter gaps; `doctor` runs the 8-check workspace-readiness diagnostic.",
+    "PL-007 工作区原语——带类型的工具。`validate` 遍历根目录并报告 frontmatter gap；`doctor` 跑 8 项工作区就绪诊断。",
   );
 
   const getDeps = (): WorkspaceDeps =>
@@ -88,13 +86,13 @@ export function workspaceCommand(depsOverride?: WorkspaceDeps): Command {
   cmd
     .command("validate [root]")
     .description(
-      "Walk a workspace root, parse each .md file's YAML frontmatter, and emit a structured gap report. Advisory only — never modifies files. Default root: cwd.",
+      "遍历工作区根目录，解析每个 .md 文件的 YAML frontmatter，输出结构化 gap 报告。仅供参考——绝不修改文件。默认根目录：当前工作目录。",
     )
-    .option("--kind <kind>", "Workspace kind to validate against: user | project | knowledge | lab | delivery")
-    .option("--no-recursive", "Do not descend into subdirectories")
-    .option("--require-frontmatter", "Report a gap for every .md file without a frontmatter delimiter")
-    .option("--max-files <n>", "Hard cap on .md files walked", "10000")
-    .option("--json", "JSON output for agents")
+    .option("--kind <kind>", "要校验的工作区类型：user | project | knowledge | lab | delivery")
+    .option("--no-recursive", "不进入子目录")
+    .option("--require-frontmatter", "为每个没有 frontmatter 分隔符的 .md 文件报告 gap")
+    .option("--max-files <n>", "遍历 .md 文件的硬上限", "10000")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(
       async (
         rootArg: string | undefined,
@@ -106,9 +104,8 @@ export function workspaceCommand(depsOverride?: WorkspaceDeps): Command {
           json?: boolean;
         },
       ) => {
-        // HG-6 — CLI-side validation BEFORE the daemon call. Reject
-        // malformed --max-files with a 3-part error; never silently
-        // coerce `12abc` → 12.
+        // HG-6——在调用后台服务之前做 CLI 侧校验。用三段式错误拒绝
+        // 畸形的 --max-files；绝不静默把 `12abc` 强转为 12。
         let maxFiles: number;
         try {
           maxFiles = parseMaxFilesStrict(opts.maxFiles);
@@ -138,40 +135,38 @@ export function workspaceCommand(depsOverride?: WorkspaceDeps): Command {
           } else {
             renderHumanReport(report);
           }
-          // Exit non-zero when gaps found — operators chain into hygiene fix loops.
+          // 发现 gap 时以非零退出——操作人员会串接到卫生修复循环里。
           if (report.gapCount > 0) process.exitCode = 1;
         });
       },
     );
 
-  // Slice-21 FR-5 — `rig workspace doctor`.
+  // Slice-21 FR-5——`zrig workspace doctor`。
   cmd
     .command("doctor")
     .description(
-      "Run the 8-check workspace-readiness diagnostic against the daemon's resolved workspace. Reports state of workspace root, missions folder, file allowlist, daemon alignment, daemon reload, slice docs, mission NOTES, and SDLC convention sections. Read-only.",
+      "对后台服务解析出的工作区跑 8 项工作区就绪诊断。报告工作区根目录、任务目标文件夹、文件白名单、后台服务对齐、后台服务重载、slice 文档、任务目标 NOTES、SDLC 约定章节的状态。只读。",
     )
     .option(
       "--workspace <path>",
-      "Override the workspace under check (default: daemon-resolved configured root)",
+      "覆盖被检查的工作区（默认：后台服务解析出的已配置根目录）",
     )
-    .option("--json", "JSON output for agents")
+    .option("--json", "供智能体使用的 JSON 输出")
     .option(
       "--strict",
-      "Exit non-zero on warn-or-fail (default: non-zero only on fail)",
+      "warn 或 fail 时以非零退出（默认：仅 fail 时非零）",
     )
     .action(async (opts: { workspace?: string; json?: boolean; strict?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
         const requestBody: { workspaceRoot?: string; filesAllowlistOverride?: string } = {};
         if (opts.workspace) requestBody.workspaceRoot = path.resolve(opts.workspace);
-        // FR-5e A2 — CLI-side env overlay for files.allowlist. The
-        // daemon runs in its own process with its own env; an
-        // operator who sets OPENRIG_FILES_ALLOWLIST in their CLI
-        // shell expects the doctor result to reflect that override
-        // even though the daemon's env is unchanged. We mirror the
-        // --workspace override pattern: read the env at request
-        // time and forward as a per-request overlay; the daemon
-        // route applies it to check #3 with source="env".
+        // FR-5e A2——files.allowlist 的 CLI 侧环境变量覆盖。后台服务在
+        // 自己的进程里跑，用自己的 env；在自己 CLI shell 里设置
+        // OPENRIG_FILES_ALLOWLIST 的操作人员希望 doctor 结果反映这个覆盖，
+        // 即使后台服务的 env 没变。我们照搬 --workspace 覆盖模式：在请求
+        // 时读取 env，作为单请求 overlay 转发；后台服务路由把它应用到
+        // check #3，source="env"。
         const cliAllowlistEnv = process.env.OPENRIG_FILES_ALLOWLIST;
         if (typeof cliAllowlistEnv === "string" && cliAllowlistEnv.length > 0) {
           requestBody.filesAllowlistOverride = cliAllowlistEnv;
@@ -188,9 +183,9 @@ export function workspaceCommand(depsOverride?: WorkspaceDeps): Command {
         } else {
           renderHumanDoctorReport(report);
         }
-        // Exit-code semantics per FR-5 IMPL-PRD §74:
-        //   default: non-zero only on fail
-        //   --strict: non-zero on warn-or-fail
+        // 退出码语义按 FR-5 IMPL-PRD §74：
+        //   默认：仅 fail 时非零
+        //   --strict：warn 或 fail 时非零
         const hasFail = report.summary.fail > 0;
         const hasWarn = report.summary.warn > 0;
         if (hasFail || (opts.strict && hasWarn)) process.exitCode = 1;
@@ -201,16 +196,16 @@ export function workspaceCommand(depsOverride?: WorkspaceDeps): Command {
 }
 
 function renderHumanReport(r: ValidationReport): void {
-  console.log(`workspace root: ${r.root}`);
-  console.log(`workspace kind: ${r.workspaceKind ?? "(none — kind-agnostic structural check)"}`);
-  console.log(`files walked:   ${r.totalFiles}`);
-  console.log(`with frontmatter: ${r.filesWithFrontmatter}`);
-  console.log(`gaps:           ${r.gapCount}`);
+  console.log(`工作区根目录：${r.root}`);
+  console.log(`工作区类型：${r.workspaceKind ?? "（无——与类型无关的结构检查）"}`);
+  console.log(`遍历文件：   ${r.totalFiles}`);
+  console.log(`含 frontmatter：${r.filesWithFrontmatter}`);
+  console.log(`gap 数：     ${r.gapCount}`);
   if (r.gapCount === 0) {
-    console.log("\n  no gaps — canon is clean against v0 contract.");
+    console.log("\n  无 gap——对照 v0 契约，规范是干净的。");
     return;
   }
-  console.log("\n  Gaps:");
+  console.log("\n  Gap：");
   for (const g of r.gaps) {
     const fieldStr = g.field ? ` [${g.field}]` : "";
     console.log(`    [${g.kind}] ${g.relativePath}${fieldStr}`);
@@ -218,13 +213,12 @@ function renderHumanReport(r: ValidationReport): void {
   }
 }
 
-// --- slice-21 FR-5 — `rig workspace doctor` types + human formatter ---
+// --- slice-21 FR-5——`rig workspace doctor` 类型 + 人类格式化器 ---
 //
-// DoctorReport shape mirrors the daemon's runWorkspaceDoctor output
-// at packages/daemon/src/domain/workspace/workspace-doctor.ts. Type
-// is duplicated here (not imported from the daemon package) because
-// the CLI does not have a direct daemon-package dependency edge; the
-// HTTP boundary already enforces the JSON shape.
+// DoctorReport 形状镜像后台服务 runWorkspaceDoctor 的输出，位于
+// packages/daemon/src/domain/workspace/workspace-doctor.ts。类型在这里
+// 复制一份（不从 daemon 包导入），因为 CLI 没有直接依赖 daemon 包的边；
+// HTTP 边界已经强制了 JSON 形状。
 
 interface DoctorCheckResult {
   check: string;
@@ -256,8 +250,8 @@ function statusIcon(status: DoctorCheckResult["status"]): string {
 }
 
 export function renderHumanDoctorReport(report: DoctorReport): void {
-  console.log(`workspace doctor — ${report.workspaceRoot}`);
-  console.log(`  summary: ${report.summary.ok} ok, ${report.summary.warn} warn, ${report.summary.fail} fail`);
+  console.log(`工作区诊断——${report.workspaceRoot}`);
+  console.log(`  汇总：${report.summary.ok} 正常，${report.summary.warn} 警告，${report.summary.fail} 失败`);
   console.log("");
 
   const byName = new Map(report.checks.map((c) => [c.check, c]));
@@ -270,21 +264,20 @@ export function renderHumanDoctorReport(report: DoctorReport): void {
       if (!c) continue;
       remaining.delete(checkName);
       console.log(`  [${statusIcon(c.status)}] ${c.check}: ${c.message}`);
-      if (c.fixHint) console.log(`        Fix: ${c.fixHint}`);
+      if (c.fixHint) console.log(`        修复：${c.fixHint}`);
     }
     console.log("");
   }
 
-  // Any checks not in the documented groups still get rendered so a
-  // future check addition doesn't silently drop from the human view
-  // before the group-map is updated.
+  // 任何不在文档化分组里的检查也照样渲染，这样以后新增检查时，
+  // 在分组映射更新之前不会从人类视图里静默消失。
   if (remaining.size > 0) {
-    console.log("other:");
+    console.log("其他：");
     for (const checkName of remaining) {
       const c = byName.get(checkName);
       if (!c) continue;
       console.log(`  [${statusIcon(c.status)}] ${c.check}: ${c.message}`);
-      if (c.fixHint) console.log(`        Fix: ${c.fixHint}`);
+      if (c.fixHint) console.log(`        修复：${c.fixHint}`);
     }
   }
 }

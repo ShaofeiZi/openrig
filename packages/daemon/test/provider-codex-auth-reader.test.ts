@@ -4,10 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { readCodexAuthMetadata } from "../src/domain/provider/codex-auth-reader.js";
 
-// Slice-04 (OPR.0.5.0.4) seam C1 — a DAEMON-LOCAL, secret-safe reader of the codex-auth on-disk
+// Slice-04（OPR.0.5.0.4）seam C1——codex-auth 磁盘上的 daemon-local、
+// secret-safe 读取器
 // contract ($CODEX_HOME||~/.codex : auth-profiles/*.json names + auth-seat-registry.tsv 6-col).
-// The daemon cannot import packages/cli; this re-reads the same documented format. It reads profile
-// NAMES and the TSV only — NEVER profile file contents (which hold token-class material).
+// daemon 不能 import packages/cli；此重读同一已记录格式。它仅读 profile
+// 名称与 TSV——绝不读 profile 文件内容（其中含 token 类材料）。
 
 let dir: string;
 
@@ -28,8 +29,8 @@ function writeRegistry(rows: string[][]): void {
   fs.writeFileSync(path.join(dir, "auth-seat-registry.tsv"), `${header}\n${body}\n`);
 }
 
-describe("readCodexAuthMetadata — daemon-local, secret-safe", () => {
-  it("lists profile NAMES (sorted) and parses the 6-column seat registry", () => {
+describe("readCodexAuthMetadata —— 后台服务本地且密钥安全", () => {
+  it("列出并排序配置名称，解析 6 列席位注册表", () => {
     writeProfile("beta", { OPENAI_API_KEY: "sk-SECRET-TOKEN-must-never-surface" });
     writeProfile("alpha", { OPENAI_API_KEY: "sk-ANOTHER-SECRET" });
     writeRegistry([
@@ -44,7 +45,7 @@ describe("readCodexAuthMetadata — daemon-local, secret-safe", () => {
     expect(s1).toMatchObject({ seat: "seat-1", rig: "rig-a", runtime: "codex", authProfile: "alpha", updatedTs: "2026-08-03T12:00:00.000Z" });
   });
 
-  it("NEVER surfaces token-class content from profile files (reads names only)", () => {
+  it("绝不呈现配置文件中的令牌类内容（只读取名称）", () => {
     writeProfile("alpha", { OPENAI_API_KEY: "sk-SECRET-TOKEN-must-never-surface", access_token: "tok-DEADBEEF" });
     writeRegistry([["seat-1", "rig-a", "codex", "/w/a", "alpha", "2026-08-03T12:00:00.000Z"]]);
 
@@ -56,7 +57,7 @@ describe("readCodexAuthMetadata — daemon-local, secret-safe", () => {
     expect(meta.profiles).toEqual(["alpha"]);
   });
 
-  it("returns empty (never throws) when the codex home / files are absent", () => {
+  it("Codex home 或文件缺失时返回空结果且不抛错", () => {
     const empty = fs.mkdtempSync(path.join(os.tmpdir(), "codexempty-"));
     try {
       const meta = readCodexAuthMetadata({ CODEX_HOME: empty } as NodeJS.ProcessEnv);
@@ -67,7 +68,7 @@ describe("readCodexAuthMetadata — daemon-local, secret-safe", () => {
     }
   });
 
-  it("skips malformed registry rows (wrong column count) rather than fabricating fields", () => {
+  it("跳过列数错误的畸形注册表记录，而不伪造字段", () => {
     fs.writeFileSync(
       path.join(dir, "auth-seat-registry.tsv"),
       ["seat\trig\truntime\tcwd\tauth_profile\tupdated_ts", "seat-1\trig-a\tcodex\t/w/a\talpha\t2026-08-03T12:00:00.000Z", "broken\trow", ""].join("\n"),

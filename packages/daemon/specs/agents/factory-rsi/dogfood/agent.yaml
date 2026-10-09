@@ -1,6 +1,6 @@
 name: factory-rsi-dogfood
 version: "1.0"
-description: Dogfood agent — continuously uses the SHIPPED product out-of-band and records findings that feed the next RSI plan cycle
+description: Dogfood 智能体——在主流程之外持续使用已交付产品，并记录发现供下一轮 RSI 规划使用
 
 defaults:
   runtime: claude-code

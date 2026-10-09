@@ -1,7 +1,6 @@
-// S10 — identity policy receipts (A1.2): the structured attribution header (rig/host/seat/
-// session) rides every outbound post in ONE honest bot identity; ZERO per-message
-// username/icon overrides (customize ABSENCE pinned at the posted-bytes level); the interim
-// loudness rule mentions ONLY escalations.
+// S10——identity 政策回执（A1.2）：结构化 attribution 头（rig/host/seat/session）
+// 随每条出站 post 以 ONE 诚实 bot identity 出现；ZERO per-message username/icon 覆盖
+//（customize ABSENCE 在 posted-bytes 层钉死）；临时 loudness 规则只 mention 升级。
 import { describe, it, expect } from "vitest";
 import { buildOutboundMessage, attributionFromSession } from "../src/domain/gateway/slack/message.js";
 import { subsystemSlackDeliver } from "../src/domain/gateway/slack/slack-delivery.js";
@@ -21,8 +20,8 @@ function memFs(): StateFsOps {
 }
 const clock = () => new Date("2026-08-27T00:00:00.000Z");
 
-describe("attributionFromSession — the stamped triple parses into the four fields", () => {
-  it("three-part triple: seat, rig, host, session", () => {
+describe("attributionFromSession——stamped triple 解析为四字段", () => {
+  it("三段 triple：seat、rig、host、session", () => {
     expect(attributionFromSession("dev-driver@v-openrig-build@host-84c37990")).toEqual({
       seat: "dev-driver@v-openrig-build",
       rig: "v-openrig-build",
@@ -30,19 +29,19 @@ describe("attributionFromSession — the stamped triple parses into the four fie
       session: "dev-driver@v-openrig-build@host-84c37990",
     });
   });
-  it("two-part ref: seat + rig, no host", () => {
+  it("两段 ref：seat + rig，无 host", () => {
     expect(attributionFromSession("dev-driver@v-openrig-build")).toMatchObject({ seat: "dev-driver@v-openrig-build", rig: "v-openrig-build" });
   });
-  it("bare/absent degrade honestly", () => {
+  it("裸/缺席诚实降级", () => {
     expect(attributionFromSession("daemon")).toMatchObject({ seat: "daemon", session: "daemon" });
     expect(attributionFromSession(null)).toBeUndefined();
   });
 });
 
-describe("buildOutboundMessage — attribution header + loudness rule", () => {
+describe("buildOutboundMessage——attribution 头 + loudness 规则", () => {
   const q = { qitemId: "q1", summary: "Decide X", body: "b", destinationSession: "mike@external" };
 
-  it("the subject leads and one sender attribution preserves the full source identity", () => {
+  it("subject 领衔，一条 sender attribution 保留完整 source identity", () => {
     const m = buildOutboundMessage(q, {
       sourceLabel: "vm",
       attribution: { seat: "dev-driver@v-openrig-build", rig: "v-openrig-build", host: "host-84c37990", session: "dev-driver@v-openrig-build@host-84c37990" },
@@ -52,11 +51,11 @@ describe("buildOutboundMessage — attribution header + loudness rule", () => {
     expect(first.type).toBe("context");
     const line = first.elements[0]!.text;
     expect(line).toContain("dev-driver@v-openrig-build");
-    expect(line).toBe("from dev-driver@v-openrig-build@host-84c37990");
-    expect(m.text).toContain("from dev-driver@v-openrig-build@host-84c37990"); // notification fallback carries it too
+    expect(line).toBe("来自 dev-driver@v-openrig-build@host-84c37990");
+    expect(m.text).toContain("来自 dev-driver@v-openrig-build@host-84c37990"); // notification fallback 也带它
   });
 
-  it("ESCALATION mentions the human by USER ID; routine stays quiet", () => {
+  it("ESCALATION 用 USER ID 提到 human；routine 保持安静", () => {
     const loud = buildOutboundMessage(q, { sourceLabel: "vm", mentionUserId: "U012AB3CD" });
     expect(loud.text.startsWith("<@U012AB3CD> :rotating_light: ")).toBe(true);
     expect(JSON.stringify(loud.blocks)).toContain("<@U012AB3CD> :rotating_light:");
@@ -67,7 +66,7 @@ describe("buildOutboundMessage — attribution header + loudness rule", () => {
   });
 });
 
-describe("customize ABSENCE — posted bytes carry the app identity ONLY", () => {
+describe("customize ABSENCE——posted bytes 只带 app identity", () => {
   function capture(): { fetchImpl: FetchImpl; bodies: Record<string, unknown>[] } {
     const bodies: Record<string, unknown>[] = [];
     return {
@@ -82,7 +81,7 @@ describe("customize ABSENCE — posted bytes carry the app identity ONLY", () =>
     kind: "outbound_decision", decisionId: "d1", op: "post_message", entityBindingRef: "mike#slack", payload,
   });
 
-  it("a full delivery (escalation, attribution, image) posts ZERO username/icon_url/icon_emoji keys", async () => {
+  it("一次完整投递（升级、attribution、图片）post ZERO username/icon_url/icon_emoji key", async () => {
     const fsx = memFs();
     const { fetchImpl, bodies } = capture();
     const deliver = subsystemSlackDeliver({
@@ -93,7 +92,7 @@ describe("customize ABSENCE — posted bytes carry the app identity ONLY", () =>
       delivered: new SeenStore("/del.jsonl", fsx, clock),
       attempted: new SeenStore("/att.jsonl", fsx, clock),
       outboundSeen: new SeenStore("/seen.jsonl", fsx, clock),
-      resolveMentionUserId: () => "U012AB3CD", // even at maximum loudness…
+      resolveMentionUserId: () => "U012AB3CD", // 即便在最大 loudness…
     });
     const out = await deliver(decision({
       qitemId: "q-esc",
@@ -106,12 +105,12 @@ describe("customize ABSENCE — posted bytes carry the app identity ONLY", () =>
     }));
     expect(out.ok).toBe(true);
     const body = bodies[0]!;
-    // …the identity stays the app's own: the customize keys are structurally absent.
+    // …identity 仍是 app 自己的：customize key 在结构上缺席。
     expect(Object.keys(body)).not.toContain("username");
     expect(Object.keys(body)).not.toContain("icon_url");
     expect(Object.keys(body)).not.toContain("icon_emoji");
     expect(JSON.stringify(body)).not.toMatch(/"username"|"icon_url"|"icon_emoji"/);
-    // and the attribution + mention arrived as CONTENT, not identity
+    // 且 attribution + mention 作为 CONTENT 到达，而非 identity
     expect(String(body.text)).toContain("<@U012AB3CD>");
     expect(JSON.stringify(body.blocks)).toContain("dev-driver@v-openrig-build");
   });

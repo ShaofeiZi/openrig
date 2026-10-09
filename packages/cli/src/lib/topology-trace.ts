@@ -1,20 +1,17 @@
-// OPR.0.5.3.6 — the productized chain-file trace (CE-v2).
+// OPR.0.5.3.6 —— 产品化的链式文件追踪（CE-v2）。
 //
-// The topology tree carries derived context at four shipped altitudes,
-// instance at the TOP of the root (D2):
+// 拓扑树在四个已交付层级上携带派生上下文，实例层位于根的【顶端】（D2）：
 //
-//   <topology.root>/<NAME>                          — instance
-//   <topology.root>/rigs/<rig>/<NAME>               — rig
-//   <topology.root>/rigs/<rig>/pods/<pod>/<NAME>    — pod
-//   <topology.root>/rigs/<rig>/seats/<seat>/<NAME>  — seat
+//   <topology.root>/<NAME>                          —— 实例
+//   <topology.root>/rigs/<rig>/<NAME>               —— 工作组
+//   <topology.root>/rigs/<rig>/pods/<pod>/<NAME>    —— pod
+//   <topology.root>/rigs/<rig>/seats/<seat>/<NAME>  —— 席位
 //
-// The root comes from the typed `topology.root` config key — never a literal
-// (D1). The pre-convention location (resolveLegacyTopologyRigsRoot) stays
-// readable as a per-level fallback that MUST surface the named advisory: the
-// read succeeds, and the caller is told the content came from the legacy tree
-// and how to migrate. The legacy literal lives in ONE helper here (the CLI
-// twin of the daemon settings-store's resolveLegacyTopologyRigsRoot), so the
-// walk itself carries no path literal.
+// 根来自带类型的 `topology.root` 配置键——绝不硬编码字面量（D1）。
+// 约定前的旧位置（resolveLegacyTopologyRigsRoot）仍作为逐级回退可读，
+// 但【必须】给出具名提示：读取成功，并告知调用方内容来自旧树以及如何迁移。
+// 旧字面量只集中在本文件的一个辅助函数里（与 daemon settings-store 的
+// resolveLegacyTopologyRigsRoot 是 CLI 孪生），因此遍历本身不含路径字面量。
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { resolveLegacyTopologyRigsRoot } from "../config-store.js";
@@ -23,21 +20,21 @@ export type TraceAltitude = "instance" | "rig" | "pod" | "seat";
 
 export interface TraceLevel {
   altitude: TraceAltitude;
-  /** The canonical path under topology.root for this level. */
+  /** 该层级在 topology.root 下的规范路径。 */
   path: string;
-  /** Where content was actually found: canonical, the legacy tree, or nowhere. */
+  /** 内容实际找到的位置：规范路径、旧树，或未找到。 */
   source: "topology.root" | "legacy" | "absent";
-  /** The path the content was read from (canonical or legacy); null when absent. */
+  /** 内容实际读取自的路径（规范或旧）；未找到时为 null。 */
   resolvedPath: string | null;
   content: string | null;
-  /** Present exactly when source === "legacy" — the named advisory. */
+  /** 仅当 source === "legacy" 时存在——具名提示。 */
   advisory?: string;
 }
 
 export interface TraceResult {
   name: string;
   topologyRoot: string;
-  /** Root-first: instance, rig, optional pod, optional seat — general to specific. */
+  /** 从根开始：实例、工作组、可选 pod、可选席位——由泛到专。 */
   levels: TraceLevel[];
 }
 
@@ -46,12 +43,10 @@ export interface TraceFs {
   read(path: string): string;
 }
 
-/** r2-B3: rig, seat, and name must each be ONE safe path segment. Unvalidated
- *  values joined into filesystem paths let `--rig ../../outside` resolve every
- *  level OUTSIDE topology.root (proven by the reviewer's discriminator).
- *  Rejection happens BEFORE any filesystem contact. Dotted filenames
- *  (a.b.c.md) and dashed/underscored ids stay valid; separators, dot-segments,
- *  empties, and NULs do not. */
+/** r2-B3：rig、seat、name 各自都必须是【一个】安全路径段。未校验的值拼进文件系统路径，
+ *  会让 `--rig ../../outside` 把每一层都解析到 topology.root【之外】
+ *  （评审者的判别用例已证明）。拒绝发生在【任何】文件系统接触之前。
+ *  带点的文件名（a.b.c.md）与横线/下划线 id 仍合法；分隔符、点段、空段、NUL 不合法。 */
 function assertSafeSegment(value: string, field: "rig" | "pod" | "seat" | "name"): void {
   if (
     value.trim().length === 0
@@ -60,7 +55,7 @@ function assertSafeSegment(value: string, field: "rig" | "pod" | "seat" | "name"
     || value.includes("\0")
   ) {
     throw new Error(
-      `invalid ${field} "${value}": must be a non-blank single path segment (no separators or dot-segments)`,
+      `非法的 ${field} "${value}"：必须是不含分隔符或点段的非空白单段路径`,
     );
   }
 }
@@ -71,8 +66,8 @@ const realFs: TraceFs = {
 };
 
 /**
- * Walk the topology tree for one chain filename. `seat` is optional (a
- * rig-level trace stops at the rig altitude). Pure given `fs` — tests inject.
+ * 为某个链式文件名遍历拓扑树。`seat` 可选（工作组级追踪在工作组层即停）。
+ * 给定 `fs` 时为纯函数——测试可注入。
  */
 export function traceTopologyChain(input: {
   topologyRoot: string;
@@ -85,8 +80,8 @@ export function traceTopologyChain(input: {
 }): TraceResult {
   assertSafeSegment(input.rig, "rig");
   if (input.pod != null) assertSafeSegment(input.pod, "pod");
-  // r2 residual: an explicitly EMPTY seat is user error — only true omission
-  // (undefined/null) means a rig-level trace.
+  // r2 遗留项：显式【空】seat 属于用户错误——只有真正省略（undefined/null）
+  // 才表示工作组级追踪。
   if (input.seat != null) assertSafeSegment(input.seat, "seat");
   assertSafeSegment(input.name, "name");
 
@@ -94,8 +89,7 @@ export function traceTopologyChain(input: {
   const legacyRigsRoot = input.legacyRigsRoot ?? resolveLegacyTopologyRigsRoot();
 
   const levels: Array<{ altitude: TraceAltitude; canonical: string; legacy: string | null }> = [
-    // The instance altitude IS the root of the tree — no legacy equivalent
-    // existed (the legacy layout began at rigs/).
+    // 实例层就是树的根——不存在旧版等价物（旧布局从 rigs/ 开始）。
     { altitude: "instance", canonical: join(input.topologyRoot, input.name), legacy: null },
     {
       altitude: "rig",
@@ -133,9 +127,9 @@ export function traceTopologyChain(input: {
           resolvedPath: legacy,
           content: fs.read(legacy),
           advisory:
-            `legacy-topology-read: ${altitude}-level "${input.name}" was found at the pre-convention location ` +
-            `${legacy} — not under topology.root (${input.topologyRoot}). The read succeeded; migrate this file ` +
-            `to ${canonical} (see the chain-file convention doc; \`rig config get topology.root\` names the root).`,
+            `legacy-topology-read：${altitude} 层的 "${input.name}" 在约定前的旧位置 ` +
+            `${legacy} 找到，而非位于 topology.root（${input.topologyRoot}）之下。读取已成功；请将此文件迁移到 ` +
+            `${canonical}（见链式文件约定文档；\`zrig config get topology.root\` 可查看根）。`,
         };
       }
       return { altitude, path: canonical, source: "absent", resolvedPath: null, content: null };

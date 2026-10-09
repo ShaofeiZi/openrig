@@ -30,8 +30,8 @@ function mockTmux(overrides?: {
   } as unknown as TmuxAdapter;
 }
 
-describe("ClaudeResumeAdapter", () => {
-  describe("canResume", () => {
+describe("ClaudeResumeAdapter 恢复适配器", () => {
+  describe("canResume 能力判断", () => {
     it("claude_name + token -> true", () => {
       const adapter = new ClaudeResumeAdapter(mockTmux());
       expect(adapter.canResume("claude_name", "my-session")).toBe(true);
@@ -42,7 +42,7 @@ describe("ClaudeResumeAdapter", () => {
       expect(adapter.canResume("claude_id", "abc-123")).toBe(true);
     });
 
-    it("no token -> false", () => {
+    it("无 token -> false", () => {
       const adapter = new ClaudeResumeAdapter(mockTmux());
       expect(adapter.canResume("claude_name", null)).toBe(false);
     });
@@ -52,14 +52,14 @@ describe("ClaudeResumeAdapter", () => {
       expect(adapter.canResume("none", "token")).toBe(false);
     });
 
-    it("codex_id -> false (cross-harness)", () => {
+    it("codex_id -> false（cross-harness）", () => {
       const adapter = new ClaudeResumeAdapter(mockTmux());
       expect(adapter.canResume("codex_id", "token")).toBe(false);
     });
   });
 
-  describe("resume", () => {
-    it("sends sendText then sendKeys Enter", async () => {
+  describe("resume 恢复", () => {
+    it("先发送 sendText，再发送 Enter key", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const tmux = mockTmux({ sendText, sendKeys });
@@ -69,16 +69,16 @@ describe("ClaudeResumeAdapter", () => {
 
       expect(sendText).toHaveBeenCalledOnce();
       expect(sendText.mock.calls[0]![0]).toBe("r99-demo1-lead");
-      // OPR.0.4.8.2: restore now carries the launch-posture floor (acceptEdits), same as fresh.
+      // OPR.0.4.8.2：restore 现在与 fresh 一样携带 launch-posture floor（acceptEdits）。
       expect(sendText.mock.calls[0]![1]).toBe("CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1 claude --permission-mode acceptEdits --resume 'my-session'");
       expect(sendKeys).toHaveBeenCalledOnce();
       expect(sendKeys.mock.calls[0]![0]).toBe("r99-demo1-lead");
       expect(sendKeys.mock.calls[0]![1]).toEqual(["Enter"]);
-      // sendText called before sendKeys
+      // sendText 在 sendKeys 前调用
       expect(sendText.mock.invocationCallOrder[0]).toBeLessThan(sendKeys.mock.invocationCallOrder[0]!);
     });
 
-    it("0.5.2-07: a SPEC-pinned model emits --model on the legacy resume command", async () => {
+    it("0.5.2-07：SPEC 固定的 model 会在 legacy resume command 中输出 --model", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const tmux = mockTmux({ sendText });
       const adapter = new ClaudeResumeAdapter(tmux);
@@ -90,13 +90,13 @@ describe("ClaudeResumeAdapter", () => {
       );
     });
 
-    it("returns { ok: true } on success", async () => {
+    it("成功时返回 { ok: true }", async () => {
       const adapter = new ClaudeResumeAdapter(mockTmux());
       const result = await adapter.resume("r99-demo1-lead", "claude_name", "my-session", "/repo");
       expect(result).toEqual({ ok: true, appliedLaunch: CLAUDE_FLOOR_EFFECT });
     });
 
-    it("returns { ok: false, code: 'resume_failed' } on sendText failure", async () => {
+    it("sendText 失败时返回 { ok: false, code: 'resume_failed' }", async () => {
       const sendText = vi.fn(async () => ({ ok: false as const, code: "session_not_found", message: "err" }));
       const adapter = new ClaudeResumeAdapter(mockTmux({ sendText }));
       const result = await adapter.resume("r99-demo1-lead", "claude_name", "my-session", "/repo");
@@ -111,14 +111,14 @@ describe("ClaudeResumeAdapter", () => {
       if (!result.ok) expect(result.code).toBe("no_resume");
     });
 
-    it("no token -> { ok: false, code: 'no_resume' }", async () => {
+    it("无 token -> { ok: false, code: 'no_resume' }", async () => {
       const adapter = new ClaudeResumeAdapter(mockTmux());
       const result = await adapter.resume("r99-demo1-lead", "claude_name", null, "/repo");
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.code).toBe("no_resume");
     });
 
-    it("shell-sensitive token is quoted in command", async () => {
+    it("command 中正确引用 shell-sensitive token", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const adapter = new ClaudeResumeAdapter(mockTmux({ sendText, sendKeys }));
@@ -128,7 +128,7 @@ describe("ClaudeResumeAdapter", () => {
       expect(sendText.mock.calls[0]![1]).toBe("CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1 claude --permission-mode acceptEdits --resume 'tok; rm -rf /'");
     });
 
-    it("sendKeys(Enter) fails after sendText -> C-c sent to clear buffer", async () => {
+    it("sendText 后 sendKeys(Enter) 失败 -> 发送 C-c 清除 buffer", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn()
         .mockResolvedValueOnce({ ok: false as const, code: "session_not_found", message: "err" }) // Enter fails
@@ -139,23 +139,23 @@ describe("ClaudeResumeAdapter", () => {
 
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.code).toBe("resume_failed");
-      // C-c cleanup was attempted
+      // 已尝试 C-c cleanup
       expect(sendKeys).toHaveBeenCalledTimes(2);
       expect(sendKeys.mock.calls[1]![1]).toEqual(["C-c"]);
     });
 
-    it("sendText fails -> NO C-c attempt", async () => {
+    it("sendText 失败 -> 不尝试 C-c", async () => {
       const sendText = vi.fn(async () => ({ ok: false as const, code: "session_not_found", message: "err" }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const adapter = new ClaudeResumeAdapter(mockTmux({ sendText, sendKeys }));
 
       await adapter.resume("r99-demo1-lead", "claude_name", "my-session", "/repo");
 
-      // sendKeys should NOT have been called at all (no Enter, no C-c)
+      // 完全不应调用 sendKeys（无 Enter、无 C-c）
       expect(sendKeys).not.toHaveBeenCalled();
     });
 
-    it("returns retry_fresh when Claude prints no conversation found and drops back to shell", async () => {
+    it("Claude 显示未找到 conversation 并退回 shell 时返回 retry_fresh", async () => {
       const getPaneCommand = vi.fn(async () => "zsh");
       const capturePaneContent = vi.fn(async () => "No conversation found with session ID: abc123\nuser@example.test %");
       const adapter = new ClaudeResumeAdapter(
@@ -168,11 +168,11 @@ describe("ClaudeResumeAdapter", () => {
       expect(result).toEqual({
         ok: false,
         code: "retry_fresh",
-        message: "Claude resume failed: no conversation found for the requested session",
+        message: "Claude resume 失败：找不到所请求 session 的会话",
       });
     });
 
-    it("waits for Claude to become the foreground command before succeeding", async () => {
+    it("等待 Claude 成为 foreground command 后才成功", async () => {
       const getPaneCommand = vi
         .fn<(_: string) => Promise<string | null>>()
         .mockResolvedValueOnce("zsh")
@@ -189,7 +189,7 @@ describe("ClaudeResumeAdapter", () => {
       expect(getPaneCommand).toHaveBeenCalledTimes(2);
     });
 
-    it("treats a live Claude TUI as success even when tmux reports a version-string foreground command", async () => {
+    it("即使 tmux 报告 version-string foreground command，也将 live Claude TUI 视为成功", async () => {
       const getPaneCommand = vi
         .fn<(_: string) => Promise<string | null>>()
         .mockResolvedValueOnce("zsh")
@@ -215,11 +215,10 @@ describe("ClaudeResumeAdapter", () => {
       expect(result).toEqual({ ok: true, appliedLaunch: CLAUDE_FLOOR_EFFECT });
     });
 
-    // OPR.0.3.4.5 — regression guard behavior 05: CONSUMER human gate.
-    // On a Claude resume-selection menu, the REAL consumer sends ZERO
-    // selection keystrokes and returns attention_required. This is
-    // safety-critical: auto-keying the menu is governance BLOCKING.
-    it("OPR.0.3.4.5 guard (05): resume-selection menu -> attention_required, ZERO selection keystrokes sent", async () => {
+    // OPR.0.3.4.5——regression guard 行为 05：CONSUMER human gate。在 Claude resume-selection
+    // menu 上，真实 consumer 不发送任何 selection keystroke，并返回 attention_required。这是
+    // safety-critical：自动按键选择 menu 是 governance BLOCKING。
+    it("OPR.0.3.4.5 guard（05）：resume-selection menu -> attention_required，且不发送 selection keystroke", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const getPaneCommand = vi.fn(async () => "claude");
@@ -239,15 +238,14 @@ describe("ClaudeResumeAdapter", () => {
 
       const result = await adapter.resume("r99-worker", "claude_name", "my-session", "/repo");
 
-      // attention_required, not failed
+      // attention_required，而非 failed
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.code).toBe("attention_required");
         expect(result.message).toBeTruthy();
       }
-      // THE GUARD: no numeric selection keystroke was sent.
-      // sendText has only the initial `claude --resume ...` command.
-      // sendKeys has only the initial Enter. Nothing else — no "1", no "2".
+      // 关键 GUARD：不发送数字 selection keystroke。sendText 只有初始 `claude --resume ...`
+      // command；sendKeys 只有初始 Enter。没有其他内容——没有 "1"、没有 "2"。
       const allSendTextArgs = sendText.mock.calls.map((c) => String(c[1] ?? ""));
       const allSendKeysArgs = sendKeys.mock.calls.flatMap((c) => {
         const arg = c[1];
@@ -256,14 +254,14 @@ describe("ClaudeResumeAdapter", () => {
       for (const s of [...allSendTextArgs, ...allSendKeysArgs]) {
         expect(s).not.toMatch(/^[0-9]+$/);
       }
-      // Explicitly: only the launch command + Enter were sent.
+      // 明确验证：只发送 launch command + Enter。
       expect(sendText).toHaveBeenCalledTimes(1);
       expect(sendText.mock.calls[0]![1]).toContain("claude --permission-mode acceptEdits --resume");
       expect(sendKeys).toHaveBeenCalledTimes(1);
       expect(sendKeys.mock.calls[0]![1]).toEqual(["Enter"]);
     });
 
-    it("current resume-mode chooser returns attention immediately with no selection input", async () => {
+    it("当前 resume-mode chooser 不输入 selection，立即返回 attention", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const sleep = vi.fn(async () => {});
@@ -290,7 +288,7 @@ describe("ClaudeResumeAdapter", () => {
       expect(sendKeys).toHaveBeenCalledWith("r99-worker", ["Enter"]);
     });
 
-    it("treats both chooser labels in ordinary active-TUI prose as resumed", async () => {
+    it("将普通 active-TUI prose 中的两个 chooser label 都视为已恢复", async () => {
       const adapter = new ClaudeResumeAdapter(
         mockTmux({
           getPaneCommand: vi.fn(async () => "2.1.89"),
@@ -309,7 +307,7 @@ describe("ClaudeResumeAdapter", () => {
       expect(result).toEqual({ ok: true, appliedLaunch: CLAUDE_FLOOR_EFFECT });
     });
 
-    it("treats the edit-approval footer as a live Claude TUI during resume verification", async () => {
+    it("resume verification 期间将 edit-approval footer 视为 live Claude TUI", async () => {
       const getPaneCommand = vi
         .fn<(_: string) => Promise<string | null>>()
         .mockResolvedValueOnce("2.1.89");

@@ -1,15 +1,12 @@
-// OPR.0.4.6.WF1 FR-4 (G5): the startup resume sweep.
+// OPR.0.4.6.WF1 FR-4（G5）：启动恢复扫描。
 //
-//   - re-arms missing keepalives (heals pre-WF-1 instances);
-//   - reissues LOST post-commit nudges (a pending frontier packet with
-//     last_nudge_attempt NULL was routed but never nudged — the exact
-//     commit-then-crash window, detected deterministically from the
-//     nudge ledger, not a heuristic);
-//   - surfaces stuck instances (the FR-2 evaluator; the UNCLAIMED
-//     frontier is a first-class sweep case — never invisible to an
-//     in-progress-only scan like findOverdue);
-//   - zero in-flight instances = a no-op with no side effects;
-//   - one observable summary line naming counts.
+//   - 重新武装缺失的 keepalive（修复 WF-1 前的实例）；
+//   - 重发丢失的提交后 nudge（last_nudge_attempt 为 NULL 的待处理 frontier packet 已路由
+//     却从未 nudge，正对应提交后崩溃窗口；从 nudge 台账确定性识别，而非启发式判断）；
+//   - 暴露卡住实例（FR-2 evaluator；未认领 frontier 是一等扫描场景，绝不会被 findOverdue
+//     这类仅扫描 in-progress 的逻辑忽略）；
+//   - 运行中实例为零时是无副作用空操作；
+//   - 输出一行可观察的具名计数摘要。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -124,7 +121,7 @@ describe("runWorkflowBootSweep (FR-4)", () => {
     });
   }
 
-  it("zero in-flight instances: a no-op with no side effects and an observable line", async () => {
+  it("没有运行中实例时为空操作，无副作用且有可观察日志", async () => {
     const result = await sweep();
     expect(result).toEqual({
       instancesSwept: 0,
@@ -135,16 +132,16 @@ describe("runWorkflowBootSweep (FR-4)", () => {
     });
     expect(watchdogRepo.listAll()).toHaveLength(0);
     expect(sentNudges).toHaveLength(0);
-    expect(logLines.some((l) => l.includes("0 in-flight"))).toBe(true);
+    expect(logLines.some((l) => l.includes("0 个进行中实例"))).toBe(true);
   });
 
-  it("re-arms the keepalive for a pre-WF-1 instance (no active job) and reports it healthily armed", async () => {
+  it("为 WF-1 前的实例（无活动 job）重新武装 keepalive，并报告已健康武装", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "re-arm walk",
       createdBySession: "ops@rig",
     });
-    // Simulate pre-WF-1: no active job for the instance.
+    // 模拟 WF-1 前状态：实例没有活动 job。
     const armed = findArmedKeepaliveJob(watchdogRepo, inst.instance.instanceId)!;
     watchdogRepo.markTerminal(armed.jobId, "simulated_pre_wf1_state");
 
@@ -154,14 +151,13 @@ describe("runWorkflowBootSweep (FR-4)", () => {
     expect(findArmedKeepaliveJob(watchdogRepo, inst.instance.instanceId)).not.toBeNull();
   });
 
-  it("LOST-NUDGE recovery: a pending frontier packet with last_nudge_attempt NULL is re-nudged at boot (the commit-then-crash window)", async () => {
+  it("丢失 nudge 恢复：last_nudge_attempt 为 NULL 的待处理 frontier packet 在启动时重新 nudge（提交后崩溃窗口）", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "lost nudge walk",
       createdBySession: "ops@rig",
     });
-    // Simulate the lost post-commit nudge: NULL the ledger (instantiate's
-    // own nudge stamped it via the test transport above).
+    // 模拟丢失的提交后 nudge：将台账置为 NULL（instantiate 自身的 nudge 已通过上方测试传输盖戳）。
     db.prepare(
       `UPDATE queue_items SET last_nudge_attempt = NULL, last_nudge_result = NULL WHERE qitem_id = ?`,
     ).run(inst.entryQitemId);
@@ -170,12 +166,12 @@ describe("runWorkflowBootSweep (FR-4)", () => {
     const result = await sweep();
     expect(result.lostNudgesReissued).toBe(1);
     expect(sentNudges.some((n) => n.session === "worker@rig")).toBe(true);
-    // The nudge ledger is stamped again — a second sweep does NOT re-reissue.
+    // nudge 台账重新盖戳，第二次扫描不会再次重发。
     const again = await sweep();
     expect(again.lostNudgesReissued).toBe(0);
   });
 
-  it("surfaces a stuck instance (overdue-unclaimed — the first-class unclaimed-frontier case) with evidence in the log and a re-nudge", async () => {
+  it("暴露卡住实例（逾期未认领——一等未认领 frontier 场景），在日志中附证据并重新 nudge", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "stuck walk",
@@ -192,19 +188,19 @@ describe("runWorkflowBootSweep (FR-4)", () => {
 
     const result = await sweep();
     expect(result.stuckSurfaced).toBe(1);
-    const stuckLine = logLines.find((l) => l.includes("STUCK"));
+    const stuckLine = logLines.find((l) => l.includes("卡住"));
     expect(stuckLine).toBeDefined();
     expect(stuckLine).toContain(inst.instance.instanceId);
     expect(stuckLine).toContain("overdue-unclaimed");
     expect(stuckLine).toContain("worker@rig");
     expect(sentNudges.some((n) => n.session === "worker@rig")).toBe(true);
-    // Summary line names counts.
+    // 摘要行点名各项计数。
     expect(
-      logLines.some((l) => l.includes("1 in-flight") && l.includes("1 stuck")),
+      logLines.some((l) => l.includes("1 个进行中实例") && l.includes("1 个卡住实例")),
     ).toBe(true);
   });
 
-  it("a healthy in-flight instance sweeps clean: armed, zero reissues, zero stuck", async () => {
+  it("健康运行中实例扫描干净：已武装、零重发、零卡住", async () => {
     await runtime.instantiate({
       specPath,
       rootObjective: "healthy walk",

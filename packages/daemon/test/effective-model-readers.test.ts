@@ -1,5 +1,5 @@
-// B8 / slice-07 A3 — per-runtime effective-model reads: real-shape fixtures, bounded tails, honest
-// nulls. Both specimens proved the REQUESTED echo lies; these read the runtime's own record.
+// B8 / slice-07 A3——逐运行时读取有效模型：真实形状 fixture、有界尾读、诚实 null。
+// 两个样本都证明 REQUESTED 回显不可信；这里读取运行时自身记录。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
@@ -27,7 +27,7 @@ const codexWorldState = (model: string) =>
   JSON.stringify({ timestamp: "t", ordinal: 4, type: "world_state", payload: { full: true, state: { collaboration_mode: { mode: "default", model } } } });
 
 describe("readClaudeEffectiveModel", () => {
-  it("returns the NEWEST assistant turn's model (the API response names what actually answered)", () => {
+  it("返回最新 assistant 轮次的模型（API 响应点明实际回答者）", () => {
     const p = tmp("t.jsonl", [
       claudeLine("claude-opus-5"),
       JSON.stringify({ type: "user", message: { role: "user", content: "q" } }),
@@ -37,7 +37,7 @@ describe("readClaudeEffectiveModel", () => {
     expect(readClaudeEffectiveModel(p)).toBe("claude-fable-5");
   });
 
-  it("skips a newer synthetic harness notice and returns the newest real assistant model", () => {
+  it("跳过较新的合成 harness 通知，返回最新真实 assistant 模型", () => {
     const p = tmp("t.jsonl", [
       claudeLine("claude-fable-5"),
       claudeLine("<synthetic>"),
@@ -46,25 +46,25 @@ describe("readClaudeEffectiveModel", () => {
     expect(readClaudeEffectiveModel(p)).toBe("claude-fable-5");
   });
 
-  it("a synthetic-only assistant history reads null instead of inventing an effective model", () => {
+  it("仅含合成消息的 assistant 历史返回 null，而不虚构有效模型", () => {
     const p = tmp("t.jsonl", claudeLine("<synthetic>") + "\n");
     expect(readClaudeEffectiveModel(p)).toBeNull();
   });
 
-  it("a transcript with NO assistant turn reads null (pending, never assumed)", () => {
+  it("没有 assistant 轮次的 transcript 返回 null（待定，绝不假设）", () => {
     const p = tmp("t.jsonl", JSON.stringify({ type: "user", message: { role: "user", content: "boot" } }) + "\n");
     expect(readClaudeEffectiveModel(p)).toBeNull();
   });
 
-  it("missing file reads null, corrupt lines are skipped", () => {
+  it("文件缺失时返回 null，并跳过损坏行", () => {
     expect(readClaudeEffectiveModel("/nonexistent/t.jsonl")).toBeNull();
     const p = tmp("t.jsonl", "{not json \"assistant\" \"model\"\n" + claudeLine("claude-fable-5") + "\n");
     expect(readClaudeEffectiveModel(p)).toBe("claude-fable-5");
   });
 
-  it("BOUNDED: only the tail window is read — a signal within the tail resolves even on a huge file", () => {
+  it("有界读取：只读取尾部窗口，大文件尾部范围内的信号仍可解析", () => {
     const p = tmp("t.jsonl", "");
-    // ~2MB of padding lines, then the signal — the 512KB tail still contains it.
+    // 约 2MB 填充行后写入信号；512KB 尾部仍包含它。
     for (let i = 0; i < 2000; i++) appendFileSync(p, JSON.stringify({ type: "metadata", filler: "x".repeat(1000) }) + "\n");
     appendFileSync(p, claudeLine("claude-fable-5") + "\n");
     expect(readClaudeEffectiveModel(p)).toBe("claude-fable-5");
@@ -72,7 +72,7 @@ describe("readClaudeEffectiveModel", () => {
 });
 
 describe("readCodexEffectiveModel", () => {
-  it("returns the newest world_state's collaboration_mode.model", () => {
+  it("返回最新 world_state 的 collaboration_mode.model", () => {
     const p = tmp("r.jsonl", [
       codexWorldState("gpt-5.6-luna"),
       JSON.stringify({ type: "turn_context", payload: {} }),
@@ -82,29 +82,29 @@ describe("readCodexEffectiveModel", () => {
     expect(readCodexEffectiveModel(p)).toBe("gpt-5.4-mini");
   });
 
-  it("no world_state in the tail reads null", () => {
+  it("尾部没有 world_state 时返回 null", () => {
     const p = tmp("r.jsonl", JSON.stringify({ type: "turn_context", payload: {} }) + "\n");
     expect(readCodexEffectiveModel(p)).toBeNull();
   });
 
-  it("r1 finding: a SPARSE world_state deep in a large rollout is found by the backward scan (r1 measured 0.80MB from EOF on a live 65.9MB rollout)", () => {
+  it("r1 发现：反向扫描能找到大型 rollout 深处的稀疏 world_state（实测距 65.9MB 线上文件 EOF 0.80MB）", () => {
     const p = tmp("r.jsonl", "");
     appendFileSync(p, codexWorldState("gpt-5.6-luna") + "\n");
-    // ~1.5MB of post-signal noise — the signal sits ~3 tail-windows from EOF.
+    // 信号后约 1.5MB 噪声；信号距 EOF 约 3 个尾部窗口。
     for (let i = 0; i < 1500; i++) appendFileSync(p, JSON.stringify({ type: "event_msg", filler: "x".repeat(1000) }) + "\n");
     expect(readCodexEffectiveModel(p)).toBe("gpt-5.6-luna");
   });
 
-  it("the backward scan is CAPPED: a signal beyond maxScanBytes reads null (bounded, named unknown — never a stall)", () => {
+  it("反向扫描有上限：超出 maxScanBytes 的信号返回 null（有界且明确 unknown，绝不卡死）", () => {
     const p = tmp("r.jsonl", "");
     appendFileSync(p, codexWorldState("gpt-5.6-luna") + "\n");
     for (let i = 0; i < 2000; i++) appendFileSync(p, JSON.stringify({ type: "event_msg", filler: "x".repeat(1000) }) + "\n");
     expect(readCodexEffectiveModel(p, 1024 * 1024)).toBeNull(); // 1MB cap; signal ~2MB deep
   });
 
-  it("r1 by-construction case: a REAL-SIZED (20KB) sole-signal record straddling a window boundary is read whole, not lost", () => {
-    // r1 proved the old fixed 4KB overlap lost exactly this shape (real world_state records reach
-    // ~22KB); the overlap is now sized from the dropped fragment, so size cannot defeat mechanism.
+  it("r1 构造案例：跨窗口边界的真实大小（20KB）唯一信号记录会被完整读取，不丢失", () => {
+    // r1 证明旧版固定 4KB overlap 恰好会丢失这种形状（真实 world_state 记录可达约 22KB）；
+    // 现在 overlap 根据被截断 fragment 定尺寸，记录大小无法击穿该机制。
     const bigRecord = JSON.stringify({
       timestamp: "t", ordinal: 4, type: "world_state",
       payload: { full: true, state: { collaboration_mode: { mode: "default", model: "gpt-5.6-luna" }, filler: "w".repeat(20_000) } },
@@ -118,7 +118,7 @@ describe("readCodexEffectiveModel", () => {
     }
   });
 
-  it("a small straddling record is still read (the original overlap case)", () => {
+  it("较小的跨窗口记录仍可读取（原始 overlap 案例）", () => {
     const p = tmp("r.jsonl", "");
     for (let i = 0; i < 500; i++) appendFileSync(p, JSON.stringify({ type: "event_msg", filler: "x".repeat(1000) }) + "\n");
     appendFileSync(p, codexWorldState("gpt-5.6-luna") + "\n");
@@ -127,27 +127,25 @@ describe("readCodexEffectiveModel", () => {
   });
 });
 
-describe("readCodexEffectiveModel — window-wide lines", () => {
-  it("r1 regression: a single line WIDER THAN THE WINDOW terminates fast (full-window step), instead of 1-byte grinding", () => {
+describe("readCodexEffectiveModel——宽于窗口的行", () => {
+  it("r1 回归：单行宽于窗口时快速终止（整窗口步进），而非逐字节慢扫", () => {
     const p = tmp("r.jsonl", "");
     appendFileSync(p, codexWorldState("gpt-5.6-luna") + "\n");
-    // One 2MB line (wider than the 512KB window) between the signal and EOF — the pathology needs
-    // a record bigger than the WINDOW, not bigger than the overlap.
+    // 信号与 EOF 之间有一个 2MB 行（宽于 512KB 窗口）；该异常要求记录大于窗口，而非仅大于 overlap。
     appendFileSync(p, JSON.stringify({ type: "event_msg", filler: "x".repeat(2 * 1024 * 1024) }) + "\n");
     for (let i = 0; i < 300; i++) appendFileSync(p, JSON.stringify({ type: "event_msg", filler: "x".repeat(1000) }) + "\n");
     const t0 = Date.now();
     const model = readCodexEffectiveModel(p);
     const ms = Date.now() - t0;
     expect(model).toBe("gpt-5.6-luna"); // the signal beyond the giant line is still reached
-    // NOTE (r1): if this test HANGS, that IS the regression firing — the grind is synchronous, so
-    // no timer (including vitest's own testTimeout) can interrupt it and the bound below is never
-    // reached. A stuck CI job on this file is the failure signal, not flaky infrastructure.
+    // 注意（r1）：若本测试挂起，就是回归已触发。慢扫是同步的，任何 timer（包括 vitest testTimeout）
+    // 都无法中断，下方时间界限也永远到不了。本文件的 CI 卡住就是失败信号，不是基础设施抖动。
     expect(ms).toBeLessThan(2_000); // pre-fix this ground 1-byte steps (r1: >30s on a real 6MB file)
   });
 });
 
 describe("readTailLines", () => {
-  it("drops the possibly-truncated first line when the read starts mid-file", () => {
+  it("读取从文件中部开始时丢弃可能被截断的首行", () => {
     const p = tmp("f.txt", "aaaa\nbbbb\ncccc\n");
     const lines = readTailLines(p, 7); // lands mid-"bbbb"
     expect(lines).not.toContain("aaaa");

@@ -48,7 +48,7 @@ function createApp(opts: {
   return app;
 }
 
-describe("transcript routes", () => {
+describe("transcript 路由", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -80,7 +80,7 @@ describe("transcript routes", () => {
     return { rig, node, session, store };
   }
 
-  it("GET /tail returns 200 with stripped content for existing transcript", async () => {
+  it("GET /tail 为现有 transcript 返回 200 与 stripped content", async () => {
     const { store } = seedRigWithTranscript("line1\n\x1b[1mline2\x1b[0m\nline3\n");
     const app = createApp({ db, rigRepo, sessionRegistry, transcriptStore: store });
 
@@ -88,11 +88,11 @@ describe("transcript routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.session).toBe("dev-impl@my-rig");
-    expect(body.content).toContain("line2"); // ANSI stripped
+    expect(body.content).toContain("line2"); // 已移除 ANSI
     expect(body.content).not.toContain("\x1b[");
   });
 
-  it("GET /tail reports live transcript ingest metadata for a fresh capture", async () => {
+  it("GET /tail 为 fresh capture 报告 live transcript ingest metadata", async () => {
     const { store } = seedRigWithTranscript("recent work\n");
     const app = createApp({ db, rigRepo, sessionRegistry, transcriptStore: store });
 
@@ -105,7 +105,7 @@ describe("transcript routes", () => {
     }));
   });
 
-  it("GET /tail fails loudly when an existing transcript is stale and capture cannot restart", async () => {
+  it("现有 transcript stale 且 capture 无法重启时，GET /tail 显著失败", async () => {
     const { store } = seedRigWithTranscript("old misleading work\n");
     const transcriptPath = store.getTranscriptPath("my-rig", "dev-impl@my-rig");
     const old = new Date(Date.now() - 60_000);
@@ -122,7 +122,7 @@ describe("transcript routes", () => {
     const res = await app.request("/api/transcripts/dev-impl@my-rig/tail?lines=10");
     expect(res.status).toBe(503);
     const body = await res.json();
-    expect(body.error).toContain("Transcript ingest degraded");
+    expect(body.error).toContain("transcript 摄入已降级");
     expect(body.error).toContain("claude-code");
     expect(body.ingestHealth).toEqual(expect.objectContaining({
       state: "degraded",
@@ -131,19 +131,19 @@ describe("transcript routes", () => {
     }));
   });
 
-  it("GET /tail with unknown session returns 404 with guidance", async () => {
+  it("GET /tail 使用未知 session 时返回带指引的 404", async () => {
     const store = new TranscriptStore({ transcriptsRoot: tmpDir, enabled: true });
     const app = createApp({ db, rigRepo, sessionRegistry, transcriptStore: store });
 
     const res = await app.request("/api/transcripts/nonexistent-session/tail");
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toContain("not found");
-    expect(body.error).toContain("rig ps");
+    expect(body.error).toContain("未找到会话");
+    expect(body.error).toContain("zrig ps");
   });
 
-  it("GET /tail with known session but no transcript file returns 404 with guidance", async () => {
-    // Create rig + session but NO transcript file
+  it("GET /tail 使用已知 session 但无 transcript 文件时返回带指引的 404", async () => {
+    // 创建 rig + session，但不创建 transcript 文件
     const rig = rigRepo.createRig("my-rig");
     const node = rigRepo.addNode(rig.id, "dev-impl", { role: "worker", runtime: "claude-code" });
     sessionRegistry.registerSession(node.id, "dev-impl@my-rig");
@@ -154,11 +154,11 @@ describe("transcript routes", () => {
     const res = await app.request("/api/transcripts/dev-impl@my-rig/tail");
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toContain("No transcript");
-    expect(body.error).toContain("rig up");
+    expect(body.error).toContain("无 transcript");
+    expect(body.error).toContain("下次工作组启动时自动开始");
   });
 
-  it("GET /tail registers a transcript rotation timer for a tmux-bound session with no transcript file", async () => {
+  it("GET /tail 为无 transcript 文件的 tmux-bound session 注册 transcript rotation timer", async () => {
     const {
       getActiveRotationCount,
       clearAllTranscriptRotationsForTest,
@@ -171,11 +171,9 @@ describe("transcript routes", () => {
 
     const store = new TranscriptStore({ transcriptsRoot: tmpDir, enabled: true });
     vi.spyOn(store, "ensureTranscriptDir").mockReturnValue(true);
-    // V1 pre-release Item 1: capture-pane returns null (no terminal
-    // content yet) so the rotation tick is a no-op write — the
-    // transcript file stays empty and readTail returns null, which
-    // surfaces as the legacy "started now" 404 to clients polling
-    // before the first real capture.
+    // V1 pre-release 第 1 项：capture-pane 返回 null（尚无 terminal content），因此 rotation tick
+    // 是 no-op write——transcript 文件保持为空，readTail 返回 null；在首次真实 capture 前轮询的
+    // client 会看到 legacy “started now” 404。
     const capturePaneSpy = vi.fn(async () => null);
     const app = createApp({
       db,
@@ -188,12 +186,12 @@ describe("transcript routes", () => {
     const res = await app.request("/api/transcripts/dev-impl@my-rig/tail");
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toContain("started now");
+    expect(body.error).toContain("现已启动");
     expect(getActiveRotationCount()).toBeGreaterThan(0);
     clearAllTranscriptRotationsForTest();
   });
 
-  it("GET /tail returns warmed content after lazy-start capture when output appears quickly", async () => {
+  it("lazy-start capture 后若 output 很快出现，GET /tail 返回 warmed content", async () => {
     const {
       getActiveRotationCount,
       clearAllTranscriptRotationsForTest,
@@ -223,18 +221,18 @@ describe("transcript routes", () => {
     clearAllTranscriptRotationsForTest();
   });
 
-  it("GET /tail with non-positive lines normalizes to default", async () => {
+  it("GET /tail 使用非正 lines 时 normalize 为默认值", async () => {
     const { store } = seedRigWithTranscript("line1\nline2\nline3\n");
     const app = createApp({ db, rigRepo, sessionRegistry, transcriptStore: store });
 
     const res = await app.request("/api/transcripts/dev-impl@my-rig/tail?lines=-5");
     expect(res.status).toBe(200);
     const body = await res.json();
-    // Normalized to default 50, response includes the normalized value
+    // normalize 为默认 50，response 包含 normalized value
     expect(body.lines).toBe(50);
   });
 
-  it("GET /tail with transcripts disabled returns 404 with guidance", async () => {
+  it("transcript 禁用时 GET /tail 返回带指引的 404", async () => {
     seedRigWithTranscript("content");
     const disabledStore = new TranscriptStore({ transcriptsRoot: tmpDir, enabled: false });
     const app = createApp({ db, rigRepo, sessionRegistry, transcriptStore: disabledStore });
@@ -242,10 +240,10 @@ describe("transcript routes", () => {
     const res = await app.request("/api/transcripts/dev-impl@my-rig/tail");
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toContain("disabled");
+    expect(body.error).toContain("已禁用");
   });
 
-  it("GET /grep with matches returns 200 with matched lines", async () => {
+  it("有匹配时 GET /grep 返回 200 与匹配行", async () => {
     const { store } = seedRigWithTranscript("hello world\ndecision made\nfoo bar\ndecision final\n");
     const app = createApp({ db, rigRepo, sessionRegistry, transcriptStore: store });
 
@@ -258,7 +256,7 @@ describe("transcript routes", () => {
     expect(body.matches[1]).toBe("decision final");
   });
 
-  it("GET /grep without pattern returns 400", async () => {
+  it("GET /grep 缺少 pattern 时返回 400", async () => {
     const { store } = seedRigWithTranscript("content");
     const app = createApp({ db, rigRepo, sessionRegistry, transcriptStore: store });
 
@@ -268,8 +266,8 @@ describe("transcript routes", () => {
     expect(body.error).toContain("pattern");
   });
 
-  it("GET /tail with ambiguous session name across rigs returns 409", async () => {
-    // Create two rigs with same name and same session name
+  it("GET /tail 使用跨工作组歧义 session name 时返回 409", async () => {
+    // 创建两个具有相同 name 与 session name 的工作组
     const rig1 = rigRepo.createRig("my-rig");
     const node1 = rigRepo.addNode(rig1.id, "dev-impl", { role: "worker", runtime: "claude-code" });
     sessionRegistry.registerSession(node1.id, "dev-impl@my-rig");
@@ -284,39 +282,37 @@ describe("transcript routes", () => {
     const res = await app.request("/api/transcripts/dev-impl@my-rig/tail");
     expect(res.status).toBe(409);
     const body = await res.json();
-    expect(body.error).toContain("ambiguous");
+    expect(body.error).toContain("有歧义");
   });
 
-  it("GET /grep with invalid regex returns 400", async () => {
+  it("GET /grep 使用无效 regex 时返回 400", async () => {
     const { store } = seedRigWithTranscript("content");
     const app = createApp({ db, rigRepo, sessionRegistry, transcriptStore: store });
 
     const res = await app.request("/api/transcripts/dev-impl@my-rig/grep?pattern=[invalid");
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toContain("Invalid grep pattern");
+    expect(body.error).toContain("非法 grep 模式");
   });
 
   // ─────────────────────────────────────────────────────────────────────
-  // M2c-Daemon — GET /:session/full route tests.
+  // M2c-Daemon——GET /:session/full route 测试。
   //
-  // Per orch decision approved-option-a-open-local-transcript-full-read-with-redaction
-  // (qitem-20260502020833-68e4eca3): full-read route adopts the existing
-  // tail/grep posture (open route, daemon-local trust boundary). Redaction
-  // is the protective primitive in this slice. The originally-requested
-  // session-scoped denial test was reframed by orch to session-resolution
-  // failure (404 unknown session), since no caller-identity / session-scope
-  // primitive exists in the daemon today.
+  // 根据 orch decision approved-option-a-open-local-transcript-full-read-with-redaction
+  //（qitem-20260502020833-68e4eca3）：full-read route 采用现有 tail/grep posture（open route、
+  // daemon-local trust boundary）。Redaction 是此 slice 的保护 primitive。由于 daemon 当前不存在
+  // caller-identity / session-scope primitive，原请求的 session-scoped denial 测试由 orch 重构为
+  // session-resolution failure（404 unknown session）。
   //
-  // Test plan (4 cases per dispatch + 1 ambiguity bonus per orch easy-case):
-  // (a) authorized success → full transcript content in response
+  // 测试计划（每次 dispatch 4 个 case + orch easy-case 的 1 个 ambiguity bonus）：
+  // (a) authorized success → response 中含完整 transcript content
   // (b) session-resolution failure → 404 unknown session
-  // (c) route-level redaction → synthetic credential patterns absent from wire payload
-  // (d) disabled/missing transcript → explicit 404
-  // (extra) ambiguity → 409 (matches tail/grep precedent)
+  // (c) route-level redaction → wire payload 中没有 synthetic credential pattern
+  // (d) transcript disabled/missing → 显式 404
+  //（额外）ambiguity → 409（与 tail/grep precedent 一致）
   // ─────────────────────────────────────────────────────────────────────
 
-  it("GET /full returns 200 with full transcript content for existing session (success case)", async () => {
+  it("GET /full 为现有 session 返回 200 与完整 transcript content（success case）", async () => {
     const fixture = "first line\nsecond line\nthird line\n";
     const { store } = seedRigWithTranscript(fixture);
     const app = createApp({ db, rigRepo, sessionRegistry, transcriptStore: store });
@@ -331,22 +327,22 @@ describe("transcript routes", () => {
     expect(body.content).toContain("third line");
   });
 
-  it("GET /full with unknown session returns 404 (session-resolution failure; reframe per orch)", async () => {
-    // Orch reframe: session-scoped denial replaced with session-resolution
-    // failure since no caller-identity/session-scope primitive exists.
+  it("GET /full 使用未知 session 时返回 404（session-resolution failure；按 orch 重构）", async () => {
+    // Orch 重构：由于不存在 caller-identity/session-scope primitive，以 session-resolution
+    // failure 替代 session-scoped denial。
     const store = new TranscriptStore({ transcriptsRoot: tmpDir, enabled: true });
     const app = createApp({ db, rigRepo, sessionRegistry, transcriptStore: store });
 
     const res = await app.request("/api/transcripts/nonexistent-session/full");
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toContain("not found");
-    expect(body.error).toContain("rig ps");
+    expect(body.error).toContain("未找到会话");
+    expect(body.error).toContain("zrig ps");
   });
 
-  it("GET /full applies route-level redaction: synthetic credential patterns absent from wire payload", async () => {
-    // Synthetic credentials covering 4 of the 5 v0 patterns (sk-*, gh*_*,
-    // github_pat_*, Bearer *). NOT real credentials. Per Quality Lesson v9.
+  it("GET /full 应用 route-level redaction：wire payload 中不含 synthetic credential pattern", async () => {
+    // synthetic credential 覆盖 5 种 v0 pattern 中的 4 种（sk-*、gh*_*、github_pat_*、Bearer *）。
+    // 不是真实 credential。遵循 Quality Lesson v9。
     const fixture = [
       "INFO startup",
       "user pasted token sk-FakeAbCdEfGhIjKlMnOpQr in chat",
@@ -361,19 +357,19 @@ describe("transcript routes", () => {
     const res = await app.request("/api/transcripts/dev-impl@my-rig/full");
     expect(res.status).toBe(200);
     const body = await res.json();
-    // Wire payload MUST NOT contain any of the planted credential patterns.
+    // Wire payload 绝不能包含任何植入的 credential pattern。
     expect(body.content).not.toContain("sk-FakeAbCdEfGhIjKlMnOpQr");
     expect(body.content).not.toContain("ghp_FakeAbCdEfGhIjKlMnOpQrSt");
     expect(body.content).not.toContain("github_pat_FakeAbCdEfGhIjKlMnOpQrSt");
     expect(body.content).not.toContain("Bearer FakeAbCdEfGhIjKlMnOpQrStUvWxYz123456");
-    // Route-level redaction left a [REDACTED] marker in place of each.
+    // Route-level redaction 在每处留下 [REDACTED] marker。
     expect(body.content).toContain("[REDACTED]");
-    // Surrounding context preserved (redaction is non-destructive at line level).
+    // 保留周围 context（redaction 在行级别是非破坏性的）。
     expect(body.content).toContain("INFO startup");
     expect(body.content).toContain("trailing line");
   });
 
-  it("GET /full with transcripts disabled returns 404 with guidance (disabled case)", async () => {
+  it("transcript 禁用时 GET /full 返回带指引的 404（disabled case）", async () => {
     seedRigWithTranscript("content");
     const disabledStore = new TranscriptStore({ transcriptsRoot: tmpDir, enabled: false });
     const app = createApp({ db, rigRepo, sessionRegistry, transcriptStore: disabledStore });
@@ -381,11 +377,11 @@ describe("transcript routes", () => {
     const res = await app.request("/api/transcripts/dev-impl@my-rig/full");
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toContain("disabled");
+    expect(body.error).toContain("已禁用");
   });
 
-  it("GET /full with known session but no transcript file returns 404 with guidance (missing case)", async () => {
-    // Create rig + session but NO transcript file.
+  it("GET /full 使用已知 session 但无 transcript 文件时返回带指引的 404（missing case）", async () => {
+    // 创建 rig + session，但不创建 transcript 文件。
     const rig = rigRepo.createRig("my-rig");
     const node = rigRepo.addNode(rig.id, "dev-impl", { role: "worker", runtime: "claude-code" });
     sessionRegistry.registerSession(node.id, "dev-impl@my-rig");
@@ -396,11 +392,11 @@ describe("transcript routes", () => {
     const res = await app.request("/api/transcripts/dev-impl@my-rig/full");
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toContain("No transcript");
+    expect(body.error).toContain("无 transcript");
   });
 
-  it("GET /full with ambiguous session name across rigs returns 409 (precedent match with tail/grep)", async () => {
-    // Two rigs, same session name → ambiguity 409 (mirrors tail/grep behavior).
+  it("GET /full 使用跨工作组歧义 session name 时返回 409（与 tail/grep precedent 一致）", async () => {
+    // 两个工作组使用相同 session name → ambiguity 409（镜像 tail/grep 行为）。
     const rig1 = rigRepo.createRig("my-rig");
     const node1 = rigRepo.addNode(rig1.id, "dev-impl", { role: "worker", runtime: "claude-code" });
     sessionRegistry.registerSession(node1.id, "dev-impl@my-rig");
@@ -415,6 +411,6 @@ describe("transcript routes", () => {
     const res = await app.request("/api/transcripts/dev-impl@my-rig/full");
     expect(res.status).toBe(409);
     const body = await res.json();
-    expect(body.error).toContain("ambiguous");
+    expect(body.error).toContain("有歧义");
   });
 });

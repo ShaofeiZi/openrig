@@ -1,8 +1,7 @@
-// OPR.0.3.4.8 — POST /api/rigs/:rigId/cmux/launch.
-// Replaces the sessionStatus=running label filter with actual tmux
-// liveness via tmuxAdapter.hasSession. Adds bounded readiness wait
-// for still-booting seats and honest partial response (opened vs
-// missing with per-seat reasons).
+// OPR.0.3.4.8——POST /api/rigs/:rigId/cmux/launch。
+// 用 tmuxAdapter.hasSession 检测的真实 tmux 存活替换 sessionStatus=running
+// 标签过滤。为仍在 boot 的席位增加有界就绪等待，并返回诚实的部分响应
+// （已打开 vs 缺失，带每席位原因）。
 
 import { Hono } from "hono";
 import type { RigRepository } from "../domain/rig-repository.js";
@@ -71,7 +70,7 @@ rigCmuxRoutes.post("/launch", async (c) => {
       {
         ok: false,
         error: "rig_not_found",
-        message: `Rig "${rigId}" not found — can't launch cmux workspace — try: rig ps`,
+        message: `未找到工作组 "${rigId}"——无法 launch cmux workspace——请尝试：zrig ps`,
       },
       404,
     );
@@ -83,7 +82,7 @@ rigCmuxRoutes.post("/launch", async (c) => {
         ok: false,
         error: "cmux_unavailable",
         message:
-          "cmux is not available on this host — can't launch workspace — install cmux from https://cmux.io and run: cmux ping",
+          "本主机上 cmux 不可用——无法 launch workspace——请从 https://cmux.io 安装 cmux 并运行：cmux ping",
       },
       503,
     );
@@ -91,18 +90,17 @@ rigCmuxRoutes.post("/launch", async (c) => {
 
   const inventory = nodeInventoryFn(rigId);
 
-  // OPR.0.3.4.8: discriminate on ACTUAL tmux liveness, not the status label.
-  // A seat is attachable iff it has a canonicalSessionName, is tmux-compatible,
-  // and tmuxAdapter.hasSession(name) is true (the session is actually alive).
-  // Dead/stale names (hasSession false) are NEVER attached — preserving the
-  // safety invariant from the original running-only filter.
+  // OPR.0.3.4.8：按真实 tmux 存活判别，而非 status 标签。
+  // 席位可 attach 当且仅当它有 canonicalSessionName、tmux 兼容、
+  // 且 tmuxAdapter.hasSession(name) 为 true（session 真实存活）。
+  // 死/陈旧名字（hasSession false）绝不 attach——保留原 running-only 过滤器的安全不变量。
   const launchableByLogical = new Map<string, string>();
   const missing: MissingSeat[] = [];
   const nonTmuxIds = new Set<string>();
   const STALE_STATUSES = new Set(["exited", "detached"]);
 
-  // Collect candidates: seats with a tmux-compatible canonical name.
-  // Track original sessionStatus for reason classification.
+  // 收集候选：有 tmux 兼容 canonical 名字的席位。
+  // 跟踪原始 sessionStatus 用于原因分类。
   interface Candidate { logicalId: string; sessionName: string; sessionStatus: string | null }
   const candidates: Candidate[] = [];
   const noSessionIds = new Set<string>();
@@ -120,9 +118,8 @@ rigCmuxRoutes.post("/launch", async (c) => {
     candidates.push({ logicalId: entry.logicalId, sessionName: entry.canonicalSessionName, sessionStatus: entry.sessionStatus });
   }
 
-  // Bounded readiness wait with re-read for no-session seats.
-  // Poll candidates for tmux liveness AND re-read inventory to discover
-  // newly-appeared sessions for no-session seats.
+  // 有界就绪等待，并对无 session 席位重新读取。
+  // 轮询候选的 tmux 存活，并重新读 inventory 以发现无 session 席位新出现的 session。
   const deadline = Date.now() + effectiveTimeoutMs;
   const pending = new Map(candidates.map((c) => [c.logicalId, c]));
   let firstPass = true;
@@ -131,7 +128,7 @@ rigCmuxRoutes.post("/launch", async (c) => {
     let foundThisCycle = 0;
     let noSessionDiscovered = 0;
 
-    // Re-read inventory for no-session seats to discover newly-appeared sessions.
+    // 对无 session 席位重新读 inventory，以发现新出现的 session。
     if (noSessionIds.size > 0) {
       const freshInventory = nodeInventoryFn(rigId);
       for (const entry of freshInventory) {
@@ -144,7 +141,7 @@ rigCmuxRoutes.post("/launch", async (c) => {
       }
     }
 
-    // Check tmux liveness for all pending candidates.
+    // 检查所有 pending 候选的 tmux 存活。
     for (const [logicalId, candidate] of [...pending]) {
       try {
         const alive = await tmuxAdapter.hasSession(candidate.sessionName);
@@ -154,13 +151,12 @@ rigCmuxRoutes.post("/launch", async (c) => {
           foundThisCycle++;
         }
       } catch {
-        // Probe failed — treat as not-yet-live this cycle.
+        // probe 失败——本周期视为尚未存活。
       }
     }
     if (pending.size === 0 && noSessionIds.size === 0) break;
-    // Early-exit when no progress was made this cycle (no new live sessions
-    // AND no new sessions discovered from no-session seats) and all remaining
-    // pending are known-stale.
+    // 当本周期无进展（无新存活 session 且无新发现的无 session 席位）
+    // 且所有剩余 pending 均为已知陈旧时提前退出。
     if (!firstPass && foundThisCycle === 0 && noSessionDiscovered === 0 && noSessionIds.size === 0) {
       const allPendingStale = pending.size === 0 || [...pending.values()].every((c) => STALE_STATUSES.has(c.sessionStatus ?? ""));
       if (allPendingStale) break;
@@ -171,7 +167,7 @@ rigCmuxRoutes.post("/launch", async (c) => {
     }
   }
 
-  // Classify remaining pending/no-session with reason fidelity.
+  // 以原因保真度分类剩余 pending/无 session。
   for (const [logicalId, candidate] of pending) {
     const isStale = STALE_STATUSES.has(candidate.sessionStatus ?? "");
     missing.push({ logicalId, reason: isStale ? "session-missing" : "still-booting" });
@@ -180,7 +176,7 @@ rigCmuxRoutes.post("/launch", async (c) => {
     missing.push({ logicalId, reason: "no-session" });
   }
 
-  // rig.nodes is in DB ORDER BY created_at — deterministic agent ordering.
+  // rig.nodes 按 DB ORDER BY created_at——确定性的智能体排序。
   const orderedSessions: string[] = [];
   for (const node of rigWithRelations.nodes) {
     const session = launchableByLogical.get(node.logicalId);
@@ -193,7 +189,7 @@ rigCmuxRoutes.post("/launch", async (c) => {
       {
         ok: false,
         error: "rig_not_running",
-        message: `Rig "${rigName}" has no live tmux sessions — can't attach to anything — run: rig up ${rigName}`,
+        message: `工作组 "${rigName}" 没有存活的 tmux session——无法 attach 到任何东西——请运行：zrig up ${rigName}`,
         missing,
       },
       412,

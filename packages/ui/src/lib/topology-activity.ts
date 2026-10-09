@@ -21,19 +21,17 @@ export interface TopologyActivityBaseline {
   currentQitems?: CurrentQitemSummary[] | null;
   startupStatus?: string | null;
   /**
-   * Slice 15 — `terminal-active` primitive (tmux byte-stream). When
-   * available, this is the source of truth for the ActivityRing's
-   * active/idle animation. Independent from `hasAssignedWork`.
+   * Slice 15 —— `terminal-active` 原语（tmux 字节流）。可用时它是活动环
+   * active/idle 动画的事实来源，独立于 `hasAssignedWork`。
    *
-   *   true  → seat producing output within the silence window → "active"
-   *   false → seat silent past the threshold → "idle"
-   *   null/undefined → no signal; fall back to other inputs.
+   *   true  → 席位在静默窗口内仍在产出输出 → "active"
+   *   false → 席位静默超过阈值 → "idle"
+   *   null/undefined → 无信号；回退到其他输入。
    */
   terminalActive?: boolean | null;
   /**
-   * Slice 15 — `has-work-to-do` primitive (queue-derived). Distinct
-   * from `terminalActive`. The UI renders this as its own affordance
-   * (e.g., "n queued") rather than collapsing into the active animation.
+   * Slice 15 —— `has-work-to-do` 原语（来自队列）。与 `terminalActive` 不同。
+   * 界面把它渲染成独立的提示（例如“n 个排队中”），而不是并入 active 动画。
    */
   hasAssignedWork?: boolean;
   pendingWorkCount?: number;
@@ -133,7 +131,7 @@ export function buildTopologySessionIndex(entries: readonly TopologySessionIndex
       if (!rigToken) continue;
       addKey(`${entry.logicalId ?? localId}@${rigToken}`, entry);
       if (entry.canonicalSessionName?.includes("@")) {
-        // OPR.0.4.6.MH1 FR-8: the shared parse contract's display helper.
+        // OPR.0.4.6.MH1 FR-8：共享解析约定的展示辅助函数。
         const sessionLocal = sessionMemberLabel(entry.canonicalSessionName);
         addKey(`${sessionLocal}@${rigToken}`, entry);
       }
@@ -153,7 +151,7 @@ export function resolveTopologySession(
   if (direct) return { ...direct, session: clean };
   if (direct === null) return null;
 
-  // OPR.0.4.6.MH1 FR-8: the shared parse contract (greedy first-@ rig).
+  // OPR.0.4.6.MH1 FR-8：共享解析约定（贪婪地取第一个 @ 前的 rig）。
   const parsed = parseSessionName(clean);
   if (parsed.kind !== "canonical") return null;
   const local = parsed.member;
@@ -174,19 +172,16 @@ export function getBaselineActivityState(input: TopologyActivityBaseline | null 
   if (input.startupStatus === "attention_required") return "needs_input";
   if (input.agentActivity?.state === "needs_input") return "needs_input";
 
-  // Slice 15 — terminal-active drives the active/idle animation.
-  // When the tmux signal is present it is the authoritative source. We
-  // STOPPED inferring "active" from `currentQitems` (queued-work
-  // presence) per IMPL-PRD §2.3 non-inference contract — that
-  // queue-to-active conflation was the reported bug. Queued work is
-  // rendered separately by the UI (hasAssignedWork affordance).
+  // Slice 15 —— 由 terminal-active 驱动 active/idle 动画。
+  // tmux 信号存在时它是权威来源。我们已停止从 `currentQitems`（有排队工作）
+  // 推断 "active"，这是 IMPL-PRD §2.3 的“不推断”约定——此前把“有队列工作”误当成
+  // “活跃”正是上报的缺陷。排队工作由界面另行渲染（hasAssignedWork 提示）。
   if (input.terminalActive === true) return "active";
   if (input.terminalActive === false) return "idle";
 
-  // Fallback when there's no terminal-active signal: trust the hook-
-  // based agentActivity if the runtime reports it. This is NOT a
-  // queue-derived inference — agentActivity comes from agent hook
-  // events (UserPromptSubmit etc.), a separate signal.
+  // 无 terminal-active 信号时的兜底：若运行时上报了基于 hook 的 agentActivity 则信任它。
+  // 这不是来自队列的推断——agentActivity 来自智能体 hook 事件（UserPromptSubmit 等），
+  // 是另一条独立信号。
   if (input.agentActivity?.state === "running") return "active";
 
   return "idle";

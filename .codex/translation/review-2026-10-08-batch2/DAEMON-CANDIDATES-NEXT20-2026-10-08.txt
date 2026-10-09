@@ -1,0 +1,21 @@
+daemon self_reported code-comment NEXT batch 20 (excludes reviewed batch4 20)
+1 domain/bootstrap-orchestrator.ts
+2 domain/bootstrap-types.ts
+3 domain/builtin-policy-reference.ts
+4 domain/chat-repository.ts
+5 domain/checkpoint-store.ts
+6 domain/claim-service.ts
+7 domain/classification-attempts.ts
+8 domain/classification-sources.ts
+9 domain/classifier-lease-manager.ts
+10 domain/claude-activity-hooks.ts
+11 domain/claude-managed-launch.ts
+12 domain/cmux-layout-service.ts
+13 domain/codex-daemon-support.ts
+14 domain/codex-thread-id.ts
+15 domain/conflict-detector.ts
+16 domain/context-monitor.ts
+17 domain/context-packs/context-pack-library-service.ts
+18 domain/context-packs/context-pack-types.ts
+19 domain/context-packs/manifest-parser.ts
+20 domain/context-packs/probe-eval-bridge.ts

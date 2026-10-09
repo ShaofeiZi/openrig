@@ -1,7 +1,7 @@
-// OPR.0.6.0.5 F1 — "Print link to copy" on the Connections page. Real decoded key bytes drive the
-// real input path (decodeInput → resolveKeyAction) to the action; the action runs the real
-// printForCopy over test streams. Proves the EMITTED bytes: the exact link as one unbroken line.
-// It cannot prove what a given terminal's mouse selection copies from soft-wrapped output.
+// OPR.0.6.0.5 F1——Connections 页的 "Print link to copy"。真实解码键字节驱动
+// 真实输入路径（decodeInput → resolveKeyAction）到动作；动作在测试流上跑真实
+// printForCopy。证明发出的字节：精确链接为一整行不断开。
+// 它不能证明某终端的鼠标选择从软包装输出复制到什么。
 import { describe, expect, it } from "vitest";
 import { PassThrough } from "node:stream";
 import { buildSlackAppManifest } from "../../daemon/src/domain/gateway/slack/manifest.js";
@@ -30,7 +30,7 @@ function snapshot(tokens: "missing" | "resolved" | "unavailable", manifest = tru
 
 const KEYS = { right: "\x1b[C", down: "\x1b[B", up: "\x1b[A", enter: "\r" } as const;
 
-/** Drive real key bytes to the "Print link to copy" line; return the action Enter resolves to. */
+/** 把真实键字节驱动到 "Print link to copy" 行；返回 Enter 解析到的动作。 */
 function pressEnterOnPrintLink(snap: FleetSnapshot, size: { cols: number; rows: number }): Action | null {
   const v = createViewState({ instanceId: "fixture", getSnapshot: () => snap });
   v.dispatch(parseCommand("connections"));
@@ -64,7 +64,7 @@ class FakeTerminal {
   term = streamCopyTerminal(this.stdin, { write: (t: string) => { this.out += t; } }, (on) => { this.raw.push(on); });
 }
 
-describe("Print link to copy — real key path to the action", () => {
+describe("打印链接到剪贴板——到动作的真实键路径", () => {
   for (const size of [{ cols: 60, rows: 20 }, { cols: 100, rows: 30 }]) {
     it(`${size.cols}x${size.rows}: arrow keys and Enter reach the action carrying the exact link`, () => {
       const action = pressEnterOnPrintLink(snapshot("missing"), size);
@@ -72,23 +72,23 @@ describe("Print link to copy — real key path to the action", () => {
     });
   }
 
-  it("not offered when Slack is configured, or when token state is unknown", () => {
+  it("Slack 已配置或 token 状态未知时不提供", () => {
     for (const tokens of ["resolved", "unavailable"] as const) {
       const sc = renderScreen((() => { const v = createViewState({ instanceId: "f", getSnapshot: () => snapshot(tokens) }); v.dispatch(parseCommand("connections")); return v.get(); })(), snapshot(tokens), { cols: 100, rows: 30 });
       expect(sc.contentTargets.some((t) => t.action?.type === "print-for-copy")).toBe(false);
     }
   });
 
-  it("older daemon (no manifest): no print action, the CLI fallback is named", () => {
+  it("旧 daemon（无 manifest）：无打印动作，CLI 回退被命名", () => {
     const snap = snapshot("missing", false);
     const v = createViewState({ instanceId: "f", getSnapshot: () => snap });
     v.dispatch(parseCommand("connections"));
     const sc = renderScreen(v.get(), snap, { cols: 100, rows: 60 });
     expect(sc.contentTargets.some((t) => t.action?.type === "print-for-copy")).toBe(false);
-    expect(sc.lines.join("\n")).toContain("rig slack manifest --url");
+    expect(sc.lines.join("\n")).toContain("zrig slack manifest --url");
   });
 
-  it("dispatching the action to view state changes nothing (only perform runs it)", () => {
+  it("把动作 dispatch 到 view state 不改变任何东西（仅 perform 运行它）", () => {
     const snap = snapshot("missing");
     const v = createViewState({ instanceId: "f", getSnapshot: () => snap });
     v.dispatch(parseCommand("connections"));
@@ -102,8 +102,8 @@ const RESTORE = ALT_SCREEN_ON + "\x1b[?1000h\x1b[?1006h\x1b[?2004h";
 const tick = () => new Promise((r) => setImmediate(r));
 const listeners = (s: PassThrough) => ["data", "end", "close", "error"].reduce((n, e) => n + s.listenerCount(e), 0);
 
-describe("Print link to copy — emitted bytes and normal return", () => {
-  it("leaves the alternate screen, prints the exact link as one unbroken line, and restores on Enter", async () => {
+describe("打印链接到剪贴板——发出字节与正常返回", () => {
+  it("离开备用屏，把精确链接打印为一不断行，Enter 恢复", async () => {
     const f = new FakeTerminal();
     const action = pressEnterOnPrintLink(snapshot("missing"), { cols: 60, rows: 20 }) as Extract<Action, { type: "print-for-copy" }>;
     const done = printForCopy(f.term, action.label, action.value);
@@ -122,7 +122,7 @@ describe("Print link to copy — emitted bytes and normal return", () => {
     expect(listeners(f.stdin)).toBe(0);
   });
 
-  it("ignores other input while waiting; later input is not consumed", async () => {
+  it("等待时忽略其他输入；后续输入不被消费", async () => {
     const f = new FakeTerminal();
     let returned = false;
     const done = printForCopy(f.term, "label", bundle.url).then(() => { returned = true; });
@@ -136,12 +136,12 @@ describe("Print link to copy — emitted bytes and normal return", () => {
     expect(f.out.length).toBe(len);
   });
 
-  it("a value that contains a line break is still printed as one line", () => {
+  it("含换行的值仍打印为一行", () => {
     expect(printForCopyText("l", "a\nb\r\nc").split("\r\n")).toContain("abc");
   });
 });
 
-describe("Print link to copy — input ends, closes or fails while waiting", () => {
+describe("打印链接到剪贴板——等待期间输入结束、关闭或失败", () => {
   for (const [how, trigger] of [
     ["end", (s: PassThrough) => { s.end(); }],
     ["close", (s: PassThrough) => { s.emit("close"); }],
@@ -174,8 +174,8 @@ function sessionDeps(terminal: CopyTerminal, over: Partial<{ shutting: () => boo
   };
 }
 
-describe("runCopySession — the main boundary", () => {
-  it("normal Enter: suspends, resumes, redraws once, no notice", async () => {
+describe("runCopySession——主边界", () => {
+  it("正常 Enter：挂起、恢复、重绘一次、无通知", async () => {
     const f = new FakeTerminal();
     const { log, deps } = sessionDeps(f.term);
     const done = runCopySession(deps);
@@ -184,16 +184,16 @@ describe("runCopySession — the main boundary", () => {
     expect(log).toEqual(["suspended:true", "suspended:false", "draw"]);
   });
 
-  it("input ends while waiting: resumes with a notice", async () => {
+  it("等待中输入结束：带通知恢复", async () => {
     const f = new FakeTerminal();
     const { log, deps } = sessionDeps(f.term);
     const done = runCopySession(deps);
     await tick(); f.stdin.end();
     expect(await done).toBe("end");
-    expect(log).toEqual(["suspended:true", "notice:Returned from the printed link: terminal input ended.", "suspended:false", "draw"]);
+    expect(log).toEqual(["suspended:true", "notice:从打印链接返回：终端输入结束。", "suspended:false", "draw"]);
   });
 
-  it("a rejected wait is caught: notice, resume, redraw, and no unhandled rejection", async () => {
+  it("拒绝的 wait 被捕获：通知、恢复、重绘，且无未处理拒绝", async () => {
     const unhandled: unknown[] = [];
     const onUnhandled = (e: unknown) => unhandled.push(e);
     process.on("unhandledRejection", onUnhandled);
@@ -204,7 +204,7 @@ describe("runCopySession — the main boundary", () => {
       expect(await runCopySession(deps)).toBe("failed");
       await tick(); await tick();
       expect(unhandled).toEqual([]);
-      expect(log).toEqual(["suspended:true", "notice:Could not print the link (closed). Run: rig slack manifest --url", "suspended:false", "draw"]);
+      expect(log).toEqual(["suspended:true", "notice:无法打印链接（closed）。运行：zrig slack manifest --url", "suspended:false", "draw"]);
       expect(out.endsWith(RESTORE)).toBe(true);
       expect(raw).toEqual([false, true]);
     } finally { process.off("unhandledRejection", onUnhandled); }
@@ -227,7 +227,7 @@ describe("runCopySession — the main boundary", () => {
     });
   }
 
-  it("shutdown while waiting: no alternate-screen restore and no redraw after shutdown", async () => {
+  it("等待中关闭：关闭后不恢复备用屏、不重绘", async () => {
     const f = new FakeTerminal();
     let shutting = false;
     const { log, deps } = sessionDeps(f.term, { shutting: () => shutting });

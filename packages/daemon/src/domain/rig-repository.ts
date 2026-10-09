@@ -19,17 +19,16 @@ import type {
 } from "./types.js";
 
 /**
- * Free helper: returns the latest snapshot for a rig whose data carries non-null
- * `resume_token` for at least one persisted session, or null otherwise.
+ * 独立辅助函数：返回工作组的最新快照，其中至少一个持久会话携带非 null 的
+ * `resume_token`；否则返回 null。
  *
- * Used by node-inventory and ps-projection to derive `lifecycleState=recoverable`
- * post-L1 cold-start. Distinct from `findLatestAutoPreDown`, which filters by kind.
+ * node-inventory 与 ps-projection 在 L1 冷启动后用它派生
+ * `lifecycleState=recoverable`。它不同于按 kind 过滤的 `findLatestAutoPreDown`。
  */
 interface SnapshotRow { id: string; rig_id: string; kind: string; status: string; data: string; created_at: string }
 
-/** Shared row → usable-Snapshot mapping (single source of truth for the parse +
- *  the ≥1-resume-token usability rule), used by both the single-rig and the
- *  FS-1 W1.2 all-rigs batched reads so their semantics are byte-identical. */
+/** 共享的行 → 可用 Snapshot 映射（解析与“至少一个 resume token”可用性规则的单一事实来源）。
+ * 单工作组读取与 FS-1 W1.2 全工作组批量读取都使用它，使两者语义逐字节一致。 */
 function snapshotFromRowIfUsable(row: SnapshotRow): Snapshot | null {
   let data: SnapshotData;
   try {
@@ -38,11 +37,9 @@ function snapshotFromRowIfUsable(row: SnapshotRow): Snapshot | null {
     return null;
   }
 
-  // OPR.0.5.7.1 — usability is OCCUPANT truth, not any-historical-row truth:
-  // a snapshot is usable iff at least one node RESOLVES to an active occupant
-  // carrying a token (the same four-way ladder execution consumes). A
-  // present-null/missing-key/dangling relation never counts — a historical
-  // token on a non-occupant row must not read as recoverable.
+  // OPR.0.5.7.1——可用性取决于占用者事实，而非任意历史行：当且仅当至少一个节点解析为
+  // 携带 token 的活跃占用者时，快照才可用（执行流程消费同一套四级判定）。存在但为 null、
+  // key 缺失或悬空关系均不计入；非占用者历史行上的 token 绝不能被读作可恢复。
   const sessions = data.sessions ?? [];
   const nodeIds = [...new Set(sessions.map((s) => s.nodeId))];
   const hasResolvedOccupantToken = nodeIds.some((nodeId) => {
@@ -72,11 +69,10 @@ export function findLatestUsableSnapshot(db: Database.Database, rigId: string): 
 }
 
 /**
- * FS-1 W1.2 — the all-rigs batched form of `findLatestUsableSnapshot`: the
- * latest snapshot per rig in ONE query (same `created_at DESC, id DESC` order),
- * each mapped through the shared `snapshotFromRowIfUsable`. Rigs with no usable
- * snapshot are simply absent from the map (callers default to null). Rides the
- * arch-D1.1 sibling-audit `snapshots(rig_id, created_at)` index candidate.
+ * FS-1 W1.2——`findLatestUsableSnapshot` 的全工作组批量形式：一次查询取得每个工作组
+ * 的最新快照（同样按 `created_at DESC, id DESC` 排序），再逐条通过共享的
+ * `snapshotFromRowIfUsable` 映射。没有可用快照的工作组不出现在 map 中
+ *（调用方默认使用 null）。使用 arch-D1.1 同级审计候选索引 `snapshots(rig_id, created_at)`。
  */
 export function findLatestUsableSnapshotsForAllRigs(db: Database.Database): Map<string, Snapshot> {
   const rows = db.prepare(`
@@ -95,21 +91,19 @@ export function findLatestUsableSnapshotsForAllRigs(db: Database.Database): Map<
 }
 
 /**
- * OPR.0.3.3.19 - rig archive read filter. Default daemon reads EXCLUDE archived
- * rigs; explicit modes opt in. Mirrors the stream-items `--include-archived`
- * precedent (stream-store.list).
+ * OPR.0.3.3.19——工作组归档读取过滤器。后台服务默认读取排除已归档工作组，
+ * 显式模式可选择纳入；对应 stream-items 的 `--include-archived` 先例（stream-store.list）。
  */
 export interface RigArchiveFilter {
-  /** include both active and archived rigs */
+  /** 同时包含活跃和已归档工作组。 */
   includeArchived?: boolean;
-  /** return ONLY archived rigs */
+  /** 只返回已归档工作组。 */
   archivedOnly?: boolean;
 }
 
 /**
- * SQL condition fragment for the archive filter on a column (e.g. "archived_at"
- * or the aliased "r.archived_at"). Returns null when no filter applies
- * (includeArchived = include everything). Default (no filter) excludes archived.
+ * 针对某列的归档过滤 SQL 条件片段（例如 "archived_at" 或别名 "r.archived_at"）。
+ * 不应用过滤时返回 null（includeArchived 表示包含全部）；默认排除已归档项。
  */
 export function archiveWhereClause(col: string, filter?: RigArchiveFilter): string | null {
   if (filter?.archivedOnly) return `${col} IS NOT NULL`;
@@ -122,7 +116,7 @@ interface NodeOptions {
   runtime?: string;
   model?: string;
   codexConfigProfile?: string;
-  /** OPR.0.4.8.3 Seam B: per-seat permission_policy REF (builtin:<name> or spec-relative path). */
+  /** OPR.0.4.8.3 接缝 B：逐席位 permission_policy 引用（builtin:<name> 或 spec 相对路径）。 */
   permissionPolicy?: string;
   cwd?: string;
   surfaceHint?: string;
@@ -141,9 +135,8 @@ interface NodeOptions {
 
 export class RigRepository {
   readonly db: Database.Database;
-  /** OPR.0.5.6.24 — born-armed (advisor-ruled birth-property principle):
-   *  protection arms in the same act that creates the rig. Wired at startup;
-   *  optional so repo construction stays dependency-free. */
+  /** OPR.0.5.6.24——创建即启用（advisor 裁定的出生属性原则）：保护机制与工作组在同一操作中创建。
+   * 在启动时接线；保持可选，使仓库构造不依赖它。 */
   onRigCreated?: (rig: Rig) => void;
   constructor(db: Database.Database) {
     this.db = db;
@@ -163,12 +156,10 @@ export class RigRepository {
   }
 
   /**
-   * PL-007 Workspace Primitive — persist the typed workspace block on the
-   * rigs row. Stored as JSON in `workspace_json` (migration 038). Pass
-   * null to clear. Older test fixtures that bypass the canonical migration
-   * list don't have the column; setter is a no-op in that case (the
-   * caller's contract is "best-effort persistence"). Whoami / node-inventory
-   * read this column to surface the rig's workspace block alongside cwd.
+   * PL-007 Workspace Primitive——把类型化 workspace 块持久化到 rigs 行，以 JSON 存储在
+   * `workspace_json`（迁移 038）。传入 null 可清除。绕过规范迁移列表的旧测试 fixture
+   * 没有此列；这种情况下 setter 不执行操作（调用方契约为“尽力持久化”）。Whoami / node-inventory
+   * 读取此列，在 cwd 旁呈现工作组 workspace 块。
    */
   setRigWorkspace(rigId: string, workspace: import("./types.js").WorkspaceSpec | null): void {
     if (!this.hasRigColumn("workspace_json")) return;
@@ -177,7 +168,7 @@ export class RigRepository {
       .run(json, new Date().toISOString(), rigId);
   }
 
-  /** PL-007 — read the persisted workspace block for a rig. */
+  /** PL-007——读取工作组已持久化的 workspace 块。 */
   getRigWorkspace(rigId: string): import("./types.js").WorkspaceSpec | null {
     if (!this.hasRigColumn("workspace_json")) return null;
     const row = this.db.prepare("SELECT workspace_json FROM rigs WHERE id = ?")
@@ -190,15 +181,15 @@ export class RigRepository {
     }
   }
 
-  /** OPR.0.4.8.3 Seam B — persist a rig's attached permission_policy REF (builtin:<name> or a
-   *  spec-relative custom path), or null to clear. Mirrors setRigWorkspace (migration 056). */
+  /** OPR.0.4.8.3 接缝 B——持久化工作组附加的 permission_policy 引用（builtin:<name> 或
+   * spec 相对自定义路径）；传入 null 清除。对应 setRigWorkspace（迁移 056）。 */
   setRigPermissionPolicy(rigId: string, permissionPolicy: string | null): void {
     if (!this.hasRigColumn("permission_policy")) return;
     this.db.prepare("UPDATE rigs SET permission_policy = ?, updated_at = ? WHERE id = ?")
       .run(permissionPolicy ?? null, new Date().toISOString(), rigId);
   }
 
-  /** OPR.0.4.8.3 Seam B — read the persisted rig-level permission_policy REF (null when none). */
+  /** OPR.0.4.8.3 接缝 B——读取持久化的工作组级 permission_policy 引用；无值时为 null。 */
   getRigPermissionPolicy(rigId: string): string | null {
     if (!this.hasRigColumn("permission_policy")) return null;
     const row = this.db.prepare("SELECT permission_policy FROM rigs WHERE id = ?")
@@ -206,15 +197,15 @@ export class RigRepository {
     return row?.permission_policy ?? null;
   }
 
-  /** #25 — persist the rig's selected Claude managed-block file (migration 085), or null for
-   *  the CLAUDE.md default. Mirrors setRigPermissionPolicy. */
+  /** #25——持久化工作组选定的 Claude 托管块文件（迁移 085）；使用默认 CLAUDE.md 时为 null。
+   * 对应 setRigPermissionPolicy。 */
   setRigClaudeManagedBlockFile(rigId: string, file: ClaudeManagedBlockFile | null): void {
     if (!this.hasRigColumn("claude_managed_block_file")) return;
     this.db.prepare("UPDATE rigs SET claude_managed_block_file = ?, updated_at = ? WHERE id = ?")
       .run(file ?? null, new Date().toISOString(), rigId);
   }
 
-  /** #25 — the rig's selected Claude managed-block file, or null when it uses the default. */
+  /** #25——工作组选定的 Claude 托管块文件；使用默认值时为 null。 */
   getRigClaudeManagedBlockFile(rigId: string): ClaudeManagedBlockFile | null {
     if (!this.hasRigColumn("claude_managed_block_file")) return null;
     const row = this.db.prepare("SELECT claude_managed_block_file FROM rigs WHERE id = ?")
@@ -222,9 +213,9 @@ export class RigRepository {
     return row?.claude_managed_block_file ?? null;
   }
 
-  /** Seam B Guard-F1 — persist the RIG-level resolved attachment provenance (migration 058).
-   *  declaringDir = the ORIGINAL declaring RigSpec dir; consumers must never re-resolve the
-   *  raw relative ref against an unrelated operation root. No-op on pre-058 fixture DBs. */
+  /** 接缝 B Guard-F1——持久化工作组级已解析附件来源（迁移 058）。declaringDir 是原始声明
+   * RigSpec 目录；消费方绝不能依据无关操作根目录重新解析原始相对引用。
+   * 对 058 之前的 fixture 数据库不执行操作。 */
   setRigPolicyProvenance(
     rigId: string,
     provenance: {
@@ -240,13 +231,13 @@ export class RigRepository {
     ).run(provenance.origin, provenance.resolvedTarget, provenance.declaringDir, provenance.launchPosture, new Date().toISOString(), rigId);
   }
 
-  /** Seam B Guard-F1 — read the rig-level resolved attachment provenance (null when none). */
+  /** 接缝 B Guard-F1——读取工作组级已解析附件来源；没有时为 null。 */
   getRigPolicyProvenance(rigId: string): {
     origin: "builtin" | "custom" | "deliberate_none";
     resolvedTarget: string | null;
     declaringDir: string | null;
     launchPosture: "floor" | "full_bypass";
-    /** the raw rig ref (056) alongside, for re-validation */
+    /** 同时返回原始工作组引用（056），用于重新校验。 */
     rigRef: string | null;
   } | null {
     if (!this.hasRigColumn("rig_policy_launch_posture")) return null;
@@ -269,10 +260,10 @@ export class RigRepository {
     };
   }
 
-  /** OPR.0.4.8.3 Seam B (R2, dev-guard ruling) — persist a node's RESOLVED policy attachment
-   *  provenance (restart-stable: origin + resolved target + declaring dir + launch posture).
-   *  Builtins carry resolvedTarget=null until the packaging leg's canonical path is ruled
-   *  (PM lane c76c7153) — never a `builtin:<name>` echo. No-op on pre-057 fixture DBs. */
+  /** OPR.0.4.8.3 接缝 B（R2，dev-guard 裁定）——持久化节点已解析的策略附件来源；
+   * 重启后稳定，包含 origin、resolved target、declaring dir 与 launch posture。
+   * 在打包支线确定规范路径前（PM lane c76c7153），builtin 携带 resolvedTarget=null，
+   * 绝不回显 `builtin:<name>`。对 057 之前的 fixture 数据库不执行操作。 */
   setNodePolicyProvenance(
     nodeId: string,
     provenance: {
@@ -288,14 +279,14 @@ export class RigRepository {
     ).run(provenance.origin, provenance.resolvedTarget, provenance.declaringDir, provenance.launchPosture, nodeId);
   }
 
-  /** Seam B (R2) — read a node's persisted policy provenance; null when none attached
-   *  (or pre-057 DB). Restore consumers re-derive posture from this without the spec. */
+  /** 接缝 B（R2）——读取节点已持久化的策略来源；未附加或数据库早于 057 时为 null。
+   * 恢复消费方无需 spec 即可从中重新派生 posture。 */
   getNodePolicyProvenance(nodeId: string): {
     origin: "builtin" | "custom" | "deliberate_none";
     resolvedTarget: string | null;
     declaringDir: string | null;
     launchPosture: "floor" | "full_bypass";
-    /** The node's own raw ref (member-level; null when the attachment came from the rig). */
+    /** 节点自身的原始引用（成员级；附件来自工作组时为 null）。 */
     nodeRef: string | null;
   } | null {
     if (!this.hasNodeColumn("policy_launch_posture")) return null;
@@ -318,8 +309,7 @@ export class RigRepository {
     };
   }
 
-  /** PL-007 — defensive column probe on rigs (migration 038's
-   *  workspace_json is absent in legacy test fixtures). */
+  /** PL-007——对 rigs 执行防御性列探测；旧测试 fixture 缺少迁移 038 的 workspace_json。 */
   private hasRigColumn(columnName: string): boolean {
     try {
       return this.db.prepare("PRAGMA table_info(rigs)").all()
@@ -330,17 +320,17 @@ export class RigRepository {
   }
 
   addNode(rigId: string, logicalId: string, opts?: NodeOptions): Node {
-    // Same-rig guard for podId
+    // podId 的同工作组守卫
     if (opts?.podId) {
       const pod = this.db.prepare("SELECT rig_id FROM pods WHERE id = ?").get(opts.podId) as { rig_id: string } | undefined;
-      if (!pod) throw new Error(`Pod not found: ${opts.podId}`);
-      if (pod.rig_id !== rigId) throw new Error("Pod belongs to a different rig");
+      if (!pod) throw new Error(`未找到 Pod：${opts.podId}`);
+      if (pod.rig_id !== rigId) throw new Error("Pod 属于另一个工作组");
     }
 
     const id = ulid();
     if (this.hasNodeColumn("codex_config_profile") && this.hasNodeColumn("permission_policy")) {
-      // OPR.0.4.8.3 Seam B: both ALTER-added optional columns present (migrations 022 + 055; 055
-      // runs after 022, so a permission_policy column implies a codex_config_profile column).
+      // OPR.0.4.8.3 接缝 B：两个由 ALTER 添加的可选列均存在（迁移 022 + 055；055 在 022 后运行，
+      // 因此存在 permission_policy 列就意味着存在 codex_config_profile 列）。
       this.db
         .prepare(
           `INSERT INTO nodes (id, rig_id, logical_id, role, runtime, model, codex_config_profile, permission_policy, cwd, surface_hint, workspace, restore_policy, package_refs,
@@ -436,9 +426,9 @@ export class RigRepository {
     );
   }
 
-  /** S5 (OPR.0.5.4.7) — the first supported nodes.model write (the inventory was insert-only;
-   *  KI-5.3-9). Every managed resume/successor launch reads node.model at call time, so this
-   *  UPDATE is the complete persistence half of set-model. Returns whether a row changed. */
+  /** S5（OPR.0.5.4.7）——首个受支持的 nodes.model 写入（此前清单只能插入；KI-5.3-9）。
+   * 每次托管 resume/继任启动都在调用时读取 node.model，因此此 UPDATE 完成 set-model 的
+   * 持久化部分。返回是否有行发生变化。 */
   setNodeModel(nodeId: string, model: string): boolean {
     const result = this.db
       .prepare("UPDATE nodes SET model = ? WHERE id = ?")
@@ -502,9 +492,8 @@ export class RigRepository {
   }
 
   /**
-   * Returns the latest snapshot for this rig with at least one non-null resume token,
-   * or null if no usable snapshot exists. Used by the lifecycle projection to derive
-   * `recoverable` state.
+   * 返回此工作组至少包含一个非 null resume token 的最新快照；无可用快照时返回 null。
+   * 生命周期投影用它派生 `recoverable` 状态。
    */
   findLatestUsableSnapshot(rigId: string): Snapshot | null {
     return findLatestUsableSnapshot(this.db, rigId);
@@ -552,9 +541,8 @@ export class RigRepository {
   }
 
   /**
-   * OPR.0.3.3.19 - soft-archive a rig: sets `archived_at`. The rigs row,
-   * topology rows, and snapshots are all RETAINED (this is NOT the delete
-   * path - contrast deleteRig). Returns false if the rig was already archived.
+   * OPR.0.3.3.19——软归档工作组：设置 `archived_at`。保留 rigs 行、拓扑行和快照；
+   * 这不是删除路径，与 deleteRig 对比。工作组已归档时返回 false。
    */
   archiveRig(rigId: string): boolean {
     const result = this.db
@@ -563,7 +551,7 @@ export class RigRepository {
     return result.changes > 0;
   }
 
-  /** OPR.0.3.3.19 - reverse archive: clears `archived_at`. Returns false if not archived. */
+  /** OPR.0.3.3.19——撤销归档：清除 `archived_at`。未归档时返回 false。 */
   unarchiveRig(rigId: string): boolean {
     const result = this.db
       .prepare("UPDATE rigs SET archived_at = NULL, updated_at = datetime('now') WHERE id = ? AND archived_at IS NOT NULL")
@@ -583,7 +571,7 @@ export class RigRepository {
     const now = new Date().toISOString();
     const composeFile = resolve(record.rigRoot, record.composeFile);
     const rig = this.db.prepare("SELECT name FROM rigs WHERE id = ?").get(rigId) as { name: string } | undefined;
-    if (!rig) throw new Error(`Rig not found: ${rigId}`);
+    if (!rig) throw new Error(`未找到工作组：${rigId}`);
     const projectName = record.projectName ?? deriveComposeProjectName(rig.name);
     this.db.prepare(`
       INSERT INTO rig_services (
@@ -618,7 +606,7 @@ export class RigRepository {
     );
 
     const stored = this.db.prepare("SELECT * FROM rig_services WHERE rig_id = ?").get(rigId) as RigServicesRow | undefined;
-    if (!stored) throw new Error(`Failed to persist services record for rig ${rigId}`);
+    if (!stored) throw new Error(`无法持久化工作组 ${rigId} 的服务记录`);
     return this.rowToServicesRecord(stored);
   }
 
@@ -639,7 +627,7 @@ export class RigRepository {
     return this.getServicesRecord(rigId);
   }
 
-  // -- Row-to-domain mappers --
+  // -- 数据库行到 domain 对象的映射 --
 
   private rowToRig(row: RigRow): Rig {
     return {
@@ -730,7 +718,7 @@ export class RigRepository {
   }
 }
 
-// -- Raw DB row types (snake_case) --
+// -- 原始数据库行类型（snake_case） --
 
 interface RigRow {
   id: string;

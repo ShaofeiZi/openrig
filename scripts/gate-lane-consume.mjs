@@ -5,36 +5,36 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 function refuse(message) {
-  throw new Error(`[gate-consume] REFUSED: ${message}`);
+  throw new Error(`[gate-consume] 拒绝：${message}`);
 }
 
-/** Honor one exact real-gate verdict, then remove it so it cannot be reused. */
+/** 兑现一条确切的真实闸门裁决，随后删除它，使其不能被重复使用。 */
 export function consumeGateVerdict({ verdictPath, headSha, log = console.log }) {
-  if (!existsSync(verdictPath)) refuse(`verdict is missing: ${verdictPath}`);
+  if (!existsSync(verdictPath)) refuse(`裁决缺失：${verdictPath}`);
   let verdict;
   try {
     verdict = JSON.parse(readFileSync(verdictPath, "utf8"));
   } catch (error) {
-    refuse(`verdict is not valid JSON: ${error?.message ?? error}`);
+    refuse(`裁决不是合法 JSON：${error?.message ?? error}`);
   }
   if (typeof verdict?.candidateSha !== "string" || verdict.candidateSha.length === 0) {
-    refuse("candidateSha is required");
+    refuse("candidateSha 为必填");
   }
   if (verdict.candidateSha !== headSha) {
-    refuse(`candidateSha does not match current HEAD (verdict=${verdict.candidateSha}, HEAD=${headSha})`);
+    refuse(`candidateSha 与当前 HEAD 不匹配（verdict=${verdict.candidateSha}，HEAD=${headSha}）`);
   }
-  if (verdict.gate !== "pass") refuse(`gate must be "pass" (received ${JSON.stringify(verdict.gate)})`);
-  if (verdict.smoke !== false) refuse("smoke must be strictly false; only a real gate may be consumed");
+  if (verdict.gate !== "pass") refuse(`gate 必须为 "pass"（收到 ${JSON.stringify(verdict.gate)}）`);
+  if (verdict.smoke !== false) refuse("smoke 必须严格为 false；只能兑现真实闸门裁决");
 
   unlinkSync(verdictPath);
-  if (existsSync(verdictPath)) refuse(`consumed verdict still exists after unlink: ${verdictPath}`);
-  log(`[gate-consume] honored and consumed candidate ${headSha}; removed ${verdictPath}`);
+  if (existsSync(verdictPath)) refuse(`删除后裁决文件仍存在：${verdictPath}`);
+  log(`[gate-consume] 已兑现并消耗候选 ${headSha}；已删除 ${verdictPath}`);
   return verdict;
 }
 
 function readHead(root) {
   const result = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" });
-  if (result.status !== 0) refuse(`cannot derive current HEAD: ${result.stderr.trim()}`);
+  if (result.status !== 0) refuse(`无法取得当前 HEAD：${result.stderr.trim()}`);
   return result.stdout.trim();
 }
 

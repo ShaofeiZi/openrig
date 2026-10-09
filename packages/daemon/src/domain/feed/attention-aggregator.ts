@@ -1,22 +1,16 @@
-// OPR.0.4.4.15 FR-1 — daemon-side attention aggregation (the SEE architecture,
-// call A): the LOCAL daemon fans out server-side to each subscribed host's
-// shipped GET /api/queue/list?attention=1 over the registered HTTP+bearer
-// transport, merges, and returns ONE AggregatedPayload. Bearer tokens never
-// reach the browser — this module is the only place remote hosts are
-// contacted for the feed.
+// OPR.0.4.4.15 FR-1——后台服务侧待关注聚合（SEE 架构，调用 A）：本地后台服务通过已注册的
+// HTTP+bearer transport，在服务端向每个已订阅主机的正式 GET /api/queue/list?attention=1
+// 扇出，合并后返回一份 AggregatedPayload。Bearer token 绝不到达浏览器；feed 只在本模块
+// 联系远端主机。
 //
-// Reuse, not reimplementation: the LOCAL leg invokes the SAME
-// QueueRepository.listAttention query the existing route uses (injected at
-// the route wiring); the registry is read through S11's shared
-// hosts-registry-reader (interface cell — never re-parsed); the remote hop
-// rides the shared remote-daemon-http core with the READ deadline class
-// named EXPLICITLY at this call-site (arch sharpening: 5s — a poll, not a
-// bootstrap; the up-leaf's 120s budget lives at ITS call-site).
+// 复用而非重写：本地分支调用现有路由使用的同一个 QueueRepository.listAttention 查询
+//（在路由接线处注入）；registry 通过 S11 共享 hosts-registry-reader 读取，绝不重复解析；
+// 远端跳转复用 remote-daemon-http 核心，并在本调用点显式指定 READ deadline 类别。架构约束
+// 为 5 秒，因为这是轮询而非 bootstrap；up-leaf 的 120 秒预算留在它自己的调用点。
 //
-// FR-1/R15-2 honesty: EVERY subscribed host appears in hosts[] on EVERY
-// call — ok, unreachable, auth-failed, or unsupported-transport — never
-// all-or-nothing, never a silently thinner feed. The registry is read ONLY
-// when ≥1 remote subscription is enabled (zero-config never touches it).
+// FR-1/R15-2 真实性：每次调用的 hosts[] 都必须包含每个已订阅主机，并明确标为 ok、
+// unreachable、auth-failed 或 unsupported-transport；绝不全有全无，也绝不静默缩减 feed。
+// 只有启用至少一个远端订阅时才读取 registry；零配置时绝不触碰它。
 
 import type { AggregatedPayload, PerHostStatus } from "../hosts/fanout-contract.js";
 import { LOCAL_HOST_ID } from "../hosts/fanout-contract.js";
@@ -24,27 +18,27 @@ import type { HostRegistryLoadResult } from "../hosts/hosts-registry-reader.js";
 import { resolveHost } from "../hosts/hosts-registry-reader.js";
 import { remoteJsonRequest } from "../hosts/remote-daemon-http.js";
 
-/** The aggregation READ deadline class (per-host bound). Distinct from the
- *  up-leaf's long-running budget by design — named here, passed explicitly. */
+/** 聚合 READ deadline 类别（逐主机上限）。它按设计不同于 up-leaf 的长任务预算，因此在这里
+ *  命名并显式传入。 */
 export const ATTENTION_READ_TIMEOUT_MS = 5_000;
 
-/** Fixed fan-out cap — a poll across a handful of hosts; adaptive
- *  throttling is out of scope (same v1 posture as the topology walker). */
+/** 固定扇出上限：这里只轮询少量主机；自适应节流不在范围内，与 topology walker 的 v1
+ *  策略相同。 */
 export const ATTENTION_FANOUT_CONCURRENCY = 4;
 
 export type AttentionItem = Record<string, unknown>;
 
 export interface AttentionAggregatorDeps {
-  /** The SAME query the shipped /api/queue/list?attention=1 route runs. */
+  /** 正式 /api/queue/list?attention=1 路由运行的同一个查询。 */
   listLocalAttention: () => AttentionItem[];
-  /** settings-store.listFeedHostSubscriptions (the G15-P1 dynamic class). */
+  /** settings-store.listFeedHostSubscriptions（G15-P1 动态类别）。 */
   listSubscriptions: () => Array<{ hostId: string; enabled: boolean }>;
-  /** S11's shared reader — called lazily, only when a remote sub exists. */
+  /** S11 共享 reader；仅存在远端订阅时延迟调用。 */
   loadRegistry: () => HostRegistryLoadResult;
   fetchImpl?: typeof fetch;
   env?: Record<string, string | undefined>;
   readFile?: (path: string) => string;
-  /** Test override; production uses ATTENTION_READ_TIMEOUT_MS. */
+  /** 测试覆盖值；生产使用 ATTENTION_READ_TIMEOUT_MS。 */
   timeoutMs?: number;
   concurrency?: number;
 }
@@ -56,9 +50,8 @@ interface PerHostOutcome {
 
 async function readHostAttention(hostId: string, reg: HostRegistryLoadResult, deps: AttentionAggregatorDeps): Promise<PerHostOutcome> {
   if (!reg.ok) {
-    // Registry unreadable: every subscribed host reports it honestly —
-    // the operator sees ONE actionable error per host row, local items
-    // are untouched.
+    // Registry 不可读时，每个已订阅主机都如实报告；操作员在每个主机行看到一条可执行错误，
+    // 本地 item 不受影响。
     return { status: { hostId, status: "unreachable", error: reg.error }, items: [] };
   }
   const resolved = resolveHost(reg.registry, hostId);
@@ -66,10 +59,10 @@ async function readHostAttention(hostId: string, reg: HostRegistryLoadResult, de
     return { status: { hostId, status: "unreachable", error: resolved.error }, items: [] };
   }
   if (resolved.host.transport !== "http") {
-    // R15-2 (the whoami --all-hosts precedent): SSH-declared hosts are a
-    // structured per-host status, never a silently thinner feed.
+    // R15-2（沿用 whoami --all-hosts）：SSH 声明的主机要显示结构化逐主机状态，绝不能
+    // 静默缩减 feed。
     return {
-      status: { hostId, status: "unsupported-transport", error: `host '${hostId}' is SSH-declared; the aggregated feed read requires an http-transport registry entry (url; bearer optional)` },
+      status: { hostId, status: "unsupported-transport", error: `主机 '${hostId}' 声明为 SSH；聚合 feed 读取需要 http transport registry entry（url 必填，bearer 可选）` },
       items: [],
     };
   }
@@ -91,17 +84,15 @@ async function readHostAttention(hostId: string, reg: HostRegistryLoadResult, de
       if (res.status === 401 || res.status === 403) {
         return { status: { hostId, status: "auth-failed", error: `HTTP ${res.status}${res.detail ? `: ${res.detail}` : ""}`, failedStep: "permission-gate" }, items: [] };
       }
-      // A remote 4xx/5xx on the read: the feed cannot show that host's
-      // items — the closest closed-enum truth is unreachable, with the
-      // remote's own status/text as the honest detail and the shipped
-      // FailedStep vocabulary riding as the additive detail field.
+      // 读取远端时收到 4xx/5xx，feed 无法显示该主机的 item。最接近的封闭枚举事实是
+      // unreachable；把远端自身 status/text 作为真实 detail，并附加正式 FailedStep 词汇。
       return { status: { hostId, status: "unreachable", error: `HTTP ${res.status}${res.detail ? `: ${res.detail}` : ""}`, failedStep: "remote-command-failed" }, items: [] };
     case "timeout":
       return {
         status: {
           hostId,
           status: "unreachable",
-          error: res.phase === "body" ? `read timed out: response headers arrived (HTTP ${res.status}) but the body never completed` : `read timed out after ${deps.timeoutMs ?? ATTENTION_READ_TIMEOUT_MS}ms`,
+          error: res.phase === "body" ? `读取超时：响应头已到达（HTTP ${res.status}），但响应体始终未完成` : `读取在 ${deps.timeoutMs ?? ATTENTION_READ_TIMEOUT_MS}ms 后超时`,
           failedStep: "remote-daemon-unreachable",
         },
         items: [],
@@ -111,9 +102,8 @@ async function readHostAttention(hostId: string, reg: HostRegistryLoadResult, de
   }
 }
 
-/** One merged attention payload: local ALWAYS included (stamped with the
- *  contract's LOCAL_HOST_ID), each enabled remote host fanned out under the
- *  read deadline + fixed cap, per-host status complete by construction. */
+/** 合并后的单一待关注 payload：始终包含本地 item（标记契约 LOCAL_HOST_ID）；每个启用的远端
+ *  主机都在 read deadline 与固定并发上限内扇出，逐主机状态从构造上完整。 */
 export async function aggregateAttention(deps: AttentionAggregatorDeps): Promise<AggregatedPayload<AttentionItem>> {
   const localItems = deps.listLocalAttention().map((i) => ({ ...i, hostId: LOCAL_HOST_ID }));
   const hosts: PerHostStatus[] = [{ hostId: LOCAL_HOST_ID, status: "ok" }];
@@ -121,8 +111,7 @@ export async function aggregateAttention(deps: AttentionAggregatorDeps): Promise
 
   const subs = deps.listSubscriptions().filter((s) => s.enabled);
   if (subs.length === 0) {
-    // Zero remote subscriptions: the registry is NEVER read; the payload
-    // is today's local feed plus the local status row.
+    // 没有远端订阅时绝不读取 registry；payload 只包含当前本地 feed 与本地状态行。
     return { items, hosts };
   }
 
@@ -140,7 +129,7 @@ export async function aggregateAttention(deps: AttentionAggregatorDeps): Promise
   });
   await Promise.all(workers);
 
-  // Subscription order preserved in both arrays (deterministic payload).
+  // 两个数组都保留订阅顺序，使 payload 保持确定。
   for (const outcome of outcomes) {
     hosts.push(outcome.status);
     items.push(...outcome.items);

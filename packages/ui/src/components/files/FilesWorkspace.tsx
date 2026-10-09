@@ -1,15 +1,13 @@
-// UI Enhancement Pack v0 — Files browser workspace.
+// UI 增强包 v0——文件浏览器工作区。
 //
-// Top-level center-workspace surface for /files route. Two-pane shape:
-//   - Left: allowlist root selector + directory tree of the selected root.
-//   - Right: file content panel (markdown via MarkdownViewer, code via
-//     SyntaxHighlight, images inline, other → "view as text" affordance).
+// /files 路由的顶层中心工作区界面，采用双窗格布局：
+//   - 左侧：白名单根目录选择器和所选根目录的目录树。
+//   - 右侧：文件内容面板（Markdown 由 MarkdownViewer 渲染，代码由 SyntaxHighlight 渲染，
+//     图片行内显示，其他类型提供“以文本查看”操作）。
 //
-// Item 4 (edit mode) is integrated: a header toggle flips the right
-// pane into a `<textarea>` editor with Save/Cancel; Save does the
-// daemon's atomic-write contract; 409 conflicts surface a refresh
-// affordance per the PRD's recommendation. Per item 4's recommended
-// landing posture: lightweight `<textarea>` (no CodeMirror).
+// 已集成第 4 项（编辑模式）：标题栏开关可将右侧窗格切换为带保存/取消操作的 `<textarea>`
+// 编辑器；保存遵循后台服务的原子写入契约；按 PRD 建议，409 冲突时提供刷新操作。
+// 第 4 项建议的初始方案采用轻量 `<textarea>`，不引入 CodeMirror。
 
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -46,7 +44,7 @@ export function FilesWorkspace() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<boolean>(false);
 
-  // Default-select the first root once roots arrive.
+  // 根目录返回后默认选中第一个。
   useEffect(() => {
     if (selectedRoot) return;
     if (!roots.data || isUnavailable(roots.data)) return;
@@ -54,7 +52,7 @@ export function FilesWorkspace() {
     if (first) setSelectedRoot(first.name);
   }, [roots.data, selectedRoot]);
 
-  // Reset path + selected file when root changes.
+  // 根目录变化时重置路径和所选文件。
   useEffect(() => {
     setCurrentPath("");
     setSelectedFile(null);
@@ -64,8 +62,8 @@ export function FilesWorkspace() {
   return (
     <div data-testid="files-workspace" className="flex h-full flex-col lg:pl-[var(--workspace-left-offset,0px)] lg:pr-[var(--workspace-right-offset,0px)]">
       <header className="border-b border-outline-variant bg-background px-4 py-3">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">Workspace</div>
-        <h1 className="font-headline text-xl font-bold tracking-tight text-on-surface">Files</h1>
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">工作区</div>
+        <h1 className="font-headline text-xl font-bold tracking-tight text-on-surface">文件</h1>
       </header>
       {/* Slice 20 mobile: at narrow viewports the two-pane
           shape stacks vertically so the document panel claims full width
@@ -91,12 +89,12 @@ export function FilesWorkspace() {
         <main data-testid="files-content-pane" className="flex-1 min-w-0 overflow-y-auto bg-surface-lowest">
           {!selectedRoot && (
             <div className="m-auto p-4 font-mono text-[10px] text-on-surface-variant">
-              Select an allowlist root to browse.
+              选择一个允许列表根目录以浏览。
             </div>
           )}
           {selectedRoot && !selectedFile && (
             <div className="p-4 font-mono text-[10px] text-on-surface-variant" data-testid="files-no-selection">
-              Select a file from the tree.
+              从树中选择一个文件。
             </div>
           )}
           {selectedRoot && selectedFile && (
@@ -126,12 +124,12 @@ function RootSelector({
   onSelect: (name: string) => void;
   workspace: import("../../hooks/useWorkspace.js").WhoamiWorkspaceUI | null;
 }) {
-  if (isLoading) return <div className="p-3 font-mono text-[10px] text-on-surface-variant">Loading roots…</div>;
+  if (isLoading) return <div className="p-3 font-mono text-[10px] text-on-surface-variant">正在加载根目录…</div>;
   if (!roots) return null;
   if (isUnavailable(roots)) {
     return (
       <div data-testid="files-roots-unavailable" className="p-3 font-mono text-[10px] text-on-surface-variant">
-        <div>Files routes unavailable.</div>
+        <div>文件路由不可用。</div>
         {roots.hint && <div className="mt-1 text-on-surface-variant">{roots.hint}</div>}
       </div>
     );
@@ -139,14 +137,14 @@ function RootSelector({
   if (roots.roots.length === 0) {
     return (
       <div data-testid="files-roots-empty" className="p-3 font-mono text-[10px] text-on-surface-variant">
-        <div>No allowlist roots configured.</div>
+        <div>未配置任何允许列表根目录。</div>
         {roots.hint && <div className="mt-1 text-on-surface-variant">{roots.hint}</div>}
       </div>
     );
   }
   return (
     <div data-testid="files-root-selector" className="border-b border-outline-variant p-2">
-      <div className="mb-1 font-mono text-[8px] uppercase tracking-[0.18em] text-on-surface-variant">Roots</div>
+      <div className="mb-1 font-mono text-[8px] uppercase tracking-[0.18em] text-on-surface-variant">根目录</div>
       <ul>
         {roots.roots.map((r: AllowlistRoot) => {
           const kind = resolveKindForPath(r.path, workspace);
@@ -207,10 +205,10 @@ function DirectoryTree({
   selectedFile: string | null;
 }) {
   const list = useFilesList(root, path);
-  if (list.isLoading) return <div className="p-3 font-mono text-[10px] text-on-surface-variant">Loading…</div>;
-  if (list.isError) return <div data-testid="files-list-error" className="p-3 font-mono text-[10px] text-red-600">{(list.error as Error)?.message ?? "Error loading directory."}</div>;
+  if (list.isLoading) return <div className="p-3 font-mono text-[10px] text-on-surface-variant">加载中…</div>;
+  if (list.isError) return <div data-testid="files-list-error" className="p-3 font-mono text-[10px] text-red-600">{(list.error as Error)?.message ?? "加载目录出错。"}</div>;
   if (!list.data || list.data.entries.length === 0) {
-    return <div className="p-3 font-mono text-[10px] text-on-surface-variant">Empty directory.</div>;
+    return <div className="p-3 font-mono text-[10px] text-on-surface-variant">空目录。</div>;
   }
   return (
     <ul data-testid="files-directory-tree" className="p-1">
@@ -287,13 +285,13 @@ function FileContentPanel({
                 : "border-outline-variant text-on-surface hover:bg-surface-low"
             }`}
           >
-            {editMode ? "editing" : "edit"}
+            {editMode ? "编辑中" : "编辑"}
           </button>
         </div>
       </header>
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {read.isLoading && <div className="p-4 font-mono text-[10px] text-on-surface-variant">Loading…</div>}
-        {read.isError && <div data-testid="files-read-error" className="p-4 font-mono text-[10px] text-red-600">{(read.error as Error)?.message ?? "Error loading file."}</div>}
+        {read.isLoading && <div className="p-4 font-mono text-[10px] text-on-surface-variant">正在加载…</div>}
+        {read.isError && <div data-testid="files-read-error" className="p-4 font-mono text-[10px] text-red-600">{(read.error as Error)?.message ?? "加载文件失败。"}</div>}
         {read.data && (
           editMode
             ? <FileEditor root={root} path={path} read={read.data} />
@@ -306,7 +304,7 @@ function FileContentPanel({
 
 function FileViewer({ root, path, read }: { root: string; path: string; read: FilesReadResponse }) {
   const ext = pathExtension(path);
-  // OSR v0 item 3: detect spec-kind YAML files for inline validation.
+  // OSR v0 第 3 项：识别规格类 YAML 文件并进行行内校验。
   const specKind = detectSpecKind(path);
   if (IMAGE_EXTENSIONS.has(ext)) {
     return (
@@ -337,7 +335,7 @@ function FileViewer({ root, path, read }: { root: string; path: string; read: Fi
     return (
       <div data-testid="files-download-only" className="p-4 font-mono text-[10px] text-on-surface">
         <a href={fileAssetUrl(root, path)} download className="text-blue-700 underline">
-          Download {path}
+          下载 {path}
         </a>
       </div>
     );
@@ -350,10 +348,9 @@ function FileViewer({ root, path, read }: { root: string; path: string; read: Fi
   );
 }
 
-// Operator Surface Reconciliation v0 item 5: explicit truncation marker
-// rendered above the file body when the daemon capped the read at
-// FILE_READ_TRUNCATION_BYTES (1 MB). Honest about the limit so the
-// operator knows to use an external editor for full content.
+// Operator Surface Reconciliation v0 第 5 项：后台服务把读取量限制在
+// FILE_READ_TRUNCATION_BYTES（1 MB）时，在文件正文上方显示明确的截断标记。
+// 如实说明限制，提醒操作者使用外部编辑器查看完整内容。
 function TruncationMarker({ read }: { read: FilesReadResponse }) {
   if (!read.truncated) return null;
   const totalKb = Math.round((read.totalBytes ?? read.size) / 1024);
@@ -364,26 +361,22 @@ function TruncationMarker({ read }: { read: FilesReadResponse }) {
       data-total-bytes={read.totalBytes ?? ""}
       className="mb-3 border border-amber-400 bg-amber-50 px-3 py-2 font-mono text-[10px] text-amber-900"
     >
-      ⚠ Truncated by file viewer at {Math.round((read.truncatedAtBytes ?? 0) / 1024)} KB —
-      file is {totalKb} KB total. Use an external editor for full content.
+      ⚠ 文件查看器已在 {Math.round((read.truncatedAtBytes ?? 0) / 1024)} KB 处截断——
+      文件总大小为 {totalKb} KB。请使用外部编辑器查看完整内容。
     </div>
   );
 }
 
-// OSR v0 item 3: RigSpec / AgentSpec validation panel. Detects spec
-// kind by filename and invokes the existing /api/specs/review/{rig|agent}
-// endpoint via the useSpecReview hook. Errors / warnings render inline
-// alongside the YAML view; non-spec YAML files don't surface this
-// panel at all.
+// OSR v0 第 3 项：RigSpec / AgentSpec 校验面板。根据文件名识别规范种类，
+// 并通过 useSpecReview hook 调用现有的 /api/specs/review/{rig|agent} 端点。
+// 错误和警告会显示在 YAML 视图旁；非规范 YAML 文件完全不显示此面板。
 function detectSpecKind(filePath: string): "rig" | "agent" | null {
   const lower = filePath.toLowerCase();
   if (lower.endsWith("/rig.yaml") || lower === "rig.yaml" || lower.endsWith("/rig.yml") || lower === "rig.yml") return "rig";
   if (lower.endsWith("/agent.yaml") || lower === "agent.yaml" || lower.endsWith("/agent.yml") || lower === "agent.yml") return "agent";
-  // Spec library entries: <pkg>/specs/<spec-name>/{rig,agent}.yaml shape;
-  // we already match those above via the basename. Driver picks
-  // additional heuristics here in v0+1 if false-positive avoidance
-  // becomes a friction (e.g., "config.yaml" inside an unrelated
-  // workspace tree should NOT trigger spec validation).
+  // 规范库条目采用 <pkg>/specs/<spec-name>/{rig,agent}.yaml 结构；
+  // 上面已经通过 basename 匹配。若规避误判开始造成使用阻碍（例如工作区树中
+  // 不相关的 "config.yaml" 不应触发规范校验），驱动方可在 v0+1 中补充启发式规则。
   return null;
 }
 
@@ -392,14 +385,14 @@ function SpecValidationPanel({ kind, yaml }: { kind: "rig" | "agent"; yaml: stri
   if (review.isLoading) {
     return (
       <div data-testid="files-spec-validation-loading" className="mb-3 border border-outline-variant bg-background px-3 py-2 font-mono text-[10px] text-on-surface-variant">
-        Validating {kind}.yaml…
+        正在校验 {kind}.yaml…
       </div>
     );
   }
   if (review.isError) {
     return (
       <div data-testid="files-spec-validation-error" className="mb-3 border border-red-400 bg-red-50 px-3 py-2 font-mono text-[10px] text-red-900">
-        Validation failed to run: {(review.error as Error)?.message ?? "unknown error"}
+        校验运行失败：{(review.error as Error)?.message ?? "未知错误"}
       </div>
     );
   }
@@ -418,7 +411,7 @@ function SpecValidationPanel({ kind, yaml }: { kind: "rig" | "agent"; yaml: stri
       }`}
     >
       <div className="mb-1 font-bold uppercase tracking-[0.10em]">
-        {isValid ? `✓ Valid ${kind === "rig" ? "RigSpec" : "AgentSpec"}` : `✗ ${kind === "rig" ? "RigSpec" : "AgentSpec"} validation errors`}
+        {isValid ? `✓ ${kind === "rig" ? "RigSpec" : "AgentSpec"} 有效` : `✗ ${kind === "rig" ? "RigSpec" : "AgentSpec"} 校验错误`}
       </div>
       {errors.length > 0 && (
         <ul className="space-y-1">
@@ -446,11 +439,9 @@ function FileEditor({ root, path, read }: { root: string; path: string; read: Fi
   const write = useFilesWrite();
   const qc = useQueryClient();
 
-  // When a fresh read comes in (after Refresh on conflict, or after a
-  // successful save), reset the draft to the new content. Note: useFilesWrite
-  // intentionally does NOT invalidate the read query on a 409 conflict,
-  // so a conflict-state read stays stable until the operator clicks
-  // Refresh (which triggers the invalidation explicitly).
+  // 新读取结果返回时（冲突后刷新，或成功保存后），将草稿重置为新内容。注意：发生 409 冲突时，
+  // useFilesWrite 有意不使读取查询失效，因此冲突状态下的读取会保持稳定，直到操作人员点击刷新，
+  // 由该操作显式触发失效。
   useEffect(() => {
     setDraft(read.content);
     setConflict(null);
@@ -462,7 +453,7 @@ function FileEditor({ root, path, read }: { root: string; path: string; read: Fi
     <div data-testid="files-editor" className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-outline-variant bg-amber-50 px-3 py-1.5 font-mono text-[9px]">
         <span className="font-bold text-amber-900" data-testid="files-editor-status">
-          {dirty ? "draft (unsaved)" : "no changes"}
+          {dirty ? "草稿（未保存）" : "无改动"}
         </span>
         <button
           type="button"
@@ -498,7 +489,7 @@ function FileEditor({ root, path, read }: { root: string; path: string; read: Fi
           }}
           className="border border-emerald-500 bg-emerald-50 px-2 py-0.5 uppercase tracking-[0.10em] text-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          save
+          保存
         </button>
         <button
           type="button"
@@ -506,16 +497,16 @@ function FileEditor({ root, path, read }: { root: string; path: string; read: Fi
           onClick={() => { setDraft(read.content); setSaveError(null); setConflict(null); }}
           className="border border-outline bg-surface-lowest px-2 py-0.5 uppercase tracking-[0.10em] text-on-surface"
         >
-          cancel
+          取消
         </button>
         {savedIndicator && (
-          <span data-testid="files-editor-saved" className="ml-auto text-emerald-700">saved</span>
+          <span data-testid="files-editor-saved" className="ml-auto text-emerald-700">已保存</span>
         )}
       </div>
       {conflict && (
         <div data-testid="files-editor-conflict" className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-3 py-2 font-mono text-[10px] text-red-900">
           <span className="flex-1">
-            File changed externally. Local mtime <code>{read.mtime}</code> ≠ server <code>{conflict.currentMtime}</code>. Click Refresh to re-read the file (your draft will be replaced with the new server content; copy it elsewhere first if you need to re-apply).
+            文件已被外部修改。本地 mtime <code>{read.mtime}</code> ≠ 服务器 <code>{conflict.currentMtime}</code>。点击“刷新”重新读取文件（你的草稿将被服务器新内容替换；如需重新应用，请先复制到别处）。
           </span>
           <button
             type="button"
@@ -525,13 +516,13 @@ function FileEditor({ root, path, read }: { root: string; path: string; read: Fi
             }}
             className="border border-red-500 bg-surface-lowest px-2 py-0.5 uppercase tracking-[0.10em] text-red-900"
           >
-            refresh
+            刷新
           </button>
         </div>
       )}
       {saveError && (
         <div data-testid="files-editor-error" className="border-b border-red-200 bg-red-50 px-3 py-2 font-mono text-[10px] text-red-900">
-          Save failed: {saveError}
+          保存失败：{saveError}
         </div>
       )}
       <textarea

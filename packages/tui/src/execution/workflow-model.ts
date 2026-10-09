@@ -1,4 +1,5 @@
 import { DEFAULT_TIME_ZONE, displayTime } from "../time.js";
+import { strWidth } from "../text-width.js";
 import { fieldLine, listItem, sectionRule, wrapDetailLines, type ContentLine } from "../detail.js";
 import type { Action } from "../types.js";
 import type { ExecutionViewSnap } from "./execution-model.js";
@@ -6,29 +7,35 @@ import type { ExecutionViewSnap } from "./execution-model.js";
 type Row = Record<string, unknown>;
 const row = (v: unknown): Row => v !== null && typeof v === "object" && !Array.isArray(v) ? v as Row : {};
 const rows = (v: unknown): Row[] => Array.isArray(v) ? v.map(row) : [];
-const text = (v: unknown, missing = "not recorded"): string => typeof v === "string" && v.length ? v : v == null ? missing : JSON.stringify(v);
+const LIFECYCLE_WORD: Record<string, string> = { waiting: "等待", active: "活跃", done: "完成", aborted: "已中止", failed: "失败", pending: "待处理", completed: "已完成" };
+// 收据状态仅做展示层中文映射，底层枚举值保持不变
+const RECEIPT_WORD: Record<string, string> = { recorded: "已记录", missing: "缺失", "not-required": "无需" };
+const text = (v: unknown, missing = "未记录"): string => {
+  if (typeof v === "string" && v.length) return LIFECYCLE_WORD[v] ?? v;
+  return v == null ? missing : JSON.stringify(v);
+};
 const open = (key: string): Action => ({ type: "execution-open", key });
-const words = (v: unknown) => text(v, "unknown step").replaceAll("-", " ");
+const words = (v: unknown) => text(v, "未知步骤").replaceAll("-", " ");
 const packets = (instance: Row) => rows(instance.frontier_packets);
-const title = (instance: Row) => text(instance.description, "Mission lifecycle");
+const title = (instance: Row) => text(instance.description, "任务目标生命周期");
 const field = (label: string, value: unknown, link?: Action) => fieldLine({ label, value: text(value), ...(link ? { link } : {}) });
 
 export function workflowOverview(execution: ExecutionViewSnap, width: number): ContentLine[] {
   const instances = execution.lifecycle_instances;
-  if (!instances?.length) return [{ text: "" }, { text: instances ? "  Workflows: none bound to this mission" : "  Workflows: projection unavailable" }];
-  const lines: ContentLine[] = [{ text: "" }, sectionRule("WORKFLOWS", width)];
+  if (!instances?.length) return [{ text: "" }, { text: instances ? "  工作流：此任务目标未绑定" : "  工作流：投影不可用" }];
+  const lines: ContentLine[] = [{ text: "" }, sectionRule("工作流", width)];
   for (const instance of [...instances].sort((a, b) => Number(["completed", "aborted"].includes(text(a.status))) - Number(["completed", "aborted"].includes(text(b.status))))) {
-    lines.push(listItem(`${title(instance)} · ${text(instance.status, "unknown")}`, open(`workflow:${instance.instance_id}`)));
+    lines.push(listItem(`${title(instance)} · ${text(instance.status, "未知")}`, open(`workflow:${instance.instance_id}`)));
     for (const packet of packets(instance)) {
       lines.push(listItem(`${words(packet.step_id)} · ${text(packet.queue_state)} · ${text(packet.owner)}`, open(`packet:${packet.packet_id}`), 4));
       const transition = row(packet.latest_transition);
-      if (packet.queue_state === "blocked") lines.push({ text: `      Wait: ${text(row(packet.blocker).summary ?? transition.transition_note, "reason not recorded; open work for blocker and wake")}` });
+      if (packet.queue_state === "blocked") lines.push({ text: `      等待：${text(row(packet.blocker).summary ?? transition.transition_note, "原因未记录；打开阻塞者的工作并唤醒")}` });
     }
   }
   return wrapDetailLines(lines, width);
 }
 
-/** All claims are served state or attributed records. No receipt is adjudicated here. */
+/** 所有认领都是服务状态或归因记录。此处不裁决任何收据。 */
 export function workflowDetail(execution: ExecutionViewSnap, key: string, width: number, timeZone = DEFAULT_TIME_ZONE): ContentLine[] | null {
   const instances = execution.lifecycle_instances ?? [];
   const packetId = key.startsWith("packet:") ? key.slice(7) : null;
@@ -37,87 +44,87 @@ export function workflowDetail(execution: ExecutionViewSnap, key: string, width:
   const identity = row(instance.identity);
   const packet = packetId ? packets(instance).find((p) => p.packet_id === packetId)! : null;
   const lines: ContentLine[] = [
-    { text: packet ? `Work · ${words(packet.step_id)}` : `${title(instance)} · ${text(instance.status)}` },
-    field("mission", execution.mission, { type: "scopes-mission-open", mission: execution.mission }),
-    field("project", identity.project),
-    field("as of", displayTime(execution.derived_at, timeZone)),
+    { text: packet ? `工作 · ${words(packet.step_id)}` : `${title(instance)} · ${text(instance.status)}` },
+    field("任务目标", execution.mission, { type: "scopes-mission-open", mission: execution.mission }),
+    field("项目", identity.project),
+    field("截至", displayTime(execution.derived_at, timeZone)),
   ];
   if (packet) {
     const transition = row(packet.latest_transition);
     const wake = row(packet.wake);
     const schedule = row(packet.wake_schedule);
-    lines.push(field("purpose", packet.objective), field("summary", packet.summary), field("state", packet.queue_state));
-    // The rendered owner remains the canonical address; navigation uses the existing
-    // resolver, which names unavailable/ambiguous seats rather than choosing a twin.
-    lines.push(field("owner", packet.owner, { type: "drill", resource: "agent", name: text(packet.owner) }));
-    lines.push(sectionRule("Waiting and continuation", width), field("last change", transition.transition_note), field("recorded by", transition.actor_session), field("at", displayTime(transition.ts, timeZone)));
-    if (packet.blocked_on) lines.push(field("blocker", packet.blocked_on));
+    lines.push(field("目的", packet.objective), field("摘要", packet.summary), field("状态", packet.queue_state));
+    // 渲染的所有者保持规范地址；导航使用现有
+    // 解析器，它命名不可用/歧义席位而非选择双胞胎。
+    lines.push(field("所有者", packet.owner, { type: "drill", resource: "agent", name: text(packet.owner) }));
+    lines.push(sectionRule("等待和继续", width), field("最后更改", transition.transition_note), field("记录者", transition.actor_session), field("于", displayTime(transition.ts, timeZone)));
+    if (packet.blocked_on) lines.push(field("阻塞于", packet.blocked_on));
     if (packet.blocker) {
       const blocker = row(packet.blocker);
-      lines.push(field("waiting for", blocker.summary), field("blocker state", blocker.state), field("blocker owner", blocker.destination_session), field("evidence", blocker.evidence_ref));
+      lines.push(field("等待", blocker.summary), field("阻塞者状态", blocker.state), field("阻塞者所有者", blocker.destination_session), field("证据", blocker.evidence_ref));
     }
-    lines.push(field("wake", packet.wake ? `${text(wake.kind)} · ${text(wake.phase)} · ${wake.live ? "live" : "not live"}${wake.unconsumed ? " · fired without pickup" : ""}` : "none recorded"));
-    if (packet.wake) lines.push(field("wake ref", wake.ref), field("delivery", wake.deliveryStatus));
-    if (wake.expiresAt) lines.push(field("due", displayTime(wake.expiresAt, timeZone)));
-    if (packet.wake_schedule) lines.push(field("policy", schedule.policy), field("cadence", `${text(schedule.interval_seconds)} seconds (a check, not guaranteed delivery)`), field("last check", displayTime(schedule.last_evaluation_at, timeZone)));
-    lines.push(sectionRule("Next action", width), ...actionLines(text(packet.targeted_action), width));
-    if (packet.gate) lines.push(field("gate", packet.gate));
-    if (packet.acceptance) lines.push(field("decision", packet.acceptance));
-    lines.push(field("evidence", packet.evidence_ref), field("packet", packet.packet_id), listItem("Workflow, obligations and bound sources", open(`workflow:${instance.instance_id}`)));
+    lines.push(field("唤醒", packet.wake ? `${text(wake.kind)} · ${text(wake.phase)} · ${wake.live ? "实时" : "非实时"}${wake.unconsumed ? " · 触发但未拾取" : ""}` : "无记录"));
+    if (packet.wake) lines.push(field("唤醒引用", wake.ref), field("投递", wake.deliveryStatus));
+    if (wake.expiresAt) lines.push(field("到期", displayTime(wake.expiresAt, timeZone)));
+    if (packet.wake_schedule) lines.push(field("策略", schedule.policy), field("节奏", `${text(schedule.interval_seconds)} 秒（检查，非保证投递）`), field("上次检查", displayTime(schedule.last_evaluation_at, timeZone)));
+    lines.push(sectionRule("下一步动作", width), ...actionLines(text(packet.targeted_action), width));
+    if (packet.gate) lines.push(field("门控", packet.gate));
+    if (packet.acceptance) lines.push(field("决定", packet.acceptance));
+    lines.push(field("证据", packet.evidence_ref), field("包", packet.packet_id), listItem("工作流、义务和绑定来源", open(`workflow:${instance.instance_id}`)));
   } else {
-    lines.push(sectionRule("Current work", width));
+    lines.push(sectionRule("当前工作", width));
     for (const current of packets(instance)) lines.push(listItem(`${words(current.step_id)} · ${text(current.queue_state)} · ${text(current.owner)}`, open(`packet:${current.packet_id}`)));
-    if (!packets(instance).length) lines.push({ text: `  No current work packet · workflow ${text(instance.status)}. This is lifecycle state, not product acceptance.` });
+    if (!packets(instance).length) lines.push({ text: `  无当前工作包 · 工作流 ${text(instance.status)}。这是生命周期状态，非产品验收。` });
     const steps = rows(instance.steps);
     const obligations = rows(instance.boundary_obligations);
     const hasBoundary = obligations.some((o) => o.stepId === "release-boundary");
-    lines.push(sectionRule(hasBoundary ? "Release ceremony and post-release housekeeping" : "Obligations", width), { text: "  Receipt recorded means an attributed evidence reference was recorded; it does not establish acceptance." });
+    lines.push(sectionRule(hasBoundary ? "发布仪式和发布后整理" : "义务", width), { text: "  已记录收据意味着已记录归因证据引用；它不建立验收。" });
     for (const obligation of obligations) {
-      const label = obligation.stepId === "release-boundary" ? "Post-release housekeeping · release boundary" : obligation.stepId === "activate-successor" ? "Optional successor · activate successor" : words(obligation.stepId);
-      lines.push({ text: `  ${label} · ${obligation.required ? "required" : "extension"} · ${text(obligation.state)} · receipt ${text(obligation.receiptState)}` });
+      const label = obligation.stepId === "release-boundary" ? "发布后整理 · 发布边界" : obligation.stepId === "activate-successor" ? "可选后继 · 激活后继" : words(obligation.stepId);
+      lines.push({ text: `  ${label} · ${obligation.required ? "必需" : "扩展"} · ${text(obligation.state)} · 收据 ${RECEIPT_WORD[text(obligation.receiptState)] ?? text(obligation.receiptState)}` });
       const step = steps.find((s) => s.id === obligation.stepId);
       if (step?.objective) lines.push({ text: `    ${text(step.objective)}` });
       const receipt = row(obligation.receipt);
-      if (obligation.receipt) lines.push(field("evidence", receipt.evidenceRef), field("recorded by", receipt.actorSession), field("at", displayTime(receipt.closedAt, timeZone)));
+      if (obligation.receipt) lines.push(field("证据", receipt.evidenceRef), field("记录者", receipt.actorSession), field("于", displayTime(receipt.closedAt, timeZone)));
     }
     const dependencies = rows(instance.dependencies);
-    // Do not infer successor semantics from an arbitrary step name. Show the
-    // compiler's declared dependency graph and the end of the current workflow.
-    lines.push(sectionRule("Continuation", width));
-    if (hasBoundary) lines.push({ text: obligations.some((o) => o.stepId === "activate-successor") ? "  Successor activation is authored after the release boundary." : "  No successor activation step is bound. This workflow ends after its own release boundary." });
+    // 不从任意步骤名推断后继语义。显示
+    // 编译器声明的依赖图和当前工作流末尾。
+    lines.push(sectionRule("继续", width));
+    if (hasBoundary) lines.push({ text: obligations.some((o) => o.stepId === "activate-successor") ? "  后继激活在发布边界后编写。" : "  无后继激活步骤绑定。此工作流在其自己的发布边界后结束。" });
     for (const dependency of dependencies) lines.push(field(words(dependency.stepId), dependency.dependsOn));
-    lines.push({ text: "  An optional successor is separate from completing this workflow; only authored steps above are obligations." });
-    lines.push(sectionRule("Bound graph and sources", width), field("workflow", instance.workflow_name), field("version", instance.workflow_version), field("graph", instance.graph_source), { text: instance.reconciliation ? "  Bound source receipts are retained; the authored/running comparison below explains current changes." : "  Sources are bound at compilation. Current source bytes have not been compared." });
+    lines.push({ text: "  可选后继独立于此工作流的完成；仅上面编写的步骤是义务。" });
+    lines.push(sectionRule("绑定图和来源", width), field("工作流", instance.workflow_name), field("版本", instance.workflow_version), field("图", instance.graph_source), { text: instance.reconciliation ? "  绑定来源收据已保留；下面的编写/运行比较解释当前更改。" : "  来源在编译时绑定。当前源字节尚未比较。" });
     for (const source of rows(instance.sources)) {
       if (source.kind === "slice" && typeof source.path === "string") {
         const parts = source.path.split("/");
         const slice = parts.at(-2);
-        if (slice) lines.push(listItem(`Slice ${slice}`, { type: "scopes-open", mission: execution.mission, slice }));
+        if (slice) lines.push(listItem(`切片 ${slice}`, { type: "scopes-open", mission: execution.mission, slice }));
       }
       for (const [label, value] of Object.entries(source)) lines.push(field(label, value));
     }
     const comparison = row(instance.reconciliation);
     if (instance.reconciliation) {
-      lines.push(sectionRule("Authored and running plan", width), field("comparison", comparison.status),
-        field("bound input", comparison.boundDigest), field("authored input", comparison.proposedDigest),
-        field("composition", row(comparison.composition).explanation));
-      if (comparison.status === "source-only") lines.push({ text: "  Source bytes changed; executable steps/policy are unchanged. No completed work needs replay." });
-      for (const reason of Array.isArray(comparison.reasons) ? comparison.reasons : []) lines.push(field("reason", reason));
+      lines.push(sectionRule("已编写和运行计划", width), field("比较", comparison.status),
+        field("绑定输入", comparison.boundDigest), field("编写输入", comparison.proposedDigest),
+        field("组合", row(comparison.composition).explanation));
+      if (comparison.status === "source-only") lines.push({ text: "  源字节已更改；可执行步骤/策略不变。无已完成工作需要重放。" });
+      for (const reason of Array.isArray(comparison.reasons) ? comparison.reasons : []) lines.push(field("原因", reason));
       lines.push(...actionLines(text(comparison.nextAction), width));
       if (comparison.applyCommand) lines.push(...actionLines(text(comparison.applyCommand), width));
-      lines.push({ text: "  Inspect first; the plan can change. A lost response is recoverable with rig workflow operation <key>." });
+      lines.push({ text: "  先检查；计划可能更改。丢失的响应可用 zrig workflow operation <键> 恢复。" });
     }
-    lines.push(field("input digest", instance.compiled_input_digest));
-    for (const failure of rows(instance.failure_occurrences)) if (failure.status === "unresolved") lines.push(sectionRule("Unresolved failure", width), field("step", failure.step_id), field("reason", failure.failure_reason), field("occurrence", failure.occurrence_id), ...actionLines(text(failure.targeted_action), width));
-    for (const unknown of Array.isArray(instance.unknowns) ? instance.unknowns : []) lines.push(field("unknown", unknown));
-    lines.push(field("instance", instance.instance_id), field("operation", instance.operation_key));
+    lines.push(field("输入摘要", instance.compiled_input_digest));
+    for (const failure of rows(instance.failure_occurrences)) if (failure.status === "unresolved") lines.push(sectionRule("未解决失败", width), field("步骤", failure.step_id), field("原因", failure.failure_reason), field("出现", failure.occurrence_id), ...actionLines(text(failure.targeted_action), width));
+    for (const unknown of Array.isArray(instance.unknowns) ? instance.unknowns : []) lines.push(field("未知", unknown));
+    lines.push(field("实例", instance.instance_id), field("操作", instance.operation_key));
   }
-  lines.push({ text: "" }, listItem("Back · Esc", { type: "back" }));
+  lines.push({ text: "" }, listItem("返回 · Esc", { type: "back" }));
   return wrapDetailLines(lines, width);
 }
 
-/** Keep lifecycle commands complete in the scrollable pane. Shell continuations make the
- * visual wrap usable as one command instead of turning the hidden suffix into guesswork. */
+/** 保持生命周期命令在可滚动窗格中完整。Shell 续行使
+ *  视觉换行可用作一个命令，而非将隐藏后缀变成猜测。 */
 function shellWords(command: string): string[] {
   const words: string[] = [];
   let word = "";
@@ -148,9 +155,9 @@ function quoteShell(value: string): string {
   return `'${value.replace(/'/g, `'"'"'`)}'`;
 }
 
-/** Split only words emitted by the daemon's shellQuote helper. A continuation directly
- * between adjacent quoted chunks is one shell argument; option-to-option continuations
- * retain a separating space. */
+/** 仅拆分后台服务 shellQuote 辅助发出的词。相邻引用块之间直接
+ *  的续行是一个 shell 参数；选项到选项的续行
+ *  保留分隔空格。 */
 function splitQuotedWord(word: string, maxWidth: number): string[] | null {
   if (!word.startsWith("'") || !word.endsWith("'")) return null;
   const value = word.slice(1, -1).replaceAll(`'"'"'`, "'");
@@ -158,7 +165,8 @@ function splitQuotedWord(word: string, maxWidth: number): string[] | null {
   const chunks: string[] = [];
   let chunk = "";
   for (const char of value) {
-    if (chunk && quoteShell(chunk + char).length > maxWidth) {
+    // 分块阈值按显示宽度计算：引号内若含 CJK 双宽字符，.length 会低估列宽导致块过宽
+    if (chunk && strWidth(quoteShell(chunk + char)) > maxWidth) {
       chunks.push(quoteShell(chunk));
       chunk = char;
     } else {
@@ -170,7 +178,7 @@ function splitQuotedWord(word: string, maxWidth: number): string[] | null {
 }
 
 function actionLines(action: string, width: number): ContentLine[] {
-  const firstIndent = "      action ";
+  const firstIndent = "      动作 ";
   const nextIndent = "        ";
   const room = Math.max(width, 24);
   const parts = shellWords(action);
@@ -179,13 +187,14 @@ function actionLines(action: string, width: number): ContentLine[] {
   for (let index = 0; index < parts.length; index++) {
     const part = parts[index]!;
     const more = index < parts.length - 1;
-    if (current && `${current} ${part}${more ? " \\" : ""}`.length <= room) {
+    // 列宽按显示宽度计算（中文双宽字符占 2 列），不能用 string.length
+    if (current && strWidth(`${current} ${part}${more ? " \\" : ""}`) <= room) {
       current += ` ${part}`;
       continue;
     }
     if (current) lines.push({ text: `${current} \\` });
     const chunks = splitQuotedWord(part, room - 2);
-    if (chunks && `${nextIndent}${part}${more ? " \\" : ""}`.length > room) {
+    if (chunks && strWidth(`${nextIndent}${part}${more ? " \\" : ""}`) > room) {
       for (let chunkIndex = 0; chunkIndex < chunks.length - 1; chunkIndex++) {
         lines.push({ text: `${chunks[chunkIndex]!}\\` });
       }

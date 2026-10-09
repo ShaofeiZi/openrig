@@ -30,31 +30,31 @@ export function healthHash(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(stable(value))).digest("hex");
 }
 export function object(value: unknown, keys: string[]): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Expected an object");
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("应为对象");
   const result = value as Record<string, unknown>;
-  if (Object.keys(result).some((k) => !keys.includes(k)) || keys.some((k) => !(k in result))) throw new Error(`Expected exactly: ${keys.join(", ")}`);
+  if (Object.keys(result).some((k) => !keys.includes(k)) || keys.some((k) => !(k in result))) throw new Error(`必须恰好包含：${keys.join(", ")}`);
   return result;
 }
 function number(value: unknown, min: number, max: number): void {
-  if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) throw new Error(`Expected integer ${min}..${max}`);
+  if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) throw new Error(`应为 ${min}..${max} 范围内的整数`);
 }
 export function validateHealthPolicy(value: unknown): HealthPolicy {
   const p = object(value, ["schema", "disabledDetectors", "thresholds", "observationWindowSeconds", "freshnessSeconds", "diagnosis", "human"]);
-  if (p.schema !== DEFAULT_HEALTH_POLICY.schema) throw new Error("Unsupported health policy schema");
+  if (p.schema !== DEFAULT_HEALTH_POLICY.schema) throw new Error("不支持的健康策略 schema");
   for (const list of [p.disabledDetectors, (p.diagnosis as HealthPolicy["diagnosis"])?.detectors]) {
-    if (!Array.isArray(list) || list.some((x) => !HEALTH_DETECTORS.includes(x)) || new Set(list).size !== list.length) throw new Error("Unknown or duplicate detector");
+    if (!Array.isArray(list) || list.some((x) => !HEALTH_DETECTORS.includes(x)) || new Set(list).size !== list.length) throw new Error("存在未知或重复的 detector");
   }
   const t = object(p.thresholds, ["ceremonyTransitions", "ceremonyRatio", "reviewReturns", "redundantWakes"]);
   Object.values(t).forEach((v) => number(v, 1, 100000));
   number(p.observationWindowSeconds, 60, 604800); number(p.freshnessSeconds, 1, 86400);
   const d = object(p.diagnosis, ["enabled", "owner", "detectors", "cooldownSeconds", "maxRepresentations"]);
-  if (typeof d.enabled !== "boolean" || (d.owner !== null && (typeof d.owner !== "string" || !/^[^\s@]+@[^\s@]+$/.test(d.owner) || d.owner.endsWith("@external")))) throw new Error("Diagnosis owner must be an agent seat address");
-  if (d.enabled && !d.owner) throw new Error("Enabled diagnosis requires an owner");
+  if (typeof d.enabled !== "boolean" || (d.owner !== null && (typeof d.owner !== "string" || !/^[^\s@]+@[^\s@]+$/.test(d.owner) || d.owner.endsWith("@external")))) throw new Error("诊断 owner 必须是智能体席位地址");
+  if (d.enabled && !d.owner) throw new Error("启用诊断时必须提供 owner");
   number(d.cooldownSeconds, 60, 604800); number(d.maxRepresentations, 0, 10);
   const h = object(p.human, ["address", "conditions"]);
-  if (h.address !== null && (typeof h.address !== "string" || !/^[a-z0-9._-]+@external$/.test(h.address))) throw new Error("Human address must be registered @external");
-  if (!Array.isArray(h.conditions) || h.conditions.some((c) => c !== "critical" && c !== "established pathology" && c !== "confirmed ceremony")) throw new Error("Unknown human escalation condition");
-  if (h.conditions.length && !h.address) throw new Error("Human escalation requires a registered address");
+  if (h.address !== null && (typeof h.address !== "string" || !/^[a-z0-9._-]+@external$/.test(h.address))) throw new Error("人工地址必须是已注册的 @external 地址");
+  if (!Array.isArray(h.conditions) || h.conditions.some((c) => c !== "critical" && c !== "established pathology" && c !== "confirmed ceremony")) throw new Error("存在未知的人工升级条件");
+  if (h.conditions.length && !h.address) throw new Error("人工升级需要已注册的地址");
   return structuredClone(value as HealthPolicy);
 }
 export class HealthPolicyStore {
@@ -68,14 +68,14 @@ export class HealthPolicyStore {
     return { policy, contextPressure, version: healthHash({ policy, contextPressure }) };
   }
   apply(value: unknown, actor: string): EffectiveHealthPolicy {
-    if (!actor.trim()) throw new Error("Policy change needs an actor");
+    if (!actor.trim()) throw new Error("策略变更必须提供 actor");
     const policy = validateHealthPolicy(value);
     const previous = this.read();
     if (healthHash(policy) === healthHash(previous.policy)) return previous;
     const dir = join(this.home, "health");
     mkdirSync(join(dir, "policy-history"), { recursive: true });
     const id = randomUUID();
-    // Retain the proposed bytes and predecessor before atomically replacing the live policy.
+    // 原子替换当前策略前，保留提议内容与前一版本。
     writeFileSync(join(dir, "policy-history", `${id}.json`), JSON.stringify({ actor, at: new Date().toISOString(), previous, policy }, null, 2), { flag: "wx" });
     const temporary = join(dir, `policy-${id}.tmp`);
     writeFileSync(temporary, JSON.stringify(policy, null, 2) + "\n");

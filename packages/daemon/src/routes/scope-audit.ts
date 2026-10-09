@@ -47,9 +47,8 @@ function nodeId(frontmatter: Record<string, unknown>): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-/** Daemon-side filesystem reader for the shared pure graph derivation. The
- * graph is advisory: malformed or stale data becomes an advisory and never
- * changes the audit status or prevents a response. */
+/** 后台服务侧文件系统读取器，供共享的纯图推导使用。
+ * 图是建议性的：格式错误或过期数据只变成一条建议，绝不改变 audit 状态，也不阻止响应。 */
 function buildAuditDependencyGraph(missionName: string, missionDir: string): MissionDependencyGraph {
   const missionFrontmatter = readNodeFrontmatter(missionDir);
   const slices: Array<{
@@ -90,9 +89,9 @@ function buildAuditDependencyGraph(missionName: string, missionDir: string): Mis
   });
 }
 
-// OPR.0.4.4.19 FR-10 (C1 backstop input) — list the slice's proof/ markdown
-// artifacts with raw frontmatter. Media files are exempt by construction.
-// Undefined when the dir is absent/unreadable so the classifier stays inert.
+// OPR.0.4.4.19 FR-10（C1 backstop 输入）——列出该 slice proof/ 下的 markdown
+// 制品及其原始 frontmatter。媒体文件按构造豁免。目录缺失/不可读时返回 undefined，
+// 使分类器保持惰性。
 function listProofArtifactsForAudit(proofDir: string): Array<{ path: string; frontmatterRaw: string | null }> | undefined {
   if (!fs.existsSync(proofDir)) return undefined;
   try {
@@ -109,11 +108,11 @@ function listProofArtifactsForAudit(proofDir: string): Array<{ path: string; fro
 
 
 /**
- * Advisory-only: a work node carrying BOTH authored files. The daemon twin of the CLI finding of the
- * same name — same contract, separate code, because the daemon cannot import packages/cli.
+ * 仅建议：一个工作节点同时携带两个 authored 文件。与同名 CLI finding 的后台服务孪生——
+ * 同一契约、独立代码，因为后台服务不能 import packages/cli。
  *
- * SPEC.md wins and nothing blocks. The point is that a shadowed README.md is invisible otherwise,
- * and any surface still reading the legacy name is reading the OTHER file.
+ * SPEC.md 胜出，什么都不阻塞。重点在于：否则被遮蔽的 README.md 是不可见的，
+ * 而任何仍在读旧名的表面读到的是另一个文件。
  */
 function shadowedNodeFileFinding(dir: string, level: "mission" | "slice"): AuditFinding | null {
   if (!fs.existsSync(path.join(dir, "SPEC.md")) || !fs.existsSync(path.join(dir, "README.md"))) return null;
@@ -121,8 +120,8 @@ function shadowedNodeFileFinding(dir: string, level: "mission" | "slice"): Audit
     kind: "shadowed_node_file",
     severity: "low",
     path: dir,
-    message: `${level} has BOTH SPEC.md and README.md; SPEC.md is the authored node file and wins, so README.md is shadowed and any surface still reading the legacy name sees different content.`,
-    remediation: "Fold anything still needed from README.md into SPEC.md and remove the shadowed file. Advisory only — nothing is blocked.",
+    message: `${level} 同时有 SPEC.md 和 README.md；SPEC.md 是 authored 节点文件并胜出，因此 README.md 被遮蔽，任何仍读旧名的表面会看到不同内容。`,
+    remediation: "把 README.md 中仍需要的内容折进 SPEC.md，然后删除被遮蔽的文件。仅建议——不阻塞任何东西。",
   };
 }
 
@@ -140,7 +139,7 @@ export function scopeAuditRoutes(): Hono {
 
     const missionName = c.req.query("mission");
     if (!missionName) {
-      return c.json({ error: "missing_mission_param", hint: "Pass ?mission=<name>" }, 400);
+      return c.json({ error: "missing_mission_param", hint: "传入 ?mission=<name>" }, 400);
     }
 
     const missionsRoot = indexer.slicesRoot;
@@ -149,10 +148,9 @@ export function scopeAuditRoutes(): Hono {
       return c.json({ error: "mission_not_found", mission: missionName }, 404);
     }
 
-    // qitem-43d69e17 — ONE audit request is ONE composite operation: the
-    // per-slice indexer.get() walk below shares ONE membership batch
-    // (pre-scope: each uncached get built its own 2-scan batch — 2N total
-    // queue scans, 80 at 40 slices). Handler body is fully synchronous.
+    // qitem-43d69e17——一次 audit 请求是一个复合操作：下面逐 slice 的 indexer.get()
+    // 遍历共享同一个 membership 批次（改前：每个未缓存的 get 自建 2 扫描批次——
+    // 共 2N 次队列扫描，40 个 slice 时为 80）。处理器体完全同步。
     return indexer.withMembershipBatch(() => {
       const missionReadme = resolveNodeFile(missionDir) ?? path.join(missionDir, "SPEC.md");
       const missionProgress = path.join(missionDir, "PROGRESS.md");
@@ -171,8 +169,8 @@ export function scopeAuditRoutes(): Hono {
             kind: "orphan_progress",
             severity: "high",
             path: missionDir,
-            message: "PROGRESS.md exists but no SPEC.md or legacy README.md (orphan progress rail, no backing scope item)",
-            remediation: "Add SPEC.md with frontmatter id, or remove the orphan PROGRESS.md",
+            message: "PROGRESS.md 存在，但没有 SPEC.md 或旧版 README.md（孤儿 progress rail，无支撑的 scope 项）",
+            remediation: "添加带 frontmatter id 的 SPEC.md，或删除孤儿 PROGRESS.md",
           }],
           frontmatterError: null,
         };
@@ -218,8 +216,8 @@ export function scopeAuditRoutes(): Hono {
                     kind: "orphan_progress",
                     severity: "high",
                     path: sliceDir,
-                    message: "PROGRESS.md exists but no SPEC.md or legacy README.md (orphan progress rail, no backing scope item)",
-                    remediation: "Add SPEC.md with frontmatter id, or remove the orphan PROGRESS.md",
+                    message: "PROGRESS.md 存在，但没有 SPEC.md 或旧版 README.md（孤儿 progress rail，无支撑的 scope 项）",
+                    remediation: "添加带 frontmatter id 的 SPEC.md，或删除孤儿 PROGRESS.md",
                   }],
                   frontmatterError: null,
                 },
@@ -259,10 +257,10 @@ export function scopeAuditRoutes(): Hono {
             proofDirHasEntries: directoryHasEntries(proofDir),
             hasProofPacket: indexedSlice?.proofPacket !== null && indexedSlice?.proofPacket !== undefined,
             sliceStatus: indexedSlice?.rawStatus ?? null,
-            // OPR.0.4.4.19 FR-10 backstop inputs (parity with the CLI builder).
+            // OPR.0.4.4.19 FR-10 backstop 输入（与 CLI builder 对齐）。
             proofArtifacts: listProofArtifactsForAudit(proofDir),
             implementationPrdExists: fs.existsSync(path.join(sliceDir, "IMPLEMENTATION-PRD.md")),
-            // OPR.0.4.4.23 convention-section advisory inputs (parity with the CLI builder).
+            // OPR.0.4.4.23 convention-section 建议输入（与 CLI builder 对齐）。
             nodeFileName: path.basename(sliceReadme) as "SPEC.md" | "README.md",
             readmeContent: sliceReadmeContent,
             implementationPrdContent: fs.existsSync(path.join(sliceDir, "IMPLEMENTATION-PRD.md"))
@@ -275,8 +273,8 @@ export function scopeAuditRoutes(): Hono {
               kind: "id_convention_violation",
               severity: "high",
               path: sliceDir,
-              message: `Directory "${entry}" does not match the NN-slug slice naming convention (e.g. 01-my-slice)`,
-              remediation: "Rename to NN-slug format or move out of slices/",
+              message: `目录 "${entry}" 不符合 NN-slug slice 命名约定（例如 01-my-slice）`,
+              remediation: "重命名为 NN-slug 格式，或移出 slices/",
             });
           }
 
@@ -308,7 +306,7 @@ export function scopeAuditRoutes(): Hono {
           railStatus: s.result.railStatus,
           frontmatterError: s.result.frontmatterError,
           findings: s.result.findings,
-          // OPR.0.5.0.18 — amendment lineage (present only when re-stamped).
+          // OPR.0.5.0.18——修订谱系（仅在重新盖章时存在）。
           ...(s.attestations ? { attestations: s.attestations } : {}),
         })),
         graph,

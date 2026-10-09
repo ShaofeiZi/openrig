@@ -92,11 +92,9 @@ describe("P5.3 topology activity parser and resolver", () => {
     expect(getBaselineActivityState({
       agentActivity: { state: "needs_input", reason: "x", evidenceSource: "test", sampledAt: "now" },
     })).toBe("needs_input");
-    // Slice 15 — queued work alone does NOT make a seat "active". The
-    // currentQitems→active inference was the reported queue-to-active
-    // conflation bug. UI now renders queued work separately as a
-    // hasAssignedWork affordance; active/idle is driven by
-    // terminalActive (tmux byte-stream) or agentActivity (hook events).
+    // Slice 15——仅有排队工作不会让席位变为 "active"。currentQitems→active 推断正是已报告的
+    // 队列与活动状态混淆缺陷。UI 现以 hasAssignedWork 提示单独呈现排队工作；active/idle
+    // 由 terminalActive（tmux 字节流）或 agentActivity（钩子事件）驱动。
     expect(getBaselineActivityState({ currentQitems: [{ qitemId: "q", bodyExcerpt: "work", tier: null }] })).toBe("idle");
     expect(getBaselineActivityState({ startupStatus: "failed" })).toBe("blocked");
     expect(getBaselineActivityState({
@@ -104,24 +102,22 @@ describe("P5.3 topology activity parser and resolver", () => {
     })).toBe("idle");
   });
 
-  // Slice 15 non-inference HG-4 (UI surface). terminalActive is the
-  // authoritative source when present; queue state never collapses
-  // into the active animation.
+  // Slice 15 非推断 HG-4（UI 表面）。terminalActive 存在时是权威来源；队列状态绝不会
+  // 折叠进活动动画。
   it("slice 15 HG-3/HG-4 — terminalActive drives active/idle; queued work alone does NOT", () => {
-    // DIRECTION A: terminalActive=true, NO queued work → active
+    // 方向 A：terminalActive=true、无排队工作 → active。
     expect(getBaselineActivityState({ terminalActive: true })).toBe("active");
-    // DIRECTION B: terminalActive=false WITH queued work → idle
-    // (proves queue→active inference is removed at the baseline layer)
+    // 方向 B：terminalActive=false、有排队工作 → idle，证明基础层已移除 queue→active 推断。
     expect(getBaselineActivityState({
       terminalActive: false,
       currentQitems: [{ qitemId: "q", bodyExcerpt: "work", tier: null }],
     })).toBe("idle");
-    // Independent: terminalActive=true WITH queued work is still active
+    // 独立验证：terminalActive=true 且有排队工作时仍为 active。
     expect(getBaselineActivityState({
       terminalActive: true,
       currentQitems: [{ qitemId: "q", bodyExcerpt: "work", tier: null }],
     })).toBe("active");
-    // Null/undefined terminalActive — fall back to agentActivity, not queue
+    // terminalActive 为 null/undefined 时回退到 agentActivity，而非队列。
     expect(getBaselineActivityState({
       terminalActive: null,
       currentQitems: [{ qitemId: "q", bodyExcerpt: "work", tier: null }],

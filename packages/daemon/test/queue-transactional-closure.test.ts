@@ -1,23 +1,20 @@
-// W1 — TRANSACTIONAL CLOSURE (mission release-0.5.1, 51-06).
+// W1——事务性闭合（mission release-0.5.1，51-06）。
 //
 // Atom origin: workspace/missions/release-0.5.1/WAVE-CONVERSION-state-vs-truth-2026-08-07-pm-openrig.md
 //   § "W1 — TRANSACTIONAL CLOSURE", sha-16 5c899ee14a693fdb.
 // Plan: workspace/artifacts/PLAN-W1-transactional-closure-dev50-planner.md sha-16 0738722b87e9e38b.
 //
-// The atom: a qitem terminal act (close + transition) and its WAKE INTENT commit
-// as ONE act or NONE, so an executed-but-unclosed item becomes impossible to WRITE
-// rather than merely detectable. The wake nudge is a pane write and CANNOT join a db
-// transaction (a pane write inside a txn would make the txn lie in the other
-// direction — queue-repository.ts post-commit contract, reversed-never). So what
-// joins the txn is the DURABLE INTENT ROW (an outbox_entries row); the external
-// delivery drains from that committed intent afterward.
+// 原子操作：qitem terminal act（close + transition）与其 WAKE INTENT 要么一起提交，要么均不提交，
+// 从而让“已执行但未闭合”的 item 无法写入，而不是仅可检测。wake nudge 是 pane 写入，无法加入 DB
+// transaction（在 transaction 内写 pane 会让 transaction 在相反方向上撒谎——queue-repository.ts
+// post-commit 契约，不可逆）。因此加入 transaction 的是持久 INTENT ROW（outbox_entries row）；
+// 外部投递随后从已提交 intent drain。
 //
-// Proof discipline (PM amendment): a green-path run cannot demonstrate atomicity —
-// one-act-or-none is only observable by watching the act fail midway. The demos
-// below are effect-reads on the queue emitter, each naming its pin:
-//   demo2 → W1-a  (fail INSIDE txn ⇒ NOTHING persists — the NONE side)
-//   demo1 → W1-b  (drain idempotence — drain twice, delivered once)
-//   demo3 → W1-c  (guard shown FIRING at the seam)
+// 证明纪律（PM 修订）：绿色路径运行无法证明原子性——只有观察动作中途失败，才能看到全有或全无。
+// 以下 demo 是对 queue emitter 的效果读取，每项都点名其锁定点：
+//   demo2 → W1-a（transaction 内失败 ⇒ 不持久化任何内容——全无侧）
+//   demo1 → W1-b（drain 幂等——drain 两次，只投递一次）
+//   demo3 → W1-c（证明 guard 在接缝处触发）
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
@@ -38,8 +35,8 @@ interface SendCall {
   text: string;
 }
 
-/** A mock wake transport that records every send and lets a test dictate the
- *  outcome (ok+verified, ok+unverified = the ambiguous face, not-ok, or throw). */
+/** 记录每次 send 并允许测试指定 outcome 的 mock wake transport（ok+verified、ok+unverified =
+ *  歧义面、not-ok 或 throw）。 */
 type SendMode = "verified" | "unverified" | "notok" | "timeout" | "throw" | "throw-timeout";
 function makeMockTransport(): {
   transport: QueueNudgeTransport;
@@ -61,7 +58,7 @@ function makeMockTransport(): {
         case "notok":
           return { ok: false, error: outcome.error ?? "unreachable" };
         case "timeout":
-          // A timeout is AMBIGUOUS: the send may or may not have landed.
+          // timeout 具有歧义：send 可能已到达，也可能没有。
           return { ok: false, reason: "verify timeout waiting for render ack" };
         case "throw":
           throw new Error(outcome.error ?? "transport exploded");
@@ -83,9 +80,8 @@ function makeHarness(opts?: { deferTransport?: boolean; resolveOccupantGeneratio
     validateRig: () => true,
     resolveOccupantGeneration: opts?.resolveOccupantGeneration,
   });
-  // deferTransport leaves the intent PENDING after a real handoff (the immediate
-  // post-commit deliver is skipped without a transport) — the crash window a drain
-  // recovers from.
+  // deferTransport 会让真实 handoff 后的 intent 保持 PENDING（没有 transport 时跳过 commit 后立即
+  // deliver）——这正是 drain 要恢复的 crash window。
   if (!opts?.deferTransport) repo.attachTransport(transport);
   repo.attachOutbox(outbox);
   return {
@@ -94,43 +90,41 @@ function makeHarness(opts?: { deferTransport?: boolean; resolveOccupantGeneratio
   };
 }
 
-// MF2 (guard HOLD): the atomic seam must NOT be optional and must NOT span two
-// databases. A durable wake intent only commits atomically with the close when it
-// is written on the SAME connection inside the same transaction; and a
-// nudge-intended terminal act with no intent store cannot make good on W1's
-// guarantee, so it must fail closed rather than silently close without an intent.
-describe("W1 MF2 — the atomic seam is mandatory and single-DB", () => {
-  it("attachOutbox REJECTS an outbox backed by a different DB connection (split-DB)", () => {
+// MF2（guard HOLD）：原子接缝不得可选，也不得跨两个数据库。只有在同一 transaction 内使用同一
+// connection 写入，持久 wake intent 才能与 close 原子提交；旨在 nudge 的 terminal act 若没有 intent
+// store，便无法履行 W1 保证，因此必须 fail closed，而不能没有 intent 却静默 close。
+describe("W1 MF2——原子接缝必须存在且使用单一 DB", () => {
+  it("attachOutbox 拒绝由另一 DB connection 支持的 outbox（split-DB）", () => {
     const db1 = createDb();
     migrate(db1, ALL_MIGRATIONS);
     const db2 = createDb();
     migrate(db2, [outboxEntriesSchema]);
     const repo = new QueueRepository(db1, new EventBus(db1), { validateRig: () => true });
-    const foreignOutbox = new OutboxHandler(db2); // different connection
+    const foreignOutbox = new OutboxHandler(db2); // 不同 connection。
     expect(() => repo.attachOutbox(foreignOutbox)).toThrow(/db|connection|same/i);
     db1.close();
     db2.close();
   });
 
-  it("a nudge-intended terminal handoff with NO outbox attached FAILS CLOSED (no silent close-without-intent)", async () => {
+  it("旨在 nudge 的 terminal handoff 未接入 outbox 时 FAILS CLOSED（不静默 close-without-intent）", async () => {
     const db = createDb();
     migrate(db, ALL_MIGRATIONS);
     const { transport } = makeMockTransport();
     const repo = new QueueRepository(db, new EventBus(db), { validateRig: () => true });
     repo.attachTransport(transport);
-    // deliberately NO attachOutbox
+    // 有意不调用 attachOutbox。
     const source = await repo.create({
       sourceSession: "planner@rig", destinationSession: "driver@rig", body: "x",
     });
     await expect(
       repo.handoff({ qitemId: source.qitemId, fromSession: "driver@rig", toSession: "reviewer@rig", body: "y" }),
     ).rejects.toThrow(/intent store|outbox|unavailable/i);
-    // the close rolled back — source stays open
+    // close 已回滚——source 保持 open。
     expect(repo.getById(source.qitemId)!.state).toBe("pending");
     db.close();
   });
 
-  it("a nudge:false terminal handoff with NO outbox is allowed (no wake intended ⇒ no store needed)", async () => {
+  it("允许 nudge:false 且无 outbox 的 terminal handoff（不准备 wake ⇒ 不需要 store）", async () => {
     const db = createDb();
     migrate(db, ALL_MIGRATIONS);
     const repo = new QueueRepository(db, new EventBus(db), { validateRig: () => true });
@@ -145,14 +139,14 @@ describe("W1 MF2 — the atomic seam is mandatory and single-DB", () => {
   });
 });
 
-describe("W1 transactional closure — W1-a: the durable intent row joins the terminal txn", () => {
+describe("W1 事务性闭合——W1-a：持久 intent row 加入 terminal transaction", () => {
   let h: ReturnType<typeof makeHarness>;
   beforeEach(() => {
     h = makeHarness();
   });
   afterEach(() => h.db.close());
 
-  it("a handoff commits close + successor + wake intent atomically (intent row present, pending)", async () => {
+  it("handoff 原子提交 close + successor + wake intent（intent row 存在且 pending）", async () => {
     const source = await h.repo.create({
       sourceSession: "planner@rig",
       destinationSession: "driver@rig",
@@ -169,16 +163,15 @@ describe("W1 transactional closure — W1-a: the durable intent row joins the te
     expect(closed.state).toBe("handed-off");
     expect(created.destinationSession).toBe("reviewer@rig");
 
-    // The wake intent for the successor is durably committed — a row exists whose
-    // destination is the successor's owner. (Its delivery OUTCOME is W1-b's concern;
-    // W1-a's property is that the intent EXISTS, coupled atomically to the close.)
+    // successor 的 wake intent 已持久提交——存在 destination 为 successor owner 的 row。（其投递
+    // outcome 由 W1-b 关注；W1-a 的性质是 intent 存在，并与 close 原子耦合。）
     const intents = h.outbox.listForSender("driver@rig");
     const wake = intents.find((e) => e.destinationSession === "reviewer@rig");
     expect(wake).toBeTruthy();
     expect(wake!.auditPointer).toBe(created.qitemId);
   });
 
-  it("handoffAndComplete also stages the durable wake intent (symmetric)", async () => {
+  it("handoffAndComplete 也暂存持久 wake intent（对称）", async () => {
     const source = await h.repo.create({
       sourceSession: "planner@rig",
       destinationSession: "driver@rig",
@@ -197,18 +190,17 @@ describe("W1 transactional closure — W1-a: the durable intent row joins the te
     expect(intents.some((e) => e.destinationSession === "reviewer@rig")).toBe(true);
   });
 
-  // demo2 → W1-a: the NONE side. A failure INSIDE the terminal txn (here: the
-  // intent-stage throws) must roll back EVERYTHING — no close, no successor, no
-  // intent. This is what distinguishes an atom from "three writes in a row": the
-  // close is not observable without its intent.
-  it("demo2 — failure INSIDE the txn persists NOTHING (no close, no successor, no intent)", async () => {
+  // demo2 → W1-a：全无侧。terminal transaction 内失败（这里是 intent stage 抛错）必须回滚所有内容——
+  // 无 close、无 successor、无 intent。这正是原子操作与“三次连续写入”的区别：没有 intent 时，
+  // close 不可观测。
+  it("demo2——transaction 内失败时不持久化任何内容（无 close、无 successor、无 intent）", async () => {
     const source = await h.repo.create({
       sourceSession: "planner@rig",
       destinationSession: "driver@rig",
       body: "do the thing",
     });
 
-    // Force the in-txn intent stage to throw — simulating a mid-transaction fault.
+    // 强制 transaction 内 intent stage 抛错——模拟 transaction 中途故障。
     const spy = vi.spyOn(h.outbox, "record").mockImplementationOnce(() => {
       throw new Error("intent-stage fault mid-transaction");
     });
@@ -224,19 +216,19 @@ describe("W1 transactional closure — W1-a: the durable intent row joins the te
 
     spy.mockRestore();
 
-    // Source did NOT close.
+    // source 未 close。
     const reloaded = h.repo.getById(source.qitemId);
     expect(reloaded!.state).toBe("pending");
-    // No successor was created (only the original item exists for the seat).
+    // 未创建 successor（seat 只有原始 item）。
     const successors = h.db
       .prepare("SELECT COUNT(*) AS n FROM queue_items WHERE handed_off_from = ?")
       .get(source.qitemId) as { n: number };
     expect(successors.n).toBe(0);
-    // No intent row survived the rollback.
+    // 回滚后没有 intent row 残留。
     expect(h.outbox.listForSender("driver@rig")).toHaveLength(0);
   });
 
-  it("nudge:false stages NO wake intent (no wake intended ⇒ no durable intent, nothing to drain)", async () => {
+  it("nudge:false 不暂存 wake intent（不准备 wake ⇒ 无持久 intent，无内容可 drain）", async () => {
     const source = await h.repo.create({
       sourceSession: "planner@rig",
       destinationSession: "driver@rig",
@@ -253,7 +245,7 @@ describe("W1 transactional closure — W1-a: the durable intent row joins the te
   });
 });
 
-describe("W1 transactional closure — W1-b: the drain, with indeterminate-outcome discipline", () => {
+describe("W1 事务性闭合——W1-b：采用 indeterminate outcome 纪律的 drain", () => {
   let h: ReturnType<typeof makeHarness>;
   beforeEach(() => {
     h = makeHarness();
@@ -266,8 +258,8 @@ describe("W1 transactional closure — W1-b: the drain, with indeterminate-outco
       destinationSession: "driver@rig",
       body: "do the thing",
     });
-    // The create() above fires its own nudge to driver@rig — clear so the counts
-    // below measure ONLY the handoff's wake delivery to the successor.
+    // 上方 create() 会向 driver@rig 发出自身 nudge——清空记录，使下方计数只衡量 handoff 向 successor
+    // 的 wake 投递。
     h.calls.length = 0;
     return h.repo.handoff({
       qitemId: source.qitemId,
@@ -277,7 +269,7 @@ describe("W1 transactional closure — W1-b: the drain, with indeterminate-outco
     });
   }
 
-  it("immediate post-commit delivery marks the intent DELIVERED on a verified nudge", async () => {
+  it("verified nudge 的 commit 后立即投递会将 intent 标为 DELIVERED", async () => {
     h.outcome.mode = "verified";
     const { created } = await doHandoff();
     const row = h.outbox.getById(`wake-intent-${created.qitemId}`);
@@ -285,36 +277,35 @@ describe("W1 transactional closure — W1-b: the drain, with indeterminate-outco
     expect(h.calls).toHaveLength(1);
   });
 
-  it("an AMBIGUOUS nudge (res.ok, NOT verified) records INDETERMINATE — never delivered, never failed", async () => {
-    // The live specimen: rendered-unconfirmed sends (landed, pane re-render not
-    // confirmed) are res.ok && !verified in production today.
+  it("歧义 nudge（res.ok 但未 verified）记录为 INDETERMINATE——绝非 delivered 或 failed", async () => {
+    // live 样本：rendered-unconfirmed send（已到达，但未确认 pane 重绘）在当前生产环境中为
+    // res.ok && !verified。
     h.outcome.mode = "unverified";
     const { created } = await doHandoff();
     const row = h.outbox.getById(`wake-intent-${created.qitemId}`);
     expect(row!.deliveryState).toBe("indeterminate");
   });
 
-  it("a HARD delivery failure records FAILED and the item stays CLOSED (close is not conditional on delivery)", async () => {
+  it("硬投递失败记录为 FAILED，item 保持 CLOSED（close 不以投递为条件）", async () => {
     h.outcome.mode = "notok";
     const { closed, created } = await doHandoff();
-    // The close committed in the transaction regardless of the later delivery.
+    // 无论后续投递如何，close 都已在 transaction 中提交。
     expect(closed.state).toBe("handed-off");
-    // Q1 residue: a live-daemon transient failure lands in a VISIBLE state, not
-    // lingering `pending` (a periodic retry is the named follow-on, out of scope).
+    // Q1 残留：live daemon 的 transient failure 会落入可见状态，而不会滞留在 `pending`
+    //（周期重试是具名后续项，不在范围内）。
     const row = h.outbox.getById(`wake-intent-${created.qitemId}`);
     expect(row!.deliveryState).toBe("failed");
   });
 
-  it("demo1 — a crash-orphaned intent from a REAL handoff drains idempotently: drain twice, delivered ONCE", async () => {
-    // Drive the REAL emitter (proof contract): a handoff with NO transport attached
-    // commits the durable intent but skips the immediate deliver — exactly a crash
-    // after commit / before drain. Then the recovery sweep delivers it, once.
+  it("demo1——真实 handoff 遗留的 crash-orphaned intent 可幂等 drain：drain 两次，只投递一次", async () => {
+    // 驱动真实 emitter（proof 契约）：未接入 transport 的 handoff 会提交持久 intent，但跳过立即 deliver——
+    // 正好模拟 commit 后、drain 前崩溃。随后 recovery sweep 投递一次。
     const g = makeHarness({ deferTransport: true });
     const source = await g.repo.create({ sourceSession: "planner@rig", destinationSession: "driver@rig", body: "x" });
     const { created } = await g.repo.handoff({
       qitemId: source.qitemId, fromSession: "driver@rig", toSession: "reviewer@rig", body: "y",
     });
-    // committed but PENDING, and never sent — the crash window.
+    // 已提交但为 PENDING，且从未发送——即 crash window。
     expect(g.outbox.getById(`wake-intent-${created.qitemId}`)!.deliveryState).toBe("pending");
     expect(g.calls).toHaveLength(0);
 
@@ -325,36 +316,33 @@ describe("W1 transactional closure — W1-b: the drain, with indeterminate-outco
     expect(g.calls).toHaveLength(1);
     expect(g.outbox.getById(`wake-intent-${created.qitemId}`)!.deliveryState).toBe("delivered");
 
-    // Second drain finds nothing pending — the compare-and-set makes it a no-op.
+    // 第二次 drain 找不到 pending 内容——compare-and-set 使其成为 no-op。
     const second = await g.repo.drainPendingWakeIntents();
     expect(second.delivered).toBe(0);
-    expect(g.calls).toHaveLength(1); // delivered exactly once
+    expect(g.calls).toHaveLength(1); // 恰好投递一次。
     g.db.close();
   });
 });
 
-describe("W1 transactional closure — W1-c: the seam guard (a terminal close cannot commit without its intent)", () => {
+describe("W1 事务性闭合——W1-c：接缝 guard（terminal close 无 intent 时不能提交）", () => {
   let h: ReturnType<typeof makeHarness>;
   beforeEach(() => {
     h = makeHarness();
   });
   afterEach(() => h.db.close());
 
-  // demo3 → W1-c: the guard shown FIRING. We drive the REAL handoff chokepoint —
-  // the same path production traverses — but neuter the in-txn intent stage,
-  // simulating a future refactor that writes the close and drops the intent.
-  // The guard must fail that at the SEAM (throw, inside the txn), not defer it to
-  // review. A guard merely present but never demonstrated firing is the
-  // assert-the-effect-not-the-indicator class.
-  it("demo3 — a terminal close that SKIPS intent staging FAILS AT THE SEAM (guard throws, txn rolls back)", async () => {
+  // demo3 → W1-c：证明 guard 会触发。驱动真实 handoff chokepoint——与生产环境相同的路径——但禁用
+  // transaction 内 intent stage，模拟未来 refactor 写入 close 却丢失 intent。guard 必须在接缝处令其
+  // 失败（在 transaction 内抛错），而不能延后到 review。只存在却从未证明会触发的 guard，属于
+  // assert-the-effect-not-the-indicator 类。
+  it("demo3——跳过 intent staging 的 terminal close 在接缝处失败（guard 抛错，transaction 回滚）", async () => {
     const source = await h.repo.create({
       sourceSession: "planner@rig",
       destinationSession: "driver@rig",
       body: "do the thing",
     });
 
-    // Synthetic close-without-intent: the close is still written, but no wake
-    // intent is staged — the exact class the guard forbids.
+    // 合成 close-without-intent：仍写入 close，但不暂存 wake intent——正是 guard 禁止的类别。
     const spy = vi
       .spyOn(h.repo as unknown as { stageWakeIntent: () => void }, "stageWakeIntent")
       .mockImplementation(() => {});
@@ -366,24 +354,23 @@ describe("W1 transactional closure — W1-c: the seam guard (a terminal close ca
         toSession: "reviewer@rig",
         body: "review the thing",
       }),
-    ).rejects.toThrow(/terminal_close_without_wake_intent|one act or none/i);
+    ).rejects.toThrow(/terminal_close_without_wake_intent|一个操作或全无/i);
 
     spy.mockRestore();
 
-    // The guard fired INSIDE the transaction, so the close rolled back — the
-    // source is still open. An executed-but-unwoken close was made UNWRITABLE.
+    // guard 在 transaction 内触发，因此 close 回滚——source 仍为 open。已执行但未 wake 的 close
+    // 已变得不可写入。
     expect(h.repo.getById(source.qitemId)!.state).toBe("pending");
   });
 
-  it("nudge:false does NOT trip the guard (no wake intended ⇒ no intent required)", async () => {
+  it("nudge:false 不触发 guard（不准备 wake ⇒ 不需要 intent）", async () => {
     const source = await h.repo.create({
       sourceSession: "planner@rig",
       destinationSession: "driver@rig",
       body: "do the thing",
     });
 
-    // Intent staging skipped AND nudge:false — the guard must recognize that no
-    // wake was intended and let the close commit.
+    // 跳过 intent staging 且 nudge:false——guard 必须识别出未准备 wake，并允许 close 提交。
     const spy = vi
       .spyOn(h.repo as unknown as { stageWakeIntent: () => void }, "stageWakeIntent")
       .mockImplementation(() => {});
@@ -401,13 +388,11 @@ describe("W1 transactional closure — W1-c: the seam guard (a terminal close ca
   });
 });
 
-// MF6 (guard HOLD): the LOCK requires a timeout/ambiguous outcome to record
-// `indeterminate`. The prior code classified only ok&&!verified that way; a
-// timeout-shaped non-OK became `failed`, and because recovery drains only
-// `pending`, a `failed` row is never retried despite the prose. Fix: classify a
-// timeout as indeterminate from the typed result; keep the honest retry policy
-// (only `pending` is retried; failed/indeterminate are terminal-visible).
-describe("W1 MF6 — timeout classifies as indeterminate; retry policy is honest", () => {
+// MF6（guard HOLD）：LOCK 要求将 timeout/ambiguous outcome 记录为 `indeterminate`。此前代码只把
+// ok&&!verified 如此分类；timeout 形态的非 OK 会变为 `failed`，而 recovery 只 drain `pending`，
+// 导致 `failed` row 尽管文案声称会重试，实际从不重试。修复：根据类型化结果把 timeout 分类为
+// indeterminate；保持诚实的 retry policy（只重试 `pending`；failed/indeterminate 为终态可见）。
+describe("W1 MF6——timeout 分类为 indeterminate；retry policy 如实", () => {
   let h: ReturnType<typeof makeHarness>;
   beforeEach(() => { h = makeHarness(); });
   afterEach(() => h.db.close());
@@ -422,47 +407,46 @@ describe("W1 MF6 — timeout classifies as indeterminate; retry policy is honest
     });
   }
 
-  it("a transport TIMEOUT (ok:false, timeout reason) records INDETERMINATE, not failed", async () => {
+  it("transport TIMEOUT（ok:false、timeout reason）记录为 INDETERMINATE，而非 failed", async () => {
     h.outcome.mode = "timeout";
     const { created } = await doHandoff();
     expect(h.outbox.getById(`wake-intent-${created.qitemId}`)!.deliveryState).toBe("indeterminate");
   });
 
-  it("a THROWN timeout (ETIMEDOUT) also records INDETERMINATE", async () => {
+  it("抛出的 timeout（ETIMEDOUT）也记录为 INDETERMINATE", async () => {
     h.outcome.mode = "throw-timeout";
     const { created } = await doHandoff();
     expect(h.outbox.getById(`wake-intent-${created.qitemId}`)!.deliveryState).toBe("indeterminate");
   });
 
-  it("a genuine hard failure (unreachable) still records FAILED", async () => {
+  it("真正的硬失败（unreachable）仍记录为 FAILED", async () => {
     h.outcome.mode = "notok";
     const { created } = await doHandoff();
     expect(h.outbox.getById(`wake-intent-${created.qitemId}`)!.deliveryState).toBe("failed");
   });
 
-  it("retry policy is honest: a FAILED intent is NOT re-drained by the recovery sweep", async () => {
+  it("retry policy 如实：recovery sweep 不会再次 drain FAILED intent", async () => {
     h.outcome.mode = "notok";
     const { created } = await doHandoff();
     expect(h.outbox.getById(`wake-intent-${created.qitemId}`)!.deliveryState).toBe("failed");
     h.calls.length = 0;
     h.outcome.mode = "verified";
     const tally = await h.repo.drainPendingWakeIntents();
-    // recovery drains only `pending` — a terminal `failed` is left visible, not resent.
-    expect(tally).toEqual({ delivered: 0, indeterminate: 0, failed: 0 });
+    // recovery 只 drain `pending`——terminal `failed` 保持可见，不会重发。
+    expect(tally).toEqual({ delivered: 0, indeterminate: 0, failed: 0, retained: 0 });
     expect(h.calls).toHaveLength(0);
     expect(h.outbox.getById(`wake-intent-${created.qitemId}`)!.deliveryState).toBe("failed");
   });
 });
 
-// MF3 (guard HOLD): overlapping drains must send the external wake ONCE, not just
-// converge to one final state. The claim-before-send (pending→sending) makes the
-// losing drain find nothing to claim.
-describe("W1 MF3 — overlapping drains send the external wake exactly once", () => {
+// MF3（guard HOLD）：重叠 drain 必须只发送一次外部 wake，而不能只是收敛到同一终态。发送前 claim
+//（pending→sending）使落败的 drain 找不到可领取内容。
+describe("W1 MF3——重叠 drain 只发送一次外部 wake", () => {
   let h: ReturnType<typeof makeHarness>;
   beforeEach(() => { h = makeHarness(); });
   afterEach(() => h.db.close());
 
-  it("two concurrent drains of the same crash-orphaned intent: ONE send, honest tallies", async () => {
+  it("两个 drain 并发处理同一 crash-orphaned intent：只 send 一次，计数如实", async () => {
     const g = makeHarness({ deferTransport: true });
     const source = await g.repo.create({ sourceSession: "planner@rig", destinationSession: "driver@rig", body: "x" });
     const { created } = await g.repo.handoff({
@@ -474,18 +458,17 @@ describe("W1 MF3 — overlapping drains send the external wake exactly once", ()
       g.repo.drainPendingWakeIntents(),
       g.repo.drainPendingWakeIntents(),
     ]);
-    expect(g.calls).toHaveLength(1); // the external wake happened exactly ONCE
-    expect(ta.delivered + tb.delivered).toBe(1); // per-drain tallies sum to one, not two
+    expect(g.calls).toHaveLength(1); // 外部 wake 恰好发生一次。
+    expect(ta.delivered + tb.delivered).toBe(1); // 各 drain 计数之和为一，而非二。
     expect(g.outbox.getById(`wake-intent-${created.qitemId}`)!.deliveryState).toBe("delivered");
     g.db.close();
   });
 });
 
-// MF4 (guard HOLD): recovery must not forge the CURRENT occupant's generation onto
-// an old intent. The intent freezes the emitting envelope (generation resolved at
-// stage time) and delivery replays it verbatim.
-describe("W1 MF4 — the intent freezes its emitting generation/envelope", () => {
-  it("freeze: the staged intent carries the SOURCE generation resolved at STAGE time", async () => {
+// MF4（guard HOLD）：recovery 不得把当前 occupant 的 generation 伪造到旧 intent 上。intent 冻结
+// emitting envelope（在 stage 时解析 generation），delivery 原样重放它。
+describe("W1 MF4——intent 冻结其 emitting generation/envelope", () => {
+  it("冻结：已暂存 intent 携带在 stage 时解析的 source generation", async () => {
     const db = createDb();
     migrate(db, ALL_MIGRATIONS);
     const { transport } = makeMockTransport();
@@ -501,43 +484,41 @@ describe("W1 MF4 — the intent freezes its emitting generation/envelope", () =>
       qitemId: source.qitemId, fromSession: "driver@rig", toSession: "reviewer@rig", body: "y",
     });
     const intent = outbox.getById(`wake-intent-${created.qitemId}`);
-    expect(intent!.body).toContain("gen 11111111"); // frozen at stage
+    expect(intent!.body).toContain("gen 11111111"); // 在 stage 时冻结。
     db.close();
   });
 
-  it("no relabel: recovery delivers the FROZEN envelope verbatim after a tenure swap", async () => {
+  it("不 relabel：tenure 切换后，recovery 原样投递已冻结 envelope", async () => {
     const db = createDb();
     migrate(db, ALL_MIGRATIONS);
     const { transport, calls, outcome } = makeMockTransport();
-    // A resolver that would relabel to the CURRENT occupant if delivery re-resolved.
+    // 若投递时重新解析，此 resolver 会 relabel 为当前 occupant。
     const repo = new QueueRepository(db, new EventBus(db), {
       validateRig: () => true,
       resolveOccupantGeneration: () => "22222222-current-occupant-tenure",
     });
     const outbox = new OutboxHandler(db);
     repo.attachOutbox(outbox);
-    // A REAL successor qitem so the intent references an existing target (MF5).
+    // 使用真实 successor qitem，使 intent 引用现有目标（MF5）。
     const successor = await repo.create({ sourceSession: "driver@rig", destinationSession: "reviewer@rig", body: "z" });
-    // A committed-but-undelivered intent whose frozen envelope carries the ORIGINAL gen.
+    // 已提交但未投递的 intent，其冻结 envelope 携带原始 gen。
     const FROZEN =
-      `From: driver@rig\nTo: reviewer@rig\nSent: 08-08 19:44Z · gen 11111111\n---\nQueue handoff: ${successor.qitemId} - check your queue.\n---\n↩ Reply: rig send driver@rig \"...\"`;
+      `From: driver@rig\nTo: reviewer@rig\nSent: 08-08 19:44Z · gen 11111111\n---\nQueue handoff: ${successor.qitemId} - check your queue.\n---\n↩ 回复：rig send driver@rig \"...\"`;
     outbox.record({ outboxId: `wake-intent-${successor.qitemId}`, senderSession: "driver@rig", destinationSession: "reviewer@rig", body: FROZEN, auditPointer: successor.qitemId });
-    repo.attachTransport(transport); // tenure swap: transport now available
+    repo.attachTransport(transport); // tenure 切换：transport 现在可用。
     outcome.mode = "verified";
     await repo.drainPendingWakeIntents();
     expect(calls).toHaveLength(1);
-    expect(calls[0]!.text).toBe(FROZEN); // verbatim
-    expect(calls[0]!.text).not.toContain("22222222"); // did NOT re-resolve to the current occupant
+    expect(calls[0]!.text).toBe(FROZEN); // 原样。
+    expect(calls[0]!.text).not.toContain("22222222"); // 未重新解析为当前 occupant。
     db.close();
   });
 });
 
-// The drain refuses a wake whose target qitem does not exist. The route-side prefix
-// refusal was unbuilt (founder ruling), so a caller CAN record an id under the
-// executable prefix; this pin is what stops such a row being sent as a real wake
-// when it points at nothing.
-describe("W1 — the drain never sends a wake for a nonexistent qitem", () => {
-  it("a wake-intent pointing at a NONEXISTENT qitem is failed, never sent", async () => {
+// drain 拒绝目标 qitem 不存在的 wake。路由侧 prefix 拒绝未构建（founder 裁定），因此 caller 可以
+// 在可执行 prefix 下记录 id；此锁定会阻止指向空目标的 row 作为真实 wake 发出。
+describe("W1——drain 绝不为不存在的 qitem 发送 wake", () => {
+  it("指向不存在 qitem 的 wake-intent 会失败，绝不发送", async () => {
     const h = makeHarness();
     h.outbox.record({
       outboxId: "wake-intent-ghost",
@@ -548,29 +529,28 @@ describe("W1 — the drain never sends a wake for a nonexistent qitem", () => {
     });
     h.outcome.mode = "verified";
     const tally = await h.repo.drainPendingWakeIntents();
-    expect(h.calls).toHaveLength(0); // never sent as a real wake
+    expect(h.calls).toHaveLength(0); // 绝不作为真实 wake 发送。
     expect(tally.failed).toBe(1);
     expect(h.outbox.getById("wake-intent-ghost")!.deliveryState).toBe("failed");
     h.db.close();
   });
 });
 
-// Re-seal BLOCKING 1 (guard): an abandoned `sending` claim (a crash after claim,
-// before finalize — same persisted state whether the send landed or not) must
-// reconcile to `indeterminate` at the recovery boundary, WITHOUT re-sending.
-describe("W1 re-seal BLOCKING 1 — abandoned `sending` claims reconcile to indeterminate", () => {
-  it("a claimed intent left `sending` by a crash becomes `indeterminate` on recovery, never re-sent", async () => {
+// Re-seal BLOCKING 1（guard）：遗弃的 `sending` claim（claim 后、finalize 前崩溃——无论 send 是否
+// 到达，持久化状态都相同）必须在 recovery 边界对账为 `indeterminate`，且不重发。
+describe("W1 re-seal BLOCKING 1——遗弃的 `sending` claim 对账为 indeterminate", () => {
+  it("崩溃后遗留为 `sending` 的已领取 intent 在 recovery 时变为 `indeterminate`，绝不重发", async () => {
     const g = makeHarness({ deferTransport: true });
     const source = await g.repo.create({ sourceSession: "planner@rig", destinationSession: "driver@rig", body: "x" });
     const { created } = await g.repo.handoff({
       qitemId: source.qitemId, fromSession: "driver@rig", toSession: "reviewer@rig", body: "y",
     });
     const intentId = `wake-intent-${created.qitemId}`;
-    // Simulate the crash window: claim (pending->sending), then die before finalize.
+    // 模拟 crash window：claim（pending->sending），随后在 finalize 前崩溃。
     g.outbox.claimForDelivery(intentId);
     expect(g.outbox.getById(intentId)!.deliveryState).toBe("sending");
 
-    // Reopen: a fresh repo on the SAME db runs the startup recovery sweep.
+    // 重新打开：同一 DB 上的新 repo 运行启动 recovery sweep。
     const reopened = new QueueRepository(g.db, new EventBus(g.db), { validateRig: () => true });
     reopened.attachOutbox(g.outbox);
     reopened.attachTransport(g.transport);
@@ -579,46 +559,42 @@ describe("W1 re-seal BLOCKING 1 — abandoned `sending` claims reconcile to inde
     const tally = await reopened.drainPendingWakeIntents();
 
     expect(reconciled).toBe(1);
-    expect(g.calls).toHaveLength(0); // NEVER re-sent
-    expect(tally.delivered).toBe(0); // reconciled to indeterminate ⇒ nothing pending to deliver
+    expect(g.calls).toHaveLength(0); // 绝不重发。
+    expect(tally.delivered).toBe(0); // 对账为 indeterminate ⇒ 无 pending 内容可投递。
     expect(g.outbox.getById(intentId)!.deliveryState).toBe("indeterminate");
     g.db.close();
   });
 });
 
-// The executable drain selector is EXACT-CASE, so a `WAKE-INTENT-…` variant is never
-// selected/executed. NOTE: the public /outbox/record route no longer rejects reserved-prefix
-// ids (the W4-era MF5 route guard was unbuilt — founder ruling: its justification required an
-// adversary inside this trust domain, where the only caller is the daemon's own localhost
-// client). That makes this selector pin MORE load-bearing, not less: it is now the only thing
-// keeping a recorded case-variant id out of the executable drain.
-describe("W1 — the executable drain selector is exact-case", () => {
-  it("a WAKE-INTENT- case variant is NOT selected by the drain (never executed)", async () => {
+// 可执行 drain selector 区分大小写，因此永远不会选择/执行 `WAKE-INTENT-…` 变体。注意：公开
+// /outbox/record 路由不再拒绝保留 prefix id（W4 时期 MF5 路由 guard 未构建——founder 裁定：其理由
+// 需要此信任域内存在 adversary，而唯一 caller 是 daemon 自己的 localhost client）。这使 selector
+// 锁定更承重，而非更轻：它现在是阻止已记录大小写变体 id 进入可执行 drain 的唯一机制。
+describe("W1——可执行 drain selector 区分大小写", () => {
+  it("drain 不选择 WAKE-INTENT- 大小写变体（绝不执行）", async () => {
     const h = makeHarness();
     const q = await h.repo.create({ sourceSession: "driver@rig", destinationSession: "reviewer@rig", body: "z" });
-    h.calls.length = 0; // ignore the create-time nudge; count only drain sends
-    const variantId = `WAKE-INTENT-${q.qitemId}`; // uppercase variant, real target qitem
+    h.calls.length = 0; // 忽略 create-time nudge；只统计 drain send。
+    const variantId = `WAKE-INTENT-${q.qitemId}`; // 大写变体，真实 target qitem。
     h.outbox.record({ outboxId: variantId, senderSession: "attacker@rig", destinationSession: "victim@rig", body: "variant", auditPointer: q.qitemId });
     h.outcome.mode = "verified";
     const tally = await h.repo.drainPendingWakeIntents();
-    expect(h.calls).toHaveLength(0); // the variant was never selected/sent
+    expect(h.calls).toHaveLength(0); // 变体从未被选择/发送。
     expect(tally.delivered).toBe(0);
-    expect(h.outbox.getById(variantId)!.deliveryState).toBe("pending"); // untouched
+    expect(h.outbox.getById(variantId)!.deliveryState).toBe("pending"); // 保持不变。
     h.db.close();
   });
 });
 
-// Re-seal #3 (guard): a REAL file-backed close/reopen crash boundary. The earlier
-// BLOCKING 1 test reused one still-open in-memory Database, so it did not actually
-// cross a restart. This one persists to disk, CLOSES the connection (the crash),
-// then reopens the SAME file with FRESH objects (a new process) before recovering.
-// The before-send and after-send/before-finalize windows share the same persisted
-// `sending` state, so one equivalence pin suffices.
-describe("W1 re-seal #3 — real file-backed close/reopen crash boundary", () => {
-  it("a claimed `sending` intent survives a db CLOSE/REOPEN and reconciles to indeterminate, never re-sent", async () => {
+// Re-seal #3（guard）：真实 file-backed close/reopen crash 边界。此前 BLOCKING 1 测试复用同一个
+// 仍打开的内存 Database，因此并未真正跨越 restart。本测试持久化到磁盘、关闭 connection（崩溃），
+// 随后在 recovery 前以新对象（新进程）重新打开同一文件。发送前与发送后/finalize 前窗口共享同一个
+// 持久化 `sending` 状态，因此一个等价性锁定足够。
+describe("W1 re-seal #3——真实 file-backed close/reopen crash 边界", () => {
+  it("已领取的 `sending` intent 在 DB close/reopen 后仍存在，对账为 indeterminate 且绝不重发", async () => {
     const dbPath = join(tmpdir(), `w1-reopen-${Date.now()}-${process.pid}.sqlite`);
     try {
-      // --- process 1: real handoff, claim the intent, then CRASH (close the db) ---
+      // --- 进程 1：真实 handoff，领取 intent，随后崩溃（关闭 DB）---
       const db1 = createDb(dbPath);
       migrate(db1, ALL_MIGRATIONS);
       const outbox1 = new OutboxHandler(db1);
@@ -627,30 +603,30 @@ describe("W1 re-seal #3 — real file-backed close/reopen crash boundary", () =>
       const source = await repo1.create({ sourceSession: "planner@rig", destinationSession: "driver@rig", body: "x" });
       const { created } = await repo1.handoff({ qitemId: source.qitemId, fromSession: "driver@rig", toSession: "reviewer@rig", body: "y" });
       const intentId = `wake-intent-${created.qitemId}`;
-      outbox1.claimForDelivery(intentId); // claim, then die before finalize
+      outbox1.claimForDelivery(intentId); // claim，随后在 finalize 前崩溃。
       expect(outbox1.getById(intentId)!.deliveryState).toBe("sending");
-      db1.close(); // the crash: connection gone; row persisted on disk as `sending`
+      db1.close(); // 崩溃：connection 消失；row 以 `sending` 状态持久化到磁盘。
 
-      // --- process 2: reopen the SAME db file with FRESH objects, then recover ---
+      // --- 进程 2：以新对象重新打开同一 DB 文件，随后 recovery ---
       const db2 = createDb(dbPath);
       const outbox2 = new OutboxHandler(db2);
       const { transport, calls } = makeMockTransport();
       const repo2 = new QueueRepository(db2, new EventBus(db2), { validateRig: () => true });
       repo2.attachOutbox(outbox2);
       repo2.attachTransport(transport);
-      expect(outbox2.getById(intentId)!.deliveryState).toBe("sending"); // survived the reopen
+      expect(outbox2.getById(intentId)!.deliveryState).toBe("sending"); // reopen 后仍存在。
 
       const reconciled = repo2.reconcileAbandonedWakeIntents();
       const tally = await repo2.drainPendingWakeIntents();
 
       expect(reconciled).toBe(1);
       expect(outbox2.getById(intentId)!.deliveryState).toBe("indeterminate");
-      expect(calls).toHaveLength(0); // NEVER re-sent across the restart
-      expect(tally).toEqual({ delivered: 0, indeterminate: 0, failed: 0 }); // no re-drive
+      expect(calls).toHaveLength(0); // 跨 restart 绝不重发。
+      expect(tally).toEqual({ delivered: 0, indeterminate: 0, failed: 0, retained: 0 }); // 不重新驱动。
       db2.close();
     } finally {
       for (const suffix of ["", "-journal", "-wal", "-shm"]) {
-        try { rmSync(`${dbPath}${suffix}`, { force: true }); } catch { /* best effort */ }
+        try { rmSync(`${dbPath}${suffix}`, { force: true }); } catch { /* 尽力清理。 */ }
       }
     }
   });

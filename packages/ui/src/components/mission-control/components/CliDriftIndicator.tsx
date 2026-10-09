@@ -1,8 +1,8 @@
-// PL-005 Phase A: cross-CLI-version drift indicator.
+// PL-005 Phase A：跨 CLI 版本漂移指示器。
 //
-// Per PRD § Runtime/Source Drift Acceptance sub-clause 4: surfaces a
-// fleet-level "rigs running stale CLI" indicator + per-row "field
-// unavailable on this rig's daemon version" placeholders.
+// 按 PRD § Runtime/Source Drift Acceptance 第 4 子条：在舰队级呈现
+// "运行过期 CLI 的工作组"指示器 + 逐行"该字段在此工作组后台服务版本上不可用"
+// 占位。
 
 export interface CliDriftIndicatorProps {
   staleCliCount: number;
@@ -25,19 +25,19 @@ export function CliDriftIndicator({
     >
       {staleCliCount > 0 ? (
         <div data-testid="mc-cli-drift-stale-count">
-          <span className="font-mono uppercase text-[9px] tracking-[0.12em]">stale-cli</span>{" "}
-          {staleCliCount} {staleCliCount === 1 ? "rig" : "rigs"} running stale CLI
+          <span className="font-mono uppercase text-[9px] tracking-[0.12em]">过期 CLI</span>{" "}
+          {staleCliCount} 个工作组运行过期 CLI
         </div>
       ) : null}
       {degradedFields.length > 0 ? (
         <div data-testid="mc-cli-drift-fields" className="mt-1">
-          <span className="font-mono uppercase text-[9px] tracking-[0.12em]">missing fields</span>{" "}
+          <span className="font-mono uppercase text-[9px] tracking-[0.12em]">缺失字段</span>{" "}
           {degradedFields.join(", ")}
         </div>
       ) : null}
       {sourceFallback ? (
         <div data-testid="mc-cli-drift-fallback" className="mt-1 text-amber-700">
-          <span className="font-mono uppercase text-[9px] tracking-[0.12em]">fallback</span>{" "}
+          <span className="font-mono uppercase text-[9px] tracking-[0.12em]">回退</span>{" "}
           {sourceFallback}
         </div>
       ) : null}
@@ -54,9 +54,9 @@ export function MissingFieldPlaceholder({ fieldName }: MissingFieldPlaceholderPr
     <span
       data-testid="mc-missing-field-placeholder"
       className="font-mono text-[10px] text-amber-700"
-      title={`field unavailable on this rig's daemon version`}
+      title={`该字段在此工作组的后台服务版本上不可用`}
     >
-      {fieldName}: field unavailable on this rig's daemon version
+      {fieldName}：该字段在此工作组的后台服务版本上不可用
     </span>
   );
 }

@@ -7,11 +7,10 @@ import { emitTestbedManifest } from "./testbed-emit-manifest.mjs";
 import { TestbedBuildInputsError, deriveStubAssetsHash } from "./testbed-build-inputs.mjs";
 import { TestbedManifestError } from "./testbed-manifest.mjs";
 
-// 51-04 testbed image — the build verb's VM-testable heart. `docker build` runs HOST-side (locus
-// ruling); this orchestrator gathers the manifest identity from the tree — the host-resolved base
-// digest (docker/testbed/base-image), the stub-assets census, git/openrig sha, node version — and
-// emits the reproducible manifest + census receipt into the build artifact dir. REBUILD CONTRACT:
-// same inputs => byte-identical manifest.json + receipt. A missing/unresolved input fails loudly.
+// 51-04 testbed 镜像——构建命令里可在 VM 内测试的核心。`docker build` 在宿主机侧运行（locus 裁决）；
+// 本编排器从源码树收集 manifest 身份——宿主机解析的 base digest（docker/testbed/base-image）、
+// stub 资产清点、git/openrig sha、node 版本——并把可复现的 manifest + 清点收据写进构建产物目录。
+// 重建契约：相同输入 => 字节一致的 manifest.json + 收据。缺失/未解析的输入响亮失败。
 
 const DIGEST = "sha256:" + "c".repeat(64);
 const STUB_FILES = Object.freeze({
@@ -54,7 +53,7 @@ test("emits a manifest.json wiring the host-resolved base digest + stub census +
     assert.equal(manifest.baseDigest, DIGEST); // from the base-image slot, not fabricated
     assert.equal(manifest.nodeVersion, "22.22.1");
     assert.equal(manifest.openrigSha, "9cf781060000000000000000000000000000000");
-    // stubAssetsHash matches the standalone census over the SAME staged set.
+    // stubAssetsHash 与对同一已暂存集合做的独立清点一致。
     assert.equal(manifest.stubAssetsHash, deriveStubAssetsHash(stubRoot, Object.keys(STUB_FILES)).hash);
     assert.match(manifest.manifestDigest, /^[0-9a-f]{64}$/);
   } finally {
@@ -103,15 +102,15 @@ test("loud-fail on a missing required identity input (delegated to the manifest 
   try {
     const args = baseArgs(root, stubRoot, join(root, "out"));
     delete args.gitSha;
-    // gitSha/openrigSha/nodeVersion are validated by computeTestbedManifest (single source) —
-    // a missing one is a loud TestbedManifestError, not a silent partial manifest.
+    // gitSha/openrigSha/nodeVersion 由 computeTestbedManifest 校验（单一来源）——
+    // 缺一个会响亮抛 TestbedManifestError，而不是静默产出半成品 manifest。
     assert.throws(() => emitTestbedManifest(args), TestbedManifestError);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-// --- CLI shim: the shell build verb invokes `node testbed-emit-manifest.mjs <inputs.json> <outDir>` ---
+// --- CLI 垫片：shell 构建命令以 `node testbed-emit-manifest.mjs <inputs.json> <outDir>` 调用 ---
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";

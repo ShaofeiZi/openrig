@@ -1,27 +1,24 @@
-// OPR.0.5.3.10 — the ONE process census.
+// OPR.0.5.3.10——唯一 process census。
 //
-// The measured collapse (parent incident qitem-20260823031444-cec9cafb; live
-// slow-span sample: 171 resume_metadata.list_processes calls, mean 9.39s, max
-// 40.31s): every consumer that needed the process table spawned its own
-// `ps -Ao` — the model-divergence poll once PER SEAT, the snapshot refresher up
-// to eight times PER CODEX SEAT — and under load the spawns stretched, piled
-// up, and took the control plane down with them. Process enumeration is a
-// GLOBAL read: one census serves every consumer in a cycle.
+// 实测崩塌（父事故 qitem-20260823031444-cec9cafb；现场慢 span 样本：171 次
+// resume_metadata.list_processes 调用，平均 9.39s、最大 40.31s）：每个需要进程表的消费者都派生
+// 自己的 `ps -Ao`；model-divergence poll 每席位一次，snapshot refresher 每个 Codex 席位最多八次。
+// 高负载下派生调用变慢并堆积，最终拖垮 control plane。进程枚举是全局读取：每个周期一次 census
+// 服务所有消费者。
 //
-// Contract (mini-req 3):
-//   - COALESCE: concurrent callers share one in-flight enumeration.
-//   - FRESHNESS: a recent SUCCESSFUL census (within freshnessMs) is reused.
-//   - HONEST FAILURE: a failed enumeration rejects every coalesced caller,
-//     caches NOTHING, and the next call retries — failure never becomes
-//     cached success.
+// 契约（mini-req 3）：
+//   - COALESCE：并发调用方共享一次进行中的枚举。
+//   - FRESHNESS：复用 freshnessMs 内最近一次成功 census。
+//   - HONEST FAILURE：失败枚举拒绝每个合并调用方，不缓存任何内容，下一次调用重试；失败绝不成为
+//     缓存成功。
 import type { ProcessRow } from "./model-divergence/current-generation-record.js";
 
 export interface ProcessCensusOpts {
-  /** The underlying enumeration (default: the shared `ps -Ao` lister). */
+  /** 底层枚举（默认：共享的 `ps -Ao` lister）。 */
   list?: () => Promise<ProcessRow[]>;
-  /** Reuse window for a successful census. Default 2000ms. */
+  /** 成功 census 的复用窗口，默认 2000ms。 */
   freshnessMs?: number;
-  /** Injectable clock (tests). */
+  /** 可注入时钟（测试用）。 */
   now?: () => number;
 }
 
@@ -52,7 +49,7 @@ export class ProcessCensus {
         return rows;
       },
       (err) => {
-        // Honest failure: nothing cached, next call retries.
+        // 真实失败：不缓存任何内容，下一次调用重试。
         this.inFlight = null;
         throw err;
       },
@@ -60,10 +57,9 @@ export class ProcessCensus {
     return this.inFlight;
   }
 
-  /** A CYCLE-SCOPED lister: at most one census underneath for the closure's
-   *  lifetime, lazily fetched (a cycle with nothing to read spawns nothing).
-   *  This is the "at most one per poll/tick" guarantee (mini-reqs 1-2) —
-   *  stronger than the freshness window, which a slow cycle could outlive. */
+  /** 周期定界 lister：closure 生命周期内最多执行一次底层 census，并按需获取（没有内容可读的周期
+   * 不派生任何调用）。这是“每次 poll/tick 最多一次”的保证（mini-req 1–2），比慢周期可能超出的
+   * freshness 窗口更强。 */
   cycleLister(): () => Promise<ProcessRow[]> {
     let cycle: Promise<ProcessRow[]> | null = null;
     return () => (cycle ??= this.list());
@@ -71,9 +67,8 @@ export class ProcessCensus {
 }
 
 async function defaultCensusList(): Promise<ProcessRow[]> {
-  // r2-B2: the STRICT lister — a failed `ps` must REJECT here so the census's
-  // honest-failure path is reachable in production (the lenient variant's []
-  // would have been cached as an empty SUCCESS for the freshness window).
+  // r2-B2：严格 lister——失败的 `ps` 必须在此拒绝，使 census 的真实失败路径可在生产中触达
+  //（宽松版本的 [] 会在 freshness 窗口内被缓存为空成功）。
   const { defaultListProcessesStrict } = await import("./resume-metadata-refresher.js");
   return defaultListProcessesStrict();
 }

@@ -12,10 +12,10 @@ export type MirrorDriftSafeResult =
 
 export async function checkMirrorDriftSafe(): Promise<MirrorDriftSafeResult> {
   if (!existsSync(SOURCE_DIR)) {
-    return { ok: false, reason: `Mirror source not found: ${SOURCE_DIR}` };
+    return { ok: false, reason: `未找到镜像源目录：${SOURCE_DIR}` };
   }
   if (!existsSync(TARGET_DIR)) {
-    return { ok: false, reason: `Mirror target not found: ${TARGET_DIR}` };
+    return { ok: false, reason: `未找到镜像目标目录：${TARGET_DIR}` };
   }
 
   try {
@@ -26,6 +26,6 @@ export async function checkMirrorDriftSafe(): Promise<MirrorDriftSafeResult> {
     const result = mod.checkModeAbsolute(SOURCE_DIR, TARGET_DIR);
     return { ok: true, stale: result.stale, changes: result.changes };
   } catch (err) {
-    return { ok: false, reason: `Mirror drift check failed: ${err instanceof Error ? err.message : String(err)}` };
+    return { ok: false, reason: `镜像漂移检查失败：${err instanceof Error ? err.message : String(err)}` };
   }
 }

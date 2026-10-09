@@ -1,15 +1,12 @@
-// OPR.0.5.3.6 — THE DOOR (proof item 3, and the check that would have caught
-// r2-B1 the first time): a REAL spawned daemon, the REAL `rig up` verb, a
-// clean scratch OPENRIG_HOME — then find the installed chain files at all
-// four altitudes under the derived topology.root. Not a unit proof: the unit
-// suite was green while the shipped door installed nothing, because the
-// installer was wired into materializeValidatedSpec and `rig up` takes the
-// bootstrap → instantiate() path. This test drives the user's actual command.
+// OPR.0.5.3.6——真实入口（证明项 3，也是本可在首次出现时捕获 r2-B1 的检查）：
+// 启动真实后台服务，执行真实 `rig up` 动词，使用干净临时 OPENRIG_HOME，随后在推导出的
+// topology.root 下查找四个层级的已安装链文件。这不是单元证明：当已交付入口什么也没安装时，
+// 单元测试仍为绿色，因为 installer 接到了 materializeValidatedSpec，而 `rig up` 走的是
+// bootstrap → instantiate() 路径。本测试驱动用户的实际命令。
 //
-// The rig has ONE terminal-runtime member (builtin:terminal, zero startup
-// actions) so nothing agent-shaped launches; seats land on the scaffold-owned
-// tmux server, never the fleet's. Contention note: spawns a real daemon
-// (seconds), bounded by timeout.
+// 工作组只有一个 terminal runtime 成员（builtin:terminal，启动 action 为零），因此不会启动
+// agent 形状的内容；席位落在 scaffold 自有 tmux server，而非机群 server。并发说明：
+// 测试会启动真实后台服务（耗时数秒），并由 timeout 限定。
 import { describe, it, expect, afterEach } from "vitest";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
@@ -39,7 +36,7 @@ pods:
     edges: []
 `;
 
-describe("topology defaults DOOR (real daemon, real rig up)", () => {
+describe("拓扑默认值入口（真实后台服务、真实 rig up）", () => {
   let scaffold: HermeticScaffold | undefined;
   let daemon: ScenarioDaemon | undefined;
 
@@ -50,7 +47,7 @@ describe("topology defaults DOOR (real daemon, real rig up)", () => {
     scaffold = undefined;
   });
 
-  it("rig up rejects an unknown topology key before daemon or filesystem topology mutation", async () => {
+  it("rig up 在后台服务或文件系统拓扑修改前拒绝未知 topology key", async () => {
     scaffold = prepareHermeticEnv({ baseEnv: realBaseEnv() });
     daemon = await spawnScenarioDaemon(scaffold, { rigBin: RIG_BIN });
 
@@ -65,7 +62,7 @@ describe("topology defaults DOOR (real daemon, real rig up)", () => {
     const up = await runRig(["up", join(specDir, "rig.yaml"), "--json"], daemon.readEnv, RIG_BIN);
     expect(up.code).toBe(2);
     expect(JSON.parse(up.stdout).error).toContain(
-      'operating_mod: unknown key "operating_mod"; refusing the spec because normalization would otherwise discard it and alter the requested topology',
+      'operating_mod：未知键 "operating_mod"；拒绝该规范，因为规范化会丢弃此键并改变请求的拓扑',
     );
 
     const ps = await runRig(["ps", "--json"], daemon.readEnv, RIG_BIN);
@@ -74,11 +71,11 @@ describe("topology defaults DOOR (real daemon, real rig up)", () => {
     expect(fs.existsSync(join(scaffold.openrigHome, "topology", "rigs", "typo-rig"))).toBe(false);
   }, 120_000);
 
-  it("rig up then context trace walks runtime-matching instance, rig, pod, and seat defaults", async () => {
+  it("rig up 后 context trace 依次遍历 runtime 匹配的 instance、rig、pod 和 seat 默认值", async () => {
     scaffold = prepareHermeticEnv({ baseEnv: realBaseEnv() });
     daemon = await spawnScenarioDaemon(scaffold, { rigBin: RIG_BIN });
 
-    // A spec dir INSIDE the scaffold carrying topology/ defaults at all four altitudes.
+    // scaffold 内的 spec 目录，在四个层级均携带 topology/ 默认值。
     const specDir = join(scaffold.root, "specs", "door-rig");
     fs.mkdirSync(join(specDir, "topology", "instance"), { recursive: true });
     fs.mkdirSync(join(specDir, "topology", "rig"), { recursive: true });
@@ -90,11 +87,11 @@ describe("topology defaults DOOR (real daemon, real rig up)", () => {
     fs.writeFileSync(join(specDir, "topology", "pods", "ops", "CRAFT.md"), "pod ops default (door)", "utf-8");
     fs.writeFileSync(join(specDir, "topology", "seats", "ops-term", "CRAFT.md"), "seat default (door)", "utf-8");
 
-    // THE DOOR: the user's actual command against the scenario-local daemon.
+    // 真实入口：用户针对场景局部后台服务执行的实际命令。
     const up = await runRig(["up", join(specDir, "rig.yaml"), "--json"], daemon.readEnv, RIG_BIN);
     expect(up.code, `rig up failed: ${up.stdout} ${up.stderr}`).toBe(0);
 
-    // The find receipt: all four altitudes populated, instance at the TOP of the root.
+    // 查找回执：四个层级全部填充，instance 位于根目录顶层。
     const topoRoot = join(scaffold.openrigHome, "topology");
     expect(fs.readFileSync(join(topoRoot, "CRAFT.md"), "utf-8")).toBe("instance default (door)");
     expect(fs.readFileSync(join(topoRoot, "rigs", "door-rig", "CRAFT.md"), "utf-8")).toBe("rig default (door)");
@@ -119,17 +116,13 @@ describe("topology defaults DOOR (real daemon, real rig up)", () => {
     ]);
   }, 120_000);
 
-  it("source discriminator: shipped product-team topology bytes install through the real door", async () => {
-    // r2 residual: the synthetic door proved the MECHANISM; this case proves
-    // the product-team spec's actual topology/ folder from source lands
-    // byte-identical through the real `rig up`. It is deliberately separate
-    // from the clean-checkout packaging discriminator in check-packing.test.mjs;
-    // neither test is labeled as the whole locked proof item by itself.
-    // DISCLOSED STAND-IN: the member set is one terminal seat, not the real
-    // 7-agent roster (launching claude/codex agents in a hermetic scaffold
-    // proves nothing about defaults and costs real runtimes); the installer
-    // keys on the spec dir's topology/ folder and the rig NAME, both of which
-    // are the shipped ones here.
+  it("来源判别器：已交付的 product-team 拓扑字节通过真实入口安装", async () => {
+    // r2 遗留：合成入口已证明机制；本用例证明 product-team spec 源码中的真实 topology/ 目录
+    // 经真实 `rig up` 后逐字节一致落地。它刻意与 check-packing.test.mjs 中的干净检出打包判别器
+    // 分开；两个测试都不单独标榜为完整锁定证明项。已披露替身：成员集合只含一个 terminal 席位，
+    // 而非真实 7-agent 名单（在封闭 scaffold 中启动 claude/codex agent 不能证明默认值，
+    // 还会消耗真实 runtime）；installer 以 spec 目录的 topology/ 文件夹和工作组名称为 key，
+    // 此处两者均采用已交付值。
     const shippedTopology = resolve(HERE, "../specs/rigs/preview/product-team/topology");
     expect(fs.statSync(shippedTopology).isDirectory()).toBe(true);
 

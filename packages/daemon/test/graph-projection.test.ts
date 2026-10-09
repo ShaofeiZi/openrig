@@ -57,7 +57,7 @@ function makeSession(nodeId: string, status: string, createdAt: string): Session
 }
 
 describe("projectRigToGraph", () => {
-  it("3 nodes + 2 edges -> correct React Flow shape", () => {
+  it("3 个节点和 2 条边生成正确的 React Flow 结构", () => {
     const input = makeRig(
       [
         { id: "n1", logicalId: "orchestrator", role: "orchestrator" },
@@ -75,14 +75,14 @@ describe("projectRigToGraph", () => {
     expect(result.edges).toHaveLength(2);
   });
 
-  it("empty rig -> { nodes: [], edges: [] }", () => {
+  it("空工作组生成 { nodes: [], edges: [] }", () => {
     const input = makeRig([], []);
     const result = projectRigToGraph(input);
     expect(result.nodes).toEqual([]);
     expect(result.edges).toEqual([]);
   });
 
-  it("all nodes have type: 'rigNode'", () => {
+  it("所有节点的 type 均为 rigNode", () => {
     const input = makeRig([
       { id: "n1", logicalId: "a" },
       { id: "n2", logicalId: "b" },
@@ -93,7 +93,7 @@ describe("projectRigToGraph", () => {
     }
   });
 
-  it("deterministic layout: 3-node rig has exact positions", () => {
+  it("确定性布局：三节点工作组具有精确位置", () => {
     const input = makeRig([
       { id: "n1", logicalId: "a" },
       { id: "n2", logicalId: "b" },
@@ -106,7 +106,7 @@ describe("projectRigToGraph", () => {
     expect(result.nodes[2]!.position).toEqual({ x: 0, y: 400 });
   });
 
-  it("node with binding -> binding data in node.data", () => {
+  it("有绑定的节点在 node.data 中包含绑定数据", () => {
     const input = makeRig([
       { id: "n1", logicalId: "worker", bindingTmux: "r01-worker", cmuxSurface: "s-1" },
     ]);
@@ -118,7 +118,7 @@ describe("projectRigToGraph", () => {
     expect(data.binding.cmuxSurface).toBe("s-1");
   });
 
-  it("node without binding -> binding: null in node.data", () => {
+  it("无绑定节点在 node.data 中的 binding 为 null", () => {
     const input = makeRig([{ id: "n1", logicalId: "worker" }]);
 
     const result = projectRigToGraph(input);
@@ -127,7 +127,7 @@ describe("projectRigToGraph", () => {
     expect(data.binding).toBeNull();
   });
 
-  it("RF node.id === nodes.id, edge.source === sourceId, edge.target === targetId", () => {
+  it("RF node.id 等于 nodes.id，edge.source 等于 sourceId，edge.target 等于 targetId", () => {
     const input = makeRig(
       [
         { id: "node-abc", logicalId: "a" },
@@ -143,7 +143,7 @@ describe("projectRigToGraph", () => {
     expect(result.edges[0]!.target).toBe("node-xyz");
   });
 
-  it("edge label matches edge kind", () => {
+  it("边标签与边 kind 匹配", () => {
     const input = makeRig(
       [
         { id: "n1", logicalId: "a" },
@@ -156,7 +156,7 @@ describe("projectRigToGraph", () => {
     expect(result.edges[0]!.label).toBe("can_observe");
   });
 
-  it("session status included in node.data (latest by createdAt)", () => {
+  it("node.data 包含会话状态（按 createdAt 取最新）", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "worker" }],
       [],
@@ -167,7 +167,7 @@ describe("projectRigToGraph", () => {
     expect(result.nodes[0]!.data.status).toBe("running");
   });
 
-  it("node with multiple sessions -> latest by createdAt wins", () => {
+  it("节点有多个会话时按 createdAt 取最新者", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "worker" }],
       [],
@@ -181,7 +181,7 @@ describe("projectRigToGraph", () => {
     expect(result.nodes[0]!.data.status).toBe("running");
   });
 
-  it("node with no session -> node.data.status = null", () => {
+  it("节点无会话时 node.data.status 为 null", () => {
     const input = makeRig([{ id: "n1", logicalId: "worker" }]);
 
     const result = projectRigToGraph(input);
@@ -189,7 +189,7 @@ describe("projectRigToGraph", () => {
     expect(result.nodes[0]!.data.status).toBeNull();
   });
 
-  it("non-running latest session clears startupStatus so graph does not show stale READY", () => {
+  it("最新会话未运行时清除 startupStatus，使图中不显示陈旧 READY", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "worker", runtime: "claude-code" }],
       [],
@@ -205,8 +205,8 @@ describe("projectRigToGraph", () => {
     expect(result.nodes[0]!.data.startupStatus).toBeNull();
   });
 
-  // NS-T12: enriched fields
-  it("enriched fields include startupStatus, canonicalSessionName, podId, restoreOutcome from overlay", () => {
+  // NS-T12：富化字段
+  it("增强字段包含 overlay 中的 startupStatus、canonicalSessionName、podId 和 restoreOutcome", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "dev.impl", runtime: "claude-code" }],
       [],
@@ -225,8 +225,8 @@ describe("projectRigToGraph", () => {
     expect(node!.data.restoreOutcome).toBe("resumed");
   });
 
-  // NS-T12: pod group nodes
-  it("creates React Flow group nodes for pods", () => {
+  // NS-T12：pod 组节点
+  it("为 pod 创建 React Flow 组节点", () => {
     const input = makeRig([
       { id: "n1", logicalId: "dev.impl", runtime: "claude-code" },
       { id: "n2", logicalId: "dev.qa", runtime: "codex" },
@@ -241,7 +241,7 @@ describe("projectRigToGraph", () => {
         createdAt: "2026-03-23",
       },
     ]);
-    // Add podId to nodes
+    // 给节点加 podId
     input.nodes[0]!.podId = "dev";
     input.nodes[1]!.podId = "dev";
 
@@ -253,7 +253,7 @@ describe("projectRigToGraph", () => {
     expect(groupNode!.data.podNamespace).toBe("dev");
     expect(groupNode!.data.logicalId).toBe("dev");
 
-    // Child nodes should have parentId and podId in data
+    // 子节点 data 中应有 parentId 与 podId
     const childNodes = result.nodes.filter((n) => n.parentId === "pod-dev");
     expect(childNodes).toHaveLength(2);
     expect(childNodes[0]!.data.podId).toBe("dev");
@@ -261,7 +261,7 @@ describe("projectRigToGraph", () => {
   });
 
   // NS-T03: nodeKind derived from runtime
-  it("nodeKind is 'infrastructure' for terminal runtime, 'agent' otherwise", () => {
+  it("terminal 运行时的 nodeKind 为 infrastructure，其他为 agent", () => {
     const input = makeRig([
       { id: "n1", logicalId: "impl", runtime: "claude-code" },
       { id: "n2", logicalId: "server", runtime: "terminal" },
@@ -274,8 +274,8 @@ describe("projectRigToGraph", () => {
     expect(result.nodes[2]!.data.nodeKind).toBe("agent");
   });
 
-  // Task 7: graph projection includes spec hint fields
-  it("node data includes resolvedSpecName and profile from node", () => {
+  // 任务 7：graph 投影含 spec hint 字段
+  it("节点数据包含节点的 resolvedSpecName 和 profile", () => {
     const input = makeRig([
       { id: "n1", logicalId: "impl", runtime: "claude-code" },
     ]);
@@ -288,7 +288,7 @@ describe("projectRigToGraph", () => {
     expect(result.nodes[0]!.data.profile).toBe("default");
   });
 
-  it("node data includes edgeCount reflecting connected edges", () => {
+  it("节点数据包含反映连接边数量的 edgeCount", () => {
     const input = makeRig(
       [
         { id: "n1", logicalId: "impl" },
@@ -311,7 +311,7 @@ describe("projectRigToGraph", () => {
     expect(leadNode.data.edgeCount).toBe(1);  // source of e2
   });
 
-  it("node data defaults resolvedSpecName/profile to null when not set", () => {
+  it("未设置时节点数据的 resolvedSpecName/profile 默认为 null", () => {
     const input = makeRig([{ id: "n1", logicalId: "impl" }]);
 
     const result = projectRigToGraph(input);
@@ -321,7 +321,7 @@ describe("projectRigToGraph", () => {
   });
 
   // Task 7: canonicalSessionName uses overlay (binding) first, then newest session by ULID
-  it("canonicalSessionName prefers overlay over newest session", () => {
+  it("canonicalSessionName 优先采用 overlay 而非最新会话", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "impl", bindingTmux: "impl@rig" }],
       [],
@@ -338,7 +338,7 @@ describe("projectRigToGraph", () => {
     expect(result.nodes[0]!.data.canonicalSessionName).toBe("impl@rig-overlay");
   });
 
-  it("canonicalSessionName falls back to newest session when no overlay", () => {
+  it("没有 overlay 时 canonicalSessionName 回退到最新会话", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "impl" }],
       [],

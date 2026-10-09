@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch28",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json",
+  "files": [
+    {
+      "path": "packages/cli/test/queue.test.ts",
+      "before_sha256_16": "81bc841b543c55db",
+      "after_sha256_16": "1c3af2507ee59847",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/host-selection.test.ts",
+      "before_sha256_16": "ff487b65b5131314",
+      "after_sha256_16": "10732d3099c552b2",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/ps-is-active-rig.test.ts",
+      "before_sha256_16": "c07bc22dd4944e37",
+      "after_sha256_16": "b7e0e54cf4b08ea5",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/seat.test.ts",
+      "before_sha256_16": "79f90daf916abf7f",
+      "after_sha256_16": "0731f05a925a35dd",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/session-admin-auth-headers.test.ts",
+      "before_sha256_16": "fa5d09f5699fcc7b",
+      "after_sha256_16": "bb938b8e4b5b557b",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

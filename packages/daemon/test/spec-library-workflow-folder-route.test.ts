@@ -1,9 +1,8 @@
-// Slice 11 (workflow-spec-folder-discovery) — route-level TDD.
+// 切片 11（workflow-spec-folder-discovery）——路由级 TDD。
 //
-// GET /api/specs/library opportunistically scans
-// <workspace.specs_root>/workflows/ when wired via context vars
-// `workflowSpecCache` + `workflowsFolderDir`, then surfaces both
-// valid + diagnostic rows alongside built-in starters (OQ-3).
+// 当通过上下文变量 `workflowSpecCache` + `workflowsFolderDir` 接线时，
+// GET /api/specs/library 会择机扫描 <workspace.specs_root>/workflows/，
+// 然后把有效行和诊断行连同内置 starter 一起呈现（OQ-3）。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -25,7 +24,7 @@ import { specLibraryRoutes } from "../src/routes/spec-library.js";
 const VALID_YAML = (id: string) => `workflow:
   id: ${id}
   version: '1'
-  objective: Folder-scan fixture
+  objective: 文件夹扫描 fixture
   target:
     rig: folder-fix
   entry:
@@ -37,7 +36,7 @@ const VALID_YAML = (id: string) => `workflow:
   steps:
     - id: produce
       actor_role: producer
-      objective: Draft.
+      objective: 起草。
       allowed_exits:
         - done
   invariants:
@@ -47,11 +46,11 @@ const VALID_YAML = (id: string) => `workflow:
 
 const INVALID_YAML = `workflow:
   id: bad-spec
-  # missing required version, roles, steps
-  objective: This will not parse cleanly
+  # 缺少必填的 version、roles、steps
+  objective: 此内容无法正常解析
 `;
 
-describe("spec-library route folder scan (slice 11)", () => {
+describe("spec-library 路由文件夹扫描（切片 11）", () => {
   let db: Database.Database;
   let tmp: string;
   let folder: string;
@@ -97,7 +96,7 @@ describe("spec-library route folder scan (slice 11)", () => {
     return app;
   }
 
-  it("GET / triggers folder scan and surfaces valid YAML as a workflow entry", async () => {
+  it("GET / 触发文件夹扫描，并将有效 YAML 显示为 workflow 条目", async () => {
     writeFileSync(join(folder, "good.yaml"), VALID_YAML("good-spec"));
     const app = createApp();
     const res = await app.request("/api/specs/library");
@@ -108,7 +107,7 @@ describe("spec-library route folder scan (slice 11)", () => {
     expect(entry?.id).toBe("workflow:good-spec:1");
   });
 
-  it("GET / surfaces invalid YAML as a diagnostic workflow entry", async () => {
+  it("GET / 将无效 YAML 显示为诊断 workflow 条目", async () => {
     writeFileSync(join(folder, "broken.yaml"), INVALID_YAML);
     const app = createApp();
     const res = await app.request("/api/specs/library");
@@ -127,7 +126,7 @@ describe("spec-library route folder scan (slice 11)", () => {
     expect(diag?.name).toBe("broken.yaml");
   });
 
-  it("GET / removes diagnostic row after the file disappears (OQ-4)", async () => {
+  it("文件消失后 GET / 移除诊断行（OQ-4）", async () => {
     const brokenPath = join(folder, "broken.yaml");
     writeFileSync(brokenPath, INVALID_YAML);
     let app = createApp();
@@ -142,7 +141,7 @@ describe("spec-library route folder scan (slice 11)", () => {
     expect(body.some((e) => e.id.startsWith("workflow:error:"))).toBe(false);
   });
 
-  it("GET / is a no-op for the folder scan when workflowsFolderDir is not set", async () => {
+  it("未设置 workflowsFolderDir 时，GET / 的文件夹扫描为空操作", async () => {
     writeFileSync(join(folder, "good.yaml"), VALID_YAML("ghost-spec"));
     const app = createApp({ withFolder: false });
     const res = await app.request("/api/specs/library");
@@ -150,12 +149,12 @@ describe("spec-library route folder scan (slice 11)", () => {
     expect(body.some((e) => e.name === "ghost-spec")).toBe(false);
   });
 
-  it("drift-discriminator: valid + invalid + previously-removed in single response", async () => {
-    // Pre-seed a diagnostic for a file that no longer exists.
+  it("漂移判别项：单次响应中同时包含有效、无效及先前已移除状态", async () => {
+    // 为已不存在的文件预先植入诊断。
     cache.writeDiagnostic({
       sourcePath: join(folder, "previously-here.yaml"),
       sourceHash: "h",
-      errorMessage: "stale",
+      errorMessage: "陈旧",
     });
     writeFileSync(join(folder, "good.yaml"), VALID_YAML("disc-good"));
     writeFileSync(join(folder, "bad.yaml"), INVALID_YAML);

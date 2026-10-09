@@ -123,7 +123,7 @@ describe("rig ask --seat (L1 CLI)", () => {
     });
     const out = logs.join("\n");
     expect(out).toContain("dev-planner@my-rig");
-    expect(out).toMatch(/2 generation/i); // cross-generation is surfaced
+    expect(out).toMatch(/已检索.*代|2 代/); // 跨代已呈现
     expect(out).toContain("[gen 1]");
     expect(out).toContain("[gen 2]");
   });

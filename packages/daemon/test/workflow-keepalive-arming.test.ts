@@ -1,17 +1,15 @@
-// OPR.0.4.6.WF1 FR-3 (G2): keepalive auto-arm in-txn + disarm + the
-// deadline-gated policy behavior.
+// OPR.0.4.6.WF1 FR-3（G2）：keepalive 在事务内自动 arm、disarm，以及受 deadline 门控的
+// policy 行为。
 //
-//   - instantiate arms ONE per-instance workflow-keepalive job inside
-//     the same transaction that creates the entry packet;
-//   - handoff projections keep it armed idempotently (one job per
-//     instance — arch-blessed — and heals pre-WF-1 instances);
-//   - terminal exits disarm in-txn (no orphaned watchdog noise);
-//   - a mid-txn failure rolls the arming back WITH everything else
-//     (the arming rides the scribe, it is not a second writer);
-//   - the auto-armed (deadline_gated) policy is QUIET while healthy
-//     (FR-2 zero-noise AC) and sends the stuck re-nudge with evidence
-//     once a frontier packet is overdue — steering a restored agent to
-//     re-project. Operator-registered jobs keep POC always-send parity.
+//   - instantiate 在创建 entry packet 的同一事务内，为每个 instance arm 恰好一个
+//     workflow-keepalive job；
+//   - handoff 投影以幂等方式保持 armed（每个 instance 一个 job——架构已认可——并修复 WF-1
+//     之前的 instance）；
+//   - terminal 退出在事务内 disarm（无孤立 watchdog 噪声）；
+//   - 事务中途失败会连同其他所有内容回滚 arming（arming 随 scribe 执行，不是第二个 writer）；
+//   - 自动 armed（deadline_gated）policy 在 healthy 时保持安静（FR-2 零噪声 AC），frontier packet
+//     逾期后发送带 evidence 的 stuck re-nudge，引导恢复后的 agent 重新投影。操作员注册 job 保持
+//     POC 始终发送的行为。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -71,7 +69,7 @@ const SPEC = `workflow:
         - failed
 `;
 
-describe("FR-3: keepalive auto-arm in-txn + disarm", () => {
+describe("FR-3：keepalive 在事务内自动 arm + disarm", () => {
   let db: Database.Database;
   let queueRepo: QueueRepository;
   let watchdogRepo: WatchdogJobsRepository;
@@ -97,8 +95,8 @@ describe("FR-3: keepalive auto-arm in-txn + disarm", () => {
     const bus = new EventBus(db);
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
     queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝为 fail-closed（MF2）——旨在 nudge 的 terminal close 需要同数据库的 intent store，
+    // 才能让 wake 持久化。
     queueRepo.attachOutbox(new OutboxHandler(db));
     watchdogRepo = new WatchdogJobsRepository(db);
     runtime = new WorkflowRuntime({
@@ -119,7 +117,7 @@ describe("FR-3: keepalive auto-arm in-txn + disarm", () => {
     vi.restoreAllMocks();
   });
 
-  it("instantiate arms exactly ONE per-instance deadline-gated keepalive job (in the same txn as the entry packet)", async () => {
+  it("instantiate 在 entry packet 的同一事务中，为每个 instance arm 恰好一个受 deadline 门控的 keepalive job", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "arming walk",
@@ -136,7 +134,7 @@ describe("FR-3: keepalive auto-arm in-txn + disarm", () => {
     expect(watchdogRepo.listActive()).toHaveLength(1);
   });
 
-  it("handoff keeps ONE job per instance (idempotent ensure); terminal done disarms it in-txn", async () => {
+  it("handoff 保持每个 instance 一个 job（幂等确保）；terminal done 在事务内将其 disarm", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "one job walk",
@@ -148,7 +146,7 @@ describe("FR-3: keepalive auto-arm in-txn + disarm", () => {
       exit: "handoff",
       actorSession: "worker@rig",
     });
-    // Still exactly one active job for the instance.
+    // 该 instance 仍恰有一个 active job。
     expect(
       watchdogRepo
         .listActive()
@@ -170,13 +168,13 @@ describe("FR-3: keepalive auto-arm in-txn + disarm", () => {
     expect(all[0]!.terminalReason).toBe("workflow_completed");
   });
 
-  it("failed exit disarms with workflow_failed; a handoff onto a pre-WF-1 instance (no job) heals by arming", async () => {
+  it("failed 退出以 workflow_failed disarm；handoff 到 WF-1 前的无 job instance 时通过 arming 修复", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "heal walk",
       createdBySession: "ops@rig",
     });
-    // Simulate a pre-WF-1 instance: kill the auto-armed job out-of-band.
+    // 模拟 WF-1 前的 instance：在带外移除自动 armed job。
     const armed = findArmedKeepaliveJob(watchdogRepo, inst.instance.instanceId)!;
     watchdogRepo.markTerminal(armed.jobId, "simulated_pre_wf1_state");
     expect(findArmedKeepaliveJob(watchdogRepo, inst.instance.instanceId)).toBeNull();
@@ -187,7 +185,7 @@ describe("FR-3: keepalive auto-arm in-txn + disarm", () => {
       exit: "handoff",
       actorSession: "worker@rig",
     });
-    // Healed: a fresh active job exists again.
+    // 已修复：重新存在新的 active job。
     const healed = findArmedKeepaliveJob(watchdogRepo, inst.instance.instanceId);
     expect(healed).not.toBeNull();
     expect(healed!.targetSession).toBe("next@rig");
@@ -205,7 +203,7 @@ describe("FR-3: keepalive auto-arm in-txn + disarm", () => {
     expect(terminalJob.terminalReason).toBe("workflow_failed");
   });
 
-  it("waiting keeps the deadline-gated keepalive armed (authored re-presentation is a separate one-shot timer)", async () => {
+  it("waiting 保持受 deadline 门控的 keepalive armed（编写的再次展示使用独立一次性 timer）", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "waiting walk",
@@ -221,13 +219,13 @@ describe("FR-3: keepalive auto-arm in-txn + disarm", () => {
     expect(findArmedKeepaliveJob(watchdogRepo, inst.instance.instanceId)).not.toBeNull();
   });
 
-  it("BR-2/atomicity: a mid-txn failure rolls the arming back WITH the rest — arming rides the scribe, it is not a second writer", async () => {
+  it("BR-2/原子性：事务中途失败会连同其余内容回滚 arming——arming 随 scribe 执行，不是第二个 writer", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "rollback walk",
       createdBySession: "ops@rig",
     });
-    // Make this look like a pre-WF-1 instance so the handoff would arm.
+    // 将其模拟为 WF-1 前的 instance，使 handoff 会执行 arm。
     const armed = findArmedKeepaliveJob(watchdogRepo, inst.instance.instanceId)!;
     watchdogRepo.markTerminal(armed.jobId, "simulated_pre_wf1_state");
 
@@ -243,12 +241,12 @@ describe("FR-3: keepalive auto-arm in-txn + disarm", () => {
       }),
     ).rejects.toThrow("injected-mid-txn-failure");
 
-    // The heal-arm rolled back with everything else.
+    // heal-arm 连同其他所有内容一起回滚。
     expect(findArmedKeepaliveJob(watchdogRepo, inst.instance.instanceId)).toBeNull();
   });
 });
 
-describe("FR-3/FR-2: the deadline-gated keepalive policy behavior", () => {
+describe("FR-3/FR-2：受 deadline 门控的 keepalive policy 行为", () => {
   let db: Database.Database;
   let queueRepo: QueueRepository;
   let watchdogRepo: WatchdogJobsRepository;
@@ -274,8 +272,8 @@ describe("FR-3/FR-2: the deadline-gated keepalive policy behavior", () => {
     const bus = new EventBus(db);
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
     queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝为 fail-closed（MF2）——旨在 nudge 的 terminal close 需要同数据库的 intent store，
+    // 才能让 wake 持久化。
     queueRepo.attachOutbox(new OutboxHandler(db));
     watchdogRepo = new WatchdogJobsRepository(db);
     runtime = new WorkflowRuntime({
@@ -314,7 +312,7 @@ describe("FR-3/FR-2: the deadline-gated keepalive policy behavior", () => {
     };
   }
 
-  it("deadline-gated + healthy → QUIET skip (workflow_healthy_deadline_gated) — zero noise on the happy path", async () => {
+  it("deadline-gated + healthy → 静默 skip（workflow_healthy_deadline_gated）——正常路径零噪声", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "quiet walk",
@@ -326,13 +324,13 @@ describe("FR-3/FR-2: the deadline-gated keepalive policy behavior", () => {
     expect(evaluation.reason).toBe("workflow_healthy_deadline_gated");
   });
 
-  it("deadline-gated + overdue-unclaimed → SEND to the packet owner with stuck evidence + re-project steering", async () => {
+  it("deadline-gated + overdue-unclaimed → 向 packet owner 发送 stuck evidence + re-project steering", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "stuck walk",
       createdBySession: "ops@rig",
     });
-    // Age the entry packet past the never-claimed threshold.
+    // 将 entry packet 老化到超过 never-claimed 阈值。
     const past = new Date(
       Date.now() - (WORKFLOW_STEP_STUCK_THRESHOLD_SECONDS + 60) * 1000,
     ).toISOString();
@@ -346,17 +344,17 @@ describe("FR-3/FR-2: the deadline-gated keepalive policy behavior", () => {
     expect(evaluation.action).toBe("send");
     if (evaluation.action !== "send") throw new Error("unreachable");
     expect(evaluation.target.session).toBe("worker@rig");
-    expect(evaluation.message).toContain("Workflow deadline:");
+    expect(evaluation.message).toContain("Workflow deadline：");
     expect(evaluation.message).toContain(inst.entryQitemId);
     expect(evaluation.message).toContain("--full");
-    expect(evaluation.message).toContain("Packet age does not establish idle");
+    expect(evaluation.message).toContain("Packet age 不能证明处于 idle");
     const deadlineNotes = (evaluation.notes as Record<string, unknown>)
       .deadline as Record<string, unknown>;
     expect(deadlineNotes.state).toBe("overdue-unclaimed");
     expect(deadlineNotes.packetId).toBe(inst.entryQitemId);
   });
 
-  it("NON-gated (operator-registered) + healthy → shipped always-send POC parity unchanged", async () => {
+  it("非门控（操作员注册）+ healthy → 已发布 POC 始终发送行为不变", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "parity walk",
@@ -366,7 +364,7 @@ describe("FR-3/FR-2: the deadline-gated keepalive policy behavior", () => {
     const evaluation = await policy.evaluate(jobFor(inst.instance.instanceId, false));
     expect(evaluation.action).toBe("send");
     if (evaluation.action !== "send") throw new Error("unreachable");
-    expect(evaluation.message).toContain("Workflow keepalive:");
+    expect(evaluation.message).toContain("Workflow keepalive：");
     expect(evaluation.message).not.toContain("Workflow STUCK");
   });
 });

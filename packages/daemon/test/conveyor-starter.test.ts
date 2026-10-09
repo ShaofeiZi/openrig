@@ -25,7 +25,7 @@ const BUILTIN_WORKFLOW_DIR = resolve(import.meta.dirname, "../src/builtins/workf
 const CONVEYOR_SPEC = join(BUILTIN_WORKFLOW_DIR, "conveyor.yaml");
 const BASIC_LOOP_SPEC = join(BUILTIN_WORKFLOW_DIR, "basic-loop.yaml");
 
-describe("0.3.0 conveyor starter workflow specs", () => {
+describe("0.3.0 conveyor starter workflow spec", () => {
   let db: Database.Database;
   let eventBus: EventBus;
   let runtime: WorkflowRuntime;
@@ -45,33 +45,28 @@ describe("0.3.0 conveyor starter workflow specs", () => {
     eventBus = new EventBus(db);
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-conveyor', 'conveyor')`).run();
     const queueRepo = new QueueRepository(db, eventBus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝关闭失败（MF2）——意图 nudge 的 terminal close 需要同 DB intent store，
+    // 才能让 wake 持久化。
     queueRepo.attachOutbox(new OutboxHandler(db));
     runtime = new WorkflowRuntime({ db, eventBus, queueRepo });
   });
 
   afterEach(() => db.close());
 
-  it("ships exactly the generic public starter workflow specs", () => {
+  it("准确发布通用公共 starter workflow spec", () => {
     const result = loadStarterWorkflowSpecs({
       cache: runtime.specCache,
       builtinDir: BUILTIN_WORKFLOW_DIR,
     });
 
     expect(result.errors).toEqual([]);
-    // Keep this list in sync with
-    // packages/daemon/src/builtins/workflow-specs/*.yaml.
-    // OPR.0.4.6.WF2: + the three spec-language example shapes
-    // (linear / gated / branched — the FR-6 hand-authorability set).
-    // OPR.0.4.6.FAC2: + factory-rsi (the canonical single-rig RSI
-    // factory workflow — the demo/dogfood vehicle).
-    // DRIFT VERDICT: STALE ASSERTION (test-ordering), not a product change —
-    // all six specs correctly ship and load. When 0.4.6 FAC2 (commit 8250d702)
-    // added factory-rsi.yaml + this expected entry, the literal APPENDED
-    // "factory-rsi" at the end, but the assertion compares against a `.sort()`ed
-    // actual, where factory-rsi sorts between "conveyor" and "gated-release".
-    // Restored to sorted order to match the shipped, correctly-loaded set.
+    // 此列表需与 packages/daemon/src/builtins/workflow-specs/*.yaml 保持同步。
+    // OPR.0.4.6.WF2：增加三种 spec-language 示例结构（linear / gated / branched，即 FR-6
+    // 手工创作集合）。OPR.0.4.6.FAC2：增加 factory-rsi（canonical 单 rig RSI factory workflow，
+    // 也是 demo/dogfood 载体）。漂移裁定：这是陈旧断言（测试排序），不是产品变更；六个 spec 均已
+    // 正确发布并加载。0.4.6 FAC2（commit 8250d702）加入 factory-rsi.yaml 和此预期条目时，字面量把
+    // "factory-rsi" 追加到末尾，但断言将其与 `.sort()` 后的实际值比较；排序后 factory-rsi 位于
+    // "conveyor" 与 "gated-release" 之间。现已恢复排序顺序，与已发布并正确加载的集合一致。
     expect(result.loaded.map((s) => s.name).sort()).toEqual([
       "basic-loop",
       "branched-remediation",
@@ -83,7 +78,7 @@ describe("0.3.0 conveyor starter workflow specs", () => {
     expect(result.skipped).toEqual([]);
   });
 
-  it("conveyor and basic-loop validate as generic conveyor-targeted specs", () => {
+  it("conveyor 和 basic-loop 作为面向通用 conveyor 的 spec 通过验证", () => {
     const validator = new WorkflowValidator();
 
     for (const specPath of [CONVEYOR_SPEC, BASIC_LOOP_SPEC]) {
@@ -103,7 +98,7 @@ describe("0.3.0 conveyor starter workflow specs", () => {
     }
   });
 
-  it("conveyor can run multiple active instances on the same rig", async () => {
+  it("conveyor 可在同一 rig 上运行多个活动 instance", async () => {
     const first = await runtime.instantiate({
       specPath: CONVEYOR_SPEC,
       rootObjective: "packet A",
@@ -136,7 +131,7 @@ describe("0.3.0 conveyor starter workflow specs", () => {
     expect(stillActive?.currentStepId).toBe("intake");
   });
 
-  it("basic-loop can move one packet end-to-end through close", async () => {
+  it("basic-loop 可将一个 packet 端到端推进至 close", async () => {
     const created = await runtime.instantiate({
       specPath: BASIC_LOOP_SPEC,
       rootObjective: "walk one packet",
@@ -195,7 +190,7 @@ describe("0.3.0 conveyor starter workflow specs", () => {
     expect(done?.currentStepId).toBeNull();
   });
 
-  it("workflow review graph shows pass-to-close and review-to-build feedback paths", () => {
+  it("workflow review graph 显示 pass-to-close 和 review-to-build 反馈路径", () => {
     runtime.specCache.readThrough(CONVEYOR_SPEC);
     const review = getWorkflowReview({
       db,

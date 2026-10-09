@@ -14,9 +14,9 @@ const EDGE_COLOR = "#546073";
 const ARROW = { type: MarkerType.ArrowClosed, color: EDGE_COLOR, width: 12, height: 12 };
 
 /**
- * Edge styles for vellum paper aesthetic.
- * All edges use secondary blue (#546073) with arrow markers.
- * Relationship type communicated via line style, not labels.
+ * vellum 纸张美学的边样式。
+ * 所有边使用次级蓝（#546073）配箭头标记。
+ * 关系类型通过线型表达，不通过标签。
  */
 export function getEdgeStyle(kind: string): EdgeStyleResult {
   switch (kind) {

@@ -1,75 +1,72 @@
-// OPR.0.5.1.1 — the shared, PURE contract between the stub runtime adapter and the
-// pane-hosted stub-runner process (A5 / ContextMonitor settlement).
+// OPR.0.5.1.1——stub runtime adapter 与 pane 承载的 stub-runner 进程之间共享的纯契约
+//（A5/ContextMonitor 收口）。
 //
-// Everything here is side-effect-free (constants + the readiness-sidecar shape +
-// string/argv builders) so the pane-hosted runner entry can import it without
-// dragging daemon dependencies into the pane process, and the adapter tests can
-// assert command construction hermetically. Mirrors the proven pi-runner-protocol
-// shape (OPR.0.4.6.PI1): a Pi-shaped node-script runner with a self-invocation guard.
+// 此处所有内容都无副作用（常量 + readiness sidecar 结构 + 字符串/argv 构建器），因此 pane
+// 承载的 runner 入口可以导入，而不会把后台服务依赖带入 pane 进程；adapter 测试也能隔离断言
+// 命令构造。镜像已验证的 pi-runner-protocol 形态（OPR.0.4.6.PI1）：带自调用守卫的 Pi 形
+// node 脚本 runner。
 //
-// Contract summary:
-// - The adapter launches `node <runnerEntry> …` inside the seat's tmux pane.
-// - The runner writes the readiness sidecar `<cwd>/.openrig/stub/state.json` and
-//   prints the READY marker to the pane; the daemon reads ONLY runner-authored
-//   surfaces (the sidecar), never pane heuristics, for the readiness decision.
-// - Step-4 scope: the runner becomes ready + persists the readiness sidecar. The
-//   four seeded behaviors {compaction, slow_output, mid_turn_death, restore} and
-//   the ctx% context sidecar land in later increments (A5 items 5-8).
+// 契约摘要：
+// - adapter 在席位的 tmux pane 内启动 `node <runnerEntry> …`。
+// - runner 写入 readiness sidecar `<cwd>/.openrig/stub/state.json`，并向 pane 输出 READY
+//   标记；后台服务只读取 runner 生成的 surface（sidecar）来判断 readiness，绝不使用 pane
+//   启发式规则。
+// - 第 4 步范围：runner 就绪并持久化 readiness sidecar。四个 seed 行为
+//   {compaction, slow_output, mid_turn_death, restore} 与 ctx% context sidecar 在后续增量
+//   （A5 第 5–8 项）落地。
 
 import nodePath from "node:path";
 import { shellQuote } from "./shell-quote.js";
 
-// ── Readiness sidecar layout ────────────────────────────────────────────────
-// <cwd>/.openrig/stub/state.json → the runner's readiness sidecar (the daemon's
-// authoritative liveness source; distinct from the ctx% context sidecar under
-// <OPENRIG_HOME>/context/ consumed by ContextUsageStore in a later increment).
+// ── Readiness sidecar 布局 ───────────────────────────────────────────────────
+// <cwd>/.openrig/stub/state.json → runner 的 readiness sidecar（后台服务的权威活性来源；
+// 不同于后续增量中由 ContextUsageStore 消费、位于 <OPENRIG_HOME>/context/ 下的 ctx%
+// 上下文伴随文件）。
 
 export const STUB_READINESS_SIDECAR_SUBPATH = nodePath.join(".openrig", "stub", "state.json");
 
-/** Absolute path to the readiness sidecar for a seat whose managed cwd is `cwd`. */
+/** 托管 cwd 为 `cwd` 的席位对应 readiness sidecar 的绝对路径。 */
 export function stubSeatSidecarPath(cwd: string): string {
   return nodePath.join(cwd, STUB_READINESS_SIDECAR_SUBPATH);
 }
 
-// ── Scenario-resolved behavior script ───────────────────────────────────────
-// <cwd>/.openrig/stub/script.json → the per-seat behavior script the runner
-// executes (pane outputs + hook/behavior emissions; PRD §4.2). A scenario harness
-// (51-02) drops it into the managed cwd; a standalone stub seat has none and the
-// runner falls back to the built-in DEFAULT_STUB_SCRIPT. A cwd convention (not a
-// launch flag) so the launch command stays byte-stable across fresh/resume.
+// ── 场景解析出的行为脚本 ─────────────────────────────────────────────────────
+// <cwd>/.openrig/stub/script.json → runner 执行的逐席位行为脚本（pane 输出 + hook/行为触发；
+// PRD §4.2）。场景 harness（51-02）将其放入托管 cwd；独立 stub 席位没有该文件，runner 会
+// 回退到内置 DEFAULT_STUB_SCRIPT。采用 cwd 约定而非启动标志，使启动命令在 fresh/resume
+// 之间保持字节稳定。
 
 export const STUB_SCRIPT_SUBPATH = nodePath.join(".openrig", "stub", "script.json");
 
-/** Absolute path to the scenario-resolved behavior script for a seat whose managed
- *  cwd is `cwd` (absent = the runner uses DEFAULT_STUB_SCRIPT). */
+/** 托管 cwd 为 `cwd` 的席位对应场景行为脚本的绝对路径
+ *（缺失 = runner 使用 DEFAULT_STUB_SCRIPT）。 */
 export function stubSeatScriptPath(cwd: string): string {
   return nodePath.join(cwd, STUB_SCRIPT_SUBPATH);
 }
 
-// ── Pane markers (runner-authored; the adapter greps for THESE, never harness UI) ─
+// ── Pane 标记（runner 生成；adapter 只查找这些标记，绝不判断 harness UI）────────
 
 export const STUB_RUNNER_READY_MARKER = "[stub-runner] READY";
 export const STUB_RUNNER_EXIT_MARKER = "[stub-runner] EXITED";
 export const STUB_RUNNER_ERROR_MARKER = "[stub-runner] ERROR";
 
-// ── Readiness sidecar shape ─────────────────────────────────────────────────
+// ── Readiness sidecar 结构 ──────────────────────────────────────────────────
 
 export interface StubRunnerState {
-  /** True once the runner has come up; the daemon's positive readiness signal. */
+  /** runner 启动后为 true；后台服务的正向 readiness 信号。 */
   ready: boolean;
-  /** Launch-attempt scope (Pi precedent): the adapter mints a launchId per attempt
-   *  and passes --launch-id; the runner stamps it into every sidecar write so a
-   *  durable artifact from a prior runner instance can never false-green a new
-   *  launch. Optional so a minimal hand-written fixture still parses. */
+  /** 启动尝试范围（Pi 先例）：adapter 为每次尝试铸造 launchId 并传入 --launch-id；runner
+   * 在每次 sidecar 写入时盖上该值，使旧 runner 实例的持久产物绝不能让新启动误绿。此字段
+   * 可选，使最小手写 fixture 仍可解析。 */
   launchId?: string;
-  /** Set when the stub process exited; the seat is honestly non-running. */
+  /** stub 进程退出时设置；如实表示席位未运行。 */
   exited?: { code: number | null; at?: string };
-  /** ISO timestamp of the last sidecar write (optional metadata). */
+  /** 最近一次 sidecar 写入的 ISO 时间戳（可选元数据）。 */
   updatedAt?: string;
 }
 
-/** Parse a readiness sidecar. Requires only `ready: boolean` (a minimal
- *  `{"ready": true}` fixture is valid); everything else is optional metadata. */
+/** 解析 readiness sidecar。只要求 `ready: boolean`（最小 `{"ready": true}` fixture 有效）；
+ * 其他内容均为可选元数据。 */
 export function parseStubRunnerState(raw: string): StubRunnerState | null {
   try {
     const parsed = JSON.parse(raw);
@@ -82,26 +79,25 @@ export function parseStubRunnerState(raw: string): StubRunnerState | null {
   }
 }
 
-// ── Command construction ─────────────────────────────────────────────────────
+// ── 命令构造 ─────────────────────────────────────────────────────────────────
 
 export interface StubRunnerLaunchOpts {
-  /** Absolute path to the compiled runner entry (daemon dist). */
+  /** 已编译 runner 入口（daemon dist）的绝对路径。 */
   runnerEntryPath: string;
-  /** The seat's canonical session name (identity). */
+  /** 席位的 canonical session 名称（身份）。 */
   sessionName: string;
-  /** Managed working directory (the readiness sidecar root). */
+  /** 托管工作目录（readiness sidecar 根目录）。 */
   cwd: string;
-  /** Launch-attempt scope stamped into the runner's sidecar writes. */
+  /** 盖在 runner sidecar 写入上的启动尝试范围。 */
   launchId: string;
-  /** The seat's RESOLVED launch posture — byte-observable in the command on
-   *  BOTH fresh and resume paths (floor is the usability default). */
+  /** 席位已解析的启动姿态——在 fresh 与 resume 路径的命令中都可按字节观察
+   *（floor 是可用性默认值）。 */
   posture: "floor" | "full_bypass";
-  /** Exact resume token (a prior session marker) for the restore path. */
+  /** restore 路径使用的准确 resume token（之前的 session 标记）。 */
   resumeToken?: string;
 }
 
-/** The command typed into the seat's tmux pane. The runner owns everything past
- *  this boundary (sidecar write, behavior simulation, mirror). */
+/** 输入席位 tmux pane 的命令。边界之后的一切（sidecar 写入、行为模拟、mirror）由 runner 所有。 */
 export function buildStubRunnerCommand(opts: StubRunnerLaunchOpts): string {
   const parts = [
     "node",

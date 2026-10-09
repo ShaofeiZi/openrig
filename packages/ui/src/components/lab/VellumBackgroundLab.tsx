@@ -1,20 +1,19 @@
-// Vellum BACK-layer iteration lab — iter 5 per founder dispatch
-// 2026-05-14.
+// Vellum 背景层迭代实验室——按创始人 2026-05-14 派发的 iter 5。
 //
-// Two new options based on founder reference photos:
-//   - Topographic contour lines (organic flowing curves filling canvas)
-//   - Scattered isometric geometric shapes (line-art icons across canvas)
+// 基于创始人参考照片的两个新选项：
+//   - 地形等高线（有机流动曲线铺满画布）
+//   - 散布的等距几何图形（线稿图标铺满画布）
 //
-// Both use the diffuse vellum setting from iter 4 (bg-surface-lowest/50 +
-// backdrop-blur-[26px]) — heavy fade so the line art reads as a
-// quiet field, never competing with the cards.
+// 两者都用 iter 4 的 diffuse vellum 设置（bg-surface-lowest/50 +
+// backdrop-blur-[26px]）——重淡出，使线稿读作安静的底场，
+// 绝不与卡片争夺注意力。
 //
-//   /lab/vellum-bg/a-large    — TOPO LINES: ~50 wavy horizontal
-//                                contour lines across the canvas
-//                                (topographical map / wood grain feel)
-//   /lab/vellum-bg/b-small    — ISOMETRIC: ~30 small isometric/line-art
-//                                geometric icons scattered across canvas
-//   /lab/vellum-bg/c-allover  — RESERVED — same as a-large for now
+//   /lab/vellum-bg/a-large    —— 地形线：约 50 条波浪水平
+//                                等高线横跨画布
+//                                （地形图 / 木纹质感）
+//   /lab/vellum-bg/b-small    —— 等距：约 30 个小等距/线稿
+//                                几何图标散布画布
+//   /lab/vellum-bg/c-allover  —— 保留——目前同 a-large
 
 import { VellumLab } from "./VellumLab.js";
 
@@ -35,10 +34,9 @@ export function VellumBgSmall() {
   );
 }
 export function VellumBgAllover() {
-  // Iter 25 — switched back to topo lines per founder dispatch, but
-  // now with a SEAMLESS HORIZONTAL SCROLL animation. Pattern is 2×
-  // viewport wide with a wave whose period = viewport width, so
-  // translate3d(-50%, 0, 0) loops without a visible seam.
+  // Iter 25——按创始人派发切回地形线，但现在带无缝水平滚动动画。
+  // 图案宽 2× 视口，波浪周期 = 视口宽，故 translate3d(-50%, 0, 0)
+  // 循环而无可见接缝。
   return (
     <VellumLab
       backLayerOverride={<ScrollingTopoLinesBackground />}
@@ -48,10 +46,9 @@ export function VellumBgAllover() {
 }
 
 function HeavyDiffuseVellumSheet() {
-  // Iter 28: dropped the staggered inset (was top-14/bottom-12/left-16/
-  // right-14) and extended to full viewport (inset-0). The topo-lines
-  // graphic doesn't look good at the page edges exposed; works best
-  // as a continuous animated field UNDER the vellum everywhere.
+  // Iter 28：去掉交错 inset（原为 top-14/bottom-12/left-16/right-14），
+  // 扩展到整个视口（inset-0）。地形线图形在页面边缘露出时不好看；
+  // 作为 vellum 之下处处连续的动画底场效果最佳。
   return (
     <div
       data-testid="vellum-sheet-heavy-diffuse"
@@ -62,20 +59,19 @@ function HeavyDiffuseVellumSheet() {
 }
 
 /* ====================================================================
-   SCROLLING TOPO LINES — periodic wave, seamless horizontal loop
+   滚动地形线——周期波，无缝水平循环
    ==================================================================== */
 function ScrollingTopoLinesBackground() {
-  // Pattern is 2× viewport-wide. Each wave function uses INTEGER cycles
-  // over the period (PATTERN_W = 1280) so the wave at x=0 equals the
-  // wave at x=1280; the second 1280-wide half mirrors the first half;
-  // animating translateX from 0 to -50% loops without a visible seam.
+  // 图案宽 2× 视口。每个波函数在周期（PATTERN_W = 1280）上用整数个周期，
+  // 使 x=0 处的波等于 x=1280 处的波；第二个 1280 宽的半幅镜像前半；
+  // 把 translateX 从 0 动画到 -50% 循环而无可见接缝。
   const PATTERN_W = 1280;
-  const VIEW_W = PATTERN_W * 2; // 2560 total
+  const VIEW_W = PATTERN_W * 2; // 共 2560
   const VIEW_H = 1100;
   const lineSpacing = 40;
   const lineCount = Math.ceil(VIEW_H / lineSpacing) + 2;
 
-  // Convert pixel x → angle for periodic wave with N cycles per pattern
+  // 把像素 x 转成周期波的角度，每个图案 N 个周期
   const cycle = (x: number, n: number, phase = 0) =>
     (x / PATTERN_W) * Math.PI * 2 * n + phase;
 
@@ -84,8 +80,7 @@ function ScrollingTopoLinesBackground() {
     const baseY = i * lineSpacing - 40;
     let path = `M 0 ${baseY.toFixed(2)}`;
     for (let x = 0; x <= VIEW_W; x += 32) {
-      // 3 superimposed sine waves; ALL with integer cycle counts so the
-      // total dy at x=0 equals dy at x=PATTERN_W (seamless loop).
+      // 3 个叠加正弦波；全用整数周期数，使 x=0 处的总 dy 等于 x=PATTERN_W 处（无缝循环）。
       const w1 = Math.sin(cycle(x, 2, i * 0.3)) * 36;
       const w2 = Math.sin(cycle(x, 5, i * 0.5)) * 9;
       const w3 = Math.sin(cycle(x, 3, i * 0.18)) * 14;
@@ -101,7 +96,7 @@ function ScrollingTopoLinesBackground() {
       aria-hidden="true"
       className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none"
     >
-      {/* SVG is 2× viewport wide; CSS translates -50% over 60s, looping seamlessly */}
+      {/* SVG 宽 2× 视口；CSS 在 60s 内平移 -50%，无缝循环 */}
       <svg
         className="absolute top-0 left-0 h-full vellum-scroll-x"
         style={{ width: "200%" }}
@@ -125,10 +120,9 @@ function ScrollingTopoLinesBackground() {
 }
 
 /* ====================================================================
-   MINIMAL LARGE OBJECTS — 3 huge shapes, very diffuse
-   Almost-blank back layer. Each object 600-900px so even when heavily
-   blurred the silhouette is still recognizable. Cards' ambient shadow
-   does the work of defining card edges; back layer just adds depth.
+   极简大图形——3 个巨大形状，非常弥散
+   近乎空白的背景层。每个对象 600-900px，即使重度模糊轮廓仍可辨认。
+   卡片的环境阴影负责定义卡边；背景层只增加纵深。
    ==================================================================== */
 function MinimalLargeBackground() {
   return (
@@ -137,7 +131,7 @@ function MinimalLargeBackground() {
       aria-hidden="true"
       className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none text-on-surface"
     >
-      {/* Concentric target, top-left bleed (~800px) — drift A */}
+      {/* 同心靶心，左上出血（约 800px）——漂移 A */}
       <svg
         className="absolute -top-40 -left-40 w-[820px] h-[820px] vellum-drift-a"
         viewBox="0 0 200 200"
@@ -154,7 +148,7 @@ function MinimalLargeBackground() {
         <line x1="100" y1="0" x2="100" y2="200" />
       </svg>
 
-      {/* Hexagram, bottom-right bleed (~700px) — drift B */}
+      {/* 六芒星，右下出血（约 700px）——漂移 B */}
       <svg
         className="absolute -bottom-32 -right-28 w-[720px] h-[720px] vellum-drift-b"
         viewBox="0 0 200 200"
@@ -167,7 +161,7 @@ function MinimalLargeBackground() {
         <circle cx="100" cy="100" r="60" />
       </svg>
 
-      {/* Mandala radial — mid, slight bleed (~600px) — drift C */}
+      {/* 曼陀罗放射——居中，微出血（约 600px）——漂移 C */}
       <svg
         className="absolute top-[28%] left-[28%] w-[620px] h-[620px] vellum-drift-c"
         viewBox="0 0 200 200"
@@ -190,7 +184,7 @@ function MinimalLargeBackground() {
 }
 
 function DiffuseVellumSheet() {
-  // Medium (bg-surface-lowest/35 + blur-[14px]) — used by topo lines variant.
+  // 中等（bg-surface-lowest/35 + blur-[14px]）——地形线变体用。
   return (
     <div
       data-testid="vellum-sheet-diffuse"
@@ -200,9 +194,8 @@ function DiffuseVellumSheet() {
   );
 }
 function MoreDiffuseVellumSheet() {
-  // Iter 7: more diffuse for the isometric variant per founder request.
-  // Halfway between medium (35/14) and diffuse (50/26) — bg-surface-lowest/45 +
-  // blur-[22px]. Heavier shapes still read; cards float more.
+  // Iter 7：按创始人请求，等距变体更弥散。介于中等（35/14）与弥散（50/26）之间——
+  // bg-surface-lowest/45 + blur-[22px]。较重形状仍可读；卡片更漂浮。
   return (
     <div
       data-testid="vellum-sheet-more-diffuse"
@@ -213,14 +206,14 @@ function MoreDiffuseVellumSheet() {
 }
 
 /* ====================================================================
-   TOPO LINES — wavy contour lines filling the canvas
+   地形线——铺满画布的波浪等高线
    ==================================================================== */
 function TopoLinesBackground() {
-  // Iter 6: fewer + thicker lines so they read clearly through the
-  // vellum. Line count cut from ~70 to ~28; stroke width 1.2 → 2.4.
+  // Iter 6：更少更粗的线，使其透过 vellum 清晰可读。线数从约 70 降到约 28；
+  // 线宽 1.2 → 2.4。
   const viewBoxW = 1280;
   const viewBoxH = 1100;
-  const lineSpacing = 40; // px between lines (was 16)
+  const lineSpacing = 40; // 线距 px（原 16）
   const lineCount = Math.ceil(viewBoxH / lineSpacing) + 2;
 
   const lines: string[] = [];
@@ -266,29 +259,28 @@ function TopoLinesBackground() {
 }
 
 /* ====================================================================
-   ISOMETRIC SHAPES — scattered line-art geometric icons
+   等距形状——散布的线稿几何图标
    ==================================================================== */
 function IsometricShapesBackground() {
-  // Iter 6: cut count 42 → 15; sizes scaled up 70-110px → 180-260px so
-  // shapes read clearly through the vellum. Spread across 4 rows with
-  // generous breathing room.
+  // Iter 6：数量 42 → 15；尺寸放大 70-110px → 180-260px，使形状透过
+  // vellum 清晰可读。跨 4 行散布，留足呼吸空间。
   const placements: IsoPlacement[] = [
-    // Top row (4 shapes)
+    // 顶行（4 个形状）
     { type: "cube", size: 220, pos: "top-[2%] -left-6" },
     { type: "spool", size: 200, pos: "top-[4%] left-[24%]" },
     { type: "x-prism", size: 220, pos: "top-[2%] left-[50%]" },
     { type: "cube-frame", size: 240, pos: "top-[1%] -right-8" },
-    // Upper-mid row (4 shapes)
+    // 中上一行（4 个形状）
     { type: "arc-stripes", size: 200, pos: "top-[28%] left-[4%]" },
     { type: "donut-dots", size: 220, pos: "top-[26%] left-[28%]" },
     { type: "hex-prism", size: 220, pos: "top-[26%] left-[54%]" },
     { type: "cylinder-stripes", size: 200, pos: "top-[28%] right-[4%]" },
-    // Lower-mid row (4 shapes)
+    // 中下一行（4 个形状）
     { type: "wedge", size: 230, pos: "top-[52%] -left-4" },
     { type: "stairs-iso", size: 240, pos: "top-[50%] left-[24%]" },
     { type: "barrel", size: 220, pos: "top-[52%] left-[50%]" },
     { type: "pacman", size: 240, pos: "top-[50%] -right-6" },
-    // Bottom row (3 shapes)
+    // 底行（3 个形状）
     { type: "cube-stack", size: 260, pos: "bottom-[-4%] left-[5%]" },
     { type: "L-prism", size: 260, pos: "bottom-[-2%] left-[36%]" },
     { type: "cube-ports", size: 260, pos: "bottom-[-4%] right-[4%]" },
@@ -333,8 +325,8 @@ function IsoShape({ type, size, pos }: IsoPlacement) {
 }
 
 function IsoSvg({ type }: { type: IsoShapeType }) {
-  // Iter 7: halved stroke width 3.2 → 1.6 per founder request — finer
-  // line art reads more like technical drafting than heavy graphic.
+  // Iter 7：按创始人请求把线宽减半 3.2 → 1.6——更细的
+  // 线稿读作技术制图，而非重图形。
   const sp = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
   switch (type) {
     case "cube":

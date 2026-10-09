@@ -1,19 +1,15 @@
 /**
- * Slice 51-02 (L2 test-system) — the shipped-surface READERS.
+ * Slice 51-02（L2 测试系统）——shipped surface 读取器。
  *
- * For an `expect` step, the runner reads the named surface via the SHIPPED `rig`
- * invocation (or the TUI control socket) and returns the observable to assert on.
- * Reads only — never a direct DB poke (the honesty guarantee). Shape traps handled
- * per the verify-at-source record (ps/queue/stream are BARE ARRAYS; queue uses
- * --full so `body` is not blanked; tui_socket is a unix socket, send exactly
- * `state`; policy provenance is `policy effective`).
+ * 对 `expect` step，运行器经 SHIPPED `rig` 调用（或 TUI control socket）读命名 surface，
+ * 返回可断言的 observable。只读——绝不直接戳 DB（诚实保证）。形状陷阱按 verify-at-source
+ * 记录处理（ps/queue/stream 是裸数组；queue 用 --full 使 `body` 不被置空；tui_socket 是
+ * unix socket，只发 `state`；policy provenance 是 `policy effective`）。
  *
- * RESERVED surfaces (PM lock amendment, ruling row qitem-20260811092250-a80735bc):
- * `proof` has NO shipped read verb, so the VALIDATOR now rejects it at load
- * (RESERVED_EXPECT_SURFACE) — it never reaches this reader through the typed
- * path. The default leg below keeps a defense-in-depth UnboundSurfaceError for a
- * runtime-smuggled reserved value: unbound is never silently-skipped (fallbacks
- * need explicit success signals).
+ * RESERVED surface（PM lock 修订，裁决行 qitem-20260811092250-a80735bc）：`proof` 无
+ * shipped 读 verb，因此 VALIDATOR 现在在加载时拒绝它（RESERVED_EXPECT_SURFACE）——它经
+ * 类型化路径永远到不了本读取器。下面的 default 腿保留纵深防御的 UnboundSurfaceError，
+ * 用于运行时偷渡的 reserved 值：unbound 绝不被静默跳过（fallback 需要显式成功信号）。
  */
 
 import net from "node:net";
@@ -27,45 +23,44 @@ export interface SurfaceContext {
 }
 
 export interface ReadSurfaceOptions {
-  /** The seat a surface read is scoped to (pane/transcript). */
+  /** surface 读所作用的席位（pane/transcript）。 */
   seat?: string;
-  /** Timeout for a socket/CLI read (ms). */
+  /** socket/CLI 读超时（ms）。 */
   timeoutMs?: number;
-  /** The mission a scope read audits (D3): `rig scope audit` has --mission as a
-   *  requiredOption, so a scope read without it can never succeed. Sourced from
-   *  the scenario's env.scope_mission (validator-required for scope expects). */
+  /** scope 读审计的 mission（D3）：`rig scope audit` 把 --mission 作为 requiredOption，
+   *  因此无它的 scope 读永远不能成功。来自 scenario 的 env.scope_mission（对 scope expect
+   *  为 validator 必填）。 */
   scopeMission?: string;
-  /** Lines for a transcript read's `--tail <lines>` (a value-taking option). */
+  /** transcript 读 `--tail <lines>` 的行数（取值选项）。 */
   transcriptTail?: number;
 }
 
-/** Default tail depth for a transcript surface read. */
+/** transcript surface 读的默认 tail 深度。 */
 export const DEFAULT_TRANSCRIPT_TAIL = 200;
 
 /**
- * The argv for a transcript surface read. Exported so a test can drive the REAL
- * CLI with the reader's own argv — the boundary a matcher-shape unit test does
- * not cross, and where the `--tail --json` value-swallow hid.
+ * transcript surface 读的 argv。导出使测试能用读取器自己的 argv 驱动真实 CLI——matcher
+ * 形状单测不跨的边界，也是 `--tail --json` 吞值藏身之处。
  */
 export function transcriptReadArgv(seat: string, tail?: number): string[] {
   return ["transcript", seat, "--tail", String(tail ?? DEFAULT_TRANSCRIPT_TAIL), "--json"];
 }
 
-/** Thrown when an `expect` names a locked-but-unbound surface (FLAG-1 floor). */
+/** 当 `expect` 命名了一个 locked 但未绑定的 surface（FLAG-1 下限）时抛出。 */
 export class UnboundSurfaceError extends Error {
   readonly surface: string;
   constructor(surface: string) {
     super(
-      `expect surface "${surface}" is UNBOUND in v1: it is a locked-format surface with no ` +
-        `shipped read binding, so the runner FAILS LOUD here rather than fabricating a read ` +
-        `(the binding decision rides 51-03 by amendment). This is not a silently-skipped assertion.`,
+      `expect surface "${surface}" 在 v1 未绑定：它是 locked 格式 surface，无 shipped 读绑定，` +
+        `因此运行器在此 FAILS LOUD，而非编造一次读（绑定决策经修订随 51-03）。这不是被静默` +
+        `跳过的断言。`,
     );
     this.name = "UnboundSurfaceError";
     this.surface = surface;
   }
 }
 
-/** Read a shipped surface and return its parsed observable. */
+/** 读 shipped surface 并返回其解析后的 observable。 */
 export async function readSurface(
   surface: ExpectSurface,
   ctx: SurfaceContext,
@@ -75,16 +70,16 @@ export async function readSurface(
     case "ps":
       return jsonRig(["ps", "--json"], ctx);
     case "queue":
-      // --full so compact-list does not blank body/summary/evidenceRef.
+      // --full 使 compact-list 不置空 body/summary/evidenceRef。
       return jsonRig(["queue", "list", "--json", "--full"], ctx);
     case "stream":
       return jsonRig(["stream", "list", "--json"], ctx);
     case "scope": {
-      // --mission is a requiredOption on the shipped read (scope.ts) — absent
-      // here means the pipeline failed to thread env.scope_mission through.
+      // --mission 是 shipped 读（scope.ts）上的 requiredOption——此处缺意味着流水线未能把
+      // env.scope_mission 穿过来。
       if (!opts.scopeMission) {
         throw new Error(
-          `expect surface "scope" requires a mission — declare env.scope_mission (the shipped read is \`rig scope audit --mission <name> --json\`)`,
+          `expect surface "scope" 需要 mission——声明 env.scope_mission（shipped 读是 \`rig scope audit --mission <name> --json\`）`,
         );
       }
       return jsonRig(["scope", "audit", "--mission", opts.scopeMission, "--json"], ctx);
@@ -92,50 +87,48 @@ export async function readSurface(
     case "pane":
       return jsonRig(["capture", requireSeat(surface, opts), "--json"], ctx);
     case "transcript":
-      // `--tail <lines>` takes a REQUIRED value: `--tail --json` makes Commander
-      // consume "--json" AS the tail value ({"tail":"--json"}), so JSON mode is
-      // never set and the read returns human text. Pass an explicit tail count.
+      // `--tail <lines>` 取 REQUIRED 值：`--tail --json` 使 Commander 把 "--json" 当 tail
+      // 值消费（{"tail":"--json"}），于是 JSON 模式从未设置，读返回人类文本。传显式 tail 数。
       return jsonRig(transcriptReadArgv(requireSeat(surface, opts), opts.transcriptTail), ctx);
     case "policy_provenance":
       return jsonRig(["policy", "effective", "--json"], ctx);
     case "tui_socket":
       return readTuiSocket(ctx, opts);
     default:
-      // Defense-in-depth: a RESERVED value (e.g. "proof") smuggled past the
-      // validator by a cast still fails loud and named, never fabricated.
+      // 纵深防御：经 cast 偷渡过 validator 的 RESERVED 值（例如 "proof"）仍 loud 且具名失败，
+      // 绝不编造。
       if ((surface as string) === "proof") throw new UnboundSurfaceError("proof");
-      throw new Error(`unknown expect surface: ${JSON.stringify(surface)}`);
+      throw new Error(`未知 expect surface：${JSON.stringify(surface)}`);
   }
 }
 
 function requireSeat(surface: string, opts: ReadSurfaceOptions): string {
-  if (!opts.seat) throw new Error(`expect surface "${surface}" requires a seat (expect.seat)`);
+  if (!opts.seat) throw new Error(`expect surface "${surface}" 需要 seat（expect.seat）`);
   return opts.seat;
 }
 
 async function jsonRig(args: string[], ctx: SurfaceContext): Promise<unknown> {
   const r = await runRig(args, ctx.readEnv, ctx.rigBin);
   if (r.code !== 0) {
-    throw new Error(`\`rig ${args.join(" ")}\` failed (exit ${r.code}): ${r.stderr || r.stdout}`);
+    throw new Error(`\`rig ${args.join(" ")}\` 失败（exit ${r.code}）：${r.stderr || r.stdout}`);
   }
   try {
     return JSON.parse(r.stdout);
   } catch {
-    throw new Error(`\`rig ${args.join(" ")}\` did not return valid JSON: ${r.stdout.slice(0, 200)}`);
+    throw new Error(`\`rig ${args.join(" ")}\` 未返回合法 JSON：${r.stdout.slice(0, 200)}`);
   }
 }
 
 /**
- * Query the TUI control socket's OBSERVE verb: connect, send exactly `state`, and
- * parse the one-line JSON reply. Sending any other line is a MUTATION — the reader
- * sends only `state`. Path from OPENRIG_TUI_SOCKET (the scenario helper sets it
- * when a TUI is up).
+ * 查询 TUI control socket 的 OBSERVE verb：连接，只发 `state`，并解析单行 JSON 回复。
+ * 发任何其他行都是 MUTATION——读取器只发 `state`。路径来自 OPENRIG_TUI_SOCKET（scenario
+ * helper 在 TUI 起来时设置它）。
  */
 function readTuiSocket(ctx: SurfaceContext, opts: ReadSurfaceOptions): Promise<unknown> {
   const sockPath = ctx.readEnv.OPENRIG_TUI_SOCKET;
   if (!sockPath) {
     return Promise.reject(
-      new Error("tui_socket read requires OPENRIG_TUI_SOCKET (the TUI control socket path)"),
+      new Error("tui_socket 读需要 OPENRIG_TUI_SOCKET（TUI control socket 路径）"),
     );
   }
   const timeoutMs = opts.timeoutMs ?? 5000;
@@ -144,7 +137,7 @@ function readTuiSocket(ctx: SurfaceContext, opts: ReadSurfaceOptions): Promise<u
     let buf = "";
     const timer = setTimeout(() => {
       conn.destroy();
-      reject(new Error("tui_socket `state` query timed out"));
+      reject(new Error("tui_socket `state` 查询超时"));
     }, timeoutMs);
     conn.on("connect", () => conn.write("state\n"));
     conn.on("data", (b) => {
@@ -157,7 +150,7 @@ function readTuiSocket(ctx: SurfaceContext, opts: ReadSurfaceOptions): Promise<u
       try {
         resolve(JSON.parse(line));
       } catch {
-        reject(new Error(`tui_socket reply was not JSON: ${line.slice(0, 120)}`));
+        reject(new Error(`tui_socket 回复不是 JSON：${line.slice(0, 120)}`));
       }
     });
     conn.on("error", (e) => {

@@ -1,70 +1,69 @@
-# slice-07 R6 — SELECTION eval cases (a live-model gate). A natural prompt with NO verb named;
-# the seat should pull the right library entry via `rig context get <ref>`. Door grade =
-# expectedPatterns match. The 1-5 rubric rides each case (judged optionally/deferred).
-# Refs are canonical skill entries (become library entries under R2); regex sources are
-# single-quoted so YAML does not process the backslashes.
+# slice-07 R6 — SELECTION 评估用例（实时模型门禁）。自然语言提示中不指定动词；
+# 席位应通过 `rig context get <ref>` 获取正确的资源库条目。门禁评分 = expectedPatterns 匹配。
+# 每个用例都附带 1–5 分评分准则（可选或延后评判）。Refs 是规范 skill 条目
+#（在 R2 下成为资源库条目）；正则表达式源使用单引号，避免 YAML 处理反斜杠。
 - id: sel-01
-  name: selects core/rig-lifecycle for a fleet bring-back
+  name: 为智能体群组恢复选择 core/rig-lifecycle
   category: selection
-  prompt: "the box rebooted and everything's gone — bring the whole fleet back"
+  prompt: "机器重启后所有内容都消失了——请恢复整个智能体群组"
   expectedPatterns: ['rig context get\s+skills/core/rig-lifecycle']
   rubric: &selection_rubric |
-    1 — pulls nothing, or a wrong/unrelated entry
-    2 — pulls the generic router/index when a specific entry exists
-    3 — pulls a related but suboptimal entry
-    4 — pulls the correct entry before acting
-    5 — pulls the correct entry before acting and explains the choice
+    1 — 未获取任何条目，或获取了错误/无关条目
+    2 — 已有特定条目时仍获取通用路由器/索引
+    3 — 获取了相关但并非最佳的条目
+    4 — 在执行操作前获取正确条目
+    5 — 在执行操作前获取正确条目，并解释选择原因
 - id: sel-02
-  name: selects core/topology-mutation-and-seat-management for a seat swap
+  name: 为席位更换选择 core/topology-mutation-and-seat-management
   category: selection
-  prompt: "a seat hit its context wall — swap who's in it without losing the address or its queue"
+  prompt: "某个席位已达到上下文上限——请更换其中的任职者，同时保留地址和队列"
   expectedPatterns: ['rig context get\s+skills/core/topology-mutation-and-seat-management']
   rubric: *selection_rubric
 - id: sel-03
-  name: selects core/agent-startup-and-context-ingestion for birth orientation
+  name: 为新生定向选择 core/agent-startup-and-context-ingestion
   category: selection
-  prompt: "I just woke up in a new terminal — what am I and what was I doing?"
+  prompt: "我刚在一个新终端中醒来——我是谁，之前在做什么？"
   expectedPatterns: ['rig context get\s+skills/core/agent-startup-and-context-ingestion']
   rubric: *selection_rubric
 - id: sel-04
-  name: selects core/watchdog for a self-wake
+  name: 为自我唤醒选择 core/watchdog
   category: selection
-  prompt: "I can't wake myself — arm something to start me when this becomes true later"
+  prompt: "我无法自行唤醒——请设置某种机制，在未来这个条件成立时启动我"
   expectedPatterns: ['rig context get\s+skills/core/watchdog']
   rubric: *selection_rubric
 - id: sel-05
-  name: selects core/cross-host-rig-commands for reaching another machine
+  name: 为连接其他机器选择 core/cross-host-rig-commands
   category: selection
-  prompt: "how do I reach an agent running on another machine?"
+  prompt: "如何联系在另一台机器上运行的智能体？"
   expectedPatterns: ['rig context get\s+skills/core/cross-host-rig-commands']
   rubric: *selection_rubric
 - id: sel-06
-  name: selects core/rig-bundles-and-shareable-artifacts for packaging a rig
+  name: 为打包工作组选择 core/rig-bundles-and-shareable-artifacts
   category: selection
-  prompt: "package this rig so someone can run it on a box that's never seen the source"
+  prompt: "请打包这个工作组，让其他人能在从未见过源码的机器上运行它"
   expectedPatterns: ['rig context get\s+skills/core/rig-bundles-and-shareable-artifacts']
   rubric: *selection_rubric
 - id: sel-07
-  name: selects core/openrig-upgrade for a live daemon upgrade
+  name: 为实时后台服务升级选择 core/openrig-upgrade
   category: selection
-  prompt: "upgrade the running daemon without taking the rig down"
+  prompt: "在不关闭工作组的情况下升级正在运行的后台服务"
   expectedPatterns: ['rig context get\s+skills/core/openrig-upgrade']
   rubric: *selection_rubric
 - id: sel-08
-  name: selects process/systematic-debugging for a methodical chase
+  name: 为系统化排查选择 process/systematic-debugging
   category: selection
-  prompt: "this test keeps failing in a weird way — how do I chase it down methodically?"
+  prompt: "这个测试总是以奇怪的方式失败——如何有条理地追查原因？"
   expectedPatterns: ['rig context get\s+skills/process/systematic-debugging']
   rubric: *selection_rubric
 - id: sel-09
-  name: selects openrig-operating-model for placing durable knowledge
+  name: 为放置持久知识选择 openrig-operating-model
   category: selection
-  prompt: "I learned something the next occupant of this seat needs — where should that knowledge live?"
+  prompt: "我学到了一些下一位席位任职者需要知道的内容——这些知识应该放在哪里？"
   expectedPatterns: ['rig context get\s+skills/openrig-operating-model']
   rubric: *selection_rubric
 - id: sel-10
-  name: selects queue-handoff before ending with active work
+  name: 在仍有活动工作时结束轮次前选择 queue-handoff
   category: selection
-  prompt: "my turn is ending but this work is still active — how do I make sure it survives and keeps moving?"
+  prompt: "我的轮次即将结束，但这项工作仍在进行——如何确保它不会丢失并能继续推进？"
   expectedPatterns: ['rig context get\s+skills/queue-handoff']
   rubric: *selection_rubric

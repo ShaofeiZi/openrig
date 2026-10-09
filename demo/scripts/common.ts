@@ -60,7 +60,7 @@ export function runCommand(command: string, args: string[], cwd = repoRoot()): s
 }
 
 export function runRig(args: string[]): string {
-  return runCommand("rig", args);
+  return runCommand("zrig", args);
 }
 
 export function runRigJson<T>(args: string[]): T {

@@ -1,4 +1,4 @@
-// Workflows in Spec Library + Activation Lens v0 — active lens store tests.
+// 规范库中的工作流 + 激活透镜 v0——活跃透镜存储测试。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ActiveLensStore } from "../src/domain/active-lens-store.js";
 
-describe("ActiveLensStore (Workflows in Spec Library v0)", () => {
+describe("ActiveLensStore（规范库中的工作流 v0）", () => {
   let tmp: string;
   let filePath: string;
 
@@ -18,12 +18,12 @@ describe("ActiveLensStore (Workflows in Spec Library v0)", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("returns null when no lens file exists", () => {
+  it("透镜文件不存在时返回 null", () => {
     const store = new ActiveLensStore({ filePath });
     expect(store.get()).toBeNull();
   });
 
-  it("set persists name + version + activatedAt timestamp", () => {
+  it("set 会持久化名称、版本和 activatedAt 时间戳", () => {
     const store = new ActiveLensStore({
       filePath,
       now: () => new Date("2026-05-04T12:34:56Z"),
@@ -37,7 +37,7 @@ describe("ActiveLensStore (Workflows in Spec Library v0)", () => {
     expect(re).toEqual(lens);
   });
 
-  it("set replaces an existing lens (single-active invariant)", () => {
+  it("set 会替换现有透镜（单活不变量）", () => {
     const store = new ActiveLensStore({ filePath });
     store.set("first", "1");
     store.set("second", "2");
@@ -46,7 +46,7 @@ describe("ActiveLensStore (Workflows in Spec Library v0)", () => {
     expect(lens?.specVersion).toBe("2");
   });
 
-  it("clear removes the lens file", () => {
+  it("clear 会删除透镜文件", () => {
     const store = new ActiveLensStore({ filePath });
     store.set("foo", "1");
     expect(existsSync(filePath)).toBe(true);
@@ -55,24 +55,24 @@ describe("ActiveLensStore (Workflows in Spec Library v0)", () => {
     expect(store.get()).toBeNull();
   });
 
-  it("clear is a no-op when no file exists", () => {
+  it("文件不存在时 clear 为空操作", () => {
     const store = new ActiveLensStore({ filePath });
     expect(() => store.clear()).not.toThrow();
   });
 
-  it("returns null for malformed JSON", () => {
+  it("JSON 格式错误时返回 null", () => {
     writeFileSync(filePath, "{not-json", "utf-8");
     const store = new ActiveLensStore({ filePath });
     expect(store.get()).toBeNull();
   });
 
-  it("returns null when stored object is missing specName/specVersion", () => {
+  it("存储对象缺少 specName/specVersion 时返回 null", () => {
     writeFileSync(filePath, JSON.stringify({ activatedAt: "2026-01-01T00:00:00Z" }), "utf-8");
     const store = new ActiveLensStore({ filePath });
     expect(store.get()).toBeNull();
   });
 
-  it("creates parent directory lazily on first set", () => {
+  it("首次 set 时延迟创建父目录", () => {
     const nested = join(tmp, "does", "not", "exist", "lens.json");
     const store = new ActiveLensStore({ filePath: nested });
     store.set("foo", "1");

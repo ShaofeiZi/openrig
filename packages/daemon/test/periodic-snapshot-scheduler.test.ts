@@ -1,4 +1,4 @@
-// OPR.0.3.4.9 — periodic snapshot scheduler tests.
+// OPR.0.3.4.9——周期 snapshot 调度器测试。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -44,7 +44,7 @@ describe("PeriodicSnapshotScheduler", () => {
     return rig.id;
   }
 
-  it("tick captures an auto-periodic snapshot for a running rig", async () => {
+  it("tick 为运行中的 rig 捕获 auto-periodic snapshot", async () => {
     const rigId = seedRunningRig("r1");
     await scheduler.tick();
     const snaps = snapshotRepo.listSnapshots(rigId, { kind: "auto-periodic" });
@@ -52,7 +52,7 @@ describe("PeriodicSnapshotScheduler", () => {
     expect(snaps[0]!.kind).toBe("auto-periodic");
   });
 
-  it("tick skips archived rigs", async () => {
+  it("tick 跳过已归档 rig", async () => {
     const rigId = seedRunningRig("r-archived");
     rigRepo.archiveRig(rigId);
     await scheduler.tick();
@@ -60,7 +60,7 @@ describe("PeriodicSnapshotScheduler", () => {
     expect(snaps).toHaveLength(0);
   });
 
-  it("tick skips stopped rigs (no running sessions)", async () => {
+  it("tick 跳过已停止 rig（没有运行中的 session）", async () => {
     const rig = rigRepo.createRig("r-stopped");
     rigRepo.addNode(rig.id, "worker", { role: "worker" });
     await scheduler.tick();
@@ -68,13 +68,13 @@ describe("PeriodicSnapshotScheduler", () => {
     expect(snaps).toHaveLength(0);
   });
 
-  it("kind-scoped retention prunes only auto-periodic, preserves other kinds", async () => {
+  it("按 kind 定界的 retention 只修剪 auto-periodic，并保留其他 kind", async () => {
     const rigId = seedRunningRig("r-prune");
     snapshotCapture.captureSnapshot(rigId, "manual");
     snapshotCapture.captureSnapshot(rigId, "auto-pre-down");
     scheduler.start(100000, 2);
     scheduler.stop();
-    // Run 5 ticks with retention_keep=2
+    // 在 retention_keep=2 时运行 5 个 tick。
     for (let i = 0; i < 5; i++) {
       snapshotCapture.captureSnapshot(rigId, "auto-periodic");
     }
@@ -88,7 +88,7 @@ describe("PeriodicSnapshotScheduler", () => {
     expect(preDown).toHaveLength(1);
   });
 
-  it("retention_keep floor: keepCount < 1 still leaves at least 1", () => {
+  it("retention_keep 下限：keepCount < 1 时仍至少保留 1 个", () => {
     const rigId = seedRunningRig("r-floor");
     snapshotCapture.captureSnapshot(rigId, "auto-periodic");
     snapshotCapture.captureSnapshot(rigId, "auto-periodic");
@@ -97,7 +97,7 @@ describe("PeriodicSnapshotScheduler", () => {
     expect(remaining.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("per-rig error isolation: one rig's failure does not abort others", async () => {
+  it("按 rig 隔离错误：一个 rig 失败不会中止其他 rig", async () => {
     const rigId1 = seedRunningRig("r-ok");
     const rigId2 = seedRunningRig("r-fail");
     const origCapture = snapshotCapture.captureSnapshot.bind(snapshotCapture);
@@ -115,7 +115,7 @@ describe("PeriodicSnapshotScheduler", () => {
     captureSpy.mockRestore();
   });
 
-  it("skips rig with older running + newer exited session (latest-session semantics)", async () => {
+  it("跳过拥有较旧 running 和较新 exited session 的 rig（latest-session 语义）", async () => {
     const rig = rigRepo.createRig("r-latest");
     const node = rigRepo.addNode(rig.id, "worker", { role: "worker" });
     const oldSess = sessionRegistry.registerSession(node.id, "worker@r-latest");
@@ -128,7 +128,7 @@ describe("PeriodicSnapshotScheduler", () => {
     expect(snaps).toHaveLength(0);
   });
 
-  it("start/stop is idempotent", () => {
+  it("start/stop 幂等", () => {
     scheduler.start(60000, 10);
     expect(scheduler.isActive).toBe(true);
     scheduler.start(60000, 10);
@@ -139,18 +139,17 @@ describe("PeriodicSnapshotScheduler", () => {
     expect(scheduler.isActive).toBe(false);
   });
 
-  it("non-overlapping ticks: the running flag prevents re-entry", () => {
-    // The running flag is set synchronously at the top of tick();
-    // the setInterval callback checks it before calling tick().
+  it("tick 不重叠：running 标志防止重入", () => {
+    // running 标志在 tick() 顶部同步设置；setInterval 回调在调用 tick() 前检查它。
     scheduler.start(100000, 10);
     expect(scheduler.isActive).toBe(true);
     scheduler.stop();
   });
 
-  // OPR.0.4.3.20 FR-4 — refresh the live per-seat resume ledger before serialize.
+  // OPR.0.4.3.20 FR-4——序列化前刷新实时的逐席位 resume ledger。
   type Refresher = import("../src/domain/resume-metadata-refresher.js").ResumeMetadataRefresher;
 
-  it("FR-4: tick refreshes live tokens before capturing the periodic snapshot", async () => {
+  it("FR-4：tick 在捕获周期 snapshot 前刷新实时 token", async () => {
     const rigId = seedRunningRig("r-fr4");
     const refresh = vi.fn(async () => {});
     const fr4 = new PeriodicSnapshotScheduler({
@@ -158,19 +157,19 @@ describe("PeriodicSnapshotScheduler", () => {
       resumeMetadataRefresher: { refresh } as unknown as Refresher,
     });
     await fr4.tick();
-    // refresh ran, and it received the rig's latest live sessions.
+    // refresh 已运行，并收到 rig 最新的存活 session。
     expect(refresh).toHaveBeenCalledTimes(1);
     const passed = refresh.mock.calls[0]![0] as Array<{ sessionName: string }>;
     expect(passed.some((s) => s.sessionName === "worker@r-fr4")).toBe(true);
-    // rev1 fix: the recurring snapshot path calls refresh in fill-null-only mode
-    // (never clears a present token, never spawns a `claude --resume` probe).
+    // rev1 修复：周期 snapshot 路径以 fill-null-only 模式调用 refresh（绝不清除现有 token，
+    // 绝不派生 `claude --resume` 探针）。
     const opts = refresh.mock.calls[0]![1] as { fillNullOnly?: boolean } | undefined;
     expect(opts?.fillNullOnly).toBe(true);
-    // and the snapshot was still captured (refresh precedes serialize, not replaces it).
+    // snapshot 仍被捕获（refresh 先于 serialize，而非取代它）。
     expect(snapshotRepo.listSnapshots(rigId, { kind: "auto-periodic" })).toHaveLength(1);
   });
 
-  it("FR-4: a refresh that THROWS does not skip the snapshot (best-effort, own try/catch)", async () => {
+  it("FR-4：refresh 抛错不会跳过 snapshot（尽力而为，独立 try/catch）", async () => {
     const rigId = seedRunningRig("r-fr4-throw");
     const fr4 = new PeriodicSnapshotScheduler({
       db, snapshotCapture, snapshotRepo, sessionRegistry,
@@ -181,8 +180,8 @@ describe("PeriodicSnapshotScheduler", () => {
   });
 });
 
-describe("OPR.0.3.4.9 production wiring: startPeriodicSnapshotScheduler", () => {
-  it("enabled=true: scheduler.start AND psProjectionService.setPeriodicSnapshotState called", async () => {
+describe("OPR.0.3.4.9 生产接线：startPeriodicSnapshotScheduler", () => {
+  it("enabled=true 时调用 scheduler.start 和 psProjectionService.setPeriodicSnapshotState", async () => {
     const { startPeriodicSnapshotScheduler } = await import("../src/index.js");
     const schedulerStart = vi.fn();
     const setState = vi.fn();
@@ -205,7 +204,7 @@ describe("OPR.0.3.4.9 production wiring: startPeriodicSnapshotScheduler", () => 
     expect(setState).toHaveBeenCalledWith(true, 300);
   });
 
-  it("enabled=false: scheduler NOT started, psProjectionService NOT called", async () => {
+  it("enabled=false 时不启动 scheduler，也不调用 psProjectionService", async () => {
     const { startPeriodicSnapshotScheduler } = await import("../src/index.js");
     const schedulerStart = vi.fn();
     const setState = vi.fn();
@@ -227,13 +226,13 @@ describe("OPR.0.3.4.9 production wiring: startPeriodicSnapshotScheduler", () => 
   });
 });
 
-describe("PsProjectionService periodic snapshot status", () => {
+describe("PsProjectionService 周期 snapshot 状态", () => {
   let db: Database.Database;
 
   beforeEach(() => { db = createFullTestDb(); });
   afterEach(() => { db.close(); });
 
-  it("periodicSnapshotActive=false and interval=0 by default (scheduler not started)", async () => {
+  it("默认 periodicSnapshotActive=false 且 interval=0（scheduler 未启动）", async () => {
     const { PsProjectionService } = await import("../src/domain/ps-projection.js");
     const svc = new PsProjectionService({ db });
     const rig = new RigRepository(db).createRig("test-rig");
@@ -245,7 +244,7 @@ describe("PsProjectionService periodic snapshot status", () => {
     expect(entry!.autoPeriodicSnapshotCount).toBe(0);
   });
 
-  it("periodicSnapshotActive=true and interval matches after setPeriodicSnapshotState", async () => {
+  it("调用 setPeriodicSnapshotState 后 periodicSnapshotActive=true 且 interval 匹配", async () => {
     const { PsProjectionService } = await import("../src/domain/ps-projection.js");
     const svc = new PsProjectionService({ db });
     svc.setPeriodicSnapshotState(true, 300);
@@ -256,7 +255,7 @@ describe("PsProjectionService periodic snapshot status", () => {
     expect(entry!.periodicSnapshotIntervalSeconds).toBe(300);
   });
 
-  it("autoPeriodicSnapshotCount reflects actual auto-periodic snapshots", async () => {
+  it("autoPeriodicSnapshotCount 反映实际 auto-periodic snapshot", async () => {
     const { PsProjectionService } = await import("../src/domain/ps-projection.js");
     const rigRepo = new RigRepository(db);
     const sessionReg = new SessionRegistry(db);
@@ -277,32 +276,32 @@ describe("PsProjectionService periodic snapshot status", () => {
   });
 });
 
-describe("OPR.0.3.4.9 config validation: malformed numeric writes rejected", () => {
-  it("daemon SettingsStore rejects snapshots.periodic.interval_seconds=60abc", async () => {
+describe("OPR.0.3.4.9 配置验证：拒绝格式错误的数字写入", () => {
+  it("后台服务 SettingsStore 拒绝 snapshots.periodic.interval_seconds=60abc", async () => {
     const { SettingsStore } = await import("../src/domain/user-settings/settings-store.js");
     const store = new SettingsStore();
-    expect(() => store.set("snapshots.periodic.interval_seconds", "60abc")).toThrow(/expected an integer/);
+    expect(() => store.set("snapshots.periodic.interval_seconds", "60abc")).toThrow(/应为大于等于 60 的整数/);
   });
 
-  it("daemon SettingsStore rejects snapshots.periodic.interval_seconds=60.5", async () => {
+  it("后台服务 SettingsStore 拒绝 snapshots.periodic.interval_seconds=60.5", async () => {
     const { SettingsStore } = await import("../src/domain/user-settings/settings-store.js");
     const store = new SettingsStore();
-    expect(() => store.set("snapshots.periodic.interval_seconds", "60.5")).toThrow(/expected an integer/);
+    expect(() => store.set("snapshots.periodic.interval_seconds", "60.5")).toThrow(/应为大于等于 60 的整数/);
   });
 
-  it("daemon SettingsStore rejects snapshots.periodic.retention_keep=0", async () => {
+  it("后台服务 SettingsStore 拒绝 snapshots.periodic.retention_keep=0", async () => {
     const { SettingsStore } = await import("../src/domain/user-settings/settings-store.js");
     const store = new SettingsStore();
-    expect(() => store.set("snapshots.periodic.retention_keep", "0")).toThrow(/must be >= 1/);
+    expect(() => store.set("snapshots.periodic.retention_keep", "0")).toThrow(/必须大于等于 1/);
   });
 
-  it("daemon SettingsStore rejects snapshots.periodic.interval_seconds=30", async () => {
+  it("后台服务 SettingsStore 拒绝 snapshots.periodic.interval_seconds=30", async () => {
     const { SettingsStore } = await import("../src/domain/user-settings/settings-store.js");
     const store = new SettingsStore();
-    expect(() => store.set("snapshots.periodic.interval_seconds", "30")).toThrow(/must be >= 60/);
+    expect(() => store.set("snapshots.periodic.interval_seconds", "30")).toThrow(/必须大于等于 60/);
   });
 
-  it("daemon SettingsStore accepts valid snapshots.periodic.interval_seconds=120", async () => {
+  it("后台服务 SettingsStore 接受有效 snapshots.periodic.interval_seconds=120", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
@@ -340,7 +339,7 @@ describe("findLatestRestoreUsable Option Y", () => {
 
   afterEach(() => { db.close(); });
 
-  it("stale auto-pre-down + newer auto-periodic -> auto-periodic wins (the crash fix)", () => {
+  it("陈旧 auto-pre-down + 更新 auto-periodic 时后者胜出（崩溃修复）", () => {
     insertRaw("snap-old-apd", "rig-1", "auto-pre-down", "2026-06-10T00:00:00Z");
     insertRaw("snap-new-periodic", "rig-1", "auto-periodic", "2026-06-14T12:00:00Z");
     const result = snapshotRepo.findLatestRestoreUsable("rig-1");
@@ -348,7 +347,7 @@ describe("findLatestRestoreUsable Option Y", () => {
     expect(result!.kind).toBe("auto-periodic");
   });
 
-  it("fresher auto-pre-down + older auto-periodic -> auto-pre-down wins (graceful-cycle preserved)", () => {
+  it("更新 auto-pre-down + 较旧 auto-periodic 时前者胜出（保留优雅周期）", () => {
     insertRaw("snap-new-apd", "rig-1", "auto-pre-down", "2026-06-14T18:00:00Z");
     insertRaw("snap-old-periodic", "rig-1", "auto-periodic", "2026-06-14T12:00:00Z");
     const result = snapshotRepo.findLatestRestoreUsable("rig-1");
@@ -356,7 +355,7 @@ describe("findLatestRestoreUsable Option Y", () => {
     expect(result!.kind).toBe("auto-pre-down");
   });
 
-  it("manual unchanged: Apr-27 auto-pre-down beats Apr-28 manual (manual below tier)", () => {
+  it("manual 保持不变：4 月 27 日 auto-pre-down 胜过 4 月 28 日 manual（manual tier 更低）", () => {
     insertRaw("snap-apd", "rig-1", "auto-pre-down", "2026-04-27T00:00:00Z");
     insertRaw("snap-manual", "rig-1", "manual", "2026-04-28T00:00:00Z");
     const result = snapshotRepo.findLatestRestoreUsable("rig-1");
@@ -364,7 +363,7 @@ describe("findLatestRestoreUsable Option Y", () => {
     expect(result!.kind).toBe("auto-pre-down");
   });
 
-  it("only auto-periodic present -> returned", () => {
+  it("只有 auto-periodic 时返回该项", () => {
     insertRaw("snap-periodic-only", "rig-1", "auto-periodic", "2026-06-14T12:00:00Z");
     const result = snapshotRepo.findLatestRestoreUsable("rig-1");
     expect(result!.id).toBe("snap-periodic-only");

@@ -27,19 +27,19 @@ function resolveSessionToRig(
   rigRepo: RigRepository,
   sessionName: string,
 ): { rigName: string; nodeId: string; runtime: string | null } | { error: string; status: number } {
-  // Find ALL sessions with this name to detect ambiguity
+  // 找出同名的所有会话以检测歧义
   const sessionRows = db
     .prepare("SELECT node_id FROM sessions WHERE session_name = ? ORDER BY id DESC")
     .all(sessionName) as SessionRow[];
 
   if (sessionRows.length === 0) {
     return {
-      error: `Session '${sessionName}' not found. Check session names with: rig ps --nodes`,
+      error: `未找到会话 '${sessionName}'。用 zrig ps --nodes 查看会话名`,
       status: 404,
     };
   }
 
-  // Collect distinct rig names for all matching sessions
+  // 收集所有匹配会话的不同工作组名
   const rigNames = new Set<string>();
   for (const row of sessionRows) {
     const nodeRow = db
@@ -53,7 +53,7 @@ function resolveSessionToRig(
 
   if (rigNames.size === 0) {
     return {
-      error: `Session '${sessionName}' not found. Check session names with: rig ps --nodes`,
+      error: `未找到会话 '${sessionName}'。用 zrig ps --nodes 查看会话名`,
       status: 404,
     };
   }
@@ -61,7 +61,7 @@ function resolveSessionToRig(
   if (rigNames.size > 1) {
     const names = Array.from(rigNames).join(", ");
     return {
-      error: `Session '${sessionName}' is ambiguous — found in rigs: ${names}. Use a unique session name or specify the rig.`,
+      error: `会话 '${sessionName}' 有歧义——出现在以下工作组：${names}。请使用唯一会话名或指定工作组`,
       status: 409,
     };
   }
@@ -123,14 +123,14 @@ async function ensureTranscriptIngest(
 }
 
 function transcriptIngestError(sessionName: string, health: RouteIngestHealth, started = false): string {
-  const runtime = health.runtime ?? "unknown runtime";
+  const runtime = health.runtime ?? "未知运行时";
   if (health.reason === "capture_missing") {
     if (started) {
-      return `No transcript for '${sessionName}' yet (${runtime}). Transcript capture was missing and has been started now. Retry after the session emits new output.`;
+      return `'${sessionName}' 暂无 transcript（${runtime}）。transcript 捕获原本缺失，现已启动。等会话产出新输出后重试。`;
     }
-    return `No transcript for '${sessionName}' (${runtime}; ingest unavailable: ${health.reason}). Transcripts start automatically on next rig up.`;
+    return `'${sessionName}' 无 transcript（${runtime}；摄入不可用：${health.reason}）。transcript 会在下次工作组启动时自动开始。`;
   }
-  return `Transcript ingest degraded for '${sessionName}' (${runtime}; state=${health.state}; reason=${health.reason}). Do not conclude the session was quiet from this transcript.`;
+  return `'${sessionName}' 的 transcript 摄入已降级（${runtime}；state=${health.state}；reason=${health.reason}）。不要仅凭此 transcript 断定会话安静。`;
 }
 
 export function transcriptRoutes(): Hono {
@@ -147,7 +147,7 @@ export function transcriptRoutes(): Hono {
 
     if (!transcriptStore?.enabled) {
       return c.json(
-        { error: "Transcripts are disabled. Enable with: rig config set transcripts.enabled true" },
+        { error: "transcript 已禁用。用 zrig config set transcripts.enabled true 启用" },
         404,
       );
     }
@@ -193,22 +193,22 @@ export function transcriptRoutes(): Hono {
     const pattern = c.req.query("pattern");
 
     if (!pattern) {
-      return c.json({ error: "Missing required query parameter: pattern" }, 400);
+      return c.json({ error: "缺少必填查询参数：pattern" }, 400);
     }
 
-    // Pre-validate regex
+    // 预校验正则
     try {
       new RegExp(pattern);
     } catch (err) {
       return c.json(
-        { error: `Invalid grep pattern: ${(err as Error).message}` },
+        { error: `非法 grep 模式：${(err as Error).message}` },
         400,
       );
     }
 
     if (!transcriptStore?.enabled) {
       return c.json(
-        { error: "Transcripts are disabled. Enable with: rig config set transcripts.enabled true" },
+        { error: "transcript 已禁用。用 zrig config set transcripts.enabled true 启用" },
         404,
       );
     }
@@ -237,19 +237,16 @@ export function transcriptRoutes(): Hono {
     return c.json({ session: sessionName, pattern, matches, ingestHealth });
   });
 
-  // GET /:session/full — return the full transcript content for a session.
+  // GET /:session/full——返回一个会话的完整 transcript 内容。
   //
-  // Per orch decision approved-option-a (escalation
-  // qitem-20260502020833-68e4eca3): this route adopts the existing
-  // tail/grep posture (open route, daemon-local trust boundary). No
-  // session-scoped auth is enforced because no caller-identity primitive
-  // exists in the daemon today. Route-level redaction (M1 contract § 4 /
-  // openrig-v0 policy) is the protective primitive — credential-shaped
-  // patterns are scrubbed from the wire payload BEFORE serialization.
+  // 按 orch 决策 approved-option-a（escalation
+  // qitem-20260502020833-68e4eca3）：本路由沿用既有 tail/grep 姿态
+  // （开放路由，后台服务本地信任边界）。不强制会话范围鉴权，因为今天后台服务里
+  // 还没有调用方身份原语。路由级脱敏（M1 contract § 4 / openrig-v0 策略）
+  // 是保护性原语——凭据形状的模式在序列化之前从线路负载中 scrub 掉。
   //
-  // A future slice may layer a coherent transcript-read auth policy
-  // across tail/grep/full; that work is out of scope for M2c-Daemon and
-  // tracked as a Product Lab follow-up signal.
+  // 未来的 slice 可能在 tail/grep/full 之上叠加一套一致的 transcript 读取鉴权策略；
+  // 那部分工作不在 M2c-Daemon 范围内，作为 Product Lab 后续信号跟踪。
   router.get("/:session/full", async (c) => {
     const transcriptStore = c.get("transcriptStore" as never) as TranscriptStore;
     const db = c.get("db" as never) as Database.Database;
@@ -259,7 +256,7 @@ export function transcriptRoutes(): Hono {
 
     if (!transcriptStore?.enabled) {
       return c.json(
-        { error: "Transcripts are disabled. Enable with: rig config set transcripts.enabled true" },
+        { error: "transcript 已禁用。用 zrig config set transcripts.enabled true 启用" },
         404,
       );
     }
@@ -286,9 +283,8 @@ export function transcriptRoutes(): Hono {
       return c.json({ error: transcriptIngestError(sessionName, emptyHealth), ingestHealth: emptyHealth }, 503);
     }
 
-    // Apply route-level redaction BEFORE serialization. Per Quality Lesson
-    // v9 + orch decision approved-option-a: the wire payload MUST be
-    // already redacted; do NOT rely on client-side redaction.
+    // 序列化之前应用路由级脱敏。按 Quality Lesson v9 + orch 决策
+    // approved-option-a：线路负载必须已脱敏；不要依赖客户端脱敏。
     const content = redactTranscriptContent(raw);
     return c.json({ session: sessionName, content, ingestHealth });
   });

@@ -39,7 +39,7 @@ export function readCmuxSocketControlModeFromText(text: string | null): CmuxSett
     return {
       mode: CMUX_DEFAULT_SOCKET_CONTROL_MODE,
       source: "settings",
-      error: "cmux settings must contain a JSON object.",
+      error: "cmux 设置必须是一个 JSON 对象。",
     };
   }
 
@@ -82,6 +82,6 @@ function ensureTrailingNewline(text: string): string {
 
 function formatParseErrors(errors: ParseError[]): string {
   return errors
-    .map((error) => `${printParseErrorCode(error.error)} at offset ${error.offset}`)
-    .join("; ");
+    .map((error) => `解析错误 ${printParseErrorCode(error.error)}（位于偏移 ${error.offset}）`)
+    .join("；");
 }

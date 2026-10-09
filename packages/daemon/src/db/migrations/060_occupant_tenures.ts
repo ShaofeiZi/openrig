@@ -1,20 +1,18 @@
 import type { Migration } from "../migrate.js";
 
-// GHOST-STAGE atom-B (P12 verdict 3548d8eb): the occupant-generation TENURE ledger.
+// GHOST-STAGE atom-B（P12 裁定 3548d8eb）：occupant-generation TENURE 台账。
 //
-// A `sessions` row is a REGISTRATION, not a tenure — treating a row as a generation mints PHANTOM
-// generations. This append-only ledger records ONE row per OCCUPANT GENERATION on a node, minted in
-// the registry at registerSession / registerClaimedSession (callers declare `kind`). `generation_uuid`
-// identifies ONE occupant tenure: it PERSISTS within a tenure (a same-native relaunch is a
-// continuation, not a new generation) but CHANGES for a new occupant — a handover/swap/repair to a
-// different native session mints a NEW generation_uuid (the provider's native session id is a separate
-// POINTER — the 51-09 split). Consumers compare recorded-vs-live generation_uuid to gate
-// stale-generation state (the ghost-stage defect): a CHANGED generation is the dead-tenure signal.
-// node_id is the identity that IS stable across handover/swap/repair — the cross-handover key.
+// `sessions` 行表示注册，而不是 tenure；把一行当成一代会铸造虚假的代。此只追加台账为节点上的
+// 每一 OCCUPANT GENERATION 记录一行，由 registry 在 registerSession/registerClaimedSession 时铸造
+//（调用方声明 `kind`）。`generation_uuid` 标识一次 occupant tenure：它在 tenure 内持续不变
+//（同一原生 session 的重新启动是继续，而非新一代），但在新 occupant 到来时变化——handover/
+// swap/repair 到不同原生 session 会铸造新的 generation_uuid（provider 原生 session id 是独立指针，
+// 即 51-09 拆分）。消费者比较记录值与实时 generation_uuid，对陈旧代状态设门禁（ghost-stage
+// 缺陷）：代发生变化就是旧 tenure 已结束的信号。node_id 是跨 handover/swap/repair 保持稳定的
+// 身份，即跨交接键。
 //
-// HONEST BOUNDARY: node_id does NOT survive a `rig` teardown-recreate of the node — out of scope for
-// this ledger (a recreated node is a genuinely new identity), and labelled here so no consumer assumes
-// cross-teardown continuity.
+// 诚实边界：node_id 不会跨节点的 `rig` 销毁重建保留——这不属于本台账范围（重建节点确实是新身份）。
+// 在此明确标注，避免消费者假定存在跨销毁连续性。
 export const occupantTenuresSchema: Migration = {
   name: "060_occupant_tenures.sql",
   sql: `

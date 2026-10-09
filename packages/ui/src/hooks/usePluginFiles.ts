@@ -1,14 +1,12 @@
-// Slice 28 Checkpoint C-2 — plugin docs-browser file hooks.
+// Slice 28 Checkpoint C-2 —— 插件文档浏览器的文件 hooks。
 //
-// Wraps the new daemon endpoints (SC-29 EXCEPTION #11) added in
-// Checkpoint C-1:
+// 封装 Checkpoint C-1 新增的后台服务端点（SC-29 EXCEPTION #11）：
 //   GET /api/plugins/:id/files/list?path=<rel>  → usePluginFilesList
 //   GET /api/plugins/:id/files/read?path=<rel>  → usePluginFilesRead
 //
-// Same react-query shape as useFilesList / useFilesRead but the daemon
-// returns response objects scoped to a single plugin (no allowlist root
-// concept). Plugins live outside the operator's OPENRIG_FILES_ALLOWLIST,
-// so this is the only way to browse plugin folder contents at v0.
+// 与 useFilesList / useFilesRead 同为 react-query 形态，但后台服务返回的是
+// 限定到单个插件的响应对象（无白名单根概念）。插件不在操作者的
+// OPENRIG_FILES_ALLOWLIST 之内，所以这是 v0 下浏览插件文件夹内容的唯一途径。
 
 import { useQuery } from "@tanstack/react-query";
 import type { FileEntry } from "./useFiles.js";

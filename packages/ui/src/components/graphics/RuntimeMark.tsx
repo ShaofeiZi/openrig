@@ -102,9 +102,8 @@ function CodexGlyph({ className, title, decorative }: { className?: string; titl
   );
 }
 
-// OPR.0.4.6.PI1 — the Pi coding agent mark: a pixel-simple lowercase pi on a
-// rounded tile, tinted the indigo family so it reads apart from Claude's clay
-// and Codex's mono circle at 16px.
+// OPR.0.4.6.PI1——Pi 编程智能体标记：圆角方块上一个像素风小写 π，
+// 染成靛蓝家族，使其在 16px 下与 Claude 的陶土色、Codex 的单色圆圈区分开。
 function PiGlyph({ className, title, decorative }: { className?: string; title: string; decorative?: boolean }) {
   return (
     <svg viewBox="0 0 16 16" {...glyphA11y(title, decorative)} className={className}>
@@ -478,7 +477,7 @@ export function ActorMark({
   title?: string;
   decorative?: boolean;
 }) {
-  const label = title ?? (actor ? actor : "Operator");
+  const label = title ?? (actor ? actor : "操作员");
   const cls = cn(sizeClass[size], "shrink-0", className);
   if (isHumanActor(actor)) return <OperatorGlyph className={cls} title={label} decorative={decorative} />;
   if (normalizeRuntimeBrandId(actor) !== "unknown") {
@@ -499,7 +498,7 @@ export function OperatorMoodMark({
   title?: string;
 }) {
   const cls = cn(sizeClass[size], "shrink-0", className);
-  if (mood === "urgent") return <UrgentOperatorGlyph className={cls} title={title ?? "Urgent operator"} />;
-  if (mood === "calm") return <CalmOperatorGlyph className={cls} title={title ?? "Calm operator"} />;
-  return <OperatorGlyph className={cls} title={title ?? "Cool operator"} />;
+  if (mood === "urgent") return <UrgentOperatorGlyph className={cls} title={title ?? "紧急操作员"} />;
+  if (mood === "calm") return <CalmOperatorGlyph className={cls} title={title ?? "冷静操作员"} />;
+  return <OperatorGlyph className={cls} title={title ?? "沉稳操作员"} />;
 }

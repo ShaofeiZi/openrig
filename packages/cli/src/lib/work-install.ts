@@ -49,7 +49,7 @@ export interface WorkInstallPlan {
     context: SystemWorldContextSelection[];
     skills: string[];
   };
-  /** Project-world skill identities from project.yaml install.skills. */
+  /** 来自 project.yaml install.skills 的项目世界技能身份。 */
   skills: string[];
   derive: [];
   warnings: string[];
@@ -76,9 +76,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function readYaml(path: string): { value: Record<string, unknown> | null; error?: string } {
   try {
     const value = parseYaml(readFileSync(path, "utf-8")) as unknown;
-    return isRecord(value) ? { value } : { value: null, error: `${path} must contain a YAML object` };
+    return isRecord(value) ? { value } : { value: null, error: `${path} 必须包含一个 YAML 对象` };
   } catch (err) {
-    return { value: null, error: `${path} is not valid YAML: ${(err as Error).message}` };
+    return { value: null, error: `${path} 不是有效的 YAML：${(err as Error).message}` };
   }
 }
 
@@ -115,15 +115,15 @@ function piece(
   source: WorkInstallSource,
 ): WorkInstallPiece | WorkInstallFailure {
   const rel = markdownPath(address.slice(address.indexOf(":") + 1));
-  if (!rel) return failure("invalid_markdown_address", `${address} must be a relative Markdown address inside its selected root`);
+  if (!rel) return failure("invalid_markdown_address", `${address} 必须是其所选根目录内的相对 Markdown 地址`);
   const nominalPath = resolve(root, rel);
   if (!inside(root, nominalPath)) {
-    return failure("address_escape", `${address} resolves outside its selected ${altitude} root`);
+    return failure("address_escape", `${address} 解析到其所选 ${altitude} 根目录之外`);
   }
   if (existsSync(nominalPath)) {
     const canonicalPath = canonicalExisting(nominalPath);
     if (canonicalPath && !inside(root, canonicalPath)) {
-      return failure("address_escape", `${address} resolves through a symlink outside its selected ${altitude} root`);
+      return failure("address_escape", `${address} 通过符号链接解析到其所选 ${altitude} 根目录之外`);
     }
   }
   return { altitude, address, path: nominalPath, exists: existsSync(nominalPath), source };
@@ -151,7 +151,7 @@ function resolveExplicitSlice(
       const root = canonicalExisting(nominalRoot);
       if (!root || !inside(missionRoot, root)) {
         if (entry.name === selection) {
-          return failure("slice_root_escape", `slice '${selection}' resolves outside the selected mission root`);
+          return failure("slice_root_escape", `slice '${selection}' 解析到所选任务目标根目录之外`);
         }
         continue;
       }
@@ -168,12 +168,12 @@ function resolveExplicitSlice(
   available.sort();
   matches.sort((a, b) => a.name.localeCompare(b.name));
   if (matches.length === 0) {
-    return failure("slice_not_found", `slice '${selection}' is not a child of the selected mission`, available);
+    return failure("slice_not_found", `slice '${selection}' 不是所选任务目标的子项`, available);
   }
   if (matches.length > 1) {
     return failure(
       "slice_identity_ambiguous",
-      `slice '${selection}' names multiple children of the selected mission`,
+      `slice '${selection}' 命名了所选任务目标的多个子项`,
       matches.map((match) => match.name),
     );
   }
@@ -191,21 +191,21 @@ export function resolveWorkPosition(opts: {
   slice?: string;
 }): WorkInstallResult {
   if (opts.project !== undefined && !SEGMENT.test(opts.project)) {
-    return failure("invalid_project", "project must be a single bounded segment");
+    return failure("invalid_project", "project 必须是单个有界段");
   }
   if (opts.mission !== undefined && !SEGMENT.test(opts.mission)) {
-    return failure("invalid_mission", "mission must be a single bounded segment");
+    return failure("invalid_mission", "mission 必须是单个有界段");
   }
   if (opts.slice !== undefined && !SEGMENT.test(opts.slice)) {
-    return failure("invalid_slice", "slice must be a single bounded segment");
+    return failure("invalid_slice", "slice 必须是单个有界段");
   }
   if (opts.slice !== undefined && opts.mission === undefined) {
-    return failure("mission_required", "slice requires an exact mission selection");
+    return failure("mission_required", "slice 需要精确的 mission 选择");
   }
 
   const workspaceRoot = canonicalExisting(opts.workspaceRoot);
   if (!workspaceRoot) {
-    return failure("workspace_root_missing", `workspace root does not exist: ${resolve(opts.workspaceRoot)}`);
+    return failure("workspace_root_missing", `工作区根目录不存在：${resolve(opts.workspaceRoot)}`);
   }
 
   const warnings: string[] = [];
@@ -231,18 +231,18 @@ export function resolveWorkPosition(opts: {
   if (existsSync(projectManifestPath)) {
     const parsed = readYaml(projectManifestPath);
     if (parsed.value) projectManifest = parsed.value;
-    else warnings.push(`${parsed.error}; ignored optional enrichment and kept conventional addresses`);
+    else warnings.push(`${parsed.error}；已忽略可选增强并保持常规地址`);
   }
   const declaredProjectId = manifestProjectId(projectManifest);
   if (projectId && declaredProjectId && projectId !== declaredProjectId) {
     return failure(
       "project_identity_conflict",
-      `selected project '${projectId}' conflicts with project.yaml identity '${declaredProjectId}' at ${projectRoot}`,
+      `所选 project '${projectId}' 与 ${projectRoot} 的 project.yaml 身份 '${declaredProjectId}' 冲突`,
     );
   }
   if (!projectId) {
     if (opts.project && declaredProjectId !== opts.project) {
-      return failure("project_not_found", `project '${opts.project}' cannot be resolved from the uncatalogued workspace`);
+      return failure("project_not_found", `无法从无目录工作区解析 project '${opts.project}'`);
     }
     projectId = opts.project ?? declaredProjectId;
   }
@@ -253,12 +253,12 @@ export function resolveWorkPosition(opts: {
     if (typeof missions["root"] === "string" && !isAbsolute(missions["root"]) && !missions["root"].split(/[\\/]/).includes("..")) {
       missionsRel = missions["root"];
     } else {
-      warnings.push("project.yaml: optional missions.root must be a relative path inside the project; kept the conventional missions root");
+      warnings.push("project.yaml：可选的 missions.root 必须是项目内的相对路径；保持常规 missions 根目录");
     }
   }
   const missionsRoot = resolve(projectRoot, missionsRel);
   if (!inside(projectRoot, missionsRoot)) {
-    return failure("missions_root_escape", "project.yaml missions.root resolves outside the selected project root");
+    return failure("missions_root_escape", "project.yaml missions.root 解析到所选项目根目录之外");
   }
 
   let projectIntent = "SPEC.md";
@@ -272,14 +272,14 @@ export function resolveWorkPosition(opts: {
         projectIntent = install["intent"];
         projectIntentSource = "manifest";
       } else {
-        warnings.push("project.yaml: optional install.intent must be a relative Markdown address; kept the conventional project SPEC");
+        warnings.push("project.yaml：可选的 install.intent 必须是相对 Markdown 地址；保持常规项目 SPEC");
       }
     }
     if (install["context"] !== undefined) {
       if (Array.isArray(install["context"]) && install["context"].every((value) => typeof value === "string" && markdownPath(value))) {
         projectContext = install["context"] as string[];
       } else {
-        warnings.push("project.yaml: optional install.context must be a list of relative Markdown addresses; ignored it");
+        warnings.push("project.yaml：可选的 install.context 必须是相对 Markdown 地址列表；已忽略");
       }
     }
   }
@@ -308,7 +308,7 @@ export function resolveWorkPosition(opts: {
     if (existsSync(missionRoot)) {
       const canonicalMissionRoot = canonicalExisting(missionRoot);
       if (!canonicalMissionRoot || !inside(projectRoot, canonicalMissionRoot)) {
-        return failure("mission_root_escape", `mission '${opts.mission}' resolves outside the selected project root`);
+        return failure("mission_root_escape", `mission '${opts.mission}' 解析到所选项目根目录之外`);
       }
       missionRoot = canonicalMissionRoot;
       frontier = "mission";
@@ -328,7 +328,7 @@ export function resolveWorkPosition(opts: {
           } catch (error) {
             const message = error instanceof LifecycleManifestValidationError
               ? error.message
-              : `Mission composition validation failed: ${(error as Error).message}`;
+              : `任务目标组合验证失败：${(error as Error).message}`;
             return failure("mission_composition_invalid", message);
           }
         }
@@ -337,7 +337,7 @@ export function resolveWorkPosition(opts: {
           missionSpec = markdown["spec"];
           missionSource = "manifest";
         } else if (!parsed.value) {
-          warnings.push(`${parsed.error}; kept the conventional mission SPEC`);
+          warnings.push(`${parsed.error}；保持常规任务目标 SPEC`);
         }
       }
       const plannedMission = piece("mission", `mission:${missionSpec}`, missionRoot, missionSource);
@@ -364,7 +364,7 @@ export function resolveWorkPosition(opts: {
             sliceSpec = markdown["spec"];
             sliceSource = "manifest";
           } else if (!parsed.value) {
-            warnings.push(`${parsed.error}; kept the conventional slice SPEC`);
+            warnings.push(`${parsed.error}；保持常规 slice SPEC`);
           }
         }
         const plannedSlice = piece(

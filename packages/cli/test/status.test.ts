@@ -43,7 +43,7 @@ function captureLogs(fn: () => Promise<void>): Promise<string[]> {
   });
 }
 
-// Echo server for daemon API
+// daemon API 的 echo server
 function createDaemonServer(
   summaryData: unknown[],
   cmuxStatus: unknown,
@@ -97,7 +97,7 @@ function runningState(port: number): DaemonState {
 }
 
 describe("rig status", () => {
-  // Test 1: Running daemon with rigs -> formatted summary
+  // 测试 1：带 rigs 的运行中 daemon → 格式化摘要
   describe("with running daemon and rigs", () => {
     let srv: ReturnType<typeof createDaemonServer>;
     let port: number;
@@ -136,12 +136,12 @@ describe("rig status", () => {
       expect(output).toContain("3");
       expect(output).toContain("beta");
       expect(output).toContain("1");
-      // Must include snapshot age info
-      expect(output).toMatch(/snapshot:/i);
+      // 必须包含 snapshot 时长信息
+      expect(output).toMatch(/快照：/);
     });
   });
 
-  // OPR.0.3.3.04.2 (AC-2): state clarity - daemon port, kernel readiness
+  // OPR.0.3.3.04.2（AC-2）：状态清晰——daemon port、kernel 就绪
   // (distinct from daemon health), effective workspace root (default vs override).
   describe("AC-2 state clarity (OPR.0.3.3.04.2)", () => {
     let srv: ReturnType<typeof createDaemonServer>;
@@ -171,12 +171,12 @@ describe("rig status", () => {
         program.addCommand(statusCommand(statusDeps()));
         const logs = await captureLogs(() => program.parseAsync(["node", "rig", "status"]));
         const output = logs.join("\n");
-        expect(output).toMatch(/Daemon running on port \d+/);
-        expect(output).toContain("Kernel: ready");
-        expect(output).toContain("distinct from daemon health");
-        // the effective root is surfaced WITH whether it's default vs an override
+        expect(output).toMatch(/后台服务运行于端口 \d+/);
+        expect(output).toContain("内核：ready");
+        expect(output).toContain("与后台服务健康状态是两个信号");
+        // 生效 root 连同其是默认还是覆盖一并浮出
         // (host-independent: a host may legitimately carry a file-level override).
-        expect(output).toMatch(/Workspace root: .+ \((default|override via (env|file))\)/);
+        expect(output).toMatch(/工作区根目录：.+（默认值|来自 .* 的覆盖）/);
       } finally {
         if (prev === undefined) delete process.env.OPENRIG_WORKSPACE_ROOT;
         else process.env.OPENRIG_WORKSPACE_ROOT = prev;
@@ -191,7 +191,7 @@ describe("rig status", () => {
         program.addCommand(statusCommand(statusDeps()));
         const logs = await captureLogs(() => program.parseAsync(["node", "rig", "status"]));
         const output = logs.join("\n");
-        expect(output).toContain(`Workspace root: ${process.cwd()} (override via env)`);
+        expect(output).toContain(`工作区根目录：${process.cwd()}（来自 env 的覆盖）`);
       } finally {
         if (prev === undefined) delete process.env.OPENRIG_WORKSPACE_ROOT;
         else process.env.OPENRIG_WORKSPACE_ROOT = prev;
@@ -227,7 +227,7 @@ describe("rig status", () => {
       program.addCommand(statusCommand(deps));
       const logs = await captureLogs(() => program.parseAsync(["node", "rig", "status"]));
 
-      expect(logs.join("\n")).toMatch(/no rigs/i);
+      expect(logs.join("\n")).toMatch(/暂无工作组/);
     });
   });
 
@@ -247,7 +247,7 @@ describe("rig status", () => {
     program.addCommand(statusCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "status"]));
 
-    expect(logs.join("\n")).toMatch(/not running/i);
+    expect(logs.join("\n")).toMatch(/后台服务未运行/);
     expect(clientFactory).not.toHaveBeenCalled();
   });
 
@@ -270,7 +270,7 @@ describe("rig status", () => {
     program.addCommand(statusCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "status"]));
 
-    expect(logs.join("\n")).toMatch(/not running/i);
+    expect(logs.join("\n")).toMatch(/后台服务未运行/);
     expect(clientFactory).not.toHaveBeenCalled();
   });
 
@@ -366,7 +366,7 @@ describe("rig status", () => {
     program.addCommand(statusCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "status"]));
 
-    expect(logs.join("\n")).toMatch(/unhealthy|healthz failed/i);
+    expect(logs.join("\n")).toMatch(/健康状态异常|healthz 检查失败/);
     expect(clientFactory).not.toHaveBeenCalled();
   });
 
@@ -386,7 +386,7 @@ describe("rig status", () => {
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "status"]));
 
     // Should have output (not crash or "unknown command")
-    expect(logs.join("\n")).toMatch(/not running/i);
+    expect(logs.join("\n")).toMatch(/后台服务未运行/);
   });
 
   // Test 9: summary 500 -> error message, does not crash

@@ -135,8 +135,8 @@ describe("rig watchdog CLI (PL-004 Phase C)", () => {
     expect(body.registeredBySession).toBe("ops@kernel");
   });
 
-  // PL-004 Phase D: registration-rejection assertion REPLACED with
-  // positive registration-accept. workflow-keepalive is now an
+  // PL-004 Phase D：注册拒绝断言已替换为
+  // 正向注册接受。workflow-keepalive 现为
   // accepted policy.
   it("register accepts workflow-keepalive (Phase D enum extension surfaces 201 + job_id)", async () => {
     const { deps, calls } = makeDeps({
@@ -176,7 +176,7 @@ describe("rig watchdog CLI (PL-004 Phase C)", () => {
     expect(call).toBeDefined();
     const body = call!.body as Record<string, unknown>;
     expect(body.policy).toBe("workflow-keepalive");
-    // exit code unchanged since 201 is success.
+    // 退出码不变，因 201 即成功。
     expect(process.exitCode).toBeUndefined();
   });
 
@@ -235,8 +235,8 @@ describe("rig watchdog CLI (PL-004 Phase C)", () => {
     const register = watchdog?.commands.find((command) => command.name() === "register");
     const help = register?.helpInformation() ?? "";
     expect(help).toContain("context-usage-threshold");
-    expect(help).toMatch(/113K.*153K.*tokens.*MB/i);
-    expect(help).toMatch(/margin.*protection/i);
+    expect(help).toMatch(/113K[\s\S]*153K[\s\S]*tokens[\s\S]*MB/);
+    expect(help).toMatch(/余量即保护/);
   });
 
   it("list GETs /api/watchdog/list", async () => {
@@ -293,7 +293,7 @@ describe("rig watchdog CLI (PL-004 Phase C)", () => {
     });
     expect(result[0]).not.toHaveProperty("specYaml");
     expect(result.some((job) => job.jobId === "stopped-job")).toBe(false);
-    expect(errors.at(-1)).toMatch(/Showing 100 of 101.*--all --full/);
+    expect(errors.at(-1)).toMatch(/共 101 个匹配.*--all --full/);
   });
 
   it("list --all --full preserves the complete legacy record", async () => {

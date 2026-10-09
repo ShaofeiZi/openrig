@@ -28,7 +28,7 @@ function setupDb(): Database.Database {
   return db;
 }
 
-describe("DS-T00: Discovery schema", () => {
+describe("DS-T00：Discovery schema", () => {
   let db: Database.Database;
 
   beforeEach(() => {
@@ -39,8 +39,8 @@ describe("DS-T00: Discovery schema", () => {
     db.close();
   });
 
-  // T1: discovered_sessions table created with all columns
-  it("discovered_sessions table has all columns", () => {
+  // T1：创建的 discovered_sessions 表包含所有列。
+  it("discovered_sessions 表包含所有列", () => {
     const cols = db.pragma("table_info(discovered_sessions)") as Array<{ name: string }>;
     const names = cols.map((c) => c.name);
     expect(names).toContain("id");
@@ -60,8 +60,8 @@ describe("DS-T00: Discovery schema", () => {
     expect(names).toContain("last_seen_at");
   });
 
-  // T2: Insert + query by status
-  it("insert and query by status", () => {
+  // T2：插入并按 status 查询。
+  it("插入并按 status 查询", () => {
     db.prepare(
       "INSERT INTO discovered_sessions (id, tmux_session, tmux_pane, runtime_hint) VALUES (?, ?, ?, ?)"
     ).run("ds-1", "my-session", "%0", "claude-code");
@@ -73,8 +73,8 @@ describe("DS-T00: Discovery schema", () => {
     expect(rows[0]!.runtime_hint).toBe("claude-code");
   });
 
-  // T3: Unique constraint on tmux_session+pane
-  it("unique constraint on tmux_session+pane rejects duplicates", () => {
+  // T3：tmux_session+pane 上的唯一约束。
+  it("tmux_session+pane 的唯一约束拒绝重复项", () => {
     db.prepare(
       "INSERT INTO discovered_sessions (id, tmux_session, tmux_pane) VALUES (?, ?, ?)"
     ).run("ds-1", "sess-a", "%0");
@@ -86,29 +86,29 @@ describe("DS-T00: Discovery schema", () => {
     }).toThrow(/UNIQUE/);
   });
 
-  // T4: sessions.origin column added with default 'launched'
-  it("sessions table has origin column with default launched", () => {
+  // T4：添加 sessions.origin 列，默认值为 'launched'。
+  it("sessions 表包含默认值为 launched 的 origin 列", () => {
     const cols = db.pragma("table_info(sessions)") as Array<{ name: string; dflt_value: string | null }>;
     const originCol = cols.find((c) => c.name === "origin");
     expect(originCol).toBeDefined();
     expect(originCol!.dflt_value).toBe("'launched'");
   });
 
-  // T5: Pre-existing sessions get origin='launched' via staged migration
-  it("pre-existing sessions get origin=launched after migration 012", () => {
-    // Use a fresh DB with only pre-012 migrations
+  // T5：通过分阶段迁移，让已有 session 获得 origin='launched'。
+  it("迁移 012 后已有 session 获得 origin=launched", () => {
+    // 使用只含 012 之前迁移的新数据库。
     const stagedDb = createDb();
     migrate(stagedDb, PRE_DISCOVERY_MIGRATIONS);
 
-    // Seed a rig + node + session BEFORE 012
+    // 在 012 之前写入 rig + node + session。
     stagedDb.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-1", "test-rig");
     stagedDb.prepare("INSERT INTO nodes (id, rig_id, logical_id) VALUES (?, ?, ?)").run("node-1", "rig-1", "dev");
     stagedDb.prepare("INSERT INTO sessions (id, node_id, session_name) VALUES (?, ?, ?)").run("sess-1", "node-1", "r01-dev");
 
-    // Now apply migration 012
+    // 此时应用迁移 012。
     migrate(stagedDb, ALL_MIGRATIONS);
 
-    // The existing session should have origin='launched'
+    // 已有 session 应具有 origin='launched'。
     const row = stagedDb.prepare("SELECT origin FROM sessions WHERE id = ?")
       .get("sess-1") as { origin: string };
     expect(row.origin).toBe("launched");
@@ -116,8 +116,8 @@ describe("DS-T00: Discovery schema", () => {
     stagedDb.close();
   });
 
-  // T6: claimed_node_id nullable
-  it("claimed_node_id is nullable", () => {
+  // T6：claimed_node_id 可为 null。
+  it("claimed_node_id 可为 null", () => {
     db.prepare(
       "INSERT INTO discovered_sessions (id, tmux_session, tmux_pane) VALUES (?, ?, ?)"
     ).run("ds-1", "sess", "%0");
@@ -127,13 +127,13 @@ describe("DS-T00: Discovery schema", () => {
     expect(row.claimed_node_id).toBeNull();
   });
 
-  // T7: Upsert on tmux identity — different id, same (tmux_session, tmux_pane)
-  it("upsert via UNIQUE(tmux_session, tmux_pane) replaces on identity collision", () => {
+  // T7：按 tmux identity upsert——id 不同，但 (tmux_session, tmux_pane) 相同。
+  it("identity 冲突时通过 UNIQUE(tmux_session, tmux_pane) 替换", () => {
     db.prepare(
       "INSERT INTO discovered_sessions (id, tmux_session, tmux_pane, last_seen_at) VALUES (?, ?, ?, ?)"
     ).run("ds-1", "sess", "%0", "2026-03-26 10:00:00");
 
-    // Different id, same tmux identity — UNIQUE drives the replacement
+    // id 不同但 tmux identity 相同——由 UNIQUE 驱动替换。
     db.prepare(
       "INSERT OR REPLACE INTO discovered_sessions (id, tmux_session, tmux_pane, last_seen_at) VALUES (?, ?, ?, ?)"
     ).run("ds-2", "sess", "%0", "2026-03-26 11:00:00");
@@ -145,8 +145,8 @@ describe("DS-T00: Discovery schema", () => {
     expect(rows[0]!.last_seen_at).toBe("2026-03-26 11:00:00");
   });
 
-  // T8: Status transitions
-  it("status transitions: active → claimed, active → vanished", () => {
+  // T8：状态转换。
+  it("状态转换：active → claimed、active → vanished", () => {
     db.prepare(
       "INSERT INTO discovered_sessions (id, tmux_session, tmux_pane) VALUES (?, ?, ?)"
     ).run("ds-1", "sess-a", "%0");
@@ -154,9 +154,9 @@ describe("DS-T00: Discovery schema", () => {
       "INSERT INTO discovered_sessions (id, tmux_session, tmux_pane) VALUES (?, ?, ?)"
     ).run("ds-2", "sess-b", "%0");
 
-    // Transition to claimed
+    // 转换为 claimed。
     db.prepare("UPDATE discovered_sessions SET status = 'claimed' WHERE id = ?").run("ds-1");
-    // Transition to vanished
+    // 转换为 vanished。
     db.prepare("UPDATE discovered_sessions SET status = 'vanished' WHERE id = ?").run("ds-2");
 
     const claimed = db.prepare("SELECT status FROM discovered_sessions WHERE id = ?")
@@ -168,8 +168,8 @@ describe("DS-T00: Discovery schema", () => {
     expect(vanished.status).toBe("vanished");
   });
 
-  // T9: claimed_node_id FK enforcement
-  it("claimed_node_id FK rejects nonexistent node_id", () => {
+  // T9：claimed_node_id 外键强制规则。
+  it("claimed_node_id 外键拒绝不存在的 node_id", () => {
     expect(() => {
       db.prepare(
         "INSERT INTO discovered_sessions (id, tmux_session, tmux_pane, claimed_node_id) VALUES (?, ?, ?, ?)"
@@ -177,21 +177,21 @@ describe("DS-T00: Discovery schema", () => {
     }).toThrow(/FOREIGN KEY/);
   });
 
-  // T10: Rig deletion with claimed discovery row — ON DELETE SET NULL
-  it("rig deletion nulls claimed_node_id via ON DELETE SET NULL", () => {
-    // Create rig + node
+  // T10：删除带有已认领 discovery 行的 rig——ON DELETE SET NULL。
+  it("删除 rig 时通过 ON DELETE SET NULL 清空 claimed_node_id", () => {
+    // 创建 rig + node。
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-1", "test-rig");
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id) VALUES (?, ?, ?)").run("node-1", "rig-1", "dev");
 
-    // Create claimed discovery row
+    // 创建已认领的 discovery 行。
     db.prepare(
       "INSERT INTO discovered_sessions (id, tmux_session, tmux_pane, status, claimed_node_id) VALUES (?, ?, ?, 'claimed', ?)"
     ).run("ds-1", "sess", "%0", "node-1");
 
-    // Delete rig (cascades to node)
+    // 删除 rig（级联删除 node）。
     db.prepare("DELETE FROM rigs WHERE id = ?").run("rig-1");
 
-    // Discovery row should survive with claimed_node_id = NULL
+    // Discovery 行应保留，且 claimed_node_id = NULL。
     const row = db.prepare("SELECT * FROM discovered_sessions WHERE id = ?")
       .get("ds-1") as { id: string; claimed_node_id: string | null; status: string };
     expect(row).toBeDefined();

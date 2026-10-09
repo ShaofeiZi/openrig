@@ -1,5 +1,5 @@
-// Phase 3a slice 3.3 — usePlugins / usePlugin / usePluginUsedBy tests
-// (TDD red→green).
+// 阶段 3a slice 3.3——usePlugins / usePlugin / usePluginUsedBy 测试
+//（TDD 红灯 → 绿灯）。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";

@@ -1,24 +1,22 @@
-// §6 RECONCILIATION — WARNING EMISSION-ORDER PIN (PM ruling 2026-08-05, fold-wave qitem 79159e6f).
-// When ONE preflight emits BOTH proven warning sources — main's managed-activity-hook DELIVERY
-// warning (already-folded 0.5.0 content) AND the incoming permission-policy DISCOVERY warning (the
-// restacked 4.8 chain) — the emission order is ACTIVITY-HOOK-FIRST, POLICY-APPENDED.
+// §6 RECONCILIATION——警告发出顺序固定项（PM 裁定 2026-08-05，fold-wave qitem 79159e6f）。
+// 当一次 preflight 同时发出两类已证实警告——main 的 managed-activity-hook DELIVERY 警告
+//（已折入 0.5.0 的内容）和传入的 permission-policy DISCOVERY 警告（重新堆叠的 4.8 链）——
+// 发出顺序为 ACTIVITY-HOOK-FIRST、POLICY-APPENDED。
 //
-// RATIONALE (PM): fold-order = emission-order — main is the restack's fixed base and its
-// already-folded activity-hook content is the floor (emitted first); the incoming restacked policy
-// content APPENDS after, matching the mechanical grain of the rebase + the gates-first discipline,
-// and keeping the 0.5.0 train's existing warning content byte-stable under the restack (the actual
-// stability invariant; npm compatibility is NOT implicated — npm carries the POLICY chain cut from
-// 0.4.7, activity-hook is unshipped local 0.5.0 work, so neither ordering shipped anywhere before
-// this merge; this pin freezes the merged order).
+// 理由（PM）：折入顺序等于发出顺序——main 是 restack 的固定基础，其已折入的 activity-hook 内容
+// 是底层（先发出）；传入的重叠 policy 内容随后追加，符合 rebase 的机械粒度和 gate-first 纪律，并在
+// restack 下保持 0.5.0 现有警告内容逐字节稳定（真正的稳定性不变量；这不涉及 npm 兼容性——npm
+// 携带从 0.4.7 切出的 POLICY 链，而 activity-hook 是尚未发布的本地 0.5.0 工作，因此此次合并前
+// 两种顺序均未在任何地方发布；此固定项锁定合并后的顺序）。
 //
-// SEMANTIC FENCE: this order is PRESENTATION ONLY. Any consumer that treats the first warning as
-// higher-priority is a FINDING, not an ordering input — this pin freezes presentation, never semantics.
+// 语义边界：此顺序仅用于展示。任何把首条警告视为更高优先级的消费者都属于缺陷，而不是排序输入；
+// 此固定项只冻结展示，绝不冻结语义。
 import { describe, expect, it } from "vitest";
 import { rigPreflight } from "../src/domain/rigspec-preflight.js";
 import type { AgentResolverFsOps } from "../src/domain/agent-resolver.js";
 
-// An agent.yaml that DECLARES + SELECTS the claude_activity_hooks runtime resource — so a claude-code
-// member triggers the managed-activity-hook delivery check (which warns when the assets are absent).
+// 此 agent.yaml 声明并选择 claude_activity_hooks runtime resource，因此 claude-code 成员会触发
+// managed-activity-hook 投递检查（资产缺失时发出警告）。
 const AGENT_YAML = `name: impl
 version: "1.0.0"
 resources:
@@ -58,26 +56,26 @@ pods:
     edges: []
 `;
 
-describe("§6 reconciliation — warning emission order (activity-hook-first, policy-appended)", () => {
-  it("a preflight emitting BOTH an activity-hook delivery warning AND a policy discovery warning orders activity-hook FIRST, policy APPENDED", async () => {
+describe("§6 reconciliation——警告发出顺序（activity-hook-first、policy-appended）", () => {
+  it("preflight 同时发出 activity-hook 投递警告和 policy 发现警告时前者在先、后者追加", async () => {
     const result = await rigPreflight({
       rigSpecYaml: RIG_YAML,
       rigRoot: "/probe/root",
       fsOps: fsOps(),
-      // Missing assets → the managed-activity-hook delivery warning fires (nonfatal, READY path).
+      // 资产缺失会触发 managed-activity-hook 投递警告（非致命，READY 路径）。
       claudeActivityAssets: { relayPath: "/missing/relay.cjs", manifestPath: "/missing/claude.json" },
     });
-    expect(result.ready).toBe(true); // both warnings are NONFATAL — rig up stays rc0
+    expect(result.ready).toBe(true); // 两条警告都非致命，rig up 保持 rc0。
 
     const hookIdx = result.warnings.findIndex((w) =>
-      w.includes("managed Claude activity hooks cannot be delivered"),
+      w.includes("无法交付受管 Claude 活动 hook"),
     );
     const policyIdx = result.warnings.findIndex((w) => w.includes("permission_policy"));
 
-    expect(hookIdx).toBeGreaterThanOrEqual(0); // main's activity-hook delivery warning present
-    expect(policyIdx).toBeGreaterThanOrEqual(0); // the 4.8 permission-policy discovery warning present
-    // THE ORDER PIN: activity-hook-first, policy-appended (PM ruling). A drift in either direction is
-    // a deliberate re-rule, never an accident — and per the semantic fence it changes PRESENTATION only.
+    expect(hookIdx).toBeGreaterThanOrEqual(0); // 存在 main 的 activity-hook 投递警告。
+    expect(policyIdx).toBeGreaterThanOrEqual(0); // 存在 4.8 permission-policy 发现警告。
+    // 顺序固定项：activity-hook-first、policy-appended（PM 裁定）。任一方向的漂移都必须是有意重定规则，
+    // 不能是意外；按照语义边界，它只改变展示。
     expect(hookIdx).toBeLessThan(policyIdx);
   });
 });

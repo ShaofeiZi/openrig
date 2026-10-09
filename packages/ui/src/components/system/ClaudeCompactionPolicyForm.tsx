@@ -1,17 +1,13 @@
-// Slice 27 — Claude Auto-Compaction Policy form.
+// Slice 27——Claude 自动压缩策略表单。
 //
-// Operator-configurable pre-compaction trigger: when a Claude seat's
-// context usage crosses `threshold_percent`, the daemon's ContextMonitor
-// first sends a fixed-wrapper preparation prompt plus operator-editable
-// `pre_compact_instruction`, then dispatches `/compact` via
-// SessionTransport on the next eligible observation, optionally with
-// `compact_instruction` as slash-command args. The restore phase uses
-// `message_inline`, `message_file_path`, and an editable
-// `post_restore_audit_instruction` wrapped by daemon-owned trust
-// framing.
+// 操作人员可配置的压缩前触发器：Claude 席位的上下文用量越过 `threshold_percent` 后，
+// 后台服务 ContextMonitor 会先发送带固定包装的准备提示和可编辑的
+// `pre_compact_instruction`，再在下一次合格观测时通过 SessionTransport 分派 `/compact`，
+// 并可选地把 `compact_instruction` 作为斜杠命令参数。恢复阶段使用 `message_inline`、
+// `message_file_path` 和可编辑的 `post_restore_audit_instruction`，外层由后台服务拥有的
+// 信任框架包裹。
 //
-// Opt-in default-off. Inline points at the canonical restore skill; the
-// file path points at a user-owned extra-instructions placeholder.
+// 默认关闭，需显式启用。行内内容指向规范恢复技能；文件路径指向用户拥有的补充说明占位文件。
 
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -68,13 +64,13 @@ export function ClaudeCompactionPolicyForm() {
         data-testid="claude-compaction-policy-form"
         className="border border-outline-variant p-5 bg-surface-lowest/50"
       >
-        <SectionHeader tone="muted">Policy</SectionHeader>
+        <SectionHeader tone="muted">策略</SectionHeader>
         <h2 className="font-headline text-headline-sm font-bold tracking-tight uppercase text-on-surface mt-1">
-          Claude Auto-Compaction
+          Claude 自动压缩
         </h2>
         {isLoading && (
           <p className="mt-4 text-sm text-on-surface-variant" data-testid="claude-compaction-policy-loading">
-            Loading current settings…
+            正在加载当前设置…
           </p>
         )}
         {error && (
@@ -115,7 +111,7 @@ function PolicyFormBody({ data, setSetting }: PolicyFormBodyProps) {
     const thresholdRaw = form.thresholdPercent.trim();
     const thresholdValue = Number(thresholdRaw);
     if (!/^\d+$/.test(thresholdRaw) || thresholdValue < 1 || thresholdValue > 100) {
-      setThresholdError("Threshold must be an integer between 1 and 100.");
+      setThresholdError("阈值必须是 1 到 100 之间的整数。");
       return;
     }
     setThresholdError(null);
@@ -144,17 +140,15 @@ function PolicyFormBody({ data, setSetting }: PolicyFormBodyProps) {
       data-testid="claude-compaction-policy-form"
       className="border border-outline-variant p-5 bg-surface-lowest/50"
     >
-      <SectionHeader tone="muted">Policy</SectionHeader>
+      <SectionHeader tone="muted">策略</SectionHeader>
       <h2 className="font-headline text-headline-sm font-bold tracking-tight uppercase text-on-surface mt-1">
-        Claude Auto-Compaction
+        Claude 自动压缩
       </h2>
       <p className="mt-2 text-sm text-on-surface-variant max-w-prose">
-        When a Claude seat's context usage crosses the configured threshold,
-        OpenRig first sends a preparation message, then sends
-        <code className="font-mono text-[12px]"> /compact</code> on the next
-        eligible observation. After compaction, OpenRig sends one restore prompt
-        that points the seat at its restore packet, followed by a read-depth
-        audit prompt.
+        当某个 Claude 席位的上下文用量超过配置阈值时，zrig 会先发送一条准备消息，
+        然后在下一个满足条件的观测点发送
+        <code className="font-mono text-[12px]"> /compact</code>。压缩之后，zrig 会发送
+        一条恢复提示，引导该席位读取其恢复包，随后再发一条阅读深度审计提示。
       </p>
 
       <form
@@ -169,12 +163,12 @@ function PolicyFormBody({ data, setSetting }: PolicyFormBodyProps) {
             checked={form.enabled}
             onChange={(e) => setForm((s) => ({ ...s, enabled: e.target.checked }))}
           />
-          <span>Enable automatic pre-compaction trigger</span>
+          <span>启用自动预压缩触发</span>
         </label>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="claude-compaction-threshold" className="text-sm font-medium text-on-surface">
-            Threshold percentage
+            阈值百分比
           </label>
           <input
             id="claude-compaction-threshold"
@@ -188,7 +182,7 @@ function PolicyFormBody({ data, setSetting }: PolicyFormBodyProps) {
             aria-describedby="claude-compaction-threshold-hint"
           />
           <span className="text-xs text-on-surface-variant">
-            Preparation starts when context usage is at-or-above this percentage (1–100).
+            当上下文用量达到或超过此百分比（1–100）时开始准备。
           </span>
           {thresholdError && (
             <span className="text-xs text-error" data-testid="claude-compaction-threshold-error">
@@ -199,7 +193,7 @@ function PolicyFormBody({ data, setSetting }: PolicyFormBodyProps) {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="claude-compaction-pre-compact-instruction" className="text-sm font-medium text-on-surface">
-            Pre-compaction prep message
+            预压缩准备消息
           </label>
           <textarea
             id="claude-compaction-pre-compact-instruction"
@@ -207,18 +201,17 @@ function PolicyFormBody({ data, setSetting }: PolicyFormBodyProps) {
             rows={4}
             value={form.preCompactInstruction}
             onChange={(e) => setForm((s) => ({ ...s, preCompactInstruction: e.target.value }))}
-            placeholder="Read the claude-compaction-restore skill and prepare for compaction."
+            placeholder="阅读 claude-compaction-restore 技能并为压缩做准备。"
             className="border border-outline-variant px-2 py-1 font-mono text-sm"
           />
           <span className="text-xs text-on-surface-variant">
-            OpenRig wraps this with the current context usage, threshold, and
-            operator-authorized user-channel framing.
+            zrig 会用当前上下文用量、阈值以及操作者授权的用户通道包装来包裹此消息。
           </span>
         </div>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="claude-compaction-compact-instruction" className="text-sm font-medium text-on-surface">
-            Compaction instruction
+            压缩指令
           </label>
           <textarea
             id="claude-compaction-compact-instruction"
@@ -226,18 +219,17 @@ function PolicyFormBody({ data, setSetting }: PolicyFormBodyProps) {
             rows={3}
             value={form.compactInstruction}
             onChange={(e) => setForm((s) => ({ ...s, compactInstruction: e.target.value }))}
-            placeholder="Optional. Sent as /compact <instruction> when OpenRig triggers compaction."
+            placeholder="可选。zrig 触发压缩时作为 /compact <指令> 发送。"
             className="border border-outline-variant px-2 py-1 font-mono text-sm"
           />
           <span className="text-xs text-on-surface-variant">
-            Optional advanced override. Leave blank to rely on Claude's native
-            compaction summary; OpenRig still appends a trust-channel note.
+            可选的高级覆盖。留空则依赖 Claude 原生的压缩摘要；zrig 仍会附加一条信任通道说明。
           </span>
         </div>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="claude-compaction-inline" className="text-sm font-medium text-on-surface">
-            Post-compaction restore instruction (inline)
+            压缩后恢复指令（内联）
           </label>
           <textarea
             id="claude-compaction-inline"
@@ -245,19 +237,17 @@ function PolicyFormBody({ data, setSetting }: PolicyFormBodyProps) {
             rows={4}
             value={form.messageInline}
             onChange={(e) => setForm((s) => ({ ...s, messageInline: e.target.value }))}
-            placeholder="Optional override. Leave blank to use the instruction file path below."
+            placeholder="可选覆盖。留空则使用下方的指令文件路径。"
             className="border border-outline-variant px-2 py-1 font-mono text-sm"
           />
           <span className="text-xs text-on-surface-variant">
-            Default asks Claude to read the claude-compaction-restore skill.
-            OpenRig wraps this with marker, transcript, and current-task
-            framing.
+            默认会让 Claude 阅读 claude-compaction-restore 技能。zrig 会用标记、转录和当前任务的上下文来包裹此消息。
           </span>
         </div>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="claude-compaction-file" className="text-sm font-medium text-on-surface">
-            Post-compaction restore instruction (file path)
+            压缩后恢复指令（文件路径）
           </label>
           <input
             id="claude-compaction-file"
@@ -265,19 +255,17 @@ function PolicyFormBody({ data, setSetting }: PolicyFormBodyProps) {
             type="text"
             value={form.messageFilePath}
             onChange={(e) => setForm((s) => ({ ...s, messageFilePath: e.target.value }))}
-            placeholder="Path read at hook-fire time for extra restore instructions."
+            placeholder="钩子触发时读取的额外恢复指令路径。"
             className="border border-outline-variant px-2 py-1 font-mono text-sm"
           />
           <span className="text-xs text-on-surface-variant">
-            Default points at a user-owned placeholder file. Put
-            mission-specific reading lists or extra restore notes there
-            without changing the canonical skill.
+            默认指向一个用户自有的占位文件。可把任务相关的阅读清单或额外恢复说明放进去，而无需改动规范技能。
           </span>
         </div>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="claude-compaction-post-restore-audit" className="text-sm font-medium text-on-surface">
-            Post-restore audit message
+            恢复后审计消息
           </label>
           <textarea
             id="claude-compaction-post-restore-audit"
@@ -285,12 +273,11 @@ function PolicyFormBody({ data, setSetting }: PolicyFormBodyProps) {
             rows={4}
             value={form.postRestoreAuditInstruction}
             onChange={(e) => setForm((s) => ({ ...s, postRestoreAuditInstruction: e.target.value }))}
-            placeholder="Read the claude-compaction-restore skill and audit restore read depth."
+            placeholder="阅读 claude-compaction-restore 技能并审计恢复后的阅读深度。"
             className="border border-outline-variant px-2 py-1 font-mono text-sm"
           />
           <span className="text-xs text-on-surface-variant">
-            OpenRig wraps this with the required FULL/PARTIAL/NOT_READ table
-            and no-token-conservation language.
+            zrig 会用必需的 全部/部分/未读 表格和不保留令牌的措辞来包裹此消息。
           </span>
         </div>
 
@@ -301,11 +288,11 @@ function PolicyFormBody({ data, setSetting }: PolicyFormBodyProps) {
             disabled={setSetting.isPending}
             className="border border-outline px-4 py-2 bg-inverse-surface text-background font-medium text-sm disabled:opacity-60"
           >
-            {setSetting.isPending ? "Saving…" : "Save policy"}
+            {setSetting.isPending ? "保存中…" : "保存策略"}
           </button>
           {submitOk && (
             <span className="text-sm text-success" data-testid="claude-compaction-policy-saved">
-              Saved.
+              已保存。
             </span>
           )}
           {submitError && (

@@ -27,10 +27,10 @@ import {
 } from "../src/domain/classification-attempts.js";
 
 /**
- * 0.6.0 S02 P1 — classification persistence and lease correctness.
- * Contract: missions/release-0.6.0/evidence/offline-contract-s01-s02-dev60/CONTRACT.md
- * (revision 2) and Review-R2 REPORT 3b6d58dd (nine offline controls). Every
- * case uses an in-memory or disposable temp database and an injected clock.
+ * 0.6.0 S02 P1——分类持久化与租约正确性。契约：
+ * missions/release-0.6.0/evidence/offline-contract-s01-s02-dev60/CONTRACT.md
+ *（修订 2）及 Review-R2 REPORT 3b6d58dd（九项离线控制）。每个用例都使用内存或
+ * 一次性临时数据库，并注入时钟。
  */
 
 const TTL = 60_000;
@@ -48,7 +48,7 @@ function code(fn: () => unknown): string {
   return "no-error";
 }
 
-describe("S02 P1 classification persistence and lease correctness", () => {
+describe("S02 P1 分类持久化与租约正确性", () => {
   let db: Database.Database;
   let bus: EventBus;
   let clock: number;
@@ -81,8 +81,8 @@ describe("S02 P1 classification persistence and lease correctness", () => {
 
   afterEach(() => db.close());
 
-  describe("lease binding (R2 controls 1-3, now passing the corrected direction)", () => {
-    it("same-session acquire after TTL issues a NEW lease id instead of returning the expired one", () => {
+  describe("租约绑定（R2 控制项 1—3，现按修正后的方向通过）", () => {
+    it("同一会话在 TTL 后获取时签发新租约 id，而非返回已过期租约", () => {
       const first = leases.acquire("occ@rig");
       clock += TTL + 1;
       const second = leases.acquire("occ@rig");
@@ -91,20 +91,20 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(second.state).toBe("active");
     });
 
-    it("same-session acquire before TTL stays idempotent", () => {
+    it("同一会话在 TTL 前获取时保持幂等", () => {
       const first = leases.acquire("occ@rig");
       clock += TTL - 1;
       expect(leases.acquire("occ@rig").leaseId).toBe(first.leaseId);
     });
 
-    it("heartbeat on a TTL-passed lease refuses with lease_expired and does not revive it", () => {
+    it("已超过 TTL 的租约收到心跳时以 lease_expired 拒绝，且不会复活", () => {
       const lease = leases.acquire("occ@rig");
       clock += TTL + 1;
       expect(code(() => leases.heartbeat(lease.leaseId, "occ@rig"))).toBe("lease_expired");
       expect(leases.getById(lease.leaseId)?.expiresAt).toBe(lease.expiresAt);
     });
 
-    it("a late result bound to a replaced same-session lease is refused (lease_mismatch), nothing written", () => {
+    it("绑定到同会话已替换租约的迟到结果被拒绝（lease_mismatch），且不写入任何内容", () => {
       seed(1);
       const old = leases.acquire("occ@rig");
       clock += TTL + 1;
@@ -115,7 +115,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(classifier.getByStreamItemId("item-000")).toBeNull();
     });
 
-    it("a different session cannot take an expired lease without the evaluated acquire, then can", () => {
+    it("不同会话在执行评估式获取前不能接管过期租约，执行后可以", () => {
       leases.acquire("occ@rig");
       clock += TTL + 1;
       expect(code(() => leases.acquire("other@rig"))).toBe("lease_held");
@@ -123,7 +123,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(leases.acquire("other@rig").classifierSession).toBe("other@rig");
     });
 
-    it("an expired lease (not yet replaced) refuses the write", () => {
+    it("已过期但尚未替换的租约拒绝写入", () => {
       seed(1);
       const lease = leases.acquire("occ@rig");
       clock += TTL + 1;
@@ -132,7 +132,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       );
     });
 
-    it("an old caller without leaseId gets a clear refusal, not a silent write", () => {
+    it("没有 leaseId 的旧调用方收到明确拒绝，而非静默写入", () => {
       seed(1);
       leases.acquire("occ@rig");
       expect(code(() => classifier.classify({ streamItemId: "item-000", classifierSession: "occ@rig" } as never))).toBe(
@@ -141,8 +141,8 @@ describe("S02 P1 classification persistence and lease correctness", () => {
     });
   });
 
-  describe("classification fields (migration 086)", () => {
-    it("stores the four fields and version bindings; unknown needs_human stays null, not false", () => {
+  describe("分类字段（迁移 086）", () => {
+    it("存储四个字段及版本绑定；未知 needs_human 保持 null 而非 false", () => {
       seed(3);
       const { leaseId } = leases.acquire("occ@rig");
       const yes = classifier.classify({
@@ -164,7 +164,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(classifier.list({ scopeRef: "OPR.0.6.0.2" })).toHaveLength(1);
     });
 
-    it("validates consumed shapes: duplicate must exist and not be self; scopeRef needs a candidate-set version", () => {
+    it("校验消费形态：duplicate 必须存在且不能指向自身；scopeRef 需要候选集版本", () => {
       seed(1);
       const { leaseId } = leases.acquire("occ@rig");
       const base = { streamItemId: "item-000", classifierSession: "occ@rig", leaseId };
@@ -175,7 +175,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(classifier.getByStreamItemId("item-000")).toBeNull();
     });
 
-    it("first write still wins", () => {
+    it("仍由首次写入胜出", () => {
       seed(1);
       const { leaseId } = leases.acquire("occ@rig");
       classifier.classify({ streamItemId: "item-000", classifierSession: "occ@rig", leaseId, area: "a" });
@@ -186,8 +186,8 @@ describe("S02 P1 classification persistence and lease correctness", () => {
     });
   });
 
-  describe("attempt ledger", () => {
-    it("abstention is terminal for its identity, and a new version or evidence epoch makes the item eligible again", () => {
+  describe("尝试台账", () => {
+    it("弃权对其身份是终止状态，新版本或证据周期使该项重新具备资格", () => {
       seed(1);
       const { leaseId } = leases.acquire("occ@rig");
       const a = ledger.begin({ streamItemId: "item-000", ...V, leaseId, classifierSession: "occ@rig" });
@@ -196,14 +196,14 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(ledger.eligible(V).items).toHaveLength(0);
       expect(ledger.eligible({ ...V, classifierVersion: "clf-2" }).items.map((i) => i.streamItemId)).toEqual(["item-000"]);
       expect(ledger.eligible({ ...V, evidenceEpoch: "evidence:sha256:abc" }).items).toHaveLength(1);
-      // Abstention never touched the immutable classification row.
+      // 弃权从未触碰不可变分类行。
       expect(classifier.getByStreamItemId("item-000")).toBeNull();
     });
 
-    it("errors retry after a bounded, doubling delay and exhaust at the budget", () => {
+    it("错误经过有界倍增延迟后重试，并在预算耗尽时停止", () => {
       seed(1);
-      // The test lease TTL (60 s) is shorter than the backoff, so the occupant
-      // re-acquires after each wait; its own expired lease yields a new id.
+      // 测试租约 TTL（60 秒）短于退避时间，因此占用者每次等待后重新获取；其自身已过期
+      // 的租约会产生新 id。
       let leaseId = leases.acquire("occ@rig").leaseId;
       const begin = () => ledger.begin({ streamItemId: "item-000", ...V, leaseId, classifierSession: "occ@rig" });
       const fail = (x: { attemptId: string; executionId: string }) =>
@@ -231,7 +231,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(ledger.eligible(V).items).toHaveLength(0);
     });
 
-    it("an abandoned in-flight attempt (crash) becomes eligible after the timeout and counts toward the budget", () => {
+    it("被遗弃的进行中尝试（崩溃）在超时后重新具备资格，并计入预算", () => {
       seed(1);
       const lease = leases.acquire("occ@rig");
       ledger.begin({ streamItemId: "item-000", ...V, leaseId: lease.leaseId, classifierSession: "occ@rig" });
@@ -245,7 +245,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(ledger.begin({ streamItemId: "item-000", ...V, leaseId: fresh.leaseId, classifierSession: "occ@rig" }).attemptCount).toBe(2);
     });
 
-    it("an in-flight attempt under a replaced lease can be resumed by the new lease but not finished by the old one", () => {
+    it("已替换租约下的进行中尝试可由新租约恢复，但不能由旧租约完成", () => {
       seed(1);
       const old = leases.acquire("occ@rig");
       const a = ledger.begin({ streamItemId: "item-000", ...V, leaseId: old.leaseId, classifierSession: "occ@rig" });
@@ -259,7 +259,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(resumed.attemptCount).toBe(2);
     });
 
-    it("a classify bound to the attempt marks it written in the same transaction", () => {
+    it("绑定到尝试的 classify 在同一事务中将其标记为已写入", () => {
       seed(1);
       const { leaseId } = leases.acquire("occ@rig");
       const a = ledger.begin({ streamItemId: "item-000", ...V, leaseId, classifierSession: "occ@rig" });
@@ -272,7 +272,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(ledger.eligible({ ...V, classifierVersion: "clf-2" }).items).toHaveLength(0); // classified items never re-offered
     });
 
-    it("a classify with mismatched attempt versions is refused and writes nothing", () => {
+    it("尝试版本不匹配的 classify 被拒绝，且不写入任何内容", () => {
       seed(1);
       const { leaseId } = leases.acquire("occ@rig");
       const a = ledger.begin({ streamItemId: "item-000", ...V, leaseId, classifierSession: "occ@rig" });
@@ -288,7 +288,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(ledger.getById(a.attemptId)?.status).toBe("in_flight");
     });
 
-    it("a transaction failure after the checks rolls back both the row and the attempt", () => {
+    it("检查后的事务失败会同时回滚数据行与尝试", () => {
       seed(1);
       const { leaseId } = leases.acquire("occ@rig");
       const a = ledger.begin({ streamItemId: "item-000", ...V, leaseId, classifierSession: "occ@rig" });
@@ -309,9 +309,9 @@ describe("S02 P1 classification persistence and lease correctness", () => {
     });
   });
 
-  describe("F1 execution fencing (R2 510ef2da finding): old execution vs current execution", () => {
-    // A long TTL with periodic heartbeats keeps ONE lease alive across the retry,
-    // so only the execution fence (not the lease) can refuse the old execution.
+  describe("F1 执行隔离（R2 510ef2da 发现）：旧执行与当前执行", () => {
+    // 长 TTL 配合定期心跳，使同一租约跨重试保持存活，因此只有执行隔离（而非租约）
+    // 能拒绝旧执行。
     const LONG_TTL = 60 * 60_000;
     let fenceLeases: ClassifierLeaseManager;
     let fenceLedger: ClassificationAttemptLedger;
@@ -342,7 +342,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
     }
 
     for (const cause of ["timeout", "error"] as const) {
-      it(`${cause} retry: the old execution cannot classify, abstain or fail; the current one can`, () => {
+      it(`${cause} 重试：旧执行不能 classify、abstain 或 fail；当前执行可以`, () => {
         const { leaseId, oldExec, current } = retried(cause);
         const finish = { attemptId: oldExec.attemptId, leaseId, classifierSession: "occ@rig", reason: "late" };
         expect(code(() => fenceLedger.abstain({ ...finish, executionId: oldExec.executionId }))).toBe("attempt_superseded");
@@ -351,10 +351,10 @@ describe("S02 P1 classification persistence and lease correctness", () => {
           streamItemId: "item-000", classifierSession: "occ@rig", leaseId, attemptId: oldExec.attemptId,
           executionId: oldExec.executionId, classifierVersion: V.classifierVersion, taxonomyVersion: V.taxonomyVersion,
         }))).toBe("attempt_superseded");
-        // Nothing the old execution tried touched the current one.
+        // 旧执行的任何尝试都未触碰当前执行。
         expect(fenceClassifier.getByStreamItemId("item-000")).toBeNull();
         expect(fenceLedger.getById(current.attemptId)).toMatchObject({ status: "in_flight", executionId: current.executionId });
-        // The current execution finishes normally.
+        // 当前执行正常完成。
         fenceClassifier.classify({
           streamItemId: "item-000", classifierSession: "occ@rig", leaseId, attemptId: current.attemptId,
           executionId: current.executionId, classifierVersion: V.classifierVersion, taxonomyVersion: V.taxonomyVersion,
@@ -363,7 +363,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       });
     }
 
-    it("a missing executionId is refused on every finish path", () => {
+    it("所有完成路径都拒绝缺少 executionId 的请求", () => {
       seed(1);
       const { leaseId } = fenceLeases.acquire("occ@rig");
       const a = fenceLedger.begin({ streamItemId: "item-000", ...V, leaseId, classifierSession: "occ@rig" });
@@ -377,7 +377,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(fenceLedger.getById(a.attemptId)?.status).toBe("in_flight");
     });
 
-    it("a manual classification (no attemptId) needs no executionId and is not ledger-bound", () => {
+    it("手动分类（无 attemptId）不需要 executionId，也不受台账绑定", () => {
       seed(1);
       const { leaseId } = fenceLeases.acquire("occ@rig");
       fenceClassifier.classify({ streamItemId: "item-000", classifierSession: "occ@rig", leaseId, area: "tui" });
@@ -385,7 +385,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
     });
   });
 
-  describe("F2 consumed-shape validation through HTTP (R2 510ef2da finding)", () => {
+  describe("F2 通过 HTTP 校验消费形态（R2 510ef2da 发现）", () => {
     function app(): Hono {
       const a = new Hono();
       a.use("*", async (c, next) => {
@@ -401,7 +401,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
     const post = (path: string, body: unknown) =>
       app().request(`/api/projects${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
-    it("rejects number, object and null for string fields with a field-specific 400 and no write", async () => {
+    it("字符串字段收到数字、对象或 null 时以字段特定 400 拒绝，且不写入", async () => {
       seed(1);
       const { leaseId } = leases.acquire("occ@rig");
       const base = { streamItemId: "item-000", classifierSession: "occ@rig", leaseId };
@@ -420,7 +420,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(classifier.getByStreamItemId("item-000")).toBeNull();
     });
 
-    it("legitimate strings and needsHuman true/false/null still succeed", async () => {
+    it("合法字符串和 needsHuman true/false/null 仍然成功", async () => {
       seed(3);
       const { leaseId } = leases.acquire("occ@rig");
       const ok = await post("/project", {
@@ -433,7 +433,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect((await post("/project", { streamItemId: "item-002", classifierSession: "occ@rig", leaseId, needsHuman: "no" })).status).toBe(400);
     });
 
-    it("attempt routes reject non-string identity and finish fields", async () => {
+    it("尝试路由拒绝非字符串的身份与完成字段", async () => {
       seed(1);
       const { leaseId } = leases.acquire("occ@rig");
       const bad = await post("/attempts/begin", { streamItemId: "item-000", ...V, classifierVersion: 1, leaseId, classifierSession: "occ@rig" });
@@ -446,8 +446,8 @@ describe("S02 P1 classification persistence and lease correctness", () => {
     });
   });
 
-  describe("eligible pages", () => {
-    it("pages more than 50 items completely, in stream order, excluding archived and classified", () => {
+  describe("符合资格的分页", () => {
+    it("按流顺序完整分页超过 50 项，并排除已归档和已分类项", () => {
       const ids = seed(57);
       stream.archive(ids[3]!);
       const { leaseId } = leases.acquire("occ@rig");
@@ -466,7 +466,7 @@ describe("S02 P1 classification persistence and lease correctness", () => {
       expect(seen).toEqual(ids.filter((id) => id !== ids[3] && id !== ids[10]));
     });
 
-    it("caps the page size and refuses an unknown cursor", () => {
+    it("限制页大小并拒绝未知 cursor", () => {
       seed(120);
       expect(ledger.eligible({ ...V, limit: 1000 }).items).toHaveLength(100);
       expect(code(() => ledger.eligible({ ...V, afterSortKey: "not-a-key" }))).toBe("unknown_cursor");
@@ -474,19 +474,19 @@ describe("S02 P1 classification persistence and lease correctness", () => {
   });
 });
 
-describe("S02 P1 migration 086 on a populated base database (upgrade + reopen)", () => {
+describe("S02 P1 在已有数据的基础数据库上执行迁移 086（升级 + 重开）", () => {
   let dir: string;
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "s02-p1-upgrade-"));
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it("keeps old rows readable with null new fields and first-write-wins after upgrade", () => {
+  it("旧行的新字段为 null 时仍可读取，升级后保持首次写入胜出", () => {
     const file = join(dir, "base.sqlite");
     const base = ALL_MIGRATIONS.filter((m) => m.name !== classificationFieldsAndAttemptsSchema.name && m.name !== classificationIdentityProvenanceSchema.name);
     expect(base.length).toBe(ALL_MIGRATIONS.length - 2);
 
-    // Base (through 085): one classification written the old way, one active lease.
+    // 基线（截至 085）：一个按旧方式写入的分类，一个活跃租约。
     const before = createDb(file);
     migrate(before, base);
     before.prepare(`INSERT INTO stream_items (stream_item_id, ts_emitted, stream_sort_key, source_session, body) VALUES (?, ?, ?, ?, ?)`)
@@ -497,7 +497,7 @@ describe("S02 P1 migration 086 on a populated base database (upgrade + reopen)",
       .run("proj-old", "old-1", "idea", "occ@rig", "2026-09-01T00:00:01.000Z");
     before.close();
 
-    // Upgrade and reopen.
+    // 升级并重开。
     const upgraded = createDb(file);
     migrate(upgraded, ALL_MIGRATIONS);
     upgraded.close();
@@ -521,7 +521,7 @@ describe("S02 P1 migration 086 on a populated base database (upgrade + reopen)",
     reopened.close();
   });
 
-  it("a durable error retry survives close/reopen, and the fence still refuses the pre-restart execution", () => {
+  it("持久错误重试在关闭/重开后仍保留，且隔离仍拒绝重启前执行", () => {
     const file = join(dir, "durable.sqlite");
     let clock = Date.parse("2026-09-27T02:00:00.000Z");
     const now = () => new Date(clock);

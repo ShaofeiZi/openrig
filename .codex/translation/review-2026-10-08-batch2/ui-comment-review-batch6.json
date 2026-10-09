@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:49:02",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch6",
+ "files": 10,
+ "changed": 5,
+ "reviewed_no_change": 5,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/workflow-anti-prose.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "56e3e4cd27bbf2e02d9f840808d9dceb03894151cd6006267d17c53e5385f657",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.3.21/0.4.1.27/0.4.0.1、Slice 24.D、ARIA role=tab、sortFeedByDecisionBand、eventLoop.healthy 保留"
+  },
+  {
+   "path": "packages/ui/test/feed-decision-band-sort.test.ts",
+   "status": "changed",
+   "after_sha256": "8a71ceb6bab9c8e9d6e893a48bc2104af779020092e9c9240284d0dbc8a217cc",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.3.21/0.4.1.27/0.4.0.1、Slice 24.D、ARIA role=tab、sortFeedByDecisionBand、eventLoop.healthy 保留"
+  },
+  {
+   "path": "packages/ui/test/workflow-instances-band.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "9a109913bd6101d146831f5fbacc334c0a9a54efd7ed10add6652bd388f79a41",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.3.21/0.4.1.27/0.4.0.1、Slice 24.D、ARIA role=tab、sortFeedByDecisionBand、eventLoop.healthy 保留"
+  },
+  {
+   "path": "packages/ui/test/topology-view-mode-tabs-trailing.test.tsx",
+   "status": "changed",
+   "after_sha256": "3e15b7173c3dd6511017384c76a8abd574ab821715c2c0d0cb711a6a3d438d69",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.3.21/0.4.1.27/0.4.0.1、Slice 24.D、ARIA role=tab、sortFeedByDecisionBand、eventLoop.healthy 保留"
+  },
+  {
+   "path": "packages/ui/test/design-compliance.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "d6dbfd1d2bccbca339b4afca3212b6a320d0f45559b1a5586b539a1069c2c229",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.3.21/0.4.1.27/0.4.0.1、Slice 24.D、ARIA role=tab、sortFeedByDecisionBand、eventLoop.healthy 保留"
+  },
+  {
+   "path": "packages/ui/test/system-panel-daemon-health.test.tsx",
+   "status": "changed",
+   "after_sha256": "d89bf7828bb16a4b656af53e8c22d3fc1100007d9bf3bc8f8358147b4c7fb39f",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.3.21/0.4.1.27/0.4.0.1、Slice 24.D、ARIA role=tab、sortFeedByDecisionBand、eventLoop.healthy 保留"
+  },
+  {
+   "path": "packages/ui/test/tailwind-foundation.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "c301e031b846a2469ea08c8601e611f1f846ceb25d6d788109a789aac736c848",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.3.21/0.4.1.27/0.4.0.1、Slice 24.D、ARIA role=tab、sortFeedByDecisionBand、eventLoop.healthy 保留"
+  },
+  {
+   "path": "packages/ui/test/agent-spec-validate-flow.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "caef8999e8df5fc7a337cd96d3cc1994c6e1afe915898b028aea89fda375d072",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.3.21/0.4.1.27/0.4.0.1、Slice 24.D、ARIA role=tab、sortFeedByDecisionBand、eventLoop.healthy 保留"
+  },
+  {
+   "path": "packages/ui/test/feed-card-no-source-type-leak.test.tsx",
+   "status": "changed",
+   "after_sha256": "4588a37990746b8ba47489901be71d4f3c73e16964c536125831eaf3c3e7de3c",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.3.21/0.4.1.27/0.4.0.1、Slice 24.D、ARIA role=tab、sortFeedByDecisionBand、eventLoop.healthy 保留"
+  },
+  {
+   "path": "packages/ui/test/progressive-terminal.test.tsx",
+   "status": "changed",
+   "after_sha256": "e309baab4b107f67c617294ac6c3a4afd5beff128c9cf7b49dc9f103408f2123",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.3.21/0.4.1.27/0.4.0.1、Slice 24.D、ARIA role=tab、sortFeedByDecisionBand、eventLoop.healthy 保留"
+  }
+ ]
+}

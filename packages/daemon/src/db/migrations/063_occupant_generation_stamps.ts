@@ -1,25 +1,23 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * GHOST-STAGE (e/Class-B) — occupant-generation stamps on the durable seat-ROLE stores.
+ * GHOST-STAGE（e/Class-B）——持久 seat-ROLE 存储上的 occupant-generation 标记。
  *
- * Class-B stores (queue_items, watchdog_jobs) are keyed by seat NAME (member@rig), which continues
- * across a handover — so a name-scoped drop would neutralize the SUCCESSOR's own legitimate role
- * entries. Only an entry bound to the RETIRING generation's specific in-flight work is a ghost. These
- * columns carry the occupant-generation (atom-B `generation_uuid`) of the CONTEXT-BINDING act, so the
- * invalidator can discriminate the retiree's entries from the successor's by generation, not name.
+ * Class-B 存储（queue_items、watchdog_jobs）以跨 handover 延续的席位名称（member@rig）为键，
+ * 因此按名称范围丢弃会使继任者自身合法的角色条目失效。只有绑定到退役代特定在途工作的条目才是
+ * ghost。这些列保存 CONTEXT-BINDING 操作的 occupant-generation（atom-B `generation_uuid`），
+ * 使 invalidator 能按代而非名称区分退役者与继任者的条目。
  *
- * Stamp the binding act, not merely INSERT (orch ruling): an item MINTED by seat-A gen-X but CLAIMED
- * by seat-B gen-Y needs the CLAIMANT's generation for the ghost test — minting-gen alone re-creates
- * the false-positive.
- *   - queue_items.minting_generation_uuid    — set at INSERT (the creating occupant's gen).
- *   - queue_items.claimed_by_generation_uuid — set at CLAIM, cleared at release (the CLAIMANT's gen;
- *                                              THIS is the queue-item ghost discriminator).
- *   - watchdog_jobs.registered_by_generation_uuid — set at arm (the registering occupant's gen).
+ * 标记绑定操作，而非仅标记 INSERT（编排裁定）：由 seat-A gen-X 铸造、但被 seat-B gen-Y CLAIM
+ * 的条目需要 CLAIMANT 的代来做 ghost 检查；只有 minting-gen 会重现误报。
+ *   - queue_items.minting_generation_uuid——INSERT 时设置（创建 occupant 的代）。
+ *   - queue_items.claimed_by_generation_uuid——CLAIM 时设置，release 时清除（CLAIMANT 的代；
+ *                                              这是 queue-item ghost 判别项）。
+ *   - watchdog_jobs.registered_by_generation_uuid——arm 时设置（注册 occupant 的代）。
  *
- * All NULLABLE + no default: pre-063 rows and un-stamped writers stay NULL, and a NULL generation is
- * UNKNOWN → the invalidator's gen predicate never matches it (never dropped/released on unknown —
- * note-2). Additive ALTERs; defensive column-detect reads keep pre-063 fixtures degrading cleanly.
+ * 全部可空且无默认值：063 之前的行和未标记写入方保持 NULL；NULL 代表示 UNKNOWN，因此
+ * invalidator 的代谓词绝不会匹配（未知时绝不 drop/release——note-2）。使用增量 ALTER；防御性
+ * 列检测读取使 063 之前的 fixture 能干净降级。
  */
 export const occupantGenerationStampsSchema: Migration = {
   name: "063_occupant_generation_stamps.sql",

@@ -1,8 +1,7 @@
-// V1 attempt-3 Phase 3 — feed-classifier tests (SC-15 + SC-17).
+// V1 第三次尝试阶段 3——feed-classifier 测试（SC-15 + SC-17）。
 //
-// SC-17 LOAD-BEARING: SHIPPED cards are synthesized client-side from
-// existing daemon events (queue close + git events). NO new daemon
-// event types (SC-29).
+// SC-17 承重约束：已交付卡片在客户端根据既有后台服务事件（队列关闭 + Git 事件）合成；
+// 不新增后台服务事件类型（SC-29）。
 
 import { describe, it, expect } from "vitest";
 import { classifyFeed } from "../src/lib/feed-classifier.js";
@@ -19,10 +18,9 @@ function evt(type: string, payload: Record<string, unknown> = {}, seq = 1): Acti
 }
 
 describe("classifyFeed — SC-15 5 card types", () => {
-  // OPR.0.4.4.19 FR-3: human-gate is a TIER, never a state. The prior test
-  // pinned the dead `state === "human-gate"` branch (the daemon state enum
-  // never contains it); the fixed branch fires on tier and classifies as
-  // an approval card.
+  // OPR.0.4.4.19 FR-3：human-gate 是层级值，绝不是状态。旧测试锁定了不可达的
+  // `state === "human-gate"` 分支（后台服务状态枚举从不包含该值）；修复后的分支按 tier
+  // 触发，并分类为审批卡片。
   it("queue.item.created with tier=human-gate → approval (FR-3 fixed branch)", () => {
     const cards = classifyFeed([evt("queue.item.created", { tier: "human-gate" })]);
     expect(cards[0]?.kind).toBe("approval");
@@ -51,7 +49,7 @@ describe("classifyFeed — SC-15 5 card types", () => {
       }),
     ]);
     expect(cards[0]?.kind).toBe("progress");
-    expect(cards[0]?.title).toBe("Queue item created: qitem-20260507-abcdef12");
+    expect(cards[0]?.title).toBe("队列事项已创建: qitem-20260507-abcdef12");
     expect(cards[0]?.body).toContain(
       "orch-lead@openrig-velocity -> driver@openrig-velocity",
     );
@@ -94,7 +92,7 @@ describe("classifyFeed — SC-15 5 card types", () => {
       }),
     ]);
     expect(cards[0]?.kind).toBe("shipped");
-    expect(cards[0]?.title).toBe("Queue item shipped: qitem-shipped");
+    expect(cards[0]?.title).toBe("队列事项已交付: qitem-shipped");
     expect(cards[0]?.body).toContain("state=done");
   });
 
@@ -107,7 +105,7 @@ describe("classifyFeed — SC-15 5 card types", () => {
       }),
     ]);
     expect(cards[0]?.kind).toBe("progress");
-    expect(cards[0]?.title).toBe("Queue item handed off: qitem-20260507-handoff");
+    expect(cards[0]?.title).toBe("队列事项已交接: qitem-20260507-handoff");
     expect(cards[0]?.body).toContain(
       "driver@openrig-velocity -> guard@openrig-velocity",
     );
@@ -178,7 +176,7 @@ describe("classifyFeed — SC-15 5 card types", () => {
   });
 });
 
-// OPR.0.4.4.19 FR-1 (AC 3): feed-card titles read the event's summary.
+// OPR.0.4.4.19 FR-1（AC 3）：feed 卡片标题读取事件 summary。
 describe("classifyFeed — FR-1 summary titles", () => {
   it("queue.created event with summary → card title is the summary, not a generic label", () => {
     const cards = classifyFeed([
@@ -201,6 +199,6 @@ describe("classifyFeed — FR-1 summary titles", () => {
         summary: null,
       }),
     ]);
-    expect(cards[0]?.title).toBe("Queue item created: qitem-20260704-nosum");
+    expect(cards[0]?.title).toBe("队列事项已创建: qitem-20260704-nosum");
   });
 });

@@ -1,19 +1,18 @@
-// OPR.0.4.6.WF4 — RENDER-PARITY (PM refined Rule B, 2026-07-07). The two
-// production-UNREACHABLE attention kinds (the no-item ▲ backstop and the S2
-// overdue ● — see PROOF.md for the engine reasons: the 4h hardcoded stuck
-// threshold with no env override, and the exception item born in the SAME
-// failure txn) are proven by CONSTRUCTING the exact row/state and asserting the
-// SAME row.workflow deep-link target + the SAME rendered banner as the LIVE
-// kinds — render-parity, not unit-trust. Q6-P3 anti-prose is asserted across
-// ALL FOUR kinds here (every kind's link resolves from item.workflow only).
+// OPR.0.4.6.WF4——渲染对等（PM 精炼 Rule B，2026-07-07）。两个
+// production 不可达的 attention kind（no-item ▲ 兜底和 S2
+// overdue ●——引擎原因见 PROOF.md：4h 硬编码 stuck 阈值无 env 覆盖，
+// 以及在同一 failure txn 中诞生的 exception 项）通过构造精确行/状态并断言
+// 与 LIVE kind 相同的 row.workflow 深链目标 + 相同渲染 banner 来证明——
+// 渲染对等，而非单元信任。Q6-P3 反散文在此处跨全部四个 kind 断言
+//（每个 kind 的链接仅从 item.workflow 解析）。
 
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, cleanup, fireEvent, waitFor } from "@testing-library/react";
 
-// The NEEDS-YOU chat surface is ProgressiveTerminal (xterm). Mock it so the
-// accordion renders in jsdom without booting a canvas (getContext is
-// unimplemented in jsdom → xterm throws → empty render). Pattern from
-// foryou-bare-approve-chat.test.tsx (OPR.0.4.6.WF4 leg-8 test-only fix).
+// NEEDS-YOU chat 表面是 ProgressiveTerminal（xterm）。mock 它，使
+// accordion 在 jsdom 中渲染而不启动 canvas（jsdom 未实现 getContext
+// → xterm 抛错 → 空渲染）。模式取自
+// foryou-bare-approve-chat.test.tsx（OPR.0.4.6.WF4 leg-8 test-only 修复）。
 vi.mock("../src/components/terminal/ProgressiveTerminal.js", () => ({
   ProgressiveTerminal: () => <div data-testid="mock-progressive-terminal" />,
 }));
@@ -50,10 +49,10 @@ const item = (over: Partial<NeedsYouItem>): NeedsYouItem => ({
   ...over,
 });
 
-// The four kinds, each carrying the Q6 row.workflow pointer. Two are live-
-// reachable (parked gate ● · human-routed ●), two are disclosed-unreachable
-// (orchestrator awareness is live too but grouped here as ▲; the no-item
-// backstop is the unreachable ▲). All must render the SAME deep-link.
+// 四个 kind，各带 Q6 row.workflow 指针。两个 live 可达
+//（parked gate ● · human-routed ●），两个披露为不可达
+//（orchestrator awareness 也 live，但在此归为 ▲；no-item
+// 兜底是不可达 ▲）。全部必须渲染相同深链。
 const FOUR_KINDS: NeedsYouItem[] = [
   item({
     identity: "gate",
@@ -85,10 +84,10 @@ const FOUR_KINDS: NeedsYouItem[] = [
     },
     workflow: { instanceId: "01BACKSTOP", workflowName: "acme-factory" },
   }),
-  // S2 overdue/stuck (production-unreachable — 4h hardcoded threshold, no env
-  // override): its NEEDS-YOU row must ALSO render the SAME deep-link (qa2
-  // re-review #4 — not just the ExceptionBanner). Exact-state row with the
-  // Q6 pointer + the ?step= anchor at the stuck step.
+  // S2 overdue/stuck（production 不可达——4h 硬编码阈值，无 env
+  // 覆盖）：其 NEEDS-YOU 行也必须渲染相同深链（qa2
+  // 复审 #4——不仅 ExceptionBanner）。带 Q6 指针 + stuck step 处
+  // ?step= 锚的精确状态行。
   item({
     identity: "overdue",
     source: "derived",
@@ -121,10 +120,9 @@ function renderAccordion(band: NeedsYouBand) {
   });
   const routeTree = rootRoute.addChildren([indexRoute, instRoute]);
   const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: ["/"] }) });
-  // NeedsYouAccordion calls useInvalidateReview() → useQueryClient(), so the
-  // render needs a QueryClientProvider; without it the component throws and the
-  // band renders empty (OPR.0.4.6.WF4 leg-8 test-only fix; pattern from
-  // rig-graph.test.tsx).
+  // NeedsYouAccordion 调 useInvalidateReview() → useQueryClient()，故
+  // 渲染需要 QueryClientProvider；无它组件抛错且 band 渲染为空
+  //（OPR.0.4.6.WF4 leg-8 test-only 修复；模式取自 rig-graph.test.tsx）。
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return render(
     <QueryClientProvider client={qc}>
@@ -136,18 +134,18 @@ function renderAccordion(band: NeedsYouBand) {
 describe("WF-4 render-parity — the NEEDS-YOU deep-link across ALL FOUR kinds", () => {
   it("every kind renders the SAME row.workflow deep-link target (live ● gate/human + ▲ awareness/backstop + the overdue ● row)", async () => {
     const { getByTestId } = renderAccordion({ items: FOUR_KINDS, provenance: "test" });
-    // TanStack Router resolves the route asynchronously; await the band before
-    // querying rows (OPR.0.4.6.WF4 leg-8 test-only fix; pattern: discovery-overlay).
+    // TanStack Router 异步解析路由；查询行前先 await band
+    //（OPR.0.4.6.WF4 leg-8 test-only 修复；模式：discovery-overlay）。
     await waitFor(() => expect(getByTestId("needs-you-band")).toBeTruthy());
     for (const row of FOUR_KINDS) {
       fireEvent.click(getByTestId(`needs-you-row-${row.identity}`));
       const link = getByTestId(`needs-you-workflow-link-${row.identity}`);
       const href = link.getAttribute("href") ?? "";
-      // SAME structure for every kind: an anchor to the instance route resolved
-      // from item.workflow.instanceId (Q6-P3: never from prose).
+      // 每个 kind 结构相同：到 instance 路由的 anchor，
+      // 从 item.workflow.instanceId 解析（Q6-P3：绝不从散文）。
       expect(href).toContain(`/workflow/instance/${row.workflow!.instanceId}`);
       if (row.workflow!.stepId) expect(href).toContain(`step=${row.workflow!.stepId}`);
-      expect(link.textContent).toContain("View Instance");
+      expect(link.textContent).toContain("查看实例");
     }
   });
 
@@ -159,7 +157,7 @@ describe("WF-4 render-parity — the NEEDS-YOU deep-link across ALL FOUR kinds",
   });
 });
 
-// --- ExceptionBanner render-parity: overdue (disclosed) vs failed (live) ---
+// --- ExceptionBanner 渲染对等：overdue（披露）vs failed（live）---
 
 const EVIDENCE = {
   instanceId: "01OVERDUE",
@@ -201,7 +199,7 @@ describe("WF-4 render-parity — the ExceptionBanner (overdue disclosed vs faile
       <ExceptionBanner instance={overdue} onResume={() => {}} resuming={false} resumeError={null} />,
     );
     const banner = getByTestId("workflow-exception-banner");
-    expect(banner.textContent).toContain("OVERDUE-UNCLAIMED");
+    expect(banner.textContent).toContain("逾期·未认领");
     expect(banner.textContent).toContain("inspector@acme-factory");
   });
 
@@ -210,9 +208,9 @@ describe("WF-4 render-parity — the ExceptionBanner (overdue disclosed vs faile
     const { getByTestId, queryByTestId } = render(
       <ExceptionBanner instance={failed} onResume={() => {}} resuming={false} resumeError={null} />,
     );
-    expect(getByTestId("workflow-exception-banner").textContent).toContain("FAILED");
+    expect(getByTestId("workflow-exception-banner").textContent).toContain("已失败");
     expect(getByTestId("workflow-resume")).toBeTruthy();
-    // route-from-web is deferred — no re-route affordance renders.
+    // route-from-web 延后——无 re-route 可点击项渲染。
     expect(queryByTestId("workflow-route")).toBeNull();
   });
 });

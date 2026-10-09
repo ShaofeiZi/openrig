@@ -1,9 +1,9 @@
-// OPR.0.4.3.02 — CLI half of the session-admin mutation auth guard.
-// The three CLI callers of the newly-guarded mutating routes must attach the
-// terminal bearer via terminalAuthHeaders() (as `rig seat set-resume-token`
-// already does), else `rig reconcile-session` / `rig unclaim` /
-// `rig seat clear-attention` would 401 against a non-loopback daemon — the
-// exact mode this slice protects. Mirrors seat-set-resume-token.test.ts.
+// OPR.0.4.3.02——session-admin mutation auth 守卫的 CLI 半边。
+// 新受保护 mutation 路由的三个 CLI 调用者必须经 terminalAuthHeaders()
+// 附 terminal bearer（如 `rig seat set-resume-token` 已做），否则
+// `rig reconcile-session` / `rig unclaim` / `rig seat clear-attention`
+// 会对非 loopback daemon 401——正是本 slice 保护的模式。镜像
+// seat-set-resume-token.test.ts。
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { reconcileSessionCommand } from "../src/commands/reconcile-session.js";

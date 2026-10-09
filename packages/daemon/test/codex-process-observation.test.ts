@@ -10,9 +10,9 @@ afterEach(() => {
   if (scratch) fs.rmSync(scratch, { recursive: true, force: true });
 });
 
-it("reads foreground identity through the real async executable and parser path", async () => {
+it("通过真实异步可执行程序与解析器路径读取前台身份", async () => {
   scratch = fs.mkdtempSync(path.join(os.tmpdir(), "codex-process-read-"));
-  // A hermetic ps executable; no provider, tmux or daemon is launched.
+  // 隔离的 ps 可执行程序；不启动 provider、tmux 或守护进程。
   const output = [
     "PID PPID PGID TPGID UCOMM LSTART COMMAND",
     "101 1 101 102 zsh Sat Jan  1 12:00:00 2000 -zsh",
@@ -39,7 +39,7 @@ it("reads foreground identity through the real async executable and parser path"
   expect(await defaultListProcesses()).toEqual([]);
 });
 
-it("reads this test process with the installed ps columns, without starting a provider", async () => {
+it("使用已安装的 ps 列读取当前测试进程，且不启动 provider", async () => {
   const rows = await defaultListProcesses();
   const self = rows.find((r) => r.pid === process.pid);
   expect(self).toBeDefined();

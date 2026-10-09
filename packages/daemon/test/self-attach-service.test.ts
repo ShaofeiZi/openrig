@@ -55,7 +55,7 @@ describe("SelfAttachService", () => {
     db.close();
   });
 
-  it("attachToNode binds the current raw agent as external_cli", async () => {
+  it("attachToNode 将当前 raw agent 绑定为 external_cli", async () => {
     const rig = rigRepo.createRig("rigged-buildout");
     const node = rigRepo.addNode(rig.id, "orch1.lead", {
       runtime: "claude-code",
@@ -90,7 +90,7 @@ describe("SelfAttachService", () => {
     expect(sessions[0]?.sessionName).toBe("orch1-lead@rigged-buildout");
   });
 
-  it("attachToNode rejects runtime mismatch for an existing node", async () => {
+  it("attachToNode 拒绝现有 node 的 runtime mismatch", async () => {
     const rig = rigRepo.createRig("rigged-buildout");
     rigRepo.addNode(rig.id, "orch1.lead", { runtime: "claude-code" });
 
@@ -105,7 +105,7 @@ describe("SelfAttachService", () => {
     expect(result.code).toBe("runtime_mismatch");
   });
 
-  it("attachToPod creates a new pod member with an external_cli binding", async () => {
+  it("attachToPod 创建带 external_cli binding 的新 pod member", async () => {
     const rig = rigRepo.createRig("rigged-buildout");
     const pod = podRepo.createPod(rig.id, "orch1", "Orchestrator");
 
@@ -132,7 +132,7 @@ describe("SelfAttachService", () => {
     expect(binding?.externalSessionName).toBe("orch1-lead@rigged-buildout");
   });
 
-  it("attachToNode can self-attach from tmux without discovery", async () => {
+  it("attachToNode 无需 discovery 即可从 tmux self-attach", async () => {
     const rig = rigRepo.createRig("rigged-buildout");
     const node = rigRepo.addNode(rig.id, "dev1.impl2", {
       runtime: "claude-code",
@@ -163,7 +163,7 @@ describe("SelfAttachService", () => {
     expect(binding?.externalSessionName).toBeNull();
   });
 
-  it("attachToNode starts transcript capture when self-attaching from tmux", async () => {
+  it("attachToNode 从 tmux self-attach 时启动 transcript capture", async () => {
     const rig = rigRepo.createRig("rigged-buildout");
     rigRepo.addNode(rig.id, "dev1.impl2", {
       runtime: "claude-code",
@@ -182,19 +182,17 @@ describe("SelfAttachService", () => {
     });
 
     expect(result.ok).toBe(true);
-    // V1 pre-release Item 1: transcript capture path now starts a
-    // rotation timer (capture-pane overwrite) instead of pipe-pane.
-    // The rotation module's first tick calls capturePaneContent on the
-    // adapter; with capturePaneContent unstubbed in the smoke harness,
-    // the call is best-effort silent. Test the integration boundary
-    // via getActiveRotationCount.
+    // V1 pre-release 第 1 项：transcript capture 路径现在启动 rotation timer
+    //（capture-pane overwrite），而非 pipe-pane。rotation module 首次 tick 会调用 adapter 上的
+    // capturePaneContent；smoke harness 未 stub capturePaneContent 时，该调用以 best-effort 静默处理。
+    // 通过 getActiveRotationCount 验证 integration boundary。
     const { getActiveRotationCount, clearAllTranscriptRotationsForTest } =
       await import("../src/domain/transcript-rotation.js");
     expect(getActiveRotationCount()).toBeGreaterThan(0);
     clearAllTranscriptRotationsForTest();
   });
 
-  it("attachToNode provisions Claude context collection when self-attaching from tmux", async () => {
+  it("attachToNode 从 tmux self-attach 时 provision Claude context collection", async () => {
     const rig = rigRepo.createRig("rigged-buildout");
     rigRepo.addNode(rig.id, "dev1.impl2", {
       runtime: "claude-code",

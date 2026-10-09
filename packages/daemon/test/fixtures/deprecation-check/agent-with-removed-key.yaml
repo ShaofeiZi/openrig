@@ -1,9 +1,7 @@
-# bug-fix slice deprecation-check-keys-widening — fixture.
-# Reproduces a deprecated-KEY-path case: resources.hooks is removed
-# from the spec per plugin-primitive Phase 3a. validateAgentSpec must
-# reject this (line 191 of agent-manifest.ts emits the explicit
-# migration error). Also asserted by the DEPRECATED_KEY_PATHS check
-# directly so we catch the key regardless of validator behavior. T6.
+# bug-fix 切片 deprecation-check-keys-widening——fixture。
+# 复现已弃用 key 路径：plugin-primitive Phase 3a 已从 spec 中移除 resources.hooks。
+# validateAgentSpec 必须拒绝它（agent-manifest.ts 第 191 行会输出显式迁移错误）。
+# DEPRECATED_KEY_PATHS 也会直接断言，从而无论验证器行为如何都能捕获此 key。T6。
 name: agent-with-removed-key
 version: "1.0"
 

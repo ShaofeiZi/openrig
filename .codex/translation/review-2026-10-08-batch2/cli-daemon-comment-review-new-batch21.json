@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch21",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/daemon/test/opr-0.4.1.31-node-cmux-no-current-workspace.test.ts",
+      "before_sha256_16": "141a8e74cac55ea0",
+      "after_sha256_16": "2f25f94bf2984d86",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/codex-update-input.test.ts",
+      "before_sha256_16": "1d949e1bf3ba1ac2",
+      "after_sha256_16": "ac2501b1c48ef590",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/workspace-max-files-validation.test.ts",
+      "before_sha256_16": "93de948350c902f8",
+      "after_sha256_16": "50ef256800825094",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/workflow-status.test.ts",
+      "before_sha256_16": "bc355d897aed39a1",
+      "after_sha256_16": "9488e6030008b270",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/up-restore-decision.test.ts",
+      "before_sha256_16": "ae24d7ae7468ddc8",
+      "after_sha256_16": "e1da468697314efa",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

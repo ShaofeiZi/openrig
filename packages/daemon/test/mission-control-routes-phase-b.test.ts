@@ -114,7 +114,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
   afterEach(() => db.close());
 
   describe("Bearer-token gate on POST /action", () => {
-    it("returns 401 when bearer required but Authorization missing", async () => {
+    it("要求 bearer 但缺少 Authorization 时返回 401", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: "secret", withDispatcher: false });
       const created = await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body: "x" });
       const res = await app.request("/api/mission-control/action", {
@@ -127,7 +127,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
       expect(body.error).toBe("unauthorized");
     });
 
-    it("returns 200 when correct bearer provided", async () => {
+    it("提供正确 bearer 时返回 200", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: "secret", withDispatcher: false });
       const created = await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body: "x" });
       const res = await app.request("/api/mission-control/action", {
@@ -138,7 +138,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
       expect(res.status).toBe(200);
     });
 
-    it("returns 200 on writes when bearerToken=null (loopback-only mode passes through)", async () => {
+    it("bearerToken=null 时写入返回 200（仅 loopback 模式放行）", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: null, withDispatcher: false });
       const created = await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body: "x" });
       const res = await app.request("/api/mission-control/action", {
@@ -149,7 +149,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
       expect(res.status).toBe(200);
     });
 
-    it("Reads (GET /views/:name) remain UNgated even when bearerToken set (Phase B v0 default per planner brief)", async () => {
+    it("即使设置 bearerToken，读取 GET /views/:name 仍不受门控（按规划简报的 Phase B v0 默认）", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: "secret", withDispatcher: false });
       const res = await app.request("/api/mission-control/views/active-work");
       expect(res.status).toBe(200);
@@ -157,7 +157,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
   });
 
   describe("POST /action client-error mapping", () => {
-    it("resolve without decision returns 400 decision_required", async () => {
+    it("resolve 缺少 decision 时返回 400 decision_required", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: null, withDispatcher: false });
       const created = await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body: "x" });
       const res = await app.request("/api/mission-control/action", {
@@ -174,7 +174,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
       expect(body.error).toBe("decision_required");
     });
 
-    it("resolve against a non-leg-1-parked qitem returns 409 qitem_not_leg1_parked", async () => {
+    it("对非 leg-1 停驻 qitem 执行 resolve 时返回 409 qitem_not_leg1_parked", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: null, withDispatcher: false });
       const created = await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body: "x" });
       const res = await app.request("/api/mission-control/action", {
@@ -193,9 +193,9 @@ describe("mission-control routes Phase B (PL-005)", () => {
   });
 
   describe("GET /audit", () => {
-    it("returns rows + pagination metadata", async () => {
+    it("返回记录和分页元数据", async () => {
       const { app, actionLog } = buildApp({ bus, queueRepo, bearerToken: null, withDispatcher: false });
-      // Seed an action.
+      // 播种一条 action。
       const created = await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body: "x" });
       actionLog.record({
         actionVerb: "approve",
@@ -222,7 +222,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
       expect(body.rows[0]!.qitemId).toBe(a.qitemId);
     });
 
-    it("returns 500 on unknown action_verb (audit-browse rejects with structured error)", async () => {
+    it("未知 action_verb 返回 500（audit-browse 以结构化错误拒绝）", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: null, withDispatcher: false });
       const res = await app.request("/api/mission-control/audit?action_verb=totally-bogus");
       expect(res.status).toBe(500);
@@ -230,7 +230,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
       expect(body.error).toBe("audit_query_failed");
     });
 
-    it("audit GET is read-only: POST returns 404 (route not registered for POST)", async () => {
+    it("audit GET 只读：POST 返回 404（路由未注册 POST）", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: null, withDispatcher: false });
       const res = await app.request("/api/mission-control/audit", { method: "POST" });
       expect(res.status).toBe(404);
@@ -238,7 +238,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
   });
 
   describe("POST /notifications/test", () => {
-    it("returns 503 when dispatcher not configured", async () => {
+    it("dispatcher 未配置时返回 503", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: null, withDispatcher: false });
       const res = await app.request("/api/mission-control/notifications/test", {
         method: "POST",
@@ -249,7 +249,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
       expect(body.error).toBe("notifications_unconfigured");
     });
 
-    it("returns 200 + dispatches synthetic notification when dispatcher wired", async () => {
+    it("dispatcher 已接线时返回 200 并派发合成通知", async () => {
       const { app, adapter } = buildApp({
         bus,
         queueRepo,
@@ -267,7 +267,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
       expect(adapter!.calls).toHaveLength(1);
     });
 
-    it("notifications/test requires bearer when configured", async () => {
+    it("配置 bearer 时 notifications/test 要求认证", async () => {
       const { app } = buildApp({
         bus,
         queueRepo,
@@ -282,7 +282,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
   });
 
   describe("Route-order discipline", () => {
-    it("GET /destinations returns phone-friendly handoff candidates from queue-observed sessions", async () => {
+    it("GET /destinations 从队列观测到的会话返回适合手机展示的交接候选", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: "secret", withDispatcher: false });
       await queueRepo.create({
         sourceSession: "velocity.qa@openrig-velocity",
@@ -303,7 +303,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
       expect(body.destinations.every((d) => d.label.length > 0)).toBe(true);
     });
 
-    it("/audit literal path does NOT shadow /views/:view-name", async () => {
+    it("字面路径 /audit 不会遮蔽 /views/:view-name", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: null, withDispatcher: false });
       const auditRes = await app.request("/api/mission-control/audit");
       const viewRes = await app.request("/api/mission-control/views/active-work");
@@ -315,7 +315,7 @@ describe("mission-control routes Phase B (PL-005)", () => {
       expect(viewBody.viewName).toBe("active-work");
     });
 
-    it("/notifications/test literal does NOT shadow other POST routes", async () => {
+    it("字面路径 /notifications/test 不会遮蔽其他 POST 路由", async () => {
       const { app } = buildApp({ bus, queueRepo, bearerToken: null, withDispatcher: false });
       const created = await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body: "x" });
       const actionRes = await app.request("/api/mission-control/action", {

@@ -48,13 +48,13 @@ function PodGroupNode({
       }`}
     >
       <div className="absolute left-4 top-3 inline-flex items-center font-mono text-[12px] font-bold leading-none tracking-[0.08em] text-on-surface">
-        {`${label} pod`}
+        {`${label} 容器组`}
       </div>
     </div>
   );
 }
 
-/** Discovered (unmanaged) node rendered with dashed border */
+/** 以虚线边框渲染已发现但未受管的节点。 */
 function DiscoveredNode({ data }: { data: { session: DiscoveredSession } }) {
   const s = data.session;
   return (
@@ -81,7 +81,7 @@ const edgeTypes: EdgeTypes = {
   hotPotato: HotPotatoEdge,
 };
 
-/** Wireframe ghost for empty topology */
+/** 空拓扑的线框占位图。 */
 function EmptyTopologyGhost() {
   return (
     <div className="flex flex-col items-center justify-center h-full relative text-foreground-muted" data-testid="empty-topology">
@@ -93,7 +93,7 @@ function EmptyTopologyGhost() {
         <line x1="200" y1="100" x2="300" y2="180" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" />
       </svg>
       <div className="relative z-10 text-center">
-        <h2 className="text-headline-md uppercase">EMPTY TOPOLOGY</h2>
+        <h2 className="text-headline-md uppercase">空拓扑</h2>
       </div>
     </div>
   );
@@ -113,11 +113,10 @@ export function RigGraph({
   rigId: string | null;
   rigName?: string | null;
   showDiscovered?: boolean;
-  /** V1 polish slice Phase 5.1 P5.1-5: pod-scope filter. When set, the
-   *  graph renders only nodes/edges/podGroups whose pod matches this
-   *  name (matched via inferPodName + node.podId/podNamespace). Other
-   *  rig nodes are filtered out so the graph reads as a single-pod
-   *  subset. Used by /topology/pod/$rigId/$podName graph view-mode. */
+  /** V1 打磨切片第 5.1 阶段 P5.1-5：Pod 范围筛选。设置后，图中只渲染 Pod 名称
+   * 匹配的节点、边和 podGroups（通过 inferPodName 与 node.podId/podNamespace 匹配）。
+   * 其他工作组节点会被滤除，使图呈现为单 Pod 子集。供
+   * /topology/pod/$rigId/$podName 图视图模式使用。 */
   podScope?: string;
 }) {
   const { data, isPending: loading, error: queryError } = useRigGraph(rigId ?? "");
@@ -125,9 +124,8 @@ export function RigGraph({
   const allRawNodes = data?.nodes ?? [];
   const allRawEdges = data?.edges ?? [];
 
-  // P5.1-5 pod-scope filter: when podScope set, restrict nodes to those
-  // whose pod matches; restrict edges to those between filtered nodes.
-  // Hook data is typed as unknown[]; cast inline to known shape.
+  // P5.1-5 Pod 范围筛选：设置 podScope 后，只保留 Pod 匹配的节点，以及筛选后节点之间的边。
+  // Hook 数据类型为 unknown[]，此处行内转换为已知形态。
   const { rawNodes, rawEdges } = useMemo(() => {
     if (!podScope) return { rawNodes: allRawNodes, rawEdges: allRawEdges };
     type RigNodeShape = {
@@ -160,18 +158,17 @@ export function RigGraph({
   const error = queryError?.message ?? null;
   const { reconnecting } = useRigEvents(rigId);
   const reducedMotion = usePrefersReducedMotion();
-  // OPR.0.4.6.MH2 rev1-r2 B1: cmux focus is a LOCAL session action; under a
-  // remote selection the node click still navigates (read drill-in) but the
-  // bare-local focus POST must never fire.
+  // OPR.0.4.6.MH2 rev1-r2 B1：cmux 聚焦是本地会话操作；选择远程主机时，点击节点仍会
+  // 导航进入只读详情，但绝不能发出裸本地聚焦 POST。
   const graphIsRemote = useSelectedHostId() !== LOCAL_HOST_ID;
   const [focusMessage, setFocusMessage] = useState<FocusMessage | null>(null);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Entrance animation tracking: keyed by rigId, fires once per navigation
+  // 进入动画跟踪：以 rigId 为键，每次导航只触发一次。
   const animatedRigRef = useRef<string | null>(null);
   const shouldAnimate = rigId !== null && animatedRigRef.current !== rigId;
 
-  // Mark animation as done after first render
+  // 首次渲染后将动画标记为完成。
   useEffect(() => {
     if (rigId && rawNodes.length > 0 && animatedRigRef.current !== rigId) {
       animatedRigRef.current = rigId;
@@ -242,7 +239,7 @@ export function RigGraph({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawEdges, shouldAnimate, rawNodes.length]);
 
-  // Apply tree layout + entrance animation to nodes
+  // 对节点应用树形布局和进入动画。
   const podMetaById = useMemo(() => {
     const meta = new Map<string, { displayName: string | null; namespace: string | null }>();
     for (const node of rawNodes as Node[]) {
@@ -333,7 +330,7 @@ export function RigGraph({
       },
     }));
 
-    // Add discovered sessions as dashed nodes below managed ones
+    // 在受管节点下方，以虚线节点加入已发现会话。
     const maxY = managed.reduce((max, n) => Math.max(max, (n.position?.y ?? 0)), 0);
     const discovered = discoveredSessions.map((s, i) => ({
       id: `discovered-${s.id}`,
@@ -354,9 +351,8 @@ export function RigGraph({
         ...(node.data ?? {}),
         activityRing: topologyActivity.getNodeActivity(node.id, data),
         reducedMotion,
-        // OPR.0.4.6.MH2 rev1-r2 B1: rides the same enrichment channel as
-        // reducedMotion so RigNode stays hook-free (standalone harnesses
-        // need no QueryClientProvider).
+        // OPR.0.4.6.MH2 rev1-r2 B1：与 reducedMotion 共用同一充实通道，使 RigNode 不使用 hook；
+        // 独立测试装具因而无须 QueryClientProvider。
         remoteReadonly: graphIsRemote,
       },
     };
@@ -367,11 +363,10 @@ export function RigGraph({
     [rfEdges, topologyActivity.packets, reducedMotion],
   );
 
-  // V1 polish slice Phase 5.1 P5.1-2 + DRIFT P5.1-D2: graph node click
-  // navigates to /topology/seat/$rigId/$logicalId center page (matches
-  // Explorer tree click + table row click contract). Replaces legacy
-  // setSelection({type:'seat-detail'}) drawer-open behavior. The
-  // useNodeSelection alias is fully retired post-Phase 5.1.
+  // V1 打磨切片第 5.1 阶段 P5.1-2 + DRIFT P5.1-D2：点击图节点会导航到
+  // /topology/seat/$rigId/$logicalId 中心页，与 Explorer 目录树和表格行点击契约一致。
+  // 它替代旧的 setSelection({type:'seat-detail'}) 打开抽屉行为；第 5.1 阶段后已完全弃用
+  // useNodeSelection 别名。
   const navigate = useNavigate();
 
   const onNodeClick: NodeMouseHandler = useCallback(
@@ -379,9 +374,8 @@ export function RigGraph({
       if (!rigId) return;
 
       if (placementMode) {
-        // OPR.0.4.6.MH2 rev1-r2 re-verdict B1: placement targets feed the
-        // LOCAL discovery bind/adopt mutation — a remote-rendered node/pod
-        // must never become a placement target.
+        // OPR.0.4.6.MH2 rev1-r2 再裁定 B1：放置目标会供给本地发现绑定/接纳变更，
+        // 因此远程渲染的节点或 Pod 绝不能成为放置目标。
         if (graphIsRemote) {
           return;
         }
@@ -397,7 +391,7 @@ export function RigGraph({
             podNamespace: podMeta?.namespace ?? null,
             podLabel: podMeta?.displayName ?? null,
             eligible,
-            ...(eligible ? {} : { reason: "This pod cannot receive a new node yet." }),
+            ...(eligible ? {} : { reason: "此容器组暂不可接收新节点。" }),
           });
           return;
         }
@@ -414,16 +408,15 @@ export function RigGraph({
             rigId,
             logicalId: nodeData.logicalId,
             eligible: available,
-            ...(available ? {} : { reason: "This node is already claimed." }),
+            ...(available ? {} : { reason: "此节点已被占用。" }),
           });
           return;
         }
       }
 
       if (node.type === "podGroup" || node.type === "group") {
-        // Phase 4 P4-5: 'rig' kind retired from DrawerSelection;
-        // pod-group click is a no-op at the graph level (pods open
-        // via Explorer tree's /topology/pod/$rigId/$podName link).
+        // 第 4 阶段 P4-5：DrawerSelection 已弃用 'rig' 类型；在图层面点击 Pod 组不执行操作，
+        // Pod 通过 Explorer 目录树的 /topology/pod/$rigId/$podName 链接打开。
         return;
       }
 
@@ -432,9 +425,8 @@ export function RigGraph({
         binding: { cmuxSurface?: string | null } | null;
       };
 
-      // V1 polish slice Phase 5.1 P5.1-2: navigate to center page
-      // (canonical agent-detail = LiveNodeDetails). Parity with Explorer
-      // tree click + topology table row click (P5.1-7).
+      // V1 打磨切片第 5.1 阶段 P5.1-2：导航到中心页，规范智能体详情为 LiveNodeDetails。
+      // 与 Explorer 目录树点击和拓扑表格行点击保持一致（P5.1-7）。
       navigate({
         to: "/topology/seat/$rigId/$logicalId",
         params: { rigId, logicalId: encodeURIComponent(nodeData.logicalId) },
@@ -445,7 +437,7 @@ export function RigGraph({
       }
 
       if (!nodeData.binding?.cmuxSurface) {
-        showFocusMessage({ text: "Not bound to cmux surface", type: "info" });
+        showFocusMessage({ text: "未绑定到 cmux 界面", type: "info" });
         return;
       }
 
@@ -456,28 +448,28 @@ export function RigGraph({
         );
 
         if (!res.ok) {
-          showFocusMessage({ text: "Focus failed", type: "error" });
+          showFocusMessage({ text: "聚焦失败", type: "error" });
           return;
         }
 
         const result = await res.json();
 
         if (result.ok === false && result.code === "unavailable") {
-          showFocusMessage({ text: "cmux not connected", type: "error" });
+          showFocusMessage({ text: "cmux 未连接", type: "error" });
         } else if (result.ok) {
-          showFocusMessage({ text: "Focused", type: "success" });
+          showFocusMessage({ text: "已聚焦", type: "success" });
         } else {
-          showFocusMessage({ text: "Focus failed", type: "error" });
+          showFocusMessage({ text: "聚焦失败", type: "error" });
         }
       } catch {
-        showFocusMessage({ text: "Focus failed", type: "error" });
+        showFocusMessage({ text: "聚焦失败", type: "error" });
       }
     },
     [placementMode, podMetaById, rigId, setPlacementTarget, navigate, setSelection, showFocusMessage, graphIsRemote]
   );
 
   if (rigId === null) {
-    return <div className="p-spacing-6 text-foreground-muted">No rig selected</div>;
+    return <div className="p-spacing-6 text-foreground-muted">未选择工作组</div>;
   }
 
   if (loading) {
@@ -493,7 +485,7 @@ export function RigGraph({
     return (
       <div className="p-spacing-6">
         <Alert data-testid="graph-error">
-          <AlertDescription>Error: {error}</AlertDescription>
+          <AlertDescription>错误：{error}</AlertDescription>
         </Alert>
       </div>
     );
@@ -518,7 +510,7 @@ export function RigGraph({
       {reconnecting && (
         <div className="absolute top-spacing-4 right-spacing-4 z-20">
           <Alert>
-            <AlertDescription className="text-warning">Live updates disconnected from daemon - reconnecting...</AlertDescription>
+            <AlertDescription className="text-warning">实时更新已与后台服务断开——正在重连…</AlertDescription>
           </Alert>
         </div>
       )}
@@ -536,7 +528,7 @@ export function RigGraph({
           data-testid="graph-placement-banner"
           className="absolute top-spacing-4 left-1/2 z-20 -translate-x-1/2 border border-emerald-300/90 bg-[rgba(236,253,245,0.92)] px-3.5 py-2 font-mono text-[10px] text-emerald-950 shadow-[0_12px_28px_rgba(34,197,94,0.14)] backdrop-blur-sm"
         >
-          PLACEMENT MODE / click an available node to bind, or click a pod to add a new node.
+          放置模式 / 点击可用节点进行绑定，或点击容器组以添加新节点。
         </div>
       )}
       <ReactFlow

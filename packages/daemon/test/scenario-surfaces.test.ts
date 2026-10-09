@@ -17,37 +17,36 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const RIG_BIN = resolve(HERE, "../../cli/dist/bin-wrapper.js");
 const realBaseEnv = () => ({ HOME: process.env.HOME, PATH: process.env.PATH, TERM: "xterm" });
 
-// Slice 51-02 — surface readers: read each shipped-observable surface via the
-// shipped `rig` invocation and parse it into the observable the runner asserts
-// on. `proof` is RESERVED at the format level (PM lock amendment, ruling row
-// qitem-20260811092250-a80735bc) — the validator rejects it at load, and the
-// reader keeps a defense-in-depth unbound error for a runtime-smuggled value.
+// Slice 51-02——surface reader：通过已发布的 `rig` 调用读取每个可观察 surface，并解析为 runner
+// 断言的 observable。`proof` 在格式层被保留（PM lock 修正，裁定行
+// qitem-20260811092250-a80735bc）；validator 在加载时拒绝它，reader 则为 runtime 偷渡值保留
+// 纵深防御的 unbound 错误。
 
-describe("surface readers — reserved-proof defense-in-depth + dispatch (pure)", () => {
+describe("surface reader——reserved-proof 纵深防御 + dispatch（纯）", () => {
   const ctx: SurfaceContext = { rigBin: RIG_BIN, readEnv: {}, baseUrl: "http://127.0.0.1:1" };
 
-  it("a runtime-smuggled 'proof' read still FAILS LOUD with a named UnboundSurfaceError (defense-in-depth)", async () => {
-    // "proof" left the ExpectSurface type (RESERVED); only a cast can reach here.
+  it("runtime 偷渡的 'proof' 读取仍以具名 UnboundSurfaceError 明确失败（纵深防御）", async () => {
+    // "proof" 已离开 ExpectSurface 类型（RESERVED），只有类型转换能到达此处。
     const smuggled = "proof" as never;
     await expect(readSurface(smuggled, ctx)).rejects.toBeInstanceOf(UnboundSurfaceError);
     let msg = "";
     try { await readSurface(smuggled, ctx); } catch (e) { msg = (e as Error).message; }
     expect(msg).toContain("proof");
-    expect(msg.toLowerCase()).toContain("unbound");
-    // it must NOT claim success or return a value
+    expect(msg).toContain("未绑定");
+    // 不得声称成功或返回值。
   });
 
-  it("readSurface(unknown surface) throws (never silently skips)", async () => {
+  it("readSurface 遇到未知 surface 时抛错（绝不静默跳过）", async () => {
     await expect(readSurface("database" as never, ctx)).rejects.toThrow();
   });
 });
 
-describe("surface readers — tui_socket `state` query (fake unix socket)", () => {
+describe("surface reader——tui_socket `state` 查询（虚假 unix socket）", () => {
   const dirs: string[] = [];
   afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }); });
 
-  it("connects, sends exactly `state`, and parses the one-line JSON reply", async () => {
-    // Keep the socket path SHORT (sun_path ~104-byte cap): tmpdir + short name.
+  it("连接、准确发送 `state` 并解析单行 JSON 回复", async () => {
+    // 保持 socket 路径简短（sun_path 上限约 104 字节）：tmpdir + 短名称。
     const d = mkdtempSync(join(tmpdir(), "ts-"));
     dirs.push(d);
     const sockPath = join(d, "t.sock");
@@ -77,7 +76,7 @@ describe("surface readers — tui_socket `state` query (fake unix socket)", () =
   });
 });
 
-describe("surface readers — live daemon (integration)", () => {
+describe("surface reader——实时后台服务（集成）", () => {
   let scaffold: HermeticScaffold | undefined;
   let daemon: ScenarioDaemon | undefined;
   afterEach(async () => {
@@ -86,7 +85,7 @@ describe("surface readers — live daemon (integration)", () => {
     daemon = undefined; scaffold = undefined;
   });
 
-  it("ps and queue readers return parsed bare arrays from the scenario-local daemon", async () => {
+  it("ps 与 queue reader 从 scenario 本地后台服务返回解析后的裸数组", async () => {
     scaffold = prepareHermeticEnv({ baseEnv: realBaseEnv() });
     daemon = await spawnScenarioDaemon(scaffold, { rigBin: RIG_BIN });
     const ctx: SurfaceContext = { rigBin: RIG_BIN, readEnv: daemon.readEnv, baseUrl: daemon.baseUrl };
@@ -97,17 +96,15 @@ describe("surface readers — live daemon (integration)", () => {
     expect(Array.isArray(queue)).toBe(true);
   }, 60_000);
 
-  // Guard finding 1 (false-green): the transcript reader emitted `--tail --json`,
-  // but `--tail <lines>` takes a REQUIRED value, so Commander consumed "--json"
-  // AS the tail value ({"tail":"--json"}) and JSON mode was never set. The
-  // containsMatch unit pin never crossed this reader/CLI boundary, so "D11 covers
-  // transcript" was false for transcript. This crosses it for real.
-  it("the transcript reader reaches JSON mode at the REAL CLI boundary (not human text)", async () => {
+  // 守卫发现 1（假绿）：transcript reader 发出 `--tail --json`，但 `--tail <lines>` 需要值，因此
+  // Commander 把 "--json" 当作 tail 值（{"tail":"--json"}），JSON mode 从未启用。containsMatch
+  // 单元固定项没有跨越 reader/CLI 边界，所以“D11 覆盖 transcript”对 transcript 并不成立。此测试
+  // 真正跨越该边界。
+  it("transcript reader 在真实 CLI 边界进入 JSON mode（而非人类文本）", async () => {
     scaffold = prepareHermeticEnv({ baseEnv: realBaseEnv() });
     daemon = await spawnScenarioDaemon(scaffold, { rigBin: RIG_BIN });
 
-    // Drive the shipped CLI with the reader's OWN argv, then assert on the effect:
-    // stdout must PARSE as JSON. Human text parses as nothing.
+    // 使用 reader 自己的 argv 驱动已发布 CLI，再断言效果：stdout 必须可解析为 JSON；人类文本无法解析。
     const argv = transcriptReadArgv("no-such-seat@scn-none");
     expect(argv).toContain("--json");
     const tailIdx = argv.indexOf("--tail");
@@ -117,8 +114,7 @@ describe("surface readers — live daemon (integration)", () => {
     const r = await runRig(argv, daemon.readEnv, RIG_BIN);
     expect(() => JSON.parse(r.stdout)).not.toThrow();
 
-    // Negative control: the OLD argv shape does NOT reach JSON mode — proving the
-    // discriminator can actually tell the two apart.
+    // 负对照：旧 argv 结构无法进入 JSON mode，证明判别项确实能区分二者。
     const broken = ["transcript", "no-such-seat@scn-none", "--tail", "--json"];
     const rBroken = await runRig(broken, daemon.readEnv, RIG_BIN);
     let brokenIsJson = true;

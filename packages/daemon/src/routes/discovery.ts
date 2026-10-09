@@ -21,18 +21,18 @@ function getDeps(c: { get: (key: string) => unknown }) {
   };
 }
 
-// POST /api/discovery/scan — trigger one-shot scan
+// POST /api/discovery/scan——触发一次性扫描
 discoveryRoutes.post("/scan", async (c) => {
   const { discoveryCoordinator } = getDeps(c);
   try {
     const sessions = await discoveryCoordinator.scanOnce();
     return c.json({ sessions }, 200);
   } catch (err) {
-    return c.json({ error: (err as Error).message ?? "scan failed" }, 500);
+    return c.json({ error: (err as Error).message ?? "扫描失败" }, 500);
   }
 });
 
-// GET /api/discovery — list discovered sessions
+// GET /api/discovery——列出已发现的会话
 discoveryRoutes.get("/", (c) => {
   const { discoveryRepo } = getDeps(c);
   const status = c.req.query("status") as "active" | "vanished" | "claimed" | undefined;
@@ -55,16 +55,16 @@ discoveryRoutes.get("/", (c) => {
   return c.json(sessions);
 });
 
-// GET /api/discovery/:id — detail
+// GET /api/discovery/:id——详情
 discoveryRoutes.get("/:id", (c) => {
   const { discoveryRepo } = getDeps(c);
   const id = c.req.param("id")!;
   const session = discoveryRepo.getDiscoveredSession(id);
-  if (!session) return c.json({ error: "Discovered session not found" }, 404);
+  if (!session) return c.json({ error: "未找到已发现的会话" }, 404);
   return c.json(session);
 });
 
-// POST /api/discovery/draft-rig — generate candidate rig spec from discovered sessions
+// POST /api/discovery/draft-rig——从已发现会话生成候选工作组 spec
 discoveryRoutes.post("/draft-rig", (c) => {
   const { discoveryRepo } = getDeps(c);
   const sessions = discoveryRepo.listDiscovered("active");
@@ -73,7 +73,7 @@ discoveryRoutes.post("/draft-rig", (c) => {
   return c.body(result.yaml);
 });
 
-// POST /api/discovery/:id/bind — unified bind: attach to existing node OR create in pod
+// POST /api/discovery/:id/bind——统一 bind：挂到既有节点，或在 pod 中创建
 discoveryRoutes.post("/:id/bind", async (c) => {
   const { claimService } = getDeps(c);
   const id = c.req.param("id")!;
@@ -84,31 +84,31 @@ discoveryRoutes.post("/:id/bind", async (c) => {
   const memberName = typeof body["memberName"] === "string" ? body["memberName"] : "";
 
   if (!rigId) {
-    return c.json({ error: "rigId is required" }, 400);
+    return c.json({ error: "rigId 为必填项" }, 400);
   }
 
-  // XOR mode validation: logicalId OR (podNamespace + memberName), not both, not neither
+  // XOR 模式校验：logicalId 或（podNamespace + memberName），二者不能同时，也不能都无
   const hasNode = !!logicalId;
   const hasPod = !!podNamespace && !!memberName;
   if (hasNode && hasPod) {
-    return c.json({ error: "Specify either logicalId (bind to existing node) or podNamespace + memberName (create in pod), not both" }, 400);
+    return c.json({ error: "请二选一指定 logicalId（挂到既有节点）或 podNamespace + memberName（在 pod 中创建），不能同时指定两者" }, 400);
   }
   if (!hasNode && !hasPod) {
-    return c.json({ error: "Specify either logicalId (bind to existing node) or podNamespace + memberName (create in pod)" }, 400);
+    return c.json({ error: "请二选一指定 logicalId（挂到既有节点）或 podNamespace + memberName（在 pod 中创建）" }, 400);
   }
 
   let result;
   if (hasNode) {
-    // Mode A: bind to existing node
+    // 模式 A：挂到既有节点
     result = await claimService.bind({ discoveredId: id, rigId, logicalId });
   } else {
-    // Mode B: create node in pod + bind
-    // Resolve podNamespace -> pod row
+    // 模式 B：在 pod 中创建节点 + 绑定
+    // 解析 podNamespace -> pod 行
     const { PodRepository } = await import("../domain/pod-repository.js");
     const podRepo = new PodRepository(claimService.db);
     const pod = podRepo.getPodByNamespace(rigId, podNamespace);
     if (!pod) {
-      return c.json({ ok: false, code: "pod_not_found", error: `Pod namespace '${podNamespace}' not found in rig` }, 404);
+      return c.json({ ok: false, code: "pod_not_found", error: `工作组中未找到 pod 命名空间 '${podNamespace}'` }, 404);
     }
     result = await claimService.createAndBindToPod({ discoveredId: id, rigId, podId: pod.id, podNamespace, memberName });
   }
@@ -135,7 +135,7 @@ discoveryRoutes.post("/:id/bind", async (c) => {
   }
 });
 
-// POST /api/discovery/:id/adopt — UI-friendly composite adopt route
+// POST /api/discovery/:id/adopt——UI 友好的复合 adopt 路由
 discoveryRoutes.post("/:id/adopt", async (c) => {
   const { claimService } = getDeps(c);
   const id = c.req.param("id")!;
@@ -144,17 +144,17 @@ discoveryRoutes.post("/:id/adopt", async (c) => {
   const target = body["target"] && typeof body["target"] === "object" ? body["target"] as Record<string, unknown> : null;
 
   if (!rigId) {
-    return c.json({ error: "rigId is required" }, 400);
+    return c.json({ error: "rigId 为必填项" }, 400);
   }
   if (!target) {
-    return c.json({ error: "target is required" }, 400);
+    return c.json({ error: "target 为必填项" }, 400);
   }
 
   const kind = typeof target["kind"] === "string" ? target["kind"] : "";
   if (kind === "node") {
     const logicalId = typeof target["logicalId"] === "string" ? target["logicalId"] : "";
     if (!logicalId) {
-      return c.json({ error: "target.logicalId is required" }, 400);
+      return c.json({ error: "target.logicalId 为必填项" }, 400);
     }
     const result = await claimService.bind({ discoveredId: id, rigId, logicalId });
     if (result.ok) {
@@ -180,13 +180,13 @@ discoveryRoutes.post("/:id/adopt", async (c) => {
     const podNamespace = typeof target["podNamespace"] === "string" ? target["podNamespace"] : "";
     const memberName = typeof target["memberName"] === "string" ? target["memberName"] : "";
     if (!podId) {
-      return c.json({ error: "target.podId is required" }, 400);
+      return c.json({ error: "target.podId 为必填项" }, 400);
     }
     if (!podNamespace) {
-      return c.json({ error: "target.podNamespace is required" }, 400);
+      return c.json({ error: "target.podNamespace 为必填项" }, 400);
     }
     if (!memberName) {
-      return c.json({ error: "target.memberName is required" }, 400);
+      return c.json({ error: "target.memberName 为必填项" }, 400);
     }
 
     const result = await claimService.createAndBindToPod({
@@ -215,5 +215,5 @@ discoveryRoutes.post("/:id/adopt", async (c) => {
     }
   }
 
-  return c.json({ error: `Unsupported target kind "${kind}"` }, 400);
+  return c.json({ error: `不支持的 target kind "${kind}"` }, 400);
 });

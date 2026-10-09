@@ -1,8 +1,7 @@
-// Send/broadcast header capture harness (ruling 03c35295, pin 6 proof). Renders the FOUR envelope
-// types through the REAL wrapPaneEnvelope (the exact bytes a recipient pane shows), with a fixed stamp,
-// and drops per-type .txt + SHA256SUMS. The STORM TEST: a recipient tells DM vs multi vs rig-broadcast
-// vs topology from the header alone (the To line + scale) — proven by the four distinct To lines.
-// Deterministic (fixed inputs) → byte-identical on re-run.
+// 发送/广播页头捕获工具（裁决 03c35295，锁定项 6 证明）。通过真实 wrapPaneEnvelope 渲染
+// 四种信封类型，即接收方窗格所见的准确字节；使用固定时间戳，并输出逐类型 .txt 与
+// SHA256SUMS。风暴测试：接收方只看页头（To 行 + 规模）即可区分私信、多目标、工作组广播与
+// 拓扑广播；由四条不同 To 行证明。输入固定，重跑时逐字节一致。
 //
 //   node --import tsx scripts/capture-send-header.mjs <out-dir>
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -13,27 +12,27 @@ import { wrapPaneEnvelope } from "../src/lib/pane-envelope.js";
 const OUT = process.argv[2] ?? "send-header-captures";
 mkdirSync(OUT, { recursive: true });
 const SENDER = "orch-advisor@v-openrig-build"; // member@rig
-// The ORIGIN HOST id resolved per the 51-09 shipped rendering (host registry self-id) — the THIRD
-// triple slot. This is the real founder host (mm2), DISTINCT from the rig, so From/Reply render as a
-// clean member@rig@host. (Prior capture hardcoded the rig name here → a doubled 'rig@rig' teaching
-// surface; the CODE path itself resolves the real host_id via getSelfHostId/fetchSelfHostId.)
+// 来源主机 id 按 51-09 已交付渲染解析（主机注册表 self-id），位于三元地址第三槽。
+// 这是实际创建者主机 mm2，与工作组不同，因此 From/Reply 会干净渲染为 member@rig@host。
+// 旧捕获在此硬编码工作组名，造成重复的 'rig@rig' 教学表面；代码路径本身通过
+// getSelfHostId/fetchSelfHostId 解析真实 host_id。
 const HOST = "mm2";
 const STAMP = "2026-08-07T00:42:00Z"; // fixed → deterministic captures
 
 const captures = {
-  // A DM — To: the single recipient.
+  // 私信——To：单个接收方。
   dm: wrapPaneEnvelope(SENDER, "dev-driver@v-openrig-build", "one-to-one status.", HOST, { stampISO: STAMP }),
-  // A multi-send — To: the FULL recipient list (WHO got it).
+  // 多目标发送——To：完整接收方列表，即哪些人收到了。
   multi: wrapPaneEnvelope(SENDER, "dev-driver@v-openrig-build", "coordinate the three of you.", HOST, {
     stampISO: STAMP,
     scope: { kind: "multi", recipients: ["dev-driver@v-openrig-build", "dev-guard@v-openrig-build", "dev-qa@v-openrig-build"] },
   }),
-  // A rig-broadcast — "broadcast to <rig> (N seats)" scale line (a recipient knows peers have it).
+  // 工作组广播——“广播到 <rig>（N 个席位）”规模行，使接收方知道同伴也已收到。
   "rig-broadcast": wrapPaneEnvelope(SENDER, "openrig-pm", "checkpoint review complete.", HOST, {
     stampISO: STAMP,
     scope: { kind: "rig-broadcast", rig: "openrig-pm", seats: 11 },
   }),
-  // A topology-broadcast — "broadcast to topology".
+  // 拓扑广播——“广播到拓扑”。
   topology: wrapPaneEnvelope(SENDER, "*", "system maintenance in 5 minutes.", HOST, {
     stampISO: STAMP,
     scope: { kind: "topology" },
@@ -47,11 +46,11 @@ for (const [name, text] of Object.entries(captures)) {
   manifest.push(`${createHash("sha256").update(text + "\n").digest("hex")}  ${name}.txt`);
   toLines.push(text.split("\n").find((l) => l.startsWith("To:")));
 }
-// Storm test: the four To lines must be mutually distinct (header-alone distinguishability).
+// 风暴测试：四条 To 行必须彼此不同，证明仅靠页头即可区分。
 const distinct = new Set(toLines).size === 4;
 writeFileSync(join(OUT, "SHA256SUMS"), manifest.join("\n") + "\n");
-writeFileSync(join(OUT, "STORM-TEST.txt"), `STORM TEST: ${distinct ? "PASS" : "FAIL"} — 4 distinct To lines (header-alone distinguishable)\n` + toLines.join("\n") + "\n");
-console.log(`captured 4 send-header envelopes → ${OUT}`);
-console.log(`STORM TEST: ${distinct ? "PASS" : "FAIL"}`);
+writeFileSync(join(OUT, "STORM-TEST.txt"), `风暴测试：${distinct ? "通过" : "失败"}——4 条不同的 To 行（仅凭页头即可区分）\n` + toLines.join("\n") + "\n");
+console.log(`已捕获 4 个发送页头信封 → ${OUT}`);
+console.log(`风暴测试：${distinct ? "通过" : "失败"}`);
 console.log(toLines.join("\n"));
 console.log("\n" + captures["rig-broadcast"]);

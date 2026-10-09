@@ -1,8 +1,7 @@
-// V1 Shell Redesign — Phase 1 — StatusPip primitive.
+// V1 Shell 重设计——阶段 1——StatusPip 原语。
 //
-// API surface + tone mapping + negative-assertion (discipline ritual #8):
-// status-pip is for SEMANTIC status only, not kind-taxonomy. Tests assert
-// it does not render workspace-kind labels by accident.
+// API 表面、色调映射与负向断言（约束流程 #8）：status-pip 只用于语义状态，不用于类别分类。
+// 测试确保它不会意外渲染工作区类别标签。
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -59,8 +58,8 @@ describe("StatusPip (Phase 1 primitive)", () => {
     expect(screen.getByTestId("sp-aria").getAttribute("aria-label")).toBe("info");
   });
 
-  // Negative-assertion (ritual #8): StatusPip is for semantic status, not kind taxonomy.
-  // Make sure forbidden workspace-kind strings never bleed into the rendering.
+  // 负向断言（约束流程 #8）：StatusPip 用于语义状态而非类别分类，确保禁止的工作区类别
+  // 字符串绝不会混入渲染。
   const FORBIDDEN_KIND_LABELS = ["user", "project", "knowledge", "lab", "delivery"];
   it("does NOT render workspace-kind taxonomy labels for any status", () => {
     for (const s of ALL_STATUSES) {

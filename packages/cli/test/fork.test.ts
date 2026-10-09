@@ -1,6 +1,6 @@
-// OPR.0.4.3.05 — `rig fork` verb tests. Proves the CLI composes the daemon
-// fork composer, surfaces honest errors, reports the successor + kept image,
-// and never prints a native resume id (kept daemon-local by the route).
+// OPR.0.4.3.05——`rig fork` 动词测试。证明 CLI 组装 daemon
+// fork composer，呈现诚实错误，报告 successor + 保留 image，
+// 且绝不打印 native resume id（由路由保持 daemon-local）。
 
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import { Command } from "commander";
@@ -121,7 +121,7 @@ describe("rig fork", () => {
     const out = logs.join("\n");
     expect(out).toContain("[OK] dev.forked");
     expect(out).toContain("forked@dst");
-    expect(out).toContain("One-shot fork");
+    expect(out).toContain("一次性 fork（未保留镜像）");
   });
 
   it("--keep-image sends keepImage and reports the pinned image", async () => {
@@ -130,7 +130,7 @@ describe("rig fork", () => {
     });
     expect(capturedBody).toMatchObject({ keepImage: true, imageName: "kept" });
     const out = logs.join("\n");
-    expect(out).toContain("Kept image: kept v1 (pinned, protected from prune)");
+    expect(out).toContain("已保留镜像：kept v1（已钉住，受保护不被裁剪）");
   });
 
   it("--json emits the raw response", async () => {

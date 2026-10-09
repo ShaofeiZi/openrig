@@ -1,9 +1,8 @@
-// 0.3.1 slice 06 — For You storytelling card primitives test surface.
-// Covers IMPL-PRD HG-6 (5 card primitives ship), HG-7 (drill-in
-// routing), HG-8 (mobile-first; ≥44px touch targets). Visual proof
-// per phone-viewport is the design-reviewer's gate; this suite gates
-// the structural shape (testid surface, collapsed-vs-expanded
-// behavior, drill-in href shape, touch-target sizing).
+// 0.3.1 slice 06——For You storytelling 卡片原语测试表面。
+// 覆盖 IMPL-PRD HG-6（5 个卡片原语交付）、HG-7（drill-in
+// 路由）、HG-8（mobile-first；≥44px 触摸目标）。按 phone-viewport 的
+// 视觉证明是 design-reviewer 门禁；本套件门控结构形状
+//（testid 表面、折叠 vs 展开行为、drill-in href 形状、触摸目标尺寸）。
 
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, cleanup, fireEvent } from "@testing-library/react";
@@ -176,14 +175,13 @@ describe("StorytellingFeed — composition", () => {
 
   it("renders an empty-state when there are no items", () => {
     const { getByTestId } = render(<StorytellingFeed items={[]} />);
-    expect(getByTestId("storytelling-feed-empty").textContent).toContain("No items");
+    expect(getByTestId("storytelling-feed-empty").textContent).toContain("信息流中暂无条目");
   });
 
-  // OPR.0.3.2.17 — StorytellingFeed switch carries the concept branch
-  // (previously stripped at 0.3.1). Renders ConceptCard when adapter
-  // emits kind:"concept". HG-6 fail-first: if the switch loses the
-  // concept branch (silent regression), this test FAILS — no concept
-  // testid is found in the DOM.
+  // OPR.0.3.2.17——StorytellingFeed switch 带 concept 分支
+  //（0.3.1 时曾被剥离）。adapter 发 kind:"concept" 时渲染
+  // ConceptCard。HG-6 fail-first：若 switch 丢失 concept 分支
+  //（静默回归），本测试 FAILS——DOM 中找不到 concept testid。
   it("OPR.0.3.2.17: renders a ConceptCard when items include kind:'concept' (HG-6 fail-first)", () => {
     const items: FeedCardItem[] = [
       {

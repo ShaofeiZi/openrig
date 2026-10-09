@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/package-install-service.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/package-manifest.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/projection-planner.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/native-resume-probe.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/node-launcher.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/path-safety.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/permission-drift.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/node-inventory.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/occupant-invalidator.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/outbox-handler.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/package-repository.ts": [
+"daemon-core-i",
+null
+],
+"packages/daemon/src/domain/node-cmux-service.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/parked-query.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/periodic-snapshot-scheduler.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/pane-binding-observation.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/plugin-discovery-service.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/package-resolve-helper.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/package-resolver.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/native-process-lineage.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/permission-drift-observer.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

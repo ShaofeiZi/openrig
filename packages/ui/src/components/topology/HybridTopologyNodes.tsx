@@ -48,8 +48,8 @@ interface HybridAgentNodeData {
   contextTotalOutputTokens?: number | null;
   agentActivity?: AgentActivitySummary | null;
   terminalActive?: boolean | null;
-  // OPR.0.4.3.19 — liveness identity verdict; mismatch/pane_missing overrides
-  // terminalActive so the dot never renders active/running green.
+  // OPR.0.4.3.19——活性身份判定；mismatch/pane_missing 覆盖 terminalActive，
+  // 使圆点绝不渲染成 active/running 绿色。
   identityVerdict?: SeatIdentityVerdictSummary | null;
   currentQitems?: unknown[];
   rigId?: string | null;
@@ -76,7 +76,7 @@ function HybridPodGroupNodeInner({ data }: { data: HybridPodGroupNodeData }) {
     ?? data.podNamespace
     ?? inferPodName(data.logicalId ?? null)
     ?? data.podId
-    ?? "pod";
+    ?? "Pod";
   return (
     <div
       data-testid="hybrid-pod-group-node"
@@ -94,10 +94,9 @@ function HybridPodGroupNodeInner({ data }: { data: HybridPodGroupNodeData }) {
   );
 }
 
-/** V0.3.1 bug-fix slice topology-perf — graph CPU win. Pod-group node
- *  content depends only on label fields + agent count; data reference
- *  churns on every topology-activity bump but the visible content
- *  doesn't. Memoize on the fields the renderer reads. */
+/** V0.3.1 bug-fix slice topology-perf——图 CPU 优化。Pod 组节点内容只依赖标签字段 +
+ *  智能体数；data 引用在每次 topology-activity 跳动时都变化，但可见内容不变。
+ *  按渲染器读取的字段做 memo。 */
 export const HybridPodGroupNode = memo(
   HybridPodGroupNodeInner,
   (prev, next) => {
@@ -115,9 +114,9 @@ export const HybridPodGroupNode = memo(
 HybridPodGroupNode.displayName = "HybridPodGroupNode";
 
 function HybridAgentNodeInner({ data }: { data: HybridAgentNodeData }) {
-  // OPR.0.4.6.MH2 rev1-r2 B1 — terminal preview + cmux-open are LOCAL
-  // affordances (local session reads / bare local POST); gated off when a
-  // remote host's data is on the canvas (FR-7 read-only remote views).
+  // OPR.0.4.6.MH2 rev1-r2 B1——终端预览 + cmux 打开是本地提示
+  // （本地会话读取 / 裸本地 POST）；当画布上是远程主机的数据时关闭
+  // （FR-7 只读远程视图）。
   const nodeIsRemote = useSelectedHostId() !== LOCAL_HOST_ID;
   const cmuxLaunch = useCmuxLaunch();
   const core = isCoreRole(data.role);
@@ -141,7 +140,7 @@ function HybridAgentNodeInner({ data }: { data: HybridAgentNodeData }) {
       data-testid="hybrid-agent-node"
       title={[
         data.canonicalSessionName,
-        `activity: ${activityLabel}${activityStale ? " (stale)" : ""}`,
+        `活动：${activityLabel}${activityStale ? "（已停滞）" : ""}`,
         runtimeTitle,
         tokenTitle,
       ].filter(Boolean).join("\n")}
@@ -182,7 +181,7 @@ function HybridAgentNodeInner({ data }: { data: HybridAgentNodeData }) {
           data-testid={`hybrid-activity-dot-${data.logicalId}`}
           data-activity-state={activityState}
           data-activity-source={activitySource}
-          aria-label={`activity: ${activityLabel}${timeInState ? ` ${timeInState.label}` : ""}${activitySource !== "hook" && activitySource !== "none" ? " (activity-grade)" : ""}`}
+          aria-label={`活动：${activityLabel}${timeInState ? ` ${timeInState.label}` : ""}${activitySource !== "hook" && activitySource !== "none" ? "（活动分级）" : ""}`}
         />
       </div>
       {data.rigId && !nodeIsRemote ? (
@@ -205,28 +204,27 @@ function HybridAgentNodeInner({ data }: { data: HybridAgentNodeData }) {
           aria-busy={cmuxLaunch.isPending || undefined}
           aria-label={
             cmuxLaunch.isPending
-              ? `Opening ${data.logicalId} in cmux`
+              ? `正在在 cmux 中打开 ${data.logicalId}`
               : cmuxLaunch.isError
-                ? `Open ${data.logicalId} in cmux failed: ${cmuxLaunch.error instanceof Error ? cmuxLaunch.error.message : String(cmuxLaunch.error)}. Click to retry.`
-                : `Open ${data.logicalId} in cmux`
+                ? `在 cmux 中打开 ${data.logicalId} 失败：${cmuxLaunch.error instanceof Error ? cmuxLaunch.error.message : String(cmuxLaunch.error)}。点击重试。`
+                : `在 cmux 中打开 ${data.logicalId}`
           }
           title={
             cmuxLaunch.isPending
-              ? "Opening in cmux"
+              ? "正在在 cmux 中打开"
               : cmuxLaunch.isError
-                ? `Failed: ${cmuxLaunch.error instanceof Error ? cmuxLaunch.error.message : String(cmuxLaunch.error)} — click to retry`
-                : "Open in cmux"
+                ? `失败：${cmuxLaunch.error instanceof Error ? cmuxLaunch.error.message : String(cmuxLaunch.error)}——点击重试`
+                : "在 cmux 中打开"
           }
           disabled={cmuxLaunch.isPending || !data.logicalId}
           data-error={cmuxLaunch.isError || undefined}
           onClick={(event) => {
             event.stopPropagation();
-            // OPR.0.4.1.31 part D (rev1-r2) — symmetric to the table guard: never
-            // POST open-cmux for a malformed node (a null/empty logicalId would
-            // build /nodes/"null"/open-cmux). The button is also disabled above.
+            // OPR.0.4.1.31 part D（rev1-r2）——与表格守卫对称：绝不为畸形节点 POST
+            // open-cmux（null/空 logicalId 会拼出 /nodes/"null"/open-cmux）。上面按钮也已禁用。
             if (!data.logicalId) return;
-            // part B — reset a prior error then retry; the failure is no longer
-            // silent (data-error + title/aria carry the message).
+            // part B——先重置先前错误再重试；失败不再静默
+            // （data-error + title/aria 携带消息）。
             if (cmuxLaunch.isError) cmuxLaunch.reset();
             cmuxLaunch.mutate({ rigId: data.rigId!, logicalId: data.logicalId });
           }}
@@ -235,10 +233,9 @@ function HybridAgentNodeInner({ data }: { data: HybridAgentNodeData }) {
           <ToolMark tool="cmux" size="sm" />
         </button>
         {cmuxLaunch.isError ? (
-          // OPR.0.4.1.31 B2 (dev1-guard) — a stable, VISIBLE error message (not
-          // just title/aria/color): a persistent role=alert chip near the button
-          // carrying the daemon message so a failed open-cmux is readable, not a
-          // dead-looking button.
+          // OPR.0.4.1.31 B2（dev1-guard）——一条稳定、可见的错误消息（不只是
+          // title/aria/颜色）：按钮旁一个持久的 role=alert 小条，携带后台服务消息，
+          // 使失败的 open-cmux 可读，而非一个看起来像死了的按钮。
           <span
             data-testid={`hybrid-cmux-error-${data.logicalId}`}
             role="alert"
@@ -281,7 +278,7 @@ function HybridAgentNodeInner({ data }: { data: HybridAgentNodeData }) {
               tokenLabel ? "text-on-surface-variant" : "text-on-surface-variant",
             )}
             data-testid="hybrid-token-total"
-            title={tokenTitle ?? "Token sample unavailable"}
+            title={tokenTitle ?? "Token 样本不可用"}
           >
             {tokenLabel ?? "--"}
           </div>
@@ -303,21 +300,16 @@ function HybridAgentNodeInner({ data }: { data: HybridAgentNodeData }) {
   );
 }
 
-/** V0.3.1 bug-fix slice topology-perf — graph CPU win.
+/** V0.3.1 bug-fix slice topology-perf——图 CPU 优化。
  *
- * HybridAgentNode is the per-seat card on the workspace topology graph.
- * Its `data` prop reference changes on every `useTopologyActivity` bump
- * (1s interval + per-stream-event in HostMultiRigGraph.activeNodes) but
- * most fields are stable across bumps for any given seat. Without
- * memoization we re-render the full card — including `useCmuxLaunch`,
- * `TerminalPreviewPopover`, multiple format calls, ActivityRing — on
- * every tick for every visible seat. Slice 12.5 made this acute by
- * mounting the graph at workspace scope (many rigs × many seats).
+ * HybridAgentNode 是工作区拓扑图上每个席位的卡片。它的 `data` prop 引用在每次
+ * `useTopologyActivity` 跳动（1 秒间隔 + HostMultiRigGraph.activeNodes 里的逐流事件）
+ * 时都变化，但对任一给定席位，大多数字段在跳动间是稳定的。若不 memo，我们会为每个可见席位
+ * 在每个 tick 重渲染整张卡片——包括 `useCmuxLaunch`、`TerminalPreviewPopover`、多次格式化调用、
+ * ActivityRing。Slice 12.5 把图挂载到工作区范围（多工作组 × 多席位）后这一问题变尖锐。
  *
- * Custom equality compares all fields the renderer reads (visible
- * content + activity-ring shape + flash). The `currentQitems` array is
- * compared by length (sufficient signal; deep-equal would re-introduce
- * work). */
+ * 自定义相等比较渲染器读取的所有字段（可见内容 + activity-ring 形状 + flash）。
+ * `currentQitems` 数组按长度比较（信号足够；深比较会重新引入开销）。 */
 export const HybridAgentNode = memo(HybridAgentNodeInner, (prev, next) => {
   const a = prev.data;
   const b = next.data;

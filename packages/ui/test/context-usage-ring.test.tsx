@@ -1,4 +1,4 @@
-// Token / Context Usage Surface v0 (PL-012) — ContextUsageRing tests.
+// Token / 上下文用量表面 v0（PL-012）——ContextUsageRing 测试。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
@@ -63,6 +63,6 @@ describe("ContextUsageRing (PL-012)", () => {
   it("title surface includes percent + tier on known samples", () => {
     render(<ContextUsageRing percent={85} availability="known" fresh testIdSuffix="t" />);
     expect(screen.getByTestId("context-ring-t").getAttribute("title")).toContain("85%");
-    expect(screen.getByTestId("context-ring-t").getAttribute("title")).toContain("critical");
+    expect(screen.getByTestId("context-ring-t").getAttribute("title")).toContain("严重");
   });
 });

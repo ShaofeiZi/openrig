@@ -1,0 +1,102 @@
+{
+"packages/daemon/src/domain/process-census.ts": [
+"daemon-core-a",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/queue-repository.ts": [
+"daemon-core-a",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/project-lifecycle-compiler.ts": [
+"daemon-core-g",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/projection-manifest-store.ts": [
+"daemon-core-g",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/queue-wait-backoff.ts": [
+"daemon-core-g",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/pod-repository.ts": [
+"daemon-core-f",
+"validated",
+"done"
+],
+"packages/daemon/src/domain/profile-resolver.ts": [
+"daemon-core-f",
+"validated",
+"done"
+],
+"packages/daemon/src/domain/projection-lane.ts": [
+"daemon-core-f",
+"validated",
+"done"
+],
+"packages/daemon/src/domain/queue-waiting.ts": [
+"daemon-core-f",
+"validated",
+"done"
+],
+"packages/daemon/src/domain/predecessor-recap-resolver.ts": [
+"daemon-core-i",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/project-classifier.ts": [
+"daemon-core-i",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/ps-projection.ts": [
+"daemon-core-i",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/pod-bundle-assembler.ts": [
+"daemon-core-e",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/queue-stuck-sweep.ts": [
+"daemon-core-e",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/queue-owner.ts": [
+"daemon-core-d",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/queue-transition-log.ts": [
+"daemon-core-d",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/queue-retention.ts": [
+"daemon-core-h",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/plugin-vendor-service.ts": [
+"daemon-core-b",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/queue-pickup.ts": [
+"daemon-core-b",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/queue-recovery.ts": [
+"daemon-core-b",
+"self_reported",
+"done"
+]
+}

@@ -1,0 +1,93 @@
+{
+ "schema": "openrig.tui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:03:58",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "comment-review-batch4",
+ "files": 10,
+ "changed": 7,
+ "reviewed_no_change": 3,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/tui/test/command-registry-parity.test.ts",
+   "status": "changed",
+   "before_sha256": "8db2a240a268377e1dde3efbc32c7fabda4ff1d45ba234d26dd64830af902ea8",
+   "after_sha256": "4761b79793c6710999b6c4e9b24a65cd3489e2d6f866a62c5b1bb0679f42e042",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(64f1dbdf/c015d9ed/508e383d)、命令名、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/one-click-gate.test.ts",
+   "status": "changed",
+   "before_sha256": "0572fdbd38c69398f8192a7de370bb59daaa3186b285b2acfccde09b30a411cd",
+   "after_sha256": "66de7d2ed62669abd987819415613c89614c4213e7e9e40fa5aafa5da014cd48",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(64f1dbdf/c015d9ed/508e383d)、命令名、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/runtime-marks.test.ts",
+   "status": "changed",
+   "before_sha256": "ae5716147fecf15abc6a05d69002b36464d87d6ad0a3386561cd4ec611ee4463",
+   "after_sha256": "5770bd276a91addb255c8ea90712a7eaac2689f41992e2ad3c3e5975a170a75c",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(64f1dbdf/c015d9ed/508e383d)、命令名、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/crash-cart-triage.test.ts",
+   "status": "changed",
+   "before_sha256": "aae580ba7d5344713600544a02baaeb8876b21e9434a5d77b799f9d1e00ed33d",
+   "after_sha256": "37ed2c57f9b16fd7ae343e7801b56e3568701b0b008cb19e9f25e3a07e3ebc30",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(64f1dbdf/c015d9ed/508e383d)、命令名、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/crash-cart-from-emit.test.ts",
+   "status": "changed",
+   "before_sha256": "b3ff421cc26098b14f685a1a78a01e0f76bacd6ae1aa53e4337da61e0ddaf252",
+   "after_sha256": "ace93afee9c71748a419b755ab2d231beb9fb3a40dcacc142b80af1ecab4467d",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(64f1dbdf/c015d9ed/508e383d)、命令名、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/organizer.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "91a4e86f03bda622436f6860731d8e9fb1feec7fc92be8340bcc25b3c2f5843f",
+   "after_sha256": "f14bfe7e5ecc2672e6fb3f4065145db71e1923e5d354a314f08e5e5aed4c40da",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(64f1dbdf/c015d9ed/508e383d)、命令名、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/startup-connection.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "c5b08d0c7132d04d8023d5c07e1d1ed231ec943daf254e21d52fdf05da03631e",
+   "after_sha256": "27605a535c8d37e9aa1b5b2bfa332be5434cc3da8e64ad59423534809b24c546",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(64f1dbdf/c015d9ed/508e383d)、命令名、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/config-model.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "25d16ae01912de661c4023465022753636380241ae87c2770a859960acabc65c",
+   "after_sha256": "2f3137fe81980a0344718841208a59b7e91576bce9f736ea00e2b73bfcecfea7",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(64f1dbdf/c015d9ed/508e383d)、命令名、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/command-palette.test.ts",
+   "status": "changed",
+   "before_sha256": "37db18cd49524e0036a23d7a9d83f1f79eca410f5407fbfa4a19864be8f39efe",
+   "after_sha256": "a66fae1d62238553bad2bfdc0d87e5413e11aab366bb2509fce32e8f2e590c61",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(64f1dbdf/c015d9ed/508e383d)、命令名、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/refresh-trailing.test.ts",
+   "status": "changed",
+   "before_sha256": "6384c0aaec23bba39829ff283bc22b6b5aa7db6bb2f0253035ffad858b9e01a7",
+   "after_sha256": "8221fb944e219f24e063400210aafccc6d30ee1e250d07f85c974bd27d2c181d",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(64f1dbdf/c015d9ed/508e383d)、命令名、协议令牌保留"
+  }
+ ]
+}

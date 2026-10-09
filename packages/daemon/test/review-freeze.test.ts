@@ -83,7 +83,7 @@ describe("POST /api/review/freeze", () => {
     });
   }
 
-  // P21 I5 — review freeze is a founder-visible surface (the hill-climb): resolveActorWithDeferral.
+  // P21 I5——review freeze 是创始人可见表面（爬坡）：resolveActorWithDeferral。
   function freezeAs(name: string, session: string, bodyActor?: string) {
     return app.request("/api/review/freeze", {
       method: "POST",
@@ -96,7 +96,7 @@ describe("POST /api/review/freeze", () => {
     return JSON.parse(lines[lines.length - 1]!) as { actor: string; identity_provenance: string | null };
   }
 
-  it("freeze — header present derives the actor + stamps the audit identity_provenance transport:v1", async () => {
+  it("freeze — 存在的标头派生出参与者 + 标记审核identity_provenance 传输：v1", async () => {
     const dir = approvedSlice("40-id");
     writeFullGateSet(dir, "40-id", "cand40");
     const res = await freezeAs("40-id", "cli@host");
@@ -106,7 +106,7 @@ describe("POST /api/review/freeze", () => {
     expect(row.identity_provenance).toBe("transport:v1");
   });
 
-  it("freeze — header present + differing body actor → wire supersedes (actor cli@host, transport:v1); 409 retired", async () => {
+  it("freeze — 标头存在 + 不同的主体 actor → 线取代（actor cli@host，transport:v1）； 409 退休", async () => {
     const dir = approvedSlice("41-id");
     writeFullGateSet(dir, "41-id", "cand41");
     const res = await freezeAs("41-id", "cli@host", "mallory@host"); // body mallory@host superseded by the wire
@@ -116,18 +116,18 @@ describe("POST /api/review/freeze", () => {
     expect(row.identity_provenance).toBe("transport:v1");
   });
 
-  it("freeze — header absent records the body actor CLAIMED-era (identity_provenance null, never-break)", async () => {
+  it("freeze — 标头缺失记录了身体演员声称的时代（identity_provenance null，永不中断）", async () => {
     const dir = approvedSlice("42-id");
     writeFullGateSet(dir, "42-id", "cand42");
     const res = await freeze("42-id"); // no header, body actor approver@host (the UI deferral path)
     expect(res.status).toBe(200);
     const row = lastAuditRow();
     expect(row.actor).toBe("approver@host");
-    // PM pin: the deferral records the DECLARED claimed-era variant `claimed:v1`, never null.
+    // PM pin：deferral 记录已声明的 claimed-era 变体 `claimed:v1`，绝非 null。
     expect(row.identity_provenance).toBe("claimed:v1");
   });
 
-  it("freeze — header absent + no body actor → 400", async () => {
+  it("冻结 — 标头缺失 + 没有主体演员 → 400", async () => {
     const dir = approvedSlice("43-id");
     writeFullGateSet(dir, "43-id", "cand43");
     const res = await app.request("/api/review/freeze", {
@@ -138,7 +138,7 @@ describe("POST /api/review/freeze", () => {
     expect(res.status).toBe(400);
   });
 
-  it("writes exactly one self-contained HTML file: inlined images, video by LINK with poster, no video bytes, no external fetches", async () => {
+  it("准确地写入一个独立的 HTML 文件：内嵌图像、带有海报的 LINK 视频、无视频字节、无外部获取", async () => {
     const dir = approvedSlice("30-freeze");
     // A tiny valid PNG + a "video" file + its poster, referenced from PROOF.md.
     const png = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
@@ -164,18 +164,18 @@ describe("POST /api/review/freeze", () => {
     expect(html).not.toMatch(/src="https?:/); // no external fetches
     expect(html).not.toMatch(/href="https?:/);
     expect(html).toContain('class="locked"'); // verified proof-lock stamp renders solid
-    expect(html).toContain("proof-lock (done)");
+    expect(html).toContain("证明锁（完成）");
     expect(html).toContain("CLEAR"); // verbatim verdict tokens survive into the export
-    // The one structure, statically mirrored — no superseded section survives.
-    expect(html).toContain("<h2>Intent</h2>");
-    expect(html).toContain("<h2>Plan</h2>");
-    expect(html).toContain("<h2>Delivered</h2>");
+    // 唯一结构，静态镜像——无被取代章节残留。
+    expect(html).toContain("<h2>意图</h2>");
+    expect(html).toContain("<h2>计划</h2>");
+    expect(html).toContain("<h2>已交付</h2>");
     expect(html).not.toContain("Requirements (concise)");
     expect(html).not.toContain("item join");
     expect(html).not.toContain("<h2>Acceptance</h2>");
   });
 
-  it("re-invoking for the same approval is idempotent — one file, no rewrite, alreadyFrozen=true", async () => {
+  it("重新调用相同的批准是幂等的 - 一个文件，无需重写，alreadyFrozen=true", async () => {
     approvedSlice("31-idem");
     const first = await (await freeze("31-idem")).json();
     expect(first.alreadyFrozen).toBe(false);
@@ -186,7 +186,7 @@ describe("POST /api/review/freeze", () => {
     expect(fs.statSync(first.path).mtimeMs).toBe(statBefore.mtimeMs); // frozen exports never rewritten
   });
 
-  it("recomposition (GET) after freeze never rewrites the frozen file", async () => {
+  it("冻结后的重组 (GET) 永远不会重写冻结的文件", async () => {
     approvedSlice("32-recompose");
     const { path: frozen } = await (await freeze("32-recompose")).json();
     const before = fs.statSync(frozen).mtimeMs;
@@ -195,15 +195,15 @@ describe("POST /api/review/freeze", () => {
     expect(fs.statSync(frozen).mtimeMs).toBe(before);
   });
 
-  it("409s a freeze with no approval stamp — the stamp is the only trigger", async () => {
+  it("409 冻结，没有批准印章——印章是唯一的触发因素", async () => {
     writeFixtureSlice(ws, "release-t", "33-unstamped", { intent: "i", prd: { miniReqs: ["m"] } });
     const res = await freeze("33-unstamped");
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe("stamp_missing");
   });
 
-  it("renders the UNVERIFIED stamp loudly when frontmatter claims approval with no audit row", async () => {
-    // Approval stamp in frontmatter but NO matching mission_control_actions row.
+  it("当 frontmatter 声称获得批准但没有审核行时，会大声显示 UNVERIFIED 标记", async () => {
+    // frontmatter 有批准盖章但无匹配的 mission_control_actions 行。
     writeFixtureSlice(ws, "release-t", "34-unverified", {
       id: "OPR.T.34",
       intent: "i",
@@ -215,12 +215,12 @@ describe("POST /api/review/freeze", () => {
     expect(res.status).toBe(200); // the freeze still renders — loudly labeled
     const { path: frozen } = await res.json();
     const html = fs.readFileSync(frozen, "utf8");
-    expect(html).toContain("UNVERIFIED proof-lock (done) stamp");
+    expect(html).toContain("未验证的 证明锁（完成） 盖章");
     expect(html).not.toContain('class="locked"'); // never renders the verified banner
   });
 
-  it("returns the structured allowlist error when the slice folder is outside every allowlist root", async () => {
-    // Rebuild the app with an allowlist that does NOT cover the workspace.
+  it("当切片文件夹位于每个白名单根之外时，返回结构化白名单错误", async () => {
+    // 用不覆盖工作区的 allowlist 重建 app。
     const otherRoot = fs.mkdtempSync(path.join(ws.root, "..", "other-"));
     const allowlist = [{ name: "elsewhere", canonicalPath: realpathSync(otherRoot) }];
     const writeService = new FileWriteService({ allowlist, auditFilePath: path.join(otherRoot, "audit.jsonl") });
@@ -248,7 +248,7 @@ describe("POST /api/review/freeze", () => {
   // rev1 fixback at d6135921 — the slice-19 path-containment class: the frozen
   // export must NEVER inline content from outside the slice dir, whatever the
   // agent-authored markdown says.
-  it("traversal media refs render the muted outside-slice branch and are NEVER inlined", async () => {
+  it("遍历媒体引用渲染静音的外部切片分支并且永远不会内联", async () => {
     const dir = approvedSlice("36-traversal");
     // A secret file OUTSIDE the slice dir (inside the workspace so it exists).
     const outside = path.join(ws.root, "outside-secret.png");
@@ -268,7 +268,7 @@ describe("POST /api/review/freeze", () => {
     expect(html).not.toContain('href="../../outside-secret.mp4"'); // no escaping link either
   });
 
-  it("a symlink inside the slice pointing outside is refused (realpath containment)", async () => {
+  it("切片内指向外部的符号链接被拒绝（真实路径包含）", async () => {
     const dir = approvedSlice("37-symlink");
     const outside = path.join(ws.root, "outside-symlinked.png");
     const secret = Buffer.from("89504e470d0a1a0a53594d4c494e4b5f4d41524b", "hex");
@@ -282,7 +282,7 @@ describe("POST /api/review/freeze", () => {
     expect(html).toContain("media outside slice dir");
   });
 
-  it("404s an unknown slice and validates the request body", async () => {
+  it("404 未知切片并验证请求正文", async () => {
     expect((await freeze("nope")).status).toBe(404);
     const bad = await app.request("/api/review/freeze", { method: "POST", body: "not json" });
     expect(bad.status).toBe(400);

@@ -1,10 +1,9 @@
-// Test-A pre-drive (row 782b467a) — the WALK/PROFILE join: WALK consumes the
-// AUTHORITATIVE composed profile (rig context profile's output, per-piece
-// provenance intact) and reports delivered pieces BY IDENTITY (atomId+address),
-// so the profile piece set and the delivered set are exact-comparable. The
-// piece set is NEVER hand-authored; the smallest glue is a --through-profile
-// input on the existing walk verb. NO-COPY: the bytes sent are the bytes the
-// profile served — walk re-reads and re-composes nothing.
+// Test-A pre-drive（row 782b467a）——WALK/PROFILE 接合：WALK 消费
+// 权威组合 profile（rig context profile 的输出，逐 piece 来源完整）并按
+// 身份（atomId+address）报告已投递 piece，故 profile piece 集与已投递集
+// 可精确比对。piece 集绝不手写；最小粘合是既有 walk 动词上的
+// --through-profile 输入。NO-COPY：发出的字节即 profile 所供字节——
+// walk 不重读、不重组任何东西。
 
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import http from "node:http";
@@ -150,7 +149,7 @@ describe("rig walk --through-profile — the walk/profile join (Test-A)", () => 
   it("mixing --through and --through-profile is rejected loud before any send", async () => {
     const { errLogs, exitCode, transportPayloads } = await runWalk(0, ["seat@rig", "--through", "a.md", "--through-profile", "packs/world", "--situation", "fresh"]);
     expect(exitCode).toBe(1);
-    expect(errLogs.join("\n")).toMatch(/either .*--through|not both|mix/i);
+    expect(errLogs.join("\n")).toMatch(/不可混用|--through 或 --through-profile/);
     expect(transportPayloads).toHaveLength(0);
   });
 });

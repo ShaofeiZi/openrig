@@ -31,7 +31,7 @@ describe("CheckpointStore", () => {
     db.close();
   });
 
-  it("createCheckpoint persists and returns typed Checkpoint with parsed keyArtifacts", () => {
+  it("createCheckpoint 持久化并返回带已解析 keyArtifacts 的类型化 Checkpoint", () => {
     const cp = store.createCheckpoint("node-1", {
       summary: "Implemented auth module",
       currentTask: "auth tests",
@@ -50,7 +50,7 @@ describe("CheckpointStore", () => {
     expect(cp.createdAt).toBeDefined();
   });
 
-  it("getLatestCheckpoint: explicit timestamps, newest returned", () => {
+  it("getLatestCheckpoint：按显式时间戳返回最新项", () => {
     db.prepare(
       "INSERT INTO checkpoints (id, node_id, summary, key_artifacts, created_at) VALUES (?, ?, ?, ?, ?)"
     ).run("cp-old", "node-1", "first", "[]", "2026-03-23 01:00:00");
@@ -67,11 +67,11 @@ describe("CheckpointStore", () => {
     expect(latest!.summary).toBe("third");
   });
 
-  it("getLatestCheckpoint no checkpoints -> null", () => {
+  it("getLatestCheckpoint 无 checkpoint 时返回 null", () => {
     expect(store.getLatestCheckpoint("node-1")).toBeNull();
   });
 
-  it("getCheckpointsForNode: all returned in created_at ASC order", () => {
+  it("getCheckpointsForNode：全部按 created_at ASC 顺序返回", () => {
     db.prepare(
       "INSERT INTO checkpoints (id, node_id, summary, key_artifacts, created_at) VALUES (?, ?, ?, ?, ?)"
     ).run("cp-3", "node-1", "third", "[]", "2026-03-23 03:00:00");
@@ -86,7 +86,7 @@ describe("CheckpointStore", () => {
     expect(cps.map((c) => c.id)).toEqual(["cp-1", "cp-2", "cp-3"]);
   });
 
-  it("getCheckpointsForRig: returns map keyed by node id, latest per node", () => {
+  it("getCheckpointsForRig：返回以 node id 为 key 的 map，每个节点取最新项", () => {
     db.prepare(
       "INSERT INTO checkpoints (id, node_id, summary, key_artifacts, created_at) VALUES (?, ?, ?, ?, ?)"
     ).run("cp-1a", "node-1", "node1 old", "[]", "2026-03-23 01:00:00");
@@ -103,8 +103,8 @@ describe("CheckpointStore", () => {
     expect(map["node-2"]!.id).toBe("cp-2a");
   });
 
-  it("getCheckpointsForRig: node with no checkpoint -> null in map", () => {
-    // node-1 has a checkpoint, node-2 does not
+  it("getCheckpointsForRig：没有 checkpoint 的节点在 map 中为 null", () => {
+    // node-1 有 checkpoint，node-2 没有。
     db.prepare(
       "INSERT INTO checkpoints (id, node_id, summary, key_artifacts, created_at) VALUES (?, ?, ?, ?, ?)"
     ).run("cp-1", "node-1", "has checkpoint", "[]", "2026-03-23 01:00:00");
@@ -114,7 +114,7 @@ describe("CheckpointStore", () => {
     expect(map["node-2"]).toBeNull();
   });
 
-  it("getCheckpointsForRig: multiple nodes, each gets latest checkpoint", () => {
+  it("getCheckpointsForRig：多个节点分别获得各自最新 checkpoint", () => {
     db.prepare(
       "INSERT INTO checkpoints (id, node_id, summary, key_artifacts, created_at) VALUES (?, ?, ?, ?, ?)"
     ).run("cp-1old", "node-1", "n1 old", "[]", "2026-03-23 01:00:00");
@@ -133,7 +133,7 @@ describe("CheckpointStore", () => {
     expect(map["node-2"]!.summary).toBe("n2 new");
   });
 
-  it("getCheckpointsForRig: cross-rig isolation — only rig-1 nodes returned", () => {
+  it("getCheckpointsForRig：跨工作组隔离，只返回 rig-1 节点", () => {
     seedRigWithNodes(db, "rig-2", "r02", [
       { id: "node-3", logicalId: "worker-c" },
     ]);
@@ -146,7 +146,7 @@ describe("CheckpointStore", () => {
 
     const map = store.getCheckpointsForRig("rig-1");
 
-    // Only rig-1 nodes should be in the map
+    // map 中只应包含 rig-1 节点。
     const nodeIds = Object.keys(map);
     expect(nodeIds).toContain("node-1");
     expect(nodeIds).toContain("node-2"); // null entry

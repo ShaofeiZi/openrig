@@ -1,7 +1,7 @@
-// PL-019 item 6: topology edge-activity event normalization. The hook
-// itself is tested in render-tree tests below; here we drill into the
-// normalize step that maps each tracked event-type's payload shape onto
-// the unified (source, dest) directed pair.
+// PL-019 item 6：topology edge-activity 事件归一化。hook
+// 本身在下方 render-tree 测试中测；此处深挖
+// normalize 步骤，它把每个已追踪事件类型的 payload 形状映射到
+// 统一的 (source, dest) 有向对。
 
 import { describe, it, expect } from "vitest";
 import { __test_internals } from "../src/hooks/useTopologyEdgeActivity.js";
@@ -43,8 +43,8 @@ describe("PL-019 topology edge-activity normalization", () => {
   it("returns null for unknown / non-PL-019 event types", () => {
     expect(normalizeEvent({ type: "rig.created", rigId: "r-1" })).toBeNull();
     expect(normalizeEvent({ type: "node.startup_completed", rigId: "r-1" })).toBeNull();
-    // mission_control.action_executed is intentionally not mapped at v0
-    // because the event payload lacks a destination session pair.
+    // mission_control.action_executed 在 v0 故意不映射，
+    // 因事件 payload 缺目标 session 对。
     expect(normalizeEvent({ type: "mission_control.action_executed", actorSession: "a@r" })).toBeNull();
   });
 
@@ -67,7 +67,7 @@ describe("PL-019 topology edge-activity normalization", () => {
 
   it("just-fired window is shorter than recent-traffic window (one-shot ⊂ sustained)", () => {
     expect(JUST_FIRED_WINDOW_MS).toBeLessThan(RECENT_TRAFFIC_WINDOW_MS);
-    // Sanity: design guidance says one-shot ~1.2s, sustained ~30s.
+    // 健全：设计指南称 one-shot ~1.2s，持续 ~30s。
     expect(JUST_FIRED_WINDOW_MS).toBe(1_200);
     expect(RECENT_TRAFFIC_WINDOW_MS).toBe(30_000);
   });

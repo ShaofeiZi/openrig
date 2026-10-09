@@ -1,41 +1,39 @@
-// Operator Surface Reconciliation v0 — health summary aggregator.
+// Operator Surface Reconciliation v0——健康状态摘要聚合器。
 //
-// Item 1F: compact health gates on the steering surface. Two
-// aggregations:
-//   - nodes: cross-rig roll-up of node sessionStatus + lifecycleState
-//     (mirrors `rig ps --nodes --summary` shape; UI consumes for the
-//     "running / detached / attention-required" badges).
-//   - context: cross-rig roll-up of context-usage urgency + freshness
-//     (mirrors `rigx-context --json` summary; UI consumes for the
-//     "critical / warning / ok / stale" badges).
+// 第 1F 项：steering 表面上的紧凑健康门禁，包含两种聚合：
+//   - nodes：跨工作组汇总节点 sessionStatus + lifecycleState
+//     （镜像 `zrig ps --nodes --summary` 形状；UI 用于展示
+//     "running / detached / attention-required" 徽章）。
+//   - context：跨工作组汇总上下文用量紧急度与新鲜度
+//     （镜像 `rigx-context --json` 摘要；UI 用于展示
+//     "critical / warning / ok / stale" 徽章）。
 //
-// Daemon-side aggregation rather than CLI shell-out: the steering
-// composer stays in-process and avoids spawning subprocesses per
-// request. Same data, cheaper.
+// 在后台服务侧聚合而不是调用 CLI shell：steering 组合器保留在进程内，
+// 避免每个请求都生成子进程；数据相同，成本更低。
 
 import type Database from "better-sqlite3";
 import type { RigRepository } from "../rig-repository.js";
 import { getNodeInventory } from "../node-inventory.js";
 
 export interface NodeHealthSummary {
-  /** Total nodes across all rigs. */
+  /** 所有工作组的节点总数。 */
   total: number;
-  /** Counts grouped by node.sessionStatus (running / detached / exited / unknown). */
+  /** 按 node.sessionStatus 分组的计数（running / detached / exited / unknown）。 */
   bySessionStatus: Record<string, number>;
-  /** Counts grouped by lifecycleState (running / recoverable / detached / attention_required). */
+  /** 按 lifecycleState 分组的计数（running / recoverable / detached / attention_required）。 */
   byLifecycle: Record<string, number>;
-  /** Convenience tally for the steering surface's headline number. */
+  /** 供 steering 表面标题数字使用的便捷汇总。 */
   attentionRequired: number;
 }
 
 export interface ContextHealthSummary {
-  /** Total nodes that the context store knows about. */
+  /** 上下文存储已知的节点总数。 */
   total: number;
-  /** Counts grouped by context urgency (critical / warning / low / unknown). */
+  /** 按上下文紧急度分组的计数（critical / warning / low / unknown）。 */
   byUrgency: Record<string, number>;
-  /** Counts grouped by freshness of the last sample (fresh / stale / none). */
+  /** 按最近样本新鲜度分组的计数（fresh / stale / none）。 */
   byFreshness: Record<string, number>;
-  /** Convenience tallies the steering surface foregrounds. */
+  /** steering 表面重点展示的便捷汇总。 */
   critical: number;
   warning: number;
   stale: number;
@@ -65,13 +63,11 @@ export function computeNodeHealthSummary(deps: { db: Database.Database; rigRepo:
   return { total, bySessionStatus, byLifecycle, attentionRequired };
 }
 
-/** Reduces context_usage rows into the steering health summary.
- *  Urgency derived from usedPercentage thresholds (≥80 critical, ≥60
- *  warning, otherwise low). Freshness derived from sampledAt age vs
- *  FRESHNESS_THRESHOLD_S (300s). Reads context_usage directly because
- *  ContextUsageStore intentionally exposes per-node accessors only;
- *  listing all rows is a steering-surface concern, not a per-node
- *  concern. */
+/** 将 context_usage 行归并为 steering 健康状态摘要。紧急度由 usedPercentage 阈值推导
+ *（≥80 为 critical，≥60 为 warning，否则为 low）；新鲜度由 sampledAt 的时间差与
+ * FRESHNESS_THRESHOLD_S（300 秒）比较得出。这里直接读取 context_usage，因为
+ * ContextUsageStore 有意只暴露逐节点访问器；列出全部行属于 steering 表面职责，
+ * 而不是逐节点职责。 */
 export function computeContextHealthSummary(deps: { db: Database.Database }): ContextHealthSummary {
   let samples: Array<{ usedPercentage: number | null; sampledAt: string | null }> = [];
   try {
@@ -79,7 +75,7 @@ export function computeContextHealthSummary(deps: { db: Database.Database }): Co
       `SELECT used_percentage AS usedPercentage, sampled_at AS sampledAt FROM context_usage`,
     ).all() as Array<{ usedPercentage: number | null; sampledAt: string | null }>;
   } catch {
-    // Table absent (test harness without the migration): empty summary.
+    // 表不存在（测试工具未应用迁移）时返回空摘要。
     samples = [];
   }
   const byUrgency: Record<string, number> = { critical: 0, warning: 0, low: 0, unknown: 0 };

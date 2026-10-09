@@ -34,8 +34,8 @@ function seed(db: ReturnType<typeof createDb>, id: string, state = "done", paren
   return log;
 }
 
-describe("archived audit identity — real migration, writer and history readers", () => {
-  it("upgrades the previous schema additively without relabeling old archive rows", () => {
+describe("归档审计身份——真实 migration、writer 与历史 reader", () => {
+  it("以增量方式升级旧 schema，且不重新标记旧归档行", () => {
     const db = database(true);
     db.prepare(`INSERT INTO queue_transitions_archive (transition_id, qitem_id, ts, state,
       actor_session, archived_at) VALUES (1, 'legacy', ?, 'done', 'owner@rig-a', ?)`).run(OLD, OLD);
@@ -49,7 +49,7 @@ describe("archived audit identity — real migration, writer and history readers
     expect(new QueueTransitionLog(db).listForQitem("legacy")[0]?.identityProvenance).toBeNull();
   });
 
-  it("retains complete transition values through archival, public history and bounded readers", async () => {
+  it("在归档、公共历史和有界读取中保留完整 transition 值", async () => {
     const db = database();
     const log = seed(db, "archived");
     seed(db, "child", "handed-off", "archived");
@@ -74,14 +74,14 @@ describe("archived audit identity — real migration, writer and history readers
     const response = await app.request("/api/queue/archived/transitions");
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(before);
-    // A newer live row and an archived row must share one ordering/limit.
+    // 较新的实时行与归档行必须共享同一排序/limit。
     const newer = log.append({ qitemId: "archived", state: "done", actorSession: "owner@rig-a", identityProvenance: "transport:v1" });
     expect(log.listForQitem("archived")).toEqual([...before, newer]);
     expect(log.listForActor("owner@rig-a", 1)).toEqual([newer]);
     expect(archiveAgedTerminalTransitions(db, { nowIso: NOW }).archivedRows).toBe(0);
   });
 
-  it("keeps nonterminal, recent and live-frontier history; normal retention resumes after frontier closure", () => {
+  it("保留非终态、近期与实时 frontier 历史；frontier 闭合后恢复正常保留策略", () => {
     const db = database();
     seed(db, "active", "in-progress");
     seed(db, "recent");
@@ -97,7 +97,7 @@ describe("archived audit identity — real migration, writer and history readers
     expect((db.prepare("SELECT COUNT(*) n FROM queue_transitions").get() as { n: number }).n).toBe(6);
   });
 
-  it("rolls back the archive insert when deletion fails inside the same transaction", () => {
+  it("同一事务内删除失败时回滚归档插入", () => {
     const db = database();
     seed(db, "rollback");
     const before = db.prepare("SELECT * FROM queue_transitions").all();
@@ -107,7 +107,7 @@ describe("archived audit identity — real migration, writer and history readers
     expect(db.prepare("SELECT * FROM queue_transitions_archive").all()).toEqual([]);
   });
 
-  it("refuses a pre-upgrade archive that cannot carry live provenance", () => {
+  it("拒绝无法携带实时 provenance 的升级前归档", () => {
     const db = database(true);
     seed(db, "old-schema");
     const before = db.prepare("SELECT * FROM queue_transitions").all();

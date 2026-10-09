@@ -15,16 +15,15 @@ export interface SpecLibraryEntry {
   updatedAt: string;
   summary?: string;
   hasServices?: boolean;
-  /** Workflows in Spec Library v0 — workflow-only metadata (kind === "workflow"). */
+  /** Spec Library v0 中工作流专属的元数据（kind === `workflow`）。 */
   isBuiltIn?: boolean;
   rolesCount?: number;
   stepsCount?: number;
   terminalTurnRule?: string;
   targetRig?: string | null;
-  /** Slice 11 (workflow-spec-folder-discovery) — diagnostic state for
-   *  workflow entries surfaced from the folder scan. "error" rows came
-   *  from malformed YAML and carry the parse/validate reason in
-   *  errorMessage so the Library UI can render a diagnostic row. */
+  /** Slice 11（workflow-spec-folder-discovery）——目录扫描得到的工作流 entry 诊断状态。
+   *  `error` 行来自格式错误的 YAML，并在 errorMessage 中携带解析/校验原因，
+   *  供 Library UI 渲染诊断行。 */
   status?: "valid" | "error";
   errorMessage?: string | null;
 }
@@ -49,14 +48,11 @@ function isYamlFile(filename: string): boolean {
   return filename.endsWith(".yaml") || filename.endsWith(".yml");
 }
 
-// OPR.0.3.2.22 Bug 4 — noise directories that should never enter the
-// spec library walk. The set matches progress-indexer.ts:81 exactly.
-// frontmatter-validator.ts:103 is a related scanner that uses a
-// narrower subset (node_modules / .git / .worktrees / dist / build);
-// if this list and the progress-indexer list ever diverge, reconcile
-// there first. The `.worktrees` entry closes the stale-row class
-// where conveyor.yaml inside a worktree was sliding into the library
-// cache and producing the `rig specs show conveyor` ambiguous-match UX.
+// OPR.0.3.2.22 Bug 4——绝不能进入 spec library 遍历的噪声目录。此集合与
+// progress-indexer.ts:81 完全一致。frontmatter-validator.ts:103 是相关 scanner，使用更窄的子集
+//（node_modules / .git / .worktrees / dist / build）；若此列表与 progress-indexer 列表出现分歧，
+// 应先在那里统一。`.worktrees` entry 关闭了一类 stale-row：worktree 中的 conveyor.yaml 曾会滑入
+// library cache，导致 `zrig specs show conveyor` 出现歧义匹配。
 const SKIP_DIRS = new Set([
   ".worktrees",
   "node_modules",
@@ -108,10 +104,8 @@ function shouldIndexRelativePath(sourceType: "builtin" | "user_file", relPath: s
 
 export class SpecLibraryService {
   private entries = new Map<string, SpecLibraryEntry>();
-  /** Workflow entries are written by the route layer via
-   *  setWorkflowEntries() — kept separate from the rig+agent scan
-   *  because their source-of-truth is the workflow_specs SQLite cache,
-   *  not YAML files on disk. */
+  /** Workflow entry 由 route 层通过 setWorkflowEntries() 写入。它们与工作组/智能体扫描分开保存，
+   *  因为其真源是 workflow_specs SQLite cache，而不是磁盘上的 YAML 文件。 */
   private workflowEntries = new Map<string, SpecLibraryEntry>();
   private readonly roots: SpecLibraryOpts["roots"];
   private readonly specReviewService: SpecReviewService;
@@ -140,7 +134,7 @@ export class SpecLibraryService {
         try {
           yaml = readFileSync(absPath, "utf-8");
         } catch {
-          continue; // Can't read — skip
+          continue; // 无法读取时跳过。
         }
 
         let stat: { mtimeMs: number };
@@ -171,9 +165,8 @@ export class SpecLibraryService {
     return entries;
   }
 
-  /** Workflows in Spec Library v0: replace the workflow-entry projection
-   *  in one shot. Called by the route layer after running
-   *  scanWorkflowSpecs() against the workflow_specs SQLite cache. */
+  /** Spec Library v0 中的工作流：一次性替换 workflow-entry projection。route 层针对
+   *  workflow_specs SQLite cache 运行 scanWorkflowSpecs() 后调用。 */
   setWorkflowEntries(entries: SpecLibraryEntry[]): void {
     const next = new Map<string, SpecLibraryEntry>();
     for (const entry of entries) {
@@ -184,11 +177,11 @@ export class SpecLibraryService {
   }
 
   get(id: string): { entry: SpecLibraryEntry; yaml: string } | null {
-    // Workflow entries: yaml is read from the source path on demand.
+    // Workflow entry 的 YAML 按需从 source path 读取。
     const wfEntry = this.workflowEntries.get(id);
     if (wfEntry) {
       let yaml = "";
-      try { yaml = readFileSync(wfEntry.sourcePath, "utf-8"); } catch { /* tolerate */ }
+      try { yaml = readFileSync(wfEntry.sourcePath, "utf-8"); } catch { /* 容忍读取失败。 */ }
       return { entry: wfEntry, yaml };
     }
     const entry = this.entries.get(id);
@@ -205,10 +198,10 @@ export class SpecLibraryService {
   remove(id: string): SpecLibraryMutationResult {
     const entry = this.entries.get(id);
     if (!entry) {
-      return { ok: false, code: "not_found", error: `Spec '${id}' not found in library` };
+      return { ok: false, code: "not_found", error: `library 中未找到 Spec '${id}'` };
     }
     if (entry.sourceType !== "user_file") {
-      return { ok: false, code: "read_only", error: `Spec '${entry.name}' is built in and cannot be removed.` };
+      return { ok: false, code: "read_only", error: `Spec '${entry.name}' 为内置项，无法移除。` };
     }
 
     unlinkSync(entry.sourcePath);
@@ -219,24 +212,24 @@ export class SpecLibraryService {
   rename(id: string, newName: string): SpecLibraryMutationResult {
     const entry = this.entries.get(id);
     if (!entry) {
-      return { ok: false, code: "not_found", error: `Spec '${id}' not found in library` };
+      return { ok: false, code: "not_found", error: `library 中未找到 Spec '${id}'` };
     }
     if (entry.sourceType !== "user_file") {
-      return { ok: false, code: "read_only", error: `Spec '${entry.name}' is built in and cannot be renamed.` };
+      return { ok: false, code: "read_only", error: `Spec '${entry.name}' 为内置项，无法重命名。` };
     }
 
     const trimmedName = newName.trim();
     if (!trimmedName) {
-      return { ok: false, code: "invalid_spec", error: "name is required" };
+      return { ok: false, code: "invalid_spec", error: "name 为必填项" };
     }
     if (Array.from(this.entries.values()).some((candidate) => candidate.id !== id && candidate.name === trimmedName)) {
-      return { ok: false, code: "conflict", error: `Spec name '${trimmedName}' already exists in the library.` };
+      return { ok: false, code: "conflict", error: `library 中已存在 Spec 名称 '${trimmedName}'。` };
     }
 
     const yaml = readFileSync(entry.sourcePath, "utf-8");
     const raw = parseYaml(yaml) as Record<string, unknown> | null;
     if (!raw || typeof raw !== "object") {
-      return { ok: false, code: "invalid_spec", error: `Spec '${entry.name}' could not be parsed for rename.` };
+      return { ok: false, code: "invalid_spec", error: `无法解析 Spec '${entry.name}' 以执行重命名。` };
     }
     raw["name"] = trimmedName;
 
@@ -246,9 +239,9 @@ export class SpecLibraryService {
     if (nextPath !== entry.sourcePath) {
       try {
         statSync(nextPath);
-        return { ok: false, code: "conflict", error: `A spec file already exists at ${nextPath}.` };
+        return { ok: false, code: "conflict", error: `${nextPath} 已存在 spec 文件。` };
       } catch {
-        // target path is free
+        // target path 可用。
       }
     }
 
@@ -264,7 +257,7 @@ export class SpecLibraryService {
     const renamed = Array.from(this.entries.values()).find((candidate) => candidate.sourcePath === nextPath);
     return renamed
       ? { ok: true, entry: renamed }
-      : { ok: false, code: "invalid_spec", error: `Renamed spec '${trimmedName}' could not be reloaded.` };
+      : { ok: false, code: "invalid_spec", error: `重命名后的 spec '${trimmedName}' 无法重新加载。` };
   }
 
   private classifySpec(
@@ -274,14 +267,14 @@ export class SpecLibraryService {
     relPath: string,
     mtimeMs: number,
   ): SpecLibraryEntry | null {
-    // Try rig first
+    // 先尝试按工作组 spec 解析。
     try {
       const review = this.specReviewService.reviewRigSpec(yaml, "library_item");
       let hasServices = false;
       try {
         const raw = parseYaml(yaml) as Record<string, unknown>;
         hasServices = !!(raw["services"] && typeof raw["services"] === "object");
-      } catch { /* safe default */ }
+      } catch { /* 使用安全默认值。 */ }
       return {
         id: makeId(sourceType, relPath),
         kind: "rig",
@@ -295,10 +288,10 @@ export class SpecLibraryService {
         ...(hasServices ? { hasServices } : {}),
       };
     } catch {
-      // Not a valid rig spec
+      // 不是合法的工作组 spec。
     }
 
-    // Try agent
+    // 再尝试按智能体 spec 解析。
     try {
       const review = this.specReviewService.reviewAgentSpec(yaml, "library_item");
       return {
@@ -313,7 +306,7 @@ export class SpecLibraryService {
         summary: review.description,
       };
     } catch {
-      // Not a valid agent spec either — skip
+      // 也不是合法的智能体 spec，跳过。
     }
 
     return null;

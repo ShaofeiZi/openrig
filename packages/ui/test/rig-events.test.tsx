@@ -85,7 +85,7 @@ describe("useRigEvents hook", () => {
       es.simulateMessage(JSON.stringify({ type: "node.startup_ready", rigId: "rig-1" }));
     });
 
-    // Wait for debounce (100ms)
+    // 等 debounce（100ms）
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["rig", "rig-1", "graph"] });
     });
@@ -104,7 +104,7 @@ describe("useRigEvents hook", () => {
     await waitFor(() => expect(instances).toHaveLength(1));
     const es = getLastInstance();
 
-    // Rapid fire — all within debounce window
+    // 快速连发——全在 debounce 窗口内
     act(() => {
       es.simulateMessage(JSON.stringify({ type: "node.startup_ready", rigId: "rig-1", seq: 1 }));
       es.simulateMessage(JSON.stringify({ type: "node.startup_ready", rigId: "rig-1", seq: 2 }));
@@ -177,7 +177,7 @@ describe("useRigEvents hook", () => {
     await waitFor(() => expect(instances).toHaveLength(1));
     const es = getLastInstance();
 
-    // Simulate error then reconnect
+    // 模拟错误后重连
     act(() => { es.simulateError(); });
     await waitFor(() => expect(screen.getByTestId("reconnecting").textContent).toBe("true"));
 
@@ -188,7 +188,7 @@ describe("useRigEvents hook", () => {
       expect(screen.getByTestId("connected").textContent).toBe("true");
     });
 
-    // Reconnect should trigger graph invalidation
+    // 重连应触发 graph 失效
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["rig", "rig-1", "graph"] });
     });
@@ -210,7 +210,7 @@ describe("useRigEvents hook", () => {
     act(() => { es.simulateOpen(); });
     await waitFor(() => expect(screen.getByTestId("connected").textContent).toBe("true"));
 
-    // No invalidation on initial open
+    // 初始打开时无失效
     expect(invalidateSpy).not.toHaveBeenCalled();
   });
 

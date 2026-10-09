@@ -11,8 +11,7 @@ import type {
   InstalledResource, ProjectionResult, StartupDeliveryResult, ReadinessResult,
   HarnessLaunchResult,
 } from "../domain/runtime-adapter.js";
-// Type-only — keeps the profile-preflight module's dynamic import lazy for
-// production (no runtime import cost from this line).
+// 仅类型导入——使 profile-preflight 模块在生产中保持动态延迟导入（此行不产生 runtime 导入开销）。
 import type { CodexProfileProbeResult } from "../domain/codex-profile-preflight.js";
 import { resolveConcreteHint } from "../domain/runtime-adapter.js";
 import type { ProjectionPlan, ProjectionEntry } from "../domain/projection-planner.js";
@@ -31,8 +30,8 @@ import { runSyncSite } from "../domain/sync-site-wrap.js";
 
 import { listNativeProcesses, observeCodexPaneProcess, type NativeProcessRow } from "../domain/native-process-lineage.js";
 
-// Shared by all probes of ONE launch, never reset by a delayed screen or an
-// ambiguous transport result. A separately requested launch gets a new attempt.
+// 一次启动的所有 probe 共享此状态，绝不因延迟屏幕或含糊的 transport 结果而重置。
+// 单独请求的启动会获得新的 attempt。
 interface UpdatePromptAttempt {
   handled: boolean;
   failure?: Extract<HarnessLaunchResult, { ok: false }>;
@@ -46,16 +45,16 @@ export interface CodexAdapterFsOps {
   exists(path: string): boolean;
   mkdirp(path: string): void;
   listFiles?(dirPath: string): string[];
-  /** Source file permission bits (for mode-preserving projection). Optional: mode preservation is a no-op if absent. */
+  /** 源文件权限位（用于保留 mode 的投影）。可选；缺失时不保留 mode。 */
   statMode?(path: string): number;
-  /** Apply permission bits to a file (for mode-preserving projection). Optional: no-op if absent. */
+  /** 将权限位应用到文件（用于保留 mode 的投影）。可选；缺失时为空操作。 */
   chmod?(path: string, mode: number): void;
   homedir?: string;
 }
 
 /**
- * Codex runtime adapter. Projects resources to .agents/ targets (preserving
- * existing Codex filesystem contract) and delivers startup files.
+ * Codex runtime adapter。将资源投影到 .agents/ 目标（保留现有 Codex 文件系统契约），
+ * 并投递启动文件。
  */
 export class CodexRuntimeAdapter implements RuntimeAdapter {
   readonly runtime = "codex";
@@ -67,20 +66,17 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
   private resolveHomeDirByPid: ResolveHomeDirByPid;
   private codexHome?: string;
   private launchPath?: string;
-  // Housekeeping B1 fixback (guard-blocking, arch HK-AR-1 = whole-probe DI):
-  // the Codex profile-LOAD probe is an injectable dep in the adapter's
-  // established optional-deps shape. Default = the REAL probe
-  // (defaultProfilePreflight, module-private); tests inject a controlled probe
-  // so no real codex subprocess runs. Contract not weakened — production uses
-  // the real probe by default.
+  // Housekeeping B1 修正（阻塞 guard，架构 HK-AR-1 = 整体 probe DI）：Codex profile 加载探针
+  // 是 adapter 既有可选依赖结构中的可注入依赖。默认使用真实探针（模块私有的
+  // defaultProfilePreflight）；测试注入受控探针，不运行真实 codex 子进程。契约未削弱——生产默认
+  // 使用真实探针。
   private verifyProfilePreflight: (profile: string) => Promise<CodexProfileProbeResult>;
-  // #69: whether the installed Codex supports --no-daemon. Startup wires the real probe;
-  // absent (unit tests, other embedders) keeps the existing invocation unchanged.
+  // #69：已安装 Codex 是否支持 --no-daemon。Startup 接入真实探针；缺失时（单元测试、其他
+  // 嵌入方）保持现有调用不变。
   private detectDaemonSupport?: CodexDaemonSupportDetector;
-  // OPR.0.4.1.10 FR-B — absolute path to the daemon's own shipped activity-relay.cjs,
-  // resolved by startup from import.meta.dirname. Used by ensureCodexActivityHooks
-  // (FR-A) to write config-layer [hooks] command entries that are cwd-independent and
-  // version-matched to the running daemon (NOT ${PLUGIN_ROOT}, NOT a per-cwd copy).
+  // OPR.0.4.1.10 FR-B——后台服务自身发布的 activity-relay.cjs 绝对路径，由 startup 从
+  // import.meta.dirname 解析。ensureCodexActivityHooks（FR-A）用它写入配置层 [hooks] 命令条目；
+  // 这些条目不依赖 cwd，且版本与运行中的后台服务匹配（不是 ${PLUGIN_ROOT}，也不是逐 cwd 副本）。
   private activityRelayPath?: string;
 
   constructor(deps: {
@@ -92,7 +88,7 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
     sleep?: (ms: number) => Promise<void>;
     activityRelayPath?: string;
     codexHome?: string;
-    /** Match the daemon's prerequisite probe even if the pane's login shell rewrites PATH. */
+    /** 即使 pane 的登录 shell 重写 PATH，也要与后台服务的前置探针保持一致。 */
     launchPath?: string;
     verifyProfilePreflight?: (profile: string) => Promise<CodexProfileProbeResult>;
     detectDaemonSupport?: CodexDaemonSupportDetector;
@@ -111,16 +107,14 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
   }
 
   /**
-   * plugin-primitive Phase 3a slice 3.5 — ensure Codex feature flag.
+   * plugin-primitive 阶段 3a slice 3.5——确保 Codex feature flag。
    *
-   * When `enabled` is true, idempotently writes `codex_hooks = true` under
-   * `[features]` in `~/.codex/config.toml`, creating the file if missing.
-   * When `enabled` is false, makes ZERO modifications — the operator is
-   * managing Codex config independently and the daemon does not touch it.
+   * `enabled` 为 true 时，幂等地把 `codex_hooks = true` 写入 `~/.codex/config.toml` 的
+   * `[features]` 下；文件缺失时创建。`enabled` 为 false 时不做任何修改——操作员独立管理
+   * Codex 配置，后台服务不触碰它。
    *
-   * Replaces the activity-hook-injection-coupled feature-flag set call
-   * that lived inside the auto-injected activity-hook provisioning path
-   * pre-rip (plugin-primitive Phase 3a slice 3.1).
+   * 取代拆除前位于自动注入 activity hook 配置路径中、与 activity-hook 注入耦合的 feature-flag
+   * 设置调用（plugin-primitive 阶段 3a slice 3.1）。
    */
   ensureCodexFeatureFlag(enabled: boolean, opts?: { codexVersion?: string }): void {
     if (!enabled) return;
@@ -136,31 +130,27 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
   }
 
   /**
-   * OPR.0.4.1.10 FR-A — write the OpenRig activity hooks into Codex's config layer
-   * (`~/.codex/config.toml` inline `[hooks]`) so an OpenRig-launched Codex seat is
-   * hook-PRIMARY from clean shipped config. Idempotent managed-block upsert for the
-   * four events SessionStart / UserPromptSubmit / Stop / PermissionRequest; each
-   * command is `node "<activityRelayPath>"` (the daemon's OWN shipped relay, FR-B —
-   * cwd-independent, version-matched, NOT `${PLUGIN_ROOT}` nor a per-cwd copy). Also
-   * pins `[features].hooks = true` (canonical key; the deprecated `codex_hooks` alias
-   * is intentionally NOT used here). Trust is scoped to the exact authored hook
-   * hashes below; remaining native review prompts require an operator decision.
-   * The relay inherits the seat's OPENRIG_* env from the tmux session.
+   * OPR.0.4.1.10 FR-A——将 OpenRig activity hook 写入 Codex 配置层
+   *（`~/.codex/config.toml` 内联 `[hooks]`），使 OpenRig 启动的 Codex 席位从干净发布配置起就以
+   * hook 为主。对 SessionStart/UserPromptSubmit/Stop/PermissionRequest 四个事件幂等 upsert
+   * 托管块；每个命令为 `node "<activityRelayPath>"`（后台服务自身发布的 relay，FR-B——不依赖
+   * cwd、与运行版本匹配，不使用 `${PLUGIN_ROOT}` 或逐 cwd 副本）。同时固定
+   * `[features].hooks = true`（canonical key；有意不使用已弃用别名 `codex_hooks`）。Trust 仅限
+   * 下方准确的已编写 hook 哈希；剩余原生评审提示需要操作员决策。relay 从 tmux session 继承
+   * 席位的 OPENRIG_* 环境。
    *
-   * Fail-safe: skips + warns when the relay asset is missing — never writes a hook that
-   * points at a nonexistent script. Verified-firsthand (Codex 0.139, dev1-qa AC-2 proof):
-   * on the OpenRig-managed launch path — managed inline hooks + trusted + the relay env
-   * delivered into the seat (OPENRIG_URL + OPENRIG_ACTIVITY_HOOK_TOKEN + session/node/runtime)
-   * — all four events, SessionStart included, deliver as runtime_hook activity. Without the
-   * relay env the hooks are still trusted/visible but no activity rows land. (A bare/manual
-   * codex TUI launch lacks that context and may not deliver SessionStart — not how OpenRig
-   * launches seats.)
+   * 故障安全：relay 资产缺失时跳过并警告，绝不写入指向不存在脚本的 hook。已一手验证
+   *（Codex 0.139，dev1-qa AC-2 证据）：在 OpenRig 托管启动路径上，托管内联 hook + trusted +
+   * 投递进席位的 relay 环境（OPENRIG_URL + OPENRIG_ACTIVITY_HOOK_TOKEN + session/node/runtime）
+   * 会使包括 SessionStart 在内的四个事件都作为 runtime_hook activity 投递。没有 relay 环境时，
+   * hook 仍可信/可见，但不会落 activity 行。（裸启动/手工启动的 codex TUI 缺少该上下文，可能不
+   * 投递 SessionStart；OpenRig 并不这样启动席位。）
    */
   ensureCodexActivityHooks(): void {
     const relay = this.activityRelayPath;
     if (!relay || !this.fs.exists(relay)) {
       if (relay) {
-        console.error(`[openrig] codex activity hooks skipped: relay asset not found at ${relay}`);
+        console.error(`[zrig] 已跳过 Codex activity hook：${relay} 中未找到 relay 资产`);
       }
       return;
     }
@@ -171,13 +161,11 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
       this.fs.mkdirp(nodePath.dirname(configPath));
       this.fs.writeFile(configPath, withHooks);
     }
-    // OPR.0.4.3.33 hook-trust-autoclear — pre-write Codex's OWN hook trust record
-    // ([hooks.state."<key>"] trusted_hash) for exactly our 4 authored hooks, on the SAME
-    // seam that provisions them, so the daemon's unmanaged inline hooks are trusted from
-    // clean config on EVERY path a fresh Codex process reads config (launch/adopt/reconcile)
-    // — without a blanket native trust keystroke. If native identity/hash semantics
-    // change, the remaining review is surfaced for a decision. Idempotent
-    // + non-clobbering; only touches our 4 keys. See applyCodexActivityHookTrust for the RTFM.
+    // OPR.0.4.3.33 hook-trust-autoclear——在配置 hook 的同一接缝上，为我们编写的四个 hook
+    // 预写 Codex 自身 hook trust 记录（[hooks.state."<key>"] trusted_hash），使后台服务未托管的
+    // 内联 hook 在全新 Codex 进程读取配置的每条路径（launch/adopt/reconcile）上从干净配置起就
+    // 被信任，而无需笼统的原生 trust 按键。若原生身份/哈希语义变化，则展示剩余评审供决策。
+    // 幂等且不覆盖；只触碰我们的四个 key。RTFM 见 applyCodexActivityHookTrust。
     const trusted = this.applyCodexActivityHookTrust(withHooks, configPath, relay);
     if (trusted !== withHooks) {
       this.fs.mkdirp(nodePath.dirname(configPath));
@@ -186,22 +174,21 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
   }
 
   /**
-   * OPR.0.4.3.33 — compute + splice Codex's `[hooks.state."<key>"] trusted_hash` for our 4
-   * authored activity hooks into `content`. `key_source` is the canonicalized config path
-   * (Codex keys trust by `std::fs::canonicalize(config.toml).display()`); we best-effort
-   * `realpathSync` the config path to match — on a miss (file not yet on real disk, or a mock
-   * fs in tests) we fall back to the plain absolute path, and any resulting key mismatch just
-   * degrades to the launch-time trust gate (Layer-2 floor), never a broken run. The command
-   * string is the value Codex deserializes from our TOML literal `'node "<relay>"'` — i.e.
-   * `node "<relay>"` WITHOUT the outer TOML quote delimiters. Timeout=5, matcher/status None.
+   * OPR.0.4.3.33——计算 Codex 为我们四个 activity hook 使用的
+   * `[hooks.state."<key>"] trusted_hash` 并拼入 `content`。`key_source` 是 canonical 化配置
+   * 路径（Codex 按 `std::fs::canonicalize(config.toml).display()` 为 trust 定键）；我们尽力
+   * `realpathSync` 配置路径以匹配。失败时（文件尚未真实落盘，或测试中的 mock fs）回退到普通
+   * 绝对路径，由此产生的 key 不匹配只会降级到启动时 trust gate（第 2 层 floor），绝不导致运行
+   * 损坏。命令字符串是 Codex 从 TOML 字面量 `'node "<relay>"'` 反序列化出的值，即不含外层
+   * TOML 引号的 `node "<relay>"`。timeout=5，matcher/status 为 None。
    */
   private applyCodexActivityHookTrust(content: string, configPath: string, relay: string): string {
     let keySource = configPath;
     try {
       keySource = fs.realpathSync(configPath);
     } catch {
-      // config.toml not on the real filesystem (first write / unit-test mock fs) — the plain
-      // absolute path is the honest best guess; a canonicalization delta is fail-safe (gate reappears).
+      // config.toml 不在真实文件系统中（首次写入/单元测试 mock fs）；普通绝对路径是诚实的最佳
+      // 猜测，canonical 化差异会故障安全（gate 重新出现）。
     }
     const command = `node "${relay}"`;
     let next = content;
@@ -213,11 +200,10 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
   }
 
   /**
-   * OPR.0.4.1.10 B3 — durable disable. When runtime.codex.hooks_enabled is false, strip the
-   * OpenRig-managed activity-hooks sentinel block from ~/.codex/config.toml so a seat that was
-   * previously provisioned with hooks does not keep firing them after the operator disables.
-   * Removes ONLY the managed block — preserves any user-owned hooks and leaves [features].hooks
-   * (the Codex 0.139 default) intact. Idempotent; no-op when the config or the block is absent.
+   * OPR.0.4.1.10 B3——持久禁用。runtime.codex.hooks_enabled 为 false 时，从
+   * ~/.codex/config.toml 删除 OpenRig 托管的 activity-hooks 哨兵块，使之前配置过 hook 的席位
+   * 在操作员禁用后不再触发。只删除托管块，保留所有用户 hook，并保持 [features].hooks
+   *（Codex 0.139 默认值）不变。操作幂等；配置或块缺失时为空操作。
    */
   removeCodexActivityHooks(): void {
     const configPath = this.resolveCodexConfigPath();
@@ -268,7 +254,7 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
 
   async deliverStartup(files: ResolvedStartupFile[], binding: NodeBinding): Promise<StartupDeliveryResult> {
     try { this.ensureManagedBootstrap(binding); } catch (err) {
-      console.error(`[openrig] codex bootstrap warning: ${(err as Error).message}`);
+      console.error(`[zrig] Codex bootstrap 警告：${(err as Error).message}`);
     }
 
     let delivered = 0;
@@ -283,7 +269,7 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
           case "guidance_merge": {
             const targetPath = nodePath.join(binding.cwd, "AGENTS.md");
             const merged = this.mergeGuidance(targetPath, file.path, content);
-            if (!merged) continue; // rig-role skip: do not count as delivered
+            if (!merged) continue; // 跳过 rig-role 时不计为已投递。
             break;
           }
           case "skill_install": {
@@ -319,11 +305,11 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
     opts: { name: string; resumeToken?: string; forkSource?: import("../domain/runtime-adapter.js").ForkSource },
   ): Promise<HarnessLaunchResult> {
     if (!binding.tmuxSession) {
-      return { ok: false, error: "No tmux session bound — cannot launch Codex harness" };
+      return { ok: false, error: "未绑定 tmux session——无法启动 Codex harness" };
     }
 
     if (opts.resumeToken && opts.forkSource) {
-      return { ok: false, error: "resumeToken and forkSource are mutually exclusive — pick one" };
+      return { ok: false, error: "resumeToken 与 forkSource 互斥——请选择一个" };
     }
 
     const updatePrompt: UpdatePromptAttempt = { handled: false };
@@ -334,23 +320,22 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
     const postureArg = codexPostureArg(profileArg, process.env, binding.launchPosture);
     const appliedLaunch = observeCodexSandbox(postureArg);
 
-    // OPR.0.3.4.7 — profile-LOAD probe before launch/resume. A legacy
-    // [profiles.<name>] table or invalid TOML must fail BEFORE the opaque
-    // `codex -p <profile> resume` failure. An absent .config.toml passes
-    // (Codex default-layers it; advisor Option B).
+    // OPR.0.3.4.7——launch/resume 前的 profile 加载探针。legacy [profiles.<name>] 表或无效
+    // TOML 必须先于不透明的 `codex -p <profile> resume` 失败。缺少 .config.toml 时通过
+    //（Codex 会应用默认层；顾问方案 B）。
     if (profile) {
       const probeResult = await this.verifyProfilePreflight(profile);
       if (!probeResult.ok) {
         return {
           ok: false,
-          error: `${probeResult.error}${probeResult.migrationHint ? `\n  Fix: ${probeResult.migrationHint}` : ""}`,
+          error: `${probeResult.error}${probeResult.migrationHint ? `\n  修复：${probeResult.migrationHint}` : ""}`,
         };
       }
     }
     const gitDirArg = ` --add-dir ${shellQuote(nodePath.join(binding.cwd, ".git"))}`;
     const queueStateDirArg = this.buildQueueStateAddDirArg(opts.name);
-    // #69: one daemon-support decision for this launch, for the Codex the seat pane runs
-    // (its cwd, the launch PATH), applied to fresh, fork and resume.
+    // #69：为本次启动及席位 pane 实际运行的 Codex（其 cwd 与启动 PATH）做一次 daemon-support
+    // 决策，并应用于 fresh、fork 和 resume。
     const daemonSupport = this.detectDaemonSupport ? await this.detectDaemonSupport(binding.cwd) : undefined;
     if (daemonSupport?.kind === "unknown") {
       return { ok: false, error: unknownDaemonSupportMessage(daemonSupport.detail) };
@@ -358,28 +343,26 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
     const daemonOptOut = daemonSupport?.kind === "supported";
     const daemonArg = daemonOptOut ? " --no-daemon" : "";
 
-    // Fork branch: `codex fork <parent_thread_id>`. Captures the NEW thread id
-    // post-fork. Parent thread id is NOT persisted onto the new seat record
-    // (identity-honesty bedrock).
+    // Fork 分支：`codex fork <parent_thread_id>`。捕获 fork 后的新 thread id；父 thread id
+    // 不会持久化到新席位记录（身份诚实基石）。
     if (opts.forkSource) {
       if (opts.forkSource.kind !== "native_id") {
         return {
           ok: false,
-          error: `codex fork: ref.kind="${opts.forkSource.kind}" is not supported in v1; use ref.kind="native_id" with the prior conversation's thread id`,
+          error: `codex fork：v1 不支持 ref.kind="${opts.forkSource.kind}"；请使用 ref.kind="native_id" 并提供先前会话的 thread id`,
         };
       }
       const parentId = opts.forkSource.value?.trim();
       if (!parentId) {
-        return { ok: false, error: "codex fork: forkSource.value is required (parent native_id)" };
+        return { ok: false, error: "codex fork：必须提供 forkSource.value（父 native_id）" };
       }
-      // OPR.0.4.8.2: the FORK path uses the SAME posture decision (codexPostureArg) — YOLO forces
-      // -s danger-full-access on every seat; otherwise the named profile, or OpenRig's explicit
-      // -s workspace-write floor flag.
-      // 0.5.2-07 A2-3: the FORK path threads the SPEC model too (fork-instantiate reverted it before).
+      // OPR.0.4.8.2：FORK 路径使用同一姿态决策 codexPostureArg；YOLO 强制每个席位使用
+      // -s danger-full-access，否则使用具名 profile 或 OpenRig 显式 -s workspace-write floor。
+      // 0.5.2-07 A2-3：FORK 路径也传递 spec model（此前 fork-instantiate 会将其还原）。
       const cmd = `codex${daemonArg}${postureArg}${modelArg} fork${queueStateDirArg} ${shellQuote(parentId)}`;
       const textResult = await this.tmux.sendShellCommand(binding.tmuxSession, this.launchPath ? `env PATH=${shellQuote(this.launchPath)} ${cmd}` : cmd);
       if (!textResult.ok) {
-        return { ok: false, error: `Failed to send launch command: ${textResult.message}` };
+        return { ok: false, error: `发送启动命令失败：${textResult.message}` };
       }
       await this.dismissSkippableCodexUpdatePrompt(binding.tmuxSession, updatePrompt, 8);
       if (updatePrompt.failure) return updatePrompt.failure;
@@ -388,24 +371,24 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
       if (!threadId) {
         return {
           ok: false,
-          error: "codex fork: could not capture new post-fork thread id",
+          error: "codex fork：无法捕获 fork 后的新 thread id",
         };
       }
       return { ok: true, resumeToken: threadId, resumeType: "codex_id", appliedLaunch };
     }
 
-    // OPR.0.4.8.2: one posture decision (codexPostureArg) for the fresh launch too — YOLO forces
-    // -s danger-full-access (overrides even a named profile); otherwise the named profile, or
-    // OpenRig's explicit -s workspace-write floor flag.
+    // OPR.0.4.8.2：fresh 启动也使用唯一姿态决策 codexPostureArg；YOLO 强制
+    // -s danger-full-access（即使有具名 profile 也覆盖），否则使用具名 profile 或 OpenRig
+    // 显式 -s workspace-write floor。
     const cmd = opts.resumeToken
-      // 0.5.2-07 A2-3: the pod-aware RESUME path threads the SPEC model too (reverted before — the
-      // grounding map assumed codex parity with the claude adapter, but only fresh emitted -m).
+      // 0.5.2-07 A2-3：感知 pod 的 RESUME 路径也传递 spec model（此前被还原；grounding map
+      // 假定 Codex 与 Claude adapter 一致，但只有 fresh 会输出 -m）。
       ? buildCodexResumeCore(opts.resumeToken, profile, false, queueStateDirArg.trim() || undefined, binding.launchPosture, model, postureArg, daemonOptOut)
       : `codex${daemonArg}${postureArg} -C ${shellQuote(binding.cwd)}${gitDirArg}${queueStateDirArg}${modelArg}`;
 
     const textResult = await this.tmux.sendShellCommand(binding.tmuxSession, this.launchPath ? `env PATH=${shellQuote(this.launchPath)} ${cmd}` : cmd);
     if (!textResult.ok) {
-      return { ok: false, error: `Failed to send launch command: ${textResult.message}` };
+      return { ok: false, error: `发送启动命令失败：${textResult.message}` };
     }
 
     await this.dismissSkippableCodexUpdatePrompt(binding.tmuxSession, updatePrompt);
@@ -431,26 +414,25 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
     if (!identity) return "";
 
     const sharedDocsRoot = process.env.OPENRIG_SHARED_DOCS_ROOT?.trim()
-      // OPR.0.3.2.14 — subpath scrubbed (internal-team layout → generic placeholder).
+      // OPR.0.3.2.14——子路径已清理（内部团队布局 → 通用占位符）。
       || nodePath.join(this.fs.homedir ?? os.homedir(), ".openrig", "shared-docs");
     const queueStateRoot = nodePath.join(sharedDocsRoot, "rigs", identity.rig, "state", identity.pod);
     return ` --add-dir ${shellQuote(queueStateRoot)}`;
   }
 
   private async captureProbeScreen(target: string): Promise<string> {
-    // Current readiness belongs to the rendered screen. Scrollback may retain
-    // dismissed prompts, loading headers, or refusals from earlier attempts.
+    // 当前 readiness 属于已渲染屏幕。Scrollback 可能保留已关闭提示、加载标题或早先尝试的拒绝。
     if (this.tmux.capturePaneScreen) return await this.tmux.capturePaneScreen(target) ?? "";
     return await this.tmux.capturePaneContent(target, 40) ?? "";
   }
 
   async checkReady(binding: NodeBinding): Promise<ReadinessResult> {
     if (!binding.tmuxSession) {
-      return { ready: false, reason: "No tmux session bound" };
+      return { ready: false, reason: "未绑定 tmux session" };
     }
     const alive = await this.tmux.hasSession(binding.tmuxSession);
     if (!alive) {
-      return { ready: false, reason: "tmux session not responsive" };
+      return { ready: false, reason: "tmux session 无响应" };
     }
 
     const paneCommand = await this.tmux.getPaneCommand(binding.tmuxSession);
@@ -477,8 +459,8 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
         if (updatePrompt.handled || !isSkippableCodexUpdatePrompt(paneContent)) return false;
         const identity = await this.observeMenuProcess(tmuxSession, paneCommand);
         if (!identity) return false;
-        // The npm launcher may be foreground Node with a native Codex child.
-        // Recheck identity and CURRENT screen after sampling, never scrollback.
+        // npm launcher 可能是带原生 Codex 子进程的前台 Node。采样后重新检查身份与当前屏幕，
+        // 绝不读取 scrollback。
         const currentCommand = await this.tmux.getPaneCommand(tmuxSession);
         if (await this.observeMenuProcess(tmuxSession, currentCommand) !== identity) {
           updatePrompt.handled = true;
@@ -491,25 +473,24 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
           return false;
         }
 
-        // Codex 0.155.1 ignores Paste; Key3 selects AND submits DontRemind
-        // (including its version-cache write). An Enter would hit the next
-        // screen. Consume the attempt before sending, even if delivery fails.
+        // Codex 0.155.1 忽略 Paste；Key3 会选择并提交 DontRemind（包括其版本缓存写入）。
+        // Enter 会命中下一屏。即使投递失败，也要在发送前消耗本次尝试。
         updatePrompt.handled = true;
         const result = await this.tmux.sendKeys(tmuxSession, ["3"]);
         if (!result.ok) {
           updatePrompt.failure = {
             ok: false, recovery: "attention_required",
-            error: `Could not skip the Codex update prompt: ${result.message}. Inspect the session before retrying.`,
+            error: `无法跳过 Codex 更新提示：${result.message}。请检查 session 后再重试。`,
             evidence: paneContent.split("\n").slice(-12).join("\n"),
           };
           return false;
         }
         await this.sleep(500);
-        continue; // Observe transition; never send a second choice on this launch.
+        continue; // 观察状态转换；本次启动绝不发送第二次选择。
       }
 
-      // Readiness or another native decision closes update automation. A later
-      // stale capture must not reopen it. Trust/auth decisions remain in-pane.
+      // readiness 或其他原生决策会关闭 update 自动化；后续陈旧捕获不得重新打开它。
+      // Trust/auth 决策仍留在 pane 中。
       if (probe.status === "resumed" || probe.status === "attention_required"
         || probe.code === "trust_gate" || probe.code === "hook_trust_gate") {
         updatePrompt.handled = true;
@@ -521,7 +502,7 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
   }
 
   private async observeMenuProcess(target: string, paneCommand: string | null): Promise<string | null> {
-    // tmux may name the shell wrapper; native ancestry and foreground group decide identity.
+    // tmux 可能报告 shell wrapper 名称；身份由原生祖先进程与前台进程组共同决定。
     if (!paneCommand) return null;
     const observation = await observeCodexPaneProcess({ target, tmux: this.tmux, listProcesses: this.listProcesses });
     return observation ? JSON.stringify([paneCommand, observation.fingerprint]) : null;
@@ -542,10 +523,10 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
       return this.mergeGuidance(targetPath, entry.effectiveId, content);
     }
 
-    // HG-1.3 plugin runtime applicability filter (per DESIGN.md §5.1):
-    // - explicit pluginType="claude" → skip Codex projection
-    // - pluginType="auto" (or unset) + no .codex-plugin/ manifest dir → skip
-    // - explicit pluginType="codex" → project regardless of manifest presence
+    // HG-1.3 插件 runtime 适用性筛选（依据 DESIGN.md §5.1）：
+    // - 显式 pluginType="claude" → 跳过 Codex 投影
+    // - pluginType="auto"（或未设置）且没有 .codex-plugin/ manifest 目录 → 跳过
+    // - 显式 pluginType="codex" → 无论 manifest 是否存在都投影
     if (entry.category === "plugin" && !this.pluginAppliesToCodex(entry)) {
       return false;
     }
@@ -561,8 +542,7 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
         const src = nodePath.join(entry.absolutePath, file);
         const dest = nodePath.join(targetDir, file);
         const content = this.fs.readFile(src);
-        // Reconcile mode even when the content write is skipped: a byte-identical dest
-        // projected earlier may still carry the wrong (default) mode.
+        // 即使跳过内容写入也要协调 mode：先前投影的逐字节相同目标仍可能带有错误的默认 mode。
         if (this.fs.exists(dest) && hashContent(content) === hashContent(this.fs.readFile(dest))) {
           this.preserveMode(src, dest);
           continue;
@@ -585,11 +565,10 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
   }
 
   /**
-   * Reapply the source file's permission bits to the projected dest. Plain
-   * readFile+writeFile (writeFileSync) creates the dest with the process default
-   * mode, dropping executable bits on nested plugin helpers (e.g. the
-   * claude-compaction-restore/scripts/*.mjs 0755 hooks). No-op when the fs adapter
-   * does not expose mode primitives (keeps existing mock-fs callers unaffected).
+   * 将源文件权限位重新应用到投影目标。普通 readFile+writeFile（writeFileSync）使用进程默认
+   * mode 创建目标，会丢失嵌套插件辅助程序的可执行位（例如
+   * claude-compaction-restore/scripts/*.mjs 的 0755 hook）。fs adapter 未公开 mode 原语时
+   * 为空操作，使现有 mock-fs 调用方不受影响。
    */
   private preserveMode(src: string, dest: string): void {
     if (!this.fs.statMode || !this.fs.chmod) return;
@@ -601,7 +580,7 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
     const explicit = entry.pluginType ?? "auto";
     if (explicit === "codex") return true;
     if (explicit === "claude") return false;
-    // auto: detect via .codex-plugin/plugin.json presence in the source tree
+    // auto：根据源树中是否存在 .codex-plugin/plugin.json 检测。
     return this.fs.exists(nodePath.join(entry.absolutePath, ".codex-plugin", "plugin.json"));
   }
 
@@ -626,11 +605,11 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
 
     const existing = this.fs.exists(configPath) ? this.fs.readFile(configPath) : "";
     const fragment = this.fs.readFile(entry.absolutePath);
-    // Before anything is dropped: a fragment that is invalid on its own must
-    // fail loudly, never be "resolved" by the collision filter deleting it.
+    // 在丢弃任何内容前：本身无效的 fragment 必须明确失败，绝不能由冲突筛选器通过删除内容来
+    // “解决”。
     assertFragmentParsesStandalone(fragment, entry.absolutePath, entry.effectiveId);
-    // Ordered after the parse: an unparseable fragment gets the TOML error that
-    // names its line and column, not a root-scope complaint about wreckage.
+    // 此检查位于解析之后：无法解析的 fragment 应收到指出行列的 TOML 错误，而不是关于残片的
+    // 根范围投诉。
     assertFragmentOpensWithTable(fragment, entry.absolutePath, entry.effectiveId);
     const rendered = upsertManagedCodexConfigFragment(existing, entry.effectiveId, fragment);
     assertRendersAsLoadableToml(rendered, configPath, entry.effectiveId);
@@ -639,20 +618,16 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
   }
 
   /**
-   * Merge a managed block into the target guidance file. Returns `true` when
-   * the merge happened, `false` when intentionally skipped (rig-role). Callers
-   * propagate the skip signal so ProjectionResult and StartupDeliveryResult
-   * report honest counts.
+   * 将托管块合并到目标 guidance 文件。完成合并时返回 `true`，有意跳过 rig-role 时返回
+   * `false`。调用方传播跳过信号，使 ProjectionResult 与 StartupDeliveryResult 报告真实计数。
    */
   private mergeGuidance(targetPath: string, blockId: string, content: string): boolean {
-    // Mirrors Claude Code adapter: the `rig-role` managed block collides across
-    // pod-mates because the regenerator pairs (target-file × spec) without
-    // seat correlation. Per-seat role content is delivered through `send_text`
-    // startup instead. Refuse the merge loudly; silent skip would mask the
-    // collision. See ADR-0006.
+    // 镜像 Claude Code adapter：`rig-role` 托管块会在 pod 同伴间冲突，因为 regenerator
+    // 以（目标文件 × spec）配对而不关联席位。逐席位角色内容改由 `send_text` 启动路径投递。
+    // 明确拒绝合并；静默跳过会掩盖冲突。参见 ADR-0006。
     if (blockId === "rig-role") {
       console.log(
-        `[openrig] skip: effectiveId is rig-role, per-seat delivery via send_text path required (target=${targetPath})`
+        `[zrig] 跳过：effectiveId 为 rig-role，需要通过 send_text 路径逐席位投递（目标=${targetPath}）`
       );
       return false;
     }
@@ -715,7 +690,7 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
     try {
       keys.add(fs.realpathSync.native(cwd));
     } catch {
-      // Best-effort only.
+      // 仅尽力而为。
     }
     return Array.from(keys);
   }
@@ -749,16 +724,13 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
     const quickSleepMs = 200;
     const extendedSleepMs = 500;
 
-    // OPR.0.3.3.21 (FR-2): process-alive is NOT proof of a restored
-    // conversation. verifyResumeLaunch must NOT return ok:true unless the probe
-    // proves `resumed`. Unresolved operator-action gates (update/trust/model)
-    // and a bounded poll that never reaches `resumed` are `attention_required`,
-    // not launch success.
+    // OPR.0.3.3.21（FR-2）：进程存活不能证明会话已恢复。除非 probe 证明 `resumed`，
+    // verifyResumeLaunch 不得返回 ok:true。未解决的操作员行动 gate（update/trust/model）以及
+    // 在有界轮询内始终未达到 `resumed` 的情况都属于 `attention_required`，不是启动成功。
     //
-    // OPR.0.3.4.13: a slow-but-valid Codex resume (boot-in-progress on the
-    // original thread, no real gate) gets an extended poll window (~15s) beyond
-    // the quick 1.2s. Genuine gates (auth/trust/model/update) still classify
-    // within the quick window. Only the awaiting_runtime boot case extends.
+    // OPR.0.3.4.13：缓慢但有效的 Codex resume（原 thread 正在启动，没有真实 gate）在快速
+    // 1.2 秒窗口后获得约 15 秒的扩展轮询。真实 gate（auth/trust/model/update）仍在快速窗口内
+    // 分类；只有 awaiting_runtime 启动情形会扩展。
     let lastUnresolved: NativeResumeProbeResult | null = null;
     let lastPaneContent = "";
     let sawRealGate = false;
@@ -766,8 +738,8 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
     const totalAttempts = quickAttempts + extendedAttempts;
 
     for (let attempt = 0; attempt < totalAttempts; attempt++) {
-      // After the quick phase, only continue if we're in the boot-in-progress
-      // case (awaiting_runtime, no real gate). Real gates won't self-resolve.
+      // 快速阶段之后，只有处于启动中情形（awaiting_runtime，无真实 gate）才继续。真实 gate
+      // 不会自行解决。
       if (attempt >= quickAttempts && (sawRealGate || lastUnresolved?.code !== "awaiting_runtime")) {
         break;
       }
@@ -784,20 +756,18 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
       if (probe.code === "no_saved_session") {
         return {
           ok: false,
-          error: "Codex resume failed: no saved session found for the requested session",
+          error: "Codex resume 失败：找不到所请求 session 对应的已保存会话",
           recovery: "retry_fresh",
         };
       }
 
       if (probe.code === "returned_to_shell") {
-        // sendShellCommand starts asynchronously, and a shell can remain the
-        // pane's wrapper while Codex loads. Use the existing bounded boot wait;
-        // this label proves neither launch failure nor readiness. A usable
-        // screen is still required here, followed by joined native identity
-        // proof in restore before the seat is reported resumed.
+        // sendShellCommand 异步启动；Codex 加载期间 shell 可能仍是 pane wrapper。使用现有有界
+        // 启动等待；这个标签既不能证明启动失败，也不能证明已就绪。此处仍需可用屏幕，随后 restore
+        // 中还需联合原生身份凭证，才能把席位报告为 resumed。
         probe = {
           status: "inconclusive", code: "awaiting_runtime",
-          detail: "Codex resume has not yet reached an interactive conversation in the launch pane.",
+          detail: "Codex resume 尚未在启动 pane 中进入可交互会话。",
         };
       }
 
@@ -844,7 +814,7 @@ export class CodexRuntimeAdapter implements RuntimeAdapter {
     return {
       ok: false,
       error: lastUnresolved?.detail
-        ?? "Codex resume could not be confirmed: the process is alive but a restored conversation was never proven.",
+        ?? "无法确认 Codex resume：进程仍存活，但始终未证明会话已恢复。",
       recovery: "attention_required",
       evidence: lastPaneContent.split("\n").slice(-12).join("\n"),
     };
@@ -898,34 +868,33 @@ function upsertCodexProjectTrust(content: string, projectPath: string): string {
 }
 
 // ── OPR.0.4.3.33 hook-trust-autoclear ────────────────────────────────────────────────────
-// Pre-write Codex's OWN hook trust record so the daemon's provisioned (unmanaged) inline
-// activity hooks are trusted on every path (launch/adopt/reconcile) without a manual `/hooks`
-// "Trust all" keystroke. Codex is a private impl; the key+hash below are REPRODUCED from the
-// open source (RTFM, cited) and are PROVISIONAL until pinned by a byte-for-byte read-back of a
-// real Codex `[hooks.state]` after `/hooks`->"Trust all" (the QA VM proof — see the unit test
-// fixture marked PIN-TO-VM). A mismatch is fail-safe: Codex re-shows the gate and the launch-time
-// review remains visible for the operator — never a blanket trust keystroke.
+// 预写 Codex 自身 hook trust 记录，使后台服务配置的未托管内联 activity hook 在所有路径
+//（launch/adopt/reconcile）上无需手动 `/hooks`“Trust all”按键即可受信任。Codex 是私有实现；
+// 下方 key + hash 从开源代码复现（已阅读并引用），在真实 Codex 执行 `/hooks`→“Trust all”后对
+// `[hooks.state]` 逐字节读回固定前仍属临时结论（QA VM 证据，见标为 PIN-TO-VM 的单元测试
+// fixture）。不匹配时故障安全：Codex 重新显示 gate，启动时评审继续对操作员可见，绝不发送
+// 笼统 trust 按键。
 //
-// RTFM sources (cite):
+// RTFM 来源（引用）：
 //   - https://developers.openai.com/codex/hooks
 //   - openai/codex PR #20321 "hook trust metadata and enforcement" (merge commit 0452dca;
 //     typed-identity commit ffcc9cc) — key file codex-rs/hooks/src/engine/discovery.rs.
 //   - openai/codex issue #21615 (the `[hooks.state]` pre-write workaround for exactly this
 //     local-wrapper-installer case) + #23259 (positional path-keying fragility).
 //
-// KEY — codex-rs/hooks/src/lib.rs `hook_key`:
+// KEY——codex-rs/hooks/src/lib.rs `hook_key`：
 //   `{key_source}:{event_label}:{group_index}:{handler_index}`
-//   - key_source: `std::fs::canonicalize(~/.codex/config.toml).display()` (the config source
-//     layer identity; confirmed by codex-rs/app-server/tests/suite/v2/hooks_list.rs which keys
+//   - key_source：`std::fs::canonicalize(~/.codex/config.toml).display()`（配置源层身份；
+//     经 codex-rs/app-server/tests/suite/v2/hooks_list.rs 确认，其 key
 //     `{canonicalize(config.toml).display()}:pre_tool_use:0:0`).
-//   - event_label: `hook_event_key_label()` — SessionStart→session_start,
+//   - event_label：`hook_event_key_label()`——SessionStart→session_start，
 //     UserPromptSubmit→user_prompt_submit, Stop→stop, PermissionRequest→permission_request.
-//   - group_index/handler_index: positional. Our managed block writes exactly one
-//     `[[hooks.<Ev>]]` group (0) with one `[[hooks.<Ev>.hooks]]` handler (0) per event ⇒ 0:0.
-//     (Positional keying is a known upstream fragility (#23259); if a user pre-authored hooks
-//     for the same event in the same layer our index would shift → gate reappears → fail-safe.)
+//   - group_index/handler_index：按位置。我们的托管块为每个事件恰好写一个
+//     `[[hooks.<Ev>]]` group（0）和一个 `[[hooks.<Ev>.hooks]]` handler（0）⇒ 0:0。
+//     （位置定键是已知上游脆弱点 #23259；若用户在同一层为同一事件预先编写 hook，我们的索引
+//     会偏移 → gate 重现 → 故障安全。）
 //
-// HASH — codex-rs/hooks/src/engine/discovery.rs `command_hook_hash`
+// HASH——codex-rs/hooks/src/engine/discovery.rs `command_hook_hash`
 //        → codex-rs/config/src/fingerprint.rs `version_for_toml`:
 //   hash = "sha256:" + hex( sha256( canonical_json( toml_value( NormalizedHookIdentity ) ) ) )
 //   NormalizedHookIdentity { event_name: <label>, #[serde(flatten)] group: MatcherGroup }
@@ -933,19 +902,18 @@ function upsertCodexProjectTrust(content: string, projectPath: string): string {
 //   HookHandlerConfig::Command (codex-rs/config/src/hook_config.rs, `#[serde(tag="type")]`,
 //     rename "command"): { command: String, commandWindows: Option, timeout(=timeout_sec):
 //     Option<u64>, async: bool, statusMessage: Option }
-//   Load-bearing serialization facts:
-//     * `TomlValue::try_from` DROPS None fields (TOML has no null) → matcher / commandWindows /
-//       statusMessage are omitted for our hooks; `async` is a plain bool (not Option) so
-//       `async = false` IS present.
-//     * event_name uses the snake_case label (session_start …), NOT the CamelCase event.
-//     * `version_for_toml` converts the TomlValue → serde_json Value, `canonical_json` sorts
-//       every object's keys recursively, then sha256's the COMPACT JSON bytes. serde_json's
-//       compact output (no spaces, `/` unescaped, `"`/`\` JSON-escaped) matches JSON.stringify.
-//   CONFIDENCE: the HASH is fully deterministic from the open source (JSON+sha256) — HIGH.
-//   The KEY's exact key_source canonical form + the positional indices are what the VM
-//   read-back must confirm — PROVISIONAL until then.
+//   承重序列化事实：
+//     * `TomlValue::try_from` 丢弃 None 字段（TOML 没有 null）→ 我们的 hook 省略 matcher/
+//       commandWindows/statusMessage；`async` 是普通 bool（不是 Option），因此存在
+//       `async = false`。
+//     * event_name 使用 snake_case 标签（session_start 等），不是 CamelCase 事件。
+//     * `version_for_toml` 将 TomlValue 转为 serde_json Value，`canonical_json` 递归排序
+//       每个对象的 key，再对紧凑 JSON 字节做 sha256。serde_json 的紧凑输出（无空格、`/` 不转义、
+//       `"`/`\` 做 JSON 转义）与 JSON.stringify 一致。
+//   置信度：HASH 完全可从开源代码确定性推出（JSON+sha256），为高。KEY 的准确 key_source
+//   canonical 形式及位置索引仍需 VM 读回确认，在此之前为临时结论。
 
-/** Recursively sort object keys (mirrors codex-rs fingerprint.rs `canonical_json`). */
+/** 递归排序对象 key（镜像 codex-rs fingerprint.rs 的 `canonical_json`）。 */
 function canonicalizeJsonValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalizeJsonValue);
   if (value !== null && typeof value === "object") {
@@ -965,26 +933,25 @@ const CODEX_HOOK_EVENT_KEY_LABEL: Record<(typeof OPENRIG_ACTIVITY_HOOK_EVENTS)[n
 };
 
 export interface CodexHookTrustInput {
-  /** Codex hook_key source identity: canonicalized `~/.codex/config.toml` path. */
+  /** Codex hook_key 来源身份：canonical 化的 `~/.codex/config.toml` 路径。 */
   keySource: string;
-  /** The command as Codex DESERIALIZES it — `node "<relay>"` (no outer TOML quote delimiters). */
+  /** Codex 反序列化得到的命令——`node "<relay>"`（不含外层 TOML 引号）。 */
   command: string;
-  /** Our authored hook timeout (seconds). */
+  /** 我们编写的 hook 超时（秒）。 */
   timeoutSec: number;
-  /** None for our hooks; folded into the hash when present (kept for faithful reproduction). */
+  /** 我们的 hook 为 None；存在时纳入哈希（为忠实复现而保留）。 */
   matcher?: string | null;
-  /** None for our hooks; folded into the hash when present. */
+  /** 我们的 hook 为 None；存在时纳入哈希。 */
   statusMessage?: string | null;
-  /** Positional group index within the event's matcher-group list (our hooks: 0). */
+  /** 事件 matcher-group 列表中的位置 group 索引（我们的 hook 为 0）。 */
   groupIndex?: number;
-  /** Positional handler index within the group's handler list (our hooks: 0). */
+  /** group 的 handler 列表中的位置 handler 索引（我们的 hook 为 0）。 */
   handlerIndex?: number;
 }
 
 /**
- * Reproduce Codex's persisted hook trust `{ key, trusted_hash }` for one authored activity
- * hook. Pure + deterministic. See the block comment above for the full RTFM derivation and the
- * PROVISIONAL-until-VM-read-back caveat.
+ * 为一个已编写 activity hook 复现 Codex 持久 hook trust `{ key, trusted_hash }`。纯且确定性。
+ * 完整 RTFM 推导与“VM 读回前为临时结论”的警示见上方块注释。
  */
 export function computeCodexHookTrust(
   event: (typeof OPENRIG_ACTIVITY_HOOK_EVENTS)[number],
@@ -995,7 +962,7 @@ export function computeCodexHookTrust(
   const handlerIndex = input.handlerIndex ?? 0;
   const key = `${input.keySource}:${label}:${groupIndex}:${handlerIndex}`;
 
-  // Build NormalizedHookIdentity exactly as `TomlValue::try_from` would: None fields dropped.
+  // 严格按 `TomlValue::try_from` 构建 NormalizedHookIdentity：丢弃 None 字段。
   const handler: Record<string, unknown> = {
     type: "command",
     command: input.command,
@@ -1012,11 +979,10 @@ export function computeCodexHookTrust(
 }
 
 /**
- * OPR.0.4.3.33 — idempotent, non-clobbering, section-scoped writer for a single
- * `[hooks.state."<key>"] trusted_hash = "<hash>"` record. Mirrors upsertCodexProjectTrust:
- * find/create the exact table header, splice ONLY its `trusted_hash` line, leave every other
- * `[hooks.state]` / `[projects]` entry and the managed hook block byte-identical. Same key+hash
- * ⇒ no-op. Only ever called for OUR 4 authored hook keys (never a blanket/wildcard trust).
+ * OPR.0.4.3.33——单条 `[hooks.state."<key>"] trusted_hash = "<hash>"` 记录的幂等、
+ * 非覆盖、section 范围写入器。镜像 upsertCodexProjectTrust：查找/创建准确表头，只拼接其
+ * `trusted_hash` 行，其他所有 `[hooks.state]`/`[projects]` 条目与托管 hook 块保持逐字节不变。
+ * 相同 key+hash 时为空操作。只为我们编写的四个 hook key 调用，绝不做笼统/通配 trust。
  */
 export function upsertCodexHookTrust(content: string, key: string, hash: string): string {
   const header = `[hooks.state.${JSON.stringify(key)}]`;
@@ -1051,10 +1017,9 @@ export function upsertCodexHookTrust(content: string, key: string, hash: string)
 }
 
 function parseCanonicalSessionName(sessionName: string): { pod: string; member: string; rig: string } | null {
-  // OPR.0.4.6.MH1 FR-8: the member/rig split rides the shared parse
-  // contract. A multi-@ name now parses with a greedy rig ("rig@x"),
-  // which isSafeQueueSegment rejects ("@" is unsafe) — the same null this
-  // site returned via its old single-@ check.
+  // OPR.0.4.6.MH1 FR-8：member/rig 拆分使用共享解析契约。含多个 @ 的名称现在以贪婪方式
+  // 解析 rig（"rig@x"），随后被 isSafeQueueSegment 拒绝（"@" 不安全）；与此处旧版单 @
+  // 检查返回的 null 相同。
   const trimmed = sessionName.trim();
   const parsed = parseSessionName(trimmed);
   if (parsed.kind !== "canonical") return null;
@@ -1083,15 +1048,14 @@ export function isCodex013xOrLater(version: string): boolean {
   return minor >= 130;
 }
 
-// OPR.0.4.1.10 B2 — true for a real TOML `[features]` table header in ANY valid spelling.
-// Normalize-and-compare (not incremental regex): a table header is `[ <key> ]` optionally
-// followed by a comment. Per the TOML v1.0.0 spec (toml.io/en/v1.0.0, Keys/Table): whitespace
-// around the bracketed key is ignored (`[ features ]` == `[features]`), and the key may be bare
-// (`features`) or quoted as a basic/literal string (`"features"` / `'features'`) — all denote the
-// same `features` table. A leading-`#` line is a comment, never a section. The `[^[\]]*` body
-// excludes the array-of-tables `[[...]]` form. Used by BOTH feature upserts (DRY) so no header
-// spelling is missed — a missed header appends a duplicate table that Codex 0.139 --strict-config
-// rejects (config-could-not-be-loaded).
+// OPR.0.4.1.10 B2——对 TOML `[features]` 表头的任何合法写法都返回 true。规范化后比较，
+// 而不是叠加正则：表头为 `[ <key> ]`，后面可带注释。根据 TOML v1.0.0 规范
+//（toml.io/en/v1.0.0，Keys/Table），方括号内 key 周围的空白会被忽略
+//（`[ features ]` == `[features]`），key 可以是裸值（`features`）或 basic/literal 引号字符串
+//（`"features"`/`'features'`），都表示同一个 `features` 表。以 `#` 开头的行是注释，绝不是
+// section。`[^[\]]*` 正文排除 array-of-tables 的 `[[...]]` 形式。两个 feature upsert 都使用
+// 此函数（DRY），避免漏掉任何表头写法；漏掉表头会追加重复表，被 Codex 0.139
+// --strict-config 拒绝（config-could-not-be-loaded）。
 function isCodexFeaturesHeader(line: string): boolean {
   const trimmed = line.trim();
   if (trimmed.startsWith("#")) return false;
@@ -1138,20 +1102,17 @@ function upsertCodexHooksFeature(content: string): string {
   return `${lines.join("\n")}\n`;
 }
 
-// OPR.0.4.1.10 FR-A — config-layer activity-hook projection.
+// OPR.0.4.1.10 FR-A——配置层 activity-hook 投影。
 const OPENRIG_ACTIVITY_HOOKS_BEGIN = "# BEGIN OPENRIG MANAGED ACTIVITY HOOKS";
 const OPENRIG_ACTIVITY_HOOKS_END = "# END OPENRIG MANAGED ACTIVITY HOOKS";
 const OPENRIG_ACTIVITY_HOOK_EVENTS = ["SessionStart", "UserPromptSubmit", "Stop", "PermissionRequest"] as const;
 
 /**
- * Idempotently write the OpenRig activity hooks into a Codex config.toml: pin
- * `[features].hooks = true` (canonical key) and a sentinel-wrapped managed block of
- * inline `[[hooks.<Event>]]` stanzas (one representation per layer — never a sibling
- * hooks.json). Re-running with the same relay path is a no-op; a changed daemon path
- * replaces the block. `command` is a TOML literal string so the absolute relay path
- * needs no escaping; the inner double-quotes quote the path arg for the shell Codex
- * runs the hook under. No matcher (verified on 0.139: no-matcher fires for every
- * turn-scope event).
+ * 幂等地将 OpenRig activity hook 写入 Codex config.toml：固定 `[features].hooks = true`
+ *（canonical key），并添加由哨兵包裹的内联 `[[hooks.<Event>]]` stanza 托管块（每层一种表示，
+ * 绝不另建同级 hooks.json）。以相同 relay 路径重复运行为空操作；后台服务路径变化时替换该块。
+ * `command` 是 TOML literal 字符串，因此绝对 relay 路径无需转义；内层双引号为 Codex 运行 hook
+ * 的 shell 引用路径参数。不设 matcher（已在 0.139 验证：无 matcher 会对每个轮次范围事件触发）。
  */
 function upsertCodexActivityHooks(content: string, relayPath: string): string {
   const command = `'node "${relayPath}"'`;
@@ -1174,10 +1135,9 @@ function upsertCodexActivityHooks(content: string, relayPath: string): string {
 }
 
 /**
- * OPR.0.4.1.10 B3 — remove the OpenRig-managed activity-hooks sentinel block (durable disable).
- * Strips ONLY the BEGIN..END block (plus the leading blank-line separator it was appended with);
- * leaves all other content — user-owned hooks, [features], project trust — untouched. Returns the
- * input unchanged when the block is absent.
+ * OPR.0.4.1.10 B3——移除 OpenRig 托管的 activity-hooks 哨兵块（持久禁用）。只删除
+ * BEGIN..END 块及追加时附带的前导空行分隔符；其他内容——用户 hook、[features]、项目 trust——
+ * 保持不变。块不存在时原样返回输入。
  */
 function stripCodexActivityHooks(content: string): string {
   const pattern = new RegExp(
@@ -1188,7 +1148,7 @@ function stripCodexActivityHooks(content: string): string {
   return content.replace(pattern, "\n").replace(/\n{3,}/g, "\n\n").replace(/^\n+/, "");
 }
 
-/** Ensure `[features].hooks = true` (canonical key; not the deprecated codex_hooks alias). */
+/** 确保 `[features].hooks = true`（canonical key，而非已弃用的 codex_hooks 别名）。 */
 function upsertCodexFeaturesHooksEnabled(content: string): string {
   const lines = content.length > 0 ? content.replace(/\n*$/, "").split("\n") : [];
   const featuresIndex = lines.findIndex(isCodexFeaturesHeader);
@@ -1212,17 +1172,14 @@ function upsertCodexFeaturesHooksEnabled(content: string): string {
 }
 
 /**
- * For each line, whether it BEGINS at document level — outside every string AND
- * outside every array or inline table. At document level, TOML grammar allows
- * nothing but a table header to start with `[`, so that one bit is the whole
- * header test; anywhere else a `[` is value syntax.
+ * 对每一行，判断它是否从文档层开始，即位于所有字符串、数组和内联表之外。在文档层，TOML
+ * 语法只允许表头以 `[` 开始，因此这一个 bit 就足以完成整个表头判断；其他位置的 `[` 都是值语法。
  *
- * Both halves were learned the hard way, each from a silent wrong answer:
- *  - strings: `\"""` inside a multiline basic string read as the string's end,
- *    promoting the next line to a header (review50-r2, 2026-09-01).
- *  - nesting: a continuation row of a multi-line array (`  [1, 2],`) read as a
- *    header, so a valid fragment was split apart and refused (review50-r2,
- *    2026-09-01). Depth is what separates the two, not the line's own text.
+ * 两部分都是从静默错误答案中得到的教训：
+ *  - 字符串：多行 basic 字符串内的 `\"""` 被误读为字符串结束符，使下一行被提升为表头
+ *    （review50-r2，2026-09-01）。
+ *  - 嵌套：多行数组的续行（`  [1, 2],`）被误读为表头，导致有效 fragment 被拆开并拒绝
+ *    （review50-r2，2026-09-01）。区分二者的是深度，而不是该行自身文本。
  */
 function lineStartsAtDocumentLevel(content: string): boolean[] {
   const out: boolean[] = [true];
@@ -1232,13 +1189,11 @@ function lineStartsAtDocumentLevel(content: string): boolean[] {
   while (i < content.length) {
     const ch = content[i]!;
     if (multiline) {
-      // A multiline BASIC string honours backslash escapes, so `\"""` is an
-      // escaped quote followed by two more — NOT the closing delimiter. A
-      // multiline LITERAL string ('''), by contrast, has no escapes at all.
-      // Missing this read `\"""` as the string's end and promoted the next
-      // line to a table header (review50-r2, 2026-09-01).
+      // 多行 BASIC 字符串遵循反斜杠转义，因此 `\"""` 是一个已转义引号再加两个引号，
+      // 不是结束分隔符。相比之下，多行 LITERAL 字符串（'''）完全没有转义。忽略此点会把
+      // `\"""` 读作字符串结束，并把下一行提升为表头（review50-r2，2026-09-01）。
       if (multiline === '"""' && ch === "\\") {
-        // Count an escaped newline so the line index stays aligned.
+        // 计入已转义换行，使行索引保持对齐。
         if (content[i + 1] === "\n") out.push(false);
         i += 2;
         continue;
@@ -1254,8 +1209,7 @@ function lineStartsAtDocumentLevel(content: string): boolean[] {
     if (ch === '"' || ch === "'") {
       const quote = ch;
       i += 1;
-      // Single-line strings cannot span a newline; stopping at one keeps the
-      // line index honest on malformed input instead of swallowing the rest.
+      // 单行字符串不能跨换行；在换行处停止，使格式错误输入的行索引保持真实，而不是吞掉余下内容。
       while (i < content.length && content[i] !== quote && content[i] !== "\n") {
         if (quote === '"' && content[i] === "\\") i += 1;
         i += 1;
@@ -1263,8 +1217,8 @@ function lineStartsAtDocumentLevel(content: string): boolean[] {
       if (content[i] === quote) i += 1;
       continue;
     }
-    // A header's own brackets open and close on its line, so depth is back to 0
-    // by the newline; a multi-line array leaves it raised for its whole body.
+    // 表头自身方括号在同一行打开并关闭，因此换行时 depth 会回到 0；多行数组则在整个正文中
+    // 保持 depth 增加。
     if (ch === "[" || ch === "{") { depth += 1; i += 1; continue; }
     if (ch === "]" || ch === "}") { depth = Math.max(0, depth - 1); i += 1; continue; }
     if (ch === "\n") { out.push(depth === 0); i += 1; continue; }
@@ -1273,7 +1227,7 @@ function lineStartsAtDocumentLevel(content: string): boolean[] {
   return out;
 }
 
-/** A fragment split at its table headers: a leading preamble, then one entry per table. */
+/** 按表头拆分的 fragment：先是前言，随后每个表各一个条目。 */
 function splitAtTableHeaders(fragment: string): Array<{ header: string | null; text: string }> {
   const structural = lineStartsAtDocumentLevel(fragment);
   const blocks: Array<{ header: string | null; lines: string[] }> = [{ header: null, lines: [] }];
@@ -1293,26 +1247,20 @@ function parsesAsToml(candidate: string): boolean {
 }
 
 /**
- * Refuse a fragment that declares keys before its first table header.
+ * 拒绝在第一个表头之前声明 key 的 fragment。
  *
- * TOML HAS NO ROOT-REOPEN SYNTAX. The managed block is appended at the end of
- * the user's document, so once their file has opened any table there is no way
- * for appended text to bind a key at document root — the key silently joins
- * whatever table the user was last inside. This is not a limitation we can
- * engineer around inside this seam: prepending the block inverts the same bug
- * onto the managed content, and re-serializing the whole document would destroy
- * the user's comments and formatting. So the honest contract is to refuse.
+ * TOML 没有重新打开根级作用域的语法。托管块追加在用户文档末尾，因此用户文件一旦打开任何表，
+ * 追加文本便无法把 key 绑定到文档根级；key 会静默加入用户最后所在的表。此接缝内部无法规避
+ * 该限制：把块前置只会把同一问题反转到托管内容，重新序列化整份文档又会破坏用户注释和格式。
+ * 因此诚实契约是拒绝。
  *
- * REFUSAL IS DETERMINISTIC — it never consults the user's file. A fragment
- * author cannot see user state, so a rule that depended on it would pass in
- * testing and fail in the field for reasons the author could not reproduce.
+ * 拒绝是确定性的，不查询用户文件。fragment 作者看不到用户状态，因此依赖用户状态的规则会在
+ * 测试中通过，却在现场因作者无法复现的原因失败。
  *
- * Detected from the fragment's PREAMBLE (everything ahead of its first
- * document-level table header) rather than from the parsed object's value
- * shapes. The ruling proposed the latter; the preamble is the same intent with
- * a tighter edge, because a parsed root key holding an inline table (`x = [{a=1}]`)
- * is indistinguishable from an array-of-tables after parsing, and would slip
- * through — while it binds into the user's table exactly like any other root key.
+ * 从 fragment 的前言（首个文档级表头之前的所有内容）检测，而不是从解析后对象的值结构检测。
+ * 裁定原先建议后者；前言方案意图相同但边界更严，因为保存内联表的已解析根 key
+ *（`x = [{a=1}]`）在解析后与 array-of-tables 无法区分，会漏过检查，却会像其他根 key 一样
+ * 绑定到用户的表。
  */
 function assertFragmentOpensWithTable(fragment: string, sourcePath: string, id: string): void {
   const preamble = splitAtTableHeaders(fragment)[0];
@@ -1322,63 +1270,50 @@ function assertFragmentOpensWithTable(fragment: string, sourcePath: string, id: 
     .some((line) => line.length > 0 && !line.startsWith("#"));
   if (!declaresSomething) return;
   throw new Error(
-    `Codex config fragment '${id}' declares root-level keys before its first table header ` +
-    `(${sourcePath}); appended TOML cannot bind at document root — open a table first. ` +
-    `Nothing was projected and the existing config was left unchanged.`,
+    `Codex 配置 fragment '${id}' 在首个表头之前声明了根级 key（${sourcePath}）；` +
+    `追加的 TOML 无法绑定到文档根级——请先打开一个表。未投影任何内容，现有配置保持不变。`,
   );
 }
 
 /**
- * A managed fragment must be a valid TOML document on its own, checked BEFORE
- * any collision filtering. Without this, an authoring error in the fragment is
- * indistinguishable from a user collision and gets silently dropped — the
- * write then succeeds precisely because the bad input was deleted, which is the
- * opposite of what the render guard is for.
+ * 托管 fragment 本身必须是有效 TOML 文档，并在任何冲突筛选之前检查。否则 fragment 中的创作
+ * 错误无法与用户冲突区分，会被静默丢弃；写入随后恰恰因为错误输入被删除而成功，这与渲染守卫
+ * 的目的相反。
  */
 function assertFragmentParsesStandalone(fragment: string, sourcePath: string, id: string): void {
   try {
     parseToml(fragment);
   } catch (err) {
     throw new Error(
-      `Codex config fragment '${id}' is not valid TOML on its own (${sourcePath}); ` +
-      `nothing was projected and the existing config was left unchanged. ${(err as Error).message}`,
+      `Codex 配置 fragment '${id}' 本身不是有效 TOML（${sourcePath}）；` +
+      `未投影任何内容，现有配置保持不变。${(err as Error).message}`,
     );
   }
 }
 
 /**
- * Drop the fragment tables that would collide with the user's own.
+ * 丢弃会与用户表冲突的 fragment 表。
  *
- * THE COLLISION DECISION IS THE PARSER'S, NOT OURS. For each table the fragment
- * declares, we ask smol-toml whether the user's document still parses with that
- * table appended. A duplicate declaration is exactly what TOML rejects, so the
- * question the parser answers IS the question we need, on the arbitrary input —
- * the user's file — where a lexical guess is least defensible.
+ * 冲突判断属于解析器，不属于我们。对 fragment 声明的每个表，我们让 smol-toml 判断把该表追加
+ * 到用户文档后是否仍可解析。重复声明正是 TOML 会拒绝的内容，因此解析器回答的恰好就是我们
+ * 需要的问题，且面对的是词法猜测最不可靠的任意输入——用户文件。
  *
- * The earlier version scanned the USER's document for header lines and compared
- * paths. That scanner mishandled a backslash-escaped delimiter inside a
- * multiline basic string, so `\"""` read as the string's end, the next line read
- * as a declared table, and a genuinely non-conflicting managed table was dropped
- * while projection reported success (review50-r2, 2026-09-01, reproduced). A
- * lexer over user input can be wrong in that silent direction; the parser cannot.
+ * 旧版本扫描用户文档中的表头行并比较路径。该扫描器错误处理了多行 basic 字符串中的反斜杠
+ * 转义分隔符，把 `\"""` 读作字符串结束符、把下一行读作已声明表，并在投影报告成功时丢弃
+ * 实际不冲突的托管表（review50-r2，2026-09-01，已复现）。对用户输入做词法扫描可能以这种
+ * 静默方式出错，解析器则不会。
  *
- * The user's values are never merged, rewritten or overwritten — a colliding
- * managed table simply stands down.
+ * 用户值绝不合并、重写或覆盖；冲突的托管表只会退出。
  *
- * CALLERS MUST VALIDATE THE FRAGMENT STANDALONE FIRST. "Appending this block
- * makes the document unparseable" has two causes — the user owns a conflicting
- * path, or the block is malformed on its own — and this predicate cannot tell
- * them apart. Left unguarded it answered both with "collides" and DELETED an
- * invalid authored fragment, turning a resource error into a clean-looking empty
- * managed block while the receipt said projected (review50-r2, 2026-09-01,
- * reproduced). `assertFragmentParsesStandalone` eliminates the second cause
- * before we get here, so a failure that survives to this point is a real
- * collision.
+ * 调用方必须先独立验证 fragment。“追加此块会使文档无法解析”有两个原因：用户拥有冲突路径，
+ * 或块本身格式错误；此谓词无法区分二者。若无守卫，它会把两者都判断为“冲突”并删除无效的已编写
+ * fragment，把资源错误变成看似干净的空托管块，同时回执仍称已投影
+ *（review50-r2，2026-09-01，已复现）。`assertFragmentParsesStandalone` 在抵达此处前消除
+ * 第二种原因，因此仍存在的失败是真实冲突。
  *
- * Keys ahead of the fragment's first header never reach here: OPR.0.5.8.15
- * refuses that shape upstream in `assertFragmentOpensWithTable`, because an
- * appended root key cannot bind at document root and would silently join the
- * user's last table. Every block this function sees is therefore a table.
+ * fragment 第一个表头之前的 key 永远不会到达此处：OPR.0.5.8.15 在上游
+ * `assertFragmentOpensWithTable` 中拒绝该结构，因为追加的根 key 无法绑定到文档根级，会静默
+ * 加入用户最后一个表。因此此函数看到的每个块都是表。
  */
 function dropCollidingFragmentTables(
   fragment: string,
@@ -1406,10 +1341,8 @@ function upsertManagedCodexConfigFragment(content: string, id: string, fragment:
   const end = `# END OPENRIG MANAGED CODEX CONFIG FRAGMENT: ${id}`;
   const pattern = new RegExp(`${escapeRegExp(start)}[\\s\\S]*?${escapeRegExp(end)}\\n?`, "m");
 
-  // Everything outside THIS block is what the fragment must not collide with.
-  // Our own previous block is excluded because re-projection replaces it
-  // wholesale — counting it would make the second projection drop everything
-  // the first one legitimately landed.
+  // 当前块之外的一切都是 fragment 不得冲突的内容。排除我们自己的旧块，因为重新投影会整体替换
+  // 它；若把它计入，第二次投影会丢弃第一次合法落地的全部内容。
   const userOwned = content.replace(pattern, "");
   const { kept } = dropCollidingFragmentTables(fragment, userOwned);
   const block = `${start}\n${kept}\n${end}\n`;
@@ -1423,17 +1356,16 @@ function upsertManagedCodexConfigFragment(content: string, id: string, fragment:
 }
 
 /**
- * Refuse to hand Codex a config it cannot load. Throwing here (rather than
- * writing and hoping) is what keeps a malformed render off disk entirely:
- * `project()` records the entry as failed and the existing file is untouched.
+ * 拒绝把 Codex 无法加载的配置交给它。在此抛错（而不是先写入再碰运气）可使格式错误的渲染完全
+ * 不落盘；`project()` 将条目记录为 failed，现有文件保持不变。
  */
 function assertRendersAsLoadableToml(rendered: string, configPath: string, id: string): void {
   try {
     parseToml(rendered);
   } catch (err) {
     throw new Error(
-      `Codex config projection '${id}' would write a config Codex cannot parse; ` +
-      `${configPath} left unchanged. ${(err as Error).message}`,
+      `Codex 配置投影 '${id}' 会写入 Codex 无法解析的配置；` +
+      `${configPath} 保持不变。${(err as Error).message}`,
     );
   }
 }
@@ -1442,11 +1374,10 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Module-private (P1 pin — NEVER exported). The REAL Codex profile-LOAD probe,
-// extracted verbatim from launchHarness: dynamic imports keep it lazy for
-// production, execFn runs the real `codex -p <profile> mcp list` via execSync
-// (utf-8, piped stdio, 10s timeout). Injected as the adapter's default
-// verifyProfilePreflight; tests substitute a controlled stub.
+// 模块私有（P1 pin——绝不导出）。真实 Codex profile 加载探针从 launchHarness 原样抽出：
+// 动态 import 使生产环境保持延迟加载；execFn 通过 execSync 运行真实
+// `codex -p <profile> mcp list`（UTF-8、管道 stdio、10 秒超时）。作为 adapter 默认
+// verifyProfilePreflight 注入；测试替换为受控 stub。
 async function defaultProfilePreflight(profile: string): Promise<CodexProfileProbeResult> {
   const { verifyCodexProfileLoads } = await import("../domain/codex-profile-preflight.js");
   const { execSync } = await import("node:child_process");
@@ -1457,9 +1388,8 @@ async function defaultProfilePreflight(profile: string): Promise<CodexProfilePro
   return verifyCodexProfileLoads(profile, execFn);
 }
 
-// Exported for unit test (B12-T): the REAL async sampling path — the anti-vacuity test drives
-// this default directly (every other suite injects sync stubs) and asserts the non-blocking
-// property that the pre-B12 sync implementation violated.
+// 导出供单元测试（B12-T）使用：真实异步采样路径。反空洞测试直接驱动此默认实现
+//（其他测试套件都注入同步 stub），并断言 B12 前同步实现违反的非阻塞属性。
 export async function defaultListProcesses(): Promise<CodexProcess[]> {
   return listNativeProcesses();
 }

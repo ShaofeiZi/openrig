@@ -1,8 +1,8 @@
-// V1 polish slice Phase 5.1 P5.1-7: TopologyTableView CMUX column +
-// row click navigation regression guard.
+// V1 polish slice Phase 5.1 P5.1-7：TopologyTableView CMUX 列 +
+// 行点击导航回归守卫。
 //
-// The table requires a cmux launch affordance and row-click
-// navigation to the agent detail page.
+// 表格需要 cmux 启动 affordance 与行点击
+// 导航到 agent 详情页。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup, waitFor } from "@testing-library/react";
@@ -92,7 +92,7 @@ describe("TopologyTableView P5.1-7 CMUX column + row click", () => {
     const tokens = await findByTestId("topology-table-tokens-orch.lead");
     expect(context.textContent).toBe("42%");
     expect(tokens.textContent).toBe("134k");
-    expect(tokens.getAttribute("title")).toContain("Tokens: 134,000");
+    expect(tokens.getAttribute("title")).toContain("令牌数：134,000");
   });
 
   it("CMUX button click POSTs to /api/rigs/.../open-cmux (open-or-create launcher)", async () => {
@@ -112,7 +112,7 @@ describe("TopologyTableView P5.1-7 CMUX column + row click", () => {
     const { findByTestId } = withQueryClient(<TopologyTableView />);
     const cmux = await findByTestId("topology-table-cmux-orch.lead");
     fireEvent.click(cmux);
-    // Allow one tick for any propagation that wasn't stopped.
+    // 给任何未被阻止的传播一个 tick。
     await new Promise((r) => setTimeout(r, 10));
     expect(navigateSpy).not.toHaveBeenCalled();
   });

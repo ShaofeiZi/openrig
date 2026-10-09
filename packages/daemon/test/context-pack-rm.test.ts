@@ -1,11 +1,9 @@
-// Slice-03 rig-context ATOM 4 (STORE) — remove-by-ref, the delete half of the
-// path-like verb set (list/show/add/rm). rm resolves + deletes THROUGH the
-// sealed Atom-1 ref boundary: an unsafe ref is a structured, fail-visible error
-// BEFORE any filesystem mutation; a safe-but-absent ref is an honest
-// pack_not_found; a shipped `builtin` pack is refused (rm never rmSyncs shipped
-// assets — the add path only ever writes into user_file, and rm mirrors that
-// operator-writable contract). A successful remove is durable: the ref no
-// longer resolves and the directory is gone.
+// Slice-03 rig-context ATOM 4（STORE）——remove-by-ref，即 path-like verb set
+//（list/show/add/rm）的删除部分。rm 通过封闭的 Atom-1 ref boundary 解析并删除：在任何
+// filesystem 修改前，不安全 ref 会成为结构化且可见的 failure；安全但不存在的 ref 会如实返回
+// pack_not_found；拒绝删除已交付的 `builtin` pack（rm 从不对已交付 asset 执行 rmSync——add 路径
+// 只写入 user_file，rm 镜像此 operator-writable contract）。成功 remove 是持久的：ref 不再可解析，
+// directory 也已消失。
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -28,10 +26,10 @@ function captureError(fn: () => unknown): ContextPackError {
     expect(err).toBeInstanceOf(ContextPackError);
     return err as ContextPackError;
   }
-  throw new Error("expected ContextPackError");
+  throw new Error("预期抛出 ContextPackError");
 }
 
-describe("ATOM 4 — removeByRef (rm over path-like refs)", () => {
+describe("ATOM 4——removeByRef（对 path-like ref 执行 rm）", () => {
   let tmp: string;
   let userRoot: string;
 
@@ -48,7 +46,7 @@ describe("ATOM 4 — removeByRef (rm over path-like refs)", () => {
     });
   }
 
-  it("removes a discovered user pack: ref stops resolving and the directory is gone", () => {
+  it("删除已发现的用户 pack：ref 不再解析且目录消失", () => {
     writePack(userRoot, "packs/compaction-restore");
     const lib = service();
     lib.scan();
@@ -64,7 +62,7 @@ describe("ATOM 4 — removeByRef (rm over path-like refs)", () => {
     expect(lib.list()).toEqual([]);
   });
 
-  it("removing one pack leaves the others resolvable (scan refresh is correct)", () => {
+  it("删除一个 pack 后其他 pack 仍可解析（scan refresh 正确）", () => {
     writePack(userRoot, "packs/one");
     writePack(userRoot, "packs/two");
     const lib = service();
@@ -78,7 +76,7 @@ describe("ATOM 4 — removeByRef (rm over path-like refs)", () => {
     expect(existsSync(join(userRoot, "packs", "two", "manifest.yaml"))).toBe(true);
   });
 
-  it("rejects an unsafe ref with a structured error BEFORE any filesystem mutation", () => {
+  it("在任何 filesystem 修改前，以结构化 error 拒绝不安全 ref", () => {
     writePack(userRoot, "packs/keep");
     const lib = service();
     lib.scan();
@@ -86,13 +84,13 @@ describe("ATOM 4 — removeByRef (rm over path-like refs)", () => {
     const err = captureError(() => lib.removeByRef("../escape"));
 
     expect(err.code).toBe("unsafe_ref");
-    expect(err.message).toMatch(/unsafe pack ref/);
-    // the sibling pack is untouched — no delete happened
+    expect(err.message).toMatch(/不安全的 pack ref/);
+    // sibling pack 未受影响——没有发生删除
     expect(lib.getByRef("packs/keep")).not.toBeNull();
     expect(existsSync(join(userRoot, "packs", "keep", "manifest.yaml"))).toBe(true);
   });
 
-  it("returns pack_not_found for a safe-but-absent ref and mutates nothing", () => {
+  it("对安全但不存在的 ref 返回 pack_not_found，且不作修改", () => {
     writePack(userRoot, "packs/keep");
     const lib = service();
     lib.scan();
@@ -104,7 +102,7 @@ describe("ATOM 4 — removeByRef (rm over path-like refs)", () => {
     expect(existsSync(join(userRoot, "packs", "keep"))).toBe(true);
   });
 
-  it("refuses to remove a shipped builtin pack and never deletes its directory", () => {
+  it("拒绝删除已交付的 builtin pack，且绝不删除其目录", () => {
     const builtinRoot = join(tmp, "builtin-store");
     mkdirSync(builtinRoot, { recursive: true });
     writePack(builtinRoot, "packs/shipped", "shipped");
@@ -116,7 +114,7 @@ describe("ATOM 4 — removeByRef (rm over path-like refs)", () => {
     const err = captureError(() => lib.removeByRef("packs/shipped"));
 
     expect(err.code).toBe("pack_not_removable");
-    // still resolvable + on disk, byte-for-byte
+    // 仍可解析且逐字节保留在磁盘上
     expect(lib.getByRef("packs/shipped")).not.toBeNull();
     expect(readFileSync(join(builtinRoot, "packs", "shipped", "manifest.yaml"))).toEqual(manifestBefore);
   });

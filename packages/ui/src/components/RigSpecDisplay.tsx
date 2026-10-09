@@ -4,14 +4,14 @@ import { SpecTopologyPreview } from "./SpecTopologyPreview.js";
 import { WorkflowCodePreview } from "./WorkflowScaffold.js";
 import type { RigSpecReview } from "../hooks/useSpecReview.js";
 import { RuntimeBadge } from "./graphics/RuntimeMark.js";
-// V1 attempt-3 Phase 5 P5-1: pod-member agentRef cells become SubSpecTrigger-
-// wrapped — click → SubSpecPreview in drawer (referenced agent spec). Per
-// content-drawer.md L31 sub-spec auto-open trigger contract.
+// V1 attempt-3 Phase 5 P5-1：pod 成员的 agentRef 单元格改为用 SubSpecTrigger
+// 包裹——点击 → 抽屉中打开 SubSpecPreview（被引用的 agent 规格）。遵循
+// content-drawer.md L31 的子规格自动打开触发器约定。
 import { SubSpecTrigger } from "./drawer-triggers/SubSpecTrigger.js";
 
-// agentRef shape examples: "local:agents/impl", "local:agents/orch-lead",
-// "fork:agents/qa@0.2.0", "builtin:agents/driver". The leg after agents/ is
-// the spec name; everything before agents/ is the source qualifier.
+// agentRef 形态示例："local:agents/impl"、"local:agents/orch-lead"、
+// "fork:agents/qa@0.2.0"、"builtin:agents/driver"。agents/ 之后的一段是规格名；
+// agents/ 之前的全部内容是来源限定符。
 function parseAgentRef(agentRef: string): { specName: string; source: "builtin" | "user_file" | "fork" } {
   const trimmed = agentRef.startsWith("local:") ? agentRef.slice("local:".length) : agentRef;
   const stripQual = trimmed.replace(/^(builtin|user|fork):/, "");
@@ -26,6 +26,14 @@ function parseAgentRef(agentRef: string): { specName: string; source: "builtin" 
 }
 
 type Tab = "topology" | "configuration" | "environment" | "yaml";
+
+// 标签页展示文案（Tab 枚举本身与 testid 保留英文）。
+const TAB_LABELS: Record<Tab, string> = {
+  topology: "拓扑",
+  configuration: "配置",
+  environment: "环境",
+  yaml: "YAML",
+};
 
 interface MemberInfo {
   id: string;
@@ -56,7 +64,7 @@ export function RigSpecDisplay({ review, yaml, testIdPrefix = "", yamlTestId, sh
 
   return (
     <>
-      {/* Tabs */}
+      {/* 标签页 */}
       <div className="flex gap-1 border-b border-outline-variant">
         {tabs.map((tab) => (
           <button
@@ -69,12 +77,12 @@ export function RigSpecDisplay({ review, yaml, testIdPrefix = "", yamlTestId, sh
                 : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
-            {tab}
+            {TAB_LABELS[tab]}
           </button>
         ))}
       </div>
 
-      {/* Tab content */}
+      {/* 标签页内容 */}
       {activeTab === "topology" && review && (
         <SpecTopologyPreview graph={review.graph} testId={`${prefix}topology-preview`} />
       )}
@@ -87,10 +95,10 @@ export function RigSpecDisplay({ review, yaml, testIdPrefix = "", yamlTestId, sh
               <table className="w-full font-mono text-[10px]">
                 <thead>
                   <tr className="border-b border-outline-variant text-on-surface-variant">
-                    <th className="text-left py-1">Member</th>
-                    <th className="text-left py-1">Agent Ref</th>
-                    <th className="text-left py-1">Runtime</th>
-                    <th className="text-left py-1">Profile</th>
+                    <th className="text-left py-1">成员</th>
+                    <th className="text-left py-1">智能体引用</th>
+                    <th className="text-left py-1">运行时</th>
+                    <th className="text-left py-1">档案</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -107,7 +115,7 @@ export function RigSpecDisplay({ review, yaml, testIdPrefix = "", yamlTestId, sh
                               className="h-6 px-2 font-mono text-[9px] uppercase tracking-[0.12em]"
                               onClick={() => onMemberClick(pod.id, m)}
                             >
-                              Agent Spec
+                              智能体规格
                             </Button>
                           )}
                         </div>
@@ -143,13 +151,13 @@ export function RigSpecDisplay({ review, yaml, testIdPrefix = "", yamlTestId, sh
 
           {review.format === "legacy" && reviewNodes.length > 0 && (
             <div className="border border-outline-variant p-3">
-              <div className="font-mono text-xs font-bold mb-2">Nodes</div>
+              <div className="font-mono text-xs font-bold mb-2">节点</div>
               <table className="w-full font-mono text-[10px]">
                 <thead>
                   <tr className="border-b border-outline-variant text-on-surface-variant">
                     <th className="text-left py-1">ID</th>
-                    <th className="text-left py-1">Runtime</th>
-                    <th className="text-left py-1">Role</th>
+                    <th className="text-left py-1">运行时</th>
+                    <th className="text-left py-1">角色</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -170,14 +178,14 @@ export function RigSpecDisplay({ review, yaml, testIdPrefix = "", yamlTestId, sh
           {reviewEdges.length > 0 && (
             <div className="border border-outline-variant p-3">
               <div className="font-mono text-xs font-bold mb-2">
-                {review.format === "pod_aware" ? "Cross-Pod Edges" : "Edges"}
+                {review.format === "pod_aware" ? "跨 Pod 边" : "边"}
               </div>
               <table className="w-full font-mono text-[10px]">
                 <thead>
                   <tr className="border-b border-outline-variant text-on-surface-variant">
-                    <th className="text-left py-1">From</th>
-                    <th className="text-left py-1">To</th>
-                    <th className="text-left py-1">Kind</th>
+                    <th className="text-left py-1">起点</th>
+                    <th className="text-left py-1">终点</th>
+                    <th className="text-left py-1">类型</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -198,7 +206,7 @@ export function RigSpecDisplay({ review, yaml, testIdPrefix = "", yamlTestId, sh
       {activeTab === "environment" && showEnv && review?.services && (
         <div className="space-y-4" data-testid={`${prefix}env-details`}>
           <div className="space-y-2">
-            <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-on-surface-variant">Services</div>
+            <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-on-surface-variant">服务</div>
             {review.services.composePreview?.services.map((svc) => (
               <div key={svc.name} className="flex items-center justify-between border border-outline-variant px-3 py-2">
                 <span className="font-mono text-[11px] text-on-surface">{svc.name}</span>
@@ -209,7 +217,7 @@ export function RigSpecDisplay({ review, yaml, testIdPrefix = "", yamlTestId, sh
 
           {review.services.waitFor.length > 0 && (
             <div className="space-y-2">
-              <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-on-surface-variant">Health Gates</div>
+              <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-on-surface-variant">健康检查门</div>
               {review.services.waitFor.map((w, i) => (
                 <div key={i} className="font-mono text-[10px] text-on-surface-variant border border-outline-variant px-3 py-2">
                   {w.url && <span>{w.url}</span>}
@@ -222,7 +230,7 @@ export function RigSpecDisplay({ review, yaml, testIdPrefix = "", yamlTestId, sh
 
           {review.services.surfaces && (
             <div className="space-y-2">
-              <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-on-surface-variant">Surfaces</div>
+              <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-on-surface-variant">界面入口</div>
               {review.services.surfaces.urls?.map((u) => (
                 <div key={u.name} className="flex items-center justify-between border border-outline-variant px-3 py-2">
                   <span className="text-[11px] text-on-surface">{u.name}</span>
@@ -241,7 +249,7 @@ export function RigSpecDisplay({ review, yaml, testIdPrefix = "", yamlTestId, sh
       )}
 
       {activeTab === "yaml" && (
-        <WorkflowCodePreview title="YAML Preview" testId={yamlTestId ?? `${prefix}spec-yaml`}>
+        <WorkflowCodePreview title="YAML 预览" testId={yamlTestId ?? `${prefix}spec-yaml`}>
           {yaml}
         </WorkflowCodePreview>
       )}

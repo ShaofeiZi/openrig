@@ -7,21 +7,21 @@ import { spawnSync } from "node:child_process";
 
 const SCHEMA = "openrig-telemetry-state-migration/v1";
 const rig = process.env.OPENRIG_RIG_BIN || "rig";
-const HELP = `Usage: migrate-telemetry-state-0.5.9.mjs [options]
+const HELP = `用法：migrate-telemetry-state-0.5.9.mjs [选项]
 
-No phase flag runs the read-only plan.
-This tool performs one bounded operation selected by the user agent. It does not
-install, start, stop, or otherwise orchestrate an OpenRig upgrade.
+不提供阶段标志时运行只读计划。
+此工具仅执行用户智能体选择的一项有界操作，不会安装、启动、停止或以其他方式编排
+OpenRig 升级。
 
-Options:
-  --home <path>               OpenRig home to inspect or migrate
-  --apply-state               Prepare canonical roots, recovery, and compatibility config
-  --verify                    Verify real paired canonical telemetry after activation
-  --apply-library             Finalize by non-destructive verified library copy
-  --rollback <preimage>       Reverse only helper-owned preparation/finalizer effects
-  --preimage <path>           Protected recovery material created by apply-state
-  --verification <path>       Successful verification receipt required by the finalizer
-  -h, --help                  Show this help without inspecting the instance
+选项：
+  --home <path>               要检查或迁移的 OpenRig 主目录
+  --apply-state               准备 canonical 根目录、恢复材料和兼容配置
+  --verify                    激活后验证真实成对的 canonical 遥测
+  --apply-library             通过非破坏性且经过验证的库复制完成收尾
+  --rollback <preimage>       仅撤销此辅助工具负责的准备/收尾效果
+  --preimage <path>           apply-state 创建的受保护恢复材料
+  --verification <path>       收尾程序要求的成功验证回执
+  -h, --help                  显示此帮助且不检查实例
 `;
 const DEFAULT_SYSTEM_WORLD = `schema: openrig.system-world/v0alpha1
 id: openrig-default
@@ -49,13 +49,13 @@ function parseArguments(argv) {
     if (valueOptions.has(option)) {
       const value = argv[index + 1];
       if (value === undefined || value.startsWith("-")) {
-        return { issue: issue("value_required", null, `${option} requires a value`, { option }) };
+        return { issue: issue("value_required", null, `${option} 需要一个值`, { option }) };
       }
       values.set(option, value);
       index += 1;
       continue;
     }
-    return { issue: issue("unknown_option", null, "run --help for supported options", { option }) };
+    return { issue: issue("unknown_option", null, "请运行 --help 查看支持的选项", { option }) };
   }
   return { values, phases };
 }
@@ -96,7 +96,7 @@ function treeSnapshot(root, ignored = new Set()) {
   const rootStat = lstatOrNull(root);
   if (!rootStat) return { digest: null, rootIdentity: null, entries: [] };
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) {
-    throw new Error(`library root is not a real directory: ${root}`);
+    throw new Error(`库根目录不是真实目录：${root}`);
   }
   const rows = [];
   const entries = [];
@@ -114,7 +114,7 @@ function treeSnapshot(root, ignored = new Set()) {
           || afterRead.dev !== current.dev
           || afterRead.ino !== current.ino
           || (afterRead.mode & 0o777) !== mode) {
-          throw new Error(`symlink changed while being inventoried: ${absolute}`);
+          throw new Error(`盘点期间 symlink 发生变化：${absolute}`);
         }
         entries.push({
           path: relative,
@@ -131,10 +131,10 @@ function treeSnapshot(root, ignored = new Set()) {
       } else if (current.isFile()) {
         const digest = sha256(fs.readFileSync(absolute));
         entries.push({ path: relative, type: "file", mode, sha256: digest });
-        // Preserve the pre-symlink regular-file serialization byte-for-byte.
+        // 逐字节保留引入 symlink 支持前的常规文件序列化格式。
         rows.push(`${relative}\0${mode}\0${digest}`);
       } else {
-        throw new Error(`unsupported library entry is not supported: ${absolute}`);
+        throw new Error(`库中存在不受支持的条目：${absolute}`);
       }
     }
   };
@@ -151,7 +151,7 @@ function treeDigest(root, ignored = new Set()) {
 }
 
 function librarySourceDrift(sourcePath, message) {
-  const drift = new Error(`context library changed after inventory: ${sourcePath}: ${message}`);
+  const drift = new Error(`context 库在盘点后发生变化：${sourcePath}：${message}`);
   drift.migrationIssueCode = "library_source_drift";
   drift.migrationPath = sourcePath;
   return drift;
@@ -189,9 +189,9 @@ function assertTreeSnapshot(root, expected, ignored = new Set()) {
 
 function regularFileSnapshot(filePath) {
   const before = lstatOrNull(filePath);
-  if (!before) throw new Error(`managed file is missing: ${filePath}`);
+  if (!before) throw new Error(`托管文件缺失：${filePath}`);
   if (!before.isFile() || before.isSymbolicLink()) {
-    throw new Error(`managed path is not a regular file: ${filePath}`);
+    throw new Error(`托管路径不是常规文件：${filePath}`);
   }
   const mode = before.mode & 0o777;
   const digest = sha256(fs.readFileSync(filePath));
@@ -201,7 +201,7 @@ function regularFileSnapshot(filePath) {
     || after.dev !== before.dev
     || after.ino !== before.ino
     || (after.mode & 0o777) !== mode) {
-    throw new Error(`managed file changed while being inventoried: ${filePath}`);
+    throw new Error(`托管文件在盘点期间发生变化：${filePath}`);
   }
   return {
     type: "file",
@@ -212,14 +212,14 @@ function regularFileSnapshot(filePath) {
 }
 
 function assertRegularFileSnapshot(filePath, expected) {
-  if (!expected) throw new Error(`managed file has no recorded identity: ${filePath}`);
+  if (!expected) throw new Error(`托管文件没有已记录身份：${filePath}`);
   const current = regularFileSnapshot(filePath);
   if (current.type !== expected.type
     || current.mode !== expected.mode
     || current.sha256 !== expected.sha256
     || current.identity.dev !== expected.identity?.dev
     || current.identity.ino !== expected.identity?.ino) {
-    throw new Error(`managed file identity no longer matches: ${filePath}`);
+    throw new Error(`托管文件身份不再匹配：${filePath}`);
   }
   return current;
 }
@@ -229,20 +229,20 @@ function readLibraryConfig(home, issues) {
   const configExists = fs.existsSync(configPath);
   const config = configExists ? readJson(configPath) : {};
   if (!config) {
-    issues.push(issue("config_invalid", configPath, "repair config.json before migrating the context library"));
+    issues.push(issue("config_invalid", configPath, "迁移 context 库前请修复 config.json"));
     return null;
   }
   const context = config.context === undefined ? {} : config.context;
   if (!context || typeof context !== "object" || Array.isArray(context)) {
-    issues.push(issue("config_invalid", configPath, "make config.context an object before migrating the context library"));
+    issues.push(issue("config_invalid", configPath, "迁移 context 库前请将 config.context 改为对象"));
     return null;
   }
   if (context.packsRoot !== undefined && (typeof context.packsRoot !== "string" || context.packsRoot.length === 0)) {
-    issues.push(issue("config_invalid", configPath, "make context.packsRoot a non-empty path or remove it before migration"));
+    issues.push(issue("config_invalid", configPath, "迁移前请将 context.packsRoot 设为非空路径，或将其移除"));
     return null;
   }
   if (context.root !== undefined && (typeof context.root !== "string" || context.root.length === 0)) {
-    issues.push(issue("config_invalid", configPath, "make context.root a non-empty path or remove it before migration"));
+    issues.push(issue("config_invalid", configPath, "迁移前请将 context.root 设为非空路径，或将其移除"));
     return null;
   }
   const defaultLegacyRoot = path.join(home, "context-packs");
@@ -253,7 +253,7 @@ function readLibraryConfig(home, issues) {
     : defaultLegacyRoot;
   if (context.packsRoot !== undefined && context.root !== undefined
     && path.resolve(context.packsRoot) !== path.resolve(context.root)) {
-    issues.push(issue("context_root_conflict", configPath, "choose the one context library that must stay authoritative during activation", {
+    issues.push(issue("context_root_conflict", configPath, "请选择激活期间必须保持权威的唯一 context 库", {
       legacyRoot: path.resolve(context.packsRoot),
       configuredRoot: path.resolve(context.root),
     }));
@@ -286,22 +286,22 @@ function systemWorldPlan(home, issues) {
   const filePath = path.join(directory, "system-world.yaml");
   const file = lstatOrNull(filePath);
   if (file && (!file.isFile() || file.isSymbolicLink())) {
-    issues.push(issue("system_world_conflict", filePath, "preserve the opaque entry and select the intended System World before preparation"));
+    issues.push(issue("system_world_conflict", filePath, "请保留不透明条目，并在准备前选择预期的 System World"));
     return null;
   }
   if (file && sha256(fs.readFileSync(filePath)) !== sha256(DEFAULT_SYSTEM_WORLD)) {
-    issues.push(issue("system_world_conflict", filePath, "preserve the operator-owned System World and explicitly reconcile it before preparation"));
+    issues.push(issue("system_world_conflict", filePath, "请保留操作员所有的 System World，并在准备前显式协调"));
     return null;
   }
   const directoryStat = lstatOrNull(directory);
   if (directoryStat && (!directoryStat.isDirectory() || directoryStat.isSymbolicLink())) {
-    issues.push(issue("system_world_conflict", directory, "preserve the opaque entry and select the intended System World directory before preparation"));
+    issues.push(issue("system_world_conflict", directory, "请保留不透明条目，并在准备前选择预期的 System World 目录"));
     return null;
   }
   if (directoryStat) {
     const foreign = fs.readdirSync(directory).filter((name) => name !== "system-world.yaml");
     if (foreign.length > 0) {
-      issues.push(issue("system_world_conflict", path.join(directory, foreign[0]), "preserve the additional content and reconcile the reserved System World directory before preparation"));
+      issues.push(issue("system_world_conflict", path.join(directory, foreign[0]), "请保留附加内容，并在准备前协调预留的 System World 目录"));
       return null;
     }
   }
@@ -314,8 +314,8 @@ function inventoryClaudeSeats(issues) {
     issues.push(issue(
       "inventory_unavailable",
       null,
-      `run ${rig} ps --nodes -A --json --full and restore daemon inventory before retrying`,
-      { diagnostic: result.stderr?.trim() || result.stdout?.trim() || "command produced no diagnostic" },
+      `请运行 ${rig} ps --nodes -A --json --full 并恢复后台服务盘点，然后重试`,
+      { diagnostic: result.stderr?.trim() || result.stdout?.trim() || "命令未产生诊断信息" },
     ));
     return [];
   }
@@ -323,10 +323,10 @@ function inventoryClaudeSeats(issues) {
   try {
     const parsed = JSON.parse(result.stdout);
     const entries = Array.isArray(parsed) ? parsed : parsed.entries;
-    if (!Array.isArray(entries) || parsed.truncated === true) throw new Error("inventory is missing or truncated");
+    if (!Array.isArray(entries) || parsed.truncated === true) throw new Error("盘点缺失或已截断");
     return entries.filter((entry) => entry.runtime === "claude-code" && entry.sessionStatus === "running");
   } catch (error) {
-    issues.push(issue("inventory_unavailable", null, "obtain one complete untruncated node inventory before retrying", {
+    issues.push(issue("inventory_unavailable", null, "重试前请获取一份完整且未截断的节点盘点", {
       diagnostic: error.message,
     }));
     return [];
@@ -341,13 +341,13 @@ function targetIssue(target) {
     cursor = parent;
   }
   if (fs.existsSync(cursor) && !fs.statSync(cursor).isDirectory()) {
-    return issue("unwriteable_target", target, "replace the non-directory ancestor or choose the correct OpenRig home before apply", {
+    return issue("unwriteable_target", target, "应用前请替换非目录祖先，或选择正确的 OpenRig 主目录", {
       blockingPath: cursor,
     });
   }
   if (!fs.existsSync(target)) return null;
   if (!fs.statSync(target).isDirectory()) {
-    return issue("unwriteable_target", target, "preserve the non-directory target and repair the path before apply");
+    return issue("unwriteable_target", target, "请保留非目录目标，并在应用前修复路径");
   }
   return null;
 }
@@ -355,7 +355,7 @@ function targetIssue(target) {
 function scanLegacy(directory, kind, destination, issues, managedEmptyDirectories = [], allowedDirectories = []) {
   if (!fs.existsSync(directory)) return [];
   if (!fs.statSync(directory).isDirectory()) {
-    issues.push(issue("foreign_file", directory, "preserve the path and identify the real legacy telemetry directory"));
+    issues.push(issue("foreign_file", directory, "请保留此路径，并找出真实的旧版遥测目录"));
     return [];
   }
 
@@ -371,7 +371,7 @@ function scanLegacy(directory, kind, destination, issues, managedEmptyDirectorie
       if (allowedDirectories.includes(source)) continue;
     }
     if (!entry.isFile() || !entry.name.endsWith(".json")) {
-      issues.push(issue("foreign_file", source, "classify or archive the non-telemetry entry before applying this bounded migration"));
+      issues.push(issue("foreign_file", source, "应用此有界迁移前，请分类或归档非遥测条目"));
       continue;
     }
     const parsed = readJson(source);
@@ -379,7 +379,7 @@ function scanLegacy(directory, kind, destination, issues, managedEmptyDirectorie
     const timestamp = kind === "context" ? parsed?.sampled_at : parsed?.asOf;
     if (typeof identity !== "string" || identity.length === 0
       || typeof timestamp !== "string" || Number.isNaN(Date.parse(timestamp))) {
-      issues.push(issue("malformed_sidecar", source, `repair or archive the malformed ${kind} sidecar before apply`));
+      issues.push(issue("malformed_sidecar", source, `应用前请修复或归档格式错误的 ${kind} sidecar`));
       continue;
     }
     files.push({
@@ -418,7 +418,7 @@ function buildPlan(home) {
   inventoryClaudeSeats(issues);
   const library = readLibraryConfig(home, issues);
   if (library && fs.existsSync(library.sourceRoot) && !fs.statSync(library.sourceRoot).isDirectory()) {
-    issues.push(issue("library_source_invalid", library.sourceRoot, "preserve the path and identify the real legacy context library"));
+    issues.push(issue("library_source_invalid", library.sourceRoot, "请保留此路径，并找出真实的旧版 context 库"));
   }
   return { roots, telemetry, library, systemWorld, managedEmptyDirectories, issues };
 }
@@ -447,8 +447,8 @@ function publicPlan(home, plan) {
     ],
     issues: plan.issues,
     next: plan.issues.length === 0
-      ? "after the user agent approves this installation-specific plan, choose an unused --preimage path and run --apply-state"
-      : "resolve every issue; plan mode changed nothing",
+      ? "用户智能体批准此安装专用计划后，请选择未使用的 --preimage 路径并运行 --apply-state"
+      : "请解决所有问题；计划模式未做任何更改",
   };
 }
 
@@ -469,7 +469,7 @@ function storePreimage(preimage, records) {
     emit({ schema: SCHEMA, phase: "apply-state", ok: false, issues: [issue(
       "preimage_exists",
       preimage,
-      "choose a new preimage path; this helper never overwrites one",
+      "请选择新的 preimage 路径；此辅助工具绝不会覆盖已有路径",
     )] }, 1);
   }
   fs.mkdirSync(preimage, { recursive: true });
@@ -491,7 +491,7 @@ function loadManifest(preimage, home, phase) {
     emit({ schema: SCHEMA, phase, ok: false, issues: [issue(
       "preimage_manifest_mismatch",
       manifestPath,
-      "use the exact preimage emitted by this home's apply-state receipt",
+      "请使用此主目录的 apply-state 回执所生成的准确 preimage",
     )] }, 1);
   }
   return manifest;
@@ -503,7 +503,7 @@ function validatePreimage(preimage, manifest) {
     const storedPath = path.resolve(preimage, file.storedAs);
     if (!storedPath.startsWith(`${path.resolve(preimage)}${path.sep}`) || !fs.existsSync(storedPath)
       || sha256(fs.readFileSync(storedPath)) !== file.sha256) {
-      issues.push(issue("preimage_mismatch", storedPath, "restore the byte-matching preimage before rollback", {
+      issues.push(issue("preimage_mismatch", storedPath, "回滚前请恢复逐字节匹配的 preimage", {
         originalPath: file.originalPath,
       }));
     }
@@ -529,7 +529,7 @@ function applyState(home, preimage) {
     emit({ schema: SCHEMA, phase: "apply-state", ok: false, issues: [issue(
       "preimage_required",
       null,
-      "pass --preimage with a new path under a protected backup root",
+      "请通过 --preimage 指定受保护备份根目录下的新路径",
     )] }, 1);
   }
   const plan = buildPlan(home);
@@ -588,7 +588,7 @@ function applyState(home, preimage) {
     if (plan.library) {
       const configMode = plan.library.configExists ? fs.statSync(plan.library.configPath).mode & 0o777 : 0o600;
       if (plan.library.configExists && sha256(fs.readFileSync(plan.library.configPath)) !== sha256(plan.library.originalConfig)) {
-        throw new Error(`config changed during preparation: ${plan.library.configPath}`);
+        throw new Error(`配置在准备期间发生变化：${plan.library.configPath}`);
       }
       atomicWrite(plan.library.configPath, plan.library.activationConfig, configMode);
     }
@@ -600,7 +600,7 @@ function applyState(home, preimage) {
       applied: false,
       complete: false,
       preimage,
-      issues: [issue("unwriteable_target", null, "inspect the preserved preimage and partial target state; resolve before retrying", {
+      issues: [issue("unwriteable_target", null, "请检查已保留的 preimage 和部分目标状态；解决问题后再重试", {
         diagnostic: error.message,
       })],
     }, 1);
@@ -620,23 +620,23 @@ function applyState(home, preimage) {
     preservedLegacy: plan.telemetry.map((item) => item.source),
     configuredContextRoot: plan.library?.sourceRoot ?? null,
     issues: [],
-    next: "the user agent may now activate the exact target runtime; prove canonical-only writes and canonical-first/legacy-fallback reads, then run --verify with this --preimage",
+    next: "用户智能体现在可以激活准确的目标 runtime；证明仅写 canonical、读取时 canonical 优先且 legacy 回退，然后使用此 --preimage 运行 --verify",
   });
 }
 
 function sampleTime(filePath, identityKey, timeKey, expectedSession, issues) {
   const parsed = readJson(filePath);
   if (!parsed) {
-    if (fs.existsSync(filePath)) issues.push(issue("malformed_sidecar", filePath, "repair the malformed sidecar and obtain a fresh sample"));
+    if (fs.existsSync(filePath)) issues.push(issue("malformed_sidecar", filePath, "请修复格式错误的 sidecar 并获取新样本"));
     return null;
   }
   if (parsed[identityKey] !== expectedSession || typeof parsed[timeKey] !== "string") {
-    issues.push(issue("malformed_sidecar", filePath, "repair the sidecar identity or timestamp and obtain a fresh sample"));
+    issues.push(issue("malformed_sidecar", filePath, "请修复 sidecar 身份或时间戳并获取新样本"));
     return null;
   }
   const time = Date.parse(parsed[timeKey]);
   if (Number.isNaN(time)) {
-    issues.push(issue("malformed_sidecar", filePath, "repair the sidecar timestamp and obtain a fresh sample"));
+    issues.push(issue("malformed_sidecar", filePath, "请修复 sidecar 时间戳并获取新样本"));
     return null;
   }
   return time;
@@ -650,12 +650,12 @@ function managedSystemWorldState(home, manifest, issues, expectedArtifact = unde
     if (!current?.isFile() || current.isSymbolicLink()
       || sha256(fs.readFileSync(filePath)) !== expected.sha256
       || (current.mode & 0o777) !== expected.mode) {
-      issues.push(issue("system_world_conflict", filePath, "preserve the changed System World and restore the exact prepared artifact before continuing"));
+      issues.push(issue("system_world_conflict", filePath, "请保留已变化的 System World，并在继续前恢复准确的已准备产物"));
       return { directories: [path.dirname(filePath)], artifact: null };
     }
     const foreign = fs.readdirSync(path.dirname(filePath)).filter((name) => name !== path.basename(filePath));
     if (foreign.length > 0) {
-      issues.push(issue("system_world_conflict", path.join(path.dirname(filePath), foreign[0]), "preserve the additional content and reconcile the reserved System World directory before continuing"));
+      issues.push(issue("system_world_conflict", path.join(path.dirname(filePath), foreign[0]), "请保留附加内容，并在继续前协调预留的 System World 目录"));
     }
     const artifact = { path: filePath, sha256: expected.sha256, mode: expected.mode };
     if (expectedArtifact !== undefined && (
@@ -664,7 +664,7 @@ function managedSystemWorldState(home, manifest, issues, expectedArtifact = unde
       || expectedArtifact.sha256 !== artifact.sha256
       || expectedArtifact.mode !== artifact.mode
     )) {
-      issues.push(issue("destination_drift", filePath, "preserve the changed System World and rerun verification from the exact migration state"));
+      issues.push(issue("destination_drift", filePath, "请保留已变化的 System World，并从准确迁移状态重新运行验证"));
     }
     return { directories: [path.dirname(filePath)], artifact };
   }
@@ -672,22 +672,22 @@ function managedSystemWorldState(home, manifest, issues, expectedArtifact = unde
   const systemWorldPath = path.join(directory, "system-world.yaml");
   const directories = manifest.managedEmptyDirectories ?? [];
   if (!Array.isArray(directories) || directories.length > 1 || directories.some((entry) => entry !== directory)) {
-    issues.push(issue("preimage_manifest_mismatch", directory, "use the exact preimage emitted by this helper"));
+    issues.push(issue("preimage_manifest_mismatch", directory, "请使用此辅助工具生成的准确 preimage"));
     return { directories: [], artifact: null };
   }
   if (directories.length === 0) {
     if (expectedArtifact !== undefined && expectedArtifact !== null) {
-      issues.push(issue("verification_receipt_invalid", systemWorldPath, "rerun --verify against this exact home and preimage"));
+      issues.push(issue("verification_receipt_invalid", systemWorldPath, "请针对这一准确的主目录和 preimage 重新运行 --verify"));
     }
     return { directories, artifact: null };
   }
   if (!fs.existsSync(directory) || !fs.lstatSync(directory).isDirectory() || fs.lstatSync(directory).isSymbolicLink()) {
-    issues.push(issue("system_world_conflict", directory, "start the exact target daemon and require only its canonical default System World before retrying"));
+    issues.push(issue("system_world_conflict", directory, "重试前请启动准确的目标后台服务，并确保只有其 canonical 默认 System World"));
     return { directories, artifact: null };
   }
   const entries = fs.readdirSync(directory, { withFileTypes: true });
   if (entries.length !== 1 || entries[0].name !== "system-world.yaml" || !entries[0].isFile() || entries[0].isSymbolicLink()) {
-    issues.push(issue("system_world_conflict", directory, "preserve the differing or additional System World content and reconcile it manually"));
+    issues.push(issue("system_world_conflict", directory, "请保留不同或额外的 System World 内容，并手动协调"));
     return { directories, artifact: null };
   }
   const bytes = fs.readFileSync(systemWorldPath);
@@ -697,7 +697,7 @@ function managedSystemWorldState(home, manifest, issues, expectedArtifact = unde
     mode: fs.statSync(systemWorldPath).mode & 0o777,
   };
   if (artifact.sha256 !== sha256(DEFAULT_SYSTEM_WORLD)) {
-    issues.push(issue("system_world_conflict", systemWorldPath, "preserve the differing System World and reconcile it manually"));
+    issues.push(issue("system_world_conflict", systemWorldPath, "请保留不同的 System World，并手动协调"));
   }
   if (expectedArtifact !== undefined && (
     expectedArtifact === null
@@ -705,7 +705,7 @@ function managedSystemWorldState(home, manifest, issues, expectedArtifact = unde
     || expectedArtifact.sha256 !== artifact.sha256
     || expectedArtifact.mode !== artifact.mode
   )) {
-    issues.push(issue("destination_drift", systemWorldPath, "preserve the changed System World and rerun verification from the exact migration state"));
+    issues.push(issue("destination_drift", systemWorldPath, "请保留已变化的 System World，并从准确迁移状态重新运行验证"));
   }
   return { directories, artifact };
 }
@@ -735,7 +735,7 @@ function legacyTails(manifest, telemetry, appliedAt, issues) {
   const currentPaths = new Set(telemetry.map((file) => file.source));
   for (const original of originalByPath.values()) {
     if (!currentPaths.has(original.originalPath)) {
-      issues.push(issue("legacy_source_drift", original.originalPath, "restore the preimage-bound legacy sidecar and rerun verification"));
+      issues.push(issue("legacy_source_drift", original.originalPath, "请恢复绑定 preimage 的 legacy sidecar 并重新运行验证"));
     }
   }
   const tails = [];
@@ -748,7 +748,7 @@ function legacyTails(manifest, telemetry, appliedAt, issues) {
     const identityKey = file.kind === "context" ? "session_name" : "seatSession";
     const observedAt = Date.parse(current?.[timeKey]);
     if (Number.isNaN(observedAt) || observedAt <= appliedAt) {
-      issues.push(issue("legacy_source_drift", file.source, "preserve the changed legacy sidecar and rerun the migration from a fresh preimage"));
+      issues.push(issue("legacy_source_drift", file.source, "请保留已变化的 legacy sidecar，并从新的 preimage 重新运行迁移"));
       continue;
     }
     tails.push({
@@ -768,7 +768,7 @@ function requireTailConvergence(tails, samples, issues) {
     const sample = samples.get(tail.sessionName);
     const observedAt = Date.parse(tail.observedAt);
     if (!sample || sample.contextAt <= observedAt || sample.providerAt <= observedAt) {
-      issues.push(issue("legacy_writer_active", tail.originalPath, "obtain newer samples for the named seat at both new state roots, or replace the process if legacy writes continue", {
+      issues.push(issue("legacy_writer_active", tail.originalPath, "请在两个新状态根目录为指定席位获取更新样本；若 legacy 写入继续，请替换该进程", {
         sessionName: tail.sessionName,
         observedAt: tail.observedAt,
         ...(sample ? {
@@ -782,12 +782,12 @@ function requireTailConvergence(tails, samples, issues) {
 
 function verify(home, preimage) {
   if (!preimage) {
-    emit({ schema: SCHEMA, phase: "verify", ok: false, issues: [issue("preimage_required", null, "pass the apply-state --preimage path")] }, 1);
+    emit({ schema: SCHEMA, phase: "verify", ok: false, issues: [issue("preimage_required", null, "请传入 apply-state 使用的 --preimage 路径")] }, 1);
   }
   const manifest = loadManifest(preimage, home, "verify");
   const issues = validatePreimage(preimage, manifest);
   if (manifest.status !== "applied" || typeof manifest.appliedAt !== "string") {
-    issues.push(issue("preimage_manifest_mismatch", path.join(preimage, "manifest.json"), "use a completed apply-state preimage"));
+    issues.push(issue("preimage_manifest_mismatch", path.join(preimage, "manifest.json"), "请使用已完成 apply-state 的 preimage"));
   }
   const appliedAt = Date.parse(manifest.appliedAt);
   const systemWorld = managedSystemWorldState(home, manifest, issues);
@@ -816,7 +816,7 @@ function verify(home, preimage) {
   }
   requireTailConvergence(tails, samples, issues);
   if (freshSamples.length === 0) {
-    issues.push(issue("missing_fresh_sample", path.join(home, "state", "context-usage"), "obtain one post-apply Claude sample at both new telemetry roots before declaring migration complete"));
+    issues.push(issue("missing_fresh_sample", path.join(home, "state", "context-usage"), "宣布迁移完成前，请在两个新遥测根目录获取一份 apply 后的 Claude 样本"));
   }
 
   const report = {
@@ -832,13 +832,13 @@ function verify(home, preimage) {
     freshSamples,
     legacyTails: tails,
     issues,
-    next: issues.length === 0 ? "canonical telemetry adoption is verified" : "resolve the named incomplete state and rerun verify",
+    next: issues.length === 0 ? "canonical 遥测采用情况已验证" : "请解决列出的未完成状态并重新运行 verify",
   };
   emit(report, issues.length === 0 ? 0 : 1);
 }
 
 function verificationReceipt(home, preimage, verificationPath) {
-  if (!verificationPath) return { issue: issue("verification_receipt_required", null, "capture a successful --verify JSON receipt and pass it with --verification") };
+  if (!verificationPath) return { issue: issue("verification_receipt_required", null, "请捕获成功的 --verify JSON 回执，并通过 --verification 传入") };
   const receipt = readJson(verificationPath);
   const manifestPath = path.join(preimage, "manifest.json");
   const manifest = readJson(manifestPath);
@@ -867,7 +867,7 @@ function verificationReceipt(home, preimage, verificationPath) {
       : receipt.managedSystemWorld === null);
   return valid
     ? { receipt }
-    : { issue: issue("verification_receipt_invalid", verificationPath, "rerun --verify against this exact home and preimage, capture its JSON, then retry") };
+    : { issue: issue("verification_receipt_invalid", verificationPath, "请针对这一准确的主目录和 preimage 重新运行 --verify，捕获其 JSON 后重试") };
 }
 
 function validateLegacySources(preimage, manifest, root, kind, issues, allowedEntries = [], verifiedTails = []) {
@@ -880,19 +880,19 @@ function validateLegacySources(preimage, manifest, root, kind, issues, allowedEn
   const allowedEntrySet = new Set(allowedEntries);
   if (!fs.existsSync(root)) {
     for (const file of expectedByPath.values()) {
-      issues.push(issue("legacy_source_drift", file.originalPath, "restore the verified legacy telemetry source before migrating the library"));
+      issues.push(issue("legacy_source_drift", file.originalPath, "迁移库前请恢复经过验证的 legacy 遥测源"));
     }
     return [...expectedByPath.values()];
   }
   if (!fs.statSync(root).isDirectory()) {
-    issues.push(issue("legacy_source_drift", root, "restore the verified legacy telemetry directory before migrating the library"));
+    issues.push(issue("legacy_source_drift", root, "迁移库前请恢复经过验证的 legacy 遥测目录"));
     return files;
   }
   for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
     if (entry.isFile() && entry.name.endsWith(".json.tmp")) continue;
     if (allowedEntrySet.has(path.join(root, entry.name))) continue;
     if (!entry.isFile() || !allowed.has(entry.name)) {
-      issues.push(issue("legacy_source_drift", path.join(root, entry.name), "classify the new legacy-root entry and obtain a fresh verification receipt before finalization"));
+      issues.push(issue("legacy_source_drift", path.join(root, entry.name), "收尾前请分类新的 legacy 根条目，并获取新验证回执"));
     }
   }
   for (const file of expectedByPath.values()) {
@@ -900,14 +900,14 @@ function validateLegacySources(preimage, manifest, root, kind, issues, allowedEn
     if (!sourceKind?.isFile() || sourceKind.isSymbolicLink()
       || sha256(fs.readFileSync(file.originalPath)) !== file.sha256
       || (sourceKind.mode & 0o777) !== file.mode) {
-      issues.push(issue("legacy_source_drift", file.originalPath, "rerun apply-state and verify; a legacy telemetry source changed after the receipt"));
+      issues.push(issue("legacy_source_drift", file.originalPath, "请重新运行 apply-state 和 verify；某个 legacy 遥测源在回执生成后发生变化"));
     }
   }
   return [...expectedByPath.values()];
 }
 
 function legacySourceDrift(sourcePath, error) {
-  const drift = new Error(`legacy source changed after verification: ${sourcePath}: ${error.message}`);
+  const drift = new Error(`legacy 源在验证后发生变化：${sourcePath}：${error.message}`);
   drift.migrationIssueCode = "legacy_source_drift";
   drift.migrationPath = sourcePath;
   return drift;
@@ -941,7 +941,7 @@ function assertLegacySourcesStillVerified(home, preimage, manifest, allowedConte
 
 function decodePlannedBytes(encoded, digest) {
   const bytes = Buffer.from(encoded ?? "", "base64");
-  if (!encoded || sha256(bytes) !== digest) throw new Error("manifest-planned bytes do not match their digest");
+  if (!encoded || sha256(bytes) !== digest) throw new Error("manifest 规划的字节与其摘要不匹配");
   return bytes;
 }
 
@@ -967,7 +967,7 @@ function entrySnapshot(entryPath) {
   if (stat.isDirectory()) {
     return { type: "directory", mode, tree: treeSnapshot(entryPath) };
   }
-  throw new Error(`unsupported library entry is not supported: ${entryPath}`);
+  throw new Error(`库中存在不受支持的条目：${entryPath}`);
 }
 
 function copyEntryOpaque(source, destination) {
@@ -989,7 +989,7 @@ function copyEntryOpaque(source, destination) {
     fs.chmodSync(destination, stat.mode & 0o777);
     return;
   }
-  throw new Error(`unsupported library entry is not supported: ${source}`);
+  throw new Error(`库中存在不受支持的条目：${source}`);
 }
 
 function semanticEntrySnapshot(snapshot) {
@@ -1011,23 +1011,23 @@ function semanticEntrySnapshot(snapshot) {
 function assertEntrySnapshot(entryPath, expected, requireIdentity = true) {
   const current = entrySnapshot(entryPath);
   if (JSON.stringify(semanticEntrySnapshot(current)) !== JSON.stringify(semanticEntrySnapshot(expected))) {
-    throw new Error(`entry bytes, type, link payload, or mode changed: ${entryPath}`);
+    throw new Error(`条目的字节、类型、链接 payload 或 mode 发生变化：${entryPath}`);
   }
   if (!requireIdentity) return current;
   if (expected.type === "directory") {
     if (current.tree.rootIdentity?.dev !== expected.tree.rootIdentity?.dev
       || current.tree.rootIdentity?.ino !== expected.tree.rootIdentity?.ino) {
-      throw new Error(`entry identity changed: ${entryPath}`);
+      throw new Error(`条目身份发生变化：${entryPath}`);
     }
     const currentLinks = new Map(current.tree.entries.filter((entry) => entry.type === "symlink").map((entry) => [entry.path, entry.identity]));
     for (const link of expected.tree.entries.filter((entry) => entry.type === "symlink")) {
       const identity = currentLinks.get(link.path);
       if (identity?.dev !== link.identity?.dev || identity?.ino !== link.identity?.ino) {
-        throw new Error(`symlink identity changed: ${path.join(entryPath, link.path)}`);
+        throw new Error(`symlink 身份发生变化：${path.join(entryPath, link.path)}`);
       }
     }
   } else if (current.identity.dev !== expected.identity.dev || current.identity.ino !== expected.identity.ino) {
-    throw new Error(`entry identity changed: ${entryPath}`);
+    throw new Error(`条目身份发生变化：${entryPath}`);
   }
   return current;
 }
@@ -1039,13 +1039,13 @@ function libraryPlanFromManifest(manifest, home, issues) {
       || typeof plan.configPath !== "string"
       || typeof plan.sourceRoot !== "string"
       || typeof plan.targetRoot !== "string"
-      || typeof plan.configExisted !== "boolean") throw new Error("library plan is absent or malformed");
+      || typeof plan.configExisted !== "boolean") throw new Error("库计划缺失或格式错误");
     const activationConfig = decodePlannedBytes(plan.activationConfigBase64, plan.activationConfigSha256);
     const finalConfig = decodePlannedBytes(plan.finalConfigBase64, plan.finalConfigSha256);
-    if (path.resolve(plan.configPath) !== path.join(home, "config.json")) throw new Error("config path does not match this home");
+    if (path.resolve(plan.configPath) !== path.join(home, "config.json")) throw new Error("配置路径与此主目录不匹配");
     return { ...plan, activationConfig, finalConfig };
   } catch (error) {
-    issues.push(issue("preimage_manifest_mismatch", path.join(home, "config.json"), "use the exact preparation receipt for this home", {
+    issues.push(issue("preimage_manifest_mismatch", path.join(home, "config.json"), "请使用此主目录对应的准确准备回执", {
       diagnostic: error.message,
     }));
     return null;
@@ -1054,12 +1054,12 @@ function libraryPlanFromManifest(manifest, home, issues) {
 
 function applyLibrary(home, preimage, verificationPath) {
   if (!preimage) {
-    emit({ schema: SCHEMA, phase: "apply-library", ok: false, issues: [issue("preimage_required", null, "pass the apply-state --preimage path")] }, 1);
+    emit({ schema: SCHEMA, phase: "apply-library", ok: false, issues: [issue("preimage_required", null, "请传入 apply-state 使用的 --preimage 路径")] }, 1);
   }
   const manifest = loadManifest(preimage, home, "apply-library");
   const issues = validatePreimage(preimage, manifest);
   if (manifest.status !== "applied") {
-    issues.push(issue("preimage_manifest_mismatch", path.join(preimage, "manifest.json"), "the finalizer requires one completed preparation receipt"));
+    issues.push(issue("preimage_manifest_mismatch", path.join(preimage, "manifest.json"), "收尾程序需要一份已完成的准备回执"));
   }
   const receipt = verificationReceipt(home, preimage, verificationPath);
   if (receipt.issue) issues.push(receipt.issue);
@@ -1093,7 +1093,7 @@ function applyLibrary(home, preimage, verificationPath) {
   if (library) {
     const currentConfigSha = fs.existsSync(library.configPath) ? sha256(fs.readFileSync(library.configPath)) : null;
     if (currentConfigSha !== library.activationConfigSha256) {
-      issues.push(issue("config_drift", library.configPath, "preserve the changed config and prepare a fresh migration receipt before finalization"));
+      issues.push(issue("config_drift", library.configPath, "请保留已变化的配置，并在收尾前准备新迁移回执"));
     }
   }
   if (issues.length > 0 || !library) {
@@ -1107,7 +1107,7 @@ function applyLibrary(home, preimage, verificationPath) {
     emit({ schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
       "library_source_invalid",
       library.sourceRoot,
-      "preserve the unsupported entry and extend the bounded migration before retrying",
+      "请保留不受支持的条目，扩展有界迁移后再重试",
       { diagnostic: error.message },
     )] }, 1);
   }
@@ -1117,7 +1117,7 @@ function applyLibrary(home, preimage, verificationPath) {
     emit({ schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
       "system_world_conflict",
       path.join(library.sourceRoot, "system"),
-      "preserve the opaque entry at the reserved System World path and reconcile it before migration",
+      "请保留预留 System World 路径中的不透明条目，并在迁移前协调",
     )] }, 1);
   }
   const sourceSystemWorld = path.join(library.sourceRoot, "system", "system-world.yaml");
@@ -1131,7 +1131,7 @@ function applyLibrary(home, preimage, verificationPath) {
     emit({ schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
       "system_world_conflict",
       path.join(library.sourceRoot, "system"),
-      "preserve the legacy library's reserved system entry and explicitly reconcile it before finalization",
+      "请保留 legacy 库的预留 system 条目，并在收尾前显式协调",
     )] }, 1);
   }
 
@@ -1143,8 +1143,8 @@ function applyLibrary(home, preimage, verificationPath) {
       libraryDrift ? "library_source_drift" : "preimage_mismatch",
       libraryDrift ? error.migrationPath : preimage,
       libraryDrift
-        ? "preserve the changed context library and rerun from a fresh inventory"
-        : "restore a writeable byte-matching preimage before finalization",
+        ? "请保留已变化的 context 库，并从新盘点重新运行"
+        : "收尾前请恢复可写且逐字节匹配的 preimage",
       { diagnostic: error.message },
     )] }, 1);
   }
@@ -1154,7 +1154,7 @@ function applyLibrary(home, preimage, verificationPath) {
     emit({ schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
       "library_target_conflict",
       library.targetRoot,
-      "preserve the opaque target and select the intended canonical context root before finalization",
+      "请保留不透明目标，并在收尾前选择预期的 canonical context 根目录",
     )] }, 1);
   }
   const sourceTopLevel = sourceTreeSnapshot.digest === null
@@ -1170,7 +1170,7 @@ function applyLibrary(home, preimage, verificationPath) {
         emit({ schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
           "library_target_conflict",
           destination,
-          "preserve both entries and reconcile the collision before finalization; no existing target is overwritten",
+          "请保留两个条目并在收尾前协调冲突；不会覆盖任何现有目标",
         )] }, 1);
       }
     }
@@ -1230,7 +1230,7 @@ function applyLibrary(home, preimage, verificationPath) {
       verifiedTails,
     );
     if (sha256(fs.readFileSync(library.configPath)) !== library.activationConfigSha256) {
-      throw new Error(`config changed during finalization: ${library.configPath}`);
+      throw new Error(`配置在收尾期间发生变化：${library.configPath}`);
     }
     if (library.activationConfigSha256 !== library.finalConfigSha256) {
       atomicWrite(library.configPath, library.finalConfig, fs.statSync(library.configPath).mode & 0o777);
@@ -1263,7 +1263,7 @@ function applyLibrary(home, preimage, verificationPath) {
       copied: copiedRoots.map((entry) => path.join(library.targetRoot, entry.name)),
       preservedRecovery: [library.sourceRoot, path.join(home, "context"), path.join(home, "provider-usage")],
       issues: [],
-      next: "inspect the copied library, effective context root, System World provenance, and representative fresh-seat behavior; keep the legacy sources until separately retired",
+      next: "请检查复制后的库、生效的 context 根目录、System World 来源以及有代表性的新席位行为；在单独退役前保留 legacy 源",
     });
   } catch (error) {
     const sourceDrift = error.migrationIssueCode === "legacy_source_drift";
@@ -1279,10 +1279,10 @@ function applyLibrary(home, preimage, verificationPath) {
         sourceDrift ? "legacy_source_drift" : libraryDrift ? "library_source_drift" : "library_apply_incomplete",
         sourceDrift || libraryDrift ? error.migrationPath : null,
         libraryDrift
-          ? "preserve the changed context library and run --rollback with this preimage before retrying"
+          ? "请保留已变化的 context 库，并在重试前使用此 preimage 运行 --rollback"
           : sourceDrift
-          ? "preserve the changed legacy telemetry source and obtain a fresh verification receipt"
-          : "run --rollback with this preimage before retrying; copied roots remain recorded and the source was not removed",
+          ? "请保留已变化的 legacy 遥测源并获取新验证回执"
+          : "重试前请使用此 preimage 运行 --rollback；已复制的根目录仍有记录，源未被删除",
         { diagnostic: error.message },
       )],
     }, 1);
@@ -1306,14 +1306,14 @@ function rollback(home, preimage) {
     if (currentConfigSha === originalSha || (!libraryPlan.configExisted && currentConfigSha === null)) {
       alreadyOriginal.push(libraryPlan.configPath);
     } else if (currentConfigSha === null || !accepted.has(currentConfigSha)) {
-      issues.push(issue("destination_drift", libraryPlan.configPath, "preserve the changed config and decide its recovery before rollback"));
+      issues.push(issue("destination_drift", libraryPlan.configPath, "请保留已变化的配置，并在回滚前决定其恢复方式"));
     }
   }
 
   for (const copied of copiedRoots) {
     const destination = libraryPlan ? path.join(libraryPlan.targetRoot, copied.name) : null;
     if (!destination || copied.name.includes(path.sep) || copied.name === "." || copied.name === "..") {
-      issues.push(issue("preimage_manifest_mismatch", destination, "use the exact preparation receipt for this home"));
+      issues.push(issue("preimage_manifest_mismatch", destination, "请使用此主目录对应的准确准备回执"));
       continue;
     }
     if (!lstatOrNull(destination)) {
@@ -1323,7 +1323,7 @@ function rollback(home, preimage) {
     try {
       assertEntrySnapshot(destination, copied.snapshot, true);
     } catch (error) {
-      issues.push(issue("destination_drift", destination, "preserve the changed copied library entry and reconcile it before rollback", {
+      issues.push(issue("destination_drift", destination, "请保留已变化的库副本条目，并在回滚前协调", {
         diagnostic: error.message,
       }));
     }
@@ -1335,7 +1335,7 @@ function rollback(home, preimage) {
     if (!current?.isFile() || current.isSymbolicLink()
       || sha256(fs.readFileSync(systemWorld.path)) !== systemWorld.sha256
       || (current.mode & 0o777) !== systemWorld.mode) {
-      issues.push(issue("destination_drift", systemWorld.path, "preserve the changed System World and reconcile it before rollback"));
+      issues.push(issue("destination_drift", systemWorld.path, "请保留已变化的 System World，并在回滚前协调"));
     }
   }
 
@@ -1386,7 +1386,7 @@ function rollback(home, preimage) {
     alreadyOriginal,
     preservedLegacy: [path.join(home, "context"), path.join(home, "provider-usage"), libraryPlan?.sourceRoot].filter(Boolean),
     issues: [],
-    next: "helper-owned preparation and finalizer effects are reversed; legacy sources and unrelated canonical state remain untouched",
+    next: "此辅助工具负责的准备和收尾效果已撤销；legacy 源及无关 canonical 状态保持不变",
   });
 }
 
@@ -1401,7 +1401,7 @@ if (parsed.issue) {
 }
 const homeArg = parsed.values.get("--home") || process.env.OPENRIG_HOME;
 if (!homeArg) {
-  emit({ schema: SCHEMA, phase: "input", ok: false, issues: [issue("home_required", null, "pass --home or set OPENRIG_HOME")] }, 1);
+  emit({ schema: SCHEMA, phase: "input", ok: false, issues: [issue("home_required", null, "请传入 --home 或设置 OPENRIG_HOME")] }, 1);
 }
 const home = path.resolve(homeArg);
 const apply = parsed.phases.has("--apply-state");
@@ -1409,7 +1409,7 @@ const verifyFlag = parsed.phases.has("--verify");
 const applyLibraryFlag = parsed.phases.has("--apply-library");
 const rollbackArg = parsed.values.get("--rollback");
 if ([apply, verifyFlag, applyLibraryFlag, Boolean(rollbackArg)].filter(Boolean).length > 1) {
-  emit({ schema: SCHEMA, phase: "input", ok: false, issues: [issue("phase_conflict", null, "choose exactly one of --apply-state, --verify, --apply-library, or --rollback")] }, 1);
+  emit({ schema: SCHEMA, phase: "input", ok: false, issues: [issue("phase_conflict", null, "请在 --apply-state、--verify、--apply-library 或 --rollback 中仅选择一项")] }, 1);
 }
 
 if (apply) applyState(home, parsed.values.get("--preimage"));

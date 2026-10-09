@@ -43,10 +43,10 @@ export function AgentSpecValidateFlow() {
         setStatus("valid");
         return;
       }
-      setErrors(data.errors ?? ["Validation failed"]);
+      setErrors(data.errors ?? ["验证失败"]);
       setStatus("invalid");
     } catch {
-      setErrors(["Validation request failed"]);
+      setErrors(["验证请求失败"]);
       setStatus("error");
     }
   };
@@ -55,17 +55,17 @@ export function AgentSpecValidateFlow() {
     <WorkspacePage>
       <div data-testid="agent-spec-validate-flow" className="space-y-8">
         <WorkflowHeader
-          eyebrow="Agent Spec Validation"
-          title="VALIDATE AGENT"
-          description="Check an AgentSpec before you use it in a rig."
+          eyebrow="智能体规格验证"
+          title="验证智能体"
+          description="在工作组中使用 AgentSpec 之前进行检查。"
         />
 
-        <WorkflowSection title="Agent YAML" description="Paste or refine an AgentSpec draft, then validate it against the daemon contract.">
+        <WorkflowSection title="智能体 YAML" description="粘贴或编辑 AgentSpec 草稿，然后对照后台服务契约验证。">
           <Textarea
             data-testid="agent-spec-yaml-input"
             value={yaml}
             onChange={(e) => setYaml(e.target.value)}
-            placeholder="Paste agent.yaml here..."
+            placeholder="在此粘贴 agent.yaml..."
             rows={16}
             className="bg-background font-mono text-body-sm"
           />
@@ -77,13 +77,13 @@ export function AgentSpecValidateFlow() {
               onClick={handleValidate}
               disabled={!yaml.trim() || status === "pending"}
             >
-              {status === "pending" ? "VALIDATING..." : "VALIDATE AGENTSPEC"}
+              {status === "pending" ? "验证中..." : "验证 AGENTSPEC"}
             </Button>
           </div>
 
           {status === "valid" && (
             <Alert className="mt-spacing-1" data-testid="agent-spec-valid">
-              <AlertDescription className="text-primary">AgentSpec valid.</AlertDescription>
+              <AlertDescription className="text-primary">AgentSpec 有效。</AlertDescription>
             </Alert>
           )}
 

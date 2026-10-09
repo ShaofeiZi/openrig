@@ -14,11 +14,10 @@ const binding = {
   cmuxWorkspace: null, cmuxSurface: null, updatedAt: "", cwd: "/private-test",
 } satisfies NodeBinding;
 
-// Modeled receiver, NOT native execution. Pinned upstream be2951ea:
-// update_prompt.rs:57-68 ignores Paste; :121-158 Key3 selects/submits
-// DontRemind immediately; :74-85 persists dismissal or returns RunUpdate.
-// Drive real TmuxAdapter serialization into this model, not a sequence of
-// ready screenshots that would pass even if the wrong input were sent.
+// 建模的接收方，非原生执行。钉住上游 be2951ea：update_prompt.rs:57-68 忽略 Paste；
+// :121-158 Key3 选择/提交 DontRemind 立即；:74-85 持久化忽略或返回 RunUpdate。
+// 把真实 TmuxAdapter 序列化驱动进此模型，而非一系列 ready 截图——后者即便发错输入
+// 也会通过。
 type ProcessRow = { pid: number; ppid: number; command: string; pgid?: number; tpgid?: number; executableName?: string; startedAt?: string };
 const native = "/opt/codex/vendor/aarch64-apple-darwin/bin/codex";
 // Synthetic shell -> Node -> native ancestry, including a background helper.
@@ -97,8 +96,8 @@ const paths = [
   { name: "fork", opts: { name: "checker@test", forkSource: { kind: "native_id" as const, value: "parent-thread" } } },
 ];
 
-describe.each(paths)("Codex update input: $name", ({ opts }) => {
-  it.each([0, 4, 100])("sends one real key, no Enter or retry, with %i delayed ticks", async (delay) => {
+describe.each(paths)("Codex更新输入：$name", ({ opts }) => {
+  it.each([0, 4, 100])("发送一个真实的按键，无需 Enter 或重试，有 %i 个延迟刻度", async (delay) => {
     const f = fixture({ delay });
     const result = await f.adapter.launchHarness(binding, opts);
     expect(f.commands).toEqual(["tmux send-keys -t 'checker@test' '3'"]);
@@ -109,7 +108,7 @@ describe.each(paths)("Codex update input: $name", ({ opts }) => {
     else if (opts.resumeToken) expect(result).toMatchObject({ ok: false, recovery: "attention_required" });
   });
 
-  it.each([0, 9])("reports input failure without retry when the menu arrives after %i ticks", async (beforeMenu) => {
+  it.each([0, 9])("当菜单在 %i 刻度后到达时报告输入失败而不重试", async (beforeMenu) => {
     const f = fixture({ failInput: true, beforeMenu });
     const result = await f.adapter.launchHarness(binding, opts);
     expect(result).toMatchObject({ ok: false, recovery: "attention_required" });
@@ -119,7 +118,7 @@ describe.each(paths)("Codex update input: $name", ({ opts }) => {
     expect((await f.adapter.checkReady(binding)).ready).toBe(false);
   });
 
-  it("handles a menu first appearing during later thread/resume polls", async () => {
+  it("处理稍后线程/恢复轮询期间首次出现的菜单", async () => {
     const f = fixture({ beforeMenu: 9 });
     const result = await f.adapter.launchHarness(binding, opts);
     expect(result.ok).toBe(true);
@@ -128,7 +127,7 @@ describe.each(paths)("Codex update input: $name", ({ opts }) => {
     expect(f.leaked).toEqual([]);
   });
 
-  it("does not reopen update automation after seeing the conversation", async () => {
+  it("看到对话后不会重新打开更新自动化", async () => {
     const f = fixture();
     vi.mocked(f.tmux.capturePaneScreen).mockResolvedValueOnce(READY).mockResolvedValue(MENU);
     await f.adapter.launchHarness(binding, opts);
@@ -147,14 +146,14 @@ describe.each(paths)("Codex update input: $name", ({ opts }) => {
     expect(f.commands).toEqual([]);
   });
 
-  it.each(["wrapper", "exec-wrapper", "native"] as const)("recognizes the live foreground %s identity", async (shape) => {
+  it.each(["wrapper", "exec-wrapper", "native"] as const)("识别当前前台 %s 的身份", async (shape) => {
     const f = fixture({ shape, command: shape === "native" ? "codex" : "node" });
     await f.adapter.launchHarness(binding, opts);
     expect(f.commands).toEqual(["tmux send-keys -t 'checker@test' '3'"]);
     expect(f.counts()).toEqual({ updates: 0, dismissals: 1 });
   });
 
-  it("checks synthetic shell-owned ancestry before selecting one key", async () => {
+  it("在选择一个键之前检查合成 shell 拥有的祖先", async () => {
     const f = fixture({ command: "bash", panePid: 2001, processes: ordinaryRows });
     await f.adapter.launchHarness(binding, opts);
     expect(f.commands).toEqual(["tmux send-keys -t 'checker@test' '3'"]);
@@ -203,7 +202,7 @@ describe.each(paths)("Codex update input: $name", ({ opts }) => {
     expect(f.commands).toEqual([]);
   });
 
-  it.each(["pane", "group", "process", "command", "menu"])("rechecks %s identity before choosing", async (changed) => {
+  it.each(["pane", "group", "process", "command", "menu"])("选择之前重新检查 %s 的身份", async (changed) => {
     const f=fixture({command:"node"});
     // Directly bound one observation isolates the before-send recheck;
     // later launch polling is covered separately above.
@@ -223,7 +222,7 @@ describe.each(paths)("Codex update input: $name", ({ opts }) => {
     expect(f.commands).toEqual([]);
   });
 
-  it("allows one choice on a separately requested new launch", async () => {
+  it("允许对单独请求的新发布进行选择", async () => {
     const f = fixture();
     await f.adapter.launchHarness(binding, opts);
     f.reset();
@@ -234,7 +233,7 @@ describe.each(paths)("Codex update input: $name", ({ opts }) => {
   });
 });
 
-it("negative control: real bracketed Paste3 then Enter selects UpdateNow in the pinned model", async () => {
+it("阴性对照：真实括号中的 Paste3，然后按 Enter 键在固定模型中选择 UpdateNow", async () => {
   const f = fixture();
   await f.tmux.sendText(binding.tmuxSession!, "3");
   await f.tmux.sendKeys(binding.tmuxSession!, ["Enter"]);

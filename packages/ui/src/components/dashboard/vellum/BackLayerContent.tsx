@@ -1,12 +1,10 @@
-// LAYER 0 — back content (bold black, full bleed).
+// 第 0 层——背部内容（粗黑、满出血）。
 //
-// BOLD BLACK at 100% alpha. Full-bleed asymmetric placement. The eye
-// reads these as "deep blurred background" only because the back vellum
-// sheet sits over them — never use opacity to fake the fade.
+// 使用 100% 不透明的粗黑字体和非对称满出血布局。之所以看起来像“深层模糊背景”，只是因为
+// 背部 vellum 纸张覆盖在其上；绝不能用透明度伪造淡出。
 //
-// hostname surfaces in two places (OPERATOR block + bottom serial code
-// line) so production reads the live host while the lab default keeps
-// 127.0.0.1.
+// 主机名出现在两处：操作人员区块和底部序列码行。生产环境读取实时主机，实验室默认值保持
+// 127.0.0.1。
 
 interface BackLayerContentProps {
   hostname?: string;
@@ -21,12 +19,12 @@ export function BackLayerContent({ hostname = "127.0.0.1" }: BackLayerContentPro
     >
       {/* OPERATOR — full bleed left edge */}
       <div className="absolute top-[14%] -left-12 font-mono text-[9rem] leading-[0.85] tracking-[-0.02em] font-black text-on-surface whitespace-pre">
-        {`OPERATOR\n04°·LIVE\n${hostname}`}
+        {`操作者\n04°·直播\n${hostname}`}
       </div>
 
-      {/* RIG·OS(s*) — full bleed right edge, balances OPERATOR */}
+      {/* RIG·OS(s*) —— 全出血右边，与 OPERATOR 平衡 */}
       <div className="absolute top-[42%] -right-10 font-headline font-black text-[14rem] leading-[0.82] tracking-[-0.06em] text-on-surface whitespace-nowrap">
-        RIG·OS<sup className="text-[6rem] tracking-[-0.04em] align-super">(s*)</sup>
+        zrig·OS<sup className="text-[6rem] tracking-[-0.04em] align-super">(s*)</sup>
       </div>
 
       {/* 07/?? massive numeral — top-right anchor */}
@@ -65,13 +63,13 @@ export function BackLayerContent({ hostname = "127.0.0.1" }: BackLayerContentPro
           <path id="vellum-curve-path-back" d="M 20 140 Q 260 30 500 140" />
         </defs>
         <text fontSize="58" fontFamily="'Space Grotesk', sans-serif" fontWeight="900" fill="currentColor" letterSpacing="2">
-          <textPath href="#vellum-curve-path-back">Field·Realm·Map</textPath>
+          <textPath href="#vellum-curve-path-back">现场·领域·地图</textPath>
         </text>
       </svg>
 
       {/* Bottom-mid bold serial code line — full bleed bottom */}
       <div className="absolute bottom-2 left-[28%] font-mono text-[3rem] leading-none tracking-[-0.02em] font-black text-on-surface whitespace-nowrap">
-        ▪ {hostname} / RELEASE 0.3.1
+        ▪ {hostname} / 发布 0.3.1
       </div>
     </div>
   );

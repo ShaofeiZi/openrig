@@ -117,7 +117,7 @@ function persistStoredValue(key: string, value: unknown) {
     }
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // Best effort only for local working state.
+    // 本地工作状态仅尽力持久化。
   }
 }
 
@@ -125,7 +125,7 @@ function createDraft(kind: "rig" | "agent", yaml: string, label?: string): Specs
   return {
     id: `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind,
-    label: label ?? (kind === "rig" ? "Untitled RigSpec" : "Untitled AgentSpec"),
+    label: label ?? (kind === "rig" ? "未命名 RigSpec" : "未命名 AgentSpec"),
     yaml,
     updatedAt: Date.now(),
   };
@@ -150,7 +150,7 @@ function buildActiveTask(
     if (!currentRigDraft) return null;
     return {
       id: "import",
-      label: "Import RigSpec",
+      label: "导入 RigSpec",
       route: "/import",
       summary: currentRigDraft.label,
     };
@@ -161,7 +161,7 @@ function buildActiveTask(
     if (!trimmedSourceRef) return null;
     return {
       id: "bootstrap",
-      label: "Bootstrap",
+      label: "引导",
       route: "/bootstrap",
       summary: trimmedSourceRef,
     };
@@ -171,7 +171,7 @@ function buildActiveTask(
     if (!currentAgentDraft) return null;
     return {
       id: "validate-agent",
-      label: "Validate AgentSpec",
+      label: "校验 AgentSpec",
       route: "/agents/validate",
       summary: currentAgentDraft.label,
     };
@@ -243,7 +243,7 @@ export function SpecsWorkspaceProvider({ children }: { children: ReactNode }) {
     setCurrentRigDraft((existing) => ({
       id: existing?.id ?? createDraft("rig", yaml, label).id,
       kind: "rig",
-      label: label ?? extractSpecLabel(yaml, existing?.label ?? "Untitled RigSpec"),
+      label: label ?? extractSpecLabel(yaml, existing?.label ?? "未命名 RigSpec"),
       yaml,
       updatedAt: Date.now(),
     }));
@@ -251,7 +251,7 @@ export function SpecsWorkspaceProvider({ children }: { children: ReactNode }) {
 
   const rememberRigDraft = useCallback((yaml: string, label?: string) => {
     if (!yaml.trim()) return;
-    const draft = createDraft("rig", yaml, label ?? extractSpecLabel(yaml, "Untitled RigSpec"));
+    const draft = createDraft("rig", yaml, label ?? extractSpecLabel(yaml, "未命名 RigSpec"));
     setCurrentRigDraft(draft);
     setRecentRigDrafts((existing) => upsertRecentDrafts(existing, draft));
     setSelectedRigDraftId(draft.id);
@@ -266,7 +266,7 @@ export function SpecsWorkspaceProvider({ children }: { children: ReactNode }) {
     setCurrentAgentDraft((existing) => ({
       id: existing?.id ?? createDraft("agent", yaml, label).id,
       kind: "agent",
-      label: label ?? extractSpecLabel(yaml, existing?.label ?? "Untitled AgentSpec"),
+      label: label ?? extractSpecLabel(yaml, existing?.label ?? "未命名 AgentSpec"),
       yaml,
       updatedAt: Date.now(),
     }));
@@ -274,7 +274,7 @@ export function SpecsWorkspaceProvider({ children }: { children: ReactNode }) {
 
   const rememberAgentDraft = useCallback((yaml: string, label?: string) => {
     if (!yaml.trim()) return;
-    const draft = createDraft("agent", yaml, label ?? extractSpecLabel(yaml, "Untitled AgentSpec"));
+    const draft = createDraft("agent", yaml, label ?? extractSpecLabel(yaml, "未命名 AgentSpec"));
     setCurrentAgentDraft(draft);
     setRecentAgentDrafts((existing) => upsertRecentDrafts(existing, draft));
     setSelectedAgentDraftId(draft.id);

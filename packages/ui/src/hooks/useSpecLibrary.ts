@@ -16,14 +16,14 @@ export interface SpecLibraryEntry {
   updatedAt: string;
   summary?: string;
   hasServices?: boolean;
-  // Workflows in Spec Library v0 — workflow-only metadata.
+  // Spec Library v0 中的工作流——仅工作流相关的元数据。
   isBuiltIn?: boolean;
   rolesCount?: number;
   stepsCount?: number;
   terminalTurnRule?: string;
   targetRig?: string | null;
-  // Slice 11 (workflow-spec-folder-discovery) — diagnostic state for
-  // workflow rows surfaced by the operator's specs/workflows folder.
+  // Slice 11（workflow-spec-folder-discovery）——对操作者 specs/workflows 文件夹
+  // 中浮现的工作流行的诊断状态。
   status?: "valid" | "error";
   errorMessage?: string | null;
 }
@@ -37,7 +37,7 @@ export interface LibraryReview {
 export type LibraryRigReview = RigSpecReview & LibraryReview;
 export type LibraryAgentReview = AgentSpecReview & LibraryReview;
 
-// Workflows in Spec Library v0 — workflow review payload shape.
+// Spec Library v0 中的工作流——工作流评审负载的结构。
 export interface LibraryWorkflowReview {
   kind: "workflow";
   libraryEntryId: string;
@@ -59,11 +59,10 @@ export interface LibraryWorkflowReview {
       preferredTarget: string | null;
       isEntry: boolean;
       isTerminal: boolean;
-      // OPR.0.4.6.WF4 (C1, arch Q1) — the WF-2 node fields the shipped
-      // scanner predated. Optional + omit-when-absent: pre-WF-2 specs project
-      // WITHOUT these keys (byte-identical). Shapes mirror the daemon exactly
-      // (spec-library-workflow-scanner.ts / workflow-types.ts): harness =
-      // WorkflowAgentHarness, gate = WorkflowGateSpec {target,summary?,evidence_ref?}.
+      // OPR.0.4.6.WF4（C1，架构 Q1）——既有扫描器早于 WF-2 引入的节点字段。
+      // 可选、缺失即省略：WF-2 之前的 spec 投影不带这些键（逐字节一致）。
+      // 结构与后台服务完全镜像（spec-library-workflow-scanner.ts / workflow-types.ts）：
+      // harness = WorkflowAgentHarness，gate = WorkflowGateSpec {target,summary?,evidence_ref?}。
       harness?: "claude-code" | "codex";
       host?: string;
       gate?: { target: string; summary?: string; evidence_ref?: string };
@@ -71,9 +70,8 @@ export interface LibraryWorkflowReview {
     edges: Array<{
       fromStepId: string;
       toStepId: string;
-      // OPR.0.4.6.WF4 (C1) — "branch" = a next_hop.on conditional edge (the
-      // shipped scanner dropped these entirely). branchOn = the triggering
-      // recorded exit (WorkflowExitKind); absent on direct edges.
+      // OPR.0.4.6.WF4（C1）——"branch" 指带 next_hop.on 条件的边（既有扫描器此前完全丢弃这类边）。
+      // branchOn = 触发路由的已记录退出（WorkflowExitKind）；直连边上不存在。
       routingType: "direct" | "branch";
       branchOn?: "handoff" | "waiting" | "done" | "failed";
     }>;
@@ -88,8 +86,8 @@ export interface LibraryWorkflowReview {
 }
 
 async function fetchLibraryEntries(kind: SpecLibraryKind | undefined, hostId: string): Promise<SpecLibraryEntry[]> {
-  // OPR.0.4.6.MH2 FR-2 — selected-host envelope; origin shape verbatim;
-  // local path unchanged (withHostParam is identity for local).
+  // OPR.0.4.6.MH2 FR-2 —— 所选主机信封；来源形态逐字透传；本地路径不变
+  // （对本地而言 withHostParam 是恒等变换）。
   const url = kind ? `/api/specs/library?kind=${kind}` : "/api/specs/library";
   const res = await fetch(withHostParam(url, hostId));
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -124,10 +122,10 @@ export function useLibraryReview(id: string | null) {
   });
 }
 
-// NOTE (MH-2): active-lens deliberately does NOT retarget — it is a local
-// operator preference with write verbs, excluded from the read allowlist.
+// 注意（MH-2）：active-lens 刻意不重新定向——它是带有写动词的本地操作者偏好，
+// 不在读取白名单之列。
 
-// --- Workflows in Spec Library v0: active lens hook ---
+// --- Spec Library v0 中的工作流：active-lens hook ---
 
 export interface ActiveLensPayload {
   specName: string;

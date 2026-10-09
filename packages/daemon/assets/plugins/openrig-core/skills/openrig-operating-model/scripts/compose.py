@@ -1,37 +1,33 @@
 #!/usr/bin/env python3
-"""compose.py — leaf-to-root chain composition and subtree renders.
+"""compose.py——从叶到根组合链并渲染子树。
 
-SUPERSEDED FOR REFOCUS: the public core reorientation trace lives at
-../../refocusing/scripts/trace-to-root.py. This general composer remains the
-compatibility surface for down/progress and historical up invocations.
+SUPERSEDED FOR REFOCUS（重新聚焦场景已由其他实现取代）：公共核心重定向追踪位于
+../../refocusing/scripts/trace-to-root.py。此通用组合器继续作为 down/progress 与历史 up
+调用的兼容表面。
 
   up   <start-dir> --name FILE [--name FILE ...] [--root DIR]
-       Walk from start-dir up to root (default: filesystem stops at a dir
-       containing .compose-root, or at --root). Emit the chain ROOT-FIRST
-       (defaults, then overrides) with provenance headers, and a MISSING-LINK
-       report for altitudes without the file — the scream is output, not error.
+       从 start-dir 向上遍历到根目录（默认在含 .compose-root 的目录或 --root 处停止）。
+       按根优先顺序输出链（先默认值，后覆盖值）及来源页头；层级缺少文件时输出
+       MISSING-LINK 报告——告警属于输出，不是错误。
 
   down <root-dir> --name FILE [--name FILE ...] [--exclude GLOB ...]
-       Gather every instance of the named files under root-dir.
+       收集 root-dir 下具名文件的每个实例。
 
   progress <root-dir> --name FILE [--name FILE ...] [--exclude GLOB ...]
-       THE DERIVED PROGRESS VIEW (the PROGRESS.md prototype done right):
-       count markdown checkboxes in the named files (the mark level), roll
-       counts UP the tree, and print a walk-map-shaped tree with done/total
-       per level. Never stored in any file — the render is the only home.
-       Gather every instance of the named files under root-dir (the subtree
-       render; run at the topology root = THE TRUNK RENDER). Sorted by path.
+       派生进度视图（正确实现的 PROGRESS.md 原型）：统计具名文件中的 Markdown 复选框
+       （标记层），沿树向上汇总计数，并打印遍历图形态的树，显示各层 done/total。
+       绝不存入任何文件，渲染结果是唯一载体。收集 root-dir 下具名文件的每个实例
+       （子树渲染；在拓扑根运行即主干渲染），按路径排序。
 
-Composed output is GENERATED, NEVER EDITED (fragments are the source of truth).
-Seals/locks bind to a render's bytes, not to fragments. Stdlib only.
+组合输出由程序生成，绝不编辑；片段才是事实源。seal/lock 绑定渲染结果的字节，而不是片段。
+只使用标准库。
 """
 import argparse, os, sys, fnmatch, datetime, re, shutil, subprocess
 
-# A SHELF holds instances of an altitude; it is not a position and carries no chain file.
-# Both trees have them: missions/ slices/ (work) and rigs/ pods/ seats/ (topology). Without
-# this list the trace reports every shelf as a gap and the audit tells you to scaffold one —
-# which is litter that inflates the map to a clean-looking 5/5 while adding nothing. Extend
-# with --shelf for a tree that names them differently.
+# SHELF 容纳某层级的实例；它本身不是位置，也不携带链文件。两棵树都有 shelf：工作树中的
+# missions/、slices/，拓扑树中的 rigs/、pods/、seats/。若没有此列表，追踪会把每个 shelf
+# 都报告为缺口，审计还会要求为其搭脚手架；这只会制造垃圾，把地图虚增成貌似干净的 5/5，
+# 却不增加信息。树使用不同名称时，可通过 --shelf 扩展。
 SHELF_NAMES = {"missions", "slices", "seats", "pods", "rigs"}
 
 _TPL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "templates")
@@ -42,13 +38,12 @@ def _template_bytes(name):
         return None
 
 def read_state(path):
-    """Detection is DETERMINISTIC-FIRST, declared-second — never memory-reliant:
-    1. byte-identical to the shipped template  -> 'unseeded' (nobody had to remember anything)
-    2. `status: UNSEEDED` marker on content that DIFFERS from the template -> 'conflicted':
-       render the content AND scream — real work is never hidden behind a stale field,
-       and the disagreement is its own reported state (third-state law).
-    3. otherwise -> 'seeded'. Every residual failure mode shows too much plus a scream,
-       never hides work and never silently trusts a field."""
+    """检测以确定性为先、声明为后，绝不依赖记忆：
+    1. 与随附模板逐字节相同 -> 'unseeded'（无需任何人记住状态）
+    2. 内容与模板不同但带 `status: UNSEEDED` 标记 -> 'conflicted'：渲染内容并明确告警；
+       真实工作绝不隐藏在过期字段后，分歧本身就是需要报告的状态（第三状态定律）。
+    3. 其他情况 -> 'seeded'。所有残余失败模式都宁可显示过多内容并告警，绝不隐藏工作，
+       也绝不静默信任字段。"""
     raw = open(path, "rb").read()
     tpl = _template_bytes(os.path.basename(path))
     body = raw.decode("utf-8", errors="replace")
@@ -56,7 +51,7 @@ def read_state(path):
     marked = re.search(r"^status:\s*UNSEEDED", head, re.M)
     if tpl is not None and raw == tpl:
         m = re.search(r"^owners?:\s*(.+)$", head, re.M)
-        return "unseeded", (m.group(1).strip() if m else "owner unknown — untouched scaffold")
+        return "unseeded", (m.group(1).strip() if m else "负责人未知——未改动的脚手架")
     if marked:
         return "conflicted", body
     return "seeded", body
@@ -65,47 +60,46 @@ def hdr(title):
     return f"\n\n<!-- ═══ {title} ═══ -->\n\n## ⟦{title}⟧\n"
 
 def frontmatter(payload):
-    """Parse the frontmatter block ONCE. Returns (dict, note); note is set when there is
-    nothing to read, so a caller can report the gap rather than silently skip it."""
+    """只解析一次 frontmatter 块。返回 (dict, note)；没有可读内容时设置 note，使调用方
+    能报告缺口，而非静默跳过。"""
     if not payload:
-        return None, "no content"
+        return None, "无内容"
     m = re.match(r"^---\n(.*?)\n---\n", payload, re.S)
     if not m:
-        return None, "no frontmatter"
+        return None, "无 frontmatter"
     try:
         import yaml
         return (yaml.safe_load(m.group(1)) or {}), None
     except Exception as e:
-        return None, f"frontmatter did not parse ({e.__class__.__name__})"
+        return None, f"frontmatter 解析失败（{e.__class__.__name__}）"
 
 def field_of(payload, field):
-    """Extract ONE frontmatter field. Returns (value, note).
-    A chain walked by FIELD composes intent without dragging bodies: three sentences
-    unfurl, not three documents. A level whose file exists but lacks the field is a
-    real gap and is reported as such — never silently skipped."""
+    """提取一个 frontmatter 字段，返回 (value, note)。按 FIELD 遍历的链组合 intent，
+    不携带正文：展开的是三句话，而非三篇文档。某层文件存在但缺少字段时属于真实缺口，
+    必须如实报告，绝不静默跳过。"""
     fm, note = frontmatter(payload)
     if fm is None:
         return None, note
     if field not in fm:
-        return None, f"no `{field}:` field"
+        return None, f"没有 `{field}:` 字段"
     v = fm[field]
     return (" ".join(str(v).split()) if v is not None else None), None
 
 def _cut_at_boundary(s, n):
-    """Cut to at most n characters without splitting a token.
+    """在不拆分 token 的前提下截断到最多 n 个字符。
 
-    Prefer paragraph, line, then word boundaries. Drop a single unbroken token
-    that exceeds the budget; a partial path or identifier looks valid but is not."""
+    依次优先使用段落、行和词边界。若单个连续 token 超过预算，则整个丢弃；不完整路径或
+    标识符看似有效，实际并非如此。"""
     if len(s) <= n:
         return s
     head = s[:n]
-    if s[n:n + 1].isspace():                 # n already sits on a boundary
+    if s[n:n + 1].isspace():                 # n 已位于边界上。
         return head.rstrip()
     for sep, floor in (("\n\n", n // 2), ("\n", n // 2), (" ", 0)):
         i = head.rfind(sep)
         if i > floor:
             return head[:i].rstrip()
-    return ""                                # one unbroken token — drop it, never cut into it
+    return ""                                # 单个连续 token——整个丢弃，绝不从中截断。
 
 
 def _short(s, n=52):
@@ -118,32 +112,30 @@ _ARTIFACT_KEYS = ("outputs", "output", "artifacts", "artifact")
 
 
 def dep_artifacts(dep_dir, names, dep_fm):
-    """WHAT THE DEPENDENCY HANDS YOU — the file, not the fact that it is done.
+    """返回依赖交付的文件，而非仅返回“依赖已完成”这一事实。
 
-    Frontmatter first if the node declares it (`outputs:`/`output:`/`artifacts:`/`artifact:`),
-    because a declaration outranks a guess. Otherwise the directory itself: everything beside
-    the node file, which for a built slice IS its output (MAP.md, PROOF.md, the script). No
-    prose parsing — a `## Output` section is written for humans and reading it would make the
-    trace confidently wrong exactly where it is trying to stop being that."""
+    若节点通过 `outputs:`/`output:`/`artifacts:`/`artifact:` 声明产物，则优先采用
+    frontmatter，因为显式声明优于猜测。否则检查目录本身：节点文件旁的所有内容；对已构建的
+    slice 来说，这些内容就是它的输出（MAP.md、PROOF.md、脚本）。不要解析正文——`## Output`
+    章节面向人类，解析它会让追踪恰好在试图消除误判的地方自信地得出错误结论。"""
     for k in _ARTIFACT_KEYS:
         v = (dep_fm or {}).get(k)
         if v:
-            return [" ".join(str(x).split()) for x in (v if isinstance(v, list) else [v])], "declared"
+            return [" ".join(str(x).split()) for x in (v if isinstance(v, list) else [v])], "已声明"
     try:
         entries = sorted(os.listdir(dep_dir))
     except OSError:
-        return [], "unreadable"
+        return [], "不可读"
     out = [e + ("/" if os.path.isdir(os.path.join(dep_dir, e)) else "")
            for e in entries if not e.startswith(".") and e not in set(names)]
-    return out, "on disk"
+    return out, "磁盘现有"
 
 
 def blocking_state(payload, lvl, names):
-    """Return leaf status and dependency facts beside its intent, or None.
+    """返回叶节点 intent 旁的状态和依赖事实；没有则返回 None。
 
-    Intent alone does not say whether work may start or where dependency outputs
-    live. Resolve dependencies on disk and report state, absolute path, and
-    artifacts; leave ancestors to carry purpose."""
+    仅靠 intent 无法判断工作能否开始，也无法得知依赖产物的位置。应在磁盘上解析依赖并报告
+    状态、绝对路径和产物；目的说明由祖先节点承载。"""
     fm, _ = frontmatter(payload)
     if not fm:
         return None
@@ -158,8 +150,8 @@ def blocking_state(payload, lvl, names):
             dep = " ".join(str(dep).split())
             dep_dir = os.path.join(shelf, dep)
             if not os.path.isdir(dep_dir):
-                lines.append(f"    {dep} — ⚠ UNRESOLVED: no directory `{dep}` under {shelf}"
-                             f" (nothing to point you at — check the id)")
+                lines.append(f"    {dep}——⚠ 未解析：{shelf} 下没有目录 `{dep}`"
+                             f"（没有可指向的位置——请检查 id）")
                 continue
             state, dfm = None, None
             for n in names:
@@ -170,25 +162,24 @@ def blocking_state(payload, lvl, names):
                     state = _short((dfm or {}).get("status") or st)
                     break
             lines.append(f"    {dep} ({state})" if state else
-                         f"    {dep} (⚠ no {'/'.join(names)} — state unknown)")
+                         f"    {dep}（⚠ 没有 {'/'.join(names)}——状态未知）")
             lines.append(f"      path: {os.path.abspath(dep_dir)}")
             arts, how = dep_artifacts(dep_dir, names, dfm)
             if arts:
                 shown = arts[:8]
-                more = f" (+{len(arts) - 8} more)" if len(arts) > 8 else ""
+                more = f"（另有 {len(arts) - 8} 项）" if len(arts) > 8 else ""
                 lines.append(f"      artifacts ({how}): " + " · ".join(shown) + more)
             else:
-                lines.append(f"      artifacts: ⚠ none found — the dependency has produced no"
-                             f" output file yet")
-        parts.append("\n".join(lines))   # lines 2+ carry their own indent; the caller indents line 1
+                lines.append(f"      artifacts: ⚠ 未找到——依赖尚未生成输出文件")
+        parts.append("\n".join(lines))   # 第 2 行起自带缩进；调用方负责缩进第 1 行。
     return "\n  ".join(parts) or None
 
 
 def operates_on(payload):
-    """Return the roots a work node declares it operates on.
+    """返回工作节点声明的操作根目录。
 
-    The tree being walked need not be the tree the work changes. This cannot be
-    inferred safely, so render `operates_on` verbatim and omit it when unstated."""
+    正在遍历的树不一定是工作实际修改的树。此信息无法安全推断，因此按原样渲染
+    `operates_on`，未声明时则省略。"""
     fm, _ = frontmatter(payload)
     if not fm:
         return None
@@ -198,9 +189,8 @@ def operates_on(payload):
     return [" ".join(str(r).split()) for r in (roots if isinstance(roots, list) else [roots])]
 
 
-# Preserve contract and scope sections ahead of rationale and history when the
-# leaf body exceeds its cap. Unknown headings remain middle priority so new shapes
-# degrade without being silently privileged or discarded.
+# 叶节点正文超过上限时，优先保留契约和范围章节，再保留理由与历史。未知标题保持中等优先级，
+# 使新结构能够平稳降级，不会被静默优先或丢弃。
 _PRI_CONTRACT = re.compile(
     r"(done when|what done looks like|scope fence|outputs?\b|inputs?\b|depends on|"
     r"what must be built|how we will know|acceptance|payload|deliverable)", re.I)
@@ -212,7 +202,7 @@ _PRI_DISCUSSION = re.compile(
 
 
 def _priority(heading):
-    """0 = preamble (never dropped) · 1 = contract · 2 = unclassified · 3 = discussion."""
+    """0 = 前言（绝不丢弃）· 1 = 契约 · 2 = 未分类 · 3 = 讨论。"""
     if heading is None:
         return 0
     if _PRI_CONTRACT.search(heading):
@@ -223,11 +213,10 @@ def _priority(heading):
 
 
 def _sections(body):
-    """Split a node body at LEVEL-2 headings into [(heading|None, chunk), ...].
+    """按二级标题将节点正文拆成 [(heading|None, chunk), ...]。
 
-    Chunk 0 is the preamble — the `# Title` and its lede — and carries heading None. `###`
-    stays inside its parent section: in these specs it is a sub-step of the section above it,
-    and splitting there would let half a section survive its own heading."""
+    第 0 块是前言，即 `# Title` 及其导语，heading 为 None。`###` 留在父章节中：在这些规范里
+    它是上级章节的子步骤；若在此拆分，可能导致半个章节脱离自身标题而残留。"""
     starts = [m.start() for m in re.finditer(r"^## +.*$", body, re.M)]
     if not starts:
         return [(None, body)]
@@ -239,11 +228,10 @@ def _sections(body):
 
 
 def leaf_body(payload, cap):
-    """Render the leaf body, truncating by semantic priority rather than position.
+    """渲染叶节点正文，按语义优先级而非位置截断。
 
-    Ancestors can compose by stable intent fields, but the leaf carries the nouns,
-    boundaries, outputs, and completion conditions. When over budget, retain
-    contract and scope sections before explanatory history."""
+    祖先节点可通过稳定的 intent 字段组合，但叶节点承载具体对象、边界、输出和完成条件。
+    超出预算时，优先保留契约与范围章节，再保留解释性历史。"""
     if not payload:
         return None
     m = re.match(r"^---\n.*?\n---\n", payload, re.S)
@@ -253,12 +241,11 @@ def leaf_body(payload, cap):
     if len(body) <= cap:
         return body
     secs = _sections(body)
-    if len(secs) == 1:                     # headingless prose — nothing to prioritise
+    if len(secs) == 1:                     # 无标题正文——没有可排序的章节。
         kept = _cut_at_boundary(body, cap)
-        return (kept + "\n\n[… " + str(len(body) - len(kept)) + " more chars, no further "
-                "headings — prose tail]" + "\n(read the node file for these)")
-    # Drop the lowest-priority, largest sections first to preserve more short,
-    # decisive sections. The title and lede preamble are never candidates.
+        return (kept + "\n\n[…另有 " + str(len(body) - len(kept)) + " 个字符，后续无标题——"
+                "正文尾部]" + "\n（请读取节点文件以查看这些内容）")
+    # 优先丢弃低优先级且较大的章节，以保留更多简短而关键的章节。标题与导语前言绝不参与丢弃。
     keep, size = set(range(len(secs))), len(body)
     for i in sorted(range(1, len(secs)), key=lambda i: (-_priority(secs[i][0]), -len(secs[i][1]))):
         if size <= cap:
@@ -266,29 +253,27 @@ def leaf_body(payload, cap):
         keep.discard(i)
         size -= len(secs[i][1])
     kept = "".join(secs[i][1] for i in sorted(keep)).rstrip()
-    if len(kept) > cap:                    # preamble alone overflows; cut it safely, never mid-token
+    if len(kept) > cap:                    # 仅前言就超限；安全截断，绝不从 token 中间切开。
         kept = _cut_at_boundary(kept, cap)
     dropped = [secs[i][0] for i in range(1, len(secs)) if i not in keep]
-    # Name omitted headings so truncation is visible to the reader.
-    tail = ("\n\nOMITTED FROM THIS RENDER — " + str(len(body) - len(kept)) + " chars, sections: "
+    # 列出省略的标题，让读者明确看到发生了截断。
+    tail = ("\n\n本次渲染已省略——" + str(len(body) - len(kept)) + " 个字符，章节："
             + " · ".join(dropped) if dropped else
-            "\n\n[… " + str(len(body) - len(kept)) + " more chars, no further headings — prose tail]")
-    return kept + tail + "\n(read the node file for these)"
+            "\n\n[…另有 " + str(len(body) - len(kept)) + " 个字符，后续无标题——正文尾部]")
+    return kept + tail + "\n（请读取节点文件以查看这些内容）"
 
 
 def resolve_roots():
-    """Resolve work and topology roots from configuration or explicit environment.
+    """从配置或显式环境变量解析工作根目录与拓扑根目录。
 
-    A library copy may derive topology from its own real path; a projected plugin
-    copy must be configured rather than guessing. Resolution follows environment,
-    configuration, then derived location."""
+    库副本可以从自身真实路径推导拓扑；投影的插件副本必须通过配置获取，不能猜测。解析顺序为
+    环境变量、配置、推导位置。"""
     out = {}
     out["work_root"] = os.environ.get("OPENRIG_WORKSPACE_ROOT") or rig_config("workspace.root")
 
     t = os.environ.get("OPENRIG_TOPOLOGY_ROOT") or rig_config("workspace.topology_root")
     if not t:
-        # Resolve symlinks before walking upward; otherwise a projection ascends
-        # its own tree rather than the shared-docs source.
+        # 向上遍历前先解析符号链接；否则投影副本会沿自身目录树上溯，而不是沿 shared-docs 源上溯。
         here = os.path.realpath(__file__)
         for _ in range(6):                       # scripts/ skill/ skills/ skill-canon/ -> shared-docs/
             here = os.path.dirname(here)
@@ -323,34 +308,34 @@ def compose_up(start, names, root, field=None, prefer=False, shelves=None, leaf_
         parent = os.path.dirname(d)
         if parent == d: break
         d = parent
-    levels.reverse()  # root first: defaults, then overrides
+    levels.reverse()  # 根目录优先：先默认值，后覆盖值。
     out = [f"<!-- GENERATED by compose.py up · {datetime.datetime.now().isoformat(timespec='minutes')} -->",
-           f"<!-- start: {start} · altitudes: {sum(1 for d in levels if os.path.basename(d) not in shelves)} ({len(levels)} path segments) · chains: {', '.join(names)}" + (f" · FIELD: {field}" if field else "") + " -->",
-           "<!-- Composed view — never edit; edit the fragments. -->"]
-    GLYPH = {"seeded": "✓ seeded", "unseeded": "⟂ UNSEEDED", "conflicted": "⚠ stale marker",
-             "absent": "✗ absent", "shelf": "· shelf"}
+           f"<!-- 起点：{start} · 层级：{sum(1 for d in levels if os.path.basename(d) not in shelves)}（{len(levels)} 个路径段）· 链：{', '.join(names)}" + (f" · FIELD: {field}" if field else "") + " -->",
+           "<!-- 组合视图——绝不要编辑；请编辑片段。 -->"]
+    GLYPH = {"seeded": "✓ seeded（已播种）", "unseeded": "⟂ UNSEEDED（未播种）",
+             "conflicted": "⚠ conflicted（标记已过期）", "absent": "✗ absent（缺失）",
+             "shelf": "· shelf（容器层）"}
     missing, unseeded = [], []
-    # --prefer turns the --name list into ONE chain resolved per level by precedence
-    # (first match wins) instead of N independent chains. A tree mid-rename is the normal
-    # case, not an exception: SPEC.md is the current node filename and README.md the legacy
-    # one, and a trace that cannot span both reports a chain as broken when it is merely mixed.
-    # Validate the start node against configured tree roots. Merely sitting below
-    # workspace.root is insufficient because fixtures may look structurally valid.
+    # --prefer 将 --name 列表变成一条按优先级逐层解析的链（首个匹配项胜出），而非 N 条独立链。
+    # 树处于改名过程中是常态而非例外：SPEC.md 是当前节点文件名，README.md 是旧名称。若追踪
+    # 无法跨越二者，就会把只是混用名称的链误报为断裂。
+    # 根据已配置的树根验证起始节点。仅位于 workspace.root 下并不充分，因为 fixture 也可能
+    # 看起来结构有效。
     _cfg = [c for c in (rig_config("workspace.slices_root"),
                         resolve_roots().get("topology_root")) if c]
     _here = os.path.abspath(start)
     _root_warning = None
     if _cfg and not any(_here == os.path.abspath(c) or _here.startswith(os.path.abspath(c) + os.sep)
                         for c in _cfg):
-        _root_warning = ("  ⚠ THIS IS NOT A CONFIGURED TREE. Trees on this instance: "
-                         + " · ".join(_cfg) + "\n    A walk renders just as cleanly from a stray or"
-                         " fixture tree — verify before acting on it.")
+        _root_warning = ("  ⚠ 这不是已配置的树。当前实例上的树："
+                         + " · ".join(_cfg) + "\n    从游离树或 fixture 树遍历也能渲染得同样完整——"
+                         "据此行动前请先核实。")
     groups = [list(names)] if prefer else [[n] for n in names]
     for group in groups:
         name = group[0]
-        out.append(f"\n\n# CHAIN: {' → '.join(group)} (root → leaf)"
-                   + (" · precedence: first match wins per level" if len(group) > 1 else ""))
-        # pass 1 — collect the state of every level (this IS the trace; the map derives from it)
+        out.append(f"\n\n# 链：{' → '.join(group)}（根 → 叶）"
+                   + (" · 优先级：每层首个匹配项胜出" if len(group) > 1 else ""))
+        # 第 1 遍——收集每一层的状态（这就是追踪本身；地图由此派生）。
         chain, hits = [], {}
         for lvl in levels:
             p = None
@@ -360,11 +345,10 @@ def compose_up(start, names, root, field=None, prefer=False, shelves=None, leaf_
                     p, hits[lvl] = cand, n
                     break
             where = os.path.relpath(lvl, levels[0]) or '.'
-            # A SHELF is a path segment, not an altitude. The chain has three rungs — project,
-            # mission, slice — and rendering `missions/` and `slices/` as rungs implies five.
-            # Any file living at a shelf is ordinary folder documentation, NOT a chain link:
-            # ignore it rather than flagging it. `README.md` does double duty as a legacy node
-            # name and as a plain readme, and only the level it sits at can tell them apart.
+            # SHELF 是路径段，不是层级。链只有项目、mission、slice 三阶；若把 `missions/` 和
+            # `slices/` 也渲染成阶梯，就会误成五阶。shelf 中的任何文件都只是普通目录文档，
+            # 不是链路节点，应忽略而非标记。`README.md` 既可能是旧节点名，也可能是普通说明，
+            # 只有它所在的层级才能区分二者。
             is_shelf = os.path.basename(lvl) in shelves
             if is_shelf:
                 state, payload, p = "shelf", None, None
@@ -373,14 +357,12 @@ def compose_up(start, names, root, field=None, prefer=False, shelves=None, leaf_
                 state, payload = read_state(p)
             else:
                 state, payload = "absent", None
-            # Resolve the field HERE so the map can tell the truth. A map keyed on file
-            # presence says ✓ for a level that composes nothing — the exact reading that
-            # lets a trace certify the drift it exists to catch.
+            # 在这里解析字段，地图才能反映真实状态。若地图只看文件是否存在，会把未组合任何内容
+            # 的层级标成 ✓；这种误读会让追踪反过来证明它本应发现的漂移没有问题。
             fval, fnote = (field_of(payload, field) if (field and state == "seeded") else (None, None))
             chain.append((lvl, where, state, payload, fval, fnote))
-        # TRACE — derived orientation tree (never stored in files; the render is the only home)
-        # The map shows ALTITUDES as rungs; shelves fold into the next rung's path so the tree
-        # depth equals the number of levels that actually carry intent.
+        # 追踪——派生的定位树（绝不存入文件，渲染结果是唯一载体）。地图把层级显示为阶梯；
+        # shelf 折叠进下一阶路径，使树深度等于实际承载 intent 的层级数。
         rungs, pending = [], []
         for idx, row in enumerate(chain):
             if row[2] == "shelf" and idx != len(chain) - 1:
@@ -390,34 +372,32 @@ def compose_up(start, names, root, field=None, prefer=False, shelves=None, leaf_
             rungs.append((label, row)); pending = []
         leads = [("" if i == 0 else "   " * (i - 1) + "└─ ") + rungs[i][0] + "/" for i in range(len(rungs))]
         width = max(len(l) for l in leads) + 2
-        # Name the walked root and chain so readers do not confuse the tree being
-        # shown with the tree the work will change.
-        out.append(f"\nTRACE · root {levels[0]} · chain {' → '.join(group)}")
-        # Warn on an unconfigured root: an arbitrary lookalike tree can render a
-        # clean chain.
+        # 标明遍历的根和链，避免读者把展示中的树与工作实际修改的树混为一谈。
+        out.append(f"\n追踪 · 根 {levels[0]} · 链 {' → '.join(group)}")
+        # 对未配置的根发出告警：任意外观相似的树也能渲染出完整链。
         if _root_warning:
             out.append(_root_warning)
         for i, (_label, (lvl, where, state, payload, fval, fnote)) in enumerate(rungs):
-            note = f" (owner: {payload})" if state == "unseeded" and payload else ""
-            here = "   ← you are here" if i == len(rungs) - 1 else ""
-            glyph = f"⟂ no {field}" if (field and state == "seeded" and not fval) else GLYPH[state]
-            # In precedence mode, name WHICH file answered at each level — a mixed tree is
-            # readable state, not noise, and hiding it is how a rename looks like corruption.
+            note = f"（负责人：{payload}）" if state == "unseeded" and payload else ""
+            here = "   ← 你在这里" if i == len(rungs) - 1 else ""
+            glyph = f"⟂ 没有 {field}" if (field and state == "seeded" and not fval) else GLYPH[state]
+            # 在优先级模式下，标明每层究竟由哪个文件响应。混用名称的树是可读状态而非噪声；
+            # 隐藏此信息会让改名过程看起来像数据损坏。
             via = f" [{hits[lvl]}]" if len(group) > 1 and lvl in hits and state != "shelf" else ""
             out.append(f"  {leads[i]:<{width}}{glyph}{via}{note}{here}")
-        # pass 2 — contents, states collapsed per the three-state rules
+        # 第 2 遍——内容；按三状态规则折叠状态。
         found = 0
         for lvl, where, state, payload, fval, fnote in chain:
             if state == "shelf":
-                continue          # a path segment, not a position — contributes nothing, flags nothing
+                continue          # 路径段而非位置——不贡献内容，也不产生标记。
             elif state == "unseeded":
-                out.append(f"\n⟂ {name} @ {where} — UNSEEDED (scaffold only, not rendered; seed it: {payload})")
-                unseeded.append(f"{name} @ {where} (owner: {payload})")
+                out.append(f"\n⟂ {name} @ {where}——UNSEEDED（仅脚手架，不渲染；请播种：{payload}）")
+                unseeded.append(f"{name} @ {where}（负责人：{payload}）")
             elif state == "conflicted":
                 found += 1
-                out.append(hdr(f"{name} @ {where} — ⚠ carries status: UNSEEDED but content differs from template"))
+                out.append(hdr(f"{name} @ {where}——⚠ 标有 status: UNSEEDED，但内容不同于模板"))
                 out.append(payload.rstrip())
-                unseeded.append(f"{name} @ {where} — MARKER/CONTENT DISAGREE: rendered anyway; owner should clear the stale status line")
+                unseeded.append(f"{name} @ {where}——标记与内容不一致：仍已渲染；负责人应清除过期的 status 行")
             elif state == "seeded":
                 found += 1
                 if field:
@@ -426,19 +406,19 @@ def compose_up(start, names, root, field=None, prefer=False, shelves=None, leaf_
                     else:
                         out.append(f"\n{where}:  ⚠ {fnote}")
                         unseeded.append(f"{name} @ {where} — {fnote}")
-                    # The leaf is the only level whose answer is an ACTION. Compose its
-                    # blocking state here or the walk certifies the next step it never read.
+                    # 只有叶节点的答案代表操作。在这里组合其阻塞状态，否则遍历会认证一个它从未
+                    # 读取过的下一步。
                     if lvl == chain[-1][0]:
                         blocked = blocking_state(payload, lvl, group)
                         if blocked:
                             out.append(f"  {blocked}")
                         roots = operates_on(payload)
                         if roots:
-                            out.append("  operates on: " + " · ".join(roots))
-                        # ...and the only altitude that SPECIFIES. See leaf_body().
+                            out.append("  operates_on：" + " · ".join(roots))
+                        # ……也是唯一给出具体规范的层级。参见 leaf_body()。
                         lb = leaf_body(payload, leaf_cap) if leaf_cap else None
                         if lb:
-                            out.append(f"\n─── {where} · node body ───")
+                            out.append(f"\n─── {where} · 节点正文 ───")
                             out.append(lb)
                 else:
                     out.append(hdr(f"{name} @ {where}"))
@@ -446,14 +426,14 @@ def compose_up(start, names, root, field=None, prefer=False, shelves=None, leaf_
             else:
                 missing.append(f"{name} @ {where}")
         if not found:
-            out.append(f"\n⚠ NO seeded instances of {name} on this walk.")
+            out.append(f"\n⚠ 本次遍历中没有 {name} 的 seeded 实例。")
     if unseeded or missing:
-        out.append("\n\n# ⚠ CHAIN AUDIT (the walk screams once, here — never by breaking, never by template litter)")
+        out.append("\n\n# ⚠ 链审计（遍历只在这里集中告警；绝不靠中断，也绝不靠模板垃圾）")
         if unseeded:
-            out.append("UNSEEDED (file exists, template only — the owner writes the first true version):")
+            out.append("UNSEEDED（文件存在但仅为模板——由负责人写入首个真实版本）：")
             out += [f"- {m}" for m in unseeded]
         if missing:
-            out.append("ABSENT (no file at a POSITION — scaffold it, or report to the level owner if absence looks wrong):")
+            out.append("ABSENT（某个位置没有文件——请搭建脚手架；若不应缺失，则报告给该层负责人）：")
             out += [f"- {m}" for m in missing]
     return "\n".join(out)
 
@@ -468,32 +448,32 @@ def compose_down(root, names, excludes):
                 hits.append(os.path.join(dirpath, name))
     hits.sort()
     out = [f"<!-- GENERATED by compose.py down · {datetime.datetime.now().isoformat(timespec='minutes')} -->",
-           f"<!-- root: {root} · files: {len(hits)} · chains: {', '.join(names)} -->",
-           "<!-- Subtree render (trunk render at a tree root). Never edit. -->"]
+           f"<!-- 根：{root} · 文件：{len(hits)} · 链：{', '.join(names)} -->",
+           "<!-- 子树渲染（在树根处即为主干渲染）。绝不要编辑。 -->"]
     unseeded = []
     for p in hits:
         state, payload = read_state(p)
         rel = os.path.relpath(p, root)
         if state == "unseeded":
-            unseeded.append(f"{rel} (owner: {payload})")
+            unseeded.append(f"{rel}（负责人：{payload}）")
         elif state == "conflicted":
-            out.append(hdr(f"{rel} — ⚠ stale UNSEEDED marker on real content"))
+            out.append(hdr(f"{rel}——⚠ 真实内容上存在过期的 UNSEEDED 标记"))
             out.append(payload.rstrip())
-            unseeded.append(f"{rel} — MARKER/CONTENT DISAGREE: rendered anyway; clear the stale status line")
+            unseeded.append(f"{rel}——标记与内容不一致：仍已渲染；请清除过期的 status 行")
         else:
             out.append(hdr(rel))
             out.append(payload.rstrip())
     if unseeded:
-        out.append("\n\n# ⚠ UNSEEDED under this root (scaffold only — collapsed, not rendered)")
+        out.append("\n\n# ⚠ 此根目录下的 UNSEEDED（仅脚手架——已折叠，不渲染）")
         out += [f"- {u}" for u in unseeded]
     if not hits:
-        out.append("\n⚠ no chain files under this root — unfurl first?")
+        out.append("\n⚠ 此根目录下没有链文件——是否需要先展开？")
     return "\n".join(out)
 
 def compose_progress(root, names, excludes):
     import collections
     root = os.path.abspath(root)
-    direct = collections.defaultdict(lambda: [0, 0])   # dir -> [done, total] from its own files
+    direct = collections.defaultdict(lambda: [0, 0])   # dir -> 自身文件中的 [done, total]。
     for dirpath, dirs, files in os.walk(root):
         dirs[:] = [x for x in dirs if not x.startswith(".") and x != "node_modules"
                    and not any(fnmatch.fnmatch(os.path.join(dirpath, x), g) for g in excludes)]
@@ -505,7 +485,7 @@ def compose_progress(root, names, excludes):
                 if done + open_:
                     direct[dirpath][0] += done
                     direct[dirpath][1] += done + open_
-    agg = collections.defaultdict(lambda: [0, 0])       # dir -> rolled-up [done, total]
+    agg = collections.defaultdict(lambda: [0, 0])       # dir -> 向上汇总后的 [done, total]。
     for d, (dn, tt) in direct.items():
         cur = d
         while True:
@@ -513,10 +493,10 @@ def compose_progress(root, names, excludes):
             if os.path.samefile(cur, root): break
             cur = os.path.dirname(cur)
     out = [f"<!-- GENERATED by compose.py progress · {datetime.datetime.now().isoformat(timespec='minutes')} -->",
-           "<!-- Derived from the mark level at render time. Never store this in a file. -->",
-           f"\nPROGRESS MAP ({', '.join(names)} — checkbox = the one mark level; everything above derives):"]
+           "<!-- 在渲染时从标记层派生。绝不要把此结果存入文件。 -->",
+           f"\n进度图（{', '.join(names)}——复选框是唯一标记层；其上各层均由此派生）："]
     if not agg:
-        out.append("  (no checkboxes found in the named files under this root — nothing is marked here)")
+        out.append("  （此根目录下的具名文件中未发现复选框——这里没有任何标记）")
         return "\n".join(out)
     keys = sorted(agg, key=lambda d: os.path.relpath(d, root))
     leads = []
@@ -530,7 +510,7 @@ def compose_progress(root, names, excludes):
         dn, tt = agg[d]
         pct = 100 * dn // tt if tt else 0
         glyph = "✓" if dn == tt else ("◐" if dn else "○")
-        own = " ·" if d in direct else "  "   # · = has marks of its own (vs pure roll-up)
+        own = " ·" if d in direct else "  "   # · = 自身带标记（区别于纯汇总）。
         out.append(f"  {leads[i]:<{width}}{glyph} {dn}/{tt} ({pct}%){own}")
     return "\n".join(out)
 
@@ -541,16 +521,16 @@ if __name__ == "__main__":
     ap.add_argument("--name", action="append")
     ap.add_argument("--root", default=None)
     ap.add_argument("--prefer", action="store_true",
-                    help="treat --name as a PRECEDENCE list (first match wins per level) rather "
-                         "than separate chains — for a tree mid-rename: --name SPEC.md --name README.md --prefer")
+                    help="将 --name 视为优先级列表（每层首个匹配项胜出），而非独立链——适用于"
+                         "改名过程中的树：--name SPEC.md --name README.md --prefer")
     ap.add_argument("--exclude", action="append", default=[])
-    ap.add_argument("--field", default=None, help="compose ONE frontmatter field up the chain (e.g. --field intent) instead of whole bodies")
+    ap.add_argument("--field", default=None, help="沿链组合一个 frontmatter 字段（如 --field intent），而非完整正文")
     ap.add_argument("--leaf-cap", type=int, default=2400, metavar="N",
-                    help="with --field: also render the LEAF's body, capped at N chars (0 = off). "
-                         "Ancestors compress; the leaf is where the nouns are.")
+                    help="与 --field 搭配时同时渲染叶节点正文，上限为 N 个字符（0 = 关闭）。"
+                         "祖先节点会压缩；具体对象位于叶节点。")
     ap.add_argument("--shelf", action="append", default=[],
-                    help=f"extra directory name that HOLDS instances rather than being a position, so "
-                         f"its absence of a chain file is correct (defaults: {', '.join(sorted(SHELF_NAMES))})")
+                    help=f"额外的容器目录名；它容纳实例而非表示位置，因此没有链文件是正确的"
+                         f"（默认：{', '.join(sorted(SHELF_NAMES))}）")
     a = ap.parse_args()
     if a.mode == "roots":
         r = resolve_roots()
@@ -560,10 +540,10 @@ if __name__ == "__main__":
                 print(f"{k}={v}")
             else:
                 key = "workspace.root" if k == "work_root" else "workspace.topology_root"
-                print(f"# {k} UNRESOLVED — set it: rig config set {key} <path>", file=sys.stderr)
+                print(f"# {k} 未解析——请设置：rig config set {key} <path>", file=sys.stderr)
         sys.exit(0 if all(r.values()) else 3)
     if not a.name:
-        ap.error("--name is required for up/down/progress")
+        ap.error("up/down/progress 模式必须提供 --name")
     if a.mode == "up":
         print(compose_up(a.path, a.name, a.root, a.field, prefer=a.prefer, shelves=a.shelf, leaf_cap=a.leaf_cap))
     elif a.mode == "down":

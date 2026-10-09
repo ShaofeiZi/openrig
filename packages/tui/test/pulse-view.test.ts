@@ -8,147 +8,150 @@ import { demoPulseModel } from "../src/pulse/pulse-model.js";
 import { renderPulseView, renderLanes } from "../src/pulse/render-pulse.js";
 import { stylizeLines } from "../src/stylize.js";
 import { createStyle } from "../src/theme.js";
+import { strWidth } from "../src/text-width.js";
 import type { InputEvent } from "../src/types.js";
 
 const snap = demoSnapshot();
 const withSnap = { getSnapshot: () => snap };
-// Fixed reader clock so the PARKED idle-duration (derived from the demo seat's
-// lastActivityAt) renders deterministically — the demo guard last output 47m before.
+// 固定 reader 时钟，使 PARKED 空闲时长（派生自 demo 席的
+// lastActivityAt）确定性渲染——demo guard 最后输出在 47 分钟前。
 const DEMO_NOW = Date.parse("2026-08-06T12:00:00.000Z");
 
-describe("PULSE view (5.2 Wave B — increment 1: static skeleton from the approved mock)", () => {
-  it("registers `pulse` as a reachable viewTab (tab pulse + dispatch)", () => {
+describe("PULSE 视图（5.2 Wave B——增量1：来自批准 mock 的静态骨架）", () => {
+  it("把 `pulse` 注册为可达 viewTab（tab pulse + dispatch）", () => {
     expect(parseCommand("tab pulse")).toEqual({ type: "tab", tab: "pulse" });
     const v = createViewState({ instanceId: "t", ...withSnap });
     v.dispatch({ type: "tab", tab: "pulse" });
     expect(v.get().viewTab).toBe("pulse");
-    // pulse is a top-level VIEW MODE, not a section — the section is unchanged
+    // pulse 是顶层 VIEW MODE，非区段——区段不变
     expect(v.get().section).toBe("topology");
   });
 
-  it("renders LIVE exception sections from the snapshot + contract ordering (increment 2)", () => {
+  it("从快照 + 契约顺序渲染 LIVE 异常区段（增量2）", () => {
     const v = createViewState({ instanceId: "t", ...withSnap });
     v.dispatch({ type: "tab", tab: "pulse" });
     const body = renderScreen(v.get(), snap, { cols: 140, rows: 44, nowMs: DEMO_NOW }).lines.join("\n");
 
-    // ▲ NEEDS YOU ← the demo attention read (subject from summary)
-    expect(body).toContain("▲ NEEDS YOU (2)");
-    expect(body).toContain("0.5.0 cut packet ready · waiting on you");
-    expect(body).toContain("slice-20 routing pixels · waiting on you");
-    // ◌ PARKED WITH BATON ← LIVE join: the demo in-progress qitem whose owner
-    // (dev50-guard) is idle (terminalActive false) and NOT handed off; idle-duration
-    // derived at the renderer from the seat's lastActivityAt (47m before DEMO_NOW).
-    expect(body).toContain("◌ PARKED WITH BATON (1)");
+    // ▲ NEEDS YOU ← demo attention 读取（subject 来自 summary）
+    expect(body).toContain("▲ 需要你 (2)");
+    expect(body).toContain("0.5.0 切割包就绪 · 等待你");
+    expect(body).toContain("slice-20 路由像素 · 等待你");
+    // ◌ PARKED WITH BATON ← LIVE join：demo in-progress qitem，其 owner
+    // (dev50-guard) 空闲（terminalActive false）且未交接；空闲时长
+    // 在 renderer 由席的 lastActivityAt 派生（DEMO_NOW 前 47 分钟）。
+    expect(body).toContain("◌ 停驻待接力 (1)");
     expect(body).toContain("dev50-guard@openrig-build");
-    expect(body).toContain("47m idle");
-    expect(body).toContain("no handoff");
+    expect(body).toContain("47 分钟空闲");
+    expect(body).toContain("无交接");
     expect(body).not.toContain("idle-age read pending"); // placeholder gone — read is live
-    // ⧗ BLOCKED ON AGENTS ← the demo state=blocked read, human-blocked item EXCLUDED
-    expect(body).toContain("⧗ BLOCKED ON AGENTS (1)");
+    // ⧗ BLOCKED ON AGENTS ← demo state=blocked 读取，人工阻塞项排除
+    expect(body).toContain("⧗ 被智能体阻塞 (1)");
     expect(body).toContain("dev50-driver@openrig-build");
-    // label==referent: the blocking AGENT is named (resolved blockerSession), NOT the qitem pointer
-    expect(body).toContain("blocked on review-r1@openrig-build");
+    // label==referent：阻塞 AGENT 被命名（解析的 blockerSession），非 qitem 指针
+    expect(body).toContain("被 review-r1@openrig-build 阻塞");
     expect(body).not.toContain("qitem-20260805-review");
-    expect(body).toContain("terminal verdict for 51209941");
+    expect(body).toContain("51209941 的终端裁决");
     expect(body).not.toContain("human sign-off pending"); // human-blocked → not here
 
-    // ordering ▲ NEEDS YOU → ◌ PARKED → ⧗ BLOCKED → lanes is contract
-    const iNeeds = body.indexOf("NEEDS YOU");
-    const iParked = body.indexOf("PARKED WITH BATON");
-    const iBlocked = body.indexOf("BLOCKED ON AGENTS");
-    const iLanes = body.indexOf("JUST FINISHED");
+    // 顺序 ▲ NEEDS YOU → ◌ PARKED → ⧗ BLOCKED → lanes 为契约
+    const iNeeds = body.indexOf("需要你");
+    const iParked = body.indexOf("停驻待接力");
+    const iBlocked = body.indexOf("被智能体阻塞");
+    const iLanes = body.indexOf("刚完成");
     expect(iNeeds).toBeGreaterThanOrEqual(0);
     expect(iNeeds).toBeLessThan(iParked);
     expect(iParked).toBeLessThan(iBlocked);
     expect(iBlocked).toBeLessThan(iLanes);
   });
 
-  it("builds the three lanes + footer LIVE from the demo snapshot (label==referent honesty)", () => {
+  it("从 demo 快照构建三 lane + footer LIVE（label==referent 诚实）", () => {
     const v = createViewState({ instanceId: "t", ...withSnap });
     v.dispatch({ type: "tab", tab: "pulse" });
     const body = renderScreen(v.get(), snap, { cols: 140, rows: 44, nowMs: DEMO_NOW }).lines.join("\n");
 
-    // NOW ← active seats (terminalActive true) ⋈ their in-progress work: driver,
-    // planner, r1, lead (guard is idle → PARKED; qa null → excluded). The lane
-    // shows the COMPACT logicalId (incr-4 r1 ruling — full session recovered on
-    // drill-in); assert the compact seats + count here.
-    expect(body).toContain("NOW (4)");
+    // NOW ← 活动席（terminalActive true）⋈ 其 in-progress 工作：driver、
+    // planner、r1、lead（guard 空闲 → PARKED；qa null → 排除）。lane
+    // 显示紧凑 logicalId（incr-4 r1 ruling——drill-in 时恢复完整 session）；
+    // 在此断言紧凑席 + 计数。
+    expect(body).toContain("现在 (4)");
     expect(body).toContain("dev50.driver");
     expect(body).toContain("orch.lead");
-    // JUST FINISHED ← done/handed-off, newest-FINISHED first (tsUpdated desc) + HH:MM
-    expect(body).toContain("JUST FINISHED (3)");
+    // JUST FINISHED ← done/已交接，最新完成在前（tsUpdated 降序）+ HH:MM
+    expect(body).toContain("刚完成 (3)");
     expect(body).toContain("11:44");
-    expect(body).toContain("slice-03 close-out");
-    expect(body).toContain("terminal CLEAR");
+    expect(body).toContain("slice-03 收尾");
+    expect(body).toContain("终端 CLEAR");
     expect(body).not.toContain("14:02"); // the old static mock time is gone
-    // UP NEXT ← unclaimed pending in served order; SIX pending → cap-4 + "…", count 6
-    expect(body).toContain("UP NEXT (6)");
-    expect(body).toContain("RM ceremony");
-    expect(body).toContain("51-02 scenario runner");
+    // UP NEXT ← 未认领 pending 按服务顺序；6 个 pending → cap-4 + "…"，计数 6
+    expect(body).toContain("下一个 (6)");
+    expect(body).toContain("RM 仪式");
+    expect(body).toContain("51-02 场景运行器");
     expect(body).toContain("…"); // overflow marker (2 hidden pending)
-    // FOOTER live: active=NOW(4) · parked=PARKED(1) · waiting-you=NEEDS YOU(2) · 2s ago
-    expect(body).toContain("4 active · 1 parked · 2 waiting-you · updated 2s ago");
-    // the old static lane content is GONE
-    expect(body).not.toContain("slice 51-01 stub");
+    // FOOTER live：active=NOW(4) · parked=PARKED(1) · waiting-you=NEEDS YOU(2) · 2 秒前
+    expect(body).toContain("4 激活 · 1 暂停 · 2 等待你 · 2 秒前更新");
+    // 旧静态 lane 内容消失
+    expect(body).not.toContain("slice 51-01 桩");
     expect(body).not.toContain("oversight.watch");
   });
 
-  it("the tab strip carries the PULSE tab (top-level view set)", () => {
+  it("tab 条带 PULSE tab（顶层视图集）", () => {
     const v = createViewState({ instanceId: "t", ...withSnap });
     v.dispatch({ type: "tab", tab: "pulse" });
     const body = renderScreen(v.get(), snap, { cols: 140, rows: 44 }).lines.join("\n");
     expect(body).toContain("PULSE");
   });
 
-  it("preserves the mock's 3-space inter-column gutter on full-width rows + the rule's post-count space (r1 padding finding)", () => {
+  it("全宽行保留 mock 的 3 列间距 + 规则计数后空格（r1 内边距发现）", () => {
     const lines = renderPulseView(demoPulseModel()).map((l) => l.text);
 
-    // (a) JUST FINISHED → UP NEXT gutter must NOT collapse when JF content fills
-    //     the column ("✓ 14:02 slice-03 close-out" is exactly the col width): the
-    //     mock keeps a 3-space gutter — "close-out   ○ 51-02".
-    const laneRow = lines.find((l) => l.includes("slice-03 close-out"));
+    // (a) JUST FINISHED → UP NEXT 间隔在 JF 内容填满列时绝不折叠
+    //     （"✓ 14:02 slice-03 close-out" 恰为列宽）：
+    //     mock 保留 3 空格间隔——"close-out   ○ 51-02"。
+    const laneRow = lines.find((l) => l.includes("slice-03 收尾"));
     expect(laneRow).toBeDefined();
-    expect(laneRow).toContain("slice-03 close-out   ○ 51-02 scenario runner");
+    expect(laneRow).toContain("○ 51-02 场景运行器");
+    const upNextStart = laneRow!.indexOf("○ 51-02 场景运行器");
+    expect(strWidth(laneRow!.slice(0, upNextStart))).toBe(62);
 
-    // (b) the rule row keeps the space after each "(n)" before the dashes:
-    //     mock "── NOW (4) ───… JUST FINISHED (3) ───…" (space, THEN dashes).
-    const rule = lines.find((l) => l.includes("NOW (4)"));
+    // (b) 规则行在每个 "(n)" 后、破折号前保留空格：
+    //     mock "── NOW (4) ───… JUST FINISHED (3) ───…"（先空格，再破折号）。
+    const rule = lines.find((l) => l.includes("现在 (4)"));
     expect(rule).toBeDefined();
-    expect(rule).toContain("NOW (4) ─");
-    expect(rule).toContain("JUST FINISHED (3) ─");
-    expect(rule).not.toContain("NOW (4)─"); // no dash flush against the paren
+    expect(rule).toContain("现在 (4) ─");
+    expect(rule).toContain("刚完成 (3) ─");
+    expect(rule).not.toContain("现在 (4)─"); // no dash flush against the paren
   });
 
-  it("column ALIGNMENT holds when a live NOW label overflows: truncated with '…', never shoving the JUST FINISHED column (incr-3, real-data widths)", () => {
+  it("live NOW 标签溢出时列对齐保持：以 … 截断，绝不挤动 JUST FINISHED 列（incr-3，真实数据宽度）", () => {
     const lanes: Parameters<typeof renderLanes>[0] = [
-      { label: "NOW", count: 1, rows: [{ glyph: "●", token: "ok", label: "dev50-driver@openrig-build  a very long piece of active work that would overflow the lane" }] },
-      { label: "JUST FINISHED", count: 1, rows: [{ glyph: "✓", token: "ok", time: "11:44", label: "JFMARK" }] },
-      { label: "UP NEXT", count: 1, rows: [{ glyph: "○", token: "dim", label: "UPMARK" }] },
+      { label: "现在", count: 1, rows: [{ glyph: "●", token: "ok", label: "dev50-driver@openrig-build  a very long piece of active work that would overflow the lane" }] },
+      { label: "刚完成", count: 1, rows: [{ glyph: "✓", token: "ok", time: "11:44", label: "JFMARK" }] },
+      { label: "下一个", count: 1, rows: [{ glyph: "○", token: "dim", label: "UPMARK" }] },
     ];
     const [row0] = renderLanes(lanes);
-    // the NOW cell is truncated to exactly COL[0] (30) → the JF column begins at a
-    // FIXED offset (30 + 3-space gutter = 33) instead of being shoved rightward
+    // NOW 格截断到恰为 COL[0]（30）→ JF 列始于固定
+    // 偏移（30 + 3 空格间隔 = 33），而非被向右推
     expect(row0!.text.indexOf("✓ 11:44 JFMARK")).toBe(33);
-    expect(row0!.text.slice(0, 30)).toContain("…"); // overflow signalled in-cell
+    expect(row0!.text.slice(0, 30)).toContain("…"); // 格内标记溢出
     expect(row0!.text).toContain("UPMARK");
-    // and the full active-work text is NOT smeared across the neighbouring column
+    // 且完整活动工作文本不涂到相邻列
     expect(row0!.text).not.toContain("overflow the lane");
   });
 
-  it("registers the lane cells as content targets in column-major order (NOW first), each with its drill action", () => {
+  it("按列主序（NOW 优先）把 lane 单元格注册为内容目标，各带 drill 动作", () => {
     const v = createViewState({ instanceId: "t", ...withSnap });
     v.dispatch({ type: "tab", tab: "pulse" });
     const s = renderScreen(v.get(), snap, { cols: 140, rows: 44, nowMs: DEMO_NOW });
-    // demo NOW = driver/planner/r1/lead (4 active) → the first four targets are the
-    // NOW column (column-major). driver resolves in the topology → an agent drill.
+    // demo NOW = driver/planner/r1/lead（4 活动）→ 前四个目标是
+    // NOW 列（列优先）。driver 在 topology 解析 → agent drill。
     expect(s.contentTargets.length).toBeGreaterThanOrEqual(4);
     expect(s.contentTargets[0]!.action).toEqual({ type: "drill", resource: "agent", name: "dev50.driver", target: { host: "vm-host", rig: "openrig-build", pod: "dev50" } });
-    // a JUST FINISHED cell (guard's close-out) drills the seat that finished it
+    // JUST FINISHED 格（guard 的 close-out）drill 完成它的席
     const jf = s.contentTargets.find((t) => t.action.type === "drill" && t.action.name === "dev50.guard");
     expect(jf).toBeDefined();
   });
 
-  it("↑↓ move the lane selection, painting the selected cell PER-CELL (not the whole zipped row)", () => {
+  it("↑↓ 移动 lane 选择，按单元格绘选中（非整个拉链行）", () => {
     const v = createViewState({ instanceId: "t", ...withSnap });
     v.dispatch({ type: "tab", tab: "pulse" });
     v.dispatch({ type: "focus", pane: "content" }); // in-pane: the lane cursor shows on the focused content pane
@@ -157,25 +160,25 @@ describe("PULSE view (5.2 Wave B — increment 1: static skeleton from the appro
     v.dispatch({ type: "layout", contentMaxOffset: s.contentMaxOffset, contentTargetCount: s.contentTargets.length });
     s = renderScreen(v.get(), snap, opts);
 
-    // default selection (0) = the first NOW cell; its line is accent-painted, but
-    // only the NOW cell — the JF/UP-NEXT cells on the SAME zipped line are NOT, so
-    // the line carries BOTH accent and non-accent segs (per-cell, not whole-row).
+    // 默认选择（0）= 第一个 NOW 格；其行 accent 绘制，但
+    // 仅 NOW 格——同一 zipped 行上的 JF/UP-NEXT 格不绘制，故
+    // 该行同时带 accent 与非 accent seg（按格，非整行）。
     const y0 = s.contentTargets[0]!.y;
     const segs0 = s.segRows![y0]!;
     expect(segs0.some((sg) => sg.bg === "accent")).toBe(true);
     expect(segs0.some((sg) => sg.bg !== "accent")).toBe(true);
 
-    // move down one: selection follows to target[1], and target[0]'s cell clears.
+    // 下移一格：选择跟随到 target[1]，target[0] 的格清除。
     v.dispatch({ type: "content-select", delta: 1 });
     s = renderScreen(v.get(), snap, opts);
     const y1 = s.contentTargets[1]!.y;
-    // the newly-selected cell paints…
+    // 新选格绘制…
     expect(s.segRows![y1]!.some((sg) => sg.bg === "accent")).toBe(true);
-    // …and if target[1] is on a DIFFERENT line than target[0], target[0] clears.
+    // …且若 target[1] 与 target[0] 在不同行，target[0] 清除。
     if (y1 !== y0) expect((s.segRows![y0] ?? []).some((sg) => sg.bg === "accent")).toBe(false);
   });
 
-  it("Enter on the selected NOW seat drills to that AGENT — leaving PULSE, recovering the full identity the compact label dropped", () => {
+  it("选中 NOW 席按 Enter drill 到该 agent——离开 PULSE，恢复紧凑标签丢弃的完整身份", () => {
     const v = createViewState({ instanceId: "t", ...withSnap });
     v.dispatch({ type: "tab", tab: "pulse" });
     v.dispatch({ type: "focus", pane: "content" }); // Enter drills the focused content pane's selected cell
@@ -186,64 +189,63 @@ describe("PULSE view (5.2 Wave B — increment 1: static skeleton from the appro
     const enter: Extract<InputEvent, { type: "key" }> = { type: "key", key: "enter", action: { type: "activate" } };
     const action = resolveKeyAction(enter, v.get(), s, 0);
     expect(action).toEqual({ type: "drill", resource: "agent", name: "dev50.driver", target: { host: "vm-host", rig: "openrig-build", pod: "dev50" } });
-    // dispatching it navigates to the agent (full detail), leaving the pulse view
+    // dispatch 它导航到 agent（完整详情），离开 pulse 视图
     v.dispatch(action!);
     expect(v.get().viewTab).toBe("table");
     expect(v.get().drill.at(-1)).toEqual({ kind: "agent", name: "dev50.driver" });
   });
 
-  it("in PULSE (in-pane, founder Option-B): ←→ switch panes (the sidebar is the founder's action path) and ↑↓ move the focused pane — normal chrome input, no special-case", () => {
+  it("PULSE 内（in-pane，founder Option-B）：←→ 切窗格（侧栏是 founder 动作路径），↑↓ 移动聚焦窗格——常规 chrome 输入，无特例", () => {
     const v = createViewState({ instanceId: "t", ...withSnap });
     v.dispatch({ type: "tab", tab: "pulse" });
     v.dispatch({ type: "focus", pane: "content" });
     const s = renderScreen(v.get(), snap, { cols: 140, rows: 44, nowMs: DEMO_NOW });
     const down: Extract<InputEvent, { type: "key" }> = { type: "key", key: "down", action: { type: "select", delta: 1 } };
     const left: Extract<InputEvent, { type: "key" }> = { type: "key", key: "left", action: { type: "select", delta: 0 } };
-    // content-focused ↑↓ walks the lane cells; ← switches focus to the explorer sidebar
+    // content 聚焦时 ↑↓ 走 lane 格；← 切焦点到 explorer 侧栏
     expect(resolveKeyAction(down, v.get(), s, 0)).toEqual({ type: "content-select", delta: 1 });
     expect(resolveKeyAction(left, v.get(), s, 0)).toEqual({ type: "focus", pane: "explorer" });
   });
 
-  it("renders without throwing, and the reusable renderer's counts match the model", () => {
+  it("渲染不抛错，可复用渲染器计数与模型一致", () => {
     const v = createViewState({ instanceId: "t", ...withSnap });
     expect(() => renderScreen(v.get(), snap, { cols: 120, rows: 32 })).not.toThrow(); // default (table) still fine
     v.dispatch({ type: "tab", tab: "pulse" });
     expect(() => renderScreen(v.get(), snap, { cols: 120, rows: 32 })).not.toThrow();
 
-    // honesty floor: lane header counts equal the referent set the model carries
+    // 诚实底线：lane 头计数 == 模型携带的引用集
     const model = demoPulseModel();
     for (const lane of model.lanes) {
-      // NOTE: the mock's UP NEXT (5) shows 4 rows incl. the "…" overflow row —
-      // the header count is the TRUE total, the rows are the rendered referent
-      // (increment-1 fixture mirrors the mock exactly, overflow row included).
+      // 注：mock 的 UP NEXT(5) 显示 4 行含 "…" 溢出行——
+      // 头计数是真总数，行是渲染引用
+      //（increment-1 fixture 精确镜像 mock，含溢出行）。
       expect(lane.rows.length).toBeGreaterThan(0);
     }
     expect(renderPulseView(model).length).toBeGreaterThan(10);
   });
 });
 
-// ── increment 5: live refresh-seam + motion budget, reconciled to the founder's
-// Option-B in-pane layout. These pins assert the STYLIZED terminal output (the
-// layer every earlier pulse pin skipped — they inspected the pre-stylize Screen,
-// which is why the paint no-op slipped through). In-pane, per-cell segs paint via
-// the NORMAL split-pane path; content SELECTION renders as accent-bg (mock `.sel`
-// affordance) while the sidebar's own selected row uses inverse — so BG (48;2) is
-// a CLEAN content-selection signal, but "no inverse" checks scope to the content
-// segRows (the sidebar selection legitimately carries inverse). ─────────────────
-describe("PULSE view (5.2 Wave B — increment 5: live refresh-seam + motion budget, in-pane)", () => {
+// ── increment 5：live refresh-seam + motion 预算，对齐 founder 的
+// Option-B 窗内布局。这些锚点断言 STYLIZED 终端输出（
+// 此前每个 pulse 锚点跳过的层——它们检查 pre-stylize Screen，
+// 故 paint no-op 漏过）。窗内按格 seg 经常规 split-pane 路径绘制；
+// content 选择渲染为 accent-bg（mock `.sel` 提示），而侧栏自己的选中行用 inverse——
+// 故 BG(48;2) 是干净的 content 选择信号，但 "无 inverse" 检查
+// 限定到 content segRows（侧栏选择合法带 inverse）。 ─────────────────
+describe("PULSE 视图（5.2 Wave B——增量5：live refresh 缝 + motion 预算，in-pane）", () => {
   const truecolor = createStyle("truecolor");
   const INV = /(?:\x1b\[|;)7(?:;|m)/; // a standalone inverse SGR param (7), not the "7" inside a color triple
   const BG = /48;2;/; // a truecolor background SGR
   const OPTS = { cols: 140, rows: 44, nowMs: DEMO_NOW, colorMode: "truecolor" as const };
   const agentKey = (a: Extract<InputEvent, never> | { type: string; name?: string; target?: { host: string; rig: string; pod: string } }): string =>
     `agent:${a.target!.host}/${a.target!.rig}/${a.target!.pod}/${a.name}`;
-  // content-only inverse: the flashed CELL segs (segRows is the content half),
-  // excluding the sidebar's selected-row inverse highlight on the left
+  // 仅 content inverse：闪烁的格 seg（segRows 是 content 半），
+  // 排除左侧侧栏选中行 inverse 高亮
   const contentInverse = (s: ReturnType<typeof renderScreen>): boolean =>
     Object.values(s.segRows ?? {}).some((segs) => segs.some((g) => g.inverse));
 
-  // focus the content pane (the lane cursor lives there), settle the layout, then
-  // re-render — mirroring the entry loop
+  // 聚焦 content 窗格（lane 光标在那），稳定布局，然后
+  // 重渲染——镜像进入循环
   function primed(selectMoves = 0, extra: Record<string, unknown> = {}) {
     const v = createViewState({ instanceId: "t", ...withSnap });
     v.dispatch({ type: "tab", tab: "pulse" });
@@ -255,19 +257,19 @@ describe("PULSE view (5.2 Wave B — increment 5: live refresh-seam + motion bud
     return { v, s };
   }
 
-  it("F0: the selected NOW cell's accent bg PAINTS in the stylized in-pane output (via the normal split-pane path, not just the pre-stylize Screen)", () => {
+  it("F0：选中 NOW 单元格的强调背景在 stylized in-pane 输出中绘出（经常规分屏路径，非仅 pre-stylize Screen）", () => {
     const { s } = primed();
     const y0 = s.contentTargets[0]!.y;
-    // the pre-stylize Screen carried the seg since incr-4 — this always passed
+    // pre-stylize Screen 自 incr-4 起就带 seg——此断言一直通过
     expect(s.segRows![y0]!.some((sg) => sg.bg === "accent")).toBe(true);
-    // …and now it RENDERS: in-pane the content segs paint through the split-pane
-    // segRows path (the full-width no-op is gone — the bypass no longer exists).
+    // …现在它真渲染：窗内 content seg 经 split-pane
+    // segRows 路径绘制（全宽 no-op 消失——bypass 不复存在）。
     const painted = stylizeLines(s, truecolor);
     expect(BG.test(painted[y0 - 1]!)).toBe(true);
   });
 
-  it("F2: a NOW seat's in-window fresh-output flash inverts ITS cell only (per-cell), rendered in the stylized output", () => {
-    // select row 1 so the FLASH (on row 0) is isolated from the selection paint
+  it("F2：NOW 席窗口内新鲜输出闪烁只反色其单元格（按单元格），在 stylized 输出中渲染", () => {
+    // 选行 1，使闪烁（在行 0）与选择绘制隔离
     const { v } = primed(1);
     const targets = renderScreen(v.get(), snap, OPTS).contentTargets;
     const driver = targets[0]!; // NOW row 0 = dev50.driver (unselected now)
@@ -275,32 +277,32 @@ describe("PULSE view (5.2 Wave B — increment 5: live refresh-seam + motion bud
     const s = renderScreen(v.get(), snap, { ...OPTS, load: { inFlight: false, settled: true }, rowFlashes: [{ key, at: DEMO_NOW }] });
     const painted = stylizeLines(s, truecolor);
     const dy = driver.y;
-    // per-cell at the model layer: the flashed line carries BOTH inverse (NOW cell)
-    // and non-inverse (JF/UP-NEXT siblings + gutters) segs — not a whole-row flash
+    // 模型层按格：闪烁行同时带 inverse（NOW 格）
+    // 与非 inverse（JF/UP-NEXT 兄弟 + 间隔）seg——非整行闪烁
     const segs = s.segRows![dy]!;
     expect(segs.some((sg) => sg.inverse)).toBe(true);
     expect(segs.some((sg) => !sg.inverse)).toBe(true);
-    // …and it RENDERS (the layer the prior pins never reached)
+    // …且它真渲染（此前锚点从未到达的层）
     expect(INV.test(painted[dy - 1]!)).toBe(true);
-    // the SELECTED cell (row 1) is accent-painted but NOT inverted — flash and
-    // selection are visually distinct, co-existing without conflation
+    // 选中格（行 1）accent 绘制但非 inverse——闪烁与
+    // 选择视觉上不同，共存而不混淆
     const sy = s.contentTargets[1]!.y;
     expect(BG.test(painted[sy - 1]!)).toBe(true);
     expect(INV.test(painted[sy - 1]!)).toBe(false);
   });
 
-  it("F2 budget: a flash whose seat is in JUST FINISHED (not NOW) moves nothing — motion is scoped to the NOW live-update region", () => {
+  it("F2 预算：席在 JUST FINISHED（非 NOW）的闪烁不移动任何东西——motion 限定在 NOW live 更新区", () => {
     const { s: s0 } = primed();
     const jf = s0.contentTargets.find((t) => (t.action as { name?: string }).name === "dev50.guard"); // guard's close-out lives in JF
     expect(jf).toBeDefined();
     const key = agentKey(jf!.action as never);
     const { v } = primed();
     const s = renderScreen(v.get(), snap, { ...OPTS, load: { inFlight: false, settled: true }, rowFlashes: [{ key, at: DEMO_NOW }] });
-    // the seat's key matches, but only lane 0 (NOW) flashes → no CONTENT cell inverts
+    // 席键匹配，但仅 lane 0（NOW）闪烁 → 无 content 格 inverse
     expect(contentInverse(s)).toBe(false);
   });
 
-  it("F2 window: an EXPIRED flash (older than the 600ms window) does not invert", () => {
+  it("F2 窗口：过期闪烁（老于 600ms 窗口）不反色", () => {
     const { v } = primed(1);
     const driver = renderScreen(v.get(), snap, OPTS).contentTargets[0]!;
     const key = agentKey(driver.action as never);
@@ -308,7 +310,7 @@ describe("PULSE view (5.2 Wave B — increment 5: live refresh-seam + motion bud
     expect(contentInverse(s)).toBe(false);
   });
 
-  it("F3 reduced-motion twin: under reduced motion the flash is SUPPRESSED (no inverse), the seat is still shown", () => {
+  it("F3 reduced-motion 孪生：reduced motion 下闪烁被抑制（无反色），席仍显示", () => {
     const prev = process.env["OPENRIG_REDUCED_MOTION"];
     process.env["OPENRIG_REDUCED_MOTION"] = "1";
     try {
@@ -325,7 +327,7 @@ describe("PULSE view (5.2 Wave B — increment 5: live refresh-seam + motion bud
     }
   });
 
-  it("F1: an active NOW flash sets motionActive (bounded-expiry redraw); a settled frame with no flash is calm", () => {
+  it("F1：活动 NOW 闪烁设 motionActive（有界过期重绘）；无闪烁的 settle 帧平静", () => {
     const { v } = primed(1);
     const driver = renderScreen(v.get(), snap, OPTS).contentTargets[0]!;
     const key = agentKey(driver.action as never);
@@ -335,34 +337,34 @@ describe("PULSE view (5.2 Wave B — increment 5: live refresh-seam + motion bud
     expect(calm.motionActive).toBe(false);
   });
 
-  it("F1: while the FIRST load is in flight (!settled) an honest loading indicator shows + motionActive; a settled empty frame is calm", () => {
+  it("F1：首次加载 in-flight（未 settle）时显示诚实加载指示 + motionActive；settle 空帧平静", () => {
     const { v } = primed();
     const loading = renderScreen(v.get(), snap, { ...OPTS, load: { inFlight: true, settled: false } });
     const status = loading.lines[0];
     expect(status).toBeDefined();
-    expect(status!.toLowerCase()).toContain("loading");
+    expect(status!.toLowerCase()).toContain("加载中");
     expect(loading.motionActive).toBe(true);
     const settled = renderScreen(v.get(), snap, { ...OPTS, load: { inFlight: false, settled: true } });
     const settledStatus = settled.lines.find((l) => l.startsWith("[t]"));
-    expect(settledStatus!.toLowerCase()).not.toContain("loading"); // empty-strip-is-calm
+    expect(settledStatus!.toLowerCase()).not.toContain("加载中"); // empty-strip-is-calm
   });
 
-  it("F3 reader-clock discipline: the footer 'updated Ns ago' + the PARKED idle age RE-DERIVE on the same snapshot as the reader clock advances (no cached staleness)", () => {
+  it("F3 读取时钟纪律：footer updated Ns ago + PARKED 空闲龄随读取时钟在同一快照上重推导（无缓存陈旧）", () => {
     const { v } = primed();
-    const foot = (nowMs: number) => renderScreen(v.get(), snap, { ...OPTS, nowMs }).lines.find((l) => l.includes("active ·") && l.includes("updated"))!;
+    const foot = (nowMs: number) => renderScreen(v.get(), snap, { ...OPTS, nowMs }).lines.find((l) => l.includes("激活 ·") && l.includes("更新"))!;
     const t0 = foot(DEMO_NOW);
     const t1 = foot(DEMO_NOW + 90_000);
     expect(t0).not.toEqual(t1); // the "updated Ns ago" advanced — the derivation is live, not stamped once
-    expect(t1).toContain("updated");
+    expect(t1).toContain("更新");
   });
 });
 
-// P2 — tab-strip active "PULSE" bold no-op. The mock renders the active tab (trailing
-// PULSE) in BOLD, but its seg was bold-ONLY (no token), so the segRows painter (paints
-// only when token||bg||inverse) dropped it to plain — the same class as the exception
-// subject. Per-site emphasis token (no stylize.ts change). Pin at the STYLIZED layer.
-describe("PULSE view (5.2 Wave B) — tab-strip active PULSE renders bold [P2]", () => {
-  // extract the text rendered under an active BOLD SGR (1=on, 0/22=off)
+// P2——tab-strip 活动 "PULSE" 粗体 no-op。mock 把活动 tab（尾部
+// PULSE）渲染为粗体，但其 seg 仅粗体（无 token），故 segRows 绘制器（仅当
+// token||bg||inverse 才绘）把它降为纯文本——与 exception subject 同类。
+// 按位点强调 token（不改 stylize.ts）。锚在 STYLIZED 层。
+describe("PULSE 视图（5.2 Wave B）——tab 条活动 PULSE 渲染加粗 [P2]", () => {
+  // 提取活动 BOLD SGR 下渲染的文本（1=开，0/22=关）
   function boldText(styled: string): string {
     let bold = false;
     let out = "";
@@ -385,13 +387,13 @@ describe("PULSE view (5.2 Wave B) — tab-strip active PULSE renders bold [P2]",
     return out;
   }
 
-  it("the active (trailing) PULSE tab label renders BOLD in the stylized output", () => {
+  it("活动（尾随）PULSE tab 标签在 stylized 输出中渲染加粗", () => {
     const v = createViewState({ instanceId: "t", ...withSnap });
     v.dispatch({ type: "tab", tab: "pulse" });
     const styled = stylizeLines(renderScreen(v.get(), snap, { cols: 140, rows: 44, nowMs: DEMO_NOW, colorMode: "truecolor" }), createStyle("truecolor"));
-    const tabLine = styled.find((l) => l.includes("TABLE") && l.includes("OVERVIEW"))!;
+    const tabLine = styled.find((l) => l.includes("表格") && l.includes("概览"))!;
     expect(tabLine).toBeDefined();
-    // the trailing active "PULSE" is the bold token; "[ PULSE ]" is dim, not bold
+    // 尾部活动 "PULSE" 是粗体 token；"[ PULSE ]" 是 dim，非粗体
     expect(boldText(tabLine)).toContain("PULSE");
   });
 });

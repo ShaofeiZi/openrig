@@ -7,7 +7,7 @@ import { loadHumanRegistry } from "./human-registry.js";
 import { channelStateDigest, type ChannelOperation } from "./channel-operations.js";
 import type { SettingsStore } from "../user-settings/settings-store.js";
 
-/** Shared passive read context. Raw values and the redactor stay inside the domain. */
+/** 共享的被动读取上下文。原始值与脱敏器始终封装在领域层内。 */
 export function readConnectionConfiguration(home: string) {
   let cfg: SlackConnectorConfig | null = null;
   const configPath = configPathFor(home);
@@ -21,7 +21,7 @@ export function readConnectionConfiguration(home: string) {
     sourceState = bytes === null ? "missing" : "malformed";
     if (bytes !== null) {
       const raw = JSON.parse(bytes);
-      if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("invalid config");
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("配置无效");
       fields = Object.keys(DEFAULT_CONFIG).filter((key) => Object.hasOwn(raw, key));
     }
     cfg = loadConfig(home);
@@ -30,7 +30,7 @@ export function readConnectionConfiguration(home: string) {
       || !cfg.outboundDestinations.every((x) => typeof x === "string")
       || typeof cfg.sourceLabel !== "string" || !Array.isArray(cfg.requiredScopes)
       || !cfg.requiredScopes.every((x) => typeof x === "string")
-      || (cfg.secretsEnvFile !== null && typeof cfg.secretsEnvFile !== "string")) throw new Error("invalid config");
+      || (cfg.secretsEnvFile !== null && typeof cfg.secretsEnvFile !== "string")) throw new Error("配置无效");
     configState = bytes === null ? "default" : "file";
     sourceState = bytes === null ? "missing" : "available";
   } catch { cfg = null; }
@@ -50,7 +50,7 @@ export function readConnectionConfiguration(home: string) {
   return { cfg, configPath, configState, sourceState, fields, bot, app, secretsAvailable, text };
 }
 
-/** Passive evidence only. No provider client, queue writer, or service activation. */
+/** 只提供被动证据；不创建 provider 客户端、不写队列，也不激活服务。 */
 export function connectionsProjection(home: string, gateway: Record<string, unknown> | null, settings?: SettingsStore,
   read = readConnectionConfiguration(home)) {
   const { cfg, configPath, configState, sourceState, bot, app, secretsAvailable, text } = read;
@@ -68,22 +68,22 @@ export function connectionsProjection(home: string, gateway: Record<string, unkn
     : connector.configurationDigest === digest ? "matching" : "changed";
   const verification = latestVerification(home, digest);
   verification.actor = text(verification.actor);
-  // Authored intent describes delivery only after the running wire confirms application.
+  // 只有运行中的 wire 确认配置已应用后，作者意图才可描述实际投递状态。
   const state = !cfg || !secretsAvailable || !gateway ? "unavailable"
     : gateway.state === "failed" ? "failed" : gateway.state !== "active" ? "unavailable"
     : applied === "changed" ? "unapplied" : applied === "unverified" ? "unverified"
     : !cfg.enabled ? "disabled" : !bot || !cfg.channel ? "incomplete"
     : connector?.outboundReady !== true ? "unverified"
     : verification.state === "failed" ? "failed" : verification.state === "indeterminate" ? "indeterminate"
-    : "unverified"; // Even a successful dated check is not current external reachability.
-  // OPR.0.6.0.5: no Slack app yet (neither token resolves) → create one from the shipped manifest first.
+    : "unverified"; // 即使某次历史检查成功，也不能证明当前外部连通性。
+  // OPR.0.6.0.5：尚无 Slack app（两个 token 都无法解析）时，先用随附 manifest 创建。
   const noSlackApp = !!cfg && secretsAvailable && !bot && !app;
-  const nextAction = state !== "unavailable" && state !== "failed" && noSlackApp ? "rig slack manifest --url"
-    : state === "disabled" ? "rig slack enable" : state === "incomplete" || !cfg ? "rig slack setup --help"
-    : state === "unavailable" || state === "unapplied" || applied === "unverified" || gateway?.state === "failed" ? "rig daemon logs"
-    : "rig slack verify --json";
+  const nextAction = state !== "unavailable" && state !== "failed" && noSlackApp ? "zrig slack manifest --url"
+    : state === "disabled" ? "zrig slack enable" : state === "incomplete" || !cfg ? "zrig slack setup --help"
+    : state === "unavailable" || state === "unapplied" || applied === "unverified" || gateway?.state === "failed" ? "zrig daemon logs"
+    : "zrig slack verify --json";
   let registry: ReturnType<typeof loadHumanRegistry>;
-  try { registry = loadHumanRegistry(home, { readOnly: true }); } catch { registry = { ok: false, error: "registry unavailable" }; }
+  try { registry = loadHumanRegistry(home, { readOnly: true }); } catch { registry = { ok: false, error: "注册表不可用" }; }
   const instance = ["host.name", "workspace.root", "workspace.operator_seat_name"] as const;
   const browserKey = (value: string) => createHash("sha256").update(value).digest("hex").slice(0, 16);
   return {
@@ -113,7 +113,7 @@ export function connectionsProjection(home: string, gateway: Record<string, unkn
   };
 }
 
-/** Bounded tail of the EXISTING audit log; no second cache or freshness policy. */
+/** 对既有审计日志做有界尾读；不引入第二份缓存或新鲜度策略。 */
 function latestVerification(home: string, digest: string | null) {
   const empty = { state: "unverified", at: null as string | null, actor: null as string | null };
   const file = join(home, "state", "human-channel-operations.jsonl");
@@ -134,7 +134,7 @@ function latestVerification(home: string, digest: string | null) {
       if (typeof r.at !== "string" || !Number.isFinite(Date.parse(r.at))) return { ...empty, state: "indeterminate" };
       return { state: r.effect !== "observed" ? "indeterminate" : r.after?.ready === true ? "ready-at-check"
         : r.after?.ready === false ? "failed" : "indeterminate", at: r.at,
-        // Actor is an identity; reason/connector responses are deliberately omitted.
+        // Actor 是身份字段；刻意省略 reason 与 connector 响应。
         actor: typeof r.actor === "string" ? r.actor.replace(/[\x00-\x1f\x7f]/g, " ").slice(0, 120) : null };
     }
     return empty;

@@ -24,12 +24,12 @@ export function RigSpecReview() {
       <WorkspacePage>
         <div data-testid="rig-spec-review-empty" className="space-y-5">
           <WorkflowHeader
-            eyebrow="Rig Spec Review"
-            title="No RigSpec Selected"
-            description="Choose a current or recent rig draft from the Library drawer to review it here before you import or bootstrap it."
+            eyebrow="工作组规格审查"
+            title="未选择工作组规格"
+            description="从资料库抽屉中选择当前或最近的工作组草稿，在导入或引导启动前在此审查。"
           />
           <Button variant="outline" size="sm" onClick={() => navigate({ to: "/import" })}>
-            Open Import
+            打开导入
           </Button>
         </div>
       </WorkspacePage>
@@ -40,43 +40,43 @@ export function RigSpecReview() {
     <WorkspacePage>
       <div data-testid="rig-spec-review" className="space-y-6">
         <WorkflowHeader
-          eyebrow="Rig Spec Review"
+          eyebrow="工作组规格审查"
           title={review?.name ?? draft.label}
-          description={review?.summary ?? "Review the spec structure before import or bootstrap."}
+          description={review?.summary ?? "在导入或引导启动前审查规格结构。"}
           actions={(
             <>
               <Button variant="outline" size="sm" onClick={() => navigate({ to: "/import" })}>
-                Open In Import
+                在导入中打开
               </Button>
               <Button variant="outline" size="sm" onClick={() => navigate({ to: "/bootstrap" })}>
-                Bootstrap
+                引导启动
               </Button>
             </>
           )}
         />
 
-        {/* Summary cards */}
+        {/* 摘要卡片 */}
         {review && (
           <WorkflowSummaryGrid>
             <WorkflowSummaryCard
-              label="Format"
-              value={review.format === "pod_aware" ? "Pod-Aware" : "Legacy"}
+              label="格式"
+              value={review.format === "pod_aware" ? "感知 Pod" : "遗留"}
               testId="rig-spec-summary-format"
             />
             <WorkflowSummaryCard
-              label={review.format === "pod_aware" ? "Pods" : "Nodes"}
+              label={review.format === "pod_aware" ? "Pod" : "节点"}
               value={review.format === "pod_aware" ? reviewPods.length : reviewNodes.length}
               testId="rig-spec-summary-pods"
             />
             <WorkflowSummaryCard
-              label="Members"
+              label="成员"
               value={review.format === "pod_aware"
                 ? reviewPods.reduce((sum, p) => sum + p.members.length, 0)
                 : reviewNodes.length}
               testId="rig-spec-summary-members"
             />
             <WorkflowSummaryCard
-              label="Edges"
+              label="边"
               value={reviewEdges.length + (review.format === "pod_aware"
                 ? reviewPods.reduce((sum, p) => sum + (p.edges?.length ?? 0), 0)
                 : 0)}
@@ -85,15 +85,15 @@ export function RigSpecReview() {
           </WorkflowSummaryGrid>
         )}
 
-        {/* Loading / Error */}
-        {isLoading && <div className="font-mono text-[10px] text-on-surface-variant">Loading review...</div>}
+        {/* 加载中 / 错误 */}
+        {isLoading && <div className="font-mono text-[10px] text-on-surface-variant">正在加载审查...</div>}
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 font-mono text-[10px] text-red-700">
             {(error as Error).message}
           </div>
         )}
 
-        {/* Delegated display */}
+        {/* 委托展示 */}
         <RigSpecDisplay review={review} yaml={draft.yaml} yamlTestId="rig-spec-yaml" />
       </div>
     </WorkspacePage>

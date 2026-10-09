@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:41:54",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch3",
+ "files": 10,
+ "changed": 7,
+ "reviewed_no_change": 3,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/static-terminal-plate.test.tsx",
+   "status": "changed",
+   "after_sha256": "b7452ff42483fa8ec2c50eae27ae9895fc5f5c82f317c39af8ac4c9ecfff6ed1",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.39/0.4.0.1/0.4.4.19/0.4.3.19、qitem-b4c89c72、c230909cf、eslint-disable、xterm/WS、ScaleToFitTerminal 保留"
+  },
+  {
+   "path": "packages/ui/test/feed-card-kind-structured.test.ts",
+   "status": "changed",
+   "after_sha256": "a274c9fe3391798d27d15b5e08270509eade13004619ab43fd48ba177fb2f105",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.39/0.4.0.1/0.4.4.19/0.4.3.19、qitem-b4c89c72、c230909cf、eslint-disable、xterm/WS、ScaleToFitTerminal 保留"
+  },
+  {
+   "path": "packages/ui/test/rig-node-progressive.test.tsx",
+   "status": "changed",
+   "after_sha256": "a5d644cc36796becff5334564994ad56a6f3cce7258872f03032ff00f1ed8f44",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.39/0.4.0.1/0.4.4.19/0.4.3.19、qitem-b4c89c72、c230909cf、eslint-disable、xterm/WS、ScaleToFitTerminal 保留"
+  },
+  {
+   "path": "packages/ui/test/format-event-payload.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "1824eed7b3584ae08093587ceaeccbfbb667f21069f8c23c51216fa7e7dc5469",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.39/0.4.0.1/0.4.4.19/0.4.3.19、qitem-b4c89c72、c230909cf、eslint-disable、xterm/WS、ScaleToFitTerminal 保留"
+  },
+  {
+   "path": "packages/ui/test/rig-stamp.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "1165f68928f441999a94623e47d5548df5b7281fa3a440a413b78bb08361b6f0",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.39/0.4.0.1/0.4.4.19/0.4.3.19、qitem-b4c89c72、c230909cf、eslint-disable、xterm/WS、ScaleToFitTerminal 保留"
+  },
+  {
+   "path": "packages/ui/test/harness-teardown-hygiene.test.tsx",
+   "status": "changed",
+   "after_sha256": "58ece032843f3fa81bddd79ab2c570dc34d85123e8121dadb3ea04a0f38fb56e",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.39/0.4.0.1/0.4.4.19/0.4.3.19、qitem-b4c89c72、c230909cf、eslint-disable、xterm/WS、ScaleToFitTerminal 保留"
+  },
+  {
+   "path": "packages/ui/test/topology-grid-responsive.test.ts",
+   "status": "changed",
+   "after_sha256": "1d412aa10fc35789ec0019277a41df81d16f53917950a2b1c3658434824cd790",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.39/0.4.0.1/0.4.4.19/0.4.3.19、qitem-b4c89c72、c230909cf、eslint-disable、xterm/WS、ScaleToFitTerminal 保留"
+  },
+  {
+   "path": "packages/ui/test/feed-levels.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "19b0b877fc57cf9b68bd259118d8dd7a5d54510aa1283214da5aa61f412bfb75",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.39/0.4.0.1/0.4.4.19/0.4.3.19、qitem-b4c89c72、c230909cf、eslint-disable、xterm/WS、ScaleToFitTerminal 保留"
+  },
+  {
+   "path": "packages/ui/test/agent-spec-review.test.tsx",
+   "status": "changed",
+   "after_sha256": "dbd241fd6a0ac9d25a1d54ea634977c31dac605f57676ebfa64bd31e83fc942b",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.39/0.4.0.1/0.4.4.19/0.4.3.19、qitem-b4c89c72、c230909cf、eslint-disable、xterm/WS、ScaleToFitTerminal 保留"
+  },
+  {
+   "path": "packages/ui/test/liveness-identity-visuals.test.ts",
+   "status": "changed",
+   "after_sha256": "466aef3788621ee1c73811fa5bbc6a75c767b659066de17affc57e50c8552a22",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.39/0.4.0.1/0.4.4.19/0.4.3.19、qitem-b4c89c72、c230909cf、eslint-disable、xterm/WS、ScaleToFitTerminal 保留"
+  }
+ ]
+}

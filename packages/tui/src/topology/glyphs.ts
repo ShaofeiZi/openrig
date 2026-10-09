@@ -1,31 +1,30 @@
-// SPIKE — the founder's 4-glyph status vocabulary as a RENDER MAPPING over
-// the EXISTING projection states (arch binding 2, R7-clean, grounded
-// @12862302). The 4 buckets COLLAPSE the richer existing states; nothing here
-// invents state, and a projection with no value renders honest-unknown ○
-// (PIN-2 as a glyph — NEVER a fabricated ●).
+// SPIKE——创建者的 4 字形状态词汇作为已存在投影状态之上的渲染映射
+//（架构绑定 2，R7 清洁，基于 @12862302）。4 个桶折叠更丰富的已存在状态；
+// 此处不发明状态，无值的投影渲染诚实未知 ○
+//（PIN-2 作为字形——绝不伪造 ●）。
 //
-//   ● active/done   = startupStatus ready + session running; S19 MR3 splits
-//                     the COLOR by activity (actActive vs actIdle roles) —
-//                     the glyph stays one honest ●
-//   ◐ partial/%     = the existing amber-attention family: startupStatus/
-//                     lifecycle attention_required, needs_input, heldReason
-//                     (ps-projection.ts seatNeedsAttention minus `failed`,
-//                     which gets its own glyph). ctx% may overlay.
-//   ○ queued/unknown= the SHIPPED unknown stateGlyph (compose.ts a.idle===null
-//                     → "unknown") + pending/queued/no-session — honest-unknown
-//   ✕ failed        = startupStatus failed / session stopped-failed
+//   ● 活动/完成 = startupStatus ready + 会话运行中；S19 MR3 按活动拆分
+//                 颜色（actActive vs actIdle 角色）——
+//                 字形保持一个诚实 ●
+//   ◐ 部分/%   = 已存在的琥珀待关注族：startupStatus/
+//                 生命周期 attention_required、needs_input、heldReason
+//                （ps-projection.ts seatNeedsAttention 减去 `failed`，
+//                 它有自己的字形）。ctx% 可叠加。
+//   ○ 排队/未知= 已发布未知 stateGlyph（compose.ts a.idle===null
+//                 → "unknown"）+ pending/queued/no-session——诚实未知
+//   ✕ 失败     = startupStatus failed / 会话 stopped-failed
 //
-// Edge kinds → line COLOR (founder refinement: lines, no labels):
-//   delegates_to = accent(teal) · collaborates_with = ok(green) ·
-//   escalates_to = warn(amber); any other served kind renders dim (honest:
-//   the kind string is data — unknown kinds are not forced into a bucket).
+// 边类型 → 线颜色（创建者细化：线，无标签）：
+//   delegates_to = accent(青) · collaborates_with = ok(绿) ·
+//   escalates_to = warn(琥珀)；任何其他服务类型渲染为暗（诚实：
+//   类型字符串是数据——未知类型不强制进入桶）。
 import type { Token } from "../theme.js";
 import type { GraphNodeData } from "./graph-types.js";
 
 export interface StatusGlyph {
   glyph: "●" | "◐" | "○" | "✕";
   token: Token;
-  /** ctx% overlay text ("63%") when the ◐ bucket has a served percentage */
+  /** 当 ◐ 桶有服务百分比时的 ctx% 叠加文本（"63%"） */
   overlay: string | null;
 }
 
@@ -40,23 +39,23 @@ export function statusGlyph(data: GraphNodeData): StatusGlyph {
       overlay: data.contextUsedPercentage != null ? `${Math.round(data.contextUsedPercentage)}%` : null,
     };
   if (data.startupStatus === "ready" && data.status === "running") {
-    // S19 MR3: ACTIVITY splits the ● bucket by color ROLE (glyph honesty
-    // unchanged) — actively-working vs idle are visibly distinct
+    // S19 MR3：活动按颜色角色拆分 ● 桶（字形诚实
+    // 不变）——主动工作 vs 空闲可见区分
     const working = activity === "running" || data.terminalActive === true;
     return { glyph: "●", token: working ? "actActive" : "actIdle", overlay: null };
   }
-  // everything else — pending, queued, detached, no session — is the honest
-  // ○ bucket, rendered wherever the projection has no value (role: detached)
+  // 其他一切——pending、queued、detached、无会话——是诚实的
+  // ○ 桶，在投影无值处渲染（角色：detached）
   return { glyph: "○", token: "actDetached", overlay: null };
 }
 
-/** S19 round-4 (guard finding 4): the EXPLORER row's status glyph+role,
- * folded from the SERVED AgentRow status vocabulary (hydrate.toAgentRow
- * derives it verbatim from the projection: failed / attention_required /
- * needs_input / active / idle / sessionStatus-or-"unknown"; the demo fixture
- * additionally uses the legacy "needs-attention" spelling). Same honest
- * 4-glyph vocabulary + activity roles as the topology statusGlyph — anything
- * not positively known renders ○, never a fabricated ●. */
+/** S19 round-4（防护发现 4）：资源管理器行的状态字形+角色，
+ *  从服务端 AgentRow 状态词汇折叠（hydrate.toAgentRow
+ *  从投影逐字派生：failed / attention_required /
+ *  needs_input / active / idle / sessionStatus-or-"unknown"；演示夹具
+ *  额外使用遗留 "needs-attention" 拼写）。相同诚实
+ *  4 字形词汇 + 活动角色如拓扑 statusGlyph——任何
+ *  不正已知的渲染 ○，绝不伪造 ●。 */
 export function rowStatusGlyph(agent: { status: string }): Pick<StatusGlyph, "glyph" | "token"> {
   const s = agent.status;
   if (s === "failed") return { glyph: "✕", token: "error" };

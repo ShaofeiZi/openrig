@@ -66,7 +66,7 @@ describe("authValidate (OPR.0.4.1.29 — mode + parseability, never echo content
   });
 
   it("reports malformed_json WITHOUT echoing the file content in the result or any error", () => {
-    // Malformed JSON whose bytes include the sentinel — a JSON.parse error message could echo it.
+    // 字节含 sentinel 的畸形 JSON——JSON.parse 错误消息可能回显它。
     writeProfile("bad", `{ bad json ${SENTINEL}`);
     const r = authValidate(paths, "bad");
     expect(r).toEqual({ ok: false, reason: "malformed_json" });

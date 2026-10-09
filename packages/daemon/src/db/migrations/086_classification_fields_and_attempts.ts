@@ -1,27 +1,21 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * 0.6.0 S02 P1: classification fields, result binding, and the attempt ledger.
+ * 0.6.0 S02 P1：分类字段、结果绑定和尝试台账。
  *
- * project_classifications (028) gains:
- * - four nullable label fields: area, scope_ref, duplicate_of_stream_item_id,
- *   needs_human (0/1; NULL = unknown, never false)
- * - result binding: lease_id plus the classifier, taxonomy and candidate-set
- *   versions the label was produced under
- * Rows written before 086 keep NULL in every new column; first-write-wins (the
- * UNIQUE stream_item_id) is unchanged.
+ * project_classifications（028）新增：
+ * - 四个可空标签字段：area、scope_ref、duplicate_of_stream_item_id、needs_human
+ *   （0/1；NULL = 未知，绝不表示 false）
+ * - 结果绑定：lease_id，以及生成标签时使用的 classifier、taxonomy 和 candidate-set 版本
+ * 086 之前写入的行在所有新列中保持 NULL；首次写入胜出（UNIQUE stream_item_id）保持不变。
  *
- * classification_attempts is the durable ledger for work that must NOT land in
- * the immutable classification row: abstentions, errors and in-flight attempts.
- * Identity is (stream_item_id, classifier_version, taxonomy_version,
- * evidence_epoch). An abstention is terminal only for that identity; a changed
- * version or evidence epoch is a new identity and makes the item eligible
- * again. Errors and abandoned in-flight attempts retry within a finite budget,
- * then end `exhausted`.
+ * classification_attempts 是不应写入不可变 classification 行的工作的持久台账：弃权、错误和
+ * 在途尝试。身份为 (stream_item_id, classifier_version, taxonomy_version, evidence_epoch)。
+ * 弃权只对该身份是终态；版本或 evidence epoch 变化即形成新身份，使条目重新符合条件。错误和被
+ * 放弃的在途尝试会在有限预算内重试，随后以 `exhausted` 结束。
  *
- * execution_id fences each execution: every begin (first try, timeout reissue
- * or error retry) mints a new one, and only the current execution_id may finish
- * the attempt. A renewable lease never proves an older execution is dead.
+ * execution_id 隔离每次执行：每次 begin（首次尝试、超时重发或错误重试）都会铸造新值，只有当前
+ * execution_id 可以完成尝试。可续租租约永远不能证明旧执行已死亡。
  */
 export const classificationFieldsAndAttemptsSchema: Migration = {
   name: "086_classification_fields_and_attempts.sql",

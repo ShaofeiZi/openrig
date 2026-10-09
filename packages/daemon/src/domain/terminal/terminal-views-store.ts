@@ -1,37 +1,33 @@
-// OPR.0.4.6.02 C2 — the terminal-views store.
+// OPR.0.4.6.02 C2 —— 终端视图存储。
 //
-// SAVED views persist to `terminal-views.yaml` at the OPENRIG_HOME root
-// (VM-isolatable via OPENRIG_HOME). They are write-once/read-at-launch: the
-// daemon reads them at launch and the operator's saved layouts survive
-// restarts. Each saved member carries a STRUCTURED `host` field (a host id,
-// never a `member@rig@host` string — MH BR-1).
+// SAVED 视图持久化在 OPENRIG_HOME 根目录的 `terminal-views.yaml` 中（可通过
+// OPENRIG_HOME 实现 VM 隔离）。它们写入后在启动时读取：后台服务启动时加载，
+// 操作员保存的布局可跨重启保留。每个已保存成员都携带结构化 `host` 字段
+// （主机 ID，绝不是 `member@rig@host` 字符串——MH BR-1）。
 //
-// DERIVED views (per-rig / per-mission / per-slice) are computed LIVE from the
-// live seat inventory + the review agents band and are NEVER written to disk
-// (A3). That invariant is structural, not conventional: this module exposes
-// `deriveViewMembers` (a pure mapper) and a `save()` that only ever accepts a
-// `SavedView` — there is no code path that persists a derived view.
+// DERIVED 视图（按工作组/任务目标/切片）由实时席位清单和审查智能体带即时计算，
+// 绝不写入磁盘（A3）。该不变量由结构保证，而非仅靠约定：本模块暴露纯映射器
+// `deriveViewMembers`，而 `save()` 只接受 `SavedView`，不存在持久化派生视图的路径。
 //
-// Writes are atomic (tmp + rename on the same filesystem) and byte-stable:
-// serialization uses a fixed field order and OMITS absent optionals (never
-// null), so a read→save round-trip of the same logical content is idempotent.
+// 写入是原子的（同一文件系统内临时文件加 rename）且字节稳定：序列化使用固定字段
+// 顺序，并省略缺失的可选字段（绝不写 null），因此同一逻辑内容的读取→保存往返幂等。
 
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { getDefaultOpenRigPath } from "../../openrig-compat.js";
 import type { ViewMemberInput } from "./view-composer.js";
 
-/** One persisted member of a saved view. Optionals are omitted-when-absent on write. */
+  /** 已保存视图中的一个持久化成员；写入时省略缺失的可选字段。 */
 export interface SavedViewMember {
-  /** Canonical session name of the seat. */
+  /** 席位的规范会话名。 */
   seat: string;
-  /** Pane label — `<agent> · <slice>`. */
+  /** Pane 标签——`<agent> · <slice>`。 */
   label?: string;
-  /** Structured host id (never a `member@rig@host` string). Omitted for a local seat. */
+  /** 结构化主机 ID（绝不是 `member@rig@host` 字符串）；本地席位省略。 */
   host?: string;
-  /** The tmux session to attach to. */
+  /** 要附加的 tmux 会话。 */
   tmuxSession?: string;
-  /** View-only / read-only attach. Omitted (defaults false) when not read-only. */
+  /** 仅查看/只读附加；非只读时省略（默认为 false）。 */
   readOnly?: boolean;
 }
 
@@ -48,7 +44,7 @@ export interface TerminalViewsFile {
 
 const EMPTY_FILE: TerminalViewsFile = { version: 1, views: [] };
 
-/** Build a member object in fixed key order, omitting absent optionals (never null). */
+  /** 按固定键顺序构造成员对象，省略缺失的可选字段（绝不写 null）。 */
 function normalizeMember(m: SavedViewMember): SavedViewMember {
   const out: SavedViewMember = { seat: m.seat };
   if (m.label != null && m.label !== "") out.label = m.label;
@@ -62,7 +58,7 @@ function normalizeView(v: SavedView): SavedView {
   return { id: v.id, name: v.name, members: v.members.map(normalizeMember) };
 }
 
-/** Canonical byte-stable serialization of the whole file (fixed order, omit-when-absent). */
+  /** 整个文件的规范、字节稳定序列化（固定顺序，缺失即省略）。 */
 function serialize(file: TerminalViewsFile): string {
   const normalized: TerminalViewsFile = {
     version: 1,
@@ -74,14 +70,14 @@ function serialize(file: TerminalViewsFile): string {
 export class TerminalViewsStore {
   constructor(private readonly path: string = getDefaultOpenRigPath("terminal-views.yaml")) {}
 
-  /** The resolved on-disk path (useful for tests / diagnostics). */
+  /** 解析后的磁盘路径（供测试/诊断使用）。 */
   getPath(): string {
     return this.path;
   }
 
   /**
-   * Read-at-launch. An absent file yields the empty set. A malformed file
-   * throws (honest — never a silent reset that would discard operator layouts).
+   * 启动时读取。文件缺失时返回空集合；格式错误时抛出异常（如实报告，绝不静默
+   * 重置并丢弃操作员布局）。
    */
   read(): TerminalViewsFile {
     if (!existsSync(this.path)) return { version: 1, views: [] };
@@ -89,12 +85,12 @@ export class TerminalViewsStore {
     const parsed = parseYaml(raw) as unknown;
     if (parsed == null) return { version: 1, views: [] };
     if (typeof parsed !== "object") {
-      throw new Error(`terminal views file at ${this.path} must be a YAML object with a 'views' array`);
+      throw new Error(`${this.path} 处的终端视图文件必须是包含“views”数组的 YAML 对象`);
     }
     const obj = parsed as Record<string, unknown>;
     const views = obj["views"];
     if (!Array.isArray(views)) {
-      throw new Error(`terminal views file at ${this.path}: 'views' must be an array`);
+      throw new Error(`${this.path} 处的终端视图文件：“views”必须是数组`);
     }
     return { version: 1, views: views as SavedView[] };
   }
@@ -108,9 +104,8 @@ export class TerminalViewsStore {
   }
 
   /**
-   * Persist a SAVED view (upsert by id). Atomic (tmp + rename) and byte-stable.
-   * Returns the resulting file. Only accepts `SavedView` — a derived view can
-   * never reach disk through this path (A3).
+   * 持久化 SAVED 视图（按 ID upsert）。写入原子且字节稳定，并返回最终文件。
+   * 只接受 `SavedView`，派生视图绝不可能通过此路径写入磁盘（A3）。
    */
   save(view: SavedView): TerminalViewsFile {
     const current = this.read();
@@ -123,7 +118,7 @@ export class TerminalViewsStore {
     return { version: 1, views: file.views.map(normalizeView) };
   }
 
-  /** Remove a saved view by id (idempotent). Atomic. */
+  /** 按 ID 删除已保存视图（幂等），操作为原子写入。 */
   remove(id: string): TerminalViewsFile {
     const current = this.read();
     const file: TerminalViewsFile = {
@@ -141,39 +136,37 @@ export class TerminalViewsStore {
   }
 }
 
-// --- Derived views (computed LIVE, never persisted — A3) ---
+// --- 派生视图（实时计算，绝不持久化——A3）---
 
 /**
- * The minimal structural shape of a live seat row the derived-view mapper
- * needs. Deliberately a subset (not an import of `NodeInventoryEntry`) so this
- * module stays free of the inventory's transitive deps and is trivially
- * testable. Field names match `NodeInventoryEntry`.
+ * 派生视图映射器所需的实时席位记录最小结构。刻意使用子集而不导入
+ * `NodeInventoryEntry`，使本模块不依赖清单的传递依赖且易于测试。字段名与
+ * `NodeInventoryEntry` 一致。
  */
 export interface LiveSeatRow {
   canonicalSessionName: string | null;
-  /** "tmux" for tmux-backed seats; other kinds have no attachable pane. */
+  /** tmux 承载的席位为 "tmux"；其他类型没有可附加 pane。 */
   attachmentType: string | null;
-  /** The tmux session name (canonical session name for tmux-backed seats). */
+  /** tmux 会话名（tmux 承载席位的规范会话名）。 */
   tmuxSession?: string | null;
   rigName?: string | null;
   logicalId?: string | null;
 }
 
-/** Options controlling how a derived view labels/scopes its members. */
+/** 控制派生视图如何标注成员及限定其范围的选项。 */
 export interface DeriveOptions {
-  /** Structured host id to stamp on every derived member (remote scope); omit for local. */
+  /** 写入每个派生成员的结构化主机 ID（远程范围）；本地时省略。 */
   host?: string | null;
-  /** When true, members attach read-only (`-r`) — cross-rig / view-only derived scopes. */
+  /** 为 true 时，成员以只读方式（`-r`）附加，用于跨工作组/仅查看的派生范围。 */
   readOnly?: boolean;
-  /** Slice/mission label suffix for the pane label (`<agent> · <slice>`); optional. */
+  /** pane 标签的切片/任务目标后缀（`<agent> · <slice>`），可选。 */
   labelSuffix?: string;
 }
 
 /**
- * Map a live seat inventory into composer-ready members. PURE and IN-MEMORY —
- * the result is handed straight to `composeView`; it is NEVER written to the
- * saved-views file. Non-tmux / session-less rows are dropped from the derived
- * set (a derived view only tiles attachable seats; saved views name absents).
+ * 将实时席位清单映射为可供 composer 使用的成员。该操作纯净且只在内存中执行；
+ * 结果直接交给 `composeView`，绝不写入 saved-views 文件。非 tmux 或无会话记录
+ * 会从派生集合中移除（派生视图只平铺可附加席位；已保存视图可以指向缺席项）。
  */
 export function deriveViewMembers(
   rows: LiveSeatRow[],
@@ -193,9 +186,8 @@ export function deriveViewMembers(
       tmuxSession,
       host: opts.host ?? null,
       readOnly: opts.readOnly === true,
-      // Derived views are live: presence in the inventory IS the liveness
-      // signal for the derived set; a stricter has-session probe layers on at
-      // compose time for local members if the caller supplies one.
+  // 派生视图是实时的：出现在清单中本身就是派生集合的存活信号；若调用方提供，
+  // 本地成员在 compose 时可叠加更严格的会话存在性探测。
       alive: true,
     });
   }

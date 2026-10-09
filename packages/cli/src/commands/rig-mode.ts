@@ -1,26 +1,24 @@
-// Slice 09 (OPR.0.3.2.9) — `rig mode` CLI (renamed from `rig policy`, 0.5.2 B7 — clean rename, zero adoption; `rig policy` is now the permission-policy verb): operator-context-mode
-// surface. Pairs with the daemon's typed-primitive store.
+// Slice 09（OPR.0.3.2.9）——`rig mode` CLI（从 `rig policy` 改名，0.5.2 B7——干净改名，零采用；
+// `rig policy` 现在是权限策略动词）：操作人员上下文模式接口。与后台服务的类型化原语存储配对。
 //
-// Subcommands:
-//   rig mode set <mode> [--scope ...] [--qualifier ...] [--<field> ...]
+// 子命令：
+//   zrig mode set <mode> [--scope ...] [--qualifier ...] [--<field> ...]
 //                         [--evidence ...] [--confirm]
-//                         → restate-and-confirm; PUT only when --confirm
-//   rig mode show       → list all bindings (defaults to JSON-when-piped)
-//   rig mode effective  → resolve effective for a read context
-//   rig mode cite       → emit the citation line per convention §Component 5
-//   rig mode unset <scope> [qualifier]
-//                         → DELETE one binding (operator-only)
-//   rig mode defaults   → recommended 8×7 + per-mode scope + stale rule
+//                         → 复述并确认；仅在 --confirm 时 PUT
+//   rig mode show       → 列出所有绑定（管道时默认 JSON）
+//   rig mode effective  → 解析读上下文的有效模式
+//   rig mode cite       → 按 convention §Component 5 输出引用行
+//   zrig mode unset <scope> [qualifier]
+//                         → DELETE 一条绑定（仅操作人员）
+//   rig mode defaults   → 推荐的 8×7 + 每模式范围 + 陈旧规则
 //
-// HG-4 / HG-7 anchored here:
-//   - `set` never silently applies. Without `--confirm` it echoes the
-//     proposed binding (mode + scope + key settings) and exits with
-//     `exit 2` so scripts cannot accidentally apply. `--confirm` is the
-//     explicit operator action.
-//   - Mode invocation: bare word OR `mode:<mode>` prefix; both normalize
-//     via disambiguateModeInvocation().
-//   - Citation format: short-prose per convention §Component 5 +
-//     §Citation Rules.
+// HG-4 / HG-7 锚定在这里：
+//   - `set` 绝不静默应用。没有 `--confirm` 时它回显提议的绑定
+//    （模式 + 范围 + 关键设置）并以 `exit 2` 退出，脚本无法意外应用。
+//     `--confirm` 是显式的操作人员动作。
+//   - 模式调用：裸词或 `mode:<mode>` 前缀；两者都通过
+//     disambiguateModeInvocation() 归一化。
+//   - 引用格式：按 convention §Component 5 + §Citation Rules 的短散文。
 
 import { Command } from "commander";
 import { DaemonClient } from "../client.js";
@@ -31,20 +29,17 @@ import type { OperatingPosture } from "@openrig/daemon/health-projection";
 
 export interface RigModeDeps extends StatusDeps {}
 
-// Mirror of daemon enums + structure. We keep these inline so the CLI
-// doesn't grow a build-time dep on the daemon package; the validator
-// at the daemon edge is the source of truth, and the CLI sends the
-// record through unchanged.
+// 镜像后台服务枚举 + 结构。我们内联保留这些，避免 CLI 在构建期依赖
+// daemon 包；后台服务边界的校验器是事实来源，CLI 原样把记录传过去。
 const MODES = ["sleep", "desk", "mobile", "away", "focus", "debug", "human-led", "delegated"] as const;
 type Mode = (typeof MODES)[number];
 
 const SCOPES = ["global_host", "rig", "project", "mission", "workstream", "qitem"] as const;
 type Scope = (typeof SCOPES)[number];
 
-// Convention §Component 4 — bare-word disambiguation. A bare reserved
-// mode word, or `mode:<word>`, becomes an invocation; embedded-in-
-// sentence does not (the latter is a CLI input error here since the
-// CLI takes a single-positional <mode> argument).
+// Convention §Component 4——裸词消歧。一个裸的保留模式词，或 `mode:<word>`，
+// 成为一次调用；嵌在句子里的不算（后者在这里是 CLI 输入错误，因为 CLI
+// 只接受一个位置参数 <mode>）。
 function disambiguateModeInvocation(raw: string): Mode | null {
   const trimmed = raw.trim();
   if (trimmed.length === 0) return null;
@@ -108,29 +103,28 @@ function emitRecord(label: string, record: Record<string, string>): void {
 
 function emitOperatingPosture(value: OperatingPosture | undefined): void {
   if (!value) {
-    console.log("Operating posture: unknown (not reported by this daemon).");
+    console.log("运行姿态：未知（本后台服务未报告）。");
     return;
   }
-  console.log(`Operating posture: ${value.posture} (source: ${value.source}${value.binding ? ", " + value.binding.id : ""})`);
+  console.log(`运行姿态：${value.posture}（来源：${value.source}${value.binding ? "，" + value.binding.id : ""}）`);
   if (value.context) {
     const { phase, sources: _sources, ...scope } = value.context;
-    console.log(`  Scope: ${JSON.stringify(scope)}`);
-    console.log(`  Phase: ${phase.value ?? "unknown"} (source: ${phase.source ?? "unavailable"})`);
+    console.log(`  范围：${JSON.stringify(scope)}`);
+    console.log(`  阶段：${phase.value ?? "未知"}（来源：${phase.source ?? "不可用"}）`);
   }
-  console.log(`  ${value.reason} Recorded preference grants no execution authority.`);
+  console.log(`  ${value.reason} 记录的偏好不授予任何执行权限。`);
 }
 
 /**
- * Mirror of the daemon route's parseScopeAndQualifier semantics on the
- * CLI side. The CLI is the operator's authoring surface; the convention's
- * scope rule applies at invocation, NOT only at raw HTTP URL parsing.
+ * CLI 侧镜像后台服务路由 parseScopeAndQualifier 的语义。
+ * CLI 是操作人员的创作面；convention 的范围规则在调用时生效，
+ * 而不只在原始 HTTP URL 解析时。
  *
- * Reject:
- *   - explicit qualifier with global_host (BLOCKING re-verify finding from
- *     guard qitem-20260518044650): operators who type
- *     `--scope global_host --qualifier <id>` get an error and the daemon
- *     is never contacted. The CLI does NOT silently drop the qualifier.
- *   - missing qualifier for any non-global scope.
+ * 拒绝：
+ *   - global_host 带显式 qualifier（guard qitem-20260518044650 的阻塞性
+ *     复核结论）：输入 `--scope global_host --qualifier <id>` 的操作人员
+ *     会收到错误，绝不联系后台服务。CLI 不静默丢弃 qualifier。
+ *   - 任何非 global 范围缺 qualifier。
  */
 type NormalizedScope = { ok: true; qualifier: string | null } | { ok: false; message: string };
 function normalizeScopeQualifier(scope: Scope, explicitQualifier: string | undefined): NormalizedScope {
@@ -138,7 +132,7 @@ function normalizeScopeQualifier(scope: Scope, explicitQualifier: string | undef
     if (explicitQualifier !== undefined && explicitQualifier !== "") {
       return {
         ok: false,
-        message: `Global-host bindings cannot carry a qualifier (got "${explicitQualifier}"). Either drop --qualifier OR change --scope to rig / workstream / qitem.`,
+        message: `global_host 绑定不能带 qualifier（收到 "${explicitQualifier}"）。要么去掉 --qualifier，要么把 --scope 改成 rig / workstream / qitem。`,
       };
     }
     return { ok: true, qualifier: null };
@@ -146,7 +140,7 @@ function normalizeScopeQualifier(scope: Scope, explicitQualifier: string | undef
   if (explicitQualifier === undefined || explicitQualifier === "") {
     return {
       ok: false,
-      message: `Scope ${scope} requires a qualifier (rigId / workstreamId / qitemId). Pass --qualifier <id>.`,
+      message: `范围 ${scope} 需要 qualifier（rigId / workstreamId / qitemId）。请传 --qualifier <id>。`,
     };
   }
   return { ok: true, qualifier: explicitQualifier };
@@ -155,12 +149,12 @@ function normalizeScopeQualifier(scope: Scope, explicitQualifier: string | undef
 function formatCitation(b: BindingResponse["binding"]): string {
   const qualifierPart = b.qualifier ? `:${b.qualifier}` : "";
   const scope = b.record.scope as Scope;
-  return `Operating in \`${b.mode}\` mode at \`${scope}${qualifierPart}\` per operator (set_at ${b.setAt})`;
+  return `按操作人员在 \`${scope}${qualifierPart}\` 以 \`${b.mode}\` 模式运行（set_at ${b.setAt}）`;
 }
 
 export function rigModeCommand(depsOverride?: RigModeDeps): Command {
   const cmd = new Command("mode").description(
-    "Inspect and explicitly set scoped operating posture (human-led/delegated) and operator-context modes.",
+    "查看并显式设置带范围的运行姿态（human-led/delegated）与操作人员上下文模式。",
   );
 
   const getDeps = (): RigModeDeps =>
@@ -173,22 +167,22 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
   cmd
     .command("set <mode>")
     .description(
-      "Propose a mode binding. Without --confirm, restates the proposed binding and exits 2 (no daemon write). With --confirm, sets it.",
+      "提议一条模式绑定。没有 --confirm 时，复述提议的绑定并以 2 退出（不写后台服务）。带 --confirm 时才设置。",
     )
-    .option("--scope <scope>", `Scope: ${SCOPES.join(" | ")} (default: per-mode recommendation)`)
-    .option("--qualifier <id>", "Rig/project/qitem ID; mission: project/mission; workstream: project/mission/slice-id; omit for global_host")
+    .option("--scope <scope>", `范围：${SCOPES.join(" | ")}（默认：按模式推荐）`)
+    .option("--qualifier <id>", "rig/project/qitem ID；mission：project/mission；workstream：project/mission/slice-id；global_host 省略")
     .option("--autonomy-scope <v>")
     .option("--heartbeat-cadence <v>")
     .option("--inspection-depth <v>")
     .option("--update-detail <v>")
     .option("--escalation-threshold <v>")
     .option("--concurrency-limit <v>")
-    .option("--permission-prompt-posture <v>", "One of: normal | batch_for_human | do_not_prompt_unless_blocked (auto_accept is FORBIDDEN by convention).")
+    .option("--permission-prompt-posture <v>", "取值之一：normal | batch_for_human | do_not_prompt_unless_blocked（按 convention 禁止 auto_accept）。")
     .option("--expiry-or-stale-rule <v>")
-    .option("--evidence <citation>", "Free-text citation (operator message id, file pointer, chatroom topic, etc.).")
-    .option("--confirm", "Confirm the proposed binding and apply it. Without this flag, set is restate-only.")
-    .option("--bearer <token>", "Operator bearer token (or set OPENRIG_AUTH_BEARER_TOKEN env).")
-    .option("--json", "JSON output for agents")
+    .option("--evidence <citation>", "自由文本引用（操作人员消息 id、文件指针、chatroom 话题等）。")
+    .option("--confirm", "确认提议的绑定并应用。不带此标志时，set 只复述。")
+    .option("--bearer <token>", "操作人员 bearer token（或设置 OPENRIG_AUTH_BEARER_TOKEN 环境变量）。")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (
       modeArg: string,
       opts: {
@@ -210,22 +204,20 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
     ) => {
       const mode = disambiguateModeInvocation(modeArg);
       if (!mode) {
-        console.error(`Unknown mode '${modeArg}'. Allowed: ${MODES.join(", ")} (or 'mode:<name>' prefix).`);
+        console.error(`未知模式 '${modeArg}'。允许：${MODES.join(", ")}（或 'mode:<name>' 前缀）。`);
         process.exitCode = 1;
         return;
       }
 
-      // BLOCKING re-verify-2 (qitem-20260518045300): when --scope is
-      // explicit, validate scope + qualifier LOCALLY before touching
-      // the daemon. Otherwise an invalid operator invocation
-      // (e.g. `--scope global_host --qualifier X`) surfaces as
-      // "Daemon not running" when the daemon is down, instead of the
-      // proper local input error. Convention's scope rule applies at
-      // operator invocation, not at daemon HTTP parsing.
+      // 阻塞性 re-verify-2（qitem-20260518045300）：当 --scope 显式给出时，
+      // 在碰后台服务之前本地校验 scope + qualifier。否则一个非法的操作人员
+      // 调用（例如 `--scope global_host --qualifier X`）会在后台服务宕机时
+      // 表面化为 "Daemon not running"，而不是正确的本地输入错误。
+      // Convention 的范围规则在操作人员调用时生效，不在后台服务 HTTP 解析时。
       let explicitScope: Scope | null = null;
       if (opts.scope !== undefined) {
         if (!(SCOPES as readonly string[]).includes(opts.scope)) {
-          console.error(`Unknown scope '${opts.scope}'. Allowed: ${SCOPES.join(", ")}.`);
+          console.error(`未知范围 '${opts.scope}'。允许：${SCOPES.join(", ")}。`);
           process.exitCode = 1;
           return;
         }
@@ -252,18 +244,15 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
         }
         const defaults = defaultsRes.data;
         const scope = explicitScope ?? defaults.recommendedDefaultScope[mode];
-        // Defensive — the defaults map is from the daemon, so its scope
-        // values are trusted; keep the assertion shape lean.
+        // 防御——defaults 映射来自后台服务，其 scope 值可信；保持断言形状精简。
         if (!(SCOPES as readonly string[]).includes(scope)) {
-          console.error(`Unknown scope '${scope}'. Allowed: ${SCOPES.join(", ")}.`);
+          console.error(`未知范围 '${scope}'。允许：${SCOPES.join(", ")}。`);
           process.exitCode = 1;
           return;
         }
-        // Re-run normalization for the implicit-default-scope case.
-        // (Explicit scope was already preflighted above; this branch is
-        // a no-op for explicit-scope inputs but is needed when the
-        // default scope is e.g. `qitem`/`workstream` and the operator
-        // forgot --qualifier.)
+        // 对隐式默认 scope 情况再跑一次归一化。
+        //（显式 scope 已在上面预检过；这个分支对显式 scope 输入是 no-op，
+        // 但当默认 scope 是 `qitem`/`workstream` 而操作人员忘了 --qualifier 时需要。）
         const normalized = normalizeScopeQualifier(scope, opts.qualifier);
         if (!normalized.ok) {
           if (opts.json) {
@@ -276,9 +265,8 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
         }
         const qualifier = normalized.qualifier;
         const perMode = defaults.recommendedModeDefaults[mode];
-        // Component 3 — exactly the 10 settings fields. `mode` is the
-        // binding's identity (Component 2) and lives at the top level
-        // of the PUT body, NOT inside the record.
+        // Component 3——恰好这 10 个设置字段。`mode` 是绑定的身份
+        //（Component 2），位于 PUT body 顶层，不在 record 内。
         const record = {
           autonomy_scope: opts.autonomyScope ?? perMode.autonomy_scope,
           heartbeat_cadence: opts.heartbeatCadence ?? perMode.heartbeat_cadence,
@@ -293,15 +281,15 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
         };
 
         if (!opts.confirm) {
-          // Restate-and-confirm (HG-7). No daemon write.
+          // 复述并确认（HG-7）。不写后台服务。
           if (opts.json) {
             console.log(JSON.stringify({ ok: false, proposed: { mode, scope, qualifier, record }, confirm_required: true }, null, 2));
           } else {
-            console.log(`Proposed binding (restate-and-confirm — NOT applied):`);
-            console.log(`  mode:      ${mode}`);
-            console.log(`  scope:     ${scope}${qualifier ? ` (${qualifier})` : ""}`);
+            console.log(`提议的绑定（复述并确认——未应用）：`);
+            console.log(`  模式：    ${mode}`);
+            console.log(`  范围：    ${scope}${qualifier ? `（${qualifier}）` : ""}`);
             emitRecord(`  record:`, record);
-            console.log(`\nRe-run with --confirm to apply.`);
+            console.log(`\n带 --confirm 重跑以应用。`);
           }
           process.exitCode = 2;
           return;
@@ -318,10 +306,10 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
         );
         if (res.status === 401) {
           if (opts.json) {
-            console.log(JSON.stringify({ ok: false, error: "unauthorized", hint: "Daemon requires operator bearer. Pass --bearer <token> or set OPENRIG_AUTH_BEARER_TOKEN." }, null, 2));
+            console.log(JSON.stringify({ ok: false, error: "unauthorized", hint: "后台服务要求操作人员 bearer。请传 --bearer <token> 或设置 OPENRIG_AUTH_BEARER_TOKEN。" }, null, 2));
           } else {
-            console.error("Unauthorized. Daemon requires an operator bearer token.");
-            console.error("Pass --bearer <token> or export OPENRIG_AUTH_BEARER_TOKEN before re-running.");
+            console.error("未授权。后台服务要求操作人员 bearer token。");
+            console.error("请传 --bearer <token>，或在重跑前 export OPENRIG_AUTH_BEARER_TOKEN。");
           }
           process.exitCode = 1;
           return;
@@ -330,7 +318,7 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
           if (opts.json) {
             console.log(JSON.stringify({ ok: false, ...(res.data as object) }, null, 2));
           } else {
-            console.error(`Error setting binding (HTTP ${res.status}):`);
+            console.error(`设置绑定出错（HTTP ${res.status}）：`);
             console.error(JSON.stringify(res.data, null, 2));
           }
           process.exitCode = 1;
@@ -340,11 +328,11 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
         if (opts.json) {
           console.log(JSON.stringify({ ok: true, binding: body.binding }, null, 2));
         } else {
-          console.log(`Set: ${body.binding.id}`);
-          console.log(`  mode:    ${body.binding.mode}`);
+          console.log(`已设置：${body.binding.id}`);
+          console.log(`  模式：    ${body.binding.mode}`);
           emitRecord(`  record:`, body.binding.record);
-          console.log(`  set_by:  ${body.binding.setBy}`);
-          console.log(`  set_at:  ${body.binding.setAt}`);
+          console.log(`  设置者：  ${body.binding.setBy}`);
+          console.log(`  设置时间：${body.binding.setAt}`);
           console.log(`\n${formatCitation(body.binding)}`);
         }
       });
@@ -353,8 +341,8 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
   // -- show --------------------------------------------------------------
   cmd
     .command("show")
-    .description("List all operator-context-mode bindings.")
-    .option("--json", "JSON output for agents")
+    .description("列出所有操作人员上下文模式绑定。")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: { json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -369,11 +357,11 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
           return;
         }
         if (res.data.bindings.length === 0) {
-          console.log("No operator-context-mode bindings set.");
+          console.log("未设置任何操作人员上下文模式绑定。");
           return;
         }
         for (const b of res.data.bindings) {
-          console.log(`${b.id}  [${b.mode}]  set_at=${b.setAt}`);
+          console.log(`${b.id}  [${b.mode}]  设置于=${b.setAt}`);
         }
       });
     });
@@ -381,13 +369,13 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
   // -- effective ---------------------------------------------------------
   cmd
     .command("effective")
-    .description("Inspect effective operating posture, scope, phase and source. Resolved unset scopes default to human-led; unreadable or ambiguous identity stays unknown.")
+    .description("查看有效运行姿态、范围、阶段与来源。未设置范围解析为默认 human-led；不可读或有歧义的身份保持未知。")
     .option("--rig <id>")
     .option("--project <id>")
     .option("--mission <id>")
     .option("--workstream <id>")
     .option("--qitem <id>")
-    .option("--json", "JSON output for agents")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: { rig?: string; project?: string; mission?: string; workstream?: string; qitem?: string; json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -410,21 +398,21 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
         }
         emitOperatingPosture(res.data.operatingPosture);
         if (res.data.posture === "unknown_posture" || !res.data.effective) {
-          console.log("Operator-context mode: unset (legacy unknown_posture).");
+          console.log("操作人员上下文模式：未设置（legacy unknown_posture）。");
           return;
         }
         const b = res.data.effective.binding;
-        console.log(`Effective: ${b.mode} (resolved scope: ${res.data.effective.resolvedScope})`);
+        console.log(`有效模式：${b.mode}（解析范围：${res.data.effective.resolvedScope}）`);
         emitRecord(`  record:`, b.record);
-        console.log(`  set_by:  ${b.setBy}`);
-        console.log(`  set_at:  ${b.setAt}`);
+        console.log(`  设置者：  ${b.setBy}`);
+        console.log(`  设置时间：${b.setAt}`);
       });
     });
 
   // -- cite --------------------------------------------------------------
   cmd
     .command("cite")
-    .description("Emit a citation line for the effective mode at a read context. Per convention §Citation Rules.")
+    .description("为读上下文处的有效模式输出一行引用。按 convention §Citation Rules。")
     .option("--rig <id>")
     .option("--project <id>")
     .option("--mission <id>")
@@ -443,7 +431,7 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
         const res = await client.get<EffectiveResponse>(path);
         emitOperatingPosture(res.data.operatingPosture);
         if (res.status >= 400 || !res.data.effective) {
-          console.log("Operating without an explicit operator-context-mode binding (unknown_posture).");
+          console.log("在没有显式操作人员上下文模式绑定的情况下运行（unknown_posture）。");
           return;
         }
         console.log(formatCitation(res.data.effective.binding));
@@ -453,23 +441,23 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
   // -- unset -------------------------------------------------------------
   cmd
     .command("unset <scope> [qualifier]")
-    .description("Delete one binding (operator-only). Scope: global_host | rig | project | mission | workstream | qitem.")
+    .description("删除一条绑定（仅操作人员）。范围：global_host | rig | project | mission | workstream | qitem。")
     .option("--bearer <token>")
-    .option("--json", "JSON output for agents")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (
       scopeArg: string,
       qualifierArg: string | undefined,
       opts: { bearer?: string; json?: boolean },
     ) => {
       if (!(SCOPES as readonly string[]).includes(scopeArg)) {
-        console.error(`Unknown scope '${scopeArg}'. Allowed: ${SCOPES.join(", ")}.`);
+        console.error(`未知范围 '${scopeArg}'。允许：${SCOPES.join(", ")}。`);
         process.exitCode = 1;
         return;
       }
       const scope = scopeArg as Scope;
-      // BLOCKING re-verify (qitem-20260518044650): never silently drop
-      // an explicit operator-supplied qualifier on global_host on unset.
-      // Same hazard class as set; same shared helper.
+      // 阻塞性 re-verify（qitem-20260518044650）：unset 时绝不静默丢弃
+      // 操作人员在 global_host 上显式给的 qualifier。
+      // 与 set 同一类风险，共用同一个 helper。
       const normalized = normalizeScopeQualifier(scope, qualifierArg);
       if (!normalized.ok) {
         if (opts.json) {
@@ -500,7 +488,7 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
         if (opts.json) {
           console.log(JSON.stringify({ ok: true, removed: res.data.removed }, null, 2));
         } else {
-          console.log(res.data.removed ? `Removed ${scope}${qualifier ? `:${qualifier}` : ""}` : "Nothing to remove.");
+          console.log(res.data.removed ? `已移除 ${scope}${qualifier ? `:${qualifier}` : ""}` : "无可移除。");
         }
       });
     });
@@ -508,8 +496,8 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
   // -- defaults ----------------------------------------------------------
   cmd
     .command("defaults")
-    .description("Print the recommended per-mode 8×7 + default-scope + stale rule.")
-    .option("--json", "JSON output for agents")
+    .description("打印推荐的每模式 8×7 + 默认范围 + 陈旧规则。")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: { json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -524,15 +512,15 @@ export function rigModeCommand(depsOverride?: RigModeDeps): Command {
           return;
         }
         for (const mode of MODES) {
-          console.log(`${mode}  (default scope: ${res.data.recommendedDefaultScope[mode]})`);
+          console.log(`${mode}（默认范围：${res.data.recommendedDefaultScope[mode]}）`);
           emitRecord("  ", res.data.recommendedModeDefaults[mode] as unknown as Record<string, string>);
         }
-        console.log(`\ndefault stale rule: ${res.data.defaultStaleRule}`);
+        console.log(`\n默认陈旧规则：${res.data.defaultStaleRule}`);
       });
     });
 
   return cmd;
 }
 
-// Re-export for unit-testability of pure helpers.
+// 为纯 helper 的可单测性而重导出。
 export const __test__ = { disambiguateModeInvocation, formatCitation, normalizeScopeQualifier };

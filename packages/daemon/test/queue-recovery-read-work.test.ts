@@ -7,7 +7,7 @@ import { QueueRepository } from "../src/domain/queue-repository.js";
 import { findQueueRecovery, recoveryTag } from "../src/domain/queue-recovery.js";
 import { queueRecoveryOwnsWake, readWakeLadderBackstop } from "../src/domain/queue-wake-ladder.js";
 
-describe("recovery lookup work and fresh disposition", () => {
+describe("recovery 查询工作与 fresh disposition", () => {
   let db: Database.Database, repo: QueueRepository;
   const at = "2026-09-11T10:00:00.000Z";
   function row(id: string, state = "pending", tags: string | null = "[]", updated = at) {
@@ -20,7 +20,7 @@ describe("recovery lookup work and fresh disposition", () => {
   beforeEach(() => { db = new Database(":memory:"); migrate(db, ALL_MIGRATIONS); repo = new QueueRepository(db, new EventBus(db)); });
   afterEach(() => { vi.restoreAllMocks(); db.close(); });
 
-  it("reads a complete queue row once without a second unused recovery scan for its delivery receipt", () => {
+  it("只读取一次完整 queue 行，不为其 delivery receipt 再做一次无用 recovery 扫描", () => {
     row("source"); row("arbitrary recovery", "blocked", JSON.stringify([recoveryTag("source")]));
     const internal = repo as unknown as { rowToItem: (row: unknown, waiting?: boolean) => unknown };
     const project = internal.rowToItem.bind(repo);
@@ -41,7 +41,7 @@ describe("recovery lookup work and fresh disposition", () => {
     (tag: string) => JSON.stringify([tag]).replace("recovery", "\\u0072ecovery"),
     (tag: string) => JSON.stringify({ member: tag }),
     (tag: string) => JSON.stringify(tag),
-  ])("keeps exact decoded membership and arbitrary escaped identities", (encode) => {
+  ])("保留精确解码的 membership 和任意转义 identity", (encode) => {
     const id = "odd'\"\\\n%_ id"; row(id);
     row("null-tags", "pending", null); row("malformed-tags", "pending", "{");
     row("substring", "pending", JSON.stringify([recoveryTag(id) + "suffix"]));
@@ -51,7 +51,7 @@ describe("recovery lookup work and fresh disposition", () => {
     expect(findQueueRecovery(db, "missing")).toBeNull();
   });
 
-  it("prefers any active recovery, then updated time, then ID; shared membership stays exact", () => {
+  it("依次优先 active recovery、更新时间、ID；共享 membership 保持精确", () => {
     row("source"); row("other");
     const tags = JSON.stringify([recoveryTag("source"), recoveryTag("other")]);
     row("z-terminal", "done", tags, "2026-09-11T12:00:00Z");
@@ -61,7 +61,7 @@ describe("recovery lookup work and fresh disposition", () => {
     expect(findQueueRecovery(db, "other")).toEqual({ qitemId: "a", state: "in-progress" });
   });
 
-  it.each(["transition-id", "transition-time", "failed-attempt"])("invalidates terminal disposition on later %s without caching across reads", (reason) => {
+  it.each(["transition-id", "transition-time", "failed-attempt"])("后续 %s 会使 terminal disposition 失效，且不跨读取缓存", (reason) => {
     row("source"); row("disposition", "done", JSON.stringify([recoveryTag("source")]));
     transition("source", "2026-09-11T09:00:00Z"); transition("disposition");
     expect(findQueueRecovery(db, "source")).toEqual({ qitemId: "disposition", state: "done" });
@@ -81,7 +81,7 @@ describe("recovery lookup work and fresh disposition", () => {
     expect(queueRecoveryOwnsWake(db, repo.getById("source"))).toBe(false);
   });
 
-  it("keeps independent handles fresh and propagates lookup errors through the queue face", () => {
+  it("保持独立 handle 新鲜，并通过 queue 接口传播查询错误", () => {
     row("source"); row("disposition", "pending", JSON.stringify([recoveryTag("source")]));
     const other = new Database(":memory:");
     try { migrate(other, ALL_MIGRATIONS); expect(findQueueRecovery(other, "source")).toBeNull(); } finally { other.close(); }

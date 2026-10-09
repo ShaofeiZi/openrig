@@ -1,0 +1,20 @@
+{
+  "schema": "openrig.tui-src-comment-review-batch/v1",
+  "batch": 2,
+  "captured_at": "2026-10-09T19:05:00+08:00",
+  "depth": "full_comment_javascript_docstring_reviewed",
+  "owner": "s_000cae46uuw",
+  "natural_residual": 0,
+  "files": [
+    {"path": "packages/tui/src/crash-cart/restore-scroll.ts", "status": "reviewed_no_change", "after_sha256": "d29173dce2220d92c99e881b67235b3d308d367358fb3731a6faf3774381a29b", "classification": "0 English residual"},
+    {"path": "packages/tui/src/grammar.ts", "status": "reviewed_no_change", "after_sha256": "aaaf901e07b90b1db41da841885e007d49f25c18870e1efb7f8d5938747423ed", "classification": "0 English residual"},
+    {"path": "packages/tui/src/attention/source-continuity.ts", "status": "reviewed_no_change", "after_sha256": "f354380bf715a7ec0bc2bfef206ade59692e0d42b9700562a4287414e0a93892", "classification": "0 English residual"},
+    {"path": "packages/tui/src/time.ts", "status": "reviewed_no_change", "after_sha256": "3ee5e3b760085a607982934a0198c3872c80b7137cc88d31c3646ad77077a1c4", "classification": "0 English residual"},
+    {"path": "packages/tui/src/motion.ts", "status": "reviewed_no_change", "after_sha256": "f3f5c9b01f8ccf1f176c2ba4e86d0e8cca3fa4176e9092dc2a1a16e592e56762", "classification": "0 English residual"},
+    {"path": "packages/tui/src/crash-cart/one-click-gate.ts", "status": "reviewed_no_change", "after_sha256": "333a227317360da2c92b9c3e89202ccac5f674ea2d1249134ab5b162b224deac", "classification": "0 English residual"},
+    {"path": "packages/tui/src/crash-cart/keys.ts", "status": "reviewed_no_change", "after_sha256": "54bb5619299283a0d80322ec058604b4ee2209b7e8a49f8ac289f85e73fc0218", "classification": "0 English residual"},
+    {"path": "packages/tui/src/crash-cart/restore-input.ts", "status": "reviewed_no_change", "after_sha256": "6807673987ad9f98651edd1b56724aaeabee9bc517343b3efe0f3188e73cc664", "classification": "0 English residual"},
+    {"path": "packages/tui/src/commands/palette.ts", "status": "reviewed_no_change", "after_sha256": "837cd46f976b2fc6bb45ebaa424b2312c935998286fb042ad245fdbdb782d0ae", "classification": "0 English residual"},
+    {"path": "packages/tui/src/crash-cart/triage.ts", "status": "reviewed_no_change", "after_sha256": "c9970424decf20e492427de58d2aff16e802dcf72896e334ee79366d609a2fa9", "classification": "0 English residual"}
+  ]
+}

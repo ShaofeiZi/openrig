@@ -1,22 +1,16 @@
-// OPR.0.4.6.WF1 FR-1: the KEEP-fence regression pins + the facade test.
+// OPR.0.4.6.WF1 FR-1：KEEP-fence 回归固定点 + facade 测试。
 //
-// These are CHARACTERIZATION pins on the shipped transactional-scribe
-// contract (WF-1 PRD §4 FR-1). They must FAIL if any kept guarantee
-// silently regresses:
-//   (a) atomicity  — a failure injected mid-transaction leaves ZERO
-//       partial state (no closed packet without its next qitem, ever);
-//   (b) determinism — identical (spec, instance) inputs yield the
-//       identical routing decision (step, owner, closure shape) on
-//       every replay;
-//   (c) terminal-exit replay — a re-projected handed-off/done/failed
-//       packet is rejected with the structured frontier error;
-//   (d) the WorkflowRuntime facade itself is exercised end-to-end
-//       (validate / instantiate / project / continue) — untested
-//       before this slice.
+// 这些是已发布 transactional-scribe 契约（WF-1 PRD §4 FR-1）的特征固定点。若任何保留保证
+// 静默回归，它们必须失败：
+//   (a) 原子性——事务中途注入失败只留下零个部分状态（绝不出现已关闭 packet 却没有下一 qitem）；
+//   (b) 确定性——相同 (spec, instance) 输入在每次重放中产生相同 routing decision
+//       （step、owner、closure shape）；
+//   (c) 终态 exit 重放——重新投影 handed-off/done/failed packet 时以结构化 frontier 错误拒绝；
+//   (d) 对 WorkflowRuntime facade 本身执行端到端测试（validate / instantiate / project /
+//       continue）——本 slice 之前未测试。
 //
-// The TRUE process-kill leg (SIGKILL mid-projection + restart) is the
-// VM proof `fr1-midtxn-process-kill` (ACK Rev-2); the throw-injection
-// tests here are the unit-level pins, not a replacement for it.
+// 真实进程终止分支（投影中途 SIGKILL + restart）是 VM proof `fr1-midtxn-process-kill`
+//（ACK Rev-2）；此处 throw-injection 测试是单元级固定点，不能替代它。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -35,7 +29,7 @@ import { ALL_MIGRATIONS } from "../src/db/all-migrations.js";
 const SPEC = `workflow:
   id: fr1-three-step
   version: 1
-  objective: FR-1 KEEP-fence pin fixture
+  objective: FR-1 KEEP-fence 固定点 fixture
   entry:
     role: producer
   roles:
@@ -78,14 +72,14 @@ function buildRuntime(db: Database.Database) {
   const bus = new EventBus(db);
   db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
   const queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-  // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-  // close needs a SAME-DB intent store to make its wake durable.
+  // P34：W1 seam 为关闭式失败（MF2）——意图 nudge 的终态 close 需要同数据库 intent store，
+  // 以持久化其唤醒动作。
   queueRepo.attachOutbox(new OutboxHandler(db));
   const runtime = new WorkflowRuntime({ exceptionDial: { hostDefault: () => null, humanFallbackSeat: "human@host" }, db, eventBus: bus, queueRepo });
   return { bus, queueRepo, runtime };
 }
 
-describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => {
+describe("WorkflowRuntime facade + FR-1 KEEP-fence 固定点（OPR.0.4.6.WF1）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -107,9 +101,9 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
     vi.restoreAllMocks();
   });
 
-  // ── (d) facade coverage ────────────────────────────────────────────
+  // ── (d) facade 覆盖 ────────────────────────────────────────────────
 
-  it("facade: validate returns ok for a well-formed spec and reports issues for a broken one", () => {
+  it("facade：validate 对格式正确的 spec 返回 ok，并报告损坏 spec 的问题", () => {
     const good = runtime.validate(specPath);
     expect(good.ok).toBe(true);
 
@@ -123,10 +117,10 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
     expect(bad.issues.some((i) => i.severity === "error")).toBe(true);
   });
 
-  it("facade: instantiate → project → continue drives one instance end-to-end through the facade", async () => {
+  it("facade：instantiate → project → continue 通过 facade 端到端驱动一个 instance", async () => {
     const inst = await runtime.instantiate({
       specPath,
-      rootObjective: "facade walk",
+      rootObjective: "facade 演练",
       createdBySession: "ops@rig",
     });
     expect(inst.instance.status).toBe("active");
@@ -148,12 +142,12 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
     expect(inspected.trail[0]!.nextQitemId).toBe(projected.nextQitemId);
   });
 
-  // ── (a) atomicity pin: mid-transaction failure → ZERO partial state ─
+  // ── (a) 原子性固定点：事务中途失败 → 零个部分状态 ─────────────────
 
-  it("FR-1a atomicity pin: a failure injected AFTER the queue close (trail append) rolls back EVERYTHING — no closed packet without its next qitem, ever", async () => {
+  it("FR-1a 原子性固定点：在 queue close 后（追加 trail 时）注入失败会回滚一切——绝不出现无下一 qitem 的已关闭 packet", async () => {
     const inst = await runtime.instantiate({
       specPath,
-      rootObjective: "atomicity pin",
+      rootObjective: "原子性固定点",
       createdBySession: "ops@rig",
     });
     const before = runtime.instanceStore.getByIdOrThrow(inst.instance.instanceId);
@@ -161,11 +155,9 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
       db.prepare(`SELECT COUNT(*) AS n FROM queue_items`).get() as { n: number }
     ).n;
 
-    // Inject the failure at trail append — AFTER the queue close and the
-    // next-qitem create have already run inside the transaction. If the
-    // scribe were not atomic, the packet would be left closed with a
-    // next qitem minted but no trail/frontier — the exact lost-handoff
-    // corruption FR-1 pins against.
+    // 在追加 trail 时注入失败——此时 queue close 与下一 qitem create 已在事务中运行。若 scribe
+    // 不具原子性，packet 会保持关闭并生成下一 qitem，却没有 trail/frontier——这正是 FR-1
+    // 要固定防止的 lost-handoff 损坏。
     vi.spyOn(runtime.trailLog, "record").mockImplementation(() => {
       throw new Error("injected-mid-txn-failure");
     });
@@ -179,19 +171,19 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
       }),
     ).rejects.toThrow("injected-mid-txn-failure");
 
-    // ZERO partial state:
-    // 1. the current packet is NOT closed;
+    // 零个部分状态：
+    // 1. 当前 packet 未关闭；
     const packet = queueRepo.getById(inst.entryQitemId);
     expect(packet?.state).toBe("pending");
     expect(packet?.closureReason).toBeNull();
-    // 2. NO next qitem was minted;
+    // 2. 未生成下一 qitem；
     const qitemCountAfter = (
       db.prepare(`SELECT COUNT(*) AS n FROM queue_items`).get() as { n: number }
     ).n;
     expect(qitemCountAfter).toBe(qitemCountBefore);
-    // 3. NO trail row landed;
+    // 3. 未写入 trail 行；
     expect(runtime.trailLog.countForInstance(inst.instance.instanceId)).toBe(0);
-    // 4. frontier / step / status / hop count unchanged.
+    // 4. frontier / step / status / hop count 不变。
     const after = runtime.instanceStore.getByIdOrThrow(inst.instance.instanceId);
     expect(after.currentFrontier).toEqual(before.currentFrontier);
     expect(after.currentStepId).toBe(before.currentStepId);
@@ -199,16 +191,14 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
     expect(after.hopCount).toBe(before.hopCount);
   });
 
-  it("FR-1a atomicity pin (crash-shaped, file-backed): rollback state is what an INDEPENDENT connection sees after the failure", async () => {
-    // File-backed variant: after the injected mid-txn failure, a second
-    // better-sqlite3 connection (a fresh process's view of the same
-    // file) must see the pre-transaction state. This is the unit-level
-    // stand-in for the fr1-midtxn-process-kill VM walk.
+  it("FR-1a 原子性固定点（崩溃形态、文件存储）：独立连接在失败后看到回滚状态", async () => {
+    // 文件存储变体：注入事务中途失败后，第二个 better-sqlite3 连接（新进程对同一文件的视图）
+    // 必须看到事务前状态。这是 fr1-midtxn-process-kill VM 演练的单元级替代。
     const fileDb = createDb(join(tmp, "crash-shaped.db"));
     const built = buildRuntime(fileDb);
     const inst = await built.runtime.instantiate({
       specPath,
-      rootObjective: "crash-shaped pin",
+      rootObjective: "崩溃形态固定点",
       createdBySession: "ops@rig",
     });
 
@@ -224,7 +214,7 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
       }),
     ).rejects.toThrow("injected-mid-txn-failure");
 
-    // Independent connection — the restart's-eye view.
+    // 独立连接——从 restart 的视角观察。
     const secondConn = new Database(join(tmp, "crash-shaped.db"));
     try {
       const packetRow = secondConn
@@ -261,9 +251,9 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
     }
   });
 
-  // ── (b) determinism pin ────────────────────────────────────────────
+  // ── (b) 确定性固定点 ──────────────────────────────────────────────
 
-  it("FR-1b determinism pin: N identical (spec, instance) inputs produce the IDENTICAL routing decision — step, owner, closure shape", async () => {
+  it("FR-1b 确定性固定点：N 个相同 (spec, instance) 输入产生相同 routing decision——step、owner、closure shape", async () => {
     const N = 5;
     const decisions: Array<{
       nextStepId: string | null;
@@ -277,7 +267,7 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
     for (let i = 0; i < N; i++) {
       const inst = await runtime.instantiate({
         specPath,
-        rootObjective: "determinism pin",
+        rootObjective: "确定性固定点",
         createdBySession: "ops@rig",
       });
       const projected = await runtime.project({
@@ -305,12 +295,12 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
     }
   });
 
-  // ── (c) terminal-exit replay pin ───────────────────────────────────
+  // ── (c) 终态 exit 重放固定点 ──────────────────────────────────────
 
-  it("FR-1c terminal-replay pin: a re-projected handed-off packet is rejected with the structured packet_not_on_frontier error and mutates nothing", async () => {
+  it("FR-1c 终态重放固定点：重新投影 handed-off packet 时以结构化 packet_not_on_frontier 错误拒绝且不做变更", async () => {
     const inst = await runtime.instantiate({
       specPath,
-      rootObjective: "terminal replay pin",
+      rootObjective: "终态重放固定点",
       createdBySession: "ops@rig",
     });
     await runtime.project({
@@ -336,17 +326,17 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
     }
     expect(thrown).toBeInstanceOf(WorkflowProjectorError);
     expect((thrown as WorkflowProjectorError).code).toBe("packet_not_on_frontier");
-    // Replay mutated nothing.
+    // 重放未做任何变更。
     expect(runtime.trailLog.countForInstance(inst.instance.instanceId)).toBe(
       trailCountAfterFirst,
     );
   });
 
-  it("FR-1c terminal-replay pin: done and failed exits also remove the packet from the frontier so replays reject", async () => {
+  it("FR-1c 终态重放固定点：done 与 failed exit 也会从 frontier 移除 packet，因此拒绝重放", async () => {
     for (const exit of ["done", "failed"] as const) {
       const inst = await runtime.instantiate({
         specPath,
-        rootObjective: `terminal ${exit} replay pin`,
+        rootObjective: `终态 ${exit} 重放固定点`,
         createdBySession: "ops@rig",
       });
       await runtime.project({
@@ -363,23 +353,22 @@ describe("WorkflowRuntime facade + FR-1 KEEP-fence pins (OPR.0.4.6.WF1)", () => 
           actorSession: "producer@rig",
         }),
       ).rejects.toMatchObject({
-        // Terminal instance is rejected before the frontier check even
-        // runs — instance_not_active for done/failed instance status.
+        // 在 frontier 检查运行前就拒绝终态 instance——done/failed instance 状态返回
+        // instance_not_active。
         name: "WorkflowProjectorError",
       });
     }
   });
 });
 
-// ── P19 A4 (finding graduated): the runtime OWNS a default seat-liveness check ──
-// The advisory role_no_live_preferred_target existed but nothing ever
-// constructed a SeatLivenessCheckFn — dead in prod (instantiate passed
-// undefined EXPLICITLY). The runtime now defaults it from its own DB, the
-// hostRegistryLookup sibling precedent. RED-first.
+// ── P19 A4（finding 已升级）：runtime 拥有默认 seat-liveness check ─────────────
+// advisory role_no_live_preferred_target 原本存在，但从未构造 SeatLivenessCheckFn——生产中为死代码
+//（instantiate 显式传入 undefined）。现在 runtime 参照 hostRegistryLookup 先例，从自身数据库
+// 提供默认实现。先 RED。
 const LIVENESS_SPEC = `workflow:
   id: p19-liveness
   version: 1
-  objective: liveness probe
+  objective: 存活性探测
   entry:
     role: worker
   roles:
@@ -396,8 +385,8 @@ const LIVENESS_SPEC = `workflow:
       - done
 `;
 
-describe("P19 A4 — default seat-liveness check (validator advisory is live in prod)", () => {
-  it("no running session -> role_no_live_preferred_target warns; running silences; stopped re-warns", () => {
+describe("P19 A4——默认 seat-liveness check（validator advisory 在生产中生效）", () => {
+  it("无 running session → role_no_live_preferred_target 警告；running 时静默；stopped 后再次警告", () => {
     const db = createDb();
     const { runtime } = buildRuntime(db);
     const tmp = mkdtempSync(join(tmpdir(), "wf-p19-"));

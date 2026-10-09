@@ -9,7 +9,7 @@ import {
 import type { UsageSamplesStore, ProviderWindowSampleInput } from "./usage-samples-store.js";
 import type { ContextUsage } from "./types.js";
 
-/** Default polling interval: 30 seconds. */
+/** 默认 polling interval：30 秒。 */
 export const DEFAULT_POLL_INTERVAL_MS = 30_000;
 
 interface EligibleSession {
@@ -32,14 +32,12 @@ interface RuntimeReadinessChecker {
 }
 
 /**
- * Polls known managed runtime context sources and persists the latest
- * normalized telemetry. Scheduler-only: no queries, no response shaping,
- * no in-memory truth.
+ * 轮询已知 managed runtime context source，并持久化最新的 normalized telemetry。仅负责
+ * scheduler：不查询、不塑造 response，也不保存 in-memory truth。
  *
- * Slice 27: optional `compactionEnforcer` participates in each polling
- * tick after persistence so policy-driven /compact triggers fire on the
- * same observation the operator sees in the UI. Without an enforcer
- * provided, polling behavior is unchanged.
+ * Slice 27：可选 `compactionEnforcer` 在持久化后的每次 polling tick 中参与，使 policy-driven
+ * /compact trigger 基于 operator 在 UI 中看到的同一 observation 触发。未提供 enforcer 时，
+ * polling 行为不变。
  */
 export class ContextMonitor {
   private db: Database.Database;
@@ -73,7 +71,7 @@ export class ContextMonitor {
     }
   }
 
-  /** Discover active managed Claude sessions and poll their sidecar files. */
+  /** 发现 active managed Claude session，并轮询其 sidecar 文件。 */
   async pollOnce(): Promise<void> {
     if (this.activePoll) return this.activePoll;
     const poll = this.runPoll();
@@ -94,10 +92,9 @@ export class ContextMonitor {
         try {
           observed = this.readContextUsage(session);
           this.store.persist(session.node_id, observed);
-          // 51-08 A1: the over-time twin — advance-only append on the SAME tick
-          // (PM decision 1: piggyback, no parallel sampler). Known samples only:
-          // unknown is a query-side judgment, never a stored zero (Option-A bar
-          // + BR-2 absent-never-zero).
+          // 51-08 A1：over-time twin——在同一 tick 中只前进地 append（PM decision 1：piggyback，
+          // 无 parallel sampler）。只记录 known sample：unknown 是 query-side judgment，绝不是
+          // 存储的零（Option-A bar + BR-2 absent-never-zero）。
           if (this.usageSamples && observed.availability === "known") {
             try {
               this.usageSamples.appendContextSample(
@@ -112,14 +109,14 @@ export class ContextMonitor {
                 },
                 new Date().toISOString(),
               );
-            } catch { /* series write must never break polling */ }
+            } catch { /* series write 绝不能打断 polling */ }
           }
         } catch {
           observed = null;
-          // One bad session must not crash polling for others
+          // 单个异常 session 不能令其他 session 的 polling 崩溃
           try {
             this.store.persist(session.node_id, this.store.unknownUsage("parse_error"));
-          } catch { /* give up on this session */ }
+          } catch { /* 放弃此次 session */ }
         }
       }
 
@@ -129,8 +126,8 @@ export class ContextMonitor {
     this.drainProviderWindowSamples();
   }
 
-  /** 51-08 A1: drain the provider-window supplier once per tick, advance-only.
-   *  Defensive parity with the enforcer seam: a supplier fault never breaks polling. */
+  /** 51-08 A1：每个 tick drain 一次 provider-window supplier，只前进。与 enforcer seam 保持防御性
+   *  一致：supplier fault 永远不会打断 polling。 */
   private drainProviderWindowSamples(): void {
     if (!this.usageSamples || !this.providerWindowSampler) return;
     try {
@@ -138,14 +135,13 @@ export class ContextMonitor {
       for (const sample of this.providerWindowSampler()) {
         this.usageSamples.appendProviderWindowSample(sample, capturedAt);
       }
-    } catch { /* series write must never break polling */ }
+    } catch { /* series write 绝不能打断 polling */ }
   }
 
   /**
-   * Slice 27 — invoke the enforcer with the latest observation. The
-   * enforcer owns policy + dedup + send; ContextMonitor only relays
-   * data and absorbs enforcer errors so a trigger-path fault never
-   * crashes telemetry polling.
+   * Slice 27——用最新 observation 调用 enforcer。enforcer 负责 policy + dedup + send；
+   * ContextMonitor 只转发 data 并吸收 enforcer error，使 trigger-path fault 永远不会令 telemetry
+   * polling 崩溃。
    */
   private async maybeAutoCompact(
     session: EligibleSession,
@@ -162,24 +158,23 @@ export class ContextMonitor {
         sessionId: usage.sessionId,
       });
     } catch {
-      // Defensive: enforcer should not throw, but absorb here so the
-      // polling loop continues to make progress for remaining sessions.
+      // 防御：enforcer 本不应抛错，但这里仍吸收错误，使 polling loop 继续处理其余 session。
     }
   }
 
-  /** Start polling at the given interval. Idempotent. */
+  /** 按给定 interval 启动 polling。幂等。 */
   start(intervalMs: number = DEFAULT_POLL_INTERVAL_MS): void {
-    if (this.timer) return; // Already running
+    if (this.timer) return; // 已在运行
     this.timer = setInterval(() => {
       void this.pollOnce();
     }, intervalMs);
-    // Unref so the timer doesn't keep the process alive
+    // unref，避免 timer 阻止 process 退出
     if (this.timer && typeof this.timer === "object" && "unref" in this.timer) {
       (this.timer as NodeJS.Timeout).unref();
     }
   }
 
-  /** Stop polling. Safe to call before start or multiple times. */
+  /** 停止 polling。可在 start 前调用，也可重复调用。 */
   stop(): void {
     if (this.timer) {
       clearInterval(this.timer);
@@ -187,7 +182,7 @@ export class ContextMonitor {
     }
   }
 
-  /** Query for managed runtime sessions with readable context sources. */
+  /** 查询具有可读 context source 的 managed runtime session。 */
   private getEligibleSessions(): EligibleSession[] {
     return this.db.prepare(`
       SELECT
@@ -226,10 +221,9 @@ export class ContextMonitor {
       });
     }
 
-    // Only claude-code seats get the Claude context collector provisioned into
-    // their cwd. A runtime:stub seat self-provides its context sidecar, so the
-    // monitor consumes it via readAndNormalize below WITHOUT writing any
-    // Claude-specific collector config into the stub's cwd.
+    // 只有 claude-code seat 会在 cwd 中配置 Claude context collector。runtime:stub seat 自行提供
+    // context sidecar，因此 monitor 通过下方 readAndNormalize 使用它，不向 stub cwd 写入任何
+    // Claude 专用收集器配置。
     if (session.runtime === "claude-code") {
       this.claudeContextProvisioner?.ensureContextCollector({
         cwd: session.cwd ?? undefined,
@@ -275,7 +269,7 @@ export class ContextMonitor {
         `).run(session.session_id);
       }
     } catch {
-      // Best-effort normalization only; telemetry polling still succeeds.
+      // 只做 best-effort normalization；telemetry polling 仍会成功。
     }
   }
 }

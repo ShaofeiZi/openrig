@@ -1,23 +1,20 @@
-// OPR.0.4.3.16 — centralized queue gate-predicate.
+// OPR.0.4.3.16——集中式队列 gate predicate。
 //
-// Convention: conventions/queue-gate-predicate/README.md (frozen by
-// pm-lead 2026-07-03). This is the ONE config point that decides whether a
-// queue qitem is "gate work" — a review/approval step a specific role must
-// act on to clear, and which can STALL. Consumers (the idle-gate watchdog
-// policy) read the predicate from HERE; they never scatter tag-checks or
-// body-parse the qitem (slice-16 PRD Business Rule 4).
+// 约定见 conventions/queue-gate-predicate/README.md（由 pm-lead 于 2026-07-03 冻结）。
+// 这是判断队列 qitem 是否属于“gate work”的唯一配置点：特定角色必须处理并解除的审查/审批步骤，
+// 也可能因此停滞。消费者（idle-gate watchdog policy）从这里读取 predicate，绝不分散执行 tag 检查，
+// 也不解析 qitem body（slice-16 PRD Business Rule 4）。
 //
-// Predicate = a qitem carrying ANY `gate:<role>` tag. SECONDARY fallback:
-// tier === "human-gate" maps to the `gate:human` role (subsumes the legacy
-// human-gate tier for the predicate; it is NOT sufficient on its own to
-// catch the guard / spec-review targets).
+// Predicate：qitem 携带任意 `gate:<role>` tag。次级 fallback：tier === `human-gate` 会映射到
+// `gate:human` 角色，从而让 predicate 包含旧版 human-gate tier；但仅靠它不足以捕获 guard /
+// 规格评审目标。
 
-/** Tag namespace that marks gate work. */
+/** 标记 gate work 的 tag namespace。 */
 export const GATE_TAG_PREFIX = "gate:";
 
 /**
- * Known gate roles. Guidance / documentation only — the predicate accepts
- * ANY `gate:<role>` so new gate-holder roles need no code change.
+ * 已知 gate 角色，仅用于说明和文档。predicate 接受任意 `gate:<role>`，
+ * 因此新增 gate holder 角色无需修改代码。
  */
 export const GATE_ROLES = [
   "guard",
@@ -30,15 +27,15 @@ export const GATE_ROLES = [
 ] as const;
 export type GateRole = (typeof GATE_ROLES)[number];
 
-/** The human-approval tier that maps to the `gate:human` role (fallback). */
+/** 映射到 `gate:human` 角色的人工审批 tier（fallback）。 */
 export const HUMAN_GATE_TIER = "human-gate";
 
-/** True if `tag` is a well-formed `gate:<role>` tag. */
+/** `tag` 是格式正确的 `gate:<role>` tag 时返回 true。 */
 export function isGateTag(tag: string): boolean {
   return tag.startsWith(GATE_TAG_PREFIX) && tag.length > GATE_TAG_PREFIX.length;
 }
 
-/** Gate roles declared by a qitem's tags (order-preserving, de-duplicated). */
+/** qitem tag 声明的 gate 角色；保持原顺序并去重。 */
 export function gateRolesOf(tags: readonly string[] | null | undefined): string[] {
   if (!tags) return [];
   const seen = new Set<string>();
@@ -61,8 +58,8 @@ export interface GatePredicateInput {
 }
 
 /**
- * THE predicate: is this qitem gate work?
- * Primary: any `gate:<role>` tag. Secondary fallback: tier === "human-gate".
+ * 判断此 qitem 是否属于 gate work 的唯一 predicate。
+ * 主判据：存在任意 `gate:<role>` tag。次级 fallback：tier === `human-gate`。
  */
 export function qitemIsGated(input: GatePredicateInput): boolean {
   if (gateRolesOf(input.tags).length > 0) return true;
@@ -71,8 +68,8 @@ export function qitemIsGated(input: GatePredicateInput): boolean {
 }
 
 /**
- * Effective gate roles for a qitem, including the human-gate tier fallback
- * surfaced as the `human` role. Empty iff the qitem is not gate work.
+ * qitem 的有效 gate 角色；其中 human-gate tier fallback 以 `human` 角色呈现。
+ * 当且仅当 qitem 不属于 gate work 时返回空数组。
  */
 export function effectiveGateRoles(input: GatePredicateInput): string[] {
   const roles = gateRolesOf(input.tags);

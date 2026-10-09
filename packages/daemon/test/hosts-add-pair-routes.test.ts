@@ -1,14 +1,12 @@
-// OPR.0.4.6.MH1 FR-5/FR-6 — the narrow named host add/pair route family
-// (arch pins P1–P4) + the daemon writer twin.
+// OPR.0.4.6.MH1 FR-5/FR-6——窄范围的具名主机添加/配对路由族
+//（架构固定项 P1—P4）及后台服务 writer twin。
 //
-// Pins under test:
-//   P2 — the daemon add route NEVER accepts secret VALUES (named negative).
-//   P3 — the daemon writer is BYTE-PARITY-pinned to the CLI addHostEntry
-//        (same entries in → identical yaml bytes out) and shares the
-//        reader twin's validation (reserved ids surface verbatim).
-//   FR-6 — pair-request mints ONE human approval moment (a human-routed
-//        qitem via the shipped machinery); approval hands the bearer over
-//        exactly once; deny/expiry persists nothing.
+// 测试固定项：
+//   P2——后台服务添加路由绝不接受密钥值（具名负向用例）。
+//   P3——后台服务 writer 与 CLI addHostEntry 固定为字节完全一致（输入相同条目 →
+//        输出相同 YAML 字节），并共享 reader twin 的校验（保留 id 原样公开）。
+//   FR-6——pair-request 只创建一个人工审批时刻（通过随附机制路由给人工的 qitem）；
+//        批准后只移交一次 bearer；拒绝/过期时不持久化任何内容。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -23,9 +21,8 @@ import { coreSchema } from "../src/db/migrations/001_core_schema.js";
 import { eventsSchema } from "../src/db/migrations/003_events.js";
 import { queueItemsSchema } from "../src/db/migrations/024_queue_items.js";
 import { queueTransitionsSchema } from "../src/db/migrations/025_queue_transitions.js";
-// 044/048 carry the summary + evidence_ref columns — without them the
-// repo's persistSummary/persistEvidenceRef silently no-op (the WF-2
-// fixture lesson: migrate what you assert on).
+// 044/048 提供 summary + evidence_ref 列；没有它们时，仓库的
+// persistSummary/persistEvidenceRef 会静默不操作（WF-2 fixture 的教训：迁移断言所依赖的内容）。
 import { queueItemSummarySchema } from "../src/db/migrations/044_queue_item_summary.js";
 import { queueItemEvidenceRefSchema } from "../src/db/migrations/048_queue_item_evidence_ref.js";
 import { EventBus } from "../src/domain/event-bus.js";
@@ -49,7 +46,7 @@ function buildApp(queueRepo: QueueRepository, bearerToken: string | null, humanR
   return app;
 }
 
-describe("hosts-registry writer twin — P3 byte parity with the CLI addHostEntry", () => {
+describe("hosts-registry writer twin——与 CLI addHostEntry 保持 P3 字节一致", () => {
   let dirA: string;
   let dirB: string;
 
@@ -68,7 +65,7 @@ describe("hosts-registry writer twin — P3 byte parity with the CLI addHostEntr
     { id: "vps-c", transport: "http", url: "http://vps-c:7433", bearer_file: "/tmp/tok", notes: "paired 2026-07-07" },
   ];
 
-  it("same entry sequence in → identical yaml bytes out", () => {
+  it("输入相同条目序列 → 输出相同 YAML 字节", () => {
     const pathA = join(dirA, "hosts.yaml");
     const pathB = join(dirB, "hosts.yaml");
     for (const entry of SEQUENCE) {
@@ -78,22 +75,22 @@ describe("hosts-registry writer twin — P3 byte parity with the CLI addHostEntr
     expect(readFileSync(pathB, "utf8")).toBe(readFileSync(pathA, "utf8"));
   });
 
-  it("identical validation verdicts: reserved id + both-bearer rejected by BOTH, same error text", () => {
+  it("校验结论一致：双方均拒绝保留 id 和双 bearer，且错误文本相同", () => {
     const pathA = join(dirA, "hosts.yaml");
     const pathB = join(dirB, "hosts.yaml");
     for (const bad of [
       { id: "local", transport: "ssh", target: "a" },
       { id: "../escape", transport: "ssh", target: "a" },
-      // NOTE: a URL-only http entry (no bearer) is now VALID (anonymous/
-      // tokenless daemon) — only BOTH pointers together is rejected.
+      // 注意：仅有 URL 的 http 条目（无 bearer）现在有效（匿名/无 token 的后台服务）——
+      // 只有同时提供两个指针才会被拒绝。
       { id: "x", transport: "http", url: "http://x", bearer_env: "T", bearer_file: "/f" },
     ]) {
       const a = cliAddHostEntry(bad, pathA);
       const b = daemonAddHostEntry(bad, pathB);
       expect(a.ok).toBe(false);
       expect(b.ok).toBe(false);
-      // The error text embeds each writer's own registry PATH — normalize
-      // it away; the parity pin is the validation message, not the tmp dir.
+      // 错误文本嵌入各 writer 自己的注册表路径——先将其规范化；一致性固定的是校验消息，
+      // 而非临时目录。
       if (!a.ok && !b.ok) expect(b.error.replaceAll(pathB, "<path>")).toBe(a.error.replaceAll(pathA, "<path>"));
     }
     expect(existsSync(pathA)).toBe(false);
@@ -101,7 +98,7 @@ describe("hosts-registry writer twin — P3 byte parity with the CLI addHostEntr
   });
 });
 
-describe("POST /api/hosts/add — the narrow named add seam", () => {
+describe("POST /api/hosts/add——窄范围的具名添加接缝", () => {
   let db: Database.Database;
   let app: Hono;
   let home: string;
@@ -125,7 +122,7 @@ describe("POST /api/hosts/add — the narrow named add seam", () => {
 
   const auth = { Authorization: `Bearer ${BEARER}`, "Content-Type": "application/json" };
 
-  it("writes a valid entry through the writer twin and the CLI-visible registry file", async () => {
+  it("通过 writer twin 和 CLI 可见注册表文件写入有效条目", async () => {
     const res = await app.request("/api/hosts/add", {
       method: "POST",
       headers: auth,
@@ -137,7 +134,7 @@ describe("POST /api/hosts/add — the narrow named add seam", () => {
     expect(yaml).toContain("bearer_env: VPS_A_TOKEN");
   });
 
-  it("P2 named negative: a secret-value-shaped field is rejected and NOTHING is written", async () => {
+  it("P2 具名负向用例：拒绝形似密钥值的字段，且不写入任何内容", async () => {
     const res = await app.request("/api/hosts/add", {
       method: "POST",
       headers: auth,
@@ -149,7 +146,7 @@ describe("POST /api/hosts/add — the narrow named add seam", () => {
     expect(existsSync(join(home, "hosts.yaml"))).toBe(false);
   });
 
-  it("reserved ids surface the validator error verbatim (FR-7 at the daemon door)", async () => {
+  it("保留 id 原样公开校验器错误（后台服务入口处的 FR-7）", async () => {
     const res = await app.request("/api/hosts/add", {
       method: "POST",
       headers: auth,
@@ -157,11 +154,11 @@ describe("POST /api/hosts/add — the narrow named add seam", () => {
     });
     expect(res.status).toBe(400);
     const body = await res.json() as { message: string };
-    expect(body.message).toContain("reserved host id");
+    expect(body.message).toContain("保留主机 id");
     expect(existsSync(join(home, "hosts.yaml"))).toBe(false);
   });
 
-  it("the write seam is bearer-gated (401 without the token when one is configured)", async () => {
+  it("写入接缝受 bearer 门禁控制（配置 token 后未携带则返回 401）", async () => {
     const res = await app.request("/api/hosts/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -170,10 +167,9 @@ describe("POST /api/hosts/add — the narrow named add seam", () => {
     expect(res.status).toBe(401);
   });
 
-  // rev1-r1 D: P1's "no generic registry-write route" pinned as a
-  // NEGATIVE — the surface is exactly add + the pair handshake; anything
-  // remove/edit-shaped does not exist.
-  it("R1-D: no generic registry-write route exists (remove/edit/PUT/DELETE all 404)", async () => {
+  // rev1-r1 D：将 P1“无通用注册表写入路由”固定为负向用例——接口恰好只有 add 与
+  // pair 握手；任何 remove/edit 形态的接口都不存在。
+  it("R1-D：不存在通用注册表写入路由（remove/edit/PUT/DELETE 均返回 404）", async () => {
     for (const [method, url] of [
       ["POST", "/api/hosts/remove"],
       ["POST", "/api/hosts/edit"],
@@ -188,7 +184,7 @@ describe("POST /api/hosts/add — the narrow named add seam", () => {
   });
 });
 
-describe("pair-request — the target-side issuance handshake (FR-6)", () => {
+describe("pair-request——目标侧签发握手（FR-6）", () => {
   let db: Database.Database;
   let repo: QueueRepository;
   let app: Hono;
@@ -196,8 +192,7 @@ describe("pair-request — the target-side issuance handshake (FR-6)", () => {
   beforeEach(() => {
     db = createDb();
     migrate(db, [coreSchema, eventsSchema, queueItemsSchema, queueTransitionsSchema, queueItemSummarySchema, queueItemEvidenceRefSchema]);
-    // The REAL gate composition (startup.ts shape): human seats pass
-    // before parse — pairing's approval item rides it.
+    // 真实门禁组合（startup.ts 形态）：人工席位在解析前放行——配对审批项沿用该流程。
     repo = new QueueRepository(db, new EventBus(db), {
       validateRig: (ref) => {
         if (isHumanSeatSessionRef(ref)) return true;
@@ -218,14 +213,14 @@ describe("pair-request — the target-side issuance handshake (FR-6)", () => {
     return await res.json() as { pairId: string; code: string; approvalQitemId: string };
   }
 
-  it("a tokenless target refuses loudly with pair_target_no_bearer (nothing to issue)", async () => {
+  it("无 token 的目标以 pair_target_no_bearer 明确拒绝（没有可签发内容）", async () => {
     const tokenless = buildApp(repo, null);
     const res = await tokenless.request("/api/hosts/pair-request", { method: "POST", body: "{}" });
     expect(res.status).toBe(409);
     expect(((await res.json()) as { error: string }).error).toBe("pair_target_no_bearer");
   });
 
-  it("missing or ambiguous humans refuse before minting an approval; explicit selection resolves ambiguity", async () => {
+  it("人工目标缺失或有歧义时在创建审批前拒绝；显式选择可消除歧义", async () => {
     for (const entities of [[], [human, { ...human, entityId: "blair", address: "blair@external" }]]) {
       const target = buildApp(repo, BEARER, () => ({ ok: true, entities }));
       const response = await target.request("/api/hosts/pair-request", { method: "POST", body: "{}" });
@@ -239,7 +234,7 @@ describe("pair-request — the target-side issuance handshake (FR-6)", () => {
     expect(repo.list({ limit: 100 })[0]?.destinationSession).toBe("blair@external");
   });
 
-  it("issuance mints the ONE human approval moment: a human-routed qitem with code + summary + evidence_ref", async () => {
+  it("签发只创建一个人工审批时刻：包含 code、summary 与 evidence_ref 的人工路由 qitem", async () => {
     const { code, approvalQitemId } = await issue();
     const item = repo.getById(approvalQitemId)!;
     expect(item.destinationSession).toBe("alex@external");
@@ -249,7 +244,7 @@ describe("pair-request — the target-side issuance handshake (FR-6)", () => {
     expect(item.state).toBe("pending");
   });
 
-  it("approve (close done) → approved + the bearer token, SINGLE-SHOT; the pairing then dies", async () => {
+  it("批准（close done）→ approved 与 bearer token，仅可获取一次；随后配对失效", async () => {
     const { pairId, approvalQitemId } = await issue();
 
     const pending = await app.request(`/api/hosts/pair-request/${pairId}`);
@@ -266,7 +261,7 @@ describe("pair-request — the target-side issuance handshake (FR-6)", () => {
     expect(second.status).toBe(404);
   });
 
-  it("deny → status denied, and the pairing dies (nothing to hand over)", async () => {
+  it("拒绝 → 状态为 denied，配对失效（没有可移交内容）", async () => {
     const { pairId, approvalQitemId } = await issue();
     await repo.update({ qitemId: approvalQitemId, actorSession: "alex@external", state: "denied" });
     const res = await app.request(`/api/hosts/pair-request/${pairId}`);
@@ -276,7 +271,7 @@ describe("pair-request — the target-side issuance handshake (FR-6)", () => {
   });
 });
 
-describe("local pair-client seam — POST /pair + GET /pair/:id (the browser's write seam, B1)", () => {
+describe("本地 pair-client 接缝——POST /pair + GET /pair/:id（浏览器写入接缝，B1）", () => {
   let db: Database.Database;
   let app: Hono;
   let home: string;
@@ -322,7 +317,7 @@ describe("local pair-client seam — POST /pair + GET /pair/:id (the browser's w
 
   const auth = { Authorization: `Bearer ${BEARER}`, "Content-Type": "application/json" };
 
-  it("approved walk: token file lands 0600 + registry entry via the writer twin", async () => {
+  it("批准流程：token 文件以 0600 落盘，并通过 writer twin 写入注册表条目", async () => {
     const started = await app.request("/api/hosts/pair", {
       method: "POST",
       headers: auth,
@@ -347,7 +342,7 @@ describe("local pair-client seam — POST /pair + GET /pair/:id (the browser's w
     expect(yaml).not.toContain("remote-bearer-value");
   });
 
-  it("denied walk: NOTHING persists (no token file, no registry entry)", async () => {
+  it("拒绝流程：不持久化任何内容（无 token 文件、无注册表条目）", async () => {
     const started = await app.request("/api/hosts/pair", {
       method: "POST",
       headers: auth,
@@ -362,10 +357,9 @@ describe("local pair-client seam — POST /pair + GET /pair/:id (the browser's w
     expect(existsSync(join(home, "secrets"))).toBe(false);
   });
 
-  // B1 fixback (guard code-review 2026-07-07): a failed pair must never
-  // clobber or delete pre-existing credential/registry state, and must
-  // fail BEFORE the target is ever contacted.
-  it("B1: duplicate-id re-pair fails at PREFLIGHT — registry bytes, token contents and 0600 mode preserved; target NEVER contacted", async () => {
+  // B1 回修（guard 代码审查，2026-07-07）：失败的配对绝不能覆盖或删除已有凭证/注册表
+  // 状态，并且必须在联系目标前失败。
+  it("B1：重复 id 的再次配对在预检失败——保留注册表字节、token 内容与 0600 模式；绝不联系目标", async () => {
     const secretsDir = join(home, "secrets");
     const tokenPath = join(secretsDir, "host-vps-paired.token");
     mkdirSync(secretsDir, { recursive: true, mode: 0o700 });
@@ -381,7 +375,7 @@ describe("local pair-client seam — POST /pair + GET /pair/:id (the browser's w
     expect(res.status).toBe(400);
     const body = await res.json() as { error: string; message: string };
     expect(body.error).toBe("invalid_host_entry");
-    expect(body.message).toContain("duplicate host id");
+    expect(body.message).toContain("重复的主机 id");
 
     expect(targetRequests).toBe(0);
     expect(readFileSync(join(home, "hosts.yaml"), "utf8")).toBe(yamlBefore);
@@ -389,7 +383,7 @@ describe("local pair-client seam — POST /pair + GET /pair/:id (the browser's w
     expect(statSync(tokenPath).mode & 0o777).toBe(0o600);
   });
 
-  it("B1: a pre-existing token file at the derived path rejects the pair before target contact — file untouched", async () => {
+  it("B1：派生路径已有 token 文件时，在联系目标前拒绝配对——文件保持不变", async () => {
     const secretsDir = join(home, "secrets");
     const tokenPath = join(secretsDir, "host-127-0-0-1.token");
     mkdirSync(secretsDir, { recursive: true, mode: 0o700 });
@@ -409,8 +403,8 @@ describe("local pair-client seam — POST /pair + GET /pair/:id (the browser's w
     expect(existsSync(join(home, "hosts.yaml"))).toBe(false);
   });
 
-  // rev1-r2 B1: path-bearing ids die at the registry-door preflight.
-  it("rev1-r2 B1: a path-bearing id is rejected at POST /pair preflight; target never contacted", async () => {
+  // rev1-r2 B1：包含路径的 id 在注册表入口预检时即失败。
+  it("rev1-r2 B1：POST /pair 预检拒绝包含路径的 id；绝不联系目标", async () => {
     const res = await app.request("/api/hosts/pair", {
       method: "POST",
       headers: auth,
@@ -419,14 +413,13 @@ describe("local pair-client seam — POST /pair + GET /pair/:id (the browser's w
     expect(res.status).toBe(400);
     const body = await res.json() as { error: string; message: string };
     expect(body.error).toBe("invalid_host_entry");
-    expect(body.message).toContain("not a valid host id");
+    expect(body.message).toContain("不是有效的主机 id");
     expect(targetRequests).toBe(0);
     expect(existsSync(join(home, "secrets"))).toBe(false);
   });
 
-  // rev1-r2 B3: exclusive-create ("wx") — a token file appearing during
-  // the approval wait is refused, never overwritten or deleted.
-  it("rev1-r2 B3: a token file appearing during the approval wait → 409, winner's contents preserved", async () => {
+  // rev1-r2 B3：独占创建（"wx"）——审批等待期间出现 token 文件时拒绝，绝不覆盖或删除。
+  it("rev1-r2 B3：审批等待期间出现 token 文件 → 409，并保留胜出方内容", async () => {
     const started = await app.request("/api/hosts/pair", {
       method: "POST",
       headers: auth,
@@ -447,7 +440,7 @@ describe("local pair-client seam — POST /pair + GET /pair/:id (the browser's w
     expect(existsSync(join(home, "hosts.yaml"))).toBe(false);
   });
 
-  it("B1: add failure AFTER approval (preflight/add race) removes only the token THIS pairing created; the racing entry survives", async () => {
+  it("B1：批准后添加失败（预检/添加竞态）时，只删除本次配对创建的 token；竞态条目保留", async () => {
     const started = await app.request("/api/hosts/pair", {
       method: "POST",
       headers: auth,
@@ -456,8 +449,7 @@ describe("local pair-client seam — POST /pair + GET /pair/:id (the browser's w
     expect(started.status).toBe(200);
     const { pairId } = await started.json() as { pairId: string };
 
-    // The TOCTOU window preflight cannot close: a conflicting entry lands
-    // during the approval wait. addHostEntry stays authoritative.
+    // 预检无法封闭 TOCTOU 窗口：审批等待期间写入冲突条目。addHostEntry 仍是权威来源。
     expect(daemonAddHostEntry({ id: "vps-race", transport: "http", url: "http://racer:7433", bearer_env: "RACER_TOKEN" }).ok).toBe(true);
     const yamlBefore = readFileSync(join(home, "hosts.yaml"), "utf8");
 

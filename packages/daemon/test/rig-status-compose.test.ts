@@ -29,8 +29,8 @@ function seat(logicalId: string, lifecycleState: SeatLifecycleInput["lifecycleSt
   return { logicalId, runtime, lifecycleState };
 }
 
-describe("composeRigStatus — pure fold of per-seat truths (the LOCK)", () => {
-  it("THE MONEY CASE: 2 resumable + 3 blocked seats → aggregate blocked; resumable seats STAY resume-original; input plan NOT mutated", () => {
+describe("composeRigStatus——per-seat truth 的纯 fold（锁定原则）", () => {
+  it("关键场景：2 个 resumable + 3 个 blocked seat → aggregate blocked；resumable seat 保持 resume-original；不修改 input plan", () => {
     const inputPlan = plan([
       planNode({ logicalId: "a", intendedAction: "resume-original", tokenState: "present" }),
       planNode({ logicalId: "b", intendedAction: "resume-original", tokenState: "present" }),
@@ -53,26 +53,26 @@ describe("composeRigStatus — pure fold of per-seat truths (the LOCK)", () => {
       plan: inputPlan,
     });
 
-    // Aggregate is blocked BECAUSE seats are blocked.
+    // aggregate 因 seat 被阻塞而 blocked。
     expect(out.status).toBe("blocked");
-    // The 2 resumable seats stay resume-original in the per-seat table (no global-fresh flip).
+    // 2 个 resumable seat 在 per-seat table 中保持 resume-original（无 global-fresh flip）。
     const a = out.perSeat.find((s) => s.logicalId === "a")!;
     const b = out.perSeat.find((s) => s.logicalId === "b")!;
     expect(a.intendedAction).toBe("resume-original");
     expect(b.intendedAction).toBe("resume-original");
     expect(a.blocked).toBe(false);
     expect(b.blocked).toBe(false);
-    // The 3 blocked seats surface as awaiting-decision blockers.
+    // 3 个 blocked seat 以 awaiting-decision blocker 呈现。
     expect(out.perSeat.filter((s) => s.blocked)).toHaveLength(3);
-    // Blocked rig is NOT recoverable without operator action.
+    // blocked rig 无法在没有 operator action 时恢复。
     expect(out.recoverable).toBe(false);
-    // No code path sets any seat to fresh.
+    // 没有代码路径将任何 seat 设为 fresh。
     expect(out.perSeat.some((s) => s.intendedAction === "fresh-primed")).toBe(false);
-    // The input plan was not mutated.
+    // input plan 未被修改。
     expect(JSON.stringify(inputPlan.nodes)).toBe(snapshotBefore);
   });
 
-  it("all seats running → up (composed, with a src provenance line)", () => {
+  it("所有 seat 运行中 → up（组合得出，带 src provenance 行）", () => {
     const out = composeRigStatus({
       rigId: "rig1",
       rigName: "r1",
@@ -82,12 +82,12 @@ describe("composeRigStatus — pure fold of per-seat truths (the LOCK)", () => {
     expect(out.status).toBe("up");
     expect(out.seatsRunning).toBe(2);
     expect(out.seatsTotal).toBe(2);
-    // Composed, not inferred — src names the folded signals + values.
-    expect(out.src.some((s) => s.startsWith("ps: 2/2 running"))).toBe(true);
+    // 组合而非推断——src 点名已折叠 signal 及其值。
+    expect(out.src.some((s) => s.startsWith("ps: 2/2 运行中"))).toBe(true);
     expect(out.src.some((s) => s.startsWith("restore-plan:"))).toBe(true);
   });
 
-  it("mixed running + stopped → partial (recoverable)", () => {
+  it("混合 running + stopped → partial（可恢复）", () => {
     const out = composeRigStatus({
       rigId: "rig1",
       rigName: "r1",
@@ -98,7 +98,7 @@ describe("composeRigStatus — pure fold of per-seat truths (the LOCK)", () => {
     expect(out.recoverable).toBe(true);
   });
 
-  it("none running, all recoverable → down (recoverable)", () => {
+  it("没有 seat 运行且全部可恢复 → down（可恢复）", () => {
     const out = composeRigStatus({
       rigId: "rig1",
       rigName: "r1",
@@ -109,7 +109,7 @@ describe("composeRigStatus — pure fold of per-seat truths (the LOCK)", () => {
     expect(out.recoverable).toBe(true);
   });
 
-  it("restore-original honest: a seat with recorded source + missing token → awaiting-decision (blocked), others independently resume-original", () => {
+  it("restore-original 诚实性：有 recorded source 但缺 token 的 seat → awaiting-decision（blocked），其他 seat 独立 resume-original", () => {
     const out = composeRigStatus({
       rigId: "rig1",
       rigName: "r1",
@@ -124,7 +124,7 @@ describe("composeRigStatus — pure fold of per-seat truths (the LOCK)", () => {
     expect(out.perSeat.find((s) => s.logicalId === "b")!.intendedAction).toBe("awaiting-decision");
   });
 
-  it("stale-but-present token is DISTINCT from missing (FR-6) and is not itself a blocker", () => {
+  it("stale-but-present token 与 missing 不同（FR-6），且本身不是 blocker", () => {
     const out = composeRigStatus({
       rigId: "rig1",
       rigName: "r1",
@@ -134,11 +134,11 @@ describe("composeRigStatus — pure fold of per-seat truths (the LOCK)", () => {
     const a = out.perSeat[0]!;
     expect(a.tokenState).toBe("stale");
     expect(a.tokenState).not.toBe("missing");
-    expect(a.blocked).toBe(false); // stale is visible, not a blocker
+    expect(a.blocked).toBe(false); // stale 可见，但不是 blocker
     expect(out.status).toBe("down");
   });
 
-  it("restore-check blocked verdict folds up to aggregate blocked even when the plan alone is clean", () => {
+  it("即使 plan 本身无异常，restore-check blocked verdict 仍折叠为 aggregate blocked", () => {
     const recovery: RecoveryPlan = {
       status: "blocked",
       summary: "restore-input blockers remain",
@@ -153,12 +153,12 @@ describe("composeRigStatus — pure fold of per-seat truths (the LOCK)", () => {
       plan: plan([planNode({ logicalId: "a", intendedAction: "resume-original", tokenState: "present" })]),
       recovery,
     });
-    // The plan seat is clean, but restore-check says blocked → the verdict is consumed, not defaulted to green.
+    // plan seat 无异常，但 restore-check 判定 blocked → 使用该 verdict，不默认判绿。
     expect(out.status).toBe("blocked");
     expect(out.src.some((s) => s === "restore-check: blocked")).toBe(true);
   });
 
-  it("restore-check unknown → aggregate unknown (probe uncertainty), when no seat is blocked", () => {
+  it("无 seat 被阻塞时，restore-check unknown → aggregate unknown（probe uncertainty）", () => {
     const recovery: RecoveryPlan = {
       status: "unknown",
       summary: "could not inspect",
@@ -176,7 +176,7 @@ describe("composeRigStatus — pure fold of per-seat truths (the LOCK)", () => {
     expect(out.status).toBe("unknown");
   });
 
-  it("kernel rig folds kernel-status (NOT /healthz): auth_blocked → blocked; ready → up; degraded → partial", () => {
+  it("kernel 工作组折叠 kernel-status（而非 /healthz）：auth_blocked → blocked；ready → up；degraded → partial", () => {
     const nodes = [seat("k", "running", "claude-code")];
     const p = plan([planNode({ logicalId: "k" })]);
 

@@ -16,9 +16,9 @@ source: custom
 name: incomplete-config
 surface: config
 policy_schema_version: 1
-description: missing required config fields
+description: 缺少必填配置字段
 ---
-body
+正文
 `;
 
 const AGENT_YAML = `name: impl
@@ -52,16 +52,16 @@ function minimalSpec(permissionPolicy: unknown): Record<string, unknown> {
   };
 }
 
-describe("review50-r2 independent Seam-B adversarial branches", () => {
-  it("rejects characters outside the required per-segment ref charset", () => {
+describe("review50-r2 独立接缝 B 对抗分支", () => {
+  it("拒绝逐段引用字符集之外的字符", () => {
     expect(validatePermissionPolicyRef("policies/team?.md", "permission_policy")).not.toBeNull();
   });
 
-  it("rejects explicit null because attachment grammar permits only the two string forms or absence", () => {
+  it("拒绝显式 null，因为附件语法只允许两种字符串形式或缺省", () => {
     expect(RigSpecSchema.validate(minimalSpec(null)).valid).toBe(false);
   });
 
-  it("does not mark readable-but-invalid config content as safely re-derived", () => {
+  it("不将可读但无效的配置内容标记为已安全重新推导", () => {
     const attachment = resolvePermissionPolicyAttachment("policies/incomplete.md", "/rig", {
       readFile: () => INVALID_BUT_READABLE_CONFIG,
     });
@@ -70,13 +70,13 @@ describe("review50-r2 independent Seam-B adversarial branches", () => {
       name: "incomplete-config",
       surface: "config",
       policy_schema_version: 1,
-      description: "missing required config fields",
+      description: "缺少必填配置字段",
     });
     expect(validity.ok).toBe(false);
     expect(attachment.contentResolved).toBe(false);
   });
 
-  it("launches structured add-member at inherited rig posture", async () => {
+  it("以继承的装备姿态启动结构化 add-member", async () => {
     const bindings: NodeBinding[] = [];
     const adapter: RuntimeAdapter = {
       runtime: "claude-code",
@@ -97,7 +97,7 @@ describe("review50-r2 independent Seam-B adversarial branches", () => {
           exists: (p) => p.includes("agents/impl"),
           readFile: (p) => {
             if (p.includes("agents/impl")) return AGENT_YAML;
-            throw new Error(`not found: ${p}`);
+            throw new Error(`未找到：${p}`);
           },
         },
       });
@@ -129,7 +129,7 @@ describe("review50-r2 independent Seam-B adversarial branches", () => {
     }
   });
 
-  it("launches structured pod expansion at inherited rig posture", async () => {
+  it("以继承的装备姿态启动结构化工作组扩展", async () => {
     const bindings: NodeBinding[] = [];
     const adapter: RuntimeAdapter = {
       runtime: "claude-code",
@@ -150,7 +150,7 @@ describe("review50-r2 independent Seam-B adversarial branches", () => {
           exists: (p) => p.includes("agents/impl"),
           readFile: (p) => {
             if (p.includes("agents/impl")) return AGENT_YAML;
-            throw new Error(`not found: ${p}`);
+            throw new Error(`未找到：${p}`);
           },
         },
       });

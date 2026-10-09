@@ -1,21 +1,20 @@
-// V1 attempt-3 Phase 2 — AppShell chrome tests.
+// V1 attempt-3 Phase 2——AppShell chrome 测试。
 //
-// Replaces the legacy 655-line test that exercised the pre-Phase-2 shell
-// (slices-link / specs-toggle / discovery-toggle / progress-link /
-// steering-link / context-link / system-toggle). Phase 2 deleted those
-// header buttons; the rail with 6+2 icons takes over destination
-// switching.
+// 替换旧 655 行测试（演练 pre-Phase-2 shell：slices-link / specs-toggle /
+// discovery-toggle / progress-link / steering-link / context-link /
+// system-toggle）。Phase 2 删除这些 header 按钮；带 6+2 图标的 rail 接管
+// 目标切换。
 //
-// Coverage:
-// - SC-1 — exactly 2 left chromes on desktop (rail + explore); Sidebar.tsx GONE
-// - SC-2 — rail roster: 6 destinations + 2 chat icons in spec'd order
-// - SC-6 — drawer default-closed (selection=null → null render)
-// - SC-7 — Settings rail icon links to /settings (center, not drawer)
-// - SC-8 — mobile rail collapses to top-bar menu (hamburger present at <lg)
-// - Surface routing — Explorer renders for tree/lens destinations
-//   AND Settings (slice 26: settings became a 4-destination Explorer
-//   peer to Topology / Project / Library / For-You). Only Dashboard
-//   remains surface=none (no Explorer).
+// 覆盖：
+// - SC-1——desktop 上恰好 2 个左侧 chrome（rail + explore）；Sidebar.tsx 已移除
+// - SC-2——rail 名册：按 spec 顺序的 6 个目标 + 2 个 chat 图标
+// - SC-6——drawer 默认关闭（selection=null -> null render）
+// - SC-7——Settings rail 图标链接到 /settings（居中，非 drawer）
+// - SC-8——mobile rail 折叠为 top-bar 菜单（<lg 处有 hamburger）
+// - Surface 路由——Explorer 为 tree/lens 目标渲染
+//   以及 Settings（slice 26：settings 成为与 Topology / Project / Library /
+//   For-You 并列的 4 目标 Explorer 同位）。仅 Dashboard 保持 surface=none（无
+//   Explorer）。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, waitFor } from "@testing-library/react";
@@ -32,7 +31,7 @@ let OriginalEventSource: typeof EventSource | undefined;
 
 beforeEach(async () => {
   mockFetch.mockReset();
-  // Default rig/ps mocks return empty so chrome can render.
+  // 默认 rig/ps mock 返回空，使 chrome 可渲染。
   mockFetch.mockImplementation(async (url: string) => {
     if (url.includes("/api/rigs/summary")) return new Response(JSON.stringify([]));
     if (url.includes("/api/rigs/ps")) return new Response(JSON.stringify([]));
@@ -57,14 +56,12 @@ afterEach(() => {
   window.dispatchEvent(new Event("resize"));
 });
 
-// Slice 52 (UI wall-clock hardening): the timed fixture no longer imports
-// ../src/routes.js. Mounting the whole route tree (all lazy page modules) was
-// the wall-clock-heavy step that lost a race against the 5000ms waitFor under
-// fleet load, false-failing the SC-1 strict count. The chrome these tests
-// assert on (rail + Explorer + surface) is computed by AppShell from the router
-// PATHNAME (surfaceForPath), not by the route tree — so a minimal router with
-// AppShell as the root and a catch-all stub renders IDENTICAL chrome with no
-// heavy import and no clock to race.
+// Slice 52（UI wall-clock 加固）：计时 fixture 不再 import ../src/routes.js。
+// 挂载整棵路由树（所有 lazy page 模块）是 wall-clock 重步骤，在 fleet 负载下
+// 输掉与 5000ms waitFor 的竞速，误报 SC-1 严格计数。这些测试断言的 chrome
+//（rail + Explorer + surface）由 AppShell 从 router PATHNAME（surfaceForPath）
+// 计算，非路由树——故以 AppShell 为根 + catch-all stub 的最小 router 渲染
+// 完全相同 chrome，无重 import 也无时钟竞速。
 async function renderAt(initialPath: string, opts: { innerWidth?: number } = {}) {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: opts.innerWidth ?? 1440, writable: true });
   window.dispatchEvent(new Event("resize"));
@@ -75,7 +72,7 @@ async function renderAt(initialPath: string, opts: { innerWidth?: number } = {})
       initialPath,
     }),
   );
-  // TanStack Router resolves route component async; wait for chrome to land.
+  // TanStack Router 异步解析路由组件；等 chrome 落地。
   await waitFor(() => {
     expect(result.container.querySelector("[data-testid='app-rail']")).toBeTruthy();
   }, { timeout: 5000 });
@@ -86,15 +83,15 @@ describe("AppShell — Phase 2 chrome", () => {
   describe("SC-1: exactly 2 left chromes on desktop (rail + explore)", () => {
     it("renders exactly 2 left chromes at /topology desktop (rail + explore) — SC-1 strict count", async () => {
       const { container } = await renderAt("/topology");
-      // SC-1: count desktop-visible nav/aside elements only. The Phase 5 P5-9
-      // MobileBottomNav uses <nav lg:hidden> — it's in the DOM but display:none
-      // at desktop (lg breakpoint). SC-1's "exactly 2 left chromes on desktop"
-      // is about VISIBLE chromes, not raw element count — filter by lg:hidden.
+      // SC-1：仅数 desktop 可见 nav/aside 元素。Phase 5 P5-9 MobileBottomNav
+      // 用 <nav lg:hidden>——它在 DOM 中但 desktop（lg 断点）display:none。
+      // SC-1 的 "desktop 上恰好 2 个左侧 chrome" 指可见 chrome，非原始元素数——
+      // 按 lg:hidden 过滤。
       const chromeCount = Array.from(
         container.querySelectorAll("nav, aside"),
       ).filter((el) => !(el as HTMLElement).className.includes("lg:hidden")).length;
       expect(chromeCount).toBe(2);
-      // No legacy Sidebar.tsx anywhere — file is deleted.
+      // 任何处都无旧 Sidebar.tsx——文件已删。
       expect(container.querySelector("[data-testid='sidebar']")).toBeNull();
     });
 
@@ -104,10 +101,9 @@ describe("AppShell — Phase 2 chrome", () => {
       expect(container.querySelector("[data-testid='explorer']")).toBeNull();
     });
 
-    // Slice 26 — Settings is now an Explorer destination (peer to
-    // Topology / Project / Library / For-You). The Explorer renders
-    // alongside the rail and contains the 4-item SettingsExplorer
-    // (Settings / Policies / Log / Status).
+    // Slice 26——Settings 现为 Explorer 目标（与 Topology / Project / Library /
+    // For-You 同位）。Explorer 与 rail 并列渲染，含 4 项 SettingsExplorer
+    //（Settings / Policies / Log / Status）。
     it("Settings surface (/settings) renders rail AND Explorer (surface=settings)", async () => {
       const { container } = await renderAt("/settings");
       expect(container.querySelector("[data-testid='app-rail']")).toBeTruthy();
@@ -231,7 +227,7 @@ describe("AppShell — Phase 2 chrome", () => {
       const { container } = await renderAt("/");
       const topbar = container.querySelector("[data-testid='app-topbar']") as HTMLElement;
       expect(topbar).toBeTruthy();
-      // Single source of truth — top bar is universal, NOT lg:hidden.
+      // 单一事实源——top bar 通用，非 lg:hidden。
       expect(topbar.className).not.toContain("lg:hidden");
       expect(topbar.className).toContain("h-14");
     });
@@ -241,12 +237,12 @@ describe("AppShell — Phase 2 chrome", () => {
       const brand = container.querySelector("[data-testid='brand-home-link']") as HTMLAnchorElement;
       expect(brand).toBeTruthy();
       expect(brand.getAttribute("href")).toBe("/");
-      expect(brand.textContent).toContain("OPENRIG");
+      expect(brand.textContent).toContain("zrig");
     });
 
     it("right-slot carries the MH-2 host indicator (quiet local register, defaults to 'localhost')", async () => {
-      // OPR.0.4.6.MH2 FR-3 — the reserved V2 slot now renders HostIndicator;
-      // with no hosts payload the truthful default is the local state.
+      // OPR.0.4.6.MH2 FR-3——预留 V2 slot 现在渲染 HostIndicator；
+      // 无 hosts payload 时如实默认 local 状态。
       const { container } = await renderAt("/");
       const indicator = container.querySelector(
         "[data-testid='host-indicator']",
@@ -282,52 +278,48 @@ describe("AppShell — Phase 2 chrome", () => {
       expect(tray.className).toContain("-translate-x-full");
     });
 
-    // Slice 20 mobile: hamburger menu items stack vertically
-    // (not horizontally) so each route is a thumb-tappable row. The Rail
-    // inside the mobile slide-over now renders with `vertical=true`.
-    // The slide-over tray is closed by default; we assert against the
-    // rendered DOM regardless of open state (className is fixed at mount).
+    // Slice 20 mobile：hamburger 菜单项纵向堆叠（非横向），使每条路由是
+    // 拇指可点行。mobile slide-over 内 Rail 现在以 `vertical=true` 渲染。
+    // slide-over tray 默认关闭；我们对渲染 DOM 断言，不论 open 状态
+    //（className 在 mount 时固定）。
     it("slice 20: mobile slide-over Rail renders vertical (flex-col) — not horizontal scroll", async () => {
       const { container } = await renderAt("/", { innerWidth: 375 });
       const tray = container.querySelector("[data-testid='mobile-rail-tray']") as HTMLElement;
       const rail = tray.querySelector("[data-testid='app-rail']") as HTMLElement;
       expect(rail, "rail nav inside mobile slide-over tray").toBeTruthy();
-      // Vertical Rail mode adds flex-col + w-12 + border-r; horizontal
-      // mode adds flex-row + w-full + border-b + overflow-x-auto.
+      // 纵向 Rail 模式加 flex-col + w-12 + border-r；横向模式加
+      // flex-row + w-full + border-b + overflow-x-auto。
       expect(rail.className).toMatch(/\bflex-col\b/);
       expect(rail.className).not.toMatch(/\bflex-row\b/);
       expect(rail.className).not.toMatch(/\boverflow-x-auto\b/);
     });
 
-    // Slice 20 mobile: rail icon tap targets meet iOS HIG minimum
-    // (44px) on mobile, AND restore the prior 40px hitbox at lg: width
-    // so desktop hover precision is preserved. The className carries
-    // both shapes: `h-11 w-11` (mobile default) + `lg:h-10 lg:w-10`
-    // (desktop override). Tailwind's mobile-first cascade ensures the
-    // larger square only paints at < lg: viewports.
+    // Slice 20 mobile：rail 图标 tap target 在 mobile 满足 iOS HIG 最小值
+    //（44px），且在 lg: 宽度恢复既有 40px hitbox，保留 desktop hover 精度。
+    // className 携带两种形状：`h-11 w-11`（mobile 默认）+ `lg:h-10 lg:w-10`
+    //（desktop 覆盖）。Tailwind mobile-first 级联确保更大方形仅在 < lg:
+    // viewport 绘制。
     it("slice 20: rail icon tap targets are ≥44px on mobile + restored to 40px at lg:", async () => {
       const { container } = await renderAt("/");
       const dashIcon = container.querySelector(
         "[data-testid='rail-dashboard']",
       ) as HTMLElement;
       expect(dashIcon, "rail dashboard icon link").toBeTruthy();
-      // Mobile default: 44px square.
+      // Mobile 默认：44px 方形。
       expect(dashIcon.className).toMatch(/\bh-11\b/);
       expect(dashIcon.className).toMatch(/\bw-11\b/);
-      // Desktop override: lg: prefix restores the 40px hitbox.
+      // Desktop 覆盖：lg: 前缀恢复 40px hitbox。
       expect(dashIcon.className).toMatch(/\blg:h-10\b/);
       expect(dashIcon.className).toMatch(/\blg:w-10\b/);
     });
   });
 
-  // Phase 2 BOUNCE-FIX #3 — width-coupling regression (guard-3 catch).
-  // The center workspace's --workspace-right-offset CSS variable must equal
-  // the VellumSheet wide preset width when drawer is open. Bounce-fix #2
-  // calibrated VellumSheet 45rem → 38rem but missed this consumer; net
-  // effect was a 7rem (112px) gap between drawer and reserved padding.
-  // Per pseudo-element-paint test contract (discipline ritual #7), assert
-  // via CSS source rather than runtime (computed style of CSS vars from
-  // jsdom is brittle).
+  // Phase 2 BOUNCE-FIX #3——宽度耦合回归（guard-3 捕获）。
+  // 中央 workspace 的 --workspace-right-offset CSS 变量在 drawer 打开时必须等于
+  // VellumSheet wide preset 宽度。Bounce-fix #2 把 VellumSheet 45rem 校准为
+  // 38rem 但漏了此消费者；净效果是 drawer 与预留 padding 间 7rem（112px）缝隙。
+  // 按 pseudo-element-paint 测试契约（discipline ritual #7），经 CSS 源码而非
+  // runtime 断言（jsdom 中 CSS var 的 computed style 脆弱）。
   describe("Drawer width / right-offset coupling (bounce-fix #3 regression)", () => {
     const APP_SHELL_SRC = readFileSync(
       path.resolve(__dirname, "../src/components/AppShell.tsx"),
@@ -343,14 +335,14 @@ describe("AppShell — Phase 2 chrome", () => {
     );
 
     it("VellumSheet wide preset and AppShell workspaceRightOffset use the SAME literal", () => {
-      // Pull the wide-preset width from VellumSheet source.
+      // 从 VellumSheet 源码提取 wide-preset 宽度。
       const vellumMatch = VELLUM_SHEET_SRC.match(
         /wide:\s*"w-full\s+lg:w-\[(\d+rem)\]/,
       );
       expect(vellumMatch, "VellumSheet wide preset must declare lg:w-[Xrem]").toBeTruthy();
       const vellumWide = vellumMatch![1];
 
-      // Pull the open-drawer offset from AppShell source.
+      // 从 AppShell 源码提取 open-drawer offset。
       const offsetMatch = APP_SHELL_SRC.match(
         /workspaceRightOffset\s*=\s*[^?]*\?\s*"(\d+rem)"\s*:/,
       );
@@ -363,22 +355,20 @@ describe("AppShell — Phase 2 chrome", () => {
     });
 
     it("no live 45rem string in chrome source (only historical calibration comments are allowed)", () => {
-      // Extract every line containing "45rem" and verify each is inside
-      // a comment (calibration history). Chrome source must NOT carry
-      // 45rem as a live class or value.
+      // 提取每行含 "45rem" 并验证每行都在注释内（校准历史）。Chrome 源码
+      // 不得携带 45rem 作为 live class 或值。
       const checkSource = (src: string, label: string) => {
         const lines = src.split("\n");
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
           if (!line.includes("45rem")) continue;
-          // Permitted only when the line is a JS/TS line comment ("//") or
-          // an active block-comment context ("/*", "*"). We scan backward
-          // for a recent /* opener if no "//" on this line.
+          // 仅在行是 JS/TS 行注释（"//"）或活动块注释上下文（"/*"、"*"）时
+          // 允许。此行无 "//" 时向后扫最近的 /* opener。
           const trimmed = line.trim();
           const isLineComment = trimmed.startsWith("//") || trimmed.startsWith("*");
           let isInsideBlockComment = false;
           if (!isLineComment) {
-            // Look backward up to 30 lines for a /* without an intervening */.
+            // 向后看最多 30 行，找无中间 */ 的 /*。
             for (let j = i - 1; j >= Math.max(0, i - 30); j--) {
               if (lines[j].includes("*/")) break;
               if (lines[j].includes("/*")) {
@@ -395,8 +385,8 @@ describe("AppShell — Phase 2 chrome", () => {
       };
       checkSource(APP_SHELL_SRC, "AppShell.tsx");
       checkSource(SHARED_DRAWER_SRC, "SharedDetailDrawer.tsx");
-      // VellumSheet keeps a historical calibration comment with 45rem;
-      // it's inside a // comment so the same checker passes there too.
+      // VellumSheet 保留含 45rem 的历史校准注释；它在 // 注释内，故同一
+      // checker 在那里也通过。
       checkSource(VELLUM_SHEET_SRC, "vellum-sheet.tsx");
     });
   });

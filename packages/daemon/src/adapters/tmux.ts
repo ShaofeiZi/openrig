@@ -7,16 +7,15 @@ import { randomUUID } from "node:crypto";
 export type ExecFn = (cmd: string) => Promise<string>;
 
 /**
- * Injectable file/buffer operations for `sendText`.
- * Split out so tests can observe temp-file writes and unique-name generation
- * without touching the real filesystem; production wires node fs + os.tmpdir.
+ * `sendText` 可注入的文件/缓冲区操作。单独抽出后，测试无需触碰真实文件系统即可观察临时文件
+ * 写入和唯一名称生成；生产环境接入 Node fs + os.tmpdir。
  */
 export interface TmuxFileOps {
   writeFile(path: string, content: string, options?: { mode: number; flag: "wx" }): Promise<void>;
   unlink(path: string): Promise<void>;
-  /** Unique temp-file path per call - parallel `rig up` stands up many seats. */
+  /** 每次调用使用唯一临时文件路径——并行 `rig up` 会启动多个席位。 */
   tmpName(): string;
-  /** Unique tmux buffer name per call - a fixed name would collide under concurrency. */
+  /** 每次调用使用唯一 tmux buffer 名称——固定名称会在并发时冲突。 */
   bufferName(): string;
 }
 
@@ -57,10 +56,8 @@ export interface TmuxPane {
 }
 
 /**
- * Cursor coordinates plus pane geometry, used by the live-terminal seed
- * (OPR.0.4.0.38). Coordinates are zero-based; geometry is the visible pane
- * size. Lifted from the FR-4 seed work so a new subscriber can paint the
- * current screen with the cursor in the right place and no row drift.
+ * 光标坐标与 pane 几何尺寸，用于实时终端初始化（OPR.0.4.0.38）。坐标从零开始，几何尺寸是
+ * 可见 pane 大小。源自 FR-4 seed 工作，使新订阅者可在正确光标位置绘制当前屏幕且不发生行漂移。
  */
 export interface TmuxCursorPosition {
   x: number;
@@ -70,10 +67,9 @@ export interface TmuxCursorPosition {
 }
 
 /**
- * An attached tmux client — the human's terminal/CMUX tile. `name` is the
- * client identifier accepted by `switch-client -c` (the client tty by default);
- * `session` is the session the client is CURRENTLY viewing (may be the wrong or
- * a dead view, which is exactly the recovery case OPR.0.4.3.26 retargets).
+ * 已连接的 tmux 客户端——人类使用的终端/CMUX 磁贴。`name` 是 `switch-client -c` 接受的
+ * 客户端标识符（默认为客户端 tty）；`session` 是客户端当前正在查看的 session（可能是错误或
+ * 已死亡视图，这正是 OPR.0.4.3.26 恢复所重定向的情形）。
  */
 export interface TmuxClient {
   name: string;
@@ -81,10 +77,9 @@ export interface TmuxClient {
 }
 
 /**
- * Result of a classified session probe (OPR.0.5.4.2). `absent` carries
- * positive tmux evidence; `transport_unavailable` means the tmux server could
- * not be reached and session existence was NOT determined — the two are never
- * interchangeable.
+ * 分类后的 session 探测结果（OPR.0.5.4.2）。`absent` 携带正向 tmux 证据；
+ * `transport_unavailable` 表示无法访问 tmux server，且未确定 session 是否存在——二者绝不可
+ * 互换。
  */
 export type SessionProbe =
   | { state: "present" }
@@ -99,9 +94,8 @@ const SESSION_FORMAT = [
   "#{session_attached}",
 ].join(TMUX_FIELD_SEPARATOR);
 const WINDOW_FORMAT = "#{window_index}\t#{window_name}\t#{window_panes}\t#{window_active}";
-// tmux 3.6 sanitizes literal control characters in -F output to underscores,
-// so tab-delimited session and pane rows become unparseable. Use a printable
-// delimiter for these adapter-owned formats instead.
+// tmux 3.6 会把 -F 输出中的字面控制字符清理为下划线，导致 tab 分隔的 session 与 pane 行无法
+// 解析。因此，这些 adapter 所有的格式改用可打印分隔符。
 const PANE_FORMAT = [
   "#{pane_id}",
   "#{pane_index}",
@@ -131,26 +125,24 @@ function isPaneAbsenceError(err: unknown): boolean {
   return msg.includes("can't find pane") || msg.includes("pane not found") || msg.includes("no such pane");
 }
 
-// Post-reboot the tmux socket file at /tmp/tmux-<uid>/<name> is gone, so
-// `tmux has-session` exits non-zero with a transport-absent message rather than
-// a server/session-absent message. probeSession() classifies this class as
-// transport_unavailable — session existence NOT determined, never absence;
-// only Reconciler elects to treat that state as detachable, at its own
-// cold-start call site (OPR.0.5.4.2). Permission errors must remain rethrown.
+// 重启后，/tmp/tmux-<uid>/<name> 的 tmux socket 文件会消失，因此 `tmux has-session` 以非零
+// 状态退出并给出 transport 缺失消息，而非 server/session 缺失消息。probeSession() 将此类归为
+// transport_unavailable——未确定 session 是否存在，绝不等同于缺失；只有 Reconciler 在自己的
+// 冷启动调用点选择把该状态视为可分离（OPR.0.5.4.2）。权限错误必须继续重新抛出。
 function isTmuxTransportAbsentError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const msg = err.message;
-  // Fail-closed: never classify a permission/authorization failure as absence.
+  // 关闭失败：绝不把权限/授权失败归类为缺失。
   if (/permission denied|operation not permitted|EACCES|EPERM/i.test(msg)) {
     return false;
   }
-  // tmux's socket-transport failure prefix; the parenthetical names the cause.
+  // tmux socket transport 失败前缀；括号内说明原因。
   //   "error connecting to /private/tmp/tmux-501/default (No such file or directory)"
   //   "error connecting to /private/tmp/tmux-501/default (Connection refused)"
   if (msg.startsWith("error connecting to")) {
     return /No such file or directory|Connection refused/.test(msg);
   }
-  // Conservative bare-message variants that still reference a tmux socket path.
+  // 仍引用 tmux socket 路径的保守裸消息变体。
   if (/tmux-\d+/.test(msg) && /No such file or directory|Connection refused/.test(msg)) {
     return true;
   }
@@ -171,9 +163,9 @@ function classifyWriteError(err: unknown): TmuxResult {
   return { ok: false, code: "unknown", message: err.message };
 }
 
-/** Shell-quote a string using single quotes (POSIX-safe). */
+/** 使用单引号为字符串添加 shell 引号（POSIX 安全）。 */
 function shellQuote(s: string): string {
-  // Replace each ' with '"'"' (end quote, double-quote the apostrophe, resume quote)
+  // 将每个 ' 替换为 '"'"'（结束引号、用双引号包裹撇号、恢复引号）。
   return "'" + s.replace(/'/g, "'\"'\"'") + "'";
 }
 
@@ -245,17 +237,17 @@ export class TmuxAdapter {
   private readonly freshProbes = new Map<string, string>();
   private readonly freshManaged = new Map<string, {nodeId: string; pane: string}>();
 
-  /** Only the private metadata probe uses this door. Success proves allocation,
-   * never authority over a pre-existing or registry-managed target. */
+  /** 只有私有元数据探针使用此入口。成功只能证明已分配，绝不证明对既有或 registry 托管目标
+   * 拥有权限。 */
   async createProbeSession(name: string, cwd?: string): Promise<TmuxResult> {
-    if (this.deliveryGuard?.maybeTarget(name)) return { ok: false, code: "guard_target_managed", message: "A probe cannot reuse a managed seat." };
+    if (this.deliveryGuard?.maybeTarget(name)) return { ok: false, code: "guard_target_managed", message: "探针不能复用托管席位。" };
     const created = await this.createSessionUnchecked(name, cwd);
     if (!created.ok) return created;
     try {
       const panes = await this.listPanes(name);
       if (panes.length === 1) { this.freshProbes.set(name, panes[0]!.id); this.freshProbes.set(panes[0]!.id, panes[0]!.id); return created; }
-    } catch { /* no target proof, no input */ }
-    return { ok: false, code: "guard_target_unknown", message: "New probe pane could not be established; no input written." };
+    } catch { /* 没有目标凭证，不写入输入。 */ }
+    return { ok: false, code: "guard_target_unknown", message: "无法建立新的探针 pane；未写入输入。" };
   }
 
   private async guardedInput(target: string, write: (pane: string, beforeWrite: () => void) => Promise<TmuxResult>, allowAbsent = false): Promise<TmuxResult> {
@@ -265,7 +257,7 @@ export class TmuxAdapter {
       const probePane = this.freshProbes.get(target);
       if (probePane && !guard.maybeTarget(target)) {
         const panes = await this.listPanes(target);
-        if (panes.length !== 1 || panes[0]!.id !== probePane) throw new Error("Private probe target changed; no input written.");
+        if (panes.length !== 1 || panes[0]!.id !== probePane) throw new Error("私有探针目标已变化；未写入输入。");
         return write(probePane, () => {});
       }
       const created = this.freshManaged.get(target);
@@ -278,16 +270,14 @@ export class TmuxAdapter {
         catch (error) {
           guard.checkInput(identity);
           const result = classifyWriteError(error);
-          // Only termination consumes positive absence. Unknown probe failures
-          // still refuse, and guard-on never reaches this observation.
+          // 只有终止操作会消费确定缺失。未知探针失败仍会拒绝，guard 开启时永远不会到达此观察。
           if (allowAbsent && !result.ok && result.code === "session_not_found"
             && !/permission denied|operation not permitted|EACCES|EPERM/i.test(result.message)) return result;
           throw error;
         }
         const pane = fresh ? created.pane : bound.pane;
-        if (!pane || panes.length !== 1 || panes[0]!.id !== pane) throw new Error("Managed pane identity unavailable or changed; no input written.");
-        // Revalidate registry/occupant after the asynchronous observation. Write
-        // to the immutable pane ID, not a session name which could be recycled.
+        if (!pane || panes.length !== 1 || panes[0]!.id !== pane) throw new Error("托管 pane 身份不可用或已变化；未写入输入。");
+        // 异步观察后重新验证 registry/occupant。写入不可变 pane ID，而不是可能被复用的 session 名称。
         return guard.input(identity, () => write(pane, () => guard.checkInput(identity)));
       });
     } catch (error) {
@@ -296,7 +286,7 @@ export class TmuxAdapter {
   }
 
 
-  /** Explicit internal human input; transport HTTP options cannot select this. */
+  /** 显式内部人工输入；transport HTTP 选项无法选择此路径。 */
   humanInput<T>(target: string, fn: () => Promise<T>): Promise<T> {
     return this.deliveryGuard ? this.deliveryGuard.humanInput(target, fn) : fn();
   }
@@ -307,21 +297,21 @@ export class TmuxAdapter {
 
   constructor(private exec: ExecFn, private fileOps: TmuxFileOps = defaultTmuxFileOps()) {}
 
-  /** Start an empty native terminal server, without inventing a seat/session. */
+  /** 启动空的原生终端 server，不捏造席位/session。 */
   async startServer(): Promise<TmuxResult> {
     const probeName = `openrig-startup-${randomUUID()}`;
     try {
       if ((await this.probeSession(probeName)).state !== "transport_unavailable") return { ok: true };
-      // tmux -D keeps an empty server alive. Native socket ownership arbitrates
-      // concurrent starts; the readback below, not shell exit, proves availability.
+      // tmux -D 让空 server 保持存活。原生 socket 所有权仲裁并发启动；证明可用性的是下方
+      // 读回，而不是 shell 退出。
       await this.exec("tmux -D </dev/null >/dev/null 2>&1 &");
       for (let attempt = 0; attempt < 20; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 25));
         if ((await this.probeSession(probeName)).state !== "transport_unavailable") return { ok: true };
       }
-      return { ok: false, code: "tmux_unavailable", message: "The terminal server did not become available. Check tmux and its socket permissions." };
+      return { ok: false, code: "tmux_unavailable", message: "终端 server 未变为可用；请检查 tmux 及其 socket 权限。" };
     } catch (error) {
-      return { ok: false, code: "tmux_unavailable", message: `Terminal server unavailable: ${(error as Error).message}` };
+      return { ok: false, code: "tmux_unavailable", message: `终端 server 不可用：${(error as Error).message}` };
     }
   }
 
@@ -356,22 +346,19 @@ export class TmuxAdapter {
   }
 
   /**
-   * Classified session probe (OPR.0.5.4.2): the three error classes tmux
-   * produces are distinct answers, and the adapter must not decide for its
-   * callers that a transport failure means absence.
-   * - `absent` requires POSITIVE tmux evidence (the can't-find-session class).
-   * - `transport_unavailable` is the no-server / socket-gone class: whether
-   *   the session exists was NOT determined.
-   * - Unexpected probe failures (permission denied, etc.) rethrow so callers
-   *   fail closed rather than treating a probe failure as an answer.
+   * 分类后的 session 探针（OPR.0.5.4.2）：tmux 产生的三类错误是不同答案，adapter 不得替
+   * 调用方把 transport 失败判断为缺失。
+   * - `absent` 需要正向 tmux 证据（can't-find-session 类）。
+   * - `transport_unavailable` 是无 server/socket 消失类：未确定 session 是否存在。
+   * - 意外探针失败（permission denied 等）会重新抛出，使调用方关闭失败，而不是把探针失败
+   *   当成答案。
    */
   async probeSession(name: string): Promise<SessionProbe> {
     try {
-      // Use `tmux has-session` directly for reliable existence check — avoids
-      // parsing format-string output from `list-sessions` which can fail when
-      // tab delimiters are malformed across tmux versions.
+      // 直接使用 `tmux has-session` 做可靠存在性检查，避免解析 `list-sessions` 的格式字符串输出；
+      // 后者在不同 tmux 版本中 tab 分隔符格式异常时可能失败。
       await this.exec(`tmux has-session -t ${shellQuote(name)}`);
-      return { state: "present" }; // exit 0 = session exists
+      return { state: "present" }; // 退出码 0 = session 存在。
     } catch (err) {
       if (isSessionAbsenceError(err)) {
         return { state: "absent" };
@@ -384,10 +371,9 @@ export class TmuxAdapter {
   }
 
   /**
-   * Collapsed presence view. Kept for the consumers outside the bound
-   * send/capture/nudge/walk resolution path (OPR.0.5.4.2 mini-req 6 — their
-   * adoption of the classification is a named follow-on). Callers that must
-   * distinguish a transport blip from absence use probeSession().
+   * 折叠后的存在性视图。为绑定的 send/capture/nudge/walk 解析路径之外的消费者保留
+   *（OPR.0.5.4.2 mini-req 6——它们采用此分类属于具名后续项）。必须区分 transport 短暂故障
+   * 与缺失的调用方使用 probeSession()。
    */
   async hasSession(name: string): Promise<boolean> {
     const probe = await this.probeSession(name);
@@ -396,19 +382,19 @@ export class TmuxAdapter {
 
   async createSession(name: string, cwd?: string, env?: Record<string, string>): Promise<TmuxResult> {
     if (this.deliveryGuard && (!env?.OPENRIG_NODE_ID || !this.deliveryGuard.ownsLifecycle(env.OPENRIG_NODE_ID))) {
-      return { ok: false, code: "guard_lease_required", message: "Managed launch requires a lifecycle lease before terminal creation." };
+      return { ok: false, code: "guard_lease_required", message: "托管启动必须先获得生命周期租约，才能创建终端。" };
     }
     const result = await this.createSessionUnchecked(name, cwd, env);
     if (result.ok && this.deliveryGuard && env?.OPENRIG_NODE_ID) {
       try {
         const panes = await this.listPanes(name);
         if (panes.length === 1) this.freshManaged.set(name, {nodeId: env.OPENRIG_NODE_ID, pane: panes[0]!.id});
-      } catch { /* no fresh pane proof: subsequent writes remain refused */ }
+      } catch { /* 没有新 pane 凭证：后续写入继续被拒绝。 */ }
     }
     return result;
   }
 
-  /** The committed binding now owns identity; this is not filesystem cleanup. */
+  /** 已提交的绑定现在拥有身份；这不是文件系统清理。 */
   finishLaunchBinding(session: string): void { this.freshManaged.delete(session); }
 
   private async createSessionUnchecked(name: string, cwd?: string, env?: Record<string, string>): Promise<TmuxResult> {
@@ -426,19 +412,15 @@ export class TmuxAdapter {
   }
 
   /**
-   * Paste text at every size. Unbracketed input can be consumed as individual
-   * keystrokes by agent TUIs, losing text even below the old 8 KiB cutoff.
-   * A file keeps payload bytes out of shell/tmux argv and its size limits.
-   *   `-p`  bracket the paste when the receiving application enables that mode.
-   *   `-r`  preserve raw LF. tmux's default paste-buffer replaces every LF with
-   *         CR, and CR (= `C-m` = Enter) is SUBMIT in the Claude/Codex TUIs - a
-   *         default paste of a multi-line pack would submit on every newline.
-   *   `-d`  drop the buffer after a successful paste.
-   * The single trailing submit stays the caller's separate `sendKeys(["C-m"])`.
-   * Cleanup unlinks the temp file in `finally`; if the buffer was loaded but the
-   * paste failed (e.g. missing target), an explicit `delete-buffer` runs so no
-   * buffer leaks. Unique temp + buffer names per call keep parallel `rig up`
-   * seats from colliding.
+   * 粘贴任意大小的文本。无 bracket 输入可能被智能体 TUI 当作单个按键消费，即使低于旧 8 KiB
+   * 截止值也会丢字。使用文件可避免 payload 字节进入 shell/tmux argv 及其大小限制。
+   *   `-p`  接收应用启用该模式时，为粘贴加 bracket。
+   *   `-r`  保留原始 LF。tmux 默认 paste-buffer 会把每个 LF 替换为 CR，而 CR（即 `C-m`、
+   *         Enter）在 Claude/Codex TUI 中表示提交；默认粘贴多行包会在每个换行处提交。
+   *   `-d`  成功粘贴后删除 buffer。
+   * 唯一的尾部提交仍由调用方单独执行 `sendKeys(["C-m"])`。`finally` 中清理临时文件；若
+   * buffer 已加载但粘贴失败（如目标缺失），显式执行 `delete-buffer`，避免泄漏 buffer。每次调用
+   * 使用唯一临时文件和 buffer 名，避免并行 `rig up` 席位发生冲突。
    */
   async sendText(target: string, text: string): Promise<TmuxResult> {
     return this.guardedInput(target, (pane, beforeWrite) => this.sendTextUnchecked(pane, text, beforeWrite));
@@ -457,27 +439,24 @@ export class TmuxAdapter {
       return { ok: true };
     } catch (err) {
       if (bufferLoaded) {
-        // paste failed after load - `-d` never ran, so the buffer is still
-        // resident. Best-effort delete to avoid leaking it.
+        // load 后 paste 失败，`-d` 未运行，因此 buffer 仍驻留。尽力删除以避免泄漏。
         try {
           await this.exec(`tmux delete-buffer -b ${shellQuote(buffer)}`);
-        } catch { /* best-effort cleanup */ }
+        } catch { /* 尽力清理。 */ }
       }
       return classifyWriteError(err);
     } finally {
       try {
         await this.fileOps.unlink(path);
-      } catch { /* best-effort cleanup */ }
+      } catch { /* 尽力清理。 */ }
     }
   }
 
   /**
-   * Launch a POSIX command in an empty shell. A newly created pane can still
-   * be in canonical input mode: on macOS it silently drops input beyond 1024
-   * bytes, even when paste-buffer succeeds. Only a short invocation crosses
-   * that boundary; the command's PATH, quoting and arguments travel in a file.
-   * The shell removes its private script when consumed (not when pasted).
-   * A shell that never consumes the invocation leaves the file for diagnosis.
+   * 在空 shell 中启动 POSIX 命令。新建 pane 仍可能处于 canonical 输入模式：在 macOS 上，
+   * 即使 paste-buffer 成功，超过 1024 字节的输入也会被静默丢弃。只有简短调用跨过该边界；
+   * 命令的 PATH、引号和参数通过文件传递。shell 在消费私有脚本时删除它，而不是在粘贴时删除。
+   * 若 shell 从未消费调用，则保留文件供诊断。
    */
   async sendShellCommand(target: string, command: string, beforeInput?: () => void): Promise<TmuxResult> {
     return this.guardedInput(target, pane => this.sendShellCommandUnchecked(pane, command, beforeInput));
@@ -487,7 +466,7 @@ export class TmuxAdapter {
     const path = this.fileOps.tmpName();
     const invocation = `/bin/sh ${shellQuote(path)}`;
     if (Buffer.byteLength(invocation, "utf8") > 512) {
-      return { ok: false, code: "launch_path_too_long", message: "Temporary launch-script path exceeds the safe terminal input bound" };
+      return { ok: false, code: "launch_path_too_long", message: "临时启动脚本路径超过安全终端输入上限" };
     }
     let created = false;
     try {
@@ -502,14 +481,14 @@ export class TmuxAdapter {
         await this.sendKeys(target, ["C-c"]);
         return enter;
       }
-      // The receiver now owns removal. Unlinking here races shell startup.
+      // 现在由接收方负责删除；在此 unlink 会与 shell 启动产生竞态。
       created = false;
       return { ok: true };
     } catch (err) {
       return classifyWriteError(err);
     } finally {
       if (created) {
-        try { await this.fileOps.unlink(path); } catch { /* best-effort cleanup */ }
+        try { await this.fileOps.unlink(path); } catch { /* 尽力清理。 */ }
       }
     }
   }
@@ -540,10 +519,10 @@ export class TmuxAdapter {
 
   async resizeWindow(target: string, cols: number, rows: number): Promise<TmuxResult> {
     if (!Number.isFinite(cols) || !Number.isInteger(cols) || cols < 1) {
-      return { ok: false, code: "validation_error", message: `resizeWindow: cols must be a positive integer, got ${cols}` };
+      return { ok: false, code: "validation_error", message: `resizeWindow：cols 必须是正整数，收到 ${cols}` };
     }
     if (!Number.isFinite(rows) || !Number.isInteger(rows) || rows < 1) {
-      return { ok: false, code: "validation_error", message: `resizeWindow: rows must be a positive integer, got ${rows}` };
+      return { ok: false, code: "validation_error", message: `resizeWindow：rows 必须是正整数，收到 ${rows}` };
     }
     const cmd = `tmux resize-window -t ${shellQuote(target)} -x ${cols} -y ${rows}`;
     try {
@@ -559,7 +538,7 @@ export class TmuxAdapter {
       return this.guardedInput(name, async pane => {
         const stdout = await this.exec(`tmux display-message -p -t ${shellQuote(pane)} '#{session_id}'`);
         const sessionId = stdout.trim();
-        if (!/^\$\d+$/.test(sessionId)) return { ok: false, code: "guard_target_unknown", message: "Cannot establish immutable session identity; no session killed." };
+        if (!/^\$\d+$/.test(sessionId)) return { ok: false, code: "guard_target_unknown", message: "无法确认不可变 session 身份；未终止任何 session。" };
         const kill = async () => {
           const result = await this.killSessionUnchecked(sessionId);
           if (result.ok) { this.freshProbes.delete(name); this.freshProbes.delete(pane); this.freshManaged.delete(name); }
@@ -585,24 +564,24 @@ export class TmuxAdapter {
     }
   }
 
-  /** Seat-handover cutover (plan 411c43de): respawn a pane IN PLACE (reuse the retiree's EXACT pane) so
-   *  the successor boots below the predecessor's history — same window, same pane, predecessor scrollback
-   *  PRESERVED above the boot. The command is shell-quoted as ONE unit (tmux runs it via the shell).
+  /** 席位 handover 切换（计划 411c43de）：原地 respawn pane（复用退役者的准确 pane），使继任者
+   * 在前任历史下方启动；窗口相同、pane 相同，前任 scrollback 保留在启动内容上方。命令作为一个
+   * 整体做 shell 引号处理（tmux 通过 shell 运行它）。
    *
-   *  ⚠ NO `-k`: empirically (tmux 3.6a) `respawn-pane -k` force-kills+respawns atomically and CLEARS the
-   *  pane's scrollback — defeating the money-proof. So the cutover terminates the retiree FIRST (graceful
-   *  exit + `setRemainOnExit(true)` so the pane survives dead), waits for `isPaneDead`, then calls this
-   *  WITHOUT -k on the already-dead pane — which preserves the history. respawn-pane refuses a still-live
-   *  pane ("still active"), which is the correct guard: never respawn over a live retiree.
+   * ⚠ 不使用 `-k`：实测 tmux 3.6a 中 `respawn-pane -k` 会原子地强制终止并重生，同时清空 pane
+   * scrollback，破坏关键证据。因此切换流程先终止退役者（优雅退出 + `setRemainOnExit(true)`，
+   * 让 pane 在进程死亡后仍保留），等待 `isPaneDead`，再对已死亡 pane 调用不带 -k 的本方法，
+   * 从而保留历史。respawn-pane 会拒绝仍存活的 pane（"still active"），这是正确守卫：绝不在
+   * 活跃退役者之上 respawn。
    *
-   *  Optional `cwd`/`env` inject the successor's start-directory + OpenRig identity env onto the reused
-   *  pane via respawn-pane's `-c`/`-e` flags (tmux ≥3.0), the SAME mechanism createSession uses. Any flags
-   *  precede the command, which always stays LAST.
+   * 可选 `cwd`/`env` 通过 respawn-pane 的 `-c`/`-e` 标志（tmux ≥3.0）把继任者启动目录与
+   * OpenRig 身份环境注入复用 pane，与 createSession 使用同一机制。所有标志位于命令之前，
+   * 命令始终位于最后。
    *
-   *  ⚠ KI-14: omitting `command` re-runs the pane's CREATION (or last-respawn) command — which is the
-   *  default shell ONLY for panes createSession made. Adopted/hand-recovered panes can carry a full
-   *  harness invocation there (`codex … resume <old-token>`), so an undefined respawn silently boots the
-   *  OLD context. Callers that need a blank pane must pass an explicit shell (see getDefaultShell). */
+   * ⚠ KI-14：省略 `command` 会重新运行 pane 的创建命令（或上次 respawn 命令）；只有由
+   * createSession 创建的 pane 才保证该命令是默认 shell。已接管/手工恢复的 pane 可能在此保存完整
+   * harness 调用（`codex … resume <old-token>`），因此未定义命令的 respawn 会静默启动旧上下文。
+   * 需要空 pane 的调用方必须传入显式 shell（见 getDefaultShell）。 */
   async respawnPane(
     paneTarget: string,
     command?: string,
@@ -626,10 +605,9 @@ export class TmuxAdapter {
     }
   }
 
-  /** Seat-handover cutover: set the pane-scoped `remain-on-exit` so the pane SURVIVES (goes dead, not
-   *  destroyed) when the retiree process exits — holding its scrollback for the successor's respawn.
-   *  Set to `on` BEFORE the retiree is signalled to exit (else the pane is destroyed on exit and there
-   *  is nothing to respawn into). */
+  /** 席位 handover 切换：设置 pane 范围的 `remain-on-exit`，使退役进程退出时 pane 仍保留
+   *（变为 dead 而非销毁），为继任者 respawn 保存 scrollback。必须在向退役者发送退出信号前设为
+   * `on`，否则 pane 会在退出时销毁，没有可供 respawn 的位置。 */
   async setRemainOnExit(paneTarget: string, on: boolean): Promise<TmuxResult> {
     const cmd = `tmux set-option -p -t ${shellQuote(paneTarget)} remain-on-exit ${on ? "on" : "off"}`;
     try {
@@ -640,8 +618,8 @@ export class TmuxAdapter {
     }
   }
 
-  /** Seat-handover cutover: is the pane's process dead (the retiree exited; the pane held by
-   *  remain-on-exit)? A known-missing pane also proves physical cutover; unknown probe errors stay false. */
+  /** 席位 handover 切换：pane 进程是否已死亡（退役者退出，pane 由 remain-on-exit 保留）？
+   * 已确认缺失的 pane 也能证明物理切换；未知探针错误仍返回 false。 */
   async isPaneDead(paneId: string): Promise<boolean> {
     try {
       const output = await this.exec(`tmux display-message -p -t ${shellQuote(paneId)} "#{pane_dead}"`);
@@ -651,9 +629,8 @@ export class TmuxAdapter {
     }
   }
 
-  /** Seat-handover cutover: signal the pane's foreground process (the retiree) — `TERM` for the graceful
-   *  exit-in-place, `KILL` for the bounded-timeout force fallback. Resolves the pane pid then `kill`s it;
-   *  an unresolvable pid is a structured, non-throwing failure. */
+  /** 席位 handover 切换：向 pane 前台进程（退役者）发送信号；原地优雅退出用 `TERM`，有界超时
+   * 强制回退用 `KILL`。解析 pane pid 后执行 `kill`；无法解析 pid 时返回结构化非抛出失败。 */
   async signalPaneProcess(paneId: string, signal: "TERM" | "KILL"): Promise<TmuxResult> {
     return this.guardedInput(paneId, (pane, beforeWrite) => this.signalPaneProcessUnchecked(pane, signal, beforeWrite));
   }
@@ -661,7 +638,7 @@ export class TmuxAdapter {
   private async signalPaneProcessUnchecked(paneId: string, signal: "TERM" | "KILL", beforeWrite: () => void): Promise<TmuxResult> {
     const pid = await this.getPanePid(paneId);
     if (pid == null) {
-      return { ok: false, code: "pane_pid_unavailable", message: `Could not resolve the pane pid for "${paneId}".` };
+      return { ok: false, code: "pane_pid_unavailable", message: `无法解析 pane "${paneId}" 的 pid。` };
     }
     try {
       beforeWrite();
@@ -672,7 +649,7 @@ export class TmuxAdapter {
     }
   }
 
-  /** Get the PID of the foreground process in a pane. Returns null if unavailable. */
+  /** 获取 pane 中前台进程的 PID；不可用时返回 null。 */
   async getPanePid(paneId: string): Promise<number | null> {
     try {
       const output = await this.exec(`tmux display-message -p -t ${shellQuote(paneId)} "#{pane_pid}"`);
@@ -684,9 +661,9 @@ export class TmuxAdapter {
     }
   }
 
-  /** KI-14: the server's `default-shell` option — what a createSession pane runs when no command is
-   *  given. Used to make a respawn EXPLICIT about the blank shell instead of inheriting whatever
-   *  command the pane was created with. Returns null if unavailable (caller falls back). */
+  /** KI-14：server 的 `default-shell` 选项，即 createSession pane 未提供命令时运行的内容。
+   * 用于让 respawn 明确使用空 shell，而不是继承 pane 创建时的任意命令。不可用时返回 null
+   *（调用方回退）。 */
   async getDefaultShell(): Promise<string | null> {
     try {
       const output = await this.exec(`tmux show-options -gv default-shell`);
@@ -697,7 +674,7 @@ export class TmuxAdapter {
     }
   }
 
-  /** Get the current foreground command in a pane. Returns null if unavailable. */
+  /** 获取 pane 当前前台命令；不可用时返回 null。 */
   async getPaneCommand(paneId: string): Promise<string | null> {
     try {
       const output = await this.exec(`tmux display-message -p -t ${shellQuote(paneId)} "#{pane_current_command}"`);
@@ -708,11 +685,9 @@ export class TmuxAdapter {
     }
   }
 
-  /** OPR.0.4.3.28 Part C — usable-presence check for a session-env variable.
-   *  Returns whether the var has a nonblank value, NEVER that value, and null
-   *  when the session environment cannot be inspected. Listing the environment
-   *  distinguishes a genuinely absent var from `tmux show-environment <var>`'s
-   *  nonzero lookup exit. */
+  /** OPR.0.4.3.28 Part C——检查 session 环境变量是否可用。返回变量是否有非空值，绝不返回
+   * 该值；无法检查 session 环境时返回 null。列出环境可以区分真正缺失的变量与
+   * `tmux show-environment <var>` 查询时的非零退出。 */
   async hasSessionEnv(sessionName: string, varName: string): Promise<boolean | null> {
     try {
       const output = await this.exec(`tmux show-environment -t ${shellQuote(sessionName)}`);
@@ -725,11 +700,10 @@ export class TmuxAdapter {
     }
   }
 
-  /** Start pipe-pane to capture terminal output to a file. */
+  /** 启动 pipe-pane，将终端输出捕获到文件。 */
   async startPipePane(sessionName: string, outputPath: string): Promise<TmuxResult> {
-    // Shell-quote the path for safe injection into the pipe-pane command.
-    // The entire pipe command is passed as a single argument to tmux,
-    // which executes it via sh -c. We use shellQuote on the path.
+    // 对路径做 shell 引号处理，以安全注入 pipe-pane 命令。整个 pipe 命令作为单个参数传给 tmux，
+    // 由其通过 sh -c 执行，因此路径使用 shellQuote。
     const cmd = `tmux pipe-pane -t ${shellQuote(sessionName)} ${shellQuote("cat >> " + shellQuote(outputPath))}`;
     try {
       await this.exec(cmd);
@@ -739,7 +713,7 @@ export class TmuxAdapter {
     }
   }
 
-  /** Stop pipe-pane on a session. */
+  /** 停止 session 上的 pipe-pane。 */
   async stopPipePane(sessionName: string): Promise<TmuxResult> {
     const cmd = `tmux pipe-pane -t ${shellQuote(sessionName)}`;
     try {
@@ -750,7 +724,7 @@ export class TmuxAdapter {
     }
   }
 
-  /** Capture pane content (last N lines). Returns null if unavailable. */
+  /** 捕获 pane 内容（最后 N 行）；不可用时返回 null。 */
   async capturePaneContent(paneId: string, lines: number = 20): Promise<string | null> {
     try {
       const output = await this.exec(`tmux capture-pane -p -t ${shellQuote(paneId)} -S -${lines}`);
@@ -761,10 +735,9 @@ export class TmuxAdapter {
   }
 
   /**
-   * Capture the currently VISIBLE pane screen (no scrollback). Returns null if
-   * unavailable. The live-terminal seed (OPR.0.4.0.38) must use the visible
-   * screen, NOT `-S -<lines>` scrollback: scrollback reintroduces the row drift
-   * the absolute-paint seed exists to eliminate.
+   * 捕获 pane 当前可见屏幕（不含 scrollback）；不可用时返回 null。实时终端 seed
+   *（OPR.0.4.0.38）必须使用可见屏幕，而不是 `-S -<lines>` scrollback；后者会重新引入
+   * 绝对绘制 seed 原本要消除的行漂移。
    */
   async capturePaneScreen(paneId: string): Promise<string | null> {
     try {
@@ -776,10 +749,8 @@ export class TmuxAdapter {
   }
 
   /**
-   * Get the current cursor coordinates and pane geometry. Coordinates are
-   * zero-based. Returns null if unavailable or if tmux yields non-finite /
-   * out-of-range values (x<0, y<0, width<1, height<1) so a bad read never
-   * produces a garbage seed.
+   * 获取当前光标坐标和 pane 几何尺寸。坐标从零开始。不可用或 tmux 返回非有限/越界值
+   *（x<0、y<0、width<1、height<1）时返回 null，避免错误读取产生无效 seed。
    */
   async getPaneCursorPosition(paneId: string): Promise<TmuxCursorPosition | null> {
     try {
@@ -800,12 +771,10 @@ export class TmuxAdapter {
   }
 
   /**
-   * Set a SESSION-scoped option via `set-option -t <session>` (OPR.0.4.6.02
-   * N1 JSDoc fix, arch): this is the GENERIC session-scope writer — it takes
-   * ANY session option, not only `@`-prefixed user options (it is how the
-   * launcher sets built-in session options like `mouse` and `status`). For
-   * SERVER-scope options use `setServerOption` (`set-option -s`); the two
-   * scopes are never crossed (guard b2).
+   * 通过 `set-option -t <session>` 设置 SESSION 范围选项（OPR.0.4.6.02 N1 JSDoc 修复，
+   * 架构）：这是通用 session 范围写入器，接受任何 session 选项，不只接受以 `@` 开头的用户
+   * 选项（launcher 用它设置 `mouse`、`status` 等内置 session 选项）。SERVER 范围选项使用
+   * `setServerOption`（`set-option -s`）；两种范围绝不交叉（守卫 b2）。
    */
   async setSessionOption(sessionName: string, key: string, value: string): Promise<TmuxResult> {
     const cmd = `tmux set-option -t ${shellQuote(sessionName)} ${shellQuote(key)} ${shellQuote(value)}`;
@@ -818,11 +787,10 @@ export class TmuxAdapter {
   }
 
   /**
-   * OPR.0.4.6.02 S1 (guard b2): set a SERVER-scoped option via
-   * `set-option -s <option> <value>` — the daemon configuring its OWN tmux
-   * server (NOT a live-flip of anyone's session). NEVER targets a session
-   * (`-t`): server scope and session scope are distinct and never crossed.
-   * Used for `set-clipboard` / `copy-command`.
+   * OPR.0.4.6.02 S1（守卫 b2）：通过 `set-option -s <option> <value>` 设置 SERVER 范围
+   * 选项，即后台服务配置自身 tmux server，而不是实时修改任何人的 session。绝不以 session
+   *（`-t`）为目标：server 范围与 session 范围相互独立，绝不交叉。用于 `set-clipboard`/
+   * `copy-command`。
    */
   async setServerOption(option: string, value: string): Promise<TmuxResult> {
     const cmd = `tmux set-option -s ${shellQuote(option)} ${shellQuote(value)}`;
@@ -835,9 +803,8 @@ export class TmuxAdapter {
   }
 
   /**
-   * OPR.0.4.6.02 S1: read a SERVER-scoped option value via
-   * `show-options -sv <option>` (the `-s` server-scope reader — mirrors
-   * `setServerOption`). Returns null if unset or on error. For tests/proof.
+   * OPR.0.4.6.02 S1：通过 `show-options -sv <option>` 读取 SERVER 范围选项值
+   *（`-s` server 范围读取器，镜像 `setServerOption`）。未设置或出错时返回 null，用于测试/证明。
    */
   async showServerOption(option: string): Promise<string | null> {
     try {
@@ -849,7 +816,7 @@ export class TmuxAdapter {
     }
   }
 
-  /** Get a session-scoped user option value. Returns null if not set or error. */
+  /** 获取 session 范围的用户选项值；未设置或出错时返回 null。 */
   async getSessionOption(sessionName: string, key: string): Promise<string | null> {
     try {
       const output = await this.exec(`tmux show-option -v -t ${shellQuote(sessionName)} ${shellQuote(key)}`);
@@ -860,25 +827,19 @@ export class TmuxAdapter {
   }
 
   /**
-  /**
-   * Slice 15 — read the timestamp (Unix epoch seconds) of the last
-   * activity on the pane's window. The daemon's SeatActivityService
-   * compares this against the configured silence window: if the
-   * timestamp is within the window the seat is `terminal-active`,
-   * otherwise it's silent past the threshold.
+   * Slice 15——读取 pane 所在窗口最近一次活动的时间戳（Unix epoch 秒）。后台服务的
+   * SeatActivityService 将它与已配置静默窗口比较：时间戳位于窗口内时，席位为
+   * `terminal-active`；否则表示静默时间超过阈值。
    *
-   * Why not `pane_silence_flag`: tmux 3.6a was observed to return a
-   * blank value for `#{pane_silence_flag}` during slice 15 dogfood
-   * (sticky-alert behavior + version-dependent emit semantics), so
-   * we cannot rely on it as the primary signal. `#{window_activity}`
-   * is reliably populated (the runtime updates it whenever the
-   * window receives output) and is the timestamp the tmux status-line
-   * activity indicators use themselves.
+   * 为何不用 `pane_silence_flag`：slice 15 dogfood 时观察到 tmux 3.6a 对
+   * `#{pane_silence_flag}` 返回空值（sticky-alert 行为 + 依赖版本的 emit 语义），因此不能作为
+   * 主要信号。`#{window_activity}` 会可靠填充（窗口每次收到输出时由 runtime 更新），也是 tmux
+   * status-line 活动指示器自身使用的时间戳。
    *
-   * Returns:
-   *   - a Unix-epoch-seconds integer when the runtime exposed the value
-   *   - `null` when the target is missing OR the value is unparseable
-   *     (consumers treat null as "no signal", distinct from "idle").
+   * 返回值：
+   *   - runtime 公开该值时，返回 Unix epoch 秒整数
+   *   - 目标缺失或值无法解析时返回 `null`
+   *     （消费者把 null 视为“无信号”，与“idle”区分）。
    */
   async readPaneLastActivity(paneId: string): Promise<number | null> {
     try {
@@ -896,12 +857,10 @@ export class TmuxAdapter {
   }
 
   /**
-   * OPR.0.4.3.26 — list the tmux clients (human terminals / CMUX tiles) attached
-   * to the server. VIEW-ONLY probe: it never mutates routing, bindings, or
-   * sessions. Mirrors the read/parse/error-swallow shape of `listSessions`:
-   * a "no server running" / socket-absent server yields `[]` (no attachable
-   * client) so the caller emits an honest "attach first" error rather than
-   * crashing. Unexpected failures (permission, etc.) rethrow.
+   * OPR.0.4.3.26——列出连接到 server 的 tmux 客户端（人工终端/CMUX 磁贴）。仅查看探针：
+   * 绝不修改路由、绑定或 session。镜像 `listSessions` 的读取/解析/吞错结构：
+   * “no server running”或 socket 缺失的 server 返回 `[]`（没有可连接客户端），使调用方给出
+   * 诚实的“请先连接”错误而不是崩溃。意外失败（权限等）重新抛出。
    */
   async listClients(): Promise<TmuxClient[]> {
     try {
@@ -914,10 +873,9 @@ export class TmuxAdapter {
   }
 
   /**
-   * OPR.0.4.3.26 — retarget an already-attached client's VIEW to `target`
-   * (`<session>` or `<session>:<window>`). This is the whole point of the
-   * seat-recovery slice: it changes only what a client SEES; it never creates,
-   * kills, or rebinds a session and never touches OpenRig routing/identity.
+   * OPR.0.4.3.26——将已连接客户端的视图重定向到 `target`
+   *（`<session>` 或 `<session>:<window>`）。这是席位恢复 slice 的核心：只改变客户端看到的内容；
+   * 绝不创建、终止或重新绑定 session，也不触碰 OpenRig 路由/身份。
    */
   async switchClient(client: string, target: string): Promise<TmuxResult> {
     const cmd = `tmux switch-client -c ${shellQuote(client)} -t ${shellQuote(target)}`;

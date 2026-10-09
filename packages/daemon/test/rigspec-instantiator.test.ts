@@ -79,7 +79,7 @@ describe("RigInstantiator", () => {
     return new RigInstantiator({ db, rigRepo, sessionRegistry, eventBus, nodeLauncher, preflight });
   }
 
-  it("valid spec -> rig created with correct name", async () => {
+  it("有效 spec 会创建名称正确的 rig", async () => {
     const inst = createInstantiator();
     const result = await inst.instantiate(validSpec());
     expect(result.ok).toBe(true);
@@ -90,7 +90,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("nodes with correct logical_ids, roles, runtimes, extended fields", async () => {
+  it("节点具有正确的 logical_id、role、runtime 和扩展字段", async () => {
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", role: "worker", surfaceHint: "tab:main", packageRefs: ["pkg-a"] }],
       edges: [],
@@ -109,7 +109,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("edges with correct from/to/kind", async () => {
+  it("边具有正确的 from/to/kind", async () => {
     const inst = createInstantiator();
     const result = await inst.instantiate(validSpec());
     expect(result.ok).toBe(true);
@@ -120,7 +120,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("topological launch order (delegates_to, exact)", async () => {
+  it("拓扑启动顺序（delegates_to，精确）", async () => {
     const tmux = mockTmux();
     const inst = createInstantiator({ tmux });
     const result = await inst.instantiate(validSpec());
@@ -133,7 +133,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("spawned_by constrains order", async () => {
+  it("spawned_by 约束顺序", async () => {
     const spec = validSpec({
       nodes: [
         { id: "child", runtime: "claude-code", cwd: "/" },
@@ -150,7 +150,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("alphabetical tiebreaker at same depth", async () => {
+  it("同一深度按字母顺序决胜", async () => {
     const inst = createInstantiator();
     const result = await inst.instantiate(validSpec());
     expect(result.ok).toBe(true);
@@ -160,7 +160,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("can_observe does NOT constrain order", async () => {
+  it("can_observe 不约束顺序", async () => {
     const spec = validSpec({
       nodes: [
         { id: "orchestrator", runtime: "claude-code", role: "orchestrator", cwd: "/" },
@@ -178,12 +178,12 @@ describe("RigInstantiator", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       const order = result.result.nodes.map((n) => n.logicalId);
-      // worker-a before worker-b by alphabetical, can_observe does NOT reverse
+      // 按字母顺序 worker-a 在 worker-b 前；can_observe 不会反转顺序。
       expect(order.indexOf("worker-a")).toBeLessThan(order.indexOf("worker-b"));
     }
   });
 
-  it("launch failure -> node 'failed', remaining processed", async () => {
+  it("启动失败时节点为 'failed'，其余节点继续处理", async () => {
     const tmux = mockTmux();
     let callCount = 0;
     (tmux.createSession as ReturnType<typeof vi.fn>).mockImplementation(async () => {
@@ -201,7 +201,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("rig.imported persisted after launches with rigId, specName, specVersion", async () => {
+  it("启动后持久化带 rigId、specName、specVersion 的 rig.imported", async () => {
     const inst = createInstantiator();
     const result = await inst.instantiate(validSpec());
     expect(result.ok).toBe(true);
@@ -213,7 +213,7 @@ describe("RigInstantiator", () => {
     if (result.ok) expect(payload.rigId).toBe(result.result.rigId);
   });
 
-  it("partial failure: rig.imported still fires", async () => {
+  it("部分失败时仍发出 rig.imported", async () => {
     const tmux = mockTmux();
     (tmux.createSession as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce({ ok: true })
@@ -226,7 +226,7 @@ describe("RigInstantiator", () => {
     expect(events).toHaveLength(1);
   });
 
-  it("validation_failed outcome: { ok: false, code, errors[] }", async () => {
+  it("validation_failed 结果为 { ok: false, code, errors[] }", async () => {
     const inst = createInstantiator();
     const result = await inst.instantiate({ schemaVersion: 1, name: "", version: "", nodes: [], edges: [] });
     expect(result.ok).toBe(false);
@@ -234,12 +234,12 @@ describe("RigInstantiator", () => {
       expect(result.code).toBe("validation_failed");
       expect((result as { errors: string[] }).errors.length).toBeGreaterThan(0);
     }
-    // No rig created
+    // 未创建 rig。
     expect(rigRepo.listRigs()).toHaveLength(0);
   });
 
-  it("preflight_failed outcome: { ok: false, code, errors[], warnings[] }", async () => {
-    // Create name collision
+  it("preflight_failed 结果为 { ok: false, code, errors[], warnings[] }", async () => {
+    // 制造名称冲突。
     rigRepo.createRig("r99");
     const inst = createInstantiator();
     const result = await inst.instantiate(validSpec());
@@ -249,7 +249,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("constructor throws on mismatched db handles", () => {
+  it("DB handle 不匹配时 constructor 抛错", () => {
     const otherDb = setupDb();
     const otherRepo = new RigRepository(otherDb);
     const tmux = mockTmux();
@@ -257,11 +257,11 @@ describe("RigInstantiator", () => {
       db, rigRepo: otherRepo, sessionRegistry, eventBus,
       nodeLauncher: new NodeLauncher({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmux }),
       preflight: new RigSpecPreflight({ rigRepo, tmuxAdapter: tmux, exec: async () => "", cmuxExec: async () => "" }),
-    })).toThrow(/same db handle/);
+    })).toThrow(/RigInstantiator：rigRepo 必须共享同一个数据库句柄/);
     otherDb.close();
   });
 
-  it("constructor throws on mismatched preflight db handle", () => {
+  it("preflight DB handle 不匹配时 constructor 抛错", () => {
     const otherDb = setupDb();
     const otherRepo = new RigRepository(otherDb);
     const tmux = mockTmux();
@@ -270,11 +270,11 @@ describe("RigInstantiator", () => {
       db, rigRepo, sessionRegistry, eventBus,
       nodeLauncher: new NodeLauncher({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmux }),
       preflight: otherPreflight,
-    })).toThrow(/preflight.*same db handle/);
+    })).toThrow(/RigInstantiator：preflight 必须共享同一个数据库句柄/);
     otherDb.close();
   });
 
-  it("per-node status in InstantiateResult", async () => {
+  it("InstantiateResult 包含逐节点状态", async () => {
     const inst = createInstantiator();
     const result = await inst.instantiate(validSpec());
     expect(result.ok).toBe(true);
@@ -287,7 +287,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("DB rig retrievable via getRig after instantiate", async () => {
+  it("instantiate 后可通过 getRig 取回 DB 中的 rig", async () => {
     const inst = createInstantiator();
     const result = await inst.instantiate(validSpec());
     expect(result.ok).toBe(true);
@@ -299,7 +299,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("extended fields persisted (surface_hint, package_refs)", async () => {
+  it("持久化扩展字段（surface_hint、package_refs）", async () => {
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", surfaceHint: "tab:x", packageRefs: ["pkg"] }],
       edges: [],
@@ -314,7 +314,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("restorePolicy propagated to session metadata", async () => {
+  it("restorePolicy 传播到 session metadata", async () => {
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", cwd: "/", restorePolicy: "checkpoint_only" }],
       edges: [],
@@ -329,7 +329,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("default restorePolicy -> resume_if_possible", async () => {
+  it("默认 restorePolicy 为 resume_if_possible", async () => {
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", cwd: "/" }],
       edges: [],
@@ -343,21 +343,21 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("atomic materialization: edge failure -> no partial rig/nodes", async () => {
-    // Sabotage edges table so edge insert fails inside the materialization transaction
+  it("原子 materialization：edge 失败时不留下部分 rig/node", async () => {
+    // 破坏 edges 表，使 edge insert 在 materialization 事务内失败。
     db.exec("CREATE TRIGGER block_edge BEFORE INSERT ON edges BEGIN SELECT RAISE(ABORT, 'blocked'); END;");
 
     const inst = createInstantiator();
     const result = await inst.instantiate(validSpec());
     expect(result.ok).toBe(false);
 
-    // No partial rig or nodes should remain
+    // 不应残留部分 rig 或 node。
     expect(rigRepo.listRigs()).toHaveLength(0);
 
     db.exec("DROP TRIGGER block_edge");
   });
 
-  it("InstantiateResult success shape: rigId, specName, specVersion, nodes[]", async () => {
+  it("InstantiateResult 成功结构包含 rigId、specName、specVersion、nodes[]", async () => {
     const inst = createInstantiator();
     const result = await inst.instantiate(validSpec());
     expect(result.ok).toBe(true);
@@ -369,7 +369,7 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("rig.imported event type in RigEvent union", async () => {
+  it("RigEvent union 包含 rig.imported event type", async () => {
     const notifications: PersistedEvent[] = [];
     eventBus.subscribe((e) => notifications.push(e));
     const inst = createInstantiator();
@@ -382,16 +382,16 @@ describe("RigInstantiator", () => {
     }
   });
 
-  it("event persistence fails after launches -> ok: true, rig + sessions exist, no event", async () => {
+  it("启动后 event 持久化失败时仍 ok:true，rig + session 存在，但无 event", async () => {
     const inst = createInstantiator();
     const spec = validSpec({ nodes: [{ id: "worker", runtime: "claude-code", cwd: "/" }], edges: [] });
 
-    // Let the materialization transaction succeed, then sabotage events for the post-launch emit
+    // 先让 materialization 事务成功，再破坏 events 以使启动后 emit 失败。
     const origEmit = eventBus.emit.bind(eventBus);
     let emitCount = 0;
     vi.spyOn(eventBus, "emit").mockImplementation((event) => {
       emitCount++;
-      // Block only the rig.imported emit (not node.launched from NodeLauncher)
+      // 只阻断 rig.imported emit，不阻断 NodeLauncher 发出的 node.launched。
       if (event.type === "rig.imported") {
         throw new Error("event persistence failed");
       }
@@ -402,30 +402,30 @@ describe("RigInstantiator", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // Rig exists
+      // Rig 存在。
       const rig = rigRepo.getRig(result.result.rigId);
       expect(rig).not.toBeNull();
-      // Sessions exist
+      // Session 存在。
       const sessions = sessionRegistry.getSessionsForRig(result.result.rigId);
       expect(sessions.length).toBeGreaterThan(0);
-      // No rig.imported event row
+      // 没有 rig.imported event 行。
       const importedEvents = db.prepare("SELECT * FROM events WHERE type = 'rig.imported'").all();
       expect(importedEvents).toHaveLength(0);
     }
   });
 
-  it("restorePolicy propagation fails -> ok: true (best-effort)", async () => {
+  it("restorePolicy 传播失败时仍 ok:true（尽力而为）", async () => {
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", cwd: "/", restorePolicy: "checkpoint_only" }],
       edges: [],
     });
     const inst = createInstantiator();
 
-    // Sabotage sessions table after launch so restorePolicy UPDATE fails
+    // 启动后破坏 sessions 表，使 restorePolicy UPDATE 失败。
     const origLaunchNode = inst["nodeLauncher"].launchNode.bind(inst["nodeLauncher"]);
     vi.spyOn(inst["nodeLauncher"], "launchNode").mockImplementation(async (...args: [string, string, unknown?]) => {
       const result = await origLaunchNode(...args);
-      // Sabotage after successful launch
+      // 成功启动后进行破坏。
       if (result.ok) {
         db.exec("CREATE TRIGGER block_session_update BEFORE UPDATE ON sessions BEGIN SELECT RAISE(ABORT, 'blocked'); END;");
       }
@@ -434,7 +434,7 @@ describe("RigInstantiator", () => {
 
     const result = await inst.instantiate(spec);
 
-    // Should still return ok: true
+    // 仍应返回 ok:true。
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.result.rigId).toBeDefined();
@@ -442,11 +442,11 @@ describe("RigInstantiator", () => {
       expect(rig).not.toBeNull();
     }
 
-    // Clean up trigger
+    // 清理 trigger。
     try { db.exec("DROP TRIGGER block_session_update"); } catch { /* may not exist */ }
   });
 
-  it("dependency cycle -> instantiate_error", async () => {
+  it("dependency 环产生 instantiate_error", async () => {
     const spec = validSpec({
       nodes: [
         { id: "a", runtime: "claude-code", cwd: "/" },
@@ -466,13 +466,13 @@ describe("RigInstantiator", () => {
       expect(result.message).toContain("cycle");
     }
 
-    // No rig should have been created (cycle detected before materialization)
+    // 不应创建 rig（在 materialization 前检测到环）。
     expect(rigRepo.listRigs()).toHaveLength(0);
   });
 
-  // -- Review Fix 2: Total launch failure cleanup --
+  // -- Review Fix 2：全部启动失败时清理 --
 
-  it("all launches fail -> instantiate_error, rig deleted, no rig.imported", async () => {
+  it("全部启动失败时返回 instantiate_error、删除 rig 且无 rig.imported", async () => {
     const tmux = mockTmux();
     (tmux.createSession as ReturnType<typeof vi.fn>).mockResolvedValue(
       { ok: false as const, code: "err", message: "all fail" }
@@ -483,18 +483,18 @@ describe("RigInstantiator", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe("instantiate_error");
-      expect(result.message).toContain("all node launches failed");
+      expect(result.message).toContain("所有 node launch 均失败");
     }
 
-    // Rig should be deleted
+    // Rig 应被删除。
     expect(rigRepo.listRigs()).toHaveLength(0);
 
-    // No rig.imported event
+    // 没有 rig.imported event。
     const events = db.prepare("SELECT * FROM events WHERE type = 'rig.imported'").all();
     expect(events).toHaveLength(0);
   });
 
-  it("partial launch failure -> ok: true, rig preserved", async () => {
+  it("部分启动失败时 ok:true 且保留 rig", async () => {
     const tmux = mockTmux();
     let callCount = 0;
     (tmux.createSession as ReturnType<typeof vi.fn>).mockImplementation(async () => {
@@ -507,13 +507,13 @@ describe("RigInstantiator", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // Rig preserved
+      // Rig 已保留。
       const rig = rigRepo.getRig(result.result.rigId);
       expect(rig).not.toBeNull();
     }
   });
 
-  it("total failure -> no rig.imported event row", async () => {
+  it("全部失败时没有 rig.imported event 行", async () => {
     const tmux = mockTmux();
     (tmux.createSession as ReturnType<typeof vi.fn>).mockResolvedValue(
       { ok: false as const, code: "err", message: "fail" }
@@ -525,11 +525,11 @@ describe("RigInstantiator", () => {
     expect(events).toHaveLength(0);
   });
 
-  it("launch warnings propagate into InstantiateResult.warnings", async () => {
+  it("启动 warning 传播到 InstantiateResult.warnings", async () => {
     const tmux = mockTmux();
-    // Mock launchNode to return warnings via NodeLauncher transcript integration
+    // 通过 NodeLauncher transcript 集成模拟 launchNode 返回 warning。
     const nodeLauncher = new NodeLauncher({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmux });
-    // Override launchNode to simulate transcript warning
+    // 覆盖 launchNode 以模拟 transcript warning。
     const originalLaunch = nodeLauncher.launchNode.bind(nodeLauncher);
     vi.spyOn(nodeLauncher, "launchNode").mockImplementation(async (...args) => {
       const result = await originalLaunch(...args);

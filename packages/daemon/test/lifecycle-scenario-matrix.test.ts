@@ -1,8 +1,7 @@
-// Tier 1 in-process foundation proof for the lifecycle reboot/recovery
-// scenario matrix. One suite per scenario. Mocks tmuxExec/cmuxExec at the
-// adapter boundary; in-memory SQLite via createDaemon/createFullTestDb.
+// lifecycle 重启/恢复 scenario 矩阵的 Tier 1 进程内基础证明。每个 scenario 一个 suite。
+// 在 adapter 边界 mock tmuxExec/cmuxExec；通过 createDaemon/createFullTestDb 使用内存 SQLite。
 //
-// Slice packet:
+// Slice 包：
 //   <shared-docs>/missions/primitive-hardening/
 //   slices/lifecycle-reboot-recovery-scenario-matrix/
 
@@ -37,7 +36,7 @@ import { createFullTestDb } from "./helpers/test-app.js";
 import { PsProjectionService } from "../src/domain/ps-projection.js";
 
 // ---------------------------------------------------------------------------
-// Shared helpers
+// 共享 helper
 // ---------------------------------------------------------------------------
 
 function seedDbWithStaleSessions(
@@ -127,12 +126,12 @@ function mockCodexResumeReturning(result: ResumeResult): CodexResumeAdapter {
 }
 
 // ---------------------------------------------------------------------------
-// Scenario suites
+// Scenario 测试套件
 // ---------------------------------------------------------------------------
 
-describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
-  describe("Scenario 1: Clean start (empty DB, no rigs)", () => {
-    it("daemon comes up; reconciliation summary line reads rigs=0 checked=0 detached=0 errors=0", async () => {
+describe("Lifecycle 重启/恢复 scenario 矩阵（Tier 1）", () => {
+  describe("Scenario 1：干净启动（空 DB、无 rig）", () => {
+    it("后台服务启动，reconciliation 汇总行为 rigs=0 checked=0 detached=0 errors=0", async () => {
       const tmuxExec: ExecFn = async () => "";
       const cmuxExec = unavailableCmuxExec();
 
@@ -140,14 +139,14 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         createDaemon({ tmuxExec, cmuxExec }),
       );
 
-      const summary = lines.find((line) => line.startsWith("startup reconcile:"));
+      const summary = lines.find((line) => line.startsWith("启动协调："));
       expect(summary).toBeDefined();
       expect(summary).toMatch(/rigs=0\b/);
       expect(summary).toMatch(/checked=0\b/);
       expect(summary).toMatch(/detached=0\b/);
       expect(summary).toMatch(/errors=0\b/);
 
-      // No spurious session.detached events on a clean start.
+      // 干净启动时没有虚假的 session.detached event。
       const detachedEvents = value.db
         .prepare("SELECT type FROM events WHERE type = 'session.detached'")
         .all();
@@ -157,15 +156,15 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
     });
   });
 
-  describe("Scenario 2: Warm resume (daemon restart, tmux still alive)", () => {
-    it("live tmux session is NOT marked detached; summary shows detached=0", async () => {
+  describe("Scenario 2：热恢复（后台服务重启，tmux 仍存活）", () => {
+    it("存活 tmux session 不标为 detached；汇总显示 detached=0", async () => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rigged-matrix-warm-"));
       const dbPath = path.join(tmpDir, "warm.sqlite");
       seedDbWithStaleSessions(dbPath, [
         { rigName: "r01", logicalId: "dev1-impl", sessionName: "r01-dev1-impl" },
       ]);
 
-      // tmux is alive; has-session returns success (stdout empty, no throw).
+      // tmux 存活；has-session 成功返回（stdout 为空，不抛错）。
       const tmuxExec: ExecFn = async () => "";
       const cmuxExec = unavailableCmuxExec();
 
@@ -184,7 +183,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         .all();
       expect(detachedEvents).toHaveLength(0);
 
-      const summary = lines.find((line) => line.startsWith("startup reconcile:"));
+      const summary = lines.find((line) => line.startsWith("启动协调："));
       expect(summary).toMatch(/detached=0\b/);
       expect(summary).toMatch(/errors=0\b/);
 
@@ -193,16 +192,15 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
     });
   });
 
-  describe("Scenario 3: Host reboot / tmux socket absence (postmortem fixes #1, #2)", () => {
-    // Each absence-class error must classify as missing session, NOT crash and
-    // NOT silently leave the row marked running.
+  describe("Scenario 3：主机重启 / tmux socket 缺失（事后修复 #1、#2）", () => {
+    // 每个 absence 类错误都必须分类为 session 缺失，不能崩溃，也不能静默保留 running 标记。
     it.each([
       ["error connecting to /private/tmp/tmux-501/default (No such file or directory)"],
       ["error connecting to /private/tmp/tmux-501/default (Connection refused)"],
       ["no server running on /private/tmp/tmux-501/default"],
       ["can't find session: r01-dev1-impl"],
       ["session not found"],
-    ])("classifies %s as absence; session marked detached and event emitted", async (errMsg) => {
+    ])("将 %s 分类为缺失；session 标为 detached 并发出 event", async (errMsg) => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rigged-matrix-reboot-"));
       const dbPath = path.join(tmpDir, "reboot.sqlite");
       seedDbWithStaleSessions(dbPath, [
@@ -230,10 +228,9 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       fs.rmSync(tmpDir, { recursive: true });
     });
 
-    // Negative case: permission-denied tmux probe must NOT be classified as
-    // absence. Session stays running (fail-closed) and the unexpected probe
-    // error is recorded in the summary's errors=N count plus a warning line.
-    it("permission-denied tmux probe stays NOT-detached (fail-closed) and surfaces warning", async () => {
+    // 负例：permission-denied tmux probe 不得分类为缺失。Session 保持 running（关闭失败），意外
+    // probe 错误记录到汇总的 errors=N 计数和一条警告行中。
+    it("permission-denied tmux probe 保持非 detached（关闭失败）并显示警告", async () => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rigged-matrix-permerr-"));
       const dbPath = path.join(tmpDir, "permerr.sqlite");
       seedDbWithStaleSessions(dbPath, [
@@ -254,28 +251,28 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       );
 
       try {
-        // Session must NOT be marked detached on ambiguous probe failure.
+        // probe 失败有歧义时不得把 session 标为 detached。
         const sessions = value.db
           .prepare("SELECT status FROM sessions")
           .all() as { status: string }[];
         expect(sessions).toHaveLength(1);
         expect(sessions[0]!.status).toBe("running");
 
-        // No detached event.
+        // 没有 detached event。
         const detached = value.db
           .prepare("SELECT type FROM events WHERE type = 'session.detached'")
           .all();
         expect(detached).toHaveLength(0);
 
-        // Summary records the error count.
-        const summary = lines.find((line) => line.startsWith("startup reconcile:"));
+        // 汇总记录错误数。
+        const summary = lines.find((line) => line.startsWith("启动协调："));
         expect(summary).toMatch(/errors=1\b/);
         expect(summary).toMatch(/detached=0\b/);
 
-        // Per-session warning line emitted.
+        // 发出逐 session 警告行。
         const warnCalls = warnSpy.mock.calls.map((c) => String(c[0] ?? ""));
         const sessWarn = warnCalls.find((line) =>
-          line.startsWith("startup reconcile warning:") && line.includes("session="),
+          line.startsWith("启动协调警告：") && line.includes("session="),
         );
         expect(sessWarn).toBeDefined();
         expect(sessWarn).toContain("permission denied");
@@ -288,9 +285,9 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
     });
   });
 
-  describe("Scenario 4: Provider auth loss", () => {
-    // Helper: build orchestrator + seed a snapshot with a Claude node that
-    // requests resume via claude_name (legacy resume path).
+  describe("Scenario 4：Provider auth 丢失", () => {
+    // Helper：构建 orchestrator，并播种包含通过 claude_name 请求 resume 的 Claude 节点 snapshot
+    //（legacy resume 路径）。
     function setupClaudeAttentionRequiredScenario(opts: {
       claudeResult: ResumeResult;
     }) {
@@ -312,12 +309,12 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         codexResume: mockCodexResumeReturning({ ok: true }),
       });
 
-      // Seed rig + node + snapshot with a resumable session.
+      // 播种 rig、node 和包含可恢复 session 的 snapshot。
       const rig = rigRepo.createRig("r88");
       const node = rigRepo.addNode(rig.id, "worker", { role: "worker", runtime: "claude-code", cwd: "/tmp" });
       const snap = snapshotCapture.captureSnapshot(rig.id, "manual");
-      // Patch the persisted snapshot to embed a resume_token so the orchestrator
-      // exercises the legacy resume path with non-pod-aware nodes.
+      // 修改持久化 snapshot 以嵌入 resume_token，使 orchestrator 对非 pod-aware 节点走 legacy
+      // resume 路径。
       const fullSnap = snapshotRepo.getSnapshot(snap.id)!;
       const data = JSON.parse(JSON.stringify(fullSnap.data));
       data.sessions = [{
@@ -337,7 +334,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       return { db, rigRepo, sessionRegistry, eventBus, snapshotRepo, orchestrator, rig, node, snapshotId: snap.id };
     }
 
-    it("Claude resume returning attention_required → node status=attention_required with prompt evidence", async () => {
+    it("Claude resume 返回 attention_required 时节点 status=attention_required 且带 prompt evidence", async () => {
       const ctx = setupClaudeAttentionRequiredScenario({
         claudeResult: {
           ok: false,
@@ -351,29 +348,27 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       expect(outcome.ok).toBe(true);
       if (!outcome.ok) throw new Error(`restore failed: ${outcome.code}`);
 
-      // Per-node status carries attention_required (NOT failed).
+      // 逐节点 status 携带 attention_required，而非 failed。
       const workerNode = outcome.result.nodes.find((n) => n.nodeId === ctx.node.id);
       expect(workerNode?.status).toBe("attention_required");
-      // Evidence is preserved on the node result.
+      // 节点结果保留 evidence。
       expect(workerNode?.attentionEvidence).toBeDefined();
       expect(workerNode?.attentionEvidence).toContain("Choose a conversation");
 
-      // Rig-level rollup: any attention_required (with at least one
-      // not-failed) yields partially_restored, NOT failed.
+      // Rig 级 rollup：任一 attention_required（且至少一个非 failed）产生 partially_restored，
+      // 而非 failed。
       expect(outcome.result.rigResult).toBe("partially_restored");
 
       ctx.db.close();
     });
 
-    // Codex side — closes the false-positive `resumed` shape that fire-and-
-    // forget left open. Driver patch (this slice) added Codex verifyResume
-    // mirroring Claude using existing native-resume-probe Codex outcomes.
-    describe("Codex verifyResume (driver patch in this slice)", () => {
-      // Use the real CodexResumeAdapter against a controlled tmux mock so we
-      // verify the patch wires probe + tmux honestly. No new probe patterns.
+    // Codex 侧——关闭 fire-and-forget 留下的假阳性 `resumed` 结构。本 slice 的 driver 补丁增加
+    // Codex verifyResume，使用现有 native-resume-probe Codex 结果镜像 Claude。
+    describe("Codex verifyResume（本 slice 的 driver 补丁）", () => {
+      // 使用真实 CodexResumeAdapter 和受控 tmux mock，验证补丁真实连接 probe + tmux；不增加探针模式。
       const fastOptions = { pollMs: 1, maxWaitMs: 5, sleep: async () => {} };
 
-      it("probe sees an interactive Codex prompt → {ok: true}", async () => {
+      it("probe 看到可交互 Codex prompt 时返回 {ok: true}", async () => {
         const tmux = mockTmuxForRestore({ paneCommand: "codex", paneContent: "OpenAI Codex (v0.0.0)\n› Ask Codex to do anything" });
         const adapter = new CodexResumeAdapter(tmux, fastOptions);
 
@@ -388,18 +383,19 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
             axis: "sandbox",
             state: "observed",
             value: "workspace-write",
+            reason: "emitted_launch_arguments",
           },
         });
       });
 
-      it("a Codex process with no interactive prompt is not a successful resume", async () => {
+      it("没有可交互 prompt 的 Codex 进程不算成功 resume", async () => {
         const tmux = mockTmuxForRestore({ paneCommand: "codex", paneContent: "" });
         const adapter = new CodexResumeAdapter(tmux, fastOptions);
         const result = await adapter.resume("r99-worker", "codex_id", "tok-abc", "/tmp");
         expect(result).toMatchObject({ ok: false, code: "resume_failed" });
       });
 
-      it("probe sees `No saved session found` → {ok:false, code:'retry_fresh'} (NOT silent ok:true)", async () => {
+      it("probe 看到 `No saved session found` 时返回 {ok:false, code:'retry_fresh'}，不静默返回 ok:true", async () => {
         const tmux = mockTmuxForRestore({
           paneCommand: "codex",
           paneContent: "Error: No saved session found for that token.",
@@ -412,7 +408,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         if (!r.ok) expect(r.code).toBe("retry_fresh");
       });
 
-      it("pane returns to shell → {ok:false, code:'retry_fresh'} (NOT silent ok:true)", async () => {
+      it("pane 返回 shell 时返回 {ok:false, code:'retry_fresh'}，不静默返回 ok:true", async () => {
         const tmux = mockTmuxForRestore({ paneCommand: "zsh", paneContent: "" });
         const adapter = new CodexResumeAdapter(tmux, fastOptions);
 
@@ -422,16 +418,14 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         if (!r.ok) expect(r.code).toBe("retry_fresh");
       });
 
-      // Codex auth-refusal → attention_required end-to-end. Closes the
-      // deferral previously documented in this file. Implemented by the
-      // codex-auth-refusal-attention-required slice via:
-      //   (a) `looksLikeCodexAuthRefusal` in native-resume-probe.ts;
-      //   (b) `attention_required` pass-through in codex-resume.ts;
-      //   (c) Codex-branch translation in restore-orchestrator.ts:944-960.
-      // The runtime-agnostic per-node mapping at restore-orchestrator.ts:725-735
-      // emits `status: "attention_required"` with `attentionEvidence` for
-      // both runtimes — no further wiring needed.
-      it("Codex auth-refusal → node status=attention_required with auth-refusal pane evidence", async () => {
+      // Codex auth-refusal 端到端转为 attention_required，关闭此前记录在本文件中的延期项。
+      // 由 codex-auth-refusal-attention-required slice 通过以下方式实现：
+      //   (a) native-resume-probe.ts 中的 `looksLikeCodexAuthRefusal`；
+      //   (b) codex-resume.ts 中的 `attention_required` 透传；
+      //   (c) restore-orchestrator.ts:944-960 中的 Codex 分支转换。
+      // restore-orchestrator.ts:725-735 中与 runtime 无关的逐节点 mapping，为两个 runtime 都输出
+      // 带 `attentionEvidence` 的 `status: "attention_required"`，无需额外接线。
+      it("Codex auth-refusal 产生 node status=attention_required 及 auth-refusal pane evidence", async () => {
         const db = createFullTestDb();
         const rigRepo = new RigRepository(db);
         const sessionRegistry = new SessionRegistry(db);
@@ -444,11 +438,9 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         const tmux = mockTmuxForRestore({ hasSession: false });
         const nodeLauncher = new NodeLauncher({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmux });
 
-        // Codex adapter stub returns the same shape the real adapter would
-        // emit for auth-refusal: { ok: false, code: "attention_required",
-        // message, evidence } where evidence is the last 12 lines of pane
-        // content. Exercises restore-orchestrator's Codex branch translation
-        // patched in this slice.
+        // Codex adapter stub 返回真实 adapter 遇到 auth-refusal 时会输出的相同结构：
+        // { ok: false, code: "attention_required", message, evidence }，其中 evidence 是 pane 内容
+        // 最后 12 行。覆盖本 slice 修补的 restore-orchestrator Codex 分支转换。
         const refusalEvidence = [
           "$ codex resume tok-codex",
           "Error: Your access token could not be refreshed because you have since",
@@ -490,33 +482,28 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         expect(outcome.ok).toBe(true);
         if (!outcome.ok) throw new Error(`restore failed: ${outcome.code}`);
 
-        // Per-node status: attention_required (NOT failed, NOT resumed).
+        // 逐节点 status：attention_required，而非 failed 或 resumed。
         const codexNode = outcome.result.nodes.find((n) => n.nodeId === node.id);
         expect(codexNode?.status).toBe("attention_required");
-        // Evidence preserved on the node result via the runtime-agnostic
-        // mapping at restore-orchestrator.ts:725-735.
+        // 通过 restore-orchestrator.ts:725-735 中与 runtime 无关的 mapping，在节点结果上保留 evidence。
         expect(codexNode?.attentionEvidence).toBeDefined();
         expect(codexNode?.attentionEvidence).toContain("access token could not be refreshed");
         expect(codexNode?.attentionEvidence).toContain("Please sign in again");
 
-        // Rig-level rollup: single attention_required node → partially_restored
-        // (NOT failed). Aggregation at restore-orchestrator.ts:65 already
-        // includes attention_required in the mixed-status set; this test
-        // confirms Codex participates honestly.
+        // Rig 级 rollup：单个 attention_required 节点产生 partially_restored，而非 failed。
+        // restore-orchestrator.ts:65 的聚合已把 attention_required 纳入混合状态集合；本测试确认
+        // Codex 如实参与。
         expect(outcome.result.rigResult).toBe("partially_restored");
 
         db.close();
       });
 
-      // Pod-aware Codex auth-refusal end-to-end. The production resume path
-      // for pod-aware Codex nodes flows through `launchHarness` →
-      // `verifyResumeLaunch` → probe → `recovery: "attention_required"` →
-      // startup-orchestrator returns `startupStatus: "attention_required"` →
-      // restore-orchestrator's hoisted pod-aware mapping surfaces
-      // `status: "attention_required"` with `attentionEvidence`.
-      // Closes the gap guard caught in revision 1 (commit 63ee206 only
-      // covered the legacy CodexResumeAdapter path).
-      it("pod-aware Codex auth-refusal → node status=attention_required (production path)", async () => {
+      // 感知 pod 的 Codex auth-refusal 端到端路径。感知 pod 的 Codex 节点在生产中沿
+      // `launchHarness` → `verifyResumeLaunch` → probe → `recovery: "attention_required"` →
+      // startup-orchestrator 返回 `startupStatus: "attention_required"` → restore-orchestrator 提升的
+      // pod-aware mapping 显示带 `attentionEvidence` 的 `status: "attention_required"`。关闭 revision 1
+      // 发现的 gap（commit 63ee206 只覆盖 legacy CodexResumeAdapter 路径）。
+      it("感知 pod 的 Codex auth-refusal 产生 node status=attention_required（生产路径）", async () => {
         const db = createFullTestDb();
         const rigRepo = new RigRepository(db);
         const sessionRegistry = new SessionRegistry(db);
@@ -530,8 +517,8 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         const nodeLauncher = new NodeLauncher({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmux });
 
         const rig = rigRepo.createRig("r96");
-        // Pod-aware setup mirrors restore-orchestrator.test.ts:1296-1362
-        // pattern (pods row + node.podId + node_startup_context + snapshot).
+        // Pod-aware 设置镜像 restore-orchestrator.test.ts:1296-1362 的模式
+        //（pods 行 + node.podId + node_startup_context + snapshot）。
         db.prepare("INSERT INTO pods (id, rig_id, label) VALUES (?, ?, ?)")
           .run("pod-codex-attention", rig.id, "Codex");
         const node = rigRepo.addNode(rig.id, "dev.qa", {
@@ -544,13 +531,12 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
           "INSERT INTO node_startup_context (node_id, projection_entries_json, resolved_files_json, startup_actions_json, runtime) VALUES (?, ?, ?, ?, ?)"
         ).run(node.id, "[]", "[]", "[]", "codex");
         const snap = snapshotCapture.captureSnapshot(rig.id, "manual");
-        // Reset to "exited" so restore actually attempts launch.
+        // 重置为 "exited"，使 restore 真正尝试启动。
         sessionRegistry.updateStatus(session.id, "exited");
         db.prepare("DELETE FROM bindings WHERE node_id = ?").run(node.id);
 
-        // The Codex runtime adapter's launchHarness returns the new shape
-        // landed in this revision: ok:false with recovery: "attention_required"
-        // and last-12-line pane evidence.
+        // Codex runtime adapter 的 launchHarness 返回本 revision 引入的新结构：ok:false、
+        // recovery: "attention_required" 以及 pane 最后 12 行 evidence。
         const refusalEvidence = [
           "$ codex resume stale-codex-token",
           "Error: Your access token could not be refreshed because you have since",
@@ -592,13 +578,12 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         expect(codexNode?.attentionEvidence).toContain("access token could not be refreshed");
         expect(codexNode?.attentionEvidence).toContain("Please sign in again");
 
-        // Rig-level rollup: single attention_required node → partially_restored.
+        // Rig 级 rollup：单个 attention_required 节点产生 partially_restored。
         expect(outcome.result.rigResult).toBe("partially_restored");
 
-        // launchHarness called ONCE — fresh-fallback was NOT triggered for
-        // attention_required (auth-refusal is operator-recoverable, not a
-        // stale-token signal). The startup orchestrator's new branch
-        // distinguishes recovery: "attention_required" from "retry_fresh".
+        // launchHarness 只调用一次；attention_required 不触发 fresh-fallback（auth-refusal 可由操作员
+        // 恢复，不是 stale-token 信号）。startup orchestrator 新分支区分
+        // recovery: "attention_required" 与 "retry_fresh"。
         expect(launchHarness).toHaveBeenCalledTimes(1);
 
         db.close();
@@ -606,7 +591,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
     });
   });
 
-  describe("Scenario 5: Partial boot", () => {
+  describe("Scenario 5：部分启动", () => {
     function buildOrchestratorWithMixedNodes() {
       const db = createFullTestDb();
       const rigRepo = new RigRepository(db);
@@ -618,16 +603,15 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         db, rigRepo, sessionRegistry, eventBus, snapshotRepo, checkpointStore,
       });
 
-      // Mocked Claude returns attention_required for one node, success for
-      // another. Codex returns failed for the third. We seed three nodes
-      // sharing one snapshot.
+      // Mock Claude 为一个节点返回 attention_required，另一个成功；Codex 为第三个返回 failed。
+      // 播种共享一个 snapshot 的三个节点。
       const tmux = {
         ...mockTmuxForRestore({ hasSession: false }),
         listPanes: vi.fn(async () => [{ id: "%1", index: 0, cwd: "/", width: 80, height: 24, active: true }]),
         getPanePid: vi.fn(async () => 1234),
       } as unknown as TmuxAdapter;
       const nodeLauncher = new NodeLauncher({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmux });
-      // Dispatch by sessionName so test doesn't depend on iteration order.
+      // 按 sessionName 分派，使测试不依赖迭代顺序。
       const claudeStub = {
         canResume: vi.fn((type: string | null) => type === "claude_name" || type === "claude_id"),
         resume: vi.fn(async (sessionName: string) => {
@@ -693,7 +677,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       return { db, orchestrator, rig, snapshotId: snap.id, nodeIds: { claudeOk: claudeOk.id, claudeAtt: claudeAtt.id, codexFail: codexFail.id } };
     }
 
-    it("mixed resumed + attention_required + failed → rigResult=partially_restored", async () => {
+    it("混合 resumed + attention_required + failed 时 rigResult=partially_restored", async () => {
       const ctx = buildOrchestratorWithMixedNodes();
 
       const outcome = await ctx.orchestrator.restore(ctx.snapshotId);
@@ -702,15 +686,15 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
 
       expect(outcome.result.rigResult).toBe("partially_restored");
 
-      // Per-node statuses preserved in the restore.completed payload.
+      // restore.completed payload 保留逐节点状态。
       const map = Object.fromEntries(outcome.result.nodes.map((n) => [n.nodeId, n.status]));
       expect(map[ctx.nodeIds.claudeOk]).toBe("resumed");
       expect(map[ctx.nodeIds.claudeAtt]).toBe("attention_required");
-      // OPR.0.3.4.2: a CONCLUDED resume failure rolls back to zero sessions
-      // and reports awaiting-decision (the stop-and-ask), not failed.
+      // OPR.0.3.4.2：已定论的 resume 失败回滚到零 session，并报告 awaiting-decision
+      //（停止并询问），而非 failed。
       expect(map[ctx.nodeIds.codexFail]).toBe("awaiting-decision");
 
-      // restore.completed event payload preserves per-node discrimination.
+      // restore.completed event payload 保留逐节点判别。
       const completedRow = ctx.db
         .prepare("SELECT payload FROM events WHERE type = 'restore.completed' ORDER BY seq DESC LIMIT 1")
         .get() as { payload: string };
@@ -721,7 +705,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       ctx.db.close();
     });
 
-    it("all resume-failures stop-and-ask → rigResult=partially_restored (awaiting-decision is not failed)", async () => {
+    it("所有 resume 失败都停止并询问时 rigResult=partially_restored（awaiting-decision 不等于 failed）", async () => {
       const db = createFullTestDb();
       const rigRepo = new RigRepository(db);
       const sessionRegistry = new SessionRegistry(db);
@@ -763,17 +747,15 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       const outcome = await orchestrator.restore(snap.id);
       expect(outcome.ok).toBe(true);
       if (!outcome.ok) throw new Error(`restore failed: ${outcome.code}`);
-      // OPR.0.3.4.2: concluded resume failures are awaiting-decision (zero
-      // session, operator must choose) - not failed - so the rig rolls up
-      // partially_restored. Genuine all-harness-failure rollup stays covered
-      // by the launch-failure tests.
+      // OPR.0.3.4.2：已定论的 resume 失败为 awaiting-decision（零 session、操作员必须选择），
+      // 而非 failed，因此 rig 汇总为 partially_restored。真正的全 harness 失败 rollup 仍由启动失败测试覆盖。
       expect(outcome.result.rigResult).toBe("partially_restored");
 
       db.close();
     });
   });
 
-  describe("Scenario 6: Operator recovery (reconcileNodeRuntimeTruth)", () => {
+  describe("Scenario 6：操作员恢复（reconcileNodeRuntimeTruth）", () => {
     function setupForReconcile(opts: {
       runtime: "claude-code" | "codex";
       restoreOutcome: "failed" | "attention_required";
@@ -804,9 +786,8 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         checkpointStore, nodeLauncher, tmuxAdapter: tmux,
         claudeResume: mockClaudeResumeReturning({ ok: true }),
         codexResume: mockCodexResumeReturning({ ok: true }),
-        // Full ps columns: Codex identity requires the pane's foreground process group, start
-        // time and executable name (native-process-lineage selectCodexProcess); pid/ppid/command
-        // alone is deliberately insufficient positive proof.
+        // 完整 ps 列：Codex identity 需要 pane 前台进程组、启动时间和可执行文件名
+        //（native-process-lineage selectCodexProcess）；刻意不把 pid/ppid/command 本身当作充分正向证明。
         listProcesses: async () => [
           { pid: 1234, ppid: 1, pgid: 1234, tpgid: 5678, executableName: "zsh", startedAt: "Sat Jan  1 12:00:00 2000", command: "zsh" },
           {
@@ -849,7 +830,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       return { db, orchestrator, rig, nodeId: node.id };
     }
 
-    it("upgrades failed → operator_recovered when ALL four preconditions hold; emits restore.outcome_reconciled", async () => {
+    it("四项前置条件全部满足时将 failed 升级为 operator_recovered，并发出 restore.outcome_reconciled", async () => {
       const ctx = setupForReconcile({
         runtime: "claude-code",
         restoreOutcome: "failed",
@@ -870,7 +851,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
         .all(ctx.rig.id);
       expect(reconciled).toHaveLength(1);
 
-      // Original failure event NOT mutated/deleted (load-bearing invariant).
+      // 原始 failure event 不被修改或删除（承重不变量）。
       const completed = ctx.db
         .prepare("SELECT payload FROM events WHERE rig_id = ? AND type = 'restore.completed'")
         .all(ctx.rig.id) as { payload: string }[];
@@ -881,9 +862,9 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       ctx.db.close();
     });
 
-    // Codex foreground recognition is load-bearing per planner research gap
-    // (`paneCommand.startsWith("codex")` at restore-orchestrator.ts:1038).
-    it("recognizes Codex foreground process: paneCommand='codex' → operator_recovered with fgProcess='codex'", async () => {
+    // 按 planner 研究缺口，Codex 前台识别是承重行为
+    //（restore-orchestrator.ts:1038 的 `paneCommand.startsWith("codex")`）。
+    it("识别 Codex 前台进程：paneCommand='codex' 时 operator_recovered 且 fgProcess='codex'", async () => {
       const ctx = setupForReconcile({
         runtime: "codex",
         restoreOutcome: "failed",
@@ -899,7 +880,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       ctx.db.close();
     });
 
-    it("NEVER produces 'ready' as terminal outcome; only operator_recovered", async () => {
+    it("terminal 结果绝不产生 'ready'，只能是 operator_recovered", async () => {
       const ctx = setupForReconcile({
         runtime: "claude-code",
         restoreOutcome: "failed",
@@ -920,8 +901,8 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       ctx.db.close();
     });
 
-    // Per-precondition refusal codes (load-bearing for honest UX).
-    it("refuses upgrade with code=tmux_session_missing when tmux probe says false", async () => {
+    // 各前置条件的拒绝 code（承载真实 UX）。
+    it("tmux probe 返回 false 时以 code=tmux_session_missing 拒绝升级", async () => {
       const ctx = setupForReconcile({
         runtime: "claude-code", restoreOutcome: "failed", hasSession: false,
       });
@@ -931,7 +912,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       ctx.db.close();
     });
 
-    it("refuses upgrade with code=process_lineage_mismatch when pane is in shell", async () => {
+    it("pane 位于 shell 时以 code=process_lineage_mismatch 拒绝升级", async () => {
       const ctx = setupForReconcile({
         runtime: "claude-code", restoreOutcome: "failed",
         paneCommand: "zsh", paneContent: "$ ",
@@ -942,7 +923,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       ctx.db.close();
     });
 
-    it("refuses upgrade with code=resume_token_not_used when no token recorded", async () => {
+    it("未记录 token 时以 code=resume_token_not_used 拒绝升级", async () => {
       const ctx = setupForReconcile({
         runtime: "claude-code", restoreOutcome: "failed",
         withResumeToken: false,
@@ -954,7 +935,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       ctx.db.close();
     });
 
-    it("refuses upgrade with code=pane_not_usable when pane is at Claude resume-selection prompt", async () => {
+    it("pane 位于 Claude resume-selection prompt 时以 code=pane_not_usable 拒绝升级", async () => {
       const ctx = setupForReconcile({
         runtime: "claude-code", restoreOutcome: "attention_required",
         paneContent: "Choose a conversation to resume:\n  1. project-foo\n  2. project-bar",
@@ -965,7 +946,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       ctx.db.close();
     });
 
-    it("refuses upgrade with code=outcome_not_upgradable for an already-resumed outcome", async () => {
+    it("结果已 resumed 时以 code=outcome_not_upgradable 拒绝升级", async () => {
       const db = createFullTestDb();
       const rigRepo = new RigRepository(db);
       const sessionRegistry = new SessionRegistry(db);
@@ -1008,7 +989,7 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
       db.close();
     });
 
-    it("refuses upgrade with code=no_attempt when no restore.started exists for the rig", async () => {
+    it("rig 没有 restore.started 时以 code=no_attempt 拒绝升级", async () => {
       const db = createFullTestDb();
       const rigRepo = new RigRepository(db);
       const sessionRegistry = new SessionRegistry(db);
@@ -1040,18 +1021,16 @@ describe("Lifecycle reboot/recovery scenario matrix (Tier 1)", () => {
 });
 
 // ===================================================================
-// SLICE-05 items 5+6 — cross-contract invariant RED (the item-6 regression).
-// INVARIANT: a seat whose live tmux session is gone — PROVEN by driving the REAL
-// SessionTransport.send AND .capture (both return { ok:false, reason:"session_missing" }
-// through the tmuxAdapter.probeSession gate, on POSITIVE absence evidence only;
-// OPR.0.5.4.2) — must NEVER be concurrently reported running by ps. ps.runningCount reads raw persisted sessions.status='running' and never consults
-// live tmux, so the invariant is violated today. ONE shared db + ONE shared tmux adapter
-// with per-session hasSession truth. Row (b) is LOAD-BEARING: the last/only session, where
-// the reconciler emits tmux_unavailable (not session_missing) on the empty census — so a
-// verdict-only demotion cannot satisfy it; the fix must honor the definitive send/capture
-// liveness. Outcome-level (fix-agnostic); no invented production seam.
+// SLICE-05 第 5+6 项——跨契约不变量 RED（第 6 项回归）。不变量：实时 tmux session 已消失的席位
+//（通过驱动真实 SessionTransport.send 和 .capture 证明；二者只在正向缺失证据下经
+// tmuxAdapter.probeSession gate 返回 { ok:false, reason:"session_missing" }，OPR.0.5.4.2），
+// 绝不能同时被 ps 报告为 running。ps.runningCount 读取原始持久化 sessions.status='running'，从不
+// 查询实时 tmux，因此当前违反该不变量。使用同一 DB、同一 tmux adapter 和逐 session hasSession
+// 事实。行 (b) 承重：对于最后/唯一 session，reconciler 在空 census 上发出 tmux_unavailable 而非
+// session_missing，所以仅降低 verdict 无法满足；修复必须尊重确定性的 send/capture liveness。
+// 这是结果层且与修法无关，不发明生产接缝。
 // ===================================================================
-describe("Slice-05 items 5+6 — real send/capture vs ps running (cross-contract regression)", () => {
+describe("Slice-05 第 5+6 项——真实 send/capture 与 ps running（跨契约回归）", () => {
   function seedSeat(db: Database.Database, rigId: string, node: string, sessionName: string, pane: string): void {
     db.prepare("INSERT OR IGNORE INTO rigs (id, name) VALUES (?, ?)").run(rigId, rigId);
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id, runtime, cwd) VALUES (?, ?, ?, 'claude-code', '/tmp')").run(node, rigId, `pod.${node}`);
@@ -1083,31 +1062,31 @@ describe("Slice-05 items 5+6 — real send/capture vs ps running (cross-contract
     return new SessionTransport({ db, rigRepo: new RigRepository(db), sessionRegistry: new SessionRegistry(db), tmuxAdapter: tmux });
   }
 
-  it("RED (another session remains): send+capture session_missing must not coexist with ps running", async () => {
+  it("RED（仍有另一 session）：send+capture 的 session_missing 不得与 ps running 并存", async () => {
     const db = createFullTestDb();
     try {
-      seedSeat(db, "rig-1", "n1", "s1@rig", "%1"); // dead seat
-      seedSeat(db, "rig-1", "n2", "s2@rig", "%2"); // another live seat remains
-      const transport = transportFor(db, tmuxWithLive(new Set(["s2@rig"]))); // s1 gone, s2 live
+      seedSeat(db, "rig-1", "n1", "s1@rig", "%1"); // 已死亡席位。
+      seedSeat(db, "rig-1", "n2", "s2@rig", "%2"); // 另一存活席位仍在。
+      const transport = transportFor(db, tmuxWithLive(new Set(["s2@rig"]))); // s1 消失，s2 存活。
       const send = await transport.send("s1@rig", "hi");
       const cap = await transport.capture("s1@rig");
       expect(send.ok).toBe(false);
       expect(send.reason).toBe("session_missing");
       expect(cap.ok).toBe(false);
       expect(cap.reason).toBe("session_missing");
-      // INVARIANT: ps must not report running the seat send+capture just declared missing.
+      // 不变量：ps 不得把 send+capture 刚声明缺失的席位报告为 running。
       const rig = new PsProjectionService({ db }).getEntries()[0]!;
-      expect(rig.runningCount).toBe(1); // <-- RED: currently 2 (s1 fabricated running)
+      expect(rig.runningCount).toBe(1); // <-- RED：当前为 2（伪造 s1 running）。
     } finally {
       db.close();
     }
   });
 
-  it("RED (LOAD-BEARING last/only session): send+capture session_missing must not coexist with ps running", async () => {
+  it("RED（承重的最后/唯一 session）：send+capture 的 session_missing 不得与 ps running 并存", async () => {
     const db = createFullTestDb();
     try {
-      seedSeat(db, "rig-1", "n1", "s1@rig", "%1"); // the ONLY seat
-      const transport = transportFor(db, tmuxWithLive(new Set())); // no live sessions (empty census)
+      seedSeat(db, "rig-1", "n1", "s1@rig", "%1"); // 唯一席位。
+      const transport = transportFor(db, tmuxWithLive(new Set())); // 无存活 session（空 census）。
       const send = await transport.send("s1@rig", "hi");
       const cap = await transport.capture("s1@rig");
       expect(send.ok).toBe(false);
@@ -1115,7 +1094,7 @@ describe("Slice-05 items 5+6 — real send/capture vs ps running (cross-contract
       expect(cap.ok).toBe(false);
       expect(cap.reason).toBe("session_missing");
       const entry = new PsProjectionService({ db }).getEntries()[0]!;
-      expect(entry.runningCount).toBe(0); // <-- RED: currently 1 despite the definitive session_missing
+      expect(entry.runningCount).toBe(0); // <-- RED：尽管已有确定 session_missing，当前仍为 1。
       expect(entry.status).not.toBe("running"); // <-- RED
     } finally {
       db.close();

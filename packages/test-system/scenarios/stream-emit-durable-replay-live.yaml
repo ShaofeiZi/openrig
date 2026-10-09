@@ -1,31 +1,29 @@
-# Defect class: the stream spine kept honest (durable + replay).
-# Marathon origin: stream events seen live were not durably persisted, so a later
-#   `rig stream` replay missed them — the spine lied by omission.
-# SEED (class: stream-not-durable): the seeded regression drops the emitted activity
-#   from the durable stream store. The `expect stream` (durable-list) leg MUST catch it —
-#   the diff shows the seat's emitted activity expected in the replayable stream vs an
-#   observed absence, naming the durability gap.
+# 缺陷类别：保持 stream 主干诚实（持久化 + 重放）。
+# Marathon 来源：实时可见的 stream 事件未持久保存，导致后续 `rig stream` 重放遗漏事件——
+#   主干通过遗漏事实造成误导。
+# SEED（class: stream-not-durable）：种子回归从持久 stream 存储中丢弃已发出的活动。
+#   `expect stream`（durable-list）步骤必须发现它——diff 会展示预期在可重放 stream 中存在的
+#   席位活动与观察到的缺失，并标明持久性缺口。
 #
-# REAL EMIT FORM (51-01 items 6-8 in main): `emit slow_output` runs a real scripted turn
-# — deterministic chunked pane output PLUS the canonical activity event set over the wire
-# (SessionStart, then UserPromptSubmit … Stop). `rig stream list --json` reads the DURABLE
-# (replayable) spine, so asserting the seat's activity is present there IS the durability
-# check. NOTE (verify-at-source, runtime pass): the exact `rig stream list --json` event
-# field names (below is an intent-level subset) finalize against the shipped shape; a
-# live-watch/replay-vs-live distinction may need a stream-watch reader (routed if so).
-# Deps: R-10 runner + the folded emit behaviors.
+# 真实 EMIT 形式（main 中 51-01 第 6–8 项）：`emit slow_output` 运行一个真实脚本轮次——
+# 确定性的分块 pane 输出，加上通过线路发送的规范活动事件集（SessionStart，随后
+# UserPromptSubmit … Stop）。`rig stream list --json` 读取持久（可重放）主干，因此断言
+# 席位活动存在于其中，本身就是持久性检查。注意（运行时阶段对照源码验证）：
+# `rig stream list --json` 的精确事件字段名（下方只是意图层子集）最终以已发布形态为准；
+# live-watch 与 replay-vs-live 的区分可能需要 stream-watch reader（如确有需要则路由）。
+# 依赖：R-10 runner + 已折叠的 emit 行为。
 scenario: stream-emit-durable-replay-live
 topology: ./dev-pair-stub.yaml
 steps:
   - up: {}
   - emit: {seat: impl, behavior: slow_output}
-  # DURABLE: the emitted activity is on the replayable stream (rig stream list).
+  # 持久性：发出的活动位于可重放 stream（rig stream list）中。
   - expect:
       surface: stream
       within: 30s
       match:
         - runtime: stub
-  # the paced chunks also land deterministically in the pane (secondary observable).
+  # 按节奏输出的分块也会确定性地出现在 pane 中（次要可观察结果）。
   - expect:
       surface: pane
       seat: impl

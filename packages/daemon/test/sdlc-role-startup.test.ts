@@ -23,8 +23,8 @@ describe('packaged SDLC entry', () => {
     expect(startup.actions).toEqual([]);
     expect(startup.files).toHaveLength(1);
     const file = startup.files[0]!;
-    // Role-specific bytes must stay on the seat's wire: a shared cwd overlay
-    // would let one role replace another's instructions on the next launch.
+    // 角色专属内容必须留在对应席位的传输线上；共享 cwd 叠层会让一个角色在下次启动时
+    // 替换另一个角色的指令。
     expect(file.deliveryHint).toBe('send_text');
     expect(file.appliesOn).toEqual(['fresh_start', 'restore']);
     const text = readFileSync(resolve(agents, role, file.path), 'utf8');

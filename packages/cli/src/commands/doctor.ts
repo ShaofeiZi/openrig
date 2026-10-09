@@ -37,15 +37,15 @@ export interface DoctorDeps {
   checkWritable?: (path: string) => void;
   fetch?: (url: string) => Promise<{ ok: boolean; json?: () => Promise<unknown> }>;
   /**
-   * Build B — path to a rig spec to check against the RUNNING rig of the same name (`--spec`).
+   * Build B——与同名运行中工作组对照的工作组规格路径（`--spec`）。
    *
-   * Supplied explicitly because it cannot be discovered. Nothing persists a running rig's spec
-   * path: the `rigs` table has no spec/rigRoot column, `rig_services.rig_root` is empty, and
-   * `projection_manifest.source_spec` is empty. The daemon does not remember which file described
-   * the rig it is running. Absent, the check SKIPS with that reason rather than passing.
+   * 必须显式传入，因为无法自动发现。没有任何地方持久化运行中工作组的规格
+   * 路径：`rigs` 表没有 spec/rigRoot 列、`rig_services.rig_root` 为空、
+   * `projection_manifest.source_spec` 为空。后台服务不记得是哪个文件描述了
+   * 它正在运行的工作组。缺失时本检查以该原因 SKIP，而不是 PASS。
    */
   specPath?: string;
-  /** Live seat ids (`<pod>.<member>`) for the spec's rig; null when the topology cannot be read. */
+  /** 该规格对应工作组的运行席位 id（`<pod>.<member>`）；无法读取拓扑时为 null。 */
   fetchLiveLogicalIds?: (rigName: string) => Promise<string[] | null>;
 }
 
@@ -66,36 +66,36 @@ export function runDoctorChecks(deps: DoctorDeps): { checks: DoctorCheck[]; port
   const checks: DoctorCheck[] = [];
   const platform = deps.platform ?? process.platform;
 
-  // 1. Daemon dist
+  // 1. 后台服务 dist
   const daemonPath = resolveDaemonPath(deps.baseDir, deps.exists);
   const daemonEntry = path.join(daemonPath, "dist/index.js");
   if (deps.exists(daemonEntry)) {
-    checks.push({ name: "daemon_dist", status: "pass", message: `Daemon dist found at ${daemonPath}` });
+    checks.push({ name: "daemon_dist", status: "pass", message: `已在 ${daemonPath} 找到后台服务 dist` });
   } else {
     checks.push({
       name: "daemon_dist",
       status: "fail",
-      message: "Daemon dist not found.",
-      reason: "The daemon compiled output is required to start the OpenRig daemon process.",
-      fix: "Run 'npm run build:package' from the repo root, or reinstall with 'npm install -g @openrig/cli'.",
+      message: "未找到后台服务 dist。",
+      reason: "启动 zrig 后台服务进程需要编译产物。",
+      fix: "在仓库根目录运行 'npm run build:package'，或用 'npm install -g @openrig/cli' 重装。",
     });
   }
 
   // 2. UI dist
   const uiDistPath = path.resolve(daemonPath, "..", "ui", "dist", "index.html");
   if (deps.exists(uiDistPath)) {
-    checks.push({ name: "ui_dist", status: "pass", message: "UI dist found." });
+    checks.push({ name: "ui_dist", status: "pass", message: "已找到 UI dist。" });
   } else {
     checks.push({
       name: "ui_dist",
       status: "fail",
-      message: "UI dist not found.",
-      reason: "The pre-built UI assets are required for the dashboard to render.",
-      fix: "Run 'npm run build:package' from the repo root, or reinstall with 'npm install -g @openrig/cli'.",
+      message: "未找到 UI dist。",
+      reason: "仪表盘渲染需要预构建的 UI 资源。",
+      fix: "在仓库根目录运行 'npm run build:package'，或用 'npm install -g @openrig/cli' 重装。",
     });
   }
 
-  // 3. Node version
+  // 3. Node 版本
   const nodeSupport = classifyNodeVersion(process.version);
   if (nodeSupport.kind === "supported") {
     checks.push({ name: "node_version", status: "pass", message: `Node ${process.version}` });
@@ -117,9 +117,9 @@ export function runDoctorChecks(deps: DoctorDeps): { checks: DoctorCheck[]; port
     checks.push({
       name: "tmux",
       status: "fail",
-      message: "tmux not found.",
-      reason: "OpenRig uses tmux to manage agent sessions.",
-      fix: "Install tmux: brew install tmux (macOS), apt install tmux (Linux).",
+      message: "未找到 tmux。",
+      reason: "zrig 用 tmux 管理智能体会话。",
+      fix: "安装 tmux：brew install tmux（macOS）、apt install tmux（Linux）。",
     });
   } else if (tmuxProbe.available && tmuxProbe.version) {
     checks.push({ name: "tmux", status: "pass", message: tmuxProbe.version });
@@ -129,20 +129,20 @@ export function runDoctorChecks(deps: DoctorDeps): { checks: DoctorCheck[]; port
         checks.push({
           name: "tmux_mouse",
           status: "pass",
-          message: "tmux mouse mode enabled.",
+          message: "tmux 鼠标模式已启用。",
         });
       } else if (mouseMode === "off") {
         checks.push({
           name: "tmux_mouse",
           status: "warn",
-          message: "tmux mouse mode appears disabled.",
-          reason: "On macOS, scrolling and text selection inside tmux panes is much smoother with mouse mode enabled.",
-          fix: "Run `tmux set -g mouse on` for the current tmux server. To keep it enabled, add `set -g mouse on` to `~/.tmux.conf` and reload with `tmux source-file ~/.tmux.conf`.",
+          message: "tmux 鼠标模式似乎已禁用。",
+          reason: "在 macOS 上，启用鼠标模式后 tmux 窗格内的滚动和文本选择会顺畅得多。",
+          fix: "为当前 tmux 服务器运行 `tmux set -g mouse on`。要长期启用，把 `set -g mouse on` 加到 `~/.tmux.conf`，并用 `tmux source-file ~/.tmux.conf` 重新加载。",
         });
       }
     }
   } else {
-    const failure = buildTmuxControlFailure(tmuxProbe.detail ?? "unknown tmux control failure");
+    const failure = buildTmuxControlFailure(tmuxProbe.detail ?? "未知 tmux 控制失败");
     checks.push({
       name: "tmux",
       status: "fail",
@@ -152,7 +152,7 @@ export function runDoctorChecks(deps: DoctorDeps): { checks: DoctorCheck[]; port
     });
   }
 
-  // 5. cmux shell check (optional but recommended for Open CMUX workflows)
+  // 5. cmux shell 检查（可选，但 Open CMUX 工作流推荐）
   let shellCmuxPassed = false;
   try {
     deps.exec("cmux capabilities --json");
@@ -160,39 +160,39 @@ export function runDoctorChecks(deps: DoctorDeps): { checks: DoctorCheck[]; port
     checks.push({
       name: "cmux_shell",
       status: "pass",
-      message: "cmux shell control available.",
+      message: "cmux shell 控制可用。",
     });
   } catch (err) {
     try {
       deps.exec("cmux --help");
       const socketMode = platform === "darwin" ? readCmuxSocketControlMode(deps) : null;
       const modeHint = socketMode?.error
-        ? ` Likely cause on macOS: ${CMUX_SETTINGS_DISCLOSURE_PATH} is unreadable (${socketMode.error}).`
+        ? ` macOS 上的可能原因：${CMUX_SETTINGS_DISCLOSURE_PATH} 不可读（${socketMode.error}）。`
         : socketMode && !isCmuxSocketControlCompatible(socketMode.mode) && socketMode.source === "default"
-        ? ` Likely cause on macOS: cmux is still using its default automation.socketControlMode '${socketMode.mode}'.`
+        ? ` macOS 上的可能原因：cmux 仍在使用默认的 automation.socketControlMode '${socketMode.mode}'。`
         : socketMode && !isCmuxSocketControlCompatible(socketMode.mode)
-        ? ` Likely cause on macOS: automation.socketControlMode is '${socketMode.mode}' in ${CMUX_SETTINGS_DISCLOSURE_PATH}.`
+        ? ` macOS 上的可能原因：${CMUX_SETTINGS_DISCLOSURE_PATH} 中 automation.socketControlMode 为 '${socketMode.mode}'。`
         : "";
       checks.push({
         name: "cmux_shell",
         status: "warn",
-        message: "cmux installed, but control unavailable right now.",
-        reason: "OpenRig can run without cmux, but Open CMUX actions and cmux-aware node control will be unavailable until cmux control works.",
-        fix: `Open the cmux app, verify control access/socket sharing is enabled for OpenRig, then rerun 'rig doctor'. If you are running this for someone else, tell the user that cmux is optional but required for Open CMUX. If you do not need cmux features, you can ignore this warning.${modeHint}`,
+        message: "已安装 cmux，但当前不可用控制。",
+        reason: "zrig 没有 cmux 也能运行，但在 cmux 控制可用之前，打开 CMUX 操作和 cmux 感知的节点控制都不可用。",
+        fix: `打开 cmux 应用，确认已为 zrig 启用控制访问/socket 共享，然后重跑 'zrig doctor'。如果你是替别人跑这个命令，请告诉对方 cmux 是可选的，但打开 CMUX 需要它。不需要 cmux 功能可以忽略此警告。${modeHint}`,
       });
     } catch {
       checks.push({
         name: "cmux_shell",
         status: "warn",
-        message: "cmux not found.",
-        reason: "OpenRig can run without cmux, but Open CMUX actions and surface control will be unavailable.",
-        fix: "Install and launch cmux if you want Open CMUX support. If you are running this for someone else, tell the user that cmux is optional and only needed for Open CMUX workflows.",
+        message: "未找到 cmux。",
+        reason: "zrig 没有 cmux 也能运行，但打开 CMUX 操作和 surface 控制不可用。",
+        fix: "需要 Open CMUX 支持就安装并启动 cmux。如果你是替别人跑这个命令，请告诉对方 cmux 是可选的，仅 Open CMUX 工作流需要。",
       });
     }
     void err;
   }
 
-  // 6. Writable state paths (shared with preflight)
+  // 6. 可写状态路径（与预检共用）
   const config = deps.configStore.resolve();
   const writableCheck = buildWritableHomeCheck(config, path.dirname(config.db.path), {
     mkdirp: deps.mkdirp,
@@ -201,50 +201,50 @@ export function runDoctorChecks(deps: DoctorDeps): { checks: DoctorCheck[]; port
   checks.push({
     name: writableCheck.name,
     status: writableCheck.ok ? "pass" : "fail",
-    message: writableCheck.ok ? "Writable state paths verified." : writableCheck.error ?? "State paths are not writable.",
+    message: writableCheck.ok ? "已验证状态路径可写。" : writableCheck.error ?? "状态路径不可写。",
     reason: writableCheck.reason,
     fix: writableCheck.fix,
   });
 
-  // 7. Port availability (async) — daemon already running on that port counts as OK.
-  // OPR.0.4.7 slice-05 item-4b: resolve the daemon host+port ONCE from config and use
-  // BOTH for checkPort, healthz, the cmux URL, and messages (a daemon on a non-default
-  // configured host/port must not be reported missing). Defaults stay 127.0.0.1:7433.
+  // 7. 端口可用性（异步）——已经在该端口上跑的后台服务算作 OK。
+  // OPR.0.4.7 slice-05 item-4b：只从配置解析一次后台服务 host+port，并
+  // 同时用于 checkPort、healthz、cmux URL 和提示文案（配置在非默认
+  // host/port 的后台服务绝不能被报成缺失）。默认仍为 127.0.0.1:7433。
   const daemonHost = config.daemon.host ?? "127.0.0.1";
   const daemonPort = config.daemon.port ?? DEFAULT_PORT;
   const daemonBase = `http://${daemonHost}:${daemonPort}`;
   const fetchFn = deps.fetch ?? globalThis.fetch;
   const portCheck = deps.checkPort(daemonPort, daemonHost).then(async (available): Promise<DoctorCheck> => {
     if (available) {
-      return { name: "port", status: "pass", message: `Port ${daemonHost}:${daemonPort} available.` };
+      return { name: "port", status: "pass", message: `端口 ${daemonHost}:${daemonPort} 可用。` };
     }
-    // Port in use — check if it's our daemon via healthz
+    // 端口被占用——通过 healthz 检查是不是我们的后台服务
     try {
       const res = await fetchFn(`${daemonBase}/healthz`);
       if (res.ok) {
-        return { name: "port", status: "pass", message: `Port ${daemonHost}:${daemonPort} in use by OpenRig daemon.` };
+        return { name: "port", status: "pass", message: `端口 ${daemonHost}:${daemonPort} 已被 zrig 后台服务占用。` };
       }
-    } catch { /* not our daemon */ }
+    } catch { /* 不是我们的后台服务 */ }
     return {
       name: "port",
       status: "fail",
-      message: `Port ${daemonHost}:${daemonPort} is in use by another process.`,
-      reason: "The daemon needs this port to serve the API and UI.",
-      fix: `Stop the process using port ${daemonPort}, or start the daemon on a different port with: rig daemon start --port <port>`,
+      message: `端口 ${daemonHost}:${daemonPort} 已被其他进程占用。`,
+      reason: "后台服务需要这个端口来提供 API 和 UI。",
+      fix: `停掉占用端口 ${daemonPort} 的进程，或用不同端口启动后台服务：zrig daemon start --port <port>`,
     };
   });
 
-  // 8. Daemon cmux control (async, only when shell cmux passed)
+  // 8. 后台服务 cmux 控制（异步，仅在 shell cmux 通过时检查）
   const asyncChecks: Promise<DoctorCheck>[] = [portCheck];
   if (shellCmuxPassed) {
     const daemonCmuxCheck = (async (): Promise<DoctorCheck> => {
       try {
         const healthRes = await fetchFn(`${daemonBase}/healthz`);
         if (!healthRes.ok) {
-          return { name: "cmux_daemon", status: "skipped", message: "Daemon healthz not ok. Skipping daemon cmux check." };
+          return { name: "cmux_daemon", status: "skipped", message: "后台服务 healthz 不正常。跳过后台服务 cmux 检查。" };
         }
       } catch {
-        return { name: "cmux_daemon", status: "skipped", message: "Daemon not reachable. Skipping daemon cmux check." };
+        return { name: "cmux_daemon", status: "skipped", message: "无法连接后台服务。跳过后台服务 cmux 检查。" };
       }
 
       try {
@@ -252,11 +252,11 @@ export function runDoctorChecks(deps: DoctorDeps): { checks: DoctorCheck[]; port
         if (cmuxRes.ok && cmuxRes.json) {
           const data = (await cmuxRes.json()) as { available?: boolean };
           if (data.available) {
-            return { name: "cmux_daemon", status: "pass", message: "Daemon cmux control available." };
+            return { name: "cmux_daemon", status: "pass", message: "后台服务 cmux 控制可用。" };
           }
           return buildCmuxDaemonWarning(deps, platform);
         }
-      } catch { /* fetch failed */ }
+      } catch { /* fetch 失败 */ }
 
       return buildCmuxDaemonWarning(deps, platform);
     })();
@@ -269,15 +269,14 @@ export function runDoctorChecks(deps: DoctorDeps): { checks: DoctorCheck[]; port
 }
 
 /**
- * Build B — does the rig spec still describe the rig that is running?
+ * Build B——工作组规格是否仍在描述正在运行的工作组？
  *
- * Nothing writes a spec back after `rig expand`, and the spec is what a bundle export copies
- * verbatim, so a rig can outgrow its own description silently. This is the check that says so —
- * and, once a spec is reconciled by hand, the check that VERIFIES the write-back landed instead of
- * someone eyeballing YAML.
+ * `rig expand` 之后没有任何东西把规格写回，而 bundle 导出是逐字复制规格的，
+ * 因此一个工作组可能悄悄长大到超出它自己的描述。这个检查就是把它点出来——
+ * 而且在手工调和规格之后，这个检查用来验证写回真的落盘，而不是靠人盯 YAML。
  *
- * SKIPS rather than passes when it has no input. A check that cannot find its subject and stays
- * quiet is indistinguishable from one that looked and found nothing wrong.
+ * 没有输入时 SKIP 而不是 pass。一个找不到检查对象却保持沉默的检查，和一个
+ * 看过之后没发现问题的检查，是无法区分的。
  */
 async function buildSpecConformanceCheck(deps: DoctorDeps): Promise<DoctorCheck> {
   const name = "spec_live_conformance";
@@ -285,27 +284,27 @@ async function buildSpecConformanceCheck(deps: DoctorDeps): Promise<DoctorCheck>
     return {
       name,
       status: "skipped",
-      message: "No --spec given; spec-vs-live topology not checked.",
+      message: "未提供 --spec；未检查规格与运行拓扑的一致性。",
       reason:
-        "A running rig's spec path is not persisted anywhere (the rigs table has no spec/rigRoot column), so this check cannot discover it.",
-      fix: "rig doctor --spec <path/to/rig.yaml>",
+        "运行中工作组的规格路径没有任何地方持久化（rigs 表没有 spec/rigRoot 列），本检查无法自行发现。",
+      fix: "zrig doctor --spec <path/to/rig.yaml>",
     };
   }
 
   const raw = deps.readFile(deps.specPath);
   if (raw === null) {
-    return { name, status: "fail", message: `Rig spec could not be read at ${deps.specPath}.` };
+    return { name, status: "fail", message: `无法读取 ${deps.specPath} 处的工作组规格。` };
   }
 
   let spec: { name?: unknown; pods?: unknown };
   try {
     spec = parseYaml(raw) as { name?: unknown; pods?: unknown };
   } catch (err) {
-    return { name, status: "fail", message: `Rig spec at ${deps.specPath} is not valid YAML: ${(err as Error).message}` };
+    return { name, status: "fail", message: `${deps.specPath} 处的工作组规格不是合法 YAML：${(err as Error).message}` };
   }
   const rigName = typeof spec?.name === "string" ? spec.name : "";
   if (!rigName || !Array.isArray(spec?.pods)) {
-    return { name, status: "fail", message: `Rig spec at ${deps.specPath} declares no name or no pods.` };
+    return { name, status: "fail", message: `${deps.specPath} 处的工作组规格未声明 name 或 pods。` };
   }
 
   const liveIds = deps.fetchLiveLogicalIds ? await deps.fetchLiveLogicalIds(rigName) : null;
@@ -313,8 +312,8 @@ async function buildSpecConformanceCheck(deps: DoctorDeps): Promise<DoctorCheck>
     return {
       name,
       status: "skipped",
-      message: `Live topology for '${rigName}' could not be read; conformance unknown.`,
-      reason: "Absence of live data is not evidence of conformance, so this is reported as unknown rather than passing.",
+      message: `无法读取 '${rigName}' 的运行拓扑；一致性未知。`,
+      reason: "没有运行数据不能作为一致的证据，所以这里报为未知而不是通过。",
     };
   }
 
@@ -323,15 +322,15 @@ async function buildSpecConformanceCheck(deps: DoctorDeps): Promise<DoctorCheck>
     return {
       name,
       status: "pass",
-      message: `Spec matches the running rig '${rigName}' (${result.spec.pods} pods/${result.spec.seats} seats).`,
+      message: `规格与运行中的工作组 '${rigName}' 一致（${result.spec.pods} 个 pod/${result.spec.seats} 个席位）。`,
     };
   }
   return {
     name,
     status: "warn",
-    message: `Rig '${rigName}': ${result.message}`,
-    reason: "A bundle export copies the SPEC verbatim, so this rig would export smaller than it runs.",
-    fix: "Reconcile the spec with the running topology, then re-run this check to verify the write-back.",
+    message: `工作组 '${rigName}'：${result.message}`,
+    reason: "bundle 导出是逐字复制规格的，因此导出的工作组会比实际运行的小。",
+    fix: "把规格与运行拓扑调和一致，然后重跑本检查以验证写回。",
   };
 }
 
@@ -346,31 +345,31 @@ function buildCmuxDaemonWarning(deps: DoctorDeps, platform: NodeJS.Platform): Do
     return {
       name: "cmux_daemon",
       status: "warn",
-      message: "Shell cmux works, but the daemon cannot control cmux.",
-      reason: `${CMUX_SETTINGS_DISCLOSURE_PATH} is unreadable: ${socketMode.error}`,
-      fix: `Repair ${CMUX_SETTINGS_DISCLOSURE_PATH} or remove it so cmux can regenerate the template, then rerun \`rig setup\` or \`rig doctor\`.`,
+      message: "shell cmux 可用，但后台服务无法控制 cmux。",
+      reason: `${CMUX_SETTINGS_DISCLOSURE_PATH} 不可读：${socketMode.error}`,
+      fix: `修复 ${CMUX_SETTINGS_DISCLOSURE_PATH} 或删掉它让 cmux 重新生成模板，然后重跑 \`zrig setup\` 或 \`zrig doctor\`。`,
     };
   }
 
   if (platform === "darwin" && socketMode && !isCmuxSocketControlCompatible(socketMode.mode)) {
     const reason = socketMode.source === "default"
-      ? `cmux is still using its default automation.socketControlMode '${socketMode.mode}', so the daemon cannot attach as an external cmux client yet.`
-      : `automation.socketControlMode is '${socketMode.mode}' in ${CMUX_SETTINGS_DISCLOSURE_PATH}, so the daemon cannot attach as an external cmux client yet.`;
+      ? `cmux 仍在使用默认的 automation.socketControlMode '${socketMode.mode}'，后台服务还不能作为外部 cmux 客户端挂载。`
+      : `${CMUX_SETTINGS_DISCLOSURE_PATH} 中 automation.socketControlMode 为 '${socketMode.mode}'，后台服务还不能作为外部 cmux 客户端挂载。`;
     return {
       name: "cmux_daemon",
       status: "warn",
-      message: "Shell cmux works, but the daemon cannot control cmux.",
+      message: "shell cmux 可用，但后台服务无法控制 cmux。",
       reason,
-      fix: `Run \`rig setup\` to set automation.socketControlMode to "automation" in ${CMUX_SETTINGS_DISCLOSURE_PATH}, then restart the daemon with \`rig daemon start\`.`,
+      fix: `运行 \`zrig setup\` 把 ${CMUX_SETTINGS_DISCLOSURE_PATH} 中的 automation.socketControlMode 设为 "automation"，然后用 \`zrig daemon start\` 重启后台服务。`,
     };
   }
 
   return {
     name: "cmux_daemon",
     status: "warn",
-    message: "Shell cmux works, but the daemon cannot control cmux.",
-    reason: "The daemon inherited a terminal/session environment that broke cmux adapter initialization.",
-    fix: "Restart the daemon with `rig daemon start` after setup. If it still fails, inspect the daemon log with `rig daemon logs`.",
+    message: "shell cmux 可用，但后台服务无法控制 cmux。",
+    reason: "后台服务继承的终端/会话环境破坏了 cmux 适配器初始化。",
+    fix: "setup 之后用 `zrig daemon start` 重启后台服务。如果仍失败，用 `zrig daemon logs` 查看后台服务日志。",
   };
 }
 
@@ -385,11 +384,11 @@ function readTmuxMouseMode(deps: DoctorDeps): "on" | "off" | null {
 }
 
 export function doctorCommand(depsOverride?: DoctorDeps): Command {
-  const cmd = new Command("doctor").description("Verify OpenRig install health");
+  const cmd = new Command("doctor").description("检查 zrig 安装健康状态");
 
   cmd
-    .option("--json", "JSON output for agents")
-    .option("--spec <path>", "Rig spec to check against the running rig of the same name (spec-vs-live topology)")
+    .option("--json", "供智能体使用的 JSON 输出")
+    .option("--spec <path>", "与同名运行中工作组对照的工作组规格（规格 vs 运行拓扑）")
     .action(async (opts: { json?: boolean; spec?: string }) => {
       const deps: DoctorDeps = depsOverride ?? {
         exists: existsSync,
@@ -401,8 +400,8 @@ export function doctorCommand(depsOverride?: DoctorDeps): Command {
         mkdirp: (dirPath: string) => mkdirSync(dirPath, { recursive: true }),
         checkWritable: (dirPath: string) => accessSync(dirPath, constants.W_OK),
         specPath: opts.spec ? path.resolve(opts.spec) : undefined,
-        // Returns null on ANY failure to read the live side. The conformance check treats null as
-        // "unknown" and skips — an unreachable daemon must never read as a matching topology.
+        // 读取运行侧任何失败都返回 null。一致性检查把 null 视为"未知"并跳过——
+        // 无法连接的后台服务绝不能被读成拓扑匹配。
         fetchLiveLogicalIds: async (rigName: string): Promise<string[] | null> => {
           try {
             const cfg = new ConfigStore().resolve();
@@ -434,14 +433,14 @@ export function doctorCommand(depsOverride?: DoctorDeps): Command {
       }
 
       for (const check of allChecks) {
-        const icon = check.status === "pass" ? "OK" : check.status === "warn" ? "WARN" : check.status === "skipped" ? "SKIP" : "FAIL";
+        const icon = check.status === "pass" ? "通过" : check.status === "warn" ? "警告" : check.status === "skipped" ? "跳过" : "失败";
         console.log(`  [${icon}] ${check.name}: ${check.message}`);
-        if (check.reason) console.log(`       Why: ${check.reason}`);
-        if (check.fix) console.log(`       Fix: ${check.fix}`);
+        if (check.reason) console.log(`       原因：${check.reason}`);
+        if (check.fix) console.log(`       修复：${check.fix}`);
       }
 
       console.log("");
-      console.log(healthy ? "System checks look good." : "Some checks failed.");
+      console.log(healthy ? "系统检查看起来都正常。" : "部分检查失败。");
       if (!healthy) process.exitCode = 1;
     });
 

@@ -1,12 +1,11 @@
-// Mechanics-gate fix (desk BLOCKING ruling qitem-20260825153441-d9b3989a) — the two daemon
-// primitives behind `rig walk`'s per-piece consumption verification:
-//   1. SessionTransport submitOnly — the single bare-Enter retry for staged text, safe by
-//      construction: the pane must show the EXPECTED staged content or the Enter is refused
-//      (a bare Enter at a permission prompt would APPROVE it — the mismatch gate exists for
-//      exactly that hazard).
-//   2. GET /api/sessions/:sessionName/generation-record — the consumption-by-effect source:
-//      current-generation identity + byte-addressed suffix via the ContextUsageStore sidecar,
-//      refusing LOUD when no record resolves.
+// Mechanics-gate 修复（desk BLOCKING 裁定 qitem-20260825153441-d9b3989a）——`zrig walk`
+// 逐片段消费验证背后的两个 daemon primitive：
+//   1. SessionTransport submitOnly——对暂存文本只重试一次裸 Enter，且结构上安全：pane 必须
+//      显示预期暂存内容，否则拒绝 Enter（权限提示处的裸 Enter 会批准操作——mismatch gate
+//      正是为此风险而存在）。
+//   2. GET /api/sessions/:sessionName/generation-record——按效果判定消费的来源：通过
+//      ContextUsageStore sidecar 获得当前 generation identity + 按字节寻址的后缀；无法解析
+//      record 时明确拒绝。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
@@ -57,7 +56,7 @@ function mockTmux(overrides?: Partial<{
   } as unknown as TmuxAdapter;
 }
 
-describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
+describe("SessionTransport submitOnly——受 guard 保护的裸 Enter 重试", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -81,9 +80,9 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
   const makeTransport = (tmux: TmuxAdapter) =>
     new SessionTransport({ db, rigRepo, sessionRegistry, tmuxAdapter: tmux, agentActivityStore, eventBus });
 
-  const STAGED_PIECE = "# World from primitives\n\nThe seat learns the world by composing…";
+  const STAGED_PIECE = "# 从 primitive 构建世界\n\n席位通过组合来学习世界……";
 
-  it("presses C-m exactly once, types NOTHING, when the pane shows the expected staged text", async () => {
+  it("pane 显示预期暂存文本时恰好按一次 C-m，且不输入任何内容", async () => {
     const sendText = vi.fn(async () => ({ ok: true as const }));
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({
@@ -93,12 +92,12 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
     const res = await transport.send("dev-impl@my-rig", "", { submitOnly: true, expectedStagedText: STAGED_PIECE.slice(0, 200) });
     expect(res.ok).toBe(true);
     expect(res.submitOnly).toBe(true);
-    expect(sendText).not.toHaveBeenCalled();                       // nothing typed — ever
+    expect(sendText).not.toHaveBeenCalled();                       // 始终不输入任何内容
     expect(sendKeys).toHaveBeenCalledTimes(1);
     expect(sendKeys).toHaveBeenCalledWith("dev-impl@my-rig", ["C-m"]);
   });
 
-  it("REFUSES (staged_mismatch) when the pane shows something else — a bare Enter at a permission prompt would approve it", async () => {
+  it("pane 显示其他内容时拒绝（staged_mismatch）——权限提示处的裸 Enter 会批准操作", async () => {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({
       sendKeys,
@@ -107,52 +106,51 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
     const res = await transport.send("dev-impl@my-rig", "", { submitOnly: true, expectedStagedText: STAGED_PIECE });
     expect(res.ok).toBe(false);
     expect(res.reason).toBe("staged_mismatch");
-    expect(sendKeys).not.toHaveBeenCalled();                       // the Enter never lands
+    expect(sendKeys).not.toHaveBeenCalled();                       // Enter 从未发送
   });
 
-  it("a bare placeholder with a matching size but NO literal residual REFUSES — size similarity is not identity (round-4 contract; supersedes the R1/R2 acceptance)", async () => {
+  it("大小匹配但无字面残留的裸 placeholder 会拒绝——大小相似不代表身份相同（第 4 轮契约，取代 R1/R2 接受规则）", async () => {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({
       sendKeys,
       capturePaneContent: async () => "❯ [Pasted text #4 +112 lines]\n  paste again to expand",
     }));
     const res = await transport.send("dev-impl@my-rig", "", { submitOnly: true, expectedStagedText: STAGED_PIECE, expectedStagedLineCount: 112 });
-    expect(res.ok).toBe(false); // round-4: no residual -> no identity -> fail closed
+    expect(res.ok).toBe(false); // 第 4 轮：无残留 → 无身份 → 关闭式失败
     expect(res.reason).toBe("staged_mismatch");
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  // ROUND-2 (r2 R1 HIGH-1, row 66e74676): stale scrollback must never authorize the Enter. The
-  // evidence must be the CURRENT ACTIVE INPUT and must identify THIS piece — a generic placeholder
-  // anywhere in 50 lines is neither.
-  it("R2 HIGH-1 discriminator — a stale pasted-text placeholder ABOVE a later interactive prompt refuses with ZERO Enter calls [GREEN — current-input binding]", async () => {
+  // ROUND-2（r2 R1 HIGH-1，row 66e74676）：陈旧 scrollback 绝不能授权 Enter。证据必须是当前
+  // 活动输入且能标识此片段——50 行内任意位置的通用 placeholder 两者都不满足。
+  it("R2 HIGH-1 判别器——后续交互提示上方的陈旧 pasted-text placeholder 会拒绝，Enter 调用为零【GREEN——当前输入绑定】", async () => {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({
       sendKeys,
-      // The reviewer's shape: an older placeholder in scrollback, then a LATER interactive
-      // prompt occupying the current input. An Enter here approves the prompt.
+      // reviewer 给出的形状：scrollback 中有较早 placeholder，随后是占据当前输入的交互提示。
+      // 此时按 Enter 会批准该提示。
       capturePaneContent: async () => "❯ [Pasted text #2 +112 lines]\nold output scrolled past\n\nAuthorize the next action?\n❯ 1. Continue\n  2. Cancel\n",
     }));
     const res = await transport.send("dev-impl@my-rig", "", { submitOnly: true, expectedStagedText: STAGED_PIECE, expectedStagedLineCount: 112 });
     expect(res.ok).toBe(false);
     expect(res.reason).toBe("staged_mismatch");
-    expect(sendKeys).not.toHaveBeenCalled(); // zero Enter calls — the forbidden effect never happens
+    expect(sendKeys).not.toHaveBeenCalled(); // Enter 调用为零——禁止的效果从未发生
   });
 
-  it("R2 HIGH-1 — a placeholder whose line count does NOT match the expected piece is not piece identity: refused [GREEN — line-count qualification]", async () => {
+  it("R2 HIGH-1——placeholder 行数与预期片段不匹配时不构成片段身份：拒绝【GREEN——行数限定】", async () => {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({
       sendKeys,
       capturePaneContent: async () => "❯ [Pasted text #4 +112 lines]\n  paste again to expand",
     }));
-    // The walked piece is 6 lines; the staged blob is 112 — someone else's paste.
+    // walk 片段为 6 行；暂存 blob 为 112 行——来自其他人的粘贴。
     const res = await transport.send("dev-impl@my-rig", "", { submitOnly: true, expectedStagedText: STAGED_PIECE, expectedStagedLineCount: 6 });
     expect(res.ok).toBe(false);
     expect(res.reason).toBe("staged_mismatch");
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  it("R2 HIGH-1 — MULTIPLE placeholders staged at the current input is coalesced staging: refused, never one Enter for several pieces [GREEN — multi-staging refusal]", async () => {
+  it("R2 HIGH-1——当前输入暂存多个 placeholder 属于合并暂存：拒绝，绝不以一次 Enter 提交多个片段【GREEN——拒绝多段暂存】", async () => {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({
       sendKeys,
@@ -164,31 +162,30 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  // ROUND-3 (r2 R2 HIGH-1, row d95b2ea7): the identity relation must be true of Claude's ACTUAL
-  // staged rendering, pinned from the PRESERVED Test-A specimen (t1-mechanics run, receipts
-  // 54-direct-tmux-capture.txt + served-profile/02-permission-self-sleep.md), not invented:
-  // one walked piece (8834 bytes, 142 split("\n") entries) renders as EIGHT placeholders
-  // (+16,+15,+19,+15,+17,+15,+17,+16 — segment sizes, NOT source newlines; sum 130) followed by
-  // the piece's own literal tail, wrapped across pane lines; placeholder tokens themselves wrap
-  // across lines ("+19\n  lines]").
+  // ROUND-3（r2 R2 HIGH-1，row d95b2ea7）：身份关系必须符合 Claude 的真实暂存渲染，
+  // 固定于保留的 Test-A specimen（t1-mechanics run、receipt 54-direct-tmux-capture.txt +
+  // served-profile/02-permission-self-sleep.md），而非凭空构造：一个 walk 片段（8834 字节、
+  // 142 个 split("\n") 条目）渲染为八个 placeholder（+16,+15,+19,+15,+17,+15,+17,+16——
+  // segment 大小，不是源码换行；总和 130），随后是该片段自身的字面尾部并跨 pane 行换行；
+  // placeholder token 本身也会跨行（"+19\n  lines]"）。
   const FIXTURES = join(import.meta.dirname ?? __dirname, "fixtures", "walk-staged-specimen");
   const PIECE_2 = () => readFileSync(join(FIXTURES, "piece-02-permission-self-sleep.md"), "utf8");
   const PANE_SINGLE = () => readFileSync(join(FIXTURES, "pane-single-piece-2.txt"), "utf8");
   const PANE_COALESCED = () => readFileSync(join(FIXTURES, "pane-coalesced-pieces-2-and-3.txt"), "utf8");
 
-  it("R3 SPECIMEN — the preserved single-piece staged rendering (8 placeholders + literal tail) ACCEPTS and submits exactly once [GREEN — rendering-true identity]", async () => {
+  it("R3 SPECIMEN——保留的单片段暂存渲染（8 个 placeholder + 字面尾部）会接受并恰好提交一次【GREEN——真实渲染身份】", async () => {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({ sendKeys, capturePaneContent: async () => PANE_SINGLE() }));
     const res = await transport.send("dev-impl@my-rig", "", {
       submitOnly: true,
       expectedStagedText: PIECE_2(),
-      expectedStagedLineCount: PIECE_2().split("\n").length, // 142 — none of the displayed counts equals this
+      expectedStagedLineCount: PIECE_2().split("\n").length, // 142——任何显示计数都不等于此值
     });
     expect(res.ok).toBe(true);
-    expect(sendKeys).toHaveBeenCalledTimes(1); // the guarded recovery submits THAT exact staged input once
+    expect(sendKeys).toHaveBeenCalledTimes(1); // 受 guard 保护的恢复恰好提交一次该暂存输入
   });
 
-  it("R3 SPECIMEN GUARD — the preserved COALESCED region (pieces 2 AND 3 staged) refuses for piece 2 with zero Enter calls: submitting would coalesce two pieces into one message", async () => {
+  it("R3 SPECIMEN GUARD——保留的合并区域（片段 2 与 3 均暂存）拒绝片段 2 且 Enter 调用为零：提交会把两个片段合成一条消息", async () => {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({ sendKeys, capturePaneContent: async () => PANE_COALESCED() }));
     const res = await transport.send("dev-impl@my-rig", "", {
@@ -201,11 +198,10 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  // ROUND-4 (r2 R3 HIGH-1, row 7435d61b): size similarity and short shared phrases are NOT
-  // identity. The rendering's own structure (proven on the preserved bytes: the literal residual
-  // is the piece's normalized SUFFIX, 524 chars in the specimen) is the only acceptance anchor;
-  // anything less fails closed.
-  it("R4 PROBE-A — a bare unrelated placeholder with a plausible size (+100 of 142) REFUSES with zero Enter calls: no residual means no identity [GREEN — identity-free acceptance removed]", async () => {
+  // ROUND-4（r2 R3 HIGH-1，row 7435d61b）：大小相似与短共享短语都不代表身份相同。只有渲染
+  // 自身结构（保留字节已证明：字面残留是片段归一化后的后缀，specimen 中为 524 字符）可作为
+  // 接受锚点；低于此要求时关闭式失败。
+  it("R4 PROBE-A——大小看似合理（142 中的 +100）但不相关的裸 placeholder 会拒绝，Enter 调用为零：无残留即无身份【GREEN——已移除无身份接受】", async () => {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({
       sendKeys,
@@ -221,7 +217,7 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  it("R4 PROBE-B — an unrelated placeholder plus a short phrase that happens to occur in the piece REFUSES with zero Enter calls: a common substring cannot bless another input [GREEN — strong residual anchoring]", async () => {
+  it("R4 PROBE-B——不相关 placeholder 加上碰巧出现在片段中的短语会拒绝，Enter 调用为零：公共子串不能授权另一输入【GREEN——强残留锚定】", async () => {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({
       sendKeys,
@@ -237,14 +233,13 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  // ROUND-5 (r2 R4 HIGH-1, row e039e8d1): the suffix anchor must be JOINED to the opaque
-  // placeholder prefix. The preserved bytes prove the relation: the placeholder sum (130)
-  // IDENTIFIES the hidden source boundary immediately before the visible suffix (the 524-char
-  // residual begins after exactly 130 source newlines of the 142-entry piece). A sum that does
-  // not match the boundary before the matched suffix is a truncated or wrong prefix — refuse.
-  const pieceTail = () => PIECE_2().split("\n").slice(-3).join("\n"); // a TRUE suffix, 85 normalized chars; boundary = 139
+  // ROUND-5（r2 R4 HIGH-1，row e039e8d1）：后缀锚点必须连接到不透明 placeholder 前缀。
+  // 保留字节证明了该关系：placeholder 总和（130）标识可见后缀正前方的隐藏源码边界（524 字符
+  // 残留恰好从 142 条目片段的第 130 个源码换行后开始）。总和与匹配后缀之前的边界不一致，
+  // 表明前缀被截断或错误——拒绝。
+  const pieceTail = () => PIECE_2().split("\n").slice(-3).join("\n"); // 真实后缀，归一化后 85 字符；边界 = 139
 
-  it("R5 — a +1 placeholder with the piece's EXACT literal suffix REFUSES with zero Enter calls: the sum does not match the hidden boundary [GREEN — sum-boundary join]", async () => {
+  it("R5——+1 placeholder 带片段精确字面后缀时拒绝且 Enter 调用为零：总和不匹配隐藏边界【GREEN——总和与边界连接】", async () => {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({
       sendKeys,
@@ -258,7 +253,7 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  it("R5 — a plausible +100 placeholder with the piece's EXACT literal suffix REFUSES with zero Enter calls: 100 is not the boundary either [GREEN — sum-boundary join]", async () => {
+  it("R5——看似合理的 +100 placeholder 带片段精确字面后缀时拒绝且 Enter 调用为零：100 也不是边界【GREEN——总和与边界连接】", async () => {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const transport = makeTransport(mockTmux({
       sendKeys,
@@ -272,9 +267,9 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  // ROUND-6 (r2 R5, row 98a9a82c / artifact a7ff103e): the ±1 tolerance was unproven — BOTH
-  // separately staged preserved pieces exhibit EXACT equality (piece 2: sum 130 = boundary 130;
-  // piece 3: sum 82 = boundary 82). Exact equality is the contract.
+  // ROUND-6（r2 R5，row 98a9a82c / artifact a7ff103e）：±1 容差未经证明——两个单独暂存的
+  // 保留片段都呈现精确相等（片段 2：总和 130 = 边界 130；片段 3：总和 82 = 边界 82）。
+  // 精确相等才是契约。
   const submitTail = (count: number) => transportFor(count);
   function transportFor(count: number) {
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
@@ -286,14 +281,14 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
   }
   const submitOpts = () => ({ submitOnly: true as const, expectedStagedText: PIECE_2(), expectedStagedLineCount: PIECE_2().split("\n").length });
 
-  it("R6 — the exact boundary (+139) accepts once", async () => {
+  it("R6——精确边界（+139）接受一次", async () => {
     const { transport, sendKeys } = submitTail(139);
     const res = await transport.send("dev-impl@my-rig", "", submitOpts());
     expect(res.ok).toBe(true);
     expect(sendKeys).toHaveBeenCalledTimes(1);
   });
 
-  it("R6 — one under the boundary (+138) REFUSES with zero Enter calls [GREEN — exact equality]", async () => {
+  it("R6——比边界少一（+138）时拒绝且 Enter 调用为零【GREEN——精确相等】", async () => {
     const { transport, sendKeys } = submitTail(138);
     const res = await transport.send("dev-impl@my-rig", "", submitOpts());
     expect(res.ok).toBe(false);
@@ -301,7 +296,7 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  it("R6 — one over the boundary (+140) REFUSES with zero Enter calls [GREEN — exact equality]", async () => {
+  it("R6——比边界多一（+140）时拒绝且 Enter 调用为零【GREEN——精确相等】", async () => {
     const { transport, sendKeys } = submitTail(140);
     const res = await transport.send("dev-impl@my-rig", "", submitOpts());
     expect(res.ok).toBe(false);
@@ -309,18 +304,18 @@ describe("SessionTransport submitOnly — the guarded bare-Enter retry", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  it("REFUSES (invalid_submit_only) without expectedStagedText, and when text is supplied", async () => {
+  it("缺少 expectedStagedText 或提供 text 时拒绝（invalid_submit_only）", async () => {
     const transport = makeTransport(mockTmux());
     const noExpected = await transport.send("dev-impl@my-rig", "", { submitOnly: true });
     expect(noExpected.ok).toBe(false);
     expect(noExpected.reason).toBe("invalid_submit_only");
-    const withText = await transport.send("dev-impl@my-rig", "some text", { submitOnly: true, expectedStagedText: "some text" });
+    const withText = await transport.send("dev-impl@my-rig", "一些文本", { submitOnly: true, expectedStagedText: "一些文本" });
     expect(withText.ok).toBe(false);
     expect(withText.reason).toBe("invalid_submit_only");
   });
 });
 
-describe("GET /api/sessions/:sessionName/generation-record — the consumption-by-effect source", () => {
+describe("GET /api/sessions/:sessionName/generation-record——按效果判定消费的来源", () => {
   let stateDir: string;
   let app: Hono;
   let db: Database.Database;
@@ -368,21 +363,21 @@ describe("GET /api/sessions/:sessionName/generation-record — the consumption-b
     return { node, record, url: `/api/sessions/${seat}/generation-record` };
   }
 
-  it("Codex current bound thread resolves before its first token_count event", async () => {
+  it("Codex 当前绑定 thread 在首个 token_count 事件前即可解析", async () => {
     const { url } = seedCodex();
     const response = await app.request(url);
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ runtime: "codex", sessionId: threadId });
   });
 
-  it("Codex refuses a wrong rollout identity instead of accepting the thread table pointer", async () => {
+  it("Codex 拒绝错误 rollout identity，而非接受 thread 表指针", async () => {
     const { url } = seedCodex("old-thread");
     const response = await app.request(url);
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ error: "record_identity_mismatch" });
   });
 
-  it("Codex replacement at the same path changes generation identity", async () => {
+  it("同一路径替换 Codex record 会改变 generation identity", async () => {
     const { url, record } = seedCodex();
     const first = await (await app.request(url)).json();
     const replacement = record + ".next";
@@ -394,7 +389,7 @@ describe("GET /api/sessions/:sessionName/generation-record — the consumption-b
     expect(second.generationId).not.toBe(first.generationId);
   });
 
-  it("Codex refuses an identity observation from a retired occupant", async () => {
+  it("Codex 拒绝来自已退役 occupant 的 identity observation", async () => {
     const { node, url } = seedCodex();
     db.prepare("UPDATE seat_identity_verdicts SET observed_at = '2000-01-01T00:00:00Z' WHERE node_id = ?").run(node.id);
     const response = await app.request(url);
@@ -402,7 +397,7 @@ describe("GET /api/sessions/:sessionName/generation-record — the consumption-b
     expect(await response.json()).toMatchObject({ error: "record_identity_unverified" });
   });
 
-  it("Codex refuses ambiguous native threads under one pane", async () => {
+  it("Codex 拒绝同一 pane 下有歧义的 native thread", async () => {
     const { url } = seedCodex();
     vi.mocked(ProcessCensus.prototype.list).mockResolvedValue([
       { pid: 10, ppid: 1, command: "zsh" },
@@ -412,23 +407,23 @@ describe("GET /api/sessions/:sessionName/generation-record — the consumption-b
     vi.mocked(CodexThreadIdResolver.prototype.resolve).mockImplementation(async pid => pid === 20 ? threadId : "other-thread");
     const response = await app.request(url);
     expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({ error: "record_identity_unverified", message: expect.stringContaining("multiple") });
+    expect(await response.json()).toMatchObject({ error: "record_identity_unverified", message: expect.stringContaining("多个 Codex 线程") });
   });
 
-  it.each(["0.5", "-1", "NaN", "", "9007199254740992"])("refuses invalid byte offset %s", async offset => {
+  it.each(["0.5", "-1", "NaN", "", "9007199254740992"])("拒绝无效字节偏移 %s", async offset => {
     seedSidecar("dev-offset@r", "gen-offset", "{}\n");
     expect((await app.request(`/api/sessions/dev-offset@r/generation-record?sinceBytes=${offset}`)).status).toBe(400);
   });
 
   it.each(["complete", "prefix", "old-file", "replaced-file", "changed-occupant", "wrong-turn", "missing-turn", "missing-file", "claude"])(
-    "integrated CLI → route → native record: %s", async (scenario) => {
+    "集成 CLI → route → native record：%s", async (scenario) => {
       const { record, node } = seedCodex();
-      const piece = "Shared heading. ".repeat(8) + "The complete middle matters.\n".repeat(9) + "unique tail Ω";
+      const piece = "共享标题。".repeat(8) + "完整中段很重要。\n".repeat(9) + "独特尾部 Ω";
       const seat = scenario === "claude" ? "dev-claude@r" : "dev-codex@codex-rig";
       const claudePath = scenario === "claude" ? seedSidecar(seat, "claude-gen", "") : null;
       const records = (text: string) => scenario === "claude" ? [
         { type: "user", uuid: "input", message: { role: "user", content: text } },
-        { type: "assistant", uuid: "answer", parentUuid: "input", message: { role: "assistant", content: "done" } },
+        { type: "assistant", uuid: "answer", parentUuid: "input", message: { role: "assistant", content: "完成" } },
         { type: "system", subtype: "turn_duration", uuid: "closed", parentUuid: "answer" },
       ] : [
         { type: "event_msg", payload: { type: "task_started", turn_id: "turn" } },
@@ -455,7 +450,7 @@ describe("GET /api/sessions/:sessionName/generation-record — the consumption-b
               return { status: response.status, data: await response.json() };
             },
             post: async (path: string) => {
-              if (path.endsWith("/capture")) return { status: 200, data: { content: "idle" } };
+              if (path.endsWith("/capture")) return { status: 200, data: { content: "空闲" } };
               sends++;
               const text = scenario === "prefix" ? piece.slice(0, 115) : piece;
               const suffix = records(text).map(r => JSON.stringify(r)).join("\n") + "\n";
@@ -472,7 +467,7 @@ describe("GET /api/sessions/:sessionName/generation-record — the consumption-b
           }) as never,
           sleep: async () => {},
         }));
-        await command.parseAsync(["node", "rig", "walk", seat, "--through", "piece.md", "--json", "--pace", "0ms",
+        await command.parseAsync(["node", "zrig", "walk", seat, "--through", "piece.md", "--json", "--pace", "0ms",
           "--consume-timeout", "20ms", "--consume-poll", "1ms", "--turn-timeout", "20ms"]);
         const positive = scenario === "complete" || scenario === "claude";
         expect(process.exitCode).toBe(positive ? undefined : 1);
@@ -495,11 +490,10 @@ describe("GET /api/sessions/:sessionName/generation-record — the consumption-b
     return jsonl;
   };
 
-  it("serves identity + totalBytes without sinceBytes, and the BYTE-addressed suffix with it (multibyte-safe)", async () => {
-    // The record deliberately carries multibyte characters BEFORE the suffix boundary: byte
-    // addressing must stay consistent between totalBytes and the served slice.
-    const early = '{"note":"…multibyte … ellipses…"}\n';
-    const late = '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"the walked piece"}]}}\n';
+  it("无 sinceBytes 时提供 identity + totalBytes，有该参数时提供按字节寻址的后缀（多字节安全）", async () => {
+    // record 故意在后缀边界前包含多字节字符：totalBytes 与返回 slice 的字节寻址必须一致。
+    const early = '{"note":"……多字节……省略号……"}\n';
+    const late = '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"walk 的片段"}]}}\n';
     seedSidecar("dev-x@r", "gen-abc", early + late);
     const idRes = await app.request(`/api/sessions/${encodeURIComponent("dev-x@r")}/generation-record`);
     expect(idRes.status).toBe(200);
@@ -518,7 +512,7 @@ describe("GET /api/sessions/:sessionName/generation-record — the consumption-b
     expect(suf.truncated).toBe(false);
   });
 
-  it("refuses LOUD (409 unsupported_runtime) when no sidecar record resolves — never an empty success", async () => {
+  it("无法解析 sidecar record 时明确拒绝（409 unsupported_runtime），绝不返回空成功", async () => {
     const res = await app.request(`/api/sessions/${encodeURIComponent("ghost@r")}/generation-record`);
     expect(res.status).toBe(409);
     const body = await res.json() as { error: string; message: string };
@@ -526,11 +520,10 @@ describe("GET /api/sessions/:sessionName/generation-record — the consumption-b
     expect(body.message).toContain("ghost@r");
   });
 
-  // ROUND-2 (r2 R1 HIGH-2, row 66e74676): the raw generation-record read is a TERMINAL-CLASS
-  // surface (raw conversation bytes, no transcript redaction) and must sit behind the same
-  // bearer gate as its neighbors. 401 / 401 / 200 for missing / wrong / correct bearer; a
-  // null-token (loopback) daemon passes through.
-  it("R2 HIGH-2 — with a terminal bearer token configured: missing and wrong bearers are 401, the correct bearer is 200 [GREEN — terminalAuthGuard]", async () => {
+  // ROUND-2（r2 R1 HIGH-2，row 66e74676）：原始 generation-record 读取是终端级 surface
+  //（原始对话字节，无 transcript 脱敏），必须位于与相邻接口相同的 bearer gate 后。bearer
+  // 缺失/错误/正确分别返回 401/401/200；null-token（loopback）daemon 直接放行。
+  it("R2 HIGH-2——配置 terminal bearer token 时：缺失与错误 bearer 返回 401，正确 bearer 返回 200【GREEN——terminalAuthGuard】", async () => {
     const stateDir2 = mkdtempSync(join(tmpdir(), "walk-genrec-auth-"));
     try {
       const db2 = createFullTestDb();
@@ -559,14 +552,14 @@ describe("GET /api/sessions/:sessionName/generation-record — the consumption-b
     }
   });
 
-  it("null-token (loopback) daemon passes the generation-record read through — the existing no-auth tests are this mode", async () => {
-    // The suite's other route tests run with no terminalBearerToken set and expect 200/409 —
-    // that IS the null-token pass-through pin; this case just names the contract.
+  it("null-token（loopback）daemon 放行 generation-record 读取——现有无鉴权测试即此模式", async () => {
+    // 套件其他 route 测试均未设置 terminalBearerToken，并预期 200/409——这正是 null-token
+    // 放行固定点；本用例仅为该契约命名。
     const res = await app.request(`/api/sessions/${encodeURIComponent("nobody@r")}/generation-record`);
     expect([200, 409]).toContain(res.status);
   });
 
-  it("refuses LOUD (409 record_unreadable) when the sidecar names a transcript that does not exist", async () => {
+  it("sidecar 指向不存在的 transcript 时明确拒绝（409 record_unreadable）", async () => {
     seedSidecar("dev-y@r", "gen-y", "x\n");
     rmSync(join(stateDir, "gen-y.jsonl"));
     const res = await app.request(`/api/sessions/${encodeURIComponent("dev-y@r")}/generation-record`);

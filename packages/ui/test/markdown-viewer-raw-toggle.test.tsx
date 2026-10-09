@@ -1,11 +1,9 @@
-// Operator Surface Reconciliation v0 — MarkdownViewer raw/rendered toggle tests.
+// Operator Surface Reconciliation v0——MarkdownViewer 原文/渲染切换测试。
 //
-// Item 4: header-bar toggle switches between rendered (default;
-// MarkdownViewer's normal block render) and raw (monospace pre-rendered
-// text + visible Markdown source). Frontmatter metadata header still
-// renders in raw mode unless hideFrontmatter is set. hideRawToggle
-// prop suppresses the toggle for callers (e.g. PriorityStackPanel)
-// that don't want the chrome.
+// 第 4 项：页头栏开关在渲染模式（默认，即 MarkdownViewer 的常规块渲染）与原文模式
+//（等宽预格式化文本 + 可见 Markdown 源码）之间切换。除非设置 hideFrontmatter，原文模式
+// 仍会渲染 frontmatter 元数据头。hideRawToggle 属性可为不需要此装饰的调用方
+//（如 PriorityStackPanel）隐藏开关。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
@@ -21,6 +19,9 @@ describe("OSR v0 — MarkdownViewer raw/rendered toggle", () => {
     expect(screen.getByTestId("markdown-viewer").getAttribute("data-mode")).toBe("rendered");
     expect(screen.getByTestId("markdown-viewer-mode-rendered").getAttribute("data-active")).toBe("true");
     expect(screen.getByTestId("markdown-viewer-mode-raw").getAttribute("data-active")).toBe("false");
+    expect(screen.getByTestId("markdown-viewer-mode-rendered").textContent).toContain("渲染视图");
+    expect(screen.getByTestId("markdown-viewer-mode-raw").textContent).toContain("原文");
+    expect(screen.getByTestId("markdown-frontmatter").textContent).toContain("前置元数据");
     expect(screen.getByTestId("markdown-viewer-rendered")).toBeDefined();
   });
 

@@ -1,5 +1,5 @@
-// Build B — narrow public surface for spec-vs-live topology conformance, so the cli-side `rig
-// doctor` and the daemon-side bundle-export path answer with the SAME delta. Two surfaces
-// disagreeing about the size of a rig is the defect one layer up from the one this reports.
-// Lane rule: exports map + dist + cli tsconfig paths, all three. Re-export only — no logic here.
+// Build B——spec 与实时拓扑一致性的窄公开 surface，使 CLI 侧 `rig doctor` 与后台服务侧
+// bundle-export 路径返回相同 delta。两个 surface 对 rig 大小得出不同结果，是此处报告问题的
+// 上一层缺陷。线路规则：exports map + dist + CLI tsconfig paths，三者缺一不可。仅 re-export，
+// 此处无逻辑。
 export * from "./domain/spec-live-conformance.js";

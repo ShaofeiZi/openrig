@@ -3,7 +3,7 @@ import type Database from "better-sqlite3";
 import { createFullTestDb, createTestApp } from "./helpers/test-app.js";
 import { QueueRepository } from "../src/domain/queue-repository.js";
 
-describe("Rig lifecycle routes", () => {
+describe("Rig 生命周期路由", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
 
@@ -16,7 +16,7 @@ describe("Rig lifecycle routes", () => {
     db.close();
   });
 
-  it("POST /api/sessions/:sessionRef/unclaim releases a claimed session and reactivates discovery", async () => {
+  it("POST /api/sessions/:sessionRef/unclaim 释放已认领 session 并重新启用发现", async () => {
     const rig = setup.rigRepo.createRig("claim-rig");
     const discovered = setup.discoveryRepo.upsertDiscoveredSession({
       tmuxSession: "manual-claim-session",
@@ -57,7 +57,7 @@ describe("Rig lifecycle routes", () => {
     expect(rediscovered?.claimedNodeId).toBeNull();
   });
 
-  it("POST /api/rigs/:rigId/release releases claimed sessions without killing tmux and deletes the rig", async () => {
+  it("POST /api/rigs/:rigId/release 释放已认领 session、保留 tmux 并删除 rig", async () => {
     const rig = setup.rigRepo.createRig("release-rig");
     const discoveredA = setup.discoveryRepo.upsertDiscoveredSession({
       tmuxSession: "manual-release-a",
@@ -112,7 +112,7 @@ describe("Rig lifecycle routes", () => {
     expect(killSession).not.toHaveBeenCalled();
   });
 
-  it("POST /api/rigs/:rigId/release refuses rigs containing launched nodes", async () => {
+  it("POST /api/rigs/:rigId/release 拒绝包含已启动节点的 rig", async () => {
     const rig = setup.rigRepo.createRig("release-mixed-rig");
     const launchedNode = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "codex" });
     setup.sessionRegistry.registerSession(launchedNode.id, "dev-impl@release-mixed-rig");
@@ -131,7 +131,7 @@ describe("Rig lifecycle routes", () => {
     expect(setup.rigRepo.getRig(rig.id)).not.toBeNull();
   });
 
-  it("DELETE /api/rigs/:rigId/nodes/:nodeRef kills the session and removes the node", async () => {
+  it("DELETE /api/rigs/:rigId/nodes/:nodeRef 终止 session 并移除节点", async () => {
     const rig = setup.rigRepo.createRig("remove-rig");
     const expanded = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -176,7 +176,7 @@ describe("Rig lifecycle routes", () => {
     });
   });
 
-  it("DELETE /api/rigs/:rigId/nodes/:nodeRef refuses removal while active qitems target the session", async () => {
+  it("活动 qitem 指向该 session 时 DELETE /api/rigs/:rigId/nodes/:nodeRef 拒绝移除", async () => {
     const rig = setup.rigRepo.createRig("remove-active-qitem-rig");
     const expanded = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -222,7 +222,7 @@ describe("Rig lifecycle routes", () => {
     });
   });
 
-  it("DELETE /api/rigs/:rigId/nodes/:nodeRef reroutes active qitems to an explicit running fallback before removal", async () => {
+  it("DELETE /api/rigs/:rigId/nodes/:nodeRef 在移除前将活动 qitem 重路由到显式运行中 fallback", async () => {
     const rig = setup.rigRepo.createRig("remove-fallback-rig");
     const expanded = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -273,7 +273,7 @@ describe("Rig lifecycle routes", () => {
     });
   });
 
-  it("DELETE /api/rigs/:rigId/nodes/:nodeRef refuses a non-running fallback before changing queue or topology", async () => {
+  it("DELETE /api/rigs/:rigId/nodes/:nodeRef 在改变 queue 或 topology 前拒绝非运行中 fallback", async () => {
     const rig = setup.rigRepo.createRig("remove-stopped-fallback-rig");
     const expanded = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -321,7 +321,7 @@ describe("Rig lifecycle routes", () => {
     });
   });
 
-  it("DELETE /api/rigs/:rigId/nodes/:nodeRef refuses a stale running fallback absent from tmux", async () => {
+  it("DELETE /api/rigs/:rigId/nodes/:nodeRef 拒绝 tmux 中缺失的陈旧 running fallback", async () => {
     const rig = setup.rigRepo.createRig("remove-stale-fallback-rig");
     const expanded = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -370,7 +370,7 @@ describe("Rig lifecycle routes", () => {
     });
   });
 
-  it("DELETE /api/rigs/:rigId/nodes/:nodeRef refuses the removed seat as its own fallback", async () => {
+  it("DELETE /api/rigs/:rigId/nodes/:nodeRef 拒绝将被移除席位作为自身 fallback", async () => {
     const rig = setup.rigRepo.createRig("remove-self-fallback-rig");
     const expanded = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -397,7 +397,7 @@ describe("Rig lifecycle routes", () => {
     expect(setup.rigRepo.getRig(rig.id)?.nodes.map((node) => node.logicalId)).toEqual(["infra.server"]);
   });
 
-  it("DELETE /api/rigs/:rigId/nodes/:nodeRef preserves a previously detached claimed session while removing the node", async () => {
+  it("DELETE /api/rigs/:rigId/nodes/:nodeRef 移除节点时保留先前已分离的 claimed session", async () => {
     const rig = setup.rigRepo.createRig("remove-detached-rig");
     const discovered = setup.discoveryRepo.upsertDiscoveredSession({
       tmuxSession: "phase4-detached-remove",
@@ -436,7 +436,7 @@ describe("Rig lifecycle routes", () => {
     expect(setup.rigRepo.getRig(rig.id)?.nodes.find((candidate) => candidate.logicalId === "external.helper")).toBeUndefined();
   });
 
-  it("DELETE /api/rigs/:rigId/pods/:podRef removes all nodes in the pod and deletes the pod", async () => {
+  it("DELETE /api/rigs/:rigId/pods/:podRef 移除 pod 内所有节点并删除 pod", async () => {
     const rig = setup.rigRepo.createRig("shrink-rig");
     const seed = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -471,7 +471,7 @@ describe("Rig lifecycle routes", () => {
     expect(podEvents).toHaveLength(1);
   });
 
-  it("DELETE /api/rigs/:rigId/pods/:podRef reroutes member work to an explicit fallback outside the pod", async () => {
+  it("DELETE /api/rigs/:rigId/pods/:podRef 将成员工作重路由到 pod 外的显式 fallback", async () => {
     const rig = setup.rigRepo.createRig("shrink-fallback-rig");
     const dev = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -539,7 +539,7 @@ describe("Rig lifecycle routes", () => {
     });
   });
 
-  it("DELETE /api/rigs/:rigId/pods/:podRef refuses active work before removing an earlier pod member", async () => {
+  it("DELETE /api/rigs/:rigId/pods/:podRef 在移除较早 pod 成员前拒绝活动工作", async () => {
     const rig = setup.rigRepo.createRig("shrink-active-qitem-rig");
     const expanded = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -577,7 +577,7 @@ describe("Rig lifecycle routes", () => {
     expect(setup.rigRepo.getRig(rig.id)?.nodes.map((node) => node.logicalId).sort()).toEqual(["dev.impl", "dev.qa"]);
   });
 
-  it("DELETE /api/rigs/:rigId/pods/:podRef refuses a fallback inside the removed pod before mutation", async () => {
+  it("DELETE /api/rigs/:rigId/pods/:podRef 在修改前拒绝位于待移除 pod 内的 fallback", async () => {
     const rig = setup.rigRepo.createRig("shrink-in-pod-fallback-rig");
     const expanded = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -607,7 +607,7 @@ describe("Rig lifecycle routes", () => {
     expect(setup.rigRepo.getRig(rig.id)?.nodes.map((node) => node.logicalId).sort()).toEqual(["dev.impl", "dev.qa"]);
   });
 
-  it("DELETE /api/rigs/:rigId/pods/:podRef returns partial state when a later node removal fails", async () => {
+  it("后续节点移除失败时 DELETE /api/rigs/:rigId/pods/:podRef 返回部分状态", async () => {
     const rig = setup.rigRepo.createRig("shrink-partial-rig");
     const seed = await setup.rigExpansionService.expand({
       rigId: rig.id,

@@ -1,35 +1,26 @@
-// Slice 24 — CmuxLayoutService.
+// Slice 24——CmuxLayoutService。
 //
-// Algorithmic core of the "Launch in CMUX" feature. Three pure helpers
-// (computeLayout / chunkAgents / orderAgentsFromRigSpec) + the
-// coordinated grid builder (buildWorkspacePanes, with buildWorkspace as
-// its tmux-attach wrapper) that drives the CmuxAdapter through
-// workspace.create + N-1 surface.split + N surface.sendText calls to
-// populate a freshly-created cmux workspace with one panel per agent.
-// The terminal-provider ride reuses the same core with composer-built
-// pane commands (read-only -r / ssh-wrap preserved).
+// “在 CMUX 中启动”功能的算法核心。三个纯 helper（computeLayout / chunkAgents /
+// orderAgentsFromRigSpec）加上协调式 grid builder（buildWorkspacePanes，buildWorkspace 是其
+// tmux-attach 包装器），通过 workspace.create + N-1 次 surface.split + N 次 surface.sendText
+// 驱动 CmuxAdapter，在新建 cmux workspace 中为每个智能体填充一个 panel。terminal-provider
+// 路径复用同一核心，并使用 composer 构建的 pane command（保留只读 -r、ssh-wrap 和 quoting）。
 //
-// Timing strategy (per slice 24 README §Daemon-side + cmux-rig-layout
-// skill §5 gotchas):
-//   - After every splitSurface, wait OP_DELAY_MS so the freshly-created
-//     surface's shell reaches its prompt before the next operation
-//     (skill §5 gotcha 3 — surface-not-ready-for-input window).
-//   - After the LAST sendText, wait FINAL_SETTLE_MS to defeat the
-//     last-send-key race (skill §5 gotcha 2).
-//   - listSurfaces immediately after createWorkspace retries with
-//     small backoff to absorb the workspace-default-surface attach
-//     latency. The default surface is created by cmux daemon at
-//     workspace.create time but the listing may not reflect it for
-//     a beat.
-// Sleep is injected via constructor so tests stub it to no-op.
+// 时序策略（见 slice 24 README §Daemon-side 与 cmux-rig-layout skill §5 陷阱）：
+//   - 每次 splitSurface 后等待 OP_DELAY_MS，让新 surface 的 shell 在下一操作前到达 prompt
+//     （skill §5 陷阱 3：surface 暂时无法接收输入的窗口）。
+//   - 最后一次 sendText 后等待 FINAL_SETTLE_MS，规避 last-send-key 竞态（skill §5 陷阱 2）。
+//   - createWorkspace 后立即调用 listSurfaces 时采用短暂 backoff 重试，以吸收 workspace 默认
+//     surface 的 attach 延迟。cmux 后台服务在 workspace.create 时创建默认 surface，但列表可能
+//     暂时还看不到它。
+// Sleep 通过构造器注入，测试可将其替换为 no-op。
 //
-// Constants live at the top of the file per slice 24 README §Layout
-// algorithm §"Configurability posture". v0 ships them as hardcoded
-// constants; v0.3.2 follow-on graduates to settings keys.
+// 按 slice 24 README §Layout algorithm §“Configurability posture”，常量位于文件顶部。v0
+// 以硬编码常量交付；v0.3.2 后续版本再升级为 settings key。
 //
-// TODO(0.3.2): graduate MAX_COLS + MAX_PER_WORKSPACE to settings keys
+// TODO(0.3.2)：将 MAX_COLS 和 MAX_PER_WORKSPACE 提升为设置键。
 // cmux.workspace_columns + cmux.workspace_max_panels (slice 08 settings
-// infra is ready; this is a 2-keys-plus-optional-UI-surface follow-on).
+// 基础设施已就绪；这是包含两个 key 与可选 UI surface 的后续工作）。
 
 import type { CmuxAdapter, CmuxResult } from "../adapters/cmux.js";
 
@@ -45,10 +36,9 @@ export const EQUALIZE_SETTLE_MS = 1200;
 export type SleepFn = (ms: number) => Promise<void>;
 
 /**
- * The modal Auto-grid column count for N panes. MUST mirror the UI's
- * TerminalLauncher `suggestLayout` (PM ruling: the applied cmux grid matches
- * the modal preview — N=7 → 3×3, never 2×4). Kept here because the daemon
- * cannot import from packages/ui; a drift is a bug in whichever side changed.
+ * N 个 pane 的弹窗 Auto-grid 列数。必须镜像 UI TerminalLauncher 的 `suggestLayout`。PM 裁定：
+ * 实际 cmux grid 必须与弹窗 preview 一致，N=7 时为 3×3，绝不能是 2×4。这里保留一份实现，
+ * 因为后台服务无法从 packages/ui 导入；任一侧发生漂移都属于 bug。
  */
 export function autoGridCols(n: number): number {
   return Math.max(1, Math.ceil(Math.sqrt(n)));
@@ -75,11 +65,9 @@ export interface BuildWorkspacePanesResult {
   paneCount: number;
   blanks: number;
   /**
-   * Observability only — NOT the acceptance signal (VM-proven: cmux can
-   * report equalized:true while later layout churn restores binary sizes;
-   * final pane frames are the acceptance). True = at least one equalize pass
-   * reported a rebalance; false = no pass did. Absent = not applicable
-   * (no equalize needed for this shape).
+   * 仅用于可观测性，不是 acceptance signal。VM 已证明 cmux 可能报告 equalized:true，但后续
+   * layout churn 又恢复二叉尺寸；最终 pane frame 才是 acceptance。true 表示至少一次 equalize
+   * pass 报告 rebalance；false 表示一次也没有；缺失表示不适用，即当前形状无需 equalize。
    */
   equalized?: boolean;
 }
@@ -104,24 +92,24 @@ export class CmuxLayoutService {
 
   static computeLayout(n: number): LayoutShape {
     if (n === 1) {
-      // Guard n here so the 1×1 fast path still rejects non-integers upstream.
+      // 在这里校验 n，使 1×1 快速路径仍会在上游拒绝非整数。
       return CmuxLayoutService.computeGridLayout(n, 1);
     }
     return CmuxLayoutService.computeGridLayout(n, MAX_COLS);
   }
 
-  /** Grid shape for N panes at an explicit column count (clamped to N). */
+  /** 使用显式列数计算 N 个 pane 的 grid 形状；列数最大限制为 N。 */
   static computeGridLayout(n: number, cols: number): LayoutShape {
     if (!Number.isInteger(n) || n <= 0) {
-      throw new Error(`CmuxLayoutService.computeLayout: N must be a positive integer (got ${n})`);
+      throw new Error(`CmuxLayoutService.computeLayout：N 必须是正整数（收到 ${n}）`);
     }
     if (n > MAX_PER_WORKSPACE) {
       throw new Error(
-        `CmuxLayoutService.computeLayout: N=${n} exceeds MAX_PER_WORKSPACE=${MAX_PER_WORKSPACE}; caller should chunk first`,
+        `CmuxLayoutService.computeLayout：N=${n} 超过 MAX_PER_WORKSPACE=${MAX_PER_WORKSPACE}；调用方应先分块`,
       );
     }
     if (!Number.isInteger(cols) || cols <= 0) {
-      throw new Error(`CmuxLayoutService.computeGridLayout: cols must be a positive integer (got ${cols})`);
+      throw new Error(`CmuxLayoutService.computeGridLayout：cols 必须是正整数（收到 ${cols}）`);
     }
     const effectiveCols = Math.min(cols, n);
     const rows = Math.ceil(n / effectiveCols);
@@ -171,14 +159,12 @@ export class CmuxLayoutService {
   }
 
   /**
-   * Command-level grid builder (the shared core). Same one-workspace grid as
-   * buildWorkspace, but each pane runs an arbitrary caller-composed shell
-   * command verbatim (+ trailing newline) — the terminal-provider ride's
-   * `paneCommand` contract (read-only `-r`, ssh-wrap, quoting preserved).
+   * 命令级 grid builder（共享核心）。与 buildWorkspace 使用相同的单 workspace grid，但每个
+   * pane 逐字运行调用方组合的任意 shell command，并追加换行；这就是 terminal-provider 路径
+   * 的 `paneCommand` 契约，保留只读 `-r`、ssh-wrap 和 quoting。
    *
-   * `cols` overrides the column count (the terminal launcher passes the modal
-   * Auto-grid `autoGridCols(N)` — PM ruling: the applied grid must match the
-   * modal preview). Omitted → the legacy 2-column rig-launch shape.
+   * `cols` 覆盖列数。terminal launcher 传入弹窗 Auto-grid 的 `autoGridCols(N)`；按 PM 裁定，
+   * 实际 grid 必须与弹窗 preview 一致。省略时使用 legacy 双列 rig-launch 形状。
    */
   async buildWorkspacePanes(
     workspaceName: string,
@@ -199,7 +185,7 @@ export class CmuxLayoutService {
       return {
         ok: false,
         code: "invalid_input",
-        message: `buildWorkspace: ${paneCommands.length} agents exceeds MAX_PER_WORKSPACE=${MAX_PER_WORKSPACE}; caller should chunk first`,
+        message: `buildWorkspace：${paneCommands.length} 个智能体超过 MAX_PER_WORKSPACE=${MAX_PER_WORKSPACE}；调用方应先分块`,
       };
     }
 
@@ -208,26 +194,21 @@ export class CmuxLayoutService {
         ? CmuxLayoutService.computeGridLayout(paneCommands.length, cols)
         : CmuxLayoutService.computeLayout(paneCommands.length);
 
-    // 1. Create the workspace.
+    // 1. 创建 workspace。
     const wsResult = await this.cmuxAdapter.createWorkspace(workspaceName, cwd);
     if (!wsResult.ok) return wsResult;
     const workspaceId = wsResult.data;
 
-    // 2. Discover the workspace's default surface. workspace.create
-    //    auto-creates one terminal surface but the listing may not
-    //    reflect it immediately. Retry with small backoff (skill §5
-    //    gotcha 3 — surface-not-ready-for-input window also applies
-    //    to surface enumeration).
+    // 2. 发现 workspace 默认 surface。workspace.create 会自动创建一个 terminal surface，
+    //    但列表不一定立即反映；使用短 backoff 重试。skill §5 陷阱 3 的 surface 输入未就绪
+    //    窗口同样适用于 surface 枚举。
     const initialSurface = await this.discoverInitialSurface(workspaceId);
     if (!initialSurface.ok) return initialSurface;
 
-    // 3. Build the grid. grid[col][row] holds the surface id. Layout
-    //    shape determines the split sequence:
-    //    - col 1: the initial surface + (rows-1) down splits below it
-    //    - each further column: 1 right split off the previous column's
-    //      top surface + (rows-1) down splits
-    //    Sleep OP_DELAY_MS after every split so the freshly created
-    //    surface's shell reaches its prompt before the next op.
+    // 3. 构建 grid，grid[col][row] 保存 surface id。layout 形状决定 split 顺序：
+    //    - 第 1 列：初始 surface + 其下方 (rows-1) 次 down split；
+    //    - 后续每列：从前一列顶部 surface 向右 split 一次，再执行 (rows-1) 次 down split。
+    //    每次 split 后等待 OP_DELAY_MS，让新 surface 的 shell 在下一操作前到达 prompt。
     const grid: string[][] = [[initialSurface.data]];
 
     for (let c = 1; c < layout.cols; c++) {
@@ -255,13 +236,10 @@ export class CmuxLayoutService {
       }
     }
 
-    // 4. Send each pane's command to its surface in COLUMN-MAJOR
-    //    order: fill column 0 top-to-bottom first, then column 1
-    //    top-to-bottom. Matches README §52 "Fill ... (top-to-bottom,
-    //    left-to-right)" — each column's contents in reading order,
-    //    moving left-to-right across columns.
-    //    Any unpopulated surfaces in column 1's last row(s) remain
-    //    as "blanks" (cmux still shows them as empty terminals).
+    // 4. 按 COLUMN-MAJOR 顺序把每个 pane command 发送到对应 surface：先自上而下填满第 0 列，
+    //    再自上而下填第 1 列。与 README §52 “Fill ... (top-to-bottom, left-to-right)”一致，
+    //    每列内容按阅读顺序排列，再从左向右移动。最后几行未填充的 surface 保持为空白，cmux
+    //    仍会把它们显示为空 terminal。
     let paneIndex = 0;
     for (let c = 0; c < layout.cols && paneIndex < paneCommands.length; c++) {
       for (let r = 0; r < layout.rows && paneIndex < paneCommands.length; r++) {
@@ -277,22 +255,16 @@ export class CmuxLayoutService {
       }
     }
 
-    // 5. Final settle. Per skill §5 gotcha 2 the very last send-key
-    //    can drop if the script exits immediately; the sleep
-    //    guarantees the terminal flushes the Enter character.
+    // 5. 最终 settle。按 skill §5 陷阱 2，脚本立即退出时最后一次 send-key 可能丢失；等待可确保
+    //    terminal 刷出 Enter 字符。
     await this.sleep(FINAL_SETTLE_MS);
 
-    // 6. Equalize — explicit-cols Auto-grid only (legacy 2-col rig-launch
-    //    stays byte-identical), for grids beyond 2 in either dimension
-    //    (successive 50/50 binary splits land 50/25/25). VM-proven (PM
-    //    ruling): equalization must run AFTER every pane command has landed
-    //    and the workspace settled — an early call can even report
-    //    equalized:true and still end 2:1:1 once later layout churn restores
-    //    binary sizes. So: a fixed number of passes with a settle delay
-    //    between them, never early-exiting on the RPC boolean. The boolean is
-    //    observability only; acceptance is final pane-frame geometry.
-    //    Non-fatal by design: an unequalized grid degrades sizing only,
-    //    never the panes.
+    // 6. Equalize——只用于显式 cols 的 Auto-grid；legacy 双列 rig-launch 保持逐字节不变。任一维
+    //    超过 2 时，连续 50/50 二叉 split 会形成 50/25/25。VM 已证明并由 PM 裁定：必须等所有
+    //    pane command 落地且 workspace settle 后再 equalize；过早调用即使报告 equalized:true，
+    //    后续 layout churn 仍可能恢复二叉尺寸，最终变成 2:1:1。因此固定执行若干 pass，pass 间
+    //    留 settle delay，绝不因 RPC boolean 提前退出。boolean 只供观测，最终 pane-frame 几何
+    //    才是 acceptance。按设计此步骤非致命：未 equalize 只会降低尺寸质量，不影响 pane。
     let equalized: boolean | undefined;
     if (cols != null && (layout.cols > 2 || layout.rows > 2)) {
       equalized = false;
@@ -331,7 +303,7 @@ export class CmuxLayoutService {
     return {
       ok: false,
       code: "request_failed",
-      message: `buildWorkspace: workspace ${workspaceId} had no default surface after ${LIST_SURFACES_MAX_ATTEMPTS} attempts; cmux daemon may not be ready`,
+      message: `buildWorkspace：尝试 ${LIST_SURFACES_MAX_ATTEMPTS} 次后，workspace ${workspaceId} 仍没有默认 surface；cmux 后台服务可能尚未就绪`,
     };
   }
 }

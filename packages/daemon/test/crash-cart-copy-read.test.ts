@@ -12,10 +12,10 @@ import {
   CrashCartReadError,
 } from "../src/domain/crash-cart-discovery.js";
 
-// Crash-cart C2 keystone (arch a1344201 Q1 + PM gate): copy the {db,-wal,-shm} triple to scratch,
-// open the COPY, and SQLite replays the WAL on the copy → a FRESH view (the last pre-crash frames)
-// with ZERO interference to the originals a restarting daemon reopens. REAL better-sqlite3 + real
-// files — this is the "WAL-replay-on-copy demonstrated" evidence, not a mock.
+// Crash-cart C2 关键证明（架构 a1344201 Q1 + PM 门禁）：把 {db,-wal,-shm} 三件套复制到 scratch，
+// 打开副本后由 SQLite 在副本上重放 WAL，得到包含崩溃前最后 frame 的新鲜视图，并且完全不干扰
+// 重启后台服务将重新打开的原文件。使用真实 better-sqlite3 与真实文件；这是“已证明在副本上重放
+// WAL”的证据，不是 mock。
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -29,12 +29,12 @@ function scratch(prefix = "cc-cr-"): string {
 const sha = (p: string): string =>
   existsSync(p) ? createHash("sha256").update(readFileSync(p)).digest("hex") : "ABSENT";
 
-describe("copy-then-read — WAL replays on the copy; originals untouched", () => {
-  it("last WAL-committed rows are visible on the copy; main-alone omits them; originals byte-identical after the read", () => {
+describe("先复制再读取——在副本上重放 WAL，原文件不受影响", () => {
+  it("副本可见 WAL 最后提交行，单独 main 文件不可见，读取后原文件逐字节一致", () => {
     const dir = scratch();
     const dbPath = join(dir, "openrig.sqlite");
-    // A WAL-mode DB with a committed-but-UNcheckpointed row (writer kept open ⇒ frames stay in -wal,
-    // simulating a crash where the last frames never replayed into main.db).
+    // WAL 模式 DB 含一条已提交但未 checkpoint 的行；writer 保持打开，使 frame 留在 -wal，
+    // 模拟崩溃时最后 frame 尚未重放进 main.db。
     const writer = createDb(dbPath);
     writer.exec("CREATE TABLE t (x INTEGER)");
     writer.prepare("INSERT INTO t (x) VALUES (7)").run();
@@ -44,28 +44,28 @@ describe("copy-then-read — WAL replays on the copy; originals untouched", () =
     const originals = [dbPath, dbPath + "-wal", dbPath + "-shm"];
     const before = originals.map(sha);
 
-    // (A) COPY the full triple → open the copy → the WAL frames replay: the row is present + fresh.
+    // (A) 复制完整三件套并打开副本，WAL frame 重放后该行存在且新鲜。
     const scratchDir = scratch("cc-copy-");
     const copyDb = snapshotDaemonDb(dbPath, scratchDir, { copyFile: copyFileSync, exists: existsSync });
     const ro = openDaemonDbReadonly(copyDb);
     expect(ro.prepare("SELECT x FROM t").get()).toEqual({ x: 7 });
     ro.close();
 
-    // (B) main.db ALONE (no -wal) omits the frames — proof they lived in the WAL, not main.db.
+    // (B) 单独 main.db（无 -wal）不含这些 frame，证明它们位于 WAL 而非 main.db。
     const mainOnly = join(scratch("cc-main-"), "openrig.sqlite");
     copyFileSync(dbPath, mainOnly);
     const roMain = new Database(mainOnly, { readonly: true });
-    expect(() => roMain.prepare("SELECT x FROM t").get()).toThrow(); // table itself lived in the WAL
+    expect(() => roMain.prepare("SELECT x FROM t").get()).toThrow(); // 表本身也只存在于 WAL。
     roMain.close();
 
-    // (C) the reads touched ONLY copies — the originals are byte-identical (read-only / no interference).
+    // (C) 读取只接触副本；原文件逐字节一致（只读、无干扰）。
     const afterReads = originals.map(sha);
     expect(afterReads).toEqual(before);
 
     writer.close(); // only now may the originals legitimately change (checkpoint on close)
   });
 
-  it("snapshotDaemonDb copies sidecars only when present and fails loud on a missing db", () => {
+  it("snapshotDaemonDb 只复制存在的 sidecar，DB 缺失时明确失败", () => {
     const dir = scratch();
     const dbPath = join(dir, "openrig.sqlite");
     const w = createDb(dbPath);
@@ -75,7 +75,7 @@ describe("copy-then-read — WAL replays on the copy; originals untouched", () =
 
     const out = scratch("cc-copy2-");
     const copyDb = snapshotDaemonDb(dbPath, out, { copyFile: copyFileSync, exists: existsSync });
-    expect(existsSync(copyDb)).toBe(true); // the db is always copied
+    expect(existsSync(copyDb)).toBe(true); // DB 始终会被复制。
     const ro = openDaemonDbReadonly(copyDb);
     expect(ro.prepare("SELECT COUNT(*) AS n FROM t").get()).toEqual({ n: 0 });
     ro.close();
@@ -86,8 +86,8 @@ describe("copy-then-read — WAL replays on the copy; originals untouched", () =
   });
 });
 
-describe("resolveDaemonDbPath — prefer daemon.json.db, flag relative", () => {
-  it("uses the state file's db path when present (absolute)", () => {
+describe("resolveDaemonDbPath——优先 daemon.json.db，并标记相对路径", () => {
+  it("状态文件含绝对 DB 路径时使用该路径", () => {
     const r = resolveDaemonDbPath("/home/.openrig", () => ({
       pid: 1,
       port: 7433,
@@ -96,13 +96,13 @@ describe("resolveDaemonDbPath — prefer daemon.json.db, flag relative", () => {
     expect(r).toEqual({ path: "/home/.openrig/openrig.sqlite", fromStateFile: true, relative: false });
   });
 
-  it("flags a relative state-file db path (daemon CWD unknown → caller must handle)", () => {
+  it("标记状态文件中的相对 DB 路径（后台服务 CWD 未知，调用方必须处理）", () => {
     const r = resolveDaemonDbPath("/home/.openrig", () => ({ pid: 1, port: 7433, db: "openrig.sqlite" }));
     expect(r.fromStateFile).toBe(true);
     expect(r.relative).toBe(true);
   });
 
-  it("falls back to $OPENRIG_HOME/openrig.sqlite when there is no state file", () => {
+  it("没有状态文件时回退到 $OPENRIG_HOME/openrig.sqlite", () => {
     const r = resolveDaemonDbPath("/home/.openrig", () => undefined);
     expect(r).toEqual({ path: "/home/.openrig/openrig.sqlite", fromStateFile: false, relative: false });
   });

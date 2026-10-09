@@ -40,11 +40,9 @@ function inventory(root) {
   return files;
 }
 
-// Equality is the COMPLETE inventoried state, not just the bytes. Mode is a
-// local modification like any other: an operator who chmods a managed file has
-// changed it, and comparing only the hash classifies that file refresh-safe and
-// then chmods it back to the packaged mode. The inventory already carries mode;
-// dropping the axis here is what let the write through.
+// 相等指完整的清单状态，而不只是字节。mode 与其他本地变更一样：操作员对托管文件执行
+// chmod 就已改变它；若只比较 hash，会把该文件误判为可安全刷新，再把它 chmod 回打包模式。
+// 清单已经携带 mode；若在此丢弃该维度，就会错误放行写入。
 function same(left, right) {
   return left?.kind === "file"
     && right?.kind === "file"
@@ -89,7 +87,7 @@ const targetArg = argument("--target");
 const liveArg = argument("--live");
 const applySafe = process.argv.includes("--apply-safe");
 if (!ancestorArg || !targetArg || !liveArg) {
-  fail("--ancestor, --target, and --live are required", "derive all three plugin roots before classifying any managed file");
+  fail("必须提供 --ancestor、--target 和 --live", "请先确定三个插件根目录，再对任何托管文件分类");
 }
 
 const roots = {
@@ -99,11 +97,11 @@ const roots = {
 };
 for (const name of ["ancestor", "target"]) {
   if (!fs.existsSync(roots[name]) || !fs.statSync(roots[name]).isDirectory()) {
-    fail(`${name} is not a directory: ${roots[name]}`, `derive the ${name} packaged plugin root before retrying`);
+    fail(`${name} 不是目录：${roots[name]}`, `请先确定 ${name} 打包插件根目录，再重试`);
   }
 }
 if (fs.existsSync(roots.live) && !fs.statSync(roots.live).isDirectory()) {
-  fail(`live is not a directory: ${roots.live}`, "do not replace a non-directory live path automatically");
+  fail(`live 不是目录：${roots.live}`, "不要自动替换非目录的 live 路径");
 }
 
 const inventories = {
@@ -146,6 +144,6 @@ process.stdout.write(`${JSON.stringify({
   written,
   actions,
   next: preserved.length === 0
-    ? "re-run the plan after the surrounding upgrade step and verify the live tree"
-    : "resolve preserved paths individually; this helper will not delete or overwrite them",
+    ? "请在外围升级步骤完成后重新运行计划，并验证 live 树"
+    : "请逐项处理保留路径；此辅助工具不会删除或覆盖它们",
 }, null, 2)}\n`);

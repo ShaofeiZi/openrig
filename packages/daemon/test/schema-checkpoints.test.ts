@@ -19,14 +19,14 @@ describe("005_checkpoints", () => {
     db.close();
   });
 
-  it("creates checkpoints table", () => {
+  it("创建 checkpoints 表", () => {
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='checkpoints'")
       .all();
     expect(tables).toHaveLength(1);
   });
 
-  it("can insert checkpoint for a node", () => {
+  it("可为节点插入 checkpoint", () => {
     db.prepare(
       "INSERT INTO checkpoints (id, node_id, summary, current_task, next_step, blocked_on, key_artifacts, confidence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     ).run("cp-1", "node-1", "Implemented auth module", "auth tests", "write integration tests", null, '["src/auth.ts"]', "high", "2026-03-23 01:00:00");
@@ -40,7 +40,7 @@ describe("005_checkpoints", () => {
     expect(JSON.parse(cp.key_artifacts)).toEqual(["src/auth.ts"]);
   });
 
-  it("latest checkpoint per node: explicit timestamps, newest returned", () => {
+  it("逐节点获取最新 checkpoint：按显式时间戳返回最新项", () => {
     db.prepare(
       "INSERT INTO checkpoints (id, node_id, summary, created_at) VALUES (?, ?, ?, ?)"
     ).run("cp-old", "node-1", "first checkpoint", "2026-03-23 01:00:00");
@@ -58,7 +58,7 @@ describe("005_checkpoints", () => {
     expect(latest.summary).toBe("third checkpoint");
   });
 
-  it("multiple checkpoints per node: all returned in created_at order", () => {
+  it("逐节点获取多个 checkpoint：全部按 created_at 顺序返回", () => {
     db.prepare(
       "INSERT INTO checkpoints (id, node_id, summary, created_at) VALUES (?, ?, ?, ?)"
     ).run("cp-3", "node-1", "third", "2026-03-23 03:00:00");
@@ -75,7 +75,7 @@ describe("005_checkpoints", () => {
     expect(cps.map((c) => c.id)).toEqual(["cp-1", "cp-2", "cp-3"]);
   });
 
-  it("FK enforced: checkpoint with invalid node_id rejected", () => {
+  it("强制 FK：拒绝带无效 node_id 的 checkpoint", () => {
     expect(() =>
       db.prepare(
         "INSERT INTO checkpoints (id, node_id, summary) VALUES (?, ?, ?)"
@@ -83,7 +83,7 @@ describe("005_checkpoints", () => {
     ).toThrow();
   });
 
-  it("CASCADE: deleting node removes its checkpoints", () => {
+  it("CASCADE：删除节点时移除其 checkpoint", () => {
     db.prepare(
       "INSERT INTO checkpoints (id, node_id, summary) VALUES (?, ?, ?)"
     ).run("cp-1", "node-1", "test checkpoint");
@@ -94,7 +94,7 @@ describe("005_checkpoints", () => {
     expect(cps).toHaveLength(0);
   });
 
-  it("key_artifacts stored as JSON string, queryable", () => {
+  it("key_artifacts 以可查询的 JSON 字符串保存", () => {
     db.prepare(
       "INSERT INTO checkpoints (id, node_id, summary, key_artifacts) VALUES (?, ?, ?, ?)"
     ).run("cp-1", "node-1", "test", '["file-a.ts", "file-b.ts"]');
@@ -107,7 +107,7 @@ describe("005_checkpoints", () => {
     expect(artifacts).toHaveLength(2);
   });
 
-  it("index idx_checkpoints_node exists on (node_id, created_at)", () => {
+  it("(node_id, created_at) 上存在 idx_checkpoints_node 索引", () => {
     const indexes = db
       .prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_checkpoints_node'")
       .all();

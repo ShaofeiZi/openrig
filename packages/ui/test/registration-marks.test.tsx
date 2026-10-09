@@ -1,12 +1,11 @@
-// V1 Shell Redesign — Phase 1 — RegistrationMarks primitive.
+// V1 Shell 重设计——Phase 1——RegistrationMarks 原语。
 //
-// API surface tests + CSS-source-assertion regression test for the
-// pseudo-element-paint contract (discipline ritual #7).
+// API 表面测试 + 伪元素绘制契约的 CSS 源码断言回归测试（纪律仪式 #7）。
 //
-// The CSS-source-assertion test enforces DRIFT-2 fix: each corner
-// (.reg-tl, .reg-tr, .reg-bl, .reg-br) must have its own ::before and
-// ::after rules carrying content + position + background-color, so each
-// corner renders symmetrically without requiring a .reg-mark parent.
+// CSS 源码断言测试强制 DRIFT-2 修复：每个角
+//（.reg-tl、.reg-tr、.reg-bl、.reg-br）必须有自己的 ::before 与
+// ::after 规则，携带 content + position + background-color，使每个
+// 角对称渲染而无需 .reg-mark 父级。
 
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
@@ -64,21 +63,19 @@ describe("RegistrationMarks (Phase 1 primitive)", () => {
   });
 });
 
-// CSS-source-assertion: pseudo-element-paint test contract.
+// CSS 源码断言：伪元素绘制测试契约。
 //
-// jsdom does not paint pseudo-elements, so we verify the CSS source
-// directly. Each corner class MUST carry self-contained ::before and
-// ::after rules with content, position, and background-color — the
-// DRIFT-2 fix from V1 attempt-3 dispatch.
+// jsdom 不绘制伪元素，故我们直接验证 CSS 源码。每个角类必须携带
+// 自包含的 ::before 与 ::after 规则，含 content、position、background-color——
+// V1 attempt-3 派发的 DRIFT-2 修复。
 describe("globals.css registration-mark CSS source (DRIFT-2 regression)", () => {
   const corners = ["reg-tl", "reg-tr", "reg-bl", "reg-br"] as const;
 
   for (const c of corners) {
     it(`.${c}::before is self-contained (content + position + bg-color)`, () => {
-      // Match the standalone selector — NOT the .reg-mark > .${c} parent-qualified one.
-      // OPR.0.4.3.29: the hardcoded #546073 was converted to the (pixel-identical in
-      // light) --secondary token so the marks theme under dark; self-containment intent
-      // is unchanged.
+      // 匹配独立选择器——非 .reg-mark > .${c} 父限定那个。
+      // OPR.0.4.3.29：硬编码 #546073 转为（light 下像素相同的）
+      // --secondary token，使标记在 dark 下随主题；自包含意图不变。
       const re = new RegExp(
         `(^|[^>\\s])\\s*\\.${c}::before\\s*\\{[^}]*content:\\s*'';[^}]*position:\\s*absolute;[^}]*background-color:\\s*hsl\\(var\\(--secondary\\)\\);`,
         "m",

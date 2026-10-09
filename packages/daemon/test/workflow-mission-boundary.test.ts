@@ -32,7 +32,7 @@ lifecycle:
         re_present_max_seconds: 3600
 `;
 
-describe("authored mission boundary with event-first wait", () => {
+describe("带 event-first wait 的 authored mission boundary", () => {
   let db: Database.Database;
   let queue: QueueRepository;
   let jobs: WatchdogJobsRepository;
@@ -86,7 +86,7 @@ describe("authored mission boundary with event-first wait", () => {
   const instantiateInput = () => ({ missionPath: mission, operationKey: "opaque-boundary-operation", rootObjective: "Recover project context", createdBySession: "orch@rig" });
   const timer = (packet: string) => jobs.getByIdOrThrow(queue.getParkWakeStatus(packet)!.ref);
 
-  it("compiles only the authored boundary, binds its sources, and replays one instance without interpreting receipts", async () => {
+  it("只编译 authored boundary，绑定其 sources，replay 同一实例而不解释 receipts", async () => {
     const before = readFileSync(join(mission, "mission.yaml"), "utf8");
     const compiled = runtime.compileLifecycle(mission, "opaque-boundary-operation");
     expect(compiled.eligible).toBe(true);
@@ -99,7 +99,7 @@ describe("authored mission boundary with event-first wait", () => {
     const body = queue.getByIdOrThrow(run.entryQitemId).body;
     for (const ref of [join(root, "authority.md"), join(mission, "SPEC.md"), join(mission, "PROGRESS.md")]) expect(body).toContain(ref);
     expect(body).toContain(`--instance ${run.instance.instanceId} --current-packet ${run.entryQitemId}`);
-    expect(body).toContain("shortcut, not the whole story");
+    expect(body).toContain("只是捷径，并非全部信息");
     await runtime.project({ instanceId: run.instance.instanceId, currentPacketId: run.entryQitemId,
       actorSession: "orch@rig", exit: "waiting", blockedOn: "external:receipt",
       closureEvidence: { receipt: { outcome: "published", verdict: "CLEAR" } } });
@@ -116,7 +116,7 @@ describe("authored mission boundary with event-first wait", () => {
     expect((db.prepare("SELECT count(*) n FROM workflow_instances").get() as { n: number }).n).toBe(1);
   });
 
-  it("backs off 5/10/20/40/60 minutes across acknowledgments and restart, resets only for new evidence, and stops on the agent's exit", async () => {
+  it("跨 ack 与 restart 按 5/10/20/40/60 分钟退避，仅新证据重置，并在 agent exit 时停止", async () => {
     const run = await runtime.instantiateLifecycle(instantiateInput());
     const wait = { instanceId: run.instance.instanceId, currentPacketId: run.entryQitemId, actorSession: "orch@rig", exit: "waiting" as const, blockedOn: "external:receipt", closureEvidence: { receipt: "proof/a.md", candidate: "a" } };
     await expect(runtime.project({ ...wait, blockedOn: run.entryQitemId })).rejects.toMatchObject({ code: "wake_self_blocker" });
@@ -142,14 +142,14 @@ describe("authored mission boundary with event-first wait", () => {
     expect(timer(run.entryQitemId).lastEvaluationAt).toBe(new Date().toISOString());
     expect(timer(run.entryQitemId).jobId).toBe(jobId);
     const before = readFileSync(join(mission, "mission.yaml"), "utf8");
-    await runtime.project({ ...wait, exit: "done", resultNote: "Agent chose to close the boundary" });
+    await runtime.project({ ...wait, exit: "done", resultNote: "Agent 选择关闭 boundary" });
     expect(jobs.getByIdOrThrow(jobId).state).toBe("terminal");
     stepTime(7200); await scheduler.runTickNow();
     expect(delivered).toHaveLength(6);
     expect(readFileSync(join(mission, "mission.yaml"), "utf8")).toBe(before);
   });
 
-  it("wakes on the exact blocker transition, bridges missed events at restart, and absorbs event replay", async () => {
+  it("在精确 blocker 变迁上唤醒，重启时桥接错过的事件，并吸收 event replay", async () => {
     const run = await runtime.instantiateLifecycle(instantiateInput());
     const blocker = await queue.create({ sourceSession: "orch@rig", destinationSession: "worker@rig", body: "Receipt work", nudge: false });
     await runtime.project({ instanceId: run.instance.instanceId, currentPacketId: run.entryQitemId, actorSession: "orch@rig", exit: "waiting", blockedOn: blocker.qitemId });
@@ -177,7 +177,7 @@ describe("authored mission boundary with event-first wait", () => {
     expect(delivered).toHaveLength(2);
   });
 
-  it("refuses conflicting profiles and invalid backoff without instantiation", () => {
+  it("不实例化即拒绝冲突 profile 与非法退避", () => {
     const path = join(mission, "mission.yaml");
     const original = readFileSync(path, "utf8");
     writeFileSync(path, original.replace(/        re_present_.*\n/g, ""));
@@ -189,7 +189,7 @@ describe("authored mission boundary with event-first wait", () => {
     expect((db.prepare("SELECT count(*) n FROM workflow_instances").get() as { n: number }).n).toBe(0);
   });
 
-  it("continues backoff without acknowledgments, ignores unrelated traffic, and honors same-state blocker progress", async () => {
+  it("无 ack 时继续退避，忽略无关流量，并认可同态 blocker 进展", async () => {
     const run = await runtime.instantiateLifecycle(instantiateInput());
     const blocker = await queue.create({ sourceSession: "orch@rig", destinationSession: "worker@rig", body: "Blocker", nudge: false });
     const park = { qitemId: blocker.qitemId, actorSession: "worker@rig", state: "blocked" as const, blockedOn: "external:receipt", closureReason: "blocked_on", closureTarget: "external:receipt" };

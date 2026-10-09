@@ -11,12 +11,10 @@ export function runSyncSite<T>(site: string, fn: () => T): T {
 }
 
 /**
- * Async twin of runSyncSite: instruments a NON-blocking site through the
- * recorder's async `runStage` seam (falls back to a bare call when no recorder
- * is configured). Use this for sites whose work must NOT block the event loop
- * (e.g. process-table sampling via async execFile) — a synchronous `runSyncSite`
- * wrapping an `execFileSync` freezes the loop for the whole spawn, which is the
- * daemon-degradation defect this replaces.
+ * runSyncSite 的异步对应函数：通过 recorder 的异步 `runStage` 接缝检测非阻塞调用点；
+ * 未配置 recorder 时回退为直接调用。工作不得阻塞事件循环的调用点应使用此函数，例如通过
+ * 异步 execFile 采样进程表。若用同步 `runSyncSite` 包装 `execFileSync`，整个子进程期间
+ * 事件循环都会冻结；本函数正是为修复这种 daemon 性能退化而引入。
  */
 export async function runAsyncSite<T>(site: string, fn: () => Promise<T>): Promise<T> {
   return recorder?.runStage ? recorder.runStage(site, fn) : fn();

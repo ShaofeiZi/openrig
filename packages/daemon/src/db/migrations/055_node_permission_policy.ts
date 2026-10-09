@@ -1,14 +1,12 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * OPR.0.4.8.3 Seam B — nodes.permission_policy column.
+ * OPR.0.4.8.3 接缝 B——nodes.permission_policy 列。
  *
- * Adds `permission_policy TEXT` to the nodes table. Holds the per-seat
- * permission_policy REF (`builtin:<name>` or a spec-relative custom path)
- * when a seat declares one, written by createMemberNode → addNode.
- * NULL when the seat attaches no policy (= the floor). Mirrors migration
- * 022 (node codex_config_profile); the repository probes for the column
- * so a seat attribute round-trips only on DBs that have the column.
+ * 向 nodes 表添加 `permission_policy TEXT`。席位声明策略时，保存逐席位 permission_policy
+ * REF（`builtin:<name>` 或相对于 spec 的自定义路径），由 createMemberNode → addNode 写入。
+ * 席位未附加策略时为 NULL（即 floor）。镜像迁移 022（node codex_config_profile）；repository
+ * 会探测该列，因此席位属性只在拥有该列的数据库中往返。
  */
 export const nodePermissionPolicySchema: Migration = {
   name: "055_node_permission_policy.sql",

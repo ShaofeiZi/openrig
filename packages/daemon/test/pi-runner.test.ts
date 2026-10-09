@@ -1,8 +1,6 @@
-// OPR.0.4.6.PI1 — hermetic unit tests for the pi-runner core: submitted paste
-// boundaries (including delayed multi-line sends), stdin→RPC routing
-// (idle→prompt / streaming→steer / prefix conventions), the event→mirror and
-// event→activity mapping, the get_state identity capture + sidecar, the
-// durable catch-up cursor, and honest pi-exit reporting. No live pi.
+// OPR.0.4.6.PI1——pi-runner 核心的密闭单元测试：已提交粘贴的边界（包括延迟多行发送）、
+// stdin→RPC 路由（idle→prompt / streaming→steer / 前缀约定）、事件→镜像与事件→活动映射、
+// get_state 身份捕获 + sidecar、持久化补偿游标，以及如实报告 Pi 退出。不使用实时 Pi。
 
 import { describe, it, expect, vi } from "vitest";
 import { PassThrough } from "node:stream";
@@ -43,9 +41,9 @@ function readyCore(f = fakeIo()) {
   return { core, ...f };
 }
 
-// ── Actual Node line editor + framed input ──────────────────────────────────
+// ── 实际 Node 行编辑器 + 帧化输入 ───────────────────────────────────────────
 
-describe("runner input", () => {
+describe("运行器输入", () => {
   const start = "\u001b[200~";
   const end = "\u001b[201~";
   function terminal(onSubmit?: (s: string) => void) {
@@ -71,7 +69,7 @@ describe("runner input", () => {
     expect(t.input.isRaw).toBe(false);
   });
 
-  it("holds delayed paste and preserves whitespace, Unicode and CRLF bytes", () => {
+  it("暂存延迟粘贴，并保留空白、Unicode 和 CRLF 字节", () => {
     vi.useFakeTimers();
     const t = terminal();
     try {
@@ -85,7 +83,7 @@ describe("runner input", () => {
     } finally { t.editor.close(); vi.useRealTimers(); }
   });
 
-  it("reassembles UTF-8 and markers across single-byte chunks", () => {
+  it("跨单字节分块重新组装 UTF-8 和标记", () => {
     const t = terminal();
     try {
       for (const byte of Buffer.from(start + "café\n日本語" + end)) t.input.write(Buffer.from([byte]));
@@ -95,7 +93,7 @@ describe("runner input", () => {
     } finally { t.editor.close(); }
   });
 
-  it("retains mixed typing/paste, cursor insertion, backspace and line clear", () => {
+  it("保留混合键入/粘贴、光标插入、退格和清行行为", () => {
     const t = terminal();
     try {
       t.input.write("prefix " + start + "paste\n café " + end + " suffix\r");
@@ -106,7 +104,7 @@ describe("runner input", () => {
     } finally { t.editor.close(); }
   });
 
-  it("keeps rapid submissions distinct, with current core routing", () => {
+  it("在当前核心路由下保持快速提交相互独立", () => {
     const { core, rpc } = readyCore();
     const t = terminal(s => core.handleUserBlock(s));
     try {
@@ -120,7 +118,7 @@ describe("runner input", () => {
     } finally { t.editor.close(); }
   });
 
-  it("Ctrl-C cancels an unfinished paste and leaves the next input reachable", () => {
+  it("Ctrl-C 取消未完成的粘贴，并使下一次输入仍可到达", () => {
     const t = terminal();
     try {
       t.input.write(start + "unfinished\n/abort\r");
@@ -129,15 +127,15 @@ describe("runner input", () => {
       expect(t.blocks).toEqual(["/abort"]);
       t.input.write(start + "next" + end + "\r");
       expect(t.blocks).toEqual(["/abort", "next"]);
-      expect(t.screen()).toContain("input cleared");
+      expect(t.screen()).toContain("输入已清除");
     } finally { t.editor.close(); }
   });
 
-  it("rejects an oversized paste without submitting a prefix; controls recover", () => {
+  it("拒绝超大粘贴且不提交前缀；控制状态可恢复", () => {
     const t = terminal();
     try {
       t.input.write("prefix " + start + "x".repeat(MAX_PI_INPUT_BYTES + 1));
-      expect(t.screen()).toContain("input rejected");
+      expect(t.screen()).toContain("输入被拒绝");
       expect(t.blocks).toEqual([]);
       t.input.write(end + "\r/abort\rnext\r");
       expect(t.blocks).toEqual(["/abort", "next"]);
@@ -146,7 +144,7 @@ describe("runner input", () => {
     } finally { t.editor.close(); }
   });
 
-  it("does not echo framing markers or submit empty input; EOF restores raw mode", () => {
+  it("不回显帧标记或提交空输入；EOF 恢复 raw 模式", () => {
     const t = terminal();
     t.input.write("\r" + start + end + "\r");
     expect(t.blocks).toEqual([]);
@@ -156,7 +154,7 @@ describe("runner input", () => {
     expect(t.input.isRaw).toBe(false);
   });
 
-  it("uses newline-delimited messages for nonterminal input", () => {
+  it("非终端输入使用换行分隔消息", () => {
     const input = new PassThrough(), output = new PassThrough(), blocks: string[] = [];
     const editor = createRunnerInput(input as unknown as NodeJS.ReadStream,
       output as unknown as NodeJS.WriteStream, block => blocks.push(block));
@@ -166,7 +164,7 @@ describe("runner input", () => {
   });
 });
 
-// ── stdin → RPC routing ──────────────────────────────────────────────────────
+// ── stdin → RPC 路由 ─────────────────────────────────────────────────────────
 
 describe("RunnerCore.handleUserBlock", () => {
   it("idle → RPC prompt", () => {
@@ -175,14 +173,14 @@ describe("RunnerCore.handleUserBlock", () => {
     expect(rpc.at(-1)).toEqual({ type: "prompt", message: "hello pi" });
   });
 
-  it("streaming → RPC steer (Pi's documented mid-stream delivery)", () => {
+  it("streaming → RPC steer（Pi 文档规定的流中投递）", () => {
     const { core, rpc } = readyCore();
     core.handlePiLine(JSON.stringify({ type: "agent_start" }));
     core.handleUserBlock("change course");
     expect(rpc.at(-1)).toEqual({ type: "steer", message: "change course" });
   });
 
-  it("back to prompt after agent_end", () => {
+  it("agent_end 后恢复为 prompt", () => {
     const { core, rpc } = readyCore();
     core.handlePiLine(JSON.stringify({ type: "agent_start" }));
     core.handlePiLine(JSON.stringify({ type: "agent_end" }));
@@ -190,7 +188,7 @@ describe("RunnerCore.handleUserBlock", () => {
     expect(rpc.at(-1)).toEqual({ type: "prompt", message: "next task" });
   });
 
-  it("/abort → RPC abort; /followup → RPC follow_up", () => {
+  it("/abort → RPC abort；/followup → RPC follow_up", () => {
     const { core, rpc } = readyCore();
     core.handleUserBlock("/abort");
     expect(rpc.at(-1)).toEqual({ type: "abort" });
@@ -199,10 +197,10 @@ describe("RunnerCore.handleUserBlock", () => {
   });
 });
 
-// ── identity capture + sidecar + catch-up cursor ─────────────────────────────
+// ── 身份捕获 + sidecar + 补偿游标 ────────────────────────────────────────────
 
-describe("RunnerCore identity + sidecar", () => {
-  it("get_state response → READY marker + sidecar + session_identity POST with sessionFile", () => {
+describe("RunnerCore 身份 + sidecar", () => {
+  it("get_state 响应 → READY 标记 + sidecar + 带 sessionFile 的 session_identity POST", () => {
     const { lines, activity, sidecars } = readyCore();
     expect(lines.some((l) => l.startsWith(PI_RUNNER_READY_MARKER))).toBe(true);
     const sidecar = sidecars.at(-1)!;
@@ -213,20 +211,20 @@ describe("RunnerCore identity + sidecar", () => {
     });
   });
 
-  it("start() with a catch-up cursor issues get_entries since (durable catch-up, FR-5)", () => {
+  it("start() 带补偿游标时发出含 since 的 get_entries（持久化补偿，FR-5）", () => {
     const f = fakeIo();
     const core = new RunnerCore(f.io, { sessionName: SESSION }, { catchUpSince: "entry-42" });
     core.start();
     expect(f.rpc).toContainEqual({ type: "get_entries", since: "entry-42", id: "pi-runner-catch-up" });
   });
 
-  it("events carrying entry ids advance the sidecar cursor", () => {
+  it("携带条目标识的事件推进 sidecar 游标", () => {
     const { core, sidecars } = readyCore();
     core.handlePiLine(JSON.stringify({ type: "agent_start", entryId: "entry-7" }));
     expect(sidecars.at(-1)!.lastEntryId).toBe("entry-7");
   });
 
-  it("pi exit → EXIT marker + sidecar exited + idle activity (honest, never frozen)", () => {
+  it("Pi 退出 → EXIT 标记 + sidecar exited + idle 活动（如实且不冻结）", () => {
     const { core, lines, sidecars, activity } = readyCore();
     core.handlePiExit(1);
     expect(lines.some((l) => l.startsWith(PI_RUNNER_EXIT_MARKER))).toBe(true);
@@ -234,18 +232,18 @@ describe("RunnerCore identity + sidecar", () => {
     expect(activity.at(-1)).toMatchObject({ hookEvent: "Stop", subtype: "pi_exited" });
   });
 
-  it("non-JSON pi stdout noise is mirrored verbatim, never swallowed", () => {
+  it("逐字镜像非 JSON 的 Pi stdout 噪声，绝不吞掉", () => {
     const { core, lines } = readyCore();
     core.handlePiLine("some stray warning");
     expect(lines).toContain("some stray warning");
   });
 });
 
-// ── event → mirror / activity mapping ────────────────────────────────────────
+// ── 事件 → 镜像 / 活动映射 ──────────────────────────────────────────────────
 
-// Shapes from a real `pi --mode rpc` 0.87.1 run (OpenRig's child argv) that
-// streamed a reply from a local OpenAI-compatible mock. Since Pi 0.84.0,
-// message_update carries only `usage` and the `assistantMessageEvent` delta.
+// 数据结构来自真实的 `pi --mode rpc` 0.87.1 运行（OpenRig 子进程参数），该运行从本地
+// OpenAI 兼容模拟服务流式返回回复。自 Pi 0.84.0 起，message_update 只携带 `usage`
+// 与 `assistantMessageEvent` 增量。
 const PI_USAGE = {
   input: 12, output: 5, cacheRead: 0, cacheWrite: 0, reasoning: 0, totalTokens: 17,
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
@@ -275,7 +273,7 @@ const PI_REPLY_EVENTS = [
 ];
 
 describe("mapPiEvent", () => {
-  it("agent_start/agent_end drive streaming + running/idle activity", () => {
+  it("agent_start/agent_end 驱动 streaming + running/idle 活动", () => {
     expect(mapPiEvent({ type: "agent_start" })).toMatchObject({
       streaming: true, activity: { hookEvent: "active", subtype: "agent_start" },
     });
@@ -284,7 +282,7 @@ describe("mapPiEvent", () => {
     });
   });
 
-  it("pre-0.84 message_update appends only the delta, never the cumulative message", () => {
+  it("0.84 之前的 message_update 只追加增量，绝不追加累计消息", () => {
     const partial = { ...PI_REPLY, content: [{ type: "text", text: "Hello from the" }], stopReason: "pending" };
     const legacy = mapPiEvent({
       type: "message_update",
@@ -294,22 +292,22 @@ describe("mapPiEvent", () => {
     expect(legacy.mirrorAppend).toBe(" from the");
   });
 
-  it("tool executions render compact one-line summaries + PreToolUse activity", () => {
+  it("工具执行渲染紧凑单行摘要 + PreToolUse 活动", () => {
     const start = mapPiEvent({ type: "tool_execution_start", toolName: "bash" });
     expect(start.mirrorLines[0]).toContain("bash");
     expect(start.activity).toEqual({ hookEvent: "PreToolUse", subtype: "bash" });
     const failed = mapPiEvent({ type: "tool_execution_end", toolName: "bash", isError: true });
-    expect(failed.mirrorLines[0]).toContain("FAILED");
+    expect(failed.mirrorLines[0]).toContain("失败");
   });
 
-  it("compaction and retry map to their honest states", () => {
+  it("压缩和重试映射到各自真实状态", () => {
     expect(mapPiEvent({ type: "compaction_start" }).activity).toEqual({ hookEvent: "active", subtype: "compaction" });
     expect(mapPiEvent({ type: "auto_retry_start" }).activity).toEqual({ hookEvent: "active", subtype: "auto_retry" });
   });
 });
 
-describe("RunnerCore assistant reply mirror", () => {
-  it("streams a Pi 0.84+ reply from text deltas and ends the line on message_end", () => {
+describe("RunnerCore 助手回复镜像", () => {
+  it("从文本增量流式输出 Pi 0.84+ 回复，并在 message_end 时结束该行", () => {
     const f = fakeIo();
     const { core } = readyCore(f);
     let pane = "";
@@ -320,13 +318,13 @@ describe("RunnerCore assistant reply mirror", () => {
   });
 });
 
-describe("RunnerCore terminal assistant failures", () => {
+describe("RunnerCore 助手终止失败", () => {
   const failure = (errorMessage?: unknown, content: unknown[] = []) => ({
     type: "message_end", message: { role: "assistant", stopReason: "error", errorMessage, content },
   });
   const errors = (lines: string[]) => lines.filter(line => line.startsWith("[pi-runner] ERROR"));
 
-  it("shows an empty native error and ends partial text without replaying its content", () => {
+  it("显示空原生错误并结束部分文本，且不重放其内容", () => {
     const { core, lines, appends } = readyCore();
     core.handlePiLine(JSON.stringify(failure('400 "field_not_allowed"')));
     expect(errors(lines)).toEqual(['[pi-runner] ERROR 400 "field_not_allowed"']);
@@ -340,10 +338,10 @@ describe("RunnerCore terminal assistant failures", () => {
   it.each([undefined, null, {}, 7, "", " \n\t "])("uses a useful fallback for invalid error detail %j", (detail) => {
     const { core, lines } = readyCore();
     core.handlePiLine(JSON.stringify(failure(detail)));
-    expect(errors(lines)).toEqual(["[pi-runner] ERROR request failed"]);
+    expect(errors(lines)).toEqual(["[pi-runner] ERROR 请求失败"]);
   });
 
-  it("ignores malformed message envelopes and does not dump thinking or tool arguments", () => {
+  it("忽略格式错误的消息信封，且不输出思考内容或工具参数", () => {
     const { core, lines, appends } = readyCore();
     for (const message of [undefined, null, 7, [], { role: "user", stopReason: "error" }]) {
       core.handlePiLine(JSON.stringify({ type: "message_end", message }));
@@ -353,12 +351,12 @@ describe("RunnerCore terminal assistant failures", () => {
     core.handlePiLine(JSON.stringify(failure(undefined, [
       { type: "thinking", thinking: "private-thought" }, { type: "toolCall", arguments: "private-arguments" },
     ])));
-    expect(errors(lines)).toEqual(["[pi-runner] ERROR request failed"]);
+    expect(errors(lines)).toEqual(["[pi-runner] ERROR 请求失败"]);
     expect(appends).toEqual([]);
     expect(lines.join("\n")).not.toMatch(/private-thought|private-arguments/);
   });
 
-  it("strips terminal controls, flattens newlines and bounds error notices", () => {
+  it("移除终端控制字符、压平换行并限制错误通知长度", () => {
     const { core, lines } = readyCore();
     core.handlePiLine(JSON.stringify(failure("\u001b[2J\u001b]0;title\u0007bad\r\nrequest\u0000\u202e" + "x".repeat(1000))));
     const notice = errors(lines)[0]!;
@@ -368,7 +366,7 @@ describe("RunnerCore terminal assistant failures", () => {
     expect(notice.length).toBeLessThanOrEqual(420);
   });
 
-  it("shows standalone exhausted retry once and suppresses its duplicate terminal notice", () => {
+  it("只显示一次独立的重试耗尽提示，并抑制其重复终止通知", () => {
     const { core, lines } = readyCore();
     const retryEnd = { type: "auto_retry_end", success: false, finalError: "busy" };
     core.handlePiLine(JSON.stringify(retryEnd));
@@ -381,7 +379,7 @@ describe("RunnerCore terminal assistant failures", () => {
     expect(errors(lines)).toEqual(["[pi-runner] ERROR busy", "[pi-runner] ERROR busy"]);
   });
 
-  it("resets for a subsequent successful turn and a later independent failure", () => {
+  it("为后续成功轮次及更晚的独立失败重置状态", () => {
     const { core, lines, appends, activity, sidecars } = readyCore();
     core.handlePiLine(JSON.stringify(failure("first failure")));
     core.handlePiLine(JSON.stringify({ type: "agent_end" }));
@@ -399,35 +397,35 @@ describe("RunnerCore terminal assistant failures", () => {
   });
 });
 
-// ── argv contract ────────────────────────────────────────────────────────────
+// ── argv 契约 ───────────────────────────────────────────────────────────────
 
 describe("parseRunnerArgs", () => {
   const base = ["--session-name", SESSION, "--state-root", "/sr", "--cwd", "/work", "--launch-id", "launch-77"];
 
-  it("requires --launch-id (launch-attempt scoping, guard fold)", () => {
+  it("要求 --launch-id（启动尝试范围，guard 合入）", () => {
     const noLaunch = ["--session-name", SESSION, "--state-root", "/sr", "--cwd", "/work", "--approve"];
-    expect(() => parseRunnerArgs(noLaunch)).toThrow(/--launch-id is required/);
+    expect(() => parseRunnerArgs(noLaunch)).toThrow(/必须提供 --launch-id/);
   });
 
-  it("requires an EXPLICIT trust flag (BR-5)", () => {
-    expect(() => parseRunnerArgs(base)).toThrow(/explicit trust flag/);
+  it("要求显式信任标志（BR-5）", () => {
+    expect(() => parseRunnerArgs(base)).toThrow(/显式提供 trust 标志/);
     expect(parseRunnerArgs([...base, "--no-approve"]).trust).toBe("no-approve");
     expect(parseRunnerArgs([...base, "--approve"]).trust).toBe("approve");
   });
 
-  it("refuses --session + --fork together", () => {
+  it("拒绝同时使用 --session 与 --fork", () => {
     expect(() => parseRunnerArgs([...base, "--approve", "--session", "/a.jsonl", "--fork", "/b.jsonl"]))
-      .toThrow(/mutually exclusive/);
+      .toThrow(/互斥/);
   });
 
-  it("rejects unknown flags loudly", () => {
-    expect(() => parseRunnerArgs([...base, "--approve", "--resume"])).toThrow(/unknown flag/);
+  it("明确拒绝未知标志", () => {
+    expect(() => parseRunnerArgs([...base, "--approve", "--resume"])).toThrow(/未知标志/);
   });
 });
 
-// ── FR-5: prepareRunnerSidecar + cursor seed (guard re-verdict fold) ─────────
+// ── FR-5：prepareRunnerSidecar + 游标种子（guard 复审结论合入）───────────────
 
-describe("prepareRunnerSidecar — the cursor survives the runner's own reset", () => {
+describe("prepareRunnerSidecar——游标可跨越运行器自身重置", () => {
   function memFsOps(files: Record<string, string>) {
     return {
       files,
@@ -439,28 +437,28 @@ describe("prepareRunnerSidecar — the cursor survives the runner's own reset", 
   const PATH = "/seat/runner-state.json";
   const prior = JSON.stringify({ ready: true, launchId: "old", lastEntryId: "entry-42", updatedAt: "t" });
 
-  it("reads the prior cursor BEFORE overwriting, carries it in the pending record, returns it when resuming", () => {
+  it("覆盖前读取旧游标，将其带入 pending 记录，并在恢复时返回", () => {
     const fs = memFsOps({ [PATH]: prior });
     const { catchUpSince } = prepareRunnerSidecar(fs, PATH, "launch-9", true, () => "t2");
     expect(catchUpSince).toBe("entry-42");
     expect(JSON.parse(fs.files[PATH]!)).toEqual({ ready: false, launchId: "launch-9", lastEntryId: "entry-42", updatedAt: "t2" });
   });
 
-  it("fresh/fork (not resuming) returns no catch-up but still preserves the record's cursor", () => {
+  it("fresh/fork（非恢复）不返回补偿游标，但仍保留记录中的游标", () => {
     const fs = memFsOps({ [PATH]: prior });
     const { catchUpSince } = prepareRunnerSidecar(fs, PATH, "launch-9", false, () => "t2");
     expect(catchUpSince).toBeUndefined();
     expect(JSON.parse(fs.files[PATH]!).lastEntryId).toBe("entry-42");
   });
 
-  it("absent/unreadable prior sidecar -> pending without cursor, no catch-up", () => {
+  it("旧 sidecar 缺失或不可读 -> pending 不带游标，也不补偿", () => {
     const fs = memFsOps({});
     const { catchUpSince } = prepareRunnerSidecar(fs, PATH, "launch-9", true, () => "t2");
     expect(catchUpSince).toBeUndefined();
     expect(JSON.parse(fs.files[PATH]!)).toEqual({ ready: false, launchId: "launch-9", updatedAt: "t2" });
   });
 
-  it("COMPOSED (the guard's red-green case): prior cursor -> prepare -> RunnerCore.start sends get_entries since", () => {
+  it("组合场景（guard 红绿用例）：旧游标 -> prepare -> RunnerCore.start 发送含 since 的 get_entries", () => {
     const fs = memFsOps({ [PATH]: prior });
     const { catchUpSince } = prepareRunnerSidecar(fs, PATH, "launch-9", true, () => "t2");
     const f = fakeIo();
@@ -469,7 +467,7 @@ describe("prepareRunnerSidecar — the cursor survives the runner's own reset", 
     expect(f.rpc).toContainEqual({ type: "get_entries", since: "entry-42", id: "pi-runner-catch-up" });
   });
 
-  it("the seeded cursor survives the core's own post-get_state sidecar write", () => {
+  it("种子游标在核心自己的 get_state 后 sidecar 写入中得以保留", () => {
     const f = fakeIo();
     const core = new RunnerCore(f.io, { sessionName: SESSION, launchId: "launch-9" }, { catchUpSince: "entry-42" });
     core.start();
@@ -481,17 +479,17 @@ describe("prepareRunnerSidecar — the cursor survives the runner's own reset", 
   });
 });
 
-// ── QA RED fold: the cursor refreshes from get_entries, not live-event guesses ─
+// ── QA 红灯合入：游标从 get_entries 刷新，而非猜测实时事件 ─────────────────
 
-describe("cursor refresh via get_entries (QA RED, qitem-20260707020922)", () => {
-  it("agent_end triggers a cursor-refresh get_entries request", () => {
+describe("通过 get_entries 刷新游标（QA 红灯，qitem-20260707020922）", () => {
+  it("agent_end 触发用于刷新游标的 get_entries 请求", () => {
     const { core, rpc } = readyCore();
     core.handlePiLine(JSON.stringify({ type: "agent_start" }));
     core.handlePiLine(JSON.stringify({ type: "agent_end" }));
     expect(rpc).toContainEqual({ type: "get_entries", id: "pi-runner-cursor-refresh" });
   });
 
-  it("the refresh response advances lastEntryId from the LAST entry and persists it", () => {
+  it("刷新响应从最后一条记录推进 lastEntryId 并持久化", () => {
     const { core, sidecars } = readyCore();
     core.handlePiLine(JSON.stringify({
       type: "response", id: "pi-runner-cursor-refresh",
@@ -500,7 +498,7 @@ describe("cursor refresh via get_entries (QA RED, qitem-20260707020922)", () => 
     expect(sidecars.at(-1)).toMatchObject({ lastEntryId: "e9", launchId: "launch-77" });
   });
 
-  it("the catch-up response also advances the cursor (restart path)", () => {
+  it("补偿响应也推进游标（重启路径）", () => {
     const f = fakeIo();
     const core = new RunnerCore(f.io, { sessionName: SESSION, launchId: "launch-9" }, { catchUpSince: "e1" });
     core.start();
@@ -511,7 +509,7 @@ describe("cursor refresh via get_entries (QA RED, qitem-20260707020922)", () => 
     expect(f.sidecars.at(-1)!.lastEntryId).toBe("e3");
   });
 
-  it("an empty/id-less entries response leaves the cursor untouched (never regresses)", () => {
+  it("空或不含标识的 entries 响应不改变游标（绝不回退）", () => {
     const f = fakeIo();
     const core = new RunnerCore(f.io, { sessionName: SESSION, launchId: "launch-9" }, { catchUpSince: "e5" });
     core.start();

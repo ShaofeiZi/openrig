@@ -107,17 +107,13 @@ function expectedProfileResumeCommand(profile: string, token = "sess-456", queue
 }
 
 beforeEach(() => {
-  // ENV-COUPLING HARDEN (housekeeping, qitem-20260711131501-e43707b0). DRIFT
-  // VERDICT for the two launchHarness profile/model tests: ENV-SENSITIVITY,
-  // NOT a stale assertion and NOT a product regression. launchHarness
-  // CORRECTLY honors OPENRIG_SHARED_DOCS_ROOT for the Codex queue-state
-  // writable root — that behavior is proven by the dedicated
-  // "uses OPENRIG_SHARED_DOCS_ROOT" test, which stubs it explicitly. But the
-  // profile/model launch-command tests assume the unset-fallback that
-  // testQueueRoot() encodes (os.homedir()/.openrig/shared-docs). Some run
-  // environments (the substrate host, provisioned VMs) export the var, which
-  // flapped those two tests pass/fail while byte-identical. Neutralize the
-  // ambient value so the default is deterministic; unstubAllEnvs() restores.
+  // 环境耦合加固（housekeeping，qitem-20260711131501-e43707b0）。两项 launchHarness
+  // profile/model 测试的漂移判定是环境敏感，并非断言过期或产品回归。launchHarness 会正确
+  // 遵循 OPENRIG_SHARED_DOCS_ROOT，作为 Codex 队列状态的可写根目录；专门的测试通过显式
+  // stub 证明该行为。但 profile/model 启动命令测试假设使用 testQueueRoot() 编码的未设置
+  // 回退路径 os.homedir()/.openrig/shared-docs。部分运行环境（基础设施主机、预配 VM）会
+  // 导出该变量，使两个测试在字节完全相同时仍不稳定。这里清除环境值以保证默认行为确定，
+  // unstubAllEnvs() 会在之后恢复。
   vi.stubEnv("OPENRIG_SHARED_DOCS_ROOT", undefined);
 });
 afterEach(() => {
@@ -152,8 +148,8 @@ function createCodexLogsDb(homeDir: string, pid: number, threadId: string, dbNam
   }
 }
 
-describe("Codex runtime adapter", () => {
-  it("launches the probed executable despite a different login-shell PATH", async () => {
+describe("Codex 运行时适配器", () => {
+  it("即使登录 shell 的 PATH 不同，也启动探测到的可执行文件", async () => {
     const root = fs.mkdtempSync(nodePath.join(os.tmpdir(), "codex-launch-path-"));
     try {
       const selected = nodePath.join(root, "selected tools");
@@ -169,8 +165,8 @@ describe("Codex runtime adapter", () => {
       expect(output).toBe("selected");
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   });
-  // T2: implements all four methods
-  it("implements all four methods", () => {
+  // T2：实现全部四个方法。
+  it("实现全部四个方法", () => {
     const adapter = new CodexRuntimeAdapter({ tmux: mockTmux(), fsOps: mockFs() });
     expect(typeof adapter.listInstalled).toBe("function");
     expect(typeof adapter.project).toBe("function");
@@ -179,15 +175,15 @@ describe("Codex runtime adapter", () => {
     expect(adapter.runtime).toBe("codex");
   });
 
-  // T7: checkReady returns true for responsive session
-  it("checkReady returns true for responsive session", async () => {
+  // T7：会话响应正常时 checkReady 返回 true。
+  it("会话响应正常时 checkReady 返回 true", async () => {
     const tmux = mockTmux({ hasSession: vi.fn(async () => true) });
     const adapter = new CodexRuntimeAdapter({ tmux, fsOps: mockFs() });
     const result = await adapter.checkReady(makeBinding());
     expect(result.ready).toBe(true);
   });
 
-  it("checkReady returns false when the pane has fallen back to a shell prompt", async () => {
+  it("窗格回退到 shell 提示符时 checkReady 返回 false", async () => {
     const tmux = mockTmux({
       getPaneCommand: vi.fn(async () => "zsh"),
       capturePaneContent: vi.fn(async () => "user@example.test rigged %"),
@@ -198,12 +194,12 @@ describe("Codex runtime adapter", () => {
 
     expect(result).toEqual({
       ready: false,
-      reason: "The probe pane returned to a shell instead of staying inside the runtime.",
+      reason: "探测窗格已返回 shell，没有停留在运行时内部。",
       code: "returned_to_shell",
     });
   });
 
-  it("checkReady returns false when Codex is blocked on the workspace trust prompt", async () => {
+  it("Codex 阻塞在工作区信任提示时 checkReady 返回 false", async () => {
     const tmux = mockTmux({
       getPaneCommand: vi.fn(async () => "codex"),
       capturePaneContent: vi.fn(async () => [
@@ -224,12 +220,12 @@ describe("Codex runtime adapter", () => {
 
     expect(result).toEqual({
       ready: false,
-      reason: "Codex is waiting for workspace trust approval before the session can become interactive.",
+      reason: "Codex 正等待工作区信任批准，批准后会话才能交互。",
       code: "trust_gate",
     });
   });
 
-  it("checkReady returns false when Codex is blocked on a numbered model-selection prompt", async () => {
+  it("Codex 阻塞在编号模型选择提示时 checkReady 返回 false", async () => {
     const tmux = mockTmux({
       getPaneCommand: vi.fn(async () => "codex-aarch64-a"),
       capturePaneContent: vi.fn(async () => [
@@ -250,12 +246,12 @@ describe("Codex runtime adapter", () => {
 
     expect(result).toEqual({
       ready: false,
-      reason: "Codex is waiting for model selection before the session can become interactive.",
+      reason: "Codex 正等待选择模型，选择后会话才能交互。",
       code: "model_selection_gate",
     });
   });
 
-  it("checkReady returns true when Codex is interactive even if an update banner remains in scrollback", async () => {
+  it("即使回滚缓冲区仍有更新横幅，Codex 可交互时 checkReady 也返回 true", async () => {
     const tmux = mockTmux({
       getPaneCommand: vi.fn(async () => "codex"),
       capturePaneContent: vi.fn(async () => [
@@ -281,7 +277,7 @@ describe("Codex runtime adapter", () => {
     expect(result).toEqual({ ready: true });
   });
 
-  it("checkReady returns true when a resumed Codex pane is foregrounded through node and only the live prompt footer remains in recent scrollback", async () => {
+  it("恢复的 Codex 窗格通过 Node 前台运行且近期回滚区只剩实时提示尾部时 checkReady 返回 true", async () => {
     const tmux = mockTmux({
       getPaneCommand: vi.fn(async () => "node"),
       capturePaneContent: vi.fn(async () => [
@@ -307,8 +303,8 @@ describe("Codex runtime adapter", () => {
     expect(result).toEqual({ ready: true });
   });
 
-  // T8: listInstalled reports projected resources
-  it("listInstalled reports projected resources in .agents/", async () => {
+  // T8：listInstalled 报告已投影资源。
+  it("listInstalled 报告 .agents/ 中的已投影资源", async () => {
     const fs = mockFs({
       "/project/.agents/skills": "", // directory marker
       "/project/.agents/skills/deep-review/SKILL.md": "content",
@@ -319,9 +315,9 @@ describe("Codex runtime adapter", () => {
     expect(result[0]!.category).toBe("skill");
   });
 
-  // T10: deliverStartup does NOT execute startup actions
-  it("deliverStartup only handles files, no action execution", async () => {
-    // Verify that the interface only accepts ResolvedStartupFile[], not StartupAction[]
+  // T10：deliverStartup 不执行启动操作。
+  it("deliverStartup 只处理文件，不执行操作", async () => {
+    // 验证接口只接受 ResolvedStartupFile[]，而不接受 StartupAction[]。
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({ tmux, fsOps: mockFs({ "/rig/file.md": "content" }), sleep: async () => {} });
     const file: ResolvedStartupFile = {
@@ -330,11 +326,11 @@ describe("Codex runtime adapter", () => {
     };
     const result = await adapter.deliverStartup([file], makeBinding());
     expect(result.delivered).toBe(1);
-    // No action-related methods called — only file delivery
+    // 不调用操作相关方法，只进行文件交付。
     expect(tmux.sendText).not.toHaveBeenCalled();
   });
 
-  it("replaces legacy using-openrig managed block when delivering openrig-start guidance", async () => {
+  it("交付 openrig-start 指引时替换旧式 using-openrig 受管区块", async () => {
     const fs = mockFs({
       "/rig/openrig-start.md": "# OpenRig Start\n\nNew guidance",
       "/project/AGENTS.md": [
@@ -363,9 +359,9 @@ describe("Codex runtime adapter", () => {
     expect(content).toContain("New guidance");
   });
 
-  // T11: structured failure on delivery error
-  it("returns structured failure when delivery fails", async () => {
-    const fs = mockFs({}); // empty — file not found
+  // T11：交付错误时返回结构化失败。
+  it("交付失败时返回结构化失败", async () => {
+    const fs = mockFs({}); // 空文件系统，找不到文件
     const adapter = new CodexRuntimeAdapter({ tmux: mockTmux(), fsOps: fs });
     const file: ResolvedStartupFile = {
       path: "missing.md", absolutePath: "/rig/missing.md", ownerRoot: "/rig",
@@ -377,7 +373,7 @@ describe("Codex runtime adapter", () => {
     expect(result.failed[0]!.error).toContain("Not found");
   });
 
-  it("submits send_text startup files after pasting", async () => {
+  it("粘贴 send_text 启动文件后提交输入", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({
       tmux,
@@ -395,11 +391,10 @@ describe("Codex runtime adapter", () => {
     expect(tmux.sendKeys).toHaveBeenCalledWith("r01-qa", ["C-m"]);
   });
 
-  // OPR.0.3.3.16 - a >100KB send_text startup pack must still travel through the
-  // sendText -> sleep -> sendKeys(["C-m"]) sequence unchanged. The large-payload
-  // buffer mechanics live in TmuxAdapter; the adapter hands the full content to
-  // sendText and fires the single trailing submit.
-  it("delivers a large (>100KB) send_text startup file via sendText then submits with C-m", async () => {
+  // OPR.0.3.3.16：大于 100KB 的 send_text 启动包仍必须原样经过
+  // sendText → sleep → sendKeys(["C-m"]) 序列。大载荷缓冲机制位于 TmuxAdapter；
+  // 适配器把完整内容交给 sendText，并只在末尾提交一次。
+  it("通过 sendText 交付大于 100KB 的 send_text 启动文件，随后用 C-m 提交", async () => {
     const tmux = mockTmux();
     const big = "L".repeat(120 * 1024);
     const adapter = new CodexRuntimeAdapter({
@@ -416,14 +411,14 @@ describe("Codex runtime adapter", () => {
 
     expect(result.delivered).toBe(1);
     expect(result.failed).toEqual([]);
-    // The full payload is handed to sendText (TmuxAdapter routes it to the buffer path).
+    // 完整载荷交给 sendText，TmuxAdapter 会将其路由到缓冲路径。
     expect(tmux.sendText).toHaveBeenCalledWith("r01-qa", big);
-    // Single trailing submit preserved.
+    // 保持末尾只提交一次。
     expect(tmux.sendKeys).toHaveBeenCalledWith("r01-qa", ["C-m"]);
   });
 
-  // T12: replay on restore is safe for already-projected content
-  it("replay on restore is safe for already-projected content", async () => {
+  // T12：恢复时重放已投影内容是安全的。
+  it("恢复时安全重放已投影内容", async () => {
     const fs = mockFs({
       "/rig/guide.md": "# Guidance",
       "/project/AGENTS.md": "<!-- BEGIN OpenRig MANAGED BLOCK: guide.md -->\n# Guidance\n<!-- END OpenRig MANAGED BLOCK: guide.md -->",
@@ -434,18 +429,18 @@ describe("Codex runtime adapter", () => {
       deliveryHint: "guidance_merge", required: true, appliesOn: ["fresh_start", "restore"],
     };
 
-    // Deliver twice — should replace managed block, not duplicate
+    // 交付两次时应替换受管区块，而不是重复追加。
     await adapter.deliverStartup([file], makeBinding());
     await adapter.deliverStartup([file], makeBinding());
 
     const store = (fs as unknown as { _store: Record<string, string> })._store;
     const content = store["/project/AGENTS.md"]!;
     const blockCount = (content.match(/BEGIN OpenRig MANAGED BLOCK/g) ?? []).length;
-    expect(blockCount).toBe(1); // exactly one block, not two
+    expect(blockCount).toBe(1); // 恰好一个区块，而不是两个
   });
 
-  // NS-T04: launchHarness tests
-  it("launchHarness sends correct fresh launch command", async () => {
+  // NS-T04：launchHarness 测试。
+  it("launchHarness 发送正确的全新启动命令", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({
       tmux,
@@ -461,7 +456,7 @@ describe("Codex runtime adapter", () => {
     expect(sendText).toHaveBeenCalledWith("r01-qa", expectedFreshLaunchCommand());
   });
 
-  it("launchHarness passes the requested Codex model on fresh launch", async () => {
+  it("全新启动时 launchHarness 传递请求的 Codex 模型", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({
       tmux,
@@ -478,16 +473,15 @@ describe("Codex runtime adapter", () => {
     expect(sendText).toHaveBeenCalledWith("r01-qa", expectedFreshLaunchCommand({ model: "gpt-5.5" }));
   });
 
-  it("launchHarness uses the requested Codex config profile without overriding sandbox or approval policy", async () => {
+  it("launchHarness 使用请求的 Codex 配置 profile，且不覆盖 sandbox 或审批策略", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({
       tmux,
       fsOps: mockFs(),
       listProcesses: () => [],
       sleep: async () => {},
-      // Housekeeping B1 fixback: inject a controlled preflight so no real
-      // `codex -p fleet mcp list` subprocess runs. Assertions below unchanged —
-      // they were always about launch-command shape, now tested hermetically.
+      // Housekeeping B1 修正：注入受控预检，避免运行真实的 `codex -p fleet mcp list`
+      // 子进程。下方断言保持不变；它们始终针对启动命令结构，现在可在密闭环境中测试。
       verifyProfilePreflight: async (profile) => ({ ok: true, profile }),
     });
     const binding = { ...makeBinding(), codexConfigProfile: "fleet" };
@@ -499,7 +493,7 @@ describe("Codex runtime adapter", () => {
     expect(sendText).toHaveBeenCalledWith("r01-qa", expectedProfileFreshLaunchCommand("fleet"));
   });
 
-  it("launchHarness passes the disposable proof Codex model on fresh launch", async () => {
+  it("全新启动时 launchHarness 传递一次性证明用 Codex 模型", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({
       tmux,
@@ -519,7 +513,7 @@ describe("Codex runtime adapter", () => {
     );
   });
 
-  it("launchHarness uses OPENRIG_SHARED_DOCS_ROOT for the Codex queue state writable root", async () => {
+  it("launchHarness 使用 OPENRIG_SHARED_DOCS_ROOT 作为 Codex 队列状态可写根目录", async () => {
     vi.stubEnv("OPENRIG_SHARED_DOCS_ROOT", "/custom/shared-docs");
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({
@@ -539,7 +533,7 @@ describe("Codex runtime adapter", () => {
     );
   });
 
-  it("launchHarness does not guess a queue state writable root for non-canonical session names", async () => {
+  it("会话名称不规范时 launchHarness 不猜测队列状态可写根目录", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({
       tmux,
@@ -555,7 +549,7 @@ describe("Codex runtime adapter", () => {
     expect(sendText).toHaveBeenCalledWith("r01-qa", expectedFreshLaunchCommand({ queueRoot: null }));
   });
 
-  it("launchHarness skips the Codex update prompt with one control key before capturing a fresh thread id", async () => {
+  it("捕获新线程 ID 前，launchHarness 用一次控制按键跳过 Codex 更新提示", async () => {
     const initialShell = [
       expectedFreshLaunchCommand(),
       "admin@host project %",
@@ -609,7 +603,7 @@ describe("Codex runtime adapter", () => {
     ]);
   });
 
-  it("launchHarness does not choose a Codex update action unless skip-until-next-version is visible", async () => {
+  it("只有“跳过到下一版本”可见时 launchHarness 才选择 Codex 更新操作", async () => {
     const tmux = mockTmux({
       capturePaneContent: vi.fn(async () => [
         "✨ Update available! 0.120.0 -> 0.121.0",
@@ -632,7 +626,7 @@ describe("Codex runtime adapter", () => {
     ]);
   });
 
-  it("launchHarness keeps checking for a skippable Codex update while waiting for a fresh thread id", async () => {
+  it("等待新线程 ID 时 launchHarness 持续检查可跳过的 Codex 更新", async () => {
     const initialShell = [
       expectedFreshLaunchCommand(),
       "admin@host project %",
@@ -690,7 +684,7 @@ describe("Codex runtime adapter", () => {
     expect(tmux.sendKeys).toHaveBeenLastCalledWith("r01-qa", ["3"]);
   });
 
-  it("uses the visible conversation rather than dismissed loading/review scrollback", async () => {
+  it("使用当前可见对话，而不是已消失的加载/评审回滚内容", async () => {
     const tmux = mockTmux({ capturePaneContent: vi.fn(async () => "OpenAI Codex (v0.153.4)\nmodel: loading\nHooks need review\nTrust all and continue"),
       capturePaneScreen: vi.fn(async () => "› Ask Codex to do anything\n  gpt-6-astra xhigh · /work") });
     const adapter = new CodexRuntimeAdapter({ tmux, fsOps: mockFs() });
@@ -700,7 +694,7 @@ describe("Codex runtime adapter", () => {
     expect((await adapter.checkReady(makeBinding())).ready).toBe(false);
   });
 
-  it("does not type a blanket trust choice into fresh hook review", async () => {
+  it("不会在新出现的 hook 评审中输入一概信任选项", async () => {
     const tmux = mockTmux({ capturePaneContent: vi.fn(async () => "Hooks need review\n1. Review hooks\n2. Trust all and continue\n3. Continue without trusting"), getPanePid: vi.fn(async () => 900) });
     const adapter = new CodexRuntimeAdapter({ tmux, fsOps: mockFs(), sleep: async () => {}, listProcesses: () => [] });
     await adapter.launchHarness(makeBinding(), { name: "impl" });
@@ -708,7 +702,7 @@ describe("Codex runtime adapter", () => {
     expect(tmux.sendKeys).toHaveBeenCalledTimes(1);
   });
 
-  it("launchHarness captures a fresh Codex thread id from the live child process", async () => {
+  it("launchHarness 从实时子进程捕获新的 Codex 线程 ID", async () => {
     const tmux = mockTmux({
       getPanePid: vi.fn(async () => 900),
     });
@@ -733,7 +727,7 @@ describe("Codex runtime adapter", () => {
     });
   });
 
-  it("launchHarness captures a fresh Codex thread id from a nested wrapper -> vendor codex process tree", async () => {
+  it("launchHarness 从嵌套 wrapper 到 vendor codex 的进程树捕获新线程 ID", async () => {
     const tmux = mockTmux({
       getPanePid: vi.fn(async () => 900),
     });
@@ -759,7 +753,7 @@ describe("Codex runtime adapter", () => {
     });
   });
 
-  it("launchHarness captures a fresh Codex thread id from the child process home directory", async () => {
+  it("launchHarness 从子进程主目录捕获新的 Codex 线程 ID", async () => {
     const tempRoot = fs.mkdtempSync(nodePath.join(os.tmpdir(), "rigged-codex-home-"));
     const actualHome = nodePath.join(tempRoot, "actual-home");
     createCodexLogsDb(actualHome, 901, "019d45bc-117d-78a3-a4ad-6fb186e5a86d");
@@ -795,7 +789,7 @@ describe("Codex runtime adapter", () => {
     });
   });
 
-  it("launchHarness captures a fresh Codex thread id from the current versioned logs database", async () => {
+  it("launchHarness 从当前版本的日志数据库捕获新的 Codex 线程 ID", async () => {
     const tempRoot = fs.mkdtempSync(nodePath.join(os.tmpdir(), "rigged-codex-home-"));
     const actualHome = nodePath.join(tempRoot, "actual-home");
     createCodexLogsDb(actualHome, 901, "019d45bc-117d-78a3-a4ad-6fb186e5a86d", "logs_2.sqlite");
@@ -831,7 +825,7 @@ describe("Codex runtime adapter", () => {
     });
   });
 
-  it("launchHarness sends correct resume command", async () => {
+  it("launchHarness 发送正确的恢复命令", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({ tmux, fsOps: mockFs() });
 
@@ -842,7 +836,7 @@ describe("Codex runtime adapter", () => {
     expect(sendText).toHaveBeenCalledWith("r01-qa", expectedResumeCommand());
   });
 
-  it("0.5.2-07 A2-3: launchHarness threads the SPEC model onto the codex RESUME command (pod-aware restore gap)", async () => {
+  it("0.5.2-07 A2-3：launchHarness 将 spec 模型传入 Codex 恢复命令", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({ tmux, fsOps: mockFs() });
     const binding = { ...makeBinding(), model: "gpt-5.4-cheap" };
@@ -854,7 +848,7 @@ describe("Codex runtime adapter", () => {
     expect(sendText).toHaveBeenCalledWith("r01-qa", expectedResumeCommand("sess-456", testQueueRoot(), "gpt-5.4-cheap"));
   });
 
-  it("0.5.2-07 A2-3: launchHarness threads the SPEC model onto the codex FORK command (fork-instantiate gap)", async () => {
+  it("0.5.2-07 A2-3：launchHarness 将 spec 模型传入 Codex 分叉命令", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({
       tmux,
@@ -864,8 +858,8 @@ describe("Codex runtime adapter", () => {
     });
     const binding = { ...makeBinding(), model: "gpt-5.4-cheap" };
 
-    // The command is built + sent BEFORE the post-fork thread-id capture; assert the sent command
-    // even though thread capture is not mocked (fork ultimately returns not-captured).
+    // 命令在分叉后的线程 ID 捕获前构建并发送；即使未模拟线程捕获（分叉最终返回
+    // not-captured），仍需断言已发送命令。
     await adapter.launchHarness(binding, {
       name: "dev-qa@test-rig",
       forkSource: { kind: "native_id", value: "parent-thread-id" },
@@ -875,14 +869,14 @@ describe("Codex runtime adapter", () => {
     expect(sendText).toHaveBeenCalledWith("r01-qa", expectedForkCommand("parent-thread-id", { model: "gpt-5.4-cheap" }));
   });
 
-  it("launchHarness passes the requested Codex config profile on resume", async () => {
+  it("恢复时 launchHarness 传递请求的 Codex 配置 profile", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({
       tmux,
       fsOps: mockFs(),
       listProcesses: () => [],
       sleep: async () => {},
-      // Housekeeping B1 fixback: controlled preflight (no real codex subprocess).
+      // Housekeeping B1 修正：使用受控预检，不运行真实 codex 子进程。
       verifyProfilePreflight: async (profile) => ({ ok: true, profile }),
     });
     const binding = { ...makeBinding(), codexConfigProfile: "fleet" };
@@ -894,13 +888,12 @@ describe("Codex runtime adapter", () => {
     expect(sendText).toHaveBeenCalledWith("r01-qa", expectedProfileResumeCommand("fleet"));
   });
 
-  // Housekeeping B1 fixback (S-3) — adapter-boundary failure contract. When the
-  // injected profile preflight fails, launchHarness must reject with the adapter's
-  // composed error (probe error + "\n  Fix: " + migrationHint) BEFORE constructing
-  // or sending any launch command — i.e. tmux.sendText is never called. The rich
-  // real-probe failure vectors (legacy table, TOML, timeout, quoting) stay owned by
-  // codex-profile-preflight.test.ts; this pins only the adapter's join + ordering.
-  it("launchHarness rejects with the composed error and sends nothing when the profile preflight fails", async () => {
+  // Housekeeping B1 修正（S-3）—— 适配器边界失败契约。注入的 profile 预检失败时，
+  // launchHarness 必须在构建或发送任何启动命令前，以适配器组合后的错误（探测错误 +
+  // "\n  修复：" + migrationHint）拒绝，即绝不调用 tmux.sendText。丰富的真实探测失败向量
+  //（旧表、TOML、超时、引用）仍由 codex-profile-preflight.test.ts 负责；这里仅固定
+  // 适配器的关联与顺序。
+  it("profile 预检失败时 launchHarness 返回组合错误且不发送任何内容", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({
       tmux,
@@ -922,21 +915,20 @@ describe("Codex runtime adapter", () => {
       ok: false,
       error:
         "Codex profile 'fleet' failed to load: legacy [profiles.fleet] table present" +
-        "\n  Fix: Move the profile settings into ~/.codex/fleet.config.toml and remove the legacy [profiles.fleet] table.",
+        "\n  修复：Move the profile settings into ~/.codex/fleet.config.toml and remove the legacy [profiles.fleet] table.",
     });
-    // Rejection is BEFORE command construction — no launch text ever sent.
+    // 在构建命令前拒绝，因此不会发送任何启动文本。
     const sendText = tmux.sendText as ReturnType<typeof vi.fn>;
     expect(sendText).not.toHaveBeenCalled();
   });
 
-  // Pre-rip 'provisions project-local Codex hooks and feature flag without
-  // persisting the hook token' test removed in plugin-primitive Phase 3a
-  // slice 3.1 — activity-hook auto-injection ripped (provisionActivityHooks
-  // gone). Replacement coverage: codex-hooks-feature-flag.test.ts (slice 3.5
-  // ensureCodexFeatureFlag) + activity-hook-rip-proof.test.ts (negative
-  // assertions on adapter symbol absence + endpoint-stays).
+  // 清理前的“配置项目本地 Codex hook 与特性开关且不持久化 hook token”测试已在
+  // plugin-primitive Phase 3a slice 3.1 中移除；活动 hook 自动注入已删除，
+  // provisionActivityHooks 不再存在。替代覆盖位于 codex-hooks-feature-flag.test.ts
+  //（slice 3.5 ensureCodexFeatureFlag）和 activity-hook-rip-proof.test.ts
+  //（反向断言适配器符号缺失及端点保持不变）。
 
-  it("launchHarness skips the Codex update prompt with one control key during resume verification", async () => {
+  it("恢复验证期间 launchHarness 用一次控制按键跳过 Codex 更新提示", async () => {
     const updatePrompt = [
       "✨ Update available! 0.120.0 -> 0.121.0",
       "› 1. Update now (runs `npm install -g @openai/codex`)",
@@ -969,12 +961,11 @@ describe("Codex runtime adapter", () => {
     ]);
   });
 
-  // 0.5.2-07 A2-3 CONTRACT FLIP: this test previously asserted resume DROPPED the model
-  // (`.not.toContain("-m")`) — a pure characterization of the 51-07-A1-era increment-reasoning bug
-  // (fresh threaded -m, resume/fork did not), with no reason it should. That is the exact class this
-  // slice kills. Corrected: resume now CARRIES -m (top-level flag, same class as the shipped -p), and
-  // the queue --add-dir stays intact.
-  it("launchHarness passes the SPEC model argument (-m) when resuming Codex", async () => {
+  // 0.5.2-07 A2-3 契约翻转：此测试此前断言恢复时丢弃模型（`.not.toContain("-m")`），
+  // 只是描述 51-07-A1 时期的增量推理缺陷：全新启动传递 -m，而恢复/分叉不传递，且没有
+  // 理由如此。这正是本切片消除的问题。修正后恢复会携带 -m（顶层标志，与已发布的 -p
+  // 同类），队列 --add-dir 保持不变。
+  it("恢复 Codex 时 launchHarness 传递 spec 模型参数 -m", async () => {
     const tmux = mockTmux();
     const adapter = new CodexRuntimeAdapter({ tmux, fsOps: mockFs() });
     const binding = { ...makeBinding(), model: "gpt-5.5" };
@@ -988,7 +979,7 @@ describe("Codex runtime adapter", () => {
     expect(sendText.mock.calls[0]?.[1]).toContain("--add-dir");
   });
 
-  it("launchHarness returns retry_fresh when Codex reports no saved session for the requested resume token", async () => {
+  it("Codex 报告找不到恢复令牌对应的已保存会话时 launchHarness 返回 retry_fresh", async () => {
     const tmux = mockTmux({
       getPaneCommand: vi.fn(async () => "zsh"),
       capturePaneContent: vi.fn(async () => [
@@ -1002,16 +993,16 @@ describe("Codex runtime adapter", () => {
 
     expect(result).toEqual({
       ok: false,
-      error: "Codex resume failed: no saved session found for the requested session",
+      error: "Codex resume 失败：找不到所请求 session 对应的已保存会话",
       recovery: "retry_fresh",
     });
   });
 
-  // Codex auth-refusal pod-aware path. verifyResumeLaunch must surface
-  // probe.status === "attention_required" as recovery: "attention_required"
-  // with the last-12-line evidence tail. Closes the guard-blocked gap in
-  // commit 63ee206 alongside the legacy CodexResumeAdapter path.
-  it("launchHarness returns attention_required when Codex post-logout token-refresh fails during resume", async () => {
+  // Codex 认证拒绝的 pod 感知路径。verifyResumeLaunch 必须把
+  // probe.status === "attention_required" 显示为 recovery: "attention_required"，
+  // 并附带最后 12 行证据。它与旧 CodexResumeAdapter 路径共同修复提交 63ee206 中
+  // guard 被阻塞的缺口。
+  it("恢复期间 Codex 登出后刷新令牌失败时 launchHarness 返回 attention_required", async () => {
     const refusalPane = [
       "$ codex -s workspace-write resume sess-456",
       "Error: Your access token could not be refreshed because you have since",
@@ -1028,15 +1019,15 @@ describe("Codex runtime adapter", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.recovery).toBe("attention_required");
-      expect(result.error).toContain("sign in again");
-      // Evidence is the last-12-line tail (mirrors claude-resume.ts:97).
+      expect(result.error).toContain("重新登录");
+      // 证据是最后 12 行尾部，与 claude-resume.ts 对应逻辑一致。
       expect(result.evidence).toBeDefined();
       expect(result.evidence).toContain("access token could not be refreshed");
       expect(result.evidence).toContain("Please sign in again");
     }
   });
 
-  it("launchHarness returns attention_required for `log out and sign in` Codex variant", async () => {
+  it("遇到 Codex `log out and sign in` 变体时 launchHarness 返回 attention_required", async () => {
     const tmux = mockTmux({
       getPaneCommand: vi.fn(async () => "zsh"),
       capturePaneContent: vi.fn(async () => [
@@ -1053,36 +1044,34 @@ describe("Codex runtime adapter", () => {
     if (!result.ok) expect(result.recovery).toBe("attention_required");
   });
 
-  // OPR.0.3.3.21 FR-2 — honest restore gate. verifyResumeLaunch must NOT return
-  // launch success when the probe only proves process-alive on an UNRESOLVED
-  // gate. Before this slice these all returned { ok: true } (the 04.3
-  // bootstrap_failed advisory). Each test below FAILS against that old behavior.
+  // OPR.0.3.3.21 FR-2 —— 如实恢复门禁。探测只能证明进程存活但门禁尚未解决时，
+  // verifyResumeLaunch 不得返回启动成功。本切片前这些情况都会返回 { ok: true }
+  //（04.3 bootstrap_failed 提示）；下方每个测试在旧行为下都会失败。
 
-  // THE LOAD-BEARING DISCRIMINATOR (the 04.3 Codex update-flow scenario): an
-  // update gate that cannot be auto-dismissed must classify as attention_required,
-  // not launch success on process-alive alone.
-  it("FR-2 DISCRIMINATOR: resume on an unresolved Codex update gate returns attention_required, not ok:true", async () => {
+  // 关键判别条件（04.3 Codex 更新流程场景）：无法自动关闭的更新门禁必须分类为
+  // attention_required，不能只因进程存活就判定启动成功。
+  it("FR-2 判别条件：在未解决 Codex 更新门禁上恢复时返回 attention_required 而非 ok:true", async () => {
     const updateGate = [
       "✨ Update available! 0.120.0 -> 0.121.0",
       "Updating Codex...",
-    ].join("\n"); // no 'Skip until next version' option -> not auto-dismissable
+    ].join("\n"); // 没有“跳过到下一版本”选项，因此无法自动关闭
     const tmux = mockTmux({
       getPaneCommand: vi.fn(async () => "node"),
-      capturePaneContent: vi.fn(async () => updateGate), // stays gated every poll
+      capturePaneContent: vi.fn(async () => updateGate), // 每次轮询都保持门禁状态
     });
     const adapter = new CodexRuntimeAdapter({ tmux, fsOps: mockFs(), sleep: async () => {} });
 
     const result = await adapter.launchHarness(makeBinding(), { name: "dev-qa@test-rig", resumeToken: "sess-456" });
 
-    expect(result.ok).toBe(false); // fails against the pre-fix ok:true-on-gate behavior
+    expect(result.ok).toBe(false); // 修复前门禁仍返回 ok:true，此断言会失败
     if (!result.ok) {
       expect(result.recovery).toBe("attention_required");
-      expect(result.error).toContain("process-alive alone is not proof");
+      expect(result.error).toContain("仅有进程存活不能证明");
       expect(result.evidence).toContain("Update available");
     }
   });
 
-  it("FR-2: resume on an unresolved Codex trust gate returns attention_required, not ok:true", async () => {
+  it("FR-2：在未解决 Codex 信任门禁上恢复时返回 attention_required 而非 ok:true", async () => {
     const trustGate = [
       "Do you trust the contents of this directory?",
       "› 1. Yes, continue",
@@ -1099,11 +1088,11 @@ describe("Codex runtime adapter", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.recovery).toBe("attention_required");
-      expect(result.error.toLowerCase()).toContain("trust");
+      expect(result.error).toContain("信任");
     }
   });
 
-  it("FR-2: resume on an unresolved Codex model-selection gate returns attention_required, not ok:true", async () => {
+  it("FR-2：在未解决 Codex 模型选择门禁上恢复时返回 attention_required 而非 ok:true", async () => {
     const modelGate = [
       "Select a model to continue:",
       "› 1. gpt-5.1-codex",
@@ -1120,13 +1109,13 @@ describe("Codex runtime adapter", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.recovery).toBe("attention_required");
-      expect(result.error.toLowerCase()).toContain("model selection");
+      expect(result.error).toContain("选择模型");
     }
   });
 
-  it("FR-2: resume that never proves `resumed` within the bounded poll returns attention_required, not ok:true", async () => {
-    // Process alive but not yet the foreground runtime, no explicit gate -> the
-    // probe stays `inconclusive`; the old fallthrough laundered this to ok:true.
+  it("FR-2：有界轮询内始终无法证明 resumed 时返回 attention_required 而非 ok:true", async () => {
+    // 进程存活但尚未成为前台运行时，且没有显式门禁，因此探测保持 `inconclusive`；
+    // 旧回退逻辑会错误地把它洗成 ok:true。
     const tmux = mockTmux({
       getPaneCommand: vi.fn(async () => "node"),
       capturePaneContent: vi.fn(async () => "spawning codex worker..."),
@@ -1142,10 +1131,10 @@ describe("Codex runtime adapter", () => {
     }
   });
 
-  // OPR.0.3.4.13 — slow-but-valid Codex resume: boot-in-progress for several
-  // ticks then the pane becomes a ready Codex TUI → must classify `resumed`
-  // with resume metadata, not `attention_required`.
-  it("OPR.0.3.4.13: slow Codex resume boot-in-progress then ready TUI classifies resumed with metadata", async () => {
+  // OPR.0.3.4.13 —— 缓慢但有效的 Codex 恢复：经历数个 boot-in-progress tick 后，
+  // 窗格变为就绪 Codex TUI；必须分类为 `resumed` 并携带恢复元数据，而不是
+  // `attention_required`。
+  it("OPR.0.3.4.13：Codex 缓慢恢复后 TUI 就绪时分类为 resumed 并携带元数据", async () => {
     let callCount = 0;
     const tmux = mockTmux({
       getPaneCommand: vi.fn(async () => {
@@ -1171,9 +1160,8 @@ describe("Codex runtime adapter", () => {
     }
   });
 
-  // OPR.0.3.4.13: genuine gates still classify fast — trust gate does NOT
-  // get the extended boot-in-progress window.
-  it("OPR.0.3.4.13: trust gate still classifies attention_required without extended delay", async () => {
+  // OPR.0.3.4.13：真实门禁仍快速分类；信任门禁不会获得延长的 boot-in-progress 窗口。
+  it("OPR.0.3.4.13：信任门禁不延长等待，仍分类为 attention_required", async () => {
     let pollCount = 0;
     const trustGate = "Do you trust the contents of this directory?\n› 1. Yes, continue\n  2. No, exit";
     const tmux = mockTmux({
@@ -1188,17 +1176,14 @@ describe("Codex runtime adapter", () => {
     if (!result.ok) {
       expect(result.recovery).toBe("attention_required");
     }
-    // Trust gate should NOT enter the extended phase (30 attempts).
-    // Quick phase = 6 attempts; trust gate breaks out after quick phase.
+    // 信任门禁不应进入延长阶段（30 次尝试）。快速阶段为 6 次，随后立即退出。
     expect(pollCount).toBeLessThanOrEqual(7);
   });
 
-  // Guard against breaking the working auto-dismiss: a skippable update gate
-  // still auto-dismisses and continues to success (covered end-to-end by
-  // "launchHarness skips the Codex update prompt with one control key during resume
-  // verification" above) — only UNRESOLVED gates fail loudly.
+  // 防止破坏已工作的自动关闭逻辑：可跳过的更新门禁仍会自动关闭并继续成功；上方恢复
+  // 验证测试已端到端覆盖。只有未解决门禁会醒目失败。
 
-  it("deliverStartup pre-seeds Codex trust for the managed project", async () => {
+  it("deliverStartup 为受管项目预先写入 Codex 信任", async () => {
     const fs = mockFs({});
     const fsWithHome = { ...fs, homedir: "/home/tester" };
     const adapter = new CodexRuntimeAdapter({ tmux: mockTmux(), fsOps: fsWithHome });
@@ -1212,7 +1197,7 @@ describe("Codex runtime adapter", () => {
     expect(content).toContain('trust_level = "trusted"');
   });
 
-  it("GAP-7 routes workspace trust and runtime config fragments through the injected Codex home", async () => {
+  it("GAP-7 通过注入的 Codex 主目录路由工作区信任与运行时配置片段", async () => {
     const fs = mockFs({
       "/agents/base/runtime/codex-config.toml": "[mcp_servers.test]\nurl = \"https://example.test\"\n",
     });
@@ -1243,7 +1228,7 @@ describe("Codex runtime adapter", () => {
     expect(store["/daemon-home/.codex/config.toml"]).toBeUndefined();
   });
 
-  it("deliverStartup does not inject Codex MCP servers without runtime resources", async () => {
+  it("没有运行时资源时 deliverStartup 不注入 Codex MCP 服务器", async () => {
     const fs = mockFs({
       "/home/tester/.codex/config.toml": '[projects."/tmp/workspace"]\ntrust_level = "trusted"\n',
     });
@@ -1260,7 +1245,7 @@ describe("Codex runtime adapter", () => {
     expect(content).not.toContain('[mcp_servers.context7]');
   });
 
-  it("applies codex_config_fragment runtime resources to the global Codex config idempotently", async () => {
+  it("将 codex_config_fragment 运行时资源幂等应用到全局 Codex 配置", async () => {
     const fs = mockFs({
       "/agents/base/runtime/codex-config.toml": [
         "[mcp_servers.exa]",
@@ -1300,13 +1285,13 @@ describe("Codex runtime adapter", () => {
     expect(content.match(/BEGIN OPENRIG MANAGED CODEX CONFIG FRAGMENT: codex-default-config/g)?.length ?? 0).toBe(1);
   });
 
-  // --- OPR.0.5.8.12: user-owned Codex tables survive projection ---
+  // --- OPR.0.5.8.12：用户所有的 Codex 表在投影后保留 ---
   //
-  // Before this repair the fragment was spliced in raw, so a user who already
-  // owned [mcp_servers.exa] got a duplicate table and Codex refused to start:
+  // 修复前片段会原样拼入，因此已经拥有 [mcp_servers.exa] 的用户会得到重复表，
+  // 导致 Codex 拒绝启动：
   //   "failed to load bootstrap configuration ... duplicate key"
-  // (reproduced against codex-cli 0.147.0). Every assertion below ends at the
-  // real outcome — the rendered config PARSES — not at a string shape.
+  // 已在 codex-cli 0.147.0 上复现。下方每项断言都以真实结果——渲染后的配置能够解析——
+  // 为终点，而不是只检查字符串形态。
 
   const SHIPPED_FRAGMENT = [
     "[mcp_servers.exa]",
@@ -1340,7 +1325,7 @@ describe("Codex runtime adapter", () => {
     return { project, read: () => store["/home/tester/.codex/config.toml"]! };
   }
 
-  it("keeps a user-owned MCP table and its values when the fragment names the same table", async () => {
+  it("片段声明同名表时保留用户所有的 MCP 表及其值", async () => {
     const { project, read } = await projectFragment([
       '[projects."/tmp/workspace"]',
       'trust_level = "trusted"',
@@ -1356,12 +1341,12 @@ describe("Codex runtime adapter", () => {
     const parsed = parseToml(read()) as Record<string, any>;
     expect(parsed.mcp_servers.exa.url).toBe("https://exa.internal.example/mcp");
     expect(parsed.mcp_servers.exa.api_key).toBe("USER-OWNED");
-    // the non-colliding half of the fragment still lands
+    // 片段中不冲突的另一半仍会落地。
     expect(parsed.mcp_servers.context7.url).toBe("https://mcp.context7.com/mcp");
     expect(parsed.projects["/tmp/workspace"].trust_level).toBe("trusted");
   });
 
-  it("keeps MULTIPLE user-owned MCP tables when the fragment names all of them", async () => {
+  it("片段声明多个同名表时保留所有用户所有的 MCP 表", async () => {
     const { project, read } = await projectFragment([
       "[mcp_servers.exa]",
       'url = "https://exa.internal.example/mcp"',
@@ -1378,9 +1363,9 @@ describe("Codex runtime adapter", () => {
     expect(parsed.mcp_servers.context7.url).toBe("https://c7.internal.example/mcp");
   });
 
-  it("still lands the whole fragment when the user owns a DIFFERENT table under the same parent", async () => {
-    // [mcp_servers.other] and [mcp_servers.exa] share an implied parent and are
-    // legal together — a parent-level collision check would wrongly drop both.
+  it("用户在同一父级下拥有其他表时仍完整落地片段", async () => {
+    // [mcp_servers.other] 与 [mcp_servers.exa] 共享隐式父级，但可以合法共存；
+    // 在父级检测冲突会错误地丢弃两者。
     const { project, read } = await projectFragment([
       "[mcp_servers.other]",
       'url = "https://other.example/mcp"',
@@ -1394,7 +1379,7 @@ describe("Codex runtime adapter", () => {
     expect(parsed.mcp_servers.context7.url).toBe("https://mcp.context7.com/mcp");
   });
 
-  it("re-projects idempotently over a collision without duplicating the managed block", async () => {
+  it("发生冲突时重复投影保持幂等，不重复添加受管区块", async () => {
     const { project, read } = await projectFragment([
       "[mcp_servers.exa]",
       'url = "https://exa.internal.example/mcp"',
@@ -1413,13 +1398,11 @@ describe("Codex runtime adapter", () => {
       .toBe("https://exa.internal.example/mcp");
   });
 
-  it("does not mistake a header after an ESCAPED delimiter inside a multi-line string (r2 NOT-CLEAR, 09-01)", async () => {
-    // review50-r2 blocking finding on candidate 4d2ad86c. `\"""` is an escaped
-    // quote plus two more, NOT the end of the string, so [mcp_servers.exa] here
-    // is string data and the managed exa must still land. The old user-side
-    // header scanner read the escape as a terminator and dropped it silently
-    // WHILE REPORTING SUCCESS — which the final parse guard cannot catch,
-    // because the wrong answer is still valid TOML.
+  it("不把多行字符串内转义分隔符之后的内容误认成表头（r2 NOT-CLEAR，09-01）", async () => {
+    // review50-r2 对候选提交 4d2ad86c 的阻塞发现。`\"""` 是一个转义引号加两个引号，
+    // 并非字符串结束，因此此处 [mcp_servers.exa] 是字符串数据，受管 exa 仍必须落地。
+    // 旧用户侧表头扫描器把转义符误认为终止符，并在报告成功的同时静默丢弃该表；最终解析
+    // 保护无法发现，因为错误答案仍是有效 TOML。
     const userConfig = [
       "[profiles.notes]",
       'text = """',
@@ -1431,32 +1414,27 @@ describe("Codex runtime adapter", () => {
     ].join("\n");
     const { project, read } = await projectFragment(userConfig);
 
-    // fact 1 — the user genuinely declares no exa table
+    // 事实 1：用户确实没有声明 exa 表。
     expect((parseToml(userConfig) as Record<string, any>).mcp_servers).toBeUndefined();
-    // fact 2 — projection succeeds
+    // 事实 2：投影成功。
     expect(await project()).toEqual({ projected: ["codex-default-config"], skipped: [], failed: [] });
     const after = parseToml(read()) as Record<string, any>;
-    // fact 3 — BOTH managed tables land
+    // 事实 3：两个受管表都落地。
     expect(after.mcp_servers.exa.url).toBe("https://mcp.exa.ai/mcp");
     expect(after.mcp_servers.context7.url).toBe("https://mcp.context7.com/mcp");
-    // fact 4 — the user's string is untouched
+    // 事实 4：用户字符串保持不变。
     expect(after.profiles.notes.text).toBe((parseToml(userConfig) as Record<string, any>).profiles.notes.text);
   });
 
-  it("projects a fragment containing a multi-line nested array (r2 NOT-CLEAR #3, 09-01)", async () => {
-    // review50-r2 blocking finding on candidate a760ec27. `  [1, 2],` is a row
-    // of a multi-line array, not a table header — but the splitter classified
-    // any bracket-leading line as a header, tore the array apart, and the render
-    // guard then refused a perfectly valid fragment. Depth, not the line's own
-    // text, separates them.
+  it("投影包含多行嵌套数组的片段（r2 NOT-CLEAR #3，09-01）", async () => {
+    // review50-r2 对候选提交 a760ec27 的阻塞发现。`  [1, 2],` 是多行数组的一行，
+    // 不是表头；但分割器曾把任何以方括号开头的行都分类为表头，拆散数组，随后渲染保护
+    // 拒绝完全有效的片段。应由深度而不是行文本自身来区分。
     //
-    // AMENDED BY OPR.0.5.8.15, NOT WEAKENED. R2's original repro put the array
-    // at root, a shape .15 now refuses outright for an unrelated reason (no
-    // root-reopen in TOML). Rewriting the assertion to expect a refusal would
-    // have made this pin green while retiring the thing R2 actually cleared, so
-    // the array is moved inside a table — the only legal shape — and the depth
-    // claim is asserted unchanged. The refusal of the root-level form is pinned
-    // separately below.
+    // OPR.0.5.8.15 对此作了修正而非弱化。R2 原始复现把数组放在根级；.15 现在因无关
+    // 原因直接拒绝该形态（TOML 无法重新打开根）。若把断言改为期待拒绝，会在变绿的同时
+    // 废掉 R2 真正修复的行为，因此数组移入表内——唯一合法形态——并保持深度断言不变。
+    // 根级形态的拒绝在下方单独固定。
     const original = 'model = "gpt-5"\n';
     const fragment = ["[managed.data]", "matrix = [", "  [1, 2],", "  [3, 4],", "]", ""].join("\n");
     const { project, read } = await projectFragment(original, fragment);
@@ -1464,14 +1442,13 @@ describe("Codex runtime adapter", () => {
     const result = await project();
     expect(result).toEqual({ projected: ["codex-default-config"], skipped: [], failed: [] });
     const after = parseToml(read()) as Record<string, any>;
-    expect(after.model).toBe("gpt-5");                          // user value preserved
-    expect(after.managed.data.matrix).toEqual([[1, 2], [3, 4]]); // array intact, not torn
+    expect(after.model).toBe("gpt-5");                          // 保留用户值
+    expect(after.managed.data.matrix).toEqual([[1, 2], [3, 4]]); // 数组完整，没有被拆散
   });
 
-  it("still finds real headers that follow a multi-line array", async () => {
-    // The depth fix must not overshoot: once the array closes we are back at
-    // document level, so BOTH following headers are headers again — the
-    // colliding one yields to the user, the other lands.
+  it("仍能识别多行数组之后的真实表头", async () => {
+    // 深度修复不能过度：数组关闭后回到文档层级，后续两个表头都应重新识别为表头；
+    // 冲突表让位给用户，另一个表正常落地。
     const original = '[mcp_servers.exa]\nurl = "https://user.example/mcp"\n';
     const fragment = [
       "[managed.data]",
@@ -1483,39 +1460,35 @@ describe("Codex runtime adapter", () => {
 
     expect(await project()).toEqual({ projected: ["codex-default-config"], skipped: [], failed: [] });
     const after = parseToml(read()) as Record<string, any>;
-    expect(after.mcp_servers.exa.url).toBe("https://user.example/mcp");   // user wins
+    expect(after.mcp_servers.exa.url).toBe("https://user.example/mcp");   // 用户值优先
     expect(after.mcp_servers.context7.url).toBe("https://mcp.context7.com/mcp");
-    expect(after.managed.data.matrix).toEqual([[1, 2]]);                  // array intact
+    expect(after.managed.data.matrix).toEqual([[1, 2]]);                  // 数组保持完整
   });
 
-  // --- OPR.0.5.8.15: a fragment's root-level keys refuse instead of binding
-  // silently into a user-owned table.
+  // --- OPR.0.5.8.15：拒绝片段根级 key，而不是将其静默绑定到用户所有的表。---
   //
-  // Superseded the OPR.0.5.8.12 pin that DOCUMENTED this as inherited behaviour
-  // (`matrix` landing as `mcp_servers.other.matrix`). That pin was correct about
-  // the mechanism and is now obsolete as a contract: the shape is refused.
+  // 取代 OPR.0.5.8.12 中把该现象记录为继承行为的固定项（`matrix` 落为
+  // `mcp_servers.other.matrix`）。该固定项对机制的描述正确，但作为契约现已过时：
+  // 此结构应被拒绝。
 
-  it("refuses a fragment whose keys precede its first table header (OPR.0.5.8.15)", async () => {
-    // The spec repro: user's document ends inside [mcp_servers.other], so an
-    // appended root key could only ever bind into THEIR table. TOML has no
-    // root-reopen syntax, so preserving the author's intent here is impossible,
-    // not merely expensive — the honest answer is to refuse and say why.
+  it("拒绝首个表头前声明 key 的片段（OPR.0.5.8.15）", async () => {
+    // spec 复现：用户文档结束于 [mcp_servers.other] 内，因此追加的根级 key 只能绑定到
+    // 用户的表。TOML 没有重新打开根的语法，所以保留作者意图不是代价高，而是根本不可能；
+    // 如实做法是拒绝并说明原因。
     const original = '[mcp_servers.other]\nurl = "https://user.example/mcp"\n';
     const { project, read } = await projectFragment(original, "matrix = [[1, 2]]\n");
 
     const result = await project();
     expect(result.projected).toEqual([]);
     expect(result.failed).toHaveLength(1);
-    expect(result.failed[0]!.error).toMatch(/root-level keys before its first table header/);
-    expect(result.failed[0]!.error).toMatch(/open a table first/);   // names the author's fix
-    expect(read()).toBe(original);                                   // byte-unchanged
+    expect(result.failed[0]!.error).toMatch(/首个表头之前声明了根级 key/);
+    expect(result.failed[0]!.error).toMatch(/请先打开一个表/);   // 点明作者应采取的修复。
+    expect(read()).toBe(original);                                   // 字节不变
   });
 
-  it("refuses the same shape DETERMINISTICALLY even when the user's file ends at root", async () => {
-    // Here the key would in fact have bound at root, so a state-dependent rule
-    // would allow it. It is still refused: a fragment author cannot see user
-    // state, and a contract that passes or fails on someone else's file is one
-    // the author can never reproduce.
+  it("即使用户文件结束于根级，也确定性拒绝相同形态", async () => {
+    // 此时 key 实际上会绑定到根级，依赖状态的规则可能允许它。但仍应拒绝：片段作者看不到
+    // 用户状态，依赖他人文件决定成败的契约无法由作者复现。
     const original = 'model = "gpt-5"\n';
     const { project, read } = await projectFragment(original, "matrix = [[1, 2]]\n");
 
@@ -1525,9 +1498,8 @@ describe("Codex runtime adapter", () => {
     expect(read()).toBe(original);
   });
 
-  it("allows comments and blank lines ahead of the first table header", async () => {
-    // Refusing on a leading comment would make the rule feel arbitrary and
-    // would reject perfectly ordinary authored fragments.
+  it("允许首个表头前出现注释和空行", async () => {
+    // 因开头注释而拒绝会让规则显得武断，也会拒绝完全普通的自定义片段。
     const original = 'model = "gpt-5"\n';
     const fragment = ["# managed by openrig", "", "[mcp_servers.context7]", 'url = "https://mcp.context7.com/mcp"', ""].join("\n");
     const { project, read } = await projectFragment(original, fragment);
@@ -1536,9 +1508,8 @@ describe("Codex runtime adapter", () => {
     expect((parseToml(read()) as Record<string, any>).mcp_servers.context7.url).toBe("https://mcp.context7.com/mcp");
   });
 
-  it("leaves the shipped codex-default-config fragment unaffected (OPR.0.5.8.15 regression)", async () => {
-    // The shipped fragment opens with a table header, so the new refusal must
-    // not touch it — including its OPR.0.5.8.12 collision behaviour.
+  it("已发布的 codex-default-config 片段不受影响（OPR.0.5.8.15 回归）", async () => {
+    // 已发布片段以表头开头，因此新拒绝规则不得影响它，包括其 OPR.0.5.8.12 冲突行为。
     const original = [
       '[projects."/tmp/workspace"]', 'trust_level = "trusted"', "",
       "[mcp_servers.exa]", 'url = "https://exa.internal.example/mcp"', 'api_key = "USER-SECRET"', "",
@@ -1552,25 +1523,23 @@ describe("Codex runtime adapter", () => {
     expect(after.mcp_servers.context7.url).toBe("https://mcp.context7.com/mcp");
   });
 
-  it("refuses an intrinsically invalid managed fragment instead of deleting it (r2 NOT-CLEAR, 09-01)", async () => {
-    // review50-r2 blocking finding on candidate ebfe60d9. "appending this block
-    // breaks the parse" has TWO causes — a user collision, or a malformed block.
-    // Conflating them let the collision filter DELETE an invalid authored
-    // fragment, after which the render guard passed precisely because the bad
-    // input was gone, and the receipt said projected.
+  it("拒绝本身无效的受管片段，而不是删除它（r2 NOT-CLEAR，09-01）", async () => {
+    // review50-r2 对候选提交 ebfe60d9 的阻塞发现。“追加该区块导致解析失败”有两种原因：
+    // 用户冲突或区块格式错误。混淆两者会让冲突过滤器删除无效的自定义片段；随后恰因错误
+    // 输入已消失，渲染保护通过，回执也错误地报告 projected。
     const original = 'model = "gpt-5"\n';
     const { project, read } = await projectFragment(original, "[mcp_servers.exa]\nurl =\n");
 
     const result = await project();
-    expect(result.projected).toEqual([]);            // zero projected
-    expect(result.failed).toHaveLength(1);           // one failed projection
-    expect(result.failed[0]!.error).toMatch(/not valid TOML on its own/);
-    expect(read()).toBe(original);                   // user file byte-unchanged
+    expect(result.projected).toEqual([]);            // 投影数量为零
+    expect(result.failed).toHaveLength(1);           // 一项投影失败
+    expect(result.failed[0]!.error).toMatch(/本身不是有效 TOML/);
+    expect(read()).toBe(original);                   // 用户文件字节不变
   });
 
-  it("refuses a fragment whose own tables collide with each other", async () => {
-    // Closed by the same standalone check: the per-block collision test compares
-    // each block against the USER only, so it could never have caught this.
+  it("拒绝自身表之间相互冲突的片段", async () => {
+    // 同一个独立检查修复此问题：逐区块冲突测试只把每个区块与用户配置比较，因此不可能
+    // 捕获片段内部的冲突。
     const original = 'model = "gpt-5"\n';
     const dup = "[mcp_servers.exa]\nurl = \"a\"\n\n[mcp_servers.exa]\nurl = \"b\"\n";
     const { project, read } = await projectFragment(original, dup);
@@ -1581,9 +1550,9 @@ describe("Codex runtime adapter", () => {
     expect(read()).toBe(original);
   });
 
-  it("leaves the fragment intact when the user's config does not parse, and refuses the write", async () => {
-    // No collision can be discriminated against a file we cannot read, so
-    // nothing is dropped and the render guard refuses rather than "fixing" it.
+  it("用户配置无法解析时保持片段完整并拒绝写入", async () => {
+    // 无法读取的文件无法进行冲突判定，因此不丢弃任何内容，由渲染保护拒绝写入，
+    // 而不是尝试“修复”。
     const broken = "[mcp_servers.exa\nurl = \n";
     const { project, read } = await projectFragment(broken);
     const result = await project();
@@ -1592,7 +1561,7 @@ describe("Codex runtime adapter", () => {
     expect(read()).toBe(broken);
   });
 
-  it("does not mistake a table header inside a multi-line string for a user-owned table", async () => {
+  it("不把多行字符串内的表头误认成用户所有的表", async () => {
     const { project, read } = await projectFragment([
       "[profiles.notes]",
       'text = """',
@@ -1602,44 +1571,38 @@ describe("Codex runtime adapter", () => {
     ].join("\n"));
 
     await project();
-    // exa was never really declared by the user, so the managed table must land
+    // 用户从未真正声明 exa，因此受管表必须落地。
     expect((parseToml(read()) as Record<string, any>).mcp_servers.exa.url).toBe("https://mcp.exa.ai/mcp");
   });
 
-  it("refuses a duplicate root-level key rather than writing it, file untouched", async () => {
-    // Was: a duplicate top-level KEY is not a table collision, so table-dropping
-    // cannot save it and the RENDER guard must reject it.
+  it("拒绝重复的根级 key 而不是写入，并保持文件不变", async () => {
+    // 原行为：重复顶层 key 不是表冲突，因此丢弃表无法修复，必须由渲染保护拒绝。
     //
-    // AMENDED BY OPR.0.5.8.15. That case is now caught one layer earlier by the
-    // root-scope refusal, so the render guard is no longer what stops it. The
-    // user-visible contract is unchanged and still pinned here — nothing is
-    // written and the file is byte-identical — but the assertion no longer
-    // claims WHICH guard fired, because that claim is now false.
+    // OPR.0.5.8.15 修正后，该情况会提前一层被根 scope 拒绝，因此不再由渲染保护阻止。
+    // 用户可见契约不变并继续在此固定：不写入任何内容，文件字节完全一致；但断言不再声称
+    // 由哪个保护触发，因为该说法已经不成立。
     //
-    // CORRECTION (orch-lead, 09-01): I reported here that
-    // `assertRendersAsLoadableToml` had become unreachable. That was WRONG, and
-    // the counterexample was already in this file — the invalid-user-config test
-    // below reaches it (userParses=false, so no block is dropped, and the
-    // rendered document is still invalid). Verified: that path fails with
-    // "would write a config Codex cannot parse". The guard is live; I searched
-    // my own imagination and reported the result as a property of the code.
+    // 更正（orch-lead，09-01）：此前曾声称 `assertRendersAsLoadableToml` 已不可达，这是错误的。
+    // 反例就在本文件中：下方无效用户配置测试可以到达它；userParses=false，因此不会丢弃
+    // 区块，渲染文档仍无效。已验证该路径以“将写入 Codex 无法解析的配置”失败。保护仍在
+    // 生效；此前把主观猜测误报成了代码属性。
     const original = 'model = "user-choice"\n';
     const { project, read } = await projectFragment(original, 'model = "managed-choice"\n');
 
     const result = await project();
     expect(result.projected).toEqual([]);
     expect(result.failed).toHaveLength(1);
-    expect(result.failed[0]!.error).toMatch(/left unchanged/);
+    expect(result.failed[0]!.error).toMatch(/保持不变/);
     expect(read()).toBe(original);
   });
 
-  // --- Regenerator bug repair: rig-role managed-block skip ---
+  // --- Regenerator 缺陷修复：跳过 rig-role 受管区块 ---
   //
-  // Parallel to the Claude Code adapter fix. The same rig-role seat-collision
-  // symptom occurs for AGENTS.md on Codex members. Per architect SHAPE 1:
-  // skip mergeManagedBlock when the block id is `rig-role`; log honest skip.
+  // 与 Claude Code 适配器修复并行。Codex 成员的 AGENTS.md 也会出现相同的 rig-role 席位
+  // 冲突。按照架构 SHAPE 1：区块 ID 为 `rig-role` 时跳过 mergeManagedBlock，并如实
+  // 记录跳过。
 
-  it("projectEntry skips rig-role guidance managed block; AGENTS.md is not written", async () => {
+  it("projectEntry 跳过 rig-role 指引受管区块，不写入 AGENTS.md", async () => {
     const fs = mockFs({ "/agents/qa/guidance/role.md": "# You are `qa`\ngate discipline." });
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const adapter = new CodexRuntimeAdapter({ tmux: mockTmux(), fsOps: fs });
@@ -1658,16 +1621,16 @@ describe("Codex runtime adapter", () => {
 
     const store = (fs as unknown as { _store: Record<string, string> })._store;
     expect(store["/project/AGENTS.md"]).toBeUndefined();
-    // ProjectionResult contract: rig-role must appear in `skipped`, NOT `projected`.
+    // ProjectionResult 契约：rig-role 必须出现在 `skipped`，而不是 `projected` 中。
     expect(result.skipped).toContain("rig-role");
     expect(result.projected).not.toContain("rig-role");
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining("skip: effectiveId is rig-role")
+      expect.stringContaining("跳过：effectiveId 为 rig-role")
     );
     logSpy.mockRestore();
   });
 
-  it("projectEntry reports non-rig-role guidance in `projected`, not `skipped` (regression on contract)", async () => {
+  it("projectEntry 将非 rig-role 指引记入 `projected` 而非 `skipped`（契约回归）", async () => {
     const fs = mockFs({ "/agents/base/guidance/using-openrig.md": "# Using OpenRig\nhub guidance" });
     const adapter = new CodexRuntimeAdapter({ tmux: mockTmux(), fsOps: fs });
     const plan: ProjectionPlan = {
@@ -1688,7 +1651,7 @@ describe("Codex runtime adapter", () => {
     expect(result.skipped).not.toContain("using-openrig.md");
   });
 
-  it("projectEntry still merges non-rig-role guidance blocks (regression)", async () => {
+  it("projectEntry 仍合并非 rig-role 指引区块（回归）", async () => {
     const fs = mockFs({ "/agents/base/guidance/using-openrig.md": "# Using OpenRig\nhub guidance" });
     const adapter = new CodexRuntimeAdapter({ tmux: mockTmux(), fsOps: fs });
     const plan: ProjectionPlan = {
@@ -1710,7 +1673,7 @@ describe("Codex runtime adapter", () => {
     expect(store["/project/AGENTS.md"]).toContain("hub guidance");
   });
 
-  it("deliverStartup skips rig-role guidance_merge; delivered is NOT incremented (honest metrics)", async () => {
+  it("deliverStartup 跳过 rig-role guidance_merge，且 delivered 不增加（如实指标）", async () => {
     const fs = mockFs({ "/rig/rig-role": "# You are `qa`\nrole body" });
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const adapter = new CodexRuntimeAdapter({ tmux: mockTmux(), fsOps: fs });
@@ -1721,13 +1684,13 @@ describe("Codex runtime adapter", () => {
 
     const result = await adapter.deliverStartup([file], makeBinding());
 
-    // StartupDeliveryResult contract: skip does NOT count as delivered.
+    // StartupDeliveryResult 契约：跳过不计为已交付。
     expect(result.delivered).toBe(0);
     expect(result.failed).toEqual([]);
     const store = (fs as unknown as { _store: Record<string, string> })._store;
     expect(store["/project/AGENTS.md"]).toBeUndefined();
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining("skip: effectiveId is rig-role")
+      expect.stringContaining("跳过：effectiveId 为 rig-role")
     );
     logSpy.mockRestore();
   });

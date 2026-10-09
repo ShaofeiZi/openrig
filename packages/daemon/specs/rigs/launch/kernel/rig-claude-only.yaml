@@ -1,15 +1,14 @@
 version: "0.2"
 name: kernel
 summary: >
-  Claude-only kernel variant: all three agents run on Claude Code.
-  Selected by rig daemon start when claude auth status is green but
-  codex login status fails.
+  仅 Claude 的内核变体：三个智能体全部在 Claude Code 上运行。当 zrig 后台服务启动时，
+  若 Claude 鉴权状态正常但 Codex 登录状态失败，则选择此变体。
 
 culture_file: culture/CULTURE.md
 
 pods:
   - id: advisor
-    label: Advisor
+    label: 顾问
     members:
       - id: lead
         agent_ref: "local:agents/advisor/lead"
@@ -18,7 +17,7 @@ pods:
         cwd: "."
 
   - id: operator
-    label: Operator
+    label: 操作员
     members:
       - id: human
         agent_ref: "builtin:terminal"
@@ -46,7 +45,7 @@ pods:
         to: human
 
   - id: queue
-    label: Queue
+    label: 队列
     members:
       - id: worker
         agent_ref: "local:agents/queue/worker"

@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/user-settings/settings-browser.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/workspace/default-workspace-scaffold.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/topology/multi-rig-launcher.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/feed/attention-aggregator.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/workspace/project-read.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/workspace/workspace-resolver.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/files/file-write-service.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/files/path-safety.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/topology/topology-manifest.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow/slice-workflow-projection.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/user-settings/settings-store.ts": [
+"daemon-core-i",
+"validated"
+],
+"packages/daemon/src/domain/files/file-read.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/workspace/workspace-doctor.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/preview/preview-rate-limiter.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/workspace/frontmatter-validator.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/workspace/project-catalog.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow/slice-workflow-binding.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow/starter-spec-loader.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/topology/remote-up-leaf.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/workspace/getting-started-narrative.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

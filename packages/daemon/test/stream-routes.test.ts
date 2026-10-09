@@ -26,7 +26,7 @@ function buildApp(opts: { eventBus: EventBus; streamStore: StreamStore }): Hono 
   return app;
 }
 
-describe("stream routes", () => {
+describe("stream 路由", () => {
   let db: Database.Database;
   let bus: EventBus;
   let store: StreamStore;
@@ -38,7 +38,7 @@ describe("stream routes", () => {
       coreSchema,
       eventsSchema,
       streamItemsSchema,
-      // 067's 4 ALTERs need their base tables present in this DB
+      // 067 的 4 条 ALTER 需要此数据库中存在基础表
       queueItemsSchema,
       queueTransitionsSchema,
       inboxEntriesSchema,
@@ -52,7 +52,7 @@ describe("stream routes", () => {
 
   afterEach(() => db.close());
 
-  it("POST /api/stream/emit creates and returns the item", async () => {
+  it("POST /api/stream/emit 创建并返回条目", async () => {
     const res = await app.request("/api/stream/emit", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@rig" }, // P21 I3: source from the transport header
@@ -70,7 +70,7 @@ describe("stream routes", () => {
     expect(data.streamItemId).toMatch(/^[0-9A-Z]{26}$/);
   });
 
-  it("POST /api/stream/emit rejects missing body (source is header-derived; missing-source is the 401 path)", async () => {
+  it("POST /api/stream/emit 拒绝缺失正文（source 从 header 派生；缺少来源走 401 路径）", async () => {
     const res = await app.request("/api/stream/emit", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@rig" },
@@ -81,8 +81,8 @@ describe("stream routes", () => {
     expect(data.error).toMatch(/body/);
   });
 
-  // P21 I3 — stream emit was an allow-all body-supplied sourceSession site; I3 derives it from the header.
-  it("emit — header absent + body sourceSession → delivers under the claimed actor, stream_items claimed:v1", async () => {
+  // P21 I3——stream emit 曾允许正文任意提供 sourceSession；I3 改为从 header 派生。
+  it("emit——无 header + 正文 sourceSession → 以声明 actor 交付，stream_items 标记 claimed:v1", async () => {
     const res = await app.request("/api/stream/emit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -97,7 +97,7 @@ describe("stream routes", () => {
     expect(row?.identity_provenance).toBe("claimed:v1");
   });
 
-  it("emit — header present + differing body sourceSession → wire supersedes (source alice@rig, transport:v1); 409 retired", async () => {
+  it("emit——有 header + 正文 sourceSession 不同 → 线路值优先（来源 alice@rig、transport:v1）；409 已退役", async () => {
     const res = await app.request("/api/stream/emit", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@rig" },
@@ -112,7 +112,7 @@ describe("stream routes", () => {
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it("emit — derives source from the header + era-stamps stream_items transport:v1", async () => {
+  it("emit——从 header 派生来源，并为 stream_items 标记时代 transport:v1", async () => {
     const res = await app.request("/api/stream/emit", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@rig" },
@@ -127,7 +127,7 @@ describe("stream routes", () => {
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it("GET /api/stream/list returns chronological items with filters", async () => {
+  it("GET /api/stream/list 按筛选条件返回时间正序条目", async () => {
     store.emit({ sourceSession: "alice@rig", body: "1", hintDestination: "bob@rig" });
     store.emit({ sourceSession: "carol@rig", body: "2", hintDestination: "bob@rig" });
     store.emit({ sourceSession: "alice@rig", body: "3" });
@@ -143,7 +143,7 @@ describe("stream routes", () => {
     expect(filteredData).toHaveLength(2);
   });
 
-  it("GET /api/stream/list?direction=latest returns the newest active page chronologically", async () => {
+  it("GET /api/stream/list?direction=latest 按时间正序返回最新活跃页", async () => {
     const items = Array.from({ length: 7 }, (_, index) =>
       store.emit({ sourceSession: "alice@rig", body: `item-${index + 1}` }),
     );
@@ -161,12 +161,12 @@ describe("stream routes", () => {
     ]);
   });
 
-  it("GET /api/stream/list rejects invalid or ambiguous direction input", async () => {
+  it("GET /api/stream/list 拒绝无效或有歧义的 direction 输入", async () => {
     expect((await app.request("/api/stream/list?direction=sideways")).status).toBe(400);
     expect((await app.request("/api/stream/list?direction=latest&afterSortKey=k1")).status).toBe(400);
   });
 
-  it("GET /api/stream/list wires exact tag and canonicalized inclusive ISO time filters", async () => {
+  it("GET /api/stream/list 接入精确标签与标准化的包含边界 ISO 时间筛选", async () => {
     const lower = store.emit({ sourceSession: "alice@rig", body: "lower", hintTags: ["context"] });
     const upper = store.emit({ sourceSession: "alice@rig", body: "upper", hintTags: ["context"] });
     const wrongTag = store.emit({ sourceSession: "alice@rig", body: "wrong-tag", hintTags: ["context-extra"] });
@@ -186,18 +186,18 @@ describe("stream routes", () => {
     expect(((await res.json()) as Array<{ body: string }>).map((item) => item.body)).toEqual(["lower", "upper"]);
   });
 
-  it("GET /api/stream/list rejects invalid time windows", async () => {
+  it("GET /api/stream/list 拒绝无效时间窗口", async () => {
     const invalidSince = await app.request("/api/stream/list?since=not-a-time");
     expect(invalidSince.status).toBe(400);
-    expect(await invalidSince.json()).toEqual({ error: "since must be a valid ISO timestamp" });
+    expect(await invalidSince.json()).toEqual({ error: "since 必须是合法的 ISO 时间戳" });
     const invalidUntil = await app.request("/api/stream/list?until=not-a-time");
     expect(invalidUntil.status).toBe(400);
-    expect(await invalidUntil.json()).toEqual({ error: "until must be a valid ISO timestamp" });
+    expect(await invalidUntil.json()).toEqual({ error: "until 必须是合法的 ISO 时间戳" });
     const reversed = await app.request(
       "/api/stream/list?since=2026-08-03T10%3A00%3A00.000Z&until=2026-08-03T09%3A00%3A00.000Z",
     );
     expect(reversed.status).toBe(400);
-    expect(await reversed.json()).toEqual({ error: "since must not be after until" });
+    expect(await reversed.json()).toEqual({ error: "since 不能晚于 until" });
   });
 
   it.each([
@@ -206,7 +206,7 @@ describe("stream routes", () => {
   ])("GET /api/stream/list rejects impossible %s timestamp components", async (field, value) => {
     const res = await app.request(`/api/stream/list?${field}=${encodeURIComponent(value)}`);
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: `${field} must be a valid ISO timestamp` });
+    expect(await res.json()).toEqual({ error: `${field} 必须是合法的 ISO 时间戳` });
   });
 
   it.each([
@@ -215,15 +215,15 @@ describe("stream routes", () => {
   ])("GET /api/stream/list rejects unsupported %s sub-millisecond precision", async (field) => {
     const res = await app.request(`/api/stream/list?${field}=2026-08-03T09%3A00%3A00.0009Z`);
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: `${field} must use at most millisecond precision` });
+    expect(await res.json()).toEqual({ error: `${field} 最多只能用毫秒精度` });
   });
 
-  it("GET /api/stream/:id returns 404 on unknown id", async () => {
+  it("GET /api/stream/:id 遇到未知 ID 时返回 404", async () => {
     const res = await app.request("/api/stream/nonexistent");
     expect(res.status).toBe(404);
   });
 
-  it("POST /api/stream/:id/archive succeeds and excludes from default list", async () => {
+  it("POST /api/stream/:id/archive 成功归档，并从默认列表排除", async () => {
     const item = store.emit({ sourceSession: "alice@rig", body: "x" });
     const res = await app.request(`/api/stream/${item.streamItemId}/archive`, { method: "POST" });
     expect(res.status).toBe(200);
@@ -232,13 +232,12 @@ describe("stream routes", () => {
     expect(data).toHaveLength(0);
   });
 
-  // ---- PL-004 Phase A revision (R1): SSE route — live GET reaches handler ----
-  // Per QA finding: HEAD comparison was inadequate. Dynamic route shadowing
-  // (/:streamItemId catching `sse` and `watch` as ids) returns 404 with
-  // `stream item not found` instead of the SSE handler. Live GET asserting
-  // content-type: text/event-stream proves the handler is reached.
+  // ---- PL-004 阶段 A 修订（R1）：SSE 路由——实时 GET 到达处理器 ----
+  // 根据 QA 发现：HEAD 比较不充分。动态路由遮蔽（/:streamItemId 将 `sse` 与 `watch`
+  // 捕获为 ID）会返回 404 与“未找到 stream 项”，而不是进入 SSE 处理器。实时 GET
+  // 断言 content-type: text/event-stream，可证明处理器已到达。
 
-  it("GET /api/stream/sse returns 200 + content-type: text/event-stream (handler reached)", async () => {
+  it("GET /api/stream/sse 返回 200 与 content-type:text/event-stream（已到达处理器）", async () => {
     const res = await app.request("/api/stream/sse");
     try {
       expect(res.status).toBe(200);
@@ -248,7 +247,7 @@ describe("stream routes", () => {
     }
   });
 
-  it("GET /api/stream/watch returns 200 + content-type: text/event-stream (handler reached)", async () => {
+  it("GET /api/stream/watch 返回 200 与 content-type:text/event-stream（已到达处理器）", async () => {
     const res = await app.request("/api/stream/watch");
     try {
       expect(res.status).toBe(200);
@@ -258,7 +257,7 @@ describe("stream routes", () => {
     }
   });
 
-  it("GET /api/stream/sse does NOT return stream-item-not-found (route-order regression guard)", async () => {
+  it("GET /api/stream/sse 不返回 stream-item-not-found（路由顺序回归护栏）", async () => {
     const res = await app.request("/api/stream/sse");
     try {
       expect(res.status).not.toBe(404);

@@ -13,8 +13,8 @@ import { loadConfig } from "./gateway/slack/config.js";
 import { resolveSecret } from "./gateway/slack/secrets.js";
 import { resolveHumanDeliveryReadiness } from "./gateway/human-readiness.js";
 
-/** Local evidence files only. Unsupported addresses retain unavailable truth.
- * Reuse the file surface's realpath resolver; callers choose whether to embed bytes. */
+/** 仅处理本地证据文件。不支持的地址保持“不可用”的真实状态。
+ * 复用文件表面的 realpath 解析器；是否嵌入字节由调用方决定。 */
 export function readHealthArtifact(workspace: string, path: string, maxBytes = 1048576, embed = false): AuthorityReference {
   try {
     const root = realpathSync(workspace);
@@ -28,7 +28,7 @@ export function readHealthArtifact(workspace: string, path: string, maxBytes = 1
 
 type AuthorityLevel = NonNullable<AuthorityReference["level"]>;
 
-/** Only read a canonical file at the selected work-tree node; aliases are unavailable. */
+/** 只读取所选工作树节点上的规范文件；别名不可用。 */
 function readAuthorityFile(workspace: string, path: string): AuthorityReference {
   try {
     const selected = relative(resolve(workspace), resolve(workspace, path));
@@ -38,8 +38,8 @@ function readAuthorityFile(workspace: string, path: string): AuthorityReference 
   } catch { return { path, state: "unavailable" }; }
 }
 
-/** Reuse authored context selections, including project planning before a mission exists.
- * No filename guesses, recursive link following, or executable workflow adoption. */
+/** 复用作者明确选择的上下文，包括任务目标建立前的项目规划。
+ * 不猜测文件名、不递归跟随链接，也不采用可执行工作流。 */
 export function healthSelectedContext(workspace: string, missionRoot?: string): AuthorityReference[] {
   const result: AuthorityReference[] = [];
   let remaining = 131072;
@@ -47,15 +47,15 @@ export function healthSelectedContext(workspace: string, missionRoot?: string): 
   const add = (refs: unknown, source: string, root: string) => {
     if (refs === undefined) return;
     if (!Array.isArray(refs) || refs.some(r => typeof r !== "string" || !r.trim()) || (count += refs.length) > 32) {
-      result.push({ path: source, state: "unavailable", role: "selected context", reason: "Context selection must contain at most 32 non-empty addresses in total." });
+      result.push({ path: source, state: "unavailable", role: "selected context", reason: "上下文选择最多只能包含 32 个非空地址。" });
       return;
     }
     for (const address of refs as string[]) {
       const base = { path: address, role: "selected context", selectedBy: source };
       try {
         const { ref, headerPath } = parseAddress(address);
-        // Only explicitly selected local project files; unsupported transports stay visible.
-        if (/^(?:[a-z]+:|\$)/i.test(ref)) throw Error("Unsupported local context address");
+        // 仅处理显式选择的本地项目文件；不支持的传输方式仍保持可见。
+        if (/^(?:[a-z]+:|\$)/i.test(ref)) throw Error("不支持的本地上下文地址");
         const path = resolve(root, ref);
         const file = readAuthorityFile(workspace, path);
         if (!file.content) throw Error("Selected file unavailable, aliased, outside project, or larger than 64 KiB");
@@ -89,7 +89,7 @@ export function healthSelectedContext(workspace: string, missionRoot?: string): 
 
 export function healthAuthority(workspace: string, checkpoints: HealthCheckpointSource, record: HealthRecord): AuthorityReference[] {
   if (record.operatingPosture?.posture === "unknown") return [{ path: "operatingPosture", state: "unavailable", role: "scope", reason: record.operatingPosture.reason }];
-  // The shared reader has already resolved the declared project catalog and real paths.
+  // 共享读取器已经解析了声明的项目目录及真实路径。
   const paths = record.operatingPosture?.context?.paths;
   workspace = paths?.project ?? workspace;
   const checkpoint = record.detector === "process.ceremony-amplification" ? checkpoints.entries().find((c) => healthEpisodeId(record.detector, c.checkpoint.scope, c.episodeStartedAt) === record.id)?.checkpoint : undefined;
@@ -108,7 +108,7 @@ export function healthAuthority(workspace: string, checkpoints: HealthCheckpoint
     const workParts = relative(missionDir, resolve(workspace, path)).split("/");
     if (level === "mission") return workParts.length === 1 && ["SPEC.md", "mission.yaml"].includes(workParts[0]!);
     if (scope.type !== "slice" || workParts.length !== 3 || workParts[0] !== "slices" || !["SPEC.md", "slice.yaml"].includes(workParts[2]!)) return false;
-    // Directory names are not slice IDs. The canonical sibling SPEC owns identity.
+    // 目录名不是 slice ID；身份由同级规范 SPEC 确定。
     const spec = readAuthorityFile(workspace, join(missionDir, ...workParts.slice(0, 2), "SPEC.md"));
     const frontmatter = spec.content?.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1];
     if (!frontmatter) return false;
@@ -123,8 +123,8 @@ export function healthAuthority(workspace: string, checkpoints: HealthCheckpoint
   return [...authority, ...healthSelectedContext(workspace, missionDir ?? undefined)];
 }
 
-/** Connector-specific readiness lives behind the transport-neutral diagnosis port.
- * No notification is posted here; the existing gateway owns posting and receipts. */
+/** 连接器特定的就绪状态位于传输无关的诊断端口之后。
+ * 此处不发送通知；发送与回执由现有网关负责。 */
 export async function healthHumanReadiness(home: string, address: string, gatewayActive: boolean) {
   const registry = loadHumanRegistry(home);
   const human = registry.ok ? registry.entities.find((h) => h.address === address) : undefined;

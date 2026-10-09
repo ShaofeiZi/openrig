@@ -11,8 +11,8 @@ import {
   workspaceScaffoldFiles as daemonScaffoldFiles,
 } from "../src/domain/workspace/default-workspace-scaffold.js";
 
-describe("canonical project-workspace scaffold parity", () => {
-  it("keeps the CLI and daemon layouts byte-identical", () => {
+describe("canonical project-workspace scaffold 一致性", () => {
+  it("保持 CLI 与 daemon layout 逐字一致", () => {
     expect(daemonScaffoldDirs()).toEqual(["missions", "exhaust"]);
     expect(cliScaffoldDirs()).toEqual(daemonScaffoldDirs());
     expect(cliScaffoldFiles()).toEqual(daemonScaffoldFiles());
@@ -24,7 +24,7 @@ describe("canonical project-workspace scaffold parity", () => {
     ]);
   });
 
-  it("emits valid project and catalog manifests without instance-owned sources", () => {
+  it("输出不含 instance-owned source 的有效 project 与 catalog manifest", () => {
     const files = new Map(daemonScaffoldFiles().map((file) => [file.relPath, file.content]));
     expect(parseYaml(files.get("project.yaml")!)).toMatchObject({
       schema: "openrig.project/v0alpha1",
@@ -57,7 +57,7 @@ describe("canonical project-workspace scaffold parity", () => {
     }
   });
 
-  it("keeps shipped init-workspace guidance aligned with the additive six-entry scaffold", () => {
+  it("保持已交付 init-workspace 指引与增量六 entry scaffold 一致", () => {
     const repoRoot = resolve(import.meta.dirname, "../../..");
     const cliReference = readFileSync(join(repoRoot, "docs/as-built/cli-reference.md"), "utf-8");
     const skill = readFileSync(

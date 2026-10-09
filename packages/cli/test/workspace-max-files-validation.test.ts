@@ -1,7 +1,6 @@
-// release-0.3.2 slice 01 BC repair — HG-6 discriminators.
-// Verifies that `rig workspace validate --max-files <garbage>` rejects
-// CLI-side with a 3-part error AND does NOT call the daemon. Matches
-// the guard BC-1 fix recipe.
+// release-0.3.2 slice 01 BC 修复——HG-6 判别式。
+// 验证 `rig workspace validate --max-files <garbage>` 在 CLI 侧以三段错误拒绝，
+// 且不调用 daemon。匹配守卫 BC-1 修复配方。
 
 import { describe, expect, it, vi } from "vitest";
 import { workspaceCommand, parseMaxFilesStrict, type WorkspaceDeps } from "../src/commands/workspace.js";
@@ -41,15 +40,15 @@ describe("parseMaxFilesStrict — pure helper", () => {
     expect(parseMaxFilesStrict("10000")).toBe(10000);
   });
   it("rejects garbage tails (BC-1 root cause)", () => {
-    expect(() => parseMaxFilesStrict("12abc")).toThrow(/positive integer/);
+    expect(() => parseMaxFilesStrict("12abc")).toThrow(/正整数/);
   });
   it("rejects non-numeric input", () => {
-    expect(() => parseMaxFilesStrict("abc")).toThrow(/positive integer/);
-    expect(() => parseMaxFilesStrict("")).toThrow(/positive integer/);
+    expect(() => parseMaxFilesStrict("abc")).toThrow(/正整数/);
+    expect(() => parseMaxFilesStrict("")).toThrow(/正整数/);
   });
   it("rejects zero and negatives", () => {
-    expect(() => parseMaxFilesStrict("0")).toThrow(/positive integer/);
-    expect(() => parseMaxFilesStrict("-1")).toThrow(/positive integer/);
+    expect(() => parseMaxFilesStrict("0")).toThrow(/正整数/);
+    expect(() => parseMaxFilesStrict("-1")).toThrow(/正整数/);
   });
   it("3-part error carries fact + consequence + action fields", () => {
     try {
@@ -57,9 +56,9 @@ describe("parseMaxFilesStrict — pure helper", () => {
       throw new Error("should have thrown");
     } catch (err) {
       const e = err as Error & { fact?: string; consequence?: string; action?: string };
-      expect(e.fact).toMatch(/positive integer/);
-      expect(e.consequence).toMatch(/did not run/);
-      expect(e.action).toMatch(/Pass a positive integer/);
+      expect(e.fact).toMatch(/正整数/);
+      expect(e.consequence).toMatch(/未运行/);
+      expect(e.action).toMatch(/请传一个正整数/);
     }
   });
 });
@@ -81,8 +80,8 @@ describe("rig workspace validate --max-files — CLI-side discriminator (BLOCK 1
     const joined = out.logs.join("\n");
     const parsed = JSON.parse(joined);
     expect(parsed.ok).toBe(false);
-    expect(parsed.error.fact).toMatch(/positive integer/);
-    expect(parsed.error.consequence).toMatch(/did not run/);
+    expect(parsed.error.fact).toMatch(/正整数/);
+    expect(parsed.error.consequence).toMatch(/未运行/);
     expect(parsed.error.action).toMatch(/--max-files/);
   });
 
@@ -117,14 +116,14 @@ describe("rig workspace validate --max-files — CLI-side discriminator (BLOCK 1
     expect(exitCode).toBe(1);
     expect(post).not.toHaveBeenCalled();
     const joined = err.logs.join("");
-    expect(joined).toMatch(/Error:.*positive integer/);
-    expect(joined).toMatch(/did not run/);
-    expect(joined).toMatch(/Pass a positive integer/);
+    expect(joined).toMatch(/错误：.*正整数/);
+    expect(joined).toMatch(/未运行/);
+    expect(joined).toMatch(/请传一个正整数/);
   });
 
-  // Positive case is covered by parseMaxFilesStrict pure-helper test
-  // above ("accepts positive integers"); driving end-to-end here
-  // requires stubbing the daemon-status check too, which is covered
+  // 正向用例已由上方 parseMaxFilesStrict 纯 helper 测试
+  // （"accepts positive integers"）覆盖；此处端到端驱动
+  // 还需 stub daemon-status 检查，而那已被覆盖
   // by the daemon-lifecycle adopt/expand test pattern (out of scope
   // for this BC discriminator).
 });

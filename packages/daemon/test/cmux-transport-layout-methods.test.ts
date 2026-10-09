@@ -1,12 +1,9 @@
-// Slice 24 Checkpoint A repair — transport-level tests for the four
-// layout RPC methods (surface.split / workspace.create / workspace.close
-// / pane.surfaces). velocity-guard 24.A BLOCKING-CONCERN at 8f13174:
-// adapter methods were unreachable through the concrete CLI transport
-// because buildCommand had no mapping. Repair routes these four methods
-// through `cmux rpc <method> '<json-params>'` — a generic CLI subcommand
-// that cmux exposes for direct RPC pass-through (verified via slice 24
-// pre-scaffold spike). Tests pin the exact command shape + JSON
-// serialization + snake_case param preservation.
+// Slice 24 Checkpoint A 修复——四种 layout RPC method（surface.split / workspace.create /
+// workspace.close / pane.surfaces）的 transport 层测试。8f13174 的 velocity-guard 24.A
+// BLOCKING-CONCERN：由于 buildCommand 没有 mapping，无法通过具体 CLI transport 访问 adapter
+// method。修复后四种 method 均通过 `cmux rpc <method> '<json-params>'` 路由；这是 cmux 提供的
+// 通用 CLI 子命令，可直接透传 RPC（已通过 slice 24 预搭建 spike 验证）。测试固定精确命令结构、
+// JSON 序列化与 snake_case 参数保留。
 
 import { describe, it, expect, vi } from "vitest";
 import { createCmuxCliTransport } from "../src/adapters/cmux-transport.js";
@@ -37,9 +34,9 @@ function mockExec(captured: Array<string>, responses: Record<string, string> = {
   return vi.fn(impl) as unknown as ExecFn;
 }
 
-describe("cmux CLI transport — layout RPC method pass-through (slice 24.A repair)", () => {
+describe("cmux CLI transport——layout RPC method 透传（slice 24.A 修复）", () => {
   describe("surface.split", () => {
-    it("emits `cmux rpc surface.split` with snake_case JSON params", async () => {
+    it("以 snake_case JSON 参数发出 `cmux rpc surface.split`", async () => {
       const captured: string[] = [];
       const exec = mockExec(captured, {});
       const factory = createCmuxCliTransport(exec);
@@ -54,7 +51,7 @@ describe("cmux CLI transport — layout RPC method pass-through (slice 24.A repa
       const splitCmd = captured.find((c) => c.startsWith("cmux rpc surface.split"));
       expect(splitCmd).toBeTruthy();
       expect(splitCmd).toContain("surface.split");
-      // Params are JSON-encoded and shell-quoted.
+      // 参数经过 JSON 编码和 shell 引号处理。
       expect(splitCmd).toMatch(/surface_id/);
       expect(splitCmd).toMatch(/"surface:10"/);
       expect(splitCmd).toMatch(/direction/);
@@ -62,10 +59,10 @@ describe("cmux CLI transport — layout RPC method pass-through (slice 24.A repa
       expect(splitCmd).toMatch(/workspace_id/);
     });
 
-    it("parses JSON response from cmux rpc output", async () => {
+    it("解析 cmux rpc 输出中的 JSON 响应", async () => {
       const captured: string[] = [];
       const exec = mockExec(captured, {});
-      // Override the rpc response for surface.split
+      // 覆盖 surface.split 的 rpc 响应。
       const customExec = vi.fn(async (cmd: string) => {
         captured.push(cmd);
         if (cmd === "cmux --help") return helpText();
@@ -88,7 +85,7 @@ describe("cmux CLI transport — layout RPC method pass-through (slice 24.A repa
   });
 
   describe("workspace.create", () => {
-    it("emits `cmux rpc workspace.create` with visible title + optional cwd as snake_case JSON", async () => {
+    it("以 snake_case JSON 发出带可见 title 和可选 cwd 的 `cmux rpc workspace.create`", async () => {
       const captured: string[] = [];
       const exec = mockExec(captured, {});
       const factory = createCmuxCliTransport(exec);
@@ -107,7 +104,7 @@ describe("cmux CLI transport — layout RPC method pass-through (slice 24.A repa
       expect(cmd).toMatch(/"\/path\/to\/cwd"/);
     });
 
-    it("handles workspace.create with only title (no cwd)", async () => {
+    it("处理只有 title 而没有 cwd 的 workspace.create", async () => {
       const captured: string[] = [];
       const exec = mockExec(captured, {});
       const factory = createCmuxCliTransport(exec);
@@ -124,7 +121,7 @@ describe("cmux CLI transport — layout RPC method pass-through (slice 24.A repa
   });
 
   describe("workspace.close", () => {
-    it("emits `cmux rpc workspace.close` with workspace_id (snake_case)", async () => {
+    it("发出带 workspace_id（snake_case）的 `cmux rpc workspace.close`", async () => {
       const captured: string[] = [];
       const exec = mockExec(captured, {});
       const factory = createCmuxCliTransport(exec);
@@ -140,7 +137,7 @@ describe("cmux CLI transport — layout RPC method pass-through (slice 24.A repa
   });
 
   describe("pane.surfaces", () => {
-    it("emits `cmux rpc pane.surfaces` with pane_id (snake_case)", async () => {
+    it("发出带 pane_id（snake_case）的 `cmux rpc pane.surfaces`", async () => {
       const captured: string[] = [];
       const exec = mockExec(captured, {});
       const factory = createCmuxCliTransport(exec);
@@ -158,7 +155,7 @@ describe("cmux CLI transport — layout RPC method pass-through (slice 24.A repa
       expect(cmd).toMatch(/"workspace_id"/);
     });
 
-    it("parses surfaces array from cmux rpc response", async () => {
+    it("解析 cmux rpc 响应中的 surfaces 数组", async () => {
       const customExec = vi.fn(async (cmd: string) => {
         if (cmd === "cmux --help") return helpText();
         if (cmd === "cmux capabilities --json") return '{"capabilities":[]}';
@@ -175,14 +172,11 @@ describe("cmux CLI transport — layout RPC method pass-through (slice 24.A repa
     });
   });
 
-  // OPR.0.4.7.1 regression — the equalize miss: the adapter shipped
-  // equalizeSplits but this allowlist omitted the RPC name, so every
-  // production call threw Unknown cmux method (request_failed, silently
-  // absorbed by the non-fatal layout path → 2:1:1 grids), while adapter
-  // unit tests rode a fake transport and never noticed. This test pins the
-  // PRODUCTION command path.
+  // OPR.0.4.7.1 回归——equalize 缺失：adapter 已提供 equalizeSplits，但此 allowlist 漏掉 RPC 名，
+  // 因而每次生产调用都抛出 Unknown cmux method（request_failed，被非致命 layout 路径静默吸收，
+  // 导致 2:1:1 网格）；而 adapter 单元测试使用虚假 transport，未能发现。本测试固定生产命令路径。
   describe("workspace.equalize_splits", () => {
-    it("emits `cmux rpc workspace.equalize_splits` with workspace_id (snake_case JSON)", async () => {
+    it("以 workspace_id（snake_case JSON）发出 `cmux rpc workspace.equalize_splits`", async () => {
       const captured: string[] = [];
       const exec = mockExec(captured, {});
       const factory = createCmuxCliTransport(exec);
@@ -196,7 +190,7 @@ describe("cmux CLI transport — layout RPC method pass-through (slice 24.A repa
       expect(cmd).toMatch(/"workspace:3"/);
     });
 
-    it("parses the equalized verdict from the cmux rpc JSON response", async () => {
+    it("解析 cmux rpc JSON 响应中的 equalized 结果", async () => {
       const customExec = vi.fn(async (cmd: string) => {
         if (cmd === "cmux --help") return helpText();
         if (cmd === "cmux capabilities --json") return '{"capabilities":[]}';
@@ -215,14 +209,14 @@ describe("cmux CLI transport — layout RPC method pass-through (slice 24.A repa
     });
   });
 
-  describe("unknown methods still throw (regression guard)", () => {
-    it("throws Unknown cmux method for an unmapped method name", async () => {
+  describe("未知 method 仍抛错（回归守卫）", () => {
+    it("未映射 method 名会抛出 Unknown cmux method", async () => {
       const captured: string[] = [];
       const exec = mockExec(captured, {});
       const factory = createCmuxCliTransport(exec);
       const transport = await factory();
 
-      await expect(transport.request("totally.bogus.method", {})).rejects.toThrow(/Unknown cmux method/);
+      await expect(transport.request("totally.bogus.method", {})).rejects.toThrow(/未知 cmux 方法/);
     });
   });
 });

@@ -5,7 +5,7 @@ import { realDeps } from "./daemon.js";
 import type { StatusDeps } from "./status.js";
 
 export function bindCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("bind").description("Bind a discovered session to a rig node (existing or new)");
+  const cmd = new Command("bind").description("把发现的会话绑定到工作组节点（已有或新建）");
   const getDeps = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   async function getClient(deps: StatusDeps): Promise<DaemonClient | null> {
@@ -15,28 +15,28 @@ export function bindCommand(depsOverride?: StatusDeps): Command {
   }
 
   cmd
-    .argument("<discoveredId>", "ID of the discovered session")
-    .requiredOption("--rig <rigId>", "Target rig ID")
-    .option("--node <logicalId>", "Bind to existing logical node")
-    .option("--pod <namespace>", "Create new node in this pod (requires --member)")
-    .option("--member <name>", "Member name for the new node (requires --pod)")
+    .argument("<discoveredId>", "发现的会话 ID")
+    .requiredOption("--rig <rigId>", "目标工作组 ID")
+    .option("--node <logicalId>", "绑定到已有逻辑节点")
+    .option("--pod <namespace>", "在此 Pod 中新建节点（需要 --member）")
+    .option("--member <name>", "新节点的成员名（需要 --pod）")
     .action(async (discoveredId: string, opts: { rig: string; node?: string; pod?: string; member?: string }) => {
-      // XOR mode validation
+      // 互斥模式校验
       const hasNode = !!opts.node;
       const hasPod = !!opts.pod || !!opts.member;
 
       if (hasNode && hasPod) {
-        console.error("Specify either --node (bind to existing) or --pod + --member (create in pod), not both.");
+        console.error("请指定 --node（绑定到已有节点）或 --pod + --member（在 Pod 中新建），二者不可同时使用。");
         process.exitCode = 1;
         return;
       }
       if (!hasNode && !hasPod) {
-        console.error("Specify --node <logicalId> to bind to an existing node, or --pod <namespace> --member <name> to create a new node in a pod.");
+        console.error("请指定 --node <logicalId> 绑定到已有节点，或 --pod <namespace> --member <name> 在 Pod 中新建节点。");
         process.exitCode = 1;
         return;
       }
       if (hasPod && (!opts.pod || !opts.member)) {
-        console.error("Both --pod and --member are required when creating a new node in a pod.");
+        console.error("在 Pod 中新建节点时，--pod 与 --member 必须同时提供。");
         process.exitCode = 1;
         return;
       }
@@ -56,15 +56,15 @@ export function bindCommand(depsOverride?: StatusDeps): Command {
       const res = await client.post<Record<string, unknown>>(`/api/discovery/${encodeURIComponent(discoveredId)}/bind`, body);
 
       if (res.status >= 400) {
-        console.error(res.data["error"] ?? `Bind failed (HTTP ${res.status})`);
+        console.error(res.data["error"] ?? `绑定失败（HTTP ${res.status}）`);
         process.exitCode = 1;
         return;
       }
 
       if (hasNode) {
-        console.log(`Bound discovery ${discoveredId} to node ${opts.node} in rig ${opts.rig}`);
+        console.log(`已把发现项 ${discoveredId} 绑定到工作组 ${opts.rig} 的节点 ${opts.node}`);
       } else {
-        console.log(`Created node ${opts.pod}.${opts.member} and bound discovery ${discoveredId} in rig ${opts.rig}`);
+        console.log(`已创建节点 ${opts.pod}.${opts.member}，并在工作组 ${opts.rig} 中绑定发现项 ${discoveredId}`);
       }
     });
 

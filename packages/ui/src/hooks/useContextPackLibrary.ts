@@ -1,5 +1,4 @@
-// Rig Context / Composable Context Injection v0 (PL-014) — UI hooks
-// for the context_packs library + review + send.
+// Rig Context / 可组合上下文注入 v0（PL-014）——面向 context_packs 库 + 评审 + 发送的界面 hooks。
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -41,14 +40,12 @@ export interface ContextPackPreview {
 async function fetchContextPacks(): Promise<ContextPackEntry[]> {
   const res = await fetch("/api/context-packs/library");
   if (!res.ok) {
-    if (res.status === 503) return []; // honest fallback when library not configured
+    if (res.status === 503) return []; // 库未配置时的诚实兜底
     throw new Error(`HTTP ${res.status}`);
   }
   const body = await res.json().catch(() => null);
-  // Cross-CLI-version drift guard: an older daemon that doesn't ship
-  // the route may surface 200 with a non-array placeholder. Fall back
-  // to an empty list rather than letting consumers .map() into an
-  // exception.
+  // 跨 CLI 版本漂移防护：未提供该路由的旧后台服务可能返回 200 但带一个非数组占位。
+  // 兜底为空数组，而不是让消费方 .map() 时抛异常。
   return Array.isArray(body) ? body : [];
 }
 
@@ -60,7 +57,7 @@ export function useContextPackLibrary() {
   });
 }
 
-// Slice-03 Atom 5: preview addresses by the pack's path-like ref.
+// Slice-03 Atom 5：预览按 context-pack 类路径 ref 寻址。
 async function fetchContextPackPreview(ref: string): Promise<ContextPackPreview> {
   const res = await fetch(`/api/context-packs/library/by-ref/preview?ref=${encodeURIComponent(ref)}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

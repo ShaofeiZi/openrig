@@ -4,16 +4,15 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-// 51-04 testbed image — the Dockerfile is the deliverable (plan §1). `docker build` runs
-// HOST-side (the locus ruling: the VM seat has no container runtime); this contract test is the
-// VM-authorable proof that the Dockerfile encodes the plan §1 fences as executable guards, so a
-// later edit that floats the base tag, pulls openrig from the npm registry, or drops the non-root
-// user breaks the build here — not silently in a host-side image nobody re-audits.
+// 51-04 testbed 镜像——Dockerfile 就是交付物（计划 §1）。`docker build` 在宿主机侧运行
+// （locus 裁决：VM seat 没有容器运行时）；本契约测试是“VM 可编写”的证明，证明 Dockerfile 把
+// 计划 §1 的栅栏编码成了可执行守卫，使日后某次编辑——让 base tag 浮动、从 npm registry 拉 openrig、
+// 或去掉非 root 用户——都在这里破坏构建，而不是默默留在一个没人复审的宿主机侧镜像里。
 //
-// The fences it pins (plan §1 + the FENCES line): base parameterized for a digest-pin (never a
-// floating tag baked in); tmux + git present (the PTY/tmux substrate); node pinned to an in-range
-// engines version; OpenRig installed from a COPY'd local tarball, NEVER the npm registry (0.5.1 is
-// unreleased — build from the tree); a non-root `openrig` user; a tini/dumb-init entrypoint.
+// 它钉的栅栏（计划 §1 + FENCES 行）：base 参数化以便 digest 钉死（绝不把浮动 tag 烤进去）；
+// tmux + git 就位（PTY/tmux 底座）；node 钉在 engines 区间内的版本；OpenRig 从 COPY 进来的本地
+// tarball 安装，绝不走 npm registry（0.5.1 未发布——从源码树构建）；一个非 root 的 `openrig` 用户；
+// 一个 tini/dumb-init 入口。
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");
@@ -41,7 +40,7 @@ test("base is parameterized via ARG BASE_IMAGE + FROM ${BASE_IMAGE} — no float
   const text = readDockerfile();
   assert.match(text, /^ARG\s+BASE_IMAGE\b/m, "must declare ARG BASE_IMAGE (digest supplied by the build verb)");
   assert.match(text, /^FROM\s+\$\{BASE_IMAGE\}/m, "FROM must consume ${BASE_IMAGE}, not a hardcoded image");
-  // No FROM with a concrete floating tag baked in (e.g. FROM node:22-slim / debian:bookworm-slim).
+  // 不得内置具体 floating tag 的 FROM（例如 FROM node:22-slim / debian:bookworm-slim）。
   for (const line of instructions(text)) {
     if (/^FROM\s/i.test(line)) {
       assert.match(line, /\$\{BASE_IMAGE\}/, `FROM must be parameterized, got: ${line}`);
@@ -65,11 +64,11 @@ test("node is pinned via ARG NODE_VERSION to an in-range (even LTS) engines vers
 
 test("OpenRig is installed from a COPY'd local tarball, NEVER the npm registry", () => {
   const text = readDockerfile();
-  // Positive: there is a build ARG for the tarball, it is COPY'd in, and installed from that path.
+  // 正面：tarball 有一个 build ARG，它被 COPY 进来，并从该路径安装。
   assert.match(text, /^ARG\s+OPENRIG_TARBALL\b/m, "must declare ARG OPENRIG_TARBALL");
   assert.match(text, /^COPY\s+.*\$\{OPENRIG_TARBALL\}/m, "must COPY the tarball into the image");
   assert.match(text, /npm\s+install[^\n]*\.tgz/, "must install openrig from the local .tgz");
-  // Negative fence: no registry install of the openrig package by bare name.
+  // 反面栅栏：绝不按裸名从 registry 安装 openrig 包。
   assert.doesNotMatch(
     text,
     /npm\s+(?:install|i|add)\s+(?:-g\s+)?openrig(?:@|\s|$)/m,

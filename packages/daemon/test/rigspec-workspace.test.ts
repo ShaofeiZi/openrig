@@ -2,14 +2,14 @@
 // normalization tests.
 //
 // Pins:
-//   - validateRigSpec accepts an optional workspace block with required
+//   - validateRigSpec 接受可选 workspace block，含必填
 //     workspace_root + repos[] + per-repo (name, path, kind)
 //   - rejects malformed (missing workspace_root, unknown kind, duplicate
-//     repo name, default_repo not in repos[])
-//   - back-compat: rigs without workspace block stay valid
-//   - normalize round-trips fields and resolves relative paths against
+//     repo name、default_repo 不在 repos[])
+//   - 向后兼容：无 workspace block 的 rig 仍有效
+//   - normalize 往返字段并解析相对路径相对
 //     workspace_root
-//   - codec round-trip preserves the workspace block on serialize/parse
+//   - codec 往返在 serialize/parse 时保留 workspace block
 
 import { describe, it, expect } from "vitest";
 import { RigSpecSchema } from "../src/domain/rigspec-schema.js";
@@ -43,25 +43,25 @@ const workspaceBlock = {
   knowledge_root: "/Users/test/knowledge",
 };
 
-describe("RigSpec validation — workspace block (PL-007)", () => {
-  it("accepts a well-formed workspace block", () => {
+describe("RigSpec 校验——工作区块（PL-007）", () => {
+  it("接受结构正确的工作区块", () => {
     const result = RigSpecSchema.validate({ ...baseRig, workspace: workspaceBlock });
     expect(result.valid).toBe(true);
   });
 
-  it("back-compat: rig without workspace block stays valid", () => {
+  it("向后兼容：没有工作区块的工作组仍有效", () => {
     const result = RigSpecSchema.validate(baseRig);
     expect(result.valid).toBe(true);
   });
 
-  it("rejects missing workspace_root", () => {
+  it("拒绝缺少 workspace_root", () => {
     const broken = { ...baseRig, workspace: { ...workspaceBlock, workspace_root: "" } };
     const result = RigSpecSchema.validate(broken);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("workspace_root"))).toBe(true);
   });
 
-  it("rejects an unknown kind", () => {
+  it("拒绝未知 kind", () => {
     const broken = {
       ...baseRig,
       workspace: { ...workspaceBlock, repos: [{ name: "x", path: "x", kind: "rd-pod" }] },
@@ -71,7 +71,7 @@ describe("RigSpec validation — workspace block (PL-007)", () => {
     expect(result.errors.some((e) => /kind/i.test(e))).toBe(true);
   });
 
-  it("rejects duplicate repo names", () => {
+  it("拒绝重复仓库名称", () => {
     const broken = {
       ...baseRig,
       workspace: {
@@ -84,17 +84,17 @@ describe("RigSpec validation — workspace block (PL-007)", () => {
     };
     const result = RigSpecSchema.validate(broken);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => /duplicate/i.test(e))).toBe(true);
+    expect(result.errors.some((e) => /重复/.test(e))).toBe(true);
   });
 
-  it("rejects default_repo that does not match any repo", () => {
+  it("拒绝不匹配任何仓库的 default_repo", () => {
     const broken = { ...baseRig, workspace: { ...workspaceBlock, default_repo: "nonexistent" } };
     const result = RigSpecSchema.validate(broken);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => /default_repo/.test(e))).toBe(true);
   });
 
-  it("normalize resolves relative repo paths against workspace_root", () => {
+  it("normalize 相对于 workspace_root 解析仓库相对路径", () => {
     const normalized = RigSpecSchema.normalize({ ...baseRig, workspace: workspaceBlock } as Record<string, unknown>);
     expect(normalized.workspace).toBeDefined();
     expect(normalized.workspace?.workspaceRoot).toBe("/Users/test/project");
@@ -104,12 +104,12 @@ describe("RigSpec validation — workspace block (PL-007)", () => {
     expect(normalized.workspace?.knowledgeRoot).toBe("/Users/test/knowledge");
   });
 
-  it("normalize accepts a rig without workspace block", () => {
+  it("normalize 接受没有工作区块的工作组", () => {
     const normalized = RigSpecSchema.normalize(baseRig as Record<string, unknown>);
     expect(normalized.workspace).toBeUndefined();
   });
 
-  it("validates all 5 typed kinds (user/project/knowledge/lab/delivery)", () => {
+  it("校验全部 5 种类型化 kind（user/project/knowledge/lab/delivery）", () => {
     for (const k of ["user", "project", "knowledge", "lab", "delivery"]) {
       const result = RigSpecSchema.validate({
         ...baseRig,
@@ -122,7 +122,7 @@ describe("RigSpec validation — workspace block (PL-007)", () => {
     }
   });
 
-  it("codec round-trips the workspace block", () => {
+  it("codec 可往返转换工作区块", () => {
     const normalized = RigSpecSchema.normalize({ ...baseRig, workspace: workspaceBlock } as Record<string, unknown>);
     const yaml = RigSpecCodec.serialize(normalized);
     const parsed = RigSpecCodec.parse(yaml) as Record<string, unknown>;

@@ -8,7 +8,7 @@ interface RuntimeVerifierDeps {
   db: Database.Database;
 }
 
-// OPR.0.4.6.PI1 — Pi's documented Node engine floor (package.json engines).
+// OPR.0.4.6.PI1——Pi 文档声明的 Node 引擎最低版本（package.json engines）。
 export const PI_NODE_ENGINE_FLOOR = "22.19.0";
 
 export function meetsPiNodeEngineFloor(version: string): boolean {
@@ -24,8 +24,8 @@ export function meetsPiNodeEngineFloor(version: string): boolean {
 }
 
 /**
- * Verifies runtimes are usable — not just present on PATH.
- * Persists results to runtime_verifications table automatically.
+ * 验证运行时确实可用，而不只是存在于 PATH。结果自动持久化到
+ * runtime_verifications 表。
  */
 export class RuntimeVerifier {
   readonly db: Database.Database;
@@ -36,7 +36,7 @@ export class RuntimeVerifier {
     this.exec = deps.exec;
   }
 
-  /** Verify tmux: `tmux -V`, parse version from output. */
+  /** 验证 tmux：执行 `tmux -V` 并从输出解析版本。 */
   async verifyTmux(): Promise<RuntimeVerification> {
     const result = await this.runProbe("tmux", async () => {
       const output = await this.exec("tmux -V");
@@ -50,7 +50,7 @@ export class RuntimeVerifier {
     return result;
   }
 
-  /** Verify cmux: `cmux capabilities --json`, parse capabilities. */
+  /** 验证 cmux：执行 `cmux capabilities --json` 并解析能力。 */
   async verifyCmux(): Promise<RuntimeVerification> {
     const result = await this.runProbe("cmux", async () => {
       const output = await this.exec("cmux capabilities --json");
@@ -60,30 +60,30 @@ export class RuntimeVerifier {
         const capsJson = JSON.stringify(parsed);
         return { status: "verified" as RuntimeStatus, version: null, capabilitiesJson: capsJson, error: null };
       } catch {
-        return { status: "error" as RuntimeStatus, version: null, capabilitiesJson: null, error: "invalid capabilities JSON" };
+        return { status: "error" as RuntimeStatus, version: null, capabilitiesJson: null, error: "capabilities JSON 无效" };
       }
     }, "degraded");
     this.persist(result);
     return result;
   }
 
-  /** Verify Claude Code: `claude --version`, fallback to `claude --help`. */
+  /** 验证 Claude Code：执行 `claude --version`，失败时回退到 `claude --help`。 */
   async verifyClaude(): Promise<RuntimeVerification> {
     const result = await this.verifyVersionOrHelp("claude", "claude-code");
     this.persist(result);
     return result;
   }
 
-  /** Verify Codex: `codex --version`, fallback to `codex --help`. */
+  /** 验证 Codex：执行 `codex --version`，失败时回退到 `codex --help`。 */
   async verifyCodex(): Promise<RuntimeVerification> {
     const result = await this.verifyVersionOrHelp("codex", "codex");
     this.persist(result);
     return result;
   }
 
-  /** OPR.0.4.6.PI1 FR-1 — Verify Pi: `pi --version` (fallback `pi --help`)
-   *  plus the Node engine floor Pi requires (>= 22.19.0). Provider/model
-   *  resolvability is member-scoped and verified at launch, not here. */
+  /** OPR.0.4.6.PI1 FR-1——验证 Pi：执行 `pi --version`（回退为 `pi --help`），
+   *  并检查 Pi 要求的 Node 引擎最低版本（>= 22.19.0）。provider/model
+   *  可解析性属于成员作用域，在启动时校验，不在此处理。 */
   async verifyPi(): Promise<RuntimeVerification> {
     let result = await this.verifyVersionOrHelp("pi", "pi");
     if (result.status === "verified") {
@@ -95,12 +95,11 @@ export class RuntimeVerifier {
             "error",
             result.version,
             null,
-            `Pi requires Node >= ${PI_NODE_ENGINE_FLOOR}; found ${nodeVersion}. Upgrade Node to run pi seats.`,
+            `Pi 要求 Node >= ${PI_NODE_ENGINE_FLOOR}；当前为 ${nodeVersion}。请升级 Node 后再运行 Pi 席位。`,
           );
         }
       } catch {
-        // `node` unresolvable from the daemon's exec context — leave the
-        // binary verification standing; the engine floor re-checks at launch.
+        // 后台服务执行上下文无法解析 `node`——保留二进制验证结果；启动时会再次检查引擎下限。
       }
     }
     this.persist(result);
@@ -108,8 +107,8 @@ export class RuntimeVerifier {
   }
 
   /**
-   * Verify multiple runtimes. Returns results in input order.
-   * @param runtimes - canonical runtime names: 'tmux', 'cmux', 'claude-code', 'codex', 'pi'
+   * 验证多个运行时，按输入顺序返回结果。
+   * @param runtimes - 权威运行时名称：'tmux'、'cmux'、'claude-code'、'codex'、'pi'
    */
   async verifyAll(runtimes: string[]): Promise<RuntimeVerification[]> {
     const results: RuntimeVerification[] = [];
@@ -121,7 +120,7 @@ export class RuntimeVerifier {
         case "codex": results.push(await this.verifyCodex()); break;
         case "pi": results.push(await this.verifyPi()); break;
         default: {
-          const v = this.buildVerification(runtime, "not_found", null, null, `unknown runtime: ${runtime}`);
+          const v = this.buildVerification(runtime, "not_found", null, null, `未知运行时：${runtime}`);
           this.persist(v);
           results.push(v);
         }
@@ -131,28 +130,28 @@ export class RuntimeVerifier {
   }
 
   /**
-   * Shared helper: try `{binary} --version`, fall back to `{binary} --help`.
-   * Used by verifyClaude and verifyCodex.
+   * 共享辅助函数：先尝试 `{binary} --version`，再回退到 `{binary} --help`。
+   * 由 verifyClaude 与 verifyCodex 共用。
    */
   private async verifyVersionOrHelp(binary: string, canonicalName: string): Promise<RuntimeVerification> {
-    // Try --version first
+    // 先尝试 --version。
     try {
       const output = await this.exec(`${binary} --version`);
       const version = this.parseVersion(output);
       return this.buildVerification(canonicalName, "verified", version ?? null, null, null);
     } catch {
-      // Fall back to --help
+      // 回退到 --help。
       try {
         await this.exec(`${binary} --help`);
         return this.buildVerification(canonicalName, "verified", null, null, null);
       } catch {
-        return this.buildVerification(canonicalName, "not_found", null, null, `${binary} not found`);
+        return this.buildVerification(canonicalName, "not_found", null, null, `未找到 ${binary}`);
       }
     }
   }
 
   /**
-   * Run a probe with error handling. On exec failure, returns failStatus (default: not_found).
+   * 运行探针并处理错误。执行失败时返回 failStatus（默认 not_found）。
    */
   private async runProbe(
     runtime: string,
@@ -185,13 +184,13 @@ export class RuntimeVerifier {
     };
   }
 
-  /** Parse a semver-like version from output (e.g. "tmux 3.4" -> "3.4"). */
+  /** 从输出解析类似 semver 的版本，例如 "tmux 3.4" -> "3.4"。 */
   private parseVersion(output: string): string | undefined {
     const match = output.match(/(\d+\.\d+(?:\.\d+)?(?:[a-z])?)/);
     return match?.[1];
   }
 
-  /** Persist verification to runtime_verifications table. Upserts by runtime name. */
+  /** 将验证结果持久化到 runtime_verifications 表，按运行时名称 upsert。 */
   private persist(v: RuntimeVerification): void {
     const existing = this.db
       .prepare("SELECT id FROM runtime_verifications WHERE runtime = ?")

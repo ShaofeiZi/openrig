@@ -1,7 +1,7 @@
-// S5b final-fix round 2 (r2 artifact 8d9ec788) — the WHOLE import/materialize
-// delivery class, table-shaped so the typed rig_name_running variant cannot
-// drift among sibling handlers: pod-aware import (fixed round 1, control),
-// legacy import and materialize-only (the two 500-mapping siblings).
+// S5b final-fix 第 2 轮（r2 artifact 8d9ec788）——整个 import/materialize
+// 交付类，表状以便类型化 rig_name_running 变体不得在兄弟 handler 间漂移：
+// pod 感知 import（第 1 轮修复，对照）、legacy import 与 materialize-only
+//（两个 500 映射兄弟）。
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
 import { createFullTestDb, createTestApp } from "./helpers/test-app.js";
@@ -33,7 +33,7 @@ const LEGACY_YAML = (name: string) => [
   "edges: []",
 ].join("\n");
 
-describe("import/materialize routes — rig_name_running is a 409 conflict on EVERY sibling (S5b r2)", () => {
+describe("import/materialize 路由——所有同级入口的 rig_name_running 均为 409 冲突（S5b r2）", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
 
@@ -56,9 +56,8 @@ describe("import/materialize routes — rig_name_running is a 409 conflict on EV
     return (db.prepare("SELECT COUNT(*) AS c FROM rigs WHERE name = ?").get(name) as { c: number }).c;
   }
 
-  // The table: every production route that surfaces an instantiate/materialize
-  // outcome, driven identically. Adding a sibling handler without adding a row
-  // here is the drift this test exists to catch.
+  // 该表：每个浮出 instantiate/materialize 结果的生产路由，同等驱动。
+  // 加兄弟 handler 而不在此处加一行，就是本测试存在要抓的漂移。
   const ROUTES: Array<{
     label: string;
     path: string;
@@ -104,15 +103,15 @@ describe("import/materialize routes — rig_name_running is a 409 conflict on EV
       expect(body["message"], `${route.label} message/error parity`).toBe(teaching);
       expect(teaching).toContain(name);
       expect(teaching).toContain(rig.id);
-      expect(teaching).toMatch(/nothing was created or launched/i);
-      expect(teaching).toMatch(/rig down/);
+      expect(teaching).toMatch(/未创建或启动任何内容/);
+      expect(teaching).toMatch(/zrig down/);
 
       expect(rigCount(name), `${route.label} rig count`).toBe(1);
       expect(createSession, `${route.label} launches`).not.toHaveBeenCalled();
     });
   }
 
-  it("control: materialize with X-Target-Rig-Id (adopt/expand family) targets the EXISTING rig — guard never fires", async () => {
+  it("对照：带 X-Target-Rig-Id 的 materialize（adopt/expand 族）指向现有工作组且不触发守卫", async () => {
     const rig = seedRunningRig("target-mat");
     const res = await setup.app.request("/api/rigs/import/materialize", {
       method: "POST",

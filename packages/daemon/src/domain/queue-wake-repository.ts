@@ -4,14 +4,13 @@ import { isQueueWait } from "./queue-wait-backoff.js";
 export type ParkWakeKind = "watchdog" | "timer" | "blocker";
 export type ParkWakePhase = "armed" | "fired";
 
-/** S16: identifies the one shared provider/account blocker whose own timer expiry
- *  is inherited by its dependent HELD rows. Ordinary blockers remain expiry-less. */
+/** S16：标识唯一共享的 provider/账号阻塞项，其计时器到期时间会被依赖它的 HELD 行继承。
+ * 普通阻塞项仍不带到期时间。 */
 export const USAGE_LIMIT_BLOCKER_TAG = "usage-limit-blocker";
 export const USAGE_LIMIT_POOL_TAG_PREFIX = "usage-limit-pool:";
 
-/** One arithmetic for the S16 timer's projected due boundary. The scheduler
- *  enforces the same boundary after the attach leg seeds lastEvaluationAt to
- *  registeredAt. */
+/** S16 计时器预计到期边界的唯一计算方式。附加阶段用 registeredAt 初始化
+ * lastEvaluationAt 后，调度器会执行同一边界。 */
 export function timerExpiresAt(registeredAt: string, intervalSeconds: number): string | undefined {
   const registeredAtMs = Date.parse(registeredAt);
   if (!Number.isFinite(registeredAtMs) || !Number.isFinite(intervalSeconds)) return undefined;
@@ -34,13 +33,12 @@ export interface ParkWakeStatus {
   phase: ParkWakePhase;
   live: boolean;
   deliveryStatus: string | null;
-  /** A wake fired, but the row is still HELD. The resume attempt is visible
-   *  and cannot be mistaken for a healthy armed continuation. */
+  /** 唤醒已触发，但该行仍处于 HELD。恢复尝试必须可见，不能误认为健康的已武装延续。 */
   unconsumed: boolean;
-  /** Repeating wait notices have a separate bounded recovery owner. */
+  /** 重复等待通知由独立且有界的恢复责任方处理。 */
   recoveryOwner?: "queue-stuck-sweep";
-  /** Absolute due time derived from canonical watchdog metadata. Present only
-   *  for a timer or a dependent of the sanctioned usage-limit timer blocker. */
+  /** 从规范 watchdog 元数据派生的绝对到期时间。只对计时器或获准的使用量限制计时器
+   * 阻塞项的依赖者提供。 */
   expiresAt?: string;
 }
 
@@ -53,7 +51,7 @@ interface WakeRow {
   delivery_status: string | null;
 }
 
-/** Persistence + live-state projection for transition-bound park wakes. */
+/** 与转换绑定的暂存唤醒持久化及实时状态投影。 */
 export class QueueWakeRepository {
   private readonly available: boolean;
 
@@ -137,10 +135,9 @@ export class QueueWakeRepository {
     });
   }
 
-  /** Queue rows bound to a park-generated timer, regardless of whether that
-   *  timer has fired before. Legacy daemons could leave a repeating timer live
-   *  after its row closed, so delivery-time defense must consult the original
-   *  armed binding rather than only the current blocked/fired projection. */
+  /** 查找绑定到暂存流程所生成计时器的队列行，不论计时器此前是否触发。旧版后台服务可能在
+   * 行关闭后仍保留重复计时器，因此交付时防护必须查询原始 armed 绑定，不能只看当前
+   * blocked/fired 投影。 */
   findQitemsByGeneratedTimer(jobId: string): Array<{ qitemId: string; state: string }> {
     if (!this.available) return [];
     return this.db.prepare(
@@ -154,13 +151,11 @@ export class QueueWakeRepository {
     });
   }
 
-  /** Rows that attached an OPERATOR watchdog to this job, whatever their state.
-   *  A park-generated timer and an operator attachment can share one job id:
-   *  `--wake-watchdog` accepts any active job whose target matches the parked
-   *  owner, including the job another row's `--wake-after` produced, and that
-   *  second binding persists as wake_kind = 'watchdog' against the same
-   *  wake_ref. This lookup is how the timer backstop learns the job is not
-   *  solely its own to retire. */
+  /** 查找把操作者 watchdog 附加到此任务的队列行，不限其当前状态。暂存流程生成的计时器
+   * 与操作者附件可以共享同一个任务 ID：`--wake-watchdog` 接受目标匹配暂存所有者的任意
+   * 活跃任务，包括另一行通过 `--wake-after` 创建的任务；第二个绑定会以
+   * wake_kind = 'watchdog' 持久化到相同 wake_ref。计时器后备机制借此判断该任务并非只能
+   * 由自己退役。 */
   findQitemsByAttachedWatchdog(jobId: string): Array<{ qitemId: string; state: string }> {
     if (!this.available) return [];
     return this.db.prepare(

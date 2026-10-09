@@ -16,27 +16,25 @@ export interface SlowOperationSnapshot {
 }
 
 /**
- * OPR.0.4.3.21 (51elv2) — the named terminal-failure signal. A rejected
- * flush/close carries this error after the recorder Worker is lost, so a
- * caller can never mistake a settled-but-lost drain for a successful durable
- * one (see the terminal transition in {@link SlowOpRecorder}).
+ * OPR.0.4.3.21（51elv2）——具名终态失败信号。recorder Worker 丢失后，
+ * 被拒绝的 flush/close 携带此错误，使调用方不会把“已结束但丢失”的排空误认为
+ * 成功持久排空（见 {@link SlowOpRecorder} 的终态迁移）。
  */
 export class SlowOpRecorderTerminatedError extends Error {
   constructor(reason: string) {
-    super(`slow-operation recorder terminated: ${reason}`);
+    super(`慢操作记录器已终止：${reason}`);
     this.name = "SlowOpRecorderTerminatedError";
   }
 }
 
 /**
- * OPR.0.4.3.21 (51elv2) — the named acknowledged-write-failure signal. The
- * Worker is still alive (distinct from {@link SlowOpRecorderTerminatedError}),
- * but it acknowledged that a record could not be durably written; flush()/close()
- * reject with this so a known-lost record can never read as a clean durable drain.
+ * OPR.0.4.3.21（51elv2）——具名的已确认写失败信号。Worker 仍存活
+ *（区别于 {@link SlowOpRecorderTerminatedError}），但它已确认某条记录无法持久写入；
+ * flush()/close() 以此拒绝，避免已知丢失的记录看起来像干净的持久排空。
  */
 export class SlowOpRecorderWriteError extends Error {
   constructor(reason: string) {
-    super(`slow-operation recorder write failed: ${reason}`);
+    super(`慢操作记录器写入失败：${reason}`);
     this.name = "SlowOpRecorderWriteError";
   }
 }
@@ -51,18 +49,17 @@ export interface SlowOperationInstrumentation {
   recordRequest?(site: string, durationMs: number): void;
   snapshot?(): SlowOperationSnapshot;
   setDegradedHandler?(handler: (snapshot: Required<Pick<SlowOperationSnapshot, "reason" | "site">>) => void): void;
-  // OPR.0.4.3.21 (51elv2) — optional graceful-shutdown lifecycle. A drain that
-  // cannot prove durability rejects (never a silent success); see index.ts.
+  // OPR.0.4.3.21（51elv2）——可选优雅关闭生命周期。无法证明持久性的排空会被拒绝，
+  // 绝不静默成功；见 index.ts。
   flush?(): Promise<void>;
   close?(): Promise<void>;
 }
 
-// The request-timing MIDDLEWARE, extracted as a wired seam (OPR request-observer). It is
-// MEASUREMENT-ONLY: the observer is invoked in a `finally` and isolated in its own try/catch, so a
-// throwing observer can NEVER replace the route's real status/body. `now` is injectable (default
-// real wall-clock) so the recorded durations are DETERMINISTIC under test — the same injectable-clock
-// discipline as the compaction-restore + mission-bucket seams. server.ts wires this via
-// `app.use("*", createSlowOpRequestMiddleware(recorder))`; the startup-wiring pin proves that enable path.
+// 请求计时中间件，被提取为已接线接缝（OPR request-observer）。它仅做测量：observer 在
+// `finally` 中调用，并由独立 try/catch 隔离，所以 observer 抛错绝不能替换路由的真实 status/body。
+// `now` 可注入（默认真实墙上时钟），使记录时长在测试中确定；这与 compaction-restore 和
+// mission-bucket 接缝采用相同的可注入时钟纪律。server.ts 通过
+// `app.use("*", createSlowOpRequestMiddleware(recorder))` 接线；startup-wiring 固定用例证明启用路径。
 export function createSlowOpRequestMiddleware(
   recorder: Pick<SlowOperationInstrumentation, "recordRequest">,
   now: () => number = () => Date.now(),
@@ -75,8 +72,8 @@ export function createSlowOpRequestMiddleware(
       try {
         recorder.recordRequest?.(`${c.req.method} ${c.req.path}`, now() - startedAt);
       } catch (error) {
-        // A measurement throw must never re-enter Hono control flow (would turn the route into a 500).
-        console.error("[slow-operation] request observer failed", error);
+        // 测量抛错绝不能重新进入 Hono 控制流，否则会把路由变成 500。
+        console.error("[慢操作] 请求观察器失败", error);
       }
     }
   };
@@ -160,15 +157,12 @@ export class SlowOpRecorder implements SlowOperationInstrumentation {
   private degraded: SlowOperationSnapshot = { healthy: true };
   private degradedHandler?: (snapshot: Required<Pick<SlowOperationSnapshot, "reason" | "site">>) => void;
   private closed = false;
-  // OPR.0.4.3.21 (51elv2) — set once the Worker is lost (error / unexpected
-  // exit / messageerror / synchronous postMessage failure). Distinct from
-  // `closed` (an expected caller-initiated teardown): a terminal recorder
-  // rejects every future post/flush so nothing waits forever or reports a
-  // false durable drain.
+  // OPR.0.4.3.21（51elv2）——Worker 丢失时设置一次（error、意外 exit、messageerror
+  // 或同步 postMessage 失败）。它与 `closed`（调用方发起的预期拆除）不同：终态 recorder
+  // 会拒绝后续所有 post/flush，避免无限等待或错误报告持久排空成功。
   private terminalReason: string | null = null;
-  // OPR.0.4.3.21 (51elv2) — sticky latch set once the Worker acknowledges a
-  // record it could not durably write (ok:false). The Worker stays alive, but
-  // durability is lost, so flush()/close() must refuse to report a clean drain.
+  // OPR.0.4.3.21（51elv2）——Worker 确认某条记录无法持久写入（ok:false）后设置的
+  // 粘性闩锁。Worker 仍存活，但持久性已丢失，因此 flush()/close() 必须拒绝报告干净排空。
   private acknowledgedWriteFailure = false;
 
   constructor(options: SlowOpRecorderOptions) {
@@ -182,19 +176,18 @@ export class SlowOpRecorder implements SlowOperationInstrumentation {
     this.worker.on("message", (message: { id?: string; ok?: boolean }) => {
       if (!message.id) return;
       if (message.ok === false) {
-        // Latch the lost durability BEFORE resolving this waiter (the write
-        // attempt is done, just failed): keep the one-shot degraded signal and
-        // waiter resolution, but flush()/close() will now refuse a clean drain.
+        // 在解决此 waiter 前锁存持久性丢失（写尝试已结束，只是失败）：保留一次性 degraded
+        // 信号和 waiter 解决，但 flush()/close() 此后会拒绝干净排空。
         this.acknowledgedWriteFailure = true;
         this.markDegraded("recorder_write_failed", "recorder.worker");
       }
       this.pending.get(message.id)?.resolve();
       this.pending.delete(message.id);
     });
-    // One terminal transition for every unrecoverable Worker-loss trigger.
+    // 所有不可恢复 Worker 丢失触发器共用一个终态迁移。
     this.worker.on("error", () => this.handleTerminalFailure("recorder_worker_failed"));
-    // An unexpected exit (any code — 0 included) while the recorder is still
-    // open is a loss; a normal close() sets `closed` first, so we skip it.
+    // recorder 尚开启时的意外退出（包括退出码 0）都算丢失；正常 close() 会先设置
+    // `closed`，因此此处跳过。
     this.worker.on("exit", () => {
       if (!this.closed) this.handleTerminalFailure("recorder_worker_exited");
     });
@@ -223,9 +216,8 @@ export class SlowOpRecorder implements SlowOperationInstrumentation {
         record: { v: 1, ts: new Date().toISOString(), spanId: span.spanId, phase: "begin", site },
       });
     } catch {
-      // Synchronous postMessage failure means the Worker is gone: degrade
-      // through the terminal transition but still return the span so the
-      // wrapped operation runs to completion (its value/error stays exact).
+      // 同步 postMessage 失败表示 Worker 已消失：经终态迁移降级，但仍返回 span，
+      // 使被包装操作执行完成，并精确保留其值/错误。
       this.handleTerminalFailure("recorder_post_failed", site);
       return span;
     }
@@ -282,12 +274,10 @@ export class SlowOpRecorder implements SlowOperationInstrumentation {
 
   async flush(): Promise<void> {
     if (this.closed) return;
-    // Rejects with SlowOpRecorderTerminatedError when the Worker is lost —
-    // finite, and never a false durable-drain success.
+    // Worker 丢失时以 SlowOpRecorderTerminatedError 拒绝——有界结束，绝不伪报持久排空成功。
     await this.postAndWait({ type: "flush" });
-    // The marker round-tripped, but if the Worker earlier acknowledged a write
-    // it could not persist, durability is unproven — reject so flush()/close()
-    // (and the production drain) never report a clean drain over a lost record.
+    // marker 已往返，但若 Worker 此前确认某次写入无法持久化，则持久性仍未证明；
+    // 必须拒绝，使 flush()/close()（及生产排空）不在记录丢失时报告干净排空。
     if (this.acknowledgedWriteFailure) {
       throw new SlowOpRecorderWriteError("recorder_write_failed");
     }
@@ -295,9 +285,8 @@ export class SlowOpRecorder implements SlowOperationInstrumentation {
 
   async close(): Promise<void> {
     if (this.closed) return;
-    // Best-effort drain that still tears the Worker down and finishes finitely,
-    // but preserves a terminal drain failure for the caller (index.ts maps it
-    // to a nonzero exit so a lost drain never looks like a clean shutdown).
+    // 尽力排空仍会拆除 Worker 并在有限时间内结束，但为调用方保留终态排空失败；
+    // index.ts 将其映射为非零退出，使丢失排空绝不会看起来像干净关闭。
     let drainError: unknown;
     try {
       await this.flush();
@@ -323,9 +312,8 @@ export class SlowOpRecorder implements SlowOperationInstrumentation {
 
   private appendAsync(record: Record<string, unknown>): void {
     if (this.closed) return;
-    // Fire-and-forget: a terminal Worker loss rejects this promise, so we
-    // internalize that outcome — Worker loss must never surface as an
-    // unhandled rejection on a measurement path.
+    // 发出即忘：终态 Worker 丢失会拒绝此 promise，因此在内部消化该结果；
+    // Worker 丢失绝不能在测量路径上暴露成未处理拒绝。
     void this.postAndWait({
       type: "append",
       logPath: this.logPath,
@@ -344,8 +332,8 @@ export class SlowOpRecorder implements SlowOperationInstrumentation {
       try {
         this.worker.postMessage({ ...message, id });
       } catch {
-        // Synchronous postMessage failure — the Worker is gone. Same terminal
-        // transition; this waiter is rejected along with any others.
+        // 同步 postMessage 失败——Worker 已消失。执行同一终态迁移；
+        // 此 waiter 与其他 waiter 一起被拒绝。
         this.pending.delete(id);
         this.handleTerminalFailure("recorder_post_failed");
         reject(this.terminalError());
@@ -358,10 +346,9 @@ export class SlowOpRecorder implements SlowOperationInstrumentation {
   }
 
   /**
-   * The single terminal-failure transition for every unrecoverable Worker-loss
-   * trigger. Idempotent (settles pending exactly once), marks health degraded
-   * with the one-shot high-urgency signal, and rejects every pending waiter so
-   * no flush hangs or reports a false durable drain.
+   * 所有不可恢复 Worker 丢失触发器共用的唯一终态失败迁移。它是幂等的
+   *（pending 仅结算一次），用一次性高紧急度信号将健康标为 degraded，并拒绝每个
+   * pending waiter，使 flush 不会挂起或误报持久排空成功。
    */
   private handleTerminalFailure(reason: string, site = "recorder.worker"): void {
     if (this.terminalReason !== null) return;

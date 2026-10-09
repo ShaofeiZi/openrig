@@ -1,61 +1,58 @@
 /**
- * Slice 51-02 delta D7 — scenario TUI PROVISIONING (opt-in, bounded, fail-loud).
+ * Slice 51-02 delta D7——scenario TUI provisioning（opt-in、有界、明确失败）。
  *
- * The `tui_socket` surface reads the shipped TUI's control socket, which exists
- * only INSIDE a running TUI process — nothing else creates it. Merely spawning
- * the TUI and proceeding leaves the first read racing a socket that may not be
- * listening yet: `readTuiSocket` rejects immediately on a connect error and the
- * `expect` poller does not catch observation errors, so the scenario would ABORT
- * rather than poll.
+ * `tui_socket` surface 读取已交付 TUI 的 control socket；该 socket 只存在于运行中的 TUI process
+ * 内，其他组件不会创建。仅启动 TUI 就继续，会让首次读取与可能尚未 listen 的 socket 竞争：
+ * `readTuiSocket` 遇到连接错误会立即 reject，`expect` poller 又不捕获 observation error，
+ * 因此 scenario 会直接中止，而不是轮询。
  *
- * So provisioning WAITS, boundedly, for a real `state` round-trip — the same
- * query the surface reader makes — while watching for early process exit, and
- * fails with a NAMED error on either. Teardown runs on success and on every
- * failure path (the caller wraps it in try/finally).
+ * 因此 provisioning 会在有界时间内等待真实 `state` 往返——与 surface reader 发出的 query 相同——
+ * 同时监测 process 是否提前退出，任一情况都以具名 error 失败。成功和所有失败路径都会执行
+ * teardown（caller 使用 try/finally 包裹）。
  *
- * The TUI runs in the scaffold's OWN tmux server (D5) with the scaffold socket
- * path, so provisioning cannot touch the operator's TUI or fleet server.
+ * TUI 在 scaffold 自己的 tmux server（D5）中运行，并使用 scaffold socket path，
+ * 因此 provisioning 不会触碰用户的 TUI 或 fleet server。
  */
 
 import net from "node:net";
 import { spawn, type ChildProcess } from "node:child_process";
 
-/** Thrown when the TUI could not be provisioned (early exit or readiness timeout). */
+/** TUI 无法 provision 时抛出（提前退出或 readiness timeout）。 */
 export class TuiProvisioningError extends Error {
   readonly reason: "early_exit" | "readiness_timeout";
   constructor(reason: "early_exit" | "readiness_timeout", detail: string) {
-    super(`TUI provisioning failed (${reason}): ${detail}`);
+    super(`TUI provisioning 失败（${reason}）：${detail}`);
     this.name = "TuiProvisioningError";
     this.reason = reason;
   }
 }
 
-/** A provisioned TUI: its control-socket path and an idempotent teardown. */
+/** 已 provision 的 TUI：其 control-socket path 与幂等 teardown。 */
 export interface ProvisionedTui {
   socketPath: string;
   stop(): Promise<void>;
 }
 
-/** The process handle provisioning needs — narrowed so tests inject a fake. */
+/** provisioning 所需的 process handle——收窄以便测试注入 fake。 */
 export interface TuiProcessLike {
-  /** Resolves with the exit code when the process exits; never rejects. */
+  /** process 退出时以 exit code resolve；绝不 reject。 */
   exited: Promise<number | null>;
-  /** True once the process has exited. */
+  /** process 退出后为 true。 */
   hasExited(): boolean;
   kill(): void;
 }
 
 export interface ProvisionTuiOptions {
   socketPath: string;
-  /** Spawn the TUI. Injected so the readiness/exit paths are unit-testable. */
+  /** 启动 TUI。可注入，以便对 readiness/exit 路径做单元测试。 */
   spawnTui: () => TuiProcessLike;
-  /** Total readiness bound in ms. */
+  /** readiness 总时限，单位 ms。 */
   readinessTimeoutMs?: number;
-  /** Interval between readiness probes in ms. */
+  /** readiness probe 间隔，单位 ms。 */
   probeIntervalMs?: number;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
-  /** Probe override (defaults to a real `state` round-trip on the socket). */
+  /** probe override（默认为 socket 上的真实 `state` 往返）。 */
   probe?: (socketPath: string) => Promise<boolean>;
 }
 
@@ -63,9 +60,8 @@ const DEFAULT_READINESS_TIMEOUT_MS = 20_000;
 const DEFAULT_PROBE_INTERVAL_MS = 100;
 
 /**
- * One `state` round-trip on the control socket. Returns true only when the TUI
- * answers with a parseable line — i.e. the exact contract the surface reader
- * depends on, not merely "the socket file exists".
+ * 在 control socket 上执行一次 `state` 往返。仅当 TUI 返回可解析的一行时才返回 true——
+ * 这是 surface reader 依赖的精确 contract，而非只检查“socket file 存在”。
  */
 export function probeTuiState(socketPath: string, timeoutMs = 1000): Promise<boolean> {
   return new Promise((resolve) => {
@@ -89,9 +85,8 @@ export function probeTuiState(socketPath: string, timeoutMs = 1000): Promise<boo
 }
 
 /**
- * Spawn the TUI and wait — boundedly — until its control socket answers `state`.
- * Fails NAMED on early exit or timeout, killing the process either way so no
- * orphan survives. On success the caller owns `stop()`.
+ * 启动 TUI，并在有界时间内等待其 control socket 回答 `state`。提前退出或超时时以具名方式失败，
+ * 两种情况下都会终止 process，确保没有 orphan 存留。成功后由 caller 负责 `stop()`。
  */
 export async function provisionTui(opts: ProvisionTuiOptions): Promise<ProvisionedTui> {
   const {
@@ -116,12 +111,12 @@ export async function provisionTui(opts: ProvisionTuiOptions): Promise<Provision
   const start = now();
   for (;;) {
     if (proc.hasExited()) {
-      // Early exit beats readiness: a dead TUI never listens, and waiting out the
-      // full bound would report a timeout for what is really a crash.
+      // 提前退出优先于 readiness：已退出的 TUI 不会 listen，若等待完整时限，会把真实 crash
+      // 错报为 timeout。
       await stop();
       throw new TuiProvisioningError(
         "early_exit",
-        `the TUI process exited (code ${String(exitCode)}) before its control socket answered \`state\` at ${socketPath}`,
+        `TUI process 在 ${socketPath} 的 control socket 回答 \`state\` 前退出（code ${String(exitCode)}）`,
       );
     }
     if (await probe(socketPath)) {
@@ -131,14 +126,14 @@ export async function provisionTui(opts: ProvisionTuiOptions): Promise<Provision
       await stop();
       throw new TuiProvisioningError(
         "readiness_timeout",
-        `the control socket at ${socketPath} did not answer \`state\` within ${readinessTimeoutMs}ms (process still running)`,
+        `${socketPath} 的 control socket 未在 ${readinessTimeoutMs}ms 内回答 \`state\`（process 仍在运行）`,
       );
     }
     await sleep(probeIntervalMs);
   }
 }
 
-/** Spawn the shipped TUI binary as a detached-from-terminal child process. */
+/** 将已交付的 TUI binary 作为脱离 terminal 的 child process 启动。 */
 export function spawnShippedTui(tuiBin: string, env: Record<string, string | undefined>): TuiProcessLike {
   const child: ChildProcess = spawn(process.execPath, [tuiBin], {
     env: env as NodeJS.ProcessEnv,
@@ -152,6 +147,6 @@ export function spawnShippedTui(tuiBin: string, env: Record<string, string | und
   return {
     exited: exitedPromise,
     hasExited: () => exited,
-    kill: () => { try { child.kill("SIGTERM"); } catch { /* already gone */ } },
+    kill: () => { try { child.kill("SIGTERM"); } catch { /* 已退出 */ } },
   };
 }

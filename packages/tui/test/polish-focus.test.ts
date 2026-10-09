@@ -7,27 +7,27 @@ import { createStyle, stripAnsi } from "../src/theme.js";
 import { stylizeLines } from "../src/stylize.js";
 import type { FleetSnapshot } from "../src/types.js";
 
-// Parallel-polish pins: visible pane focus, content selection bar, and the
-// content library mirroring the explorer's folder grouping.
+// 并行 polish 锚点：可见窗格焦点、content 选择条，以及
+// content 库镜像 explorer 的文件夹分组。
 
 const snap = demoSnapshot();
 
-describe("active-pane emphasis (k9s chrome)", () => {
-  it("brackets the focused pane's title in the top rule", () => {
+describe("活动窗格强调（k9s chrome）", () => {
+  it("在顶规则中给聚焦窗格标题加括号", () => {
     const s = createViewState({ instanceId: "t", getSnapshot: () => snap });
     let screen = renderScreen(s.get(), snap, { cols: 140, rows: 34 });
-    expect(screen.lines[1]).toContain("{ EXPLORER }");
-    expect(screen.lines[1]).not.toContain("{ TOPOLOGY }");
+    expect(screen.lines[1]).toContain("{ 资源管理器 }");
+    expect(screen.lines[1]).not.toContain("{ 拓扑 }");
     s.dispatch(parseCommand("rig openrig-build"));
     s.dispatch({ type: "focus", pane: "content" });
     screen = renderScreen(s.get(), snap, { cols: 140, rows: 34 });
-    expect(screen.lines[1]).toContain("{ TOPOLOGY }");
-    expect(screen.lines[1]).not.toContain("{ EXPLORER }");
+    expect(screen.lines[1]).toContain("{ 拓扑 }");
+    expect(screen.lines[1]).not.toContain("{ 资源管理器 }");
   });
 });
 
-describe("content selection bar", () => {
-  it("renders the focused content row as an inverse highlight bar (strip-invariant intact)", () => {
+describe("content 选择条", () => {
+  it("把聚焦 content 行渲染为反色高亮条（strip 不变量完整）", () => {
     const s = createViewState({ instanceId: "t", getSnapshot: () => snap });
     s.dispatch(parseCommand("rig openrig-build"));
     const pre = renderScreen(s.get(), snap, { cols: 140, rows: 34 });
@@ -42,7 +42,7 @@ describe("content selection bar", () => {
   });
 });
 
-describe("content library mirrors the explorer grouping", () => {
+describe("content 库镜像 explorer 分组", () => {
   const nsSnap: FleetSnapshot = {
     ...snap,
     specs: [
@@ -52,7 +52,7 @@ describe("content library mirrors the explorer grouping", () => {
     ],
   };
 
-  it("collapses agent folders in the CONTENT pane too, honoring the same expansion state", () => {
+  it("在 content 窗格也折叠 agent 文件夹，遵守同一展开状态", () => {
     const s = createViewState({ instanceId: "t", getSnapshot: () => nsSnap });
     s.dispatch(parseCommand(":specs"));
     s.dispatch({ type: "toggle-expand", key: "specs-kind:agent" });
@@ -65,8 +65,8 @@ describe("content library mirrors the explorer grouping", () => {
   });
 });
 
-describe("unfocused-pane cursor dims (pm-approved nit)", () => {
-  it("explorer bar is accent when explorer focused, dim-inverse when content focused", () => {
+describe("失焦窗格光标变暗（pm 批准的微调）", () => {
+  it("explorer 聚焦时 explorer 条为强调色，content 聚焦时为暗反色", () => {
     const s = createViewState({ instanceId: "t", getSnapshot: () => snap });
     s.dispatch(parseCommand("rig openrig-build"));
     let styled = stylizeLines(renderScreen(s.get(), snap, { cols: 140, rows: 34 }), createStyle("truecolor"));
@@ -82,8 +82,8 @@ describe("unfocused-pane cursor dims (pm-approved nit)", () => {
   });
 });
 
-describe("truncation reads as ellipsis, never a hard mid-word clip", () => {
-  it("clips long explorer labels and long cells with …", () => {
+describe("截断读作省略号，绝不硬切词中", () => {
+  it("用 … 截断长 explorer 标签与长单元格", () => {
     const s = createViewState({ instanceId: "t", getSnapshot: () => snap });
     const screen = renderScreen(s.get(), snap, { cols: 60, rows: 20 });
     const clipped = screen.lines.filter((l) => l.includes("…"));

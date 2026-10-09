@@ -1,20 +1,15 @@
 import type Database from "better-sqlite3";
 
 /**
- * OPR.0.4.6.WF3 FR-6 — the frontier close-path guard's PREDICATE (pm
- * convention ruling: prevention over detection).
+ * OPR.0.4.6.WF3 FR-6——frontier close-path guard 的谓词（pm 约定裁定：预防优先于检测）。
  *
- * THE LAYERING PIN (arch, binding, Rev-1): the queue is the lower
- * primitive and NEVER imports the workflow domain. This module is the
- * workflow domain's export; startup INJECTS the predicate into
- * QueueRepository (the `validateRig` injection precedent exactly).
- * Same functional behavior as a direct import, without the module
- * cycle the next refactor would strangle on.
+ * 分层固定点（arch、binding、Rev-1）：queue 是更底层的 primitive，绝不能导入 workflow
+ * domain。本模块是 workflow domain 的 export；startup 把该谓词注入 QueueRepository，
+ * 完全沿用 `validateRig` 的注入先例。其功能与直接导入相同，但不会形成阻碍后续重构的模块循环。
  *
- * The predicate answers: is this qitem a LIVE workflow-frontier
- * packet? Null for every non-workflow qitem — the zero-friction
- * negative (non-workflow closure behavior stays byte-identical; no
- * new rejections ride this predicate for ordinary traffic).
+ * 谓词回答：该 qitem 是否为存活的 workflow-frontier packet？所有非 workflow qitem 均返回
+ * null，形成零摩擦负向路径：非 workflow closure 行为保持逐字节一致，普通流量不会因本谓词
+ * 新增任何拒绝。
  */
 
 export interface WorkflowFrontierBinding {
@@ -26,9 +21,8 @@ export type WorkflowFrontierPredicate = (qitemId: string) => WorkflowFrontierBin
 
 export function createWorkflowFrontierPredicate(db: Database.Database): WorkflowFrontierPredicate {
   return (qitemId: string): WorkflowFrontierBinding | null => {
-    // current_frontier is a JSON array column; a frontier membership
-    // check is a containment probe on the serialized id. Scoped to
-    // LIVE instances only — terminal instances hold no frontier.
+    // current_frontier 是 JSON array 列；frontier membership 检查是在序列化 id 上执行包含探测。
+    // 仅限存活 instance；终态 instance 不持有 frontier。
     let row: { instance_id?: string; workflow_name?: string } | undefined;
     try {
       row = db
@@ -39,12 +33,9 @@ export function createWorkflowFrontierPredicate(db: Database.Database): Workflow
         )
         .get(`%"${qitemId}"%`) as typeof row;
     } catch (err) {
-      // Pre-workflow schemas (no workflow_instances table): nothing to
-      // guard — identical to the predicate-absent posture. ONLY that
-      // case is tolerated: any other SQL error (e.g. a renamed column)
-      // must fail LOUD — a swallowed error here silently disables a
-      // correctness guard (VM-caught: the first draft ate its own
-      // wrong-column error and the guard never fired).
+      // workflow 之前的 schema 没有 workflow_instances 表，也就没有需要保护的内容，行为等同于
+      // 未提供谓词。只容忍这一种情况；其他 SQL 错误（例如列被重命名）必须明确失败。在此吞错会
+      // 静默禁用正确性 guard；VM 曾发现第一版吞掉自身 wrong-column 错误，导致 guard 从未触发。
       if (err instanceof Error && /no such table/i.test(err.message)) return null;
       throw err;
     }

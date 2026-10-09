@@ -15,41 +15,41 @@
 
 @layer base {
   :root {
-    /* Vellum Paper — "The Tactical Dossier" */
-    /* Reference: docs/design/design-v2-vellum-paper/code.md */
+    /* 羊皮纸——“战术档案” */
+    /* 参考：docs/design/design-v2-vellum-paper/code.md */
 
-    /* Paper surfaces */
-    --background: 47 20% 97%;           /* #faf9f5 — base paper */
-    --surface-container-lowest: 0 0% 100%;  /* #ffffff — card bodies */
-    --surface-container-low: 80 10% 95%;    /* #f3f4ef — secondary panels */
-    --surface-container: 80 10% 92%;        /* #ecefe8 — mid containers */
-    --surface-container-high: 100 10% 89%;  /* #e5e9e2 — active workspaces */
-    --surface-container-highest: 100 10% 87%; /* #dfe4dc — highest elevation */
+    /* 纸张表面 */
+    --background: 47 20% 97%;           /* #faf9f5——基础纸张 */
+    --surface-container-lowest: 0 0% 100%;  /* #ffffff——卡片主体 */
+    --surface-container-low: 80 10% 95%;    /* #f3f4ef——次级面板 */
+    --surface-container: 80 10% 92%;        /* #ecefe8——中层容器 */
+    --surface-container-high: 100 10% 89%;  /* #e5e9e2——活动工作区 */
+    --surface-container-highest: 100 10% 87%; /* #dfe4dc——最高层级 */
 
-    /* Ink */
-    --on-surface: 120 8% 19%;           /* #2e342e — primary text */
-    --on-surface-variant: 108 5% 36%;   /* #5b615a — secondary text */
+    /* 墨色 */
+    --on-surface: 120 8% 19%;           /* #2e342e——主要文字 */
+    --on-surface-variant: 108 5% 36%;   /* #5b615a——次要文字 */
 
-    /* Technical annotations */
-    --secondary: 213 15% 39%;           /* hsl(var(--secondary)) — lines, crosshairs, edge connectors */
+    /* 技术标注 */
+    --secondary: 213 15% 39%;           /* hsl(var(--secondary))——线条、十字准星、边连接线 */
     --secondary-container: 220 39% 91%; /* #d8e3fa */
 
-    /* Stamped alerts */
-    --tertiary: 1 63% 42%;              /* #b12d2a — red ink stamps, critical */
+    /* 印章式警报 */
+    --tertiary: 1 63% 42%;              /* #b12d2a——红色墨印、严重状态 */
     --error: 0 43% 44%;                 /* #9f403d */
 
-    /* Interactive */
-    --primary: 0 1% 37%;               /* #5f5e5e — primary actions */
-    --inverse-surface: 120 10% 4%;     /* #0d0f0d — dark fills, header stripes */
+    /* 交互色 */
+    --primary: 0 1% 37%;               /* #5f5e5e——主要操作 */
+    --inverse-surface: 120 10% 4%;     /* #0d0f0d——深色填充、页头条纹 */
 
-    /* Borders */
+    /* 边框 */
     --outline: 108 4% 47%;              /* #767c75 */
-    --outline-variant: 108 4% 68%;      /* #aeb4ac — ghost borders at 15% */
+    --outline-variant: 108 4% 68%;      /* #aeb4ac——透明度 15% 的幽灵边框 */
 
-    /* Success */
+    /* 成功状态 */
     --success: 145 63% 35%;             /* #21955a */
 
-    /* shadcn compatibility */
+    /* shadcn 兼容层 */
     --foreground: var(--on-surface);
     --foreground-muted: var(--on-surface-variant);
     --border: var(--outline-variant);
@@ -80,7 +80,7 @@
     font-family: "Inter", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Blueprint dot grid — the paper texture */
+    /* 蓝图点阵——纸张纹理 */
     background-image: radial-gradient(#d1d1cf 1px, transparent 1px);
     background-size: 20px 20px;
   }
@@ -91,8 +91,8 @@
   }
 }
 
-/* === REGISTRATION MARKS === */
-/* 8px L-shaped crosshairs at container corners, in secondary blue */
+/* === 定位标记 === */
+/* 容器四角使用次级蓝色的 8px L 形准星。 */
 
 @layer components {
   .reg-mark { position: relative; }
@@ -118,7 +118,7 @@
   .reg-br::after  { content: ''; position: absolute; bottom: 0; right: 0; width: 8px; height: 1px; background-color: hsl(var(--secondary)); }
 }
 
-/* === VELLUM OVERLAYS === */
+/* === 羊皮纸叠层 === */
 
 @layer components {
   .vellum {
@@ -132,7 +132,7 @@
     -webkit-backdrop-filter: blur(16px);
   }
 
-  /* Crosshair marks inside vellum sheets */
+  /* 羊皮纸层内部的十字准星标记。 */
   .crosshair { position: relative; }
   .crosshair::before {
     content: ''; position: absolute;
@@ -146,7 +146,7 @@
   }
 }
 
-/* === HARD SHADOWS === */
+/* === 硬边阴影 === */
 
 @layer components {
   .hard-shadow { box-shadow: 2px 2px 0px #2e342e; }
@@ -154,12 +154,10 @@
   .hard-shadow-hover:hover { box-shadow: 1px 1px 0px #2e342e; translate: 1px 1px; }
 }
 
-/* === VELLUM BACK-LAYER AMBIENT DRIFT ===
-   Slow continuous translate/rotate animations for back-layer shapes
-   in the Dashboard / VellumLab. Defined OUTSIDE any @layer wrapper —
-   Tailwind's tree-shaker can drop keyframes-inside-@layer in some
-   PostCSS configurations, causing the animation to never apply.
-   Three variants so shapes drift independently. */
+/* === 羊皮纸背层环境漂移 ===
+   Dashboard / VellumLab 背层形状使用缓慢连续的平移/旋转动画。定义在所有 @layer
+   包装之外，因为 Tailwind 的 tree-shaker 在部分 PostCSS 配置中可能移除 @layer 内的
+   keyframes，导致动画从不生效。提供三种变体，使各形状独立漂移。 */
 
 @keyframes vellum-drift-a {
   0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
@@ -178,11 +176,8 @@
 .vellum-drift-b { animation: vellum-drift-b 24s ease-in-out infinite; will-change: transform; transform-origin: center; }
 .vellum-drift-c { animation: vellum-drift-c 21s ease-in-out infinite; will-change: transform; transform-origin: center; }
 
-/* Seamless horizontal scroll for back-layer patterns. The pattern
-   author makes the SVG 2× viewport-wide with a periodic wave whose
-   period equals viewport width — translating by -50% (= -1 period)
-   moves the second half into the first half's position, looping
-   without a visible seam. */
+/* 背层图案无缝横向滚动。图案作者让 SVG 宽度为视口的 2 倍，并使用周期等于视口宽度的
+   周期波；平移 -50%（即 -1 个周期）会让后半段进入前半段的位置，循环时看不到接缝。 */
 @keyframes vellum-scroll-x {
   from { transform: translate3d(0, 0, 0); }
   to   { transform: translate3d(-50%, 0, 0); }
@@ -201,34 +196,28 @@
   }
 }
 
-/* === INKY VELLUM PRINT (Vellum Lab + showcase dashboard) === */
+/* === 羊皮纸墨印（Vellum Lab 与展示仪表盘）=== */
 
 @layer components {
-  /* Subtle paper-grain "ink-on-vellum" texture for top-layer card
-     surfaces. Uses a faint SVG-noise tile so cards feel printed
-     rather than rendered. The grain is very subtle by design — it
-     must NOT compete with text legibility, only set the haptic
-     paper feel that the founder reference (declassified vellum
-     dossier) implies. */
+  /* 顶层卡片表面的轻微纸纹“羊皮纸着墨”质感。使用淡淡的 SVG 噪声图块，让卡片像印刷品
+     而非屏幕渲染。纸纹刻意保持极弱，不能影响文字可读性，只用于营造创建者参考图
+     （解密的羊皮纸档案）所暗示的触感。 */
   .vellum-card-inky {
     background-image:
       url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
     background-blend-mode: multiply;
   }
 
-  /* Inky text — micro text-shadow that mimics the way laser-printer
-     ink bleeds slightly into vellum paper fibers. Not a glow; the
-     bleed is asymmetric (offset by ~0.3px) and dark, so the eye
-     reads it as physical ink, not a UI effect. */
+  /* 墨印文字——用细微 text-shadow 模拟激光打印墨粉轻微渗入羊皮纸纤维的效果。它不是发光；
+     渗色不对称（偏移约 0.3px）且颜色偏暗，因此视觉上像实体墨迹，而非 UI 特效。 */
   .inky-text {
     text-shadow:
       0.3px 0.3px 0 rgba(0, 0, 0, 0.18),
       -0.2px -0.2px 0 rgba(0, 0, 0, 0.06);
   }
 
-  /* Heavier ink-bleed for very large display headlines (the WELCOME
-     BACK / RIG·OS scale). The reference's massive ANGEL(s*) word
-     has visible ink-grain — this is our static approximation. */
+  /* 超大展示标题（WELCOME BACK / RIG·OS 尺度）使用更重的墨色渗染。参考图中巨大的
+     ANGEL(s*) 字样带有明显墨粒，此处做静态近似。 */
   .inky-display {
     text-shadow:
       0.6px 0.6px 0 rgba(0, 0, 0, 0.22),
@@ -237,7 +226,7 @@
   }
 }
 
-/* === STAMPS === */
+/* === 印章 === */
 
 @layer components {
   .stamp-watermark {
@@ -268,7 +257,7 @@
   }
 }
 
-/* === MOTION === */
+/* === 动效 === */
 
 @layer components {
   @keyframes status-ping {
@@ -344,13 +333,11 @@
   }
 }
 
-/* === PL-019 ACTIVITY INDICATORS === */
+/* === PL-019 活动指示器 === */
 
 @layer components {
-  /* Subtle slow pulse for the running activity state on RigNode dot.
-     Low-amplitude opacity + box-shadow halo. The brief is explicit:
-     pulses, not blinking — running stays calm and confident, needs_input
-     is the eye-catcher (and stays static color). */
+  /* RigNode 圆点在 running 活动状态下使用轻柔慢脉冲：低幅度透明度变化加 box-shadow 光晕。
+     简报明确要求脉冲而非闪烁；running 保持平静稳重，needs_input 才是视觉焦点且保持静态色。 */
   @keyframes activity-pulse-running-frames {
     0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.0); }
     50%      { opacity: 0.85; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18); }
@@ -359,11 +346,9 @@
     animation: activity-pulse-running-frames 1.8s ease-in-out infinite;
   }
 
-  /* V1 attempt-3 Phase 5 P5-7 — Topology terminal grid pulsing-ring per
-     topology-terminal-view.md L47. Cards for "active" agents (output
-     emitted within polling window) get a pulsing ring around the card;
-     idle cards are neutral. At-a-glance scan signal so the human can
-     spot which agents to attend to without reading every card. */
+  /* V1 第三次尝试阶段 5 P5-7——按 topology-terminal-view.md 第 47 行，为拓扑终端网格
+     添加脉冲环。active 智能体（在轮询窗口内产生输出）的卡片周围显示脉冲环，idle 卡片保持
+     中性，让人无需阅读每张卡片便能一眼识别需要关注的智能体。 */
   @keyframes terminal-card-active-frames {
     0%, 100% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.0); }
     50%      { box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.30); }
@@ -372,11 +357,9 @@
     animation: terminal-card-active-frames 2.2s ease-in-out infinite;
   }
 
-  /* PL-019 item 6 — edge animation. One-shot ~1.2s emphasis on edges
-     between source-seat and dest-seat when a queue event fires. React Flow
-     renders edges as SVG <path> wrapped in .react-flow__edge; we toggle
-     classes on the wrapper through the edge `className` prop so the SVG
-     stroke responds without us swapping React Flow's edge component. */
+  /* PL-019 第 6 项——边动画。队列事件触发时，对来源席位与目标席位之间的边执行约 1.2 秒
+     的一次性强调。React Flow 把边渲染为包在 .react-flow__edge 中的 SVG <path>；我们通过
+     边的 `className` 属性切换包装器类，使 SVG 笔画响应，而无需替换 React Flow 边组件。 */
   .edge-recent-traffic .react-flow__edge-path,
   .react-flow__edge.edge-recent-traffic .react-flow__edge-path {
     stroke-width: 3px !important;
@@ -501,9 +484,8 @@
     animation: activity-ring-flash-frames 700ms ease-out 1;
   }
 
-  /* OPR.0.4.1.26 — BRIGHTEN while a handoff is live; the 450ms ease-out is the
-     explicit SETTLE: when the packet expires the class drops and the edge eases
-     back to static (a calm settle on camera, not an abrupt snap). */
+  /* OPR.0.4.1.26——交接进行时提亮；450 毫秒 ease-out 是显式的稳定阶段：包过期后类会移除，
+     边平滑回到静态（镜头中呈现平稳收束，而非突然跳变）。 */
   .hot-potato-edge-active .react-flow__edge-path,
   .react-flow__edge.hot-potato-edge-active .react-flow__edge-path {
     filter: drop-shadow(0 0 7px rgba(16, 185, 129, 0.55)) !important;
@@ -520,8 +502,8 @@
     opacity: 0.86;
     filter: drop-shadow(0 0 6px rgba(120, 113, 108, 0.36));
   }
-  /* OPR.0.4.1.26 — DIRECTION: the dashed overlay marches source -> destination
-     by driving stroke-dashoffset negative (toward the path end). CSS only. */
+  /* OPR.0.4.1.26——方向：通过让 stroke-dashoffset 向负值变化（朝路径终点），使虚线叠层
+     从来源移动到目标；仅使用 CSS。 */
   .hot-potato-flow {
     animation: hot-potato-flow-frames 650ms linear infinite;
     filter: drop-shadow(0 0 3px rgba(16, 185, 129, 0.45));
@@ -544,7 +526,7 @@
   }
 }
 
-/* === REDUCED MOTION === */
+/* === 减少动效 === */
 
 @media (prefers-reduced-motion: reduce) {
   .status-changed,
@@ -575,99 +557,88 @@
 }
 
 /* ============================================================================
-   === OPR.0.4.3.29 — VELLUM DARK (the first new theme) ===
+   === OPR.0.4.3.29——羊皮纸深色主题（首个新主题）===
    ----------------------------------------------------------------------------
-   PART A — the `.dark {}` token block. Founder-approved "Vellum Dark" palette
-   (source: slice 29 twin-mockup dark-theme.css Part A, pasted verbatim). It
-   re-declares the same token names `:root` (above) defines with dark values; the
-   `hsl(var(--token))` cascade then flips every token-backed component. Scoped
-   under `.dark`, so this is INERT until the `.dark` class is on <html> — light
-   (`:root`) stays pixel-identical when dark is off (the regression floor).
+   A 部分——`.dark {}` token 块。采用创建者批准的“Vellum Dark”调色板
+   （来源：slice 29 twin-mockup dark-theme.css A 部分，逐字粘贴）。它以深色值重新声明上方
+   `:root` 定义的同名 token，随后 `hsl(var(--token))` 级联会切换所有由 token 驱动的组件。
+   规则限定在 `.dark` 下，因此只有 <html> 带 `.dark` 类时才生效；关闭深色模式后，浅色
+   （`:root`）仍保持像素级一致，这是回归底线。
 
-   Palette principle (founder + PRD): NOT a mechanical invert. Warm-vellum hue
-   family preserved (a dark tactical dossier); backgrounds drop to low lightness,
-   ink rises, and SATURATED accents (blue / red / green) get HIGHER lightness so
-   contrast holds on the dark ground. FLAT / RECESSED elevation — the lightest
-   surface ≈ black; depth is carried by borders + the hard-shadow offset, not a
-   rising gray ramp.
+   调色原则（创建者 + PRD）：不是机械反相。保留温暖的羊皮纸色相族（深色战术档案）；
+   背景降低亮度、墨色提高亮度，高饱和强调色（蓝/红/绿）进一步提高亮度，以维持深色底上的
+   对比度。层级采用平坦/内凹设计；最亮表面也接近黑色，深度由边框和硬边阴影偏移表达，
+   而不是逐级变亮的灰色梯度。
 
-   NOTE ON SCOPE (Part B / token-bypass inventory): the mockup's Part B (raw
-   Tailwind palette utilities in components — bg-white/NN, bg-stone-*, text-stone-*,
-   border-stone-*) is a BYPASS INVENTORY, not shipped here as a shim. It is
-   delivered as a finding doc for a follow-up per-component token conversion. The
-   `.dark` variants below fix ONLY the escape hatches that are hardcoded WITHIN
-   this stylesheet (co-located with their light rule = the real fix, not a
-   `[class*="bg-white/"]` override hack). See the slice PART-B bypass inventory.
+   范围说明（B 部分/token 绕过清单）：mockup 的 B 部分列出组件中直接使用的 Tailwind
+   调色工具类（bg-white/NN、bg-stone-*、text-stone-*、border-stone-*），它是绕过清单，
+   不作为垫片交付于此，而是作为发现文档留给后续逐组件 token 转换。下方 `.dark` 变体只修复
+   本样式表内部硬编码的逃生口（与对应浅色规则放在一起才是真正修复，不使用
+   `[class*="bg-white/"]` 覆盖技巧）。详见该 slice 的 B 部分绕过清单。
    ========================================================================== */
 
 .dark {
-  /* Paper surfaces → warm charcoal. FLAT / RECESSED (do NOT ramp lighter per
-     nesting): base cards sit a hair above the ground; MORE-nested surfaces go
-     DARKER (toward black). Range compressed to 7.5–9.5% L; depth = borders +
-     hard-shadow offset. */
+  /* 纸张表面 → 暖炭色。层级保持平坦/内凹，不要随嵌套逐级变亮：基础卡片仅略高于底色，
+     嵌套越深表面越暗、越接近黑色。亮度压缩在 7.5–9.5%；深度由边框与硬边阴影偏移表达。 */
   --background: 120 8% 7%;                   /* #111311 — warm near-black ground */
-  --surface-container-lowest: 120 6% 9.5%;   /* #171917 — base card: a hair above ground */
-  --surface-container-low: 120 5% 9%;        /* slightly recessed */
-  --surface-container: 120 5% 8.5%;          /* nested panels recede */
-  --surface-container-high: 120 5% 8%;       /* deeper nesting = darker */
-  --surface-container-highest: 120 4% 7.5%;  /* most-nested ≈ ground */
+  --surface-container-lowest: 120 6% 9.5%;   /* #171917——基础卡片略高于底色 */
+  --surface-container-low: 120 5% 9%;        /* 略微内凹 */
+  --surface-container: 120 5% 8.5%;          /* 嵌套面板后退 */
+  --surface-container-high: 120 5% 8%;       /* 嵌套越深越暗 */
+  --surface-container-highest: 120 4% 7.5%;  /* 最深嵌套接近底色 */
 
-  /* Ink → high lightness, warm-green tint kept. */
-  --on-surface: 100 10% 90%;               /* #e4e8e0 — primary text */
-  --on-surface-variant: 108 6% 66%;        /* #a3a99f — secondary text */
+  /* 墨色 → 高亮度，同时保留暖绿色调。 */
+  --on-surface: 100 10% 90%;               /* #e4e8e0——主要文字 */
+  --on-surface-variant: 108 6% 66%;        /* #a3a99f——次要文字 */
 
-  /* Technical blue — HIGHER L + a touch more sat to read on dark. */
-  --secondary: 213 30% 70%;                /* #92abcf — lines / crosshairs / edges */
+  /* 技术蓝——提高亮度并略增饱和度，以便在深色背景上阅读。 */
+  --secondary: 213 30% 70%;                /* #92abcf——线条/十字准星/边 */
   --secondary-container: 220 24% 24%;      /* #2f3a4c */
 
-  /* Stamped red — saturated → HIGHER lightness in dark. */
-  --tertiary: 2 72% 64%;                   /* #e26562 — critical / destructive ink */
+  /* 印章红——高饱和，并在深色主题中提高亮度。 */
+  --tertiary: 2 72% 64%;                   /* #e26562——严重/破坏性墨色 */
   --error: 0 62% 62%;                      /* #dc5b5b */
 
-  /* Interactive — primary lifted to a light warm neutral so it reads on dark. */
+  /* 交互色——主色提升为浅暖中性色，以便在深色背景上阅读。 */
   --primary: 100 6% 76%;                   /* #bfc4bd */
-  --inverse-surface: 100 12% 92%;          /* dark theme's "inverse" is now LIGHT */
+  --inverse-surface: 100 12% 92%;          /* 深色主题中的“反色”改为浅色 */
 
-  /* Borders → mid, subtle on dark. */
+  /* 边框 → 中等亮度，在深色背景上保持克制。 */
   --outline: 108 5% 40%;                   /* #616b5f */
   --outline-variant: 108 6% 32%;           /* #4b5349 — ghost borders at 15% opacity */
 
-  /* Success green — HIGHER lightness for dark contrast. */
+  /* 成功绿——提高亮度以保证深色对比。 */
   --success: 145 52% 52%;                  /* #43c684 */
 
-  /* Warning amber — slightly brighter for dark. */
+  /* 警告琥珀色——在深色主题中稍微提亮。 */
   --warning: 42 92% 60%;                   /* #f6b13a */
 
-  /* shadcn compat aliases reference the base tokens above (var(--…)) → they
-     inherit the dark values automatically (--foreground/--card/--border/--input/
-     --ring/--muted/--destructive/--accent/--popover). */
+  /* shadcn 兼容别名引用上方基础 token（var(--…)），因此会自动继承深色值
+    （--foreground/--card/--border/--input/--ring/--muted/--destructive/--accent/--popover）。 */
   --destructive-foreground: 0 0% 100%;
 }
 
-/* --- Co-located .dark variants for the hardcoded-hex/rgba escape hatches that
-   live in THIS stylesheet (real fix; no component shim). Unlayered rules win
-   over the @layer components light rules; !important is used only where a rule
-   must beat a keyframe animation (activity cards). --- */
+/* --- 本样式表中硬编码 hex/rgba 逃生口对应的就地 `.dark` 变体（真正修复，不使用组件垫片）。
+   未分层规则优先于 @layer components 浅色规则；只有规则必须压过关键帧动画时
+   （活动卡片）才使用 !important。--- */
 
-/* Hard-shadow ink #2e342e → black depth on dark. */
+/* 硬边阴影墨色 #2e342e → 深色主题中的黑色景深。 */
 .dark .hard-shadow { box-shadow: 2px 2px 0px #000000; }
 .dark .hard-shadow-hover:hover { box-shadow: 1px 1px 0px #000000; }
 
-/* Body dot-grid #d1d1cf (light) → a faint dark dot on the near-black ground. */
+/* body 浅色点阵 #d1d1cf → 近黑底色上的微弱暗点。 */
 .dark body {
   background-image: radial-gradient(hsl(120 6% 22%) 1px, transparent 1px);
 }
 
-/* Vellum translucent overlays were white-tinted → tint dark, or they glow white. */
+/* 羊皮纸半透明叠层原本偏白；深色主题下必须改为暗色，否则会泛白光。 */
 .dark .vellum { background: rgba(31, 34, 31, 0.5); }
 .dark .vellum-heavy { background: rgba(31, 34, 31, 0.72); }
 
-/* Topology agent-card fills (activity-card-*) hardcode light pastels + animate
-   the same. Founder direction: STATE is a small accent (the activity DOT + the
-   thin inset ring), NOT a full-card wash — node BODIES stay uniformly dark. The
-   !important beats the running keyframe animations (important author > animation
-   in the cascade), so the body holds dark mid-pulse; the inset colored ring in
-   the base rule remains as the small state accent. */
+/* 拓扑智能体卡片填充（activity-card-*）硬编码了浅色粉彩，动画也使用同样颜色。创建者要求：
+   状态只作为小面积强调（活动圆点 + 细内环），不能整卡铺色；节点主体应统一保持深色。
+   !important 会压过运行中的关键帧动画（级联中 important 作者规则优先于 animation），
+   因此脉冲中途卡片主体仍保持深色，基础规则的彩色内环继续作为小面积状态强调。 */
 .dark .activity-card-surface,
 .dark .activity-card-active,
 .dark .activity-card-needs-input,
@@ -675,13 +646,11 @@
   background-color: hsl(var(--surface-container-lowest)) !important;
 }
 
-/* Pod-group slab (founder-handed, HybridTopologyNodes:78). The visible slab surface
-   is the HybridPodGroupNode component div, now tokenized (bg-background/25 +
-   border-outline), so the token cascade carries dark. xyflow v12 puts NO default
-   background on the .react-flow__node-podGroup wrapper (verified against the installed
-   @xyflow/react/dist/style.css — no node-group / custom-type bg rule), but the mockup
-   warned a STACKED react-flow wrapper could carry a light gray in a future default-style
-   change. Defensively force the wrapper transparent under .dark so no stacked light gray
-   can ever win; the component div's own token surface remains the visible fill. Live-browser
-   QC still owns the final visual confirmation of the stacked-layer behavior. */
+/* Pod-group 板块（创建者交付，HybridTopologyNodes:78）。可见板块表面是
+   HybridPodGroupNode 组件 div，现已 token 化（bg-background/25 + border-outline），
+   因此 token 级联会带入深色。xyflow v12 不会为 .react-flow__node-podGroup 包装器设置默认
+   背景；已核对安装的 @xyflow/react/dist/style.css，不存在 node-group/custom-type 背景规则。
+   但 mockup 提醒，未来默认样式变化可能让堆叠的 react-flow 包装器带浅灰背景。为防患于未然，
+   在 .dark 下强制包装器透明，使堆叠浅灰永远无法覆盖；组件 div 自身的 token 表面仍作为
+   可见填充。堆叠层行为最终仍须由真实浏览器质检确认。 */
 .dark .react-flow__node-podGroup { background: transparent !important; }

@@ -1,21 +1,21 @@
-# 51-04 testbed image (openrig-testbed) — see IMPL-PLAN §1. Built HOST-side by
-# scripts/build-testbed-image.sh, which resolves + records the base digest, pins node, stages the
-# stub assets, and COPYs the local openrig pack tarball. Byte-reproducible BY CONTRACT: the base is
-# digest-pinned (the verb refuses a tag-floating reference), node is pinned, and openrig comes from
-# the tree — never the npm registry (0.5.1 is unreleased). Layers are ordered stable -> volatile.
+# 51-04 testbed 镜像（openrig-testbed）——见 IMPL-PLAN §1。由
+# scripts/build-testbed-image.sh 在主机侧构建：解析并记录基础镜像摘要、固定 Node 版本、暂存
+# stub 资源，再 COPY 本地 openrig pack tarball。其契约要求逐字节可复现：基础镜像固定摘要
+#（构建命令拒绝使用浮动 tag）、Node 版本固定，且 openrig 来自当前源码树，绝不从
+# npm registry 获取（0.5.1 尚未发布）。镜像层按稳定 -> 易变排序。
 
-# --- base: a digest-pinned LTS-slim Linux, supplied by the build verb (docker/testbed/base-image,
-#     which REFUSES a non-@sha256 reference). No floating tag is baked into this file. ---
+# --- 基础层：由构建命令提供、固定摘要的 LTS-slim Linux（docker/testbed/base-image
+#     拒绝非 @sha256 引用）。本文件不固化任何浮动 tag。---
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-# --- layer 1: userland + tmux + git + PTY/process essentials + the native-build toolchain (most stable) ---
-# python3/make/g++ are REQUIRED, not optional: the sealed Q2 packaging ruling builds better-sqlite3
-# FRESH ON TARGET (never a prebuilt/nested binary — that would risk a wrong-arch native module). Its
-# install is `prebuild-install || node-gyp rebuild`; with a self-contained tarball npm reaches that
-# step, prebuild-install is absent, and node-gyp needs python3+make+g++ to compile from source. Without
-# them layer 3 dies ('prebuild-install: not found' → 'Could not find any Python installation'). This is
-# testbed-image scope only (no multi-stage gold-plating — the image is a throwaway test target).
+# --- 第 1 层：用户空间 + tmux + git + PTY/进程必需组件 + 原生构建工具链（最稳定）---
+# python3/make/g++ 是必需项而非可选项：已锁定的 Q2 打包裁定要求在目标上重新构建
+# better-sqlite3（绝不使用预构建/嵌套二进制，否则可能装入错误架构的原生模块）。其安装命令为
+# `prebuild-install || node-gyp rebuild`；使用自包含 tarball 时 npm 会执行到这一步，
+# prebuild-install 不存在，node-gyp 需要 python3+make+g++ 从源码编译。若缺少这些工具，第 3 层
+# 会失败（'prebuild-install: not found' → 'Could not find any Python installation'）。这仅属于
+# testbed-image 范围（无需多阶段额外优化——该镜像是一次性测试目标）。
 RUN set -eux; \
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -23,15 +23,15 @@ RUN set -eux; \
       python3 make g++; \
     rm -rf /var/lib/apt/lists/*
 
-# --- layer 2: pinned node (an in-range engines version — see scripts/check-engines) ---
+# --- 第 2 层：固定 Node 版本（满足 engines 范围——见 scripts/check-engines）---
 ARG NODE_VERSION=22.22.1
 ARG TARGETARCH
 RUN set -eux; \
     case "${TARGETARCH}" in \
       amd64) NODE_ARCH=x64 ;; \
       arm64) NODE_ARCH=arm64 ;; \
-      "") echo "TARGETARCH is empty — the legacy (non-BuildKit) builder does not populate it. Pass --build-arg TARGETARCH explicitly (build-testbed-image.sh does) or enable BuildKit. REFUSING to default to amd64, which would install wrong-arch Node." >&2; exit 1 ;; \
-      *) echo "unsupported TARGETARCH=${TARGETARCH}" >&2; exit 1 ;; \
+      "") echo "TARGETARCH 为空——旧版（非 BuildKit）构建器不会填充它。请显式传入 --build-arg TARGETARCH（build-testbed-image.sh 已这样做），或启用 BuildKit。拒绝默认使用 amd64，以免安装错误架构的 Node。" >&2; exit 1 ;; \
+      *) echo "不支持 TARGETARCH=${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     curl -fsSLo /tmp/node.tar.xz \
       "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz"; \
@@ -39,7 +39,7 @@ RUN set -eux; \
     rm -f /tmp/node.tar.xz; \
     node --version; npm --version
 
-# --- layer 3: the OpenRig package from the LOCAL pack tarball, never the npm registry ---
+# --- 第 3 层：从本地 pack tarball 安装 OpenRig 包，绝不使用 npm registry ---
 ARG OPENRIG_TARBALL
 COPY ${OPENRIG_TARBALL} /tmp/openrig.tgz
 RUN set -eux; \
@@ -47,11 +47,11 @@ RUN set -eux; \
     rm -f /tmp/openrig.tgz; \
     rig --version
 
-# --- layer 4: stub runtime assets (zero-token by construction; staged by the build verb into the
-#     build context as ./stub-assets/, hashed into the manifest via deriveStubAssetsHash) ---
+# --- 第 4 层：stub 运行时资源（设计上零 token；构建命令将其以 ./stub-assets/ 暂存到
+#     构建上下文，并通过 deriveStubAssetsHash 将摘要写入 manifest）---
 COPY stub-assets/ /opt/openrig-testbed/stub-assets/
 
-# --- layer 5: a non-root openrig user + a tini entrypoint into tmux-server-friendly init ---
+# --- 第 5 层：非 root 的 openrig 用户 + 通过 tini 进入适合 tmux server 的 init ---
 RUN set -eux; \
     useradd --create-home --shell /bin/bash openrig; \
     mkdir -p /opt/openrig-testbed; \

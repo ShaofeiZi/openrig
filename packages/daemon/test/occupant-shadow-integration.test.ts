@@ -24,8 +24,8 @@ function terminal(capture?:ShadowCapture) {
   const transport=new SessionTransport({db,rigRepo:{},sessionRegistry:{},tmuxAdapter:tmux,captureObserver:capture?.observer,sleep:async()=>{}} as unknown as ConstructorParameters<typeof SessionTransport>[0]);
   return {db,tmux,transport,mutate:()=>{pane="%99";occupant="new";},setHook:(fn:()=>void)=>{hook=fn;},counts:()=>({probes,captures,pastes,enters})};
 }
-describe("disabled-by-default production observer ports",()=>{
-  it("stop disables capture immediately, flushes the retained active and queued rows once, and preserves ordinary send",async()=>{
+describe("默认禁用的生产 observer port",()=>{
+  it("stop 立即禁用 capture，一次性 flush 保留的 active/queued row，并保留普通 send",async()=>{
     const rows:Observation[]=[];let release!:()=>void, entered!:()=>void, closes=0;
     const started=new Promise<void>(r=>{entered=r;});
     const shadow=new ShadowCapture(config,async()=>({append:async text=>{if(!rows.length){entered();await new Promise<void>(r=>{release=r;});} rows.push(JSON.parse(text));},close:async()=>{closes++;}}));
@@ -40,7 +40,7 @@ describe("disabled-by-default production observer ports",()=>{
     expect(status.sink).toMatchObject({completedRecords:4,dropped:0,stopped:true});
     expect(await shadow.stop()).toEqual(status);expect(closes).toBe(1);
   });
-  it("public stop requires an actor, drains retained observations, and cannot enable an absent collector",async()=>{
+  it("公开 stop 要求 actor、drain 已保留 observation，且无法启用不存在的 collector",async()=>{
     const rows:Observation[]=[];const shadow=new ShadowCapture(config,async()=>({append:async text=>{rows.push(JSON.parse(text));},close:async()=>{}}));
     const f=terminal(shadow);await f.transport.send("seat@rig","hello world",{verify:true});
     const app=new Hono();app.use("*",async(c,next)=>{c.set("shadowCapture" as never,shadow);await next();});app.route("/",projectsRoutes());
@@ -50,7 +50,7 @@ describe("disabled-by-default production observer ports",()=>{
     const absent=new Hono().route("/",projectsRoutes());
     expect(await(await absent.request("/shadow/stop",{method:"POST",headers:{"x-openrig-session":"fixture@rig"}})).json()).toEqual({enabled:false,error:null});
   });
-  it("absent/invalid opt-in has no collector or sink, and does not affect send",async()=>{
+  it("缺失/无效 opt-in 不产生 collector 或 sink，且不影响 send",async()=>{
     expect(configureShadowCapture(undefined)).toEqual({});
     expect(configureShadowCapture(JSON.stringify({...config,maxBytes:Infinity})).capture).toBeUndefined();
     expect(configureShadowCapture(JSON.stringify({...config,destination:"relative"})).capture).toBeUndefined();
@@ -59,7 +59,7 @@ describe("disabled-by-default production observer ports",()=>{
     expect(f.counts()).toMatchObject({captures:3,pastes:1});
     expect(inventoryCaptureOptions(f.db,undefined)).toEqual({});
   });
-  it("transport entry snapshots node/occupant/pane before awaits and uses only existing captures",async()=>{
+  it("transport entry 在 await 前 snapshot node/occupant/pane，且只使用已有 capture",async()=>{
     const rows:Observation[]=[];
     const shadow=new ShadowCapture(config,async()=>({append:async text=>{rows.push(JSON.parse(text));},close:async()=>{}}));
     const f=terminal(shadow);f.setHook(f.mutate);
@@ -70,7 +70,7 @@ describe("disabled-by-default production observer ports",()=>{
     for(const row of rows)expect(row.binding).toEqual({sessionName:"seat@rig",nodeId:"node",occupant:"old",pane:"%7"});
     expect(rows.find(x=>x.seam==="send_verify")!.regexResult).toMatchObject({outcome:"delivered"});
   });
-  it("separate inventory probe uses the same entry snapshot; cheap inventory takes no capture",async()=>{
+  it("独立 inventory probe 使用相同 entry snapshot；低成本 inventory 不执行 capture",async()=>{
     const rows:Observation[]=[];const shadow=new ShadowCapture(config,async()=>({append:async text=>{rows.push(JSON.parse(text));},close:async()=>{}}));
     const f=terminal(shadow);let release!:(x:boolean)=>void;
     f.tmux.hasSession=()=>new Promise(resolve=>{release=resolve;});
@@ -81,7 +81,7 @@ describe("disabled-by-default production observer ports",()=>{
     entry.canonicalSessionName="successor@rig";entry.nodeId="new-node";f.mutate();release(true);await pending;await shadow.drain();
     expect(f.counts().captures).toBe(1);expect(rows[0]!.binding).toEqual({sessionName:"seat@rig",nodeId:"node",occupant:"old",pane:"%7"});
   });
-  it.each(["slow","error","full","bytes"])("%s sink cannot delay or decide send; losses stay counted",async(kind)=>{
+  it.each(["slow","error","full","bytes"])("%s sink 不能延迟或决定 send；loss 保持计数",async(kind)=>{
     let release!:()=>void, entered!:()=>void;
     const started=new Promise<void>(resolve=>{entered=resolve;});
     const shadow=new ShadowCapture({...config,capacity:2,maxRecords:kind==="full"?1:10,maxObservationBytes:kind==="bytes"?10:10000},async()=>({
@@ -93,11 +93,11 @@ describe("disabled-by-default production observer ports",()=>{
     expect(result.outcome).toBe("delivered");expect(f.counts()).toMatchObject({pastes:2,captures:6});
     if(kind==="slow"){
       expect(shadow.status().observer.drainingBytes).toBeGreaterThan(0);
-      // One pending drain only; overflow on the next send cannot spawn another sink call.
+      // 只允许一个 pending drain；下一次 send 的 overflow 不能产生另一 sink 调用。
       await shadow.drain();await f.transport.send("seat@rig","hello world",{verify:true});
       expect(shadow.status().observer.dropped).toBeGreaterThan(0);
       release();
-      // The retained batch has two rows. The second append must also be released.
+      // retained batch 有两行。第二次 append 也必须 release。
       await new Promise(resolve=>setTimeout(resolve,0));release();
     }
     await drain;
@@ -105,7 +105,7 @@ describe("disabled-by-default production observer ports",()=>{
     if(kind==="full")expect(shadow.status().sink).toMatchObject({reservedRecords:1,dropped:1});
     if(kind==="bytes")expect(shadow.status().observer).toMatchObject({recorded:0,dropped:4});
   });
-  it("HTTP drain is separate, cannot enable capture, requires an actor, and reports sink errors",async()=>{
+  it("HTTP drain 独立存在，无法启用 capture，要求 actor，并报告 sink error",async()=>{
     const shadow=new ShadowCapture(config,async()=>{throw Error("private destination unavailable");});
     const f=terminal(shadow);await f.transport.send("seat@rig","hello world",{verify:true});
     const app=new Hono();app.use("*",async(c,next)=>{c.set("shadowCapture" as never,shadow);await next();});app.route("/",projectsRoutes());
@@ -115,7 +115,7 @@ describe("disabled-by-default production observer ports",()=>{
     const disabled=new Hono().route("/",projectsRoutes());expect((await disabled.request("/shadow")).status).toBe(200);
     expect(await(await disabled.request("/shadow")).json()).toEqual({enabled:false,error:null});
   });
-  it("private sink writes only synthetic observations and refuses existing or nonprivate destinations",async()=>{
+  it("private sink 只写入合成 observation，并拒绝已有或非私有 destination",async()=>{
     const dir=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),"shadow-private-")));
     const destination=path.join(dir,"new.jsonl");
     const capture=new ShadowCapture({...config,destination,maxRecords:1});
@@ -133,7 +133,7 @@ describe("disabled-by-default production observer ports",()=>{
   });
 });
 
-it("async classifier deadline is honest about uncancelled work; no second call or late write",async()=>{
+it("async classifier deadline 如实反映未取消 work；无第二次调用或迟到写入",async()=>{
   let release!:(d:ClassificationDecision)=>void,calls=0,writes=0;
   const now=new Date(),lease={leaseId:"l",lastHeartbeat:now.toISOString(),expiresAt:new Date(now.getTime()+90000).toISOString()};
   const options={session:"seat@rig",classifierVersion:"v",taxonomyVersion:"t",evidenceEpoch:"owner",requestTimeoutMs:5,

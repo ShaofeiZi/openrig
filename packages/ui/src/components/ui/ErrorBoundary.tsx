@@ -1,21 +1,19 @@
-// OPR.0.4.1.13: a small reusable React error boundary.
+// OPR.0.4.1.13：一个小型可复用的 React 错误边界。
 //
-// The topology table view (and other render-heavy surfaces) can throw during render
-// on a malformed data shape. With NO boundary, a single render throw propagates to
-// the root and white-screens the WHOLE page. This boundary CONTAINS a render throw to
-// its subtree and shows a quiet inline fallback so the rest of the page stays usable -
-// "render stably" (OPR.0.4.1.13). The root-cause data guard is the primary fix; this
-// is defense-in-depth so any residual/future edge degrades gracefully, not fatally.
+// 拓扑表格视图（以及其他渲染密集的界面）在遇到畸形数据形态时可能在渲染期抛错。
+// 若没有边界，单次渲染抛错会向上传播到根，把整页白屏。本边界把渲染抛错收敛到其子树内，
+// 并显示一个安静的内联兜底，使页面其余部分仍可用——“稳定渲染”（OPR.0.4.1.13）。
+// 根因数据守卫才是主修复；这里是纵深防御，让任何残留/未来的边界都能优雅降级，而非致命崩溃。
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
-  /** Inline fallback shown when a child render throws. */
+  /** 子级渲染抛错时显示的内联兜底。 */
   fallback?: ReactNode;
-  /** Optional label for the default fallback + console diagnostics. */
+  /** 默认兜底与控制台诊断用的可选标签。 */
   label?: string;
-  /** Optional hook for diagnostics/telemetry. */
+  /** 诊断/遥测用的可选钩子。 */
   onError?: (error: Error, info: ErrorInfo) => void;
 }
 
@@ -31,7 +29,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    // Keep the throw visible for diagnostics without crashing the page.
+    // 让抛错对诊断可见，同时不使页面崩溃。
     console.error(`[ErrorBoundary${this.props.label ? `: ${this.props.label}` : ""}]`, error, info.componentStack);
     this.props.onError?.(error, info);
   }
@@ -45,8 +43,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           role="alert"
           className="border border-outline-variant bg-surface-low px-3 py-6 text-center font-mono text-xs text-on-surface-variant"
         >
-          {this.props.label ? `${this.props.label} failed to render.` : "This view failed to render."}
-          {" "}The rest of the page is still usable.
+          {this.props.label ? `${this.props.label} 渲染失败。` : "此视图渲染失败。"}
+          {" "}页面其余部分仍可正常使用。
         </div>
       );
     }

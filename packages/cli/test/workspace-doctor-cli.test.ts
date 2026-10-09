@@ -1,14 +1,14 @@
-// Slice-21 FR-5 — `rig workspace doctor` CLI subcommand tests.
+// Slice-21 FR-5——`rig workspace doctor` CLI 子命令测试。
 //
-// Covers:
-//   - default behavior posts to /api/workspace/doctor with empty body
-//   - --workspace passes body.workspaceRoot
-//   - --json passes through the structured report
-//   - human output groups by category (workspace / missions / daemon)
-//   - exit-code semantics for fail / warn-with-strict / warn-without-strict / all-ok
+// 覆盖：
+//   - 默认行为以空 body POST 到 /api/workspace/doctor
+//   - --workspace 传入 body.workspaceRoot
+//   - --json 透传结构化报告
+//   - 人类输出按类别分组（workspace / missions / daemon）
+//   - 失败 / 带 strict 的 warn / 不带 strict 的 warn / 全好 的退出码语义
 //
-// Mirrors the queue.test.ts pattern: vi.mock daemon-lifecycle to skip
-// the live status probe; clientFactory delivers stub HTTP responses.
+// 镜像 queue.test.ts 模式：vi.mock daemon-lifecycle 以跳过
+// 实时 status 探测；clientFactory 交付 stub HTTP 响应。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
@@ -115,7 +115,7 @@ describe("rig workspace doctor — request shape", () => {
     expect(post).toHaveBeenCalledWith("/api/workspace/doctor", {});
   });
 
-  // Discriminator-flip: when --workspace is passed, body.workspaceRoot
+  // 判别翻转：传 --workspace 时，body.workspaceRoot
   // must carry the resolved absolute path. Without path.resolve(), a
   // relative input like "./ws" would land as "./ws" on the wire and
   // the daemon check #4 would compare against an un-normalized value.
@@ -190,10 +190,8 @@ describe("rig workspace doctor — request shape", () => {
     expect(sent.filesAllowlistOverride).toBeUndefined();
   });
 
-  // Discriminator-flip: empty-string env value is treated as unset
-  // (no override sent). Without the length > 0 check, an empty value
-  // would land as filesAllowlistOverride="" and the daemon route
-  // would treat that as an explicit override.
+  // 判别翻转：空字符串 env 值视为未设置（不发送覆盖）。没有 length > 0 检查时，
+  // 空值会落成 filesAllowlistOverride=""，daemon 路由会把它当作显式覆盖。
   it("treats empty-string OPENRIG_FILES_ALLOWLIST as unset (no override sent)", async () => {
     const original = process.env.OPENRIG_FILES_ALLOWLIST;
     process.env.OPENRIG_FILES_ALLOWLIST = "";
@@ -237,14 +235,13 @@ describe("rig workspace doctor — output formatters", () => {
       out.restore();
     }
     const joined = out.logs.join("\n");
-    expect(joined).toContain("workspace doctor — /ws");
-    expect(joined).toContain("summary: 8 ok, 0 warn, 0 fail");
+    expect(joined).toContain("工作区诊断——/ws");
+    expect(joined).toContain("汇总：8 正常，0 警告，0 失败");
     expect(joined).toContain("workspace:");
     expect(joined).toContain("missions:");
     expect(joined).toContain("daemon:");
-    // Discriminator: each check name must appear under the correct
-    // group section. We assert the category labels appear BEFORE the
-    // check names that belong to them.
+    // 判别：每个检查名必须出现在正确的分组段下。我们断言类别标签
+    // 出现在其所属检查名之前。
     const wsIdx = joined.indexOf("workspace:");
     const wsCheckIdx = joined.indexOf("workspace_root_reachable");
     const missionsIdx = joined.indexOf("missions:");
@@ -256,9 +253,8 @@ describe("rig workspace doctor — output formatters", () => {
     expect(daemonIdx).toBeLessThan(daemonCheckIdx);
   });
 
-  // Discriminator-flip: fixHint MUST render below the failing check.
-  // Without `if (c.fixHint) console.log(...)` operators don't see how
-  // to fix the failure.
+  // 判别翻转：fixHint 必须渲染在失败检查之下。没有
+  // `if (c.fixHint) console.log(...)`，操作者就看不到如何修复该失败。
   it("human output renders fixHint under failing/warning checks", () => {
     const report: DoctorReportFixture = {
       workspaceRoot: "/ws",
@@ -282,7 +278,7 @@ describe("rig workspace doctor — output formatters", () => {
     }
     const joined = out.logs.join("\n");
     expect(joined).toContain("[FAIL] workspace_root_reachable");
-    expect(joined).toContain("Fix: run `rig config init-workspace`");
+    expect(joined).toContain("config init-workspace");
   });
 
   // Discriminator-flip: a check absent from DOCTOR_CHECK_GROUPS falls
@@ -304,7 +300,7 @@ describe("rig workspace doctor — output formatters", () => {
       out.restore();
     }
     const joined = out.logs.join("\n");
-    expect(joined).toContain("other:");
+    expect(joined).toContain("其他：");
     expect(joined).toContain("future_unknown_check");
   });
 });

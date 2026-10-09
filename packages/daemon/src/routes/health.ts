@@ -17,18 +17,18 @@ export function healthRoutes(): Hono {
     const scopeTypeRaw = c.req.query("scope_type");
     const scopeId = c.req.query("scope_id");
     if ((scopeTypeRaw === undefined) !== (scopeId === undefined)) {
-      return c.json({ error: "scope_type and scope_id must be provided together" }, 400);
+      return c.json({ error: "scope_type 与 scope_id 必须同时提供" }, 400);
     }
     if (scopeTypeRaw !== undefined && !SCOPE_TYPES.includes(scopeTypeRaw as HealthScope["type"])) {
-      return c.json({ error: `scope_type must be one of: ${SCOPE_TYPES.join(", ")}` }, 400);
+      return c.json({ error: `scope_type 必须是以下之一：${SCOPE_TYPES.join(", ")}` }, 400);
     }
     const severity = c.req.query("severity");
     if (severity !== undefined && !HEALTH_SEVERITIES.includes(severity as never)) {
-      return c.json({ error: `severity must be one of: ${HEALTH_SEVERITIES.join(", ")}` }, 400);
+      return c.json({ error: `severity 必须是以下之一：${HEALTH_SEVERITIES.join(", ")}` }, 400);
     }
     const status = c.req.query("status");
     if (status !== undefined && !HEALTH_STATUSES.includes(status as never)) {
-      return c.json({ error: `status must be one of: ${HEALTH_STATUSES.join(", ")}` }, 400);
+      return c.json({ error: `status 必须是以下之一：${HEALTH_STATUSES.join(", ")}` }, 400);
     }
     const limitRaw = c.req.query("limit");
     const limit = limitRaw === undefined ? 100 : Number(limitRaw);

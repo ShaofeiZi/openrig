@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch20",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/daemon/test/refocus-context-ref.test.ts",
+      "before_sha256_16": "aa539350dd56f617",
+      "after_sha256_16": "543f34aab7dea70e",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/workflow-bound-rig-cli.test.ts",
+      "before_sha256_16": "e950e04ea077071a",
+      "after_sha256_16": "cc82bc6fdf38e282",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/mcp-server.test.ts",
+      "before_sha256_16": "805d2fc3ad2bdc75",
+      "after_sha256_16": "c9d1074d903a68c9",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/export-import.test.ts",
+      "before_sha256_16": "38a504e9baa47c02",
+      "after_sha256_16": "369f89a3557986bc",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/skill-refs-membership-chain.test.ts",
+      "before_sha256_16": "f4cad1153741559f",
+      "after_sha256_16": "f4cad1153741559f",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

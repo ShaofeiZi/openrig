@@ -1,0 +1,77 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T01:06:09",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch11",
+ "files": 9,
+ "changed": 4,
+ "reviewed_no_change": 5,
+ "note": "本批仅9文件：graph-layout.test.ts 与批8 nochange 重复，按去重略过",
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/shadcn-components.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "db0b0ac612488e6189dfb5aacbcf69f1e20ee3a3053af19d9033bac6b4540374",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.0.24、R1 release-0.4.7、8250d702、agent.yaml resources.plugins[]、/plugins/:pluginId、FocusedTerminal xterm/WebSocket、AC-3、R1 状态机 idle|unresolved|absent|read_error|content 保留"
+  },
+  {
+   "path": "packages/ui/test/use-scope-markdown-state.test.tsx",
+   "status": "changed",
+   "after_sha256": "d9e391dd46fd79ac8163b302af9cf608505d5f46ad9f53efbbd42ff54ffbeeb9",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.0.24、R1 release-0.4.7、8250d702、agent.yaml resources.plugins[]、/plugins/:pluginId、FocusedTerminal xterm/WebSocket、AC-3、R1 状态机 idle|unresolved|absent|read_error|content 保留"
+  },
+  {
+   "path": "packages/ui/test/agent-plugins-list.test.tsx",
+   "status": "changed",
+   "after_sha256": "4df406de68a0e3611a6c2b7ae71f4823550c9fca86fe67a11ef204204c99846c",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.0.24、R1 release-0.4.7、8250d702、agent.yaml resources.plugins[]、/plugins/:pluginId、FocusedTerminal xterm/WebSocket、AC-3、R1 状态机 idle|unresolved|absent|read_error|content 保留"
+  },
+  {
+   "path": "packages/ui/test/usePlugins.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "0506ab0880169edba64a32443b6f16790b4e9b1eca72ef7efd3aa00d1984ed7f",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.0.24、R1 release-0.4.7、8250d702、agent.yaml resources.plugins[]、/plugins/:pluginId、FocusedTerminal xterm/WebSocket、AC-3、R1 状态机 idle|unresolved|absent|read_error|content 保留"
+  },
+  {
+   "path": "packages/ui/test/feed-card-terminal-drill.test.tsx",
+   "status": "changed",
+   "after_sha256": "dbcff1eb1498e323f56163c3668d602327018e3b36345b84680389ae0f9dfd2d",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.0.24、R1 release-0.4.7、8250d702、agent.yaml resources.plugins[]、/plugins/:pluginId、FocusedTerminal xterm/WebSocket、AC-3、R1 状态机 idle|unresolved|absent|read_error|content 保留"
+  },
+  {
+   "path": "packages/ui/test/global-events.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "18cbd7ba2a48e21e44c554470ebffac0d528b4b4454e3cd9cf8a41e889496992",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.0.24、R1 release-0.4.7、8250d702、agent.yaml resources.plugins[]、/plugins/:pluginId、FocusedTerminal xterm/WebSocket、AC-3、R1 状态机 idle|unresolved|absent|read_error|content 保留"
+  },
+  {
+   "path": "packages/ui/test/priority-rail-rule.test.ts",
+   "status": "changed",
+   "after_sha256": "f403678225fc1f2596b306253eb3c0428cd36596073f838735be2d2e3a7cf5b9",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.0.24、R1 release-0.4.7、8250d702、agent.yaml resources.plugins[]、/plugins/:pluginId、FocusedTerminal xterm/WebSocket、AC-3、R1 状态机 idle|unresolved|absent|read_error|content 保留"
+  },
+  {
+   "path": "packages/ui/test/feed-card-dismiss.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "4285ea3ff806971763b06210fdeafc822597a18d03159835c8daca6bc911a17e",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.0.24、R1 release-0.4.7、8250d702、agent.yaml resources.plugins[]、/plugins/:pluginId、FocusedTerminal xterm/WebSocket、AC-3、R1 状态机 idle|unresolved|absent|read_error|content 保留"
+  },
+  {
+   "path": "packages/ui/test/node-selection-migration.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "9ea180774865582b348a80c44d7ea3506a0b689e1d915bcac2526992093810ea",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.3.20/0.4.0.24、R1 release-0.4.7、8250d702、agent.yaml resources.plugins[]、/plugins/:pluginId、FocusedTerminal xterm/WebSocket、AC-3、R1 状态机 idle|unresolved|absent|read_error|content 保留"
+  }
+ ]
+}

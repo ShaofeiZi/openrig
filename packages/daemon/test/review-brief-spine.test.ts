@@ -1,5 +1,5 @@
-// OPR.0.4.4.20 FR-8 — MISSION_BRIEF spine generation ACs.
-// (Authored by the driver; executed by QA's gate run per the dev44 VM posture.)
+// OPR.0.4.4.20 FR-8——MISSION_BRIEF spine generation AC。
+//（由 driver 编写；按 dev44 VM posture 在 QA gate run 中执行。）
 
 import { describe, it, expect } from "vitest";
 import { applyBriefSpine, renderBriefSpine } from "../src/domain/review/brief-spine.js";
@@ -69,35 +69,35 @@ Hand-authored prose the generator must never touch.
 `;
 
 describe("FR-8 brief spine", () => {
-  it("derives the spine from the same composer queries (no second computation path) and carries intent verbatim", () => {
+  it("从相同 composer query 派生 spine（无第二条计算路径），并原样携带 intent", () => {
     const m = mission();
     expect(m.intent).toBe("The founder's why.");
     expect(m.briefSpine.progress).toContain("PLAN: 1");
-    expect(m.briefSpine.needsYou).toContain("0 attention items");
-    expect(renderBriefSpine(m)).toEqual(m.briefSpine); // same function, same strings
+    expect(m.briefSpine.needsYou).toContain("0 个待关注项");
+    expect(renderBriefSpine(m)).toEqual(m.briefSpine); // 同一 function、相同字符串。
   });
 
-  it("applies section-scoped: spine sections replaced, hand-authored sections byte-untouched, schema order preserved", () => {
+  it("按 section scope 应用：替换 spine section，手写 section 字节不变，保留 schema 顺序", () => {
     const m = mission();
     const applied = applyBriefSpine(BRIEF, m.briefSpine);
     expect(applied).not.toBeNull();
     expect(applied!).toContain("Hand-authored prose the generator must never touch.");
     expect(applied!).toContain("hand-authored pointer, untouched");
     expect(applied!).not.toContain("stale hand line");
-    // The pinned exact-order H2 schema survives (the scope-audit contract).
+    // 保留已 pin 的准确顺序 H2 schema（scope-audit 契约）。
     const headers = [...applied!.matchAll(/^##\s+(.+?)\s*$/gm)].map((x) => x[1]);
     expect(headers).toEqual(MISSION_BRIEF_HEADERS);
   });
 
-  it("refuses to guess-rewrite a brief that does not carry the pinned schema", () => {
+  it("拒绝猜测并重写不含已 pin schema 的 brief", () => {
     const m = mission();
     expect(applyBriefSpine("# not a brief\n\n## Random\n\nx\n", m.briefSpine)).toBeNull();
-    // Wrong order is also refused — order is part of the schema.
+    // 顺序错误时也拒绝——顺序是 schema 的一部分。
     const wrongOrder = BRIEF.replace("## Building", "## TEMP").replace("## Progress", "## Building").replace("## TEMP", "## Progress");
     expect(applyBriefSpine(wrongOrder, m.briefSpine)).toBeNull();
   });
 
-  it("is idempotent: applying the same spine twice yields identical bytes", () => {
+  it("保持幂等：应用同一 spine 两次会产生相同字节", () => {
     const m = mission();
     const once = applyBriefSpine(BRIEF, m.briefSpine)!;
     const twice = applyBriefSpine(once, m.briefSpine)!;

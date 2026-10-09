@@ -1,28 +1,23 @@
-// UI Enhancement Pack v0 — atomic file write + JSONL audit.
+// UI Enhancement Pack v0——原子文件写入 + JSONL 审计。
 //
-// Item 4: operator-actionable write surface for STEERING.md /
-// PROGRESS.md / spec YAML / any allowlisted file. Honors the dashboard
-// precedent's mtime + content-hash invariants (cited as retired-but-
-// instructive from `services/dashboard/bin/server.py:1269-1289`;
-// reimplemented fresh in TypeScript per current OpenRig conventions).
+// 条目 4：操作者可执行的 STEERING.md / PROGRESS.md / spec YAML / 任意白名单文件写入面。
+// 遵循 dashboard 先例中的 mtime + content-hash 不变量（引用已退役但仍有指导意义的
+// `services/dashboard/bin/server.py:1269-1289`），并按当前 zrig 约定用 TypeScript 重新实现。
 //
-// Atomic-write semantics:
-//   1. Resolve target path under allowlist root (path-safety from
-//      file-allowlist.ts).
-//   2. Re-stat file: if mtime != expectedMtime OR contentHash !=
-//      expectedContentHash, reject with WriteConflictError carrying
-//      the current mtime + contentHash for the UI to surface.
-//   3. Write content to a temp file in the same directory.
-//   4. fsync the temp file so the write is durable before the rename.
-//   5. Atomic rename over the target path. On POSIX this is a single
-//      inode swap, so other readers either see the old file or the
-//      new file — never a partial write.
-//   6. Compute new mtime + contentHash from the rename'd target.
-//   7. Append one JSONL row to the audit file.
+// 原子写入语义：
+//   1. 在白名单根目录下解析目标路径（路径安全规则来自 file-allowlist.ts）。
+//   2. 重新 stat 并计算哈希：若 mtime != expectedMtime 或 contentHash !=
+//      expectedContentHash，则抛出 WriteConflictError，并携带当前 mtime + contentHash
+//      供 UI 展示。
+//   3. 将内容写入同目录临时文件。
+//   4. 对临时文件执行 fsync，确保重命名前写入已持久化。
+//   5. 原子重命名覆盖目标路径。在 POSIX 上这是一次 inode 交换，其他读取者只会看到旧文件
+//      或新文件，绝不会看到部分写入。
+//   6. 从重命名后的目标重新计算 mtime + contentHash。
+//   7. 向审计文件追加一行 JSONL。
 //
-// The audit file is `~/.openrig/file-edit-audit.jsonl` by default
-// (operator-overridable via env). Append-only; never rotates at v0
-// per PRD § Item 4 (rotation is a future concern).
+// 审计文件默认为 `~/.openrig/file-edit-audit.jsonl`，操作者可通过环境变量覆盖。按照
+// PRD § 条目 4，v0 只追加且不轮转；轮转留待后续处理。
 
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
@@ -31,28 +26,28 @@ import { resolveAllowedPath, type AllowlistRoot } from "./path-safety.js";
 
 export interface FileWriteRequest {
   rootName: string;
-  /** Relative path under the allowlist root; same shape as item 3 routes. */
+  /** 白名单根目录下的相对路径；结构与条目 3 的路由一致。 */
   path: string;
   content: string;
-  /** Caller-known mtime (ISO string) at the time of last read. */
+  /** 调用方上次读取时已知的 mtime（ISO 字符串）。 */
   expectedMtime: string;
-  /** Caller-known SHA-256 content hash (hex) at the time of last read. */
+  /** 调用方上次读取时已知的 SHA-256 内容哈希（十六进制）。 */
   expectedContentHash: string;
-  /** Operator session that initiated the write (for the audit row). */
+  /** 发起写入的操作者会话，用于审计记录。 */
   actor: string;
-  /** P21 §4 era-stamp for the audit row: `transport:v1` when the actor came from the transport
-   *  header chokepoint; null = claimed-era (the UI/MCP named-deferral path). */
+  /** 审计记录的 P21 §4 时代标记：操作者来自传输 header 汇聚点时为 `transport:v1`；
+   * null 表示 claimed-era（UI/MCP 命名延后路径）。 */
   identityProvenance?: string | null;
 }
 
 export interface FileWriteResult {
-  /** Resolved canonical absolute path that was written. */
+  /** 实际写入的已解析规范绝对路径。 */
   absolutePath: string;
-  /** New mtime after the write (ISO string). */
+  /** 写入后的新 mtime（ISO 字符串）。 */
   newMtime: string;
-  /** New SHA-256 content hash (hex) after the write. */
+  /** 写入后的新 SHA-256 内容哈希（十六进制）。 */
   newContentHash: string;
-  /** Byte-count delta (new - prev). */
+  /** 字节数差值（新值 - 旧值）。 */
   byteCountDelta: number;
 }
 
@@ -62,7 +57,7 @@ export class WriteConflictError extends Error {
     public readonly currentContentHash: string,
     public readonly details: Record<string, unknown>,
   ) {
-    super("file changed externally; refresh required before writing");
+    super("文件已被外部修改；写入前必须刷新");
     this.name = "WriteConflictError";
   }
 }
@@ -79,11 +74,11 @@ export class FileWriteError extends Error {
 }
 
 export interface FileWriteServiceOpts {
-  /** Allowlist roots resolved from env at startup (re-resolved per request is fine; cheap). */
+  /** 启动时从环境变量解析的白名单根目录；每次请求重新解析也可以，开销很小。 */
   allowlist: AllowlistRoot[];
-  /** Override default audit file location for tests. */
+  /** 测试时覆盖默认审计文件位置。 */
   auditFilePath?: string;
-  /** Override Date.now() for tests (returns ISO timestamp). */
+  /** 测试时覆盖 Date.now()，返回 ISO 时间戳。 */
   now?: () => Date;
 }
 
@@ -105,16 +100,14 @@ export class FileWriteService {
   }
 
   /**
-   * Atomically write content to an allowlisted file. Throws
-   * WriteConflictError on mtime/contentHash mismatch; throws
-   * FileWriteError on stat / temp-write / rename / audit failures.
-   * Returns FileWriteResult with the new mtime + contentHash on
-   * success.
+   * 将内容原子写入白名单文件。mtime/contentHash 不匹配时抛出 WriteConflictError；
+   * stat、临时写入、重命名或审计失败时抛出 FileWriteError。成功时返回包含新 mtime +
+   * contentHash 的 FileWriteResult。
    */
   writeAtomic(req: FileWriteRequest): FileWriteResult {
     const target = resolveAllowedPath(this.allowlist, req.rootName, req.path);
 
-    // Pre-write checks: re-stat + re-hash for conflict detection.
+    // 写入前重新 stat 并计算哈希，以检测冲突。
     let prevStat: fs.Stats;
     let prevContent: Buffer;
     try {
@@ -123,7 +116,7 @@ export class FileWriteService {
     } catch (err) {
       throw new FileWriteError(
         "stat_failed",
-        `failed to read '${target}' for conflict detection: ${err instanceof Error ? err.message : String(err)}`,
+        `为检测冲突读取 '${target}' 失败：${err instanceof Error ? err.message : String(err)}`,
         { target },
       );
     }
@@ -137,9 +130,8 @@ export class FileWriteService {
       });
     }
 
-    // Write to temp file in the SAME directory (so atomic rename
-    // works across the same filesystem). Suffix with PID + random
-    // so concurrent writes don't collide.
+    // 写入同一目录下的临时文件，使原子重命名发生在同一文件系统内。文件名附加 PID 和
+    // 随机值，避免并发写入冲突。
     const tmpName = `.openrig-write-${process.pid}-${Math.random().toString(36).slice(2, 10)}-${path.basename(target)}`;
     const tmpPath = path.join(path.dirname(target), tmpName);
     let tmpFd: number | null = null;
@@ -148,12 +140,12 @@ export class FileWriteService {
       fs.writeFileSync(tmpFd, req.content);
       fs.fsyncSync(tmpFd);
     } catch (err) {
-      // Clean up temp file if it was partially created.
+      // 如果临时文件已部分创建，则尽力清理。
       try { if (tmpFd !== null) fs.closeSync(tmpFd); } catch { /* ignore */ }
       try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
       throw new FileWriteError(
         "tmp_write_failed",
-        `failed to write+fsync temp file at '${tmpPath}': ${err instanceof Error ? err.message : String(err)}`,
+        `写入并 fsync 临时文件 '${tmpPath}' 失败：${err instanceof Error ? err.message : String(err)}`,
         { target, tmpPath },
       );
     } finally {
@@ -163,27 +155,24 @@ export class FileWriteService {
     try {
       fs.renameSync(tmpPath, target);
     } catch (err) {
-      // Best-effort cleanup of the orphan temp file. We don't try to
-      // restore the previous content because we never touched the
-      // target (rename failed atomically).
+      // 尽力清理孤立的临时文件。由于原子重命名失败时目标从未被修改，因此无需恢复旧内容。
       try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
       throw new FileWriteError(
         "rename_failed",
-        `failed to atomically rename '${tmpPath}' over '${target}': ${err instanceof Error ? err.message : String(err)}`,
+        `将 '${tmpPath}' 原子重命名覆盖 '${target}' 失败：${err instanceof Error ? err.message : String(err)}`,
         { target, tmpPath },
       );
     }
 
-    // Re-stat to get the new mtime + content hash.
+    // 重新 stat 以取得新的 mtime 和内容哈希。
     const newStat = fs.statSync(target);
     const newContent = fs.readFileSync(target);
     const newMtime = newStat.mtime.toISOString();
     const newContentHash = sha256Hex(newContent);
     const byteCountDelta = newContent.byteLength - prevContent.byteLength;
 
-    // Append the audit JSONL row. Failure here is logged but does
-    // NOT undo the write — the user's edit landed; we don't want
-    // audit-system flakes to revert canon edits.
+    // 追加审计 JSONL 记录。此处失败会报错，但不会撤销写入：用户编辑已落盘，不能因为
+    // 审计系统偶发故障而回滚规范内容。
     const auditRow = {
       ts: this.now().toISOString(),
       actor: req.actor,
@@ -202,7 +191,7 @@ export class FileWriteService {
     } catch (err) {
       throw new FileWriteError(
         "audit_write_failed",
-        `write succeeded but audit append failed: ${err instanceof Error ? err.message : String(err)}`,
+        `写入已成功，但追加审计记录失败：${err instanceof Error ? err.message : String(err)}`,
         { target, auditFilePath: this.auditFilePath, ...auditRow },
       );
     }
@@ -216,17 +205,14 @@ export class FileWriteService {
   }
 
   /**
-   * Atomically CREATE a new allowlisted file (OPR.0.4.4.20 FR-6 — the frozen
-   * review export). Exclusive: throws `target_exists` when the file is
-   * already there (frozen exports are point-in-time snapshots, never
-   * rewritten; re-invoking the freeze for the same approval is an idempotent
-   * no-op at the caller). Same temp-write + fsync + audit-row machinery as
-   * writeAtomic — one writer family, no parallel write path.
+   * 原子创建新的白名单文件（OPR.0.4.4.20 FR-6——冻结评审导出）。采用独占创建：文件已
+   * 存在时抛出 `target_exists`。冻结导出是时点快照，永不改写；对同一审批重复冻结由调用方
+   * 视为幂等无操作。与 writeAtomic 共用临时写入、fsync 和审计记录机制，只有一个写入器族。
    */
   createAtomic(req: Omit<FileWriteRequest, "expectedMtime" | "expectedContentHash">): FileWriteResult {
     const target = resolveAllowedPath(this.allowlist, req.rootName, req.path);
     if (fs.existsSync(target)) {
-      throw new FileWriteError("target_exists", `refusing to overwrite existing file '${target}'`, { target });
+      throw new FileWriteError("target_exists", `拒绝覆盖现有文件 '${target}'`, { target });
     }
 
     const tmpName = `.openrig-write-${process.pid}-${Math.random().toString(36).slice(2, 10)}-${path.basename(target)}`;
@@ -249,7 +235,7 @@ export class FileWriteService {
     }
 
     try {
-      // linkSync fails if the target appeared meanwhile — true exclusive create.
+      // 若目标在此期间出现，linkSync 会失败，从而实现真正的独占创建。
       fs.linkSync(tmpPath, target);
       fs.unlinkSync(tmpPath);
     } catch (err) {
@@ -257,7 +243,7 @@ export class FileWriteService {
       const code = (err as NodeJS.ErrnoException).code === "EEXIST" ? "target_exists" : "rename_failed";
       throw new FileWriteError(
         code,
-        `failed to atomically create '${target}': ${err instanceof Error ? err.message : String(err)}`,
+        `原子创建 '${target}' 失败：${err instanceof Error ? err.message : String(err)}`,
         { target, tmpPath },
       );
     }
@@ -285,7 +271,7 @@ export class FileWriteService {
     } catch (err) {
       throw new FileWriteError(
         "audit_write_failed",
-        `create succeeded but audit append failed: ${err instanceof Error ? err.message : String(err)}`,
+        `创建已成功，但追加审计记录失败：${err instanceof Error ? err.message : String(err)}`,
         { target, auditFilePath: this.auditFilePath, ...auditRow },
       );
     }
@@ -298,7 +284,7 @@ export class FileWriteService {
     fs.appendFileSync(this.auditFilePath, `${JSON.stringify(row)}\n`);
   }
 
-  /** Test/debug helper: returns the configured audit file path. */
+  /** 测试/调试辅助函数：返回配置的审计文件路径。 */
   getAuditFilePath(): string {
     return this.auditFilePath;
   }

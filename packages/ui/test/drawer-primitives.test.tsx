@@ -1,21 +1,17 @@
-// V1 attempt-3 Phase 4 — drawer primitives reachability proof (ritual #6).
+// V1 第三次尝试阶段 4——抽屉原语可达性证明（约束流程 #6）。
 //
-// Phase 4 P4-2 site-of-use trigger wiring DEFERRED to Phase 5; with no live
-// consumers, the 4 viewers + 4 triggers need a minimum unit-level proof so
-// regressions can't slip in unnoticed. Coverage:
+// 阶段 4 P4-2 使用点触发器接线延后到阶段 5；在没有实时消费者时，4 个查看器与 4 个触发器
+// 至少需要单元级证明，避免回归悄然混入。覆盖范围：
 //
-// - Each viewer renders without crashing when given canonical-shape props.
-// - Each trigger fires setSelection on click with the correct DrawerSelection
-//   discriminator (`type: "qitem" | "file" | "sub-spec"`) and the matching
-//   payload.
-// - SharedDetailDrawer routes selection.type to the correct viewer component.
+// - 每个查看器接收规范形态属性时均可无崩溃渲染。
+// - 每个触发器点击后都以正确的 DrawerSelection 判别值
+//   （`type: "qitem" | "file" | "sub-spec"`）及匹配 payload 调用 setSelection。
+// - SharedDetailDrawer 根据 selection.type 路由到正确的查看器组件。
 //
-// V1 polish slice Phase 5.1 P5.1-D2: SeatDetailViewer + SeatDetailTrigger
-// RETIRED. seat-detail navigation goes to /topology/seat/$rigId/$logicalId
-// center page (LiveNodeDetails). The 'seat-detail' kind is dropped from
-// DrawerSelection union; this file now covers only the 3 remaining
-// drawer surfaces (qitem / file / sub-spec). The retirement-regression
-// guard lives in test/node-selection-migration.test.tsx.
+// V1 润色 slice 阶段 5.1 P5.1-D2：SeatDetailViewer 与 SeatDetailTrigger 已退役。
+// seat-detail 导航改到 /topology/seat/$rigId/$logicalId 中心页（LiveNodeDetails）。
+// DrawerSelection 联合类型中已移除 'seat-detail'；本文件现在只覆盖剩余 3 个抽屉表面
+//（qitem/file/sub-spec）。退役回归守卫位于 test/node-selection-migration.test.tsx。
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, cleanup, screen, within } from "@testing-library/react";
@@ -51,7 +47,7 @@ function renderWithQuery(ui: ReactElement) {
 }
 
 // ---------------------------------------------------------------------------
-// Viewers — render-without-crash with canonical-shape props
+// 查看器——使用规范形态属性时无崩溃渲染。
 // ---------------------------------------------------------------------------
 
 describe("Drawer viewers (P4-1) render with canonical props", () => {
@@ -95,8 +91,8 @@ describe("Drawer viewers (P4-1) render with canonical props", () => {
   });
 
   it("FileViewer honest NOT-RESOLVABLE state when no content/imageUrl and no readable target", () => {
-    // Retro-demo fixback: no content AND no root/absolutePath can never load —
-    // the viewer now says so instead of the old eternal empty/Loading state.
+    // 追溯演示回修：既无 content 又无 root/absolutePath 时不可能加载；查看器现在会明确说明，
+    // 不再永久停留在旧的空白/加载中状态。
     const { getByTestId } = render(<FileViewer path="missing.md" kind="markdown" />);
     expect(getByTestId("file-viewer-unresolvable")).toBeTruthy();
   });
@@ -168,13 +164,13 @@ describe("Drawer viewers (P4-1) render with canonical props", () => {
   });
 
   // -------------------------------------------------------------------------
-  // FOUNDER-FIX blocker (qitem-20260723002125-9e4526a0): the drawer's FileViewer
-  // Markdown branch must pass an assetBasePath so relative C1-body images resolve
-  // through /api/files/asset (dirname of the RESOLVED target.path), not as broken
-  // SPA-route-relative URLs (QA firsthand caught proof/qa.md body ![](proof-image.png)
-  // resolving to http://host/project/slice/proof-image.png). RED against FileViewer.tsx
-  // (currently renders <MarkdownViewer content={content}/> with no assetBasePath).
-  // Semantic URL parsing (decode params) — never brittle encoded-string matching.
+  // FOUNDER-FIX 阻断项（qitem-20260723002125-9e4526a0）：抽屉 FileViewer 的 Markdown
+  // 分支必须传入 assetBasePath，使 C1 正文中的相对图片通过 /api/files/asset 解析
+  //（取已解析 target.path 的 dirname），而不是形成损坏的 SPA 路由相对 URL。QA 实测发现
+  // proof/qa.md 正文中的 ![](proof-image.png) 被解析成
+  // http://host/project/slice/proof-image.png。该测试针对 FileViewer.tsx 为红；当时它渲染
+  // <MarkdownViewer content={content}/> 却未传 assetBasePath。使用语义 URL 解析并解码参数，
+  // 绝不依赖脆弱的编码字符串匹配。
   // -------------------------------------------------------------------------
   const C1_QA = [
     "---",
@@ -194,7 +190,7 @@ describe("Drawer viewers (P4-1) render with canonical props", () => {
 
   function readContentMock(content: string, readPath: string, expectedRoot: string) {
     return vi.fn(async (url: string) => {
-      // semantic pin: FileViewer reads the RESOLVED root/readPath (never the display path).
+      // 语义锁定：FileViewer 读取已解析的 root/readPath，绝不读取展示路径。
       const u = new URL(String(url), "http://drawer.local");
       expect(u.pathname).toBe("/api/files/read");
       expect(u.searchParams.get("root")).toBe(expectedRoot);
@@ -217,7 +213,7 @@ describe("Drawer viewers (P4-1) render with canonical props", () => {
     });
   }
 
-  // decode an md-inline-image src into {pathname, root, path} for semantic assertions.
+  // 把 Markdown 内联图片 src 解码为 {pathname, root, path}，用于语义断言。
   function assetParams(src: string) {
     const u = new URL(src, "http://drawer.local");
     return { pathname: u.pathname, root: u.searchParams.get("root"), path: u.searchParams.get("path") };
@@ -225,12 +221,12 @@ describe("Drawer viewers (P4-1) render with canonical props", () => {
 
   it("FileViewer RED-1: inline C1-body image resolves via /api/files/asset using dirname of the RESOLVED target.path (not the display path)", async () => {
     globalThis.fetch = readContentMock(C1_QA, "missions/m/slices/s/proof/qa.md", "workspace") as unknown as typeof fetch;
-    // display path DELIBERATELY different from readPath — derivation must use target.path.
+    // 展示路径故意与 readPath 不同；派生必须使用 target.path。
     renderWithQuery(
       <FileViewer path="proof/qa.md" kind="markdown" root="workspace" readPath="missions/m/slices/s/proof/qa.md" />,
     );
-    // C1 five-field header — labels AND values (the founder contract is header+body,
-    // not generic keys) — plus the distinctive body, still render.
+    // C1 五字段页头——标签和值（创建者契约是页头 + 正文，不是泛化键）——以及可区分的正文
+    // 都必须继续渲染。
     const fm = await screen.findByTestId("markdown-frontmatter");
     const C1_FIELDS: Array<[string, string | RegExp]> = [
       ["slice", "fg1-09-locked-media"],
@@ -244,7 +240,7 @@ describe("Drawer viewers (P4-1) render with canonical props", () => {
       expect(within(fm).getByText(value)).toBeTruthy();
     }
     expect(screen.getByText(/DISTINCTIVE-QA-BODY/)).toBeTruthy();
-    // the inline image resolves through the canonical asset URL: dirname of readPath, exactly once.
+    // 内联图片通过规范资源 URL 解析：准确使用一次 readPath 的 dirname。
     const img = await screen.findByTestId("md-inline-image");
     const p = assetParams(img.getAttribute("src") ?? "");
     expect(p.pathname).toBe("/api/files/asset");
@@ -287,8 +283,8 @@ describe("Drawer viewers (P4-1) render with canonical props", () => {
     );
     await screen.findByTestId("markdown-frontmatter");
     const imgs = screen.getAllByTestId("md-inline-image").map((i) => i.getAttribute("src"));
-    // each absolute form is preserved verbatim — the derived base never rewrites them
-    // (this passthrough is also unit-pinned in markdown-viewer.test.tsx:85-89/92-96).
+    // 每种绝对形式都逐字保留，派生基址绝不改写它们；此透传也由
+    // markdown-viewer.test.tsx 第 85–89/92–96 行的单元测试锁定。
     expect(imgs).toContain("https://example.com/img.png");
     expect(imgs).toContain("data:image/png;base64,AAAA");
     expect(imgs).toContain("/already/absolute.png");
@@ -305,16 +301,16 @@ describe("Drawer viewers (P4-1) render with canonical props", () => {
       />,
     );
     expect(getByTestId("sub-spec-preview")).toBeTruthy();
-    // entryId omitted → no open-in-center Link rendered (avoids router context dep).
+    // 省略 entryId 时不渲染在中心打开的 Link，以免依赖路由上下文。
     expect(queryByTestId("sub-spec-open-center")).toBeNull();
   });
 
-  // V1 polish slice Phase 5.1 P5.1-D2: SeatDetailViewer RETIRED.
-  // Negative-assertion guard lives in test/node-selection-migration.test.tsx.
+  // V1 润色 slice 阶段 5.1 P5.1-D2：SeatDetailViewer 已退役。负向断言守卫位于
+  // test/node-selection-migration.test.tsx。
 });
 
 // ---------------------------------------------------------------------------
-// Triggers — click → setSelection with correct DrawerSelection shape
+// 触发器——点击后以正确的 DrawerSelection 结构调用 setSelection。
 // ---------------------------------------------------------------------------
 
 function renderWithDrawerCtx(
@@ -358,9 +354,8 @@ describe("Drawer triggers (P4-2) fire setSelection with correct kind on click", 
     expect(setSelection).toHaveBeenCalledWith({ type: "sub-spec", data });
   });
 
-  // V1 polish slice Phase 5.1 P5.1-D2: SeatDetailTrigger RETIRED. Click
-  // contract for the (now-deleted) primitive is guarded as a
-  // file-doesn't-exist negative-assertion in node-selection-migration.test.tsx.
+  // V1 润色 slice 阶段 5.1 P5.1-D2：SeatDetailTrigger 已退役。该已删除原语的点击契约
+  // 由 node-selection-migration.test.tsx 中的“文件不存在”负向断言守卫。
 
   it("trigger custom testId override is respected (predicate-consistency probe)", () => {
     const data = { qitemId: "q", body: "b" };
@@ -373,7 +368,7 @@ describe("Drawer triggers (P4-2) fire setSelection with correct kind on click", 
 });
 
 // ---------------------------------------------------------------------------
-// SharedDetailDrawer routing — selection.type → correct viewer component
+// SharedDetailDrawer 路由——selection.type → 正确的查看器组件。
 // ---------------------------------------------------------------------------
 
 const NOOP_PROPS = {
@@ -442,10 +437,9 @@ describe("SharedDetailDrawer (Phase 4) routes selection.type to the correct view
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  // CORRECTIVE §7.2 (founder 2026-07-05) — the LEFT reinvention is reverted
-  // at its three tokens: edge prop RIGHT (border side), right-0 anchor class
-  // (the positioner), and the FR-11.1 z-50 bump comes OUT (the right edge
-  // never contended with the sidebar's z-40).
+  // CORRECTIVE §7.2（创建者，2026-07-05）——从三个 token 上撤销左侧重制：edge 属性改回
+  // RIGHT（边框侧）、定位器使用 right-0 锚点类，并移除 FR-11.1 的 z-50 提升
+  //（右边缘从未与侧栏的 z-40 冲突）。
   it("the shared drawer anchors to the RIGHT edge with the pre-flip z (three-token revert)", () => {
     const selection: DrawerSelection = {
       type: "file",
@@ -462,8 +456,7 @@ describe("SharedDetailDrawer (Phase 4) routes selection.type to the correct view
     expect(sheet.className).not.toContain("left-0");
   });
 
-  // V1 polish slice Phase 5.1 P5.1-D2: 'seat-detail' kind RETIRED from
-  // DrawerSelection union; navigation to /topology/seat/$rigId/$logicalId
-  // center page (LiveNodeDetails) replaces the drawer-mounted variant.
-  // Routing-by-type test for 'seat-detail' is gone with the kind itself.
+  // V1 润色 slice 阶段 5.1 P5.1-D2：DrawerSelection 联合类型中的 'seat-detail' 已退役；
+  // 导航到 /topology/seat/$rigId/$logicalId 中心页（LiveNodeDetails）取代了抽屉挂载变体。
+  // 'seat-detail' 的按类型路由测试也随该类别一并移除。
 });

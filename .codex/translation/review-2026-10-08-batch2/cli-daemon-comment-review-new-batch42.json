@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch42",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/daemon/test/progress-review-done-coherence.test.ts",
+      "before_sha256_16": "4cf1e84bff263348",
+      "after_sha256_16": "4cf1e84bff263348",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/provider-host-usage-rollup.test.ts",
+      "before_sha256_16": "77204a66a03a8c82",
+      "after_sha256_16": "23ed6ad2bb2a9f43",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/s03-bound-launch.test.ts",
+      "before_sha256_16": "0daa345c38b48b6d",
+      "after_sha256_16": "8b1c2cbdc1c06a30",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/scaffold-placeholder.test.ts",
+      "before_sha256_16": "843fd68f612ed857",
+      "after_sha256_16": "843fd68f612ed857",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/scenario-determinism.test.ts",
+      "before_sha256_16": "d0ce612b07054dd8",
+      "after_sha256_16": "5814b3df4a17e1e9",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

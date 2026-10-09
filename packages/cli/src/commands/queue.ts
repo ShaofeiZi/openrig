@@ -12,14 +12,13 @@ import { shellQuote } from "../cross-host-executor.js";
 import { omittedReadField, readView } from "../read-view.js";
 
 /**
- * `rig queue` — coordination primitive L3/inbox/outbox commands (PL-004 Phase A).
+ * `rig queue`——协同原语 L3/inbox/outbox 命令（PL-004 Phase A）。
  *
- * Backed by `/api/queue`. Operates only via the daemon HTTP API.
- * Does NOT touch the POC `rigx-queue-proto` filesystem state.
+ * 后台为 `/api/queue`。只通过后台服务 HTTP API 操作。
+ * 不触碰 POC 的 `rigx-queue-proto` 文件系统状态。
  *
- * Hot-potato strict-rejection is enforced at the daemon; `update --state done`
- * without `--closure-reason` returns exit 1 with structured error naming the
- * 6 valid closure reasons.
+ * hot-potato 严格拒绝在后台服务侧执行：不带 `--closure-reason` 的
+ * `update --state done` 会以退出码 1 返回结构化错误，列出 6 个合法 closure reason。
  */
 
 export interface DeliveryVerifyDeps {
@@ -35,9 +34,9 @@ export interface QueueDeps extends StatusDeps {
 
 export interface VerifiedDeliveryResult {
   outcome: "posted" | "transport-failed" | "never-posted" | "still-pending" | "indeterminate";
-  /** null means no receipt can presently settle connector acceptance. */
+  /** null 表示目前无法判定 connector 是否签收。 */
   connectorAccepted: boolean | null;
-  /** A connector receipt can never prove that a person read the message. */
+  /** connector 回执永远无法证明有人已读这条消息。 */
   humanReadership: "unknown";
   detail?: string;
   nextAction: string | null;
@@ -56,7 +55,7 @@ export async function waitForDeliveryOutcome(
   for (;;) {
     try {
       const response = await client.get<Record<string, unknown>>(`/api/queue/${encodeURIComponent(qitemId)}`);
-      if (response.status !== 200) throw new Error(`receipt lookup returned HTTP ${response.status}`);
+      if (response.status !== 200) throw new Error(`回执查询返回 HTTP ${response.status}`);
       const outcome = response.data.deliveryOutcome;
       if (outcome === "posted") {
         return { outcome, connectorAccepted: true, humanReadership: "unknown", nextAction: null };
@@ -67,7 +66,7 @@ export async function waitForDeliveryOutcome(
           connectorAccepted: false,
           humanReadership: "unknown",
           detail: typeof response.data.deliveryFailureDetail === "string" ? response.data.deliveryFailureDetail : undefined,
-          nextAction: `rig queue show ${qitemId} --json`,
+          nextAction: `zrig queue show ${qitemId} --json`,
         };
       }
     } catch (error) {
@@ -75,8 +74,8 @@ export async function waitForDeliveryOutcome(
         outcome: "indeterminate",
         connectorAccepted: null,
         humanReadership: "unknown",
-        detail: `delivery receipt could not be read: ${(error as Error).message}`,
-        nextAction: `rig queue show ${qitemId} --json`,
+        detail: `无法读取投递回执：${(error as Error).message}`,
+        nextAction: `zrig queue show ${qitemId} --json`,
       };
     }
     if (now() - started >= timeoutMs) {
@@ -84,8 +83,8 @@ export async function waitForDeliveryOutcome(
         outcome: "still-pending",
         connectorAccepted: null,
         humanReadership: "unknown",
-        detail: `no terminal connector receipt within ${timeoutMs}ms; the durable qitem remains intact`,
-        nextAction: `rig queue show ${qitemId} --json`,
+        detail: `${timeoutMs}ms 内没有拿到终态 connector 回执；持久化的 qitem 保持完好`,
+        nextAction: `zrig queue show ${qitemId} --json`,
       };
     }
     await sleep(intervalMs);
@@ -96,41 +95,40 @@ async function withClient<T>(
   deps: QueueDeps,
   fn: (client: DaemonClient) => Promise<T>,
   attemptWhenProbeUnconfirmed = false,
-  // D14 — names the cross-host target in transport-failure output.
+  // D14——在传输失败输出里点名跨主机目标。
   hostContext?: string,
 ): Promise<T | undefined> {
   const status = await getDaemonStatus(deps.lifecycleDeps);
-  // RULING 1ae863d2 — status is 3-state: hard-block ONLY on positive evidence
-  // (stopped/stale). UNVERIFIED (timeout/wedged/wrong-home) proceeds to the
-  // configured-target request as the authority — never a down assertion.
+  // RULING 1ae863d2——状态是三态：只在有确凿证据（stopped/stale）时硬阻断。
+  // UNVERIFIED（timeout/ wedged /wrong-home）仍继续向配置的目标发请求，由目标裁定——
+  // 绝不武断判定为 down。
   const positiveDown = status.state === "stopped" || status.state === "stale";
   if (positiveDown || (status.state === "running" && status.healthy === false)) {
     if (!attemptWhenProbeUnconfirmed) {
-      // B8-1b: the ONE epistemic-matched guard renders both branches.
+      // B8-1b：唯一一处认知匹配的闸门同时渲染两个分支。
       daemonStatusGuard(status);
       return undefined;
     }
   }
   if (status.state === "unverified" && status.siblingHint) {
-    console.error(`note: OPENRIG_HOME may be wrong — resolved ${status.siblingHint.resolvedHome}, live sibling ${status.siblingHint.siblingHome}`);
+    console.error(`注意：OPENRIG_HOME 可能不对——解析到 ${status.siblingHint.resolvedHome}，存活的同级 ${status.siblingHint.siblingHome}`);
   }
   const baseUrl = status.state === "running" && status.port !== undefined
     ? getDaemonUrl(status)
     : new DaemonClient().baseUrl;
   const client = deps.clientFactory(baseUrl);
-  // D14 (accept-and-drop family #6): a THROWING transport must fail LOUD — the
-  // classified error + host context on stderr, nonzero exit — never a silent exit.
+  // D14（accept-and-drop 家族 #6）：抛错的传输必须响亮地失败——分类后的错误 +
+  // 主机上下文打到 stderr、非零退出码——绝不静默退出。
   try {
     return await fn(client);
   } catch (err) {
     if (err instanceof DaemonConnectionError || err instanceof DaemonTimeoutError || err instanceof DaemonResponseError) {
-      // D14 + B8 reconciliation (pre-existing main conflict, found at B8 A/B): the D14
-      // context lines print here, then the typed error RETHROWS so the SHARED runProgram
-      // render owns the 3-part fact/consequence/action + the io exit (response-integrity
-      // contract). One render authority, layered context — never a swallowed exit.
-      const where = hostContext ? ` (routing to host '${hostContext}')` : "";
-      console.error(`queue transport failure${where}: ${err.message}`);
-      console.error("The write outcome is INDETERMINATE if the request may have reached a daemon — reconcile by ID before any retry.");
+      // D14 + B8 调和（既有的 main 冲突，在 B8 A/B 时发现）：D14 上下文行在这里打印，
+      // 然后带类型的错误重新抛出，让共享的 runProgram 渲染负责三段式 fact/consequence/action
+      // + io 退出（响应完整性契约）。一个渲染权威，分层上下文——绝不吞掉退出码。
+      const where = hostContext ? `（路由到主机 '${hostContext}'）` : "";
+      console.error(`queue 传输失败${where}：${err.message}`);
+      console.error("若请求可能已到达某个后台服务，写入结果即为不确定——重试前先按 ID 对账。");
     }
     throw err;
   }
@@ -145,21 +143,20 @@ function printResult(json: boolean, body: unknown, status: number): void {
   if (status >= 400) process.exitCode = status >= 500 ? 2 : 1;
 }
 
-// OPR.0.4.3.03 — `rig queue show` body preview.
+// OPR.0.4.3.03——`rig queue show` 正文预览。
 //
-// Default `show` renders a BOUNDED body preview instead of dumping the whole
-// qitem body into the agent's context; `--full` opts back into the complete
-// body. The bound is a CODE-POINT count (delivery-set, adjustable) per
-// IMPL-SPEC §2.3-2.4.
+// 默认 `show` 渲染有界正文预览，而不是把整个 qitem 正文倒进智能体上下文；
+// `--full` 才退回完整正文。这个界是码点数计数（delivery-set，可调），
+// 按 IMPL-SPEC §2.3-2.4。
 const SHOW_BODY_PREVIEW_MAX_CODEPOINTS = 512;
 
 function wakeDurationSeconds(value: string): number {
   const match = /^(\d+)(s|m|h)?$/i.exec(value.trim());
-  if (!match) throw new Error("wake duration must be a positive integer with optional s, m, or h suffix");
+  if (!match) throw new Error("唤醒时长必须是正整数，可带 s、m 或 h 后缀");
   const amount = Number.parseInt(match[1]!, 10);
   const factor = match[2]?.toLowerCase() === "h" ? 3600 : match[2]?.toLowerCase() === "m" ? 60 : 1;
   const seconds = amount * factor;
-  if (!Number.isSafeInteger(seconds) || seconds <= 0) throw new Error("wake duration must be positive");
+  if (!Number.isSafeInteger(seconds) || seconds <= 0) throw new Error("唤醒时长必须为正");
   return seconds;
 }
 
@@ -169,12 +166,10 @@ export interface BodyPreview {
   bodyTruncated: boolean;
 }
 
-// Multibyte-SAFE bounded preview (IMPL-SPEC §2.3-2.4). The preview is the first
-// N CODE POINTS: `Array.from(body)` splits by code point (never a surrogate
-// pair / multibyte char), so the slice is inherently multibyte-safe and never
-// emits a partial/invalid UTF-8 sequence. `bodyTruncated` is CODE-POINT-count
-// based (codePointCount > N). `bodyBytes` is the honest TRUE total UTF-8 byte
-// length of the FULL body (never the truncated size).
+// 多字节安全的有界预览（IMPL-SPEC §2.3-2.4）。预览是前 N 个码点：
+// `Array.from(body)` 按码点切分（绝不把代理对/多字节字符切开），所以切片天然多字节安全，
+// 绝不会吐出半个/非法 UTF-8 序列。`bodyTruncated` 按码点数判断（codePointCount > N）。
+// `bodyBytes` 是完整正文诚实的真实 UTF-8 字节总长（绝不是截断后的大小）。
 export function previewBody(
   body: string,
   maxCodePoints = SHOW_BODY_PREVIEW_MAX_CODEPOINTS
@@ -199,18 +194,17 @@ function isRecordWithStringBody(v: unknown): v is Record<string, unknown> & { bo
   );
 }
 
-// OPR.0.3.2.21.FR-4(a) — body input resolution. Three accepted shapes:
-//   --body "<text>"               inline (legacy; backtick-prone for raw
-//                                 multiline content)
-//   --body-file <path>            read body content from a file path
-//                                 (kills the backtick-corruption class)
-//   --body-file -    or  --body - read body from stdin (pipeline-friendly)
+// OPR.0.3.2.21.FR-4(a)——正文输入解析。接受三种形态：
+//   --body "<text>"               内联（遗留；原始多行内容易被反引号污染）
+//   --body-file <path>            从文件路径读正文内容
+//                                 （消灭反引号污染这一类问题）
+//   --body-file - 或 --body -     从 stdin 读正文（便于管道）
 //
-// Exactly one of --body / --body-file must be provided; the resolver throws
-// a 3-part fact/consequence/action error otherwise.
+// --body / --body-file 二者必须恰好提供一个；否则解析器抛出三段式
+// fact/consequence/action 错误。
 //
-// stdinReader is dependency-injected so tests can swap it without touching
-// process.stdin. Default reads UTF-8 from process.stdin until EOF.
+// stdinReader 是依赖注入的，测试可以替换它而不动 process.stdin。
+// 默认从 process.stdin 按 UTF-8 读到 EOF。
 export interface ResolveBodyOpts {
   body?: string;
   bodyFile?: string;
@@ -224,11 +218,9 @@ export async function defaultStdinReader(): Promise<string> {
     process.stdin.on("end", () => resolve(data));
     process.stdin.on("error", reject);
     if (process.stdin.isTTY) {
-      // No pipe is connected to stdin; resolve immediately to empty
-      // rather than blocking forever waiting for data on a TTY. The
-      // empty body then flows through to the daemon's content
-      // validation (queue-repository owns the body contract); the CLI
-      // does not error locally on empty stdin.
+      // stdin 没有接管道；立即解析为空，而不是在 TTY 上永远阻塞等数据。
+      // 空正文随后流向后台服务的内容校验（正文契约归 queue-repository）；
+      // CLI 本地不因空 stdin 报错。
       resolve("");
     }
   });
@@ -241,39 +233,39 @@ export async function resolveQueueBody(
   const hasInline = opts.body !== undefined && opts.body !== "";
   const hasFile = opts.bodyFile !== undefined && opts.bodyFile !== "";
   if (hasInline && hasFile) {
-    const err = new Error("--body and --body-file are mutually exclusive.") as Error & { fact?: string; consequence?: string; action?: string };
-    err.fact = "Both --body and --body-file were passed; the body source is ambiguous.";
-    err.consequence = "The queue command did not run; the daemon was not contacted.";
-    err.action = "Pass exactly one of --body or --body-file.";
+    const err = new Error("--body 与 --body-file 互斥。") as Error & { fact?: string; consequence?: string; action?: string };
+    err.fact = "同时传了 --body 和 --body-file；正文来源有歧义。";
+    err.consequence = "queue 命令未执行；未联系后台服务。";
+    err.action = "--body 与 --body-file 二者只传一个。";
     throw err;
   }
   if (!hasInline && !hasFile) {
-    const err = new Error("Missing required body input.") as Error & { fact?: string; consequence?: string; action?: string };
-    err.fact = "Neither --body nor --body-file was provided.";
-    err.consequence = "The queue command did not run; the daemon was not contacted.";
-    err.action = "Pass the body via --body \"<text>\" or --body-file <path> (use - for stdin).";
+    const err = new Error("缺少必需的正文输入。") as Error & { fact?: string; consequence?: string; action?: string };
+    err.fact = "既没传 --body，也没传 --body-file。";
+    err.consequence = "queue 命令未执行；未联系后台服务。";
+    err.action = "用 --body \"<文本>\" 或 --body-file <路径> 传入正文（用 - 表示 stdin）。";
     throw err;
   }
   if (hasInline) {
     if (opts.body === "-") return requireNonEmptyResolvedBody(await stdinReader(), "stdin (--body -)");
     return opts.body!;
   }
-  // hasFile path
+  // hasFile 路径
   if (opts.bodyFile === "-") return requireNonEmptyResolvedBody(await stdinReader(), "stdin (--body-file -)");
   const absPath = opts.bodyFile!;
   if (!fs.existsSync(absPath)) {
-    const err = new Error(`--body-file path does not exist: ${absPath}`) as Error & { fact?: string; consequence?: string; action?: string };
-    err.fact = `--body-file path does not exist: ${absPath}`;
-    err.consequence = "The queue command did not run; the daemon was not contacted.";
-    err.action = "Check the path; pass an absolute path; or use --body-file - to read from stdin.";
+    const err = new Error(`--body-file 路径不存在：${absPath}`) as Error & { fact?: string; consequence?: string; action?: string };
+    err.fact = `--body-file 路径不存在：${absPath}`;
+    err.consequence = "queue 命令未执行；未联系后台服务。";
+    err.action = "检查路径；传绝对路径；或用 --body-file - 从 stdin 读。";
     throw err;
   }
   const stat = fs.statSync(absPath);
   if (!stat.isFile()) {
-    const err = new Error(`--body-file path is not a regular file: ${absPath}`) as Error & { fact?: string; consequence?: string; action?: string };
-    err.fact = `--body-file path is not a regular file: ${absPath}`;
-    err.consequence = "The queue command did not run; the daemon was not contacted.";
-    err.action = "Pass a path to a readable file (not a directory, symlink-to-directory, or block device). Use --body-file - to read from stdin.";
+    const err = new Error(`--body-file 路径不是普通文件：${absPath}`) as Error & { fact?: string; consequence?: string; action?: string };
+    err.fact = `--body-file 路径不是普通文件：${absPath}`;
+    err.consequence = "queue 命令未执行；未联系后台服务。";
+    err.action = "传一个可读文件的路径（不是目录、指向目录的软链或块设备）。用 --body-file - 从 stdin 读。";
     throw err;
   }
   return requireNonEmptyResolvedBody(fs.readFileSync(absPath, "utf8"), `--body-file ${absPath}`);
@@ -281,12 +273,12 @@ export async function resolveQueueBody(
 
 function requireNonEmptyResolvedBody(body: string, source: string): string {
   if (Buffer.byteLength(body, "utf8") > 0) return body;
-  const err = new Error(`${source} resolved to 0 bytes.`) as Error & { fact?: string; consequence?: string; action?: string };
-  err.fact = `${source} resolved to 0 bytes; an empty body is not a valid implicit queue payload.`;
-  err.consequence = "The coordination command did not run, the daemon was not contacted, and nothing was persisted.";
+  const err = new Error(`${source} 解析为 0 字节。`) as Error & { fact?: string; consequence?: string; action?: string };
+  err.fact = `${source} 解析为 0 字节；空正文不是合法的隐式 queue 载荷。`;
+  err.consequence = "协同命令未执行，未联系后台服务，也没有任何内容被持久化。";
   err.action = source.startsWith("stdin")
-    ? "Pipe non-empty content to stdin, or pass a non-empty file with --body-file <path>."
-    : "Add content to the file, or pass a different non-empty body source.";
+    ? "向 stdin 管道送入非空内容，或用 --body-file <路径> 传一个非空文件。"
+    : "给文件加上内容，或换一个非空正文来源。";
   throw err;
 }
 
@@ -294,7 +286,7 @@ function emitBodyResolveError(err: Error & { fact?: string; consequence?: string
   if (json) {
     console.log(JSON.stringify({ ok: false, error: { fact: err.fact ?? err.message, consequence: err.consequence ?? "", action: err.action ?? "" } }, null, 2));
   } else {
-    process.stderr.write(`Error: ${err.fact ?? err.message}\n${err.consequence ?? ""}\n${err.action ?? ""}\n`);
+    process.stderr.write(`错误：${err.fact ?? err.message}\n${err.consequence ?? ""}\n${err.action ?? ""}\n`);
   }
   process.exitCode = 1;
 }
@@ -303,41 +295,35 @@ function resolveCurrentSession(explicit: string | undefined, optionName: string)
   const session = explicit ?? readOpenRigEnv("OPENRIG_SESSION_NAME", "RIGGED_SESSION_NAME");
   if (session) return session;
 
-  console.error(`--${optionName} is required when OPENRIG_SESSION_NAME is not set`);
+  console.error(`未设置 OPENRIG_SESSION_NAME 时必须提供 --${optionName}`);
   process.exitCode = 1;
   return undefined;
 }
 
 function extractRigName(sessionName: string): string | undefined {
-  // OPR.0.4.6.MH1 FR-8: the shared parse contract (greedy first-@ rig).
+  // OPR.0.4.6.MH1 FR-8：共享解析契约（贪婪的第一个 @ 前的 rig）。
   return sessionRigOf(sessionName);
 }
 
 /**
- * OPR.0.4.6.MH3 D-3 (C3): resolve a queue DESTINATION operand + optional
- * explicit `--host` into the out-of-band request envelope (BR-1 — the session
- * string that leaves the CLI stays 2-part `member@rig`; the host rides
- * `hostId`; the 3-part string NEVER leaves the CLI edge).
+ * OPR.0.4.6.MH3 D-3（C3）：把 queue 目标操作数 + 可选的显式 `--host` 解析进带外请求信封
+ * （BR-1——离开 CLI 的会话串保持两段 `member@rig`；主机走 `hostId`；三段串绝不离开 CLI 边界）。
  *
- * The queue parse rule (arch-ruled — deliberately DIFFERENT from the
- * interactive verbs' strip-iff-registered rule): queue destinations are
- * CANONICAL-ONLY by construction (the daemon's validateRig rejects any
- * non-canonical parse), so the strip is UNCONDITIONAL after the human-seat
- * classifier — a mistyped host dies loud with the HOST named (unknown-host)
- * instead of a misleading rig-shaped `unknown_destination_rig`:
+ * queue 的解析规则（架构裁定——刻意与交互式动词的"已注册才剥"规则不同）：
+ * queue 目标按构造就是只能用规范名（后台服务的 validateRig 会拒绝任何非规范解析），
+ * 所以在人 seat 分类之后无条件剥离——敲错的主机会响亮地报错并点名该主机
+ * （unknown-host），而不是给出误导性的 rig 形状的 `unknown_destination_rig`：
  *
- *   1. human-seat classifier FIRST (the shipped archetype): a human-seat ref
- *      is never captured. `RESERVED_HOST_IDS` (kernel/host/local) guarantees
- *      no REGISTERED host can shadow the human-seat `@kernel`/`@host` family.
- *   2. fewer than two `@` → plain 2-part session, pass through untouched.
- *   3. two or more `@` → split on the LAST `@`; the trailing segment is the
- *      host qualifier, stripped into `hostId`; the remainder is the
- *      destination session.
+ *   1. 先做人 seat 分类（已交付的原型）：人 seat 引用绝不被捕获。
+ *      `RESERVED_HOST_IDS`（kernel/host/local）保证没有已注册主机会遮蔽
+ *      人 seat 的 `@kernel`/`@host` 家族。
+ *   2. 少于两个 `@` → 普通两段会话，原样放行。
+ *   3. 两个或以上 `@` → 在最后一个 `@` 处切分；尾段是主机限定词，剥离进 `hostId`；
+ *      其余部分是目标会话。
  *
- * D-2 (explicit-only): queue verbs NEVER consult the persisted host
- * selection — cross-host routing happens only via `--host <id>` or the
- * host-qualified destination form. Naming BOTH with different hosts is a
- * structured ambiguity error, never a silent precedence pick.
+ * D-2（仅显式）：queue 动词绝不查持久化的主机选择——跨主机路由只通过
+ * `--host <id>` 或带主机限定词的目标形态发生。同时用不同主机命名二者是结构化
+ * 歧义错误，绝不静默挑一个优先级。
  */
 export type QueueHostResolution =
   | { ok: true; destination: string; hostId?: string }
@@ -361,20 +347,20 @@ export function resolveQueueHostDestination(
     return {
       ok: false,
       error: "invalid_host_qualified_destination",
-      message: `destination '${destination}' ends with an empty host segment — use member@rig@<host> (or drop the trailing '@')`,
+      message: `目标 '${destination}' 以空主机段结尾——用 member@rig@<host>（或去掉末尾的 '@'）`,
     };
   }
   if (explicitHost !== undefined && explicitHost !== tail) {
     return {
       ok: false,
       error: "host_qualifier_conflict",
-      message: `--host ${explicitHost} conflicts with the host-qualified destination '${destination}' (host '${tail}') — name ONE host (drop the flag or the qualifier)`,
+      message: `--host ${explicitHost} 与带主机限定词的目标 '${destination}'（主机 '${tail}'）冲突——只命名一个主机（去掉标志或去掉限定词）`,
     };
   }
   return { ok: true, destination: head, hostId: tail };
 }
 
-/** Emit a D-3 resolution error (local, pre-daemon) in the house 3-part style. */
+/** 以本项目三段式风格发出 D-3 解析错误（本地、联系后台服务之前）。 */
 function emitHostResolutionError(res: { error: string; message: string }, json: boolean): void {
   if (json) {
     console.log(JSON.stringify({ error: res.error, message: res.message }));
@@ -385,10 +371,10 @@ function emitHostResolutionError(res: { error: string; message: string }, json: 
 }
 
 const QUEUE_HOST_OPTION_HELP =
-  "OPR.0.4.6.MH3: route this queue write to a REGISTERED remote host (see rig host ls). EXPLICIT-ONLY — queue verbs never follow the persisted 'rig host select' selection. Equivalent to the host-qualified destination form member@rig@<host>.";
+  "OPR.0.4.6.MH3：把这次 queue 写入路由到一台已注册的远程主机（见 zrig host ls）。仅显式——queue 动词绝不跟随持久化的 'zrig host select' 选择。等价于带主机限定词的目标形态 member@rig@<host>。";
 
 export function queueCommand(depsOverride?: QueueDeps): Command {
-  const cmd = new Command("queue").description("Coordination L3 — owned-work queue + inbox/outbox");
+  const cmd = new Command("queue").description("协同 L3——自有工作队列 + inbox/outbox");
   const getDeps = (): QueueDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
     clientFactory: (url: string) => new DaemonClient(url),
@@ -396,29 +382,29 @@ export function queueCommand(depsOverride?: QueueDeps): Command {
 
   cmd
     .command("create")
-    .description("Create a new qitem")
-    .option("--source <session>", "(deprecated, ignored) the source is derived from the seat env (X-OpenRig-Session); P21 I3 made the create route derive it from the transport header")
-    .requiredOption("--destination <session>", "Destination session (the seat that owns the work)")
-    .option("--body <text>", "Qitem body inline (use - to read from stdin; mutually exclusive with --body-file)")
-    .option("--body-file <path>", "Read qitem body from a file path (use - for stdin; mutually exclusive with --body). Kills the backtick-shell-corruption class for multiline bodies.")
-    .option("--body-context <ref>", "Snapshot a context pack by its path-like ref into the qitem body (the resolved content rides the handoff + a body-context:<ref> provenance tag). Mutually exclusive with --body / --body-file.")
-    .option("--mission <id>", "First-class mission scope; translated to a mission:<id> tag (composes with --tags)")
-    .option("--slice <id>", "First-class slice scope; translated to a slice:<id> tag (composes with --tags)")
-    .option("--gate <role>", "OPR.0.4.3.16: mark this as a gate qitem; translated to a gate:<role> tag (role e.g. guard | spec-review | pm-lead | qa | human). The idle-gate watchdog reads this predicate. Composes with --tags.")
-    .option("--priority <priority>", "Priority: routine | urgent | critical", "routine")
-    .option("--tier <tier>", "Tier (e.g. fast, routine, deep, critical) — drives SLA")
-    .option("--tags <tags>", "Comma-separated tags (composes with --mission and --slice)")
-    .option("--expires-at <iso>", "ISO timestamp at which the qitem expires")
-    .option("--id <qitemId>", "Idempotent qitem_id (skip if not provided)")
-    .option("--target-repo <name>", "PL-007: typed repo scope (must match a repo in the source rig's RigSpec.workspace.repos[])")
-    .option("--summary <text>", "Short human-readable subject, shown in the needs-you view. For a human destination, --body-file is the complete decision brief or update; keep technical continuation in the owning agent row and evidence.")
-    .option("--human-intent <intent>", "decision (default) or update: a quiet informational delivery, never an approval request")
-    .option("--human-detail-file <path>", "One explicitly authored supplemental thread reply; keep the complete action/options in --body-file")
-    .option("--evidence-ref <path>", "OPR.0.4.4.19 FR-5: pointer to the durable artifact a human judges (e.g. a PROOF.md path). Required by the daemon when the item is human-routed; optional otherwise.")
+    .description("创建一个新 qitem")
+    .option("--source <session>", "（已废弃，忽略）source 从 seat 环境推导（X-OpenRig-Session）；P21 I3 让 create 路由从传输头推导它")
+    .requiredOption("--destination <session>", "目标会话（拥有该工作的 seat）")
+    .option("--body <text>", "内联 qitem 正文（用 - 从 stdin 读；与 --body-file 互斥）")
+    .option("--body-file <path>", "从文件路径读 qitem 正文（用 - 表示 stdin；与 --body 互斥）。消灭多行正文的反引号 shell 污染这一类问题。")
+    .option("--body-context <ref>", "把一个 context pack 按其类路径 ref 快照进 qitem 正文（解析出的内容随交接 + body-context:<ref> 溯源标签一起携带）。与 --body / --body-file 互斥。")
+    .option("--mission <id>", "一等 mission 作用域；翻译成 mission:<id> 标签（与 --tags 组合）")
+    .option("--slice <id>", "一等 slice 作用域；翻译成 slice:<id> 标签（与 --tags 组合）")
+    .option("--gate <role>", "OPR.0.4.3.16：把此项标记为 gate qitem；翻译成 gate:<role> 标签（role 例如 guard | spec-review | pm-lead | qa | human）。idle-gate 看门狗读这个谓词。与 --tags 组合。")
+    .option("--priority <priority>", "优先级：routine | urgent | critical", "routine")
+    .option("--tier <tier>", "tier（例如 fast、routine、deep、critical）——驱动 SLA")
+    .option("--tags <tags>", "逗号分隔的标签（与 --mission、--slice 组合）")
+    .option("--expires-at <iso>", "qitem 过期的 ISO 时间戳")
+    .option("--id <qitemId>", "幂等的 qitem_id（不传则跳过）")
+    .option("--target-repo <name>", "PL-007：带类型的 repo 作用域（必须匹配源 rig 的 RigSpec.workspace.repos[] 里的某个 repo）")
+    .option("--summary <text>", "简短的人读主题，显示在 needs-you 视图。目标是人时，--body-file 是完整的决策简报或更新；技术续述留在所属智能体行和证据里。")
+    .option("--human-intent <intent>", "decision（默认）或 update：一次安静的信息投递，绝不是审批请求")
+    .option("--human-detail-file <path>", "一条显式撰写的补充跟帖回复；完整的行动/选项放在 --body-file 里")
+    .option("--evidence-ref <path>", "OPR.0.4.4.19 FR-5：指向人要评判的持久化产物（例如 PROOF.md 路径）。此项路由给人时由后台服务要求；否则可选。")
     .option("--host <id>", QUEUE_HOST_OPTION_HELP)
-    .option("--no-nudge", "Suppress the default destination nudge (cold-queue)")
-    .option("--verify", "Boundedly wait for the existing gateway delivery receipt after persistence; never retries the create and never claims human readership")
-    .option("--json", "JSON output for agents")
+    .option("--no-nudge", "抑制默认的目标 nudge（冷队列）")
+    .option("--verify", "持久化后有界等待既有网关投递回执；绝不重试 create，也绝不声称有人已读")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: {
       source?: string;
       destination: string;
@@ -443,24 +429,23 @@ export function queueCommand(depsOverride?: QueueDeps): Command {
       verify?: boolean;
       json?: boolean;
     }) => {
-      // OPR.0.4.6.MH3 D-3 (C3): resolve the host qualifier at the CLI edge —
-      // the 3-part form never leaves the CLI; the request carries the 2-part
-      // destination + the out-of-band hostId envelope (BR-1).
+      // OPR.0.4.6.MH3 D-3（C3）：在 CLI 边界解析主机限定词——三段形态绝不离开 CLI；
+      // 请求携带两段目标 + 带外 hostId 信封（BR-1）。
       const hostResolved = resolveQueueHostDestination(opts.destination, opts.host);
       if (!hostResolved.ok) {
         emitHostResolutionError(hostResolved, opts.json ?? false);
         return;
       }
-      // Atom 6b: --body-context snapshots a pack ref's whole content as the body
-      // (the snapshot rule), resolved against the daemon library inside withClient
-      // below. Mutually exclusive with the local --body / --body-file sources.
+      // Atom 6b：--body-context 把一个 pack ref 的全部内容快照为正文
+      // （快照规则），在下面的 withClient 内向后台服务库解析。
+      // 与本地 --body / --body-file 来源互斥。
       if (opts.bodyContext !== undefined && (opts.body !== undefined || opts.bodyFile !== undefined)) {
-        console.error("--body-context is mutually exclusive with --body / --body-file (choose one body source).");
+        console.error("--body-context 与 --body / --body-file 互斥（正文来源三选一）。");
         process.exitCode = 1;
         return;
       }
-      // OPR.0.3.2.21.FR-4(a) — resolve a LOCAL body BEFORE contacting the daemon
-      // so a missing/ambiguous body fails fast and locally.
+      // OPR.0.3.2.21.FR-4(a)——在联系后台服务之前先解析本地正文，
+      // 让缺失/歧义的正文快速、本地失败。
       let resolvedBody = "";
       if (opts.bodyContext === undefined) {
         try {
@@ -470,44 +455,40 @@ export function queueCommand(depsOverride?: QueueDeps): Command {
           return;
         }
       }
-      // OPR.0.4.1.18 (FR-7, warn-then-require grace): a summary SHOULD accompany
-      // every new qitem (it feeds the Story node + helps humans skim). Warn — to
-      // stderr so --json stdout stays clean — but do NOT hard-break existing
-      // callers that omit it; hard-require is a future hardening.
+      // OPR.0.4.1.18（FR-7，先警告后要求的宽限期）：每个新 qitem 都应带 summary
+      // （它喂给 Story 节点 + 帮人快速扫读）。打到 stderr 警告，好让 --json 的 stdout 保持干净——
+      // 但不硬性中断省略它的既有调用方；硬性要求是未来的加固。
       if (!opts.summary) {
         process.stderr.write(
-          "warning: rig queue create called without --summary. Pass --summary <text> to set the new qitem's short human-readable summary; without it, the Story node falls back to a bounded body preview. A good summary is 1-2 plain sentences a human skims in the needs-you view — what the work is and why it needs this seat, not the agent-speak --body. Proceeding (pre-18 callers exempt).\n"
+          "警告：调用 zrig queue create 时未带 --summary。传 --summary <文本> 可设置新 qitem 简短的人读摘要；否则 Story 节点回退到有界正文预览。好的摘要是一两句平实的话，让人在 needs-you 视图里快速扫读——这项工作是什么、为什么需要这个 seat，而不是 --body 里的智能体黑话。继续执行（pre-18 调用方豁免）。\n"
         );
       }
-      // P21 I3 reconcile: the source is DERIVED from the seat env (X-OpenRig-Session) — --source
-      // deprecated + ignored, no body sourceSession. Verify the env or the daemon returns 400 actor_required (no seat identity to record; P18 retired the 401 refusal).
+      // P21 I3 调和：source 从 seat 环境推导（X-OpenRig-Session）——--source
+      // 已废弃且被忽略，没有 body sourceSession。校验环境，否则后台服务返回 400 actor_required
+      // （没有 seat 身份可记录；P18 已退役 401 拒绝）。
       if (!resolveCurrentSession(undefined, "source")) return;
       const deps = getDeps();
-      // OPR.0.3.2.21.FR-4(b) — first-class --mission / --slice flags
-      // translate to canonical mission:<id> / slice:<id> tags. Composes
-      // with --tags (any flag-derived tags prepend; explicit --tags
-      // append). De-duplicates so passing both --mission X and
-      // --tags mission:X yields one mission:X tag.
+      // OPR.0.3.2.21.FR-4(b)——一等 --mission / --slice 标志翻译成规范的
+      // mission:<id> / slice:<id> 标签。与 --tags 组合（任何标志派生的标签前置；
+      // 显式 --tags 追加）。去重，使得同时传 --mission X 和 --tags mission:X 只产生一个 mission:X 标签。
       const fromTagsArg = opts.tags ? opts.tags.split(",").map((s) => s.trim()).filter(Boolean) : [];
       const fromFlags: string[] = [];
       if (opts.mission) fromFlags.push(`mission:${opts.mission}`);
       if (opts.slice) fromFlags.push(`slice:${opts.slice}`);
-      // OPR.0.4.3.16 — first-class --gate <role> stamps a gate:<role> tag
-      // (the queue-gate-predicate the idle-gate watchdog reads). Same
-      // formalization + de-dup as --mission/--slice.
+      // OPR.0.4.3.16——一等 --gate <role> 盖一个 gate:<role> 标签
+      // （idle-gate 看门狗读的 queue-gate 谓词）。与 --mission/--slice 同样的
+      // 形式化 + 去重。
       if (opts.gate) fromFlags.push(`gate:${opts.gate}`);
-      // Atom 6b snapshot provenance: record WHERE the body came from so the
-      // handoff stays auditable even if the pack is edited later.
+      // Atom 6b 快照溯源：记录正文来自哪里，好让交接保持可审计，即便之后 pack 被编辑。
       if (opts.bodyContext) fromFlags.push(`body-context:${opts.bodyContext}`);
       const merged = [...fromFlags, ...fromTagsArg];
       const seen = new Set<string>();
       const dedupedTags = merged.filter((t) => { if (seen.has(t)) return false; seen.add(t); return true; });
       const tags = dedupedTags.length > 0 ? dedupedTags : undefined;
       await withClient(deps, async (client) => {
-        // Atom 6b: resolve --body-context against the library (all-or-nothing —
-        // a missing member aborts before the qitem is created). The RESOLVED
-        // content is the body (a snapshot); the ref rides as a provenance tag,
-        // so a later library edit never rewrites this handoff's history.
+        // Atom 6b：在库上解析 --body-context（全有或全无——缺一个成员就在创建
+        // qitem 之前中止）。解析出的内容就是正文（一次快照）；ref 作为溯源标签携带，
+        // 好让之后的库编辑永不改写这次交接的历史。
         if (opts.bodyContext !== undefined) {
           try {
             resolvedBody = (await resolveContextRef(client, opts.bodyContext)).text;
@@ -531,8 +512,7 @@ export function queueCommand(depsOverride?: QueueDeps): Command {
           expiresAt: opts.expiresAt,
           targetRepo: opts.targetRepo,
           nudge: opts.nudge,
-          // OPR.0.4.6.MH3 FR-1: the out-of-band host envelope (omitted for
-          // plain local writes — the local path stays byte-identical).
+          // OPR.0.4.6.MH3 FR-1：带外主机信封（纯本地写入时省略——本地路径保持逐字节一致）。
           ...(hostResolved.hostId !== undefined ? { hostId: hostResolved.hostId } : {}),
         });
         if (opts.verify && res.status < 400) {
@@ -544,7 +524,7 @@ export function queueCommand(depsOverride?: QueueDeps): Command {
                 outcome: "indeterminate" as const,
                 connectorAccepted: null,
                 humanReadership: "unknown" as const,
-                detail: "create response did not include a qitem id; delivery cannot be correlated",
+                detail: "create 响应未含 qitem id；无法关联投递",
                 nextAction: null,
               };
           printResult(opts.json ?? false, { ...created, qitemId, persisted: true, delivery }, res.status);
@@ -556,12 +536,13 @@ export function queueCommand(depsOverride?: QueueDeps): Command {
 
   cmd
     .command("claim <qitemId>")
-    .description("Claim a qitem (pending → in-progress); computes closure_required_at from tier")
-    .option("--destination <session>", "(deprecated, ignored) the claimant is derived from the seat env (X-OpenRig-Session); P21 I3 made the claim route derive it from the transport header")
-    .option("--json", "JSON output for agents")
+    .description("认领一个 qitem（pending → in-progress）；按 tier 计算 closure_required_at")
+    .option("--destination <session>", "（已废弃，忽略）认领者从 seat 环境推导（X-OpenRig-Session）；P21 I3 让 claim 路由从传输头推导它")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (qitemId: string, opts: { destination?: string; json?: boolean }) => {
-      // P21 I3 reconcile: the claimant is DERIVED from the seat env — --destination deprecated + ignored,
-      // no body claim. Verify the env (the header source) or the daemon returns 400 actor_required (no seat identity to record; P18 retired the 401 refusal).
+      // P21 I3 调和：认领者从 seat 环境推导——--destination 已废弃且被忽略，
+      // 没有 body claim。校验环境（头来源），否则后台服务返回 400 actor_required
+      // （没有 seat 身份可记录；P18 已退役 401 拒绝）。
       if (!resolveCurrentSession(undefined, "destination")) return;
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -572,13 +553,14 @@ export function queueCommand(depsOverride?: QueueDeps): Command {
 
   cmd
     .command("unclaim <qitemId>")
-    .description("Release a claimed qitem (in-progress → pending)")
-    .option("--destination <session>", "(deprecated, ignored) the releaser is derived from the seat env (X-OpenRig-Session); the unclaim route derives it from the transport header")
-    .option("--reason <text>", "Reason for unclaim", "manual")
-    .option("--json", "JSON output for agents")
+    .description("释放已认领的 qitem（in-progress → pending）")
+    .option("--destination <session>", "（已废弃，忽略）释放者从 seat 环境推导（X-OpenRig-Session）；unclaim 路由从传输头推导它")
+    .option("--reason <text>", "unclaim 的原因", "manual")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (qitemId: string, opts: { destination?: string; reason: string; json?: boolean }) => {
-      // P21 I3 reconcile: the releaser is DERIVED from the seat env — --destination deprecated + ignored,
-      // no body claim. Verify the env or the daemon returns 400 actor_required (no seat identity to record; P18 retired the 401 refusal).
+      // P21 I3 调和：释放者从 seat 环境推导——--destination 已废弃且被忽略，
+      // 没有 body claim。校验环境，否则后台服务返回 400 actor_required
+      // （没有 seat 身份可记录；P18 已退役 401 拒绝）。
       if (!resolveCurrentSession(undefined, "destination")) return;
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -591,19 +573,19 @@ export function queueCommand(depsOverride?: QueueDeps): Command {
 
   cmd
     .command("update <qitemId>")
-    .description("Append a note and/or mutate qitem state. A note without --state never changes row state. state=done REQUIRES --closure-reason (one of: handed_off_to, blocked_on, denied, canceled, no-follow-on, escalation). Closure ≠ acceptance: handed_off_to records delivery to the next stage; acceptance is the next stage's verdict on its own qitem, not this closure.")
-    .option("--actor <session>", "(deprecated, ignored) the actor is derived from the seat env (X-OpenRig-Session); P21 I3 made the update route derive it from the transport header")
-    .option("--state <state>", "New state: pending | in-progress | done | blocked | failed | denied | canceled | handed-off")
-    .option("--reopen", "Explicitly acknowledge a deliberate terminal-to-active repair; requires --state and --note")
-    .option("--closure-reason <reason>", "Required for state=done; also 'superseded' on state=canceled (with --closure-target = the successor) records a supersession, distinct from an abandoned cancel")
-    .option("--closure-target <target>", "Required for handed_off_to, blocked_on, escalation, and superseded")
-    .option("--blocked-on <blocker>", "For state=blocked: the blocker — a qitem id (must exist and be live), a human seat (FR-6 park; requires summary + evidence_ref), or a typed non-qitem gate 'fold:<what>' / 'auth:<what>' / 'external:<what>'")
-    .option("--wake-watchdog <jobId>", "For state=blocked: attach an existing live watchdog id targeting the row owner")
-    .option("--wake-after <duration>", "For state=blocked: atomically arm a timer (for example 90s, 15m, 2h)", wakeDurationSeconds)
-    .option("--summary <text>", "OPR.0.4.4.19 FR-6: park-time summary persisted onto the item (human-seat parks only)")
-    .option("--evidence-ref <path>", "OPR.0.4.4.19 FR-6: park-time durable-artifact pointer persisted onto the item (human-seat parks only)")
-    .option("--note <text>", "Transition note for the audit log")
-    .option("--json", "JSON output for agents")
+    .description("追加一条 note 和/或变更 qitem 状态。不带 --state 的 note 绝不改变行状态。state=done 必须带 --closure-reason（六选一：handed_off_to, blocked_on, denied, canceled, no-follow-on, escalation）。closure ≠ acceptance：handed_off_to 记录已交付到下一阶段；acceptance 是下一阶段对它自己 qitem 的裁定，不是本次 closure。")
+    .option("--actor <session>", "（已废弃，忽略）actor 从 seat 环境推导（X-OpenRig-Session）；P21 I3 让 update 路由从传输头推导它")
+    .option("--state <state>", "新状态：pending | in-progress | done | blocked | failed | denied | canceled | handed-off")
+    .option("--reopen", "显式承认一次有意的终态→活跃修复；要求 --state 和 --note")
+    .option("--closure-reason <reason>", "state=done 时必填；state=canceled 时也可用 'superseded'（配 --closure-target = 后继项）记录一次取代，区别于放弃式 cancel")
+    .option("--closure-target <target>", "handed_off_to、blocked_on、escalation、superseded 时必填")
+    .option("--blocked-on <blocker>", "state=blocked 时：阻塞者——一个 qitem id（必须存在且存活）、一个人 seat（FR-6 park；要求 summary + evidence_ref），或带类型的非 qitem 闸门 'fold:<what>' / 'auth:<what>' / 'external:<what>'")
+    .option("--wake-watchdog <jobId>", "state=blocked 时：挂一个已存在的、指向行属主的存活 watchdog id")
+    .option("--wake-after <duration>", "state=blocked 时：原子地武装一个定时器（例如 90s、15m、2h）", wakeDurationSeconds)
+    .option("--summary <text>", "OPR.0.4.4.19 FR-6：park 时持久化到该条目的摘要（仅人 seat park）")
+    .option("--evidence-ref <path>", "OPR.0.4.4.19 FR-6：park 时持久化到该条目的持久化产物指针（仅人 seat park）")
+    .option("--note <text>", "进审计日志的迁移 note")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (qitemId: string, opts: {
       actor?: string;
       state?: string;
@@ -618,9 +600,9 @@ export function queueCommand(depsOverride?: QueueDeps): Command {
       note?: string;
       json?: boolean;
     }) => {
-      // P21 I3 reconcile: the actor is DERIVED from the seat env (X-OpenRig-Session, stamped by
-      // DaemonClient) — --actor is deprecated + ignored, no body actorSession. Verify the env (the
-      // header source) or the daemon returns 400 actor_required (no seat identity to record; P18 retired the 401 refusal). Matches `resolve`.
+      // P21 I3 调和：actor 从 seat 环境推导（X-OpenRig-Session，由 DaemonClient 盖章）——
+      // --actor 已废弃且被忽略，没有 body actorSession。校验环境（头来源），否则后台服务返回
+      // 400 actor_required（没有 seat 身份可记录；P18 已退役 401 拒绝）。与 `resolve` 一致。
       if (!resolveCurrentSession(undefined, "actor")) return;
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -640,33 +622,31 @@ export function queueCommand(depsOverride?: QueueDeps): Command {
       });
     });
 
-  // OPR.0.4.4.19 FR-6 — the first-class park affordance (C5 leg 1). One verb,
-  // both blocker kinds: --on takes a qitem id (today's shipped blocked-on
-  // usage, nothing new required) or a human-seat session (the leg-1 park —
-  // summary + evidence_ref enforced by the daemon validator). A THIN client
-  // of the same update write path — enforcement lives in the daemon domain
-  // layer, never verb-only. The park is NON-TERMINAL: the owner keeps the
-  // potato and no closure_reason is involved.
+  // OPR.0.4.4.19 FR-6——一等 park 入口（C5 leg 1）。一个动词，两种阻塞者：
+  // --on 接一个 qitem id（今天已交付的 blocked-on 用法，不需要新东西）或一个人 seat 会话
+  // （leg-1 park——summary + evidence_ref 由后台服务校验器强制）。它是同一条 update 写入路径的
+  // 瘦客户端——强制在后台服务域层，绝不只在动词里。park 是非终态的：属主保留这个 potato，
+  // 不涉及任何 closure_reason。
   cmd
     .command("block <qitemId>")
-    .description("Park a qitem as HELD with a continuation and wake. Choose a watchdog id, timer, or live blocker.")
-    .requiredOption("--on <blocker>", "The blocker: a live blocker qitem, typed gate, or human-seat session")
-    .option("--actor <session>", "(deprecated, ignored) the actor is derived from the seat env (X-OpenRig-Session); the park writes via the same P21 I3 header-deriving update route")
-    .option("--summary <text>", "Plain-language summary of the decision owed (required for human-seat parks unless already on the item)")
-    .option("--evidence-ref <path>", "Durable artifact the human judges (required for human-seat parks unless already on the item)")
-    .option("--note <text>", "Transition note for the audit log")
-    .option("--continuation <text>", "What resumes. Workspace deferred/not-imminent work belongs in a mission/slice")
-    .option("--wake-watchdog <jobId>", "Attach an existing live watchdog id targeting the parked owner")
-    .option("--wake-after <duration>", "Atomically arm a timer with the park (for example 90s, 15m, 2h)", wakeDurationSeconds)
-    .option("--json", "JSON output for agents")
+    .description("把一个 qitem park 为 HELD，并带续作和唤醒。选一个 watchdog id、定时器或存活阻塞者。")
+    .requiredOption("--on <blocker>", "阻塞者：一个存活的阻塞 qitem、带类型闸门，或人 seat 会话")
+    .option("--actor <session>", "（已废弃，忽略）actor 从 seat 环境推导（X-OpenRig-Session）；park 走同一条 P21 I3 从头推导的 update 路由")
+    .option("--summary <text>", "所欠决策的平实摘要（人 seat park 必填，除非条目上已有）")
+    .option("--evidence-ref <path>", "人要评判的持久化产物（人 seat park 必填，除非条目上已有）")
+    .option("--note <text>", "进审计日志的迁移 note")
+    .option("--continuation <text>", "恢复时做什么。被推迟/不紧迫的工作区归属工作应放进 mission/slice")
+    .option("--wake-watchdog <jobId>", "挂一个已存在的、指向被 park 属主的存活 watchdog id")
+    .option("--wake-after <duration>", "park 时原子地武装一个定时器（例如 90s、15m、2h）", wakeDurationSeconds)
+    .option("--json", "供智能体使用的 JSON 输出")
     .addHelpText("after", `
-Every deliberate HELD row should name its continuation and one live wake:
-  --wake-watchdog <jobId>  attach a live watchdog id
-  --wake-after <duration>  arm a timer atomically with the park
-  --on qitem-…             a live blocker resolution is the wake
+每一行有意的 HELD 都应写明它的续作和一个存活唤醒：
+  --wake-watchdog <jobId>  挂一个存活 watchdog id
+  --wake-after <duration>  park 时原子地武装定时器
+  --on qitem-…             存活阻塞者的解决本身即唤醒
 
-HELD is only for a row that must stay on the queue while waiting. Work with a
-workspace home that is deferred/not-imminent belongs in its mission/slice.`)
+HELD 只用于必须留在队列上等待的行。归属某个被推迟/不紧迫工作区的工作，
+应放进它的 mission/slice。`)
     .action(async (qitemId: string, opts: {
       on: string;
       actor?: string;
@@ -678,8 +658,8 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
       wakeAfter?: number;
       json?: boolean;
     }) => {
-      // P21 I3 reconcile: actor DERIVED from the seat env (X-OpenRig-Session) — --actor deprecated +
-      // ignored, no body actorSession. Verify the env, else the daemon returns 400 actor_required (no seat identity to record). Matches `resolve`.
+      // P21 I3 调和：actor 从 seat 环境推导（X-OpenRig-Session）——--actor 已废弃且被忽略，
+      // 没有 body actorSession。校验环境，否则后台服务返回 400 actor_required（没有 seat 身份可记录）。与 `resolve` 一致。
       if (!resolveCurrentSession(undefined, "actor")) return;
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -696,20 +676,19 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
       });
     });
 
-  // OPR.0.4.4.19 FR-7 — the resolve verb's CLI wrapper: a THIN client of the
-  // ONE write path (POST /api/mission-control/action, verb=resolve). Exists
-  // so proof walks and the relay session are scriptable before the Packet-2
-  // surface ships; the founder's path is the surface/feed card invoking the
-  // same endpoint. Resolution returns to the PARKED OWNER (blocked →
-  // in-progress on the SAME item) — never a closure, never a new owner.
+  // OPR.0.4.4.19 FR-7——resolve 动作的 CLI 包装器：后台服务写入路径的薄客户端。
+  // ONE 写入路径（POST /api/mission-control/action，verb=resolve）。它的存在是为了
+  // 让 proof 行走和 relay 会话在 Packet-2 表面交付之前就能脚本化；创始人的路径是
+  // 表面/feed 卡片调用同一个端点。裁决回到被 PARK 的属主（同一条目上 blocked →
+  // in-progress）——绝不 closure，绝不换属主。
   cmd
     .command("resolve <qitemId>")
-    .description("Resolve a leg-1 parked qitem (state=blocked on a human seat): records the decision text durably in queue_transitions, unparks blocked -> in-progress, and nudges the owner. Non-closure.")
-    .requiredOption("--decision <text>", "The human's decision text (non-empty; lands in transition_note + the audit row)")
-    .option("--actor <session>", "(deprecated, ignored) resolver is derived from the seat env (X-OpenRig-Session)")
-    .option("--bearer <token>", "Operator bearer token for the mission-control write gate (or set OPENRIG_AUTH_BEARER_TOKEN; loopback daemons without a configured bearer need none)")
-    .option("--no-notify", "Skip the best-effort owner nudge (the unpark still commits)")
-    .option("--json", "JSON output for agents")
+    .description("裁决一个 leg-1 park 的 qitem（state=blocked 在人 seat 上）：把决策文本持久记录进 queue_transitions，解除 park blocked -> in-progress，并 nudge 属主。非 closure。")
+    .requiredOption("--decision <text>", "人的决策文本（非空；落到 transition_note + 审计行）")
+    .option("--actor <session>", "（已废弃，忽略）resolver 从 seat 环境推导（X-OpenRig-Session）")
+    .option("--bearer <token>", "mission-control 写入闸门的 operator bearer token（或设 OPENRIG_AUTH_BEARER_TOKEN；未配置 bearer 的 loopback 后台服务不需要）")
+    .option("--no-notify", "跳过尽力而为的属主 nudge（解除 park 仍会提交）")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (qitemId: string, opts: {
       decision: string;
       actor?: string;
@@ -717,9 +696,9 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
       notify?: boolean;
       json?: boolean;
     }) => {
-      // P21: the resolver is DERIVED from the seat env (X-OpenRig-Session, stamped by DaemonClient) —
-      // --actor is deprecated + ignored. The pre-check verifies the env (the header source); else the
-      // daemon returns 400 actor_required (no seat identity to record; P18 retired the 401 refusal).
+      // P21：resolver 从 seat 环境推导（X-OpenRig-Session，由 DaemonClient 盖章）——
+      // --actor 已废弃且被忽略。预检查校验环境（头来源）；否则后台服务返回 400 actor_required
+      // （没有 seat 身份可记录；P18 已退役 401 拒绝）。
       if (!resolveCurrentSession(undefined, "actor")) return;
       const deps = getDeps();
       const bearer = opts.bearer ?? process.env.OPENRIG_AUTH_BEARER_TOKEN;
@@ -729,7 +708,7 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
           {
             verb: "resolve",
             qitemId,
-            // P21: no body actorSession — the daemon derives the resolver from the transport header.
+            // P21：没有 body actorSession——后台服务从传输头推导 resolver。
             decision: opts.decision,
             notify: opts.notify,
           },
@@ -741,22 +720,22 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
 
   cmd
     .command("handoff <qitemId>")
-    .description("Transactional handoff: closes source as handed-off + creates new qitem owned by --to")
-    .option("--from <session>", "(deprecated, ignored) the handing-off seat is derived from the seat env (X-OpenRig-Session); P21 I3 made the handoff route derive it from the transport header")
-    .requiredOption("--to <session>", "Destination seat receiving the new qitem")
-    .option("--body <text>", "New qitem body inline (use - to read from stdin; mutually exclusive with --body-file). Omit both to keep the source body.")
-    .option("--body-file <path>", "Read the new qitem body from a file path (use - for stdin; mutually exclusive with --body). Kills the backtick-shell-corruption class.")
-    .option("--note <text>", "Transition note")
-    .option("--priority <priority>", "Override priority for the new qitem")
-    .option("--tier <tier>", "Override tier for the new qitem")
-    .option("--tags <tags>", "Comma-separated tags for the new qitem")
-    .option("--gate <role>", "OPR.0.4.3.16: mark the new qitem as gate work; translated to a gate:<role> tag (e.g. guard | spec-review). The idle-gate watchdog reads this predicate. Composes with --tags.")
-    .option("--target-repo <name>", "PL-007: typed repo scope for the new qitem")
-    .option("--summary <text>", "OPR.0.4.1.18: short human-readable 1-2 sentence summary for the new qitem — what it is and why this seat, skimmable in the needs-you view (--body stays source of truth). Warned-if-missing.")
-    .option("--evidence-ref <path>", "OPR.0.4.4.19 FR-5: durable-artifact pointer for the new qitem. Required by the daemon when the new qitem is human-routed; optional otherwise.")
+    .description("事务性交接：把 source 关闭为 handed-off + 创建一个归属 --to 的新 qitem")
+    .option("--from <session>", "（已废弃，忽略）交出的 seat 从 seat 环境推导（X-OpenRig-Session）；P21 I3 让 handoff 路由从传输头推导它")
+    .requiredOption("--to <session>", "接收新 qitem 的目标 seat")
+    .option("--body <text>", "内联新 qitem 正文（用 - 从 stdin 读；与 --body-file 互斥）。两者都不传则保留 source 正文。")
+    .option("--body-file <path>", "从文件路径读新 qitem 正文（用 - 表示 stdin；与 --body 互斥）。消灭反引号 shell 污染这一类问题。")
+    .option("--note <text>", "迁移 note")
+    .option("--priority <priority>", "覆盖新 qitem 的优先级")
+    .option("--tier <tier>", "覆盖新 qitem 的 tier")
+    .option("--tags <tags>", "新 qitem 的逗号分隔标签")
+    .option("--gate <role>", "OPR.0.4.3.16：把新 qitem 标记为 gate 工作；翻译成 gate:<role> 标签（例如 guard | spec-review）。idle-gate 看门狗读这个谓词。与 --tags 组合。")
+    .option("--target-repo <name>", "PL-007：新 qitem 的带类型 repo 作用域")
+    .option("--summary <text>", "OPR.0.4.1.18：给新 qitem 写一两句简短人读摘要——它是什么、为什么是这个 seat，可在 needs-you 视图扫读（--body 仍是事实来源）。缺失时警告。")
+    .option("--evidence-ref <path>", "OPR.0.4.4.19 FR-5：新 qitem 的持久化产物指针。新 qitem 路由给人时由后台服务要求；否则可选。")
     .option("--host <id>", QUEUE_HOST_OPTION_HELP)
-    .option("--no-nudge", "Suppress the default nudge to the new destination")
-    .option("--json", "JSON output for agents")
+    .option("--no-nudge", "抑制对新目标的默认 nudge")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (qitemId: string, opts: {
       from?: string;
       to: string;
@@ -774,13 +753,13 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
       nudge?: boolean;
       json?: boolean;
     }) => {
-      // P21 I3 reconcile: the handing-off seat is DERIVED from the seat env (X-OpenRig-Session) —
-      // --from deprecated + ignored, no body fromSession. Verify the env or the daemon returns 400 actor_required (no seat identity to record; P18 retired the 401 refusal).
+      // P21 I3 调和：交出的 seat 从 seat 环境推导（X-OpenRig-Session）——--from 已废弃且被忽略，
+      // 没有 body fromSession。校验环境，否则后台服务返回 400 actor_required
+      // （没有 seat 身份可记录；P18 已退役 401 拒绝）。
       if (!resolveCurrentSession(undefined, "from")) return;
-      // slice-08 OPR.0.4.7.8 — body-input parity. Resolve through the shipped
-      // resolveQueueBody ONLY when a body source is supplied; neither preserves
-      // today's source-body default (POST body undefined). Both/invalid reject
-      // BEFORE any daemon contact, mirroring create.
+      // slice-08 OPR.0.4.7.8——正文输入对齐。只在提供了正文来源时才通过已交付的
+      // resolveQueueBody 解析；两者都不传时保留今天的 source 正文默认（POST body 未定义）。
+      // 都传/非法则在联系后台服务之前拒绝，与 create 对齐。
       let resolvedBody: string | undefined;
       if (opts.body !== undefined || opts.bodyFile !== undefined) {
         try {
@@ -790,24 +769,23 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
           return;
         }
       }
-      // OPR.0.4.6.MH3 D-3 (C3): the host qualifier resolves at the CLI edge
-      // (applies to the DESTINATION --to only; --from stays as given).
+      // OPR.0.4.6.MH3 D-3（C3）：主机限定词在 CLI 边界解析
+      // （只作用于目标 --to；--from 保持原样）。
       const hostResolved = resolveQueueHostDestination(opts.to, opts.host);
       if (!hostResolved.ok) {
         emitHostResolutionError(hostResolved, opts.json ?? false);
         return;
       }
-      // OPR.0.4.1.18 (FR-7): warn-on-author — a handoff authors a NEW qitem, so
-      // it should carry its own summary. Warn to stderr; do not hard-break.
+      // OPR.0.4.1.18（FR-7）：对作者警告——handoff 写了一个新 qitem，所以它应带自己的
+      // summary。打到 stderr 警告；不硬性中断。
       if (!opts.summary) {
         process.stderr.write(
-          "warning: rig queue handoff called without --summary. Pass --summary <text> to set the new qitem's short human-readable summary; without it, the Story node falls back to a bounded body preview. A good summary is 1-2 plain sentences a human skims in the needs-you view — what the work is and why it needs this seat, not the agent-speak --body. Proceeding.\n"
+          "警告：调用 zrig queue handoff 时未带 --summary。传 --summary <文本> 可设置新 qitem 简短的人读摘要；否则 Story 节点回退到有界正文预览。好的摘要是一两句平实的话，让人在 needs-you 视图里快速扫读——这项工作是什么、为什么需要这个 seat，而不是 --body 里的智能体黑话。继续执行。\n"
         );
       }
       const deps = getDeps();
-      // OPR.0.4.3.16 — --gate <role> stamps a gate:<role> tag (composes with
-      // --tags, de-duplicated). Guard code-review + spec-review handoffs use
-      // this so the idle-gate watchdog's predicate has a producer.
+      // OPR.0.4.3.16——--gate <role> 盖一个 gate:<role> 标签（与 --tags 组合，去重）。
+      // 守门 code-review + spec-review handoff 用它，好让 idle-gate 看门狗的谓词有生产者。
       const explicitTags = opts.tags ? opts.tags.split(",").map((s) => s.trim()).filter(Boolean) : [];
       const gateTags = opts.gate ? [`gate:${opts.gate}`] : [];
       const mergedTags = [...gateTags, ...explicitTags];
@@ -835,23 +813,23 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
   cmd
     .command("handoff-and-complete <qitemId>")
     .description(
-      "Atomic close (state=done, closure_reason=handed_off_to) + create new qitem owned by --to. Variant of handoff that fully terminates the source qitem."
+      "原子关闭（state=done，closure_reason=handed_off_to）+ 创建归属 --to 的新 qitem。handoff 的变体，会彻底终止 source qitem。"
     )
-    .option("--from <session>", "(deprecated, ignored) the handing-off seat is derived from the seat env (X-OpenRig-Session); P21 I3 made the handoff route derive it from the transport header")
-    .requiredOption("--to <session>", "Destination seat receiving the new qitem")
-    .option("--body <text>", "New qitem body inline (use - to read from stdin; mutually exclusive with --body-file). Omit both to keep the source body.")
-    .option("--body-file <path>", "Read the new qitem body from a file path (use - for stdin; mutually exclusive with --body). Kills the backtick-shell-corruption class.")
-    .option("--note <text>", "Transition note")
-    .option("--priority <priority>", "Override priority for the new qitem")
-    .option("--tier <tier>", "Override tier for the new qitem")
-    .option("--tags <tags>", "Comma-separated tags for the new qitem")
-    .option("--gate <role>", "OPR.0.4.3.16: mark the new qitem as gate work; translated to a gate:<role> tag (e.g. guard | spec-review). The idle-gate watchdog reads this predicate. Composes with --tags.")
-    .option("--target-repo <name>", "PL-007: typed repo scope for the new qitem")
-    .option("--summary <text>", "OPR.0.4.1.18: short human-readable 1-2 sentence summary for the new qitem — what it is and why this seat, skimmable in the needs-you view (--body stays source of truth). Warned-if-missing.")
-    .option("--evidence-ref <path>", "OPR.0.4.4.19 FR-5: durable-artifact pointer for the new qitem. Required by the daemon when the new qitem is human-routed; optional otherwise.")
+    .option("--from <session>", "（已废弃，忽略）交出的 seat 从 seat 环境推导（X-OpenRig-Session）；P21 I3 让 handoff 路由从传输头推导它")
+    .requiredOption("--to <session>", "接收新 qitem 的目标 seat")
+    .option("--body <text>", "内联新 qitem 正文（用 - 从 stdin 读；与 --body-file 互斥）。两者都不传则保留 source 正文。")
+    .option("--body-file <path>", "从文件路径读新 qitem 正文（用 - 表示 stdin；与 --body 互斥）。消灭反引号 shell 污染这一类问题。")
+    .option("--note <text>", "迁移 note")
+    .option("--priority <priority>", "覆盖新 qitem 的优先级")
+    .option("--tier <tier>", "覆盖新 qitem 的 tier")
+    .option("--tags <tags>", "新 qitem 的逗号分隔标签")
+    .option("--gate <role>", "OPR.0.4.3.16：把新 qitem 标记为 gate 工作；翻译成 gate:<role> 标签（例如 guard | spec-review）。idle-gate 看门狗读这个谓词。与 --tags 组合。")
+    .option("--target-repo <name>", "PL-007：新 qitem 的带类型 repo 作用域")
+    .option("--summary <text>", "OPR.0.4.1.18：给新 qitem 写一两句简短人读摘要——它是什么、为什么是这个 seat，可在 needs-you 视图扫读（--body 仍是事实来源）。缺失时警告。")
+    .option("--evidence-ref <path>", "OPR.0.4.4.19 FR-5：新 qitem 的持久化产物指针。新 qitem 路由给人时由后台服务要求；否则可选。")
     .option("--host <id>", QUEUE_HOST_OPTION_HELP)
-    .option("--no-nudge", "Suppress the default nudge to the new destination")
-    .option("--json", "JSON output for agents")
+    .option("--no-nudge", "抑制对新目标的默认 nudge")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (qitemId: string, opts: {
       from?: string;
       to: string;
@@ -869,12 +847,13 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
       nudge?: boolean;
       json?: boolean;
     }) => {
-      // P21 I3 reconcile: the handing-off seat is DERIVED from the seat env (X-OpenRig-Session) —
-      // --from deprecated + ignored, no body fromSession. Verify the env or the daemon returns 400 actor_required (no seat identity to record; P18 retired the 401 refusal).
+      // P21 I3 调和：交出的 seat 从 seat 环境推导（X-OpenRig-Session）——--from 已废弃且被忽略，
+      // 没有 body fromSession。校验环境，否则后台服务返回 400 actor_required
+      // （没有 seat 身份可记录；P18 已退役 401 拒绝）。
       if (!resolveCurrentSession(undefined, "from")) return;
-      // slice-08 OPR.0.4.7.8 — body-input parity (same contract as handoff):
-      // resolve only when a body source is supplied; neither keeps the
-      // source-body default; both/invalid reject before daemon contact.
+      // slice-08 OPR.0.4.7.8——正文输入对齐（与 handoff 同一契约）：
+      // 只在提供正文来源时解析；两者都不传时不保留 source 正文默认；
+      // 都传/非法在联系后台服务之前拒绝。
       let resolvedBody: string | undefined;
       if (opts.body !== undefined || opts.bodyFile !== undefined) {
         try {
@@ -884,23 +863,22 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
           return;
         }
       }
-      // OPR.0.4.6.MH3 D-3 (C3): same edge resolution as handoff.
+      // OPR.0.4.6.MH3 D-3（C3）：与 handoff 相同的边界解析。
       const hostResolved = resolveQueueHostDestination(opts.to, opts.host);
       if (!hostResolved.ok) {
         emitHostResolutionError(hostResolved, opts.json ?? false);
         return;
       }
-      // OPR.0.4.1.18 (FR-7): warn-on-author — a handoff authors a NEW qitem, so
-      // it should carry its own summary. Warn to stderr; do not hard-break.
+      // OPR.0.4.1.18（FR-7）：对作者警告——handoff 写了一个新 qitem，所以它应带自己的
+      // summary。打到 stderr 警告；不硬性中断。
       if (!opts.summary) {
         process.stderr.write(
-          "warning: rig queue handoff called without --summary. Pass --summary <text> to set the new qitem's short human-readable summary; without it, the Story node falls back to a bounded body preview. A good summary is 1-2 plain sentences a human skims in the needs-you view — what the work is and why it needs this seat, not the agent-speak --body. Proceeding.\n"
+          "警告：调用 zrig queue handoff 时未带 --summary。传 --summary <文本> 可设置新 qitem 简短的人读摘要；否则 Story 节点回退到有界正文预览。好的摘要是一两句平实的话，让人在 needs-you 视图里快速扫读——这项工作是什么、为什么需要这个 seat，而不是 --body 里的智能体黑话。继续执行。\n"
         );
       }
       const deps = getDeps();
-      // OPR.0.4.3.16 — --gate <role> stamps a gate:<role> tag (composes with
-      // --tags, de-duplicated). Guard code-review + spec-review handoffs use
-      // this so the idle-gate watchdog's predicate has a producer.
+      // OPR.0.4.3.16——--gate <role> 盖一个 gate:<role> 标签（与 --tags 组合，去重）。
+      // 守门 code-review + spec-review handoff 用它，好让 idle-gate 看门狗的谓词有生产者。
       const explicitTags = opts.tags ? opts.tags.split(",").map((s) => s.trim()).filter(Boolean) : [];
       const gateTags = opts.gate ? [`gate:${opts.gate}`] : [];
       const mergedTags = [...gateTags, ...explicitTags];
@@ -927,10 +905,10 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
 
   cmd
     .command("whoami")
-    .description("Show the caller's queue position from the daemon's perspective")
-    .option("--session <session>", "Caller's session name (defaults to OPENRIG_SESSION_NAME)")
-    .option("--recent-limit <n>", "How many recent active qitems to include", "25")
-    .option("--json", "JSON output for agents")
+    .description("从后台服务视角显示调用者的队列位置")
+    .option("--session <session>", "调用者的会话名（默认 OPENRIG_SESSION_NAME）")
+    .option("--recent-limit <n>", "包含多少条近期活跃 qitem", "25")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: { session?: string; recentLimit: string; json?: boolean }) => {
       const session = resolveCurrentSession(opts.session, "session");
       if (!session) return;
@@ -947,10 +925,10 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
 
   cmd
     .command("fallback <qitemId>")
-    .description("Reroute a qitem to a fallback destination (e.g. unreachable seat)")
-    .requiredOption("--destination <session>", "Fallback destination seat")
-    .option("--reason <text>", "Reason for fallback", "manual")
-    .option("--json", "JSON output for agents")
+    .description("把一个 qitem 改路由到兜底目标（例如 seat 不可达）")
+    .requiredOption("--destination <session>", "兜底目标 seat")
+    .option("--reason <text>", "fallback 的原因", "manual")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (qitemId: string, opts: { destination: string; reason: string; json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -964,40 +942,38 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
 
   cmd
     .command("show <qitemId>")
-    .description("Show one qitem and its derived waiting state (bounded preview; --full for complete body)")
-    .option("--full", "Complete original record; may be large (use --full --json for lossless JSON)")
-    .option("--json", "JSON preview with completeness, original byte size and exact full command")
+    .description("显示一个 qitem 及其派生的等待状态（有界预览；--full 看完整正文）")
+    .option("--full", "完整原始记录；可能很大（无损 JSON 用 --full --json）")
+    .option("--json", "带完整度、原始字节大小和精确完整命令的 JSON 预览")
     .action(async (qitemId: string, opts: { full?: boolean; json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
         const res = await client.get<unknown>(`/api/queue/${encodeURIComponent(qitemId)}`);
         const json = opts.json ?? false;
         const item = res.data;
-        // --full is a pure passthrough of today's COMPLETE item shape (the
-        // compatibility contract — body byte-identical to pre-0.4.3.03). Also
-        // passthrough on error responses / non-object payloads, where there is
-        // no string body to preview.
+        // --full 是今天完整 item 形状的纯透传（兼容契约——正文与 0.4.3.0 之前逐字节一致）。
+        // 错误响应 / 非对象负载也透传，那里没有字符串正文可预览。
         if (opts.full || res.status >= 400 || !isRecordWithStringBody(item)) {
           printResult(json, item, res.status);
           return;
         }
         const { preview, bodyBytes, bodyTruncated } = previewBody(item.body);
-        // Append-only additions: keep `body` in place (now the preview) and add
-        // the honest size + truncation flag. Object otherwise unchanged.
-        const fullCommand = `rig queue show ${shellQuote(qitemId)} --full --json`;
+        // 只追加：保持 `body` 原位（现在是预览），加上诚实的大小 + 截断标志。
+        // 对象其余部分不变。
+        const fullCommand = `zrig queue show ${shellQuote(qitemId)} --full --json`;
         const view = readView(item, fullCommand, bodyTruncated ? [omittedReadField("body (after preview)", item.body.slice(preview.length))] : []);
         const transformed = { ...item, body: preview, bodyBytes, bodyTruncated, readView: view };
         printResult(json, transformed, res.status);
         if (!json && bodyTruncated) {
-          console.log(`… (bounded preview — complete body is ${bodyBytes} bytes; full record ${view.fullJsonBytes} JSON bytes: ${fullCommand})`);
+          console.log(`…（有界预览——完整正文 ${bodyBytes} 字节；完整记录 ${view.fullJsonBytes} 个 JSON 字节：${fullCommand}）`);
         }
       });
     });
 
   cmd
     .command("transitions <qitemId>")
-    .description("Show the append-only transition log for a qitem")
-    .option("--json", "JSON output for agents")
+    .description("显示一个 qitem 只追加的迁移日志")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (qitemId: string, opts: { json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -1008,48 +984,48 @@ workspace home that is deferred/not-imminent belongs in its mission/slice.`)
 
   cmd
     .command("list")
-    .description("List qitems (default: active + compact + current-rig; like 'docker ps')")
-    .option("-a, --all", "Include closed/done history (like 'docker ps -a')")
-    .option("-A, --all-rigs", "Cross-rig breadth (like 'kubectl get --all-namespaces')")
-    .option("--full", "Show complete per-item fields (body, chain-of-record)")
-    .option("--owned", "Scope to obligations assigned to you (destination only)")
-    .option("--mine", "Scope to items where you are source or destination, including rows you authored but do not own")
-    .option("-o <format>", "Output format: json", enumArg(["json"]))
-    .option("--destination <session>", "Filter by destination session")
-    .option("--source <session>", "Filter by source session")
-    .option("--state <state>", "Filter by state (comma-separated for multiple)")
-    .option("--target-repo <name>", "PL-007: filter qitems by target_repo (exact match)")
-    .option("--limit <n>", "Result limit", positiveIntArg, 100)
-    .option("--json", "JSON output (compact; use --full --json for complete fields)")
+    .description("列出 qitem（默认：active + 紧凑 + 当前 rig；类似 'docker ps'）")
+    .option("-a, --all", "包含已关闭/已完成历史（类似 'docker ps -a'）")
+    .option("-A, --all-rigs", "跨 rig 宽度（类似 'kubectl get --all-namespaces'）")
+    .option("--full", "显示每个条目的完整字段（body、chain-of-record）")
+    .option("--owned", "收窄到指派给你的义务（仅 destination）")
+    .option("--mine", "收窄到你是 source 或 destination 的条目，包括你撰写但不拥有的行")
+    .option("-o <format>", "输出格式：json", enumArg(["json"]))
+    .option("--destination <session>", "按目标会话过滤")
+    .option("--source <session>", "按来源会话过滤")
+    .option("--state <state>", "按状态过滤（多个用逗号分隔）")
+    .option("--target-repo <name>", "PL-007：按 target_repo 过滤 qitem（精确匹配）")
+    .option("--limit <n>", "结果上限", positiveIntArg, 100)
+    .option("--json", "JSON 输出（紧凑；完整字段用 --full --json）")
     .addHelpText("after", `
-Default: active items in your current rig, compact summary (like 'docker ps').
-Current rig is derived from OPENRIG_SESSION_NAME's @<rig> suffix.
+默认：你当前 rig 里的活跃条目，紧凑摘要（类似 'docker ps'）。
+当前 rig 从 OPENRIG_SESSION_NAME 的 @<rig> 后缀推导。
 
-Four orthogonal axes (docker/kubectl pattern):
-  -a, --all         Include closed/done history (state axis)
-  -A, --all-rigs    Cross-rig breadth (scope axis)
-  --full            Include body + chain-of-record (field axis)
-  -o json            JSON output (compact; --full -o json for complete)
+四个正交轴（docker/kubectl 模式）：
+  -a, --all         包含已关闭/已完成历史（状态轴）
+  -A, --all-rigs    跨 rig 宽度（作用域轴）
+  --full            包含 body + chain-of-record（字段轴）
+  -o json           JSON 输出（紧凑；完整用 --full -o json）
 
-Active states: pending, in-progress, blocked.
-History (-a adds): done, canceled, handed-off, failed, denied.
-Use --state <states> to select specific states explicitly.
+活跃状态：pending、in-progress、blocked。
+历史（-a 增加）：done、canceled、handed-off、failed、denied。
+用 --state <states> 显式选择特定状态。
 
-Depth: 'rig queue show <qitemId>' previews one body; add --full for the complete record.
-Frontier source: 'rig queue list' is the default status surface.
+深度：'zrig queue show <qitemId>' 预览一条 body；加 --full 看完整记录。
+前沿来源：'zrig queue list' 是默认状态表面。
 
-Examples:
-  rig queue list                          Active items in your rig (compact)
-  rig queue list -a                       Include closed history in your rig
-  rig queue list -A                       Active items across ALL rigs
-  rig queue list -a -A                    Everything across all rigs
-  rig queue list --full                   Active items with body/chain
-  rig queue list -o json                  Compact JSON (same as --json)
-  rig queue list --full -o json           Complete JSON (with body/chain)
-  rig queue list --owned                  Obligations assigned to you (destination only)
-  rig queue list --mine                   Items you own or authored (source-or-destination union)
-  rig queue list --state pending          Only pending items in your rig
-  rig queue list --full --all --all-rigs  Full firehose (pre-0.4.0 default)`)
+示例：
+  zrig queue list                          你 rig 里的活跃条目（紧凑）
+  zrig queue list -a                       包含你 rig 里的已关闭历史
+  zrig queue list -A                       所有 rig 的活跃条目
+  zrig queue list -a -A                    所有 rig 的全部
+  zrig queue list --full                   带 body/chain 的活跃条目
+  zrig queue list -o json                  紧凑 JSON（同 --json）
+  zrig queue list --full -o json           完整 JSON（带 body/chain）
+  zrig queue list --owned                  指派给你的义务（仅 destination）
+  zrig queue list --mine                   你拥有或撰写的条目（source 或 destination 的并集）
+  zrig queue list --state pending          你 rig 里仅 pending 条目
+  zrig queue list --full --all --all-rigs  完整 firehose（0.4.0 之前的默认）`)
     .action(async (opts: {
       all?: boolean;
       allRigs?: boolean;
@@ -1068,7 +1044,7 @@ Examples:
       const params = new URLSearchParams();
       const sessionName = readOpenRigEnv("OPENRIG_SESSION_NAME", "RIGGED_SESSION_NAME");
       if (opts.owned && !sessionName) {
-        console.error("Cannot use --owned: checked OPENRIG_SESSION_NAME and RIGGED_SESSION_NAME, but neither caller seat identity is set. Set one to a canonical seat@rig address, or use --destination <session>.");
+        console.error("无法使用 --owned：已检查 OPENRIG_SESSION_NAME 和 RIGGED_SESSION_NAME，但两个调用者 seat 身份都未设置。把其中一个设为规范的 seat@rig 地址，或用 --destination <session>。");
         process.exitCode = 1;
         return;
       }
@@ -1105,17 +1081,17 @@ Examples:
 
   cmd
     .command("overdue")
-    .description("List in-progress qitems past their closure_required_at deadline (current rig, bounded, body-free by default)")
-    .option("--rig <name>", "Scope to a specific rig (default: current rig from OPENRIG_SESSION_NAME)")
-    .option("-A, --all-rigs", "Cross-rig breadth (default is current rig only)")
-    .option("--full", "Include complete per-item fields (body, chain-of-record)")
-    .option("--limit <n>", "Result limit", positiveIntArg, 50)
-    .option("--json", "JSON output for agents")
-    .addHelpText("after", "\nDefault: overdue items in your current rig, compact (no bodies), newest-deadline first.\nUse --full for bodies, -A for all rigs, --rig <name> to target another rig.")
+    .description("列出超过 closure_required_at 截止时间的 in-progress qitem（当前 rig，有界，默认不带 body）")
+    .option("--rig <name>", "收窄到某个 rig（默认：从 OPENRIG_SESSION_NAME 推导的当前 rig）")
+    .option("-A, --all-rigs", "跨 rig 宽度（默认仅当前 rig）")
+    .option("--full", "包含每个条目的完整字段（body、chain-of-record）")
+    .option("--limit <n>", "结果上限", positiveIntArg, 50)
+    .option("--json", "供智能体使用的 JSON 输出")
+    .addHelpText("after", "\n默认：你当前 rig 里已逾期的条目，紧凑（无 body），按截止时间最新在前。\n用 --full 看 body，-A 看所有 rig，--rig <name> 指向另一个 rig。")
     .action(async (opts: { rig?: string; allRigs?: boolean; full?: boolean; limit?: number; json?: boolean }) => {
       const deps = getDeps();
       const params = new URLSearchParams();
-      // Rig scope: explicit --rig wins; else current-rig default unless -A (mirrors `list`).
+      // rig 作用域：显式 --rig 优先；否则当前 rig 默认，除非 -A（镜像 `list`）。
       if (opts.rig) {
         params.set("rig", opts.rig);
       } else if (!opts.allRigs) {
@@ -1123,7 +1099,7 @@ Examples:
         const rigName = sessionName ? extractRigName(sessionName) : undefined;
         if (rigName) params.set("rig", rigName);
       }
-      if (!opts.full) params.set("compact", "1"); // body-free by default
+      if (!opts.full) params.set("compact", "1"); // 默认不带 body
       if (opts.limit) params.set("limit", String(opts.limit));
       await withClient(deps, async (client) => {
         const res = await client.get<unknown>(`/api/queue/overdue?${params.toString()}`);
@@ -1133,13 +1109,13 @@ Examples:
 
   cmd
     .command("undelivered")
-    .description("List PENDING qitems whose create-path nudge FAILED (delivery never reached the destination; current rig, bounded, body-free by default)")
-    .option("--rig <name>", "Scope to a specific rig (default: current rig from OPENRIG_SESSION_NAME)")
-    .option("-A, --all-rigs", "Cross-rig breadth (default is current rig only)")
-    .option("--full", "Include complete per-item fields (body, chain-of-record)")
-    .option("--limit <n>", "Result limit", positiveIntArg, 50)
-    .option("--json", "JSON output for agents")
-    .addHelpText("after", "\nSurfaces the create-path delivery strands: pending rows whose nudge recorded failed:<reason> and which nothing else reconciles. Read-only; the sender believed delivery succeeded but the destination was never woken.\nUse --full for bodies, -A for all rigs, --rig <name> to target another rig.")
+    .description("列出 create 路径 nudge 失败的 PENDING qitem（投递从未到达目标；当前 rig，有界，默认不带 body）")
+    .option("--rig <name>", "收窄到某个 rig（默认：从 OPENRIG_SESSION_NAME 推导的当前 rig）")
+    .option("-A, --all-rigs", "跨 rig 宽度（默认仅当前 rig）")
+    .option("--full", "包含每个条目的完整字段（body、chain-of-record）")
+    .option("--limit <n>", "结果上限", positiveIntArg, 50)
+    .option("--json", "供智能体使用的 JSON 输出")
+    .addHelpText("after", "\n暴露 create 路径上的投递滞留：nudge 记录了 failed:<reason>、又没有别的东西去对账的 pending 行。只读；发送方以为投递成功，但目标从未被唤醒。\n用 --full 看 body，-A 看所有 rig，--rig <name> 指向另一个 rig。")
     .action(async (opts: { rig?: string; allRigs?: boolean; full?: boolean; limit?: number; json?: boolean }) => {
       const deps = getDeps();
       const params = new URLSearchParams();
@@ -1158,23 +1134,23 @@ Examples:
       });
     });
 
-  // ---- Inbox subcommands ----
+  // ---- inbox 子命令 ----
 
   cmd
     .command("inbox-drop <destinationSession>")
-    .description("Drop a mailbox-style entry into a destination's inbox")
-    // P18: the sender is derived from the seat env (X-OpenRig-Session, stamped by the transport), not a
-    // flag. --sender is deprecated + IGNORED (kept optional so existing callers don't break).
-    .option("--sender <session>", "(deprecated, ignored) sender is derived from the authenticated seat env")
-    .option("--body <text>", "Inbox body inline (use - to read from stdin; mutually exclusive with --body-file).")
-    .option("--body-file <path>", "Read the inbox body from a file path (use - for stdin; mutually exclusive with --body). Kills the backtick-shell-corruption class.")
-    .option("--tags <tags>", "Comma-separated tags")
+    .description("把一个邮箱式条目投进目标的 inbox")
+    // P18：sender 从 seat 环境推导（X-OpenRig-Session，由传输盖章），不是一个标志。
+    // --sender 已废弃且被忽略（保留为可选，好让既有调用方不破坏）。
+    .option("--sender <session>", "（已废弃，忽略）sender 从已认证的 seat 环境推导")
+    .option("--body <text>", "内联 inbox 正文（用 - 从 stdin 读；与 --body-file 互斥）。")
+    .option("--body-file <path>", "从文件路径读 inbox 正文（用 - 表示 stdin；与 --body 互斥）。消灭反引号 shell 污染这一类问题。")
+    .option("--tags <tags>", "逗号分隔的标签")
     .option("--urgency <urgency>", "routine | urgent | critical", "routine")
-    .option("--audit <pointer>", "Audit pointer reference")
-    .option("--id <inboxId>", "Idempotent inbox_id")
-    .option("--json", "JSON output for agents")
+    .option("--audit <pointer>", "审计指针引用")
+    .option("--id <inboxId>", "幂等的 inbox_id")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (destinationSession: string, opts: {
-      sender?: string; // P18: deprecated + ignored (sender derived from the seat env)
+      sender?: string; // P18：已废弃且被忽略（sender 从 seat 环境推导）
       body?: string;
       bodyFile?: string;
       tags?: string;
@@ -1183,9 +1159,9 @@ Examples:
       id?: string;
       json?: boolean;
     }) => {
-      // slice-08 OPR.0.4.7.8 — inbox-drop ALWAYS resolves body through the
-      // shipped resolveQueueBody (no source-body default here): neither and
-      // both reject BEFORE daemon contact; --body -/--body-file - read stdin.
+      // slice-08 OPR.0.4.7.8——inbox-drop 总是通过已交付的 resolveQueueBody 解析 body
+      // （这里没有 source-body 默认）：两者都不传和都传都在联系后台服务之前拒绝；
+      // --body -/--body-file - 读 stdin。
       let resolvedBody: string;
       try {
         resolvedBody = await resolveQueueBody({ body: opts.body, bodyFile: opts.bodyFile });
@@ -1196,8 +1172,8 @@ Examples:
       const deps = getDeps();
       const tags = opts.tags ? opts.tags.split(",").map((s) => s.trim()).filter(Boolean) : undefined;
       await withClient(deps, async (client) => {
-        // P18: the sender is the transport-derived identity header (stamped once by DaemonClient from
-        // the seat env), NOT a body claim/flag — the daemon ignores any body-supplied sender.
+        // P18：sender 是传输推导的身份头（由 DaemonClient 从 seat 环境盖一次章），
+        // 不是 body 声明/标志——后台服务会忽略任何 body 里提供的 sender。
         const res = await client.post<unknown>("/api/queue/inbox/drop", {
           inboxId: opts.id,
           destinationSession,
@@ -1212,9 +1188,9 @@ Examples:
 
   cmd
     .command("inbox-absorb <inboxId>")
-    .description("Absorb a pending inbox entry into the receiver's main queue")
-    .requiredOption("--receiver <session>", "Receiver session (must match destination)")
-    .option("--json", "JSON output for agents")
+    .description("把一条 pending 的 inbox 条目吸收进接收者的主队列")
+    .requiredOption("--receiver <session>", "接收者会话（必须与 destination 匹配）")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (inboxId: string, opts: { receiver: string; json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -1227,10 +1203,10 @@ Examples:
 
   cmd
     .command("inbox-deny <inboxId>")
-    .description("Deny a pending inbox entry with a recorded reason")
-    .requiredOption("--receiver <session>", "Receiver session (must match destination)")
-    .requiredOption("--reason <text>", "Reason for denial")
-    .option("--json", "JSON output for agents")
+    .description("拒绝一条 pending 的 inbox 条目，并记录原因")
+    .requiredOption("--receiver <session>", "接收者会话（必须与 destination 匹配）")
+    .requiredOption("--reason <text>", "拒绝原因")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (inboxId: string, opts: { receiver: string; reason: string; json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -1244,8 +1220,8 @@ Examples:
 
   cmd
     .command("inbox-pending <destinationSession>")
-    .description("List pending inbox entries for a destination seat")
-    .option("--json", "JSON output for agents")
+    .description("列出某个目标 seat 的 pending inbox 条目")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (destinationSession: string, opts: { json?: boolean }) => {
       const deps = getDeps();
       const params = new URLSearchParams({ destinationSession });
@@ -1255,20 +1231,20 @@ Examples:
       });
     });
 
-  // ---- Outbox subcommands ----
+  // ---- Outbox 子命令 ----
 
   cmd
     .command("outbox-record")
-    .description("Record an outbound dispatch in the sender's outbox")
-    .option("--sender <session>", "(deprecated, ignored) the sender is derived from the seat env (X-OpenRig-Session); P21 I3 made the outbox-record route derive it from the transport header")
-    .requiredOption("--destination <session>", "Destination session")
-    .option("--body <text>", "Outbox body inline (use - to read from stdin; mutually exclusive with --body-file).")
-    .option("--body-file <path>", "Read the outbox body from a file path (use - for stdin; mutually exclusive with --body). Kills the backtick-shell-corruption class.")
-    .option("--tags <tags>", "Comma-separated tags")
+    .description("在发送者的 outbox 里记录一次出站派发")
+    .option("--sender <session>", "（已废弃，忽略）sender 从 seat 环境推导（X-OpenRig-Session）；P21 I3 让 outbox-record 路由从传输头推导它")
+    .requiredOption("--destination <session>", "目标会话")
+    .option("--body <text>", "内联 outbox 正文（用 - 从 stdin 读；与 --body-file 互斥）。")
+    .option("--body-file <path>", "从文件路径读 outbox 正文（用 - 表示 stdin；与 --body 互斥）。消灭反引号 shell 污染这一类问题。")
+    .option("--tags <tags>", "逗号分隔的标签")
     .option("--urgency <urgency>", "routine | urgent | critical", "routine")
-    .option("--audit <pointer>", "Audit pointer reference")
-    .option("--id <outboxId>", "Idempotent outbox_id")
-    .option("--json", "JSON output for agents")
+    .option("--audit <pointer>", "审计指针引用")
+    .option("--id <outboxId>", "幂等的 outbox_id")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: {
       sender?: string;
       destination: string;
@@ -1280,9 +1256,9 @@ Examples:
       id?: string;
       json?: boolean;
     }) => {
-      // slice-08 OPR.0.4.7.8 — outbox-record ALWAYS resolves body through the
-      // shipped resolveQueueBody (no source-body default): neither and both
-      // reject BEFORE daemon contact; --body -/--body-file - read stdin.
+      // slice-08 OPR.0.4.7.8——outbox-record 总是通过已交付的 resolveQueueBody 解析 body
+      // （没有 source-body 默认）：两者都不传和都传都在联系后台服务之前拒绝；
+      // --body -/--body-file - 读 stdin。
       let resolvedBody: string;
       try {
         resolvedBody = await resolveQueueBody({ body: opts.body, bodyFile: opts.bodyFile });
@@ -1290,8 +1266,9 @@ Examples:
         emitBodyResolveError(err as Error & { fact?: string; consequence?: string; action?: string }, opts.json ?? false);
         return;
       }
-      // P21 I3 reconcile: the sender is DERIVED from the seat env (X-OpenRig-Session) — --sender
-      // deprecated + ignored, no body senderSession. Verify the env or the daemon returns 400 actor_required (no seat identity to record; P18 retired the 401 refusal).
+      // P21 I3 调和：sender 从 seat 环境推导（X-OpenRig-Session）——--sender 已废弃且被忽略，
+      // 没有 body senderSession。校验环境，否则后台服务返回 400 actor_required
+      // （没有 seat 身份可记录；P18 已退役 401 拒绝）。
       if (!resolveCurrentSession(undefined, "sender")) return;
       const deps = getDeps();
       const tags = opts.tags ? opts.tags.split(",").map((s) => s.trim()).filter(Boolean) : undefined;
@@ -1310,9 +1287,9 @@ Examples:
 
   cmd
     .command("outbox-list <senderSession>")
-    .description("List outbox entries for a sender seat")
-    .option("--limit <n>", "Result limit", "100")
-    .option("--json", "JSON output for agents")
+    .description("列出某个发送者 seat 的 outbox 条目")
+    .option("--limit <n>", "结果上限", "100")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (senderSession: string, opts: { limit: string; json?: boolean }) => {
       const deps = getDeps();
       const params = new URLSearchParams({ senderSession, limit: opts.limit });

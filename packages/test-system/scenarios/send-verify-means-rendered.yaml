@@ -1,18 +1,16 @@
-# Defect class: pane-render vs receipt (send --verify honesty).
-# Marathon origin: `rig send --verify` reported success on delivery/receipt (message
-#   queued) while the text never RENDERED in the seat's pane — a false-positive that
-#   masked wedged seats.
-# SEED (class: verify-is-receipt-not-render): the seeded regression makes --verify
-#   ack on receipt without confirming pane render. The `expect pane contains marker`
-#   MUST catch it — the diff shows expected marker-in-pane vs an observed empty pane,
-#   even though the send "succeeded", naming the receipt-not-render class.
-# Deps: send{verify} + pane surface (R-10). No emit.
+# 缺陷类别：pane-render 与 receipt 不一致（send --verify 诚实性）。
+# Marathon 来源：`rig send --verify` 在投递/接收（消息已入队）时报告成功，
+#   但文本从未在席位 pane 中渲染——这种假阳性掩盖了卡死席位。
+# SEED（class: verify-is-receipt-not-render）：种子回归使 --verify 在收到 receipt 时 ACK，
+#   却未确认 pane 渲染。`expect pane contains marker` 必须发现它——即使 send 显示“成功”，
+#   diff 仍会展示预期 pane 中存在 marker 与观察到的空 pane，并标明 receipt-not-render 类别。
+# 依赖：send{verify} + pane 界面（R-10）。不使用 emit。
 scenario: send-verify-means-rendered
 topology: ./solo-stub.yaml
 steps:
   - up: {}
   - send: {to: work-worker@solo-stub, text: "render-marker-7f3a", verify: true}
-  # --verify must mean RENDERED: the exact text is observable in the pane.
+  # --verify 必须表示已渲染：pane 中可以观察到完全相同的文本。
   - expect:
       surface: pane
       seat: work-worker@solo-stub

@@ -37,7 +37,7 @@ describe("AgentSpecValidateFlow", () => {
       expect(screen.getByTestId("agent-spec-validate-flow")).toBeDefined();
     });
 
-    expect(screen.getByText("VALIDATE AGENT")).toBeDefined();
+    expect(screen.getByText("验证智能体")).toBeDefined();
     expect(screen.getByTestId("agent-spec-yaml-input")).toBeDefined();
     expect(screen.getByTestId("agent-spec-validate-btn")).toBeDefined();
   });

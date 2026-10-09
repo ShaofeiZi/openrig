@@ -1,6 +1,6 @@
-// REGISTRY I4 — the socket "commands" OBSERVE query: one serialized projection of the
-// ONE registry with LIVE availability. Parity: socket rows == registry entries == the
-// I2 dump's data contract (one source, derived surfaces).
+// REGISTRY I4——socket "commands" OBSERVE 查询：同一注册表带 LIVE 可用性的
+// 一个序列化投影。对等：socket 行 == 注册表条目 ==
+// I2 dump 的数据契约（一源，派生表面）。
 import { describe, it, expect } from "vitest";
 import net from "node:net";
 import os from "node:os";
@@ -22,8 +22,8 @@ async function query(sockPath: string, line: string): Promise<unknown> {
   });
 }
 
-describe("socket commands query (I4)", () => {
-  it("returns the full registry projection with live availability; parity with the one source", async () => {
+describe("socket 命令查询（I4）", () => {
+  it("返回带 live 可用性的完整 registry 投影；与唯一来源对等", async () => {
     const view = createViewState({ instanceId: "i4", getSnapshot: () => demoSnapshot() });
     const sockPath = path.join(os.tmpdir(), `t-i4-${process.pid}.sock`);
     const sock = await createControlSocket({ socketPath: sockPath, view });
@@ -33,7 +33,7 @@ describe("socket commands query (I4)", () => {
       expect(res.commands.length).toBe(COMMAND_REGISTRY.length); // every entry, none hidden
       expect(res.commands.every((c) => typeof c.available === "boolean" && c.context.length > 0)).toBe(true);
       expect(res.commands.find((c) => c.name === "help")!.available).toBe(true); // always-context
-      // parity with the serializer (the ONE projection — byte-deep equality)
+      // 与序列化器对等（唯一投影——字节级相等）
       expect(res.commands).toEqual(JSON.parse(JSON.stringify(serializeCommands("standard"))));
     } finally {
       await sock.close();

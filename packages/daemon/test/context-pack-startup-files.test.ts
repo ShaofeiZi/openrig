@@ -1,26 +1,26 @@
-// Slice-03 V3 delivery-free noun gate: context packs are composed and managed
-// by `rig context`; startup_files must never turn one into a send_text action.
+// Slice-03 V3 无投递名词门禁：context pack 由 `zrig context` 组合和管理；
+// startup_files 绝不能将其转为 send_text 操作。
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { normalizeStartupBlock, validateStartupFile } from "../src/domain/startup-validation.js";
 
-describe("startup_files rejects the retired delivery-coupled context_pack representation", () => {
+describe("startup_files 拒绝已退役、与投递耦合的 context_pack 表示形式", () => {
   it.each([
     { kind: "context_pack", ref: "packs/release-priming" },
     { kind: "context_pack", name: "release-priming", version: "1" },
-  ])("rejects $kind input rather than converting it to send_text", (entry) => {
+  ])("拒绝 $kind 输入，而不是将其转换为 send_text", (entry) => {
     const errors = validateStartupFile(entry, 0, "");
-    expect(errors.join("\n")).toMatch(/context_pack.*not supported|compose.*dedicated.*delivery/i);
+    expect(errors.join("\n")).toMatch(/context.pack.*不支持|compose.*专用.*投递/i);
   });
 
-  it("preserves ordinary startup file normalization", () => {
+  it("保留普通启动文件规范化行为", () => {
     expect(validateStartupFile({ kind: "file", path: "skill.md" }, 0, "")).toEqual([]);
     const block = normalizeStartupBlock({ files: [{ path: "skill.md" }] });
     expect(block.files[0]).toMatchObject({ kind: "file", path: "skill.md" });
   });
 
-  it("has no production representation or expansion path from context_pack to send_text", () => {
+  it("生产代码中不存在从 context_pack 到 send_text 的表示或展开路径", () => {
     const paths = [
       "../src/domain/startup-validation.ts",
       "../src/domain/runtime-adapter.ts",

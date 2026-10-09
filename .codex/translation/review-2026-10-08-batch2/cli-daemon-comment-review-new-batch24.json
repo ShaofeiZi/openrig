@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch24",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/workflow-exit-validation.test.ts",
+      "before_sha256_16": "b2e08f9c122ed46b",
+      "after_sha256_16": "ff64b5adf811537a",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/workflow-errors.test.ts",
+      "before_sha256_16": "f4aefa4735edac60",
+      "after_sha256_16": "e8880af797a53a76",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/ui.test.ts",
+      "before_sha256_16": "c82f0f77723656ad",
+      "after_sha256_16": "d5fb786cf7ed4bb0",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/scope-audit-shadowed-node.test.ts",
+      "before_sha256_16": "b58ea4bd8f497ef8",
+      "after_sha256_16": "ce8cdc0995816bb2",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/rig.test.ts",
+      "before_sha256_16": "806700b8762c9840",
+      "after_sha256_16": "577dda122eafe06c",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

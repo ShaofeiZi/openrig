@@ -1,32 +1,30 @@
-// PL-005 Phase B: shared notification adapter contract.
+// PL-005 阶段 B：共用的通知适配器契约。
 //
-// Each adapter implements `send(payload)`. The dispatcher chooses the
-// adapter at construction time based on the operator's notification
-// mechanism config.
+// 每个适配器都实现 `send(payload)`。dispatcher 在构造时根据操作方的通知机制配置选择适配器。
 
 export interface NotificationPayload {
-  /** Short human-readable title (e.g., "human-gate qitem arrived"). */
+  /** 简短的人类可读标题，例如“human-gate qitem 已到达”。 */
   title: string;
-  /** Longer body. May contain qitem id, source rig, action verb. */
+  /** 较长的正文，可包含 qitem id、来源 rig 和动作动词。 */
   body: string;
-  /** Optional qitem reference (URL or id) for click-through. */
+  /** 可选的 qitem 引用（URL 或 id），用于点击跳转。 */
   qitemRef?: string;
-  /** Operator-supplied tags for downstream routing (Slack channel, etc.). */
+  /** 操作方提供的下游路由标签，例如 Slack channel。 */
   tags?: string[];
 }
 
 export interface NotificationDeliveryResult {
   ok: boolean;
-  /** When ok=true: provider-side ack (httpStatus, message-id). */
+  /** ok=true 时为 provider 侧 ack，例如 httpStatus、message-id。 */
   ack?: string;
-  /** When ok=false: human-readable error. */
+  /** ok=false 时为人类可读错误。 */
   error?: string;
 }
 
 export interface NotificationAdapter {
-  /** Adapter mechanism label for events / audit. */
+  /** 用于事件和审计的 adapter 机制标签。 */
   readonly mechanism: string;
-  /** Target descriptor (ntfy topic URL or webhook endpoint URL). */
+  /** 目标描述符，例如 ntfy topic URL 或 webhook endpoint URL。 */
   readonly target: string;
   send(payload: NotificationPayload): Promise<NotificationDeliveryResult>;
 }

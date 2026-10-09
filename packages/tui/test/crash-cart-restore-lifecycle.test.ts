@@ -1,7 +1,7 @@
-// B1 ROUND 2 — the TUI-owned lifecycle. Discriminators against r2's probes:
-//  HIGH-3: a MID-RUN frame is observable (onFrame fires on not-done polls, with progressive counts),
-//          not only at completion.
-//  HIGH-1: cancel reaches the endpoint with the retained attempt id when the operator requests it.
+// B1 ROUND 2——TUI 自有生命周期。对 r2 探针的判别器：
+//  HIGH-3：MID-RUN 帧可观察（onFrame 在未完成 poll 上触发，带渐进计数），
+//          非仅完成时。
+//  HIGH-1：操作者请求时 cancel 带保留的 attempt id 到达端点。
 import { describe, it, expect, vi } from "vitest";
 import { driveRestoreLifecycle, type RestoreLifecycleClient } from "../src/crash-cart/restore-lifecycle.js";
 import type { RestoreFleetStatus } from "../src/daemon-client.js";
@@ -40,7 +40,7 @@ function scriptedClient(statuses: RestoreFleetStatus[]): { client: RestoreLifecy
 }
 
 describe("driveRestoreLifecycle", () => {
-  it("HIGH-3: emits a frame EVERY poll — a mid-run running frame is observed, not only completion", async () => {
+  it("HIGH-3：每次轮询都发一帧——运行中途的 running 帧被观测到，不止完成时", async () => {
     const frames: Array<{ phase: string; done: boolean; fully: number }> = [];
     const { client } = scriptedClient([
       status({ done: false, counts: { fully_restored: 1 } }), // 1 rig done, fleet still running
@@ -53,7 +53,7 @@ describe("driveRestoreLifecycle", () => {
       isCancelRequested: () => false,
       sleep: async () => {},
     });
-    // three frames — TWO of them mid-run (running) with progressive counts BEFORE the done frame
+    // 三帧——其中两帧 mid-run（running），在 done 帧前带渐进计数
     expect(frames).toEqual([
       { phase: "running", done: false, fully: 1 },
       { phase: "running", done: false, fully: 2 },
@@ -63,7 +63,7 @@ describe("driveRestoreLifecycle", () => {
     expect(final.attemptId).toBe("fleet-xyz");
   });
 
-  it("HIGH-1: cancel reaches the endpoint with the retained attempt id, exactly once", async () => {
+  it("HIGH-1：cancel 带保留的 attempt id 到达端点，恰好一次", async () => {
     const { client, cancelled } = scriptedClient([
       status({ done: false, counts: { fully_restored: 1 } }),
       status({ done: false, cancelled: true, counts: { fully_restored: 1, not_attempted: 1 } }),
@@ -82,9 +82,9 @@ describe("driveRestoreLifecycle", () => {
     expect(final.cancelled).toBe(true);
   });
 
-  it("HIGH-1 (r2 probe): the poll ceiling DETACHES — never a frozen 'running' frame", async () => {
-    // r2's maxPolls:2 discriminator: a perpetually-running status. The driver must NOT return a
-    // running frame the caller would render as live-with-a-dead-cancel; it returns DETACHED.
+  it("HIGH-1 (r2 probe)：轮询上限会脱附——绝不冻结在 running 帧", async () => {
+    // r2 的 maxPolls:2 判别器：永久运行状态。driver 绝不返回
+    // 一个调用方会渲染为 live-with-a-dead-cancel 的 running 帧；它返回 DETACHED。
     const frames: string[] = [];
     const { client } = scriptedClient([status({ done: false, counts: { fully_restored: 1 } })]);
     const final = await driveRestoreLifecycle({
@@ -99,7 +99,7 @@ describe("driveRestoreLifecycle", () => {
     expect(frames[frames.length - 1]).toBe("detached"); // the last rendered frame is detached, honest
   });
 
-  it("HIGH-1 (r1 refinement 2): ONE transient poll error is TOLERATED — the lifecycle does not end", async () => {
+  it("HIGH-1 (r1 refinement 2)：容忍一次瞬时轮询错误——生命周期不结束", async () => {
     let n = 0;
     const client: RestoreLifecycleClient = {
       restoreFleet: async () => ({ fleetAttemptId: "fleet-t" }),
@@ -115,8 +115,8 @@ describe("driveRestoreLifecycle", () => {
     expect(final.done).toBe(true);
   });
 
-  it("HIGH-1 (r1 q2): the error counter RESETS on a good poll — scattered blips never accumulate to a detach", async () => {
-    // error, ok, error, ok, error, done — 3 errors total but never 2 in a row; maxConsecutiveErrors:2.
+  it("HIGH-1 (r1 q2)：好轮询后错误计数清零——零星抖动不累积到脱附", async () => {
+    // error, ok, error, ok, error, done——共 3 错但绝不连续 2 次；maxConsecutiveErrors:2。
     const seq: Array<"err" | "ok" | "done"> = ["err", "ok", "err", "ok", "err", "done"];
     let i = 0;
     const client: RestoreLifecycleClient = {
@@ -133,7 +133,7 @@ describe("driveRestoreLifecycle", () => {
     expect(final.phase).toBe("done"); // reset-on-success: no 2-in-a-row streak, so never detaches
   });
 
-  it("HIGH-1: a SUSTAINED error streak detaches (a genuinely unreachable daemon)", async () => {
+  it("HIGH-1：持续错误连串会脱附（daemon 真的不可达）", async () => {
     const client: RestoreLifecycleClient = {
       restoreFleet: async () => ({ fleetAttemptId: "fleet-d" }),
       restoreFleetStatus: async () => {
@@ -145,7 +145,7 @@ describe("driveRestoreLifecycle", () => {
     expect(final.phase).toBe("detached");
   });
 
-  it("HIGH-1 (r1 q1): reattach+cancel POSTs cancel AND emits a frame — observable confirmation, not a silent POST", async () => {
+  it("HIGH-1 (r1 q1)：reattach+cancel 既 POST cancel 又发帧——可观测确认，非静默 POST", async () => {
     const frames: Array<{ cancelled: boolean }> = [];
     let cancelCalled = false;
     const client: RestoreLifecycleClient = {
@@ -162,7 +162,7 @@ describe("driveRestoreLifecycle", () => {
     expect(frames[frames.length - 1]!.cancelled).toBe(true); // the frame shows the cancel took effect
   });
 
-  it("reattach (attemptId set): skips the kick and polls the existing attempt", async () => {
+  it("reattach（已设 attemptId）：跳过 kick，轮询既有 attempt", async () => {
     const kickSpy = vi.fn(async () => ({ fleetAttemptId: "SHOULD-NOT-BE-USED" }));
     let polledId = "";
     const client: RestoreLifecycleClient = {

@@ -14,28 +14,25 @@ import {
 import type { WatchdogHistoryEntry, WatchdogHistoryLog } from "./watchdog-history-log.js";
 
 /**
- * Watchdog policy engine (PL-004 Phase C R1).
+ * Watchdog 策略引擎（PL-004 阶段 C R1）。
  *
- * Owns the per-evaluation state machine that mirrors POC engine
+ * 负责逐次评估状态机，与 POC 引擎
  * `lib/engine.mjs`:
- *   1. Resolve policy by name from registry. Unknown policy → terminal.
- *   2. Parse spec_yaml into top-level `target:` + top-level `message?:` +
- *      nested `context:` block, then build a PolicyJob with the
- *      resolved target object (falls back to registered targetSession
- *      when spec lacks an explicit `target:`).
- *   3. Dispatch policy.evaluate(policyJob).
- *   4. Action handling:
- *      - skip: clear actionable=false; record history + emit event
- *        ONLY if reason is "loud" (not in QUIET_SKIP_REASONS).
- *      - send: enforce active-wake throttle. If state.actionable was
- *        already true AND active_wake_interval_seconds is set AND not
- *        elapsed since last_fire_at → emit/record `active_wake_not_due`
- *        (quiet skip per POC). Otherwise call delivery, record history
- *        with sent outcome, emit evaluation_fired, set actionable=true.
- *      - terminal: mark job terminal, record history, emit terminal.
+ *   1. 按名称从注册表解析策略。未知策略 → terminal。
+ *   2. 将 spec_yaml 解析为顶层 `target:`、顶层 `message?:` 和嵌套的 `context:` 块，
+ *      再使用解析后的目标对象构建 PolicyJob（规范未显式提供 `target:` 时，
+ *      回退到已注册的 targetSession）。
+ *   3. 分派 policy.evaluate(policyJob)。
+ *   4. 操作处理：
+ *      - skip：清除 actionable=false；仅当原因“响亮”（不在 QUIET_SKIP_REASONS 中）时，
+ *        才记录历史并发出事件。
+ *      - send：执行活跃唤醒节流。若 state.actionable 已为 true，且已设置
+ *        active_wake_interval_seconds，并且自 last_fire_at 起尚未经过该时长 →
+ *        发出/记录 `active_wake_not_due`（按 POC 静默跳过）。否则调用投递，
+ *        以 sent 结果记录历史，发出 evaluation_fired，并设置 actionable=true。
+ *      - terminal：将任务标记为终止，记录历史，并发出 terminal。
  *
- * `not_due` polls are filtered upstream by the scheduler and never
- * reach this engine.
+ * `not_due` 轮询由上游调度器过滤，绝不会进入此引擎。
  */
 
 export interface DeliveryRequest {
@@ -55,7 +52,7 @@ export interface DeliveryOutcome {
   status: "ok" | "failed" | "retained";
   outboxIds?: string[];
   error?: string;
-  /** Structured continuity custody was durably created or identified. */
+  /** 已持久创建或识别结构化连续性托管。 */
   continuityActionCompleted?: boolean;
 }
 
@@ -74,14 +71,13 @@ export function formatWatchdogDeliveryMessage(
   source: WatchdogDeliverySource,
   message: string,
 ): string {
-  return `[OpenRig watchdog scheduler · policy: ${source.policy} · job: ${source.jobId}]\n${message}`;
+  return `[zrig watchdog 调度器 · 策略：${source.policy} · 任务：${source.jobId}]\n${message}`;
 }
 
 export interface PolicyContextParser {
   /**
-   * Parse the operator-supplied spec_yaml into the structured fields the
-   * engine needs. Returns the top-level `target` (object), top-level
-   * `message` (string), and the `context:` block (Record).
+   * 将操作者提供的 spec_yaml 解析为引擎所需的结构化字段。返回顶层 `target`（对象）、
+   * 顶层 `message`（字符串）以及 `context:` 块（Record）。
    */
   (specYaml: string): {
     target: { session: string } | null;
@@ -98,27 +94,24 @@ interface WatchdogPolicyEngineDeps {
   parseSpec?: PolicyContextParser;
   now?: () => Date;
   /**
-   * PL-004 Phase D extension point (orch-ratified per slice IMPL):
-   * additional policies to register alongside the Phase C built-in
-   * three. Used to register `workflow-keepalive` (which depends on
-   * the Phase D workflow_instances DB and so must be constructed at
-   * daemon startup with a db handle injected).
+   * PL-004 阶段 D 扩展点（根据切片 IMPL 经编排批准）：与阶段 C 内置策略一同注册的
+   * 附加策略。用于注册 `workflow-keepalive`（它依赖阶段 D 的 workflow_instances
+   * 数据库，因此必须在 daemon 启动时注入数据库句柄来构造）。
    */
   additionalPolicies?: Policy[];
   /**
-   * (i-c) FIRE-TIME target-generation gate. Resolve a target session's LIVE occupant-generation (P12
-   * `occupant_tenures`) so a GENERATION-bound wake (job.targetGeneration set) can be refused when the
-   * target has been handed over to a different generation since the job was armed. Absent → gate off
-   * (jobs fire unchanged). A null return = UNKNOWN → fail-open (deliver): the protective act is
-   * SKIPPING, so an unknown target-generation must never skip a legitimate wake (note-2 inversion).
+   * (i-c) 触发时 target-generation 门禁。解析目标会话的实时 occupant-generation
+   * （P12 `occupant_tenures`），当任务布防后目标已 handover 到另一 generation 时，拒绝
+   * 绑定 generation 的唤醒（已设置 job.targetGeneration）。缺失 → 关闭门禁（任务照常触发）。
+   * 返回 null = 未知 → 开放失败（投递）：保护动作是跳过，因此未知 target-generation
+   * 绝不能跳过合法唤醒（note-2 反转）。
    */
   resolveTargetGeneration?: (sessionName: string) => string | null;
-  /** Last defense before transport for persisted jobs whose owning domain can
-   *  prove they are no longer actionable. A reason terminals the job without
-   *  delivering; null preserves the existing send path. */
+  /** 对持久化任务执行传输前的最后一道防线，其所属域可证明它们已不可操作。返回原因时
+   *  终止任务且不投递；返回 null 时保留现有发送路径。 */
   resolvePreDeliveryTerminalReason?: (input: { jobId: string }) => string | null;
-  /** Queue-side observer for a wake attempt. It appends resume evidence to
-   *  every HELD row armed to this job; delivery outcome is preserved. */
+  /** 唤醒尝试的队列侧观察器。它会向为该任务布防的每个 HELD 行追加恢复证据；
+   *  投递结果保持不变。 */
   resolveQueueWait?: (input: { jobId: string }) => PolicyEvaluation | null | undefined;
   onWakeAttempt?: (attempt: { jobId: string; deliveryStatus: string }) => void;
 }
@@ -131,10 +124,9 @@ const PHASE_C_BUILTIN_POLICIES: ReadonlyArray<Policy> = [
 ];
 
 /**
- * Quiet skip reasons — POC `shouldAppendHistory` (engine.mjs:99-112)
- * suppresses these from history. Same set must NOT emit watchdog.*
- * events for parity with POC SSE behavior; agents never see scheduler
- * polls just because the pool was empty or the wake throttle was active.
+ * 静默跳过原因——POC 的 `shouldAppendHistory`（engine.mjs:99-112）会从历史中抑制这些原因。
+ * 为与 POC SSE 行为保持一致，同一集合也不得发出 watchdog.* 事件；agent 不应仅因池为空
+ * 或唤醒节流生效就看到调度器轮询。
  */
 const QUIET_SKIP_REASONS = new Set<string>([
   "not_due",
@@ -148,37 +140,27 @@ const QUIET_SKIP_REASONS = new Set<string>([
   "active_wake_not_due",
   "context_usage_below_threshold",
   "threshold_receipt_stable",
-  // OPR.0.4.3.16 idle-gate-qitem routine no-ops — analogues of
-  // no_actionable_artifacts. Suppressed from history/SSE so a per-second
-  // scan does not spam when there is simply nothing to wake about. The
-  // audited signal is the WAKE (fired) path.
+  // OPR.0.4.3.16 idle-gate-qitem 常规空操作——类似 no_actionable_artifacts。
+  // 从历史/SSE 中抑制，避免在无事可唤醒时每秒扫描刷屏。受审计的信号是 WAKE（fired）路径。
   "no_pending_gate",
   "seat_active",
-  // OPR.0.5.8.1 S2 — the gated condition has not materially changed since the
-  // wake that was already delivered for it. Quiet for the same reason as its
-  // siblings: a 60s scan must not write a history row every minute. The
-  // suppression stays derivable without one — the row itself remains visible in
-  // the held/escalations views (this suppresses the WAKE, never the record),
-  // and the job carries `last_fired_condition`, the exact condition it fired
-  // for. Adding this string changes no throttle semantics and no other policy
-  // emits it.
+  // OPR.0.5.8.1 S2 — 自已为受门控条件投递唤醒后，该条件没有实质变化。与同类原因一样
+  // 保持静默：60 秒扫描不应每分钟写一行历史。即使没有历史行，仍可推导抑制状态——
+  // 该行本身仍显示在 held/escalations 视图中（这里只抑制 WAKE，绝不抑制记录），
+  // 且任务携带 `last_fired_condition`，即其触发时的精确条件。添加此字符串不会改变任何
+  // 节流语义，也没有其他策略会发出它。
   "gate_condition_unchanged",
-  // OPR.0.5.6.24 — the parked-owner consumer's clean-scan no-op: nothing
-  // parked, nothing closed, nothing deferred. Suppressed so a routine rig
-  // scan writes no history (the loud, audited signals are the SENT wake,
-  // episode-ended, and all-parked-owners-deferred).
+  // OPR.0.5.6.24 — parked-owner 消费者清洁扫描时的空操作：没有停放、关闭或延迟的内容。
+  // 对其进行抑制，使常规 rig 扫描不写历史（响亮且受审计的信号是 SENT 唤醒、
+  // episode-ended 和 all-parked-owners-deferred）。
   "no-parked-owner",
-  // OPR.0.4.3.16 rev1-r1 fixback (advisor ruling 2026-07-03): seat_needs_input
-  // and activity_stale_unknown are the COMMON recurring states for this
-  // policy's own target scenario — a gate qitem pending on a seat that has
-  // gone stale/needs-input. Such a seat never becomes fresh-idle, so it never
-  // hits the send throttle; left LOUD it emitted one history row + one SSE per
-  // scan, UNBOUNDED, for as long as the gate stayed pending — contradicting the
-  // slice's bounded/no-spam ACs (BR6/AC2). Quiet here suppresses the per-scan
-  // history+SSE for these routine unwakeable states while the WAKE (send) path
-  // — the signal operators actually need — stays LOUD/audited. Stuck-seat
-  // visibility is served on-demand (pending gate qitems mapped to unwakeable
-  // seats), NOT via a per-scan log.
+  // OPR.0.4.3.16 rev1-r1 回修（顾问裁定 2026-07-03）：seat_needs_input 和
+  // activity_stale_unknown 是此策略目标场景的常见重复状态——某个 gate qitem 等待已陈旧/
+  // 需要输入的 seat。此类 seat 永远不会变成 fresh-idle，因此从不触发发送节流；若保持响亮，
+  // gate 持续待处理期间每次扫描都会无界地产生一行历史和一个 SSE，与切片的有界/不刷屏
+  // 验收条件（BR6/AC2）相矛盾。在此静默处理可抑制这些常规不可唤醒状态的逐次扫描历史+SSE，
+  // 同时保持操作者真正需要的 WAKE（send）路径响亮且受审计。卡住 seat 的可见性按需提供
+  //（将待处理 gate qitem 映射到不可唤醒 seat），而非通过逐次扫描日志提供。
   "seat_needs_input",
   "activity_stale_unknown",
 ]);
@@ -188,7 +170,7 @@ export interface EvaluationResult {
   outcome: PolicyEvaluation | { action: "skip"; reason: "active_wake_not_due" };
   history: WatchdogHistoryEntry | null;
   delivery: DeliveryOutcome | null;
-  /** True if this evaluation produced a history record + event. */
+  /** 若本次评估生成了历史记录和事件，则为 true。 */
   meaningful: boolean;
 }
 
@@ -336,8 +318,7 @@ export class WatchdogPolicyEngine {
     const outcome = this.resolveQueueWait?.({ jobId: job.jobId }) ?? await policy.evaluate(policyJob);
 
     if (outcome.action === "skip") {
-      // POC parity: skip clears actionable. Loud-vs-quiet decides
-      // whether to record + emit.
+      // 与 POC 保持一致：skip 会清除 actionable。是否记录并发出事件由响亮/静默决定。
       this.jobsRepo.recordEvaluation(job.jobId, evaluatedAt, false);
       this.jobsRepo.setActionable(job.jobId, false, evaluatedAt);
       const isQuiet = QUIET_SKIP_REASONS.has(outcome.reason);
@@ -396,13 +377,12 @@ export class WatchdogPolicyEngine {
       };
     }
 
-    // outcome.action === "send".
-    // POC active-wake throttle (engine.mjs:49-64, :243-263):
-    //   - If state.actionable was already true AND active_wake_interval
-    //     is set AND wake-window has not elapsed → quiet skip. Preserves
-    //     existing last_fire_at and last_actionable_at.
-    //   - Otherwise: deliver, set actionable=true, stamp last_fire_at +
-    //     last_actionable_at (preserve existing first-actionable timestamp).
+    // outcome.action === "send"。
+    // POC 活跃唤醒节流（engine.mjs:49-64, :243-263）：
+    //   - 若 state.actionable 已为 true，且已设置 active_wake_interval，并且唤醒窗口尚未经过
+    //     → 静默跳过。保留现有 last_fire_at 和 last_actionable_at。
+    //   - 否则：投递，设置 actionable=true，写入 last_fire_at + last_actionable_at
+    //     （保留现有的首次可操作时间戳）。
     if (
       job.actionable &&
       job.activeWakeIntervalSeconds !== null &&
@@ -412,10 +392,8 @@ export class WatchdogPolicyEngine {
       const nowMs = Date.parse(evaluatedAt);
       const intervalMs = job.activeWakeIntervalSeconds * 1000;
       if (Number.isFinite(lastFireMs) && nowMs - lastFireMs < intervalMs) {
-        // Quiet skip: scan happened, pool still actionable, but the
-        // wake window is closed. Update last_evaluation_at, do NOT
-        // touch last_fire_at, keep actionable=true and preserve
-        // last_actionable_at.
+        // 静默跳过：已完成扫描，池仍可操作，但唤醒窗口尚未开放。更新 last_evaluation_at，
+        // 不触碰 last_fire_at，保持 actionable=true 并保留 last_actionable_at。
         this.jobsRepo.recordEvaluation(job.jobId, evaluatedAt, false);
         this.jobsRepo.setActionable(job.jobId, true, evaluatedAt, job.lastActionableAt);
         return {
@@ -428,11 +406,11 @@ export class WatchdogPolicyEngine {
       }
     }
 
-    // (i-c) FIRE-TIME target-generation gate. A generation-bound wake (job.targetGeneration set) must
-    // not fire at a target handed over to a DIFFERENT live generation since it was armed. Role-bound
-    // jobs (null) skip the gate → fire unchanged. UNKNOWN live generation (null) fails OPEN → deliver
-    // (the protective act is SKIPPING, so unknown never skips — note-2). Only a resolved MISMATCH
-    // skips LOUD (loud reason → recorded + emitted), with a structured audit naming BOTH generations.
+    // (i-c) 触发时 target-generation 门禁。绑定 generation 的唤醒（已设置 job.targetGeneration）
+    // 不得发往任务布防后已 handover 到另一实时 generation 的目标。绑定 role 的任务（null）
+    // 跳过门禁 → 保持原样触发。实时 generation 未知（null）时开放失败 → 投递
+    //（保护动作是跳过，因此未知值绝不能跳过——note-2）。只有已解析的不匹配会响亮地跳过
+    //（响亮原因 → 记录并发出事件），并通过结构化审计列出两个 generation。
     if (job.targetGeneration !== null && this.resolveTargetGeneration) {
       const liveGeneration = this.resolveTargetGeneration(outcome.target.session);
       if (liveGeneration !== null && liveGeneration !== job.targetGeneration) {
@@ -466,11 +444,9 @@ export class WatchdogPolicyEngine {
       }
     }
 
-    // OPR.0.5.8.1 S1c — current queue transitions retire park timers at every
-    // exit. This narrow pre-transport guard handles only legacy persisted
-    // residue, where the row is already terminal and no transition remains to
-    // intercept. It runs after normal policy/throttle/generation decisions but
-    // before any custody or message delivery side effect.
+    // OPR.0.5.8.1 S1c — 当前队列转换会在每个出口退役 park 定时器。此窄范围的传输前守卫
+    // 只处理旧版持久化残留：该行已经 terminal，且已无可拦截的转换。它在常规策略、节流和
+    // generation 决策之后运行，但早于任何托管或消息投递副作用。
     const preDeliveryTerminalReason = this.resolvePreDeliveryTerminalReason?.({ jobId: job.jobId });
     if (preDeliveryTerminalReason) {
       this.jobsRepo.markTerminal(job.jobId, preDeliveryTerminalReason);
@@ -501,9 +477,8 @@ export class WatchdogPolicyEngine {
       occupantGeneration,
     );
 
-    // Plain wakes retain the proven at-most-once ordering. Structured
-    // continuity custody is retry-safe by deterministic qitem id, so its
-    // receipt waits until the durable action has completed.
+    // 普通唤醒保留已验证的至多一次顺序。结构化连续性托管凭借确定性 qitem id 可安全重试，
+    // 因此其回执要等持久操作完成后再写入。
     if (isContextUsageThreshold && occupantGeneration && !continuityAction) {
       this.jobsRepo.recordThresholdFire(job.jobId, occupantGeneration, evaluatedAt);
     }
@@ -531,9 +506,8 @@ export class WatchdogPolicyEngine {
       deliveryTargetSession: outcome.target.session,
       deliveryStatus: delivery.status,
       deliveryMessage: outcome.message,
-      // OPR.0.5.6.24 — the delivery error/reason string survives into the
-      // durable record so a policy can distinguish an interactive-prompt
-      // refusal from a generic failure (status alone discards that identity).
+      // OPR.0.5.6.24 — 投递错误/原因字符串会保留到持久记录中，使策略能够区分交互式
+      // 提示拒绝和一般故障（仅凭 status 会丢失该身份）。
       evaluationNotes:
         delivery.error !== undefined
           ? { ...(outcome.notes ?? {}), deliveryReason: delivery.error }
@@ -542,11 +516,9 @@ export class WatchdogPolicyEngine {
     if (!isContextUsageThreshold) {
       this.jobsRepo.recordEvaluation(job.jobId, evaluatedAt, true);
     }
-    // OPR.0.5.8.1 S2 — a policy's condition receipt is banked ONLY on positive
-    // delivery. `status` is "ok" | "failed"; anything that is not a definite ok
-    // leaves the receipt untouched so the next scan retries. A policy that does
-    // not propose a receipt is untouched by this, so no other policy's
-    // behaviour changes.
+    // OPR.0.5.8.1 S2 — 只有明确投递成功后才保存策略的条件回执。`status` 为 "ok" |
+    // "failed"；凡非明确 ok 的结果都不触碰回执，以便下次扫描重试。未提出回执的策略
+    // 不受此逻辑影响，因此其他策略的行为不会改变。
     if (outcome.conditionReceipt !== undefined && delivery.status === "ok") {
       this.jobsRepo.recordConditionReceipt(job.jobId, outcome.conditionReceipt);
     }
@@ -594,7 +566,7 @@ function parseContinuityAction(
   };
 }
 
-/** Parse the operator-authored watchdog YAML before it reaches persistence. */
+/** 在操作者编写的 watchdog YAML 进入持久化层之前解析它。 */
 export function parseWatchdogSpec(specYaml: string): {
   target: { session: string } | null;
   message: string | null;
@@ -606,21 +578,21 @@ export function parseWatchdogSpec(specYaml: string): {
   } catch (err) {
     throw new WatchdogJobsError(
       "spec_invalid",
-      `watchdog spec has invalid YAML: ${err instanceof Error ? err.message : String(err)}`,
+      `watchdog 规范包含无效 YAML：${err instanceof Error ? err.message : String(err)}`,
     );
   }
   if (!isRecord(parsed)) {
-    throw new WatchdogJobsError("spec_invalid", "watchdog spec must be a YAML mapping");
+    throw new WatchdogJobsError("spec_invalid", "watchdog 规范必须是 YAML 映射");
   }
 
   const rawMessage = parsed["message"];
   if (rawMessage !== undefined && rawMessage !== null && typeof rawMessage !== "string") {
-    throw new WatchdogJobsError("spec_invalid", "watchdog spec field 'message' must be a string");
+    throw new WatchdogJobsError("spec_invalid", "watchdog 规范字段 'message' 必须是字符串");
   }
 
   const rawContext = parsed["context"];
   if (rawContext !== undefined && rawContext !== null && !isRecord(rawContext)) {
-    throw new WatchdogJobsError("spec_invalid", "watchdog spec field 'context' must be a mapping");
+    throw new WatchdogJobsError("spec_invalid", "watchdog 规范字段 'context' 必须是映射");
   }
   const context = isRecord(rawContext) ? rawContext : {};
   if (
@@ -628,7 +600,7 @@ export function parseWatchdogSpec(specYaml: string): {
     context["message"] !== null &&
     typeof context["message"] !== "string"
   ) {
-    throw new WatchdogJobsError("spec_invalid", "watchdog spec field 'context.message' must be a string");
+    throw new WatchdogJobsError("spec_invalid", "watchdog 规范字段 'context.message' 必须是字符串");
   }
 
   const rawTarget = parsed["target"];
@@ -639,7 +611,7 @@ export function parseWatchdogSpec(specYaml: string): {
     if (!isRecord(rawTarget) || typeof rawTarget["session"] !== "string") {
       throw new WatchdogJobsError(
         "spec_invalid",
-        "watchdog spec field 'target' must be a session string or mapping with string 'session'",
+        "watchdog 规范字段 'target' 必须是会话字符串，或带字符串 'session' 的映射",
       );
     }
     target = { session: rawTarget["session"] };

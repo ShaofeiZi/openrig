@@ -3,10 +3,9 @@ import type Database from "better-sqlite3";
 import { createFullTestDb, createTestApp } from "./helpers/test-app.js";
 
 /**
- * OPR.0.4.3.26 — POST /api/seat/switch-client/:seatRef. VIEW-ONLY view retarget:
- * the route resolves the seat read-only and only probes/switches via the tmux
- * adapter already in context. These tests pin the happy path + the honest-error
- * HTTP mapping + that no reconcile/converge machinery is invoked.
+ * OPR.0.4.3.26——POST /api/seat/switch-client/:seatRef。仅视图的 view retarget：路由以
+ * 只读方式解析席位，只通过 context 中已有 tmux adapter 探测/切换。这些测试固定 happy path、
+ * 真实错误 HTTP mapping，并保证不调用 reconcile/converge 机制。
  */
 describe("POST /api/seat/switch-client/:seatRef", () => {
   let db: Database.Database;
@@ -39,7 +38,7 @@ describe("POST /api/seat/switch-client/:seatRef", () => {
     });
   }
 
-  it("200: retargets the single attached client to <session>:0", async () => {
+  it("200：把唯一 attached client retarget 到 <session>:0", async () => {
     seedLiveSeat();
     tmux().hasSession.mockResolvedValue(true);
     tmux().listClients.mockResolvedValue([{ name: "/dev/ttys003", session: "wrong-view" }]);
@@ -58,7 +57,7 @@ describe("POST /api/seat/switch-client/:seatRef", () => {
     expect(tmux().switchClient).toHaveBeenCalledWith("/dev/ttys003", "dev-impl@seat-rig:0");
   });
 
-  it("404 for an unknown seat", async () => {
+  it("未知席位返回 404", async () => {
     const res = await post("ghost@seat-rig");
     expect(res.status).toBe(404);
     const body = await res.json();
@@ -66,7 +65,7 @@ describe("POST /api/seat/switch-client/:seatRef", () => {
     expect(tmux().switchClient).not.toHaveBeenCalled();
   });
 
-  it("409 no_client when nothing is attached (honest error, no switch)", async () => {
+  it("没有 attached client 时返回 409 no_client，真实报错且不切换", async () => {
     seedLiveSeat();
     tmux().hasSession.mockResolvedValue(true);
     tmux().listClients.mockResolvedValue([]);
@@ -78,7 +77,7 @@ describe("POST /api/seat/switch-client/:seatRef", () => {
     expect(tmux().switchClient).not.toHaveBeenCalled();
   });
 
-  it("409 ambiguous_client when multiple attached and no --client", async () => {
+  it("存在多个 attached client 且未指定 --client 时返回 409 ambiguous_client", async () => {
     seedLiveSeat();
     tmux().hasSession.mockResolvedValue(true);
     tmux().listClients.mockResolvedValue([
@@ -94,7 +93,7 @@ describe("POST /api/seat/switch-client/:seatRef", () => {
     expect(tmux().switchClient).not.toHaveBeenCalled();
   });
 
-  it("409 session_not_found points to routing repair when the canonical session is dead", async () => {
+  it("canonical session 已停止时，409 session_not_found 指向 routing 修复", async () => {
     seedLiveSeat();
     tmux().hasSession.mockResolvedValue(false);
     tmux().listClients.mockResolvedValue([{ name: "/dev/ttys003", session: "a" }]);
@@ -107,7 +106,7 @@ describe("POST /api/seat/switch-client/:seatRef", () => {
     expect(tmux().switchClient).not.toHaveBeenCalled();
   });
 
-  it("404 window_not_found for an explicit --to-window that does not exist", async () => {
+  it("显式 --to-window 不存在时返回 404 window_not_found", async () => {
     seedLiveSeat();
     tmux().hasSession.mockResolvedValue(true);
     tmux().listWindows.mockResolvedValue([{ index: 0, name: "main", panes: 1, active: true }]);
@@ -120,7 +119,7 @@ describe("POST /api/seat/switch-client/:seatRef", () => {
     expect(tmux().switchClient).not.toHaveBeenCalled();
   });
 
-  it("502 tmux_probe_failed when listClients THROWS (honest error, not an unstructured 500)", async () => {
+  it("listClients 抛错时返回 502 tmux_probe_failed，而非无结构 500", async () => {
     seedLiveSeat();
     tmux().hasSession.mockResolvedValue(true);
     tmux().listClients.mockRejectedValue(new Error("error connecting to /private/tmp/tmux-501/default (Permission denied)"));
@@ -132,7 +131,7 @@ describe("POST /api/seat/switch-client/:seatRef", () => {
     expect(tmux().switchClient).not.toHaveBeenCalled();
   });
 
-  it("502 tmux_probe_failed when listWindows THROWS on an explicit --to-window", async () => {
+  it("显式 --to-window 上 listWindows 抛错时返回 502 tmux_probe_failed", async () => {
     seedLiveSeat();
     tmux().hasSession.mockResolvedValue(true);
     tmux().listWindows.mockRejectedValue(new Error("EACCES: permission denied"));
@@ -145,7 +144,7 @@ describe("POST /api/seat/switch-client/:seatRef", () => {
     expect(tmux().switchClient).not.toHaveBeenCalled();
   });
 
-  it("502 switch_failed when the tmux switch itself fails", async () => {
+  it("tmux switch 自身失败时返回 502 switch_failed", async () => {
     seedLiveSeat();
     tmux().hasSession.mockResolvedValue(true);
     tmux().listClients.mockResolvedValue([{ name: "/dev/ttys003", session: "a" }]);

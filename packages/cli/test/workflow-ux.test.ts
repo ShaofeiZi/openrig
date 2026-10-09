@@ -1,11 +1,8 @@
-// release-0.3.2 slice 01 (OPR.0.3.2.1) — GA-polish coverage for the
-// rig workflow command surface.
+// release-0.3.2 slice 01（OPR.0.3.2.1）——覆盖 zrig workflow 命令界面的 GA 润色。
 //
-// Scope: static --help + description coverage; the what/state/next
-// summary behavior is verified at the building-block level via
-// printOutcomeSummary unit tests (exported for this purpose), since
-// the live action path is gated by getDaemonStatus and tested at the
-// integration tier elsewhere.
+// 范围：静态 --help + 描述覆盖；what/state/next 摘要行为通过
+// printOutcomeSummary 单元测试在构建块层验证（专为此目的导出），因为
+// 实时操作路径受 getDaemonStatus 门禁约束，并已在其他位置的集成层测试。
 
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -17,7 +14,7 @@ import {
   type OutcomeSummary,
 } from "../src/commands/workflow.js";
 
-describe("rig workflow --help carries examples on every command (HG-4)", () => {
+describe("zrig workflow --help 为每条命令提供示例（HG-4）", () => {
   const expectedVerbs = [
     "validate",
     "instantiate",
@@ -29,12 +26,10 @@ describe("rig workflow --help carries examples on every command (HG-4)", () => {
     "continue",
   ];
 
-  // Commander v13 attaches `addHelpText('after', ...)` as a listener
-  // that fires when --help is rendered; `helpInformation()` returns
-  // Usage+Options+Subcommands but NOT the after-text. Source-scan the
-  // command file to prove every verb carries an Examples block —
-  // catches drift if a future refactor drops `addHelpText` from one
-  // verb but leaves the others.
+  // Commander v13 将 `addHelpText('after', ...)` 作为 listener 附加，
+  // 在渲染 --help 时触发；`helpInformation()` 返回 Usage+Options+Subcommands，
+  // 但不包含 after-text。扫描命令源码以证明每个动词都包含示例块——
+  // 如果未来重构只从某个动词移除 `addHelpText`，此测试可捕获漂移。
   const here = path.dirname(fileURLToPath(import.meta.url));
   const workflowSrc = readFileSync(
     path.resolve(here, "../src/commands/workflow.ts"),
@@ -42,42 +37,41 @@ describe("rig workflow --help carries examples on every command (HG-4)", () => {
   );
 
   for (const verb of expectedVerbs) {
-    it(`${verb} has an addHelpText('after', ...) block with an Examples section`, () => {
+    it(`${verb} 包含带示例章节的 addHelpText('after', ...) 块`, () => {
       const root = workflowCommand();
       const sub = root.commands.find((c) => c.name() === verb);
-      expect(sub, `verb ${verb} should be registered`).toBeTruthy();
-      // Source-scan: locate the command(...) declaration and look
-      // for an Examples block in the addHelpText that follows.
+      expect(sub, `应注册动词 ${verb}`).toBeTruthy();
+      // 扫描源码：定位 command(...) 声明，并检查其后的 addHelpText 是否包含示例块。
       const verbBlockRe = new RegExp(
         `\\.command\\("${verb}[ "(<]([\\s\\S]*?)\\.action\\(`,
         "m",
       );
       const match = verbBlockRe.exec(workflowSrc);
-      expect(match, `couldn't locate builder for "${verb}"`).toBeTruthy();
+      expect(match, `无法定位 "${verb}" 的构建器`).toBeTruthy();
       const block = match![0];
       expect(block).toMatch(/\.addHelpText\("after",/);
-      expect(block).toMatch(/Examples?:/i);
-      expect(block).toMatch(/\$ rig workflow /); // at least one concrete example invocation
+      expect(block).toMatch(/示例：?/i);
+      expect(block).toMatch(/\$ zrig workflow /); // 至少包含一个具体调用示例
     });
   }
 
-  it("every verb has a non-empty description", () => {
+  it("每个动词都有非空描述", () => {
     const root = workflowCommand();
     for (const sub of root.commands) {
       expect(
         sub.description().length,
-        `verb ${sub.name()} needs a description`,
+        `动词 ${sub.name()} 需要描述`,
       ).toBeGreaterThan(0);
     }
   });
 
-  it("the top-level command itself is documented", () => {
+  it("顶层命令本身已有文档说明", () => {
     const root = workflowCommand();
     expect(root.description().length).toBeGreaterThan(0);
   });
 });
 
-describe("printOutcomeSummary — what/state/next ending (HG-4)", () => {
+describe("printOutcomeSummary——what/state/next 收尾（HG-4）", () => {
   function captureStdout(): { logs: string[]; restore: () => void } {
     const logs: string[] = [];
     const original = console.log;
@@ -93,33 +87,33 @@ describe("printOutcomeSummary — what/state/next ending (HG-4)", () => {
     next: "Inspect: rig queue show QITEM-456",
   };
 
-  it("emits 4 lines (blank + what + state + next) in human mode on success", () => {
+  it("成功时在人类模式输出 4 行（空行 + what + state + next）", () => {
     const out = captureStdout();
     printOutcomeSummary(false, 200, baseSummary);
     out.restore();
     const joined = out.logs.join("\n");
-    expect(joined).toMatch(/what:\s+Closed QITEM-123/);
-    expect(joined).toMatch(/state:\s+instance WF01ABC = active/);
-    expect(joined).toMatch(/next:\s+Inspect: rig queue show QITEM-456/);
-    // Blank separator line precedes the summary.
+    expect(joined).toMatch(/做了什么：\s*Closed QITEM-123/);
+    expect(joined).toMatch(/state.*instance.*WF01ABC|状态.*WF01ABC/);
+    expect(joined).toMatch(/next.*Inspect.*rig queue show QITEM-456|下一步.*Inspect/);
+    // 摘要前有一个空白分隔行。
     expect(out.logs[0]).toBe("");
   });
 
-  it("suppresses output in --json mode (machine consumers stay clean)", () => {
+  it("--json 模式抑制输出（保持机器消费者输入干净）", () => {
     const out = captureStdout();
     printOutcomeSummary(true, 200, baseSummary);
     out.restore();
     expect(out.logs.length).toBe(0);
   });
 
-  it("suppresses output when status >= 400 (error path uses its own surface)", () => {
+  it("status >= 400 时抑制输出（错误路径使用自己的界面）", () => {
     const out = captureStdout();
     printOutcomeSummary(false, 500, baseSummary);
     out.restore();
     expect(out.logs.length).toBe(0);
   });
 
-  it("suppresses output when summary is null", () => {
+  it("summary 为 null 时抑制输出", () => {
     const out = captureStdout();
     printOutcomeSummary(false, 200, null);
     out.restore();

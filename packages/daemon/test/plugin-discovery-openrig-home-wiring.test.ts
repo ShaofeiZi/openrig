@@ -1,17 +1,13 @@
-// bug-fix slice plugin-discovery-respects-openrig-home — wiring test.
+// 缺陷修复切片 plugin-discovery-respects-openrig-home——接线测试。
 //
-// Verifies the startup-time wiring of PluginDiscoveryService honors
-// `OPENRIG_HOME` env override (HG-1, HG-3, HG-4 per IMPL-PRD §5). The
-// service-level tests in plugin-discovery-service.test.ts cover the
-// scan logic against injected paths; THIS test covers the call-site
-// resolution in startup.ts that pre-fix hardcoded
-// `~/.openrig/plugins`. Without this gate, the next regression at the
-// call site would only surface via end-to-end VM dogfood exercise
-// (which is exactly how velocity-qa caught the bug originally).
+// 验证 PluginDiscoveryService 的启动时接线遵循 `OPENRIG_HOME` 环境覆盖值
+//（根据 IMPL-PRD §5 的 HG-1、HG-3、HG-4）。plugin-discovery-service.test.ts 中的
+// 服务级测试覆盖针对注入路径的扫描逻辑；本测试覆盖 startup.ts 中调用点的解析，
+// 修复前这里硬编码了 `~/.openrig/plugins`。若无此门禁，调用点的下一次回归只能通过
+// 端到端 VM dogfood 演练暴露（velocity-qa 最初正是这样发现该缺陷）。
 //
-// HG-5 (audit-grep) is asserted as a static check in the second
-// describe: no `homedir().*\.openrig.*plugins` literal remains in
-// daemon src.
+// HG-5（audit-grep）在第二个 describe 中作为静态检查断言：daemon src 中不再保留
+// `homedir().*\.openrig.*plugins` 字面量。
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -28,7 +24,7 @@ beforeEach(() => {
   savedHome = process.env.OPENRIG_HOME;
   savedNoKernel = process.env.OPENRIG_NO_KERNEL;
   process.env.OPENRIG_HOME = tmpHome;
-  process.env.OPENRIG_NO_KERNEL = "1"; // belt-and-suspenders; vitest already auto-skips
+  process.env.OPENRIG_NO_KERNEL = "1"; // 双重保险；vitest 已自动跳过
 });
 
 afterEach(() => {
@@ -81,14 +77,14 @@ function refocusProviders(runtime: "claude" | "codex"): string[] {
     .sort();
 }
 
-describe("plugin discovery honors OPENRIG_HOME (HG-1, HG-3, HG-4)", () => {
-  it("scans <OPENRIG_HOME>/plugins and finds a plugin placed there", async () => {
-    // Vendor a synthetic plugin at <OPENRIG_HOME>/plugins/example/
+describe("plugin 发现遵循 OPENRIG_HOME（HG-1、HG-3、HG-4）", () => {
+  it("扫描 <OPENRIG_HOME>/plugins 并发现放置于其中的 plugin", async () => {
+    // 在 <OPENRIG_HOME>/plugins/example/ 中放置一个合成 plugin
     const pluginDir = join(tmpHome, "plugins", "example");
     writeClaudePluginManifest(pluginDir, {
       name: "example",
       version: "0.1.0",
-      description: "test plugin",
+      description: "测试 plugin",
     });
 
     const { deps, db } = await createDaemon({ dbPath: ":memory:" });
@@ -105,7 +101,7 @@ describe("plugin discovery honors OPENRIG_HOME (HG-1, HG-3, HG-4)", () => {
     }
   });
 
-  it("starts with a historical openrig-lab refocus registration left by an upgrade", async () => {
+  it("启动时清理升级遗留的历史 openrig-lab refocus 注册", async () => {
     const lab = join(tmpHome, "plugins", "openrig-lab");
     writeClaudePluginManifest(lab, {
       name: "openrig-lab",
@@ -144,34 +140,30 @@ describe("plugin discovery honors OPENRIG_HOME (HG-1, HG-3, HG-4)", () => {
     }
   });
 
-  it("vendor + discovery resolve to the SAME OPENRIG_HOME-rooted path (path startsWith verification)", async () => {
-    // Hardened symmetric-resolution check: assert the discovered
-    // PluginEntry.path actually lives under <tmpHome>/plugins, not
-    // just that an id with the same name appeared. A host with
-    // ~/.openrig/plugins/openrig-core would otherwise let pre-fix
-    // code satisfy the id-only assertion from the wrong root.
+  it("vendor 与 discovery 解析到同一个以 OPENRIG_HOME 为根的路径（path startsWith 验证）", async () => {
+    // 加固的对称解析检查：断言发现的 PluginEntry.path 确实位于 <tmpHome>/plugins 下，
+    // 而不仅是出现同名 id。否则，若主机存在 ~/.openrig/plugins/openrig-core，修复前代码
+    // 可能从错误根目录满足只检查 id 的断言。
     //
-    // Two layers of evidence:
-    //   1. Synthetic plugin id (NOT 'openrig-core' — that name exists
-    //      at the host default location on some operators' machines,
-    //      so it wouldn't discriminate pre-fix vs post-fix code).
-    //   2. PluginEntry.path startsWith <tmpHome>/plugins/<unique-id>.
+    // 两层证据：
+    //   1. 合成 plugin id（不是 'openrig-core'——某些操作者机器的主机默认位置存在该名称，
+    //      因此无法区分修复前后代码）。
+    //   2. PluginEntry.path 以 <tmpHome>/plugins/<unique-id> 开头。
     const uniqueId = `synthetic-cross-leak-${Date.now()}`;
     const pluginDir = join(tmpHome, "plugins", uniqueId);
     writeClaudePluginManifest(pluginDir, {
       name: uniqueId,
       version: "0.1.0",
-      description: "cross-leak probe",
+      description: "跨根泄漏探针",
     });
 
     const { deps, db } = await createDaemon({ dbPath: ":memory:" });
     try {
       const plugins = await deps.pluginDiscoveryService!.listPlugins({});
       const entry = plugins.find((p) => p.id === uniqueId);
-      expect(entry, `discovery should surface synthetic plugin ${uniqueId}`).toBeDefined();
+      expect(entry, `发现流程应显示合成 plugin ${uniqueId}`).toBeDefined();
       expect(entry!.source).toBe("vendored");
-      // Path-startsWith proof: discovery resolved against tmpHome,
-      // not the host's default ~/.openrig.
+      // Path-startsWith 证明：发现流程基于 tmpHome 解析，而非主机默认的 ~/.openrig。
       expect(entry!.path.startsWith(join(tmpHome, "plugins"))).toBe(true);
     } finally {
       db.close();
@@ -179,13 +171,11 @@ describe("plugin discovery honors OPENRIG_HOME (HG-1, HG-3, HG-4)", () => {
   });
 });
 
-describe("plugin-discovery-respects-openrig-home audit (HG-2, HG-5)", () => {
-  // T5: static-grep audit — no hardcoded `homedir() ... .openrig ...
-  // plugins` literal should remain in daemon src. Comments OK; runtime
-  // path construction NOT OK. This test will fail if a future change
-  // reintroduces the hardcoded path that velocity-qa VM dogfood
-  // exposed.
-  it("no daemon src file constructs the plugins path via homedir() literal", () => {
+describe("plugin-discovery-respects-openrig-home 审计（HG-2、HG-5）", () => {
+  // T5：静态 grep 审计——daemon src 中不得保留硬编码的 `homedir() ... .openrig ...
+  // plugins` 字面量。注释中可以出现，运行时路径构造中则不允许。若未来变更重新引入
+  // velocity-qa VM dogfood 所暴露的硬编码路径，本测试会失败。
+  it("没有 daemon src 文件通过 homedir() 字面量构造 plugins 路径", () => {
     const daemonSrcDir = resolve(__dirname, "..", "src");
     const offenders: string[] = [];
     const NEEDLE = /homedir\(\)\s*,\s*["']\.openrig["']\s*,\s*["']plugins["']/;
@@ -200,8 +190,7 @@ describe("plugin-discovery-respects-openrig-home audit (HG-2, HG-5)", () => {
         }
         if (!entry.isFile() || !entry.name.endsWith(".ts")) continue;
         const text = readFileSync(full, "utf-8");
-        // Strip line comments + block comments to avoid false positives
-        // on documentation that mentions the legacy path.
+        // 移除行注释和块注释，避免提及旧路径的文档产生误报。
         const stripped = text
           .split("\n")
           .map((line) => {
@@ -218,10 +207,10 @@ describe("plugin-discovery-respects-openrig-home audit (HG-2, HG-5)", () => {
     walk(daemonSrcDir);
     if (offenders.length > 0) {
       throw new Error(
-        `Daemon src files still construct plugins path via homedir() literal — must use getDefaultOpenRigPath('plugins') instead:\n  - ${offenders.join("\n  - ")}`,
+        `Daemon src 文件仍通过 homedir() 字面量构造 plugins 路径——必须改用 getDefaultOpenRigPath('plugins')：\n  - ${offenders.join("\n  - ")}`,
       );
     }
-    // Reference the unused import deliberately to silence lint
+    // 有意引用未使用的 import 以消除 lint 告警
     void statSync;
     void dirname;
   });

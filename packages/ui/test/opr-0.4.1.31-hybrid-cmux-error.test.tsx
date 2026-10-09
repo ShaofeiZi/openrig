@@ -1,7 +1,6 @@
-// OPR.0.4.1.31 B2 (dev1-guard) — the hybrid topology cmux button must surface a
-// VISIBLE error message on a failed open-cmux, not just color the icon / set a
-// hover title. Asserts a persistent role=alert chip with the daemon message +
-// that a retry resets and clears it on success.
+// OPR.0.4.1.31 B2（dev1-guard）——hybrid topology cmux 按钮在 open-cmux
+// 失败时必须呈现可见错误消息，而非仅给图标上色 / 设 hover title。
+// 断言一个带 daemon 消息的持久 role=alert 芯片，加重试成功后重置并清除它。
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";

@@ -1,18 +1,15 @@
-// OPR.0.4.1.21 — Artifacts tab: altitude-scoped file navigator.
+// OPR.0.4.1.21——产物页签：按层级限定范围的文件导航器。
 //
-// Read-only PROJECTION over the EXISTING /api/files/* endpoints — a folder TREE
-// (left, lazy per-folder /list on expand) + the selected folder's FILE LIST
-// (right; type badge from extension + size + mtime straight from /list). File
-// BODIES load only on open (FileLink -> SharedDetailDrawer -> /read or /asset).
-// No new endpoint, no new write/security surface — it inherits the daemon's
-// allowlist + path-traversal guards on the existing routes.
+// 对现有 /api/files/* 端点的只读投影：左侧为目录树，展开时按目录延迟请求 /list；
+// 右侧为所选目录的文件列表，类型徽标来自扩展名，大小和 mtime 直接来自 /list。
+// 文件正文只在打开时加载（FileLink → SharedDetailDrawer → /read 或 /asset）。
+// 不新增端点，也不新增写入或安全界面；沿用后台服务现有路由的白名单和路径穿越守卫。
 //
-// THE LAZY-LOAD BOUNDARY (the slice-17 over-fetch lesson — see
-// feedback_new_default_tab_flips_every_active_neq_guard): on landing fetch only
-// /roots + /list(base); on folder EXPAND fetch /list(that folder); on file OPEN
-// fetch /read|/asset. A collapsed folder passes root=null to useFilesList so the
-// query is DISABLED (enabled:!!root) — never pre-walk the tree, never eager-fetch
-// any file body on landing or tree render.
+// 延迟加载边界（吸取 slice-17 过度获取的教训，见
+// feedback_new_default_tab_flips_every_active_neq_guard）：首次进入只获取 /roots 和
+// /list(base)；展开目录时获取该目录的 /list；打开文件时才获取 /read 或 /asset。折叠目录向
+// useFilesList 传入 root=null，使查询禁用（enabled:!!root）；绝不预遍历目录树，也不在首次进入
+// 或渲染目录树时提前获取任何文件正文。
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -25,21 +22,21 @@ function isUnavailable(data: unknown): data is { unavailable: true; error: strin
   return Boolean(data && typeof data === "object" && "unavailable" in (data as Record<string, unknown>));
 }
 
-/** Type badge from the file extension (UI-derived; mockup shows MD / DIFF / PNG). */
+/** 根据文件扩展名生成类型徽标（由 UI 派生；模型图展示 MD / DIFF / PNG）。 */
 function fileBadge(name: string): string {
   const idx = name.lastIndexOf(".");
   if (idx <= 0 || idx === name.length - 1) return "···";
   return name.slice(idx + 1).toUpperCase();
 }
 
-/** Size straight from the /list entry (bytes -> human KB). */
+/** 直接使用 /list 条目中的大小（字节 → 人类可读 KB）。 */
 function formatSize(bytes: number | null): string {
   if (bytes == null) return "—";
   if (bytes < 1024) return `${bytes} B`;
   return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
-/** mtime straight from the /list entry (ISO -> "MM-DD HH:mm"). */
+/** 直接使用 /list 条目中的 mtime（ISO → "MM-DD HH:mm"）。 */
 function formatMtime(mtime: string | null): string {
   if (!mtime) return "—";
   const d = new Date(mtime);
@@ -57,7 +54,7 @@ function baseName(path: string): string {
   return idx === -1 ? path : path.slice(idx + 1);
 }
 
-// LEFT — one folder node; lazily lists its children only when expanded.
+// 左侧：单个目录节点，仅在展开时延迟列出子项。
 function FolderNode({
   root,
   path,
@@ -76,8 +73,8 @@ function FolderNode({
   defaultExpanded?: boolean;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  // Lazy boundary: pass root only when expanded so useFilesList is DISABLED
-  // (enabled:!!root) while collapsed — a collapsed folder fetches nothing.
+  // 延迟边界：仅在展开时传入 root，使 useFilesList 在折叠期间禁用
+  //（enabled:!!root）；折叠目录不获取任何内容。
   const list = useFilesList(expanded ? root : null, path);
   const entries = list.data?.entries ?? [];
   const isSelected = selectedFolder === path;
@@ -93,7 +90,7 @@ function FolderNode({
       >
         <button
           type="button"
-          aria-label={expanded ? `Collapse ${label}` : `Expand ${label}`}
+          aria-label={expanded ? `折叠 ${label}` : `展开 ${label}`}
           data-testid={`artifacts-tree-toggle-${path}`}
           onClick={() => setExpanded((e) => !e)}
           className="flex h-4 w-4 shrink-0 items-center justify-center"
@@ -116,7 +113,7 @@ function FolderNode({
       {expanded ? (
         list.isLoading ? (
           <div style={indent(depth + 1)} className="py-0.5 font-mono text-[10px] text-on-surface-variant">
-            Loading…
+            加载中…
           </div>
         ) : list.isError ? (
           <div
@@ -124,7 +121,7 @@ function FolderNode({
             style={indent(depth + 1)}
             className="py-0.5 font-mono text-[10px] text-red-600"
           >
-            Error loading folder.
+            加载文件夹出错。
           </div>
         ) : (
           <ul>
@@ -168,11 +165,11 @@ function FolderNode({
   );
 }
 
-// RIGHT — the selected folder's file list (metadata, not content).
+// 右侧：所选目录的文件列表（元数据而非正文）。
 function FolderFileList({ root, path }: { root: string; path: string }) {
   const list = useFilesList(root, path);
   const files = (list.data?.entries ?? []).filter((e) => e.type === "file");
-  const header = `${(path || root).toUpperCase()} · ${files.length} FILE${files.length === 1 ? "" : "S"}`;
+  const header = `${(path || root).toUpperCase()} · ${files.length} 个文件`;
 
   return (
     <div data-testid="artifacts-file-list" className="min-w-0 flex-1">
@@ -183,14 +180,14 @@ function FolderFileList({ root, path }: { root: string; path: string }) {
         {header}
       </div>
       {list.isLoading ? (
-        <div className="px-3 py-2 font-mono text-[10px] text-on-surface-variant">Loading…</div>
+        <div className="px-3 py-2 font-mono text-[10px] text-on-surface-variant">加载中…</div>
       ) : list.isError ? (
         <div data-testid="artifacts-file-list-error" className="px-3 py-2 font-mono text-[10px] text-red-600">
-          Error loading folder.
+          加载文件夹出错。
         </div>
       ) : files.length === 0 ? (
         <div data-testid="artifacts-file-list-empty" className="px-3 py-2 font-mono text-[10px] text-on-surface-variant">
-          No files in this folder.
+          此文件夹中无文件。
         </div>
       ) : (
         <ul className="divide-y divide-outline-variant/60">
@@ -237,26 +234,23 @@ function FolderFileList({ root, path }: { root: string; path: string }) {
 }
 
 /**
- * Altitude-scoped Artifacts file navigator.
- * @param scopePath absolute filesystem path of the altitude folder (mission dir
- *   at mission altitude, slice dir at slice altitude); resolved to an allowlist
- *   (root, relPath) via the same resolver useScopeMarkdown uses.
- * @param scopeLabel the tree-root label (e.g. the mission or slice name).
+ * 按层级限定范围的产物文件导航器。
+ * @param scopePath 当前层级目录的绝对文件系统路径（任务层级为任务目录，切片层级为切片目录）；
+ *   通过 useScopeMarkdown 所用的同一解析器解析为白名单中的 (root, relPath)。
+ * @param scopeLabel 目录树根标签，例如任务名或切片名。
  */
 export function ArtifactsNavigator({ scopePath, scopeLabel, remoteGated }: { scopePath: string | null; scopeLabel: string; remoteGated?: boolean }) {
-  // OPR.0.4.6.MH2 guard-B1 — under a remote host selection the scope path
-  // belongs to the REMOTE filesystem and must never resolve against LOCAL
-  // allowlist roots: remoteGated issues ZERO file requests and renders the
-  // honest note. The local null-path flow is byte-preserved (roots fetched,
-  // OUT OF SCOPE rendered) — the gate is the explicit prop, not null-ness.
+  // OPR.0.4.6.MH2 guard-B1：选择远程主机时，范围路径属于远程文件系统，绝不能依据本地
+  // 白名单根目录解析。remoteGated 不发出任何文件请求，并显示如实说明。本地空路径流程保持
+  // 字节不变（获取 roots 并渲染 OUT OF SCOPE）；守卫取决于显式属性，而非是否为 null。
   const rootsQuery = useFilesRoots({ enabled: remoteGated !== true });
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
 
   if (remoteGated) {
     return (
       <EmptyState
-        label="LOCAL FILES NOT SHOWN"
-        description={`Artifacts for ${scopeLabel} live on the selected host's filesystem, which the remote read view does not browse. Select the local host to browse local artifacts.`}
+        label="不显示本地文件"
+        description={`${scopeLabel} 的产物位于所选主机的文件系统上，远程只读视图不会浏览它。请选择本地主机以浏览本地产物。`}
         variant="card"
         testId="artifacts-navigator-remote-gated"
       />
@@ -266,22 +260,21 @@ export function ArtifactsNavigator({ scopePath, scopeLabel, remoteGated }: { sco
   if (rootsQuery.isLoading) {
     return (
       <div data-testid="artifacts-navigator-loading" className="font-mono text-[11px] text-on-surface-variant">
-        Loading…
+        加载中…
       </div>
     );
   }
-  // "No allowlist configured" surfaces TWO ways from /api/files/roots: a 503
-  // `unavailable` sentinel, OR a 200 with { roots: [], hint } (files.ts returns
-  // the latter when OPENRIG_FILES_ALLOWLIST is unset). BOTH must render the same
-  // setup hint — a user with no allowlist needs the instruction, not a misleading
-  // "no artifacts / out of scope" (AC-5; rev1-r2 catch).
+  // “未配置白名单”会从 /api/files/roots 以两种方式出现：503 `unavailable` 哨兵，或 200 加
+  // { roots: [], hint }（未设置 OPENRIG_FILES_ALLOWLIST 时 files.ts 返回后者）。两者都必须渲染
+  // 相同的设置提示；没有白名单的用户需要操作说明，而不是误导性的“无产物/超出范围”
+  //（AC-5；rev1-r2 补漏）。
   if (!rootsQuery.data || isUnavailable(rootsQuery.data) || rootsQuery.data.roots.length === 0) {
     return (
       <EmptyState
-        label="FILES UNAVAILABLE"
+        label="文件不可用"
         description={
           rootsQuery.data?.hint ||
-          "No allowlist files root is configured, so the artifact navigator can't list files. Configure a workspace files root to browse artifacts."
+          "未配置允许列表文件根，因此产物导航器无法列出文件。请配置一个工作区文件根以浏览产物。"
         }
         variant="card"
         testId="artifacts-navigator-unavailable"
@@ -293,8 +286,8 @@ export function ArtifactsNavigator({ scopePath, scopeLabel, remoteGated }: { sco
   if (!resolved) {
     return (
       <EmptyState
-        label="ARTIFACTS OUT OF SCOPE"
-        description="This scope's folder is not under any configured files root, so its artifacts can't be listed."
+        label="产物超出范围"
+        description="此范围的文件夹不在任何已配置的文件根之下，因此无法列出其产物。"
         variant="card"
         testId="artifacts-navigator-no-scope"
       />
@@ -303,9 +296,8 @@ export function ArtifactsNavigator({ scopePath, scopeLabel, remoteGated }: { sco
 
   const root = resolved.rootName;
   const basePath = resolved.relPath;
-  // Default selection = the altitude base folder (so the landing fetches only
-  // /roots + /list(base) — the tree root and the right-pane listing share the
-  // same query key and dedupe).
+  // 默认选择当前层级的基础目录，因此首次进入只获取 /roots 和 /list(base)；目录树根与右侧列表
+  // 共享同一查询键并去重。
   const activeFolder = selectedFolder ?? basePath;
 
   return (

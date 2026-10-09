@@ -1,17 +1,15 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * OPR.0.3.3.19 - rig archive affordance.
+ * OPR.0.3.3.19——rig 归档能力。
  *
- * Adds a soft, reversible archive flag to the local `rigs` row. `archived_at`
- * is NULL for an active rig and an ISO timestamp once archived. This is a
- * visibility/retention flag, NOT a lifecycle state - lifecycle stays a derived
- * runtime/recovery projection. Default daemon reads exclude archived rigs;
- * explicit include/archived-only modes opt in. Mirrors the shipped stream-items
- * `archived_at` precedent (023_stream_items).
+ * 向本地 `rigs` 行添加柔性、可逆的归档标志。活跃 rig 的 `archived_at` 为 NULL，归档后为
+ * ISO 时间戳。这是可见性/保留标志，不是生命周期状态；生命周期仍是派生的 runtime/recovery
+ * 投影。后台服务默认读取排除已归档 rig；显式 include/archived-only 模式可选择包含。镜像已发布的
+ * stream-items `archived_at` 先例（023_stream_items）。
  *
- * Append-only: ADD COLUMN + index only. No rigs-row restructure/rebuild/drop;
- * existing rig rows are untouched (STEERING: DB migrations don't destroy data).
+ * 仅追加：只执行 ADD COLUMN + 索引。不重构、重建或删除 rigs 行；现有 rig 行保持不变
+ *（STEERING：数据库迁移不销毁数据）。
  */
 export const rigArchiveSchema: Migration = {
   name: "042_rig_archive.sql",

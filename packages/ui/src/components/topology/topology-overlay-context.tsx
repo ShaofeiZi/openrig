@@ -1,31 +1,26 @@
-// V1 attempt-3 Phase 3 bounce-fix — Class B TopologyOverlayContext.
+// V1 第 3 阶段尝试 3 回弹修复 —— B 类 TopologyOverlayContext。
 //
-// Topology destination signature: when the active view-mode is GRAPH,
-// the Explorer renders as a vellum-translucent overlay floating over
-// the canvas (sheets-of-vellum-layered aesthetic per universal-shell.md
-// L48). Center workspace canvas extends to the viewport-left edge
-// underneath the Explorer overlay.
+// 拓扑目标签名：当活动视图模式为 GRAPH 时，Explorer 渲染为羊皮纸半透明遮罩，
+// 浮在画布上（羊皮纸层叠美学，见 universal-shell.md L48）。
+// 中心工作区画布延伸到视口左边缘，位于 Explorer 遮罩下方。
 //
-// When the active view-mode is TABLE / TERMINAL (or any non-topology
-// destination), the Explorer is opaque (default behavior); center
-// workspace starts at the Explorer's right edge.
+// 当活动视图模式为 TABLE / TERMINAL（或任何非拓扑目标）时，Explorer
+// 不透明（默认行为）；中心工作区从 Explorer 右边缘开始。
 //
-// View-mode tab bar anchors at fixed left = rail (48px) + explorer
-// (280px) = 328px = var(--explorer-anchor-left). Independent of mode,
-// so tabs never jump position between graph / table / terminal switches.
+// 视图模式标签栏固定在 left = 导轨（48px）+ 探索器（280px）= 328px =
+// var(--explorer-anchor-left)。与模式无关，因此标签在 graph / table /
+// terminal 切换间从不跳动。
 //
-// V1 polish slice Phase 5.2 bounce-fix — rig-collapse state persistence.
-// Phase 5.2 Item 6 auto-expand was dead code: HostMultiRigGraph held
-// `expanded` as local useState, and the activeRigId useEffect only
-// fired when HostMultiRigGraph itself was mounted. But topology routes
-// are SIBLING (not nested), so /topology/rig/$id renders RigScopePage,
-// NOT HostMultiRigGraph — the effect never ran for direct-URL entry.
-// Navigating back to /topology re-mounted HostMultiRigGraph fresh with
-// an empty Map. Fix: lift the expanded Map into this provider so the
-// state survives HostScopePage unmount/remount cycles, and run the
-// auto-expand useEffect at provider scope (always mounted under
-// AppShell) so URL-driven expansion fires regardless of which scope
-// page is currently in the center.
+// V1 润色切片第 5.2 阶段回弹修复 —— 工作组折叠状态持久化。
+// 第 5.2 阶段第 6 项自动展开是死代码：HostMultiRigGraph 将 `expanded`
+// 作为本地 useState，activeRigId useEffect 仅在 HostMultiRigGraph 自身
+// 挂载时触发。但拓扑路由是兄弟节点（非嵌套），所以
+// /topology/rig/$id 渲染 RigScopePage，而非 HostMultiRigGraph——
+// 该 effect 对直接 URL 入口从不运行。导航回 /topology 会以空 Map
+// 重新挂载 HostMultiRigGraph。修复：将 expanded Map 提升到此 provider，
+// 使状态在 HostScopePage 卸载/重挂载周期中存活；在 provider 作用域运行
+// 自动展开 useEffect（始终挂载在 AppShell 下），使 URL 驱动的展开
+// 不管当前中心是哪个范围页面都能触发。
 
 import {
   createContext,
@@ -43,16 +38,13 @@ export type ExplorerMode = "overlay" | "opaque";
 interface TopologyOverlayContextValue {
   mode: ExplorerMode;
   setMode: (mode: ExplorerMode) => void;
-  /** V1 polish slice Phase 5.2 — rig-expanded state persisted at provider
-   *  scope so HostMultiRigGraph mount/unmount cycles don't reset the
-   *  collapse map. Default empty → all rigs collapsed. */
+  /** V1 润色切片第 5.2 阶段 —— 工作组展开状态在 provider 作用域持久化，
+   *  使 HostMultiRigGraph 挂载/卸载周期不重置折叠 Map。默认为空 → 所有工作组折叠。 */
   expandedRigs: ReadonlyMap<string, boolean>;
-  /** Idempotent setter: explicitly mark a rig expanded or collapsed.
-   *  Used by the URL-driven auto-expand effect (always sets true) and
-   *  by direct programmatic control. */
+  /** 幂等设置器：显式标记工作组展开或折叠。
+   *  由 URL 驱动的自动展开 effect（始终设为 true）和直接编程控制使用。 */
   setRigExpanded: (rigId: string, expanded: boolean) => void;
-  /** Click-toggle: flip a rig's expanded state. Used by RigGroupNode
-   *  body click. */
+  /** 点击切换：翻转工作组的展开状态。由 RigGroupNode 主体点击使用。 */
   toggleRig: (rigId: string) => void;
 }
 
@@ -64,11 +56,9 @@ const TopologyOverlayContext = createContext<TopologyOverlayContextValue>({
   toggleRig: () => {},
 });
 
-/** Parse an active-rig identifier from the topology pathname. Used by
- *  the provider's auto-expand effect AND by consumers that need to
- *  know which rig the URL is currently scoped to (e.g., for active-row
- *  highlighting). Returns null when the pathname isn't on a rig-scoped
- *  route. */
+/** 从拓扑路径名解析活动工作组标识符。由 provider 的自动展开 effect
+ *  以及需要知道 URL 当前作用于哪个工作组的消费者使用
+ * （例如活动行高亮）。当路径名不在工作组范围路由上时返回 null。 */
 export function parseActiveRigId(pathname: string): string | null {
   const seat = pathname.match(/^\/topology\/seat\/([^/]+)\//);
   if (seat) return decodeURIComponent(seat[1]!);
@@ -85,10 +75,9 @@ export function TopologyOverlayProvider({ children }: { children: ReactNode }) {
     setModeState(next);
   }, []);
 
-  // V1 polish slice Phase 5.2 bounce-fix — rig-expanded state lifted to
-  // provider scope so direct-URL navigation (where HostMultiRigGraph
-  // isn't mounted because routes are SIBLING) still updates the state
-  // that HostMultiRigGraph reads when the user returns to /topology.
+  // V1 润色切片第 5.2 阶段回弹修复 —— 工作组展开状态提升到 provider 作用域，
+  // 使直接 URL 导航（HostMultiRigGraph 因路由是兄弟节点而未挂载时）
+  // 仍能更新 HostMultiRigGraph 在用户返回 /topology 时读取的状态。
   const [expandedRigs, setExpandedRigs] = useState<Map<string, boolean>>(
     () => new Map(),
   );
@@ -108,12 +97,10 @@ export function TopologyOverlayProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Auto-expand effect at provider scope. Reads pathname via
-  // useRouterState (provider sits inside RouterProvider tree under
-  // AppShell). Whenever the route is on a rig-scoped topology URL,
-  // mark the matching rig expanded. Fires regardless of which center
-  // scope page is currently mounted — solves the dead-code bug from
-  // the prior in-component auto-expand.
+  // provider 作用域的自动展开 effect。通过 useRouterState 读取路径名
+  //（provider 在 AppShell 下的 RouterProvider 树内）。每当路由在工作组范围
+  // 拓扑 URL 上时，标记对应工作组为展开。不管当前中心挂载的是哪个范围页面
+  // 都触发——解决了之前组件内自动展开的死代码 bug。
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   useEffect(() => {
     const rigId = parseActiveRigId(pathname);

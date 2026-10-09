@@ -13,14 +13,14 @@ function fixture(fail?: string, scriptPath = "/tmp/launch 'quoted'.sh") {
   const commands: string[] = [];
   const exec = vi.fn(async (command: string) => {
     commands.push(command);
-    if (fail && command.includes(fail)) throw new Error("transport refused");
+    if (fail && command.includes(fail)) throw new Error("传输被拒绝");
     return "";
   });
   return { adapter: new TmuxAdapter(exec, fileOps), fileOps, files, commands, scriptPath };
 }
 
-describe("shell launch transport", () => {
-  it("keeps long PATH/quoted arguments out of terminal input and retains script until consumption", async () => {
+describe("shell 启动传输", () => {
+  it("避免将长 PATH/带引号参数写入终端输入，并保留脚本直至被消费", async () => {
     const f = fixture();
     const command = `env PATH='${"p".repeat(4096)}' codex -s workspace-write resume 'same-native-id' -m 'chosen-model'`;
     expect(await f.adapter.sendShellCommand("pane", command)).toEqual({ ok: true });
@@ -34,7 +34,7 @@ describe("shell launch transport", () => {
     expect(f.commands.at(-1)).toBe("tmux send-keys -t 'pane' 'Enter'");
   });
 
-  it.each(["load-buffer", "paste-buffer", "'Enter'"])("removes the unconsumed script when %s fails", async failure => {
+  it.each(["load-buffer", "paste-buffer", "'Enter'"])("%s 失败时移除未消费脚本", async failure => {
     const f = fixture(failure);
     expect(await f.adapter.sendShellCommand("pane", "codex resume 'same-id'")).toMatchObject({ ok: false });
     expect(f.files.size).toBe(0);
@@ -42,19 +42,19 @@ describe("shell launch transport", () => {
     expect(f.commands.some(command => command.endsWith("'Enter'"))).toBe(failure === "'Enter'");
   });
 
-  it("refuses an oversized bootstrap path before writing or sending", async () => {
+  it("在写入或发送前拒绝过长的引导路径", async () => {
     const f = fixture(undefined, "/tmp/" + "a".repeat(512));
     expect(await f.adapter.sendShellCommand("pane", "codex")).toMatchObject({ ok: false, code: "launch_path_too_long" });
     expect(f.fileOps.writeFile).not.toHaveBeenCalled();
     expect(f.commands).toEqual([]);
   });
 
-  it("does not remove a preexisting file when exclusive creation fails", async () => {
+  it("独占创建失败时不移除预先存在的文件", async () => {
     const f = fixture();
-    f.files.set(f.scriptPath, "retained bytes");
+    f.files.set(f.scriptPath, "保留的字节");
     vi.mocked(f.fileOps.writeFile).mockRejectedValueOnce(new Error("EEXIST"));
     expect(await f.adapter.sendShellCommand("pane", "codex")).toMatchObject({ ok: false });
-    expect(f.files.get(f.scriptPath)).toBe("retained bytes");
+    expect(f.files.get(f.scriptPath)).toBe("保留的字节");
     expect(f.fileOps.unlink).not.toHaveBeenCalled();
     expect(f.commands).toEqual([]);
   });

@@ -1,6 +1,6 @@
 name: analyst
 version: "1.0"
-description: Research analyst — deep-dive investigation and evidence gathering
+description: 研究分析智能体——开展深入调查并收集证据
 
 defaults:
   runtime: claude-code

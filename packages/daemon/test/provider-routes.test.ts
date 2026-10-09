@@ -4,9 +4,9 @@ import { providerRoutes } from "../src/routes/provider.js";
 import type { ProviderService } from "../src/domain/provider/provider-service.js";
 import type { FourBlockReadModel } from "../src/domain/provider/provider-types.js";
 
-// Slice-04 (OPR.0.5.0.4) seam B — the daemon provider routes (packet 3ffa3c22 §3). Thin handlers
-// over ONE service read model: filtered projections cannot diverge; edge validation -> 400; unsafe
-// precheck stays a 200 verdict; switch outcomes are 200 payloads; unwired service -> loud 503.
+// 切片 04（OPR.0.5.0.4）接缝 B——daemon provider 路由（数据包 3ffa3c22 §3）。
+// 基于单一服务读取模型的轻量 handler：筛选投影不会分歧；边界校验 -> 400；不安全的
+// precheck 仍是 200 裁决；switch 结果为 200 载荷；服务未接线 -> 明确返回 503。
 
 const MODEL: FourBlockReadModel = {
   accounts: [
@@ -42,14 +42,14 @@ function appWith(svc: ProviderService | null): Hono {
   return app;
 }
 
-describe("provider routes", () => {
-  it("GET /status returns the whole four-block model", async () => {
+describe("provider 路由", () => {
+  it("GET /status 返回完整的四块模型", async () => {
     const res = await appWith(stubService).request("/api/provider/status");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(MODEL);
   });
 
-  it("accounts/bindings/signals are FILTERED projections of the one model (cannot diverge)", async () => {
+  it("accounts/bindings/signals 是同一模型的筛选投影（不能分歧）", async () => {
     const app = appWith(stubService);
     const acc = await (await app.request("/api/provider/accounts?provider=codex")).json();
     expect(acc.accounts.map((a: { accountId: string }) => a.accountId)).toEqual(["cdx-a"]);
@@ -60,17 +60,17 @@ describe("provider routes", () => {
     expect(bnd.bindings[0].seatSession).toBe("seat-1");
   });
 
-  it("rejects a malformed provider enum at the edge (400)", async () => {
+  it("在边界拒绝格式错误的 provider 枚举（400）", async () => {
     const res = await appWith(stubService).request("/api/provider/accounts?provider=bad");
     expect(res.status).toBe(400);
   });
 
-  it("rejects an empty/whitespace account filter at the edge (400)", async () => {
+  it("在边界拒绝空值/仅空白的 account 筛选条件（400）", async () => {
     const res = await appWith(stubService).request("/api/provider/accounts?account=");
     expect(res.status).toBe(400);
   });
 
-  it("a JSON null switch body is malformed (400), never an accidental 500", async () => {
+  it("JSON null 的 switch 请求体格式错误（400），绝不意外返回 500", async () => {
     const res = await appWith(stubService).request("/api/provider/switch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -79,7 +79,7 @@ describe("provider routes", () => {
     expect(res.status).toBe(400);
   });
 
-  it("precheck returns a 200 VERDICT even when unsafe (safe:false is not an error)", async () => {
+  it("即使不安全，precheck 也返回 200 裁决（safe:false 不是错误）", async () => {
     const res = await appWith(stubService).request("/api/provider/precheck?seat=s1&toAccount=cla-x");
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -87,12 +87,12 @@ describe("provider routes", () => {
     expect(body.reasons).toContain("target_needs_reauth");
   });
 
-  it("precheck requires seat and toAccount (400 when missing)", async () => {
+  it("precheck 要求 seat 和 toAccount（缺失时返回 400）", async () => {
     const res = await appWith(stubService).request("/api/provider/precheck?seat=s1");
     expect(res.status).toBe(400);
   });
 
-  it("switch business outcomes are 200 payloads, not transport errors (failed_safely = 200)", async () => {
+  it("switch 业务结果是 200 载荷，而非传输错误（failed_safely = 200）", async () => {
     const res = await appWith(stubService).request("/api/provider/switch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -101,12 +101,12 @@ describe("provider routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.outcome).toBe("failed_safely");
-    // BR-1: a failed_safely outcome MUST carry fail-visible reasons (type-enforced + asserted).
+    // BR-1：failed_safely 结果必须携带失败可见的原因（类型强制 + 断言）。
     expect(Array.isArray(body.reasons)).toBe(true);
     expect(body.reasons.length).toBeGreaterThan(0);
   });
 
-  it("rejects whitespace-only seat/toAccount at the edge (precheck query AND switch body) -> 400", async () => {
+  it("在边界拒绝仅空白的 seat/toAccount（precheck 查询与 switch 请求体）→ 400", async () => {
     const app = appWith(stubService);
     const pre = await app.request("/api/provider/precheck?seat=%20%20&toAccount=cdx-a");
     expect(pre.status).toBe(400);
@@ -118,7 +118,7 @@ describe("provider routes", () => {
     expect(sw.status).toBe(400);
   });
 
-  it("switch validates seat/toAccount/forceUnsafe at the edge (400 on malformed)", async () => {
+  it("switch 在边界校验 seat/toAccount/forceUnsafe（格式错误时返回 400）", async () => {
     const res = await appWith(stubService).request("/api/provider/switch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -127,7 +127,7 @@ describe("provider routes", () => {
     expect(res.status).toBe(400);
   });
 
-  it("an UNWIRED service returns a loud 503 provider_service_unavailable (never a fabricated stub)", async () => {
+  it("未接线的服务明确返回 503 provider_service_unavailable（绝不伪造 stub）", async () => {
     const res = await appWith(null).request("/api/provider/status");
     expect(res.status).toBe(503);
     expect((await res.json()).error).toBe("provider_service_unavailable");

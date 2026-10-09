@@ -1,10 +1,10 @@
-// V1 polish slice Phase 5.1 P5.1-3 — pod name truncation regression guard.
+// V1 polish slice Phase 5.1 P5.1-3——pod 名截断回归守卫。
 //
-// Pod names were rendering as "covery" / "anning" / etc. Root cause:
-// displayPodName was calling shortId(podId, 6), which returns the LAST
-// 6 chars of any input — designed for 26-char ULIDs but WRONG for
-// human-readable pod namespaces. The fix returns podId verbatim. This
-// test permanently guards the symptom plus the underlying contract.
+// Pod 名曾渲染为 "covery" / "anning" 等。根因：
+// displayPodName 调用 shortId(podId, 6)，后者返回任意输入的
+// 末 6 字符——为 26 字符 ULID 设计，但对
+// 人类可读 pod namespace 错误。修复原样返回 podId。此
+// 测试永久守卫症状及底层契约。
 
 import { describe, it, expect } from "vitest";
 import { displayPodName, inferPodName, displayAgentName } from "../src/lib/display-name.js";
@@ -37,9 +37,9 @@ describe("displayPodName P5.1-3 regression: human-readable pod names pass throug
   });
 
   it("null / empty returns 'ungrouped' fallback", () => {
-    expect(displayPodName(null)).toBe("ungrouped");
-    expect(displayPodName(undefined)).toBe("ungrouped");
-    expect(displayPodName("")).toBe("ungrouped");
+    expect(displayPodName(null)).toBe("未分组");
+    expect(displayPodName(undefined)).toBe("未分组");
+    expect(displayPodName("")).toBe("未分组");
   });
 
   it("source-assertion: displayPodName does NOT call shortId for pod names (ritual #9)", async () => {
@@ -49,11 +49,11 @@ describe("displayPodName P5.1-3 regression: human-readable pod names pass throug
       path.resolve(__dirname, "../src/lib/display-name.ts"),
       "utf8",
     );
-    // Strip comments to ignore historical mention.
+    // 剥离注释以忽略历史提及。
     const codeOnly = src
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/[^\n]*\n/gm, "");
-    // Locate displayPodName function body.
+    // 定位 displayPodName 函数体。
     const fnMatch = codeOnly.match(/export function displayPodName[\s\S]*?^}/m);
     expect(fnMatch).not.toBeNull();
     const body = fnMatch![0];

@@ -59,7 +59,7 @@ describe("RigChatPanel", () => {
 
     renderPanel("rig-1");
 
-    // Wait for messages to render — sender is now on its own line
+    // 等待消息渲染；发送者现在独占一行。
     expect(await screen.findByText("alice")).toBeTruthy();
     expect(screen.getByText("hello")).toBeTruthy();
     expect(screen.getByText("bob")).toBeTruthy();
@@ -85,17 +85,17 @@ describe("RigChatPanel", () => {
 
     renderPanel("rig-1");
 
-    // Wait for panel to load
+    // 等待面板加载。
     await screen.findByTestId("chat-send-form");
 
     const input = screen.getByTestId("chat-input");
     const sendBtn = screen.getByTestId("chat-send-btn");
 
-    // Type and send
+    // 输入并发送。
     fireEvent.change(input, { target: { value: "hello world" } });
     fireEvent.click(sendBtn);
 
-    // Verify fetch was called with the message
+    // 验证 fetch 收到了消息。
     await waitFor(() => {
       const sendCalls = mockFetch.mock.calls.filter(
         (call: unknown[]) => typeof call[0] === "string" && (call[0] as string).includes("/chat/send")
@@ -118,10 +118,10 @@ describe("RigChatPanel", () => {
 
     renderPanel("rig-1");
 
-    // Topic marker should render with distinct testId
+    // 主题标记应使用独立 testId 渲染。
     const topicEl = await screen.findByTestId("chat-topic-msg-t1");
     expect(topicEl.textContent).toContain("review");
-    // Regular message should have sender header
+    // 普通消息应有发送者标题。
     expect(screen.getByText("alice")).toBeTruthy();
     expect(screen.getByText("review comment")).toBeTruthy();
   });
@@ -136,10 +136,10 @@ describe("RigChatPanel", () => {
 
     renderPanel("rig-1");
 
-    // Sender should be in its own element, not inline with body
+    // 发送者应位于独立元素中，而不是与正文内联。
     const senderEl = await screen.findByTestId("chat-sender-msg-1");
     expect(senderEl.textContent).toBe("alice");
-    // Body should be in a separate element
+    // 正文应位于独立元素中。
     expect(screen.getByText("hello")).toBeTruthy();
   });
 
@@ -154,7 +154,7 @@ describe("RigChatPanel", () => {
             json: async () => chatMessages,
           });
         }
-        // After SSE event triggers refetch, return with new message
+        // SSE 事件触发重新获取后，返回新增消息。
         return Promise.resolve({
           ok: true,
           json: async () => [
@@ -168,14 +168,14 @@ describe("RigChatPanel", () => {
 
     renderPanel("rig-1");
 
-    // Wait for initial render
+    // 等待首次渲染。
     await screen.findByText("alice");
 
-    // Simulate SSE message event
+    // 模拟 SSE 消息事件。
     const esInstance = instances[0]!;
     esInstance.simulateMessage(JSON.stringify({ id: "msg-3", sender: "charlie", body: "new message" }));
 
-    // Wait for refetch to include the new message
+    // 等待重新获取结果包含新消息。
     await waitFor(() => {
       expect(screen.getByText("new message")).toBeTruthy();
     });

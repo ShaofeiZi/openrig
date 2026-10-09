@@ -31,9 +31,8 @@ import { ActorMark } from "../graphics/RuntimeMark.js";
 import { cn } from "../../lib/utils.js";
 
 /**
- * Vellum-coherent kind indicator. Mono uppercase tag + leading colored
- * dot, mapped to the design tokens (success / warning / tertiary /
- * secondary / stone-500). Replaces the old colored-pill chrome.
+ * 与 vellum 协调一致的类型指示器。等宽大写标签加前导彩色圆点，映射到设计令牌
+ *（success / warning / tertiary / secondary / stone-500），替代旧的彩色胶囊外观。
  */
 const KIND_DOT: Record<FeedCardKind, string> = {
   "action-required": "bg-tertiary",
@@ -60,19 +59,17 @@ const KIND_TESTID: Record<FeedCardKind, string> = {
 };
 
 const KIND_TOKEN: Record<FeedCardKind, ProjectToken> = {
-  // CORRECTIVE §7.1 guard fixback (2026-07-06): the kind tag is a STATUS
-  // label like its siblings, never instruction chrome — "Your turn" is gone
-  // from the surface (founder N-1); the kind's canonical name matches the
-  // approved frame's subscription vocabulary ("Action required · Items the
-  // human must act on").
-  "action-required": { label: "Action required", tone: "danger", icon: CircleAlert },
-  approval: { label: "Needs approval", tone: "warning", icon: CircleAlert },
-  shipped: { label: "Shipped", tone: "success", icon: PackageCheck },
-  progress: { label: "Progress", tone: "info", icon: History },
-  observation: { label: "Observation", tone: "neutral", icon: Clock },
+  // 纠偏 §7.1 守卫回修（2026-07-06）：类型标签与同级项一样是状态标签，绝不是操作指令外观。
+  // 界面已移除“轮到你了”（创始人 N-1）；类型规范名称与批准框架中的订阅词汇一致：
+  //“需要操作 · 必须由人处理的项目”。
+  "action-required": { label: "需要处理", tone: "danger", icon: CircleAlert },
+  approval: { label: "需要批准", tone: "warning", icon: CircleAlert },
+  shipped: { label: "已交付", tone: "success", icon: PackageCheck },
+  progress: { label: "进行中", tone: "info", icon: History },
+  observation: { label: "观察", tone: "neutral", icon: Clock },
 };
 
-// OPR.0.4.1.27 Unit 5 — tone → text color (for the kind glyph; mirrors TONE_DOT).
+// OPR.0.4.1.27 单元 5——语气 → 文本颜色，用于类型图标，并镜像 TONE_DOT。
 const TONE_TEXT: Record<ProjectMetaTone, string> = {
   neutral: "text-on-surface-variant",
   info: "text-secondary",
@@ -82,12 +79,11 @@ const TONE_TEXT: Record<ProjectMetaTone, string> = {
 };
 
 /**
- * OPR.0.4.1.27 Unit 6 — sender-or-owner terminal resolver (fidelity map).
- * Human-action cards (action-required / approval) open the SENDER
- * (sourceSession); agent-owned cards (progress / shipped / observation) open
- * the current HOLDER (destinationSession), falling back to source when no
- * destination resolves. sourceSession / destinationSession are the only
- * terminal-addressable sessions (never handed_off_from, which is qitem lineage).
+ * OPR.0.4.1.27 单元 6——发送方或所有者终端解析器（保真映射）。人工操作卡片
+ *（action-required / approval）打开发送方 sourceSession；智能体所有的卡片
+ *（progress / shipped / observation）打开当前持有者 destinationSession，无法解析目标时回退到
+ * 来源。sourceSession / destinationSession 是仅有的可寻址终端会话；绝不使用表示 qitem
+ * 传承关系的 handed_off_from。
  */
 export function resolveCardTerminalSession(
   kind: FeedCardKind,
@@ -99,11 +95,11 @@ export function resolveCardTerminalSession(
 }
 
 /**
- * Card surface — vellum-coherent. Matches CardShell in
- * storytelling-cards.tsx so /for-you reads as one surface.
+ * 卡片表面与 vellum 协调一致，并匹配 storytelling-cards.tsx 中的 CardShell，
+ * 使 /for-you 呈现为统一界面。
  *   bg-surface-low/45 + backdrop-blur-[10px]
- *   ambient 3-stop box-shadow defines the card edges through the vellum
- *   no left-stripe, no outline border
+ *   三段环境 box-shadow 在 vellum 上勾勒卡片边缘
+ *   无左侧条纹，无轮廓边框
  */
 const CARD_SURFACE_CLASS =
   "relative bg-surface-low/45 backdrop-blur-[10px] overflow-hidden group";
@@ -237,7 +233,7 @@ function outcomeToken(outcome: FeedActionOutcome): ProjectToken {
   return actionVerbToken(outcome.verb, "outcome");
 }
 
-/** Inline meta mark: mono uppercase pill replacement — colored dot + label. */
+/** 行内元数据标记：替代等宽大写胶囊的彩色圆点加标签。 */
 function InlineMetaMark({ token }: { token: ProjectToken }) {
   return (
     <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-on-surface">
@@ -272,9 +268,9 @@ function InlineFlow({ source, destination }: { source?: string | null; destinati
   if (!source && !destination) return null;
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-      <InlineActor session={source ?? "unknown source"} />
+      <InlineActor session={source ?? "未知来源"} />
       <ArrowRight className="h-3.5 w-3.5 text-on-surface-variant" strokeWidth={1.4} />
-      <InlineActor session={destination ?? "unresolved target"} />
+      <InlineActor session={destination ?? "未解析目标"} />
     </div>
   );
 }
@@ -282,27 +278,27 @@ function InlineFlow({ source, destination }: { source?: string | null; destinati
 function outcomeSentence(outcome: FeedActionOutcome): string {
   switch (outcome.verb) {
     case "approve":
-      return `Approved by ${outcome.actorSession}.`;
+      return `已由 ${outcome.actorSession} 批准。`;
     case "deny":
-      return `Denied by ${outcome.actorSession}${outcome.reason ? `: ${outcome.reason}.` : "."}`;
+      return `已由 ${outcome.actorSession} 拒绝${outcome.reason ? `：${outcome.reason}。` : "。"}`;
     case "route":
     case "handoff":
       return outcome.destinationSession
-        ? `Routed by ${outcome.actorSession} to ${outcome.destinationSession}.`
-        : `Routed by ${outcome.actorSession}.`;
+        ? `已由 ${outcome.actorSession} 转交至 ${outcome.destinationSession}。`
+        : `已由 ${outcome.actorSession} 转交。`;
     case "hold":
-      return `Held by ${outcome.actorSession}${outcome.reason ? `: ${outcome.reason}.` : "."}`;
+      return `已由 ${outcome.actorSession} 挂起${outcome.reason ? `：${outcome.reason}。` : "。"}`;
     case "drop":
-      return `Dropped by ${outcome.actorSession}${outcome.reason ? `: ${outcome.reason}.` : "."}`;
+      return `已由 ${outcome.actorSession} 丢弃${outcome.reason ? `：${outcome.reason}。` : "。"}`;
     case "annotate":
-      return `Annotated by ${outcome.actorSession}.`;
+      return `已由 ${outcome.actorSession} 标注。`;
   }
 }
 
 /**
- * Action-outcome receipt strip — vellum-coherent.
- *   subtle bg-background/40 across all tones
- *   leading colored dot indicates the tone, NOT the whole strip color
+ * 操作结果回执条，与 vellum 协调一致。
+ *   所有语气统一使用轻微的 bg-background/40
+ *   由前导彩色圆点指示语气，而不是给整条着色
  */
 function ActionOutcomePanel({ outcome }: { outcome: FeedActionOutcome }) {
   const meta = ACTION_VERB_META[outcome.verb];
@@ -323,7 +319,7 @@ function ActionOutcomePanel({ outcome }: { outcome: FeedActionOutcome }) {
               {meta.outcomeLabel}
             </div>
             <div className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">
-              Decision recorded
+              已记录决策
             </div>
           </div>
         </div>
@@ -360,23 +356,20 @@ export function FeedCard({
   proofPreview?: FeedProofPreview | null;
   actionOutcome?: FeedActionOutcome | null;
   /**
-   * OPR.0.3.2.20 — receives the FULL card on dismiss so the parent
-   * can route the dismissal to the right dismissal-set (event-seq
-   * for event-derived cards, string-id for queue-derived attention
-   * cards). The prior `(seq: number)` signature collided across all
-   * queue-derived cards (all share synthetic seq=-1) — banked guard
-   * BLOCKER qitem-20260518190827.
+   * OPR.0.3.2.20：关闭时接收完整卡片，让父组件可将关闭操作路由到正确的关闭集合。
+   * 事件派生卡片使用 event-seq，队列派生的注意项卡片使用 string-id。旧的 `(seq: number)`
+   * 签名会让所有队列派生卡片发生冲突，因为它们共享合成 seq=-1；这是已记录守卫 BLOCKER
+   * qitem-20260518190827。
    */
   onDismiss?: (card: FeedCardModel) => void;
   /**
-   * 0.3.1 demo-bug fix — fired by VerbActions on mutation success
-   * so the parent (Feed.tsx) can render the ActionOutcomePanel
-   * optimistically without waiting for the audit-log re-fetch.
+   * 0.3.1 演示缺陷修复：变更成功时由 VerbActions 触发，使父组件 Feed.tsx 无须等待重新获取
+   * 审计日志，即可乐观渲染 ActionOutcomePanel。
    */
   onOptimisticOutcome?: (qitemId: string, outcome: FeedActionOutcome) => void;
 }) {
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
-  // CORRECTIVE §7.1 — CHAT quick-action state (the shared terminal, per BR-12).
+  // 纠偏 §7.1——聊天快捷操作状态（按 BR-12 使用共享终端）。
   const [chatOpen, setChatOpen] = useState(false);
   const dragStateRef = useRef<{ startX: number; pointerId: number; isTouch: boolean } | null>(null);
 
@@ -428,10 +421,10 @@ export function FeedCard({
   const primaryDotClass = renderedOutcome
     ? TONE_DOT[primaryToken.tone]
     : KIND_DOT[card.kind];
-  // OPR.0.4.1.27 Unit 5 — the kind glyph (mockup fidelity): render the kind's
-  // icon tone-colored instead of a bare dot when one is defined.
+  // OPR.0.4.1.27 单元 5——类型图标（模型图保真）：定义图标时按类型语气着色，
+  // 而不是只渲染裸圆点。
   const PrimaryIcon = primaryToken.icon;
-  // OPR.0.4.1.27 Unit 6 — sender-or-owner terminal address.
+  // OPR.0.4.1.27 单元 6——发送方或所有者的终端地址。
   const terminalSession = resolveCardTerminalSession(card.kind, source, destination);
   return (
     <article
@@ -501,7 +494,7 @@ export function FeedCard({
               <button
                 type="button"
                 data-testid="feed-card-dismiss"
-                aria-label="Dismiss card"
+                aria-label="关闭卡片"
                 onClick={handleDismissClick}
                 className="opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-outline transition-opacity inline-flex h-5 w-5 items-center justify-center border border-outline-variant bg-surface-lowest/80 text-on-surface-variant hover:text-on-surface hover:border-outline"
               >
@@ -511,7 +504,7 @@ export function FeedCard({
           </div>
         </div>
         {body ? (
-          // Qitem / event body is prose. 12px body for legibility.
+          // Qitem / 事件正文是散文文本，使用 12px 字号保证可读性。
           <p className="mt-3 font-body text-[12px] leading-relaxed text-on-surface whitespace-pre-line">
             {body}
           </p>
@@ -530,7 +523,7 @@ export function FeedCard({
             className="mt-3 bg-background/40 p-2"
           >
             <ProofPacketHeader
-              title={`Proof packet · ${proofPreview.displayName}`}
+              title={`证据包 · ${proofPreview.displayName}`}
               badge={proofPreview.passFailBadge}
             />
             <div className="mt-2">
@@ -572,11 +565,11 @@ export function FeedCard({
                 type="button"
                 data-testid={`feed-card-chat-${card.id}`}
                 disabled={!terminalSession}
-                title={terminalSession ? `Chat with ${terminalSession}` : "No owning agent resolves for this card"}
+                title={terminalSession ? `与 ${terminalSession} 聊天` : "此卡片未解析到归属智能体"}
                 onClick={() => setChatOpen((v) => !v)}
                 className="border border-outline px-3 py-1 font-mono text-[11px] uppercase hover:bg-surface-variant disabled:opacity-50"
               >
-                ⌨ Chat
+                ⌨ 聊天
               </button>
             </div>
             {chatOpen && terminalSession ? (
@@ -606,7 +599,7 @@ export function FeedCard({
                 testId={`feed-card-show-context-${card.id}`}
                 className="font-mono text-[10px] uppercase tracking-wide text-on-surface hover:text-on-surface underline"
               >
-                show context
+                查看上下文
               </QueueItemTrigger>
             ) : null}
             {/* OPR.0.4.1.27 Unit 6 — drill into the live terminal of the right
@@ -623,7 +616,7 @@ export function FeedCard({
                 title={card.evidenceRef}
                 className="max-w-48 truncate font-mono text-[10px] text-on-surface-variant"
               >
-                evidence: {card.evidenceRef}
+                证据：{card.evidenceRef}
               </span>
             ) : null}
             {/* OPR.0.4.4.20 FR-9 win #1: living-notes cards deep-link into the
@@ -637,7 +630,7 @@ export function FeedCard({
                 data-testid={`feed-card-review-link-${card.id}`}
                 className="font-mono text-[10px] uppercase tracking-wide underline text-on-surface hover:text-on-surface-variant"
               >
-                review →
+                评审 →
               </Link>
             ) : null}
           </div>

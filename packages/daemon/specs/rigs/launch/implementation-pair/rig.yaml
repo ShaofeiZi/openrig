@@ -1,13 +1,12 @@
 version: "0.2"
 name: implementation-pair
 summary: >
-  A focused development pair providing implementation and QA capabilities.
-  Project/mission/slice components choose the work and any independent checks;
-  no composition means light Part A, not a per-edit approval loop.
+  一个聚焦的开发搭档，提供实现与 QA 能力。项目/任务目标/slice 组件选择工作和所需的
+  独立检查；不做额外编排意味着采用轻量 Part A，而不是每次编辑都进入审批循环。
 
 pods:
   - id: dev
-    label: Development Pair
+    label: 开发搭档
     members:
       - id: impl
         agent_ref: "local:../../../agents/development/implementer"

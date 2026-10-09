@@ -1,0 +1,1009 @@
+{
+  "owner": "daemon-core-i",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": "packages/daemon/src/domain/bundle-agent-images-router.ts",
+      "target_path": "packages/daemon/src/domain/bundle-agent-images-router.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 198,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释与人类可读路由详情完整中文化；status/字段/路径与插值保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | b2-daemon-domain-closure:tree-scan整树英文NL残留0(4命中均中文内嵌代码),非逐文件full-read;generated1 skip→validated-scan"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/bundle-conflict-detector.ts",
+      "target_path": "packages/daemon/src/domain/bundle-conflict-detector.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 81,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 冲突检测注释和操作员建议中文化；kind/字段/参数保持不变，命令示例改为 zrig | batch2 daemon next40:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/context-packs/bundle-assembler.ts",
+      "target_path": "packages/daemon/src/domain/context-packs/bundle-assembler.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 159,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 生产文案/测试同步中文化；相关定向回归通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster18:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/crash-cart-detect.ts",
+      "target_path": "packages/daemon/src/domain/crash-cart-detect.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 93,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 三态判定与有界重试注释中文化；状态枚举和行为不变 | batch2 daemon next40:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/demo-rig-selector.ts",
+      "target_path": "packages/daemon/src/domain/demo-rig-selector.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 41,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 同名 rig 歧义错误中文化；行为不变；关联测试 63/63 与 daemon typecheck 通过 | batch2 daemon cluster3:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/discovery-repository.ts",
+      "target_path": "packages/daemon/src/domain/discovery-repository.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 141,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 仓库方法注释中文化；SQL 与状态值不变 | batch2 daemon cluster3:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/fresh-occupant-relation.ts",
+      "target_path": "packages/daemon/src/domain/fresh-occupant-relation.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 29,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | fresh occupant 关系与冲突处理注释中文化；事件和字段保持不变；关联测试 125/125 与 daemon typecheck 通过 | batch2 daemon cluster3:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/gateway/external-admission.ts",
+      "target_path": "packages/daemon/src/domain/gateway/external-admission.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 55,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | external 准入注释及人员引导文案中文化；kind/虚拟域/参数保持不变，示例使用 zrig",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster13:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/health-projection.ts",
+      "target_path": "packages/daemon/src/domain/health-projection.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 530,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 投影边界、窗口与规范序列化注释中文化；协议枚举、校验错误与数据语义保持不变 | batch2 daemon cluster4:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/hosts/hosts-registry-reader.ts",
+      "target_path": "packages/daemon/src/domain/hosts/hosts-registry-reader.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 268,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 主机注册表孪生约束与放置解析注释中文化；为保持 CLI/daemon 错误面及一致性测试，机器可比错误字符串不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster14:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/kernel-boot.ts",
+      "target_path": "packages/daemon/src/domain/kernel-boot.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 193,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 启动路径注释、日志和三段式认证错误中文化；保留环境变量、状态、探测命令并将用户命令改为 zrig；关联测试 63/63 与 daemon typecheck 通过 | 完整中文化启动路径说明、日志和认证错误；保留 OPENRIG_NO_KERNEL、状态枚举、spec 文件名和认证命令；使用 zrig 用户命令；关联测试 63/63 与 daemon typecheck 通过 | batch2 daemon cluster4:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/managed-blocks.ts",
+      "target_path": "packages/daemon/src/domain/managed-blocks.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 121,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 托管块兼容与清理注释中文化；OpenRig/RIGGED 标记协议原样保留 | batch2 daemon cluster4:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/mission-control/notification-adapter-ntfy.ts",
+      "target_path": "packages/daemon/src/domain/mission-control/notification-adapter-ntfy.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 65,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | ntfy 适配器注释中文化；HTTP 方法、请求头、ack/error 机器值不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster14:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/outbox-handler.ts",
+      "target_path": "packages/daemon/src/domain/outbox-handler.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 423,
+      "notes": " | batch2 daemon cluster5:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/package-repository.ts",
+      "target_path": "packages/daemon/src/domain/package-repository.ts",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 108,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 纯数据库存取与字段映射；无自然语言注释、日志或用户可见文案，SQL/标识符保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster5:整文件人类注释/串审读已中文;未改源相关全套覆盖→validated | batch2 daemon审读:纯数据访问/字段映射无自然语言注释/日志/用户文案;SQL/标识符保持不变→skip合法"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/permission-policy/policy-spec.ts",
+      "target_path": "packages/daemon/src/domain/permission-policy/policy-spec.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 119,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | policy spec 契约、失败开放校验与确定性序列化注释中文化；schema/枚举/校验错误保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster18:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/policies/artifact-pool-helpers.ts",
+      "target_path": "packages/daemon/src/domain/policies/artifact-pool-helpers.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 269,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | artifact pool 扫描、frontmatter 与 POC 对齐注释中文化；路径、默认值和错误字符串保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster18:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/policies/periodic-reminder.ts",
+      "target_path": "packages/daemon/src/domain/policies/periodic-reminder.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 36,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | periodic-reminder 策略契约注释中文化；action/字段/错误码与错误字符串保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster18:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/predecessor-recap-resolver.ts",
+      "target_path": "packages/daemon/src/domain/predecessor-recap-resolver.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 90,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 交接回顾竞态守卫、边界与依赖注释及人类不可用原因中文化；路径/字段/运行时分支不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster6:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/project-classifier.ts",
+      "target_path": "packages/daemon/src/domain/project-classifier.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 432,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 分类写事务、lease、幂等与字段结构注释中文化；协议错误码/字段/SQL/事件名不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster6:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/provider/claude-usage-reader.ts",
+      "target_path": "packages/daemon/src/domain/provider/claude-usage-reader.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 160,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | Claude usage 原子缓存与 unknown 语义注释中文化；缓存结构/unknownReason/路径不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster14:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/provider/provider-signals.ts",
+      "target_path": "packages/daemon/src/domain/provider/provider-signals.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 324,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | provider 信号归一化、reactive 通道与池派生注释中文化；枚举/事件/窗口值不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster15:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/ps-projection.ts",
+      "target_path": "packages/daemon/src/domain/ps-projection.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 344,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | ps 汇总、生命周期、有效运行与 N+1 优化注释中文化；JSON 字段/枚举/SQL/时间输出保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster6:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/rehydrate-eligibility.ts",
+      "target_path": "packages/daemon/src/domain/rehydrate-eligibility.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 116,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 当前状态重建资格与占用者一致性注释中文化；blocker/SQL/运行时值保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster7:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/review/compose.ts",
+      "target_path": "packages/daemon/src/domain/review/compose.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 1397,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | Living Notes 组合器注释与人类展示 summary/evidence/provenance/stageCell/degrade 中文化；kind/source/state/phase/identity 与文档解析标题保持不变；命令示例改为 zrig；跨 owner 测试同步项已通知协调者",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/rig-repository.ts",
+      "target_path": "packages/daemon/src/domain/rig-repository.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 804,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 工作组快照可用性、归档过滤、workspace/permission attachment 与归档语义注释中文化；SQL/字段/行为不变 | 工作组快照可用性、归档过滤、workspace/permission attachment 与归档语义注释完整中文化；SQL/字段/行为不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster7:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/running-name-guard.ts",
+      "target_path": "packages/daemon/src/domain/running-name-guard.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 74,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 运行中同名工作组守卫注释中文化；错误码、SQL、协议消息和兼容命令字符串不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster9:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/seat-activity-service.ts",
+      "target_path": "packages/daemon/src/domain/seat-activity-service.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 651,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 席位活动采样、证据阶梯、仲裁、去抖与推送注释完整中文化；状态枚举、阈值与事件结构不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster7:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/seat-switch-client-service.ts",
+      "target_path": "packages/daemon/src/domain/seat-switch-client-service.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 227,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | switch-client 只读边界与探测流程注释中文化；HTTP 结果码和协议 message/guidance 保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster8:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/service-orchestrator.ts",
+      "target_path": "packages/daemon/src/domain/service-orchestrator.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 220,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 服务启动、等待、回执与拆除流程注释中文化；返回 code/error 与行为不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster9:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/terminal/view-composer.ts",
+      "target_path": "packages/daemon/src/domain/terminal/view-composer.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 187,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 终端视图组合、分页、主机分类与 shell 安全注释中文化；paneCommand 和 reason 协议值不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | b2-daemon-domain-closure:tree-scan整树英文NL残留0(4命中均中文内嵌代码),非逐文件full-read;generated1 skip→validated-scan"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/topology-defaults-installer.ts",
+      "target_path": "packages/daemon/src/domain/topology-defaults-installer.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 169,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 拓扑默认文件复制、尽力而为与目录投影注释中文化；路径/结果字段/行为不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster11:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/user-settings/settings-store.ts",
+      "target_path": "packages/daemon/src/domain/user-settings/settings-store.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 1175,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 设置存储、动态 key、默认值、校验与回读守卫注释完整中文化；配置 key/env/错误字符串保持不变 | 设置存储、默认值、动态 key、校验与回读守卫注释完整中文化；配置 key/env/运行时错误字符串保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster8:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/watchdog-history-log.ts",
+      "target_path": "packages/daemon/src/domain/watchdog-history-log.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 136,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | watchdog 仅追加审计契约与记录规则注释中文化；outcome/SQL/字段不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster11:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/workflow-deadline.ts",
+      "target_path": "packages/daemon/src/domain/workflow-deadline.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 239,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 工作流截止锚点四态、派生判定与 max_hops 守卫注释中文化；状态值、阈值与行为不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster12:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/src/domain/workflow-types.ts",
+      "target_path": "packages/daemon/src/domain/workflow-types.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 311,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 工作流分支、gate、角色、路由、并发与 redrive 类型注释中文化；所有枚举、字段和默认值不变 | 工作流类型、gate、角色、异常路由、并发与 redrive 注释完整中文化；所有字段/枚举/默认值不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated",
+      "note": " | batch2 daemon cluster12:整文件人类注释/串审读已中文,机器token保留;未改源相关全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/daemon/test/add-member-route.test.ts",
+      "target_path": "packages/daemon/test/add-member-route.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 191,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 测试标题与维护注释中文化；HTTP 路径、状态码、JSON 字段、事件名和错误码保持不变 | class-v2:chinese_or_machine_only/245b04f09d207bea",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/agent-manifest-plugins.test.ts",
+      "target_path": "packages/daemon/test/agent-manifest-plugins.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 233,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 测试标题与设计注释中文化；manifest 字段、枚举、fixture 与迁移错误关键字断言保持不变 | class-v2:chinese_or_machine_only/6b2941c6d2d88693",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/agent-starter-instantiator.test.ts",
+      "target_path": "packages/daemon/test/agent-starter-instantiator.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 432,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 测试标题与设计注释中文化，并同步生产层中文展示错误断言；schema、环境变量、SQL 与状态值保持不变 | class-v2:chinese_or_machine_only/d3caec13d5ececbc",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/chat-repository.test.ts",
+      "target_path": "packages/daemon/test/chat-repository.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 166,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 测试标题与注释中文化；消息 fixture、过滤参数和行为断言保持不变 | class-v2:chinese_or_machine_only/d88c6c3b85b0853b",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/chat-routes.test.ts",
+      "target_path": "packages/daemon/test/chat-routes.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 262,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 测试标题与注释中文化；HTTP 路径、传输头、fixture 和行为断言保持不变 | class-v2:chinese_or_machine_only/ff4d7b1f9da23e86",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/codex-activity-hooks.test.ts",
+      "target_path": "packages/daemon/test/codex-activity-hooks.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 224,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 测试标题与复杂 TOML 匹配注释中文化；TOML 内容、hook 事件名、路径和哨兵值保持不变 | class-v2:chinese_or_machine_only/98107dffb764b359",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/conflict-detector.test.ts",
+      "target_path": "packages/daemon/test/conflict-detector.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 327,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 15 个测试标题与注释中文化；冲突类型、哈希、manifest fixture 和行为断言保持不变 | class-v2:chinese_or_machine_only/dda74aae6df18150",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/context-pack-address-route.test.ts",
+      "target_path": "packages/daemon/test/context-pack-address-route.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 119,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 测试标题与寻址不变量注释中文化；地址语法、路由、fixture 与错误行为断言保持不变 | class-v2:chinese_or_machine_only/fa55001c25da84be",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/context-pack-compose.test.ts",
+      "target_path": "packages/daemon/test/context-pack-compose.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 288,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 生产文案/测试同步中文化；相关定向回归通过 | class-v2:no_comments/40c9bc41eeccb3bd",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/context-pack-manifest-parser.test.ts",
+      "target_path": "packages/daemon/test/context-pack-manifest-parser.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 259,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 测试标题与解析边界注释中文化；YAML fixture、manifest 字段、错误码与错误关键字行为断言保持不变 | class-v2:chinese_or_machine_only/782316a1368a31e3",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/crash-cart-detect.test.ts",
+      "target_path": "packages/daemon/test/crash-cart-detect.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 101,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 三态分类与有界重试测试标题、设计注释中文化；状态枚举、URL、探针结果和行为断言保持不变 | class-v2:chinese_or_machine_only/55f9d1451fb86ae8",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/crash-cart-load.test.ts",
+      "target_path": "packages/daemon/test/crash-cart-load.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 104,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 故障诊断读取流程标题与注释中文化；路径、异常类型、SQL 与行为断言保持不变 | class-v2:chinese_or_machine_only/67afd07b5bb9f2ba",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/current-generation-record.test.ts",
+      "target_path": "packages/daemon/test/current-generation-record.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 180,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 身份解析测试标题与注释中文化；进程命令、UUID、来源枚举和机器原因断言保持不变 | class-v2:chinese_or_machine_only/739995c2bd2d30a1",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/demo-rig-selector.test.ts",
+      "target_path": "packages/daemon/test/demo-rig-selector.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 63,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 5 个测试标题中文化并同步展示文本断言；关联测试 63/63 通过 | class-v2:no_comments/1022bedc84e4a49b",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/eval-cases.test.ts",
+      "target_path": "packages/daemon/test/eval-cases.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 35,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 评估用例标题与一致性防护注释中文化；类别值、路径和行为断言保持不变 | class-v2:chinese_or_machine_only/58e3ac2dc0a902db",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/eval-rig-runner.test.ts",
+      "target_path": "packages/daemon/test/eval-rig-runner.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 125,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | runner 接缝测试标题与维护注释中文化；命令参数、JSONL fixture、机器错误断言与旧 rig provider 入口保持不变 | class-v2:chinese_or_machine_only/c83effd1c510b4c0",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/event-loop-health-server.test.ts",
+      "target_path": "packages/daemon/test/event-loop-health-server.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 112,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | healthz 与压力证明标题、注释中文化；路由、JSON 字段、SQL 和阈值行为断言保持不变 | class-v2:chinese_or_machine_only/e92bd298f0926c20",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/event-loop-monitor.test.ts",
+      "target_path": "packages/daemon/test/event-loop-monitor.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 82,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 阈值边界与直方图测试标题、注释中文化；计时常量和行为断言保持不变 | class-v2:chinese_or_machine_only/5782481af8c5f0f5",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/factory-rsi-starter.test.ts",
+      "target_path": "packages/daemon/test/factory-rsi-starter.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 238,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 工作流测试标题、设计说明与门禁注释中文化；规范路径、角色/步骤 id、状态枚举及结果 fixture 保持不变 | class-v2:chinese_or_machine_only/889022e541d9b9d0",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/files-routes.test.ts",
+      "target_path": "packages/daemon/test/files-routes.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 287,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 文件路由标题与注释中文化；HTTP 路径、字段名、错误码、审计 provenance 和 fixture 内容保持不变 | class-v2:chinese_or_machine_only/517fa9a38cc1aa17",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/gateway-transport-e2e.test.ts",
+      "target_path": "packages/daemon/test/gateway-transport-e2e.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 193,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | Unix socket 端到端测试标题与协议说明中文化；协议 kind/op/ack、socket 路径与错误匹配保持不变 | class-v2:chinese_or_machine_only/0a675745a8082c1e",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/helpers/eval-rig-runner.ts",
+      "target_path": "packages/daemon/test/helpers/eval-rig-runner.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 91,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 完整翻译辅助模块 docblock；运行时错误字符串、环境变量、命令参数与 provider 标识保持不变 | daemon-helpers batch45:整文件注释审读residual0,already-chinese-no-change;scan evidence锁validated(无需test)",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/helpers/staging-docker-invoker.ts",
+      "target_path": "packages/daemon/test/helpers/staging-docker-invoker.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 162,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 完整翻译调用器契约与并发/超时注释；运行时 stderr、命令、信号和返回码保持不变 | daemon-helpers batch45:整文件注释审读residual0,already-chinese-no-change;scan evidence锁validated(无需test)",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/hermetic-clock.test.ts",
+      "target_path": "packages/daemon/test/hermetic-clock.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 60,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 环境时钟防护测试标题与注释中文化；环境变量、时间 fixture 和行为断言保持不变 | class-v2:chinese_or_machine_only/9dbab428b6c86f89",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/hosts-add-pair-routes.test.ts",
+      "target_path": "packages/daemon/test/hosts-add-pair-routes.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 472,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 主机添加/配对路由测试标题与注释中文化；API、YAML/JSON 字段、状态、错误码、密钥 fixture 与行为断言保持不变 | class-v2:chinese_or_machine_only/cbbe68f5837320a2",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/local-bare-identity.test.ts",
+      "target_path": "packages/daemon/test/local-bare-identity.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 111,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 5 个身份边界测试标题与设计注释中文化，zrig 回复提示断言同步；裸 member@rig 与跨主机 triple 协议保持不变；5/5 通过 | class-v2:chinese_or_machine_only/66fbd1c1765d4906",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/markdown-address.test.ts",
+      "target_path": "packages/daemon/test/markdown-address.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 185,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 地址解析脚本中文诊断兼容验证；15/15 通过 | b2 daemon-comment new-batch6:comments-only整文件审读residual0,机器token保留,assertions/titles未动;3changed66测试过+2nochange历史→passed",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/test/migration-067-i3-identity-provenance.test.ts",
+      "target_path": "packages/daemon/test/migration-067-i3-identity-provenance.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 23,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 迁移契约标题、注释和断言提示中文化；机器列名保持不变；关联测试 125/125 通过 | class-v2:chinese_or_machine_only/6c51c10594c16a75",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/p34-call-site-allowlist.test.ts",
+      "target_path": "packages/daemon/test/p34-call-site-allowlist.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 313,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 枚举防护设计说明、docblock 与测试标题中文化；扫描路径、诊断协议字符串、fixture 源码和计数断言保持不变 | class-v2:chinese_or_machine_only/642532bcecc01e03",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/parked-query.test.ts",
+      "target_path": "packages/daemon/test/parked-query.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 209,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 停滞诊断测试标题与语义说明中文化；状态枚举、对象字段、责任范围与行为断言保持不变 | class-v2:chinese_or_machine_only/8678ab55cc18dc31",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/permission-policy-ref.test.ts",
+      "target_path": "packages/daemon/test/permission-policy-ref.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 130,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 整文件标题与注释中文化，展示断言同步；18/18 通过 | class-v2:chinese_or_machine_only/547da51dd933729a",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/pi-activity-generation.test.ts",
+      "target_path": "packages/daemon/test/pi-activity-generation.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 131,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | Pi 活动代绑定测试标题与注释中文化；事件字段、身份值、HTTP 路由与行为断言保持不变 | class-v2:chinese_or_machine_only/6167eae6f1a8e443",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/provider-c3-seat-keyed-discovery.test.ts",
+      "target_path": "packages/daemon/test/provider-c3-seat-keyed-discovery.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 153,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | provider_usage 发现测试标题与生产边界说明中文化；缓存字段、状态值、SQL 数据与行为断言保持不变 | class-v2:chinese_or_machine_only/9dc459fb5c204ae0",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/queue-cross-host-handoff.test.ts",
+      "target_path": "packages/daemon/test/queue-cross-host-handoff.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 374,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 跨主机移交测试标题与编排注释中文化；旧 local 入口、API 路径、状态、错误码、id 派生与行为断言保持不变 | class-v2:chinese_or_machine_only/0d33866382e91934",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/queue-transactional-closure.test.ts",
+      "target_path": "packages/daemon/test/queue-transactional-closure.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 657,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 测试标题/docblock/维护注释中文化；wake-intent id、状态枚举、错误码与 envelope fixture 保留；24/24 通过 | 测试标题/docblock/维护注释中文化；wake-intent id、状态枚举与 envelope fixture 保留；24/24 通过 | class-v2:chinese_or_machine_only/51f91426a9a1fcd8",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/refocus-occupant-baseline.test.ts",
+      "target_path": "packages/daemon/test/refocus-occupant-baseline.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 204,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 测试注释与中文诊断断言已同步；占位者代数和基线行为保持；定向测试通过 | b2-172 new-batch25:comments-only整文件审读residual0,assertions/titles未动;27测试过→passed",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/test/remote-daemon-http.test.ts",
+      "target_path": "packages/daemon/test/remote-daemon-http.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 173,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 测试标题、注释与中文错误断言同步；12/12 通过 | class-v2:chinese_or_machine_only/86c3e0164c730eb9",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/restore-check-service.test.ts",
+      "target_path": "packages/daemon/test/restore-check-service.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 1949,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 已完成全部测试标题和注释中文化；仍有大量人类展示 evidence/remediation/command 断言依赖 packages/daemon/src/domain/restore-check-service.ts 的跨 owner 英文生产文案，当前边界禁止修改 src，待源码 owner 中文化后同步断言 | 已按 daemon-core-g 最新生产中文文案同步 evidence/remediation/recovery/zrig 展示断言；测试标题与注释完整中文化，状态枚举、JSON 字段和行为断言保持不变 | 按 daemon-core-g 最新生产中文文案同步 evidence/remediation/recovery 与 zrig 展示断言；测试标题/注释中文化，状态枚举、JSON 字段和行为断言保持不变 | class-v2:chinese_or_machine_only/50454723b19540fc",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/restore-plan-preview.test.ts",
+      "target_path": "packages/daemon/test/restore-plan-preview.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 150,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 恢复计划测试标题与关键 token 状态说明中文化；状态枚举、参数、SQL 字段和行为断言保持不变 | b2 daemon-comment new-batch10:5 nochange comments already Chinese, scan residual0;注释审读合格(不声称新测试) | restore-plan-preview manifest10 nochange+latest coverage过;comment审读residual0→passed",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/test/resume-token-route.test.ts",
+      "target_path": "packages/daemon/test/resume-token-route.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 142,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | resume-token 路由测试标题与脱敏注释中文化；API、token fixture、来源枚举、错误码与认证行为保持不变 | class-v2:chinese_or_machine_only/b9fca7c00f96b7d4",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/rigs-routes-pl019-current-qitems.test.ts",
+      "target_path": "packages/daemon/test/rigs-routes-pl019-current-qitems.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 141,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 读侧联接测试标题与说明中文化；SQL、状态枚举、字段名、截取长度及行为断言保持不变 | class-v2:chinese_or_machine_only/114df393238a5cb1",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/s02-p1-classification-persistence.test.ts",
+      "target_path": "packages/daemon/test/s02-p1-classification-persistence.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 558,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 分类租约、尝试台账、执行隔离、HTTP 形态与迁移测试标题/注释中文化；状态、错误码、SQL、字段和诊断协议保持不变 | class-v2:chinese_or_machine_only/bc5e2e707a764ea1",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/s03-native-permissions.test.ts",
+      "target_path": "packages/daemon/test/s03-native-permissions.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 219,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 25 个原生权限测试标题与边界注释中文化；权限 mode、事件、数据库和命令参数保持不变；25/25 通过 | class-v2:chinese_or_machine_only/6c7709fae3de2efa",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/scenario-daemon-mode.test.ts",
+      "target_path": "packages/daemon/test/scenario-daemon-mode.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 93,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 主机/容器后台服务选择与结果标记测试标题、注释中文化；函数引用、记录键和行为断言保持不变 | class-v2:chinese_or_machine_only/a1452d9781d78673",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/scenario-real-deps.test.ts",
+      "target_path": "packages/daemon/test/scenario-real-deps.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 118,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 真实依赖测试标题与注释中文化；用户命令示例改用 zrig，实际 argv 中旧 rig 兼容入口及参数保持不变 | class-v2:chinese_or_machine_only/40ea4d96109f8974",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/scopes-routes.test.ts",
+      "target_path": "packages/daemon/test/scopes-routes.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 71,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 工作范围路由标题与注释中文化；API 路径、fixture 和响应行为保持不变 | class-v2:chinese_or_machine_only/3bbd502e38c5ef79",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/sdlc-role-startup.test.ts",
+      "target_path": "packages/daemon/test/sdlc-role-startup.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 44,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 注释与 Part A 中文摘要兼容断言已同步；启动契约保持；定向测试通过 | class-v2:chinese_or_machine_only/0b8c61b7d4562045",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/seat-identity-reconciler.test.ts",
+      "target_path": "packages/daemon/test/seat-identity-reconciler.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 343,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 身份协调测试标题、docblock 与防抖说明中文化；判定枚举、命令、SQL schema 和行为断言保持不变 | class-v2:chinese_or_machine_only/b8ea5721bb7d0adc",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/seat-lifecycle-service.test.ts",
+      "target_path": "packages/daemon/test/seat-lifecycle-service.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 452,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 席位生命周期测试标题、docblock 与安全边界注释中文化；错误码、状态、命令、数据库字段及行为断言保持不变 | class-v2:chinese_or_machine_only/a21e48df9c217c05",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/self-host-envelope-sweep.test.ts",
+      "target_path": "packages/daemon/test/self-host-envelope-sweep.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 65,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 三段式发送者兼容清查的完整 docblock 与测试标题中文化；member@rig@host 协议和旧两段式兼容断言保持不变 | class-v2:chinese_or_machine_only/e18769bc5edc6443",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/self-host-identity.test.ts",
+      "target_path": "packages/daemon/test/self-host-identity.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 88,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 自身主机身份测试标题与架构注释中文化；host id、保留值、数据库字段与行为断言保持不变 | class-v2:chinese_or_machine_only/eb13408304daaddc",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/send-prompt-guard.test.ts",
+      "target_path": "packages/daemon/test/send-prompt-guard.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 594,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 交互提示与权限防护测试标题、设计说明中文化，并同步当前生产层中文诊断片段；命令参数、错误码、事件与旧兼容选项保持不变 | 交互提示与权限防护测试标题、设计说明中文化，并同步当前生产层中文诊断断言；机器错误码、事件、命令参数与旧兼容选项保持不变 | class-v2:chinese_or_machine_only/4908efa4ea1a8146",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/session-jsonl.test.ts",
+      "target_path": "packages/daemon/test/session-jsonl.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 79,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | JSONL 解析测试标题与格式说明中文化；provider 记录结构、role/content fixture 和容错行为保持不变 | JSONL 解析测试标题与格式说明中文化；provider 记录结构、role/content fixture 和容错行为保持不变 | class-v2:chinese_or_machine_only/0bdbfcb6fc870303",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/sessions-routes.test.ts",
+      "target_path": "packages/daemon/test/sessions-routes.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 1153,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 会话、启动、cmux、活动与节点详情路由标题/注释中文化，并同步 zrig 辅助命令和中文 not-found 展示断言；API/字段/枚举保持不变 | 会话、启动、cmux、活动与节点详情路由标题/注释中文化，并同步 zrig 辅助命令与中文 not-found 展示断言；API/字段/枚举保持不变 | class-v2:chinese_or_machine_only/b81fa5373080a824",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/snapshot-repository.test.ts",
+      "target_path": "packages/daemon/test/snapshot-repository.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 355,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 快照仓库测试标题与选择策略注释中文化；SQL、kind/status、JSON fixture 和排序行为保持不变 | 快照仓库测试标题与选择策略注释中文化；SQL、kind/status、JSON fixture 和排序行为保持不变 | class-v2:chinese_or_machine_only/a186cd4e71708112",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/startup-proof.test.ts",
+      "target_path": "packages/daemon/test/startup-proof.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 306,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 启动证明测试标题与关键不变量注释中文化，并同步 zrig startup-proof 展示命令；错误码、事件、哈希与身份行为保持不变 | 启动证明测试标题与关键不变量注释中文化，并同步 zrig startup-proof 展示命令；错误码、事件、哈希与身份行为保持不变 | class-v2:chinese_or_machine_only/bfecae4cb53c5a24",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/transcript-store.test.ts",
+      "target_path": "packages/daemon/test/transcript-store.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 693,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 转录存储测试标题与过滤/性能/存活性注释中文化；ANSI/UTF-8 fixture、路径和捕获状态保持不变 | 转录存储测试标题与过滤/性能/存活性注释中文化；ANSI/UTF-8 fixture、路径和捕获状态保持不变 | class-v2:chinese_or_machine_only/b0cf72b5a603e163",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/watchdog-policy-engine.test.ts",
+      "target_path": "packages/daemon/test/watchdog-policy-engine.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 514,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | watchdog 策略、节流与 generation 门禁测试标题/注释中文化；策略 id、状态、事件、payload 与交付错误值保持不变 | watchdog 策略、节流与 generation 门禁测试标题/注释中文化；策略 id、状态、事件、payload 与交付错误值保持不变 | class-v2:chinese_or_machine_only/123328f9f4c8a0a3",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/workflow-exception-item.test.ts",
+      "target_path": "packages/daemon/test/workflow-exception-item.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 412,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 11 个事务内异常条目测试标题与承重注释中文化；tag、tier、状态和 YAML 保持不变；11/11 通过 | class-v2:chinese_or_machine_only/006987bd95c93ec9",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/workflow-routes.test.ts",
+      "target_path": "packages/daemon/test/workflow-routes.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 792,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 工作流路由测试标题与结构化错误边界注释中文化；HTTP 路径、错误码、规范 fixture 和事务行为断言保持不变 | 工作流路由测试标题与结构化错误边界注释中文化；HTTP 路径、错误码、规范 fixture 和事务行为断言保持不变 | class-v2:chinese_or_machine_only/5bef8257e063f397",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/test/workflow-row-ref.test.ts",
+      "target_path": "packages/daemon/test/workflow-row-ref.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 52,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | workflowRef 标签派生测试标题与说明中文化；结构化标签键、返回结构和缺失行为保持不变 | workflowRef 标签派生测试标题与说明中文化；结构化标签键、返回结构和缺失行为保持不变 | class-v2:chinese_or_machine_only/b332710f6342006e",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    }
+  ]
+}

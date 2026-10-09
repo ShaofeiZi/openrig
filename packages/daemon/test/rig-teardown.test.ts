@@ -83,8 +83,8 @@ describe("RigTeardownOrchestrator", () => {
     });
   }
 
-  // T1: Kills tmux sessions
-  it("teardown kills tmux sessions", async () => {
+  // T1：终止 tmux session
+  it("teardown 终止 tmux session", async () => {
     const { rigId } = seedRig();
     const tmux = mockTmux();
     const td = buildTeardown(tmux);
@@ -94,8 +94,8 @@ describe("RigTeardownOrchestrator", () => {
     expect(tmux.killSession).toHaveBeenCalledWith("r01-dev");
   });
 
-  // T2: Bindings cleared
-  it("bindings cleared after teardown", async () => {
+  // T2：清除 binding
+  it("teardown 后清除 binding", async () => {
     const { rigId, nodeId } = seedRig();
     sessionRegistry.updateBinding(nodeId, { tmuxSession: "r01-dev" });
     const td = buildTeardown();
@@ -105,8 +105,8 @@ describe("RigTeardownOrchestrator", () => {
     expect(sessionRegistry.getBindingForNode(nodeId)).toBeNull();
   });
 
-  // T3: Sessions marked exited
-  it("sessions marked exited", async () => {
+  // T3：将 session 标记为 exited
+  it("将 session 标记为 exited", async () => {
     const { rigId, sessionId } = seedRig();
     const td = buildTeardown();
 
@@ -117,8 +117,8 @@ describe("RigTeardownOrchestrator", () => {
     expect(latest?.status).toBe("exited");
   });
 
-  // T4: Rig preserved
-  it("rig record preserved without --delete", async () => {
+  // T4：保留 rig
+  it("不带 --delete 时保留 rig 记录", async () => {
     const { rigId } = seedRig();
     const td = buildTeardown();
 
@@ -128,8 +128,8 @@ describe("RigTeardownOrchestrator", () => {
     expect(rigRepo.getRig(rigId)).toBeTruthy();
   });
 
-  // T5: --delete removes rig
-  it("--delete removes rig after stop", async () => {
+  // T5：--delete 删除 rig
+  it("--delete 在停止后删除 rig", async () => {
     const { rigId } = seedRig();
     const td = buildTeardown();
 
@@ -139,8 +139,8 @@ describe("RigTeardownOrchestrator", () => {
     expect(rigRepo.getRig(rigId)).toBeNull();
   });
 
-  // T6: --snapshot
-  it("--snapshot captures before teardown", async () => {
+  // T6：--snapshot
+  it("--snapshot 在 teardown 前执行 capture", async () => {
     const { rigId } = seedRig();
     const td = buildTeardown();
 
@@ -149,7 +149,7 @@ describe("RigTeardownOrchestrator", () => {
     expect(result.snapshotId).toBe("snap-1");
   });
 
-  it("refreshes resume metadata before snapshot capture", async () => {
+  it("在 snapshot capture 前刷新 resume metadata", async () => {
     const { rigId } = seedRig();
     const refresh = vi.fn(async () => {});
     const td = new RigTeardownOrchestrator({
@@ -165,8 +165,8 @@ describe("RigTeardownOrchestrator", () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
-  // T7: --force (same as default in v1)
-  it("--force kills sessions", async () => {
+  // T7：--force（v1 中与默认行为相同）
+  it("--force 终止 session", async () => {
     const { rigId } = seedRig();
     const tmux = mockTmux();
     const td = buildTeardown(tmux);
@@ -176,17 +176,17 @@ describe("RigTeardownOrchestrator", () => {
     expect(tmux.killSession).toHaveBeenCalled();
   });
 
-  // T8: Nonexistent rig
-  it("nonexistent rig throws", async () => {
+  // T8：不存在的 rig
+  it("rig 不存在时抛出异常", async () => {
     const td = buildTeardown();
 
-    await expect(td.teardown("nonexistent")).rejects.toThrow(/not found/);
+    await expect(td.teardown("nonexistent")).rejects.toThrow(/未找到/);
   });
 
-  // T9: Already stopped
-  it("already-stopped rig returns alreadyStopped=true", async () => {
+  // T9：已经停止
+  it("已停止的 rig 返回 alreadyStopped=true", async () => {
     const { rigId, sessionId } = seedRig();
-    sessionRegistry.updateStatus(sessionId, "exited"); // already stopped
+    sessionRegistry.updateStatus(sessionId, "exited"); // 已停止
     const td = buildTeardown();
 
     const result = await td.teardown(rigId);
@@ -195,8 +195,8 @@ describe("RigTeardownOrchestrator", () => {
     expect(result.sessionsKilled).toBe(0);
   });
 
-  // T10: rig.stopped event
-  it("rig.stopped event emitted", async () => {
+  // T10：rig.stopped 事件
+  it("发出 rig.stopped 事件", async () => {
     const { rigId } = seedRig();
     const td = buildTeardown();
 
@@ -206,14 +206,14 @@ describe("RigTeardownOrchestrator", () => {
     expect(events.length).toBeGreaterThanOrEqual(1);
   });
 
-  // T11: Multi-session node — only newest killed
-  it("multiple session rows — only newest live session acted on", async () => {
+  // T11：多 session 节点——只终止最新一个
+  it("存在多个 session 行时——只处理最新的 live session", async () => {
     const rig = rigRepo.createRig("r11");
     const node = rigRepo.addNode(rig.id, "dev");
-    // Old session (exited) - earlier timestamp + earlier id
+    // 旧 session（exited）——时间戳更早 + ID 更早
     db.prepare("INSERT INTO sessions (id, node_id, session_name, status, created_at) VALUES (?, ?, ?, 'exited', ?)")
       .run("sess-aaa", node.id, "r11-old", "2026-03-26 09:00:00");
-    // New session (running) - later timestamp + later id
+    // 新 session（running）——时间戳更晚 + ID 更晚
     db.prepare("INSERT INTO sessions (id, node_id, session_name, status, created_at) VALUES (?, ?, ?, 'running', ?)")
       .run("sess-zzz", node.id, "r11-new", "2026-03-26 12:00:00");
 
@@ -222,13 +222,13 @@ describe("RigTeardownOrchestrator", () => {
 
     await td.teardown(rig.id);
 
-    // Only the new session should be killed
+    // 只应终止新 session
     expect(tmux.killSession).toHaveBeenCalledWith("r11-new");
     expect(tmux.killSession).toHaveBeenCalledTimes(1);
   });
 
-  // T12: Kill failure + --delete -> blocked
-  it("kill failure blocks --delete", async () => {
+  // T12：终止失败 + --delete -> blocked
+  it("终止失败会阻止 --delete", async () => {
     const { rigId, nodeId } = seedRig();
     const tmux = mockTmux({ ok: false, code: "kill_failed", message: "tmux error" });
     const td = buildTeardown(tmux);
@@ -236,15 +236,15 @@ describe("RigTeardownOrchestrator", () => {
     const result = await td.teardown(rigId, { delete: true });
 
     expect(result.deleted).toBe(false);
-    expect(result.errors.some((e) => e.includes("blocked"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("被阻止"))).toBe(true);
     expect(rigRepo.getRig(rigId)).toBeTruthy();
-    // Node should NOT be marked exited
+    // 不应将节点标记为 exited
     const sessions = sessionRegistry.getSessionsForRig(rigId);
     expect(sessions.some((s) => s.status === "running")).toBe(true);
   });
 
-  // T13: Stale session (tmux gone) -> benign
-  it("stale session (tmux already gone) treated as success", async () => {
+  // T13：stale session（tmux 已消失）-> 良性处理
+  it("将 stale session（tmux 已消失）视为成功", async () => {
     const { rigId } = seedRig();
     const tmux = mockTmux({ ok: false, code: "session_not_found" });
     const td = buildTeardown(tmux);
@@ -256,7 +256,7 @@ describe("RigTeardownOrchestrator", () => {
     expect(result.errors).toHaveLength(0);
   });
 
-  it("removes only OpenRig-managed blocks and preserves user + third-party content", async () => {
+  it("只移除 OpenRig 受管区块，并保留用户及第三方内容", async () => {
     const cwd = path.join(tmpDir, "claude-project");
     fs.mkdirSync(cwd, { recursive: true });
     const claudeMd = path.join(cwd, "CLAUDE.md");
@@ -282,7 +282,7 @@ describe("RigTeardownOrchestrator", () => {
     expect(content).not.toContain("BEGIN OpenRig MANAGED BLOCK");
   });
 
-  it("deletes guidance file if only OpenRig-managed content remains after teardown", async () => {
+  it("teardown 后只剩 OpenRig 受管内容时删除 guidance 文件", async () => {
     const cwd = path.join(tmpDir, "codex-project");
     fs.mkdirSync(cwd, { recursive: true });
     const agentsMd = path.join(cwd, "AGENTS.md");
@@ -300,36 +300,36 @@ describe("RigTeardownOrchestrator", () => {
     expect(fs.existsSync(agentsMd)).toBe(false);
   });
 
-  // T14: Per-node cleanup is atomic (status + binding together)
-  it("per-node cleanup updates status and clears binding atomically", async () => {
+  // T14：逐节点清理具有原子性（同时处理 status + binding）
+  it("逐节点清理以原子方式更新 status 并清除 binding", async () => {
     const { rigId, nodeId, sessionId } = seedRig();
     sessionRegistry.updateBinding(nodeId, { tmuxSession: "r01-dev" });
     const td = buildTeardown();
 
     await td.teardown(rigId);
 
-    // Both should be updated (transaction succeeded)
+    // 两者都应更新（transaction 成功）
     const sessions = sessionRegistry.getSessionsForRig(rigId);
     expect(sessions.find((s) => s.id === sessionId)?.status).toBe("exited");
     expect(sessionRegistry.getBindingForNode(nodeId)).toBeNull();
   });
 
-  // T15: --delete event sabotage -> rig not deleted
-  it("rig.deleted event failure prevents rig deletion", async () => {
+  // T15：破坏 --delete 事件 -> 不删除 rig
+  it("rig.deleted 事件失败会阻止删除 rig", async () => {
     const { rigId } = seedRig();
     const td = buildTeardown();
 
-    // Sabotage event persistence
+    // 破坏事件持久化
     const origPersist = eventBus.persistWithinTransaction.bind(eventBus);
     eventBus.persistWithinTransaction = (event) => {
       if (event.type === "rig.deleted") throw new Error("event persist failed");
       return origPersist(event);
     };
 
-    // Teardown + delete should fail on the event
+    // Teardown + delete 应因该事件失败
     const result = await td.teardown(rigId, { delete: true });
 
-    // Sessions killed but rig NOT deleted (atomic delete + event rolled back)
+    // session 已终止，但 rig 未删除（原子 delete + 事件已回滚）
     expect(result.sessionsKilled).toBe(1);
     expect(result.deleted).toBe(false);
     expect(rigRepo.getRig(rigId)).toBeTruthy();

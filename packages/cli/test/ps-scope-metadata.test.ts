@@ -1,8 +1,8 @@
 // OPR.0.5.0 — `rig ps --nodes` HONEST SCOPE METADATA. The current-rig-only default is CORRECT and
-// STAYS; the fix DECLARES the scope so a scoped list is never read as the whole host (the width-clip
-// honesty rule applied to CLI output: output that silently looks complete is silent loss).
-// Verified via a STUB client (the DaemonClient http harness is pre-existing-broken in this env —
-// res.json() "position 4", the Atom-5/S-C CLI-harness flake class).
+// 保留；该修复声明 scope，使 scoped 列表绝不被读成整个 host（宽度裁剪
+// 诚实规则应用于 CLI 输出：静默看似完整的输出即静默丢失）。
+// 经 STUB client 验证（DaemonClient http harness 在此环境本就损坏——
+// res.json() "position 4"，Atom-5/S-C CLI-harness flake 类）。
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { psCommand } from "../src/commands/ps.js";
 import { STATE_FILE } from "../src/daemon-lifecycle.js";
@@ -14,8 +14,8 @@ const RIGS_MULTI = [
 ];
 const RIGS_SINGLE = [{ rigId: "rA", rigName: "alpha", name: "alpha" }];
 // LIVE-CLASS coherence fixture (review50-r1 finding @ fb8c8dcc): 4 rigs on host, but `rig ps`'s
-// bare-default header renders the ACTIVE projection (stopped fold into a count line) — so an honest
-// "1 of N" must count the 2 ACTIVE rigs the operator sees when they follow the hint, never all 4.
+// 裸默认 header 渲染 ACTIVE 投影（已停折叠进一行计数）——故诚实的
+// "1 of N" 必须数操作员跟随提示所见的 2 个 ACTIVE rig，绝非全部 4 个。
 const RIGS_MIXED = [
   { rigId: "rA", rigName: "alpha", name: "alpha", status: "running" }, // session rig (active)
   { rigId: "rB", rigName: "beta", name: "beta", status: "running" },
@@ -63,16 +63,17 @@ describe("rig ps --nodes honest scope metadata", () => {
     expect(parsed.scope).toBeDefined();
     expect(parsed.scope.rig).toBe("alpha");
     expect(parsed.scope.rigsOnHost).toBe(3);
-    expect(parsed.scope.hint).toContain("rig ps lists all");
+    expect(parsed.scope.hint).toContain("仅显示 3 个工作组中的 1 个");
+    expect(parsed.scope.hint).toContain("zrig ps 可列出全部");
     expect(parsed.scope.hint).toMatch(/-A|--rig/);
     expect(parsed.entries).toHaveLength(1); // still scoped to the session rig (behavior unchanged)
   });
 
   it("MULTI-RIG: --nodes (human) renders ONE matching stderr hint line", async () => {
     const { err } = await run(["--nodes"], RIGS_MULTI);
-    expect(err).toContain("rigs shown");
+    expect(err).toContain("个rig中的");
     expect(err).toContain("alpha");
-    expect(err).toMatch(/rig ps lists all|--rig NAME or -A/);
+    expect(err).toMatch(/zrig ps 列出全部|--rig NAME 或 -A/);
   });
 
   it("NO DEFAULT CHANGE: single-rig host → NO scope, bare array (byte-stable)", async () => {
@@ -95,7 +96,8 @@ describe("rig ps --nodes honest scope metadata", () => {
     const parsed = JSON.parse(out);
     expect(parsed.scope.rigsOnHost).toBe(2); // active projection, NOT rigRes.data.length (4)
     expect(parsed.scope.rigsOnHost).not.toBe(4); // the exact RED before the fix
-    expect(parsed.scope.hint).toContain("1 of 2 rigs shown");
+    expect(parsed.scope.hint).toContain("仅显示 2 个工作组中的 1 个");
+    expect(parsed.scope.hint).toContain("zrig ps 可列出全部");
     expect(err).toBe(""); // json path: no stderr
   });
 });

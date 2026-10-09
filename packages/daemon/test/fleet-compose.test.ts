@@ -1,9 +1,7 @@
-// OPR.0.4.6.MH5 — the fleet composer's correctness core (plan C5, the
-// C1-pinning subset): the Q4 one-count Set (`hostId|identity`, the one
-// place), permutation-stable union, kind-agnostic carry, the WF-4 Q6
-// workflow-pointer passthrough, absent-not-zero per-host honesty, and the
-// no-clock/no-random purity pin. The fan-out shell vectors mirror the
-// shipped attention-aggregator's per-host outcome discipline.
+// OPR.0.4.6.MH5——fleet composer 的正确性核心（计划 C5、C1 固定子集）：Q4 单次计数 Set
+//（`hostId|identity`，唯一位置）、排列稳定 union、与 kind 无关的携带、WF-4 Q6 workflow-pointer
+// 透传、按 host 的“缺失而非零”真实性，以及无时钟/无随机的纯度固定项。fan-out shell 向量镜像
+// 已发布 attention-aggregator 的逐 host 结果纪律。
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -53,8 +51,8 @@ function hostInput(hostId: string, overrides: Partial<FleetHostInput> = {}): Fle
 
 const OK = (hostId: string): PerHostStatus => ({ hostId, status: "ok" });
 
-describe("unionFleet — the Q4 one-count key (hostId|identity)", () => {
-  it("same identity from slice+mission+rig on ONE host collapses to ONE row with 3-altitude provenance", () => {
+describe("unionFleet——Q4 单次计数 key（hostId|identity）", () => {
+  it("同一 host 上来自 slice+mission+rig 的相同 identity 合并为一行并带三层 provenance", () => {
     const shared = item({ identity: "qi-1" });
     const fleet = unionFleet(
       [
@@ -75,7 +73,7 @@ describe("unionFleet — the Q4 one-count key (hostId|identity)", () => {
     expect(fleet.rollup.needsYouCount).toBe(1);
   });
 
-  it("the SAME identity string on TWO hosts stays TWO rows (the host dimension distinguishes)", () => {
+  it("相同 identity 字符串位于两个 host 时仍为两行（由 host 维度区分）", () => {
     const fleet = unionFleet(
       [
         hostInput("vps-a", { scopedNeedsYou: [{ scope: "rig", items: [item({ identity: "qi-same" })] }] }),
@@ -88,9 +86,8 @@ describe("unionFleet — the Q4 one-count key (hostId|identity)", () => {
     expect(fleet.needsYou.items.map((r) => r.fleetKey).sort()).toEqual(["vps-a|qi-same", "vps-b|qi-same"]);
   });
 
-  it("MH-3 forwarded item: origin-owns-the-record means the id appears in ONE host's set only → one fleet row", () => {
-    // A forwarded qitem lives in its ORIGIN host's DB only (the source
-    // closed on handoff) — the fixture mirrors that construction.
+  it("MH-3 转发项：origin 拥有 record 意味着 id 只出现在一个 host 集合中，因此只有一条 fleet 行", () => {
+    // 转发 qitem 只存在于其 ORIGIN host 的 DB 中（source 在 handoff 时关闭），fixture 镜像该构造。
     const fleet = unionFleet(
       [
         hostInput("vps-a", { scopedNeedsYou: [{ scope: "rig", items: [item({ identity: "qi-forwarded" })] }] }),
@@ -104,7 +101,7 @@ describe("unionFleet — the Q4 one-count key (hostId|identity)", () => {
   });
 });
 
-describe("unionFleet — permutation-stable (input order never changes rows/counts)", () => {
+describe("unionFleet——排列稳定（输入顺序绝不改变行或计数）", () => {
   const inputs: FleetHostInput[] = [
     hostInput(LOCAL_HOST_ID, {
       scopedNeedsYou: [{ scope: "rig", items: [item({ identity: "qi-l1", priority: "urgent" })] }],
@@ -121,7 +118,7 @@ describe("unionFleet — permutation-stable (input order never changes rows/coun
   ];
   const statuses = [OK(LOCAL_HOST_ID), OK("vps-a"), OK("vps-b")];
 
-  it("reversed and rotated host inputs (and scoped-set order) yield a byte-identical payload", () => {
+  it("反转和轮转 host 输入（及 scoped-set 顺序）会产生逐字节相同的 payload", () => {
     const base = unionFleet(inputs, statuses, NOW);
     const reversed = unionFleet([...inputs].reverse(), statuses, NOW);
     const rotated = unionFleet([inputs[2]!, inputs[0]!, inputs[1]!], statuses, NOW);
@@ -132,26 +129,24 @@ describe("unionFleet — permutation-stable (input order never changes rows/coun
     );
     expect(JSON.stringify(reversed)).toBe(JSON.stringify(base));
     expect(JSON.stringify(rotated)).toBe(JSON.stringify(base));
-    // Row set + counts are order-invariant; seenFrom records the scopes as
-    // a SET-equivalent (order may reflect read order, so compare sorted).
+    // 行集合和计数与顺序无关；seenFrom 以集合等价方式记录 scope（顺序可能反映读取顺序，因此排序后比较）。
     expect(scopedReversed.needsYou.items.map((r) => ({ ...r, seenFrom: [...r.seenFrom].sort() }))).toEqual(
       base.needsYou.items.map((r) => ({ ...r, seenFrom: [...r.seenFrom].sort() })),
     );
     expect(scopedReversed.rollup).toEqual(base.rollup);
   });
 
-  it("the same inputs twice yield a byte-identical payload (pure — no clock/random)", () => {
+  it("相同输入执行两次产生逐字节相同 payload（纯函数，无时钟/随机）", () => {
     expect(JSON.stringify(unionFleet(inputs, statuses, NOW))).toBe(JSON.stringify(unionFleet(inputs, statuses, NOW)));
   });
 });
 
-describe("unionFleet — kind-agnostic carry + workflow passthrough (D-2)", () => {
-  it("a synthetic 8th exception kind flows through UNTOUCHED (union, never filter)", () => {
+describe("unionFleet——与 kind 无关的携带 + workflow 透传（D-2）", () => {
+  it("合成的第 8 种 exception kind 原样流过（只 union，绝不筛选）", () => {
     const synthetic = item({
       identity: "qi-x|future-kind|2026-07-08",
       source: "derived",
-      // Deliberately outside today's closed 7-kind union — the fleet layer
-      // must carry whatever the per-host composer produced.
+      // 刻意位于当前封闭的 7-kind union 之外；fleet 层必须携带逐 host composer 产生的任何内容。
       derived: { kind: "future-kind" as never, evidence: "synthetic evidence", threshold: "synthetic threshold" },
     });
     const fleet = unionFleet(
@@ -163,7 +158,7 @@ describe("unionFleet — kind-agnostic carry + workflow passthrough (D-2)", () =
     expect(fleet.rollup.exceptionsByKind).toEqual([{ kind: "future-kind", count: 1 }]);
   });
 
-  it("row.workflow passes through pointer-only and OMITS when absent (byte-identity-by-omission)", () => {
+  it("row.workflow 只透传 pointer，缺失时省略（通过省略保持字节一致）", () => {
     const withPointer = item({
       identity: "qi-wf",
       workflow: { instanceId: "wfi-1", workflowName: "acme-factory", stepId: "assemble" },
@@ -181,8 +176,8 @@ describe("unionFleet — kind-agnostic carry + workflow passthrough (D-2)", () =
   });
 });
 
-describe("unionFleet — per-host honesty + rollup math", () => {
-  it("an unreachable host has its status PRESENT and its counts ABSENT (not zero); rollup reflects it", () => {
+describe("unionFleet——逐 host 真实性与 rollup 计算", () => {
+  it("不可达 host 的 status 存在、counts 缺失而非零，rollup 如实反映", () => {
     const down: PerHostStatus = { hostId: "vps-b", status: "unreachable", error: "ECONNREFUSED", failedStep: "remote-daemon-unreachable" };
     const fleet = unionFleet(
       [hostInput("vps-a", { scopedNeedsYou: [{ scope: "rig", items: [item({ identity: "qi-a1" })] }] })],
@@ -196,11 +191,11 @@ describe("unionFleet — per-host honesty + rollup math", () => {
     expect("topLine" in bRow).toBe(false);
     expect(fleet.rollup.hostCount).toBe(3);
     expect(fleet.rollup.unreachableCount).toBe(1);
-    expect(fleet.needsYou.provenance).toContain("2/3 hosts composing");
-    expect(fleet.needsYou.provenance).toContain("ABSENT, not zero");
+    expect(fleet.needsYou.provenance).toContain("2/3 台主机完成组合");
+    expect(fleet.needsYou.provenance).toContain("缺失，而不是零");
   });
 
-  it("header math is computed FROM the deduped rows and equals the HOSTS-band per-host sums", () => {
+  it("header 计算源自去重后的行，并等于 HOSTS-band 逐 host 求和", () => {
     const fleet = unionFleet(
       [
         hostInput(LOCAL_HOST_ID, {
@@ -240,18 +235,18 @@ describe("unionFleet — per-host honesty + rollup math", () => {
     const perHostExceptions = fleet.hosts.flatMap((h) => h.exceptionsByKind ?? []).reduce((n, k) => n + k.count, 0);
     expect(perHostNeedsYou).toBe(fleet.rollup.needsYouCount);
     expect(perHostExceptions).toBe(fleet.rollup.exceptionCount);
-    // seat/rig counts derive from the host's own agents band (BR-1 grammar).
+    // seat/rig 计数来自 host 自身 agents band（BR-1 grammar）。
     const localRow = fleet.hosts.find((h) => h.hostId === LOCAL_HOST_ID)!;
     expect(localRow.seatCount).toBe(2);
     expect(localRow.rigCount).toBe(2);
-    // topLine is worst-first and deterministic.
+    // topLine 按最差优先且确定。
     const aRow = fleet.hosts.find((h) => h.hostId === "vps-a")!;
     expect(aRow.topLine).toBe("● summary qi-a1");
   });
 });
 
-describe("fleet-compose purity pin — no clock, no random (arch/C5)", () => {
-  it("the fleet composer source contains no Date.now/new Date()/Math.random (it unions, never derives time state)", () => {
+describe("fleet-compose 纯度固定项——无时钟、无随机（arch/C5）", () => {
+  it("fleet composer 源码不含 Date.now/new Date()/Math.random（只做 union，不派生时间状态）", () => {
     const src = readFileSync(
       path.join(path.dirname(fileURLToPath(import.meta.url)), "../src/domain/review/fleet-compose.ts"),
       "utf-8",
@@ -263,7 +258,7 @@ describe("fleet-compose purity pin — no clock, no random (arch/C5)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// The fan-out shell (mirrors the shipped attention-aggregator discipline).
+// fan-out shell（镜像已发布 attention-aggregator 的纪律）。
 // ---------------------------------------------------------------------------
 
 const REGISTRY: HostRegistry = {
@@ -308,8 +303,8 @@ function fanoutDeps(overrides: Partial<FleetComposeDeps> = {}): FleetComposeDeps
   };
 }
 
-describe("composeFleet — the fan-out shell (D-1/D-7 + per-host honesty)", () => {
-  it("local joins IN-PROCESS (zero self-transport) and every registered host is fanned out to /api/review/rig", async () => {
+describe("composeFleet——fan-out shell（D-1/D-7 + 逐 host 真实性）", () => {
+  it("local 在进程内加入（零 self-transport），每个已注册 host 都扇出到 /api/review/rig", async () => {
     const urls: string[] = [];
     const fleet = await composeFleet(
       fanoutDeps({
@@ -321,7 +316,7 @@ describe("composeFleet — the fan-out shell (D-1/D-7 + per-host honesty)", () =
     );
     expect(urls.some((u) => u.includes("vps-a") && u.endsWith("/api/review/rig"))).toBe(true);
     expect(urls.some((u) => u.includes("vps-b") && u.endsWith("/api/review/rig"))).toBe(true);
-    // Local + both http hosts contributed; the ssh host is a status row only.
+    // Local 与两个 http host 都有贡献；ssh host 只形成 status 行。
     expect(fleet.needsYou.items.map((r) => r.fleetKey).sort()).toEqual(["local|qi-local-1", "vps-a|qi-a1", "vps-b|qi-b1"]);
     expect(fleet.hosts.map((h) => [h.hostId, h.status.status])).toEqual([
       [LOCAL_HOST_ID, "ok"],
@@ -329,11 +324,11 @@ describe("composeFleet — the fan-out shell (D-1/D-7 + per-host honesty)", () =
       ["vps-b", "ok"],
       ["ssh-1", "unsupported-transport"],
     ]);
-    // Every row from the v1 fan-out carries rig-root provenance.
+    // v1 fan-out 的每一行都携带 rig-root provenance。
     for (const r of fleet.needsYou.items) expect(r.seenFrom).toEqual(["rig"]);
   });
 
-  it("one unreachable host degrades to its structured status; the rest still compose (never all-or-nothing)", async () => {
+  it("一个不可达 host 降级为结构化 status，其余仍可组合（绝不全成或全败）", async () => {
     const fleet = await composeFleet(
       fanoutDeps({
         fetchImpl: (async (url: string | URL | Request) => {
@@ -349,7 +344,7 @@ describe("composeFleet — the fan-out shell (D-1/D-7 + per-host honesty)", () =
     expect(fleet.rollup.unreachableCount).toBe(2); // vps-a down + ssh-1 unsupported
   });
 
-  it("a 200 with a malformed composed payload degrades honestly (never silently-empty ok data)", async () => {
+  it("带格式错误组合 payload 的 200 响应真实降级（绝不静默生成空 ok 数据）", async () => {
     const fleet = await composeFleet(
       fanoutDeps({
         fetchImpl: (async (url: string | URL | Request) =>
@@ -360,10 +355,10 @@ describe("composeFleet — the fan-out shell (D-1/D-7 + per-host honesty)", () =
     );
     const aRow = fleet.hosts.find((h) => h.hostId === "vps-a")!;
     expect(aRow.status.status).toBe("unreachable");
-    expect(aRow.status.error).toContain("malformed");
+    expect(aRow.status.error).toContain("格式错误");
   });
 
-  it("HTTP 401/403 → auth-failed (the operator fix differs from unreachable)", async () => {
+  it("HTTP 401/403 产生 auth-failed（操作员修复方式不同于 unreachable）", async () => {
     const fleet = await composeFleet(
       fanoutDeps({
         fetchImpl: (async (url: string | URL | Request) =>
@@ -375,7 +370,7 @@ describe("composeFleet — the fan-out shell (D-1/D-7 + per-host honesty)", () =
     expect(fleet.hosts.find((h) => h.hostId === "vps-a")!.status.status).toBe("auth-failed");
   });
 
-  it("no registry file = a clean local-only fleet (single-host operator; registry never read)", async () => {
+  it("没有 registry 文件时得到干净的仅本地 fleet（单 host 操作员；不读取 registry）", async () => {
     const fleet = await composeFleet(
       fanoutDeps({
         registryExists: () => false,
@@ -389,7 +384,7 @@ describe("composeFleet — the fan-out shell (D-1/D-7 + per-host honesty)", () =
     expect("registryError" in fleet).toBe(false);
   });
 
-  it("a registry that EXISTS but fails to load is surfaced honestly (never a silently-local-only fleet)", async () => {
+  it("存在但加载失败的 registry 会被真实呈现（绝不静默变为仅本地 fleet）", async () => {
     const fleet = await composeFleet(
       fanoutDeps({
         loadRegistry: () => ({ ok: false, error: "failed to parse host registry YAML" }),
@@ -399,12 +394,12 @@ describe("composeFleet — the fan-out shell (D-1/D-7 + per-host honesty)", () =
     expect(fleet.hosts).toHaveLength(1);
   });
 
-  it("reserves response time inside the ordinary five-second caller deadline", () => {
+  it("在普通五秒调用方 deadline 内预留响应时间", () => {
     expect(FLEET_READ_TIMEOUT_MS).toBe(5_000 - 1_000);
   });
 });
 
-describe("composeFleet — one elapsed budget, including local work and worker waves", () => {
+describe("composeFleet——一个 elapsed budget，包含本地工作和 worker wave", () => {
   afterEach(() => vi.useRealTimers());
 
   function registry(count: number): HostRegistry {
@@ -447,10 +442,10 @@ describe("composeFleet — one elapsed budget, including local work and worker w
     expect(fleet.rollup).toMatchObject({ needsYouCount: 1, hostCount: 10, unreachableCount: 9 });
     for (const h of fleet.hosts.slice(1)) {
       expect(h.status.status).toBe("unreachable");
-      expect(h.status.error).toContain("budget exhausted");
+      expect(h.status.error).toContain("预算已耗尽");
       expect(h).not.toHaveProperty("seatCount");
     }
-    for (const h of fleet.hosts.slice(5)) expect(h.status.error).toContain("not attempted");
+    for (const h of fleet.hosts.slice(5)) expect(h.status.error).toContain("未尝试");
   });
 
   it.each([100, 150])("local work consuming %ims leaves no further remote wait or request", async (localMs) => {
@@ -461,10 +456,10 @@ describe("composeFleet — one elapsed budget, including local work and worker w
     expect(performance.now() - started).toBe(localMs); // no claim of preempting synchronous work
     expect(starts).toEqual([]);
     expect(fleet.needsYou.items[0]!.fleetKey).toBe("local|qi-kept-local");
-    expect(fleet.hosts.slice(1).every(h => h.status.error?.includes("not attempted"))).toBe(true);
+    expect(fleet.hosts.slice(1).every(h => h.status.error?.includes("未尝试"))).toBe(true);
   });
 
-  it("keeps timely results from multiple waves and their original host order", async () => {
+  it("保留多个 wave 的及时结果及其原始 host 顺序", async () => {
     const { deps } = timedDeps(10);
     deps.fetchImpl = ((url) => new Promise<Response>(resolve => {
       setTimeout(() => resolve(composedRigResponse([item({ identity: new URL(String(url)).hostname })])), 20);
@@ -480,7 +475,7 @@ describe("composeFleet — one elapsed budget, including local work and worker w
     expect(fleet.rollup).toMatchObject({ needsYouCount: 10, hostCount: 10, unreachableCount: 0 });
   });
 
-  it("keeps a completed remote alongside local data when its sibling exhausts the budget", async () => {
+  it("同级项耗尽 budget 时，仍保留已完成 remote 与本地数据", async () => {
     const { deps, aborts } = timedDeps(0, 2);
     const stalled = deps.fetchImpl!;
     deps.fetchImpl = ((url, init) => String(url).includes("h0.")
@@ -494,7 +489,7 @@ describe("composeFleet — one elapsed budget, including local work and worker w
     expect(aborts).toEqual([100]);
   });
 
-  it("a body stall shares the remaining budget, aborts its transport, and names received headers", async () => {
+  it("body 阻塞共享剩余 budget，中止其 transport，并点明已接收 header", async () => {
     const { deps, started } = timedDeps(60, 1);
     let signal: AbortSignal;
     deps.fetchImpl = (async (_url, init) => {
@@ -507,7 +502,7 @@ describe("composeFleet — one elapsed budget, including local work and worker w
     expect(performance.now() - started).toBe(100);
     expect(signal!.aborted).toBe(true);
     expect(fleet.hosts[1]!.status).toMatchObject({ status: "unreachable" });
-    expect(fleet.hosts[1]!.status.error).toMatch(/budget exhausted.*headers.*HTTP 200.*body/);
+    expect(fleet.hosts[1]!.status.error).toMatch(/预算已耗尽.*response header.*HTTP 200.*body/);
     expect(fleet.needsYou.items[0]!.fleetKey).toBe("local|qi-kept-local");
   });
 });

@@ -1,4 +1,4 @@
-// PL-005 Phase B: hook to fetch Mission Control audit history.
+// PL-005 Phase B：拉取任务控制审计历史的 hook。
 import { useQuery } from "@tanstack/react-query";
 
 export interface AuditEntry {

@@ -2,7 +2,7 @@
 // tests (Atom-7 renamed the retired `context-pack` grammar to `rig context`).
 //
 // Stands up a small in-memory daemon mock for the /api/context-packs/*
-// surface and exercises each subcommand against it.
+// surface 并对其练习每个子命令。
 
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import http from "node:http";
@@ -203,7 +203,7 @@ describe("rig context CLI (PL-014)", () => {
           ]);
         });
         expect(rejected.exitCode, JSON.stringify(seat)).toBe(1);
-        expect(rejected.errLogs.join("\n"), JSON.stringify(seat)).toMatch(/invalid seat/i);
+        expect(rejected.errLogs.join("\n"), JSON.stringify(seat)).toMatch(/非法的 seat/);
       }
 
       const omitted = await captureLogs(async () => {
@@ -232,7 +232,7 @@ files:
   - path: ../secret.md
     role: notes
 `,
-      "must be a relative path inside the pack",
+      "必须是 pack 内的相对路径",
     ],
     [
       "absolute path",
@@ -243,7 +243,7 @@ files:
   - path: /etc/passwd
     role: notes
 `,
-      "must be a relative path inside the pack",
+      "必须是 pack 内的相对路径",
     ],
     [
       "leading backslash",
@@ -254,7 +254,7 @@ files:
   - path: '\\evil.md'
     role: notes
 `,
-      "must be a relative path inside the pack",
+      "必须是 pack 内的相对路径",
     ],
     [
       "unknown suffix",
@@ -265,7 +265,7 @@ files:
   - path: secret.bin
     role: notes
 `,
-      "has an unsupported suffix",
+      "后缀不受支持",
     ],
     [
       "missing name",
@@ -274,7 +274,7 @@ files:
   - path: notes.md
     role: notes
 `,
-      "missing required field 'name'",
+      "缺少必填字段 'name'",
     ],
     [
       "missing version",
@@ -283,7 +283,7 @@ files:
   - path: notes.md
     role: notes
 `,
-      "missing required field 'version'",
+      "缺少必填字段 'version'",
     ],
     [
       "missing files",
@@ -291,7 +291,7 @@ files:
 version: 1.0.0
 taxonomy: world
 `,
-      "must declare 'files: [...]'",
+      "必须声明 'files: [...]'",
     ],
     [
       "missing path",
@@ -301,7 +301,7 @@ taxonomy: world
 files:
   - role: notes
 `,
-      "missing 'path'",
+      "缺少 'path'",
     ],
     [
       "missing role",
@@ -311,7 +311,7 @@ taxonomy: world
 files:
   - path: notes.md
 `,
-      "missing 'role'",
+      "缺少 'role'",
     ],
     [
       "missing taxonomy (OPR.0.5.6.10 — teach at add time)",
@@ -321,7 +321,7 @@ files:
   - path: notes.md
     role: notes
 `,
-      "missing required field 'taxonomy'",
+      "缺少必填字段 'taxonomy'",
     ],
     [
       "non-enum taxonomy (OPR.0.5.6.10)",
@@ -332,7 +332,7 @@ files:
   - path: notes.md
     role: notes
 `,
-      "invalid taxonomy",
+      "taxonomy 非法",
     ],
   ])("rejects invalid context add manifest: %s", async (_name, manifest, expectedError) => {
     const dir = writePack(manifest);
@@ -353,7 +353,7 @@ files:
     });
     expect(exitCode).toBeUndefined();
     expect(logs.join("\n")).toContain("smoke");
-    expect(logs.join("\n")).toContain("1 files");
+    expect(logs.join("\n")).toContain("1 文件");
   });
 
   it("list --json emits JSON", async () => {
@@ -368,7 +368,7 @@ files:
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "context", "show", "smoke"]);
     });
-    expect(logs.join("\n")).toContain("Name:        smoke");
+    expect(logs.join("\n")).toContain("名称：      smoke");
     expect(logs.join("\n")).toContain("Smoke test pack");
   });
 
@@ -377,7 +377,7 @@ files:
       await makeCmd().parseAsync(["node", "rig", "context", "show", "packs/smoke"]);
     });
     expect(shown.exitCode).toBeUndefined();
-    expect(shown.logs.join("\n")).toContain("Name:        smoke");
+    expect(shown.logs.join("\n")).toContain("名称：      smoke");
     const previewed = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "context", "preview", "packs/smoke"]);
     });
@@ -390,8 +390,8 @@ files:
       await makeCmd().parseAsync(["node", "rig", "context", "show", "context-pack:smoke:1"]);
     });
     expect(exitCode).toBe(1);
-    expect(errLogs.join("\n")).toMatch(/colon-id addressing.*removed/);
-    expect(errLogs.join("\n")).toMatch(/path-like ref/);
+    expect(errLogs.join("\n")).toMatch(/冒号 id 寻址.*已移除/);
+    expect(errLogs.join("\n")).toMatch(/路径式 ref/);
   });
 
   it("show fails with helpful error on unknown name", async () => {
@@ -399,7 +399,7 @@ files:
       await makeCmd().parseAsync(["node", "rig", "context", "show", "missing-pack"]);
     });
     expect(exitCode).toBe(1);
-    expect(errLogs.join("\n")).toContain("not found in library");
+    expect(errLogs.join("\n")).toContain("在库中未找到");
   });
 
   it("preview prints the assembled bundle text", async () => {
@@ -410,8 +410,8 @@ files:
     expect(logs.join("\n")).toContain("Smoke body");
   });
 
-  // OPR.0.5.3.7 R1 — the pull verb: `get` serves the assembled bundle for an agent, over the same
-  // assembler path as preview, but WITHOUT the operator preview framing.
+  // OPR.0.5.3.7 R1——pull 动词：`get` 经与 preview 相同的
+  // assembler 路径为 agent 提供组装好的 bundle，但不带操作员 preview 框架。
   it("get serves the assembled bundle bytes for agent pull (no operator preview framing)", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "context", "get", "smoke"]);
@@ -444,7 +444,7 @@ files:
       await makeCmd().parseAsync(["node", "rig", "context", "sync"]);
     });
     expect(exitCode).toBeUndefined();
-    expect(logs.join("\n")).toContain("Indexed 1 context pack");
+    expect(logs.join("\n")).toContain("已索引 1 个 context pack");
   });
 
   it("rm removes a pack by its path-like ref and reports success", async () => {
@@ -454,7 +454,7 @@ files:
     });
     expect(exitCode).toBeUndefined();
     expect(deleteLog).toEqual(["packs/smoke"]);
-    expect(logs.join("\n")).toMatch(/Removed .*packs\/smoke/);
+    expect(logs.join("\n")).toMatch(/已移除.*packs\/smoke/);
   });
 
   it("rm --json emits the structured removal result", async () => {
@@ -538,8 +538,8 @@ files:
   });
 
   it("add <url>: follows a redirected manifest and resolves files from the FINAL url (r2 MEDIUM-1)", async () => {
-    // /redirect-manifest -> 302 -> /pack/manifest.yaml; SKILL.md must resolve
-    // against the FINAL manifest dir (/pack/), not the caller's original root.
+    // /redirect-manifest -> 302 -> /pack/manifest.yaml；SKILL.md 必须解析
+    // 到最终 manifest 目录（/pack/），而非调用方原始 root。
     const pack = await startPackServer(
       { "pack/manifest.yaml": R4_MANIFEST, "pack/SKILL.md": "# hi\nredirected body\n" },
       { "redirect-manifest": "/pack/manifest.yaml" },
@@ -568,7 +568,7 @@ files:
           await makeCmd().parseAsync(["node", "rig", "context", "add", `${pack.baseUrl}manifest.yaml`]);
         });
         expect(exitCode).toBe(1);
-        expect(errLogs.join("\n")).toMatch(/outside the pack directory/i);
+        expect(errLogs.join("\n")).toMatch(/pack 目录.*之外/);
         expect(readdirSync(root)).toEqual([]); // no partial pack AND no leaked staging temp
       });
     } finally {
@@ -582,7 +582,7 @@ files:
         await makeCmd().parseAsync(["node", "rig", "context", "add", "http://127.0.0.1:1/manifest.yaml"]);
       });
       expect(exitCode).toBe(1);
-      expect(errLogs.join("\n")).toMatch(/could not (reach|fetch) manifest/i);
+      expect(errLogs.join("\n")).toMatch(/无法连到 manifest/);
       expect(readdirSync(root)).toEqual([]); // no partial pack AND no leaked staging temp
     });
   });
@@ -595,7 +595,7 @@ files:
           await makeCmd().parseAsync(["node", "rig", "context", "add", `${pack.baseUrl}manifest.yaml`]);
         });
         expect(exitCode).toBe(1);
-        expect(errLogs.join("\n")).toContain("must be a relative path inside the pack");
+        expect(errLogs.join("\n")).toContain("必须是 pack 内的相对路径");
         expect(readdirSync(root)).toEqual([]); // no partial pack AND no leaked staging temp
       });
     } finally {
@@ -612,7 +612,7 @@ files:
           await makeCmd().parseAsync(["node", "rig", "context", "add", `${pack.baseUrl}manifest.yaml`]);
         });
         expect(exitCode).toBe(1);
-        expect(errLogs.join("\n")).toMatch(/could not fetch file 'SKILL\.md'/i);
+        expect(errLogs.join("\n")).toMatch(/无法获取 文件 'SKILL\.md'/);
         expect(existsSync(join(root, "url-pack"))).toBe(false);
         expect(readdirSync(root)).toEqual([]); // no partial pack AND no leaked staging temp
       });

@@ -1,7 +1,7 @@
-// S5b final-fix round 2 (r2 artifact 8d9ec788) — every CLI consumer of the
-// direct instantiate/materialize routes must render the locked rig_name_running
-// teaching refusal VERBATIM, not wrap it in check-your-spec/validate noise.
-// The stub serves the daemon's post-fix 409 outcome shape.
+// S5b final-fix 第 2 轮（r2 artifact 8d9ec788）——直接 instantiate/materialize
+// 路由的每个 CLI 消费者必须逐字渲染锁定 rig_name_running 教学拒绝，
+// 而非包在 check-your-spec/validate 噪声中。stub 服务
+// daemon 修复后 409 结果形状。
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import * as http from "node:http";
 import * as fs from "node:fs";

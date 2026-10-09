@@ -10,19 +10,18 @@ import {
 import { parseWatchdogSpec } from "../domain/watchdog-policy-engine.js";
 
 /**
- * Watchdog HTTP routes (PL-004 Phase C). Backs `rig watchdog` CLI verb.
+ * watchdog HTTP 路由（PL-004 Phase C）。支撑 `zrig watchdog` CLI 动词。
  *
- * Per Phase A R1 SSE route-order lesson: SSE/static routes mounted
- * BEFORE the bare-param /:job_id catchall so the literal `/sse` and
- * literal action paths win over the param route.
+ * 按 Phase A R1 SSE 路由顺序教训：SSE/静态路由挂载在裸参 /:job_id 通配之前，
+ * 这样字面量 `/sse` 与字面量动作路径优先于参数路由。
  *
- * Endpoints:
- *   POST /register          register a new watchdog job
- *   GET  /list              list all watchdog jobs (active + stopped + terminal)
- *   GET  /sse               SSE stream of watchdog.* events
- *   GET  /:job_id           show one job
- *   GET  /:job_id/status    job + recent history (compact summary)
- *   POST /:job_id/stop      operator stop
+ * 端点：
+ *   POST /register          注册新 watchdog job
+ *   GET  /list              列出所有 watchdog job（active + stopped + terminal）
+ *   GET  /sse               watchdog.* 事件的 SSE 流
+ *   GET  /:job_id           展示一个 job
+ *   GET  /:job_id/status    job + 近期历史（紧凑摘要）
+ *   POST /:job_id/stop      操作员停止
  */
 export function watchdogRoutes(): Hono {
   const app = new Hono();
@@ -60,7 +59,7 @@ export function watchdogRoutes(): Hono {
         status as 200,
       );
     }
-    const message = err instanceof Error ? err.message : "internal error";
+    const message = err instanceof Error ? err.message : "内部错误";
     return c.json({ error: "internal_error", message }, 500);
   }
 
@@ -79,13 +78,13 @@ export function watchdogRoutes(): Hono {
         requiresJobId?: string;
       }>()
       .catch(() => ({} as never));
-    if (!body.policy) return c.json({ error: "policy is required" }, 400);
-    if (!body.specYaml) return c.json({ error: "specYaml is required" }, 400);
-    if (!body.targetSession) return c.json({ error: "targetSession is required" }, 400);
+    if (!body.policy) return c.json({ error: "policy 为必填项" }, 400);
+    if (!body.specYaml) return c.json({ error: "specYaml 为必填项" }, 400);
+    if (!body.targetSession) return c.json({ error: "targetSession 为必填项" }, 400);
     if (typeof body.intervalSeconds !== "number") {
-      return c.json({ error: "intervalSeconds is required" }, 400);
+      return c.json({ error: "intervalSeconds 为必填项" }, 400);
     }
-    if (!body.registeredBySession) return c.json({ error: "registeredBySession is required" }, 400);
+    if (!body.registeredBySession) return c.json({ error: "registeredBySession 为必填项" }, 400);
     try {
       const jobsRepo = getJobsRepo(c);
       const context = parseWatchdogSpec(body.specYaml).context;
@@ -104,11 +103,11 @@ export function watchdogRoutes(): Hono {
         : null;
       if (isContextUsageThreshold) {
         try {
-          if (!watchedFilePath || !statSync(watchedFilePath).isFile()) throw new Error("not a file");
+          if (!watchedFilePath || !statSync(watchedFilePath).isFile()) throw new Error("不是文件");
         } catch {
           throw new WatchdogJobsError(
             "watched_file_unresolved",
-            `no readable transcript file could be resolved for ${body.targetSession}`,
+            `无法为 ${body.targetSession} 解析出可读的 transcript 文件`,
             { targetSession: body.targetSession, watchedFilePath },
           );
         }
@@ -142,15 +141,15 @@ export function watchdogRoutes(): Hono {
     }
   });
 
-  // GET /list — list all watchdog jobs.
-  // Literal path before /:job_id (per Phase A R1 SSE route-order lesson).
+  // GET /list——列出所有 watchdog job。
+  // 字面量路径在 /:job_id 之前（按 Phase A R1 SSE 路由顺序教训）。
   app.get("/list", (c) => {
     const jobs = getJobsRepo(c).listAll();
     return c.json(jobs);
   });
 
-  // SSE for watchdog.* events. MUST precede /:job_id so the literal
-  // path wins. Per Phase A R1 SSE route-order lesson.
+  // watchdog.* 事件的 SSE。必须在 /:job_id 之前，使字面量路径优先。
+  // 按 Phase A R1 SSE 路由顺序教训。
   const sseHandler = (c: Parameters<typeof streamSSE>[0]) => {
     const eventBus = getEventBus(c);
     return streamSSE(c, async (stream) => {

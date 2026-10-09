@@ -1,18 +1,18 @@
-// REGISTRY I5 — context composition with the C3 detector states: a detector flip changes
-// availability IDENTICALLY on every surface (one rule, three projections).
+// REGISTRY I5——context 组合与 C3 detector 状态：detector 翻转在每个表面
+// 一致地改变可用性（一规则，三投影）。
 import { describe, it, expect } from "vitest";
 import { COMMAND_REGISTRY, serializeCommands, evaluateAvailability, currentCommandContext } from "../src/commands/registry.js";
 import { filterPalette } from "../src/commands/palette.js";
 
-describe("detector-state → command context (I5)", () => {
-  it("maps C3 states: up/absent=standard, down=crash-cart, unverified=unverified", () => {
+describe("detector-state → command 上下文 (I5)", () => {
+  it("映射 C3 状态：up/absent=standard，down=crash-cart，unverified=unverified", () => {
     expect(currentCommandContext(null)).toBe("standard");
     expect(currentCommandContext("up")).toBe("standard");
     expect(currentCommandContext("down")).toBe("crash-cart");
     expect(currentCommandContext("unverified")).toBe("unverified");
   });
 
-  it("daemon-down: standard commands go unavailable-with-reason on palette AND socket identically; help stays available", () => {
+  it("daemon-down：standard 命令在 palette 与 socket 上一致地变为带原因不可用；help 保持可用", () => {
     const ctx = currentCommandContext("down");
     const socketRows = serializeCommands(ctx);
     const paletteRows = filterPalette("", COMMAND_REGISTRY, ctx);

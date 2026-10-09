@@ -1,11 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { buildRestorePacket } from "../src/domain/seat-handover-service.js";
 
-// The successor boot packet carries a bounded LABELED-FROM-RECORD recap of the last few predecessor
-// exchanges (from the provider JSONL) + a receipt line naming the predecessor record path, labeled
-// honest-degraded. The recap is the permanent claude-runtime leg of scrollback preservation
-// (alternate-screen seats keep no native scrollback); it is never called "scrollback" — the label
-// must make replay unmistakable.
+// 后继启动数据包携带前任最后几轮交互的有界“来自记录”标签回顾（源自 provider JSONL），
+// 加上一行标明前任记录路径的回执，并标记为如实降级。该回顾是 claude 运行时保留回滚内容的
+// 永久支路（备用屏幕中的 seat 不保留原生回滚）；绝不称其为 "scrollback"——标签必须明确
+// 表明这是重放。
 
 const base = {
   seatRef: "dev.driver@my-rig",
@@ -15,97 +14,95 @@ const base = {
   capturedContext: "",
 };
 
-describe("buildRestorePacket — recap + receipt (labeled-from-record)", () => {
-  it("renders the bounded recap from the predecessor exchanges, labeled replayed-from-record (not scrollback)", () => {
+describe("buildRestorePacket——回顾 + 回执（标明来自记录）", () => {
+  it("根据前任交互渲染有界回顾，并标为从记录重放（而非 scrollback）", () => {
     const packet = buildRestorePacket({
       ...base,
       recap: [
-        { role: "user", content: "finish the atom" },
-        { role: "assistant", content: "atom finished; handing over" },
+        { role: "user", content: "完成这个原子" },
+        { role: "assistant", content: "原子已完成，正在移交" },
       ],
       recordPath: "/home/.claude/projects/x/abc.jsonl",
     });
-    expect(packet).toContain("Predecessor recap (replayed from record, not the live terminal)");
+    expect(packet).toContain("前任回顾（从记录重放，并非实时终端）");
     expect(packet).not.toContain("scrollback");
-    expect(packet).toContain("user: finish the atom");
-    expect(packet).toContain("assistant: atom finished; handing over");
+    expect(packet).toContain("user: 完成这个原子");
+    expect(packet).toContain("assistant: 原子已完成，正在移交");
   });
 
-  it("renders the receipt line naming the predecessor record path, labeled honest-degraded (durable, grep-able, not human-scrollable)", () => {
+  it("渲染标明前任记录路径的回执行，并标记为如实降级（持久、可 grep、不便人工滚动查看）", () => {
     const packet = buildRestorePacket({ ...base, recap: [{ role: "user", content: "x" }], recordPath: "/p/abc.jsonl" });
-    expect(packet).toContain("Predecessor record: /p/abc.jsonl");
-    expect(packet.toLowerCase()).toContain("honest-degraded");
-    expect(packet).toContain("not human-scrollable");
+    expect(packet).toContain("前任记录：/p/abc.jsonl");
+    expect(packet).toContain("如实降级");
+    expect(packet).toContain("不便人工滚动查看");
   });
 
-  it("omits the recap/receipt sections honestly when no record is available (no fabrication)", () => {
+  it("没有可用记录时如实省略回顾/回执 section（不伪造）", () => {
     const packet = buildRestorePacket({ ...base, recap: [], recordPath: null });
-    expect(packet).not.toContain("Predecessor recap (replayed from record");
-    expect(packet).not.toContain("Predecessor record:");
-    // the base packet (seat/reason/predecessor/handover) still renders
-    expect(packet).toContain("Seat: dev.driver@my-rig");
+    expect(packet).not.toContain("前任回顾（从记录重放");
+    expect(packet).not.toContain("前任记录：");
+    // 基础数据包（seat/reason/predecessor/handover）仍会渲染
+    expect(packet).toContain("Seat：dev.driver@my-rig");
   });
 
-  it("B16: an unavailable recap renders its NAMED reason as a labeled line (never a silent omission)", () => {
+  it("B16：不可用回顾将其具名原因渲染为带标签行（绝不静默省略）", () => {
     const packet = buildRestorePacket({
       ...base,
       recap: [],
       recordPath: null,
-      recapUnavailableReason: "the name-keyed context sidecar is missing or carries no transcript_path",
+      recapUnavailableReason: "以名称为键的上下文 sidecar 缺失或未携带 transcript_path",
     });
-    expect(packet).toContain("--- Predecessor recap unavailable: the name-keyed context sidecar is missing or carries no transcript_path ---");
-    expect(packet).not.toContain("scrollback"); // the fence holds on the unavailable line too
+    expect(packet).toContain("--- 前任回顾不可用：以名称为键的上下文 sidecar 缺失或未携带 transcript_path ---");
+    expect(packet).not.toContain("scrollback"); // 不可用行同样遵守边界
   });
 
-  it("B16: a RESOLVED recap suppresses the unavailable line even if a reason was passed", () => {
+  it("B16：回顾已解析时，即使传入原因也会抑制不可用行", () => {
     const packet = buildRestorePacket({
       ...base,
       recap: [{ role: "user", content: "x" }],
       recordPath: "/p/abc.jsonl",
-      recapUnavailableReason: "should not render",
+      recapUnavailableReason: "不应渲染",
     });
-    expect(packet).toContain("Predecessor recap (replayed from record");
-    expect(packet).not.toContain("recap unavailable");
+    expect(packet).toContain("前任回顾（从记录重放");
+    expect(packet).not.toContain("前任回顾不可用");
   });
 
-  it("stays backward-compatible when recap/recordPath are omitted entirely", () => {
+  it("完全省略 recap/recordPath 时保持向后兼容", () => {
     const packet = buildRestorePacket(base);
-    expect(packet).toContain("Seat: dev.driver@my-rig");
-    expect(packet).not.toContain("Predecessor recap (replayed from record");
+    expect(packet).toContain("Seat：dev.driver@my-rig");
+    expect(packet).not.toContain("前任回顾（从记录重放");
   });
 });
 
-// OPR.0.5.3.5 recap-write atom (mini-req 7 / Q2 boundary requirement) — the
-// AUTHORED seat recap joins the packet as a THIRD leg beside the from-record
-// recap: the successor is pointed at the ADDRESS (seat:RECAP.md — no-copy
-// composition, never inlined bytes), with the chain depth named; absence is a
-// labeled line per the B16 doctrine, never a silent omission.
-describe("buildRestorePacket — the AUTHORED recap leg (seat-homed, by address)", () => {
-  it("renders the authored recap's ADDRESS and chain depth — pointer, never inlined bytes", () => {
+// OPR.0.5.3.5 recap-write 原子（微需求 7 / Q2 边界需求）——人工编写的 seat 回顾作为
+//“来自记录”回顾旁的第三支路加入数据包：后继会被指向该地址（seat:RECAP.md——无复制组合，
+// 绝不内联字节），并注明链深度；根据 B16 原则，缺失显示为带标签行，绝不静默省略。
+describe("buildRestorePacket——人工编写的回顾支路（位于 seat，按地址引用）", () => {
+  it("渲染人工回顾的地址与链深度——使用指针，绝不内联字节", () => {
     const packet = buildRestorePacket({
       ...base,
       authoredRecap: { address: "seat:RECAP.md", chainLength: 2 },
     });
-    expect(packet).toContain("Authored seat recap");
+    expect(packet).toContain("人工编写的 seat 回顾");
     expect(packet).toContain("seat:RECAP.md");
-    expect(packet).toMatch(/2 superseded/);
-    // Tells the successor HOW to pull it — the handover PROFILE compose is the
-    // verb that resolves seat: refs (get is library-only); pin fixed pre-green
-    // (my RED asserted get, which does not accept tree refs — disclosed).
-    expect(packet).toContain("rig context profile");
+    expect(packet).toMatch(/保留了 2 个已被替代的前任/);
+    // 告诉后继如何拉取——handover PROFILE compose 是解析 seat: 引用的动词
+    //（get 仅用于 library）；在 green 前修正固定点（原 RED 断言 get，
+    // 但它不接受 tree 引用——已披露）。
+    expect(packet).toContain("zrig context profile");
   });
 
-  it("absence is a LABELED line naming the reason, never silence", () => {
+  it("缺失会以带标签行说明原因，绝不静默处理", () => {
     const packet = buildRestorePacket({
       ...base,
-      authoredRecapAbsentReason: "no RECAP.md on the seat tree (predecessor never wrote one)",
+      authoredRecapAbsentReason: "seat 树中没有 RECAP.md（前任从未编写）",
     });
-    expect(packet).toContain("Authored seat recap");
-    expect(packet).toContain("predecessor never wrote one");
+    expect(packet).toContain("人工编写的 seat 回顾");
+    expect(packet).toContain("前任从未编写");
   });
 
-  it("stays backward-compatible when the authored leg is omitted entirely", () => {
+  it("完全省略人工编写支路时保持向后兼容", () => {
     const packet = buildRestorePacket(base);
-    expect(packet).not.toContain("Authored seat recap");
+    expect(packet).not.toContain("人工编写的 seat 回顾");
   });
 });

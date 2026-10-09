@@ -21,14 +21,14 @@ function database(upgrade = false): Database.Database {
   return db;
 }
 function compose(db: Database.Database) {
-  // Rig review uses queue/session projections, never the slice indexer.
+  // 工作组 review 使用 queue/session projection，不使用 slice indexer。
   return new ReviewGatherer({ db, indexer: null!, now: () => NOW }).composeRig();
 }
 function seed(db: Database.Database) {
   const insert = db.prepare(`INSERT INTO queue_items
     (qitem_id, ts_created, ts_updated, source_session, destination_session, state, tags, body, summary, blocked_on)
     VALUES (?, ?, ?, 'source@rig', ?, ?, ?, 'retained body', ?, ?)`);
-  // Reverse IDs and tied timestamps exercise the existing first-row tie behavior.
+  // 倒序 ID 与相同 timestamp 用于验证既有的首行平局行为。
   for (const [i, state] of ["pending", "in-progress", "claimed", "blocked", "handed-off", "done", "canceled", "failed", "denied"].entries()) {
     for (const id of ["z", "a"]) insert.run(`${state}-${id}`, TODAY, NOW, `${state}@rig`, state,
       JSON.stringify(["slice:test", "mission:release-test"]), id === "z" ? null : `${state} second`, state === "blocked" ? "external:test" : null);
@@ -68,8 +68,8 @@ function expectIndexed(db: Database.Database) {
   expect(JSON.stringify(p.settled)).not.toContain("TEMP B-TREE");
 }
 
-describe("083 review read access paths", () => {
-  it("fresh install registers just the two indexes and reapplying migrations is inert", () => {
+describe("083 review 读取访问路径", () => {
+  it("全新安装只注册两个 index，重复应用 migration 不产生变化", () => {
     const db = database(); seed(db);
     expect(BEFORE).toHaveLength(82);
     expect(db.prepare("SELECT name FROM schema_migrations ORDER BY name DESC LIMIT 1").get()).toEqual({ name: reviewReadIndexesSchema.name });
@@ -79,7 +79,7 @@ describe("083 review read access paths", () => {
     expect({ output: compose(db), rows: queueBytes(db), schema: db.prepare("SELECT * FROM schema_migrations ORDER BY name").all() }).toEqual(before);
   });
 
-  it("82 upgrade preserves full composition, nulls, handed-off membership and equal-timestamp ordering", () => {
+  it("从 82 升级保留完整 composition、null、handed-off membership 与同时间戳顺序", () => {
     const db = database(true); seed(db);
     const before = compose(db), rows = queueBytes(db);
     const indexNames = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all() as { name: string }[]).map(row => row.name));
@@ -96,7 +96,7 @@ describe("083 review read access paths", () => {
     expect(compose(db)).toEqual(before);
   });
 
-  it("queue create, claim, update and transactional handoff maintain the indexed reads", async () => {
+  it("queue create、claim、update 与 transactional handoff 保持 indexed read", async () => {
     const db = database();
     const repo = new QueueRepository(db, new EventBus(db)); repo.attachOutbox(new OutboxHandler(db));
     const created = await repo.create({ sourceSession: "source@rig", destinationSession: "owner@rig", body: "work", summary: "first", tags: ["slice:test"], nudge: false });

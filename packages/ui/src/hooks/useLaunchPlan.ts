@@ -1,8 +1,7 @@
-// OPR.0.4.3.22 — fetch the READ-ONLY per-seat launch plan
-// (POST /api/rigs/:id/launch-plan). The launch/recovery modal fetches this
-// BEFORE any mutation (plan-before-action, AC-3). The endpoint is read-only by
-// construction (mutated:false) — it never restores or fresh-primes. Passing
-// freshLogicalIds forecasts the fresh-primed plan for an explicit fresh choice.
+// OPR.0.4.3.22——获取只读的逐席位启动计划（POST /api/rigs/:id/launch-plan）。
+// 启动/恢复弹窗会在任何变更前获取它（先计划后执行，AC-3）。此端点在结构上只读
+//（mutated:false），绝不执行恢复或全新预热。传入 freshLogicalIds 可预测显式选择
+// 全新启动时的预热计划。
 
 import { useMutation } from "@tanstack/react-query";
 import type { SeatTokenState, SeatIntendedAction } from "./useRigStatus.js";
@@ -37,14 +36,13 @@ async function fetchLaunchPlan(rigId: string, freshLogicalIds?: string[]): Promi
   });
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error ?? `Launch plan failed (HTTP ${res.status})`);
+    throw new Error(data.error ?? `获取启动计划失败（HTTP ${res.status}）`);
   }
   return res.json();
 }
 
-/** Fetch the read-only launch plan on demand (e.g. when the modal opens or the
- *  operator toggles the policy). Mutation shape so it's imperative, not a
- *  background poll — but it NEVER mutates the rig (the daemon route is read-only). */
+/** 按需获取只读启动计划，例如弹窗打开或操作员切换策略时。采用 mutation 形态以便命令式
+ *  调用，而非后台轮询；但它绝不改变工作组（后台服务路由只读）。 */
 export function useLaunchPlan(rigId: string) {
   return useMutation({
     mutationFn: (freshLogicalIds?: string[]) => fetchLaunchPlan(rigId, freshLogicalIds),

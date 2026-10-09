@@ -7,7 +7,7 @@ function setupDb(): Database.Database {
   return createFullTestDb();
 }
 
-describe("RigRepository", () => {
+describe("RigRepository 装备仓库", () => {
   let db: Database.Database;
   let repo: RigRepository;
 
@@ -20,7 +20,7 @@ describe("RigRepository", () => {
     db.close();
   });
 
-  it("createRig persists and returns typed Rig with id", () => {
+  it("createRig 持久化并返回带 ID 的类型化 Rig", () => {
     const rig = repo.createRig("test-rig");
     expect(rig.id).toBeDefined();
     expect(typeof rig.id).toBe("string");
@@ -29,7 +29,7 @@ describe("RigRepository", () => {
     expect(rig.createdAt).toBeDefined();
   });
 
-  it("addNode persists with rig FK, returns typed Node", () => {
+  it("addNode 使用装备外键持久化并返回类型化 Node", () => {
     const rig = repo.createRig("test-rig");
     const node = repo.addNode(rig.id, "orchestrator", {
       role: "orchestrator",
@@ -44,17 +44,17 @@ describe("RigRepository", () => {
     expect(node.model).toBe("opus");
   });
 
-  it("addNode to nonexistent rig throws", () => {
+  it("向不存在的装备 addNode 时抛错", () => {
     expect(() => repo.addNode("nonexistent", "worker")).toThrow();
   });
 
-  it("addNode with duplicate logical_id in same rig throws", () => {
+  it("在同一装备中以重复 logical_id 调用 addNode 时抛错", () => {
     const rig = repo.createRig("test-rig");
     repo.addNode(rig.id, "worker");
     expect(() => repo.addNode(rig.id, "worker")).toThrow();
   });
 
-  it("addEdge validates both nodes exist and belong to same rig", () => {
+  it("addEdge 验证两个节点均存在且属于同一装备", () => {
     const rig = repo.createRig("test-rig");
     const n1 = repo.addNode(rig.id, "orchestrator");
     const n2 = repo.addNode(rig.id, "worker");
@@ -65,23 +65,23 @@ describe("RigRepository", () => {
     expect(edge.kind).toBe("delegates_to");
   });
 
-  it("addEdge cross-rig rejected", () => {
+  it("拒绝 addEdge 跨装备连接", () => {
     const rig1 = repo.createRig("rig-one");
     const rig2 = repo.createRig("rig-two");
     const n1 = repo.addNode(rig1.id, "worker-a");
     const n2 = repo.addNode(rig2.id, "worker-b");
     expect(() =>
       repo.addEdge(rig1.id, n1.id, n2.id, "delegates_to")
-    ).toThrow(/same rig/);
+    ).toThrow(/同一个 rig/);
   });
 
-  it("getRig returns full graph with nodes, edges, and bindings", () => {
+  it("getRig 返回包含节点、边与绑定的完整图", () => {
     const rig = repo.createRig("test-rig");
     const n1 = repo.addNode(rig.id, "orchestrator", { role: "orchestrator" });
     const n2 = repo.addNode(rig.id, "worker", { role: "worker" });
     repo.addEdge(rig.id, n1.id, n2.id, "delegates_to");
 
-    // Add a binding to n1 only
+    // 仅向 n1 添加绑定
     db.prepare(
       "INSERT INTO bindings (id, node_id, tmux_session) VALUES (?, ?, ?)"
     ).run("bind-1", n1.id, "r01-orch1-lead");
@@ -93,24 +93,24 @@ describe("RigRepository", () => {
     expect(full!.edges).toHaveLength(1);
     expect(full!.edges[0]!.kind).toBe("delegates_to");
 
-    // n1 has a binding
+    // n1 有绑定
     const orchNode = full!.nodes.find((n) => n.logicalId === "orchestrator");
     expect(orchNode!.binding).not.toBeNull();
     expect(orchNode!.binding!.tmuxSession).toBe("r01-orch1-lead");
   });
 
-  it("getRig: unbound nodes have binding: null (not undefined/omitted)", () => {
+  it("getRig：未绑定节点的 binding 为 null（不是 undefined/缺省）", () => {
     const rig = repo.createRig("test-rig");
     repo.addNode(rig.id, "worker");
 
     const full = repo.getRig(rig.id);
     const workerNode = full!.nodes.find((n) => n.logicalId === "worker");
-    // Must be explicitly null, not undefined
+    // 必须显式为 null，而非 undefined
     expect(workerNode).toHaveProperty("binding");
     expect(workerNode!.binding).toBeNull();
   });
 
-  it("listRigs returns all rigs", () => {
+  it("listRigs 返回所有装备", () => {
     repo.createRig("rig-a");
     repo.createRig("rig-b");
     repo.createRig("rig-c");
@@ -122,7 +122,7 @@ describe("RigRepository", () => {
     expect(names).toContain("rig-c");
   });
 
-  it("deleteRig cascades — nodes and edges gone", () => {
+  it("deleteRig 级联删除——节点与边均消失", () => {
     const rig = repo.createRig("test-rig");
     const n1 = repo.addNode(rig.id, "orchestrator");
     const n2 = repo.addNode(rig.id, "worker");
@@ -134,9 +134,9 @@ describe("RigRepository", () => {
     expect(repo.listRigs()).toHaveLength(0);
   });
 
-  // -- P3-T00: Extended node fields --
+  // -- P3-T00：扩展节点字段 --
 
-  it("addNode persists extended fields", () => {
+  it("addNode 持久化扩展字段", () => {
     const rig = repo.createRig("test-rig");
     const node = repo.addNode(rig.id, "worker", {
       role: "worker",
@@ -153,7 +153,7 @@ describe("RigRepository", () => {
     expect(node.packageRefs).toEqual(["github:example/pkg@v1", "local:./my-pkg"]);
   });
 
-  it("getRig returns nodes with extended fields (parsed packageRefs)", () => {
+  it("getRig 返回带扩展字段的节点（已解析 packageRefs）", () => {
     const rig = repo.createRig("test-rig");
     repo.addNode(rig.id, "worker", {
       surfaceHint: "tab:main",
@@ -167,7 +167,7 @@ describe("RigRepository", () => {
     expect(Array.isArray(node.packageRefs)).toBe(true);
   });
 
-  it("addNode with no extended fields: surfaceHint=null, workspace=null, restorePolicy=null, packageRefs=[]", () => {
+  it("addNode 无扩展字段时：surfaceHint=null、workspace=null、restorePolicy=null、packageRefs=[]", () => {
     const rig = repo.createRig("test-rig");
     const node = repo.addNode(rig.id, "worker");
 
@@ -178,8 +178,8 @@ describe("RigRepository", () => {
   });
 });
 
-describe("Wiring regression", () => {
-  it("createFullTestDb schema includes 007 columns", async () => {
+describe("接线回归", () => {
+  it("createFullTestDb schema 包含 007 列", async () => {
     const { createFullTestDb } = await import("./helpers/test-app.js");
     const db = createFullTestDb();
     const cols = db.prepare("PRAGMA table_info(nodes)").all() as { name: string }[];
@@ -193,7 +193,7 @@ describe("Wiring regression", () => {
 });
 
 // L2 findLatestUsableSnapshot
-describe("RigRepository.findLatestUsableSnapshot (L2)", () => {
+describe("RigRepository.findLatestUsableSnapshot（L2）", () => {
   let db: Database.Database;
   let repo: RigRepository;
 
@@ -241,12 +241,12 @@ describe("RigRepository.findLatestUsableSnapshot (L2)", () => {
     }
   }
 
-  it("returns null when no snapshot exists for rig", () => {
+  it("装备不存在快照时返回 null", () => {
     const rig = repo.createRig("no-snap");
     expect(repo.findLatestUsableSnapshot(rig.id)).toBeNull();
   });
 
-  it("returns null when only snapshots have null resume tokens for all nodes", () => {
+  it("仅有的快照中所有节点恢复令牌均为 null 时返回 null", () => {
     const rig = repo.createRig("null-tokens");
     seedSnapshot(rig.id, "snap-1", [
       { nodeId: "node-a", resumeToken: null },
@@ -255,7 +255,7 @@ describe("RigRepository.findLatestUsableSnapshot (L2)", () => {
     expect(repo.findLatestUsableSnapshot(rig.id)).toBeNull();
   });
 
-  it("returns latest snapshot when at least one session has a non-null resume token", () => {
+  it("至少一个会话有非 null 恢复令牌时返回最新快照", () => {
     const rig = repo.createRig("usable");
     seedSnapshot(rig.id, "snap-1", [
       { nodeId: "node-a", resumeToken: "tok-a" },
@@ -268,7 +268,7 @@ describe("RigRepository.findLatestUsableSnapshot (L2)", () => {
     expect(result!.data.sessions?.find((s) => s.nodeId === "node-a")?.resumeToken).toBe("tok-a");
   });
 
-  it("returns the snapshot even when only some nodes have valid tokens (per-node lifecycleState handles individual recoverability)", () => {
+  it("即使仅部分节点有有效令牌也返回快照（逐节点 lifecycleState 处理各自可恢复性）", () => {
     const rig = repo.createRig("partial");
     seedSnapshot(rig.id, "snap-1", [
       { nodeId: "node-a", resumeToken: "tok-a" }, // recoverable
@@ -281,7 +281,7 @@ describe("RigRepository.findLatestUsableSnapshot (L2)", () => {
     expect(result!.data.sessions).toHaveLength(3);
   });
 
-  it("returns the latest snapshot when multiple usable snapshots exist (ORDER BY created_at DESC, id DESC)", () => {
+  it("存在多个可用快照时返回最新项（ORDER BY created_at DESC, id DESC）", () => {
     const rig = repo.createRig("multi-snap");
     seedSnapshot(rig.id, "snap-old", [{ nodeId: "node-a", resumeToken: "tok-old" }], "2026-04-27 00:00:00");
     seedSnapshot(rig.id, "snap-new", [{ nodeId: "node-a", resumeToken: "tok-new" }], "2026-04-28 00:00:00");

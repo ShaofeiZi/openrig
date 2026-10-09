@@ -1,23 +1,18 @@
-// OPR.0.5.7.1 — the ONE active-occupant truth, as a pure leaf module.
+// OPR.0.5.7.1——唯一的活动占用者真相，以纯叶子模块实现。
 //
-// Execution (restore-orchestrator), preview (restore-plan-preview), snapshot
-// usability (rig-repository), and lifecycle projection (node-inventory) all
-// consume the SAME four-way ladder below; capture (snapshot-capture) and the
-// live no-snapshot preview both derive the relation through the SAME helper.
-// R2's HOLD was exactly the drift this module removes: reporting surfaces
-// selecting historical rows the execution path would never resume.
+// 执行（restore-orchestrator）、预览（restore-plan-preview）、快照可用性
+//（rig-repository）和生命周期投影（node-inventory）都使用下方同一个四路判定阶梯；
+// 捕获（snapshot-capture）与实时无快照预览也通过同一个辅助函数派生关系。
+// R2 的 HOLD 正是本模块要消除的漂移：报告表面选中了执行路径绝不会恢复的历史行。
 //
-// FOUR-WAY OCCUPANT TRUTH (repair ruling qitem-20260829080039-c47a571e):
-// the ONLY case where legacy inference may run is the WHOLE relation map
-// being absent (a pre-convention snapshot). A PRESENT map is the authority —
-// a null value, a missing node key, or a dangling id each fails LOUDLY; the
-// map is never collapsed by truthiness into the legacy ladder.
+// 四路占用者真相（修复裁决 qitem-20260829080039-c47a571e）：仅当整个关系映射缺失
+//（约定建立前的快照）时才允许旧版推断。只要映射存在，它就是权威——null 值、
+// 缺失的节点键或悬空 id 都必须响亮失败；绝不能通过 truthiness 把映射折叠回旧阶梯。
 
 import type { SnapshotData, Session, SnapshotOccupantState } from "./types.js";
 
-/** The minimal row shape the ladder needs — satisfied by Session and by the
- *  preview's narrower session rows alike, so ONE ladder serves every consumer
- *  without a copied variant. */
+/** 判定阶梯所需的最小行形状——Session 与预览所用的窄化会话行都满足它，
+ *  因而同一个阶梯可服务所有消费者，无需复制变体。 */
 export interface OccupantCandidateRow {
   id: string;
   nodeId: string;
@@ -34,8 +29,8 @@ export type ActiveSnapshotSessionResolution =
   | { kind: "none" }
   | { kind: "ambiguous"; candidateIds: string[]; detail: string };
 
-/** The four-way ladder (moved from restore-orchestrator.ts, behavior
- *  byte-faithful; generic over the row shape so no consumer copies it). */
+/** 四路判定阶梯（从 restore-orchestrator.ts 移入，行为逐字节保持一致）；
+ *  对行形状使用泛型，使消费者无需复制实现。 */
 export function resolveActiveOccupantRow<T extends OccupantCandidateRow>(
   sessions: T[],
   relationMap: Record<string, string | null> | undefined,
@@ -44,66 +39,60 @@ export function resolveActiveOccupantRow<T extends OccupantCandidateRow>(
   const rows = sessions.filter((s) => s.nodeId === nodeId);
   const map = relationMap;
   if (map === undefined) {
-    // Pre-convention snapshot: this is the ONLY branch where zero rows means
-    // "never ran" (none) and legacy inference may run — a single row, else
-    // the uniquely-running row, else ambiguity.
+    // 约定建立前的快照：只有这个分支可把零行解释为“从未运行”（none）并执行旧版推断——
+    // 有且仅有一行则选它；否则选唯一 running 行；再否则就是歧义。
     if (rows.length === 0) return { kind: "none" };
     if (rows.length === 1) return { kind: "resolved", session: rows[0]! };
     const running = rows.filter((s) => s.status === "running");
     if (running.length === 1) return { kind: "resolved", session: running[0]! };
-    return { kind: "ambiguous", candidateIds: rows.map((r) => r.id), detail: "no explicit active relation (pre-convention snapshot) and no uniquely-running row" };
+    return { kind: "ambiguous", candidateIds: rows.map((r) => r.id), detail: "没有显式活动关系（约定建立前的快照），也没有唯一的 running 行" };
   }
-  // Map PRESENT: it is the authority even with zero session rows — a null,
-  // missing-key, or dangling relation state is loud regardless of history.
+  // 映射已存在：即使会话行为零，它仍是权威；无论历史如何，null、缺键或悬空关系都必须响亮暴露。
   if (!Object.prototype.hasOwnProperty.call(map, nodeId)) {
-    return { kind: "ambiguous", candidateIds: rows.map((r) => r.id), detail: "the snapshot's activeSessionIdByNode map carries no entry for this node" };
+    return { kind: "ambiguous", candidateIds: rows.map((r) => r.id), detail: "快照的 activeSessionIdByNode 映射没有此节点的条目" };
   }
   const rel = map[nodeId];
   if (rel === null) {
-    return { kind: "ambiguous", candidateIds: rows.map((r) => r.id), detail: "the snapshot recorded no single live occupant at capture (explicit null)" };
+    return { kind: "ambiguous", candidateIds: rows.map((r) => r.id), detail: "快照捕获时未记录唯一存活占用者（显式 null）" };
   }
   const hit = rows.find((s) => s.id === rel);
   if (!hit) {
-    return { kind: "ambiguous", candidateIds: rows.map((r) => r.id), detail: `the recorded active relation ${rel} names no session row in this snapshot (dangling)` };
+    return { kind: "ambiguous", candidateIds: rows.map((r) => r.id), detail: `记录的活动关系 ${rel} 在此快照中没有对应会话行（悬空）` };
   }
   return { kind: "resolved", session: hit };
 }
 
-/** The snapshot-shaped entry point (the original public signature; a thin
- *  wrapper so execution call sites are unchanged). */
+/** 快照形态的入口（原有公开签名）；保持执行调用点不变的薄包装。 */
 export function resolveActiveSnapshotSession(data: SnapshotData, nodeId: string): ActiveSnapshotSessionResolution {
   const explicit = data.activeOccupantsByNode;
   if (explicit !== undefined) {
     const state = explicit[nodeId];
     const rows = data.sessions.filter((session) => session.nodeId === nodeId);
     if (!state) {
-      return { kind: "ambiguous", candidateIds: rows.map((row) => row.id), detail: "the snapshot's activeOccupantsByNode map carries no entry for this node" };
+      return { kind: "ambiguous", candidateIds: rows.map((row) => row.id), detail: "快照的 activeOccupantsByNode 映射没有此节点的条目" };
     }
     if (state.kind === "absent") return { kind: "none" };
     if (state.kind === "ambiguous") {
-      return { kind: "ambiguous", candidateIds: [...state.candidateIds], detail: "the snapshot recorded multiple live occupant candidates at capture" };
+      return { kind: "ambiguous", candidateIds: [...state.candidateIds], detail: "快照捕获时记录了多个存活占用者候选" };
     }
     const session = rows.find((row) => row.id === state.sessionId);
     if (!session) {
-      return { kind: "ambiguous", candidateIds: rows.map((row) => row.id), detail: `the recorded active occupant ${state.sessionId} names no session row in this snapshot (dangling)` };
+      return { kind: "ambiguous", candidateIds: rows.map((row) => row.id), detail: `记录的活动占用者 ${state.sessionId} 在此快照中没有对应会话行（悬空）` };
     }
     return { kind: "resolved", session };
   }
   return resolveActiveOccupantRow(data.sessions, data.activeSessionIdByNode, nodeId);
 }
 
-/** One wording for the loud failure everywhere — divergent phrasings would be
- *  a second copy of the truth. */
+/** 所有位置共用一套响亮失败措辞——不同措辞会形成第二份真相。 */
 export function activeOccupantAmbiguityError(candidateIds: string[], detail?: string): string {
-  return `Active-occupant ambiguity: ${candidateIds.length} candidate session rows (${candidateIds.join(", ")})` +
-    `${detail ? ` — ${detail}` : ""}. Seat unrecoverable until resolved. ` +
-    `Refusing newest-row-wins and refusing a replacement occupant.`;
+  return `活动占用者有歧义：${candidateIds.length} 个候选会话行（${candidateIds.join(", ")}）` +
+    `${detail ? `——${detail}` : ""}。解决前席位不可恢复。` +
+    `拒绝“最新行胜出”，也拒绝替换占用者。`;
 }
 
-/** The CAPTURE rule, shared verbatim by SnapshotCapture and the live
- *  no-snapshot preview so the two sibling derivations cannot drift:
- *  exactly one RUNNING row for a node -> its id; otherwise -> explicit null
- *  (recorded honestly; restore resolves it loudly instead of guessing). */
+/** 捕获规则，由 SnapshotCapture 与实时无快照预览原样共享，避免两个同级派生漂移：
+ *  节点恰有一个 RUNNING 行时取其 id；否则取显式 null（如实记录，恢复时响亮解析而不猜测）。 */
 export function deriveActiveSessionIdByNode(
   sessions: OccupantCandidateRow[],
   nodeIds: string[],
@@ -116,7 +105,7 @@ export function deriveActiveSessionIdByNode(
   return relation;
 }
 
-/** Capture the same live relation without collapsing absent and ambiguous. */
+/** 捕获同一实时关系，同时保持 absent 与 ambiguous 的区别。 */
 export function deriveActiveOccupantsByNode(
   sessions: OccupantCandidateRow[],
   nodeIds: string[],
@@ -133,8 +122,7 @@ export function deriveActiveOccupantsByNode(
   return relation;
 }
 
-/** Reboot capture equivalent: resolve one durable non-terminal occupant when
- * possible, otherwise preserve the exact absent/ambiguous candidate set. */
+/** 重启捕获的等价规则：尽可能解析一个持久的非终态占用者，否则保留精确的 absent/ambiguous 候选集。 */
 export function deriveRehydrateOccupantsByNode(
   sessions: OccupantCandidateRow[],
   nodeIds: string[],
@@ -154,11 +142,9 @@ export function deriveRehydrateOccupantsByNode(
   return relation;
 }
 
-/** Reboot-only capture rule. Startup reconciliation has already changed the
- * lost process's row from running to detached, so the ordinary live-capture
- * rule cannot identify it. Reuse the legacy relation ladder over durable rows:
- * one non-terminal row, or one uniquely-running row among several, is enough;
- * every ambiguous shape remains explicit null and therefore fails closed. */
+/** 仅用于重启的捕获规则。启动对账已把丢失进程的行从 running 改为 detached，
+ *  普通实时捕获规则无法再识别它。因此在持久行上复用旧关系阶梯：一个非终态行，
+ *  或多行中唯一的 running 行即可；所有歧义形态仍保留为显式 null，从而失败关闭。 */
 export function deriveRehydrateSessionIdByNode(
   sessions: OccupantCandidateRow[],
   nodeIds: string[],

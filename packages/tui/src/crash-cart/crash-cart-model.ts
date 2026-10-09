@@ -1,50 +1,48 @@
-// Crash-cart cockpit view MODEL (5.2 Wave B, plan c015d9ed §C3). The pre-daemon recovery view:
-// bare `rig` with the daemon DOWN. View-local data model + builders (mirrors pulse-model.ts) — the
-// renderer (render-crash-cart.ts) turns it into rows. Live data comes from the C2 daemon-down direct
-// read (readCrashCartDiscovery); this builder adapts that discovery into the view model, keeping the
-// renderer pure + testable.
+// 故障诊断座舱视图 MODEL（5.2 Wave B，计划 c015d9ed §C3）。后台服务停止时的
+// 恢复前视图：裸 `rig` 且后台服务已停止。视图本地数据模型 + 构建器（镜像 pulse-model.ts）——
+// 渲染器（render-crash-cart.ts）将其转为行。实时数据来自 C2 后台服务停止直接读取
+// （readCrashCartDiscovery）；此构建器将该发现适配到视图模型，保持渲染器纯逻辑 + 可测试。
 //
-// PM ruling (binding): the header stop-reason + prior-uptime are EXPLICIT honest-unknown — the slot
-// says unavailable + WHY (no shutdown record is persisted), never blank, never inferred. Structure
-// and ordering stay per the approved mock (3d3c90a0).
+// PM 裁决（有约束力）：头部停止原因 + 先前运行时间是显式诚实未知——槽位显示
+// 不可用 + 原因（未持久化关闭记录），绝不留空，绝不推断。结构和顺序按批准的 mock（3d3c90a0）。
 
-/** The honest-unknown text for the two unrecoverable header slots (PM ruling). */
-export const NO_SHUTDOWN_RECORD = "unavailable — no shutdown record";
+/** 两个不可恢复头部槽位的诚实未知文本（PM 裁决）。 */
+export const NO_SHUTDOWN_RECORD = "不可用 — 无关闭记录";
 
 export interface CrashCartHeaderVM {
-  /** Last activity time (HH:MM) derived from the newest durable write; "unknown" if none. */
+  /** 从最新持久化写入派生的最后活动时间（HH:MM）；若无则为 "unknown"。 */
   lastSeen: string;
-  /** Always the honest-unknown text — prior uptime is not persisted. */
+  /** 始终为诚实未知文本——先前运行时间未持久化。 */
   uptimeText: string;
-  /** Always the honest-unknown text — stop reason is not persisted. */
+  /** 始终为诚实未知文本——停止原因未持久化。 */
   reasonText: string;
 }
 
 export interface CrashCartRigVM {
   name: string;
   seatCount: number;
-  lastActive: string; // HH:MM or "unknown"
+  lastActive: string; // HH:MM 或 "unknown"
   resumableCount: number;
 }
 
 export interface CrashCartStoppedVM {
   session: string;
   summary: string;
-  time: string; // HH:MM or "unknown"
+  time: string; // HH:MM 或 "unknown"
 }
 
 export interface CrashCartModel {
-  /** recovery = evidence of prior life (rigs and/or last activity) → the crash cockpit.
-   *  first-run = DOWN + no DB (no rigs, no prior activity) → onboarding framing, never a crash story. */
+  /** recovery = 先前生命的证据（工作组和/或最后活动）→ 故障座舱。
+   *  first-run = 停止 + 无数据库（无工作组、无先前活动）→ 引导框架，绝非故障故事。 */
   mode: "recovery" | "first-run";
   header: CrashCartHeaderVM;
   foundOnHost: CrashCartRigVM[];
-  /** In-progress work at crash time; empty ⇒ the renderer shows only the idle-clean line. */
+  /** 故障时进行中的工作；空 ⇒ 渲染器仅显示空闲清理行。 */
   whereWorkStopped: CrashCartStoppedVM[];
 }
 
-/** The subset of the C2 discovery the view consumes (structurally the daemon's CrashCartDiscovery;
- *  kept local so the pure view has no cross-package import — the integration passes the real one). */
+/** 视图消费的 C2 发现子集（结构上是后台服务的 CrashCartDiscovery；
+ *  本地保存使纯视图无跨包导入——集成传入真实的）。 */
 export interface CrashCartDiscoveryInput {
   header: { lastActivityAt: string | null };
   foundOnHost: Array<{
@@ -60,18 +58,18 @@ export interface CrashCartDiscoveryInput {
   }>;
 }
 
-/** Extract HH:MM from an ISO-Z or SQLite `datetime('now')` timestamp (format-agnostic, no timezone
- *  math — the crash-cart shows wall times as recorded); null/unparseable ⇒ "unknown". */
+/** 从 ISO-Z 或 SQLite `datetime('now')` 时间戳提取 HH:MM（与格式无关，无时区
+ *  计算——故障诊断按记录显示墙上时间）；null/不可解析 ⇒ "未知"。 */
 export function hhmm(ts: string | null): string {
-  if (!ts) return "unknown";
+  if (!ts) return "未知";
   const m = /[T ](\d{2}:\d{2})/.exec(ts);
-  return m ? m[1]! : "unknown";
+  return m ? m[1]! : "未知";
 }
 
-/** Adapt the C2 daemon-down discovery into the crash-cart view model. */
+/** 将 C2 后台服务停止发现适配到故障诊断视图模型。 */
 export function buildCrashCartModel(discovery: CrashCartDiscoveryInput): CrashCartModel {
-  // Crash language requires evidence of PRIOR LIFE: no rigs AND no last-activity ⇒ a fresh host, not
-  // a crash — render onboarding framing (PM ruling), never a crash story.
+  // 故障语言需要先前生命的证据：无工作组 AND 无最后活动 ⇒ 全新主机，而非
+  // 故障——渲染引导框架（PM 裁决），绝非故障故事。
   const mode: CrashCartModel["mode"] =
     discovery.foundOnHost.length === 0 && !discovery.header.lastActivityAt ? "first-run" : "recovery";
   return {
@@ -89,14 +87,14 @@ export function buildCrashCartModel(discovery: CrashCartDiscoveryInput): CrashCa
     })),
     whereWorkStopped: discovery.whereWorkStopped.map((w) => ({
       session: w.destinationSession,
-      summary: w.summary ?? "(no summary)",
+      summary: w.summary ?? "(无摘要)",
       time: hhmm(w.tsUpdated),
     })),
   };
 }
 
-/** Static fixture reproducing the approved mock's data (with the PM honest-unknown header). Used by
- *  the demo screen + the strip-invariant test. */
+/** 复现批准 mock 数据的静态夹具（带 PM 诚实未知头部）。由
+ *  demo 屏幕 + 条带不变测试使用。 */
 export function demoCrashCartModel(): CrashCartModel {
   return {
     mode: "recovery",

@@ -14,13 +14,13 @@ export interface LocalReadingState {
 }
 
 export function readLocal(cliEntry: string | undefined, request: LocalRequest): Promise<LocalResult> {
-  if (!cliEntry) return Promise.resolve({ error: "Local reader unavailable in this launcher; open through the installed rig CLI." });
+  if (!cliEntry) return Promise.resolve({ error: "本地读取器在此启动器中不可用；请通过已安装的 zrig CLI 打开。" });
   return new Promise((resolve) => {
     execFile(process.execPath, [join(dirname(cliEntry), "local-reading.js"), JSON.stringify(request)],
       { timeout: 5000, maxBuffer: 8 * 1024 * 1024 }, (error, stdout) => {
-        if (error) return resolve({ error: "Local reader did not complete", message: error.message });
+        if (error) return resolve({ error: "本地读取器未完成", message: error.message });
         try { resolve(JSON.parse(stdout)); }
-        catch { resolve({ error: "Local reader returned invalid data" }); }
+        catch { resolve({ error: "本地读取器返回了无效数据" }); }
       });
   });
 }
@@ -72,24 +72,24 @@ export class LocalReadingController {
 export function localLines(s: LocalReadingState): Array<{ text: string; action?: Action }> {
   const r = s.result;
   const lines: Array<{ text: string; action?: Action }> = [
-    { text: "LOCAL READING · this machine's configured sources" },
-    { text: "Disk snapshot only. Live queue, execution and topology are unavailable here." },
-    { text: "r re-reads disk · Esc Back · ↑↓ choose/scroll · Enter read" },
-    { text: `Source: ${r.absolutePath ?? r.source ?? (s.request.root ? `${s.request.root}/${s.request.path}` : "configured workspace roots")}` },
+    { text: "本地读取 · 此机器的已配置来源" },
+    { text: "仅磁盘快照。实时队列、执行和拓扑在此不可用。" },
+    { text: "r 重读磁盘 · Esc 返回 · ↑↓ 选择/滚动 · 回车 读取" },
+    { text: `来源：${r.absolutePath ?? r.source ?? (s.request.root ? `${s.request.root}/${s.request.path}` : "已配置工作区根目录")}` },
   ];
-  if (s.busy) return [...lines, { text: "Reading selected source… Help and Back remain available." }];
-  if (r.error) return [...lines, { text: `UNAVAILABLE: ${r.error}` }, { text: r.message ?? "" }];
+  if (s.busy) return [...lines, { text: "正在读取所选来源…帮助和返回仍可用。" }];
+  if (r.error) return [...lines, { text: `不可用：${r.error}` }, { text: r.message ?? "" }];
   if (r.entries) {
-    lines.push({ text: `Read at ${r.readAt}` }, { text: "" });
+    lines.push({ text: `读取于 ${r.readAt}` }, { text: "" });
     for (const [i, entry] of r.entries.entries()) lines.push({
       text: `${i === s.selected ? "▶" : " "} ${entry.label}${entry.kind === "directory" ? "/" : ""}${entry.error ? ` · ${entry.error}` : ""}`,
       action: { type: "startup", key: `select:${i}` },
     });
-    if (!r.entries.length) lines.push({ text: "No visible entries in this selected directory." });
+    if (!r.entries.length) lines.push({ text: "此所选目录中无可见条目。" });
   } else {
-    lines.push({ text: `Modified ${r.mtime} · ${r.totalBytes} bytes` }, { text: `SHA-256 ${r.contentHash}` },
-      { text: r.truncated ? `TRUNCATED at ${r.truncatedAtBytes} of ${r.totalBytes} bytes.` : "Complete disk read. May change after this read; not daemon state." });
-    if (r.binary) lines.push({ text: "Binary / non-UTF-8 file; text is not displayed." });
+    lines.push({ text: `修改于 ${r.mtime} · ${r.totalBytes} 字节` }, { text: `SHA-256 ${r.contentHash}` },
+      { text: r.truncated ? `在 ${r.truncatedAtBytes} / ${r.totalBytes} 字节处截断。` : "完整磁盘读取。此读取后可能变化；非后台服务状态。" });
+    if (r.binary) lines.push({ text: "二进制 / 非 UTF-8 文件；不显示文本。" });
     else lines.push({ text: "" }, ...(r.content ?? "").split(/\r\n|\r|\n/).map((text) => ({ text })));
   }
   return lines;

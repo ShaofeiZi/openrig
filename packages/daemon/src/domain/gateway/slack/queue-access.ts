@@ -1,16 +1,14 @@
-// S10 — the IN-PROCESS queue port for the gateway subsystem. Successor to the retired CLI
-// queue-bridge (which shelled out to `rig queue` from the relay's separate process): in-daemon
-// there is no process boundary, so fleet access is a direct QueueRepository read/write. The
-// SELECTION SEMANTICS consume the single structured OWNER classification written with the
-// queue transition. Tags and destination spellings are not a second alert classifier.
-//   - reads are unbounded (the B5 lesson: a default limit silently truncates a large backlog).
+// S10——gateway 子系统的进程内 queue port。它接替已退役的 CLI queue-bridge（后者从 relay 的独立
+// process shell out 到 `rig queue`）：daemon 内不存在 process boundary，因此 fleet access 直接读写
+// QueueRepository。选择语义使用随 queue transition 写入的唯一结构化 owner classification。tag 与
+// destination 拼写不是第二套 alert classifier。
+//   - read 无上限（B5 教训：默认 limit 会静默截断大 backlog）。
 
 import type { QueueRepository, QueueItem as RepoQueueItem } from "../../queue-repository.js";
 import { loadHumanRegistry, resolveRegisteredHumanAddress, type LoadResult, type HumanFragment } from "../human-registry.js";
 import { ownerNotificationLevelAtLeast, type OwnerNotificationLevel, type QueueTransition } from "../../queue-transition-log.js";
 
-/** The narrow projection the slack path consumes (shape-compatible with the retired bridge's
- *  QueueItem so message construction and tests carry over). */
+/** Slack 路径使用的窄 projection（形态兼容已退役 bridge 的 QueueItem，使消息构建与测试可沿用）。 */
 export interface QueueItem {
   qitemId: string;
   destinationSession?: string | null;
@@ -32,7 +30,7 @@ export interface AlertFilterOpts {
   minimumLevel?: OwnerNotificationLevel;
 }
 
-/** PURE: select active qitems whose transition carries a sufficient OWNER classification. */
+/** 纯函数：选择 transition 携带足够 owner classification 的 active qitem。 */
 export function filterHumanAlerts(items: QueueItem[], opts: AlertFilterOpts): QueueItem[] {
   const active = new Set(["pending", "in-progress", "blocked"]);
   return items.filter((q) => {
@@ -53,12 +51,12 @@ export interface CreateQitemInput {
   tags?: string[];
 }
 
-/** What the inbound router needs: land a durable qitem, get its id (or throw). */
+/** inbound router 所需能力：落盘持久 qitem，并取得其 id（否则抛错）。 */
 export interface InboundQueuePort {
   createQitem(input: CreateQitemInput): Promise<string>;
 }
 
-/** What the outbound driver needs: the current human-alert set, full items included. */
+/** outbound driver 所需能力：当前 human-alert 集合，包含完整 item。 */
 export interface OutboundQueuePort {
   listHumanAlerts(filter: AlertFilterOpts): Promise<QueueItem[]>;
 }
@@ -96,9 +94,9 @@ function project(q: RepoQueueItem, transition: QueueTransition, entities: readon
   };
 }
 
-/** Slice-11 item 9, carried over verbatim from the retired outbound.ts: on ENABLE, seed all
- *  currently-active human alerts as history/seen WITHOUT posting, so turning the connector on
- *  never replays the backlog. Returns the honest online-status line marking the transition. */
+/** Slice-11 第 9 项，从已退役的 outbound.ts 原样继承其语义：启用时，将当前所有 active human alert
+ *  seed 为 history/seen 而不发布，使 connector 开启时绝不重放 backlog。返回如实标记该 transition
+ *  的 online-status 行。 */
 export async function seedBacklogAsHistory(opts: {
   queue: OutboundQueuePort;
   seen: import("./state-store.js").SeenStore;
@@ -109,13 +107,13 @@ export async function seedBacklogAsHistory(opts: {
   const already = opts.seen.load();
   const toSeed = alerts.map((a) => a.notificationKey ?? a.qitemId).filter((id) => !already.has(id));
   const seeded = opts.seen.seed(toSeed, "seeded-at-enable");
-  const onlineStatus = `slack outbound ENABLED at enable-time: ${seeded} pre-existing alert(s) seeded as history (not reposted); only alerts created after this point will deliver.`;
+  const onlineStatus = `slack outbound 已启用（ENABLED）：${seeded} 条既有 alert 已记为历史（不重新发布）；只会投递此后创建的 alert。`;
   opts.log?.(onlineStatus);
   return { seeded, onlineStatus };
 }
 
-/** Build both ports over the daemon's own QueueRepository. In-process: no shell, no transport,
- *  no `-A` scope trap (list() here is repository-wide), no bounded-body N+1 (rows carry bodies). */
+/** 在 daemon 自身的 QueueRepository 上构建两个 port。进程内实现：无 shell、无 transport、无 `-A`
+ *  scope 陷阱（此处 list() 覆盖整个 repository），也无 bounded-body N+1（row 自带 body）。 */
 export function makeQueuePorts(
   queueRepo: QueueRepository,
   opts: { loadHumanRegistry?: () => LoadResult } = {},

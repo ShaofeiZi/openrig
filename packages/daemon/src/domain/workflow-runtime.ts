@@ -2,16 +2,15 @@ import { readWorkflowGuidance, type GuidanceInput } from "./workflow-guidance.js
 import { exceptionConfigurationSource, inspectExceptionReadiness, type ExceptionReadiness } from "./workflow-exception-readiness.js";
 import { inspectGraph, recoverGraphOperation, reviseGraph } from "./workflow-reconciliation.js";
 import { lifecycleObligations, requiredLifecycleSteps, type LifecycleObligation } from "./lifecycle-obligations.js";
-// PL-004 Phase D: workflow runtime facade.
+// PL-004 Phase D：工作流运行时 facade。
 //
-// Coordinates spec cache + validator + instance store + projector +
-// trail log into the four high-level operations:
+// 将 spec cache、validator、instance store、projector 和 trail log 协调为四个高层操作：
 //   - validate(specPath)
 //   - instantiate(specPath, rootObjective, createdBySession)
-//   - project(...)  (delegates to projector)
-//   - continue(instanceId)  (idempotent advance; v1 = read-only inspector)
+//   - project(...)（委托给 projector）
+//   - continue(instanceId)（幂等推进；v1 为只读检查器）
 //
-// Pattern mirrors Phase B's ProjectClassifier facade shape.
+// 该模式与 Phase B 的 ProjectClassifier facade 形状一致。
 
 import type Database from "better-sqlite3";
 import type { WorkflowSpec } from "./workflow-types.js";
@@ -77,18 +76,15 @@ export interface WorkflowRuntimeDeps {
   queueRepo: QueueRepository;
   now?: () => Date;
   /**
-   * OPR.0.4.6.WF1 FR-3: when supplied, instantiate + handoff
-   * projections auto-arm the per-instance workflow-keepalive watchdog
-   * job INSIDE the scribe transaction, and terminal exits disarm it.
-   * Optional so tests / embedders without the watchdog subsystem keep
-   * working; startup wires the real repository.
+   * OPR.0.4.6.WF1 FR-3：提供后，instantiate + handoff 投影会在 scribe 事务内
+   * 自动武装逐实例 workflow-keepalive watchdog job，终态退出则解除。此依赖可选，
+   * 使没有 watchdog 子系统的测试/嵌入方仍可工作；startup 接入真实 repository。
    */
   watchdogJobsRepo?: WatchdogJobsRepository;
   /**
-   * OPR.0.4.6.WF5 FR-2: the maturity-dial inputs (injected at startup —
-   * the projector never reads config itself). hostDefault is read LIVE
-   * per exception; absent = the orchestrator-first engine default with
-   * registered-human selection when no agent route resolves.
+   * OPR.0.4.6.WF5 FR-2：成熟度旋钮输入在启动时注入，projector 自身从不读取配置。
+   * 每次异常都实时读取 hostDefault；缺失时使用“orchestrator 优先”的引擎默认值，
+   * 若无智能体路由可解析则选择已登记人类。
    */
   exceptionDial?: {
     hostDefault: () => "orchestrator" | "human_only" | null;
@@ -101,16 +97,14 @@ export interface InstantiateInput {
   rootObjective: string;
   createdBySession: string;
   /**
-   * Override default entry-step owner. v1 falls back to spec
-   * preferred_targets[0] for the entry step's role.
+   * 覆盖默认入口步骤 owner。v1 回退到入口步骤角色的 spec preferred_targets[0]。
    */
   entryOwnerSession?: string;
   /**
-   * OPR.0.4.6.FAC1 (AC-1): the rig this instance binds to. Overrides
-   * the spec's `target.rig` DEFAULT; the effective binding
-   * (`targetRig ?? spec.target.rig ?? null`) persists as
-   * `WorkflowInstance.boundRig` and scopes role-capability resolution.
-   * Absent AND no spec default = unbound (today's behavior).
+   * OPR.0.4.6.FAC1（AC-1）：此实例绑定的工作组。覆盖 spec 的 `target.rig` 默认值；
+   * 生效绑定（`targetRig ?? spec.target.rig ?? null`）持久化为
+   * `WorkflowInstance.boundRig`，并限定角色能力解析作用域。两者都缺失时为 unbound，
+   * 与当前行为一致。
    */
   targetRig?: string;
   lifecycle?: {
@@ -118,7 +112,7 @@ export interface InstantiateInput {
     compiledInputDigest: string;
     binding: Record<string, unknown>;
   };
-  /** Internal generated input from compileLifecycle; never accepted from a client. */
+  /** compileLifecycle 生成的内部输入；绝不从客户端接收。 */
   compiledLifecycle?: LifecycleCompilation;
 }
 
@@ -128,17 +122,12 @@ export interface InstantiateResult {
   entryQitemId: string;
   entryOwnerSession: string;
   /**
-   * OPR.0.4.6.FAC1 (arch ruling 2026-07-07, target-rig zero-regression):
-   * loud instantiate-time advisories. Non-fatal notices the operator MUST
-   * see. TWO producers into this one list: (1) the spec-default degrade —
-   * when a spec's `target.rig` DEFAULT (provenance = spec author's hint,
-   * not an operator `--rig` demand) names an unregistered rig, the
-   * instance degrades to UNBOUND (routes via preferred_targets,
-   * byte-identical pre-FAC-1) with an advisory here rather than a
-   * hard-fail; (2) the OPR.0.4.6.FAC3 member-exists probe — a declared
-   * preferred_target naming a registered rig but a nonexistent member.
-   * Always present (empty when nothing to say); route + CLI surface it
-   * loudly.
+   * OPR.0.4.6.FAC1（2026-07-07 架构裁决，target-rig 零回归）：instantiate 时的响亮建议。
+   * 这是操作人员必须看到的非致命通知，列表有两个来源：(1) spec 默认值降级——若 spec 的
+   * `target.rig` 默认值（出处是 spec 作者提示，不是操作人员的 `--rig` 要求）指向未登记工作组，
+   * 实例降级为 UNBOUND（经 preferred_targets 路由，与 FAC-1 前字节一致），在此给出建议而非硬失败；
+   * (2) OPR.0.4.6.FAC3 member-exists 探针——声明的 preferred_target 指向已登记工作组
+   * 中不存在的成员。字段始终存在，无内容时为空；路由和 CLI 会响亮展示。
    */
   advisories: string[];
   replayed?: boolean;
@@ -211,7 +200,7 @@ export class WorkflowRuntime {
     const instance = this.instanceStore.getByIdOrThrow(instanceId);
     const spec = this.specCache.getByNameVersion(instance.workflowName, instance.workflowVersion)?.spec;
     const packetId = options.packetId ?? (instance.currentFrontier.length === 1 ? instance.currentFrontier[0] : undefined);
-    if (packetId && !instance.currentFrontier.includes(packetId)) throw new WorkflowProjectorError("packet_not_on_frontier", "Guidance needs a current frontier packet; inspect workflow show first.");
+    if (packetId && !instance.currentFrontier.includes(packetId)) throw new WorkflowProjectorError("packet_not_on_frontier", "指导信息需要当前 frontier packet；请先检查 workflow show。");
     const packet = packetId ? this.queueRepo.getById(packetId) : null;
     const stepId = packetId ? this.instanceStore.getFrontierBinding(instanceId, packetId)?.stepId ?? (instance.currentFrontier.length === 1 ? instance.currentStepId : null) : null;
     return readWorkflowGuidance({instanceId, contextRefs: spec?.context_refs, binding: instance.lifecycleBinding,
@@ -234,7 +223,7 @@ export class WorkflowRuntime {
         const q = this.queueRepo.getById(row.qitem_id)!;
         return { qitemId: q.qitemId, ownerSession: q.destinationSession, state: q.state,
           evidenceRef: q.evidenceRef, tags: q.tags, handedOffFrom: q.handedOffFrom,
-          inspectCommand: "rig queue show " + q.qitemId + " --full --json" };
+          inspectCommand: "zrig queue show " + q.qitemId + " --full --json" };
       });
   }
 
@@ -247,13 +236,13 @@ export class WorkflowRuntime {
     targetRig?: string;
   }): Promise<InstantiateResult & { compilation: LifecycleCompilation }> {
     if (this.recoverOperation(input.operationKey)?.kind === "revision") {
-      throw new WorkflowProjectorError("lifecycle_operation_conflict", "This key already records a graph revision; inspect workflow operation before choosing a new creation key.");
+      throw new WorkflowProjectorError("lifecycle_operation_conflict", "此 key 已记录一次图修订；请选择新的创建 key 前先检查 workflow operation。");
     }
     const compilation = this.compileLifecycle(input.missionPath, input.operationKey);
     if (!compilation.eligible || !compilation.workflowSpec) {
       throw new WorkflowProjectorError(
         "lifecycle_not_eligible",
-        "compiled lifecycle is inspectable but not eligible for instantiation",
+        "已编译的生命周期可检查，但不符合实例化条件",
         { missionPath: input.missionPath, unknowns: compilation.unknowns },
       );
     }
@@ -280,20 +269,18 @@ export class WorkflowRuntime {
   }
 
   /**
-   * OPR.0.4.6.WF5 FR-2: resolve the maturity dial for a CACHED spec —
-   * the class-(b) detection paths (sweep/keepalive) call this through
-   * the startup-injected closure. null = spec not cached (the caller's
-   * registered-human selection applies). Uses the SAME preferred_targets[0]
-   * string-pick as step-owner resolution (arch Seam-A uniformity).
+   * OPR.0.4.6.WF5 FR-2：为已缓存 spec 解析成熟度旋钮。类别 (b) 检测路径
+   *（sweep/keepalive）通过启动时注入的闭包调用这里。null 表示 spec 未缓存，
+   * 此时应用调用方的已登记人类选择。与步骤 owner 解析使用相同的
+   * preferred_targets[0] 字符串选择（架构接缝 A 一致性）。
    */
   resolveExceptionRouteFor(
     workflowName: string,
     workflowVersion: string,
     exceptionClass: WorkflowExceptionClass,
-    /** OPR.0.4.6.FAC1 (arch Q3): the instance's bound rig — dial
-     *  position 3 (orchestrator-role) then resolves capability-aware
-     *  on that rig when the role declares no preferred_targets.
-     *  Absent/null = the shipped fleet-blind string-pick only. */
+    /** OPR.0.4.6.FAC1（arch Q3）：实例绑定的工作组。旋钮位置 3
+     *（orchestrator-role）在角色未声明 preferred_targets 时，会在该工作组上按能力解析。
+     * 缺失/null 表示只用现有的不感知舰队的字符串选择。 */
     boundRig?: string | null,
   ): ExceptionRoute | null {
     const specRow = this.specCache.getByNameVersion(workflowName, workflowVersion);
@@ -312,11 +299,10 @@ export class WorkflowRuntime {
   }
 
   /**
-   * OPR.0.4.6.WF2 FR-3: the production host-registry probe for the
-   * validator — built on the daemon hosts-registry reader (read-only
-   * twin of the CLI registry). An unreadable/missing registry reports
-   * every id as unregistered with an empty id list (fail-loud at the
-   * validator's host_not_registered issue, never a silent pass).
+   * OPR.0.4.6.WF2 FR-3：validator 的生产 host-registry 探针，构建在后台服务
+   * hosts-registry reader（CLI 注册表的只读孪生）之上。注册表不可读/缺失时，
+   * 以空 id 列表把每个 id 报为未登记，在 validator 的 host_not_registered 问题处
+   * 响亮失败，绝不静默通过。
    */
   private hostRegistryLookup: HostRegistryLookupFn = (hostId: string) => {
     const loaded = loadHostRegistry();
@@ -325,15 +311,13 @@ export class WorkflowRuntime {
     return { registered: ids.includes(hostId), registeredIds: ids };
   };
 
-  /** P19 A4 (finding graduated): the runtime OWNS the default liveness probe —
-   *  the hostRegistryLookup sibling precedent. A preferred target is live iff a
-   *  session with that exact name is currently `running` in this daemon's DB.
-   *  Callers may still inject a custom check (tests, remote-aware futures). */
+  /** P19 A4（发现项已毕业）：runtime 持有默认存活探针，沿用 hostRegistryLookup 同级先例。
+   *  当且仅当后台服务数据库中同名会话当前为 `running`，preferred target 才存活。
+   *  调用方仍可注入自定义检查（测试、未来远程感知）。 */
   private seatLivenessCheck: SeatLivenessCheckFn = (sessionRef: string) => {
-    // ADVISORY-NEVER-THROW (the member-advisory precedent): a partial-schema DB
-    // (bare fixtures without the sessions table) means the probe cannot vouch
-    // EITHER way — report alive so no warning fires, and never let an advisory
-    // path fail validate/instantiate.
+    // 建议绝不抛错（member-advisory 先例）：部分 schema 数据库（没有 sessions 表的裸 fixture）
+    // 意味着探针无法证明任一方向——报告 alive 以避免告警，且绝不能让建议路径使
+    // validate/instantiate 失败。
     try {
       const row = this.db
         .prepare(
@@ -354,20 +338,17 @@ export class WorkflowRuntime {
   }
 
   /**
-   * Create a workflow instance + first-step qitem. The entry qitem is
-   * created in the same transaction as the instance row; subscribers
-   * see the workflow.instantiated + queue.created events together.
+   * 创建工作流实例和首步骤 qitem。入口 qitem 与实例行在同一事务中创建；
+   * 订阅者会一起看到 workflow.instantiated 与 queue.created 事件。
    */
   async instantiate(input: InstantiateInput): Promise<InstantiateResult> {
-    // Replay/conflict classification must precede every cache or queue write.
-    // The operation key is the durable outer identity; an exact replay reads
-    // the already-cached spec and entry row, while changed bytes refuse with
-    // zero mutation.
+    // replay/conflict 分类必须先于任何缓存或队列写入。operation key 是持久外层身份；
+    // 精确重放读取已缓存 spec 和入口行，字节变更则零修改拒绝。
     if (input.lifecycle) {
       if (!input.lifecycle.operationKey || !input.lifecycle.compiledInputDigest) {
         throw new WorkflowProjectorError(
           "lifecycle_identity_invalid",
-          "lifecycle instantiation requires non-empty operationKey and compiledInputDigest",
+          "生命周期实例化要求 operationKey 和 compiledInputDigest 均非空",
         );
       }
       const existing = this.instanceStore.getByLifecycleOperationKey(input.lifecycle.operationKey);
@@ -375,7 +356,7 @@ export class WorkflowRuntime {
         if ((existing.lifecycleBinding?.initialInputDigest ?? existing.compiledInputDigest) !== input.lifecycle.compiledInputDigest) {
           throw new WorkflowProjectorError(
             "lifecycle_operation_conflict",
-            `lifecycle operation key ${input.lifecycle.operationKey} already binds different compiled input bytes`,
+            `生命周期 operation key ${input.lifecycle.operationKey} 已绑定不同的编译输入字节`,
             {
               operationKey: input.lifecycle.operationKey,
               expectedDigest: existing.lifecycleBinding?.initialInputDigest ?? existing.compiledInputDigest,
@@ -392,7 +373,7 @@ export class WorkflowRuntime {
         if (!spec || !entryQitemId || !entryPacket) {
           throw new WorkflowProjectorError(
             "lifecycle_replay_indeterminate",
-            `lifecycle operation ${input.lifecycle.operationKey} exists but its cached spec or entry packet cannot be resolved`,
+            `生命周期 operation ${input.lifecycle.operationKey} 已存在，但无法解析其缓存 spec 或入口 packet`,
             { operationKey: input.lifecycle.operationKey, instanceId: existing.instanceId, entryQitemId },
           );
         }
@@ -406,13 +387,11 @@ export class WorkflowRuntime {
         };
       }
     }
-    // OPR.0.3.3.04.1 (AC-3 reachability): a fresh operator runs
-    // `workflow instantiate <discovered-name>` (e.g. `conveyor`), not a hidden
-    // file path. Resolve the identifier against the seeded spec cache BY NAME
-    // first (using the cache's already-resolved stored sourcePath), falling back
-    // to treating it as a literal sourcePath only when no named spec matches (an
-    // operator-authored spec at an explicit path). Before this, instantiate fed
-    // the bare name straight to readThrough -> spec_file_missing.
+    // OPR.0.3.3.04.1（AC-3 可达性）：新操作人员运行
+    // `workflow instantiate <discovered-name>`（如 `conveyor`），而不是隐藏文件路径。
+    // 先按名称在已播种 spec 缓存中解析标识符（使用缓存中已解析的 sourcePath）；
+    // 只有无同名 spec 时才回退为字面 sourcePath，即显式路径上的人工 spec。此前 instantiate
+    // 会把裸名称直接交给 readThrough，导致 spec_file_missing。
     const resolvedSpecPath = this.specCache.resolveSourcePathByName(input.specPath) ?? input.specPath;
     const generatedSpec = input.compiledLifecycle?.workflowSpec;
     const specRow = generatedSpec
@@ -426,7 +405,7 @@ export class WorkflowRuntime {
     if (!validation.ok) {
       throw new WorkflowProjectorError(
         "spec_invalid",
-        `cannot instantiate: spec ${specRow.name}@${specRow.version} has ${validation.issues.filter((i) => i.severity === "error").length} validation error(s); run validate to inspect`,
+        `无法实例化：spec ${specRow.name}@${specRow.version} 有 ${validation.issues.filter((i) => i.severity === "error").length} 个校验错误；请运行 validate 检查`,
         { specPath: input.specPath, issues: validation.issues },
       );
     }
@@ -434,53 +413,43 @@ export class WorkflowRuntime {
     if (!entryStep) {
       throw new WorkflowProjectorError(
         "spec_no_steps",
-        `cannot instantiate: spec ${specRow.name}@${specRow.version} has no steps[]`,
+        `无法实例化：spec ${specRow.name}@${specRow.version} 没有 steps[]`,
         { specPath: input.specPath },
       );
     }
 
 
-    // OPR.0.4.6.WF2 FR-3: THE v1 execution boundary (the slice-11
-    // pattern). A REMOTE host pin is legal LANGUAGE (it validated
-    // above) but fails loud HERE — the queue is local-only until MH-3
-    // (cross-host queue routing); minting a qitem into a queue that
-    // cannot route it, or silently running the step locally, are both
-    // forbidden. Checked for EVERY step at instantiate (the earliest
-    // knowable moment — a mid-run surprise would strand the instance).
+    // OPR.0.4.6.WF2 FR-3：v1 执行边界（slice-11 模式）。远程 host pin 在语言层合法
+    //（已在上方校验），但在此响亮失败——队列在 MH-3 跨主机队列路由前仅支持本地。
+    // 禁止把 qitem 写进无法路由它的队列，也禁止静默在本地运行步骤。instantiate 时为每个步骤
+    // 检查，这是最早可知时刻；运行中途才发现会搁浅实例。
     for (const step of specRow.spec.steps) {
       if (step.host && step.host !== "local") {
         throw new WorkflowProjectorError(
           "host_pin_remote_unsupported",
-          `cannot instantiate: step "${step.id}" pins host "${step.host}". Remote-step execution requires MH-3 (cross-host queue routing), which has not shipped — the queue is local-only today. Workaround: run that step's seat on this host (host: local, or drop the pin), or wait for MH-3.`,
+          `无法实例化：步骤 "${step.id}" 固定到主机 "${step.host}"。远程步骤执行需要尚未交付的 MH-3（跨主机队列路由）；当前队列仅支持本机。临时方案：在本机运行该步骤的席位（host: local 或移除 pin），或等待 MH-3。`,
           { specPath: input.specPath, stepId: step.id, host: step.host, boundary: "MH-3" },
         );
       }
     }
 
-    // OPR.0.4.6.FAC1 (AC-1) + arch ruling 2026-07-07 (target-rig
-    // zero-regression, "Option A refined by PROVENANCE"): resolve the
-    // instance's rig binding by SPLITTING on the provenance of the rig
-    // name, because the two sources carry different intent:
+    // OPR.0.4.6.FAC1（AC-1）+ 2026-07-07 架构裁决（target-rig 零回归，
+    // “按出处细化方案 A”）：按工作组名称的出处分流解析实例绑定，
+    // 因为两个来源表达不同意图：
     //
-    //   - Operator `input.targetRig` (explicit `--rig X`) is AUTHORITATIVE:
-    //     an explicit instantiation demand. Unknown X → `bound_rig_unknown`
-    //     HARD-FAIL, loud, before any mutation (unchanged built behavior).
-    //   - Spec-default `spec.target.rig` is ADVISORY: the spec author's
-    //     default HINT, authored under the pre-FAC-1 regime where the field
-    //     was IGNORED at runtime (display-only). Unknown → DEGRADE to
-    //     UNBOUND + a LOUD advisory (not silent, not a hard-fail). This
-    //     preserves AC-1 zero-regression for shipped/example specs (e.g.
-    //     `conveyor` declares `target.rig: conveyor` AND routes every step
-    //     via preferred_targets — degrading to unbound routes exactly as
-    //     pre-FAC-1). A spec that genuinely needs a bound rig still fails
-    //     loudly, per-step, at the right granularity (entry →
-    //     `entry_owner_unresolved` at instantiate; later role-only step →
-    //     `next_owner_unresolved` at projection). Nothing degrades to
-    //     silence — it degrades to per-step honest failure with a heads-up.
-    //   - Neither set → unbound (byte-identical today's behavior).
+    //   - 操作人员 `input.targetRig`（显式 `--rig X`）具有权威性：这是显式实例化要求。
+    //     未知 X → 在任何修改前以 `bound_rig_unknown` 响亮硬失败，保持既有行为。
+    //   - spec 默认 `spec.target.rig` 仅为建议：它是 spec 作者在 FAC-1 前字段运行时被忽略
+    //     （仅展示）的制度下写出的默认提示。未知值 → 降级为 UNBOUND + 响亮建议，
+    //     既不静默也不硬失败。这为随包/示例 spec 保持 AC-1 零回归；例如 `conveyor` 声明
+    //     `target.rig: conveyor`，且每步经 preferred_targets 路由，降级为 unbound 后与 FAC-1 前
+    //     路由完全一致。真正需要绑定工作组的 spec 仍会按步骤在正确粒度响亮失败：入口在
+    //     instantiate 时为 `entry_owner_unresolved`，后续仅角色步骤在投影时为
+    //     `next_owner_unresolved`。没有任何东西静默降级，只会降为带预警的逐步骤诚实失败。
+    //   - 二者均未设置 → unbound，与当前行为字节一致。
     //
-    // name→id re-resolves fresh at each later resolution site, so a rig
-    // vanishing mid-run fails loud there (WF-5 catches it).
+    // 后续每个解析点都重新执行 name→id，因此运行中消失的工作组会在当地响亮失败，
+    // 由 WF-5 捕获。
     const registeredRigNames = (): string[] =>
       (this.db.prepare(`SELECT DISTINCT name FROM rigs ORDER BY name`).all() as Array<{ name: string }>).map(
         (r) => r.name,
@@ -491,30 +460,30 @@ export class WorkflowRuntime {
     const advisories: string[] = [];
     let boundRig: string | null;
     if (input.targetRig != null) {
-      // AUTHORITATIVE path: honor the operator's explicit demand or fail loud.
+      // 权威路径：满足操作人员的显式要求，否则响亮失败。
       if (!rigIsRegistered(input.targetRig)) {
         const registered = registeredRigNames();
         throw new WorkflowProjectorError(
           "bound_rig_unknown",
-          `cannot instantiate: target rig "${input.targetRig}" is not a registered rig on this daemon. Registered rigs: ${
-            registered.length > 0 ? registered.join(", ") : "(none)"
-          }. Check \`rig ps\`, create/import the rig first, or instantiate with a different --rig.`,
+          `无法实例化：目标工作组 "${input.targetRig}" 未在此后台服务登记。已登记工作组：${
+            registered.length > 0 ? registered.join(", ") : "（无）"
+          }。请检查 \`zrig ps\`，先创建或导入工作组，或改用其他 --rig 实例化。`,
           { specPath: input.specPath, targetRig: input.targetRig, registeredRigs: registered },
         );
       }
       boundRig = input.targetRig;
     } else if (specRow.spec.target?.rig != null) {
-      // ADVISORY path: the spec author's DEFAULT hint. Unknown → degrade
-      // to unbound with a loud advisory (never a hard-fail on a default).
+      // 建议路径：spec 作者的默认提示。未知值降级为 unbound 并响亮提示，
+      // 绝不因默认值硬失败。
       const specDefaultRig = specRow.spec.target.rig;
       if (!rigIsRegistered(specDefaultRig)) {
         const registered = registeredRigNames();
         boundRig = null;
         advisories.push(
-          `workflow spec default target.rig "${specDefaultRig}" is not a registered rig on this daemon — instantiating UNBOUND. ` +
-            `Steps route via their declared preferred_targets; any role-only step (no preferred_targets) will fail per-role at the right time ` +
-            `(entry at instantiate, later steps at projection). Pass --rig <name> to bind explicitly. ` +
-            `Registered rigs: ${registered.length > 0 ? registered.join(", ") : "(none)"}.`,
+          `工作流 spec 的默认 target.rig "${specDefaultRig}" 未在此后台服务登记——将以 UNBOUND 状态实例化。` +
+            `步骤通过其声明的 preferred_targets 路由；任何仅声明角色的步骤（无 preferred_targets）都会在恰当时机按角色失败` +
+            `（入口在实例化时，后续步骤在投影时）。传入 --rig <name> 可显式绑定。` +
+            `已登记工作组：${registered.length > 0 ? registered.join(", ") : "（无）"}。`,
         );
       } else {
         boundRig = specDefaultRig;
@@ -523,33 +492,24 @@ export class WorkflowRuntime {
       boundRig = null;
     }
 
-    // OPR.0.4.6.WF2 FR-2: static harness-pin reconciliation for EVERY
-    // pinned step at instantiate (the earliest knowable moment against
-    // current inventory); projection re-checks at each route (runtimes
-    // can change mid-flight).
+    // OPR.0.4.6.WF2 FR-2：instantiate 时为每个固定步骤做静态 harness-pin 对账，
+    // 这是相对当前 inventory 的最早可知时刻；投影在每次路由时重查，因为 runtime 可在途中变化。
     //
-    // OPR.0.4.6.FAC1 (ARCH Q2 = GUARD B1, binding): this eager loop
-    // does NO live role resolution and RECORDS NOTHING. It keeps the
-    // shipped harness/preferred-target reconciliation for steps whose
-    // role DECLARES targets (spec-only facts — sound to check now); a
-    // BOUND instance's role-only step (zero declared targets) is
-    // deliberately SKIPPED here — a factory rig warms up, and that
-    // step's liveness is its own projection-time concern where
-    // loud-with-candidates + WF-5 own the failure. The structural
-    // zero-role-coverage check below is the only instantiate-time
-    // hard-fail for role-only steps. Unbound specs keep today's
-    // behavior byte-identically (a pinned no-target step still fails
-    // "(none declared)" at instantiate — nothing could ever resolve it).
+    // OPR.0.4.6.FAC1（ARCH Q2 = GUARD B1，强约束）：此预先循环不做实时角色解析，
+    // 也不记录任何内容。对角色已声明 target 的步骤，保留已交付的 harness/preferred-target
+    // 对账（仅依赖 spec 事实，此刻检查可靠）；绑定实例中仅角色且零声明 target 的步骤在此刻意跳过——
+    // 工厂工作组需要预热，其存活性应在该步骤投影时处理，届时由带候选响亮失败 + WF-5 负责。
+    // 下方结构化零角色覆盖检查，是仅角色步骤在 instantiate 时唯一的硬失败。未绑定 spec
+    // 与当前行为字节一致；固定了 harness 却无 target 的步骤仍在 instantiate 时以
+    // "(none declared)" 失败，因为它永远不可能解析。
     const runtimeOf = (session: string) => nodeRuntimeOf(this.db, session);
     const declaredTargetsOf = (roleName: string): number =>
       (specRow.spec.roles?.[roleName]?.preferred_targets ?? []).length;
     for (const step of specRow.spec.steps) {
       if (step.harness) {
-        // rev1-r2 blocker fix: gated steps are NOT excluded — a pinned
-        // gated step reconciles through its gate compile (human gates
-        // resolve the step owner pin-aware; handler gates match the pin
-        // against the handler role's targets). Both throw
-        // harness_pin_unsatisfied when no candidate matches.
+        // rev1-r2 阻断修复：不排除 gated 步骤——固定了 harness 的 gated 步骤通过
+        // gate compile 对账；human gate 感知 pin 地解析步骤 owner，handler gate 则把 pin
+        // 与 handler 角色的 target 匹配。无候选匹配时二者都抛 harness_pin_unsatisfied。
         if (step.gate) {
           const gateIsHuman = isHumanSeatSession(step.gate.target);
           const gateRoleTargets = gateIsHuman
@@ -564,14 +524,11 @@ export class WorkflowRuntime {
       }
     }
 
-    // OPR.0.4.6.FAC1 (ARCH Q2): the STRUCTURAL role-coverage check for
-    // a BOUND instance — hard-fail ONLY when a step's role (or a
-    // handler-gate's target role) with zero declared preferred_targets
-    // is declared by ZERO seats on the bound rig, at ANY lifecycle
-    // state. Existence, not liveness: catches typos and missing role
-    // attributes at instantiate WITHOUT eager live resolution. The
-    // entry step is included — it resolves live below anyway, but a
-    // structural miss reads better as this named error.
+    // OPR.0.4.6.FAC1（ARCH Q2）：绑定实例的结构化角色覆盖检查。仅当步骤角色
+    //（或 handler gate 的目标角色）未声明 preferred_targets，且绑定工作组上任意生命周期
+    // 状态的席位都未声明该角色时硬失败。检查存在性而非存活性：不做预先实时解析，
+    // 但在 instantiate 时抓住拼写错误和缺失 role 属性。入口步骤也包括在内；
+    // 它虽会在下方实时解析，但结构缺失用此具名错误表达更清楚。
     if (boundRig !== null) {
       for (const step of specRow.spec.steps) {
         const rolesToCover: string[] = [];
@@ -583,7 +540,7 @@ export class WorkflowRuntime {
           if (!rigDeclaresRole(this.db, boundRig, roleName)) {
             throw new WorkflowProjectorError(
               "bound_rig_role_uncovered",
-              `cannot instantiate: step "${step.id}" needs role "${roleName}" but NO seat on rig "${boundRig}" declares that role (at any lifecycle state). Add a member with role ${roleName} to rig ${boundRig} (rig add), declare role: ${roleName} on an existing member, or add preferred_targets to the role in the spec. (A declared-but-not-yet-running seat is fine — liveness is checked when the step projects.)`,
+              `无法实例化：步骤 "${step.id}" 需要角色 "${roleName}"，但工作组 "${boundRig}" 中没有任何席位（无论生命周期状态）声明该角色。请用 zrig rig add 向工作组 ${boundRig} 添加角色为 ${roleName} 的成员、在现有成员上声明 role: ${roleName}，或在 spec 中为该角色添加 preferred_targets。（允许席位已声明但尚未运行——步骤投影时才检查存活性。）`,
               { specPath: input.specPath, stepId: step.id, role: roleName, boundRig },
             );
           }
@@ -591,28 +548,20 @@ export class WorkflowRuntime {
       }
     }
 
-    // OPR.0.4.6.FAC3 (FR-5): the member-exists instantiate ADVISORY —
-    // catch a mis-routed destination (a typo'd/stale member on a rig
-    // this daemon DOES know) loudly at the earliest knowable moment,
-    // never silently orphaned. ADVISORY-NEVER-DENY: instantiate always
-    // proceeds, and the queue transport gate stays rig-exists-only —
-    // hardening it to member-exists would gate EVERY queue write and
-    // break legitimate non-managed destinations (adopted seats, human
-    // seats, MH-3-forwarded items). A read-only pre-txn pass over
-    // spec-declared targets; sync SQL only.
+    // OPR.0.4.6.FAC3（FR-5）：instantiate 时的 member-exists 建议——在最早可知时刻
+    // 响亮抓住错误路由的目标（本后台服务确知工作组中的拼错/陈旧成员），绝不静默孤立。
+    // 建议绝不拒绝：instantiate 始终继续，队列 transport 门仍只检查工作组存在；
+    // 若强化为 member-exists，会门控每次队列写入并破坏合法非受管目标
+    //（已采纳席位、人类席位、MH-3 转发条目）。事务前只读扫描 spec 声明的 target，
+    // 且只用同步 SQL。
     //
-    // Scope = roles REFERENCED BY STEPS (actor_role + a handler gate's
-    // target role — the same reference set the structural coverage
-    // check above walks): the advisory must name a declaring step, and
-    // an unreferenced role's targets never route. Skip order per the
-    // queue-gate archetype: human-seat classifier BEFORE parse (the
-    // identical predicate the transport uses) → non-canonical
-    // (raw/adopted destinations are legitimate; the inventory cannot
-    // vouch for them) → unregistered rig (the transport already rejects
-    // those loudly at queue-write — no double advisory) → member probe
-    // (existence at ANY lifecycle state/kind; liveness is projection's
-    // business). ONE aggregated advisory per unique unknown target,
-    // naming every declaring step/role pair.
+    // 作用域 = 步骤引用的角色（actor_role + handler gate 目标角色，与上方结构覆盖检查
+    // 遍历同一引用集）：建议必须点名声明步骤，未引用角色的 target 永不路由。跳过顺序沿用
+    // queue-gate 原型：先按 transport 所用同一谓词判断 human-seat → 跳过非 canonical
+    //（原始/已采纳目标合法，inventory 无法为其担保）→ 跳过未登记工作组
+    //（transport 已在队列写入时响亮拒绝，不重复建议）→ member 探针（任意生命周期/种类下
+    // 的存在性；存活性归投影负责）。每个唯一未知 target 只生成一条聚合建议，
+    // 点名每个声明它的步骤/角色对。
     {
       const unknownTargets = new Map<
         string,
@@ -629,12 +578,9 @@ export class WorkflowRuntime {
           try {
             memberExists = rigMemberExists(this.db, parsed.rig, target);
           } catch {
-            // ADVISORY-NEVER-THROW (VM-caught, run-1): the probe rides the
-            // full inventory projection, which can error on a
-            // partial-schema DB (e.g. a test fixture without the snapshots
-            // table). A probe error means the inventory cannot vouch
-            // EITHER way — skip silently; an advisory path must never be
-            // able to fail the instantiate.
+            // 建议绝不抛错（VM run-1 捕获）：探针依赖完整 inventory 投影，后者在部分 schema
+            // 数据库（如缺 snapshots 表的测试 fixture）上可能出错。探针错误意味着 inventory
+            // 无法证明任一方向——静默跳过；建议路径绝不能使 instantiate 失败。
             continue;
           }
           if (memberExists) continue;
@@ -654,24 +600,21 @@ export class WorkflowRuntime {
       }
       for (const [target, { rig, declaredBy }] of unknownTargets) {
         const declares = declaredBy
-          .map((d) => `step "${d.stepId}" (role "${d.role}")`)
+          .map((d) => `步骤 "${d.stepId}"（角色 "${d.role}"）`)
           .join(", ");
         advisories.push(
-          `preferred target "${target}" names rig "${rig}" (registered) but NO member of that rig has this coordinate — declared by ${declares}. ` +
-            `Work routed there will not be claimed; it will surface as a stuck exception. ` +
-            `Check the member name against \`rig ps\`, or add the member to rig "${rig}".`,
+          `preferred target "${target}" 指向已登记工作组 "${rig}"，但其中没有成员使用该坐标——声明位置：${declares}。` +
+            `路由到此处的工作不会被认领，并会表现为卡住异常。` +
+            `请用 \`zrig ps\` 核对成员名称，或将该成员添加到工作组 "${rig}"。`,
         );
       }
     }
 
-    // OPR.0.4.6.WF2 FR-5: a gated ENTRY step compiles to the gate item
-    // (human-routed or handler-routed) and the instance parks waiting
-    // from birth — same socket as a mid-flow gate.
-    // OPR.0.4.6.FAC1 (ARCH Q2/call-site row 3): the ENTRY step gets
-    // FULL live resolution at instantiate and is RECORDED — the entry
-    // packet is actually created now (the first routing decision), so
-    // this is resolve-once, not eager pre-resolution. A tier-3 failure
-    // here re-throws under the entry error code, candidates preserved.
+    // OPR.0.4.6.WF2 FR-5：带 gate 的入口步骤编译为 gate 条目（路由到 human 或 handler），
+    // 实例从诞生起就停驻等待，与流程中途 gate 使用同一接口。
+    // OPR.0.4.6.FAC1（ARCH Q2/调用点第 3 行）：入口步骤在 instantiate 时进行完整实时解析
+    // 并记录；入口 packet 此刻实际创建，是第一次路由决策。因此这是一次性解析，
+    // 不是预先解析。此处第 3 层失败会以入口错误码重新抛出，并保留 candidates。
     const entryRoleCtx = roleResolutionContext(this.db, boundRig);
     let entryGate: GateCompileResult | null;
     let entryOwner: string | null;
@@ -689,11 +632,10 @@ export class WorkflowRuntime {
       }
     } catch (err) {
       if (err instanceof WorkflowProjectorError && err.code === "next_owner_unresolved") {
-        // entry_owner_unresolved SPEAKS CANDIDATES: same structured
-        // details, the entry site's error-code contract preserved.
+        // entry_owner_unresolved 会列出候选：保留相同结构化详情和入口点错误码契约。
         throw new WorkflowProjectorError(
           "entry_owner_unresolved",
-          `cannot instantiate: ${err.message}`,
+          `无法实例化：${err.message}`,
           { specPath: input.specPath, entryStepId: entryStep.id, entryRole: entryStep.actor_role, ...(err.details ?? {}) },
         );
       }
@@ -702,7 +644,7 @@ export class WorkflowRuntime {
     if (!entryOwner) {
       throw new WorkflowProjectorError(
         "entry_owner_unresolved",
-        `cannot instantiate: entry step "${entryStep.id}" (role "${entryStep.actor_role}") has no preferred_targets and no entryOwnerSession was supplied`,
+        `无法实例化：入口步骤 "${entryStep.id}"（角色 "${entryStep.actor_role}"）没有 preferred_targets，也未提供 entryOwnerSession`,
         { specPath: input.specPath, entryStepId: entryStep.id, entryRole: entryStep.actor_role },
       );
     }
@@ -719,12 +661,10 @@ export class WorkflowRuntime {
         workflowVersion: specRow.version,
         createdBySession: input.createdBySession,
         initialFrontier: [],
-        // R2 fix: set durable current_step_id at instantiate so the
-        // projector resolves the correct step on the first project()
-        // call without any trail-based inference.
+        // R2 修复：instantiate 时设置持久 current_step_id，使 projector 首次调用
+        // project() 时无需基于 trail 推断即可解析正确步骤。
         currentStepId: entryStep.id,
-        // OPR.0.4.6.FAC1: the resolved rig binding persists with the
-        // instance row (same txn as the entry packet).
+        // OPR.0.4.6.FAC1：已解析工作组绑定随实例行持久化，与入口 packet 同一事务。
         boundRig,
         lifecycle: input.lifecycle
           ? {
@@ -735,13 +675,11 @@ export class WorkflowRuntime {
       });
       instanceId = instance.instanceId;
 
-      // Create entry qitem in the same txn (gate-aware: a gated entry
-      // rides the shipped human-route / handler-route write path).
-      // OPR.0.4.6.WF5 FR-1 class (c) (guard code-review fold — the entry
-      // twin of the projector's mid-flow stamp): a HUMAN-gated ENTRY
-      // carries the class-(c) exception identity on the WF-2 item
-      // itself, occurrence = the preallocated packet id. Handler-role
-      // entries stay negative.
+      // 在同一事务中创建入口 qitem；它感知 gate，带 gate 的入口复用已交付的
+      // human-route / handler-route 写路径。
+      // OPR.0.4.6.WF5 FR-1 类别 (c)（guard code-review 折叠；projector 流程中途
+      // 戳记的入口孪生）：由 HUMAN 门控的 ENTRY 在 WF-2 条目自身携带类别 (c) 异常身份，
+      // occurrence = 预分配 packet id。handler-role 入口保持反例。
       const entryGateQitemId = preallocatedEntryQitemId;
       const entryGateException =
         entryGate && entryGateQitemId
@@ -795,10 +733,9 @@ export class WorkflowRuntime {
         });
       }
 
-      // OPR.0.4.6.WF2 FR-5 (guard blocker 1): a HUMAN-gated ENTRY parks
-      // in the same txn — the leg-1 blocked_on human-seat shape the
-      // shipped resolve verb acts on (same as the projector's mid-flow
-      // gate park).
+      // OPR.0.4.6.WF2 FR-5（guard blocker 1）：HUMAN 门控入口在同一事务中停驻——
+      // 这是已交付 resolve 动词所操作的 leg-1 blocked_on human-seat 形状，
+      // 与 projector 的流程中途 gate park 相同。
       if (entryGate?.parkOn) {
         const parked = this.queueRepo.updateWithinTransaction({
           qitemId: created.qitemId,
@@ -807,20 +744,19 @@ export class WorkflowRuntime {
           closureReason: "blocked_on",
           closureTarget: entryGate.parkOn,
           blockedOn: entryGate.parkOn,
-          transitionNote: `workflow gate: parked on ${entryGate.parkOn} pending sign-off`,
+          transitionNote: `工作流门控：停驻在 ${entryGate.parkOn}，等待确认`,
         });
         register(parked.persistedEvent);
       }
 
       this.instanceStore.updateFrontier(instance.instanceId, [created.qitemId], entryGate ? "waiting" : "active", {
-        // FR-5: guarded even here — the instance was created in this
-        // txn at version 0; uniformity keeps every advance guarded.
+        // FR-5：即便此处也要守卫——实例在本事务中以 version 0 创建；
+        // 一致性要求每次推进都受守卫。
         expectedVersion: instance.version,
       });
 
-      // FR-3: arm the packet-addressed keepalive (or legacy instance job)
-      // INSIDE the same txn that creates the entry packet. This covers the
-      // commit-then-crash-before-nudge window from the very first step.
+      // FR-3：在创建入口 packet 的同一事务内武装 packet 寻址 keepalive
+      //（或旧版 instance job）。从第一步起覆盖“提交后、nudge 前崩溃”的窗口。
       if (this.watchdogJobsRepo) {
         ensureWorkflowKeepaliveArmed(this.watchdogJobsRepo, {
           instanceId: instance.instanceId,
@@ -861,8 +797,8 @@ export class WorkflowRuntime {
     return result;
   }
 
-  /** Recheck each recorded overdue packet, never a sibling's verdict. The
-   * decision and closure share a transaction; boot repairs a crash after project. */
+  /** 重新检查每个已记录逾期 packet，绝不借用同级项裁决。决定与关闭共享事务；
+   * 启动扫描修复 project 后崩溃。 */
   reconcileStuckExceptions(instanceId?: string): number {
     let closed = 0;
     this.eventBus.withNotifyEnvelope((register) => {
@@ -884,7 +820,7 @@ export class WorkflowRuntime {
         if (!id || !packetId) continue;
         const instance = this.instanceStore.getById(id);
         const packet = this.queueRepo.getById(packetId);
-        // Unknown or conflicting provenance cannot certify recovery.
+        // 未知或冲突的出处不能证明已恢复。
         if (!instance || !packet || one("workflow:") !== instance.workflowName
           || !packet.tags?.includes(`instance:${id}`)
           || !packet.tags?.includes(`workflow:${instance.workflowName}`)) continue;
@@ -903,7 +839,7 @@ export class WorkflowRuntime {
         const updated = this.queueRepo.updateWithinTransaction({
           qitemId: row.qitem_id, actorSession: instance.createdBySession,
           state: "done", closureReason: "no-follow-on",
-          transitionNote: `workflow overdue occurrence resolved: instance ${id}, packet ${packetId}; ${live ? `packet is ${packet.state} and no longer overdue` : "packet is no longer an active frontier obligation"}`,
+          transitionNote: `工作流逾期事件已解决：实例 ${id}，packet ${packetId}；${live ? `packet 状态为 ${packet.state}，且已不再逾期` : "packet 已不再是活动 frontier 义务"}`,
         });
         register(updated.persistedEvent);
         closed += 1;
@@ -940,8 +876,8 @@ export class WorkflowRuntime {
       const packet = this.queueRepo.getById(packetId);
       const stepId = binding?.stepId ?? (instance.currentFrontier.length === 1 ? instance.currentStepId : null);
       const step = stepId ? spec?.steps.find((candidate) => candidate.id === stepId) : undefined;
-      if (!binding && instance.currentFrontier.length > 1) unknowns.push(`frontier packet ${packetId} has no unique step binding`);
-      if (!packet) unknowns.push(`frontier packet ${packetId} has no queue row`);
+      if (!binding && instance.currentFrontier.length > 1) unknowns.push(`frontier packet ${packetId} 没有唯一的步骤绑定`);
+      if (!packet) unknowns.push(`frontier packet ${packetId} 没有队列记录`);
       return {
         packetId,
         stepId,
@@ -977,30 +913,30 @@ export class WorkflowRuntime {
     status: "aborted";
   }> {
     if (!input.reason.trim()) {
-      throw new WorkflowProjectorError("abort_reason_required", "workflow abort requires a non-empty reason");
+      throw new WorkflowProjectorError("abort_reason_required", "中止工作流需要非空原因");
     }
     const closedPacketIds: string[] = [];
     this.eventBus.withNotifyEnvelope((register) => {
       const instance = this.instanceStore.getByIdOrThrow(input.instanceId);
       if (instance.status === "completed" || instance.status === "aborted") {
-        throw new WorkflowProjectorError("instance_not_abortable", `instance ${instance.instanceId} is ${instance.status}`, { instanceId: instance.instanceId, status: instance.status });
+        throw new WorkflowProjectorError("instance_not_abortable", `实例 ${instance.instanceId} 当前状态为 ${instance.status}`, { instanceId: instance.instanceId, status: instance.status });
       }
       const spec = this.specCache.getByNameVersion(instance.workflowName, instance.workflowVersion)?.spec;
       const bindingByPacket = new Map(this.instanceStore.listFrontierBindings(instance.instanceId).map((binding) => [binding.packetId, binding]));
       const closedAt = this.now().toISOString();
       for (const packetId of instance.currentFrontier) {
         const packet = this.queueRepo.getById(packetId);
-        if (!packet) throw new WorkflowProjectorError("packet_not_found", `frontier packet ${packetId} not found`, { instanceId: instance.instanceId, packetId });
+        if (!packet) throw new WorkflowProjectorError("packet_not_found", `未找到 frontier packet ${packetId}`, { instanceId: instance.instanceId, packetId });
         const binding = bindingByPacket.get(packetId);
         const stepId = binding?.stepId ?? (instance.currentFrontier.length === 1 ? instance.currentStepId : null);
-        if (!stepId) throw new WorkflowProjectorError("frontier_binding_indeterminate", `cannot abort: packet ${packetId} has no step binding`, { instanceId: instance.instanceId, packetId });
+        if (!stepId) throw new WorkflowProjectorError("frontier_binding_indeterminate", `无法中止：packet ${packetId} 没有步骤绑定`, { instanceId: instance.instanceId, packetId });
         const step = spec?.steps.find((candidate) => candidate.id === stepId);
         const closed = this.queueRepo.updateWithinTransaction({
           qitemId: packetId,
           actorSession: input.actorSession,
           viaWorkflowVerb: true,
           state: "canceled",
-          transitionNote: `workflow abort by ${input.actorSession}: ${input.reason}`,
+          transitionNote: `工作流由 ${input.actorSession} 中止：${input.reason}`,
         });
         register(closed.persistedEvent);
         this.trailLog.record({
@@ -1024,47 +960,38 @@ export class WorkflowRuntime {
         lastContinuationDecision: { action: "abort", actorSession: input.actorSession, reason: input.reason, closedPacketIds },
       });
       if (this.watchdogJobsRepo) disarmAllWorkflowKeepalives(this.watchdogJobsRepo, instance.instanceId, `workflow_aborted: ${input.reason}`);
-      register(this.eventBus.persistWithinTransaction({ type: "workflow.failed", instanceId: instance.instanceId, workflowName: instance.workflowName, reason: `aborted: ${input.reason}` }));
+      register(this.eventBus.persistWithinTransaction({ type: "workflow.failed", instanceId: instance.instanceId, workflowName: instance.workflowName, reason: `已中止：${input.reason}` }));
     });
     return { instanceId: input.instanceId, closedPacketIds, status: "aborted" };
   }
 
   /**
-   * OPR.0.4.6.WF3 FR-4 — `route`: re-target the CURRENT FRONTIER step
-   * of a live instance to a new owner. THE ADJUDICATED MECHANISM
-   * (arch, formal, on the advance-authority ground): CLOSE + RECREATE
-   * + FRONTIER REBIND in ONE scribe transaction. Revocation is
-   * STRUCTURAL: the old packet leaves the frontier inside this txn, so
-   * a zombie old owner's stale `project` hits the shipped
-   * `packet_not_on_frontier` 409 — zero new validation machinery on
-   * the hot advance path (the weighed-and-rejected alternative).
+   * OPR.0.4.6.WF3 FR-4——`route`：把存活实例的当前 frontier 步骤重新指向新 owner。
+   * 经裁决的机制（架构正式决定，基于推进权威）：在一个 scribe 事务中完成
+   * CLOSE + RECREATE + FRONTIER REBIND。撤销是结构性的：旧 packet 在事务内离开 frontier，
+   * 因此僵尸旧 owner 的陈旧 `project` 会命中已交付的 `packet_not_on_frontier` 409；
+   * 热推进路径不增加任何新校验机制，这是权衡后否决的替代方案。
    *
-   * The observable contract (PRD FR-4 (1)-(8)):
-   *   (1) owner = target after route      (5) frontier non-dangling
-   *   (2) current_step_id UNCHANGED       (6) additive event detail
-   *   (3) actor+reason+old→new durable    (7) pin + version guard held
-   *   (4) NO forged completion closure    (8) zombie structurally 409'd
-   * Route is NOT an advance: hop_count does not bump (max_hops counts
-   * steps, not re-targets); BR-3 — `project` stays the sole advance.
+   * 可观察契约（PRD FR-4 第 1-8 条）：
+   *   (1) route 后 owner = target          (5) frontier 不悬空
+   *   (2) current_step_id 不变             (6) 增量事件详情
+   *   (3) actor+reason+old→new 持久化      (7) pin + version 守卫成立
+   *   (4) 不伪造完成 closure               (8) 僵尸从结构上得到 409
+   * Route 不是推进：hop_count 不增加（max_hops 统计步骤而非重定向）；
+   * BR-3——`project` 仍是唯一推进操作。
    */
   /**
-   * OPR.0.4.6.WF5 FR-4 — RESUME from where it stopped (redrive
-   * semantics, the one engine extension). One scribe transaction:
-   * failed → active REBOUND to the failed step, a FRESH frontier packet
-   * to the step's RE-RESOLVED owner, the trail preserved and extended
-   * (completed steps never re-run), the livelock rail re-baselined
-   * (hops-since-resume — exactly one more bounded window), the redrive
-   * count recorded, open exception items for THIS occurrence closed
-   * (resolve+resume closes the occurrence; a later re-failure is a NEW
-   * occurrence), keepalive re-armed, additive workflow.resumed event.
+   * OPR.0.4.6.WF5 FR-4——从停止位置 RESUME（redrive 语义，唯一的引擎扩展）。
+   * 一个 scribe 事务完成：failed → active，反弹到失败步骤；向重新解析的步骤 owner
+   * 创建新 frontier packet；保留并扩展 trail（已完成步骤绝不重跑）；重新设定 livelock
+   * 基线（resume 后 hop，恰好再给一个有界窗口）；记录 redrive 次数；关闭本次 occurrence
+   * 的开放异常条目（resolve+resume 关闭该 occurrence，后续再失败是新 occurrence）；
+   * 重新武装 keepalive，并发出增量 workflow.resumed 事件。
    *
-   * THE ARCH PIN (plan Rev-2, binding): the owner is RE-RESOLVED
-   * through the SAME resolution path projection uses
-   * (resolveDefaultOwner — preferred_targets + harness reconciliation),
-   * NEVER copied from the closed packet's recorded destination: a dead
-   * seat is a common CAUSE of the exception, and resume is the one
-   * sanctioned re-resolution point (FAC-1 R1) the binding layer later
-   * upgrades uniformly.
+   * 架构固定点（计划 Rev-2，强约束）：owner 必须通过投影所用的同一解析路径重新解析
+   *（resolveDefaultOwner——preferred_targets + harness 对账），绝不从已关闭 packet
+   * 的记录目标复制。已死席位常常正是异常原因，而 resume 是唯一获准的重新解析点
+   *（FAC-1 R1），绑定层以后可统一升级它。
    */
   async resume(input: {
     instanceId: string;
@@ -1099,7 +1026,7 @@ export class WorkflowRuntime {
       if (instance.status !== "failed") {
         throw new WorkflowProjectorError(
           "instance_not_failed",
-          `instance ${instance.instanceId} is ${instance.status}; resume re-drives FAILED instances only (a waiting instance resumes via the shipped project path; an active instance needs no resume)` ,
+          `实例 ${instance.instanceId} 当前状态为 ${instance.status}；resume 只能重新驱动 FAILED 实例（waiting 实例通过已交付的 project 路径恢复，active 实例无需 resume）` ,
           { instanceId: instance.instanceId, status: instance.status, expectedStatus: "failed" },
         );
       }
@@ -1107,7 +1034,7 @@ export class WorkflowRuntime {
       if (!specRow) {
         throw new WorkflowProjectorError(
           "spec_not_cached",
-          `workflow spec ${instance.workflowName}@${instance.workflowVersion} is not in the spec cache; re-run validate to refresh it before resuming`,
+          `工作流 spec ${instance.workflowName}@${instance.workflowVersion} 不在 spec 缓存中；恢复前请重新运行 validate 刷新`,
           { workflowName: instance.workflowName, workflowVersion: instance.workflowVersion },
         );
       }
@@ -1121,7 +1048,7 @@ export class WorkflowRuntime {
       if (!failedStepId) {
         throw new WorkflowProjectorError(
           "resume_step_unrecoverable",
-          `instance ${instance.instanceId} carries no recorded failed step (pre-R2 row without lastContinuationDecision.currentStep); cannot rebind — instantiate a fresh run`,
+          `实例 ${instance.instanceId} 没有记录失败步骤（R2 前记录缺少 lastContinuationDecision.currentStep）；无法重新绑定——请实例化一次新运行`,
           { instanceId: instance.instanceId },
         );
       }
@@ -1129,17 +1056,14 @@ export class WorkflowRuntime {
       if (!step) {
         throw new WorkflowProjectorError(
           "resume_step_missing_from_spec",
-          `failed step "${failedStepId}" no longer exists in ${instance.workflowName}@${instance.workflowVersion}; fix the spec (the cached version is authoritative for in-flight instances) or instantiate a fresh run`,
+          `失败步骤 "${failedStepId}" 已不在 ${instance.workflowName}@${instance.workflowVersion} 中；请修复 spec（对运行中实例以缓存版本为准）或实例化一次新运行`,
           { instanceId: instance.instanceId, stepId: failedStepId },
         );
       }
 
-      // THE ARCH PIN: re-resolve, never copy.
-      // OPR.0.4.6.FAC1 (call-site row 5): resume is the ONE sanctioned
-      // re-resolution point and now runs the full tier stack — a bound
-      // instance's role-only failed step re-resolves capability-aware
-      // against CURRENT inventory (a dead seat is a common CAUSE of the
-      // exception; the redrive picks the seat that is eligible NOW).
+      // 架构固定点：重新解析，绝不复制。OPR.0.4.6.FAC1（调用点第 5 行）：resume 是唯一
+      // 获准的重新解析点，现在运行完整层级栈——绑定实例中仅角色的失败步骤会基于当前 inventory
+      // 感知能力地重新解析；已死席位常是异常原因，redrive 应选择现在合格的席位。
       const owner = resolveDefaultOwner(
         spec,
         step,
@@ -1149,14 +1073,13 @@ export class WorkflowRuntime {
       if (!owner) {
         throw new WorkflowProjectorError(
           "next_owner_unresolved",
-          `cannot resolve an owner for failed step "${step.id}" (role "${step.actor_role}"); add preferred_targets to the role before resuming`,
+          `无法为失败步骤 "${step.id}"（角色 "${step.actor_role}"）解析 owner；恢复前请为该角色添加 preferred_targets`,
           { instanceId: instance.instanceId, stepId: step.id, role: step.actor_role },
         );
       }
 
-      // Fresh frontier packet — the redrive delivery. The --decision
-      // text lands durably in the packet body (the resumer’s
-      // instruction reaches the step owner).
+      // 新 frontier packet——redrive 投递。--decision 文本持久写入 packet body，
+      // 使恢复者指令到达步骤 owner。
       const redrivePacketId = newQitemId();
       const created = this.queueRepo.createWithinTransaction({
         qitemId: redrivePacketId,
@@ -1166,13 +1089,13 @@ export class WorkflowRuntime {
           binding: instance.lifecycleBinding,
           library: this.guidanceLibrary,
           body:
-            `WORKFLOW RESUME (redrive)\n` +
-            `workflow: ${instance.workflowName} v${instance.workflowVersion}\n` +
-            `instance: ${instance.instanceId}\n` +
-            `step: ${step.id} (role ${step.actor_role}) — re-driven from the recorded failure; completed steps are NOT re-run\n` +
-            `resumed by: ${input.actorSession} (redrive #${(instance.resumeCount ?? 0) + 1})\n` +
-            (input.decision ? `decision: ${input.decision}\n` : "") +
-            `history: rig workflow trace ${instance.instanceId}`,
+            `工作流恢复（重新驱动）\n` +
+            `工作流：${instance.workflowName} v${instance.workflowVersion}\n` +
+            `实例：${instance.instanceId}\n` +
+            `步骤：${step.id}（角色 ${step.actor_role}）——从已记录失败处重新驱动；已完成步骤不会重跑\n` +
+            `恢复者：${input.actorSession}（第 ${(instance.resumeCount ?? 0) + 1} 次重新驱动）\n` +
+            (input.decision ? `决策：${input.decision}\n` : "") +
+            `历史：zrig workflow trace ${instance.instanceId}`,
           instanceId: instance.instanceId,
           packetId: redrivePacketId,
           ownerSession: owner,
@@ -1191,7 +1114,7 @@ export class WorkflowRuntime {
       });
       register(created.persistedEvent);
       nudgeTo = { qitemId: created.qitemId, session: created.destinationSession, nudge: created.nudge };
-      // P34: stage the redrive packet's wake intent inside this transaction.
+      // P34：在此事务内暂存 redrive packet 的唤醒意图。
       this.queueRepo.stageWakeIntent(
         created.qitemId,
         input.actorSession,
@@ -1200,18 +1123,15 @@ export class WorkflowRuntime {
         created.nudge,
       );
 
-      // Resolve+resume CLOSES the occurrence: open exception items for
-      // THIS episode close honestly with resume provenance. A later
-      // re-failure mints a NEW packet id = a NEW occurrence (never
-      // hidden behind this resolved past).
+      // resolve+resume 会关闭 occurrence：本 episode 的开放异常条目带 resume 出处诚实关闭。
+      // 后续再次失败会生成新 packet id，即新 occurrence，绝不藏在已解决历史之后。
       const exceptionItemsClosed = failedPacketId
         ? this.closeFailureExceptions(instance.instanceId, failedPacketId, step.id, input, register)
         : 0;
 
-      // Frontier rebind + status + THE LIVELOCK RAIL: hops_baseline =
-      // hopCount at resume (one fresh bounded window under the same
-      // max_hops), resume_count recorded, version guard held
-      // (concurrent resumes: exactly one commits).
+      // frontier 重绑 + status + 活锁护栏：hops_baseline = resume 时的 hopCount
+      //（相同 max_hops 下再给一个新有界窗口），记录 resume_count，并保持版本守卫；
+      // 并发 resume 中恰有一个提交。
       this.instanceStore.updateFrontier(instance.instanceId, [created.qitemId], "active", {
         currentStepId: step.id,
         expectedVersion: instance.version,
@@ -1221,7 +1141,7 @@ export class WorkflowRuntime {
         },
       });
 
-      // Keepalive re-arm for the redriven owner (in-txn, WF-1 FR-3).
+      // 为 redrive 后的 owner 重新武装 keepalive（事务内，WF-1 FR-3）。
       if (this.watchdogJobsRepo) {
         ensureWorkflowKeepaliveArmed(this.watchdogJobsRepo, {
           instanceId: instance.instanceId,
@@ -1251,33 +1171,25 @@ export class WorkflowRuntime {
         exceptionItemsClosed,
       };
 
-      // P34 (site :791) — NO SEAM ASSERT HERE, deliberately.
+      // P34（位置 :791）——这里刻意不做接缝断言。
       //
-      // Canonical correction, transition 5764 on qitem-20260809175537-8e25384f:
-      // "Intent goes on :791; the assert runs only where a real source->successor
-      // pair exists." This transaction has no such pair. The N exception closes
-      // above are terminal closes with NO successor of their own (`no-follow-on`),
-      // and the redrive packet's own predecessor — the failed packet — was closed
-      // in an EARLIER transaction, not this one.
+      // 权威修正，qitem-20260809175537-8e25384f 上的 transition 5764：
+      // “意图放在 :791；仅在真实 source->successor 对存在时运行断言。”本事务没有这种配对。
+      // 上方 N 个异常关闭都是没有自身 successor 的终态关闭（`no-follow-on`）；
+      // redrive packet 自己的 predecessor——失败 packet——在更早事务中关闭，不在本事务。
       //
-      // Anchoring the seam on one of those closes against this packet would pair a
-      // close with a successor that is not its own: the assert would pass because
-      // the intent for an UNRELATED successor exists, so it could never fail. That
-      // is the exact pairing 5764 forbids, and a prior revision of this file did
-      // it once rather than N times, which made it no less vacuous.
+      // 若把接缝锚定在那些 close 中任一项并对照本 packet，就会把 close 与不属于它的 successor
+      // 配成一对；断言会因无关 successor 的意图存在而通过，从而永远不可能失败。
+      // 这正是 5764 禁止的配对；本文件旧修订曾只做一次而不是 N 次，同样空洞。
       //
-      // The redrive packet's wake is still DURABLE — stageWakeIntent above commits
-      // it atomically with this transaction. What is absent is a paired close for
-      // the seam to roll back against, and inventing one would buy a green check
-      // that asserts nothing.
+      // redrive packet 的 wake 仍然持久——上方 stageWakeIntent 与本事务原子提交。
+      // 缺少的是供接缝回滚核对的配对 close；臆造一个只会换来不验证任何事实的绿色检查。
     });
-    // Closure-assignment cast (the shipped post-commit idiom): TS cannot
-    // track the txn-closure write, so narrow via the cast.
+    // 闭包赋值断言（已交付的提交后惯用法）：TS 无法跟踪事务闭包写入，因此通过断言缩窄。
     const resumeNudge = nudgeTo as { qitemId: string; session: string; nudge: boolean | undefined } | null;
     if (resumeNudge) {
-      // P34: deliver via the SHARED staged-intent path (claims + finalizes the
-      // row staged in the txn, so recovery cannot re-send it); falls back to the
-      // best-effort nudge when no intent store is attached.
+      // P34：经共享 staged-intent 路径投递（认领并完成事务中暂存的行，使恢复不能重发）；
+      // 未接入 intent store 时回退到尽力 nudge。
       await this.queueRepo.deliverWakeForSuccessor(
         resumeNudge.qitemId,
         resumeNudge.session,
@@ -1288,7 +1200,7 @@ export class WorkflowRuntime {
     return result;
   }
 
-  /** Called inside the redrive transaction; only this instance's failed packet is resolved. */
+  /** 在 redrive 事务内调用；只解决此实例的失败 packet。 */
   private closeFailureExceptions(
     instanceId: string,
     failedPacketId: string,
@@ -1309,7 +1221,7 @@ export class WorkflowRuntime {
         actorSession: input.actorSession,
         state: "done",
         closureReason: "no-follow-on",
-        transitionNote: `workflow resume: occurrence resolved by ${input.actorSession} redriving step ${stepId}${input.decision ? ` — ${input.decision}` : ""}`,
+        transitionNote: `工作流恢复：${input.actorSession} 重新驱动步骤 ${stepId}，事件已解决${input.decision ? `——${input.decision}` : ""}`,
       });
       register(closed.persistedEvent);
     }
@@ -1338,7 +1250,7 @@ export class WorkflowRuntime {
       if (selected.resumeDecision !== (input.decision ?? null)) {
         throw new WorkflowProjectorError(
           "failure_occurrence_replay_conflict",
-          `failure occurrence ${selected.occurrenceId} was already resumed with different decision bytes`,
+          `失败事件 ${selected.occurrenceId} 已用不同的决策字节恢复`,
           {
             instanceId: input.instanceId,
             occurrenceId: selected.occurrenceId,
@@ -1349,18 +1261,18 @@ export class WorkflowRuntime {
       }
       const packet = this.queueRepo.getById(selected.redrivePacketId);
       if (!packet) {
-        throw new WorkflowProjectorError("failure_occurrence_replay_indeterminate", `resolved occurrence ${selected.occurrenceId} points to missing redrive packet ${selected.redrivePacketId}`, { instanceId: input.instanceId, occurrenceId: selected.occurrenceId });
+        throw new WorkflowProjectorError("failure_occurrence_replay_indeterminate", `已解决事件 ${selected.occurrenceId} 指向缺失的重新驱动 packet ${selected.redrivePacketId}`, { instanceId: input.instanceId, occurrenceId: selected.occurrenceId });
       }
       const instance = this.instanceStore.getByIdOrThrow(input.instanceId);
       return { instanceId: input.instanceId, stepId: selected.stepId, newPacketId: selected.redrivePacketId, ownerSession: packet.destinationSession, resumeCount: instance.resumeCount, exceptionItemsClosed: 0, absorbedReplay: true };
     }
     const unresolved = all.filter((occurrence) => occurrence.status === "unresolved");
     if (!input.occurrenceId && unresolved.length !== 1) {
-      throw new WorkflowProjectorError("failure_occurrence_required", `instance ${input.instanceId} has ${unresolved.length} unresolved failure occurrences; --occurrence is required`, { instanceId: input.instanceId, candidates: unresolved });
+      throw new WorkflowProjectorError("failure_occurrence_required", `实例 ${input.instanceId} 有 ${unresolved.length} 个未解决的失败事件；必须提供 --occurrence`, { instanceId: input.instanceId, candidates: unresolved });
     }
     const occurrence = selected ?? unresolved[0];
     if (!occurrence || occurrence.status !== "unresolved") {
-      throw new WorkflowProjectorError("failure_occurrence_not_unresolved", `failure occurrence ${input.occurrenceId ?? "(unspecified)"} is not unresolved`, { instanceId: input.instanceId, occurrenceId: input.occurrenceId ?? null });
+      throw new WorkflowProjectorError("failure_occurrence_not_unresolved", `失败事件 ${input.occurrenceId ?? "（未指定）"} 并非未解决状态`, { instanceId: input.instanceId, occurrenceId: input.occurrenceId ?? null });
     }
 
     let output!: {
@@ -1375,14 +1287,14 @@ export class WorkflowRuntime {
     this.eventBus.withNotifyEnvelope((register) => {
       const instance = this.instanceStore.getByIdOrThrow(input.instanceId);
       if (instance.status === "completed" || instance.status === "aborted") {
-        throw new WorkflowProjectorError("instance_not_resumable", `instance ${instance.instanceId} is ${instance.status}`, { instanceId: instance.instanceId, status: instance.status });
+        throw new WorkflowProjectorError("instance_not_resumable", `实例 ${instance.instanceId} 当前状态为 ${instance.status}`, { instanceId: instance.instanceId, status: instance.status });
       }
       const specRow = this.specCache.getByNameVersion(instance.workflowName, instance.workflowVersion);
-      if (!specRow) throw new WorkflowProjectorError("spec_not_cached", `workflow spec ${instance.workflowName}@${instance.workflowVersion} is not cached`);
+      if (!specRow) throw new WorkflowProjectorError("spec_not_cached", `工作流 spec ${instance.workflowName}@${instance.workflowVersion} 未缓存`);
       const step = specRow.spec.steps.find((candidate) => candidate.id === occurrence.stepId);
-      if (!step) throw new WorkflowProjectorError("resume_step_missing_from_spec", `failed step "${occurrence.stepId}" no longer exists`, { instanceId: instance.instanceId, stepId: occurrence.stepId });
+      if (!step) throw new WorkflowProjectorError("resume_step_missing_from_spec", `失败步骤 "${occurrence.stepId}" 已不存在`, { instanceId: instance.instanceId, stepId: occurrence.stepId });
       const owner = resolveDefaultOwner(specRow.spec, step, (session) => nodeRuntimeOf(this.db, session), roleResolutionContext(this.db, instance.boundRig));
-      if (!owner) throw new WorkflowProjectorError("next_owner_unresolved", `cannot resolve owner for failed step "${step.id}"`);
+      if (!owner) throw new WorkflowProjectorError("next_owner_unresolved", `无法为失败步骤 "${step.id}" 解析 owner`);
       const redrivePacketId = newQitemId();
       const created = this.queueRepo.createWithinTransaction({
         qitemId: redrivePacketId,
@@ -1391,7 +1303,7 @@ export class WorkflowRuntime {
         body: withWorkflowContinuation({
           binding: instance.lifecycleBinding,
           library: this.guidanceLibrary,
-          body: `WORKFLOW RESUME (packet redrive)\nworkflow: ${instance.workflowName} v${instance.workflowVersion}\ninstance: ${instance.instanceId}\noccurrence: ${occurrence.occurrenceId}\nstep: ${step.id}\n${input.decision ? `decision: ${input.decision}\n` : ""}`,
+          body: `工作流恢复（packet 重新驱动）\n工作流：${instance.workflowName} v${instance.workflowVersion}\n实例：${instance.instanceId}\n事件：${occurrence.occurrenceId}\n步骤：${step.id}\n${input.decision ? `决策：${input.decision}\n` : ""}`,
           instanceId: instance.instanceId,
           packetId: redrivePacketId,
           ownerSession: owner,
@@ -1469,7 +1381,7 @@ export class WorkflowRuntime {
       if (instance.status !== "active" && instance.status !== "waiting") {
         throw new WorkflowProjectorError(
           "instance_not_active",
-          `instance ${instance.instanceId} is ${instance.status}; only a live (active|waiting) instance can be re-routed`,
+          `实例 ${instance.instanceId} 当前状态为 ${instance.status}；只有存活的（active|waiting）实例才能重路由`,
           { instanceId: instance.instanceId, status: instance.status },
         );
       }
@@ -1479,7 +1391,7 @@ export class WorkflowRuntime {
           if (instance.currentFrontier.length === 0) {
             throw new WorkflowProjectorError(
               "packet_not_found",
-              `instance ${instance.instanceId} has an empty frontier; nothing to re-route`,
+              `实例 ${instance.instanceId} 的 frontier 为空；没有可重路由的内容`,
               { instanceId: instance.instanceId },
             );
           }
@@ -1490,7 +1402,7 @@ export class WorkflowRuntime {
           });
           throw new WorkflowProjectorError(
             "frontier_packet_required",
-            `instance ${instance.instanceId} has ${instance.currentFrontier.length} live packets; --packet is required`,
+            `实例 ${instance.instanceId} 有 ${instance.currentFrontier.length} 个活动 packet；必须提供 --packet`,
             { instanceId: instance.instanceId, candidates },
           );
         }
@@ -1499,14 +1411,14 @@ export class WorkflowRuntime {
       if (!oldPacketId) {
         throw new WorkflowProjectorError(
           "packet_not_found",
-          `instance ${instance.instanceId} has no selectable frontier packet`,
+          `实例 ${instance.instanceId} 没有可选择的 frontier packet`,
           { instanceId: instance.instanceId },
         );
       }
       if (!instance.currentFrontier.includes(oldPacketId)) {
         throw new WorkflowProjectorError(
           "packet_not_on_frontier",
-          `qitem ${oldPacketId} is not in workflow instance ${instance.instanceId} frontier`,
+          `qitem ${oldPacketId} 不在工作流实例 ${instance.instanceId} 的 frontier 中`,
           { instanceId: instance.instanceId, packetId: oldPacketId, frontier: instance.currentFrontier },
         );
       }
@@ -1514,15 +1426,14 @@ export class WorkflowRuntime {
       if (!oldPacket) {
         throw new WorkflowProjectorError(
           "packet_not_found",
-          `frontier packet ${oldPacketId} not found`,
+          `未找到 frontier packet ${oldPacketId}`,
           { instanceId: instance.instanceId, packetId: oldPacketId },
         );
       }
       const fromSession = oldPacket.destinationSession;
 
-      // (7) harness pin: the SAME reconciliation the projector applies
-      // to explicit --next-owner overrides — an explicit route target
-      // never silently defeats a declared pin.
+      // (7) harness pin：与 projector 对显式 --next-owner 覆盖执行相同对账——
+      // 显式 route 目标绝不能静默绕过声明的 pin。
       const specRow = this.specCache.getByNameVersion(instance.workflowName, instance.workflowVersion);
       const oldBinding = this.instanceStore.getFrontierBinding(instance.instanceId, oldPacketId);
       const selectedStepId = oldBinding?.stepId ?? (instance.currentFrontier.length === 1 ? instance.currentStepId : null);
@@ -1536,8 +1447,7 @@ export class WorkflowRuntime {
         );
       }
 
-      // (3)+(4) close the old packet HONESTLY: handed_off_to with full
-      // provenance in the transition — never a forged completion.
+      // (3)+(4) 诚实关闭旧 packet：迁移中记录完整出处的 handed_off_to，绝不伪造完成。
       const closed = this.queueRepo.updateWithinTransaction({
         qitemId: oldPacketId,
         actorSession: input.actorSession,
@@ -1546,21 +1456,17 @@ export class WorkflowRuntime {
         closureReason: "handed_off_to",
         closureTarget: input.toSession,
         handedOffTo: input.toSession,
-        transitionNote: `workflow route: ${input.actorSession} re-routed step ${selectedStepId ?? "?"} from ${fromSession} to ${input.toSession}${input.reason ? ` — ${input.reason}` : ""}`,
+        transitionNote: `工作流路由：${input.actorSession} 将步骤 ${selectedStepId ?? "?"} 从 ${fromSession} 重路由到 ${input.toSession}${input.reason ? `——${input.reason}` : ""}`,
       });
       register(closed.persistedEvent);
 
-      // Recreate the SAME step for the new owner (step identity is the
-      // work's continuity — the qitem id is a storage artifact of the
-      // append-only design). chainOfRecord threads the lineage.
-      // FULL-FIDELITY FIELD CARRY (rev1-r2 BLOCKING fold): the
-      // successor IS the same work item, so it keeps the source
-      // packet's priority/tier/summary/evidenceRef/targetRepo — a
-      // human-gated packet (blocked on a human seat) MUST keep
-      // summary + evidence_ref or the shipped human-park validator
-      // rejects the repark below (human_route_fields_required) and
-      // the waiting-on-human class — the one route most exists for —
-      // becomes un-routable.
+      // 为新 owner 重建同一步骤。步骤身份代表工作连续性；qitem id 只是只追加设计的
+      // 存储产物。chainOfRecord 串起谱系。
+      // 全保真字段携带（rev1-r2 BLOCKING 折叠）：successor 就是同一工作条目，因此保留
+      // source packet 的 priority/tier/summary/evidenceRef/targetRepo。由人类门控的 packet
+      //（阻塞在人类席位）必须保留 summary + evidence_ref，否则已交付 human-park validator
+      // 会以 human_route_fields_required 拒绝下方再次 park，使最需要 route 的 waiting-on-human
+      // 类别无法路由。
       const routedPacketId = newQitemId();
       const created = this.queueRepo.createWithinTransaction({
         qitemId: routedPacketId,
@@ -1578,14 +1484,11 @@ export class WorkflowRuntime {
         }),
         priority: oldPacket.priority ?? "routine",
         tier: oldPacket.tier ?? "mode2",
-        // OPR.0.4.6.WF5 (rev1-r2 B1 fold): the successor IS the same work
-        // item — tags carry VERBATIM (+ re-route) so a routed class-(c)
-        // gate item keeps its exception identity on the live frontier
-        // packet (workflow-exception/step:/exception:human_gate_trip/
-        // occurrence:<ORIGINAL gate packet id> — the occurrence is the
-        // EPISODE, which route does not end; chainOfRecord links the
-        // packet lineage). The WF-3 full-fidelity-carry lesson, extended
-        // to the tag dimension.
+        // OPR.0.4.6.WF5（rev1-r2 B1 折叠）：successor 就是同一工作条目——tags 原样携带
+        //（再加 re-route），使已路由的类别 (c) gate 条目在实时 frontier packet 上保留异常身份：
+        // workflow-exception/step:/exception:human_gate_trip/occurrence:<原 gate packet id>。
+        // occurrence 是 episode，route 不会结束它；chainOfRecord 连接 packet 谱系。
+        // 这是 WF-3 全保真携带经验向 tag 维度的扩展。
         tags: Array.from(
           new Set([
             ...(oldPacket.tags ?? []),
@@ -1602,8 +1505,7 @@ export class WorkflowRuntime {
       });
       register(created.persistedEvent);
       nudgeTo = { qitemId: created.qitemId, session: created.destinationSession, nudge: created.nudge };
-      // P34 (site :992): stage the re-routed packet's wake intent in the same
-      // transaction that closed the old frontier packet.
+      // P34（位置 :992）：在关闭旧 frontier packet 的同一事务中暂存重路由 packet 的唤醒意图。
       this.queueRepo.stageWakeIntent(
         created.qitemId,
         input.actorSession,
@@ -1612,16 +1514,12 @@ export class WorkflowRuntime {
         created.nudge,
       );
 
-      // A parked (waiting) frontier packet keeps its park on the
-      // successor — route changes the owner, never the recorded state.
-      // OPR.0.5.1 slice-51-06 D2: summary/evidenceRef are NOT re-supplied
-      // here. The create above (create-side carry) already put them on the
-      // successor, and validateHumanPark evaluates the EFFECTIVE values
-      // (input ?? item), so a human re-park still validates from the
-      // carried fields. Re-supplying them made this a non-park metadata
-      // update, which the D2 guard rejects for a NON-human blocker —
-      // rolling back a valid route with HTTP 500. Dropping the redundant
-      // re-submission keeps the metadata (from create) without tripping D2.
+      // 已停驻（waiting）的 frontier packet 在 successor 上保持停驻；route 只换 owner，
+      // 不改记录状态。OPR.0.5.1 slice-51-06 D2：此处不重复提供 summary/evidenceRef。
+      // 上方 create（创建侧携带）已把它们放到 successor，validateHumanPark 校验生效值
+      //（input ?? item），因此 human re-park 仍可凭携带字段通过。重复提交会使它成为非 park
+      // 元数据更新，被 D2 守卫针对非人类 blocker 拒绝，并以 HTTP 500 回滚有效 route。
+      // 去掉冗余重提后既保留 create 携带的元数据，也不会触发 D2。
       if (oldPacket.state === "blocked" && oldPacket.blockedOn) {
         const reparked = this.queueRepo.updateWithinTransaction({
           qitemId: created.qitemId,
@@ -1630,7 +1528,7 @@ export class WorkflowRuntime {
           closureReason: "blocked_on",
           closureTarget: oldPacket.blockedOn,
           blockedOn: oldPacket.blockedOn,
-          transitionNote: `workflow route: park preserved (${oldPacket.blockedOn})`,
+          transitionNote: `工作流路由：保留停驻状态（${oldPacket.blockedOn}）`,
           wakeAfterSeconds: step?.re_present_after_seconds,
           wakeMaxSeconds: step?.re_present_max_seconds,
           wakeMessage:
@@ -1647,8 +1545,8 @@ export class WorkflowRuntime {
         register(reparked.persistedEvent);
       }
 
-      // (2)+(5)+(7) frontier REBIND: same step, new packet, version
-      // guard held; NO hop bump (not an advance).
+      // (2)+(5)+(7) frontier 重绑：同一步骤、新 packet、版本守卫成立；
+      // 不增加 hop，因为这不是推进。
       const nextFrontier = instance.currentFrontier.map((packetId) => packetId === oldPacketId ? created.qitemId : packetId);
       if (oldBinding) {
         this.instanceStore.removeFrontierBinding(instance.instanceId, oldPacketId);
@@ -1667,13 +1565,13 @@ export class WorkflowRuntime {
         expectedVersion: instance.version,
       });
 
-      // Keepalive re-target IN-TXN (arch n3: covers route's lost-nudge
-      // window — the armed job re-nudges the new owner).
+      // 在事务内重定向 keepalive（arch n3：覆盖 route 的 lost-nudge 窗口；
+      // 已武装 job 会再次 nudge 新 owner）。
       if (this.watchdogJobsRepo) {
         disarmWorkflowKeepalive(
           this.watchdogJobsRepo,
           instance.instanceId,
-          `workflow route: re-targeted to ${input.toSession}`,
+          `工作流路由：目标已改为 ${input.toSession}`,
           oldBinding ? oldPacketId : undefined,
         );
         ensureWorkflowKeepaliveArmed(this.watchdogJobsRepo, {
@@ -1684,12 +1582,11 @@ export class WorkflowRuntime {
         });
       }
 
-      // (6) the shipped event shape {rigName, cause} extended ADDITIVELY.
+      // (6) 对已交付事件形状 {rigName, cause} 做增量扩展。
       register(
         this.eventBus.persistWithinTransaction({
           type: "workflow.routing_table_changed",
-          // OPR.0.4.6.FAC1 (display-only): the instance's actual bound
-          // rig wins over the spec's default label.
+          // OPR.0.4.6.FAC1（仅展示）：实例实际绑定的工作组优先于 spec 默认标签。
           rigName: instance.boundRig ?? specRow?.targetRig ?? "",
           cause: "workflow_route",
           instanceId: instance.instanceId,
@@ -1709,24 +1606,21 @@ export class WorkflowRuntime {
         instanceStatus: instance.status,
       };
 
-      // P34 (site :992): the W1 seam, LAST statement of this transaction. Route
-      // always closes the old frontier packet terminally (handed-off) and always
-      // creates its successor, so the pairing here is unconditional.
+      // P34（位置 :992）：W1 接缝，本事务最后一条语句。Route 始终以 handed-off
+      // 终态关闭旧 frontier packet，并始终创建 successor，因此这里无条件配对。
       this.queueRepo.assertTerminalClosureHasIntent(oldPacketId, created.qitemId, created.nudge);
     });
     if (nudgeTo) {
       const n = nudgeTo as { qitemId: string; session: string; nudge: boolean | undefined };
-      // P34: shared staged-intent delivery (see the resume path above).
+      // P34：共享 staged-intent 投递，见上方 resume 路径。
       await this.queueRepo.deliverWakeForSuccessor(n.qitemId, n.session, n.nudge, input.actorSession);
     }
     return result;
   }
 
   /**
-   * Continue: idempotent inspector for the current frontier of an
-   * instance. v1 is read-only — returns the current state. POC's
-   * mechanical advance is folded into project() for v1; continue() is
-   * the audit/inspect entrypoint.
+   * Continue：实例当前 frontier 的幂等检查器。v1 只读并返回当前状态。
+   * POC 的机械推进已在 v1 折入 project()；continue() 是审计/检查入口。
    */
   continue(instanceId: string): {
     instance: WorkflowInstanceWithDeadline;
@@ -1754,21 +1648,17 @@ export class WorkflowRuntime {
   }
 
   /**
-   * OPR.0.4.6.WF1 FR-2 COMPLETION FIXBACK (build-vs-ratified-AC debt,
-   * qitem-20260706211220-279039f5): the ratified FR-2 AC requires the
-   * stuck classification to be "queryable via list/show/trace … with
-   * the evidence (step, owner, deadline, age)". The merged WF-1 build
-   * surfaced it only through the boot sweep + keepalive nudges; this
-   * closes the queryability clause by deriving the SAME evaluator
-   * verdict (one threshold home — workflow-deadline.ts) at read time.
+   * OPR.0.4.6.WF1 FR-2 完成态回补（构建结果与已批准 AC 之间的技术债，
+   * qitem-20260706211220-279039f5）：已批准的 FR-2 AC 要求卡住分类能够
+   * “通过 list/show/trace 查询……并附带证据（step、owner、deadline、age）”。
+   * 合并后的 WF-1 构建只通过启动扫描和 keepalive nudge 暴露该信息；这里在读取时
+   * 推导同一个 evaluator 裁决（阈值唯一来源为 workflow-deadline.ts），补齐可查询性条款。
    *
-   * DERIVED, NEVER STORED: recomputed per read from (instance,
-   * frontier packets, now) — a normal re-projection self-clears it,
-   * exactly like every other evaluator consumer. Exposes the FULL
-   * classification tuple (state + evidence{step, owner, anchor,
-   * anchorAt, overdueBySeconds, ageSeconds}) so BOTH consumers (WF-3's
-   * status rollup and WF-5's FR-3 ▲ source) read one shape — no
-   * boolean flattening, no second path.
+   * 只推导，绝不存储：每次读取都根据（instance、frontier packets、now）重新计算；
+   * 正常重新投影会自动清除该状态，与其他 evaluator 使用方完全一致。公开完整分类元组
+   *（state + evidence{step, owner, anchor, anchorAt, overdueBySeconds, ageSeconds}），
+   * 让两个使用方（WF-3 状态汇总和 WF-5 FR-3 ▲ 来源）读取同一种结构——
+   * 不压平成布尔值，也不引入第二条路径。
    */
   deadlineFor(instance: WorkflowInstance): WorkflowDeadlineVerdict {
     const packets = instance.currentFrontier
@@ -1777,12 +1667,12 @@ export class WorkflowRuntime {
     return evaluateStepDeadline(instance, packets, this.now());
   }
 
-  /** The additive read enrichment consumed by list/show/trace routes. */
+  /** 供 list/show/trace 路由使用的增量读取信息。 */
   withDeadline(instance: WorkflowInstance): WorkflowInstanceWithDeadline {
     return { ...instance, deadline: this.deadlineFor(instance) };
   }
 
-  /** List instances (optionally filtered) with the deadline verdict attached. */
+  /** 列出实例（可选过滤），并附加 deadline 裁决。 */
   listInstancesWithDeadline(
     status?: "active" | "waiting" | "completed" | "failed" | "aborted",
   ): WorkflowInstanceWithInspection[] {
@@ -1800,7 +1690,7 @@ export class WorkflowRuntime {
   }
 }
 
-/** WorkflowInstance + the derived FR-2 deadline verdict (additive read shape). */
+/** WorkflowInstance 加推导出的 FR-2 deadline 裁决（增量读取结构）。 */
 export type WorkflowInstanceWithDeadline = WorkflowInstance & {
   deadline: WorkflowDeadlineVerdict;
 };
@@ -1824,23 +1714,23 @@ function workflowInstantiateBody(input: {
   ownerSession: string;
 }): string {
   const lines = [
-    `### Workflow entry: ${input.spec.id}@${input.spec.version} step ${input.entryStep.id}`,
+    `### 工作流入口：${input.spec.id}@${input.spec.version} 步骤 ${input.entryStep.id}`,
     "",
-    `Workflow instance: ${input.instanceId}`,
-    `Entry step: ${input.entryStep.id} (${input.entryStep.actor_role})`,
+    `工作流实例：${input.instanceId}`,
+    `入口步骤：${input.entryStep.id} (${input.entryStep.actor_role})`,
     "",
-    `Root objective: ${input.rootObjective}`,
+    `根目标：${input.rootObjective}`,
   ];
   if (input.gate) {
     lines.push(
       "",
-      `Gate: ${input.gate.kind === "human" ? "human sign-off" : "handler-role check"} — the workflow is PARKED (waiting) until this item is resolved/closed; the flow then continues from this step.`,
+      `门控：${input.gate.kind === "human" ? "人工确认" : "处理角色检查"}——在此事项解决或关闭前，工作流将保持停驻（等待）状态；之后从本步骤继续。`,
     );
-    if (input.gate.summary) lines.push(`Ask: ${input.gate.summary}`);
-    if (input.gate.evidenceRef) lines.push(`Evidence: ${input.gate.evidenceRef}`);
+    if (input.gate.summary) lines.push(`请求：${input.gate.summary}`);
+    if (input.gate.evidenceRef) lines.push(`证据：${input.gate.evidenceRef}`);
   }
   if (input.entryStep.objective) {
-    lines.push("", `Step objective: ${input.entryStep.objective}`);
+    lines.push("", `步骤目标：${input.entryStep.objective}`);
   }
   return withWorkflowContinuation({
     body: lines.join("\n"),

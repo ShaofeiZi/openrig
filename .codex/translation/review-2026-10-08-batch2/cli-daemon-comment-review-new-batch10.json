@@ -1,0 +1,57 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch10",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/daemon/test/queue-stuck-sweep.test.ts",
+      "before_sha256_16": "e3d6a606bcf374d3",
+      "after_sha256_16": "e3d6a606bcf374d3",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/daemon/test/restore-plan-preview.test.ts",
+      "before_sha256_16": "4b7a3961a341fb9e",
+      "after_sha256_16": "4b7a3961a341fb9e",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/daemon/test/topology-launcher.test.ts",
+      "before_sha256_16": "09d706585e35b715",
+      "after_sha256_16": "09d706585e35b715",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/daemon/test/walk-consumption-primitives.test.ts",
+      "before_sha256_16": "08916d951bdee9ca",
+      "after_sha256_16": "08916d951bdee9ca",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/cli/test/restore-packet.test.ts",
+      "before_sha256_16": "7de62830627e69e8",
+      "after_sha256_16": "7de62830627e69e8",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    }
+  ]
+}

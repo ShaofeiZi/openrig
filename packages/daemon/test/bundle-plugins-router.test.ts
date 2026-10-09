@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { routePlugins, type PluginsRouterFsOps, type RoutePluginsInput } from "../src/domain/bundle-plugins-router.js";
 
-// Item 6 / slice-05 Checkpoint 7.3c: bundle-plugins-router pure-function tests.
-// Banked both-sides trust-boundary lesson applied: source + target containment.
+// 第 6 项 / slice-05 Checkpoint 7.3c：bundle-plugins-router 纯函数测试。
+// 应用已沉淀的双侧信任边界经验：同时约束来源和目标。
 
 function mockFs(initial: { dirs?: string[]; files?: Record<string, string> } = {}): PluginsRouterFsOps & { _copyCalls: Array<{ src: string; dest: string }>; _mkdirpCalls: string[]; _dirs: Set<string> } {
   const dirs = new Set<string>(initial.dirs ?? []);
@@ -33,8 +33,8 @@ function makeInput(overrides?: Partial<RoutePluginsInput>): RoutePluginsInput {
 }
 
 describe("routePlugins", () => {
-  // P1: empty plugin list
-  it("empty declaredPlugins produces empty records but still mkdirp's target", () => {
+  // P1：空 plugin 列表
+  it("declaredPlugins 为空时生成空记录，但仍创建目标目录", () => {
     const fs = mockFs();
     const result = routePlugins(makeInput(), fs);
     expect(result.records).toEqual([]);
@@ -42,8 +42,8 @@ describe("routePlugins", () => {
     expect(fs._mkdirpCalls).toContain(TARGET);
   });
 
-  // P2: single plugin routes end-to-end
-  it("routes one plugin: copyDir called from source to target/<id>", () => {
+  // P2：单个 plugin 端到端路由
+  it("路由单个 plugin：调用 copyDir 从来源复制到目标/<id>", () => {
     const fs = mockFs({ dirs: [`${BUNDLE_ROOT}/plugins/gstack`] });
     const result = routePlugins(
       makeInput({
@@ -61,8 +61,8 @@ describe("routePlugins", () => {
     });
   });
 
-  // P3: multiple plugins
-  it("routes multiple plugins each landing at target/<id>", () => {
+  // P3：多个 plugin
+  it("路由多个 plugin，每个都落到目标/<id>", () => {
     const fs = mockFs({ dirs: [`${BUNDLE_ROOT}/plugins/a`, `${BUNDLE_ROOT}/plugins/b`] });
     const result = routePlugins(
       makeInput({
@@ -77,8 +77,8 @@ describe("routePlugins", () => {
     expect(fs._copyCalls).toHaveLength(2);
   });
 
-  // P4: missing source skipped honestly
-  it("missing source plugin is skipped with status=missing", () => {
+  // P4：如实跳过缺失来源
+  it("来源 plugin 缺失时跳过，并返回 status=missing", () => {
     const fs = mockFs(); // no dirs
     const result = routePlugins(
       makeInput({
@@ -91,8 +91,8 @@ describe("routePlugins", () => {
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // P5: source path is a file (not a directory) is rejected
-  it("source path that is a file (not directory) produces status=not_directory", () => {
+  // P5：拒绝文件形式的来源路径（而非目录）
+  it("来源路径是文件而非目录时返回 status=not_directory", () => {
     const fs = mockFs({ files: { [`${BUNDLE_ROOT}/plugins/notadir.txt`]: "content" } });
     const result = routePlugins(
       makeInput({
@@ -104,8 +104,8 @@ describe("routePlugins", () => {
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // P6: SOURCE-side path escaping bundle workspace rejected
-  it("source path escaping bundle workspace produces status=unsafe (source containment)", () => {
+  // P6：拒绝从来源侧逃逸 bundle 工作区的路径
+  it("来源路径逃逸 bundle 工作区时返回 status=unsafe（来源边界）", () => {
     const fs = mockFs();
     const result = routePlugins(
       makeInput({
@@ -114,13 +114,13 @@ describe("routePlugins", () => {
       fs,
     );
     expect(result.records[0]!.status).toBe("unsafe");
-    expect(result.records[0]!.detail).toContain("escapes bundle workspace");
+    expect(result.records[0]!.detail).toContain("越出 bundle 工作区");
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // P7: TARGET-side containment — plugin id that resolves outside target rejected
-  // (banked both-sides-trust-boundary lesson applied)
-  it("plugin id with traversal escapes target plugins library — status=unsafe (target containment)", () => {
+  // P7：目标侧边界——拒绝解析到目标外的 plugin id
+  //（应用已沉淀的双侧信任边界经验）
+  it("含遍历段的 plugin id 逃逸目标 plugin 库时返回 status=unsafe（目标边界）", () => {
     const fs = mockFs({ dirs: [`${BUNDLE_ROOT}/plugins/legitsource`] });
     const result = routePlugins(
       makeInput({
@@ -129,12 +129,12 @@ describe("routePlugins", () => {
       fs,
     );
     expect(result.records[0]!.status).toBe("unsafe");
-    expect(result.records[0]!.detail).toContain("resolve outside target plugins library");
+    expect(result.records[0]!.detail).toContain("解析到目标插件库外部");
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // P8: invalid plugin entry (missing id or wrong source.kind) rejected
-  it("plugin reference with non-local source.kind rejected", () => {
+  // P8：拒绝非法 plugin 条目（缺少 id 或 source.kind 错误）
+  it("拒绝 source.kind 非 local 的 plugin 引用", () => {
     const fs = mockFs({ dirs: [`${BUNDLE_ROOT}/plugins/x`] });
     const result = routePlugins(
       makeInput({
@@ -143,12 +143,12 @@ describe("routePlugins", () => {
       fs,
     );
     expect(result.records[0]!.status).toBe("unsafe");
-    expect(result.records[0]!.detail).toContain("source.kind must be 'local'");
+    expect(result.records[0]!.detail).toContain("source.kind 必须为 'local'");
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // P9: mixed list — routed + missing + unsafe + not_directory aggregate
-  it("mixed plugin list aggregates by status correctly", () => {
+  // P9：混合列表——汇总 routed、missing、unsafe 和 not_directory
+  it("混合 plugin 列表能按状态正确汇总", () => {
     const fs = mockFs({
       dirs: [`${BUNDLE_ROOT}/plugins/ok`],
       files: { [`${BUNDLE_ROOT}/plugins/file.txt`]: "x" },

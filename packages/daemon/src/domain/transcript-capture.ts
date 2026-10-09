@@ -21,11 +21,9 @@ export async function startTmuxTranscriptCapture(
   }
 
   const transcriptPath = transcriptStore.getTranscriptPath(rigName, sessionName);
-  // V1 pre-release CLI/daemon Item 1: bounded-trail rotation replaces
-  // the pipe-pane infinite-growth file. Defaults from env vars + 1000
-  // line / 2s baseline; failure inside rotation is best-effort silent
-  // and never blocks launch (the prior pipe-pane site treated failure
-  // as launch-warning, not launch-blocker, so behavior stays).
+  // V1 预发布 CLI/daemon 项 1：有界尾部轮换取代 pipe-pane 无限增长文件。默认值来自环境变量 +
+  // 1000 行 / 2 秒基线；rotation 内失败按 best-effort 静默处理，绝不阻塞 launch（此前 pipe-pane
+  // 位置将 failure 视为 launch warning，而非 launch blocker，因此行为保持不变）。
   startTranscriptRotation(
     tmuxAdapter,
     sessionName,
@@ -40,7 +38,7 @@ interface RunningTranscriptSession {
   session_name: string;
 }
 
-/** Restore process-local rotation timers after daemon restart. */
+/** daemon restart 后恢复进程本地 rotation timer。 */
 export async function resumeRunningTranscriptCaptures(
   db: Database.Database,
   tmuxAdapter: TmuxAdapter | null | undefined,

@@ -1,10 +1,8 @@
-// Slice Story View v0 — Decisions tab.
+// Slice Story View v0——决策标签页。
 //
-// Linear timeline of every operator-driven mission_control_actions row
-// touching this slice's qitem chain. Filter controls: by verb, by
-// actor, by free-text search across reason / verb / qitem.
-// Operator drills into a row by clicking — expands the JSON before/
-// after state snapshot for forensic reconstruction.
+// 触及本 slice 的 qitem 链路的每一行操作者驱动的 mission_control_actions，按线性时间排列。
+// 过滤控件：按 verb、按 actor、按 reason / verb / qitem 的自由文本搜索。
+// 操作者点击某行钻取——展开前后状态快照的 JSON，用于取证重建。
 
 import { useMemo, useState } from "react";
 import type { DecisionRow } from "../../../hooks/useSlices.js";
@@ -39,7 +37,7 @@ export function DecisionsTab({ rows }: { rows: DecisionRow[] }) {
   }, [rows, verbFilter, actorFilter, search]);
 
   if (rows.length === 0) {
-    return <div className="p-4 font-mono text-[10px] text-on-surface-variant" data-testid="decisions-empty">No mission_control_actions rows found for this slice's qitem chain.</div>;
+    return <div className="p-4 font-mono text-[10px] text-on-surface-variant" data-testid="decisions-empty">此切片的 qitem 链路上未找到 mission_control_actions 行。</div>;
   }
 
   return (
@@ -64,7 +62,7 @@ export function DecisionsTab({ rows }: { rows: DecisionRow[] }) {
         <input
           data-testid="decisions-search"
           type="text"
-          placeholder="search verb / qitem / reason"
+          placeholder="搜索 verb / qitem / reason"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 min-w-32 border border-outline-variant bg-surface-lowest px-2 py-1 font-mono text-[10px]"
@@ -103,11 +101,11 @@ function DecisionRowItem({ row }: { row: DecisionRow }) {
       {expanded && (
         <div className="ml-[120px] mt-1 grid grid-cols-2 gap-2" data-testid={`decision-row-detail-${row.actionId}`}>
           <pre className="overflow-x-auto bg-background p-2 font-mono text-[9px] text-on-surface">
-            <div className="text-on-surface-variant">before:</div>
+            <div className="text-on-surface-variant">之前：</div>
             {row.beforeState ?? "null"}
           </pre>
           <pre className="overflow-x-auto bg-background p-2 font-mono text-[9px] text-on-surface">
-            <div className="text-on-surface-variant">after:</div>
+            <div className="text-on-surface-variant">之后：</div>
             {row.afterState ?? "null"}
           </pre>
         </div>

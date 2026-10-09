@@ -18,25 +18,20 @@ import type { SpecGraphPayload, SpecGraphNode } from "../../../hooks/useSlices.j
 import { ToolMark } from "../../graphics/RuntimeMark.js";
 import { RegistrationMarks } from "../../ui/registration-marks.js";
 
-// OPR.0.4.1.20 — Workspace Workflow tab visualizer.
+// OPR.0.4.1.20——工作区工作流标签页可视化器。
 //
-// Re-skins the slice's bound workflow-spec graph into the topology
-// visual grammar (matches the approved creative-rig mockup
-// digital-twin/opr-0.4.1.20/workflow-project-tab.intent): dotted-grid
-// canvas, dark-header step cards (role header + state dot + step name +
-// bound seat), curved topology-style edges, and the amber
-// reject->rework back-edge for loop-back hops.
+// 把 slice 绑定的 workflow-spec 图重皮为拓扑视觉语法（与批准的 creative-rig 样机一致：
+// digital-twin/opr-0.4.1.20/workflow-project-tab.intent）：点格画布、深色头部步骤卡片
+// （角色头 + 状态点 + 步骤名 + 绑定席位）、曲线拓扑式边，以及用于回路跳的琥珀色
+// reject->rework 回边。
 //
-// Data honesty (founder north-star: represent-the-real-system / map != territory):
-// this renders ONLY what the SpecGraphPayload carries — step identity,
-// role, bound preferredTarget seat, and entry/current/terminal state.
-// The mockup's live telemetry (ctx% / runtime / activity) is illustrative
-// and comes from the SEPARATE node-inventory source (HybridAgentNode);
-// joining it onto each step's bound seat is a tracked follow-up, NOT
-// fabricated here.
+// 数据诚实（创始人北极星：表示真实系统 / 地图不等于领土）：这里只渲染 SpecGraphPayload
+// 携带的内容——步骤身份、角色、绑定的 preferredTarget 席位、entry/current/terminal 状态。
+// 样机里的实时遥测（ctx% / runtime / activity）是示意性的，来自独立的 node-inventory
+// 源（HybridAgentNode）；把它接到每个步骤的绑定席位是已追踪的后续项，不在此编造。
 //
-// Layout stays dagre LR so the canvas scales to real multi-branch specs
-// (fan-out, gate rings, loop-backs) rather than a fixed hand-placed graph.
+// 布局保持 dagre LR，使画布能伸缩到真实的多分支 spec（扇出、门环、回路），
+// 而非固定手工摆位的图。
 
 const NODE_WIDTH = 200;
 const NODE_HEIGHT = 112;
@@ -68,7 +63,7 @@ export function SliceWorkflowGraph({ specGraph }: { specGraph: SpecGraphPayload 
     >
       <header className="flex items-center justify-between gap-3 border-b border-outline-variant bg-surface-lowest/30 px-3 py-2">
         <div className="flex min-w-0 items-center gap-2 font-mono text-[10px] uppercase tracking-[0.10em] text-on-surface-variant">
-          <span className="text-on-surface-variant">Workflow spec</span>
+          <span className="text-on-surface-variant">工作流规格</span>
           <span className="text-on-surface-variant">·</span>
           <span className="truncate font-semibold text-on-surface">{specGraph.specName}</span>
           <span className="text-on-surface-variant">v{specGraph.specVersion}</span>
@@ -76,17 +71,17 @@ export function SliceWorkflowGraph({ specGraph }: { specGraph: SpecGraphPayload 
             <>
               <span className="text-on-surface-variant">·</span>
               <span className="inline-flex items-center gap-1 text-[var(--amber,#b9822f)]" style={{ color: LOOPBACK_STROKE }}>
-                ↺ reject→rework loop
+                ↺ 拒绝→返工回路
               </span>
             </>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className="font-mono text-[9px] uppercase tracking-[0.10em] text-on-surface-variant">
-            {specGraph.nodes.length} steps / {specGraph.edges.length} edges
+            {specGraph.nodes.length} 步 / {specGraph.edges.length} 边
           </span>
           <span className="border border-outline-variant px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.14em] text-on-surface-variant">
-            read-only
+            只读
           </span>
         </div>
       </header>
@@ -119,7 +114,7 @@ export function SliceWorkflowGraph({ specGraph }: { specGraph: SpecGraphPayload 
             data-routing-type={edge.routingType}
             data-is-loop-back={edge.isLoopBack}
           >
-            {edge.fromStepId} to {edge.toStepId}
+            {edge.fromStepId} 到 {edge.toStepId}
           </span>
         ))}
       </div>
@@ -167,7 +162,7 @@ export function buildSliceWorkflowGraph(specGraph: SpecGraphPayload): { nodes: S
     id: `spec-edge-${edge.fromStepId}-${edge.toStepId}`,
     source: edge.fromStepId,
     target: edge.toStepId,
-    // Curved topology-style edge; loop-backs ride the amber reject->rework path.
+    // 曲线拓扑式边；回路走琥珀色 reject->rework 路径。
     type: edge.isLoopBack ? "default" : "smoothstep",
     markerEnd: { type: MarkerType.ArrowClosed, color: edge.isLoopBack ? LOOPBACK_STROKE : FORWARD_STROKE },
     style: {
@@ -175,7 +170,7 @@ export function buildSliceWorkflowGraph(specGraph: SpecGraphPayload): { nodes: S
       strokeWidth: edge.isLoopBack ? 2.2 : 1.6,
       strokeDasharray: edge.isLoopBack ? "7 5" : undefined,
     },
-    label: edge.isLoopBack ? "reject → rework" : undefined,
+    label: edge.isLoopBack ? "拒绝 → 返工" : undefined,
     labelStyle: {
       fill: LOOPBACK_STROKE,
       fontSize: 9,
@@ -206,11 +201,11 @@ function SliceWorkflowStepNode({ data }: NodeProps<SliceWorkflowNode>) {
       <RegistrationMarks testIdPrefix={`slice-workflow-${step.stepId}`} />
       <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-outline-variant !bg-outline" />
       <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-outline-variant !bg-outline" />
-      {/* dark topology-style header: role + live-state affordance */}
+      {/* 深色拓扑式头部：角色 + 实时状态提示 */}
       <div className="flex items-center justify-between bg-inverse-surface px-2 py-1 text-background">
         <span className="truncate text-[10px] tracking-[0.04em]">{step.role}</span>
         <span className="flex shrink-0 items-center gap-1.5">
-          <span className="text-[7px] tracking-[0.14em] text-on-surface-variant">STATE</span>
+          <span className="text-[7px] tracking-[0.14em] text-on-surface-variant">状态</span>
           <span
             data-testid={`spec-node-${step.stepId}-state-dot`}
             data-active={active ? "true" : "false"}
@@ -219,7 +214,7 @@ function SliceWorkflowStepNode({ data }: NodeProps<SliceWorkflowNode>) {
           <span className="inline-block h-2.5 w-2.5 rounded-full border-[1.4px] border-outline" />
         </span>
       </div>
-      {/* body: step identity + bound seat + lifecycle markers */}
+      {/* 正文：步骤身份 + 绑定席位 + 生命周期标记 */}
       <div className={`px-2 py-1.5 ${active ? "bg-emerald-50/70" : "bg-surface-lowest"}`}>
         <div className="flex items-start justify-between gap-2">
           <span className="truncate text-[11px] font-bold uppercase tracking-[0.04em] text-on-surface">
@@ -231,7 +226,7 @@ function SliceWorkflowStepNode({ data }: NodeProps<SliceWorkflowNode>) {
                 data-testid={`spec-node-${step.stepId}-entry-badge`}
                 className="border border-blue-300 bg-blue-50 px-1 text-[8px] uppercase tracking-[0.10em] text-blue-900"
               >
-                entry
+                入口
               </span>
             )}
             {step.isCurrent && (
@@ -239,7 +234,7 @@ function SliceWorkflowStepNode({ data }: NodeProps<SliceWorkflowNode>) {
                 data-testid={`spec-node-${step.stepId}-current-badge`}
                 className="border border-emerald-400 bg-emerald-100 px-1 text-[8px] uppercase tracking-[0.10em] text-emerald-900"
               >
-                current
+                当前
               </span>
             )}
             {step.isTerminal && (
@@ -248,7 +243,7 @@ function SliceWorkflowStepNode({ data }: NodeProps<SliceWorkflowNode>) {
                 className="inline-flex items-center gap-1 border border-outline-variant bg-surface-low px-1 text-[8px] uppercase tracking-[0.10em] text-on-surface"
               >
                 <ToolMark tool="terminal" size="xs" />
-                terminal
+                终止
               </span>
             )}
           </span>

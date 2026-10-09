@@ -50,7 +50,7 @@ describe("SystemPreflight", () => {
   }) {
     const configPath = join(tmpDir, "config.json");
     const config = new ConfigStore(configPath);
-    // Point writable paths to tmpDir
+    // 把可写路径指向 tmpDir
     const homeDir = join(tmpDir, ".openrig");
     mkdirSync(homeDir, { recursive: true });
 
@@ -62,16 +62,16 @@ describe("SystemPreflight", () => {
     });
   }
 
-  // Test 1
+  // 测试 1
   it("all checks pass → ready: true", async () => {
     const pf = createPreflight();
-    // Use port 0 to avoid collisions with any running daemon
+    // 使用端口 0 以避免与任何运行中的 daemon 冲突
     const result = await pf.run({ port: 0 });
     expect(result.ready).toBe(true);
     expect(result.checks.every((c) => c.ok)).toBe(true);
   });
 
-  // Test 2
+  // 测试 2
   it("Node version below 22 → ready: false with guidance", async () => {
     Object.defineProperty(process, "version", { value: "v18.19.0", writable: true });
     const pf = createPreflight();
@@ -80,7 +80,7 @@ describe("SystemPreflight", () => {
     const nodeCheck = result.checks.find((c) => c.name === "node_version");
     expect(nodeCheck!.ok).toBe(false);
     expect(nodeCheck!.error).toContain("v18.19.0");
-    expect(nodeCheck!.fix).toContain("Node 22 or 24");
+    expect(nodeCheck!.fix).toContain("Node 22 或 24");
   });
 
   it.each([
@@ -96,18 +96,18 @@ describe("SystemPreflight", () => {
     const nodeCheck = result.checks.find((c) => c.name === "node_version")!;
     expect(nodeCheck.ok).toBe(ok);
     expect(Boolean(nodeCheck.warning)).toBe(warned);
-    if (!ok) expect(nodeCheck.fix).toContain("Node 22 or 24");
-    if (warned) expect(nodeCheck.warning).toContain("untested");
+    if (!ok) expect(nodeCheck.fix).toContain("Node 22 或 24");
+    if (warned) expect(nodeCheck.warning).toContain("尚未在");
   });
 
-  // Test 3
+  // 测试 3
   it("tmux missing → ready: false with guidance", async () => {
     const pf = createPreflight({ tmuxMode: "missing" });
     const result = await pf.run();
     expect(result.ready).toBe(false);
     const tmuxCheck = result.checks.find((c) => c.name === "tmux");
     expect(tmuxCheck!.ok).toBe(false);
-    expect(tmuxCheck!.error).toContain("not found");
+    expect(tmuxCheck!.error).toContain("未找到");
     expect(tmuxCheck!.fix).toContain("install tmux");
   });
 
@@ -118,12 +118,12 @@ describe("SystemPreflight", () => {
     expect(result.ready).toBe(false);
     const tmuxCheck = result.checks.find((c) => c.name === "tmux");
     expect(tmuxCheck!.ok).toBe(false);
-    expect(tmuxCheck!.error).toContain("control socket");
+    expect(tmuxCheck!.error).toContain("控制套接字");
     expect(tmuxCheck!.reason).toContain("server exited unexpectedly");
-    expect(tmuxCheck!.fix).toContain("restart the default tmux server");
+    expect(tmuxCheck!.fix).toContain("重启默认 tmux 服务");
   });
 
-  // Test 4
+  // 测试 4
   it("OpenRig home not writable → ready: false with guidance", async () => {
     const readonlyDir = join(tmpDir, "readonly-home");
     mkdirSync(readonlyDir);
@@ -138,14 +138,14 @@ describe("SystemPreflight", () => {
     expect(result.ready).toBe(false);
     const homeCheck = result.checks.find((c) => c.name === "writable_home");
     expect(homeCheck!.ok).toBe(false);
-    expect(homeCheck!.fix).toContain("permissions");
-    // Restore perms for cleanup
+    expect(homeCheck!.fix).toContain("权限");
+    // 恢复权限以便清理
     chmodSync(readonlyDir, 0o755);
   });
 
-  // Test 5
+  // 测试 5
   it("port in use → ready: false with guidance", async () => {
-    // Start a server on a known port
+    // 在已知端口启动服务器
     const server = net.createServer();
     await new Promise<void>((resolve) => server.listen(0, resolve));
     const port = (server.address() as net.AddressInfo).port;
@@ -161,7 +161,7 @@ describe("SystemPreflight", () => {
     expect(portCheck!.fix).toContain("rig config set daemon.port");
   });
 
-  // Test 6
+  // 测试 6
   it("port check skipped when daemon running on same host:port", async () => {
     const pf = createPreflight({
       daemonStatus: { state: "running", port: 7433, host: "127.0.0.1", healthy: true },
@@ -171,9 +171,9 @@ describe("SystemPreflight", () => {
     expect(portCheck!.ok).toBe(true);
   });
 
-  // Test 7
+  // 测试 7
   it("port check NOT skipped when daemon running on different host:port", async () => {
-    // Daemon running on 127.0.0.1:7433 but checking 10.0.0.5:7433
+    // daemon 运行于 127.0.0.1:7433 但检查的是 10.0.0.5:7433
     const pf = createPreflight({
       daemonStatus: { state: "running", port: 7433, host: "127.0.0.1", healthy: true },
     });
@@ -194,7 +194,7 @@ describe("SystemPreflight", () => {
     expect(failedChecks.length).toBeGreaterThanOrEqual(2);
   });
 
-  // Test 10
+  // 测试 10
   it("port override takes precedence over config", async () => {
     const pf = createPreflight();
     // Config default is 7433, override to 0 (always available)
@@ -258,7 +258,7 @@ describe("Preflight CLI", () => {
     expect(Array.isArray(parsed.checks)).toBe(true);
   });
 
-  // Test 11
+  // 测试 11
   it("rig preflight prints check marks and exits 0 on pass", async () => {
     const homeDir = join(tmpDir, ".openrig");
     mkdirSync(homeDir, { recursive: true });
@@ -280,11 +280,11 @@ describe("Preflight CLI", () => {
     });
     const output = logs.join("\n");
     expect(output).toContain("✓");
-    expect(output).toContain("passed");
+    expect(output).toContain("全部检查通过");
     expect(exitCode).toBeUndefined(); // 0 / not set
   });
 
-  // Test 12: simulates daemon start / rig up aborting on preflight failure
+  // 测试 12: simulates daemon start / rig up aborting on preflight failure
   // The actual daemon.ts and up.ts commands run the same SystemPreflight.run() check
   // and abort on !result.ready — this test proves that flow via the preflight command
   it("preflight failure causes abort with exit code 1 (same flow as daemon start/up)", async () => {
@@ -318,7 +318,7 @@ describe("Preflight CLI", () => {
     expect(exitCode).toBe(1);
   });
 
-  // Test 13
+  // 测试 13
   it("rig preflight with failure prints three-part error and exits 1", async () => {
     const homeDir = join(tmpDir, ".openrig");
     mkdirSync(homeDir, { recursive: true });
@@ -337,7 +337,7 @@ describe("Preflight CLI", () => {
     });
     const output = logs.join("\n");
     expect(output).toContain("✗");
-    expect(output).toContain("Fix:");
+    expect(output).toContain("修复：");
     expect(exitCode).toBe(1);
   });
 });

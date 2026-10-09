@@ -93,24 +93,24 @@ describe("SessionPreviewPane", () => {
 
     expect(pane.getAttribute("data-variant")).toBe("compact-terminal");
     expect(content.className).toContain("text-stone-50");
-    // OPR.0.4.0.39 (founder spec): the compact static renders at the LIVE xterm
-    // geometry (same font, fixed 90-col width) so static and live are the SAME
-    // shape under the shared ScaleToFitTerminal. Font + width are inline (mirror the
-    // live exactly), not utility classes.
+    // OPR.0.4.0.39（founder spec）：紧凑 static 按 live xterm 几何渲染
+    //（同字体、固定 90 列宽），使 static 与 live 在共享
+    // ScaleToFitTerminal 下形状一致。字体 + 宽度内联（精确镜像 live），
+    // 而非工具类。
     expect(content.style.fontSize).toBe("12px");
     expect(content.style.width).toBe("90ch");
     expect(content.style.fontFamily).toContain("ui-monospace");
     expect(content.className).not.toContain("text-[8px]");
-    // OPR.0.4.0.39 FR-5: the tmux capture is already pane-width-wrapped, so the
-    // static <pre> uses whitespace-pre (no re-wrap, mirroring the live fixed-
-    // geometry xterm) - NOT whitespace-pre-wrap/break-words (which double-wrapped).
+    // OPR.0.4.0.39 FR-5：tmux capture 已按 pane 宽折行，故 static <pre>
+    // 用 whitespace-pre（不再折行，镜像 live 固定几何 xterm）——
+    // 不用 whitespace-pre-wrap/break-words（会双重折行）。
     expect(content.className).toContain("whitespace-pre");
     expect(content.className).not.toContain("whitespace-pre-wrap");
     expect(content.className).not.toContain("break-words");
-    // OPR.0.4.0.39 FR-1 (founder spec-correction): the static content is translucent
-    // smoked-GLASS (bg-transparent; the SMOKED_STATIC_PLATE_CLASS plate shows
-    // through). Opaque #0c0a09 is the LIVE xterm only; the glass->opaque flip on
-    // click-to-live is the static-vs-live activation affordance.
+    // OPR.0.4.0.39 FR-1（founder spec 修正）：static 内容为半透明
+    // 烟熏玻璃（bg-transparent；SMOKED_STATIC_PLATE_CLASS 板透出）。
+    // 不透明 #0c0a09 仅 live xterm；click-to-live 时玻璃->不透明翻转是
+    // static 对 live 的激活 affordance。
     expect(content.className).toContain("bg-transparent");
     expect(content.className).not.toContain("bg-[#0c0a09]");
     expect(content.className).toContain("scrollbar-none");
@@ -140,8 +140,8 @@ describe("SessionPreviewPane", () => {
     const unavailable = await screen.findByTestId("compact-terminal-test-unavailable");
 
     expect(unavailable.className).toContain("text-stone-50");
-    expect(unavailable.textContent).toContain("Preview unavailable.");
-    expect(unavailable.textContent).toContain("$ waiting for terminal output");
+    expect(unavailable.textContent).toContain("预览不可用");
+    expect(unavailable.textContent).toContain("等待终端输出");
     expect(unavailable.textContent).not.toContain("preview_unavailable");
     expect(unavailable.textContent).not.toContain("rig capture");
   });

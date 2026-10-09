@@ -3,10 +3,9 @@ import { createCmuxCliTransport } from "../src/adapters/cmux-transport.js";
 import type { ExecFn } from "../src/adapters/tmux.js";
 
 /**
- * Synthesize a fragment of `cmux --help` output for adapter probing.
- * cmux ≥0.63 exposes `list-panels` / `list-panes` / `list-pane-surfaces` and
- * has removed the older `list-surfaces` and `agent-pids` commands.
- * cmux <0.63 exposed `list-surfaces` and `agent-pids` instead.
+ * 合成一段 `cmux --help` 输出，供适配器探测。
+ * cmux ≥0.63 提供 `list-panels` / `list-panes` / `list-pane-surfaces`，并且
+ * 已移除旧的 `list-surfaces` 与 `agent-pids` 命令。cmux <0.63 则公开这两个旧命令。
  */
 function helpText(opts: { modern?: boolean; legacy?: boolean; rpc?: boolean }): string {
   const lines = [
@@ -38,9 +37,8 @@ function helpText(opts: { modern?: boolean; legacy?: boolean; rpc?: boolean }): 
 }
 
 /**
- * Mock exec that answers `cmux --help` with a synthesized surface and
- * delegates any other command to `overrides`. Unmatched commands resolve
- * to empty string.
+ * 模拟 exec：用合成的 surface 回答 `cmux --help`，其他命令委托给 `overrides`；未匹配
+ * 的命令返回空字符串。
  */
 function mockExec(opts: {
   modern?: boolean;
@@ -60,8 +58,8 @@ function mockExec(opts: {
   return vi.fn(impl) as unknown as ExecFn;
 }
 
-describe("cmux CLI transport — factory / surface detection", () => {
-  it("factory probes `cmux --help` at connect time", async () => {
+describe("cmux CLI transport——factory / surface 检测", () => {
+  it("factory 在连接时探测 `cmux --help`", async () => {
     const exec = mockExec({ modern: true });
     const factory = createCmuxCliTransport(exec);
 
@@ -70,7 +68,7 @@ describe("cmux CLI transport — factory / surface detection", () => {
     expect(exec).toHaveBeenCalledWith("cmux --help");
   });
 
-  it("factory throws when `cmux --help` errors (e.g., cmux not installed)", async () => {
+  it("`cmux --help` 报错时 factory 抛错（例如未安装 cmux）", async () => {
     const exec = vi.fn(async () => {
       throw Object.assign(new Error("command not found: cmux"), { code: "ENOENT" });
     }) as unknown as ExecFn;
@@ -80,8 +78,8 @@ describe("cmux CLI transport — factory / surface detection", () => {
   });
 });
 
-describe("cmux CLI transport — stable commands (unchanged across versions)", () => {
-  it("request('capabilities') -> exact: cmux capabilities --json", async () => {
+describe("cmux CLI transport——跨版本不变的稳定命令", () => {
+  it("request('capabilities') → 精确命令 cmux capabilities --json", async () => {
     const exec = mockExec({ modern: true, overrides: { "cmux capabilities --json": '{"capabilities":["workspace.list"]}' } });
     const transport = await createCmuxCliTransport(exec)();
 
@@ -90,7 +88,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     expect(exec).toHaveBeenCalledWith("cmux capabilities --json");
   });
 
-  it("request('workspace.list') prefers rpc when available and maps titles to names", async () => {
+  it("request('workspace.list') 在可用时优先使用 rpc，并把 title 映射为 name", async () => {
     const exec = mockExec({
       modern: true,
       rpc: true,
@@ -112,7 +110,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     });
   });
 
-  it("request('workspace.list') falls back to list-workspaces when rpc is unavailable", async () => {
+  it("request('workspace.list') 在 rpc 不可用时回退到 list-workspaces", async () => {
     const exec = mockExec({ modern: true, overrides: { "cmux list-workspaces --json": '{"workspaces":[]}' } });
     const transport = await createCmuxCliTransport(exec)();
 
@@ -121,7 +119,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     expect(exec).toHaveBeenCalledWith("cmux list-workspaces --json");
   });
 
-  it("request('workspace.list') falls back to plain-text rows when list-workspaces --json prints text", async () => {
+  it("list-workspaces --json 输出文本时 request('workspace.list') 回退到纯文本行", async () => {
     const exec = mockExec({
       modern: true,
       overrides: {
@@ -141,7 +139,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     });
   });
 
-  it("request('workspace.current') -> exact: cmux current-workspace --json", async () => {
+  it("request('workspace.current') → 精确命令 cmux current-workspace --json", async () => {
     const exec = mockExec({
       modern: true,
       overrides: { "cmux current-workspace --json": '{"workspace_id":"workspace:1"}' },
@@ -153,7 +151,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     expect(result).toEqual({ workspace_id: "workspace:1" });
   });
 
-  it("request('workspace.current') falls back to bare legacy handle output", async () => {
+  it("request('workspace.current') 回退到裸旧式 handle 输出", async () => {
     const exec = mockExec({
       legacy: true,
       overrides: { "cmux current-workspace --json": "3FD8CF06-F6FD-451D-AC6B-1DF15BD0BECA\n" },
@@ -164,7 +162,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     expect(result).toEqual({ workspace_id: "3FD8CF06-F6FD-451D-AC6B-1DF15BD0BECA" });
   });
 
-  it("request('surface.focus') -> exact: cmux focus-panel --panel 's-1'", async () => {
+  it("request('surface.focus') → 精确命令 cmux focus-panel --panel 's-1'", async () => {
     const exec = mockExec({ modern: true });
     const transport = await createCmuxCliTransport(exec)();
 
@@ -173,7 +171,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     expect(exec).toHaveBeenCalledWith("cmux focus-panel --panel 's-1'");
   });
 
-  it("request('surface.focus') includes --workspace when provided", async () => {
+  it("提供 workspace 时 request('surface.focus') 包含 --workspace", async () => {
     const exec = mockExec({ modern: true });
     const transport = await createCmuxCliTransport(exec)();
 
@@ -182,7 +180,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     expect(exec).toHaveBeenCalledWith("cmux focus-panel --panel 'surface:7' --workspace 'workspace:2'");
   });
 
-  it("request('surface.sendText') -> exact: cmux send --surface 's-1' 'hello'", async () => {
+  it("request('surface.sendText') → 精确命令 cmux send --surface 's-1' 'hello'", async () => {
     const exec = mockExec({ modern: true });
     const transport = await createCmuxCliTransport(exec)();
 
@@ -191,7 +189,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     expect(exec).toHaveBeenCalledWith("cmux send --surface 's-1' 'hello'");
   });
 
-  it("request('surface.sendText') includes --workspace when provided", async () => {
+  it("提供 workspace 时 request('surface.sendText') 包含 --workspace", async () => {
     const exec = mockExec({ modern: true });
     const transport = await createCmuxCliTransport(exec)();
 
@@ -204,7 +202,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     expect(exec).toHaveBeenCalledWith("cmux send --surface 'surface:7' --workspace 'workspace:2' 'hello'");
   });
 
-  it("request('surface.create') -> exact: cmux new-surface --type terminal --workspace 'workspace:2' --json", async () => {
+  it("request('surface.create') → 精确命令 cmux new-surface --type terminal --workspace 'workspace:2' --json", async () => {
     const exec = mockExec({
       modern: true,
       overrides: {
@@ -225,7 +223,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     });
   });
 
-  it("request('surface.create') falls back to bare legacy handle output", async () => {
+  it("request('surface.create') 回退到裸旧式 handle 输出", async () => {
     const exec = mockExec({
       legacy: true,
       overrides: { "cmux new-surface --type 'terminal' --workspace 'workspace:2' --json": "surface:9\n" },
@@ -236,7 +234,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     expect(result).toEqual({ created_surface_ref: "surface:9" });
   });
 
-  it("request('surface.create') extracts the surface ref from legacy OK summary output", async () => {
+  it("request('surface.create') 从旧式 OK summary 输出提取 surface ref", async () => {
     const exec = mockExec({
       legacy: true,
       overrides: {
@@ -250,7 +248,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     expect(result).toEqual({ created_surface_ref: "surface:78" });
   });
 
-  it("surface.focus uses modern 'cmux focus-panel --panel' not old 'cmux focus-surface'", async () => {
+  it("surface.focus 使用现代 'cmux focus-panel --panel' 而非旧 'cmux focus-surface'", async () => {
     const exec = mockExec({ modern: true });
     const transport = await createCmuxCliTransport(exec)();
 
@@ -264,7 +262,7 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
     expect(focusCall![0]).not.toContain("focus-surface");
   });
 
-  it("surface.sendText uses modern 'cmux send --surface' not old 'cmux send-surface'", async () => {
+  it("surface.sendText 使用现代 'cmux send --surface' 而非旧 'cmux send-surface'", async () => {
     const exec = mockExec({ modern: true });
     const transport = await createCmuxCliTransport(exec)();
 
@@ -279,8 +277,8 @@ describe("cmux CLI transport — stable commands (unchanged across versions)", (
   });
 });
 
-describe("cmux CLI transport — version-adaptive surface listing", () => {
-  it("surface.list on modern cmux uses `list-panels --json` (legacy `list-surfaces` removed)", async () => {
+describe("cmux CLI transport——适应版本的 surface 列表", () => {
+  it("现代 cmux 的 surface.list 使用 `list-panels --json`（旧 `list-surfaces` 已移除）", async () => {
     const exec = mockExec({
       modern: true,
       overrides: { "cmux list-panels --json": '{"panels":[{"id":"surface:1","title":"term","type":"terminal"}]}' },
@@ -297,7 +295,7 @@ describe("cmux CLI transport — version-adaptive surface listing", () => {
     expect(listCall![0]).not.toContain("list-surfaces");
   });
 
-  it("surface.list on modern cmux normalizes `panels` payload to `surfaces`", async () => {
+  it("现代 cmux 的 surface.list 把 `panels` payload 规范化为 `surfaces`", async () => {
     const exec = mockExec({
       modern: true,
       overrides: {
@@ -311,11 +309,10 @@ describe("cmux CLI transport — version-adaptive surface listing", () => {
     expect(result).toEqual({ surfaces: [{ id: "surface:1", title: "term", type: "terminal" }] });
   });
 
-  // OPR.0.3.3.18 - THE pinned break: cmux 0.64.x `list-panels --json` rows
-  // carry `ref` with NO `id`. Pre-fix, downstream `result.data[0].id` was
-  // undefined -> surfaceId undefined -> `surface.sendText` never mapped ->
-  // "Unknown cmux method" throw. The row handle must resolve from `ref`.
-  it("surface.list on cmux 0.64.x normalizes `panels[].ref` (no id) to `surfaces[].id`", async () => {
+  // OPR.0.3.3.18——锁定的破坏点：cmux 0.64.x 的 `list-panels --json` 行携带 `ref`，
+  // 但没有 `id`。修复前，下游 `result.data[0].id` 为 undefined → surfaceId undefined →
+  // `surface.sendText` 无法映射 → 抛出 "Unknown cmux method"。行 handle 必须从 `ref` 解析。
+  it("cmux 0.64.x 的 surface.list 把无 id 的 `panels[].ref` 规范化为 `surfaces[].id`", async () => {
     const exec = mockExec({
       modern: true,
       overrides: {
@@ -334,11 +331,10 @@ describe("cmux CLI transport — version-adaptive surface listing", () => {
     });
   });
 
-  // OPR.0.3.3.18 - regression guard for the early-return-raw path: when cmux
-  // already keys the array as `surfaces` but the rows carry `ref` (not `id`),
-  // the rows must STILL be normalized (pre-fix this branch returned raw, so
-  // `id` stayed undefined).
-  it("surface.list normalizes `ref`-only rows even when the array is already keyed `surfaces`", async () => {
+  // OPR.0.3.3.18——early-return-raw 路径的回归防线：即使 cmux 已用 `surfaces` 作为数组
+  // key，只要行携带 `ref` 而非 `id`，仍必须规范化（修复前此分支直接返回原值，导致 `id`
+  // 始终为 undefined）。
+  it("数组已经以 `surfaces` 为 key 时仍规范化仅含 `ref` 的行", async () => {
     const exec = mockExec({
       modern: true,
       overrides: {
@@ -352,10 +348,9 @@ describe("cmux CLI transport — version-adaptive surface listing", () => {
     expect(result).toEqual({ surfaces: [{ id: "surface:9", title: "x", type: "terminal" }] });
   });
 
-  // OPR.0.3.3.18 - 0.63.2 NON-REGRESSION discriminator: rows carrying `id`
-  // (no `ref`) resolve unchanged. One normalization, BOTH cmux versions -
-  // proves the fix is adaptation, not a version-negotiation shim.
-  it("surface.list keeps `id`-shape rows (cmux 0.63.x) working unchanged - no regression", async () => {
+  // OPR.0.3.3.18——0.63.2 无回归判别：携带 `id` 而无 `ref` 的行保持原样解析。一套
+  // 规范化同时支持两个 cmux 版本，证明修复是适配而非版本协商 shim。
+  it("surface.list 保持 `id` 形状的行（cmux 0.63.x）正常工作，无回归", async () => {
     const exec = mockExec({
       modern: true,
       overrides: {
@@ -369,7 +364,7 @@ describe("cmux CLI transport — version-adaptive surface listing", () => {
     expect(result).toEqual({ surfaces: [{ id: "surface:63", title: "legacy", type: "terminal" }] });
   });
 
-  it("surface.list on modern cmux honors workspaceId via --workspace", async () => {
+  it("现代 cmux 的 surface.list 通过 --workspace 使用 workspaceId", async () => {
     const exec = mockExec({
       modern: true,
       overrides: { "cmux list-panels --workspace 'workspace:2' --json": '{"panels":[]}' },
@@ -381,7 +376,7 @@ describe("cmux CLI transport — version-adaptive surface listing", () => {
     expect(exec).toHaveBeenCalledWith("cmux list-panels --workspace 'workspace:2' --json");
   });
 
-  it("surface.list on modern cmux falls back to plain-text panel rows when `--json` still prints text", async () => {
+  it("现代 cmux 的 `--json` 仍输出文本时，surface.list 回退到纯文本 panel 行", async () => {
     const exec = mockExec({
       modern: true,
       overrides: {
@@ -403,7 +398,7 @@ describe("cmux CLI transport — version-adaptive surface listing", () => {
     });
   });
 
-  it("surface.list on modern cmux treats empty plain-text output as an empty surface list", async () => {
+  it("现代 cmux 的 surface.list 把空纯文本输出视为空 surface 列表", async () => {
     const exec = mockExec({
       modern: true,
       overrides: { "cmux list-panels --workspace 'workspace:1' --json": "\n" },
@@ -417,7 +412,7 @@ describe("cmux CLI transport — version-adaptive surface listing", () => {
     expect(result).toEqual({ surfaces: [] });
   });
 
-  it("surface.list on modern cmux rejects plain-text error output that merely mentions a surface id", async () => {
+  it("现代 cmux 的 surface.list 拒绝仅提及 surface ID 的纯文本错误输出", async () => {
     const exec = mockExec({
       modern: true,
       overrides: {
@@ -429,10 +424,10 @@ describe("cmux CLI transport — version-adaptive surface listing", () => {
 
     await expect(
       transport.request("surface.list", { workspaceId: "workspace:1" })
-    ).rejects.toThrow(/Failed to parse JSON from cmux command/);
+    ).rejects.toThrow(/无法解析 cmux 命令.*返回的 JSON/);
   });
 
-  it("surface.list on legacy cmux falls back to `list-surfaces --json`", async () => {
+  it("旧版 cmux 的 surface.list 回退到 `list-surfaces --json`", async () => {
     const exec = mockExec({
       legacy: true,
       overrides: { "cmux list-surfaces --json": '{"surfaces":[]}' },
@@ -444,8 +439,8 @@ describe("cmux CLI transport — version-adaptive surface listing", () => {
     expect(exec).toHaveBeenCalledWith("cmux list-surfaces --json");
   });
 
-  it("surface.list throws a structured `unavailable` error when neither command is present", async () => {
-    // Help has neither list-panels nor list-surfaces — adapter cannot satisfy the method.
+  it("两个命令都不存在时 surface.list 抛出结构化 `unavailable` 错误", async () => {
+    // Help 中既没有 list-panels 也没有 list-surfaces——adapter 无法实现该方法。
     const exec = mockExec({});
     const transport = await createCmuxCliTransport(exec)();
 
@@ -456,8 +451,8 @@ describe("cmux CLI transport — version-adaptive surface listing", () => {
   });
 });
 
-describe("cmux CLI transport — agent-pids surface (legacy-only)", () => {
-  it("workspace.agentPIDs on legacy cmux maps to `cmux agent-pids --json`", async () => {
+describe("cmux CLI transport——agent-pids 表面（仅旧版）", () => {
+  it("旧版 cmux 的 workspace.agentPIDs 映射到 `cmux agent-pids --json`", async () => {
     const exec = mockExec({
       legacy: true,
       overrides: { "cmux agent-pids --json": '{"agents":[{"pid":1234,"runtime":"claude_code"}]}' },
@@ -470,7 +465,7 @@ describe("cmux CLI transport — agent-pids surface (legacy-only)", () => {
     expect(exec).toHaveBeenCalledWith("cmux agent-pids --json");
   });
 
-  it("workspace.agentPIDs on modern cmux throws structured `unavailable` (command removed)", async () => {
+  it("现代 cmux 的 workspace.agentPIDs 抛出结构化 `unavailable`（命令已移除）", async () => {
     const exec = mockExec({ modern: true });
     const transport = await createCmuxCliTransport(exec)();
 
@@ -480,7 +475,7 @@ describe("cmux CLI transport — agent-pids surface (legacy-only)", () => {
     });
   });
 
-  it("workspace.agentPIDs never calls the removed command when cmux is modern", async () => {
+  it("cmux 为现代版本时 workspace.agentPIDs 绝不调用已移除命令", async () => {
     const exec = mockExec({ modern: true });
     const transport = await createCmuxCliTransport(exec)();
 
@@ -490,8 +485,8 @@ describe("cmux CLI transport — agent-pids surface (legacy-only)", () => {
   });
 });
 
-describe("cmux CLI transport — JSON parse honesty", () => {
-  it("cmux returns invalid JSON for --json command -> request rejects", async () => {
+describe("cmux CLI transport——JSON 解析诚实性", () => {
+  it("cmux 对 --json 命令返回无效 JSON 时拒绝 request", async () => {
     const exec = mockExec({
       modern: true,
       overrides: { "cmux list-workspaces --json": "this is not json {{{" },

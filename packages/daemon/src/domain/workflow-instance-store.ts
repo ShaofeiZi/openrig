@@ -1,9 +1,8 @@
-// PL-004 Phase D: workflow instance store.
+// PL-004 Phase D：工作流 instance store。
 //
-// Owns CRUD on workflow_instances. Frontier tracking uses
-// current_frontier_json (serialized JSON array of qitem_ids). Survives
-// daemon restart without filesystem reconciliation: list/getById query
-// SQLite directly.
+// 负责 workflow_instances 的 CRUD。frontier tracking 使用 current_frontier_json
+//（序列化后的 qitem_id JSON 数组）。无需文件系统 reconciliation 即可跨后台服务重启存活：
+// list/getById 直接查询 SQLite。
 
 import type Database from "better-sqlite3";
 import { ulid } from "ulid";
@@ -27,26 +26,24 @@ interface InstanceRow {
   fallback_synthesis: string | null;
   last_continuation_decision_json: string | null;
   completed_at: string | null;
-  /** OPR.0.4.6.WF1 FR-5 — optimistic-concurrency version (migration
-   *  049). Optional at the row layer: legacy fixtures without the
-   *  migration read undefined and map to 0. */
+  /** OPR.0.4.6.WF1 FR-5——乐观并发 version（migration 049）。row 层可选：
+   *  未应用 migration 的旧版 fixture 读取为 undefined，并映射到 0。 */
   version?: number;
-  /** OPR.0.4.6.WF5 FR-4 (migration 051) — optional at the row layer
-   *  like version: legacy fixtures map to 0. */
+  /** OPR.0.4.6.WF5 FR-4（migration 051）——与 version 相同，在 row 层可选；
+   *  旧版 fixture 映射到 0。 */
   resume_count?: number;
   hops_baseline?: number;
-  /** OPR.0.4.6.FAC1 (migration 052) — optional at the row layer like
-   *  version: legacy fixtures map to null (unbound). */
+  /** OPR.0.4.6.FAC1（migration 052）——与 version 相同，在 row 层可选；
+   *  旧版 fixture 映射到 null（未绑定）。 */
   bound_rig?: string | null;
   lifecycle_operation_key?: string | null;
   compiled_input_digest?: string | null;
   lifecycle_binding_json?: string | null;
 }
 
-/** Defensive column probe (the detectQueueColumn house pattern) —
- *  older test fixtures bypass the canonical migration list, so the
- *  version column (migration 049) may be absent; the guard degrades
- *  to legacy unguarded updates there. Production always migrates. */
+/** 防御性 column probe（沿用 detectQueueColumn 模式）。旧测试 fixture 会绕过 canonical migration
+ *  列表，因此 version column（migration 049）可能缺失；guard 在这种情况下退化为旧版无守卫 update。
+ *  production 始终执行 migration。 */
 function detectInstanceColumn(db: Database.Database, columnName: string): boolean {
   try {
     return db
@@ -63,12 +60,11 @@ export interface CreateWorkflowInstanceInput {
   workflowVersion: string;
   createdBySession: string;
   initialFrontier?: string[];
-  /** R2: durable current-step binding set at instantiate time. */
+  /** R2：在 instantiate 时设置的持久 current-step binding。 */
   currentStepId?: string;
   /**
-   * OPR.0.4.6.FAC1: the rig NAME this instance binds to (already
-   * resolved by the runtime: targetRig override ?? spec.target.rig).
-   * null/absent = unbound (today's behavior byte-identical).
+   * OPR.0.4.6.FAC1：此 instance 绑定的工作组名称，已由 runtime 解析：
+   * targetRig override ?? spec.target.rig。null/缺失表示未绑定，与当前行为逐字节一致。
    */
   boundRig?: string | null;
   lifecycle?: {
@@ -113,9 +109,8 @@ export class WorkflowInstanceStore {
     const instanceId = ulid();
     const createdAt = this.now().toISOString();
     const frontier = input.initialFrontier ?? [];
-    // OPR.0.4.6.FAC1: bound_rig rides the same defensive column probe
-    // as version/resume (legacy fixtures without migration 052 keep the
-    // legacy INSERT; production always migrates).
+    // OPR.0.4.6.FAC1：bound_rig 使用与 version/resume 相同的防御性 column probe。
+    // 未应用 migration 052 的旧 fixture 保留旧版 INSERT；production 始终执行 migration。
     const boundRigCol = this.hasBoundRigColumn ? ", bound_rig" : "";
     const boundRigVal = this.hasBoundRigColumn ? ", ?" : "";
     const lifecycleCols = this.hasLifecycleColumns
@@ -162,7 +157,7 @@ export class WorkflowInstanceStore {
     if (!inst) {
       throw new WorkflowInstanceError(
         "instance_not_found",
-        `workflow instance ${instanceId} not found`,
+        `未找到 workflow instance ${instanceId}`,
         { instanceId },
       );
     }
@@ -177,11 +172,11 @@ export class WorkflowInstanceStore {
     return row ? rowToInstance(row) : null;
   }
 
-  /** Caller wraps cache/binding/receipt/event in one transaction. No packet or trail is rewritten. */
+  /** 调用方在同一 transaction 中封装 cache/binding/receipt/event；不会重写 packet 或 trail。 */
   reviseLifecycle(instanceId: string, expectedVersion: number, workflowVersion: string, digest: string, binding: Record<string, unknown>): void {
     const result = this.db.prepare("UPDATE workflow_instances SET workflow_version = ?, compiled_input_digest = ?, lifecycle_binding_json = ?, version = version + 1 WHERE instance_id = ? AND version = ?")
       .run(workflowVersion, digest, JSON.stringify(binding), instanceId, expectedVersion);
-    if (result.changes !== 1) throw new WorkflowInstanceError("instance_version_conflict", "Instance progressed during revision; inspect it again.", { instanceId, expectedVersion });
+    if (result.changes !== 1) throw new WorkflowInstanceError("instance_version_conflict", "revision 期间 instance 已推进；请重新检查。", { instanceId, expectedVersion });
   }
 
   bindFrontierPacket(input: {
@@ -193,7 +188,7 @@ export class WorkflowInstanceStore {
     hopsBaseline?: number;
   }): WorkflowFrontierBinding {
     if (!this.hasFrontierBindingsTable) {
-      throw new WorkflowInstanceError("frontier_bindings_unavailable", "packet-addressed workflow state requires migration 079");
+      throw new WorkflowInstanceError("frontier_bindings_unavailable", "按 packet 寻址的 workflow state 需要 migration 079");
     }
     const createdAt = this.now().toISOString();
     this.db.prepare(
@@ -244,7 +239,7 @@ export class WorkflowInstanceStore {
     failureReason?: string | null;
   }): WorkflowFailureOccurrence {
     if (!this.hasFailureOccurrencesTable) {
-      throw new WorkflowInstanceError("failure_occurrences_unavailable", "branch-local workflow recovery requires migration 079");
+      throw new WorkflowInstanceError("failure_occurrences_unavailable", "branch-local workflow recovery 需要 migration 079");
     }
     const failedAt = this.now().toISOString();
     this.db.prepare(
@@ -292,7 +287,7 @@ export class WorkflowInstanceStore {
     if (info.changes === 0) {
       throw new WorkflowInstanceError(
         "failure_occurrence_not_unresolved",
-        `failure occurrence ${occurrenceId} is not unresolved for instance ${instanceId}`,
+        `failure occurrence ${occurrenceId} 在 instance ${instanceId} 中不是 unresolved 状态`,
         { instanceId, occurrenceId },
       );
     }
@@ -315,10 +310,8 @@ export class WorkflowInstanceStore {
   }
 
   /**
-   * Update frontier + status atomically. Caller is responsible for
-   * wrapping in a transaction when this needs to compose with other
-   * mutations (e.g., workflow-projector folds this into the
-   * close + create + frontier-update transaction).
+   * 原子更新 frontier + status。需要与其他 mutation 组合时，由调用方负责放入 transaction
+   *（例如 workflow-projector 会把它合并到 close + create + frontier-update transaction 中）。
    */
   updateFrontier(
     instanceId: string,
@@ -330,27 +323,20 @@ export class WorkflowInstanceStore {
       fallbackSynthesis?: string | null;
       completedAt?: string | null;
       /**
-       * R2: explicit next current_step_id. When provided, OVERWRITES
-       * the column (including to NULL by passing the empty string for
-       * "clear"). When omitted, current_step_id is preserved (the
-       * frontier packet is reused, e.g., on waiting). To clear pass
-       * the symbol "clear-current-step" (typed as the literal below).
+       * R2：显式指定下一个 current_step_id。提供时覆盖该 column；传入 `clear` 可写为 NULL。
+       * 省略时保留 current_step_id，例如 waiting 时复用 frontier packet。
        */
       currentStepId?: string | "preserve" | "clear";
       /**
-       * OPR.0.4.6.WF1 FR-5 — the optimistic-concurrency guard. When
-       * provided, the UPDATE is qualified `WHERE version = ?` and bumps
-       * `version = version + 1`; zero rows changed throws the
-       * structured `instance_version_conflict` naming expected/actual
-       * (the caller's transaction rolls back whole). When omitted,
-       * legacy unguarded behavior (no version read, no bump) — the
-       * projector ALWAYS provides it.
+       * OPR.0.4.6.WF1 FR-5——乐观并发 guard。提供时，UPDATE 增加 `WHERE version = ?` 条件，
+       * 并执行 `version = version + 1`；若修改 0 行，则抛出结构化 `instance_version_conflict`，
+       * 点明 expected/actual，调用方 transaction 整体回滚。省略时使用旧版无守卫行为：
+       * 不读取 version，也不递增；projector 始终提供该值。
        */
       expectedVersion?: number;
       /**
-       * OPR.0.4.6.WF5 FR-4 — the resume stamp: sets the recorded
-       * redrive count AND the livelock-rail hops baseline atomically
-       * with the frontier rebind. Only resume() passes it.
+       * OPR.0.4.6.WF5 FR-4——resume stamp：在 frontier rebind 时原子设置已记录的 redrive count
+       * 与 livelock-rail hops baseline；只有 resume() 会传入。
        */
       resumeStamp?: { resumeCount: number; hopsBaseline: number };
     } = {},
@@ -397,7 +383,7 @@ export class WorkflowInstanceStore {
       const current = this.getById(instanceId);
       throw new WorkflowInstanceError(
         "instance_version_conflict",
-        `workflow instance ${instanceId} advanced concurrently: expected version ${opts.expectedVersion}, actual ${current ? current.version : "(instance missing)"} — the losing writer's transaction rolls back whole; re-read and re-project against current state`,
+        `workflow instance ${instanceId} 被并发推进：预期 version ${opts.expectedVersion}，实际为 ${current ? current.version : "（instance 缺失）"}；失败 writer 的 transaction 已整体回滚，请读取当前状态后重新 project`,
         {
           instanceId,
           expectedVersion: opts.expectedVersion,

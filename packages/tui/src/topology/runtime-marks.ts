@@ -1,22 +1,22 @@
-// S19 MR2 (§A2+§A4, founder-directed) — the TUI renders the SAME runtime
-// marks as the web UI, not cousins. The identity of record is
-// packages/ui/src/components/graphics/RuntimeMark.tsx: clawd = a 16x16
-// crispEdges pixel grid (body #ad6755, eyes #181818); Codex = the `>_`
-// prompt mark; terminal = `>_` on a dark cell. This module derives the cell
-// art FROM that grid (rect list transcribed 1:1 below) — never a redesign.
+// S19 MR2（§A2+§A4，创建者指导）——TUI 渲染与 Web UI 相同的运行时
+// 标记，而非表亲。记录的身份是
+// packages/ui/src/components/graphics/RuntimeMark.tsx：clawd = 16x16
+// crispEdges 像素网格（主体 #ad6755，眼睛 #181818）；Codex = `>_`
+// 提示符标记；终端 = 暗色单元格上的 `>_`。此模块从该网格派生单元格
+// 艺术（矩形列表下面 1:1 转录）——绝非重设计。
 //
-// Color: the marks need the web's exact RGB, so the theme gains mark tokens
-// (truecolor exact; 256 nearest; 16-color value = a PLACEHOLDER pending the
-// founder's degrade-fallback pick — carried in the mr7 packet, not silently
-// decided).
+// 颜色：标记需要 Web 的确切 RGB，因此主题获得标记 token
+//（truecolor 精确；256 最近；16 色值 = 占位符待
+// 创建者降级回退选择——在 mr7 包中携带，不静默
+// 决定）。
 import type { Token } from "../theme.js";
 
-/** the RuntimeMark.tsx rect list, transcribed (x, y, w, h) */
+/** RuntimeMark.tsx 矩形列表，已转录 (x, y, w, h) */
 const CLAWD_BODY_RECTS: Array<[number, number, number, number]> = [
-  [3, 2, 10, 8], // body
-  [1, 5, 2, 3], // left arm
-  [13, 5, 2, 3], // right arm
-  [4, 10, 2, 3], // legs
+  [3, 2, 10, 8], // 主体
+  [1, 5, 2, 3], // 左臂
+  [13, 5, 2, 3], // 右臂
+  [4, 10, 2, 3], // 腿
   [7, 10, 2, 3],
   [10, 10, 2, 3],
 ];
@@ -25,9 +25,9 @@ const CLAWD_EYE_RECTS: Array<[number, number, number, number]> = [
   [10, 4, 1, 2],
 ];
 
-export type ClawdPixel = 0 | 1 | 2; // 0 empty · 1 body · 2 eye
+export type ClawdPixel = 0 | 1 | 2; // 0 空 · 1 主体 · 2 眼睛
 
-/** the 16x16 pixel matrix, derived from the rect list (row-major) */
+/** 16x16 像素矩阵，从矩形列表派生（行优先） */
 export function clawdGrid(): ClawdPixel[][] {
   const g: ClawdPixel[][] = Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => 0 as ClawdPixel));
   for (const [x, y, w, h] of CLAWD_BODY_RECTS)
@@ -41,12 +41,12 @@ export interface MarkSeg {
   text: string;
   token?: Token;
   bold?: boolean;
-  /** background token for half/quadrant cells whose lower/other half differs */
+  /** 下半/另一半不同的半/象限单元格的背景 token */
   bg?: Token;
 }
 
-/** FAITHFUL form — 16 cells x 8 rows of half-blocks (▀ paints the top pixel
- * with fg and the bottom with bg): the detail-pane / prototype scale. */
+/** 忠实形式——16 单元格 x 8 行半块（▀ 用 fg 绘制顶部像素
+ *  用 bg 绘制底部）：详情面板/原型比例。 */
 export function clawdFaithfulRows(): MarkSeg[][] {
   const g = clawdGrid();
   const rows: MarkSeg[][] = [];
@@ -67,12 +67,12 @@ export function clawdFaithfulRows(): MarkSeg[][] {
   return rows;
 }
 
-/** quadrant-block downsample: the 16x16 grid → cols x rows cells, each cell
- * a 2x2 quadrant whose quadrants are majority-vote body coverage of their
- * source region. PROVABLY grid-derived (guard finding 4) — the mini forms
- * are OUTPUTS of this function, never hand-picked glyphs. Honest limit: the
- * 1px eyes are below majority threshold at these scales and vanish — that
- * fidelity fact is part of the mr7 packet, not hidden. */
+/** 象限块降采样：16x16 网格 → cols x rows 单元格，每个单元格
+ *  一个 2x2 象限，其象限是其源区域主体覆盖的多数投票。
+ *  可证明网格派生（防护发现 4）——迷你形式
+ *  是此函数的输出，绝非手挑字形。诚实限制：
+ *  1px 眼睛在这些比例下低于多数阈值并消失——该
+ *  保真事实是 mr7 包的一部分，不隐藏。 */
 const QUADRANT_CHARS: Record<number, string> = {
   0b0000: " ", 0b0001: "▗", 0b0010: "▖", 0b0011: "▄", 0b0100: "▝", 0b0101: "▐",
   0b0110: "▞", 0b0111: "▟", 0b1000: "▘", 0b1001: "▚", 0b1010: "▌", 0b1011: "▙",
@@ -91,7 +91,7 @@ export function clawdDownsample(cols: number, rows: number): MarkSeg[][] {
         total++;
         if (g[y]![x]! !== 0) body++;
       }
-    return total > 0 && body * 2 >= total; // majority vote
+    return total > 0 && body * 2 >= total; // 多数投票
   };
   const out: MarkSeg[][] = [];
   for (let r = 0; r < rows; r++) {
@@ -112,27 +112,27 @@ export function clawdDownsample(cols: number, rows: number): MarkSeg[][] {
   return out;
 }
 
-/** FOUNDER ROUND-2 DESIGN (2026-08-04 via pm-lead): the row mark is a flat
- * claude-terracotta BLOCK with two short dark vertical eye bars centered —
- * no limbs/legs; color + face ARE the mark at 2-cell size. Exact source
- * values: body #ad6755, eyes #181818 (RuntimeMark.tsx). */
+/** 创建者 round-2 设计（2026-08-04 通过 pm-lead）：行标记是扁平
+ *  claude 陶土色块，带两个短暗色垂直眼条居中——
+ *  无四肢/腿；颜色 + 面在 2 单元格大小就是标记。精确源
+ *  值：主体 #ad6755，眼睛 #181818（RuntimeMark.tsx）。 */
 export function clawdFounderMark(): MarkSeg[] {
-  // superseded by clawdSquareMark (round-3: wide-rect center-bunch REJECTED);
-  // kept for the decision-record lineage only
+  // 被 clawdSquareMark 取代（round-3：宽矩形居中束被拒）；
+  // 仅为决策记录血统保留
   return [
     { text: "╹", token: "clawdEye", bg: "clawd" },
     { text: "╹", token: "clawdEye", bg: "clawd" },
   ];
 }
 
-/** PICKS-V4 clawd row mark (founder amendment, PICKS-OF-RECORD sha256-16
- * 14afeb74, 2026-08-04 — a bounded refinement INSIDE the locked square-with-
- * eyes direction): the eyes are literally the characters `><` — left eye `>`,
- * right eye `<`, pointing INWARD, squinty (reference image-cache 102).
- * Founder rationale verbatim: eyes at the far edges do not read as eyes;
- * inward angle brackets make it read as a FACE. Dark #181818 eyes ON the
- * #ad6755 terracotta field, unchanged. (Lineage: round-4 shipped the ▘▝
- * outer-quadrant pair; superseded by this amendment.) */
+/** PICKS-V4 clawd 行标记（创建者修正，PICKS-OF-RECORD sha256-16
+ *  14afeb74，2026-08-04——锁定方眼方向内的有界细化）：眼睛
+ *  字面是字符 `><`——左眼 `>`，
+ *  右眼 `<`，指向内，斜眼（参考 image-cache 102）。
+ *  创建者理由原文：远边缘的眼睛读起来不像眼睛；
+ *  内向尖括号使其读起来像一张脸。暗色 #181818 眼睛在
+ *  #ad6755 陶土场上，不变。（血统：round-4 发布了 ▘▝
+ *  外象限对；被此修正取代。） */
 export function clawdSquareMark(): MarkSeg[] {
   return [
     { text: ">", token: "clawdEye", bg: "clawd" },
@@ -140,12 +140,12 @@ export function clawdSquareMark(): MarkSeg[] {
   ];
 }
 
-/** ROUND-3 codex blue-hint CANDIDATES — PICKED at picks v4 (14afeb74):
- * CHEVRON-ONLY, on detail/topology surfaces only (founder delegated; pm-lead
- * ruled the most restrained option). codexMark() below now ships the chevron
- * form; this record keeps the presented variants for decision lineage. Each
- * variant uses the OFFICIAL sampled #6867aa (token codexBlue), never a
- * remembered value. */
+/** ROUND-3 codex 蓝色提示候选——在 picks v4 选定（14afeb74）：
+ *  仅尖括号，仅在详情/拓扑表面（创建者委托；pm-lead
+ *  裁决最克制选项）。codexMark() 下面现在发布尖括号
+ *  形式；此记录为决策血统保留呈现的变体。每个
+ *  变体使用官方采样 #6867aa（token codexBlue），绝不
+ *  记忆值。 */
 export function codexHintVariants(): Record<"chevron" | "outline" | "none", MarkSeg[]> {
   return {
     none: codexMark(),
@@ -162,7 +162,7 @@ export function codexHintVariants(): Record<"chevron" | "outline" | "none", Mark
   };
 }
 
-/** row-mark CANDIDATES for the mr7 pick — both are downsample outputs */
+/** mr7 选择的行标记候选——两者都是降采样输出 */
 export function clawdMiniA(): MarkSeg[] {
   return clawdDownsample(2, 1)[0]!;
 }
@@ -171,11 +171,11 @@ export function clawdMiniB(): MarkSeg[] {
   return clawdDownsample(3, 1)[0]!;
 }
 
-/** Codex: the `>_` prompt mark with the PICKS-V4 CHEVRON-ONLY blue hint
- * (item a, 14afeb74): the `>` carries the OFFICIAL sampled #6867aa; the `_`
- * stays light ink. Text stays exactly ASCII `>_` (web-identity: the SAME
- * mark, not a cousin; ❯ remains vetoed). This mark renders on detail +
- * topology surfaces only — the explorer carries no marks (locked). */
+/** Codex：带 PICKS-V4 仅尖括号蓝色提示的 `>_` 提示符标记
+ *（项 a，14afeb74）：`>` 携带官方采样 #6867aa；`_`
+ *  保持浅色墨水。文本保持 exactly ASCII `>_`（Web 身份：相同
+ *  标记，非表亲；❯ 保持否决）。此标记仅在详情 +
+ *  拓扑表面渲染——资源管理器不携带标记（锁定）。 */
 export function codexMark(): MarkSeg[] {
   return [
     { text: ">", token: "codexBlue", bold: true },
@@ -183,7 +183,7 @@ export function codexMark(): MarkSeg[] {
   ];
 }
 
-/** terminal/tty runtime: dark cell + white `>_` — same family, inverted. */
+/** 终端/tty 运行时：暗色单元格 + 白色 `>_`——同族，反转。 */
 export function terminalMark(): MarkSeg[] {
   return [
     { text: ">", token: "bright", bg: "markBg", bold: true },
@@ -191,18 +191,18 @@ export function terminalMark(): MarkSeg[] {
   ];
 }
 
-/** the row-scale mark for a served runtime string (placeholder-safe default:
- * miniA for claude until the founder pick lands — swap point, one site) */
+/** 服务端运行时字符串的行级标记（占位符安全默认：
+ *  claude 用 miniA 直到创建者选择落地——交换点，单站点） */
 export function runtimeMarkSegs(runtime: string | null | undefined): MarkSeg[] {
   const r = (runtime ?? "").toLowerCase();
-  if (r.startsWith("claude")) return clawdSquareMark(); // round-3 locked square
+  if (r.startsWith("claude")) return clawdSquareMark(); // round-3 锁方形
   if (r.startsWith("codex")) return codexMark();
   if (r === "terminal" || r === "tty" || r.startsWith("external")) return terminalMark();
-  // unknown runtime: honest text token, dimmed — never a fabricated mark
+  // 未知运行时：诚实文本 token，置暗——绝不伪造标记
   return [{ text: "?", token: "dim" }];
 }
 
-/** plain-text width of a mark (all marks are single-cell glyphs) */
+/** 标记的纯文本宽度（所有标记都是单单元格字形） */
 export function markText(segs: MarkSeg[]): string {
   return segs.map((s) => s.text).join("");
 }

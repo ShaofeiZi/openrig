@@ -1,4 +1,4 @@
-// V1 attempt-3 Phase 4 — SubSpecTrigger.
+// V1 第 4 阶段尝试 3 —— SubSpecTrigger（子规格触发按钮）。
 
 import { type ReactNode, type CSSProperties } from "react";
 import { useDrawerSelection } from "../AppShell.js";

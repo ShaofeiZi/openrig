@@ -1,8 +1,7 @@
-// Test-A blocker 3 round 7 — the ENTRY-LEVEL discriminator r2 round-6 HIGH-1 requires: prove the
-// PUBLIC runner seam (`run-evals.mjs --provider rig` via buildRigProviderSession) wires a
-// current-generation record reader, submits ONE natural prompt, and captures the current-generation
-// suffix — and that the authoritative default reader refuses LOUD when no record resolves. The green
-// helper unit tests did not reach this seam; this test does.
+// Test-A 阻断项 3 第 7 轮——入口级判别项 r2 第 6 轮 HIGH-1 要求：证明公开 runner
+// 接缝（`run-evals.mjs --provider rig` 经 buildRigProviderSession）接入当前代记录读取器，
+// 只提交一条自然提示并捕获当前代后缀；还要证明没有解析出记录时，权威默认读取器会
+// 明确拒绝。已通过的辅助单元测试未覆盖此接缝，本测试负责覆盖。
 
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
@@ -24,10 +23,10 @@ function scriptedExec(script: (args: string[]) => string | undefined): { exec: R
   return { exec, calls };
 }
 
-describe("run-evals --provider rig — the wired runner seam (r2 round-6 HIGH-1)", () => {
-  it("submits EXACTLY ONE natural prompt through the runner and captures the CURRENT-GENERATION suffix", async () => {
-    // JSONL-shaped record (harness correction): the capture is schema-aware and grades assistant
-    // OUTPUT with a terminal stop_reason — a raw pane-ish string is no longer a completable turn.
+describe("run-evals --provider rig——已接线的 runner 接缝（r2 第 6 轮 HIGH-1）", () => {
+  it("通过 runner 恰好提交一条自然提示，并捕获当前代后缀", async () => {
+    // JSONL 形态的记录（harness 修正）：捕获过程感知 schema，并评估带终止
+    // stop_reason 的智能体输出——类似 pane 的原始字符串不再视为可完成回合。
     const state = { generationId: "g1", content: '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"prior gen-1 record"}]}}\n' };
     let sent = false;
     const { exec, calls } = scriptedExec((args) => {
@@ -35,8 +34,8 @@ describe("run-evals --provider rig — the wired runner seam (r2 round-6 HIGH-1)
       if (args[0] === "send") { sent = true; state.content = state.content + '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"the case prompt"}]}}\n'; return "sent"; }
       return undefined;
     });
-    // A fake current-generation reader standing in for the contextUsageStore-backed default: the record
-    // grows append-only across reads, then goes quiet.
+    // 用假的当前代读取器代替由 contextUsageStore 支持的默认实现：记录在多次读取间
+    // 仅追加增长，随后保持静默。
     const readGenerationRecord = async () => {
       const out = { generationId: state.generationId, content: state.content };
       if (sent && !state.content.includes("DONE")) state.content = state.content + '{"type":"assistant","message":{"role":"assistant","model":"claude-x","stop_reason":"end_turn","content":[{"type":"text","text":"DONE rig context get skills/core/rig-lifecycle"}]}}\n{"type":"system","subtype":"turn_duration","isMeta":false}\n';
@@ -52,18 +51,18 @@ describe("run-evals --provider rig — the wired runner seam (r2 round-6 HIGH-1)
     await session.sendPrompt("the case prompt");
     const since = await session.captureSince("the case prompt");
 
-    // ONE submitted send — the natural prompt (the frozen custody contract), through the runner seam.
+    // 只提交一次 send——自然提示（冻结的保管契约）通过 runner 接缝发出。
     const sends = calls.filter((c) => c[0] === "send");
-    expect(sends).toEqual([["send", "--raw", "ops-eval@evalrig", "the case prompt"]]); // raw per PIN 5 — envelope suppressed, still exactly one send
-    // The current-generation suffix is captured (grading sees the seat's turn), pre-send content excluded.
+    expect(sends).toEqual([["send", "--raw", "ops-eval@evalrig", "the case prompt"]]); // 根据 PIN 5 使用 raw——抑制信封，仍只发送一次。
+    // 捕获当前代后缀（评估可看到席位回合），排除发送前内容。
     expect(since).toContain("DONE rig context get skills/core/rig-lifecycle");
     expect(since).not.toContain("prior gen-1 record");
   });
 
-  it("the authoritative default reader REFUSES LOUD when the seat has no current-generation record (no silent degrade)", async () => {
+  it("席位没有当前代记录时权威默认读取器明确拒绝（不静默降级）", async () => {
     const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "eval-rig-runner-"));
     try {
-      // No sidecar written at <stateDir>/state/context-usage/<seat>.json => readAndNormalize resolves nothing.
+      // <stateDir>/state/context-usage/<seat>.json 未写入 sidecar，readAndNormalize 无法解析。
       const reader = defaultRunnerGenerationReader({ stateDir });
       await expect(reader("dev-x@r")).rejects.toThrow(/no current-generation Claude conversation record|observation refused/);
     } finally {
@@ -71,7 +70,7 @@ describe("run-evals --provider rig — the wired runner seam (r2 round-6 HIGH-1)
     }
   });
 
-  it("SESSION-LIFETIME binding through the DEFAULT sidecar reader (r2 round-7 HIGH-1): a re-prime between cases emits ONLY the first send", async () => {
+  it("通过默认 sidecar 读取器建立会话生命周期绑定（r2 第 7 轮 HIGH-1）：用例间重新预热时只发出第一次 send", async () => {
     const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "eval-rig-runner-"));
     try {
       const ctxDir = path.join(stateDir, "state", "context-usage");
@@ -89,30 +88,30 @@ describe("run-evals --provider rig — the wired runner seam (r2 round-6 HIGH-1)
         return undefined;
       });
       const session = await buildRigProviderSession({ seat: "s@r", exec, stateDir, session: { pollMs: 1, stablePolls: 2, sleep: async () => {} } }).spawn();
-      // case 1 binds the session generation g1 (via the real ContextUsageStore sidecar reader)
+      // 用例 1 绑定会话代 g1（通过真实的 ContextUsageStore sidecar 读取器）。
       await session.sendPrompt("case-1");
       expect(await session.captureSince("case-1")).toContain("completed");
-      // AUTHORITATIVE re-prime between cases: the seat's sidecar now names g2 + a fresh JSONL
+      // 用例间的权威重新预热：席位 sidecar 现在指向 g2 和新的 JSONL。
       const j2 = path.join(stateDir, "g2.jsonl");
       fs.writeFileSync(j2, "gen-2 fresh\n");
       currentJsonl = j2;
       writeSidecar("g2", j2);
-      // case 2 must refuse BEFORE the send — the cross-generation run is void
-      await expect(session.sendPrompt("case-2")).rejects.toThrow(/generation changed BETWEEN cases/);
-      expect(calls.filter((c) => c[0] === "send").map((c) => c[3])).toEqual(["case-1"]); // argv: send --raw <seat> <prompt>
+      // 用例 2 必须在 send 前拒绝——跨代运行无效。
+      await expect(session.sendPrompt("case-2")).rejects.toThrow(/generation 在用例之间发生变化/);
+      expect(calls.filter((c) => c[0] === "send").map((c) => c[3])).toEqual(["case-1"]); // argv：send --raw <seat> <prompt>
     } finally {
       fs.rmSync(stateDir, { recursive: true, force: true });
     }
   });
 
-  it("the authoritative default reader resolves the sidecar's session id + JSONL as the generation record", async () => {
+  it("权威默认读取器将 sidecar 的会话 id 与 JSONL 解析为代记录", async () => {
     const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "eval-rig-runner-"));
     try {
       const jsonl = path.join(stateDir, "gen-abc.jsonl");
       fs.writeFileSync(jsonl, '{"role":"assistant","text":"rig context get skills/core/rig-lifecycle"}\n');
       const ctxDir = path.join(stateDir, "state", "context-usage");
       fs.mkdirSync(ctxDir, { recursive: true });
-      // Minimal Claude status-line sidecar: session id + transcript path (the append-only JSONL).
+      // 最小 Claude 状态行 sidecar：会话 id + 转录路径（仅追加的 JSONL）。
       fs.writeFileSync(path.join(ctxDir, "dev-x@r.json"), JSON.stringify({ session_id: "gen-abc", transcript_path: jsonl, context_window: { used_percentage: 10 } }));
       const reader = defaultRunnerGenerationReader({ stateDir });
       const rec = await reader("dev-x@r");

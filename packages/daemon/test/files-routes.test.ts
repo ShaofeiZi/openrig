@@ -1,14 +1,13 @@
-// UI Enhancement Pack v0 — files routes end-to-end tests.
+// UI 增强包 v0——文件路由端到端测试。
 //
-// Drives the routes against a hand-mounted Hono app with a temp
-// allowlist. Pins:
-//   - GET /api/files/roots: empty roots → hint; populated → list
-//   - GET /api/files/list: directory listing + path-safety negatives
-//   - GET /api/files/read: content + mtime + contentHash + size
-//   - GET /api/files/asset: image bytes with right Content-Type
-//   - POST /api/files/write: success → audit row appended; mtime
-//     mismatch → 409 with current{Mtime,ContentHash}
-//   - 503 graceful path when filesAllowlist context unset
+// 针对手动挂载的 Hono 应用和临时允许列表驱动路由。固定以下行为：
+//   - GET /api/files/roots：roots 为空 → 提示；非空 → 列表
+//   - GET /api/files/list：目录列表 + 路径安全负向用例
+//   - GET /api/files/read：content + mtime + contentHash + size
+//   - GET /api/files/asset：以正确 Content-Type 返回图片字节
+//   - POST /api/files/write：成功 → 追加审计行；mtime 不匹配 → 409 并携带
+//     current{Mtime,ContentHash}
+//   - 未设置 filesAllowlist 上下文时优雅返回 503
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -37,7 +36,7 @@ function sha256(content: string | Buffer): string {
   return createHash("sha256").update(content).digest("hex");
 }
 
-describe("UI Enhancement Pack v0 — /api/files routes", () => {
+describe("UI 增强包 v0——/api/files 路由", () => {
   let tempDir: string;
   let allowlist: AllowlistRoot[];
   let writeService: FileWriteService;
@@ -48,7 +47,7 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
     mkdirSync(join(tempDir, "workspace", "subdir"), { recursive: true });
     writeFileSync(join(tempDir, "workspace", "STEERING.md"), "# steering content\n");
     writeFileSync(join(tempDir, "workspace", "subdir", "nested.md"), "# nested\n");
-    // Tiny PNG signature for asset-type detection.
+    // 用于产物类型检测的最小 PNG 文件头。
     writeFileSync(join(tempDir, "workspace", "image.png"), Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]));
     allowlist = [{ name: "workspace", canonicalPath: realpathSync(join(tempDir, "workspace")) }];
     writeService = new FileWriteService({
@@ -61,12 +60,12 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
   afterEach(() => rmSync(tempDir, { recursive: true, force: true }));
 
   describe("GET /roots", () => {
-    it("returns 503 when filesAllowlist context is unset", async () => {
+    it("未设置 filesAllowlist 上下文时返回 503", async () => {
       const res = await buildApp(null).request("/api/files/roots");
       expect(res.status).toBe(503);
     });
 
-    it("returns empty roots + setup hint when allowlist is empty", async () => {
+    it("允许列表为空时返回空 roots 和设置提示", async () => {
       const res = await buildApp({ allowlist: [], writeService: null }).request("/api/files/roots");
       expect(res.status).toBe(200);
       const body = (await res.json()) as { roots: AllowlistRoot[]; hint?: string };
@@ -74,7 +73,7 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
       expect(body.hint).toContain("OPENRIG_FILES_ALLOWLIST");
     });
 
-    it("returns the configured roots", async () => {
+    it("返回已配置的 roots", async () => {
       const res = await app.request("/api/files/roots");
       expect(res.status).toBe(200);
       const body = (await res.json()) as { roots: Array<{ name: string; path: string }> };
@@ -83,7 +82,7 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
   });
 
   describe("GET /list", () => {
-    it("lists root directory entries with type + size + mtime", async () => {
+    it("列出根目录条目及其 type、size 和 mtime", async () => {
       const res = await app.request("/api/files/list?root=workspace&path=");
       expect(res.status).toBe(200);
       const body = (await res.json()) as { entries: Array<{ name: string; type: string }> };
@@ -93,24 +92,24 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
       expect(names).toContain("image.png");
     });
 
-    it("sorts directories before files", async () => {
+    it("将目录排在文件之前", async () => {
       const res = await app.request("/api/files/list?root=workspace&path=");
       const body = (await res.json()) as { entries: Array<{ name: string; type: string }> };
       const types = body.entries.map((e) => e.type);
-      // First N entries are dirs.
+      // 前 N 个条目均为目录。
       const dirCount = types.findIndex((t) => t !== "dir");
       const allDirsFirst = types.slice(0, dirCount === -1 ? types.length : dirCount).every((t) => t === "dir");
       expect(allDirsFirst).toBe(true);
     });
 
-    it("rejects '..' escape with 400", async () => {
+    it("以 400 拒绝 '..' 越界", async () => {
       const res = await app.request("/api/files/list?root=workspace&path=..%2F..%2F");
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error: string };
       expect(body.error).toBe("path_escape");
     });
 
-    it("rejects unknown root with 400", async () => {
+    it("以 400 拒绝未知 root", async () => {
       const res = await app.request("/api/files/list?root=does-not-exist&path=");
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error: string };
@@ -119,7 +118,7 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
   });
 
   describe("GET /read", () => {
-    it("returns content + mtime + contentHash + size", async () => {
+    it("返回 content、mtime、contentHash 和 size", async () => {
       const res = await app.request("/api/files/read?root=workspace&path=STEERING.md");
       expect(res.status).toBe(200);
       const body = (await res.json()) as { content: string; mtime: string; contentHash: string; size: number };
@@ -129,14 +128,14 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
       expect(body.mtime).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
-    it("rejects path-traversal with 400", async () => {
+    it("以 400 拒绝路径穿越", async () => {
       const res = await app.request("/api/files/read?root=workspace&path=..%2Fescape.md");
       expect(res.status).toBe(400);
     });
   });
 
   describe("GET /asset", () => {
-    it("serves a .png file with image/png Content-Type", async () => {
+    it("以 image/png Content-Type 提供 .png 文件", async () => {
       const res = await app.request("/api/files/asset?root=workspace&path=image.png");
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toBe("image/png");
@@ -145,7 +144,7 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
   });
 
   describe("POST /write", () => {
-    it("returns 503 with hint when no writeService is wired", async () => {
+    it("未接入 writeService 时返回 503 和提示", async () => {
       const res = await buildApp({ allowlist, writeService: null }).request("/api/files/write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -154,7 +153,7 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
       expect(res.status).toBe(503);
     });
 
-    it("rejects when expectedMtime mismatches with 409 + current values", async () => {
+    it("expectedMtime 不匹配时以 409 和当前值拒绝", async () => {
       const res = await app.request("/api/files/write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -173,7 +172,7 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
       expect(body.currentContentHash).toBe(sha256("# steering content\n"));
     });
 
-    it("succeeds when expectedMtime + expectedContentHash match; appends audit row", async () => {
+    it("expectedMtime 与 expectedContentHash 匹配时成功，并追加审计行", async () => {
       const target = join(tempDir, "workspace", "STEERING.md");
       const stat = statSync(target);
       const expectedMtime = stat.mtime.toISOString();
@@ -193,9 +192,9 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as { newContentHash: string; byteCountDelta: number };
       expect(body.newContentHash).toBe(sha256("# new steering\n"));
-      // File on disk has the new content.
+      // 磁盘文件包含新内容。
       expect(readFileSync(target, "utf-8")).toBe("# new steering\n");
-      // Audit row appended.
+      // 已追加审计行。
       const auditPath = join(tempDir, "audit.jsonl");
       const audit = readFileSync(auditPath, "utf-8").trim().split("\n");
       expect(audit).toHaveLength(1);
@@ -203,16 +202,16 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
       expect(row.actor).toBe("test@r");
       expect(row.root).toBe("workspace");
       expect(row.path).toBe("STEERING.md");
-      // P21 I5 NAMED DEFERRAL: header-absent (the UI/browser path) records the body actor stamped
-      // the DECLARED claimed-era variant `claimed:v1` (PM pin — never null; null now = pre-sweep-legacy
-      // ONLY, so a legacy row and a founder UI tap today stay distinguishable). Never refused/broken.
+      // P21 I5 具名延后处理：缺少请求头（UI/浏览器路径）时记录请求体操作者，并标记已声明的
+      // claimed-era 变体 `claimed:v1`（PM 固定——绝不为 null；如今 null 仅表示清查前旧数据，
+      // 因而旧行与今天创始人在 UI 的点击仍可区分）。绝不拒绝或破坏流程。
       expect((row as { identity_provenance: string | null }).identity_provenance).toBe("claimed:v1");
     });
 
-    // P21 I5 — files write is a founder-visible surface; resolveActorWithDeferral splits the two paths:
-    // header present (CLI/DaemonClient) => derive + transport:v1 + 409-on-mismatch; header absent
-    // (browser UI) => claimed-era (NULL provenance), never-break (the named deferral, owner=dev50).
-    it("write — header present derives the actor + stamps the audit identity_provenance transport:v1", async () => {
+    // P21 I5——文件写入是创始人可见接口；resolveActorWithDeferral 将其拆分为两条路径：
+    // 有请求头（CLI/DaemonClient）→ 推导身份 + transport:v1 + 不匹配时返回 409；无请求头
+    //（浏览器 UI）→ claimed-era（NULL 来源），绝不中断（具名延后处理，owner=dev50）。
+    it("write——存在请求头时推导操作者，并为审计 identity_provenance 标记 transport:v1", async () => {
       const target = join(tempDir, "workspace", "STEERING.md");
       const expectedMtime = statSync(target).mtime.toISOString();
       const expectedContentHash = sha256(readFileSync(target));
@@ -228,23 +227,23 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
       expect(row.identity_provenance).toBe("transport:v1");
     });
 
-    it("write — header present + differing body actor → wire supersedes (actor cli@r, transport:v1); 409 retired", async () => {
+    it("write——请求头存在且请求体 actor 不同时，以线路身份为准（actor cli@r，transport:v1）；不再返回 409", async () => {
       const target = join(tempDir, "workspace", "STEERING.md");
       const expectedMtime = statSync(target).mtime.toISOString();
       const expectedContentHash = sha256(readFileSync(target));
       const res = await app.request("/api/files/write", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "cli@r" },
-        body: JSON.stringify({ root: "workspace", path: "STEERING.md", content: "x", expectedMtime, expectedContentHash, actor: "mallory@r" }), // superseded
+        body: JSON.stringify({ root: "workspace", path: "STEERING.md", content: "x", expectedMtime, expectedContentHash, actor: "mallory@r" }), // 被覆盖。
       });
       expect(res.status).toBe(200);
       const audit = readFileSync(join(tempDir, "audit.jsonl"), "utf-8").trim().split("\n");
       const row = JSON.parse(audit[audit.length - 1]!) as { actor: string; identity_provenance: string | null };
-      expect(row.actor).toBe("cli@r"); // wire wins; mallory@r superseded
+      expect(row.actor).toBe("cli@r"); // 以线路身份为准；mallory@r 被覆盖。
       expect(row.identity_provenance).toBe("transport:v1");
     });
 
-    it("write — header absent + no body actor → 400 actor_required (the deferral still needs some actor)", async () => {
+    it("write——缺少请求头且请求体无 actor → 400 actor_required（延后处理仍需某个操作者）", async () => {
       const target = join(tempDir, "workspace", "STEERING.md");
       const expectedMtime = statSync(target).mtime.toISOString();
       const expectedContentHash = sha256(readFileSync(target));
@@ -257,7 +256,7 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
       expect(((await res.json()) as { error: string }).error).toBe("actor_required");
     });
 
-    it("rejects missing required fields with 400", async () => {
+    it("以 400 拒绝缺少必填字段的请求", async () => {
       const res = await app.request("/api/files/write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -266,7 +265,7 @@ describe("UI Enhancement Pack v0 — /api/files routes", () => {
       expect(res.status).toBe(400);
     });
 
-    it("rejects path-traversal with 400 (path-safety beats stat)", async () => {
+    it("以 400 拒绝路径穿越（路径安全检查优先于 stat）", async () => {
       const res = await app.request("/api/files/write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

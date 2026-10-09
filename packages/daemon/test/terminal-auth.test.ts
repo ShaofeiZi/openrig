@@ -17,13 +17,13 @@ function buildApp(bearerToken: string | null): Hono {
   return app;
 }
 
-describe("terminal-token auth on transport routes", () => {
+describe("transport 路由的 terminal-token 认证", () => {
   const TOKEN = "test-terminal-token-abc123";
 
-  describe("with token required", () => {
+  describe("要求 token 时", () => {
     const app = buildApp(TOKEN);
 
-    it("POST /send without token returns 401", async () => {
+    it("POST /send 不带 token 时返回 401", async () => {
       const res = await app.request("/api/transport/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -32,7 +32,7 @@ describe("terminal-token auth on transport routes", () => {
       expect(res.status).toBe(401);
     });
 
-    it("POST /send with wrong token returns 401", async () => {
+    it("POST /send 携带错误 token 时返回 401", async () => {
       const res = await app.request("/api/transport/send", {
         method: "POST",
         headers: {
@@ -44,7 +44,7 @@ describe("terminal-token auth on transport routes", () => {
       expect(res.status).toBe(401);
     });
 
-    it("POST /send with valid token passes auth", async () => {
+    it("POST /send 携带合法 token 时通过认证", async () => {
       const res = await app.request("/api/transport/send", {
         method: "POST",
         headers: {
@@ -56,7 +56,7 @@ describe("terminal-token auth on transport routes", () => {
       expect(res.status).not.toBe(401);
     });
 
-    it("POST /capture without token returns 401", async () => {
+    it("POST /capture 不带 token 时返回 401", async () => {
       const res = await app.request("/api/transport/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -65,7 +65,7 @@ describe("terminal-token auth on transport routes", () => {
       expect(res.status).toBe(401);
     });
 
-    it("POST /capture with valid token passes auth", async () => {
+    it("POST /capture 携带合法 token 时通过认证", async () => {
       const res = await app.request("/api/transport/capture", {
         method: "POST",
         headers: {
@@ -77,7 +77,7 @@ describe("terminal-token auth on transport routes", () => {
       expect(res.status).not.toBe(401);
     });
 
-    it("POST /broadcast without token returns 401", async () => {
+    it("POST /broadcast 不带 token 时返回 401", async () => {
       const res = await app.request("/api/transport/broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -87,10 +87,10 @@ describe("terminal-token auth on transport routes", () => {
     });
   });
 
-  describe("with no token (null)", () => {
+  describe("未配置 token（null）时", () => {
     const app = buildApp(null);
 
-    it("POST /send passes through without auth", async () => {
+    it("POST /send 无需认证即可通过", async () => {
       const res = await app.request("/api/transport/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

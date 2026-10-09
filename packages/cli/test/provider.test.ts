@@ -7,7 +7,7 @@ import type { StatusDeps } from "../src/commands/status.js";
 
 // Slice-04 (OPR.0.5.0.4) seam A — the `rig provider` CLI grammar, daemon-backed via DaemonClient
 // (packet 3ffa3c22 §3). These prove the CLI reaches the real routes and its --json is stable and
-// param-faithful; the routes/collection/switch composition are the B/C/D production seams.
+// 参数忠实；routes/collection/switch 组合是 B/C/D 生产接缝。
 
 function mockLifecycleDeps(overrides?: Partial<LifecycleDeps>): LifecycleDeps {
   return {
@@ -72,7 +72,7 @@ describe("rig provider CLI grammar (daemon-backed)", () => {
       },
     ],
     signals: [{ provider: "codex", accountRef: "cdx-a", sourceClass: "unknown", authority: "unknown", asOf: "2026-08-03T12:00:00.000Z", unknownReason: "codex_app_server_unavailable", automationUse: "do_not_automate" }],
-    // S-C: the S-A host-usage rollup rows the status verb now renders (arrive via /status verbatim).
+    // S-C：status 动词现渲染的 S-A host-usage 汇总行（经 /status 逐字到达）。
     hostUsage: [
       { host: "local", provider: "claude", state: "ok", windows: [{ window: "five_hour", usedPercent: 10, asOf: "2026-08-03T12:00:00.000Z", seatSession: "seat-c" }], provenance: { basis: "one_account_per_host_deployment_invariant", note: "host==account is a deployment invariant of this rig (one account per host); no account identity is read or emitted." }, anomalies: [], evidenceSeats: ["seat-c"], asOf: "2026-08-03T12:00:00.000Z" },
       { host: "local", provider: "codex", state: "limited", resetsAt: "2026-08-03T13:00:00.000Z", windows: [{ window: "primary", usedPercent: 100, resetsAt: "2026-08-03T13:00:00.000Z", asOf: "2026-08-03T12:00:00.000Z", seatSession: "seat-x" }], provenance: { basis: "one_account_per_host_deployment_invariant", note: "host==account is a deployment invariant of this rig (one account per host); no account identity is read or emitted." }, anomalies: [], evidenceSeats: ["seat-x"], asOf: "2026-08-03T12:00:00.000Z" },
@@ -130,7 +130,7 @@ describe("rig provider CLI grammar (daemon-backed)", () => {
     expect(req!.url).toContain("seat=s1");
     expect(req!.url).toContain("toAccount=cdx-b");
     expect(JSON.parse(logs.join("\n"))).toEqual({ safe: false, reasons: ["target_needs_reauth"] });
-    // an unsafe precheck exits nonzero so scripts can gate.
+    // 不安全 precheck 以非零退出，便于脚本拦截。
     expect(exitCode).toBe(1);
   });
 
@@ -159,18 +159,18 @@ describe("rig provider CLI grammar (daemon-backed)", () => {
   it("status (human) renders the §3 projection: account rows, first-class anomaly flags, signal summary", async () => {
     const { logs } = await run(["status"], runningDeps(port));
     const out = logs.join("\n");
-    expect(out).toContain("ACCOUNTS");
+    expect(out).toContain("账号");
     expect(out).toContain("Codex A");
-    expect(out).toContain("(codex)");
-    expect(out).toContain("ANOMALIES");
-    expect(out).toMatch(/seat with no bound account: seat-9/);
-    expect(out).toMatch(/SIGNALS \(1;/); // freshest-signal summary
+    expect(out).toContain("（codex）");
+    expect(out).toContain("异常");
+    expect(out).toMatch(/席位未绑定账号：seat-9/);
+    expect(out).toMatch(/信号（1 条；/); // freshest-signal summary
   });
 
-  // ── S-C: host-usage rollup rendered on the EXISTING `provider status` verb (no new verb) ──
+  // ── S-C：host-usage 汇总渲染在既有 `provider status` 动词上（无新动词）──
   it("S-C human: a HOST USAGE section renders the rollup rows (state / window granularity / resets_at)", async () => {
     const out = (await run(["status"], runningDeps(port))).logs.join("\n");
-    expect(out).toContain("HOST USAGE");
+    expect(out).toContain("主机用量");
     expect(out).toMatch(/claude\s+ok/);
     expect(out).toMatch(/codex\s+limited/);
     expect(out).toContain("2026-08-03T13:00:00.000Z"); // resets_at surfaced for the limited row
@@ -179,7 +179,7 @@ describe("rig provider CLI grammar (daemon-backed)", () => {
 
   it("S-C human: explicit_unknown renders as 'unknown' + reason — never blank, never ok", async () => {
     const out = (await run(["status"], runningDeps(port))).logs.join("\n");
-    expect(out).toMatch(/codex\s+unknown/);
+    expect(out).toMatch(/codex\s+未知/);
     expect(out).toContain("codex profile present but no usage meter");
   });
 
@@ -214,6 +214,6 @@ describe("rig provider CLI grammar (daemon-backed)", () => {
     };
     const { logs, exitCode } = await run(["status", "--json"], downDeps);
     expect(exitCode).toBe(1);
-    expect(logs.join(" ")).toMatch(/not running/i);
+    expect(logs.join(" ")).toMatch(/后台服务未运行/);
   });
 });

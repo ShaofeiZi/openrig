@@ -3,7 +3,7 @@ name: dev-pair-stub
 culture_file: culture.md
 pods:
   - id: dev
-    label: Development Pair
+    label: 开发搭档
     members:
       - {id: impl, agent_ref: "local:agents/impl", profile: default, runtime: stub, cwd: .}
       - {id: qa, agent_ref: "local:agents/qa", profile: default, runtime: stub, cwd: .}

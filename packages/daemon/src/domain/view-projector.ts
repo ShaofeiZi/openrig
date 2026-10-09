@@ -7,22 +7,20 @@ import type { EventBus } from "./event-bus.js";
 import { buildExecutionView, type ExecutionViewDeps } from "./execution-view.js";
 
 /**
- * View projector (PL-004 Phase B; L5 View — read-only projections).
+ * View projector（PL-004 Phase B；L5 View——只读 projection）。
  *
- * Per PRD § L5 + slice IMPL § Guard Checkpoint Focus item 5+6:
- * - 6 built-in views over Phase A's queue_items + queue_transitions tables.
- * - Custom view registration via views_custom table.
- * - Read-only over Phase A state + Phase B state. NO writes to queue_items
- *   or queue_transitions from this module.
- * - Sub-100 ms latency target (per PRD § Acceptance Criteria); achieved by
- *   leaning on Phase A's existing indexes.
- * - Fixture rig exclusion default: rig names matching `^test-` or `^fixture-`
- *   are excluded; opt-in via OPENRIG_VIEW_INCLUDE_FIXTURES=1.
+ * 按 PRD § L5 + slice IMPL § Guard Checkpoint Focus item 5+6：
+ * - 基于 Phase A queue_items + queue_transitions 表提供 6 个 built-in view。
+ * - 通过 views_custom 表注册 custom view。
+ * - 只读 Phase A + Phase B state；本模块绝不写 queue_items 或 queue_transitions。
+ * - 按 PRD § Acceptance Criteria，延迟目标低于 100ms；依靠 Phase A 现有索引实现。
+ * - 默认排除 fixture 工作组：名称匹配 `^test-` 或 `^fixture-`；可通过
+ *   OPENRIG_VIEW_INCLUDE_FIXTURES=1 选择包含。
  *
- * Custom views in views_custom store a SQL string (`definition`) that the
- * projector executes verbatim. Operator-defined; no taxonomy enforced.
+ * views_custom 中的 custom view 保存 projector 逐字执行的 SQL 字符串（`definition`）。它由
+ * 操作员定义，不强制 taxonomy。
  *
- * Pattern mirrors Phase A's queue-repository.ts read-API shape.
+ * 模式镜像 Phase A queue-repository.ts 的 read API 结构。
  */
 
 export const BUILT_IN_VIEW_NAMES = [
@@ -32,10 +30,10 @@ export const BUILT_IN_VIEW_NAMES = [
   "escalations",
   "held",
   "activity",
-  // S04 (OPR.0.5.5.4) — the pickup lens: claimed rows with the DERIVED receipt.
+  // S04（OPR.0.5.5.4）——pickup lens：带 DERIVED receipt 的 claimed row。
   "pickup",
-  // S27 (OPR.0.5.6.27) — the execution view: one derived JSON document
-  // answering the six execution questions; needs setExecutionDeps wiring.
+  // S27（OPR.0.5.6.27）——execution view：一份回答六个执行问题的派生 JSON 文档；
+  // 需要 setExecutionDeps 接线。
   "execution",
 ] as const;
 
@@ -75,14 +73,12 @@ export class ViewProjectorError extends Error {
 }
 
 /**
- * Detect fixture rigs by session name suffix `@<rig>` where <rig> starts
- * with `test-` or `fixture-`. Used to filter views by default; opt-in via
- * OPENRIG_VIEW_INCLUDE_FIXTURES=1.
+ * 通过 session name 后缀 `@<rig>` 检测 fixture 工作组，其中 <rig> 以 `test-` 或
+ * `fixture-` 开头。默认用于过滤 view；可通过 OPENRIG_VIEW_INCLUDE_FIXTURES=1 选择包含。
  */
 function fixtureExclusionClause(): string {
   if (process.env.OPENRIG_VIEW_INCLUDE_FIXTURES === "1") return "1=1";
-  // Exclude qitems whose source_session OR destination_session has a rig
-  // name starting with test- or fixture-.
+  // 排除 source_session 或 destination_session 的工作组名称以 test-/fixture- 开头的 qitem。
   return `(
     destination_session NOT LIKE '%@test-%' AND
     destination_session NOT LIKE '%@fixture-%' AND
@@ -106,22 +102,21 @@ export class ViewProjector {
     this.now = opts?.now ?? (() => new Date());
   }
 
-  // S27 — execution-view wiring (startup calls this once the slices root
-  // resolves; tests inject fixture roots and a pinned clock).
+  // S27——execution-view 接线。startup 在 slices root 解析后调用一次；测试注入 fixture root
+  // 和固定时钟。
   private executionDeps: ExecutionViewDeps | null = null;
   setExecutionDeps(deps: ExecutionViewDeps): void {
     this.executionDeps = deps;
   }
 
   /**
-   * Run a view by name. Built-in names (BUILT_IN_VIEW_NAMES) dispatch to
-   * hardcoded SQL; other names dispatch to custom-view lookup.
+   * 按名称运行 view。built-in 名称（BUILT_IN_VIEW_NAMES）派发到硬编码 SQL；其他名称派发到
+   * custom-view 查询。
    */
   show(viewName: string, opts?: { rig?: string; limit?: number; mission?: string; project?: ProjectRead | null }): ViewQueryResult {
     const limit = Math.max(1, Math.min(opts?.limit ?? 100, 1000));
-    // S27 — the execution view is document-shaped (rows = [one JSON document])
-    // and derives from fs/git/build-info legs beyond this class's SQL, so it
-    // dispatches to its own module through the wired deps.
+    // S27——execution view 呈文档结构（rows = [一份 JSON 文档]），还需要从本 class SQL 之外的
+    // fs/git/build-info 分支派生，因此通过已接线 deps 派发到独立模块。
     if (viewName === "execution") {
       if (!this.executionDeps) {
         throw new ViewProjectorError(
@@ -151,9 +146,9 @@ export class ViewProjector {
     const rigClause = rig ? `AND (destination_session LIKE ? OR source_session LIKE ?)` : "";
     const rigParams: unknown[] = rig ? [`%@${rig}`, `%@${rig}`] : [];
 
-    // S04 — the pickup lens post-processes through the ONE shared derivation rule
-    // (derivePickup), never a second SQL copy of it: claimed live rows, oldest claim first,
-    // each carrying pickup_state and (when stalled) the named pickup_evidence.
+    // S04——pickup lens 通过唯一共享派生规则 derivePickup 做后处理，绝不复制第二份 SQL：
+    // claimed live row 按最早 claim 优先，每项携带 pickup_state，stalled 时还携带具名
+    // pickup_evidence。
     if (name === "pickup") {
       const rows = this.db
         .prepare(
@@ -194,7 +189,7 @@ export class ViewProjector {
     let params: unknown[] = [];
     switch (name) {
       case "recently-active":
-        // qitems by ts_updated DESC; live states (pending/in-progress/blocked).
+        // qitem 按 ts_updated DESC 排序；只含 live state（pending/in-progress/blocked）。
         sql = `
           SELECT qitem_id, source_session, destination_session, state, priority, tier, ts_updated, body
           FROM queue_items
@@ -207,7 +202,7 @@ export class ViewProjector {
         params = [...rigParams, limit];
         break;
       case "founder":
-        // priority='critical' OR tier='critical' OR tier='fast'.
+        // priority='critical' OR tier='critical' OR tier='fast'。
         sql = `
           SELECT qitem_id, source_session, destination_session, state, priority, tier, ts_updated
           FROM queue_items
@@ -221,15 +216,11 @@ export class ViewProjector {
         params = [...rigParams, limit];
         break;
       case "pod-load":
-        // R1 NOTE 4: PRD § L5 names this view "per-pod queue-item counts",
-        // but Phase A's queue_items table does not carry pod metadata —
-        // destination_session is `<member>@<rig>` shape and there is no
-        // pod_id column. v0 interpretation: group by destination_session
-        // (i.e., per-seat counts). When pod metadata becomes available
-        // (Phase D workflow runtime or later), this view should be
-        // upgraded to GROUP BY pod_id with destination_session aggregation
-        // as a sub-grouping. Documented v0 behavior preserves the view
-        // name but reduces the grouping key.
+        // R1 NOTE 4：PRD § L5 把此 view 称为“逐 pod queue-item 计数”，但 Phase A queue_items
+        // 表没有 pod metadata；destination_session 形如 `<member>@<rig>`，且没有 pod_id 列。
+        // v0 按 destination_session 分组，即逐席位计数。Phase D workflow runtime 或更晚版本
+        // 提供 pod metadata 后，应升级为 GROUP BY pod_id，并以 destination_session 聚合作为
+        // 子分组。已记录的 v0 行为保留 view 名称，但缩小 grouping key。
         sql = `
           SELECT destination_session AS pod, COUNT(*) AS active_count
           FROM queue_items
@@ -243,9 +234,9 @@ export class ViewProjector {
         params = [...rigParams, limit];
         break;
       case "escalations":
-        // closure_reason = 'escalation' OR an OPEN S01 wake-escalation aggregate — the
-        // operator rung's delivery floor (AM-R25): the ladder's aggregated escalation
-        // rows surface here so a dead-seat storm is visible without any human sweep.
+        // closure_reason = 'escalation'，或 OPEN S01 wake-escalation aggregate——操作员 rung 的
+        // delivery 下限（AM-R25）。ladder 聚合的 escalation row 在此呈现，使 dead-seat storm
+        // 无需人类 sweep 也可见。
         sql = `
           SELECT qitem_id, source_session, destination_session, state, closure_reason, closure_target, ts_updated
           FROM queue_items
@@ -259,7 +250,7 @@ export class ViewProjector {
         params = [...rigParams, limit];
         break;
       case "held":
-        // state = 'blocked' OR blocked_on is non-null.
+        // state = 'blocked' 或 blocked_on 非 null。
         sql = `
           SELECT qitem_id, source_session, destination_session, state, blocked_on, ts_updated, body
           FROM queue_items
@@ -272,8 +263,8 @@ export class ViewProjector {
         params = [...rigParams, limit];
         break;
       case "activity": {
-        // Recent transitions joined with qitem state. Fixture-clause must
-        // reference queue_items columns, so use the prefixed clause.
+        // recent transition 与 qitem state 连接。fixture clause 必须引用 queue_items 列，因此
+        // 使用带前缀的 clause。
         const fixtureClauseQI = fixtureClause === "1=1"
           ? "1=1"
           : `(
@@ -299,8 +290,8 @@ export class ViewProjector {
         break;
       }
       default:
-        // "execution" is intercepted in show() before this dispatch; reaching
-        // here means a name was added to BUILT_IN_VIEW_NAMES without a case.
+        // "execution" 在此次 dispatch 前已由 show() 截获；走到这里说明有名称加入
+        // BUILT_IN_VIEW_NAMES，却没有对应 case。
         throw new ViewProjectorError("view_query_failed", `built-in view '${name}' has no SQL dispatch case`);
     }
 
@@ -314,9 +305,8 @@ export class ViewProjector {
   }
 
   private runCustom(view: CustomView, limit: number): ViewQueryResult {
-    // Custom view definitions are operator-supplied SQL. Append LIMIT if
-    // the operator's SQL does not already include one. We do not parse SQL;
-    // operators are responsible for the definition's correctness.
+    // Custom view definition 是操作员提供的 SQL；若 SQL 没有 LIMIT，则追加一个。本模块不解析
+    // SQL，definition 正确性由操作员负责。
     const sql = view.definition.toLowerCase().includes("limit")
       ? view.definition
       : `${view.definition.trim().replace(/;$/, "")} LIMIT ${limit}`;
@@ -329,7 +319,7 @@ export class ViewProjector {
         `custom view '${view.viewName}' query failed: ${(err as Error).message}`,
       );
     }
-    // Touch last_evaluated_at (best-effort; not transactional).
+    // 更新 last_evaluated_at，尽力而为且不在事务中。
     this.db
       .prepare(`UPDATE views_custom SET last_evaluated_at = ? WHERE view_id = ?`)
       .run(this.now().toISOString(), view.viewId);
@@ -342,9 +332,8 @@ export class ViewProjector {
   }
 
   /**
-   * Register a custom view. UNIQUE on view_name; re-registration of the
-   * same name updates the definition (operator-friendly: edit views.yaml,
-   * re-register, get the new query).
+   * 注册 custom view。view_name 唯一；重复注册同名 view 会更新 definition，方便操作员编辑
+   * views.yaml 后重新注册以获得新查询。
    */
   registerCustomView(input: {
     viewName: string;
@@ -397,9 +386,8 @@ export class ViewProjector {
   }
 
   /**
-   * Used by routes/views.ts to emit view.changed when underlying state
-   * changes. Phase B does not auto-evaluate; callers (route SSE handlers)
-   * subscribe to event-bus events and trigger this notify.
+   * 底层 state 变化时由 routes/views.ts 用来发出 view.changed。Phase B 不自动 evaluate；
+   * 调用方（route SSE handler）订阅 event-bus event 并触发此 notify。
    */
   notifyViewChanged(viewName: string, cause: string): void {
     this.eventBus.persistWithinTransaction({

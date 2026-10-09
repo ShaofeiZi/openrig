@@ -17,17 +17,17 @@ async function resolveRigId(client: DaemonClient, rigName: string): Promise<stri
   const matches = res.data.filter((r) => r.name === rigName);
 
   if (matches.length === 0) {
-    throw new Error(`Rig '${rigName}' not found. List rigs with: rig ps`);
+    throw new Error(`未找到工作组 '${rigName}'。列出工作组：zrig ps`);
   }
   if (matches.length > 1) {
-    throw new Error(`Rig '${rigName}' is ambiguous — ${matches.length} rigs share that name. Use a unique name or remove duplicates.`);
+    throw new Error(`工作组 '${rigName}' 有歧义——共有 ${matches.length} 个同名工作组。请使用唯一名称或删除重复项。`);
   }
 
   return matches[0]!.id;
 }
 
 export function chatroomCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("chatroom").description("Chat room for rig communication");
+  const cmd = new Command("chatroom").description("用于工作组内通信的聊天室");
   const getDeps = (): StatusDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
     clientFactory: (url: string) => new DaemonClient(url),
@@ -40,12 +40,12 @@ export function chatroomCommand(depsOverride?: StatusDeps): Command {
     return deps.clientFactory(getDaemonUrl(status));
   }
 
-  // chatroom send <rig> "message" [--sender <name>]
+  // zrig chatroom send <rig> "message" [--sender <name>]
   cmd
     .command("send")
-    .argument("<rig>", "Rig name")
-    .argument("<message>", "Message to send")
-    .option("--sender <name>", "(deprecated, ignored) the sender is derived from the seat env (X-OpenRig-Session); P21 made the chat route derive it from the transport header")
+    .argument("<rig>", "工作组名")
+    .argument("<message>", "要发送的消息")
+    .option("--sender <name>", "（已废弃，忽略）发送者由席位环境变量派生（X-OpenRig-Session）；P21 起聊天路由从传输请求头派生")
     .action(async (rig: string, message: string, _opts: { sender?: string }) => {
       const client = await getClient();
       if (!client) return;
@@ -59,35 +59,35 @@ export function chatroomCommand(depsOverride?: StatusDeps): Command {
         return;
       }
 
-      // P21: no body sender — the daemon derives it from the transport header (X-OpenRig-Session,
-      // stamped by DaemonClient from the seat env). A hardcoded 'cli' differing from the header would be
-      // SUPERSEDED by it (transport:v1), not persisted (P18: the 409 mismatch is retired).
+      // P21：请求体不带 sender——后台服务从传输请求头派生（X-OpenRig-Session，
+      // 由 DaemonClient 从席位环境变量盖戳）。与请求头不一致的硬编码 'cli' 会
+      // 被请求头覆盖（transport:v1），而不是落库（P18：409 不一致已退役）。
       const res = await client.post<Record<string, unknown>>(
         `/api/rigs/${encodeURIComponent(rigId)}/chat/send`,
         { body: message },
       );
 
       if (res.status >= 400) {
-        console.error((res.data as Record<string, unknown>)["error"] ?? `Failed (HTTP ${res.status})`);
+        console.error((res.data as Record<string, unknown>)["error"] ?? `失败（HTTP ${res.status}）`);
         process.exitCode = 1;
         return;
       }
 
-      // P21: echo the DERIVED seat identity (the env the daemon stamps as X-OpenRig-Session), not the
-      // deprecated --sender flag — so the local confirmation matches what the chat route actually records.
-      console.log(`[${readOpenRigEnv("OPENRIG_SESSION_NAME", "RIGGED_SESSION_NAME") ?? "you"}] ${message}`);
+      // P21：回显派生出来的席位身份（后台服务盖为 X-OpenRig-Session 的环境变量），
+      // 而非已废弃的 --sender 标志——让本地确认与聊天路由实际记录的一致。
+      console.log(`[${readOpenRigEnv("OPENRIG_SESSION_NAME", "RIGGED_SESSION_NAME") ?? "你"}] ${message}`);
     });
 
-  // chatroom history <rig> [--topic <name>] [--limit N] [--json]
+  // zrig chatroom history <rig> [--topic <name>] [--limit N] [--json]
   cmd
     .command("history")
-    .argument("<rig>", "Rig name")
-    .option("--topic <name>", "Filter by topic")
-    .option("--after <id>", "Messages after this message ID")
-    .option("--since <timestamp>", "Messages since this timestamp")
-    .option("--sender <name>", "Messages from this sender")
-    .option("--limit <n>", "Limit results", "50")
-    .option("--json", "JSON output")
+    .argument("<rig>", "工作组名")
+    .option("--topic <name>", "按主题过滤")
+    .option("--after <id>", "该消息 ID 之后的消息")
+    .option("--since <timestamp>", "该时间戳之后的消息")
+    .option("--sender <name>", "该发送者的消息")
+    .option("--limit <n>", "限制返回条数", "50")
+    .option("--json", "以 JSON 输出")
     .action(async (rig: string, opts: { topic?: string; after?: string; since?: string; sender?: string; limit?: string; json?: boolean }) => {
       const client = await getClient();
       if (!client) return;
@@ -120,25 +120,25 @@ export function chatroomCommand(depsOverride?: StatusDeps): Command {
 
       const messages = res.data;
       if (!Array.isArray(messages) || messages.length === 0) {
-        console.log("No messages.");
+        console.log("暂无消息。");
         return;
       }
 
       for (const msg of messages) {
         const kind = msg["kind"] as string;
         if (kind === "topic") {
-          console.log(`--- topic: ${msg["topic"]} ---`);
+          console.log(`--- 主题：${msg["topic"]} ---`);
         } else {
           console.log(`[${msg["sender"]}] ${msg["body"]}`);
         }
       }
     });
 
-  // chatroom watch <rig> [--tmux]
+  // zrig chatroom watch <rig> [--tmux]
   cmd
     .command("watch")
-    .argument("<rig>", "Rig name")
-    .option("--tmux", "Run watch in a dedicated tmux session")
+    .argument("<rig>", "工作组名")
+    .option("--tmux", "在独立 tmux 会话中运行 watch")
     .action(async (rig: string, opts: { tmux?: boolean }) => {
       const client = await getClient();
       if (!client) return;
@@ -156,16 +156,16 @@ export function chatroomCommand(depsOverride?: StatusDeps): Command {
         const sessionName = `chatroom@${rig}`;
         try {
           execSync(`tmux new-session -d -s ${JSON.stringify(sessionName)} "rig chatroom watch ${JSON.stringify(rig)}"`, { stdio: "ignore" });
-          console.log(`Started watch in tmux session: ${sessionName}`);
-          console.log(`Attach with: tmux attach -t ${sessionName}`);
+          console.log(`已在 tmux 会话中启动 watch：${sessionName}`);
+          console.log(`挂载：tmux attach -t ${sessionName}`);
         } catch {
-          console.error(`Failed to create tmux session '${sessionName}'. It may already exist.`);
+          console.error(`创建 tmux 会话 '${sessionName}' 失败。它可能已存在。`);
           process.exitCode = 1;
         }
         return;
       }
 
-      // Direct SSE watch
+      // 直接 SSE 监听
       const url = `${client.baseUrl}/api/rigs/${encodeURIComponent(rigId)}/chat/watch`;
       try {
         const res = await fetch(url, {
@@ -173,7 +173,7 @@ export function chatroomCommand(depsOverride?: StatusDeps): Command {
         });
 
         if (!res.ok || !res.body) {
-          console.error(`Watch failed (HTTP ${res.status})`);
+          console.error(`监听失败（HTTP ${res.status}）`);
           process.exitCode = 1;
           return;
         }
@@ -196,31 +196,31 @@ export function chatroomCommand(depsOverride?: StatusDeps): Command {
               try {
                 const msg = JSON.parse(data) as { sender: string; body: string; kind: string; topic?: string; createdAt: string };
                 if (msg.kind === "topic") {
-                  console.log(`--- topic: ${msg.topic} ---`);
+                  console.log(`--- 主题：${msg.topic} ---`);
                 } else {
                   console.log(`[${msg.sender}] ${msg.body}`);
                 }
               } catch {
-                // Skip malformed data lines
+                // 跳过格式错误的 data 行
               }
             }
           }
         }
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
-          console.error(`Watch error: ${(err as Error).message}`);
+          console.error(`监听错误：${(err as Error).message}`);
           process.exitCode = 1;
         }
       }
     });
 
-  // chatroom topic <rig> <topic-name> [--body "text"]
+  // zrig chatroom topic <rig> <topic-name> [--body "text"]
   cmd
     .command("topic")
-    .argument("<rig>", "Rig name")
-    .argument("<topic-name>", "Topic name")
-    .option("--body <text>", "Optional body text")
-    .option("--sender <name>", "(deprecated, ignored) the sender is derived from the seat env (X-OpenRig-Session); the chat topic route derives it from the transport header")
+    .argument("<rig>", "工作组名")
+    .argument("<topic-name>", "主题名")
+    .option("--body <text>", "可选的正文文本")
+    .option("--sender <name>", "（已废弃，忽略）发送者由席位环境变量派生（X-OpenRig-Session）；聊天主题路由从传输请求头派生")
     .action(async (rig: string, topicName: string, opts: { body?: string; sender?: string }) => {
       const client = await getClient();
       if (!client) return;
@@ -234,30 +234,30 @@ export function chatroomCommand(depsOverride?: StatusDeps): Command {
         return;
       }
 
-      // P21: no body sender — the daemon derives it from the transport header (see chat/send).
+      // P21：请求体不带 sender——后台服务从传输请求头派生（见 chat/send）。
       const res = await client.post<Record<string, unknown>>(
         `/api/rigs/${encodeURIComponent(rigId)}/chat/topic`,
         { topic: topicName, body: opts.body },
       );
 
       if (res.status >= 400) {
-        console.error((res.data as Record<string, unknown>)["error"] ?? `Failed (HTTP ${res.status})`);
+        console.error((res.data as Record<string, unknown>)["error"] ?? `失败（HTTP ${res.status}）`);
         process.exitCode = 1;
         return;
       }
 
-      console.log(`--- topic: ${topicName} ---`);
+      console.log(`--- 主题：${topicName} ---`);
     });
 
-  // chatroom wait <rig>
+  // zrig chatroom wait <rig>
   cmd
     .command("wait")
-    .argument("<rig>", "Rig name")
-    .option("--after <id>", "Only messages after this ID")
-    .option("--topic <name>", "Filter by topic")
-    .option("--sender <name>", "Filter by sender")
-    .option("--timeout <seconds>", "Timeout in seconds", "120")
-    .option("--json", "JSON output")
+    .argument("<rig>", "工作组名")
+    .option("--after <id>", "只看该 ID 之后的消息")
+    .option("--topic <name>", "按主题过滤")
+    .option("--sender <name>", "按发送者过滤")
+    .option("--timeout <seconds>", "超时（秒）", "120")
+    .option("--json", "以 JSON 输出")
     .action(async (rig: string, opts: { after?: string; topic?: string; sender?: string; timeout: string; json?: boolean }) => {
       const client = await getClient();
       if (!client) return;
@@ -274,22 +274,22 @@ export function chatroomCommand(depsOverride?: StatusDeps): Command {
       const timeoutMs = parseInt(opts.timeout, 10) * 1000;
       const pollIntervalMs = 3000;
 
-      // Bootstrap cursor: use --after if provided, otherwise generate a ULID at start time
-      // as a practical time-based baseline. Messages with IDs after this point are considered new.
+      // 起始游标：若提供 --after 则用它，否则在启动时生成一个 ULID
+      // 作为实用的时间基线。ID 在该点之后的消息视为新消息。
       let cursor = opts.after ?? "";
       if (!cursor) {
         const { monotonicFactory } = await import("ulid");
         cursor = monotonicFactory()();
       }
 
-      // Build filter params
+      // 构造过滤参数
       const filterParams = new URLSearchParams();
       if (opts.topic) filterParams.set("topic", opts.topic);
       if (opts.sender) filterParams.set("sender", opts.sender);
 
       const start = Date.now();
       while (true) {
-        // Check timeout BEFORE polling
+        // 在轮询前先检查超时
         if (Date.now() - start >= timeoutMs) break;
 
         const params = new URLSearchParams(filterParams);
@@ -310,20 +310,20 @@ export function chatroomCommand(depsOverride?: StatusDeps): Command {
           return;
         }
 
-        // Sleep with remaining timeout awareness
+        // 睡眠时考虑剩余超时
         const remaining = timeoutMs - (Date.now() - start);
         if (remaining <= 0) break;
         await new Promise((resolve) => setTimeout(resolve, Math.min(pollIntervalMs, remaining)));
       }
 
-      console.error(`Timed out after ${opts.timeout} seconds — no new messages matching filters.`);
+      console.error(`${opts.timeout} 秒超时——没有匹配过滤条件的新消息。`);
       process.exitCode = 1;
     });
 
-  // chatroom clear <rig>
+  // zrig chatroom clear <rig>
   cmd
     .command("clear")
-    .argument("<rig>", "Rig name")
+    .argument("<rig>", "工作组名")
     .action(async (rig: string) => {
       const client = await getClient();
       if (!client) return;
@@ -340,12 +340,12 @@ export function chatroomCommand(depsOverride?: StatusDeps): Command {
       const res = await client.post<{ ok: boolean; deleted: number }>(`/api/rigs/${encodeURIComponent(rigId)}/chat/clear`, {});
 
       if (res.status >= 400) {
-        console.error(`Clear failed (HTTP ${res.status})`);
+        console.error(`清空失败（HTTP ${res.status}）`);
         process.exitCode = 1;
         return;
       }
 
-      console.log(`Cleared ${res.data.deleted} messages from ${rig} chatroom.`);
+      console.log(`已从 ${rig} 聊天室清空 ${res.data.deleted} 条消息。`);
     });
 
   return cmd;

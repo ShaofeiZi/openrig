@@ -207,7 +207,7 @@ describe("rig compact-plan", () => {
       explicitAuthorizationRequired: true,
     });
     expect(candidate.notificationPacket.recipient).toBe("orch-lead@test-rig");
-    expect(candidate.notificationPacket.text).toContain("No automatic compaction has been run");
+    expect(candidate.notificationPacket.text).toContain("未执行任何自动压缩");
     expect(json.recommendedOrder).toEqual(["orch-lead@test-rig"]);
 
     const belowThreshold = json.skipped.find((entry: { session: string }) => entry.session === "dev-impl@test-rig");
@@ -387,7 +387,7 @@ describe("rig compact-plan", () => {
     expect(json.blocked.find((entry: { logicalId: string }) => entry.logicalId === "unknown.context").reasons).toContain("context_unknown");
     const missingSession = json.blocked.find((entry: { logicalId: string }) => entry.logicalId === "missing.session");
     expect(missingSession.reasons).toContain("missing_canonical_session");
-    expect(missingSession.notificationPacket.text).toContain("cannot safely plan");
+    expect(missingSession.notificationPacket.text).toContain("无法安全地为");
     expect(missingSession.precompactRequirements).toContain("one_seat_at_a_time_only");
   });
 
@@ -427,7 +427,7 @@ describe("rig compact-plan", () => {
     const unknownCmd = compactPlanCommand(deps);
     await unknownCmd.parseAsync(["node", "rig", "--rig", "missing", "--refresh"]);
     expect(process.exitCode).toBe(1);
-    expect(errors.join(" ")).toContain("not found");
+    expect(errors.join(" ")).toContain("未找到工作组");
     expect(requestedPaths.some((path) => path.includes("refresh=true"))).toBe(false);
   });
 
@@ -446,8 +446,8 @@ describe("rig compact-plan", () => {
     const failCmd = compactPlanCommand(failure.deps);
     await failCmd.parseAsync(["node", "rig", "--refresh"]);
     expect(process.exitCode).toBe(2);
-    expect(errors.join("\n")).toContain("Compact-plan refresh failed");
-    expect(logs.join("\n")).not.toContain("READ-ONLY PLAN");
+    expect(errors.join("\n")).toContain("compact-plan 刷新失败");
+    expect(logs.join("\n")).not.toContain("只读规划");
   });
 
   it("daemon down exits nonzero with honest next step copy", async () => {
@@ -459,7 +459,7 @@ describe("rig compact-plan", () => {
     await cmd.parseAsync(["node", "rig"]);
 
     expect(process.exitCode).toBe(1);
-    expect(errors.join("\n")).toContain("Daemon is not running");
+    expect(errors.join("\n")).toContain("后台服务未运行");
     expect(errors.join("\n")).toContain("rig daemon start");
   });
 
@@ -469,14 +469,14 @@ describe("rig compact-plan", () => {
     await cmd.parseAsync(["node", "rig"]);
 
     const output = logs.join("\n");
-    expect(output).toContain("READ-ONLY PLAN");
-    expect(output).toContain("does not compact");
-    expect(output).toContain("Thresholds:");
-    expect(output).toContain("one-seat-at-a-time");
+    expect(output).toContain("只读规划");
+    expect(output).toContain("不做任何压缩");
+    expect(output).toContain("阈值：");
+    expect(output).toContain("逐席位");
     expect(output).toContain("orch-lead@test-rig");
     expect(output).toContain("authorization");
     expect(output).toContain("checkpoint/restore");
     expect(output).toContain("claude-compact-in-place");
-    expect(output).toContain("No automatic compaction has been run");
+    expect(output).toContain("未执行任何自动压缩");
   });
 });

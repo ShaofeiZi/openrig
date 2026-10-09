@@ -27,7 +27,7 @@ interface RFNodeData {
   canonicalSessionName: string | null;
   podId: string | null;
   restoreOutcome: string;
-  // OPR.0.4.3.06 — challenge-verified orientation, distinct from startupStatus.
+  // OPR.0.4.3.06——经 challenge 验证的 orientation，与 startupStatus 不同。
   oriented: string;
   resumeToken?: string | null;
   resolvedSpecName: string | null;
@@ -46,8 +46,8 @@ interface RFNodeData {
   pendingWorkCount?: number;
   inProgressWorkCount?: number;
   blockedWorkCount?: number;
-  /** OPR.0.4.3.19 — liveness identity verdict threaded through so the graph
-   *  surfaces the same non-green mismatch/missing evidence as node inventory. */
+  /** OPR.0.4.3.19——透传 liveness identity verdict，使 graph 呈现与 node inventory 相同的
+   *  非绿色 mismatch/missing evidence。 */
   identityVerdict?: SeatIdentityVerdict | null;
   heldReason?: string | null;
 }
@@ -103,27 +103,24 @@ export function projectRigToGraph(input: RigGraphInput, inventoryOverlay?: Inven
   const podLabelById = new Map(pods.map((pod) => [pod.id, pod.label]));
   const podNamespaceById = new Map(pods.map((pod) => [pod.id, pod.namespace]));
 
-  // Collect unique pods for group nodes
+  // 收集唯一 pod，用于 group node
   const podNodes = new Map<string, string[]>(); // podId → node IDs
 
   const nodes: RFNode[] = rigNodes.map((node, index) => {
-    // Find latest session for this node by ULID ordering (max session.id)
+    // 按 ULID 顺序为此 node 查找最新 session（最大 session.id）
     const nodeSessions = sessions.filter((s) => s.nodeId === node.id);
     const latestSession = nodeSessions.length > 0
       ? nodeSessions.reduce((latest, s) => s.id > latest.id ? s : latest)
       : null;
 
     const overlay = overlayMap.get(node.logicalId);
-    // OPR.0.4.3.19 forward-fix — a down-ranking identity verdict
-    // (mismatch/pane_missing) makes the graph node's effective startup status
-    // `attention_required`, so every UI surface that already treats
-    // startupStatus==="attention_required" as non-green (the activity ring via
-    // getBaselineActivityState, the ATTN badge) renders non-green WITHOUT a new
-    // vocabulary. `getBaselineActivityState` checks attention_required BEFORE
-    // terminalActive, so an orphan's tmux output can no longer paint the ring
-    // active. The raw `status` stays the honest session-row value; the dot
-    // (getActivityStateWithSource, which ignores startupStatus) is gated
-    // separately in the UI via `identityVerdict`.
+    // OPR.0.4.3.19 forward-fix——降级 identity verdict（mismatch/pane_missing）会使 graph node
+    // 的 effective startup status 变为 `attention_required`，于是所有已将
+    // startupStatus==="attention_required" 视为非绿色的 UI surface（通过
+    // getBaselineActivityState 的 activity ring、ATTN badge）无需新 vocabulary 即可显示非绿色。
+    // `getBaselineActivityState` 在 terminalActive 前检查 attention_required，因此 orphan 的 tmux
+    // output 不再能把 ring 标为 active。raw `status` 保持真实 session-row value；dot
+    //（忽略 startupStatus 的 getActivityStateWithSource）在 UI 中通过 `identityVerdict` 独立控制。
     const identityDownranked = identityVerdictDownranksRunning(overlay?.identityVerdict?.verdict);
     const effectiveStartupStatus: RFNodeData["startupStatus"] = latestSession?.status === "running"
       ? (identityDownranked
@@ -131,7 +128,7 @@ export function projectRigToGraph(input: RigGraphInput, inventoryOverlay?: Inven
         : (overlay?.startupStatus ?? (latestSession.startupStatus as RFNodeData["startupStatus"]) ?? null))
       : null;
 
-    // Track pods
+    // 跟踪 pod
     if (node.podId) {
       if (!podNodes.has(node.podId)) podNodes.set(node.podId, []);
       podNodes.get(node.podId)!.push(node.id);
@@ -181,7 +178,7 @@ export function projectRigToGraph(input: RigGraphInput, inventoryOverlay?: Inven
     };
   });
 
-  // Create pod group nodes
+  // 创建 pod group node
   const groupNodes: RFNode[] = [];
   for (const [podId] of podNodes) {
     groupNodes.push({

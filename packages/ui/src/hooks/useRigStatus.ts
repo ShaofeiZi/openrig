@@ -1,9 +1,9 @@
-// OPR.0.4.3.22 — the composed rig-status object (GET /api/rigs/:id/status).
+// OPR.0.4.3.22 —— 组合后的 rig 状态对象（GET /api/rigs/:id/status）。
 //
-// Mirrors the daemon `composeRigStatus` fold: a rig's status is COMPOSED from
-// backend signals (ps-lifecycle + restore-plan + restore-check + kernel-status),
-// NEVER inferred from pane text or /healthz. `src[]` is the composed provenance.
-// The per-seat truths are preserved (the LOCK: no global-fresh flip).
+// 与后台服务的 `composeRigStatus` 折叠对应：一个 rig 的状态由多个后端信号
+// （ps 生命周期 + 恢复计划 + 恢复检查 + 内核状态）组合而成，绝不从窗格文本或
+// /healthz 推断。`src[]` 是这次组合的来源。各席位的真实状态被保留
+// （锁定：不做全局“全部刷新”的翻转）。
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -48,8 +48,7 @@ export function useRigStatus(rigId: string | undefined) {
     queryKey: ["rig", rigId, "status"],
     queryFn: () => fetchRigStatus(rigId!),
     enabled: !!rigId,
-    // Status folds restore-check (some filesystem probing) — poll gently, not
-    // at the 3s ps cadence.
+    // 状态会折叠恢复检查（涉及一些文件系统探测）——温和轮询，不要用 ps 那种 3 秒节奏。
     refetchInterval: 10_000,
   });
 }

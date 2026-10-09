@@ -5,7 +5,7 @@ import { validatePodBundleManifest, parsePodBundleManifest, serializePodBundleMa
 import { RigSpecCodec } from "../src/domain/rigspec-codec.js";
 import type { RigSpec } from "../src/domain/types.js";
 
-// -- Mock filesystem --
+// ——Mock 文件系统——
 
 function mockFs(files: Record<string, string>): PodAssemblerFsOps {
   const written: Record<string, string> = {};
@@ -34,7 +34,7 @@ function mockFs(files: Record<string, string>): PodAssemblerFsOps {
   } as PodAssemblerFsOps & { _written: Record<string, string> };
 }
 
-// -- Helpers --
+// ——Helper——
 
 const RIG_ROOT = "/project/rigs/my-rig";
 
@@ -75,16 +75,16 @@ function setupBasicRig(fs: ReturnType<typeof mockFs>, spec?: RigSpec): RigSpec {
   const yaml = rigSpecYaml(rigSpec);
   (fs as unknown as { _files: Record<string, string> })["_files"] = {};
 
-  // Put files into mock FS
+  // 将文件放入 mock FS
   const files = fs as unknown as Record<string, unknown>;
-  // We need to add to the original files object, but mockFs creates a closure.
-  // Instead, re-create the FS with the needed files.
+  // 需要向原始 files 对象添加内容，但 mockFs 会创建闭包。
+  // 改为使用所需文件重新创建 FS。
   return rigSpec;
 }
 
 describe("PodBundleAssembler", () => {
-  // T1: assembler walks embedded pod members correctly
-  it("walks embedded pod members and collects agent dirs", () => {
+  // T1：assembler 正确遍历嵌入的 pod member
+  it("遍历嵌入的 pod member 并收集 agent 目录", () => {
     const spec = makeRigSpec();
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -107,8 +107,8 @@ describe("PodBundleAssembler", () => {
     expect(result.collectedFiles).toContain("rig.yaml");
   });
 
-  // T2: referenced AgentSpecs included exactly once (dedup)
-  it("deduplicates AgentSpecs referenced by multiple members", () => {
+  // T2：被引用的 AgentSpec 恰好包含一次（去重）
+  it("对多个 member 引用的 AgentSpec 去重", () => {
     const spec = makeRigSpec({
       pods: [{
         id: "dev",
@@ -135,7 +135,7 @@ describe("PodBundleAssembler", () => {
     expect(result.manifest.agents).toHaveLength(1);
   });
 
-  it("preserves builtin terminal members without trying to vendor them", () => {
+  it("保留内置 terminal member，且不尝试 vendor", () => {
     const spec = makeRigSpec({
       pods: [{
         id: "infra",
@@ -171,8 +171,8 @@ describe("PodBundleAssembler", () => {
     expect(rewrittenRig).not.toContain("local:agents/");
   });
 
-  // T3: flat imports collected with correct per-import originalRef
-  it("collects flat imports with correct originalRef per import", () => {
+  // T3：收集扁平 import，并为每个 import 设置正确的 originalRef
+  it("收集扁平 import，并为每个 import 设置正确的 originalRef", () => {
     const spec = makeRigSpec();
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -197,8 +197,8 @@ describe("PodBundleAssembler", () => {
     expect(impB!.originalRef).toBe("local:../lib-b");
   });
 
-  // T4: culture_file included
-  it("includes culture_file in bundle", () => {
+  // T4：包含 culture_file
+  it("在 bundle 中包含 culture_file", () => {
     const spec = makeRigSpec({ cultureFile: "culture.md" });
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -217,8 +217,8 @@ describe("PodBundleAssembler", () => {
     expect(result.manifest.cultureFile).toBe("culture.md");
   });
 
-  // T5: rig startup files included
-  it("includes rig startup files", () => {
+  // T5：包含 rig startup 文件
+  it("包含 rig startup 文件", () => {
     const spec = makeRigSpec({
       startup: { files: [{ path: "startup/all-hands.md", deliveryHint: "auto", required: true, appliesOn: ["fresh_start", "restore"] }], actions: [] },
     });
@@ -238,8 +238,8 @@ describe("PodBundleAssembler", () => {
     expect(result.collectedFiles).toContain("startup/all-hands.md");
   });
 
-  // T6: pod shared startup files included
-  it("includes pod shared startup files", () => {
+  // T6：包含 pod 共享 startup 文件
+  it("包含 pod 共享 startup 文件", () => {
     const spec = makeRigSpec({
       pods: [{
         id: "dev", label: "Dev",
@@ -264,8 +264,8 @@ describe("PodBundleAssembler", () => {
     expect(result.collectedFiles).toContain("pods/dev/shared.md");
   });
 
-  // T7: member overlay startup files included
-  it("includes member startup overlay files", () => {
+  // T7：包含 member overlay startup 文件
+  it("包含 member startup overlay 文件", () => {
     const spec = makeRigSpec({
       pods: [{
         id: "dev", label: "Dev",
@@ -292,8 +292,8 @@ describe("PodBundleAssembler", () => {
     expect(result.collectedFiles).toContain("pods/dev/overlays/impl.md");
   });
 
-  // T8: path traversal rejected
-  it("rejects path traversal in startup files", () => {
+  // T8：拒绝路径遍历
+  it("拒绝 startup 文件中的路径遍历", () => {
     const spec = makeRigSpec({
       startup: { files: [{ path: "../escape.md", deliveryHint: "auto", required: true, appliesOn: ["fresh_start", "restore"] }], actions: [] },
     });
@@ -310,8 +310,8 @@ describe("PodBundleAssembler", () => {
     })).toThrow(/traversal|escape/i);
   });
 
-  // T8b: path: absolute agent_ref outside rig root included and ref is rewritten
-  it("path: absolute agent_ref outside rig root is vendored with rewritten ref", () => {
+  // T8b：纳入 rig root 之外的 path: 绝对 agent_ref，并重写 ref
+  it("vendor rig root 之外的 path: 绝对 agent_ref，并重写 ref", () => {
     const spec = makeRigSpec({
       pods: [{
         id: "dev", label: "Dev",
@@ -334,14 +334,14 @@ describe("PodBundleAssembler", () => {
     expect(result.manifest.agents).toHaveLength(1);
     expect(result.manifest.agents[0]!.originalRef).toBe("path:/external/agents/impl");
 
-    // Verify rewritten rig.yaml has local: ref, not path:
+    // 验证重写后的 rig.yaml 使用 local: ref，而不是 path:
     const written = (fs as unknown as { _written: Record<string, string> })._written;
     const rewrittenRig = written["/tmp/staging/rig.yaml"]!;
     expect(rewrittenRig).toContain("local:agents/impl");
     expect(rewrittenRig).not.toContain("path:/external/agents/impl");
   });
 
-  it("LP-1 refuses internal-substance files from a path: agent before vendoring", () => {
+  it("LP-1 在 vendor 前拒绝 path: agent 中包含内部实质内容的文件", () => {
     const spec = makeRigSpec({
       pods: [{
         id: "dev", label: "Dev", edges: [],
@@ -358,10 +358,10 @@ describe("PodBundleAssembler", () => {
     expect(() => assembler.assemble({
       rigRoot: RIG_ROOT, rigSpecPath: `${RIG_ROOT}/rig.yaml`,
       outputDir: "/tmp/staging", bundleName: "test", bundleVersion: "1.0",
-    })).toThrow(/internal-path[\s\S]*(genericize|public home|re-home)/i);
+    })).toThrow(/internal-path[\s\S]*(通用化|公开来源|内部内容包)/i);
   });
 
-  it("LP-1 refuses a lore-classed pack nested in a path: agent with otherwise clean bytes", () => {
+  it("LP-1 拒绝嵌套在 path: agent 中、其他字节干净的 lore 类 pack", () => {
     const spec = makeRigSpec({
       pods: [{
         id: "dev", label: "Dev", edges: [],
@@ -383,7 +383,7 @@ describe("PodBundleAssembler", () => {
     })).toThrow(/lore-class|taxonomy:\s*lore/i);
   });
 
-  it("LP-2 refuses internal substance from operator-rooted docs before copying", () => {
+  it("LP-2 在复制前拒绝 operator-rooted 文档中的内部实质内容", () => {
     const spec = makeRigSpec({ docs: [{ path: "SETUP.md" }] });
     const fs = mockFs({
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -395,10 +395,10 @@ describe("PodBundleAssembler", () => {
     expect(() => assembler.assemble({
       rigRoot: RIG_ROOT, rigSpecPath: `${RIG_ROOT}/rig.yaml`,
       outputDir: "/tmp/staging", bundleName: "test", bundleVersion: "1.0",
-    })).toThrow(/internal-path[\s\S]*(genericize|public home|re-home)/i);
+    })).toThrow(/internal-path[\s\S]*(通用化|公开来源|内部内容包)/i);
   });
 
-  it("LP-2 refuses a lore-classed operator-rooted document before copying", () => {
+  it("LP-2 在复制前拒绝 lore 类 operator-rooted 文档", () => {
     const spec = makeRigSpec({ docs: [{ path: "LORE.md" }] });
     const fs = mockFs({
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -413,8 +413,8 @@ describe("PodBundleAssembler", () => {
     })).toThrow(/lore-class|taxonomy:\s*lore/i);
   });
 
-  // T9: remote import source rejected
-  it("rejects remote import source during assembly", () => {
+  // T9：拒绝远程 import source
+  it("组装期间拒绝远程 import source", () => {
     const spec = makeRigSpec();
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -429,8 +429,8 @@ describe("PodBundleAssembler", () => {
     })).toThrow();
   });
 
-  // T10: round-trip: assemble -> verify manifest shape
-  it("assembled manifest has correct shape and validates", () => {
+  // T10：往返：assemble -> 验证 manifest 结构
+  it("组装后的 manifest 结构正确且通过校验", () => {
     const spec = makeRigSpec({ cultureFile: "culture.md" });
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -445,7 +445,7 @@ describe("PodBundleAssembler", () => {
       outputDir: "/tmp/staging", bundleName: "my-bundle", bundleVersion: "2.0.0",
     });
 
-    // Verify manifest shape
+    // 验证 manifest 结构
     expect(result.manifest.schemaVersion).toBe(2);
     expect(result.manifest.name).toBe("my-bundle");
     expect(result.manifest.version).toBe("2.0.0");
@@ -453,7 +453,7 @@ describe("PodBundleAssembler", () => {
     expect(result.manifest.cultureFile).toBe("culture.md");
     expect(result.manifest.agents).toHaveLength(1);
 
-    // Serialize and re-validate
+    // 序列化并重新校验
     const written = (fs as unknown as { _written: Record<string, string> })._written;
     const manifestYaml = written["/tmp/staging/bundle.yaml"];
     expect(manifestYaml).toBeDefined();
@@ -462,8 +462,8 @@ describe("PodBundleAssembler", () => {
     expect(validation.valid).toBe(true);
   });
 
-  // T11: integration: assemble -> verify manifest + file contents
-  it("integration: assembled bundle has correct manifest and files", () => {
+  // T11：集成：assemble -> 验证 manifest + 文件内容
+  it("集成：组装后的 bundle 包含正确 manifest 和文件", () => {
     const spec = makeRigSpec({
       cultureFile: "culture.md",
       startup: { files: [{ path: "startup/rig.md", deliveryHint: "auto", required: true, appliesOn: ["fresh_start", "restore"] }], actions: [] },
@@ -483,21 +483,21 @@ describe("PodBundleAssembler", () => {
       outputDir: "/tmp/staging", bundleName: "full-bundle", bundleVersion: "1.0.0",
     });
 
-    // Verify collected files
+    // 验证收集的文件
     expect(result.collectedFiles).toContain("rig.yaml");
     expect(result.collectedFiles).toContain("culture.md");
     expect(result.collectedFiles).toContain("startup/rig.md");
     expect(result.collectedFiles.some((f) => f.startsWith("agents/impl/"))).toBe(true);
 
-    // Verify written files exist
+    // 验证写入的文件存在
     const written = (fs as unknown as { _written: Record<string, string> })._written;
     expect(written["/tmp/staging/rig.yaml"]).toBeDefined();
     expect(written["/tmp/staging/culture.md"]).toBe("# Culture doc");
     expect(written["/tmp/staging/bundle.yaml"]).toBeDefined();
   });
 
-  // T12: PodBundleManifest shape validates
-  it("PodBundleManifest validates with correct schema_version", () => {
+  // T12：校验 PodBundleManifest 结构
+  it("PodBundleManifest 使用正确 schema_version 时通过校验", () => {
     const raw = {
       schema_version: 2,
       name: "test",
@@ -517,8 +517,8 @@ describe("PodBundleAssembler", () => {
     expect(result.valid).toBe(true);
   });
 
-  // T13: vendored agent.yaml import refs are rewritten
-  it("vendored agent.yaml has import refs rewritten to local:", () => {
+  // T13：重写 vendored agent.yaml 的 import ref
+  it("vendored agent.yaml 的 import ref 被重写为 local:", () => {
     const spec = makeRigSpec();
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -540,8 +540,8 @@ describe("PodBundleAssembler", () => {
     expect(vendoredAgentYaml).not.toContain("local:../lib-a"); // no stray rewrites
   });
 
-  // T14: shared imports appear in all referencing agents' importEntries
-  it("shared imports appear in all referencing agents importEntries", () => {
+  // T14：共享 import 出现在所有引用 agent 的 importEntries 中
+  it("共享 import 出现在所有引用 agent 的 importEntries 中", () => {
     const spec = makeRigSpec({
       pods: [{
         id: "dev", label: "Dev",
@@ -566,7 +566,7 @@ describe("PodBundleAssembler", () => {
       outputDir: "/tmp/staging", bundleName: "test", bundleVersion: "1.0",
     });
 
-    // Both agents should have shared-lib in their importEntries
+    // 两个 agent 的 importEntries 都应包含 shared-lib
     const agentA = result.manifest.agents.find((a) => a.name === "agent-a");
     const agentB = result.manifest.agents.find((a) => a.name === "agent-b");
     expect(agentA!.importEntries).toHaveLength(1);
@@ -575,11 +575,11 @@ describe("PodBundleAssembler", () => {
     expect(agentB!.importEntries[0]!.name).toBe("shared-lib");
   });
 
-  // Deferred: full golden-path integration (assemble -> validate -> preflight -> instantiate)
-  // will be verified at Checkpoint 2 when AS-T11 + AS-T08b land
+  // 延后：完整黄金路径集成（assemble -> validate -> preflight -> instantiate）
+  // 将在 AS-T11 + AS-T08b 落地后的 Checkpoint 2 验证
 
-  // Item 1 — provenance capture (slice-05 Checkpoint 2 part 2)
-  it("v2: captures provenance from opts into manifest", () => {
+  // 条目 1——provenance 捕获（slice-05 Checkpoint 2 第 2 部分）
+  it("v2：将 opts 中的 provenance 捕获到 manifest", () => {
     const spec = makeRigSpec();
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -608,11 +608,11 @@ describe("PodBundleAssembler", () => {
     expect(result.manifest.provenance?.authorSession).toBe("velocity-driver@openrig-velocity");
     expect(result.manifest.provenance?.daemonVersion).toBe("0.3.2");
     expect(result.manifest.provenance?.notes).toBe("v2 capture fixture");
-    // createdAt mirrors root
+    // createdAt 与根级值一致
     expect(result.manifest.provenance?.createdAt).toBe(result.manifest.createdAt);
   });
 
-  it("v2: respects opts.provenance.createdAt when pre-set (test determinism)", () => {
+  it("v2：预设 opts.provenance.createdAt 时尊重该值（测试确定性）", () => {
     const spec = makeRigSpec();
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -634,7 +634,7 @@ describe("PodBundleAssembler", () => {
     expect(result.manifest.createdAt).not.toBe(fixedCreatedAt);
   });
 
-  it("v2: omits provenance when opts.provenance not provided (backward compat)", () => {
+  it("v2：未提供 opts.provenance 时省略 provenance（向后兼容）", () => {
     const spec = makeRigSpec();
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -653,8 +653,8 @@ describe("PodBundleAssembler", () => {
     expect(result.manifest.provenance).toBeUndefined();
   });
 
-  // Item 2 — compatibility capture (slice-05 Checkpoint 3.2)
-  it("v2: captures compatibility from opts into manifest", () => {
+  // 条目 2——compatibility 捕获（slice-05 Checkpoint 3.2）
+  it("v2：将 opts 中的 compatibility 捕获到 manifest", () => {
     const spec = makeRigSpec();
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -682,7 +682,7 @@ describe("PodBundleAssembler", () => {
     expect(result.manifest.compatibility?.schemaVersion).toBe(2);
   });
 
-  it("v2: omits compatibility when opts.compatibility not provided (backward compat)", () => {
+  it("v2：未提供 opts.compatibility 时省略 compatibility（向后兼容）", () => {
     const spec = makeRigSpec();
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: rigSpecYaml(spec),
@@ -702,8 +702,8 @@ describe("PodBundleAssembler", () => {
   });
 });
 
-describe("PodBundleManifest validation", () => {
-  it("valid schemaVersion 2 manifest passes validation", () => {
+describe("PodBundleManifest 校验", () => {
+  it("有效的 schemaVersion 2 manifest 通过校验", () => {
     const raw = {
       schema_version: 2,
       name: "test-bundle",
@@ -720,7 +720,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("wrong schema_version fails", () => {
+  it("错误的 schema_version 校验失败", () => {
     const raw = {
       schema_version: 1, name: "test", version: "1.0",
       created_at: "2026-03-29T00:00:00Z", rig_spec: "rig.yaml",
@@ -728,10 +728,10 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/schema_version must be 2/);
+    expect(result.errors[0]).toMatch(/schema_version 必须为 2/);
   });
 
-  it("serialize -> parse -> validate round-trips", () => {
+  it("serialize -> parse -> validate 可往返", () => {
     const manifest: PodBundleManifest = {
       schemaVersion: 2, name: "rt-test", version: "2.0",
       createdAt: "2026-03-29T00:00:00Z", rigSpec: "rig.yaml",
@@ -746,7 +746,7 @@ describe("PodBundleManifest validation", () => {
     const validation = validatePodBundleManifest(parsed);
     expect(validation.valid).toBe(true);
 
-    // Verify agent entry round-trips
+    // 验证 agent 条目可往返
     const m = parsed as Record<string, unknown>;
     const agents = m["agents"] as Array<Record<string, unknown>>;
     expect(agents).toHaveLength(1);
@@ -757,8 +757,8 @@ describe("PodBundleManifest validation", () => {
     expect(imports[0]!["name"]).toBe("lib");
   });
 
-  // Item 1 — provenance block (slice-05): backward-compat + presence + round-trip
-  it("v2: missing provenance block passes validation (backward compat)", () => {
+  // 条目 1——provenance 区块（slice-05）：向后兼容 + 存在性 + 往返
+  it("v2：缺少 provenance 区块时通过校验（向后兼容）", () => {
     const raw = {
       schema_version: 2, name: "no-prov", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -772,7 +772,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: full provenance block passes validation", () => {
+  it("v2：完整 provenance 区块通过校验", () => {
     const raw = {
       schema_version: 2, name: "with-prov", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -796,7 +796,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: provenance present but not an object rejected", () => {
+  it("v2：provenance 存在但不是对象时拒绝", () => {
     const raw = {
       schema_version: 2, name: "bad-prov", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -808,7 +808,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.errors.some((e) => e.includes("provenance"))).toBe(true);
   });
 
-  it("v2: provenance field with wrong type rejected", () => {
+  it("v2：provenance 字段类型错误时拒绝", () => {
     const raw = {
       schema_version: 2, name: "bad-prov-field", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -820,9 +820,9 @@ describe("PodBundleManifest validation", () => {
     expect(result.errors.some((e) => e.includes("provenance.source_host"))).toBe(true);
   });
 
-  // -- Item 2 compatibility block tests (slice-05 Checkpoint 3.1) --
+  // ——条目 2：compatibility 区块测试（slice-05 Checkpoint 3.1）——
 
-  it("v2: missing compatibility block passes validation (backward compat)", () => {
+  it("v2：缺少 compatibility 区块时通过校验（向后兼容）", () => {
     const raw = {
       schema_version: 2, name: "no-compat", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -832,7 +832,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: full compatibility block passes validation", () => {
+  it("v2：完整 compatibility 区块通过校验", () => {
     const raw = {
       schema_version: 2, name: "with-compat", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -843,7 +843,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: compatibility present but not an object rejected", () => {
+  it("v2：compatibility 存在但不是对象时拒绝", () => {
     const raw = {
       schema_version: 2, name: "bad-compat", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -855,7 +855,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.errors.some((e) => e.includes("compatibility"))).toBe(true);
   });
 
-  it("v2: compatibility field with wrong type rejected", () => {
+  it("v2：compatibility 字段类型错误时拒绝", () => {
     const raw = {
       schema_version: 2, name: "bad-compat-field", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -867,9 +867,9 @@ describe("PodBundleManifest validation", () => {
     expect(result.errors.some((e) => e.includes("compatibility.min_daemon_version"))).toBe(true);
   });
 
-  // -- Item 6 skills block tests for v2 (slice-05 Checkpoint 7.1) --
+  // ——条目 6：v2 skills 区块测试（slice-05 Checkpoint 7.1）——
 
-  it("v2: missing skills block passes validation (backward compat)", () => {
+  it("v2：缺少 skills 区块时通过校验（向后兼容）", () => {
     const raw = {
       schema_version: 2, name: "no-skills", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -879,7 +879,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: skills as string array passes validation", () => {
+  it("v2：skills 为字符串数组时通过校验", () => {
     const raw = {
       schema_version: 2, name: "with-skills", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -890,7 +890,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: unsafe skill path rejected", () => {
+  it("v2：拒绝不安全的 skill 路径", () => {
     const raw = {
       schema_version: 2, name: "bad-skills", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -899,12 +899,12 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("skills[0]") && e.includes("not safe"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("skills[0]") && e.includes("不安全"))).toBe(true);
   });
 
-  // -- Item 6 plugins block tests for v2 (slice-05 Checkpoint 7.3b) --
+  // ——条目 6：v2 plugins 区块测试（slice-05 Checkpoint 7.3b）——
 
-  it("v2: missing plugins block passes validation", () => {
+  it("v2：缺少 plugins 区块时通过校验", () => {
     const raw = {
       schema_version: 2, name: "no-plugins", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -914,7 +914,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: plugins as valid {id, source} array passes validation", () => {
+  it("v2：plugins 为有效 {id, source} 数组时通过校验", () => {
     const raw = {
       schema_version: 2, name: "with-plugins", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -925,7 +925,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: plugin entry with unsafe source.path rejected", () => {
+  it("v2：拒绝 source.path 不安全的 plugin 条目", () => {
     const raw = {
       schema_version: 2, name: "bad-plugins", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -934,10 +934,10 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("plugins[0].source.path") && e.includes("not safe"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("plugins[0].source.path") && e.includes("不安全"))).toBe(true);
   });
 
-  it("v2: round-trip preserves plugins through serialize -> parse", () => {
+  it("v2：serialize -> parse 往返保留 plugins", () => {
     const manifest: PodBundleManifest = {
       schemaVersion: 2, name: "rt-plugins-v2", version: "2.0",
       createdAt: "2026-05-18T00:00:00Z", rigSpec: "rig.yaml",
@@ -961,7 +961,7 @@ describe("PodBundleManifest validation", () => {
     expect((ps[0]!["source"] as Record<string, unknown>)["path"]).toBe("plugins/gstack");
   });
 
-  it("v2: round-trip preserves skills through serialize -> parse", () => {
+  it("v2：serialize -> parse 往返保留 skills", () => {
     const manifest: PodBundleManifest = {
       schemaVersion: 2, name: "rt-skills-v2", version: "2.0",
       createdAt: "2026-05-18T00:00:00Z", rigSpec: "rig.yaml",
@@ -982,9 +982,9 @@ describe("PodBundleManifest validation", () => {
     expect(m["skills"]).toEqual(["skills/v2-foo/SKILL.md", "skills/v2-bar/SKILL.md"]);
   });
 
-  // -- Item 6 workflow_specs block tests for v2 (slice-05 Checkpoint 7.3e) --
+  // ——条目 6：v2 workflow_specs 区块测试（slice-05 Checkpoint 7.3e）——
 
-  it("v2: missing workflow_specs block passes validation (backward compat)", () => {
+  it("v2：缺少 workflow_specs 区块时通过校验（向后兼容）", () => {
     const raw = {
       schema_version: 2, name: "no-workflow-specs", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -994,7 +994,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: workflow_specs as string array passes validation", () => {
+  it("v2：workflow_specs 为字符串数组时通过校验", () => {
     const raw = {
       schema_version: 2, name: "with-workflow-specs", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1005,7 +1005,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: workflow_specs as non-array rejected", () => {
+  it("v2：workflow_specs 不是数组时拒绝", () => {
     const raw = {
       schema_version: 2, name: "bad-workflow-specs", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1014,10 +1014,10 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("workflow_specs must be an array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("workflow_specs 必须是数组"))).toBe(true);
   });
 
-  it("v2: non-string workflow_specs entry rejected", () => {
+  it("v2：拒绝非字符串 workflow_specs 条目", () => {
     const raw = {
       schema_version: 2, name: "bad-workflow-specs", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1026,10 +1026,10 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("workflow_specs[0]") && e.includes("must be a string"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("workflow_specs[0]") && e.includes("必须是字符串"))).toBe(true);
   });
 
-  it("v2: unsafe workflow_specs path rejected", () => {
+  it("v2：拒绝不安全的 workflow_specs 路径", () => {
     const raw = {
       schema_version: 2, name: "bad-workflow-specs", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1038,10 +1038,10 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("workflow_specs[0]") && e.includes("not safe"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("workflow_specs[0]") && e.includes("不安全"))).toBe(true);
   });
 
-  it("v2: round-trip preserves workflow_specs through serialize -> parse", () => {
+  it("v2：serialize -> parse 往返保留 workflow_specs", () => {
     const manifest: PodBundleManifest = {
       schemaVersion: 2, name: "rt-workflow-specs-v2", version: "2.0",
       createdAt: "2026-05-18T00:00:00Z", rigSpec: "rig.yaml",
@@ -1062,7 +1062,7 @@ describe("PodBundleManifest validation", () => {
     expect(m["workflow_specs"]).toEqual(["workflows/v2-onboarding.yaml", "workflows/v2-release.yaml"]);
   });
 
-  it("v2: round-trip preserves all 3 cross-primitive blocks together (skills + plugins + workflow_specs)", () => {
+  it("v2：往返同时保留全部 3 个跨原语区块（skills + plugins + workflow_specs）", () => {
     const manifest: PodBundleManifest = {
       schemaVersion: 2, name: "rt-all-three", version: "2.0",
       createdAt: "2026-05-18T00:00:00Z", rigSpec: "rig.yaml",
@@ -1086,9 +1086,9 @@ describe("PodBundleManifest validation", () => {
     expect(ps[0]!["id"]).toBe("co-plugin");
   });
 
-  // -- Item 6 context_packs block tests for v2 (slice-05 Checkpoint 7.3f) --
+  // ——条目 6：v2 context_packs 区块测试（slice-05 Checkpoint 7.3f）——
 
-  it("v2: missing context_packs block passes validation (backward compat)", () => {
+  it("v2：缺少 context_packs 区块时通过校验（向后兼容）", () => {
     const raw = {
       schema_version: 2, name: "no-context-packs", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1098,7 +1098,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: context_packs as string array passes validation", () => {
+  it("v2：context_packs 为字符串数组时通过校验", () => {
     const raw = {
       schema_version: 2, name: "with-context-packs", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1109,7 +1109,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: context_packs as non-array rejected", () => {
+  it("v2：context_packs 不是数组时拒绝", () => {
     const raw = {
       schema_version: 2, name: "bad-context-packs", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1118,10 +1118,10 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("context_packs must be an array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("context_packs 必须是数组"))).toBe(true);
   });
 
-  it("v2: non-string context_packs entry rejected", () => {
+  it("v2：拒绝非字符串 context_packs 条目", () => {
     const raw = {
       schema_version: 2, name: "bad-context-packs", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1130,10 +1130,10 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("context_packs[0]") && e.includes("must be a string"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("context_packs[0]") && e.includes("必须是字符串"))).toBe(true);
   });
 
-  it("v2: unsafe context_packs path rejected", () => {
+  it("v2：拒绝不安全的 context_packs 路径", () => {
     const raw = {
       schema_version: 2, name: "bad-context-packs", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1142,10 +1142,10 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("context_packs[0]") && e.includes("not safe"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("context_packs[0]") && e.includes("不安全"))).toBe(true);
   });
 
-  it("v2: round-trip preserves context_packs through serialize -> parse", () => {
+  it("v2：serialize -> parse 往返保留 context_packs", () => {
     const manifest: PodBundleManifest = {
       schemaVersion: 2, name: "rt-context-packs-v2", version: "2.0",
       createdAt: "2026-05-18T00:00:00Z", rigSpec: "rig.yaml",
@@ -1166,9 +1166,9 @@ describe("PodBundleManifest validation", () => {
     expect(m["context_packs"]).toEqual(["context-packs/v2-intent/manifest.yaml", "context-packs/v2-persona/manifest.yaml"]);
   });
 
-  // -- Item 6 agent_images block tests for v2 (slice-05 Checkpoint 7.3g) --
+  // ——条目 6：v2 agent_images 区块测试（slice-05 Checkpoint 7.3g）——
 
-  it("v2: missing agent_images block passes validation (backward compat)", () => {
+  it("v2：缺少 agent_images 区块时通过校验（向后兼容）", () => {
     const raw = {
       schema_version: 2, name: "no-agent-images", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1178,7 +1178,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: agent_images as string array passes validation", () => {
+  it("v2：agent_images 为字符串数组时通过校验", () => {
     const raw = {
       schema_version: 2, name: "with-agent-images", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1189,7 +1189,7 @@ describe("PodBundleManifest validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("v2: agent_images as non-array rejected", () => {
+  it("v2：agent_images 不是数组时拒绝", () => {
     const raw = {
       schema_version: 2, name: "bad-agent-images", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1198,10 +1198,10 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("agent_images must be an array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("agent_images 必须是数组"))).toBe(true);
   });
 
-  it("v2: non-string agent_images entry rejected", () => {
+  it("v2：拒绝非字符串 agent_images 条目", () => {
     const raw = {
       schema_version: 2, name: "bad-agent-images", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1210,10 +1210,10 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("agent_images[0]") && e.includes("must be a string"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("agent_images[0]") && e.includes("必须是字符串"))).toBe(true);
   });
 
-  it("v2: unsafe agent_images path rejected", () => {
+  it("v2：拒绝不安全的 agent_images 路径", () => {
     const raw = {
       schema_version: 2, name: "bad-agent-images", version: "1.0",
       created_at: "2026-05-18T00:00:00Z", rig_spec: "rig.yaml",
@@ -1222,10 +1222,10 @@ describe("PodBundleManifest validation", () => {
     };
     const result = validatePodBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("agent_images[0]") && e.includes("not safe"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("agent_images[0]") && e.includes("不安全"))).toBe(true);
   });
 
-  it("v2: round-trip preserves agent_images through serialize -> parse", () => {
+  it("v2：serialize -> parse 往返保留 agent_images", () => {
     const manifest: PodBundleManifest = {
       schemaVersion: 2, name: "rt-agent-images-v2", version: "2.0",
       createdAt: "2026-05-18T00:00:00Z", rigSpec: "rig.yaml",
@@ -1246,7 +1246,7 @@ describe("PodBundleManifest validation", () => {
     expect(m["agent_images"]).toEqual(["agent-images/v2-seat-a", "agent-images/v2-seat-b"]);
   });
 
-  it("v2: round-trip preserves compatibility through serialize -> parse", () => {
+  it("v2：serialize -> parse 往返保留 compatibility", () => {
     const manifest: PodBundleManifest = {
       schemaVersion: 2, name: "rt-compat", version: "2.0",
       createdAt: "2026-05-18T00:00:00Z", rigSpec: "rig.yaml",
@@ -1274,7 +1274,7 @@ describe("PodBundleManifest validation", () => {
     expect(compat["schema_version"]).toBe(2);
   });
 
-  it("v2: round-trip preserves provenance through serialize -> parse", () => {
+  it("v2：serialize -> parse 往返保留 provenance", () => {
     const manifest: PodBundleManifest = {
       schemaVersion: 2, name: "rt-prov", version: "2.0",
       createdAt: "2026-05-18T00:00:00Z", rigSpec: "rig.yaml",
@@ -1308,19 +1308,18 @@ describe("PodBundleManifest validation", () => {
 });
 
 describe("PodBundleSourceResolver", () => {
-  // This test exercises the real resolver against a staged bundle directory.
-  // We simulate what unpack produces by writing files directly, then test resolve.
-  it("resolves a schemaVersion 2 bundle with correct manifest and specPath", async () => {
+  // 此测试针对暂存 bundle 目录覆盖真实 resolver。直接写入文件模拟 unpack 产物，然后测试 resolve。
+  it("解析具有正确 manifest 和 specPath 的 schemaVersion 2 bundle", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
     const { PodBundleSourceResolver } = await import("../src/domain/bundle-source-resolver.js");
 
-    // Create a temp "bundle" directory (simulating post-unpack state)
+    // 创建临时 "bundle" 目录（模拟 unpack 后状态）
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "podbundle-test-"));
 
     try {
-      // Write manifest
+      // 写入 manifest
       const manifestYaml = serializePodBundleManifest({
         schemaVersion: 2,
         name: "resolver-test",
@@ -1335,7 +1334,7 @@ describe("PodBundleSourceResolver", () => {
       });
       fs.writeFileSync(path.join(tmpDir, "bundle.yaml"), manifestYaml);
 
-      // Write rig.yaml
+      // 写入 rig.yaml
       const rigYaml = RigSpecCodec.serialize({
         version: "0.2", name: "test-rig",
         pods: [{ id: "dev", label: "Dev", members: [{ id: "impl", agentRef: "local:agents/impl", profile: "default", runtime: "claude-code", cwd: "." }], edges: [] }],
@@ -1343,12 +1342,12 @@ describe("PodBundleSourceResolver", () => {
       });
       fs.writeFileSync(path.join(tmpDir, "rig.yaml"), rigYaml);
 
-      // Write agent
+      // 写入 agent
       fs.mkdirSync(path.join(tmpDir, "agents", "impl"), { recursive: true });
       fs.writeFileSync(path.join(tmpDir, "agents", "impl", "agent.yaml"), 'name: impl\nversion: "1.0"\nprofiles: {}');
 
-      // Now test the resolver's manifest parsing (we skip the archive unpack
-      // since we've already staged files — test the parse/validate/extract seam)
+      // 现在测试 resolver 的 manifest 解析（文件已暂存，因此跳过归档解包——
+      // 测试 parse/validate/extract seam）
       const raw = parsePodBundleManifest(fs.readFileSync(path.join(tmpDir, "bundle.yaml"), "utf-8"));
       const validation = validatePodBundleManifest(raw);
       expect(validation.valid).toBe(true);
@@ -1360,7 +1359,7 @@ describe("PodBundleSourceResolver", () => {
       const agents = m["agents"] as Array<Record<string, unknown>>;
       expect(agents[0]!["name"]).toBe("impl");
 
-      // Verify specPath exists
+      // 验证 specPath 存在
       const specPath = path.join(tmpDir, m["rig_spec"] as string);
       expect(fs.existsSync(specPath)).toBe(true);
     } finally {
@@ -1368,7 +1367,7 @@ describe("PodBundleSourceResolver", () => {
     }
   });
 
-  it("bundles declared docs files alongside the rig spec", () => {
+  it("将声明的 docs 文件与 rig spec 一同打包", () => {
     const spec = makeRigSpec({ docs: [{ path: "SETUP.md" }] });
     const yaml = rigSpecYaml(spec);
     const files: Record<string, string> = {
@@ -1388,18 +1387,18 @@ describe("PodBundleSourceResolver", () => {
     });
 
     expect(result.collectedFiles).toContain("SETUP.md");
-    // The bundled rig.yaml should still reference the doc
+    // 打包后的 rig.yaml 仍应引用该文档
     const written = (fs as unknown as { _written: Record<string, string> })._written;
     const bundledRigYaml = written["/out/rig.yaml"];
     expect(bundledRigYaml).toContain("SETUP.md");
   });
 
-  it("fails assembly when a declared doc file is missing from disk", () => {
+  it("声明的 doc 文件在磁盘上缺失时组装失败", () => {
     const spec = makeRigSpec({ docs: [{ path: "SETUP.md" }] });
     const yaml = rigSpecYaml(spec);
     const files: Record<string, string> = {
       [`${RIG_ROOT}/rig.yaml`]: yaml,
-      // SETUP.md deliberately missing
+      // 故意缺少 SETUP.md
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: validAgentYaml("impl"),
     };
     const fs = mockFs(files);
@@ -1411,6 +1410,6 @@ describe("PodBundleSourceResolver", () => {
       outputDir: "/out",
       bundleName: "test",
       bundleVersion: "1.0",
-    })).toThrow(/Declared doc file not found.*SETUP\.md/);
+    })).toThrow(/未找到已声明的文档文件：SETUP\.md/);
   });
 });

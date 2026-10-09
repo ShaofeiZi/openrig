@@ -1,0 +1,19 @@
+{
+  "report": "test-comment-classification-794-v3-closure-2026-10-08",
+  "agent": "s_000cae46UNk",
+  "denominator": 929,
+  "sets": {
+    "manifest_union": 219,
+    "external_qualified": 5,
+    "exclusive_scan_no_comments_plus_chinese_or_machine": 705
+  },
+  "overlap_check": {
+    "manifest∩external": 0,
+    "scan∩external": 0,
+    "manifest∩scan_english_nl_translated": 79
+  },
+  "union_total": 929,
+  "missing": 0,
+  "english_nl_remaining": 0,
+  "note": "All 79 originally-english_nl files from the v2 scan have been translated into manifest batches (batch28-44). The remaining 705 exclusive-scan files are no_comments(116)+chinese_or_machine_only(589), requiring no further translation. external_qualified=5 are peer-reviewed old-batch files not in this agent's manifest."
+}

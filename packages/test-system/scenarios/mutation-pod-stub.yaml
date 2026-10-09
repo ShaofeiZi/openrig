@@ -3,7 +3,7 @@ name: mutation-pod-stub
 culture_file: culture.md
 pods:
   - id: swarm
-    label: Swarm
+    label: 智能体群组
     members:
       - {id: a, agent_ref: "local:agents/worker", profile: default, runtime: stub, cwd: .}
       - {id: b, agent_ref: "local:agents/worker", profile: default, runtime: stub, cwd: .}

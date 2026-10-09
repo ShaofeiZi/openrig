@@ -1,14 +1,11 @@
-// LAYER 5 — 6 destination cards, all numeral layout (iter-15 founder
-// pick). Tactical schematic drafting alignment: 2 rows × 3 cols, all
-// positions aligned, no stagger. All cards 28% wide × 220px tall.
-// Project is the only card with the washed/inky look; the rest use
-// sharp text.
+// 第 5 层——6 张目标卡片，全部采用数字布局（第 15 次迭代由创始人选定）。战术示意图式对齐：
+// 2 行 × 3 列，所有位置对齐，不错位。每张卡片宽 28%、高 220px。只有项目卡片采用水洗墨迹
+// 外观，其余卡片使用清晰文字。
 //
-// Column layout: Col 1 left-[5%], Col 2 left-[36%], Col 3 left-[67%]
-// Row layout:    Top row top-[22%], Bottom row top-[55%]
+// 列布局：第 1 列 left-[5%]，第 2 列 left-[36%]，第 3 列 left-[67%]
+// 行布局：上排 top-[22%]，下排 top-[55%]
 //
-// librarySize prop wires the Library card body to the live artifact
-// count. Lab default keeps the static "field catalog 0.3.1" copy.
+// librarySize 属性将资料库卡片正文接入实时产物数量。实验室默认值保留静态的“现场目录 0.3.1”文案。
 
 import { Network, Folder, Sparkles, FileText, Search, Cog } from "lucide-react";
 import { VellumDestinationCard } from "./VellumDestinationCard.js";
@@ -28,8 +25,8 @@ interface DestinationsLayerProps {
 export function DestinationsLayer({ librarySize }: DestinationsLayerProps = {}) {
   const libraryBody =
     librarySize && librarySize > 0
-      ? `Specs · Plugins · Skills · Context packs. Field catalog 0.3.1 — ${librarySize} active artifacts.`
-      : "Specs · Plugins · Skills · Context packs. Field catalog 0.3.1 — 38 active artifacts.";
+      ? `规格 · 插件 · 技能 · 上下文包。现场目录 0.3.1 —— ${librarySize} 个活跃产物。`
+      : "规格 · 插件 · 技能 · 上下文包。现场目录 0.3.1 —— 38 个活跃产物。";
 
   return (
     <div
@@ -40,13 +37,13 @@ export function DestinationsLayer({ librarySize }: DestinationsLayerProps = {}) 
         to="/topology"
         num="01"
         big="01"
-        label="Topology"
+        label="拓扑"
         icon={<Network className="h-4 w-4" />}
-        body="Host · Rig · Pod · Seat tree — live edges + runtimes; drill into any rig's pod graph."
+        body="主机 · 工作组 · Pod · 席位树 —— 实时边 + 运行时；可钻取任意工作组的 Pod 图。"
         positionClass="top-[22%] left-[5%]"
         graphic={<TreeGraphic />}
         layout="numeral"
-        callouts={["HOST", "RIG", "POD", "SEAT"]}
+        callouts={["主机", "工作组", "Pod", "席位"]}
         tint="stone"
         shadow="ambient"
       />
@@ -55,13 +52,13 @@ export function DestinationsLayer({ librarySize }: DestinationsLayerProps = {}) 
         to="/project"
         num="02"
         big="02"
-        label="Project"
+        label="项目"
         icon={<Folder className="h-4 w-4" />}
-        body="Workspace · Mission · Slice. Browse all in-flight work by what agents are doing, not by repo."
+        body="工作区 · 任务 · 切片。按智能体在做什么浏览所有进行中的工作，而非按仓库。"
         positionClass="top-[22%] left-[36%]"
         graphic={<StratigraphicGraphic />}
         layout="numeral"
-        callouts={["WORKSPACE", "MISSION", "SLICE", "TASK"]}
+        callouts={["工作区", "任务", "切片", "工作项"]}
         washed
         tint="stone"
         shadow="ambient"
@@ -71,13 +68,13 @@ export function DestinationsLayer({ librarySize }: DestinationsLayerProps = {}) 
         to="/for-you"
         num="03"
         big="03"
-        label="For You"
+        label="为你"
         icon={<Sparkles className="h-4 w-4" />}
-        body="Action feed → what needs you · what shipped · what's in flight. Prioritized for the operator."
+        body="行动流 → 需要你处理的 · 已交付的 · 进行中的。为操作者排序。"
         positionClass="top-[22%] left-[67%]"
         graphic={<PulseGraphic />}
         layout="numeral"
-        callouts={["NEEDS YOU", "SHIPPED", "IN-FLIGHT", "BLOCKED"]}
+        callouts={["需要你处理", "已交付", "进行中", "已阻塞"]}
         accent
         tint="stone"
         shadow="ambient"
@@ -87,13 +84,13 @@ export function DestinationsLayer({ librarySize }: DestinationsLayerProps = {}) 
         to="/specs"
         num="04"
         big="04"
-        label="Library"
+        label="库"
         icon={<FileText className="h-4 w-4" />}
         body={libraryBody}
         positionClass="top-[55%] left-[5%]"
         graphic={<SphereGraphic />}
         layout="numeral"
-        callouts={["SPECS", "PLUGINS", "SKILLS", "PACKS"]}
+        callouts={["规格", "插件", "技能", "上下文包"]}
         tint="stone"
         shadow="ambient"
       />
@@ -102,13 +99,13 @@ export function DestinationsLayer({ librarySize }: DestinationsLayerProps = {}) 
         to="/search"
         num="05"
         big="05"
-        label="Search & Audit"
+        label="搜索与审计"
         icon={<Search className="h-4 w-4" />}
-        body="Audit history · full artifact explorer. V1 placeholder; the full surface ships in V2."
+        body="审计历史 · 完整产物浏览器。V1 占位；完整界面在 V2 交付。"
         positionClass="top-[55%] left-[36%]"
         graphic={<MagnifierGraphic />}
         layout="numeral"
-        callouts={["AUDIT", "HISTORY", "QUERY", "FILTER"]}
+        callouts={["审计", "历史", "查询", "筛选"]}
         tint="stone"
         shadow="ambient"
       />
@@ -117,13 +114,13 @@ export function DestinationsLayer({ librarySize }: DestinationsLayerProps = {}) 
         to="/settings"
         num="06"
         big="06"
-        label="Settings"
+        label="设置"
         icon={<Cog className="h-4 w-4" />}
-        body="Config · Policy · Log · Status. Operator-grade controls; ConfigStore-backed; reversible."
+        body="配置 · 策略 · 日志 · 状态。操作者级控制；配置存储支持；可回退。"
         positionClass="top-[55%] left-[67%]"
         graphic={<GearGraphic />}
         layout="numeral"
-        callouts={["CONFIG", "POLICY", "LOG", "STATUS"]}
+        callouts={["配置", "策略", "日志", "状态"]}
         tint="stone"
         shadow="ambient"
       />

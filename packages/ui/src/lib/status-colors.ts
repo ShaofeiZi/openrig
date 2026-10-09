@@ -1,5 +1,5 @@
 /**
- * Maps node status to Tailwind background color class.
+ * 将节点状态映射为 Tailwind 背景色类名。状态值为协议枚举，保持原值不变。
  */
 export function getStatusColorClass(status: string | null): string {
   switch (status) {

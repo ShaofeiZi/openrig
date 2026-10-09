@@ -1,31 +1,28 @@
-// UI HARNESS TEARDOWN HYGIENE — the R5-family "work must not outlive its
-// context" pattern, in the React harness.
+// UI HARNESS 拆卸卫生——React harness 中 R5 家族"工作不得活过其
+// 上下文"模式。
 //
-// THE DEFECT (desk-caught, main c230909cf): the full ui run reported
-// "Errors 1" with a fully GREEN test count — ReferenceError: window is not
-// defined at react-dom performWorkOnRootViaSchedulerTask, thrown AFTER the
-// test environment was torn down. Vitest's own warning: an unhandled
-// post-teardown error can cause FALSE POSITIVE tests, and it flips the exit
-// code that gates the A/B pin.
+// 缺陷（桌面捕获，main c230909cf）：完整 ui 运行报
+// "Errors 1"而测试计数全绿——ReferenceError: window is not
+// defined，位于 react-dom performWorkOnRootViaSchedulerTask，抛出于
+// 测试环境拆卸之后。Vitest 自身警告：未处理的
+// 拆卸后错误可致假阳性测试，并翻转门控 A/B 锚点的退出码。
 //
-// THE STRUCTURAL CAUSE (verified at source): vitest.config.ts does not set
-// `globals`, so it defaults FALSE — and React Testing Library only registers
-// its automatic `afterEach(cleanup)` when the framework's afterEach is
-// available as a global. With globals:false that auto-cleanup NEVER RUNS, so
-// every test file that does not call cleanup itself (117 of 153 at the time
-// of writing) leaves its React tree MOUNTED past the test. A mounted tree can
-// still have scheduled work (React schedules through its own task queue); if
-// that task lands after the environment is disposed, it dereferences a
-// `window` that no longer exists. The components are innocent — e.g.
-// TerminalPreviewPopover already cancels its rAF in the effect cleanup — but
-// that cleanup only runs ON UNMOUNT, which never happens.
+// 结构性成因（源码核实）：vitest.config.ts 未设
+// `globals`，故默认 FALSE——React Testing Library 仅在框架 afterEach
+// 作为全局可用时才注册其自动 `afterEach(cleanup)`。globals:false 下该自动清理永不运行，故
+// 每个不自调 cleanup 的测试文件（写时 153 中 117）让其 React 树在测试后仍挂载。
+// 挂载的树仍可有已调度工作（React 经自身任务队列调度）；若
+// 该任务在环境销毁后落地，它解引用一个
+// 已不存在的 `window`。组件无辜——例如
+// TerminalPreviewPopover 已在 effect 清理中取消 rAF——但
+// 该清理仅在卸载时运行，而卸载从不发生。
 //
-// THE FIX: register cleanup globally in test/setup.ts, so every test unmounts
-// its tree (cancelling pending work) rather than suppressing the error.
+// 修复：在 test/setup.ts 全局注册 cleanup，使每个测试卸载
+// 其树（取消待处理工作）而非压制错误。
 //
-// This file pins the PRECONDITION deterministically: with the fix, a test
-// that renders leaves nothing behind for the next test. Without it, the leak
-// is visible — which is the same leak that lets work outlive the environment.
+// 本文件确定性锚定前置条件：有修复时，渲染的测试
+// 不给下一测试留任何残留。无修复时泄漏可见——
+// 正是让工作活过环境的同一泄漏。
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 
@@ -36,10 +33,9 @@ describe("ui harness: every test unmounts its tree (global auto-cleanup register
   });
 
   it("the NEXT test starts with a clean DOM — the previous tree was unmounted by the harness", () => {
-    // RED without a global afterEach(cleanup): the probe from the previous
-    // test is still mounted here, and (crucially) so is every other suite's
-    // tree in a full run — the population whose scheduled work outlives the
-    // environment.
+    // 无全局 afterEach(cleanup) 时 RED：前一测试的 probe 仍挂载于此，
+    // 且（关键）完整运行中每个其他 suite 的树也在此——
+    // 正是已调度工作活过环境的那批。
     expect(document.querySelectorAll("[data-testid='teardown-hygiene-probe']").length).toBe(0);
     expect(document.body.innerHTML).toBe("");
   });

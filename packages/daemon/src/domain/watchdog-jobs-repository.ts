@@ -2,14 +2,13 @@ import type Database from "better-sqlite3";
 import { ulid } from "ulid";
 
 /**
- * Watchdog jobs repository (PL-004 Phase C; extended in Phase D).
+ * 看门狗任务仓库（PL-004 Phase C，并在 Phase D 扩展）。
  *
- * Owns all reads/writes against `watchdog_jobs`. Pure persistence; no
- * event-bus, no scheduler, no policy dispatch. Composed by the
- * scheduler and policy engine.
+ * 负责对 `watchdog_jobs` 的所有读写。这里只做持久化，不涉及 event-bus、调度器或
+ * 策略分发；由调度器与策略引擎组合使用。
  *
- * Accepted policy values include the orch-ratified Phase C set plus
- * daemon-native workflow, idle-gate, and context-usage conditions:
+ * 接受的策略值包括编排器批准的 Phase C 集合，以及后台服务原生的工作流、空闲门禁
+ * 和上下文用量条件：
  *   - periodic-reminder (Phase C)
  *   - artifact-pool-ready (Phase C)
  *   - edge-artifact-required (Phase C)
@@ -17,8 +16,8 @@ import { ulid } from "ulid";
  *   - idle-gate-qitem
  *   - context-usage-threshold
  *
- * PHASE_C_POLICIES retained as a deprecated alias for callers that
- * still reference it; new code uses PHASE_D_POLICIES.
+ * PHASE_C_POLICIES 作为弃用别名保留给仍引用它的调用方；新代码使用
+ * PHASE_D_POLICIES。
  */
 
 export const PHASE_D_POLICIES = [
@@ -26,24 +25,23 @@ export const PHASE_D_POLICIES = [
   "artifact-pool-ready",
   "edge-artifact-required",
   "workflow-keepalive",
-  // OPR.0.4.3.16 — idle-seat gate watchdog. DB-backed (queue_items) + the
-  // shared arbitrated SeatActivityService oracle, injected at startup
-  // via WatchdogPolicyEngine additionalPolicies (like workflow-keepalive).
+  // OPR.0.4.3.16 —— 空闲席位门禁看门狗。由数据库 queue_items 和共享仲裁
+  // SeatActivityService 判定源支撑，在启动时通过 WatchdogPolicyEngine
+  // additionalPolicies 注入（与 workflow-keepalive 相同）。
   "idle-gate-qitem",
   "context-usage-threshold",
-  // OPR.0.5.6.24 F-14 — one rig-level parked-owner consumer: joins claimed
-  // open obligations with the ARBITRATED idle verdict into one wake per park
-  // episode. Injected via additionalPolicies like idle-gate-qitem.
+  // OPR.0.5.6.24 F-14 —— 单一工作组级 parked-owner 消费者：将已领取的开放义务与
+  // 经仲裁的空闲判定关联，每个停放阶段只唤醒一次。与 idle-gate-qitem 一样通过
+  // additionalPolicies 注入。
   "parked-owner-consumer",
-  // OPR.0.5.6.1 AM-F1 — the delivery rules engine's two timing legs, on THIS
-  // substrate by ruling (no third timer engine): the one-shot away-escalation
-  // deferral and the repeating C/D digest window flush. Injected via
-  // additionalPolicies like parked-owner-consumer.
+  // OPR.0.5.6.1 AM-F1 —— 按裁定在此基础设施上承载交付规则引擎的两个计时分支
+  // （不引入第三套定时器）：一次性的离开升级延迟，以及重复的 C/D 摘要窗口刷新。
+  // 与 parked-owner-consumer 一样通过 additionalPolicies 注入。
   "delivery-deferral",
   "delivery-digest-flush",
 ] as const;
 
-/** @deprecated since Phase D — use PHASE_D_POLICIES. */
+/** 自 Phase D 起弃用，请使用 PHASE_D_POLICIES。 */
 export const PHASE_C_POLICIES = PHASE_D_POLICIES;
 
 export type WatchdogPolicyName = (typeof PHASE_D_POLICIES)[number];
@@ -66,20 +64,20 @@ export interface WatchdogJob {
   registeredBySession: string;
   registeredAt: string;
   terminalReason: string | null;
-  /** (e/Class-B) atom-B generation of the occupant that armed this job; null = UNKNOWN/pre-063. */
+  /** (e/Class-B) 启用此任务的占用者 atom-B 代际；null 表示 UNKNOWN/迁移 063 前。 */
   registeredByGeneration: string | null;
-  /** (i-c) opt-in target occupant-generation this wake is bound to; null = ROLE-bound (fire at whoever
-   *  occupies the seat name). Only a non-null value opts the job into the fire-time gen-gate. */
+  /** (i-c) 可选的目标占用者代次，此唤醒与其绑定；null 表示按角色绑定，即向当时占用该席位名的
+   * 对象触发。只有非 null 值才让任务进入触发时代次守卫。 */
   targetGeneration: string | null;
-  /** Transcript-byte condition state. Null on every other policy. */
+  /** transcript 字节条件状态；其他策略中为 null。 */
   watchedFilePath: string | null;
-  /** Occupant generation that qualified watchedFilePath. */
+  /** 使 watchedFilePath 合格的占用者代际。 */
   watchedFileGeneration: string | null;
-  /** Visible lifecycle of the generated transcript binding. */
+  /** 所生成 transcript 绑定的可见生命周期。 */
   bindingState: "pending-binding" | "bound" | null;
   thresholdBytes: number | null;
   requiresJobId: string | null;
-  /** The latest occupant generation for which this threshold fired. */
+  /** 最近一次触发此阈值的占用者代际。 */
   lastFiredGeneration: string | null;
 }
 
@@ -91,8 +89,8 @@ export interface RegisterWatchdogJobInput {
   activeWakeIntervalSeconds?: number | null;
   scanIntervalSeconds?: number | null;
   registeredBySession: string;
-  /** (i-c) opt-in: the occupant-generation this wake is bound to. Omit/null = ROLE-bound (the common
-   *  case — fires at whoever occupies the seat, unchanged). Non-null opts into the fire-time gen-gate. */
+  /** (i-c) 可选：此唤醒绑定的占用者代次。省略/null 表示按角色绑定，这是常见情况，仍向当时占用
+   * 席位的对象触发。非 null 值启用触发时代次守卫。 */
   targetGenerationUuid?: string | null;
   watchedFilePath?: string | null;
   thresholdBytes?: number | null;
@@ -137,8 +135,8 @@ export class WatchdogJobsError extends Error {
   }
 }
 
-/** Defensive additive-column detect (mirrors queue-repository's detectQueueColumn): a harness whose
- *  db predates migration 063 lacks the generation columns, so writers degrade instead of throwing. */
+/** 防御性检测新增列（对应 queue-repository 的 detectQueueColumn）：数据库早于迁移
+ * 063 的测试夹具缺少代际列，因此写入方降级而非抛错。 */
 function detectWatchdogColumn(db: Database.Database, columnName: string): boolean {
   try {
     return db.prepare("PRAGMA table_info(watchdog_jobs)").all()
@@ -156,9 +154,9 @@ export class WatchdogJobsRepository {
   constructor(
     private readonly db: Database.Database,
     private readonly now: () => Date = () => new Date(),
-    // GHOST-STAGE (e/Class-B): resolve the ARMING occupant's atom-B generation so a job carries the
-    // generation that registered it. null/absent ⇒ UNKNOWN → the column stays NULL and the swap-time
-    // gen predicate never matches it (never dropped on unknown). Injected in startup (SessionRegistry).
+    // GHOST-STAGE（e/Class-B）：解析登记任务时占用者的 atom-B 代次，使任务携带登记它的代次。
+    // null/缺失表示 UNKNOWN，列保持 NULL，切换时的代次谓词永远不会匹配它，未知项绝不被删除。
+    // 由启动流程注入 SessionRegistry。
     private readonly resolveOccupantGeneration?: (sessionName: string) => string | null,
   ) {
     this.hasGenColumn = detectWatchdogColumn(db, "registered_by_generation_uuid");
@@ -171,21 +169,21 @@ export class WatchdogJobsRepository {
     if (!PHASE_D_POLICIES.includes(input.policy as WatchdogPolicyName)) {
       throw new WatchdogJobsError(
         "policy_unknown",
-        `unknown watchdog policy '${input.policy}'; Phase D v1 supports: ${PHASE_D_POLICIES.join(", ")}`,
+        `未知看门狗策略“${input.policy}”；Phase D v1 支持：${PHASE_D_POLICIES.join(", ")}`,
         { policy: input.policy, supported: [...PHASE_D_POLICIES] },
       );
     }
     if (!Number.isInteger(input.intervalSeconds) || input.intervalSeconds <= 0) {
       throw new WatchdogJobsError(
         "interval_invalid",
-        `interval_seconds must be a positive integer (got ${input.intervalSeconds})`,
+        `interval_seconds 必须是正整数（收到 ${input.intervalSeconds}）`,
         { intervalSeconds: input.intervalSeconds },
       );
     }
     if (!input.targetSession || !input.targetSession.includes("@")) {
       throw new WatchdogJobsError(
         "target_session_invalid",
-        `target_session must be canonical '<member>@<rig>' (got '${input.targetSession}')`,
+        `target_session 必须是规范的“<member>@<rig>”（收到“${input.targetSession}”）`,
         { targetSession: input.targetSession },
       );
     }
@@ -193,7 +191,7 @@ export class WatchdogJobsRepository {
     if (isContextUsageThreshold && !this.hasContextUsageColumns) {
       throw new WatchdogJobsError(
         "context_usage_schema_missing",
-        "context-usage-threshold requires migration 074_context_usage_watchdog",
+        "context-usage-threshold 需要迁移 074_context_usage_watchdog",
       );
     }
     if (
@@ -202,7 +200,7 @@ export class WatchdogJobsRepository {
     ) {
       throw new WatchdogJobsError(
         "threshold_invalid",
-        `threshold_bytes must be a positive integer (got ${String(input.thresholdBytes)})`,
+        `threshold_bytes 必须是正整数（收到 ${String(input.thresholdBytes)}）`,
       );
     }
     const generatedContinuityJob =
@@ -212,26 +210,26 @@ export class WatchdogJobsRepository {
     if (isContextUsageThreshold && !input.watchedFilePath && !generatedContinuityJob) {
       throw new WatchdogJobsError(
         "watched_file_unresolved",
-        `no transcript file could be resolved for ${input.targetSession}`,
+        `无法为 ${input.targetSession} 解析 transcript 文件`,
         { targetSession: input.targetSession },
       );
     }
     if (isContextUsageThreshold && input.requiresJobId && !this.getById(input.requiresJobId)) {
       throw new WatchdogJobsError(
         "requires_job_not_found",
-        `required watchdog job ${input.requiresJobId} does not exist`,
+        `所需看门狗任务 ${input.requiresJobId} 不存在`,
         { requiresJobId: input.requiresJobId },
       );
     }
     const jobId = ulid();
     const registeredAt = this.now().toISOString();
-    // (e/Class-B): stamp the ARMING occupant's generation so a swap can drop THIS gen's armed jobs
-    // (a stale wake firing into the successor's context is the ghost). NULL when unresolved/pre-063.
+    // (e/Class-B)：写入登记时占用者的代次，使切换可停止这一代登记的任务；陈旧唤醒进入继任者
+    // 上下文就是幽灵问题。无法解析或迁移 063 前为 NULL。
     const registeredByGeneration = this.hasGenColumn
       ? (this.resolveOccupantGeneration?.(input.registeredBySession) ?? null)
       : null;
-    // (i-c) opt-in TARGET generation: caller-supplied (NULL = role-bound). Stored only when the 066
-    // column exists; pre-066 dbs silently degrade the opt-in to role-bound. 066 ⟹ 063 (additive order).
+    // (i-c) 可选目标代次：由调用方提供，NULL 表示按角色绑定。仅在 066 列存在时存储；
+    // 066 之前的数据库会将该可选能力静默降级为按角色绑定。066 蕴含 063（增量顺序）。
     const targetGenerationUuid = this.hasTargetGenColumn ? (input.targetGenerationUuid ?? null) : null;
     const watchedFileGeneration = isContextUsageThreshold && input.watchedFilePath
       ? (this.resolveOccupantGeneration?.(input.targetSession) ?? null)
@@ -280,7 +278,7 @@ export class WatchdogJobsRepository {
     return this.getByIdOrThrow(jobId);
   }
 
-  /** Transcript path sampled during the requested seat occupant generation. */
+  /** 在指定席位占用者代际期间采样的 transcript 路径。 */
   findTranscriptPath(
     targetSession: string,
     occupantGeneration = this.resolveOccupantGeneration?.(targetSession) ?? null,
@@ -312,7 +310,7 @@ export class WatchdogJobsRepository {
     if (!this.hasWatchedFileGenerationColumn) {
       throw new WatchdogJobsError(
         "context_usage_generation_schema_missing",
-        "context-usage-threshold generation binding requires migration 075_context_usage_watchdog_generation",
+        "context-usage-threshold 代际绑定需要迁移 075_context_usage_watchdog_generation",
       );
     }
     this.db
@@ -328,7 +326,7 @@ export class WatchdogJobsRepository {
     if (!this.hasContextUsageColumns) {
       throw new WatchdogJobsError(
         "context_usage_schema_missing",
-        "context-usage-threshold requires migration 074_context_usage_watchdog",
+        "context-usage-threshold 需要迁移 074_context_usage_watchdog",
       );
     }
     this.db
@@ -341,10 +339,9 @@ export class WatchdogJobsRepository {
   }
 
   /**
-   * Ensure the daemon-owned, role-bound auto-registration tuple has exactly
-   * one nonterminal row. Stopped is an operator opt-out and is therefore as
-   * durable as active; terminal-only history is replaced. The table has no
-   * uniqueness constraint, so every matching row must be inspected.
+   * 确保后台服务所有、按角色绑定的自动登记元组恰好有一条非终态记录。stopped 是
+   * 操作员主动退出，因此与 active 一样持久；仅含终态历史时会被替换。表中没有唯一
+   * 约束，所以必须检查每条匹配记录。
    */
   ensureAutoRegistration(
     input: EnsureAutoRegistrationInput,
@@ -376,9 +373,8 @@ export class WatchdogJobsRepository {
   }
 
   /**
-   * Resolve the one active/stopped role-bound row across every historical
-   * session alias for a node. Persisted states are intentionally closed:
-   * unknown values are neither runnable jobs nor operator opt-outs.
+   * 在节点所有历史会话别名中解析唯一一条 active/stopped 角色绑定记录。持久化状态
+   * 刻意采用闭集；未知值既不是可运行任务，也不是操作员主动退出。
    */
   findAutoRegistration(
     policy: string,
@@ -393,7 +389,7 @@ export class WatchdogJobsRepository {
     if (invalid.length > 0) {
       throw new WatchdogJobsError(
         "auto_registration_state_invalid",
-        `auto_registration_state_invalid: auto-registration has invalid persisted state for ${policy}/${targetSession}`,
+        `auto_registration_state_invalid：${policy}/${targetSession} 的自动登记存在无效持久化状态`,
         {
           policy,
           targetSession,
@@ -406,7 +402,7 @@ export class WatchdogJobsRepository {
     if (nonterminal.length > 1) {
       throw new WatchdogJobsError(
         "auto_registration_ambiguous",
-        `auto-registration is ambiguous for ${policy}/${targetSession}: ${nonterminal.length} nonterminal rows`,
+        `${policy}/${targetSession} 的自动登记有歧义：存在 ${nonterminal.length} 条非终态记录`,
         {
           policy,
           targetSession,
@@ -418,7 +414,7 @@ export class WatchdogJobsRepository {
     return nonterminal[0] ?? null;
   }
 
-  /** All rows for the exact policy/seat/generation tuple, including history. */
+  /** 精确策略/席位/代际元组的所有记录，包括历史。 */
   listExactTuple(
     policy: string,
     targetSession: string,
@@ -476,7 +472,7 @@ export class WatchdogJobsRepository {
     if (!job) {
       throw new WatchdogJobsError(
         "job_not_found",
-        `watchdog job ${jobId} not found`,
+        `未找到看门狗任务 ${jobId}`,
         { jobId },
       );
     }
@@ -511,21 +507,20 @@ export class WatchdogJobsRepository {
     }
   }
 
-  /** Preserve job identity while its owner adjusts a durable reminder schedule. */
+  /** 所有者调整持久提醒计划时保留任务身份。 */
   updateSchedule(jobId: string, specYaml: string, intervalSeconds: number, lastEvaluationAt: string | null): void {
     this.db.prepare(`UPDATE watchdog_jobs SET spec_yaml = ?, interval_seconds = ?, last_evaluation_at = ?
       WHERE job_id = ? AND state = 'active'`).run(specYaml, intervalSeconds, lastEvaluationAt, jobId);
   }
 
   /**
-   * R1 fix: write the actionable-state machine columns. Mirrors POC
-   * engine's `state.actionable` + `state.last_actionable_at`. Called
-   * by the policy engine after every meaningful evaluation:
-   *   - newActionable=false (skip): clears actionable + last_actionable_at.
-   *   - newActionable=true with no preserveLastActionableAt: stamps
-   *     last_actionable_at to evaluatedAt (newly actionable).
-   *   - newActionable=true with preserveLastActionableAt set: keeps the
-   *     existing first-actionable timestamp (continued actionable window).
+   * R1 修复：写入可操作状态机列。对应 POC 引擎的 `state.actionable` 与
+   * `state.last_actionable_at`。策略引擎在每次有意义的评估后调用：
+   *   - newActionable=false（跳过）：清除 actionable 与 last_actionable_at。
+   *   - newActionable=true 且无 preserveLastActionableAt：把 last_actionable_at
+   *     标记为 evaluatedAt（新近变为可操作）。
+   *   - newActionable=true 且设置 preserveLastActionableAt：保留首次可操作时间戳
+   *     （延续可操作窗口）。
    */
   setActionable(
     jobId: string,
@@ -550,12 +545,11 @@ export class WatchdogJobsRepository {
   }
 
   /**
-   * OPR.0.5.8.1 S2 — record the CONDITION a job last successfully woke about.
+   * OPR.0.5.8.1 S2 —— 记录任务最近一次成功唤醒所针对的条件。
    *
-   * Called by the engine only after a delivery that returned `ok`. A policy that
-   * suppresses on "already told them" needs its receipt tied to evidence the
-   * telling happened; recording it on the ATTEMPT turns one transport failure
-   * into indefinite silence. One overwritten value per job, never appended to.
+   * 仅在交付返回 `ok` 后由引擎调用。按“已经告知”抑制的策略必须把回执绑定到确已
+   * 告知的证据；若在尝试时就记录，一次传输失败会造成无限静默。每个任务只覆盖
+   * 一个值，绝不追加。
    */
   recordConditionReceipt(jobId: string, receipt: string): void {
     this.db
@@ -576,7 +570,7 @@ export class WatchdogJobsRepository {
     if (existing.state === "terminal") {
       throw new WatchdogJobsError(
         "job_terminal",
-        `cannot stop watchdog job ${jobId}: state is terminal`,
+        `无法停止看门狗任务 ${jobId}：状态已是 terminal`,
         { jobId, state: existing.state },
       );
     }
@@ -588,12 +582,11 @@ export class WatchdogJobsRepository {
   }
 
   /**
-   * GHOST-STAGE (e/Class-B): at a seat swap, stop every ARMED (state='active') job registered by the
-   * RETIRING generation — a stale wake firing into the successor's context is the specimen; the
-   * successor re-arms its own. Gen-scoped, NEVER name-scoped (the successor shares the seat name, so a
-   * name-scoped stop would kill the successor's own jobs). A NULL/empty generation never matches
-   * (UNKNOWN ≠ retired — note-2). Returns the count stopped. Auditable (terminal_reason), not a hard
-   * delete — the row stays for forensics. Pre-063 dbs no-op.
+   * GHOST-STAGE（e/Class-B）：席位切换时，停止所有由退役代际登记且已启用
+   * （state='active'）的任务；故障样本是陈旧唤醒进入继任者上下文，继任者会自行
+   * 重新启用。范围按代际而非名称限定（继任者共享席位名，按名称停止会误杀其任务）。
+   * NULL/空代际永不匹配（UNKNOWN ≠ retired，note-2）。返回停止数。通过
+   * terminal_reason 可审计，不做硬删除，记录保留供取证。迁移 063 前数据库不操作。
    */
   dropArmedByRegisteringGeneration(generationUuid: string): number {
     if (!this.hasGenColumn || !generationUuid) return 0;

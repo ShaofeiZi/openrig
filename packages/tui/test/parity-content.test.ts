@@ -5,14 +5,15 @@ import { decodeInput, resolveKeyAction, sgrClick } from "../src/input.js";
 import { renderScreen } from "../src/render.js";
 import { demoSnapshot } from "../src/demo-data.js";
 import type { FleetSnapshot, Screen, ViewState, ViewStateStore } from "../src/types.js";
+import { strWidth } from "../src/text-width.js";
 
-// Phase-3 parity hardening: CONTENT-pane surfaces are hit targets too.
-// Hit-target realism: these tests click coordinates on the rendered SURFACE
-// (a visible table cell, a spec member line), not a labeled control.
+// Phase-3 对等强化：content 窗格表面也是命中目标。
+// 命中目标真实性：这些测试点击渲染表面上的坐标
+// （可见表格格、spec 成员行），而非带标签的控件。
 
 const snap = demoSnapshot();
 snap.specs.find(s => s.name === "openrig-build-rig")!.pods = [{ id: "build", namespace: "build", members: [{ id: "guard", agentRef: "guard-agent", runtime: "codex" }], edges: [] }];
-// Explicit human request from the Attention authority, not a converted agent signal.
+// 来自 Attention 权威的显式人工请求，非转换的 agent 信号。
 snap.attentionRead = {
   scope: "instance", readAt: "2026-09-10T00:00:00Z", sources: [{ source: "queue", state: "available", detail: "fixture" }],
   items: [{ id: "queue:cover", kind: "action", summary: "Choose the readable cover", unblocks: "Print the edition", urgency: "urgent", at: "2026-09-10T00:00:00Z", scope: "instance", project: null, source: "/api/queue/cover" }],
@@ -45,6 +46,12 @@ function findContentLine(store: ViewStateStore, match: RegExp): { y: number; tex
   return { y: idx + 1, text: screen.lines[idx]! };
 }
 
+function columnOf(text: string, needle: string, offset = 0): number {
+  const index = text.indexOf(needle);
+  if (index < 0) throw new Error(`no rendered text ${needle}`);
+  return strWidth(text.slice(0, index)) + 1 + offset;
+}
+
 function syncedScreen(store: ViewStateStore, snapshot: FleetSnapshot = snap): Screen {
   let screen = renderScreen(store.get(), snapshot, { cols: 120, rows: 32 });
   store.dispatch({
@@ -64,21 +71,21 @@ function press(store: ViewStateStore, bytes: string, snapshot: FleetSnapshot = s
   if (action) store.dispatch(action);
 }
 
-describe("content-pane parity (Phase 3): click the surface, not a control", () => {
-  it("clicking a table row's STATUS cell opens the agent — identical to the command", () => {
+describe("content 窗格对等（Phase 3）：点表面，不点控件", () => {
+  it("点表格行 STATUS 单元格打开 agent——与命令相同", () => {
     const byCommand = fresh("cmd");
     const byMouse = fresh("ui");
     byCommand.dispatch(parseCommand("agent dev50.guard"));
 
     byMouse.dispatch(parseCommand("rig openrig-build"));
-    const row = findContentLine(byMouse, /guard.*idle/);
-    // click INSIDE the STATUS cell text (a non-label visible cell, far from the AGENT column)
-    const statusX = row.text.indexOf("idle") + 1;
+    const row = findContentLine(byMouse, /guard.*空闲/);
+    // 在 STATUS 格文本内部点击（非标签可见格，远离 AGENT 列）
+    const statusX = columnOf(row.text, "空闲");
     expect(clickAt(byMouse, statusX, row.y)).toBe(true);
     expect(comparable(byMouse.get())).toEqual(comparable(byCommand.get()));
   });
 
-  it("clicking a rig-spec member line opens that agent spec — identical to the command", () => {
+  it("点 rig-spec 成员行打开该 agent spec——与命令相同", () => {
     const byCommand = fresh("cmd");
     const byMouse = fresh("ui");
     byCommand.dispatch(parseCommand("spec guard-agent"));
@@ -88,38 +95,38 @@ describe("content-pane parity (Phase 3): click the surface, not a control", () =
     byMouse.dispatch({ type: "layout", contentMaxOffset: layout.contentMaxOffset, contentTargetCount: layout.contentTargets.length });
     byMouse.dispatch({ type: "content-scroll", delta: layout.contentMaxOffset });
     const member = findContentLine(byMouse, /┃.*▪.*guard-agent/);
-    expect(clickAt(byMouse, member.text.lastIndexOf("guard-agent") + 3, member.y)).toBe(true);
+    expect(clickAt(byMouse, columnOf(member.text, "guard-agent", 2), member.y)).toBe(true);
     expect(byMouse.get().drill).toEqual(byCommand.get().drill);
     expect(byMouse.get().section).toBe(byCommand.get().section);
   });
 
-  it("clicking the tabs line toggles TABLE→OVERVIEW — identical to `tab overview`", () => {
+  it("点 tab 行切换 TABLE→OVERVIEW——与 `tab overview` 相同", () => {
     const byCommand = fresh("cmd");
     const byMouse = fresh("ui");
     byCommand.dispatch(parseCommand("rig openrig-build"));
     byCommand.dispatch(parseCommand("tab overview"));
 
     byMouse.dispatch(parseCommand("rig openrig-build"));
-    const tabs = findContentLine(byMouse, /TABLE.*OVERVIEW/);
-    expect(clickAt(byMouse, tabs.text.indexOf("OVERVIEW") + 1, tabs.y)).toBe(true);
+    const tabs = findContentLine(byMouse, /表格.*概览/);
+    expect(clickAt(byMouse, columnOf(tabs.text, "概览"), tabs.y)).toBe(true);
     expect(byMouse.get().viewTab).toBe("overview");
     expect(comparable(byMouse.get())).toEqual(comparable(byCommand.get()));
-    // and the overview renders pods, not the table header
+    // 且概览渲染 pods，非表头
     const screen = renderScreen(byMouse.get(), snap, { cols: 120, rows: 32 });
-    expect(screen.lines.some((l) => l.includes("2 pods"))).toBe(true);
+    expect(screen.lines.some((l) => l.includes("2 个席位"))).toBe(true);
   });
 
-  it("clicking a human Attention item opens its source detail without resolving it", () => {
+  it("点人工 Attention 项打开其源详情，不解决它", () => {
     const byMouse = fresh("ui");
     byMouse.dispatch(parseCommand(":needs"));
     const item = findContentLine(byMouse, /\[urgent\] Choose the readable cover/);
-    expect(clickAt(byMouse, item.text.indexOf("Choose") + 1, item.y)).toBe(true);
+    expect(clickAt(byMouse, columnOf(item.text, "Choose"), item.y)).toBe(true);
     expect(byMouse.get().section).toBe("needs");
     expect(byMouse.get().attentionOpen).toBe("queue:cover");
     expect(snap.attentionRead!.items).toHaveLength(1);
   });
 
-  it("renders NO resolve/reply affordance anywhere (B3: those are Studio's)", () => {
+  it("任何处都不渲染 resolve/reply 可操作项（B3：那些属 Studio）", () => {
     const s = fresh("t");
     for (const cmd of [":topology", "rig openrig-build", ":specs", "spec openrig-build-rig", ":needs"]) {
       s.dispatch(parseCommand(cmd));
@@ -128,7 +135,7 @@ describe("content-pane parity (Phase 3): click the surface, not a control", () =
     }
   });
 
-  it("drilling resets the view tab to TABLE (FR-3 default)", () => {
+  it("drill 把视图 tab 重置为 TABLE（FR-3 默认）", () => {
     const s = fresh("t");
     s.dispatch(parseCommand("rig openrig-build"));
     s.dispatch(parseCommand("tab overview"));
@@ -136,7 +143,7 @@ describe("content-pane parity (Phase 3): click the surface, not a control", () =
     expect(s.get().viewTab).toBe("table");
   });
 
-  it("PageDown scrolls content without moving the Explorer selection", () => {
+  it("PageDown 滚动内容，不移动 explorer 选择", () => {
     const s = fresh("t");
     const selected = s.get().selection;
     const screen = renderScreen(s.get(), snap, { cols: 120, rows: 8 });
@@ -148,7 +155,7 @@ describe("content-pane parity (Phase 3): click the surface, not a control", () =
     expect(s.get().selection).toBe(selected);
   });
 
-  it("raw right/down/Enter reaches content tabs, table rows, spec refs, and Needs links", () => {
+  it("原始 right/down/Enter 到达 content tab、表格行、spec 引用与 Needs 链接", () => {
     const structured: FleetSnapshot = {
       ...snap,
       specs: [{
@@ -194,17 +201,17 @@ describe("content-pane parity (Phase 3): click the surface, not a control", () =
   });
 });
 
-describe("rig-stream footer (FR-10): ambient, toggleable, never a view", () => {
-  it("renders the latest stream item when ON and hides when toggled OFF", () => {
+describe("rig-stream footer（FR-10）：环境性、可切换、绝非视图", () => {
+  it("开启时渲染最新流项，切换关闭时隐藏", () => {
     const s = fresh("t");
     let screen = renderScreen(s.get(), snap, { cols: 120, rows: 32 });
-    expect(screen.lines.some((l) => l.includes("≋") && l.includes("provider re-auth completed"))).toBe(true);
+    expect(screen.lines.some((l) => l.includes("≋") && l.includes("提供商重新认证在 mm2 上完成"))).toBe(true);
     s.dispatch({ type: "footer" });
     screen = renderScreen(s.get(), snap, { cols: 120, rows: 32 });
     expect(screen.lines.some((l) => l.includes("≋"))).toBe(false);
   });
 
-  it("is not navigable: no section, no grammar verb, no hit target", () => {
+  it("不可导航：无区段、无 grammar 动词、无命中目标", () => {
     const s = fresh("t");
     expect(s.get().sections.some((sec) => sec.name.includes("stream"))).toBe(false);
     expect(parseCommand(":stream").type).toBe("error");

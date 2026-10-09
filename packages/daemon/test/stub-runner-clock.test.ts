@@ -5,15 +5,13 @@ import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Slice 51-01 items 6-8 — the stub runner's OWN clock honors the injected clock.
+// Slice 51-01 第 6-8 项——stub runner 自身时钟遵守注入时钟。
 //
-// PRD §5 determinism guarantee: "no wall-clock/RNG in the stub's OWN behavior." The
-// runner stamps its readiness sidecar (updatedAt, exit.at) — with plain new Date()
-// those stamps drift run-to-run and break the compaction determinism pin (a
-// byte-identical double-run). The runner's clock must be the SAME injectable seam the
-// compaction assets use: OPENRIG_TEST_CLOCK_NOW (an ISO instant) with a real-wall-clock
-// fallback (absent = production). This spawns the REAL runner (the class-fix floor) and
-// reads the sidecar it actually wrote.
+// PRD 第 5 节确定性保证：“stub 自身行为不得使用墙上时钟或 RNG。”runner 会为 readiness
+// sidecar 写入 updatedAt、exit.at；若直接用 new Date()，这些戳记会在每次运行间漂移，
+// 破坏压缩确定性固定（两次运行必须字节一致）。runner 时钟必须使用压缩资产的同一可注入接缝：
+// OPENRIG_TEST_CLOCK_NOW（ISO 时刻），缺失时回退到真实墙上时钟（生产行为）。本测试生成
+// 真实 runner（类别修复下限）并读取它实际写入的 sidecar。
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNNER = resolve(HERE, "../src/adapters/stub-runner.ts");
@@ -46,7 +44,7 @@ describe("stub-runner own-clock determinism (PRD §5)", () => {
     dir = undefined;
   });
 
-  it("stamps the readiness sidecar updatedAt from OPENRIG_TEST_CLOCK_NOW (not wall-clock)", async () => {
+  it("使用 OPENRIG_TEST_CLOCK_NOW 而非墙上时钟写入 readiness sidecar updatedAt", async () => {
     dir = mkdtempSync(join(tmpdir(), "stub-clock-"));
     child = execFile("node", ["--import", "tsx", RUNNER,
       "--session-name", "dev-worker@t", "--cwd", dir, "--launch-id", "clk-1", "--posture", "floor"],
@@ -57,7 +55,7 @@ describe("stub-runner own-clock determinism (PRD §5)", () => {
     expect(sidecar["updatedAt"]).toBe(INJECTED_ISO);
   }, 20_000);
 
-  it("falls back to real wall-clock when the injected clock is absent (production path intact)", async () => {
+  it("未注入时钟时回退到真实墙上时钟（生产路径保持完整）", async () => {
     dir = mkdtempSync(join(tmpdir(), "stub-clock-fallback-"));
     child = execFile("node", ["--import", "tsx", RUNNER,
       "--session-name", "dev-worker@t", "--cwd", dir, "--launch-id", "clk-2", "--posture", "floor"]);

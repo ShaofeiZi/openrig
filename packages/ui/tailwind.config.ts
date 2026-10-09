@@ -2,9 +2,9 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}", "./index.html"],
-  // OPR.0.4.3.29 — Tailwind v3.4 selector strategy so `dark:` utilities key off
-  // the `.dark` class on <html>. The general theme applies via the token cascade
-  // (globals.css `.dark {}`), not per-utility; this enables `dark:` where used.
+  // OPR.0.4.3.29——Tailwind v3.4 选择器策略，使 `dark:` 工具类依据 <html> 上的
+  // `.dark` 类生效。通用主题经 token 级联（globals.css `.dark {}`）施加，而非逐工具类；
+  // 这让用到 `dark:` 的地方生效。
   darkMode: "selector",
   theme: {
     borderRadius: {
@@ -16,11 +16,11 @@ const config: Config = {
       xl: "0px",
       "2xl": "0px",
       "3xl": "0px",
-      full: "9999px", /* Exception: stamp circles only */
+      full: "9999px", /* 例外：仅印章圆用 */
     },
     extend: {
       colors: {
-        /* Paper surfaces */
+        /* 纸面表面 */
         background: "hsl(var(--background))",
         "surface-lowest": "hsl(var(--surface-container-lowest))",
         "surface-low": "hsl(var(--surface-container-low))",
@@ -28,7 +28,7 @@ const config: Config = {
         "surface-high": "hsl(var(--surface-container-high))",
         "surface-highest": "hsl(var(--surface-container-highest))",
 
-        /* Ink */
+        /* 墨色 */
         foreground: {
           DEFAULT: "hsl(var(--on-surface))",
           muted: "hsl(var(--on-surface-variant))",
@@ -37,13 +37,13 @@ const config: Config = {
         "on-surface": "hsl(var(--on-surface))",
         "on-surface-variant": "hsl(var(--on-surface-variant))",
 
-        /* Technical */
+        /* 技术色 */
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           container: "hsl(var(--secondary-container))",
         },
 
-        /* Alert red */
+        /* 警示红 */
         tertiary: "hsl(var(--tertiary))",
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -51,25 +51,25 @@ const config: Config = {
         },
         error: "hsl(var(--error))",
 
-        /* Interactive */
+        /* 交互 */
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--background))",
         },
         "inverse-surface": "hsl(var(--inverse-surface))",
 
-        /* Borders */
+        /* 边框 */
         outline: {
           DEFAULT: "hsl(var(--outline))",
           variant: "hsl(var(--outline-variant))",
         },
 
-        /* Status */
+        /* 状态 */
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
         accent: "hsl(var(--secondary))",
 
-        /* shadcn compat */
+        /* shadcn 兼容 */
         card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
         popover: { DEFAULT: "hsl(var(--popover))", foreground: "hsl(var(--popover-foreground))" },
         muted: { DEFAULT: "hsl(var(--muted))", foreground: "hsl(var(--muted-foreground))" },
@@ -78,7 +78,7 @@ const config: Config = {
         headline: ["Space Grotesk Variable", "Space Grotesk", "sans-serif"],
         body: ["Inter", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono Variable", "JetBrains Mono", "monospace"],
-        /* Legacy aliases */
+        /* 旧别名 */
         inter: ["Inter", "system-ui", "sans-serif"],
         grotesk: ["Space Grotesk Variable", "Space Grotesk", "sans-serif"],
       },

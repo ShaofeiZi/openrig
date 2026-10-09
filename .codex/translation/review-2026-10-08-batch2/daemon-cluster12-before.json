@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/workflow-human-destination.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-exception-readiness.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-keepalive-arming.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-exception.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-frontier-guard.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-reconciliation.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/workflow-exception-router.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-deadline.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-types.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-exception-escalation.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-instance-store.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-projector.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-spec-cache.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-role-context.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-role-resolver.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-runtime.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-step-trail-log.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-planning-context.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-guidance.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-validator.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

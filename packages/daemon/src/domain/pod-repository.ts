@@ -18,8 +18,8 @@ interface PodRow {
 }
 
 /**
- * CRUD repository for pods (bounded context domains within a rig).
- * @param db - shared database handle
+ * pod 的 CRUD 仓库；pod 是工作组内部的有界上下文域。
+ * @param db - 共享数据库句柄
  */
 export class PodRepository {
   readonly db: Database.Database;
@@ -29,11 +29,11 @@ export class PodRepository {
   }
 
   /**
-   * Create a pod within a rig.
-   * @param rigId - parent rig id
-   * @param label - human-readable pod label
-   * @param opts - optional summary and continuity policy JSON
-   * @returns the created Pod
+   * 在工作组中创建一个 pod。
+   * @param rigId - 父工作组 id
+   * @param label - 人类可读的 pod 标签
+   * @param opts - 可选的摘要与连续性策略 JSON
+   * @returns 已创建的 Pod
    */
   createPod(rigId: string, namespace: string, label: string, opts?: PodOptions): Pod {
     const id = ulid();
@@ -49,25 +49,25 @@ export class PodRepository {
   }
 
   /**
-   * Get a pod by id.
-   * @param podId - pod id
-   * @returns Pod or null if not found
+   * 按 id 获取 pod。
+ * @param podId - pod 标识符
+   * @returns 找到时返回 Pod，否则返回 null
    */
   getPod(podId: string): Pod | null {
     const row = this.db.prepare("SELECT * FROM pods WHERE id = ?").get(podId) as PodRow | undefined;
     return row ? this.rowToPod(row) : null;
   }
 
-  /** Get a pod by rig and authored namespace. Returns null if not found. */
+  /** 按工作组与作者声明的 namespace 获取 pod；未找到时返回 null。 */
   getPodByNamespace(rigId: string, namespace: string): Pod | null {
     const row = this.db.prepare("SELECT * FROM pods WHERE rig_id = ? AND namespace = ?").get(rigId, namespace) as PodRow | undefined;
     return row ? this.rowToPod(row) : null;
   }
 
   /**
-   * Get all pods for a rig.
-   * @param rigId - rig id
-   * @returns array of Pods ordered by creation time
+   * 获取工作组中的全部 pod。
+   * @param rigId - 工作组 id
+   * @returns 按创建时间排序的 Pod 数组
    */
   getPodsForRig(rigId: string): Pod[] {
     const rows = this.db
@@ -77,15 +77,15 @@ export class PodRepository {
   }
 
   /**
-   * Delete a pod by id.
-   * Nodes with this pod_id will have pod_id set to NULL (ON DELETE SET NULL).
-   * @param podId - pod id
+   * 按 id 删除 pod。
+   * 引用该 pod_id 的节点会把 pod_id 设为 NULL（ON DELETE SET NULL）。
+   * @param podId - pod 标识符
    */
   deletePod(podId: string): void {
     this.db.prepare("DELETE FROM pods WHERE id = ?").run(podId);
   }
 
-  // -- Continuity state operations --
+  // -- 连续性状态操作 --
 
   getContinuityStatesForRig(rigId: string): import("./types.js").ContinuityState[] {
     const podIds = this.db.prepare("SELECT id FROM pods WHERE rig_id = ?").all(rigId) as { id: string }[];

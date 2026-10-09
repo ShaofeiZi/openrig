@@ -25,8 +25,8 @@ test("full mode scans tracked files and fails loudly on a planted leak", () => {
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /README\.md/);
     assert.match(result.stderr, /founder/);
-    assert.match(result.stderr, /line 1/i);
-    assert.match(result.stderr, /sidecar|fence|genericize|host-only/i);
+    assert.match(result.stderr, /第 1 行/);
+    assert.match(result.stderr, /sidecar|围栏|泛化|宿主侧/i);
   });
 });
 
@@ -247,7 +247,7 @@ test("Plain B keeps guard enforcement out of root test:repo while fixture tests 
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
   const command = pkg.scripts["test:repo"];
 
-  assert.match(command, /node --test scripts\/\*\.test\.mjs/);
+  assert.match(command, /node --test --test-concurrency=1 scripts\/\*\.test\.mjs/);
   assert.doesNotMatch(command, /node scripts\/check-internal-leak-guard\.mjs/);
 });
 

@@ -32,7 +32,7 @@ export function useScopeAudit(missionId: string | null) {
     queryKey: ["scope-audit", missionId],
     queryFn: async () => {
       const res = await fetch(`/api/scope/audit?mission=${encodeURIComponent(missionId!)}`);
-      if (!res.ok) throw new Error(`scope audit failed: ${res.status}`);
+      if (!res.ok) throw new Error(`范围审计失败：${res.status}`);
       return res.json();
     },
     enabled: !!missionId,

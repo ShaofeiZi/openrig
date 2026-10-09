@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch19",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/context.test.ts",
+      "before_sha256_16": "00915791da9469b7",
+      "after_sha256_16": "2f0e1e1c72288cb6",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/broadcast.test.ts",
+      "before_sha256_16": "e2dfc157b4a35c99",
+      "after_sha256_16": "bb2a9988f7b90599",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/ask-wake-cli.test.ts",
+      "before_sha256_16": "fce00551cc5c0946",
+      "after_sha256_16": "df91560103a2009a",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/topology-converge.test.ts",
+      "before_sha256_16": "820955ad14272c3e",
+      "after_sha256_16": "0ce9856d6099ae3d",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/review-freeze.test.ts",
+      "before_sha256_16": "32926afd82a17ffb",
+      "after_sha256_16": "8048dd4e985d54dc",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

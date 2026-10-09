@@ -109,7 +109,7 @@ describe("ForkNowAction", () => {
 
     await waitFor(() => {
       const result = screen.getByTestId("fork-now-result");
-      expect(result.textContent).toContain("Fork failed");
+      expect(result.textContent).toContain("派生失败");
       expect(result.textContent).toContain("attention_required");
       expect(result.className).toContain("text-red");
     }, { timeout: 3000 });

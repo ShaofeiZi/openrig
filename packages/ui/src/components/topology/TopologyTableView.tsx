@@ -1,17 +1,15 @@
-// V1 attempt-3 Phase 3: Topology table view per topology-table-view.md + SC-25.
+// V1 attempt-3 Phase 3：拓扑表格视图，依 topology-table-view.md + SC-25。
 //
-// Tanstack-backed table; row per agent across topology, scoped by URL.
+// 基于 Tanstack 的表格；按拓扑逐智能体一行，由 URL 限定范围。
 //
-// V1 attempt-3 Phase 5 P5-9 ship-gate bounce P0-1: rules-of-hooks fix.
-// Previous shape used `scopedRigs.map((r) => useNodeInventory(r.id))` which
-// calls hooks in a loop with variable count. When scopedRigs grew from 0
-// (initial render before useRigSummary resolves) to N (after resolution),
-// React detected the hook count change and threw "Cannot read properties
-// of undefined (reading 'length')" downstream. This crashed /topology at
-// 375x812 mobile because P5-9 mounts the table immediately at first
-// render (graph view-mode degraded to table for narrow viewports) BEFORE
-// rigs data is available. Switched to `useQueries` from React Query:
-// single hook call regardless of array length.
+// V1 attempt-3 Phase 5 P5-9 ship-gate bounce P0-1：hooks 规则修复。
+// 原写法用 `scopedRigs.map((r) => useNodeInventory(r.id))`，在循环中以可变数量调用 hook。
+// 当 scopedRigs 从 0（useRigSummary 解析前的首屏）增长到 N（解析后）时，
+// React 检测到 hook 数量变化，下游抛出
+// "Cannot read properties of undefined (reading 'length')"。这导致 /topology 在
+// 375x812 移动端白屏，因为 P5-9 在 rigs 数据就绪前的首次渲染就立即挂载表格
+// （窄视口下 graph 视图降级为 table）。改用 React Query 的 `useQueries`：
+// 无论数组长度如何都只调用一次 hook。
 
 import { memo, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -82,16 +80,14 @@ function statusToSemanticPip(s: string): "active" | "running" | "stopped" | "war
 }
 
 function CmuxButton({ row }: { row: AgentRow }) {
-  // V0.3.1 slice 14 walk-item 16: action column buttons stay visible
-  // unconditionally (no hover/focus gate). Prior implementation used
-  // `opacity-0` + `group-hover:!opacity-100` which hid the affordance
-  // off-mouse — operators kept missing the cmux launcher.
+  // V0.3.1 slice 14 walk-item 16：操作列按钮无条件保持可见
+  //（无 hover/focus 门控）。此前实现用 `opacity-0` + `group-hover:!opacity-100`，
+  // 鼠标移开后隐藏了入口——操作者总找不到 cmux 启动器。
   const cmuxLaunch = useCmuxLaunch();
-  // OPR.0.4.1.31 part B — surface the mutation error. Previously the button
-  // tracked only isPending, so a failed open-cmux (no current cmux workspace,
-  // missing terminal bearer, etc.) failed SILENTLY = "the button never works."
-  // Now a failure shows a visible, actionable message (TanStack isError/error)
-  // and a click while errored resets + retries.
+  // OPR.0.4.1.31 part B：把变更错误暴露出来。此前按钮只跟踪 isPending，
+  // 一次 open-cmux 失败（无当前 cmux 工作区、缺终端 bearer 等）会静默失败
+  // =「按钮从来不好使」。现在失败会显示可见、可操作的消息
+  //（TanStack isError/error），出错时点击会重置并重试。
   const failed = cmuxLaunch.isError;
   const errorMessage = failed
     ? (cmuxLaunch.error instanceof Error ? cmuxLaunch.error.message : String(cmuxLaunch.error))
@@ -103,8 +99,8 @@ function CmuxButton({ row }: { row: AgentRow }) {
         data-testid={`topology-table-cmux-${row.logicalId}`}
         onClick={(e) => {
           e.stopPropagation();
-          // OPR.0.4.1.31 part D — never POST open-cmux for a malformed row
-          // (a null/empty logicalId would build /nodes/"null"/open-cmux).
+          // OPR.0.4.1.31 part D：绝不为畸形行 POST open-cmux
+          // （null/空 logicalId 会拼出 /nodes/"null"/open-cmux）。
           if (!row.logicalId) return;
           if (cmuxLaunch.isError) cmuxLaunch.reset();
           cmuxLaunch.mutate({ rigId: row.rigId, logicalId: row.logicalId });
@@ -112,17 +108,17 @@ function CmuxButton({ row }: { row: AgentRow }) {
         aria-busy={cmuxLaunch.isPending || undefined}
         aria-label={
           cmuxLaunch.isPending
-            ? `Opening ${row.logicalId} in cmux`
+            ? `正在 cmux 中打开 ${row.logicalId}`
             : failed
-              ? `Open ${row.logicalId} in cmux failed: ${errorMessage}. Click to retry.`
-              : `Open ${row.logicalId} in cmux`
+              ? `在 cmux 中打开 ${row.logicalId} 失败：${errorMessage}。点击重试。`
+              : `在 cmux 中打开 ${row.logicalId}`
         }
         title={
           cmuxLaunch.isPending
-            ? "Opening in cmux"
+            ? "正在 cmux 中打开"
             : failed
-              ? `Failed: ${errorMessage} — click to retry`
-              : "Open in cmux"
+              ? `失败：${errorMessage} —— 点击重试`
+              : "在 cmux 中打开"
         }
         disabled={cmuxLaunch.isPending}
         data-error={failed || undefined}
@@ -148,25 +144,23 @@ function CmuxButton({ row }: { row: AgentRow }) {
   );
 }
 
-/** V0.3.1 slice 14 walk-item 15 — status label split. When the row's
- *  activity ring is in the `active` state the cell shows "active" with
- *  a subtle left-to-right shimmer; otherwise it shows "idle" (or the
- *  raw status string for non-running states like "starting" / "failed").
- *  Honors `prefers-reduced-motion: reduce` via CSS — see
- *  `topology-shimmer` in `topology-table-shimmer.css`.
+/** V0.3.1 slice 14 walk-item 15 —— 状态标签拆分。当该行的活动环处于 `active` 状态时，
+ *  单元格显示「活跃」并带 subtle 的从左到右微光；否则显示「空闲」
+ *  （对 starting / failed 等非运行态则显示原始状态串）。
+ *  通过 CSS 响应 `prefers-reduced-motion: reduce`——见
+ *  `topology-table-shimmer.css` 中的 `topology-table-active-shimmer`。
  *
- *  V0.3.1 bug-fix slice topology-perf: memoized so that
- *  useTopologyActivity bumps (1s interval + per-stream-event) don't
- *  re-render every active-status cell across a large topology when
- *  only one row's activityState changed. */
+ *  V0.3.1 修复 slice topology-perf：做了 memo，
+ *  这样 useTopologyActivity 的刷新（1 秒间隔 + 每流事件）不会在只有某一行
+ *  activityState 变化时，重渲染大拓扑里每一个活跃状态单元格。 */
 const StatusCell = memo(function StatusCell({ status, activityState }: { status: string; activityState: string | undefined }) {
   const semantic = statusToSemanticPip(status);
-  // Only split the "running" status into active/idle. Other statuses
-  // (starting / stopped / failed / unknown) keep their raw label.
+  // 只把 "running" 状态拆成 活跃/空闲。其他状态
+  // （starting / stopped / failed / unknown）保留原始标签。
   const isRunning = status === "running" || status === "ready";
   const isActive = isRunning && activityState === "active";
   const isIdle = isRunning && !isActive;
-  const label = isActive ? "active" : isIdle ? "idle" : status;
+  const label = isActive ? "活跃" : isIdle ? "空闲" : status;
   const labelClass = isActive ? "topology-table-active-shimmer" : "";
   return (
     <span data-testid={`topology-table-status-${activityState ?? "unknown"}`} data-activity-state={activityState ?? null}>
@@ -176,9 +170,8 @@ const StatusCell = memo(function StatusCell({ status, activityState }: { status:
 });
 StatusCell.displayName = "StatusCell";
 
-/** V0.3.1 bug-fix slice topology-perf: memoized to skip re-render when
- *  the parent table rebuilds rows for a 1s activity bump but this
- *  row's context-usage payload didn't change. */
+/** V0.3.1 修复 slice topology-perf：做了 memo，当父表格因 1 秒活动刷新重建行、
+ *  但本行 context-usage 负载未变时跳过重渲染。 */
 const ContextCell = memo(function ContextCell({ row }: { row: AgentRow }) {
   const usage = row.contextUsage;
   const known = usage?.availability === "known" && typeof usage.usedPercentage === "number";
@@ -189,9 +182,9 @@ const ContextCell = memo(function ContextCell({ row }: { row: AgentRow }) {
       title={
         known
           ? usage?.fresh === false
-            ? "Context usage (stale sample)"
-            : "Context usage (fresh)"
-          : "Context sample unavailable"
+            ? "上下文用量（采样已过期）"
+            : "上下文用量（最新采样）"
+          : "上下文采样不可用"
       }
     >
       {known ? `${usage.usedPercentage}%` : "--"}
@@ -209,9 +202,8 @@ const ContextCell = memo(function ContextCell({ row }: { row: AgentRow }) {
 });
 ContextCell.displayName = "ContextCell";
 
-/** V0.3.1 bug-fix slice topology-perf: memoized; token cell content
- *  only depends on the (input, output) token pair which is stable
- *  across most bumps. */
+/** V0.3.1 修复 slice topology-perf：做了 memo；令牌单元格内容
+ *  只依赖（输入、输出）令牌对，该对在多数刷新中保持稳定。 */
 const TokenCell = memo(function TokenCell({ row }: { row: AgentRow }) {
   const usage = row.contextUsage;
   const total = sumTokenCounts(usage?.totalInputTokens, usage?.totalOutputTokens);
@@ -221,7 +213,7 @@ const TokenCell = memo(function TokenCell({ row }: { row: AgentRow }) {
     <span
       data-testid={`topology-table-tokens-${row.logicalId}`}
       className={`font-mono text-xs font-bold ${tokenLabel ? "text-on-surface-variant" : "text-on-surface-variant"}`}
-      title={tokenTitle ?? "Token sample unavailable"}
+      title={tokenTitle ?? "令牌采样不可用"}
     >
       {tokenLabel ?? "--"}
     </span>
@@ -239,11 +231,11 @@ TokenCell.displayName = "TokenCell";
 
 function agentColumns(): ColumnDef<AgentRow>[] {
   return [
-    { accessorKey: "rigName", header: "Rig", cell: ({ getValue }) => <span className="font-mono text-xs">{String(getValue())}</span> },
+    { accessorKey: "rigName", header: "工作组", cell: ({ getValue }) => <span className="font-mono text-xs">{String(getValue())}</span> },
     { accessorKey: "podName", header: "Pod", cell: ({ getValue }) => <span className="font-mono text-xs">{String(getValue())}</span> },
     {
       accessorKey: "logicalId",
-      header: "Agent",
+      header: "智能体",
       cell: ({ row }) => (
         <ActivityRing
           as="span"
@@ -262,20 +254,20 @@ function agentColumns(): ColumnDef<AgentRow>[] {
     },
     {
       accessorKey: "runtime",
-      header: "Runtime",
+      header: "运行时",
       cell: ({ getValue }) => (
         <RuntimeBadge runtime={String(getValue() ?? "")} size="xs" compact variant="inline" />
       ),
     },
     {
       id: "context",
-      header: "Context",
+      header: "上下文",
       sortingFn: (a, b) => (a.original.contextUsage?.usedPercentage ?? -1) - (b.original.contextUsage?.usedPercentage ?? -1),
       cell: ({ row }) => <ContextCell row={row.original} />,
     },
     {
       id: "tokens",
-      header: "Tokens",
+      header: "令牌",
       sortingFn: (a, b) => {
         const left = sumTokenCounts(a.original.contextUsage?.totalInputTokens, a.original.contextUsage?.totalOutputTokens) ?? -1;
         const right = sumTokenCounts(b.original.contextUsage?.totalInputTokens, b.original.contextUsage?.totalOutputTokens) ?? -1;
@@ -285,7 +277,7 @@ function agentColumns(): ColumnDef<AgentRow>[] {
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "状态",
       cell: ({ getValue, row }) => (
         <StatusCell
           status={String(getValue())}
@@ -295,21 +287,18 @@ function agentColumns(): ColumnDef<AgentRow>[] {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "操作",
       enableSorting: false,
-      // V0.3.1 slice 14 walk-item 16: action column shows cmux +
-      // terminal-preview side-by-side, no hover gate. Both buttons
-      // render at all times for predictable affordances.
+      // V0.3.1 slice 14 walk-item 16：操作列并排显示 cmux + 终端预览，无 hover 门控。
+      // 两个按钮始终渲染，保证入口可预期。
       cell: ({ row }) => <TopologyActionsCell row={row.original} />,
     },
   ];
 }
 
-/** OPR.0.4.6.MH2 rev1-r2 B1 — cmux launch + terminal preview are LOCAL
- *  actions (bare local POST / local session reads); with a remote host
- *  selected the row data is the REMOTE host's, so the local affordances
- *  are gated behind an honest read-only marker (FR-7: no cross-host
- *  mutation offered on remote views). */
+/** OPR.0.4.6.MH2 rev1-r2 B1 —— cmux 启动 + 终端预览是本地动作
+ * （裸本地 POST / 本地会话读取）；选中远程主机时行数据来自远程主机，
+ *  因此本地入口被一个诚实的只读标记挡住（FR-7：远程视图不提供跨主机变更）。 */
 function TopologyActionsCell({ row }: { row: AgentRow }) {
   const isRemote = useSelectedHostId() !== LOCAL_HOST_ID;
   if (isRemote) {
@@ -319,7 +308,7 @@ function TopologyActionsCell({ row }: { row: AgentRow }) {
         data-remote-readonly="true"
         className="font-mono text-[9px] uppercase tracking-wide text-on-surface-variant"
       >
-        read-only
+        只读
       </span>
     );
   }
@@ -342,9 +331,8 @@ function TopologyActionsCell({ row }: { row: AgentRow }) {
 }
 
 export function TopologyTableView({ rigIdScope, podNameScope }: { rigIdScope?: string; podNameScope?: string }) {
-  // V1 polish slice Phase 5.1 P5.1-7: row click navigates to seat-scope
-  // center page (parity with graph node click + Explorer tree click +
-  // Topology Tree details-icon-retired contract).
+  // V1 polish slice Phase 5.1 P5.1-7：行点击导航到 seat-scope 居中页
+  //（与 graph 节点点击 + Explorer 树点击 + Topology Tree 的 details 图标退役契约保持一致）。
   const navigate = useNavigate();
   const hostId = useSelectedHostId();
   const { data: rigs } = useRigSummary();
@@ -357,9 +345,9 @@ export function TopologyTableView({ rigIdScope, podNameScope }: { rigIdScope?: s
     [rigs, rigIdScope],
   );
 
-  // P0-1 fix: useQueries replaces the .map(useNodeInventory) loop. Single
-  // hook call regardless of scopedRigs length. React's hook order stays
-  // stable across renders even when rigs grows from undefined to [N].
+  // P0-1 修复：用 useQueries 替换 .map(useNodeInventory) 循环。无论 scopedRigs
+  // 长度如何都只调用一次 hook。即使 rigs 从 undefined 增长到 [N]，React 的 hook
+  // 顺序在各次渲染间保持稳定。
   const inventoryResults = useQueries({
     queries: scopedRigs.map((r) => ({
       queryKey: ["rig", r.id, "nodes", hostId] as const,
@@ -437,12 +425,11 @@ export function TopologyTableView({ rigIdScope, podNameScope }: { rigIdScope?: s
       const q = String(filterValue ?? "").toLowerCase();
       if (!q) return true;
       const r = row.original;
-      // OPR.0.4.1.13 (crash fix): NULL-SAFE every field. The table builds a row for
-      // EVERY node and does NOT default rigName (rig.name) or logicalId (n.logicalId)
-      // at build, so a malformed inventory entry (null name / null logicalId - a real
-      // edge data shape) made `r.rigName.toLowerCase()` / `r.logicalId.toLowerCase()`
-      // throw HERE during the filtered-row-model build, white-screening /topology
-      // (no error boundary). `String(v ?? "")` is null-safe for all five fields.
+      // OPR.0.4.1.13（崩溃修复）：每个字段都做空安全。表格为每个节点都建行，
+      // 且在建行时不给 rigName（rig.name）或 logicalId（n.logicalId）兜底，
+      // 因此一条畸形库存条目（name / logicalId 为 null——真实边界数据形态）
+      // 会在过滤行模型构建时让 `r.rigName.toLowerCase()` / `r.logicalId.toLowerCase()`
+      // 在此抛错，使 /topology 白屏（无错误边界）。`String(v ?? "")` 对五个字段都空安全。
       const hay = (v: unknown) => String(v ?? "").toLowerCase();
       return (
         hay(r.rigName).includes(q) ||
@@ -458,14 +445,14 @@ export function TopologyTableView({ rigIdScope, podNameScope }: { rigIdScope?: s
     <div data-testid="topology-table-view" className="space-y-3 mt-4">
       <div className="flex items-center gap-2">
         <VellumInput
-          placeholder="Filter agents..."
+          placeholder="筛选智能体…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
           testId="topology-table-search"
         />
         <span className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant ml-auto">
-          {table.getFilteredRowModel().rows.length} of {activityData.length}
+          {table.getFilteredRowModel().rows.length} / {activityData.length}
         </span>
       </div>
       <div className="border border-outline-variant overflow-x-auto">
@@ -490,7 +477,7 @@ export function TopologyTableView({ rigIdScope, podNameScope }: { rigIdScope?: s
             {table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-3 py-6 text-center font-mono text-xs text-on-surface-variant">
-                  No agents match.
+                  无匹配的智能体。
                 </td>
               </tr>
             ) : (
@@ -499,10 +486,10 @@ export function TopologyTableView({ rigIdScope, podNameScope }: { rigIdScope?: s
                   key={row.id}
                   data-testid={`topology-table-row-${row.original.logicalId}`}
                   onClick={() => {
-                    // OPR.0.4.1.31 part D — guard malformed rows: a null/empty
-                    // logicalId would build /seat/$rigId/"null"
-                    // (encodeURIComponent(null) === "null"). Skip navigation for
-                    // such rows instead of routing to a bogus seat URL.
+                    // OPR.0.4.1.31 part D：防护畸形行：null/空
+                    // logicalId 会拼出 /seat/$rigId/"null"
+                    //（encodeURIComponent(null) === "null"）。这类行跳过导航，
+                    // 而不是路由到一个假的 seat URL。
                     if (!row.original.logicalId) return;
                     navigate({
                       to: "/topology/seat/$rigId/$logicalId",

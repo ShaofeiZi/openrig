@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-// OpenRig Claude Status Line Context Collector
-// Reads Claude status line JSON from stdin, extracts context window data,
-// and writes atomically to a sidecar file.
+// OpenRig Claude 状态栏上下文收集器。
+// 从 stdin 读取 Claude 状态栏 JSON，提取上下文窗口数据，并原子写入 sidecar 文件。
 //
-// Usage: node claude-statusline-context.js <context-output-path-or-dir> [provider-usage-dir]
+// 用法：node claude-statusline-context.js <context-output-path-or-dir> [provider-usage-dir]
 
 const fs = require("fs");
 const path = require("path");
@@ -11,7 +10,7 @@ const path = require("path");
 const outputTarget = process.argv[2];
 const providerUsageTarget = process.argv[3];
 if (!outputTarget) {
-  process.exit(0); // No output path — silently exit
+  process.exit(0); // 未提供输出路径时静默退出。
 }
 
 function logFailure(message, error) {
@@ -27,7 +26,7 @@ process.stdin.on("end", () => {
     const raw = JSON.parse(input);
     const contextWindow = raw.context_window;
     if (!contextWindow) {
-      logFailure("missing context_window in Claude status line payload");
+      logFailure("Claude 状态栏 payload 中缺少 context_window");
       process.exit(0);
     }
 
@@ -49,7 +48,7 @@ process.stdin.on("end", () => {
 
     const outputPath = resolveOutputPath(outputTarget, raw);
     if (!outputPath) {
-      logFailure("could not resolve output path from Claude status line payload");
+      logFailure("无法从 Claude 状态栏 payload 解析输出路径");
       process.exit(0);
     }
 
@@ -58,7 +57,7 @@ process.stdin.on("end", () => {
     if (providerUsageTarget) {
       const providerUsagePath = resolveOutputPath(providerUsageTarget, raw);
       if (!providerUsagePath) {
-        logFailure("could not resolve provider_usage output path from Claude status line payload");
+        logFailure("无法从 Claude 状态栏 payload 解析 provider_usage 输出路径");
         process.exit(0);
       }
       const rateLimits = normalizeRateLimits(raw.rate_limits);
@@ -70,7 +69,7 @@ process.stdin.on("end", () => {
       writeJsonAtomic(providerUsagePath, providerUsage);
     }
   } catch (error) {
-    logFailure("failed to collect Claude context status line", error);
+    logFailure("收集 Claude 上下文状态栏失败", error);
     process.exit(0);
   }
 });

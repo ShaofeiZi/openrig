@@ -19,9 +19,9 @@ const AUTHORED_WAIT_SPEC = readFileSync(
 );
 
 const commandFor = (instanceId: string, packetId: string, owner: string) =>
-  `rig workflow project --instance ${instanceId} --current-packet ${packetId} --exit <handoff|waiting|done|failed> --actor-session ${owner}`;
+  `zrig workflow project --instance ${instanceId} --current-packet ${packetId} --exit <handoff|waiting|done|failed> --actor-session ${owner}`;
 
-describe("workflow authored waiting re-presentation", () => {
+describe("工作流声明的 waiting 再次提醒", () => {
   let db: Database.Database;
   let queueRepo: QueueRepository;
   let watchdogRepo: WatchdogJobsRepository;
@@ -48,7 +48,7 @@ describe("workflow authored waiting re-presentation", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("re-presents the same waiting occurrence once, absorbs replay, and leaves unconfigured waiting unchanged", async () => {
+  it("对同一 waiting occurrence 只再次提醒一次、吸收 replay，并保持未配置的 waiting 不变", async () => {
     const created = await runtime.instantiate({
       specPath,
       rootObjective: "prove the authored context rail",
@@ -57,7 +57,7 @@ describe("workflow authored waiting re-presentation", () => {
     const entryCommand = commandFor(created.instance.instanceId, created.entryQitemId, "worker@rig");
     const entryBody = queueRepo.getByIdOrThrow(created.entryQitemId).body;
     expect(entryBody).toContain(`Continuation: ${entryCommand}`);
-    expect(entryBody).toContain("shortcut, not the whole story");
+    expect(entryBody).toContain("只是捷径，并非全部信息");
 
     await runtime.project({
       instanceId: created.instance.instanceId,
@@ -76,7 +76,7 @@ describe("workflow authored waiting re-presentation", () => {
     expect(timer.intervalSeconds).toBe(60);
     expect(timerMessage).toContain(created.entryQitemId);
     expect(timerMessage).toContain(entryCommand);
-    expect(timerMessage).toContain("shortcut, not the whole story");
+    expect(timerMessage).toContain("只是捷径，并非全部信息");
     queueRepo.recordWatchdogWakeAttempt(timer.jobId, "verified");
     expect(watchdogRepo.getById(timer.jobId)).toMatchObject({
       state: "terminal",
@@ -117,7 +117,7 @@ describe("workflow authored waiting re-presentation", () => {
     const nextCommand = commandFor(created.instance.instanceId, handoff.nextQitemId!, "next@rig");
     const nextBody = queueRepo.getByIdOrThrow(handoff.nextQitemId!).body;
     expect(nextBody).toContain(`Continuation: ${nextCommand}`);
-    expect(nextBody).toContain("shortcut, not the whole story");
+    expect(nextBody).toContain("只是捷径，并非全部信息");
 
     await reconstructed.project({
       instanceId: created.instance.instanceId,
@@ -130,7 +130,7 @@ describe("workflow authored waiting re-presentation", () => {
     expect(queueRepo.getParkWakeStatus(handoff.nextQitemId!)).toBeNull();
   });
 
-  it("refreshes the exact continuation command when a frontier packet is rerouted or redriven", async () => {
+  it("frontier packet 被重新路由或重新驱动时刷新精确的 continuation 命令", async () => {
     const created = await runtime.instantiate({
       specPath,
       rootObjective: "prove replacement packets",
@@ -164,10 +164,10 @@ describe("workflow authored waiting re-presentation", () => {
     expect(resumedBody).toContain(
       `Continuation: ${commandFor(created.instance.instanceId, resumed.newPacketId, resumed.ownerSession)}`,
     );
-    expect(resumedBody).toContain("shortcut, not the whole story");
+    expect(resumedBody).toContain("只是捷径，并非全部信息");
   });
 
-  it("rejects a non-positive authored waiting deadline", () => {
+  it("拒绝非正数的已声明 waiting deadline", () => {
     const invalidPath = join(tmp, "invalid.yaml");
     writeFileSync(invalidPath, AUTHORED_WAIT_SPEC.replace("re_present_after_seconds: 60", "re_present_after_seconds: 0"));
     expect(() => runtime.validate(invalidPath)).toThrowError(

@@ -71,11 +71,11 @@ export class ChatRepository {
     const since = opts?.since;
     const sender = opts?.sender;
 
-    // Build composable WHERE clauses
+    // 构建可组合的 WHERE 子句。
     const conditions: string[] = ["rig_id = ?"];
     const params: unknown[] = [rigId];
 
-    // Topic windowing: find the topic marker and constrain to its window
+    // Topic 窗口：找到 topic marker，并把查询限制在该窗口内。
     if (topic) {
       const topicMarker = this.db
         .prepare(
@@ -100,19 +100,19 @@ export class ChatRepository {
       }
     }
 
-    // Cursor-based pagination
+    // 基于 cursor 的分页。
     if (after) {
       conditions.push("id > ?");
       params.push(after);
     }
 
-    // Timestamp filter
+    // 时间戳过滤。
     if (since) {
       conditions.push("created_at >= ?");
       params.push(since);
     }
 
-    // Sender filter
+    // 发送方过滤。
     if (sender) {
       conditions.push("sender = ?");
       params.push(sender);
@@ -131,12 +131,12 @@ export class ChatRepository {
       )
       .all(rigId, count) as ChatMessageRow[];
 
-    // Reverse to return chronological order
+    // 反转后按时间正序返回。
     return rows.reverse().map((r) => this.rowToMessage(r));
   }
 
   searchChat(rigId: string, pattern: string): ChatMessage[] {
-    // Split pipe-joined keywords into OR conditions for SQL LIKE
+    // 把竖线连接的关键词拆成 SQL LIKE 的 OR 条件。
     const keywords = pattern.split("|").map((k) => k.trim()).filter(Boolean);
     if (keywords.length === 0) return [];
 

@@ -1,12 +1,12 @@
-// R1 (release-0.4.7) — C2: useScopeMarkdown discriminated `state` matrix.
+// R1（release-0.4.7）——C2：useScopeMarkdown 判别 `state` 矩阵。
 //
-// The shared read hook stops collapsing three different truths into one
-// `{content:null, unavailable:true}`. It now exposes a discriminated `state`
-// (idle | unresolved | absent | read_error | content) while keeping
-// `unavailable` as a DERIVED back-compat field. This file pins the full state
-// matrix AND asserts the derived `unavailable` equals its 8250d702 value at
-// every settled state (the byte-compat leg). The two pre-R1 canary tests live
-// UNMODIFIED in use-scope-markdown.test.tsx.
+// 共享 read hook 不再把三种不同真相塌缩成一个
+// `{content:null, unavailable:true}`。它现暴露判别 `state`
+//（idle | unresolved | absent | read_error | content），同时把
+// `unavailable` 保留为派生的后兼容字段。本文件锁定完整状态矩阵，
+// 并断言派生 `unavailable` 在每个 settled 状态等于其 8250d702 值
+//（字节兼容腿）。两个 R1 前金丝雀测试
+// 原样保留于 use-scope-markdown.test.tsx。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor, cleanup } from "@testing-library/react";
@@ -90,7 +90,7 @@ describe("useScopeMarkdown — discriminated state matrix (R1)", () => {
     const r = await settle(SCOPE);
     expect(r.current.state).toBe("unresolved");
     expect(r.current.unavailable).toBe(true);
-    // no containing root ⇒ the read never fires
+    // 无包裹根 ⇒ read 从不触发
     expect(fetchSpy.mock.calls.filter(([u]) => String(u).startsWith("/api/files/read"))).toEqual([]);
   });
 

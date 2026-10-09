@@ -60,11 +60,11 @@ describe("SnapshotCapture", () => {
     return { rig, n1, n2 };
   }
 
-  it("does not collapse a dangling current effect into a never-occupied seat", () => {
+  it("不会把悬空的当前效果折叠为从未被占用的 seat", () => {
     expect(deriveRehydrateOccupantsByNode([], ["n1"], { n1: "missing-session" }).n1).toEqual({ kind: "ambiguous", candidateIds: [] });
   });
 
-  it("uses the current fresh effect consistently in reboot capture, live preview and snapshot matching", () => {
+  it("在重启捕获、实时预览和快照匹配中一致使用当前 fresh 效果", () => {
     const { rig, n1 } = seedRig();
     const old = sessionRegistry.registerSession(n1.id, "r99-demo1-lead");
     const successor = sessionRegistry.registerSession(n1.id, "r99-demo1-lead", "fresh");
@@ -80,13 +80,13 @@ describe("SnapshotCapture", () => {
     expect(snapshotMatchesCurrentOccupants(db, current, snapshot)).toBe(true);
     const preview = buildRestorePlanPreview(current, null, collectPreviewSessionRows(db, current, null), undefined, Date.now(), readFreshOccupantRelations(db, rig.id));
     expect(preview.nodes.find((node) => node.logicalId === n1.logicalId)).toMatchObject({ occupantSessionId: successor.id, intendedAction: "resume-original" });
-    // Conflicting effects under the same generation cannot select either history.
+    // 同一 generation 下存在冲突效果时，不能选择任一历史记录。
     db.prepare("INSERT INTO events (rig_id, type, payload) VALUES (?, 'seat.fresh_launched', ?)").run(rig.id, JSON.stringify({ ...event, sessionId: old.id }));
     expect(snapshotMatchesCurrentOccupants(db, current, snapshot)).toBe(false);
     expect(capture.captureSnapshot(rig.id, "auto-rehydrate").data.activeOccupantsByNode?.[n1.id]?.kind).toBe("ambiguous");
   });
 
-  it("assembles correct SnapshotData (rig + nodes + edges + bindings)", () => {
+  it("组装正确的 SnapshotData（rig + nodes + edges + bindings）", () => {
     const { rig, n1 } = seedRig();
 
     const snap = capture.captureSnapshot(rig.id, "manual");
@@ -95,13 +95,13 @@ describe("SnapshotCapture", () => {
     expect(snap.data.nodes).toHaveLength(2);
     expect(snap.data.edges).toHaveLength(1);
     expect(snap.data.edges[0]!.kind).toBe("delegates_to");
-    // n1 has binding
+    // n1 有 binding
     const orchNode = snap.data.nodes.find((n) => n.logicalId === "orchestrator");
     expect(orchNode!.binding).not.toBeNull();
     expect(orchNode!.binding!.tmuxSession).toBe("r99-demo1-lead");
   });
 
-  it("includes sessions with resume metadata", () => {
+  it("包含带恢复元数据的会话", () => {
     const { rig, n1 } = seedRig();
     const session = sessionRegistry.registerSession(n1.id, "r99-demo1-lead");
     db.prepare(
@@ -116,7 +116,7 @@ describe("SnapshotCapture", () => {
     expect(snap.data.sessions[0]!.restorePolicy).toBe("resume_if_possible");
   });
 
-  it("persists a versioned intended roster and explicit three-state occupant truth", () => {
+  it("持久化带版本的预期花名册和显式三态 occupant 事实", () => {
     const { rig, n1, n2 } = seedRig();
     const resolved = sessionRegistry.registerSession(n1.id, "r99-demo1-lead");
     sessionRegistry.updateStatus(resolved.id, "running");
@@ -139,7 +139,7 @@ describe("SnapshotCapture", () => {
     });
   });
 
-  it("uses the latest durable materialized topology roster instead of all historical nodes", () => {
+  it("使用最新的持久化实体拓扑花名册，而非全部历史节点", () => {
     const { rig, n1, n2 } = seedRig();
     eventBus.emit({
       type: "topology.roster_recorded",
@@ -158,30 +158,30 @@ describe("SnapshotCapture", () => {
     });
   });
 
-  it("refuses snapshot capture when the latest authoritative roster event is malformed", () => {
+  it("最新权威花名册事件格式错误时拒绝捕获快照", () => {
     const { rig } = seedRig();
     db.prepare("INSERT INTO events (rig_id, type, payload) VALUES (?, ?, ?)")
       .run(rig.id, "topology.roster_recorded", JSON.stringify({ intendedNodeIds: "not-an-array" }));
 
-    expect(() => capture.captureSnapshot(rig.id, "manual")).toThrow(/malformed authoritative topology roster/);
+    expect(() => capture.captureSnapshot(rig.id, "manual")).toThrow(/格式错误的权威拓扑名册/);
     expect(snapshotRepo.listSnapshots(rig.id)).toHaveLength(0);
   });
 
-  it("includes checkpoints as map (latest per node)", () => {
+  it("以映射形式包含 checkpoint（每个节点取最新项）", () => {
     const { rig, n1 } = seedRig();
-    checkpointStore.createCheckpoint(n1.id, { summary: "old checkpoint", keyArtifacts: [] });
-    checkpointStore.createCheckpoint(n1.id, { summary: "latest checkpoint", keyArtifacts: ["file.ts"] });
+    checkpointStore.createCheckpoint(n1.id, { summary: "旧 checkpoint", keyArtifacts: [] });
+    checkpointStore.createCheckpoint(n1.id, { summary: "最新 checkpoint", keyArtifacts: ["file.ts"] });
 
     const snap = capture.captureSnapshot(rig.id, "manual");
 
     expect(snap.data.checkpoints[n1.id]).not.toBeNull();
-    expect(snap.data.checkpoints[n1.id]!.summary).toBe("latest checkpoint");
+    expect(snap.data.checkpoints[n1.id]!.summary).toBe("最新 checkpoint");
   });
 
-  it("node with no checkpoint -> null in checkpoints map", () => {
+  it("没有 checkpoint 的节点在 checkpoints 映射中对应 null", () => {
     const { rig, n1, n2 } = seedRig();
-    checkpointStore.createCheckpoint(n1.id, { summary: "has checkpoint", keyArtifacts: [] });
-    // n2 has no checkpoint
+    checkpointStore.createCheckpoint(n1.id, { summary: "有 checkpoint", keyArtifacts: [] });
+    // n2 没有 checkpoint
 
     const snap = capture.captureSnapshot(rig.id, "manual");
 
@@ -189,7 +189,7 @@ describe("SnapshotCapture", () => {
     expect(snap.data.checkpoints[n2.id]).toBeNull();
   });
 
-  it("persists via SnapshotRepository (retrievable by id)", () => {
+  it("通过 SnapshotRepository 持久化（可按 id 获取）", () => {
     const { rig } = seedRig();
 
     const snap = capture.captureSnapshot(rig.id, "manual");
@@ -200,14 +200,14 @@ describe("SnapshotCapture", () => {
     expect(fetched!.data.rig.name).toBe("r01");
   });
 
-  it("emits snapshot.created with exact payload (persisted + subscriber)", () => {
+  it("以精确载荷发出 snapshot.created（持久化 + 订阅者）", () => {
     const { rig } = seedRig();
     const notifications: PersistedEvent[] = [];
     eventBus.subscribe((e) => notifications.push(e));
 
     const snap = capture.captureSnapshot(rig.id, "manual");
 
-    // Subscriber received event
+    // 订阅者收到事件
     expect(notifications).toHaveLength(1);
     expect(notifications[0]!.type).toBe("snapshot.created");
     if (notifications[0]!.type === "snapshot.created") {
@@ -216,7 +216,7 @@ describe("SnapshotCapture", () => {
       expect(notifications[0]!.kind).toBe("manual");
     }
 
-    // Event persisted in DB
+    // 事件持久化到数据库
     const events = db
       .prepare("SELECT type, payload FROM events WHERE type = 'snapshot.created'")
       .all() as { type: string; payload: string }[];
@@ -227,7 +227,7 @@ describe("SnapshotCapture", () => {
     expect(payload.kind).toBe("manual");
   });
 
-  it("empty rig (no nodes) -> valid snapshot with empty collections", () => {
+  it("空 rig（无节点）→ 包含空集合的有效快照", () => {
     const rig = rigRepo.createRig("r02");
 
     const snap = capture.captureSnapshot(rig.id, "manual");
@@ -239,7 +239,7 @@ describe("SnapshotCapture", () => {
     expect(snap.data.checkpoints).toEqual({});
   });
 
-  it("nonexistent rig -> throws RigNotFoundError specifically", async () => {
+  it("rig 不存在时明确抛出 RigNotFoundError", async () => {
     const { RigNotFoundError } = await import("../src/domain/errors.js");
     let caught: unknown;
     try {
@@ -250,7 +250,7 @@ describe("SnapshotCapture", () => {
     expect(caught).toBeInstanceOf(RigNotFoundError);
   });
 
-  it("constructor throws on mismatched db handles", () => {
+  it("数据库句柄不匹配时构造函数抛错", () => {
     const otherDb = setupDb();
     const otherRepo = new RigRepository(otherDb);
 
@@ -263,15 +263,15 @@ describe("SnapshotCapture", () => {
         snapshotRepo,
         checkpointStore,
       })
-    ).toThrow(/same db handle/);
+    ).toThrow(/同一个数据库句柄/);
 
     otherDb.close();
   });
 
-  it("atomic: sabotaged event insert -> no snapshot row remains (rollback)", () => {
+  it("原子性：破坏 event 插入后不残留快照行（回滚）", () => {
     const { rig } = seedRig();
 
-    // Sabotage events table so persistWithinTransaction fails
+    // 破坏 events 表，使 persistWithinTransaction 失败
     db.exec("DROP TABLE events");
     db.exec(
       "CREATE TABLE events (seq INTEGER PRIMARY KEY AUTOINCREMENT, rig_id TEXT, node_id TEXT, type TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), CONSTRAINT force_fail CHECK(length(type) < 1))"
@@ -279,11 +279,11 @@ describe("SnapshotCapture", () => {
 
     expect(() => capture.captureSnapshot(rig.id, "manual")).toThrow();
 
-    // No snapshot row should exist (rolled back)
+    // 不应存在快照行（已回滚）
     const snaps = db.prepare("SELECT * FROM snapshots").all();
     expect(snaps).toHaveLength(0);
 
-    // No event row either
+    // 也不应存在 event 行
     const events = db.prepare("SELECT * FROM events").all();
     expect(events).toHaveLength(0);
   });

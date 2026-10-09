@@ -4,29 +4,23 @@ import type { EventBus } from "./event-bus.js";
 import type { AgentActivityStore } from "./agent-activity-store.js";
 import type { NodeOriented } from "./types.js";
 
-// OPR.0.4.3.06 — startup proof (challenge-verified orientation).
+// OPR.0.4.3.06——启动证明（经挑战验证的定向）。
 //
-// When authored startup selects authenticated proof, at a fresh (or fresh-fallback) managed launch the daemon
-// issues a per-launch, content-derived CHALLENGE and persists its ground
-// truth as an append-only `node.startup_challenged` event (challengeId +
-// contractHash). The agent, after reading its startup contract, emits an
-// identity-bound `startup_proof` carrying { challengeId, answer }. The daemon
-// VERIFIES: identity resolves, the challengeId is THIS launch's (anti-replay),
-// and the answer matches the expected answer recomputed from the persisted
-// contract hash. Only a verified proof appends `node.startup_proof_verified`
-// and projects `oriented: verified` — DISTINCT from `startup_status: ready`,
-// which only ever means delivered/interactive. A bare ACK / empty / wrong /
-// replayed / identity-mismatched answer is rejected (append-only) and NEVER
-// renders oriented.
+// 当人工编写的 startup 选择认证证明时，在全新（或全新回退）受管启动中，后台服务会
+// 为每次启动发出由内容派生的 CHALLENGE，并将真相持久化为只追加的
+// `node.startup_challenged` 事件（challengeId + contractHash）。智能体读取启动契约后，
+// 发出绑定身份、携带 { challengeId, answer } 的 `startup_proof`。后台服务验证：
+// 身份可解析、challengeId 属于本次启动（防重放），且答案匹配从持久 contract hash
+// 重新计算的预期答案。只有验证通过的证明才追加 `node.startup_proof_verified`，
+// 并投影 `oriented: verified`；这与仅表示已投递/可交互的 `startup_status: ready` 不同。
+// 裸 ACK、空/错误/重放/身份不匹配的答案会被拒绝并追加记录，绝不会渲染为 oriented。
 //
-// The expected answer is a pure function of (challengeId, contractHash) and is
-// never persisted — it is recomputed at verify time from the persisted hash,
-// so later startup-file drift cannot change proof truth (the persisted
-// contractHash freezes the launch-time contract).
+// 预期答案是 (challengeId, contractHash) 的纯函数，绝不持久化；验证时从已持久化哈希
+// 重新计算，因此后续启动文件漂移无法改变证明真相（持久化 contractHash 冻结启动时契约）。
 
 export type { NodeOriented } from "./types.js";
 
-/** Per-reason reject code (append-only audit; never collapses into ready). */
+/** 逐原因拒绝码（只追加审计，绝不折叠为 ready）。 */
 export type ProofRejectReason =
   | "identity_unbound"
   | "identity_mismatch"
@@ -37,13 +31,13 @@ export type ProofRejectReason =
 export interface IssuedChallenge {
   challengeId: string;
   contractHash: string;
-  /** Recomputable; handed to the prompt so the agent can answer. Not persisted. */
+  /** 可重新计算；交给提示供智能体回答，不持久化。 */
   expectedAnswer: string;
-  /** The block appended to / delivered as the startup prompt. */
+  /** 追加到启动提示或作为启动提示投递的区块。 */
   promptBlock: string;
 }
 
-/** A presence-floor ACK is never proof (business rule 2). */
+/** 仅证明在场的 ACK 永远不构成证明（业务规则 2）。 */
 const BARE_ACK_TOKENS = new Set(["", "ack", "ok", "ready", "done", "oriented", "acknowledged"]);
 
 export function computeContractHash(contractSource: string): string {
@@ -55,28 +49,27 @@ export function computeExpectedAnswer(challengeId: string, contractHash: string)
 }
 
 function buildProofSubmissionCommand(challengeId: string, expectedAnswer: string): string {
-  return `rig startup-proof submit --challenge-id ${challengeId} --answer ${expectedAnswer}`;
+  return `zrig startup-proof submit --challenge-id ${challengeId} --answer ${expectedAnswer}`;
 }
 
 function buildPromptBlock(challengeId: string, expectedAnswer: string): string {
   return [
-    "--- OpenRig startup orientation challenge ---",
+    "--- zrig 启动定向挑战 ---",
     `challengeId: ${challengeId}`,
-    "After you have read your startup contract (all the files/identity above),",
-    "prove you oriented by submitting an authenticated startup_proof with EXACTLY:",
+    "阅读启动契约（上方所有文件/身份）后，",
+    "请提交一份经过认证、且严格包含下列内容的 startup_proof，以证明已完成定向：",
     `  answer: ${expectedAnswer}`,
     "",
-    "Run this command from your shell/tools after reading the contract:",
+    "阅读契约后，在 shell/工具中运行以下命令：",
     buildProofSubmissionCommand(challengeId, expectedAnswer),
-    "A bare acknowledgement (\"ack\"/\"ready\") is presence only, NEVER proof.",
+    "裸确认（\"ack\"/\"ready\"）只能证明在场，绝不构成证明。",
     "--------------------------------------------",
   ].join("\n");
 }
 
 /**
- * Derive + persist (append-only event) a per-launch challenge and return the
- * prompt block. Call at fresh/fresh-fallback managed launch, BEFORE the
- * startup prompt is delivered, so the ground truth exists before any proof.
+ * 派生并持久化（只追加事件）逐启动挑战，再返回提示区块。应在全新/全新回退受管启动时、
+ * 启动提示投递前调用，使真相先于任何证明存在。
  */
 export function issueStartupChallenge(
   eventBus: EventBus,
@@ -116,10 +109,8 @@ interface ChallengeRow {
 }
 
 /**
- * Verify an agent-emitted startup proof against the persisted per-launch
- * challenge. Identity-bound + anti-replay + content-correct, or an
- * append-only rejection with a per-reason code. Never sets `ready`; never
- * routes through updateStartupStatus.
+ * 对照持久化的逐启动挑战验证智能体发出的启动证明。要求身份绑定、防重放且内容正确；
+ * 否则按原因码追加拒绝。绝不设置 `ready`，也绝不经 updateStartupStatus 路由。
  */
 export function verifyStartupProof(
   deps: { store: AgentActivityStore; eventBus: EventBus },
@@ -128,44 +119,38 @@ export function verifyStartupProof(
   const { store, eventBus } = deps;
   const db = store.db;
 
-  // (a) IDENTITY — resolve {sessionId,nodeId,rigId}; an unknown identity is
-  // rejected and NO node-scoped state is projected (we cannot attribute an
-  // event to an unknown node).
+  // (a) 身份——解析 {sessionId,nodeId,rigId}；未知身份会被拒绝，且不投影任何节点
+  // 作用域状态，因为无法把事件归因到未知节点。
   const resolved = store.resolveSession({ sessionName: input.sessionName, nodeId: input.nodeId, runtime: input.runtime });
   if (!resolved) {
-    return { ok: false, code: "identity_unbound", error: "startup_proof did not resolve to a managed session/node" };
+    return { ok: false, code: "identity_unbound", error: "startup_proof 未解析到受管会话/节点" };
   }
 
-  // (a2) IDENTITY BINDING — the proof must bind to BOTH nodeId AND sessionName.
-  // `resolveSession` prioritizes nodeId and does NOT cross-check a supplied
-  // sessionName, so a proof carrying nodeId=node-a + sessionName=node-b would
-  // otherwise resolve to (and false-verify) node-a while claiming node-b's
-  // identity. Reject any conflict. We do NOT emit a node-scoped rejection for
-  // the resolved node here (mirroring identity_unbound): a mismatched /
-  // cross-seat / malformed proof must not touch the resolved node's projection
-  // at all — never verify it, and never downgrade it to `rejected` either.
-  // (runtime is a non-authoritative hint used for hook classification, not an
-  // identity key — the seat identity is the nodeId<->sessionName binding.)
+  // (a2) 身份绑定——证明必须同时绑定 nodeId 和 sessionName。`resolveSession` 优先 nodeId，
+  // 不交叉检查传入的 sessionName；若不拒绝冲突，携带 nodeId=node-a + sessionName=node-b
+  // 的证明会解析到 node-a 并错误通过，却声称拥有 node-b 身份。这里不为已解析节点发出
+  // 节点作用域拒绝（与 identity_unbound 一致）：不匹配、跨席位或畸形证明完全不能触碰
+  // 该节点投影，既不能验证，也不能降级为 `rejected`。runtime 只是 hook 分类所用的
+  // 非权威提示，不是身份键；席位身份由 nodeId<->sessionName 绑定。
   if (input.sessionName && input.sessionName !== resolved.sessionName) {
-    return { ok: false, code: "identity_mismatch", error: "startup_proof nodeId and sessionName resolve to different seats" };
+    return { ok: false, code: "identity_mismatch", error: "startup_proof 的 nodeId 与 sessionName 解析到不同席位" };
   }
 
-  // A new lean launch retires any earlier challenge without deleting history.
+  // 新的精简启动会退役此前挑战，但不删除历史。
   const challengeRow = db.prepare(
     "SELECT type, payload, seq FROM events WHERE node_id = ? AND type IN ('node.startup_challenged','node.startup_proof_skipped') ORDER BY seq DESC LIMIT 1"
   ).get(resolved.nodeId) as ChallengeRow | undefined;
   if (!challengeRow || challengeRow.type === "node.startup_proof_skipped") {
-    // Never challenged (e.g. a resumed restore, or a non-agent path). A proof
-    // has nothing to verify against — reject as stale WITHOUT appending an
-    // event, so the node's oriented projection stays honest (`n-a`).
-    return { ok: false, code: "challenge_stale", error: "no active startup challenge for this node" };
+    // 从未挑战（例如恢复后的 resume 或非智能体路径）。证明没有可供核验的对象——
+    // 以 stale 拒绝但不追加事件，使节点 oriented 投影如实保持 `n-a`。
+    return { ok: false, code: "challenge_stale", error: "此节点没有活动的启动挑战" };
   }
 
   let current: { challengeId: string; contractHash: string };
   try {
     current = JSON.parse(challengeRow.payload) as { challengeId: string; contractHash: string };
   } catch {
-    return { ok: false, code: "challenge_stale", error: "startup challenge payload unreadable" };
+    return { ok: false, code: "challenge_stale", error: "启动挑战 payload 不可读" };
   }
 
   const answer = (input.answer ?? "").trim();
@@ -179,25 +164,23 @@ export function verifyStartupProof(
     });
   };
 
-  // (b) THIS-LAUNCH — the answered challenge must be the current one. A
-  // replayed prior-launch answer carries a stale challengeId.
+  // (b) 本次启动——回答的挑战必须是当前挑战；重放此前启动的答案会携带陈旧 challengeId。
   if (!input.challengeId || input.challengeId !== current.challengeId) {
     emitRejected("challenge_stale");
-    return { ok: false, code: "challenge_stale", error: "challengeId does not match this launch's challenge (replay/stale)" };
+    return { ok: false, code: "challenge_stale", error: "challengeId 与本次启动的挑战不匹配（重放/陈旧）" };
   }
 
-  // (d) bare-ACK / empty / presence-floor is never proof.
+  // (d) 裸 ACK、空值或仅证明在场的内容永远不是证明。
   if (BARE_ACK_TOKENS.has(answer.toLowerCase())) {
     emitRejected("bare_ack");
-    return { ok: false, code: "bare_ack", error: "a bare acknowledgement is presence only, never proof" };
+    return { ok: false, code: "bare_ack", error: "裸确认只能证明在场，绝不构成证明" };
   }
 
-  // (c) CONTRACT — recompute the expected answer from the persisted contract
-  // hash. A plausible-but-content-wrong answer is rejected.
+  // (c) 契约——从持久化 contract hash 重新计算预期答案；貌似合理但内容错误的答案会被拒绝。
   const expected = computeExpectedAnswer(current.challengeId, current.contractHash);
   if (answer !== expected) {
     emitRejected("contract_mismatch");
-    return { ok: false, code: "contract_mismatch", error: "proof answer does not match the delivered startup contract" };
+    return { ok: false, code: "contract_mismatch", error: "证明答案与已投递的启动契约不匹配" };
   }
 
   eventBus.emit({
@@ -213,19 +196,16 @@ export function verifyStartupProof(
 }
 
 /**
- * Project the oriented signal for a node from the append-only proof events.
- * `verified` requires a verified proof for the CURRENT (latest) challenge;
- * `missing` = challenged but not yet proven; `rejected` = the latest proof for
- * the current challenge was rejected; `n-a` = no active challenge, including
- * an explicitly lean fresh launch. NEVER derived from startup_status.
+ * 从只追加的证明事件中投影节点 oriented 信号。`verified` 要求当前最新挑战有已验证证明；
+ * `missing` 表示已挑战但尚未证明；`rejected` 表示当前挑战的最新证明被拒绝；
+ * `n-a` 表示无活动挑战，包括显式精简的全新启动。绝不从 startup_status 派生。
  */
 type OrientedEventRow = { type: string; payload: string; seq: number };
 
 /**
- * The pure oriented fold over ONE node's proof events (seq DESC). Extracted
- * verbatim from the prior inline `deriveOriented` body so the per-node reader
- * and the FS-1 W1.3 S2 batched builder (`buildOrientedMap`) share ONE
- * implementation — same verdicts by construction, no drift.
+ * 对单个节点证明事件（seq 降序）的纯 oriented 折叠。由原内联 `deriveOriented` 主体
+ * 原样提取，使逐节点读取器与 FS-1 W1.3 S2 批量构造器 `buildOrientedMap` 共享同一实现——
+ * 构造上裁决一致，不会漂移。
  */
 function orientedFromRows(rows: OrientedEventRow[]): NodeOriented {
   const challengeRow = rows.find((r) => r.type === "node.startup_challenged" || r.type === "node.startup_proof_skipped");
@@ -237,8 +217,7 @@ function orientedFromRows(rows: OrientedEventRow[]): NodeOriented {
     return "n-a";
   }
 
-  // The most-recent proof event referencing the current challenge decides
-  // verified-vs-rejected (a later verify overrides an earlier reject).
+  // 引用当前挑战的最新证明事件决定 verified 或 rejected；后续 verify 会覆盖此前 reject。
   for (const row of rows) {
     if (row.seq <= challengeRow.seq) break;
     if (row.type !== "node.startup_proof_verified" && row.type !== "node.startup_proof_rejected") continue;
@@ -258,14 +237,12 @@ export function deriveOriented(db: Database.Database, nodeId: string): NodeOrien
 }
 
 /**
- * FS-1 W1.3 S2 — batch `deriveOriented` for the whole fleet in ONE query
- * instead of one query per node (the ~175-query-per-poll residual). Fetches all
- * proof events, groups by `node_id` (ORDER BY node_id, seq DESC preserves each
- * node's seq-DESC order exactly), and runs the SAME `orientedFromRows` fold per
- * node. Byte-identical to per-node `deriveOriented`: `deriveOriented` is
- * node-scoped, so the per-node subset of rows + the identical fold yield the
- * identical verdict. Nodes with no proof events are simply absent (caller
- * defaults to "n-a", matching the no-challenge branch).
+ * FS-1 W1.3 S2——用一次查询为整个舰队批量执行 `deriveOriented`，替代逐节点查询
+ *（每轮残留约 175 次查询）。获取所有证明事件，按 `node_id` 分组；
+ * ORDER BY node_id, seq DESC 精确保留各节点的 seq 降序，再逐节点运行同一
+ * `orientedFromRows` 折叠。结果与逐节点 `deriveOriented` 字节一致：后者以节点为作用域，
+ * 因此逐节点行子集加相同折叠必然得到相同裁决。无证明事件的节点直接缺席，
+ * 调用方默认 `n-a`，与无挑战分支一致。
  */
 export function buildOrientedMap(db: Database.Database): Map<string, NodeOriented> {
   const rows = db.prepare(

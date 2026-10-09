@@ -19,7 +19,7 @@ import { resolveNodeWorkspace } from "./workspace/workspace-resolver.js";
 import { deriveCanonicalSessionName } from "./session-name.js";
 import { buildNativeResumeCommand, buildCodexResumeCore } from "./native-resume-probe.js";
 
-// -- Row types for SQL results --
+// -- SQL 结果行类型 --
 
 interface InventoryRow {
   node_id: string;
@@ -44,7 +44,7 @@ interface InventoryRow {
   handover_result: string | null;
   previous_occupant: string | null;
   handover_at: string | null;
-  // Newest session fields (may be null if no session)
+  // 最新会话字段；没有会话时可能为 null。
   session_name: string | null;
   session_status: string | null;
   startup_status: string | null;
@@ -85,7 +85,7 @@ interface BindingRow {
   updated_at: string;
 }
 
-// -- Helpers --
+// -- 辅助函数 --
 
 function computeResumeCommand(runtime: string | null, resumeToken: string | null, codexConfigProfile?: string | null): string | null {
   return buildNativeResumeCommand(runtime, resumeToken, null, codexConfigProfile);
@@ -114,14 +114,14 @@ function computeRecoveryGuidance(input: {
     commands.push("claude --resume");
 
     if (sessionName) {
-      notes.push(`Look for session name: ${sessionName}`);
+      notes.push(`查找会话名称：${sessionName}`);
     }
-    notes.push("Choose the full conversation option, not summary.");
+    notes.push("请选择完整会话选项，不要选择摘要。");
 
     return {
       summary: resumeToken
-        ? "Try native Claude resume first, then fall back to the workspace-local picker if needed."
-        : "No stored Claude resume token. Use the workspace-local Claude picker fallback.",
+        ? "先尝试 Claude 原生恢复；需要时再回退到工作区本地选择器。"
+        : "没有已存储的 Claude 恢复 token。请使用工作区本地 Claude 选择器回退。",
       commands,
       notes,
     };
@@ -141,18 +141,18 @@ function computeRecoveryGuidance(input: {
       commands.push(buildCodexResumeCore("", codexConfigProfile, true));
     }
 
-    notes.push("Use workspace and recent prompt text to identify the right conversation.");
+    notes.push("请结合工作区和近期提示词文本识别正确会话。");
     if (codexConfigProfile) {
-      notes.push(`Preserve Codex config profile: ${codexConfigProfile}`);
+      notes.push(`保留 Codex 配置 profile：${codexConfigProfile}`);
     }
     if (sessionName) {
-      notes.push(`If the identity anchor was captured, the picker may include: ${sessionName}`);
+      notes.push(`如果已捕获身份锚点，选择器中可能包含：${sessionName}`);
     }
 
     return {
       summary: resumeToken
-        ? "Try native Codex resume first; the managed launch sets the explicit -s workspace-write floor flag unless a named config profile is present."
-        : "No stored Codex resume token. Try codex -s workspace-write resume --last; the managed launch sets the explicit -s workspace-write floor flag unless a named config profile is present.",
+        ? "先尝试 Codex 原生恢复；除非存在命名配置 profile，否则托管启动会显式设置 -s workspace-write 底线参数。"
+        : "没有已存储的 Codex 恢复 token。请尝试 codex -s workspace-write resume --last；除非存在命名配置 profile，否则托管启动会显式设置 -s workspace-write 底线参数。",
       commands,
       notes,
     };
@@ -166,36 +166,32 @@ function deriveNodeKind(runtime: string | null): "agent" | "infrastructure" {
 }
 
 /**
- * Derives per-node lifecycle state from session/restore truth plus the rig's latest
- * usable snapshot.
+ * 根据会话/恢复事实与工作组最新可用快照派生每节点生命周期状态。
  *
- * Priorities (post-L2):
- *   attention_required  — restoreOutcome=failed AND tmux session is alive
- *                         (v0 proxy for the Claude resume-prompt case; revisited in L3).
- *   running             — sessionStatus=running.
- *   recoverable         — non-running session AND the latest usable snapshot has a
- *                         non-null resume token for THIS node.
- *   detached            — anything else (no session, exited, detached without resume token).
+ * 优先级（L2 后）：
+ *   attention_required  — restoreOutcome=failed 且 tmux 会话仍存活
+ *                         （Claude 恢复提示场景的 v0 代理，L3 会重新审视）。
+ *   running             — sessionStatus=running。
+ *   recoverable         — 会话未运行，且最新可用快照为此节点提供非 null 恢复 token。
+ *   detached            — 其他全部情况（无会话、已退出、detached 且无恢复 token）。
  *
- * Permission/IO failures upstream (L1 fail-closed) leave sessionStatus unchanged, so
- * the projection stays honest without misclassifying ambiguous probe failures.
+ * 上游权限/I/O 失败（L1 失败关闭）不改变 sessionStatus，因此投影保持诚实，不会误判有歧义的
+ * 探测失败。
  */
 export function deriveNodeLifecycleState(input: {
   sessionStatus: string | null;
-  /** Startup attention is live seat state, independent of restore history. */
+  /** 启动待关注状态是实时席位状态，与恢复历史无关。 */
   startupStatus?: string | null;
   restoreOutcome: NodeRestoreOutcome;
   nodeId: string;
   usableSnapshot: Snapshot | null;
-  /** OPR.0.4.3.19 — the persisted liveness identity verdict for this node.
-   *  A `mismatch`/`pane_missing` verdict down-ranks a `running` session to
-   *  `attention_required` (no false-green). `verified`, `tmux_unavailable`,
-   *  and an absent verdict leave the projection unchanged. */
+  /** OPR.0.4.3.19——此节点持久化的存活身份判决。`mismatch`/`pane_missing` 会把
+   * `running` 会话降为 `attention_required`，避免假绿；`verified`、`tmux_unavailable`
+   * 和缺失判决不改变投影。 */
   identityVerdict?: SeatIdentityVerdictKind | null;
 }): NodeLifecycleState {
-  // L3: the explicit `attention_required` outcome (Claude resume-selection
-  // prompt) and the L2 proxy (failed + alive tmux session) both surface as
-  // lifecycleState=attention_required.
+  // L3：显式 `attention_required` 结果（Claude 恢复选择提示）和 L2 代理（failed + tmux
+  // 会话存活）都显示为 lifecycleState=attention_required。
   if (
     input.startupStatus === "attention_required"
     || input.restoreOutcome === "attention_required"
@@ -204,18 +200,15 @@ export function deriveNodeLifecycleState(input: {
     return "attention_required";
   }
   if (input.sessionStatus === "running") {
-    // OPR.0.4.3.19 — a `running` session projects `running` ONLY when its
-    // pane process identity is verified (or not-yet-observed). An explicit
-    // mismatch/pane-missing verdict down-ranks to attention_required so a
-    // dead/orphaned/squatted pane never surfaces as healthy green.
+    // OPR.0.4.3.19——`running` 会话只有在窗格进程身份已验证（或尚未观察）时才投影为
+    // `running`。显式 mismatch/pane-missing 判决会降为 attention_required，使死亡、孤立或
+    // 被占用的窗格绝不会显示为健康绿色。
     if (identityVerdictDownranksRunning(input.identityVerdict)) return "attention_required";
     return "running";
   }
   if (input.usableSnapshot) {
-    // OPR.0.5.7.1 — recoverability follows the RESOLVED occupant (the same
-    // four-way ladder execution consumes), never the first matching row: a
-    // token on a historical row the restore would refuse must not render
-    // recoverable.
+    // OPR.0.5.7.1——可恢复性跟随已解析占用者（执行流程消费的同一四路阶梯），绝不使用
+    // 第一条匹配行。恢复流程会拒绝的历史行 token 不能让界面显示为 recoverable。
     const resolution = resolveActiveOccupantRow(
       input.usableSnapshot.data.sessions ?? [],
       input.usableSnapshot.data.activeSessionIdByNode,
@@ -239,8 +232,8 @@ function deriveOccupantLifecycle(
   if (row.occupant_lifecycle) {
     return row.occupant_lifecycle as NodeInventoryEntry["occupantLifecycle"];
   }
-  // OPR.0.4.3.19 — the derived `active` occupant requires a verified (or
-  // not-yet-observed) pane identity, mirroring the lifecycleState gate.
+  // OPR.0.4.3.19——派生的 `active` 占用者要求窗格身份已验证或尚未观察，与
+  // lifecycleState 门禁一致。
   if (row.session_status === "running" && !identityVerdictDownranksRunning(identityVerdict)) {
     return "active";
   }
@@ -255,38 +248,30 @@ function deriveContinuityOutcome(
     return row.continuity_outcome as NodeInventoryEntry["continuityOutcome"];
   }
   if (restoreOutcome === "n-a") return null;
-  // L3: `attention_required` and `operator_recovered` are restore-attempt
-  // outcomes that don't map onto the ContinuityOutcome vocabulary
-  // ("resumed"|"rebuilt"|"forked"|"fresh"|"failed"). Surface as null here;
-  // the lifecycleState projection picks them up via restoreOutcome directly.
+  // L3：`attention_required` 和 `operator_recovered` 是恢复尝试结果，不能直接映射到
+  // ContinuityOutcome 词汇（"resumed"|"rebuilt"|"forked"|"fresh"|"failed"）。
+  // 此处显示为 null；lifecycleState 投影会直接通过 restoreOutcome 处理。
   if (restoreOutcome === "attention_required") return null;
   if (restoreOutcome === "operator_recovered") return "resumed";
-  // OPR.0.3.4.2: a deliberate fresh-prime IS fresh continuity; awaiting-decision
-  // means zero session, so no continuity outcome exists — null (the
-  // restoreOutcome field carries the distinct term).
+  // OPR.0.3.4.2：显式 fresh-prime 属于 fresh 连续性；awaiting-decision 表示没有会话，
+  // 因而不存在连续性结果，返回 null；restoreOutcome 字段保留其独立术语。
   if (restoreOutcome === "fresh-primed") return "fresh";
   if (restoreOutcome === "awaiting-decision") return null;
   return restoreOutcome;
 }
 
-// FS-1 W1.3 S1 — hoist restore-outcome derivation to ONCE-PER-RIG.
-// Prior shape: deriveRestoreOutcome(db, rigId, nodeId) fetched + JSON-parsed the
-// rig's ENTIRE restore-event set once PER NODE inside buildInventoryEntry (K
-// nodes x E events per rig per poll = the dominant W3 residual). This builds a
-// nodeId->outcome map in ONE seq-DESC pass and buildInventoryEntry does an O(1)
-// lookup.
-//   OPR.0.3.4.11 + 0.4.0.16: per-node-latest across restore.completed,
-//   restore.subset_completed, AND restore.outcome_reconciled. reconciled has a
-//   different shape (top-level nodeId/to, not result.nodes[]).
-// BYTE-IDENTICAL BY CONSTRUCTION: the prior per-node reader returned the FIRST
-// event in seq-DESC order that referenced the node. This single seq-DESC pass
-// sets a node's outcome ONLY IF ABSENT — so the first (highest-seq) event
-// referencing a node wins, reproducing exactly that (incl.
-// newer-reconcile-overrides-older-failure). rigId given -> WHERE rig_id=? (the
-// prior single-rig filter); rigId omitted -> all rigs in one pass (a nodeId is
-// referenced only by its own rig's events, so the per-node value is identical).
-// [GUARD AT CODE REVIEW: the only-if-absent set is the one load-bearing
-//  semantics cell — it is what preserves first/newest-wins.]
+// FS-1 W1.3 S1——将恢复结果派生提升为每个工作组只执行一次。旧结构在
+// buildInventoryEntry 内对每个节点调用 deriveRestoreOutcome(db, rigId, nodeId)，每次都获取
+// 并解析该工作组的全部恢复事件（每轮 K 个节点 × E 个事件，是主要 W3 残余开销）。现在通过
+// 一次 seq 降序遍历构建 nodeId→outcome map，buildInventoryEntry 只做 O(1) 查找。
+// OPR.0.3.4.11 + 0.4.0.16：在 restore.completed、restore.subset_completed 和
+// restore.outcome_reconciled 之间取每节点最新结果；reconciled 结构不同，使用顶层 nodeId/to，
+// 而不是 result.nodes[]。
+// 结构上保证逐字节一致：旧版逐节点读取器返回 seq 降序中第一条引用该节点的事件。单次
+// seq 降序遍历仅在节点尚无结果时赋值，因此同样由第一条、即 seq 最大的事件获胜，包括
+// 新 reconcile 覆盖旧 failure。提供 rigId 时使用原单工作组过滤 WHERE rig_id=?；省略时一次
+// 扫描全部工作组。节点只会被自身工作组事件引用，所以每节点结果相同。
+// [代码评审核心：仅在 absent 时赋值是承重语义，它保证第一条/最新事件获胜。]
 function buildRestoreOutcomeMap(db: Database.Database, rigId?: string): Map<string, NodeRestoreOutcome> {
   const stmt = db.prepare(
     `SELECT type, payload, seq FROM events WHERE type IN ('restore.completed', 'restore.subset_completed', 'restore.outcome_reconciled')${rigId ? " AND rig_id = ?" : ""} ORDER BY seq DESC`
@@ -333,9 +318,9 @@ function deriveHeldReason(db: Database.Database, rigId: string, nodeId: string, 
   ).get(nodeId) as { seq: number; payload: string } | undefined;
   if (!heldRow) return null;
 
-  // Superseded by a later rig-scoped restore event containing this node.
-  // restore.completed/restore.subset_completed are rig-scoped (no top-level nodeId),
-  // so query by rig_id and parse payloads for node containment.
+  // 若后续工作组范围恢复事件包含此节点，则当前 held 已被取代。restore.completed /
+  // restore.subset_completed 属于工作组范围（无顶层 nodeId），因此按 rig_id 查询并解析
+  // payload 判断是否包含节点。
   const laterRestoreRows = db.prepare(
     "SELECT payload FROM events WHERE rig_id = ? AND type IN ('restore.completed', 'restore.subset_completed') AND seq > ? ORDER BY seq DESC"
   ).all(rigId, heldRow.seq) as { payload: string }[];
@@ -370,9 +355,9 @@ function getLatestError(db: Database.Database, rigId: string, nodeId: string): s
 }
 
 /**
- * Map persisted projection entries to the installedResources shape.
- * The startup-orchestrator persists: { category, effectiveId, sourceSpec, sourcePath, resourcePath, absolutePath, mergeStrategy, target }
- * We normalize to: { id, category, targetPath }
+ * 将持久化投影条目映射到 installedResources 结构。startup-orchestrator 持久化：
+ * { category, effectiveId, sourceSpec, sourcePath, resourcePath, absolutePath, mergeStrategy, target }；
+ * 此处规范化为 { id, category, targetPath }。
  */
 function mapProjectionEntries(entries: unknown[]): Array<{ id: string; category: string; targetPath: string }> {
   return entries.map((e: unknown) => {
@@ -386,20 +371,17 @@ function mapProjectionEntries(entries: unknown[]): Array<{ id: string; category:
 }
 
 /**
- * OPR.0.4.3.19 rev1-r2 B1 — gate a durable identity verdict to the CURRENT
- * binding. The verdict table is keyed only by node_id, so on rebind/relaunch
- * (same node_id, new session + new pane) the stored verdict describes a pane
- * that is no longer bound. Serving it for the new pane opens a false-green
- * window (a stale `verified` suppresses the down-rank a fresh squat/orphan
- * should trigger; a stale `mismatch` would down-rank a healthy new pane).
+ * OPR.0.4.3.19 rev1-r2 B1——把持久身份判决限定到当前 binding。判决表仅以 node_id 为键，
+ * 因此重新 binding/启动后（相同 node_id，新会话 + 新窗格），已存判决描述的是不再绑定的
+ * 旧窗格。若用于新窗格会形成假绿窗口：过期 `verified` 会抑制新占位/孤立窗格应触发的降级；
+ * 过期 `mismatch` 又会把健康新窗格降级。
  *
- * A verdict applies ONLY when it was computed against the current binding:
+ * 判决只有在针对当前 binding 计算时才适用：
  *   verdict.sessionName === row.session_name  AND
  *   verdict.evidence.registeredPane === row.tmux_pane
- * Otherwise return null — the projection treats it as ABSENT (fail-open: a
- * running seat is left unchanged, never down-ranked). This keeps the rev1-r1
- * fail-open discipline: turning a stale verdict into ABSENT never down-ranks;
- * only a matching mismatch/pane_missing does.
+ * 否则返回 null，投影将其视为缺失（失败开放：运行中席位保持不变，绝不降级）。这维持
+ * rev1-r1 的失败开放纪律：把过期判决视为缺失不会降级，只有匹配当前 binding 的
+ * mismatch/pane_missing 才会降级。
  */
 function applicableVerdict(
   verdict: SeatIdentityVerdict | null,
@@ -411,26 +393,23 @@ function applicableVerdict(
   return verdict;
 }
 
-// -- Public API --
+// -- 公共 API --
 
 /**
- * Get the canonical node inventory for a rig.
- * Single source of truth consumed by CLI, UI, and MCP.
+ * 获取工作组的规范节点清单；CLI、UI 和 MCP 共用的唯一事实源。
  */
 export function getNodeInventory(db: Database.Database, rigId: string): NodeInventoryEntry[] {
-  // Resolve the rig's latest usable snapshot once for the whole projection so per-node
-  // recoverability checks share the same source of truth without N extra queries.
+  // 整个投影只解析一次工作组最新可用快照，使每节点可恢复性检查共享同一事实源，避免 N 次额外查询。
   const usableSnapshot = findLatestUsableSnapshot(db, rigId);
-  // PL-007: rig's typed workspace block (if declared) loaded once per
-  // projection so per-node kind resolution shares one parse.
+  // PL-007：每次投影只加载一次工作组类型化 workspace 块（若有声明），使每节点 kind 解析
+  // 共享一次解析。
   const workspaceSpec = readRigWorkspaceJson(db, rigId);
-  // OPR.0.4.3.19: the persisted per-node liveness identity verdicts, read once
-  // per projection (cheap indexed read, defensive to a missing table). Gates
-  // the running/active green derivations below.
+  // OPR.0.4.3.19：每次投影只读取一次持久化的每节点存活身份判决。该操作使用低成本索引，
+  // 并能防御表缺失；它为下方 running/active 绿色状态派生设门禁。
   const identityVerdicts = new SeatIdentityStore(db).getForRig(rigId);
-  // FS-1 W1.3 S1/S2 — the per-node restore-outcome + oriented reads built ONCE
-  // for the rig (was a query per node inside the rows.map). rig-scoped restore
-  // map = the prior WHERE rig_id=? filter; oriented map is node-scoped/global.
+  // FS-1 W1.3 S1/S2——每工作组只构建一次每节点 restore-outcome + oriented 读取；此前在
+  // rows.map 内逐节点查询。工作组范围 restore map 等于原 WHERE rig_id=? 过滤；oriented map
+  // 是节点范围/全局。
   const restoreOutcomes = buildRestoreOutcomeMap(db, rigId);
   const orienteds = buildOrientedMap(db);
 
@@ -442,20 +421,17 @@ export function getNodeInventory(db: Database.Database, rigId: string): NodeInve
 }
 
 /**
- * FS-1 W1.2 — the shared inventory-row query. Extracted verbatim from the prior
- * inline `getNodeInventory` SELECT so the single-rig and all-rigs paths run the
- * IDENTICAL query.
- *   - `rigId` given → one rig (`WHERE n.rig_id = ?`, `ORDER BY n.created_at`) —
- *     byte-identical to the prior per-rig read.
- *   - `rigId` omitted → ALL rigs in one pass (no WHERE; `ORDER BY n.rig_id,
- *     n.created_at` so JS grouping preserves each rig's `created_at` order,
- *     matching the per-rig ordering exactly).
- * The latest-session subquery (`s2.node_id = n.id ORDER BY id DESC LIMIT 1`)
- * rides the W1.1 index (051, idx_sessions_node_created_id).
+ * FS-1 W1.2——共享清单行查询。它从旧版内联 `getNodeInventory` SELECT 逐字提取，确保单
+ * 工作组和全部工作组路径执行完全相同的查询。
+ *   - 提供 `rigId` → 单工作组（`WHERE n.rig_id = ?`、`ORDER BY n.created_at`），与旧版
+ *     逐工作组读取逐字节一致。
+ *   - 省略 `rigId` → 一次读取全部工作组（无 WHERE；`ORDER BY n.rig_id, n.created_at`，
+ *     使 JS 分组保留每个工作组的 `created_at` 顺序，与逐工作组顺序完全一致）。
+ * 最新会话子查询（`s2.node_id = n.id ORDER BY id DESC LIMIT 1`）使用 W1.1 索引
+ *（051，idx_sessions_node_created_id）。
  */
 function runInventoryRowQuery(db: Database.Database, whereClause: string, orderClause: string, params: readonly string[]): InventoryRow[] {
-  // Join nodes with newest session (max ULID = max session.id string comparison)
-  // and the rig name
+  // 将节点与最新会话（最大 ULID = session.id 字符串比较最大值）及工作组名称联接。
   const hasCodexConfigProfile = db.prepare("PRAGMA table_info(nodes)").all()
     .some((row) => (row as { name?: string }).name === "codex_config_profile");
   const codexConfigProfileSelect = hasCodexConfigProfile
@@ -505,8 +481,8 @@ function runInventoryRowQuery(db: Database.Database, whereClause: string, orderC
   return stmt.all(...params) as InventoryRow[];
 }
 
-// Single-rig (WHERE n.rig_id=?) or ALL-rigs (no WHERE). Byte-identical SQL/order to
-// the prior inline read; existing single-rig callers are unchanged.
+// 单工作组（WHERE n.rig_id=?）或全部工作组（无 WHERE）。SQL/顺序与旧版内联读取逐字节
+// 一致，既有单工作组调用方不变。
 function queryInventoryRows(db: Database.Database, rigId?: string): InventoryRow[] {
   return runInventoryRowQuery(
     db,
@@ -516,26 +492,24 @@ function queryInventoryRows(db: Database.Database, rigId?: string): InventoryRow
   );
 }
 
-// Scoped to a rig-id SET — every IN value bound as a parameter; per-rig created_at
-// order preserved (same ORDER BY as the all-rigs path). Callers guarantee a
-// non-empty list (empty set → getNodeInventoryForRigs returns early, no query run).
+// 限定到工作组 ID 集合；每个 IN 值都以参数绑定，并保留逐工作组 created_at 顺序
+//（与全部工作组路径使用相同 ORDER BY）。调用方保证列表非空；空集合会让
+// getNodeInventoryForRigs 提前返回，不执行查询。
 function queryInventoryRowsForRigs(db: Database.Database, rigIds: readonly string[]): InventoryRow[] {
   const placeholders = rigIds.map(() => "?").join(", ");
   return runInventoryRowQuery(db, `WHERE n.rig_id IN (${placeholders})`, "n.rig_id, n.created_at", rigIds);
 }
 
-/** Per-rig setup context an inventory row is built against. FS-1 W1.2: the
- *  single-rig (`getNodeInventory`) and all-rigs (`getNodeInventoryForAllRigs`)
- *  paths both build entries through THIS one function, so their output is
- *  byte-identical by construction — the collapse changes only HOW the context +
- *  rows are fetched (per-rig vs batched), never how an entry is derived. */
+/** 构建清单行时使用的逐工作组设置上下文。FS-1 W1.2：单工作组
+ *（`getNodeInventory`）和全部工作组（`getNodeInventoryForAllRigs`）路径都通过此函数
+ * 构建条目，因此输出在结构上逐字节一致。合并只改变获取上下文和行的方式（逐工作组或批量），
+ * 不改变条目派生方式。 */
 interface InventoryBuildContext {
   usableSnapshot: Snapshot | null;
   workspaceSpec: WorkspaceSpec | null;
   identityVerdicts: Map<string, SeatIdentityVerdict>;
-  // FS-1 W1.3 S1/S2 — the once-per-rig-batched per-node reads, keyed by node_id.
-  // Built ONCE per projection (rig-scoped for single-rig, all-rigs for the
-  // batched path) and looked up O(1) here instead of a query per node.
+  // FS-1 W1.3 S1/S2——以 node_id 为键、每工作组批量一次的逐节点读取。每次投影只构建
+  // 一次（单工作组路径限定工作组，批量路径覆盖全部工作组），此处 O(1) 查找，不再逐节点查询。
   restoreOutcomes: Map<string, NodeRestoreOutcome>;
   orienteds: Map<string, NodeOriented>;
 }
@@ -546,21 +520,15 @@ function buildInventoryEntry(
   ctx: InventoryBuildContext,
 ): NodeInventoryEntry {
   const { usableSnapshot, workspaceSpec, identityVerdicts, restoreOutcomes, orienteds } = ctx;
-  // FS-1 W1.3 S1 — O(1) lookup into the once-per-rig restore-outcome map
-  // (byte-identical to the prior per-node deriveRestoreOutcome; "n-a" when a node
-  // is referenced by no restore event, matching the prior fall-through).
+  // FS-1 W1.3 S1——在每工作组一次的 restore-outcome map 中 O(1) 查找；与旧版逐节点
+  // deriveRestoreOutcome 逐字节一致。没有恢复事件引用节点时为 "n-a"，与旧版回退一致。
   const restoreOutcome = restoreOutcomes.get(row.node_id) ?? "n-a";
-  // OPR.0.4.3.19 rev1-r2 B1 — a durable verdict is keyed only by node_id, so
-  // after a rebind/relaunch (same node, NEW session + NEW pane) a stale
-  // `verified` verdict for the OLD pane would otherwise be served for the new
-  // pane until the next 5s reconcile tick, suppressing down-rank and rendering
-  // a fresh squat/orphan false-green. Make applicability LOAD-BEARING at read
-  // time: a stored verdict applies ONLY when it was computed against the
-  // current binding (its sessionName === the latest session AND its
-  // registeredPane === the current binding pane). Otherwise treat it as ABSENT
-  // (null) — a STALE verdict becomes fail-open (never down-ranks a running
-  // seat), it does NOT itself down-rank. Only a MATCHING mismatch/pane_missing
-  // verdict down-ranks.
+  // OPR.0.4.3.19 rev1-r2 B1——持久判决仅以 node_id 为键，因此重新绑定/启动后（同节点、
+  // 新会话 + 新窗格），旧窗格的过期 `verified` 判决在下一次 5 秒对账前可能被用于新窗格，
+  // 抑制应有降级并形成新的占位/孤立假绿；过期 `mismatch` 也可能错误降级健康新窗格。
+  // 读取时把适用性作为承重条件：存储判决只有在针对当前 binding 计算时才适用，即
+  // sessionName === 最新会话，且 registeredPane === 当前 binding 窗格。否则视为缺失 null。
+  // 过期判决采用失败开放，不会自行降级运行中席位；只有匹配的 mismatch/pane_missing 会降级。
   const identityVerdict = applicableVerdict(identityVerdicts.get(row.node_id) ?? null, row);
   const lifecycleState = deriveNodeLifecycleState({
     sessionStatus: row.session_status,
@@ -577,9 +545,8 @@ function buildInventoryEntry(
     logicalId: row.logical_id,
     podId: row.pod_id,
     podNamespace: row.pod_namespace,
-    // OPR.0.4.6.FAC1: the seat-side role dimension (nodes.role,
-    // declared in the pod-member spec) — the workflow binding layer's
-    // candidate filter. null = role-less (never role-resolved).
+    // OPR.0.4.6.FAC1：席位侧角色维度（nodes.role，在 pod-member spec 中声明），是工作流
+    // binding 层的候选过滤器。null 表示无角色，永不进行角色解析。
     role: row.role,
     canonicalSessionName: row.session_name,
     attachmentType: (row.binding_attachment_type as NodeInventoryEntry["attachmentType"]) ?? null,
@@ -588,9 +555,8 @@ function buildInventoryEntry(
     sessionStatus: row.session_status,
     startupStatus: row.startup_status as NodeInventoryEntry["startupStatus"],
     restoreOutcome,
-    // FS-1 W1.3 S2 — O(1) lookup into the fleet-batched oriented map
-    // (byte-identical to the prior per-node deriveOriented; "n-a" when a node has
-    // no proof events, matching deriveOriented's no-challenge branch).
+    // FS-1 W1.3 S2——在舰队批量 oriented map 中 O(1) 查找；与旧版逐节点 deriveOriented
+    // 逐字节一致。节点没有证明事件时为 "n-a"，对应 deriveOriented 的无挑战分支。
     oriented: orienteds.get(row.node_id) ?? "n-a",
     lifecycleState,
     occupantLifecycle: deriveOccupantLifecycle(row, identityVerdict?.verdict ?? null),
@@ -600,14 +566,12 @@ function buildInventoryEntry(
     handoverAt: row.handover_at,
     tmuxAttachCommand: row.binding_attachment_type === "tmux" && row.session_name ? `tmux attach -t ${row.session_name}` : null,
     resumeCommand: computeResumeCommand(row.runtime, row.resume_token, row.codex_config_profile),
-    // OPR.0.4.0.26: recoveryGuidance is NOT inlined per node in the LIST
-    // payload. It duplicated ~47KB of templated prose across all nodes and
-    // no node-list consumer reads it. The full guidance is recomputed on
-    // the single-node detail path (getNodeDetail / GET
-    // /api/rigs/:rigId/nodes/:logicalId) — relocation, not loss.
+    // OPR.0.4.0.26：LIST 载荷不再逐节点内联 recoveryGuidance。它会在所有节点间重复约
+    // 47KB 模板散文，且没有节点列表消费者读取。完整指导改在单节点详情路径
+    //（getNodeDetail / GET /api/rigs/:rigId/nodes/:logicalId）重新计算，只是迁移位置，未丢失。
     recoveryGuidance: null,
     latestError: row.startup_status === "ready" ? null : getLatestError(db, row.rig_id, row.node_id),
-    // Extended fields
+    // 扩展字段。
     model: row.model,
     agentRef: row.agent_ref,
     profile: row.profile,
@@ -620,57 +584,49 @@ function buildInventoryEntry(
     resumeType: row.resume_type,
     resumeToken: row.resume_token,
     startupCompletedAt: row.startup_completed_at,
-    // PL-007 Workspace Primitive — per-node workspace summary derived
-    // from cwd against the rig's typed workspace block. null when the
-    // rig has no workspace declaration.
+    // PL-007 Workspace Primitive——根据 cwd 和工作组类型化 workspace 块派生的逐节点
+    // 工作区摘要；工作组未声明 workspace 时为 null。
     workspace: resolveNodeWorkspace({ spec: workspaceSpec, cwd: row.cwd }),
-    // OPR.0.4.3.19 — the liveness identity verdict (third axis). null when
-    // never observed; carries evidence on mismatch/missing.
+    // OPR.0.4.3.19——存活身份判决（第三维）。从未观察时为 null；mismatch/missing 时携带证据。
     identityVerdict,
     heldReason: deriveHeldReason(db, row.rig_id, row.node_id, row.session_status),
   };
 }
 
-/** FS-1 W1.2 — all-rigs batched form of `readRigWorkspaceJson`: one query,
- *  `rigId → WorkspaceSpec`. Rigs with no/malformed workspace are absent (callers
- *  default to null — byte-identical to `readRigWorkspaceJson`'s null return). */
+/** FS-1 W1.2——`readRigWorkspaceJson` 的全工作组批量形式：一次查询生成
+ * `rigId → WorkspaceSpec`。没有 workspace 或格式错误的工作组不出现在结果中；调用方默认
+ * 为 null，与 `readRigWorkspaceJson` 返回 null 逐字节一致。 */
 function readAllRigWorkspaceJson(db: Database.Database): Map<string, WorkspaceSpec> {
   const out = new Map<string, WorkspaceSpec>();
   try {
     const rows = db.prepare("SELECT id, workspace_json FROM rigs").all() as Array<{ id: string; workspace_json: string | null }>;
     for (const row of rows) {
       if (!row.workspace_json) continue;
-      try { out.set(row.id, JSON.parse(row.workspace_json) as WorkspaceSpec); } catch { /* malformed → absent → caller null (matches per-rig) */ }
+      try { out.set(row.id, JSON.parse(row.workspace_json) as WorkspaceSpec); } catch { /* 格式错误 → 缺失 → 调用方取 null，与逐工作组路径一致。 */ }
     }
-  } catch { /* column/table absent → empty → caller null (matches per-rig defensive path) */ }
+  } catch { /* 列/表缺失 → 空结果 → 调用方取 null，与逐工作组防御路径一致。 */ }
   return out;
 }
 
 /**
- * FS-1 W1.2 — the rig-level N+1 collapse. Builds inventory for ALL rigs in a
- * bounded, rig-count-INDEPENDENT set of queries: 3 batched setup reads
- * (snapshots / workspaces / identity verdicts) + 1 all-rigs node SELECT, grouped
- * by rig_id. Every entry is built through the SAME `buildInventoryEntry` that the
- * per-rig `getNodeInventory` uses, so `getNodeInventoryForAllRigs(db).get(rigId)`
- * is byte-identical to `getNodeInventory(db, rigId)` — the collapse changes only
- * HOW the context + rows are fetched (batched vs per-rig), never how an entry is
- * derived. Per-node reads inside `buildInventoryEntry` (`deriveRestoreOutcome`
- * etc.) remain per-node and ride the 047 index — NOT the rig-level N+1 removed here.
+ * FS-1 W1.2——消除工作组级 N+1。使用与工作组数量无关的有界查询集构建全部工作组清单：
+ * 三次批量设置读取（快照/workspace/身份判决）+ 一次全部工作组节点 SELECT，并按 rig_id 分组。
+ * 每个条目都通过逐工作组 `getNodeInventory` 使用的同一个 `buildInventoryEntry` 构建，因此
+ * `getNodeInventoryForAllRigs(db).get(rigId)` 与 `getNodeInventory(db, rigId)` 逐字节一致。
+ * 合并只改变上下文和行的获取方式（批量或逐工作组），不改变条目派生方式。
+ * `buildInventoryEntry` 内的逐节点读取仍使用 047 索引；它们不是此处移除的工作组级 N+1。
  */
-// Shared batched builder — the common body of the all-rigs and scoped-rigs paths.
-// Builds the fleet setup maps + EXACTLY one fleet startup-orientation
-// (buildOrientedMap) and one fleet restore-outcome (buildRestoreOutcomeMap) scan
-// ONCE, then builds a NodeInventoryEntry for each PROVIDED row via the SAME
-// buildInventoryEntry, grouped by rig_id with per-rig created_at order preserved.
-// `rows` decides the scope (all rigs vs a selected rig set); entry derivation is
-// identical, so a rig's entries are byte-identical regardless of which caller ran.
+// 共享批量构建器——全部工作组和限定工作组路径的公共主体。一次构建舰队设置 map，并恰好
+// 执行一次舰队启动方向扫描 buildOrientedMap 和一次恢复结果扫描 buildRestoreOutcomeMap；
+// 随后通过同一个 buildInventoryEntry 为每个给定行构建条目，按 rig_id 分组并保留每工作组
+// created_at 顺序。`rows` 决定范围（全部工作组或指定集合）；条目派生完全一致，因此无论由
+// 哪个调用方运行，同一工作组的条目都逐字节一致。
 function buildInventoryMapFromRows(db: Database.Database, rows: InventoryRow[]): Map<string, NodeInventoryEntry[]> {
   const snapshotByRig = findLatestUsableSnapshotsForAllRigs(db);
   const workspaceByRig = readAllRigWorkspaceJson(db);
   const verdictsByRig = new SeatIdentityStore(db).getForAllRigs();
-  // FS-1 W1.3 S1/S2 — the per-node reads built ONCE (O(1) queries, not O(nodes)).
-  // Restore map unscoped: a nodeId is referenced only by its own rig's restore
-  // events, so each node's value equals the single-rig path.
+  // FS-1 W1.3 S1/S2——逐节点读取只构建一次（O(1) 次查询，而非 O(nodes)）。restore map
+  // 不限定工作组：nodeId 只会被自身工作组的恢复事件引用，所以每节点值与单工作组路径一致。
   const restoreOutcomes = buildRestoreOutcomeMap(db); // one fleet restore-outcome scan
   const orienteds = buildOrientedMap(db);             // one fleet startup-orientation scan
   const out = new Map<string, NodeInventoryEntry[]>();
@@ -693,21 +649,17 @@ export function getNodeInventoryForAllRigs(db: Database.Database): Map<string, N
   return buildInventoryMapFromRows(db, queryInventoryRows(db));
 }
 
-// slice-04 — inventory for a SELECTED set of rigs only (e.g. the rigs a summary
-// actually returns), so the per-node fold never widens to rigs the caller excluded
-// (e.g. archived). Retains exactly one fleet startup-orientation + one fleet
-// restore-outcome scan via the shared builder. Empty set → empty Map, NO scans and
-// no invalid `IN ()`. getNodeInventoryForRigs(db, {r}).get(r) is byte-identical to
-// the all-rigs path's entry list for r (same rows, same builder).
+// slice-04——只为选定的工作组集合构建清单，例如摘要实际返回的工作组，因而逐节点折叠不会
+// 扩大到调用方已排除的工作组（例如 archived）。共享构建器仍只执行一次舰队启动方向和一次
+// 舰队恢复结果扫描。空集合返回空 Map，不扫描，也不会生成无效 `IN ()`。
+// getNodeInventoryForRigs(db, {r}).get(r) 与全部工作组路径中 r 的条目列表逐字节一致。
 export function getNodeInventoryForRigs(db: Database.Database, rigIds: ReadonlySet<string>): Map<string, NodeInventoryEntry[]> {
   if (rigIds.size === 0) return new Map();
   return buildInventoryMapFromRows(db, queryInventoryRowsForRigs(db, [...rigIds]));
 }
 
-/** PL-007 — read the rig's typed workspace block from `rigs.workspace_json`
- *  defensively. Migration 038 may not yet be applied in older test fixtures
- *  that bypass the canonical migration list, so a missing column returns
- *  null cleanly. */
+/** PL-007——防御性读取 `rigs.workspace_json` 中工作组的类型化 workspace 块。绕过规范迁移
+ * 列表的旧测试 fixture 可能尚未应用迁移 038，因此列缺失时干净地返回 null。 */
 function readRigWorkspaceJson(db: Database.Database, rigId: string): WorkspaceSpec | null {
   try {
     const row = db.prepare("SELECT workspace_json FROM rigs WHERE id = ?")
@@ -720,9 +672,8 @@ function readRigWorkspaceJson(db: Database.Database, rigId: string): WorkspaceSp
 }
 
 /**
- * Get detailed node information including startup files, resources, and events.
- * The adapter dependency is optional — when provided, uses live listInstalled;
- * otherwise falls back to projection entries from startup context.
+ * 获取节点详细信息，包括启动文件、资源和事件。适配器依赖可选；提供时使用实时
+ * listInstalled，否则回退到启动上下文中的投影条目。
  */
 export function getNodeDetail(
   db: Database.Database,
@@ -730,23 +681,23 @@ export function getNodeDetail(
   logicalId: string,
   opts?: {
     adapters?: Record<string, RuntimeAdapter>;
-    /** Pre-resolved installed resources from adapter.listInstalled() — route layer provides this. */
+    /** 预先解析的已安装资源，来自 adapter.listInstalled()，由路由层提供。 */
     installedResourcesOverride?: Array<{ id: string; category: string; targetPath: string }>;
   },
 ): NodeDetailEntry | null {
-  // Get the inventory entry first
+  // 先获取清单条目。
   const allEntries = getNodeInventory(db, rigId);
   const entry = allEntries.find((e) => e.logicalId === logicalId);
   if (!entry) return null;
 
-  // Find the node ID
+  // 查找节点 ID。
   const nodeRow = db.prepare(
     "SELECT id FROM nodes WHERE rig_id = ? AND logical_id = ?"
   ).get(rigId, logicalId) as { id: string } | undefined;
   if (!nodeRow) return null;
   const nodeId = nodeRow.id;
 
-  // Binding
+  // Binding。
   const bindingRow = db.prepare("SELECT * FROM bindings WHERE node_id = ?").get(nodeId) as BindingRow | undefined;
   const binding: Binding | null = bindingRow ? {
     id: bindingRow.id,
@@ -761,7 +712,7 @@ export function getNodeDetail(
     updatedAt: bindingRow.updated_at,
   } : null;
 
-  // Startup context
+  // 启动上下文。
   const ctxRow = db.prepare(
     "SELECT * FROM node_startup_context WHERE node_id = ?"
   ).get(nodeId) as StartupContextRow | undefined;
@@ -770,18 +721,18 @@ export function getNodeDetail(
   const startupActions = ctxRow ? JSON.parse(ctxRow.startup_actions_json) : [];
   const projectionEntries = ctxRow ? JSON.parse(ctxRow.projection_entries_json) : [];
 
-  // Installed resources: override (from async adapter call) > projection fallback
+  // 已安装资源：override（来自异步适配器调用）优先于投影回退。
   let installedResources: NodeDetailEntry["installedResources"];
   if (opts?.installedResourcesOverride) {
     installedResources = opts.installedResourcesOverride;
   } else if (opts?.adapters?.[entry.runtime ?? ""] && binding) {
-    // Adapter is available — caller should have pre-resolved via listInstalled (async).
-    // If caller passed adapters but not override, try sync call for test compatibility.
+    // 适配器可用时，调用方应已通过异步 listInstalled 预解析。若调用方传入适配器但没有
+    // override，则为兼容测试尝试同步调用。
     try {
       const adapter = opts.adapters[entry.runtime ?? ""]!;
       const nodeBinding = { ...binding, cwd: entry.cwd ?? "." };
       const resources = adapter.listInstalled(nodeBinding) as unknown;
-      // Handle both sync (test mocks) and Promise (real adapters)
+      // 同时处理同步测试 mock 与真实适配器 Promise。
       if (Array.isArray(resources)) {
         installedResources = (resources as Array<{ effectiveId: string; category: string; installedPath: string }>).map((r) => ({
           id: r.effectiveId,
@@ -789,25 +740,25 @@ export function getNodeDetail(
           targetPath: r.installedPath,
         }));
       } else {
-        // Async — fall through to projection
+        // 异步结果——回退到投影。
         installedResources = mapProjectionEntries(projectionEntries);
       }
     } catch {
       installedResources = mapProjectionEntries(projectionEntries);
     }
   } else {
-    // Projection fallback
+    // 投影回退。
     installedResources = mapProjectionEntries(projectionEntries);
   }
 
-  // Recent events (last 20 for this node)
+  // 近期事件（此节点最近 20 条）。
   const eventRows = db.prepare(
     "SELECT * FROM events WHERE node_id = ? ORDER BY seq DESC LIMIT 20"
   ).all(nodeId) as EventRow[];
 
   const recentEvents = eventRows.map((r) => {
     let payload: Record<string, unknown> = {};
-    try { payload = JSON.parse(r.payload); } catch { /* empty */ }
+    try { payload = JSON.parse(r.payload); } catch { /* 保持空对象。 */ }
     return {
       type: r.type,
       createdAt: r.created_at,
@@ -815,7 +766,7 @@ export function getNodeDetail(
     };
   });
 
-  // Infrastructure startup command
+  // 基础设施启动命令。
   let infrastructureStartupCommand: string | null = null;
   if (entry.nodeKind === "infrastructure" && startupActions.length > 0) {
     const sendTextAction = startupActions.find((a: { type: string }) => a.type === "send_text");
@@ -824,7 +775,7 @@ export function getNodeDetail(
     }
   }
 
-  // Peers: other nodes in the same rig
+  // 同级节点：同一工作组中的其他节点。
   const peers: NodeDetailPeer[] = allEntries
     .filter((e) => e.logicalId !== logicalId)
     .map((e) => ({
@@ -834,7 +785,7 @@ export function getNodeDetail(
       runtime: e.runtime,
     }));
 
-  // Edges: outgoing and incoming for this node
+  // 此节点的出边与入边。
   const edgeRows = db.prepare(
     "SELECT e.kind, e.source_id, e.target_id, src.logical_id as src_logical, tgt.logical_id as tgt_logical " +
     "FROM edges e " +
@@ -855,7 +806,7 @@ export function getNodeDetail(
     }
   }
 
-  // Compact spec summary
+  // 紧凑 spec 摘要。
   const compactSpec: NodeDetailCompactSpec = {
     name: entry.resolvedSpecName,
     version: entry.resolvedSpecVersion,
@@ -866,9 +817,8 @@ export function getNodeDetail(
 
   return {
     ...entry,
-    // OPR.0.4.0.26: the LIST omits recoveryGuidance to stay slim; the
-    // single-node detail recomputes the full guidance from the entry's
-    // resume fields (relocation of the per-node prose, not loss).
+    // OPR.0.4.0.26：LIST 省略 recoveryGuidance 以保持精简；单节点详情根据条目的恢复字段
+    // 重新计算完整指导。这只是移动逐节点说明的位置，并未丢失信息。
     recoveryGuidance: computeRecoveryGuidance({
       runtime: entry.runtime,
       resumeToken: entry.resumeToken,
@@ -890,8 +840,8 @@ export function getNodeDetail(
 }
 
 /**
- * Context-aware wrapper: returns inventory with context usage attached.
- * Uses one daemon-owned ContextUsageStore for all reads.
+ * 上下文感知包装器：返回附带上下文用量的清单。所有读取共用一个后台服务拥有的
+ * ContextUsageStore。
  */
 export function getNodeInventoryWithContext(
   db: Database.Database,
@@ -901,7 +851,7 @@ export function getNodeInventoryWithContext(
 ): NodeInventoryEntry[] {
   const entries = getNodeInventory(db, rigId);
 
-  // Find node IDs for batch read
+  // 查找节点 ID，供批量读取。
   const nodeRows = db.prepare(
     "SELECT id, logical_id FROM nodes WHERE rig_id = ?"
   ).all(rigId) as Array<{ id: string; logical_id: string }>;
@@ -917,11 +867,10 @@ export function getNodeInventoryWithContext(
   return entries.map((e) => {
     const nodeId = nodeIdByLogicalId.get(e.logicalId) ?? "";
     const usage = contextMap.get(nodeId) ?? contextUsageStore.unknownUsage("no_data");
-    // OPR.0.4.0.26: drop the heavy `currentUsage` blob from the LIST
-    // contextUsage (a serialized per-node usage payload, ~79KB across a
-    // large fleet; no node-list consumer reads it). All scalars are kept so
-    // the ring/table/filter consumers are unaffected. The full currentUsage
-    // remains on the detail/whoami path (getNodeDetailWithContext, whoami).
+    // OPR.0.4.0.26：从 LIST 的 contextUsage 移除较重的 `currentUsage` blob。它是逐节点
+    // 序列化用量载荷，在大型舰队中约 79KB，且节点列表消费者均不读取。保留全部标量，
+    // 因而环形图/表格/过滤器消费者不受影响。完整 currentUsage 仍保留在详情/whoami 路径
+    //（getNodeDetailWithContext、whoami）中。
     const transcriptIngest = transcriptStore && e.canonicalSessionName
       ? {
           ...transcriptStore.getIngestHealth(e.rigName, e.canonicalSessionName),
@@ -937,7 +886,7 @@ export function getNodeInventoryWithContext(
 }
 
 /**
- * Context-aware wrapper: returns node detail with context usage attached.
+ * 上下文感知包装器：返回附带上下文用量的节点详情。
  */
 export function getNodeDetailWithContext(
   db: Database.Database,
@@ -963,17 +912,15 @@ export function getNodeDetailWithContext(
 }
 
 /**
- * Slice 15 — populate `terminalActive` + `hasAssignedWork` per node.
+ * Slice 15——填充每节点的 `terminalActive` + `hasAssignedWork`。
  *
- * Two orthogonal enrichments computed independently (non-inference
- * contract per IMPL-PRD §2.3):
- *   - `terminalActive`: read from SeatActivityService (tmux signal)
- *   - assigned-work counts: pending, in-progress, and blocked queue_items
- *     where destination_session matches either canonical coordinate for the seat
+ * 两项正交增强独立计算（遵循 IMPL-PRD §2.3 的非推断契约）：
+ *   - `terminalActive`：从 SeatActivityService 读取（tmux 信号）
+ *   - 已分配工作计数：destination_session 匹配席位任一规范坐标的 pending、in-progress
+ *     和 blocked queue_items
  *
- * Pure / synchronous — keeps the projection cheap for both `rig ps` and
- * the UI which both fetch this per-request. The two enrichments do not
- * read each other's source.
+ * 纯函数且同步，使每次请求都会获取此投影的 `zrig ps` 与 UI 保持低开销。两项增强不会读取
+ * 对方的数据源。
  */
 export function attachTerminalActivityAndWork(
   entries: NodeInventoryEntry[],
@@ -983,21 +930,20 @@ export function attachTerminalActivityAndWork(
   const assignedByDest = readAssignedWorkBySession(deps.db);
   return entries.map((entry) => {
     let terminalActive: boolean | null | undefined = undefined;
-    // ARCH RULING 3a947fb1 (FR-7 additive): project the RAW lastActivityAt fact
-    // alongside terminalActive from the SAME observation — honest-absence ladder
-    // (obs → value, no obs → null, no service → undefined). No ageSeconds
-    // sibling; age is derived renderer-side from this fact + a reader clock (C3).
+    // 架构裁决 3a947fb1（FR-7 增量）：从同一观察中同时投影原始 lastActivityAt 事实与
+    // terminalActive，遵循诚实缺失阶梯（有观察 → 值；无观察 → null；无服务 → undefined）。
+    // 不增加 ageSeconds 同级字段；年龄由渲染器根据此事实和读取者时钟派生（C3）。
     let lastActivityAt: string | null | undefined = undefined;
     if (seatActivity && entry.canonicalSessionName) {
       const obs = seatActivity.getSeatActivity(entry.canonicalSessionName);
       terminalActive = obs ? obs.isActiveWithinWindow : null;
       lastActivityAt = obs ? obs.lastActivityAt : null;
     }
-    // S19 — the arbitrated taxonomy state from the ONE oracle, display pre-derived
-    // through the single bridge (consumers render, never re-arbitrate).
+    // S19——来自唯一事实源的仲裁分类状态，通过单一桥预先派生显示值；消费者只渲染，
+    // 绝不重新仲裁。
     let activityState: NodeInventoryEntry["activityState"] = undefined;
-    // Capability-checked: a partial injected double without the S19 surface keeps the
-    // pre-taxonomy shape (undefined) rather than faking a null oracle answer.
+    // 按能力检查：不带 S19 接口的局部注入替身保持分类前结构 undefined，而不是伪造 null
+    // 事实源结果。
     if (seatActivity && entry.canonicalSessionName && typeof seatActivity.getSeatStateBySession === "function") {
       const arb = seatActivity.getSeatStateBySession(entry.canonicalSessionName);
       activityState = arb
@@ -1024,35 +970,27 @@ export function attachTerminalActivityAndWork(
 }
 
 /**
- * QA baseline-deep-dogfood BLOCKING-A2 (qitem-20260518063900-85745917):
- * adopted/live-session rigs do NOT surface assigned queue work because
- * the prior lookup matched destination_session ONLY against
- * canonicalSessionName.
+ * QA baseline-deep-dogfood BLOCKING-A2（qitem-20260518063900-85745917）：已采用/实时会话
+ * 工作组不会显示已分配队列工作，因为旧版查找只用 canonicalSessionName 匹配
+ * destination_session。
  *
- * For MANAGED seats, canonicalSessionName equals the canonical form
- * `{pod}-{member}@{rig}` (set by deriveCanonicalSessionName at
- * materialize time) and queue operators address them by that form, so
- * the single-key lookup works.
+ * 对托管席位，canonicalSessionName 等于规范形式 `{pod}-{member}@{rig}`，由
+ * deriveCanonicalSessionName 在物化时设置；队列操作者也用该形式寻址，所以单键查找有效。
  *
- * For ADOPTED seats, canonicalSessionName is the RAW tmux session
- * name (whatever the adopter chose, e.g., `my-existing-claude`).
- * Operators address adopted seats by the canonical form (logical
- * `{pod}-{member}@{rig}`) through `rig queue create --destination`,
- * so the single-key lookup misses.
+ * 对已采用席位，canonicalSessionName 是原始 tmux 会话名，即采用者选择的任意名称，例如
+ * `my-existing-claude`。操作者通过 `zrig queue create --destination` 使用规范形式
+ *（逻辑 `{pod}-{member}@{rig}`）寻址已采用席位，所以单键查找会漏掉。
  *
- * Resolve via BOTH forms:
- *   1. entry.canonicalSessionName (covers managed + adopted-by-raw)
- *   2. derived `{pod}-{member}@{rig}` from logicalId + rigName
- *      (covers adopted-by-canonical)
+ * 同时按两种形式解析：
+ *   1. entry.canonicalSessionName（覆盖托管席位 + 按原始名称采用的席位）
+ *   2. 从 logicalId + rigName 派生的 `{pod}-{member}@{rig}`（覆盖按规范名称寻址的已采用席位）
  *
- * The logicalId is the pod-aware `pod.member` form (dot-separated).
- * The canonical session form replaces the dot with a dash to match the
- * convention from deriveCanonicalSessionName (so `redo.driver-2` in
- * rig `openrig-velocity` becomes `redo-driver-2@openrig-velocity`).
+ * logicalId 是感知 pod 的 `pod.member` 形式，以点分隔。规范会话形式把点替换为连字符，
+ * 以符合 deriveCanonicalSessionName 约定；例如工作组 `openrig-velocity` 中的
+ * `redo.driver-2` 会变成 `redo-driver-2@openrig-velocity`。
  *
- * Sums distinct destination_session keys to avoid double-counting
- * when both forms are identical (managed seats whose
- * canonicalSessionName already equals the derived canonical form).
+ * 对不同 destination_session 键求和，避免两种形式相同时重复计数；托管席位的
+ * canonicalSessionName 已等于派生规范形式。
  */
 export interface AssignedWorkCounts {
   assignedWorkCount: number;
@@ -1086,10 +1024,8 @@ export function countAssignedWorkForEntry(
   return total;
 }
 
-/** EXPORTED (OPR.0.4.6.FAC1): the derived canonical coordinate
- *  `{pod}-{member}@{rig}` for an inventory entry — the binding layer's
- *  ONE string rule (tiebreak key AND recorded destination) reuses
- *  exactly this dual-key derivation, never a parallel one. */
+/** 导出函数（OPR.0.4.6.FAC1）：为清单条目派生规范坐标 `{pod}-{member}@{rig}`。binding
+ * 层的唯一字符串规则（平局判定键和记录目标）精确复用此双键派生，绝不另起平行实现。 */
 export function deriveCanonicalFromEntry(entry: NodeInventoryEntry): string | null {
   if (!entry.rigName || !entry.logicalId) return null;
   const dotIdx = entry.logicalId.indexOf(".");
@@ -1133,32 +1069,29 @@ export async function attachAgentActivity(
   deps: {
     tmuxAdapter: TmuxAdapter;
     activityStore?: AgentActivityStore;
-    /** 5b82324b — the cached STRUCTURAL pane observation (SeatStructuralActivityService). READ-only
-     *  and capture-FREE: lifts structural motion into the ACTIVITY signal on the DEFAULT path so a
-     *  live hook-less/stale-hook seat stops rendering as `unknown`. Absent = the pre-5b behavior. */
+    /** 5b82324b——缓存的结构化窗格观察（SeatStructuralActivityService）。只读且无 capture：
+     * 在默认路径把结构运动提升为 ACTIVITY 信号，使实时但无 hook/hook 过期的席位不再显示
+     * `unknown`。缺失时保持 5b 之前的行为。 */
     structuralActivity?: { getStructuralActivity(sessionName: string): StructuralObservation | null };
-    /** ACTIVITY D1+D2 — the cached MOTION observation (SeatActivityService, tmux
-     *  `#{window_activity}` at 1Hz). READ-only and capture-FREE, same as `structuralActivity`.
+    /** ACTIVITY D1+D2——缓存的运动观察（SeatActivityService，以 1Hz 读取 tmux
+     * `#{window_activity}`）。与 `structuralActivity` 一样只读且无 capture。
      *
-     *  This signal was already computed per seat and already rendered — in the SEPARATE `TERMINAL`
-     *  column, and in the UI's own activity fold (activity-visuals.ts has returned
-     *  `{state: "running", source: "terminal_activity"}` on `terminalActive === true` since slice
-     *  15). ACTIVITY was the one consumer that never read it, which is why the web UI could show a
-     *  seat working while `rig ps` called the same seat `unknown`. Absent = the pre-fix behavior. */
+     * 此信号已按席位计算并渲染在独立 `TERMINAL` 列和 UI 自身的活动折叠中；从 slice 15
+     * 起，activity-visuals.ts 在 `terminalActive === true` 时返回
+     * `{state: "running", source: "terminal_activity"}`。ACTIVITY 是唯一从未读取它的
+     * 消费者，因此 Web UI 可能显示席位在工作，而 `zrig ps` 却把同一席位标为 `unknown`。
+     * 缺失时保持修复前行为。 */
     seatActivity?: { getSeatActivity(sessionName: string): SeatActivity | null };
     now?: Date;
-    // OPR.0.4.3 healthz-wedge amplification fix: cheap by default. The per-node
-    // tmux `capturePaneContent` fallback (probeSessionActivity) is the storm that
-    // amplifies fleet-scale under the CLI `rig ps --nodes` fan-out + the graph/nodes
-    // polls. It is ONLY reached for hook-less seats (getLatestForNode returns null),
-    // and it uniquely adds ONLY pane-heuristic `needs_input` for those seats — the
-    // SeatActivityService snapshot (terminalActive) already serves running/idle at a
-    // higher UI precedence, and getLatestForNode serves hook activity (incl.
-    // hook-needs_input). So cheap-default skips the capture and emits an HONEST
-    // `unknown/no_runtime_hook` placeholder (running/idle then come from the snapshot
-    // at render time). Set `captureFallback: true` (via ?full=/?refresh=) to opt into
-    // the per-node tmux capture — needs-input surfaces (useNeedsInputSeats, node
-    // detail) request it explicitly.
+    // OPR.0.4.3 healthz-wedge 放大修复：默认走低成本路径。逐节点 tmux
+    // `capturePaneContent` 回退（probeSessionActivity）会在 CLI `zrig ps --nodes` 扇出和
+    // graph/nodes 轮询下放大为舰队级进程风暴。它只用于无 hook 席位（getLatestForNode 返回
+    // null），且只为这些席位增加基于窗格启发式的 `needs_input`。SeatActivityService 快照
+    //（terminalActive）已以更高 UI 优先级提供 running/idle，getLatestForNode 则提供 hook 活动
+    //（包括 hook-needs_input）。因此低成本默认值跳过 capture，发出诚实的
+    // `unknown/no_runtime_hook` 占位；running/idle 在渲染时来自快照。设置
+    // `captureFallback: true`（通过 ?full=/?refresh=）才启用逐节点 tmux capture；
+    // needs-input 界面（useNeedsInputSeats、节点详情）会显式请求。
     captureFallback?: boolean;
     captureObserver?: Pick<CaptureObserver, "record">;
     observationBinding?: (entry: NodeInventoryEntry) => Omit<ObservedBinding, "sessionName">;
@@ -1167,33 +1100,30 @@ export async function attachAgentActivity(
   const sampledAt = deps.now ?? new Date();
   const captureFallback = deps.captureFallback ?? false;
   return Promise.all(entries.map(async (entry) => {
-    // ACTIVITY D1+D2 — the MOTION reading, resolved once and applied to every exit below.
+    // ACTIVITY D1+D2——运动读取只解析一次，并应用到下方每个出口。
     const motion = entry.canonicalSessionName
       ? deps.seatActivity?.getSeatActivity(entry.canonicalSessionName) ?? null
       : null;
 
     /**
-     * Freshness is decided HERE, at read time, from the RAW `lastActivityAt` against the request
-     * clock — NEVER from the cached `isActiveWithinWindow` boolean alone.
+     * 新鲜度在此读取时决定：用原始 `lastActivityAt` 对照请求时钟，绝不能只依赖缓存的
+     * `isActiveWithinWindow` 布尔值。
      *
-     * WHY (dev50-guard HOLD on 29ad1b2b9): `SeatActivityService.pollSeat` returns null on a tmux
-     * error BEFORE it replaces or deletes the cached record, and `pollAllRunningTmuxSeats` only
-     * evicts seats that are no longer running in the DB. A seat still marked running whose tmux read
-     * keeps failing therefore KEEPS its last observation forever — including a `true`. Trusting that
-     * boolean turned an UNAVAILABLE observation into an affirmative liveness claim: ACTIVITY would
-     * report `running` indefinitely after the instrument went dark.
+     * 原因（dev50-guard 对 29ad1b2b9 的 HOLD）：`SeatActivityService.pollSeat` 在 tmux 错误时
+     * 会先返回 null，而不会替换或删除缓存记录；`pollAllRunningTmuxSeats` 只清除数据库中不再
+     * 运行的席位。因此，数据库仍标为 running 但 tmux 读取持续失败的席位会永久保留最后观察，
+     * 包括 `true`。信任该布尔值会把不可用观察变成肯定的存活声明：检测工具失效后，ACTIVITY
+     * 仍会无限期报告 `running`。
      *
-     * That is this ladder's own no-fabrication rule broken in the unwatched direction. Three guards
-     * below stop motion inventing `idle` from silence; none of them stopped a dead cache inventing
-     * `running`. A silent seat and a seat we can no longer SEE are different states, and only the
-     * raw timestamp distinguishes them.
+     * 这会从未防护方向破坏该阶梯自身的不伪造规则。下方三个门禁会阻止 motion 根据沉默伪造
+     * `idle`，却都不能阻止失效缓存伪造 `running`。安静的席位与已无法观察的席位是不同状态，
+     * 只有原始时间戳能区分。
      *
-     * Fail CLOSED when the fact cannot be aged (absent or unparseable): an un-ageable affirmative is
-     * indistinguishable from a long-dead one, so it must not become a liveness claim.
+     * 当事实无法计算年龄（缺失或无法解析）时失败关闭：无法计算年龄的肯定值与长期失效值无法
+     * 区分，因此不能成为存活声明。
      *
-     * The seat's OWN `silenceWindowSeconds` is the threshold — the same one the service used at poll
-     * time. No second threshold is invented here. A negative age (raw fact slightly ahead of the
-     * request clock) still reads live, preserving pollSeat's deliberate clock-skew tolerance.
+     * 阈值使用席位自身的 `silenceWindowSeconds`，与服务轮询时相同；此处不创造第二个阈值。
+     * 年龄为负（原始事实略早于请求时钟）时仍判为存活，保留 pollSeat 有意提供的时钟偏差容忍。
      */
     const motionRunning = (() => {
       if (motion?.isActiveWithinWindow !== true) return false;
@@ -1204,33 +1134,27 @@ export async function attachAgentActivity(
     })();
 
     /**
-     * ACTIVITY D1+D2 — ONE precedence rule, applied at EVERY exit of the ladder:
+     * ACTIVITY D1+D2——一条优先级规则，应用于阶梯每个出口：
      *
      *     needs_input > running > MOTION > idle / unknown
      *
-     * Live motion UPGRADES a verdict of `idle` or `unknown`; it never touches `needs_input` or an
-     * already-`running` verdict, and it never MANUFACTURES `idle`. That asymmetry is the whole
-     * safety argument, and it is what each half of the defect needs:
+     * 实时运动会把 `idle` 或 `unknown` 判决提升，但绝不改动 `needs_input` 或已有 `running`
+     * 判决，也绝不伪造 `idle`。这种不对称性就是完整安全论据，也是缺陷两部分各自所需的规则：
      *
-     *   D1 (Codex → unknown) is COVERAGE. A Codex seat has no hook, and the structural matcher is
-     *     Claude-shaped over a fixed 8-line tail window, so a tall Codex footer pushes the real work
-     *     line out of view and the seat falls to `unknown`. Motion is a fact about bytes on the pane,
-     *     so it covers every runtime without a matcher per provider — the treadmill this avoids.
-     *   D2 (Claude → idle) is PRECEDENCE. A seat that Stopped and then RESUMED still carries the
-     *     stale positive `idle` hook as its latest, and the old early-return handed that back as
-     *     authoritative before anything else was consulted. A perfect motion source placed further
-     *     down the ladder would still have lost to it. Motion has to outrank a POSITIVE idle hook,
-     *     not merely an absent one.
+     *   D1（Codex → unknown）是覆盖问题。Codex 席位没有 hook，结构匹配器又按 Claude 形态
+     *     检查固定 8 行尾部窗口，因此较高的 Codex 页脚会把真实工作行挤出视野，使席位降为
+     *     `unknown`。Motion 是窗格字节事实，能覆盖所有运行时，无需为每个 provider 写匹配器。
+     *   D2（Claude → idle）是优先级问题。停止后恢复的席位仍可能把过期肯定 `idle` hook 作为
+     *     最新记录；旧版提前返回会在查询其他来源前把它视为权威。即使后续有完美 motion 源也会
+     *     输给它。因此 motion 必须高于肯定 idle hook，而不只是高于缺失 hook。
      *
-     * Why `needs_input` outranks motion: motion cannot tell "working" from "waiting at a prompt" —
-     * any per-second redraw keeps the window fresh. If motion outranked a needs_input TEXT verdict,
-     * a seat asking for permission would be relabelled `running`, and the parking watch would step
-     * over the one seat that is actually blocked.
+     * `needs_input` 优先于 motion 的原因：motion 无法区分“工作中”和“在提示处等待”，每秒重绘
+     * 都会让窗口保持新鲜。若 motion 高于 needs_input 文本判决，请求权限的席位会被改标为
+     * `running`，暂存监视器反而会跳过真正受阻的席位。
      *
-     * Why motion never yields `idle`: a silent window is not evidence of a quiet agent (a seat can
-     * think for a long time without printing). Deriving `idle` from silence would satisfy
-     * "not unknown" by relabelling the default, which is the closed union rotting rather than the
-     * signal improving. Silence therefore leaves the prior verdict exactly as it was.
+     * motion 永不产生 `idle` 的原因：安静窗口不能证明智能体空闲，席位可能长时间思考而不输出。
+     * 从沉默派生 `idle` 只是通过重标默认值来满足“非 unknown”，会腐蚀封闭联合类型而非改善
+     * 信号。因此沉默时保持原判决不变。
      */
     const withMotion = (activity: AgentActivity): AgentActivity => {
       if (!motionRunning) return activity;
@@ -1240,8 +1164,8 @@ export async function attachAgentActivity(
         reason: "window_activity_motion",
         evidenceSource: "terminal_activity",
         sampledAt: motion!.lastObservedAt,
-        // The RAW `#{window_activity}` timestamp that earned the verdict — a reader can age it
-        // against their own clock and see for themselves why this seat reads running.
+        // 得出该判决的原始 `#{window_activity}` 时间戳；读取者可用自己的时钟计算年龄，
+        // 直接判断为何此席位显示为 running。
         evidence: motion!.lastActivityAt ?? null,
         runtime: entry.runtime ?? null,
       };
@@ -1251,8 +1175,8 @@ export async function attachAgentActivity(
       sessionName: entry.canonicalSessionName,
       now: sampledAt,
     });
-    // A fresh POSITIVE hook (running/needs_input/idle) is authoritative — EXCEPT that a positive
-    // `idle` hook now yields to live motion (D2). running/needs_input hooks are untouched.
+    // 新鲜肯定 hook（running/needs_input/idle）具有权威性，但肯定 `idle` hook 现在让位于实时
+    // motion（D2）；running/needs_input hook 不变。
     if (hookActivity && hookActivity.state !== "unknown") {
       return {
         ...entry,
@@ -1260,13 +1184,12 @@ export async function attachAgentActivity(
       };
     }
 
-    // Hook ABSENT or unknown/stale → consult the CACHED structural observation. This read is
-    // capture-FREE: the pane capture already happened on the background SeatStructuralActivityService
-    // tick, never here (the healthz-wedge no-per-request-capture invariant is preserved). A structural
-    // motion verdict is a LIVENESS signal that OVERRIDES an absent/stale hook (constraint 2 — liveness
-    // beats hook-arrival age) and makes ACTIVITY real on the DEFAULT path for hook-less / Codex /
-    // just-finished-a-turn seats: the exact fleet-blindness this fix targets. Structural discrimination
-    // is STRUCTURAL (spinner shapes / esc-to-interrupt / idle prompt), never a verb allowlist.
+    // Hook 缺失或 unknown/stale 时查询缓存的结构观察。该读取无需 capture：窗格捕获已在后台
+    // SeatStructuralActivityService tick 中完成，绝不在此执行，从而维持 healthz-wedge 不逐请求
+    // capture 的不变量。结构 motion 判决是存活信号，会覆盖缺失/过期 hook（约束 2：存活性高于
+    // hook 到达年龄），使无 hook、Codex 或刚结束轮次的席位在默认路径拥有真实 ACTIVITY；这正是
+    // 本修复针对的舰队盲区。结构判别依据 spinner 形态、Esc 中断提示、空闲提示等结构，绝不用
+    // 动词白名单。
     const structural = entry.canonicalSessionName
       ? deps.structuralActivity?.getStructuralActivity(entry.canonicalSessionName)
       : null;
@@ -1283,12 +1206,10 @@ export async function attachAgentActivity(
       };
     }
 
-    // No positive hook and no structural verdict. A stale/unknown hook, if one exists, is delivered
-    // HONESTLY as-is (unknown/stale) — never upgraded to a quiet-seat verdict on arrival age alone.
-    // Live motion DOES upgrade it, and on this fleet that is the common case rather than the exotic
-    // one: every seat's hook currently arrives and is then demoted to unknown because the occupant
-    // generation cannot be resolved, so a demoted hook — not a positive idle one — is what stands
-    // between a working seat and a truthful label.
+    // 没有肯定 hook，也没有结构判决。若存在 stale/unknown hook，则原样诚实返回，绝不只凭
+    // 到达年龄把它提升为空闲席位判决。实时 motion 会提升它；在本舰队这是常见情况而非例外：
+    // 每个席位的 hook 当前都会到达，随后因无法解析占用者 generation 而降为 unknown。因此，
+    // 阻隔工作中席位与真实标签的是被降级的 hook，而非肯定 idle hook。
     if (hookActivity) {
       return {
         ...entry,
@@ -1297,9 +1218,9 @@ export async function attachAgentActivity(
     }
 
     if (!captureFallback) {
-      // CHEAP DEFAULT — no per-node tmux capture. A hook-less seat's pane-heuristic needs_input
-      // still requires ?full/?refresh; running now comes from the capture-FREE motion read above,
-      // so the honest `unknown` placeholder is reached only by a seat that is genuinely silent.
+      // 低成本默认值——不执行逐节点 tmux capture。无 hook 席位基于窗格启发式的 needs_input
+      // 仍需 ?full/?refresh；running 现在来自上方无 capture 的 motion 读取，因此只有真正沉默
+      // 的席位才会到达诚实的 `unknown` 占位。
       return {
         ...entry,
         agentActivity: withMotion({

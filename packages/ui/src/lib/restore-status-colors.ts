@@ -1,6 +1,6 @@
 /**
- * Maps restore node result status to Tailwind text color class.
- * Vocabulary: resumed / rebuilt / fresh / failed / n-a
+ * 将恢复节点的结果状态映射为 Tailwind 文字色类名。
+ * 取值词汇：resumed / rebuilt / fresh / failed / n-a（均为协议枚举，保持原值）。
  */
 export function getRestoreStatusColorClass(status: string): string {
   switch (status) {
@@ -12,7 +12,7 @@ export function getRestoreStatusColorClass(status: string): string {
       return "text-foreground-muted";
     case "failed":
       return "text-destructive";
-    // Compat: old persisted values
+    // 兼容：历史持久化的旧取值
     case "checkpoint_written":
       return "text-success";
     case "fresh_no_checkpoint":

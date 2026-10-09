@@ -20,10 +20,10 @@ function statusDot(status: string): string {
 
 function statusLabel(status: string): string {
   switch (status) {
-    case "installed": return "OK";
-    case "missing": return "MISSING";
-    case "unsupported": return "MANUAL";
-    case "unknown": return "UNKNOWN";
+    case "installed": return "正常";
+    case "missing": return "缺失";
+    case "unsupported": return "需手动";
+    case "unknown": return "未知";
     default: return status.toUpperCase();
   }
 }
@@ -32,7 +32,7 @@ export function RequirementsPanel({ results }: { results: RequirementResult[] })
   if (results.length === 0) {
     return (
       <div className="text-body-sm text-foreground-muted" data-testid="no-requirements">
-        No requirements declared.
+        未声明任何依赖要求。
       </div>
     );
   }

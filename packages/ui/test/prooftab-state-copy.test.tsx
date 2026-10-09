@@ -1,8 +1,8 @@
-// R1 (release-0.4.7) — C4a: ProofTab empty-state copy mapping per useScopeMarkdown state.
+// R1（release-0.4.7）——C4a：ProofTab empty-state 文案按 useScopeMarkdown 状态映射。
 //
-// The `!populated` empty-state now branches on `proofMd.state`: an infra read
-// failure and a mis-rooted scope get honest copies; a genuine absence keeps
-// today's "NO PROOF YET" bytes EXACTLY (the byte-identity leg).
+// `!populated` empty-state 现按 `proofMd.state` 分支：infra 读失败
+// 与错根 scope 各得诚实文案；真正缺失保持
+// 今日 "NO PROOF YET" 字节不变（字节对等腿）。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
@@ -42,9 +42,9 @@ describe("R1 C4a — ProofTab empty-state honest copy", () => {
     });
     renderProof();
     const el = await screen.findByTestId(`proof-read-error-${SID}`);
-    expect(el.textContent).toContain("PROOF.MD READ FAILED");
-    expect(el.textContent).toContain("this is a read failure, not an empty proof");
-    // it must NOT show the genuine-absence copy
+    expect(el.textContent).toContain("PROOF.MD 读取失败");
+    expect(el.textContent).toContain("这是读取失败，不是空校验");
+    // 它不得显示真正缺失文案
     expect(screen.queryByTestId(`proof-empty-state-${SID}`)).toBeNull();
   });
 
@@ -56,7 +56,7 @@ describe("R1 C4a — ProofTab empty-state honest copy", () => {
     });
     renderProof();
     const el = await screen.findByTestId(`proof-unresolved-${SID}`);
-    expect(el.textContent).toContain("PROOF.MD OUTSIDE FILE ROOTS");
+    expect(el.textContent).toContain("PROOF.MD 不在文件根内");
     expect(el.textContent).toContain("OPENRIG_FILES_ALLOWLIST");
     expect(screen.queryByTestId(`proof-empty-state-${SID}`)).toBeNull();
   });
@@ -71,12 +71,12 @@ describe("R1 C4a — ProofTab empty-state honest copy", () => {
     });
     renderProof();
     const el = await screen.findByTestId(`proof-empty-state-${SID}`);
-    // the pinned 8250d702 literals — label + full description, unchanged
-    expect(el.textContent).toContain("NO PROOF YET");
+    // 锁定的 8250d702 字面量——label + 完整描述，不变
+    expect(el.textContent).toContain("尚无校验");
     expect(el.textContent).toContain(
-      "This slice has a scaffolded proof/ location that no closeout has populated. Proof-of-work captures (screenshots / videos) and a PROOF.md verdict land here when the closing agent drops them in at slice closeout — no curator required.",
+      "本切片有一个已脚手架化的 proof/ 位置，但尚无收尾流程填充。工作凭证捕获（截图/视频）与 PROOF.md 判定会在收尾智能体处理切片收尾时放入此处——无需策展人。",
     );
-    // the "awaiting proof" micro-label survives ONLY on the absent branch
-    expect(screen.getByTestId(`proof-slice-empty-${SID}`).textContent).toContain("awaiting proof");
+    // the "待校验" micro-label survives ONLY on the absent branch
+    expect(screen.getByTestId(`proof-slice-empty-${SID}`).textContent).toContain("待校验");
   });
 });

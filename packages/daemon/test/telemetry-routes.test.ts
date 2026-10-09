@@ -1,6 +1,6 @@
-// 51-08 A3 — telemetry routes: the series + top-N burn served over HTTP from
-// the ONE projection (PM decision 4: one projection, CLI + HTTP both).
-// RED-first: written before routes/telemetry.ts existed.
+// 51-08 A3——telemetry 路由：经 HTTP 从单一 projection 服务 series + top-N burn
+//（PM 决策 4：一个 projection，CLI + HTTP 共用）。RED-first：在 routes/telemetry.ts
+// 存在之前写。
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import BetterSqlite3, { type Database } from "better-sqlite3";
@@ -38,10 +38,10 @@ function appWith(db: Database, nowIso: string): Hono {
   return app;
 }
 
-describe("telemetry routes", () => {
+describe("telemetry 路由", () => {
   const NOW = "2026-08-07T12:30:00.000Z";
 
-  it("GET /usage/series serves raw rows for a seat, and no response key carries account identity", async () => {
+  it("GET /usage/series 为 seat 服务原始行，且响应 key 不携带账户身份", async () => {
     const app = appWith(seeded(), NOW);
     const res = await app.request("/api/telemetry/usage/series?seat=burner%40r");
     expect(res.status).toBe(200);
@@ -51,7 +51,7 @@ describe("telemetry routes", () => {
     expect(JSON.stringify(body).toLowerCase()).not.toContain("account");
   });
 
-  it("GET /usage/top ranks the burner top-1 with tokens/hour computed from the series", async () => {
+  it("GET /usage/top 把 burner 排到 top-1，tokens/hour 从 series 计算", async () => {
     const app = appWith(seeded(), NOW);
     const res = await app.request("/api/telemetry/usage/top?window_hours=4&top=10");
     expect(res.status).toBe(200);
@@ -65,7 +65,7 @@ describe("telemetry routes", () => {
     expect(body.totalRankedSeats).toBe(2);
   });
 
-  it("invalid window_hours is a teaching 400, never a silent default", async () => {
+  it("非法 window_hours 返回带说明的 400，绝不静默默认", async () => {
     const app = appWith(seeded(), NOW);
     const res = await app.request("/api/telemetry/usage/top?window_hours=zero");
     expect(res.status).toBe(400);

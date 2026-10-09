@@ -82,7 +82,7 @@ function unhealthyDeps(): StatusDeps {
   };
 }
 
-// Mock daemon server
+// mock daemon server
 function createMockDaemon() {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url!, "http://localhost");
@@ -253,15 +253,15 @@ describe("rig snapshot + restore", () => {
   });
   afterAll(async () => { await srv.close(); });
 
-  // Test 1: snapshot create succeeds, prints ID
+  // 测试 1：snapshot create 成功，打印 ID
   it("snapshot create: prints snapshot ID", async () => {
     const program = new Command();
     program.addCommand(snapshotCommand(runningDeps(port)));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "snapshot", "rig-1"]));
     const output = logs.join("\n");
     expect(output).toContain("snap-new-123");
-    // NS-T14: handoff includes restore instruction
-    expect(output).toContain("To restore:");
+    // NS-T14：handoff 含 restore 指令
+    expect(output).toContain("恢复命令：");
     expect(output).toContain("rig restore snap-new-123 --rig rig-1");
   });
 
@@ -284,12 +284,12 @@ describe("rig snapshot + restore", () => {
     );
   });
 
-  // Test 2: snapshot create 404
+  // 测试 2：snapshot create 404
   it("snapshot create: rig not found (404) -> error", async () => {
     const program = new Command();
     program.addCommand(snapshotCommand(runningDeps(port)));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "snapshot", "missing"]));
-    expect(logs.join("\n")).toMatch(/not found/i);
+    expect(logs.join("\n")).toMatch(/未找到/);
   });
 
   // Test 3: snapshot list formatted table
@@ -310,7 +310,7 @@ describe("rig snapshot + restore", () => {
     program.addCommand(restoreCommand(runningDeps(port)));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "restore", "snap-1", "--rig", "rig-1"]));
     const output = logs.join("\n");
-    expect(output).toContain("Rig result: fully_restored");
+    expect(output).toContain("工作组结果：fully_restored");
     expect(output).toContain("orchestrator");
     expect(output).toContain("resumed");
     expect(output).toContain("worker");
@@ -331,7 +331,7 @@ describe("rig snapshot + restore", () => {
 
     expect(logs.join("\n")).toContain("worker");
     expect(logs.join("\n")).toContain("failed");
-    expect(logs.join("\n")).toContain("Recovery guidance:");
+    expect(logs.join("\n")).toContain("恢复完成");
     expect(logs.join("\n")).toContain("tmux attach -t worker@test-rig");
     expect(logs.join("\n")).toContain("$ claude --resume abc-123");
     expect(logs.join("\n")).toContain("Choose the full conversation option, not summary.");
@@ -349,7 +349,7 @@ describe("rig snapshot + restore", () => {
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "restore", "partial-fresh", "--rig", "rig-1"]));
 
     const output = logs.join("\n");
-    expect(output).toContain("Rig result: partially_restored");
+    expect(output).toContain("工作组结果：partially_restored");
     expect(output).toContain("worker");
     expect(output).toContain("fresh");
     expect(process.exitCode).toBe(1);
@@ -366,7 +366,7 @@ describe("rig snapshot + restore", () => {
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "restore", "blocked", "--rig", "rig-1"]));
 
     const output = logs.join("\n");
-    expect(output).toContain("Rig result: not_attempted");
+    expect(output).toContain("工作组结果：not_attempted");
     expect(output).toContain("Required startup file is missing");
     expect(output).toContain("/workspace/app/STARTUP.md");
     expect(output).toContain("Restore the missing startup file");
@@ -403,7 +403,7 @@ describe("rig snapshot + restore", () => {
     const program = new Command();
     program.addCommand(restoreCommand(runningDeps(port)));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "restore", "missing", "--rig", "rig-1"]));
-    expect(logs.join("\n")).toMatch(/not found/i);
+    expect(logs.join("\n")).toMatch(/未找到/);
   });
 
   // Test 7: restore in progress (409)
@@ -427,7 +427,7 @@ describe("rig snapshot + restore", () => {
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "restore", "unusable", "--rig", "rig-1"]));
     const output = logs.join("\n");
     expect(output).toMatch(/not structurally restore-usable/i);
-    expect(output).toMatch(/choose a different snapshot/i);
+    expect(output).toMatch(/snapshot|快照/);
     expect(output).not.toMatch(/stop the rig/i);
   });
 
@@ -437,7 +437,7 @@ describe("rig snapshot + restore", () => {
     const program = new Command();
     program.addCommand(snapshotCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "snapshot", "rig-1"]));
-    expect(logs.join("\n")).toMatch(/not running/i);
+    expect(logs.join("\n")).toMatch(/未运行/);
     expect(deps.clientFactory).not.toHaveBeenCalled();
   });
 
@@ -447,7 +447,7 @@ describe("rig snapshot + restore", () => {
     const program = new Command();
     program.addCommand(restoreCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "restore", "snap-1", "--rig", "rig-1"]));
-    expect(logs.join("\n")).toMatch(/did not respond|busy or stopped|unhealthy/i) // B8 supersession: epistemic guard language;
+    expect(logs.join("\n")).toMatch(/未响应|繁忙或已停止|未经确认/) // B8 supersession: epistemic guard language;
     expect(deps.clientFactory).not.toHaveBeenCalled();
   });
 
@@ -483,12 +483,12 @@ describe("rig snapshot + restore", () => {
 
     // Prove snapshot is mounted
     const snapLogs = await captureLogs(() => program.parseAsync(["node", "rig", "snapshot", "x"]));
-    expect(snapLogs.join("\n")).toMatch(/not running/i);
+    expect(snapLogs.join("\n")).toMatch(/未运行/);
 
     // Prove restore is mounted (re-create program since Commander consumes parseAsync)
     const program2 = createProgram({ snapshotDeps: deps, restoreDeps: deps });
     const restoreLogs = await captureLogs(() => program2.parseAsync(["node", "rig", "restore", "snap-1", "--rig", "x"]));
-    expect(restoreLogs.join("\n")).toMatch(/not running/i);
+    expect(restoreLogs.join("\n")).toMatch(/未运行/);
   });
 
   // Test 12: snapshot 500 -> generic error
@@ -505,7 +505,7 @@ describe("rig snapshot + restore", () => {
     const program = new Command();
     program.addCommand(restoreCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "restore", "snap-1", "--rig", "rig-1"]));
-    expect(logs.join("\n")).toMatch(/not running/i);
+    expect(logs.join("\n")).toMatch(/未运行/);
     expect(deps.clientFactory).not.toHaveBeenCalled();
   });
 });

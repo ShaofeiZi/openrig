@@ -1,40 +1,38 @@
 /**
- * Slice 51-02 (L2 test-system) — the append-only run-record ledger.
+ * Slice 51-02（L2 测试系统）——仅追加的运行记录台账。
  *
- * One JSONL row per scenario run (the "results-ledger shape") so runs are
- * comparable over time. Append-only: appending a row never rewrites earlier
- * bytes. Proof item 3 pairs a FAIL verdict with an appended run-record row that
- * carries the failing step + the expected-vs-observed DIFF.
+ * 每次场景运行写入一行 JSONL（“结果台账结构”），使不同时间的运行可比较。只追加：新增行
+ * 永不改写之前的字节。证明条目 3 将 FAIL 判决与新增运行记录配对，后者携带失败步骤和
+ * 预期值与观察值之间的差异。
  */
 
 import { appendFileSync, readFileSync } from "node:fs";
 
 export interface RunRecord {
-  /** The scenario name (its defect class). */
+  /** 场景名称，即其缺陷类别。 */
   scenario: string;
   verdict: "PASS" | "FAIL";
-  /** 0-based index of the step that failed (FAIL only). */
+  /** 失败步骤的零基索引，仅 FAIL 时存在。 */
   failedStep?: number;
-  /** The expected-vs-last-observed DIFF (FAIL only). */
+  /** 预期值与最后观察值之间的差异，仅 FAIL 时存在。 */
   diff?: string;
-  /** Caller-supplied timestamp (injectable — the runner passes a clock value). */
+  /** 调用方提供的时间戳，可注入；runner 会传入时钟值。 */
   at?: string;
-  /** Wall-clock-independent run duration in ms, if the caller measured one. */
+  /** 与墙上时钟无关的运行时长，单位毫秒；仅在调用方完成测量时存在。 */
   durationMs?: number;
   /**
-   * 51-04 container-mode: the testbed image manifest identity the run executed
-   * against (the manifest digest), so runs are comparable across image versions.
-   * ABSENT in host-mode — the row is byte-identical to the pre-51-04 ledger.
+   * 51-04 容器模式：本次运行所针对的 testbed 镜像 manifest 身份（manifest 摘要），使不同
+   * 镜像版本的运行可比较。在主机模式下缺失；记录与 51-04 之前的台账逐字节一致。
    */
   imageId?: string;
 }
 
-/** Append one run record as a JSON line. Append-only; creates the file if absent. */
+/** 将一条运行记录追加为 JSON 行。只追加；文件缺失时创建。 */
 export function appendRunRecord(ledgerPath: string, record: RunRecord): void {
   appendFileSync(ledgerPath, `${JSON.stringify(record)}\n`, "utf8");
 }
 
-/** Read all run records. A missing ledger yields an empty list (no throw). */
+/** 读取全部运行记录。台账缺失时返回空列表，不抛错。 */
 export function readRunRecords(ledgerPath: string): RunRecord[] {
   let raw: string;
   try {

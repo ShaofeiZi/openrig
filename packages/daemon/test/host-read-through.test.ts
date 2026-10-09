@@ -1,11 +1,8 @@
-// OPR.0.4.6.MH2 FR-2 + FR-7 — the single-host read-through edge.
+// OPR.0.4.6.MH2 FR-2 + FR-7——单 host 读透传边界。
 //
-// Pins the three arch rulings on the seam: P1 the NAMED closed allowlist +
-// both refusal classes structured and NEVER forwarded; P2 strip-is-total +
-// registry-validated-before-dial; P3 verbatim passthrough = status +
-// content-type + body (the origin's own 404 IS the answer). Plus the FR-2
-// zero-regression negative: absent/local host param reaches the existing
-// handler with no forward attempted.
+// 锁定此接缝上的三项架构裁定：P1 具名封闭 allowlist + 两类拒绝均为结构化且绝不转发；
+// P2 完整剥离 + 拨号前校验 registry；P3 原样透传 = status + content-type + body（origin 自身的
+// 404 就是答案）。另含 FR-2 零回归负向控制：缺失/local host 参数会到达现有 handler，且不尝试转发。
 
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
@@ -49,8 +46,7 @@ function makeApp(opts: { fetchResponse?: () => Response; env?: Record<string, st
         });
   }) as typeof fetch;
 
-  // The bearer resolves from process.env inside the transport; the tests
-  // that reach a dial set the env var themselves (and restore after).
+  // bearer 在 transport 内从 process.env 解析；会实际拨号的测试自行设置环境变量（并在之后恢复）。
   const app = new Hono();
   app.use("*", async (c, next) => {
     const set = c.set.bind(c) as (key: string, value: unknown) => void;
@@ -85,13 +81,13 @@ function withBearerEnv<T>(fn: () => Promise<T>): Promise<T> {
   });
 }
 
-describe("READ_THROUGH_ALLOWLIST matcher (arch P1 — the named closed set)", () => {
-  it("matches every allowlisted screen read", () => {
+describe("READ_THROUGH_ALLOWLIST matcher（架构 P1——具名封闭集合）", () => {
+  it("匹配 allowlist 中的每个 screen read", () => {
     const positives = [
       "/api/rigs/summary",
       "/api/rigs/factory-fleet/graph",
       "/api/rigs/factory-fleet/nodes",
-      "/api/rigs/factory-fleet/nodes/orch-lead", // rev1-r2 B2 + arch Option A: the seat-detail leaf
+      "/api/rigs/factory-fleet/nodes/orch-lead", // rev1-r2 B2 + 架构方案 A：seat-detail leaf。
       "/api/ps",
       "/api/slices",
       "/api/slices/mh2-view-remote-workspace",
@@ -104,20 +100,19 @@ describe("READ_THROUGH_ALLOWLIST matcher (arch P1 — the named closed set)", ()
     for (const p of positives) expect(isReadThroughPath(p), p).toBe(true);
   });
 
-  it("rejects the deliberate exclusions and everything else", () => {
+  it("拒绝有意排除项及其他所有路径", () => {
     const negatives = [
-      "/api/queue/qitem-123", // queue = the MH-3 lane
-      "/api/files/roots", // local FS discovery
-      "/api/slices/x/proof-asset/img.png", // binary — text transport only
-      "/api/specs/library/active-lens/review/extra", // shape mismatch
+      "/api/queue/qitem-123", // queue = MH-3 通道。
+      "/api/files/roots", // 本地 FS 发现。
+      "/api/slices/x/proof-asset/img.png", // binary——只允许文本 transport。
+      "/api/specs/library/active-lens/review/extra", // 形状不匹配。
       "/api/config",
       "/api/hosts",
       "/api/mission-control/action",
-      "/api/rigs", // bare collection is not a screen read today
+      "/api/rigs", // 目前裸 collection 不是 screen read。
       "/api/rigs/x/graph/extra",
-      // THE ARCH TOOTH on the first parameterized seat-detail entry: strict
-      // segment-shape only — the deeper ACTION routes under the same prefix
-      // stay refused (these are exactly rev1-r2 B1's local action endpoints).
+      // 首个参数化 seat-detail entry 上的架构约束：仅允许严格 segment 形状——同一前缀下更深层的
+      // action 路由保持拒绝（正是 rev1-r2 B1 的本地 action endpoint）。
       "/api/rigs/x/nodes/y/focus",
       "/api/rigs/x/nodes/y/open-cmux",
       "/api/rigs/x/nodes/y/anything/deeper",
@@ -125,22 +120,20 @@ describe("READ_THROUGH_ALLOWLIST matcher (arch P1 — the named closed set)", ()
     for (const p of negatives) expect(isReadThroughPath(p), p).toBe(false);
   });
 
-  it("nuance pinned: GET /api/slices/refresh matches :name — harmless by construction", () => {
-    // ":name" swallows the literal "refresh", so a GET here IS allowlisted.
-    // No mutation can ride it: the refresh WRITE is POST-only and every
-    // non-GET with a remote envelope is refused at the method tooth (proven
-    // above, on exactly this path); the origin resolves the forwarded GET
-    // as a slice-detail lookup for a slice literally named "refresh" → its
-    // own 404, passed through verbatim.
+  it("锁定细节：GET /api/slices/refresh 匹配 :name——按构造无害", () => {
+    // ":name" 会吸收字面量 "refresh"，因此此处 GET 确实进入 allowlist。无法借此执行 mutation：
+    // refresh 写入只支持 POST，而带远端 envelope 的每个非 GET 请求都会被 method 约束拒绝（上方已在
+    // 同一路径证明）；origin 将转发的 GET 解析为查询名称恰为 "refresh" 的 slice detail → 自身 404，
+    // 并被原样透传。
     expect(isReadThroughPath("/api/slices/refresh")).toBe(true);
   });
 
-  it("the constant itself is the closed set (additions are deliberate extensions)", () => {
+  it("常量本身就是封闭集合（新增项必须是有意扩展）", () => {
     expect([...READ_THROUGH_ALLOWLIST]).toEqual([
       "/api/rigs/summary",
       "/api/rigs/:rigId/graph",
       "/api/rigs/:rigId/nodes",
-      "/api/rigs/:rigId/nodes/:logicalId", // rev1-r2 B2, arch-ruled Option A
+      "/api/rigs/:rigId/nodes/:logicalId", // rev1-r2 B2，架构裁定方案 A。
       "/api/ps",
       "/api/slices",
       "/api/slices/:name",
@@ -152,8 +145,8 @@ describe("READ_THROUGH_ALLOWLIST matcher (arch P1 — the named closed set)", ()
   });
 });
 
-describe("hostReadThrough — local path untouched (FR-2 zero-regression)", () => {
-  it("absent host param falls through to the existing handler; no forward", async () => {
+describe("hostReadThrough——本地路径不变（FR-2 零回归）", () => {
+  it("缺少 host 参数时落入现有 handler；不转发", async () => {
     const { app, fetchCalls, localHits } = makeApp();
     const res = await app.request("/api/rigs/summary");
     expect(res.status).toBe(200);
@@ -162,7 +155,7 @@ describe("hostReadThrough — local path untouched (FR-2 zero-regression)", () =
     expect(fetchCalls).toEqual([]);
   });
 
-  it("host=local falls through identically; no forward", async () => {
+  it("host=local 时以相同行为落入现有 handler；不转发", async () => {
     const { app, fetchCalls, localHits } = makeApp();
     const res = await app.request("/api/rigs/summary?host=local");
     expect(res.status).toBe(200);
@@ -172,8 +165,8 @@ describe("hostReadThrough — local path untouched (FR-2 zero-regression)", () =
   });
 });
 
-describe("hostReadThrough — the FR-7 boundary teeth (refused, NEVER forwarded)", () => {
-  it("non-GET with a remote envelope → structured MH-3 refusal, zero forwards, local handler untouched", async () => {
+describe("hostReadThrough——FR-7 边界约束（拒绝，绝不转发）", () => {
+  it("带远端 envelope 的非 GET 请求 → 结构化 MH-3 拒绝、零转发、本地 handler 不受影响", async () => {
     const { app, fetchCalls, localHits } = makeApp();
     const res = await app.request("/api/slices/refresh?host=vps-a", { method: "POST" });
     expect(res.status).toBe(405);
@@ -187,7 +180,7 @@ describe("hostReadThrough — the FR-7 boundary teeth (refused, NEVER forwarded)
     expect(localHits).toEqual([]);
   });
 
-  it("non-GET refusal fires even on an allowlisted READ path", async () => {
+  it("即使位于 allowlist 的 READ 路径上，非 GET 拒绝仍会触发", async () => {
     const { app, fetchCalls } = makeApp();
     const res = await app.request("/api/rigs/summary?host=vps-a", { method: "DELETE" });
     expect(res.status).toBe(405);
@@ -195,7 +188,7 @@ describe("hostReadThrough — the FR-7 boundary teeth (refused, NEVER forwarded)
     expect(fetchCalls).toEqual([]);
   });
 
-  it("a GET outside the allowlist with a remote envelope → structured MH-3 refusal, zero forwards", async () => {
+  it("allowlist 外且带远端 envelope 的 GET → 结构化 MH-3 拒绝、零转发", async () => {
     const { app, fetchCalls, localHits } = makeApp();
     const res = await app.request("/api/config?host=vps-a");
     expect(res.status).toBe(403);
@@ -210,8 +203,8 @@ describe("hostReadThrough — the FR-7 boundary teeth (refused, NEVER forwarded)
   });
 });
 
-describe("hostReadThrough — registry validated BEFORE any dial (arch P2)", () => {
-  it("unknown host id → structured unknown-host error, zero forwards", async () => {
+describe("hostReadThrough——任何拨号前先校验 registry（架构 P2）", () => {
+  it("未知 host id → 结构化 unknown-host 错误、零转发", async () => {
     const { app, fetchCalls } = makeApp();
     const res = await app.request("/api/rigs/summary?host=nope");
     expect(res.status).toBe(502);
@@ -219,7 +212,7 @@ describe("hostReadThrough — registry validated BEFORE any dial (arch P2)", () 
     expect(fetchCalls).toEqual([]);
   });
 
-  it("ssh-transport host → structured unsupported-transport, zero forwards", async () => {
+  it("ssh transport host → 结构化 unsupported-transport、零转发", async () => {
     const { app, fetchCalls } = makeApp();
     const res = await app.request("/api/rigs/summary?host=vm-ssh");
     expect(res.status).toBe(502);
@@ -228,24 +221,24 @@ describe("hostReadThrough — registry validated BEFORE any dial (arch P2)", () 
   });
 });
 
-describe("hostReadThrough — forward mechanics (arch P2 strip-is-total + P3 verbatim)", () => {
-  it("happy path: same path forwarded, host param GONE, other params intact, bearer server-side, origin body verbatim", () =>
+describe("hostReadThrough——转发机制（架构 P2 完整剥离 + P3 原样透传）", () => {
+  it("正常路径：转发相同 path、移除 host 参数、保留其他参数、bearer 位于服务端、origin body 原样返回", () =>
     withBearerEnv(async () => {
       const { app, fetchCalls, localHits } = makeApp();
       const res = await app.request("/api/slices?filter=current&refresh=1&host=vps-a");
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ rigs: ["remote-rig"] });
-      expect(localHits).toEqual([]); // the local handler never ran
+      expect(localHits).toEqual([]); // 本地 handler 从未运行。
       expect(fetchCalls).toHaveLength(1);
       const call = fetchCalls[0]!;
-      // strip-is-total: no host param in ANY form; the rest of the query rides through.
+      // 完整剥离：任何形式的 host 参数都不保留；query 其余部分继续透传。
       expect(call.url).toBe("http://vps-a:7433/api/slices?filter=current&refresh=1");
       expect(call.url).not.toContain("host");
       expect(call.method).toBe("GET");
       expect(call.authorization).toBe("Bearer test-token");
     }));
 
-  it("origin 404 passes through VERBATIM — status, content-type, body; never re-wrapped", () =>
+  it("origin 404 原样透传——status、content-type、body；绝不重新包装", () =>
     withBearerEnv(async () => {
       const originBody = JSON.stringify({ error: "mission_not_found", missionId: "nope" });
       const { app } = makeApp({
@@ -254,19 +247,19 @@ describe("hostReadThrough — forward mechanics (arch P2 strip-is-total + P3 ver
       const res = await app.request("/api/missions/nope?host=vps-a");
       expect(res.status).toBe(404);
       expect(res.headers.get("content-type")).toBe("application/json; charset=utf-8");
-      expect(await res.text()).toBe(originBody); // byte-verbatim, not re-shaped
+      expect(await res.text()).toBe(originBody); // 字节级原样，不重塑。
     }));
 
-  it("missing bearer env → structured auth-failed (edge taxonomy is for the FORWARD failing only)", async () => {
-    // VPS_A_TOKEN deliberately unset.
+  it("缺少 bearer env → 结构化 auth-failed（edge taxonomy 只用于转发失败）", async () => {
+    // 有意不设置 VPS_A_TOKEN。
     const { app, fetchCalls } = makeApp();
     const res = await app.request("/api/rigs/summary?host=vps-a");
     expect(res.status).toBe(502);
     expect(await res.json()).toMatchObject({ error: "remote_read_failed", hostId: "vps-a", failureClass: "auth-failed" });
-    expect(fetchCalls).toEqual([]); // bearer resolution precedes the dial
+    expect(fetchCalls).toEqual([]); // bearer 解析先于拨号。
   });
 
-  it("network failure → structured unreachable", () =>
+  it("网络失败 → 结构化 unreachable", () =>
     withBearerEnv(async () => {
       const { app } = makeApp({
         fetchResponse: () => {
@@ -279,10 +272,10 @@ describe("hostReadThrough — forward mechanics (arch P2 strip-is-total + P3 ver
     }));
 });
 
-describe("remoteRawRequest — the transport leg's own discipline", () => {
+describe("remoteRawRequest——transport 环节自身的纪律", () => {
   const HOST: HttpHostEntry = { id: "vps-a", transport: "http", url: "http://vps-a:7433", bearer_env: "RAW_TOKEN" };
 
-  it("deadline is required + armed: a hanging origin yields a structured timeout, never a hang", async () => {
+  it("deadline 必须存在且启用：挂起的 origin 产生结构化 timeout，绝不永久挂起", async () => {
     const hangingFetch = ((_: RequestInfo | URL, init?: RequestInit) =>
       new Promise<Response>((_resolve, reject) => {
         init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
@@ -295,7 +288,7 @@ describe("remoteRawRequest — the transport leg's own discipline", () => {
     expect(res).toMatchObject({ ok: false, kind: "timeout", phase: "request" });
   });
 
-  it("non-2xx origin statuses are ok:true passthrough results (P3), with content-type + body text", async () => {
+  it("非 2xx origin status 是 ok:true 透传结果（P3），包含 content-type 与 body text", async () => {
     const fakeFetch = (async () =>
       new Response("<h1>origin 500</h1>", { status: 500, headers: { "Content-Type": "text/html" } })) as typeof fetch;
     const res = await remoteRawRequest(HOST, "/api/ps", { timeoutMs: 1000, fetchImpl: fakeFetch, env: { RAW_TOKEN: "tok" } });

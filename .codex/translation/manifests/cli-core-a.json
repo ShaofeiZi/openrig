@@ -1,0 +1,943 @@
+{
+  "owner": "cli-core-a",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": "packages/cli/src/cli-error.ts",
+      "target_path": "packages/cli/src/cli-error.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 175,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化、三段式守护进程错误中文化、Commander错误模板白名单localizeCommanderMessage",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterA:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/cmux-config.ts",
+      "target_path": "packages/cli/src/cmux-config.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 87,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与人类可见错误/标签中文化，机器字段保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/context-resolve.ts",
+      "target_path": "packages/cli/src/context-resolve.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 62,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与错误文案中文化，命令示例改 zrig",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/cross-host-cli-helpers.ts",
+      "target_path": "packages/cli/src/cross-host-cli-helpers.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 92,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与人类失败文案中文化，JSON信封/步骤枚举保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/cross-host-executor.ts",
+      "target_path": "packages/cli/src/cross-host-executor.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 227,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与人类hint/错误中文化，ssh/stderr匹配正则与步骤枚举保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/cross-host-types.ts",
+      "target_path": "packages/cli/src/cross-host-types.ts",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 1,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 仅机器枚举类型别名，无自然语言可译"
+    },
+    {
+      "source_path": "packages/cli/src/daemon-lifecycle-status.ts",
+      "target_path": "packages/cli/src/daemon-lifecycle-status.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 83,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化，机器枚举/字段保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/daemon-lifecycle.ts",
+      "target_path": "packages/cli/src/daemon-lifecycle.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 1229,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 全部用户可见错误/提示/启动失败摘要/停止保护串中文化(daemonNotRunning/statusGuard/summarizeDaemonStartFailure/startDaemon/stopDaemon)；错误码/SIGTERM/路径/正则/JSON信封保留；内部大段架构注释保留英文(不可见)",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/daemon-start-lock.ts",
+      "target_path": "packages/cli/src/daemon-start-lock.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 45,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与占用错误文案中文化",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/fetch-with-timeout.ts",
+      "target_path": "packages/cli/src/fetch-with-timeout.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 53,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与人类可见错误/标签中文化，机器字段保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/host-bindings.ts",
+      "target_path": "packages/cli/src/host-bindings.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 181,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与冲突描述文案中文化，机器字段/匹配正则保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/index.ts",
+      "target_path": "packages/cli/src/index.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 292,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 程序名按OPENRIG_INVOKED_AS展示(默认zrig)、中文描述/版本/帮助标题/-h说明、错误模板白名单中文化",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterA:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/lib/codex-auth.ts",
+      "target_path": "packages/cli/src/lib/codex-auth.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 556,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 全部面向人字符串(disclaimer/note)与头部及主要JSDoc中文化；reason枚举/路径/0600保留；深层fd安全不变量行内注释保留英文(内部不可见)",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/lib/context-install.ts",
+      "target_path": "packages/cli/src/lib/context-install.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 137,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与install错误文案中文化，正则/字段保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/lib/file-transfer.ts",
+      "target_path": "packages/cli/src/lib/file-transfer.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 358,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与全部用户错误/提示中文化，错误码/正则/rsync argv/路径保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/lib/hosts/fanout-contract.ts",
+      "target_path": "packages/cli/src/lib/hosts/fanout-contract.ts",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 109,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 与 packages/daemon/src/domain/hosts/fanout-contract.ts 整文件字节一致(parity测试 expect toBe)；注释中文化会破坏孪生契约，需daemon侧owner同步改",
+      "note": " | b2 CLI-SKIP-REVIEW:本轮全文审读仅类型/机器模板+中文注释完整,无英文自然语言;status保留(skip/validated),仅作qualified source"
+    },
+    {
+      "source_path": "packages/cli/src/lib/path-safety.ts",
+      "target_path": "packages/cli/src/lib/path-safety.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 19,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | JSDoc与错误模板中文化",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope/attestation-lineage.ts",
+      "target_path": "packages/cli/src/lib/scope/attestation-lineage.ts",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 38,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释/解析器；其body由 scripts/sync-scope-lineage.mjs 同步到 daemon 生成文件，单边改注释会分叉，需协调",
+      "note": " | b2 CLI-SKIP-REVIEW:本轮全文审读仅类型/机器模板+中文注释完整,无英文自然语言;status保留(skip/validated),仅作qualified source"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope/dot-id.ts",
+      "target_path": "packages/cli/src/lib/scope/dot-id.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 173,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与三段式错误中文化，正则/语法保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli gap11:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope/logical-checkbox.ts",
+      "target_path": "packages/cli/src/lib/scope/logical-checkbox.ts",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 81,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 与 packages/daemon/src/domain/scope/logical-checkbox.ts 字节等价孪生；同样不可单边改",
+      "note": " | b2 CLI-SKIP-REVIEW:本轮全文审读仅类型/机器模板+中文注释完整,无英文自然语言;status保留(skip/validated),仅作qualified source"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope/mission-composition.ts",
+      "target_path": "packages/cli/src/lib/scope/mission-composition.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 135,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与错误文案中文化，机器字段保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli gap11:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope/progress-edit.ts",
+      "target_path": "packages/cli/src/lib/scope/progress-edit.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 187,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与三段式错误中文化，状态枚举/Rail结构名/正则保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli gap11:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope/scaffold-placeholder.ts",
+      "target_path": "packages/cli/src/lib/scope/scaffold-placeholder.ts",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 121,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 与 packages/daemon/src/domain/scope/scaffold-placeholder.ts 字节等价孪生(CI强制)；且GENERIC_SCAFFOLD_ACCEPTANCE是匹配模板的英文标记，不可译",
+      "note": " | b2 CLI-SKIP-REVIEW:本轮全文审读仅类型/机器模板+中文注释完整,无英文自然语言;status保留(skip/validated),仅作qualified source"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope/scope-audit.ts",
+      "target_path": "packages/cli/src/lib/scope/scope-audit.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 533,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 全部审计发现message/remediation与依赖建议中文化；finding kind枚举/MISSION_BRIEF_HEADERS匹配头字面量/正则保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli gap11:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope/trust.ts",
+      "target_path": "packages/cli/src/lib/scope/trust.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 112,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与降级原因文案中文化，机器枚举/匹配正则保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli gap11:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope/types.ts",
+      "target_path": "packages/cli/src/lib/scope/types.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 117,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化，机器枚举/字段保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli gap11:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/lib/topology-trace.ts",
+      "target_path": "packages/cli/src/lib/topology-trace.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 144,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释、安全段错误与旧树提示中文化，路径/枚举保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/local-reading.ts",
+      "target_path": "packages/cli/src/local-reading.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 54,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与人类可见错误/标签中文化，机器字段保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterE:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/mcp-server.ts",
+      "target_path": "packages/cli/src/mcp-server.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 468,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | MCP工具名/参数名/HTTP路径保留，工具描述与.describe()及内联错误全部中文化",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterE:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/read-view.ts",
+      "target_path": "packages/cli/src/read-view.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 17,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化(纯机器字段无改动)",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterE:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/release-surface/generate.ts",
+      "target_path": "packages/cli/src/release-surface/generate.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 52,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与stderr文案中文化",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterE:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/release-surface/surface-diff.ts",
+      "target_path": "packages/cli/src/release-surface/surface-diff.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 250,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与三段式错误中文化，git/路径/枚举保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterE:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/remote-host-ops.ts",
+      "target_path": "packages/cli/src/remote-host-ops.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 100,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与远程错误文案中文化，HTTP/步骤枚举保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterE:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/restore-packet/claude-transcript-parser.ts",
+      "target_path": "packages/cli/src/restore-packet/claude-transcript-parser.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 280,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 纯解析无运行时串；注释全中文化，JSONL/正则/枚举保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterE:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/restore-packet/omitted-records.ts",
+      "target_path": "packages/cli/src/restore-packet/omitted-records.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 128,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 纯逻辑无运行时串；注释全中文化，枚举保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterE:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/shared-tui.ts",
+      "target_path": "packages/cli/src/shared-tui.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 42,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与人类可见错误/标签中文化，机器字段保留",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterE:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/tmux-health.ts",
+      "target_path": "packages/cli/src/tmux-health.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 114,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释无；健康提示文案中文化，tmux stderr 匹配串保留英文",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterE:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/test/ask-seat.test.ts",
+      "target_path": "packages/cli/test/ask-seat.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 149,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：1处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2 cli-comment new-batch4:comments-only整文件审读residual0,机器token保留,assertions/titles未动;2changed11测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/ask-wake-cli.test.ts",
+      "target_path": "packages/cli/test/ask-wake-cli.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 184,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：3处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-163 cli/daemon-comment new-batch19:comments-only整文件审读residual0,机器token保留,assertions/titles未动;73测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/bin-wrapper.test.ts",
+      "target_path": "packages/cli/test/bin-wrapper.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 73,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | class-v2:no_comments/e3c543c61868c466",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/check-abi.test.ts",
+      "target_path": "packages/cli/test/check-abi.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 197,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-193 new-batch40:comments-only整文件审读residual0,assertions/titles未动;41测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/client-headers.test.ts",
+      "target_path": "packages/cli/test/client-headers.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 245,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-157 cli/daemon-comment new-batch14:comments-only整文件审读residual0,机器token保留,assertions/titles未动;97测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/client.test.ts",
+      "target_path": "packages/cli/test/client.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 214,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | class-v2:chinese_or_machine_only/db820aaa23d9b317",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/codex-auth-leakhunt.test.ts",
+      "target_path": "packages/cli/test/codex-auth-leakhunt.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 330,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-145 cli/daemon-comment new-batch5:comments-only整文件审读residual0,机器token保留,assertions/titles未动;134测试过+1合法skip(no_real_daemon)→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/codex-auth-lib.test.ts",
+      "target_path": "packages/cli/test/codex-auth-lib.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 36,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | class-v2:chinese_or_machine_only/a49517b0ceaf6759",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/codex-auth-ops.test.ts",
+      "target_path": "packages/cli/test/codex-auth-ops.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 75,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-193 new-batch40:comments-only整文件审读residual0,assertions/titles未动;41测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/codex-auth-saveswitch.test.ts",
+      "target_path": "packages/cli/test/codex-auth-saveswitch.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 103,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已重定向到中文运行时输出，行为断言保留；隔离HOME定向测试通过 | b2-189 new-batch37:comments-only整文件审读residual0,assertions/titles未动;36测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/codex-auth-seats.test.ts",
+      "target_path": "packages/cli/test/codex-auth-seats.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 66,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已重定向到中文运行时输出，行为断言保留；隔离HOME定向测试通过 | b2-193 new-batch40:comments-only整文件审读residual0,assertions/titles未动;41测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/config-store-extended.test.ts",
+      "target_path": "packages/cli/test/config-store-extended.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 1086,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | cli test helper/setup files: not in 929 test closure (helper/setup, not main .test.ts); already translated done; scan shows machine/already-chinese content, no NL residual → validated (no dedicated test run)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/context-git.test.ts",
+      "target_path": "packages/cli/test/context-git.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 108,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：1处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | class-v2:no_comments/0a2c3566cdf550aa",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/context-grammar.test.ts",
+      "target_path": "packages/cli/test/context-grammar.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 82,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-155 cli/daemon-comment new-batch13:comments-only整文件审读residual0,机器token保留,assertions/titles未动;67测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/context-pack-add-ref-safety.test.ts",
+      "target_path": "packages/cli/test/context-pack-add-ref-safety.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 206,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：8处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-158 cli/daemon-comment new-batch15:comments-only整文件审读residual0,机器token保留,assertions/titles未动;35测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/context-recap-write.test.ts",
+      "target_path": "packages/cli/test/context-recap-write.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 180,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：1处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-172 new-batch25:comments-only整文件审读residual0,assertions/titles未动;27测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/context-resolve.test.ts",
+      "target_path": "packages/cli/test/context-resolve.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 60,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：3处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-180 new-batch30:comments-only整文件审读residual0,assertions/titles未动;61测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/cross-host-commands.test.ts",
+      "target_path": "packages/cli/test/cross-host-commands.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 652,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：11处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-145 cli/daemon-comment new-batch5:comments-only整文件审读residual0,机器token保留,assertions/titles未动;134测试过+1合法skip(no_real_daemon)→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/daemon-bind-provenance.test.ts",
+      "target_path": "packages/cli/test/daemon-bind-provenance.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 192,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已重定向到中文运行时输出，行为断言保留；隔离HOME定向测试通过 | b2-165 new-batch18:comments-only整文件审读residual0,assertions/titles未动;队列复跑过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/daemon-lifecycle.test.ts",
+      "target_path": "packages/cli/test/daemon-lifecycle.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 1581,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | 展示断言已按中文运行时重定向，隔离HOME定向测试全绿(93+/2)；行为断言保留 || [2026-10-08-batch2撤回]作者撤回big4全文完成；自然语言注释补译in_progress，测试通过≠全文翻译。 | b2-97+batch2 big4 report: big4 338最终通过；作者确认自然语言残留0；测试断言通过（机器fixture/JSON保留） | b2 daemon-comment new-batch9:comments-only整文件审读residual0,机器token保留,assertions/titles未动;3changed55测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/daemon-stop-outcome.test.ts",
+      "target_path": "packages/cli/test/daemon-stop-outcome.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 141,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | 展示断言已按中文运行时重定向，隔离HOME定向测试全绿(93+/2)；行为断言保留 | class-v2:no_comments/6ef87498cb3fe78f",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/export-import.test.ts",
+      "target_path": "packages/cli/test/export-import.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 539,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：10处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-165 new-batch20:comments-only整文件审读residual0,assertions/titles未动;队列复跑过→passed(skill-refs-membership-chain already-chinese nochange)",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/fanout-contract-parity.test.ts",
+      "target_path": "packages/cli/test/fanout-contract-parity.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 32,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-175 new-batch27:comments-only整文件审读residual0,assertions/titles未动;27测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/fetch-guard.test.ts",
+      "target_path": "packages/cli/test/fetch-guard.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 56,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-193 new-batch40:comments-only整文件审读residual0,assertions/titles未动;41测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/fetch-guard.ts",
+      "target_path": "packages/cli/test/fetch-guard.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 113,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试辅助模块，无人类可见运行时串/无断言，纯协议夹具 | cli test helper/setup files: not in 929 test closure (helper/setup, not main .test.ts); already translated done; scan shows machine/already-chinese content, no NL residual → validated (no dedicated test run)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/file-command.test.ts",
+      "target_path": "packages/cli/test/file-command.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 125,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：5处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-181 new-batch31:comments-only整文件审读residual0,assertions/titles未动;38测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/gateway-human-lifecycle-verb.test.ts",
+      "target_path": "packages/cli/test/gateway-human-lifecycle-verb.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 350,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：3处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-165 new-batch17:comments-only整文件审读residual0,assertions/titles未动;队列复跑过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/hermetic-env.setup.ts",
+      "target_path": "packages/cli/test/hermetic-env.setup.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 71,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试环境隔离setup，无人类可见运行时串 | cli test helper/setup files: not in 929 test closure (helper/setup, not main .test.ts); already translated done; scan shows machine/already-chinese content, no NL residual → validated (no dedicated test run)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/host-bindings.test.ts",
+      "target_path": "packages/cli/test/host-bindings.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 297,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已重定向到中文运行时输出，行为断言保留；隔离HOME定向测试通过 | class-v2:chinese_or_machine_only/0412e3af11a6c903",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/host-ls-identity.test.ts",
+      "target_path": "packages/cli/test/host-ls-identity.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 101,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-165 new-batch17:comments-only整文件审读residual0,assertions/titles未动;队列复跑过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/host-registry-http.test.ts",
+      "target_path": "packages/cli/test/host-registry-http.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 126,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | class-v2:no_comments/50f7c6d88aabe513",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/host-selection.test.ts",
+      "target_path": "packages/cli/test/host-selection.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 88,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-176 new-batch28:comments-only整文件审读residual0,assertions/titles未动;136测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/local-origin.test.ts",
+      "target_path": "packages/cli/test/local-origin.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 89,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | class-v2:no_comments/dcc9fbb04d8a7924",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/local-reading.test.ts",
+      "target_path": "packages/cli/test/local-reading.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 34,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已重定向到中文运行时输出，行为断言保留；隔离HOME定向测试通过 | class-v2:no_comments/937169b6a95503a8",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/mcp-server.test.ts",
+      "target_path": "packages/cli/test/mcp-server.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 590,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已重定向到中文运行时输出，行为断言保留；隔离HOME定向测试通过 | b2-165 new-batch20:comments-only整文件审读residual0,assertions/titles未动;队列复跑过→passed(skill-refs-membership-chain already-chinese nochange)",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/openrig-compat.test.ts",
+      "target_path": "packages/cli/test/openrig-compat.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 93,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | class-v2:chinese_or_machine_only/1c2981d5885144fa",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/permission-policy-parity.test.ts",
+      "target_path": "packages/cli/test/permission-policy-parity.test.ts",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 26,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 字节契约parity测试，需daemon侧同步翻译，与packages/daemon逐字节对齐"
+    },
+    {
+      "source_path": "packages/cli/test/progress-ui-conformance.test.ts",
+      "target_path": "packages/cli/test/progress-ui-conformance.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 77,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | class-v2:chinese_or_machine_only/980247f538a3d06f",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/ps-current-rig.test.ts",
+      "target_path": "packages/cli/test/ps-current-rig.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 418,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-142 cli-comment new-batch2:comments-only整文件审读residual0,机器token保留,assertions/titles未动;92测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/ps-http.test.ts",
+      "target_path": "packages/cli/test/ps-http.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 504,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-155 cli/daemon-comment new-batch13:comments-only整文件审读residual0,机器token保留,assertions/titles未动;67测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/ps-pl012-context-usage.test.ts",
+      "target_path": "packages/cli/test/ps-pl012-context-usage.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 242,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | class-v2:chinese_or_machine_only/d557e1037b1cfd47",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/ps-pl019-active.test.ts",
+      "target_path": "packages/cli/test/ps-pl019-active.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 273,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | class-v2:chinese_or_machine_only/6307738a2ae08153",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/ps-runtime-model-columns.test.ts",
+      "target_path": "packages/cli/test/ps-runtime-model-columns.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 67,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-158 cli/daemon-comment new-batch15:comments-only整文件审读residual0,机器token保留,assertions/titles未动;35测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/queue-update-metadata-reject-cli.test.ts",
+      "target_path": "packages/cli/test/queue-update-metadata-reject-cli.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 140,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2 daemon-comment new-batch9:comments-only整文件审读residual0,机器token保留,assertions/titles未动;3changed55测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/response-integrity.test.ts",
+      "target_path": "packages/cli/test/response-integrity.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 178,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：1处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2 daemon-comment new-batch9:comments-only整文件审读residual0,机器token保留,assertions/titles未动;3changed55测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/scope-audit-shadowed-node.test.ts",
+      "target_path": "packages/cli/test/scope-audit-shadowed-node.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 95,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | 展示断言已按中文运行时重定向，隔离HOME定向测试全绿(93+/2)；行为断言保留 | b2-169 new-batch24:comments-only整文件审读residual0,assertions/titles未动;37测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/scope-convention-scaffold.test.ts",
+      "target_path": "packages/cli/test/scope-convention-scaffold.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 439,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-142 cli-comment new-batch2:comments-only整文件审读residual0,机器token保留,assertions/titles未动;92测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/scope-frontmatter.test.ts",
+      "target_path": "packages/cli/test/scope-frontmatter.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 86,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-186 new-batch35:comments-only整文件审读residual0,assertions/titles未动;53测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/scope-progress.test.ts",
+      "target_path": "packages/cli/test/scope-progress.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 232,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-183 new-batch32:comments-only整文件审读residual0,assertions/titles未动;37测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/scope-reapprove-cli.test.ts",
+      "target_path": "packages/cli/test/scope-reapprove-cli.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 160,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：3处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-167 new-batch22:comments-only整文件审读residual0,assertions/titles未动;65测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/seat-lifecycle-verbs.test.ts",
+      "target_path": "packages/cli/test/seat-lifecycle-verbs.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 162,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：2处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-190 new-batch38:comments-only整文件审读residual0,assertions/titles未动;33测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/self-host-triple.test.ts",
+      "target_path": "packages/cli/test/self-host-triple.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 30,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：3处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | class-v2:chinese_or_machine_only/608cb3f4756d8bcc",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/session-admin-auth-headers.test.ts",
+      "target_path": "packages/cli/test/session-admin-auth-headers.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 73,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-176 new-batch28:comments-only整文件审读residual0,assertions/titles未动;136测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/slack-cutover-cli.test.ts",
+      "target_path": "packages/cli/test/slack-cutover-cli.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 134,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：4处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-183 new-batch32:comments-only整文件审读residual0,assertions/titles未动;37测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/slack-manifest-cli.test.ts",
+      "target_path": "packages/cli/test/slack-manifest-cli.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 106,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：3处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-190 new-batch38:comments-only整文件审读residual0,assertions/titles未动;33测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/sweep-c-config-boot-key-notice.test.ts",
+      "target_path": "packages/cli/test/sweep-c-config-boot-key-notice.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 35,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已重定向到中文运行时输出，行为断言保留；隔离HOME定向测试通过 | b2 cli-comment new-batch3:comments-only整文件审读residual0,机器token保留,assertions/titles未动;4changed25测试过+adopt nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/tui-command.test.ts",
+      "target_path": "packages/cli/test/tui-command.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 48,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-178 new-batch29:comments-only整文件审读residual0,assertions/titles未动;77测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/tui-timezone.test.ts",
+      "target_path": "packages/cli/test/tui-timezone.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 41,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | class-v2:no_comments/e576c15deeb0bc3a",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/cli/test/up-restore-decision.test.ts",
+      "target_path": "packages/cli/test/up-restore-decision.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 315,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：7处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-170 new-batch21:comments-only整文件审读residual0,assertions/titles未动;155测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/version-build-info.test.ts",
+      "target_path": "packages/cli/test/version-build-info.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 33,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 定向vitest隔离HOME通过(行为/协议断言对中文化运行时全绿)；describe标题/行内英文注释为残留 | b2-188 new-batch36:comments-only整文件审读residual0,assertions/titles未动;50测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/walk-profile.test.ts",
+      "target_path": "packages/cli/test/walk-profile.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 156,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已重定向到中文运行时输出，行为断言保留；隔离HOME定向测试通过 | b2-173 new-batch26:comments-only整文件审读residual0,assertions/titles未动;26测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/workflow-status.test.ts",
+      "target_path": "packages/cli/test/workflow-status.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 221,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：6处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-170 new-batch21:comments-only整文件审读residual0,assertions/titles未动;155测试过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/test/workspace-doctor-cli.test.ts",
+      "target_path": "packages/cli/test/workspace-doctor-cli.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 384,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 未完成：3处展示断言仍匹配英文子串，运行时已中文化；行为断言未放松，待按中文输出逐条重定向（预算内未完成，不虚构skip） | 断言已对齐并发中文化的运行时输出，208/208 通过 | b2-155 cli/daemon-comment new-batch13:comments-only整文件审读residual0,机器token保留,assertions/titles未动;67测试过→passed",
+      "validation_state": "passed"
+    }
+  ]
+}

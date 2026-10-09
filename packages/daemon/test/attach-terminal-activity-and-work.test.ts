@@ -1,15 +1,12 @@
-// Slice 15 — `attachTerminalActivityAndWork` non-inference test pack.
+// Slice 15——`attachTerminalActivityAndWork` 非推断测试包。
 //
-// HG-3 (both directions) + HG-4 (non-inference contract) at the
-// per-node enrichment level. The ps-projection counts are derived from
-// these fields, but the UI + `rig ps --json` also need per-node
-// visibility — this test pack pins that surface.
+// 节点级增强层的 HG-3（双向）+ HG-4（非推断契约）。ps-projection 计数从这些字段派生，但 UI 和
+// `rig ps --json` 也需要逐节点可见性；此测试包固定该 surface。
 //
-// Discriminator pattern (per banked feedback_specific_review_recommendations_get_acted_on):
-//   - DIRECTION A: active + no work → terminalActive=true, hasAssignedWork=false
-//   - DIRECTION B: silent + queued work → terminalActive=false, hasAssignedWork=true
-//   BOTH must pass — that's what proves the two primitives are computed
-//   independently. Either alone is symmetry-breakable.
+// 判别模式（按预存 feedback_specific_review_recommendations_get_acted_on）：
+//   - 方向 A：active + 无工作 → terminalActive=true、hasAssignedWork=false
+//   - 方向 B：silent + queued work → terminalActive=false、hasAssignedWork=true
+// 两者都必须通过，才能证明两个原语独立计算；只有一边会被对称性破坏。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -75,12 +72,12 @@ function makeSeatActivityFor(activeBySession: Record<string, boolean | null>) {
   };
 }
 
-describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () => {
+describe("attachTerminalActivityAndWork——slice 15 逐节点增强", () => {
   let db: Database.Database;
   beforeEach(() => { db = createFullTestDb(); });
   afterEach(() => { db.close(); });
 
-  it("HG-3 DIRECTION A — node producing output with NOTHING queued: terminalActive=true, hasAssignedWork=false", () => {
+  it("HG-3 方向 A——节点有输出且 queue 为空：terminalActive=true、hasAssignedWork=false", () => {
     const rig = seedRig(db, "active-only");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
@@ -94,7 +91,7 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(entry!.pendingWorkCount).toBe(0);
   });
 
-  it("HG-3 DIRECTION B — node SILENT with queued work: terminalActive=false, hasAssignedWork=true", () => {
+  it("HG-3 方向 B——节点静默且有 queued work：terminalActive=false、hasAssignedWork=true", () => {
     const rig = seedRig(db, "work-only");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
@@ -109,34 +106,34 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(entry!.pendingWorkCount).toBe(1);
   });
 
-  it("HG-4 non-inference — flipping ONLY activity does not move hasAssignedWork; flipping ONLY queue does not move terminalActive", () => {
+  it("HG-4 非推断——只切换 activity 不改变 hasAssignedWork；只切换 queue 不改变 terminalActive", () => {
     const rig = seedRig(db, "non-inf");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
     const baseEntries = getNodeInventory(db, rig);
 
-    // (a) silent + no work
+    // (a) silent + 无工作。
     let seatActivity = makeSeatActivityFor({ "dev@rig": false });
     let [entry] = attachTerminalActivityAndWork(baseEntries, { db, seatActivity: seatActivity as never });
     expect(entry!.terminalActive).toBe(false);
     expect(entry!.hasAssignedWork).toBe(false);
 
-    // (b) flip ONLY queue (add pending qitem); activity input unchanged.
-    //     terminalActive MUST hold steady, hasAssignedWork MUST flip true.
+    // (b) 只切换 queue（添加 pending qitem），activity 输入不变。terminalActive 必须保持，
+    //     hasAssignedWork 必须变为 true。
     seedPendingQitem(db, "dev@rig");
     [entry] = attachTerminalActivityAndWork(getNodeInventory(db, rig), { db, seatActivity: seatActivity as never });
     expect(entry!.terminalActive).toBe(false); // unchanged ⟹ no queue→active inference
     expect(entry!.hasAssignedWork).toBe(true);
 
-    // (c) flip ONLY activity (active observation); queue input unchanged.
-    //     hasAssignedWork MUST hold steady, terminalActive MUST flip true.
+    // (c) 只切换 activity（active observation），queue 输入不变。hasAssignedWork 必须保持，
+    //     terminalActive 必须变为 true。
     seatActivity = makeSeatActivityFor({ "dev@rig": true });
     [entry] = attachTerminalActivityAndWork(getNodeInventory(db, rig), { db, seatActivity: seatActivity as never });
     expect(entry!.terminalActive).toBe(true);
     expect(entry!.hasAssignedWork).toBe(true); // unchanged ⟹ no active→hasWork inference
   });
 
-  it("no SeatActivity observation → terminalActive=null (distinct from false)", () => {
+  it("没有 SeatActivity observation 时 terminalActive=null（区别于 false）", () => {
     const rig = seedRig(db, "no-obs");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
@@ -145,13 +142,12 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     const seatActivity = { getSeatActivity: () => null };
     const [entry] = attachTerminalActivityAndWork(baseEntries, { db, seatActivity: seatActivity as never });
 
-    // null ≠ false: consumers must treat "no signal" distinctly from
-    // "definitely idle" so a non-tmux seat doesn't read as idle.
+    // null 不等于 false：消费者必须区分“无信号”与“确定 idle”，避免非 tmux 席位被读成 idle。
     expect(entry!.terminalActive).toBeNull();
     expect(entry!.hasAssignedWork).toBe(false);
   });
 
-  it("no seatActivity service wired → terminalActive=undefined (the field is absent, not a value claim)", () => {
+  it("未接线 seatActivity service 时 terminalActive=undefined（字段缺失，而非值声明）", () => {
     const rig = seedRig(db, "no-svc");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
@@ -163,11 +159,10 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(entry!.hasAssignedWork).toBe(false); // queue check still runs
   });
 
-  // ── ARCH RULING 3a947fb1: the per-seat projection surfaces the RAW
-  // ── lastActivityAt fact alongside terminalActive — projected verbatim, null
-  // ── when no observation (honest absence, parallel to terminalActive), and
-  // ── with NO ageSeconds sibling (C3 — age is derived renderer-side).
-  it("projects lastActivityAt VERBATIM from the observation (raw fact, distinct from lastObservedAt) — and no ageSeconds sibling (C3)", () => {
+  // ── ARCH RULING 3a947fb1：逐席位投影在 terminalActive 旁显示原始 lastActivityAt 事实；逐字投影，
+  // ── 无 observation 时为 null（真实缺失，与 terminalActive 对齐），且没有 ageSeconds 同级字段
+  // ──（C3：age 在 renderer 侧派生）。
+  it("从 observation 逐字投影 lastActivityAt（原始事实，区别于 lastObservedAt），且没有 ageSeconds 同级字段（C3）", () => {
     const rig = seedRig(db, "act-ts");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
@@ -187,11 +182,11 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     const [entry] = attachTerminalActivityAndWork(getNodeInventory(db, rig), { db, seatActivity: seatActivity as never });
 
     expect(entry!.lastActivityAt).toBe("2026-05-16T09:59:12.000Z");
-    // C3 — one field only; no ageSeconds sibling on the projected surface.
+    // C3：只有一个字段；投影 surface 上没有 ageSeconds 同级字段。
     expect((entry as Record<string, unknown>).ageSeconds).toBeUndefined();
   });
 
-  it("no observation → lastActivityAt=null (honest absence, parallel to terminalActive=null)", () => {
+  it("无 observation 时 lastActivityAt=null（真实缺失，与 terminalActive=null 对齐）", () => {
     const rig = seedRig(db, "act-noobs");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
@@ -203,7 +198,7 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(entry!.lastActivityAt).toBeNull();
   });
 
-  it("no seatActivity service wired → lastActivityAt=undefined (field absent, not a value claim)", () => {
+  it("未接线 seatActivity service 时 lastActivityAt=undefined（字段缺失，而非值声明）", () => {
     const rig = seedRig(db, "act-nosvc");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
@@ -212,7 +207,7 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(entry!.lastActivityAt).toBeUndefined();
   });
 
-  it("multiple pending qitems for one seat ⟹ hasAssignedWork=true, pendingWorkCount = N", () => {
+  it("一个席位有多个 pending qitem 时 hasAssignedWork=true、pendingWorkCount=N", () => {
     const rig = seedRig(db, "multi");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
@@ -226,29 +221,23 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(entry!.pendingWorkCount).toBe(3);
   });
 
-  // QA baseline-deep-dogfood BLOCKING-A2 (qitem-20260518063900-85745917):
-  // adopted/live-session rigs do not surface assigned queue work because
-  // hasAssignedWork only matches destination_session against
-  // canonicalSessionName. For ADOPTED seats canonicalSessionName is the
-  // raw tmux session name (e.g., `my-existing-claude`); operators
-  // address adopted seats via the canonical `{pod}-{member}@{rig}` form
-  // through `rig queue create --destination <pod>-<member>@<rig>`.
-  // The match therefore fails for adopted, succeeds for managed (where
-  // canonicalSessionName is already the canonical form).
+  // QA baseline-deep-dogfood BLOCKING-A2（qitem-20260518063900-85745917）：adopted/live-session
+  // rig 不显示已分配 queue work，因为 hasAssignedWork 只用 destination_session 匹配
+  // canonicalSessionName。对 ADOPTED 席位，canonicalSessionName 是原始 tmux session 名（例如
+  // `my-existing-claude`）；操作员通过 `rig queue create --destination <pod>-<member>@<rig>` 使用
+  // canonical 形式寻址 adopted 席位。因此 adopted 匹配失败，而 managed 匹配成功（后者的
+  // canonicalSessionName 已是 canonical 形式）。
   //
-  // Fix: resolve pending work by BOTH forms — entry.canonicalSessionName
-  // (covers managed + adopted users who queue by raw tmux name) AND the
-  // derived `{pod}-{member}@{rig}` form (covers adopted users who queue
-  // by canonical id). Discriminators below pin both directions.
+  // 修复：同时用两种形式解析 pending work——entry.canonicalSessionName（覆盖 managed 及以原始
+  // tmux 名排队的 adopted 用户）和派生的 `{pod}-{member}@{rig}` 形式（覆盖以 canonical id 排队的
+  // adopted 用户）。下方判别项固定两个方向。
 
-  it("BLOCKING-A2: adopted-style entry (canonicalSessionName=raw tmux name) — queue dest=canonical form matches → hasAssignedWork=true", () => {
+  it("BLOCKING-A2：adopted 形式条目（canonicalSessionName=原始 tmux 名）匹配 canonical queue 目标，hasAssignedWork=true", () => {
     const rig = seedRig(db, "my-rig");
     const n = seedNode(db, rig, "default.dev");
-    // Adopted node: session name is the raw tmux session, NOT the
-    // canonical {pod}-{member}@{rig} form.
+    // Adopted 节点的 session 名是原始 tmux session，而非 canonical `{pod}-{member}@{rig}` 形式。
     seedSession(db, n, "raw-tmux-name", "running");
-    // Operator queues by the canonical form (`rig queue create
-    // --destination default-dev@my-rig`).
+    // 操作员使用 canonical 形式排队（`rig queue create --destination default-dev@my-rig`）。
     seedPendingQitem(db, "default-dev@my-rig");
 
     const [entry] = attachTerminalActivityAndWork(getNodeInventory(db, rig), { db });
@@ -257,7 +246,7 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(entry!.pendingWorkCount).toBe(1);
   });
 
-  it("BLOCKING-A2: adopted-style entry — queue dest=raw tmux name still matches (back-compat path)", () => {
+  it("BLOCKING-A2：adopted 形式条目仍匹配原始 tmux 名 queue 目标（向后兼容路径）", () => {
     const rig = seedRig(db, "my-rig");
     const n = seedNode(db, rig, "default.dev");
     seedSession(db, n, "raw-tmux-name", "running");
@@ -268,7 +257,7 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(entry!.pendingWorkCount).toBe(1);
   });
 
-  it("BLOCKING-A2: managed-style entry (canonicalSessionName IS canonical form) — unchanged behavior", () => {
+  it("BLOCKING-A2：managed 形式条目的 canonicalSessionName 已是 canonical 形式，行为不变", () => {
     const rig = seedRig(db, "my-rig");
     const n = seedNode(db, rig, "default.dev");
     seedSession(db, n, "default-dev@my-rig", "running");
@@ -279,20 +268,19 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(entry!.pendingWorkCount).toBe(1);
   });
 
-  it("BLOCKING-A2: no double-count when canonicalSessionName already equals derived canonical form", () => {
+  it("BLOCKING-A2：canonicalSessionName 已等于派生 canonical 形式时不重复计数", () => {
     const rig = seedRig(db, "my-rig");
     const n = seedNode(db, rig, "default.dev");
     seedSession(db, n, "default-dev@my-rig", "running");
-    // ONE pending qitem at the canonical destination — the entry's
-    // canonicalSessionName equals the derived canonical form, so
-    // looking up by both must not double-count.
+    // canonical 目标有一个 pending qitem；条目的 canonicalSessionName 等于派生 canonical 形式，
+    // 因此按两者查询不得重复计数。
     seedPendingQitem(db, "default-dev@my-rig");
 
     const [entry] = attachTerminalActivityAndWork(getNodeInventory(db, rig), { db });
     expect(entry!.pendingWorkCount).toBe(1);
   });
 
-  it("BLOCKING-A2: separate queue dests at raw + canonical forms sum correctly (each item counted once)", () => {
+  it("BLOCKING-A2：原始与 canonical 形式的独立 queue 目标正确求和（每项只计一次）", () => {
     const rig = seedRig(db, "my-rig");
     const n = seedNode(db, rig, "default.dev");
     seedSession(db, n, "raw-tmux-name", "running");
@@ -302,16 +290,15 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
 
     const [entry] = attachTerminalActivityAndWork(getNodeInventory(db, rig), { db });
     expect(entry!.hasAssignedWork).toBe(true);
-    // Total = 1 (raw) + 2 (canonical) = 3
+    // 总数 = 1（raw）+ 2（canonical）= 3。
     expect(entry!.pendingWorkCount).toBe(3);
   });
 
-  it("BLOCKING-A2: logical IDs with dots are normalized to dashes for canonical form (matches deriveCanonicalSessionName)", () => {
+  it("BLOCKING-A2：含点号的 logical ID 在 canonical 形式中归一化为连字符（匹配 deriveCanonicalSessionName）", () => {
     const rig = seedRig(db, "openrig-velocity");
     const n = seedNode(db, rig, "redo.driver-2");
     seedSession(db, n, "raw-name-X", "running");
-    // The convention is `{pod}-{member}@{rig}` so logicalId
-    // "redo.driver-2" becomes "redo-driver-2".
+    // 约定为 `{pod}-{member}@{rig}`，因此 logicalId "redo.driver-2" 变为 "redo-driver-2"。
     seedPendingQitem(db, "redo-driver-2@openrig-velocity");
 
     const [entry] = attachTerminalActivityAndWork(getNodeInventory(db, rig), { db });
@@ -319,19 +306,19 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(entry!.pendingWorkCount).toBe(1);
   });
 
-  it("non-pending qitems do NOT count toward pendingWorkCount", () => {
+  it("非 pending qitem 不计入 pendingWorkCount", () => {
     const rig = seedRig(db, "states");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
     const ts = new Date().toISOString().replace("T", " ").slice(0, 19);
-    // pending: counts
+    // pending：计数。
     seedPendingQitem(db, "dev@rig");
-    // done: doesn't count
+    // done：不计数。
     db.prepare(`
       INSERT INTO queue_items (qitem_id, ts_created, ts_updated, source_session, destination_session, state, priority, tier, body)
       VALUES ('q-done', ?, ?, 'op@test', 'dev@rig', 'done', 'routine', 'routine', 'body')
     `).run(ts, ts);
-    // blocked: doesn't count (only 'pending' is unworked-and-claimable)
+    // blocked：不计数（只有 'pending' 尚未处理且可 claim）。
     db.prepare(`
       INSERT INTO queue_items (qitem_id, ts_created, ts_updated, source_session, destination_session, state, priority, tier, body)
       VALUES ('q-blocked', ?, ?, 'op@test', 'dev@rig', 'blocked', 'routine', 'routine', 'body')
@@ -342,7 +329,7 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(entry!.hasAssignedWork).toBe(true);
   });
 
-  it("slice 17 RED specimen — a claimed in-progress row remains assigned without changing pendingWorkCount", () => {
+  it("slice 17 RED 标本——已 claim 的 in-progress 行保持 assigned，且不改变 pendingWorkCount", () => {
     const rig = seedRig(db, "claimed");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
@@ -382,7 +369,7 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     },
   );
 
-  it("slice 17 mixed-state breakdown keeps pendingWorkCount pending-only and ignores terminal rows", () => {
+  it("slice 17 混合状态明细使 pendingWorkCount 只计算 pending 并忽略 terminal 行", () => {
     const rig = seedRig(db, "mixed");
     const n = seedNode(db, rig, "dev");
     seedSession(db, n, "dev@rig", "running");
@@ -399,7 +386,7 @@ describe("attachTerminalActivityAndWork — slice 15 per-node enrichment", () =>
     expect(countPendingWorkForSession(db, "dev@rig")).toBe(2);
   });
 
-  it("slice 17 batch and per-session computation sites return identical state counts", () => {
+  it("slice 17 批量与逐 session 计算位置返回相同状态计数", () => {
     for (const state of ["pending", "pending", "in-progress", "blocked", "done"]) {
       seedQitem(db, "dev@rig", state);
     }

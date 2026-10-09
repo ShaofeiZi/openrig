@@ -1,22 +1,21 @@
-// codex-jsonl-parser.ts — parses Codex JSONL into a StructuredTranscript.
+// codex-jsonl-parser.ts — 将 Codex JSONL 解析为 StructuredTranscript。
 //
-// Translates the Velocity prior art parser at
+// 将 Velocity 先例解析器从
 // field-notes/2026-04-27-velocity-claude-from-codex-restore/tools/
-// codex-jsonl-to-restore-packet.mjs:81-160 from JS to TypeScript.
-// Velocity .mjs is FROZEN reference; this module borrows the structural
-// shape only.
+// codex-jsonl-to-restore-packet.mjs:81-160 从 JS 翻译为 TypeScript。
+// Velocity .mjs 是冻结参考；本模块仅借用结构形状。
 //
-// Codex JSONL semantics (from Velocity prior art):
-// - record.type === "session_meta" → session metadata (cwd, etc.)
-// - record.type === "compacted" → compaction marker (counter only)
-// - record.type === "response_item" + payload.type:
-//   - "function_call" → omitted (function_call_output class); extract paths from args
-//   - "custom_tool_call" → omitted (raw_tool_outputs class); extract paths from input
-//   - "reasoning" → omitted (reasoning_records class)
-//   - "message" → kept (after redaction); extract paths from content
+// Codex JSONL 语义（来自 Velocity 先例）：
+// - record.type === "session_meta" → 会话元数据（cwd 等）
+// - record.type === "compacted" → 压缩标记（仅计数）
+// - record.type === "response_item" + payload.type：
+//   - "function_call" → 省略（function_call_output 类）；从 args 提取路径
+//   - "custom_tool_call" → 省略（raw_tool_outputs 类）；从 input 提取路径
+//   - "reasoning" → 省略（reasoning_records 类）
+//   - "message" → 保留（脱敏后）；从 content 提取路径
 //
-// Output is a StructuredTranscript (per types.ts) consumed by the
-// packet-writer (M2c).
+// 输出是 StructuredTranscript（见 types.ts），由
+// packet-writer（M2c）消费。
 
 import { redact, hasSecretPattern } from "./redaction.js";
 import { classifyCodexRecord, OmittedCounter } from "./omitted-records.js";
@@ -79,12 +78,12 @@ interface CodexRecord {
 }
 
 /**
- * Parse a Codex JSONL string (the full file content as a single string)
- * into a StructuredTranscript. Pure function; no I/O.
+ * 将 Codex JSONL 字符串（完整文件内容作为单个字符串）解析为
+ * StructuredTranscript。纯函数；无 I/O。
  *
- * Malformed lines are skipped silently (matches Velocity prior art
- * `:100-102`); the lineCount counts every non-empty input line, so the
- * count of skipped lines is `lineCount - <kept-or-typed records>`.
+ * 格式错误的行被静默跳过（匹配 Velocity 先例
+ * `:100-102`）；lineCount 计数每个非空输入行，因此
+ * 跳过的行数为 `lineCount - <保留或已类型化的记录>`。
  */
 export function parseCodexJsonl(content: string): StructuredTranscript {
   const messages: ExtractedMessage[] = [];
@@ -130,9 +129,9 @@ export function parseCodexJsonl(content: string): StructuredTranscript {
     const classification = classifyCodexRecord(record);
     if (classification.kind === "omitted") {
       omittedCounter.recordOmission(classification.reason);
-      // Still extract paths from tool calls (matches Velocity behavior at
-      // :119-129 where args/input are walked for paths even though the
-      // record itself is omitted from messages).
+      // 仍从工具调用提取路径（匹配 Velocity 在
+      // :119-129 的行为，即使记录本身从消息中省略，
+      // 仍遍历 args/input 提取路径）。
       const payload = record.payload;
       if (payload?.type === "function_call") {
         const args = typeof payload.arguments === "string" ? payload.arguments : JSON.stringify(payload.arguments ?? {});
@@ -144,7 +143,7 @@ export function parseCodexJsonl(content: string): StructuredTranscript {
       continue;
     }
 
-    // Kept message.
+    // 保留的消息。
     const role = record.payload?.role;
     const roleStr = typeof role === "string" ? role : "unknown";
     if (roleStr !== "developer" && roleStr !== "user" && roleStr !== "assistant") {

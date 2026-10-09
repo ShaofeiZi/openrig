@@ -1,0 +1,394 @@
+{
+  "schema": "openrig.tui-src-comment-review-union/v1",
+  "captured_at": "2026-10-09T19:35:00+08:00",
+  "disk_total": 64,
+  "union_total": 64,
+  "duplicate": 0,
+  "missing": [],
+  "files": [
+    {
+      "batch": "tui-src-comment-review-batch1.json",
+      "path": "packages/tui/src/visual-layout.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "d7c60349e5138bac2f4f0ee508caec1529351fdae5b0e52016fe56379045b742"
+    },
+    {
+      "batch": "tui-src-comment-review-batch1.json",
+      "path": "packages/tui/src/crash-cart/contract.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "89383e762e6283c63000e812a25b040efac7229bbe158508b91aed8d27307c86"
+    },
+    {
+      "batch": "tui-src-comment-review-batch1.json",
+      "path": "packages/tui/src/crash-cart/start-daemon.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "64be943b5939cd616ad01091e7ac67efcee2110b872cdd81e89cc5bdf5077cd3"
+    },
+    {
+      "batch": "tui-src-comment-review-batch1.json",
+      "path": "packages/tui/src/index.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "34a17e1ee848c6895ee87e13af5db92a8f586ed27f387bd326ca070da5c9c18b"
+    },
+    {
+      "batch": "tui-src-comment-review-batch1.json",
+      "path": "packages/tui/src/refresh.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "b431c6b0a1b94c6c8702ff911fec80c270baa2c75718c520a137ee8726d35795"
+    },
+    {
+      "batch": "tui-src-comment-review-batch1.json",
+      "path": "packages/tui/src/crash-cart/ledger-explorer.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "22cc2c9c24a5c436ee74f43e2ed157a2afbdb0363816eca924f44f264b01c087"
+    },
+    {
+      "batch": "tui-src-comment-review-batch1.json",
+      "path": "packages/tui/src/topology/render-graph.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "f04ee99250676d6890fe8509732cc70b484f3ffe885dc94b9f2618e0bd02c132"
+    },
+    {
+      "batch": "tui-src-comment-review-batch1.json",
+      "path": "packages/tui/src/sections.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "7f9ea77fc381ccc3eb264da826d7fff616032b95ddf228a4da9bb1bf3f318f93"
+    },
+    {
+      "batch": "tui-src-comment-review-batch1.json",
+      "path": "packages/tui/src/topology/graph-types.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "cc2428d4cce8adb4faaa2f749fbfa838582686a57b6281ba9f1655b9d04fa98b"
+    },
+    {
+      "batch": "tui-src-comment-review-batch1.json",
+      "path": "packages/tui/src/commands/completion.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "8b795a5f5710531dff58f4dc2f943ae75275bd5a2234ec4de8f15d53e1b9f84d"
+    },
+    {
+      "batch": "tui-src-comment-review-batch2.json",
+      "path": "packages/tui/src/crash-cart/restore-scroll.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "d29173dce2220d92c99e881b67235b3d308d367358fb3731a6faf3774381a29b"
+    },
+    {
+      "batch": "tui-src-comment-review-batch2.json",
+      "path": "packages/tui/src/grammar.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "aaaf901e07b90b1db41da841885e007d49f25c18870e1efb7f8d5938747423ed"
+    },
+    {
+      "batch": "tui-src-comment-review-batch2.json",
+      "path": "packages/tui/src/attention/source-continuity.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "f354380bf715a7ec0bc2bfef206ade59692e0d42b9700562a4287414e0a93892"
+    },
+    {
+      "batch": "tui-src-comment-review-batch2.json",
+      "path": "packages/tui/src/time.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "3ee5e3b760085a607982934a0198c3872c80b7137cc88d31c3646ad77077a1c4"
+    },
+    {
+      "batch": "tui-src-comment-review-batch2.json",
+      "path": "packages/tui/src/motion.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "f3f5c9b01f8ccf1f176c2ba4e86d0e8cca3fa4176e9092dc2a1a16e592e56762"
+    },
+    {
+      "batch": "tui-src-comment-review-batch2.json",
+      "path": "packages/tui/src/crash-cart/one-click-gate.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "333a227317360da2c92b9c3e89202ccac5f674ea2d1249134ab5b162b224deac"
+    },
+    {
+      "batch": "tui-src-comment-review-batch2.json",
+      "path": "packages/tui/src/crash-cart/keys.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "54bb5619299283a0d80322ec058604b4ee2209b7e8a49f8ac289f85e73fc0218"
+    },
+    {
+      "batch": "tui-src-comment-review-batch2.json",
+      "path": "packages/tui/src/crash-cart/restore-input.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "6807673987ad9f98651edd1b56724aaeabee9bc517343b3efe0f3188e73cc664"
+    },
+    {
+      "batch": "tui-src-comment-review-batch2.json",
+      "path": "packages/tui/src/commands/palette.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "837cd46f976b2fc6bb45ebaa424b2312c935998286fb042ad245fdbdb782d0ae"
+    },
+    {
+      "batch": "tui-src-comment-review-batch2.json",
+      "path": "packages/tui/src/crash-cart/triage.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "c9970424decf20e492427de58d2aff16e802dcf72896e334ee79366d609a2fa9"
+    },
+    {
+      "batch": "tui-src-comment-review-batch3.json",
+      "path": "packages/tui/src/commands/help.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "5f523f02e3a46e476e1f9f6b74c260b49cd8a1d2dc2fa8ca13e30b370bc6ffee"
+    },
+    {
+      "batch": "tui-src-comment-review-batch3.json",
+      "path": "packages/tui/src/crash-cart/from-emit.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "8f75e3638afe2f1a66713ecba813261d4da7b40ad15ef8070478f7ce5ddeac10"
+    },
+    {
+      "batch": "tui-src-comment-review-batch3.json",
+      "path": "packages/tui/src/page-read.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "6f2b7f7f7c7d720cab98266d4a1d94bd02cfc7ff030b897c362ccbbc792ea0ff"
+    },
+    {
+      "batch": "tui-src-comment-review-batch3.json",
+      "path": "packages/tui/src/live-events.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "17a455709742f385ccf96e1a01e3016a9fb457d00782e4099bfcb7fafaaa06f2"
+    },
+    {
+      "batch": "tui-src-comment-review-batch3.json",
+      "path": "packages/tui/src/topology/glyphs.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "4637462fcd012947712d53784afd84c0ee9cafd2bbb6a3fc505590c63cbab9ad"
+    },
+    {
+      "batch": "tui-src-comment-review-batch3.json",
+      "path": "packages/tui/src/topology/styles/braille.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "933791ca2c81753d9bbcc2c36df68f6239868c91ea003906e4ab28d4043e09ee"
+    },
+    {
+      "batch": "tui-src-comment-review-batch3.json",
+      "path": "packages/tui/src/crash-cart/crash-cart-model.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "a5e64f2f093b3eb23e7a55e03132de25ccc653e87d3194917ab4a11aa2913097"
+    },
+    {
+      "batch": "tui-src-comment-review-batch3.json",
+      "path": "packages/tui/src/print-for-copy.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "6f7e588ebe773fabb37a8cb8ec20d198fdde70dc28e243c8a08aca9550fe55b0"
+    },
+    {
+      "batch": "tui-src-comment-review-batch3.json",
+      "path": "packages/tui/src/topology/fixture.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "fbbb97dd3d9295b1ca6388ad767a64b6cd2a54b31b8df9f8a8ea166256049b45"
+    },
+    {
+      "batch": "tui-src-comment-review-batch3.json",
+      "path": "packages/tui/src/theme.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "19bfddf84445a368539ebf870361855ff041f3d66b15da4052774a006ff859b3"
+    },
+    {
+      "batch": "tui-src-comment-review-batch4.json",
+      "path": "packages/tui/src/text-width.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "faed2edfbd896a229137d60efdc099864d949fd4aada3ff8d56f628dec62700b"
+    },
+    {
+      "batch": "tui-src-comment-review-batch4.json",
+      "path": "packages/tui/src/reading.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "eb24c78e5752b927e1b61a77517d66dc870c537e0b9f8bd724a00e027e718a02"
+    },
+    {
+      "batch": "tui-src-comment-review-batch4.json",
+      "path": "packages/tui/src/local-reading.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "76c0f874015f906eb4ff9e6a837d10ca910bee184dc06a3ebba47bbc9e556cb4"
+    },
+    {
+      "batch": "tui-src-comment-review-batch4.json",
+      "path": "packages/tui/src/socket-server.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "b6b9fc35667afeee1f2d38a3e2912e0107116a1401ce548662b8c2f762bde261"
+    },
+    {
+      "batch": "tui-src-comment-review-batch4.json",
+      "path": "packages/tui/src/detail.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "68af1d81395c42c4347934bfefb692a5268999d8b2a2a296e99e6c9d54374b1a"
+    },
+    {
+      "batch": "tui-src-comment-review-batch4.json",
+      "path": "packages/tui/src/attention/attention-model.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "41ba771bafabec1865efab0c3982e8ea3790dd07ab08b9748c295c4fb531df79"
+    },
+    {
+      "batch": "tui-src-comment-review-batch4.json",
+      "path": "packages/tui/src/topology/layout.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "bc8fcc6a6d5a857a35b7c29782ce458bd95a7117880a2cf9d055b35e7d2dcd8f"
+    },
+    {
+      "batch": "tui-src-comment-review-batch4.json",
+      "path": "packages/tui/src/topology/canvas.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "3757f8b36a4d0d0e330f77285ba1d8f9b8274cde3d9feda7cf99b31cbf1d4094"
+    },
+    {
+      "batch": "tui-src-comment-review-batch4.json",
+      "path": "packages/tui/src/crash-cart/restore-lifecycle.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "e4561cd0eb8e2f68a63619e3fdc8a430a43c166a53bc72deede592e88170bcc7"
+    },
+    {
+      "batch": "tui-src-comment-review-batch4.json",
+      "path": "packages/tui/src/topology/styles/hatchet.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "0022ce34e1d4c077910cf09053ff0088220be7b47e3ba1e7131676b2e37a00f4"
+    },
+    {
+      "batch": "tui-src-comment-review-batch5.json",
+      "path": "packages/tui/src/live.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "c1fbc7ac724b791f4e86bb9e6e6eb50b9985f8f794a1b83d706a8625191be6b6"
+    },
+    {
+      "batch": "tui-src-comment-review-batch5.json",
+      "path": "packages/tui/src/terminals/terminal-model.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "fcdaff65e59445f8e8351309f037a54d3cad5c34fcde7721a88c622596325f5d"
+    },
+    {
+      "batch": "tui-src-comment-review-batch5.json",
+      "path": "packages/tui/src/topology/runtime-marks.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "79a9f94d3b23ea89f9555c2f552eda057e09d7174e256d679a72c0bb3b4fec03"
+    },
+    {
+      "batch": "tui-src-comment-review-batch5.json",
+      "path": "packages/tui/src/pulse/render-pulse.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "88b4e3335e9131d61336d9168d1f4714a2dbf7723a94fdc459775cc25dbad14c"
+    },
+    {
+      "batch": "tui-src-comment-review-batch5.json",
+      "path": "packages/tui/src/navigator.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "bfee4c9c2e5635cef1038c7244742260588b61d9888cc50be0567235d6b86a8b"
+    },
+    {
+      "batch": "tui-src-comment-review-batch5.json",
+      "path": "packages/tui/src/input.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "3220c1cbac231126f3c883fbac777b3ee5efe0583d78475530b7df6e8de9192d"
+    },
+    {
+      "batch": "tui-src-comment-review-batch5.json",
+      "path": "packages/tui/src/connections/connections-model.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "a5e51737dd6404269221034c80b0ed462e5b35c56802ef0439c634e766f935c5"
+    },
+    {
+      "batch": "tui-src-comment-review-batch5.json",
+      "path": "packages/tui/src/crash-cart/render-crash-cart.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "43935549ed52a652b717027ac7133b53435acc002b99b93efe72fe928d60bbdb"
+    },
+    {
+      "batch": "tui-src-comment-review-batch5.json",
+      "path": "packages/tui/src/execution/workflow-model.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "6141a10aa69e1489e4affaccbca97ca6184d4597fcaa7e453f46296f7c1600ad"
+    },
+    {
+      "batch": "tui-src-comment-review-batch5.json",
+      "path": "packages/tui/src/stylize.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "ac3ecd2e1461e4ff459afae0876267e311c4cceaa8cf7f5aa32f384f5fd82e1e"
+    },
+    {
+      "batch": "tui-src-comment-review-batch6.json",
+      "path": "packages/tui/src/config/config-model.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "f3a46a6328c193117545dc951cf710dd43289ceb1982ec8126867090e855009c"
+    },
+    {
+      "batch": "tui-src-comment-review-batch6.json",
+      "path": "packages/tui/src/startup.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "c65e9022da14cfcc2ed51517364fab67043277becfa4911512b40d41cc762167"
+    },
+    {
+      "batch": "tui-src-comment-review-batch6.json",
+      "path": "packages/tui/src/daemon-client.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "133885c4b30fa216500911d7f56a322d9a456a0f39d987e1240b59f7b26c310e"
+    },
+    {
+      "batch": "tui-src-comment-review-batch6.json",
+      "path": "packages/tui/src/health/health-model.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "845ddca16697514b2303fc8b7caa4cb47bbbccc47f8ee078c69e2ce1663e4203"
+    },
+    {
+      "batch": "tui-src-comment-review-batch6.json",
+      "path": "packages/tui/src/demo-data.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "9912b6ff4c97ace739523626d1a1ed6567b571e2aec1ce20db3c6d14320e3cba"
+    },
+    {
+      "batch": "tui-src-comment-review-batch6.json",
+      "path": "packages/tui/src/commands/registry.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "b929f52bf96377a049667c0be7fde998b0c4d649f50c26f8cf4018ae6106789a"
+    },
+    {
+      "batch": "tui-src-comment-review-batch6.json",
+      "path": "packages/tui/src/scopes/scopes-model.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "ef6f01c356d8ab66279098d150edb19afdea2deae846f5b6e40eda8a1163107c"
+    },
+    {
+      "batch": "tui-src-comment-review-batch6.json",
+      "path": "packages/tui/src/pulse/pulse-model.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "4840cb5ff124d14105abe6ca5cf349d4e4770bbfb55aa090315b4166654bda41"
+    },
+    {
+      "batch": "tui-src-comment-review-batch6.json",
+      "path": "packages/tui/src/types.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "9e48788c80fc76371a4400329cad1745c6b887a63a9153eccefe0690e24e85a8"
+    },
+    {
+      "batch": "tui-src-comment-review-batch6.json",
+      "path": "packages/tui/src/main.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "bff4c99d8ec699caf15bf9e30864c5df319eb42cd4984911bcb862475519d399"
+    },
+    {
+      "batch": "tui-src-comment-review-batch7.json",
+      "path": "packages/tui/src/hydrate.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "d8d23b9cc277215f2bd4405a0031c4cb0375b57a913b348a292659a366c01f5a"
+    },
+    {
+      "batch": "tui-src-comment-review-batch7.json",
+      "path": "packages/tui/src/state.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "6b8993097dc8297aa5af8325a7ad72f9ae268745a5e5cd305817c7af2044c760"
+    },
+    {
+      "batch": "tui-src-comment-review-batch7.json",
+      "path": "packages/tui/src/execution/execution-model.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "3db583b3c5a2b6995784e6fbdbb831f9bee6d463ff288f17b0d9219614c09321"
+    },
+    {
+      "batch": "tui-src-comment-review-batch7.json",
+      "path": "packages/tui/src/render.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "1e67f4a3f1f07ebede30c27491270ba26c176e02cc0d2fd5b2da8fe1ca89aefc"
+    }
+  ]
+}

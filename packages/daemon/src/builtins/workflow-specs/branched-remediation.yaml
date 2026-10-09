@@ -1,12 +1,11 @@
-# OpenRig 0.4.6 spec-language example — the BRANCHED REMEDIATION shape.
-# `failed` branches to a remediation step (branch keys = the recorded
-# exit enum ONLY); the remediate → verify → remediate loop is a
-# branch-created cycle, legitimate ONLY under the declared max_hops
-# (remove loop_guards and validation fails naming the cycle + the fix).
+# OpenRig 0.4.6 spec 语言示例——分支修复形态。
+# `failed` 分支进入 remediation 步骤（分支键只能是记录下来的退出枚举）；
+# remediate → verify → remediate 循环由分支产生，只有在声明 max_hops 后才合法
+#（移除 loop_guards 后，验证会失败并指出循环及修复方式）。
 workflow:
   id: branched-remediation
   version: 1
-  objective: Build with a bounded failed-path remediation loop.
+  objective: 使用有界失败路径修复循环完成构建。
   loop_guards:
     max_hops: 8
   roles:

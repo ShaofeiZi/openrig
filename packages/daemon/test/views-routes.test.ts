@@ -28,7 +28,7 @@ function buildApp(opts: {
   return app;
 }
 
-describe("views routes (PL-004 Phase B)", () => {
+describe("views 路由（PL-004 阶段 B）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -42,7 +42,7 @@ describe("views routes (PL-004 Phase B)", () => {
     queueRepo = new QueueRepository(db, bus);
     projector = new ViewProjector(db, bus);
     app = buildApp({ eventBus: bus, projector });
-    // Seed a few qitems so views have something to project.
+    // 预置若干 qitem，使 view 有可投影内容。
     await queueRepo.create({
       sourceSession: "alice@product-lab",
       destinationSession: "planning@product-lab",
@@ -59,7 +59,7 @@ describe("views routes (PL-004 Phase B)", () => {
 
   afterEach(() => db.close());
 
-  it("GET /api/views/list returns built-in + custom view names", async () => {
+  it("GET /api/views/list 返回内置与自定义 view 名称", async () => {
     const res = await app.request("/api/views/list");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { builtIn: string[]; custom: unknown[] };
@@ -72,7 +72,7 @@ describe("views routes (PL-004 Phase B)", () => {
     expect(body.custom).toHaveLength(0);
   });
 
-  it("GET /api/views/recently-active returns rows + viewName + generatedAt", async () => {
+  it("GET /api/views/recently-active 返回 rows、viewName 与 generatedAt", async () => {
     const res = await app.request("/api/views/recently-active");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { viewName: string; rowCount: number; rows: unknown[]; generatedAt: string };
@@ -81,21 +81,21 @@ describe("views routes (PL-004 Phase B)", () => {
     expect(body.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  it("GET /api/views/<unknown-view> returns 404 view_not_found", async () => {
+  it("GET /api/views/<unknown-view> 返回 404 view_not_found", async () => {
     const res = await app.request("/api/views/nonexistent-view");
     expect(res.status).toBe(404);
     const err = (await res.json()) as { error: string };
     expect(err.error).toBe("view_not_found");
   });
 
-  it("GET /api/views/recently-active?limit=1 honors limit query", async () => {
+  it("GET /api/views/recently-active?limit=1 遵循 limit 查询参数", async () => {
     const res = await app.request("/api/views/recently-active?limit=1");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { rowCount: number };
     expect(body.rowCount).toBe(1);
   });
 
-  it("POST /api/views/custom/register registers custom view; show works via name", async () => {
+  it("POST /api/views/custom/register 注册自定义 view；可按名称查询", async () => {
     const reg = await app.request("/api/views/custom/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -113,7 +113,7 @@ describe("views routes (PL-004 Phase B)", () => {
     expect(body.rowCount).toBeGreaterThan(0);
   });
 
-  it("POST /api/views/custom/register with reserved name returns 409 view_name_reserved", async () => {
+  it("POST /api/views/custom/register 使用保留名称时返回 409 view_name_reserved", async () => {
     const res = await app.request("/api/views/custom/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -128,7 +128,7 @@ describe("views routes (PL-004 Phase B)", () => {
     expect(err.error).toBe("view_name_reserved");
   });
 
-  it("R1 SSE pattern: GET /api/views/sse returns 200 + content-type text/event-stream", async () => {
+  it("R1 SSE 模式：GET /api/views/sse 返回 200 与 content-type text/event-stream", async () => {
     const res = await app.request("/api/views/sse");
     try {
       expect(res.status).toBe(200);
@@ -138,7 +138,7 @@ describe("views routes (PL-004 Phase B)", () => {
     }
   });
 
-  it("R1 SSE pattern: GET /api/views/recently-active/sse returns 200 + content-type text/event-stream", async () => {
+  it("R1 SSE 模式：GET /api/views/recently-active/sse 返回 200 与 content-type text/event-stream", async () => {
     const res = await app.request("/api/views/recently-active/sse");
     try {
       expect(res.status).toBe(200);
@@ -148,7 +148,7 @@ describe("views routes (PL-004 Phase B)", () => {
     }
   });
 
-  it("R1 SSE pattern: GET /api/views/sse does NOT return view_not_found (route-order regression guard)", async () => {
+  it("R1 SSE 模式：GET /api/views/sse 不返回 view_not_found（路由顺序回归保护）", async () => {
     const res = await app.request("/api/views/sse");
     try {
       expect(res.status).not.toBe(404);
@@ -158,21 +158,18 @@ describe("views routes (PL-004 Phase B)", () => {
     }
   });
 
-  // ---- SSE consumer observes view.changed when queue mutates ----
-  // Route-level test that mutates queue state and observes a view.changed
-  // event. Wires the view-event-bridge in the test so the production code
-  // path is exercised.
-  it("R1 BLOCKER 2: queue mutation triggers view.changed visible to SSE consumer", async () => {
-    // Wire the bridge so queue.created → view.changed flows through the
-    // event-bus the SSE handler is subscribed to.
+  // ---- queue 变化时，SSE consumer 观测到 view.changed ----
+  // 路由级测试：改变 queue 状态并观测 view.changed event。测试中接入 view-event-bridge，
+  // 以覆盖生产代码路径。
+  it("R1 阻塞项 2：queue 变化触发 SSE consumer 可见的 view.changed", async () => {
+    // 接入 bridge，使 queue.created → view.changed 经由 SSE handler 订阅的 event-bus 流动。
     wireViewEventBridge(bus, projector);
 
-    // Subscribe to the SSE stream and read until we see a view.changed
-    // line for the recently-active view (caused by queue.created), or
-    // bail out after a short timeout.
+    // 订阅 SSE stream 并持续读取，直至看到 queue.created 导致的 recently-active view.changed 行，
+    // 或在短暂超时后退出。
     const sseResPromise = app.request("/api/views/recently-active/sse");
 
-    // Mutate queue state in parallel: create a new qitem.
+    // 并行改变 queue 状态：创建新 qitem。
     await queueRepo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -184,7 +181,7 @@ describe("views routes (PL-004 Phase B)", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type") ?? "").toContain("text/event-stream");
 
-    // Read SSE body for up to ~1.5s and look for a view.changed event.
+    // 最多读取约 1.5 秒 SSE body，寻找 view.changed event。
     const reader = res.body!.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -202,8 +199,7 @@ describe("views routes (PL-004 Phase B)", () => {
           observed = true;
           break;
         }
-        // Push another mutation if we haven't seen the event yet — the
-        // first one may have raced past the SSE handler's subscription.
+        // 若尚未看到 event，则再次触发变化——第一次可能早于 SSE handler 完成订阅。
         if (Date.now() < deadline && !observed) {
           await queueRepo.create({
             sourceSession: "alice@rig",
@@ -214,22 +210,21 @@ describe("views routes (PL-004 Phase B)", () => {
         }
       }
     } finally {
-      // Cancel via the reader (releases the stream lock cleanly).
+      // 通过 reader 取消，以干净释放 stream lock。
       await reader.cancel().catch(() => {});
     }
 
     expect(observed).toBe(true);
   });
 
-  // ---- queue.updated triggers view.changed visible to SSE consumer ----
-  // pending → blocked / in-progress → done / closure / escalation
-  // transitions through QueueRepository.update() must emit
-  // queue.updated → view.changed. Without this, normal state mutations
-  // never wake SSE consumers on /api/views/:name/sse.
-  it("R2 BLOCKER: queue.update mutation triggers view.changed (cause=queue.updated) visible to SSE consumer", async () => {
+  // ---- queue.updated 触发 SSE consumer 可见的 view.changed ----
+  // pending → blocked / in-progress → done / 关闭 / 升级
+  // 经 QueueRepository.update() 执行的转换必须发出 queue.updated → view.changed。否则正常状态变化
+  // 永远无法唤醒 /api/views/:name/sse 上的 SSE consumer。
+  it("R2 阻塞项：queue.update 变化触发 SSE consumer 可见的 view.changed（cause=queue.updated）", async () => {
     wireViewEventBridge(bus, projector);
 
-    // Pre-create + claim a qitem so we can run an update path.
+    // 预先创建并领取 qitem，以便执行 update 路径。
     const item = await queueRepo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -238,10 +233,10 @@ describe("views routes (PL-004 Phase B)", () => {
     });
     queueRepo.claim({ qitemId: item.qitemId, destinationSession: "bob@rig" });
 
-    // Subscribe to view SSE first so we don't miss the event.
+    // 先订阅 view SSE，以免错过 event。
     const sseResPromise = app.request("/api/views/recently-active/sse");
 
-    // Run an update through the general state mutator (in-progress → done).
+    // 通过通用状态 mutator 执行更新（in-progress → done）。
     queueRepo.update({
       qitemId: item.qitemId,
       actorSession: "bob@rig",

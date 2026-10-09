@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch17",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/scope-fs-spec-md.test.ts",
+      "before_sha256_16": "9d2138634d281275",
+      "after_sha256_16": "7aa3dd0d6885570b",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/restore.test.ts",
+      "before_sha256_16": "3126cd54b09f2906",
+      "after_sha256_16": "1f889806a98a0b45",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/host-ls-identity.test.ts",
+      "before_sha256_16": "fdbc25d53142c2d9",
+      "after_sha256_16": "ae94f18ab1aba2ca",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/gateway-human-lifecycle-verb.test.ts",
+      "before_sha256_16": "b52690cc9b81c858",
+      "after_sha256_16": "e1ccfe45ec5466f3",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/workflow-cross-loop-three-step.test.ts",
+      "before_sha256_16": "4343e536377d5650",
+      "after_sha256_16": "a6adcf4f863d71a8",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

@@ -11,10 +11,9 @@ import type {
 import type { ProjectionPlan } from "../domain/projection-planner.js";
 
 /**
- * Terminal runtime adapter for infrastructure nodes.
- * All operations are no-ops — the shell is immediately interactive.
- * Startup actions (send_text) are handled by the startup orchestrator,
- * not by this adapter.
+ * 基础设施节点的终端 runtime adapter。
+ * 所有操作均为空操作——shell 会立即进入交互状态。启动操作（send_text）由启动 orchestrator
+ * 处理，而非此 adapter。
  */
 export class TerminalAdapter implements RuntimeAdapter {
   readonly runtime = "terminal";
@@ -38,7 +37,7 @@ export class TerminalAdapter implements RuntimeAdapter {
     if (opts.forkSource) {
       return {
         ok: false,
-        error: "terminal runtime has no native fork primitive; remove session_source for terminal members",
+        error: "terminal runtime 没有原生 fork 原语；请移除 terminal member 的 session_source",
       };
     }
     return { ok: true };

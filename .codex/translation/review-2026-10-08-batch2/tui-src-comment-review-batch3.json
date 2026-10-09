@@ -1,0 +1,20 @@
+{
+  "schema": "openrig.tui-src-comment-review-batch/v1",
+  "batch": 3,
+  "captured_at": "2026-10-09T19:10:00+08:00",
+  "depth": "full_comment_javascript_docstring_reviewed",
+  "owner": "s_000cae46uuw",
+  "natural_residual": 0,
+  "files": [
+    {"path": "packages/tui/src/commands/help.ts", "status": "reviewed_no_change", "after_sha256": "5f523f02e3a46e476e1f9f6b74c260b49cd8a1d2dc2fa8ca13e30b370bc6ffee", "classification": "0 English residual"},
+    {"path": "packages/tui/src/crash-cart/from-emit.ts", "status": "reviewed_no_change", "after_sha256": "8f75e3638afe2f1a66713ecba813261d4da7b40ad15ef8070478f7ce5ddeac10", "classification": "0 English residual"},
+    {"path": "packages/tui/src/page-read.ts", "status": "reviewed_no_change", "after_sha256": "6f2b7f7f7c7d720cab98266d4a1d94bd02cfc7ff030b897c362ccbbc792ea0ff", "classification": "0 English residual"},
+    {"path": "packages/tui/src/live-events.ts", "status": "reviewed_no_change", "after_sha256": "17a455709742f385ccf96e1a01e3016a9fb457d00782e4099bfcb7fafaaa06f2", "classification": "0 English residual"},
+    {"path": "packages/tui/src/topology/glyphs.ts", "status": "reviewed_no_change", "after_sha256": "4637462fcd012947712d53784afd84c0ee9cafd2bbb6a3fc505590c63cbab9ad", "classification": "0 English residual; braille/hatchet glyphs machine"},
+    {"path": "packages/tui/src/topology/styles/braille.ts", "status": "reviewed_no_change", "after_sha256": "933791ca2c81753d9bbcc2c36df68f6239868c91ea003906e4ab28d4043e09ee", "classification": "0 English residual; braille algorithm glyphs retained"},
+    {"path": "packages/tui/src/crash-cart/crash-cart-model.ts", "status": "reviewed_no_change", "after_sha256": "a5e64f2f093b3eb23e7a55e03132de25ccc653e87d3194917ab4a11aa2913097", "classification": "0 English residual"},
+    {"path": "packages/tui/src/print-for-copy.ts", "status": "reviewed_no_change", "after_sha256": "6f7e588ebe773fabb37a8cb8ec20d198fdde70dc28e243c8a08aca9550fe55b0", "classification": "0 English residual"},
+    {"path": "packages/tui/src/topology/fixture.ts", "status": "reviewed_no_change", "after_sha256": "fbbb97dd3d9295b1ca6388ad767a64b6cd2a54b31b8df9f8a8ea166256049b45", "classification": "0 English residual"},
+    {"path": "packages/tui/src/theme.ts", "status": "reviewed_no_change", "after_sha256": "19bfddf84445a368539ebf870361855ff041f3d66b15da4052774a006ff859b3", "classification": "0 English residual"}
+  ]
+}

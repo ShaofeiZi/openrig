@@ -5,16 +5,15 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fireCompaction, StubCompactionError } from "../src/adapters/stub-compaction.js";
 
-// Slice 51-01 items 6-8 — the stub COMPACTION behavior TRIGGERS the exact shipped seam.
+// Slice 51-01 items 6-8——stub COMPACTION 行为触发准确的已发布接缝。
 //
-// PRD §4.3/§4.4 (arch R3): the stub does NOT fabricate compaction outputs — it FIRES the
-// real precompact-hook.mjs, which writes the seat-keyed restore-pending marker the real
-// compaction-restore-bridge later delivers. This is the production-identical observable:
-// a real marker on disk keyed to the seat, deterministic under the injected clock. The
-// runner (a real-spawn caller) invokes fireCompaction on an `emit compaction` step.
+// PRD §4.3/§4.4（arch R3）：stub 不伪造 compaction output——它触发真实 precompact-hook.mjs，
+// 后者写入按 seat 为 key 的 restore-pending marker，再由真实 compaction-restore-bridge 投递。
+// 这是与生产环境一致的 observable：磁盘上以 seat 为 key 的真实 marker，在注入 clock 下保持确定。
+// runner（真实 spawn caller）在 `emit compaction` step 上调用 fireCompaction。
 //
-// These tests spawn the REAL shipped hook (the class-fix floor) with an isolated
-// OPENRIG_HOME + a controlled transcript so the packet + stamps are deterministic.
+// 这些测试使用隔离 OPENRIG_HOME + 受控 transcript 启动真实随附 hook（class-fix floor），使 packet
+// 与 stamp 保持确定。
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const HOOK_SCRIPT = resolve(
@@ -34,7 +33,7 @@ function writeFixtureJsonl(dir: string): string {
   return p;
 }
 
-describe("stub compaction behavior fires the real precompact seam", () => {
+describe("stub compaction 行为触发真实 precompact 接缝", () => {
   let tmpDir: string;
   let openrigHome: string;
 
@@ -46,7 +45,7 @@ describe("stub compaction behavior fires the real precompact seam", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("writes a REAL seat-keyed restore-pending marker (never a fabricated output)", () => {
+  it("写入真实且以 seat 为 key 的 restore-pending marker（绝非伪造 output）", () => {
     const jsonl = writeFixtureJsonl(tmpDir);
     const result = fireCompaction({
       hookScriptPath: HOOK_SCRIPT,
@@ -56,15 +55,15 @@ describe("stub compaction behavior fires the real precompact seam", () => {
       transcriptPath: jsonl,
     });
     expect(existsSync(result.markerPath)).toBe(true);
-    // Keyed to THIS seat (sanitized) under the shipped restore-pending dir.
+    // 位于随附 restore-pending 目录下，以此 seat（已 sanitize）为 key。
     expect(result.markerPath).toBe(join(openrigHome, "compaction", "restore-pending", `${SEAT}.json`));
     const marker = JSON.parse(readFileSync(result.markerPath, "utf8"));
     expect(marker.sessionName).toBe(SEAT);
-    // The packet the real seam generated actually exists (restore-from-jsonl ran).
+    // 真实接缝生成的 packet 确实存在（restore-from-jsonl 已运行）。
     expect(existsSync(marker.outputDir)).toBe(true);
   });
 
-  it("is deterministic under the injected clock (byte-identical stamps across a double-run)", () => {
+  it("在注入 clock 下保持确定（两次运行的 stamp 字节级一致）", () => {
     const readStamps = (): { createdAt: unknown; outStamp: string | undefined } => {
       const dir = mkdtempSync(join(tmpdir(), "stub-compaction-det-"));
       const home = join(dir, ".openrig");
@@ -85,7 +84,7 @@ describe("stub compaction behavior fires the real precompact seam", () => {
     expect(String(a.outStamp)).toContain(INJECTED_ISO.replace(/[:.]/g, "-"));
   });
 
-  it("fails FAST when the shipped hook script is absent (HIGH-6 existence contract, never a silent skip)", () => {
+  it("随附 hook script 缺失时快速失败（HIGH-6 existence contract，绝不静默跳过）", () => {
     expect(() => fireCompaction({
       hookScriptPath: join(tmpDir, "no-such-precompact-hook.mjs"),
       sessionName: SEAT,

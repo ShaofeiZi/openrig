@@ -18,7 +18,7 @@ import type { ProjectionPlan } from "../src/domain/projection-planner.js";
 import type { RigSpec, SessionSourceSpec } from "../src/domain/types.js";
 
 // ============================================================================
-// Fixtures
+// 测试夹具
 // ============================================================================
 
 function baseValidSpec(): Record<string, unknown> {
@@ -54,11 +54,11 @@ function withMember(spec: Record<string, unknown>, override: Record<string, unkn
 }
 
 // ============================================================================
-// Schema validation — Honest Refusal Matrix
+// Schema 验证——诚实拒绝矩阵
 // ============================================================================
 
-describe("session_source schema validation", () => {
-  it("accepts claude-code + fork + native_id + non-empty value", () => {
+describe("session_source schema 验证", () => {
+  it("接受 claude-code + fork + native_id + 非空 value", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: {
         mode: "fork",
@@ -70,7 +70,7 @@ describe("session_source schema validation", () => {
     expect(result.errors).toEqual([]);
   });
 
-  it("accepts codex + fork + native_id + non-empty value", () => {
+  it("接受 codex + fork + native_id + 非空 value", () => {
     const spec = withMember(baseValidSpec(), {
       runtime: "codex",
       session_source: { mode: "fork", ref: { kind: "native_id", value: "thread-id-abc" } },
@@ -79,7 +79,7 @@ describe("session_source schema validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("rejects terminal runtime with session_source", () => {
+  it("拒绝带 session_source 的 terminal runtime", () => {
     const spec = withMember(baseValidSpec(), {
       runtime: "terminal",
       agent_ref: "builtin:terminal",
@@ -88,89 +88,89 @@ describe("session_source schema validation", () => {
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("terminal runtime has no native fork primitive"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("terminal 运行时没有原生 fork 原语"))).toBe(true);
   });
 
-  it("rejects mode != fork", () => {
+  it("拒绝 mode != fork", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "snapshot", ref: { kind: "native_id", value: "x" } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    // PL-016 Item 4: error message names the now-three valid modes.
-    expect(result.errors.some((e) => e.includes('supports "fork", "rebuild", or "agent_image"'))).toBe(true);
+    // PL-016 第 4 项：错误消息点明当前三种有效 mode。
+    expect(result.errors.some((e) => e.includes('支持 "fork"、"rebuild" 或 "agent_image"'))).toBe(true);
   });
 
-  it("rejects ref.kind=artifact_path (deferred per dossier)", () => {
+  it("拒绝 ref.kind=artifact_path（按 dossier 延后）", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "fork", ref: { kind: "artifact_path", value: "/some/path" } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('"artifact_path" deferred to follow-up slice'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('"artifact_path" 延后到后续切片'))).toBe(true);
   });
 
-  it("rejects ref.kind=name", () => {
+  it("拒绝 ref.kind=name", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "fork", ref: { kind: "name", value: "x" } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('weaker than "native_id"'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('弱于 "native_id"'))).toBe(true);
   });
 
-  it("rejects ref.kind=last", () => {
+  it("拒绝 ref.kind=last", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "fork", ref: { kind: "last" } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('weaker than "native_id"'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('弱于 "native_id"'))).toBe(true);
   });
 
-  it("rejects missing ref.value when kind=native_id", () => {
+  it("kind=native_id 时拒绝缺失的 ref.value", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "fork", ref: { kind: "native_id" } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("ref.value: required non-empty string"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("ref.value") && e.includes("必须提供非空字符串"))).toBe(true);
   });
 
-  it("rejects empty ref.value", () => {
+  it("拒绝空 ref.value", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "fork", ref: { kind: "native_id", value: "   " } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("ref.value: required non-empty string"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("ref.value") && e.includes("必须提供非空字符串"))).toBe(true);
   });
 
-  it("rejects missing ref entirely", () => {
+  it("拒绝完全缺失的 ref", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "fork" },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes(".ref:"))).toBe(true);
+    expect(result.errors.some((e) => e.includes(".ref："))).toBe(true);
   });
 
-  it("rejects unknown kind value", () => {
+  it("拒绝未知 kind 值", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "fork", ref: { kind: "magic" } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('v1 fork mode supports "native_id" only'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('v1 fork 模式仅支持 "native_id"'))).toBe(true);
   });
 });
 
 // ============================================================================
-// normalizePod — schema-side typed coercion
+// normalizePod——schema 侧类型化转换
 // ============================================================================
 
-describe("session_source normalization", () => {
-  it("normalizes valid session_source onto RigSpecPodMember.sessionSource", () => {
+describe("session_source 规范化", () => {
+  it("把有效 session_source 规范化到 RigSpecPodMember.sessionSource", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "fork", ref: { kind: "native_id", value: "abc" } },
     });
@@ -179,7 +179,7 @@ describe("session_source normalization", () => {
     expect(member.sessionSource).toEqual({ mode: "fork", ref: { kind: "native_id", value: "abc" } });
   });
 
-  it("normalizes absent session_source to undefined", () => {
+  it("把缺失的 session_source 规范化为 undefined", () => {
     const spec = baseValidSpec();
     const normalized = RigSpecSchema.normalize(spec) as RigSpec;
     expect(normalized.pods[0]!.members[0]!.sessionSource).toBeUndefined();
@@ -187,11 +187,11 @@ describe("session_source normalization", () => {
 });
 
 // ============================================================================
-// Codec roundtrip — serialize → parse → normalize
+// Codec 往返——serialize → parse → normalize
 // ============================================================================
 
-describe("session_source codec roundtrip", () => {
-  it("preserves session_source through serialize → parse → normalize", () => {
+describe("session_source codec 往返", () => {
+  it("经过 serialize → parse → normalize 后保留 session_source", () => {
     const seed: RigSpec = {
       version: "0.2",
       name: "fork-test-rig",
@@ -226,7 +226,7 @@ describe("session_source codec roundtrip", () => {
 });
 
 // ============================================================================
-// Claude adapter fork branch
+// Claude 适配器 fork 分支
 // ============================================================================
 
 function mockTmux(): TmuxAdapter {
@@ -271,8 +271,8 @@ function makeBinding(): NodeBinding {
   };
 }
 
-describe("ClaudeCodeAdapter.launchHarness fork branch", () => {
-  it("builds claude --resume <parent> --fork-session for forkSource.kind=native_id and captures the NEW token", async () => {
+describe("ClaudeCodeAdapter.launchHarness fork 分支", () => {
+  it("为 forkSource.kind=native_id 构建 claude --resume <parent> --fork-session 并捕获新 token", async () => {
     const tmux = mockTmux();
     const adapter = new ClaudeCodeAdapter({ tmux, fsOps: mockClaudeFs("NEW-POST-FORK-TOKEN-XYZ") });
 
@@ -288,14 +288,14 @@ describe("ClaudeCodeAdapter.launchHarness fork branch", () => {
       "CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1 claude --permission-mode acceptEdits --resume PARENT-TOKEN-ABC --fork-session --name dev-impl@test-rig",
     );
     if (result.ok) {
-      // Captured token MUST be the new post-fork token, NOT the parent.
+      // 捕获的 token 必须是 fork 后的新 token，而不是父 token。
       expect(result.resumeToken).toBe("NEW-POST-FORK-TOKEN-XYZ");
       expect(result.resumeToken).not.toBe("PARENT-TOKEN-ABC");
       expect(result.resumeType).toBe("claude_id");
     }
   });
 
-  it("refuses forkSource.kind=artifact_path (defensive — schema also rejects)", async () => {
+  it("拒绝 forkSource.kind=artifact_path（防御性检查，schema 也会拒绝）", async () => {
     const tmux = mockTmux();
     const adapter = new ClaudeCodeAdapter({ tmux, fsOps: mockClaudeFs() });
     const result = await adapter.launchHarness(makeBinding(), {
@@ -304,11 +304,11 @@ describe("ClaudeCodeAdapter.launchHarness fork branch", () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain('ref.kind="artifact_path" is not supported in v1');
+      expect(result.error).toContain('v1 不支持 ref.kind="artifact_path"');
     }
   });
 
-  it("refuses both resumeToken and forkSource together", async () => {
+  it("拒绝同时提供 resumeToken 与 forkSource", async () => {
     const tmux = mockTmux();
     const adapter = new ClaudeCodeAdapter({ tmux, fsOps: mockClaudeFs() });
     const result = await adapter.launchHarness(makeBinding(), {
@@ -318,11 +318,11 @@ describe("ClaudeCodeAdapter.launchHarness fork branch", () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain("mutually exclusive");
+      expect(result.error).toContain("resumeToken 与 forkSource 互斥");
     }
   });
 
-  it("refuses forkSource with empty value", async () => {
+  it("拒绝 value 为空的 forkSource", async () => {
     const tmux = mockTmux();
     const adapter = new ClaudeCodeAdapter({ tmux, fsOps: mockClaudeFs() });
     const result = await adapter.launchHarness(makeBinding(), {
@@ -331,11 +331,11 @@ describe("ClaudeCodeAdapter.launchHarness fork branch", () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain("forkSource.value is required");
+      expect(result.error).toContain("必须提供 forkSource.value");
     }
   });
 
-  it("does not break the existing fresh and resume paths", async () => {
+  it("不破坏现有 fresh 与 resume 路径", async () => {
     const tmux = mockTmux();
     const adapter = new ClaudeCodeAdapter({
       tmux,
@@ -350,11 +350,11 @@ describe("ClaudeCodeAdapter.launchHarness fork branch", () => {
   });
 });
 
-// OPR.0.3.4.5 — pod-aware consumer guard: ClaudeCodeAdapter.launchHarness
-// on a resume-selection menu returns attention_required with ZERO numeric
-// selection keystrokes (the governance BLOCKING safety line).
-describe("ClaudeCodeAdapter.launchHarness resume-selection menu (OPR.0.3.4.5)", () => {
-  it("returns attention_required with evidence, sends ZERO numeric selection keys", async () => {
+// OPR.0.3.4.5——pod-aware consumer guard：ClaudeCodeAdapter.launchHarness 遇到
+// resume-selection 菜单时返回带 evidence 的 attention_required，并且不发送任何数字选择
+// 按键（治理层 BLOCKING 安全线）。
+describe("ClaudeCodeAdapter.launchHarness resume-selection 菜单（OPR.0.3.4.5）", () => {
+  it("返回带 evidence 的 attention_required，且不发送数字选择按键", async () => {
     const menuContent = [
       "Choose a conversation to resume:",
       "",
@@ -389,7 +389,7 @@ describe("ClaudeCodeAdapter.launchHarness resume-selection menu (OPR.0.3.4.5)", 
       expect(result.evidence).toBeTruthy();
       expect(result.evidence).toContain("Choose a conversation");
     }
-    // THE GUARD: no numeric selection keystroke was sent.
+    // 核心 guard：没有发送数字选择按键。
     const allSendKeysArgs = sendKeys.mock.calls.flatMap((c) => {
       const arg = c[1];
       return Array.isArray(arg) ? arg : [String(arg ?? "")];
@@ -402,10 +402,10 @@ describe("ClaudeCodeAdapter.launchHarness resume-selection menu (OPR.0.3.4.5)", 
 });
 
 // ============================================================================
-// Codex adapter fork branch
+// Codex 适配器 fork 分支
 // ============================================================================
 
-describe("CodexRuntimeAdapter.launchHarness fork branch", () => {
+describe("CodexRuntimeAdapter.launchHarness fork 分支", () => {
   function makeMinimalCodexFs() {
     return {
       readFile: () => "",
@@ -443,7 +443,7 @@ describe("CodexRuntimeAdapter.launchHarness fork branch", () => {
     return { tmux, adapter };
   }
 
-  it("builds codex fork <parent> for forkSource.kind=native_id and captures the NEW thread id", async () => {
+  it("为 forkSource.kind=native_id 构建 codex fork <parent> 并捕获新 thread ID", async () => {
     const { tmux, adapter } = makeCodexAdapter("NEW-CODEX-THREAD-XYZ");
     const result = await adapter.launchHarness(makeBinding(), {
       name: "dev-impl@test-rig",
@@ -452,9 +452,9 @@ describe("CodexRuntimeAdapter.launchHarness fork branch", () => {
     expect(result.ok).toBe(true);
     const sendText = tmux.sendText as ReturnType<typeof vi.fn>;
     const sentCmd = sendText.mock.calls[0]?.[1] as string;
-    // R2 LOW-4 reconciliation (truthful floor update, assertion intent unchanged): the
-    // no-profile floor now emits the explicit ` -s workspace-write` sandbox argument
-    // (OPR.0.4.8.2 posture helper) between the executable and the fork subcommand.
+    // R2 LOW-4 校准（如实更新 floor，断言意图不变）：无 profile 的 floor 现在会在可执行文件
+    // 与 fork 子命令之间显式发出 ` -s workspace-write` sandbox 参数
+    //（OPR.0.4.8.2 posture helper）。
     expect(sentCmd).toMatch(/^codex( -p [^ ]+| -s [a-z-]+)* fork/);
     expect(sentCmd).toContain("PARENT-THREAD-ABC");
     if (result.ok) {
@@ -464,7 +464,7 @@ describe("CodexRuntimeAdapter.launchHarness fork branch", () => {
     }
   });
 
-  it("refuses forkSource.kind=artifact_path", async () => {
+  it("拒绝 forkSource.kind=artifact_path", async () => {
     const { adapter } = makeCodexAdapter();
     const result = await adapter.launchHarness(makeBinding(), {
       name: "dev-impl@test-rig",
@@ -472,11 +472,11 @@ describe("CodexRuntimeAdapter.launchHarness fork branch", () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain('ref.kind="artifact_path" is not supported in v1');
+      expect(result.error).toContain('v1 不支持 ref.kind="artifact_path"');
     }
   });
 
-  it("refuses both resumeToken and forkSource together", async () => {
+  it("拒绝同时提供 resumeToken 与 forkSource", async () => {
     const { adapter } = makeCodexAdapter();
     const result = await adapter.launchHarness(makeBinding(), {
       name: "dev-impl@test-rig",
@@ -485,23 +485,23 @@ describe("CodexRuntimeAdapter.launchHarness fork branch", () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain("mutually exclusive");
+      expect(result.error).toContain("resumeToken 与 forkSource 互斥");
     }
   });
 
-  it("refuses fork when capture fails (identity-honesty: no token == no honest seat)", async () => {
-    const { adapter } = makeCodexAdapter(); // no thread id captured
+  it("捕获失败时拒绝 fork（身份诚实性：无 token 就没有可信 seat）", async () => {
+    const { adapter } = makeCodexAdapter(); // 未捕获 thread ID。
     const result = await adapter.launchHarness(makeBinding(), {
       name: "dev-impl@test-rig",
       forkSource: { kind: "native_id", value: "PARENT-X" },
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain("could not capture new post-fork thread id");
+      expect(result.error).toContain("无法捕获 fork 后的新 thread id");
     }
   });
 
-  it("preserves Codex hook review consent during fork", async () => {
+  it("fork 期间保留 Codex hook review consent", async () => {
     const hookReviewContent = [
       "Hooks need review",
       "3 hooks are new or changed.",
@@ -556,7 +556,7 @@ describe("CodexRuntimeAdapter.launchHarness fork branch", () => {
     expect(trustDismissal).toBeUndefined();
   });
 
-  it("preserves delayed hook-trust consent while waiting for a new fork identity", async () => {
+  it("等待新 fork identity 时保留延迟出现的 hook-trust consent", async () => {
     const hookReviewContent = [
       "Hooks need review",
       "3 hooks are new or changed.",
@@ -606,7 +606,7 @@ describe("CodexRuntimeAdapter.launchHarness fork branch", () => {
     });
 
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("could not capture new post-fork thread id");
+    if (!result.ok) expect(result.error).toContain("无法捕获 fork 后的新 thread id");
     expect(threadIdAvailable).toBe(false);
 
     const sendTextCalls = (tmux.sendText as ReturnType<typeof vi.fn>).mock.calls;
@@ -616,11 +616,11 @@ describe("CodexRuntimeAdapter.launchHarness fork branch", () => {
 });
 
 // ============================================================================
-// Terminal adapter — defensive refusal
+// Terminal 适配器——防御性拒绝
 // ============================================================================
 
-describe("TerminalAdapter.launchHarness fork refusal", () => {
-  it("refuses forkSource (terminal has no native fork primitive)", async () => {
+describe("TerminalAdapter.launchHarness 拒绝 fork", () => {
+  it("拒绝 forkSource（terminal 没有原生 fork 原语）", async () => {
     const adapter = new TerminalAdapter();
     const result = await adapter.launchHarness(makeBinding(), {
       name: "term@rig",
@@ -628,11 +628,11 @@ describe("TerminalAdapter.launchHarness fork refusal", () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain("terminal runtime has no native fork primitive");
+      expect(result.error).toContain("terminal runtime 没有原生 fork 原语");
     }
   });
 
-  it("still succeeds for the no-fork path", async () => {
+  it("无 fork 路径仍然成功", async () => {
     const adapter = new TerminalAdapter();
     const result = await adapter.launchHarness(makeBinding(), { name: "term@rig" });
     expect(result.ok).toBe(true);
@@ -640,8 +640,8 @@ describe("TerminalAdapter.launchHarness fork refusal", () => {
 });
 
 // ============================================================================
-// Startup orchestrator — forkSource → continuityOutcome="forked" + new token
-// persisted; identity prompt NOT replayed (forked seat carries parent context)
+// 启动编排器——forkSource → continuityOutcome="forked" 并持久化新 token；不重放
+// identity prompt（fork 后的 seat 已携带父上下文）
 // ============================================================================
 
 function mockOrchTmux(): TmuxAdapter {
@@ -665,7 +665,7 @@ function makeStubAdapter(forkResumeToken: string): RuntimeAdapter {
     deliverStartup: vi.fn(async () => ({ delivered: 0, failed: [] })),
     checkReady: vi.fn(async () => ({ ready: true })),
     launchHarness: vi.fn(async (_binding, opts) => {
-      // Honest identity rule: the captured token IS the new post-fork token.
+      // 身份诚实规则：捕获的 token 必须是 fork 后的新 token。
       if (opts.forkSource) {
         return { ok: true, resumeToken: forkResumeToken, resumeType: "claude_id" };
       }
@@ -678,7 +678,7 @@ function emptyPlan(): ProjectionPlan {
   return { runtime: "claude-code", cwd: ".", entries: [], startup: { files: [], actions: [] }, conflicts: [], noOps: [], diagnostics: [] };
 }
 
-describe("StartupOrchestrator forkSource integration", () => {
+describe("StartupOrchestrator forkSource 集成", () => {
   let db: Database.Database;
   let sessionRegistry: SessionRegistry;
   let eventBus: EventBus;
@@ -723,7 +723,7 @@ describe("StartupOrchestrator forkSource integration", () => {
     });
   }
 
-  it("sets continuityOutcome=forked when forkSource is provided and launch succeeds", async () => {
+  it("提供 forkSource 且启动成功时设置 continuityOutcome=forked", async () => {
     const s = seed();
     const orch = createOrch();
     const forkSource: ForkSource = { kind: "native_id", value: "PARENT-TOKEN-ABC" };
@@ -735,7 +735,7 @@ describe("StartupOrchestrator forkSource integration", () => {
     });
   });
 
-  it("persists the NEW post-fork token onto the seat, NOT the parent", async () => {
+  it("在 seat 上持久化 fork 后的新 token，而不是父 token", async () => {
     const s = seed();
     const orch = createOrch();
     const forkSource: ForkSource = { kind: "native_id", value: "PARENT-TOKEN-ABC" };
@@ -746,7 +746,7 @@ describe("StartupOrchestrator forkSource integration", () => {
     expect(row.resume_token).not.toBe("PARENT-TOKEN-ABC");
   });
 
-  it("passes forkSource through to adapter.launchHarness opts (not resumeToken)", async () => {
+  it("把 forkSource 传给 adapter.launchHarness 选项，而不是 resumeToken", async () => {
     const s = seed();
     const orch = createOrch();
     const adapter = makeStubAdapter("any-token");
@@ -761,14 +761,14 @@ describe("StartupOrchestrator forkSource integration", () => {
     expect(opts.resumeToken).toBeUndefined();
   });
 
-  it("fresh path (no resumeToken, no forkSource) is unchanged: continuityOutcome=fresh", async () => {
+  it("fresh 路径（无 resumeToken、无 forkSource）保持不变：continuityOutcome=fresh", async () => {
     const s = seed();
     const orch = createOrch();
     const result = await orch.startNode(makeInput(s));
     expect(result).toEqual({ ok: true, startupStatus: "ready", continuityOutcome: "fresh" });
   });
 
-  it("resume path (resumeToken set) is unchanged: continuityOutcome=resumed", async () => {
+  it("resume 路径（已设置 resumeToken）保持不变：continuityOutcome=resumed", async () => {
     const s = seed();
     const orch = createOrch();
     const result = await orch.startNode(makeInput(s, {
@@ -780,15 +780,14 @@ describe("StartupOrchestrator forkSource integration", () => {
 });
 
 // ============================================================================
-// rig-expansion-service session_source pass-through (structured spec)
+// rig-expansion-service session_source 透传（结构化规范）
 // ============================================================================
 
-// OPR.0.3.3.24: expand passes a structured spec OBJECT (no synthetic YAML
-// round-trip) through materializeStructured + launchValidatedSpec. This is the
-// session_source analogue of the realigned starterRef pass-through tests: assert
-// snake_case session_source on the structured spec member, not a YAML string.
-describe("rig-expansion session_source pass-through (structured spec)", () => {
-  it("emits session_source on the structured spec member when member.sessionSource is set", async () => {
+// OPR.0.3.3.24：expand 通过 materializeStructured + launchValidatedSpec 传递结构化规范
+// 对象，不做合成 YAML 往返。这是重新对齐的 starterRef 透传测试对应的 session_source
+// 用例：断言结构化规范成员上的 snake_case session_source，而不是 YAML 字符串。
+describe("rig-expansion session_source 透传（结构化规范）", () => {
+  it("设置 member.sessionSource 时在结构化规范成员上输出 session_source", async () => {
     const { RigExpansionService } = await import("../src/domain/rig-expansion-service.js");
     const fakeRigRepo = { getRig: () => ({ rig: { name: "rig-x" }, nodes: [] }) } as never;
     const fakeEventBus = { emit: () => {} } as never;
@@ -838,11 +837,11 @@ describe("rig-expansion session_source pass-through (structured spec)", () => {
 });
 
 // ============================================================================
-// Honest UX literal — continuityOutcome union includes "forked"
+// 诚实的 UX 字面契约——continuityOutcome union 包含 "forked"
 // ============================================================================
 
-describe("identity-honesty literal contract", () => {
-  it('continuityOutcome union accepts "forked" alongside "resumed" and "fresh"', () => {
+describe("身份诚实性字面契约", () => {
+  it('continuityOutcome union 同时接受 "forked"、"resumed" 与 "fresh"', () => {
     const r1 = { ok: true as const, startupStatus: "ready" as const, continuityOutcome: "forked" as const };
     const r2 = { ok: true as const, startupStatus: "ready" as const, continuityOutcome: "resumed" as const };
     const r3 = { ok: true as const, startupStatus: "ready" as const, continuityOutcome: "fresh" as const };
@@ -851,7 +850,7 @@ describe("identity-honesty literal contract", () => {
     expect(r3.continuityOutcome).toBe("fresh");
   });
 
-  it("does NOT reuse 'restored', 'resumed', or 'snapshot' wording for the fork path", () => {
+  it("fork 路径不复用 'restored'、'resumed' 或 'snapshot' 措辞", () => {
     const fork: SessionSourceSpec = { mode: "fork", ref: { kind: "native_id", value: "x" } };
     expect(fork.mode).toBe("fork");
     expect(["restored", "resumed", "snapshot", "snapshot_copy"]).not.toContain(fork.mode as string);
@@ -859,18 +858,18 @@ describe("identity-honesty literal contract", () => {
 });
 
 // ============================================================================
-// OPR.0.4.6.PI1 — Pi rows: runtime "pi" + session_source fork, launch-command
-// shape via the runner (CLI --fork whole-session fork, NEW child token rule)
+// OPR.0.4.6.PI1——Pi 行：runtime "pi" + session_source fork，经 runner 生成启动命令
+// 形状（CLI --fork 整体 session fork，使用新 child token 的规则）
 // ============================================================================
 
-describe("session_source Pi rows (OPR.0.4.6.PI1)", () => {
+describe("session_source Pi 行（OPR.0.4.6.PI1）", () => {
   const PI_STATE_ROOT = "/openrig-home/state/pi";
   const PI_RUNNER = "/daemon-dist/adapters/pi-runner.js";
   const PI_SESSION = "dev-impl@fork-test-rig";
   const PI_PARENT = "/prior-seat/sessions/parent_0196.jsonl";
   const PI_CHILD = `${PI_STATE_ROOT}/${PI_SESSION}/sessions/child_0197.jsonl`;
 
-  it("accepts runtime pi + fork + native_id (schema)", () => {
+  it("接受 runtime pi + fork + native_id（schema）", () => {
     const spec = withMember(baseValidSpec(), {
       runtime: "pi",
       session_source: { mode: "fork", ref: { kind: "native_id", value: PI_PARENT } },
@@ -880,7 +879,7 @@ describe("session_source Pi rows (OPR.0.4.6.PI1)", () => {
     expect(result.errors).toEqual([]);
   });
 
-  it("builds the runner command with --fork <parent> and persists the NEW child token", async () => {
+  it("构建包含 --fork <parent> 的 runner 命令并持久化新的 child token", async () => {
     const { PiRuntimeAdapter } = await import("../src/adapters/pi-runtime-adapter.js");
     const { piSeatPaths } = await import("../src/adapters/pi-runner-protocol.js");
 
@@ -891,8 +890,7 @@ describe("session_source Pi rows (OPR.0.4.6.PI1)", () => {
       sendText: vi.fn(async (_t: string, text: string) => {
         typedCommand = text;
         const launchId = /--launch-id '([^']+)'/.exec(text)![1];
-        // The runner "starts" and reports the CHILD session file via the
-        // launch-stamped sidecar.
+        // runner “启动”并通过带 launch 标记的 sidecar 报告 CHILD session 文件。
         files[piSeatPaths(PI_STATE_ROOT, PI_SESSION).runnerStatePath] = JSON.stringify({
           ready: true, launchId, sessionFile: PI_CHILD, sessionId: "0197c", updatedAt: "t",
         });
@@ -921,13 +919,13 @@ describe("session_source Pi rows (OPR.0.4.6.PI1)", () => {
       { name: PI_SESSION, forkSource: { kind: "native_id", value: PI_PARENT } },
     );
 
-    // Launch-command shape: the runner is typed into the pane with --fork.
+    // 启动命令形状：在 pane 中输入带 --fork 的 runner。
     expect(typedCommand).toContain("pi-runner.js");
     expect(typedCommand).toContain(`--fork '${PI_PARENT}'`);
     expect(typedCommand).not.toContain("--session '");
-    expect(typedCommand).toMatch(/--(no-)?approve/); // explicit trust, always
+    expect(typedCommand).toMatch(/--(no-)?approve/); // 始终显式指定 trust。
 
-    // Post-fork token rule: the NEW child file is persisted, never the parent.
+    // fork 后 token 规则：持久化新的 child 文件，绝不使用 parent。
     expect(result).toEqual({
       ok: true,
       resumeToken: PI_CHILD,

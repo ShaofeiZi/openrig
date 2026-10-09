@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { deriveDaemonHealthSignal, type DaemonHealthPayload } from "../src/hooks/useDaemonHealth.js";
 
-// OPR.0.4.3.21 — controlPlaneUnhealthy is true ONLY on a positive signal: a
-// failed health poll (wedged loop can't answer) OR an event-loop verdict of
-// healthy:false. Unknown/first-load must NOT read as unhealthy.
+// OPR.0.4.3.21——controlPlaneUnhealthy 仅在阳性信号时为 true：
+// 健康轮询失败（wedged 循环无法应答）或 event-loop 判定 healthy:false。
+// Unknown/首次加载不得读作 unhealthy。
 
 function query(partial: Partial<UseQueryResult<DaemonHealthPayload>>): UseQueryResult<DaemonHealthPayload> {
   return partial as UseQueryResult<DaemonHealthPayload>;

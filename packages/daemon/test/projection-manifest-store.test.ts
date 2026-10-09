@@ -3,19 +3,19 @@ import type Database from "better-sqlite3";
 import { createFullTestDb } from "./helpers/test-app.js";
 import { ProjectionManifestStore } from "../src/domain/projection-manifest-store.js";
 
-describe("ProjectionManifestStore — P20 atom 1 (mig-064)", () => {
+describe("ProjectionManifestStore —— P20 atom 1（mig-064）", () => {
   let db: Database.Database;
   beforeEach(() => {
     db = createFullTestDb();
   });
 
-  it("get / lastHash are null before any record", () => {
+  it("没有记录前 get/lastHash 均为 null", () => {
     const s = new ProjectionManifestStore(db);
     expect(s.get("/x/skill.md")).toBeNull();
     expect(s.lastHash("/x/skill.md")).toBeNull();
   });
 
-  it("record → get returns the entry; lastHash returns the hash", () => {
+  it("record 后 get 返回条目，lastHash 返回哈希", () => {
     const s = new ProjectionManifestStore(db);
     s.record({ targetPath: "/x/skill.md", lastHash: "h1", writtenAt: "T0", sourceSpec: "spec-a", category: "skill" });
     const e = s.get("/x/skill.md")!;
@@ -26,7 +26,7 @@ describe("ProjectionManifestStore — P20 atom 1 (mig-064)", () => {
     expect(s.lastHash("/x/skill.md")).toBe("h1");
   });
 
-  it("record UPSERTS on target_path — a re-write keeps the LAST hash (record-on-write)", () => {
+  it("record 按 target_path UPSERT，重写时保留最后哈希（写入即记录）", () => {
     const s = new ProjectionManifestStore(db);
     s.record({ targetPath: "/x/skill.md", lastHash: "h1", writtenAt: "T0" });
     s.record({ targetPath: "/x/skill.md", lastHash: "h2", writtenAt: "T1" });
@@ -34,7 +34,7 @@ describe("ProjectionManifestStore — P20 atom 1 (mig-064)", () => {
     expect(s.get("/x/skill.md")!.writtenAt).toBe("T1");
   });
 
-  it("records are per-target (distinct paths never collide)", () => {
+  it("记录按目标隔离（不同路径绝不冲突）", () => {
     const s = new ProjectionManifestStore(db);
     s.record({ targetPath: "/a", lastHash: "ha", writtenAt: "T" });
     s.record({ targetPath: "/b", lastHash: "hb", writtenAt: "T" });
@@ -42,7 +42,7 @@ describe("ProjectionManifestStore — P20 atom 1 (mig-064)", () => {
     expect(s.lastHash("/b")).toBe("hb");
   });
 
-  it("optional fields default to null", () => {
+  it("可选字段默认为 null", () => {
     const s = new ProjectionManifestStore(db);
     s.record({ targetPath: "/x", lastHash: "h", writtenAt: "T" });
     const e = s.get("/x")!;
@@ -50,11 +50,11 @@ describe("ProjectionManifestStore — P20 atom 1 (mig-064)", () => {
     expect(e.category).toBeNull();
   });
 
-  // atom-4b — the BOOT-time whole-table readability probe, distinct from a per-lookup throw. When the
-  // whole projection_manifest is unreadable (missing / migration-failed / corrupt), EVERY lastHash
-  // lookup throws → EVERY divergent projection classifies operator_conflict → a SILENT protect-ALL
-  // degrade. isReadable lets boot detect that systemic case and warn loudly; it NEVER throws.
-  it("atom-4b: isReadable probes the whole-table boot state — true when migrated, false when the table is gone (never throws)", () => {
+  // atom-4b——BOOT 时全表可读探针，区别于逐 lookup 抛错。当
+  // 整个 projection_manifest 不可读（缺失 / migration 失败 / 损坏），每个 lastHash
+  // lookup 抛错 → 每个发散 projection 归类 operator_conflict → 静默 protect-ALL
+  // 降级。isReadable 让 boot 检测该系统性案例并大声警告；绝不抛错。
+  it("atom-4b：isReadable 探测整表启动状态，已迁移为 true、表缺失为 false，且永不抛错", () => {
     const s = new ProjectionManifestStore(db);
     expect(s.isReadable()).toBe(true); // migrated table (mig-064) → readable at boot
     db.exec("DROP TABLE projection_manifest"); // simulate a boot-unreadable manifest

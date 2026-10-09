@@ -1,11 +1,8 @@
-// Rig Context / Composable Context Injection v0 (PL-014) — library
-// service.
+// 工作组上下文 / 可组合上下文注入 v0（PL-014）——库服务。
 //
-// Walks the configured discovery roots, parses each pack's
-// manifest.yaml, and emits ContextPackEntry records ready for the
-// daemon HTTP routes + UI library + send mechanism. Workspace-surface
-// reconciliation: the operator's filesystem edit always wins on next
-// scan() (matches PL-004 Phase D's contract for workflow_specs).
+// 遍历已配置的发现根，解析每个 pack 的 manifest.yaml，并产出可供后台服务 HTTP 路由、
+// UI 库和发送机制使用的 ContextPackEntry。工作区表面对账遵循：操作人员的文件系统编辑
+// 总会在下次 scan() 时胜出，这与 PL-004 Phase D 对 workflow_specs 的契约一致。
 
 import {
   existsSync,
@@ -31,24 +28,23 @@ import {
 } from "./context-pack-types.js";
 
 export interface ContextPackLibraryRoot {
-  /** Absolute path to a discovery root. Slice-03 Atom 2: a pack is any
-   *  NESTED directory containing manifest.yaml; its ref is the relative
-   *  path from this root (spec §2 path-like refs, e.g.
-   *  `packs/compaction-restore`). */
+  /** 发现根的绝对路径。Slice-03 Atom 2：任何包含 manifest.yaml 的嵌套目录都是 pack；
+   *  其 ref 是从该根出发的相对路径（规格第 2 节的路径式 ref，例如
+   *  如 `packs/compaction-restore`）。 */
   path: string;
   sourceType: ContextPackSourceType;
 }
 
 export interface ContextPackLibraryOpts {
   roots: ContextPackLibraryRoot[];
-  /** Narrow test seam for Atom 3's cleanup-on-write-failure contract. */
+  /** Atom 3 写入失败后清理契约的窄测试接缝。 */
   writeFile?: (path: string, data: string | Buffer) => void;
 }
 
 export interface ComposeContextPackSource {
-  /** Absolute source path, resolved by the local CLI caller. */
+  /** 由本地 CLI 调用方解析的绝对源路径。 */
   path: string;
-  /** Original caller spelling retained as YAML-serialized provenance. */
+  /** 作为 YAML 序列化出处保留的调用方原始写法。 */
   label: string;
 }
 
@@ -57,11 +53,10 @@ export interface ComposeContextPackResult extends PlainFileAssembly {
   entry: ContextPackEntry;
 }
 
-/** Stable opaque id = `context-pack:<ref>` (Slice-03 Atom 5). The path-like ref
- *  IS the identity, so the id is unique per pack — two refs that share a manifest
- *  name+version no longer collide — and it keeps the `context-pack:` prefix the
- *  UI's library-review dispatch keys on. Colon-id name:version addressing/parsing
- *  was removed with the legacy index; resolution is by-ref only. */
+/** 稳定不透明 id = `context-pack:<ref>`（Slice-03 Atom 5）。路径式 ref 本身就是身份，
+ *  因而每个 pack 的 id 唯一；即使两个 ref 共享 manifest 的 name+version 也不再冲突。
+ *  同时保留 UI library-review 派发所依赖的 `context-pack:` 前缀。旧索引移除时，
+ *  冒号 id 的 name:version 寻址/解析也已删除；现在只按 ref 解析。 */
 export function contextPackId(ref: string): string {
   return `context-pack:${ref}`;
 }
@@ -69,12 +64,10 @@ export function contextPackId(ref: string): string {
 export { estimateTokensFromBytes } from "./token-estimate.js";
 
 export class ContextPackLibraryService {
-  /** Slice-03 Atom 2 (guard correction b74e4576): the PRIMARY index — the
-   *  normalized safe path-like ref IS the pack identity (spec §2 "refs are
-   *  the contract"). getByRef/list/scan().count all observe THIS map; same
-   *  ref across roots is last-root-wins here, so precedence holds everywhere
-   *  (one row, one count, one resolution). Distinct refs with identical
-   *  manifest name/version are independent entries by construction. */
+  /** Slice-03 Atom 2（守卫修正 b74e4576）：主索引。归一化后的安全路径式 ref
+   *  就是 pack 身份（规格第 2 节“ref 即契约”）。getByRef/list/scan().count 都观测
+   *  此 Map；跨根出现同一 ref 时后根胜出，使优先级处处一致（一行、一个计数、一次解析）。
+   *  manifest name/version 相同但 ref 不同的条目在构造上彼此独立。 */
   private entriesByRef = new Map<string, ContextPackEntry>();
   private readonly roots: ContextPackLibraryRoot[];
   private readonly writeFile: (path: string, data: string | Buffer) => void;
@@ -84,13 +77,10 @@ export class ContextPackLibraryService {
     this.writeFile = opts.writeFile ?? ((path, data) => writeFileSync(path, data));
   }
 
-  /** Slice-03 Atom 2 — recursive path-addressed discovery: walk a root and
-   *  return every NESTED dir containing manifest.yaml, with its path-like
-   *  ref. Packs are LEAVES: a manifest-bearing dir's subtree belongs to that
-   *  pack, so discovery does not descend below it (a nested manifest would
-   *  make the outer pack's files ambiguous). Symlinked dirs are never
-   *  traversed (dirent.isDirectory() is lstat-shaped — the pre-Atom-2
-   *  semantics, carried into the recursion). */
+  /** Slice-03 Atom 2——递归路径寻址发现：遍历根目录，返回每个包含 manifest.yaml
+   *  的嵌套目录及其路径式 ref。pack 是叶子：带 manifest 的目录子树属于该 pack，
+   *  所以发现过程不再下钻；嵌套 manifest 会使外层 pack 文件产生歧义。永不遍历
+   *  符号链接目录（dirent.isDirectory() 采用 lstat 语义，即 Atom-2 前语义并延续到递归）。 */
   private discoverPackDirs(rootPath: string): Array<{ packDir: string; ref: string }> {
     const found: Array<{ packDir: string; ref: string }> = [];
     const walk = (dir: string): void => {
@@ -114,7 +104,7 @@ export class ContextPackLibraryService {
     return found;
   }
 
-  /** Re-walk all roots, replace the in-memory index, return a count. */
+  /** 重新遍历所有根，替换内存索引并返回计数。 */
   scan(): { count: number; errors: Array<{ source: string; error: string }> } {
     const nextByRef = new Map<string, ContextPackEntry>();
     const claimedPackDirs = new Set<string>();
@@ -122,15 +112,13 @@ export class ContextPackLibraryService {
 
     for (const root of this.roots) {
       for (const { packDir, ref } of this.discoverPackDirs(root.path)) {
-        // Overlapping roots share one address space. The first configured root
-        // owns each physical pack, so a nested root cannot give that pack a
-        // second ref or shadow a different pack already using that ref.
+        // 重叠根共享一个地址空间。每个物理 pack 归首个配置根所有，
+        // 因而嵌套根不能给它第二个 ref，也不能遮蔽已使用该 ref 的另一 pack。
         const physicalPackDir = resolve(packDir);
         if (claimedPackDirs.has(physicalPackDir)) continue;
         claimedPackDirs.add(physicalPackDir);
-        // DISCOVERY trust boundary (Atom 2): every discovered ref passes the
-        // sealed per-segment contract; an unsafe on-disk ref is a STRUCTURED,
-        // FAIL-VISIBLE error and the pack is skipped — never indexed.
+        // 发现信任边界（Atom 2）：每个发现的 ref 都通过封闭的逐段契约；
+        // 不安全的磁盘 ref 形成结构化、失败可见错误并跳过该 pack，绝不入索引。
         try {
           assertSafePackRef(ref);
         } catch (err) {
@@ -139,10 +127,9 @@ export class ContextPackLibraryService {
         }
         try {
           const entry = this.readPackEntry(packDir, join(packDir, "manifest.yaml"), root, ref);
-          // PRIMARY identity = the ref. Same ref across roots: last root wins
-          // (workspace > user_file > builtin in the startup-configured discovery
-          // order), so list/count/resolve agree. Distinct refs never collide,
-          // whatever their manifests say.
+          // 主身份 = ref。跨根同 ref 时后根胜出（启动配置的发现顺序为
+          // workspace > user_file > builtin），所以 list/count/resolve 一致。
+          // 无论 manifest 如何声明，不同 ref 都不会冲突。
           nextByRef.set(ref, entry);
         } catch (err) {
           errors.push({
@@ -158,9 +145,8 @@ export class ContextPackLibraryService {
     return { count: nextByRef.size, errors };
   }
 
-  /** Slice-03 Atom 2 — RESOLVE trust boundary: get a pack by its path-like
-   *  ref. An unsafe ref is a structured, fail-visible error BEFORE any
-   *  lookup; a safe-but-absent ref is an honest null. */
+  /** Slice-03 Atom 2——解析信任边界：按路径式 ref 获取 pack。任何查找前，
+   *  不安全 ref 就会形成结构化、失败可见错误；安全但不存在的 ref 如实返回 null。 */
   getByRef(ref: string): ContextPackEntry | null {
     try {
       assertSafePackRef(ref);
@@ -170,14 +156,11 @@ export class ContextPackLibraryService {
     return this.entriesByRef.get(ref) ?? null;
   }
 
-  /** Slice-03 Atom 4 — DELETE trust boundary: remove a pack by its path-like
-   *  ref. Safety ordering mirrors getByRef/compose: an unsafe ref is a
-   *  structured, fail-visible error BEFORE any filesystem op; a safe-but-absent
-   *  ref is an honest pack_not_found; a shipped `builtin` pack is REFUSED — rm
-   *  mirrors add's operator-writable contract (add only ever writes into the
-   *  user_file root, and rm never rmSyncs shipped assets under the package
-   *  directory). On success the pack directory is deleted and a re-scan makes
-   *  the ref stop resolving (durable removal). */
+  /** Slice-03 Atom 4——删除信任边界：按路径式 ref 移除 pack。安全顺序与
+   *  getByRef/compose 一致：任何文件系统操作前，不安全 ref 就形成结构化、失败可见错误；
+   *  安全但不存在的 ref 如实返回 pack_not_found；随包交付的 `builtin` pack 被拒绝。
+   *  rm 镜像 add 的“操作人员可写”契约：add 只写 user_file 根，rm 绝不 rmSync
+   *  package 目录下的随包资产。成功时删除 pack 目录，再次扫描使 ref 不再可解析。 */
   removeByRef(ref: string): { removed: boolean; ref: string; removedPath: string } {
     try {
       assertSafePackRef(ref);
@@ -186,12 +169,12 @@ export class ContextPackLibraryService {
     }
     const entry = this.entriesByRef.get(ref);
     if (!entry) {
-      throw new ContextPackError("pack_not_found", `context pack ref '${ref}' not found in the library`, { ref });
+      throw new ContextPackError("pack_not_found", `库中未找到 context pack ref '${ref}'`, { ref });
     }
     if (entry.sourceType === "builtin") {
       throw new ContextPackError(
         "pack_not_removable",
-        `context pack ref '${ref}' is a shipped builtin pack and cannot be removed`,
+        `context pack ref '${ref}' 是随包交付的 builtin pack，不能移除`,
         { ref, sourceType: entry.sourceType },
       );
     }
@@ -202,8 +185,7 @@ export class ContextPackLibraryService {
   }
 
   list(): ContextPackEntry[] {
-    // primary-ref-index view: one row per ref; ref is the deterministic
-    // tiebreaker for identical manifest name/version
+    // 主 ref 索引视图：每个 ref 一行；manifest name/version 相同时以 ref 确定性决胜。
     return Array.from(this.entriesByRef.values()).sort(
       (a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version) || a.relativePath.localeCompare(b.relativePath),
     );
@@ -211,18 +193,17 @@ export class ContextPackLibraryService {
 
 
   /**
-   * Atom 3: compose named files into one durable path-ref pack.
+   * Atom 3：把具名文件组合成一个持久路径式 ref pack。
    *
-   * Safety ordering is load-bearing: validate the ref first; reject every
-   * existing/hidden/unsafe namespace and preflight every source before the
-   * first mutation. Members are written before manifest.yaml, so discovery
-   * can never observe a partial pack. A failed write removes the new target.
+   * 安全顺序不可打乱：先校验 ref；在首次修改前拒绝所有已存在、隐藏或不安全的命名空间，
+   * 并预检每个来源。先写成员、最后写 manifest.yaml，使发现过程绝不会观察到半成品 pack。
+   * 写入失败时删除新目标。
    */
   composeFromFiles(opts: {
     outRef: string;
     sources: ComposeContextPackSource[];
   }): ComposeContextPackResult {
-    // FIRST trust-boundary operation: the sealed Atom-1 validator.
+    // 首个信任边界操作：封闭的 Atom-1 校验器。
     try {
       assertSafePackRef(opts.outRef);
     } catch (err) {
@@ -232,19 +213,19 @@ export class ContextPackLibraryService {
     if (opts.sources.length === 0) {
       throw new ContextPackError(
         "missing_files",
-        "context composition requires at least one --from file",
+        "context 组合至少需要一个 --from 文件",
         { missingFiles: [] },
       );
     }
 
-    // Complete source preflight precedes every output/store conflict check.
+    // 完整来源预检必须先于任何输出/存储冲突检查。
     const missingFiles = opts.sources
       .filter((source) => !existsSync(source.path))
       .map((source) => source.path);
     if (missingFiles.length > 0) {
       throw new ContextPackError(
         "missing_files",
-        `context composition source file(s) not found: ${missingFiles.join(", ")}`,
+        `找不到 context 组合源文件：${missingFiles.join(", ")}`,
         { missingFiles },
       );
     }
@@ -253,12 +234,12 @@ export class ContextPackLibraryService {
     const members = opts.sources.map((source, index) => {
       let content: Buffer;
       try {
-        if (!statSync(source.path).isFile()) throw new Error("source is not a regular file");
+        if (!statSync(source.path).isFile()) throw new Error("来源不是普通文件");
         content = readFileSync(source.path);
       } catch (err) {
         throw new ContextPackError(
           "file_read_failed",
-          `failed to read composition source ${source.path}: ${(err as Error).message}`,
+          `读取组合来源 ${source.path} 失败：${(err as Error).message}`,
           { path: source.path },
         );
       }
@@ -275,43 +256,41 @@ export class ContextPackLibraryService {
     if (!writeRoot) {
       throw new ContextPackError(
         "store_unavailable",
-        "context pack composition requires a writable user_file store root",
+        "context pack 组合需要可写的 user_file 存储根",
       );
     }
 
-    // Refresh before checking so the exact ref is rejected in ANY root, not
-    // merely at the user target path. This preserves Atom-2 precedence truth.
+    // 检查前先刷新，使完全相同的 ref 在任意根中都会被拒绝，而不只是在用户目标路径上；
+    // 这保持 Atom-2 的优先级真相。
     this.scan();
     if (this.entriesByRef.has(opts.outRef)) {
       throw new ContextPackError(
         "pack_exists",
-        `context pack ref '${opts.outRef}' already exists in the library`,
+        `context pack ref '${opts.outRef}' 已存在于库中`,
         { ref: opts.outRef },
       );
     }
 
     const segments = opts.outRef.split("/");
     const targetDir = join(writeRoot.path, ...segments);
-    // lstat sees dangling symlinks too; any physical exact target is a
-    // conflict and is never overwritten or merged.
+    // lstat 也能看见悬空符号链接；任何实际存在的精确目标都是冲突，绝不覆盖或合并。
     try {
       lstatSync(targetDir);
       throw new ContextPackError(
         "pack_exists",
-        `context pack target '${targetDir}' already exists`,
+        `context pack 目标 '${targetDir}' 已存在`,
         { ref: opts.outRef, targetDir },
       );
     } catch (err) {
       if (err instanceof ContextPackError) throw err;
       const code = (err as NodeJS.ErrnoException).code;
-      // ENOTDIR means an ancestor is a file; the namespace walk below turns
-      // that into the structured unsafe_ref_namespace contract.
+      // ENOTDIR 表示某个祖先是文件；下方命名空间遍历会把它转换为
+      // 结构化 unsafe_ref_namespace 契约。
       if (code !== "ENOENT" && code !== "ENOTDIR") throw err;
     }
 
-    // Atom-2 treats manifest-bearing dirs as leaves. Reject an undiscoverable
-    // child, and reject symlink/non-directory namespace segments before any
-    // mkdir can follow them.
+    // Atom-2 把带 manifest 的目录视为叶子。拒绝无法发现的子项，并在 mkdir
+    // 可能沿路径进入前拒绝符号链接或非目录命名空间段。
     let cursor = writeRoot.path;
     for (const segment of segments.slice(0, -1)) {
       cursor = join(cursor, segment);
@@ -325,29 +304,28 @@ export class ContextPackLibraryService {
       if (stat.isSymbolicLink() || !stat.isDirectory()) {
         throw new ContextPackError(
           "unsafe_ref_namespace",
-          `context pack ref '${opts.outRef}' crosses a symlink or non-directory namespace segment '${cursor}'`,
+          `context pack ref '${opts.outRef}' 穿过符号链接或非目录命名空间段 '${cursor}'`,
           { ref: opts.outRef, segmentPath: cursor },
         );
       }
       if (existsSync(join(cursor, "manifest.yaml"))) {
         throw new ContextPackError(
           "pack_ref_below_pack",
-          `context pack ref '${opts.outRef}' is below existing pack leaf '${cursor}'`,
+          `context pack ref '${opts.outRef}' 位于已有 pack 叶子 '${cursor}' 下`,
           { ref: opts.outRef, ancestor: cursor },
         );
       }
     }
 
     const name = segments.at(-1)!;
-    // OPR.0.5.6.10 — compose stamps a FIXED `mission` class (desk ruling on
-    // qitem-20260828092429-d2f94323: true of every current compose consumer;
-    // a caller-supplied taxonomy is DEFERRED to slice 08, where the second
-    // consumer earns the option's existence). The emission must satisfy the
-    // parser this service itself scans with, or compose rejects its own output.
+    // OPR.0.5.6.10——compose 固定盖入 `mission` 类别（qitem-20260828092429-d2f94323
+    // 的桌面裁决：当前所有 compose 消费者均如此；调用方提供 taxonomy 延迟到 slice 08，
+    // 届时第二个消费者才证明该选项应存在）。输出必须满足本服务扫描所用的解析器，
+    // 否则 compose 会拒绝自己的输出。
     const manifest = stringifyYaml({
       name,
       version: "1",
-      purpose: `Composed from ${members.length} ordered files`,
+      purpose: `由 ${members.length} 个有序文件组合而成`,
       taxonomy: "mission",
       files: members.map((member) => ({
         path: member.path,
@@ -366,7 +344,7 @@ export class ContextPackLibraryService {
         if ((err as NodeJS.ErrnoException).code === "EEXIST") {
           throw new ContextPackError(
             "pack_exists",
-            `context pack target '${targetDir}' already exists`,
+            `context pack 目标 '${targetDir}' 已存在`,
             { ref: opts.outRef, targetDir },
           );
         }
@@ -375,14 +353,14 @@ export class ContextPackLibraryService {
       for (const member of members) {
         this.writeFile(join(targetDir, member.path), member.content);
       }
-      // Manifest last: only complete packs become discoverable.
+      // 最后写 manifest：只有完整 pack 才能被发现。
       this.writeFile(join(targetDir, "manifest.yaml"), manifest);
     } catch (err) {
       if (createdTarget) rmSync(targetDir, { recursive: true, force: true });
       if (err instanceof ContextPackError) throw err;
       throw new ContextPackError(
         "pack_write_failed",
-        `failed to write context pack '${opts.outRef}': ${(err as Error).message}`,
+        `写入 context pack '${opts.outRef}' 失败：${(err as Error).message}`,
         { ref: opts.outRef, targetDir },
       );
     }
@@ -394,7 +372,7 @@ export class ContextPackLibraryService {
       this.scan();
       throw new ContextPackError(
         "pack_write_failed",
-        `composed context pack '${opts.outRef}' was not discoverable at its durable ref`,
+        `组合后的 context pack '${opts.outRef}' 无法通过其持久 ref 被发现`,
         { ref: opts.outRef, targetDir },
       );
     }
@@ -408,14 +386,13 @@ export class ContextPackLibraryService {
     return { ref: opts.outRef, entry, ...assembled };
   }
 
-  /** Resolve the absolute file path for a pack entry's file, with a
-   *  containment check that prevents path-traversal escaping the pack
-   *  directory. */
+  /** 解析 pack 条目文件的绝对路径，并执行 containment 检查，
+   *  防止路径遍历逃出 pack 目录。 */
   resolveFileWithinPack(packEntry: ContextPackEntry, relPath: string): string {
     if (relPath.includes("..") || relPath.startsWith("/")) {
       throw new ContextPackError(
         "file_outside_pack",
-        `relative path '${relPath}' must be inside the pack directory (no '..', no leading '/')`,
+        `相对路径 '${relPath}' 必须位于 pack 目录内（不得含 '..'，不得以 '/' 开头）`,
         { packId: packEntry.id, relPath },
       );
     }
@@ -423,7 +400,7 @@ export class ContextPackLibraryService {
     if (!abs.startsWith(packEntry.sourcePath + "/") && abs !== packEntry.sourcePath) {
       throw new ContextPackError(
         "file_outside_pack",
-        `resolved path '${abs}' falls outside pack '${packEntry.sourcePath}'`,
+        `解析后的路径 '${abs}' 位于 pack '${packEntry.sourcePath}' 之外`,
         { packId: packEntry.id, relPath, resolved: abs },
       );
     }
@@ -442,7 +419,7 @@ export class ContextPackLibraryService {
     let mostRecentMtime = 0;
     try {
       mostRecentMtime = statSync(manifestPath).mtimeMs;
-    } catch { /* unreadable manifest stat → fall back to 0 */ }
+    } catch { /* manifest stat 不可读时回退为 0 */ }
 
     const files: ContextPackEntryFile[] = manifest.files.map((mf) => {
       const abs = join(packDir, mf.path);
@@ -469,8 +446,8 @@ export class ContextPackLibraryService {
     const derivedEstimatedTokens = files.reduce((acc, f) => acc + (f.estimatedTokens ?? 0), 0);
 
     return {
-      // id and relativePath share ONE source of truth: the discovered path-like
-      // ref (posix-joined). The id is `context-pack:<ref>` — opaque, unique.
+      // id 与 relativePath 共享唯一真相来源：已发现的路径式 ref（POSIX 连接）。
+      // id 为 `context-pack:<ref>`，不透明且唯一。
       id: contextPackId(ref),
       kind: "context-pack",
       name: manifest.name,

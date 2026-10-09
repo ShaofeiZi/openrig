@@ -1,7 +1,7 @@
 import nodePath from "node:path";
-import { LegacyRigSpecCodec as RigSpecCodec } from "./rigspec-codec.js"; // TODO: AS-T08b — migrate to pod-aware RigSpec
-import { LegacyRigSpecSchema as RigSpecSchema } from "./rigspec-schema.js"; // TODO: AS-T08b — migrate to pod-aware RigSpec
-// TODO: AS-T12 — migrate to pod-aware bundle types
+import { LegacyRigSpecCodec as RigSpecCodec } from "./rigspec-codec.js"; // TODO: AS-T08b——迁移到感知 Pod 的 RigSpec。
+import { LegacyRigSpecSchema as RigSpecSchema } from "./rigspec-schema.js"; // TODO: AS-T08b——迁移到感知 Pod 的 RigSpec。
+// TODO: AS-T12——迁移到感知 Pod 的 bundle 类型。
 import { serializeLegacyBundleManifest as serializeBundleManifest, type LegacyBundleManifest as BundleManifest, type BundleProvenance, type BundleCompatibility } from "./bundle-types.js";
 
 export interface AssemblerFsOps {
@@ -27,29 +27,26 @@ export interface AssembleOptions {
   bundleName: string;
   bundleVersion: string;
   /**
-   * Optional Item-1 provenance input. Caller fills the fields it knows
+   * 可选的第 1 项来源输入。调用方填写其已知字段
    * (sourceHost, authorSession, daemonVersion, cliVersion, sourceRigId,
-   * sourceRigName, notes). The assembler mirrors root createdAt into
-   * provenance.createdAt unless caller pre-set it (caller value wins
-   * for test determinism). Missing block = no provenance recorded
-   * (backward compat).
+   * sourceRigName、notes）。组装器会把根 createdAt 镜像到
+   * provenance.createdAt；调用方预设时以调用方值为准，以保证测试确定性。
+   * 块缺失表示不记录来源（向后兼容）。
    */
   provenance?: BundleProvenance;
   /**
-   * Optional Item-2 compatibility input. Caller declares minimum
-   * daemon + CLI versions and optional schema_version reaffirmation.
-   * Missing block = no compatibility recorded (backward compat); the
-   * install-time version check at /api/bundles/install (Checkpoint 3.3)
-   * is a no-op for bundles without compatibility.
+   * 可选的第 2 项兼容性输入。调用方声明最低后台服务版本、CLI 版本以及可选的
+   * schema_version 重申。块缺失表示不记录兼容性（向后兼容）；对于不含 compatibility
+   * 的 bundle，/api/bundles/install 在安装时执行的版本检查（检查点 3.3）为空操作。
    */
   compatibility?: BundleCompatibility;
 }
 
 /**
- * Assembles a bundle staging directory with canonical layout.
- * Generates bundle.yaml without integrity (P7-T02 adds that).
+ * 按规范布局组装 bundle 暂存目录。生成不含 integrity 的 bundle.yaml
+ *（由 P7-T02 补充）。
  */
-// TODO: AS-T12 — migrate to pod-aware bundle assembler
+// TODO: AS-T12——迁移到感知 Pod 的 bundle 组装器。
 export class LegacyBundleAssembler {
   private fs: AssemblerFsOps;
 
@@ -58,29 +55,29 @@ export class LegacyBundleAssembler {
   }
 
   assemble(opts: AssembleOptions): BundleManifest {
-    // Validate rig spec exists
+    // 校验工作组规格是否存在。
     if (!this.fs.exists(opts.specPath)) {
-      throw new Error(`Rig spec not found: ${opts.specPath}`);
+      throw new Error(`未找到工作组规格：${opts.specPath}`);
     }
 
-    // Validate rig spec content
+    // 校验工作组规格内容。
     const specYaml = this.fs.readFile(opts.specPath);
     const raw = RigSpecCodec.parse(specYaml);
     const validation = RigSpecSchema.validate(raw);
     if (!validation.valid) {
-      throw new Error(`Invalid rig spec: ${validation.errors.join("; ")}`);
+      throw new Error(`工作组规格无效：${validation.errors.join("; ")}`);
     }
 
-    // Deduplicate packages by name + manifestHash, preserving all original sources
+    // 按 name + manifestHash 去重 package，并保留全部原始来源。
     const seen = new Map<string, { pkg: PackageInput; sources: string[] }>();
     const dedupedPackages: Array<{ pkg: PackageInput; sources: string[] }> = [];
     for (const pkg of opts.packages) {
       const existing = seen.get(pkg.name);
       if (existing) {
         if (existing.pkg.manifestHash !== pkg.manifestHash) {
-          throw new Error(`Duplicate package name '${pkg.name}' with different content (hash mismatch)`);
+          throw new Error(`package 名称 '${pkg.name}' 重复但内容不同（hash 不匹配）`);
         }
-        // Same name + same hash -> collect source for provenance
+        // 名称与 hash 相同，收集来源用于来源记录。
         if (!existing.sources.includes(pkg.originalSource)) {
           existing.sources.push(pkg.originalSource);
         }
@@ -91,20 +88,20 @@ export class LegacyBundleAssembler {
       dedupedPackages.push(entry);
     }
 
-    // Validate all package source paths exist
+    // 校验所有 package 来源路径均存在。
     for (const { pkg } of dedupedPackages) {
       if (!this.fs.exists(pkg.sourcePath)) {
-        throw new Error(`Package directory not found: ${pkg.sourcePath} (${pkg.name})`);
+        throw new Error(`未找到 package 目录：${pkg.sourcePath}（${pkg.name}）`);
       }
     }
 
-    // Create staging directory
+    // 创建暂存目录。
     this.fs.mkdirp(opts.outputDir);
 
-    // Copy rig spec
+    // 复制工作组规格。
     this.fs.writeFile(nodePath.join(opts.outputDir, "rig.yaml"), specYaml);
 
-    // Vendor packages
+    // 将 package 纳入 bundle。
     const packageEntries: BundleManifest["packages"] = [];
     for (const { pkg, sources } of dedupedPackages) {
       const destPath = `packages/${pkg.name}`;
@@ -120,7 +117,7 @@ export class LegacyBundleAssembler {
       });
     }
 
-    // Generate manifest (no integrity — P7-T02 adds it)
+    // 生成清单（暂不含 integrity，由 P7-T02 补充）。
     const createdAt = new Date().toISOString();
     const manifest: BundleManifest = {
       schemaVersion: 1,
@@ -140,7 +137,7 @@ export class LegacyBundleAssembler {
       manifest.compatibility = { ...opts.compatibility };
     }
 
-    // Write bundle.yaml
+    // 写入 bundle.yaml。
     this.fs.writeFile(
       nodePath.join(opts.outputDir, "bundle.yaml"),
       serializeBundleManifest(manifest),

@@ -1,13 +1,12 @@
-// S10 — the Socket Mode INBOUND service, in-daemon. The loop is the shipped relay runner's
-// (moved verbatim from the CLI `rig slack inbound` action, which retires with the cutover):
-// open the ws via apps.connections.open, FAST-ACK every envelope, route human messages through
-// the InboundRouter, drain the dead-letter on connect + periodically (B1), reconnect with
-// backoff. Amendment A1 (M1 §3): inbound rides the PLATFORM socket — this service — never a
-// gateway↔connector wire.
+// S10——后台服务内的 Socket Mode 入站服务。循环沿用已交付 relay runner 的形状
+//（从随切换一并退役的 CLI `zrig slack inbound` 动作原样迁入）：通过 apps.connections.open
+// 打开 WebSocket，快速 ACK 每个 envelope，经 InboundRouter 路由人工消息，在连接建立时及之后
+// 定期排空 dead-letter（B1），并按退避策略重连。修订 A1（M1 §3）：入站只走 PLATFORM socket，
+// 即本服务，绝不走 gateway↔connector wire。
 //
-// Cold-init receipts (dual-path class "inbound cold-init"): on every (re)connect the router's
-// dead-letter set drains before new traffic matters, and a fresh boot picks up where the
-// durable seen/dead-letter stores left off — no replay storm, no drop.
+// 冷启动回执（双路径类别 "inbound cold-init"）：每次（重新）连接时，router 的 dead-letter
+// 集合会在处理新流量前排空；全新启动则从持久 seen/dead-letter store 的断点继续，
+// 既不产生重放风暴，也不丢消息。
 
 import { openSocketConnection, type FetchImpl } from "./slack-api.js";
 import { handleEnvelope, type InboundRouter, type SocketEnvelope } from "./inbound.js";
@@ -24,18 +23,18 @@ export interface WsLike {
 
 export interface SocketInboundDeps {
   fetchImpl?: FetchImpl;
-  /** Open a Socket Mode WebSocket (default: global WebSocket). Injectable for tests. */
+  /** 打开 Socket Mode WebSocket（默认使用全局 WebSocket）；测试可注入替代实现。 */
   wsFactory?: (url: string) => WsLike;
-  /** Test seam: run N reconnect cycles then stop (default: forever, until stop()). */
+  /** 测试接缝：运行 N 次重连后停止；默认持续运行，直到调用 stop()。 */
   inboundMaxConnects?: number;
-  /** Dead-letter retry cadence WHILE the socket stays connected (default 5min). */
+  /** socket 保持连接期间的 dead-letter 重试节奏，默认 5 分钟。 */
   retryIntervalMs?: number;
   receipts?: InboundReceiptStore;
   log?: (msg: string) => void;
 }
 
 export interface SocketInboundHandle {
-  /** Resolves when the loop ends (maxConnects reached or stop() called). */
+  /** 循环结束时 resolve（达到 maxConnects 或调用 stop()）。 */
   done: Promise<void>;
   stop(): void;
   status(): SocketInboundStatus;
@@ -52,7 +51,7 @@ export interface SocketInboundStatus {
   lastDisposition?: InboundReceiptStatus;
 }
 
-/** Start the Socket Mode loop (the shipped runner's exact shape, service-ified with a stop()). */
+/** 启动 Socket Mode 循环：保持已交付 runner 的精确形状，并封装为带 stop() 的服务。 */
 export function startSocketInbound(appToken: string, router: InboundRouter, deps: SocketInboundDeps = {}): SocketInboundHandle {
   const log = deps.log ?? (() => {});
   const wsFactory = deps.wsFactory ?? ((url: string) => new (globalThis as unknown as { WebSocket: new (u: string) => WsLike }).WebSocket(url));
@@ -68,8 +67,8 @@ export function startSocketInbound(appToken: string, router: InboundRouter, deps
     try {
       deps.receipts?.append(entry);
     } catch (error) {
-      // Observability must never become the reason an already-ACKed human message is lost.
-      log(`inbound receipt write failed (${entry.status}): ${(error as Error).message}`);
+      // 可观测性失败绝不能导致已经 ACK 的人工消息丢失。
+      log(`入站回执写入失败（${entry.status}）：${(error as Error).message}`);
     }
   };
 
@@ -84,7 +83,7 @@ export function startSocketInbound(appToken: string, router: InboundRouter, deps
       const open = await openSocketConnection(appToken, deps.fetchImpl);
       if (stopped) return resolve();
       if (!open.ok || !open.url) {
-        log(`connect failed: ${open.error}`);
+        log(`连接失败：${open.error}`);
         status.state = "disconnected";
         status.disconnectedAt = stamp();
         receipt({ generation: connects, status: "connect-failed", reason: "connection-open-failed" });
@@ -98,13 +97,12 @@ export function startSocketInbound(appToken: string, router: InboundRouter, deps
       let retryTimer: ReturnType<typeof setInterval> | undefined;
       ws.onopen = () => {
         backoff = 1000;
-        log("socket connected");
+        log("socket 已连接");
         status.state = "connected";
         status.connectedAt = stamp();
         receipt({ generation: connects, status: "connected" });
-        void router.retryDeadLetters(); // drain on connect (cold-init)…
-        // …AND periodically WHILE connected (B1: recovery after a queue outage
-        // must not wait for the next Slack reconnect). Cleared on close.
+        void router.retryDeadLetters(); // 连接时排空（冷启动）……
+        // ……并在连接期间定期重试（B1：队列中断后的恢复不能等到下次 Slack 重连）。关闭时清除。
         retryTimer = setInterval(() => void router.retryDeadLetters(), retryIntervalMs);
         if (typeof (retryTimer as unknown as { unref?: () => void }).unref === "function") {
           (retryTimer as unknown as { unref: () => void }).unref();
@@ -154,7 +152,7 @@ export function startSocketInbound(appToken: string, router: InboundRouter, deps
               channel: ev?.channel,
               reason: "handler-threw",
             });
-            log(`inbound handler failed ts=${ev?.ts ?? "-"}: ${(error as Error).message}`);
+            log(`入站 handler 失败 ts=${ev?.ts ?? "-"}：${(error as Error).message}`);
           });
       };
       ws.onclose = () => {
@@ -164,7 +162,7 @@ export function startSocketInbound(appToken: string, router: InboundRouter, deps
         status.disconnectedAt = stamp();
         receipt({ generation: connects, status: "disconnected" });
         if (stopped) return resolve();
-        log(`socket closed; reconnect in ${backoff}ms`);
+        log(`socket 已关闭；将在 ${backoff}ms 后重连`);
         if (deps.inboundMaxConnects && connects >= deps.inboundMaxConnects) return resolve();
         pendingTimer = setTimeout(connect, backoff);
         backoff = Math.min(backoff * 2, 60000);
@@ -173,7 +171,7 @@ export function startSocketInbound(appToken: string, router: InboundRouter, deps
         try {
           ws.close();
         } catch {
-          /* ignore */
+          /* 忽略关闭错误。 */
         }
       };
     };
@@ -186,7 +184,7 @@ export function startSocketInbound(appToken: string, router: InboundRouter, deps
       stopped = true;
       status.state = "stopped";
       if (pendingTimer) clearTimeout(pendingTimer);
-      try { liveWs?.close(); } catch { /* best-effort */ }
+      try { liveWs?.close(); } catch { /* 尽力关闭。 */ }
     },
     status: () => ({ ...status }),
   };

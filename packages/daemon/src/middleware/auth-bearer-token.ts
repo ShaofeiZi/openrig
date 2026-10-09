@@ -1,25 +1,17 @@
-// PL-005 Phase B: bearer-token middleware for /api/mission-control/*.
+// PL-005 阶段 B：用于 /api/mission-control/* 的 bearer-token 中间件。
 //
-// Per slice IMPL § Write Set + audit hard-gates 8 + 9:
-//   - Constant-time bearer comparison via Node `crypto.timingSafeEqual`.
-//     No early-return on byte mismatch.
-//   - 401 with three-part error body on missing or mismatched token
-//     (what failed + why it matters + what to do).
-//   - Daemon refuses to start with a non-loopback bind interface AND
-//     empty bearer config — startup-side check (see startup.ts).
+// 根据 slice IMPL § Write Set 与审计硬门禁 8 + 9：
+//   - 通过 Node `crypto.timingSafeEqual` 对 bearer 做恒定时间比较；字节不匹配时不提前返回。
+//   - token 缺失或不匹配时返回 401 及三段式错误正文（失败内容 + 重要原因 + 处理方式）。
+//   - 使用非 loopback 绑定接口且 bearer 配置为空时，后台服务拒绝启动——启动侧检查见 startup.ts。
 //
-// MVP context (single-developer, single-user, single-host): one static
-// bearer token sourced from a config field. NO OAuth / SSO / per-user
-// routing / role-based permissions / token rotation. Token holder is
-// fully privileged.
+// MVP 上下文（单开发者、单用户、单主机）：一个来自配置字段的静态 bearer token。不提供
+// OAuth/SSO/逐用户路由/基于角色的权限/token 轮换。token 持有者拥有完整权限。
 //
-// Mounted on /api/mission-control/* write verbs at minimum (POST
-// /action, POST /notifications/test). Reads (GET /views, /audit, etc.)
-// MAY be gated under the same token at operator option (Phase B
-// driver default: gate writes only; reads remain open behind tailnet
-// bind for the headed-browser-from-phone case where the operator
-// hasn't typed the token into mobile yet — the bearer is for write
-// integrity, not view confidentiality).
+// 至少挂载于 /api/mission-control/* 写动词（POST /action、POST /notifications/test）。
+// 操作员可选择让读取（GET /views、/audit 等）受同一 token 保护（阶段 B driver 默认只保护
+// 写入；读取在 tailnet 绑定后保持开放，以支持操作员尚未在手机输入 token 时从手机有界面浏览；
+// bearer 用于写入完整性，而非视图机密性）。
 
 import { Buffer } from "node:buffer";
 import { timingSafeEqual } from "node:crypto";
@@ -28,22 +20,17 @@ import { networkInterfaces, type NetworkInterfaceInfo } from "node:os";
 import type { MiddlewareHandler } from "hono";
 
 /**
- * Constant-time string equality using Node's timingSafeEqual.
- * Returns false when lengths differ (timingSafeEqual throws on
- * length mismatch; we pad-compare to keep a constant-ish branch
- * profile while still returning the honest false).
+ * 使用 Node 的 timingSafeEqual 做恒定时间字符串比较。长度不同时返回 false
+ *（timingSafeEqual 会因长度不匹配抛错；这里填充后比较，使分支特征尽量保持恒定，
+ * 同时如实返回 false）。
  */
 export function constantTimeEqual(a: string, b: string): boolean {
-  // Length check is unavoidable for timingSafeEqual to work, but the
-  // compare is still constant-time within the equal-length case. For
-  // unequal lengths we still run a fixed-size compare against a buffer
-  // of zeros so an attacker cannot infer "wrong length vs wrong byte"
-  // from response timing.
+  // timingSafeEqual 必须先检查长度，但长度相同时比较仍为恒定时间。长度不同时仍对固定大小的
+  // 零缓冲区执行比较，防止攻击者从响应时间推断“长度错误”还是“字节错误”。
   const aBuf = Buffer.from(a, "utf8");
   const bBuf = Buffer.from(b, "utf8");
   if (aBuf.length !== bBuf.length) {
-    // Compare against a same-length zero buffer to keep the call site
-    // cost similar across mismatch paths. Result is always false here.
+    // 与等长零缓冲区比较，使不同不匹配路径的调用成本接近；此处结果始终为 false。
     timingSafeEqual(aBuf, Buffer.alloc(aBuf.length));
     return false;
   }
@@ -51,8 +38,7 @@ export function constantTimeEqual(a: string, b: string): boolean {
 }
 
 /**
- * Three-part error body shape per OpenRig honest-error-reporting
- * convention. Renders inside the route's c.json call.
+ * 遵循 OpenRig 诚实错误报告约定的三段式错误正文；在路由的 c.json 调用内渲染。
  */
 function unauthorizedBody(reason: string): {
   error: "unauthorized";
@@ -63,32 +49,29 @@ function unauthorizedBody(reason: string): {
 } {
   return {
     error: "unauthorized",
-    message: `Mission Control auth failed: ${reason}`,
+    message: `Mission Control 鉴权失败：${reason}`,
     what_failed: reason,
     why_it_matters:
-      "Mission Control write verbs require a bearer token because the daemon may be bound on a non-loopback interface (tailnet) where unauthenticated mutation would be unsafe.",
+      "Mission Control 写操作需要 bearer token，因为后台服务可能绑定到非 loopback 接口（tailnet），未经认证的修改并不安全。",
     what_to_do:
-      "Set the auth.bearerToken field in daemon config (or OPENRIG_AUTH_BEARER_TOKEN env), restart the daemon, and resend the request with `Authorization: Bearer <token>`.",
+      "请在后台服务配置中设置 auth.bearerToken 字段（或 OPENRIG_AUTH_BEARER_TOKEN 环境变量），重启后台服务，再使用 `Authorization: Bearer <token>` 重新发送请求。",
   };
 }
 
 export interface AuthBearerTokenOpts {
   /**
-   * The expected bearer token. When this is null, the middleware
-   * lets all requests through (the daemon-level startup check
-   * elsewhere ensures this only happens when bound on loopback).
+   * 预期的 bearer token。为 null 时，中间件允许所有请求通过（其他位置的后台服务启动检查确保
+   * 这种情况只会在绑定 loopback 时发生）。
    */
   expectedToken: string | null;
 }
 
 /**
- * Hono middleware that enforces bearer-token auth on the routes it
- * is mounted on. Returns 401 with a three-part error body for missing
- * or mismatched tokens.
+ * 在所挂载路由上强制执行 bearer-token 鉴权的 Hono 中间件。token 缺失或不匹配时返回 401
+ * 和三段式错误正文。
  *
- * When `expectedToken` is null, the middleware passes through. The
- * startup check in `startup.ts` ensures null is only valid when the
- * bind interface is loopback.
+ * `expectedToken` 为 null 时，中间件直接放行。`startup.ts` 中的启动检查确保 null 只在
+ * 绑定接口为 loopback 时有效。
  */
 export function authBearerTokenMiddleware(
   opts: AuthBearerTokenOpts,
@@ -96,41 +79,38 @@ export function authBearerTokenMiddleware(
   const { expectedToken } = opts;
   return async (c, next) => {
     if (expectedToken === null) {
-      // Loopback-only mode (no bearer configured). Pass through.
+      // 仅 loopback 模式（未配置 bearer），直接放行。
       await next();
       return;
     }
     const header = c.req.header("Authorization") ?? c.req.header("authorization");
     if (!header) {
-      return c.json(unauthorizedBody("missing Authorization header"), 401);
+      return c.json(unauthorizedBody("缺少 Authorization 请求头"), 401);
     }
     const match = /^Bearer\s+(.+)$/i.exec(header);
     if (!match) {
       return c.json(
-        unauthorizedBody("Authorization header must be 'Bearer <token>'"),
+        unauthorizedBody("Authorization 请求头必须为 'Bearer <token>'"),
         401,
       );
     }
     const provided = match[1]!.trim();
     if (!constantTimeEqual(provided, expectedToken)) {
-      return c.json(unauthorizedBody("bearer token does not match"), 401);
+      return c.json(unauthorizedBody("bearer token 不匹配"), 401);
     }
     await next();
   };
 }
 
 /**
- * Detect whether a host bind value is loopback-only (safe to skip
- * bearer requirement) vs non-loopback (tailnet / public; requires
- * bearer). Loopback set: `127.x.x.x`, `::1`, `localhost`. Anything
- * else (including `0.0.0.0`, `::`, named hostnames, tailnet IPs) is
- * treated as non-loopback.
+ * 检测主机绑定值是仅 loopback（可安全跳过 bearer 要求），还是非 loopback（tailnet/公网，
+ * 需要 bearer）。loopback 集合：`127.x.x.x`、`::1`、`localhost`。其他值（包括 `0.0.0.0`、
+ * `::`、具名主机和 tailnet IP）均视为非 loopback。
  */
 export function isLoopbackBind(host: string | undefined | null): boolean {
   if (!host || host.length === 0) {
-    // Default Hono / @hono/node-server bind is 0.0.0.0 — treat as
-    // non-loopback for safety (force operator to either bind explicitly
-    // to 127.0.0.1 or set the bearer token).
+    // Hono/@hono/node-server 默认绑定 0.0.0.0；为安全起见视为非 loopback，强制操作员显式
+    // 绑定到 127.0.0.1 或设置 bearer token。
     return false;
   }
   const trimmed = host.trim().toLowerCase();
@@ -140,18 +120,16 @@ export function isLoopbackBind(host: string | undefined | null): boolean {
 }
 
 /**
- * Detect tailscale CGNAT IPv4 (100.64.0.0/10) and ULA IPv6 prefix
- * (fd7a:115c:a1e0::/48). Returns true for tailnet-literal IP addresses
- * only; hostname callers must first resolve via {@link resolveToIpOrNull}.
+ * 检测 tailscale CGNAT IPv4（100.64.0.0/10）与 ULA IPv6 前缀
+ *（fd7a:115c:a1e0::/48）。仅对 tailnet 字面 IP 地址返回 true；主机名调用方必须先通过
+ * {@link resolveToIpOrNull} 解析。
  *
- * Rationale: tailscale's WireGuard mesh + ACLs ARE the auth boundary, so
- * a tailnet-bound daemon does not need an additional bearer token. The
- * CGNAT IPv4 range and ULA IPv6 prefix are reserved by tailscale and
- * documented; collisions on real-world networks are essentially zero.
+ * 原因：tailscale 的 WireGuard mesh + ACL 就是鉴权边界，因此绑定 tailnet 的后台服务不需要
+ * 额外 bearer token。CGNAT IPv4 范围和 ULA IPv6 前缀由 tailscale 保留并有文档说明；
+ * 在真实网络中发生冲突的概率近乎为零。
  *
- * Boundary semantics for HG-3: CGNAT is 100.64.0.0/10 → first octet
- * exactly 100, second octet 64..127 inclusive. 100.63.x.x and
- * 100.128.x.x are NOT tailnet.
+ * HG-3 边界语义：CGNAT 为 100.64.0.0/10，即第一段必须为 100，第二段包含 64..127。
+ * 100.63.x.x 与 100.128.x.x 不属于 tailnet。
  */
 export function isTailscaleBind(host: string | undefined | null): boolean {
   if (!host) return false;
@@ -169,11 +147,9 @@ export function isTailscaleBind(host: string | undefined | null): boolean {
 }
 
 /**
- * Pure helper for {@link detectTailscaleInterface}: takes a NetworkInterfaces
- * dictionary (the shape returned by os.networkInterfaces()) and returns the
- * first non-internal address that matches the tailnet IP ranges, or null.
- * Factored out so tests can supply synthetic interface fixtures without
- * mocking node:os.
+ * {@link detectTailscaleInterface} 的纯辅助函数：接收 NetworkInterfaces 字典
+ *（os.networkInterfaces() 返回的结构），返回第一个匹配 tailnet IP 范围的非内部地址，否则
+ * 返回 null。单独抽出后，测试可提供合成网络接口 fixture，而无需 mock node:os。
  */
 export function findTailscaleIpInInterfaces(
   interfaces: NodeJS.Dict<NetworkInterfaceInfo[]>,
@@ -189,22 +165,18 @@ export function findTailscaleIpInInterfaces(
 }
 
 /**
- * Probe the host's network interfaces and return the first tailscale-IP
- * address found (CGNAT IPv4 or tailnet ULA IPv6), or null when no tailnet
- * interface is currently active. Used at daemon startup to decide whether
- * to multi-bind (loopback + tailnet) or loopback-only. Detection is
- * IP-based, not interface-name-based, so it survives platform differences
- * in how tailscale names its tun device.
+ * 探测主机网络接口并返回首个找到的 tailscale IP 地址（CGNAT IPv4 或 tailnet ULA IPv6）；
+ * 当前没有活跃 tailnet 接口时返回 null。后台服务启动时据此决定多重绑定（loopback + tailnet）
+ * 还是仅绑定 loopback。检测基于 IP 而非接口名，因此不受各平台 tailscale tun 设备命名差异影响。
  */
 export function detectTailscaleInterface(): string | null {
   return findTailscaleIpInInterfaces(networkInterfaces());
 }
 
 /**
- * Resolve a hostname to its first IP via node:dns/promises lookup.
- * Returns null on resolution failure (DNS error, timeout, no such host).
- * Wrapped with a 5s race-timeout per Risk 9.2 in the slice IMPL-PRD so an
- * unresponsive resolver does not stall daemon startup indefinitely.
+ * 通过 node:dns/promises lookup 将主机名解析为首个 IP。解析失败（DNS 错误、超时、主机不存在）
+ * 时返回 null。根据 slice IMPL-PRD 的风险 9.2，以 5 秒竞速超时包装，避免无响应解析器无限阻塞
+ * 后台服务启动。
  */
 export async function resolveToIpOrNull(host: string): Promise<string | null> {
   try {
@@ -229,13 +201,10 @@ export class AuthBearerTokenStartupError extends Error {
 }
 
 /**
- * Startup-side check (HARD-GATE audit row 8). Throws an explicit
- * AuthBearerTokenStartupError when the bind interface is genuinely
- * public/LAN AND the bearer token is empty. Loopback or tailscale-IP
- * binds short-circuit (the tailnet is the auth boundary). Hostname
- * binds resolve via DNS first; if resolution yields a loopback or
- * tailnet IP, the same short-circuit applies. Public/LAN binds without
- * a bearer throw and the daemon refuses to start.
+ * 启动侧检查（HARD-GATE 审计第 8 行）。绑定接口确实是公网/LAN 且 bearer token 为空时，
+ * 显式抛出 AuthBearerTokenStartupError。loopback 或 tailscale IP 绑定会短路（tailnet 即鉴权
+ * 边界）。主机名绑定先通过 DNS 解析；若解析为 loopback 或 tailnet IP，同样短路。公网/LAN
+ * 绑定缺少 bearer 时抛错，后台服务拒绝启动。
  */
 export async function assertBindAuthInvariant(opts: {
   host: string;
@@ -245,7 +214,7 @@ export async function assertBindAuthInvariant(opts: {
   if (isTailscaleBind(opts.host)) return;
 
   let resolvedIp: string | null = null;
-  // Hostname (non-IP literal) — resolve and re-check.
+  // 主机名（非字面 IP）——解析后重新检查。
   if (!/^[\d.]+$/.test(opts.host) && !opts.host.includes(":")) {
     resolvedIp = await resolveToIpOrNull(opts.host);
     if (resolvedIp) {
@@ -256,9 +225,9 @@ export async function assertBindAuthInvariant(opts: {
 
   if (opts.bearerToken && opts.bearerToken.length > 0) return;
   throw new AuthBearerTokenStartupError(
-    `daemon refusing to start: bind host '${opts.host}'${resolvedIp ? ` (resolves to ${resolvedIp})` : ""} is not loopback or tailscale, ` +
-      `and auth.bearerToken (env OPENRIG_AUTH_BEARER_TOKEN) is empty. ` +
-      `Either: (a) bind to 127.0.0.1 / localhost, (b) bind to a tailscale interface (100.64.0.0/10 IPv4 or fd7a:115c:a1e0::/48 IPv6), ` +
-      `or (c) set OPENRIG_AUTH_BEARER_TOKEN to a non-empty value before starting the daemon.`,
+    `后台服务拒绝启动：绑定主机 '${opts.host}'${resolvedIp ? `（解析为 ${resolvedIp}）` : ""} 不是 loopback 或 tailscale，` +
+      `且 auth.bearerToken（环境变量 OPENRIG_AUTH_BEARER_TOKEN）为空。` +
+      `请选择：(a) 绑定到 127.0.0.1/localhost；(b) 绑定到 tailscale 接口（100.64.0.0/10 IPv4 或 fd7a:115c:a1e0::/48 IPv6）；` +
+      `或 (c) 在启动后台服务前将 OPENRIG_AUTH_BEARER_TOKEN 设为非空值。`,
   );
 }

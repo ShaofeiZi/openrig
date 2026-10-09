@@ -7,8 +7,8 @@ export interface SnapshotRestoreTopology {
   invalidRosterIds: string[];
 }
 
-/** Resolve immutable attempt membership from the snapshot itself. Legacy
- * snapshots predate the roster and retain their former all-node behavior. */
+/** 直接从快照解析不可变的尝试成员集合。旧快照早于 roster 字段，
+ *  因此保留原先包含全部节点的行为。 */
 export function resolveSnapshotRestoreTopology(data: SnapshotData): SnapshotRestoreTopology {
   const nodesById = new Map(data.nodes.map((node) => [node.id, node]));
   const roster = data.topologyRoster?.intendedNodeIds ?? data.nodes.map((node) => node.id);

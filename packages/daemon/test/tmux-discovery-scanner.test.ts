@@ -30,8 +30,8 @@ function mockAdapter(opts?: {
 }
 
 describe("TmuxDiscoveryScanner", () => {
-  // T1: Enumerates sessions from tmux adapter
-  it("enumerates sessions and returns panes", async () => {
+  // T1：从 tmux adapter 枚举 session。
+  it("枚举 session 并返回 pane", async () => {
     const adapter = mockAdapter({
       sessions: [{ name: "dev", windows: 1, created: "0", attached: true }],
       windows: { dev: [{ index: 0, name: "main", panes: 1, active: true }] },
@@ -48,8 +48,8 @@ describe("TmuxDiscoveryScanner", () => {
     expect(result.scannedAt).toBeTruthy();
   });
 
-  // T2: Resolves pane PID via adapter.getPanePid
-  it("resolves pane PID from adapter", async () => {
+  // T2：通过 adapter.getPanePid 解析 pane PID。
+  it("从 adapter 解析 pane PID", async () => {
     const adapter = mockAdapter({
       sessions: [{ name: "s", windows: 1, created: "0", attached: false }],
       windows: { s: [{ index: 0, name: "w", panes: 1, active: true }] },
@@ -64,8 +64,8 @@ describe("TmuxDiscoveryScanner", () => {
     expect(adapter.getPanePid).toHaveBeenCalledWith("%1");
   });
 
-  // T3: Resolves pane cwd from existing pane.cwd field
-  it("resolves cwd from pane data", async () => {
+  // T3：从现有 pane.cwd 字段解析 pane cwd。
+  it("从 pane 数据解析 cwd", async () => {
     const adapter = mockAdapter({
       sessions: [{ name: "s", windows: 1, created: "0", attached: false }],
       windows: { s: [{ index: 0, name: "w", panes: 1, active: true }] },
@@ -78,8 +78,8 @@ describe("TmuxDiscoveryScanner", () => {
     expect(result.panes[0]!.cwd).toBe("/projects/rigged");
   });
 
-  // T4: Resolves active command via adapter.getPaneCommand
-  it("resolves active command from adapter", async () => {
+  // T4：通过 adapter.getPaneCommand 解析活动命令。
+  it("从 adapter 解析活动命令", async () => {
     const adapter = mockAdapter({
       sessions: [{ name: "s", windows: 1, created: "0", attached: false }],
       windows: { s: [{ index: 0, name: "w", panes: 1, active: true }] },
@@ -94,8 +94,8 @@ describe("TmuxDiscoveryScanner", () => {
     expect(adapter.getPaneCommand).toHaveBeenCalledWith("%2");
   });
 
-  // T5: All sessions returned — no extra filtering (tmux is per-user)
-  it("returns all sessions from adapter without filtering", async () => {
+  // T5：返回全部 session，不额外筛选（tmux 按用户隔离）。
+  it("不筛选地返回 adapter 中的全部 session", async () => {
     const adapter = mockAdapter({
       sessions: [
         { name: "session-a", windows: 1, created: "0", attached: true },
@@ -118,8 +118,8 @@ describe("TmuxDiscoveryScanner", () => {
     expect(result.panes.map((p) => p.tmuxSession)).toEqual(["session-a", "session-b"]);
   });
 
-  // T6: No tmux server -> empty result
-  it("no tmux server returns empty result", async () => {
+  // T6：没有 tmux server 时返回空结果。
+  it("没有 tmux server 时返回空结果", async () => {
     const adapter = mockAdapter({ sessions: [] });
     const scanner = new TmuxDiscoveryScanner({ tmuxAdapter: adapter });
 
@@ -128,8 +128,8 @@ describe("TmuxDiscoveryScanner", () => {
     expect(result.panes).toHaveLength(0);
   });
 
-  // T7: Pane with no foreground process -> pid=null, activeCommand=null
-  it("pane with no foreground process returns null pid and command", async () => {
+  // T7：没有前台进程的 pane 返回 pid=null、activeCommand=null。
+  it("没有前台进程的 pane 返回 null pid 和 command", async () => {
     const adapter = mockAdapter({
       sessions: [{ name: "s", windows: 1, created: "0", attached: false }],
       windows: { s: [{ index: 0, name: "w", panes: 1, active: true }] },
@@ -145,8 +145,8 @@ describe("TmuxDiscoveryScanner", () => {
     expect(result.panes[0]!.activeCommand).toBeNull();
   });
 
-  // T8: All probes use mock adapter
-  it("all operations go through mock adapter", async () => {
+  // T8：所有探针都使用 mock adapter。
+  it("所有操作都经过 mock adapter", async () => {
     const adapter = mockAdapter({
       sessions: [{ name: "s", windows: 1, created: "0", attached: false }],
       windows: { s: [{ index: 0, name: "w", panes: 1, active: true }] },
@@ -163,8 +163,8 @@ describe("TmuxDiscoveryScanner", () => {
     expect(adapter.getPaneCommand).toHaveBeenCalledTimes(1);
   });
 
-  // T9: Partial pane failure -> scan continues with null fields
-  it("partial pane metadata failure does not abort scan of other panes", async () => {
+  // T9：部分 pane 失败时，以 null 字段继续扫描。
+  it("部分 pane 元数据失败不会中止其他 pane 的扫描", async () => {
     const adapter = mockAdapter({
       sessions: [{ name: "s", windows: 1, created: "0", attached: false }],
       windows: { s: [{ index: 0, name: "w", panes: 2, active: true }] },
@@ -175,7 +175,7 @@ describe("TmuxDiscoveryScanner", () => {
       pidMap: { "%1": 9999 },
       cmdMap: { "%1": "node" },
     });
-    // Make %0 PID/command lookups throw
+    // 让 %0 的 PID/command 查询抛错。
     (adapter.getPanePid as ReturnType<typeof vi.fn>).mockImplementation(async (id: string) => {
       if (id === "%0") throw new Error("pane gone");
       return 9999;
@@ -188,12 +188,12 @@ describe("TmuxDiscoveryScanner", () => {
     const scanner = new TmuxDiscoveryScanner({ tmuxAdapter: adapter });
     const result = await scanner.scan();
 
-    // Both panes should be in the result
+    // 两个 pane 都应出现在结果中。
     expect(result.panes).toHaveLength(2);
-    // Failed pane has nulls
+    // 失败 pane 的字段为 null。
     expect(result.panes[0]!.pid).toBeNull();
     expect(result.panes[0]!.activeCommand).toBeNull();
-    // Successful pane has data
+    // 成功 pane 包含数据。
     expect(result.panes[1]!.pid).toBe(9999);
     expect(result.panes[1]!.activeCommand).toBe("node");
   });

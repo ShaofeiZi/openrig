@@ -46,7 +46,7 @@ startup:
 `;
 
 describe("spec review routes", () => {
-  it("POST /rig returns RigSpecReview for valid YAML", async () => {
+  it("POST /rig 为合法 YAML 返回 RigSpecReview", async () => {
     const app = createApp();
     const res = await app.request("/api/specs/review/rig", {
       method: "POST",
@@ -64,7 +64,7 @@ describe("spec review routes", () => {
     expect(body.graph.nodes.length).toBe(1);
   });
 
-  it("POST /agent returns AgentSpecReview for valid YAML", async () => {
+  it("POST /agent 为合法 YAML 返回 AgentSpecReview", async () => {
     const app = createApp();
     const res = await app.request("/api/specs/review/agent", {
       method: "POST",
@@ -79,7 +79,7 @@ describe("spec review routes", () => {
     expect(body.name).toBe("test-agent");
   });
 
-  it("POST /rig with invalid YAML returns 400", async () => {
+  it("POST /rig 使用无效 YAML 时返回 400", async () => {
     const app = createApp();
     const res = await app.request("/api/specs/review/rig", {
       method: "POST",
@@ -93,7 +93,7 @@ describe("spec review routes", () => {
     expect(body.errors.length).toBeGreaterThan(0);
   });
 
-  it("POST /rig with malformed YAML returns 400, not 500", async () => {
+  it("POST /rig 使用畸形 YAML 时返回 400 而非 500", async () => {
     const app = createApp();
     const res = await app.request("/api/specs/review/rig", {
       method: "POST",
@@ -104,10 +104,10 @@ describe("spec review routes", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.errors).toBeDefined();
-    expect(body.errors[0]).toContain("parse error");
+    expect(body.errors[0]).toContain("YAML 解析错误");
   });
 
-  it("POST /agent with malformed YAML returns 400, not 500", async () => {
+  it("POST /agent 使用畸形 YAML 时返回 400 而非 500", async () => {
     const app = createApp();
     const res = await app.request("/api/specs/review/agent", {
       method: "POST",
@@ -118,6 +118,6 @@ describe("spec review routes", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.errors).toBeDefined();
-    expect(body.errors[0]).toContain("parse error");
+    expect(body.errors[0]).toContain("YAML 解析错误");
   });
 });

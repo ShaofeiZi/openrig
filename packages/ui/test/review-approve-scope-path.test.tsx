@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
 
-// slice-04 REV6 regression (qitem-20260722111916-e2575404) — the nested Approve
-// controls (mission BOARD row + slice NEEDS YOU) must POST the missions-root-
-// RELATIVE scopePath `<mission>/slices/<slice>` to /api/scope/approve. A bare
-// slice name 404s the route (it is not a root slice), and the ABSOLUTE
-// SliceReviewTab.slicePath must NEVER be used (it couples the action to host
-// paths). Bare is correct ONLY for a legacy root slice (missionId null).
+// slice-04 REV6 回归（qitem-20260722111916-e2575404）——嵌套批准控件（任务目标 BOARD 行 +
+// slice NEEDS YOU）必须向 /api/scope/approve POST 相对于 missions 根目录的 scopePath
+// `<mission>/slices/<slice>`。裸 slice 名会让路由返回 404，因为它不是根 slice；绝不能使用
+// SliceReviewTab.slicePath 的绝对路径，否则操作会与主机路径耦合。只有旧版根 slice
+//（missionId 为 null）才应使用裸名称。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -124,7 +123,7 @@ describe("slice-04 REV6 — nested Approve posts missions-root-relative scopePat
 
   it("slice NEEDS YOU Approve posts <mission>/slices/<slice> and NEVER the absolute slicePath", async () => {
     sliceState.data = sliceReview({ needsYou: { items: [needsYouItem()], provenance: "x" } });
-    // slicePath is an ABSOLUTE host path — the approve must ignore it entirely.
+    // slicePath 是主机绝对路径——批准操作必须完全忽略它。
     render(withQuery(<SliceReviewTab sliceName={SLICE} slicePath={`/abs/host/missions/${MISSION}/slices/${SLICE}`} />));
     fireEvent.click(screen.getByTestId("needs-you-row-n1"));
     fireEvent.click(await screen.findByTestId("needs-you-approve"));

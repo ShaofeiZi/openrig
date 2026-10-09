@@ -1,25 +1,20 @@
-// V0.3.1 slice 13.5 mission-progress-artifacts-heatmap.
+// V0.3.1 切片 13.5 mission-progress-artifacts-heatmap。
 //
-// Mission scope Progress tab differentiation: render a slice ×
-// acceptance-cell heat-map ABOVE the existing PROGRESS.md markdown
-// + per-slice rollup. Pre-slice 13.5, Mission Progress + Artifacts
-// tabs both used the same 4-cell metric-grid primitive shape and
-// looked too similar at-a-glance. The heat-map gives Progress its
-// own visual gestalt without touching Artifacts.
+// 任务范围进度标签页差异化：在现有 PROGRESS.md markdown + 每切片汇总
+// 上方渲染切片 × 验收单元格热力图。切片 13.5 之前，任务进度 + 工件标签页
+// 都使用相同的 4 单元格指标网格原语形状，一眼望去太相似。热力图给进度
+// 自己的视觉格式塔，不触碰工件。
 //
-// Cell semantics: one row per slice; one cell per acceptance-item
-// in that slice's PROGRESS.md checklist. Filled (success token) =
-// done; outline (outline-variant) = not done. Leading column is
-// the slice display name + state pill; trailing column is the
-// (done/total) tally + percentage.
+// 单元格语义：每切片一行；该切片 PROGRESS.md 清单中每个验收项一个单元格。
+// 填充（success 令牌）= 已完成；轮廓（outline-variant）= 未完成。
+// 前导列是切片显示名 + 状态药丸；尾随列是（已完成/总数）计数 + 百分比。
 //
-// Why slice × acceptance instead of slice × phase: acceptance items
-// are the durable progress unit the operator already authors per
-// slice in PROGRESS.md. Phases are workflow_spec-bound and only
-// some slices have them. Acceptance items work for every slice.
+// 为什么切片 × 验收而非切片 × 阶段：验收项是操作者已在 PROGRESS.md 中
+// 每切片编写的持久进度单元。阶段绑定到 workflow_spec，仅部分切片有。
+// 验收项对每个切片都有效。
 //
-// All colors derive from existing DESIGN.md status tokens via the
-// shared slice-status tone + status-dot class mappings; no new color system.
+// 所有颜色通过共享 slice-status 色调 + status-dot 类映射从现有
+// DESIGN.md 状态令牌派生；无新颜色系统。
 
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -27,36 +22,34 @@ import { EmptyState } from "../ui/empty-state.js";
 import { ProjectPill } from "./ProjectMetaPrimitives.js";
 import {
   type ProjectMetaTone,
+  sliceStatusLabel,
   sliceStatusTone,
   statusDotClass,
 } from "./ProjectMetaPrimitives.js";
 import type { SliceDetail } from "../../hooks/useSlices.js";
 import type { SliceListEntry } from "../../hooks/useSlices.js";
 
-/** Resolution rule used by both the heat-map cells AND the legend so
- *  the legend swatch class is always EXACTLY the same string the cell
- *  would render. Pure function of tone; no side effects. */
+/** 热力图单元格和图例都使用的解析规则，使图例色块类名始终与单元格
+ *  渲染的字符串完全相同。色调的纯函数；无副作用。 */
 function doneCellClass(tone: ProjectMetaTone): string {
   return statusDotClass[tone === "neutral" ? "success" : tone];
 }
 
 interface HeatmapRow {
-  /** Slice id (used for the drill-in link target). */
+  /** 切片 id（用于钻取链接目标）。 */
   name: string;
-  /** Display name shown in the leading column. */
+  /** 前导列中显示的名称。 */
   displayName: string;
-  /** Slice state ("active" | "done" | "blocked" | "draft"); drives the
-   *  state pill in the leading column + the implied tone of done cells
-   *  for blocked/danger slices (so a blocked slice's "done" cells read
-   *  warning-tinted rather than success-tinted). */
+  /** 切片状态（"active" | "done" | "blocked" | "draft"）；驱动前导列中的
+   *  状态药丸 + 已阻塞/危险切片已完成单元格的隐含色调
+   *（使已阻塞切片的"已完成"单元格读为警告色调而非成功色调）。 */
   status: string;
-  /** Acceptance items in PROGRESS.md order. May be empty when the slice
-   *  hasn't authored a PROGRESS.md yet. */
+  /** PROGRESS.md 顺序的验收项。切片尚未编写 PROGRESS.md 时可为空。 */
   items: { text: string; done: boolean }[];
-  /** Pre-computed totals shown in the trailing column. */
+  /** 尾随列中显示的预计算总数。 */
   doneItems: number;
   totalItems: number;
-  /** Acceptance percentage (0-100), pre-computed by the daemon route. */
+  /** 验收百分比（0-100），由后台服务路由预计算。 */
   percentage: number;
 }
 
@@ -86,8 +79,8 @@ export function MissionProgressHeatmap({
   if (isLoading && heatmapRows.length === 0) {
     return (
       <EmptyState
-        label="LOADING PROGRESS"
-        description="Reading mission slice acceptance."
+        label="正在加载进度"
+        description="正在读取任务切片验收。"
         variant="card"
         testId="mission-progress-heatmap-loading"
       />
@@ -97,8 +90,8 @@ export function MissionProgressHeatmap({
   if (heatmapRows.length === 0) {
     return (
       <EmptyState
-        label="NO MISSION SLICES"
-        description="Mission has no scoped slices to render a heat-map."
+        label="无任务切片"
+        description="任务无范围切片可渲染热力图。"
         variant="card"
         testId="mission-progress-heatmap-empty"
       />
@@ -112,12 +105,12 @@ export function MissionProgressHeatmap({
     >
       <header className="mb-3 flex items-center justify-between gap-3 border-b border-outline-variant pb-2">
         <h3 className="font-mono text-[11px] uppercase tracking-[0.16em] text-on-surface">
-          Acceptance heat-map
+          验收热力图
         </h3>
         <span className="font-mono text-[10px] text-on-surface-variant">
-          {heatmapRows.length} slice{heatmapRows.length === 1 ? "" : "s"} ·
+          {heatmapRows.length} 个切片 ·
           {" "}
-          one cell per acceptance item
+          每个验收项一格
         </span>
       </header>
       <div className="space-y-2">
@@ -145,11 +138,11 @@ function HeatmapSliceRow({ row }: { row: HeatmapRow }) {
           params={{ sliceId: row.name }}
           className="block truncate font-mono text-[11px] uppercase tracking-[0.12em] text-on-surface hover:underline"
           title={row.displayName}
-          aria-label={`${row.displayName} (${row.doneItems}/${row.totalItems} acceptance items)`}
+          aria-label={`${row.displayName}（${row.doneItems}/${row.totalItems} 个验收项）`}
         >
           {row.displayName}
         </Link>
-        <ProjectPill token={{ label: row.status, tone }} compact />
+        <ProjectPill token={{ label: sliceStatusLabel(row.status), tone }} compact />
       </div>
       <Cells row={row} />
       <div className="font-mono text-[10px] text-on-surface tabular-nums whitespace-nowrap">
@@ -168,15 +161,14 @@ function Cells({ row }: { row: HeatmapRow }) {
         data-cell-state="empty"
         className="font-mono text-[10px] italic text-on-surface-variant"
       >
-        No acceptance items declared yet.
+        尚未声明验收项。
       </div>
     );
   }
   const tone = sliceStatusTone(row.status);
-  // Done cells take the slice's status tone (info for active, success
-  // for done, danger for blocked, etc.) so the heat-map reads both
-  // per-cell + per-row at-a-glance. Not-done cells stay outline-only
-  // so the eye finds incomplete work fast.
+  // 已完成单元格采用切片的状态色调（active 为 info、done 为 success、
+  // blocked 为 danger 等），使热力图一眼可读单元格 + 行。
+  // 未完成单元格仅保留轮廓，使眼睛快速找到未完成工作。
   const doneClass = doneCellClass(tone);
   return (
     <div
@@ -188,7 +180,7 @@ function Cells({ row }: { row: HeatmapRow }) {
           key={idx}
           data-testid={`mission-progress-heatmap-cell-${row.name}-${idx}`}
           data-done={item.done ? "true" : "false"}
-          aria-label={`${item.text} (${item.done ? "done" : "not done"})`}
+          aria-label={`${item.text}（${item.done ? "已完成" : "未完成"}）`}
           title={item.text}
           className={
             item.done
@@ -202,20 +194,19 @@ function Cells({ row }: { row: HeatmapRow }) {
 }
 
 function HeatmapLegend() {
-  // Legend swatches MUST use the same class string the cells would
-  // render for the given tone. doneCellClass() is the single source
-  // of truth; the legend just feeds it the same tone the heat-map
-  // resolves for each status keyword.
+  // 图例色块必须使用与单元格对给定色调渲染的相同类名字符串。
+  // doneCellClass() 是唯一事实来源；图例仅将热力图为每个状态关键字
+  // 解析的相同色调喂给它。
   return (
     <footer
       data-testid="mission-progress-heatmap-legend"
       className="mt-3 flex flex-wrap items-center gap-3 border-t border-outline-variant pt-2 font-mono text-[10px] text-on-surface-variant"
     >
-      <LegendCell label="done (active)" tone="info" testId="legend-active" />
-      <LegendCell label="done (complete)" tone="success" testId="legend-complete" />
-      <LegendCell label="done (warning)" tone="warning" testId="legend-warning" />
-      <LegendCell label="done (blocked)" tone="danger" testId="legend-blocked" />
-      <LegendCell label="not done" notDone testId="legend-not-done" />
+      <LegendCell label="已完成（进行中）" tone="info" testId="legend-active" />
+      <LegendCell label="已完成（完成）" tone="success" testId="legend-complete" />
+      <LegendCell label="已完成（警告）" tone="warning" testId="legend-warning" />
+      <LegendCell label="已完成（已阻塞）" tone="danger" testId="legend-blocked" />
+      <LegendCell label="未完成" notDone testId="legend-not-done" />
     </footer>
   );
 }

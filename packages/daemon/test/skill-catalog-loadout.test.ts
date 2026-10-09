@@ -41,8 +41,8 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-describe("managed skill catalog and composable loadouts", () => {
-  it("uses an explicit System World selector instead of the legacy catalog selector", () => {
+describe("受管 skill 目录与可组合 loadout", () => {
+  it("使用显式 System World selector，而非旧版目录 selector", () => {
     const f = fixture(["legacy-system"]);
     for (const id of ["legacy-system", "world-system", "topology-skill"]) writeSkill(f.catalog, id);
     commit(f.root);
@@ -60,7 +60,7 @@ describe("managed skill catalog and composable loadouts", () => {
     ]);
   });
 
-  it("composes system, topology, and project selectors deterministically with exact deduplication and provenance", () => {
+  it("确定性组合 system、topology 和 project selector，并精确去重和记录出处", () => {
     const f = fixture(["system-skill", "shared"]);
     writeSkill(f.catalog, "system-skill");
     writeSkill(f.catalog, "topology-skill");
@@ -90,14 +90,14 @@ describe("managed skill catalog and composable loadouts", () => {
     expect(result.loadout.entries.every((entry) => entry.sourceRoot === f.catalog)).toBe(true);
   });
 
-  it("refuses a dirty catalog revision and a missing selected identity without projecting", () => {
+  it("拒绝脏目录修订和缺失的所选身份，且不执行投影", () => {
     const f = fixture([]);
     writeSkill(f.catalog, "known");
     commit(f.root);
     writeFileSync(join(f.catalog, "known", "SKILL.md"), "dirty\n");
     const dirty = resolveSkillLoadout({ catalogRoot: f.catalog, projectSkills: ["known"] });
     expect(dirty).toMatchObject({ ok: false, errors: [{ code: "catalog_unavailable" }] });
-    if (!dirty.ok) expect(dirty.errors[0]!.message).toMatch(/uncommitted/);
+    if (!dirty.ok) expect(dirty.errors[0]!.message).toMatch(/未提交/);
 
     git(f.root, "restore", "skills/known/SKILL.md");
     const missing = resolveSkillLoadout({ catalogRoot: f.catalog, projectSkills: ["absent"] });
@@ -111,7 +111,7 @@ describe("managed skill catalog and composable loadouts", () => {
     commit(f.root);
     const result = resolveSkillLoadout({ catalogRoot: f.catalog, projectSkills: ["same-id"] });
     expect(result).toMatchObject({ ok: false, errors: [{ code: "catalog_unavailable" }] });
-    if (!result.ok) expect(result.errors[0]!.message).toMatch(/duplicate managed skill identity/);
+    if (!result.ok) expect(result.errors[0]!.message).toMatch(/受管 skill 身份.*重复/);
   });
 
   it.each([
@@ -142,7 +142,7 @@ describe("managed skill catalog and composable loadouts", () => {
     expect(idempotent.ok).toBe(true);
     expect(idempotent.applied).toBe(false);
     expect(idempotent.freshLaunchRequired).toBe(false);
-    expect(idempotent.receipts.every((receipt) => receipt.detail === "owned target matches catalog bytes")).toBe(true);
+    expect(idempotent.receipts.every((receipt) => receipt.detail === "自有目标与目录字节一致")).toBe(true);
 
     writeSkill(join(f.project, harnessDir, "skills"), "unrelated", "unrelated", "# user-owned\n");
     const switched = resolveSkillLoadout({ catalogRoot: f.catalog, projectSkills: ["two"] });
@@ -202,7 +202,7 @@ describe("managed skill catalog and composable loadouts", () => {
     expect(git(f.root, "status", "--porcelain=v1", "--untracked-files=all")).toBe("");
   });
 
-  it("refuses before projecting when a foreign ignore covers only part of a multi-file skill", () => {
+  it("外部 ignore 仅覆盖多文件 skill 一部分时，在投影前拒绝", () => {
     const f = fixture([]);
     writeSkill(f.catalog, "managed");
     mkdirSync(join(f.catalog, "managed", "scripts"), { recursive: true });
@@ -226,7 +226,7 @@ describe("managed skill catalog and composable loadouts", () => {
     expect(git(f.root, "status", "--porcelain=v1", "--untracked-files=all")).toBe("");
   });
 
-  it("does not hide an unowned same-path skill in a sibling linked worktree", () => {
+  it("不会隐藏同级关联工作树中同路径的非自有 skill", () => {
     const f = fixture([]);
     writeSkill(f.catalog, "managed");
     commit(f.root);
@@ -271,7 +271,7 @@ describe("managed skill catalog and composable loadouts", () => {
     expect(git(f.root, "status", "--porcelain=v1", "--untracked-files=all")).toBe("");
   });
 
-  it("projects safely when the working directory is outside Git", () => {
+  it("工作目录位于外部 Git 时仍安全投影", () => {
     const f = fixture([]);
     writeSkill(f.catalog, "managed");
     commit(f.root);
@@ -333,7 +333,7 @@ describe("managed skill catalog and composable loadouts", () => {
     });
   });
 
-  it("protects modified owned targets and leaves an equal unowned shadow untouched", () => {
+  it("保护已修改的自有目标，并保持内容相同的非自有遮蔽项不变", () => {
     const f = fixture([]);
     writeSkill(f.catalog, "owned");
     writeSkill(f.catalog, "shadow");
@@ -364,7 +364,7 @@ describe("managed skill catalog and composable loadouts", () => {
     expect(observed.receipts[0]!.status).toBe("shadowed");
   });
 
-  it("adds and switches project selections in place while system, topology, and unrelated entries stay byte-stable", () => {
+  it("原地添加和切换 project 选择，同时让 system、topology 和无关条目保持字节稳定", () => {
     const f = fixture(["system-skill"]);
     for (const id of ["system-skill", "topology-skill", "project-a", "project-b"]) writeSkill(f.catalog, id);
     commit(f.root);
@@ -410,7 +410,7 @@ describe("managed skill catalog and composable loadouts", () => {
     expect(readFileSync(join(f.project, ".agents", "skills", "project-b", "SKILL.md"), "utf8")).toContain("project-b");
   });
 
-  it("retains an installed project selection when seat startup has no project input and clears it only on explicit empty install", () => {
+  it("席位启动没有 project 输入时保留已安装选择，仅在显式空安装时清除", () => {
     const f = fixture(["system-skill"]);
     writeSkill(f.catalog, "system-skill");
     writeSkill(f.catalog, "project-skill");
@@ -449,7 +449,7 @@ describe("managed skill catalog and composable loadouts", () => {
     expect(existsSync(join(f.project, ".agents", "skills", "project-skill", "SKILL.md"))).toBe(false);
   });
 
-  it("refuses incompatible symlink targets and reports restored state after a projection rollback", () => {
+  it("拒绝不兼容的符号链接目标，并在投影回滚后报告已恢复状态", () => {
     const f = fixture([]);
     writeSkill(f.catalog, "selected");
     commit(f.root);
@@ -473,7 +473,7 @@ describe("managed skill catalog and composable loadouts", () => {
     expect(failed.receipts).toMatchObject([{
       id: "selected",
       status: "missing",
-      detail: "selected skill is not projected",
+      detail: "所选 skill 尚未投影",
     }]);
     expect(existsSync(join(f.project, ".agents", "skills", "selected"))).toBe(false);
     expect(existsSync(join(f.project, ".openrig", "skill-loadouts", "codex.json"))).toBe(false);
@@ -505,14 +505,14 @@ describe("managed skill catalog and composable loadouts", () => {
     }
     expect(rolledBack).toMatchObject({ ok: false, applied: false, errors: [{ code: "projection_failed" }] });
     expect(rolledBack.receipts).toMatchObject([
-      { id: "new-skill", status: "missing", detail: "selected skill is not projected" },
-      { id: "selected", status: "stale", detail: "owned target still matches the prior projection and can be refreshed safely" },
+      { id: "new-skill", status: "missing", detail: "所选 skill 尚未投影" },
+      { id: "selected", status: "stale", detail: "自有目标仍与上次投影一致，可安全刷新" },
     ]);
     expect(existsSync(join(prior.project, ".agents", "skills", "new-skill"))).toBe(false);
     expect(readFileSync(join(prior.project, ".agents", "skills", "selected", "SKILL.md"), "utf8")).toContain("prior bytes");
   });
 
-  it("unions topology selections from seats that share one runtime working directory", () => {
+  it("合并共享同一 runtime 工作目录的席位 topology 选择", () => {
     const f = fixture(["system-skill"]);
     for (const id of ["system-skill", "role-a", "role-b"]) writeSkill(f.catalog, id);
     commit(f.root);
@@ -541,7 +541,7 @@ describe("managed skill catalog and composable loadouts", () => {
     expect(existsSync(join(f.project, ".agents", "skills", "system-skill", "SKILL.md"))).toBe(true);
   });
 
-  it("refuses an unsafe topology owner and a manifest that redirects ownership outside the harness root", () => {
+  it("拒绝不安全的 topology owner，以及将所有权重定向到 harness 根目录外的 manifest", () => {
     const f = fixture([]);
     writeSkill(f.catalog, "owned");
     commit(f.root);

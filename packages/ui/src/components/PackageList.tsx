@@ -16,10 +16,10 @@ function statusColor(status: string | null): string {
 
 function statusLabel(status: string | null): string {
   switch (status) {
-    case "applied": return "APPLIED";
-    case "rolled_back": return "ROLLED BACK";
-    case "failed": return "FAILED";
-    default: return "NONE";
+    case "applied": return "已应用";
+    case "rolled_back": return "已回滚";
+    case "failed": return "失败";
+    default: return "无";
   }
 }
 
@@ -44,13 +44,13 @@ function PackageCard({ pkg, onSelect }: { pkg: PackageSummary; onSelect: (id: st
 
       <div className="flex items-center gap-spacing-4 text-label-sm">
         <span className="text-foreground-muted-on-dark">
-          SOURCE <span className="font-mono text-foreground-on-dark">{pkg.sourceRef}</span>
+          来源 <span className="font-mono text-foreground-on-dark">{pkg.sourceRef}</span>
         </span>
       </div>
 
       <div className="flex items-center gap-spacing-4 mt-spacing-3 text-label-sm">
         <span className="text-foreground-muted-on-dark">
-          INSTALLS <span className="font-mono text-foreground-on-dark" data-testid="install-count">{pkg.installCount}</span>
+          安装次数 <span className="font-mono text-foreground-on-dark" data-testid="install-count">{pkg.installCount}</span>
         </span>
 
         <span className="flex items-center gap-spacing-1">
@@ -71,7 +71,7 @@ export function PackageList() {
     ? [...packages].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     : [];
 
-  // Loading state
+  // 加载态
   if (isPending) {
     return (
       <WorkspacePage>
@@ -92,27 +92,27 @@ export function PackageList() {
     );
   }
 
-  // Error state
+  // 错误态
   if (error) {
     return (
       <WorkspacePage>
       <div>
         <Alert data-testid="packages-error">
-          <AlertDescription>{error.message}</AlertDescription>
+          <AlertDescription>加载旧版包失败：{error.message}</AlertDescription>
         </Alert>
       </div>
       </WorkspacePage>
     );
   }
 
-  // Empty state
+  // 空态
   if (sortedPackages.length === 0) {
     return (
       <WorkspacePage>
       <div className="flex flex-col items-center justify-center min-h-[60vh]" data-testid="packages-empty">
-        <h2 className="text-display-lg text-foreground mb-spacing-4">NO LEGACY PACKAGE INSTALLS</h2>
+        <h2 className="text-display-lg text-foreground mb-spacing-4">暂无旧版包安装</h2>
         <p className="text-body-md text-foreground-muted mb-spacing-8">
-          Legacy package tools remain available for bootstrap internals while Library becomes the main authoring surface.
+          在资料库成为主要创作界面的同时，旧版包工具仍保留，供引导等内部流程使用。
         </p>
         <div className="flex flex-col items-center gap-spacing-3">
           <Button
@@ -121,7 +121,7 @@ export function PackageList() {
             data-testid="empty-import-btn"
             onClick={() => navigate({ to: "/import" })}
           >
-            IMPORT RIGSPEC
+            导入 RigSpec
           </Button>
           <Button
             variant="ghost"
@@ -129,7 +129,7 @@ export function PackageList() {
             data-testid="empty-bootstrap-btn"
             onClick={() => navigate({ to: "/bootstrap" })}
           >
-            BOOTSTRAP
+            引导初始化
           </Button>
         </div>
       </div>
@@ -140,12 +140,12 @@ export function PackageList() {
   return (
     <WorkspacePage>
     <div>
-      {/* Page header */}
+      {/* 页头 */}
       <div className="flex justify-between items-baseline mb-spacing-6">
         <div>
-          <h2 className="text-headline-lg uppercase">LEGACY PACKAGE TOOLS</h2>
+          <h2 className="text-headline-lg uppercase">旧版包工具</h2>
           <p className="text-label-md text-foreground-muted font-grotesk mt-spacing-1">
-            {sortedPackages.length} legacy package install{sortedPackages.length !== 1 ? "s" : ""} retained for bootstrap internals
+            保留 {sortedPackages.length} 个旧版包安装，用于引导等内部流程
           </p>
         </div>
         <div className="flex flex-col items-end gap-spacing-2">
@@ -155,7 +155,7 @@ export function PackageList() {
             data-testid="header-import-btn"
             onClick={() => navigate({ to: "/import" })}
           >
-            IMPORT RIGSPEC
+            导入 RigSpec
           </Button>
           <Button
             variant="ghost"
@@ -163,7 +163,7 @@ export function PackageList() {
             data-testid="header-bootstrap-btn"
             onClick={() => navigate({ to: "/bootstrap" })}
           >
-            BOOTSTRAP
+            引导初始化
           </Button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 name: conveyor-lead
 version: "1.0"
-description: Conveyor intake lead - receives work, keeps station handoffs clear, and closes packets
+description: 流水线接入负责人——接收工作、保持工位交接清晰，并关闭工作包
 
 defaults:
   runtime: claude-code

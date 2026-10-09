@@ -36,7 +36,7 @@ function parseStartupContextJsonField<T>(
   } catch (err) {
     return {
       ok: false,
-      evidence: `Persisted startup context JSON parse failed for node ${nodeId} field ${fieldName}: ${err instanceof Error ? err.message : String(err)}`,
+      evidence: `节点 ${nodeId} 字段 ${fieldName} 的持久化启动上下文 JSON 解析失败：${err instanceof Error ? err.message : String(err)}`,
     };
   }
 }
@@ -57,7 +57,7 @@ function getStartupContext(db: Database.Database, nodeId: string): StartupContex
     if (!row) {
       return {
         status: "missing",
-        evidence: `Persisted startup context missing for node ${nodeId}`,
+        evidence: `节点 ${nodeId} 缺少持久化启动上下文`,
       };
     }
 
@@ -68,7 +68,7 @@ function getStartupContext(db: Database.Database, nodeId: string): StartupContex
     if (!Array.isArray(resolvedFiles.value)) {
       return {
         status: "malformed",
-        evidence: `Persisted startup context field resolved_files_json is not an array for node ${nodeId}`,
+        evidence: `节点 ${nodeId} 的持久化启动上下文字段 resolved_files_json 不是数组`,
       };
     }
 
@@ -79,7 +79,7 @@ function getStartupContext(db: Database.Database, nodeId: string): StartupContex
     if (!Array.isArray(projectionEntries.value)) {
       return {
         status: "malformed",
-        evidence: `Persisted startup context field projection_entries_json is not an array for node ${nodeId}`,
+        evidence: `节点 ${nodeId} 的持久化启动上下文字段 projection_entries_json 不是数组`,
       };
     }
 
@@ -90,7 +90,7 @@ function getStartupContext(db: Database.Database, nodeId: string): StartupContex
     if (!Array.isArray(startupActions.value)) {
       return {
         status: "malformed",
-        evidence: `Persisted startup context field startup_actions_json is not an array for node ${nodeId}`,
+        evidence: `节点 ${nodeId} 的持久化启动上下文字段 startup_actions_json 不是数组`,
       };
     }
 
@@ -128,10 +128,10 @@ function getStartupContext(db: Database.Database, nodeId: string): StartupContex
 }
 
 /**
- * OPR.0.4.3.22 — build a RestoreCheckService wired to the live daemon
- * repositories. Extracted so the rig-status compose route can consume the SAME
- * restore-check readiness signal (RecoveryPlan) the `/api/restore-check` route
- * emits, rather than re-implementing it (ponytail: one restore-check, composed).
+ * OPR.0.4.3.22——构建一个接到线上后台服务仓库的 RestoreCheckService。
+ * 抽出来是为了让 rig-status compose 路由能消费与 `/api/restore-check` 路由
+ * 发出的同一个 restore-check 就绪信号（RecoveryPlan），而不是重新实现一遍
+ * （ponytail：一份 restore-check，组合复用）。
  */
 export function createRestoreCheckService(
   rigRepo: RigRepository,
@@ -160,8 +160,8 @@ export function createRestoreCheckService(
       return snapshot ? { id: snapshot.id, kind: snapshot.kind } : null;
     },
     probeDaemonHealth: () => {
-      // We're inside the daemon — if this route is responding, daemon is healthy
-      return { healthy: true, evidence: "Daemon running (responding to API requests)" };
+      // 我们就在后台服务里——如果本路由能响应，说明后台服务健康
+      return { healthy: true, evidence: "后台服务运行中（正在响应 API 请求）" };
     },
     exists: (path: string) => {
       try { return existsSync(path); } catch { return false; }
@@ -178,7 +178,7 @@ restoreCheckRoutes.get("/", (c) => {
   const noQueue = c.req.query("noQueue") === "true";
   const noHooks = c.req.query("noHooks") === "true";
   const compact = c.req.query("compact") === "1";
-  // OPR.0.4.0.29 FR-2: --ready stays compact but INCLUDES ready-seat detail.
+  // OPR.0.4.0.29 FR-2：--ready 保持紧凑，但包含 ready 席位细节。
   const includeReady = c.req.query("ready") === "1";
 
   try {
@@ -201,8 +201,8 @@ restoreCheckRoutes.get("/", (c) => {
           blockedNodes: r.blockedNodes,
           caveatNodes: r.caveatNodes,
         })),
-        // --ready (ready=1) keeps the ready-seat checks in compact mode;
-        // default compact drops the green (ready) checks for token safety.
+        // --ready (ready=1) 在紧凑模式下保留 ready 席位检查；
+        // 默认紧凑为节省 token 丢弃 green（ready）检查。
         checks: includeReady ? result.checks : result.checks.filter((ch) => ch.status !== "green"),
         recovery: {
           status: result.recovery.status,
@@ -216,7 +216,7 @@ restoreCheckRoutes.get("/", (c) => {
 
     return c.json(result);
   } catch (err) {
-    const evidence = `Service error: ${err instanceof Error ? err.message : String(err)}`;
+    const evidence = `服务错误：${err instanceof Error ? err.message : String(err)}`;
 
     return c.json({
       verdict: "unknown",
@@ -229,18 +229,18 @@ restoreCheckRoutes.get("/", (c) => {
       },
       continuity: {
         status: "not_proven",
-        evidence: "Strict same-session/provider-context resume is not verified by restore-check v1.",
+        evidence: "严格的同会话/provider 上下文恢复未经 restore-check v1 验证。",
         provenCapabilities: [],
         unprovenCapabilities: ["provider_session_resume", "context_window_preservation", "interrupted_work_functional_resume"],
       },
       rigs: [],
       hostInfra: {
         status: "unknown",
-        evidence: "Host bootstrap/autostart source could not be inspected because restore-check route failed",
+        evidence: "restore-check 路由失败，无法检视 host bootstrap/autostart 来源",
       },
       recovery: {
         status: "unknown",
-        summary: "Recovery status could not be inspected because the restore-check route failed.",
+        summary: "restore-check 路由失败，无法检视恢复状态。",
         actions: [],
         blocked: [],
         unknown: [{
@@ -253,11 +253,11 @@ restoreCheckRoutes.get("/", (c) => {
         check: "probe.error",
         status: "red",
         evidence,
-        remediation: "Check daemon logs with: rig daemon logs",
+        remediation: "用 zrig daemon logs 查看后台服务日志",
       }],
       repairPacket: [{
         step: 1,
-        command: "Check daemon logs with: rig daemon logs",
+        command: "用 zrig daemon logs 查看后台服务日志",
         rationale: evidence,
         safe: true,
         blocking: true,

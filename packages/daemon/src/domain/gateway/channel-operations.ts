@@ -3,8 +3,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { getOpenRigHome } from "../../openrig-compat.js";
 
-/** Deliberately small, value-free snapshots: credentials, handles, message bodies,
- * and connector responses never enter the lifecycle ledger. */
+/** 快照刻意保持精简且不含实际值：凭据、账号标识、消息正文和连接器响应
+ * 永远不会进入生命周期台账。 */
 export interface ChannelState {
   enabled?: boolean;
   active?: boolean;
@@ -32,15 +32,15 @@ export function channelStateDigest(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
-/** A start receipt survives a crash between the effect and its completion receipt.
- * Failure to write the start refuses BEFORE the effect; incomplete is never success. */
+/** 即使在操作生效后、完成回执写入前崩溃，开始回执仍会保留。
+ * 若开始回执写入失败，则必须在产生副作用前拒绝操作；未完成绝不能算作成功。 */
 export async function runChannelOperation<T>(input: ChannelActor & {
   action: ChannelOperation["action"];
   subject: string;
   before: ChannelState;
   run: () => Promise<{ value: T; after: ChannelState; effect: "applied" | "no-op" | "observed" }>;
 }, home = getOpenRigHome()): Promise<{ value: T; receipt: ChannelOperation }> {
-  if (!input.actor.trim() || !input.reason.trim()) throw new Error("channel operation requires actor and reason");
+  if (!input.actor.trim() || !input.reason.trim()) throw new Error("通道操作必须提供操作者和原因");
   const dir = join(home, "state");
   const file = join(dir, "human-channel-operations.jsonl");
   mkdirSync(dir, { recursive: true });

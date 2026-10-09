@@ -9,13 +9,10 @@ export interface CurrentStateRehydrateEligibility {
 }
 
 /**
- * A crash snapshot remains trustworthy only while it names every occupant that
- * durable current state still identifies as active. Boot reconciliation turns
- * rows detached after abrupt substrate loss, so detached rows must participate:
- * a different session id or native resume identity is positive evidence that
- * the snapshot belongs to an older occupant. Ambiguous current state is also
- * not permission to revive a historical occupant; current-state capture
- * preserves the ambiguity and restore refuses it explicitly.
+ * 只有当崩溃快照仍列出持久当前状态认定为活跃的每个占用者时，快照才可信。
+ * 启动对账会转换底层突然丢失后分离的行，因此分离行也必须参与：不同的会话 id 或原生
+ * resume 身份，是快照属于旧占用者的肯定证据。当前状态有歧义也不代表可以恢复历史占用者；
+ * 当前状态捕获会保留歧义，恢复流程会明确拒绝。
  */
 export function snapshotMatchesCurrentOccupants(
   db: Database.Database,
@@ -56,12 +53,10 @@ export function snapshotMatchesCurrentOccupants(
 }
 
 /**
- * Determines whether current persisted DB state is sufficient to synthesize a
- * restore snapshot after volatile runtime state (tmux) disappeared.
+ * 判断易失运行时状态（tmux）消失后，当前持久数据库状态是否足以合成恢复快照。
  *
- * This is intentionally conservative. It does not claim provider continuity by
- * itself; it only says the existing restore orchestrator has enough persisted
- * input to attempt a normal restore from an on-demand snapshot.
+ * 此判定有意保持保守。它本身不声明 provider 连续性，只表示现有恢复编排器拥有足够的
+ * 持久输入，可尝试从按需快照执行普通恢复。
  */
 export function assessCurrentStateRehydrateEligibility(
   db: Database.Database,

@@ -23,8 +23,8 @@ export interface TeardownResult {
 
 interface TeardownOptions {
   delete?: boolean;
-  /** Reserved for future graceful-stop support. Currently a no-op because
-   *  tmux kill-session is already immediate — there is no graceful stop to skip. */
+  /** 为未来优雅停止支持保留。目前是 no-op，因为 tmux kill-session 已立即执行，
+   *  没有可跳过的优雅停止。 */
   force?: boolean;
   snapshot?: boolean;
 }
@@ -52,25 +52,24 @@ interface LatestNodeSession {
 }
 
 /**
- * Graceful rig shutdown. Kills tmux sessions, clears bindings, marks
- * sessions exited. Optionally snapshots before teardown, optionally
- * deletes rig record.
+ * 优雅关闭工作组：终止 tmux 会话、清除绑定并把会话标记为 exited。
+ * 可选择在拆除前拍摄快照，也可选择删除工作组记录。
  */
 export class RigTeardownOrchestrator {
   readonly db: Database.Database;
   private deps: TeardownDeps;
 
   constructor(deps: TeardownDeps) {
-    if (deps.db !== deps.rigRepo.db) throw new Error("RigTeardownOrchestrator: rigRepo must share the same db handle");
-    if (deps.db !== deps.sessionRegistry.db) throw new Error("RigTeardownOrchestrator: sessionRegistry must share the same db handle");
-    if (deps.db !== deps.eventBus.db) throw new Error("RigTeardownOrchestrator: eventBus must share the same db handle");
-    if (deps.db !== deps.snapshotCapture.db) throw new Error("RigTeardownOrchestrator: snapshotCapture must share the same db handle");
+    if (deps.db !== deps.rigRepo.db) throw new Error("RigTeardownOrchestrator：rigRepo 必须共享同一个数据库句柄");
+    if (deps.db !== deps.sessionRegistry.db) throw new Error("RigTeardownOrchestrator：sessionRegistry 必须共享同一个数据库句柄");
+    if (deps.db !== deps.eventBus.db) throw new Error("RigTeardownOrchestrator：eventBus 必须共享同一个数据库句柄");
+    if (deps.db !== deps.snapshotCapture.db) throw new Error("RigTeardownOrchestrator：snapshotCapture 必须共享同一个数据库句柄");
     this.db = deps.db;
     this.deps = deps;
   }
 
   async teardown(rigId: string, opts?: TeardownOptions): Promise<TeardownResult> {
-    // 1. Validate rig
+    // 1. 校验工作组。
     const rig = this.deps.rigRepo.getRig(rigId);
     if (!rig) throw new RigNotFoundError(rigId);
 
@@ -82,18 +81,18 @@ export class RigTeardownOrchestrator {
       deleted: false, deleteBlocked: false, alreadyStopped: false, errors: [],
     };
 
-    // 2. Get latest session per node
+    // 2. 获取每个节点的最新会话。
     const liveSessions = this.getLatestLiveSessions(rigId);
 
-    // 3. Check if already stopped
+    // 3. 检查是否已停止。
     if (liveSessions.length === 0) {
       this.cleanupManagedGuidanceFiles(rigId);
       result.alreadyStopped = true;
-      // Still tear down services even if no agent sessions are running
+      // 即使没有智能体会话在运行，仍要拆除服务。
       if (this.deps.serviceOrchestrator) {
-        try { await this.deps.serviceOrchestrator.teardown(rigId); } catch { /* best-effort */ }
+        try { await this.deps.serviceOrchestrator.teardown(rigId); } catch { /* 尽力而为 */ }
       }
-      // Skip to delete if requested
+      // 若请求删除，则直接进入删除步骤。
       if (opts?.delete) {
         this.atomicDelete(rigId);
         result.deleted = true;
@@ -103,7 +102,7 @@ export class RigTeardownOrchestrator {
       return result;
     }
 
-    // 4. Auto-snapshot before teardown (always, best-effort)
+    // 4. 拆除前自动拍摄快照（始终尝试，尽力而为）。
     try {
       if (this.deps.resumeMetadataRefresher) {
         await this.deps.resumeMetadataRefresher.refresh(liveSessions);
@@ -111,46 +110,45 @@ export class RigTeardownOrchestrator {
       const snap = this.deps.snapshotCapture.captureSnapshot(rigId, "auto-pre-down");
       result.snapshotId = snap.id;
     } catch (err) {
-      result.errors.push(`Snapshot failed: ${(err as Error).message}`);
-      // Best-effort — teardown proceeds even if snapshot fails
+      result.errors.push(`快照失败：${(err as Error).message}`);
+      // 尽力而为——快照失败时仍继续拆除。
     }
 
-    // 5. Kill each live session
+    // 5. 终止每个存活会话。
     let killFailures = 0;
     for (const session of liveSessions) {
-      // V1 pre-release CLI/daemon Item 1: stop the rotation timer
-      // before killing the tmux session so capture-pane stops poking
-      // a dead target. Idempotent: silent no-op if no timer registered.
+      // V1 预发布 CLI/后台服务第 1 项：终止 tmux 会话前先停止轮转定时器，
+      // 使 capture-pane 不再探测已死目标。幂等：没有已注册定时器时静默 no-op。
       stopTranscriptRotation(session.sessionName);
       const killResult = await this.deps.tmuxAdapter.killSession(session.sessionName);
 
       if (killResult.ok || (killResult as { code?: string }).code === "session_not_found") {
-        // Success or already gone — update DB atomically
+        // 成功或已不存在——原子更新数据库。
         this.atomicNodeCleanup(session);
         this.cleanupManagedGuidanceFileForNode(rigId, session.runtime, session.cwd);
         result.sessionsKilled++;
       } else {
-        // Real kill failure — don't update this node
-        result.errors.push(`Kill failed for session '${session.sessionName}': ${(killResult as { message?: string }).message ?? "unknown"}`);
+        // 真正的终止失败——不更新此节点。
+        result.errors.push(`终止会话 '${session.sessionName}' 失败：${(killResult as { message?: string }).message ?? "未知错误"}`);
         killFailures++;
       }
     }
     this.cleanupManagedGuidanceFiles(rigId);
 
-    // 5b. Tear down services if they exist
+    // 5b. 若服务存在，则拆除服务。
     if (this.deps.serviceOrchestrator) {
       try {
         await this.deps.serviceOrchestrator.teardown(rigId);
       } catch (err) {
-        result.errors.push(`Service teardown warning: ${(err as Error).message}`);
-        // Best-effort — rig teardown continues
+        result.errors.push(`服务拆除警告：${(err as Error).message}`);
+        // 尽力而为——继续拆除工作组。
       }
     }
 
-    // 6. Delete if requested (blocked by kill failures)
+    // 6. 按需删除；终止失败会阻止删除。
     if (opts?.delete) {
       if (killFailures > 0) {
-        result.errors.push("Rig deletion blocked: some sessions could not be killed");
+        result.errors.push("工作组删除被阻止：部分会话无法终止");
         result.deleted = false;
         result.deleteBlocked = true;
       } else {
@@ -158,19 +156,19 @@ export class RigTeardownOrchestrator {
           this.atomicDelete(rigId);
           result.deleted = true;
         } catch (err) {
-          result.errors.push(`Rig deletion failed: ${(err as Error).message}`);
+          result.errors.push(`工作组删除失败：${(err as Error).message}`);
           result.deleted = false;
         }
       }
     } else {
-      // Emit stopped event
+      // 发出 stopped 事件。
       this.deps.eventBus.emit({ type: "rig.stopped", rigId });
     }
 
     return result;
   }
 
-  /** Atomically mark session exited + clear binding + persist event */
+  /** 原子地把会话标记为 exited、清除绑定并持久化事件。 */
   private atomicNodeCleanup(session: LatestNodeSession): void {
     const tx = this.db.transaction(() => {
       this.deps.sessionRegistry.updateStatus(session.sessionId, "exited");
@@ -179,7 +177,7 @@ export class RigTeardownOrchestrator {
     tx();
   }
 
-  /** Atomically delete rig + persist rig.deleted event */
+  /** 原子删除工作组并持久化 rig.deleted 事件。 */
   private atomicDelete(rigId: string): void {
     let persistedSeq = 0;
     let persistedAt = "";
@@ -195,9 +193,8 @@ export class RigTeardownOrchestrator {
     });
   }
 
-  /** Get latest session per node, filtered to live statuses.
-   *  OPR.0.4.3.20 FR-4 — delegates to the shared SessionRegistry method so the
-   *  teardown pre-down path and the periodic/manual snapshot refresh share ONE query. */
+  /** 获取每个节点的最新会话，并只保留存活状态。OPR.0.4.3.20 FR-4——委托给共享的
+   *  SessionRegistry 方法，使拆除前路径与周期/手动快照刷新共用同一个查询。 */
   private getLatestLiveSessions(rigId: string): LatestNodeSession[] {
     return this.deps.sessionRegistry.getLatestLiveSessions(rigId);
   }
@@ -217,7 +214,7 @@ export class RigTeardownOrchestrator {
     if (!runtime || !cwd) {
       return;
     }
-    // #25: clean only the rig's selected Claude file; the other file is never touched.
+    // #25：只清理工作组选中的 Claude 文件，另一个文件绝不触碰。
     const targetPath = runtime === "claude-code"
       ? nodePath.join(cwd, this.deps.rigRepo.getRigClaudeManagedBlockFile(rigId) ?? DEFAULT_CLAUDE_MANAGED_BLOCK_FILE)
       : runtime === "codex"

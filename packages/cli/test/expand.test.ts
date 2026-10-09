@@ -135,7 +135,7 @@ describe("rig expand", () => {
     return prog;
   }
 
-  // T1: Parses arguments
+  // T1：解析参数
   it("parses rig-id and pod-fragment-path", async () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "expand", "rig-123", fragmentPath]);
@@ -155,12 +155,12 @@ describe("rig expand", () => {
     expect(parsed.nodes).toBeDefined();
   });
 
-  // T3a: Partial prints failed nodes + honest recovery guidance.
+  // T3a：Partial 打印失败节点 + 诚实恢复指引。
   //
-  // OPR.0.5.6.3: the pod-aware /launch route now runs every pod-bearing node
-  // (which every expand-created node is) through the managed subset launch
+  // OPR.0.5.6.3：pod 感知的 /launch 路由现运行每个带 pod 的节点
+  //（每个 expand 创建的节点都是）经管理子集启动
   // with full startup orchestration — the old refusal is gone from the
-  // daemon. The honest recovery path is fix-the-cause + per-node
+  // daemon。诚实恢复路径是修复根因 + 逐节点
   // `rig launch <rigId> <logicalId>`.
   it("partial result prints failed nodes with per-node relaunch recovery guidance", async () => {
     writeFileSync(fragmentPath, `id: partial-pod\nlabel: Dev\nmembers:\n  - id: impl\n    runtime: claude-code\n  - id: qa\n    runtime: codex\nedges: []\n`);
@@ -173,7 +173,7 @@ describe("rig expand", () => {
     expect(output).toContain("FAIL");
     expect(output).toContain("dev.qa");
     expect(output).toContain("rig launch rig-123 dev.qa");
-    expect(output).toContain("Failed targets: dev.qa");
+    expect(output).toContain("失败目标：dev.qa");
     expect(exitCode).toBe(1);
   });
 

@@ -122,7 +122,7 @@ describe("P5.3 ActivityRing and HotPotatoEdge", () => {
     const flow = screen.getByTestId("hot-potato-flow-packet-1");
     expect(flow.tagName.toLowerCase()).toBe("path");
     expect(flow.getAttribute("class") ?? "").toContain("hot-potato-flow");
-    // the flow rides the edge geometry and marches via a dash pattern (direction read).
+    // flow 骑在 edge 几何上，经 dash 图案行进（方向可读）。
     expect(flow.getAttribute("stroke-dasharray")).not.toBeNull();
     expect(container.querySelector("path[data-testid='hot-potato-flow-packet-1']")).not.toBeNull();
   });
@@ -216,8 +216,8 @@ describe("P5.3 ActivityRing and HotPotatoEdge", () => {
     fireEvent.click(screen.getByTestId("hybrid-driver-terminal-open"));
 
     expect(screen.getByTestId("hybrid-driver-terminal-popover")).toBeDefined();
-    // OPR.0.4.0.1: progressive default-static -> click-to-go-live. The popover
-    // opens on the STATIC preview; a click upgrades THAT terminal to live.
+    // OPR.0.4.0.1：progressive default-static -> click-to-go-live。popover
+    // 在 STATIC 预览上打开；点击把该 terminal 升级为 live。
     fireEvent.click(await screen.findByTestId("hybrid-driver-static"));
     await waitFor(() => {
       expect(screen.getByTestId("focused-terminal-velocity-driver@openrig-velocity")).toBeTruthy();
@@ -226,17 +226,17 @@ describe("P5.3 ActivityRing and HotPotatoEdge", () => {
     expect(driverPopover.parentElement).toBe(document.body);
     expect(driverPopover.className).toContain("fixed");
     expect(driverPopover.className).toContain("z-[1000]");
-    // OPR.0.4.0.1 + OPR.0.4.0.39 (no-reshape): the popover shell is w-max for BOTH
-    // static and live now (it no longer widens from a compact static to a hardcoded
-    // live plate), so overflow-hidden no longer clips the live terminal here.
+    // OPR.0.4.0.1 + OPR.0.4.0.39（no-reshape）：popover shell 现在对 static 和
+    // live 都是 w-max（不再从 compact static 拓宽到硬编码 live plate），故
+    // overflow-hidden 不再在此裁切 live terminal。
     expect(driverPopover.className).toContain("w-max");
     expect(driverPopover.className).not.toContain("w-[calc(80ch+24px)]");
     expect(driverPopover.className).toContain("max-w-[calc(100vw-1rem)]");
     expect(driverPopover.className).toContain("max-h-[calc(100vh-1rem)]");
     expect(driverPopover.className).toContain("overflow-hidden");
-    // OPR.0.4.0.1 (FR-4): the popover dropped its redundant bg-stone-950/65; the
-    // live terminal wrapper supplies the smoked plate while xterm's renderer stays
-    // opaque enough for reliable erase/redraw.
+    // OPR.0.4.0.1（FR-4）：popover 丢弃其冗余 bg-stone-950/65；live terminal
+    // wrapper 提供 smoked plate，而 xterm renderer 保持足够不透明以可靠
+    // erase/redraw。
     expect(driverPopover.className).not.toContain("bg-stone-950/65");
     expect(driverPopover.className).toContain("font-mono");
     expect(driverPopover.className).toContain("text-[8px]");
@@ -253,10 +253,10 @@ describe("P5.3 ActivityRing and HotPotatoEdge", () => {
     fireEvent.click(screen.getByTestId("hybrid-driver-terminal-open"));
     expect(screen.getByTestId("hybrid-driver-terminal-popover")).toBeDefined();
 
-    // OPR.0.4.0.1 (rev1-r2): progressive popovers COEXIST under the global cap --
-    // opening the guard popover does NOT force-close the driver popover (the old
-    // single-open TERMINAL_PREVIEW_EVENT did). Both stay open so multi-live is
-    // reachable on the graph/table surfaces.
+    // OPR.0.4.0.1（rev1-r2）：progressive popover 在全局 cap 下共存——打开
+    // guard popover 不强制关闭 driver popover（旧 single-open
+    // TERMINAL_PREVIEW_EVENT 会）。两者都保持打开，使 graph/table 表面可达
+    // multi-live。
     fireEvent.click(screen.getByTestId("hybrid-guard-terminal-open"));
     expect(screen.getByTestId("hybrid-guard-terminal-popover")).toBeDefined();
     expect(screen.getByTestId("hybrid-driver-terminal-popover")).toBeDefined();
@@ -343,12 +343,10 @@ describe("P5.3 ActivityRing and HotPotatoEdge", () => {
     expect(table).toMatch(/ActivityRing/);
     expect(table).toMatch(/terminalActive: n\.terminalActive/);
     expect(table).toMatch(/terminalActive: row\.terminalActive/);
-    // 0.3.1 slice 14 walk-item 16 deliberately removed the hover-
-    // gated `opacity-0` + `group-hover:opacity-100` pattern from
-    // action-column buttons — operators kept missing the cmux
-    // launcher when it was hidden off-mouse. The test now asserts
-    // the action button is wired in (data-testid present) instead
-    // of asserting the rejected hover-reveal chain.
+    // 0.3.1 slice 14 walk-item 16 故意从 action-column 按钮移除 hover-gated
+    // `opacity-0` + `group-hover:opacity-100` 模式——operator 在 cmux launcher
+    // 隐藏于鼠标外时一直找不到。测试现断言 action 按钮已接入（data-testid
+    // 存在），而非断言被拒的 hover-reveal 链。
     expect(table).toMatch(/data-testid=\{`topology-table-cmux-/);
     expect(ring).not.toMatch(/StatusPip/);
     expect(edge).toMatch(/animateMotion/);

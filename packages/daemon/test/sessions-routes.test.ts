@@ -80,7 +80,7 @@ function staleBindingCmux() {
   return { adapter, calls };
 }
 
-describe("Session routes", () => {
+describe("会话路由", () => {
   let db: Database.Database;
 
   beforeEach(() => {
@@ -91,7 +91,7 @@ describe("Session routes", () => {
     db.close();
   });
 
-  it("GET /api/rigs/:rigId/sessions -> session list", async () => {
+  it("GET /api/rigs/:rigId/sessions → 会话列表", async () => {
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const rig = rigRepo.createRig("r01");
     const node = rigRepo.addNode(rig.id, "dev1-impl");
@@ -104,7 +104,7 @@ describe("Session routes", () => {
     expect(body[0].sessionName).toBe("r01-dev1-impl");
   });
 
-  it("POST clear-attention re-scopes a legacy attempt-zero reconciliation to the real restore attempt", async () => {
+  it("POST clear-attention 将旧版零号尝试协调重新限定到真实恢复尝试", async () => {
     const tmux = {
       ...mockTmuxAdapter(),
       hasSession: vi.fn(async () => true),
@@ -189,7 +189,7 @@ describe("Session routes", () => {
     expect(reconciliations.map((row) => row.attemptId)).toEqual([0, started.seq]);
   });
 
-  it("POST .../launch -> 201 + sessionName + session + binding, binding.tmuxSession === sessionName", async () => {
+  it("POST .../launch → 201 + sessionName + session + binding，且 binding.tmuxSession === sessionName", async () => {
     const { app, rigRepo } = createTestApp(db);
     const rig = rigRepo.createRig("r01");
     rigRepo.addNode(rig.id, "dev1-impl", { role: "worker" });
@@ -207,7 +207,7 @@ describe("Session routes", () => {
     expect(body.binding.tmuxSession).toBe(body.sessionName);
   });
 
-  it("POST .../launch already-bound -> 409", async () => {
+  it("POST .../launch 已绑定 → 409", async () => {
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const rig = rigRepo.createRig("r01");
     const node = rigRepo.addNode(rig.id, "dev1-impl");
@@ -219,7 +219,7 @@ describe("Session routes", () => {
     expect(res.status).toBe(409);
   });
 
-  it("POST .../launch nonexistent node -> 404", async () => {
+  it("POST .../launch 节点不存在 → 404", async () => {
     const { app, rigRepo } = createTestApp(db);
     const rig = rigRepo.createRig("r01");
 
@@ -229,9 +229,9 @@ describe("Session routes", () => {
     expect(res.status).toBe(404);
   });
 
-  it("POST .../launch with ordinary rig name normalizes to r00-managed session name", async () => {
+  it("POST .../launch 使用普通工作组名称时规范化为 r00-managed 会话名", async () => {
     const { app, rigRepo } = createTestApp(db);
-    // Ordinary rig names are normalized into the managed r00- namespace.
+    // 普通工作组名称规范化到托管的 r00- 命名空间。
     const rig = rigRepo.createRig("badname");
     rigRepo.addNode(rig.id, "worker");
 
@@ -245,7 +245,7 @@ describe("Session routes", () => {
     expect(body.binding.tmuxSession).toBe("r00-badname-worker");
   });
 
-  it("POST .../launch routes pod-aware nodes through launchNodeSubset (OPR.0.3.4.11)", async () => {
+  it("POST .../launch 通过 launchNodeSubset 路由感知 pod 的节点（OPR.0.3.4.11）", async () => {
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const podRepo = new PodRepository(db);
     const rig = rigRepo.createRig("pod-rig");
@@ -262,15 +262,15 @@ describe("Session routes", () => {
     });
 
     const body = await res.json();
-    // Without a usable snapshot, launchNodeSubset returns no_usable_snapshot
+    // 没有可用快照时，launchNodeSubset 返回 no_usable_snapshot。
     expect(body.ok).toBe(false);
     expect(body.code).toBe("no_usable_snapshot");
   });
 
-  // OPR.0.4.3.28 correction — INVERT fail-closed-on-unknown. A failed tmux liveness probe is
-  // NOT positive evidence of a live seat, so the launch route no longer hard-503s; it PROCEEDS
-  // to launch and surfaces a non-blocking liveness_probe_unknown warning (verify-no-squat).
-  it("POST .../launch does NOT 503 on tmux-probe-fail — launches with a liveness warning (OPR.0.4.3.28 inversion)", async () => {
+  // OPR.0.4.3.28 修正——反转“未知时失败关闭”。tmux 存活探测失败并非席位存活的确证，
+  // 因此 launch 路由不再强制返回 503；它继续启动并公开非阻塞 liveness_probe_unknown
+  // 警告（验证无占位）。
+  it("POST .../launch 在 tmux 探测失败时不返回 503——带存活警告启动（OPR.0.4.3.28 反转）", async () => {
     const tmuxMock = {
       createSession: vi.fn(async () => true),
       hasSession: vi.fn(async () => { throw new Error("tmux unavailable"); }),
@@ -293,7 +293,7 @@ describe("Session routes", () => {
       agentRef: "local:agents/impl",
       profile: "default",
     });
-    // Seed a running session + usable snapshot so launchNodeSubset reaches the probe
+    // 预置运行中会话和可用快照，使 launchNodeSubset 到达探针。
     const session = sessionRegistry.registerSession(node.id, "dev-impl@probe-fail-rig");
     sessionRegistry.updateStatus(session.id, "running");
     const { SnapshotRepository } = await import("../src/domain/snapshot-repository.js");
@@ -310,15 +310,15 @@ describe("Session routes", () => {
       method: "POST",
     });
 
-    // No longer a hard 503 / target_liveness_unknown deny-by-default.
+    // 不再以强制 503 / target_liveness_unknown 默认拒绝。
     expect(res.status).not.toBe(503);
     const body = await res.json();
     expect(body.code).not.toBe("target_liveness_unknown");
-    // The liveness uncertainty is surfaced as a non-blocking warning, never a block.
+    // 存活不确定性显示为非阻塞警告，绝不成为阻塞项。
     expect((body.warnings ?? []).some((w: string) => w.includes("liveness_probe_unknown"))).toBe(true);
   });
 
-  it("POST .../nodes/launch-subset returns no_usable_snapshot without snapshot", async () => {
+  it("没有快照时 POST .../nodes/launch-subset 返回 no_usable_snapshot", async () => {
     const { app, rigRepo } = createTestApp(db);
     const podRepo = new PodRepository(db);
     const rig = rigRepo.createRig("subset-rig");
@@ -337,14 +337,14 @@ describe("Session routes", () => {
     expect(body.code).toBe("no_usable_snapshot");
   });
 
-  it("POST .../nodes/launch-subset launches multiple targets with usable snapshot (OPR.0.3.4.11)", async () => {
+  it("有可用快照时 POST .../nodes/launch-subset 启动多个目标（OPR.0.3.4.11）", async () => {
     const { app, rigRepo } = createTestApp(db);
     const podRepo = new PodRepository(db);
     const rig = rigRepo.createRig("multi-rig");
     const pod = podRepo.createPod(rig.id, "dev", "Development");
     const n1 = rigRepo.addNode(rig.id, "dev.driver", { runtime: "claude-code", podId: pod.id });
     const n2 = rigRepo.addNode(rig.id, "dev.guard", { runtime: "codex", podId: pod.id });
-    // Seed a usable snapshot
+    // 预置可用快照。
     const { SnapshotRepository } = await import("../src/domain/snapshot-repository.js");
     const snapRepo = new SnapshotRepository(db);
     snapRepo.createSnapshot(rig.id, "manual", {
@@ -354,9 +354,8 @@ describe("Session routes", () => {
         { id: n2.id, logicalId: "dev.guard", rigId: rig.id, runtime: "codex", podId: pod.id },
       ],
       sessions: [
-        // Deliberate fresh (relaunch_fresh) → a genuine successful launch. FR-7: a
-        // resume_if_possible seat with a token but no adapter to verify would instead
-        // land awaiting-decision (covered by the next test).
+        // 有意全新启动（relaunch_fresh）→ 真正成功的启动。FR-7：有 token 但没有适配器
+        // 可验证的 resume_if_possible 席位会转为 awaiting-decision（由下一测试覆盖）。
         { id: "s1", nodeId: n1.id, sessionName: "dev-driver@multi-rig", status: "running", resumeType: "claude-native", resumeToken: "t1", restorePolicy: "relaunch_fresh" },
         { id: "s2", nodeId: n2.id, sessionName: "dev-guard@multi-rig", status: "running", resumeType: "codex-native", resumeToken: "t2", restorePolicy: "relaunch_fresh" },
       ],
@@ -377,7 +376,7 @@ describe("Session routes", () => {
     const launchedIds = body.launched.map((n: { logicalId: string }) => n.logicalId).sort();
     expect(launchedIds).toEqual(["dev.driver", "dev.guard"]);
 
-    // Verify restore.subset_completed emitted with both nodes
+    // 验证 restore.subset_completed 随两个节点一起发出。
     const events = db.prepare("SELECT payload FROM events WHERE type = 'restore.subset_completed'").all() as { payload: string }[];
     expect(events).toHaveLength(1);
     const payload = JSON.parse(events[0]!.payload);
@@ -385,7 +384,7 @@ describe("Session routes", () => {
     expect(eventIds).toEqual(["dev.driver", "dev.guard"]);
   });
 
-  it("POST .../nodes/launch-subset plan discloses non-target effects before mutation", async () => {
+  it("POST .../nodes/launch-subset 计划在变更前公开非目标影响", async () => {
     const { app, rigRepo } = createTestApp(db);
     const podRepo = new PodRepository(db);
     const rig = rigRepo.createRig("plan-rig");
@@ -426,7 +425,7 @@ describe("Session routes", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM events").get()).toEqual(before.events);
   });
 
-  it("POST .../nodes/launch-subset does NOT report an awaiting-decision restore as a successful launch (FR-7)", async () => {
+  it("POST .../nodes/launch-subset 不把 awaiting-decision 恢复报告为成功启动（FR-7）", async () => {
     const { app, rigRepo } = createTestApp(db);
     const podRepo = new PodRepository(db);
     const rig = rigRepo.createRig("fr7-rig");
@@ -437,8 +436,8 @@ describe("Session routes", () => {
     snapRepo.createSnapshot(rig.id, "manual", {
       rig: { id: rig.id, name: "fr7-rig" },
       nodes: [{ id: n1.id, logicalId: "dev.driver", rigId: rig.id, runtime: "claude-code", podId: pod.id }],
-      // resume_if_possible + token, but the route harness wires NO runtime adapter →
-      // continuity cannot be verified → the seat lands awaiting-decision, NOT a 201.
+      // resume_if_possible + token，但路由 harness 未接入运行时适配器 → 无法验证连续性
+      // → 席位进入 awaiting-decision，而不是返回 201。
       sessions: [{ id: "s1", nodeId: n1.id, sessionName: "dev-driver@fr7-rig", status: "running", resumeType: "claude-native", resumeToken: "t1", restorePolicy: "resume_if_possible" }],
       edges: [],
       checkpoints: {},
@@ -450,7 +449,7 @@ describe("Session routes", () => {
       body: JSON.stringify({ seats: ["dev.driver"] }),
     });
 
-    // FR-7: a target with no running session must NOT be reported as a successful launch.
+    // FR-7：没有运行中会话的目标不得报告为成功启动。
     expect(res.status).not.toBe(201);
     expect(res.status).toBe(409);
     const body = await res.json();
@@ -459,7 +458,7 @@ describe("Session routes", () => {
     expect(driver.status).toBe("awaiting-decision");
   });
 
-  it("POST .../nodes/launch-subset rejects empty seats array", async () => {
+  it("POST .../nodes/launch-subset 拒绝空 seats 数组", async () => {
     const { app, rigRepo } = createTestApp(db);
     const rig = rigRepo.createRig("empty-rig");
 
@@ -474,7 +473,7 @@ describe("Session routes", () => {
     expect(body.code).toBe("invalid_request");
   });
 
-  it("POST .../focus with valid cmux binding -> calls focusSurface", async () => {
+  it("POST .../focus 使用有效 cmux 绑定 → 调用 focusSurface", async () => {
     const cmux = connectedCmux();
     await cmux.connect();
     const focusSpy = vi.spyOn(cmux, "focusSurface");
@@ -489,12 +488,12 @@ describe("Session routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    // Prove focusSurface was actually called with the correct surface ID
+    // 证明 focusSurface 确实以正确 surface ID 调用。
     expect(focusSpy).toHaveBeenCalledOnce();
     expect(focusSpy).toHaveBeenCalledWith("surface-42");
   });
 
-  it("POST .../focus node has no cmux surface -> 409, cmux NOT called", async () => {
+  it("POST .../focus 节点没有 cmux surface → 409，且不调用 cmux", async () => {
     const cmux = connectedCmux();
     await cmux.connect();
     const focusSpy = vi.spyOn(cmux, "focusSurface");
@@ -506,11 +505,11 @@ describe("Session routes", () => {
       method: "POST",
     });
     expect(res.status).toBe(409);
-    // Prove focusSurface was NOT called
+    // 证明未调用 focusSurface。
     expect(focusSpy).not.toHaveBeenCalled();
   });
 
-  it("POST .../focus nonexistent logicalId -> 404", async () => {
+  it("POST .../focus logicalId 不存在 → 404", async () => {
     const { app, rigRepo } = createTestApp(db);
     const rig = rigRepo.createRig("r01");
 
@@ -520,7 +519,7 @@ describe("Session routes", () => {
     expect(res.status).toBe(404);
   });
 
-  it("POST .../focus cmux unavailable -> 200 { ok: false, code: 'unavailable' }", async () => {
+  it("POST .../focus cmux 不可用 → 200 { ok: false, code: 'unavailable' }", async () => {
     const cmux = unavailableCmux();
     await cmux.connect();
     const { app, rigRepo, sessionRegistry } = createTestApp(db, { cmux });
@@ -537,9 +536,9 @@ describe("Session routes", () => {
     expect(body.code).toBe("unavailable");
   });
 
-  // -- open-cmux tests --
+  // -- open-cmux 测试 --
 
-  it("POST .../open-cmux with existing cmuxSurface -> focused_existing, no create/send side effects", async () => {
+  it("POST .../open-cmux 存在 cmuxSurface → focused_existing，无创建/发送副作用", async () => {
     const { adapter: cmux, calls } = trackingCmux();
     await cmux.connect();
     const { app, rigRepo, sessionRegistry } = createTestApp(db, { cmux });
@@ -548,7 +547,7 @@ describe("Session routes", () => {
     sessionRegistry.registerSession(node.id, "r01-dev1-impl");
     sessionRegistry.updateBinding(node.id, { cmuxSurface: "surface:42", cmuxWorkspace: "workspace:1" });
 
-    // Clear capability call from connect
+    // 清除连接期间的 capability 调用。
     calls.length = 0;
 
     const res = await app.request(`/api/rigs/${rig.id}/nodes/dev1-impl/open-cmux`, { method: "POST" });
@@ -557,7 +556,7 @@ describe("Session routes", () => {
     expect(body["ok"]).toBe(true);
     expect(body["action"]).toBe("focused_existing");
 
-    // Only focusSurface should have been called — no create, no send, no workspace.current
+    // 应只调用 focusSurface——不创建、不发送、不调用 workspace.current。
     const methodNames = calls.map((c) => c.method);
     expect(methodNames).toContain("surface.focus");
     expect(methodNames).not.toContain("surface.create");
@@ -565,7 +564,7 @@ describe("Session routes", () => {
     expect(methodNames).not.toContain("workspace.current");
   });
 
-  it("POST .../open-cmux with stale existing cmuxSurface -> recreates, rebinds, and focuses new surface", async () => {
+  it("POST .../open-cmux 现有 cmuxSurface 已过期 → 重新创建、绑定并聚焦新 surface", async () => {
     const { adapter: cmux, calls } = staleBindingCmux();
     await cmux.connect();
     const { app, rigRepo, sessionRegistry } = createTestApp(db, { cmux });
@@ -598,7 +597,7 @@ describe("Session routes", () => {
     expect(binding?.cmuxSurface).toBe("surface:99");
   });
 
-  it("POST .../open-cmux tmux-backed node without cmuxSurface -> created_new, binds workspace+surface, sends tmux attach", async () => {
+  it("POST .../open-cmux 由 tmux 支持的节点没有 cmuxSurface → created_new，绑定工作区与 surface，并发送 tmux attach", async () => {
     const { adapter: cmux, calls } = trackingCmux();
     await cmux.connect();
     const { app, rigRepo, sessionRegistry } = createTestApp(db, { cmux });
@@ -615,7 +614,7 @@ describe("Session routes", () => {
     expect(body["ok"]).toBe(true);
     expect(body["action"]).toBe("created_new");
 
-    // Must have used currentWorkspace as anchor, NOT created a new workspace
+    // 必须以 currentWorkspace 为锚点，而非创建新工作区。
     const methodNames = calls.map((c) => c.method);
     expect(methodNames).toContain("workspace.current");
     expect(methodNames).toContain("surface.create");
@@ -623,7 +622,7 @@ describe("Session routes", () => {
     expect(methodNames).toContain("surface.focus");
     expect(methodNames).not.toContain("workspace.create");
 
-    // sendText must contain tmux attach
+    // sendText 必须包含 tmux attach。
     const sendCall = calls.find((c) => c.method === "surface.sendText");
     expect(sendCall).toBeDefined();
     const sendParams = sendCall!.params as Record<string, unknown>;
@@ -634,13 +633,13 @@ describe("Session routes", () => {
     expect(focusCalls).toHaveLength(1);
     expect((focusCalls[0]!.params as Record<string, unknown>)["workspaceId"]).toBe("workspace:1");
 
-    // Binding must be persisted with both workspace and surface
+    // 绑定必须同时持久化工作区与 surface。
     const binding = sessionRegistry.getBindingForNode(node.id);
     expect(binding?.cmuxWorkspace).toBe("workspace:1");
     expect(binding?.cmuxSurface).toBe("surface:99");
   });
 
-  it("POST .../open-cmux external-cli node -> created_helper, honest helper text, no tmux attach", async () => {
+  it("POST .../open-cmux external-cli 节点 → created_helper，提供诚实辅助文本，不执行 tmux attach", async () => {
     const { adapter: cmux, calls } = trackingCmux();
     await cmux.connect();
     const { app, rigRepo, sessionRegistry } = createTestApp(db, { cmux });
@@ -657,18 +656,18 @@ describe("Session routes", () => {
     expect(body["ok"]).toBe(true);
     expect(body["action"]).toBe("created_helper");
 
-    // Helper text must include honest commands, NOT tmux attach
+    // 辅助文本必须包含诚实命令，而非 tmux attach。
     const sendCall = calls.find((c) => c.method === "surface.sendText");
     expect(sendCall).toBeDefined();
     const text = String((sendCall!.params as Record<string, unknown>)["text"]);
     expect(text).not.toContain("tmux attach");
-    expect(text).toContain("rig capture r01-ext-node");
-    expect(text).toContain("rig transcript r01-ext-node --tail 100");
-    expect(text).toContain("rig send r01-ext-node");
+    expect(text).toContain("zrig capture r01-ext-node");
+    expect(text).toContain("zrig transcript r01-ext-node --tail 100");
+    expect(text).toContain("zrig send r01-ext-node");
     expect(text).toContain("--verify");
   });
 
-  it("POST .../open-cmux sendText failure -> does not report ok:true, cmuxSurface NOT persisted for tmux-backed (deferred until attach succeeds)", async () => {
+  it("POST .../open-cmux 的 sendText 失败 → 不报告 ok:true，且 tmux 节点不持久化 cmuxSurface（延后到 attach 成功）", async () => {
     const { adapter: cmux } = failingCmux("surface.sendText");
     await cmux.connect();
     const { app, rigRepo, sessionRegistry } = createTestApp(db, { cmux });
@@ -683,13 +682,13 @@ describe("Session routes", () => {
     expect(body["ok"]).toBe(false);
     expect(body["error"]).toContain("connection lost");
 
-    // OPR.0.3.4.8: cmuxSurface NOT persisted for tmux-backed nodes when attach
-    // failed — deferred persistence prevents stale focused_existing on retry.
+    // OPR.0.3.4.8：tmux 节点 attach 失败时不持久化 cmuxSurface——延后持久化可避免
+    // 重试时出现过期 focused_existing。
     const binding = sessionRegistry.getBindingForNode(node.id);
     expect(binding?.cmuxSurface).toBeNull();
   });
 
-  it("POST .../open-cmux focusSurface failure after creation -> does not report ok:true", async () => {
+  it("POST .../open-cmux 创建后 focusSurface 失败 → 不报告 ok:true", async () => {
     const { adapter: cmux } = failingCmux("surface.focus");
     await cmux.connect();
     const { app, rigRepo, sessionRegistry } = createTestApp(db, { cmux });
@@ -705,8 +704,8 @@ describe("Session routes", () => {
     expect(body["error"]).toContain("connection lost");
   });
 
-  // NS-T08: node inventory route
-  it("GET /api/rigs/:rigId/nodes -> node inventory array", async () => {
+  // NS-T08：节点清单路由。
+  it("GET /api/rigs/:rigId/nodes → 节点清单数组", async () => {
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const rig = rigRepo.createRig("test-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
@@ -723,7 +722,7 @@ describe("Session routes", () => {
     expect(body[0].canonicalSessionName).toBe("dev-impl@test-rig");
   });
 
-  it("keeps permission observation off the fleet list and attaches it only to single-node detail", async () => {
+  it("权限观察不进入集群列表，只附加到单节点详情", async () => {
     const diagnose = vi.fn(() => ({
       transport: { state: "healthy" as const },
       cwdRead: { state: "visible" as const },
@@ -748,7 +747,7 @@ describe("Session routes", () => {
     expect(diagnose).toHaveBeenCalledWith(node.id);
   });
 
-  it("GET /api/rigs/:rigId/nodes includes read-only agent activity evidence", async () => {
+  it("GET /api/rigs/:rigId/nodes 包含只读智能体活动证据", async () => {
     const tmux = {
       hasSession: vi.fn(async () => true),
       capturePaneContent: vi.fn(async () => "Working on task...\n⠋ Processing files\nesc to interrupt"),
@@ -759,8 +758,8 @@ describe("Session routes", () => {
     sessionRegistry.registerSession(node.id, "dev-impl@test-rig");
     sessionRegistry.updateBinding(node.id, { tmuxSession: "dev-impl@test-rig", attachmentType: "tmux" });
 
-    // OPR.0.4.3 healthz-wedge: the per-node tmux pane-heuristic is now behind
-    // ?full=true (cheap-default skips it) — request full to exercise the probe.
+    // OPR.0.4.3 healthz-wedge：逐节点 tmux pane 启发式现位于 ?full=true 之后
+    //（低成本默认路径跳过）——请求 full 以触发探针。
     const res = await app.request(`/api/rigs/${rig.id}/nodes?full=true`);
 
     expect(res.status).toBe(200);
@@ -775,7 +774,7 @@ describe("Session routes", () => {
     expect(tmux.capturePaneContent).toHaveBeenCalledWith("dev-impl@test-rig", 20);
   });
 
-  it("GET /api/rigs/:rigId/nodes prefers fresh hook activity over pane fallback", async () => {
+  it("GET /api/rigs/:rigId/nodes 优先使用新鲜 hook 活动而非 pane 回退", async () => {
     const tmux = {
       hasSession: vi.fn(async () => true),
       capturePaneContent: vi.fn(async () => "› idle\n\ngpt-5.5 xhigh fast · Context [████ ]"),
@@ -795,8 +794,8 @@ describe("Session routes", () => {
       hookEvent: "Notification",
       subtype: "permission_prompt",
       occurredAt: new Date().toISOString(),
-      // W2a-1 — carry the emitting occupant generation (source-bound) so the read RESOLVES and the fresh
-      // hook state is honored, rather than degrading to generation_unverifiable.
+      // W2a-1——携带发出事件的占用者代（绑定来源），使读取可解析并采用新鲜 hook 状态，
+      // 而不是降级为 generation_unverifiable。
       generation: sessionRegistry.currentOccupantTenure(node.id)?.generationUuid ?? null,
     });
 
@@ -815,7 +814,7 @@ describe("Session routes", () => {
     expect(tmux.capturePaneContent).not.toHaveBeenCalled();
   });
 
-  it("GET /api/rigs/:rigId/nodes reports stale hook evidence as unknown without pane fallback", async () => {
+  it("GET /api/rigs/:rigId/nodes 将过期 hook 证据报告为 unknown，且不使用 pane 回退", async () => {
     const tmux = {
       hasSession: vi.fn(async () => true),
       capturePaneContent: vi.fn(async () => "Working on task...\n⠋ Processing files\nesc to interrupt"),
@@ -835,8 +834,8 @@ describe("Session routes", () => {
       sessionName: "dev-impl@test-rig",
       hookEvent: "UserPromptSubmit",
       occurredAt: "2000-01-01T00:00:00.000Z",
-      // W2a-1 — carry the emitting generation so the read RESOLVES, letting the CLOCK-staleness verdict
-      // (stale_runtime_hook) fire — rather than the generation gate short-circuiting to unverifiable.
+      // W2a-1——携带发出事件的代，使读取可解析并触发时钟过期判定（stale_runtime_hook），
+      // 而不是由代门禁短路为 unverifiable。
       generation: sessionRegistry.currentOccupantTenure(node.id)?.generationUuid ?? null,
     });
 
@@ -853,7 +852,7 @@ describe("Session routes", () => {
     expect(tmux.capturePaneContent).not.toHaveBeenCalled();
   });
 
-  it("GET /api/rigs/:rigId/nodes marks external CLI activity unsupported instead of idle", async () => {
+  it("GET /api/rigs/:rigId/nodes 将外部 CLI 活动标为 unsupported 而非 idle", async () => {
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const rig = rigRepo.createRig("test-rig");
     const node = rigRepo.addNode(rig.id, "orch.lead", { runtime: "claude-code" });
@@ -863,7 +862,7 @@ describe("Session routes", () => {
       externalSessionName: "orch-lead@test-rig",
     });
 
-    // OPR.0.4.3 healthz-wedge: probe classification is behind ?full=true now.
+    // OPR.0.4.3 healthz-wedge：探针分类现在位于 ?full=true 之后。
     const res = await app.request(`/api/rigs/${rig.id}/nodes?full=true`);
 
     expect(res.status).toBe(200);
@@ -875,7 +874,7 @@ describe("Session routes", () => {
     });
   });
 
-  it("GET /api/rigs/:rigId/nodes is CHEAP by default (OPR.0.4.3 healthz-wedge) — a hook-less seat gets the unknown/no_runtime_hook placeholder and NO per-node tmux capture", async () => {
+  it("GET /api/rigs/:rigId/nodes 默认低成本（OPR.0.4.3 healthz-wedge）——无 hook 席位获得 unknown/no_runtime_hook 占位，且无逐节点 tmux 捕获", async () => {
     const tmux = {
       hasSession: vi.fn(async () => true),
       capturePaneContent: vi.fn(async () => "Working on task...\nesc to interrupt"),
@@ -886,7 +885,7 @@ describe("Session routes", () => {
     sessionRegistry.registerSession(node.id, "dev-impl@test-rig");
     sessionRegistry.updateBinding(node.id, { tmuxSession: "dev-impl@test-rig", attachmentType: "tmux" });
 
-    // No ?full → cheap default.
+    // 无 ?full → 低成本默认路径。
     const res = await app.request(`/api/rigs/${rig.id}/nodes`);
 
     expect(res.status).toBe(200);
@@ -897,11 +896,11 @@ describe("Session routes", () => {
       evidenceSource: "session_registry",
       fallback: true,
     });
-    // THE cure: no per-node tmux capture on the default hot path.
+    // 修复要点：默认热点路径不执行逐节点 tmux 捕获。
     expect(tmux.capturePaneContent).not.toHaveBeenCalled();
   });
 
-  it("POST /api/activity/hooks requires the configured local hook token", async () => {
+  it("POST /api/activity/hooks 要求已配置的本地 hook token", async () => {
     const { app } = createTestApp(db, { activityHookToken: "test-token" });
 
     const res = await app.request("/api/activity/hooks", {
@@ -919,7 +918,7 @@ describe("Session routes", () => {
     expect(body.code).toBe("activity_hook_unauthorized");
   });
 
-  it("POST /api/activity/hooks ingests authenticated runtime hook events", async () => {
+  it("POST /api/activity/hooks 摄取已认证的运行时 hook 事件", async () => {
     const { app, rigRepo, sessionRegistry } = createTestApp(db, { activityHookToken: "test-token" });
     const rig = rigRepo.createRig("test-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
@@ -949,16 +948,16 @@ describe("Session routes", () => {
     });
   });
 
-  it("GET /api/rigs/:rigId/nodes -> 404 for unknown rig", async () => {
+  it("GET /api/rigs/:rigId/nodes → 未知工作组返回 404", async () => {
     const { app } = createTestApp(db);
     const res = await app.request("/api/rigs/nonexistent/nodes");
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toContain("not found");
+    expect(body.error).toContain("未找到工作组");
   });
 
-  // NS-T09: node detail route
-  it("GET /api/rigs/:rigId/nodes/:logicalId -> node detail", async () => {
+  // NS-T09：节点详情路由。
+  it("GET /api/rigs/:rigId/nodes/:logicalId → 节点详情", async () => {
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const rig = rigRepo.createRig("test-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
@@ -973,17 +972,17 @@ describe("Session routes", () => {
     expect(Array.isArray(body.recentEvents)).toBe(true);
   });
 
-  it("GET /api/rigs/:rigId/nodes/:logicalId -> 404 for unknown node", async () => {
+  it("GET /api/rigs/:rigId/nodes/:logicalId → 未知节点返回 404", async () => {
     const { app, rigRepo } = createTestApp(db);
     const rig = rigRepo.createRig("test-rig");
     const res = await app.request(`/api/rigs/${rig.id}/nodes/nonexistent`);
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toContain("not found");
+    expect(body.error).toContain("未找到节点");
   });
 
-  // Task 5: node detail returns peers, edges, transcript, compactSpec
-  it("node detail returns peers for other nodes in same rig", async () => {
+  // 任务 5：节点详情返回 peers、edges、transcript 和 compactSpec。
+  it("节点详情返回同一工作组中其他节点的 peers", async () => {
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const rig = rigRepo.createRig("test-rig");
     const n1 = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
@@ -1000,7 +999,7 @@ describe("Session routes", () => {
     expect(body.peers[0].runtime).toBe("codex");
   });
 
-  it("node detail returns outgoing and incoming edges", async () => {
+  it("节点详情返回出边和入边", async () => {
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const rig = rigRepo.createRig("test-rig");
     const n1 = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
@@ -1016,7 +1015,7 @@ describe("Session routes", () => {
     expect(body.edges.outgoing[0].to.logicalId).toBe("dev.qa");
     expect(body.edges.incoming).toHaveLength(0);
 
-    // Check from qa perspective
+    // 从 qa 视角检查。
     const res2 = await app.request(`/api/rigs/${rig.id}/nodes/${encodeURIComponent("dev.qa")}`);
     const body2 = await res2.json();
     expect(body2.edges.incoming).toHaveLength(1);
@@ -1024,11 +1023,11 @@ describe("Session routes", () => {
     expect(body2.edges.outgoing).toHaveLength(0);
   });
 
-  it("node detail returns compact spec summary", async () => {
+  it("节点详情返回紧凑规范摘要", async () => {
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const rig = rigRepo.createRig("test-rig");
     const n1 = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code", profile: "default" });
-    // Set resolved spec fields
+    // 设置已解析的规范字段。
     db.prepare("UPDATE nodes SET resolved_spec_name = ?, resolved_spec_version = ? WHERE id = ?")
       .run("impl-agent", "1.0.0", n1.id);
     sessionRegistry.registerSession(n1.id, "dev-impl@test");
@@ -1043,7 +1042,7 @@ describe("Session routes", () => {
     expect(typeof body.compactSpec.guidanceCount).toBe("number");
   });
 
-  it("node detail returns transcript info (defaults to disabled without TranscriptStore)", async () => {
+  it("节点详情返回转录信息（没有 TranscriptStore 时默认禁用）", async () => {
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const rig = rigRepo.createRig("test-rig");
     const n1 = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
@@ -1057,7 +1056,7 @@ describe("Session routes", () => {
     expect(body.transcript.tailCommand).toBeNull();
   });
 
-  it("node detail returns enriched transcript info when TranscriptStore is enabled", async () => {
+  it("启用 TranscriptStore 时节点详情返回丰富的转录信息", async () => {
     const { TranscriptStore } = await import("../src/domain/transcript-store.js");
     const os = await import("node:os");
     const path = await import("node:path");
@@ -1072,7 +1071,7 @@ describe("Session routes", () => {
     const n1 = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     setup.sessionRegistry.registerSession(n1.id, "dev-impl@test-rig");
 
-    // Build a minimal app with TranscriptStore wired
+    // 构建接入 TranscriptStore 的最小应用。
     const appWithTranscript = createApp({ ...setup, transcriptStore });
 
     const res = await appWithTranscript.request(`/api/rigs/${rig.id}/nodes/${encodeURIComponent("dev.impl")}`);
@@ -1080,15 +1079,15 @@ describe("Session routes", () => {
     expect(body.transcript.enabled).toBe(true);
     expect(body.transcript.path).toContain("test-rig");
     expect(body.transcript.path).toContain("dev-impl@test-rig");
-    expect(body.transcript.tailCommand).toBe("rig transcript dev-impl@test-rig --tail 100");
+    expect(body.transcript.tailCommand).toBe("zrig transcript dev-impl@test-rig --tail 100");
 
-    // Cleanup
+    // 清理。
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  // --- Context refresh route tests ---
+  // --- 上下文刷新路由测试 ---
 
-  it("GET /api/rigs/:id/nodes?refresh=true calls contextMonitor.pollOnce before projection", async () => {
+  it("GET /api/rigs/:id/nodes?refresh=true 在投射前调用 contextMonitor.pollOnce", async () => {
     const db2 = createFullTestDb();
     const pollOnceSpy = vi.fn(async () => {});
     const setup = createTestApp(db2);
@@ -1103,7 +1102,7 @@ describe("Session routes", () => {
     db2.close();
   });
 
-  it("GET /api/rigs/:id/nodes without refresh does not call pollOnce", async () => {
+  it("GET /api/rigs/:id/nodes 不带 refresh 时不调用 pollOnce", async () => {
     const db2 = createFullTestDb();
     const pollOnceSpy = vi.fn(async () => {});
     const setup = createTestApp(db2);
@@ -1118,7 +1117,7 @@ describe("Session routes", () => {
     db2.close();
   });
 
-  it("GET /api/rigs/:id/nodes?refresh=true returns 502 when pollOnce throws", async () => {
+  it("GET /api/rigs/:id/nodes?refresh=true 在 pollOnce 抛出异常时返回 502", async () => {
     const db2 = createFullTestDb();
     const pollOnceSpy = vi.fn(async () => { throw new Error("statusline read failed"); });
     const setup = createTestApp(db2);
@@ -1136,7 +1135,7 @@ describe("Session routes", () => {
     db2.close();
   });
 
-  it("GET /api/rigs/:id/nodes?refresh=true works when no contextMonitor is wired", async () => {
+  it("GET /api/rigs/:id/nodes?refresh=true 在未接入 contextMonitor 时仍正常工作", async () => {
     const db2 = createFullTestDb();
     const setup = createTestApp(db2);
     const { createApp } = await import("../src/server.js");
@@ -1146,7 +1145,7 @@ describe("Session routes", () => {
 
     const res = await appNoMonitor.request(`/api/rigs/${rig.id}/nodes?refresh=true`);
 
-    // Should succeed (no monitor = nothing to poll; returns stale data honestly)
+    // 应成功（没有监控器即无内容可轮询；如实返回旧数据）。
     expect(res.status).toBe(200);
     db2.close();
   });

@@ -1,12 +1,11 @@
-// PL-007 Workspace Primitive v0 — WorkspaceKindBadge component test.
+// PL-007 Workspace Primitive v0——WorkspaceKindBadge 组件测试。
 //
-// Pins:
-//   - renders one of 5 typed kinds with label + correct testid
-//   - compact mode renders single-character glyph
-//   - resolveKindForPath returns longest-prefix match
-//   - resolveKindForPath returns "knowledge" when path is under
-//     knowledgeRoot only
-//   - resolveKindForPath returns null when path is outside everything
+// 锁定项：
+//   - 渲染 5 种类型化类别之一，并带标签和正确 testid
+//   - 紧凑模式渲染单字符字形
+//   - resolveKindForPath 返回最长前缀匹配
+//   - 路径仅位于 knowledgeRoot 下时，resolveKindForPath 返回 "knowledge"
+//   - 路径不属于任何范围时，resolveKindForPath 返回 null
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";

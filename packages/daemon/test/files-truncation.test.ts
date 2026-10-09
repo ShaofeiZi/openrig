@@ -1,10 +1,7 @@
-// Operator Surface Reconciliation v0 — files /read truncation tests.
+// Operator Surface Reconciliation v0——files /read 截断测试。
 //
-// Pins item 5: GET /api/files/read caps returned content at
-// FILE_READ_TRUNCATION_BYTES (1 MB) and surfaces truncation marker
-// fields in the response. Hash is computed over the FULL file so
-// edit-mode conflict detection stays honest even when the read is
-// truncated.
+// 固定第 5 项：GET /api/files/read 将返回内容限制在 FILE_READ_TRUNCATION_BYTES（1 MB），并在
+// 响应中显示截断标记字段。Hash 根据完整文件计算，使 edit-mode 冲突检测在读取被截断时仍然真实。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -26,7 +23,7 @@ function buildApp(allowlist: AllowlistRoot[]): Hono {
   return app;
 }
 
-describe("Operator Surface Reconciliation v0 — /api/files/read truncation", () => {
+describe("Operator Surface Reconciliation v0——/api/files/read 截断", () => {
   let tempDir: string;
   let allowlist: AllowlistRoot[];
   let app: Hono;
@@ -40,7 +37,7 @@ describe("Operator Surface Reconciliation v0 — /api/files/read truncation", ()
 
   afterEach(() => rmSync(tempDir, { recursive: true, force: true }));
 
-  it("file <= 1 MB returns truncated=false + truncatedAtBytes=null + full content", async () => {
+  it("文件不超过 1 MB 时返回 truncated=false、truncatedAtBytes=null 和完整内容", async () => {
     const content = "small file content\n";
     writeFileSync(join(tempDir, "ws", "small.md"), content);
     const res = await app.request("/api/files/read?root=ws&path=small.md");
@@ -54,8 +51,8 @@ describe("Operator Surface Reconciliation v0 — /api/files/read truncation", ()
     expect(body.content).toBe(content);
   });
 
-  it("file > 1 MB returns truncated=true + truncatedAtBytes=1048576 + capped content", async () => {
-    // 1.5 MB synthetic file — first byte is 'H', rest is 'x' filler.
+  it("文件超过 1 MB 时返回 truncated=true、truncatedAtBytes=1048576 和截断内容", async () => {
+    // 1.5 MB 合成文件：首字节为 'H'，其余以 'x' 填充。
     const totalBytes = 1_572_864; // 1.5 MB
     const content = "H" + "x".repeat(totalBytes - 1);
     writeFileSync(join(tempDir, "ws", "large.md"), content);
@@ -71,19 +68,16 @@ describe("Operator Surface Reconciliation v0 — /api/files/read truncation", ()
     expect(body.truncated).toBe(true);
     expect(body.truncatedAtBytes).toBe(FILE_READ_TRUNCATION_BYTES);
     expect(body.totalBytes).toBe(totalBytes);
-    // Content is capped at FILE_READ_TRUNCATION_BYTES (1 MB).
+    // 内容限制在 FILE_READ_TRUNCATION_BYTES（1 MB）。
     expect(body.content.length).toBe(FILE_READ_TRUNCATION_BYTES);
     expect(body.content[0]).toBe("H");
-    // Hash is computed over the FULL file, not the truncated slice —
-    // edit-mode conflict detection stays honest even when a >1 MB file
-    // is read truncated. (Editing such a file is operator-error
-    // territory; the UI surfaces the truncation marker so the
-    // operator knows to use an external editor.)
+    // Hash 根据完整文件而非截断片段计算，使 edit-mode 冲突检测在超过 1 MB 的文件被截断读取时
+    // 仍然真实。（编辑此类文件属于操作员错误范围；UI 会显示截断标记，提示操作员使用外部编辑器。）
     const fullHash = createHash("sha256").update(content).digest("hex");
     expect(body.contentHash).toBe(fullHash);
   });
 
-  it("FILE_READ_TRUNCATION_BYTES is exactly 1 MB per PRD § Item 5", () => {
+  it("按 PRD 第 5 项，FILE_READ_TRUNCATION_BYTES 恰为 1 MB", () => {
     expect(FILE_READ_TRUNCATION_BYTES).toBe(1_048_576);
   });
 });

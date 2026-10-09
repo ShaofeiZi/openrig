@@ -21,22 +21,22 @@ export function rung1StackSteps(): string[] {
 
 export function renderRung1Packet(seat: ContinuitySeatIdentity): string {
   return [
-    "# Continuity rung 1 — staged successor preparation",
+    "# 连续性阶梯 1——准备已暂存的继任者",
     "",
-    "Create a fresh, staged and unbound successor. Prove blank identity and the pinned model before installing anything; a reused conversation or fallback model makes every later receipt about the wrong occupant.",
+    "创建一个全新、已暂存且尚未绑定的继任者。安装任何内容前，先证明其身份为空且模型符合固定要求；复用的对话或回退模型会让后续每份回执都指向错误的 occupant。",
     "",
-    `Successor candidate: ${seat.successorSessionName}`,
-    "First role read: `orienting-to-an-inherited-seat`. Keep that pointer in this durable packet, because a seat-name-keyed runtime prompt can outlive the occupant and become a ghost instruction.",
-    "Then install the world, the mission, and the position in that order. The successor derives its own layer-5 delta and a second reader checks it; reading deposits is not proof they were installed.",
-    "Open the apprenticeship as a conversation. The successor remains authority-free until the owner's word is recorded.",
+    `继任候选：${seat.successorSessionName}`,
+    "首次阅读的角色：`orienting-to-an-inherited-seat`。把这个指针保留在持久 packet 中，因为按席位名称定位的 runtime prompt 可能比 occupant 存续更久，继而变成幽灵指令。",
+    "然后依次安装 world、mission 和 position。继任者自行推导第 5 层 delta，再由第二位读者复核；读过 deposits 并不能证明它们已安装。",
+    "以对话方式开始学徒期。在记录 owner 的明确指令之前，继任者不具备任何权限。",
   ].join("\n");
 }
 
 export function renderRung1IncumbentNotice(seat: ContinuitySeatIdentity): string {
   return [
-    `Continuity prepare threshold crossed for ${seat.sessionName}.`,
-    "Open `retiring-and-inheriting-a-seat` at its apprentice-mode section, then execute the shipped `continuity/apprentice-prepare.md` stack.",
-    "Preserve advisory work while preparing the successor: the incumbent's accrued context is most valuable near the boundary.",
+    `${seat.sessionName} 已越过连续性准备阈值。`,
+    "打开 `retiring-and-inheriting-a-seat` 的 apprentice-mode 章节，然后执行随附的 `continuity/apprentice-prepare.md` stack。",
+    "准备继任者时保留咨询性工作：越接近交接边界，现任 occupant 积累的上下文越有价值。",
   ].join(" ");
 }
 
@@ -50,11 +50,11 @@ export function renderRung2Baton(seat: ContinuitySeatIdentity): Rung2Baton {
   return {
     destination: seat.mechanicDestination,
     template: [
-      "Owned cutover baton — execute the shipped `continuity/apprentice-cutover.md` stack and its portable cutover SOP; awareness-only is not custody.",
-      "Delivery receipt: staged/submitted/consumed.",
-      "Walker lease: one-active-walker.",
-      "Authority: authority-effective-at-effect-receipt; intent-time claims do not count.",
-      "Enumerate deposits and standing duties before the cutover. Do not rebind automatically; the mechanic acts only on the owner's word.",
+      "已归属的切换接力棒——执行随附的 `continuity/apprentice-cutover.md` stack 及其可移植切换 SOP；仅仅知情不等于承担 custody。",
+      "投递回执：staged/submitted/consumed。",
+      "执行者租约：one-active-walker。",
+      "权限：authority-effective-at-effect-receipt；意图时刻的声明不算数。",
+      "切换前列出 deposits 和长期职责。不要自动重新绑定；mechanic 只根据 owner 的明确指令行动。",
     ].join("\n"),
     custodyTable: [],
   };
@@ -65,7 +65,7 @@ export function validateCustodyRecord(record: {
   effectReceipt: string | null;
 }): { ok: true } {
   if (record.claimedAt !== "effect" || !record.effectReceipt?.trim()) {
-    throw new Error("custody requires a durable effect receipt; intent-time ownership is not effective custody");
+    throw new Error("custody 需要持久的生效回执；意图时刻声明的归属并不是已生效的 custody");
   }
   return { ok: true };
 }
@@ -93,7 +93,7 @@ export function validateGateModel(input: {
   for (const gate of ["G0", "G1", "G2", "G3"]) {
     const receipt = byGate.get(gate);
     if (!receipt?.evidence.trim() || !receipt.worder.trim()) {
-      throw new Error(`missing durable ${gate} receipt; declare a simpler model if this succession does not use G0–G3`);
+      throw new Error(`缺少持久的 ${gate} 回执；如果此次继任不使用 G0–G3，请声明更简化的模型`);
     }
   }
   return { ok: true, model: "receipts" };
@@ -101,10 +101,10 @@ export function validateGateModel(input: {
 
 export function renderPostCutoverPacket(seat: ContinuitySeatIdentity): string {
   return [
-    "Reach-back does not expire while the predecessor session record exists.",
-    `Verbatim resume handle: claude -p --resume ${seat.predecessorResumeHandle}`,
-    "Pre-formed questions: Which decision still depends on tacit context? Which failure tell should make the successor distrust the current shape?",
-    "Ask the live predecessor for why; read durable artifacts for what. Treat every answer as testimony.",
+    "只要前任 session 记录仍存在，回访能力就不会过期。",
+    `原样 resume handle：claude -p --resume ${seat.predecessorResumeHandle}`,
+    "预先拟定的问题：哪个决策仍依赖隐性上下文？出现哪种失败征兆时，继任者应该质疑当前形态？",
+    "向仍在线的前任追问原因，从持久 artifact 中查明事实。把每个回答都视为证词。",
   ].join("\n");
 }
 

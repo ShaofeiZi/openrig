@@ -1,4 +1,4 @@
-// V1 attempt-3 Phase 3 — Specs library tanstack table per specs-tree.md L82–L100 + SC-28.
+// V1 第三次尝试第 3 阶段——按 specs-tree.md L82–L100 和 SC-28 实现的规格资料库 tanstack 表格。
 
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -17,7 +17,7 @@ import { VellumInput } from "../ui/vellum-input.js";
 const COLUMNS: ColumnDef<SpecLibraryEntry>[] = [
   {
     accessorKey: "kind",
-    header: "Kind",
+    header: "种类",
     cell: ({ getValue }) => (
       <span className="font-mono text-[10px] uppercase tracking-wide">
         {String(getValue())}
@@ -26,7 +26,7 @@ const COLUMNS: ColumnDef<SpecLibraryEntry>[] = [
   },
   {
     accessorKey: "name",
-    header: "Name",
+    header: "名称",
     cell: ({ row }) => (
       <Link
         to="/specs/library/$entryId"
@@ -39,14 +39,14 @@ const COLUMNS: ColumnDef<SpecLibraryEntry>[] = [
   },
   {
     accessorKey: "version",
-    header: "Version",
+    header: "版本",
     cell: ({ getValue }) => (
       <span className="font-mono text-xs">{String(getValue())}</span>
     ),
   },
   {
     accessorKey: "sourceType",
-    header: "Source",
+    header: "来源",
     cell: ({ getValue }) => (
       <span className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">
         {String(getValue()).replace("_", " ")}
@@ -55,7 +55,7 @@ const COLUMNS: ColumnDef<SpecLibraryEntry>[] = [
   },
   {
     accessorKey: "updatedAt",
-    header: "Updated",
+    header: "更新",
     cell: ({ getValue }) => {
       const v = String(getValue() ?? "");
       return (
@@ -99,14 +99,14 @@ export function SpecsTable() {
     <div data-testid="specs-library-table" className="space-y-3">
       <div className="flex items-center gap-2">
         <VellumInput
-          placeholder="Search library..."
+          placeholder="搜索库…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
           testId="specs-search-input"
         />
         <span className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant ml-auto">
-          {table.getFilteredRowModel().rows.length} of {data.length}
+          {table.getFilteredRowModel().rows.length} / {data.length}
         </span>
       </div>
       <div className="border border-outline-variant overflow-x-auto">
@@ -131,13 +131,13 @@ export function SpecsTable() {
             {isLoading ? (
               <tr>
                 <td colSpan={COLUMNS.length} className="px-3 py-6 text-center font-mono text-xs text-on-surface-variant">
-                  Loading…
+                  加载中…
                 </td>
               </tr>
             ) : table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td colSpan={COLUMNS.length} className="px-3 py-6 text-center font-mono text-xs text-on-surface-variant">
-          No library entries match.
+          没有匹配的库条目。
                 </td>
               </tr>
             ) : (

@@ -36,10 +36,8 @@ import { rebindAndVerifyPaneIdentity } from "./seat-attention-reconciler.js";
 import { SeatIdentityStore } from "./seat-identity-store.js";
 import { resolveSnapshotRestoreTopology } from "./restore-topology.js";
 
-// L3: result shape for runtime-truth reconciliation. A reconciliation that
-// does NOT meet all four evidence preconditions is a no-op with a missing
-// reason, NOT an error. Decision 3: terminal post-reconciliation outcome is
-// `operator_recovered`; `ready` is forbidden.
+// L3：运行时事实协调结果结构。未满足全部四项证据前置条件的协调是带缺失原因的无操作，
+// 而不是错误。决策 3：协调后的终态为 `operator_recovered`，禁止使用 `ready`。
 export type ReconcileNodeResult =
   | {
       ok: true;
@@ -63,22 +61,20 @@ export type ReconcileNodeResult =
       detail: string;
     };
 
-// Only these edge kinds constrain launch order
+// 只有这些边类型会约束启动顺序。
 const LAUNCH_DEPENDENCY_KINDS = new Set(["delegates_to", "spawned_by"]);
 
-// OPR.0.5.7.1 consumer alignment: the four-way active-occupant ladder lives
-// in the pure leaf module active-occupant.ts, shared with preview, snapshot
-// usability, and lifecycle projection. Imported and re-exported here so the
-// existing export surface and the execution call sites below are unchanged.
+// OPR.0.5.7.1 消费者对齐：四分支活动使用者阶梯位于纯叶模块 active-occupant.ts，
+// 由预览、快照可用性和生命周期投影共享。这里导入并重新导出，使现有导出界面和下方
+// 执行调用点保持不变。
 import { resolveActiveSnapshotSession, activeOccupantAmbiguityError } from "./active-occupant.js";
 export { resolveActiveSnapshotSession } from "./active-occupant.js";
 export type { ActiveSnapshotSessionResolution } from "./active-occupant.js";
 
 export function rollupRestoreRigResult(nodes: RestoreNodeResult[]): RestoreRigResult {
   if (nodes.length === 0) return "failed";
-  // L3: `attention_required` is non-terminal failure (alive but blocked on
-  // operator action). It rolls up as `partially_restored`. `operator_recovered`
-  // is a clean post-reconciliation outcome and rolls up like `resumed`.
+  // L3：`attention_required` 是非终态失败，即会话存活但等待操作员处理；汇总为
+  // `partially_restored`。`operator_recovered` 是协调后的正常结果，与 `resumed` 一样汇总。
   const allFailed = nodes.every((node) => node.status === "failed");
   if (allFailed) return "failed";
   if (nodes.some((node) => node.status === "fresh" || node.status === "fresh-primed" || node.status === "awaiting-decision" || node.status === "failed" || node.status === "attention_required")) {
@@ -87,17 +83,17 @@ export function rollupRestoreRigResult(nodes: RestoreNodeResult[]): RestoreRigRe
   return "fully_restored";
 }
 
-/** OPR.0.4.3.20 FR-7 — restore/launch statuses that mean NO session is running and
- *  the operator must act. The launch API + CLI must NOT report these as a successful
- *  launch (a subset/single launch that lands `awaiting-decision` is not "Launched"). */
+/** OPR.0.4.3.20 FR-7 —— 表示没有会话运行且操作员必须处理的恢复/启动状态。启动 API
+ *  与 CLI 不得把它们报告为启动成功；子集或单节点启动落入 `awaiting-decision` 并不等于
+ *  “已启动”。 */
 export const NON_RUNNING_LAUNCH_STATUSES: ReadonlySet<string> = new Set([
   "awaiting-decision",
   "attention_required",
   "failed",
 ]);
 
-/** True when a restore/launch status means a session is actually running (a real
- *  successful launch): resumed / rebuilt / fresh / fresh-primed / operator_recovered. */
+/** 当恢复/启动状态表示会话确实在运行时返回 true，即真正启动成功：resumed / rebuilt /
+ *  fresh / fresh-primed / operator_recovered。 */
 export function launchStatusIsRunning(status: string): boolean {
   return !NON_RUNNING_LAUNCH_STATUSES.has(status);
 }
@@ -135,8 +131,8 @@ interface RestoreOrchestratorDeps {
   tmuxAdapter: TmuxAdapter;
   claudeResume: ClaudeResumeAdapter;
   codexResume: CodexResumeAdapter;
-  /** OPR.0.4.6.PI1 FR-6 — optional so older wiring/tests keep working; a Pi
-   *  resume without the adapter falls through to the honest no-adapter error. */
+  /** OPR.0.4.6.PI1 FR-6 —— 保持可选以兼容旧装配和测试；缺少适配器的 Pi 恢复会落入
+   *  如实报告“无适配器”的错误。 */
   piResume?: PiResumeAdapter;
   transcriptStore?: TranscriptStore;
   serviceOrchestrator?: import("./service-orchestrator.js").ServiceOrchestrator;
@@ -163,25 +159,25 @@ export class RestoreOrchestrator {
 
   constructor(deps: RestoreOrchestratorDeps) {
     if (deps.db !== deps.rigRepo.db) {
-      throw new Error("RestoreOrchestrator: rigRepo must share the same db handle");
+      throw new Error("RestoreOrchestrator：rigRepo 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.sessionRegistry.db) {
-      throw new Error("RestoreOrchestrator: sessionRegistry must share the same db handle");
+      throw new Error("RestoreOrchestrator：sessionRegistry 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.eventBus.db) {
-      throw new Error("RestoreOrchestrator: eventBus must share the same db handle");
+      throw new Error("RestoreOrchestrator：eventBus 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.snapshotRepo.db) {
-      throw new Error("RestoreOrchestrator: snapshotRepo must share the same db handle");
+      throw new Error("RestoreOrchestrator：snapshotRepo 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.checkpointStore.db) {
-      throw new Error("RestoreOrchestrator: checkpointStore must share the same db handle");
+      throw new Error("RestoreOrchestrator：checkpointStore 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.snapshotCapture.db) {
-      throw new Error("RestoreOrchestrator: snapshotCapture must share the same db handle");
+      throw new Error("RestoreOrchestrator：snapshotCapture 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.nodeLauncher.db) {
-      throw new Error("RestoreOrchestrator: nodeLauncher must share the same db handle");
+      throw new Error("RestoreOrchestrator：nodeLauncher 必须共享同一个数据库句柄");
     }
 
     this.db = deps.db;
@@ -205,34 +201,30 @@ export class RestoreOrchestrator {
     adapters?: Record<string, import("./runtime-adapter.js").RuntimeAdapter>;
     fsOps?: { exists(path: string): boolean };
     /**
-     * OPR.0.3.4.2 — operation B opt-in: logical ids the operator explicitly
-     * asked to fresh-prime (`rig up --existing <rig> --fresh <seat...>`).
-     * Listed seats skip the resume attempt and launch a deliberate
-     * blank-slate session, reported as `fresh-primed`. Unlisted unresumable
-     * resume-policy seats STOP as `awaiting-decision` instead.
+     * OPR.0.3.4.2 —— 操作 B 的选择加入：操作员明确要求全新预热的逻辑 ID
+     *（`zrig up --existing <rig> --fresh <seat...>`）。列出的席位跳过恢复尝试，主动启动
+     * 空白会话并报告为 `fresh-primed`；未列出且无法恢复的恢复策略席位则停止为
+     * `awaiting-decision`。
      */
     freshLogicalIds?: string[];
-    /** Selection evidence from an automatic caller. Direct restore defaults
-     * to explicit because its public door names the snapshot id. */
+    /** 来自自动调用方的选择证据。直接恢复默认视为显式选择，因为公开入口指定了快照 ID。 */
     snapshotSelection?: RestoreSnapshotSelection;
     /**
-     * L3: fired with the persisted `restore.started` event seq as soon as the
-     * orchestrator commits to running per-node restore. Routes use this to
-     * return `attemptId` to the client immediately while per-node work
-     * continues in the background.
+     * L3：编排器一旦决定执行逐节点恢复，就以持久化 `restore.started` 事件序号触发。
+     * 路由借此立即向客户端返回 `attemptId`，逐节点工作则在后台继续。
      */
     onAttemptStarted?: (attemptId: number) => void;
   }): Promise<RestoreOutcome> {
-    // 1. Load snapshot
+    // 1. 加载快照。
     const snapshot = this.snapshotRepo.getSnapshot(snapshotId);
     if (!snapshot) {
-      return { ok: false, code: "snapshot_not_found", message: `Snapshot ${snapshotId} not found` };
+      return { ok: false, code: "snapshot_not_found", message: `未找到快照 ${snapshotId}` };
     }
 
     const rigId = snapshot.rigId;
     const rig = this.rigRepo.getRig(rigId);
     if (!rig) {
-      return { ok: false, code: "rig_not_found", message: `Rig ${rigId} not found` };
+      return { ok: false, code: "rig_not_found", message: `未找到工作组 ${rigId}` };
     }
     const guard = this.tmuxAdapter.deliveryGuard;
     const guardedIds = rig.nodes.map(node => node.id);
@@ -243,18 +235,17 @@ export class RestoreOrchestrator {
     if (selectionOutcome && !selectionOutcome.ok) return selectionOutcome;
     const snapshotSelection = opts?.snapshotSelection ?? selectionOutcome?.selection;
 
-    // Classify DB-running sessions against tmux reality WITHOUT mutating DB.
-    // This determines whether the rig is safe to restore before any state
-    // changes occur — critical for pre_restore snapshot ordering (snapshot
-    // must capture original DB state, not post-reconciliation state).
+    // 对照 tmux 事实分类数据库中标记为运行中的会话，且不修改数据库。这会在任何状态
+    // 变化前判断工作组能否安全恢复，对 pre_restore 快照顺序至关重要：快照必须捕获原始
+    // 数据库状态，而不是协调后的状态。
     const classification = await this.classifyRunningSessions(rigId);
     if (classification.live.length > 0 || classification.unknown.length > 0) {
-      return { ok: false, code: "rig_not_stopped", message: `Rig ${rigId} has live sessions. Stop the rig with 'rig down' before restoring, or use the latest auto-pre-down snapshot.` };
+      return { ok: false, code: "rig_not_stopped", message: `工作组 ${rigId} 仍有实时会话。恢复前请运行 'zrig down' 停止工作组，或使用最新的自动 pre-down 快照。` };
     }
 
-    // Per-rig concurrency lock
+    // 每个工作组独立的并发锁。
     if (this.activeRestores.has(rigId)) {
-      return { ok: false, code: "restore_in_progress", message: `Restore already in progress for rig ${rigId}` };
+      return { ok: false, code: "restore_in_progress", message: `工作组 ${rigId} 的恢复已在进行中` };
     }
     this.activeRestores.add(rigId);
 
@@ -280,23 +271,23 @@ export class RestoreOrchestrator {
         return {
           ok: false,
           code: "pre_restore_validation_failed",
-          message: "Restore pre-validation failed; no restore mutation was attempted.",
+          message: "恢复预验证失败，未尝试任何恢复变更。",
           result,
         };
       }
 
-      // 2. Capture pre-restore snapshot BEFORE any DB mutations —
-      // DB still reflects original session state (running for stale sessions)
+      // 2. 在任何数据库变更前捕获恢复前快照；此时数据库仍反映原始会话状态，
+      // 包括过期会话仍为 running。
       const preRestoreSnapshot = this.snapshotCapture.captureSnapshot(rigId, "pre_restore");
 
-      // 2b. NOW mark stale sessions as detached (safe: we've captured the
-      // pre-restore snapshot and confirmed no live/unknown sessions remain)
+      // 2b. 现在把过期会话标记为 detached；恢复前快照已捕获，也已确认没有实时或
+      // unknown 会话，因此操作安全。
       for (const sessionId of classification.stale) {
         this.sessionRegistry.markDetached(sessionId);
       }
 
-      // 3. Emit restore.started — the persisted event seq IS the attempt id
-      //    (Decision 1: no separate restore_attempts table).
+      // 3. 发出 restore.started；持久化事件序号就是尝试 ID（决策 1：不设独立的
+      // restore_attempts 表）。
       const restoreStartedEvent = this.eventBus.emit({
         type: "restore.started",
         rigId,
@@ -309,11 +300,10 @@ export class RestoreOrchestrator {
       try {
         opts?.onAttemptStarted?.(attemptId);
       } catch {
-        // onAttemptStarted is fire-and-forget; never let a route's response
-        // logic crash the restore pipeline.
+        // onAttemptStarted 是即发即弃回调；绝不能让路由响应逻辑导致恢复管线崩溃。
       }
 
-      // 3b. Service gate: boot services before agent restore if this rig has services
+      // 3b. 服务门禁：工作组包含服务时，先启动服务，再恢复智能体。
       if (this.serviceOrchestrator) {
         const svcRecord = this.rigRepo.getServicesRecord(rigId);
         if (svcRecord) {
@@ -328,21 +318,21 @@ export class RestoreOrchestrator {
                 preRestoreSnapshotId: preRestoreSnapshot.id,
                 rigResult: "failed",
                 nodes: [],
-                warnings: [`Service boot failed: ${bootResult.error}`],
+                warnings: [`服务启动失败：${bootResult.error}`],
                 snapshotSelection,
                 intendedRoster: topology.intendedRoster,
                 excludedNodes: topology.excludedNodes,
               },
             });
-            return { ok: false, code: "service_boot_failed", message: `Service boot failed before agent restore: ${bootResult.error}` };
+            return { ok: false, code: "service_boot_failed", message: `智能体恢复前服务启动失败：${bootResult.error}` };
           }
         }
       }
 
-      // 4. Compute restore plan
+      // 4. 计算恢复计划。
       const plan = this.computeRestorePlan(snapshot.data);
 
-      // 5. Execute restore with compensating pattern per node
+      // 5. 按节点使用补偿模式执行恢复。
       const nodeResults: RestoreNodeResult[] = [];
       const restoreWarnings: string[] = [...validation.warnings];
       for (const entry of plan) {
@@ -361,7 +351,7 @@ export class RestoreOrchestrator {
         excludedNodes: topology.excludedNodes,
       };
 
-      // 7. Emit restore.completed
+      // 7. 发出 restore.completed。
       this.eventBus.emit({ type: "restore.completed", rigId, snapshotId, result: restoreResult });
 
       return { ok: true, result: restoreResult };
@@ -390,13 +380,13 @@ export class RestoreOrchestrator {
     snapshotId?: string;
   }): NarrowLaunchResult {
     const rig = this.rigRepo.getRig(rigId);
-    if (!rig) return { ok: false, code: "rig_not_found", message: `Rig ${rigId} not found` };
+    if (!rig) return { ok: false, code: "rig_not_found", message: `未找到工作组 ${rigId}` };
     const selected = this.snapshotRepo.selectRestoreUsable(rigId, opts?.snapshotId);
     if (!selected.ok) return selected;
     const intendedNodes = resolveSnapshotRestoreTopology(selected.snapshot.data).intendedNodes;
     const targetIds = new Set(intendedNodes.filter((node) => logicalIds.includes(node.logicalId)).map((node) => node.logicalId));
     if (targetIds.size === 0) {
-      return { ok: false, code: "no_matching_nodes", message: `No nodes match logical ids: ${logicalIds.join(", ")}` };
+      return { ok: false, code: "no_matching_nodes", message: `没有节点匹配这些逻辑 ID：${logicalIds.join(", ")}` };
     }
     const reason = opts?.holdReason ?? "excluded_from_subset";
     return {
@@ -413,7 +403,7 @@ export class RestoreOrchestrator {
         affected: rig.nodes
           .filter((node) => !targetIds.has(node.logicalId))
           .map((node) => ({ nodeId: node.id, logicalId: node.logicalId, reason })),
-        condition: "applies only to non-target seats proven not live at execution time",
+        condition: "仅适用于执行时已证明不在线的非目标席位",
       },
     };
   }
@@ -434,7 +424,7 @@ export class RestoreOrchestrator {
     nonTargetMode: "unchanged" | "detach_and_hold";
   }): Promise<NarrowLaunchResult> {
     const rig = this.rigRepo.getRig(rigId);
-    if (!rig) return { ok: false, code: "rig_not_found", message: `Rig ${rigId} not found` };
+    if (!rig) return { ok: false, code: "rig_not_found", message: `未找到工作组 ${rigId}` };
 
     const selected = this.snapshotRepo.selectRestoreUsable(rigId, opts.snapshotId);
     if (!selected.ok) return selected;
@@ -445,7 +435,7 @@ export class RestoreOrchestrator {
       .filter((node) => logicalIds.includes(node.logicalId));
     const matchedIds = new Set(targetNodes.map((n) => n.logicalId));
     const unmatchedIds = logicalIds.filter((id) => !matchedIds.has(id));
-    if (targetNodes.length === 0) return { ok: false, code: "no_matching_nodes", message: `No nodes match logical ids: ${logicalIds.join(", ")}` };
+    if (targetNodes.length === 0) return { ok: false, code: "no_matching_nodes", message: `没有节点匹配这些逻辑 ID：${logicalIds.join(", ")}` };
 
     const nonTargetNodes = opts.nonTargetMode === "detach_and_hold"
       ? allNodes.filter((node) => !targetNodes.some((target) => target.id === node.id))
@@ -457,13 +447,12 @@ export class RestoreOrchestrator {
       return guard.lifecycle(guardedIds, () => this.launchNodeTargets(rigId, logicalIds, opts));
     }
 
-    // Per-target tmux-liveness classification (runtime truth, fail-closed)
+    // 逐目标进行 tmux 存活性分类（运行时事实，封闭失败）。
     const launched: RestoreNodeResult[] = [];
     const alreadyRunning: Array<{ nodeId: string; logicalId: string }> = [];
     const failedTargets: Array<{ nodeId: string; logicalId: string; reason: string }> = [];
-    // Subset-level aggregate of per-node warnings (incl. FR-5 derived-name
-    // fallback observability). Previously created per-node inside the loop and
-    // discarded, so restore.subset_completed carried warnings: [].
+    // 在子集层级汇总逐节点警告，包括 FR-5 派生名称回退的可观测性。此前它在循环内按节点
+    // 创建后被丢弃，导致 restore.subset_completed 携带空 warnings。
     const subsetWarnings: string[] = [];
 
     for (const node of targetNodes) {
@@ -487,21 +476,19 @@ export class RestoreOrchestrator {
         continue;
       }
       if (isUnknown) {
-        // OPR.0.4.3.28 correction — INVERT the fail-closed-on-unknown launch default. A failed tmux
-        // liveness probe is NOT positive evidence of a live seat (only isLive, above, is). Deny-by-
-        // default here hard-503'd all restore/launch on a transient tmux blip. Instead PROCEED to
-        // launch this node (same path as stale/no-session below) and surface the uncertainty as a
-        // NON-blocking warning so an operator/agent can verify no live seat was squatted. isLive stays
-        // the no-squat guard.
+        // OPR.0.4.3.28 修正：翻转 unknown 时默认封闭失败的启动策略。tmux 存活探测失败
+        // 并不能正向证明席位在线，只有上方 isLive 可以。此前默认拒绝会因短暂 tmux 抖动让
+        // 所有恢复/启动直接返回 503。现在继续启动该节点，沿用下方过期/无会话路径，并将
+        // 不确定性作为非阻塞警告展示，以便操作员或智能体确认没有占用实时席位。isLive
+        // 继续充当防抢占保护。
         subsetWarnings.push(
-          `liveness_probe_unknown: launched '${node.logicalId}' despite a failed tmux liveness probe — verify no live seat was squatted`,
+          `liveness_probe_unknown：尽管 tmux 存活探测失败，仍启动了 '${node.logicalId}'；请确认没有占用实时席位`,
         );
       }
 
-      // Stale or no session (or probe-unknown, per the inversion above) — launchable. Accumulate this
-      // node's warnings into
-      // the subset-level array so they survive to restore.subset_completed + the
-      // API result (FR-5 fallback observability must not be discarded here).
+      // 过期、无会话或按上述翻转规则为 probe-unknown 时均可启动。把该节点的警告累积到
+      // 子集层数组，使其能进入 restore.subset_completed 和 API 结果；这里不能丢失 FR-5
+      // 回退可观测性。
       const planEntry = { node };
       const result = await this.restoreNodeWithCompensation(
         planEntry, rigId, snapshot.id, snapshot.data, { adapters: opts?.adapters, fsOps: opts?.fsOps }, subsetWarnings,
@@ -509,7 +496,7 @@ export class RestoreOrchestrator {
       launched.push(result);
     }
 
-    // Emit restore.subset_completed for launched targets only
+    // 只为已启动目标发出 restore.subset_completed。
     if (launched.length > 0) {
       const subsetResult: RestoreResult = {
         snapshotId: snapshot.id,
@@ -522,7 +509,7 @@ export class RestoreOrchestrator {
       this.eventBus.emit({ type: "restore.subset_completed", rigId, snapshotId: snapshot.id, result: subsetResult });
     }
 
-    // Emit node.held for non-running held non-targets (tri-state: running/unknown/held)
+    // 为非运行且被保留的非目标节点发出 node.held（三态：running/unknown/held）。
     const held: Array<{ nodeId: string; logicalId: string; reason: string }> = [];
     const holdReasonText = opts?.holdReason ?? "excluded_from_subset";
     for (const node of nonTargetNodes) {
@@ -541,8 +528,8 @@ export class RestoreOrchestrator {
 
       if (running || unknown) continue;
 
-      // Clear stale DB-running rows for non-targets proven tmux-dead so
-      // inventory projects heldReason honestly (not masked by stale running status).
+      // 清理已证明 tmux 不存活的非目标节点中过期的数据库 running 行，使 inventory 能如实
+      // 投影 heldReason，而不被过期 running 状态遮蔽。
       for (const session of sessions) {
         this.sessionRegistry.markDetached(session.id);
       }
@@ -597,8 +584,8 @@ export class RestoreOrchestrator {
         code: "invalid_snapshot_data",
         severity: "critical",
         target: "snapshot.rig",
-        message: "Snapshot is missing the rig record needed for restore.",
-        remediation: "Capture a new snapshot or restore from a structurally valid snapshot.",
+        message: "快照缺少恢复所需的工作组记录。",
+        remediation: "请捕获新快照，或从结构有效的快照恢复。",
       });
     }
     if (!nodes) {
@@ -606,8 +593,8 @@ export class RestoreOrchestrator {
         code: "invalid_snapshot_data",
         severity: "critical",
         target: "snapshot.nodes",
-        message: "Snapshot is missing the node list needed for restore.",
-        remediation: "Capture a new snapshot or restore from a structurally valid snapshot.",
+        message: "快照缺少恢复所需的节点列表。",
+        remediation: "请捕获新快照，或从结构有效的快照恢复。",
       });
     }
     if (!sessions) {
@@ -615,8 +602,8 @@ export class RestoreOrchestrator {
         code: "invalid_snapshot_data",
         severity: "critical",
         target: "snapshot.sessions",
-        message: "Snapshot is missing session records needed for restore.",
-        remediation: "Capture a new snapshot or restore from a structurally valid snapshot.",
+        message: "快照缺少恢复所需的会话记录。",
+        remediation: "请捕获新快照，或从结构有效的快照恢复。",
       });
     }
     if (!edges) {
@@ -624,8 +611,8 @@ export class RestoreOrchestrator {
         code: "invalid_snapshot_data",
         severity: "critical",
         target: "snapshot.edges",
-        message: "Snapshot is missing topology edges needed for restore planning.",
-        remediation: "Capture a new snapshot or restore from a structurally valid snapshot.",
+        message: "快照缺少恢复规划所需的拓扑边。",
+        remediation: "请捕获新快照，或从结构有效的快照恢复。",
       });
     }
     if (!checkpoints) {
@@ -633,8 +620,8 @@ export class RestoreOrchestrator {
         code: "invalid_snapshot_data",
         severity: "critical",
         target: "snapshot.checkpoints",
-        message: "Snapshot is missing the checkpoint map needed for restore.",
-        remediation: "Capture a new snapshot or restore from a structurally valid snapshot.",
+        message: "快照缺少恢复所需的检查点映射。",
+        remediation: "请捕获新快照，或从结构有效的快照恢复。",
       });
     }
 
@@ -649,8 +636,8 @@ export class RestoreOrchestrator {
         severity: "critical",
         nodeId: invalidNodeId,
         target: "snapshot.topologyRoster",
-        message: `Intended topology roster names node ${invalidNodeId}, which is absent from snapshot.nodes.`,
-        remediation: "Capture a new snapshot from the authoritative materialized topology.",
+        message: `预期拓扑名单包含节点 ${invalidNodeId}，但 snapshot.nodes 中没有该节点。`,
+        remediation: "请从权威的已物化拓扑捕获新快照。",
       });
     }
 
@@ -663,22 +650,19 @@ export class RestoreOrchestrator {
           nodeId: node.id,
           logicalId: node.logicalId,
           target: "checkpoint",
-          message: `Checkpoint exists for ${node.logicalId}, but the node has no cwd to receive it.`,
-          remediation: "Update the rig spec to include a cwd for this node, then capture a new snapshot or restore manually.",
+          message: `${node.logicalId} 有检查点，但节点没有用于接收它的 cwd。`,
+          remediation: "请更新工作组 spec，为该节点添加 cwd，然后捕获新快照或手动恢复。",
         });
       }
 
       const startupCtx = data.nodeStartupContext?.[node.id] ?? null;
       if (!startupCtx) continue;
 
-      // OPR.0.5.7.1 D6a — validate replay files IFF the node will CONSUME
-      // replay (desk static ruling on e42420990): none => fresh path,
-      // validate; ambiguity => the node stops loudly and consumes nothing,
-      // skip; explicit fresh or a non-resume policy => deliberate fresh,
-      // validate; resume_if_possible with no token => stop-and-ask, consumes
-      // nothing, skip; usable type + token => exact resume, skip; a token
-      // WITHOUT a usable resume type follows the current fresh path,
-      // validate.
+      // OPR.0.5.7.1 D6a —— 仅当节点会消费重放内容时验证重放文件（desk 对 e42420990
+      // 的静态裁定）：none → 全新路径，验证；歧义 → 节点醒目停止且不消费，跳过验证；
+      // 显式 fresh 或非恢复策略 → 主动全新，验证；resume_if_possible 但无令牌 → 停止并询问，
+      // 不消费，跳过验证；可用类型 + 令牌 → 精确恢复，跳过验证；有令牌但没有可用恢复类型
+      // → 沿用当前全新路径，验证。
       const resolution = resolveActiveSnapshotSession(data, node.id);
       const freshListed = opts.freshLogicalIds?.includes(node.logicalId) ?? false;
       let consumesReplay: boolean;
@@ -698,7 +682,7 @@ export class RestoreOrchestrator {
       for (const file of consumesReplay ? startupCtx.resolvedStartupFiles ?? [] : []) {
         if (!file.required) {
           if (this.pathLike(file.absolutePath) && !exists(file.absolutePath)) {
-            warnings.push(`Restore pre-validation: optional startup file missing for ${node.logicalId}: ${file.absolutePath}`);
+            warnings.push(`恢复预验证：${node.logicalId} 缺少可选启动文件：${file.absolutePath}`);
           }
           continue;
         }
@@ -710,8 +694,8 @@ export class RestoreOrchestrator {
             logicalId: node.logicalId,
             target: file.path,
             path: file.ownerRoot,
-            message: `Required startup file owner root is missing for ${node.logicalId}: ${file.ownerRoot}`,
-            remediation: "Restore the agent/source root or capture a new snapshot with reachable startup context.",
+            message: `${node.logicalId} 缺少必需启动文件的所有者根目录：${file.ownerRoot}`,
+            remediation: "请恢复智能体/来源根目录，或使用可访问的启动上下文捕获新快照。",
           });
         }
         if (this.pathLike(file.absolutePath) && !exists(file.absolutePath)) {
@@ -722,27 +706,23 @@ export class RestoreOrchestrator {
             logicalId: node.logicalId,
             target: file.path,
             path: file.absolutePath,
-            message: `Required startup file is missing for ${node.logicalId}: ${file.absolutePath}`,
-            remediation: "Restore the missing startup file or capture a new snapshot before retrying restore.",
+            message: `${node.logicalId} 缺少必需的启动文件：${file.absolutePath}`,
+            remediation: "请恢复缺失的启动文件，或在重试恢复前捕获新快照。",
           });
         }
       }
 
-      // OPR.0.3.4.5 (behavior 09): projection-validity != session continuity.
-      // A stale/missing projected skill/artifact must NOT abort a restore that
-      // has a valid native resume. Demoted from critical blockers to warnings
-      // flagged as projection_drift (compose slice-03's drift reporting shape).
-      // The existing post-launch filter (:855-885) already skips missing
-      // entries with a "(skipped)" warning; here we prevent the pre-restore
-      // gate from blocking the attempt entirely. Missing REQUIRED startup
-      // files and genuinely-fatal blockers (malformed snapshot, missing nodes)
-      // stay critical above.
+      // OPR.0.3.4.5（行为 09）：投影有效性不等于会话连续性。投影的 Skill/制品过期或
+      // 缺失时，不得中止具有有效原生恢复能力的恢复操作。它们从关键阻塞项降级为标记
+      // projection_drift 的警告，沿用 compose slice-03 的漂移报告结构。现有启动后过滤器
+      // 已会跳过缺失条目并产生“已跳过”警告；这里防止恢复前门禁完全阻塞尝试。缺少必需
+      // 启动文件以及真正致命的阻塞项（快照格式错误、节点缺失）仍保持关键级别。
       for (const entry of startupCtx.projectionEntries ?? []) {
         if (this.pathLike(entry.sourcePath) && !exists(entry.sourcePath)) {
-          warnings.push(`projection_drift: source root missing for ${node.logicalId}: ${entry.sourcePath} (projection will be skipped at startup; session continuity is unaffected)`);
+          warnings.push(`projection_drift：${node.logicalId} 缺少来源根目录：${entry.sourcePath}（启动时将跳过投影；会话连续性不受影响）`);
         }
         if (this.pathLike(entry.absolutePath) && !exists(entry.absolutePath)) {
-          warnings.push(`projection_drift: entry missing for ${node.logicalId}: ${entry.absolutePath} (projection will be skipped at startup; session continuity is unaffected)`);
+          warnings.push(`projection_drift：${node.logicalId} 缺少条目：${entry.absolutePath}（启动时将跳过投影；会话连续性不受影响）`);
         }
       }
     }
@@ -755,8 +735,8 @@ export class RestoreOrchestrator {
           severity: "critical",
           target: "services.rigRoot",
           path: servicesRecord.rigRoot,
-          message: `Service rig root is missing: ${servicesRecord.rigRoot}`,
-          remediation: "Restore the service rig root or update the services record before retrying restore.",
+          message: `缺少服务工作组根目录：${servicesRecord.rigRoot}`,
+          remediation: "请恢复服务工作组根目录，或更新服务记录后再重试恢复。",
         });
       }
       if (this.pathLike(servicesRecord.composeFile) && !exists(servicesRecord.composeFile)) {
@@ -765,8 +745,8 @@ export class RestoreOrchestrator {
           severity: "critical",
           target: "services.composeFile",
           path: servicesRecord.composeFile,
-          message: `Service compose file is missing: ${servicesRecord.composeFile}`,
-          remediation: "Restore the compose file or update the services record before retrying restore.",
+          message: `缺少服务 compose 文件：${servicesRecord.composeFile}`,
+          remediation: "请恢复 compose 文件，或更新服务记录后再重试恢复。",
         });
       }
     }
@@ -792,11 +772,10 @@ export class RestoreOrchestrator {
   }
 
   /**
-   * Classify ALL DB-running sessions against tmux reality without mutating DB.
-   * Scans every session (not just latest-per-node) to catch older live sessions
-   * behind newer detached rows. Returns structured classification for the caller
-   * to act on: live sessions block restore, stale sessions get marked detached
-   * AFTER the pre_restore snapshot is captured, unknown sessions fail closed.
+   * 对照 tmux 事实分类所有数据库中标记为 running 的会话，且不修改数据库。扫描每个会话
+   * （而不只是每个节点的最新会话），以发现隐藏在较新 detached 行之后的旧实时会话。
+   * 返回供调用方处理的结构化分类：实时会话阻塞恢复；过期会话在捕获 pre_restore 快照后
+   * 标记为 detached；unknown 会话封闭失败。
    */
   private async classifyRunningSessions(rigId: string): Promise<{
     live: string[];
@@ -817,7 +796,7 @@ export class RestoreOrchestrator {
           stale.push(session.id);
         }
       } catch {
-        // tmux check failed — fail closed: classify as unknown so restore blocks
+        // tmux 检查失败时封闭失败：分类为 unknown，使恢复受到阻塞。
         unknown.push(session.id);
       }
     }
@@ -836,14 +815,11 @@ export class RestoreOrchestrator {
   }
 
   private restoreNodeState(nodeId: string, priorState: { binding: import("./types.js").Binding | null; sessions: { id: string; status: string }[] }): void {
-    // Restore prior binding EXACTLY, not as a partial merge. The launch path
-    // may have created a binding for this node (NodeLauncher), and
-    // updateBinding alone is an upsert MERGE: a null prior binding would
-    // leave the launched binding pointing at a killed session, and null
-    // prior fields would silently preserve launched-row values. Clear first,
-    // then recreate from the prior fields — or leave absent when no prior
-    // binding existed. Shared by launch-failure compensation and
-    // rollbackToZeroSession so both carry the same exact semantics.
+    // 精确恢复原绑定，而不是进行部分合并。启动路径可能已由 NodeLauncher 为该节点创建绑定，
+    // 而单独调用 updateBinding 会执行 upsert 合并：原绑定为 null 时会留下指向已终止会话的
+    // 启动绑定，原字段为 null 时则会静默保留启动行的值。因此先清除，再根据原字段重建；
+    // 原先没有绑定时则保持不存在。启动失败补偿与 rollbackToZeroSession 共享此逻辑，
+    // 从而保持完全相同的语义。
     this.sessionRegistry.clearBinding(nodeId);
     if (priorState.binding) {
       this.sessionRegistry.updateBinding(nodeId, {
@@ -856,7 +832,7 @@ export class RestoreOrchestrator {
         cmuxSurface: priorState.binding.cmuxSurface ?? undefined,
       });
     }
-    // Restore prior session statuses
+    // 恢复之前的会话状态。
     for (const sess of priorState.sessions) {
       this.sessionRegistry.updateStatus(sess.id, sess.status);
     }
@@ -866,9 +842,9 @@ export class RestoreOrchestrator {
     const nodes = resolveSnapshotRestoreTopology(data).intendedNodes;
     const edges = data.edges;
 
-    // Build adjacency for launch-dependency edges only
-    // For delegates_to: source must launch before target
-    // For spawned_by: target must launch before source
+    // 只为启动依赖边构建邻接关系。
+    // delegates_to：来源必须先于目标启动。
+    // spawned_by：目标（父节点）必须先于来源（子节点）启动。
     const nodeIds = nodes.map((n) => n.id);
     const inDegree: Record<string, number> = {};
     const adjacency: Record<string, string[]> = {};
@@ -888,7 +864,7 @@ export class RestoreOrchestrator {
         from = edge.sourceId;
         to = edge.targetId;
       } else {
-        // spawned_by: target (parent) must launch before source (child)
+        // spawned_by：目标（父节点）必须先于来源（子节点）启动。
         from = edge.targetId;
         to = edge.sourceId;
       }
@@ -899,7 +875,7 @@ export class RestoreOrchestrator {
       }
     }
 
-    // Topological sort with alphabetical tiebreaker by logical_id
+    // 拓扑排序，并按 logical_id 字母顺序打破平局。
     const nodeById = new Map(nodes.map((n) => [n.id, n]));
     const queue = nodeIds
       .filter((id) => (inDegree[id] ?? 0) === 0)
@@ -923,7 +899,7 @@ export class RestoreOrchestrator {
       for (const neighbor of neighbors) {
         inDegree[neighbor] = (inDegree[neighbor] ?? 1) - 1;
         if ((inDegree[neighbor] ?? 0) === 0) {
-          // Insert in sorted position
+          // 插入到已排序位置。
           const logicalId = nodeById.get(neighbor)!.logicalId;
           let inserted = false;
           for (let i = 0; i < queue.length; i++) {
@@ -954,12 +930,10 @@ export class RestoreOrchestrator {
     const node = entry.node;
     const nodeId = node.id;
 
-    // OPR.0.5.7.1 (bought ordering blocker, baton 0efd154d): D1 present-map
-    // ambiguity must be DETECTED before any continuity_state short-circuit —
-    // a pod node in 'restoring' otherwise returns a silent status "fresh"
-    // (classified running downstream) while the occupant truth is ambiguous,
-    // bypassing A1's loud-failure semantics. Resolved/none/legacy states
-    // fall through and keep the restoring/degraded behavior unchanged.
+    // OPR.0.5.7.1（已确认的排序阻塞项，baton 0efd154d）：必须在任何 continuity_state
+    // 短路前检测 D1 present-map 歧义，否则处于 'restoring' 的 pod 节点会在使用者事实含糊时
+    // 静默返回 "fresh"（下游分类为运行中），绕过 A1 的醒目失败语义。resolved/none/legacy
+    // 状态继续落入原流程，保持 restoring/degraded 行为不变。
     const occupantResolution = resolveActiveSnapshotSession(data, nodeId);
     if (occupantResolution.kind === "ambiguous") {
       return {
@@ -970,80 +944,72 @@ export class RestoreOrchestrator {
       };
     }
 
-    // Consult live continuity state BEFORE clearing stale state
+    // 清理过期状态前查询实时连续性状态。
     if (node.podId) {
       const continuityRow = this.db.prepare(
         "SELECT status FROM continuity_state WHERE pod_id = ? AND node_id = ?"
       ).get(node.podId, nodeId) as { status: string } | undefined;
       if (continuityRow) {
         if (continuityRow.status === "restoring") {
-          warnings?.push(`Node ${node.logicalId}: continuity state is 'restoring', skipping`);
+          warnings?.push(`节点 ${node.logicalId}：连续性状态为 'restoring'，已跳过`);
           return { nodeId, logicalId: node.logicalId, status: "fresh" };
         }
         if (continuityRow.status === "degraded") {
-          warnings?.push(`Node ${node.logicalId}: continuity state is 'degraded', proceeding with caution`);
+          warnings?.push(`节点 ${node.logicalId}：连续性状态为 'degraded'，将谨慎继续`);
         }
       }
     }
 
-    // OPR.0.3.4.2 (A) + OPR.0.4.3.20 FR-7 — PRE-LAUNCH stop-and-ask classification,
-    // BEFORE clearStaleState / launchNode, so `awaiting-decision` means ZERO session
-    // started and prior state is untouched.
+    // OPR.0.3.4.2（A）+ OPR.0.4.3.20 FR-7 —— 在 clearStaleState / launchNode 前执行
+    // 启动前停止并询问分类，使 `awaiting-decision` 确实表示启动了零个会话且原状态未变。
     //
-    // FR-7 (Gap 1): a `resume_if_possible` seat that HAD a session (a snapshot
-    // session row exists) but has NO usable token stops here — whether or not a
-    // resume SOURCE was recorded. The old scope required a recorded source, so a
-    // crashed seat with a session row but no captured token silently fresh-primed
-    // (identity-replaced while looking healthy). A node with NO session row at all
-    // never ran / has nothing to resume → it legitimately fresh-primes (falls
-    // through). The ONLY default fresh-prime is now: no prior session, a genuinely
-    // non-resume policy (relaunch_fresh / checkpoint_only), or explicit `--fresh`.
+    // FR-7（缺口 1）：采用 `resume_if_possible` 且曾有会话（快照中存在会话行）、但没有
+    // 可用令牌的席位在此停止，无论是否记录过恢复来源。旧 scope 要求必须记录来源，导致崩溃
+    // 席位即使有会话行却没有捕获令牌，也会静默 fresh-prime（身份被替换却看似健康）。完全
+    // 没有会话行的节点从未运行、没有可恢复内容，因此可以合理 fresh-prime 并继续。现在默认
+    // fresh-prime 的唯一情形是：没有旧会话、确实不恢复的策略（relaunch_fresh /
+    // checkpoint_only），或显式 `--fresh`。
     {
-      // OPR.0.5.7.1 D1 — the active occupant was RESOLVED once at the top of
-      // this function (before the continuity consult); ambiguity already
-      // returned there, so only resolved/none reach here.
+      // OPR.0.5.7.1 D1 —— 活动使用者已在函数开头、连续性查询前解析一次；歧义已在那里
+      // 返回，因此只有 resolved/none 能到达此处。
       const snapSession = occupantResolution.kind === "resolved" ? occupantResolution.session : null;
       const policy = snapSession?.restorePolicy ?? "resume_if_possible";
       const freshRequested = opts?.freshLogicalIds?.includes(node.logicalId) ?? false;
       const resumeSourceRecorded = !!snapSession?.resumeType && snapSession.resumeType !== "none";
       if (policy === "resume_if_possible" && snapSession && !snapSession.resumeToken && !freshRequested) {
         const sourceNote = resumeSourceRecorded
-          ? `resume source '${snapSession?.resumeType}' recorded but no token available`
-          : `no resume token was captured for this seat`;
+          ? `已记录恢复来源 '${snapSession?.resumeType}'，但没有可用令牌`
+          : `没有为该席位捕获恢复令牌`;
         return {
           nodeId,
           logicalId: node.logicalId,
           status: "awaiting-decision",
-          error: `Original session unresumable: ${sourceNote}. No session was started. Re-run with --fresh ${node.logicalId} to deliberately start a fresh-primed seat, or restore the original session manually.`,
+          error: `原会话无法恢复：${sourceNote}。未启动任何会话。请使用 --fresh ${node.logicalId} 重新运行以主动启动 fresh-primed 席位，或手动恢复原会话。`,
         };
       }
     }
 
-    // Capture prior state for compensation
+    // 捕获原状态，供补偿使用。
     const priorState = this.captureNodeState(nodeId, rigId);
 
-    // Clear stale state so NodeLauncher doesn't see already_bound
+    // 清理过期状态，避免 NodeLauncher 看到 already_bound。
     this.clearStaleState(nodeId, rigId);
     this.tmuxAdapter.deliveryGuard?.rebindLifecycle(nodeId);
 
-    // Derive canonical session name for pod-aware nodes
+    // 为 pod 感知节点推导规范会话名称。
     const rig = this.rigRepo.getRig(rigId);
     let launchOpts: { sessionName?: string; cwd?: string } | undefined = node.cwd
       ? { cwd: node.cwd }
       : undefined;
     let expectedSessionName: string | undefined;
 
-    // OPR.0.4.3.20 FR-5 — pin the resume target to the DURABLY-BOUND session.
-    // priorState.binding was captured (above) BEFORE clearStaleState deleted the
-    // binding row, so it is the ONLY surviving copy of the name the seat was
-    // ACTUALLY bound to. Pinning it means a rename/reshape between the binding
-    // and the crash does not silently retarget resume to a re-derived
-    // (wrong/nonexistent) pane — the Class-1 fragility. Setting
-    // launchOpts.sessionName (not just expectedSessionName) is required:
-    // otherwise the launcher re-derives (node-launcher.ts) and writes the
-    // derived name back to the binding, defeating the pin. Selection-only — no
-    // identity re-key, no schema/derive-helper change. Fallback to the existing
-    // derive (below) is observable, never a silent divergence.
+    // OPR.0.4.3.20 FR-5 —— 把恢复目标固定到持久绑定的会话。priorState.binding 在
+    // clearStaleState 删除绑定行前已捕获，因此它是席位实际绑定名称唯一留存的副本。固定该值
+    // 可防止绑定到崩溃之间发生重命名/重塑后，恢复被静默重定向到重新推导出的错误或不存在
+    // 窗格，这正是 Class-1 脆弱点。必须设置 launchOpts.sessionName，而不只是
+    // expectedSessionName；否则 launcher 会在 node-launcher.ts 中重新推导，并把派生名称写回
+    // 绑定，令固定失效。此处只做选择，不重新分配身份，也不改 schema/derive helper。回退到
+    // 下方现有推导时可观测，绝不静默偏离。
     const pinnedTarget = priorState.binding?.tmuxSession ?? null;
     let pinnedTargetUsed = false;
     if (pinnedTarget) {
@@ -1053,20 +1019,20 @@ export class RestoreOrchestrator {
         launchOpts = { ...launchOpts, sessionName: expectedSessionName };
         pinnedTargetUsed = true;
       } else {
-        // Binding present but the bound name is malformed → observable fallback.
-        warnings?.push(`FR-5: durably-bound session name "${pinnedTarget}" for ${node.logicalId} is invalid; falling back to a derived name.`);
+        // 绑定存在但绑定名称格式错误，执行可观测的回退。
+        warnings?.push(`FR-5：${node.logicalId} 的持久绑定会话名称 "${pinnedTarget}" 无效；回退到派生名称。`);
       }
     } else {
-      // No durably-bound session name (old data / null binding or empty
-      // tmux_session) → observable derived-name fallback (PRD back-compat AC).
-      warnings?.push(`FR-5: no durably-bound session name for ${node.logicalId}; falling back to a derived session name.`);
+      // 没有持久绑定的会话名称（旧数据、null 绑定或空 tmux_session），执行可观测的派生
+      // 名称回退（PRD 向后兼容 AC）。
+      warnings?.push(`FR-5：${node.logicalId} 没有持久绑定的会话名称；回退到派生会话名称。`);
     }
 
-    // Derived-name FALLBACK — only when no usable pin. The existing derive,
-    // unchanged (pod-aware then legacy); preserves back-compat for partial-data rigs.
+    // 派生名称回退仅在没有可用固定值时执行。保留现有推导方式不变，先 pod 感知、再旧式，
+    // 从而兼容数据不完整的工作组。
     if (!pinnedTargetUsed) {
       if (node.podId && rig) {
-        // Pod-aware: derive {pod}-{member}@{rigName} from node identity
+        // pod 感知：从节点身份推导 {pod}-{member}@{rigName}。
         const parts = node.logicalId.split(".");
         if (parts.length >= 2) {
           const podPart = parts[0]!;
@@ -1082,24 +1048,23 @@ export class RestoreOrchestrator {
       }
     }
 
-    // Write transcript boundary marker BEFORE launch (before pipe-pane attaches)
-    // so the marker appears before any post-restore terminal output.
-    // Uses "restore attempt" language — honest even if launch subsequently fails.
+    // 在启动前、pipe-pane 连接前写入转录边界标记，使其出现在所有恢复后终端输出之前。
+    // 使用“恢复尝试”措辞，因此即使随后启动失败也仍然如实。
     if (this.transcriptStore?.enabled && rig && expectedSessionName) {
       const markerOk = this.transcriptStore.writeBoundaryMarker(
         rig.rig.name,
         expectedSessionName,
-        `restore attempt from snapshot ${snapshotId}`,
+        `尝试从快照 ${snapshotId} 恢复`,
       );
       if (!markerOk) {
-        warnings?.push(`Transcript boundary marker failed for ${expectedSessionName}`);
+        warnings?.push(`无法为 ${expectedSessionName} 写入转录边界标记`);
       }
     }
 
-    // Attempt launch — compensate ONLY if launch itself fails
+    // 尝试启动；只有启动本身失败时才执行补偿。
     const launchResult = await this.nodeLauncher.launchNode(rigId, node.logicalId, launchOpts);
     if (!launchResult.ok) {
-      // Launch failed — restore prior state (compensating action)
+      // 启动失败，执行补偿操作恢复原状态。
       this.restoreNodeState(nodeId, priorState);
       return {
         nodeId,
@@ -1109,10 +1074,9 @@ export class RestoreOrchestrator {
       };
     }
 
-    // Launch succeeded — do NOT compensate on post-launch failures
-    // (the new session/binding are now the current state)
+    // 启动成功后，不对启动后的失败执行补偿，因为新会话/绑定现已成为当前状态。
 
-    // Propagate launch warnings (includes transcript attach failures)
+    // 传递启动警告，包括转录连接失败。
     if (launchResult.warnings?.length) {
       warnings?.push(...launchResult.warnings);
     }
@@ -1120,12 +1084,9 @@ export class RestoreOrchestrator {
     return this.postLaunchRestore(entry, rigId, data, launchResult.sessionName, launchResult, opts, warnings, priorState);
   }
 
-  /** OPR.0.3.4.2 (B) — roll a just-launched session back to ZERO sessions for
-   *  the awaiting-decision outcome: kill the live blank session, mark its row
-   *  superseded, and restore the prior binding/session state (the existing
-   *  launch-failure compensating action). The caller fires this ONLY on a
-   *  POSITIVE determination the session is fresh/blank — never for
-   *  unknown-but-possibly-valid continuity. */
+  /** OPR.0.3.4.2（B）—— 对 awaiting-decision 结果，把刚启动的会话回退为零会话：
+   *  终止实时空白会话，将其行标为 superseded，并恢复原绑定/会话状态，即复用现有启动失败
+   *  补偿操作。调用方只在明确判定会话为 fresh/blank 时触发，绝不用于未知但可能有效的连续性。 */
   private async rollbackToZeroSession(
     nodeId: string,
     sessionName: string,
@@ -1134,9 +1095,9 @@ export class RestoreOrchestrator {
   ): Promise<void> {
     try {
       await this.tmuxAdapter.killSession(sessionName);
-    } catch { /* best-effort — the row + projection rollback below is the source of truth */ }
+    } catch { /* 尽力而为；下方行与投影回退才是事实源 */ }
     if (launchedSessionId) {
-      try { this.sessionRegistry.updateStatus(launchedSessionId, "superseded"); } catch { /* best-effort */ }
+      try { this.sessionRegistry.updateStatus(launchedSessionId, "superseded"); } catch { /* 尽力而为 */ }
     }
     if (priorState) {
       this.restoreNodeState(nodeId, priorState);
@@ -1154,9 +1115,8 @@ export class RestoreOrchestrator {
     priorState?: { binding: import("./types.js").Binding | null; sessions: { id: string; status: string }[] },
   ): Promise<RestoreNodeResult> {
     const node = entry.node;
-    // OPR.0.5.7.1 D1 — the active occupant is RESOLVED, never inferred from
-    // row ordering (cite site 2 of 2; "latest = max id" was the incident's
-    // defect: a superseded row with a newer ULID defeated the real occupant).
+    // OPR.0.5.7.1 D1 —— 活动使用者必须解析得出，绝不能根据行顺序推断（第 2 个引用点，
+    // 共 2 个）；事故缺陷正是“latest = max id”，较新 ULID 的 superseded 行覆盖了真实使用者。
     const sessionResolution = resolveActiveSnapshotSession(data, node.id);
     if (sessionResolution.kind === "ambiguous") {
       return {
@@ -1169,41 +1129,37 @@ export class RestoreOrchestrator {
     const session = sessionResolution.kind === "resolved" ? sessionResolution.session : null;
     const checkpoint = data.checkpoints[node.id] ?? null;
 
-    // Check restore policy. OPR.0.3.4.2: a --fresh-listed seat (operation B)
-    // deliberately skips the resume attempt; its launch reports `fresh-primed`.
+    // 检查恢复策略。OPR.0.3.4.2：列入 --fresh 的席位（操作 B）会主动跳过恢复尝试，
+    // 其启动结果报告为 `fresh-primed`。
     const restorePolicy = session?.restorePolicy ?? "resume_if_possible";
     const resumeType = session?.resumeType ?? null;
     const resumeToken = session?.resumeToken ?? null;
     const freshRequested = opts?.freshLogicalIds?.includes(node.logicalId) ?? false;
     const resumeRequested = restorePolicy === "resume_if_possible" && !!resumeType && resumeType !== "none" && !freshRequested;
 
-    // OPR.0.3.4.2 — non-resume launches are DELIBERATE blank-slate launches
-    // (policy- or --fresh-driven): named `fresh-primed`, the old conflated
-    // `fresh` no longer flows from this pipeline.
+    // OPR.0.3.4.2 —— 非恢复启动是由策略或 --fresh 驱动的主动空白启动，名称为
+    // `fresh-primed`；旧有混淆的 `fresh` 不再从此管线产生。
     let baseStatus: RestoreNodeResult["status"] = "fresh-primed";
 
-    // Pod-aware nodes: resume via launchHarness (handled in startup orchestrator with skipHarnessLaunch: false)
-    // Legacy nodes: resume via old claude-resume/codex-resume helpers
+    // pod 感知节点通过 launchHarness 恢复，由启动编排器以 skipHarnessLaunch: false 处理。
+    // 旧式节点通过原有 claude-resume/codex-resume 辅助逻辑恢复。
     const isPodAware = !!node.podId;
 
     if (resumeRequested && !isPodAware) {
-      // Legacy resume path
+      // 旧式恢复路径。
       if (!resumeToken) {
-        // Defense in depth: the pre-launch classification catches this case
-        // before any session exists. If it is somehow reached post-launch, the
-        // just-created session is a confirmed blank (no resume was possible) —
-        // roll back to zero sessions and present the decision honestly.
+        // 纵深防御：启动前分类会在任何会话存在前捕获此情况。若它仍在启动后到达，刚创建的
+        // 会话已确认是空白会话（无法恢复），因此回退为零会话并如实呈现决策。
         await this.rollbackToZeroSession(node.id, sessionName, launchResult?.session.id, priorState);
-        return { nodeId: node.id, logicalId: node.logicalId, status: "awaiting-decision", error: `Original session unresumable: resume requested but no token available. No session is running. Re-run with --fresh ${node.logicalId} for a deliberate fresh-primed seat, or restore the original session manually.` };
+        return { nodeId: node.id, logicalId: node.logicalId, status: "awaiting-decision", error: `原会话无法恢复：已请求恢复，但没有可用令牌。当前没有会话运行。请使用 --fresh ${node.logicalId} 重新运行以主动启动 fresh-primed 席位，或手动恢复原会话。` };
       } else {
         const resumeOutcome = await this.attemptResume(node.id, sessionName, resumeType, resumeToken, node.cwd ?? "/", node.codexConfigProfile, node.model, this.resolveRestorePosture(node.id, rigId));
         if (resumeOutcome.kind === "resumed") {
           baseStatus = "resumed";
         } else if (resumeOutcome.kind === "attention_required") {
-          // L3 Decision 2: Claude resume-selection prompt -> attention_required.
-          // Do NOT auto-answer. Reconcile later via reconcileNodeRuntimeTruth
-          // when the operator reaches a usable pane state. (Boundary: a LIVE
-          // parked session is attention_required, NEVER awaiting-decision.)
+          // L3 决策 2：Claude 恢复选择提示 → attention_required。不要自动回答；待操作员
+          // 让窗格进入可用状态后，再通过 reconcileNodeRuntimeTruth 协调。边界：实时但暂停的
+          // 会话是 attention_required，绝不是 awaiting-decision。
           return {
             nodeId: node.id,
             logicalId: node.logicalId,
@@ -1212,33 +1168,29 @@ export class RestoreOrchestrator {
             attentionEvidence: resumeOutcome.evidence ?? null,
           };
         } else {
-          // OPR.0.3.4.2 (B): resume CONCLUDED failed — the launched session is
-          // a confirmed blank agent (precision guard trigger (i)). Roll back to
-          // zero sessions; the stop-and-ask is realized as awaiting-decision.
+          // OPR.0.3.4.2（B）：恢复已明确失败，启动的会话是已确认空白的智能体（精确保护
+          // 触发条件 i）。回退为零会话，并以 awaiting-decision 实现停止并询问。
           await this.rollbackToZeroSession(node.id, sessionName, launchResult?.session.id, priorState);
-          return { nodeId: node.id, logicalId: node.logicalId, status: "awaiting-decision", error: `Original session unresumable: resume attempted but failed. The blank session was rolled back; no session is running. Re-run with --fresh ${node.logicalId} for a deliberate fresh-primed seat, or check the harness state manually.` };
+          return { nodeId: node.id, logicalId: node.logicalId, status: "awaiting-decision", error: `原会话无法恢复：已尝试恢复但失败。空白会话已回退，当前没有会话运行。请使用 --fresh ${node.logicalId} 重新运行以主动启动 fresh-primed 席位，或手动检查运行环境状态。` };
         }
       }
     } else if (resumeRequested && isPodAware) {
-      // Pod-aware restore must preserve the same honesty contract as legacy restore:
-      // if resume was requested but continuity state is unavailable, stop loudly
-      // instead of silently downgrading to a fresh launch with amnesia.
+      // pod 感知恢复必须与旧式恢复遵守相同的如实契约：请求恢复但连续性状态不可用时，
+      // 应醒目停止，而不是静默降级为丢失记忆的全新启动。
       if (!resumeToken) {
-        // Defense in depth (pre-launch classification catches this first).
+        // 纵深防御；启动前分类会先捕获此情况。
         await this.rollbackToZeroSession(node.id, sessionName, launchResult?.session.id, priorState);
         return {
           nodeId: node.id,
           logicalId: node.logicalId,
           status: "awaiting-decision",
-          error: `Original session unresumable: resume requested but no token available. No session is running. Re-run with --fresh ${node.logicalId} for a deliberate fresh-primed seat, or restore the original session manually.`,
+          error: `原会话无法恢复：已请求恢复，但没有可用令牌。当前没有会话运行。请使用 --fresh ${node.logicalId} 重新运行以主动启动 fresh-primed 席位，或手动恢复原会话。`,
         };
       }
-      // OPR.0.4.3.20 FR-7 (Gap 2b) — a pod-aware resume needs the runtime adapter
-      // to verify continuity + relaunch the harness (the startup replay below is
-      // gated on opts.adapters). If the adapter for this seat's runtime is absent
-      // (e.g. a node-subset launch that did not thread adapters), we CANNOT resume
-      // and MUST NOT silently fresh-prime — fail closed to awaiting-decision.
-      // Explicit --fresh and non-resume policies stay the only fresh-prime paths.
+      // OPR.0.4.3.20 FR-7（缺口 2b）：pod 感知恢复需要运行时适配器验证连续性并重新启动
+      // 运行环境，下方启动重放受 opts.adapters 门控。如果该席位的运行时适配器缺失，
+      // 例如节点子集启动未传递 adapters，就无法恢复，也绝不能静默 fresh-prime；应封闭失败
+      // 为 awaiting-decision。显式 --fresh 和非恢复策略仍是仅有的 fresh-prime 路径。
       const resumeAdapter = node.runtime ? opts?.adapters?.[node.runtime] : undefined;
       if (!resumeAdapter) {
         await this.rollbackToZeroSession(node.id, sessionName, launchResult?.session.id, priorState);
@@ -1246,50 +1198,46 @@ export class RestoreOrchestrator {
           nodeId: node.id,
           logicalId: node.logicalId,
           status: "awaiting-decision",
-          error: `Original session unresumable: resume requested but runtime continuity could not be verified (no ${node.runtime ?? "runtime"} adapter available). No session is running. Re-run with --fresh ${node.logicalId} for a deliberate fresh-primed seat, or retry restore with runtime adapters.`,
+          error: `原会话无法恢复：已请求恢复，但无法验证运行时连续性（没有可用的 ${node.runtime ?? "runtime"} 适配器）。当前没有会话运行。请使用 --fresh ${node.logicalId} 重新运行以主动启动 fresh-primed 席位，或在提供运行时适配器后重试恢复。`,
         };
       }
     }
 
-    // Checkpoint delivery (if not already resumed)
+    // 尚未恢复时交付检查点。
     if (baseStatus !== "resumed" && checkpoint) {
       if (!node.cwd) {
-        return { nodeId: node.id, logicalId: node.logicalId, status: "failed", error: "Checkpoint available but node has no cwd" };
+        return { nodeId: node.id, logicalId: node.logicalId, status: "failed", error: "有可用检查点，但节点没有 cwd" };
       }
       const written = this.writeCheckpointFile(node.cwd, checkpoint);
       if (written) {
         baseStatus = "rebuilt";
       } else {
-        return { nodeId: node.id, logicalId: node.logicalId, status: "failed", error: "Checkpoint file write failed" };
+        return { nodeId: node.id, logicalId: node.logicalId, status: "failed", error: "检查点文件写入失败" };
       }
     }
 
-    // OPR.0.5.7.1 D6a — REPLAY CONTAINMENT, UNCONDITIONAL. An exact resume
-    // returns to an EXISTING history: replaying startup/onboarding content
-    // into it is the ghost-prompt source (the incident's live specimen:
-    // managed CLAUDE.md blocks rewritten mid-"resume"). A resumed history
-    // replays NOTHING — the launch leg survives untouched (the D2
-    // discriminator proved an empty runtime-correct plan resumes fine).
-    // There is deliberately NO replay opt-in surface here: D6b restores the
-    // explicit+versioned+durable+idempotent contract in the D4 operation-id
-    // phase, where its durability primitives live. Deliberate fresh-primed
-    // launches are new histories and keep their replay.
+    // OPR.0.5.7.1 D6a —— 无条件限制重放。精确恢复会返回已有历史；向其中重放启动/
+    // 引导内容正是幽灵提示的来源，事故中的线上样本是恢复过程中重写受管 CLAUDE.md 区块。
+    // 已恢复历史不重放任何内容，启动环节保持不变；D2 判别条件已证明，运行时正确且为空的
+    // 计划可以正常恢复。这里有意不提供重放选择加入界面：D6b 会在拥有持久性原语的 D4
+    // operation-id 阶段恢复显式、版本化、持久且幂等的契约。主动 fresh-primed 启动属于
+    // 新历史，继续保留重放。
     const replayContained = resumeRequested && !!resumeToken;
 
-    // Attempt restore-safe startup replay if context available
+    // 上下文可用时，尝试恢复安全的启动重放。
     if (data.nodeStartupContext && opts?.adapters && launchResult) {
       const startupCtx = data.nodeStartupContext[node.id];
       if (startupCtx) {
         const adapter = opts.adapters[startupCtx.runtime];
         if (adapter) {
-          // Prefilter: check which files/entries still exist
+          // 预过滤：检查仍然存在的文件和条目。
           const existsFn = opts.fsOps?.exists ?? (() => true);
           const sourceEntries = replayContained ? [] : startupCtx.projectionEntries;
           const sourceFiles = replayContained ? [] : startupCtx.resolvedStartupFiles;
           const sourceActions = replayContained ? [] : startupCtx.startupActions;
           const filteredEntries = sourceEntries.filter((e) => {
             if (!existsFn(e.absolutePath)) {
-              warnings?.push(`Restore: missing projection entry ${e.absolutePath} (skipped)`);
+              warnings?.push(`恢复：缺少投影条目 ${e.absolutePath}（已跳过）`);
               return false;
             }
             return true;
@@ -1297,22 +1245,22 @@ export class RestoreOrchestrator {
           const filteredFiles = sourceFiles.filter((f) => {
             if (!existsFn(f.absolutePath)) {
               if (f.required) {
-                warnings?.push(`Restore: missing REQUIRED startup file ${f.absolutePath}`);
-                return false; // will cause failure below
+                warnings?.push(`恢复：缺少必需启动文件 ${f.absolutePath}`);
+                return false; // 会在下方导致失败
               }
-              warnings?.push(`Restore: missing optional startup file ${f.absolutePath} (skipped)`);
+              warnings?.push(`恢复：缺少可选启动文件 ${f.absolutePath}（已跳过）`);
               return false;
             }
             return true;
           });
 
-          // Check if any required files were dropped
+          // 检查是否有必需文件被过滤掉。
           const missingRequired = sourceFiles.filter((f) => f.required && !existsFn(f.absolutePath));
           if (missingRequired.length > 0) {
-            return { nodeId: node.id, logicalId: node.logicalId, status: "failed", error: `Missing required startup files: ${missingRequired.map((f) => f.path).join(", ")}` };
+            return { nodeId: node.id, logicalId: node.logicalId, status: "failed", error: `缺少必需启动文件：${missingRequired.map((f) => f.path).join(", ")}` };
           }
 
-          // Build fresh projection plan (all safe_projection)
+          // 构建全新投影计划，所有条目均为 safe_projection。
           const plan: import("./projection-planner.js").ProjectionPlan = {
             runtime: startupCtx.runtime,
             cwd: node.cwd ?? ".",
@@ -1332,15 +1280,13 @@ export class RestoreOrchestrator {
             ...launchResult.binding,
             cwd: node.cwd ?? ".",
             codexConfigProfile: node.codexConfigProfile ?? undefined,
-            // OPR.0.4.8.3 Seam B: the pod-aware restore path binds the restored posture too
-            // (both restore paths consume persisted provenance — preflight surface 3).
+            // OPR.0.4.8.3 接缝 B：pod 感知恢复路径也绑定恢复后的姿态；两条恢复路径都
+            // 消费持久化溯源，即预检界面 3。
             launchPosture: this.resolveRestorePosture(node.id, rigId),
-            // OPR.0.4.6.PI1 VM leg finding: the restore binding dropped the
-            // node's model declaration, so a resumed Pi seat relaunched with
-            // no --model — and the runner's provider-key allowlist (keyed off
-            // the declared provider) passed nothing through ("No API key
-            // found" on every resumed Pi seat). Claude/Codex silently lost
-            // their -m/--model on restore the same way.
+            // OPR.0.4.6.PI1 VM 环节发现：恢复绑定曾丢弃节点的模型声明，导致恢复后的 Pi
+            // 席位在没有 --model 的情况下重新启动；runner 按声明的 provider 索引密钥
+            // allowlist，因而不传递任何密钥，每个恢复的 Pi 席位都报 "No API key found"。
+            // Claude/Codex 在恢复时也会以同样方式静默丢失 -m/--model。
             model: node.model ?? undefined,
           };
 
@@ -1371,19 +1317,16 @@ export class RestoreOrchestrator {
                 && resumeRequested
                 && this.launchedSessionMatchesSnapshotResume(launchResult.session.id, resumeType, resumeToken);
               if (isPodAware && resumeRequested && startupResult.continuityOutcome === "fresh" && !nativeContinuityProved) {
-                // OPR.0.3.4.2 (B): the runtime POSITIVELY reported fresh
-                // continuity and native continuity is unproven — a confirmed
-                // blank agent (precision guard trigger (ii)). Roll back to
-                // zero sessions and present the decision. NOTE: this fires
-                // ONLY on the concluded-fresh determination; a genuinely
-                // unknown-but-possibly-valid continuity never reaches here
-                // (continuityOutcome would not be "fresh").
+                // OPR.0.3.4.2（B）：运行时明确报告 fresh 连续性，而原生连续性未经证实；
+                // 这是已确认的空白智能体（精确保护触发条件 ii）。回退为零会话并呈现决策。
+                // 注意：仅在明确判定为 fresh 时触发；真正未知但可能有效的连续性不会到达这里，
+                // 因为 continuityOutcome 不会是 "fresh"。
                 await this.rollbackToZeroSession(node.id, sessionName, launchResult.session.id, priorState);
                 return {
                   nodeId: node.id,
                   logicalId: node.logicalId,
                   status: "awaiting-decision",
-                  error: `Original session unresumable: resume attempted but the runtime reported fresh continuity. The blank session was rolled back; no session is running. Re-run with --fresh ${node.logicalId} if that degradation is acceptable.`,
+                  error: `原会话无法恢复：已尝试恢复，但运行时报告了 fresh 连续性。空白会话已回退，当前没有会话运行。如果可以接受这种降级，请使用 --fresh ${node.logicalId} 重新运行。`,
                 };
               }
               const finalStatus = (isPodAware && resumeRequested)
@@ -1394,21 +1337,17 @@ export class RestoreOrchestrator {
               }
               return { nodeId: node.id, logicalId: node.logicalId, status: finalStatus };
             }
-            // Pod-aware attention_required: hoisted above both the
-            // resume-requested and non-resume-requested failed branches so
-            // that pod-aware Codex auth-refusal (verifyResumeLaunch →
-            // recovery: "attention_required") surfaces honestly regardless
-            // of whether resume was requested. Mirrors the runtime-agnostic
-            // legacy mapping at lines 725-735. This MUST come before the
-            // line 859 / 867 failed branches; otherwise the production
-            // pod-aware-resume path (most common) returns `status: "failed"`
-            // and the slice's "attention_required end-to-end" claim breaks.
+            // 将 pod 感知的 attention_required 提升到请求恢复和未请求恢复的失败分支之前，
+            // 使 pod 感知 Codex 认证拒绝（verifyResumeLaunch → recovery:
+            // "attention_required"）无论是否请求恢复都能如实显示。这与运行时无关的旧式映射
+            // 一致。此分支必须位于后续 failed 分支之前，否则最常用的生产 pod-aware-resume
+            // 路径会返回 `status: "failed"`，破坏切片的“attention_required 端到端”声明。
             if (isPodAware && startupResult.startupStatus === "attention_required") {
               return {
                 nodeId: node.id,
                 logicalId: node.logicalId,
                 status: "attention_required",
-                error: `Restore startup requires attention: ${startupResult.errors.join("; ")}`,
+                error: `恢复启动需要处理：${startupResult.errors.join("; ")}`,
                 attentionEvidence: startupResult.evidence ?? null,
               };
             }
@@ -1422,8 +1361,8 @@ export class RestoreOrchestrator {
             }
             if (isPodAware) {
               const prefix = startupResult.startupStatus === "attention_required"
-                ? "Restore startup requires attention"
-                : "Restore startup failed";
+                ? "恢复启动需要处理"
+                : "恢复启动失败";
               return {
                 nodeId: node.id,
                 logicalId: node.logicalId,
@@ -1431,14 +1370,14 @@ export class RestoreOrchestrator {
                 error: `${prefix}: ${startupResult.errors.join("; ")}`,
               };
             }
-            warnings?.push(`Restore startup failed for ${node.logicalId}: ${startupResult.errors.join("; ")}`);
+            warnings?.push(`${node.logicalId} 的恢复启动失败：${startupResult.errors.join("; ")}`);
           } catch (err) {
             if (isPodAware && resumeRequested) {
               return {
                 nodeId: node.id,
                 logicalId: node.logicalId,
                 status: "failed",
-                error: `Restore startup error: ${(err as Error).message}`,
+                error: `恢复启动错误：${(err as Error).message}`,
               };
             }
             if (isPodAware) {
@@ -1446,10 +1385,10 @@ export class RestoreOrchestrator {
                 nodeId: node.id,
                 logicalId: node.logicalId,
                 status: "failed",
-                error: `Restore startup error: ${(err as Error).message}`,
+                error: `恢复启动错误：${(err as Error).message}`,
               };
             }
-            warnings?.push(`Restore startup error for ${node.logicalId}: ${(err as Error).message}`);
+            warnings?.push(`${node.logicalId} 的恢复启动出错：${(err as Error).message}`);
           }
         }
       }
@@ -1461,8 +1400,8 @@ export class RestoreOrchestrator {
     return { nodeId: node.id, logicalId: node.logicalId, status: baseStatus };
   }
 
-  /** A native resume is only a full success after the restored terminal is
-   * rebound and its process identity agrees with the declared seat runtime. */
+  /** 只有恢复后的终端已重新绑定，且其进程身份与声明的席位运行时一致，原生恢复才算
+   *  完全成功。 */
   private async finishJoinedResume(
     node: SnapshotData["nodes"][number],
     sessionName: string,
@@ -1485,11 +1424,11 @@ export class RestoreOrchestrator {
         nodeId: node.id,
         logicalId: node.logicalId,
         status: "attention_required",
-        error: `Exact native session resumed, but joined restore proof is incomplete: ${identity.detail}. The resumed session was preserved; no replacement was started.`,
+        error: `原生会话已精确恢复，但联合恢复证明不完整：${identity.detail}。已保留恢复的会话，未启动替代会话。`,
       };
     }
-    // Legacy resume adapters do not write native metadata. Fill only the
-    // launched row's empty token after proof; never overwrite a hook/operator.
+    // 旧式恢复适配器不写入原生元数据。仅在完成证明后填充已启动行中的空令牌，绝不覆盖
+    // hook/operator 来源。
     if (node.runtime === "codex" && sessionId && resumeToken) {
       const current = this.db.prepare("SELECT node_id, session_name, status, resume_token FROM sessions WHERE id = ?").get(sessionId) as
         { node_id: string; session_name: string; status: string; resume_token: string | null } | undefined;
@@ -1501,7 +1440,7 @@ export class RestoreOrchestrator {
         const proof = store.getForNode(node.id);
         if (proof) store.upsert({ ...proof, verdict: "mismatch", reason: "process_identity_mismatch" });
         return { nodeId: node.id, logicalId: node.logicalId, status: "attention_required",
-          error: "Native resume was observed but its current session metadata conflicts or could not be retained; session preserved." };
+          error: "已观测到原生恢复，但当前会话元数据冲突或无法保留；会话已保留。" };
       }
     }
     return { nodeId: node.id, logicalId: node.logicalId, status: "resumed" };
@@ -1521,26 +1460,24 @@ export class RestoreOrchestrator {
   }
 
   /**
-   * OPR.0.4.8.3 Seam B — a restored seat's launch posture WITHOUT the in-memory RigSpec
-   * (dev-guard restart-provenance ruling):
-   *   1. Persisted node provenance (migration 057) is the primary source. For a CUSTOM
-   *      attachment with readable provenance (declaringDir + the node's raw ref) the policy
-   *      is REOPENED + re-derived (a custom surface:flag policy restores to full_bypass);
-   *      an unreadable file degrades to the PERSISTED posture (still restart-stable).
-   *   2. No provenance (e.g. organic claim/self-attach seats): the persisted RIG-level ref
-   *      resolves — builtin refs resolve dirlessly; a custom rig ref without provenance
-   *      degrades to the resolver's advisory floor (honest absence of a declaring dir).
-   *   3. Nothing attached (or a resolution error) → EXPLICIT "floor" — the locked
-   *      minimum-floor absence contract; never undefined/env-delegation for managed seats.
+   * OPR.0.4.8.3 接缝 B —— 缺少内存 RigSpec 时恢复席位的启动姿态
+   *（dev-guard 重启溯源裁定）：
+   *   1. 持久化节点溯源（迁移 057）是主要来源。自定义附件具有可读溯源
+   *      （declaringDir + 节点原始 ref）时，重新打开并推导策略；自定义 surface:flag 策略
+   *      会恢复为 full_bypass。文件不可读时降级为持久化姿态，仍保持重启稳定。
+   *   2. 没有溯源（例如自然认领/自连接席位）时解析持久化工作组级 ref。builtin 引用无需
+   *      目录即可解析；没有溯源的自定义工作组 ref 降级为解析器的建议 floor，如实反映
+   *      缺少声明目录。
+   *   3. 没有附件或解析出错时显式使用 "floor"，即锁定的最低姿态缺失契约；受管席位
+   *      绝不使用 undefined 或委托给环境变量。
    */
   private resolveRestorePosture(nodeId: string, rigId: string): "floor" | "full_bypass" {
     try {
       const prov = this.rigRepo.getNodePolicyProvenance(nodeId);
       if (prov) {
-        // Guard-F3: the resolver swallows read errors internally (advisory floor), so the
-        // fallback must be decided BEFORE re-resolution: probe readability of the persisted
-        // resolvedTarget first — readable → REOPEN + re-derive (the ruling); unreadable /
-        // invalid → the PERSISTED posture carries (restart-stable), never a silent floor.
+        // Guard-F3：解析器会在内部吞掉读取错误并给出建议 floor，因此必须在重新解析前决定
+        // 回退方式。先探测持久化 resolvedTarget 是否可读：可读则按裁定重新打开并推导；
+        // 不可读或无效则沿用持久化姿态以保持重启稳定，绝不静默降到 floor。
         if (prov.origin === "custom" && prov.declaringDir && prov.resolvedTarget) {
           const ref = prov.nodeRef ?? this.rigRepo.getRigPermissionPolicy(rigId);
           if (ref) {
@@ -1551,19 +1488,17 @@ export class RestoreOrchestrator {
               const rederived = resolvePermissionPolicyAttachment(ref, prov.declaringDir, {
                 readFile: () => body,
               });
-              // Guard round-2: trust the re-derivation ONLY when content resolution
-              // genuinely succeeded with usable semantics (parse OK + valid flag
-              // contract) — readable-but-malformed/unusable carries the PERSISTED
-              // posture, exactly like unreadable. Advisory only; no enforcement.
+              // Guard 第二轮：只有内容解析真正成功并具有可用语义（解析成功 + flag 契约有效）
+              // 时才信任重新推导。可读但格式错误或不可用时与不可读一样沿用持久化姿态。
+              // 这里只提供建议，不执行强制。
               if (rederived.contentResolved) return rederived.launchPosture;
             }
           }
         }
         return prov.launchPosture;
       }
-      // Guard-F1: no node provenance (organic claim/self-attach seats) → the PERSISTED
-      // rig-level attachment is authoritative — same readable-probe discipline; NEVER
-      // resolve the raw relative rig ref against this process's cwd.
+      // Guard-F1：没有节点溯源（自然认领/自连接席位）时，以持久化工作组级附件为权威。
+      // 遵循相同的可读性探测纪律，绝不相对于当前进程 cwd 解析原始相对工作组 ref。
       const rigProv = this.rigRepo.getRigPolicyProvenance(rigId);
       if (rigProv) {
         if (rigProv.origin === "custom" && rigProv.declaringDir && rigProv.resolvedTarget && rigProv.rigRef) {
@@ -1574,14 +1509,14 @@ export class RestoreOrchestrator {
             const rederived = resolvePermissionPolicyAttachment(rigProv.rigRef, rigProv.declaringDir, {
               readFile: () => body,
             });
-            if (rederived.contentResolved) return rederived.launchPosture; // same rule as node-level
+            if (rederived.contentResolved) return rederived.launchPosture; // 与节点级规则相同
           }
         }
         return rigProv.launchPosture;
       }
-    } catch { /* posture resolution must never block a restore */ }
-    // R2 terminal (954d97a0): NO provenance anywhere (and the error path) = the locked
-    // minimum floor, explicitly — never undefined (which would delegate to ambient YOLO).
+    } catch { /* 姿态解析绝不能阻塞恢复 */ }
+    // R2 终态（954d97a0）：任何位置都没有溯源（以及错误路径）时，显式使用锁定的最低
+    // floor；绝不返回 undefined，否则会委托给环境 YOLO。
     return "floor";
   }
 
@@ -1593,8 +1528,8 @@ export class RestoreOrchestrator {
     cwd: string,
     codexConfigProfile?: string | null,
     model?: string | null,
-    // OPR.0.4.8.3 Seam B: the seat's restored launch posture (persisted provenance,
-    // custom policies re-validated when readable). Absent = env decision.
+    // OPR.0.4.8.3 接缝 B：席位恢复后的启动姿态；来源为持久化溯源，可读时重新验证
+    // 自定义策略。缺失表示由环境决定。
     resolvedPosture?: "floor" | "full_bypass",
   ): Promise<
     | { kind: "resumed" }
@@ -1608,11 +1543,11 @@ export class RestoreOrchestrator {
       const selection = new NativePermissionStore(this.db).read(nodeId);
       const runtime = this.claudeResume.canResume(resumeType, resumeToken) ? "claude-code"
         : this.codexResume.canResume(resumeType, resumeToken) ? "codex" : "pi";
-      if (selection && selection.runtime !== runtime) throw new Error("Seat runtime changed since permission selection; explicitly select again or inherit.");
+      if (selection && selection.runtime !== runtime) throw new Error("权限选择后席位运行时已改变；请重新显式选择或继承。");
       const override = permissionBindingOverride(selection);
       resolvedPosture = override.launchPosture ?? resolvedPosture;
       permissionMode = override.permissionMode;
-    } catch (error) { return { kind: "failed", message: `Permission selection: ${(error as Error).message}` }; }
+    } catch (error) { return { kind: "failed", message: `权限选择：${(error as Error).message}` }; }
     if (this.claudeResume.canResume(resumeType, resumeToken)) {
       const result = await this.claudeResume.resume(sessionName, resumeType, resumeToken, cwd, resolvedPosture, model, permissionMode, nodeId);
       if (result.ok) {
@@ -1620,7 +1555,7 @@ export class RestoreOrchestrator {
         return { kind: "resumed" };
       }
       if (result.code === "retry_fresh") return { kind: "retry_fresh" };
-      // L3: surface attention_required from the Claude probe (resume-selection prompt).
+      // L3：显示 Claude 探测返回的 attention_required（恢复选择提示）。
       if (result.code === "attention_required") {
         return {
           kind: "attention_required",
@@ -1638,10 +1573,9 @@ export class RestoreOrchestrator {
         return { kind: "resumed" };
       }
       if (result.code === "retry_fresh") return { kind: "retry_fresh" };
-      // Codex auth-refusal: stored OAuth token can no longer be refreshed.
-      // Recoverable — operator runs `codex login` and the seat continues.
-      // Per-node mapping at lines 725-735 emits `status: "attention_required"`
-      // with `attentionEvidence` for both runtimes; no further wiring needed.
+      // Codex 认证拒绝：已存储的 OAuth 令牌无法再刷新。该问题可恢复；操作员运行
+      // `codex login` 后席位即可继续。逐节点映射会为两种运行时发出
+      // `status: "attention_required"` 并附带 `attentionEvidence`，无需额外装配。
       if (result.code === "attention_required") {
         return {
           kind: "attention_required",
@@ -1652,9 +1586,9 @@ export class RestoreOrchestrator {
       return { kind: "failed", message: result.message };
     }
 
-    // OPR.0.4.6.PI1 FR-6 — honest session-file continuation. A missing
-    // session file returns retry_fresh, which the caller maps to the
-    // awaiting-decision stop-and-ask — never a silent fresh start (BR-6).
+    // OPR.0.4.6.PI1 FR-6 —— 如实执行基于会话文件的继续。会话文件缺失时返回
+    // retry_fresh，调用方把它映射为 awaiting-decision 的停止并询问；绝不静默全新启动
+    //（BR-6）。
     if (this.piResume?.canResume(resumeType, resumeToken)) {
       const result = await this.piResume.resume(sessionName, resumeType, resumeToken, cwd, model, resolvedPosture);
       if (result.ok) {
@@ -1672,38 +1606,34 @@ export class RestoreOrchestrator {
       return { kind: "failed", message: result.message };
     }
 
-    return { kind: "failed", message: "No resume adapter available for this runtime/token combination." };
+    return { kind: "failed", message: "没有适用于此运行时/令牌组合的恢复适配器。" };
   }
 
   /**
-   * L3 Decision 3: runtime-truth reconciliation. Given a node whose original
-   * `restoreOutcome` was `failed` or `attention_required`, examine current
-   * runtime state. If ALL four visible-evidence preconditions hold, append
-   * `restore.outcome_reconciled` so the node's effective post-reconciliation
-   * outcome becomes `operator_recovered`. Never mutates or deletes the
-   * original failure event; never produces `ready`.
+   * L3 决策 3：运行时事实协调。给定原始 `restoreOutcome` 为 `failed` 或
+   * `attention_required` 的节点，检查其当前运行时状态。如果全部四项可见证据前置条件成立，
+   * 追加 `restore.outcome_reconciled`，使节点协调后的有效结果变为 `operator_recovered`。
+   * 绝不修改或删除原失败事件，也绝不产生 `ready`。
    *
-   * Returns `{ ok: true, attemptId, from, to, evidence }` on upgrade, or
-   * `{ ok: false, code, detail }` describing exactly which precondition
-   * failed (or "no_attempt" / "outcome_not_upgradable" when there is nothing
-   * to reconcile).
+   * 升级成功时返回 `{ ok: true, attemptId, from, to, evidence }`；否则返回
+   * `{ ok: false, code, detail }`，准确说明哪个前置条件失败。没有可协调内容时返回
+   * "no_attempt" 或 "outcome_not_upgradable"。
    */
   async reconcileNodeRuntimeTruth(
     rigId: string,
     nodeId: string,
   ): Promise<ReconcileNodeResult> {
-    // Locate the latest restore attempt for this rig.
+    // 定位该工作组最近一次恢复尝试。
     const startedRow = this.db.prepare(
       "SELECT seq, payload FROM events WHERE rig_id = ? AND type = 'restore.started' ORDER BY seq DESC LIMIT 1"
     ).get(rigId) as { seq: number; payload: string } | undefined;
     if (!startedRow) {
-      return { ok: false, code: "no_attempt", detail: "No restore.started event recorded for this rig." };
+      return { ok: false, code: "no_attempt", detail: "该工作组没有已记录的 restore.started 事件。" };
     }
     const attemptId = startedRow.seq;
 
-    // Find the node's most recent post-attempt outcome from the most-recent
-    // restore.completed event for this rig. If the latest outcome is not
-    // failed or attention_required, the reconciler has nothing to upgrade.
+    // 从该工作组最近的 restore.completed 事件中查找节点最近一次尝试后的结果。若最新结果
+    // 不是 failed 或 attention_required，协调器就没有可升级的内容。
     const completedRow = this.db.prepare(
       "SELECT payload FROM events WHERE rig_id = ? AND type = 'restore.completed' AND seq > ? ORDER BY seq DESC LIMIT 1"
     ).get(rigId, attemptId) as { payload: string } | undefined;
@@ -1718,14 +1648,14 @@ export class RestoreOrchestrator {
           nodeLogicalId = found.logicalId;
         }
       } catch {
-        // payload corruption — treat as no node record found
+        // payload 损坏，按未找到节点记录处理。
       }
     }
     if (!nodeStatus) {
-      return { ok: false, code: "node_not_found", detail: `Node ${nodeId} has no record in the latest restore.completed event for rig ${rigId}.` };
+      return { ok: false, code: "node_not_found", detail: `工作组 ${rigId} 最近的 restore.completed 事件中没有节点 ${nodeId} 的记录。` };
     }
     if (nodeStatus !== "failed" && nodeStatus !== "attention_required") {
-      return { ok: false, code: "outcome_not_upgradable", detail: `Reconciliation only upgrades failed or attention_required; current outcome is ${nodeStatus}.` };
+      return { ok: false, code: "outcome_not_upgradable", detail: `协调只能升级 failed 或 attention_required；当前结果为 ${nodeStatus}。` };
     }
     const fromStatus: "failed" | "attention_required" = nodeStatus;
 
@@ -1739,45 +1669,43 @@ export class RestoreOrchestrator {
           return { ok: true, attemptId, from: prior.from, to: "operator_recovered", evidence: prior.evidence };
         }
       } catch {
-        // A malformed prior row is not positive evidence; continue to the live proof.
+        // 格式错误的既有行不是正向证据，继续进行实时证明。
       }
     }
 
-    // Resolve canonical session name for this node so we can probe tmux/pane.
+    // 解析节点的规范会话名称，以便探测 tmux/窗格。
     const bindingRow = this.db.prepare(
       "SELECT tmux_session FROM bindings WHERE node_id = ?"
     ).get(nodeId) as { tmux_session: string | null } | undefined;
     const sessionName = bindingRow?.tmux_session ?? null;
     if (!sessionName) {
-      return { ok: false, code: "tmux_session_missing", detail: "No tmux session bound for this node." };
+      return { ok: false, code: "tmux_session_missing", detail: "该节点没有绑定 tmux 会话。" };
     }
 
     const sessRow = this.db.prepare(
       "SELECT session_name, resume_token FROM sessions WHERE node_id = ? ORDER BY created_at DESC, id DESC LIMIT 1",
     ).get(nodeId) as { session_name: string; resume_token: string | null } | undefined;
     if (!sessRow || sessRow.session_name !== sessionName) {
-      return { ok: false, code: "binding_mismatch", detail: `Canonical binding ${sessionName} does not match the latest session row.` };
+      return { ok: false, code: "binding_mismatch", detail: `规范绑定 ${sessionName} 与最新会话行不匹配。` };
     }
     const expectedResumeToken = sessRow.resume_token;
     if (!expectedResumeToken) {
-      return { ok: false, code: "resume_token_not_used", detail: "No resume token recorded on the latest session row." };
+      return { ok: false, code: "resume_token_not_used", detail: "最新会话行没有记录恢复令牌。" };
     }
 
-    // Precondition #1: tmux session exists.
+    // 前置条件 #1：tmux 会话存在。
     let alive = false;
     try {
       alive = await this.tmuxAdapter.hasSession(sessionName);
     } catch {
-      // L1 fail-closed: ambiguous probe failure stays as not-alive for the
-      // reconciler. Original failure event remains untouched.
+      // L1 封闭失败：含糊的探测失败在协调器中保持为不存活，原失败事件不受影响。
       alive = false;
     }
     if (!alive) {
-      return { ok: false, code: "tmux_session_missing", detail: `Tmux session ${sessionName} is not currently alive.` };
+      return { ok: false, code: "tmux_session_missing", detail: `tmux 会话 ${sessionName} 当前不存活。` };
     }
 
-    // Resolve runtime and prove exact native-token process lineage. Executable
-    // basename alone is never sufficient for no-input recovery.
+    // 解析运行时并证明准确的原生令牌进程谱系。仅有可执行文件 basename 不足以支持无输入恢复。
     const nodeRow = this.db.prepare(
       "SELECT runtime FROM nodes WHERE id = ?"
     ).get(nodeId) as { runtime: string | null } | undefined;
@@ -1801,16 +1729,15 @@ export class RestoreOrchestrator {
     const probe = assessNativeResumeProbe({ runtime, paneCommand, paneContent });
     const fgProcess = runtime === "claude-code" ? "claude" as const : runtime === "codex" ? "codex" as const : null;
     if (!fgProcess) {
-      return { ok: false, code: "fg_process_not_runtime", detail: `Node runtime is ${runtime ?? "unknown"}, not claude/codex.` };
+      return { ok: false, code: "fg_process_not_runtime", detail: `节点运行时为 ${runtime ?? "unknown"}，不是 claude/codex。` };
     }
 
-    // Precondition #4: pane is at a usable/idle state — explicitly NOT a
-    // resume-selection prompt and not the "returned to shell" failure mode.
+    // 前置条件 #4：窗格处于可用/空闲状态，明确不是恢复选择提示，也不是“返回 shell”失败模式。
     if (probe.status !== "resumed") {
-      return { ok: false, code: "pane_not_usable", detail: `Pane state is ${probe.status} (${probe.code}); reconciliation requires resumed.` };
+      return { ok: false, code: "pane_not_usable", detail: `窗格状态为 ${probe.status}（${probe.code}）；协调要求状态为 resumed。` };
     }
 
-    // All four preconditions hold. Append (never mutate) the audit event.
+    // 四项前置条件全部成立。追加审计事件，绝不修改既有事件。
     this.eventBus.emit({
       type: "restore.outcome_reconciled",
       rigId,
@@ -1834,16 +1761,16 @@ export class RestoreOrchestrator {
     try {
       const filePath = join(cwd, ".rigged-checkpoint.md");
       const content = [
-        "# OpenRig Checkpoint",
+        "# zrig 检查点",
         "",
-        `## Summary`,
+        `## 摘要`,
         checkpoint.summary,
         "",
-        checkpoint.currentTask ? `## Current Task\n${checkpoint.currentTask}\n` : "",
-        checkpoint.nextStep ? `## Next Step\n${checkpoint.nextStep}\n` : "",
-        checkpoint.blockedOn ? `## Blocked On\n${checkpoint.blockedOn}\n` : "",
+        checkpoint.currentTask ? `## 当前任务\n${checkpoint.currentTask}\n` : "",
+        checkpoint.nextStep ? `## 下一步\n${checkpoint.nextStep}\n` : "",
+        checkpoint.blockedOn ? `## 阻塞项\n${checkpoint.blockedOn}\n` : "",
         checkpoint.keyArtifacts.length > 0
-          ? `## Key Artifacts\n${checkpoint.keyArtifacts.map((a) => `- ${a}`).join("\n")}\n`
+          ? `## 关键制品\n${checkpoint.keyArtifacts.map((a) => `- ${a}`).join("\n")}\n`
           : "",
       ]
         .filter(Boolean)

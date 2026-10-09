@@ -1,9 +1,8 @@
-// Slice Story View v0 — UI hooks for the list + detail endpoints.
+// Slice Story View v0 —— 列表 + 详情端点的 UI hooks。
 //
-// Wraps GET /api/slices?filter=... and GET /api/slices/:name. Both
-// queries surface the daemon's "slices_root_not_configured" 503 path
-// as a structured error object so the UI can render a setup hint
-// instead of the raw 503.
+// 封装 GET /api/slices?filter=... 与 GET /api/slices/:name。两个查询都把后台服务的
+// "slices_root_not_configured" 503 路径暴露为结构化错误对象，使 UI 能渲染安装提示
+// 而非原始 503。
 
 import { useMemo } from "react";
 import { keepPreviousData, useQueries, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,16 +22,15 @@ export interface SliceListEntry {
   railItem: string | null;
   status: SliceStatus;
   rawStatus: string | null;
-  /** OPR.0.3.2.17 — short description from slice frontmatter
-   *  (description/summary fallback). Used by the storytelling adapter
-   *  as ConceptCard.oneLiner for `rawStatus === "candidate"` slices.
-   *  null when absent. */
+  /** OPR.0.3.2.17 —— 来自 slice frontmatter 的简短描述
+   *  （description/summary 兜底）。storytelling 适配器把它作为 ConceptCard.oneLiner，
+   *  用于 `rawStatus === "candidate"` 的切片。缺失时为 null。 */
   description?: string | null;
   qitemCount: number;
   hasProofPacket: boolean;
   lastActivityAt: string | null;
-  /** PL-007: absolute filesystem path of the slice folder, used by the UI
-   *  to resolve workspace kind against the rig's RigSpec.workspace block. */
+  /** PL-007：slice 文件夹的绝对文件系统路径，UI 据此对照工作组的
+   *  RigSpec.workspace 块解析 workspace 种类。 */
   slicePath?: string;
 }
 
@@ -40,13 +38,12 @@ export interface SliceListResponse {
   slices: SliceListEntry[];
   totalCount: number;
   filter: SliceFilter;
-  /** VM-005 (release-0.4.7): additive authored mission-status sidecar —
-   *  keyed by missionId (missions with at least one indexed slice), carrying
-   *  the raw README frontmatter `status:` (null when absent). Chip surfaces
-   *  feed it to reconcileMissionStatus so authored-wins precedence holds
-   *  without a second round-trip. Optional: older daemons omit it. */
+  /** VM-005（release-0.4.7）：增量编写的 mission-status 旁车——按 missionId 为键
+   *  （至少有一个已索引切片的任务），携带 README frontmatter 原始 `status:`（缺失时为 null）。
+   *  芯片表面把它喂给 reconcileMissionStatus，使 authored-wins 优先级成立，无需第二次往返。
+   *  可选：旧版后台服务省略它。 */
   missions?: Record<string, { authoredStatus: string | null; readiness?: ProofReadiness }>;
-  // Workflows in Spec Library v0 — present only when boundToWorkflow filter applied.
+  // Spec Library v0 中的工作流——仅在应用 boundToWorkflow 过滤器时出现。
   boundToWorkflow?: {
     specName: string;
     specVersion: string;
@@ -71,16 +68,14 @@ async function fetchSlicesList(
   boundToWorkflow: BoundToWorkflowFilter | null,
   hostId: string,
 ): Promise<SliceListResponse | SlicesUnavailable> {
-  // Explorer auto-show needs a daemon-side cache bypass as well as a
-  // React Query refetch. Otherwise a focus refetch can still receive the
-  // indexer's stale in-memory listing immediately after a slice folder is
-  // created.
+  // 资源管理器自动展示需要后台服务侧的缓存绕过 + React Query 重新获取二者。
+  // 否则在 slice 文件夹刚创建后，focus 重新获取仍可能立刻拿到索引器陈旧的内存列表。
   const params = new URLSearchParams({ filter, refresh: "1" });
   if (boundToWorkflow) {
     params.set("boundToWorkflow", `${boundToWorkflow.specName}:${boundToWorkflow.specVersion}`);
   }
-  // OPR.0.4.6.MH2 FR-2 — selected-host envelope; origin shape verbatim;
-  // local path unchanged (withHostParam is identity for local).
+  // OPR.0.4.6.MH2 FR-2 —— 所选主机信封；源结构逐字保留；
+  // 本地路径不变（withHostParam 对本地为恒等）。
   const res = await fetch(withHostParam(`/api/slices?${params.toString()}`, hostId), { signal: AbortSignal.timeout(5_000) });
   if (res.status === 503) {
     const body = (await res.json().catch(() => ({}))) as Partial<SlicesUnavailable> & { error?: string; hint?: string };
@@ -108,26 +103,20 @@ export function useSlices(filter: SliceFilter, boundToWorkflow: BoundToWorkflowF
     staleTime: 30_000,
     refetchInterval: 30_000,
     placeholderData: keepPreviousData,
-    // V0.3.1 slice 17 walk-item 8 (Explorer auto-show): refetch on
-    // window focus so an operator who switches away to `mkdir slices/...`
-    // and comes back sees the new folder without manually clicking
-    // refresh.
+    // V0.3.1 slice 17 walk-item 8（资源管理器自动展示）：窗口聚焦时重新获取，
+    // 使操作者切到别处 `mkdir slices/...` 再回来时能看到新文件夹，无需手动点刷新。
     //
-    // Forward-fix #2 (2026-05-11 velocity-qa VM verify CONCERNING):
-    // the value MUST be 'always' instead of plain `true`. With this
-    // query's local staleTime: 30_000 (30 seconds), plain `true` gates
-    // the refetch on the staleness predicate — short refocus tests
-    // within the stale window observed no refetch. The 'always'
-    // variant ignores staleness and refetches on every focus, which
-    // is the actual intent: see new folders the operator JUST created.
+    // 前向修复 #2（2026-05-11 velocity-qa VM 复核，需关注）：
+    // 值必须是 'always' 而非裸 `true`。本查询本地 staleTime 为 30_000（30 秒），
+    // 裸 `true` 会让重新获取受陈旧性谓词门控——陈旧窗口内的短聚焦测试观察不到重新获取。
+    // 'always' 变体忽略陈旧性、每次聚焦都重新获取，这才是真实意图：看到操作者刚创建的新文件夹。
     refetchOnWindowFocus: "always",
   });
 }
 
-// V0.3.1 slice 17 founder-walk-workspace-state-correctness — walk item 8 (Explorer auto-show). Mutation hook for the Explorer header's
-// manual refresh button: POSTs to /api/slices/refresh to drop the
-// daemon-side indexer cache, then invalidates the react-query slices
-// + files caches so the next render hits the fresh data.
+// V0.3.1 slice 17 founder-walk-workspace-state-correctness —— walk item 8（资源管理器自动展示）。
+// 资源管理器头部手动刷新按钮的变更 hook：POST 到 /api/slices/refresh 丢弃后台服务侧索引器缓存，
+// 然后使 react-query slices + files 缓存失效，下次渲染即取新数据。
 export function useRefreshSlices() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -143,14 +132,12 @@ export function useRefreshSlices() {
   });
 }
 
-// --- per-slice detail ---
+// --- 单切片详情 ---
 
 export interface StoryEvent {
   ts: string;
-  /** Spec-defined step.id when bound to a workflow_instance + the
-   *  event's qitem maps to a step trail; null when untagged (no
-   *  binding, no trail mapping, or non-qitem event). v1 removed the v0
-   *  hardcoded legacy phase enum. */
+  /** 绑定到 workflow_instance 且事件 qitem 映射到步骤轨迹时的 spec 定义 step.id；
+   *  未打标签时为 null（无绑定、无轨迹映射或非 qitem 事件）。v1 移除了 v0 硬编码的旧阶段枚举。 */
   phase: string | null;
   kind: string;
   actorSession: string | null;
@@ -265,12 +252,12 @@ export interface SliceDetail {
   qitemIds: string[];
   commitRefs: string[];
   lastActivityAt: string | null;
-  /** v1: bound workflow_instance metadata; null when no instance touches
-   *  any of this slice's qitems (UI falls back to v0 behavior). */
+  /** v1：绑定的 workflow_instance 元数据；当无实例触及本切片任何 qitem 时为 null
+   *  （UI 退化为 v0 行为）。 */
   workflowBinding: WorkflowBindingPayload | null;
   story: {
     events: StoryEvent[];
-    /** v1: spec-declared phase definitions; null when no instance bound. */
+    /** v1：spec 声明的阶段定义；无绑定实例时为 null。 */
     phaseDefinitions: PhaseDefinition[] | null;
   };
   acceptance: {
@@ -279,8 +266,7 @@ export interface SliceDetail {
     percentage: number;
     items: AcceptanceItem[];
     closureCallout: string | null;
-    /** v1: bound instance's current step + allowed next steps; null
-     *  when no instance bound. */
+    /** v1：绑定实例的当前步骤 + 允许的下一步；无绑定实例时为 null。 */
     currentStep: CurrentStepPayload | null;
   };
   decisions: { rows: DecisionRow[] };
@@ -289,15 +275,14 @@ export interface SliceDetail {
   topology: {
     affectedRigs: TopologyRigEntry[];
     totalSeats: number;
-    /** v1: spec graph (nodes + edges) derived from the bound instance's
-     *  workflow_spec; null when unbound (UI falls back to per-rig
-     *  session listing). */
+    /** v1：从绑定实例的 workflow_spec 派生的 spec 图（节点 + 边）；
+     *  未绑定时为 null（UI 退化为按工作组的会话列表）。 */
     specGraph: SpecGraphPayload | null;
   };
 }
 
 async function fetchSliceDetail(name: string, hostId: string): Promise<SliceDetail> {
-  // OPR.0.4.6.MH2 FR-2 — selected-host envelope; origin shape verbatim.
+  // OPR.0.4.6.MH2 FR-2 —— 所选主机信封；源结构逐字保留。
   const res = await fetch(withHostParam(`/api/slices/${encodeURIComponent(name)}`, hostId), { signal: AbortSignal.timeout(5_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return (await res.json()) as SliceDetail;
@@ -355,7 +340,7 @@ export function useSliceDetails(names: string[]): SliceDetailsMapResult {
   }, [queries, uniqueNames]);
 }
 
-// --- doc body fetcher (Docs tab; lazy on click) ---
+// --- 文档正文获取（Docs 标签页；点击时懒加载） ---
 
 export interface SliceDocResponse {
   relPath: string;
@@ -363,7 +348,7 @@ export interface SliceDocResponse {
 }
 
 async function fetchSliceDoc(name: string, relPath: string, hostId: string): Promise<SliceDocResponse> {
-  // OPR.0.4.6.MH2 FR-2 — selected-host envelope; origin shape verbatim.
+  // OPR.0.4.6.MH2 FR-2 —— 所选主机信封；源结构逐字保留。
   const res = await fetch(withHostParam(`/api/slices/${encodeURIComponent(name)}/doc/${encodeURI(relPath)}`, hostId));
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return (await res.json()) as SliceDocResponse;
@@ -395,22 +380,21 @@ export interface QueueItemDetail {
   tier: string | null;
   tags: string[] | null;
   body: string;
-  // OPR.0.4.1.18 — optional human-readable summary served by /api/queue/:id
-  // (daemon QueueItem.summary); null for pre-18 qitems. The Story consumer
-  // degrades on null; body stays the source of truth.
+  // OPR.0.4.1.18 —— /api/queue/:id 提供的可选人类可读摘要
+  // （后台服务 QueueItem.summary）；pre-18 的 qitem 为 null。Story 消费者
+  // 在 null 时退化；body 仍是事实来源。
   summary: string | null;
   closureReason?: string | null;
   closureTarget?: string | null;
   handedOffTo?: string | null;
   handedOffFrom?: string | null;
-  // OPR.0.4.1.19 — lineage already serialized by /api/queue/:id (queue-repository
-  // row->QueueItem); surfaced here for the Story-tab DAG reconstruction. The tail
-  // of chainOfRecord is the direct parent qitem-id; handedOffFrom == that tail on
-  // handoff-created items.
+  // OPR.0.4.1.19 —— 谱系已由 /api/queue/:id（queue-repository
+  // row->QueueItem）序列化；在此暴露给 Story 标签页 DAG 重建。chainOfRecord 尾是直接父 qitem-id；
+  // 交接创建的项上 handedOffFrom == 该尾。
   chainOfRecord?: string[] | null;
   blockedOn?: string | null;
-  // OPR.0.4.1.19 — the remaining /api/queue/:id QueueItem fields, surfaced for the
-  // Tier-3 drawer source-of-truth view (all already in the payload; type-only).
+  // OPR.0.4.1.19 —— 其余 /api/queue/:id QueueItem 字段，暴露给
+  // Tier-3 抽屉事实来源视图（都已在负载中；仅类型）。
   claimedAt?: string | null;
   expiresAt?: string | null;
   closureRequiredAt?: string | null;

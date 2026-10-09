@@ -1,7 +1,7 @@
 import type { Migration } from "../migrate.js";
 
-// W3 cutover truth: once a generation's process is physically gone, no delayed
-// startup/restore completion may recreate its applied-launch observation.
+// W3 切换事实：某一代的进程在物理上消失后，任何延迟的 startup/restore 完成都不得重建其
+// applied-launch 观察。
 export const appliedLaunchObservationInvalidationsSchema: Migration = {
   name: "070_applied_launch_observation_invalidations.sql",
   sql: `

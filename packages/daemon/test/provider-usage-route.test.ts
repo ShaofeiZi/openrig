@@ -1,8 +1,8 @@
-// Slice-04 (OPR.0.5.0.4) S-B — GET /api/provider/usage: the external status site's ENTIRE contract.
-// A THIN route over the S-A host rollup: it SERVES model.hostUsage (rollupHostUsage rows) verbatim —
-// no derivation lives here (state/windows/resets_at/conflict-anomaly/provenance are all built in S-A).
-// Route-level pins: contract shape, anomaly rendering (both-facts-visible), the no-account-id BELT at
-// the route altitude, explicit_unknown passthrough, and the loud 503 on an unwired service.
+// Slice-04（OPR.0.5.0.4）S-B——GET /api/provider/usage：外部状态站点的完整契约。
+// 这是 S-A host rollup 上的薄路由：逐字提供 model.hostUsage（rollupHostUsage 行），此处不做推导
+//（state/windows/resets_at/conflict-anomaly/provenance 均在 S-A 构建）。路由层固定项包括契约结构、
+// anomaly 渲染（双方事实均可见）、路由层不泄露 account id 的边界、explicit_unknown 透传，以及
+// service 未接线时明确返回 503。
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import { providerRoutes } from "../src/routes/provider.js";
@@ -17,22 +17,22 @@ const PROVENANCE = {
 };
 
 const HOST_USAGE: HostUsageRow[] = [
-  // ok
+  // 正常。
   { host: "local", provider: "claude", state: "ok", windows: [{ window: "five_hour", usedPercent: 10, asOf: AS_OF, seatSession: "review-r1@rig" }], provenance: PROVENANCE, anomalies: [], evidenceSeats: ["review-r1@rig"], asOf: AS_OF },
-  // limited + resets_at
+  // limited + resets_at。
   { host: "local", provider: "codex", state: "limited", resetsAt: "2026-08-03T13:00:00.000Z", windows: [{ window: "primary", usedPercent: 100, resetsAt: "2026-08-03T13:00:00.000Z", asOf: AS_OF, seatSession: "dev-qa@rig" }], provenance: PROVENANCE, anomalies: [], evidenceSeats: ["dev-qa@rig"], asOf: AS_OF },
-  // explicit_unknown + reason (passthrough)
+  // explicit_unknown + reason（透传）。
   { host: "local", provider: "codex", state: "explicit_unknown", unknownReason: "codex profile present but no usage meter", windows: [], provenance: PROVENANCE, anomalies: [], evidenceSeats: [], asOf: AS_OF },
 ];
 
-// a row carrying a first-class conflict anomaly (both-facts-visible)
+// 携带一等 conflict anomaly 的行（双方事实均可见）。
 const HOST_USAGE_CONFLICT: HostUsageRow[] = [
   { host: "local", provider: "claude", state: "explicit_unknown", unknownReason: "conflicting seat windows falsify the one-account-per-host invariant", windows: [], provenance: PROVENANCE, anomalies: [{ kind: "conflicting_seat_windows", window: "five_hour", seats: ["a@rig", "b@rig"], evidence: "a=20% vs b=90% at same asOf", asOf: AS_OF }], evidenceSeats: ["a@rig", "b@rig"], asOf: AS_OF },
 ];
 
 function modelWith(hostUsage: HostUsageRow[] | undefined): FourBlockReadModel {
   return {
-    // accounts intentionally carry account identifiers — the belt proves /usage never leaks them.
+    // accounts 有意携带账户标识；此边界证明 /usage 绝不泄露它们。
     accounts: [{ accountId: "cdx-secret-acct", label: "Codex", provider: "codex", authState: "active", profileRef: "p", asOf: AS_OF }],
     bindings: [],
     signals: [],
@@ -57,19 +57,19 @@ const svc = (hostUsage: HostUsageRow[] | undefined): ProviderService => ({
   switchAccount: async () => ({ outcome: "succeeded" }),
 });
 
-describe("GET /api/provider/usage — S-B external status contract", () => {
-  it("serves the host rollup rows verbatim (provider, state, windows, resets_at, asOf, evidence, provenance)", async () => {
+describe("GET /api/provider/usage——S-B 外部状态契约", () => {
+  it("逐字提供 host rollup 行（provider、state、windows、resets_at、asOf、evidence、provenance）", async () => {
     const res = await appWith(svc(HOST_USAGE)).request("/api/provider/usage");
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.hostUsage).toEqual(HOST_USAGE); // SERVED verbatim — no derivation, no re-shape
+    expect(body.hostUsage).toEqual(HOST_USAGE); // 逐字提供，不推导也不重塑。
     const codexLimited = body.hostUsage.find((r: HostUsageRow) => r.provider === "codex" && r.state === "limited");
     expect(codexLimited.resetsAt).toBe("2026-08-03T13:00:00.000Z");
     expect(codexLimited.windows[0].usedPercent).toBe(100);
     expect(body.hostUsage[0].provenance.basis).toBe("one_account_per_host_deployment_invariant");
   });
 
-  it("renders the conflict anomaly (both-facts-visible), never a silent merge", async () => {
+  it("渲染 conflict anomaly（双方事实均可见），绝不静默合并", async () => {
     const body = await (await appWith(svc(HOST_USAGE_CONFLICT)).request("/api/provider/usage")).json();
     const row = body.hostUsage[0];
     expect(row.state).toBe("explicit_unknown");
@@ -78,34 +78,34 @@ describe("GET /api/provider/usage — S-B external status contract", () => {
     expect(row.anomalies[0].seats).toEqual(["a@rig", "b@rig"]);
   });
 
-  it("passes an explicit_unknown row through unchanged (state + unknownReason)", async () => {
+  it("原样透传 explicit_unknown 行（state + unknownReason）", async () => {
     const body = await (await appWith(svc(HOST_USAGE)).request("/api/provider/usage")).json();
     const unknown = body.hostUsage.find((r: HostUsageRow) => r.state === "explicit_unknown");
     expect(unknown.unknownReason).toBe("codex profile present but no usage meter");
     expect(unknown.windows).toEqual([]);
   });
 
-  it("BELT: the /usage response emits NO account identifier at the route altitude", async () => {
+  it("边界：/usage 响应在路由层不输出任何账户标识", async () => {
     const res = await appWith(svc(HOST_USAGE)).request("/api/provider/usage");
     const raw = await res.text();
-    expect(raw).not.toContain("cdx-secret-acct"); // the accounts-block id never crosses into /usage
+    expect(raw).not.toContain("cdx-secret-acct"); // accounts 块 id 绝不进入 /usage。
     expect(raw).not.toContain("accountId");
     expect(raw).not.toContain("accountRef");
   });
 
-  it("empty rollup → an empty hostUsage array (honest, not a fabricated row)", async () => {
+  it("空 rollup 产生空 hostUsage 数组（真实，而非伪造行）", async () => {
     const body = await (await appWith(svc([])).request("/api/provider/usage")).json();
     expect(body.hostUsage).toEqual([]);
   });
 
-  // Guard advisory (S-B verdict, folded free): a PRE-S-A model with NO hostUsage KEY at all exercises
-  // the `?? []` absent-key branch — must serve an honest empty array, never undefined/null.
-  it("absent hostUsage key (pre-S-A model) → honest empty array via the ?? [] branch", async () => {
+  // 守卫提示（S-B 裁定，顺带折入）：完全没有 hostUsage key 的 PRE-S-A model 会覆盖 `?? []`
+  // 缺键分支；必须提供真实空数组，绝不能是 undefined/null。
+  it("hostUsage key 缺失（pre-S-A model）时通过 ?? [] 分支返回真实空数组", async () => {
     const body = await (await appWith(svc(undefined)).request("/api/provider/usage")).json();
     expect(body.hostUsage).toEqual([]);
   });
 
-  it("unwired service → loud 503 (never an empty/fabricated payload)", async () => {
+  it("service 未接线时明确返回 503（绝不返回空或伪造 payload）", async () => {
     const res = await appWith(null).request("/api/provider/usage");
     expect(res.status).toBe(503);
     expect((await res.json()).error).toBe("provider_service_unavailable");

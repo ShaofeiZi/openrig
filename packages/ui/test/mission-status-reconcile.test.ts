@@ -1,16 +1,14 @@
-// VM-005 (release-0.4.7) — TIER B: the new-symbol unit suite + TIER A pure
-// bucket differential (plan v1.3 §D-bis; ARCH-RULING-b3, sha 632ff319…).
+// VM-005（release-0.4.7）——TIER B：new-symbol unit 套件 + TIER A 纯
+// bucket 差分（plan v1.3 §D-bis；ARCH-RULING-b3，sha 632ff319…）。
 //
-// Tier B (below): DYNAMIC import of project-mission-state.js (the module
-// exists at both SHAs, so the import always succeeds); the t1 PRESENCE
-// assertion is UNCONDITIONAL and FIRST — at base 8757593f it is the counted,
-// named RED ("expected 'undefined' to be 'function'"); the unit cases run
-// conditionally and the t3 executed-count assertion pins that ALL of them
-// ran at the candidate.
+// Tier B（下）：DYNAMIC import project-mission-state.js（该模块在两个 SHA
+// 都存在，故 import 总成功）；t1 PRESENCE 断言无条件且最先——在 base
+// 8757593f 它是计数的命名 RED（"expected 'undefined' to be 'function'"）；
+// unit 用例条件运行，t3 executed-count 断言锁定它们全部在 candidate 运行。
 //
-// Tier A (bottom): the FR-4 bucket differential + V5 pure carve through
-// both-ends STATIC imports (projectMissionBucket / partitionProjectMissions
-// exist at both SHAs) — candidate expectations verbatim, one code path.
+// Tier A（底）：FR-4 bucket 差分 + V5 纯 carve，经两端 STATIC import
+//（projectMissionBucket / partitionProjectMissions 在两个 SHA 都存在）——
+// candidate 预期逐字，一条代码路径。
 
 import { describe, it, expect, beforeAll } from "vitest";
 import {
@@ -42,7 +40,7 @@ function slice(over: Partial<ProjectSliceRow>): ProjectSliceRow {
 }
 
 // ---------------------------------------------------------------------------
-// TIER B — new-symbol units (t1/t2/t3 per the B3 ruling)
+// TIER B——new-symbol units（t1/t2/t3 按 B3 裁决）
 // ---------------------------------------------------------------------------
 
 type Pms = typeof import("../src/lib/project-mission-state.js");
@@ -63,16 +61,15 @@ beforeAll(async () => {
 });
 
 describe("Tier B — reconcileMissionStatus unit contract (t1 presence FIRST)", () => {
-  // t1 — UNCONDITIONAL, FIRST: the counted named RED at base.
+  // t1——无条件、最先：base 处计数的命名 RED。
   it("t1: the reconciled home exists (reconcileMissionStatus + AUTHORED_WORD_TONES exported)", () => {
     expect(typeof (pms as Record<string, unknown>).reconcileMissionStatus).toBe("function");
     expect(typeof (pms as Record<string, unknown>).AUTHORED_WORD_TONES).toBe("object");
   });
 
-  // t2 (B3 ruling, arch sha 632ff319…): the cases below run conditionally at
-  // base ONLY because the symbols do not exist there; NO DIFFERENTIAL VECTOR
-  // may ever move inside this conditional block — differentials live in the
-  // Tier A suites (mission-status-surfaces.test.tsx + the Tier A block below).
+  // t2（B3 裁决，arch sha 632ff319…）：下列用例仅因符号在 base 不存在而条件
+  // 运行；任何差分向量永远不得移入此条件块——差分包在 Tier A 套件
+  //（mission-status-surfaces.test.tsx + 下方 Tier A 块）。
   const hasHome = () =>
     typeof (pms as Record<string, unknown>).reconcileMissionStatus === "function";
 
@@ -101,7 +98,7 @@ describe("Tier B — reconcileMissionStatus unit contract (t1 presence FIRST)", 
       const after = pms.reconcileMissionStatus(word, [slice({ lastActivityAt: RECENT })], JUMP);
       expect(after).toEqual(before);
     }
-    // derived keeps the window as its discriminator (unit mirror of the DOM V4)
+    // derived 保持窗口作判别器（DOM V4 的 unit 镜像）
     const corpus = [slice({ lastActivityAt: RECENT })];
     expect(pms.reconcileMissionStatus(null, corpus, NOW).state).toBe("active");
     expect(pms.reconcileMissionStatus(null, corpus, JUMP).state).toBe("idle");
@@ -136,6 +133,9 @@ describe("Tier B — reconcileMissionStatus unit contract (t1 presence FIRST)", 
     expect(pms.reconcileMissionStatus(null, [slice({ lastActivityAt: RECENT })], NOW).state).toBe("active");
     expect(pms.reconcileMissionStatus(null, [slice({ status: "done" })], NOW).state).toBe("shipped");
     expect(pms.reconcileMissionStatus(null, [slice({ lastActivityAt: STALE })], NOW).state).toBe("idle");
+    expect(pms.reconcileMissionStatus(null, [], NOW).label).toBe("空");
+    expect(pms.reconcileMissionStatus(null, [slice({ lastActivityAt: RECENT })], NOW).label).toBe("进行中");
+    expect(pms.reconcileMissionStatus(null, [slice({ status: "done" })], NOW).label).toBe("已发布");
     const corpora: ProjectSliceRow[][] = [
       [],
       [slice({ lastActivityAt: STALE })],
@@ -149,14 +149,14 @@ describe("Tier B — reconcileMissionStatus unit contract (t1 presence FIRST)", 
   it("V6 frozen-fixture semantics (packet …5d184b24): no authored status → honest derived word", () => {
     if (!hasHome()) return;
     executed.push("v6-frozen-semantics");
-    // The frozen mission README (fixture/README.md sha 660068d4…) carries
-    // stage/id/release and NO `status:` — authored is null for those bytes
-    // (the daemon-side lockstep test binds the actual bytes).
+    // 冻结的 mission README（fixture/README.md sha 660068d4…）携带
+    // stage/id/release 且无 `status:`——这些字节 authored 为 null
+    //（daemon 侧 lockstep 测试绑定实际字节）。
     expect(pms.reconcileMissionStatus(null, [slice({ lastActivityAt: RECENT })], NOW).state).toBe("active");
     expect(pms.reconcileMissionStatus(null, [slice({ lastActivityAt: STALE })], NOW).state).toBe("idle");
   });
 
-  // t3 — at the candidate, ALL Tier-B cases must have executed (silent-skip fence).
+  // t3——在 candidate，全部 Tier-B 用例必须已执行（silent-skip 围栏）。
   it("t3: all Tier-B cases executed at the candidate", () => {
     if (!hasHome()) return;
     expect(executed.sort()).toEqual([...TIER_B_CASES].sort());
@@ -164,8 +164,8 @@ describe("Tier B — reconcileMissionStatus unit contract (t1 presence FIRST)", 
 });
 
 // ---------------------------------------------------------------------------
-// TIER A — FR-4 bucket differential + V5 pure carve (both-ends static imports,
-// one code path, candidate expectations verbatim)
+// TIER A——FR-4 bucket 差分 + V5 纯 carve（两端 static import，一条代码路径，
+// candidate 预期逐字）
 // ---------------------------------------------------------------------------
 
 describe("Tier A — FR-4 bucket coherence (differential: named RED at base)", () => {
@@ -191,19 +191,19 @@ describe("Tier A — FR-4 bucket coherence (differential: named RED at base)", (
         slices: [slice({ lastActivityAt: RECENT })],
       },
     ] as Parameters<typeof partitionProjectMissions>[0];
-    // Inject the fixture clock (NOW) so the fixed-timestamp RECENT slice is evaluated against the
-    // instant it was authored for — NOT wall-clock. Without this the differential rotted to RED as
-    // real time advanced 27 days past the 36h window (the excluded ui leg hid it until F1's gap-1).
+    // 注入 fixture 时钟（NOW），使固定时间戳 RECENT slice 按其 authored 瞬时
+    // 评估——非 wall-clock。无此差分随真实时间推进 27 天越过 36h 窗口而烂为
+    // RED（被排除的 ui leg 一直隐藏到 F1 gap-1）。
     const { current, archive } = partitionProjectMissions(groups, NOW);
     expect(archive.map((m) => m.id)).toEqual(["auth"]);
     expect(current.map((m) => m.id)).toEqual(["act"]);
   });
 });
 
-// VM-005 time-bomb CLASS-KILL: recency bucketing must follow the INJECTED clock, never wall-clock.
-// A fixed-timestamp fixture that reaches un-injected production time rots to the wrong bucket as real
-// time advances — exactly the failure F1's closed gap-1 surfaced. This pin proves the seam is honored,
-// so any fixed-clock differential can (and must) inject `now` and stay deterministic forever.
+// VM-005 定时炸弹 CLASS-KILL：recency 分桶必须跟随注入时钟，绝非 wall-clock。
+// 一个固定时间戳 fixture 触达未注入的生产时间，随真实时间推进烂到错误 bucket——
+// 正是 F1 已闭合 gap-1 暴露的失败。本锁证明接缝被遵守，故任何 fixed-clock 差分
+// 可以（且必须）注入 `now` 并永远保持确定性。
 describe("Tier A — clock-determinism guard (time-bomb class-kill)", () => {
   it("projectMissionBucket + partitionProjectMissions bucket by the injected now, not Date.now()", () => {
     const fixed = "2020-01-01T00:00:00.000Z"; // long-dead wall-clock: under real Date.now() ALWAYS archive
@@ -212,11 +212,11 @@ describe("Tier A — clock-determinism guard (time-bomb class-kill)", () => {
       id: "m", label: "m", status: "active", statusSource: "derived",
       slices: [slice({ lastActivityAt: fixed })],
     } as Parameters<typeof projectMissionBucket>[0];
-    // Within-window of the INJECTED now → current (would be archive if the fn read Date.now()).
+    // 注入 now 窗口内 -> current（若 fn 读 Date.now() 则会是 archive）。
     expect(projectMissionBucket(m, at + 60_000)).toBe("current");
-    // Past the window of the injected now → archive — deterministic regardless of real time.
+    // 注入 now 窗口外 -> archive——与真实时间无关地确定。
     expect(projectMissionBucket(m, at + PROJECT_CURRENT_ACTIVITY_WINDOW_MS + 60_000)).toBe("archive");
-    // partitionProjectMissions threads the same clock end-to-end.
+    // partitionProjectMissions 端到端贯穿同一时钟。
     expect(partitionProjectMissions([m], at + 60_000).current.map((x) => x.id)).toEqual(["m"]);
     expect(partitionProjectMissions([m], at + PROJECT_CURRENT_ACTIVITY_WINDOW_MS + 60_000).archive.map((x) => x.id)).toEqual(["m"]);
   });
@@ -245,8 +245,8 @@ describe("Tier A — V5 bucket byte-identity (green at BOTH SHAs)", () => {
 describe("current proof readiness and retained declared state", () => {
   it("shows the served proof basis without promoting readiness to publication", () => {
     const row = projectSliceFromListEntry({ name: "one", displayName: "One", missionId: "trial", railItem: null, status: "done", rawStatus: "done", qitemCount: 0, hasProofPacket: true, lastActivityAt: null, readiness: { configured: true, state: "unknown", revision: "changed-evidence" } });
-    expect(row.status).toBe("proof unknown");
-    expect(reconcileMissionStatus("active", [row], NOW, { state: "unknown", revision: "changed-evidence", historicalStatus: "active" })).toMatchObject({ state: "active", label: "declared active · proof unknown" });
-    expect(reconcileMissionStatus("active", [row], NOW, { state: "ready", revision: "accepted", historicalStatus: "active" })).toMatchObject({ state: "active", label: "declared active · proof ready" });
+    expect(row.status).toBe("校验 未知");
+    expect(reconcileMissionStatus("active", [row], NOW, { state: "unknown", revision: "changed-evidence", historicalStatus: "active" })).toMatchObject({ state: "active", label: "声明 active · 校验 未知" });
+    expect(reconcileMissionStatus("active", [row], NOW, { state: "ready", revision: "accepted", historicalStatus: "active" })).toMatchObject({ state: "active", label: "声明 active · 校验 已就绪" });
   });
 });

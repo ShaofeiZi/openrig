@@ -1,30 +1,28 @@
-// F1 exclusion-ledger — the 4-rail MECHANISM (PM ruling: the exclusion ledger "with teeth").
+// F1 排除台账——四条轨道的机制（PM 裁决：排除台账“带牙齿”）。
 //
-// A base-health suite that genuinely cannot be fixed before a cut may be EXCLUDED from the gate —
-// but only VISIBLY, OWNED, RECEIPTED, and MECHANICALLY EXPIRING. This module is pure logic (inject
-// `now`/`cutCeiling`) so the rails are unit-tested; the gate entrypoint wires the real ledger file +
-// clock around it. It ships with an EMPTY seed: the named-6 were KILLED, not excluded, so main is
-// truly green and no suite is a resident. The mechanism is the durable belt for a future cut.
+// 一个确实无法在裁剪前修好的基础健康套件可以被排除出闸门——但只能以“可见、有归属、
+// 有收据、且机制化到期”的方式排除。本模块是纯逻辑（注入 `now`/`cutCeiling`），
+// 以便各轨道可单测；闸门入口再把真实台账文件 + 时钟接上来。它随一份空种子发布：
+// 那命名的 6 个套件是被“杀掉”而非“排除”，所以 main 是真绿的、没有常驻者。
+// 这套机制是给未来某次裁剪准备的持久安全带。
 //
-//   Rail 1  green-with-exclusions — a failure COVERED by an active resident → gate PASS, named in-band
-//   Rail 2  mechanical expiry     — a resident past its expiry → gate FAIL (forces removal; self-dying)
-//   Rail 3  receipt+owner+expiry  — every resident carries an A/B receipt, an owner, and an expiry
-//   Rail 4  cut ceiling           — no resident's expiry may outlive the 0.5.2 cut
+//   轨道 1  带排除仍为绿——某个失败被一个生效中的常驻者覆盖 → 闸门 PASS，且在带内点名
+//   轨道 2  机制化到期——超过有效期的常驻者 → 闸门 FAIL（迫使其移除；自我消亡）
+//   轨道 3  收据+归属+到期——每个常驻者都带 A/B 收据、一个 owner 和一个到期日
+//   轨道 4  裁剪上限——任何常驻者的到期日都不得晚于 0.5.2 裁剪
 
 export const LEDGER_ENTRY_FIELDS = ["suite", "reason", "receipt", "owner", "expiry"];
 
-// Rail 4 — the 0.5.2 cut ceiling: no exclusion may expire after this instant. DESK-PINNED at the real
-// 0.5.2 cut date; this near-future placeholder is inert while the seed is empty, and the mechanism
-// enforces `expiry <= ceiling` regardless of the exact value.
+// 轨道 4——0.5.2 裁剪上限：任何排除的到期日都不得晚于此刻。这是按真实 0.5.2 裁剪日期钉死的；
+// 种子为空时这个近期占位值不起作用，机制本身无论具体取值都强制 `expiry <= ceiling`。
 export const CUT_CEILING_ISO = "2026-09-30";
 
-// Date-only lexicographic compare: for YYYY-MM-DD, string order IS chronological order.
+// 仅按日期的字典序比较：对 YYYY-MM-DD，字符串序就是时间序。
 const day = (d) => String(d).slice(0, 10);
 
 /**
- * Rail 3 + Rail 4 static validation: every resident MUST carry the full schema, and its expiry MUST
- * NOT outlive the cut ceiling. Returns { valid, errors } — an invalid ledger is a loud gate failure,
- * never a silent pass.
+ * 轨道 3 + 轨道 4 的静态校验：每个常驻者必须带完整字段，且到期日不得晚于裁剪上限。
+ * 返回 { valid, errors }——非法台账是响亮的闸门失败，绝不是静默通过。
  */
 export function validateLedger(ledger = [], { cutCeiling = CUT_CEILING_ISO } = {}) {
   const errors = [];
@@ -33,21 +31,20 @@ export function validateLedger(ledger = [], { cutCeiling = CUT_CEILING_ISO } = {
     for (const field of LEDGER_ENTRY_FIELDS) {
       const v = entry ? entry[field] : undefined;
       if (v === undefined || v === null || String(v).trim() === "") {
-        errors.push(`${tag}: missing required field "${field}"`);
+        errors.push(`${tag}：缺少必填字段 "${field}"`);
       }
     }
     if (entry && entry.expiry && day(entry.expiry) > day(cutCeiling)) {
-      errors.push(`${tag}: expiry ${day(entry.expiry)} exceeds the 0.5.2 cut ceiling ${day(cutCeiling)}`);
+      errors.push(`${tag}：到期日 ${day(entry.expiry)} 晚于 0.5.2 裁剪上限 ${day(cutCeiling)}`);
     }
   });
   return { valid: errors.length === 0, errors };
 }
 
 /**
- * Rail 1 + Rail 2 — resolve the gate verdict against the ledger. PASS iff: the ledger is schema/ceiling
- * VALID, every failure is COVERED by an ACTIVE (non-expired) resident, and NO resident is expired
- * (a resident past its expiry forces RED regardless of its suite's current state — it must be removed
- * or re-justified). Otherwise FAIL. Injected `now`/`cutCeiling` keep it deterministic.
+ * 轨道 1 + 轨道 2——依据台账裁决闸门结果。当且仅当：台账在 schema/上限上合法、每个失败都被一个
+ * 生效中（未过期）的常驻者覆盖、且没有常驻者过期（超过有效期的常驻者无论该套件当前状态如何都
+ * 强制 RED——它必须被移除或重新给出理由），才为 PASS；否则 FAIL。注入的 `now`/`cutCeiling` 保证确定性。
  */
 export function resolveGateWithLedger({ failures = [], ledger = [], now, cutCeiling = CUT_CEILING_ISO }) {
   const today = day(now);
@@ -76,28 +73,28 @@ export function resolveGateWithLedger({ failures = [], ledger = [], now, cutCeil
 }
 
 /**
- * The in-band LOUD render (Rail 1): a green that carries exclusions must NAME every one of them, and a
- * failure must name what's uncovered or expired. An empty ledger says so plainly.
+ * 带内响亮渲染（轨道 1）：带排除的绿必须逐一列出每个排除项；失败时必须点明哪些未被覆盖或已过期。
+ * 空台账就直白说明。
  */
 export function renderLedgerState(result) {
   const n = result.activeExclusions.length;
   const lines = [];
   if (n === 0) {
-    lines.push("gate ledger: 0 exclusions (clean — no residents).");
+    lines.push("闸门台账：0 项排除（干净——无常驻者）。");
   } else {
-    lines.push(`gate ledger: ${n} active exclusion(s) — GREEN WITH EXCLUSIONS (each named):`);
+    lines.push(`闸门台账：${n} 项生效排除——带排除仍为绿（逐项点名）：`);
     for (const e of result.activeExclusions) {
-      lines.push(`  • ${e.suite} — owner ${e.owner}, expires ${day(e.expiry)}, receipt ${e.receipt} (${e.reason})`);
+      lines.push(`  • ${e.suite} — 负责人 ${e.owner}，到期 ${day(e.expiry)}，收据 ${e.receipt}（${e.reason}）`);
     }
   }
   if (result.uncovered.length) {
-    lines.push(`  ✗ UNCOVERED failures (no exclusion covers them): ${result.uncovered.join(", ")}`);
+    lines.push(`  ✗ 未覆盖的失败（无排除项覆盖）：${result.uncovered.join(", ")}`);
   }
   if (result.expired.length) {
-    lines.push(`  ✗ EXPIRED residents (mechanical expiry — REMOVE or re-justify): ${result.expired.join(", ")}`);
+    lines.push(`  ✗ 已过期的常驻者（机制化到期——请移除或重新说明）：${result.expired.join(", ")}`);
   }
   if (!result.validity.valid) {
-    lines.push(`  ✗ INVALID ledger entries: ${result.validity.errors.join("; ")}`);
+    lines.push(`  ✗ 台账条目非法：${result.validity.errors.join("; ")}`);
   }
   lines.push(`gate: ${result.gate.toUpperCase()}`);
   return lines.join("\n");

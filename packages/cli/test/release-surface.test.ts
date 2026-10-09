@@ -1,4 +1,4 @@
-// OPR.0.3.3.13.1 - CLI surface-detection parser POC tests (AC-1..AC-5).
+// OPR.0.3.3.13.1——CLI surface 检测解析器 POC 测试（AC-1..AC-5）。
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -35,19 +35,19 @@ describe("release-surface parser - extract (unit)", () => {
     const surface = extractSurfaceFromSources([readSource("src/commands/rig-mode.ts")]);
     expect(surface.commands.has("mode")).toBe(true);
     expect([...surface.commands].some((c) => c.includes("rig-mode"))).toBe(false);
-    // a few known subcommands of `mode`
+    // `mode` 的几个已知子命令
     expect(surface.commands.has("mode set")).toBe(true);
     expect(surface.commands.has("mode defaults")).toBe(true);
   });
 
   it("AC-3: captures the option name-token despite a template-literal description", () => {
     const surface = extractSurfaceFromSources([readSource("src/commands/scope.ts")]);
-    // `scope slice create --template` has a `\`Template: ${...}\`` description.
+    // `scope slice create --template` 有 `\`Template: ${...}\`` 描述。
     expect(surface.commands.has("scope slice create")).toBe(true);
     expect(surface.flags.has(`scope slice create${FLAG_SEP}--template`)).toBe(true);
     // `--reason` on `scope slice close` is a requiredOption with a template desc.
     expect(surface.flags.has(`scope slice close${FLAG_SEP}--reason`)).toBe(true);
-    // top-level `--workspace` option on the scope root.
+    // scope root 上的顶层 `--workspace` 选项。
     expect(surface.flags.has(`scope${FLAG_SEP}--workspace`)).toBe(true);
   });
 
@@ -82,7 +82,7 @@ describe("release-surface parser - diff (AC-1)", () => {
 
     expect(diff.release_from).toBe("refA");
     expect(diff.release_to).toBe("refB");
-    // brand-new top-level command `scope` with its added subpath.
+    // 全新顶层命令 `scope` 及其新增子路径。
     expect(diff.added_commands).toEqual([
       { name: "scope", subcommands: ["mission"] },
     ]);

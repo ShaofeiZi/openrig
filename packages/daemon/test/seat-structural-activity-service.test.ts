@@ -1,9 +1,9 @@
-// 5b82324b — the STRUCTURAL activity cache. Proves structural classification (catching a "Drizzling"
-// gerund a verb allowlist misses), plus the two guard-required safety axes:
-//   MF1 — a stale positive verdict never survives a capture outage: a null/throw capture INVALIDATES
-//         the prior row, and a read REFUSES an observation past the freshness window.
-//   MF2 — sweeps are SINGLE-FLIGHT and held until settle: in-flight captures never exceed one sweep
-//         (N seats) across many ticks with held captures, then resume on release.
+// 5b82324b——STRUCTURAL activity 缓存。证明结构分类（抓住动词 allowlist 漏掉的
+// "Drizzling" 动名词），外加守卫要求的两条安全轴：
+//   MF1——过期正向判定绝不逃过采集中断：null/throw 采集 INVALIDATE 前一行，
+//         读 REFUSE 新鲜窗口之外的观测。
+//   MF2——sweep 是 SINGLE-FLIGHT，持有到 settle：跨多个 tick 的 in-flight 采集在持有期
+//         绝不超过一个 sweep（N seats），release 后恢复。
 
 import { describe, it, expect } from "vitest";
 import { createFullTestDb } from "./helpers/test-app.js";
@@ -20,41 +20,41 @@ function mkTmux(content: string | null, counter?: { captures: number }) {
   } as never;
 }
 
-describe("SeatStructuralActivityService — classification", () => {
-  it("classifies a mid-work spinner pane (incl. a 'Drizzling' gerund) as agent_active + caches it", async () => {
+describe("SeatStructuralActivityService——分类", () => {
+  it("把工作中 spinner pane（含 'Drizzling' 动名词）分类为 agent_active 并缓存", async () => {
     const svc = new SeatStructuralActivityService(mkTmux("some output\n⠋ Drizzling… (esc to interrupt)"));
-    expect((await svc.pollSeat("dev@rig"))?.state).toBe("agent_active"); // structural markers, NOT a verb allowlist
+    expect((await svc.pollSeat("dev@rig"))?.state).toBe("agent_active"); // 结构标记，不是动词 allowlist
     expect(svc.getStructuralActivity("dev@rig")?.state).toBe("agent_active");
     expect(svc.getStructuralActivity("dev@rig")?.observedAt).toBeTruthy();
   });
 
-  it("classifies an empty idle prompt as agent_idle", async () => {
+  it("把空 idle prompt 分类为 agent_idle", async () => {
     const svc = new SeatStructuralActivityService(mkTmux("output above\n❯ "));
     expect((await svc.pollSeat("dev@rig"))?.state).toBe("agent_idle");
   });
 
-  it("getStructuralActivity is capture-FREE (reads the cache, never re-captures)", async () => {
+  it("getStructuralActivity 不采集（读缓存，绝不重新采集）", async () => {
     const counter = { captures: 0 };
     const svc = new SeatStructuralActivityService(mkTmux("⠹ Working… esc to interrupt", counter));
     await svc.pollSeat("dev@rig");
     svc.getStructuralActivity("dev@rig");
     svc.getStructuralActivity("dev@rig");
-    expect(counter.captures).toBe(1); // reads do not capture — no per-request storm
+    expect(counter.captures).toBe(1); // 读不采集——无 per-request 风暴
   });
 });
 
-describe("SeatStructuralActivityService — MF1: a stale positive never survives a capture outage", () => {
-  it("null capture after a positive verdict INVALIDATES the row (no false-live)", async () => {
+describe("SeatStructuralActivityService——MF1：过期正向绝不逃过采集中断", () => {
+  it("正向判定后 null 采集 INVALIDATE 该行（无 false-live）", async () => {
     let content: string | null = "⠋ Working… esc to interrupt";
     const svc = new SeatStructuralActivityService({ capturePaneContent: async () => content } as never);
     await svc.pollSeat("s@rig");
     expect(svc.getStructuralActivity("s@rig")?.state).toBe("agent_active");
-    content = null; // capture goes unavailable
+    content = null; // 采集不可用
     await svc.pollSeat("s@rig");
-    expect(svc.getStructuralActivity("s@rig")).toBeNull(); // invalidated, not a stale positive
+    expect(svc.getStructuralActivity("s@rig")).toBeNull(); // 已失效，不是过期正向
   });
 
-  it("THROWING capture after a positive verdict invalidates the row", async () => {
+  it("正向判定后 THROW 采集失效该行", async () => {
     let mode = "ok";
     const svc = new SeatStructuralActivityService({
       capturePaneContent: async () => {
@@ -69,7 +69,7 @@ describe("SeatStructuralActivityService — MF1: a stale positive never survives
     expect(svc.getStructuralActivity("s@rig")).toBeNull();
   });
 
-  it("a read REFUSES + evicts an observation past the freshness window (poller made no progress)", async () => {
+  it("读 REFUSE + 逐出新鲜窗口外的观测（poller 无进展）", async () => {
     let t = Date.parse("2026-08-10T20:00:00.000Z");
     const svc = new SeatStructuralActivityService(
       { capturePaneContent: async () => "⠋ Working… esc to interrupt" } as never,
@@ -78,13 +78,13 @@ describe("SeatStructuralActivityService — MF1: a stale positive never survives
       5000, // staleAfterMs
     );
     await svc.pollSeat("s@rig");
-    expect(svc.getStructuralActivity("s@rig")?.state).toBe("agent_active"); // fresh
-    t += 5000; // advance past the window; no fresh capture happened
-    expect(svc.getStructuralActivity("s@rig")).toBeNull(); // refused + evicted
+    expect(svc.getStructuralActivity("s@rig")?.state).toBe("agent_active"); // 新鲜
+    t += 5000; // 推进过窗口；未发生新采集
+    expect(svc.getStructuralActivity("s@rig")).toBeNull(); // 拒绝 + 逐出
   });
 });
 
-describe("SeatStructuralActivityService — MF2: single-flight, held until settle", () => {
+describe("SeatStructuralActivityService——MF2：single-flight，持有到 settle", () => {
   function dbWith2RunningSeats() {
     const db = createFullTestDb();
     const rigRepo = new RigRepository(db);
@@ -99,7 +99,7 @@ describe("SeatStructuralActivityService — MF2: single-flight, held until settl
     return db;
   }
 
-  it("in-flight captures never exceed one sweep (N) across many ticks with held captures; resumes on release", async () => {
+  it("持有采集期间跨多 tick 的 in-flight 采集绝不超过一个 sweep（N）；release 后恢复", async () => {
     const db = dbWith2RunningSeats();
     const releasers: Array<() => void> = [];
     let started = 0;
@@ -117,25 +117,25 @@ describe("SeatStructuralActivityService — MF2: single-flight, held until settl
     } as never;
     const svc = new SeatStructuralActivityService(tmux);
 
-    // Fire three sweeps while the 2 captures are held. Only the first starts captures; the next two
-    // hit the single-flight guard and no-op.
+    // 在 2 个采集被持有期间发 3 个 sweep。只有第一个启动采集；后两个
+    // 撞上 single-flight 守卫并 no-op。
     const s1 = svc.pollAllRunningTmuxSeats(db);
-    await new Promise((r) => setTimeout(r, 2)); // let the first sweep's captures start
+    await new Promise((r) => setTimeout(r, 2)); // 让第一个 sweep 的采集启动
     const s2 = svc.pollAllRunningTmuxSeats(db);
     const s3 = svc.pollAllRunningTmuxSeats(db);
     await new Promise((r) => setTimeout(r, 2));
-    expect(started).toBe(2); // ONE sweep's worth
-    expect(maxInFlight).toBe(2); // never 4 or 6 — no overlapping whole-fleet sweeps
+    expect(started).toBe(2); // 一个 sweep 的量
+    expect(maxInFlight).toBe(2); // 绝不 4 或 6——无重叠 whole-fleet sweep
 
-    // Release the held captures → the first sweep settles; the skipped sweeps were already resolved.
+    // 释放被持有的采集 → 第一个 sweep settle；被跳过的 sweep 早已 resolve。
     releasers.splice(0).forEach((fn) => fn());
     await Promise.all([s1, s2, s3]);
 
-    // A later tick now resumes (single-flight released after settle).
+    // 后续 tick 现在恢复（single-flight 在 settle 后释放）。
     const s4 = svc.pollAllRunningTmuxSeats(db);
     await new Promise((r) => setTimeout(r, 2));
-    expect(started).toBe(4); // resumed: another 2 captures
-    expect(maxInFlight).toBe(2); // still bounded to one sweep
+    expect(started).toBe(4); // 恢复：又 2 个采集
+    expect(maxInFlight).toBe(2); // 仍 bounded 到一个 sweep
     releasers.splice(0).forEach((fn) => fn());
     await s4;
     db.close();

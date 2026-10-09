@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type Database from "better-sqlite3";
 import { createFullTestDb, createTestApp } from "./helpers/test-app.js";
 
-describe("single topology-creation ingress (OPR.0.5.8.9)", () => {
+describe("单一 topology-creation 入口（OPR.0.5.8.9）", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
 
@@ -23,7 +23,7 @@ describe("single topology-creation ingress (OPR.0.5.8.9)", () => {
     cwd: "/tmp",
   });
 
-  it("routes pod expansion and ordinary member growth through the same materialize and launch effects", async () => {
+  it("让 pod expansion 和普通成员增长经过相同的 materialize 与 launch 副作用", async () => {
     const rig = setup.rigRepo.createRig("shared-ingress");
     const materialize = vi.spyOn(setup.podInstantiator, "materializeValidatedSpec");
     const launch = vi.spyOn(setup.podInstantiator, "launchValidatedSpec");
@@ -61,7 +61,7 @@ describe("single topology-creation ingress (OPR.0.5.8.9)", () => {
       .toEqual(["one", "two"]);
   });
 
-  it("keeps a member cwd override identical in durable state and the runtime launch binding", async () => {
+  it("使成员 cwd override 在持久状态与 runtime launch binding 中保持一致", async () => {
     const rig = setup.rigRepo.createRig("cwd-override");
     const expanded = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -96,7 +96,7 @@ describe("single topology-creation ingress (OPR.0.5.8.9)", () => {
     expect(startNode.mock.calls[0]?.[0].binding.cwd).toBe("/private/tmp");
   });
 
-  it("keeps one construction call site for each topology-creation effect", () => {
+  it("每种 topology-creation 副作用只保留一个构造调用点", () => {
     const source = readFileSync(
       resolve(import.meta.dirname, "../src/domain/rigspec-instantiator.ts"),
       "utf8",

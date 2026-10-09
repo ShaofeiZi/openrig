@@ -55,7 +55,7 @@ function adoptedV2Projection(): string {
   return `${PROJECTION_HEADER}# Projection format: v2 content-addressed\n# projection-body-sha256: ${digest}\n${entityBody}`;
 }
 
-describe("public human registry -> queue admission journey", () => {
+describe("公共 human registry 到 queue admission 的流程", () => {
   let home: string;
   let db: Database.Database;
   let app: Hono;
@@ -107,7 +107,7 @@ describe("public human registry -> queue admission journey", () => {
     nudge: false,
   };
 
-  it("admits through queue create and handoff the same human shown by gateway list/show from an adopted v2 projection", async () => {
+  it("通过 queue create 与 handoff 接纳 adopted v2 projection 中由 gateway list/show 显示的同一 human", async () => {
     writeFileSync(projectionPath(home), adoptedV2Projection());
 
     expect(listHumans(home)).toMatchObject({ ok: true, humans: [{ entityId: "founder", address: "founder@external" }] });
@@ -136,7 +136,7 @@ describe("public human registry -> queue admission journey", () => {
     expect(await handed.json()).toMatchObject({ created: { destinationSession: "founder@external" } });
   });
 
-  it("reports a malformed projection as human_registry_unavailable with its cause", async () => {
+  it("将格式错误的 projection 报告为 human_registry_unavailable 并附带原因", async () => {
     writeFileSync(projectionPath(home), `${readFileSync(projectionPath(home), "utf8")}# hand edit\n`);
 
     const response = await app.request("/api/queue/create", {
@@ -147,12 +147,12 @@ describe("public human registry -> queue admission journey", () => {
     expect(response.status).toBe(400);
     const body = await response.json() as Record<string, unknown>;
     expect(body).toMatchObject({ error: "human_registry_unavailable", registryLoadError: true, registryProjectionError: true });
-    expect(String(body.registryError)).toMatch(/manual edit|hand-edited|canonical/i);
+    expect(String(body.registryError)).toMatch(/手工编辑|规范形式|投影.*漂移/);
     expect(body).not.toHaveProperty("unregisteredEntity");
     expect(db.prepare("SELECT COUNT(*) AS count FROM queue_items").get()).toMatchObject({ count: 0 });
   });
 
-  it("keeps unknown-human teaching when the registry is healthy", async () => {
+  it("registry 健康时保留 unknown-human 指引", async () => {
     const response = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "agent@known-rig" },

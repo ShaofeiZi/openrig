@@ -1,21 +1,21 @@
 // @vitest-environment jsdom
 
-// qitem-render-driver D3 + #5a — mission NEEDS-YOU slice attribution and
-// VERIFY LINEAGE token labelling.
+// qitem-render-driver D3 + #5a——mission NEEDS-YOU slice 归属与
+// VERIFY LINEAGE token 标签。
 //
-// D3 root (MissionReviewTab.tsx:320): the mission band unions slice-derived
-// exceptions VERBATIM, so item.where already carries `<mission>/slices/<name>`
-// (compose.ts:1070/1150). The tab COMPUTES sliceName from that ref but uses it
-// only as the Link target — the rendered row (:322-327) shows summary + leg +
-// priority only. Because the insufficient-proof summary is slice-agnostic
-// ("insufficient proof: N/M promised items missing", compose.ts:670-676), two
-// slices produce visually identical rows with no attribution. The honest fix
-// SURFACES the ref already in the payload; it must never invent one.
+// D3 根（MissionReviewTab.tsx:320）：mission 带逐字合并 slice 派生
+// 异常，故 item.where 已带 `<mission>/slices/<name>`
+//（compose.ts:1070/1150）。tab 从该 ref 计算 sliceName，但仅作
+// Link target——渲染行（:322-327）只显示 summary + leg +
+// priority。因 insufficient-proof summary 与 slice 无关
+//（"insufficient proof: N/M promised items missing"，compose.ts:670-676），
+// 两个 slice 产出视觉相同的行，无归属。诚实修复是
+// 呈现 payload 中已有的 ref；绝不臆造。
 //
-// #5a root (VerifyLineageCard.tsx:29-33, per QA evidence): the FINAL token is
-// `lineage.freshness` rendered with NO label — so a payload freshness of
-// "unknown" reads as a dangling bare token after "main tip unknown". The
-// sibling proven-at / merged-at / main-tip labels are correct and must stay.
+// #5a 根（VerifyLineageCard.tsx:29-33，据 QA 证据）：最终 token
+// `lineage.freshness` 无标签渲染——故 payload freshness 为
+// "unknown" 时读作 "main tip unknown" 后悬空裸 token。
+// 兄弟 proven-at / merged-at / main-tip 标签正确，须保留。
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, cleanup, screen } from "@testing-library/react";
@@ -49,7 +49,7 @@ function withQuery(node: React.ReactElement) {
   return <QueryClientProvider client={qc}>{node}</QueryClientProvider>;
 }
 
-/** A slice-derived insufficient-proof item exactly as compose.ts emits it. */
+/** 一个 compose.ts 原样发出的 slice 派生 insufficient-proof 项。 */
 function insufficientProof(slice: string) {
   return {
     source: "derived",
@@ -72,7 +72,7 @@ function insufficientProof(slice: string) {
   };
 }
 
-/** A MISSION-scope item — its `where` carries no /slices/ segment. */
+/** 一个 MISSION 作用域项——其 `where` 不含 /slices/ 段。 */
 function missionScopeItem() {
   return {
     source: "agent",
@@ -114,8 +114,8 @@ describe("qitem-render-driver D3 — mission NEEDS-YOU shows which slice each it
     render(withQuery(<MissionReviewTab missionId="m" />));
     const alphaRow = screen.getByTestId("mission-needs-you-m/slices/alpha|insufficient-proof|1");
     const betaRow = screen.getByTestId("mission-needs-you-m/slices/beta|insufficient-proof|1");
-    // Each row must name its own slice in VISIBLE text — today both rows
-    // render the identical slice-agnostic summary.
+    // 每行必须在可见文本中点名自己的 slice——今日两行
+    // 渲染相同的 slice 无关 summary。
     expect(alphaRow.textContent, "alpha row must name its slice").toContain("alpha");
     expect(betaRow.textContent, "beta row must name its slice").toContain("beta");
     expect(alphaRow.textContent, "alpha row must not claim beta").not.toContain("beta");
@@ -145,11 +145,11 @@ describe("qitem-render-driver #5a — VERIFY LINEAGE tokens are all labelled", (
   it("RED: the trailing freshness token is LABELLED (not a bare dangling 'unknown')", () => {
     render(<VerifyLineageCard lineage={lineage()} />);
     const token = screen.getByTestId("lineage-freshness");
-    // The freshness value must not stand alone: its own element (or an
-    // immediately adjacent label) must name what the value describes.
+    // freshness 值不得孤立：其自身元素（或紧邻标签）
+    // 必须点名该值描述什么。
     const own = (token.textContent ?? "").trim();
     expect(
-      /freshness/i.test(own),
+      /新鲜度/.test(own),
       `freshness token must be labelled; rendered bare as "${own}"`,
     ).toBe(true);
   });
@@ -157,11 +157,11 @@ describe("qitem-render-driver #5a — VERIFY LINEAGE tokens are all labelled", (
   it("GREEN pin: proven-at / merged-at / main tip labels are preserved verbatim", () => {
     const { container } = render(<VerifyLineageCard lineage={lineage({ candidateSha: "cafe1234", mergeSha: null, mainTip: "tip99" })} />);
     const text = container.textContent ?? "";
-    expect(text).toContain("proven-at");
+    expect(text).toContain("验证于");
     expect(text).toContain("cafe1234");
-    expect(text).toContain("merged-at");
-    expect(text).toContain("UNMERGED");
-    expect(text).toContain("main tip");
+    expect(text).toContain("合并于");
+    expect(text).toContain("未合并");
+    expect(text).toContain("main 尖端");
     expect(text).toContain("tip99");
   });
 });

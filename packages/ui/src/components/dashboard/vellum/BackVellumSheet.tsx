@@ -1,15 +1,13 @@
-// LAYER 1 — back vellum sheet.
+// 第 1 层 —— 背面羊皮纸衬底。
 //
-// Small stagger (12–16px) inset off the page edges so the back layer
-// just barely peeks out around the vellum edges. The eye sees sharp
-// black content at the page edge, then the SAME content blurred behind
-// the vellum a few pixels inward — that thin sharp→blurred transition
-// completes the "object behind paper" trick without sacrificing sheet
-// width. Asymmetric per side for hand-placed feel.
+// 从页面边缘向内做小幅错位（12–16px），使背面层在羊皮纸边缘周围
+// 恰好露出一圈。视觉上先在页面边缘看到清晰的黑色内容，再向内数像素
+// 处看到同一内容在羊皮纸后方被模糊——这条由清晰到模糊的细微过渡
+// 完成了"物体垫在纸下"的视错觉，同时不牺牲衬底宽度。每侧偏移量不对称，
+// 营造手工摆放的质感。
 //
-// Flat bg-surface-lowest/40 + backdrop-blur-[20px] per founder pick. The visual
-// gradient appears naturally from the back-content blur showing through
-// unevenly.
+// 按创始者选择：平铺 bg-surface-lowest/40 + backdrop-blur-[20px]。
+// 视觉渐变由背面内容透过不均匀模糊自然形成。
 
 export function BackVellumSheet() {
   return (

@@ -1,18 +1,16 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * GHOST-STAGE (i-c) — opt-in TARGET-generation stamp on watchdog_jobs.
+ * GHOST-STAGE（i-c）——watchdog_jobs 上可选启用的目标代标记。
  *
- * The registration-side ghost (a RETIRED registerer's job firing post-handover) is already closed by
- * migration 063 + `dropArmedByRegisteringGeneration`. This column is the FIRE-TIME complement: a
- * GENERATION-bound wake (opt-in) records the occupant-generation it is meant FOR, so the wake-issuer
- * (WatchdogPolicyEngine) can refuse to fire it at a target that has since been handed over to a
- * DIFFERENT live generation (the P12 `occupant_tenures` gen-check at deliver time).
+ * 注册侧 ghost（已退役注册者的任务在交接后触发）已由迁移 063 +
+ * `dropArmedByRegisteringGeneration` 关闭。此列是触发时补充：绑定到代的 wake（可选）记录其
+ * 目标 occupant-generation，使 wake 发行方（WatchdogPolicyEngine）能拒绝向之后已交接给不同
+ * 实时代的目标触发（投递时执行 P12 `occupant_tenures` 代检查）。
  *
- * NULLABLE, no default: a NULL `target_generation_uuid` = ROLE-bound (fire at whoever occupies the
- * seat NAME — the legitimate common case, fires UNCHANGED). Only a non-NULL stamp opts a job into the
- * fire-time gen-gate. Additive ALTER; the repository's defensive column-detect keeps pre-066 fixtures
- * degrading cleanly (writers leave it NULL, the gate no-ops → deliver).
+ * 可空且无默认值：NULL `target_generation_uuid` = 绑定角色（向任何占据该席位名称的人触发——
+ * 合法常见情形，行为不变）。只有非 NULL 标记才让任务进入触发时代门禁。增量 ALTER；repository
+ * 的防御性列检测使 066 之前的 fixture 干净降级（写入方留为 NULL，门禁为空操作 → 投递）。
  */
 export const watchdogTargetGenerationSchema: Migration = {
   name: "066_watchdog_target_generation.sql",

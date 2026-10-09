@@ -7,11 +7,11 @@ import fs from "node:fs";
 import os from "node:os";
 
 describe("createDb", () => {
-  it("creates an in-memory database with WAL and FK pragmas", () => {
+  it("创建带 WAL 和外键 pragma 的内存数据库", () => {
     const db = createDb();
     const walMode = db.pragma("journal_mode", { simple: true });
-    // In-memory databases may report "memory" instead of "wal" — that's fine.
-    // WAL is set but only takes effect on file-backed DBs.
+    // 内存数据库可能报告 "memory" 而非 "wal"，这是正常现象。
+    // WAL 已设置，但只对文件数据库生效。
     expect(walMode).toBeDefined();
 
     const fkEnabled = db.pragma("foreign_keys", { simple: true });
@@ -20,7 +20,7 @@ describe("createDb", () => {
     db.close();
   });
 
-  it("creates a file-backed database when path is given", () => {
+  it("提供路径时创建文件数据库", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rigged-test-"));
     const dbPath = path.join(tmpDir, "test.sqlite");
     const db = createDb(dbPath);
@@ -41,7 +41,7 @@ describe("migrate", () => {
     db.close();
   });
 
-  it("creates schema_migrations table on first run", () => {
+  it("首次运行时创建 schema_migrations 表", () => {
     migrate(db, []);
     const tables = db
       .prepare(
@@ -51,11 +51,11 @@ describe("migrate", () => {
     expect(tables).toHaveLength(1);
   });
 
-  it("runs zero migrations without error", () => {
+  it("没有迁移时运行不报错", () => {
     expect(() => migrate(db, [])).not.toThrow();
   });
 
-  it("applies a trivial migration", () => {
+  it("应用简单迁移", () => {
     const migrations = [
       {
         name: "001_test.sql",
@@ -87,7 +87,7 @@ describe("migrate", () => {
     expect(applied).toEqual([{ name: "001_test.sql" }]);
   });
 
-  it("refuses to re-run already-applied migrations", () => {
+  it("拒绝重复运行已应用的迁移", () => {
     const migrations = [
       {
         name: "001_test.sql",
@@ -95,7 +95,7 @@ describe("migrate", () => {
       },
     ];
     migrate(db, migrations);
-    // Running again should not throw (idempotent) and should not re-execute SQL
+    // 再次运行不应抛错（幂等），也不应重新执行 SQL。
     expect(() => migrate(db, migrations)).not.toThrow();
 
     const applied = db
@@ -126,7 +126,7 @@ describe("migrate", () => {
     ]);
   });
 
-  it("only applies new migrations on subsequent runs", () => {
+  it("后续运行仅应用新增迁移", () => {
     const first = [
       {
         name: "001_first.sql",

@@ -3,13 +3,13 @@ import { ulid } from "ulid";
 import type { ExecFn } from "../adapters/tmux.js";
 import type { ExternalInstallAction } from "./external-install-planner.js";
 
-/** A tagged action with its approval decision */
+/** 带批准决策的已标记 action。 */
 export interface TaggedAction {
   action: ExternalInstallAction;
   approved: boolean;
 }
 
-/** Result of executing a single action */
+/** 执行单个 action 的结果。 */
 export interface ExecutionResult {
   actionId: string;
   requirementName: string;
@@ -20,7 +20,7 @@ export interface ExecutionResult {
   durationMs: number;
 }
 
-/** Summary of all executed actions */
+/** 所有已执行 action 的汇总。 */
 export interface ExecutionSummary {
   results: ExecutionResult[];
   completed: ExecutionResult[];
@@ -29,10 +29,10 @@ export interface ExecutionSummary {
 }
 
 /**
- * Executes approved external install actions via injected ExecFn.
- * Journals everything to bootstrap_actions table.
- * On failure: marks failed, continues to next (no global abort).
- * No automatic uninstall rollback.
+ * 通过注入的 ExecFn 执行已批准的外部安装 action。
+ * 把所有内容记录到 bootstrap_actions 表。
+ * 失败时标记 failed 并继续下一项（不全局中止）。
+ * 不自动回滚卸载。
  */
 export class ExternalInstallExecutor {
   private exec: ExecFn;
@@ -44,9 +44,9 @@ export class ExternalInstallExecutor {
   }
 
   /**
-   * Execute tagged actions. All actions are journaled (including skipped).
-   * @param bootstrapId - links journal entries to a bootstrap run
-   * @param taggedActions - full action set with approval decisions
+   * 执行已标记 action。所有 action（包括 skipped）都会记入 journal。
+   * @param bootstrapId - 将 journal 条目关联到一次 bootstrap 运行
+   * @param taggedActions - 带批准决策的完整 action 集合
    */
   async execute(bootstrapId: string, taggedActions: TaggedAction[], startSeq: number = 1): Promise<ExecutionSummary> {
     const results: ExecutionResult[] = [];
@@ -56,7 +56,7 @@ export class ExternalInstallExecutor {
       const seq = startSeq + i;
       const actionId = ulid();
 
-      // Skip: unapproved, manual_only (defense in depth), or no command
+      // 跳过：未批准、manual_only（纵深防御）或没有命令。
       if (!approved || action.classification === "manual_only" || !action.commandPreview) {
         const result: ExecutionResult = {
           actionId,
@@ -72,7 +72,7 @@ export class ExternalInstallExecutor {
         continue;
       }
 
-      // Execute
+      // 执行。
       const start = Date.now();
       try {
         const stdout = await this.exec(action.commandPreview);
@@ -102,7 +102,7 @@ export class ExternalInstallExecutor {
         };
         this.journal(actionId, bootstrapId, seq, action, "failed", { stdout: null, errorMessage, durationMs });
         results.push(result);
-        // Continue to next — no abort
+        // 继续下一项，不中止。
       }
     }
 

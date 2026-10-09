@@ -1,24 +1,22 @@
-# Defect class: the acting-orch / wrong-seat restore class.
-# Marathon origin: after a compaction round-trip a seat came back without its role
-#   (or the WRONG seat was re-primed), so an acting-orch lost its seat identity.
-# SEED (class: wrong-seat-restore): the seeded regression makes restore read/deliver
-#   the WRONG seat's restore marker. Because the real restore is SEAT-KEYED (fireRestore
-#   reads THIS seat's keyed marker), the seeded cross-seat delivery makes the `expect
-#   pane` below (impl's own restore directive) fail — the diff names the class.
+# 缺陷类别：acting-orch / 错误席位恢复类别。
+# Marathon 来源：一次压缩往返后，席位恢复时丢失角色（或错误席位被重新初始化），
+#   导致 acting-orch 丢失席位身份。
+# SEED（class: wrong-seat-restore）：种子回归使恢复流程读取/投递错误席位的恢复标记。
+#   由于真实恢复按席位设键（fireRestore 读取当前席位对应的标记），种子跨席位投递会使
+#   下方 `expect pane`（impl 自己的恢复指令）失败——diff 会标明该类别。
 #
-# REAL EMIT FORM (51-01 items 6-8 in main 9cf78106): `restore` is an EMIT BEHAVIOR, not a
-# seat verb. `emit compaction` fires the real precompact-hook.mjs → a seat-keyed
-# restore-pending marker; `emit restore` fires the real compaction-restore-bridge.cjs →
-# injects ONE additionalContext directive (one-shot, deliveredAt/deliveryCount) which the
-# runner mirrors to the pane verbatim ("[stub] restore delivered — injected restore
-# directive:"). Real seams, never fabricated.
-# Deps: R-10 runner + the folded emit behaviors (in main).
+# 真实 EMIT 形式（main 9cf78106 中 51-01 第 6–8 项）：`restore` 是 EMIT 行为，不是席位动词。
+# `emit compaction` 会触发真实 precompact-hook.mjs → 生成按席位设键的 restore-pending 标记；
+# `emit restore` 会触发真实 compaction-restore-bridge.cjs → 注入一条 additionalContext 指令
+#（一次性，含 deliveredAt/deliveryCount），runner 会将其逐字镜像到 pane
+#（"[stub] restore delivered — injected restore directive:"）。使用真实接缝，绝不伪造。
+# 依赖：R-10 runner + 已折叠进 main 的 emit 行为。
 scenario: compaction-restore-resumes-role
 topology: ./dev-pair-stub.yaml
 steps:
   - up: {}
-  - emit: {seat: impl, behavior: compaction}   # real precompact seam → seat-keyed marker
-  - emit: {seat: impl, behavior: restore}       # real bridge → injects impl's own directive, mirrored
+  - emit: {seat: impl, behavior: compaction}   # 真实 precompact 接缝 → 按席位设键的标记
+  - emit: {seat: impl, behavior: restore}       # 真实 bridge → 注入并镜像 impl 自己的指令
   - expect:
       surface: pane
       seat: impl

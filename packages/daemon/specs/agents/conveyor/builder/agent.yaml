@@ -1,6 +1,6 @@
 name: conveyor-builder
 version: "1.0"
-description: Conveyor builder - executes the planned packet and prepares proof for review
+description: 流水线构建智能体——执行已规划的工作包，并准备供评审使用的证明
 
 defaults:
   runtime: claude-code

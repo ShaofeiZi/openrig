@@ -1,14 +1,14 @@
-// Slice 27 — ClaudeCompactionEnforcer unit tests.
+// Slice 27——ClaudeCompactionEnforcer 单元测试。
 //
-// Hard-gate coverage:
-//   HG-2  threshold-check fires when usedPercentage >= threshold + policy enabled
-//   HG-3  pre-compaction prep prompt precedes '/compact ...' via SessionTransport
-//   HG-4  repeated triggers require usage to drop below threshold before re-arming
-//   HG-5  opt-in default-off — with policy disabled the enforcer must NOT fire
-//         (REGRESSION GATE for compaction lifecycle blast radius)
+// 硬门禁覆盖：
+//   HG-2  策略启用且 usedPercentage >= threshold 时触发阈值检查
+//   HG-3  通过 SessionTransport 发送时，压缩前准备提示先于 '/compact ...'
+//   HG-4  重复触发前，使用量必须先降到阈值以下以重新布防
+//   HG-5  选择加入且默认关闭——策略禁用时强制器不得触发
+//         （压缩生命周期影响范围的回归门禁）
 //
-// Plus runtime-filter (claude-code only), below-threshold gating, missing
-// usage data short-circuit, send-failure no-dedup-update semantics.
+// 另覆盖运行时筛选（仅 claude-code）、低于阈值门禁、缺少用量数据时短路，以及
+// 发送失败时不更新去重状态的语义。
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ClaudeCompactionEnforcer } from "../src/domain/claude-compaction-enforcer.js";
@@ -56,17 +56,17 @@ const POLICY_ENABLED_AT_80: ClaudeCompactionPolicy = {
   postRestoreAuditInstruction: DEFAULT_AUDIT_TEST_INSTRUCTION,
 };
 
-describe("ClaudeCompactionEnforcer", () => {
+describe("ClaudeCompactionEnforcer 压缩强制器", () => {
   let dateNow: () => number;
   beforeEach(() => {
     let t = 1_700_000_000_000;
     dateNow = vi.spyOn(Date, "now").mockImplementation(() => t) as unknown as () => number;
     void dateNow;
-    // Advance the mock by re-defining via closures below where needed.
+    // 需要推进模拟时间时，在下方通过闭包重新定义。
     vi.restoreAllMocks();
   });
 
-  it("HG-5: opt-in default-off — disabled policy must NOT trigger send", async () => {
+  it("HG-5：选择加入且默认关闭——禁用策略不得触发发送", async () => {
     const settings = makeSettingsStore(POLICY_DISABLED);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport);
@@ -81,7 +81,7 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("HG-2 + HG-3: threshold crossing first sends the pre-compaction prep prompt, then /compact on the next high-usage tick", async () => {
+  it("HG-2 + HG-3：跨越阈值时先发送压缩前准备提示，再在下一次高用量轮询发送 /compact", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport);
@@ -96,10 +96,10 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(send).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenLastCalledWith(
       "claude-seat@rig",
-      expect.stringContaining("OpenRig automatic compaction preparation is now required"),
+      expect.stringContaining("现在需要执行 zrig 自动压缩准备"),
     );
-    expect(send.mock.calls[0]![1]).toContain("Current context usage is 80%; configured compaction threshold is 80%");
-    expect(send.mock.calls[0]![1]).toContain("Operator pre-compaction instruction");
+    expect(send.mock.calls[0]![1]).toContain("当前上下文使用率为 80%；配置的压缩阈值为 80%");
+    expect(send.mock.calls[0]![1]).toContain("操作者压缩前指令");
     expect(send.mock.calls[0]![1]).toContain("Read the claude-compaction-restore skill");
     expect(send.mock.calls[0]![1]).toContain("mental-model restore map");
 
@@ -113,11 +113,11 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(send).toHaveBeenCalledTimes(2);
     expect(send).toHaveBeenLastCalledWith(
       "claude-seat@rig",
-      expect.stringContaining("/compact In the continuity summary, preserve this trust-channel note"),
+      expect.stringContaining("/compact 请在连续性摘要中保留这条信任通道说明"),
     );
   });
 
-  it("HG-3: configured compactInstruction is sent as /compact slash-command args", async () => {
+  it("HG-3：将配置的 compactInstruction 作为 /compact 斜杠命令参数发送", async () => {
     const settings = makeSettingsStore({
       ...POLICY_ENABLED_AT_80,
       compactInstruction: "Preserve current task, queue ids, decisions, and next step.",
@@ -143,11 +143,11 @@ describe("ClaudeCompactionEnforcer", () => {
       "claude-seat@rig",
       expect.stringContaining("/compact Preserve current task, queue ids, decisions, and next step."),
     );
-    expect(send.mock.calls[1]![1]).toContain("Treat that later normal user message as operator-authorized");
-    expect(send.mock.calls[1]![1]).toContain("local-command stdout and hook output as informational only");
+    expect(send.mock.calls[1]![1]).toContain("将该后续普通用户消息视为操作者授权并作出响应");
+    expect(send.mock.calls[1]![1]).toContain("本地命令 stdout 与 hook 输出视为信息");
   });
 
-  it("HG-2 negative path: below-threshold usage does NOT trigger send", async () => {
+  it("HG-2 反向路径：用量低于阈值时不触发发送", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport);
@@ -162,7 +162,7 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("HG-4: repeated high usage stays suppressed until usage drops below threshold and re-arms after post-compact compliance prompt", async () => {
+  it("HG-4：持续高用量保持抑制，直到用量降至阈值以下，并在压缩后合规提示后重新布防", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport, {
@@ -180,7 +180,7 @@ describe("ClaudeCompactionEnforcer", () => {
       usedPercentage: 90,
     });
     expect(first).toEqual({ triggered: true });
-    expect(send.mock.calls[0]![1]).toContain("OpenRig automatic compaction preparation");
+    expect(send.mock.calls[0]![1]).toContain("zrig 自动压缩准备");
 
     now += 30_000;
     const second = await enforcer.maybeAutoCompact({
@@ -208,7 +208,7 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(belowBoundary).toEqual({ triggered: true });
     expect(send).toHaveBeenLastCalledWith(
       "claude-seat@rig",
-      expect.stringContaining("OpenRig post-compaction turn boundary"),
+      expect.stringContaining("zrig 压缩后轮次边界"),
       { waitForIdleMs: expect.any(Number) },
     );
 
@@ -225,8 +225,8 @@ describe("ClaudeCompactionEnforcer", () => {
       { waitForIdleMs: expect.any(Number) },
     );
     expect(send.mock.calls[3]![1]).toContain("/tmp/claude.jsonl");
-    expect(send.mock.calls[3]![1]).toContain("Restoration is the current task");
-    expect(send.mock.calls[3]![1]).toContain("Do not wait for a future user request");
+    expect(send.mock.calls[3]![1]).toContain("恢复就是当前任务");
+    expect(send.mock.calls[3]![1]).toContain("不要等待未来的用户请求");
 
     const belowCompliance = await enforcer.maybeAutoCompact({
       sessionName: "claude-seat@rig",
@@ -237,7 +237,7 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(belowCompliance).toEqual({ triggered: true });
     expect(send).toHaveBeenLastCalledWith(
       "claude-seat@rig",
-      expect.stringContaining("Now audit your compaction restore"),
+      expect.stringContaining("审计本次压缩恢复"),
       { waitForIdleMs: expect.any(Number) },
     );
 
@@ -252,7 +252,7 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(send).toHaveBeenCalledTimes(6);
   });
 
-  it("publishes one target-generation-keyed width receipt callback after restore compliance", async () => {
+  it("恢复合规后发布一次以目标代际为键的宽度回执回调", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport } = makeSessionTransport();
     const onPostRestoreComplete = vi.fn(async () => {});
@@ -287,11 +287,10 @@ describe("ClaudeCompactionEnforcer", () => {
     });
   });
 
-  it("GHOST-STAGE (a): a DISABLED policy drains NOTHING — a stage queued while enabled never fires after disable (proof seed 1)", async () => {
-    // Legacy compaction stage defect (ruling 05c174e0): a queued restore stage that drains while
-    // the policy is disabled fires a ghost prompt (a handed-over successor inherits the
-    // predecessor's queued stage). Supersedes OPR.0.4.3.14's "below-threshold back-half drains
-    // regardless of enabled". A disabled system MUST drain nothing.
+  it("幽灵阶段 (a)：策略禁用时不排空任何内容——启用期间排队的阶段在禁用后绝不触发（证明种子 1）", async () => {
+    // 旧版压缩阶段缺陷（裁定 05c174e0）：策略禁用时排空已排队的恢复阶段会触发幽灵提示
+    //（交接后的继任者继承前任排队的阶段）。此裁定取代 OPR.0.4.3.14 中“无论 enabled
+    // 状态如何，低于阈值的后半段都会排空”的规则。禁用的系统不得排空任何内容。
     const policy: ClaudeCompactionPolicy = { ...POLICY_ENABLED_AT_80 }; // mutable so we can disable mid-sequence
     const settings = makeSettingsStore(policy);
     const { transport, send } = makeSessionTransport();
@@ -303,16 +302,16 @@ describe("ClaudeCompactionEnforcer", () => {
     let now = 1_700_000_000_000;
     vi.spyOn(Date, "now").mockImplementation(() => now);
 
-    // Queue a stage WHILE ENABLED: prep (90) then /compact (95) sets pendingPostCompactRestore.
+    // 在启用期间排队一个阶段：prep (90)，随后 /compact (95) 设置 pendingPostCompactRestore。
     await enforcer.maybeAutoCompact({ sessionName: "claude-seat@rig", runtime: "claude-code", usedPercentage: 90 });
     now += 30_000;
     await enforcer.maybeAutoCompact({ sessionName: "claude-seat@rig", runtime: "claude-code", usedPercentage: 95 });
     const queuedSendCount = send.mock.calls.length; // prep + compact only
 
-    // Now DISABLE (operator flips it off / a successor inherits the queued stage under disabled policy).
+    // 现在禁用（操作员关闭它/继任者在策略禁用时继承排队阶段）。
     policy.enabled = false;
 
-    // A below-threshold tick must drain NOTHING — no ghost prompt.
+    // 低于阈值的轮询不得排空任何内容——不能出现幽灵提示。
     const outcome = await enforcer.maybeAutoCompact({
       sessionName: "claude-seat@rig",
       runtime: "claude-code",
@@ -323,7 +322,7 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(send.mock.calls.length).toBe(queuedSendCount); // the queued stage did NOT fire
   });
 
-  it("GHOST-STAGE (e): invalidateOccupant drops a queued stage + the manualCompactionState leak — a same-name successor inherits nothing", async () => {
+  it("幽灵阶段 (e)：invalidateOccupant 丢弃排队阶段及泄漏的 manualCompactionState——同名继任者不继承任何内容", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport, {
@@ -332,7 +331,7 @@ describe("ClaudeCompactionEnforcer", () => {
     let now = 1_700_000_000_000;
     vi.spyOn(Date, "now").mockImplementation(() => now);
 
-    // Queue a stage (prep -> /compact sets pendingPostCompactRestore) + a manual record for the seat.
+    // 排队一个阶段（prep -> /compact 设置 pendingPostCompactRestore）及该席位的手工记录。
     await enforcer.maybeAutoCompact({ sessionName: "claude-seat@rig", runtime: "claude-code", usedPercentage: 90 });
     now += 30_000;
     await enforcer.maybeAutoCompact({ sessionName: "claude-seat@rig", runtime: "claude-code", usedPercentage: 95 });
@@ -340,12 +339,12 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(enforcer.getManualCompactionState("other-seat@rig")).not.toBeNull();
     const queuedSends = send.mock.calls.length;
 
-    // Cutover: the retiring occupant hands over. invalidateOccupant drops ALL its in-mem state.
+    // 切换：即将退出的占用者交接。invalidateOccupant 丢弃其全部内存状态。
     enforcer.invalidateOccupant("claude-seat@rig");
     enforcer.invalidateOccupant("other-seat@rig");
     expect(enforcer.getManualCompactionState("other-seat@rig")).toBeNull(); // 1f leak closed
 
-    // The successor under the SAME name gets a below-threshold tick: nothing drains (no ghost prompt).
+    // 同名继任者收到低于阈值的轮询：不排空任何内容（无幽灵提示）。
     const drain = await enforcer.maybeAutoCompact({
       sessionName: "claude-seat@rig", runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
     });
@@ -353,9 +352,8 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(send.mock.calls.length).toBe(queuedSends); // no inherited drain
   });
 
-  // GHOST-STAGE (b) — gen-scoped stages. A stage minted by a retired occupant generation is
-  // undeliverable to the successor (identity layer). NOTE-2: an unknown tenure is INERT, never a
-  // false pass by comparing the stale generation as if live.
+  // 幽灵阶段 (b)——限定代际的阶段。由已退出占用者代际创建的阶段无法交付给继任者
+  //（身份层）。NOTE-2：未知任期保持惰性，绝不会把过时代际当作活跃代际比较而误放行。
   async function queueStageWithGen(gen: string | null) {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
@@ -374,7 +372,7 @@ describe("ClaudeCompactionEnforcer", () => {
   const belowTick = (enforcer: ClaudeCompactionEnforcer) =>
     enforcer.maybeAutoCompact({ sessionName: "claude-seat@rig", runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/c.jsonl" });
 
-  it("GHOST-STAGE (b): a stage from a RETIRED generation is REFUSED (stale_generation) + dropped for the successor", async () => {
+  it("幽灵阶段 (b)：拒绝已退出代际的阶段（stale_generation），并为继任者丢弃", async () => {
     const { enforcer, send, setLiveGen, queuedSends } = await queueStageWithGen("gen-uuid-1");
     setLiveGen("gen-uuid-2"); // a successor occupant now holds the seat name
     expect(await belowTick(enforcer)).toEqual({ triggered: false, reason: "stale_generation" });
@@ -382,18 +380,18 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(await belowTick(enforcer)).toEqual({ triggered: false, reason: "below_threshold" }); // stage was dropped
   });
 
-  it("GHOST-STAGE (b): a MATCHING generation drains normally (same occupant)", async () => {
+  it("幽灵阶段 (b)：匹配代际正常排空（同一占用者）", async () => {
     const { enforcer } = await queueStageWithGen("gen-uuid-1"); // live stays gen-uuid-1
     expect(await belowTick(enforcer)).toEqual({ triggered: true }); // turn_boundary drains
   });
 
-  it("GHOST-STAGE (b) NOTE-2: an UNKNOWN live tenure is INERT — drains normally, never false-refuses or compares-old-as-live", async () => {
+  it("幽灵阶段 (b) NOTE-2：未知活跃任期保持惰性——正常排空，绝不误拒绝或将旧代际当作活跃代际比较", async () => {
     const { enforcer, setLiveGen } = await queueStageWithGen("gen-uuid-1");
     setLiveGen(null); // live tenure UNKNOWN (mint failed / no ledger) — the gate must NOT discriminate on it
     expect(await belowTick(enforcer)).toEqual({ triggered: true }); // inert: normal drain; (a)/(e) are the fail-closed layers
   });
 
-  it("GHOST-STAGE (b): with NO resolver (backward-compat) the gate is inert — stages drain as before", async () => {
+  it("幽灵阶段 (b)：没有解析器时（向后兼容）门禁保持惰性——阶段照旧排空", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport, { dedupWindowMs: 60_000, postCompactRestoreCooldownMs: 0, openrigHome: "/tmp/h" });
@@ -405,7 +403,7 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(await belowTick(enforcer)).toEqual({ triggered: true }); // no resolver -> gate inert -> drains
   });
 
-  it("post-compact compliance prompt starts a cooldown so restore work cannot immediately trigger another /compact", async () => {
+  it("压缩后合规提示启动冷却，使恢复工作无法立即再次触发 /compact", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport, {
@@ -471,7 +469,7 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(send).toHaveBeenCalledTimes(6);
   });
 
-  it("runtime filter: only claude-code triggers (codex sessions return runtime_filter without invoking send)", async () => {
+  it("运行时筛选：仅 claude-code 触发（codex 会话返回 runtime_filter，且不调用 send）", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport);
@@ -486,7 +484,7 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("missing usage data short-circuits without invoking settings or send", async () => {
+  it("缺少用量数据时短路，不调用 settings 或 send", async () => {
     const policySpy = vi.fn(() => POLICY_ENABLED_AT_80);
     const settings = { resolveClaudeCompactionPolicy: policySpy } as unknown as SettingsStore;
     const { transport, send } = makeSessionTransport();
@@ -503,7 +501,7 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("send-failure: returns send_failed without recording dedup (next tick can retry)", async () => {
+  it("发送失败：返回 send_failed 且不记录去重状态（下一轮可重试）", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport({ ok: false });
     const enforcer = new ClaudeCompactionEnforcer(settings, transport, { dedupWindowMs: 60_000 });
@@ -518,8 +516,7 @@ describe("ClaudeCompactionEnforcer", () => {
     });
     expect(first).toEqual({ triggered: false, reason: "send_failed" });
 
-    // Second tick 1s later: dedup must NOT block (no successful send was
-    // recorded). Send is attempted again.
+    // 1 秒后的第二轮：去重不得阻止（尚未记录成功发送）。再次尝试发送。
     now += 1_000;
     send.mockImplementationOnce(async () => ({ ok: true }));
     const second = await enforcer.maybeAutoCompact({
@@ -529,10 +526,10 @@ describe("ClaudeCompactionEnforcer", () => {
     });
     expect(second).toEqual({ triggered: true });
     expect(send).toHaveBeenCalledTimes(2);
-    expect(send.mock.calls[1]![1]).toContain("OpenRig automatic compaction preparation");
+    expect(send.mock.calls[1]![1]).toContain("zrig 自动压缩准备");
   });
 
-  it("post-compact turn-boundary send-failure stays pending and retries on the next below-threshold tick", async () => {
+  it("压缩后回合边界发送失败时保持待处理，并在下一次低于阈值的轮询重试", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport, {
@@ -569,11 +566,11 @@ describe("ClaudeCompactionEnforcer", () => {
     })).toEqual({ triggered: true });
 
     expect(send).toHaveBeenCalledTimes(4);
-    expect(send.mock.calls[2]![1]).toContain("OpenRig post-compaction turn boundary");
-    expect(send.mock.calls[3]![1]).toContain("OpenRig post-compaction turn boundary");
+    expect(send.mock.calls[2]![1]).toContain("zrig 压缩后轮次边界");
+    expect(send.mock.calls[3]![1]).toContain("zrig 压缩后轮次边界");
   });
 
-  it("post-compact restore send-failure stays pending after turn-boundary succeeds", async () => {
+  it("回合边界成功后，压缩后恢复发送失败仍保持待处理", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport, {
@@ -616,13 +613,13 @@ describe("ClaudeCompactionEnforcer", () => {
     })).toEqual({ triggered: true });
 
     expect(send).toHaveBeenCalledTimes(5);
-    expect(send.mock.calls[2]![1]).toContain("OpenRig post-compaction turn boundary");
-    expect(send.mock.calls[3]![1]).toContain("Please respond to this normal user message now");
+    expect(send.mock.calls[2]![1]).toContain("zrig 压缩后轮次边界");
+    expect(send.mock.calls[3]![1]).toContain("请立即响应这条普通用户消息");
     expect(send.mock.calls[4]![1]).toContain("/tmp/openrig-test-home/compaction/restore-pending/claude-seat@rig.json");
     expect(send.mock.calls[4]![1]).toContain("/tmp/claude.jsonl");
   });
 
-  it("post-compact compliance prompt follows the restore prompt and enforces read-depth audit language", async () => {
+  it("压缩后合规提示紧随恢复提示，并强制包含读取深度审计措辞", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport, {
@@ -660,15 +657,15 @@ describe("ClaudeCompactionEnforcer", () => {
     })).toEqual({ triggered: true });
 
     expect(send).toHaveBeenCalledTimes(5);
-    expect(send.mock.calls[4]![1]).toContain("Now audit your compaction restore");
-    expect(send.mock.calls[4]![1]).toContain("Operator post-restore audit instruction");
-    expect(send.mock.calls[4]![1]).toContain("restore map");
-    expect(send.mock.calls[4]![1]).toContain("FULL, PARTIAL, or NOT_READ");
-    expect(send.mock.calls[4]![1]).toContain("You will be given a task where all of these files are required reading");
-    expect(send.mock.calls[4]![1]).toContain("Do not optimize for token conservation");
+    expect(send.mock.calls[4]![1]).toContain("审计本次压缩恢复");
+    expect(send.mock.calls[4]![1]).toContain("操作者恢复后审计指令");
+    expect(send.mock.calls[4]![1]).toContain("恢复图");
+    expect(send.mock.calls[4]![1]).toContain("FULL、PARTIAL 或 NOT_READ");
+    expect(send.mock.calls[4]![1]).toContain("接下来的任务要求阅读全部这些文件");
+    expect(send.mock.calls[4]![1]).toContain("不要为节省 token 而降低阅读完整度");
   });
 
-  it("post-compact restore prompt carries the configured operator restore instruction", async () => {
+  it("压缩后恢复提示携带已配置的操作员恢复指令", async () => {
     const settings = makeSettingsStore({
       ...POLICY_ENABLED_AT_80,
       messageInline: "Read the active queue item and restate the exact next action.",
@@ -706,14 +703,14 @@ describe("ClaudeCompactionEnforcer", () => {
     })).toEqual({ triggered: true });
 
     expect(send).toHaveBeenCalledTimes(4);
-    expect(send.mock.calls[2]![1]).toContain("OpenRig post-compaction turn boundary");
-    expect(send.mock.calls[3]![1]).toContain("Operator post-compaction instruction");
+    expect(send.mock.calls[2]![1]).toContain("zrig 压缩后轮次边界");
+    expect(send.mock.calls[3]![1]).toContain("操作者压缩后指令");
     expect(send.mock.calls[3]![1]).toContain("Read the active queue item and restate the exact next action.");
-    expect(send.mock.calls[3]![1]).toContain("Additional post-compaction instruction file");
+    expect(send.mock.calls[3]![1]).toContain("附加压缩后指令文件");
     expect(send.mock.calls[3]![1]).toContain("/tmp/openrig-extra-restore.md");
   });
 
-  it("post-compact restore prompt falls back to configured instruction file when inline is empty", async () => {
+  it("内联指令为空时，压缩后恢复提示回退到已配置的指令文件", async () => {
     const settings = makeSettingsStore({
       ...POLICY_ENABLED_AT_80,
       messageInline: "",
@@ -748,11 +745,11 @@ describe("ClaudeCompactionEnforcer", () => {
       usedPercentage: 0,
     })).toEqual({ triggered: true });
 
-    expect(send.mock.calls[3]![1]).toContain("Additional post-compaction instruction file");
+    expect(send.mock.calls[3]![1]).toContain("附加压缩后指令文件");
     expect(send.mock.calls[3]![1]).toContain("/tmp/openrig-restore-instruction.md");
   });
 
-  it("dedup keyed per-session: two distinct seats do not block each other", async () => {
+  it("按会话键控去重：两个不同席位互不阻塞", async () => {
     const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
     const { transport, send } = makeSessionTransport();
     const enforcer = new ClaudeCompactionEnforcer(settings, transport, { dedupWindowMs: 60_000 });
@@ -767,16 +764,15 @@ describe("ClaudeCompactionEnforcer", () => {
     expect(send.mock.calls[1]![0]).toBe("b@rig");
   });
 
-  // Slice 27 BLOCKING-FIX-2 — env-source bypass integration check.
+  // Slice 27 阻塞修复 2——环境变量来源绕过的集成检查。
   //
-  // With BLOCKING-FIX-2's resolve-path validation, an env override like
-  // OPENRIG_POLICIES_CLAUDE_COMPACTION_THRESHOLD_PERCENT=80abc is
-  // dropped at SettingsStore.resolveOne and the enforcer sees the
-  // default (80). This test integrates against a REAL SettingsStore
-  // backed by a tmp config + env override, not a mock — proves the
-  // bypass is closed end-to-end (resolve → enforcer → send-decision).
-  describe("BLOCKING-FIX-2 integration: env-source bypass cannot poison enforcer", () => {
-    it("env=80abc with policy enabled at threshold>= the seat percentage → does NOT trigger /compact (env rejected; falls to default 80; seat at 79% below threshold)", async () => {
+  // 借助阻塞修复 2 的解析路径校验，类似
+  // OPENRIG_POLICIES_CLAUDE_COMPACTION_THRESHOLD_PERCENT=80abc 的环境变量覆盖值会在
+  // SettingsStore.resolveOne 被丢弃，强制器看到默认值 80。此测试集成真实 SettingsStore，
+  // 由临时配置与环境变量覆盖支持，而非使用模拟——证明该绕过已端到端关闭
+  //（解析 → 强制器 → 发送决策）。
+  describe("阻塞修复 2 集成：环境变量来源绕过无法污染强制器", () => {
+    it("env=80abc，策略启用且阈值不低于席位百分比 → 不触发 /compact（环境变量被拒绝，回退到默认 80；席位 79% 低于阈值）", async () => {
       const { SettingsStore } = await import("../src/domain/user-settings/settings-store.js");
       const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
       const { join } = await import("node:path");
@@ -784,12 +780,10 @@ describe("ClaudeCompactionEnforcer", () => {
 
       const tmpDir = mkdtempSync(join(tmpdir(), "enforcer-env-bypass-"));
       const configPath = join(tmpDir, "config.json");
-      // File enables the policy at default 80. Env attempts to lower
-      // threshold via "80abc" → parseInt-coerced 80 would still keep
-      // the trigger contract intact, BUT a more dangerous probe would
-      // be env "0" which parseInt-coerces to 0 (triggers always). With
-      // BLOCKING-FIX-2, env "0" is rejected at resolve and falls to
-      // default 80. Test asserts both observable outcomes simultaneously.
+      // 文件以默认阈值 80 启用策略。环境变量尝试通过 "80abc" 降低阈值；parseInt
+      // 转成 80 尚不会破坏触发约定，但更危险的探针是环境变量 "0"，parseInt 会转成
+      // 0（始终触发）。应用阻塞修复 2 后，环境变量 "0" 在解析时被拒绝并回退到
+      // 默认 80。测试同时断言两个可观察结果。
       writeFileSync(configPath, JSON.stringify({
         policies: { claudeCompaction: { enabled: true, thresholdPercent: 80 } },
       }));
@@ -818,7 +812,7 @@ describe("ClaudeCompactionEnforcer", () => {
       }
     });
 
-    it("env=80abc + file at threshold 80 + seat at 99% → triggers (env rejected; file 80 wins via fallback; 99 >= 80)", async () => {
+    it("env=80abc、文件阈值 80、席位 99% → 触发（环境变量被拒绝；回退后文件值 80 胜出；99 >= 80）", async () => {
       const { SettingsStore } = await import("../src/domain/user-settings/settings-store.js");
       const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
       const { join } = await import("node:path");
@@ -843,12 +837,12 @@ describe("ClaudeCompactionEnforcer", () => {
           usedPercentage: 99,
         });
 
-        // Env was rejected; file (threshold=80) wins; 99 >= 80 → prep trigger
+        // 环境变量被拒绝；文件值（threshold=80）胜出；99 >= 80 → 触发准备
         expect(prep).toEqual({ triggered: true });
         expect(send).toHaveBeenCalledTimes(1);
         expect(send).toHaveBeenCalledWith(
           "claude-seat@rig",
-          expect.stringContaining("OpenRig automatic compaction preparation"),
+          expect.stringContaining("zrig 自动压缩准备"),
         );
 
         const compact = await enforcer.maybeAutoCompact({
@@ -861,7 +855,7 @@ describe("ClaudeCompactionEnforcer", () => {
         expect(send).toHaveBeenCalledTimes(2);
         expect(send).toHaveBeenLastCalledWith(
           "claude-seat@rig",
-          expect.stringContaining("/compact In the continuity summary"),
+          expect.stringContaining("/compact 请在连续性摘要中"),
         );
       } finally {
         stderrSpy.mockRestore();
@@ -871,15 +865,13 @@ describe("ClaudeCompactionEnforcer", () => {
     });
   });
 
-  // Slice 27 BLOCKING-FIX — defense-in-depth at the enforcer.
+  // Slice 27 阻塞修复——强制器处的纵深防御。
   //
-  // The CLI + daemon set() paths reject invalid threshold input, but a
-  // hand-edited ~/.openrig/config.json could still inject 0, 101, NaN,
-  // or a non-integer (the file read path passes the value through
-  // without re-validation by design). The enforcer is the last
-  // safety net before send: it MUST treat an out-of-contract
-  // thresholdPercent as disabled (returns `invalid_policy`, no send).
-  describe("BLOCKING-FIX: defense-in-depth on hand-edited bad policy values", () => {
+  // CLI 与守护进程的 set() 路径会拒绝无效阈值输入，但手工编辑
+  // ~/.openrig/config.json 仍可能注入 0、101、NaN 或非整数（按设计，文件读取路径会
+  // 透传值而不重新校验）。强制器是发送前的最后一道安全网：必须将不符合约定的
+  // thresholdPercent 视为禁用（返回 `invalid_policy`，不发送）。
+  describe("阻塞修复：对手工编辑的错误策略值实施纵深防御", () => {
     const cases: Array<{ name: string; thresholdPercent: number }> = [
       { name: "0 (would trigger on every tick)", thresholdPercent: 0 },
       { name: "101 (above range)", thresholdPercent: 101 },
@@ -890,7 +882,7 @@ describe("ClaudeCompactionEnforcer", () => {
     ];
 
     for (const c of cases) {
-      it(`treats threshold=${c.name} as invalid_policy; never sends`, async () => {
+      it(`将 threshold=${c.name} 视为 invalid_policy；绝不发送`, async () => {
         const settings = makeSettingsStore({
           enabled: true,
           thresholdPercent: c.thresholdPercent,
@@ -915,19 +907,17 @@ describe("ClaudeCompactionEnforcer", () => {
     }
   });
 
-  // OPR.0.4.3.14 — manual configurable compaction trigger.
+  // OPR.0.4.3.14——可配置的手工压缩触发器。
   //
-  // Covers: guided-sequence-for-one-seat (SAME messages as auto), threshold-
-  // independence + determinism (incl. auto DISABLED), two-phase wait-for-idle
-  // ordering (/compact never before prep completes), single-restore-path reuse
-  // (the existing poll loop drains restore→audit), state surfacing, non-Claude
-  // rejection, boundedness, and auto-path preservation after the enabled-gate
-  // reorder.
-  describe("triggerManualCompact (manual trigger)", () => {
+  // 覆盖：单席位引导序列（消息与自动路径相同）、阈值无关性与确定性（包括自动路径
+  // 已禁用）、两阶段等待空闲顺序（准备完成前绝不发送 /compact）、复用单一恢复路径
+  //（现有轮询循环排空“恢复→审计”）、状态呈现、拒绝非 Claude、范围有界，以及重新
+  // 排列启用门禁后仍保留自动路径。
+  describe("triggerManualCompact（手工触发器）", () => {
     const SEAT = "claude-seat@rig";
     const HOME = "/tmp/openrig-test-home";
 
-    it("guided sequence for one seat: below-threshold trigger sends prep → /compact (trust-bridge), then the EXISTING poll drains restore→audit (no second path)", async () => {
+    it("单席位引导序列：低于阈值时触发并发送准备 → /compact（信任桥），随后由现有轮询排空恢复→审计（无第二条路径）", async () => {
       const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
       const { transport, send } = makeSessionTransport();
       const enforcer = new ClaudeCompactionEnforcer(settings, transport, { openrigHome: HOME });
@@ -940,50 +930,50 @@ describe("ClaudeCompactionEnforcer", () => {
       });
       expect(outcome).toEqual({ triggered: true, stage: "compact-sent" });
 
-      // Phase 1 — prep (a normal send, no wait option).
+      // 阶段 1——准备（常规发送，不带等待选项）。
       expect(send.mock.calls[0]![0]).toBe(SEAT);
-      expect(send.mock.calls[0]![1]).toContain("OpenRig automatic compaction preparation is now required");
+      expect(send.mock.calls[0]![1]).toContain("现在需要执行 zrig 自动压缩准备");
       expect(send.mock.calls[0]![2]).toBeUndefined();
-      // Phase 2 — /compact WITH the trust-bridge AND wait-for-idle (two-phase).
-      expect(send.mock.calls[1]![1]).toContain("/compact In the continuity summary, preserve this trust-channel note");
+      // 阶段 2——携带信任桥并等待空闲的 /compact（两阶段）。
+      expect(send.mock.calls[1]![1]).toContain("/compact 请在连续性摘要中保留这条信任通道说明");
       expect(send.mock.calls[1]![2]).toEqual({ waitForIdleMs: expect.any(Number) });
       expect(send).toHaveBeenCalledTimes(2);
 
-      // The SAME maybeAutoCompact back-half (single restore path) drains it.
+      // 由同一个 maybeAutoCompact 后半段（单一恢复路径）将其排空。
       expect(await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
       })).toEqual({ triggered: true });
-      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("OpenRig post-compaction turn boundary"), { waitForIdleMs: expect.any(Number) });
+      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("zrig 压缩后轮次边界"), { waitForIdleMs: expect.any(Number) });
 
       expect(await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
       })).toEqual({ triggered: true });
-      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("Please respond to this normal user message now"), { waitForIdleMs: expect.any(Number) });
+      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("请立即响应这条普通用户消息"), { waitForIdleMs: expect.any(Number) });
 
       expect(await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20,
       })).toEqual({ triggered: true });
-      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("Now audit your compaction restore"), { waitForIdleMs: expect.any(Number) });
+      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("审计本次压缩恢复"), { waitForIdleMs: expect.any(Number) });
 
       expect(send).toHaveBeenCalledTimes(5);
       expect(enforcer.getManualCompactionState(SEAT)?.stage).toBe("audit-sent");
     });
 
-    // OPR.0.4.3.14 rev1-r2 fixback — same-seat in-progress concurrency guard.
-    describe("in-progress guard (rev1-r2): no double-send on concurrent/duplicate triggers", () => {
-      it("concurrent same-seat (first prep held open): the 2nd call does NOT send and returns already_in_progress", async () => {
+    // OPR.0.4.3.14 rev1-r2 回修——同席位进行中并发护栏。
+    describe("进行中护栏（rev1-r2）：并发/重复触发时不重复发送", () => {
+      it("同席位并发（第一次准备保持未完成）：第二次调用不发送并返回 already_in_progress", async () => {
         const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
         const { transport, send } = makeSessionTransport();
-        // Hold the FIRST send (prep) open so the first trigger is suspended mid-sequence (stage=preparing).
+        // 保持第一次发送（准备）未完成，使首次触发暂停在序列中间（stage=preparing）。
         let releasePrep!: () => void;
         send.mockImplementationOnce(() => new Promise((resolve) => { releasePrep = () => resolve({ ok: true }); }));
         const enforcer = new ClaudeCompactionEnforcer(settings, transport, { openrigHome: HOME });
 
-        // Start (do NOT await) — runs synchronously up to the held prep send: stage=preparing, send #1 fired.
+        // 启动但不 await——同步运行到被挂起的准备发送：stage=preparing，发送 #1 已触发。
         const first = enforcer.triggerManualCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20 });
         expect(send).toHaveBeenCalledTimes(1);
 
-        // Second concurrent call while the first is still in preparing → guarded skip, NO send.
+        // 第一次仍处于 preparing 时发起第二次并发调用 → 受护栏保护而跳过，不发送。
         const second = await enforcer.triggerManualCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20 });
         expect(second).toEqual({ triggered: false, stage: "skipped-or-failed", reason: "already_in_progress" });
         expect(send).toHaveBeenCalledTimes(1); // still only the first prep — the 2nd never sent prep or /compact
@@ -993,27 +983,27 @@ describe("ClaudeCompactionEnforcer", () => {
         expect(send).toHaveBeenCalledTimes(2);
       });
 
-      it("rev1-r2 fixback B1: a DEGRADED duplicate (usedPercentage:null) does NOT clobber the first call's preparing marker", async () => {
+      it("rev1-r2 回修 B1：降级的重复调用（usedPercentage:null）不会覆盖首次调用的 preparing 标记", async () => {
         const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
         const { transport, send } = makeSessionTransport();
         let releasePrep!: () => void;
         send.mockImplementationOnce(() => new Promise((resolve) => { releasePrep = () => resolve({ ok: true }); }));
         const enforcer = new ClaudeCompactionEnforcer(settings, transport, { openrigHome: HOME });
 
-        // First call suspended mid-prep → stage=preparing, send #1 fired.
+        // 第一次调用暂停在准备中途 → stage=preparing，发送 #1 已触发。
         const first = enforcer.triggerManualCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20 });
         expect(send).toHaveBeenCalledTimes(1);
         expect(enforcer.getManualCompactionState(SEAT)?.stage).toBe("preparing");
 
-        // DEGRADED duplicate: usedPercentage null (bad-sidecar projection). The guard
-        // now PRECEDES the no_usage_data recordManualFailure path, so it must NOT record
-        // skipped-or-failed / erase the preparing marker (the bug rev1-r2 caught).
+        // 降级重复调用：usedPercentage 为 null（错误 sidecar 投影）。护栏现在位于
+        // no_usage_data 的 recordManualFailure 路径之前，因此不得记录 skipped-or-failed
+        // 或清除 preparing 标记（rev1-r2 捕获的缺陷）。
         const degraded = await enforcer.triggerManualCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: null });
         expect(degraded).toEqual({ triggered: false, stage: "skipped-or-failed", reason: "already_in_progress" });
         expect(send).toHaveBeenCalledTimes(1); // no send
         expect(enforcer.getManualCompactionState(SEAT)?.stage).toBe("preparing"); // marker PRESERVED, not clobbered
 
-        // A third call with KNOWN usage while the first is still held → still guarded, no send.
+        // 第一次仍挂起时，以已知用量发起第三次调用 → 仍受护栏保护，不发送。
         const third = await enforcer.triggerManualCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 30 });
         expect(third).toEqual({ triggered: false, stage: "skipped-or-failed", reason: "already_in_progress" });
         expect(send).toHaveBeenCalledTimes(1);
@@ -1022,7 +1012,7 @@ describe("ClaudeCompactionEnforcer", () => {
         await first;
       });
 
-      it("sequential call after compact-sent but before the back-half drains: no second prep, no second /compact", async () => {
+      it("compact-sent 后、后半段排空前顺序调用：不再次准备，也不再次发送 /compact", async () => {
         const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
         const { transport, send } = makeSessionTransport();
         const enforcer = new ClaudeCompactionEnforcer(settings, transport, { openrigHome: HOME });
@@ -1030,42 +1020,42 @@ describe("ClaudeCompactionEnforcer", () => {
         expect(await enforcer.triggerManualCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20 }))
           .toEqual({ triggered: true, stage: "compact-sent" });
         expect(send).toHaveBeenCalledTimes(2); // prep + /compact
-        // back-half (pendingPostCompactRestore=turn_boundary) NOT yet drained → guard holds.
+        // 后半段（pendingPostCompactRestore=turn_boundary）尚未排空 → 护栏继续生效。
         const dup = await enforcer.triggerManualCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20 });
         expect(dup).toEqual({ triggered: false, stage: "skipped-or-failed", reason: "already_in_progress" });
         expect(send).toHaveBeenCalledTimes(2); // unchanged
       });
 
-      it("after the sequence completes (audit-sent) OR fails (skipped-or-failed), a fresh re-trigger is allowed", async () => {
+      it("序列完成（audit-sent）或失败（skipped-or-failed）后，允许重新触发", async () => {
         const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
         const { transport, send } = makeSessionTransport();
         const enforcer = new ClaudeCompactionEnforcer(settings, transport, { openrigHome: HOME });
 
-        // Drive one full sequence to audit-sent (the back-half clears the pending maps).
+        // 推进一个完整序列到 audit-sent（后半段会清除待处理映射）。
         await enforcer.triggerManualCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/c.jsonl" });
         await enforcer.maybeAutoCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/c.jsonl" });
         await enforcer.maybeAutoCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/c.jsonl" });
         await enforcer.maybeAutoCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20 });
         expect(enforcer.getManualCompactionState(SEAT)?.stage).toBe("audit-sent");
         const before = send.mock.calls.length;
-        // Re-trigger AFTER audit-sent → allowed (marker cleared): a new prep + /compact.
+        // audit-sent 后重新触发 → 允许（标记已清除）：新一轮准备 + /compact。
         expect(await enforcer.triggerManualCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20 }))
           .toEqual({ triggered: true, stage: "compact-sent" });
         expect(send.mock.calls.length).toBe(before + 2);
 
-        // And after a FAILED trigger (prep send fails → skipped-or-failed), a retry is allowed too.
+        // 触发失败后（准备发送失败 → skipped-or-failed）也允许重试。
         const { transport: t2, send: send2 } = makeSessionTransport();
         send2.mockImplementationOnce(async () => ({ ok: false, reason: "send_failed" }));
         const enf2 = new ClaudeCompactionEnforcer(settings, t2, { openrigHome: HOME });
         expect((await enf2.triggerManualCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20 })).triggered).toBe(false);
         expect(enf2.getManualCompactionState(SEAT)?.stage).toBe("skipped-or-failed");
-        // Retry proceeds (not blocked by the guard).
+        // 重试继续进行（不受护栏阻止）。
         expect(await enf2.triggerManualCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20 }))
           .toEqual({ triggered: true, stage: "compact-sent" });
       });
     });
 
-    it("threshold-independent + deterministic: runs the guided sequence even when auto-compaction is DISABLED, and the back-half still drains via the single path", async () => {
+    it("与阈值无关且确定：即使自动压缩已禁用也运行引导序列，后半段仍通过单一路径排空", async () => {
       const settings = makeSettingsStore(POLICY_DISABLED);
       const { transport, send } = makeSessionTransport();
       const enforcer = new ClaudeCompactionEnforcer(settings, transport, { openrigHome: HOME });
@@ -1074,39 +1064,39 @@ describe("ClaudeCompactionEnforcer", () => {
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
       }, { operatorInitiated: true }); // GHOST-STAGE (a): OPERATOR-initiated → drain-exempt while disabled
       expect(outcome).toEqual({ triggered: true, stage: "compact-sent" });
-      expect(send.mock.calls[0]![1]).toContain("OpenRig automatic compaction preparation");
+      expect(send.mock.calls[0]![1]).toContain("zrig 自动压缩准备");
       expect(send.mock.calls[1]![1]).toContain("/compact");
       expect(send).toHaveBeenCalledTimes(2);
 
-      // The below-threshold back-half must drain even though enabled=false (operator-initiated exemption).
+      // 即使 enabled=false，低于阈值的后半段也必须排空（操作员发起的豁免）。
       expect(await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
       })).toEqual({ triggered: true });
-      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("OpenRig post-compaction turn boundary"), { waitForIdleMs: expect.any(Number) });
+      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("zrig 压缩后轮次边界"), { waitForIdleMs: expect.any(Number) });
       expect(await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
       })).toEqual({ triggered: true });
       expect(await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20,
       })).toEqual({ triggered: true });
-      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("Now audit your compaction restore"), { waitForIdleMs: expect.any(Number) });
+      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("审计本次压缩恢复"), { waitForIdleMs: expect.any(Number) });
     });
 
-    it("GHOST-STAGE (a) PM-pin: an AUTOMATION-initiated manual trigger is NOT drain-exempt — a disabled tick drains nothing (no laundering bypass)", async () => {
+    it("幽灵阶段 (a) PM 固定：自动化发起的手工触发不享受排空豁免——禁用轮询不排空任何内容（无洗白绕过）", async () => {
       const settings = makeSettingsStore(POLICY_DISABLED);
       const { transport, send } = makeSessionTransport();
       const enforcer = new ClaudeCompactionEnforcer(settings, transport, { openrigHome: HOME });
 
-      // Automation calls the manual verb WITHOUT operator initiation (fail-safe default). The verb
-      // still runs (prep + /compact), but the resulting stage must NOT be drain-exempt — otherwise
-      // the manual entrypoint launders exactly the drains fix (a) kills.
+      // 自动化在没有操作员发起的情况下调用手工动作（故障安全默认值）。该动作仍会运行
+      //（准备 + /compact），但所得阶段不得享受排空豁免——否则手工入口恰好洗白了修复 (a)
+      // 所消除的排空行为。
       const outcome = await enforcer.triggerManualCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
       }); // NO { operatorInitiated: true } — automation actor
       expect(outcome).toEqual({ triggered: true, stage: "compact-sent" });
       const afterTriggerSends = send.mock.calls.length; // prep + /compact only
 
-      // A disabled below-threshold tick MUST refuse to drain the automation-seeded stage.
+      // 策略禁用时，低于阈值的轮询必须拒绝排空自动化植入的阶段。
       const drain = await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
       });
@@ -1114,7 +1104,7 @@ describe("ClaudeCompactionEnforcer", () => {
       expect(send.mock.calls.length).toBe(afterTriggerSends); // no ghost drain — not exempt
     });
 
-    it("auto path preserved after the enabled-gate reorder: a disabled policy still does NOT auto-trigger above threshold", async () => {
+    it("重新排列启用门禁后仍保留自动路径：禁用策略在超过阈值时仍不自动触发", async () => {
       const settings = makeSettingsStore(POLICY_DISABLED);
       const { transport, send } = makeSessionTransport();
       const enforcer = new ClaudeCompactionEnforcer(settings, transport);
@@ -1125,7 +1115,7 @@ describe("ClaudeCompactionEnforcer", () => {
       expect(send).not.toHaveBeenCalled();
     });
 
-    it("two-phase ordering: /compact is sent with waitForIdleMs so it cannot land before the prep turn completes", async () => {
+    it("两阶段顺序：发送 /compact 时携带 waitForIdleMs，因此不会在准备回合完成前落地", async () => {
       const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
       const { transport, send } = makeSessionTransport();
       const callOrder: string[] = [];
@@ -1140,7 +1130,7 @@ describe("ClaudeCompactionEnforcer", () => {
       expect(callOrder).toEqual(["prep", `compact:${JSON.stringify({ waitForIdleMs: 90_000 })}`]);
     });
 
-    it("wait-for-idle failure means /compact never landed: the back-half is NOT seeded (ordering guarantee)", async () => {
+    it("等待空闲失败表示 /compact 从未落地：不植入后半段（顺序保证）", async () => {
       const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
       const { transport, send } = makeSessionTransport();
       send.mockImplementationOnce(async () => ({ ok: true })); // prep lands
@@ -1151,14 +1141,14 @@ describe("ClaudeCompactionEnforcer", () => {
       expect(outcome).toEqual({ triggered: false, stage: "skipped-or-failed", reason: "wait_for_idle_timeout" });
       expect(enforcer.getManualCompactionState(SEAT)?.stage).toBe("skipped-or-failed");
 
-      // No turn_boundary was seeded, so a below-threshold poll finds nothing to drain.
+      // 未植入 turn_boundary，因此低于阈值的轮询找不到可排空内容。
       expect(await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20,
       })).toEqual({ triggered: false, reason: "below_threshold" });
       expect(send).toHaveBeenCalledTimes(2);
     });
 
-    it("prep send failure surfaces the transport reason and does not send /compact", async () => {
+    it("准备发送失败会呈现传输原因，且不发送 /compact", async () => {
       const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
       const { transport, send } = makeSessionTransport();
       send.mockImplementationOnce(async () => ({ ok: false, reason: "mid_work" }));
@@ -1169,7 +1159,7 @@ describe("ClaudeCompactionEnforcer", () => {
       expect(send).toHaveBeenCalledTimes(1);
     });
 
-    it("non-Claude runtime is rejected with a clear reason (never a silent no-op)", async () => {
+    it("以明确原因拒绝非 Claude 运行时（绝不静默空操作）", async () => {
       const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
       const { transport, send } = makeSessionTransport();
       const enforcer = new ClaudeCompactionEnforcer(settings, transport);
@@ -1180,7 +1170,7 @@ describe("ClaudeCompactionEnforcer", () => {
       expect(enforcer.getManualCompactionState("codex@rig")?.stage).toBe("skipped-or-failed");
     });
 
-    it("no known usage sample → rejected with no_usage_data (never triggers blind)", async () => {
+    it("没有已知用量样本 → 以 no_usage_data 拒绝（绝不盲目触发）", async () => {
       const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
       const { transport, send } = makeSessionTransport();
       const enforcer = new ClaudeCompactionEnforcer(settings, transport);
@@ -1190,7 +1180,7 @@ describe("ClaudeCompactionEnforcer", () => {
       expect(send).not.toHaveBeenCalled();
     });
 
-    it("bounded to the triggered seat: only that seat is sent to; no other seat gets manual state", async () => {
+    it("范围限定到被触发席位：仅向该席位发送，其他席位不获得手工状态", async () => {
       const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
       const { transport, send } = makeSessionTransport();
       const enforcer = new ClaudeCompactionEnforcer(settings, transport);
@@ -1200,7 +1190,7 @@ describe("ClaudeCompactionEnforcer", () => {
       expect(enforcer.getManualCompactionState("b@rig")).toBeNull();
     });
 
-    it("forward-fix B1: after a manual trigger, an above-threshold auto tick past the dedup window does NOT start a second prep (dedups); the manual back-half still drains", async () => {
+    it("前向修复 B1：手工触发后，超过去重窗口的高于阈值自动轮询不会启动第二次准备（去重）；手工后半段仍会排空", async () => {
       const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
       const { transport, send } = makeSessionTransport();
       const enforcer = new ClaudeCompactionEnforcer(settings, transport, {
@@ -1211,43 +1201,43 @@ describe("ClaudeCompactionEnforcer", () => {
       let now = 1_700_000_000_000;
       vi.spyOn(Date, "now").mockImplementation(() => now);
 
-      // Manual trigger below threshold → prep + /compact (2 sends), seeds the
-      // back-half AND the durable above-threshold suppression.
+      // 低于阈值时手工触发 → 准备 + /compact（2 次发送），植入后半段和持久的
+      // 高于阈值抑制状态。
       expect(await enforcer.triggerManualCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
       })).toEqual({ triggered: true, stage: "compact-sent" });
       expect(send).toHaveBeenCalledTimes(2);
 
-      // Advance PAST the short dedup window, then an ABOVE-threshold auto tick.
-      // It must dedup on triggeredAboveThreshold — NOT start a second prep.
+      // 推进到短去重窗口之后，再执行一次高于阈值的自动轮询。它必须基于
+      // triggeredAboveThreshold 去重，不得启动第二次准备。
       now += 61_000;
       expect(await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 95,
       })).toEqual({ triggered: false, reason: "already_triggered_above_threshold" });
       expect(send).toHaveBeenCalledTimes(2); // no third message
 
-      // The manual restore/audit back-half still drains normally once below threshold.
+      // 低于阈值后，手工恢复/审计后半段仍正常排空。
       expect(await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
       })).toEqual({ triggered: true }); // turn boundary
-      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("OpenRig post-compaction turn boundary"), { waitForIdleMs: expect.any(Number) });
+      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("zrig 压缩后轮次边界"), { waitForIdleMs: expect.any(Number) });
       expect(await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
       })).toEqual({ triggered: true }); // restore
       expect(await enforcer.maybeAutoCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20,
       })).toEqual({ triggered: true }); // audit
-      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("Now audit your compaction restore"), { waitForIdleMs: expect.any(Number) });
+      expect(send).toHaveBeenLastCalledWith(SEAT, expect.stringContaining("审计本次压缩恢复"), { waitForIdleMs: expect.any(Number) });
       expect(enforcer.getManualCompactionState(SEAT)?.stage).toBe("audit-sent");
       expect(send).toHaveBeenCalledTimes(5);
     });
 
-    it("state surfacing: preparing → compact-sent → restore-sent → audit-sent across the sequence", async () => {
+    it("状态呈现：序列中依次为 preparing → compact-sent → restore-sent → audit-sent", async () => {
       const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
       const { transport, send } = makeSessionTransport();
       const enforcer = new ClaudeCompactionEnforcer(settings, transport, { openrigHome: HOME });
 
-      // Hold phase 1 open so we can observe "preparing".
+      // 保持阶段 1 未完成，以便观察 "preparing"。
       let resolvePrep: (v: { ok: boolean }) => void = () => {};
       send.mockImplementationOnce(() => new Promise<{ ok: boolean }>((r) => { resolvePrep = r; }));
       const pending = enforcer.triggerManualCompact({
@@ -1268,17 +1258,16 @@ describe("ClaudeCompactionEnforcer", () => {
       expect(enforcer.getManualCompactionState(SEAT)?.stage).toBe("audit-sent");
     });
 
-    // Regression for the slices 13–14 delivery-ordering defect: the daemon surfaced
-    // restore-sent/audit-sent although the restore prompt was NEVER delivered — it was
-    // injected into a busy pane right after /compact and dropped, yet the send reported
-    // ok (busy is a non-blocking advisory on the default path). Fix: each post-compact
-    // back-half send is idle-gated (waitForIdleMs); a busy tick does NOT advance the
-    // stage, a later idle tick advances it once, and audit can never overtake restore.
-    it("post-compact restore/audit are idle-gated: a busy tick retries the SAME stage without advancing; restore delivers before audit", async () => {
+    // slices 13–14 交付顺序缺陷的回归测试：即使恢复提示从未交付，守护进程也会呈现
+    // restore-sent/audit-sent——提示在 /compact 后立即注入忙碌窗格并被丢弃，但发送仍
+    // 报告成功（默认路径中 busy 是非阻塞建议）。修复：压缩后每次后半段发送都受空闲
+    // 门禁（waitForIdleMs）约束；忙碌轮询不推进阶段，稍后的空闲轮询只推进一次，
+    // 审计绝不能越过恢复。
+    it("压缩后恢复/审计受空闲门禁约束：忙碌轮询重试同一阶段而不推进；恢复先于审计交付", async () => {
       const settings = makeSettingsStore(POLICY_ENABLED_AT_80);
       let busy = false;
       const send = vi.fn(async (_s: string, _t: string, opts?: { waitForIdleMs?: number }) => {
-        // An idle-gated send does NOT deliver while the seat is busy (waitForIdle times out).
+        // 席位忙碌时，受空闲门禁约束的发送不会交付（waitForIdle 超时）。
         if (opts?.waitForIdleMs !== undefined && busy) return { ok: false, reason: "wait_for_idle_timeout" };
         return { ok: true };
       });
@@ -1286,20 +1275,21 @@ describe("ClaudeCompactionEnforcer", () => {
       const enforcer = new ClaudeCompactionEnforcer(settings, transport, { openrigHome: HOME });
 
       const isRestore = (c: unknown[]) =>
-        typeof c[1] === "string" && (c[1] as string).includes("Please respond to this normal user message now");
+        typeof c[1] === "string" && (c[1] as string).includes("请立即响应这条普通用户消息");
       const isAudit = (c: unknown[]) =>
-        typeof c[1] === "string" && (c[1] as string).includes("Now audit your compaction restore");
+        typeof c[1] === "string" && (c[1] as string).includes("审计本次压缩恢复");
 
-      // Seed the guided sequence (prep + /compact) → stage compact-sent, pending turn_boundary.
+      // 植入引导序列（准备 + /compact）→ 阶段为 compact-sent，等待 turn_boundary。
       expect(await enforcer.triggerManualCompact({
         sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl",
       })).toEqual({ triggered: true, stage: "compact-sent" });
 
-      // turn_boundary tick while idle → delivers; pending advances to restore_prompt (stage stays compact-sent).
+      // 空闲时执行 turn_boundary 轮询 → 交付；待处理状态推进到 restore_prompt
+      //（阶段保持 compact-sent）。
       await enforcer.maybeAutoCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl" });
       expect(enforcer.getManualCompactionState(SEAT)?.stage).toBe("compact-sent");
 
-      // Claude is BUSY (still processing the boundary turn). The restore tick MUST NOT advance.
+      // Claude 处于忙碌状态（仍在处理边界回合）。恢复轮询不得推进。
       busy = true;
       await enforcer.maybeAutoCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl" });
       expect(enforcer.getManualCompactionState(SEAT)?.stage).toBe("compact-sent"); // busy timeout does NOT advance to restore-sent
@@ -1308,12 +1298,12 @@ describe("ClaudeCompactionEnforcer", () => {
       expect(restoreCall![2]).toEqual({ waitForIdleMs: expect.any(Number) }); // idle-gated, not a busy-pane fire-and-forget
       expect(send.mock.calls.some(isAudit)).toBe(false); // audit cannot overtake restore
 
-      // Claude goes idle → the SAME restore stage delivers and advances ONCE.
+      // Claude 变为空闲 → 同一个恢复阶段交付并仅推进一次。
       busy = false;
       await enforcer.maybeAutoCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20, transcriptPath: "/tmp/claude.jsonl" });
       expect(enforcer.getManualCompactionState(SEAT)?.stage).toBe("restore-sent");
 
-      // audit only AFTER restore delivered.
+      // 只有恢复交付后才执行审计。
       await enforcer.maybeAutoCompact({ sessionName: SEAT, runtime: "claude-code", usedPercentage: 20 });
       expect(enforcer.getManualCompactionState(SEAT)?.stage).toBe("audit-sent");
       const restoreIdx = send.mock.calls.findIndex(isRestore);

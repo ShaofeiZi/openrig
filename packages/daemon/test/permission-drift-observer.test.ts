@@ -7,7 +7,7 @@ import { observeClaudePermission, observeCodexSandbox } from "../src/domain/perm
 import { ClaudePermissionModeCache, PermissionDriftObserver } from "../src/domain/permission-drift-observer.js";
 
 describe("PermissionDriftObserver", () => {
-  it("reads current-generation arguments without claiming native enforcement", () => {
+  it("读取当前 generation 参数，但不声称 native enforcement", () => {
     const db = createFullTestDb();
     try {
       const rigs = new RigRepository(db);
@@ -47,7 +47,7 @@ describe("PermissionDriftObserver", () => {
     }
   });
 
-  it("never blocks a request on a cold or slow Claude help process", async () => {
+  it("绝不因冷启动或缓慢的 Claude help 进程阻塞请求", async () => {
     let resolve!: (modes: string[] | null) => void;
     const cache = new ClaudePermissionModeCache(() => new Promise((done) => { resolve = done; }));
     cache.warm();
@@ -56,7 +56,7 @@ describe("PermissionDriftObserver", () => {
     await vi.waitFor(() => expect(cache.read()).toEqual(["acceptEdits", "manual"]));
   });
 
-  it("refreshes harness vocabulary asynchronously after its cache expires", async () => {
+  it("cache 过期后异步刷新 harness 词表", async () => {
     let now = 1;
     let modes = ["acceptEdits", "manual"];
     const load = vi.fn(async () => modes);
@@ -71,7 +71,7 @@ describe("PermissionDriftObserver", () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
-  it("classifies a production accessSync EACCES as cwd denied", () => {
+  it("把生产 accessSync EACCES 分类为 cwd denied", () => {
     const db = createFullTestDb();
     try {
       const rigs = new RigRepository(db);
@@ -99,7 +99,7 @@ describe("PermissionDriftObserver", () => {
     }
   });
 
-  it("keeps a non-permission production access error at cwd unknown", () => {
+  it("非权限类生产 access 错误保持为 cwd unknown", () => {
     const db = createFullTestDb();
     try {
       const rigs = new RigRepository(db);

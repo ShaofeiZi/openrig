@@ -8,8 +8,8 @@ import { createLiveRefresh } from "../src/live.js";
 import { emptySnapshot } from "../src/state.js";
 import type { FleetSnapshot } from "../src/types.js";
 
-// OPR.0.5.5.19 AM-R18 — the open view updates ITSELF: pushes from the oracle's SSE
-// stream drive the refresh owner; zero clicks, zero manual refresh, zero idle polling.
+// OPR.0.5.5.19 AM-R18——打开的视图自更新：oracle SSE
+// 流的 push 驱动 refresh owner；零点击、零手动刷新、零空闲轮询。
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -46,8 +46,8 @@ function until(cond: () => boolean, ms = 2_000): Promise<void> {
   });
 }
 
-describe("S19 AM-R18 — the subscription path", () => {
-  it("each pushed oracle change fires onEvent with the notification payload (no activity fields consumed)", async () => {
+describe("S19 AM-R18——订阅路径", () => {
+  it("每个推送的 oracle 变更以通知 payload 触发 onEvent（不消费活动字段）", async () => {
     const { server, url, push, connections } = await sseServer();
     const events: Array<{ type: string; seq?: number }> = [];
     const sub = subscribeActivityEvents({ open: () => fetch(`${url}/api/activity/events`), onEvent: (e) => events.push(e) });
@@ -63,7 +63,7 @@ describe("S19 AM-R18 — the subscription path", () => {
     }
   });
 
-  it("THE OPEN VIEW UPDATES ITSELF (by effect): a pushed change re-renders the refresh owner's snapshot with ZERO manual refreshes", async () => {
+  it("打开的视图自更新（by effect）：推送变更以零手动刷新重渲染 refresh owner 快照", async () => {
     const { server, url, push, connections } = await sseServer();
     let served = 1;
     const hydrate = vi.fn(async (): Promise<FleetSnapshot> => ({ ...emptySnapshot(), generatedAt: `snap-${served++}` } as unknown as FleetSnapshot));
@@ -76,7 +76,7 @@ describe("S19 AM-R18 — the subscription path", () => {
       push({ type: "seat.activity_changed", seatNodeId: "node-1", seq: 1 });
       await until(() => hydrate.mock.calls.length === 1);
       await until(() => (live.snapshot() as unknown as { generatedAt?: string }).generatedAt === "snap-1");
-      // A second driven change updates again — the founder sits at the table, it keeps up:
+      // 第二次驱动变更再次更新——founder 在桌前，它跟得上：
       push({ type: "seat.activity_changed", seatNodeId: "node-1", seq: 2 });
       await until(() => hydrate.mock.calls.length === 2);
     } finally {
@@ -85,7 +85,7 @@ describe("S19 AM-R18 — the subscription path", () => {
     }
   });
 
-  it("ZERO IDLE-POLLING REGRESSION: with the subscription open and NO pushes, no hydrate ever fires", async () => {
+  it("零空闲轮询回归：订阅打开且无推送时，绝不触发 hydrate", async () => {
     const { server, url, connections } = await sseServer();
     const hydrate = vi.fn(async () => emptySnapshot());
     const sub = subscribeActivityEvents({ open: () => fetch(`${url}/api/activity/events`), onEvent: () => { void hydrate(); } });
@@ -99,19 +99,19 @@ describe("S19 AM-R18 — the subscription path", () => {
     }
   });
 
-  it("a dropped connection reconnects (connection maintenance, not data polling) and pushes resume", async () => {
+  it("断线重连（连接维护，非数据轮询），推送恢复", async () => {
     const first = await sseServer();
     const events: unknown[] = [];
     const sub = subscribeActivityEvents({ open: () => fetch(`${first.url}/api/activity/events`), onEvent: (e) => events.push(e), reconnectDelayMs: 30 });
     try {
       await until(() => first.connections() === 1);
-      // Drop every socket (server closes connections) — the subscription must come back.
+      // 丢弃所有 socket（服务器关闭连接）——订阅必须恢复。
       first.push({ type: "seat.activity_changed", seq: 1 });
       await until(() => events.length === 1);
       for (const res of [] as never[]) void res;
       await new Promise<void>((r) => { first.server.closeAllConnections(); r(); });
       await until(() => first.connections() === 0);
-      // server still listening; reconnect should land a fresh connection
+      // 服务器仍在监听；重连应落地一个新连接
       await until(() => first.connections() === 1, 3_000);
       first.push({ type: "seat.activity_changed", seq: 2 });
       await until(() => events.length === 2, 3_000);
@@ -121,7 +121,7 @@ describe("S19 AM-R18 — the subscription path", () => {
     }
   });
 
-  it("S16 CADENCE HOLDS AGAINST A NON-SSE SERVER: a JSON answer disables the leg permanently — one probe, zero retries", async () => {
+  it("S16 节奏对非 SSE 服务器保持：JSON 回答永久禁用该腿——一次探测，零重试", async () => {
     let hits = 0;
     const server = createServer((_req, res) => {
       hits++;
@@ -146,7 +146,7 @@ describe("S19 AM-R18 — the subscription path", () => {
     }
   });
 
-  it("NO SECOND ACTIVITY MECHANISM (trace): main wires pushes to live.refresh, and the subscription module derives no activity", () => {
+  it("无第二活动机制（trace）：main 把 pushes 接到 live.refresh，订阅模块不派生活动", () => {
     const main = readFileSync(join(repoRoot, "packages", "tui", "src", "main.ts"), "utf8");
     expect(main).toContain("subscribeActivityEvents");
     const mod = readFileSync(join(repoRoot, "packages", "tui", "src", "live-events.ts"), "utf8");

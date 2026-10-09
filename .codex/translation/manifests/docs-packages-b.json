@@ -1,0 +1,633 @@
+{
+  "owner": "docs-packages-b",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": "packages/cli/src/lib/scope-templates/capability-delta.md",
+      "target_path": "packages/cli/src/lib/scope-templates/capability-delta.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 61,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope-templates/mission-release.md",
+      "target_path": "packages/cli/src/lib/scope-templates/mission-release.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 36,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope-templates/notes.md",
+      "target_path": "packages/cli/src/lib/scope-templates/notes.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 14,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope-templates/placeholder.md",
+      "target_path": "packages/cli/src/lib/scope-templates/placeholder.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 49,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope-templates/slice-progress.md",
+      "target_path": "packages/cli/src/lib/scope-templates/slice-progress.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 12,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/continuity/apprentice-prepare.md",
+      "target_path": "packages/daemon/assets/continuity/apprentice-prepare.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 17,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/onboarding/01-world-and-purpose.md",
+      "target_path": "packages/daemon/assets/onboarding/01-world-and-purpose.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 52,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/onboarding/02-self-and-competent-action.md",
+      "target_path": "packages/daemon/assets/onboarding/02-self-and-competent-action.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 57,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/agent-operated-workflows/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/agent-operated-workflows/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 81,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随 Skill；保留 front matter、代码块、ref、字段、枚举、路径与运行时契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/forming-an-openrig-mental-model/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/forming-an-openrig-mental-model/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 319,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | quality_gate 机器初稿存在严重术语误译，已删除不合格目标文件，需主线程重新 claim 后人工翻译 | 已完整人工翻译为同目录 SKILL.zh-CN.md；保留 frontmatter key、metadata、代码块、链接、路径、标识符与占位符，用户命令统一使用 zrig；原文未修改；标题层级、围栏、链接、占位符及 git diff --check 均通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "translation_error",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 397,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | quality_gate 机器初稿存在严重术语误译，已删除不合格目标文件，需主线程重新 claim 后人工翻译 | 已人工完整翻译为同目录 SKILL.zh-CN.md；保留 frontmatter key、标题层级、表格、内联代码、路径、标识符、占位符与示例参数，用户命令由 rig 更新为 zrig；原文未修改，结构计数和 diff 检查通过。 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "translation_error",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/NOTES.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/NOTES.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 9,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-skills/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-skills/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 118,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随 Skill；保留 front matter、代码块、ref、字段、枚举、路径与运行时契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-user/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-user/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 1386,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | incomplete 尚未生成译本；长篇命令手册需主线程重新 claim 后分段翻译，保留全部命令、JSON 字段、枚举与兼容入口 | 已完整人工翻译为同目录 SKILL.zh-CN.md；保留 frontmatter key、85 个标题、67 个代码块、306 个占位符及全部协议标识，面向用户的顶层 CLI 示例改为 zrig；verifier 格式检查通过，CJK 比例 0.325，源文件哈希与备份一致。 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "translation_error",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/queue-handoff/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/queue-handoff/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 191,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 完整人工校正中文伴随 Skill；保持 front matter、字段/枚举、命令与队列契约；用户命令使用 zrig；结构、残留与 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/refocusing/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/refocusing/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 31,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/context-packs-src/world-public/boundaries.md",
+      "target_path": "packages/daemon/context-packs-src/world-public/boundaries.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 33,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/policies/builtin/yolo.policy.md",
+      "target_path": "packages/daemon/policies/builtin/yolo.policy.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 35,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/apps/vault-specialist/startup/context.md",
+      "target_path": "packages/daemon/specs/agents/apps/vault-specialist/startup/context.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 46,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/conveyor/planner/guidance/role.md",
+      "target_path": "packages/daemon/specs/agents/conveyor/planner/guidance/role.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 31,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/development/implementer/guidance/role.md",
+      "target_path": "packages/daemon/specs/agents/development/implementer/guidance/role.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 23,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/orchestration/orchestrator/guidance/role.md",
+      "target_path": "packages/daemon/specs/agents/orchestration/orchestrator/guidance/role.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 25,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/research/synthesizer/guidance/role.md",
+      "target_path": "packages/daemon/specs/agents/research/synthesizer/guidance/role.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 26,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、占位符、路径与协议标识；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/agent-starters/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/agent-starters/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 134,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随 Skill；保留 front matter、代码块、ref、字段、枚举、路径与运行时契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/agent-startup-and-context-ingestion/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/agent-startup-and-context-ingestion/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 128,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随 Skill；保留 front matter、代码块、ref、字段、枚举、路径与运行时契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/cross-host-rig-commands/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/cross-host-rig-commands/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 124,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随 Skill；保留 front matter、代码块、ref、字段、枚举、路径与运行时契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/human-in-the-loop/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/human-in-the-loop/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 104,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随 Skill；保留 front matter、代码块、ref、字段、枚举、路径与运行时契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/openrig-herdr/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/openrig-herdr/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 153,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随 Skill；保留 front matter、代码块、ref、字段、枚举、路径与运行时契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/session-source-fork/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/session-source-fork/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 162,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随 Skill；保留 front matter、代码块、ref、字段、枚举、路径与运行时契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/specification-system/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/specification-system/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 103,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随 Skill；保留 front matter、代码块、ref、字段、枚举、路径与运行时契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/topology-mutation-and-seat-management/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/topology-mutation-and-seat-management/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 120,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随 Skill；保留 front matter、代码块、ref、字段、枚举、路径与运行时契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/pm/backlog-capture/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/pm/backlog-capture/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 43,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/pm/context-builder/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/pm/context-builder/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 87,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留 front matter、代码块、模板字段、枚举、路径与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/pm/exec-summary/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/pm/exec-summary/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 84,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留 front matter、代码块、模板字段、枚举、路径与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/pm/plan-review/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/pm/plan-review/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 98,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留 front matter、代码块、模板字段、枚举、路径与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/pods/development-team/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/pods/development-team/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 57,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/pods/oversight-team/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/pods/oversight-team/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 106,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留 front matter、代码块、模板字段、枚举、路径与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/pods/review-team/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/pods/review-team/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 216,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 完整人工校正中文伴随文档；保持 front matter、标题层级、代码围栏、命令与标识符契约；用户命令使用 zrig；结构、残留与 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/agent-browser/OPENRIG.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/process/agent-browser/OPENRIG.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 40,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 301,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 完整人工校正中文伴随文档；保持 front matter、标题层级、代码围栏、命令与标识符契约；用户命令使用 zrig；结构、残留与 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/condition-based-waiting.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/condition-based-waiting.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 115,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 完整人工校正中文伴随文档；保持 front matter、标题层级、代码围栏、命令与标识符契约；用户命令使用 zrig；结构、残留与 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/conveyor/CULTURE.md",
+      "target_path": "packages/daemon/specs/rigs/launch/conveyor/CULTURE.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 34,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/demo/project-example/README.md",
+      "target_path": "packages/daemon/specs/rigs/launch/demo/project-example/README.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 25,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/SPEC.md",
+      "target_path": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/SPEC.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 19,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/slices/01-shorten-first-run/PROOF.md",
+      "target_path": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/slices/01-shorten-first-run/PROOF.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 7,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/slices/01-shorten-first-run/SPEC.md",
+      "target_path": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/slices/01-shorten-first-run/SPEC.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 31,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/factory-rsi/CULTURE.md",
+      "target_path": "packages/daemon/specs/rigs/launch/factory-rsi/CULTURE.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 47,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/kernel/agents/advisor/lead/guidance/role.md",
+      "target_path": "packages/daemon/specs/rigs/launch/kernel/agents/advisor/lead/guidance/role.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 50,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/kernel/agents/operator/agent/startup/context.md",
+      "target_path": "packages/daemon/specs/rigs/launch/kernel/agents/operator/agent/startup/context.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 62,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/kernel/agents/queue/worker/startup/context.md",
+      "target_path": "packages/daemon/specs/rigs/launch/kernel/agents/queue/worker/startup/context.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 31,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/preview/product-team/CULTURE.md",
+      "target_path": "packages/daemon/specs/rigs/preview/product-team/CULTURE.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 96,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留 front matter、代码块、模板字段、枚举、路径与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/preview/product-team/topology/instance/CRAFT.md",
+      "target_path": "packages/daemon/specs/rigs/preview/product-team/topology/instance/CRAFT.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 24,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/IMPLEMENTATION-PRD.md",
+      "target_path": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/IMPLEMENTATION-PRD.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 79,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留 front matter、代码块、模板字段、枚举、路径与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/proof/qa-PASS-shared-by-label.md",
+      "target_path": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/proof/qa-PASS-shared-by-label.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 25,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/self-host-live-legs/RUNBOOK.md",
+      "target_path": "packages/daemon/test/fixtures/self-host-live-legs/RUNBOOK.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 244,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | quality_gate 机器初稿存在严重术语误译与表格/占位符风险，已删除不合格目标文件，需主线程重新 claim 后人工翻译并保留命令契约 | 已人工完整翻译为同目录 RUNBOOK.zh-CN.md；原文未改；保留 10 个标题层级、5 个 bash 围栏、5 行表格、56 个占位符、107 个行内代码片段与 40 行可执行代码，顶层用户命令统一为 zrig；verifier-hub 格式和关键内容检查通过，git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "translation_error",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/agent-startup-and-context-ingestion/content.md",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/agent-startup-and-context-ingestion/content.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 5,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/rig-bundles-and-shareable-artifacts/content.md",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/rig-bundles-and-shareable-artifacts/content.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 5,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/openrig-operating-model/content.md",
+      "target_path": "packages/test-system/evals/fixtures/skills/openrig-operating-model/content.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 5,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/process/systematic-debugging/content.md",
+      "target_path": "packages/test-system/evals/fixtures/skills/process/systematic-debugging/content.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 5,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/process/test-driven-development/content.md",
+      "target_path": "packages/test-system/evals/fixtures/skills/process/test-driven-development/content.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 5,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scripts/README.md",
+      "target_path": "packages/test-system/scripts/README.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 20,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/README.md",
+      "target_path": "packages/tui/README.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 66,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；保留原始 Markdown、front matter、代码块、路径、枚举与 fixture 契约；用户命令使用 zrig；结构和 diff 检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    }
+  ]
+}

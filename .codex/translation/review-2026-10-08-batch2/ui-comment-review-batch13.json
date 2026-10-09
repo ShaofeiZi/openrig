@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T01:14:50",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch13",
+ "files": 10,
+ "changed": 7,
+ "reviewed_no_change": 3,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/steering-tab.test.tsx",
+   "status": "changed",
+   "after_sha256": "bd51c3b1fdcc8abc41f5306255dfee57c0283bea0803fe7bfae427442c903c29",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.13/0.4.1.17、slice-16 MH-2、STEERING.md/MISSION_BRIEF.md、globalFilterFn/toLowerCase、qitem-20260721000001-ps-stall-driver、HG-1/2/3、IMPLEMENTATION-PRD §10、Panel 1/2、Cannot read properties of null 错误串 保留"
+  },
+  {
+   "path": "packages/ui/test/feed-classifier.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "4c93ac545edae79c905830bf7c85c37c4f4d9d5339ae68ab9da3b01258c9e983",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.13/0.4.1.17、slice-16 MH-2、STEERING.md/MISSION_BRIEF.md、globalFilterFn/toLowerCase、qitem-20260721000001-ps-stall-driver、HG-1/2/3、IMPLEMENTATION-PRD §10、Panel 1/2、Cannot read properties of null 错误串 保留"
+  },
+  {
+   "path": "packages/ui/test/rig-events.test.tsx",
+   "status": "changed",
+   "after_sha256": "2b4404ff4e5ece2edf385a956037f3cdef674de61d1389065b556d1f4f74b0e4",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.13/0.4.1.17、slice-16 MH-2、STEERING.md/MISSION_BRIEF.md、globalFilterFn/toLowerCase、qitem-20260721000001-ps-stall-driver、HG-1/2/3、IMPLEMENTATION-PRD §10、Panel 1/2、Cannot read properties of null 错误串 保留"
+  },
+  {
+   "path": "packages/ui/test/settings-tab.test.tsx",
+   "status": "changed",
+   "after_sha256": "62ac0ba6f50ba39812b880b684a9832e8d9d2807eedaf48ae90caa19cc0e90db",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.13/0.4.1.17、slice-16 MH-2、STEERING.md/MISSION_BRIEF.md、globalFilterFn/toLowerCase、qitem-20260721000001-ps-stall-driver、HG-1/2/3、IMPLEMENTATION-PRD §10、Panel 1/2、Cannot read properties of null 错误串 保留"
+  },
+  {
+   "path": "packages/ui/test/opr-0.4.1.13-table-crash.test.tsx",
+   "status": "changed",
+   "after_sha256": "3a153d8c5cbb2a61afc745f8e803461c090c1fcdf120dea24a9f98d5e1d4645b",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.13/0.4.1.17、slice-16 MH-2、STEERING.md/MISSION_BRIEF.md、globalFilterFn/toLowerCase、qitem-20260721000001-ps-stall-driver、HG-1/2/3、IMPLEMENTATION-PRD §10、Panel 1/2、Cannot read properties of null 错误串 保留"
+  },
+  {
+   "path": "packages/ui/test/activity-elite.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "340ecbaf1407ac3f2d042e67cf1ec290283c407180bc2471e443b3100e58a20e",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.13/0.4.1.17、slice-16 MH-2、STEERING.md/MISSION_BRIEF.md、globalFilterFn/toLowerCase、qitem-20260721000001-ps-stall-driver、HG-1/2/3、IMPLEMENTATION-PRD §10、Panel 1/2、Cannot read properties of null 错误串 保留"
+  },
+  {
+   "path": "packages/ui/test/verb-actions-one-click.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "4e560a1784bc42e9cc12efe50f813069c1b3104f6d74a88054078b8fafe4f964",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.13/0.4.1.17、slice-16 MH-2、STEERING.md/MISSION_BRIEF.md、globalFilterFn/toLowerCase、qitem-20260721000001-ps-stall-driver、HG-1/2/3、IMPLEMENTATION-PRD §10、Panel 1/2、Cannot read properties of null 错误串 保留"
+  },
+  {
+   "path": "packages/ui/test/p5-3-topology-event-hub.test.tsx",
+   "status": "changed",
+   "after_sha256": "19a316645740417191303b817e8e8d2ea03b6dc6e809762eb69d6171d16a4af4",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.13/0.4.1.17、slice-16 MH-2、STEERING.md/MISSION_BRIEF.md、globalFilterFn/toLowerCase、qitem-20260721000001-ps-stall-driver、HG-1/2/3、IMPLEMENTATION-PRD §10、Panel 1/2、Cannot read properties of null 错误串 保留"
+  },
+  {
+   "path": "packages/ui/test/spec-display.test.tsx",
+   "status": "changed",
+   "after_sha256": "d24747279c28360032d3a22ca5c16dbd176a33ab226c59fabb9971177d5904c1",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.13/0.4.1.17、slice-16 MH-2、STEERING.md/MISSION_BRIEF.md、globalFilterFn/toLowerCase、qitem-20260721000001-ps-stall-driver、HG-1/2/3、IMPLEMENTATION-PRD §10、Panel 1/2、Cannot read properties of null 错误串 保留"
+  },
+  {
+   "path": "packages/ui/test/markdown-viewer-storytelling.test.tsx",
+   "status": "changed",
+   "after_sha256": "6ba58fc06f2bec0073d76ee9e819e44646b1b777821f8d2a8f64def932d6eb3e",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.13/0.4.1.17、slice-16 MH-2、STEERING.md/MISSION_BRIEF.md、globalFilterFn/toLowerCase、qitem-20260721000001-ps-stall-driver、HG-1/2/3、IMPLEMENTATION-PRD §10、Panel 1/2、Cannot read properties of null 错误串 保留"
+  }
+ ]
+}

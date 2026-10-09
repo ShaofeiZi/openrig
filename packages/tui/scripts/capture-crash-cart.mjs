@@ -1,10 +1,10 @@
-// Crash-cart LOOK-gate capture harness (PM placement-delta comparison, ruling 3c6c2be0). Renders the
-// daemon-down screens IN-SHELL (content-pane inside the standard explorer│content shell) through the
-// REAL renderScreen + stylize pipeline (the exact bytes the TUI writes) at a fixed viewport, and drops
-// per-screen .ans (ANSI — `cat` it to see the true look) + .txt (plain) + SHA256SUMS. Deterministic
-// (fixed fixtures + truecolor + fixed clock) → byte-identical on re-run.
+// 故障诊断外观门捕获工具（PM 放置增量比较，裁决 3c6c2be0）。在
+// 壳内渲染后台服务降级屏（内容面板在标准资源管理器│内容壳中），通过
+// 真实 renderScreen + stylize 管道（TUI 写入的确切字节）在固定视口，
+// 并输出每屏 .ans（ANSI——`cat` 查看真实外观）+ .txt（纯文本）+ SHA256SUMS。确定性
+// （固定夹具 + truecolor + 固定时钟）→ 重跑字节相同。
 //
-//   node --import tsx scripts/capture-crash-cart.mjs <out-dir>
+//   node --import tsx scripts/capture-crash-cart.mjs <输出目录>
 import { writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
@@ -24,21 +24,21 @@ const view = createViewState({ instanceId: "crash-cart", getSnapshot: () => snap
 const draw = (opts, s = snap) => renderScreen(view.get(), s, { cols, rows, nowMs, ...opts });
 
 const screens = {
-  // Cockpit IN-SHELL — explorer (ledger-fed, honestly marked) + the approved content in the right pane,
-  // incl. the honest-null header slots. The placement-delta vs the founder-approved content.
+  // 壳内座舱——资源管理器（账本喂入，诚实标记）+ 右窗格中批准的内容，
+  // 含诚实空头条槽位。与创建者批准内容的放置增量。
   "cockpit-in-shell": draw({ daemonState: "down", crashCart: demoCrashCartModel() }),
-  // UNVERIFIED IN-SHELL — evidence + retry, no restore, explorer present.
+  // 壳内未验证——证据 + 重试，无恢复，资源管理器存在。
   "unverified-in-shell": draw({
     daemonState: "unverified",
     daemonEvidence: { pidState: "alive (pid 4242)", probeResult: "timeout", failedSignal: "healthz timed out after 3 probes" },
   }),
-  // FIRST-RUN IN-SHELL — DOWN + no DB → onboarding framing, explorer marked ledger even with no rigs.
+  // 壳内首次运行——降级 + 无数据库 → 入门框架，资源管理器即使无工作组也标记账本。
   "first-run-in-shell": draw({
     daemonState: "down",
     crashCart: buildCrashCartModel({ header: { lastActivityAt: null }, foundOnHost: [], whereWorkStopped: [] }),
   }),
-  // POST-RESTORE SWAP — after a successful restore the shell swaps ledger→live: the SAME shell, now
-  // rendering the live fleet (no daemonState). Proves the data-source swap renders honestly, same shell.
+  // 恢复后交换——成功恢复后壳将账本→实时交换：相同壳，现在
+  // 渲染实时组（无 daemonState）。证明数据源交换诚实渲染，相同壳。
   "post-restore-swap": draw({}, demoSnapshot()),
 };
 
@@ -52,5 +52,5 @@ for (const [name, screen] of Object.entries(screens)) {
   manifest.push(`${createHash("sha256").update(plain).digest("hex")}  ${name}.txt`);
 }
 writeFileSync(join(OUT, "SHA256SUMS"), manifest.join("\n") + "\n");
-console.log(`captured ${Object.keys(screens).length} crash-cart in-shell screens → ${OUT}`);
+console.log(`已捕获 ${Object.keys(screens).length} 个壳内故障诊断屏 → ${OUT}`);
 console.log(manifest.join("\n"));

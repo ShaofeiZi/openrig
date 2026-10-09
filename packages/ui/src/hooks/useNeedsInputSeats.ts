@@ -22,10 +22,9 @@ export function useNeedsInputSeats() {
       for (const rig of rigs) {
         let nodes: NodeInventoryEntry[];
         try {
-          // OPR.0.4.3 healthz-wedge fix: this is the one consumer that needs
-          // pane-heuristic needs_input for hook-less seats (precedence #3), so it
-          // opts into the per-node tmux capture with ?full=true. All other node
-          // consumers (topology graph/table) stay on the cheap snapshot default.
+          // OPR.0.4.3 healthz-wedge 修复：这是唯一需要对无 hook 席位做
+          // 面板启发式 needs_input（优先级 #3）的消费方，因此它选择带 ?full=true 的
+          // 逐节点 tmux 捕获。其他所有节点消费方（拓扑图/拓扑表）仍用廉价的快照默认。
           const nodesRes = await fetch(`/api/rigs/${encodeURIComponent(rig.rigId)}/nodes?full=true`);
           if (!nodesRes.ok) continue;
           nodes = (await nodesRes.json()) as NodeInventoryEntry[];

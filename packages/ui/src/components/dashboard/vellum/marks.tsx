@@ -1,15 +1,12 @@
-// Scattered floating text marks used in the mid + top layers.
+// 中层和顶层使用的散落悬浮文字标记。
 //
-// FloatingTopMarks: tiny floating top-layer annotations — sparse, fine,
-// crisp. The "random pieces of text" glitch-artifact feel.
+// FloatingTopMarks：微小的顶层悬浮注释，稀疏、纤细、清晰，营造“随机文字碎片”的故障艺术感。
 //
-// ScatteredMarks: mid-tier scattered marks, slightly larger; sit on
-// layer 2 (between the back vellum sheet and the destination cards).
+// ScatteredMarks：稍大的中层散落标记，位于第 2 层，即背部 vellum 纸张与目标卡片之间。
 
 export function FloatingTopMarks() {
-  // top-[28%] left-[28%] [?] removed iter 32 — was covering the
-  // TOPOLOGY card's tree diagram. Remaining marks keep the scattered
-  // glitch-artifact feel.
+  // 第 32 次迭代移除了 top-[28%] left-[28%] [?]，因为它会遮挡拓扑卡片的树图。
+  // 剩余标记继续维持散落的故障艺术感。
   const marks: Array<{ pos: string; text: string; size?: string }> = [
     { pos: "top-[18%] left-[36%]", text: "▪ 03°", size: "text-[10px]" },
     { pos: "top-[24%] right-[34%]", text: "**", size: "text-base" },

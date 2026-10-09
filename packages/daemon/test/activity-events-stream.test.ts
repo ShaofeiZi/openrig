@@ -4,10 +4,10 @@ import { activityRoutes } from "../src/routes/activity.js";
 import { SeatActivityService } from "../src/domain/seat-activity-service.js";
 import type { EventBus } from "../src/domain/event-bus.js";
 
-// OPR.0.5.5.19 AM-R18 — the push substrate: the oracle EMITS arbitrated state changes
-// onto the event bus, and GET /api/activity/events streams them (SSE) to the open TUI
-// view. Change-notification only — the payload carries identity + seq, never a second
-// activity derivation; the view rehydrates from /api/ps (the desk-accepted shape).
+// OPR.0.5.5.19 AM-R18——推送底座：oracle 将裁决后的状态变更发到事件总线，
+// GET /api/activity/events 再通过 SSE 将其流式传给已打开的 TUI 视图。这里只通知变更——
+// payload 携带身份和 seq，绝不做第二次 activity 推导；视图从 /api/ps 恢复状态
+//（已通过评审的形状）。
 
 const SEAT = "node-ev-1";
 const SESSION = "dev50-qa@v-openrig-build";
@@ -26,8 +26,8 @@ function makeSvc(emit: ReturnType<typeof vi.fn>, clock: { now: number }) {
   return svc;
 }
 
-describe("S19 AM-R18 — the oracle emits arbitrated state changes", () => {
-  it("a transition emits seat.activity_changed with seat identity + monotonic seq (notification, not derivation)", () => {
+describe("S19 AM-R18——oracle 发出裁决后的状态变更", () => {
+  it("状态转换会发出包含席位身份和单调递增序号的 seat.activity_changed（通知而非推导）", () => {
     const emit = vi.fn();
     const clock = { now: 7_000_000 };
     const svc = makeSvc(emit, clock);
@@ -42,7 +42,7 @@ describe("S19 AM-R18 — the oracle emits arbitrated state changes", () => {
     expect(changed[0]!.seq).toBe(1);
   });
 
-  it("a NON-transition (same state re-reported) emits nothing — pushes fire on change only", () => {
+  it("重复上报同一状态不会发出事件——仅在状态变化时推送", () => {
     const emit = vi.fn();
     const clock = { now: 7_000_000 };
     const svc = makeSvc(emit, clock);
@@ -52,7 +52,7 @@ describe("S19 AM-R18 — the oracle emits arbitrated state changes", () => {
     expect(emit.mock.calls.filter((c) => (c[0] as { type: string }).type === "seat.activity_changed")).toHaveLength(0);
   });
 
-  it("an occupant swap emits the change event too (the swap is a visible push)", () => {
+  it("占用者切换也会发出变更事件（切换是可见推送）", () => {
     const emit = vi.fn();
     const clock = { now: 7_000_000 };
     const svc = makeSvc(emit, clock);
@@ -63,8 +63,8 @@ describe("S19 AM-R18 — the oracle emits arbitrated state changes", () => {
   });
 });
 
-describe("S19 AM-R18 — GET /api/activity/events streams pushes (SSE)", () => {
-  it("a driven oracle change reaches a connected stream as one SSE data line; disconnect unsubscribes", async () => {
+describe("S19 AM-R18——GET /api/activity/events 通过 SSE 流式推送", () => {
+  it("触发的 oracle 变更以一行 SSE 数据到达已连接流；断开连接会取消订阅", async () => {
     const subscribers = new Set<(e: unknown) => void>();
     const fakeBus = {
       subscribe: (cb: (e: unknown) => void) => { subscribers.add(cb); return () => subscribers.delete(cb); },
@@ -79,13 +79,13 @@ describe("S19 AM-R18 — GET /api/activity/events streams pushes (SSE)", () => {
     expect(subscribers.size).toBe(1);
 
     const reader = res.body!.getReader();
-    // Drive a push through the bus while the stream is open:
+    // 在流打开期间通过总线触发一次推送：
     for (const cb of subscribers) cb({ type: "seat.activity_changed", seatNodeId: SEAT, seq: 42 });
     const { value } = await reader.read();
     const chunk = new TextDecoder().decode(value);
     expect(chunk).toContain("seat.activity_changed");
     expect(chunk).toContain('"seq":42');
-    // Notification-only: the SSE payload never carries a derived display/vocabulary field.
+    // 仅通知：SSE payload 绝不携带推导出的展示或词汇字段。
     expect(chunk).not.toMatch(/"display"|"terminalActive"/);
 
     await reader.cancel();
@@ -93,7 +93,7 @@ describe("S19 AM-R18 — GET /api/activity/events streams pushes (SSE)", () => {
     expect(subscribers.size).toBe(0); // disconnect released the subscription
   });
 
-  it("unrelated bus events are filtered out — only activity/rung-health pushes stream", async () => {
+  it("过滤无关总线事件——仅将 activity/rung-health 推送到流", async () => {
     const subscribers = new Set<(e: unknown) => void>();
     const fakeBus = { subscribe: (cb: (e: unknown) => void) => { subscribers.add(cb); return () => subscribers.delete(cb); } };
     const app = new Hono();

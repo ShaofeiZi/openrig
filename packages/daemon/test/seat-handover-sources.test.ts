@@ -15,13 +15,12 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-// OPR.0.5.5.5 (05-handover-sources-real) — fork/rebuild handover sources EXECUTE
-// the plan they print. The v0 B3 refusal (`source_not_supported`) is replaced by
-// real execution: fork carries incumbent context through the native-fork launch
-// seam (launchHarness forkSource), rebuild primes a fresh successor from the
-// seat's durable artifact chain and records exactly what it found. Every pin
-// here runs the REAL service path over a real DB — fakes only at tmux/adapter.
-describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
+// OPR.0.5.5.5（05-handover-sources-real）——fork/rebuild 交接来源会执行其打印的计划。
+// v0 B3 的拒绝（`source_not_supported`）被真实执行替代：fork 通过原生 fork 启动接缝
+//（launchHarness forkSource）携带现任者上下文；rebuild 从席位的持久产物链准备新 successor，
+// 并准确记录找到的内容。这里每个固定测试都在真实数据库上运行真实服务路径，只在
+// tmux/adapter 处使用替身。
+describe("SeatHandoverService 来源执行（OPR.0.5.5.5）", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -135,9 +134,9 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
     return db.prepare("SELECT continuity_outcome, handover_result FROM nodes WHERE id = ?").get(nodeId) as Record<string, string | null>;
   }
 
-  // ── Mini-req 1: FORK EXECUTES ────────────────────────────────────────────
+  // ——Mini-req 1：执行 FORK——
 
-  it("fork: executes the cutover with the incumbent's native id carried through the fork launch seam, records continuity_outcome=forked", async () => {
+  it("fork：执行切换，通过 fork 启动接缝携带现任者原生 id，并记录 continuity_outcome=forked", async () => {
     const { node } = seedSeat({ resumeToken: "native-abc" });
 
     const result = await service.handover({
@@ -149,8 +148,8 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
 
     expect(result).toMatchObject({ ok: true });
     if (!result.ok || !("result" in result)) throw new Error("expected handover result");
-    // Seat identity preserved: the successor occupies the SAME seat session name
-    // (cutover-in-place), the binding moved, the seat/occupant split stays honest.
+    // 保留席位身份：successor 占用相同的席位会话名（原地切换），绑定已移动，
+    // seat/occupant 分离仍保持真实。
     expect(result.result).toMatchObject({
       ok: true,
       mutated: true,
@@ -158,17 +157,15 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
       currentStatus: { continuityOutcome: "forked", handoverResult: "complete" },
     });
     expect(nodeRow(node.id)).toEqual({ continuity_outcome: "forked", handover_result: "complete" });
-    // The launch was a FORK launch: the adapter received the resolved native id,
-    // never a blank fresh launch silently reported as a fork.
+    // 此次启动是 FORK 启动：adapter 收到已解析的原生 id，绝不是被静默报告为 fork 的空白新启动。
     const launchOpts = launchHarness.mock.calls.at(-1)?.[1];
     expect(launchOpts).toMatchObject({ forkSource: { kind: "native_id", value: "native-abc" } });
-    // The NEW post-fork token (adapter result) is what commit persists — never
-    // the parent's token.
+    // 提交持久化的是 fork 后的新 token（adapter 结果），绝不是父 token。
     const successor = sessionRegistry.getBindingForNode(node.id);
     expect(successor?.tmuxSession).toBe("dev-impl@seat-rig");
   });
 
-  it("fork: refuses honestly BEFORE any respawn when no native resume id is discoverable — no successor is created, the seat is untouched", async () => {
+  it("fork：找不到原生恢复 id 时，在任何重新生成前如实拒绝；不创建 successor，也不触碰席位", async () => {
     seedSeat({ resumeToken: null });
 
     const result = await service.handover({
@@ -180,15 +177,14 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
     expect(result).toMatchObject({ ok: false, code: "resume_token_unavailable" });
     if (result.ok) throw new Error("expected refusal");
     expect(result.message).toContain("dev-impl@seat-rig");
-    // Honest refusal is PRE-mutation: the departing pane was never respawned and
-    // no harness launch was attempted.
+    // 如实拒绝发生在修改前：离开的 pane 从未重新生成，也未尝试启动 harness。
     expect(respawnPane).not.toHaveBeenCalled();
     expect(launchHarness).not.toHaveBeenCalled();
   });
 
-  // ── Mini-req 2: REBUILD EXECUTES ─────────────────────────────────────────
+  // ——Mini-req 2：执行 REBUILD——
 
-  it("rebuild: executes a fresh launch primed from the durable chain, records the exact priming artifacts and continuity_outcome=rebuilt", async () => {
+  it("rebuild：执行由持久链准备的新启动，记录精确准备产物及 continuity_outcome=rebuilt", async () => {
     const { node } = seedSeat();
 
     const result = await service.handover({
@@ -206,7 +202,7 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
       currentStatus: { continuityOutcome: "rebuilt", handoverResult: "complete" },
     });
     expect(nodeRow(node.id)).toEqual({ continuity_outcome: "rebuilt", handover_result: "complete" });
-    // The recorded priming set is EXACTLY what resolved on disk.
+    // 已记录的准备集合与磁盘上解析到的内容完全一致。
     expect(result.result.sourceOutcome).toMatchObject({
       primedArtifacts: [
         expect.objectContaining({ address: "/seats/dev-impl/RECAP.md" }),
@@ -214,18 +210,17 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
       ],
       gaps: [],
     });
-    // The delivered priming packet names the artifacts (delivered via the same
-    // shipped tmux delivery seam as the fresh restore packet).
+    // 已交付的准备 packet 会点名产物（通过与新恢复 packet 相同的已交付 tmux 接缝发送）。
     const delivered = sendText.mock.calls.map((call) => String(call[1] ?? call[0])).join("\n");
     expect(delivered).toContain("/seats/dev-impl/RECAP.md");
     expect(delivered).toContain("/seats/dev-impl/LEARNED.md");
-    // Rebuild is a fresh runtime conversation — never a fork/resume launch.
+    // Rebuild 是全新的 runtime 对话，绝不是 fork/resume 启动。
     const launchOpts = launchHarness.mock.calls.at(-1)?.[1];
     expect(launchOpts?.forkSource).toBeUndefined();
     expect(launchOpts?.resumeToken).toBeUndefined();
   });
 
-  it("rebuild: a declared artifact missing on disk is recorded as a GAP, not silently dropped and not fatal", async () => {
+  it("rebuild：声明的产物在磁盘缺失时记录为 GAP，不静默丢弃，也不致命", async () => {
     seedSeat();
     artifactExists.mockImplementation((path: string) => !String(path).includes("LEARNED"));
 
@@ -243,7 +238,7 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
     });
   });
 
-  it("rebuild: an EMPTY durable chain still executes and says so by name — in the result AND in the delivered packet", async () => {
+  it("rebuild：持久链为空时仍执行，并在结果和交付 packet 中具名说明", async () => {
     const { node } = seedSeat();
     rebuildChain.mockImplementation(() => ({ emptyReason: "no recap chain, no LEARNED, no restore packet for this seat" }));
 
@@ -265,9 +260,9 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
     expect(delivered).toContain("no recap chain, no LEARNED, no restore packet for this seat");
   });
 
-  // ── Mini-req 3: PLAN AND EXECUTION AGREE ─────────────────────────────────
+  // ——Mini-req 3：计划与执行一致——
 
-  it("plan/executor equality: no source the dry-run plan renders a mutation plan for is refused by execution as source_not_supported", async () => {
+  it("计划与执行器一致：不会为执行阶段以 source_not_supported 拒绝的来源生成 dry-run 修改计划", async () => {
     const sources = ["fresh", "fork:dev-impl@seat-rig", "rebuild"];
     for (const source of sources) {
       seedSeat({ resumeToken: "native-abc" });
@@ -287,9 +282,9 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
     }
   });
 
-  it("the ONE shared source-capability table: every source mode has a row, and the dry-run plan renders its create-successor step FROM the table", async () => {
-    // Exhaustive Record over SeatHandoverSourceMode — a new mode cannot compile
-    // without declaring a row; this pin makes the row's truth reach the plan.
+  it("唯一共享来源能力表：每种来源模式都有记录，dry-run 计划从表中生成其创建 successor 步骤", async () => {
+    // 对 SeatHandoverSourceMode 使用穷尽 Record；新增模式若未声明记录则无法编译，
+    // 本固定测试使记录中的事实传递到计划。
     expect(Object.keys(SEAT_HANDOVER_SOURCE_CAPABILITIES).sort()).toEqual(["discovered", "fork", "fresh", "rebuild"]);
     for (const row of Object.values(SEAT_HANDOVER_SOURCE_CAPABILITIES)) {
       expect(row.executes).toBe(true);
@@ -313,7 +308,7 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
   });
 
 
-  // ── Fix round B2: the durable event IS the audit trail ───────────────────
+  // ——修复轮次 B2：持久事件就是审计轨迹——
 
   function lastHandoverEventPayload(): Record<string, unknown> {
     const row = db.prepare("SELECT payload FROM events WHERE type = 'seat.handover_completed' ORDER BY seq DESC LIMIT 1").get() as { payload: string } | undefined;
@@ -321,7 +316,7 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
     return JSON.parse(row.payload);
   }
 
-  it("B2: a rebuild's exact primed set and gaps persist on the seat.handover_completed EVENT, not just the transient response", async () => {
+  it("B2：rebuild 的精确准备集合和缺口持久化到 seat.handover_completed 事件，而不只存在于临时响应", async () => {
     seedSeat();
     artifactExists.mockImplementation((path: string) => !String(path).includes("LEARNED"));
 
@@ -335,7 +330,7 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
     });
   });
 
-  it("B2: an empty rebuild chain's named reason persists on the durable event", async () => {
+  it("B2：空 rebuild 链的具名原因持久化到事件", async () => {
     seedSeat();
     rebuildChain.mockImplementation(() => ({ emptyReason: "no recap chain, no LEARNED, no restore packet for this seat" }));
 
@@ -349,7 +344,7 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
     });
   });
 
-  it("B2: fork provenance persists on the durable event in the same shape", async () => {
+  it("B2：fork 出处以相同结构持久化到事件", async () => {
     seedSeat({ resumeToken: "native-abc" });
 
     const result = await service.handover({ seatRef: "dev-impl@seat-rig", reason: "context-wall", source: "fork:dev-impl@seat-rig" });
@@ -358,9 +353,9 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
     expect(lastHandoverEventPayload().sourceOutcome).toMatchObject({ mode: "fork", forkedFrom: "dev-impl@seat-rig" });
   });
 
-  // ── Mini-req 4: MID-SWAP FAILURE IS HONEST ───────────────────────────────
+  // ——Mini-req 4：切换中途失败必须如实呈现——
 
-  it("fork: an induced launch failure mid-swap reports the failing step, leaves the binding unchanged and the seat recoverable — never a false complete", async () => {
+  it("fork：切换中人为制造的启动失败会报告失败步骤，保持绑定不变且席位可恢复，绝不虚假完成", async () => {
     const { node } = seedSeat({ resumeToken: "native-abc" });
     launchHarness.mockImplementation(async () => ({ ok: false, error: "induced: harness died mid-launch" }));
 
@@ -373,14 +368,13 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
     expect(result).toMatchObject({ ok: false, code: "successor_create_failed" });
     if (result.ok) throw new Error("expected failure");
     expect(result.message).toContain("induced: harness died mid-launch");
-    // Recorded partial state: the registry binding never moved and the node row
-    // records no false completion.
+    // 已记录的部分状态：registry 绑定从未移动，节点记录也没有虚假完成。
     expect(sessionRegistry.getBindingForNode(node.id)?.tmuxSession).toBe("dev-impl@seat-rig");
     expect(nodeRow(node.id).handover_result).not.toBe("complete");
-    expect(result.guidance).toMatch(/re-wakeable|binding is unchanged/);
+    expect(result.guidance).toMatch(/重新唤醒|绑定未改变/);
   });
 
-  it("rebuild: an induced priming-delivery failure unwinds the successor candidate and reports the step — binding unchanged", async () => {
+  it("rebuild：人为制造的准备交付失败会撤销 successor 候选并报告步骤，绑定保持不变", async () => {
     const { node } = seedSeat();
     sendText.mockImplementation(async () => ({ ok: false, error: "induced: tmux delivery down" }));
 
@@ -397,7 +391,7 @@ describe("SeatHandoverService source execution (OPR.0.5.5.5)", () => {
 });
 
 
-// ── Fix round B3: the production chain includes the latest restore packet ──
+// ——修复轮次 B3：生产链包含最新恢复 packet——
 
 describe("buildRebuildPrimingChain (production resolver, OPR.0.5.5.5 fix B3)", () => {
   let topologyRoot: string;
@@ -428,7 +422,7 @@ describe("buildRebuildPrimingChain (production resolver, OPR.0.5.5.5 fix B3)", (
     rmSync(openrigHome, { recursive: true, force: true });
   });
 
-  it("a valid restore-pending marker's packet is NAMED in the chain — after LEARNED, before the superseded recaps", () => {
+  it("合法 restore-pending 标记的 packet 在链中具名，位于 LEARNED 之后、被取代的 recap 之前", () => {
     const packetDir = join(openrigHome, "packet-x");
     mkdirSync(packetDir, { recursive: true });
     writeFileSync(markerPath(), JSON.stringify({ version: 1, createdAt: "2026-08-27T00:00:00Z", outputDir: packetDir }));
@@ -446,7 +440,7 @@ describe("buildRebuildPrimingChain (production resolver, OPR.0.5.5.5 fix B3)", (
     expect(packet?.label).toContain("restore packet");
   });
 
-  it("a marker whose packet dir is GONE still declares the address (the service records it as a named gap, never silently dropped)", () => {
+  it("packet 目录已消失的标记仍声明地址（服务将其记录为具名缺口，绝不静默丢弃）", () => {
     const goneDir = join(openrigHome, "packet-deleted");
     writeFileSync(markerPath(), JSON.stringify({ version: 1, outputDir: goneDir }));
 
@@ -454,15 +448,15 @@ describe("buildRebuildPrimingChain (production resolver, OPR.0.5.5.5 fix B3)", (
     expect(addresses).toContain(goneDir);
   });
 
-  it("an unparseable marker is named HONESTLY: the marker file itself is declared with an invalid label — never fabricated continuity", () => {
+  it("无法解析的标记被如实具名：声明标记文件本身并附无效标签，绝不伪造连续性", () => {
     writeFileSync(markerPath(), "{not json");
 
     const marker = chain().find((artifact) => artifact.address === markerPath());
     expect(marker, "invalid marker named, not silently skipped").toBeDefined();
-    expect(marker?.label.toLowerCase()).toContain("invalid");
+    expect(marker?.label).toContain("无效");
   });
 
-  it("REGRESSION: absent marker leaves the existing precedence exactly as shipped (RECAP, LEARNED, superseded newest-first)", () => {
+  it("回归：缺少标记时保持既有优先级（RECAP、LEARNED、被取代项按最新优先）", () => {
     mkdirSync(join(seatDir, "recap-superseded"), { recursive: true });
     writeFileSync(join(seatDir, "recap-superseded", "RECAP-1000.md"), "older");
     writeFileSync(join(seatDir, "recap-superseded", "RECAP-2000.md"), "newer");
@@ -475,8 +469,8 @@ describe("buildRebuildPrimingChain (production resolver, OPR.0.5.5.5 fix B3)", (
     ]);
   });
 
-  it("an unparseable seat ref is a NAMED empty chain, never a guess", () => {
+  it("无法解析的席位引用形成具名空链，绝不猜测", () => {
     const result = buildRebuildPrimingChain("not a canonical ref", { topologyRoot, openrigHome });
-    expect(result).toMatchObject({ emptyReason: expect.stringContaining("did not parse as canonical") });
+    expect(result).toMatchObject({ emptyReason: expect.stringContaining("无法解析为 canonical") });
   });
 });

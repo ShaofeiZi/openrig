@@ -1,15 +1,12 @@
-// S19 VERIFICATION-CAPTURE ATOM — the charter's carried POSITIVE explorer-
-// absence regression (planner-carried requirement; QA LOCKED-SCOPE-CLEAR at
-// 5348bb66 required successor item 1): for CLAUDE, CODEX, and TERMINAL agent
-// rows the explorer must affirmatively prove — in BOTH the plain layer and
-// the compiled styled stream — that no runtime-mark glyph, mark token/
-// background SGR, or spelled runtime word renders. Round-3 founder verdict of
-// record: marks live on AGENT-DETAIL + TOPOLOGY cards ONLY.
+// S19 验证捕获原子——charter 携带的正向 explorer 缺席回归
+//（planner 携带需求；QA 在 5348bb66 锁定范围清零后继项 1）：对 CLAUDE、CODEX、TERMINAL agent
+// 行，explorer 必须在纯层与已编译 styled 流中都肯定证明
+// 无 runtime-mark 字形、标记 token/背景 SGR 或拼写 runtime 词渲染。
+// Round-3 founder 记录裁决：标记仅活于 AGENT-DETAIL + TOPOLOGY 卡。
 //
-// Every absence matcher is proven SENSITIVE by a control-positive: the SAME
-// snapshot's agent-detail page must contain exactly the glyph/SGR the
-// explorer row is required to lack — an absence assertion whose matcher can
-// never fire is not a regression pin.
+// 每个缺席匹配器经对照阳性证明敏感：同一
+// snapshot 的 agent-detail 页必恰含 explorer 行被要求缺少的
+// 那个字形/SGR——一个匹配器永不触发的缺席断言不是回归锚点。
 import { describe, it, expect } from "vitest";
 import { createViewState } from "../src/state.js";
 import { renderScreen } from "../src/render.js";
@@ -17,7 +14,7 @@ import { stylizeLines } from "../src/stylize.js";
 import { createStyle, stripAnsi } from "../src/theme.js";
 import type { FleetSnapshot } from "../src/types.js";
 
-// names deliberately share no substring with any runtime word
+// 名字刻意与任何 runtime 词不共享子串
 const AGENTS = [
   { name: "alpha", runtime: "claude-code", status: "active" },
   { name: "beta", runtime: "codex", status: "idle" },
@@ -33,7 +30,7 @@ function snap(): FleetSnapshot {
   };
 }
 
-/** the mark-identity SGR classes (theme mark tokens, truecolor exact values) */
+/** 标记身份 SGR 类（theme mark token、truecolor 精确值） */
 const MARK_SGR = {
   clawdBodyBg: "48;2;173;103;85", // clawd terracotta field  #ad6755
   clawdBodyFg: "38;2;173;103;85", // clawd body ink (downsample forms)
@@ -52,33 +49,33 @@ function explorerRowsFor(view: ReturnType<typeof createViewState>, s: FleetSnaps
   return AGENTS.map((a) => {
     const idx = screen.lines.findIndex((l) => l.includes(a.name));
     expect(idx, `explorer row for ${a.name}`).toBeGreaterThan(0);
-    // scope to the EXPLORER cell (left of the pane border) — the content pane
-    // legitimately renders marks on drill pages
+    // 范围限定到 EXPLORER 格（窗格边框左侧）——content 窗格
+    // 在 drill 页合法渲染标记
     const border = screen.lines[idx]!.indexOf("┃");
     return { agent: a, plain: screen.lines[idx]!.slice(0, border), styledFull: styled[idx]! };
   });
 }
 
-describe("POSITIVE explorer-absence regression — claude/codex/terminal rows carry NO mark glyph, mark SGR, or runtime word", () => {
+describe("POSITIVE explorer-absence 回归——claude/codex/terminal 行无 mark 字形、mark SGR 或 runtime 词", () => {
   const s = snap();
   const view = createViewState({ instanceId: "abs", getSnapshot: () => s });
   view.dispatch({ type: "drill", resource: "pod", name: "p", target: { host: "h", rig: "r" } }); // expands the pod → agent rows visible
 
-  it("plain layer: every runtime's agent row is free of mark glyphs and spelled runtime words", () => {
+  it("纯层：每个 runtime 的 agent 行无 mark 字形与拼写的 runtime 词", () => {
     for (const { agent, plain } of explorerRowsFor(view, s)) {
       expect(plain, `${agent.runtime} row plain glyphs`).not.toMatch(MARK_GLYPHS);
       expect(plain, `${agent.runtime} row runtime word`).not.toMatch(RUNTIME_WORDS);
     }
   });
 
-  it("styled stream: every runtime's agent row is free of ALL mark token/background SGR classes", () => {
+  it("样式流：每个 runtime 的 agent 行无任何 mark token/背景 SGR 类", () => {
     for (const { agent, styledFull } of explorerRowsFor(view, s)) {
       for (const [cls, sgr] of Object.entries(MARK_SGR))
         expect(styledFull, `${agent.runtime} row ${cls}`).not.toContain(sgr);
     }
   });
 
-  it("CONTROL-POSITIVE: the same snapshot's agent-detail pages DO render each mark the explorer lacks (matcher sensitivity)", () => {
+  it("CONTROL-POSITIVE：同快照的 agent-detail 页确实渲染 explorer 缺失的每个 mark（匹配器灵敏度）", () => {
     const detail = (name: string): string => {
       const v = createViewState({ instanceId: `abs-${name}`, getSnapshot: () => s });
       v.dispatch({ type: "drill", resource: "agent", name, target: { host: "h", rig: "r", pod: "p" } });

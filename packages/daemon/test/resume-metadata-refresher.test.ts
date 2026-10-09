@@ -53,8 +53,8 @@ function createCodexLogsDb(homeDir: string, pid: number, threadId: string, dbNam
   }
 }
 
-describe("ResumeMetadataRefresher", () => {
-  it("PERF FIX 2 — the periodic snapshot refresh is SINGLE-ATTEMPT per codex seat: no x8 retry burst under failing discovery", async () => {
+describe("ResumeMetadataRefresher 恢复元数据刷新器", () => {
+  it("性能修复 2——定期快照刷新对每个 codex 席位仅尝试一次：发现失败时不会突发 8 次重试", async () => {
     const sessionRegistry = {
       updateResumeToken: vi.fn(),
       markResumeProbeResult: vi.fn(),
@@ -65,7 +65,7 @@ describe("ResumeMetadataRefresher", () => {
     const refresher = new ResumeMetadataRefresher({
       sessionRegistry,
       tmuxAdapter: tmux,
-      // pane exists but NO codex descendant → discovery FAILS every attempt (the burst trigger).
+      // 窗格存在但没有 codex 后代进程 → 每次发现均失败（突发触发条件）。
       listProcesses: () => [{ pid: 900, ppid: 1, command: "-zsh" }],
       readCodexThreadIdByPid: () => undefined,
       sleep: async () => { sleeps += 1; },
@@ -76,14 +76,14 @@ describe("ResumeMetadataRefresher", () => {
       { fillNullOnly: true },
     );
 
-    // The 5m periodic snapshot path (fillNullOnly) is SINGLE-ATTEMPT per codex seat: ONE pane probe,
-    // ZERO retry sleeps even when discovery fails — NOT the pre-fix x8 burst (8 probes + 7 sleeps).
-    // OPR.0.5.3.10 mini-req 2. A regression to the 8-attempt loop on the recurring tick flips these.
+    // 5 分钟定期快照路径（fillNullOnly）对每个 codex 席位仅尝试一次：一次窗格探测，
+    // 即使发现失败也不等待重试——不是修复前的 8 次突发（8 次探测 + 7 次等待）。
+    // OPR.0.5.3.10 小需求 2。若定期轮询回归为 8 次循环，这些断言会失败。
     expect(panePidCalls).toBe(1);
     expect(sleeps).toBe(0);
   });
 
-  it("refreshes missing Codex resume token from the live child process", async () => {
+  it("从实时子进程刷新缺失的 Codex 恢复令牌", async () => {
     const sessionRegistry = {
       updateResumeToken: vi.fn(),
     } as unknown as SessionRegistry;
@@ -119,7 +119,7 @@ describe("ResumeMetadataRefresher", () => {
     );
   });
 
-  it("refreshes missing Codex resume token from a nested wrapper -> vendor codex process tree", async () => {
+  it("从嵌套包装器到供应商 codex 的进程树刷新缺失的 Codex 恢复令牌", async () => {
     const sessionRegistry = {
       updateResumeToken: vi.fn(),
     } as unknown as SessionRegistry;
@@ -156,7 +156,7 @@ describe("ResumeMetadataRefresher", () => {
     );
   });
 
-  it("refreshes missing Codex resume token from the child process home directory", async () => {
+  it("从子进程主目录刷新缺失的 Codex 恢复令牌", async () => {
     const tempRoot = fs.mkdtempSync(nodePath.join(os.tmpdir(), "rigged-codex-refresh-"));
     const actualHome = nodePath.join(tempRoot, "actual-home");
     createCodexLogsDb(actualHome, 901, "019d45c3-e909-7152-b52e-34edab4070ed");
@@ -197,7 +197,7 @@ describe("ResumeMetadataRefresher", () => {
     );
   });
 
-  it("refreshes missing Codex resume token from the current versioned logs database", async () => {
+  it("从当前版本化日志数据库刷新缺失的 Codex 恢复令牌", async () => {
     const tempRoot = fs.mkdtempSync(nodePath.join(os.tmpdir(), "rigged-codex-refresh-"));
     const actualHome = nodePath.join(tempRoot, "actual-home");
     createCodexLogsDb(actualHome, 901, "019d45c3-e909-7152-b52e-34edab4070ed", "logs_2.sqlite");
@@ -238,7 +238,7 @@ describe("ResumeMetadataRefresher", () => {
     );
   });
 
-  it("skips sessions that already have a resume token", async () => {
+  it("跳过已有恢复令牌的会话", async () => {
     const sessionRegistry = {
       updateResumeToken: vi.fn(),
       clearResumeToken: vi.fn(),
@@ -262,12 +262,11 @@ describe("ResumeMetadataRefresher", () => {
     expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled();
   });
 
-  // OPR.0.4.6.02 S1 EXCLUSION — the ephemeral native-resume PROBE session
-  // (`rigged-refresh-*`) is NOT a real operator/agent seat, so it must NEVER
-  // receive the tmux option defaults. The refresher is deliberately not wired
-  // with the shared applier; this pins that the refresh path calls no tmux
-  // option-setter across a run (mouse/status/set-clipboard/copy-command).
-  it("EXCLUSION: the probe/refresh path never applies tmux option defaults", async () => {
+  // OPR.0.4.6.02 S1 排除项——临时原生恢复探测会话（`rigged-refresh-*`）不是真实的
+  // 操作员/智能体席位，因此绝不能接收 tmux 默认选项。刷新器有意不连接共享应用器；
+  // 此测试固定刷新路径在整个运行期间不调用任何 tmux 选项设置器
+  //（mouse/status/set-clipboard/copy-command）。
+  it("排除项：探测/刷新路径绝不应用 tmux 默认选项", async () => {
     const sessionRegistry = {
       updateResumeToken: vi.fn(),
       clearResumeToken: vi.fn(),
@@ -278,8 +277,7 @@ describe("ResumeMetadataRefresher", () => {
     const refresher = new ResumeMetadataRefresher({
       sessionRegistry,
       tmuxAdapter: mockTmux({ setSessionOption, setServerOption } as Partial<TmuxAdapter>),
-      // deterministic probe verdict so we exercise the refresh path without a
-      // brittle live native-probe; the exclusion is about option-setters.
+      // 使用确定性探测结论来覆盖刷新路径，避免脆弱的实时原生探测；排除项关注的是选项设置器。
       probeClaudeResume: async () => "not_resumable" as const,
       sleep: async () => {},
     });
@@ -298,9 +296,9 @@ describe("ResumeMetadataRefresher", () => {
     expect(setServerOption).not.toHaveBeenCalled();
   });
 
-  // OPR.0.4.3.20 FR-6 §2.1b — the default (teardown/legacy) validate path now MARKS
-  // STALE instead of clearing: a present-but-not-resumable token stays in the ledger.
-  it("marks a not-resumable Claude token STALE without clearing it (FR-6 §2.1b)", async () => {
+  // OPR.0.4.3.20 FR-6 §2.1b——默认（拆除/旧版）校验路径现在标记为 STALE，而不是
+  // 清除：存在但无法恢复的令牌会保留在账本中。
+  it("将不可恢复的 Claude 令牌标记为 STALE 且不清除（FR-6 §2.1b）", async () => {
     const sessionRegistry = {
       updateResumeToken: vi.fn(),
       clearResumeToken: vi.fn(),
@@ -331,7 +329,7 @@ describe("ResumeMetadataRefresher", () => {
     expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled();
   });
 
-  it("stamps a resumable Claude token verified via the validate path (FR-6 §2.1b)", async () => {
+  it("为通过校验路径验证可恢复的 Claude 令牌记录时间（FR-6 §2.1b）", async () => {
     const sessionRegistry = {
       updateResumeToken: vi.fn(),
       clearResumeToken: vi.fn(),
@@ -350,8 +348,8 @@ describe("ResumeMetadataRefresher", () => {
     expect(sessionRegistry.clearResumeToken).not.toHaveBeenCalled();
   });
 
-  // OPR.0.4.3.20 FR-4 — Claude sidecar null-fill during snapshot refresh.
-  it("FR-4: null-fills a Claude token from the sidecar session_id (scrape)", async () => {
+  // OPR.0.4.3.20 FR-4——快照刷新期间从 Claude sidecar 填充空值。
+  it("FR-4：从 sidecar session_id（抓取）填充空的 Claude 令牌", async () => {
     const sessionRegistry = { updateResumeToken: vi.fn(), clearResumeToken: vi.fn() } as unknown as SessionRegistry;
     const refresher = new ResumeMetadataRefresher({
       sessionRegistry,
@@ -364,7 +362,7 @@ describe("ResumeMetadataRefresher", () => {
     expect(sessionRegistry.updateResumeToken).toHaveBeenCalledWith("sess-c", "claude_id", "claude-uuid-xyz", "scrape");
   });
 
-  it("FR-4: a missing/parse-error sidecar leaves the Claude token null (no write, no throw)", async () => {
+  it("FR-4：sidecar 缺失或解析错误时 Claude 令牌保持 null（不写入、不抛错）", async () => {
     const sessionRegistry = { updateResumeToken: vi.fn(), clearResumeToken: vi.fn() } as unknown as SessionRegistry;
     const refresher = new ResumeMetadataRefresher({
       sessionRegistry,
@@ -377,7 +375,7 @@ describe("ResumeMetadataRefresher", () => {
     expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled();
   });
 
-  it("FR-4: an empty sidecar session_id is not written (honest null)", async () => {
+  it("FR-4：不写入空的 sidecar session_id（如实为 null）", async () => {
     const sessionRegistry = { updateResumeToken: vi.fn(), clearResumeToken: vi.fn() } as unknown as SessionRegistry;
     const refresher = new ResumeMetadataRefresher({
       sessionRegistry,
@@ -390,7 +388,7 @@ describe("ResumeMetadataRefresher", () => {
     expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled();
   });
 
-  it("FR-4: a Claude session with a PRESENT token is validated, NOT sidecar-filled", async () => {
+  it("FR-4：校验已有令牌的 Claude 会话，而不是从 sidecar 填充", async () => {
     const sessionRegistry = { updateResumeToken: vi.fn(), clearResumeToken: vi.fn(), markResumeProbeResult: vi.fn() } as unknown as SessionRegistry;
     const readSidecar = vi.fn(() => ({ ok: true as const, data: { session_id: "should-not-be-used" } }));
     const refresher = new ResumeMetadataRefresher({
@@ -406,7 +404,7 @@ describe("ResumeMetadataRefresher", () => {
     expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled();
   });
 
-  it("FR-4: no contextUsageStore wired → Claude null-fill is a silent no-op (back-compat)", async () => {
+  it("FR-4：未接入 contextUsageStore → Claude 空值填充静默不操作（向后兼容）", async () => {
     const sessionRegistry = { updateResumeToken: vi.fn(), clearResumeToken: vi.fn() } as unknown as SessionRegistry;
     const refresher = new ResumeMetadataRefresher({ sessionRegistry, tmuxAdapter: mockTmux() });
     await refresher.refresh([
@@ -415,11 +413,11 @@ describe("ResumeMetadataRefresher", () => {
     expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled();
   });
 
-  // OPR.0.4.3.20 FR-4 (rev1 fix) — the RECURRING snapshot-refresh mode: fill-null only,
-  // never clear a present token (rev1-r2), never spawn a `claude --resume` probe (rev1-r1).
-  it("FR-4 rev1: fillNullOnly NEVER clears a present Claude token AND NEVER spawns a resume probe", async () => {
+  // OPR.0.4.3.20 FR-4（rev1 修复）——定期快照刷新模式：只填充空值，绝不清除
+  // 已有令牌（rev1-r2），绝不创建 `claude --resume` 探针（rev1-r1）。
+  it("FR-4 rev1：fillNullOnly 绝不清除已有 Claude 令牌，也绝不创建恢复探针", async () => {
     const sessionRegistry = { updateResumeToken: vi.fn(), clearResumeToken: vi.fn() } as unknown as SessionRegistry;
-    // Probe would say not_resumable — the default path would clear; fillNullOnly must not even call it.
+    // 探针会返回 not_resumable——默认路径会清除；fillNullOnly 连调用它都不允许。
     const probeClaudeResume = vi.fn(async () => "not_resumable" as const);
     const readSidecar = vi.fn(() => ({ ok: true as const, data: { session_id: "unused" } }));
     const refresher = new ResumeMetadataRefresher({
@@ -435,14 +433,13 @@ describe("ResumeMetadataRefresher", () => {
     expect(probeClaudeResume).not.toHaveBeenCalled();                // rev1-r1: no `claude --resume` spawn on the recurring path
     expect(sessionRegistry.clearResumeToken).not.toHaveBeenCalled(); // rev1-r2: present-but-not-resumable token SURVIVES for FR-6
     expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled();
-    // OPR.0.4.3.20 FR-6.1 — the present token IS now re-derived (pure sidecar read) for the
-    // equal-value freshness check. Here the derived value ("unused") does NOT match the stored
-    // token ("present-tok"), so nothing is re-stamped — the FR-4 invariants (no probe, no clear,
-    // no clobber) still hold even while re-deriving.
+    // OPR.0.4.3.20 FR-6.1——现在会重新推导已有令牌（纯 sidecar 读取），以检查等值
+    // 新鲜度。这里的推导值 "unused" 与存储令牌 "present-tok" 不匹配，因此不重新
+    // 记录时间——即使执行重新推导，FR-4 不变量（不探测、不清除、不覆盖）仍成立。
     expect(readSidecar).toHaveBeenCalled();
   });
 
-  it("FR-4 rev1: fillNullOnly still null-fills a Claude token from the sidecar (lightweight, no probe)", async () => {
+  it("FR-4 rev1：fillNullOnly 仍从 sidecar 填充空的 Claude 令牌（轻量、无探针）", async () => {
     const sessionRegistry = { updateResumeToken: vi.fn(), clearResumeToken: vi.fn() } as unknown as SessionRegistry;
     const probeClaudeResume = vi.fn(async () => "resumable" as const);
     const refresher = new ResumeMetadataRefresher({
@@ -459,7 +456,7 @@ describe("ResumeMetadataRefresher", () => {
     expect(probeClaudeResume).not.toHaveBeenCalled();                // still no probe — null-fill is a pure sidecar read
   });
 
-  it("FR-4 rev1: fillNullOnly still null-fills a Codex token via captureCodexThreadId (lightweight pid-log read)", async () => {
+  it("FR-4 rev1：fillNullOnly 仍通过 captureCodexThreadId 填充空的 Codex 令牌（轻量 PID 日志读取）", async () => {
     const sessionRegistry = { updateResumeToken: vi.fn(), clearResumeToken: vi.fn() } as unknown as SessionRegistry;
     const tmux = mockTmux({ getPanePid: vi.fn(async () => 900) });
     const refresher = new ResumeMetadataRefresher({
@@ -478,11 +475,11 @@ describe("ResumeMetadataRefresher", () => {
     expect(sessionRegistry.updateResumeToken).toHaveBeenCalledWith("sess-x", "codex_id", "019d45c3-e909-7152-b52e-34edab4070ed", "scrape");
   });
 
-  // OPR.0.4.3.20 FR-6.1 — periodic freshness re-stamp for present-and-valid tokens.
-  // Equal-value pure-read derive → markResumeProbeResult("resumable"); different/absent →
-  // no-op (no re-stamp, no clobber); no probe/spawn on the fillNullOnly path.
-  describe("FR-6.1 periodic freshness re-stamp", () => {
-    it("Codex present + equal derive → re-stamps freshness via markResumeProbeResult('resumable'), no clobber", async () => {
+  // OPR.0.4.3.20 FR-6.1——定期为存在且有效的令牌重新记录新鲜度。等值纯读取推导 →
+  // markResumeProbeResult("resumable")；不同/缺失 → 不操作（不重新记录、不覆盖）；
+  // fillNullOnly 路径不探测/创建进程。
+  describe("FR-6.1 定期重新记录新鲜度", () => {
+    it("Codex 已有令牌 + 等值推导 → 通过 markResumeProbeResult('resumable') 重新记录新鲜度且不覆盖", async () => {
       const sessionRegistry = { updateResumeToken: vi.fn(), markResumeProbeResult: vi.fn() } as unknown as SessionRegistry;
       const refresher = new ResumeMetadataRefresher({
         sessionRegistry,
@@ -498,7 +495,7 @@ describe("ResumeMetadataRefresher", () => {
       expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled(); // freshness-only, never re-writes the token
     });
 
-    it("Codex present + DIFFERENT derive → no re-stamp, no clobber (left honest)", async () => {
+    it("Codex 已有令牌 + 不同推导值 → 不重新记录、不覆盖（保持如实）", async () => {
       const sessionRegistry = { updateResumeToken: vi.fn(), markResumeProbeResult: vi.fn() } as unknown as SessionRegistry;
       const refresher = new ResumeMetadataRefresher({
         sessionRegistry,
@@ -514,7 +511,7 @@ describe("ResumeMetadataRefresher", () => {
       expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled();
     });
 
-    it("Codex present + ABSENT derive (no pane pid) → no-op", async () => {
+    it("Codex 已有令牌 + 无推导值（无窗格 PID）→ 不操作", async () => {
       const sessionRegistry = { updateResumeToken: vi.fn(), markResumeProbeResult: vi.fn() } as unknown as SessionRegistry;
       const refresher = new ResumeMetadataRefresher({
         sessionRegistry,
@@ -530,7 +527,7 @@ describe("ResumeMetadataRefresher", () => {
       expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled();
     });
 
-    it("Claude present + equal sidecar derive → re-stamps freshness, NO probe, no clobber", async () => {
+    it("Claude 已有令牌 + sidecar 等值推导 → 重新记录新鲜度、不探测、不覆盖", async () => {
       const sessionRegistry = { updateResumeToken: vi.fn(), markResumeProbeResult: vi.fn() } as unknown as SessionRegistry;
       const probeClaudeResume = vi.fn(async () => "resumable" as const);
       const refresher = new ResumeMetadataRefresher({
@@ -548,7 +545,7 @@ describe("ResumeMetadataRefresher", () => {
       expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled();
     });
 
-    it("Claude present + DIFFERENT sidecar derive → no re-stamp, no probe, no clobber", async () => {
+    it("Claude 已有令牌 + sidecar 推导值不同 → 不重新记录、不探测、不覆盖", async () => {
       const sessionRegistry = { updateResumeToken: vi.fn(), markResumeProbeResult: vi.fn() } as unknown as SessionRegistry;
       const probeClaudeResume = vi.fn(async () => "resumable" as const);
       const refresher = new ResumeMetadataRefresher({
@@ -566,7 +563,7 @@ describe("ResumeMetadataRefresher", () => {
       expect(sessionRegistry.updateResumeToken).not.toHaveBeenCalled();
     });
 
-    it("Claude present + sidecar unreadable (parse-error/not ok) → no-op, no probe", async () => {
+    it("Claude 已有令牌 + sidecar 不可读（解析错误/非 ok）→ 不操作、不探测", async () => {
       const sessionRegistry = { updateResumeToken: vi.fn(), markResumeProbeResult: vi.fn() } as unknown as SessionRegistry;
       const probeClaudeResume = vi.fn(async () => "resumable" as const);
       const refresher = new ResumeMetadataRefresher({

@@ -1,4 +1,4 @@
-// User Settings v0 — System drawer Settings tab tests.
+// User Settings v0——System drawer Settings tab 测试。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
@@ -57,9 +57,9 @@ describe("SettingsTab — User Settings v0", () => {
     expect(screen.getByTestId("setting-daemon.port")).toBeDefined();
     expect(screen.getByTestId("setting-db.path")).toBeDefined();
 
-    // Source badge surfaces the env-resolved row honestly.
-    expect(screen.getByTestId("setting-progress.scan_roots").textContent).toContain("source: env");
-    expect(screen.getByTestId("setting-workspace.root").textContent).toContain("source: default");
+    // Source 徽章如实呈现 env 解析行。
+    expect(screen.getByTestId("setting-progress.scan_roots").textContent).toContain("来源：env");
+    expect(screen.getByTestId("setting-workspace.root").textContent).toContain("来源：default");
   });
 
   it("Edit + Save sends POST to /api/config/:key with the value", async () => {
@@ -94,9 +94,9 @@ describe("SettingsTab — User Settings v0", () => {
     render(createTestRouter({ component: () => <SettingsTab />, path: "/" }));
     await waitFor(() => expect(screen.getByTestId("setting-workspace.root")).toBeDefined());
 
-    // workspace.root is source=default → no reset
+    // workspace.root 为 source=default → 无 reset
     expect(screen.queryByTestId("setting-workspace.root-reset")).toBeNull();
-    // progress.scan_roots is source=env → reset visible (env still counts as overridden)
+    // progress.scan_roots 为 source=env → reset 可见（env 仍算被覆盖）
     expect(screen.queryByTestId("setting-progress.scan_roots-reset")).toBeDefined();
   });
 
@@ -127,7 +127,7 @@ describe("SettingsTab — User Settings v0", () => {
 
     await waitFor(() => expect(initCalled).toBe(true));
     await waitFor(() => expect(screen.getByTestId("settings-init-result")).toBeDefined());
-    expect(screen.getByTestId("settings-init-result").textContent).toContain("created 4 subdir");
+    expect(screen.getByTestId("settings-init-result").textContent).toContain("创建了 4 个子目录");
   });
 
   it("renders a friendly error when the daemon route 503s", async () => {

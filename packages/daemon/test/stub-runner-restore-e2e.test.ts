@@ -6,13 +6,12 @@ import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StubScript } from "../src/adapters/stub-script.js";
 
-// Slice 51-01 items 6-8 — restore real-spawn observable: the WIRED runner TRIGGERS the
-// real restore reader (compaction-restore-bridge.cjs) — arch R3: TRIGGER, never fabricate.
-// A script that compacts THEN restores writes the seat-keyed restore-pending marker (via
-// the real precompact seam) and then delivers it: the bridge injects ONE additionalContext
-// restore directive (mirrored to the pane) and stamps deliveredAt/deliveryCount=1 on the
-// marker (one-shot, deterministic under the injected clock). This closes the
-// in-memory-hides-real-spawn gap for the final behavior + lights #2's seat-relaunch.
+// 切片 51-01 第 6-8 项——恢复真实启动的可观察性：已接线 runner 触发真实恢复读取器
+//（compaction-restore-bridge.cjs）——架构 R3：触发，绝不伪造。先压缩再恢复的脚本通过
+// 真实 precompact 接缝写入以 seat 为键的 restore-pending 标记，然后投递它：桥接器注入一条
+// additionalContext 恢复指令（镜像到 pane），并在标记上写入 deliveredAt/deliveryCount=1
+//（一次性，在注入时钟下结果确定）。这弥合最终行为中“内存隐藏真实启动”的缺口，并点亮
+// #2 的 seat-relaunch。
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNNER = resolve(HERE, "../src/adapters/stub-runner.ts");
@@ -25,12 +24,12 @@ async function waitFor(pred: () => boolean, timeoutMs = 12_000): Promise<void> {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     if (pred()) return;
-    if (Date.now() > deadline) throw new Error(`condition not met within ${timeoutMs}ms`);
+    if (Date.now() > deadline) throw new Error(`条件未在 ${timeoutMs}ms 内满足`);
     await new Promise((r) => setTimeout(r, 50));
   }
 }
 
-describe("stub-runner restore (real-spawn observable)", () => {
+describe("stub-runner 恢复（真实启动可观察）", () => {
   let child: ChildProcess | undefined;
   let dir: string | undefined;
   afterEach(() => {
@@ -40,12 +39,12 @@ describe("stub-runner restore (real-spawn observable)", () => {
     dir = undefined;
   });
 
-  it("compaction THEN restore: delivers the real additionalContext directive to the pane + stamps the marker deliveredAt (one-shot)", async () => {
+  it("先 compaction 再 restore：向 pane 投递真实 additionalContext 指令，并标记 deliveredAt（一次性）", async () => {
     dir = mkdtempSync(join(tmpdir(), "restore-e2e-"));
     const home = join(dir, ".openrig");
     mkdirSync(join(dir, ".openrig", "stub"), { recursive: true });
-    // The final behavior needs a pending marker: compaction (the real precompact seam)
-    // writes it, restore (the real bridge) delivers it — in one scripted turn.
+    // 最终行为需要一个 pending 标记：compaction（真实 precompact 接缝）写入它，
+    // restore（真实桥接器）投递它——均在一个脚本轮次内。
     const script: StubScript = { steps: [{ kind: "emit", behavior: "compaction" }, { kind: "emit", behavior: "restore" }] };
     writeFileSync(join(dir, ".openrig", "stub", "script.json"), JSON.stringify(script), "utf8");
 
@@ -55,12 +54,12 @@ describe("stub-runner restore (real-spawn observable)", () => {
       { env: { ...process.env, OPENRIG_HOME: home, OPENRIG_TEST_CLOCK_NOW: CLOCK } as NodeJS.ProcessEnv });
     child.stdout?.on("data", (d) => { pane += String(d); });
 
-    // Wait until the injected restore directive has rendered to the pane (proves the real
-    // bridge delivered the additionalContext, not a fabricated stub string).
-    await waitFor(() => pane.includes("OpenRig compaction restore packet is available for this Claude session"));
+    // 等待注入的恢复指令渲染到 pane（证明真实桥接器投递了 additionalContext，
+    // 而不是伪造的 stub 字符串）。
+    await waitFor(() => pane.includes("此 Claude 会话已有 OpenRig 压缩恢复包可用"));
 
-    // The marker the precompact seam wrote (seat-keyed) was stamped by the bridge:
-    // deliveredAt under the injected clock, deliveryCount exactly 1 (one-shot).
+    // precompact 接缝写入的标记（以 seat 为键）已由桥接器盖章：deliveredAt 使用注入时钟，
+    // deliveryCount 严格为 1（一次性）。
     const markerPath = join(home, "compaction", "restore-pending", `${sanitize(SEAT)}.json`);
     const marker = JSON.parse(readFileSync(markerPath, "utf8"));
     expect(marker.deliveredAt).toBe(CLOCK);

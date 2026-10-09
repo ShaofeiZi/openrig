@@ -1,9 +1,9 @@
-// OPR.0.4.3.19 forward-fix — the activity DOT (getActivityStateWithSource)
-// must consume the liveness identity verdict, not silently ignore it. A
-// mismatch/pane_missing verdict overrides output-derived activity so a
-// dead/orphaned/squatted pane never renders active/running green — even when
-// the (orphan's) tmux output makes terminalActive true (the visible
-// false-green the guard blocked).
+// OPR.0.4.3.19 前瞻修复——活动圆点（getActivityStateWithSource）
+// 必须消费 liveness identity 判定，而非静默忽略。
+// mismatch/pane_missing 判定覆盖输出派生活动，使
+// dead/orphaned/squatted pane 绝不渲染 active/running 绿——即使
+//（orphan 的）tmux 输出使 terminalActive 为 true（guard 阻断的
+// 可见假绿）。
 
 import { describe, it, expect } from "vitest";
 import {

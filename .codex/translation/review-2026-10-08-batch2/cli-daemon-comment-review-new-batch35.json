@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch35",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/cli/test/permission-policy-parity.test.ts",
+      "before_sha256_16": "049df39003353caa",
+      "after_sha256_16": "7703d3b533adb2d6",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/policy.test.ts",
+      "before_sha256_16": "c2494d6900e51d7f",
+      "after_sha256_16": "b54e579cf7daf215",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/scope-frontmatter.test.ts",
+      "before_sha256_16": "a1e7cf24207f1c87",
+      "after_sha256_16": "fc5cee6f11d622e0",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/scope-trust.test.ts",
+      "before_sha256_16": "96198b57d4902563",
+      "after_sha256_16": "59766913acc4810c",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/slice15-cli-contract.test.ts",
+      "before_sha256_16": "1939d0fc08c4a13a",
+      "after_sha256_16": "81af072e08d16a0c",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

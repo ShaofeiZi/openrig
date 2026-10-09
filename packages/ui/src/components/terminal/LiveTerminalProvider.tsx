@@ -1,21 +1,18 @@
-// OPR.0.4.0.1 — React context wrapping ONE global LiveTerminalRegistry.
+// OPR.0.4.0.1——包裹单一全局 LiveTerminalRegistry 的 React context。
 //
-// PM-locked: the cap is GLOBAL, so a single provider is mounted ABOVE all three
-// terminal surfaces (graph + table + topology) and every ProgressiveTerminal
-// shares the one registry. The cap comes from config
-// (ui.terminal.max_live_terminals) with MAX_LIVE_TERMINALS as the default; a cap
-// change rebuilds the registry (rare, config-driven). When no provider is
-// present (e.g. an isolated render) a lazily-created module singleton keeps the
-// cap global-by-construction instead of crashing.
+// PM 锁定：上限是全局的，因此单一 provider 挂载在三个终端界面（graph + table + topology）
+// 之上，每个 ProgressiveTerminal 共享同一个 registry。上限来自配置
+// （ui.terminal.max_live_terminals），默认 MAX_LIVE_TERMINALS；上限变化会重建 registry
+// （罕见，配置驱动）。当没有 provider 时（例如隔离渲染），惰性创建的模块单例保持“构造即全局”，
+// 而非崩溃。
 
 import { createContext, useContext, useMemo, useRef, type ReactNode } from "react";
 import { LiveTerminalRegistry, MAX_LIVE_TERMINALS } from "./live-terminal-registry.js";
 import { useSettings } from "../../hooks/useSettings.js";
 
-/** OPR.0.4.0.1 — read the configured global cap
- *  (ui.terminal.max_live_terminals), falling back to MAX_LIVE_TERMINALS when
- *  unset/invalid. The 2 -> 3 change is a one-place config edit (AC-5). Mount
- *  site: `<LiveTerminalProvider cap={useTerminalCap()}>`. */
+/** OPR.0.4.0.1——读取配置的全局上限
+ *  （ui.terminal.max_live_terminals），未设置/非法时回退 MAX_LIVE_TERMINALS。
+ *  2 -> 3 的改动是一处配置编辑（AC-5）。挂载点：`<LiveTerminalProvider cap={useTerminalCap()}>`。 */
 export function useTerminalCap(): number {
   const { data } = useSettings();
   const raw = data?.settings?.["ui.terminal.max_live_terminals"]?.value;
@@ -24,9 +21,9 @@ export function useTerminalCap(): number {
 }
 
 export interface LiveTerminalContextValue {
-  /** Mark a terminal live; evicts the oldest (reverting it to static) if over cap. */
+  /** 标记一个终端为实时；超上限时驱逐最旧的（退回静态）。 */
   requestLive(key: string, revertToStatic: () => void): void;
-  /** Free a terminal's slot without evicting (on unmount / manual revert). */
+  /** 释放一个终端的槽位而不驱逐（卸载/手动退回时）。 */
   release(key: string): void;
   isLive(key: string): boolean;
 }
@@ -42,21 +39,20 @@ function toValue(registry: LiveTerminalRegistry): LiveTerminalContextValue {
 }
 
 interface LiveTerminalProviderProps {
-  /** Cap from config; defaults to MAX_LIVE_TERMINALS. */
+  /** 来自配置的上限；默认 MAX_LIVE_TERMINALS。 */
   cap?: number;
   children: ReactNode;
 }
 
 export function LiveTerminalProvider({ cap = MAX_LIVE_TERMINALS, children }: LiveTerminalProviderProps) {
-  // One registry per provider instance; rebuilt only when the cap changes
-  // (config edit). The live set resets on a cap change — acceptable + rare.
+  // 每个 provider 实例一个 registry；仅当上限变化（配置编辑）时重建。
+  // 上限变化会重置实时集合——可接受且罕见。
   const value = useMemo(() => toValue(new LiveTerminalRegistry(cap)), [cap]);
   return <LiveTerminalContext.Provider value={value}>{children}</LiveTerminalContext.Provider>;
 }
 
-// Module singleton fallback: keeps the cap global even if a surface renders a
-// ProgressiveTerminal outside an explicit provider (defensive). The real app
-// mounts LiveTerminalProvider above all surfaces.
+// 模块单例回退：即使某个界面在显式 provider 之外渲染 ProgressiveTerminal，
+// 也保持上限全局（防御）。真正的应用把 LiveTerminalProvider 挂载在所有界面之上。
 let fallbackRegistry: LiveTerminalRegistry | null = null;
 function getFallbackValue(): LiveTerminalContextValue {
   if (!fallbackRegistry) fallbackRegistry = new LiveTerminalRegistry(MAX_LIVE_TERMINALS);
@@ -71,8 +67,8 @@ export function useLiveTerminal(): LiveTerminalContextValue {
   return fallbackRef.current;
 }
 
-/** Test-only: reset the module singleton so cap/eviction state does not leak
- *  across tests that render ProgressiveTerminal without an explicit provider. */
+/** 仅供测试：重置模块单例，使上限/驱逐状态不跨测试泄漏
+ *  （这些测试在没有显式 provider 的情况下渲染 ProgressiveTerminal）。 */
 export function __resetFallbackRegistryForTests(): void {
   fallbackRegistry = null;
 }

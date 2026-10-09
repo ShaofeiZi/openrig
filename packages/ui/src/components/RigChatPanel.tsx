@@ -19,12 +19,12 @@ export function RigChatPanel({ rigId }: RigChatPanelProps) {
 
   return (
     <div data-testid="rig-chat-panel" className="flex flex-col h-full">
-      {/* Messages */}
+      {/* 消息列表 */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {isLoading ? (
-          <div className="font-mono text-[10px] text-on-surface-variant text-center">Loading messages...</div>
+          <div className="font-mono text-[10px] text-on-surface-variant text-center">正在加载消息…</div>
         ) : messages.length === 0 ? (
-          <div className="font-mono text-[10px] text-on-surface-variant text-center italic">No messages yet</div>
+          <div className="font-mono text-[10px] text-on-surface-variant text-center italic">暂无消息</div>
         ) : (
           messages.map((msg) => (
             <div key={msg.id} data-testid={`chat-msg-${msg.id}`}>
@@ -50,14 +50,14 @@ export function RigChatPanel({ rigId }: RigChatPanelProps) {
         )}
       </div>
 
-      {/* Send form */}
+      {/* 发送表单 */}
       <form data-testid="chat-send-form" onSubmit={handleSubmit} className="border-t border-outline-variant p-2 flex gap-2">
         <input
           data-testid="chat-input"
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
+          placeholder="输入消息…"
           className="flex-1 px-2 py-1 border border-outline-variant font-mono text-[10px]"
           disabled={isSending}
         />
@@ -67,7 +67,7 @@ export function RigChatPanel({ rigId }: RigChatPanelProps) {
           disabled={isSending || !input.trim()}
           className="px-3 py-1 border border-outline-variant font-mono text-[9px] uppercase hover:bg-surface-high disabled:opacity-50"
         >
-          Send
+          发送
         </button>
       </form>
     </div>

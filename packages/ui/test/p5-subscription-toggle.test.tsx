@@ -1,14 +1,11 @@
-// V1 attempt-3 Phase 5 P5-3 — Subscription toggle wiring (SC-29 allowlist
-// exception same scope as Phase 4).
+// V1 第三次尝试阶段 5 P5-3——订阅开关接线（SC-29 白名单例外与阶段 4 范围相同）。
 //
-// Coverage:
-//   - SubscriptionToggleList renders 5 rows; action_required is forced ON
-//     (no toggle button; "forced ON" label).
-//   - Toggle click → useSetSetting POSTs to /api/config/<key> with the
-//     correct value.
-//   - Feed filters cards by subscription state (audit_log OFF → no
-//     observation cards rendered; turning audit_log ON surfaces them).
-//   - Settings unavailable (legacy daemon) → defaults rendered + CLI hint.
+// 覆盖范围：
+//   - SubscriptionToggleList 渲染 5 行；action_required 强制开启
+//     （无切换按钮，显示“强制开启”标签）。
+//   - 点击开关 → useSetSetting 向 /api/config/<key> POST 正确值。
+//   - Feed 按订阅状态筛选卡片（audit_log 关闭时不渲染观察卡，开启后显示）。
+//   - 设置不可用（旧版后台服务）→ 渲染默认值与 CLI 提示。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, renderHook, act, fireEvent, cleanup, waitFor } from "@testing-library/react";
@@ -88,7 +85,7 @@ describe("useFeedSubscriptions.setLevel (OPR.0.4.1.27 Unit 2)", () => {
         return new Response(JSON.stringify({ ok: true, resolved: { value: true, source: "file", defaultValue: false } }));
       }
       if (url.endsWith("/api/config")) {
-        // Highlights state: approvals/shipped/progress ON, audit OFF, action_required ON.
+        // 高亮状态：approvals/shipped/progress 开启，audit 关闭，action_required 开启。
         return new Response(
           JSON.stringify(
             settingsResponse({
@@ -116,7 +113,7 @@ describe("useFeedSubscriptions.setLevel (OPR.0.4.1.27 Unit 2)", () => {
       expect(posted["feed.subscriptions.shipped"]).toContain("false");
       expect(posted["feed.subscriptions.progress"]).toContain("false");
     });
-    // audit_log was already OFF (matches needs-you) → no write; action_required never written.
+    // audit_log 原本已关闭（符合 needs-you），因此不写入；action_required 从不写入。
     expect(posted["feed.subscriptions.audit_log"]).toBeUndefined();
     expect(posted["feed.subscriptions.action_required"]).toBeUndefined();
   });
@@ -128,7 +125,7 @@ describe("useFeedSubscriptions.setLevel (OPR.0.4.1.27 Unit 2)", () => {
     await waitFor(() => expect(result.current.unavailable).toBe(false));
     act(() => result.current.setLevel("all-activity"));
     await waitFor(() => expect(posted["feed.subscriptions.audit_log"]).toContain("true"));
-    // approvals/shipped/progress already ON (match all-activity) → no writes.
+    // approvals/shipped/progress 原本已开启（符合 all-activity），因此不写入。
     expect(posted["feed.subscriptions.approvals"]).toBeUndefined();
     expect(posted["feed.subscriptions.shipped"]).toBeUndefined();
     expect(posted["feed.subscriptions.progress"]).toBeUndefined();
@@ -158,15 +155,15 @@ describe("SubscriptionToggleList P5-3 wiring", () => {
       <SubscriptionToggleList />,
     );
     expect(await findByTestId("subscription-toggle-list")).toBeTruthy();
-    // All 5 rows.
+    // 共 5 行。
     expect(container.querySelector("[data-testid='subscription-toggle-action-required']")).toBeTruthy();
     expect(container.querySelector("[data-testid='subscription-toggle-approvals']")).toBeTruthy();
     expect(container.querySelector("[data-testid='subscription-toggle-shipped']")).toBeTruthy();
     expect(container.querySelector("[data-testid='subscription-toggle-progress']")).toBeTruthy();
     expect(container.querySelector("[data-testid='subscription-toggle-audit-log']")).toBeTruthy();
-    // action-required is FORCED ON — no button.
+    // action-required 强制开启，不显示按钮。
     expect(queryByTestId("subscription-toggle-action-required-button")).toBeNull();
-    // Other 4 are interactive (have buttons).
+    // 其他 4 行可交互，均有按钮。
     expect(container.querySelector("[data-testid='subscription-toggle-approvals-button']")).toBeTruthy();
   });
 
@@ -174,7 +171,7 @@ describe("SubscriptionToggleList P5-3 wiring", () => {
     let postedKey = "";
     let postedBody = "";
     mockFetch.mockImplementation(async (url: string, init?: RequestInit) => {
-      // POST to /api/config/<key> takes precedence over GET /api/config.
+      // POST /api/config/<key> 优先于 GET /api/config。
       const postMatch = url.match(/\/api\/config\/(.+)/);
       if (postMatch && init?.method === "POST") {
         postedKey = decodeURIComponent(postMatch[1]!);
@@ -195,7 +192,7 @@ describe("SubscriptionToggleList P5-3 wiring", () => {
       return new Response("[]");
     });
     const { findByTestId } = withQueryClient(<SubscriptionToggleList />);
-    // Wait for the button to be enabled (settings resolved → unavailable=false).
+    // 等待按钮启用（设置解析完成 → unavailable=false）。
     const auditButton = await waitFor(async () => {
       const btn = await findByTestId("subscription-toggle-audit-log-button");
       if ((btn as HTMLButtonElement).disabled) {
@@ -207,7 +204,7 @@ describe("SubscriptionToggleList P5-3 wiring", () => {
     await waitFor(() => {
       expect(postedKey).toBe("feed.subscriptions.audit_log");
     });
-    // Was off → toggling sets to "true".
+    // 原本关闭，切换后设为 "true"。
     expect(postedBody).toContain("true");
   });
 
@@ -220,7 +217,7 @@ describe("SubscriptionToggleList P5-3 wiring", () => {
     });
     const { findByTestId } = withQueryClient(<SubscriptionToggleList />);
     expect(await findByTestId("subscription-toggle-unavailable")).toBeTruthy();
-    // Defaults visible: action_required ON, audit_log OFF.
+    // 可见默认值：action_required 开启，audit_log 关闭。
     expect(
       (await findByTestId("subscription-toggle-action-required")).getAttribute(
         "data-on",

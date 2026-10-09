@@ -130,8 +130,8 @@ function createAppWithUiDist(db: ReturnType<typeof createFullTestDb>, uiDistDir:
   });
 }
 
-describe("Hono server (production app)", () => {
-  it("GET /healthz returns 200 with status ok", async () => {
+describe("Hono server（生产 app）", () => {
+  it("GET /healthz 返回 200 和 status ok", async () => {
     const db = createFullTestDb();
     const { app } = createTestApp(db);
     const res = await app.request("/healthz");
@@ -141,7 +141,7 @@ describe("Hono server (production app)", () => {
     db.close();
   });
 
-  it("unknown API routes return the JSON 404 contract for every method", async () => {
+  it("未知 API 路由对每种 method 都返回 JSON 404 contract", async () => {
     const db = createFullTestDb();
     const uiDistDir = createTempUiDist();
     const app = createAppWithUiDist(db, uiDistDir);
@@ -163,7 +163,7 @@ describe("Hono server (production app)", () => {
     db.close();
   });
 
-  it("serves index.html for root and SPA deep links when a UI bundle exists", async () => {
+  it("存在 UI bundle 时，为 root 与 SPA 深链接提供 index.html", async () => {
     const db = createFullTestDb();
     const uiDistDir = createTempUiDist();
     const app = createAppWithUiDist(db, uiDistDir);
@@ -194,7 +194,7 @@ describe("Hono server (production app)", () => {
     db.close();
   });
 
-  it("serves built assets directly when a UI bundle exists", async () => {
+  it("存在 UI bundle 时直接提供已构建 asset", async () => {
     const db = createFullTestDb();
     const uiDistDir = createTempUiDist();
     const app = createAppWithUiDist(db, uiDistDir);
@@ -208,7 +208,7 @@ describe("Hono server (production app)", () => {
     db.close();
   });
 
-  it("production app mounts /api/rigs (not healthz-only)", async () => {
+  it("生产 app 挂载 /api/rigs，而非只有 healthz", async () => {
     const db = createFullTestDb();
     const { app } = createTestApp(db);
     const res = await app.request("/api/rigs");
@@ -218,38 +218,38 @@ describe("Hono server (production app)", () => {
     db.close();
   });
 
-  it("createApp throws if rigRepo and eventBus use different db handles", () => {
+  it("rigRepo 与 eventBus 使用不同 db handle 时 createApp 抛错", () => {
     const db1 = createFullTestDb();
     const db2 = createFullTestDb();
 
     const deps = buildFullDeps(db1);
     deps.eventBus = new EventBus(db2);
 
-    expect(() => createApp(deps)).toThrow(/same db handle/);
+    expect(() => createApp(deps)).toThrow(/必须共享同一个数据库句柄/);
 
     db1.close();
     db2.close();
   });
 
-  it("createApp throws if snapshotRepo uses different db handle", () => {
+  it("snapshotRepo 使用不同 db handle 时 createApp 抛错", () => {
     const db1 = createFullTestDb();
     const db2 = createFullTestDb();
 
-    // Build valid deps on db1, then swap snapshotRepo to db2
+    // 在 db1 上构建有效 deps，再把 snapshotRepo 换成 db2。
     const deps = buildFullDeps(db1);
     (deps as Record<string, unknown>).snapshotRepo = new SnapshotRepository(db2);
 
-    expect(() => createApp(deps)).toThrow(/snapshotRepo.*same db handle/);
+    expect(() => createApp(deps)).toThrow(/snapshotRepo 必须共享同一个数据库句柄/);
 
     db1.close();
     db2.close();
   });
 
-  it("createApp throws if snapshotCapture uses different db handle", () => {
+  it("snapshotCapture 使用不同 db handle 时 createApp 抛错", () => {
     const db1 = createFullTestDb();
     const db2 = createFullTestDb();
 
-    // Build a self-consistent snapshotCapture on db2
+    // 在 db2 上构建内部一致的 snapshotCapture。
     const r2 = new RigRepository(db2);
     const s2 = new SessionRegistry(db2);
     const e2 = new EventBus(db2);
@@ -257,21 +257,21 @@ describe("Hono server (production app)", () => {
     const cs2 = new CheckpointStore(db2);
     const otherCapture = new SnapshotCapture({ db: db2, rigRepo: r2, sessionRegistry: s2, eventBus: e2, snapshotRepo: sr2, checkpointStore: cs2 });
 
-    // Build valid deps on db1, then swap snapshotCapture to db2
+    // 在 db1 上构建有效 deps，再把 snapshotCapture 换成 db2。
     const deps = buildFullDeps(db1);
     (deps as Record<string, unknown>).snapshotCapture = otherCapture;
 
-    expect(() => createApp(deps)).toThrow(/snapshotCapture.*same db handle/);
+    expect(() => createApp(deps)).toThrow(/snapshotCapture 必须共享同一个数据库句柄/);
 
     db1.close();
     db2.close();
   });
 
-  it("createApp throws if restoreOrchestrator uses different db handle", () => {
+  it("restoreOrchestrator 使用不同 db handle 时 createApp 抛错", () => {
     const db1 = createFullTestDb();
     const db2 = createFullTestDb();
 
-    // Build a self-consistent orchestrator on db2
+    // 在 db2 上构建内部一致的 orchestrator。
     const r2 = new RigRepository(db2);
     const s2 = new SessionRegistry(db2);
     const e2 = new EventBus(db2);
@@ -287,43 +287,43 @@ describe("Hono server (production app)", () => {
       claudeResume: new ClaudeResumeAdapter(tmux2), codexResume: new CodexResumeAdapter(tmux2),
     });
 
-    // Build valid deps on db1, then swap restoreOrchestrator to db2
+    // 在 db1 上构建有效 deps，再把 restoreOrchestrator 换成 db2。
     const deps = buildFullDeps(db1);
     (deps as Record<string, unknown>).restoreOrchestrator = otherOrch;
 
-    expect(() => createApp(deps)).toThrow(/restoreOrchestrator.*same db handle/);
+    expect(() => createApp(deps)).toThrow(/restoreOrchestrator 必须共享同一个数据库句柄/);
 
     db1.close();
     db2.close();
   });
 
-  it("createApp throws if packageRepo uses different db handle", () => {
+  it("packageRepo 使用不同 db handle 时 createApp 抛错", () => {
     const db1 = createFullTestDb();
     const db2 = createFullTestDb();
 
     const deps = buildFullDeps(db1);
     (deps as Record<string, unknown>).packageRepo = new PackageRepository(db2);
 
-    expect(() => createApp(deps)).toThrow(/packageRepo.*same db handle/);
+    expect(() => createApp(deps)).toThrow(/packageRepo 必须共享同一个数据库句柄/);
 
     db1.close();
     db2.close();
   });
 
-  it("createApp throws if installRepo uses different db handle", () => {
+  it("installRepo 使用不同 db handle 时 createApp 抛错", () => {
     const db1 = createFullTestDb();
     const db2 = createFullTestDb();
 
     const deps = buildFullDeps(db1);
     (deps as Record<string, unknown>).installRepo = new InstallRepository(db2);
 
-    expect(() => createApp(deps)).toThrow(/installRepo.*same db handle/);
+    expect(() => createApp(deps)).toThrow(/installRepo 必须共享同一个数据库句柄/);
 
     db1.close();
     db2.close();
   });
 
-  it("createApp throws if podInstantiator uses different db handle", () => {
+  it("podInstantiator 使用不同 db handle 时 createApp 抛错", () => {
     const db1 = createFullTestDb();
     const db2 = createFullTestDb();
 
@@ -357,7 +357,7 @@ describe("Hono server (production app)", () => {
       podBundleSourceResolver: null,
     };
 
-    expect(() => createApp(deps)).toThrow(/podInstantiator.*same db handle/);
+    expect(() => createApp(deps)).toThrow(/podInstantiator 必须共享同一个数据库句柄/);
 
     db1.close();
     db2.close();

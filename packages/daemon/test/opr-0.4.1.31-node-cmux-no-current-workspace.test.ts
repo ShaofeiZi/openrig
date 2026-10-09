@@ -1,9 +1,8 @@
-// OPR.0.4.1.31 part A — node open-in-cmux must NOT fail just because no cmux
-// workspace is current. Before the fix, createAndBindSurface anchored only on
-// currentWorkspace(), so every unbound row failed when nothing was current.
-// resolveWorkspaceAnchor now uses ONLY transport-allowlisted methods: the
-// current workspace if present, else create one (cmux opens a new workspace as
-// the active/visible one). It deliberately does NOT call workspace.select (the
+// OPR.0.4.1.31 part A——node open-in-cmux 绝不得只因无 cmux workspace 为 current
+// 就失败。修复前 createAndBindSurface 只锚定 currentWorkspace()，故无 current 时
+// 每个 unbound 行都失败。resolveWorkspaceAnchor 现仅用 transport 白名单方法：
+// 有 current workspace 就用它，否则新建一个（cmux 打开新 workspace 作为
+// active/visible 那个）。它刻意不调用 workspace.select（该
 // cmux CLI exposes no select command + our transport does not allow that RPC —
 // dev1-guard B1). A genuinely-unavailable cmux propagates honestly.
 
@@ -29,8 +28,8 @@ function makeService(adapter: Record<string, unknown>) {
   return new NodeCmuxService(rigRepo as never, sessionRegistry as never, adapter as never);
 }
 
-describe("OPR.0.4.1.31 part A — NodeCmuxService no-current-workspace handling (allowed methods only)", () => {
-  it("no current workspace -> creates a workspace (becomes visible) and opens", async () => {
+describe("OPR.0.4.1.31 A 部分——NodeCmuxService 无当前工作区处理（仅允许的方法）", () => {
+  it("没有当前工作区时创建可见工作区并打开", async () => {
     const adapter = makeAdapter({});
     const svc = makeService(adapter);
     const result = await svc.openOrFocusNodeSurface("rig-1", "dev.impl");
@@ -38,7 +37,7 @@ describe("OPR.0.4.1.31 part A — NodeCmuxService no-current-workspace handling 
     expect((adapter.createWorkspace as ReturnType<typeof vi.fn>)).toHaveBeenCalled();
   });
 
-  it("cmux unavailable -> propagates the honest error, does NOT create a workspace", async () => {
+  it("cmux 不可用时传播真实错误且不创建工作区", async () => {
     const adapter = makeAdapter({
       currentWorkspace: async () => ({ ok: false, code: "unavailable", message: "cmux is not connected" }),
     });
@@ -49,7 +48,7 @@ describe("OPR.0.4.1.31 part A — NodeCmuxService no-current-workspace handling 
     expect((adapter.createWorkspace as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
   });
 
-  it("a current workspace exists -> uses it, no create fallback", async () => {
+  it("已有当前工作区时直接使用，不走创建回退", async () => {
     const adapter = makeAdapter({
       currentWorkspace: async () => ({ ok: true, data: "ws-current" }),
     });
@@ -59,7 +58,7 @@ describe("OPR.0.4.1.31 part A — NodeCmuxService no-current-workspace handling 
     expect((adapter.createWorkspace as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
   });
 
-  it("no current + create fails -> honest error (operator can fall back to rig-level Launch)", async () => {
+  it("没有当前工作区且创建失败时返回真实错误（操作员可回退到工作组级 Launch）", async () => {
     const adapter = makeAdapter({
       createWorkspace: vi.fn(async () => ({ ok: false, code: "request_failed", message: "cmux workspace.create failed" })),
     });

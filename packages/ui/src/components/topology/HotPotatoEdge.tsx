@@ -58,10 +58,9 @@ export function HotPotatoEdge({
           />
         ) : (
           <>
-            {/* OPR.0.4.1.26 — directional flow: a dashed overlay that travels
-                source -> destination along the edge, so the DIRECTION of the
-                handoff reads at a glance even before the lead pulse arrives.
-                CSS keyframe marches stroke-dashoffset (no framer-motion). */}
+            {/* OPR.0.4.1.26——方向流动：一条沿边从源到目标行进的虚线覆盖层，
+                使交接的方向在主脉冲到达前即可一眼读出。CSS 关键帧推进
+                stroke-dashoffset（不用 framer-motion）。 */}
             <path
               data-testid={`hot-potato-flow-${packet.id}`}
               d={edgePath}
@@ -73,7 +72,7 @@ export function HotPotatoEdge({
               vectorEffect="non-scaling-stroke"
               className={crossRig ? "hot-potato-flow hot-potato-flow-cross" : "hot-potato-flow"}
             />
-            {/* The lead pulse — the head of the handoff travelling the edge. */}
+            {/* 主脉冲——交接沿边行进的头部。 */}
             <circle
               key={packet.id}
               data-testid={`hot-potato-packet-${packet.id}`}

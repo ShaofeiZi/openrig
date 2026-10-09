@@ -1,0 +1,13 @@
+{
+  "schema": "openrig.tui-src-comment-review-batch/v1",
+  "batch": 8,
+  "captured_at": "2026-10-09T19:45:00+08:00",
+  "depth": "full_comment_human_string_reviewed",
+  "owner": "s_000cae46uuw",
+  "natural_residual": 0,
+  "note": "SELFREPORTED-58 TUI scripts2 extras",
+  "files": [
+    {"path": "packages/tui/scripts/capture-crash-cart.mjs", "status": "reviewed_no_change", "after_sha256": "baa3ffb764a10dfe199745e1083ff01d456cb1b66b34a1ed87cff74d083ef238", "classification": "all comments already Chinese; screen keys cockpit-in-shell/unverified-in-shell/first-run-in-shell/post-restore-swap machine; verdict hash 3c6c2be0 retained; node --import tsx CLI usage retained"},
+    {"path": "packages/tui/vitest.config.ts", "status": "reviewed_no_change", "after_sha256": "d3f713bf444d5606c1e46d9740aaf2adab61c9a6af71e1b0d234cc8e7389fa5d", "classification": "no comments; include glob test/**/*.test.ts machine"}
+  ]
+}

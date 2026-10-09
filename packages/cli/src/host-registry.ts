@@ -9,8 +9,8 @@ export type { FailedStep };
 
 export interface RemoteBearerResolution {
   ok: true;
-  /** Absent for an anonymous (URL-only) host — a tokenless daemon, no
-   *  Authorization header is sent. Present when bearer_env/bearer_file resolves. */
+  /** 匿名（仅 URL）主机缺失——无 token 的后台服务，不发送
+   *  Authorization 请求头。当 bearer_env/bearer_file 解析到时存在。 */
   token?: string;
 }
 
@@ -24,26 +24,26 @@ export function resolveRemoteBearer(host: HttpHostEntry): RemoteBearerResolution
   if (host.bearer_env) {
     const token = process.env[host.bearer_env]?.trim();
     if (token) return { ok: true, token };
-    return { ok: false, failedStep: "permission-gate", error: `bearer env var ${host.bearer_env} is not set or empty for host ${host.id}` };
+    return { ok: false, failedStep: "permission-gate", error: `主机 ${host.id} 的 bearer 环境变量 ${host.bearer_env} 未设置或为空` };
   }
   if (host.bearer_file) {
     try {
       const token = readFileSync(host.bearer_file, "utf-8").trim();
       if (token) return { ok: true, token };
-      return { ok: false, failedStep: "permission-gate", error: `bearer file ${host.bearer_file} is empty for host ${host.id}` };
+      return { ok: false, failedStep: "permission-gate", error: `主机 ${host.id} 的 bearer 文件 ${host.bearer_file} 为空` };
     } catch {
-      return { ok: false, failedStep: "permission-gate", error: `bearer file ${host.bearer_file} not readable for host ${host.id}` };
+      return { ok: false, failedStep: "permission-gate", error: `主机 ${host.id} 的 bearer 文件 ${host.bearer_file} 不可读` };
     }
   }
-  // No bearer configured is now a VALID anonymous host — a tokenless daemon
-  // (host+VM are one founder-owned trust domain; the mesh is the auth
-  // boundary). No token means no Authorization header downstream. A
-  // configured-but-unresolvable pointer still fails above (fail-closed).
+  // 未配置 bearer 现在是有效的匿名主机——无 token 后台服务
+  // （主机+VM 是一个创始人拥有的信任域；mesh 是认证边界）。
+  // 无 token 意味着下游不发送 Authorization 请求头。
+  // 已配置但不可解析的指针仍在上面失败（故障关闭）。
   return { ok: true };
 }
 
-/** Build the Authorization header for a resolved remote bearer. An anonymous
- *  (URL-only) host resolves to no token → no header (tokenless daemon). */
+/** 为已解析的远程 bearer 构建 Authorization 请求头。匿名
+ *  （仅 URL）主机解析为无 token → 无请求头（无 token 后台服务）。 */
 export function bearerAuthHeaders(token: string | undefined): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
@@ -62,12 +62,12 @@ export function classifyHttpError(_err: unknown): FailedStep {
 export interface SshHostEntry {
   id: string;
   /**
-   * The observed, immutable self-id of the host this entry points at — the JOIN KEY.
+   * 此条目指向的主机的已观察、不可变自身 id——连接键。
    *
-   * `id` is MY label for that machine; `hostId` is what that machine calls itself and stamps into
-   * every envelope it sends. Optional because every entry that exists today predates the field:
-   * absent means "never learned", which resolves exactly as it does now. Nothing populates this
-   * automatically in this slice.
+   * `id` 是我给那台机器的标签；`hostId` 是那台机器自称并盖在
+   * 它发送的每个信封上的名称。可选，因为今天存在的每个条目都早于该字段：
+   * 缺失意味着"从未学习"，解析方式与现在完全相同。本 slice 中没有任何东西
+   * 自动填充它。
    */
   hostId?: string;
   transport: "ssh";
@@ -78,7 +78,7 @@ export interface SshHostEntry {
 
 export interface HttpHostEntry {
   id: string;
-  /** The observed self-id of the host this entry points at — the join key. See SshHostEntry.hostId. */
+  /** 此条目指向的主机的已观察自身 id——连接键。见 SshHostEntry.hostId。 */
   hostId?: string;
   transport: "http";
   url: string;
@@ -101,20 +101,18 @@ export type HostResolution =
   | { ok: true; host: HostEntry }
   | { ok: false; error: string };
 
-// OPR.0.4.6.MH1 FR-7 — reserved host ids (the cheap collision guard,
-// arch rail 4): `kernel` and `host` are lexically claimed by the
-// human-seat regex family (`@(kernel|host)$` — a host id reusing them
-// would make host-qualified surfaces ambiguous with human-seat
-// classification), and `local` is the shipped LOCAL_HOST_ID constant
-// (a registered remote named "local" would shadow the local host in
-// every selection/fan-out surface). Rejected at add/pair AND surfaced
-// as a load-time finding on pre-existing files (fail loud, never
-// silent). Mirrored verbatim in the daemon reader twin (parity test).
+// OPR.0.4.6.MH1 FR-7 — 保留主机 id（廉价冲突守卫，
+// 架构轨道 4）：`kernel` 和 `host` 由人类席位正则族词法声明
+// （`@(kernel|host)$`——重用它们的主机 id 会使主机限定表面
+// 与人类席位分类歧义），`local` 是已发布的 LOCAL_HOST_ID 常量
+// （名为 "local" 的已注册远程会在每个选择/扇出表面中 shadow 本地主机）。
+// 在添加/配对时拒绝，并在已有文件上作为加载时发现暴露
+// （响亮失败，绝不静默）。在后台服务读取器孪生中逐字镜像（奇偶测试）。
 //
-// M1 A1 — the virtual-domain tokens (VIRTUAL_DOMAIN_TOKENS, the A2 closed set = ONE
-// source of truth) join the reserved host ids: a host registered `external` would make
-// the `<local>@external` virtual-domain classification ambiguous (X@Y@external). The
-// rig-name mint gate reserves the SAME tokens for the rig namespace (rigspec-preflight).
+// M1 A1 — 虚拟域 token（VIRTUAL_DOMAIN_TOKENS，A2 闭合集 = 唯一真相来源）
+// 加入保留主机 id：注册为 `external` 的主机会使
+// `<local>@external` 虚拟域分类歧义（X@Y@external）。
+// rig 名铸造门禁为 rig 命名空间保留相同 token（rigspec-preflight）。
 export const RESERVED_HOST_IDS = new Set(["kernel", "host", "local", ...VIRTUAL_DOMAIN_TOKENS]);
 
 const KNOWN_TRANSPORTS = new Set(["ssh", "http"]);
@@ -124,79 +122,79 @@ export function defaultHostRegistryPath(): string {
 }
 
 /**
- * Load and validate the host registry from disk. v0 file shape:
+ * 从磁盘加载并验证主机注册表。v0 文件形状：
  *
  *     hosts:
  *       - id: remote-dev
  *         transport: ssh
  *         target: remote-dev.local
- *         user: your-username  # optional
- *         notes: "Tart VM"     # optional
+ *         user: your-username  # 可选
+ *         notes: "Tart VM"     # 可选
  *
- * Operator-managed; v0 does NOT auto-write or auto-modify this file. A missing
- * file returns a clear error pointing at the canonical path.
+ * 操作者管理；v0 不自动写入或自动修改此文件。缺失文件返回
+ * 指向规范路径的明确错误。
  */
 export function loadHostRegistry(path: string = defaultHostRegistryPath()): HostRegistryLoadResult {
   if (!existsSync(path)) {
     return {
       ok: false,
-      error: `host registry not found at ${path}. Create it with a 'hosts:' array; transport: ssh (target + user) or http (url; optional bearer_env or bearer_file — omit both for a tokenless daemon).`,
+      error: `在 ${path} 未找到主机注册表。请用 'hosts:' 数组创建；transport: ssh（target + user）或 http（url；可选 bearer_env 或 bearer_file——无 token 后台服务则两者都省略）。`,
     };
   }
   let raw: string;
   try {
     raw = readFileSync(path, "utf-8");
   } catch (err) {
-    return { ok: false, error: `failed to read host registry at ${path}: ${(err as Error).message}` };
+    return { ok: false, error: `读取 ${path} 的主机注册表失败：${(err as Error).message}` };
   }
   let parsed: unknown;
   try {
     parsed = parseYaml(raw);
   } catch (err) {
-    return { ok: false, error: `failed to parse host registry YAML at ${path}: ${(err as Error).message}` };
+    return { ok: false, error: `解析 ${path} 的主机注册表 YAML 失败：${(err as Error).message}` };
   }
   return validateHostRegistry(parsed, path);
 }
 
 export function validateHostRegistry(parsed: unknown, sourcePath: string): HostRegistryLoadResult {
   if (parsed === null || typeof parsed !== "object") {
-    return { ok: false, error: `host registry at ${sourcePath} must be a YAML object with a 'hosts' array` };
+    return { ok: false, error: `${sourcePath} 的主机注册表必须是带 'hosts' 数组的 YAML 对象` };
   }
   const obj = parsed as Record<string, unknown>;
   const hosts = obj["hosts"];
   if (!Array.isArray(hosts)) {
-    return { ok: false, error: `host registry at ${sourcePath}: 'hosts' must be an array` };
+    return { ok: false, error: `${sourcePath} 的主机注册表：'hosts' 必须是数组` };
   }
 
   const seenIds = new Set<string>();
   const validated: HostEntry[] = [];
   for (let i = 0; i < hosts.length; i++) {
     const raw = hosts[i];
-    const prefix = `host registry at ${sourcePath}: hosts[${i}]`;
+    const prefix = `${sourcePath} 的主机注册表：hosts[${i}]`;
     if (raw === null || typeof raw !== "object") {
-      return { ok: false, error: `${prefix}: must be an object with id/transport/target` };
+      return { ok: false, error: `${prefix}：必须是带 id/transport/target 的对象` };
     }
     const entry = raw as Record<string, unknown>;
     const id = entry["id"];
     if (typeof id !== "string" || id.trim() === "") {
-      return { ok: false, error: `${prefix}.id: required non-empty string` };
+      return { ok: false, error: `${prefix}.id：必需的非空字符串` };
     }
     if (seenIds.has(id)) {
-      return { ok: false, error: `${prefix}.id: duplicate host id '${id}' (each host id must be unique within the registry)` };
+      return { ok: false, error: `${prefix}.id：重复的主机 id '${id}'（每个主机 id 在注册表内必须唯一）` };
     }
     if (RESERVED_HOST_IDS.has(id)) {
       return {
         ok: false,
-        error: `${prefix}.id: '${id}' is a reserved host id (reserved set: ${[...RESERVED_HOST_IDS].sort().join(", ")}). 'kernel' and 'host' collide with human-seat session classification (@kernel/@host), and 'local' is the local host itself — pick a different id.`,
+        error: `${prefix}.id：'${id}' 是保留主机 id（保留集：${[...RESERVED_HOST_IDS].sort().join(", ")}）。'kernel' 和 'host' 与人类席位会话分类冲突（@kernel/@host），'local' 是本地主机本身——请选择不同的 id。`,
       };
     }
-    // OPR.0.4.6.MH1 rev1-r2 B1 — host ids name FILES (the pair verb's
-    // bearer_file path embeds the id) and render in tables: path-bearing
-    // ids are rejected at the registry door, same home as reserved ids.
+    // OPR.0.4.6.MH1 rev1-r2 B1——主机 id 命名文件（配对动词的
+    // bearer_file 路径嵌入 id）并在表格中渲染：带路径的 id
+    // 在注册表门口被拒绝，与保留 id 同一处理。
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id)) {
       return {
         ok: false,
-        error: `${prefix}.id: '${id}' is not a valid host id — allowed: letters, digits, dot, underscore, dash (starting with a letter or digit). Host ids name credential files; path characters are not allowed.`,
+        error: `${prefix}.id：'${id}' 不是有效的主机 id——允许：字母、数字、点、下划线、短横线（以字母或数字开头）。主机 id 命名凭据文件；不允许路径字符。`,
       };
     }
     seenIds.add(id);
@@ -204,30 +202,30 @@ export function validateHostRegistry(parsed: unknown, sourcePath: string): HostR
     if (typeof transport !== "string" || !KNOWN_TRANSPORTS.has(transport)) {
       return {
         ok: false,
-        error: `${prefix}.transport: must be one of ${[...KNOWN_TRANSPORTS].sort().join(", ")} (got ${JSON.stringify(transport)})`,
+        error: `${prefix}.transport：必须是 ${[...KNOWN_TRANSPORTS].sort().join(", ")} 之一（收到 ${JSON.stringify(transport)}）`,
       };
     }
     const notes = entry["notes"];
     if (notes !== undefined && typeof notes !== "string") {
-      return { ok: false, error: `${prefix}.notes: optional, but if present must be a string` };
+      return { ok: false, error: `${prefix}.notes：可选，但如果存在必须是字符串` };
     }
-    // The join key is an id like any other, so it earns the SAME rules `id` already has — it can
-    // reach a table and a path just as easily. The generated `host-XXXXXXXX` form passes them.
+    // 连接键是像其他 id 一样的 id，因此它享有 `id` 已有的相同规则——它可以
+    // 同样到达表格和路径。生成的 `host-XXXXXXXX` 形式通过它们。
     const hostId = entry["hostId"];
     if (hostId !== undefined) {
       if (typeof hostId !== "string" || hostId.trim() === "") {
-        return { ok: false, error: `${prefix}.hostId: optional, but if present must be a non-empty string` };
+        return { ok: false, error: `${prefix}.hostId：可选，但如果存在必须是非空字符串` };
       }
       if (RESERVED_HOST_IDS.has(hostId)) {
         return {
           ok: false,
-          error: `${prefix}.hostId: '${hostId}' is a reserved host id (reserved set: ${[...RESERVED_HOST_IDS].sort().join(", ")}) — a join key names a real machine's own identity and can never be one of these.`,
+          error: `${prefix}.hostId：'${hostId}' 是保留主机 id（保留集：${[...RESERVED_HOST_IDS].sort().join(", ")}）——连接键命名真实机器自身的身份，绝不能是其中之一。`,
         };
       }
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(hostId)) {
         return {
           ok: false,
-          error: `${prefix}.hostId: '${hostId}' is not a valid host id — allowed: letters, digits, dot, underscore, dash (starting with a letter or digit).`,
+          error: `${prefix}.hostId：'${hostId}' 不是有效的主机 id——允许：字母、数字、点、下划线、短横线（以字母或数字开头）。`,
         };
       }
     }
@@ -235,11 +233,11 @@ export function validateHostRegistry(parsed: unknown, sourcePath: string): HostR
     if (transport === "ssh") {
       const target = entry["target"];
       if (typeof target !== "string" || target.trim() === "") {
-        return { ok: false, error: `${prefix}.target: required non-empty string (an ssh target)` };
+        return { ok: false, error: `${prefix}.target：必需的非空字符串（ssh 目标）` };
       }
       const user = entry["user"];
       if (user !== undefined && (typeof user !== "string" || user.trim() === "")) {
-        return { ok: false, error: `${prefix}.user: optional, but if present must be a non-empty string` };
+        return { ok: false, error: `${prefix}.user：可选，但如果存在必须是非空字符串` };
       }
       validated.push({
         id,
@@ -252,23 +250,23 @@ export function validateHostRegistry(parsed: unknown, sourcePath: string): HostR
     } else if (transport === "http") {
       const url = entry["url"];
       if (typeof url !== "string" || url.trim() === "") {
-        return { ok: false, error: `${prefix}.url: required non-empty string (the remote daemon's base URL)` };
+        return { ok: false, error: `${prefix}.url：必需的非空字符串（远程后台服务的 base URL）` };
       }
       const bearerEnv = entry["bearer_env"];
       const bearerFile = entry["bearer_file"];
       const hasEnv = bearerEnv !== undefined;
       const hasFile = bearerFile !== undefined;
-      // bearer_env / bearer_file are OPTIONAL: omit both for an
-      // anonymous/tokenless daemon (no Authorization sent). At most one may
-      // be set — never both.
+      // bearer_env / bearer_file 是可选的：两者都省略表示
+      // 匿名/无 token 后台服务（不发送 Authorization）。最多可设置一个——
+      // 绝不两个都设。
       if (hasEnv && hasFile) {
-        return { ok: false, error: `${prefix}: specify at most one of bearer_env or bearer_file, not both (omit both for an anonymous/tokenless daemon)` };
+        return { ok: false, error: `${prefix}：最多指定 bearer_env 或 bearer_file 之一，不要两者都指定（匿名/无 token 后台服务则两者都省略）` };
       }
       if (hasEnv && (typeof bearerEnv !== "string" || bearerEnv.trim() === "")) {
-        return { ok: false, error: `${prefix}.bearer_env: must be a non-empty env var name` };
+        return { ok: false, error: `${prefix}.bearer_env：必须是非空环境变量名` };
       }
       if (hasFile && (typeof bearerFile !== "string" || bearerFile.trim() === "")) {
-        return { ok: false, error: `${prefix}.bearer_file: must be a non-empty file path` };
+        return { ok: false, error: `${prefix}.bearer_file：必须是非空文件路径` };
       }
       validated.push({
         id,
@@ -285,8 +283,8 @@ export function validateHostRegistry(parsed: unknown, sourcePath: string): HostR
 }
 
 /**
- * Resolve a host id against a loaded registry. Unknown id returns an error
- * naming the requested id and listing up to 10 known ids for discoverability.
+ * 针对已加载的注册表解析主机 id。未知 id 返回错误，
+ * 命名请求的 id 并列出最多 10 个已知 id 以便发现。
  */
 export function hostDisplayTarget(host: HostEntry): string {
   return host.transport === "ssh" ? host.target : host.url;
@@ -297,56 +295,54 @@ export function resolveHost(
   id: string,
   learnedBindings?: Record<string, { hostId: string }>,
 ): HostResolution {
-  // alias -> id -> transport. The human alias is the intentional handle, so an `id` match is tried
-  // across the WHOLE registry before any join key — that tiebreak is defined rather than accidental,
-  // even though a collision with a random self-id is near-impossible. A registry-declared `hostId`
-  // outranks a sidecar-learned binding for the same reason: the operator wrote it down.
+  // alias -> id -> transport。人类别名是有意的句柄，因此 `id` 匹配在
+  // 整个注册表中先于任何连接键被尝试——这个决胜规则是定义的而非偶然的，
+  // 即使与随机自身 id 碰撞几乎不可能。注册表声明的 `hostId`
+  // 出于同样原因优于 sidecar 学习的绑定：操作者写下了它。
   const match = registry.hosts.find((h) => h.id === id)
     ?? registry.hosts.find((h) => h.hostId === id)
     ?? (learnedBindings ? registry.hosts.find((h) => learnedBindings[h.id]?.hostId === id) : undefined);
   if (match) return { ok: true, host: match };
   const knownIds = registry.hosts.map((h) => h.id).slice(0, 10);
   const idsHint = knownIds.length > 0
-    ? ` Known host ids: ${knownIds.join(", ")}${registry.hosts.length > knownIds.length ? ` (+${registry.hosts.length - knownIds.length} more)` : ""}.`
-    : " (registry is empty)";
+    ? ` 已知主机 id：${knownIds.join(", ")}${registry.hosts.length > knownIds.length ? `（+${registry.hosts.length - knownIds.length} 更多）` : ""}。`
+    : "（注册表为空）";
   return {
     ok: false,
-    error: `unknown host id '${id}'.${idsHint}`,
+    error: `未知主机 id '${id}'。${idsHint}`,
   };
 }
 
 // ---------------------------------------------------------------------------
-// OPR.0.4.4.13 FR-1 — the registry WRITE path (rig host add).
+// OPR.0.4.4.13 FR-1——注册表写入路径（rig host add）。
 //
-// ONE validation source: the candidate registry (existing entries + the new
-// raw entry) is validated by the SAME validateHostRegistry the loader uses —
-// add-time errors are load-time errors, verbatim (incl. duplicate ids,
-// transport-appropriate fields, at-most-one-bearer — bearer optional for a
-// tokenless daemon, never both). The standard path never
-// hand-edits YAML; note: add REWRITES the file canonically (hand-authored
-// comments are not preserved — hand-editing remains the path for exotica).
+// 一个验证源：候选注册表（已有条目 + 新原始条目）由加载器使用的
+// 同一个 validateHostRegistry 验证——添加时错误就是加载时错误，
+// 逐字（包括重复 id、传输适当字段、最多一个 bearer——
+// bearer 对无 token 后台服务可选，绝不两个）。标准路径绝不
+// 手动编辑 YAML；注意：add 按规范重写文件（手动编写的注释不保留——
+// 手动编辑仍是特殊情况的路径）。
 // ---------------------------------------------------------------------------
 
 export type AddHostResult =
   | { ok: true; path: string; entry: HostEntry }
   | { ok: false; error: string };
 
-/** OPR.0.4.6.MH1 (arch P3/P4): the CLI half of the ONE registry write
- *  contract — the daemon twin (packages/daemon/src/domain/hosts/
- *  hosts-registry-writer.ts) mirrors this verbatim, byte-parity-pinned by
- *  test. Concurrency ceiling (P4): atomic tmp+rename, whole-file
- *  LAST-WRITE-WINS on a concurrent add — one operator-scale registry
- *  file, NO locking machinery by design; a dropped concurrent entry
- *  re-converges by re-running the add. */
+/** OPR.0.4.6.MH1（架构 P3/P4）：一个注册表写入
+ *  契约的 CLI 半边——后台服务孪生（packages/daemon/src/domain/hosts/
+ *  hosts-registry-writer.ts）逐字镜像，字节奇偶由测试固定。
+ *  并发上限（P4）：原子 tmp+rename，整文件
+ *  并发 add 上的最后写入者胜——一个操作者规模的注册表
+ *  文件，设计上无锁机制；丢失的并发条目通过重新运行 add 重新收敛。 */
 export function addHostEntry(rawEntry: Record<string, unknown>, path: string = defaultHostRegistryPath()): AddHostResult {
-  // Load what exists; a MISSING file is a valid starting point for `add`
-  // (the verb exists so operators never hand-create the YAML), but a present-
-  // but-invalid file is a loud error — never silently clobber operator state.
+  // 加载已有内容；缺失文件是 `add` 的有效起点
+  // （该动词存在使操作者绝不需要手动创建 YAML），但存在但无效的
+  // 文件是响亮错误——绝不静默覆盖操作者状态。
   let existing: HostEntry[] = [];
   if (existsSync(path)) {
     const loaded = loadHostRegistry(path);
     if (!loaded.ok) {
-      return { ok: false, error: `refusing to modify an invalid registry: ${loaded.error}` };
+      return { ok: false, error: `拒绝修改无效注册表：${loaded.error}` };
     }
     existing = loaded.registry.hosts;
   }
@@ -364,7 +360,7 @@ export function addHostEntry(rawEntry: Record<string, unknown>, path: string = d
     writeFileSync(tmp, stringifyYaml({ hosts: validated.registry.hosts }), { mode: 0o600 });
     renameSync(tmp, path);
   } catch (err) {
-    return { ok: false, error: `failed to write host registry at ${path}: ${(err as Error).message}` };
+    return { ok: false, error: `写入 ${path} 的主机注册表失败：${(err as Error).message}` };
   }
   return { ok: true, path, entry };
 }

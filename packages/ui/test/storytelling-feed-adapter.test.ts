@@ -1,9 +1,7 @@
-// 0.3.1 slice 06 forward-fix #2 — pure-logic test for the Feed.tsx
-// adapter that converts daemon-driven mission + slice rows into
-// FeedCardItem[]. Proves ProgressCard is routed for missions
-// (closing the prior "ProgressCard never mounted in production"
-// finding) and that slice status routing dispatches to the right
-// card type without mounting Feed.tsx itself.
+// 0.3.1 slice 06 forward-fix #2 —— Feed.tsx 适配器的纯逻辑测试：
+// 把后台驱动的任务 + 切片行转换为 FeedCardItem[]。证明任务被路由到
+// ProgressCard（闭环此前“生产中 ProgressCard 从未挂载”的发现），
+// 且切片状态路由在不挂载 Feed.tsx 本身的前提下分发到正确卡片类型。
 
 import { describe, it, expect } from "vitest";
 import { buildStorytellingFeedItems } from "../src/components/feed/cards/storytelling-cards.js";
@@ -46,8 +44,8 @@ function makeApprovalFeedCard(opts: {
   };
 }
 
-describe("buildStorytellingFeedItems — production adapter", () => {
-  it("routes missions into ProgressCard items (Finding 2 fix: ProgressCard now wired)", () => {
+describe("buildStorytellingFeedItems —— 生产适配器", () => {
+  it("把任务路由为 ProgressCard 项（发现 2 修复：ProgressCard 已接线）", () => {
     const items = buildStorytellingFeedItems(
       [
         { name: "release-0.3.1", path: "missions/release-0.3.1" },
@@ -60,11 +58,11 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     expect(progressItems[0]!.kind).toBe("progress");
     if (progressItems[0]!.kind === "progress") {
       expect(progressItems[0]!.source.missionId).toBe("release-0.3.1");
-      expect(progressItems[0]!.source.nextStep).toMatch(/Open mission/);
+      expect(progressItems[0]!.source.nextStep).toMatch(/打开任务/);
     }
   });
 
-  it("caps missions at 2 to keep the preview band tight", () => {
+  it("任务上限 2，保持预览条紧凑", () => {
     const items = buildStorytellingFeedItems(
       [
         { name: "m1", path: "missions/m1" },
@@ -77,7 +75,7 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     expect(items.filter((i) => i.kind === "progress")).toHaveLength(2);
   });
 
-  it("routes shipped/complete/done slices into ShippedCard", () => {
+  it("把 shipped/complete/done 切片路由为 ShippedCard", () => {
     const items = buildStorytellingFeedItems(
       [],
       [
@@ -90,7 +88,7 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     expect(items).toHaveLength(3);
   });
 
-  it("routes blocked slices into IncidentCard with status=warning", () => {
+  it("把 blocked 切片路由为 status=warning 的 IncidentCard", () => {
     const items = buildStorytellingFeedItems([], [{ name: "x", status: "blocked" }]);
     expect(items[0]!.kind).toBe("incident");
     if (items[0]!.kind === "incident") {
@@ -98,13 +96,13 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     }
   });
 
-  it("routes failed/danger slices into IncidentCard with status=danger", () => {
+  it("把 failed/danger 切片路由为 status=danger 的 IncidentCard", () => {
     const failed = buildStorytellingFeedItems([], [{ name: "x", status: "failed" }]);
     expect(failed[0]!.kind).toBe("incident");
     if (failed[0]!.kind === "incident") expect(failed[0]!.source.status).toBe("danger");
   });
 
-  it("routes everything else into IncidentCard with status=info", () => {
+  it("把其余全部路由为 status=info 的 IncidentCard", () => {
     const items = buildStorytellingFeedItems(
       [],
       [
@@ -119,7 +117,7 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     });
   });
 
-  it("composes missions + slices into a single ordered list (missions first, slices after)", () => {
+  it("把任务 + 切片合成单一有序列表（任务在前，切片在后）", () => {
     const items = buildStorytellingFeedItems(
       [{ name: "m1", path: "missions/m1" }],
       [{ name: "s1", status: "shipped" }],
@@ -129,17 +127,17 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     expect(items[1]!.kind).toBe("shipped");
   });
 
-  it("returns an empty list when both inputs are empty (no spurious cards)", () => {
+  it("两输入皆空时返回空列表（无误产生卡片）", () => {
     expect(buildStorytellingFeedItems([], [])).toEqual([]);
   });
 
-  it("tolerates null/undefined inputs without throwing", () => {
-    // @ts-expect-error — intentional shape mismatch to verify defensive
-    // guards against runtime data drift (daemon could return null).
+  it("容忍 null/undefined 输入而不抛错", () => {
+    // @ts-expect-error —— 故意形状不匹配，验证对运行时数据漂移
+    // （后台可能返回 null）的防御。
     expect(buildStorytellingFeedItems(null, undefined)).toEqual([]);
   });
 
-  it("routes approval-kind FeedCards into ApprovalCard items with qitemId extracted from payload", () => {
+  it("把 approval 类 FeedCard 路由为 ApprovalCard 项，从 payload 提取 qitemId", () => {
     const items = buildStorytellingFeedItems(
       [],
       [],
@@ -159,12 +157,12 @@ describe("buildStorytellingFeedItems — production adapter", () => {
       expect(items[0]!.source.drillInHref).toBe("/for-you");
     }
     if (items[1]!.kind === "approval") {
-      // Snake-case payload key also resolves.
+      // 下划线 payload 键也能解析。
       expect(items[1]!.source.qitemId).toBe("qitem-def");
     }
   });
 
-  it("caps approvals at 2 to keep the preview band tight", () => {
+  it("审批上限 2，保持预览条紧凑", () => {
     const items = buildStorytellingFeedItems(
       [],
       [],
@@ -179,7 +177,7 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     expect(items.filter((i) => i.kind === "approval")).toHaveLength(2);
   });
 
-  it("ignores non-approval FeedCards (Shipped / Progress / Incident come from missions+slices, not from feedCards)", () => {
+  it("忽略非审批 FeedCard（Shipped/Progress/Incident 来自任务+切片，不来自 feedCards）", () => {
     const nonApproval: FeedCard[] = [
       { ...makeApprovalFeedCard({ qitemId: "x1" }), kind: "shipped" },
       { ...makeApprovalFeedCard({ qitemId: "x2" }), kind: "progress" },
@@ -187,24 +185,21 @@ describe("buildStorytellingFeedItems — production adapter", () => {
       { ...makeApprovalFeedCard({ qitemId: "x4" }), kind: "observation" },
     ];
     const items = buildStorytellingFeedItems([], [], undefined, nonApproval);
-    // No approval inputs ⇒ no approval outputs. Non-approval FeedCards
-    // are NOT routed through this adapter (mission/slice rows are the
-    // source for those kinds).
+    // 无审批输入 ⇒ 无审批输出。非审批 FeedCard 不经过本适配器路由
+    //（那些类型的来源是任务/切片行）。
     expect(items).toEqual([]);
   });
 
-  // OPR.0.3.2.17 — ConceptCard data source (replacing the 0.3.1 deferred
-  // pin; HG-6 fail-first discriminator).
+  // OPR.0.3.2.17 —— ConceptCard 数据源（取代 0.3.1 推迟的 pin；
+  // HG-6 fail-first 判别）。
   //
-  // Source: shaped backlog candidates — SliceListEntry rows where
-  //   rawStatus === "candidate" (case-insensitive).
-  // Mapping: sliceId ← name; title ← displayName (or name); oneLiner ←
-  //   frontmatter description (passed through as the adapter row's
-  //   `description` field).
-  // Graceful-empty (HG-2): no candidate rows → no concept items, no
-  //   error; other kinds unaffected.
+  // 来源：塑形后的 backlog 候选——rawStatus === "candidate"（大小写不敏感）
+  //   的 SliceListEntry 行。
+  // 映射：sliceId ← name；title ← displayName（或 name）；oneLiner ←
+  //   frontmatter description（作为适配器行的 `description` 字段透传）。
+  // 优雅空态（HG-2）：无候选行 → 无 concept 项、无错误；其他类型不受影响。
 
-  it("HG-1: rawStatus='candidate' slice emits a ConceptCard via the adapter (fail-first; passes only when concept branch is wired)", () => {
+  it("HG-1：rawStatus='candidate' 切片经适配器发出 ConceptCard（fail-first；仅当 concept 分支接线才通过）", () => {
     const items = buildStorytellingFeedItems(
       [],
       [
@@ -227,7 +222,7 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     }
   });
 
-  it("HG-1: rawStatus='Candidate' (mixed case) still emits ConceptCard", () => {
+  it("HG-1：rawStatus='Candidate'（混合大小写）仍发出 ConceptCard", () => {
     const items = buildStorytellingFeedItems(
       [],
       [{ name: "c1", missionId: "backlog", displayName: "c1", status: "draft", rawStatus: "Candidate", description: "d" }],
@@ -235,13 +230,13 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     expect(items.filter((i) => i.kind === "concept")).toHaveLength(1);
   });
 
-  it("HG-2 graceful-empty: zero candidate rows → no concept items, no error, other kinds still render", () => {
+  it("HG-2 优雅空态：零候选行 → 无 concept 项、无错误，其他类型仍渲染", () => {
     const items = buildStorytellingFeedItems(
       [{ name: "m1", path: "missions/m1" }],
       [
         { name: "s-shipped", status: "shipped" },
         { name: "s-blocked", status: "blocked" },
-        // no rawStatus='candidate' row anywhere
+        // 任意位置都没有 rawStatus='candidate' 行
       ],
       undefined,
       [makeApprovalFeedCard({ qitemId: "q1" })],
@@ -253,7 +248,7 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     expect(items.filter((i) => i.kind === "approval")).toHaveLength(1);
   });
 
-  it("HG-4 cap: ConceptCard items capped at 2 per the curated-band rule", () => {
+  it("HG-4 上限：按精选条规则 ConceptCard 项上限 2", () => {
     const slices = Array.from({ length: 5 }).map((_, i) => ({
       name: `cand-${i}`,
       missionId: "backlog",
@@ -266,17 +261,17 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     expect(items.filter((i) => i.kind === "concept")).toHaveLength(2);
   });
 
-  it("HG-5 no regression: candidate slices do NOT also emit shipped/incident items (concept routing is exclusive)", () => {
+  it("HG-5 无回归：候选切片不再同时发出 shipped/incident 项（concept 路由互斥）", () => {
     const items = buildStorytellingFeedItems(
       [],
       [{ name: "c1", missionId: "backlog", displayName: "c1", status: "draft", rawStatus: "candidate", description: "d" }],
     );
-    // Concept-routed rows must not double-count into shipped/incident.
+    // concept 路由的行不得重复计入 shipped/incident。
     expect(items).toHaveLength(1);
     expect(items[0]!.kind).toBe("concept");
   });
 
-  it("ConceptCardSource oneLiner falls back to a stable placeholder when description is missing (defense; PRD allows graceful)", () => {
+  it("description 缺失时 ConceptCardSource oneLiner 回退到稳定占位（防御；PRD 允许优雅）", () => {
     const items = buildStorytellingFeedItems(
       [],
       [{ name: "c1", missionId: "backlog", displayName: "c1", status: "draft", rawStatus: "candidate" }],
@@ -288,12 +283,11 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     }
   });
 
-  // Guard BLOCKER qitem-20260518093643 — PRD Option A scopes the
-  // ConceptCard source narrowly: missions/backlog/slices/<slug> with
-  // `status: candidate`. A `status: candidate` row under any other
-  // mission (or with missionId === null) must NOT emit a concept item;
-  // it routes through the normal status-bucket path instead.
-  it("BLOCKER fix: candidate slice under a NON-backlog mission emits zero ConceptCards (PRD Option A — backlog-only)", () => {
+  // 守护 BLOCKER qitem-20260518093643 —— PRD 选项 A 把 ConceptCard
+  // 来源限定为 missions/backlog/slices/<slug> 且 `status: candidate`。
+  // 任何其他任务下（或 missionId === null）的 `status: candidate` 行
+  // 都不得发出 concept 项，而是走普通状态桶路径。
+  it("BLOCKER 修复：非 backlog 任务下的候选切片发出零 ConceptCard（PRD 选项 A——仅 backlog）", () => {
     const items = buildStorytellingFeedItems(
       [],
       [
@@ -301,11 +295,11 @@ describe("buildStorytellingFeedItems — production adapter", () => {
       ],
     );
     expect(items.filter((i) => i.kind === "concept")).toHaveLength(0);
-    // Falls through to status-bucket path; status="draft" routes to incident-info.
+    // 落到状态桶路径；status="draft" 路由到 incident-info。
     expect(items.filter((i) => i.kind === "incident")).toHaveLength(1);
   });
 
-  it("BLOCKER fix: candidate slice with missionId=null emits zero ConceptCards", () => {
+  it("BLOCKER 修复：missionId=null 的候选切片发出零 ConceptCard", () => {
     const items = buildStorytellingFeedItems(
       [],
       [
@@ -315,7 +309,7 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     expect(items.filter((i) => i.kind === "concept")).toHaveLength(0);
   });
 
-  it("BLOCKER fix: backlog candidate STILL emits exactly one ConceptCard (positive case preserved)", () => {
+  it("BLOCKER 修复：backlog 候选仍恰好发出一个 ConceptCard（保留正例）", () => {
     const items = buildStorytellingFeedItems(
       [],
       [
@@ -325,7 +319,7 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     expect(items.filter((i) => i.kind === "concept")).toHaveLength(1);
   });
 
-  it("BLOCKER fix: mixed input — 2 backlog candidates + 2 non-backlog candidates → 2 ConceptCards (only backlog), non-backlog as incidents", () => {
+  it("BLOCKER 修复：混合输入——2 个 backlog 候选 + 2 个非 backlog 候选 → 2 个 ConceptCard（仅 backlog），非 backlog 为 incident", () => {
     const items = buildStorytellingFeedItems(
       [],
       [
@@ -336,13 +330,12 @@ describe("buildStorytellingFeedItems — production adapter", () => {
       ],
     );
     expect(items.filter((i) => i.kind === "concept")).toHaveLength(2);
-    // Non-backlog candidates fall through to incident (status: draft → info).
+    // 非 backlog 候选落到 incident（status: draft → info）。
     expect(items.filter((i) => i.kind === "incident")).toHaveLength(2);
   });
 
-  // Pure-helper unit test — the predicate is exported separately for
-  // discrete pinning.
-  it("isBacklogCandidateSlice predicate: backlog+candidate=true; everything else=false", async () => {
+  // 纯 helper 单测——谓词单独导出以便独立 pin。
+  it("isBacklogCandidateSlice 谓词：backlog+candidate=true；其余皆 false", async () => {
     const { isBacklogCandidateSlice } = await import("../src/components/feed/cards/storytelling-cards.js");
     expect(isBacklogCandidateSlice({ name: "x", missionId: "backlog", rawStatus: "candidate" })).toBe(true);
     expect(isBacklogCandidateSlice({ name: "x", missionId: "backlog", rawStatus: "Candidate" })).toBe(true);
@@ -353,7 +346,7 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     expect(isBacklogCandidateSlice({ name: "x", missionId: "backlog" })).toBe(false);
   });
 
-  it("falls back to FeedCard.id when payload has no qitemId/qitem_id key", () => {
+  it("payload 无 qitemId/qitem_id 键时回退到 FeedCard.id", () => {
     const card = makeApprovalFeedCard({ id: "queue.created-42" });
     const items = buildStorytellingFeedItems([], [], undefined, [card]);
     expect(items).toHaveLength(1);
@@ -362,12 +355,11 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     }
   });
 
-  // OPR.0.4.1.27 qa forward-fix — the preview band must reflect the
-  // SUBSCRIPTION-FILTERED set, not the raw feed. The adapter renders an
-  // approval preview iff its caller includes an approval card, so the caller
-  // (Feed.tsx) MUST pass the level-filtered `cards`, not `rawCards`. These pin
-  // both the bug and the fix at the caller-contract level.
-  describe("preview follows the subscription-filtered set (level honesty)", () => {
+  // OPR.0.4.1.27 qa forward-fix —— 预览条必须反映经过订阅过滤的集合，
+  // 而非原始 feed。仅当调用方传入审批卡片时适配器才渲染审批预览，
+  // 因此调用方（Feed.tsx）必须传入按级别过滤后的 `cards`，而非 `rawCards`。
+  // 这里在调用方契约层同时 pin 住 bug 与修复。
+  describe("预览跟随订阅过滤后的集合（级别诚实）", () => {
     const needsYou: FeedSubscriptionState = {
       actionRequired: true,
       approvals: false,
@@ -382,17 +374,17 @@ describe("buildStorytellingFeedItems — production adapter", () => {
     };
     const approvalCard = makeApprovalFeedCard({ qitemId: "ap-1", title: "Needs approval" });
 
-    it("Needs-you (approvals OFF): the filtered set excludes approval, so the preview emits NO approval item; action-required survives", () => {
+    it("Needs-you（审批关）：过滤后集合排除审批，预览不发出审批项；action-required 保留", () => {
       const raw: FeedCard[] = [actionCard, approvalCard];
-      // What Feed must pass to the adapter: the subscription-filtered set.
+      // Feed 必须传给适配器的是订阅过滤后的集合。
       const visible = raw.filter((c) => isCardKindSubscribed(c.kind, needsYou));
-      expect(visible.some((c) => c.kind === "action-required")).toBe(true); // floor survives
-      expect(visible.some((c) => c.kind === "approval")).toBe(false); // approval filtered out
+      expect(visible.some((c) => c.kind === "action-required")).toBe(true); // 底线保留
+      expect(visible.some((c) => c.kind === "approval")).toBe(false); // 审批被过滤掉
       const items = buildStorytellingFeedItems([], [], undefined, visible);
       expect(items.some((i) => i.kind === "approval")).toBe(false);
     });
 
-    it("documents the BUG: passing the RAW (unfiltered) set surfaces approval at Needs-you — the pre-fix wiring", () => {
+    it("记录该 bug：传入原始（未过滤）集合会在 Needs-you 处露出审批——修复前接线", () => {
       const raw: FeedCard[] = [actionCard, approvalCard];
       const items = buildStorytellingFeedItems([], [], undefined, raw);
       expect(items.some((i) => i.kind === "approval")).toBe(true);

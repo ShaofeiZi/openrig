@@ -77,7 +77,7 @@ describe("RigSpecDisplay", () => {
   it("renders pod member tables for pod-aware review data", () => {
     render(<RigSpecDisplay review={POD_AWARE_REVIEW} yaml="name: test" />);
 
-    // Switch to configuration tab
+    // 切到 configuration tab
     fireEvent.click(screen.getByTestId("tab-configuration"));
 
     expect(screen.getByTestId("config-tables")).toBeDefined();
@@ -94,7 +94,7 @@ describe("RigSpecDisplay", () => {
 
     fireEvent.click(screen.getByTestId("tab-configuration"));
 
-    expect(screen.getByText("Nodes")).toBeDefined();
+    expect(screen.getByText("节点")).toBeDefined();
     expect(screen.getAllByText("node-1").length).toBeGreaterThan(0);
     expect(screen.getAllByText("node-2").length).toBeGreaterThan(0);
     expect(screen.getByText("lead")).toBeDefined();
@@ -107,7 +107,7 @@ describe("RigSpecDisplay", () => {
 
     fireEvent.click(screen.getByTestId("tab-configuration"));
 
-    expect(screen.getByText("Edges")).toBeDefined();
+    expect(screen.getByText("边")).toBeDefined();
     expect(screen.getByText("delegates_to")).toBeDefined();
   });
 
@@ -191,7 +191,7 @@ describe("AgentSpecDisplay", () => {
 
     expect(screen.getByTestId("agent-startup-section")).toBeDefined();
     expect(screen.getByText("CLAUDE.md")).toBeDefined();
-    expect(screen.getByText("REQUIRED")).toBeDefined();
+    expect(screen.getByText("必需")).toBeDefined();
     expect(screen.getByText("/compact")).toBeDefined();
   });
 

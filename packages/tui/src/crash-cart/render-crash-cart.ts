@@ -1,7 +1,7 @@
-// Crash-cart cockpit RENDERER (5.2 Wave B, plan c015d9ed §C3) — model → rows, reproducing the
-// approved mock (3d3c90a0) structure/ordering/emphasis in the TUI idiom. Glyph set ◌/▦/⏎/✓ and the
-// section wording are CONTRACT; theme tokens only (no invented colors). Bold text carries a color
-// token (`bright`) because a bold-only seg renders as plain ink in this pipeline.
+// 故障诊断座舱渲染器（5.2 Wave B，计划 c015d9ed §C3）——model → 行，以 TUI 惯用方式复现
+// 批准 mock（3d3c90a0）的结构/顺序/强调。字形集 ◌/▦/⏎/✓ 和分区措辞是契约；
+// 仅主题 token（无发明颜色）。粗体文本携带颜色 token（`bright`），因为纯粗体 seg
+// 在此管道中渲染为普通墨色。
 import type { Token } from "../theme.js";
 import type { CrashCartModel } from "./crash-cart-model.js";
 import type { DaemonUnverifiedEvidence } from "./contract.js";
@@ -21,28 +21,28 @@ interface Line {
   selected?: boolean;
 }
 
-/** Build a Line whose plain `text` is the concat of its segs (capture/width truth). */
+/** 构建一行，其纯 `text` 是 segs 的拼接（捕获/宽度真值）。 */
 function line(segs: Seg[], opts?: { selected?: boolean }): Line {
   return { text: segs.map((s) => s.text).join(""), segs, ...(opts?.selected ? { selected: true } : {}) };
 }
 
-/** The daemon-down header: `◌ daemon not running` (warn) + the dim status tail. The uptime + reason
- *  slots render EXPLICIT honest-unknown text (PM ruling) — structure/ordering per the mock. */
+/** 后台服务停止头部：`◌ 后台服务未运行`（warn）+ 置灰状态尾部。运行时间 + 原因
+ *  槽位渲染显式诚实未知文本（PM 裁决）——结构/顺序按 mock。 */
 export function renderCrashCartHeader(model: CrashCartModel): Line {
   const h = model.header;
   return line([
-    { text: "◌ daemon not running", token: "warn" },
+    { text: "◌ 后台服务未运行", token: "warn" },
     {
-      text: ` — last seen ${h.lastSeen} (uptime ${h.uptimeText}) · reason: ${h.reasonText}`,
+      text: ` — 最后见于 ${h.lastSeen}（运行时间 ${h.uptimeText}）· 原因：${h.reasonText}`,
       token: "dim",
     },
   ]);
 }
 
-/** `FOUND ON THIS HOST` + one row per rig: `▦ <name>  <n> seats · last active <t> · <r> sessions resumable`.
- *  Name column is padded to the widest name + a 4-space gap so the details align (the mock's fixed columns). */
+/** `在此主机上找到` + 每个工作组一行：`▦ <名称>  <n> 个席位 · 最后活动 <t> · <r> 个会话可恢复`。
+ *  名称列填充到最宽名称 + 4 空格间距，使详情对齐（mock 的固定列）。 */
 export function renderFoundOnHost(model: CrashCartModel): Line[] {
-  const out: Line[] = [line([{ text: "FOUND ON THIS HOST", token: "dim" }])];
+  const out: Line[] = [line([{ text: "在此主机上找到", token: "dim" }])];
   const nameCol = Math.max(0, ...model.foundOnHost.map((r) => r.name.length)) + 4;
   for (const r of model.foundOnHost) {
     const pad = " ".repeat(Math.max(0, nameCol - r.name.length));
@@ -52,7 +52,7 @@ export function renderFoundOnHost(model: CrashCartModel): Line[] {
         { text: r.name, token: "bright", bold: true },
         { text: pad },
         {
-          text: `${r.seatCount} seats · last active ${r.lastActive} · ${r.resumableCount} sessions resumable`,
+          text: `${r.seatCount} 个席位 · 最后活动 ${r.lastActive} · ${r.resumableCount} 个会话可恢复`,
           token: "dim",
         },
       ]),
@@ -61,13 +61,13 @@ export function renderFoundOnHost(model: CrashCartModel): Line[] {
   return out;
 }
 
-/** `WHERE WORK STOPPED (from the durable ledgers)` + one `◌ <session> — qitem in-progress: "<summary>" (<t>)`
- *  per in-progress item, then always the `✓ everything else idle-clean at stop` closing line. */
+/** `工作停止处（来自持久化台账）` + 每个进行中项一行 `◌ <会话> — qitem 进行中："<摘要>" (<t>)`，
+ *  然后始终为 `✓ 其余在停止时均为空闲清理` 的结束行。 */
 export function renderWhereWorkStopped(model: CrashCartModel): Line[] {
   const out: Line[] = [
     line([
-      { text: "WHERE WORK STOPPED", token: "dim" },
-      { text: " (from the durable ledgers)", token: "dim" },
+      { text: "工作停止处", token: "dim" },
+      { text: "（来自持久化台账）", token: "dim" },
     ]),
   ];
   for (const w of model.whereWorkStopped) {
@@ -75,51 +75,51 @@ export function renderWhereWorkStopped(model: CrashCartModel): Line[] {
       line([
         { text: " ◌ ", token: "warn" },
         { text: w.session },
-        { text: ` — qitem in-progress: "${w.summary}" (${w.time})`, token: "dim" },
+        { text: ` — qitem 进行中："${w.summary}" (${w.time})`, token: "dim" },
       ]),
     );
   }
-  out.push(line([{ text: " ✓ ", token: "ok" }, { text: "everything else idle-clean at stop" }]));
+  out.push(line([{ text: " ✓ ", token: "ok" }, { text: "其余在停止时均为空闲清理" }]));
   return out;
 }
 
-/** The actions block: the highlighted primary `⏎ RESTORE EVERYTHING …` row + the secondary key row. */
+/** 动作块：高亮主行 `⏎ 恢复全部 …` + 副键行。 */
 export function renderActions(): Line[] {
   return [
     line(
       [
         {
-          text: " ⏎ RESTORE EVERYTHING — daemon + kernel + all rigs, sessions resumed in their seats ",
+          text: " ⏎ 恢复全部 — 后台服务 + 内核 + 所有工作组，会话在席位上恢复 ",
           bg: "accent",
         },
       ],
       { selected: true },
     ),
     line([
-      { text: "  s start daemon only  ·  i inspect a rig  ·  n new here? onboarding" },
-      { text: " (policy menu lives here now)", token: "dim" },
+      { text: "  s 仅启动后台服务  ·  i 检查工作组  ·  n 新用户？引导" },
+      { text: "（策略菜单现在此处）", token: "dim" },
     ]),
   ];
 }
 
-/** First-run framing (DOWN + no DB): a fresh host, NOT a crash — onboarding, never a crash header or
- *  a RESTORE-of-nothing (PM ruling: crash language requires evidence of prior life). */
+/** 首次运行框架（停止 + 无数据库）：全新主机，非故障——引导，绝非故障头部或
+ *  恢复空内容（PM 裁决：故障语言需要先前生命证据）。 */
 export function renderFirstRunView(): Line[] {
   return [
     line([
-      { text: "◌ no daemon running", token: "warn" },
-      { text: " — no rigs found on this host yet (a fresh host)", token: "dim" },
+      { text: "◌ 无后台服务运行", token: "warn" },
+      { text: " — 此主机上尚未找到工作组（全新主机）", token: "dim" },
     ]),
     { text: "" },
-    line([{ text: "Nothing to restore — this looks like a first run.", token: "dim" }]),
+    line([{ text: "无可恢复内容——这看起来像首次运行。", token: "dim" }]),
     { text: "" },
-    line([{ text: " ⏎ n new here? onboarding (policy menu lives here now) ", bg: "accent" }], { selected: true }),
-    line([{ text: "  s start daemon only" }]),
+    line([{ text: " ⏎ n 新用户？引导（策略菜单现在此处） ", bg: "accent" }], { selected: true }),
+    line([{ text: "  s 仅启动后台服务" }]),
   ];
 }
 
-/** The whole crash-cart cockpit view: recovery = header → FOUND ON THIS HOST → WHERE WORK STOPPED →
- *  actions (mock-verbatim ordering); first-run = onboarding framing. */
+/** 整个故障诊断座舱视图：recovery = 头部 → 在此主机上找到 → 工作停止处 →
+ *  动作（mock 逐字顺序）；first-run = 引导框架。 */
 export function renderCrashCartView(model: CrashCartModel): Line[] {
   if (model.mode === "first-run") return renderFirstRunView();
   return [
@@ -133,9 +133,9 @@ export function renderCrashCartView(model: CrashCartModel): Line[] {
   ];
 }
 
-/** Glyph + token for the DONE header by the DERIVED fleet verdict — the conclusion must match the
- *  truth: only an all-restored fleet wears the success ✓; all_failed is ✗; none_attempted / mixed carry
- *  a warning, never a success glyph (BLOCKER 2 — the rollup was truthful, the header was not). */
+/** DONE 头部的字形 + token，按派生的舰队判决——结论必须匹配
+ *  真相：仅全恢复舰队佩戴成功 ✓；all_failed 是 ✗；none_attempted / mixed 携带
+ *  警告，绝不成功字形（BLOCKER 2——汇总诚实，头部不诚实）。 */
 function verdictGlyph(verdict: string): { glyph: string; token: Token } {
   switch (verdict) {
     case "all_fully_restored":
@@ -143,11 +143,11 @@ function verdictGlyph(verdict: string): { glyph: string; token: Token } {
     case "all_failed":
       return { glyph: "✗", token: "error" };
     default:
-      return { glyph: "⚠", token: "warn" }; // none_attempted / mixed / partially — not a success
+      return { glyph: "⚠", token: "warn" }; // none_attempted / mixed / partially — 非成功
   }
 }
 
-/** Glyph for a per-rig progress row by its rollup outcome. */
+/** 按汇总结果的按工作组进度行字形。 */
 function outcomeGlyph(outcome: string): { glyph: string; token: Token } {
   switch (outcome) {
     case "fully_restored":
@@ -161,29 +161,29 @@ function outcomeGlyph(outcome: string): { glyph: string; token: Token } {
   }
 }
 
-/** The RESTORE LIFECYCLE view (B1 ROUND 2). While running: a live header + a per-rig progress list
- *  updated from each poll (the rollup stream) + the cancel affordance. When done: the verdict + counts
- *  and the SHIPPED keyboard-walkable triage list (renderTriage) — each seat/rig on its own row with its
- *  EXACT need, NOT a width-clipped one-line footer summary. */
+/** 恢复生命周期视图（B1 ROUND 2）。运行中：实时头部 + 按工作组进度列表
+ *  从每次轮询更新（汇总流）+ 取消可用性。完成时：判决 + 计数
+ *  和已发布的可键盘遍历诊断列表（renderTriage）——每个席位/工作组在自己行上，带有其
+ *  确切需要，绝非宽度裁剪的一行页脚摘要。 */
 export function renderRestoreLifecycleView(vm: RestoreLifecycleVM): Line[] {
   const c = vm.counts;
   const total = c.fully_restored + c.partially_restored + c.failed + c.not_attempted;
   const countsSeg: Seg = {
-    text: `${c.fully_restored} restored · ${c.partially_restored} partial · ${c.failed} failed · ${c.not_attempted} not attempted`,
+    text: `${c.fully_restored} 已恢复 · ${c.partially_restored} 部分 · ${c.failed} 失败 · ${c.not_attempted} 未尝试`,
     token: "dim",
   };
 
   if (vm.phase === "running") {
     const out: Line[] = [
       line([
-        { text: "⟳ RESTORING FLEET", token: "bright", bold: true },
-        { text: `  — ${total} of the fleet done so far`, token: "dim" },
+        { text: "⟳ 正在恢复舰队", token: "bright", bold: true },
+        { text: `  — 到目前为止 ${total} 个已完成`, token: "dim" },
       ]),
       line([countsSeg]),
     ];
-    // HIGH-1 — an ACCEPTED cancel is honestly rendered: the state SAYS cancellation was requested and
-    // the current rig will finish, and it no longer offers the initial `c cancel` affordance.
-    if (vm.cancelled) out.push(line([{ text: "⚠ cancellation requested — the current rig will finish, then stop", token: "warn" }]));
+    // HIGH-1——已接受的取消诚实渲染：状态说明已请求取消且
+    // 当前工作组将完成，不再提供初始 `c cancel` 可用性。
+    if (vm.cancelled) out.push(line([{ text: "⚠ 已请求取消——当前工作组将完成，然后停止", token: "warn" }]));
     out.push({ text: "" });
     for (const p of vm.progress) {
       const g = outcomeGlyph(p.outcome);
@@ -192,26 +192,26 @@ export function renderRestoreLifecycleView(vm: RestoreLifecycleVM): Line[] {
     out.push({ text: "" });
     out.push(
       vm.cancelled
-        ? line([{ text: "  cancellation accepted — waiting for the current rig; the restore stops before the next", token: "dim" }])
-        : line([{ text: "  c cancel (stop-before-next-rig)  ·  restore continues per rig", token: "dim" }]),
+        ? line([{ text: "  取消已接受——等待当前工作组；恢复在下一个之前停止", token: "dim" }])
+        : line([{ text: "  c 取消（在下一个工作组前停止）  ·  按工作组继续恢复", token: "dim" }]),
     );
     return out;
   }
 
   if (vm.phase === "detached") {
-    // The live view paused past its window (poll ceiling, or a sustained poll-error streak) — the
-    // restore is CONTINUING on the daemon, not stopped. An explicit, OPERABLE state: reattach resumes
-    // the live view, cancel stops-before-next-rig by the retained id (both observable via the resumed poll).
+    // 实时视图超出窗口暂停（轮询上限或持续轮询错误连击）——
+    // 恢复在后台服务上继续，而非停止。显式、可操作的状态：重新附着恢复
+    // 实时视图，取消按保留 ID 在下一个工作组前停止（两者通过恢复的轮询可观察）。
     const out: Line[] = [
       line([
-        { text: "⚠ RESTORE STILL RUNNING ON THE DAEMON", token: "warn", bold: true },
-        { text: `  — attempt ${vm.attemptId}`, token: "dim" },
+        { text: "⚠ 恢复仍在后台服务上运行", token: "warn", bold: true },
+        { text: `  — 尝试 ${vm.attemptId}`, token: "dim" },
       ]),
-      line([{ text: "the live view paused past its window; the restore is CONTINUING on the daemon, not stopped.", token: "dim" }]),
+      line([{ text: "实时视图超出窗口暂停；恢复在后台服务上继续，而非停止。", token: "dim" }]),
       line([countsSeg]),
     ];
-    // HIGH-1 — if cancel was already requested, say so and drop the `c cancel` offer; reattach confirms it.
-    if (vm.cancelled) out.push(line([{ text: "⚠ cancellation requested — reattach to confirm it lands on the daemon", token: "warn" }]));
+    // HIGH-1——如果已请求取消，说明并丢弃 `c cancel` 提供；重新附着确认。
+    if (vm.cancelled) out.push(line([{ text: "⚠ 已请求取消——重新附着以确认其到达后台服务", token: "warn" }]));
     out.push({ text: "" });
     for (const p of vm.progress) {
       const g = outcomeGlyph(p.outcome);
@@ -220,8 +220,8 @@ export function renderRestoreLifecycleView(vm: RestoreLifecycleVM): Line[] {
     out.push({ text: "" });
     out.push(
       vm.cancelled
-        ? line([{ text: "  r reattach (confirm the cancellation)  ·  any key dismiss", token: "dim" }])
-        : line([{ text: "  r reattach (resume the live view)  ·  c cancel (stop-before-next-rig)  ·  any key dismiss", token: "dim" }]),
+        ? line([{ text: "  r 重新附着（确认取消）  ·  任意键关闭", token: "dim" }])
+        : line([{ text: "  r 重新附着（恢复实时视图）  ·  c 取消（在下一个工作组前停止）  ·  任意键关闭", token: "dim" }]),
     );
     return out;
   }
@@ -230,48 +230,47 @@ export function renderRestoreLifecycleView(vm: RestoreLifecycleVM): Line[] {
   const vg = verdictGlyph(vm.verdict);
   const out: Line[] = [
     line([
-      { text: `${vg.glyph} FLEET RESTORE: ${vm.verdict}`, token: vg.token, bold: true },
-      ...(vm.cancelled ? [{ text: " (cancelled)", token: "warn" as Token }] : []),
+      { text: `${vg.glyph} 舰队恢复：${vm.verdict}`, token: vg.token, bold: true },
+      ...(vm.cancelled ? [{ text: "（已取消）", token: "warn" as Token }] : []),
     ]),
     line([countsSeg]),
     { text: "" },
-    // The shipped triage renderer — one keyboard-walkable row per need (seat + exact remediation),
-    // or the all-clean line. This is the surface the door test asserts.
+    // 已发布的诊断渲染器——每个需要一行可键盘遍历行（席位 + 确切补救），
+    // 或全清理行。这是门测试断言的表面。
     ...renderTriage(vm.triage),
   ];
   return out;
 }
 
-/** B1 ROUND 10 — the ⏎ confirm banner, rendered at the TOP of the cockpit so the operator SEES the
- *  confirmation where they look. The first ⏎ used to be invisible because the confirm went to
- *  ViewState.notice, which the daemon-down cockpit does not render. The message already names the deltas
- *  and the ⏎-proceed / Esc-cancel affordance. */
+/** B1 ROUND 10——⏎ 确认横幅，渲染在座舱顶部，使操作者在看的位置
+ *  看到确认。第一次 ⏎ 曾不可见，因为确认进入了 ViewState.notice，
+ *  后台服务停止座舱不渲染它。消息已列出差异和 ⏎ 继续 / Esc 取消可用性。 */
 export function renderConfirmBanner(message: string): Line[] {
   return [
-    line([{ text: "⚠ CONFIRM RESTORE", token: "warn", bold: true }]),
+    line([{ text: "⚠ 确认恢复", token: "warn", bold: true }]),
     line([{ text: message, token: "bright" }]),
     { text: "" },
   ];
 }
 
-/** The UNVERIFIED screen (planner+PM ruling): a minimal DISTINCT view — evidence VERBATIM + retry +
- *  quit + the rig-status hint, and ZERO recovery actions (never the cockpit, never RESTORE). */
+/** UNVERIFIED 屏幕（规划器+PM 裁决）：最小化的独特视图——证据逐字 + 重试 +
+ *  退出 + 工作组状态提示，零恢复动作（绝不座舱，绝不恢复）。 */
 export function renderUnverifiedView(evidence: DaemonUnverifiedEvidence): Line[] {
   return [
     line([
-      { text: "◌ cannot verify the daemon", token: "warn" },
-      { text: " — may be busy/wedged, not confirmed down", token: "dim" },
+      { text: "◌ 无法验证后台服务", token: "warn" },
+      { text: " — 可能繁忙/卡住，未确认已停止", token: "dim" },
     ]),
     { text: "" },
     line([{ text: " pid:    ", token: "dim" }, { text: evidence.pidState }]),
-    line([{ text: " probe:  ", token: "dim" }, { text: evidence.probeResult }]),
-    line([{ text: " signal: ", token: "dim" }, { text: evidence.failedSignal }]),
+    line([{ text: " 探测:  ", token: "dim" }, { text: evidence.probeResult }]),
+    line([{ text: " 信号: ", token: "dim" }, { text: evidence.failedSignal }]),
     { text: "" },
-    line([{ text: "  r retry  ·  q quit  ·  try: rig status", token: "dim" }]),
+    line([{ text: "  r 重试  ·  q 退出  ·  尝试：zrig status", token: "dim" }]),
   ];
 }
 
-// The full-width Screen wrappers (renderCrashCartScreen/renderUnverifiedScreen/linesToScreen) were
-// REMOVED in the shell-placement rework (ruling 3c6c2be0): the cockpit now renders as a content-pane
-// view inside the standard shell (render.ts crashCartShell), so the content builders above produce
-// Line[] and the shell owns the Screen. The full-width stylize branch that only they used is gone too.
+// 全宽 Screen 包装器（renderCrashCartScreen/renderUnverifiedScreen/linesToScreen）在
+// shell 布局重做中移除（裁决 3c6c2be0）：座舱现在作为内容面板视图渲染在
+// 标准 shell 内（render.ts crashCartShell），因此上面的内容构建器产生
+// Line[]，shell 拥有 Screen。仅它们使用的全宽 stylize 分支也已消失。

@@ -1,8 +1,8 @@
 import { Command } from "commander";
 
-// OPR.0.5.5.19 A7 — `rig parked [seat]`: the founder's one-command ask. The diagnosis is
-// DERIVED at read time by the daemon (activity oracle × the queue's obligation face) and
-// returns confidence for BOTH inputs — this command renders it, it never computes it.
+// OPR.0.5.5.19 A7 — `zrig parked [seat]`：创始人的一键诊断。诊断在读取时由后台服务
+// 推导得出（活动判定 oracle × 队列的义务面），并对两个输入都返回置信度——本命令只负责
+// 渲染，绝不自行计算。
 
 interface SeatDiagnosis {
   seatNodeId: string;
@@ -30,41 +30,40 @@ interface SeatDiagnosis {
 }
 
 function verdictWord(parked: boolean | "indeterminate"): string {
-  return parked === true ? "PARKED" : parked === false ? "not parked" : "INDETERMINATE";
+  return parked === true ? "已驻留" : parked === false ? "未驻留" : "不确定";
 }
 
 function renderSeat(d: SeatDiagnosis): void {
-  console.log(`${d.sessionName}: ${verdictWord(d.parked)} — ${d.reason}`);
-  console.log(`  activity: ${d.activity.value}${d.activity.needsInput.count > 0 ? ` (needs-input x${d.activity.needsInput.count}: ${d.activity.needsInput.reason})` : ""} [decided by ${d.activity.decidedBy ?? "nothing — unknown"}; confidence ${d.confidence.activity}]`);
-  console.log(`  obligations: ${d.obligations.openCount} open, ${d.obligations.heldCount} held [${d.obligations.scope}; ${d.obligations.complete ? "complete" : `MAY BE TRUNCATED at ${d.obligations.limit}`}]`);
+  console.log(`${d.sessionName}：${verdictWord(d.parked)} — ${d.reason}`);
+  console.log(`  活动：${d.activity.value}${d.activity.needsInput.count > 0 ? `（待输入 ×${d.activity.needsInput.count}：${d.activity.needsInput.reason}）` : ""} [判定依据 ${d.activity.decidedBy ?? "无 — 未知"}；置信度 ${d.confidence.activity}]`);
+  console.log(`  义务：${d.obligations.openCount} 个未结，${d.obligations.heldCount} 个持有 [${d.obligations.scope}；${d.obligations.complete ? "已完整" : `可能在 ${d.obligations.limit} 处被截断`}]`);
   for (const item of d.obligations.items.slice(0, 10)) {
     console.log(`    - ${item.state} ${item.qitemId}${item.summary ? ` — ${item.summary}` : ""}`);
   }
-  if (d.obligations.items.length > 10) console.log(`    … and ${d.obligations.items.length - 10} more`);
+  if (d.obligations.items.length > 10) console.log(`    …另有 ${d.obligations.items.length - 10} 条`);
   for (const item of d.obligations.held ?? []) {
     const wake = item.wake;
     const wakeText = wake
-      ? `${wake.kind} ${wake.ref}: ${wake.unconsumed ? `FIRED but unconsumed${wake.deliveryStatus ? ` (${wake.deliveryStatus})` : ""}` : wake.live ? "live" : "not live"}`
-      : "no recorded wake";
-    console.log(`    - HELD ${item.qitemId}${item.summary ? ` — ${item.summary}` : ""} [${wakeText}]`);
+      ? `${wake.kind} ${wake.ref}：${wake.unconsumed ? `已触发但未被消费${wake.deliveryStatus ? `（${wake.deliveryStatus}）` : ""}` : wake.live ? "存活" : "未存活"}`
+      : "无已记录的唤醒";
+    console.log(`    - 持有 ${item.qitemId}${item.summary ? ` — ${item.summary}` : ""} [${wakeText}]`);
     if (!item.healthy && !(wake?.live && !wake.unconsumed)) {
-      console.log("      Remedy: attach a live watchdog id, arm an atomic timer, or name a live blocker qitem; deferred/not-imminent work with a workspace home belongs in its mission/slice.");
+      console.log("      补救：挂载一个存活的 watchdog 标识、设置一个原子定时器，或指定一个存活的阻塞队列项；有工作区归属的延后/非紧急工作应放入其任务目标/切片。");
     }
   }
 }
 
 export function parkedCommand(): Command {
   return new Command("parked")
-    .description("Are we parked? Derived diagnosis: stopped seats owing work; HELD is healthy only while its recorded wake is live")
-    .argument("[seat]", "Seat node id or canonical session name; omit to diagnose the whole rig")
-    .option("--rig <rig>", "Rig scope (defaults to your seat's rig from OPENRIG_SESSION_NAME; a seat argument carrying @rig self-scopes)")
-    .option("--json", "Full diagnosis as JSON")
+    .description("我们是否已驻留？推导式诊断：因欠工作而停摆的席位；HELD 仅在其记录的唤醒仍存活时才算健康")
+    .argument("[seat]", "席位节点 id 或规范会话名；省略则诊断整个工作组")
+    .option("--rig <rig>", "工作组范围（默认取自 OPENRIG_SESSION_NAME 中本席位所属的工作组；带 @rig 的席位参数会自动限定范围）")
+    .option("--json", "以 JSON 输出完整诊断")
     .action(async (seat: string | undefined, opts: { json?: boolean; rig?: string }) => {
       const { DaemonClient } = await import("../client.js");
       const client = new DaemonClient();
-      // WAVE-O B2: the diagnosis is rig-scoped — carry the coordinate. A seat@rig
-      // argument self-scopes; otherwise --rig, then the shell's own seat identity.
-      // With none resolvable the daemon's teaching refusal is surfaced verbatim.
+      // WAVE-O B2：诊断是工作组范围的——需携带坐标。seat@rig 参数自带范围；
+      // 否则依次取 --rig、再取 shell 自身的席位身份。若都无法解析，则原样透传后台服务的拒绝。
       const params = new URLSearchParams();
       if (seat) params.set("seat", seat);
       if (!seat?.includes("@")) {
@@ -78,12 +77,12 @@ export function parkedCommand(): Command {
         const res = await client.get<typeof data>(`/api/activity/parked${qs ? `?${qs}` : ""}`);
         data = res.data;
       } catch (err) {
-        console.error(`refused: the parked diagnosis is derived LIVE from the oracle and the queue — it needs a reachable daemon (${(err as Error).message}).`);
+        console.error(`已拒绝：驻留诊断是实时根据 oracle 与队列推导的——需要一个可达的后台服务（${(err as Error).message}）。`);
         process.exitCode = 1;
         return;
       }
       if (!data.ok) {
-        console.error(`refused: ${data.error}`);
+        console.error(`已拒绝：${data.error}`);
         process.exitCode = 1;
         return;
       }
@@ -92,15 +91,15 @@ export function parkedCommand(): Command {
         return;
       }
       if (data.seat) {
-        if (data.scope) console.log(`scope: rig ${data.scope.rig} (from ${data.scope.resolvedFrom})`);
+        if (data.scope) console.log(`范围：工作组 ${data.scope.rig}（来自 ${data.scope.resolvedFrom}）`);
         renderSeat(data.seat);
         return;
       }
       const rig = data.rig!;
-      console.log(`rig: ${verdictWord(rig.parked)} — ${rig.reason}`);
-      if (rig.scope) console.log(`scope: rig ${rig.scope.rig} (from ${rig.scope.resolvedFrom})`);
+      console.log(`工作组：${verdictWord(rig.parked)} — ${rig.reason}`);
+      if (rig.scope) console.log(`范围：工作组 ${rig.scope.rig}（来自 ${rig.scope.resolvedFrom}）`);
       for (const d of rig.seats) {
-        if (d.parked === false) continue; // the interesting cells are parked + indeterminate
+        if (d.parked === false) continue; // 值得关注的是已驻留 + 不确定的格子
         renderSeat(d);
       }
     });

@@ -1,0 +1,22 @@
+{
+"packages/cli/src/lib/hosts/fanout-contract.ts": [
+"cli-core-a",
+null,
+"skipped"
+],
+"packages/cli/src/lib/scope/attestation-lineage.ts": [
+"cli-core-a",
+null,
+"skipped"
+],
+"packages/cli/src/lib/scope/logical-checkbox.ts": [
+"cli-core-a",
+null,
+"skipped"
+],
+"packages/cli/src/lib/scope/scaffold-placeholder.ts": [
+"cli-core-a",
+null,
+"skipped"
+]
+}

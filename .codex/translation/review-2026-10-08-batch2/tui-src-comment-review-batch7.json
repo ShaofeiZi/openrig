@@ -1,0 +1,14 @@
+{
+  "schema": "openrig.tui-src-comment-review-batch/v1",
+  "batch": 7,
+  "captured_at": "2026-10-09T19:30:00+08:00",
+  "depth": "full_comment_javascript_docstring_reviewed",
+  "owner": "s_000cae46uuw",
+  "natural_residual": 0,
+  "files": [
+    {"path": "packages/tui/src/hydrate.ts", "status": "reviewed_no_change", "after_sha256": "d8d23b9cc277215f2bd4405a0031c4cb0375b57a913b348a292659a366c01f5a", "classification": "0 English residual"},
+    {"path": "packages/tui/src/state.ts", "status": "reviewed_no_change", "after_sha256": "6b8993097dc8297aa5af8325a7ad72f9ae268745a5e5cd305817c7af2044c760", "classification": "0 English residual"},
+    {"path": "packages/tui/src/execution/execution-model.ts", "status": "reviewed_no_change", "after_sha256": "3db583b3c5a2b6995784e6fbdbb831f9bee6d463ff288f17b0d9219614c09321", "classification": "section marker '---- overview ----' retained; Slack observation/Review/Integration decision labels already Chinese"},
+    {"path": "packages/tui/src/render.ts", "status": "reviewed_no_change", "after_sha256": "1e67f4a3f1f07ebede30c27491270ba26c176e02cc0d2fd5b2da8fe1ca89aefc", "classification": "0 English residual; read(s) failed / NODE/LABEL/RUNTIME headers previously translated"}
+  ]
+}

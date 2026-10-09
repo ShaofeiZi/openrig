@@ -6,14 +6,14 @@ import type { ViewProjector } from "../domain/view-projector.js";
 import { ViewProjectorError } from "../domain/view-projector.js";
 
 /**
- * Coordination L5 — View HTTP routes (PL-004 Phase B).
+ * 协调 L5——View HTTP 路由（PL-004 Phase B）。
  *
- * Backs `rig view` CLI verb. Lists registered views (built-in + custom),
- * runs view queries, and exposes view.changed SSE for downstream consumers
- * (PL-005 Operator Status / PL-006 Mission Control / PL-008 progress).
+ * 支撑 `zrig view` CLI 动词。列出已注册 view（内置 + 自定义）、运行 view 查询，
+ * 并向下游消费方（PL-005 Operator Status / PL-006 Mission Control / PL-008 progress）
+ * 暴露 view.changed SSE。
  *
- * Per Phase A R1 SSE route-order lesson (slice IMPL § Audit Row 12):
- * SSE/static routes are mounted BEFORE the bare-param /:name catchall.
+ * 按 Phase A R1 SSE 路由顺序教训（slice IMPL § Audit Row 12）：
+ * SSE/静态路由挂载在裸参 /:name 通配之前。
  */
 export function viewsRoutes(): Hono {
   const app = new Hono();
@@ -33,20 +33,20 @@ export function viewsRoutes(): Hono {
         : 500;
       return c.json({ error: err.code, message: err.message }, status as 200);
     }
-    const message = err instanceof Error ? err.message : "internal error";
+    const message = err instanceof Error ? err.message : "内部错误";
     return c.json({ error: "internal_error", message }, 500);
   }
 
-  // POST /custom/register — register/update custom view.
+  // POST /custom/register——注册/更新自定义 view。
   app.post("/custom/register", async (c) => {
     const body = await c.req.json<{
       viewName?: string;
       definition?: string;
       registeredBySession?: string;
     }>().catch(() => ({} as never));
-    if (!body.viewName) return c.json({ error: "viewName is required" }, 400);
-    if (!body.definition) return c.json({ error: "definition is required" }, 400);
-    if (!body.registeredBySession) return c.json({ error: "registeredBySession is required" }, 400);
+    if (!body.viewName) return c.json({ error: "viewName 为必填项" }, 400);
+    if (!body.definition) return c.json({ error: "definition 为必填项" }, 400);
+    if (!body.registeredBySession) return c.json({ error: "registeredBySession 为必填项" }, 400);
     try {
       const view = getProjector(c).registerCustomView({
         viewName: body.viewName,
@@ -59,15 +59,15 @@ export function viewsRoutes(): Hono {
     }
   });
 
-  // GET /list — built-in + custom view names.
-  // MUST precede /:viewName so the literal path wins.
+  // GET /list——内置 + 自定义 view 名。
+  // 必须在 /:viewName 之前，使字面量路径优先。
   app.get("/list", (c) => {
     return c.json(getProjector(c).list());
   });
 
-  // ---- SSE for view.changed events ----
-  // Generic SSE that emits ALL view.changed events. Per Phase A R1 lesson:
-  // mount BEFORE /:viewName catchall.
+  // ---- view.changed 事件的 SSE ----
+  // 发出所有 view.changed 事件的通用 SSE。按 Phase A R1 教训：
+  // 挂载在 /:viewName 通配之前。
   const sseHandler = (c: Parameters<typeof streamSSE>[0]) => {
     const eventBus = getEventBus(c);
     return streamSSE(c, async (stream) => {
@@ -86,9 +86,9 @@ export function viewsRoutes(): Hono {
   app.get("/sse", sseHandler);
   app.get("/watch", sseHandler);
 
-  // GET /:viewName/sse — view-specific SSE filtered by viewName.
-  // The /:viewName/sse path is more specific than /:viewName so Hono
-  // dispatches it correctly even with the catchall registered later.
+  // GET /:viewName/sse——按 viewName 过滤的 view 专属 SSE。
+  // /:viewName/sse 路径比 /:viewName 更具体，因此即使通配稍后注册，
+  // Hono 也能正确派发。
   app.get("/:viewName/sse", (c) => {
     const viewName = c.req.param("viewName");
     const eventBus = getEventBus(c);
@@ -107,14 +107,14 @@ export function viewsRoutes(): Hono {
     });
   });
 
-  // GET /:viewName — run a view (built-in or custom).
-  // Comes LAST so /list, /sse, /watch, /:viewName/sse all win.
+  // GET /:viewName——运行一个 view（内置或自定义）。
+  // 放最后，使 /list、/sse、/watch、/:viewName/sse 都优先。
   app.get("/:viewName", (c) => {
     const viewName = c.req.param("viewName");
     const rig = c.req.query("rig") || undefined;
     const limit = c.req.query("limit") ? Number.parseInt(c.req.query("limit")!, 10) : undefined;
-    // S27 — the execution view scopes by mission (release-scoped default derived
-    // in the module; --mission widens/narrows).
+    // S27——execution view 按 mission 确定范围（模块内派生 release 范围默认；
+    // --mission 放宽/收窄）。
     const mission = c.req.query("mission") || undefined;
     try {
       let project;

@@ -1,0 +1,369 @@
+{
+  "owner": "_excluded",
+  "created": "2026-09-29",
+  "rules": [
+    "Not a worker shard. These files are intentionally excluded; listed for completeness only."
+  ],
+  "files": [
+    {
+      "source_path": ".evidence/AB-full-suite-preexisting-failures.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/CLI-TERMINAL-CAPTURES.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/CONTRACT-F4-amended-hashes.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/ERROR-TEXTS-captured.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/JSON-AGGREGATE-INSPECTION.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/PRD-before-F4-amendment.md",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/RED-cli-at-base-5c34da73c.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/RED-daemon-at-base-5c34da73c.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/RED-fixround1-at-prefix-bytes.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/RED-fixround1-final-testset-at-base-aacbc3362.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/RED-fixround2-at-c6263a47a.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/RED-fixround2-final-testset-at-base-c6263a47a.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/RED-fixround3-at-57b69e405.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/RED-fixround3-final-testset-at-base-57b69e405.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/RED-run-amended-testset-at-base-be23eb200.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/RED-s3-final-testset-at-base-366642f43.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/REFUSAL-SWEEP.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/S3-RECEIPTS.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/S6-GREEN-EFFECTS.md",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/S6-HERMETICITY-MINI-SPEC.md",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/S6-IMPLEMENTATION-PRD-before.md",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/S6-RED-FIRST.md",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".evidence/SPEC-before-F4-amendment.md",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "history evidence"
+    },
+    {
+      "source_path": ".gitignore",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "scm config"
+    },
+    {
+      "source_path": "LICENSE",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "legal license text"
+    },
+    {
+      "source_path": "assets/readme/openrig-agents-working.gif",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "binary/media"
+    },
+    {
+      "source_path": "assets/ui/screenshots/launch-happy-path/guide-step-01-open-demo.png",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "binary/media"
+    },
+    {
+      "source_path": "assets/ui/screenshots/launch-happy-path/guide-step-02-open-cmux.png",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "binary/media"
+    },
+    {
+      "source_path": "assets/ui/screenshots/tui-topology.png",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "binary/media"
+    },
+    {
+      "source_path": "context7.json",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "machine data"
+    },
+    {
+      "source_path": "docker/testbed/base-image",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "unhandled extension ."
+    },
+    {
+      "source_path": "docker/testbed/stub-assets.list",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "unhandled extension .list"
+    },
+    {
+      "source_path": "package-lock.json",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "lockfile"
+    },
+    {
+      "source_path": "packages/cli/.gitignore",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "unhandled extension .gitignore"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/LICENSE",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "legal license text"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/frontend-design/LICENSE.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "unhandled extension .txt"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/plugin-vendor/openrig-core-835b700fc/.claude-plugin/plugin.json.base64",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "binary/media"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/plugin-vendor/openrig-core-835b700fc/.codex-plugin/plugin.json.base64",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "binary/media"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/plugin-vendor/openrig-core-835b700fc/hooks/scripts/refocus.cjs.base64",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "binary/media"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/walk-staged-specimen/pane-coalesced-pieces-2-and-3.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "unhandled extension .txt"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/walk-staged-specimen/pane-single-piece-2.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "unhandled extension .txt"
+    },
+    {
+      "source_path": "packages/ui/.gitignore",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "unhandled extension .gitignore"
+    },
+    {
+      "source_path": "packages/ui/public/graphics/operator-climber-monochrome.png",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "binary/media"
+    },
+    {
+      "source_path": "skills/LICENSE",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "legal license text"
+    },
+    {
+      "source_path": "skills/_canonical/process/frontend-design/LICENSE.txt",
+      "target_path": "",
+      "category": "meta",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "unhandled extension .txt"
+    }
+  ]
+}

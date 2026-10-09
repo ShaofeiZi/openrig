@@ -3,9 +3,9 @@ import type Database from "better-sqlite3";
 import { createFullTestDb, createTestApp } from "./helpers/test-app.js";
 import type { ExpansionRequest } from "../src/domain/types.js";
 
-// OPR.0.3.3.24 Chunk 3 — POST /api/rigs/:rigId/pods/:podNamespace/members.
-// The HTTP surface of the add_member converge op: status-code mapping mirrors
-// the expand route (404 not-found, 409 conflict, 400 validation, 201 created).
+// OPR.0.3.3.24 第 3 块 — POST /api/rigs/:rigId/pods/:podNamespace/members。
+// add_member 收敛操作的 HTTP 接口：状态码映射与扩展路由保持一致
+//（404 未找到、409 冲突、400 校验失败、201 已创建）。
 describe("POST /api/rigs/:rigId/pods/:podNamespace/members", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
@@ -43,7 +43,7 @@ describe("POST /api/rigs/:rigId/pods/:podNamespace/members", () => {
 
   const terminalMember = (id: string) => ({ id, runtime: "terminal", agent_ref: "builtin:terminal", profile: "none", cwd: "/tmp" });
 
-  it("returns 201 with the added node for a valid add", async () => {
+  it("有效添加时返回 201 和新增节点", async () => {
     const rig = await seedRigWithPod();
     const res = await addMember(rig.id, "infra", terminalMember("server2"));
 
@@ -54,19 +54,19 @@ describe("POST /api/rigs/:rigId/pods/:podNamespace/members", () => {
     expect(body.result.node.logicalId).toBe("infra.server2");
     expect(body.result.node.status).toBe("launched");
 
-    // The new node is in the live rig under the existing pod.
+    // 新节点位于运行中工作组的现有 pod 下。
     const updatedRig = setup.rigRepo.getRig(rig.id)!;
     expect(updatedRig.nodes.some((n) => n.logicalId === "infra.server2")).toBe(true);
   });
 
-  it("returns 404 for a nonexistent rig", async () => {
+  it("工作组不存在时返回 404", async () => {
     const res = await addMember("nonexistent", "infra", terminalMember("x"));
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.code).toBe("rig_not_found");
   });
 
-  it("returns 404 for a nonexistent pod namespace", async () => {
+  it("pod 命名空间不存在时返回 404", async () => {
     const rig = await seedRigWithPod();
     const res = await addMember(rig.id, "nope", terminalMember("x"));
     expect(res.status).toBe(404);
@@ -75,7 +75,7 @@ describe("POST /api/rigs/:rigId/pods/:podNamespace/members", () => {
     expect(body.message).toContain("infra");
   });
 
-  it("returns 409 for a duplicate member id (dup guard kept)", async () => {
+  it("成员 id 重复时返回 409（保留重复项防护）", async () => {
     const rig = await seedRigWithPod();
     const res = await addMember(rig.id, "infra", terminalMember("server"));
     expect(res.status).toBe(409);
@@ -83,7 +83,7 @@ describe("POST /api/rigs/:rigId/pods/:podNamespace/members", () => {
     expect(body.code).toBe("member_conflict");
   });
 
-  it("returns 400 for a missing member in the body", async () => {
+  it("请求体缺少 member 时返回 400", async () => {
     const rig = await seedRigWithPod();
     const res = await setup.app.request(`/api/rigs/${rig.id}/pods/infra/members`, {
       method: "POST",
@@ -93,16 +93,16 @@ describe("POST /api/rigs/:rigId/pods/:podNamespace/members", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 400 for a malformed member fragment (validation_failed)", async () => {
+  it("member 片段格式错误时返回 400（validation_failed）", async () => {
     const rig = await seedRigWithPod();
-    // Missing agent_ref.
+    // 缺少 agent_ref。
     const res = await addMember(rig.id, "infra", { id: "broken", runtime: "claude-code", profile: "default", cwd: "/tmp" });
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.code).toBe("validation_failed");
   });
 
-  it("emits a node.added event for the added member", async () => {
+  it("为新增成员发出 node.added 事件", async () => {
     const rig = await seedRigWithPod();
     await addMember(rig.id, "infra", terminalMember("server2"));
 
@@ -111,7 +111,7 @@ describe("POST /api/rigs/:rigId/pods/:podNamespace/members", () => {
     expect(logicalIds).toContain("infra.server2");
   });
 
-  it("accepts spec-style snake_case member fields", async () => {
+  it("接受规范所用的 snake_case 成员字段", async () => {
     const rig = await seedRigWithPod();
     const res = await addMember(rig.id, "infra", {
       id: "reviewer",
@@ -129,8 +129,8 @@ describe("POST /api/rigs/:rigId/pods/:podNamespace/members", () => {
     expect(stored?.restore_policy).toBe("checkpoint_only");
   });
 
-  // Governance FM2: pod-local edges in the request body are preserved end-to-end.
-  it("persists pod-local edges declared in the body (not silently dropped)", async () => {
+  // 治理 FM2：请求体中的 pod 本地边会被端到端保留。
+  it("持久化请求体声明的 pod 本地边（不会静默丢弃）", async () => {
     const rig = await seedRigWithPod();
     const res = await setup.app.request(`/api/rigs/${rig.id}/pods/infra/members`, {
       method: "POST",
@@ -148,7 +148,7 @@ describe("POST /api/rigs/:rigId/pods/:podNamespace/members", () => {
     expect(rows.some((r) => r.kind === "delegates_to")).toBe(true);
   });
 
-  it("returns 400 for an unresolvable pod-local edge (edge_unresolved)", async () => {
+  it("pod 本地边无法解析时返回 400（edge_unresolved）", async () => {
     const rig = await seedRigWithPod();
     const res = await setup.app.request(`/api/rigs/${rig.id}/pods/infra/members`, {
       method: "POST",
@@ -163,7 +163,7 @@ describe("POST /api/rigs/:rigId/pods/:podNamespace/members", () => {
     expect(body.code).toBe("edge_unresolved");
   });
 
-  it("returns 400 for a present-but-non-array edges field (no silent drop)", async () => {
+  it("edges 字段存在但不是数组时返回 400（不静默丢弃）", async () => {
     const rig = await seedRigWithPod();
     const res = await setup.app.request(`/api/rigs/${rig.id}/pods/infra/members`, {
       method: "POST",
@@ -173,11 +173,11 @@ describe("POST /api/rigs/:rigId/pods/:podNamespace/members", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.code).toBe("validation_failed");
-    // Not silently created.
+    // 不得静默创建。
     expect(setup.rigRepo.getRig(rig.id)!.nodes.some((n) => n.logicalId === "infra.server2")).toBe(false);
   });
 
-  it("returns 400 for an invalid edge kind (validation_failed)", async () => {
+  it("边类型无效时返回 400（validation_failed）", async () => {
     const rig = await seedRigWithPod();
     const res = await setup.app.request(`/api/rigs/${rig.id}/pods/infra/members`, {
       method: "POST",

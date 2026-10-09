@@ -1,9 +1,7 @@
-// release-0.3.2 slice 12 — template loader. Templates live as
-// markdown files alongside the source so they can be edited like any
-// other doc. The build copies them to dist/ via tsconfig
-// rootDir/files behavior — but since .md isn't a .ts file, we read
-// them directly via fileURLToPath to remain robust across local dev
-// and the published package layout.
+// release-0.3.2 slice 12 — 模板加载器。模板以 Markdown 文件形式与源码
+// 放在一起，便于像普通文档一样编辑。构建时通过 tsconfig 的
+// rootDir/files 行为把它们复制到 dist/——但 .md 不是 .ts 文件，
+// 因此我们通过 fileURLToPath 直接读取，以保证本地开发和发布包布局下都能工作。
 
 import fs from "node:fs";
 import path from "node:path";
@@ -13,42 +11,63 @@ import { ScopeCliError } from "./types.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-/** Candidate template roots, in order: source tree (dev), dist (built).
- *  We resolve at call time so the first existing directory wins. */
+/** 候选模板根目录，按顺序排列：源码树（开发）、dist（构建后）。
+ *  在调用时解析，第一个存在的目录胜出。 */
 function candidateRoots(): string[] {
   return [
-    // Dev: packages/cli/src/lib/scope/ → ../scope-templates
+    // 开发环境：packages/cli/src/lib/scope/ → ../scope-templates
     path.resolve(here, "..", "scope-templates"),
-    // Built: dist/lib/scope/ → ../../src/lib/scope-templates (one level up further if
-    // dist lands at packages/cli/dist/lib/scope).
+    // 构建后：dist/lib/scope/ → ../../lib/scope-templates
+    // （若 dist 落在 packages/cli/dist/lib/scope，则再向上一级）。
     path.resolve(here, "..", "..", "lib", "scope-templates"),
-    // Fallback: source tree relative to compiled dist when source is co-shipped.
+    // 兜底：编译后 dist 相对源码树的位置（当源码随包发布时）。
     path.resolve(here, "..", "..", "..", "src", "lib", "scope-templates"),
   ];
 }
 
+/** 把文件名拆成基名和扩展名，例如 notes.md → { base: "notes", ext: ".md" }。 */
+function splitTemplateName(filename: string): { base: string; ext: string } {
+  const idx = filename.lastIndexOf(".");
+  if (idx <= 0) return { base: filename, ext: "" };
+  return { base: filename.slice(0, idx), ext: filename.slice(idx) };
+}
+
+/** 解析模板文件路径。
+ *
+ * 中文化策略：优先查找 `*.zh-CN.<ext>` 伴随版（面向用户的默认模板），
+ * 若不存在则安全回落英文原版。Markdown 伴随版由 docs-packages-a 负责提供；
+ * 在伴随版尚未创建时，本函数始终回落到英文模板，行为与之前完全一致。
+ * 模板中的机读占位符（{{id}} 等）和固定标题在伴随版中保持兼容，
+ * 不影响 scope parser。 */
 function resolveTemplate(filename: string): string {
+  const { base, ext } = splitTemplateName(filename);
+  const zhName = `${base}.zh-CN${ext}`;
+  for (const root of candidateRoots()) {
+    // 优先中文伴随版
+    const zhCandidate = path.join(root, zhName);
+    if (fs.existsSync(zhCandidate)) return zhCandidate;
+  }
   for (const root of candidateRoots()) {
     const candidate = path.join(root, filename);
     if (fs.existsSync(candidate)) return candidate;
   }
   throw new ScopeCliError({
-    fact: `Template ${filename} could not be located.`,
-    consequence: "Cannot scaffold the new artifact.",
-    action: "Reinstall @openrig/cli, or run from a checkout with packages/cli/src/lib/scope-templates/ present.",
+    fact: `找不到模板文件 ${filename}。`,
+    consequence: "无法脚手架化新建的产物。",
+    action: "请重新安装 @openrig/cli，或在包含 packages/cli/src/lib/scope-templates/ 的检出目录中运行。",
   });
 }
 
 export interface RenderOpts {
   id: string;
-  slice_number?: string;     // zero-padded; only for slice templates
+  slice_number?: string;     // 零填充；仅用于 slice 模板
   slug: string;
   mission: string;
   title: string;
   created_date: string;
-  /** Authored purpose. Defaults to title for backwards-compatible callers. */
+  /** 编写用途。为向后兼容调用方默认取 title。 */
   intent?: string;
-  /** Advisory build-order edges to sibling work-node dot-IDs. */
+  /** 指向兄弟工作节点 dot-ID 的建议构建顺序边。 */
   depends_on?: string[];
   release_version?: string;
   intent_visual_image_path?: string;
@@ -79,8 +98,8 @@ export function renderSliceTemplate(kind: SliceTemplateKind, opts: RenderOpts): 
   return applyPlaceholders(raw, opts);
 }
 
-/** Legacy renderer retained for callers reading or repairing pre-convention
- * trees. New scope scaffolds never call it. */
+/** 旧渲染器，为读取或修复旧约定树的调用方保留。
+ *  新的 scope 脚手架不再调用它。 */
 export function renderImplementationPrdTemplate(opts: RenderOpts): string {
   const raw = fs.readFileSync(resolveTemplate("implementation-prd.md"), "utf8");
   return applyPlaceholders(raw, opts);
@@ -112,8 +131,8 @@ function applyNotesPlaceholders(content: string, opts: NotesRenderOpts): string 
 
 export type NotesTemplateSource = "env" | "legacy-env" | "built-in";
 
-/** Resolve the current NOTES.md template. The retired environment name stays
- * readable as a fallback and is surfaced to callers as `legacy-env`. */
+/** 解析当前 NOTES.md 模板。已弃用的环境变量名仍可作为回退，
+ *  并以 `legacy-env` 暴露给调用方。 */
 export function resolveNotesTemplatePath(envValue?: string): { absPath: string; resolvedFrom: NotesTemplateSource } {
   const current = envValue ?? process.env.OPENRIG_NOTES_TEMPLATE_PATH;
   const legacy = envValue === undefined ? process.env.OPENRIG_MISSION_NOTES_TEMPLATE_PATH : undefined;
@@ -130,9 +149,9 @@ export function resolveNotesTemplatePath(envValue?: string): { absPath: string; 
         ? "OPENRIG_MISSION_NOTES_TEMPLATE_PATH"
         : "OPENRIG_NOTES_TEMPLATE_PATH";
       throw new ScopeCliError({
-        fact: `${variable} points at "${selected}", which does not exist.`,
-        consequence: "NOTES.md not scaffolded.",
-        action: `Set OPENRIG_NOTES_TEMPLATE_PATH to an absolute readable template, or unset ${variable} to use the built-in fallback.`,
+        fact: `${variable} 指向 "${selected}"，但该路径不存在。`,
+        consequence: "未脚手架化 NOTES.md。",
+        action: `请将 OPENRIG_NOTES_TEMPLATE_PATH 设为一个可读的绝对模板路径，或取消设置 ${variable} 以使用内置回退。`,
       });
     }
     return { absPath, resolvedFrom };
@@ -173,7 +192,7 @@ export function renderSliceProofTemplate(opts: SliceProofRenderOpts): string {
     .replace(/\{\{title\}\}/g, opts.title);
 }
 
-/** Convert a folder-slug to a title-cased display name. */
+/** 将文件夹 slug 转换为首字母大写的展示名称。 */
 export function titleFromSlug(slug: string): string {
   return slug
     .split(/[-_]/g)

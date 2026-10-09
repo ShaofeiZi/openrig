@@ -1,14 +1,13 @@
-// S27 (OPR.0.5.6.27) — execution-view proof fixtures, RED-first.
+// S27（OPR.0.5.6.27）——execution-view proof fixture，RED-first。
 //
-// RED at base: every test below fails with ViewProjectorError view_not_found —
-// "view 'execution' is not registered" — because the view does not exist at base
-// (the proof contract's pinned reason). GREEN lands the built-in view.
+// base 为 RED：下方每个测试都因 ViewProjectorError view_not_found 失败——
+// “view 'execution' is not registered”——因为 base 中不存在该 view（proof contract 固定的原因）。
+// GREEN 会落地 built-in view。
 //
-// The fixture models the contract's acceptance shape: two lanes (one EC-3 baton
-// carrying worktree_path=<real tmp git worktree>, one legacy baton without),
-// one parked row with an armed wake, one candidate built-but-unfolded /
-// folded-but-unadopted distinction via a real tmp git repo, a wave-map-v1 data
-// row, and slice frontmatter carrying EC-1 depends_on + approved-spec-dial.
+// fixture 建模契约的 acceptance shape：两条 lane（一个 EC-3 baton 携带
+// worktree_path=<real tmp git worktree>，一个 legacy baton 不携带）、一个 armed wake 的 parked row、
+// 通过真实临时 git repo 区分 candidate built-but-unfolded / folded-but-unadopted、一个 wave-map-v1
+// data row，以及携带 EC-1 depends_on + approved-spec-dial 的 slice frontmatter。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
@@ -47,7 +46,7 @@ function writeSpec(root: string, dir: string, frontmatter: string, body: string)
   return p;
 }
 
-describe("execution view — S27 (OPR.0.5.6.27)", () => {
+describe("execution view——S27（OPR.0.5.6.27）", () => {
   let db: Database.Database;
   let projector: ViewProjector;
   let tmp: string;
@@ -58,9 +57,9 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
   let candidateSha: string;
   let branchName: string;
   let fixedNow: Date;
-  // THE one activity oracle (S19's locked contract): SeatActivityService's
-  // arbitrated seat-keyed read, faked per session. Q1/Q6 consume THIS — never
-  // sessions.status and never the parallel AgentActivityStore ingest.
+  // 唯一 activity oracle（S19 锁定契约）：SeatActivityService 经仲裁且按 seat 索引的 read，按
+  // session fake。Q1/Q6 使用此来源——绝不使用 sessions.status，也绝不使用并行 AgentActivityStore
+  // ingest。
   let arbitratedBySession: Map<
     string,
     { activity: "working" | "idle-at-prompt" | "unknown"; needsInput: { count: number; reason: string | null }; decidedBy: string | null; changedAt: string }
@@ -72,7 +71,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     rigsRoot = path.join(tmp, "rigs");
     fixedNow = new Date("2026-08-29T22:00:00.000Z");
 
-    // ---- tmp git repo: candidate = first commit (ancestor of main tip) ----
+    // ---- 临时 git repo：candidate = 第一个 commit（main tip 的 ancestor）----
     repoDir = path.join(tmp, "repo");
     fs.mkdirSync(repoDir);
     git(repoDir, "init", "-q", "-b", "main");
@@ -83,7 +82,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     laneWorktree = path.join(tmp, "wt-lane31");
     git(repoDir, "worktree", "add", "-q", "-b", branchName, laneWorktree, "HEAD");
 
-    // ---- slice fixtures (EC-1 fields present; 33 deliberately lacks them) ----
+    // ---- slice fixture（存在 EC-1 字段；33 特意缺少）----
     writeSpec(
       missionsRoot,
       "31-alpha",
@@ -154,7 +153,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
       "",
     ].join("\n"));
 
-    // ---- review-artifact registry fixture for slice 31 ----
+    // ---- slice 31 的 review-artifact registry fixture ----
     const reviewDir = path.join(rigsRoot, "exec-fixture", "state", "review-fixture");
     fs.mkdirSync(reviewDir, { recursive: true });
     fs.writeFileSync(
@@ -180,8 +179,8 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
       [SEAT_A, { activity: "working", needsInput: { count: 0, reason: null }, decidedBy: "self-report", changedAt: "2026-08-29T21:59:00.000Z" }],
       [SEAT_B, { activity: "working", needsInput: { count: 0, reason: null }, decidedBy: "lifecycle-hooks", changedAt: "2026-08-29T21:59:00.000Z" }],
     ]);
-    // Optional-call: at base the method does not exist — the RED then lands on
-    // show("execution") with the pinned view_not_found, not on wiring.
+    // optional call：base 中不存在该 method——RED 因而落在带固定 view_not_found 的
+    // show("execution") 上，而不是接线上。
     (projector as unknown as { setExecutionDeps?: (d: unknown) => void }).setExecutionDeps?.({
       db,
       slicesRoot: () => missionsRoot,
@@ -199,20 +198,20 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
        VALUES (?, ?, ?, ?, ?, ?, 'normal', 'light', ?, ?, ?, NULL, ?)`,
     );
     const t0 = "2026-08-29T21:00:00.000Z";
-    // Lane 1 — EC-3 baton: worktree_path field on the body.
+    // Lane 1——EC-3 baton：body 上的 worktree_path 字段。
     insertRow.run(
       "qitem-lane-31", t0, t0, "lead@exec-fixture", SEAT_A, "in-progress",
-      // Production shape: queue candidate tags are commonly ABBREVIATED.
+      // Production shape：queue candidate tag 通常为缩写。
       JSON.stringify([`mission:${MISSION}`, "slice:OPR.9.9.31", `candidate:${candidateSha.slice(0, 9)}`]),
       `Build 31.\nworktree_path=${laneWorktree}\n`, t0, null,
     );
-    // Lane 2 — legacy baton: no worktree_path (fragile join).
+    // Lane 2——legacy baton：无 worktree_path（fragile join）。
     insertRow.run(
       "qitem-lane-32", t0, t0, "lead@exec-fixture", SEAT_B, "in-progress",
       JSON.stringify([`mission:${MISSION}`, "slice:OPR.9.9.32"]),
       "Build 32 (legacy baton).", t0, null,
     );
-    // Parked row with an armed wake.
+    // 带 armed wake 的 parked row。
     insertRow.run(
       "qitem-parked-33", t0, t0, "lead@exec-fixture", SEAT_B, "blocked",
       JSON.stringify([`mission:${MISSION}`, "slice:OPR.9.9.33"]),
@@ -226,14 +225,14 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
       `INSERT INTO queue_transition_wakes (transition_id, qitem_id, phase, wake_kind, wake_ref)
        VALUES (31001, 'qitem-parked-33', 'armed', 'timer', 'wake-timer-33')`,
     ).run();
-    // Wave map data row (EC-2).
+    // Wave map data row（EC-2）。
     insertRow.run(
       "qitem-wave-map", t0, t0, "lead@exec-fixture", "lead@exec-fixture", "done",
       JSON.stringify([`mission:${MISSION}`, "wave-map", "format:wave-map-v1"]),
       'Wave map.\n```json\n{"format":"wave-map-v1","mission":"release-9.9","waves":[{"id":"WA","slices":["OPR.9.9.31","OPR.9.9.32"],"serialized_order":["OPR.9.9.31","OPR.9.9.32"],"review_model":"author-excluded-r1-r2-wave"}]}\n```\n',
       null, null,
     );
-    // Sessions: both seats present and running (nodes/rigs rows satisfy the FKs).
+    // Session：两个 seat 都存在且 running（nodes/rigs row 满足 FK）。
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('rig-x', 'exec-fixture')`).run();
     const insertNode = db.prepare(`INSERT INTO nodes (id, rig_id, logical_id) VALUES (?, 'rig-x', ?)`);
     insertNode.run("n-a", "builder-a");
@@ -260,7 +259,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     return result.rows[0] as Record<string, unknown>;
   }
 
-  it("answers the six questions in ONE read over the fixture rig (RED at base: the view does not exist)", () => {
+  it("通过对 fixture 工作组的一次 read 回答六个问题（base 为 RED：view 不存在）", () => {
     const doc = show();
     expect(doc.view).toBe("execution");
     expect(doc.mission).toBe(MISSION);
@@ -273,13 +272,13 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect(q6.lanes_live).toBe(2);
   });
 
-  it("defaults to the mission with real in-progress work before a newer planned release directory", () => {
+  it("优先默认选择有真实 in-progress work 的 mission，而非更新的 planned release directory", () => {
     fs.mkdirSync(path.join(missionsRoot, "release-10.0", "slices"), { recursive: true });
     const result = projector.show("execution");
     expect((result.rows[0] as Record<string, unknown>).mission).toBe(MISSION);
   });
 
-  it("accepts a unique body-only mission on the active row before the newer-directory fallback", () => {
+  it("在 newer-directory fallback 前接受 active row 上唯一的 body-only mission", () => {
     fs.mkdirSync(path.join(missionsRoot, "release-10.0", "slices"), { recursive: true });
     db.prepare(`UPDATE queue_items SET state = 'done' WHERE qitem_id = 'qitem-lane-32'`).run();
     db.prepare(`UPDATE queue_items SET tags = ?, body = ? WHERE qitem_id = 'qitem-lane-31'`).run(
@@ -292,7 +291,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect((doc.q1_lanes as Record<string, unknown>[]).map((lane) => lane.slice)).toContain("OPR.9.9.31");
   });
 
-  it("includes a legacy id-form mission-tagged lane when the directory form is selected", () => {
+  it("选择 directory 形式时包含带 legacy id-form mission tag 的 lane", () => {
     db.prepare(`UPDATE queue_items SET tags = ? WHERE qitem_id = 'qitem-lane-31'`).run(
       JSON.stringify(["mission:OPR.9.9", "slice:OPR.9.9.31", `candidate:${candidateSha.slice(0, 9)}`]),
     );
@@ -304,7 +303,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect(((doc.sources as Record<string, Record<string, unknown>>).wave_map).row).toBe("qitem-wave-map");
   });
 
-  it("defaults an active legacy id-form mission tag to its canonical mission directory", () => {
+  it("将 active legacy id-form mission tag 默认映射到 canonical mission directory", () => {
     fs.mkdirSync(path.join(missionsRoot, "release-10.0", "slices"), { recursive: true });
     db.prepare(`UPDATE queue_items SET state = 'done' WHERE qitem_id = 'qitem-lane-32'`).run();
     db.prepare(`UPDATE queue_items SET tags = ? WHERE qitem_id = 'qitem-lane-31'`).run(
@@ -316,7 +315,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect((doc.q1_lanes as Record<string, unknown>[]).map((lane) => lane.qitem_id)).toContain("qitem-lane-31");
   });
 
-  it("carries planned components separately from current queue ownership, including waiting and handoff", () => {
+  it("将 planned component 与当前 queue ownership 分开携带，包括 waiting 与 handoff", () => {
     const file = path.join(missionsRoot, MISSION, "slices", "31-alpha", "slice.yaml");
     fs.appendFileSync(file, "sdlc:\n  components:\n    - { id: build.minimal-gap, owner: planned@fixture }\n");
     const read = () => (show().q2_sequencing as Record<string, unknown>[]).find(s => s.slice_id === "OPR.9.9.31")!;
@@ -329,7 +328,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect(read().planned_owners).toHaveLength(1);
   });
 
-  it("EC-3: the worktree_path field is Q1's join key; a legacy baton falls back marked fragile", () => {
+  it("EC-3：worktree_path 字段是 Q1 join key；legacy baton 回退并标记为 fragile", () => {
     const doc = show();
     const lanes = doc.q1_lanes as Record<string, unknown>[];
     const ec3 = lanes.find((l) => l.slice === "OPR.9.9.31")!;
@@ -340,10 +339,10 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     const legacy = lanes.find((l) => l.slice === "OPR.9.9.32")!;
     expect(legacy.fragile_join).toBe(true);
     expect(legacy.worktree_path).toBe("INDETERMINATE");
-    expect(String(legacy.join_basis)).toContain("EC-3 field absent");
+    expect(String(legacy.join_basis)).toContain("缺少 EC-3 字段");
   });
 
-  it("EC-2: Q3 derives {build_wave, review_model, planning_dial} from row/frontmatter data alone, citing the wave-map row", () => {
+  it("EC-2：Q3 只从 row/frontmatter data 派生 {build_wave, review_model, planning_dial}，并引用 wave-map row", () => {
     const doc = show();
     const q3 = doc.q3_care as Record<string, unknown>[];
     const s31 = q3.find((s) => s.slice_id === "OPR.9.9.31")!;
@@ -351,13 +350,13 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect(s31.review_model).toBe("author-excluded-r1-r2-wave");
     expect(s31.planning_dial).toBe("P1");
     expect((s31.source as Record<string, unknown>).wave_map_row).toBe("qitem-wave-map");
-    // The no-data arm floors to INDETERMINATE, never a guess.
+    // no-data 分支下限为 INDETERMINATE，绝不猜测。
     const s33 = q3.find((s) => s.slice_id === "OPR.9.9.33")!;
     expect(s33.build_wave).toBe("INDETERMINATE");
     expect(s33.planning_dial).toBe("INDETERMINATE");
   });
 
-  it("promotes mission/slice YAML ahead of a parity-matched legacy wave map and names the superseded authority", () => {
+  it("将 mission/slice YAML 提升到 parity-matched legacy wave map 之前，并点名 superseded authority", () => {
     const doc = show();
     const q2 = doc.q2_sequencing as Record<string, unknown>[];
     expect((q2.find((s) => s.slice_id === "OPR.9.9.31")?.source as Record<string, unknown>).arrangement_path)
@@ -383,7 +382,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect(comparableQ3(doc)).toEqual(comparableQ3(legacy));
   });
 
-  it("returns current authored admission and partial-core guidance without deriving edges or acceptance from prose", () => {
+  it("返回当前 authored admission 与 partial-core guidance，不从 prose 派生 edge 或 acceptance", () => {
     const before = show();
     const manifest = path.join(missionsRoot, MISSION, "mission.yaml");
     fs.appendFileSync(manifest, "  source:\n    rule: Alpha core accepted; full contract remains open.\n");
@@ -393,8 +392,8 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     ));
     const current = show();
     expect(current.planning_guidance).toEqual(expect.arrayContaining([
-      { label: "Integration decision", text: "Alpha core accepted; full contract remains open.", source: manifest + "#arrangement.source.rule" },
-      { label: "Admission", text: "Investigate beta early; implement alpha first.", source: manifest + "#arrangement.waves[0].admission", wave: "WA" },
+      { label: "集成决策", text: "Alpha core accepted; full contract remains open.", source: manifest + "#arrangement.source.rule" },
+      { label: "准入", text: "Investigate beta early; implement alpha first.", source: manifest + "#arrangement.waves[0].admission", wave: "WA" },
     ]));
     for (const key of ["q1_lanes", "q2_sequencing", "q3_care", "q4_ladder", "readiness"])
       expect(current[key]).toEqual(before[key]);
@@ -404,7 +403,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect(show().planning_guidance).toEqual([]);
   });
 
-  it("malformed YAML emits one named warning cell and falls back to the legacy arrangement without blanking the view", () => {
+  it("malformed YAML 输出一个具名 warning cell，并回退到 legacy arrangement 而不清空 view", () => {
     fs.writeFileSync(path.join(missionsRoot, MISSION, "mission.yaml"), "composition: [not: valid");
     const doc = show();
     const q3 = doc.q3_care as Record<string, unknown>[];
@@ -412,10 +411,10 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect(doc.q1_lanes).toBeInstanceOf(Array);
     const arrangement = (doc.sources as Record<string, Record<string, unknown>>).arrangement;
     expect(arrangement.value).toBe("INDETERMINATE");
-    expect(String(arrangement.basis)).toMatch(/mission\.yaml[\s\S]*fallback/i);
+    expect(String(arrangement.basis)).toMatch(/mission\.yaml[\s\S]*回退/i);
   });
 
-  it("missing optional YAML falls back silently to the legacy arrangement", () => {
+  it("可选 YAML 缺失时静默回退到 legacy arrangement", () => {
     fs.unlinkSync(path.join(missionsRoot, MISSION, "mission.yaml"));
     const doc = show();
     const q3 = doc.q3_care as Record<string, unknown>[];
@@ -423,7 +422,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect(JSON.stringify(doc.sources)).not.toMatch(/missing mission\.yaml/i);
   });
 
-  it("Q2: EC-1 frontmatter edges + SOFT-AFTER line + blocked rows derive sequencing; absent EC-1 floors INDETERMINATE", () => {
+  it("Q2：EC-1 frontmatter edge + SOFT-AFTER line + blocked row 派生 sequencing；缺少 EC-1 时下限为 INDETERMINATE", () => {
     const doc = show();
     const q2 = doc.q2_sequencing as Record<string, unknown>[];
     const s32 = q2.find((s) => s.slice_id === "OPR.9.9.32")!;
@@ -435,13 +434,12 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect(String(s33.next_up_basis)).toContain("EC-1");
   });
 
-  it("ladder honesty: folded derives from git at read time, adopted floors INDETERMINATE on a dev daemon, and no 'done' boolean exists", () => {
+  it("ladder 诚实性：folded 在 read 时从 git 派生；adopted 在 dev daemon 上下限为 INDETERMINATE；不存在 done boolean", () => {
     const doc = show();
     const q4 = doc.q4_ladder as Record<string, unknown>[];
     const s31 = q4.find((s) => s.slice_id === "OPR.9.9.31")!;
     expect((s31.locked as Record<string, unknown>).value).toBe(true);
-    // The built rung carries the tag's own (abbreviated) token plus the
-    // commit-resolved identity.
+    // built rung 携带 tag 自身的缩写 token 与由 commit 解析的 identity。
     expect((s31.built as Record<string, unknown>).candidate_sha).toBe(candidateSha.slice(0, 9));
     expect((s31.built as Record<string, unknown>).resolved_commit).toBe(candidateSha);
     const folded = s31.folded as Record<string, unknown>;
@@ -449,44 +447,43 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect(String(folded.basis)).toContain("merge-base --is-ancestor");
     const adopted = s31.adopted as Record<string, unknown>;
     expect(adopted.value).toBe("INDETERMINATE");
-    expect(String(adopted.basis)).toContain("dev run");
+    expect(String(adopted.basis)).toContain("开发运行");
     const reviewed = s31.reviewed as Record<string, unknown>;
     expect(reviewed.value).toBe(true);
     expect((reviewed.legs as Record<string, unknown>[])[0].verdict).toBe("CLEAR");
-    // "done" as a single boolean is pinned ABSENT from the schema.
+    // schema 明确禁止单一 boolean "done"。
     for (const entry of q4) {
       expect(Object.keys(entry)).not.toContain("done");
     }
   });
 
-  it("Q1 consumes the ARBITRATED seat state (working): the superseded/stale-hook specimen cannot recur", () => {
-    // The HOLD's live specimen: sessions.status superseded + a stale hook in the
-    // parallel ingest store, while arbitration says working. Q1 must say working.
+  it("Q1 使用仲裁后的 seat state（working）：superseded/stale-hook 样本无法复现", () => {
+    // HOLD 的 live 样本：sessions.status 为 superseded，parallel ingest store 有 stale hook，
+    // 而 arbitration 判为 working。Q1 必须显示 working。
     db.prepare(`UPDATE sessions SET status = 'superseded' WHERE session_name = ?`).run(SEAT_A);
     const doc = show();
     const lane = (doc.q1_lanes as Record<string, unknown>[]).find((l) => l.slice === "OPR.9.9.31")!;
     const act = lane.activity as Record<string, unknown>;
     expect(act.activity).toBe("working");
-    expect(String(act.source)).toContain("arbitrated");
+    expect(String(act.source)).toContain("仲裁");
     expect(act.decided_by).toBe("self-report");
   });
 
-  it("Q1 passes through idle-at-prompt and unknown as canonical vocabulary, and floors INDETERMINATE only for a never-seen seat", () => {
+  it("Q1 原样传递 canonical vocabulary 中的 idle-at-prompt 与 unknown，仅对从未见过的 seat 下限为 INDETERMINATE", () => {
     arbitratedBySession.set(SEAT_A, { activity: "idle-at-prompt", needsInput: { count: 0, reason: null }, decidedBy: "window-sampling", changedAt: "2026-08-29T21:59:10.000Z" });
     const idle = show();
     expect(((idle.q1_lanes as Record<string, unknown>[]).find((l) => l.slice === "OPR.9.9.31")!.activity as Record<string, unknown>).activity).toBe("idle-at-prompt");
-    // 'unknown' is a CANONICAL member of the arbitrated vocabulary — passed
-    // through as itself, never rewritten to INDETERMINATE.
+    // 'unknown' 是 arbitrated vocabulary 的 canonical member——原样传递，绝不重写为 INDETERMINATE。
     arbitratedBySession.set(SEAT_A, { activity: "unknown", needsInput: { count: 0, reason: null }, decidedBy: null, changedAt: "2026-08-29T21:59:20.000Z" });
     const unk = show();
     expect(((unk.q1_lanes as Record<string, unknown>[]).find((l) => l.slice === "OPR.9.9.31")!.activity as Record<string, unknown>).activity).toBe("unknown");
-    // INDETERMINATE is reserved for NO arbitrated answer at all.
+    // INDETERMINATE 仅用于完全没有 arbitrated answer。
     arbitratedBySession.delete(SEAT_A);
     const gone = show();
     expect(((gone.q1_lanes as Record<string, unknown>[]).find((l) => l.slice === "OPR.9.9.31")!.activity as Record<string, unknown>).activity).toBe("INDETERMINATE");
   });
 
-  it("Q1 carries needsInput separately — count and reason ride beside activity, never folded into it", () => {
+  it("Q1 单独携带 needsInput——count 与 reason 与 activity 并列，绝不折叠进去", () => {
     arbitratedBySession.set(SEAT_A, {
       activity: "working",
       needsInput: { count: 1, reason: "permission prompt" },
@@ -500,16 +497,16 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect((act.needs_input as Record<string, unknown>).reason).toBe("permission prompt");
   });
 
-  it("Q6 idle capacity counts arbitrated idle-at-prompt seats with no needsInput, not sessions.status", () => {
-    // Seat C: arbitration says idle-at-prompt, no rows held — sessions.status
-    // deliberately 'superseded' so any status approximation would count 0.
+  it("Q6 idle capacity 统计经仲裁且无 needsInput 的 idle-at-prompt seat，而非 sessions.status", () => {
+    // Seat C：arbitration 判为 idle-at-prompt，未持有 row——sessions.status 特意设为 superseded，
+    // 因而任何 status approximation 都会计为 0。
     const t0 = "2026-08-29T21:00:00.000Z";
     db.prepare(`INSERT INTO nodes (id, rig_id, logical_id) VALUES ('n-c', 'rig-x', 'builder-c')`).run();
     db.prepare(
       `INSERT INTO sessions (id, node_id, session_name, status, last_seen_at, created_at) VALUES ('s-c', 'n-c', 'builder-c@exec-fixture', 'superseded', ?, ?)`,
     ).run(t0, t0);
     arbitratedBySession.set("builder-c@exec-fixture", { activity: "idle-at-prompt", needsInput: { count: 0, reason: null }, decidedBy: "window-sampling", changedAt: "2026-08-29T21:59:00.000Z" });
-    // A needs-input seat is NOT capacity even when idle at the prompt.
+    // needs-input seat 即使 idle at prompt 也不算 capacity。
     db.prepare(`INSERT INTO nodes (id, rig_id, logical_id) VALUES ('n-d', 'rig-x', 'builder-d')`).run();
     db.prepare(
       `INSERT INTO sessions (id, node_id, session_name, status, last_seen_at, created_at) VALUES ('s-d', 'n-d', 'builder-d@exec-fixture', 'running', ?, ?)`,
@@ -518,10 +515,10 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     const doc = show();
     const idle = (doc.q6_parallelism as Record<string, unknown>).idle_seats_with_capacity as Record<string, unknown>;
     expect(idle.value).toBe(1);
-    expect(String(idle.basis)).toContain("arbitrated");
+    expect(String(idle.basis)).toContain("仲裁");
   });
 
-  it("Q4 joins candidate FORMS by commit identity: abbreviated built tag matches full and annotated artifacts; off-sha, malformed, and non-resolving inputs floor honestly", () => {
+  it("Q4 按 commit identity 连接 candidate FORM：缩写 built tag 匹配 full/annotated artifact；off-sha、malformed、无法解析 input 诚实降级", () => {
     const reviewDir = path.join(rigsRoot, "exec-fixture", "state", "review-fixture");
     // The S20 production specimen: an ANNOTATED artifact form at the same commit.
     fs.writeFileSync(
@@ -551,10 +548,10 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     // No built candidate => no commit to scope to => INDETERMINATE, never a verdict.
     const s33 = q4.find((s) => s.slice_id === "OPR.9.9.33")!;
     expect((s33.reviewed as Record<string, unknown>).value).toBe("INDETERMINATE");
-    expect(String((s33.reviewed as Record<string, unknown>).basis)).toContain("candidate");
+    expect(String((s33.reviewed as Record<string, unknown>).basis)).toContain("候选");
   });
 
-  it("Q2 honesty: own-completion INDETERMINATE never yields next_up=true, and terminal-row blockedOn does not govern dispatchability", () => {
+  it("Q2 诚实性：own-completion INDETERMINATE 绝不产生 next_up=true，terminal-row blockedOn 不决定 dispatchability", () => {
     // 34-delta: locked, unclaimed, EC-1 present, but NO candidate tag anywhere —
     // own folded is underivable, so dispatchability is INDETERMINATE, not true.
     writeSpec(
@@ -574,7 +571,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     const q2 = doc.q2_sequencing as Record<string, unknown>[];
     const s34 = q2.find((s) => s.slice_id === "OPR.9.9.34")!;
     expect(s34.next_up).toBe("INDETERMINATE");
-    expect(String(s34.next_up_basis)).toContain("completion");
+    expect(String(s34.next_up_basis)).toContain("完成层级");
     const s32 = q2.find((s) => s.slice_id === "OPR.9.9.32")!;
     // The stale terminal-row blocker is record, not state: it must not appear.
     expect(s32.blocked_on_rows).toEqual([]);
@@ -582,10 +579,10 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     // dispatchability is INDETERMINATE — never false FROM the stale blocker,
     // never true from ignorance.
     expect(s32.next_up).toBe("INDETERMINATE");
-    expect(String(s32.next_up_basis)).toContain("completion");
+    expect(String(s32.next_up_basis)).toContain("完成层级");
   });
 
-  it("Q5 park_kind is the closed enum only: deliberate-with-wake | stalled | indeterminate", () => {
+  it("Q5 park_kind 仅使用 closed enum：deliberate-with-wake | stalled | indeterminate", () => {
     // Give lane-31 real post-claim motion so its pickup derives 'working' —
     // the arm that leaked 'working' into park_kind on the live artifact.
     db.prepare(
@@ -602,7 +599,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     }
   });
 
-  it("RECEIVER: GET /api/views/execution?mission=… derives the full document through the HTTP route (not module-direct)", async () => {
+  it("RECEIVER：GET /api/views/execution?mission=… 通过 HTTP route 派生完整 document（不是 module-direct）", async () => {
     const app = new Hono();
     app.use("*", async (c, next) => {
       c.set("viewProjector" as never, projector);
@@ -620,7 +617,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     expect((doc.q1_lanes as unknown[]).length).toBe(2);
   });
 
-  it("park honesty: armed wake => deliberate-with-wake; removing the wake flips park_kind to INDETERMINATE, never idle/dead", () => {
+  it("park 诚实性：armed wake => deliberate-with-wake；移除 wake 后 park_kind 变为 INDETERMINATE，绝不是 idle/dead", () => {
     const before = show();
     const parkedBefore = (before.q5_park as Record<string, unknown>[]).find((p) => p.qitem_id === "qitem-parked-33")!;
     expect(parkedBefore.pickup_state).toBe("parked");
@@ -631,10 +628,10 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     const parkedAfter = (after.q5_park as Record<string, unknown>[]).find((p) => p.qitem_id === "qitem-parked-33")!;
     // The DESIGN's park_kind enum is lowercase; the value floor stays honest.
     expect(parkedAfter.park_kind).toBe("indeterminate");
-    expect(String(parkedAfter.park_kind_basis)).toContain("no armed wake");
+    expect(String(parkedAfter.park_kind_basis)).toContain("没有已武装唤醒");
   });
 
-  it("INDETERMINATE floor: an unreachable worktree path renders INDETERMINATE for the git legs, never idle/dead/done", () => {
+  it("INDETERMINATE 下限：不可达 worktree path 的 git 环节渲染 INDETERMINATE，绝不是 idle/dead/done", () => {
     db.prepare(`UPDATE queue_items SET body = ? WHERE qitem_id = 'qitem-lane-31'`).run(
       "Build 31.\nworktree_path=/nonexistent/severed/path\n",
     );
@@ -642,13 +639,13 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     const lane = (doc.q1_lanes as Record<string, unknown>[]).find((l) => l.slice === "OPR.9.9.31")!;
     expect(lane.branch).toBe("INDETERMINATE");
     expect(lane.head_sha).toBe("INDETERMINATE");
-    expect(String(lane.join_basis)).toContain("unreachable");
+    expect(String(lane.join_basis)).toContain("不可达");
     for (const forbidden of ["idle", "dead", "done"]) {
       expect(lane.branch).not.toBe(forbidden);
     }
   });
 
-  it("trust stamps: derived_at + per-source asof on the response; every lane and sequencing cell carries its source id", () => {
+  it("trust stamp：response 带 derived_at + per-source asof；每个 lane 与 sequencing cell 携带 source id", () => {
     const doc = show();
     expect(typeof doc.derived_at).toBe("string");
     const sources = doc.sources as Record<string, Record<string, unknown>>;
@@ -664,7 +661,7 @@ describe("execution view — S27 (OPR.0.5.6.27)", () => {
     }
   });
 
-  it("stays a registered-name error at base and a clean not-found for unknown names either way", () => {
+  it("base 中保持 registered-name error，并始终对未知名称返回清晰 not-found", () => {
     expect(() => projector.show("no-such-view")).toThrow(ViewProjectorError);
   });
 });

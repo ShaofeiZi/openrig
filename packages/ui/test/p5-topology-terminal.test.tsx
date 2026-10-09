@@ -1,20 +1,17 @@
-// V1 attempt-3 Phase 5 P5-7 — Topology terminal grid (safe-N + pulsing-ring).
+// V1 attempt-3 Phase 5 P5-7——Topology terminal 网格（safe-N + pulsing-ring）。
 //
-// Coverage:
-//   - safe-N pagination: with > 12 seats, only 12 cards render by default;
-//     "show all N" toggle reveals the rest.
-//   - Pulsing-ring: active seats render with terminal-card-active class
-//     (CSS keyframe is paint-only — pseudo-element-paint test contract
-//     ritual #7; CSS-source-assertion guards the @keyframes rule).
-//   - data-active attribute reflects activity state.
-//   - Empty state when no seats.
-//   - Pod scope filters by podName.
+// 覆盖：
+//   - safe-N 分页：> 12 seats 时默认仅渲染 12 张卡片；"show all N" 开关揭示其余。
+//   - Pulsing-ring：active seats 以 terminal-card-active class 渲染
+//    （CSS keyframe 仅绘制——pseudo-element-paint 测试契约 ritual #7；
+//     CSS-source-assertion 守卫 @keyframes 规则）。
+//   - data-active 属性反映 activity 状态。
+//   - 无 seats 时空状态。
+//   - Pod scope 按 podName 过滤。
 //
-// Pseudo-element-paint contract: jsdom can't render @keyframes. The
-// CSS-source-assertion test reads globals.css and asserts the
-// @keyframes terminal-card-active-frames rule + .terminal-card-active
-// selector are present — guards the at-a-glance scan signal from being
-// silently removed in a refactor.
+// pseudo-element-paint 契约：jsdom 无法渲染 @keyframes。CSS-source-assertion
+// 测试读 globals.css 并断言 @keyframes terminal-card-active-frames 规则 +
+// .terminal-card-active 选择器存在——守卫一眼扫描信号不在重构中被静默移除。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup, waitFor } from "@testing-library/react";
@@ -101,7 +98,7 @@ function setupFetch(opts: {
       const rigId = decodeURIComponent(m[1]!);
       return new Response(JSON.stringify(opts.seatsByRig?.[rigId] ?? []));
     }
-    // SessionPreviewPane fetches /api/preview/session/:name etc.
+    // SessionPreviewPane fetch /api/preview/session/:name 等。
     return new Response(JSON.stringify({
       sessionName: "test", content: "", lines: 0, capturedAt: new Date().toISOString(),
     }));
@@ -122,13 +119,13 @@ describe("TopologyTerminalView P5-7 grid", () => {
     expect(await findByTestId("topology-terminal-grid")).toBeTruthy();
     expect(await findByTestId("terminal-card-rig-1-orch.lead")).toBeTruthy();
     expect(await findByTestId("terminal-card-rig-1-driver.impl")).toBeTruthy();
-    // Active seat carries data-active='true' AND the pulse class.
+    // active seat 携带 data-active='true' 且带 pulse class。
     const driverCard = container.querySelector(
       "[data-testid='terminal-card-rig-1-driver.impl']",
     );
     expect(driverCard?.getAttribute("data-active")).toBe("true");
     expect(driverCard?.className).toMatch(/terminal-card-active/);
-    // Idle seat does NOT carry the pulse class.
+    // idle seat 不携带 pulse class。
     const idleCard = container.querySelector(
       "[data-testid='terminal-card-rig-1-orch.lead']",
     );
@@ -146,12 +143,12 @@ describe("TopologyTerminalView P5-7 grid", () => {
       <TopologyTerminalView scope="rig" rigId="rig-1" />,
     );
     await findByTestId("topology-terminal-grid");
-    // Default: 12 cards visible.
+    // 默认：可见 12 张卡片。
     expect(
       container.querySelectorAll("[data-testid^='terminal-card-rig-1-']").length,
     ).toBe(12);
-    expect((await findByTestId("topology-terminal-count")).textContent).toContain("12 of 15");
-    // Toggle: show all.
+    expect((await findByTestId("topology-terminal-count")).textContent).toContain("12/15");
+    // 开关：show all。
     const toggle = await findByTestId("topology-terminal-show-toggle");
     fireEvent.click(toggle);
     await waitFor(() => {
@@ -195,7 +192,7 @@ describe("TopologyTerminalView P5-7 grid", () => {
     const tokens = await findByTestId("terminal-card-tokens-rig-1-guard.codex");
     expect(context.textContent).toBe("21%");
     expect(tokens.textContent).toBe("55k");
-    expect(tokens.getAttribute("title")).toContain("Tokens: 54,615");
+    expect(tokens.getAttribute("title")).toContain("令牌数：54,615");
   });
 
   it("renders unknown context affordance when terminal cards have no sample", async () => {
@@ -251,11 +248,11 @@ describe("TopologyTerminalView P5-7 grid", () => {
   });
 });
 
-// OPR.0.4.0.39 (FR-6 founder spec-correction -- REVERSES the slice-01 expand-out):
-// each grid card's static IS the single in-place click-to-live target (a full-width
-// ProgressiveTerminal static button) -- there is NO separate TerminalPreviewPopover
-// trigger. So each card has exactly ONE tab-reachable control (the static itself),
-// preserving the a11y intent (one trigger per card) while restoring live-in-place.
+// OPR.0.4.0.39（FR-6 founder spec 修正——反转 slice-01 expand-out）：
+// 每张网格卡片的 static 即唯一点位 click-to-live 目标（全宽
+// ProgressiveTerminal static 按钮）——无单独 TerminalPreviewPopover
+// trigger。故每张卡片恰有一个 tab 可达控件（static 本身），保留 a11y 意图
+//（每卡片一 trigger），同时恢复 live-in-place。
 describe("TerminalView card a11y (OPR.0.4.0.39 in-place click-to-live)", () => {
   it("each terminal card exposes exactly one tab-reachable control: the in-place static button (no popover trigger)", async () => {
     const seats = [
@@ -268,14 +265,14 @@ describe("TerminalView card a11y (OPR.0.4.0.39 in-place click-to-live)", () => {
     );
     await findByTestId("topology-terminal-grid");
 
-    // FR-6: the static ITSELF is the in-place click-to-live target (ProgressiveTerminal
-    // static, full-width) -- exactly ONE per card.
+    // FR-6：static 本身即点位 click-to-live 目标（ProgressiveTerminal
+    // static，全宽）——每卡片恰一个。
     const inPlaceStatic = container.querySelectorAll(
       "button[data-testid^='terminal-grid-'][data-testid$='-static']",
     );
     expect(inPlaceStatic).toHaveLength(2);
 
-    // The separate expand-out popover trigger is REMOVED from the grid.
+    // 单独 expand-out popover trigger 已从网格移除。
     const popoverTriggers = container.querySelectorAll(
       "button[data-testid^='terminal-grid-'][data-testid$='-terminal-open']",
     );
@@ -289,16 +286,15 @@ describe("TerminalView card a11y (OPR.0.4.0.39 in-place click-to-live)", () => {
     );
     await findByTestId("topology-terminal-grid");
 
-    // The grid is a TRULY BARE surface (no popover/shell plate behind it), so the
-    // static carries its OWN borderless smoked-glass plate; and per FR-6 it IS the
-    // click-to-live button (ProgressiveTerminal static), not a non-interactive
-    // thumbnail beside a separate popover trigger.
+    // 网格是真正裸露表面（背后无 popover/shell plate），故 static 自带无框
+    // smoked-glass plate；按 FR-6 它即 click-to-live 按钮（ProgressiveTerminal
+    // static），而非单独 popover trigger 旁的非交互缩略图。
     const staticPlate = await findByTestId("terminal-grid-rig-1-alpha-static");
     expect(staticPlate.tagName).toBe("BUTTON");
     expect(staticPlate.className).toContain("bg-stone-950/85");
     expect(staticPlate.className).toContain("backdrop-blur-sm");
 
-    // ...exactly ONE in-place static button + NO expand-out popover trigger.
+    // …恰一个点位 static 按钮 + 无 expand-out popover trigger。
     expect(container.querySelectorAll("button[data-testid$='-static']")).toHaveLength(1);
     expect(container.querySelectorAll("button[data-testid$='-terminal-open']")).toHaveLength(0);
   });
@@ -316,14 +312,13 @@ describe("globals.css pulsing-ring CSS contract (ritual #7 pseudo-element-paint)
   });
   it("globals.css honors prefers-reduced-motion for terminal-card-active", () => {
     const src = readFileSync(cssPath, "utf8");
-    // Reduced-motion block must include .terminal-card-active so the pulse
-    // animation is suppressed for users with motion-sensitivity preferences.
+    // reduced-motion 块必须含 .terminal-card-active，使 pulse 动画对
+    // motion-sensitivity 偏好用户被抑制。
     //
-    // globals.css has multiple @media (prefers-reduced-motion: reduce)
-    // blocks (one per animation cluster — vellum drift, activity rings,
-    // terminal cards, etc). Scan ALL of them — the prior single-match
-    // regex picked the first block (vellum-scroll-x) which doesn't
-    // include .terminal-card-active even though a later block does.
+    // globals.css 有多个 @media (prefers-reduced-motion: reduce) 块
+    // （每个动画簇一个——vellum drift、activity rings、terminal cards 等）。
+    // 扫描全部——先前 single-match regex 选中第一块（vellum-scroll-x），
+    // 它不含 .terminal-card-active，虽然后面的块含。
     const blocks = Array.from(
       src.matchAll(/@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\}\s*\}/g),
     );

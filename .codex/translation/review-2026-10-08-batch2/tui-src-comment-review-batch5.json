@@ -1,0 +1,20 @@
+{
+  "schema": "openrig.tui-src-comment-review-batch/v1",
+  "batch": 5,
+  "captured_at": "2026-10-09T19:20:00+08:00",
+  "depth": "full_comment_javascript_docstring_reviewed",
+  "owner": "s_000cae46uuw",
+  "natural_residual": 0,
+  "files": [
+    {"path": "packages/tui/src/live.ts", "status": "reviewed_no_change", "after_sha256": "c1fbc7ac724b791f4e86bb9e6e6eb50b9985f8f794a1b83d706a8625191be6b6", "classification": "0 English residual"},
+    {"path": "packages/tui/src/terminals/terminal-model.ts", "status": "reviewed_no_change", "after_sha256": "fcdaff65e59445f8e8351309f037a54d3cad5c34fcde7721a88c622596325f5d", "classification": "0 English residual"},
+    {"path": "packages/tui/src/topology/runtime-marks.ts", "status": "reviewed_no_change", "after_sha256": "79a9f94d3b23ea89f9555c2f552eda057e09d7174e256d679a72c0bb3b4fec03", "classification": "machine ref packages/ui/src/components/graphics/RuntimeMark.tsx 16x16 retained"},
+    {"path": "packages/tui/src/pulse/render-pulse.ts", "status": "reviewed_no_change", "after_sha256": "88b4e3335e9131d61336d9168d1f4714a2dbf7723a94fdc459775cc25dbad14c", "classification": "0 English residual"},
+    {"path": "packages/tui/src/navigator.ts", "status": "reviewed_no_change", "after_sha256": "bfee4c9c2e5635cef1038c7244742260588b61d9888cc50be0567235d6b86a8b", "classification": "0 English residual"},
+    {"path": "packages/tui/src/input.ts", "status": "reviewed_no_change", "after_sha256": "3220c1cbac231126f3c883fbac777b3ee5efe0583d78475530b7df6e8de9192d", "classification": "0 English residual"},
+    {"path": "packages/tui/src/connections/connections-model.ts", "status": "reviewed_no_change", "after_sha256": "a5e51737dd6404269221034c80b0ed462e5b35c56802ef0439c634e766f935c5", "classification": "0 English residual"},
+    {"path": "packages/tui/src/crash-cart/render-crash-cart.ts", "status": "reviewed_no_change", "after_sha256": "43935549ed52a652b717027ac7133b53435acc002b99b93efe72fe928d60bbdb", "classification": "0 English residual"},
+    {"path": "packages/tui/src/execution/workflow-model.ts", "status": "reviewed_no_change", "after_sha256": "6141a10aa69e1489e4affaccbca97ca6184d4597fcaa7e453f46296f7c1600ad", "classification": "0 English residual"},
+    {"path": "packages/tui/src/stylize.ts", "status": "reviewed_no_change", "after_sha256": "ac3ecd2e1461e4ff459afae0876267e311c4cceaa8cf7f5aa32f384f5fd82e1e", "classification": "0 English residual"}
+  ]
+}

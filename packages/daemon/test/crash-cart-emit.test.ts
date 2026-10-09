@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { emitCrashCartState } from "../src/domain/crash-cart-emit.js";
 
-// Crash-cart C3 — emitCrashCartState is the SSOT for the `rig crash-cart --json` payload (rail 3: ONE
-// JSON = the 3-state verdict + discovery). It composes the detector + the C2 read VERBATIM (rail 2).
-// A fail-closed refusal of the read emits STRUCTURED JSON (a refusal note, NO discovery) so the TUI
-// never renders the cockpit from a refusal. The sub-steps are injected → deterministic.
+// 故障诊断 C3——emitCrashCartState 是 `zrig crash-cart --json` payload 的唯一真源（约束 3：
+// 一份 JSON = 三态 verdict + discovery）。它逐字组合 detector + C2 read（约束 2）。读取以
+// fail-closed 拒绝时发出结构化 JSON（refusal note，不含 discovery），使 TUI 绝不会从拒绝中
+// 渲染控制台。子步骤均通过注入提供，因此行为确定。
 
 const deps = (over: Partial<Parameters<typeof emitCrashCartState>[0]> = {}) => ({
   resolveState: async () => "down" as const,
@@ -13,15 +13,15 @@ const deps = (over: Partial<Parameters<typeof emitCrashCartState>[0]> = {}) => (
   ...over,
 });
 
-describe("emitCrashCartState — the verb's JSON verdict", () => {
-  it("UP → just the state (no evidence, no discovery, no read attempted)", async () => {
+describe("emitCrashCartState——verb 的 JSON verdict", () => {
+  it("UP → 只返回 state（无 evidence、无 discovery、不尝试读取）", async () => {
     const loadDiscovery = vi.fn(deps().loadDiscovery);
     const out = await emitCrashCartState(deps({ resolveState: async () => "up", loadDiscovery }));
     expect(out).toEqual({ state: "up" });
     expect(loadDiscovery).not.toHaveBeenCalled();
   });
 
-  it("UNVERIFIED → state + evidence, NO discovery (read not attempted)", async () => {
+  it("UNVERIFIED → state + evidence，不含 discovery（不尝试读取）", async () => {
     const loadDiscovery = vi.fn(deps().loadDiscovery);
     const out = await emitCrashCartState(deps({ resolveState: async () => "unverified", loadDiscovery }));
     expect(out.state).toBe("unverified");
@@ -30,14 +30,14 @@ describe("emitCrashCartState — the verb's JSON verdict", () => {
     expect(loadDiscovery).not.toHaveBeenCalled();
   });
 
-  it("DOWN + read succeeds → state + discovery", async () => {
+  it("DOWN + 读取成功 → state + discovery", async () => {
     const out = await emitCrashCartState(deps({ resolveState: async () => "down" }));
     expect(out.state).toBe("down");
     expect(out.discovery).toBeTruthy();
     expect(out.refusal).toBeUndefined();
   });
 
-  it("DOWN + read REFUSES → structured refusal (note, NO discovery — TUI won't render the cockpit)", async () => {
+  it("DOWN + 读取拒绝 → 结构化 refusal（含 note、无 discovery，TUI 不渲染控制台）", async () => {
     const out = await emitCrashCartState(
       deps({
         resolveState: async () => "down",

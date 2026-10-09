@@ -23,7 +23,7 @@ it.each([[140, 42], [80, 24]])("Feed keeps categories in Explorer and items in c
   expect(renderScreen(view.get(), snap, { cols, rows }).explorerRows.filter(row => row.key?.startsWith("attention-category"))).toHaveLength(2);
 });
 
-it("Specs kinds and Derived views start collapsed, expand deliberately, and retain Saved views", () => {
+it("Specs kind 与 Derived 视图起始折叠， deliberate 展开，并保留 Saved 视图", () => {
   const snap = demoSnapshot();
   snap.terminals = { catalogLoaded: true, preview: null, catalog: [
     { view: "saved:watch", name: "Build watch", kind: "saved", members: ["owner@build"], ready: 0, absent: 0, degraded: 0, pages: 0, readinessUnverified: true },

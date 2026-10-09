@@ -4,11 +4,10 @@ import { Hono } from "hono";
 import { activityRoutes } from "../src/routes/activity.js";
 import { SeatActivityService } from "../src/domain/seat-activity-service.js";
 
-// WAVE O FIX R1 — B2 (R2 verdict 508e383d): `rig parked` claimed rig scope while folding
-// EVERY running rig in the daemon. R2's effect discriminator, preserved: one idle seat in
-// rig-a, one idle seat in rig-b, an obligation only in rig-b — the caller from rig-a must
-// see ONLY rig-a and NOT-PARKED. Real sqlite, real route, real oracle; only the queue's
-// obligation face is faked (per-destination).
+// WAVE O FIX R1 — B2（R2 结论 508e383d）：`zrig parked` 声称限定在 rig 范围内，
+// 实际却聚合了 daemon 中所有正在运行的 rig。保留 R2 的效果判别条件：rig-a 中有一个空闲席位，
+// rig-b 中有一个空闲席位，且仅 rig-b 中有义务——来自 rig-a 的调用者必须只看到 rig-a，
+// 结果为 NOT-PARKED。使用真实 sqlite、真实路由和真实判定逻辑；仅按目标伪造队列的义务侧。
 
 const DDL = `
 CREATE TABLE rigs (id TEXT PRIMARY KEY, name TEXT NOT NULL);
@@ -16,7 +15,7 @@ CREATE TABLE nodes (id TEXT PRIMARY KEY, rig_id TEXT NOT NULL);
 CREATE TABLE sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, node_id TEXT NOT NULL, session_name TEXT, status TEXT);
 `;
 
-describe("Wave-O B2 — parked diagnosis is RIG-SCOPED with the scope named", () => {
+describe("Wave-O B2 — parked 诊断限定在已明确命名的 RIG 范围内", () => {
   let db: Database.Database;
   let svc: SeatActivityService;
   let app: Hono;
@@ -49,7 +48,7 @@ describe("Wave-O B2 — parked diagnosis is RIG-SCOPED with the scope named", ()
       });
     }
 
-    // The obligation face: ONLY dev-b@rig-b owes work.
+    // 义务侧：只有 dev-b@rig-b 尚有工作义务。
     const queueRepo = {
       list: (opts: { destinationSession?: string }) =>
         opts.destinationSession === "dev-b@rig-b"
@@ -68,19 +67,19 @@ describe("Wave-O B2 — parked diagnosis is RIG-SCOPED with the scope named", ()
   });
   afterEach(() => db.close());
 
-  it("R2 DISCRIMINATOR: a caller from rig-a sees ONLY rig-a seats and NOT-PARKED — rig-b's obligation cannot leak in", async () => {
+  it("R2 判别条件：来自 rig-a 的调用者只看到 rig-a 席位和 NOT-PARKED——rig-b 的义务不得泄漏", async () => {
     const res = await app.request("/api/activity/parked", {
       headers: { "x-openrig-session": "dev-a@rig-a" },
     });
     expect(res.status).toBe(200);
     const body = await res.json() as { ok: boolean; rig: { parked: boolean | string; scope?: { rig: string; resolvedFrom: string }; seats: Array<{ sessionName: string }> } };
     const names = body.rig.seats.map((s) => s.sessionName);
-    expect(names).toEqual(["dev-a@rig-a"]); // candidate returned BOTH rigs
-    expect(body.rig.parked).toBe(false);    // candidate said PARKED off rig-b's obligation
-    expect(body.rig.scope).toEqual({ rig: "rig-a", resolvedFrom: "caller-session" }); // AM-3: the scope is NAMED
+    expect(names).toEqual(["dev-a@rig-a"]); // 候选实现返回了两个 rig
+    expect(body.rig.parked).toBe(false);    // 候选实现因 rig-b 的义务而判定为 PARKED
+    expect(body.rig.scope).toEqual({ rig: "rig-a", resolvedFrom: "caller-session" }); // AM-3：范围已明确命名
   });
 
-  it("an explicit ?rig= coordinate scopes to that rig — rig-b IS parked on its own obligation", async () => {
+  it("显式 ?rig= 坐标将范围限定到对应 rig——rig-b 因自身义务而处于 parked 状态", async () => {
     const res = await app.request("/api/activity/parked?rig=rig-b");
     const body = await res.json() as { rig: { parked: boolean; scope?: { rig: string; resolvedFrom: string }; seats: Array<{ sessionName: string; parked: boolean | string }> } };
     expect(body.rig.seats.map((s) => s.sessionName)).toEqual(["dev-b@rig-b"]);
@@ -88,16 +87,16 @@ describe("Wave-O B2 — parked diagnosis is RIG-SCOPED with the scope named", ()
     expect(body.rig.scope).toEqual({ rig: "rig-b", resolvedFrom: "query-param" });
   });
 
-  it("NO resolvable rig scope refuses with teaching — never a silent fleet-wide fold", async () => {
+  it("没有可解析的 rig 范围时拒绝请求并给出指引——绝不静默聚合整个机群", async () => {
     const res = await app.request("/api/activity/parked");
     expect(res.status).toBe(400);
     const body = await res.json() as { ok: boolean; error: string };
     expect(body.ok).toBe(false);
-    expect(body.error).toMatch(/rig/i);      // names the missing coordinate
-    expect(body.error).toMatch(/\?rig=|--rig|session/i); // and how to pass it
+    expect(body.error).toMatch(/rig/i);      // 指明缺失的坐标
+    expect(body.error).toMatch(/\?rig=|--rig|session/i); // 并说明如何传入
   });
 
-  it("explicit-seat semantics preserved: ?seat= carrying its @rig coordinate self-scopes", async () => {
+  it("保留显式席位语义：携带 @rig 坐标的 ?seat= 可自行确定范围", async () => {
     const res = await app.request("/api/activity/parked?seat=dev-b%40rig-b");
     expect(res.status).toBe(200);
     const body = await res.json() as { ok: boolean; seat: { sessionName: string; parked: boolean | string } };
@@ -105,7 +104,7 @@ describe("Wave-O B2 — parked diagnosis is RIG-SCOPED with the scope named", ()
     expect(body.seat.parked).toBe(true);
   });
 
-  it("an unknown rig coordinate teaches with the known rigs", async () => {
+  it("遇到未知 rig 坐标时列出已知 rig 作为指引", async () => {
     const res = await app.request("/api/activity/parked?rig=ghost-rig");
     expect(res.status).toBe(404);
     const body = await res.json() as { error: string };

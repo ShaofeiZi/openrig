@@ -6,11 +6,11 @@ export class ImportError extends Error {
   code: string;
 
   constructor(data: { code?: string; errors?: string[]; warnings?: string[]; message?: string }) {
-    const msg = data.errors?.join(", ") ?? data.message ?? "Import failed";
+    const msg = data.errors?.join(", ") ?? data.message ?? "导入失败";
     super(msg);
     this.name = "ImportError";
     this.code = data.code ?? "unknown";
-    this.errors = data.errors ?? (data.message ? [data.message] : ["Import failed"]);
+    this.errors = data.errors ?? (data.message ? [data.message] : ["导入失败"]);
     this.warnings = data.warnings ?? [];
   }
 }
@@ -33,7 +33,7 @@ export function useCreateSnapshot(rigId: string) {
       const res = await fetch(`/api/rigs/${encodeURIComponent(rigId)}/snapshots`, { method: "POST" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error ?? `Snapshot failed (HTTP ${res.status})`);
+        throw new Error((data as { error?: string }).error ?? `创建快照失败（HTTP ${res.status}）`);
       }
       return res.json();
     },
@@ -78,9 +78,9 @@ export function useTeardownRig(rigId: string) {
         sessionsKilled?: number;
       };
       if (!res.ok) {
-        throw new Error(data.error ?? `Teardown failed (HTTP ${res.status})`);
+        throw new Error(data.error ?? `关闭工作组失败（HTTP ${res.status}）`);
       }
-      // Body-driven: errors[] on 200 is a failure
+      // 由响应体判断：即使状态为 200，只要 errors[] 非空仍视为失败。
       if (Array.isArray(data.errors) && data.errors.length > 0) {
         throw new Error(data.errors.join("; "));
       }
@@ -101,7 +101,7 @@ export function useStartRig(rigId: string) {
       const res = await fetch(`/api/rigs/${encodeURIComponent(rigId)}/up`, { method: "POST" });
       const data = await res.json().catch(() => ({})) as { error?: string };
       if (!res.ok) {
-        throw new Error(data.error ?? `Start failed (HTTP ${res.status})`);
+        throw new Error(data.error ?? `启动失败（HTTP ${res.status}）`);
       }
       return data;
     },
@@ -114,14 +114,12 @@ export function useStartRig(rigId: string) {
 }
 
 /**
- * OPR.0.4.3.22 — the policy-carrying launch/restore mutation the launch/recovery
- * modal executes AFTER the operator has seen the read-only plan. POSTs
- * /api/rigs/:id/up with an explicit body carrying `freshLogicalIds` (the per-seat
- * fresh list — the LOCK: fresh is only ever a per-seat list, never a global flip).
+ * OPR.0.4.3.22——启动/恢复弹窗在操作员看过只读计划后执行的、携带策略的变更。
+ * 请求 POST /api/rigs/:id/up，并在显式请求体中携带 `freshLogicalIds`
+ *（逐席位的全新启动列表——锁定规则：fresh 只能是逐席位列表，不能是全局开关）。
  *
- * This is DISTINCT from `useStartRig`, which stays a bodyless default `/up` POST.
- * The modal never routes through `useStartRig`, so the default restore behavior
- * is not silently changed (guard 3).
+ * 此变更与 `useStartRig` 不同；后者仍是无请求体的默认 `/up` POST。弹窗绝不经过
+ * `useStartRig`，因此不会静默改变默认恢复行为（守卫 3）。
  */
 export function useLaunchRig(rigId: string) {
   const queryClient = useQueryClient();
@@ -163,7 +161,7 @@ export function useImportRig() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { code?: string; errors?: string[]; warnings?: string[]; message?: string };
         if (data.code === "cycle_error") {
-          throw new ImportError({ ...data, errors: data.errors ?? ["Cycle detected in rig topology"] });
+          throw new ImportError({ ...data, errors: data.errors ?? ["工作组拓扑中检测到循环"] });
         }
         throw new ImportError(data);
       }
@@ -198,7 +196,7 @@ export function useExpandRig() {
       });
       const data = await res.json() as ExpandRigResult;
       if (res.status >= 400 || !data.ok) {
-        throw new Error(data.error ?? `Expansion failed (HTTP ${res.status})`);
+        throw new Error(data.error ?? `扩展工作组失败（HTTP ${res.status}）`);
       }
       return data;
     },
@@ -218,7 +216,7 @@ export function useRemoveLibrarySpec() {
       const res = await fetch(`/api/specs/library/${encodeURIComponent(entryId)}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({})) as { error?: string };
       if (!res.ok) {
-        throw new Error(data.error ?? `Remove failed (HTTP ${res.status})`);
+        throw new Error(data.error ?? `移除失败（HTTP ${res.status}）`);
       }
       return data;
     },
@@ -239,7 +237,7 @@ export function useRenameLibrarySpec() {
       });
       const data = await res.json().catch(() => ({})) as { error?: string };
       if (!res.ok) {
-        throw new Error(data.error ?? `Rename failed (HTTP ${res.status})`);
+        throw new Error(data.error ?? `重命名失败（HTTP ${res.status}）`);
       }
       return data;
     },

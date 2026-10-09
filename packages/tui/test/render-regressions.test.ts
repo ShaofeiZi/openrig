@@ -3,36 +3,37 @@ import { demoSnapshot } from "../src/demo-data.js";
 import { renderScreen } from "../src/render.js";
 import { computeExplorerRows, createViewState } from "../src/state.js";
 import type { FleetSnapshot } from "../src/types.js";
+import { dropW, strWidth } from "../src/text-width.js";
 
-describe("live visual regressions", () => {
-  it("renders the approved POD/SEAT identity columns without repeating the selected rig", () => {
+describe("live 视觉回归", () => {
+  it("渲染批准的 POD/SEAT 身份列，不重复选中 rig", () => {
     const snap = demoSnapshot();
     const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
     view.dispatch({ type: "drill", resource: "rig", name: "openrig-build" });
 
     const screen = renderScreen(view.get(), snap, { cols: 140, rows: 34 });
-    const header = screen.lines.find((line) => line.includes("SEAT") && line.includes("STATE"));
+    const header = screen.lines.find((line) => line.includes("席位") && line.includes("状态"));
     const row = screen.lines.find((line) => line.includes("┃ dev50") && line.includes("driver"));
 
-    expect(header).toMatch(/POD\s+SEAT\s+RT\s+MODEL/);
+    expect(header).toMatch(/席位\s+席位\s+运行时\s+模型/);
     expect(row).not.toContain("openrig-build");
   });
 
-  it("keeps the approved operational columns at 140 columns", () => {
+  it("140 列下保持批准的运营列", () => {
     const snap = demoSnapshot();
     const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
     view.dispatch({ type: "drill", resource: "rig", name: "openrig-build" });
 
     const screen = renderScreen(view.get(), snap, { cols: 140, rows: 34 });
-    const header = screen.lines.find((line) => line.includes("SEAT") && line.includes("STATE"));
-    expect(header).toContain("CTX");
-    expect(header).toContain("Q");
-    expect(header).toContain("WORK");
-    expect(header).toContain("NOW");
-    expect(header).toContain("ACTIONS");
+    const header = screen.lines.find((line) => line.includes("席位") && line.includes("状态"));
+    expect(header).toContain("上下文");
+    expect(header).toContain("队列");
+    expect(header).toContain("工作");
+    expect(header).toContain("现在");
+    expect(header).toContain("动作");
   });
 
-  it("keeps every raw-key content target visibly focused, including multiple actions on one row", () => {
+  it("让每个 raw-key 内容目标可见聚焦，包括一行上多个动作", () => {
     const snap = demoSnapshot();
     const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
     view.dispatch({ type: "drill", resource: "rig", name: "openrig-build" });
@@ -48,31 +49,32 @@ describe("live visual regressions", () => {
 
     view.dispatch({ type: "content-select", index: tabIndex });
     screen = renderScreen(view.get(), snap, { cols: 140, rows: 34 });
-    // pane delimiter located by its FIXED boundary (EXPL_W=30 → content at 31):
-    // the slice-17 navigator's │ rails would shadow a first-│ split (guard-
-    // sanctioned truthful floor update; the assertion is unchanged)
-    expect(screen.lines[screen.contentTargets[tabIndex]!.y - 1]!.slice(screen.explorerWidth + 1)).toMatch(/^›/);
+    // 窗格分隔符按固定边界定位（EXPL_W=30 → content 在 31）：
+    // slice-17 navigator 的 │ 轨会遮蔽首 │ 分屏（guard
+    // 批准的诚实底线更新；断言不变）
+    expect(dropW(screen.lines[screen.contentTargets[tabIndex]!.y - 1]!, screen.explorerWidth + 1)).toMatch(/^›/);
 
     view.dispatch({ type: "content-select", index: termIndex });
     screen = renderScreen(view.get(), snap, { cols: 140, rows: 34 });
-    expect(screen.lines[screen.contentTargets[termIndex]!.y - 1]).toContain("›term ▸");
+    expect(dropW(screen.lines[screen.contentTargets[termIndex]!.y - 1]!, screen.explorerWidth + 1)).toMatch(/^›/);
+    expect(screen.contentTargets[termIndex]!.action).toEqual(expect.objectContaining({ type: "act", act: "open-terminal" }));
 
     view.dispatch({ type: "content-select", index: rowIndex });
     screen = renderScreen(view.get(), snap, { cols: 140, rows: 34 });
-    // fixed-boundary pane delimiter (see the tab-focus pin above)
-    expect(screen.lines[screen.contentTargets[rowIndex]!.y - 1]!.slice(screen.explorerWidth + 1)).toMatch(/^›/);
+    // 固定边界窗格分隔符（见上方 tab-focus 锚点）
+    expect(dropW(screen.lines[screen.contentTargets[rowIndex]!.y - 1]!, screen.explorerWidth + 1)).toMatch(/^›/);
   });
 
-  it("never emits a composed row wider than the terminal", () => {
+  it("绝不发出宽于终端的组合行", () => {
     const snap = demoSnapshot();
     const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
     view.dispatch({ type: "jump", section: "needs" });
 
     const screen = renderScreen(view.get(), snap, { cols: 80, rows: 20 });
-    expect(screen.lines.every((line) => line.length <= 80)).toBe(true);
+    expect(screen.lines.every((line) => strWidth(line) <= 80)).toBe(true);
   });
 
-  it("anchors ticker, rule, and status to the bottom of an exact short 140x34 view", () => {
+  it("把 ticker、rule、status 锚到精确短 140x34 视图底部", () => {
     const base = demoSnapshot();
     const snap: FleetSnapshot = { ...base, needs: [], hostsDown: [] };
     const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
@@ -80,15 +82,15 @@ describe("live visual regressions", () => {
 
     const screen = renderScreen(view.get(), snap, { cols: 140, rows: 34 });
     expect(screen.lines).toHaveLength(34);
-    // chrome contract (visual-polish directive): ticker · pane rule · keybind
-    // hint bar · status line, bottom-anchored
+    // chrome 契约（visual-polish 指令）：ticker · 窗格线 · keybind
+    // 提示条 · 状态行，底部锚定
     expect(screen.lines[30]).toContain("≋");
     expect(screen.lines[31]).toMatch(/^━+╋━+$/);
-    expect(screen.lines[32]).toContain("q quit");
-    expect(screen.lines[33]).toContain("[t] needs");
+    expect(screen.lines[32]).toContain("q 退出");
+    expect(screen.lines[33]).toContain("[t] 待关注");
   });
 
-  it("scrolls the Explorer viewport to keep the keyboard selection visible", () => {
+  it("滚动 explorer 视口保持键盘选择可见", () => {
     const base = demoSnapshot();
     const snap: FleetSnapshot = {
       ...base,
@@ -105,7 +107,7 @@ describe("live visual regressions", () => {
     expect(screen.lines.some((line) => line.includes("▶") && line.includes("spec-15"))).toBe(true);
   });
 
-  it("does not turn legacy agent signals into human Attention requests", () => {
+  it("不把遗留 agent 信号转成人工 Attention 请求", () => {
     const base = demoSnapshot();
     const snap: FleetSnapshot = {
       ...base,
@@ -116,11 +118,11 @@ describe("live visual regressions", () => {
 
     const screen = renderScreen(view.get(), snap, { cols: 140, rows: 20 });
     expect(screen.lines.join("\n")).not.toContain("qitem-123");
-    expect(screen.lines.join("\n")).toContain("Unavailable: Feed");
+    expect(screen.lines.join("\n")).toContain("不可用: 待关注");
     expect(screen.contentTargets).toHaveLength(0);
   });
 
-  it("never opens a local seat for a remote Needs row with the same canonical session", () => {
+  it("绝不给同 canonical session 的远端 Needs 行打开本地席", () => {
     const snap = demoSnapshot();
     snap.needs = [{
       source: "derived",
@@ -133,11 +135,11 @@ describe("live visual regressions", () => {
     view.dispatch({ type: "jump", section: "needs" });
     const screen = renderScreen(view.get(), snap, { cols: 140, rows: 34 });
     expect(screen.lines.join("\n")).not.toContain("remote guard needs attention");
-    expect(screen.lines.join("\n")).toContain("Unavailable: Feed");
+    expect(screen.lines.join("\n")).toContain("不可用: 待关注");
     expect(screen.contentTargets).toHaveLength(0);
   });
 
-  it("renders the locked rig-spec structure with clickable agent refs", () => {
+  it("渲染锁定 rig-spec 结构，带可点 agent 引用", () => {
     const base = demoSnapshot();
     const snap: FleetSnapshot = {
       ...base,
@@ -172,12 +174,12 @@ describe("live visual regressions", () => {
 
     const screen = renderScreen(view.get(), snap, { cols: 140, rows: 34 });
     const output = screen.lines.join("\n");
-    expect(output).toMatch(/source:\s+…\//);
-    expect(output).toContain("adversarial-review/rig.yaml · user library");
-    expect(output).toMatch(/format:\s+pod-aware/);
-    expect(output).toMatch(/shape:\s+1 pods · 1 members · 1 edges/);
-    expect(output).toMatch(/── pod review/);
-    expect(output).toMatch(/▪ r1\s+independent-reviewer\s+claude-code\s+profile default/);
+    expect(output).toMatch(/源:\s+…\//);
+    expect(output).toContain("adversarial-review/rig.yaml · 用户库");
+    expect(output).toMatch(/格式:\s+pod-aware/);
+    expect(output).toMatch(/形态:\s+1 个席位 · 1 个成员 · 1 条边/);
+    expect(output).toMatch(/── 席位 review/);
+    expect(output).toMatch(/▪ r1\s+independent-reviewer\s+claude-code\s+配置 default/);
     expect(output).toMatch(/orch\.lead → review\.r1\s+\(delegates_to\)/);
     const memberY = screen.lines.findIndex((line) => line.includes("independent-reviewer")) + 1;
     expect(screen.hitMap).toContainEqual(expect.objectContaining({
@@ -185,7 +187,7 @@ describe("live visual regressions", () => {
       action: { type: "drill", resource: "spec", name: "independent-reviewer" },
     }));
 
-    const tabsY = screen.lines.findIndex((line) => line.includes("TOPOLOGY") && line.includes("YAML")) + 1;
+    const tabsY = screen.lines.findIndex((line) => line.includes("拓扑") && line.includes("YAML")) + 1;
     expect(screen.hitMap).toContainEqual(expect.objectContaining({
       y: tabsY,
       action: { type: "tab", tab: "topology" },
@@ -193,7 +195,7 @@ describe("live visual regressions", () => {
 
     view.dispatch({ type: "tab", tab: "topology" });
     const topology = renderScreen(view.get(), snap, { cols: 140, rows: 34 }).lines.join("\n");
-    expect(topology).toMatch(/NODE\s+LABEL\s+POD\s+RUNTIME/);
+    expect(topology).toMatch(/节点\s+标签\s+席位\s+运行时/);
     expect(topology).toMatch(/orch\.lead\s+lead\s+orch\s+claude-code/);
     expect(topology).toMatch(/orch\.lead\s+→\s+review\.r1\s+\(delegates_to\)/);
 
@@ -203,7 +205,7 @@ describe("live visual regressions", () => {
     expect(yaml).not.toContain("format pod-aware");
   });
 
-  it("scrolls long content independently of the Explorer selection", () => {
+  it("长内容独立于 explorer 选择滚动", () => {
     const base = demoSnapshot();
     const snap: FleetSnapshot = {
       ...base,
@@ -221,29 +223,29 @@ describe("live visual regressions", () => {
     const initial = renderScreen(view.get(), snap, { cols: 100, rows: 12 });
     view.dispatch({ type: "layout", contentMaxOffset: initial.contentMaxOffset, contentTargetCount: initial.contentTargets.length });
     expect(initial.lines.join("\n")).not.toContain("pod pod-17");
-    const scrollY = initial.lines.findIndex((line) => line.includes("scroll ↑/↓")) + 1;
+    const scrollY = initial.lines.findIndex((line) => line.includes("滚动 ↑/↓")) + 1;
     expect(initial.hitMap).toContainEqual(expect.objectContaining({
       y: scrollY,
       action: { type: "content-scroll", delta: 10 },
     }));
     view.dispatch({ type: "content-scroll", delta: initial.contentMaxOffset }); // reach the last section regardless of the detail header height
     const scrolled = renderScreen(view.get(), snap, { cols: 100, rows: 12 }).lines.join("\n");
-    expect(scrolled).toContain("pod pod-17");
+    expect(scrolled).toContain("席位 pod-17");
     expect(view.get().selection).toBe(selected);
-    expect(scrolled).toContain("scroll ↑/↓");
+    expect(scrolled).toContain("滚动 ↑/↓");
   });
 
-  it("shows the Topology filter affordance and N-of-M / idle frame", () => {
+  it("显示 topology 过滤器可操作项与 N-of-M / 空闲帧", () => {
     const snap = demoSnapshot();
     const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
     view.dispatch({ type: "drill", resource: "rig", name: "openrig-build" });
 
     const output = renderScreen(view.get(), snap, { cols: 140, rows: 34 }).lines.join("\n");
-    expect(output).toContain("/ filter agents…");
-    expect(output).toMatch(/\d+ seats · \d+ working · \d+ need attention · \d+ open rows/);
+    expect(output).toContain("/ 过滤智能体…");
+    expect(output).toMatch(/\d+ 个席位 · \d+ 工作中 · \d+ 需要关注 · \d+ 行打开/);
   });
 
-  it("renders agent runtime/resources and makes each used-by rig a real reverse link", () => {
+  it("渲染 agent runtime/resources，并让每个 used-by rig 成为真实反向链接", () => {
     const base = demoSnapshot();
     const snap: FleetSnapshot = {
       ...base,
@@ -264,17 +266,17 @@ describe("live visual regressions", () => {
 
     const screen = renderScreen(view.get(), snap, { cols: 140, rows: 34 });
     const output = screen.lines.join("\n");
-    expect(output).toMatch(/runtime:\s+claude-code/);
+    expect(output).toMatch(/运行时:\s+claude-code/);
     expect(output).toContain("brainstorming");
-    expect(output).toMatch(/resources:\s+guidance guidance\/role\.md · plugins openrig-core · subagents reviewer/);
-    const usedY = screen.lines.findIndex((line) => line.includes("rig adversarial-review")) + 1;
+    expect(output).toMatch(/资源:\s+guidance guidance\/role\.md · plugins openrig-core · subagents reviewer/);
+    const usedY = screen.lines.findIndex((line) => line.includes("工作组 adversarial-review")) + 1;
     expect(screen.hitMap).toContainEqual(expect.objectContaining({
       y: usedY,
       action: { type: "drill", resource: "spec", name: "adversarial-review" },
     }));
   });
 
-  it("shows the Specs filter affordance and groups agent specs by folder namespace", () => {
+  it("显示 specs 过滤器可操作项并按文件夹命名空间分组 agent specs", () => {
     const base = demoSnapshot();
     const snap: FleetSnapshot = {
       ...base,
@@ -288,7 +290,7 @@ describe("live visual regressions", () => {
     view.dispatch({ type: "toggle-expand", key: "specs-kind:agent" });
 
     const output = renderScreen(view.get(), snap, { cols: 140, rows: 34 }).lines.join("\n");
-    expect(output).toContain("/ filter specs…");
+    expect(output).toContain("/ 过滤规范…");
     expect(output).toContain("review/");
     expect(output).toContain("orchestration/");
   });

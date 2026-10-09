@@ -13,18 +13,17 @@ import { stubSeatScriptPath } from "../src/adapters/stub-runner-protocol.js";
 import type { CompactionResult } from "../src/adapters/stub-compaction.js";
 import type { RestoreResult } from "../src/adapters/stub-restore.js";
 
-// Slice 51-01 items 6-8 — R1: the runner's SCRIPT-EXECUTION loop + the StubRunnerIO seam.
+// Slice 51-01 第 6–8 项——R1：runner 的脚本执行循环与 StubRunnerIO 接缝。
 //
-// The runner no longer only idles: it LOADS a script (a scenario-resolved path in cwd,
-// else DEFAULT_STUB_SCRIPT) and EXECUTES its steps against an injected IO seam
-// (mirror pi-runner's RunnerIo): `say` → a pane mirror line; `emit compaction` → the
-// real precompact seam via io.fireCompaction (arch R3: TRIGGER, never fabricate). The
-// executor is dispatch-only over the injected seam, so it unit-tests hermetically with
-// a fake IO — the real-spawn wiring is proven separately (stub-runner-compaction e2e).
+// runner 不再只保持空闲：它会加载脚本（cwd 中由场景解析出的路径，否则使用
+// DEFAULT_STUB_SCRIPT），并针对注入的 IO 接缝执行步骤（镜像 pi-runner 的 RunnerIo）：
+// `say` → 一行 pane 镜像；`emit compaction` → 通过 io.fireCompaction 进入真实 precompact
+// 接缝（arch R3：只触发，绝不伪造）。executor 只负责向注入接缝分派，因此可用 fake IO 做
+// 密闭单元测试；真实 spawn 接线由 stub-runner-compaction e2e 另行证明。
 
 const IDENTITY = { sessionName: "dev-worker@exec", nodeId: "exec-node" };
 
-/** A recording fake of the StubRunnerIO seam. */
+/** 用于记录 StubRunnerIO 接缝调用的 fake。 */
 function fakeIo(): StubRunnerIO & { lines: string[]; fireCount: number; restoreCount: number; activities: Record<string, unknown>[]; died: boolean; diedCode: number | undefined } {
   const state = {
     lines: [] as string[],
@@ -47,30 +46,30 @@ function fakeIo(): StubRunnerIO & { lines: string[]; fireCount: number; restoreC
       };
     },
     postActivity(payload: Record<string, unknown>) { this.activities.push(payload); },
-    // The real runner's die() exits the process; the fake records it so dispatch is testable.
+    // 真实 runner 的 die() 会退出进程；fake 只记录调用，使分派可测试。
     die(code: number) { this.died = true; this.diedCode = code; },
     now() { return "2021-06-06T06:06:06.000Z"; },
   };
   return state;
 }
 
-describe("executeStubScript (R1 dispatch over the StubRunnerIO seam)", () => {
-  it("mirrors a `say` step's text verbatim to the pane", () => {
+describe("executeStubScript（通过 StubRunnerIO 接缝进行 R1 分派）", () => {
+  it("把 `say` 步骤文本逐字镜像到 pane", () => {
     const io = fakeIo();
     executeStubScript({ steps: [{ kind: "say", text: "hello from the stub" }] }, io, IDENTITY);
     expect(io.lines).toContain("hello from the stub");
     expect(io.fireCount).toBe(0);
   });
 
-  it("fires the REAL compaction seam on an `emit compaction` step (never fabricates)", () => {
+  it("遇到 `emit compaction` 步骤时触发真实 compaction 接缝（绝不伪造）", () => {
     const io = fakeIo();
     executeStubScript({ steps: [{ kind: "emit", behavior: "compaction" }] }, io, IDENTITY);
     expect(io.fireCount).toBe(1);
-    // The runner mirrors the marker the seam actually wrote (observable, honest).
+    // runner 镜像接缝实际写入的 marker，保证可观察且诚实。
     expect(io.lines.some((l) => l.includes("/fake/restore-pending/seat.json"))).toBe(true);
   });
 
-  it("executes multi-step scripts in order", () => {
+  it("按顺序执行多步骤脚本", () => {
     const io = fakeIo();
     executeStubScript({
       steps: [
@@ -84,38 +83,37 @@ describe("executeStubScript (R1 dispatch over the StubRunnerIO seam)", () => {
     expect(io.lines.at(-1)).toBe("third");
   });
 
-  it("frames the scripted turn with canonical activity events (UserPromptSubmit … Stop), runtime=stub", () => {
+  it("用规范 activity event（UserPromptSubmit … Stop）界定脚本轮次，runtime=stub", () => {
     const io = fakeIo();
     executeStubScript({ steps: [{ kind: "say", text: "reply" }] }, io, IDENTITY);
-    // A script is ONE turn: it opens with UserPromptSubmit (running) and closes with
-    // Stop (idle) — the observable state transition the 51-02 scenario harness reads.
+    // 一份脚本就是一轮：以 UserPromptSubmit（running）开始，以 Stop（idle）结束；这是
+    // 51-02 场景运行环境读取的可观察状态转换。
     expect(io.activities.at(0)).toMatchObject({
       hookEvent: "UserPromptSubmit", runtime: "stub", sessionName: IDENTITY.sessionName, nodeId: IDENTITY.nodeId,
     });
     expect(io.activities.at(-1)).toMatchObject({ hookEvent: "Stop", runtime: "stub" });
-    // Every payload carries the canonical field shape (occurredAt from the injected clock).
+    // 每个 payload 都采用规范字段形状（occurredAt 来自注入的时钟）。
     for (const a of io.activities) {
       expect(a.occurredAt).toBe("2021-06-06T06:06:06.000Z");
       expect(a.sessionName).toBe(IDENTITY.sessionName);
     }
   });
 
-  it("simulates slow_output as DETERMINISTIC chunked pane output (paced observable, no real delay, no fabrication)", () => {
+  it("把 slow_output 模拟为确定性分块 pane 输出（节奏可观察、无真实延迟、不伪造）", () => {
     const io = fakeIo();
     executeStubScript({ steps: [{ kind: "emit", behavior: "slow_output" }] }, io, IDENTITY);
-    expect(io.fireCount).toBe(0); // not a compaction; no seam fired
-    // "paced output at the scripted rate" (PRD §4.2) realized deterministically as a
-    // fixed MULTI-part chunk sequence — the assertable observable (the scenario verb set
-    // has no temporal assertion, so chunking IS the paced signal); §5-clean, fits R3.
-    const chunks = io.lines.filter((l) => /slow_output chunk \d+\/\d+/.test(l));
-    expect(chunks.length).toBeGreaterThanOrEqual(2); // multi-part = paced
-    // Emitted in ascending order, deterministically.
+    expect(io.fireCount).toBe(0); // 不是 compaction，不触发接缝。
+    // “按脚本速率输出”（PRD §4.2）确定性实现为固定的多段 chunk 序列，这是可断言的
+    // 可观察信号（场景动词集没有时间断言，因此分块本身就是节奏信号）；符合 §5 与 R3。
+    const chunks = io.lines.filter((l) => /slow_output 分块 \d+\/\d+/.test(l));
+    expect(chunks.length).toBeGreaterThanOrEqual(2); // 多段即表示有节奏。
+    // 确定性地按升序发出。
     expect(io.lines.indexOf(chunks[0]!)).toBeLessThan(io.lines.indexOf(chunks[chunks.length - 1]!));
     expect(chunks[0]).toContain("1/");
     expect(chunks[chunks.length - 1]).toContain(`${chunks.length}/${chunks.length}`);
   });
 
-  it("simulates mid_turn_death: the turn dies mid-flight — hooks CEASE (no Stop) and later steps do NOT run", () => {
+  it("模拟 mid_turn_death：轮次中途死亡，hook 停止（无 Stop）且后续步骤不运行", () => {
     const io = fakeIo();
     executeStubScript({
       steps: [
@@ -123,32 +121,31 @@ describe("executeStubScript (R1 dispatch over the StubRunnerIO seam)", () => {
         { kind: "say", text: "SHOULD NOT RUN — the seat is dead" },
       ],
     }, io, IDENTITY);
-    // The turn opened (UserPromptSubmit) but died before completing — NO Stop was posted.
+    // 轮次已开始（UserPromptSubmit），但在完成前死亡，因此没有发出 Stop。
     const events = io.activities.map((a) => a.hookEvent);
     expect(events).toContain("UserPromptSubmit");
-    expect(events).not.toContain("Stop"); // hooks ceased
-    // The process was told to die (real runner exits here); later steps never ran.
+    expect(events).not.toContain("Stop"); // hook 已停止。
+    // 进程收到死亡指令（真实 runner 会在此退出），后续步骤不会运行。
     expect(io.died).toBe(true);
     expect(io.diedCode).toBe(STUB_MID_TURN_DEATH_EXIT_CODE);
     expect(io.lines).not.toContain("SHOULD NOT RUN — the seat is dead");
   });
 
-  it("fires the REAL restore seam on an `emit restore` step and mirrors the injected restore directive (never fabricates)", () => {
+  it("遇到 `emit restore` 步骤时触发真实 restore 接缝并镜像注入指令（绝不伪造）", () => {
     const io = fakeIo();
     executeStubScript({ steps: [{ kind: "emit", behavior: "restore" }] }, io, IDENTITY);
-    // The restore reader (compaction-restore-bridge.cjs) was TRIGGERED, exactly once…
+    // restore reader（compaction-restore-bridge.cjs）恰好被触发一次……
     expect(io.restoreCount).toBe(1);
-    // …restore is NOT a compaction — the precompact seam must NOT fire on this path…
+    // ……restore 不是 compaction，因此此路径不得触发 precompact 接缝……
     expect(io.fireCount).toBe(0);
-    // …and the runner mirrors the additionalContext restore directive the bridge injected
-    // (observable + honest — the real delivered context, never a fabricated one).
+    // ……runner 还会镜像 bridge 注入的 additionalContext restore 指令（可观察且诚实，
+    // 是实际交付的上下文，绝非伪造）。
     expect(io.lines.some((l) => l.includes("OpenRig compaction restore packet is available"))).toBe(true);
   });
 
-  it("throws LOUDLY on a behavior outside the closed repertoire (defensive exhaustiveness) — never a silent no-op", () => {
-    // All four seeded behaviors are wired; a value outside STUB_BEHAVIORS can only reach
-    // the executor by bypassing parseStubScript — that is a programming error, and the
-    // executor must fail loudly rather than silently drop the step.
+  it("遇到封闭行为集之外的值时明确抛错（防御性穷尽），绝不静默跳过", () => {
+    // 四种预置行为均已接线；STUB_BEHAVIORS 之外的值只有绕过 parseStubScript 才能进入
+    // executor，这属于编程错误，executor 必须明确失败，不能静默丢弃步骤。
     const io = fakeIo();
     expect(() => executeStubScript(
       { steps: [{ kind: "emit", behavior: "totally-unknown" as unknown as StubBehavior }] }, io, IDENTITY,
@@ -156,7 +153,7 @@ describe("executeStubScript (R1 dispatch over the StubRunnerIO seam)", () => {
   });
 });
 
-describe("resolveStubScript (scenario-resolved path in cwd, else the built-in default)", () => {
+describe("resolveStubScript（优先使用 cwd 中场景解析出的路径，否则使用内置默认值）", () => {
   let cwd: string;
   beforeEach(() => { cwd = mkdtempSync(join(tmpdir(), "stub-resolve-")); });
   afterEach(() => { rmSync(cwd, { recursive: true, force: true }); });
@@ -166,11 +163,11 @@ describe("resolveStubScript (scenario-resolved path in cwd, else the built-in de
     exists: (p: string) => existsSync(p),
   });
 
-  it("returns DEFAULT_STUB_SCRIPT when no scenario script is present in cwd", () => {
+  it("cwd 中没有场景脚本时返回 DEFAULT_STUB_SCRIPT", () => {
     expect(resolveStubScript(cwd, fsLike())).toEqual(DEFAULT_STUB_SCRIPT);
   });
 
-  it("parses the scenario-resolved script at <cwd>/.openrig/stub/script.json when present", () => {
+  it("存在 <cwd>/.openrig/stub/script.json 时解析场景脚本", () => {
     const scriptPath = stubSeatScriptPath(cwd);
     mkdirSync(join(cwd, ".openrig", "stub"), { recursive: true });
     const script: StubScript = { steps: [{ kind: "emit", behavior: "compaction" }] };
@@ -178,7 +175,7 @@ describe("resolveStubScript (scenario-resolved path in cwd, else the built-in de
     expect(resolveStubScript(cwd, fsLike())).toEqual(script);
   });
 
-  it("fails LOUDLY on a malformed scenario script (never a silent fallback to default)", () => {
+  it("场景脚本格式错误时明确失败，绝不静默回退到默认值", () => {
     const scriptPath = stubSeatScriptPath(cwd);
     mkdirSync(join(cwd, ".openrig", "stub"), { recursive: true });
     writeFileSync(scriptPath, "{not json", "utf8");

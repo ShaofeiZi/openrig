@@ -1,25 +1,21 @@
-// OPR.0.4.3.22 — rig-status compose (a pure FOLD of per-seat backend truths).
+// OPR.0.4.3.22——rig-status compose（对 per-seat backend truth 的纯 FOLD）。
 //
-// This is the daemon side of the rig-status + launch-control UI. It is NOT a new
-// restore pipeline and NOT slice-20's ledger. It folds four SHIPPED signals into
-// a single `{ status, perSeat[], src[] }` object the UI renders:
+// 这是 rig-status + launch-control UI 的 daemon 侧。它不是新 restore pipeline，也不是 slice-20
+// ledger。它将四个已交付 signal 折叠成 UI 渲染的单个 `{ status, perSeat[], src[] }` object：
 //
 //   1. ps-lifecycle       — per-node `lifecycleState` (running/detached/recoverable/attention).
-//   2. restore-plan       — `buildRestorePlanPreview` per-seat forecast (tokenState + intendedAction).
+//   2. restore-plan       —— `buildRestorePlanPreview` 的逐席位预测（tokenState + intendedAction）。
 //   3. restore-check      — `RecoveryPlan.status` readiness (blocked / actionable / unknown).
-//   4. kernel-status      — `KernelState` (folded only for the kernel rig; NEVER daemon /healthz).
+//   4. kernel-status      —— `KernelState`（仅为 kernel 工作组折叠；绝不读取后台服务 /healthz）。
 //
-// THE LOCK (founder/PM): the aggregate is a pure FOLD of per-seat truths — a rig
-// NEVER globally flips to `fresh`. "fresh" is only ever `freshLogicalIds` (a
-// per-seat list threaded by the backend). This module derives an aggregate that
-// READS `blocked`/`partial` BECAUSE individual seats are blocked; it never
-// repaints the per-seat truths (a global-fresh flip would be the UI form of the
-// silent-fresh-prime behavior FR-7 just removed). The compose function does NOT
-// mutate its input plan — the seats that WOULD resume stay `resume-original`.
+// 锁定原则（founder/PM）：aggregate 是 per-seat truth 的纯 FOLD——rig 绝不全局切换为 `fresh`。
+// “fresh”只会出现在 `freshLogicalIds`（backend 贯穿传递的 per-seat list）。本模块派生的 aggregate
+// 因 individual seat 被阻塞而显示 `blocked`/`partial`；它绝不重绘 per-seat truth（全局 fresh flip
+// 会成为 FR-7 刚移除的 silent-fresh-prime 行为的 UI 形式）。compose 函数不会修改 input plan——
+// 本应 resume 的 seat 继续保持 `resume-original`。
 //
-// `src[]` is the composed provenance (which signals folded, with their values) —
-// the "composed, not inferred; source state visible in debug/test" contract. It
-// is derived from real backend data, never from pane text.
+// `src[]` 是组合后的 provenance（折叠了哪些 signal 及其值）——“组合而非推断；source state 在
+// debug/test 中可见”的契约。它源自真实 backend data，绝不源自 pane text。
 
 import type { NodeLifecycleState } from "./types.js";
 import type { RestorePlanPreview } from "./restore-plan-preview.js";
@@ -28,21 +24,20 @@ import type { RecoveryPlan } from "./restore-check-service.js";
 import type { KernelState } from "./kernel-boot-tracker.js";
 import { deriveRigLifecycleState } from "./ps-projection.js";
 
-/** The composed rig-level aggregate. A pure fold — never a verdict that
- *  overwrites per-seat truth. */
+/** 组合后的 rig-level aggregate。纯 fold——绝不是覆盖 per-seat truth 的 verdict。 */
 export type RigAggStatus = "up" | "partial" | "down" | "blocked" | "unknown";
 
 export interface RigStatusSeat {
   logicalId: string;
   runtime: string | null;
-  /** Live process lifecycle (ps-projection). */
+  /** 实时进程生命周期（ps-projection）。 */
   lifecycleState: NodeLifecycleState;
-  /** Read-only restore-plan forecast (restore-plan-preview). */
+  /** 只读 restore-plan forecast（restore-plan-preview）。 */
   tokenState: ResumeTokenState;
   intendedAction: "resume-original" | "fresh-primed" | "awaiting-decision";
   freshRequired: boolean;
-  /** True when THIS seat blocks a restore-original (awaiting-decision) — the
-   *  per-seat blocker that folds up to the aggregate `blocked`. */
+  /** 此 seat 阻塞 restore-original（awaiting-decision）时为 true——该 per-seat blocker 会折叠为
+   *  aggregate `blocked`。 */
   blocked: boolean;
   provenance?: string | null;
   lastVerified?: string | null;
@@ -57,12 +52,12 @@ export interface RigStatusObject {
   status: RigAggStatus;
   seatsTotal: number;
   seatsRunning: number;
-  /** true when the rig can be recovered without operator action (down/partial);
-   *  false when blocked (needs a decision) or already up. */
+  /** rig 无需 operator action 即可恢复（down/partial）时为 true；被阻塞（需要 decision）或已 up
+   *  时为 false。 */
   recoverable: boolean;
   perSeat: RigStatusSeat[];
-  /** Composed provenance — the folded signals + their values. Visible in the UI
-   *  `src:` line and in debug/test output (the non-inference contract). */
+  /** 组合 provenance——已折叠 signal 及其值。在 UI 的 `src:` 行与 debug/test output 中可见
+   *  （非推断契约）。 */
   src: string[];
 }
 
@@ -76,23 +71,23 @@ export interface ComposeRigStatusInput {
   rigId: string;
   rigName: string;
   isKernel?: boolean;
-  /** Per-node ps-lifecycle truth (from node-inventory). */
+  /** per-node ps-lifecycle truth（来自 node-inventory）。 */
   nodes: SeatLifecycleInput[];
-  /** Read-only restore-plan forecast (buildRestorePlanPreview) — NOT mutated. */
+  /** 只读 restore-plan forecast（buildRestorePlanPreview）——不会被修改。 */
   plan: RestorePlanPreview;
-  /** restore-check recovery readiness for this rig (optional; folded when present). */
+  /** 此 rig 的 restore-check recovery readiness（可选；存在时参与折叠）。 */
   recovery?: RecoveryPlan | null;
-  /** kernel-status state — folded ONLY for the kernel rig (never /healthz). */
+  /** kernel-status state——只为 kernel rig 折叠（绝不使用 /healthz）。 */
   kernelState?: KernelState | null;
 }
 
-/** Kernel states that require an explicit operator action (a real blocker). */
+/** 需要显式 operator action 的 kernel state（真正的 blocker）。 */
 function kernelIsBlocked(state: KernelState): boolean {
   return state === "auth_blocked" || state === "spec_missing" || state === "bootstrap_failed";
 }
 
-/** Map a kernel state to an aggregate (used only for the kernel rig). Returns
- *  null for `skipped` — the caller then folds the lifecycle instead. */
+/** 将 kernel state 映射为 aggregate（仅用于 kernel rig）。`skipped` 返回 null——随后 caller 改为
+ *  折叠 lifecycle。 */
 function kernelAggregate(state: KernelState): RigAggStatus | null {
   switch (state) {
     case "ready":
@@ -110,13 +105,13 @@ function kernelAggregate(state: KernelState): RigAggStatus | null {
   }
 }
 
-/** Fold the four backend signals into a single rig-status object. Pure — does
- *  NOT mutate the input plan (the resumable seats stay resume-original). */
+/** 将四个 backend signal 折叠为单个 rig-status object。纯函数——不修改 input plan
+ *  （可 resume 的 seat 保持 resume-original）。 */
 export function composeRigStatus(input: ComposeRigStatusInput): RigStatusObject {
   const { rigId, rigName, nodes, plan, recovery, kernelState } = input;
   const isKernel = input.isKernel ?? false;
 
-  // Join ps-lifecycle nodes with the restore-plan forecast (per logicalId).
+  // 按 logicalId 连接 ps-lifecycle node 与 restore-plan forecast。
   const planByLogicalId = new Map(plan.nodes.map((n) => [n.logicalId, n]));
   const perSeat: RigStatusSeat[] = nodes.map((node) => {
     const p = planByLogicalId.get(node.logicalId);
@@ -142,11 +137,10 @@ export function composeRigStatus(input: ComposeRigStatusInput): RigStatusObject 
   const seatsRunning = nodes.filter((n) => n.lifecycleState === "running").length;
   const lifecycle = deriveRigLifecycleState(nodes.map((n) => n.lifecycleState));
 
-  // --- Aggregate fold (precedence: blocked > unknown > lifecycle/kernel) ------
-  // ANY blocked seat (awaiting-decision / restore-check blocker / kernel auth/spec/
-  // bootstrap failure) → aggregate `blocked`. This is the LOCK's money case: a
-  // rig with resumable AND blocked seats reads `blocked` BECAUSE seats are
-  // blocked — the resumable seats remain resume-original in perSeat.
+  // --- Aggregate fold（优先级：blocked > unknown > lifecycle/kernel）-----------
+  // 任意 blocked seat（awaiting-decision / restore-check blocker / kernel auth/spec/bootstrap
+  // failure）→ aggregate `blocked`。这是锁定原则的关键场景：同时有 resumable 与 blocked seat 的
+  // rig 会因为 seat 被阻塞而显示 `blocked`——resumable seat 在 perSeat 中仍为 resume-original。
   const anySeatBlocked = perSeat.some((s) => s.blocked);
   const recoveryBlocked = recovery?.status === "blocked";
   const kernelBlocked = isKernel && kernelState != null && kernelIsBlocked(kernelState);
@@ -157,8 +151,8 @@ export function composeRigStatus(input: ComposeRigStatusInput): RigStatusObject 
   } else if (recovery?.status === "unknown") {
     status = "unknown";
   } else {
-    // Kernel rig: kernel-status drives the non-blocked aggregate (never lifecycle
-    // alone, never /healthz). Falls back to the lifecycle fold when skipped.
+    // Kernel rig：由 kernel-status 驱动非 blocked aggregate（绝不只用 lifecycle，也绝不使用
+    // /healthz）。skipped 时回退到 lifecycle fold。
     const kernelAgg = isKernel && kernelState != null ? kernelAggregate(kernelState) : null;
     if (kernelAgg) {
       status = kernelAgg;
@@ -169,10 +163,10 @@ export function composeRigStatus(input: ComposeRigStatusInput): RigStatusObject 
 
   const recoverable = status === "down" || status === "partial";
 
-  // --- src[] provenance (composed, not inferred) -----------------------------
+  // --- src[] provenance（组合而非推断）---------------------------------------
   const actionCounts = countActions(perSeat);
   const src: string[] = [
-    `ps: ${seatsRunning}/${seatsTotal} running · lifecycle=${lifecycle}`,
+    `ps: ${seatsRunning}/${seatsTotal} 运行中 · lifecycle=${lifecycle}`,
     `restore-plan: ${actionCounts}`,
   ];
   if (recovery) src.push(`restore-check: ${recovery.status}`);
@@ -211,5 +205,5 @@ function countActions(perSeat: RigStatusSeat[]): string {
   if (counts["resume-original"]) parts.push(`${counts["resume-original"]} resume-original`);
   if (counts["fresh-primed"]) parts.push(`${counts["fresh-primed"]} fresh-primed`);
   if (counts["awaiting-decision"]) parts.push(`${counts["awaiting-decision"]} awaiting-decision`);
-  return parts.length > 0 ? parts.join(", ") : "no seats";
+  return parts.length > 0 ? parts.join(", ") : "无 seat";
 }

@@ -1,9 +1,8 @@
-// Preview Terminal v0 (PL-018) — stacked pinned-preview panel.
+// 预览终端 v0（PL-018）——堆叠的已固定预览面板。
 //
-// Renders all currently pinned preview panes. Composes with the
-// existing topology + slice surfaces — operator pins from the
-// node-detail drawer / loop-state row / topology tab, and the stack
-// surfaces them globally in one always-visible side rail.
+// 渲染当前所有已固定的预览面板。与既有的拓扑 + slice 界面组合——操作者从
+// 节点详情抽屉 / loop-state 行 / 拓扑标签页固定，本堆叠把它们全局铺在一条
+// 始终可见的侧栏里。
 
 import { PreviewPane } from "./PreviewPane.js";
 import { usePreviewPins } from "./usePreviewPins.js";
@@ -20,10 +19,10 @@ export function PreviewStack({ testIdPrefix = "preview-stack" }: { testIdPrefix?
     >
       <header className="px-3 py-2 border-b border-outline-variant/35 shrink-0">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface">
-          Pinned previews
+          已固定的预览
         </span>
         <span className="ml-2 font-mono text-[9px] text-on-surface-variant">
-          {pins.length} pinned
+          已固定 {pins.length} 个
         </span>
       </header>
       <div className="flex-1 px-2 py-2 space-y-2">

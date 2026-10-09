@@ -1,0 +1,42 @@
+{
+"packages/tui/test/crash-cart-keys.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-states.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/input-stream.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/rig-presence.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/s08-rig-terminal-link.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/scroll-per-view-proof.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/socket-commands-query.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/socket.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/startup-availability.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/stylize.test.ts": [
+"tui",
+"passed"
+]
+}

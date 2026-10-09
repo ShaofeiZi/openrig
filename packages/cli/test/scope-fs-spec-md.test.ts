@@ -1,13 +1,13 @@
-// SPEC.md is the authored contract file for a work node; README.md is the legacy name.
+// SPEC.md 是工作节点的撰写契约文件；README.md 是旧名。
 //
-// The founder ruling renamed the chain file, and the product stopped being able to read its own
-// work tree: `rig scope mission ls` DROPPED release-0.5.2, and `findMission` threw "contains no
-// README.md" at a mission that was fully authored. Meanwhile ~59 dormant missions and every
-// historical proof receipt are README-backed and must keep working untouched.
+// 创始人裁定重命名该链文件后，产品读不出自己的工作树：`rig scope mission ls`
+// 丢掉了 release-0.5.2，`findMission` 在一个已完整撰写的 mission 上抛出
+// "contains no README.md"。与此同时约 59 个休眠 mission 与每个历史 proof receipt
+// 都以 README 为底，必须原样继续可用。
 //
-// So: SPEC.md wins when present, README.md still resolves when it is the only one, and nothing
-// prompts a migration. Half of these tests exist to pin the legacy half — a fix that reads SPEC.md
-// by breaking README.md would trade one silent drop for another.
+// 故：SPEC.md 存在时优先，README.md 是唯一者时仍可解析，且不提示迁移。
+// 这些测试一半用于钉住旧半——靠破坏 README.md 来读 SPEC.md 的修复，等于用一次静默
+// 丢失换另一次。
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs";

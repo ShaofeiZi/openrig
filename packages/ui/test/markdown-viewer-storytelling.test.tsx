@@ -1,7 +1,7 @@
-// 0.3.1 slice 06 — MarkdownViewer storytelling integration: kind
-// dispatcher + fenced-block grammars wired through the existing
-// rendered-mode flow. Verifies the HG-1, HG-2, HG-3 acceptance gates
-// from IMPLEMENTATION-PRD §10.
+// 0.3.1 slice 06——MarkdownViewer storytelling 集成：kind
+// 分发器 + fenced-block 文法经既有
+// rendered-mode 流接线。验证 IMPLEMENTATION-PRD §10 的
+// HG-1、HG-2、HG-3 验收门禁。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
@@ -22,10 +22,10 @@ status: in-flight
 Paragraph here.`;
     const { container } = render(<MarkdownViewer content={content} hideFrontmatter />);
     expect(container.querySelector("[data-testid='kind-frame-incident-timeline']")).toBeTruthy();
-    expect(container.querySelector("[data-testid='kind-badge-incident-timeline']")?.textContent).toContain("INCIDENT TIMELINE");
+    expect(container.querySelector("[data-testid='kind-badge-incident-timeline']")?.textContent).toContain("事件时间线");
     expect(container.querySelector("[data-testid='kind-frame-title']")?.textContent).toContain("Plugin primitive narrative");
     expect(container.querySelector("[data-testid='kind-frame-meta-status']")?.textContent).toContain("in-flight");
-    // Body still rendered inside the frame.
+    // body 仍渲染在 frame 内。
     expect(container.querySelector("[data-testid='md-heading-1']")?.textContent).toContain("Background");
   });
 
@@ -136,14 +136,14 @@ rows:
     const content = "```timeline\n[broken yaml\n```\n";
     const { container } = render(<MarkdownViewer content={content} hideFrontmatter />);
     expect(container.querySelector("[data-testid='fenced-block-timeline-fallback']")).toBeTruthy();
-    expect(container.querySelector("[data-testid='fenced-block-timeline-fallback']")?.textContent).toContain("fallback");
+    expect(container.querySelector("[data-testid='fenced-block-timeline-fallback']")?.textContent).toContain("回退");
   });
 
   it("leaves unknown fenced-block languages (e.g. python) to the standard SyntaxHighlight renderer", () => {
     const content = "```python\nprint('hello')\n```\n";
     const { container } = render(<MarkdownViewer content={content} hideFrontmatter />);
     expect(container.querySelector("[data-testid^='fenced-block-']")).toBeNull();
-    // Standard code-block render path still fires.
+    // 标准 code-block 渲染路径仍触发。
     expect(container.textContent).toContain("print");
   });
 });

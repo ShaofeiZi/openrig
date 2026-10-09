@@ -1,11 +1,11 @@
-// S19 MR2 — the marks are DERIVED from the web identity of record
-// (RuntimeMark.tsx), never invented: the grid math is pinned against the
-// transcribed rect list, the row marks against their exact cell strings.
+// S19 MR2——标记派生自 web 记录身份
+//（RuntimeMark.tsx），绝不臆造：grid 数学钉在转写的 rect 列表上，
+// 行标记钉在其精确单元格字符串上。
 import { describe, it, expect } from "vitest";
 import { clawdGrid, clawdFaithfulRows, clawdMiniA, clawdMiniB, codexMark, terminalMark, runtimeMarkSegs, markText } from "../src/topology/runtime-marks.js";
 
-describe("clawd grid = the RuntimeMark.tsx rect list", () => {
-  it("body, arms, legs, and eyes land exactly where the SVG rects put them", () => {
+describe("clawd 网格 = RuntimeMark.tsx rect 列表", () => {
+  it("身体、臂、腿、眼精确落在 SVG rect 指定处", () => {
     const g = clawdGrid();
     expect(g[2]!.slice(3, 13).every((p) => p === 1)).toBe(true); // body top row
     expect(g[6]![1]).toBe(1); // left arm
@@ -19,7 +19,7 @@ describe("clawd grid = the RuntimeMark.tsx rect list", () => {
     expect(g[15]!.every((p) => p === 0)).toBe(true);
   });
 
-  it("the faithful half-block form is 8 rows x 16 cells with eye cells carrying the eye token", () => {
+  it("忠实半块形态为 8 行 x 16 格，眼格带 eye token", () => {
     const rows = clawdFaithfulRows();
     expect(rows).toHaveLength(8);
     for (const row of rows) expect(row.reduce((n, s) => n + s.text.length, 0)).toBe(16);
@@ -29,8 +29,8 @@ describe("clawd grid = the RuntimeMark.tsx rect list", () => {
   });
 });
 
-describe("row-scale mark family", () => {
-  it("runtime → mark mapping: claude family = clawd cells, codex = >_, terminal = dark >_, unknown = honest ?", () => {
+describe("行级 mark 族", () => {
+  it("runtime → mark 映射：claude 族 = clawd 格，codex = >_，terminal = 暗 >_，unknown = 诚实 ?", () => {
     expect(markText(runtimeMarkSegs("claude-code"))).toBe("><"); // picks v4 amendment 14afeb74: inward squinty eyes (supersedes the round-4 quadrant pair)
     expect(markText(runtimeMarkSegs("codex"))).toBe(">_"); // the LOCKED web token
     expect(markText(runtimeMarkSegs("terminal"))).toBe(">_");
@@ -39,7 +39,7 @@ describe("row-scale mark family", () => {
     expect(runtimeMarkSegs(null)[0]!.token).toBe("dim"); // honest, never fabricated
   });
 
-  it("both downscale candidates are OUTPUTS of the grid downsample (provably derived — guard finding 4)", async () => {
+  it("两个降采样候选都是网格降采样的输出（可证派生——guard finding 4）", async () => {
     const { clawdDownsample } = await import("../src/topology/runtime-marks.js");
     expect(clawdMiniA()).toEqual(clawdDownsample(2, 1)[0]);
     expect(clawdMiniB()).toEqual(clawdDownsample(3, 1)[0]);

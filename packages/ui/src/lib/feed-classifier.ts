@@ -1,8 +1,8 @@
-// V1 attempt-3 Phase 3 — For You feed classifier per for-you-feed.md L106–L107 + SC-17.
+// V1 第三次尝试阶段 3——“为你推荐”信息流分类器，依据 for-you-feed.md 第 106–107 行与 SC-17。
 //
-// **Client-side synthesis from existing daemon events.** No new daemon
-// `lifecycle.shipped` event type at V1 — daemon boundary stays clean
-// (SC-29). SHIPPED cards built from queue.close + git events.
+// **在客户端基于现有后台服务事件合成。** V1 不新增后台服务的
+// `lifecycle.shipped` 事件类型——后台服务边界保持干净
+// （SC-29）。SHIPPED 卡片由 queue.close + git 事件构建。
 
 import type { ActivityEvent } from "../hooks/useActivityFeed.js";
 import { isHumanSeatSessionRef } from "./session-name.js";
@@ -23,18 +23,18 @@ export interface FeedCard {
   rigId?: string;
   receivedAt: number;
   createdAt: string;
-  // Original event for click-through to scope.
+  // 点击穿透到工作范围所用的原始事件。
   source: ActivityEvent;
-  /** OPR.0.4.4.20 FR-9 win #2: the evidence_ref judge-this link, visible on
-   *  the card itself (rendering only; carried from the attention read path). */
+  /** OPR.0.4.4.20 FR-9 收益 2：evidence_ref 的 judge-this 链接，直接显示在
+   *  卡片上（仅渲染；从待关注读取路径带过来）。 */
   evidenceRef?: string | null;
-  /** OPR.0.4.4.20 FR-9 win #1: living-notes deep link — the slice Review tab
-   *  anchored at this card's NEEDS-YOU item. Absent on non-living-notes cards
-   *  (their existing drill behavior is unchanged — additive routing). */
+  /** OPR.0.4.4.20 FR-9 收益 1：living-notes 深链——即切片“评审”标签页中
+   *  定位到本卡片 NEEDS-YOU 条目的锚点。非 living-notes 卡片上不存在
+   *  （其既有下钻行为不变——属于增量路由）。 */
   reviewSlice?: string | null;
   reviewAnchor?: string | null;
-  /** OPR.0.4.4.15: origin host id on aggregated multi-host items ('local'
-   *  or a registered host id). Absent = local (zero-config unchanged). */
+  /** OPR.0.4.4.15：聚合多主机条目上的来源主机 id（'local'
+   *  或已注册的主机 id）。缺省 = local（零配置行为不变）。 */
   hostId?: string;
 }
 
@@ -63,24 +63,24 @@ function queueEventLabel(type: string): string {
   switch (type) {
     case "queue.created":
     case "queue.item.created":
-      return "Queue item created";
+      return "队列事项已创建";
     case "queue.updated":
     case "queue.item.updated":
-      return "Queue item updated";
+      return "队列事项已更新";
     case "queue.handed_off":
-      return "Queue item handed off";
+      return "队列事项已交接";
     case "queue.claimed":
-      return "Queue item claimed";
+      return "队列事项已认领";
     case "queue.unclaimed":
-      return "Queue item unclaimed";
+      return "队列事项已取消认领";
     case "qitem.fallback_routed":
-      return "Queue item fallback routed";
+      return "队列事项已路由到回退目标";
     case "qitem.closure_overdue":
-      return "Queue item closure overdue";
+      return "队列事项关闭已逾期";
     case "inbox.absorbed":
-      return "Inbox item absorbed";
+      return "收件箱事项已吸收";
     case "inbox.denied":
-      return "Inbox item denied";
+      return "收件箱事项已拒绝";
     default:
       return type;
   }
@@ -109,10 +109,9 @@ function queueKind(type: string, state: string | undefined, tier: string | undef
   if (type === "qitem.closure_overdue" || type === "inbox.denied") {
     return "action-required";
   }
-  // OPR.0.4.4.19 FR-3: human-gate is a TIER value, never a state — the prior
-  // `state === "human-gate"` branch was dead (the state enum never contains
-  // it). The fixed branch classifies on tier, as an approval card (mirrors
-  // attention-feed.ts attentionKindFor + the mission-control read layer).
+  // OPR.0.4.4.19 FR-3：human-gate 是层级值，绝不是状态；原来的
+  // `state === "human-gate"` 分支永远不可达，因为状态枚举不含该值。修复后的分支按 tier
+  // 分类为审批卡片，与 attention-feed.ts 的 attentionKindFor 及任务控制读取层一致。
   if (tier === "human-gate") {
     return "approval";
   }
@@ -141,9 +140,9 @@ function queueBody(payload: Record<string, unknown>): string | undefined {
     source && destination
       ? `${source} -> ${destination}`
       : source
-        ? `Source: ${source}`
+        ? `来源：${source}`
         : destination
-          ? `Destination: ${destination}`
+          ? `目标：${destination}`
           : undefined;
   const meta = [
     pickString(payload, "priority") ? `priority=${pickString(payload, "priority")}` : undefined,
@@ -157,11 +156,11 @@ function queueBody(payload: Record<string, unknown>): string | undefined {
     .join("\n") || undefined;
 }
 
-// OPR.0.4.4.19 FR-3: exported so Feed.tsx's card-kind hydration uses the same
-// strict human-seat predicate instead of a prefix guess.
+// OPR.0.4.4.19 FR-3：导出此函数，使 Feed.tsx 的卡片类型填充使用同一严格的人类席位谓词，
+// 而非猜测前缀。
 export function isHumanSeat(session: string | undefined): boolean {
-  // OPR.0.4.6.MH1 FR-8: delegates to the shared session-name contract
-  // (was a local regex copy — the drift this comment always feared).
+  // OPR.0.4.6.MH1 FR-8：委托给共享会话名契约；原先是本地正则副本，正是此注释一直
+  // 防范的漂移来源。
   return isHumanSeatSessionRef(session ?? "");
 }
 
@@ -189,7 +188,7 @@ function classifyEvent(evt: ActivityEvent): FeedCard | null {
     source: evt,
   };
 
-  // Type-based mapping. Keep tight; expand as feedback rolls in.
+  // 按类型映射。保持精简，随反馈逐步扩充。
   if (evt.type.startsWith("queue.") && evt.type.endsWith(".closed")) {
     return { ...base, kind: "shipped" };
   }
@@ -214,7 +213,7 @@ function classifyEvent(evt: ActivityEvent): FeedCard | null {
     const explicitTitle = pickString(payload, "summary", "title");
     const label =
       kind === "shipped" && evt.type === "queue.updated"
-        ? "Queue item shipped"
+        ? "队列事项已交付"
         : queueEventLabel(evt.type);
     const title =
       explicitTitle ??
@@ -237,7 +236,7 @@ function classifyEvent(evt: ActivityEvent): FeedCard | null {
   if (evt.type.startsWith("lifecycle.") || evt.type.startsWith("git.")) {
     return { ...base, kind: "shipped" };
   }
-  // Default: every event surfaces as observation so nothing is silently dropped.
+  // 默认把每个事件呈现为观察项，确保没有内容被静默丢弃。
   return { ...base, kind: "observation" };
 }
 
@@ -246,18 +245,15 @@ export function classifyFeed(events: ActivityEvent[]): FeedCard[] {
   return cards.sort((a, b) => b.receivedAt - a.receivedAt);
 }
 
-// OPR.0.3.3.20 — manage-by-exception ordering. The kinds that need a human
-// decision; everything else is non-decision noise relative to them.
+// OPR.0.3.3.20——按异常管理的排序。列出需要人工决策的类别；相较于它们，其他内容都是
+// 非决策噪声。
 const DECISION_KINDS: ReadonlySet<FeedCardKind> = new Set(["action-required", "approval"]);
 
 /**
- * OPR.0.3.3.20 — targeted decision-band sort over the classified/merged feed.
- * Lifts ALL action-required/approval cards (including event-only ones, which
- * the newest-first sort alone leaves buried under newer progress noise) above
- * progress/observation/shipped, preserving newest-first WITHIN each band.
- * A two-band stable partition + the existing recency comparator — deliberately
- * NOT a priority-ranking engine (no scores, no per-kind weights, no new fields
- * on the cards).
+ * OPR.0.3.3.20——对已分类/合并 feed 执行有针对性的决策带排序。把所有需要操作/审批的
+ * 卡片提升到进度/观察/已交付卡片之上，包括仅事件卡片；若只按最新优先排序，这些卡片会被
+ * 更新的进度噪声淹没。每个条带内部仍保持最新优先。实现采用双条带稳定分区加现有时间比较器，
+ * 有意不做优先级排名引擎：不引入分数、逐类别权重或卡片新字段。
  */
 export function sortFeedByDecisionBand(cards: FeedCard[]): FeedCard[] {
   const newestFirst = (a: FeedCard, b: FeedCard) => b.receivedAt - a.receivedAt;

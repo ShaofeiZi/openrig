@@ -1,41 +1,30 @@
-// OPR.0.4.4.18 — `rig file copy` core: path grammar, the FR-4 security wall,
-// the closed rsync argv builder, and result classification.
+// OPR.0.4.4.18 —— `rig file copy` 核心：路径语法、FR-4 安全墙、
+// 封闭的 rsync argv 构造器，以及结果分类。
 //
-// SECURITY CELL (plan §3 + §7a/§7a-2, guard-cleared over three rounds):
-// five independent layers, every rejection BEFORE any spawn —
-//   1. GRAMMAR (fail-closed): a path is remote iff it carries an explicit
-//      `<hostId>:` qualifier; no inference from cwd/env/session (FR-2).
-//      Local-prefix escapes (`/ ./ ../ ~`); an id-shaped colon prefix MUST
-//      resolve or fail loudly (N18-1); leading-dash operands are refused
-//      outright with the ./ escape taught (G18-P1 belt).
-//   2. NORMALIZATION: local paths are ~-expanded + path.resolve'd and the
-//      RESOLVED form is what is checked and transported; remote paths
-//      reject ANY raw '..' SEGMENT BEFORE normalization (G18-C1: normalize
-//      COLLAPSES '..' in absolute paths, so a post-normalize check is dead
-//      code), then '.'/'//' are collapsed for the shipped form.
-//   3. THE REMOTE CHARSET WALL (G18-P3 — supersedes a --protect-args pin:
-//      this platform's rsync is OPENRSYNC, which rejects -s; never assume
-//      GNU parity on macOS): remote paths must be ABSOLUTE (arch Q5) and
-//      match ^[A-Za-z0-9._/-]+$ — every allowed character is POSIX-shell-
-//      inert, so the ssh-invoked remote shell has NOTHING to interpret:
-//      no word-split (space excluded), no glob (*?[] excluded), no
-//      expansion (~ $ excluded), no metacharacters. Rejections TEACH
-//      (offending char named + workaround; arch note, N18-2-revisitable).
-//   4. THE `--` OPERAND PIN (G18-P1 suspenders): the builder ALWAYS places
-//      `--` before the two path operands — a flag-shaped path can never
-//      parse as an option even if a future caller bypasses the refusal.
-//   5. NO SHELL locally: spawn("rsync", argv) with argv arrays; the -e ssh
-//      string is built ONLY from registry fields (user shape-checked).
-//   Deletion-class flags are UNREACHABLE (property-tested, incl. the
-//   `-s`/--protect-args ABSENCE uniformity pin).
+// 安全单元（plan §3 + §7a/§7a-2，经三轮评审放行）：五层独立防线，所有拒绝都发生在
+// 任何 spawn【之前】——
+//   1. 语法（fail-closed）：当且仅当路径带显式 `<hostId>:` 限定符时才算远程；
+//      不从 cwd/env/session 推断（FR-2）。本地前缀转义（`/ ./ ../ ~`）；形如 id 的冒号前缀
+//      【必须】能解析，否则大声失败（N18-1）；前导连字符的操作数直接拒绝，并教用户用
+//      `./` 转义（G18-P1 主防线）。
+//   2. 归一化：本地路径做 ~ 展开 + path.resolve，被检查与传输的是【解析后】形态；
+//      远程路径在归一化【之前】就拒绝任何原始 '..' 段（G18-C1：归一化会在绝对路径里折叠
+//      '..'，所以归一化后再查是死代码），随后 '.'/'//' 折叠为发布形态。
+//   3. 远程字符集墙（G18-P3——取代对 --protect-args 的钉死：本平台 rsync 是 OPENRSYNC，
+//      拒绝 -s；在 macOS 上绝不可假设与 GNU 对等）：远程路径必须【绝对】（arch Q5）且匹配
+//      ^[A-Za-z0-9._/-]+$——每个允许字符对 POSIX shell 都是惰性的，ssh 唤起的远程 shell
+//      没有任何东西可解释：无分词（排除空格）、无 glob（排除 *?[]）、无展开（排除 ~ $）、
+//      无元字符。拒绝时要【教】用户（点名违规字符 + 变通办法；arch note，N18-2 可复议）。
+//   4. `--` 操作数钉（G18-P1 双保险）：构造器【总是】在两个路径操作数前放 `--`——
+//      即使未来某个调用方绕过了拒绝，形似 flag 的路径也绝不会被解析成选项。
+//   5. 本地【不经过 shell】：用 argv 数组 spawn("rsync", argv)；-e ssh 字符串只由
+//      注册表字段（user 经过形态检查）构造。
+//   删除类 flag 不可达（已做属性测试，含 `-s`/--protect-args【缺席】一致性钉）。
 //
-// DENY WALL (FR-4, arch-endorsed SHORT CLOSED NAMED list — extension = a
-// ruling, never a growing blocklist): local side denies resolved paths under
-// ~/.openrig (live rig state — crash-safety class), ~/.ssh, ~/.codex,
-// ~/.claude (credential/shared-singleton classes); remote side denies any
-// path CONTAINING one of those dot-directory segments (conservative-over-
-// broad: /srv/backup/.ssh/x is still a credentials dir; false positives are
-// loud + revisitable, false negatives are the corruption class).
+// 拒绝墙（FR-4，arch 认可的【短而封闭的命名清单】——扩充=一次裁决，绝不是不断增长的黑名单）：
+// 本地侧拒绝解析后落在 ~/.openrig（运行中的工作组状态——崩溃安全类）、~/.ssh、~/.codex、
+// ~/.claude（凭证/共享单例类）之下的路径；远程侧拒绝任何【包含】这些点目录段的路径
+//（宁可保守过宽：/srv/backup/.ssh/x 仍是凭证目录；误报是大声+可复议的，漏报才是损坏类）。
 
 import os from "node:os";
 import path from "node:path";
@@ -56,20 +45,19 @@ const HOST_ID_SHAPE = /^[A-Za-z0-9_-]+$/;
 const SSH_USER_SHAPE = /^[A-Za-z0-9._-]+$/;
 export const REMOTE_PATH_CHARSET = /^[A-Za-z0-9._/-]+$/;
 
-/** The FR-4 short closed named deny list (dot-directory segments). */
+/** FR-4 的短而封闭的命名拒绝清单（点目录段）。 */
 export const DENIED_SEGMENTS = [".openrig", ".ssh", ".codex", ".claude"] as const;
 
 export function parseFilePathArg(raw: string): FileArgParse {
-  if (raw === "") return { ok: false, error: "empty path operand" };
+  if (raw === "") return { ok: false, error: "空路径操作数" };
   if (raw.startsWith("-")) {
-    // G18-P1 belt: a flag-shaped operand is refused outright; the ./ escape
-    // is the honest way to address such a file.
+    // G18-P1 主防线：形似 flag 的操作数直接拒绝；`./` 转义才是正确指向这类文件的方式。
     return {
       ok: false,
-      error: `path operand '${raw}' begins with '-' and could be mistaken for an option. If this is a real local file, address it with the ./ prefix (./${raw}).`,
+      error: `路径操作数 '${raw}' 以 '-' 开头，可能被误认成选项。若这是一个真实本地文件，请用 ./ 前缀指向它（./${raw}）。`,
     };
   }
-  // Local-prefix escapes: these are ALWAYS local, colon or not (N18-1).
+  // 本地前缀转义：无论有没有冒号，这些【总是】本地路径（N18-1）。
   if (raw.startsWith("/") || raw.startsWith("./") || raw.startsWith("../") || raw.startsWith("~")) {
     return { ok: true, arg: { kind: "local", path: raw } };
   }
@@ -78,19 +66,18 @@ export function parseFilePathArg(raw: string): FileArgParse {
     const prefix = raw.slice(0, colon);
     const rest = raw.slice(colon + 1);
     if (HOST_ID_SHAPE.test(prefix)) {
-      // Id-shaped prefix: this IS a host qualifier — it must resolve or the
-      // command fails loudly (fail-closed; never a silent local fallback).
-      if (rest === "") return { ok: false, error: `remote path missing after '${prefix}:' — expected ${prefix}:<absolute-path>` };
+      // 形如 id 的前缀：这就是主机限定符——它必须能解析，否则命令大声失败
+      //（fail-closed；绝不静默回落到本地）。
+      if (rest === "") return { ok: false, error: `'${prefix}:' 后缺少远程路径——应为 ${prefix}:<绝对路径>` };
       return { ok: true, arg: { kind: "remote", hostId: prefix, path: rest } };
     }
-    // Non-id-shaped prefix (contains '/', empty, etc.): scp's lived
-    // behavior — the whole operand is a local path.
+    // 非 id 形态的前缀（含 '/'、为空等）：沿用 scp 的实际行为——整个操作数是本地路径。
     return { ok: true, arg: { kind: "local", path: raw } };
   }
   return { ok: true, arg: { kind: "local", path: raw } };
 }
 
-// ── the deny wall + normalization ──────────────────────────────────────────
+// ── 拒绝边界与规范化 ──────────────────────────────────────────────────────
 
 function expandLocalTilde(p: string): string {
   if (p === "~") return os.homedir();
@@ -100,8 +87,8 @@ function expandLocalTilde(p: string): string {
 
 export type PathCheck = { ok: true; normalizedPath: string } | { ok: false; error: string };
 
-/** Local side: ~-expand, resolve (traversal collapses here), then deny-check
- *  the RESOLVED form. The resolved form is what rsync receives. */
+/** 本地侧：~ 展开、resolve（遍历在此折叠），然后对【解析后】形态做拒绝检查。
+ *  rsync 收到的就是这个解析后形态。 */
 export function checkLocalPath(raw: string): PathCheck {
   const resolved = path.resolve(expandLocalTilde(raw));
   const home = os.homedir();
@@ -110,7 +97,7 @@ export function checkLocalPath(raw: string): PathCheck {
   if (resolved === activeHostsRegistry) {
     return {
       ok: false,
-      error: `refused: '${raw}' resolves to the active hosts registry (${activeHostsRegistry}) — the registry itself is not a copy source/target in v0. This is the FR-4 default-deny wall (live OpenRig state; extension requires a ruling).`,
+      error: `已拒绝：'${raw}' 解析到当前主机注册表（${activeHostsRegistry}）——v0 里注册表本身不是拷贝的源/目标。这是 FR-4 默认拒绝墙（zrig 运行态；扩充需一次裁决）。`,
     };
   }
   for (const segment of DENIED_SEGMENTS) {
@@ -118,7 +105,7 @@ export function checkLocalPath(raw: string): PathCheck {
     if (resolved === deniedRoot || resolved.startsWith(deniedRoot + path.sep)) {
       return {
         ok: false,
-        error: `refused: '${raw}' resolves into ${deniedRoot} — ${segment === ".openrig" ? "live OpenRig state (incl. the hosts registry) is not a copy source/target in v0 (crash-safety)" : "credential/agent-home directories are not copy sources/targets"}. This is the FR-4 default-deny wall (a short closed list; extension requires a ruling).`,
+        error: `已拒绝：'${raw}' 解析进 ${deniedRoot}——${segment === ".openrig" ? "zrig 运行态（含主机注册表）v0 里不是拷贝源/目标（崩溃安全）" : "凭证/智能体主目录不是拷贝的源/目标"}。这是 FR-4 默认拒绝墙（短而封闭的清单；扩充需一次裁决）。`,
       };
     }
   }
@@ -128,43 +115,40 @@ export function checkLocalPath(raw: string): PathCheck {
   ) {
     return {
       ok: false,
-      error: `refused: '${raw}' resolves into the active OPENRIG_HOME (${activeOpenRigHome}) — live OpenRig state is not a copy source/target in v0 (crash-safety). This is the FR-4 default-deny wall (a short closed list; extension requires a ruling).`,
+      error: `已拒绝：'${raw}' 解析进当前 OPENRIG_HOME（${activeOpenRigHome}）——zrig 运行态 v0 里不是拷贝源/目标（崩溃安全）。这是 FR-4 默认拒绝墙（短而封闭的清单；扩充需一次裁决）。`,
     };
   }
   return { ok: true, normalizedPath: resolved };
 }
 
-/** Remote side: posix-normalize, then the wall — absolute-only (arch Q5),
- *  no surviving traversal, the shell-inert charset (G18-P3), and the
- *  denied-segment list. Errors TEACH (offending char + workaround). */
+/** 远程侧：posix 归一化，然后过墙——仅绝对路径（arch Q5）、不残留遍历、
+ *  shell 惰性字符集（G18-P3）、以及拒绝段清单。报错要【教】用户（违规字符 + 变通办法）。 */
 export function checkRemotePath(raw: string, hostId: string): PathCheck {
   const charsetViolation = [...raw].find((ch) => !REMOTE_PATH_CHARSET.test(ch));
   if (charsetViolation !== undefined) {
-    const shown = charsetViolation === " " ? "a space" : `'${charsetViolation}'`;
+    const shown = charsetViolation === " " ? "空格" : `'${charsetViolation}'`;
     return {
       ok: false,
-      error: `refused: remote path for '${hostId}' contains ${shown}, which is outside the v0 remote-path character set [A-Za-z0-9._/-]. v0 keeps remote paths shell-inert by construction${charsetViolation === " " ? " — use a space-free staging path and rename on the far side" : ""}. (v0-conservative; widening is a ruling.)`,
+      error: `已拒绝：给 '${hostId}' 的远程路径含 ${shown}，它不在 v0 远程路径字符集 [A-Za-z0-9._/-] 内。v0 从构造上让远程路径对 shell 惰性${charsetViolation === " " ? "——请改用不含空格的暂存路径，到远端再改名" : ""}。（v0 保守；放宽需一次裁决。）`,
     };
   }
   if (!raw.startsWith("/")) {
-    return { ok: false, error: `refused: remote paths are ABSOLUTE-only in v0 (got '${raw}' for host '${hostId}') — remote ~/relative resolution would smuggle in remote-side semantics. Use the full path.` };
+    return { ok: false, error: `已拒绝：v0 远程路径【只接受绝对路径】（主机 '${hostId}' 收到 '${raw}'）——远程 ~/相对路径解析会夹带远程侧语义。请写完整路径。` };
   }
-  // G18-C1 (guard code-review): the RAW path is checked for '..' BEFORE
-  // normalization — posix.normalize fully COLLAPSES '..' in absolute paths
-  // (/srv/../../etc/passwd → /etc/passwd), so a post-normalize "surviving
-  // .." check is dead code and the climb escapes silently. In an
-  // absolute-only grammar a '..' segment is never necessary; ANY '..'
-  // rejects outright (no benign/escaping distinction — remote symlinks
-  // make that unreasonable to judge from here).
+  // G18-C1（防护代码评审）：在归一化【之前】就检查【原始】路径里的 '..'——
+  // posix.normalize 会在绝对路径中完全折叠 '..'
+  //（/srv/../../etc/passwd → /etc/passwd），所以归一化后再查“残留 ..”是死代码，
+  // 而向上越界会静默逃逸。在“仅绝对路径”的语法里，'..' 段永远用不上；
+  // 任何 '..' 都直接拒绝（不区分良性/越界——远程符号链接使得从本端无法合理判断）。
   if (raw.split("/").includes("..")) {
-    return { ok: false, error: `refused: remote path '${raw}' contains a '..' traversal segment (FR-4). Remote paths are absolute-only — write the final path without '..'.` };
+    return { ok: false, error: `已拒绝：远程路径 '${raw}' 含 '..' 遍历段（FR-4）。远程路径只接受绝对路径——请写不含 '..' 的最终路径。` };
   }
   const normalized = path.posix.normalize(raw);
   for (const part of normalized.split("/")) {
     if ((DENIED_SEGMENTS as readonly string[]).includes(part)) {
       return {
         ok: false,
-        error: `refused: remote path '${raw}' contains the denied directory segment '${part}' (credential/rig-state class; conservative-over-broad by design — FR-4's short closed list).`,
+        error: `已拒绝：远程路径 '${raw}' 含被拒目录段 '${part}'（凭证/工作组状态类；按设计宁保守过宽——FR-4 的短封闭清单）。`,
       };
     }
   }
@@ -175,9 +159,9 @@ export function checkRemotePath(raw: string, hostId: string): PathCheck {
 
 export interface CopySide {
   kind: "local" | "remote";
-  /** Normalized path (resolved local / posix-normalized remote). */
+  /** 规范化路径（本地已解析 / 远程按 POSIX 规范化）。 */
   path: string;
-  /** Present on remote sides. */
+  /** 仅远程侧存在。 */
   host?: SshHostEntry;
 }
 
@@ -202,20 +186,20 @@ function resolveRemoteSide(hostId: string, rawPath: string, deps: PlanDeps): { o
   if (resolved.host.transport !== "ssh") {
     return {
       ok: false,
-      error: `host '${hostId}' uses transport '${resolved.host.transport}' — v0 file movement is ssh/rsync only. Register an ssh entry for this host or move the file another way.`,
+      error: `主机 '${hostId}' 使用传输 '${resolved.host.transport}'——v0 文件传输仅支持 ssh/rsync。请为该主机注册一条 ssh 条目，或改用其他方式移动文件。`,
       code: "unsupported_transport",
     };
   }
   if (resolved.host.user !== undefined && !SSH_USER_SHAPE.test(resolved.host.user)) {
-    return { ok: false, error: `registry entry '${hostId}' has a user field outside [A-Za-z0-9._-] — refusing to place it on an ssh command line`, code: "invalid_registry_user" };
+    return { ok: false, error: `注册表条目 '${hostId}' 的 user 字段不在 [A-Za-z0-9._-] 内——拒绝把它放到 ssh 命令行上`, code: "invalid_registry_user" };
   }
   const pathCheck = checkRemotePath(rawPath, hostId);
   if (!pathCheck.ok) return { ok: false, error: pathCheck.error, code: "denied_path" };
   return { ok: true, side: { kind: "remote", path: pathCheck.normalizedPath, host: resolved.host } };
 }
 
-/** Validate the whole invocation — EVERY rejection here happens before any
- *  spawn (the fail-closed set; spawn-spy-asserted in tests). */
+/** 校验整个调用——这里的【每次】拒绝都发生在任何 spawn【之前】
+ *（fail-closed 集合；测试里用 spawn-spy 断言）。 */
 export function planFileCopy(rawSrc: string, rawDst: string, opts: { dryRun?: boolean } & PlanDeps = {}): PlanResult {
   const srcParse = parseFilePathArg(rawSrc);
   if (!srcParse.ok) return { ok: false, error: srcParse.error, code: "bad_operand" };
@@ -223,7 +207,7 @@ export function planFileCopy(rawSrc: string, rawDst: string, opts: { dryRun?: bo
   if (!dstParse.ok) return { ok: false, error: dstParse.error, code: "bad_operand" };
 
   if (srcParse.arg.kind === "remote" && dstParse.arg.kind === "remote") {
-    return { ok: false, error: "remote-to-remote is not in v0; pull then push (two explicit transfers — never a silent relay through this host)", code: "remote_to_remote" };
+    return { ok: false, error: "v0 不支持 remote 到 remote；请先拉取再推送（两次显式传输——绝不通过本主机静默中转）", code: "remote_to_remote" };
   }
 
   const sides: CopySide[] = [];
@@ -241,17 +225,16 @@ export function planFileCopy(rawSrc: string, rawDst: string, opts: { dryRun?: bo
   return { ok: true, plan: { src: sides[0]!, dst: sides[1]!, dryRun: opts.dryRun === true } };
 }
 
-// ── the CLOSED argv builder ─────────────────────────────────────────────────
+// ── 闭合的 argv 构建器 ─────────────────────────────────────────────────────
 
 function sideOperand(side: CopySide): string {
   if (side.kind === "local") return side.path;
   return `${side.host!.target}:${side.path}`;
 }
 
-/** The ONLY place rsync arguments are assembled. Properties (test-asserted):
- *  no deletion-class flag ever present; NO -s/--protect-args (uniform argv
- *  across GNU rsync and openrsync — the G18-P3 absence pin); `--` ALWAYS
- *  precedes the two path operands; option positions are fixed. */
+/** rsync 参数【唯一】的组装处。属性（有测试断言）：
+ *  永不存在删除类 flag；没有 -s/--protect-args（GNU rsync 与 openrsync 之间 argv 一致
+ *  ——G18-P3 缺席钉）；`--`【总是】在两个路径操作数之前；选项位置固定。 */
 export function buildRsyncArgv(plan: CopyPlan): string[] {
   const argv = ["--archive", "--itemize-changes", "--stats"];
   if (plan.dryRun) argv.push("--dry-run");
@@ -275,7 +258,7 @@ export interface FileCopyResult {
   exitCode: number | null;
   stdout: string;
   stderr: string;
-  /** Parsed from rsync --stats when available. */
+  /** 可用时从 rsync --stats 解析。 */
   bytesTransferred?: number;
   filesTransferred?: number;
   hint?: string;
@@ -299,8 +282,8 @@ function parseStats(stdout: string): { bytesTransferred?: number; filesTransferr
   return { bytesTransferred: num(bytes), filesTransferred: num(files) };
 }
 
-/** rsync's classes are the executor taxonomy MINUS remote-daemon-unreachable
- *  (rsync needs no daemon — arch ruling 2). */
+/** rsync 的错误分类就是执行器分类去掉 remote-daemon-unreachable
+ *  （rsync 不需要 daemon——arch 裁决 2）。 */
 export function classifyRsyncResult(exitCode: number | null, stdout: string, stderr: string): FileCopyResult {
   if (exitCode === 0) {
     return { ok: true, failedStep: "none", exitCode, stdout, stderr, ...parseStats(stdout) };
@@ -312,7 +295,7 @@ export function classifyRsyncResult(exitCode: number | null, stdout: string, std
       exitCode,
       stdout,
       stderr,
-      hint: "Check the registered host/user and the SSH error. For authentication errors, inspect availability of the intended key, agent or Keychain in this process. For host-key or signature-algorithm errors, confirm the expected fingerprint or supported key type with the host owner; keep host verification enabled.",
+      hint: "请检查注册的主机/用户与 SSH 报错。若是认证错误，确认本进程中所需密钥、agent 或 Keychain 是否可用；若是主机密钥或签名算法错误，请与主机负责人确认期望的指纹或支持的密钥类型；请保持主机校验开启。",
     };
   }
   if (exitCode === 255 || CONNECTION_FAILURE_PATTERNS.some((re) => re.test(stderr))) {
@@ -351,7 +334,7 @@ export async function runFileCopy(plan: CopyPlan, deps: { spawn?: SpawnFn } = {}
       exitCode: null,
       stdout,
       stderr,
-      hint: "rsync is not installed locally. macOS: `brew install rsync` (or use the system openrsync ≥ the one shipped with your OS); Linux: install the rsync package.",
+      hint: "本机未安装 rsync。macOS：`brew install rsync`（或用与你系统自带相当或更新的 openrsync）；Linux：安装 rsync 包。",
     };
   }
   return classifyRsyncResult(exitCode, stdout, stderr);

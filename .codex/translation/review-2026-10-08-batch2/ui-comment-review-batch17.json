@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T01:54:19",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch17",
+ "files": 10,
+ "changed": 8,
+ "reviewed_no_change": 2,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/p5-2-bounce-rig-expand-persistence.test.tsx",
+   "status": "changed",
+   "after_sha256": "3d2bcff046800e81e816a2b43db7cbe893ae0b48221c15d2085c43c09a69532e",
+   "natural_language_residual": 0,
+   "machine_classification": "abb154e、HostMultiRigGraph/TopologyOverlayProvider/useTopologyOverlay、/topology/rig/$id、RigScopePage、slice 21 altitude、ArtifactsNavigator/QueueItemTrigger、OPR.0.4.1 AC-4-FF/OPR.0.4.4.20 FR-4、MarkdownViewer.tsx:164-176/:302-312、regex 、exit 134/SIGABRT、256MB cap、VM-005 release-0.4.7/ARCH-RULING-b3 sha 632ff319/8757593f、fixture/README.md sha 660068d4、36h 窗口/27 天、WINDOW_MS、Slice 24 HG-10/HG-13、OPR.0.3.4.8、Q1 Option A、WorkspacePortfolioPanel/ScopePages:744、proof bar、testid 保留"
+  },
+  {
+   "path": "packages/ui/test/bootstrap-wizard.test.tsx",
+   "status": "changed",
+   "after_sha256": "158f616af4d48f97237cab1f124e0d5ec66969eb6d2b4ece60a5415c96b03891",
+   "natural_language_residual": 0,
+   "machine_classification": "abb154e、HostMultiRigGraph/TopologyOverlayProvider/useTopologyOverlay、/topology/rig/$id、RigScopePage、slice 21 altitude、ArtifactsNavigator/QueueItemTrigger、OPR.0.4.1 AC-4-FF/OPR.0.4.4.20 FR-4、MarkdownViewer.tsx:164-176/:302-312、regex 、exit 134/SIGABRT、256MB cap、VM-005 release-0.4.7/ARCH-RULING-b3 sha 632ff319/8757593f、fixture/README.md sha 660068d4、36h 窗口/27 天、WINDOW_MS、Slice 24 HG-10/HG-13、OPR.0.3.4.8、Q1 Option A、WorkspacePortfolioPanel/ScopePages:744、proof bar、testid 保留"
+  },
+  {
+   "path": "packages/ui/test/p5-slice-scope.test.tsx",
+   "status": "changed",
+   "after_sha256": "678d90a4b507612fac90eaeaf7095e0a2c300377c57772154a2777231233fbaf",
+   "natural_language_residual": 0,
+   "machine_classification": "abb154e、HostMultiRigGraph/TopologyOverlayProvider/useTopologyOverlay、/topology/rig/$id、RigScopePage、slice 21 altitude、ArtifactsNavigator/QueueItemTrigger、OPR.0.4.1 AC-4-FF/OPR.0.4.4.20 FR-4、MarkdownViewer.tsx:164-176/:302-312、regex 、exit 134/SIGABRT、256MB cap、VM-005 release-0.4.7/ARCH-RULING-b3 sha 632ff319/8757593f、fixture/README.md sha 660068d4、36h 窗口/27 天、WINDOW_MS、Slice 24 HG-10/HG-13、OPR.0.3.4.8、Q1 Option A、WorkspacePortfolioPanel/ScopePages:744、proof bar、testid 保留"
+  },
+  {
+   "path": "packages/ui/test/bundle-inspector.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "bd1aa6f30d501c1f82b449349b509eb67b36ec695d1cdc7ac082fd7f331816a3",
+   "natural_language_residual": 0,
+   "machine_classification": "abb154e、HostMultiRigGraph/TopologyOverlayProvider/useTopologyOverlay、/topology/rig/$id、RigScopePage、slice 21 altitude、ArtifactsNavigator/QueueItemTrigger、OPR.0.4.1 AC-4-FF/OPR.0.4.4.20 FR-4、MarkdownViewer.tsx:164-176/:302-312、regex 、exit 134/SIGABRT、256MB cap、VM-005 release-0.4.7/ARCH-RULING-b3 sha 632ff319/8757593f、fixture/README.md sha 660068d4、36h 窗口/27 天、WINDOW_MS、Slice 24 HG-10/HG-13、OPR.0.3.4.8、Q1 Option A、WorkspacePortfolioPanel/ScopePages:744、proof bar、testid 保留"
+  },
+  {
+   "path": "packages/ui/test/markdown-viewer.test.tsx",
+   "status": "changed",
+   "after_sha256": "2e9dc12b513f0278c57095846bd113973ac2bb9439dd008bf512929b0fb8c20e",
+   "natural_language_residual": 0,
+   "machine_classification": "abb154e、HostMultiRigGraph/TopologyOverlayProvider/useTopologyOverlay、/topology/rig/$id、RigScopePage、slice 21 altitude、ArtifactsNavigator/QueueItemTrigger、OPR.0.4.1 AC-4-FF/OPR.0.4.4.20 FR-4、MarkdownViewer.tsx:164-176/:302-312、regex 、exit 134/SIGABRT、256MB cap、VM-005 release-0.4.7/ARCH-RULING-b3 sha 632ff319/8757593f、fixture/README.md sha 660068d4、36h 窗口/27 天、WINDOW_MS、Slice 24 HG-10/HG-13、OPR.0.3.4.8、Q1 Option A、WorkspacePortfolioPanel/ScopePages:744、proof bar、testid 保留"
+  },
+  {
+   "path": "packages/ui/test/mission-status-reconcile.test.ts",
+   "status": "changed",
+   "after_sha256": "83b3f6f60aefb5db97295e70216064fedfadbd7a1b16e4c168acf9af2013823c",
+   "natural_language_residual": 0,
+   "machine_classification": "abb154e、HostMultiRigGraph/TopologyOverlayProvider/useTopologyOverlay、/topology/rig/$id、RigScopePage、slice 21 altitude、ArtifactsNavigator/QueueItemTrigger、OPR.0.4.1 AC-4-FF/OPR.0.4.4.20 FR-4、MarkdownViewer.tsx:164-176/:302-312、regex 、exit 134/SIGABRT、256MB cap、VM-005 release-0.4.7/ARCH-RULING-b3 sha 632ff319/8757593f、fixture/README.md sha 660068d4、36h 窗口/27 天、WINDOW_MS、Slice 24 HG-10/HG-13、OPR.0.3.4.8、Q1 Option A、WorkspacePortfolioPanel/ScopePages:744、proof bar、testid 保留"
+  },
+  {
+   "path": "packages/ui/test/launch-cmux-button.test.tsx",
+   "status": "changed",
+   "after_sha256": "d3cc9ff75b206e7d355c3682f4082fd4119bce3ebcaa8f04c09323cc3767fc07",
+   "natural_language_residual": 0,
+   "machine_classification": "abb154e、HostMultiRigGraph/TopologyOverlayProvider/useTopologyOverlay、/topology/rig/$id、RigScopePage、slice 21 altitude、ArtifactsNavigator/QueueItemTrigger、OPR.0.4.1 AC-4-FF/OPR.0.4.4.20 FR-4、MarkdownViewer.tsx:164-176/:302-312、regex 、exit 134/SIGABRT、256MB cap、VM-005 release-0.4.7/ARCH-RULING-b3 sha 632ff319/8757593f、fixture/README.md sha 660068d4、36h 窗口/27 天、WINDOW_MS、Slice 24 HG-10/HG-13、OPR.0.3.4.8、Q1 Option A、WorkspacePortfolioPanel/ScopePages:744、proof bar、testid 保留"
+  },
+  {
+   "path": "packages/ui/test/mission-status-surfaces.test.tsx",
+   "status": "changed",
+   "after_sha256": "1212c16754bc4ba866674af809e604478d1272c11613653818cf6fb9edd857c8",
+   "natural_language_residual": 0,
+   "machine_classification": "abb154e、HostMultiRigGraph/TopologyOverlayProvider/useTopologyOverlay、/topology/rig/$id、RigScopePage、slice 21 altitude、ArtifactsNavigator/QueueItemTrigger、OPR.0.4.1 AC-4-FF/OPR.0.4.4.20 FR-4、MarkdownViewer.tsx:164-176/:302-312、regex 、exit 134/SIGABRT、256MB cap、VM-005 release-0.4.7/ARCH-RULING-b3 sha 632ff319/8757593f、fixture/README.md sha 660068d4、36h 窗口/27 天、WINDOW_MS、Slice 24 HG-10/HG-13、OPR.0.3.4.8、Q1 Option A、WorkspacePortfolioPanel/ScopePages:744、proof bar、testid 保留"
+  },
+  {
+   "path": "packages/ui/test/package-install-flow.test.tsx",
+   "status": "changed",
+   "after_sha256": "5d2a530fd5dbea02c7389961e37fa2e8b55fbfe5f3c6687e3333e7bc6b8b4edc",
+   "natural_language_residual": 0,
+   "machine_classification": "abb154e、HostMultiRigGraph/TopologyOverlayProvider/useTopologyOverlay、/topology/rig/$id、RigScopePage、slice 21 altitude、ArtifactsNavigator/QueueItemTrigger、OPR.0.4.1 AC-4-FF/OPR.0.4.4.20 FR-4、MarkdownViewer.tsx:164-176/:302-312、regex 、exit 134/SIGABRT、256MB cap、VM-005 release-0.4.7/ARCH-RULING-b3 sha 632ff319/8757593f、fixture/README.md sha 660068d4、36h 窗口/27 天、WINDOW_MS、Slice 24 HG-10/HG-13、OPR.0.3.4.8、Q1 Option A、WorkspacePortfolioPanel/ScopePages:744、proof bar、testid 保留"
+  },
+  {
+   "path": "packages/ui/test/project-workspace-overview.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "7b4ab8b88faaecdc168d07022fd281865cbfa6ee9c5cd2246844c8c76c11c967",
+   "natural_language_residual": 0,
+   "machine_classification": "abb154e、HostMultiRigGraph/TopologyOverlayProvider/useTopologyOverlay、/topology/rig/$id、RigScopePage、slice 21 altitude、ArtifactsNavigator/QueueItemTrigger、OPR.0.4.1 AC-4-FF/OPR.0.4.4.20 FR-4、MarkdownViewer.tsx:164-176/:302-312、regex 、exit 134/SIGABRT、256MB cap、VM-005 release-0.4.7/ARCH-RULING-b3 sha 632ff319/8757593f、fixture/README.md sha 660068d4、36h 窗口/27 天、WINDOW_MS、Slice 24 HG-10/HG-13、OPR.0.3.4.8、Q1 Option A、WorkspacePortfolioPanel/ScopePages:744、proof bar、testid 保留"
+  }
+ ]
+}

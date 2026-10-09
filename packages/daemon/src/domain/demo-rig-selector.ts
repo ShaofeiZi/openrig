@@ -22,12 +22,12 @@ export function selectCurrentRigSummary<T extends DemoRigSummaryLike>(
   }
   if (runningMatches.length > 1) {
     throw new Error(
-      `Rig '${rigName}' is ambiguous — ${runningMatches.length} running rigs share that name.`
+      `Rig '${rigName}' 存在歧义——有 ${runningMatches.length} 个运行中的 rig 使用该名称。`
     );
   }
   if (matches.length > 1) {
     throw new Error(
-      `Rig '${rigName}' is ambiguous — ${matches.length} stopped rigs share that name and none are running.`
+      `Rig '${rigName}' 存在歧义——有 ${matches.length} 个已停止的 rig 使用该名称，且没有同名 rig 正在运行。`
     );
   }
   return matches[0] ?? null;

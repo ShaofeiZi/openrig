@@ -1,7 +1,6 @@
-// OPR.0.4.6.WF5 FR-2: the maturity dial — resolution-chain tests, THE TIER
-// SPLIT (human-gate ONLY on human-routed positions), the never-lost
-// fallback, never-retroactive semantics, and the dial grammar strictness
-// at the spec parse seam.
+// OPR.0.4.6.WF5 FR-2：maturity dial——resolution-chain 测试、tier split（human-gate 仅用于
+// human-routed position）、never-lost fallback、never-retroactive 语义，以及 spec parse seam
+// 上严格的 dial grammar。
 
 import { describe, expect, it } from "vitest";
 
@@ -25,8 +24,8 @@ const base = (over: Partial<ExceptionRouteInput> = {}): ExceptionRouteInput => (
   ...over,
 });
 
-describe("WF-5 FR-2 dial resolution", () => {
-  it("engine default (chain link 4): orchestrator-first, ordinary tier — the inversion at the wire", () => {
+describe("WF-5 FR-2 dial 解析", () => {
+  it("engine 默认值（chain link 4）：orchestrator-first、普通 tier——wire 层的反转", () => {
     const r = resolveExceptionRoute(base());
     expect(r.position).toBe("orchestrator");
     expect(r.destinationSession).toBe("orch-lead@wf5-proof");
@@ -35,12 +34,12 @@ describe("WF-5 FR-2 dial resolution", () => {
     expect(r.resolvedVia).toBe("engine-default");
   });
 
-  it("THE TIER-SPLIT NEGATIVE: an orchestrator-routed item NEVER carries human-gate tier", () => {
+  it("TIER-SPLIT 负向：orchestrator-routed item 绝不携带 human-gate tier", () => {
     const r = resolveExceptionRoute(base());
     expect(r.tier).not.toBe(WORKFLOW_EXCEPTION_HUMAN_TIER);
   });
 
-  it("human-only (workflow-declared, chain link 2): human seat FIRST, human-gate tier", () => {
+  it("human-only（workflow-declared，chain link 2）：human seat 优先、human-gate tier", () => {
     const r = resolveExceptionRoute(
       base({
         spec: {
@@ -56,7 +55,7 @@ describe("WF-5 FR-2 dial resolution", () => {
     expect(r.resolvedVia).toBe("workflow-declared");
   });
 
-  it("per-class override (chain link 1) beats the workflow default", () => {
+  it("per-class override（chain link 1）优先于 workflow default", () => {
     const r = resolveExceptionRoute(
       base({
         exceptionClass: "stuck_overdue",
@@ -74,7 +73,7 @@ describe("WF-5 FR-2 dial resolution", () => {
     expect(r.resolvedVia).toBe("class-declared");
   });
 
-  it("host dial default (chain link 3) applies when the spec declares nothing", () => {
+  it("spec 未声明时应用 host dial default（chain link 3）", () => {
     const r = resolveExceptionRoute(
       base({ spec: { roles: {} }, hostDialDefault: "human_only" }),
     );
@@ -82,7 +81,7 @@ describe("WF-5 FR-2 dial resolution", () => {
     expect(r.resolvedVia).toBe("host-default");
   });
 
-  it("THE NEVER-LOST FALLBACK: orchestrator position with no resolvable role target routes human@host with human-gate tier", () => {
+  it("NEVER-LOST FALLBACK：没有可解析 role target 的 orchestrator position 路由到带 human-gate tier 的 human@host", () => {
     const r = resolveExceptionRoute(base({ spec: { roles: {} } }));
     expect(r.position).toBe("fallback");
     expect(r.destinationSession).toBe("human@host");
@@ -90,7 +89,7 @@ describe("WF-5 FR-2 dial resolution", () => {
     expect(r.humanRouted).toBe(true);
   });
 
-  it("class (c) is intrinsically human-only — the dial cannot re-point it", () => {
+  it("class (c) 本质上仅限 human——dial 无法将其重定向", () => {
     const r = resolveExceptionRoute(
       base({
         exceptionClass: "human_gate_trip",
@@ -104,12 +103,12 @@ describe("WF-5 FR-2 dial resolution", () => {
     expect(r.resolvedVia).toBe("class-intrinsic");
   });
 
-  it("never-retroactive by construction: resolution is pure — a dial flip changes only the NEXT call", () => {
+  it("构造上不追溯：resolution 为纯函数——dial 切换仅改变下一次调用", () => {
     const before = resolveExceptionRoute(base({ hostDialDefault: null, spec: { roles: { orch: { preferred_targets: ["orch-lead@wf5-proof"] } }, exception_routing: { orchestrator_role: "orch" } } }));
     const after = resolveExceptionRoute(base({ hostDialDefault: "human_only", spec: { roles: { orch: { preferred_targets: ["orch-lead@wf5-proof"] } }, exception_routing: { orchestrator_role: "orch" } } }));
     expect(before.position).toBe("orchestrator");
     expect(after.position).toBe("human_only");
-    // determinism: same input, same output, N times
+    // 确定性：相同 input 在 N 次调用中得到相同 output
     for (let i = 0; i < 3; i++) {
       expect(resolveExceptionRoute(base())).toEqual(before);
     }
@@ -129,8 +128,8 @@ workflow:
 ${routing}
 `;
 
-describe("WF-5 FR-2 dial grammar strictness (WF-2 rail)", () => {
-  it("a valid exception_routing block parses", () => {
+describe("WF-5 FR-2 dial grammar 严格性（WF-2 rail）", () => {
+  it("有效 exception_routing block 可解析", () => {
     const spec = parseWorkflowSpec(
       specYaml(
         "  exception_routing:\n    default: orchestrator\n    orchestrator_role: orch\n    classes:\n      stuck_overdue: human_only\n",
@@ -142,7 +141,7 @@ describe("WF-5 FR-2 dial grammar strictness (WF-2 rail)", () => {
     expect(spec.exception_routing?.classes?.stuck_overdue).toBe("human_only");
   });
 
-  it("unknown keys inside exception_routing reject naming the allowed set", () => {
+  it("exception_routing 内未知 key 会被拒绝，并列出允许集合", () => {
     expect(() =>
       parseWorkflowSpec(
         specYaml("  exception_routing:\n    escalation_ladder: pagerduty\n"),
@@ -151,7 +150,7 @@ describe("WF-5 FR-2 dial grammar strictness (WF-2 rail)", () => {
     ).toThrowError(/exception_routing/);
   });
 
-  it("an invalid dial position rejects loud", () => {
+  it("无效 dial position 会被明确拒绝", () => {
     expect(() =>
       parseWorkflowSpec(
         specYaml("  exception_routing:\n    default: founder-first\n"),
@@ -160,25 +159,25 @@ describe("WF-5 FR-2 dial grammar strictness (WF-2 rail)", () => {
     ).toThrowError(/orchestrator.*human_only|human_only.*orchestrator/);
   });
 
-  it("classes.human_gate_trip is not configurable — rejects with the intrinsic-human explanation", () => {
+  it("classes.human_gate_trip 不可配置——以 intrinsic-human 说明拒绝", () => {
     expect(() =>
       parseWorkflowSpec(
         specYaml("  exception_routing:\n    classes:\n      human_gate_trip: orchestrator\n"),
         "test://dial-gatetrip.yaml",
       ),
-    ).toThrowError(/intrinsically human-only/);
+    ).toThrowError(/本质上只能由人工处理/);
   });
 
-  it("an unknown class key rejects naming the allowed classes", () => {
+  it("未知 class key 会被拒绝，并列出允许的 class", () => {
     expect(() =>
       parseWorkflowSpec(
         specYaml("  exception_routing:\n    classes:\n      disk_full: human_only\n"),
         "test://dial-badclass.yaml",
       ),
-    ).toThrowError(/unmapped_failed, stuck_overdue/);
+    ).toThrowError(/unmapped_failed、stuck_overdue/);
   });
 
-  it("a spec WITHOUT exception_routing still parses (the zero-regression negative)", () => {
+  it("不含 exception_routing 的 spec 仍可解析（zero-regression 负向）", () => {
     const spec = parseWorkflowSpec(specYaml(""), "test://dial-absent.yaml");
     expect(spec.exception_routing).toBeUndefined();
   });

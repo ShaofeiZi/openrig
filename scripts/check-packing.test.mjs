@@ -90,29 +90,25 @@ test("the private product-factory VPS runbook and its pointers do not ship", () 
   }
 });
 
-// aa922842 — the conventions doc reaches agents through a THREE-path model:
-//   repo source      docs/reference/sdlc-conventions.md            (what repo readers cite)
-//   packed INTERNAL  daemon/docs/reference/sdlc-conventions.md     (assembly input only —
-//                                                                   NEVER taught as a user path)
-//   installed stable $OPENRIG_HOME/reference/sdlc-conventions.md   (default ~/.openrig/…)
-// The daemon materializes the stable path at startup by reading `../docs/reference`
-// relative to its dist dir (packages/daemon/src/startup.ts), which is exactly why
-// scripts/build-package.sh stages the docs at daemon/docs/reference/. That internal input
-// is therefore load-bearing and completely unguarded today: if the copy step regressed, the
-// stable path would silently stop materializing and every teaching pointer would go stale
-// with no failing test. This pins it.
-// HERMETIC BY CONSTRUCTION: packages/cli/daemon is gitignored build output, so any assertion
-// that reads it (or runs `npm pack` against it) passes on a developer machine with a stale
-// assembled package and FAILS in a clean checkout before anything is built. This test therefore
-// asserts the three contracts that make the stable path work, using only git-tracked inputs,
-// and never runs or mutates the real package build.
+// aa922842——conventions 文档经一个三路模型到达 agent：
+//   仓库源码        docs/reference/sdlc-conventions.md            （仓库读者所引用的）
+//   打包后内部      daemon/docs/reference/sdlc-conventions.md     （仅组装输入——
+//                                                                   绝不作为用户路径传授）
+//   安装后稳定版    $OPENRIG_HOME/reference/sdlc-conventions.md   （默认 ~/.openrig/…）
+// daemon 启动时通过相对其 dist 目录读 `../docs/reference`
+// （packages/daemon/src/startup.ts）来物化这个稳定路径，这正是 scripts/build-package.sh
+// 把文档暂存到 daemon/docs/reference/ 的原因。这个内部输入因此是承重的、而今天完全无人守护：
+// 若拷贝这一步退化，稳定路径会默默停止物化，所有传授指针都会过期，却没有任何测试失败。本测试把它钉住。
+// 构造上自包含：packages/cli/daemon 是被 gitignore 的构建产物，因此任何读它（或对着它跑 `npm pack`）
+// 的断言，都会在一台带过期组装包的开发机上通过、却在干净检出里、任何东西还没构建时失败。本测试因此
+// 只用 git 跟踪的输入，断言使稳定路径成立的那三条契约，绝不运行或改动真实的包构建。
 test("build-package stages the conventions doc as the daemon's stable-path input, and the package allowlist ships it", () => {
   const buildScript = readFileSync("scripts/build-package.sh", "utf-8");
 
-  // (a) STAGING CONTRACT — build-package must stage the repo's docs/reference into
-  //     daemon/docs/reference. The daemon resolves `../docs/reference` from its dist dir at
-  //     startup to materialize $OPENRIG_HOME/reference/; if this staging is dropped or
-  //     retargeted, the stable agent-facing path silently stops existing.
+  // (a) 暂存契约——build-package 必须把仓库的 docs/reference 暂存到
+  //     daemon/docs/reference。daemon 启动时从其 dist 目录解析
+  //     `../docs/reference` 以物化 $OPENRIG_HOME/reference/；如果此暂存被
+  //     丢弃或重定向，稳定的 agent 面向路径会静默消失。
   assert.match(
     buildScript,
     /mkdir -p "\$CLI_DIR\/daemon\/docs\/reference"/,
@@ -124,16 +120,16 @@ test("build-package stages the conventions doc as the daemon's stable-path input
     "scripts/build-package.sh no longer copies docs/reference verbatim into the staged package. Byte preservation is what makes the shipped conventions doc trustworthy — a transforming copy (sed/awk/envsubst) would let installed agents read something the repo never said."
   );
 
-  // (b) INCLUSION CONTRACT — npm only publishes what the files allowlist names. Staging into
-  //     daemon/ is useless if "daemon" is not published.
+  // (b) 收录契约——npm 只发布 files 白名单里命名的内容。如果 "daemon"
+  //     不在白名单，暂存到 daemon/ 毫无用处。
   const pkg = JSON.parse(readFileSync("packages/cli/package.json", "utf-8"));
   assert.ok(
     Array.isArray(pkg.files) && pkg.files.includes("daemon"),
     `packages/cli package.json "files" must include "daemon" or nothing staged there is published. Found: ${JSON.stringify(pkg.files)}`
   );
 
-  // (c) SOURCE CONTRACT — the doc being staged must actually exist in the repo and be
-  //     non-trivial. This is the git-tracked input; everything above is plumbing around it.
+  // (c) 源契约——被暂存的文档必须在仓库中真实存在且非平凡。
+  //     这是 git 跟踪的输入；上面一切都是围绕它的管道。
   const repoDoc = readFileSync("docs/reference/sdlc-conventions.md");
   assert.ok(
     repoDoc.length > 1000,
@@ -141,10 +137,9 @@ test("build-package stages the conventions doc as the daemon's stable-path input
   );
 });
 
-// OPPORTUNISTIC, never required: when an assembled package happens to be present, verify the
-// staged copy really is byte-identical. Skipped (not failed) in a clean checkout, so this
-// cannot make `npm run test:repo` depend on build state — the contracts above are the
-// hermetic guarantee; this is the belt-and-braces check on an actual artifact.
+// 机会性检查，绝不强制：当已组装的包恰好存在时，验证暂存副本确实逐字节相同。
+// 在干净 checkout 中跳过（而非失败），因此本检查不会让 `npm run test:repo`
+// 依赖构建状态——上面的契约是密封保证；这是对实际产物的双保险检查。
 test("staged conventions doc is byte-identical to the repo source (skipped when no assembled package present)", (t) => {
   const staged = "packages/cli/daemon/docs/reference/sdlc-conventions.md";
   if (!existsSync(staged)) {

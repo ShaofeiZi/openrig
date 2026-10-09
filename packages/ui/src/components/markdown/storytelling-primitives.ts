@@ -1,17 +1,14 @@
-// 0.3.1 slice 06 — storytelling-primitives foundation.
+// 0.3.1 切片 06 —— storytelling-primitives 基础。
 //
-// Pure-logic helpers used by the MarkdownViewer kind-dispatcher and the
-// fenced-block renderers. Each parser returns a discriminated union
-// ({ ok: true, ... } | { ok: false, reason: string }) so the caller can
-// fall back to a plain code block when a body fails to parse. Graceful
-// degradation is load-bearing — a markdown file with full convention
-// must still read cleanly when the renderer doesn't recognize a kind
-// or a fenced-block language.
+// MarkdownViewer 类型分发器和围栏块渲染器使用的纯逻辑辅助函数。
+// 每个解析器返回一个可区分联合（{ ok: true, ... } | { ok: false, reason: string }），
+// 使调用方在正文解析失败时可回退到普通代码块。优雅降级是承重的——
+// 一个完整约定的 markdown 文件在渲染器不识别类型或围栏块语言时仍应清晰可读。
 
 import { parse as parseYaml } from "yaml";
 
 // -----------------------------------------------------------------------------
-// Kind dispatch
+// 类型分派
 // -----------------------------------------------------------------------------
 
 export const KNOWN_KINDS = [
@@ -28,10 +25,8 @@ export type KindName = typeof KNOWN_KINDS[number];
 
 const KIND_SET = new Set<string>(KNOWN_KINDS);
 
-/** Pull a known `kind:` value out of the frontmatter. Returns null when
- *  the frontmatter is absent, the field is missing, or the value is
- *  not in the curated set — the viewer then falls back to plain
- *  markdown rendering. */
+/** 从 frontmatter 提取已知 `kind:` 值。当 frontmatter 缺失、字段缺失或值
+ *  不在精选集合中时返回 null——查看器随后回退到普通 markdown 渲染。 */
 export function extractKind(frontmatter: Record<string, string> | null): KindName | null {
   if (!frontmatter) return null;
   const raw = frontmatter["kind"];
@@ -40,7 +35,7 @@ export function extractKind(frontmatter: Record<string, string> | null): KindNam
 }
 
 // -----------------------------------------------------------------------------
-// Fenced-block grammars
+// 围栏块语法
 // -----------------------------------------------------------------------------
 
 export const FENCED_BLOCK_LANGUAGES = ["timeline", "stats", "risk-table", "compare", "slate"] as const;
@@ -71,10 +66,10 @@ export type TimelineParseResult =
 export function parseTimelineBlock(body: string): TimelineParseResult {
   let parsed: unknown;
   try { parsed = parseYaml(body); } catch (err) {
-    return { ok: false, reason: `YAML parse error: ${err instanceof Error ? err.message : String(err)}` };
+    return { ok: false, reason: `YAML 解析错误：${err instanceof Error ? err.message : String(err)}` };
   }
   if (!Array.isArray(parsed)) {
-    return { ok: false, reason: "expected a YAML list of entries" };
+    return { ok: false, reason: "应为 YAML 条目列表" };
   }
   const entries: TimelineEntry[] = [];
   for (const item of parsed) {
@@ -108,10 +103,10 @@ export type StatsParseResult =
 export function parseStatsBlock(body: string): StatsParseResult {
   let parsed: unknown;
   try { parsed = parseYaml(body); } catch (err) {
-    return { ok: false, reason: `YAML parse error: ${err instanceof Error ? err.message : String(err)}` };
+    return { ok: false, reason: `YAML 解析错误：${err instanceof Error ? err.message : String(err)}` };
   }
   if (!Array.isArray(parsed)) {
-    return { ok: false, reason: "expected a YAML list of entries" };
+    return { ok: false, reason: "应为 YAML 条目列表" };
   }
   const entries: StatsEntry[] = [];
   for (const item of parsed) {
@@ -146,10 +141,10 @@ export type RiskTableParseResult =
 export function parseRiskTableBlock(body: string): RiskTableParseResult {
   let parsed: unknown;
   try { parsed = parseYaml(body); } catch (err) {
-    return { ok: false, reason: `YAML parse error: ${err instanceof Error ? err.message : String(err)}` };
+    return { ok: false, reason: `YAML 解析错误：${err instanceof Error ? err.message : String(err)}` };
   }
   if (!Array.isArray(parsed)) {
-    return { ok: false, reason: "expected a YAML list of entries" };
+    return { ok: false, reason: "应为 YAML 条目列表" };
   }
   const entries: RiskTableEntry[] = [];
   for (const item of parsed) {
@@ -179,14 +174,14 @@ export type CompareParseResult =
 export function parseCompareBlock(body: string): CompareParseResult {
   let parsed: unknown;
   try { parsed = parseYaml(body); } catch (err) {
-    return { ok: false, reason: `YAML parse error: ${err instanceof Error ? err.message : String(err)}` };
+    return { ok: false, reason: `YAML 解析错误：${err instanceof Error ? err.message : String(err)}` };
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return { ok: false, reason: "expected a YAML mapping with columns + rows" };
+    return { ok: false, reason: "应为包含 columns 和 rows 的 YAML 映射" };
   }
   const r = parsed as Record<string, unknown>;
   if (!Array.isArray(r.columns)) {
-    return { ok: false, reason: "missing columns array" };
+    return { ok: false, reason: "缺少 columns 数组" };
   }
   const columns = (r.columns as unknown[]).map(stringField);
   const rowsRaw = Array.isArray(r.rows) ? (r.rows as unknown[]) : [];
@@ -210,7 +205,7 @@ export type SlateParseResult =
 
 export function parseSlateBlock(body: string): SlateParseResult {
   const trimmed = body.trim();
-  if (trimmed.length === 0) return { ok: false, reason: "empty slate body" };
+  if (trimmed.length === 0) return { ok: false, reason: "面板正文为空" };
   return { ok: true, text: trimmed };
 }
 

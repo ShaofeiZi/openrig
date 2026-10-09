@@ -9,7 +9,7 @@ askRoutes.post("/", async (c) => {
   const body = await c.req.json<{ rig?: string; question?: string; nodeId?: string; sessionName?: string; seat?: string; session?: string }>();
 
   if (!body.rig || !body.question) {
-    return c.json({ error: "Missing required fields: rig, question" }, 400);
+    return c.json({ error: "缺少必填字段：rig、question" }, 400);
   }
 
   const result = await askService.ask(body.rig, body.question, {

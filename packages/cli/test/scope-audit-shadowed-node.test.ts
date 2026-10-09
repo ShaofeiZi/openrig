@@ -1,10 +1,10 @@
-// The CLI twin of the daemon's shadowed_node_file advisory.
+// daemon shadowed_node_file 提示的 CLI 孪生。
 //
 // The daemon cannot import packages/cli, so scope audit exists twice. A finding that lands on only
-// one twin means an operator sees a different truth depending on which surface they asked — which
-// is the same class of defect as the two-naming-systems problem this whole slice is about.
+// 少一个孪生意味着操作员依所问表面看到不同真相——这与本 slice 所论
+// 双命名系统问题同类缺陷。
 //
-// Advisory by construction: low severity, and it must never flip the audit's exit code.
+// 构造上即提示：低严重度，且绝不得翻转 audit 退出码。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
@@ -77,7 +77,7 @@ describe("rig scope audit — shadowed node file advisory (CLI twin)", () => {
     expect(sl, "slice advisory").toBeDefined();
     for (const f of [m!, sl!]) {
       expect(f.severity).toBe("low");
-      // It must say which file wins, or the operator cannot act on it.
+      // 它必须说明哪个文件胜出，否则操作员无法据以行动。
       expect(f.message).toContain("SPEC.md");
     }
     // ADVISORY MEANS ADVISORY: low severity never flips ok, so it can never gate a build.

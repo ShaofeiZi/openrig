@@ -2,9 +2,8 @@ import { describe, it, expect } from "vitest";
 import nodePath from "node:path";
 import { routeWorkflowSpecs, type WorkflowSpecsRouterFsOps, type RouteWorkflowSpecsInput } from "../src/domain/bundle-workflow-specs-router.js";
 
-// Item 6 / slice-05 Checkpoint 7.3e step 2: bundle-workflow-specs-router
-// pure-function tests. Mirrors the bundle-skills-router test pattern with
-// "workflows/" prefix and YAML file content shapes.
+// 第 6 项 / slice-05 Checkpoint 7.3e 第 2 步：bundle-workflow-specs-router 纯函数测试。
+// 镜像 bundle-skills-router 测试模式，使用 "workflows/" prefix 与 YAML file content shape。
 
 function mockFs(initialFiles: Record<string, string> = {}): WorkflowSpecsRouterFsOps & { _written: Map<string, string>; _mkdirpCalls: string[] } {
   const written = new Map<string, string>(Object.entries(initialFiles));
@@ -24,15 +23,13 @@ function mockFs(initialFiles: Record<string, string> = {}): WorkflowSpecsRouterF
 }
 
 const BUNDLE_ROOT = "/bundle/root";
-// TARGET is an arbitrary fixture path — the router is parametric on
-// targetWorkflowSpecsDir and the unit tests do not depend on any specific
-// operator-host layout. The CALLER CONTRACT documented in
+// TARGET 是任意 fixture path——router 由 targetWorkflowSpecsDir 参数化，unit test 不依赖任何特定
+// operator-host layout。以下位置记录的 CALLER CONTRACT：
 // bundle-workflow-specs-router.ts RouteWorkflowSpecsInput.targetWorkflowSpecsDir
-// requires step 3 integration to resolve this via
+// 要求第 3 步 integration 通过以下方式解析：
 // `nodePath.join(ContextPackSettingsStore.resolveConfig().workspaceSpecsRoot,
-// "workflows")` — SettingsStore is the sole authority. Hardcoding the
-// scanner-default path here would be a drift hazard if SettingsStore
-// changes its default; the integration-level dogfood proves the wiring.
+// "workflows")`——SettingsStore 是唯一 authority。若在此硬编码 scanner-default path，
+// SettingsStore 默认值变化时会产生 drift 风险；integration-level dogfood 证明接线。
 const TARGET = "/test/workflow-specs-target";
 
 function makeInput(overrides?: Partial<RouteWorkflowSpecsInput>): RouteWorkflowSpecsInput {
@@ -45,8 +42,8 @@ function makeInput(overrides?: Partial<RouteWorkflowSpecsInput>): RouteWorkflowS
 }
 
 describe("routeWorkflowSpecs", () => {
-  // W1: empty list → empty records + target dir mkdirp'd
-  it("empty declaredWorkflowSpecs produces empty records but still mkdirp's target", () => {
+  // W1：空 list → 空 record + 仍 mkdirp target dir
+  it("空 declaredWorkflowSpecs 生成空 record，但仍 mkdirp target", () => {
     const fs = mockFs();
     const result = routeWorkflowSpecs(makeInput(), fs);
     expect(result.records).toEqual([]);
@@ -55,8 +52,8 @@ describe("routeWorkflowSpecs", () => {
     expect(fs._mkdirpCalls).toContain(TARGET);
   });
 
-  // W2: routes one spec end-to-end at top-level basename
-  it("routes one workflow_spec: source YAML copied to target/<basename> with installedAt populated", () => {
+  // W2：以 top-level basename 端到端路由一个 spec
+  it("路由一个 workflow_spec：将 source YAML 复制到 target/<basename> 并填充 installedAt", () => {
     const fs = mockFs({
       [`${BUNDLE_ROOT}/workflows/onboarding.yaml`]: "name: onboarding\nversion: 1.0",
     });
@@ -64,15 +61,15 @@ describe("routeWorkflowSpecs", () => {
     expect(result.routedCount).toBe(1);
     expect(result.rejectedCount).toBe(0);
     expect(result.records[0]!.status).toBe("routed");
-    // Basename-only: declared "workflows/onboarding.yaml" → target/onboarding.yaml
-    // (scanner-reachability contract: spec-library-workflow-scanner reads only
-    // top-level YAML; nested paths would be invisible).
+    // 仅 basename：声明 "workflows/onboarding.yaml" → target/onboarding.yaml
+    //（scanner-reachability contract：spec-library-workflow-scanner 只读取 top-level YAML；
+    // nested path 不可见）。
     expect(result.records[0]!.installedAt).toBe(`${TARGET}/onboarding.yaml`);
     expect(fs._written.get(`${TARGET}/onboarding.yaml`)).toBe("name: onboarding\nversion: 1.0");
   });
 
-  // W3: routes multiple specs ALL FLAT at top level (basename collapses layout)
-  it("routes multiple workflow_specs all flat at top level (basename collapses directory layout)", () => {
+  // W3：将多个 spec 全部平铺路由到顶层（basename 折叠 layout）
+  it("将多个 workflow_spec 全部平铺路由到顶层（basename 折叠 directory layout）", () => {
     const fs = mockFs({
       [`${BUNDLE_ROOT}/workflows/onboarding.yaml`]: "yaml-1",
       [`${BUNDLE_ROOT}/workflows/release.yaml`]: "yaml-2",
@@ -85,17 +82,17 @@ describe("routeWorkflowSpecs", () => {
       fs,
     );
     expect(result.routedCount).toBe(3);
-    // All land at top-level basename — the "sub/" prefix on entry 3 is stripped
-    // by basename(). This matches scanner-reachability (readdirSync + isFile only).
+    // 全部落到 top-level basename——第 3 个 entry 的 "sub/" prefix 被 basename() 移除。
+    // 这符合 scanner-reachability（只使用 readdirSync + isFile）。
     expect(fs._written.get(`${TARGET}/onboarding.yaml`)).toBe("yaml-1");
     expect(fs._written.get(`${TARGET}/release.yaml`)).toBe("yaml-2");
     expect(fs._written.get(`${TARGET}/maintenance.yaml`)).toBe("yaml-3");
-    // Confirm the would-be-nested path is NOT created (basename flattened it).
+    // 确认未创建原本可能 nested 的 path（basename 已将其平铺）。
     expect(fs._written.has(`${TARGET}/sub/maintenance.yaml`)).toBe(false);
   });
 
-  // W4: missing source file → "missing" record (skipped, not error)
-  it("missing source file is skipped with status=missing (honest-scoping)", () => {
+  // W4：source 文件缺失 → "missing" record（跳过，而非 error）
+  it("缺失 source 文件以 status=missing 跳过（honest-scoping）", () => {
     const fs = mockFs();
     const result = routeWorkflowSpecs(
       makeInput({ declaredWorkflowSpecs: ["workflows/absent.yaml"] }),
@@ -104,11 +101,11 @@ describe("routeWorkflowSpecs", () => {
     expect(result.routedCount).toBe(0);
     expect(result.rejectedCount).toBe(1);
     expect(result.records[0]!.status).toBe("missing");
-    expect(result.records[0]!.detail).toContain("not present");
+    expect(result.records[0]!.detail).toContain("不存在");
   });
 
-  // W5: unsafe source path escaping bundle workspace rejected
-  it("unsafe declared path (../traversal) escapes bundle workspace and is rejected", () => {
+  // W5：拒绝逃逸 bundle workspace 的 unsafe source path
+  it("拒绝逃逸 bundle workspace 的 unsafe declared path（../traversal）", () => {
     const fs = mockFs();
     const result = routeWorkflowSpecs(
       makeInput({ declaredWorkflowSpecs: ["../escape/spec.yaml"] }),
@@ -117,11 +114,11 @@ describe("routeWorkflowSpecs", () => {
     expect(result.routedCount).toBe(0);
     expect(result.rejectedCount).toBe(1);
     expect(result.records[0]!.status).toBe("unsafe");
-    expect(result.records[0]!.detail).toContain("escapes bundle workspace");
+    expect(result.records[0]!.detail).toContain("越出 bundle 工作区");
   });
 
-  // W6: mixed list — routed + missing + unsafe in one call
-  it("mixed declared list aggregates correctly across routed/missing/unsafe", () => {
+  // W6：mixed list——一次调用包含 routed + missing + unsafe
+  it("mixed declared list 正确聚合 routed/missing/unsafe", () => {
     const fs = mockFs({
       [`${BUNDLE_ROOT}/workflows/ok.yaml`]: "ok",
     });
@@ -139,13 +136,12 @@ describe("routeWorkflowSpecs", () => {
     expect(result.records[2]!.status).toBe("unsafe");
   });
 
-  // W7: target-side escape attempt lands SAFELY at basename (structural
-  // containment via basename — replaces the prior prefix-strip target-escape
-  // hazard from the skills router; basename guarantees no traversal).
-  it("target-escape attempt via traversal still lands safely at basename (structural containment)", () => {
+  // W7：target-side escape attempt 安全落在 basename（通过 basename 结构性 containment——替代
+  // skills router 旧 prefix-strip target-escape hazard；basename 保证不会 traversal）。
+  it("通过 traversal 的 target-escape attempt 仍安全落在 basename（结构性 containment）", () => {
     const fs = mockFs({
-      // Source is reachable from bundleRoot via "workflows/../outside/spec.yaml"
-      // which resolves to "<bundleRoot>/outside/spec.yaml" — passes source check.
+      // source 可通过 "workflows/../outside/spec.yaml" 从 bundleRoot 到达；它解析为
+      // "<bundleRoot>/outside/spec.yaml"——通过 source check。
       [`${BUNDLE_ROOT}/outside/spec.yaml`]: "would-have-escaped-target",
     });
     const result = routeWorkflowSpecs(
@@ -155,17 +151,16 @@ describe("routeWorkflowSpecs", () => {
     expect(result.routedCount).toBe(1);
     expect(result.rejectedCount).toBe(0);
     expect(result.records[0]!.status).toBe("routed");
-    // basename("workflows/../outside/spec.yaml") = "spec.yaml" → lands safely.
+    // basename("workflows/../outside/spec.yaml") = "spec.yaml" → 安全落盘。
     expect(result.records[0]!.installedAt).toBe(`${TARGET}/spec.yaml`);
     expect(fs._written.get(`${TARGET}/spec.yaml`)).toBe("would-have-escaped-target");
-    // Confirm: no write outside target dir.
+    // 确认：不写入 target dir 之外。
     expect(fs._written.has(`${TARGET}/../outside/spec.yaml`)).toBe(false);
     expect(fs._written.has(nodePath.resolve(`${TARGET}/../outside/spec.yaml`))).toBe(false);
   });
 
-  // W8: non-prefixed declared path lands at its basename (prefix-strip is
-  // obsoleted by basename — the rule is uniform).
-  it("declared path without any leading prefix routes to target/<basename>", () => {
+  // W8：无 prefix 的 declared path 落在其 basename（basename 取代 prefix-strip——规则统一）。
+  it("没有任何前导 prefix 的 declared path 路由到 target/<basename>", () => {
     const fs = mockFs({
       [`${BUNDLE_ROOT}/custom/path/spec.yaml`]: "custom",
     });
@@ -174,15 +169,14 @@ describe("routeWorkflowSpecs", () => {
       fs,
     );
     expect(result.routedCount).toBe(1);
-    // basename("custom/path/spec.yaml") = "spec.yaml" → top-level under target.
+    // basename("custom/path/spec.yaml") = "spec.yaml" → target 下的 top-level。
     expect(result.records[0]!.installedAt).toBe(`${TARGET}/spec.yaml`);
     expect(fs._written.has(`${TARGET}/custom/path/spec.yaml`)).toBe(false);
   });
 
-  // W9: duplicate basenames — first wins (status=routed), later flagged
-  // status=conflict so routedCount stays truthful at the scanner-visible
-  // boundary (banked B1 guard catch d81456dc → this commit).
-  it("duplicate basenames: first routes, later flagged status=conflict (truthful routedCount)", () => {
+  // W9：basename 重复——第一个胜出（status=routed），后续标记 status=conflict，使 routedCount 在
+  // scanner-visible boundary 保持真实（banked B1 guard catch d81456dc → 本 commit）。
+  it("basename 重复：第一个路由，后续标记 status=conflict（真实 routedCount）", () => {
     const fs = mockFs({
       [`${BUNDLE_ROOT}/a/onboarding.yaml`]: "a-content",
       [`${BUNDLE_ROOT}/b/onboarding.yaml`]: "b-content",
@@ -198,15 +192,14 @@ describe("routeWorkflowSpecs", () => {
     expect(result.records[0]!.installedAt).toBe(`${TARGET}/onboarding.yaml`);
     expect(result.records[1]!.status).toBe("conflict");
     expect(result.records[1]!.detail).toContain("basename");
-    expect(result.records[1]!.detail).toContain("collides");
-    // Crucially: first content survives (no silent overwrite).
+    expect(result.records[1]!.detail).toContain("冲突");
+    // 关键：首份 content 保留（无静默覆盖）。
     expect(fs._written.get(`${TARGET}/onboarding.yaml`)).toBe("a-content");
   });
 
-  // W10: non-YAML suffix — scanner is YAML-only, route would be invisible.
-  // Reject pre-write so routedCount stays truthful (banked B2 guard catch
-  // d81456dc → this commit).
-  it("non-YAML suffix declared path rejected status=unsafe (scanner-invisible class)", () => {
+  // W10：非 YAML suffix——scanner 仅处理 YAML，因此该 route 不可见。写入前拒绝，使 routedCount
+  // 保持真实（banked B2 guard catch d81456dc → 本 commit）。
+  it("非 YAML suffix 的 declared path 以 status=unsafe 拒绝（scanner-invisible 类）", () => {
     const fs = mockFs({
       [`${BUNDLE_ROOT}/workflows/readme.txt`]: "not a workflow spec",
       [`${BUNDLE_ROOT}/workflows/good.yaml`]: "yaml-good",
@@ -218,12 +211,12 @@ describe("routeWorkflowSpecs", () => {
     expect(result.records).toHaveLength(2);
     expect(result.routedCount).toBe(1);
     expect(result.records[0]!.status).toBe("unsafe");
-    expect(result.records[0]!.detail).toContain("not a .yaml/.yml");
+    expect(result.records[0]!.detail).toContain("不是 .yaml/.yml");
     expect(result.records[1]!.status).toBe("routed");
     expect(result.records[1]!.installedAt).toBe(`${TARGET}/good.yaml`);
-    // .txt file never written even though source exists in bundle
+    // 即使 source 存在于 bundle，也绝不写入 .txt 文件
     expect(fs._written.has(`${TARGET}/readme.txt`)).toBe(false);
-    // Also covers .yml as accepted suffix
+    // 同时覆盖 .yml 作为可接受 suffix
     const fs2 = mockFs({ [`${BUNDLE_ROOT}/workflows/short.yml`]: "yml-too" });
     const r2 = routeWorkflowSpecs(makeInput({ declaredWorkflowSpecs: ["workflows/short.yml"] }), fs2);
     expect(r2.routedCount).toBe(1);

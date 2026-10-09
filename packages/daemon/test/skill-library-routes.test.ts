@@ -1,6 +1,6 @@
-// Slice 28 Checkpoint C-3 — skill-library API tests.
+// Slice 28 Checkpoint C-3——skill-library API 测试。
 //
-// SC-29 EXCEPTION #11 cumulative (verbatim declaration at
+// SC-29 异常 #11 累积（逐字声明见
 // packages/daemon/src/routes/plugins.ts header).
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -53,12 +53,12 @@ function makeSkill(baseDir: string, relativePath: string, files: Array<{ name: s
   return skillDir;
 }
 
-describe("SkillLibraryDiscoveryService — discovery (slice 28 HG-5 fix)", () => {
+describe("SkillLibraryDiscoveryService——发现（slice 28 HG-5 修复）", () => {
   let env: TestEnv;
   beforeEach(() => { env = setup(); });
   afterEach(() => { rmSync(env.root, { recursive: true, force: true }); });
 
-  it("flat openrig-managed: discovers a skill at the shared-skills root", () => {
+  it("flat openrig-managed：发现 shared-skills root 下的 skill", () => {
     makeSkill(env.sharedSkillsDir, "claude-compact-in-place", [{ name: "SKILL.md", content: "# body" }]);
     const skills = env.service.listLibrarySkills();
     expect(skills).toHaveLength(1);
@@ -68,7 +68,7 @@ describe("SkillLibraryDiscoveryService — discovery (slice 28 HG-5 fix)", () =>
     expect(skills[0]?.files.map((f) => f.name)).toEqual(["SKILL.md"]);
   });
 
-  it("HG-5 ROOT CAUSE FIX: nested openrig-managed skill (category/skill/SKILL.md) discovered", () => {
+  it("HG-5 ROOT CAUSE FIX：发现 nested openrig-managed skill（category/skill/SKILL.md）", () => {
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [{ name: "SKILL.md", content: "# body" }]);
     makeSkill(env.sharedSkillsDir, "core/openrig-architect", [{ name: "SKILL.md", content: "# body" }]);
     makeSkill(env.sharedSkillsDir, "pm/requirements-writer", [{ name: "SKILL.md", content: "# body" }]);
@@ -80,24 +80,24 @@ describe("SkillLibraryDiscoveryService — discovery (slice 28 HG-5 fix)", () =>
     ]);
   });
 
-  it("MIXED layout: flat + nested skills discovered in the same shared root", () => {
+  it("混合 layout：在同一 shared root 发现 flat + nested skill", () => {
     makeSkill(env.sharedSkillsDir, "claude-compact-in-place", [{ name: "SKILL.md", content: "# body" }]);
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [{ name: "SKILL.md", content: "# body" }]);
     const skills = env.service.listLibrarySkills();
     const ids = skills.map((s) => s.id).sort();
     expect(ids).toContain("openrig-managed:claude-compact-in-place");
     expect(ids).toContain("openrig-managed:core/openrig-user");
-    // Category folder name itself should NOT appear.
+    // category folder name 本身不应出现。
     expect(ids).not.toContain("openrig-managed:core");
   });
 
-  it("DEPTH-CAP: depth-3+ skills NOT discovered (MAX_NESTING_DEPTH=1)", () => {
+  it("DEPTH-CAP：不发现 depth-3+ skill（MAX_NESTING_DEPTH=1）", () => {
     makeSkill(env.sharedSkillsDir, "outer/inner/deep-skill", [{ name: "SKILL.md", content: "# body" }]);
     const skills = env.service.listLibrarySkills();
     expect(skills).toHaveLength(0);
   });
 
-  it("workspace source: discovers .openrig/skills/<name> under allowlist roots", () => {
+  it("workspace source：在 allowlist root 下发现 .openrig/skills/<name>", () => {
     const envWith = setup({ withWorkspace: true });
     try {
       makeSkill(envWith.workspaceRoot, ".openrig/skills/operator-skill", [{ name: "SKILL.md", content: "# body" }]);
@@ -110,7 +110,7 @@ describe("SkillLibraryDiscoveryService — discovery (slice 28 HG-5 fix)", () =>
     }
   });
 
-  it("CONSOLIDATION: workspace + openrig-managed both surface in one call", () => {
+  it("CONSOLIDATION：一次调用同时呈现 workspace + openrig-managed", () => {
     const envWith = setup({ withWorkspace: true });
     try {
       makeSkill(envWith.sharedSkillsDir, "claude-compact-in-place", [{ name: "SKILL.md", content: "# body" }]);
@@ -123,10 +123,10 @@ describe("SkillLibraryDiscoveryService — discovery (slice 28 HG-5 fix)", () =>
     }
   });
 
-  it("absent shared-skills directory: returns workspace-only", () => {
+  it("shared-skills directory 缺失：只返回 workspace", () => {
     const envWith = setup({ withWorkspace: true });
     try {
-      // Wipe the shared-skills directory; service must not throw.
+      // 清空 shared-skills directory；service 不得抛错。
       rmSync(envWith.sharedSkillsDir, { recursive: true, force: true });
       makeSkill(envWith.workspaceRoot, ".openrig/skills/operator-skill", [{ name: "SKILL.md", content: "# body" }]);
       const skills = envWith.service.listLibrarySkills();
@@ -137,7 +137,7 @@ describe("SkillLibraryDiscoveryService — discovery (slice 28 HG-5 fix)", () =>
     }
   });
 
-  it("listLibrarySkillsPublic: INCLUDES absolutePath (slice 29 HG-4 file-path discoverability)", () => {
+  it("listLibrarySkillsPublic：包含 absolutePath（slice 29 HG-4 file-path discoverability）", () => {
     makeSkill(env.sharedSkillsDir, "alpha-skill", [{ name: "SKILL.md", content: "# body" }]);
     const pub = env.service.listLibrarySkillsPublic();
     expect(pub).toHaveLength(1);
@@ -146,12 +146,12 @@ describe("SkillLibraryDiscoveryService — discovery (slice 28 HG-5 fix)", () =>
   });
 });
 
-describe("GET /api/skills/library (slice 28)", () => {
+describe("GET /api/skills/library（slice 28）", () => {
   let env: TestEnv;
   beforeEach(() => { env = setup(); });
   afterEach(() => { rmSync(env.root, { recursive: true, force: true }); });
 
-  it("returns the consolidated skill list with absolutePath surfaced (slice 29 HG-4)", async () => {
+  it("返回 consolidated skill list，并呈现 absolutePath（slice 29 HG-4）", async () => {
     makeSkill(env.sharedSkillsDir, "alpha-skill", [{ name: "SKILL.md", content: "# top" }]);
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [{ name: "SKILL.md", content: "# nested" }]);
     const res = await createApp(env.service).request("/api/skills/library");
@@ -162,14 +162,13 @@ describe("GET /api/skills/library (slice 28)", () => {
       "openrig-managed:alpha-skill",
       "openrig-managed:core/openrig-user",
     ]);
-    // Slice 29 HG-4: absolutePath is now surfaced in the public response
-    // so the skill detail page can show operators where each skill lives
-    // on disk.
+    // Slice 29 HG-4：public response 现在呈现 absolutePath，使 skill detail 页面可向 operator
+    // 显示每个 skill 在磁盘上的位置。
     expect("absolutePath" in (body[0] ?? {})).toBe(true);
     expect(body.every((s) => typeof s.absolutePath === "string" && s.absolutePath.length > 0)).toBe(true);
   });
 
-  it("returns 503 when service is not provisioned in context", async () => {
+  it("context 未提供 service 时返回 503", async () => {
     const app = new Hono();
     app.use("*", async (_c, next) => { await next(); });
     app.route("/api/skills", skillsRoutes());
@@ -180,18 +179,18 @@ describe("GET /api/skills/library (slice 28)", () => {
   });
 });
 
-describe("GET /api/skills/:id/files/list (slice 28)", () => {
+describe("GET /api/skills/:id/files/list（slice 28）", () => {
   let env: TestEnv;
   beforeEach(() => { env = setup(); });
   afterEach(() => { rmSync(env.root, { recursive: true, force: true }); });
 
-  it("lists files + dirs at the skill root (path='')", async () => {
+  it("列出 skill root 的 file + directory（path=''）", async () => {
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [
       { name: "SKILL.md", content: "# body" },
       { name: "config.json", content: "{}" },
       { name: "fixture.yaml", content: "k: v" },
     ]);
-    // Add a subfolder to verify the listing surfaces it.
+    // 添加 subfolder，验证 list 会呈现它。
     mkdirSync(join(env.sharedSkillsDir, "core/openrig-user/examples"), { recursive: true });
     writeFileSync(join(env.sharedSkillsDir, "core/openrig-user/examples/basic.md"), "# basic");
     const id = "openrig-managed:core/openrig-user";
@@ -200,16 +199,16 @@ describe("GET /api/skills/:id/files/list (slice 28)", () => {
     const body = (await res.json()) as { skillId: string; entries: Array<{ name: string; type: string }> };
     expect(body.skillId).toBe(id);
     const names = body.entries.map((e) => e.name);
-    // ALL files surfaced (HG-7 spec: not markdown-only).
+    // 呈现所有文件（HG-7 spec：不限于 Markdown）。
     expect(names).toContain("SKILL.md");
     expect(names).toContain("config.json");
     expect(names).toContain("fixture.yaml");
     expect(names).toContain("examples");
-    // Dirs sorted before files.
+    // directory 排在文件前。
     expect(names.indexOf("examples")).toBeLessThan(names.indexOf("SKILL.md"));
   });
 
-  it("HG-8 lists nested directory contents (path='examples')", async () => {
+  it("HG-8 列出 nested directory 内容（path='examples'）", async () => {
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [{ name: "SKILL.md", content: "# body" }]);
     mkdirSync(join(env.sharedSkillsDir, "core/openrig-user/examples"), { recursive: true });
     writeFileSync(join(env.sharedSkillsDir, "core/openrig-user/examples/basic.md"), "# basic");
@@ -223,12 +222,12 @@ describe("GET /api/skills/:id/files/list (slice 28)", () => {
     expect(names).toContain("advanced.md");
   });
 
-  it("returns 404 when skill id unknown", async () => {
+  it("skill id 未知时返回 404", async () => {
     const res = await createApp(env.service).request("/api/skills/missing-skill/files/list?path=");
     expect(res.status).toBe(404);
   });
 
-  it("rejects '..' escape attempt with 400 path_escape", async () => {
+  it("以 400 path_escape 拒绝 '..' escape attempt", async () => {
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [{ name: "SKILL.md", content: "# body" }]);
     const id = "openrig-managed:core/openrig-user";
     const res = await createApp(env.service).request(`/api/skills/${encodeURIComponent(id)}/files/list?path=..%2Fsomewhere`);
@@ -237,7 +236,7 @@ describe("GET /api/skills/:id/files/list (slice 28)", () => {
     expect(body.error).toBe("path_escape");
   });
 
-  it("rejects symlink escape (realpath outside skill folder)", async () => {
+  it("拒绝 symlink escape（realpath 位于 skill folder 外）", async () => {
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [{ name: "SKILL.md", content: "# body" }]);
     const escapeTarget = join(env.root, "outside-target");
     mkdirSync(escapeTarget, { recursive: true });
@@ -251,12 +250,12 @@ describe("GET /api/skills/:id/files/list (slice 28)", () => {
   });
 });
 
-describe("GET /api/skills/:id/files/read (slice 28)", () => {
+describe("GET /api/skills/:id/files/read（slice 28）", () => {
   let env: TestEnv;
   beforeEach(() => { env = setup(); });
   afterEach(() => { rmSync(env.root, { recursive: true, force: true }); });
 
-  it("reads SKILL.md content from a nested skill", async () => {
+  it("从 nested skill 读取 SKILL.md content", async () => {
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [{ name: "SKILL.md", content: "# OpenRig User skill body" }]);
     const id = "openrig-managed:core/openrig-user";
     const res = await createApp(env.service).request(`/api/skills/${encodeURIComponent(id)}/files/read?path=SKILL.md`);
@@ -268,7 +267,7 @@ describe("GET /api/skills/:id/files/read (slice 28)", () => {
     expect(body.contentHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("HG-8 reads a nested-subfolder file (examples/basic.md)", async () => {
+  it("HG-8 读取 nested-subfolder 文件（examples/basic.md）", async () => {
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [{ name: "SKILL.md", content: "# root" }]);
     mkdirSync(join(env.sharedSkillsDir, "core/openrig-user/examples"), { recursive: true });
     writeFileSync(join(env.sharedSkillsDir, "core/openrig-user/examples/basic.md"), "# basic example");
@@ -279,7 +278,7 @@ describe("GET /api/skills/:id/files/read (slice 28)", () => {
     expect(body.content).toContain("basic example");
   });
 
-  it("returns 400 path_required when path query missing", async () => {
+  it("缺少 path query 时返回 400 path_required", async () => {
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [{ name: "SKILL.md", content: "# body" }]);
     const id = "openrig-managed:core/openrig-user";
     const res = await createApp(env.service).request(`/api/skills/${encodeURIComponent(id)}/files/read`);
@@ -288,14 +287,14 @@ describe("GET /api/skills/:id/files/read (slice 28)", () => {
     expect(body.error).toBe("path_required");
   });
 
-  it("returns 404 stat_failed when file does not exist", async () => {
+  it("文件不存在时返回 404 stat_failed", async () => {
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [{ name: "SKILL.md", content: "# body" }]);
     const id = "openrig-managed:core/openrig-user";
     const res = await createApp(env.service).request(`/api/skills/${encodeURIComponent(id)}/files/read?path=nonexistent.md`);
     expect(res.status).toBe(404);
   });
 
-  it("rejects '..' escape attempt with 400 path_escape", async () => {
+  it("以 400 path_escape 拒绝 '..' escape attempt", async () => {
     makeSkill(env.sharedSkillsDir, "core/openrig-user", [{ name: "SKILL.md", content: "# body" }]);
     const id = "openrig-managed:core/openrig-user";
     const res = await createApp(env.service).request(`/api/skills/${encodeURIComponent(id)}/files/read?path=..%2Fsomewhere.md`);

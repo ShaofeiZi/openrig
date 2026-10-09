@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 
-// OPR.0.4.4.22 — the AGENTS altitude page: bands render from the composed
-// rig root, grouping is page-level arrangement in the one shared component,
-// anchored zoom filters by slice, approve stays slice-terminal (hidden here),
-// and empty/error states are honest.
+// OPR.0.4.4.22——AGENTS 高度页：band 从组合 rig root 渲染，分组是单一共享组件
+// 内的页面级安排，锚定 zoom 按 slice 过滤，approve 保持 slice-terminal
+//（此处隐藏），空/错误状态如实呈现。
 
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, cleanup, screen, fireEvent } from "@testing-library/react";
@@ -184,12 +183,12 @@ describe("AgentsBandView grouping (extension in the one home)", () => {
 
   it("unknown glyph renders honestly for telemetry-down rows", () => {
     render(<AgentsBandView band={band()} itemRef="x" />);
-    expect(screen.getByLabelText("unknown (telemetry down)")).toBeTruthy();
+    expect(screen.getByLabelText("未知（遥测中断）")).toBeTruthy();
   });
 
   it("parked glyph renders from queue-proven park state", () => {
     render(<AgentsBandView band={band()} itemRef="x" />);
-    expect(screen.getByLabelText("parked")).toBeTruthy();
+    expect(screen.getByLabelText("已停放")).toBeTruthy();
     expect(screen.getByText("parked on your follow-mode call")).toBeTruthy();
   });
 
@@ -248,13 +247,12 @@ describe("NeedsYouAccordion showApprove (slice-terminal act stays at slice altit
     );
     fireEvent.click(screen.getByTestId("needs-you-row-q-1"));
     expect(screen.getByTestId("needs-you-evidence-q-1-pointer").textContent).toBe("proof/evidence.md");
-    // Union with the P2 FileViewer fixback: the ONE no-context degrade also
-    // covers markdown — no drawer trigger may render without a readable
-    // target (the dead-drawer/eternal-Loading class), and the shadowed
-    // md-unresolvable branch stays retired.
+    // 与 P2 FileViewer fixback 联合：唯一 no-context 降级也覆盖 markdown——
+    // 无可读 target 时不得渲染 drawer trigger（dead-drawer/eternal-Loading 类），
+    // 且被遮蔽的 md-unresolvable 分支保持退役。
     expect(screen.queryByTestId("needs-you-evidence-q-1-md")).toBeNull();
     expect(screen.queryByTestId("needs-you-evidence-q-1-md-unresolvable")).toBeNull();
-    expect(screen.getByText("(not openable from this view — no slice context)")).toBeTruthy();
+    expect(screen.getByText("（从此视图无法打开——无切片上下文）")).toBeTruthy();
   });
 
   it("default keeps approve (P2 pages unchanged)", () => {
@@ -264,7 +262,7 @@ describe("NeedsYouAccordion showApprove (slice-terminal act stays at slice altit
   });
 });
 
-// OPR.0.4.4.22 FR-5 — the entry points (front doors) zoom to /agents.
+// OPR.0.4.4.22 FR-5——入口（前门）zoom 到 /agents。
 describe("entry points zoom to the AGENTS altitude", () => {
   it("the shared AgentsBand footer owns the scope-anchored zoom link", async () => {
     const src = (await import("node:fs")).readFileSync(
@@ -293,7 +291,7 @@ describe("entry points zoom to the AGENTS altitude", () => {
       "utf8",
     );
     expect(src).toContain('path: "/agents"');
-    // The nav rail lives in AppShell; the route must not appear there.
+    // nav rail 位于 AppShell；该路由不得出现在那里。
     const shell = (await import("node:fs")).readFileSync(
       "src/components/AppShell.tsx",
       "utf8",
@@ -302,8 +300,8 @@ describe("entry points zoom to the AGENTS altitude", () => {
   });
 });
 
-// OPR.0.4.4.22 FR-6 — the transcript drill-in: shipped routes, on demand,
-// honest per-seat error, zero standing transcript cost.
+// OPR.0.4.4.22 FR-6——transcript drill-in：按需交付路由、如实 per-seat 错误、
+// 零常驻 transcript 成本。
 describe("transcript drill-in (FR-6)", () => {
   it("zero standing cost: rendering the page fetches ONLY the composed root — no transcript URLs", async () => {
     const urls: string[] = [];
@@ -342,7 +340,7 @@ describe("transcript drill-in (FR-6)", () => {
     fireEvent.click(screen.getByTestId("agent-drill-dev44-driver1@openrig-delivery"));
     expect(await screen.findByTestId("drill-content")).toBeTruthy();
     expect(urls.some((u) => u.includes("/api/transcripts/dev44-driver1%40openrig-delivery/tail?lines=50"))).toBe(true);
-    // Full only on explicit request.
+    // 仅在显式请求时 full。
     expect(urls.some((u) => u.includes("/full"))).toBe(false);
     fireEvent.click(screen.getByTestId("drill-full"));
     await screen.findByTestId("drill-content");
@@ -369,9 +367,9 @@ describe("transcript drill-in (FR-6)", () => {
   });
 });
 
-// OPR.0.4.6.MH5 C4/C5 — the FLEET band's ONE v1 mount is THIS page. The
-// mount pin + both no-fleet behaviors (render NOTHING + FETCH nothing) at
-// the mount site; band anatomy depth lives in fleet-band.test.tsx.
+// OPR.0.4.6.MH5 C4/C5——FLEET band 的唯一 v1 mount 即本页。mount 站点处锁定
+// mount pin + 两种 no-fleet 行为（render NOTHING + FETCH nothing）；band anatomy
+// 深度见 fleet-band.test.tsx。
 describe("MH-5 — the FLEET band mount (v1 single mount, enumerated)", () => {
   function renderWithHostAwareStub(hosts: unknown[], fleet: unknown | null) {
     const urls: string[] = [];
@@ -425,9 +423,9 @@ describe("MH-5 — the FLEET band mount (v1 single mount, enumerated)", () => {
     const page = await screen.findByTestId("rig-agents-page");
     const bandEl = await screen.findByTestId("fleet-band");
     expect(page.contains(bandEl)).toBe(true);
-    // The band precedes the per-host NEEDS YOU content in document order.
+    // band 在文档顺序上先于 per-host NEEDS YOU 内容。
     expect(bandEl.compareDocumentPosition(screen.getByText("waiting on your follow-mode call")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // The per-host bands still render fully (the LOCK: untouched below).
+    // per-host band 仍完整渲染（LOCK：下方未触碰）。
     expect(screen.getByTestId("agents-health").textContent).toBe("2 handoffs today · 0 overdue");
   });
 

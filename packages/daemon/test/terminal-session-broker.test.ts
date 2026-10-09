@@ -9,7 +9,7 @@ import {
   type TerminalSubscriber,
 } from "../src/terminal/TerminalSessionBroker.js";
 
-// ---- test doubles -----------------------------------------------------------
+// ---- 测试替身 ---------------------------------------------------------------
 
 interface FakeSub extends TerminalSubscriber {
   received: string[];
@@ -43,7 +43,7 @@ function makeTmux(overrides: Partial<BrokerTmux> = {}): BrokerTmux {
   };
 }
 
-// Track brokers created so we always tear down (clears intervals + temp files).
+// 跟踪已创建的 broker，确保始终拆除（清除 interval 与临时文件）。
 const liveBrokers: TerminalSessionBroker[] = [];
 function track(b: TerminalSessionBroker): TerminalSessionBroker {
   liveBrokers.push(b);
@@ -53,15 +53,15 @@ afterEach(() => {
   for (const b of liveBrokers.splice(0)) b.dispose();
 });
 
-// ---- pure cursor-safe seed helpers (test #9 row-drift discriminator) --------
+// ---- 纯 cursor-safe seed helper（测试 #9 行漂移判别）------------------------
 
-describe("cursor-safe seed helpers", () => {
-  it("cursorPositionEscape emits a 1-based absolute cursor move", () => {
+describe("cursor-safe seed helper", () => {
+  it("cursorPositionEscape 发出从 1 开始的绝对光标移动", () => {
     expect(cursorPositionEscape(0, 0)).toBe("\x1b[1;1H");
     expect(cursorPositionEscape(4, 7)).toBe("\x1b[8;5H");
   });
 
-  it("screenSnapshotEscape paints each row with an ABSOLUTE move (no row drift)", () => {
+  it("screenSnapshotEscape 用绝对移动绘制每一行（无行漂移）", () => {
     const out = screenSnapshotEscape("alpha\nbeta\ngamma", { x: 2, y: 1, height: 24 });
     expect(out.startsWith("\x1b[2J")).toBe(true);
     expect(out).toContain("\x1b[1;1Halpha");
@@ -70,7 +70,7 @@ describe("cursor-safe seed helpers", () => {
     expect(out.endsWith(cursorPositionEscape(2, 1))).toBe(true);
   });
 
-  it("keeps only the last `height` rows when rows exceed height (scroll-safe)", () => {
+  it("行数超过 height 时只保留最后 `height` 行（滚动安全）", () => {
     const out = screenSnapshotEscape(["r1", "r2", "r3", "r4", "r5"].join("\n"), { x: 0, y: 0, height: 2 });
     expect(out).not.toContain("r1");
     expect(out).not.toContain("r3");
@@ -78,15 +78,15 @@ describe("cursor-safe seed helpers", () => {
     expect(out).toContain("\x1b[2;1Hr5");
   });
 
-  it("normalizes CRLF and drops exactly one trailing newline; null cursor homes", () => {
+  it("规范化 CRLF 并精确删除一个尾随换行，cursor 为 null 时回到原点", () => {
     expect(screenSnapshotEscape("a\r\nb\r\n", null)).toBe("\x1b[2J\x1b[1;1Ha\x1b[2;1Hb\x1b[H");
   });
 });
 
-// ---- broker behavior --------------------------------------------------------
+// ---- broker 行为 ------------------------------------------------------------
 
 describe("TerminalSessionBroker", () => {
-  it("test 1: fans output bytes out to ALL subscribers", async () => {
+  it("测试 1：把输出字节扇出给所有订阅者", async () => {
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux(), { pollMs: 10 }));
     const a = makeSub();
     const b = makeSub();
@@ -103,7 +103,7 @@ describe("TerminalSessionBroker", () => {
     }, { timeout: 1000 });
   });
 
-  it("test 2: a 2nd subscriber does NOT start a second pipe-pane", async () => {
+  it("测试 2：第二个订阅者不会启动第二条 pipe-pane", async () => {
     const startPipePane = vi.fn(async () => ({ ok: true as const }));
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux({ startPipePane }), { pollMs: 10 }));
     await broker.attach(makeSub());
@@ -112,7 +112,7 @@ describe("TerminalSessionBroker", () => {
     expect(broker.subscriberCount).toBe(2);
   });
 
-  it("test 3: input from a subscriber forwards to tmux sendText / sendKeys", async () => {
+  it("测试 3：把订阅者输入转发到 tmux sendText / sendKeys", async () => {
     const sendText = vi.fn(async () => ({ ok: true as const }));
     const sendKeys = vi.fn(async () => ({ ok: true as const }));
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux({ sendText, sendKeys }), { pollMs: 10 }));
@@ -125,7 +125,7 @@ describe("TerminalSessionBroker", () => {
     expect(sendKeys).toHaveBeenCalledWith("dev@rig", ["Enter"]);
   });
 
-  it("test 3b: serializes rapid input before calling tmux (ordering preserved)", async () => {
+  it("测试 3b：调用 tmux 前串行化快速输入（保持顺序）", async () => {
     const order: string[] = [];
     const sendText = vi.fn(async (_n: string, t: string) => {
       await new Promise((r) => setTimeout(r, t === "e" ? 20 : 0));
@@ -143,7 +143,7 @@ describe("TerminalSessionBroker", () => {
     expect(order.join("")).toBe("echo");
   });
 
-  it("test 4: disconnecting one subscriber keeps the broker alive for the rest", async () => {
+  it("测试 4：一个订阅者断开后，broker 继续服务其他订阅者", async () => {
     const stopPipePane = vi.fn(async () => ({ ok: true as const }));
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux({ stopPipePane }), { pollMs: 10 }));
     const a = makeSub();
@@ -162,7 +162,7 @@ describe("TerminalSessionBroker", () => {
     expect(a.received.join("")).not.toContain("still-live");
   });
 
-  it("test 5: the FINAL disconnect stops pipe-pane and deletes the temp file", async () => {
+  it("测试 5：最后一个订阅者断开时停止 pipe-pane 并删除临时文件", async () => {
     const stopPipePane = vi.fn(async () => ({ ok: true as const }));
     const broker = new TerminalSessionBroker("dev@rig", makeTmux({ stopPipePane }), { pollMs: 10 });
     const a = makeSub();
@@ -178,7 +178,7 @@ describe("TerminalSessionBroker", () => {
     expect(broker.subscriberCount).toBe(0);
   });
 
-  it("test 6: session death closes ALL subscribers honestly (1001), no silent stale-live", async () => {
+  it("测试 6：session 终止时如实关闭所有订阅者（1001），不静默保留过期 live 状态", async () => {
     let alive = true;
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux({ hasSession: async () => alive }), {
       pollMs: 10,
@@ -194,20 +194,20 @@ describe("TerminalSessionBroker", () => {
       expect(a.closed[0]?.code).toBe(1001);
       expect(b.closed[0]?.code).toBe(1001);
     }, { timeout: 1000 });
-    expect(a.closed[0]?.reason).toContain("terminated");
+    expect(a.closed[0]?.reason).toContain("已终止");
   });
 
-  it("test 7 (broker side): input has no resize path — a resize never reaches tmux.resizeWindow via input", async () => {
+  it("测试 7（broker 侧）：input 无 resize 路径，resize 不会通过输入到达 tmux.resizeWindow", async () => {
     const resizeWindow = vi.fn(async () => ({ ok: true as const }));
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux({ resizeWindow }), { pollMs: 10 }));
     await broker.attach(makeSub());
     resizeWindow.mockClear(); // ignore the one canonical-geometry resize at open
-    // The broker input API only accepts keys/text; there is no client-driven resize.
+    // broker 输入 API 只接受 keys/text，不存在客户端驱动的 resize。
     await broker.input({ type: "text", text: "x" });
     expect(resizeWindow).not.toHaveBeenCalled();
   });
 
-  it("test 7b: canonical geometry is set ONCE at open (window-size manual + 120xN, NOT aggressive-resize)", async () => {
+  it("测试 7b：打开时只设置一次规范几何尺寸（window-size manual + 120xN，不做激进 resize）", async () => {
     const setWindowOption = vi.fn(async () => ({ ok: true as const }));
     const resizeWindow = vi.fn(async () => ({ ok: true as const }));
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux({ setWindowOption, resizeWindow }), {
@@ -221,11 +221,11 @@ describe("TerminalSessionBroker", () => {
     expect(resizeWindow).toHaveBeenCalledOnce();
     expect(resizeWindow).toHaveBeenCalledWith("dev@rig", 120, 40);
     expect(setWindowOption).toHaveBeenCalledWith("dev@rig", "window-size", "manual");
-    // aggressive-resize fights fixed geometry (shrinks to smallest client) — must NOT be set.
+    // aggressive-resize 与固定几何冲突（收缩到最小 client）——绝不可设置。
     expect(setWindowOption).not.toHaveBeenCalledWith("dev@rig", "aggressive-resize", expect.anything());
   });
 
-  it("test 8: seeds on FIRST attach with NO resize message, as the first bytes the subscriber sees", async () => {
+  it("测试 8：首次 attach 时无需 resize 消息即发送 seed，并成为订阅者看到的首批字节", async () => {
     const tmux = makeTmux({
       capturePaneScreen: async () => "line one\nline two",
       getPaneCursorPosition: async () => ({ x: 3, y: 1, width: 120, height: 40 }),
@@ -238,7 +238,7 @@ describe("TerminalSessionBroker", () => {
     expect(a.received[0]!.startsWith("\x1b[2J")).toBe(true);
   });
 
-  it("test 8b: EACH subscriber gets its own seed (2nd subscriber seeded too, no shared pipe)", async () => {
+  it("测试 8b：每个订阅者都获得自己的 seed（第二个也有，不共享 seed pipe）", async () => {
     const tmux = makeTmux({ capturePaneScreen: async () => "screen" });
     const broker = track(new TerminalSessionBroker("dev@rig", tmux, { pollMs: 10 }));
     const a = makeSub();
@@ -249,7 +249,7 @@ describe("TerminalSessionBroker", () => {
     expect(b.received[0]).toContain("screen");
   });
 
-  it("test 9: the seed uses the VISIBLE-screen capture + cursor (absolute paint), never scrollback", async () => {
+  it("测试 9：seed 使用可见屏幕 capture + cursor（绝对绘制），绝不使用 scrollback", async () => {
     const capturePaneScreen = vi.fn(async () => "r1\nr2\nr3");
     const getPaneCursorPosition = vi.fn(async () => ({ x: 1, y: 2, width: 80, height: 24 }));
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux({ capturePaneScreen, getPaneCursorPosition }), {
@@ -265,7 +265,7 @@ describe("TerminalSessionBroker", () => {
     expect(seed.endsWith(cursorPositionEscape(1, 2))).toBe(true);
   });
 
-  it("test 11: a pipe-pane failure leaks no temp file, closes the subscriber, and evicts the broker", async () => {
+  it("测试 11：pipe-pane 失败不泄漏临时文件，会关闭订阅者并驱逐 broker", async () => {
     let evicted: string | null = null;
     const broker = new TerminalSessionBroker("dev@rig", makeTmux({
       startPipePane: async () => ({ ok: false, code: "session_not_found", message: "gone" }),
@@ -280,25 +280,25 @@ describe("TerminalSessionBroker", () => {
     if (path) expect(fs.existsSync(path)).toBe(false);
   });
 
-  it("test 11b: a dead session at open closes the subscriber (1008, honest) and never starts a pipe", async () => {
+  it("测试 11b：打开时 session 已终止会如实关闭订阅者（1008），且不启动 pipe", async () => {
     const startPipePane = vi.fn(async () => ({ ok: true as const }));
     const broker = new TerminalSessionBroker("dev@rig", makeTmux({ hasSession: async () => false, startPipePane }), {
       pollMs: 10,
     });
     const a = makeSub();
     await broker.attach(a);
-    // 1008 (policy / session genuinely absent) mirrors the pre-broker route, distinct
-    // from 1011 (server-side pipe failure) below.
+    // 1008（policy / session 确实不存在）镜像 broker 前的 route，与下方 1011
+    //（服务端 pipe 失败）区分。
     expect(a.closed[0]?.code).toBe(1008);
-    expect(a.closed[0]?.reason).toContain("session not found");
+    expect(a.closed[0]?.reason).toContain("未找到 session");
     expect(startPipePane).not.toHaveBeenCalled();
   });
 });
 
-// ---- registry: create-if-absent + eviction ---------------------------------
+// ---- registry：不存在时创建 + 驱逐 ----------------------------------------
 
 describe("TerminalBrokerRegistry", () => {
-  it("create-if-absent: two subscribers on one session share ONE broker / ONE pipe", async () => {
+  it("不存在时创建：同一 session 的两个订阅者共享一个 broker 与一条 pipe", async () => {
     const startPipePane = vi.fn(async () => ({ ok: true as const }));
     const reg = new TerminalBrokerRegistry(makeTmux({ startPipePane }), { pollMs: 10 });
     const b1 = await reg.attach("dev@rig", makeSub());
@@ -309,7 +309,7 @@ describe("TerminalBrokerRegistry", () => {
     b1.dispose();
   });
 
-  it("distinct sessions get distinct brokers", async () => {
+  it("不同 session 使用不同 broker", async () => {
     const reg = new TerminalBrokerRegistry(makeTmux(), { pollMs: 10 });
     const b1 = await reg.attach("a@rig", makeSub());
     const b2 = await reg.attach("b@rig", makeSub());
@@ -319,7 +319,7 @@ describe("TerminalBrokerRegistry", () => {
     b2.dispose();
   });
 
-  it("evicts a broker from the registry once its last subscriber detaches", async () => {
+  it("最后一个订阅者 detach 后从 registry 驱逐 broker", async () => {
     const reg = new TerminalBrokerRegistry(makeTmux(), { pollMs: 10 });
     const sub = makeSub();
     const broker = await reg.attach("dev@rig", sub);
@@ -331,12 +331,12 @@ describe("TerminalBrokerRegistry", () => {
   });
 });
 
-// ---- lifecycle hardening (dev1-guard watchpoints) ---------------------------
+// ---- 生命周期加固（dev1-guard watchpoint）----------------------------------
 
-describe("TerminalSessionBroker - lifecycle hardening", () => {
-  it("singleflight: CONCURRENT first attaches do not race into two pipes", async () => {
-    // A delayed startPipePane widens the race window so all three attaches are
-    // in flight together; the synchronous started-guard must still yield one pipe.
+describe("TerminalSessionBroker——生命周期加固", () => {
+  it("singleflight：并发的首次 attach 不会竞态创建两条 pipe", async () => {
+    // 延迟 startPipePane 以扩大竞态窗口，使三个 attach 同时进行；同步 started-guard 仍必须
+    // 只产生一条 pipe。
     const startPipePane = vi.fn(async () => {
       await new Promise((r) => setTimeout(r, 20));
       return { ok: true as const };
@@ -347,7 +347,7 @@ describe("TerminalSessionBroker - lifecycle hardening", () => {
     expect(broker.subscriberCount).toBe(3);
   });
 
-  it("fanout isolation: a throwing subscriber does not break others and is detached", async () => {
+  it("扇出隔离：抛错的订阅者不会破坏其他订阅者，且会被 detach", async () => {
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux(), { pollMs: 10 }));
     const good = makeSub();
     const bad: FakeSub = {
@@ -367,7 +367,7 @@ describe("TerminalSessionBroker - lifecycle hardening", () => {
     }, { timeout: 1000 });
   });
 
-  it("last-detach unlinks even a NON-EMPTY pipe file (AC-7 no temp leak)", async () => {
+  it("最后一次 detach 连非空 pipe 文件也会 unlink（AC-7 不泄漏临时文件）", async () => {
     const broker = new TerminalSessionBroker("dev@rig", makeTmux(), { pollMs: 10 });
     const a = makeSub();
     await broker.attach(a);
@@ -381,7 +381,7 @@ describe("TerminalSessionBroker - lifecycle hardening", () => {
     }, { timeout: 1000 });
   });
 
-  it("registry: CONCURRENT attaches to one session share ONE broker / ONE pipe", async () => {
+  it("registry：同一 session 的并发 attach 共享一个 broker 与一条 pipe", async () => {
     const startPipePane = vi.fn(async () => {
       await new Promise((r) => setTimeout(r, 20));
       return { ok: true as const };
@@ -397,7 +397,7 @@ describe("TerminalSessionBroker - lifecycle hardening", () => {
     b1.dispose();
   });
 
-  it("registry: attach AFTER final-close creates a FRESH broker (no stale reuse)", async () => {
+  it("registry：最终关闭后的 attach 创建新 broker，不复用过期实例", async () => {
     const reg = new TerminalBrokerRegistry(makeTmux(), { pollMs: 10 });
     const sub1 = makeSub();
     const first = await reg.attach("dev@rig", sub1);
@@ -412,15 +412,14 @@ describe("TerminalSessionBroker - lifecycle hardening", () => {
   });
 });
 
-// ---- AC-5 / FR-4 broker-owned shared history ring ---------------------------
-// dev1-guard code-review BLOCKING: late subscribers must get the broker-owned
-// shared recent-output history (the bytes that scrolled off the first
-// subscriber), not only their own visible-screen capture + future fanout.
-describe("TerminalSessionBroker - shared history ring (AC-5)", () => {
-  it("a LATE subscriber receives the broker-owned history that scrolled off the first subscriber", async () => {
+// ---- AC-5 / FR-4：broker 拥有的共享历史环 ----------------------------------
+// dev1-guard code-review BLOCKING：较晚加入的订阅者必须获得 broker 拥有的近期输出共享历史
+//（已经滚出第一个订阅者的字节），不能只获得自身的可见屏幕 capture 与后续扇出。
+describe("TerminalSessionBroker——共享历史环（AC-5）", () => {
+  it("较晚加入的订阅者收到已滚出第一个订阅者视图的 broker 历史", async () => {
     const startPipePane = vi.fn(async () => ({ ok: true as const }));
-    // capturePaneScreen returns null so the ONLY path for B to see the
-    // scrolled-off output is the broker-owned ring (not its own visible seed).
+    // capturePaneScreen 返回 null，因此 B 看到已滚出输出的唯一路径是 broker 历史环，
+    // 而不是它自己的可见 seed。
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux({ startPipePane }), { pollMs: 10 }));
     const a = makeSub();
     await broker.attach(a);
@@ -433,13 +432,13 @@ describe("TerminalSessionBroker - shared history ring (AC-5)", () => {
     const b = makeSub();
     await broker.attach(b);
 
-    // B must receive the broker-owned history even though its capturePaneScreen is null.
+    // 即使 B 的 capturePaneScreen 为 null，也必须收到 broker 拥有的历史。
     expect(b.received.join("")).toContain("HISTORY-A-SAW-THEN-SCROLLED-OFF");
-    // ...and still no second pipe (FR-1 preserved).
+    // ……且仍不创建第二条 pipe（保持 FR-1）。
     expect(startPipePane).toHaveBeenCalledOnce();
   });
 
-  it("a LATE subscriber skips unsafe TUI repaint history and receives the current screen snapshot", async () => {
+  it("较晚加入的订阅者跳过不安全的 TUI 重绘历史，并收到当前屏幕快照", async () => {
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux({
       capturePaneScreen: async () => "CURRENT SCREEN",
       getPaneCursorPosition: async () => ({ x: 0, y: 0, width: 120, height: 40 }),
@@ -464,7 +463,7 @@ describe("TerminalSessionBroker - shared history ring (AC-5)", () => {
     expect(bSeed).toContain("CURRENT SCREEN");
   });
 
-  it("the history ring is bounded under sustained output", async () => {
+  it("持续输出时历史环保持有界", async () => {
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux(), { pollMs: 5, maxHistoryBytes: 2048 }));
     await broker.attach(makeSub());
     const path = broker.pipeOutputPath!;
@@ -476,7 +475,7 @@ describe("TerminalSessionBroker - shared history ring (AC-5)", () => {
     expect(broker.historyByteLength).toBeLessThanOrEqual(2048);
   });
 
-  it("the history ring is cleared on final detach (no carry-over / leak)", async () => {
+  it("最终 detach 时清空历史环（不跨会话遗留或泄漏）", async () => {
     const broker = new TerminalSessionBroker("dev@rig", makeTmux(), { pollMs: 10 });
     const a = makeSub();
     await broker.attach(a);
@@ -488,12 +487,11 @@ describe("TerminalSessionBroker - shared history ring (AC-5)", () => {
   });
 });
 
-// ---- concurrent attach FAILURE (dev1-guard re-review watchpoint) ------------
-// A concurrent later attach must not be left live on a torn-down broker when
-// the shared open fails. All concurrent attaches await the same open result and
-// every subscriber closes honestly (no-live-terminal-lies).
-describe("TerminalSessionBroker - concurrent attach failure (honest close)", () => {
-  it("concurrent first attaches with a DEAD session close ALL subscribers honestly (1008), none left live", async () => {
+// ---- 并发 attach 失败（dev1-guard 复审 watchpoint）-------------------------
+// 共享 open 失败时，后续并发 attach 不得在已拆除 broker 上保持 live。所有并发 attach
+// 等待同一个 open 结果，每个订阅者都如实关闭（不谎报 live terminal）。
+describe("TerminalSessionBroker——并发 attach 失败（如实关闭）", () => {
+  it("DEAD session 上的并发首次 attach 会如实关闭全部订阅者（1008），不留 live 状态", async () => {
     let evicted = 0;
     const broker = new TerminalSessionBroker("dead@rig", makeTmux({
       hasSession: async () => { await new Promise((r) => setTimeout(r, 20)); return false; },
@@ -509,7 +507,7 @@ describe("TerminalSessionBroker - concurrent attach failure (honest close)", () 
     expect(evicted).toBe(1); // evicted exactly once
   });
 
-  it("concurrent first attaches with a PIPE-START failure close ALL subscribers (1011), no temp leak", async () => {
+  it("PIPE-START 失败时并发首次 attach 会关闭全部订阅者（1011），且无临时文件泄漏", async () => {
     let capturedPath: string | null = null;
     const broker = new TerminalSessionBroker("dev@rig", makeTmux({
       startPipePane: async (_n: string, p: string) => {
@@ -529,7 +527,7 @@ describe("TerminalSessionBroker - concurrent attach failure (honest close)", () 
     if (capturedPath) expect(fs.existsSync(capturedPath)).toBe(false);
   });
 
-  it("registry: concurrent attaches to a dead session close all and evict the broker (size 0)", async () => {
+  it("registry：向已终止 session 并发 attach 时全部关闭并驱逐 broker（size 0）", async () => {
     const reg = new TerminalBrokerRegistry(makeTmux({
       hasSession: async () => { await new Promise((r) => setTimeout(r, 20)); return false; },
     }), { pollMs: 10 });
@@ -544,12 +542,11 @@ describe("TerminalSessionBroker - concurrent attach failure (honest close)", () 
   });
 });
 
-// ---- teardown-during-seed race (dev1-guard round-3 watchpoint) --------------
-// A late attach blocked in its async seed must NOT be added to a broker that
-// got torn down (session death / dispose) while the seed was pending - it must
-// close honestly with the remembered teardown reason, never go live silently.
-describe("TerminalSessionBroker - teardown during seed (honest close)", () => {
-  it("a late attach blocked in seed while the session dies closes honestly (1001) and is NOT added", async () => {
+// ---- seed 期间 teardown 的竞态（dev1-guard 第三轮 watchpoint）--------------
+// 较晚加入的 attach 若阻塞在异步 seed 中，而 broker 在等待期间因 session 终止/dispose 被拆除，
+// 就不得再把它加入 broker；必须使用记住的拆除原因如实关闭，绝不静默转为 live。
+describe("TerminalSessionBroker——seed 期间 teardown（如实关闭）", () => {
+  it("session 终止时仍阻塞在 seed 中的晚到 attach 会如实关闭（1001）且不会加入", async () => {
     let releaseCapture!: () => void;
     const blocked = new Promise<string | null>((res) => { releaseCapture = () => res("late-screen"); });
     let captureCalls = 0;
@@ -559,8 +556,7 @@ describe("TerminalSessionBroker - teardown during seed (honest close)", () => {
       hasSession: async () => alive,
       capturePaneScreen: async () => {
         captureCalls += 1;
-        // The FIRST subscriber's seed resolves immediately; the late
-        // subscriber's seed blocks until we release it.
+        // 第一个订阅者的 seed 立即完成；晚到订阅者的 seed 会阻塞到测试主动放行。
         return captureCalls === 1 ? "first-screen" : blocked;
       },
     }), { pollMs: 10, livenessMs: 15, onEmpty: () => { evicted += 1; } });
@@ -571,7 +567,7 @@ describe("TerminalSessionBroker - teardown during seed (honest close)", () => {
     const b = makeSub();
     const bAttach = broker.attach(b); // blocks inside seed (capturePaneScreen)
 
-    // Session dies while B is mid-seed; liveness fires and tears the broker down.
+    // B 仍在 seed 中时 session 终止，liveness 触发并拆除 broker。
     alive = false;
     await vi.waitFor(() => { expect(a.closed[0]?.code).toBe(1001); }, { timeout: 1000 });
 
@@ -584,18 +580,15 @@ describe("TerminalSessionBroker - teardown during seed (honest close)", () => {
   });
 });
 
-// ---- OPR.0.4.0.39 per-subscriber scroll-back (tmux capture-pane window) ------
-// The live xterm screen is only the current `rows`; scrolling UP must show tmux
-// SCROLLBACK. Because the broker fans ONE pipe out to many viewers, scroll-back is
-// per-subscriber and READ-ONLY on the pane (capture-pane history window), not a
-// pane-global copy-mode (which would freeze every viewer). A scrolled subscriber is
-// painted a static history window and SKIPPED by the live fanout until it returns to
-// the bottom (offset 0), where it repaints the live screen and rejoins the fanout.
-describe("TerminalSessionBroker - per-subscriber scroll-back (OPR.0.4.0.39)", () => {
-  it("scroll(offset>0) paints a BOTTOM-anchored tmux history window (offset lines up) to ONLY that subscriber", async () => {
-    // Model REAL tmux: `capture-pane -p -S -N` returns a buffer that ENDS at the live
-    // bottom and contains ~N lines of history ABOVE the visible screen PLUS the screen
-    // (so ~N + rows lines). L1..L200 with L200 = the live bottom row.
+// ---- OPR.0.4.0.39：逐订阅者 scroll-back（tmux capture-pane 窗口）------------
+// live xterm 屏幕只包含当前 `rows`；向上滚动必须显示 tmux SCROLLBACK。broker 把一条 pipe
+// 扇出给多个 viewer，因此 scroll-back 必须逐订阅者维护，且对 pane 只读（capture-pane 历史
+// 窗口），不能使用会冻结所有 viewer 的 pane 全局 copy-mode。滚离底部的订阅者会收到静态历史
+// 窗口，并被 live 扇出跳过，直到它返回底部（offset 0），此时重绘 live 屏幕并重新加入扇出。
+describe("TerminalSessionBroker——逐订阅者 scroll-back（OPR.0.4.0.39）", () => {
+  it("scroll(offset>0) 只向该订阅者绘制以底部为锚点的 tmux 历史窗口", async () => {
+    // 模拟真实 tmux：`capture-pane -p -S -N` 返回以 live 底部结束的缓冲区，其中包含可见
+    // 屏幕上方约 N 行历史以及屏幕本身，总计约 N + rows 行。L1..L200 中 L200 是 live 底行。
     const BUF = Array.from({ length: 200 }, (_, i) => `L${i + 1}`);
     const ROWS = 3;
     const capturePaneContent = vi.fn(async (_n: string, n: number) => {
@@ -612,9 +605,9 @@ describe("TerminalSessionBroker - per-subscriber scroll-back (OPR.0.4.0.39)", ()
 
     await broker.scroll(a, 3); // wheel up 3 lines from the live bottom (L200)
 
-    // Captures (offset + rows) = 3 + 3 = 6 lines back; the painted window is `rows` (3)
-    // lines ending `offset` (3) ABOVE the live bottom: bottom row = L200 - 3 = L197,
-    // so the window is L195..L197 (NOT the older top of the capture, NOT the live tail).
+    // capture 回溯 (offset + rows) = 3 + 3 = 6 行；绘制窗口包含 `rows`（3）行，结束于
+    // live 底部上方 `offset`（3）行处：底行为 L200 - 3 = L197，因此窗口为 L195..L197，
+    // 既不是 capture 更旧的顶部，也不是 live tail。
     expect(capturePaneContent).toHaveBeenCalledWith("dev@rig", 6);
     expect(a.received.length).toBe(aBefore + 1);
     const painted = a.received[a.received.length - 1]!;
@@ -624,11 +617,11 @@ describe("TerminalSessionBroker - per-subscriber scroll-back (OPR.0.4.0.39)", ()
     expect(painted).toContain("\x1b[3;1HL197");
     expect(painted).not.toContain("L198"); // L198..L200 are within the offset (toward live)
     expect(painted).not.toContain("L194"); // above the rows-tall window
-    // b (live, never scrolled) is untouched by a's scroll - per-subscriber.
+    // b 保持 live 且从未滚动，不受 a 滚动影响，证明状态按订阅者隔离。
     expect(b.received.length).toBe(bBefore);
   });
 
-  it("a scrolled-back subscriber is SKIPPED by the live fanout; the live viewer still streams", async () => {
+  it("滚回历史的订阅者被 live 扇出跳过，live viewer 仍持续接收", async () => {
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux({
       capturePaneContent: async () => "x1\nx2\nx3\nx4",
     }), { pollMs: 10, rows: 3 }));
@@ -644,12 +637,12 @@ describe("TerminalSessionBroker - per-subscriber scroll-back (OPR.0.4.0.39)", ()
     await vi.waitFor(() => {
       expect(b.received.join("")).toContain("LIVE-AFTER-SCROLL");
     }, { timeout: 1000 });
-    // a was scrolled back: the live byte must NOT overwrite its history view.
+    // a 已滚回历史，live 字节不得覆盖其历史视图。
     expect(a.received.length).toBe(aAfterScroll);
     expect(a.received.join("")).not.toContain("LIVE-AFTER-SCROLL");
   });
 
-  it("scroll(offset 0) repaints the live screen and the subscriber REJOINS the fanout", async () => {
+  it("scroll(offset 0) 重绘 live 屏幕，并让订阅者重新加入扇出", async () => {
     const capturePaneScreen = vi.fn(async () => "LIVE SCREEN");
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux({
       capturePaneContent: async () => "g1\ng2\ng3\ng4",
@@ -669,14 +662,14 @@ describe("TerminalSessionBroker - per-subscriber scroll-back (OPR.0.4.0.39)", ()
     expect(a.received.length).toBe(beforeReturn + 1);
     expect(a.received[a.received.length - 1]!).toContain("LIVE SCREEN");
 
-    // ...and it rejoins the live fanout (no longer skipped).
+    // ……并重新加入 live 扇出，不再被跳过。
     fs.appendFileSync(broker.pipeOutputPath!, "BACK-TO-LIVE-STREAM");
     await vi.waitFor(() => {
       expect(a.received.join("")).toContain("BACK-TO-LIVE-STREAM");
     }, { timeout: 1000 });
   });
 
-  it("scroll on an UNKNOWN subscriber is a no-op (never throws, sends nothing)", async () => {
+  it("对未知订阅者执行 scroll 时不做任何操作（不抛错、不发送）", async () => {
     const broker = track(new TerminalSessionBroker("dev@rig", makeTmux(), { pollMs: 10, rows: 3 }));
     await broker.attach(makeSub());
     const ghost = makeSub(); // never attached

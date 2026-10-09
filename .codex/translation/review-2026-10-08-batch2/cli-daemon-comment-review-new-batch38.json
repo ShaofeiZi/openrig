@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch38",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/cli/test/discover.test.ts",
+      "before_sha256_16": "d4e3f3f08231725c",
+      "after_sha256_16": "e9c0e4df112d2d16",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/node-support.test.ts",
+      "before_sha256_16": "3481fd9faf357c3d",
+      "after_sha256_16": "f5f9c91c112f2112",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/seat-lifecycle-verbs.test.ts",
+      "before_sha256_16": "eb0a09bcbbf9a221",
+      "after_sha256_16": "5587d1312beb4630",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/slack-manifest-cli.test.ts",
+      "before_sha256_16": "99debc610e1cd408",
+      "after_sha256_16": "b6078d5142a2fe1d",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/sweep-b-ps-session-ladder.test.ts",
+      "before_sha256_16": "51dd70d6d62bd618",
+      "after_sha256_16": "a9334d7eadebfa3d",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

@@ -26,7 +26,7 @@ describe("StreamStore", () => {
 
   afterEach(() => db.close());
 
-  it("emit assigns ULID + sort key when not provided", () => {
+  it("未提供时 emit 分配 ULID 和排序键", () => {
     const item = store.emit({ sourceSession: "alice@rig", body: "hello" });
     expect(item.streamItemId).toMatch(/^[0-9A-Z]{26}$/);
     expect(item.streamSortKey).toMatch(/^[0-9A-Z]{26}$/);
@@ -35,7 +35,7 @@ describe("StreamStore", () => {
     expect(item.interrupt).toBe(false);
   });
 
-  it("emit is idempotent on stream_item_id", () => {
+  it("emit 对 stream_item_id 保持幂等", () => {
     const id = "01HXYZ_FIXED_ID_FOR_TEST_AB";
     const a = store.emit({ streamItemId: id, sourceSession: "alice@rig", body: "first" });
     const b = store.emit({ streamItemId: id, sourceSession: "alice@rig", body: "second-ignored" });
@@ -43,7 +43,7 @@ describe("StreamStore", () => {
     expect(b.body).toBe("first");
   });
 
-  it("emit fires stream.emitted event with hint metadata", () => {
+  it("emit 发送带提示元数据的 stream.emitted 事件", () => {
     store.emit({
       sourceSession: "alice@rig",
       body: "tagged",
@@ -63,7 +63,7 @@ describe("StreamStore", () => {
     }
   });
 
-  it("list returns chronological order, excludes archived by default", () => {
+  it("list 按时间顺序返回，默认排除已归档条目", () => {
     const a = store.emit({ sourceSession: "alice@rig", body: "first" });
     store.emit({ sourceSession: "alice@rig", body: "second" });
     store.emit({ sourceSession: "alice@rig", body: "third" });
@@ -76,7 +76,7 @@ describe("StreamStore", () => {
     expect(withArchived).toHaveLength(3);
   });
 
-  it("list latest returns the newest bounded active rows in chronological order", () => {
+  it("list latest 按时间顺序返回有界的最新 active 记录", () => {
     expect(store.list({ limit: 5, direction: "latest" })).toEqual([]);
     const items = Array.from({ length: 7 }, (_, index) =>
       store.emit({ sourceSession: "alice@rig", body: `item-${index + 1}` }),
@@ -92,7 +92,7 @@ describe("StreamStore", () => {
     ]);
   });
 
-  it("list latest uses the canonical timestamp + sort-key tuple and keeps filters", () => {
+  it("list latest 使用规范时间戳与排序键元组并保留筛选", () => {
     const first = store.emit({ sourceSession: "alice@rig", body: "first", hintDestination: "bob@rig" });
     const second = store.emit({ sourceSession: "alice@rig", body: "second", hintDestination: "bob@rig" });
     store.emit({ sourceSession: "carol@rig", body: "filtered-out", hintDestination: "bob@rig" });
@@ -103,7 +103,7 @@ describe("StreamStore", () => {
     expect(store.list({ limit: 5, direction: "latest", sourceSession: "alice@rig", hintDestination: "bob@rig" }).map((item) => item.body)).toEqual(["first", "second"]);
   });
 
-  it("list filters by sourceSession + hintDestination", () => {
+  it("list 按 sourceSession 与 hintDestination 筛选", () => {
     store.emit({ sourceSession: "alice@rig", body: "a-msg", hintDestination: "bob@rig" });
     store.emit({ sourceSession: "carol@rig", body: "c-msg", hintDestination: "bob@rig" });
     store.emit({ sourceSession: "alice@rig", body: "a2", hintDestination: "dave@rig" });
@@ -113,11 +113,11 @@ describe("StreamStore", () => {
     expect(store.list({ sourceSession: "alice@rig", hintDestination: "bob@rig" })).toHaveLength(1);
   });
 
-  it("getById returns null for unknown id", () => {
+  it("getById 对未知 ID 返回 null", () => {
     expect(store.getById("nonexistent")).toBeNull();
   });
 
-  it("hint_tags JSON-roundtrip", () => {
+  it("hint_tags 可进行 JSON 往返转换", () => {
     const item = store.emit({
       sourceSession: "alice@rig",
       body: "tagged",
@@ -128,7 +128,7 @@ describe("StreamStore", () => {
     expect(fetched?.hintTags).toEqual(["urgent", "review", "phase-a"]);
   });
 
-  it("list filters by exact tag and inclusive time window without changing cursor order", () => {
+  it("list 按精确标签和包含边界的时间窗口筛选，且不改变游标顺序", () => {
     const before = store.emit({
       sourceSession: "alice@rig",
       body: "before",
@@ -175,7 +175,7 @@ describe("StreamStore", () => {
     expect(store.list({ hintTag: "review-request" }).map((item) => item.body)).toEqual(["substring-only"]);
   });
 
-  it("list composes tag, time, source, archive, and latest-page filters", () => {
+  it("list 组合标签、时间、来源、归档和最新页筛选", () => {
     const matching = Array.from({ length: 4 }, (_, index) => store.emit({
       sourceSession: "alice@rig",
       body: `matching-${index + 1}`,

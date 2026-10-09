@@ -3,9 +3,9 @@ import { DaemonClient, terminalAuthHeaders } from "../client.js";
 import { getDaemonStatus, getDaemonUrl, type LifecycleDeps } from "../daemon-lifecycle.js";
 import { realDeps } from "./daemon.js";
 
-// The trigger is two-phase (prep → wait-for-idle → /compact); the wait-for-idle
-// half can take up to the daemon's manual-prep ceiling (~120s). Give the HTTP
-// call generous headroom so the client does not time out mid-sequence.
+// 该触发分两个阶段（prep → 等待空闲 → /compact）；等待空闲阶段最长可达后台服务的
+// 手动准备上限（约 120 秒）。因此为 HTTP 调用预留充裕的超时余量，避免客户端在流程
+// 中途超时。
 const MANUAL_COMPACT_REQUEST_TIMEOUT_MS = 180_000;
 
 export interface CompactDeps {
@@ -14,26 +14,24 @@ export interface CompactDeps {
 }
 
 /**
- * OPR.0.4.3.14 — `rig compact <session>`: manually run the guided compaction
- * lifecycle (prep → /compact → restore → audit) for one Claude seat, on demand,
- * independent of the auto threshold. Distinct from the read-only `rig
- * compact-plan` triage command.
+ * OPR.0.4.3.14 — `zrig compact <session>`：按需为单个 Claude 席位手动执行
+ * 引导式压缩生命周期（prep → /compact → restore → audit），不受自动阈值约束。
+ * 与只读的 `zrig compact-plan` 分诊命令不同。
  */
 export function compactCommand(depsOverride?: CompactDeps): Command {
   const cmd = new Command("compact")
-    .description("Manually run the guided compaction sequence (prep → /compact → restore → audit) for one Claude seat")
-    .argument("<session>", "Target Claude session name (e.g. dev-impl@my-rig)")
-    .option("--json", "JSON output for agents")
+    .description("为单个 Claude 席位手动执行引导式压缩流程（prep → /compact → restore → audit）")
+    .argument("<session>", "目标 Claude 会话名（例如 dev-impl@my-rig）")
+    .option("--json", "供智能体使用的 JSON 输出")
     .addHelpText("after", `
-Examples:
-  rig compact dev-impl@my-rig          Manually compact one Claude seat now
-  rig compact dev-impl@my-rig --json   JSON output for agents
+示例：
+  zrig compact dev-impl@my-rig          立即手动压缩一个 Claude 席位
+  zrig compact dev-impl@my-rig --json   供智能体使用的 JSON 输出
 
-Runs the SAME guided lifecycle the auto-compaction policy runs (pre-compact
-prep → /compact with the trust-bridge → restore-from-marker → read-depth audit)
-on demand, for ONE Claude seat, without waiting for the context threshold. It is
-NOT a bare /compact and NOT the read-only 'rig compact-plan' triage. Non-Claude
-seats are rejected. The /compact is sent only AFTER the prep turn completes.`);
+按需为单个 Claude 席位执行与自动压缩策略相同的引导式生命周期（压缩前准备 →
+带信任桥接的 /compact → 从标记恢复 → 读取深度审计），无需等待上下文阈值。
+它不是裸 /compact，也不是只读的 zrig compact-plan 分诊命令。非 Claude 席位
+会被拒绝。/compact 仅在准备轮次完成后才发送。`);
 
   const getDepsF = (): CompactDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
@@ -45,7 +43,7 @@ seats are rejected. The /compact is sent only AFTER the prep turn completes.`);
 
     const status = await getDaemonStatus(deps.lifecycleDeps);
     if (status.state !== "running" || status.healthy === false) {
-      console.error("Daemon is not running. Start it with: rig daemon start");
+      console.error("后台服务未运行。启动命令：zrig daemon start");
       process.exitCode = 1;
       return;
     }
@@ -65,14 +63,14 @@ seats are rejected. The /compact is sent only AFTER the prep turn completes.`);
 
     if (res.status >= 400) {
       const error = res.data["error"] as string | undefined;
-      console.error(error ?? `Manual compaction failed (HTTP ${res.status})`);
+      console.error(error ?? `手动压缩失败（HTTP ${res.status}）`);
       process.exitCode = res.status >= 500 ? 2 : 1;
       return;
     }
 
     const stage = res.data["stage"] as string | undefined;
-    console.log(`Manual compaction triggered for ${session}${stage ? ` (stage: ${stage})` : ""}.`);
-    console.log("The restore + read-depth audit prompts follow automatically as the seat drains below threshold.");
+    console.log(`已为 ${session} 触发手动压缩${stage ? `（阶段：${stage}）` : ""}。`);
+    console.log("当该席位占用回落到阈值以下时，恢复与读取深度审计提示会自动继续。");
   });
 
   return cmd;

@@ -41,10 +41,9 @@ import { threadSeatMapSchema } from "../../src/db/migrations/072_thread_seat_map
 import { queueTransitionWakesSchema } from "../../src/db/migrations/073_queue_transition_wakes.js";
 import { nodeCodexConfigProfileSchema } from "../../src/db/migrations/022_node_codex_config_profile.js";
 import { nodeSessionSourceSchema } from "../../src/db/migrations/077_node_session_source.js";
-// PL-019: GET /api/rigs/:id/graph + GET /api/rigs/:rigId/nodes/:logicalId
-// now perform a read-side join over queue_items (in-progress qitem
-// ownership per session). The route returns 500 if the table is absent,
-// so the integration harness needs the queue migrations through 025.
+// PL-019：GET /api/rigs/:id/graph + GET /api/rigs/:rigId/nodes/:logicalId 现在会在读取侧
+// join queue_items（逐 session 的 in-progress qitem ownership）。缺少该表时路由返回 500，因此
+// 集成 harness 需要包含至 025 的 queue migration。
 import { streamItemsSchema } from "../../src/db/migrations/023_stream_items.js";
 import { queueItemsSchema } from "../../src/db/migrations/024_queue_items.js";
 import { queueTransitionsSchema } from "../../src/db/migrations/025_queue_transitions.js";
@@ -53,6 +52,7 @@ import { humanNotificationIntentSchema } from "../../src/db/migrations/081_human
 import { reviewReadIndexesSchema } from "../../src/db/migrations/083_review_read_indexes.js";
 import { inventoryEventIndexesSchema } from "../../src/db/migrations/084_inventory_event_indexes.js";
 import { rigClaudeManagedBlockFileSchema } from "../../src/db/migrations/085_rig_claude_managed_block_file.js";
+import { nodePermissionSelectionsSchema } from "../../src/db/migrations/088_node_permission_selections.js";
 import { rigPolicySchema } from "../../src/db/migrations/041_rig_policy.js";
 import { rigArchiveSchema } from "../../src/db/migrations/042_rig_archive.js";
 import { resumeProvenanceSchema } from "../../src/db/migrations/043_resume_provenance.js";
@@ -113,23 +113,21 @@ import { SeatAttentionReconciler } from "../../src/domain/seat-attention-reconci
 import { createApp } from "../../src/server.js";
 import fs from "node:fs";
 
-/** Seam B R6: the canonical full-fixture migration list, exported so file-backed
- *  DB-reopen tests migrate IDENTICALLY to createFullTestDb. */
-export const migrationsForFullTestDb = [coreSchema, bindingsSessionsSchema, eventsSchema, snapshotsSchema, checkpointsSchema, resumeMetadataSchema, nodeSpecFieldsSchema, packagesSchema, installJournalSchema, journalSeqSchema, bootstrapSchema, discoverySchema, discoveryFkFix, agentspecRebootSchema, startupContextSchema, chatMessagesSchema, podNamespaceSchema, contextUsageSchema, externalCliAttachmentSchema, rigServicesSchema, seatHandoverObservabilitySchema, nodeCodexConfigProfileSchema, nodePermissionPolicySchema, rigPermissionPolicySchema, nodePolicyProvenanceSchema, rigPolicyProvenanceSchema, streamItemsSchema, queueItemsSchema, queueTransitionsSchema, rigPolicySchema, rigArchiveSchema, resumeProvenanceSchema, resumeVerificationSchema, seatIdentityVerdictsSchema, selfHostIdentitySchema, occupantTenuresSchema, daemonLifecycleSchema, watchdogJobsSchema, occupantGenerationStampsSchema, projectionManifestSchema, watchdogTargetGenerationSchema, appliedLaunchObservationsSchema, appliedLaunchObservationInvalidationsSchema, threadSeatMapSchema, queueTransitionWakesSchema, nodeSessionSourceSchema, scopedOperatingPostureSchema, humanNotificationIntentSchema, reviewReadIndexesSchema, inventoryEventIndexesSchema, rigClaudeManagedBlockFileSchema];
+/** Seam B R6：canonical 完整 fixture migration 列表；导出后，基于文件的 DB 重开测试可采用与
+ * createFullTestDb 完全相同的 migration。 */
+export const migrationsForFullTestDb = [coreSchema, bindingsSessionsSchema, eventsSchema, snapshotsSchema, checkpointsSchema, resumeMetadataSchema, nodeSpecFieldsSchema, packagesSchema, installJournalSchema, journalSeqSchema, bootstrapSchema, discoverySchema, discoveryFkFix, agentspecRebootSchema, startupContextSchema, chatMessagesSchema, podNamespaceSchema, contextUsageSchema, externalCliAttachmentSchema, rigServicesSchema, seatHandoverObservabilitySchema, nodeCodexConfigProfileSchema, nodePermissionPolicySchema, rigPermissionPolicySchema, nodePolicyProvenanceSchema, rigPolicyProvenanceSchema, streamItemsSchema, queueItemsSchema, queueTransitionsSchema, rigPolicySchema, rigArchiveSchema, resumeProvenanceSchema, resumeVerificationSchema, seatIdentityVerdictsSchema, selfHostIdentitySchema, occupantTenuresSchema, daemonLifecycleSchema, watchdogJobsSchema, occupantGenerationStampsSchema, projectionManifestSchema, watchdogTargetGenerationSchema, appliedLaunchObservationsSchema, appliedLaunchObservationInvalidationsSchema, threadSeatMapSchema, queueTransitionWakesSchema, nodeSessionSourceSchema, scopedOperatingPostureSchema, humanNotificationIntentSchema, reviewReadIndexesSchema, inventoryEventIndexesSchema, rigClaudeManagedBlockFileSchema, nodePermissionSelectionsSchema];
 
 /**
- * P24 — the DECLARED exclusions for {@link migrationsForFullTestDb}. That list is deliberately a
- * schema-MINIMAL core-topology DB (node / rig / session / pod / discovery / stream / queue items+
- * transitions / projection) shared by ~135 suites; each per-subsystem table below is a shipped
- * migration intentionally omitted so the shared fixture stays lean. The exclusion is SAFE evidence,
- * not a guess: the fixture omits these AND all ~135 consumers pass, which proves no createFullTestDb
- * consumer reads them — a subsystem that needs its table migrates that migration in its own suite's
- * inline list. The P24 guard (migration-fixture-parity.test.ts) fails LOUD if a shipped migration is
- * neither in the list above nor declared here (the 064/066/067 silent-omission tax).
+ * P24——{@link migrationsForFullTestDb} 的已声明排除项。该列表刻意保持为 schema 最小化的
+ * core-topology DB（node / rig / session / pod / discovery / stream / queue items+transitions /
+ * projection），由约 135 个 suite 共享；下方每个逐子系统表都是已发布但有意省略的 migration，
+ * 以保持共享 fixture 轻量。排除是安全证据而非猜测：fixture 省略这些项且约 135 个消费者全部通过，
+ * 证明没有 createFullTestDb 消费者读取它们；需要相应表的子系统会在自身 suite 的内联列表中执行
+ * migration。若已发布 migration 既不在上方列表也未在此声明，P24 守卫
+ *（migration-fixture-parity.test.ts）会明确失败（064/066/067 静默遗漏税）。
  *
- * TO RE-EVALUATE any entry: check whether a createFullTestDb consumer now reads that table/column
- * (e.g. a new shared read). If one does, the migration must MOVE INTO migrationsForFullTestDb (delete
- * its exclusion); the guard's redundant-exclusion check then keeps the two in sync.
+ * 重新评估条目时：检查 createFullTestDb 消费者现在是否读取该表/列（如新增共享读取）。若读取，
+ * migration 必须移入 migrationsForFullTestDb（删除排除项）；守卫的冗余排除检查会保持两者同步。
  */
 export const migrationsForFullTestDbExclusions: Record<string, string> = {
   "082_archive_identity_provenance.sql": "archive extension; 054 is excluded from this core fixture. Archive identity regressions use ALL_MIGRATIONS.",
@@ -167,6 +165,8 @@ export const migrationsForFullTestDbExclusions: Record<string, string> = {
   "076_owner_notification_levels.sql": "owner-notification columns extend queue transitions plus the archive table (054 is excluded); focused S14 suites use the canonical full migration list.",
   "078_idle_gate_fired_condition.sql": "idle-gate watchdog extension migrated inline by the idle-gate policy suite.",
   "079_workflow_lifecycle_parallel.sql": "workflow lifecycle identity, frontier, and failure tables — workflow suites migrate the canonical workflow schema inline; the shared core fixture does not read them.",
+  "087_seat_delivery_guard.sql": "seat-delivery-guard extension depends on the excluded outbox subsystem; focused guard suites migrate it inline.",
+  "089_classification_identity_provenance.sql": "classification provenance extends the excluded project_classifications subsystem; classifier suites migrate it inline.",
 };
 
 export function createFullTestDb(): Database.Database {
@@ -195,7 +195,7 @@ export function mockTmuxAdapter(): TmuxAdapter {
 
 export function unavailableCmuxAdapter(): CmuxAdapter {
   const factory: CmuxTransportFactory = async () => {
-    throw Object.assign(new Error("no socket"), { code: "ENOENT" });
+    throw Object.assign(new Error("无 socket"), { code: "ENOENT" });
   };
   return new CmuxAdapter(factory, { timeoutMs: 50 });
 }
@@ -219,11 +219,10 @@ export function createTestApp(
     adapters?: Partial<Record<string, RuntimeAdapter>>;
     activityHookToken?: string;
     activityFreshnessMs?: number;
-    /** 5b82324b — inject a structural activity cache so route tests can prove the default /nodes ACTIVITY consumes it. */
+    /** 5b82324b——注入结构化 activity cache，使路由测试可证明默认 /nodes ACTIVITY 会消费它。 */
     seatStructuralActivityService?: import("../../src/domain/seat-structural-activity-service.js").SeatStructuralActivityService;
-    // OPR.0.4.3.21 — opt-in event-loop health instrumentation for the health/
-    // stress proofs. Omitted by default so every existing test keeps the exact
-    // legacy `/healthz` `{ status: "ok" }` body.
+    // OPR.0.4.3.21——供 health/stress 证明选择启用的 event-loop 健康检测。默认省略，使所有现有
+    // 测试保持精确的 legacy `/healthz` `{ status: "ok" }` body。
     eventLoopMonitor?: import("../../src/domain/event-loop-monitor.js").EventLoopMonitor;
     routeTimingRecorder?: import("../../src/domain/route-timing-recorder.js").RouteTimingRecorder;
     permissionDriftObserver?: {
@@ -231,10 +230,8 @@ export function createTestApp(
     };
     listProcesses?: () => Promise<Array<{ pid: number; ppid: number; command: string }>>;
     /**
-     * Agent Starter v1 vertical M2: optional real-fs upRouter for tests
-     * that POST /api/up with a YAML spec on disk. Default behavior
-     * (always-false fsOps) preserved when this is omitted, so existing
-     * rig-name-path tests are not affected.
+     * Agent Starter v1 垂直切片 M2：可选 real-fs upRouter，用于以磁盘 YAML spec POST /api/up 的
+     * 测试。省略时保留默认行为（始终为 false 的 fsOps），因此不影响现有 rig-name-path 测试。
      */
     upRouterFsOps?: {
       exists: (p: string) => boolean;
@@ -242,22 +239,19 @@ export function createTestApp(
       readHead: (p: string, n: number) => Buffer;
     };
     /**
-     * Agent Starter v1 vertical M2 R2: optional fsOps for the
-     * PodRigInstantiator used by /api/up apply-mode tests that need
-     * real agent.yaml resolution. Default (always-false) preserved.
+     * Agent Starter v1 垂直切片 M2 R2：PodRigInstantiator 的可选 fsOps，供需要真实解析 agent.yaml
+     * 的 /api/up apply-mode 测试使用。保留默认值（始终为 false）。
      */
     podInstantiatorFsOps?: {
       exists: (p: string) => boolean;
       readFile: (p: string) => string;
     };
-    /** Managed Claude activity-hook delivery asset paths, forwarded to the PodRigInstantiator
-     *  (defaults to daemon-shipped assets). Tests inject fixtures to exercise the nonfatal
-     *  delivery-gap warning through the real /api/up route. */
+    /** 托管 Claude activity-hook 投递资产路径，转发给 PodRigInstantiator（默认使用后台服务发布资产）。
+     * 测试注入 fixture，通过真实 /api/up 路由覆盖非致命 delivery-gap 警告。 */
     claudeActivityAssets?: { relayPath?: string; manifestPath?: string };
     /**
-     * Agent Starter v1 vertical M2 R2: optionally expose the in-test
-     * StartupOrchestrator + PodRigInstantiator so callers can spy on
-     * `startNode` / inspect node_startup_context end-to-end.
+     * Agent Starter v1 垂直切片 M2 R2：可选公开测试内 StartupOrchestrator + PodRigInstantiator，
+     * 使调用方可监听 `startNode`，并端到端检查 node_startup_context。
      */
   },
 ) {
@@ -285,7 +279,7 @@ export function createTestApp(
   const rigSpecPreflight = new RigSpecPreflight({ rigRepo, tmuxAdapter: tmux, exec, cmuxExec: exec });
   const rigInstantiator = new RigInstantiator({ db, rigRepo, sessionRegistry, eventBus, nodeLauncher, preflight: rigSpecPreflight });
 
-  // Phase 4: Package install services
+  // Phase 4：Package install service。
   const packageRepo = new PackageRepository(db);
   const installRepo = new InstallRepository(db);
   const realEngineFsOps = {
@@ -303,7 +297,7 @@ export function createTestApp(
   };
   const installVerifier = new InstallVerifier(installRepo, packageRepo, realVerifierFsOps);
 
-  // Phase 5: Bootstrap services
+  // Phase 5：Bootstrap service。
   const bootstrapRepo = new BootstrapRepository(db);
   const runtimeVerifier = new RuntimeVerifier({ exec, db });
   const probeRegistry = new RequirementsProbeRegistry(exec);
@@ -339,7 +333,7 @@ export function createTestApp(
     podBundleSourceResolver: new PodBundleSourceResolver(),
   });
 
-  // Discovery services
+  // Discovery service。
   const tmuxScanner = new TmuxDiscoveryScanner({ tmuxAdapter: tmux });
   const fingerprinter = new SessionFingerprinter({
     cmuxAdapter: cmux, tmuxAdapter: tmux, fsExists: () => false,
@@ -367,9 +361,9 @@ export function createTestApp(
     db,
     eventBus,
     freshnessMs: opts?.activityFreshnessMs,
-    // W2a-1 — mirror the production producer wiring so integration tests exercise generation-honesty.
-    // Fixtures mint occupant tenures at registerSession, so same-tenure reads stay fresh; a test that
-    // reads across a minted new generation (or with no tenure) sees the honest UNKNOWN.
+    // W2a-1——镜像生产 producer 接线，使集成测试覆盖 generation-honesty。Fixture 在
+    // registerSession 时生成 occupant tenure，因此同 tenure 读取保持 fresh；跨新生成 generation
+    //（或无 tenure）读取的测试会看到真实 UNKNOWN。
     resolveOccupantGeneration: (nodeId) => sessionRegistry.currentOccupantTenure(nodeId)?.generationUuid ?? null,
     isRegisteredOccupantGeneration: (nodeId, generation) =>
       sessionRegistry.isOccupantGenerationRegistered(nodeId, generation),
@@ -415,12 +409,10 @@ export function createTestApp(
     activityHookToken: opts?.activityHookToken,
     eventLoopMonitor: opts?.eventLoopMonitor,
     routeTimingRecorder: opts?.routeTimingRecorder,
-    // Hermeticity (hotfix qitem-20260822230440-da0d2ad6 FIX 2): default to a
-    // null observer — leaving this undefined makes createApp construct the
-    // PRODUCTION PermissionDriftObserver, whose constructor warms the claude
-    // permission-mode cache via execFile("claude","--help") (162 real launches
-    // across the suite). Tests for the observer itself construct it directly
-    // and pass it here explicitly.
+    // 密闭性（hotfix qitem-20260822230440-da0d2ad6 FIX 2）：默认为 null observer。若保持
+    // undefined，createApp 会构造生产 PermissionDriftObserver，其 constructor 会通过
+    // execFile("claude","--help") 预热 claude permission-mode cache（整套测试会真实启动 162 次）。
+    // observer 自身的测试直接构造它，并在此显式传入。
     permissionDriftObserver: opts?.permissionDriftObserver ?? { diagnose: () => null },
   });
   return {

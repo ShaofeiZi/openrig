@@ -57,8 +57,8 @@ function createServicesDb() {
   return db;
 }
 
-describe("RigSpec services contract", () => {
-  it("rejects non-compose services kinds", () => {
+describe("RigSpec services 契约", () => {
+  it("拒绝非 compose 的 services kind", () => {
     const rig = structuredClone(VALID_RIG_WITH_SERVICES) as Record<string, unknown>;
     (rig.services as Record<string, unknown>).kind = "kubernetes";
 
@@ -68,7 +68,7 @@ describe("RigSpec services contract", () => {
     expect(result.errors.some((e) => e.includes("services.kind") && e.includes("compose"))).toBe(true);
   });
 
-  it("normalize preserves the services block", () => {
+  it("normalize 保留 services 区块", () => {
     const normalized = RigSpecSchema.normalize(structuredClone(VALID_RIG_WITH_SERVICES) as Record<string, unknown>);
 
     expect(normalized.services).toBeDefined();
@@ -82,7 +82,7 @@ describe("RigSpec services contract", () => {
     expect(normalized.services.checkpoints[0].id).toBe("vault");
   });
 
-  it("defaults project_name deterministically from the rig name when omitted", () => {
+  it("省略 project_name 时根据 rig 名称确定性生成默认值", () => {
     const rig = structuredClone(VALID_RIG_WITH_SERVICES) as Record<string, unknown>;
     delete (rig.services as Record<string, unknown>).project_name;
     rig.name = "Demo Rig / V1";
@@ -94,17 +94,17 @@ describe("RigSpec services contract", () => {
     expect(normalized.services.projectName).toBe("demo-rig-v1");
   });
 
-  it("rejects invalid explicit project_name values", () => {
+  it("拒绝无效的显式 project_name 值", () => {
     const rig = structuredClone(VALID_RIG_WITH_SERVICES) as Record<string, unknown>;
     (rig.services as Record<string, unknown>).project_name = "Bad Project Name!";
 
     const result = RigSpecSchema.validate(rig);
 
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("services.project_name") && e.includes("match"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("services.project_name") && e.includes("匹配"))).toBe(true);
   });
 
-  it("RigRepository persists and updates a services record", () => {
+  it("RigRepository 持久化并更新 services 记录", () => {
     const db = createServicesDb();
     const repo = new RigRepository(db);
     const rig = repo.createRig("services-rig");
@@ -124,24 +124,24 @@ describe("RigSpec services contract", () => {
 
     const fetched = repo.getServicesRecord(rig.id);
     expect(fetched).not.toBeNull();
-    if (!fetched) throw new Error("expected services record");
+    if (!fetched) throw new Error("预期存在 services 记录");
     expect(fetched.rigId).toBe(rig.id);
     expect(fetched.specJson).toContain('"compose"');
 
     const updated = repo.updateServicesReceipt(rig.id, JSON.stringify({ status: "healthy" }));
     expect(updated).not.toBeNull();
-    if (!updated) throw new Error("expected updated services record");
+    if (!updated) throw new Error("预期存在已更新的 services 记录");
     expect(updated.latestReceiptJson).toContain("healthy");
 
     const fetchedAgain = repo.getServicesRecord(rig.id);
     expect(fetchedAgain).not.toBeNull();
-    if (!fetchedAgain) throw new Error("expected fetched services record");
+    if (!fetchedAgain) throw new Error("预期再次取得 services 记录");
     expect(fetchedAgain.latestReceiptJson).toContain("healthy");
 
     db.close();
   });
 
-  it("createDaemon wires the rig_services migration", async () => {
+  it("createDaemon 接入 rig_services migration", async () => {
     const { createDaemon } = await import("../src/startup.js");
     const { db } = await createDaemon({ dbPath: ":memory:" });
 

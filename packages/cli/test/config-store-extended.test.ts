@@ -208,7 +208,7 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
 
   it("refuses every removed context.packs_root input with context.root guidance", () => {
     const store = new ConfigStore(configPath);
-    expect(() => store.get("context.packs_root")).toThrow(/removed.*context\.root/i);
+    expect(() => store.get("context.packs_root")).toThrow(/已移除.*context\.root/);
 
     writeFileSync(configPath, JSON.stringify({ context: { packsRoot: "/legacy" } }));
     expect(() => store.resolve()).toThrow(/context\.packs_root.*context\.root/i);
@@ -259,7 +259,7 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
     expect(() => store.set("health.context_pressure.critical_percent", "97")).toThrow(/warning.*critical/i);
 
     for (const raw of ["0", "101", "95.5", "95junk"]) {
-      expect(() => store.set("health.context_pressure.warning_percent", raw)).toThrow(/integer/i);
+      expect(() => store.set("health.context_pressure.warning_percent", raw)).toThrow(/整数/);
     }
 
     const persistedBeforeReset = readFileSync(configPath, "utf-8");
@@ -323,7 +323,7 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
     ]) {
       for (const raw of ["3junk", "60.5"]) {
         expect(() => store.set(key, raw), `${key} must reject ${raw}`)
-          .toThrow(/positive integer/i);
+          .toThrow(/正整数/);
       }
     }
   });
@@ -353,7 +353,7 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
     ]) {
       for (const raw of ["0", "-1", "1.5", "60abc"]) {
         expect(() => store.set(key, raw), `${key} must reject ${raw}`)
-          .toThrow(/positive integer/i);
+          .toThrow(/正整数/);
       }
     }
   });
@@ -380,20 +380,20 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
 
   it("rejects malformed snapshots.periodic.interval_seconds (60abc, 60.5)", () => {
     const store = new ConfigStore(configPath);
-    expect(() => store.set("snapshots.periodic.interval_seconds", "60abc")).toThrow(/expected an integer/);
-    expect(() => store.set("snapshots.periodic.interval_seconds", "60.5")).toThrow(/expected an integer/);
+    expect(() => store.set("snapshots.periodic.interval_seconds", "60abc")).toThrow(/期望 >= 60 的整数/);
+    expect(() => store.set("snapshots.periodic.interval_seconds", "60.5")).toThrow(/期望 >= 60 的整数/);
   });
 
   it("rejects malformed snapshots.periodic.retention_keep (1abc, 1.5)", () => {
     const store = new ConfigStore(configPath);
-    expect(() => store.set("snapshots.periodic.retention_keep", "1abc")).toThrow(/expected an integer/);
-    expect(() => store.set("snapshots.periodic.retention_keep", "1.5")).toThrow(/expected an integer/);
+    expect(() => store.set("snapshots.periodic.retention_keep", "1abc")).toThrow(/期望 >= 1 的整数/);
+    expect(() => store.set("snapshots.periodic.retention_keep", "1.5")).toThrow(/期望 >= 1 的整数/);
   });
 
   it("rejects out-of-range snapshots.periodic.interval_seconds=30 and retention_keep=0", () => {
     const store = new ConfigStore(configPath);
-    expect(() => store.set("snapshots.periodic.interval_seconds", "30")).toThrow(/must be >= 60/);
-    expect(() => store.set("snapshots.periodic.retention_keep", "0")).toThrow(/must be >= 1/);
+    expect(() => store.set("snapshots.periodic.interval_seconds", "30")).toThrow(/必须 >= 60/);
+    expect(() => store.set("snapshots.periodic.retention_keep", "0")).toThrow(/必须 >= 1/);
   });
 
   it("workspace.operator_seat_name roundtrip — default is unset for registry discovery; set → resolve reflects override", () => {
@@ -577,13 +577,13 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
 
   it("set rejects unknown keys with hint listing valid keys", () => {
     const store = new ConfigStore(configPath);
-    expect(() => store.set("workspace.bogus", "x")).toThrow(/Unknown config key/);
+    expect(() => store.set("workspace.bogus", "x")).toThrow(/未知配置键/);
     expect(() => store.set("workspace.bogus", "x")).toThrow(/workspace\.root/);
   });
 
   it("get rejects unknown keys", () => {
     const store = new ConfigStore(configPath);
-    expect(() => store.get("nope.doesnt.exist")).toThrow(/Unknown config key/);
+    expect(() => store.get("nope.doesnt.exist")).toThrow(/未知配置键/);
   });
 
   it("reset(key) clears just one key; reset() deletes whole file", () => {
@@ -622,8 +622,8 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
   it("malformed config.json throws with reset hint (preserves legacy behavior)", () => {
     writeFileSync(configPath, "{not-json");
     const store = new ConfigStore(configPath);
-    expect(() => store.resolve()).toThrow(/malformed/i);
-    expect(() => store.resolve()).toThrow(/reset/i);
+    expect(() => store.resolve()).toThrow(/格式错误/);
+    expect(() => store.resolve()).toThrow(/重置/);
   });
 
   // --- Preview Terminal v0 (PL-018) keys ---
@@ -654,7 +654,7 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
 
   it("ui.preview.* keys reject non-numeric values", () => {
     const store = new ConfigStore(configPath);
-    expect(() => store.set("ui.preview.refresh_interval_seconds", "soon")).toThrow(/expected a number/);
+    expect(() => store.set("ui.preview.refresh_interval_seconds", "soon")).toThrow(/期望数字/);
   });
 
   it("OPENRIG_UI_PREVIEW_* env vars override file values", () => {
@@ -702,12 +702,11 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
     expect(store.resolve().recovery.autoDriveProviderPrompts).toBe(true);
   });
 
-  // Slice 27 BLOCKING-FIX-2 — env override + file value validation.
-  // Bypass-prevention at the RESOLVE path: an env override like
-  // OPENRIG_POLICIES_CLAUDE_COMPACTION_THRESHOLD_PERCENT=80abc previously
-  // parseInt-coerced to 80 and shipped through resolveOne as a "valid"
-  // env-sourced value. With BLOCKING-FIX-2 the env resolution validates;
-  // bad env drops the override (falls to file/default) and warns on stderr.
+  // Slice 27 BLOCKING-FIX-2——env 覆盖 + 文件值校验。
+  // RESOLVE 路径的防绕过：像 OPENRIG_POLICIES_CLAUDE_COMPACTION_THRESHOLD_PERCENT=80abc
+  // 这样的 env 覆盖，此前会被 parseInt 强转为 80，并作为"合法"的 env 来源值
+  // 经 resolveOne 发出。有了 BLOCKING-FIX-2，env 解析会校验；
+  // 坏 env 丢弃该覆盖（回落文件/默认）并在 stderr 告警。
   describe("BLOCKING-FIX-2: env + file source validation", () => {
     const reject = ["0", "101", "-1", "80abc", "80.5", "NaN", "Infinity"];
 
@@ -720,7 +719,7 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
           const resolved = store.resolve();
           expect(resolved.policies.claudeCompaction.thresholdPercent).toBe(80);
           const calls = stderrSpy.mock.calls.map((c) => String(c[0]));
-          expect(calls.some((c) => c.includes("env override for policies.claude_compaction.threshold_percent rejected"))).toBe(true);
+          expect(calls.some((c) => c.includes("policies.claude_compaction.threshold_percent 的环境变量覆盖被拒绝"))).toBe(true);
         } finally {
           stderrSpy.mockRestore();
           delete process.env["OPENRIG_POLICIES_CLAUDE_COMPACTION_THRESHOLD_PERCENT"];
@@ -738,7 +737,7 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
         expect(a.source).toBe("default");
         const warns = stderrSpy.mock.calls
           .map((c) => String(c[0]))
-          .filter((c) => c.includes("env override for policies.claude_compaction.threshold_percent rejected"));
+          .filter((c) => c.includes("policies.claude_compaction.threshold_percent 的环境变量覆盖被拒绝"));
         expect(warns.length).toBe(1);
       } finally {
         stderrSpy.mockRestore();
@@ -780,7 +779,7 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
           const resolved = new ConfigStore(configPath).resolve();
           expect(resolved.policies.claudeCompaction.thresholdPercent).toBe(80);
           const calls = stderrSpy.mock.calls.map((c) => String(c[0]));
-          expect(calls.some((c) => c.includes("file value for policies.claude_compaction.threshold_percent rejected"))).toBe(true);
+          expect(calls.some((c) => c.includes("policies.claude_compaction.threshold_percent 的文件值被拒绝"))).toBe(true);
         } finally {
           stderrSpy.mockRestore();
         }
@@ -788,24 +787,23 @@ describe("ConfigStore — extended namespaces (User Settings v0)", () => {
     }
   });
 
-  // Slice 27 BLOCKING-FIX — strict accept/reject matrix for
-  // policies.claude_compaction.threshold_percent. The contract is
-  // integer in [1, 100]. parseInt's permissive coercion would otherwise
-  // accept "80abc" → 80, "80.5" → 80, and even 0 / 101 / -1 which would
-  // break the trigger's safety contract (0 = compact every tick).
+  // Slice 27 BLOCKING-FIX——policies.claude_compaction.threshold_percent 的
+  // 严格接受/拒绝矩阵。契约为 [1, 100] 内的整数。否则 parseInt 的宽松强转会
+  // 接受 "80abc" → 80、"80.5" → 80，甚至 0 / 101 / -1，那会破坏触发器的
+  // 安全契约（0 = 每个 tick 都 compact）。
   describe("policies.claude_compaction.threshold_percent strict validation matrix", () => {
     const accept = ["1", "2", "50", "80", "99", "100"];
     const reject: Array<{ raw: string; reason: RegExp }> = [
-      { raw: "0", reason: /must be in \[1, 100\]/ },
-      { raw: "101", reason: /must be in \[1, 100\]/ },
-      { raw: "-1", reason: /must be in \[1, 100\]/ },
-      { raw: "80abc", reason: /expected an integer/ },
-      { raw: "abc80", reason: /expected a number|expected an integer/ },
-      { raw: "80.5", reason: /expected an integer/ },
-      { raw: "", reason: /expected a number|expected an integer/ },
-      { raw: " ", reason: /expected a number|expected an integer/ },
-      { raw: "NaN", reason: /expected a number|expected an integer/ },
-      { raw: "Infinity", reason: /expected a number|expected an integer/ },
+      { raw: "0", reason: /必须在 \[1, 100\] 范围内/ },
+      { raw: "101", reason: /必须在 \[1, 100\] 范围内/ },
+      { raw: "-1", reason: /必须在 \[1, 100\] 范围内/ },
+      { raw: "80abc", reason: /期望 \[1, 100\] 范围内的整数/ },
+      { raw: "abc80", reason: /期望数字|期望 \[1, 100\] 范围内的整数/ },
+      { raw: "80.5", reason: /期望 \[1, 100\] 范围内的整数/ },
+      { raw: "", reason: /期望数字|期望 \[1, 100\] 范围内的整数/ },
+      { raw: " ", reason: /期望数字|期望 \[1, 100\] 范围内的整数/ },
+      { raw: "NaN", reason: /期望数字|期望 \[1, 100\] 范围内的整数/ },
+      { raw: "Infinity", reason: /期望数字|期望 \[1, 100\] 范围内的整数/ },
     ];
 
     for (const value of accept) {
@@ -951,7 +949,7 @@ describe("init-workspace runner", () => {
     }
     const projectSpec = readFileSync(join(workspaceRoot, "SPEC.md"), "utf-8");
     expect(projectSpec).toContain("intent:");
-    expect(projectSpec).toContain("# Project");
+    expect(projectSpec).toContain("# 项目");
     expect(parseYaml(readFileSync(join(workspaceRoot, "project.yaml"), "utf-8"))).toMatchObject({
       schema: "openrig.project/v0alpha1",
       kind: "project",
@@ -1041,13 +1039,14 @@ describe("init-workspace runner", () => {
   });
 });
 
-// GHOST-STAGE (d) — the CLI `rig config set` write-target must be the CANONICAL config the DAEMON
-// reads (getOpenRigHome/config.json), never the existence-based legacy ~/.rigged sidecar. The
-// operator hit config-set-success-without-persist: the setter wrote the sidecar, the daemon read
-// canonical, so `disabled` never took. RED provenance: on a host WITH a legacy ~/.rigged/config.json
-// the OLD getCompatibleOpenRigPath returns that real-home sidecar while OPENRIG_HOME points at the
-// canonical home — so `configPath` diverges and this pin RED-fails. (A host-independent RED needs
-// os.homedir() mocking — harness note.)
+// GHOST-STAGE (d)——CLI `rig config set` 的写入目标必须是 daemon 读取的
+// canonical 配置（getOpenRigHome/config.json），绝不是基于存在性的 legacy
+// ~/.rigged sidecar。操作者遭遇 config-set-success-without-persist：setter
+// 写了 sidecar，daemon 读 canonical，故 `disabled` 从未生效。RED 出处：在一台
+// 带有 legacy ~/.rigged/config.json 的 host 上，旧 getCompatibleOpenRigPath
+// 返回那个 real-home sidecar，而 OPENRIG_HOME 指向 canonical home——故
+// `configPath` 分叉，此 pin RED 失败。（host 无关的 RED 需要 mock os.homedir()
+// ——harness 注。）
 describe("ConfigStore — GHOST-STAGE (d): write-canonical + verify-readback", () => {
   let home: string;
   let savedHome: string | undefined;

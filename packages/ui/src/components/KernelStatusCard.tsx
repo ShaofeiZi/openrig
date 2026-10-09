@@ -1,16 +1,14 @@
-// OPR.0.4.3.22 — dashboard kernel-status card.
+// OPR.0.4.3.22 —— 仪表盘内核状态卡片。
 //
-// Kernel health comes from /api/kernel/status (the boot-tracker surface), NEVER
-// inferred from the daemon /healthz check (guard 4). The card CONSUMES the
-// kernel_state verdict in its rendered badge tone — a non-ready kernel renders
-// non-green (the 19/21 lesson: render the verdict, don't default to green while
-// carrying it in data).
+// 内核健康状态来自 /api/kernel/status（启动跟踪 surface），绝不从后台服务的
+// /healthz 检查推断（guard 4）。卡片直接消费 kernel_state 的判定结果来决定徽章
+// 色调——未就绪的内核渲染为非绿色（19/21 教训：渲染真实判定，不要一边在数据里
+// 带着未就绪、一边默认渲染成绿色）。
 //
-// "Restore kernel" opens the same launch/recovery modal against the kernel rig.
-// Double-instantiation guard: the action is disabled unless a kernel rig exists
-// (found via the rig summary) AND the kernel is not already up; the restore
-// itself routes through /api/rigs/:id/up, whose `rig_not_stopped` guard refuses
-// to restore a running kernel (so no second kernel/advisor/operator is spawned).
+// "恢复内核"会针对内核工作组打开同一个启动/恢复弹窗。防重复实例化守卫：除非存在
+// 内核工作组（通过 rig summary 找到）且内核尚未起来，否则该动作为禁用；恢复本身
+// 走 /api/rigs/:id/up，其 `rig_not_stopped` 守卫会拒绝恢复正在运行的内核
+// （因此不会再起第二个内核/顾问/操作员）。
 
 import { useState } from "react";
 import { RigStatusCard } from "./RigStatusCard.js";
@@ -53,16 +51,16 @@ export function KernelStatusCard() {
         seatsRunning={0}
         seatsTotal={0}
         recoverable={false}
-        src={["kernel-status: loading…"]}
-        primaryLabel="Restore kernel ▸"
+        src={["kernel-status: 加载中…"]}
+        primaryLabel="恢复内核 ▸"
         primaryDisabled
         testId="kernel-status-card"
       />
     );
   }
 
-  // 503 — the boot tracker is not wired into this daemon. Consume as `unknown`
-  // (never green); restore is not offered (nothing observable to restore).
+  // 503 —— 启动跟踪未接入本后台服务。按 `unknown` 消费（绝不变绿）；
+  // 不提供恢复（没有可观察、可恢复的对象）。
   if (isKernelUnavailable(kernel)) {
     return (
       <RigStatusCard
@@ -73,28 +71,26 @@ export function KernelStatusCard() {
         seatsRunning={0}
         seatsTotal={0}
         recoverable={false}
-        src={[`kernel-status: unavailable (${kernel.error})`]}
-        primaryLabel="Restore kernel ▸"
+        src={[`kernel-status: 不可用（${kernel.error}）`]}
+        primaryLabel="恢复内核 ▸"
         primaryDisabled
         testId="kernel-status-card"
       />
     );
   }
 
-  // Defensive: a malformed envelope (missing kernel_state / agents) reads as
-  // `unknown` — never a crash, never a false green.
+  // 防御：畸形信封（缺少 kernel_state / agents）读作 `unknown`——绝不崩溃，也绝不误报绿色。
   const status = kernelToAggregate(kernel.kernel_state);
   const agents = Array.isArray(kernel.agents) ? kernel.agents : [];
   const readyAgents = agents.filter((a) => a.startup_status === "ready").length;
   const src = [
     `kernel-status.kernel_state=${kernel.kernel_state ?? "unknown"}`,
     ...(kernel.variant ? [`variant=${kernel.variant}`] : []),
-    `agents ${readyAgents}/${agents.length} ready`,
+    `智能体 ${readyAgents}/${agents.length} 就绪`,
     ...(kernel.detail ? [kernel.detail] : []),
   ];
 
-  // Double-instantiation guard: restore only when a kernel rig exists and the
-  // kernel is not already up.
+  // 防重复实例化守卫：仅当存在内核工作组且内核尚未起来时才允许恢复。
   const restoreDisabled = !kernelRig || status === "up";
 
   return (
@@ -108,7 +104,7 @@ export function KernelStatusCard() {
         seatsTotal={agents.length}
         recoverable={status === "down" || status === "partial"}
         src={src}
-        primaryLabel="Restore kernel ▸"
+        primaryLabel="恢复内核 ▸"
         primaryDisabled={restoreDisabled}
         onPrimary={() => setModalOpen(true)}
         testId="kernel-status-card"

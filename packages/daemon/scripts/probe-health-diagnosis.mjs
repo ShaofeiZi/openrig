@@ -1,5 +1,5 @@
-// Run after building daemon and CLI. Uses compiled product code, a disposable
-// database/home and an ephemeral listener; no managed seats or real connector.
+// 请在构建后台服务与 CLI 后运行。使用编译后的产品代码、一次性数据库/home 和临时监听器；
+// 不使用托管席位或真实 connector。
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs";

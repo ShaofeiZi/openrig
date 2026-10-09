@@ -1,8 +1,7 @@
-// Workflows in Spec Library v0 — scanner tests.
+// Spec Library 中的工作流 v0——扫描器测试。
 //
-// Verifies that scanWorkflowSpecs reads from the workflow_specs SQLite
-// cache, classifies built-in vs user_file via path.sep boundary, and
-// projects the topology graph in the review payload.
+// 验证 scanWorkflowSpecs 从 workflow_specs SQLite 缓存读取，通过 path.sep 边界区分
+// built-in 与 user_file，并在 review payload 中投影拓扑图。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
@@ -79,12 +78,12 @@ describe("scanWorkflowSpecs (Workflows in Spec Library v0)", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("returns empty array when workflow_specs table is empty", () => {
+  it("workflow_specs 表为空时返回空数组", () => {
     const entries = scanWorkflowSpecs({ db, workflowBuiltinSpecsDir: builtinDir });
     expect(entries).toEqual([]);
   });
 
-  it("classifies a spec under workflowBuiltinSpecsDir as builtin", () => {
+  it("将 workflowBuiltinSpecsDir 下的 spec 归类为 builtin", () => {
     const path = join(builtinDir, "alpha.yaml");
     writeFileSync(path, SAMPLE_SPEC("alpha"));
     cache.readThrough(path);
@@ -102,7 +101,7 @@ describe("scanWorkflowSpecs (Workflows in Spec Library v0)", () => {
     expect(entry.targetRig).toBe("sample-rig");
   });
 
-  it("classifies a spec outside workflowBuiltinSpecsDir as user_file", () => {
+  it("将 workflowBuiltinSpecsDir 外的 spec 归类为 user_file", () => {
     const path = join(userDir, "user.yaml");
     writeFileSync(path, SAMPLE_SPEC("user-spec"));
     cache.readThrough(path);
@@ -113,11 +112,10 @@ describe("scanWorkflowSpecs (Workflows in Spec Library v0)", () => {
     expect(entries[0]!.isBuiltIn).toBe(false);
   });
 
-  it("treats sibling directory as NOT under builtin (path.sep boundary check)", () => {
-    // Create a spec at a sibling directory whose path STARTS with builtinDir
-    // but is not actually under it (e.g. /tmp/builtins-other/foo.yaml when
-    // builtinDir=/tmp/builtins). The scanner uses path.sep boundary so this
-    // must classify as user_file.
+  it("不将同级目录视为 builtin 子目录（path.sep 边界检查）", () => {
+    // 在路径以 builtinDir 开头但实际不在其下的同级目录创建 spec（例如 builtinDir 为
+    // /tmp/builtins，而路径为 /tmp/builtins-other/foo.yaml）。扫描器使用 path.sep 边界，
+    // 因而必须将其归类为 user_file。
     const sibling = builtinDir + "-sibling";
     mkdirSync(sibling, { recursive: true });
     const path = join(sibling, "spec.yaml");
@@ -129,7 +127,7 @@ describe("scanWorkflowSpecs (Workflows in Spec Library v0)", () => {
     expect(entry.sourceType).toBe("user_file");
   });
 
-  it("returns null isBuiltIn classification when workflowBuiltinSpecsDir is null", () => {
+  it("workflowBuiltinSpecsDir 为 null 时返回 null 的 isBuiltIn 分类", () => {
     const path = join(userDir, "user.yaml");
     writeFileSync(path, SAMPLE_SPEC("user-spec"));
     cache.readThrough(path);
@@ -139,7 +137,7 @@ describe("scanWorkflowSpecs (Workflows in Spec Library v0)", () => {
     expect(entries[0]!.sourceType).toBe("user_file");
   });
 
-  it("returns empty array gracefully when workflow_specs table is absent", () => {
+  it("workflow_specs 表不存在时妥善返回空数组", () => {
     const bareDb = createDb();
     migrate(bareDb, [coreSchema]);
     try {
@@ -179,7 +177,7 @@ describe("getWorkflowReview (Workflows in Spec Library v0)", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("projects topology with edges from next_hop.suggested_roles", () => {
+  it("从 next_hop.suggested_roles 投影带边的拓扑", () => {
     const path = join(tmp, "spec.yaml");
     writeFileSync(path, SAMPLE_SPEC("topo"));
     cache.readThrough(path);
@@ -200,7 +198,7 @@ describe("getWorkflowReview (Workflows in Spec Library v0)", () => {
     });
   });
 
-  it("marks the entry-role step as isEntry and the no-next-hop step as isTerminal", () => {
+  it("将入口角色步骤标记为 isEntry，并将无 next_hop 步骤标记为 isTerminal", () => {
     const path = join(tmp, "spec.yaml");
     writeFileSync(path, SAMPLE_SPEC("entry-terminal"));
     cache.readThrough(path);
@@ -219,7 +217,7 @@ describe("getWorkflowReview (Workflows in Spec Library v0)", () => {
     expect(step2.isTerminal).toBe(true);
   });
 
-  it("returns null for an unknown name+version", () => {
+  it("未知 name+version 返回 null", () => {
     const review = getWorkflowReview({
       db,
       workflowBuiltinSpecsDir: null,
@@ -230,10 +228,9 @@ describe("getWorkflowReview (Workflows in Spec Library v0)", () => {
   });
 });
 
-// OPR.0.4.6.WF4 C1 (arch Q1) — the scanner projection now ADDS branch edges
-// from next_hop.on, corrects the false-terminal defect, and projects optional
-// harness/host/gate node fields, all byte-identity-by-omission.
-describe("getWorkflowReview — WF-4 C1 branch/terminal/optional-field projection", () => {
+// OPR.0.4.6.WF4 C1（架构 Q1）——扫描器投影现会从 next_hop.on 添加分支边，
+// 修正错误终态缺陷，并投影可选 harness/host/gate 节点字段；缺失字段均通过省略保持字节一致。
+describe("getWorkflowReview——WF-4 C1 分支、终态和可选字段投影", () => {
   let db: Database.Database;
   let tmp: string;
   let cache: WorkflowSpecCache;
@@ -251,19 +248,19 @@ describe("getWorkflowReview — WF-4 C1 branch/terminal/optional-field projectio
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  /** Load a REAL shipped builtin through the cache and project it. */
+  /** 通过缓存加载真实已交付 builtin 并投影。 */
   function reviewBuiltin(name: string) {
     const yaml = readFileSync(join(BUILTINS_DIR, `${name}.yaml`), "utf8");
     const p = join(tmp, `${name}.yaml`);
     writeFileSync(p, yaml);
     cache.readThrough(p);
-    // builtin YAMLs are `id: <name>` version 1
+    // builtin YAML 使用 `id: <name>`，版本为 1。
     const review = getWorkflowReview({ db, workflowBuiltinSpecsDir: null, name, version: "1" });
     expect(review, `builtin ${name} projected`).not.toBeNull();
     return review!;
   }
 
-  it("SYNTHETIC branch: a step with next_hop.on is NOT terminal and emits a labeled 'branch' edge", () => {
+  it("合成分支：带 next_hop.on 的步骤不是终态，并发出标记为 branch 的边", () => {
     const spec = `workflow:
   id: c1-branch
   version: 1
@@ -296,14 +293,14 @@ describe("getWorkflowReview — WF-4 C1 branch/terminal/optional-field projectio
     expect(branchEdges).toEqual([
       { fromStepId: "build", toStepId: "remediate", routingType: "branch", branchOn: "failed" },
     ]);
-    // omit-when-absent: a step declaring no harness/host/gate carries no such key
+    // 缺失即省略：未声明 harness/host/gate 的步骤不携带对应 key。
     expect(Object.keys(build)).not.toContain("harness");
     expect(Object.keys(build)).not.toContain("host");
     expect(Object.keys(build)).not.toContain("gate");
-    // a dangling `on` target (no matching step) is dropped, never a phantom edge
+    // 悬空的 `on` 目标（无匹配步骤）会被丢弃，绝不生成幽灵边。
   });
 
-  it("BUILTINS suggested-roles-only (conveyor, basic-loop): every edge is 'direct', ZERO branch edges, ZERO optional node keys (byte-identity class)", () => {
+  it("仅使用 suggested_roles 的内置 spec（conveyor、basic-loop）：所有边均为 direct，分支边为零，可选节点 key 为零（字节一致类别）", () => {
     for (const name of ["conveyor", "basic-loop"]) {
       const review = reviewBuiltin(name);
       expect(review.topology.edges.length, `${name} has edges`).toBeGreaterThan(0);
@@ -324,10 +321,10 @@ describe("getWorkflowReview — WF-4 C1 branch/terminal/optional-field projectio
     expect(review.topology.edges).toEqual([]);
   });
 
-  it("BUILTIN branched-remediation: gains labeled branch edges + build/verify are no longer false terminals", () => {
+  it("内置 branched-remediation：获得带标签的分支边，build/verify 不再被误判为终态", () => {
     const review = reviewBuiltin("branched-remediation");
     const branchEdges = review.topology.edges.filter((e) => e.routingType === "branch");
-    // build→remediate and verify→remediate, both on the `failed` exit
+    // build→remediate 和 verify→remediate 都位于 `failed` 出口。
     expect(branchEdges).toEqual(
       expect.arrayContaining([
         { fromStepId: "build", toStepId: "remediate", routingType: "branch", branchOn: "failed" },
@@ -340,29 +337,29 @@ describe("getWorkflowReview — WF-4 C1 branch/terminal/optional-field projectio
     expect(verify.isTerminal).toBe(false);
   });
 
-  it("BUILTIN gated-release: projects the gate + harness node fields (present-when-declared)", () => {
+  it("内置 gated-release：投影 gate 和 harness 节点字段（声明时才出现）", () => {
     const review = reviewBuiltin("gated-release");
     const signoff = review.topology.nodes.find((n) => n.stepId === "ship-signoff")!;
     expect(signoff.gate).toBeDefined();
     const build = review.topology.nodes.find((n) => n.stepId === "build")!;
     expect(build.harness).toBe("claude-code");
-    // a node without a gate still omits the key entirely
+    // 没有 gate 的节点仍完全省略该 key。
     expect(Object.keys(build)).not.toContain("gate");
   });
 });
 
 describe("workflowLibraryId / parseWorkflowLibraryId", () => {
-  it("encodes and decodes name:version pairs", () => {
+  it("编码并解码 name:version 对", () => {
     expect(workflowLibraryId("foo", "1")).toBe("workflow:foo:1");
     expect(parseWorkflowLibraryId("workflow:foo:1")).toEqual({ name: "foo", version: "1" });
   });
 
-  it("splits on the LAST colon so names with colons round-trip", () => {
+  it("按最后一个冒号切分，使名称含冒号时仍可往返", () => {
     const id = workflowLibraryId("conveyor", "1.2.3");
     expect(parseWorkflowLibraryId(id)).toEqual({ name: "conveyor", version: "1.2.3" });
   });
 
-  it("returns null for non-workflow ids", () => {
+  it("非 workflow id 返回 null", () => {
     expect(parseWorkflowLibraryId("rig:foo:1")).toBeNull();
     expect(parseWorkflowLibraryId("workflow:no-version")).toBeNull();
   });

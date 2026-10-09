@@ -1,0 +1,51 @@
+[
+  {
+    "owner": "cli-a",
+    "source": "packages/cli/test/send.test.ts",
+    "status": "done",
+    "validation_state": "needs_review",
+    "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 批量断言改中文 | 部分翻译(describe/头部/约15个it标题),英文注释153→149仍剩约149行未译;保持needs_review,非整文件done"
+  },
+  {
+    "owner": "cli-b",
+    "source": "packages/cli/test/queue.test.ts",
+    "status": "done",
+    "validation_state": "self_reported",
+    "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 100/100 通过"
+  },
+  {
+    "owner": "tui",
+    "source": "packages/tui/src/hydrate.ts",
+    "status": "done",
+    "validation_state": "needs_review",
+    "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译水合器注释和可见字符串 | TUI批1局部修复:config分支3纯展示readError标签中文化(CONFIG→配置读取/control plane→后台控制面/Slack observation→Slack连接观察);机器路由execution:/nodes/rigs-summary:/specs-library不变;视觉未验,待render残留与宽度断言,不升done | batch3:fixture修合法configBrowser结构,toHaveLength1保留;待统一验证,不提前写成功"
+  },
+  {
+    "owner": "tui",
+    "source": "packages/tui/src/text-width.ts",
+    "status": "done",
+    "validation_state": "needs_review",
+    "notes": "漏登补登 2026-10-08(零点3062->3064); CJK显示宽度/截断复核:按显示宽度非string length,截断不切断中文/ANSI | batch3:clipW按SGR整体token不拆ANSI;新增text-width.test.ts;dropW/columnIndex类ANSI点未处理+真实视觉未验,如实剩余;待统一验证,不升done | 状态回退pending:batch3 clipW SGR处理已记,补丁未冻结,待统一验证不升done | 终验:clipW SGR处理+5用例绿;其余SGR/Unicode未验,维持needs_review"
+  },
+  {
+    "owner": "ui-b",
+    "source": "packages/ui/src/components/BundleInspector.tsx",
+    "status": "done",
+    "validation_state": "needs_review",
+    "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | Bundle检查页标题/路径/按钮/摘要完整性/来源/兼容性/文件完整性/安装按钮中文化；路径占位/文件名/版本保留 | 本轮局部增量:错误块{error.message}→检查失败:{error.message}加中文前缀;仅错误框提示,不代表error.message已译;视觉未验,待6回归;不升done | 回归:UI 6文件52测试全过(补错误断言前);累计唯一测试114,0失败;canvas/Browserslist日志警告非断言失败,归因未定;待新断言,不升done | t06:UI新2错误断言21用例通过;仍视觉未验,不升done"
+  },
+  {
+    "owner": "ui-b",
+    "source": "packages/ui/src/components/PackageList.tsx",
+    "status": "done",
+    "validation_state": "needs_review",
+    "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 状态标签/来源/安装次数/空态/按钮/页头/JSDoc中文化；RigSpec品牌名保留 | 本轮局部增量:Alert错误{error.message}→加载旧版包失败:{error.message}加中文前缀;仅错误框提示,不代表error.message已译;视觉未验,待6回归;不升done | 回归:UI 6文件52测试全过(补错误断言前);累计唯一测试114,0失败;canvas/Browserslist日志警告非断言失败,归因未定;待新断言,不升done | t06:UI新2错误断言21用例通过;仍视觉未验,不升done"
+  },
+  {
+    "owner": "ui-c",
+    "source": "packages/ui/src/components/MissionStatusBadge.tsx",
+    "status": "done",
+    "validation_state": "needs_review",
+    "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释，新增 MISSION_STATUS_LABEL_ZH 默认中文标签 | 本轮局部增量:aria-label读屏改中文映射(MISSION_STATUS_LABEL_ZH)+新增mission-status-badge测试1断言;机器枚举/data-testid不变;视觉未验,待6回归;错误框前缀仅提示,不代表error.message已译,不升done | 回归:UI 6文件52测试全过(补错误断言前);累计唯一测试114,0失败;canvas/Browserslist日志警告非断言失败,归因未定记环境诊断;待新断言与TUI/CLI批次,不升done | t06:UI新2错误断言21用例通过;仍视觉未验,不升done"
+  }
+]

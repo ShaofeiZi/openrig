@@ -1,20 +1,18 @@
-// OPR.0.5.5.20 — DAEMON BIND PROVENANCE: the pure bind-plan resolver. Bind intent
-// reaches the daemon ONLY through the dedicated OPENRIG_BIND_HOST surface; the
-// overloaded routing env (OPENRIG_HOST/RIGGED_HOST — a client endpoint any managed
-// environment may inject) can NEVER select the single-bind branch. The lived cost of
-// the old conflation: the parent daemon inherited OPENRIG_HOST=127.0.0.1 from a
-// maintenance command run in a managed environment and silently lost its Tailscale
-// listener (operator baton qitem-20260827070400). This re-grounds the
-// auth-bearer-tailscale-trust ruling — explicit opt-in vs default — on a channel that
-// managed environments never inject; it does not overturn it.
+// OPR.0.5.5.20——后台服务绑定来源：纯绑定计划解析器。绑定意图只能通过专用的
+// OPENRIG_BIND_HOST 表面到达后台服务；复用的路由环境变量
+//（OPENRIG_HOST/RIGGED_HOST——任何受管环境都可能注入的客户端端点）绝不能选择
+// 单地址绑定分支。旧混用方式已有实际代价：父后台服务继承了在受管环境中运行维护命令时
+// 设置的 OPENRIG_HOST=127.0.0.1，并静默丢失 Tailscale 监听器
+//（操作员接力 qitem-20260827070400）。本实现将 auth-bearer-tailscale-trust 关于
+// “显式选择 vs 默认值”的裁定重新落实到受管环境绝不注入的通道上，而不是推翻该裁定。
 
 export interface BindPlanInput {
-  /** The DEDICATED bind-intent env (OPENRIG_BIND_HOST). Whitespace-only = absent. */
+  /** 专用于绑定意图的环境变量 OPENRIG_BIND_HOST；只有空白时视为缺失。 */
   bindHostEnv: string | undefined;
-  /** The overloaded ROUTING env (OPENRIG_HOST/RIGGED_HOST) — observed for provenance
-   *  honesty, never consulted for bind policy. */
+  /** 复用的路由环境变量 OPENRIG_HOST/RIGGED_HOST；只为如实记录来源而观察，
+   *  绝不参与绑定策略。 */
   routingHostEnv: string | undefined;
-  /** The active tailscale interface IP, when present. */
+  /** 存在时为活动的 Tailscale 接口 IP。 */
   tailscaleIp: string | null;
 }
 
@@ -22,8 +20,7 @@ export interface BindPlan {
   mode: "explicit" | "default";
   hosts: string[];
   tailscaleDetected: boolean;
-  /** Set when a routing env value was present and IGNORED for bind policy — the
-   *  provenance line the daemon logs so the ignore is never silent. */
+  /** 路由环境变量存在但被绑定策略忽略时设置；后台服务会记录该来源，避免静默忽略。 */
   ignoredRoutingHost?: string;
 }
 

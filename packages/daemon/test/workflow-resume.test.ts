@@ -1,13 +1,11 @@
-// OPR.0.4.6.WF5 FR-4: resume (redrive) — the one engine extension.
+// OPR.0.4.6.WF5 FR-4：resume（重新驱动）——唯一的引擎扩展。
 //
-// Pins: the happy redrive (failed → active, rebound, fresh packet,
-// completed steps never re-run), THE ARCH PIN (owner RE-RESOLVED via the
-// projection resolver — never copied from the stale destination), the
-// livelock rail (hops-since-resume window + recorded count + honest new
-// occurrence), the rejection matrix (active/waiting/completed resume),
-// occurrence closure + the resume-cycle new-occurrence contract, decision
-// durability, and the waiting-resume regression pin (the shipped waiting
-// path is untouched — resume rejects it, project continues it).
+// 固定项：成功重新驱动（failed → active、重新绑定、新数据包、已完成步骤绝不重跑）、
+// 架构固定点（通过投影解析器重新解析 owner——绝不从陈旧目标复制）、活锁护栏
+//（resume 后 hop 窗口 + 已记录计数 + 如实生成的新 occurrence）、拒绝矩阵
+//（active/waiting/completed 状态下的 resume）、occurrence 关闭 + resume 周期的新 occurrence
+// 契约、决策持久性，以及 waiting-resume 回归固定点（已发布 waiting 路径不变——
+// resume 拒绝它，project 继续处理它）。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
@@ -91,15 +89,15 @@ const LOOP_SPEC = `workflow:
 `;
 
 
-describe("WF-5 rev1-r2 B2: the SSE allow-list carries workflow.resumed", () => {
-  it("run/watch followers stream resumes live (source pin — the WF-3 import-graph-pin precedent)", () => {
+describe("WF-5 rev1-r2 B2：SSE 允许列表包含 workflow.resumed", () => {
+  it("run/watch 跟随者实时接收 resume（源码固定点——沿用 WF-3 import-graph-pin 先例）", () => {
     const src = readFileSync(new URL("../src/routes/workflow.ts", import.meta.url), "utf8");
     const sseFilter = src.slice(src.indexOf("const sseHandler"), src.indexOf("app.get(\"/sse\""));
     expect(sseFilter).toContain('event.type !== "workflow.resumed"');
   });
 });
 
-describe("WF-5 FR-4: resume (redrive)", () => {
+describe("WF-5 FR-4：resume（重新驱动）", () => {
   let db: Database.Database;
   let queueRepo: QueueRepository;
   let runtime: WorkflowRuntime;
@@ -111,8 +109,8 @@ describe("WF-5 FR-4: resume (redrive)", () => {
     const bus = new EventBus(db);
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
     queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用闭合失败（MF2）——意图发送 nudge 的 terminal 关闭需要同数据库的
+    // intent store，才能使唤醒持久化。
     queueRepo.attachOutbox(new OutboxHandler(db));
     runtime = new WorkflowRuntime({
       db,
@@ -132,7 +130,7 @@ describe("WF-5 FR-4: resume (redrive)", () => {
   const instantiateAndFail = async (specPath: string) => {
     const inst = await runtime.instantiate({
       specPath,
-      rootObjective: "resume walk",
+      rootObjective: "恢复演练",
       createdBySession: "ops@rig",
     });
     const packetId = inst.instance.currentFrontier[0]!;
@@ -140,7 +138,7 @@ describe("WF-5 FR-4: resume (redrive)", () => {
       instanceId: inst.instance.instanceId,
       currentPacketId: packetId,
       exit: "failed",
-      resultNote: "induced",
+      resultNote: "人为触发",
       actorSession: "producer@rig",
     });
     return { instanceId: inst.instance.instanceId, failedPacketId: packetId };
@@ -157,7 +155,7 @@ describe("WF-5 FR-4: resume (redrive)", () => {
     tmp = undefined as never;
   });
 
-  it("the happy redrive: failed → active, rebound to the failed step, fresh packet to the owner, trail preserved + NOT re-run, occurrence closed, count recorded", async () => {
+  it("成功重新驱动：failed → active，重新绑定失败步骤，向 owner 发送新数据包，保留 trail 且不重跑，关闭 occurrence 并记录次数", async () => {
     build();
     const { instanceId, failedPacketId } = await instantiateAndFail(seed(SPEC));
     const trailBefore = trailCount(instanceId);
@@ -168,7 +166,7 @@ describe("WF-5 FR-4: resume (redrive)", () => {
 
     const r = await runtime.resume({
       instanceId,
-      decision: "root cause fixed — retry",
+      decision: "根因已修复——重试",
       actorSession: "orch-lead@rig",
     });
     expect(r.stepId).toBe("produce");
@@ -181,23 +179,22 @@ describe("WF-5 FR-4: resume (redrive)", () => {
     expect(inst.currentStepId).toBe("produce");
     expect(inst.currentFrontier).toEqual([r.newPacketId]);
     expect(inst.resumeCount).toBe(1);
-    // trail preserved + extended NEVER rewritten: the failure row stands,
-    // no rows were re-run/rewritten by resume itself.
+    // trail 被保留并扩展，绝不重写：失败行仍然存在，resume 本身没有重跑/重写任何行。
     expect(trailCount(instanceId)).toBe(trailBefore);
-    // decision durability: the redrive packet carries the instruction.
+    // 决策持久性：重新驱动数据包携带指令。
     const packet = db
       .prepare(`SELECT body, chain_of_record FROM queue_items WHERE qitem_id = ?`)
       .get(r.newPacketId) as { body: string; chain_of_record: string | null };
-    expect(packet.body).toContain("root cause fixed — retry");
+    expect(packet.body).toContain("根因已修复——重试");
     expect(String(packet.chain_of_record)).toContain(failedPacketId);
-    // occurrence closed
+    // occurrence 已关闭
     const excAfter = db
       .prepare(`SELECT state FROM queue_items WHERE tags LIKE '%workflow-exception%'`)
       .all() as Array<{ state: string }>;
     expect(excAfter.every((x) => x.state === "done")).toBe(true);
   });
 
-  it("the redriven step completes and the flow continues deterministically downstream", async () => {
+  it("重新驱动的步骤完成后，流程确定性地继续到下游", async () => {
     build();
     const { instanceId } = await instantiateAndFail(seed(SPEC));
     const r = await runtime.resume({ instanceId, actorSession: "orch-lead@rig" });
@@ -217,11 +214,10 @@ describe("WF-5 FR-4: resume (redrive)", () => {
     expect(runtime.instanceStore.getByIdOrThrow(instanceId).status).toBe("completed");
   });
 
-  it("THE ARCH PIN: the owner is RE-RESOLVED at resume — a preferred_targets change between failure and resume routes the NEW target, never the stale recorded destination", async () => {
+  it("架构固定点：resume 时重新解析 owner——故障与恢复之间 preferred_targets 的变更会路由到新目标，绝不使用陈旧记录目标", async () => {
     build();
     const { instanceId } = await instantiateAndFail(seed(SPEC));
-    // The operator's remedy: the dead seat is replaced in the spec cache
-    // (the exact scenario the pin exists for).
+    // 操作者的修复：在 spec cache 中替换已失效的 seat（正是此固定点针对的场景）。
     const row = db
       .prepare(`SELECT spec_id, spec_json FROM workflow_specs WHERE name = 'wf5-resume-pipeline'`)
       .get() as { spec_id: string; spec_json: string };
@@ -235,7 +231,7 @@ describe("WF-5 FR-4: resume (redrive)", () => {
     expect(r.ownerSession).toBe("producer-replacement@rig");
   });
 
-  it("rejection matrix: resume on active/waiting/completed = structured instance_not_failed naming the state", async () => {
+  it("拒绝矩阵：对 active/waiting/completed 执行 resume = 结构化 instance_not_failed 并指明状态", async () => {
     build();
     const specPath = seed(SPEC);
     // active
@@ -243,7 +239,7 @@ describe("WF-5 FR-4: resume (redrive)", () => {
     await expect(
       runtime.resume({ instanceId: a.instance.instanceId, actorSession: "x@rig" }),
     ).rejects.toMatchObject({ code: "instance_not_failed" });
-    // waiting (the shipped park) — REGRESSION PIN half 1: resume rejects it
+    // waiting（已发布 park）——回归固定点第 1 部分：resume 拒绝它
     const w = await runtime.instantiate({ specPath, rootObjective: "w", createdBySession: "ops@rig" });
     await runtime.project({
       instanceId: w.instance.instanceId,
@@ -255,8 +251,8 @@ describe("WF-5 FR-4: resume (redrive)", () => {
     await expect(
       runtime.resume({ instanceId: w.instance.instanceId, actorSession: "x@rig" }),
     ).rejects.toMatchObject({ code: "instance_not_failed" });
-    // REGRESSION PIN half 2: the shipped waiting path continues via
-    // project on the PRESERVED packet, exactly as before.
+    // 回归固定点第 2 部分：已发布 waiting 路径继续通过 project 处理保留的数据包，
+    // 与此前完全相同。
     const cont = await runtime.project({
       instanceId: w.instance.instanceId,
       currentPacketId: w.instance.currentFrontier[0]!,
@@ -270,7 +266,7 @@ describe("WF-5 FR-4: resume (redrive)", () => {
     ).rejects.toMatchObject({ code: "instance_not_failed" });
   });
 
-  it("sequential double-resume: the second resume rejects (the first made it active) — no double-drive", async () => {
+  it("连续两次 resume：第二次被拒绝（第一次已使其 active）——不重复驱动", async () => {
     build();
     const { instanceId } = await instantiateAndFail(seed(SPEC));
     await runtime.resume({ instanceId, actorSession: "orch-lead@rig" });
@@ -279,12 +275,12 @@ describe("WF-5 FR-4: resume (redrive)", () => {
     ).rejects.toMatchObject({ code: "instance_not_failed" });
   });
 
-  it("THE LIVELOCK RAIL: a max_hops-failed instance resumed gets ONE fresh bounded window (hops-since-resume), the count is recorded, and re-exceed raises an honest NEW occurrence", async () => {
+  it("活锁护栏：因 max_hops 失败的实例恢复后获得一个新的有界窗口（resume 后 hop），记录次数，再次超限时如实生成新 occurrence", async () => {
     build();
     const specPath = seed(LOOP_SPEC, "loop.yaml");
     const inst = await runtime.instantiate({ specPath, rootObjective: "loop", createdBySession: "ops@rig" });
     const id = inst.instance.instanceId;
-    // Drive to the guard trip: max_hops=2 → hop 3 converts to failed.
+    // 驱动至守卫触发：max_hops=2 → 第 3 次 hop 转为 failed。
     let packet = inst.instance.currentFrontier[0]!;
     let actor = "producer@rig";
     for (;;) {
@@ -306,8 +302,8 @@ describe("WF-5 FR-4: resume (redrive)", () => {
       .all();
     expect(firstOccurrenceItems).toHaveLength(1);
 
-    // Resume: one fresh window — the FIRST post-resume projection must
-    // NOT re-trip (without the rail it would: hopCount already > max).
+    // Resume：一个新窗口——resume 后第一次投影不得再次触发
+    //（若无该护栏则会触发：hopCount 已大于最大值）。
     const r = await runtime.resume({ instanceId: id, actorSession: "orch-lead@rig" });
     const resumed = runtime.instanceStore.getByIdOrThrow(id);
     expect(resumed.status).toBe("active");
@@ -322,8 +318,8 @@ describe("WF-5 FR-4: resume (redrive)", () => {
     });
     expect(runtime.instanceStore.getByIdOrThrow(id).status).toBe("active");
 
-    // Drive on until the fresh window re-exceeds → an honest NEW
-    // occurrence (occurrence-distinct item; the first stays closed).
+    // 继续驱动，直到新窗口再次超限 → 如实生成新的 occurrence
+    //（occurrence 不同的条目；第一项保持关闭）。
     let p2 = afterOne.nextQitemId!;
     let a2 = afterOne.nextOwnerSession!;
     for (;;) {
@@ -344,7 +340,7 @@ describe("WF-5 FR-4: resume (redrive)", () => {
     expect(items).toHaveLength(2);
     const open = items.filter((x) => x.state === "pending");
     expect(open).toHaveLength(1);
-    // occurrence-distinct: different occurrence keys on the two items
+    // occurrence 区分：两个条目使用不同 occurrence key
     const occ = (t: string) => /"occurrence:([^"]+)"/.exec(t)?.[1];
     expect(occ(items[0]!.tags)).not.toBe(occ(items[1]!.tags));
   });

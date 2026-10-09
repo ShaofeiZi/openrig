@@ -1,12 +1,12 @@
-// Phase 3a slice 3.3 — plugins HTTP routes (TDD red→green).
+// Phase 3a slice 3.3——plugin HTTP 路由（TDD red→green）。
 //
-// SC-29 EXCEPTION #8 declared verbatim:
+// SC-29 例外 #8 原文声明：
 // "Slice 3.3 (UI plugin surface) requires daemon-side plugin-discovery-service
-// + 3 HTTP routes (GET /api/plugins, GET /api/plugins/:id, GET /api/plugins/:id/used-by)
-// as backing API. No additional state, no SQL migration, no mutation routes.
-// Read-only discovery surface aggregating filesystem-scan unions per
-// DESIGN.md §5.4. Per IMPL-PRD §3.3 'Code touches' this allocation is explicit;
-// documenting in compliance with banked SC-29 verbatim-declaration rule."
+// + 3 条 HTTP 路由（GET /api/plugins、GET /api/plugins/:id、GET /api/plugins/:id/used-by）
+// 作为后台 API。无额外状态、无 SQL migration、无 mutation 路由。
+// 只读发现表面，按 DESIGN.md §5.4 聚合文件系统扫描并集。
+// 按 IMPL-PRD §3.3 'Code touches' 此分配为显式；
+// 遵照已入库 SC-29 逐字声明规则记录。"
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -66,7 +66,7 @@ function createApp(service: PluginDiscoveryService): Hono {
   return app;
 }
 
-describe("plugins HTTP routes", () => {
+describe("plugin HTTP 路由", () => {
   let env: TestEnv;
 
   beforeEach(() => {
@@ -78,14 +78,14 @@ describe("plugins HTTP routes", () => {
   });
 
   describe("GET /api/plugins", () => {
-    it("returns empty array when no plugins discovered", async () => {
+    it("未发现 plugin 时返回空数组", async () => {
       const res = await createApp(env.service).request("/api/plugins");
       expect(res.status).toBe(200);
       const body = await res.json() as unknown[];
       expect(body).toEqual([]);
     });
 
-    it("returns aggregated plugin list", async () => {
+    it("返回聚合后的 plugin 列表", async () => {
       writeClaudePluginManifest(join(env.openrigPluginsDir, "openrig-core"), {
         name: "openrig-core",
         version: "0.1.0",
@@ -110,7 +110,7 @@ describe("plugins HTTP routes", () => {
       expect(names).toEqual(["github", "openrig-core"]);
     });
 
-    it("supports runtime filter via query string", async () => {
+    it("支持通过 query string 按 runtime 筛选", async () => {
       writeClaudePluginManifest(join(env.openrigPluginsDir, "claude-only"), {
         name: "claude-only",
         version: "1.0.0",
@@ -133,10 +133,9 @@ describe("plugins HTTP routes", () => {
       expect(codexBody.map((p) => p.name)).toEqual(["codex-only"]);
     });
 
-    it("slice 3.3 fix-C — supports rig-cwd discovery via ?cwd=<path> query param", async () => {
-      // velocity-qa VM verify failure #3 — DESIGN §5.4 union 4th category
-      // (rig-bundled cwd plugin roots). API exposes the per-call cwd scan
-      // via ?cwd=<path>; service emits discoveries with rig-cwd source.
+    it("slice 3.3 fix-C——支持通过 ?cwd=<path> query 参数发现 rig-cwd", async () => {
+      // velocity-qa VM 验证失败 #3——DESIGN §5.4 union 第四类（rig-bundled cwd plugin root）。
+      // API 通过 ?cwd=<path> 公开逐调用 cwd 扫描；service 输出来源为 rig-cwd 的发现结果。
       const rigCwd = join(env.root, "rig-cwd-api");
       const claudeBundleDir = join(rigCwd, ".claude", "plugins");
       mkdirSync(claudeBundleDir, { recursive: true });
@@ -146,12 +145,12 @@ describe("plugins HTTP routes", () => {
         description: "rig-bundled tool",
       });
 
-      // Without ?cwd — no rig-cwd discoveries.
+      // 没有 ?cwd 时不产生 rig-cwd 发现结果。
       const baseRes = await createApp(env.service).request("/api/plugins");
       const base = await baseRes.json() as Array<{ source: string }>;
       expect(base.some((p) => p.source === "rig-cwd")).toBe(false);
 
-      // With ?cwd=<path> — rig-tool surfaces.
+      // 带 ?cwd=<path> 时显示 rig-tool。
       const cwdRes = await createApp(env.service).request(
         `/api/plugins?cwd=${encodeURIComponent(rigCwd)}`,
       );
@@ -161,10 +160,10 @@ describe("plugins HTTP routes", () => {
       expect(rigCwdSubset[0]?.name).toBe("rig-tool");
     });
 
-    it("slice 3.3 fix-iteration — list ?cwd= + detail roundtrip for rig-cwd plugin (no 404)", async () => {
-      // redo-guard-2 BLOCK item 1: /api/plugins?cwd= lists;
-      // /api/plugins/<encoded-rig-cwd-id> must 200 not 404. Fix lands in
-      // PluginDiscoveryService.getPlugin via self-resolve from id prefix.
+    it("slice 3.3 fix-iteration——rig-cwd plugin 的 list ?cwd= + detail 往返（无 404）", async () => {
+      // redo-guard-2 BLOCK 第 1 项：/api/plugins?cwd= 可列出；
+      // /api/plugins/<encoded-rig-cwd-id> 必须返回 200 而非 404。修复位于
+      // PluginDiscoveryService.getPlugin，通过 id 前缀自行解析。
       const rigCwd = join(env.root, "rig-cwd-roundtrip");
       const claudeBundleDir = join(rigCwd, ".claude", "plugins");
       mkdirSync(claudeBundleDir, { recursive: true });
@@ -174,7 +173,7 @@ describe("plugins HTTP routes", () => {
         description: "roundtrip",
       });
 
-      // Step 1: list with ?cwd= — captures id.
+      // 第 1 步：带 ?cwd= 列表并捕获 id。
       const listRes = await createApp(env.service).request(
         `/api/plugins?cwd=${encodeURIComponent(rigCwd)}`,
       );
@@ -184,7 +183,7 @@ describe("plugins HTTP routes", () => {
       expect(rigCwdEntry).toBeDefined();
       const rigCwdId = rigCwdEntry!.id;
 
-      // Step 2: detail call with that id — must 200 (was 404 pre-fix).
+      // 第 2 步：使用该 id 请求 detail，必须返回 200（修复前为 404）。
       const detailRes = await createApp(env.service).request(
         `/api/plugins/${encodeURIComponent(rigCwdId)}`,
       );
@@ -194,7 +193,7 @@ describe("plugins HTTP routes", () => {
       expect(detail.entry.source).toBe("rig-cwd");
     });
 
-    it("supports source filter via query string", async () => {
+    it("支持通过 query string 按 source 筛选", async () => {
       writeClaudePluginManifest(join(env.openrigPluginsDir, "vended"), {
         name: "vended",
         version: "0.1.0",
@@ -215,7 +214,7 @@ describe("plugins HTTP routes", () => {
       expect(cache.map((p) => p.name)).toEqual(["cached"]);
     });
 
-    it("returns 503 when service is not provisioned", async () => {
+    it("service 未配置时返回 503", async () => {
       const app = new Hono();
       app.route("/api/plugins", pluginsRoutes());
       const res = await app.request("/api/plugins");
@@ -224,12 +223,12 @@ describe("plugins HTTP routes", () => {
   });
 
   describe("GET /api/plugins/:id", () => {
-    it("returns 404 for unknown plugin id", async () => {
+    it("未知 plugin id 返回 404", async () => {
       const res = await createApp(env.service).request("/api/plugins/nonexistent");
       expect(res.status).toBe(404);
     });
 
-    it("returns plugin detail with manifest + skills + hooks", async () => {
+    it("返回包含 manifest + skills + hooks 的 plugin detail", async () => {
       const corePluginDir = join(env.openrigPluginsDir, "openrig-core");
       writeClaudePluginManifest(corePluginDir, {
         name: "openrig-core",
@@ -267,14 +266,14 @@ describe("plugins HTTP routes", () => {
   });
 
   describe("GET /api/plugins/:id/used-by", () => {
-    it("returns empty list when plugin not used by any agent", async () => {
+    it("没有 agent 使用 plugin 时返回空列表", async () => {
       const res = await createApp(env.service).request("/api/plugins/openrig-core/used-by");
       expect(res.status).toBe(200);
       const body = await res.json() as unknown[];
       expect(body).toEqual([]);
     });
 
-    it("returns agent references with profile names", async () => {
+    it("返回带 profile 名称的 agent 引用", async () => {
       const advisorDir = join(env.specLibraryDir, "advisor");
       mkdirSync(advisorDir, { recursive: true });
       writeFileSync(
@@ -319,10 +318,9 @@ startup:
     });
   });
 
-  describe("drift-discriminator regression coverage", () => {
-    it("each route shape is observably distinct (per banked feedback_poc_regression_must_discriminate)", async () => {
-      // Place 3 plugins in 3 source roots so the list endpoint must aggregate
-      // across all 3; verify response distinguishes them.
+  describe("drift-discriminator 回归覆盖", () => {
+    it("每种路由结构都可观察地区分（按预存 feedback_poc_regression_must_discriminate）", async () => {
+      // 在 3 个 source root 中分别放置 3 个 plugin，使 list endpoint 必须跨三者聚合；验证响应可区分它们。
       writeClaudePluginManifest(join(env.openrigPluginsDir, "vended"), {
         name: "vended", version: "0.1.0", description: "v",
       });

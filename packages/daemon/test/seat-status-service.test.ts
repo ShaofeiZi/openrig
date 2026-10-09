@@ -22,7 +22,7 @@ describe("SeatStatusService", () => {
     db.close();
   });
 
-  it("returns honest no-handover defaults for an existing active node", () => {
+  it("为现有活跃节点返回如实的无 handover 默认值", () => {
     const rig = rigRepo.createRig("seat-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "codex", cwd: "/project" });
     const session = sessionRegistry.registerSession(node.id, "dev-impl@seat-rig");
@@ -48,7 +48,7 @@ describe("SeatStatusService", () => {
     });
   });
 
-  it("returns populated handover axes and provenance fields", () => {
+  it("返回已填充的 handover 轴和来源字段", () => {
     const rig = rigRepo.createRig("seat-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     sessionRegistry.registerSession(node.id, "dev-impl@seat-rig");
@@ -73,7 +73,7 @@ describe("SeatStatusService", () => {
     expect(result.status.handover_at).toBe("2026-04-20T13:00:00Z");
   });
 
-  it("does not infer active lifecycle for a node with no current running session", () => {
+  it("不会为没有当前运行会话的节点推断 active 生命周期", () => {
     const rig = rigRepo.createRig("seat-rig");
     rigRepo.addNode(rig.id, "dev.impl", { runtime: "codex" });
 
@@ -87,17 +87,17 @@ describe("SeatStatusService", () => {
     expect(result.status.handover_result).toBeNull();
   });
 
-  it("returns not found for an unknown seat reference", () => {
+  it("对未知 seat 引用返回未找到", () => {
     const result = service.getStatus("missing@seat-rig");
 
     expect(result).toMatchObject({
       ok: false,
       code: "seat_not_found",
-      guidance: "List seats with: rig ps --nodes",
+      guidance: "使用 zrig ps --nodes 列出席位",
     });
   });
 
-  it("wires the daemon /api/seat/status route", async () => {
+  it("接入 daemon 的 /api/seat/status 路由", async () => {
     const setup = createTestApp(db);
     const rig = setup.rigRepo.createRig("seat-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "codex" });

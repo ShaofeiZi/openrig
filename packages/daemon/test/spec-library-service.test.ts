@@ -42,7 +42,7 @@ at all:
   - just random keys
 `;
 
-describe("SpecLibraryService", () => {
+describe("SpecLibraryService 规范库服务", () => {
   let tmpDir: string;
   let specReviewService: SpecReviewService;
 
@@ -62,7 +62,7 @@ describe("SpecLibraryService", () => {
     });
   }
 
-  it("scan discovers rig specs validated by SpecReviewService", () => {
+  it("scan 发现经 SpecReviewService 验证的工作组 spec", () => {
     writeFileSync(join(tmpDir, "my-rig.yaml"), VALID_RIG_YAML);
 
     const lib = createLibrary();
@@ -76,7 +76,7 @@ describe("SpecLibraryService", () => {
     expect(entries[0]!.sourcePath).toContain("my-rig.yaml");
   });
 
-  it("scan discovers agent specs validated by SpecReviewService", () => {
+  it("scan 发现经 SpecReviewService 验证的 agent spec", () => {
     writeFileSync(join(tmpDir, "my-agent.yaml"), VALID_AGENT_YAML);
 
     const lib = createLibrary();
@@ -88,7 +88,7 @@ describe("SpecLibraryService", () => {
     expect(entries[0]!.name).toBe("test-agent");
   });
 
-  it("scan skips files that fail both rig and agent validation", () => {
+  it("scan 跳过同时未通过工作组与 agent validation 的文件", () => {
     writeFileSync(join(tmpDir, "valid.yaml"), VALID_RIG_YAML);
     writeFileSync(join(tmpDir, "invalid.yaml"), INVALID_YAML);
     writeFileSync(join(tmpDir, "not-yaml.txt"), "just text");
@@ -101,7 +101,7 @@ describe("SpecLibraryService", () => {
     expect(entries[0]!.name).toBe("test-rig");
   });
 
-  it("list with kind filter returns only matching entries", () => {
+  it("带 kind filter 的 list 只返回匹配 entry", () => {
     writeFileSync(join(tmpDir, "rig.yaml"), VALID_RIG_YAML);
     writeFileSync(join(tmpDir, "agent.yaml"), VALID_AGENT_YAML);
 
@@ -113,7 +113,7 @@ describe("SpecLibraryService", () => {
     expect(lib.list()).toHaveLength(2);
   });
 
-  it("get returns entry with YAML content from disk", () => {
+  it("get 返回 entry 及磁盘中的 YAML content", () => {
     writeFileSync(join(tmpDir, "rig.yaml"), VALID_RIG_YAML);
 
     const lib = createLibrary();
@@ -126,7 +126,7 @@ describe("SpecLibraryService", () => {
     expect(result!.yaml).toContain("test-rig");
   });
 
-  it("IDs are deterministic across rescans", () => {
+  it("ID 在重复 scan 间保持确定性", () => {
     writeFileSync(join(tmpDir, "rig.yaml"), VALID_RIG_YAML);
 
     const lib = createLibrary();
@@ -137,7 +137,7 @@ describe("SpecLibraryService", () => {
     expect(id1).toBe(id2);
   });
 
-  it("scan discovers nested specs and preserves relative paths in IDs", () => {
+  it("scan 发现 nested spec，并在 ID 中保留 relative path", () => {
     mkdirSync(join(tmpDir, "agents", "development", "implementer"), { recursive: true });
     writeFileSync(join(tmpDir, "agents", "development", "implementer", "agent.yaml"), VALID_AGENT_YAML);
 
@@ -153,7 +153,7 @@ describe("SpecLibraryService", () => {
     expect(lib.list({ kind: "agent" })[0]!.id).toBe(entries[0]!.id);
   });
 
-  it("builtin scan ignores nested template yaml that is not a rig or agent entrypoint", () => {
+  it("builtin scan 忽略不是工作组或 agent entrypoint 的 nested template YAML", () => {
     mkdirSync(join(tmpDir, "rigs", "launch", "demo"), { recursive: true });
     mkdirSync(join(tmpDir, "agents", "shared", "skills", "process", "containerized-e2e", "templates"), { recursive: true });
     writeFileSync(join(tmpDir, "rigs", "launch", "demo", "rig.yaml"), VALID_RIG_YAML);
@@ -170,12 +170,11 @@ describe("SpecLibraryService", () => {
     expect(rigs[0]!.relativePath).toBe("rigs/launch/demo/rig.yaml");
   });
 
-  // OPR.0.3.2.22 Bug 4 — walkYamlFiles now skips noise directories
-  // (.worktrees, node_modules, .git, dist, build, .turbo, .next). The
-  // conveyor.yaml under .worktrees/release-0.3.0-... is the load-bearing
-  // case from the openrig-comms paper-cut report; this pins the
-  // SKIP_DIRS guard at the SpecLibraryService.scan() seam.
-  it("scan skips yaml files inside noise directories (SKIP_DIRS)", () => {
+  // OPR.0.3.2.22 Bug 4——walkYamlFiles 现在跳过 noise directory（.worktrees、node_modules、
+  // .git、dist、build、.turbo、.next）。.worktrees/release-0.3.0-... 下的 conveyor.yaml 是
+  // openrig-comms paper-cut report 中的关键 case；这里在 SpecLibraryService.scan() seam 固定
+  // SKIP_DIRS guard。
+  it("scan 跳过 noise directory 内的 YAML 文件（SKIP_DIRS）", () => {
     writeFileSync(join(tmpDir, "canonical.yaml"), VALID_RIG_YAML);
 
     const NOISE_DIRS = [".worktrees", "node_modules", ".git", "dist", "build", ".turbo", ".next"];

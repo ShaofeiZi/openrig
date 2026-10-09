@@ -1,22 +1,19 @@
-// M2 Restore-Packet vertical — Tier 1 tests.
+// M2 恢复包纵向——Tier 1 测试。
 //
-// M2a focus: schema-validator + restore-packet command shell + mutual-exclusion.
-// M2b adds: codex-jsonl-parser + claude-transcript-parser + runtime-detect +
-//           redaction + omitted-records (with Velocity round-trips).
-// M2c adds: packet-writer atomic emission + daemon route integration.
+// M2a 重点：schema-validator + restore-packet 命令外壳 + 互斥。
+// M2b 新增：codex-jsonl-parser + claude-transcript-parser + runtime-detect +
+//           redaction + omitted-records（含 Velocity 往返）。
+// M2c 新增：packet-writer 原子发射 + daemon 路由集成。
 //
-// TDD discipline (per memory feedback_tdd_scope): each test was authored to
-// fail first, then the implementation was written to green. The committed
-// state is the green/passing state.
+// TDD 纪律（据 memory feedback_tdd_scope）：每个测试先写成失败，再写实现使其转绿。
+// 提交状态即绿/通过状态。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
 
-// Module-level mock for daemon-lifecycle so the M2c-CLI mock-daemon
-// round-trip test can drive a fake "daemon running" state without
-// touching the host's real daemon. Other tests in this file don't
-// invoke daemon-lifecycle (they exercise pure parsers / packet-writer),
-// so they're unaffected.
+// daemon-lifecycle 的模块级 mock，使 M2c-CLI mock-daemon 往返测试能驱动伪造的
+// "daemon running" 状态，而不触碰宿主机真实 daemon。本文件其他测试不调用
+// daemon-lifecycle（它们只跑纯 parser / packet-writer），故不受影响。
 vi.mock("../src/daemon-lifecycle.js", async () => {
   const actual = await vi.importActual<Record<string, unknown>>("../src/daemon-lifecycle.js");
   return {
@@ -44,9 +41,8 @@ import { detectRuntime } from "../src/restore-packet/runtime-detect.js";
 import { parseCodexJsonl } from "../src/restore-packet/codex-jsonl-parser.js";
 import { parseClaudeTranscript } from "../src/restore-packet/claude-transcript-parser.js";
 
-// Minimal valid summary fixture matching the M1 contract (§ 2.1) required-field
-// set verbatim. Tests compose against this baseline by mutating one field at
-// a time to drive the accept/reject matrix.
+// 最小合法 summary 夹具，逐字对齐 M1 契约（§ 2.1）的必需字段集。
+// 测试以该基线为基础，每次改一个字段来驱动接受/拒绝矩阵。
 function validSummary(): Record<string, unknown> {
   return {
     source_session_id: "velocity-driver@openrig-velocity",
@@ -86,13 +82,13 @@ function validSummary(): Record<string, unknown> {
 }
 
 describe("M2 restore-packet schema-validator", () => {
-  it("accepts a valid summary matching contract § 2.1", () => {
+  it("接受符合契约 § 2.1 的合法 summary", () => {
     const result: ValidationResult = validateRestoreSummary(validSummary());
     expect(result.valid).toBe(true);
     expect(result.errors).toEqual([]);
   });
 
-  it("rejects when source_session_id is missing", () => {
+  it("缺 source_session_id 时拒绝", () => {
     const summary = validSummary();
     delete (summary as Record<string, unknown>)["source_session_id"];
     const result = validateRestoreSummary(summary);
@@ -100,7 +96,7 @@ describe("M2 restore-packet schema-validator", () => {
     expect(result.errors.some((e) => /source_session_id|required/.test(e.field) || /source_session_id|required/i.test(e.rule))).toBe(true);
   });
 
-  it("rejects when source_runtime is not one of the enum values", () => {
+  it("source_runtime 不在枚举值内时拒绝", () => {
     const summary = validSummary();
     summary["source_runtime"] = "bash";
     const result = validateRestoreSummary(summary);
@@ -108,7 +104,7 @@ describe("M2 restore-packet schema-validator", () => {
     expect(result.errors.some((e) => /source_runtime/.test(e.field))).toBe(true);
   });
 
-  it("rejects when source_cwd is not absolute", () => {
+  it("source_cwd 非绝对路径时拒绝", () => {
     const summary = validSummary();
     summary["source_cwd"] = "relative/path";
     const result = validateRestoreSummary(summary);
@@ -116,7 +112,7 @@ describe("M2 restore-packet schema-validator", () => {
     expect(result.errors.some((e) => /source_cwd/.test(e.field))).toBe(true);
   });
 
-  it("rejects when bounded_latest_transcript.bound is not 120", () => {
+  it("bounded_latest_transcript.bound 不为 120 时拒绝", () => {
     const summary = validSummary();
     (summary["bounded_latest_transcript"] as Record<string, unknown>)["bound"] = 100;
     const result = validateRestoreSummary(summary);
@@ -124,7 +120,7 @@ describe("M2 restore-packet schema-validator", () => {
     expect(result.errors.some((e) => /bound/.test(e.field))).toBe(true);
   });
 
-  it("rejects when durable_pointers is missing required arrays", () => {
+  it("durable_pointers 缺必需数组时拒绝", () => {
     const summary = validSummary();
     summary["durable_pointers"] = { queue_pointers: [] };
     const result = validateRestoreSummary(summary);
@@ -133,7 +129,7 @@ describe("M2 restore-packet schema-validator", () => {
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
-  it("rejects when redaction_policy_id is not a known policy", () => {
+  it("redaction_policy_id 非已知策略时拒绝", () => {
     const summary = validSummary();
     summary["redaction_policy_id"] = "custom-policy";
     const result = validateRestoreSummary(summary);
@@ -141,7 +137,7 @@ describe("M2 restore-packet schema-validator", () => {
     expect(result.errors.some((e) => /redaction_policy_id/.test(e.field))).toBe(true);
   });
 
-  it("rejects when source_trust_ranking is empty", () => {
+  it("source_trust_ranking 为空时拒绝", () => {
     const summary = validSummary();
     summary["source_trust_ranking"] = [];
     const result = validateRestoreSummary(summary);
@@ -149,7 +145,7 @@ describe("M2 restore-packet schema-validator", () => {
     expect(result.errors.some((e) => /source_trust_ranking/.test(e.field))).toBe(true);
   });
 
-  it("rejects when generated_at is not ISO-8601", () => {
+  it("generated_at 非 ISO-8601 时拒绝", () => {
     const summary = validSummary();
     summary["generated_at"] = "yesterday";
     const result = validateRestoreSummary(summary);
@@ -157,7 +153,7 @@ describe("M2 restore-packet schema-validator", () => {
     expect(result.errors.some((e) => /generated_at/.test(e.field))).toBe(true);
   });
 
-  it("rejects when an unknown top-level field is present (additionalProperties: false)", () => {
+  it("出现未知顶层字段时拒绝（additionalProperties: false）", () => {
     const summary = validSummary();
     (summary as Record<string, unknown>)["new_field"] = "leaked";
     const result = validateRestoreSummary(summary);
@@ -165,22 +161,20 @@ describe("M2 restore-packet schema-validator", () => {
     expect(result.errors.some((e) => /new_field|additional/.test(e.field) || /additional/i.test(e.rule))).toBe(true);
   });
 
-  it("accepts a summary with optional full_transcript present", () => {
+  it("接受带可选 full_transcript 的 summary", () => {
     const summary = validSummary();
     summary["full_transcript"] = { path: "transcript.md", line_count: 4321 };
     const result = validateRestoreSummary(summary);
     expect(result.valid).toBe(true);
   });
 
-  // M2a R2 drift-catcher: the canonical JSON Schema file at
-  // src/schemas/restore-summary.schema.json and the embedded TS const
-  // RESTORE_SUMMARY_SCHEMA must stay byte-equivalent. Embedding the schema
-  // in the validator is the M2a R2 packaging fix (tsc emits the const into
-  // dist/restore-packet/schema-validator.js, so the validator works after
-  // raw `tsc` emit without any extra build-script copy step). The JSON file
-  // remains the canonical source for downstream tooling that reads JSON
-  // Schema directly. This test fails loudly if either form drifts.
-  it("M2a R2 drift-catcher: TS const RESTORE_SUMMARY_SCHEMA equals the canonical JSON schema file", () => {
+  // M2a R2 drift-catcher：canonical JSON Schema 文件
+  // src/schemas/restore-summary.schema.json 与内嵌 TS 常量
+  // RESTORE_SUMMARY_SCHEMA 必须保持字节等价。把 schema 内嵌进 validator 是
+  // M2a R2 打包修复（tsc 把该 const  emit 进 dist/restore-packet/schema-validator.js，
+  // 使 validator 在裸 `tsc` emit 后即可用，无需额外 build-script 拷贝步骤）。
+  // JSON 文件仍是下游直接读 JSON Schema 的工具的 canonical 来源。任一方漂移时本测试响亮失败。
+  it("M2a R2 drift-catcher：TS 常量 RESTORE_SUMMARY_SCHEMA 等于 canonical JSON schema 文件", () => {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
     const schemaJsonPath = resolve(
@@ -208,8 +202,8 @@ describe("M2 restore-packet CLI command shell + mutual-exclusion", () => {
     try {
       const program = new Command();
       program.exitOverride();
-      // Route commander's writeErr (used for missing-required-option messages)
-      // into our stderr capture so test assertions can match against it.
+      // 把 commander 的 writeErr（用于缺失必填选项消息）
+      // 路由进我们的 stderr 捕获，便于测试断言匹配。
       program.configureOutput({ writeOut: (s) => stdout.push(s), writeErr: (s) => stderr.push(s) });
       const sub = restorePacketCommand();
       sub.exitOverride();
@@ -222,10 +216,9 @@ describe("M2 restore-packet CLI command shell + mutual-exclusion", () => {
       try {
         program.parse(["node", "rig", ...argv]);
       } catch (err) {
-        // commander throws on exitOverride + nonzero exit. Capture the
-        // thrown CommanderError message into stderr so callers can match
-        // against it (some commander error paths route through err.message
-        // rather than configureOutput's writeErr).
+        // commander 在 exitOverride + 非零退出时抛出。把抛出的 CommanderError 消息
+        // 捕获进 stderr，便于调用方据此匹配（部分 commander 错误路径走 err.message，
+        // 而非 configureOutput 的 writeErr）。
         if (err instanceof Error && err.message) {
           stderr.push(err.message);
         }
@@ -242,14 +235,14 @@ describe("M2 restore-packet CLI command shell + mutual-exclusion", () => {
     return { exitCode, stderr, stdout };
   }
 
-  it("registers a `restore-packet` command with subcommands write / read / validate", () => {
+  it("注册 `restore-packet` 命令及其子命令 write / read / validate", () => {
     const cmd = restorePacketCommand();
     expect(cmd.name()).toBe("restore-packet");
     const subs = cmd.commands.map((c) => c.name()).sort();
     expect(subs).toEqual(["read", "validate", "write"]);
   });
 
-  it("write fails with explicit error when both --source-session AND --source-jsonl are supplied", () => {
+  it("同时传 --source-session 与 --source-jsonl 时 write 以显式错误失败", () => {
     const { exitCode, stderr } = runRestorePacket([
       "restore-packet", "write",
       "--source-session", "fake@kernel",
@@ -258,10 +251,10 @@ describe("M2 restore-packet CLI command shell + mutual-exclusion", () => {
     ]);
     expect(exitCode).not.toBe(0);
     const errStr = stderr.join("\n");
-    expect(errStr).toMatch(/mutually exclusive|exactly one|both supplied/i);
+    expect(errStr).toMatch(/互斥|恰好提供一个/);
   });
 
-  it("write fails with explicit error when neither --source-session nor --source-jsonl is supplied", () => {
+  it("既不传 --source-session 也不传 --source-jsonl 时 write 以显式错误失败", () => {
     const { exitCode, stderr } = runRestorePacket([
       "restore-packet", "write",
       "--target", "/tmp/out",
@@ -271,7 +264,7 @@ describe("M2 restore-packet CLI command shell + mutual-exclusion", () => {
     expect(errStr).toMatch(/--source-session|--source-jsonl|exactly one/i);
   });
 
-  it("write fails when --target is missing (commander requiredOption check)", () => {
+  it("缺 --target 时 write 失败（commander requiredOption 检查）", () => {
     const { exitCode, stderr } = runRestorePacket([
       "restore-packet", "write",
       "--source-jsonl", "/tmp/fake.jsonl",
@@ -281,14 +274,14 @@ describe("M2 restore-packet CLI command shell + mutual-exclusion", () => {
     expect(errStr).toMatch(/--target|required/i);
   });
 
-  it("read subcommand exists as M2a stub (full implementation in M3)", () => {
+  it("read 子命令作为 M2a stub 存在（完整实现于 M3）", () => {
     const cmd = restorePacketCommand();
     const readCmd = cmd.commands.find((c) => c.name() === "read");
     expect(readCmd).toBeDefined();
-    expect(readCmd!.description()).toMatch(/render|packet/i);
+    expect(readCmd!.description()).toMatch(/渲染|恢复包/);
   });
 
-  it("validate subcommand exists as M2a stub (full implementation in M3)", () => {
+  it("validate 子命令作为 M2a stub 存在（完整实现于 M3）", () => {
     const cmd = restorePacketCommand();
     const validateCmd = cmd.commands.find((c) => c.name() === "validate");
     expect(validateCmd).toBeDefined();
@@ -297,66 +290,65 @@ describe("M2 restore-packet CLI command shell + mutual-exclusion", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────
-// M2b sub-module tests (codex-jsonl-parser, claude-transcript-parser,
-// runtime-detect, redaction, omitted-records). All fixtures are
-// SYNTHETIC; no real transcript content imported. No auth tokens or
-// device codes (Quality Lesson v9).
+// M2b 子模块测试（codex-jsonl-parser、claude-transcript-parser、
+// runtime-detect、redaction、omitted-records）。所有夹具均为合成数据；
+// 不导入真实 transcript 内容。不含 auth token 或设备码（Quality Lesson v9）。
 // ─────────────────────────────────────────────────────────────────────
 
 describe("M2b redaction (openrig-v0 / velocity-v1 patterns)", () => {
-  it("redacts sk-* tokens", () => {
+  it("脱敏 sk-* token", () => {
     const text = "Some leaked sk-aBcDeFgHiJkLmNoPqRsTuVwXyZ pattern here.";
     const redacted = redact(text);
     expect(redacted).not.toContain("sk-aBcDeFgHiJkLmNoPqRsTuVwXyZ");
     expect(redacted).toContain("[REDACTED]");
   });
 
-  it("redacts ghp_/ghs_/gho_ GitHub tokens", () => {
+  it("脱敏 ghp_/ghs_/gho_ GitHub token", () => {
     const text = "ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123 was leaked.";
     const redacted = redact(text);
     expect(redacted).not.toContain("ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123");
     expect(redacted).toContain("[REDACTED]");
   });
 
-  it("redacts github_pat_ fine-grained tokens", () => {
+  it("脱敏 github_pat_ 细粒度 token", () => {
     const text = "Token: github_pat_AbCdEfGh01234567890123456789";
     const redacted = redact(text);
     expect(redacted).not.toContain("github_pat_AbCdEfGh01234567890123456789");
     expect(redacted).toContain("[REDACTED]");
   });
 
-  it("redacts Bearer tokens", () => {
+  it("脱敏 Bearer token", () => {
     const text = "Authorization: Bearer aBcD1234.eFgH5678.iJkL9012-mNoP";
     const redacted = redact(text);
     expect(redacted).not.toContain("Bearer aBcD1234.eFgH5678.iJkL9012-mNoP");
     expect(redacted).toContain("[REDACTED]");
   });
 
-  it("redacts long base64-shaped strings", () => {
+  it("脱敏长 base64 形状字符串", () => {
     const text = "Encoded: aGVsbG93b3JsZGFlaW91YWVpb3VhZWlvdWFlaW91YWVpb3U=";
     const redacted = redact(text);
     expect(redacted).toContain("[REDACTED]");
   });
 
-  it("leaves non-credential content unchanged byte-for-byte", () => {
+  it("逐字节保持非凭据内容不变", () => {
     const text = "Normal message: visit https://example.com for docs.";
     const redacted = redact(text);
     expect(redacted).toBe(text);
   });
 
-  it("hasSecretPattern detects each known credential class", () => {
+  it("hasSecretPattern 检测每一类已知凭据", () => {
     expect(hasSecretPattern("sk-AbCdEfGhIjKlMnOpQ")).toBe(true);
     expect(hasSecretPattern("normal text without secrets")).toBe(false);
     expect(hasSecretPattern("")).toBe(false);
   });
 
-  it("exposes the pattern list (5 patterns per Velocity prior art)", () => {
+  it("暴露 pattern 列表（据 Velocity 先例 5 个 pattern）", () => {
     expect(SECRET_PATTERNS.length).toBe(5);
   });
 });
 
 describe("M2b omitted-records classifier", () => {
-  it("classifies Codex function_call → function_call_output", () => {
+  it("把 Codex function_call 归类为 function_call_output", () => {
     const result = classifyCodexRecord({ payload: { type: "function_call" } });
     expect(result.kind).toBe("omitted");
     if (result.kind === "omitted") {
@@ -364,7 +356,7 @@ describe("M2b omitted-records classifier", () => {
     }
   });
 
-  it("classifies Codex custom_tool_call → raw_tool_outputs", () => {
+  it("把 Codex custom_tool_call 归类为 raw_tool_outputs", () => {
     const result = classifyCodexRecord({ payload: { type: "custom_tool_call" } });
     expect(result.kind).toBe("omitted");
     if (result.kind === "omitted") {
@@ -372,7 +364,7 @@ describe("M2b omitted-records classifier", () => {
     }
   });
 
-  it("classifies Codex reasoning → reasoning_records", () => {
+  it("把 Codex reasoning 归类为 reasoning_records", () => {
     const result = classifyCodexRecord({ payload: { type: "reasoning" } });
     expect(result.kind).toBe("omitted");
     if (result.kind === "omitted") {
@@ -380,17 +372,17 @@ describe("M2b omitted-records classifier", () => {
     }
   });
 
-  it("classifies Codex message+user-role → kept", () => {
+  it("把 Codex message+user-role 归类为 kept", () => {
     const result = classifyCodexRecord({ payload: { type: "message", role: "user" } });
     expect(result.kind).toBe("kept");
   });
 
-  it("classifies Codex message+unknown-role → omitted (reasoning)", () => {
+  it("把 Codex message+unknown-role 归类为 omitted（reasoning）", () => {
     const result = classifyCodexRecord({ payload: { type: "message", role: "system" } });
     expect(result.kind).toBe("omitted");
   });
 
-  it("classifies Claude attachment → raw_tool_outputs", () => {
+  it("把 Claude attachment 归类为 raw_tool_outputs", () => {
     const result = classifyClaudeRecord({ type: "attachment" });
     expect(result.kind).toBe("omitted");
     if (result.kind === "omitted") {
@@ -398,12 +390,12 @@ describe("M2b omitted-records classifier", () => {
     }
   });
 
-  it("classifies Claude user|assistant → kept", () => {
+  it("把 Claude user|assistant 归类为 kept", () => {
     expect(classifyClaudeRecord({ type: "user" }).kind).toBe("kept");
     expect(classifyClaudeRecord({ type: "assistant" }).kind).toBe("kept");
   });
 
-  it("classifies Claude summary → reasoning_records", () => {
+  it("把 Claude summary 归类为 reasoning_records", () => {
     const result = classifyClaudeRecord({ type: "summary" });
     expect(result.kind).toBe("omitted");
     if (result.kind === "omitted") {
@@ -411,7 +403,7 @@ describe("M2b omitted-records classifier", () => {
     }
   });
 
-  it("OmittedCounter accumulates per-class counts and active-classes list", () => {
+  it("OmittedCounter 按类累计计数并给出 active-classes 列表", () => {
     const counter = new OmittedCounter();
     counter.recordOmission("reasoning_records");
     counter.recordOmission("reasoning_records");
@@ -432,46 +424,46 @@ describe("M2b omitted-records classifier", () => {
 });
 
 describe("M2b runtime-detect", () => {
-  it("detects Codex JSONL via response_item type marker", () => {
+  it("经 response_item 类型标记检测 Codex JSONL", () => {
     const content = `{"type":"session_meta","payload":{"cwd":"/x"}}
 {"type":"response_item","payload":{"type":"message","role":"user","content":"hi"}}`;
     expect(detectRuntime(content)).toBe("codex");
   });
 
-  it("detects Codex via session_meta alone", () => {
+  it("仅凭 session_meta 检测 Codex", () => {
     const content = `{"type":"session_meta","payload":{"cwd":"/x"}}`;
     expect(detectRuntime(content)).toBe("codex");
   });
 
-  it("detects Claude via top-level user/assistant type", () => {
+  it("经顶层 user/assistant 类型检测 Claude", () => {
     const content = `{"type":"customTitle","customTitle":"x","sessionId":"s"}
 {"type":"user","message":{"role":"user","content":"hi"},"sessionId":"s"}`;
     expect(detectRuntime(content)).toBe("claude-code");
   });
 
-  it("returns null on empty input", () => {
+  it("空输入返回 null", () => {
     expect(detectRuntime("")).toBe(null);
   });
 
-  it("returns null on non-JSONL garbage", () => {
+  it("非 JSONL 垃圾输入返回 null", () => {
     expect(detectRuntime("hello world\nfoo bar")).toBe(null);
   });
 
-  it("returns null on JSONL with no runtime markers (ambiguous)", () => {
+  it("无运行时标记的 JSONL（歧义）返回 null", () => {
     const content = `{"foo":"bar"}
 {"baz":"qux"}`;
     expect(detectRuntime(content)).toBe(null);
   });
 
-  it("does not use file extension or filename — pure content shape", () => {
-    // Calling with a string that LOOKS like a filename should still return null.
+  it("不使用文件扩展名或文件名——纯内容形状判断", () => {
+    // 传入看似文件名的字符串仍应返回 null。
     expect(detectRuntime("/tmp/fake.jsonl")).toBe(null);
     expect(detectRuntime("rollout-2026-04-23.jsonl")).toBe(null);
   });
 });
 
 describe("M2b codex-jsonl-parser", () => {
-  it("parses session_meta + response_item messages into StructuredTranscript", () => {
+  it("把 session_meta + response_item 消息解析进 StructuredTranscript", () => {
     const content = `{"type":"session_meta","payload":{"cwd":"/Users/example/code/projects/openrig-hub","id":"abc-123"}}
 {"type":"response_item","timestamp":"2026-05-02T01:00:00Z","payload":{"type":"message","role":"user","content":"Hello world"}}
 {"type":"response_item","timestamp":"2026-05-02T01:00:01Z","payload":{"type":"message","role":"assistant","content":[{"type":"text","text":"Hi back"}]}}`;
@@ -486,7 +478,7 @@ describe("M2b codex-jsonl-parser", () => {
     expect(result.lineCount).toBe(3);
   });
 
-  it("filters reasoning + function_call + custom_tool_call records and counts them", () => {
+  it("过滤 reasoning + function_call + custom_tool_call 记录并计数", () => {
     const content = `{"type":"response_item","payload":{"type":"reasoning","content":"<thinking>"}}
 {"type":"response_item","payload":{"type":"function_call","arguments":"{\\"path\\":\\"/Users/example/x.txt\\"}"}}
 {"type":"response_item","payload":{"type":"custom_tool_call","input":"some input"}}
@@ -498,7 +490,7 @@ describe("M2b codex-jsonl-parser", () => {
     expect(result.omittedCounts.raw_tool_outputs).toBe(1);
   });
 
-  it("counts compacted records separately and skips them from messages", () => {
+  it("单独计数 compacted 记录，并把它们从 messages 跳过", () => {
     const content = `{"type":"compacted","payload":{}}
 {"type":"compacted","payload":{}}
 {"type":"response_item","payload":{"type":"message","role":"user","content":"msg"}}`;
@@ -507,7 +499,7 @@ describe("M2b codex-jsonl-parser", () => {
     expect(result.messageCount).toBe(1);
   });
 
-  it("redacts credential patterns in message content", () => {
+  it("脱敏消息内容中的凭据 pattern", () => {
     const content = `{"type":"response_item","payload":{"type":"message","role":"user","content":"my token is sk-AbCdEfGhIjKlMnOpQrStUv now"}}`;
     const result = parseCodexJsonl(content);
     expect(result.messages[0]!.text).toContain("[REDACTED]");
@@ -515,7 +507,7 @@ describe("M2b codex-jsonl-parser", () => {
     expect(result.omittedCounts.redacted_secrets).toBe(1);
   });
 
-  it("skips malformed JSONL lines silently (matches Velocity prior art)", () => {
+  it("静默跳过畸形 JSONL 行（据 Velocity 先例）", () => {
     const content = `{"type":"response_item","payload":{"type":"message","role":"user","content":"first"}}
 not valid json garbage line
 {"type":"response_item","payload":{"type":"message","role":"user","content":"second"}}`;
@@ -524,7 +516,7 @@ not valid json garbage line
     expect(result.lineCount).toBe(3);
   });
 
-  it("extracts paths from message content and tool args; sorts by frequency", () => {
+  it("从消息内容与 tool 参数提取路径；按频率排序", () => {
     const content = `{"type":"response_item","payload":{"type":"message","role":"user","content":"see packages/cli/src/index.ts and packages/cli/src/index.ts again"}}
 {"type":"response_item","payload":{"type":"function_call","arguments":"{\\"path\\":\\"/Users/example/code/projects/openrig-hub/README.md\\"}"}}`;
     const result = parseCodexJsonl(content);
@@ -535,7 +527,7 @@ not valid json garbage line
 });
 
 describe("M2b claude-transcript-parser", () => {
-  it("parses Claude user + assistant messages into StructuredTranscript", () => {
+  it("把 Claude user + assistant 消息解析进 StructuredTranscript", () => {
     const content = `{"type":"customTitle","customTitle":"M2b test","sessionId":"sess-1"}
 {"type":"user","message":{"role":"user","content":"hello"},"cwd":"/x","sessionId":"sess-1","timestamp":"2026-05-02T01:00:00Z"}
 {"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"hi back"}]},"cwd":"/x","sessionId":"sess-1","timestamp":"2026-05-02T01:00:01Z"}`;
@@ -547,7 +539,7 @@ describe("M2b claude-transcript-parser", () => {
     expect(result.messages[1]!.text).toBe("hi back");
   });
 
-  it("captures sessionMeta from the first record carrying cwd + sessionId", () => {
+  it("从首个携带 cwd + sessionId 的记录捕获 sessionMeta", () => {
     const content = `{"type":"customTitle","customTitle":"x","sessionId":"sess-2"}
 {"type":"user","message":{"role":"user","content":"first"},"cwd":"/Users/example/code","sessionId":"sess-2"}`;
     const result = parseClaudeTranscript(content);
@@ -555,7 +547,7 @@ describe("M2b claude-transcript-parser", () => {
     expect(result.sessionMeta?.sessionId).toBe("sess-2");
   });
 
-  it("filters attachments → raw_tool_outputs counter", () => {
+  it("把 attachments 归入 raw_tool_outputs 计数", () => {
     const content = `{"type":"user","message":{"role":"user","content":"see attached"},"cwd":"/x","sessionId":"s"}
 {"type":"attachment","attachment":{"path":"/Users/example/x.txt","content":"file body"},"cwd":"/x","sessionId":"s"}`;
     const result = parseClaudeTranscript(content);
@@ -563,27 +555,27 @@ describe("M2b claude-transcript-parser", () => {
     expect(result.omittedCounts.raw_tool_outputs).toBe(1);
   });
 
-  it("redacts credential patterns in message content", () => {
+  it("脱敏消息内容中的凭据 pattern", () => {
     const content = `{"type":"user","message":{"role":"user","content":"my token is ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0 now"},"cwd":"/x","sessionId":"s"}`;
     const result = parseClaudeTranscript(content);
     expect(result.messages[0]!.text).toContain("[REDACTED]");
     expect(result.omittedCounts.redacted_secrets).toBe(1);
   });
 
-  it("compactedCount is always 0 (Claude transcripts don't emit compaction records)", () => {
+  it("compactedCount 恒为 0（Claude transcript 不发出 compaction 记录）", () => {
     const content = `{"type":"user","message":{"role":"user","content":"x"},"cwd":"/x","sessionId":"s"}`;
     const result = parseClaudeTranscript(content);
     expect(result.compactedCount).toBe(0);
   });
 
-  it("emits the SAME StructuredTranscript shape as the Codex parser (interface conformance)", () => {
+  it("产出与 Codex parser 相同的 StructuredTranscript 形状（接口一致性）", () => {
     const codex = parseCodexJsonl(`{"type":"response_item","payload":{"type":"message","role":"user","content":"x"}}`);
     const claude = parseClaudeTranscript(`{"type":"user","message":{"role":"user","content":"x"},"cwd":"/x","sessionId":"s"}`);
-    // Field-by-field check that both expose the same top-level keys.
+    // 逐字段检查两者暴露相同的顶层键。
     const codexKeys = Object.keys(codex).sort();
     const claudeKeys = Object.keys(claude).sort();
     expect(codexKeys).toEqual(claudeKeys);
-    // Both must expose omittedCounts with all 4 enum keys.
+    // 两者都必须暴露 omittedCounts，含全部 4 个枚举键。
     expect(Object.keys(codex.omittedCounts).sort()).toEqual([
       "function_call_output",
       "raw_tool_outputs",
@@ -600,7 +592,7 @@ describe("M2b claude-transcript-parser", () => {
 });
 
 describe("M2b interaction: parse → redact → omitted-records counter chain", () => {
-  it("counts redacted_secrets AND filters all 3 codex omitted classes in one parse", () => {
+  it("一次解析中同时计数 redacted_secrets 并过滤全部 3 类 codex omitted", () => {
     const content = `{"type":"session_meta","payload":{"cwd":"/x"}}
 {"type":"response_item","payload":{"type":"reasoning"}}
 {"type":"response_item","payload":{"type":"function_call","arguments":"{}"}}
@@ -613,32 +605,28 @@ describe("M2b interaction: parse → redact → omitted-records counter chain", 
     expect(result.omittedCounts.function_call_output).toBe(1);
     expect(result.omittedCounts.raw_tool_outputs).toBe(1);
     expect(result.omittedCounts.redacted_secrets).toBe(1);
-    // The user message is redacted but kept.
+    // user 消息被脱敏但保留。
     expect(result.messages[0]!.text).toContain("[REDACTED]");
-    // The assistant message is unchanged.
+    // assistant 消息保持不变。
     expect(result.messages[1]!.text).toBe("clean reply");
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────
-// M2b R2: Claude parser nested tool_use / tool_result handling.
+// M2b R2：Claude parser 嵌套 tool_use / tool_result 处理。
 //
-// Per guard's M2b BLOCK: the parser silently dropped tool_use parts
-// (inside assistant content) and tool_result parts (inside user
-// content) without counting them as omitted classes. Real Claude
-// transcripts have these on nearly every turn; the previous M2b
-// commit produced misleading omittedCounts of all-zero.
+// 据 guard 的 M2b BLOCK：parser 此前静默丢弃了 tool_use part（在 assistant content 内）
+// 与 tool_result part（在 user content 内），而未把它们计入 omitted 类。真实 Claude
+// transcript 几乎每轮都有这些；上一个 M2b 提交产出的 omittedCounts 全为零，有误导性。
 //
-// R2 fix: walk message.content parts inside kept user/assistant
-// records; count tool_use → function_call_output, tool_result →
-// raw_tool_outputs; extract paths from omitted parts (mirroring
-// Codex parser's behavior at codex-jsonl-parser.ts where function_call
-// args + custom_tool_call input are walked for paths even though the
-// records themselves are omitted from the message stream).
+// R2 修复：在保留的 user/assistant 记录内遍历 message.content parts；把 tool_use 计入
+// function_call_output、tool_result 计入 raw_tool_outputs；从 omitted parts 提取路径
+//（对齐 Codex parser 在 codex-jsonl-parser.ts 的行为：function_call args 与
+// custom_tool_call input 也会被遍历提取路径，尽管记录本身从消息流中省略）。
 // ─────────────────────────────────────────────────────────────────────
 
 describe("M2b R2 Claude parser nested-content-part handling", () => {
-  it("guard reproducer fixture: tool_use + tool_result both counted; paths extracted", () => {
+  it("护栏复现夹具：tool_use + tool_result 均被计数；提取路径", () => {
     const content = JSON.stringify({
       type: "assistant",
       message: {
@@ -666,17 +654,15 @@ describe("M2b R2 Claude parser nested-content-part handling", () => {
       sessionId: "s",
     });
     const r = parseClaudeTranscript(content);
-    // Both top-level records are KEPT (the parser still emits the visible
-    // text "done" from the assistant turn; the user turn has only
-    // tool_result content so no visible text — but the record was
-    // classified as kept; without visible text it's dropped from
-    // messages but the nested tool_result must STILL be counted.)
+    // 两个顶层记录都被保留（parser 仍发出 assistant turn 的可见文本 "done"；
+    // user turn 只有 tool_result content，无可见文本——但记录被归类为 kept；
+    // 无可见文本时它会从 messages 丢弃，但嵌套的 tool_result 仍必须被计数）。
     expect(r.omittedCounts.function_call_output).toBe(1);
     expect(r.omittedCounts.raw_tool_outputs).toBe(1);
     expect(r.paths.some((p) => p.path === "/Users/example/code/projects/openrig-hub")).toBe(true);
   });
 
-  it("counts each tool_use part in a multi-tool assistant turn", () => {
+  it("多 tool 的 assistant turn 中每个 tool_use part 都被计数", () => {
     const content = JSON.stringify({
       type: "assistant",
       message: {
@@ -695,11 +681,9 @@ describe("M2b R2 Claude parser nested-content-part handling", () => {
     expect(r.paths.some((p) => p.path === "/Users/example/code/x.md")).toBe(true);
   });
 
-  it("counts each tool_result part in a multi-result user turn", () => {
-    // Note: the Velocity-prior-art path pattern is greedy on the
-    // /Users/example prefix and includes trailing whitespace and word
-    // chars until end-of-line; using \n separators here so each path
-    // is matched cleanly.
+  it("多结果的 user turn 中每个 tool_result part 都被计数", () => {
+    // 注意：Velocity 先例的路径 pattern 对 /Users/example 前缀是贪婪的，
+    // 会吞到行尾的尾随空白与单词字符；这里用 \n 分隔，使每个路径干净匹配。
     const content = JSON.stringify({
       type: "user",
       message: {
@@ -718,7 +702,7 @@ describe("M2b R2 Claude parser nested-content-part handling", () => {
     expect(r.paths.some((p) => p.path === "/Users/example/code/b.md")).toBe(true);
   });
 
-  it("mixed text + tool_use: visible text kept; tool_use counted", () => {
+  it("混合 text + tool_use：可见文本保留；tool_use 被计数", () => {
     const content = JSON.stringify({
       type: "assistant",
       message: {
@@ -739,7 +723,7 @@ describe("M2b R2 Claude parser nested-content-part handling", () => {
     expect(r.omittedCounts.function_call_output).toBe(1);
   });
 
-  it("tool_use with non-path input: counted but contributes no paths", () => {
+  it("非路径输入的 tool_use：被计数但不贡献路径", () => {
     const content = JSON.stringify({
       type: "assistant",
       message: {
@@ -754,11 +738,11 @@ describe("M2b R2 Claude parser nested-content-part handling", () => {
     });
     const r = parseClaudeTranscript(content);
     expect(r.omittedCounts.function_call_output).toBe(1);
-    // No /Users/example or recognized prefix path in the input.
+    // 输入中无 /Users/example 或可识别前缀路径。
     expect(r.paths.length).toBe(0);
   });
 
-  it("tool_result with non-path content: counted but contributes no paths", () => {
+  it("非路径内容的 tool_result：被计数但不贡献路径", () => {
     const content = JSON.stringify({
       type: "user",
       message: {
@@ -775,9 +759,9 @@ describe("M2b R2 Claude parser nested-content-part handling", () => {
     expect(r.paths.length).toBe(0);
   });
 
-  it("tool_result with array content shape: walks the array for paths", () => {
-    // Claude tool_result content can be either a string OR an array of
-    // { type: "text", text } parts (the same shape as message content).
+  it("数组形状内容的 tool_result：遍历数组提取路径", () => {
+    // Claude tool_result content 可以是字符串，也可以是
+    // { type: "text", text } part 数组（与 message content 同形）。
     const content = JSON.stringify({
       type: "user",
       message: {
@@ -800,7 +784,7 @@ describe("M2b R2 Claude parser nested-content-part handling", () => {
     expect(r.paths.some((p) => p.path === "/Users/example/code/projects/openrig-hub/README.md")).toBe(true);
   });
 
-  it("kept text-only assistant turn (no tools): counters stay at zero", () => {
+  it("纯文本 assistant turn（无工具）：计数保持为零", () => {
     const content = JSON.stringify({
       type: "assistant",
       message: { role: "assistant", content: [{ type: "text", text: "hello" }] },
@@ -815,17 +799,15 @@ describe("M2b R2 Claude parser nested-content-part handling", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────
-// M2c-CLI: packet-writer atomic emission + round-trip tests.
+// M2c-CLI：packet-writer 原子化产出 + 往返测试。
 //
-// packet-writer.ts assembles a v0 restore packet directory atomically:
-// writes to a tempdir, validates the resulting restore-summary.json
-// against the embedded JSON Schema, then renames tempdir → target.
-// On any validation failure, the tempdir is removed; no partial packet
-// is left in the operator's filesystem.
+// packet-writer.ts 以原子方式组装 v0 restore packet 目录：先写到 tempdir，
+// 再据内嵌 JSON Schema 校验产出的 restore-summary.json，然后把 tempdir 重命名为 target。
+// 任一步校验失败即删除 tempdir；operator 文件系统中不留残缺 packet。
 //
-// Per M1 contract § 1: directory contains 4 required files
-// (restore-instructions.md, transcript-latest.md, touched-files.md,
-// restore-summary.json) plus optional transcript.md.
+// 据 M1 契约 § 1：目录含 4 个必需文件
+//（restore-instructions.md、transcript-latest.md、touched-files.md、
+// restore-summary.json）加可选的 transcript.md。
 // ─────────────────────────────────────────────────────────────────────
 
 describe("M2c-CLI packet-writer atomic emission", () => {
@@ -868,7 +850,7 @@ describe("M2c-CLI packet-writer atomic emission", () => {
     };
   }
 
-  it("emits 4 required files + restore-summary.json schema-valid", async () => {
+  it("产出 4 个必需文件 + restore-summary.json 符合 schema", async () => {
     const { writePacket } = await import("../src/restore-packet/packet-writer.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -879,16 +861,16 @@ describe("M2c-CLI packet-writer atomic emission", () => {
     for (const required of ["restore-instructions.md", "transcript-latest.md", "touched-files.md", "restore-summary.json"]) {
       expect(fs.existsSync(path.join(targetDir, required)), `missing ${required}`).toBe(true);
     }
-    // Optional transcript.md should NOT be present when includeFullTranscript=false.
+    // includeFullTranscript=false 时不应出现可选的 transcript.md。
     expect(fs.existsSync(path.join(targetDir, "transcript.md"))).toBe(false);
 
-    // Summary parses and schema-validates.
+    // Summary 可解析并通过 schema 校验。
     const summary = JSON.parse(fs.readFileSync(path.join(targetDir, "restore-summary.json"), "utf-8"));
     const validation = validateRestoreSummary(summary);
     expect(validation.valid, JSON.stringify(validation.errors)).toBe(true);
   });
 
-  it("emits transcript.md when includeFullTranscript=true; full_transcript key present in summary", async () => {
+  it("includeFullTranscript=true 时产出 transcript.md；summary 中含 full_transcript 键", async () => {
     const { writePacket } = await import("../src/restore-packet/packet-writer.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -904,7 +886,7 @@ describe("M2c-CLI packet-writer atomic emission", () => {
     expect(typeof summary.full_transcript.line_count).toBe("number");
   });
 
-  it("populates contract § 2.1 required fields verbatim from operator-supplied options", async () => {
+  it("按 operator 提供的选项逐字填充契约 § 2.1 必需字段", async () => {
     const { writePacket } = await import("../src/restore-packet/packet-writer.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -927,7 +909,7 @@ describe("M2c-CLI packet-writer atomic emission", () => {
     expect(summary.durable_pointers.artifact_pointers).toBeDefined();
   });
 
-  it("rejects when target directory already exists", async () => {
+  it("target 目录已存在时拒绝", async () => {
     const { writePacket } = await import("../src/restore-packet/packet-writer.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -936,39 +918,39 @@ describe("M2c-CLI packet-writer atomic emission", () => {
     fs.writeFileSync(path.join(targetDir, "marker.txt"), "do not overwrite");
 
     const opts = buildBaselineOpts(targetDir) as Parameters<typeof writePacket>[0];
-    await expect(writePacket(opts)).rejects.toThrow(/exists|already/i);
-    // Marker preserved (no partial overwrite).
+    await expect(writePacket(opts)).rejects.toThrow(/已存在/);
+    // Marker 保留（无部分覆盖）。
     expect(fs.readFileSync(path.join(targetDir, "marker.txt"), "utf-8")).toBe("do not overwrite");
   });
 
-  it("atomic emission: schema-validation failure mid-write leaves NO target dir AND cleans tempdir", async () => {
+  it("原子化产出：写入中途 schema 校验失败时不留 target 目录并清理 tempdir", async () => {
     const { writePacket } = await import("../src/restore-packet/packet-writer.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
     const targetDir = path.join(tmpRoot, "packet-fail");
     const opts = buildBaselineOpts(targetDir) as Record<string, unknown>;
-    // Inject a contract violation: empty current_work_summary should fail
-    // schema validation (minLength: 1).
+    // 注入一个契约违反：空 current_work_summary 应使
+    // schema 校验失败（minLength: 1）。
     opts["currentWorkSummary"] = "";
 
     await expect(
       writePacket(opts as Parameters<typeof writePacket>[0]),
     ).rejects.toThrow(/schema|valid|current_work_summary/i);
 
-    // Target dir was NEVER created (atomic rename semantics).
+    // target 目录从未被创建（原子重命名语义）。
     expect(fs.existsSync(targetDir)).toBe(false);
-    // No leftover .tmp- prefixed dirs in tmpRoot.
+    // tmpRoot 中无残留 .tmp- 前缀目录。
     const tmpRootContents = fs.readdirSync(tmpRoot);
     const leftovers = tmpRootContents.filter((name) => name.includes(".tmp-restore-packet-"));
     expect(leftovers).toEqual([]);
   });
 
-  it("transcript-latest.md bounded at 120 messages; message_count reflects actual count", async () => {
+  it("transcript-latest.md 按 120 条消息截断；message_count 反映真实条数", async () => {
     const { writePacket } = await import("../src/restore-packet/packet-writer.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
 
-    // Build 150 user messages (exceeds the 120 bound).
+    // 构造 150 条 user 消息（超过 120 上限）。
     const lines: string[] = [`{"type":"session_meta","payload":{"cwd":"/x"}}`];
     for (let i = 0; i < 150; i++) {
       lines.push(`{"type":"response_item","payload":{"type":"message","role":"user","content":"msg ${i}"}}`);
@@ -1003,9 +985,9 @@ describe("M2c-CLI Velocity-shape round-trip (synthetic 4-role fixtures)", () => 
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   });
 
-  // Build a synthetic Codex JSONL with the same structural shape as
-  // Velocity prior art: session_meta + response_item messages + tool_calls
-  // + reasoning records + a credential-pattern needle for redaction.
+  // 构造一个合成 Codex JSONL，结构同 Velocity 既有实践：
+  // session_meta + response_item 消息 + tool_calls + reasoning 记录，
+  // 外加一个供 redaction 用的凭证模式探针。
   function syntheticCodexJsonlFor(role: string): string {
     return [
       `{"type":"session_meta","payload":{"cwd":"/Users/example/code/projects/openrig-hub","id":"velocity-${role}@openrig-velocity-code"}}`,
@@ -1024,7 +1006,7 @@ describe("M2c-CLI Velocity-shape round-trip (synthetic 4-role fixtures)", () => 
       const path = await import("node:path");
       const structured = parseCodexJsonl(syntheticCodexJsonlFor(role));
 
-      // Sanity-check parser output before writer round-trip.
+      // writer 往返前先做 parser 输出的健全性检查。
       expect(structured.messageCount).toBe(2);
       expect(structured.compactedCount).toBe(1);
       expect(structured.omittedCounts.reasoning_records).toBeGreaterThanOrEqual(1);
@@ -1056,15 +1038,15 @@ describe("M2c-CLI Velocity-shape round-trip (synthetic 4-role fixtures)", () => 
       const summary = JSON.parse(fs.readFileSync(path.join(targetDir, "restore-summary.json"), "utf-8"));
       const validation = validateRestoreSummary(summary);
       expect(validation.valid, JSON.stringify(validation.errors)).toBe(true);
-      // Provenance preserved at relevant fields:
+      // 来源信息在相关字段保留：
       expect(summary.source_session_id).toBe(`velocity-${role}@openrig-velocity-code`);
       expect(summary.source_cwd).toBe("/Users/example/code/projects/openrig-hub");
       expect(summary.bounded_latest_transcript.message_count).toBe(2);
-      // Omitted-class enumeration matches what the parser counted:
+      // omitted 类枚举与 parser 计数一致：
       expect(summary.omitted_classes).toContain("reasoning_records");
       expect(summary.omitted_classes).toContain("function_call_output");
       expect(summary.omitted_classes).toContain("redacted_secrets");
-      // Redacted output: assistant's "sk-FakeAbCdEfGhIjKlMn" must NOT appear in transcript.md.
+      // 脱敏输出：assistant 的 "sk-FakeAbCdEfGhIjKlMn" 不得出现在 transcript.md 中。
       const fullT = fs.readFileSync(path.join(targetDir, "transcript.md"), "utf-8");
       expect(fullT).not.toContain("sk-FakeAbCdEfGhIjKlMn");
       expect(fullT).toContain("[REDACTED]");
@@ -1087,7 +1069,7 @@ describe("M2c-CLI redaction + omitted-record round-trip end-to-end", () => {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   });
 
-  it("mock-daemon --source-session round-trip writes packet and forwards no mutation", async () => {
+  it("mock-daemon --source-session 往返写入 packet 且不转发任何 mutation", async () => {
     const { restorePacketCommand } = await import("../src/commands/restore-packet.js");
     const { createProgram } = await import("../src/index.js");
     const fs = await import("node:fs");
@@ -1100,7 +1082,7 @@ describe("M2c-CLI redaction + omitted-record round-trip end-to-end", () => {
       postText: vi.fn(async () => { throw new Error("mock-daemon: postText should not be called"); }),
       postExpectText: vi.fn(async () => { throw new Error("mock-daemon: postExpectText should not be called"); }),
     };
-    // Synthetic Codex JSONL the mock-daemon serves on the new full-read route.
+    // mock-daemon 在新 full-read 路由上提供的合成 Codex JSONL。
     const fixtureContent = `{"type":"session_meta","payload":{"cwd":"/Users/example/code/x","id":"src-session"}}
 {"type":"response_item","payload":{"type":"message","role":"user","content":"hello from session"}}
 {"type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"text","text":"reply"}]}}`;
@@ -1129,14 +1111,14 @@ describe("M2c-CLI redaction + omitted-record round-trip end-to-end", () => {
       "--target", targetDir,
       "--target-rig", "openrig-velocity-claude",
       "--target-runtime", "claude-code",
-      // src-session is bare (no @); operator must supply --source-rig-override
-      // per R2 honest-fallback policy.
+      // src-session 是裸的（无 @）；操作者必须按 R2 诚实回退策略
+      // 提供 --source-rig-override。
       "--source-rig-override", "openrig-test",
       "--current-work-summary", "mock-daemon round-trip with bare session id + rig override.",
       "--authority-boundaries", "test-only.",
     ]);
 
-    // Daemon was queried at the new full-read route; no mutation methods called.
+    // daemon 经新的 full-read 路由被查询；未调用任何 mutation 方法。
     expect(requestedPaths).toContain("/api/transcripts/src-session/full");
     expect(mutationMethods.post).not.toHaveBeenCalled();
     expect(mutationMethods.delete).not.toHaveBeenCalled();
@@ -1146,11 +1128,11 @@ describe("M2c-CLI redaction + omitted-record round-trip end-to-end", () => {
     const validation = validateRestoreSummary(summary);
     expect(validation.valid, JSON.stringify(validation.errors)).toBe(true);
     expect(summary.source_session_id).toBe("src-session");
-    // R2: operator-supplied --source-rig-override is honored.
+    // R2：操作者提供的 --source-rig-override 被采纳。
     expect(summary.source_rig).toBe("openrig-test");
   });
 
-  it("M2b R2 nested Claude content fixture: round-trips with non-zero omittedCounts in summary", async () => {
+  it("M2b R2 嵌套 Claude 内容夹具：往返且 summary 中 omittedCounts 非零", async () => {
     const { writePacket } = await import("../src/restore-packet/packet-writer.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -1203,7 +1185,7 @@ describe("M2c-CLI redaction + omitted-record round-trip end-to-end", () => {
     const summary = JSON.parse(fs.readFileSync(path.join(targetDir, "restore-summary.json"), "utf-8"));
     expect(summary.omitted_classes).toContain("function_call_output");
     expect(summary.omitted_classes).toContain("raw_tool_outputs");
-    // Touched-files inventory captured the path from the omitted tool_result.
+    // Touched-files 清单捕获了被省略 tool_result 中的路径。
     expect(summary.touched_files.top_paths.some((p: { path: string }) =>
       p.path === "/Users/example/code/projects/openrig-hub")).toBe(true);
   });
@@ -1212,16 +1194,13 @@ describe("M2c-CLI redaction + omitted-record round-trip end-to-end", () => {
 // ─────────────────────────────────────────────────────────────────────
 // M2c-CLI R2 — `--source-jsonl` provenance fix.
 //
-// Guard BLOCKED M2c-CLI at openrig e5de3ab because the `--source-jsonl`
-// adapter wrote the JSONL FILE PATH into `restore-summary.json.source_session_id`
-// and forced `source_rig: "unknown"`, EVEN WHEN the parsed Codex JSONL had
-// `session_meta.payload.id = "<seat>@<rig>"` available.
+// Guard 在 openrig e5de3ab 处 BLOCKED 了 M2c-CLI：`--source-jsonl` 适配器把 JSONL
+// 文件路径写进 `restore-summary.json.source_session_id`，并强制 `source_rig: "unknown"`，
+// 即使解析出的 Codex JSONL 中本有 `session_meta.payload.id = "<seat>@<rig>"` 可用。
 //
-// These tests exercise the CLI command surface end-to-end (Quality Lesson
-// v12 candidate) — they parseAsync through createProgram() against synthetic
-// JSONL fixtures with realistic session_meta records, so the bug between
-// parse and writePacket call IS exercised. Writer-internal tests bypass
-// this path by passing manually-constructed sourceSessionId.
+// 这些测试端到端跑 CLI 命令面（Quality Lesson v12 候选）——经 createProgram() 对带
+// 真实 session_meta 记录的合成 JSONL 夹具做 parseAsync，从而覆盖 parse 与 writePacket
+// 调用之间的 bug。writer 内部测试通过传入手工构造的 sourceSessionId 绕过这条路径。
 // ─────────────────────────────────────────────────────────────────────
 
 describe("M2c-CLI R2 --source-jsonl provenance from parsed session_meta", () => {
@@ -1287,7 +1266,7 @@ describe("M2c-CLI R2 --source-jsonl provenance from parsed session_meta", () => 
     ].join("\n");
   }
 
-  it("guard reproducer: --source-jsonl with session_meta sets source_session_id from parsed id and source_rig from <seat>@<rig> split", async () => {
+  it("护栏复现：--source-jsonl 带 session_meta 时，从解析 id 设置 source_session_id，从 <seat>@<rig> 拆分设置 source_rig", async () => {
     const { createProgram } = await import("../src/index.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -1311,27 +1290,24 @@ describe("M2c-CLI R2 --source-jsonl provenance from parsed session_meta", () => 
     const summary = JSON.parse(fs.readFileSync(path.join(target, "restore-summary.json"), "utf-8"));
     const validation = validateRestoreSummary(summary);
     expect(validation.valid, JSON.stringify(validation.errors)).toBe(true);
-    // Bug reproducer's expected values per BLOCK artifact:
+    // bug 复现：据 BLOCK 产物的期望值：
     expect(summary.source_session_id).toBe("velocity-driver@openrig-velocity");
     expect(summary.source_rig).toBe("openrig-velocity");
     expect(summary.source_cwd).toBe("/Users/example/code/projects/openrig-hub");
-    // session_session_id MUST NOT be the file path.
+    // session_session_id 绝不能是文件路径。
     expect(summary.source_session_id).not.toContain("/source.jsonl");
     expect(summary.source_session_id).not.toContain(tmpRoot);
-    // transcript.md emitted (messageCount > 0 → includeFullTranscript true).
+    // 产出 transcript.md（messageCount > 0 → includeFullTranscript 为 true）。
     expect(fs.existsSync(path.join(target, "transcript.md"))).toBe(true);
   });
 
-  // OPR.0.4.6.MH1 rev1-r2 B2: the parse contract's greedy rig is the
-  // queue gate's shape (where an unknown rig fails the lookup); this site
-  // persists provenance with NO lookup, so a multi-@ session id must be
-  // REJECTED with the explicit override guidance — never silently
-  // recorded as source_rig="rig@host" (BR-1: host stays out-of-band).
-  it("B2 (rev1-r2): a member@rig@host session id is rejected, never silently persisted as source_rig", async () => {
-    // The JSONL path reaches deriveProvenance without a daemon (the
-    // --source-session path fetches the transcript via the daemon first,
-    // which is not what B2 is about). A parsed session_meta id carrying
-    // an in-band host is exactly the silently-wrong-provenance risk.
+  // OPR.0.4.6.MH1 rev1-r2 B2：parse 契约的贪婪 rig 是队列闸门的形状（未知 rig 在该处
+  // 查找失败）；本处持久化来源信息时不做查找，故多 @ 的会话 id 必须被拒绝并给出显式
+  // override 指引——绝不能静默记为 source_rig="rig@host"（BR-1：host 保持带外）。
+  it("B2 (rev1-r2)：member@rig@host 会话 id 被拒绝，绝不静默落为 source_rig", async () => {
+    // JSONL 路径在无 daemon 的情况下到达 deriveProvenance
+    //（--source-session 路径会先经 daemon 取 transcript，并非 B2 所指）。
+    // 解析出的 session_meta id 携带带内 host，正是静默错误来源的风险点。
     const { createProgram } = await import("../src/index.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -1370,7 +1346,7 @@ describe("M2c-CLI R2 --source-jsonl provenance from parsed session_meta", () => 
     expect(fs.existsSync(target)).toBe(false);
   });
 
-  it("--source-jsonl with NO session_meta and NO override flags fails with explicit guidance", async () => {
+  it("--source-jsonl 无 session_meta 且无 override flag 时失败并给出显式指引", async () => {
     const { createProgram } = await import("../src/index.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -1402,11 +1378,11 @@ describe("M2c-CLI R2 --source-jsonl provenance from parsed session_meta", () => 
     process.exitCode = origExitCode;
     const errStr = stderr.join("\n");
     expect(errStr).toMatch(/session.meta|--source-session-id-override|--source-rig-override|provenance/i);
-    // No partial packet written.
+    // 未写出残缺 packet。
     expect(fs.existsSync(target)).toBe(false);
   });
 
-  it("--source-jsonl with NO session_meta + both overrides succeeds with overridden provenance", async () => {
+  it("--source-jsonl 无 session_meta + 两个 override 均设置时以覆盖后的来源成功", async () => {
     const { createProgram } = await import("../src/index.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -1435,7 +1411,7 @@ describe("M2c-CLI R2 --source-jsonl provenance from parsed session_meta", () => 
     expect(validation.valid, JSON.stringify(validation.errors)).toBe(true);
   });
 
-  it("--source-jsonl with bare-id session_meta fails without --source-rig-override (no silent unknown)", async () => {
+  it("--source-jsonl 带裸 id 的 session_meta 时，无 --source-rig-override 则失败（不静默 unknown）", async () => {
     const { createProgram } = await import("../src/index.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -1470,7 +1446,7 @@ describe("M2c-CLI R2 --source-jsonl provenance from parsed session_meta", () => 
     expect(fs.existsSync(target)).toBe(false);
   });
 
-  it("--source-jsonl with --source-session-id-override overrides parsed session_meta id", async () => {
+  it("--source-jsonl 带 --source-session-id-override 时覆盖解析出的 session_meta id", async () => {
     const { createProgram } = await import("../src/index.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -1502,16 +1478,13 @@ describe("M2c-CLI R2 --source-jsonl provenance from parsed session_meta", () => 
 // ─────────────────────────────────────────────────────────────────────
 // M2c-Daemon final M2 regression — Velocity 4-pack round-trip via CLI.
 //
-// Per dispatch qitem-20260502020626-8cd2b7a6 (item 4): load each of the
-// four Velocity prior-art role packets, locate their original Codex
-// JSONL, run --source-jsonl through the v0 generator, and assert
-// provenance fields preserved + schema valid + redaction policy applied.
+// 据 dispatch qitem-20260502020626-8cd2b7a6（item 4）：加载 4 个 Velocity 先例角色 packet，
+// 定位其原始 Codex JSONL，经 v0 generator 跑 --source-jsonl，并断言来源字段保留 +
+// schema 合法 + 脱敏策略生效。
 //
-// Tests are gated on file presence: the original JSONL files live in
-// ~/.codex/sessions/2026/04/23/ on the host. When absent (other devs /
-// CI), the cases skip with a guard message — the synthetic Velocity
-// round-trip describe above already exercises the structural shape; this
-// suite adds REAL data validation when available (dispatch-condition).
+// 测试以文件存在为闸门：原始 JSONL 在宿主机 ~/.codex/sessions/2026/04/23/。缺失时
+//（其他开发者 / CI），用例以 guard 消息跳过——上面的合成 Velocity 往返已覆盖结构形状；
+// 本套件在可用时补充真实数据校验（dispatch-condition）。
 // ─────────────────────────────────────────────────────────────────────
 
 describe("M2c-Daemon final regression — Velocity 4-pack round-trip via CLI", () => {
@@ -1553,11 +1526,10 @@ describe("M2c-Daemon final regression — Velocity 4-pack round-trip via CLI", (
       const { createProgram } = await import("../src/index.js");
       const target = path.join(tmpRoot, `packet-${role}`);
 
-      // Codex JSONL session_meta carries a UUID-shaped rollout id, not a
-      // <seat>@<rig> name. The Velocity prior-art .mjs got the canonical
-      // name from a CLI arg; for the v0 round-trip we mirror that by
-      // passing --source-session-id-override + --source-rig-override
-      // matching the reference packet's source_session value.
+      // Codex JSONL session_meta 携带 UUID 形状的 rollout id，而非 <seat>@<rig> 名。
+      // Velocity 先例的 .mjs 从 CLI 参数取 canonical 名；v0 往返中我们以传入
+      // --source-session-id-override + --source-rig-override（对齐参考 packet 的
+      // source_session 值）来镜像该行为。
       const canonicalSessionId = refSummary.source_session ?? "";
       const canonicalRig = canonicalSessionId.split("@")[1] ?? "openrig-velocity-code";
 
@@ -1588,28 +1560,25 @@ describe("M2c-Daemon final regression — Velocity 4-pack round-trip via CLI", (
       expect(summary.source_rig).toBe(expectedRig);
       expect(summary.source_cwd).toBe(refSummary.source_cwd);
 
-      // Redaction policy applied.
+      // 脱敏策略已生效。
       expect(summary.redaction_policy_id).toBe("openrig-v0");
 
-      // Omitted-record counts are reasonable (Velocity packets should have
-      // many reasoning_records and function_call_output records since they
-      // were generated from full Codex sessions).
+      // omitted 记录计数合理（Velocity packet 由完整 Codex session 生成，
+      // 应含大量 reasoning_records 与 function_call_output 记录）。
       expect(Array.isArray(summary.omitted_classes)).toBe(true);
       expect(summary.omitted_classes.length).toBeGreaterThan(0);
 
-      // bounded_latest_transcript file was written.
+      // bounded_latest_transcript 文件已写出。
       expect(fs.existsSync(path.join(target, "transcript-latest.md"))).toBe(true);
     }, 90000); // Velocity JSONLs are 22-37MB; allow generous timeout.
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────
-// M2c-Daemon final M2 regression — CLI-surface redaction + omitted
-// round-trips. Per dispatch items 7 + 8: exercise the parse-to-write
-// path through createProgram() (Quality Lesson v12 carry-forward) for
-// (a) credential-pattern redaction via --source-jsonl, (b) M2b R2
-// nested-content omitted-record counting (Quality Lesson v11
-// carry-forward).
+// M2c-Daemon 最终 M2 回归——CLI 面脱敏 + omitted 往返。据 dispatch items 7 + 8：
+// 经 createProgram() 跑 parse-to-write 路径（Quality Lesson v12 沿用），覆盖
+// (a) 经 --source-jsonl 的凭据 pattern 脱敏，(b) M2b R2 嵌套内容 omitted-record
+// 计数（Quality Lesson v11 沿用）。
 // ─────────────────────────────────────────────────────────────────────
 
 describe("M2c-Daemon final regression — CLI-surface redaction + omitted round-trips", () => {
@@ -1627,11 +1596,11 @@ describe("M2c-Daemon final regression — CLI-surface redaction + omitted round-
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   });
 
-  it("--source-jsonl with credential-pattern fixture: emitted transcript is redacted at the wire", async () => {
+  it("--source-jsonl 带凭据 pattern 夹具：产出的 transcript 在传输层已脱敏", async () => {
     const { createProgram } = await import("../src/index.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
-    // Synthetic credentials. NOT real tokens. Per Quality Lesson v9.
+    // 合成凭据，非真实 token。据 Quality Lesson v9。
     const src = path.join(tmpRoot, "with-creds.jsonl");
     fs.writeFileSync(src, [
       JSON.stringify({
@@ -1665,13 +1634,13 @@ describe("M2c-Daemon final regression — CLI-surface redaction + omitted round-
     expect(transcriptLatest).not.toContain("sk-FakeAbCdEfGhIjKlMnOpQr");
     expect(transcriptLatest).toContain("[REDACTED]");
 
-    // Summary's omitted_classes records the redaction occurrence.
+    // summary 的 omitted_classes 记录脱敏发生次数。
     const summary = JSON.parse(fs.readFileSync(path.join(target, "restore-summary.json"), "utf-8"));
     expect(summary.omitted_classes).toContain("redacted_secrets");
     expect(summary.redaction_policy_id).toBe("openrig-v0");
   });
 
-  it("--source-jsonl with M2b R2 nested Claude content (tool_use + tool_result): omitted counts populated via CLI surface", async () => {
+  it("--source-jsonl 带 M2b R2 嵌套 Claude 内容（tool_use + tool_result）：经 CLI 面填充 omitted 计数", async () => {
     const { createProgram } = await import("../src/index.js");
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -1728,7 +1697,7 @@ describe("M2c-Daemon final regression — CLI-surface redaction + omitted round-
     expect(summary.source_session_id).toBe("claude-final@openrig-velocity-claude");
     expect(summary.source_rig).toBe("openrig-velocity-claude");
     expect(summary.source_cwd).toBe("/Users/example/code/projects/openrig-hub");
-    // Touched-files inventory captured the path from the omitted tool_result.
+    // Touched-files 清单捕获了被省略 tool_result 中的路径。
     expect(summary.touched_files.top_paths.some((p: { path: string }) =>
       p.path === "/Users/example/code/projects/openrig-hub")).toBe(true);
   });
@@ -1737,10 +1706,9 @@ describe("M2c-Daemon final regression — CLI-surface redaction + omitted round-
 // ─────────────────────────────────────────────────────────────────────
 // M3 — `rig restore-packet read` + `validate` actual implementations.
 //
-// Per dispatch qitem-20260502023319-d997e182 + IMPL § M3 line 154-191 +
-// M1 contract § 1 (packet shape) + § 4 (redaction enum-only) + § 8
-// (validate behavior + exit-code matrix). Predecessor: M2c-Daemon
-// ACCEPTED at openrig c7b74fa.
+// 据 dispatch qitem-20260502023319-d997e182 + IMPL § M3 line 154-191 +
+// M1 契约 § 1（packet 形状）+ § 4（脱敏仅枚举）+ § 8（validate 行为 + 退出码矩阵）。
+// 前驱：M2c-Daemon 在 openrig c7b74fa 处 ACCEPTED。
 // ─────────────────────────────────────────────────────────────────────
 
 describe("M3 restore-packet read + validate", () => {
@@ -1817,7 +1785,7 @@ describe("M3 restore-packet read + validate", () => {
     return { exitCode, stdout, stderr };
   }
 
-  it("read: human output prints restore-instructions body + summary metadata + transcript digest", async () => {
+  it("read：人类可读输出打印 restore-instructions 正文 + summary 元数据 + transcript 摘要", async () => {
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-read-human");
     await buildValidPacket(target);
@@ -1827,7 +1795,7 @@ describe("M3 restore-packet read + validate", () => {
     ]);
     expect(exitCode === undefined || exitCode === 0).toBe(true);
     const out = stdout.join("\n");
-    expect(out).toContain("# Restore Instructions");
+    expect(out).toContain("# 恢复说明");
     expect(out).toContain("source_session_id");
     expect(out).toContain("m3-driver@m3-rig");
     expect(out).toContain("source_rig");
@@ -1839,7 +1807,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(out).toMatch(/transcript\.md/);
   });
 
-  it("read --json: stdout is round-trippable to restore-summary.json", async () => {
+  it("read --json：stdout 可往返还原为 restore-summary.json", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-read-json");
@@ -1854,7 +1822,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(stdoutSummary).toEqual(onDisk);
   });
 
-  it("read: missing restore-summary.json fails with explicit error", async () => {
+  it("read：缺 restore-summary.json 时以显式错误失败", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-read-missing-summary");
@@ -1869,7 +1837,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(errText).toMatch(/restore-summary\.json|missing|not found/i);
   });
 
-  it("read: packet without transcript.md AND without full_transcript summary key prints absence line", async () => {
+  it("read：既无 transcript.md 又无 full_transcript summary 键的 packet 打印缺失行", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-read-no-transcript");
@@ -1883,10 +1851,10 @@ describe("M3 restore-packet read + validate", () => {
       "node", "rig", "restore-packet", "read", target,
     ]);
     expect(exitCode === undefined || exitCode === 0).toBe(true);
-    expect(stdout.join("\n")).toMatch(/transcript\.md absent/i);
+    expect(stdout.join("\n")).toMatch(/缺 transcript\.md/);
   });
 
-  it("validate: ACCEPT well-formed packet WITH transcript.md + full_transcript key (parity respected)", async () => {
+  it("validate：接受带 transcript.md + full_transcript 键的规范 packet（奇偶性一致）", async () => {
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-validate-with-transcript");
     await buildValidPacket(target);
@@ -1898,7 +1866,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(stdout.join("\n")).toMatch(/valid|ok|pass/i);
   });
 
-  it("validate: ACCEPT well-formed packet WITHOUT transcript.md AND WITHOUT full_transcript key (parity via absence)", async () => {
+  it("validate：接受既无 transcript.md 又无 full_transcript 键的规范 packet（经缺失判定的奇偶性）", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-validate-no-transcript");
@@ -1914,7 +1882,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(exitCode === undefined || exitCode === 0).toBe(true);
   });
 
-  it("validate: REJECT packet with full_transcript key but transcript.md absent (parity violation)", async () => {
+  it("validate：拒绝有 full_transcript 键但缺 transcript.md 的 packet（奇偶性违例）", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-validate-parity-1");
@@ -1929,7 +1897,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(out).toMatch(/parity|transcript\.md|full_transcript/i);
   });
 
-  it("validate: REJECT packet with transcript.md present but full_transcript key omitted (parity violation)", async () => {
+  it("validate：拒绝有 transcript.md 但缺 full_transcript 键的 packet（奇偶性违例）", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-validate-parity-2");
@@ -1946,7 +1914,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(out).toMatch(/parity|transcript\.md|full_transcript/i);
   });
 
-  it("validate: REJECT packet with required field missing (per-field error reported)", async () => {
+  it("validate：拒绝缺必需字段的 packet（逐字段报错）", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-validate-missing-field");
@@ -1963,7 +1931,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(out).toMatch(/source_session_id/);
   });
 
-  it("validate: REJECT packet missing one of the 4 required files", async () => {
+  it("validate：拒绝缺 4 个必需文件之一的 packet", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-validate-missing-file");
@@ -1978,7 +1946,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(out).toMatch(/touched-files\.md|required file|missing/i);
   });
 
-  it("validate --json: machine-readable shape { valid: boolean, errors: [...] }", async () => {
+  it("validate --json：机器可读形状 { valid: boolean, errors: [...] }", async () => {
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-validate-json");
     await buildValidPacket(target);
@@ -1994,7 +1962,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(Array.isArray(report.errors)).toBe(true);
   });
 
-  it("validate: optional-field malformation (full_transcript wrong type) -> exit 0 with WARNING (per contract § 8)", async () => {
+  it("validate：可选字段畸形（full_transcript 类型错误）-> exit 0 带 WARNING（据契约 § 8）", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-validate-warning");
@@ -2012,7 +1980,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(out).toMatch(/full_transcript|line_count/i);
   });
 
-  it("validate: redaction_policy_id ENUM-ONLY check (deliberate v0 behavior; matches Velocity precedent per contract § 4 + § 8)", async () => {
+  it("validate：redaction_policy_id 仅做枚举检查（刻意的 v0 行为；据契约 § 4 + § 8 对齐 Velocity 先例）", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-validate-enum-only");
@@ -2029,26 +1997,25 @@ describe("M3 restore-packet read + validate", () => {
   });
 
   // ─── M4 ───
-  // Per dispatch qitem-20260502024605-55720e41 + IMPL § M4 line 193-207:
-  // command-registration meta-tests. Catch any future regression where
-  // `restore-packet` would import-but-not-register (createProgram chain
-  // wiring break). Reference precedent: compact-plan.test.ts:166-176.
+  // 据 dispatch qitem-20260502024605-55720e41 + IMPL § M4 line 193-207：
+  // 命令注册元测试。捕获未来 `restore-packet` 被 import 但未注册（createProgram 链路接线断裂）的回归。
+  // 参考先例：compact-plan.test.ts:166-176。
 
-  it("M4: createProgram registers restore-packet as a top-level command", async () => {
+  it("M4：createProgram 将 restore-packet 注册为顶层命令", async () => {
     const { createProgram } = await import("../src/index.js");
     const program = createProgram();
     const names = program.commands.map((c) => c.name());
     expect(names).toContain("restore-packet");
   });
 
-  it("M4: rig --help discovers restore-packet in help output", async () => {
+  it("M4：rig --help 在帮助输出中可发现 restore-packet", async () => {
     const { createProgram } = await import("../src/index.js");
     const program = createProgram();
     const helpText = program.helpInformation();
     expect(helpText).toContain("restore-packet");
   });
 
-  it("M4: rig restore-packet --help discovers all 3 subcommands (write, read, validate)", async () => {
+  it("M4：rig restore-packet --help 可发现全部 3 个子命令（write, read, validate）", async () => {
     const { createProgram } = await import("../src/index.js");
     const program = createProgram();
     const restorePacket = program.commands.find((c) => c.name() === "restore-packet");
@@ -2059,7 +2026,7 @@ describe("M3 restore-packet read + validate", () => {
     expect(helpText).toContain("validate");
   });
 
-  it("validate: redaction_policy_id WRONG enum value -> REJECT", async () => {
+  it("validate：redaction_policy_id 错误枚举值 -> REJECT", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const target = path.join(tmpRoot, "packet-validate-bad-enum");

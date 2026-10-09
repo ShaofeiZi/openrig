@@ -1,26 +1,21 @@
-// V0.3.1 slice 12 walk-item 1 — generalized scope-markdown reader.
+// V0.3.1 slice 12 walk-item 1 —— 通用 scope-markdown 读取器。
 //
-// Reads `<scopePath>/<filename>` via the existing /api/files/read
-// daemon route so any tab that needs to render a markdown file from a
-// project scope (slice, mission, workspace) can do so through a single
-// hook with allowlist-root resolution baked in.
+// 通过既有 /api/files/read 后台服务路由读取 `<scopePath>/<filename>`，
+// 使任何需要从项目 scope（slice、mission、workspace）渲染 markdown 文件的标签页
+// 都能通过一个内置白名单根解析的 hook 完成。
 //
-// scopePath is an ABSOLUTE filesystem path (e.g.,
-// /Users/x/code/substrate/.../missions/release-0.3.1 or
-// /Users/x/code/substrate/.../slices/06-…). The daemon's
-// /api/files/read route REQUIRES a path RELATIVE TO ONE OF THE
-// REGISTERED ALLOWLIST ROOTS and rejects absolute paths outright.
+// scopePath 是绝对文件系统路径（例如
+// /Users/x/code/substrate/.../missions/release-0.3.1 或
+// /Users/x/code/substrate/.../slices/06-…）。后台服务的
+// /api/files/read 路由要求路径是相对某个已注册白名单根的路径，
+// 并直接拒绝绝对路径。
 //
-// This hook resolves the scope's absolute path against
-// /api/files/roots (cached for 60s via useFilesRoots) to find which
-// root contains the scope, then issues the read with the correct
-// relative path. When no allowlist root contains the scope, the hook
-// returns `unavailable: true` — graceful degradation matching
-// useMissionDiscovery / useSliceTimelineMarkdown precedent.
+// 本 hook 把 scope 的绝对路径对照 /api/files/roots（经 useFilesRoots 缓存 60 秒）
+// 解析出哪个根包含该 scope，再用正确的相对路径发起读取。当无白名单根包含该 scope 时，
+// hook 返回 `unavailable: true`——与 useMissionDiscovery / useSliceTimelineMarkdown 先例一致的优雅降级。
 //
-// Generalization of the slice-06-era useSliceTimelineMarkdown.
-// useSliceTimelineMarkdown is kept exported as a thin wrapper so
-// existing callsites (TimelineTab) keep working without modification.
+// 是 slice-06 时代 useSliceTimelineMarkdown 的泛化。useSliceTimelineMarkdown 作为薄包装保留导出，
+// 使既有调用方（TimelineTab）无需修改即可继续工作。
 
 import { useFilesRead, useFilesRoots, FilesReadError, type AllowlistRoot } from "./useFiles.js";
 
@@ -32,48 +27,38 @@ export type ScopeMarkdownState =
   | "content";
 
 export interface UseScopeMarkdownResult {
-  /** Raw file content when the file exists; null otherwise. */
+  /** 文件存在时为原始内容；否则为 null。 */
   content: string | null;
   isLoading: boolean;
-  /** True when the file does not exist, no allowlist root contains
-   *  the scope, or the read failed. Distinct from `content === null`
-   *  during initial load.
+  /** 文件不存在、无白名单根包含该 scope 或读取失败时为真。与初次加载期间的
+   *  `content === null` 区分开。
    *
-   *  R1 (release-0.4.7): now a DERIVED back-compat field
-   *  (`state !== "content" && !isLoading`) — every pre-R1 consumer that
-   *  branches on `unavailable` sees byte-identical true/false. Branch on
-   *  `state` for the honest three-way distinction. */
+   *  R1（release-0.4.7）：现为派生的向后兼容字段
+   * （`state !== "content" && !isLoading`）——每个在 `unavailable` 上分支的
+   *  R1 前消费者看到字节一致的 true/false。请按 `state` 做诚实的三态区分。 */
   unavailable: boolean;
-  /** mtime of the file when known. */
+  /** 已知时为文件 mtime。 */
   mtime: string | null;
-  /** Diagnostic: the (root, relPath) pair the hook computed for the
-   *  /api/files/read call. Exposed so integration tests can assert
-   *  the production call shape (absolute → relative conversion). */
+  /** 诊断：hook 为 /api/files/read 调用算出的 (root, relPath) 对。
+   *  暴露出来供集成测试断言生产调用形状（绝对→相对转换）。 */
   resolved: { rootName: string; relPath: string } | null;
-  /** R1 (release-0.4.7) — the discriminated read outcome, so a consumer
-   *  can stop collapsing three different truths into one `unavailable`
-   *  flag: `unresolved` (no allowlist root contains the scope path —
-   *  a config/root problem) | `absent` (the file is genuinely missing,
-   *  404) | `read_error` (the read failed / infra, NOT an empty file) |
-   *  `content` (read ok) | `idle`.
+  /** R1（release-0.4.7）—— 判别式读取结果，使消费者不必把三种真相塌缩成一个
+   *  `unavailable` 标志：`unresolved`（无白名单根包含 scope 路径——配置/根问题）|
+   *  `absent`（文件确实缺失，404）| `read_error`（读取失败/基础设施，不是空文件）|
+   *  `content`（读取成功）| `idle`。
    *
-   *  P1 pin (arch ruling): `idle` means *caller-gated, never looked*
-   *  (remote gate / no scope selected) — it is NOT a statement about the
-   *  file. That the copy tier of THIS slice renders `idle` like `absent`
-   *  is a **copy-tier decision, not a semantic equivalence**; the
-   *  distinction must stay expressible in the type (the ProofTab-remote
-   *  follow-up is the live case that needs it).
+   *  P1 钉住（架构裁定）：`idle` 意味着*调用方门控、从未查看*
+   *  （远端门控/未选 scope）——它不是关于文件的陈述。本 slice 的展示层把 `idle`
+   *  渲染得像 `absent` 是**展示层决定，不是语义等价**；该区分必须在类型中保持可表达
+   *  （ProofTab 远端跟进就是需要它的真实场景）。
    *
-   *  `state` is only meaningful when `isLoading` is false: while a fetch
-   *  is in flight the outcome is not yet determined (it reports `idle`
-   *  as a benign placeholder) — consumers MUST gate on `isLoading` before
-   *  branching on `state`. */
+   *  `state` 仅在 `isLoading` 为 false 时有意义：fetch 进行中时尚未确定结果
+   *  （它报告 `idle` 作为良性占位）——消费者在按 `state` 分支前必须先门控 `isLoading`。 */
   state: ScopeMarkdownState;
 }
 
-/** Returns true when `parent` is a path-prefix of `child`, treating
- *  both as absolute filesystem paths. Segment-boundary aware so
- *  `/work` is NOT a prefix of `/workspace`. */
+/** 当 `parent` 是 `child` 的路径前缀（二者视为绝对文件系统路径）时返回 true。
+ *  段边界感知，故 `/work` 不是 `/workspace` 的前缀。 */
 function isPathPrefix(parent: string, child: string): boolean {
   const p = parent.replace(/\/+$/, "");
   const c = child.replace(/\/+$/, "");
@@ -81,7 +66,7 @@ function isPathPrefix(parent: string, child: string): boolean {
   return c.startsWith(p + "/");
 }
 
-/** Compute the path under a root: `<root>/<rel>` → `<rel>`. */
+/** 计算根下的路径：`<root>/<rel>` → `<rel>`。 */
 function relativeUnder(rootPath: string, absChild: string): string {
   const p = rootPath.replace(/\/+$/, "");
   const c = absChild.replace(/\/+$/, "");
@@ -90,14 +75,13 @@ function relativeUnder(rootPath: string, absChild: string): string {
   return c;
 }
 
-/** Pick the deepest-matching allowlist root that contains the
- *  absolute path. Returns null when no root contains it. Exported
- *  for the integration test surface. */
+/** 选包含该绝对路径的最深匹配白名单根。无根包含时返回 null。
+ *  导出供集成测试表面使用。 */
 export function resolveScopePathToAllowlist(
   roots: AllowlistRoot[],
   absoluteScopePath: string,
 ): { rootName: string; relPath: string } | null {
-  // Exact match wins; otherwise deepest prefix.
+  // 精确匹配优先；否则取最深前缀。
   const exact = roots.find((r) => r.path.replace(/\/+$/, "") === absoluteScopePath.replace(/\/+$/, ""));
   if (exact) return { rootName: exact.name, relPath: "" };
   const prefixed = roots
@@ -108,19 +92,16 @@ export function resolveScopePathToAllowlist(
   return { rootName: winner.name, relPath: relativeUnder(winner.path, absoluteScopePath) };
 }
 
-/** Fetch `<absoluteScopePath>/<filename>` via /api/files/read with
- *  allowlist-root resolution. Returns the same shape as the slice-06
- *  useSliceTimelineMarkdown hook so callsites can swap between the two
- *  via a single mental model. */
+/** 通过带白名单根解析的 /api/files/read 获取 `<absoluteScopePath>/<filename>`。
+ *  返回与 slice-06 useSliceTimelineMarkdown hook 相同的形状，使调用方能用单一心智模型在二者间切换。 */
 export function useScopeMarkdown(
   absoluteScopePath: string | null,
   filename: string,
   opts?: { enabled?: boolean },
 ): UseScopeMarkdownResult {
-  // OPR.0.4.6.MH2 guard-B1 — /api/files/* is local-only: a null/disabled
-  // scope path must issue ZERO file requests (roots included), not merely
-  // render unavailable. Remote-selected surfaces pass null paths and/or
-  // enabled:false; the query below never fires for them.
+  // OPR.0.4.6.MH2 guard-B1 —— /api/files/* 仅本地：null/禁用的 scope 路径必须发出
+  // 零个文件请求（含 roots），而不只是渲染不可用。远端选中的表面传 null 路径和/或
+  // enabled:false；下面的查询对它们从不触发。
   const enabled = (opts?.enabled ?? true) && absoluteScopePath !== null;
   const rootsQuery = useFilesRoots({ enabled });
   const rootsResp = rootsQuery.data;
@@ -143,11 +124,9 @@ export function useScopeMarkdown(
     filePath,
   );
 
-  // R1 (release-0.4.7): classify the read outcome into a discriminated
-  // `state`; `unavailable` is DERIVED from it (`state !== "content" &&
-  // !isLoading`) so every pre-R1 consumer sees byte-identical true/false at
-  // every one of the sites below. content / mtime / resolved are set exactly
-  // as before per branch.
+  // R1（release-0.4.7）：把读取结果归类为判别式 `state`；`unavailable` 由其派生
+  // （`state !== "content" && !isLoading`），使每个 R1 前消费者在下方每处看到字节一致的
+  // true/false。content / mtime / resolved 仍按各分支原样设置。
   let state: ScopeMarkdownState;
   let content: string | null = null;
   let mtime: string | null = null;
@@ -155,27 +134,26 @@ export function useScopeMarkdown(
   let isLoading = false;
 
   if (!absoluteScopePath) {
-    // caller gated — no scope selected / remote selection (the query never fired)
+    // 调用方门控——未选 scope / 远端选择（查询从未触发）
     state = "idle";
   } else if (rootsQuery.isError) {
-    // G7: a roots-fetch failure is INFRA, not a mis-config — it must NOT
-    // masquerade as `unresolved`/config copy (the slice's core principle, one
-    // level up). rootsList is null here ⇒ pre-R1 this fell through to the
-    // `!resolved` branch and rendered as config/unresolved.
+    // G7：roots 获取失败是基础设施问题，不是配置错误——它绝不能伪装成
+    // `unresolved`/配置文案（slice 上一级的核心原则）。此处 rootsList 为 null ⇒
+    // R1 前会落到 `!resolved` 分支并渲染为配置/unresolved。
     state = "read_error";
   } else if (rootsQuery.isLoading) {
-    state = "idle"; // in-flight; not meaningful until !isLoading
+    state = "idle"; // 进行中；!isLoading 之前无意义
     isLoading = true;
   } else if (!resolved) {
-    // roots loaded, but no allowlist root contains the scope path (incl. roots:[])
+    // roots 已加载，但无白名单根包含该 scope 路径（含 roots:[]）
     state = "unresolved";
   } else if (readQuery.isLoading) {
-    state = "idle"; // in-flight
+    state = "idle"; // 进行中
     isLoading = true;
     resolvedOut = resolved;
   } else if (readQuery.isError) {
-    // the daemon's status signal, finally consumed (via FilesReadError.code):
-    // 404 → absent, 400/bad_path → the config class, anything else → infra.
+    // 终于消费后台服务的状态信号（经 FilesReadError.code）：
+    // 404 → absent，400/bad_path → 配置类，其他 → 基础设施。
     const err = readQuery.error;
     state =
       err instanceof FilesReadError
@@ -187,7 +165,7 @@ export function useScopeMarkdown(
         : "read_error";
     resolvedOut = resolved;
   } else if (!readQuery.data) {
-    // a 200 with no payload is not absence
+    // 200 但无负载不等于缺失
     state = "read_error";
     resolvedOut = resolved;
   } else {

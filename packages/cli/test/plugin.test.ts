@@ -1,16 +1,16 @@
 // rig plugin CLI commands (slice 3.4) — list/show/used-by/validate.
 //
-// Per IMPL-PRD §4 + DESIGN.md §6 (CLI minimalism: read-only inspection only).
+// 依据 IMPL-PRD §4 + DESIGN.md §6（CLI 极简主义：仅只读检视）。
 // Consumes plugin-discovery-service from slice 3.3 via HTTP routes
 // (GET /api/plugins, GET /api/plugins/:id, GET /api/plugins/:id/used-by).
-// `validate` is local file inspection — reuses agent-manifest's
-// validatePluginResources logic + skill frontmatter checks.
+// `validate` 是本地文件检视——复用 agent-manifest 的 validatePluginResources
+// 逻辑 + skill frontmatter 检查。
 //
-// All commands ship --json output for agent consumption per
-// banked building-agent-software + IMPL-PRD §4.4 HG-4.5.
+// 所有命令均提供 --json 输出供 agent 消费，遵循 banked building-agent-software
+// + IMPL-PRD §4.4 HG-4.5。
 //
-// Test pattern follows context-pack.test.ts (slice 3.4 mirror) — in-memory
-// http.createServer daemon mock + Commander.parseAsync via captureLogs.
+// 测试模式遵循 context-pack.test.ts（slice 3.4 镜像）——内存中
+// http.createServer daemon mock + 经 captureLogs 的 Commander.parseAsync。
 
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import http from "node:http";
@@ -72,8 +72,8 @@ function runningDeps(port: number): StatusDeps {
   };
 }
 
-// Fixtures mirror the slice 3.3 PluginDiscoveryService wire shape verbatim
-// (packages/daemon/src/domain/plugin-discovery-service.ts L41-132). Any drift
+// fixture 逐字镜像 slice 3.3 PluginDiscoveryService 线格式
+//（packages/daemon/src/domain/plugin-discovery-service.ts L41-132）。任何漂移
 // from that source means the daemon contract changed and these fixtures
 // must update in lockstep with the CLI wire types in plugin.ts.
 
@@ -216,9 +216,9 @@ describe("rig plugin CLI (slice 3.4)", () => {
       expect(out).toContain("openrig-core");
       expect(out).toContain("0.1.0");
       expect(out).toContain("vendored:openrig-core");
-      // Regression: real path field, not invented rootPath
+      // 回归：真实 path 字段，非杜撰 rootPath
       expect(out).toContain("/home/op/.openrig/plugins/openrig-core");
-      // Regression: must NOT print invented count fields (they don't exist on PluginEntry)
+      // 回归：不得打印杜撰的计数字段（PluginEntry 上不存在）
       expect(out).not.toMatch(/\bskillCount\b/);
       expect(out).not.toMatch(/\bhookEventCount\b/);
       expect(out).not.toMatch(/\bmcpServerCount\b/);
@@ -283,25 +283,25 @@ describe("rig plugin CLI (slice 3.4)", () => {
       expect(exitCode).toBeUndefined();
       const out = logs.join("\n");
 
-      // PluginEntry fields
+      // PluginEntry 字段
       expect(out).toContain("openrig-core");
       expect(out).toContain("0.1.0");
       expect(out).toContain("/home/op/.openrig/plugins/openrig-core"); // entry.path
       expect(out).toContain("2026-05-11T05:00:00Z"); // entry.lastSeenAt
 
-      // Manifests — real PluginManifestSummary fields
+      // Manifests——真实 PluginManifestSummary 字段
       expect(out).toMatch(/claude:/);
       expect(out).toMatch(/codex:/);
       expect(out).toContain("Apache-2.0");
       expect(out).toContain("github:mvschwarz/openrig-plugins");
 
-      // Skills — uses skill.name + skill.relativePath (not invented id/path/description)
+      // Skills——使用 skill.name + skill.relativePath（非杜撰 id/path/description）
       expect(out).toContain("openrig-user");
       expect(out).toContain("openrig-architect");
       expect(out).toContain("skills/openrig-user");
       expect(out).toContain("skills/openrig-architect");
 
-      // Hooks — uses runtime + events array (not invented eventCount alone) +
+      // Hooks——使用 runtime + events 数组（非仅杜撰 eventCount）+
       // relativePath
       expect(out).toContain("hooks/claude.json");
       expect(out).toContain("hooks/codex.json");
@@ -327,8 +327,8 @@ describe("rig plugin CLI (slice 3.4)", () => {
   // ============================================================
   // rig plugin used-by <id> (HG-4.3)
   //
-  // Reverse query: AgentReference[] = { agentName, sourcePath, profiles[] }
-  // (PluginDiscoveryService L134-141 verbatim shape).
+  // 反向查询：AgentReference[] = { agentName, sourcePath, profiles[] }
+  //（PluginDiscoveryService L134-141 逐字形态）。
   // Daemon route: GET /api/plugins/:id/used-by
   // ============================================================
 
@@ -361,7 +361,7 @@ describe("rig plugin CLI (slice 3.4)", () => {
 
       expect(exitCode).toBeUndefined();
       const out = logs.join("\n");
-      // Real AgentReference fields verbatim — no invented fields
+      // 真实 AgentReference 字段逐字——无杜撰字段
       expect(out).toContain("advisor-lead");
       expect(out).toContain("/home/op/.openrig/specs/agents/advisor/lead/agent.yaml");
       expect(out).toContain("default");
@@ -373,14 +373,14 @@ describe("rig plugin CLI (slice 3.4)", () => {
       program.addCommand(pluginCommand(runningDeps(port)));
 
       const { logs, exitCode } = await captureLogs(async () => {
-        // Use 'unreferenced' which the http server returns [] for
+        // 使用 'unreferenced'，http 服务器对其返回 []
         await program.parseAsync(["node", "rig", "plugin", "used-by", "unreferenced"]);
       });
 
       expect(exitCode).toBeUndefined();
       const out = logs.join("\n");
-      // Some honest message acknowledging zero refs (not crash, not silent empty)
-      expect(out.toLowerCase()).toMatch(/no agent|0|none|not referenced/);
+      // 诚实提示零引用的消息（不崩溃、不静默为空）
+      expect(out.toLowerCase()).toMatch(/没有智能体引用/);
     });
 
     it("--json on empty result returns []", async () => {
@@ -400,10 +400,10 @@ describe("rig plugin CLI (slice 3.4)", () => {
 
   // ============================================================
   // rig plugin list — filter-value validation (pre-close punch from
-  // velocity-guard 3.4.A repair verdict)
+  // velocity-guard 3.4.A 修复裁定）
   //
-  // CLI-side validation so typos like --source rig-cwd don't look
-  // filtered while the daemon silently returns all plugins.
+  // CLI 侧校验，使 --source rig-cwd 这类拼写错误不会看似已过滤，
+  // 而 daemon 却静默返回全部插件。
   // ============================================================
 
   describe("rig plugin list — filter validation", () => {
@@ -420,7 +420,7 @@ describe("rig plugin CLI (slice 3.4)", () => {
       const err = errLogs.join("\n");
       expect(err).toMatch(/--runtime/);
       expect(err).toMatch(/bogus/);
-      // Should name the allowed values so operator can correct
+      // 应列出允许值以便操作者更正
       expect(err.toLowerCase()).toMatch(/claude|codex/);
     });
 
@@ -437,7 +437,7 @@ describe("rig plugin CLI (slice 3.4)", () => {
       const err = errLogs.join("\n");
       expect(err).toMatch(/--source/);
       expect(err).toMatch(/rig-cwd/);
-      // Should name the allowed values
+      // 应列出允许值
       expect(err).toMatch(/vendored|claude-cache|codex-cache/);
     });
 
@@ -462,9 +462,9 @@ describe("rig plugin CLI (slice 3.4)", () => {
   // Local file inspection — does NOT require daemon. Validates:
   //   - .claude-plugin/plugin.json + .codex-plugin/plugin.json shape
   //     (name + version required; description required on Codex)
-  //   - At least one manifest dir is present
-  //   - Each skills/<id>/SKILL.md has frontmatter with name (non-empty)
-  //     + description (non-empty, ≤1024 chars per agentskills.io)
+  //   - 至少存在一个 manifest 目录
+  //   - 每个 skills/<id>/SKILL.md 含 frontmatter，带 name（非空）
+  //     + description（非空，按 agentskills.io ≤1024 字符）
   //
   // Output: error list; exit code 0 when valid, 1 when any errors.
   // ============================================================
@@ -636,7 +636,7 @@ describe("rig plugin CLI (slice 3.4)", () => {
       });
 
       expect(exitCode).toBe(1);
-      expect(errLogs.join("\n").toLowerCase()).toMatch(/not found|does not exist|enoent/);
+      expect(errLogs.join("\n").toLowerCase()).toMatch(/不存在|ENOENT/);
     });
 
     // ============================================================

@@ -1,11 +1,11 @@
-// Crash-cart C3 unit-C — map the parsed `rig crash-cart --json` verdict onto the renderScreen
-// daemon-down opts. Refusals and unavailable prerequisites stay visible, without
-// turning a failed discovery into permission to restore or mint an identity.
+// 故障诊断 C3 单元 C——将解析后的 `rig crash-cart --json` 判决映射到 renderScreen
+// 后台服务停止选项。拒绝和不可用前提保持可见，不将
+// 失败的发现变为恢复或铸造身份的许可。
 import type { DaemonState, DaemonUnverifiedEvidence } from "./contract.js";
 import { buildCrashCartModel, type CrashCartDiscoveryInput, type CrashCartModel } from "./crash-cart-model.js";
 import type { RestoreLifecycleVM } from "./restore-lifecycle.js";
 
-/** The `rig crash-cart --json` payload (mirrors the daemon verb's emit — the documented JSON contract). */
+/** `rig crash-cart --json` 载荷（镜像后台服务动词的输出——文档化的 JSON 契约）。 */
 export interface CrashCartEmit {
   state: DaemonState;
   evidence?: DaemonUnverifiedEvidence;
@@ -13,7 +13,7 @@ export interface CrashCartEmit {
   refusal?: string;
 }
 
-/** The daemon-down subset of RenderOptions the TUI feeds renderScreen (empty ⇒ normal fleet views). */
+/** TUI 喂给 renderScreen 的 RenderOptions 中后台服务停止子集（空 ⇒ 正常舰队视图）。 */
 export interface CrashCartRenderOpts {
   unavailable?: string;
   unavailableExpanded?: boolean;
@@ -21,17 +21,17 @@ export interface CrashCartRenderOpts {
   daemonState?: DaemonState;
   crashCart?: CrashCartModel;
   daemonEvidence?: DaemonUnverifiedEvidence;
-  /** B1 ROUND 2 — the live fleet-restore lifecycle surface (progress while running, rollup + triage
-   *  when done). Set by main.ts as the operator-owned lifecycle polls; takes precedence over the
-   *  cockpit while present, so the operator sees progress and the triage list rather than a bare refresh. */
+  /** B1 ROUND 2——实时舰队恢复生命周期表面（运行中显示进度，完成时显示汇总+诊断列表）。
+   *  由 main.ts 设置为操作者拥有的生命周期轮询；存在时优先于座舱，
+   *  使操作者看到进度和诊断列表而非裸刷新。 */
   restore?: RestoreLifecycleVM;
-  /** B1 ROUND 10 — the ⏎ confirm banner (non-zero-generation restore). Rendered IN the cockpit where the
-   *  operator looks; ViewState.notice is NOT rendered in the daemon-down cockpit, so the confirm was
-   *  invisible (first ⏎ appeared to do nothing). Present ⇔ pendingRestoreConfirm. */
+  /** B1 ROUND 10——⏎ 确认横幅（非零代恢复）。渲染在座舱内操作者看的位置；
+   *  ViewState.notice 不在后台服务停止座舱中渲染，因此确认曾不可见
+   *  （第一次 ⏎ 看起来什么都没做）。存在 ⇔ pendingRestoreConfirm。 */
   confirm?: string;
 }
 
-/** A refusal is an unavailable read, never an empty instance. */
+/** 拒绝是不可用读取，绝非空实例。 */
 export function crashCartRenderOpts(emit: CrashCartEmit): CrashCartRenderOpts {
   if (emit.refusal) return { unavailable: emit.refusal };
   if (emit.state === "down" && emit.discovery) {
@@ -44,7 +44,7 @@ export function crashCartRenderOpts(emit: CrashCartEmit): CrashCartRenderOpts {
 }
 
 /**
- * Run the public read. Failure is visible and does not authorize recovery effects.
+ * 运行公共读取。失败可见，不授权恢复效果。
  */
 export async function probeCrashCart(runVerb: () => Promise<string>): Promise<CrashCartRenderOpts> {
   try {
@@ -52,12 +52,12 @@ export async function probeCrashCart(runVerb: () => Promise<string>): Promise<Cr
     if (!emit || !["up", "down", "unverified"].includes(emit.state)) {
       const error = emit as unknown as { error?: { message?: string } | string };
       const detail = typeof error?.error === "string" ? error.error : error?.error?.message;
-      return { unavailable: detail ?? "Crash-cart did not return a daemon verdict." };
+      return { unavailable: detail ?? "故障诊断未返回后台服务判决。" };
     }
-    if (emit.state === "down" && !emit.discovery && !emit.refusal) return { unavailable: "Daemon is down; its saved state could not be read." };
-    if (emit.state === "unverified" && !emit.evidence) return { unavailable: "Daemon state could not be verified; probe evidence is unavailable." };
+    if (emit.state === "down" && !emit.discovery && !emit.refusal) return { unavailable: "后台服务已停止；无法读取其保存状态。" };
+    if (emit.state === "unverified" && !emit.evidence) return { unavailable: "无法验证后台服务状态；探测证据不可用。" };
     return crashCartRenderOpts(emit);
   } catch (error) {
-    return { unavailable: `Startup prerequisite unavailable: ${error instanceof Error ? error.message : String(error)}` };
+    return { unavailable: `启动前提不可用：${error instanceof Error ? error.message : String(error)}` };
   }
 }

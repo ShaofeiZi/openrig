@@ -1,0 +1,22 @@
+daemon self_reported code-comment candidate 20 (read-only; non-overlap CLI author batch5)
+excluded topics: walk/hermetic/setup/doctor/ps/broadcast/transcript/capture/whoami/send/queue/bundle/restore/lifecycle
+1 adapters/claude-code-adapter.ts
+2 adapters/codex-runtime-adapter.ts
+3 adapters/tmux.ts
+4 domain/active-lens-store.ts
+5 domain/active-occupant.ts
+6 domain/activity-endpoint.ts
+7 domain/activity-taxonomy.ts
+8 domain/agent-activity-store.ts
+9 domain/agent-images/agent-image-library-service.ts
+10 domain/agent-images/agent-image-types.ts
+11 domain/agent-images/evidence-guard.ts
+12 domain/agent-images/manifest-parser.ts
+13 domain/agent-images/resume-token-discovery.ts
+14 domain/agent-manifest.ts
+15 domain/agent-preflight.ts
+16 domain/agent-resolver.ts
+17 domain/agent-starter-resolver.ts
+18 domain/applied-launch-observation-store.ts
+19 domain/ask-service.ts
+20 domain/bind-plan.ts

@@ -33,14 +33,14 @@ export function resolveAttachContext(tmuxExec: TmuxExecFn = defaultTmuxExec):
       };
     }
   } catch {
-    // Fall back to external_cli if tmux metadata cannot be resolved.
+    // 无法解析 tmux 元数据时回退到 external_cli。
   }
 
   return { attachmentType: "external_cli" };
 }
 
 export function attachCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("attach").description("Attach the current shell or agent into a rig node");
+  const cmd = new Command("attach").description("把当前 shell 或智能体挂载到某个工作组节点");
   const getDeps = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   async function getClient(deps: StatusDeps): Promise<DaemonClient | null> {
@@ -50,16 +50,16 @@ export function attachCommand(depsOverride?: StatusDeps): Command {
   }
 
   cmd
-    .requiredOption("--self", "Attach the current shell/agent (required in v1)")
-    .requiredOption("--rig <rigId>", "Target rig ID")
-    .option("--node <logicalId>", "Attach to an existing logical node")
-    .option("--pod <namespace>", "Attach by creating a new member in an existing pod")
-    .option("--member <name>", "Member name for pod attach mode")
-    .option("--runtime <runtime>", "Runtime for pod attach mode; optional guard for node mode")
-    .option("--cwd <path>", "Working directory to record", process.cwd())
-    .option("--display-name <name>", "External session/display name to record")
-    .option("--print-env", "Print shell exports for OPENRIG_NODE_ID and OPENRIG_SESSION_NAME")
-    .option("--json", "JSON output")
+    .requiredOption("--self", "挂载当前 shell/智能体（v1 中必填）")
+    .requiredOption("--rig <rigId>", "目标工作组 ID")
+    .option("--node <logicalId>", "挂载到已有的逻辑节点")
+    .option("--pod <namespace>", "在已有 pod 中新建成员完成挂载")
+    .option("--member <name>", "pod 挂载模式下的成员名")
+    .option("--runtime <runtime>", "pod 挂载模式使用的运行时；node 模式下为可选校验")
+    .option("--cwd <path>", "要记录的工作目录", process.cwd())
+    .option("--display-name <name>", "要记录的外部会话/显示名")
+    .option("--print-env", "打印 OPENRIG_NODE_ID 与 OPENRIG_SESSION_NAME 的 shell export 语句")
+    .option("--json", "以 JSON 输出")
     .action(async (opts: {
       self?: boolean;
       rig: string;
@@ -73,12 +73,12 @@ export function attachCommand(depsOverride?: StatusDeps): Command {
       json?: boolean;
     }) => {
       if (!opts.self) {
-        console.error("Only --self is supported right now. Use: rig attach --self ...");
+        console.error("目前只支持 --self。用法：zrig attach --self ...");
         process.exitCode = 1;
         return;
       }
       if (opts.json && opts.printEnv) {
-        console.error("Use either --json or --print-env, not both.");
+        console.error("--json 与 --print-env 只能二选一。");
         process.exitCode = 1;
         return;
       }
@@ -86,17 +86,17 @@ export function attachCommand(depsOverride?: StatusDeps): Command {
       const hasNode = !!opts.node;
       const hasPodFields = !!opts.pod || !!opts.member || !!opts.runtime;
       if (hasNode && hasPodFields) {
-        console.error("Specify either --node or --pod + --member + --runtime, not both.");
+        console.error("--node 与 --pod + --member + --runtime 只能二选一。");
         process.exitCode = 1;
         return;
       }
       if (!hasNode && !hasPodFields) {
-        console.error("Specify --node <logicalId> or --pod <namespace> --member <name> --runtime <runtime>.");
+        console.error("请指定 --node <logicalId>，或 --pod <namespace> --member <name> --runtime <runtime>。");
         process.exitCode = 1;
         return;
       }
       if (!hasNode && (!opts.pod || !opts.member || !opts.runtime)) {
-        console.error("Pod attach requires --pod <namespace> --member <name> --runtime <runtime>.");
+        console.error("pod 挂载必须同时提供 --pod <namespace> --member <name> --runtime <runtime>。");
         process.exitCode = 1;
         return;
       }
@@ -139,7 +139,7 @@ export function attachCommand(depsOverride?: StatusDeps): Command {
       }
 
       if (res.status >= 400) {
-        console.error(res.data["error"] ?? `Attach failed (HTTP ${res.status})`);
+        console.error(res.data["error"] ?? `挂载失败（HTTP ${res.status}）`);
         process.exitCode = 1;
         return;
       }
@@ -156,17 +156,17 @@ export function attachCommand(depsOverride?: StatusDeps): Command {
 
       const logicalId = String(res.data["logicalId"] ?? opts.node ?? `${opts.pod}.${opts.member}`);
       if (hasNode) {
-        console.log(`Attached this shell to node ${logicalId} in rig ${opts.rig}`);
+        console.log(`已把当前 shell 挂载到工作组 ${opts.rig} 的节点 ${logicalId}`);
       } else {
-        console.log(`Created node ${logicalId} and attached this shell in rig ${opts.rig}`);
+        console.log(`已在工作组 ${opts.rig} 中创建节点 ${logicalId} 并挂载当前 shell`);
       }
-      console.log(`Session:    ${sessionName}`);
-      console.log(`Transport:  ${
+      console.log(`会话：      ${sessionName}`);
+      console.log(`传输方式：  ${
         res.data["attachmentType"] === "tmux"
           ? "tmux"
-          : "external_cli (outbound rig commands available; inbound tmux transport unavailable)"
+          : "external_cli（可主动发起工作组命令；无入站 tmux 传输）"
       }`);
-      console.log("Identity:   rerun with --print-env and eval the output to persist OPENRIG_NODE_ID/OPENRIG_SESSION_NAME");
+      console.log("身份标识：用 --print-env 重跑并 eval 输出，即可持久化 OPENRIG_NODE_ID/OPENRIG_SESSION_NAME");
     });
 
   return cmd;

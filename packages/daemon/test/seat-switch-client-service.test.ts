@@ -7,15 +7,13 @@ import { SeatSwitchClientService } from "../src/domain/seat-switch-client-servic
 import type { TmuxAdapter, TmuxClient, TmuxWindow, TmuxResult } from "../src/adapters/tmux.js";
 
 /**
- * OPR.0.4.3.26 — VIEW-ONLY switch-client retarget. The service holds only
- * rigRepo (read) + tmuxAdapter (probe + switch); it is structurally incapable of
- * mutating routing/bindings/sessions. These tests pin the mechanism AND the
- * view-only invariant: no session/binding mutation adapter call ever fires.
+ * OPR.0.4.3.26——仅查看的 switch-client 重定向。服务只持有 rigRepo（读取）与
+ * tmuxAdapter（探测 + 切换）；从结构上无法修改路由、绑定或会话。这些测试同时固定机制与
+ * 仅查看不变量：绝不触发任何会话/绑定修改适配器调用。
  */
 
-/** A tmux mock with every method spied so the invariant test can assert that no
- *  mutation method (createSession/killSession/sendText/sendKeys/setSessionOption)
- *  is ever invoked by the view retarget. */
+/** 监视每个方法的 tmux 模拟，使不变量测试可以断言查看重定向绝不会调用任何修改方法
+ * （createSession/killSession/sendText/sendKeys/setSessionOption）。 */
 function spyTmux(overrides: {
   hasSession?: boolean;
   windows?: TmuxWindow[];
@@ -61,7 +59,7 @@ describe("SeatSwitchClientService", () => {
 
   afterEach(() => { db.close(); });
 
-  /** Seed a live seat whose canonical session is `dev-impl@seat-rig`. */
+  /** 建立规范会话为 `dev-impl@seat-rig` 的活跃席位。 */
   function seedLiveSeat() {
     const rig = rigRepo.createRig("seat-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "codex", cwd: "/project" });
@@ -70,7 +68,7 @@ describe("SeatSwitchClientService", () => {
     return { rig, node, session };
   }
 
-  it("retargets the single attached client to <session>:0 and returns view-only success", async () => {
+  it("将唯一连接的客户端重定向到 <session>:0，并返回仅查看成功结果", async () => {
     seedLiveSeat();
     const { adapter, probes } = spyTmux({ clients: [client("/dev/ttys003", "wrong-view")] });
     const service = new SeatSwitchClientService({ rigRepo, tmuxAdapter: adapter });
@@ -91,8 +89,8 @@ describe("SeatSwitchClientService", () => {
     expect(probes.switchClient).toHaveBeenCalledWith("/dev/ttys003", "dev-impl@seat-rig:0");
   });
 
-  // THE money proof: a successful view retarget mutates NOTHING in OpenRig.
-  it("VIEW-ONLY invariant: never calls a session/binding mutation adapter method", async () => {
+  // 关键证明：成功的查看重定向不会修改 OpenRig 中的任何内容。
+  it("仅查看不变量：绝不调用会话/绑定修改适配器方法", async () => {
     seedLiveSeat();
     const { adapter, mutators } = spyTmux({ clients: [client("/dev/ttys003", "wrong-view")] });
     const service = new SeatSwitchClientService({ rigRepo, tmuxAdapter: adapter });
@@ -100,21 +98,21 @@ describe("SeatSwitchClientService", () => {
     const result = await service.switchClient({ seatRef: "dev-impl@seat-rig" });
     expect(result.ok).toBe(true);
 
-    // No session lifecycle mutation, no send, no option write.
+    // 不修改会话生命周期、不发送内容、不写入选项。
     expect(mutators.createSession).not.toHaveBeenCalled();
     expect(mutators.killSession).not.toHaveBeenCalled();
     expect(mutators.sendText).not.toHaveBeenCalled();
     expect(mutators.sendKeys).not.toHaveBeenCalled();
     expect(mutators.setSessionOption).not.toHaveBeenCalled();
 
-    // And no binding/session mutation leaked into the DB: the session is still
-    // the one registered, running, and no successor/handover rows appeared.
+    // 也没有绑定/会话修改泄漏进数据库：会话仍是已注册且正在运行的那一个，
+    // 没有出现后继或交接记录。
     const rows = db.prepare("SELECT status FROM sessions WHERE session_name = ?").all("dev-impl@seat-rig") as Array<{ status: string }>;
     expect(rows).toHaveLength(1);
     expect(rows[0]!.status).toBe("running");
   });
 
-  it("targets an explicit --to-window after verifying it exists", async () => {
+  it("确认存在后，将目标设为显式 --to-window", async () => {
     seedLiveSeat();
     const { adapter, probes } = spyTmux({
       clients: [client("/dev/ttys003", "wrong-view")],
@@ -133,7 +131,7 @@ describe("SeatSwitchClientService", () => {
     expect(probes.switchClient).toHaveBeenCalledWith("/dev/ttys003", "dev-impl@seat-rig:1");
   });
 
-  it("honest window_not_found (never a raw tmux failure) for a missing --to-window", async () => {
+  it("--to-window 缺失时如实返回 window_not_found（绝不返回原始 tmux 失败）", async () => {
     seedLiveSeat();
     const { adapter, probes } = spyTmux({
       clients: [client("/dev/ttys003", "wrong-view")],
@@ -149,7 +147,7 @@ describe("SeatSwitchClientService", () => {
     expect(probes.switchClient).not.toHaveBeenCalled();
   });
 
-  it("honest no_client error (suggest attach / CMUX) when no client is attached", async () => {
+  it("没有已连接客户端时如实返回 no_client 错误（建议 attach / CMUX）", async () => {
     seedLiveSeat();
     const { adapter, probes } = spyTmux({ clients: [] });
     const service = new SeatSwitchClientService({ rigRepo, tmuxAdapter: adapter });
@@ -163,7 +161,7 @@ describe("SeatSwitchClientService", () => {
     expect(probes.switchClient).not.toHaveBeenCalled();
   });
 
-  it("honest ambiguous_client (lists clients, never picks one) when multiple attached and no --client", async () => {
+  it("连接多个客户端且未指定 --client 时如实返回 ambiguous_client（列出客户端且绝不擅自选择）", async () => {
     seedLiveSeat();
     const { adapter, probes } = spyTmux({
       clients: [client("/dev/ttys003", "a"), client("/dev/ttys007", "b")],
@@ -182,7 +180,7 @@ describe("SeatSwitchClientService", () => {
     expect(probes.switchClient).not.toHaveBeenCalled();
   });
 
-  it("--client selects the named client out of several", async () => {
+  it("--client 从多个客户端中选择指定客户端", async () => {
     seedLiveSeat();
     const { adapter, probes } = spyTmux({
       clients: [client("/dev/ttys003", "a"), client("/dev/ttys007", "b")],
@@ -197,7 +195,7 @@ describe("SeatSwitchClientService", () => {
     expect(probes.switchClient).toHaveBeenCalledWith("/dev/ttys007", "dev-impl@seat-rig:0");
   });
 
-  it("client_not_found lists attached clients when --client names none of them", async () => {
+  it("--client 未命中时，client_not_found 列出已连接客户端", async () => {
     seedLiveSeat();
     const { adapter, probes } = spyTmux({ clients: [client("/dev/ttys003", "a")] });
     const service = new SeatSwitchClientService({ rigRepo, tmuxAdapter: adapter });
@@ -211,7 +209,7 @@ describe("SeatSwitchClientService", () => {
     expect(probes.switchClient).not.toHaveBeenCalled();
   });
 
-  it("session_not_found points to routing repair (reconcile/handover) and never switches", async () => {
+  it("session_not_found 指向路由修复（reconcile/handover），且绝不切换", async () => {
     seedLiveSeat();
     const { adapter, probes } = spyTmux({ hasSession: false, clients: [client("/dev/ttys003", "a")] });
     const service = new SeatSwitchClientService({ rigRepo, tmuxAdapter: adapter });
@@ -225,15 +223,14 @@ describe("SeatSwitchClientService", () => {
     expect(probes.switchClient).not.toHaveBeenCalled();
   });
 
-  it("missing_canonical_session for a seat with no current occupant (never fresh-launch)", async () => {
-    // Node exists but no running session -> current_occupant is null.
+  it("当前无占用者的席位返回 missing_canonical_session（绝不全新启动）", async () => {
+    // 节点存在但没有运行中的会话 -> current_occupant 为 null。
     const rig = rigRepo.createRig("seat-rig");
     rigRepo.addNode(rig.id, "dev.impl", { runtime: "codex" });
     const { adapter, probes, mutators } = spyTmux({ clients: [client("/dev/ttys003", "a")] });
     const service = new SeatSwitchClientService({ rigRepo, tmuxAdapter: adapter });
 
-    // No session registered -> resolve by the logical-id form (there is no
-    // canonical session name to match on yet).
+    // 未注册会话 -> 按逻辑标识形式解析（尚无可匹配的规范会话名）。
     const result = await service.switchClient({ seatRef: "dev.impl@seat-rig" });
 
     expect(result.ok).toBe(false);
@@ -243,7 +240,7 @@ describe("SeatSwitchClientService", () => {
     expect(mutators.createSession).not.toHaveBeenCalled();
   });
 
-  it("propagates seat_not_found for an unknown seat", async () => {
+  it("为未知席位透传 seat_not_found", async () => {
     const { adapter } = spyTmux();
     const service = new SeatSwitchClientService({ rigRepo, tmuxAdapter: adapter });
 
@@ -254,7 +251,7 @@ describe("SeatSwitchClientService", () => {
     expect(result.code).toBe("seat_not_found");
   });
 
-  it("surfaces tmux_probe_failed on an unexpected probe error (no silent switch)", async () => {
+  it("意外探测错误时呈现 tmux_probe_failed（不静默切换）", async () => {
     seedLiveSeat();
     const { adapter, probes } = spyTmux({
       hasSessionThrows: new Error("EACCES: permission denied"),
@@ -270,10 +267,10 @@ describe("SeatSwitchClientService", () => {
     expect(probes.switchClient).not.toHaveBeenCalled();
   });
 
-  it("catches a listClients THROW as tmux_probe_failed (never leaks the raw throw, never switches)", async () => {
+  it("将 listClients 抛错捕获为 tmux_probe_failed（不泄漏原始异常且不切换）", async () => {
     seedLiveSeat();
     const { adapter, probes } = spyTmux({ clients: [client("/dev/ttys003", "a")] });
-    // Adapter intentionally rethrows unexpected probe failures (permission/socket).
+    // 适配器有意重新抛出意外探测失败（权限/socket）。
     probes.listClients.mockRejectedValueOnce(new Error("error connecting to /private/tmp/tmux-501/default (Permission denied)"));
     const service = new SeatSwitchClientService({ rigRepo, tmuxAdapter: adapter });
 
@@ -287,7 +284,7 @@ describe("SeatSwitchClientService", () => {
     expect(probes.switchClient).not.toHaveBeenCalled();
   });
 
-  it("catches a listWindows THROW (explicit --to-window) as tmux_probe_failed (never switches)", async () => {
+  it("将 listWindows 抛错（显式 --to-window）捕获为 tmux_probe_failed（不切换）", async () => {
     seedLiveSeat();
     const { adapter, probes } = spyTmux({ clients: [client("/dev/ttys003", "a")] });
     probes.listWindows.mockRejectedValueOnce(new Error("EACCES: permission denied"));
@@ -302,7 +299,7 @@ describe("SeatSwitchClientService", () => {
     expect(probes.switchClient).not.toHaveBeenCalled();
   });
 
-  it("surfaces switch_failed when the tmux switch-client itself fails", async () => {
+  it("tmux switch-client 本身失败时呈现 switch_failed", async () => {
     seedLiveSeat();
     const { adapter } = spyTmux({
       clients: [client("/dev/ttys003", "a")],

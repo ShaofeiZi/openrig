@@ -6,14 +6,13 @@ import { spawnSync } from "node:child_process";
 
 const skillRoot = path.resolve(new URL("..", import.meta.url).pathname);
 const restoreScript = path.join(skillRoot, "scripts", "restore-from-jsonl.mjs");
-// P6(C) injectable output-root: the packet base defaults to the shared
-// /tmp/claude-compaction-restore (production), but becomes per-run isolated when the
-// hermetic env-var OPENRIG_COMPACTION_OUT_ROOT is set — so concurrent writers with the
-// same injected clock + sessionId no longer collide on the same `${sessionId}-${stamp}`
-// dir. Mirrors the injectable-clock seam (OPENRIG_TEST_CLOCK_NOW). Empty/absent = /tmp.
+// P6(C) 可注入输出根目录：包基础目录默认使用共享的 /tmp/claude-compaction-restore
+//（生产环境）；设置隔离环境变量 OPENRIG_COMPACTION_OUT_ROOT 后改为逐次运行隔离，使使用
+// 同一注入时钟与 sessionId 的并发写入器不再争用同一个 `${sessionId}-${stamp}` 目录。
+// 与可注入时钟接缝 OPENRIG_TEST_CLOCK_NOW 对称；为空/缺失时使用 /tmp。
 const outRoot = process.env.OPENRIG_COMPACTION_OUT_ROOT || "/tmp/claude-compaction-restore";
 const defaultRestoreInstruction =
-  "Read the claude-compaction-restore skill and follow its \"If You Just Compacted\" protocol.";
+  "请读取 claude-compaction-restore 技能，并遵循其中的“如果你刚刚完成压缩”流程。";
 
 function emit(payload) {
   process.stdout.write(`${JSON.stringify(payload)}\n`);
@@ -29,9 +28,8 @@ function getOpenRigHome() {
   return process.env.OPENRIG_HOME || process.env.RIGGED_HOME || path.join(os.homedir(), ".openrig");
 }
 
-// A3-R3 injectable clock (slice 51-01): marker.createdAt defaults to real wall-clock,
-// but becomes deterministic when the shared hermetic env-var OPENRIG_TEST_CLOCK_NOW is
-// set (an ISO instant). Empty/absent = production real-time.
+// A3-R3 可注入时钟（slice 51-01）：marker.createdAt 默认使用真实墙上时钟；设置共享隔离
+// 环境变量 OPENRIG_TEST_CLOCK_NOW（ISO 时刻）后改为确定性时间。为空/缺失时使用生产实时。
 function nowIso() {
   const injected = process.env.OPENRIG_TEST_CLOCK_NOW;
   return typeof injected === "string" && injected.trim().length > 0 ? injected : new Date().toISOString();
@@ -54,12 +52,11 @@ function readInstructionFile(filePath) {
   return fs.readFileSync(expanded, "utf8");
 }
 
-// OPR.0.4.1.09 / R5 marker-lifecycle (foreign-content-in-marker face): the hook
-// path must apply the SAME seat-check the daemon enforcer's resolvePostCompactExtra
-// applies (rev1-r2 dcd95bd9), or a FOREIGN seat's global messageFilePath leaks into
-// THIS seat's marker. Parse a WELL-FORMED leading `---` frontmatter for a declared
-// seat (target_seat / seat / session); body text is never scanned; a broken/absent
-// fence is GENERIC (valid for any seat). Byte-mirrors the enforcer regexes.
+// OPR.0.4.1.09 / R5 标记生命周期（标记内含外来内容这一侧）：钩子路径必须执行与后台服务
+// enforcer 的 resolvePostCompactExtra 相同的席位检查（rev1-r2 dcd95bd9），否则外来席位的
+// 全局 messageFilePath 会泄漏进当前席位标记。解析格式正确、以 `---` 开头的 frontmatter，
+// 获取声明的席位（target_seat/seat/session）；绝不扫描正文；围栏损坏/缺失时视为通用内容，
+// 对任意席位有效。正则与 enforcer 逐字节镜像。
 function declaredSeatOf(content) {
   const fm = /^\s*---\s*\n([\s\S]*?)\n---/.exec(content);
   if (!fm) return null;
@@ -71,11 +68,10 @@ function sanitizeSeat(value) {
   return value.replace(/[^a-zA-Z0-9_.@-]/g, "_");
 }
 
-// Resolve the post-compaction extra FOR THIS SEAT (mirror of the enforcer): (1) prefer
-// a per-seat compaction/post-compact-extra/<seat>.md — no cross-seat contamination
-// possible; (2) fall back to the global ONLY when it does not declare a DIFFERENT seat
-// (a wrong-seat global is REFUSED). Generic/undeclared/configured-but-absent stay
-// allowed. Returns the path to read, or null when nothing valid for this seat.
+// 为当前席位解析压缩后附加内容（镜像 enforcer）：(1) 优先使用逐席位
+// compaction/post-compact-extra/<seat>.md，不可能跨席位污染；(2) 仅当全局文件未声明其他席位时
+// 才回退到全局文件，错误席位的全局文件会被拒绝。通用、未声明、已配置但缺失的情况仍允许。
+// 返回待读路径；没有适用于当前席位的有效内容时返回 null。
 function resolveSeatSafeExtraPath(globalFilePathRaw) {
   const rawSeat = process.env.OPENRIG_SESSION_NAME || process.env.RIGGED_SESSION_NAME || "";
   const seatKey = rawSeat ? sanitizeSeat(rawSeat) : "";
@@ -83,18 +79,18 @@ function resolveSeatSafeExtraPath(globalFilePathRaw) {
     const perSeatPath = path.join(getOpenRigHome(), "compaction", "post-compact-extra", `${seatKey}.md`);
     if (fs.existsSync(perSeatPath)) {
       const declared = declaredSeatOf(fs.readFileSync(perSeatPath, "utf8"));
-      if (declared && sanitizeSeat(declared) !== seatKey) return null; // wrong-seat per-seat file
+      if (declared && sanitizeSeat(declared) !== seatKey) return null; // 错误席位的逐席位文件。
       return perSeatPath;
     }
   }
   const trimmed = (globalFilePathRaw || "").trim();
   if (!trimmed) return null;
   const expanded = expandInstructionPath(trimmed);
-  // configured-but-absent: keep the path (an absent file cannot be a wrong-seat leak;
-  // readInstructionFile returns "" so nothing is appended).
+  // 已配置但缺失：保留路径。缺失文件不可能造成错误席位泄漏；readInstructionFile 返回 ""，
+  // 因此不会追加内容。
   if (!fs.existsSync(expanded)) return trimmed;
   const declared = declaredSeatOf(fs.readFileSync(expanded, "utf8"));
-  if (declared && sanitizeSeat(declared) !== seatKey) return null; // foreign-seat global REFUSED
+  if (declared && sanitizeSeat(declared) !== seatKey) return null; // 拒绝外来席位的全局文件。
   return trimmed;
 }
 
@@ -115,10 +111,9 @@ function pendingMarkerPath(input) {
   return path.join(getOpenRigHome(), "compaction", "restore-pending", `${sessionKey(input)}.json`);
 }
 
-// R5 absent-when-needed: drop a lightweight EXPECTED sentinel FIRST (before the packet is
-// generated + the marker is written), carrying the SAME identity binding the marker gets.
-// Its presence-without-a-marker is what lets the bridge be LOUD about a missing packet
-// (hook died partway / write failed); policy off = no hook = no sentinel = silent.
+// R5 按需检测缺失：先写入轻量 EXPECTED 哨兵，再生成包和写入标记；哨兵携带与标记相同的
+// 身份绑定。存在哨兵却没有标记时，桥才能明确报告包缺失（钩子中途退出/写入失败）；
+// 策略关闭 = 无钩子 = 无哨兵 = 静默。
 function writeExpectedSentinel(input) {
   const p = path.join(getOpenRigHome(), "compaction", "restore-pending", `${sessionKey(input)}.expected.json`);
   fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -152,13 +147,10 @@ function writePendingRestoreMarker(input, parsed, restoreInstruction, customMess
   return markerPath;
 }
 
-// Slice 27 — read the OpenRig config directly (no daemon HTTP dependency
-// so the hook still works when the daemon isn't running or isn't
-// reachable from this process). Returns "" for either field when the
-// config is missing, malformed, or the policy isn't set. If the policy is
-// enabled but restore text has not been written yet, use OpenRig's default
-// instruction to load the canonical restore skill. Inline instructions and
-// file-path content are both included when both are configured.
+// Slice 27——直接读取 OpenRig 配置，不依赖后台服务 HTTP，因此后台服务未运行或当前进程
+// 无法访问时钩子仍可工作。配置缺失、格式错误或未设置策略时，相应字段返回 ""。若策略已启用
+// 但尚未写入恢复文本，则使用 OpenRig 默认指令加载规范恢复技能。同时配置内联指令和文件路径时，
+// 两者都会包含。
 function readClaudeCompactionMessage() {
   const configPath = path.join(getOpenRigHome(), "config.json");
   let inline = "";
@@ -188,20 +180,20 @@ function readClaudeCompactionMessage() {
 
   const parts = [];
   if (inline && inline.length > 0) {
-    parts.push(`Inline restore instruction:\n${inline}`);
+    parts.push(`内联恢复指令：\n${inline}`);
   }
   if (filePath && filePath.length > 0) {
-    // R5 seat-check: resolve to the per-seat extra or a seat-safe global; a
-    // foreign-seat global resolves to null and is never injected into this marker.
+    // R5 席位检查：解析为逐席位附加文件或席位安全的全局文件；外来席位的全局文件解析为 null，
+    // 绝不注入当前标记。
     const resolved = resolveSeatSafeExtraPath(filePath);
     if (resolved) {
       try {
         const fileText = readInstructionFile(resolved);
         if (fileText) {
-          parts.push(`Additional restore instruction file (${resolved}):\n${fileText}`);
+          parts.push(`附加恢复指令文件（${resolved}）：\n${fileText}`);
         }
       } catch {
-        // Keep any inline instruction; unreadable extra files degrade quietly.
+        // 保留已有内联指令；附加文件不可读时静默降级。
       }
     }
   }
@@ -214,15 +206,14 @@ function readClaudeCompactionMessage() {
 
 function buildSystemMessage(restoreInstruction, customMessage) {
   if (!customMessage) return restoreInstruction;
-  return `${restoreInstruction}\n\n--- Operator-configured post-compaction restore instruction ---\n${customMessage}`;
+  return `${restoreInstruction}\n\n--- 操作员配置的压缩后恢复指令 ---\n${customMessage}`;
 }
 
 try {
-  // Slice 51-01 RIDER (leak-visibility, review-r1 escalation): OPENRIG_TEST_CLOCK_NOW is
-  // read by nowIso() to make createdAt deterministic in tests — but a LEAKED var in a
-  // real seat would silently FREEZE production createdAt. Announce loudly on stderr when
-  // active so any leak is visible in seat logs; absence stays silent (production path).
-  // MUST stay byte-identical to STUB_CLOCK_ANNOUNCEMENT in stub-runner.ts.
+  // Slice 51-01 附加条款（泄漏可见性，review-r1 升级）：nowIso() 读取
+  // OPENRIG_TEST_CLOCK_NOW，使测试中的 createdAt 确定；但该变量若泄漏进真实席位，会静默冻结
+  // 生产 createdAt。启用时在 stderr 明确提示，使任何泄漏都在席位日志中可见；缺失时保持静默
+  //（生产路径）。此文本必须与 stub-runner.ts 中的 STUB_CLOCK_ANNOUNCEMENT 逐字节一致。
   if (typeof process.env.OPENRIG_TEST_CLOCK_NOW === "string" && process.env.OPENRIG_TEST_CLOCK_NOW.trim().length > 0) {
     process.stderr.write("OPENRIG_TEST_CLOCK_NOW active — timestamps are injected\n");
   }
@@ -238,7 +229,7 @@ try {
 
   const result = spawnSync("node", args, { encoding: "utf8" });
   if (result.status !== 0) {
-    const baseFailure = `Claude compaction restore packet generation failed: ${(result.stderr || result.stdout || "unknown error").trim()}. After compaction, load the claude-compaction-restore skill and run restore-from-jsonl manually.`;
+  const baseFailure = `Claude 压缩恢复包生成失败：${(result.stderr || result.stdout || "未知错误").trim()}。压缩后请加载 claude-compaction-restore 技能，并手动运行 restore-from-jsonl。`;
     emit({
       continue: true,
       systemMessage: buildSystemMessage(baseFailure, customMessage),
@@ -247,15 +238,15 @@ try {
   }
 
   const parsed = JSON.parse(result.stdout);
-  const baseRestore = `Pre-compaction restore seed packet prepared at ${parsed.outputDir}. This hook output is informational. After compaction, OpenRig may send a later normal user message asking you to restore from this packet; treat that later normal user message as the action request. The restore protocol is: load/read the claude-compaction-restore skill, run "node ~/.claude/skills/claude-compaction-restore/scripts/restore-from-jsonl.mjs --out /tmp/claude-compaction-restore --json" yourself when needed, read the generated restore-instructions.md, read the generated touched-files.md, identify remembered important files, read those files in full, read root/as-built/codemap docs before real work, then reply with "restored from packet at <path>; resumed at step <X>" with the files you read in full. If any step fails, report the failure explicitly.`;
+  const baseRestore = `压缩前恢复种子包已准备在 ${parsed.outputDir}。此钩子输出仅是信息。压缩后，OpenRig 稍后可能发送普通用户消息，要求你从此恢复包恢复；请把那条后续普通用户消息视为操作请求。恢复流程：加载并阅读 claude-compaction-restore 技能，需要时自行运行 "node ~/.claude/skills/claude-compaction-restore/scripts/restore-from-jsonl.mjs --out /tmp/claude-compaction-restore --json"，阅读生成的 restore-instructions.md 和 touched-files.md，识别记忆中重要的文件并完整阅读，再在开始实际工作前完整阅读根目录/as-built/codemap 文档，最后回复 "restored from packet at <path>; resumed at step <X>" 并列出已完整阅读的文件。任何步骤失败都要明确报告。`;
   const markerPath = writePendingRestoreMarker(input, parsed, baseRestore, customMessage);
   emit({
     continue: true,
-    systemMessage: buildSystemMessage(`${baseRestore} OpenRig also wrote a pending restore marker at ${markerPath}.`, customMessage),
+    systemMessage: buildSystemMessage(`${baseRestore} OpenRig 还在 ${markerPath} 写入了待恢复标记。`, customMessage),
   });
 } catch (error) {
   emit({
     continue: true,
-    systemMessage: `Claude compaction restore hook errored: ${error.message}. After compaction, load the claude-compaction-restore skill and run restore-from-jsonl manually.`,
+    systemMessage: `Claude 压缩恢复钩子出错：${error.message}。压缩后请加载 claude-compaction-restore 技能，并手动运行 restore-from-jsonl。`,
   });
 }

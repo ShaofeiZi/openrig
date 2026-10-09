@@ -1,15 +1,13 @@
-// OPR.0.5.1.1 — the pane-hosted stub-runner (A5 / ContextMonitor settlement).
+// OPR.0.5.1.1——pane 承载的 stub-runner（A5/ContextMonitor 收口）。
 //
-// A Pi-shaped node-script runner: the stub adapter types `node <thisEntry> …` into
-// the seat's tmux pane; this process persists the readiness sidecar the daemon polls
-// and prints the READY marker, then idles as the pane's live foreground process (so
-// the adapter's hasSession/atShell liveness cross-checks see a running seat). A
-// self-invocation guard keeps the module import-safe: nothing runs unless this file
-// is the process entry.
+// Pi 形 node 脚本 runner：stub adapter 将 `node <thisEntry> …` 输入席位 tmux pane；此进程
+// 持久化后台服务轮询的 readiness sidecar，输出 READY 标记，然后作为 pane 的实时前台进程空闲
+//（使 adapter 的 hasSession/atShell 活性交叉检查看到运行中的席位）。自调用守卫保证模块可安全
+// 导入：除非本文件是进程入口，否则不会运行任何内容。
 //
-// Step-4 scope: come up + persist readiness + honest exit. The four seeded behaviors
-// {compaction, slow_output, mid_turn_death, restore} and the ctx% context sidecar are
-// later increments (A5 items 5-8) — deliberately NOT simulated here yet.
+// 第 4 步范围：启动 + 持久化 readiness + 如实退出。四个 seed 行为
+// {compaction, slow_output, mid_turn_death, restore} 与 ctx% context sidecar 是后续增量
+//（A5 第 5–8 项），此处有意不模拟。
 
 import nodeFs from "node:fs";
 import nodePath from "node:path";
@@ -34,7 +32,7 @@ export interface StubRunnerArgs {
   resumeToken?: string;
 }
 
-/** Parse the runner argv (the flags buildStubRunnerCommand emits). Pure. */
+/** 解析 runner argv（buildStubRunnerCommand 生成的标志）。纯函数。 */
 export function parseStubRunnerArgs(argv: string[]): StubRunnerArgs {
   const get = (flag: string): string | undefined => {
     const i = argv.indexOf(flag);
@@ -44,9 +42,9 @@ export function parseStubRunnerArgs(argv: string[]): StubRunnerArgs {
   const cwd = get("--cwd");
   const launchId = get("--launch-id");
   const postureRaw = get("--posture");
-  if (!sessionName) throw new Error("stub-runner: --session-name is required");
-  if (!cwd) throw new Error("stub-runner: --cwd is required");
-  if (!launchId) throw new Error("stub-runner: --launch-id is required");
+  if (!sessionName) throw new Error("stub-runner：必须提供 --session-name");
+  if (!cwd) throw new Error("stub-runner：必须提供 --cwd");
+  if (!launchId) throw new Error("stub-runner：必须提供 --launch-id");
   const posture = postureRaw === "full_bypass" ? "full_bypass" : "floor";
   return { sessionName, cwd, launchId, posture, resumeToken: get("--session") };
 }
@@ -54,50 +52,48 @@ export function parseStubRunnerArgs(argv: string[]): StubRunnerArgs {
 function writeSidecar(cwd: string, state: StubRunnerState): void {
   const sidecarPath = stubSeatSidecarPath(cwd);
   nodeFs.mkdirSync(nodePath.dirname(sidecarPath), { recursive: true });
-  // Atomic replace: write a temp sibling then rename, so a poller never reads a
-  // half-written sidecar (a torn read would misreport readiness).
+  // 原子替换：先写入同级临时文件再重命名，避免轮询方读到只写了一半的 sidecar
+  //（撕裂读取会误报 readiness）。
   const tmp = `${sidecarPath}.${process.pid}.tmp`;
   nodeFs.writeFileSync(tmp, JSON.stringify(state), "utf-8");
   nodeFs.renameSync(tmp, sidecarPath);
 }
 
-// ── Script-execution seam (mirror pi-runner's RunnerIo) ─────────────────────
-// The runner drives a script against injected effects so the dispatch loop unit-
-// tests hermetically. R1 wires the compaction behavior; postActivity (the event
-// POST) is a later increment (R2). now() honors the same injected clock (PRD §5).
+// ── 脚本执行接缝（镜像 pi-runner 的 RunnerIo）────────────────────────────────
+// runner 针对注入的 effect 驱动脚本，使分发循环可隔离进行单元测试。R1 接入 compaction 行为；
+// postActivity（事件 POST）是后续增量（R2）。now() 遵循同一注入时钟（PRD §5）。
 
 export interface StubRunnerIO {
-  /** Print one line to the seat's pane. */
+  /** 向席位 pane 输出一行。 */
   mirrorLine(line: string): void;
-  /** Fire the REAL precompact seam (arch R3: TRIGGER, never fabricate) and return
-   *  the seat-keyed restore-pending marker it wrote. */
+  /** 触发真实 precompact 接缝（架构 R3：触发，绝不伪造），并返回其写入的按席位定键
+   * restore-pending 标记。 */
   fireCompaction(): CompactionResult;
-  /** Fire the REAL restore reader (compaction-restore-bridge.cjs) — arch R3: TRIGGER,
-   *  never fabricate — and return the injected restore directive it delivered (or a
-   *  delivered=false no-op when there is no pending marker to deliver). */
+  /** 触发真实 restore 读取器（compaction-restore-bridge.cjs）——架构 R3：触发，绝不伪造——
+   * 并返回其投递的注入恢复指令；没有待处理标记可投递时返回 delivered=false 的空操作。 */
   fireRestore(): RestoreResult;
-  /** Fire-and-forget POST of a canonical activity event to /api/activity/hooks. */
+  /** 向 /api/activity/hooks 发出无需等待响应的 canonical activity 事件 POST。 */
   postActivity(payload: Record<string, unknown>): void;
-  /** Kill the seat MID-TURN (mid_turn_death): record the exited sidecar + EXIT marker,
-   *  then terminate the process. The real runner never returns from this. */
+  /** 在轮次中途终止席位（mid_turn_death）：记录 exited sidecar + EXIT 标记，再终止进程。
+   * 真实 runner 从此不会返回。 */
   die(code: number): void;
-  /** Injectable clock (OPENRIG_TEST_CLOCK_NOW when set, real wall-clock otherwise). */
+  /** 可注入时钟（设置时用 OPENRIG_TEST_CLOCK_NOW，否则用真实墙上时钟）。 */
   now(): string;
 }
 
-/** mid_turn_death's exit code — 128+SIGKILL(9), the conventional "process killed" code,
- *  evoking a seat struck down mid-turn. Deterministic + distinct from the error paths. */
+/** mid_turn_death 的退出码——128+SIGKILL(9)，惯用的“进程被终止”代码，表示席位在轮次中途
+ * 被终止。确定性且不同于错误路径。 */
 export const STUB_MID_TURN_DEATH_EXIT_CODE = 137;
 
-/** The seat's activity identity (mirror pi-runner). runtime is always "stub". */
+/** 席位的 activity 身份（镜像 pi-runner）。runtime 始终为 "stub"。 */
 export interface StubActivityIdentity {
   sessionName: string;
   nodeId?: string;
 }
 
-/** Build a canonical /api/activity/hooks payload — the SAME field shape the real
- *  runtimes POST ({runtime, sessionName, nodeId, hookEvent, subtype?, occurredAt}),
- *  so the stub's events drive agent-activity-store state identically. */
+/** 构建 canonical /api/activity/hooks payload——与真实 runtime POST 使用相同字段结构
+ *（{runtime, sessionName, nodeId, hookEvent, subtype?, occurredAt}），使 stub 事件以相同方式
+ * 驱动 agent-activity-store 状态。 */
 export function stubActivityPayload(
   identity: StubActivityIdentity,
   hookEvent: string,
@@ -114,16 +110,14 @@ export function stubActivityPayload(
   };
 }
 
-/** slow_output's fixed chunk count — the "scripted rate" as a deterministic multi-part
- *  pane sequence (no wall-clock, no new leak-vector pacer var). */
+/** slow_output 的固定分块数——把“脚本化速率”实现为确定性的多段 pane 序列
+ *（不使用墙上时钟，也不增加可泄漏的 pacer 变量）。 */
 export const SLOW_OUTPUT_CHUNKS = 3;
 
-/** Execute a stub behavior script step-by-step against the injected IO seam. Pure
- *  dispatch — no filesystem/clock of its own — so a fake IO drives it hermetically.
- *  A script is ONE turn: it opens with a UserPromptSubmit activity (running) and
- *  closes with Stop (idle) — the observable state transition the 51-02 scenario
- *  harness reads. `say` mirrors its text; `emit compaction` fires the real seam; a
- *  not-yet-wired behavior mirrors an HONEST deferral (never a silent no-op). */
+/** 针对注入的 IO 接缝逐步执行 stub 行为脚本。这里只做纯分发，不自带文件系统/时钟，因此可由
+ * 假 IO 隔离驱动。一个脚本就是一个轮次：以 UserPromptSubmit activity（running）开始，以 Stop
+ *（idle）结束——这是 51-02 场景 harness 读取的可观察状态转换。`say` 镜像其文本；
+ * `emit compaction` 触发真实接缝；尚未接入的行为会如实显示延后，绝不静默空操作。 */
 export function executeStubScript(script: StubScript, io: StubRunnerIO, identity: StubActivityIdentity): void {
   io.postActivity(stubActivityPayload(identity, "UserPromptSubmit", null, io.now()));
   for (const step of script.steps) {
@@ -134,59 +128,54 @@ export function executeStubScript(script: StubScript, io: StubRunnerIO, identity
     // step.kind === "emit"
     if (step.behavior === "compaction") {
       const { markerPath } = io.fireCompaction();
-      io.mirrorLine(`[stub] compaction fired — restore-pending marker ${markerPath}`);
+      io.mirrorLine(`[stub] 已触发 compaction——restore-pending 标记 ${markerPath}`);
       continue;
     }
     if (step.behavior === "slow_output") {
-      // "paced output at the scripted rate" (PRD §4.2) realized DETERMINISTICALLY as a
-      // fixed multi-part chunk sequence — no wall-clock/real delay (§5), no new leak-vector
-      // pacer var. The scenario verb set (match/contains/equals) has no temporal assertion,
-      // so chunked multi-part pane output IS the assertable "paced" observable (orch ruling
-      // 2026-08-06). Real temporal pacing would return only as a future grammar extension.
+      // “按脚本速率输出”（PRD §4.2）以固定多段分块序列确定性实现——不使用墙上时钟/真实延迟
+      //（§5），也不增加可泄漏的 pacer 变量。场景动词集（match/contains/equals）没有时间断言，
+      // 因此分块多段 pane 输出就是可断言的“paced”观察（编排裁定 2026-08-06）。真实时间节奏只会
+      // 作为未来语法扩展回归。
       for (let i = 1; i <= SLOW_OUTPUT_CHUNKS; i++) {
-        io.mirrorLine(`[stub] slow_output chunk ${i}/${SLOW_OUTPUT_CHUNKS}`);
+        io.mirrorLine(`[stub] slow_output 分块 ${i}/${SLOW_OUTPUT_CHUNKS}`);
       }
       continue;
     }
     if (step.behavior === "mid_turn_death") {
-      // The seat dies MID-TURN: emit a partial-turn line, then die. `return` halts the
-      // loop BEFORE the trailing Stop — so hooks CEASE (UserPromptSubmit fired, no Stop),
-      // the production-identical signature of a turn that never completed. The real
-      // runner's die() exits the process here, so nothing after this runs either way.
-      io.mirrorLine("[stub] mid_turn_death — dying mid-turn; hooks cease");
+      // 席位在轮次中途终止：先输出部分轮次行，再结束。`return` 在尾部 Stop 前停止循环，因此钩子
+      // 终止（已触发 UserPromptSubmit，没有 Stop）；这与生产环境中未完成轮次的特征一致。真实
+      // runner 的 die() 会在此退出进程，因此之后的内容无论如何都不会运行。
+      io.mirrorLine("[stub] mid_turn_death——正在轮次中途终止；钩子停止");
       io.die(STUB_MID_TURN_DEATH_EXIT_CODE);
       return;
     }
     if (step.behavior === "restore") {
-      // Fire the REAL restore reader (compaction-restore-bridge.cjs): it reads THIS seat's
-      // keyed restore-pending marker (written by a prior `emit compaction`), injects ONE
-      // additionalContext restore directive, and stamps the marker deliveredAt/deliveryCount
-      // (one-shot). The runner mirrors the delivered directive verbatim (observable + honest
-      // — the real injected context, never a fabricated one). A restore with no pending
-      // marker legitimately no-ops; the runner says so out loud rather than silently drop it.
+      // 触发真实 restore 读取器（compaction-restore-bridge.cjs）：读取当前席位由先前
+      // `emit compaction` 写入的键控 restore-pending 标记，注入一条 additionalContext 恢复
+      // 指令，并在标记上盖 deliveredAt/deliveryCount（一次性）。runner 原样镜像已投递指令
+      //（可观察且诚实——是真实注入上下文，绝不伪造）。没有待处理标记时，restore 合法空操作；
+      // runner 会明确说明，而不是静默丢弃。
       const { additionalContext, delivered } = io.fireRestore();
       if (delivered && additionalContext) {
-        io.mirrorLine("[stub] restore delivered — injected restore directive:");
+        io.mirrorLine("[stub] restore 已投递——注入的恢复指令：");
         io.mirrorLine(additionalContext);
       } else {
-        io.mirrorLine("[stub] restore fired — no pending restore marker to deliver");
+        io.mirrorLine("[stub] 已触发 restore——没有待投递的恢复标记");
       }
       continue;
     }
-    // All four seeded behaviors are wired above; step.behavior is `never` here. A value
-    // outside the closed STUB_BEHAVIORS union can only reach the executor by bypassing
-    // parseStubScript — a programming error. Fail LOUDLY, never a silent no-op.
+    // 四个 seed 行为均已在上方接入；此处 step.behavior 为 `never`。封闭 STUB_BEHAVIORS 并集之外
+    // 的值只能绕过 parseStubScript 才能进入执行器，这是编程错误。必须明确失败，绝不静默空操作。
     throw new Error(
-      `[stub] unknown behavior '${(step as { behavior: string }).behavior}' — not in the stub repertoire`,
+      `[stub] 未知行为 '${(step as { behavior: string }).behavior}'——不在 stub 行为集合中`,
     );
   }
   io.postActivity(stubActivityPayload(identity, "Stop", null, io.now()));
 }
 
-/** Resolve the seat's behavior script: the scenario-resolved script at
- *  <cwd>/.openrig/stub/script.json when present, else the built-in default. A
- *  malformed scenario script fails LOUDLY (parseStubScript throws) — never a silent
- *  fallback to the default that would mask a broken scenario. */
+/** 解析席位行为脚本：存在时使用 <cwd>/.openrig/stub/script.json 中由场景解析的脚本，否则使用
+ * 内置默认值。格式错误的场景脚本会明确失败（parseStubScript 抛错），绝不静默回退到默认值
+ * 而掩盖损坏场景。 */
 export function resolveStubScript(
   cwd: string,
   fsLike: { readFile(p: string): string; exists(p: string): boolean },
@@ -196,12 +185,10 @@ export function resolveStubScript(
   return parseStubScript(fsLike.readFile(scriptPath));
 }
 
-/** Build the stub seat's OWN session transcript (a real JSONL) from its script. The
- *  compaction seam MUST compact this, never a foreign transcript: restore-from-jsonl's
- *  findLatestJsonl falls back to ~/.claude/projects, so without an explicit own
- *  transcript the stub would non-deterministically compact whatever latest transcript
- *  exists on the box. Authoring + passing this is what makes the compaction honest
- *  (the stub compacts its scripted conversation) and deterministic. */
+/** 从脚本构建 stub 席位自身的 session transcript（真实 JSONL）。compaction 接缝必须压缩它，
+ * 绝不能压缩外来 transcript：restore-from-jsonl 的 findLatestJsonl 会回退到
+ * ~/.claude/projects，因此若不显式提供自身 transcript，stub 会不确定地压缩机器上最新的其他
+ * transcript。创建并传入此文件，才能让 compaction 诚实（stub 压缩自身脚本化会话）且确定。 */
 export function buildStubTranscript(
   script: StubScript,
   ctx: { sessionName: string; cwd: string; sessionId: string },
@@ -215,15 +202,14 @@ export function buildStubTranscript(
   for (const step of script.steps) {
     if (step.kind === "say") push("assistant", step.text);
   }
-  // Guarantee ≥1 assistant turn (analyze needs content) even for an emit-only script.
+  // 即使脚本只含 emit，也保证至少有一个 assistant 轮次（analyze 需要内容）。
   if (lines.length <= 1) push("assistant", "[stub] scripted reply");
   return `${lines.join("\n")}\n`;
 }
 
-/** Resolve the shipped precompact-hook.mjs the compaction behavior fires. An env
- *  override (OPENRIG_STUB_PRECOMPACT_HOOK) wins for hermetic tests; otherwise the
- *  packaged asset relative to this entry — the SAME relative path from src/adapters
- *  (tsx) and dist/adapters (compiled), matching the daemon's asset-resolution idiom. */
+/** 解析 compaction 行为触发的已发布 precompact-hook.mjs。隔离测试中环境覆盖项
+ * OPENRIG_STUB_PRECOMPACT_HOOK 优先；否则使用相对于此入口的打包资产——从 src/adapters
+ *（tsx）与 dist/adapters（已编译）出发的相对路径相同，符合后台服务资产解析惯例。 */
 export function resolveStubHookScriptPath(env: NodeJS.ProcessEnv = process.env): string {
   const override = env.OPENRIG_STUB_PRECOMPACT_HOOK;
   if (typeof override === "string" && override.trim().length > 0) return override;
@@ -233,10 +219,9 @@ export function resolveStubHookScriptPath(env: NodeJS.ProcessEnv = process.env):
   );
 }
 
-/** Resolve the shipped compaction-restore-bridge.cjs the restore behavior fires. An env
- *  override (OPENRIG_STUB_RESTORE_BRIDGE) wins for hermetic tests; otherwise the packaged
- *  asset relative to this entry — the SAME relative path from src/adapters (tsx) and
- *  dist/adapters (compiled), matching the daemon's asset-resolution idiom. */
+/** 解析 restore 行为触发的已发布 compaction-restore-bridge.cjs。隔离测试中环境覆盖项
+ * OPENRIG_STUB_RESTORE_BRIDGE 优先；否则使用相对于此入口的打包资产——从 src/adapters
+ *（tsx）与 dist/adapters（已编译）出发的相对路径相同，符合后台服务资产解析惯例。 */
 export function resolveStubRestoreBridgePath(env: NodeJS.ProcessEnv = process.env): string {
   const override = env.OPENRIG_STUB_RESTORE_BRIDGE;
   if (typeof override === "string" && override.trim().length > 0) return override;
@@ -246,10 +231,10 @@ export function resolveStubRestoreBridgePath(env: NodeJS.ProcessEnv = process.en
   );
 }
 
-/** Resolve the daemon's activity endpoint (mirror pi-runner): env first
- *  (OPENRIG_URL + OPENRIG_ACTIVITY_HOOK_TOKEN, or OPENRIG_HOST:OPENRIG_PORT), then
- *  the <OPENRIG_HOME>/activity-endpoint.json fallback. Returns null when neither is
- *  available — activity POSTs then no-op (the sidecar + pane still work). */
+/** 解析后台服务 activity endpoint（镜像 pi-runner）：优先环境变量（OPENRIG_URL +
+ * OPENRIG_ACTIVITY_HOOK_TOKEN，或 OPENRIG_HOST:OPENRIG_PORT），再回退到
+ * <OPENRIG_HOME>/activity-endpoint.json。二者都不可用时返回 null；activity POST 随后为空操作，
+ * sidecar + pane 仍可工作。 */
 export function resolveStubActivityEndpoint(env: NodeJS.ProcessEnv): { baseUrl: string; token: string } | null {
   let baseUrl = env.OPENRIG_URL?.trim() || null;
   let token = env.OPENRIG_ACTIVITY_HOOK_TOKEN?.trim() || null;
@@ -263,26 +248,25 @@ export function resolveStubActivityEndpoint(env: NodeJS.ProcessEnv): { baseUrl: 
       if (!baseUrl && typeof parsed.baseUrl === "string") baseUrl = parsed.baseUrl;
       if (!token && typeof parsed.token === "string") token = parsed.token;
     } catch {
-      // absent/malformed — activity POSTs no-op; the sidecar + mirror still work.
+      // 缺失/格式错误——activity POST 为空操作；sidecar + mirror 仍可工作。
     }
   }
   return baseUrl && token ? { baseUrl, token } : null;
 }
 
-/** The loud stderr line both the stub runner AND the shipped precompact hook emit when
- *  OPENRIG_TEST_CLOCK_NOW is active. A leaked test-clock var silently FREEZES production
- *  timestamps; this makes any leak visible in seat logs (safety, per review-r1's
- *  escalation). MUST stay byte-identical to the literal in precompact-hook.mjs. */
+/** OPENRIG_TEST_CLOCK_NOW 启用时，stub runner 与已发布 precompact 钩子都会向 stderr 输出的
+ * 明确提示。泄漏的测试时钟变量会静默冻结生产时间戳；此提示使任何泄漏在席位日志中可见
+ *（安全措施，来自 review-r1 升级）。必须与 precompact-hook.mjs 中的字面量逐字节一致。 */
 export const STUB_CLOCK_ANNOUNCEMENT = "OPENRIG_TEST_CLOCK_NOW active — timestamps are injected";
 
 export async function runStubRunner(args: StubRunnerArgs): Promise<void> {
-  // PRD §5 (no wall-clock in the stub's OWN behavior): the runner's own stamps honor
-  // the same A3-R3 injectable clock the compaction assets use — OPENRIG_TEST_CLOCK_NOW
-  // (an ISO instant) when set, real wall-clock otherwise (absent = production).
+  // PRD §5（stub 自身行为不使用墙上时钟）：runner 自身 stamp 遵循 compaction 资产使用的同一
+  // A3-R3 可注入时钟；设置时用 OPENRIG_TEST_CLOCK_NOW（ISO 时刻），否则用真实墙上时钟
+  //（缺失 = 生产环境）。
   const injectedClock = process.env.OPENRIG_TEST_CLOCK_NOW;
   if (typeof injectedClock === "string" && injectedClock.trim().length > 0) {
     // eslint-disable-next-line no-console
-    console.error(STUB_CLOCK_ANNOUNCEMENT); // loud-on-active; absence stays silent (production)
+    console.error(STUB_CLOCK_ANNOUNCEMENT); // 启用时明确提示；缺失时静默（生产环境）。
   }
   const nowIso = () => {
     const injected = process.env.OPENRIG_TEST_CLOCK_NOW;
@@ -299,13 +283,12 @@ export async function runStubRunner(args: StubRunnerArgs): Promise<void> {
     return;
   }
 
-  // R1: LOAD the seat's behavior script (scenario-resolved in cwd, else the built-in
-  // default) and EXECUTE its steps against the real IO seam. `emit compaction` fires
-  // the exact shipped precompact seam (arch R3: TRIGGER, never fabricate). A broken
-  // scenario script fails LOUDLY on the pane rather than silently no-opping.
+  // R1：加载席位行为脚本（cwd 中的场景解析版本，否则使用内置默认值），并针对真实 IO 接缝执行
+  // 其步骤。`emit compaction` 触发准确的已发布 precompact 接缝（架构 R3：触发，绝不伪造）。
+  // 损坏的场景脚本会在 pane 中明确失败，而不是静默空操作。
   const openrigHome = process.env.OPENRIG_HOME?.trim() || nodePath.join(process.env.HOME ?? "", ".openrig");
-  // The stub compacts its OWN authored transcript (never a foreign one discovered
-  // under ~/.claude/projects) — authored below from the resolved script.
+  // stub 压缩自身创建的 transcript，绝不使用在 ~/.claude/projects 下发现的外来 transcript；
+  // 下方根据已解析脚本创建该文件。
   const transcriptPath = nodePath.join(args.cwd, ".openrig", "stub", "transcript.jsonl");
   const identity: StubActivityIdentity = { sessionName: args.sessionName, nodeId: process.env.OPENRIG_NODE_ID };
   const endpoint = resolveStubActivityEndpoint(process.env);
@@ -323,8 +306,8 @@ export async function runStubRunner(args: StubRunnerArgs): Promise<void> {
     fireRestore: () => fireRestore({
       bridgeScriptPath: resolveStubRestoreBridgePath(),
       sessionName: args.sessionName,
-      // Same authored transcript the compaction seam recorded on the marker — the identity
-      // the bridge's R5 premise gate matches to deliver (drive it through, never weaken it).
+      // 与 compaction 接缝记录在标记上的人工 transcript 相同——bridge 的 R5 前提门禁用此身份
+      // 匹配并投递（让它贯穿全程，绝不削弱门禁）。
       transcriptPath,
       openrigHome,
       cwd: args.cwd,
@@ -339,29 +322,29 @@ export async function runStubRunner(args: StubRunnerArgs): Promise<void> {
         headers: { "content-type": "application/json", authorization: `Bearer ${endpoint.token}` },
         body: JSON.stringify(payload),
         signal: controller.signal,
-      }).catch(() => { /* best-effort — never blocks the loop */ }).finally(() => clearTimeout(timeout));
+      }).catch(() => { /* 尽力而为——绝不阻塞循环。 */ }).finally(() => clearTimeout(timeout));
     },
     die: (code) => {
-      // Record the honest exited sidecar so the daemon sees the seat die (never a stale
-      // ready), print the EXIT marker, then terminate — no graceful idle, no Stop.
+      // 记录真实 exited sidecar，使后台服务看到席位终止（绝不是陈旧 ready）；输出 EXIT 标记后
+      // 终止——没有优雅空闲，也没有 Stop。
       try {
         writeSidecar(args.cwd, { ready: false, launchId: args.launchId, exited: { code, at: nowIso() }, updatedAt: nowIso() });
-      } catch { /* best-effort on the way out */ }
+      } catch { /* 退出途中尽力而为。 */ }
       // eslint-disable-next-line no-console
       console.log(STUB_RUNNER_EXIT_MARKER);
       process.exit(code);
     },
     now: nowIso,
   };
-  // SessionStart signals the seat came up (running); it precedes the turn's events.
+  // SessionStart 表示席位已启动（running）；它先于轮次事件。
   io.postActivity(stubActivityPayload(identity, "SessionStart", null, nowIso()));
   try {
     const script = resolveStubScript(args.cwd, {
       readFile: (p) => nodeFs.readFileSync(p, "utf-8"),
       exists: (p) => nodeFs.existsSync(p),
     });
-    // Author the seat's own transcript BEFORE executing, so `emit compaction`
-    // fires the real seam over the stub's scripted conversation, not a foreign one.
+    // 执行前创建席位自身 transcript，使 `emit compaction` 对 stub 的脚本化会话触发真实接缝，
+    // 而不是处理外来会话。
     nodeFs.mkdirSync(nodePath.dirname(transcriptPath), { recursive: true });
     nodeFs.writeFileSync(
       transcriptPath,
@@ -371,24 +354,21 @@ export async function runStubRunner(args: StubRunnerArgs): Promise<void> {
     executeStubScript(script, io, identity);
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error(`${STUB_RUNNER_ERROR_MARKER} script execution failed: ${(err as Error).message}`);
+    console.error(`${STUB_RUNNER_ERROR_MARKER} 脚本执行失败：${(err as Error).message}`);
   }
 
-  // Keep the Node event loop alive so the process IDLES as the pane's live
-  // foreground process. The `await new Promise(()=>{})` below never resolves, but an
-  // unresolved promise does NOT ref the loop — nor do signal listeners — so without a
-  // ref'd handle the loop drains and the runner exits immediately after READY; the
-  // daemon then sees the pane fall back to a shell and readiness fails (F1). This
-  // timer never fires (its callback is a no-op); it exists only to ref the loop.
-  const keepAlive = setInterval(() => { /* ref the event loop until termination */ }, 1 << 30);
+  // 保持 Node 事件循环存活，使进程作为 pane 的实时前台进程空闲。下方
+  // `await new Promise(()=>{})` 永不解析，但未解析 promise 与信号监听器都不会引用事件循环；
+  // 若无被引用的 handle，循环会耗尽，runner 在 READY 后立即退出，后台服务随后看到 pane 回到
+  // shell，readiness 失败（F1）。此定时器永不触发（回调为空操作），仅用于引用事件循环。
+  const keepAlive = setInterval(() => { /* 在终止前持续引用事件循环。 */ }, 1 << 30);
 
-  // Record an honest exit on termination so the daemon's readiness never
-  // false-greens a stopped seat off a stale ready sidecar.
+  // 终止时记录真实退出，避免后台服务 readiness 因陈旧 ready sidecar 把已停止席位误判为绿色。
   const recordExit = (code: number | null) => {
     clearInterval(keepAlive);
     try {
       writeSidecar(args.cwd, { ready: false, launchId: args.launchId, exited: { code, at: nowIso() }, updatedAt: nowIso() });
-    } catch { /* best-effort on the way out */ }
+    } catch { /* 退出途中尽力而为。 */ }
     // eslint-disable-next-line no-console
     console.log(STUB_RUNNER_EXIT_MARKER);
   };
@@ -396,12 +376,11 @@ export async function runStubRunner(args: StubRunnerArgs): Promise<void> {
     process.on(sig, () => { recordExit(0); process.exit(0); });
   }
 
-  // Idle as the pane's live foreground process (held open by `keepAlive` above).
-  // Resolves only on termination.
-  await new Promise<void>(() => { /* held open until a signal fires */ });
+  // 作为 pane 的实时前台进程空闲（由上方 `keepAlive` 保持）；只在终止时结束。
+  await new Promise<void>(() => { /* 保持打开，直到信号触发。 */ });
 }
 
-// ── Self-invocation guard (Pi precedent) — run ONLY as the process entry. ──
+// ── 自调用守卫（Pi 先例）——仅作为进程入口时运行。──────────────────────────
 const invokedDirectly =
   process.argv[1] !== undefined &&
   import.meta.url === pathToFileURL(process.argv[1]).href;

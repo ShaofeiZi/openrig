@@ -1,11 +1,11 @@
-// OPR.0.4.0.1 round-two QA fix: the rig-scope graph node popover
-// (RigNode -> TerminalPreviewPopover) must participate in the progressive
-// default-static -> click-inside-to-go-live model, NOT open an immediate
-// always-live FocusedTerminal. QA BLOCKING (qitem-20260621025642-b4c89c72)
-// proved RigNode mounted the popover without the `progressive` prop, so
-// opening it produced a live xterm/WebSocket immediately. The heavy leaves
-// (FocusedTerminal -> xterm+WS, SessionPreviewPane -> polling) are stubbed so
-// the test exercises the RigNode -> popover -> ProgressiveTerminal wiring.
+// OPR.0.4.0.1 二轮 QA 修复：rig 范围 graph 节点 popover
+//（RigNode -> TerminalPreviewPopover）必须参与渐进式
+// default-static -> 点内转 live 模型，而非立即打开
+// always-live FocusedTerminal。QA BLOCKING（qitem-20260621025642-b4c89c72）
+// 证明 RigNode 挂载 popover 时无 `progressive` prop，故
+// 打开即立即产生 live xterm/WebSocket。重叶子
+//（FocusedTerminal -> xterm+WS，SessionPreviewPane -> 轮询）被 stub，
+// 使测试走 RigNode -> popover -> ProgressiveTerminal 接线。
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
@@ -53,10 +53,10 @@ describe("RigNode terminal popover (OPR.0.4.0.1 round-two QA fix)", () => {
 
     fireEvent.click(screen.getByTestId("rig-node-dev.impl-terminal-open"));
 
-    // The popover renders ProgressiveTerminal, whose default mode is the STATIC
-    // SessionPreviewPane -- so the static preview is present...
+    // popover 渲染 ProgressiveTerminal，其默认模式是 STATIC
+    // SessionPreviewPane——故静态预览在场…
     expect(screen.getByTestId("preview-dev-impl@test-rig")).toBeTruthy();
-    // ...and NO live xterm/WebSocket terminal is mounted on open.
+    // …且打开时不挂载 live xterm/WebSocket 终端。
     expect(screen.queryByTestId("live-dev-impl@test-rig")).toBeNull();
   });
 });

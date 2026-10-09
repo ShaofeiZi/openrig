@@ -32,10 +32,8 @@ export function openRigContextLibraryRoots(contextRoot: string): [string, string
   return [contextRoot, join(contextRoot, "system")];
 }
 
-/** Reconcile one canonical OpenRig instance layout. This is the shared owner
- * for CLI setup and daemon first-start. It owns empty roots and config.json;
- * S01 owns workspace contents, S04 owns skill contents, and topology owns its
- * contents. */
+/** 协调一个 canonical OpenRig instance 布局。这是 CLI setup 与后台服务首次启动的共享 owner。
+ * 它负责空 root 和 config.json；S01 负责 workspace 内容，S04 负责 skill 内容，topology 负责自身内容。 */
 export function ensureOpenRigInstance(
   options: OpenRigInstanceInitializationOptions,
 ): OpenRigInstanceInitializationResult {
@@ -110,6 +108,6 @@ export function formatInstanceInitializationConflicts(
   result: Pick<OpenRigInstanceInitializationResult, "conflicts">,
 ): string {
   return result.conflicts
-    .map((conflict) => `${conflict.path}: expected ${conflict.expected}, found ${conflict.actual}`)
+    .map((conflict) => `${conflict.path}：预期 ${conflict.expected}，实际为 ${conflict.actual}`)
     .join("; ");
 }

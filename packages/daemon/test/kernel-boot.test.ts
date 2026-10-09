@@ -1,11 +1,9 @@
-// V0.3.1 slice 05 kernel-rig-as-default — kernel auto-boot tests.
+// V0.3.1 切片 05 kernel-rig-as-default——kernel 自动启动测试。
 //
-// Covers HG-2 (variant selection), HG-3 (auth-block 3-part error),
-// HG-4 (already-managed short-circuit), HG-6 (--no-kernel flag via
-// OPENRIG_NO_KERNEL env). Forward-fix #3 architectural amendment:
-// bootKernelIfNeeded now returns a KernelBootTracker; the bootstrap
-// runs in the background. Tests await microtasks to observe the
-// post-bootstrap tracker state.
+// 覆盖 HG-2（变体选择）、HG-3（认证阻塞三段式错误）、HG-4（已受管时直接返回）和
+// HG-6（通过 OPENRIG_NO_KERNEL 环境变量传递 --no-kernel flag）。前向修复 #3 的架构
+// 修订：bootKernelIfNeeded 现在返回 KernelBootTracker，bootstrap 在后台运行。测试等待
+// microtask，以观察 bootstrap 完成后的 tracker 状态。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -62,9 +60,8 @@ function makeBootstrapMock(result?: { errors?: string[]; throwError?: Error }) {
   } as unknown as BootstrapOrchestrator;
 }
 
-/** Await pending microtasks so tracker's bootstrap-promise handlers can
- *  fire before status is read. The setImmediate hop is enough for
- *  vi.fn-wrapped async mocks that resolve in the same tick. */
+/** 等待尚未执行的 microtask，使 tracker 的 bootstrap Promise handler 能在读取状态前触发。
+ *  对于在同一 tick 内 resolve 的 vi.fn 异步 mock，一次 setImmediate 跳转已经足够。 */
 async function flushPromises(): Promise<void> {
   await new Promise<void>((resolve) => setImmediate(resolve));
 }
@@ -82,7 +79,7 @@ function makeBaseDeps(
     cwdOverride: specsDir,
     probeRuntimes: async () => ({ claudeCode: "ok", codex: "ok" }),
     log: () => {},
-    degradedTimeoutMs: 0, // disable degraded timer for default tests
+    degradedTimeoutMs: 0, // 默认测试禁用 degraded timer。
     ...overrides,
   };
 }
@@ -103,43 +100,43 @@ afterEach(() => {
   if (tmpSpecsDir) rmSync(tmpSpecsDir, { recursive: true, force: true });
 });
 
-describe("selectVariant — auth-state → variant mapping", () => {
-  it("picks rig.yaml when both runtimes available", () => {
+describe("selectVariant——认证状态到变体的映射", () => {
+  it("两个 runtime 都可用时选择 rig.yaml", () => {
     expect(selectVariant({ claudeCode: "ok", codex: "ok" })).toBe("rig.yaml");
   });
-  it("picks rig-claude-only.yaml when only Claude available", () => {
+  it("只有 Claude 可用时选择 rig-claude-only.yaml", () => {
     expect(selectVariant({ claudeCode: "ok", codex: "unavailable" })).toBe("rig-claude-only.yaml");
   });
-  it("picks rig-codex-only.yaml when only Codex available", () => {
+  it("只有 Codex 可用时选择 rig-codex-only.yaml", () => {
     expect(selectVariant({ claudeCode: "unavailable", codex: "ok" })).toBe("rig-codex-only.yaml");
   });
 });
 
-describe("kernelAlreadyManaged — short-circuit predicate", () => {
-  it("returns true when a rig named 'kernel' exists", () => {
+describe("kernelAlreadyManaged——直接返回谓词", () => {
+  it("存在名为 kernel 的 rig 时返回 true", () => {
     expect(kernelAlreadyManaged(makeRigRepo([{ name: "kernel" }, { name: "other" }]))).toBe(true);
   });
-  it("returns false when no rig is named 'kernel' (case-sensitive)", () => {
+  it("没有名为 kernel 的 rig 时返回 false（区分大小写）", () => {
     expect(kernelAlreadyManaged(makeRigRepo([{ name: "Kernel" }, { name: "other" }]))).toBe(false);
   });
-  it("returns false on an empty rig list", () => {
+  it("rig 列表为空时返回 false", () => {
     expect(kernelAlreadyManaged(makeRigRepo([]))).toBe(false);
   });
 });
 
-describe("authBlockMessage — 3-part error contract", () => {
-  it("includes Error/Reason/Fix lines per building-agent-software skill discipline", () => {
+describe("authBlockMessage——三段式错误契约", () => {
+  it("按 building-agent-software skill 规范包含错误、原因和修复三行", () => {
     const msg = authBlockMessage();
-    expect(msg).toMatch(/^Error:/m);
-    expect(msg).toMatch(/^Reason:/m);
-    expect(msg).toMatch(/^Fix:/m);
+    expect(msg).toMatch(/^错误：/m);
+    expect(msg).toMatch(/^原因：/m);
+    expect(msg).toMatch(/^修复：/m);
     expect(msg).toContain("claude auth login");
     expect(msg).toContain("codex login");
   });
 });
 
-describe("bootKernelIfNeeded — short-circuit branches", () => {
-  it("returns skipped tracker when OPENRIG_NO_KERNEL=1", async () => {
+describe("bootKernelIfNeeded——直接返回分支", () => {
+  it("OPENRIG_NO_KERNEL=1 时返回 skipped tracker", async () => {
     process.env.OPENRIG_NO_KERNEL = "1";
     const bootstrap = makeBootstrapMock();
     const tracker = await bootKernelIfNeeded(makeBaseDeps({ bootstrapOrchestrator: bootstrap }, tmpSpecsDir));
@@ -148,18 +145,18 @@ describe("bootKernelIfNeeded — short-circuit branches", () => {
     expect((bootstrap as unknown as { bootstrap: ReturnType<typeof vi.fn> }).bootstrap).not.toHaveBeenCalled();
   });
 
-  it("returns skipped tracker when a kernel rig is already managed", async () => {
+  it("kernel rig 已受管时返回 skipped tracker", async () => {
     const bootstrap = makeBootstrapMock();
     const tracker = await bootKernelIfNeeded(makeBaseDeps({
       rigRepo: makeRigRepo([{ name: "kernel" }]),
       bootstrapOrchestrator: bootstrap,
     }, tmpSpecsDir));
     expect(tracker.getStatus().kernelState).toBe("skipped");
-    expect(tracker.getStatus().detail).toContain("already managed");
+    expect(tracker.getStatus().detail).toContain("已受管");
     expect((bootstrap as unknown as { bootstrap: ReturnType<typeof vi.fn> }).bootstrap).not.toHaveBeenCalled();
   });
 
-  it("returns auth_blocked tracker when neither runtime is available", async () => {
+  it("两个 runtime 都不可用时返回 auth_blocked tracker", async () => {
     const bootstrap = makeBootstrapMock();
     const tracker = await bootKernelIfNeeded(makeBaseDeps({
       bootstrapOrchestrator: bootstrap,
@@ -167,11 +164,11 @@ describe("bootKernelIfNeeded — short-circuit branches", () => {
     }, tmpSpecsDir));
     const status = tracker.getStatus();
     expect(status.kernelState).toBe("auth_blocked");
-    expect(status.detail).toMatch(/^Error: Kernel rig cannot boot/);
+    expect(status.detail).toMatch(/^错误：Kernel rig 无法启动/);
     expect((bootstrap as unknown as { bootstrap: ReturnType<typeof vi.fn> }).bootstrap).not.toHaveBeenCalled();
   });
 
-  it("returns spec_missing tracker when the chosen variant file doesn't exist", async () => {
+  it("选定的变体文件不存在时返回 spec_missing tracker", async () => {
     rmSync(join(tmpSpecsDir, "rigs/launch/kernel/rig.yaml"));
     const bootstrap = makeBootstrapMock();
     const tracker = await bootKernelIfNeeded(makeBaseDeps({ bootstrapOrchestrator: bootstrap }, tmpSpecsDir));
@@ -180,10 +177,9 @@ describe("bootKernelIfNeeded — short-circuit branches", () => {
   });
 });
 
-describe("bootKernelIfNeeded — fire-and-forget bootstrap", () => {
-  it("fires bootstrap in the background with the resolved variant + correct opts", async () => {
-    // Hold the bootstrap mock open so we can observe the in-flight
-    // booting state deterministically before the promise resolves.
+describe("bootKernelIfNeeded——触发后不等待的 bootstrap", () => {
+  it("使用解析出的变体和正确选项在后台触发 bootstrap", async () => {
+    // 暂停 bootstrap mock，以便在 Promise resolve 前确定性地观察进行中的 booting 状态。
     let release: () => void = () => {};
     const blocked = new Promise<void>((r) => { release = r; });
     const bootstrap = {
@@ -206,7 +202,7 @@ describe("bootKernelIfNeeded — fire-and-forget bootstrap", () => {
     tracker.stop();
   });
 
-  it("transitions to bootstrap_failed when orchestrator returns errors (post-flush)", async () => {
+  it("orchestrator 返回错误时在 flush 后转换为 bootstrap_failed", async () => {
     const tracker = await bootKernelIfNeeded(makeBaseDeps({
       bootstrapOrchestrator: makeBootstrapMock({ errors: ["preflight: tmux missing"] }),
     }, tmpSpecsDir));
@@ -217,7 +213,7 @@ describe("bootKernelIfNeeded — fire-and-forget bootstrap", () => {
     tracker.stop();
   });
 
-  it("transitions to bootstrap_failed and surfaces thrown error message (post-flush)", async () => {
+  it("orchestrator 抛错时在 flush 后转换为 bootstrap_failed 并呈现错误信息", async () => {
     const tracker = await bootKernelIfNeeded(makeBaseDeps({
       bootstrapOrchestrator: makeBootstrapMock({ throwError: new Error("network blip") }),
     }, tmpSpecsDir));
@@ -228,7 +224,7 @@ describe("bootKernelIfNeeded — fire-and-forget bootstrap", () => {
     tracker.stop();
   });
 
-  it("uses the claude-only variant when only Claude is available", async () => {
+  it("只有 Claude 可用时使用 claude-only 变体", async () => {
     const tracker = await bootKernelIfNeeded(makeBaseDeps({
       probeRuntimes: async () => ({ claudeCode: "ok", codex: "unavailable" }),
     }, tmpSpecsDir));
@@ -236,7 +232,7 @@ describe("bootKernelIfNeeded — fire-and-forget bootstrap", () => {
     tracker.stop();
   });
 
-  it("uses the codex-only variant when only Codex is available", async () => {
+  it("只有 Codex 可用时使用 codex-only 变体", async () => {
     const tracker = await bootKernelIfNeeded(makeBaseDeps({
       probeRuntimes: async () => ({ claudeCode: "unavailable", codex: "ok" }),
     }, tmpSpecsDir));

@@ -13,7 +13,7 @@ describe("runWake — L3 headless one-shot wake", () => {
     expect(out.answer).toBe("the deploy decision was X");
     expect(out.timedOut).toBeFalsy();
 
-    // command is claude, headless one-shot resume of the token, question present
+    // 命令为 claude，headless 一次性 resume token，question 存在
     const call = (runner as unknown as { mock: { calls: [string, string[], unknown][] } }).mock.calls[0]!;
     expect(call[0]).toBe("claude");
     expect(call[1]).toContain("-p");
@@ -57,8 +57,8 @@ describe("runWake — L3 headless one-shot wake", () => {
   });
 
   it("reports a NON-ZERO exit as a FAILURE, not a silent empty answer (honest-degraded parity)", async () => {
-    // bad token / missing binary / auth fail: code=1, empty stdout. Must NOT read
-    // as a successful empty answer.
+    // 坏 token / 缺 binary / auth 失败：code=1，空 stdout。绝不可读作
+    // 成功空答案。
     const runner: WakeRunner = vi.fn(async () => ({ stdout: "", stderr: "resume: invalid session token", code: 1, timedOut: false }));
     const out = await runWake({ runner }, { question: "q?", token: "bad", runtime: "claude" });
     expect(out.failed).toBe(true);

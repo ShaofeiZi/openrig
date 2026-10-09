@@ -1,6 +1,5 @@
-// OPR.0.4.6.MH1 FR-5 — the dashboard host-config component: one registry
-// two surfaces, one selection store two surfaces, honest empty state,
-// rename = the settings write path (FR-4).
+// OPR.0.4.6.MH1 FR-5——仪表盘主机配置组件：一份注册表服务两个表面，一份选择存储服务
+// 两个表面，空状态如实呈现，重命名走设置写入路径（FR-4）。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
@@ -29,9 +28,8 @@ describe("HostConfigCard (OPR.0.4.6.MH1 FR-5)", () => {
     hostsData = { ownName: "localhost", selected: "local", hosts: [] };
   });
 
-  // This project's vitest setup has no RTL auto-cleanup (no test globals);
-  // without this, containers accumulate and any testid every render
-  // carries (host-own-name) throws multiple-match on the second query.
+  // 本项目 Vitest 设置未启用 RTL 自动清理（无测试全局）；若不清理，容器会累积，
+  // 每次渲染都存在的 testid（host-own-name）会在第二次查询时触发多重匹配。
   afterEach(() => cleanup());
 
   it("zero added hosts: own-host card + honest empty state + the add affordance (never blank)", () => {
@@ -59,8 +57,7 @@ describe("HostConfigCard (OPR.0.4.6.MH1 FR-5)", () => {
     expect(rows.textContent).toContain("vm-b.local");
     expect(rows.textContent).toContain("unreachable");
     expect(screen.getByTestId("host-selected-marker-vps-a")).toBeTruthy();
-    // The selection banner renders the honest non-local state (the FR-5
-    // disposition: pointer + selection rendering, no UI data retarget).
+    // 选择横幅如实呈现非本地状态（FR-5 处置：显示指针与选择结果，不重定向 UI 数据）。
     expect(screen.getByTestId("host-selection-banner").textContent).toContain("vps-a");
   });
 

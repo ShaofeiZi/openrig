@@ -19,17 +19,17 @@ import { WorkflowProjectorError } from "../src/domain/workflow-projector.js";
 import { WorkflowInstanceStore } from "../src/domain/workflow-instance-store.js";
 import { ALL_MIGRATIONS } from "../src/db/all-migrations.js";
 
-// OPR.0.4.6.FAC1 commit 2 — the instance is bound to a rig at
-// instantiation (AC-1; ARCH Q4; migration 052).
+// OPR.0.4.6.FAC1 commit 2——instance 在 instantiation 时绑定到 rig
+//（AC-1；ARCH Q4；migration 052）。
 //
-// The binding contract:
+// 绑定契约：
 //   effective = input.targetRig ?? spec.target.rig ?? null
-//   - the spec's target.rig is a DEFAULT the instantiate param overrides;
-//   - null = unbound = byte-identical pre-FAC-1 behavior;
-//   - a named rig must EXIST at instantiate (`bound_rig_unknown`, loud,
-//     structured, BEFORE any mutation — no instance row is created);
-//   - the binding persists the rig NAME (Q4: the durable operator-space
-//     coordinate) on workflow_instances.bound_rig.
+//   - spec 的 target.rig 是 DEFAULT，instantiate 参数可覆盖；
+//   - null = unbound = 与 FAC-1 之前 byte 一致；
+//   - 命名 rig 必须在 instantiate 时 EXIST（`bound_rig_unknown`，loud、结构化、
+//     在任何 mutation 之前——不创建 instance 行）；
+//   - 绑定把 rig NAME（Q4：持久 operator-space 坐标）持久化到
+//     workflow_instances.bound_rig。
 
 const SPEC_WITH_DEFAULT = `workflow:
   id: fac1-default-rig
@@ -69,7 +69,7 @@ const SPEC_NO_TARGET = `workflow:
 `;
 
 
-describe("FAC-1 C2: workflow instance bound rig (migration 052)", () => {
+describe("FAC-1 C2：workflow instance 绑定 rig（migration 052）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -82,15 +82,14 @@ describe("FAC-1 C2: workflow instance bound rig (migration 052)", () => {
     db = createDb();
     migrate(db, ALL_MIGRATIONS);
     bus = new EventBus(db);
-    // Registered rigs: the spec default (factory-a), the override target
-    // (factory-b), and the queue-destination rig for worker@rig.
+    // 已注册 rig：spec 默认（factory-a）、override 目标（factory-b）、
+    // worker@rig 的 queue-destination rig。
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-a', 'factory-a')`).run();
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-b', 'factory-b')`).run();
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
-    // Full-schema fixture realism (P13): under the SHIPPED migration list the
-    // member-existence probe WORKS (the old subset schema made it error and
-    // skip — silently suppressing the advisory). Seed the member the specs
-    // name so the no-advisory assertions test what they always meant to.
+    // 全 schema fixture 真实性（P13）：在 SHIPPED migration 列表下 member-existence probe
+    // 工作正常（旧 subset schema 让它 error 并 skip——静默压制 advisory）。种子 spec 命名的
+    // member，使 no-advisory 断言测它们一直想测的东西。
     db.prepare(`INSERT INTO nodes (id, rig_id, logical_id, runtime) VALUES ('n-w', 'r-1', 'dev.worker', 'claude-code')`).run();
     db.prepare(`INSERT INTO sessions (id, node_id, session_name, status) VALUES ('s-w', 'n-w', 'dev-worker@rig', 'running')`).run();
     queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
@@ -115,7 +114,7 @@ describe("FAC-1 C2: workflow instance bound rig (migration 052)", () => {
     return row!.bound_rig;
   }
 
-  it("default-from-spec: no override → boundRig = spec target.rig, persisted as the NAME", async () => {
+  it("default-from-spec：无 override → boundRig = spec target.rig，按 NAME 持久化", async () => {
     const result = await runtime.instantiate({
       specPath: defaultSpecPath,
       rootObjective: "test",
@@ -123,11 +122,11 @@ describe("FAC-1 C2: workflow instance bound rig (migration 052)", () => {
     });
     expect(result.instance.boundRig).toBe("factory-a");
     expect(boundRigColumn(result.instance.instanceId)).toBe("factory-a");
-    // A resolvable spec-default binds cleanly — no advisory.
+    // 可解析的 spec 默认干净绑定——无 advisory。
     expect(result.advisories).toEqual([]);
   });
 
-  it("override-wins: instantiate targetRig beats the spec default (default-with-override, AC-1)", async () => {
+  it("override-wins：instantiate targetRig 胜过 spec 默认（default-with-override，AC-1）", async () => {
     const result = await runtime.instantiate({
       specPath: defaultSpecPath,
       rootObjective: "test",
@@ -138,7 +137,7 @@ describe("FAC-1 C2: workflow instance bound rig (migration 052)", () => {
     expect(boundRigColumn(result.instance.instanceId)).toBe("factory-b");
   });
 
-  it("null-unbound: no spec default and no override → boundRig null (today's behavior byte-identical)", async () => {
+  it("null-unbound：无 spec 默认且无 override → boundRig null（今日行为 byte 一致）", async () => {
     const result = await runtime.instantiate({
       specPath: noTargetSpecPath,
       rootObjective: "test",
@@ -146,17 +145,16 @@ describe("FAC-1 C2: workflow instance bound rig (migration 052)", () => {
     });
     expect(result.instance.boundRig).toBeNull();
     expect(boundRigColumn(result.instance.instanceId)).toBeNull();
-    // Unbound with no bad default — no advisory.
+    // unbound 且无坏默认——无 advisory。
     expect(result.advisories).toEqual([]);
   });
 
-  // AUTHORITATIVE-PATH NEGATIVE (guard-critical, arch ruling 2026-07-07):
-  // an explicit operator `--rig X` (input.targetRig) is authoritative — an
-  // unknown X HARD-FAILS `bound_rig_unknown` and must NEVER enter the
-  // spec-default degrade branch. This is the named negative the narrow
-  // guard confirm checks (the provenance split must not soften the
-  // explicit demand). Contrast with the spec-default degrade test below.
-  it("explicit --rig unknown STILL hard-fails bound_rig_unknown BEFORE any mutation (never degrades)", async () => {
+  // AUTHORITATIVE-PATH NEGATIVE（guard-critical，arch 裁决 2026-07-07）：
+  // 显式运维 `--rig X`（input.targetRig）是 authoritative——未知 X HARD-FAIL
+  // `bound_rig_unknown`，绝不进入 spec-default degrade 分支。这是窄 guard confirm
+  // 检查的命名负例（provenance split 不得软化显式要求）。与下方 spec-default degrade
+  // 测试对照。
+  it("显式 --rig 未知仍在任何 mutation 之前 hard-fail bound_rig_unknown（绝不 degrade）", async () => {
     const before = db.prepare(`SELECT COUNT(*) as c FROM workflow_instances`).get() as { c: number };
     let thrown: unknown;
     try {
@@ -169,23 +167,22 @@ describe("FAC-1 C2: workflow instance bound rig (migration 052)", () => {
     } catch (err) {
       thrown = err;
     }
-    // It THREW (did not degrade to an unbound result with an advisory).
+    // 它 THROW（未退化为带 advisory 的 unbound 结果）。
     expect(thrown).toBeInstanceOf(WorkflowProjectorError);
     const e = thrown as WorkflowProjectorError;
     expect(e.code).toBe("bound_rig_unknown");
-    // The what/why/fix contract: names the rig, lists registered rigs.
+    // what/why/fix 契约：命名 rig，列出已注册 rig。
     expect(e.message).toContain("no-such-rig");
     expect(e.message).toContain("factory-a");
     expect((e.details?.["registeredRigs"] as string[]) ?? []).toContain("factory-b");
-    // No instance row was created (validation-before-mutation).
+    // 未创建 instance 行（validation-before-mutation）。
     const after = db.prepare(`SELECT COUNT(*) as c FROM workflow_instances`).get() as { c: number };
     expect(after.c).toBe(before.c);
   });
 
-  // Guard the other direction too: an explicit --rig that DOES exist,
-  // over a spec whose default is BAD, binds to the explicit rig and emits
-  // NO advisory (the explicit demand is honored; the bad default is moot).
-  it("explicit --rig (known) over a bad spec-default binds explicitly, no advisory", async () => {
+  // 反向也守卫：显式 --rig 存在，而 spec 默认坏时，绑定到显式 rig 且不发 advisory
+  //（显式要求被遵守；坏默认无意义）。
+  it("显式 --rig（已知）覆盖坏 spec 默认时显式绑定，无 advisory", async () => {
     const badSpecPath = join(tmp, "bad-default-explicit.yaml");
     writeFileSync(badSpecPath, SPEC_WITH_DEFAULT.replace("rig: factory-a", "rig: vanished-rig"));
     const result = await runtime.instantiate({
@@ -198,17 +195,15 @@ describe("FAC-1 C2: workflow instance bound rig (migration 052)", () => {
     expect(result.advisories).toEqual([]);
   });
 
-  // OPR.0.4.6.FAC1 arch ruling 2026-07-07 (target-rig zero-regression,
-  // "Option A refined by PROVENANCE"): an unknown SPEC-DEFAULT target.rig
-  // is ADVISORY, not authoritative — it DEGRADES to unbound with a loud
-  // advisory rather than hard-failing. (Prior behavior asserted here was
-  // an AC-1 zero-regression violation: shipped builtins like `conveyor`
-  // declare target.rig AND route via preferred_targets, so a hard-fail on
-  // the default would regress a shipped spec's instantiate.) The explicit
-  // `--rig` path keeps its hard-fail — see the authoritative-negative test
-  // above. SPEC_WITH_DEFAULT declares preferred_targets: [worker@rig] and
-  // `rig` is registered, so the unbound instance still routes and succeeds.
-  it("spec-default unknown DEGRADES to unbound + a LOUD advisory (advisory provenance, not a hard-fail)", async () => {
+  // OPR.0.4.6.FAC1 arch 裁决 2026-07-07（target-rig zero-regression，
+  // "Option A refined by PROVENANCE"）：未知 SPEC-DEFAULT target.rig 是 ADVISORY，
+  // 不是 authoritative——它 DEGRADE 到 unbound 并带 loud advisory，而非 hard-fail。
+  //（此前在此断言的行为是 AC-1 zero-regression 违规：shipped builtins 如 `conveyor`
+  // 声明 target.rig 且经 preferred_targets 路由，所以对默认 hard-fail 会让 shipped spec 的
+  // instantiate 回归。）显式 `--rig` 路径保留 hard-fail——见上面 authoritative-negative 测试。
+  // SPEC_WITH_DEFAULT 声明 preferred_targets: [worker@rig] 且 `rig` 已注册，
+  // 故 unbound instance 仍能路由并成功。
+  it("spec 默认未知 DEGRADE 到 unbound + LOUD advisory（advisory provenance，不是 hard-fail）", async () => {
     const badSpecPath = join(tmp, "bad-default.yaml");
     writeFileSync(badSpecPath, SPEC_WITH_DEFAULT.replace("rig: factory-a", "rig: vanished-rig"));
     const before = db.prepare(`SELECT COUNT(*) as c FROM workflow_instances`).get() as { c: number };
@@ -217,22 +212,21 @@ describe("FAC-1 C2: workflow instance bound rig (migration 052)", () => {
       rootObjective: "test",
       createdBySession: "orch@rig",
     });
-    // Degrades to unbound (routes via preferred_targets — byte-identical
-    // pre-FAC-1 behavior for a spec that carries a descriptive target.rig).
+    // 退到 unbound（经 preferred_targets 路由——对带描述性 target.rig 的 spec，与 FAC-1
+    // 之前 byte 一致）。
     expect(result.instance.boundRig).toBeNull();
     expect(boundRigColumn(result.instance.instanceId)).toBeNull();
-    // The advisory is genuinely LOUD (guard invariant): it names the
-    // absent default rig AND the unbound consequence — never silent.
+    // advisory 真正 LOUD（守卫不变量）：命名缺席的默认 rig 以及 unbound 后果——绝不静默。
     expect(result.advisories.length).toBeGreaterThan(0);
     const advisory = result.advisories.join(" ");
     expect(advisory).toContain("vanished-rig");
     expect(advisory).toContain("UNBOUND");
-    // The instance WAS created (degrade, not fail).
+    // instance 已创建（degrade，不是 fail）。
     const after = db.prepare(`SELECT COUNT(*) as c FROM workflow_instances`).get() as { c: number };
     expect(after.c).toBe(before.c + 1);
   });
 
-  it("legacy-fixture degrade: without migration 052 the store's column probe keeps the legacy INSERT (boundRig reads null, nothing crashes)", () => {
+  it("legacy-fixture degrade：无 migration 052 时 store 的列探针保留 legacy INSERT（boundRig 读 null，不崩）", () => {
     const legacyDb = createDb();
     migrate(legacyDb, [
       coreSchema,
@@ -248,7 +242,7 @@ describe("FAC-1 C2: workflow instance bound rig (migration 052)", () => {
       workflowName: "legacy",
       workflowVersion: "1",
       createdBySession: "orch@rig",
-      boundRig: "factory-a", // silently untracked pre-052 — the probe degrades
+      boundRig: "factory-a", // 052 之前静默未跟踪——探针 degrade
     });
     expect(instance.boundRig).toBeNull();
     legacyDb.close();

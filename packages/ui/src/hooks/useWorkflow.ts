@@ -1,16 +1,15 @@
-// OPR.0.4.6.WF4 (C3) — workflow instance READ hooks.
+// OPR.0.4.6.WF4（C3）——工作流实例的读取 hooks。
 //
-// FR-4 parity rail: these hooks read the SAME daemon endpoints the WF-3 CLI
-// reads (routes/workflow.ts — list / specs / :id / :id/trace), verbatim shapes,
-// with ZERO UI-side recomputation of status/deadline/branch (BR-4). The type
-// mirrors below restate the daemon read contracts field-for-field, verified
-// firsthand at 56556dcf (untouched by C1/C2):
+// FR-4 对齐护栏：这些 hooks 读取与 WF-3 CLI 相同的后台服务端点
+// （routes/workflow.ts —— list / specs / :id / :id/trace），结构逐字一致，
+// 界面侧对状态/截止时间/分支零重算（BR-4）。下面的类型镜像逐字段复述后台服务的读取契约，
+// 已在 56556dcf 处亲自核对（C1/C2 未改动）：
 //   WorkflowInstance             domain/workflow-types.ts:177
-//   withDeadline enrichment      domain/workflow-runtime.ts (deadline verdict)
+//   withDeadline 增强            domain/workflow-runtime.ts（截止时间判定）
 //   WorkflowStepTrailEntry       domain/workflow-types.ts:224
 //   WorkflowDeadlineVerdict      domain/workflow-deadline.ts
-//   /api/workflow/specs rows     routes/workflow.ts:201-212 (HEADERS ONLY — the
-//   workflow SHAPE rides the Library review payload, useSpecLibrary.ts)
+//   /api/workflow/specs 行       routes/workflow.ts:201-212（仅头部——工作流结构
+//                                走 Library 评审负载，见 useSpecLibrary.ts）
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -89,8 +88,8 @@ async function fetchJson<T>(url: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-/** GET /api/workflow/list[?status=] — every instance carries the derived WF-1
- *  FR-2 deadline verdict (recomputed per read, never stored). */
+/** GET /api/workflow/list[?status=] —— 每个实例都携带派生的 WF-1 FR-2 截止时间判定
+ *  （每次读取时重算，绝不持久化）。 */
 export function useWorkflowInstances(status?: WorkflowInstanceStatus) {
   const qs = status ? `?status=${status}` : "";
   return useQuery({
@@ -100,7 +99,7 @@ export function useWorkflowInstances(status?: WorkflowInstanceStatus) {
   });
 }
 
-/** GET /api/workflow/:id — a single instance (show), deadline-enriched. */
+/** GET /api/workflow/:id —— 单个实例（详情），附带截止时间增强。 */
 export function useWorkflowInstance(instanceId: string | null) {
   return useQuery({
     queryKey: ["workflow", "instance", instanceId],
@@ -110,7 +109,7 @@ export function useWorkflowInstance(instanceId: string | null) {
   });
 }
 
-/** GET /api/workflow/specs — cached-spec HEADERS (never the shape). */
+/** GET /api/workflow/specs —— 已缓存 spec 的头部（绝不含结构本体）。 */
 export function useWorkflowSpecs() {
   return useQuery({
     queryKey: ["workflow", "specs"],
@@ -119,8 +118,8 @@ export function useWorkflowSpecs() {
   });
 }
 
-/** GET /api/workflow/:id/trace — instance + full routing trail (the same read
- *  `rig workflow trace` projects; the daemon's read-only continue(), no write). */
+/** GET /api/workflow/:id/trace —— 实例 + 完整路由轨迹（与 `rig workflow trace`
+ *  投影的是同一份读取；后台服务的 continue() 为只读，无写入）。 */
 export function useWorkflowTrace(instanceId: string | null) {
   return useQuery({
     queryKey: ["workflow", "trace", instanceId],

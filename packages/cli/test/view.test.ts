@@ -95,7 +95,7 @@ describe("rig view CLI (PL-004 Phase B)", () => {
     });
     const program = createProgram({ viewDeps: deps });
     program.exitOverride();
-    // Note: --limit has a default of "100"; so this test needs explicit limit empty OR we accept default.
+    // 注意：--limit 默认 "100"；故本测试需显式 limit 为空 OR 接受默认。
     await program.parseAsync(["node", "rig", "view", "show", "founder"]);
     const call = calls.find((c) => c.method === "GET" && c.path.startsWith("/api/views/founder"));
     expect(call).toBeDefined();

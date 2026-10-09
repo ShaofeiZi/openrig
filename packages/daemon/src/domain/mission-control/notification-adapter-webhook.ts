@@ -1,7 +1,7 @@
-// PL-005 Phase B: generic webhook adapter (operator-routable alternate).
+// PL-005 Phase B：通用 webhook adapter（操作员可路由的替代方案）。
 //
-// Documented stable JSON body shape so the operator can POST through
-// Slack incoming webhooks, Discord, Telegram bots, or their own infra.
+// 记录稳定的 JSON body 结构，使操作员可通过 Slack incoming webhook、Discord、Telegram bot
+// 或自有基础设施 POST。
 
 import type {
   NotificationAdapter,
@@ -10,11 +10,11 @@ import type {
 } from "./notification-adapter-types.js";
 
 export interface WebhookAdapterOpts {
-  /** Full webhook endpoint URL. */
+  /** 完整 webhook endpoint URL。 */
   endpointUrl: string;
-  /** Optional fetch override for tests. */
+  /** 供测试使用的可选 fetch override。 */
   fetchImpl?: typeof fetch;
-  /** Optional extra headers (e.g., `X-Webhook-Signature`). */
+  /** 可选额外 header（如 `X-Webhook-Signature`）。 */
   extraHeaders?: Record<string, string>;
 }
 

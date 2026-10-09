@@ -1,10 +1,10 @@
-// release-0.3.2 slice 12 — `rig scope` CLI primitive.
+// release-0.3.2 slice 12——`rig scope` CLI 原语。
 //
-// Command grammar: rig scope <tier> <verb>. v0 ships `mission` +
-// `slice` tiers; `project` and `sub-slice` are reserved per the
-// substrate convention `conventions/scope-and-versioning/README.md`
-// (stage: provisional). The CLI mints stable dot-IDs into created
-// mission/slice frontmatter per §1 of that convention.
+// 命令语法：rig scope <tier> <verb>。v0 交付 `mission` +
+// `slice` tier；`project` 和 `sub-slice` 按 substrate 约定
+// `conventions/scope-and-versioning/README.md` 保留（stage: provisional）。
+// CLI 按该约定 §1 把稳定 dot-ID 铸进创建的
+// mission/slice frontmatter。
 
 import fs from "node:fs";
 import path from "node:path";
@@ -85,7 +85,7 @@ import {
 } from "../lib/scope/mission-composition.js";
 
 // ---------------------------------------------------------------------
-// Shared helpers
+// 共享辅助函数
 // ---------------------------------------------------------------------
 
 interface Stdout {
@@ -136,11 +136,11 @@ function fail(err: unknown, json: boolean, out: Stdout): never {
         error: { fact: err.fact, consequence: err.consequence, action: err.action },
       }, null, 2) + "\n");
     } else {
-      process.stderr.write(`Error: ${err.fact}\n${err.consequence}\n${err.action}\n`);
+      process.stderr.write(`错误：${err.fact}\n${err.consequence}\n${err.action}\n`);
     }
   } else {
     const message = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`Error: ${message}\n`);
+    process.stderr.write(`错误：${message}\n`);
   }
   process.exit(1);
 }
@@ -170,7 +170,7 @@ interface RootOpts {
 }
 
 function getOpts(cmd: Command): RootOpts {
-  // commander v13 attaches opts on the parent.
+  // commander v13 将 opts 挂在父命令上。
   let walker: Command | null = cmd;
   while (walker) {
     const o = walker.opts() as RootOpts;
@@ -180,36 +180,35 @@ function getOpts(cmd: Command): RootOpts {
   return {};
 }
 
-/** FR-5: a one-line human render of the derived stage. Shows the declared
- *  stage, and (when a weak `verified` downgrades it) the effective stage +
- *  why. Derived at read time; nothing is written. */
+/** FR-5：派生 stage 的一行人类渲染。显示声明的 stage，
+ *  （当弱 `verified` 把它降级时）显示生效 stage + 原因。读时派生；不写任何东西。 */
 function formatTrustLine(trust: ReturnType<typeof deriveScopeTrust>): string {
   const declared = trust.declaredStage || "—";
   if (trust.downgraded) {
-    return `  stage: ${declared} (effective: ${trust.effectiveStage} — ${trust.verified.status})\n`;
+    return `  stage: ${declared}（生效：${trust.effectiveStage} — ${trust.verified.status}）\n`;
   }
   return `  stage: ${declared}\n`;
 }
 
 // ---------------------------------------------------------------------
-// rig scope slice ls
+// zrig scope slice ls
 // ---------------------------------------------------------------------
 
 function buildSliceLsCommand(): Command {
   const cmd = new Command("ls")
-    .description("List slices in a mission (or across all missions)")
-    .option("--mission <name>", "Restrict to a single mission")
-    .option("--state <state>", "Filter: active | closed | shipped | all", "active")
-    .option("--json", "Machine-readable output")
+    .description("列出一个 mission 里（或跨所有 mission）的 slices")
+    .option("--mission <name>", "限定到单个 mission")
+    .option("--state <state>", "过滤：active | closed | shipped | all", "active")
+    .option("--json", "机器可读输出")
     .action(async (opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
       const state = (opts.state as SliceState) ?? "active";
       if (!["active", "closed", "shipped", "all"].includes(state)) {
         fail(new ScopeCliError({
-          fact: `Unknown --state value "${state}".`,
-          consequence: "Command did not run.",
-          action: "Pick one of: active, closed, shipped, all.",
+          fact: `未知 --state 值 "${state}"。`,
+          consequence: "命令未运行。",
+          action: "选一个：active、closed、shipped、all。",
         }), json, out);
       }
       try {
@@ -234,7 +233,7 @@ function buildSliceLsCommand(): Command {
             lines.push(`${mission.name}/${slice.name}    ${slice.id ?? "—"}    ${slice.status ?? "—"}`);
           }
         }
-        emit(out, { ok: true, count: rows.length, slices: rows }, json, lines.length === 0 ? ["(no slices)"] : lines);
+        emit(out, { ok: true, count: rows.length, slices: rows }, json, lines.length === 0 ? ["（无 slices）"] : lines);
       } catch (err) {
         fail(err, json, out);
       }
@@ -243,15 +242,15 @@ function buildSliceLsCommand(): Command {
 }
 
 // ---------------------------------------------------------------------
-// rig scope slice show
+// zrig scope slice show
 // ---------------------------------------------------------------------
 
 function buildSliceShowCommand(): Command {
   return new Command("show")
-    .description("Inspect a single slice (frontmatter + README + children)")
-    .argument("<slice-path>", "Slice path (absolute, relative-to-substrate, or NN-slug)")
-    .option("--mission <name>", "Hint mission when path is just NN-slug")
-    .option("--json", "Machine-readable output")
+    .description("检视单个 slice（frontmatter + README + 子项）")
+    .argument("<slice-path>", "Slice 路径（绝对、相对 substrate，或 NN-slug）")
+    .option("--mission <name>", "路径只是 NN-slug 时提示 mission")
+    .option("--json", "机器可读输出")
     .action(async (slicePath: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -261,7 +260,7 @@ function buildSliceShowCommand(): Command {
         const readme = slice.readmePath ? fs.readFileSync(slice.readmePath, "utf8") : null;
         const children = fs.readdirSync(slice.absPath, { withFileTypes: true })
           .map((e) => ({ name: e.name, kind: e.isDirectory() ? "dir" : "file" as const }));
-        // FR-5: derive read-time trust from (stage x verified) — NEVER stored.
+        // FR-5：读时从（stage x verified）派生信任——绝不存储。
         const trust = deriveScopeTrust(slice.frontmatter);
         const payload = {
           ok: true,
@@ -280,12 +279,12 @@ function buildSliceShowCommand(): Command {
         if (json) {
           out.write(JSON.stringify(payload, null, 2) + "\n");
         } else {
-          out.write(`Slice: ${slice.missionName}/${slice.name}\n`);
+          out.write(`Slice：${slice.missionName}/${slice.name}\n`);
           out.write(`  id: ${slice.id ?? "—"}\n`);
           out.write(`  status: ${slice.status ?? "—"}\n`);
           out.write(formatTrustLine(trust));
           out.write(`  path: ${slice.absPath}\n`);
-          out.write(`  children: ${children.length}\n`);
+          out.write(`  子项：${children.length}\n`);
           if (readme) {
             out.write("\n--- README ---\n");
             out.write(readme);
@@ -299,20 +298,20 @@ function buildSliceShowCommand(): Command {
 }
 
 // ---------------------------------------------------------------------
-// rig scope slice create
+// zrig scope slice create
 // ---------------------------------------------------------------------
 
 function buildSliceCreateCommand(): Command {
   return new Command("create")
-    .description("Create a new slice with SPEC.md, slice.yaml, PROGRESS.md, PROOF.md, and proof/. Conventions SSOT: docs/reference/sdlc-conventions.md (installed: $OPENRIG_HOME/reference/sdlc-conventions.md).")
-    .argument("<mission>", "Mission name")
-    .argument("<slug>", "Short slug (becomes the folder name's suffix)")
-    .option("--template <kind>", `Template: ${SLICE_TEMPLATE_KINDS.join(" | ")}`, "placeholder")
-    .option("--title <text>", "Display title (defaults to titlecased slug)")
-    .option("--intent <text>", "Authored intent stored in SPEC.md frontmatter (defaults to title)")
-    .option("--depends-on <dot-id...>", "Advisory build-order dependencies on sibling slice dot-IDs")
-    .option("--readme-only", "Write progress_rail: readme-only in README frontmatter instead of scaffolding PROGRESS.md")
-    .option("--json", "Machine-readable output")
+    .description("创建一个新 slice，带 SPEC.md、slice.yaml、PROGRESS.md、PROOF.md 和 proof/。约定 SSOT：docs/reference/sdlc-conventions.md（已安装：$OPENRIG_HOME/reference/sdlc-conventions.md）。")
+    .argument("<mission>", "Mission 名")
+    .argument("<slug>", "短 slug（成为文件夹名后缀）")
+    .option("--template <kind>", `模板：${SLICE_TEMPLATE_KINDS.join(" | ")}`, "placeholder")
+    .option("--title <text>", "显示标题（默认 titlecased slug）")
+    .option("--intent <text>", "存进 SPEC.md frontmatter 的编写意图（默认标题）")
+    .option("--depends-on <dot-id...>", "对兄弟 slice dot-ID 的建议构建顺序依赖")
+    .option("--readme-only", "在 README frontmatter 写 progress_rail: readme-only，而不是搭 PROGRESS.md 骨架")
+    .option("--json", "机器可读输出")
     .action(async (missionName: string, rawSlug: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -320,17 +319,17 @@ function buildSliceCreateCommand(): Command {
         const kind = opts.template as SliceTemplateKind;
         if (!SLICE_TEMPLATE_KINDS.includes(kind)) {
           throw new ScopeCliError({
-            fact: `Unknown --template kind "${kind}".`,
-            consequence: "Slice not created.",
-            action: `Pick one of: ${SLICE_TEMPLATE_KINDS.join(", ")}.`,
+            fact: `未知 --template 种类 "${kind}"。`,
+            consequence: "未创建 slice。",
+            action: `选一个：${SLICE_TEMPLATE_KINDS.join(", ")}。`,
           });
         }
         const slug = slugify(rawSlug);
         if (!slug) {
           throw new ScopeCliError({
-            fact: `Slug "${rawSlug}" reduces to empty after slugification.`,
-            consequence: "Slice not created.",
-            action: "Pick a slug containing letters or digits.",
+            fact: `slug "${rawSlug}" slugify 后为空。`,
+            consequence: "未创建 slice。",
+            action: "选一个含字母或数字的 slug。",
           });
         }
         const missionsRoot = resolveMissionsRoot({ override: getOpts(command).workspace });
@@ -340,9 +339,9 @@ function buildSliceCreateCommand(): Command {
         const sliceAbs = path.join(mission.absPath, "slices", sliceFolder);
         if (fs.existsSync(sliceAbs)) {
           throw new ScopeCliError({
-            fact: `Slice folder ${sliceAbs} already exists.`,
-            consequence: "Refusing to overwrite.",
-            action: "Pick a different slug, or rm -rf the existing folder first.",
+            fact: `slice 文件夹 ${sliceAbs} 已存在。`,
+            consequence: "拒绝覆盖。",
+            action: "换一个 slug，或先 rm -rf 现有文件夹。",
           });
         }
         const title = opts.title ?? titleFromSlug(slug);
@@ -358,9 +357,9 @@ function buildSliceCreateCommand(): Command {
         for (const dependency of dependsOn) {
           if (!isSliceDotId(dependency) || !dependency.startsWith(`${missionId}.`)) {
             throw new ScopeCliError({
-              fact: `Dependency "${dependency}" is not a sibling slice dot-ID under ${missionId}.`,
-              consequence: "Slice not created.",
-              action: `Use a sibling ID shaped like ${missionId}.<n>, or omit --depends-on.`,
+              fact: `依赖 "${dependency}" 不是 ${missionId} 下的兄弟 slice dot-ID。`,
+              consequence: "未创建 slice。",
+              action: `用形如 ${missionId}.<n> 的兄弟 ID，或省略 --depends-on。`,
             });
           }
         }
@@ -379,12 +378,11 @@ function buildSliceCreateCommand(): Command {
         const originalMissionNode = mission.readmePath ? fs.readFileSync(mission.readmePath, "utf8") : null;
         const readmePath = path.join(sliceAbs, "SPEC.md");
         try {
-          // Persist the parent id in the same rollback boundary as the child
-          // and composition membership. Validation above performs no writes.
+          // 在与子项及组合成员关系相同的回滚边界中持久化父 ID。上方校验不执行写入。
           ensureMissionIdPersisted(mission, missionsRoot);
           fs.mkdirSync(sliceAbs, { recursive: true });
           fs.mkdirSync(path.join(sliceAbs, "proof"), { recursive: true });
-          // New scaffolds author SPEC.md; existing README-backed nodes are never rewritten.
+          // 新脚手架编写 SPEC.md；由现有 README 支撑的节点绝不重写。
           const readmeOnly = Boolean(opts.readmeOnly);
           if (readmeOnly) {
             const markerBody = body.replace(
@@ -417,7 +415,7 @@ function buildSliceCreateCommand(): Command {
           },
         };
         emit(out, payload, json, [
-          `Created ${mission.name}/slices/${sliceFolder}`,
+          `已创建 ${mission.name}/slices/${sliceFolder}`,
           `  id: ${id}`,
           `  template: ${kind}`,
           `  path: ${sliceAbs}`,
@@ -429,16 +427,16 @@ function buildSliceCreateCommand(): Command {
 }
 
 // ---------------------------------------------------------------------
-// rig scope slice ship
+// zrig scope slice ship
 // ---------------------------------------------------------------------
 
 function buildSliceShipCommand(): Command {
   return new Command("ship")
-    .description("Ship a slice to a release mission (preserves git history)")
-    .argument("<slice-path>", "Slice path (absolute, relative, or NN-slug)")
-    .argument("<release-mission>", "Target release mission name")
-    .option("--mission <name>", "Hint mission when slice-path is just NN-slug")
-    .option("--json", "Machine-readable output")
+    .description("把一个 slice 发布到 release mission（保留 git 历史）")
+    .argument("<slice-path>", "Slice 路径（绝对、相对，或 NN-slug）")
+    .argument("<release-mission>", "目标 release mission 名")
+    .option("--mission <name>", "slice-path 只是 NN-slug 时提示 mission")
+    .option("--json", "机器可读输出")
     .action(async (slicePath: string, releaseMission: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -447,7 +445,7 @@ function buildSliceShipCommand(): Command {
         const slice = findSlice(missionsRoot, slicePath, opts.mission ?? null);
         const target = findMission(missionsRoot, releaseMission);
         if (target.name === slice.missionName) {
-          throw new ScopeCliError({ fact: "Source and release mission are the same.", consequence: "Slice not shipped.", action: "Choose a different release mission." });
+          throw new ScopeCliError({ fact: "源 mission 和 release mission 是同一个。", consequence: "未发布 slice。", action: "选一个不同的 release mission。" });
         }
         const targetSlicesDir = path.join(target.absPath, "slices");
         const newNN = nextSliceNN(target.absPath);
@@ -486,9 +484,9 @@ function buildSliceShipCommand(): Command {
               git: { usedGit, repoRoot },
             },
           }, json, [
-            `Shipped ${slice.missionName}/${slice.name} → ${target.name}/slices/${newName}`,
+            `已发布 ${slice.missionName}/${slice.name} → ${target.name}/slices/${newName}`,
             `  id: ${newSliceId}`,
-            `  git: ${usedGit ? "git mv" : "fs.rename (not in a git repo)"}`,
+            `  git: ${usedGit ? "git mv" : "fs.rename（不在 git 仓库里）"}`,
           ]);
         } catch (error) {
           if (moveResult) rollbackMovedSlice(slice.absPath, destAbs, moveResult);
@@ -504,17 +502,17 @@ function buildSliceShipCommand(): Command {
 }
 
 // ---------------------------------------------------------------------
-// rig scope slice close
+// zrig scope slice close
 // ---------------------------------------------------------------------
 
 function buildSliceCloseCommand(): Command {
   return new Command("close")
-    .description("Close a slice (move to <mission>/closed/, update status)")
-    .argument("<slice-path>", "Slice path (absolute, relative, or NN-slug)")
-    .requiredOption("--reason <reason>", `Closure reason: ${CLOSE_REASONS.join(" | ")}`)
-    .option("--note <text>", "Optional closure note")
-    .option("--mission <name>", "Hint mission when slice-path is just NN-slug")
-    .option("--json", "Machine-readable output")
+    .description("关闭一个 slice（移到 <mission>/closed/，更新 status）")
+    .argument("<slice-path>", "Slice 路径（绝对、相对，或 NN-slug）")
+    .requiredOption("--reason <reason>", `关闭原因：${CLOSE_REASONS.join(" | ")}`)
+    .option("--note <text>", "可选关闭备注")
+    .option("--mission <name>", "slice-path 只是 NN-slug 时提示 mission")
+    .option("--json", "机器可读输出")
     .action(async (slicePath: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -522,9 +520,9 @@ function buildSliceCloseCommand(): Command {
         const reason = opts.reason as CloseReason;
         if (!CLOSE_REASONS.includes(reason)) {
           throw new ScopeCliError({
-            fact: `Unknown --reason "${reason}".`,
-            consequence: "Slice not closed.",
-            action: `Pick one of: ${CLOSE_REASONS.join(", ")}.`,
+            fact: `未知 --reason "${reason}"。`,
+            consequence: "未关闭 slice。",
+            action: `选一个：${CLOSE_REASONS.join(", ")}。`,
           });
         }
         const missionsRoot = resolveMissionsRoot({ override: getOpts(command).workspace });
@@ -576,9 +574,9 @@ function buildSliceCloseCommand(): Command {
             git: { usedGit, repoRoot },
           },
         }, json, [
-          `Closed ${slice.missionName}/${slice.name} → ${slice.missionName}/closed/${destName}`,
+          `已关闭 ${slice.missionName}/${slice.name} → ${slice.missionName}/closed/${destName}`,
           `  reason: ${reason}`,
-          `  git: ${usedGit ? "git mv" : "fs.rename (not in a git repo)"}`,
+          `  git: ${usedGit ? "git mv" : "fs.rename（不在 git 仓库里）"}`,
         ]);
       } catch (err) {
         fail(err, json, out);
@@ -587,16 +585,16 @@ function buildSliceCloseCommand(): Command {
 }
 
 // ---------------------------------------------------------------------
-// rig scope slice move
+// zrig scope slice move
 // ---------------------------------------------------------------------
 
 function buildSliceMoveCommand(): Command {
   return new Command("move")
-    .description("Move a slice between missions (re-numbers in destination)")
-    .argument("<slice-path>", "Slice path (absolute, relative, or NN-slug)")
-    .argument("<dest-mission>", "Destination mission name")
-    .option("--mission <name>", "Hint source mission when slice-path is just NN-slug")
-    .option("--json", "Machine-readable output")
+    .description("在 mission 之间移动一个 slice（在目的地重新编号）")
+    .argument("<slice-path>", "Slice 路径（绝对、相对，或 NN-slug）")
+    .argument("<dest-mission>", "目标 mission 名")
+    .option("--mission <name>", "slice-path 只是 NN-slug 时提示源 mission")
+    .option("--json", "机器可读输出")
     .action(async (slicePath: string, destMission: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -605,7 +603,7 @@ function buildSliceMoveCommand(): Command {
         const slice = findSlice(missionsRoot, slicePath, opts.mission ?? null);
         const target = findMission(missionsRoot, destMission);
         if (target.name === slice.missionName) {
-          throw new ScopeCliError({ fact: "Source and destination mission are the same.", consequence: "Slice not moved.", action: "Choose a different destination mission." });
+          throw new ScopeCliError({ fact: "源 mission 和目标 mission 是同一个。", consequence: "未移动 slice。", action: "选一个不同的目标 mission。" });
         }
         const targetSlicesDir = path.join(target.absPath, "slices");
         const newNN = nextSliceNN(target.absPath);
@@ -643,9 +641,9 @@ function buildSliceMoveCommand(): Command {
               git: { usedGit, repoRoot },
             },
           }, json, [
-            `Moved ${slice.missionName}/${slice.name} → ${target.name}/slices/${newName}`,
+            `已移动 ${slice.missionName}/${slice.name} → ${target.name}/slices/${newName}`,
             `  id: ${newSliceId}`,
-            `  git: ${usedGit ? "git mv" : "fs.rename (not in a git repo)"}`,
+            `  git: ${usedGit ? "git mv" : "fs.rename（不在 git 仓库里）"}`,
           ]);
         } catch (error) {
           if (moveResult) rollbackMovedSlice(slice.absPath, destAbs, moveResult);
@@ -661,13 +659,13 @@ function buildSliceMoveCommand(): Command {
 }
 
 // ---------------------------------------------------------------------
-// rig scope mission ls / show / create
+// zrig scope mission ls / show / create
 // ---------------------------------------------------------------------
 
 function buildMissionLsCommand(): Command {
   return new Command("ls")
-    .description("List missions (top-level folders with SPEC.md or a legacy README.md)")
-    .option("--json", "Machine-readable output")
+    .description("列出 missions（带 SPEC.md 或旧 README.md 的顶层文件夹）")
+    .option("--json", "机器可读输出")
     .action(async (opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -683,7 +681,7 @@ function buildMissionLsCommand(): Command {
         }));
         emit(out, { ok: true, count: rows.length, missions: rows }, json,
           rows.length === 0
-            ? ["(no missions)"]
+            ? ["（无 missions）"]
             : rows.map((r) => `${r.name}    ${r.id ?? "—"}    active=${r.activeSliceCount}  closed=${r.closedSliceCount}`),
         );
       } catch (err) {
@@ -694,9 +692,9 @@ function buildMissionLsCommand(): Command {
 
 function buildMissionShowCommand(): Command {
   return new Command("show")
-    .description("Inspect a single mission")
-    .argument("<mission>", "Mission name")
-    .option("--json", "Machine-readable output")
+    .description("检视单个 mission")
+    .argument("<mission>", "Mission 名")
+    .option("--json", "机器可读输出")
     .action(async (missionName: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -707,7 +705,7 @@ function buildMissionShowCommand(): Command {
         const slices = listSlices(mission, "all").map((s) => ({
           name: s.name, id: s.id, status: s.status, nn: s.nn,
         }));
-        // FR-5: derive read-time trust from (stage x verified) — NEVER stored.
+        // FR-5：读时从（stage x verified）派生信任——绝不存储。
         const trust = deriveScopeTrust(mission.frontmatter);
         const payload = {
           ok: true,
@@ -726,11 +724,11 @@ function buildMissionShowCommand(): Command {
         if (json) {
           out.write(JSON.stringify(payload, null, 2) + "\n");
         } else {
-          out.write(`Mission: ${mission.name}\n`);
+          out.write(`Mission：${mission.name}\n`);
           out.write(`  id: ${mission.id ?? "—"}\n`);
           out.write(formatTrustLine(trust));
-          out.write(`  active slices: ${mission.activeSliceCount}\n`);
-          out.write(`  closed slices: ${mission.closedSliceCount}\n`);
+          out.write(`  活动 slices：${mission.activeSliceCount}\n`);
+          out.write(`  已关闭 slices：${mission.closedSliceCount}\n`);
           out.write(`  path: ${mission.absPath}\n`);
           if (readme) {
             out.write(`\n--- ${path.basename(mission.readmePath!)} ---\n`);
@@ -746,16 +744,16 @@ function buildMissionShowCommand(): Command {
 
 function buildMissionCreateCommand(): Command {
   return new Command("create")
-    .description("Create a new mission with SPEC.md and mission.yaml (mints a stable dot-ID into frontmatter)")
-    .argument("<name>", "Mission folder name (e.g., release-0.4.0, backlog-foo)")
-    .option("--template <kind>", `Template: ${MISSION_TEMPLATE_KINDS.join(" | ")} (auto when name matches release-X.Y.Z)`, "")
-    .option("--id <dot-id>", "Explicit dot-ID. Overrides name-pattern inference.")
-    .option("--title <text>", "Display title (defaults to titlecased name)")
-    .option("--intent <text>", "Authored intent stored in SPEC.md frontmatter (defaults to title)")
-    .option("--depends-on <dot-id...>", "Advisory build-order dependencies on sibling mission dot-IDs")
-    .option("--no-notes", "Skip NOTES.md scaffolding")
-    .option("--no-mission-notes", "Deprecated alias for --no-notes")
-    .option("--json", "Machine-readable output")
+    .description("创建一个新 mission，带 SPEC.md 和 mission.yaml（在 frontmatter 铸一个稳定 dot-ID）")
+    .argument("<name>", "Mission 文件夹名（例如 release-0.4.0、backlog-foo）")
+    .option("--template <kind>", `模板：${MISSION_TEMPLATE_KINDS.join(" | ")}（名字匹配 release-X.Y.Z 时自动）`, "")
+    .option("--id <dot-id>", "显式 dot-ID。覆盖名字模式推断。")
+    .option("--title <text>", "显示标题（默认 titlecased 名）")
+    .option("--intent <text>", "存进 SPEC.md frontmatter 的编写意图（默认标题）")
+    .option("--depends-on <dot-id...>", "对兄弟 mission dot-ID 的建议构建顺序依赖")
+    .option("--no-notes", "跳过 NOTES.md 骨架")
+    .option("--no-mission-notes", "--no-notes 的已废弃别名")
+    .option("--json", "机器可读输出")
     .action(async (rawName: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -763,44 +761,43 @@ function buildMissionCreateCommand(): Command {
         const name = rawName.trim();
         if (!name || /[\\/\s]/.test(name)) {
           throw new ScopeCliError({
-            fact: `Invalid mission name "${rawName}".`,
-            consequence: "Mission not created.",
-            action: "Pick a name with no whitespace or path separators.",
+            fact: `非法 mission 名 "${rawName}"。`,
+            consequence: "未创建 mission。",
+            action: "选一个不含空白或路径分隔符的名字。",
           });
         }
         const missionsRoot = resolveMissionsRoot({ override: getOpts(command).workspace });
         const absPath = path.join(missionsRoot, name);
         if (fs.existsSync(absPath)) {
           throw new ScopeCliError({
-            fact: `Mission folder ${absPath} already exists.`,
-            consequence: "Refusing to overwrite.",
-            action: "Pick a different name, or use `rig scope mission show <name>` to inspect the existing mission.",
+            fact: `mission 文件夹 ${absPath} 已存在。`,
+            consequence: "拒绝覆盖。",
+            action: "换一个名字，或用 `zrig scope mission show <name>` 检视已有 mission。",
           });
         }
-        // Resolve template kind: explicit > release-pattern auto > placeholder.
+        // 解析 template kind：显式 > release 模式自动 > placeholder。
         const isReleaseName = /^release-\d+\.\d+(?:\.\d+)?$/.test(name);
         let templateKind: MissionTemplateKind = opts.template as MissionTemplateKind;
         if (!templateKind) templateKind = isReleaseName ? "release" : "placeholder";
         if (!MISSION_TEMPLATE_KINDS.includes(templateKind)) {
           throw new ScopeCliError({
-            fact: `Unknown --template kind "${templateKind}".`,
-            consequence: "Mission not created.",
-            action: `Pick one of: ${MISSION_TEMPLATE_KINDS.join(", ")}.`,
+            fact: `未知 --template 种类 "${templateKind}"。`,
+            consequence: "未创建 mission。",
+            action: `选一个：${MISSION_TEMPLATE_KINDS.join(", ")}。`,
           });
         }
-        // Mint the dot-ID.
+        // 铸造 dot-ID。
         let id: string;
         if (opts.id) {
-          // Tier-aware validation per guard BC verdict (BLOCK 1).
-          // A mission ID has 2-3 numeric segments after the prefix
-          // (release X.Y or X.Y.Z; escape-band 99.x.y). Reject
-          // slice-shaped IDs (4 segments) so the parent identity stays
-          // unambiguous.
+          // 按 guard BC 裁定（BLOCK 1）的 tier 感知校验。
+          // mission ID 在前缀后有 2-3 段数字
+          //（release X.Y 或 X.Y.Z；escape band 99.x.y）。拒绝
+          // slice 形 ID（4 段），让父身份保持无歧义。
           if (!isMissionDotId(opts.id)) {
             throw new ScopeCliError({
-              fact: `Supplied --id "${opts.id}" is not a mission-tier dot-ID.`,
-              consequence: "Mission not created. A mission ID has the shape <PFX>.<ver> (2-3 numeric segments), not a slice shape <PFX>.<ver>.<n>.",
-              action: "Use a mission-shaped dot-ID like OPR.0.3.2 (release) or OPR.99.0.1 (escape band). For slice IDs, scope automatically mints them when you create a slice.",
+              fact: `提供的 --id "${opts.id}" 不是 mission tier dot-ID。`,
+              consequence: "未创建 mission。mission ID 形如 <PFX>.<ver>（2-3 段数字），不是 slice 形 <PFX>.<ver>.<n>。",
+              action: `用 mission 形 dot-ID，例如 OPR.0.3.2（release）或 OPR.99.0.1（escape band）。slice ID 在你创建 slice 时由 scope 自动铸造。`,
             });
           }
           id = opts.id;
@@ -811,9 +808,9 @@ function buildMissionCreateCommand(): Command {
           const ordinal = nextEscapeBandOrdinal(peers.map((p) => p.id));
           id = inferMissionDotId(name, ordinal);
         }
-        // Resolve titles + render templates before any filesystem side
-        // effects. A stale current or legacy notes-template override must
-        // fail before mkdir, or it leaks a half-created mission directory.
+        // 在任何文件系统副作用前解析标题 + 渲染模板。
+        // 陈旧的 current 或旧 notes-template 覆盖必须在 mkdir 前失败，
+        // 否则会漏出半个创建的 mission 目录。
         const title = opts.title ?? titleFromSlug(name.replace(/^release-/, ""));
         const intent = opts.intent ?? title;
         const dependsOn = Array.isArray(opts.dependsOn) ? [...new Set(opts.dependsOn as string[])] : [];
@@ -821,9 +818,9 @@ function buildMissionCreateCommand(): Command {
         for (const dependency of dependsOn) {
           if (!isMissionDotId(dependency) || dependency.split(".")[0] !== project) {
             throw new ScopeCliError({
-              fact: `Dependency "${dependency}" is not a sibling mission dot-ID in project ${project}.`,
-              consequence: "Mission not created.",
-              action: `Use a mission ID shaped like ${project}.<version>, or omit --depends-on.`,
+              fact: `依赖 "${dependency}" 不是 project ${project} 下的兄弟 mission dot-ID。`,
+              consequence: "未创建 mission。",
+              action: `用形如 ${project}.<version> 的 mission ID，或省略 --depends-on。`,
             });
           }
         }
@@ -859,10 +856,10 @@ function buildMissionCreateCommand(): Command {
               depends_on: dependsOn,
             })
           : null;
-        // All renders succeeded — safe to touch the filesystem.
+        // 全部渲染成功——可以安全动文件系统了。
         fs.mkdirSync(absPath, { recursive: true });
         fs.mkdirSync(path.join(absPath, "slices"), { recursive: true });
-        // New scaffolds author SPEC.md; existing README-backed nodes are never rewritten.
+        // 新骨架编写 SPEC.md；已有 README 节点绝不被重写。
         const readmePath = path.join(absPath, "SPEC.md");
         fs.writeFileSync(readmePath, readmeBody, "utf8");
         fs.writeFileSync(path.join(absPath, "mission.yaml"), MISSION_MANIFEST, "utf8");
@@ -880,17 +877,17 @@ function buildMissionCreateCommand(): Command {
           fs.writeFileSync(notesPath, notesRendered.rendered, "utf8");
         }
         const humanLines = [
-          `Created mission ${name}`,
+          `已创建 mission ${name}`,
           `  id: ${id}`,
           `  template: ${templateKind}`,
           `  path: ${absPath}`,
         ];
         if (notesPath) {
-          humanLines.push(`  notes: ${notesPath} (template: ${notesRendered?.resolvedFrom})`);
+          humanLines.push(`  notes: ${notesPath}（模板：${notesRendered?.resolvedFrom}）`);
         }
         if (capabilityDeltaPath) humanLines.push(`  capability delta: ${capabilityDeltaPath}`);
         if (notesRendered?.resolvedFrom === "legacy-env") {
-          humanLines.push("  advisory: OPENRIG_MISSION_NOTES_TEMPLATE_PATH is deprecated; use OPENRIG_NOTES_TEMPLATE_PATH");
+          humanLines.push("  提示：OPENRIG_MISSION_NOTES_TEMPLATE_PATH 已废弃；用 OPENRIG_NOTES_TEMPLATE_PATH");
         }
         emit(out, {
           ok: true,
@@ -916,9 +913,9 @@ function buildMissionCreateCommand(): Command {
 
 function buildMissionGraphCommand(): Command {
   return new Command("graph")
-    .description("Show advisory sibling build-order edges and the current ready set")
-    .argument("<mission>", "Mission name")
-    .option("--json", "Machine-readable output")
+    .description("显示建议的兄弟构建顺序边和当前 ready 集")
+    .argument("<mission>", "Mission 名")
+    .option("--json", "机器可读输出")
     .action(async (missionName: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -926,9 +923,9 @@ function buildMissionGraphCommand(): Command {
         const missionsRoot = resolveMissionsRoot({ override: getOpts(command).workspace });
         const graph = buildMissionDependencyGraph(findMission(missionsRoot, missionName));
         emit(out, { ok: true, graph }, json, [
-          `Ready: ${graph.ready.join(", ") || "(none)"}`,
-          ...graph.waiting.map((row) => `Waiting: ${row.id} on ${row.on.join(", ")}`),
-          ...graph.advisories.map((row) => `Advisory: ${row.id}${row.dependency ? ` -> ${row.dependency}` : ""}: ${row.message}`),
+          `Ready：${graph.ready.join(", ") || "（无）"}`,
+          ...graph.waiting.map((row) => `Waiting：${row.id} 等 ${row.on.join(", ")}`),
+          ...graph.advisories.map((row) => `Advisory：${row.id}${row.dependency ? ` -> ${row.dependency}` : ""}：${row.message}`),
         ]);
       } catch (err) {
         fail(err, json, out);
@@ -938,25 +935,25 @@ function buildMissionGraphCommand(): Command {
 
 function buildResolveNotesCommand(): Command {
   return new Command("resolve-notes")
-    .description("Resolve the readable mission notes file for an absolute work-node directory")
-    .argument("<absolute-work-node-dir>", "Absolute mission or slice directory")
-    .option("--json", "Machine-readable JSON output")
+    .description("为一个绝对工作节点目录解析可读的 mission notes 文件")
+    .argument("<absolute-work-node-dir>", "绝对 mission 或 slice 目录")
+    .option("--json", "机器可读 JSON 输出")
     .action((workNodeDir: string, opts) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
       try {
         if (!path.isAbsolute(workNodeDir)) {
           throw new ScopeCliError({
-            fact: `Work-node directory must be absolute: ${workNodeDir}`,
-            consequence: "Mission notes cannot be resolved from an ambiguous location.",
-            action: "Pass the absolute mission or slice directory.",
+            fact: `工作节点目录必须是绝对路径：${workNodeDir}`,
+            consequence: "mission notes 无法从一个有歧义的位置解析。",
+            action: "传绝对 mission 或 slice 目录。",
           });
         }
         const resolution = resolveNotesFile(workNodeDir);
         emit(out, { ok: true, resolution }, json, [
           resolution
             ? `${resolution.name}: ${resolution.path}`
-            : `No readable mission notes at ${workNodeDir}`,
+            : `${workNodeDir} 处无可读 mission notes`,
         ]);
       } catch (err) {
         fail(err, json, out);
@@ -965,14 +962,14 @@ function buildResolveNotesCommand(): Command {
 }
 
 // ---------------------------------------------------------------------
-// Audit (B2 — read-only scope audit)
+// Audit（B2——只读 scope 审计）
 // ---------------------------------------------------------------------
 
 function buildAuditCommand(): Command {
   return new Command("audit")
-    .description("Read-only scope audit: flag scope findings and show the advisory dependency graph")
-    .requiredOption("--mission <name>", "Mission to audit")
-    .option("--json", "Machine-readable JSON output")
+    .description("只读 scope 审计：标记 scope findings 并显示建议依赖图")
+    .requiredOption("--mission <name>", "要审计的 mission")
+    .option("--json", "机器可读 JSON 输出")
     .action(async (opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -983,7 +980,7 @@ function buildAuditCommand(): Command {
 
         const missionDir = path.join(missionsRoot, missionName);
         if (!fs.existsSync(missionDir)) {
-          throw new ScopeCliError({ fact: `Mission "${missionName}" not found at ${missionDir}.`, consequence: "Cannot audit.", action: "Check the mission name." });
+          throw new ScopeCliError({ fact: `在 ${missionDir} 找不到 mission "${missionName}"。`, consequence: "无法审计。", action: "检查 mission 名。" });
         }
 
         const missionReadme = resolveNodeFile(missionDir) ?? path.join(missionDir, "SPEC.md");
@@ -1014,8 +1011,8 @@ function buildAuditCommand(): Command {
               kind: "orphan_progress",
               severity: "high",
               path: missionDir,
-              message: `PROGRESS.md exists but no SPEC.md or legacy README.md (orphan progress rail, no backing scope item)`,
-              remediation: `Add SPEC.md with frontmatter id, or remove the orphan PROGRESS.md`,
+              message: `PROGRESS.md 存在但没有 SPEC.md 或旧 README.md（孤立 progress rail，无 backing scope item）`,
+              remediation: `加一个带 frontmatter id 的 SPEC.md，或删掉孤立 PROGRESS.md`,
             }],
             frontmatterError: null,
           };
@@ -1067,8 +1064,8 @@ function buildAuditCommand(): Command {
                       kind: "orphan_progress" as const,
                       severity: "high" as const,
                       path: sliceDir,
-                      message: `PROGRESS.md exists but no SPEC.md or legacy README.md (orphan progress rail, no backing scope item)`,
-                      remediation: `Add SPEC.md with frontmatter id, or remove the orphan PROGRESS.md`,
+                      message: `PROGRESS.md 存在但没有 SPEC.md 或旧 README.md（孤立 progress rail，无 backing scope item）`,
+                      remediation: `加一个带 frontmatter id 的 SPEC.md，或删掉孤立 PROGRESS.md`,
                     }],
                     frontmatterError: null,
                   },
@@ -1106,10 +1103,10 @@ function buildAuditCommand(): Command {
               proofDirPath: proofDir,
               proofDirHasEntries: directoryHasEntries(proofDir),
               hasProofPacket: hasProofPacketForSlice(dogfoodEvidenceRoot, entry),
-              // OPR.0.4.4.19 FR-10 backstop inputs.
+              // OPR.0.4.4.19 FR-10 兜底输入。
               proofArtifacts: listProofArtifactsForAudit(proofDir),
               implementationPrdExists: fs.existsSync(path.join(sliceDir, "IMPLEMENTATION-PRD.md")),
-              // OPR.0.4.4.23 convention-section advisory inputs.
+              // OPR.0.4.4.23 约定段建议输入。
               nodeFileName: path.basename(sliceReadme) as "SPEC.md" | "README.md",
               readmeContent: sliceReadmeContent,
               implementationPrdContent: fs.existsSync(path.join(sliceDir, "IMPLEMENTATION-PRD.md"))
@@ -1122,8 +1119,8 @@ function buildAuditCommand(): Command {
                 kind: "id_convention_violation",
                 severity: "high",
                 path: sliceDir,
-                message: `Directory "${entry}" does not match the NN-slug slice naming convention (e.g. 01-my-slice)`,
-                remediation: `Rename to NN-slug format or move out of slices/`,
+                message: `文件夹 "${entry}" 不匹配 NN-slice 命名约定（例如 01-my-slice）`,
+                remediation: `重命名为 NN-slug 格式，或移出 slices/`,
               });
             }
 
@@ -1151,7 +1148,7 @@ function buildAuditCommand(): Command {
               railStatus: s.result.railStatus,
               frontmatterError: s.result.frontmatterError,
               findings: s.result.findings,
-              // OPR.0.5.0.18 — amendment lineage (present only when re-stamped).
+              // OPR.0.5.0.18——amendment lineage（仅 re-stamp 时存在）。
               ...(s.attestations ? { attestations: s.attestations } : {}),
             })),
             graph,
@@ -1162,45 +1159,45 @@ function buildAuditCommand(): Command {
           return;
         }
 
-        out.write(`Scope audit: ${missionName}\n`);
-        out.write(`Mission rail: ${missionResult.railStatus}\n`);
-        out.write(`Slices: ${sliceResults.length} total\n`);
-        out.write(`Ready: ${graph.ready.join(", ") || "(none)"}\n`);
-        for (const row of graph.waiting) out.write(`Waiting: ${row.id} on ${row.on.join(", ")}\n`);
+        out.write(`Scope 审计：${missionName}\n`);
+        out.write(`Mission rail：${missionResult.railStatus}\n`);
+        out.write(`Slices：共 ${sliceResults.length}\n`);
+        out.write(`Ready：${graph.ready.join(", ") || "（无）"}\n`);
+        for (const row of graph.waiting) out.write(`Waiting：${row.id} 等 ${row.on.join(", ")}\n`);
         for (const row of graph.advisories) {
-          out.write(`Advisory: ${row.id}${row.dependency ? ` -> ${row.dependency}` : ""}: ${row.message}\n`);
+          out.write(`Advisory：${row.id}${row.dependency ? ` -> ${row.dependency}` : ""}：${row.message}\n`);
         }
         out.write("\n");
 
-        // OPR.0.5.0.18 — amendment lineage: a re-stamped slice shows the
-        // CURRENT attestation + prior-count (the append-only audit rows
-        // reconstruct the full history; this is the at-a-glance surface).
+        // OPR.0.5.0.18——amendment lineage：re-stamp 的 slice 显示
+        // 当前 attestation + prior 数（append-only 审计行
+        // 重建完整历史；这是一目了然的表面）。
         const amended = sliceResults.filter((s) => s.attestations);
         if (amended.length > 0) {
-          out.write("AMENDMENT LINEAGE:\n");
+          out.write("AMENDMENT LINEAGE：\n");
           for (const s of amended) {
             for (const [scope, att] of Object.entries(s.attestations!)) {
-              out.write(`  ${s.name} [${scope}]: current ${att.by} at ${att.at} — ${att.priors} prior attestation(s) in the audit log\n`);
+              out.write(`  ${s.name} [${scope}]：当前 ${att.by} 于 ${att.at}——审计日志中 ${att.priors} 条 prior attestation\n`);
             }
           }
           out.write("\n");
         }
 
         if (allFindings.length > 0) {
-          out.write("FINDINGS:\n");
+          out.write("FINDINGS：\n");
           for (const f of allFindings) {
             out.write(`  [${f.severity}] [${f.kind}] ${f.scope}/${f.scopeName}\n`);
             out.write(`    ${f.message}\n`);
-            out.write(`    fix: ${f.remediation}\n`);
+            out.write(`    修复：${f.remediation}\n`);
           }
           if (hardFindings.length > 0) {
-            out.write(`\nFAIL: ${allFindings.length} finding(s)\n`);
+            out.write(`\nFAIL：${allFindings.length} 个 finding\n`);
             process.exitCode = 1;
           } else {
-            out.write(`\nWARN: ${allFindings.length} advisory finding(s)\n`);
+            out.write(`\nWARN：${allFindings.length} 个建议性 finding\n`);
           }
         } else {
-          out.write("PASS: all scope items have valid rails\n");
+          out.write("PASS：所有 scope item 的 rail 都有效\n");
         }
       } catch (err) {
         if (err instanceof ScopeCliError) { fail(err, json, out); }
@@ -1227,9 +1224,9 @@ function defaultDogfoodEvidenceRoot(missionsRoot: string): string {
   return path.join(path.dirname(missionsRoot), "dogfood-evidence");
 }
 
-// OPR.0.4.4.19 FR-10 (C1 backstop input) — list the slice's proof/ markdown
-// artifacts with raw frontmatter. Media files are exempt by construction.
-// Undefined when the dir is absent/unreadable so the classifier stays inert.
+// OPR.0.4.4.19 FR-10（C1 backstop 输入）——列出 slice 的 proof/ markdown
+// artifact 及其原始 frontmatter。媒体文件按构造豁免。
+// 目录不存在/不可读时为 undefined，让分类器保持惰性。
 function listProofArtifactsForAudit(proofDir: string): Array<{ path: string; frontmatterRaw: string | null }> | undefined {
   if (!fs.existsSync(proofDir)) return undefined;
   try {
@@ -1261,13 +1258,13 @@ function hasProofPacketForSlice(dogfoodEvidenceRoot: string, sliceName: string):
 }
 
 // ---------------------------------------------------------------------
-// rig scope <tier> progress  (OPR.0.4.0.33 FR-3 — deterministic update)
+// rig scope <tier> progress（OPR.0.4.0.33 FR-3——确定性更新）
 // ---------------------------------------------------------------------
 
-/** Resolve which file a progress update edits for a scope dir: the
- *  PROGRESS.md when present, else the README's rail for a readme-only
- *  scope, else an error directing to create/repair (the verb UPDATES an
- *  existing surface; it does not scaffold). */
+/** 解析一个 scope 目录的 progress 更新编辑哪个文件：
+ *  有 PROGRESS.md 时用它；否则 readme-only
+ *  scope 用 README 的 rail；否则报错指引 create/repair（这个动词更新
+ *  已有表面；它不搭骨架）。 */
 function resolveProgressTarget(scopeDir: string, level: "mission" | "slice"): {
   targetPath: string;
   kind: "progress" | "readme-only";
@@ -1282,15 +1279,14 @@ function resolveProgressTarget(scopeDir: string, level: "mission" | "slice"): {
     }
   }
   throw new ScopeCliError({
-    fact: `${level} at ${scopeDir} has no progress surface (no PROGRESS.md and no readme-only rail).`,
-    consequence: "The progress verb updates an existing surface; it does not scaffold.",
-    action: `Backfill it with: rig scope ${level} repair <target> (creates PROGRESS.md), or rig scope ${level} create.`,
+    fact: `${scopeDir} 的 ${level} 没有 progress 表面（无 PROGRESS.md，也无 readme-only rail）。`,
+    consequence: "progress 动词更新已有表面；它不搭骨架。",
+    action: `用以下之一回填：zrig scope ${level} repair <target>（创建 PROGRESS.md），或 zrig scope ${level} create。`,
   });
 }
 
-/** Shared body for slice/mission progress: validate the mutually
- *  exclusive --add/--set modes, edit the resolved surface, write only
- *  on change. */
+/** slice/mission progress 的共享主体：校验互斥的
+ *  --add/--set 模式，编辑解析出的表面，仅在变化时写入。 */
 function runProgressUpdate(
   scopeDir: string,
   level: "mission" | "slice",
@@ -1304,10 +1300,10 @@ function runProgressUpdate(
   if (hasAdd === hasSet) {
     throw new ScopeCliError({
       fact: hasAdd
-        ? "Both --add and --set were given."
-        : "Neither --add nor --set was given.",
-      consequence: "No progress update was made.",
-      action: 'Pass exactly one of --add "<row text>" or --set "<row text>".',
+        ? "同时给了 --add 和 --set。"
+        : "--add 和 --set 都没给。",
+      consequence: "未做任何 progress 更新。",
+      action: '恰好传一个：--add "<row text>" 或 --set "<row text>"。',
     });
   }
   const status = parseStatus(opts.status ?? "active");
@@ -1342,7 +1338,7 @@ function runProgressUpdate(
       changed: result.changed,
     },
   }, json, [
-    `${result.changed ? "Updated" : "No change"} ${level} ${scopeName} progress (${operation})`,
+    `${result.changed ? "已更新" : "无变化"} ${level} ${scopeName} progress（${operation}）`,
     `  target: ${targetPath}`,
     `  status: ${status}`,
   ]);
@@ -1350,14 +1346,14 @@ function runProgressUpdate(
 
 function buildSliceProgressCommand(): Command {
   return new Command("progress")
-    .description("Update a slice's progress rail deterministically (append a row, or set a row's status)")
-    .argument("<slice-path>", "Slice path (absolute, relative, or NN-slug)")
-    .option("--mission <name>", "Hint mission when slice-path is just NN-slug")
-    .option("--add <text>", "Append a checkbox row with this text")
-    .option("--set <text>", "Set the status of the row whose trimmed text exactly matches")
-    .option("--section <heading>", `Section heading for --add (default: ${DEFAULT_PROGRESS_SECTION})`)
-    .option("--status <status>", `Row status: ${PROGRESS_STATUSES.join(" | ")}`, "active")
-    .option("--json", "Machine-readable output")
+    .description("确定性更新 slice 的 progress rail（追加一行，或设置一行的 status）")
+    .argument("<slice-path>", "Slice 路径（绝对、相对，或 NN-slug）")
+    .option("--mission <name>", "slice-path 只是 NN-slug 时提示 mission")
+    .option("--add <text>", "追加一行带此文本的 checkbox 行")
+    .option("--set <text>", "设置 trimmed 文本精确匹配的行的 status")
+    .option("--section <heading>", `--add 的段标题（默认：${DEFAULT_PROGRESS_SECTION}）`)
+    .option("--status <status>", `行 status：${PROGRESS_STATUSES.join(" | ")}`, "active")
+    .option("--json", "机器可读输出")
     .action(async (slicePath: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -1373,13 +1369,13 @@ function buildSliceProgressCommand(): Command {
 
 function buildMissionProgressCommand(): Command {
   return new Command("progress")
-    .description("Update a mission's progress rail deterministically (append a row, or set a row's status)")
-    .argument("<mission>", "Mission name")
-    .option("--add <text>", "Append a checkbox row with this text")
-    .option("--set <text>", "Set the status of the row whose trimmed text exactly matches")
-    .option("--section <heading>", `Section heading for --add (default: ${DEFAULT_PROGRESS_SECTION})`)
-    .option("--status <status>", `Row status: ${PROGRESS_STATUSES.join(" | ")}`, "active")
-    .option("--json", "Machine-readable output")
+    .description("确定性更新 mission 的 progress rail（追加一行，或设置一行的 status）")
+    .argument("<mission>", "Mission 名")
+    .option("--add <text>", "追加一行带此文本的 checkbox 行")
+    .option("--set <text>", "设置 trimmed 文本精确匹配的行的 status")
+    .option("--section <heading>", `--add 的段标题（默认：${DEFAULT_PROGRESS_SECTION}）`)
+    .option("--status <status>", `行 status：${PROGRESS_STATUSES.join(" | ")}`, "active")
+    .option("--json", "机器可读输出")
     .action(async (missionName: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -1394,7 +1390,7 @@ function buildMissionProgressCommand(): Command {
 }
 
 // ---------------------------------------------------------------------
-// rig scope <tier> repair  (OPR.0.4.0.33 FR-6 — idempotent backfill)
+// rig scope <tier> repair（OPR.0.4.0.33 FR-6——幂等回填）
 // ---------------------------------------------------------------------
 
 interface BackfillResult {
@@ -1405,8 +1401,8 @@ interface BackfillResult {
   path: string | null;
 }
 
-/** Mirror the create-time title derivation so a backfilled PROGRESS.md
- *  is byte-identical to what create would have written. */
+/** 镜像 create 时的标题派生，让回填的 PROGRESS.md
+ *  与 create 当时会写的字节一致。 */
 function backfillTitle(level: "mission" | "slice", scopeDir: string): string {
   const base = path.basename(scopeDir);
   return level === "mission"
@@ -1414,15 +1410,15 @@ function backfillTitle(level: "mission" | "slice", scopeDir: string): string {
     : titleFromSlug(base.replace(/^\d+-/, ""));
 }
 
-/** Create a missing PROGRESS.md for a single scope dir. Idempotent
- *  (skips when one exists) and non-clobbering (skips an intentional
- *  readme-only scope, and skips README-less dirs that are not declared
- *  scopes). */
+/** 为单个 scope 目录创建缺失的 PROGRESS.md。幂等
+ * （已存在则跳过）且不覆盖（跳过有意
+ *  readme-only 的 scope，也跳过未声明为
+ *  scope 的无 README 目录）。 */
 function backfillScopeProgress(scopeDir: string, level: "mission" | "slice"): BackfillResult {
   const name = path.basename(scopeDir);
   const readmePath = resolveNodeFile(scopeDir);
   if (!readmePath) {
-    return { scope: level, name, created: false, reason: "no-readme (not a declared scope)", path: null };
+    return { scope: level, name, created: false, reason: "no-readme（非已声明 scope）", path: null };
   }
   const progressPath = path.join(scopeDir, "PROGRESS.md");
   if (fs.existsSync(progressPath)) {
@@ -1430,7 +1426,7 @@ function backfillScopeProgress(scopeDir: string, level: "mission" | "slice"): Ba
   }
   const fm = readFrontmatter(readmePath);
   if (String(fm.progress_rail ?? "") === "readme-only") {
-    return { scope: level, name, created: false, reason: "readme-only (intentional opt-out)", path: null };
+    return { scope: level, name, created: false, reason: "readme-only（有意 opt-out）", path: null };
   }
   const title = backfillTitle(level, scopeDir);
   const body = level === "mission"
@@ -1441,32 +1437,32 @@ function backfillScopeProgress(scopeDir: string, level: "mission" | "slice"): Ba
 }
 
 // ---------------------------------------------------------------------
-// OPR.0.4.1.6 — stage + verified verbs (deterministic §2 maturity edits)
+// OPR.0.4.1.6——stage + verified 动作（确定性的 §2 成熟度编辑）
 // ---------------------------------------------------------------------
 
-/** Validate a stage against the §2 enum, rejecting invented values. */
+/** 按 §2 枚举校验一个 stage，拒绝凭空造的值。 */
 function validateStage(raw: string): Stage {
   if (!STAGE_VALUES.includes(raw as Stage)) {
     throw new ScopeCliError({
-      fact: `Invalid stage "${raw}".`,
-      consequence: "Stage not changed.",
-      action: `Use one of: ${STAGE_VALUES.join(" | ")}.`,
+      fact: `非法 stage "${raw}"。`,
+      consequence: "stage 未改变。",
+      action: `用其中之一：${STAGE_VALUES.join(" | ")}。`,
     });
   }
   return raw as Stage;
 }
 
-/** Surgically set `stage` (+ `superseded-by` when superseded) on a scope
- *  README, enforcing the §2 superseded-needs-successor rule. */
+/** 在 scope README 上外科手术式地设置 `stage`（superseded 时加 `superseded-by`），
+ *  强制 §2 superseded-needs-successor 规则。 */
 function applyStage(readmePath: string, stage: Stage, successor: unknown): void {
   const updates: Record<string, unknown> = { stage };
   if (stage === "superseded") {
     const id = typeof successor === "string" ? successor.trim() : "";
     if (!id) {
       throw new ScopeCliError({
-        fact: "stage 'superseded' requires a successor.",
-        consequence: "Stage not changed (a superseded scope must name what replaces it, per scope-and-versioning §2).",
-        action: "Re-run with --successor <id>, e.g. --successor OPR.0.4.1.7.",
+        fact: "stage 'superseded' 需要一个 successor。",
+        consequence: "stage 未改变（superseded scope 必须按 scope-and-versioning §2 命名它的替代者）。",
+        action: "带 --successor <id> 重跑，例如 --successor OPR.0.4.1.7。",
       });
     }
     updates["superseded-by"] = id;
@@ -1474,22 +1470,22 @@ function applyStage(readmePath: string, stage: Stage, successor: unknown): void 
   updateFrontmatter(readmePath, updates);
 }
 
-/** `retired` is an exit, not a rung — warn (do not block). */
+/** `retired` 是出口，不是 rung——警告（不阻塞）。 */
 function warnRetired(stage: Stage): void {
   if (stage === "retired") {
-    process.stderr.write("Warning: stage 'retired' means do-not-use (an exit, not a maturity rung).\n");
+    process.stderr.write("警告：stage 'retired' 意为 do-not-use（一个出口，不是成熟度 rung）。\n");
   }
 }
 
-/** Validate a --against provenance: mandatory, non-empty, non-whitespace
- *  (the §2 "no bare timestamp" rule). Returns the trimmed source. */
+/** 校验 --against 出处：必填、非空、非纯空白
+ * （§2 "no bare timestamp" 规则）。返回 trimmed 后的 source。 */
 function validateAgainst(raw: unknown): string {
   const source = typeof raw === "string" ? raw.trim() : "";
   if (!source) {
     throw new ScopeCliError({
-      fact: "--against provenance is empty or missing.",
-      consequence: "verified not stamped — scope-and-versioning §2 forbids a bare timestamp without a named source.",
-      action: 'Provide what it was verified against, e.g. --against "runtime (npm+tag+origin)".',
+      fact: "--against 出处为空或缺失。",
+      consequence: "未盖 verified——scope-and-versioning §2 禁止没有命名 source 的裸时间戳。",
+      action: '提供它被 against 的对象，例如 --against "runtime (npm+tag+origin)"。',
     });
   }
   return source;
@@ -1497,12 +1493,12 @@ function validateAgainst(raw: unknown): string {
 
 function buildSliceStageCommand(): Command {
   return new Command("stage")
-    .description(`Set a slice's epistemic stage (${STAGE_VALUES.join(" | ")}); superseded needs --successor`)
-    .argument("<slice-path>", "Slice path (absolute, relative, or NN-slug)")
-    .argument("<new-stage>", `New stage: ${STAGE_VALUES.join(" | ")}`)
-    .option("--successor <id>", "Successor scope id — REQUIRED when new-stage is superseded")
-    .option("--mission <name>", "Hint mission when slice-path is just NN-slug")
-    .option("--json", "Machine-readable output")
+    .description(`设置 slice 的认知 stage（${STAGE_VALUES.join(" | ")}）；superseded 需要 --successor`)
+    .argument("<slice-path>", "Slice 路径（绝对、相对，或 NN-slug）")
+    .argument("<new-stage>", `新 stage：${STAGE_VALUES.join(" | ")}`)
+    .option("--successor <id>", "Successor scope id——new-stage 为 superseded 时必填")
+    .option("--mission <name>", "slice-path 只是 NN-slug 时提示 mission")
+    .option("--json", "机器可读输出")
     .action(async (slicePath: string, newStage: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -1512,16 +1508,16 @@ function buildSliceStageCommand(): Command {
         const slice = findSlice(missionsRoot, slicePath, opts.mission ?? null);
         if (!slice.readmePath) {
           throw new ScopeCliError({
-            fact: `Slice ${slice.name} has no SPEC.md or legacy README.md.`,
-            consequence: "Stage is a work-node frontmatter field; nothing to write.",
-            action: "Create the slice with `rig scope slice create` before setting its stage.",
+            fact: `slice ${slice.name} 没有 SPEC.md 或旧 README.md。`,
+            consequence: "stage 是 work-node frontmatter 字段；没东西可写。",
+            action: "先用 `zrig scope slice create` 创建 slice，再设置它的 stage。",
           });
         }
         applyStage(slice.readmePath, stage, opts.successor);
         warnRetired(stage);
         const supersededBy = stage === "superseded" ? String(opts.successor).trim() : undefined;
         emit(out, { ok: true, scope: { tier: "slice", mission: slice.missionName, name: slice.name, id: slice.id, stage, ...(supersededBy ? { supersededBy } : {}) } }, json, [
-          `Set ${slice.missionName}/${slice.name} stage: ${stage}`,
+          `已设置 ${slice.missionName}/${slice.name} stage：${stage}`,
           ...(supersededBy ? [`  superseded-by: ${supersededBy}`] : []),
         ]);
       } catch (err) {
@@ -1532,11 +1528,11 @@ function buildSliceStageCommand(): Command {
 
 function buildMissionStageCommand(): Command {
   return new Command("stage")
-    .description(`Set a mission's epistemic stage (${STAGE_VALUES.join(" | ")}); superseded needs --successor`)
-    .argument("<mission>", "Mission name")
-    .argument("<new-stage>", `New stage: ${STAGE_VALUES.join(" | ")}`)
-    .option("--successor <id>", "Successor scope id — REQUIRED when new-stage is superseded")
-    .option("--json", "Machine-readable output")
+    .description(`设置 mission 的认知 stage（${STAGE_VALUES.join(" | ")}）；superseded 需要 --successor`)
+    .argument("<mission>", "Mission 名")
+    .argument("<new-stage>", `新 stage：${STAGE_VALUES.join(" | ")}`)
+    .option("--successor <id>", "Successor scope id——new-stage 为 superseded 时必填")
+    .option("--json", "机器可读输出")
     .action(async (missionName: string, newStage: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -1546,16 +1542,16 @@ function buildMissionStageCommand(): Command {
         const mission = findMission(missionsRoot, missionName);
         if (!mission.readmePath) {
           throw new ScopeCliError({
-            fact: `Mission ${mission.name} has no SPEC.md or legacy README.md.`,
-            consequence: "Stage is a work-node frontmatter field; nothing to write.",
-            action: "Create the mission with `rig scope mission create` before setting its stage.",
+            fact: `mission ${mission.name} 没有 SPEC.md 或旧 README.md。`,
+            consequence: "stage 是 work-node frontmatter 字段；没东西可写。",
+            action: "先用 `zrig scope mission create` 创建 mission，再设置它的 stage。",
           });
         }
         applyStage(mission.readmePath, stage, opts.successor);
         warnRetired(stage);
         const supersededBy = stage === "superseded" ? String(opts.successor).trim() : undefined;
         emit(out, { ok: true, scope: { tier: "mission", name: mission.name, id: mission.id, stage, ...(supersededBy ? { supersededBy } : {}) } }, json, [
-          `Set ${mission.name} stage: ${stage}`,
+          `已设置 ${mission.name} stage：${stage}`,
           ...(supersededBy ? [`  superseded-by: ${supersededBy}`] : []),
         ]);
       } catch (err) {
@@ -1566,11 +1562,11 @@ function buildMissionStageCommand(): Command {
 
 function buildSliceVerifiedCommand(): Command {
   return new Command("verified")
-    .description("Stamp a slice's verified line: <today> against <source> (provenance mandatory; overwrites the prior line)")
-    .argument("<slice-path>", "Slice path (absolute, relative, or NN-slug)")
-    .option("--against <source>", "What it was verified against — MANDATORY (no bare timestamps)")
-    .option("--mission <name>", "Hint mission when slice-path is just NN-slug")
-    .option("--json", "Machine-readable output")
+    .description("盖 slice 的 verified 行：<today> against <source>（出处必填；覆盖前一行）")
+    .argument("<slice-path>", "Slice 路径（绝对、相对，或 NN-slug）")
+    .option("--against <source>", "它被 against 的对象——必填（不要裸时间戳）")
+    .option("--mission <name>", "slice-path 只是 NN-slug 时提示 mission")
+    .option("--json", "机器可读输出")
     .action(async (slicePath: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -1580,15 +1576,15 @@ function buildSliceVerifiedCommand(): Command {
         const slice = findSlice(missionsRoot, slicePath, opts.mission ?? null);
         if (!slice.readmePath) {
           throw new ScopeCliError({
-            fact: `Slice ${slice.name} has no SPEC.md or legacy README.md.`,
-            consequence: "verified is a work-node frontmatter field; nothing to write.",
-            action: "Create the slice with `rig scope slice create` before stamping verified.",
+            fact: `slice ${slice.name} 没有 SPEC.md 或旧 README.md。`,
+            consequence: "verified 是 work-node frontmatter 字段；没东西可写。",
+            action: "先用 `zrig scope slice create` 创建 slice，再盖 verified。",
           });
         }
         const verified = `${todayDateISO()} against ${source}`;
         updateFrontmatter(slice.readmePath, { verified });
         emit(out, { ok: true, scope: { tier: "slice", mission: slice.missionName, name: slice.name, id: slice.id, verified } }, json, [
-          `Stamped ${slice.missionName}/${slice.name} verified: ${verified}`,
+          `已盖 ${slice.missionName}/${slice.name} verified：${verified}`,
         ]);
       } catch (err) {
         fail(err, json, out);
@@ -1598,10 +1594,10 @@ function buildSliceVerifiedCommand(): Command {
 
 function buildMissionVerifiedCommand(): Command {
   return new Command("verified")
-    .description("Stamp a mission's verified line: <today> against <source> (provenance mandatory; overwrites the prior line)")
-    .argument("<mission>", "Mission name")
-    .option("--against <source>", "What it was verified against — MANDATORY (no bare timestamps)")
-    .option("--json", "Machine-readable output")
+    .description("盖 mission 的 verified 行：<today> against <source>（出处必填；覆盖前一行）")
+    .argument("<mission>", "Mission 名")
+    .option("--against <source>", "它被 against 的对象——必填（不要裸时间戳）")
+    .option("--json", "机器可读输出")
     .action(async (missionName: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -1611,15 +1607,15 @@ function buildMissionVerifiedCommand(): Command {
         const mission = findMission(missionsRoot, missionName);
         if (!mission.readmePath) {
           throw new ScopeCliError({
-            fact: `Mission ${mission.name} has no SPEC.md or legacy README.md.`,
-            consequence: "verified is a work-node frontmatter field; nothing to write.",
-            action: "Create the mission with `rig scope mission create` before stamping verified.",
+            fact: `mission ${mission.name} 没有 SPEC.md 或旧 README.md。`,
+            consequence: "verified 是 work-node frontmatter 字段；没东西可写。",
+            action: "先用 `zrig scope mission create` 创建 mission，再盖 verified。",
           });
         }
         const verified = `${todayDateISO()} against ${source}`;
         updateFrontmatter(mission.readmePath, { verified });
         emit(out, { ok: true, scope: { tier: "mission", name: mission.name, id: mission.id, verified } }, json, [
-          `Stamped ${mission.name} verified: ${verified}`,
+          `已盖 ${mission.name} verified：${verified}`,
         ]);
       } catch (err) {
         fail(err, json, out);
@@ -1627,24 +1623,25 @@ function buildMissionVerifiedCommand(): Command {
     });
 }
 
-// OPR.0.4.1.6 FR-4 — frontmatter-conformance backfill (extends `repair`).
-// `repair` historically backfilled a missing PROGRESS.md only; per the
-// convention's "consolidate, do not invent" it now ALSO conforms the mandatory
-// scope-and-versioning §1/§2 frontmatter (id / stage / verified) in the SAME
-// idempotent verb, rather than adding a parallel `reconcile`.
+// OPR.0.4.1.6 FR-4——frontmatter 一致性回填（扩展 `repair`）。
+// `repair` 历史上只回填缺失的 PROGRESS.md；按
+// 约定的"consolidate, do not invent"，它现在在同一个
+// 幂等动词里也对齐必填的
+// scope-and-versioning §1/§2 frontmatter（id / stage / verified），
+// 而不是加一个平行的 `reconcile`。
 
 interface FrontmatterConformResult {
-  /** Minted+written id, or null if already present / unmintable. */
+  /** 铸造+写入的 id，或 null（已存在/无法铸造）。 */
   idAdded: string | null;
-  /** Added stage, or null if already present. */
+  /** 加的 stage，或 null（已存在）。 */
   stageAdded: string | null;
-  /** Added verified placeholder, or null if already present. */
+  /** 加的 verified 占位符，或 null（已存在）。 */
   verifiedAdded: string | null;
   changed: boolean;
 }
 
-/** Map a legacy `status:` to a §4 migration stage. Default `wip` when absent
- *  or unmapped (the safe floor). */
+/** 把旧 `status:` 映射到 §4 迁移 stage。缺省或未映射时默认
+ *  `wip`（安全地板）。 */
 function mapLegacyStatusToStage(status: unknown): string {
   const s = typeof status === "string" ? status.toLowerCase().trim() : "";
   if (s === "placeholder") return "wip";
@@ -1655,9 +1652,8 @@ function mapLegacyStatusToStage(status: unknown): string {
   return "wip";
 }
 
-/** Preserve a malformed value before repair replaces it with the conformant
- *  representation. A pre-existing preservation key means a prior repair has
- *  already recorded a different original; refusing is the only lossless move. */
+/** 在 repair 用一致表示替换畸形值之前先保留它。已有保留 key 意味着
+ *  之前的 repair 已经记过另一个 original；拒绝是唯一无损动作。 */
 function preserveMalformedFrontmatterValue(
   frontmatter: Record<string, unknown>,
   updates: Record<string, unknown>,
@@ -1667,19 +1663,19 @@ function preserveMalformedFrontmatterValue(
   const preservedKey = `repair-original-${key.replaceAll("_", "-")}`;
   if (Object.prototype.hasOwnProperty.call(frontmatter, preservedKey)) {
     throw new ScopeCliError({
-      fact: `${key} is malformed and ${preservedKey} already exists.`,
-      consequence: "Repair refused rather than overwrite either authored value.",
-      action: `Resolve ${key} manually and retain ${preservedKey} as the prior-value record, then re-run repair.`,
+      fact: `${key} 是畸形的，且 ${preservedKey} 已存在。`,
+      consequence: "拒绝 repair，而不是覆盖任一 authored 值。",
+      action: `手动解决 ${key}，把 ${preservedKey} 留作 prior-value 记录，然后重跑 repair。`,
     });
   }
   updates[preservedKey] = frontmatter[key];
 }
 
-/** Idempotently conform a scope README's mandatory frontmatter. Adds absent
- *  fields and replaces malformed ones only after preserving their values under
- *  repair-original-* keys. A valid id/stage/verified is never touched.
- *  `mintId` is called only when `id` is absent or malformed (it may persist a
- *  parent id per §1 lazy adoption). */
+/** 幂等地对齐一个 scope README 的必填 frontmatter。加缺失
+ *  字段，仅在把畸形值保留到
+ *  repair-original-* key 下后才替换。合法 id/stage/verified 绝不碰。
+ *  `mintId` 只在 `id` 缺失或畸形时调用（它可能按 §1 lazy adoption 持久化一个
+ *  parent id）。 */
 function conformReadmeFrontmatter(readmePath: string, mintId: () => string | null): FrontmatterConformResult {
   const fm = readFrontmatter(readmePath);
   const updates: Record<string, unknown> = {};
@@ -1704,6 +1700,7 @@ function conformReadmeFrontmatter(readmePath: string, mintId: () => string | nul
   const hasVerified = typeof fm.verified === "string" && fm.verified.trim().length > 0;
   if (!hasVerified) {
     preserveMalformedFrontmatterValue(fm, updates, "verified");
+    // `against backfill (rig scope repair)` 是由 trust.ts 识别的稳定 provenance 标记。
     verifiedAdded = `${todayDateISO()} against backfill (rig scope repair)`;
     updates.verified = verifiedAdded;
   }
@@ -1713,8 +1710,8 @@ function conformReadmeFrontmatter(readmePath: string, mintId: () => string | nul
   return { idAdded, stageAdded, verifiedAdded, changed };
 }
 
-/** Mint a slice's id from its (persisted) parent mission id + NN — the §1
- *  lazy parent-ID adoption site. Null when the folder has no NN. */
+/** 从 slice 的（已持久化的）parent mission id + NN 铸造 id——§1
+ *  lazy parent-ID adoption 点。文件夹没有 NN 时为 null。 */
 function mintSliceIdClosure(slice: SliceInfo, missionsRoot: string): () => string | null {
   return () => {
     if (slice.nn == null) return null;
@@ -1725,20 +1722,20 @@ function mintSliceIdClosure(slice: SliceInfo, missionsRoot: string): () => strin
 }
 
 function conformLines(scope: string, r: FrontmatterConformResult): string[] {
-  if (!r.changed) return [`  frontmatter: conformant (no change)`];
+  if (!r.changed) return [`  frontmatter：一致（无变化）`];
   const parts: string[] = [];
   if (r.idAdded) parts.push(`id=${r.idAdded}`);
   if (r.stageAdded) parts.push(`stage=${r.stageAdded}`);
   if (r.verifiedAdded) parts.push(`verified=${r.verifiedAdded}`);
-  return [`  frontmatter conformed: ${parts.join(", ")}`];
+  return [`  frontmatter 已对齐：${parts.join(", ")}`];
 }
 
 function buildSliceRepairCommand(): Command {
   return new Command("repair")
-    .description("Backfill a slice's missing PROGRESS.md + conform mandatory frontmatter (id/stage/verified); idempotent")
-    .argument("<slice-path>", "Slice path (absolute, relative, or NN-slug)")
-    .option("--mission <name>", "Hint mission when slice-path is just NN-slug")
-    .option("--json", "Machine-readable output")
+    .description("回填 slice 缺失的 PROGRESS.md + 对齐必填 frontmatter（id/stage/verified）；幂等")
+    .argument("<slice-path>", "Slice 路径（绝对、相对，或 NN-slug）")
+    .option("--mission <name>", "slice-path 只是 NN-slug 时提示 mission")
+    .option("--json", "机器可读输出")
     .action(async (slicePath: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -1754,7 +1751,7 @@ function buildSliceRepairCommand(): Command {
         if (specPath) ensureConventionFrontmatter(specPath, slice.name);
         ensureSliceProofSurface(slice.absPath, readFrontmatter(specPath ?? "").id, slice.name);
         emit(out, { ok: true, result, frontmatter }, json, [
-          `${result.created ? "Backfilled" : "Skipped"} ${slice.name}: ${result.reason}`,
+          `${result.created ? "已回填" : "跳过"} ${slice.name}：${result.reason}`,
           ...(result.path ? [`  path: ${result.path}`] : []),
           ...conformLines("slice", frontmatter),
         ]);
@@ -1766,9 +1763,9 @@ function buildSliceRepairCommand(): Command {
 
 function buildMissionRepairCommand(): Command {
   return new Command("repair")
-    .description("Backfill missing PROGRESS.md + conform mandatory frontmatter (id/stage/verified) for a mission and its slices; idempotent")
-    .argument("<mission>", "Mission name")
-    .option("--json", "Machine-readable output")
+    .description("为一个 mission 及其 slices 回填缺失的 PROGRESS.md + 对齐必填 frontmatter（id/stage/verified）；幂等")
+    .argument("<mission>", "Mission 名")
+    .option("--json", "机器可读输出")
     .action(async (missionName: string, opts, command) => {
       const out = makeStdout();
       const json = Boolean(opts.json);
@@ -1787,9 +1784,9 @@ function buildMissionRepairCommand(): Command {
           }
         }
 
-        // FR-4: conform mandatory frontmatter — mission first (mints+persists
-        // the mission id), then each slice (child ids derive from the now-
-        // persisted parent id).
+        // FR-4：对齐必填 frontmatter——先 mission（铸造+持久化
+        // mission id），再每个 slice（child id 从现在已持久化的
+        // parent id 派生）。
         const conformed: Array<{ scope: "mission" | "slice"; name: string; frontmatter: FrontmatterConformResult }> = [];
         if (missionSpec) {
           const fm = conformReadmeFrontmatter(missionSpec, () => ensureMissionId(mission, missionsRoot));
@@ -1811,7 +1808,7 @@ function buildMissionRepairCommand(): Command {
         const created = results.filter((r) => r.created);
         const fmChanged = conformed.filter((c) => c.frontmatter.changed);
         emit(out, { ok: true, mission: mission.name, created, results, conformed }, json, [
-          `Repaired ${mission.name}: ${created.length} PROGRESS.md backfilled, ${fmChanged.length} frontmatter conformed`,
+          `已修复 ${mission.name}：回填 ${created.length} 个 PROGRESS.md，对齐 ${fmChanged.length} 个 frontmatter`,
           ...created.map((r) => `  + PROGRESS ${r.scope}/${r.name}`),
           ...fmChanged.map((c) => `  ~ frontmatter ${c.scope}/${c.name}`),
         ]);
@@ -1821,8 +1818,8 @@ function buildMissionRepairCommand(): Command {
     });
 }
 
-/** Add the current authored node beside a legacy README without touching the
- * legacy file. Existing SPEC bytes stay in place. */
+/** 在不动旧文件的前提下，把当前 authored node 加到旧 README 旁边。
+ *  已有 SPEC 字节保持原位。 */
 function ensureCurrentSpec(dir: string, nodePath: string | null, fallbackName: string): string | null {
   const specPath = path.join(dir, "SPEC.md");
   if (fs.existsSync(specPath)) return specPath;
@@ -1835,7 +1832,7 @@ function ensureCurrentSpec(dir: string, nodePath: string | null, fallbackName: s
 function ensureConventionFrontmatter(specPath: string, fallbackName: string): void {
   const content = fs.readFileSync(specPath, "utf8");
   const { frontmatter, body } = splitFrontmatter(content);
-  const h2Intent = /^## Intent\s*\n+([\s\S]*?)(?=\n## |$)/m.exec(body)?.[1]?.trim();
+  const h2Intent = /^##\s+(?:Intent|意图)\s*\n+([\s\S]*?)(?=\n##\s+|$)/mi.exec(body)?.[1]?.trim();
   const h1 = /^#\s+(.+)$/m.exec(body)?.[1]?.trim();
   const updates: Record<string, unknown> = {};
   if (!(typeof frontmatter.intent === "string" && frontmatter.intent.trim().length > 0)) {
@@ -1878,33 +1875,33 @@ function ensureSliceProofSurface(dir: string, rawId: unknown, fallbackName: stri
 }
 
 // ---------------------------------------------------------------------
-// Approve (OPR.0.4.4.19 FR-9)
+// Approve（OPR.0.4.4.19 FR-9）
 // ---------------------------------------------------------------------
 
-// `rig scope slice|mission approve` — a THIN client of the daemon's ONE
-// write path (POST /api/scope/approve): frontmatter stamp + append-only
-// audit row land together daemon-side (no half-stamp by construction).
-// STAGED: --scope spec ("the PRD matches my intent") | delivery (the
-// terminal sign-off + future freeze trigger); omitted = delivery.
-// DELEGATED: --on-behalf-of records whose decision this is in the audit
-// notes; the actor stays the REAL invoking session (honest provenance).
-// Two-regime rule (BR-6): approval is freeze/sign-off — NEVER proven-green.
+// `rig scope slice|mission approve`——后台服务唯一
+// 写路径（POST /api/scope/approve）的薄客户端：frontmatter 盖章 + append-only
+// 审计行在后台服务侧一起落地（构造上不允许半盖章）。
+// STAGED：--scope spec（"PRD 匹配我的意图"）| delivery（
+// 终局签字 + 未来 freeze 触发器）；省略 = delivery。
+// DELEGATED：--on-behalf-of 在审计
+// notes 里记录这是谁的决定；actor 仍是真实调用会话（诚实出处）。
+// 双 regime 规则（BR-6）：approval 是 freeze/sign-off——绝不 proven-green。
 function buildApproveCommand(tier: "slice" | "mission"): Command {
   return new Command("approve")
     .description(
       tier === "slice"
-        ? "Approve a slice: writes the frontmatter stamp + an append-only audit row (daemon-side, one operation). --scope spec = the PLAN-LOCK (PRD-matches-intent; this artifact set gets built); delivery (default) = the PROOF-LOCK (terminal sign-off). Approval is freeze/sign-off, never proven-green. Conventions SSOT: docs/reference/sdlc-conventions.md (installed: $OPENRIG_HOME/reference/sdlc-conventions.md)."
-        : "Approve a mission: same staged/delegated semantics as slice approve, at mission tier."
+        ? "批准一个 slice：写 frontmatter 盖章 + 一行 append-only 审计（后台服务侧，一个操作）。--scope spec = PLAN-LOCK（PRD 匹配意图；这组 artifact 将被构建）；delivery（默认）= PROOF-LOCK（终局签字）。approval 是 freeze/sign-off，绝不是 proven-green。约定 SSOT：docs/reference/sdlc-conventions.md（已安装：$OPENRIG_HOME/reference/sdlc-conventions.md）。"
+        : "批准一个 mission：与 slice approve 相同的 staged/delegated 语义，在 mission tier。"
     )
-    .argument(tier === "slice" ? "<slice-path>" : "<mission>", tier === "slice" ? "Slice path (absolute, relative, or NN-slug)" : "Mission name")
-    .option("--mission <name>", tier === "slice" ? "Hint mission when slice-path is just NN-slug" : "(unused at mission tier)")
-    .option("--scope <scope>", "Approval scope: spec | delivery (default delivery)")
-    .option("--actor <session>", "(deprecated, ignored) approver is derived from the seat env (X-OpenRig-Session)")
-    .option("--on-behalf-of <human>", "Record the delegation: whose decision this stamp records (actor stays the real invoking session)")
-    .option("--re-approve", "OPR.0.5.0.18 amend/re-stamp: supersede an existing stamp with a new reasoned attestation (prior preserved in the append-only audit log). Requires --reason.")
-    .option("--reason <why>", "Why the stamp is being amended (required with --re-approve; recorded on the audit row)")
-    .option("--locked-artifacts <paths>", "PLAN-LOCK ONLY (--scope spec): comma-separated slice-relative paths naming the artifact set this lock freezes — replaces the derived default entirely. Each file must exist. Without it, a derivation that would freeze only a missing/scaffold PRD refuses.")
-    .option("--json", "Machine-readable output")
+    .argument(tier === "slice" ? "<slice-path>" : "<mission>", tier === "slice" ? "Slice 路径（绝对、相对，或 NN-slug）" : "Mission 名")
+    .option("--mission <name>", tier === "slice" ? "slice-path 只是 NN-slug 时提示 mission" : "（mission tier 不用）")
+    .option("--scope <scope>", "批准范围：spec | delivery（默认 delivery）")
+    .option("--actor <session>", "（已废弃，忽略）approver 从 seat 环境（X-OpenRig-Session）派生")
+    .option("--on-behalf-of <human>", "记录委托：这枚盖章记的是谁的决定（actor 仍是真实调用会话）")
+    .option("--re-approve", "OPR.0.5.0.18 amend/re-stamp：用一个新的有理 attestation 取代已有盖章（prior 保留在 append-only 审计日志）。需要 --reason。")
+    .option("--reason <why>", "为什么要 amend 这枚盖章（与 --re-approve 一起必填；记在审计行上）")
+    .option("--locked-artifacts <paths>", "仅 PLAN-LOCK（--scope spec）：逗号分隔的 slice 相对路径，命名这把锁冻结的 artifact 集——完全替换派生默认。每个文件必须存在。没有它，只会冻结缺失/骨架 PRD 的派生会拒绝。")
+    .option("--json", "机器可读输出")
     .action(async (target: string, opts: {
       mission?: string;
       scope?: string;
@@ -1920,52 +1917,52 @@ function buildApproveCommand(tier: "slice" | "mission"): Command {
       try {
         if (opts.scope !== undefined && opts.scope !== "spec" && opts.scope !== "delivery") {
           throw new ScopeCliError({
-            fact: `Unknown --scope value "${opts.scope}".`,
-            consequence: "Command did not run.",
-            action: "Pick one of: spec, delivery (omit for delivery).",
+            fact: `未知 --scope 值 "${opts.scope}"。`,
+            consequence: "命令未运行。",
+            action: "选一个：spec、delivery（省略即 delivery）。",
           });
         }
-        // OPR.0.5.0.18 — fail the flag misuse fast and locally (the daemon
-        // enforces the same contract; this just saves the round-trip).
+        // OPR.0.5.0.18——在本地快速失败 flag 误用（后台服务
+        // 强制同一契约；这只是省一趟往返）。
         if (opts.reApprove && (!opts.reason || opts.reason.trim().length === 0)) {
           throw new ScopeCliError({
-            fact: "--re-approve without --reason.",
-            consequence: "A re-stamp is a reasoned deliberate act; nothing was written.",
-            action: 'Re-run with --reason "<why>" describing what changed since the prior attestation.',
+            fact: "--re-approve 没带 --reason。",
+            consequence: "re-stamp 是一个有理的 deliberate 动作；什么都没写。",
+            action: '带 --reason "<why>" 重跑，描述自上次 attestation 以来变了什么。',
           });
         }
         if (opts.reason && !opts.reApprove) {
           throw new ScopeCliError({
-            fact: "--reason was passed without --re-approve.",
-            consequence: "A first-time approval carries no amendment reason; nothing was written.",
-            action: "Drop --reason for a first approval, or add --re-approve to amend an existing stamp.",
+            fact: "--reason 没有 --re-approve。",
+            consequence: "首次批准不带 amend 原因；什么都没写。",
+            action: "首次批准去掉 --reason，或加 --re-approve 来 amend 已有盖章。",
           });
         }
-        // B14 — the explicit set is a PLAN-LOCK concept; on a delivery approval it
-        // would silently do nothing, and silence around lock content is the defect.
+        // B14——显式集是 PLAN-LOCK 概念；在 delivery 批准上
+        // 它会静默什么都不做，而锁内容周围的静默就是缺陷。
         const lockedArtifactsList = typeof opts.lockedArtifacts === "string"
           ? opts.lockedArtifacts.split(",").map((p) => p.trim()).filter((p) => p.length > 0)
           : null;
         if (lockedArtifactsList && (tier !== "slice" || opts.scope !== "spec")) {
           throw new ScopeCliError({
-            fact: "--locked-artifacts applies only to a slice plan-lock (--scope spec).",
-            consequence: "Nothing was written.",
-            action: "Re-run with --scope spec, or drop the flag for a delivery/mission approval.",
+            fact: "--locked-artifacts 只适用于 slice plan-lock（--scope spec）。",
+            consequence: "什么都没写。",
+            action: "带 --scope spec 重跑，或为 delivery/mission 批准去掉这个 flag。",
           });
         }
-        // P21: the approver is DERIVED from the seat env (X-OpenRig-Session, stamped by DaemonClient
-        // from OPENRIG_SESSION_NAME) — never a flag/body claim. --actor is deprecated + ignored. Fail
-        // early with a friendly message if the env is unset (else the daemon returns 400 actor_required —
-        // no seat identity to attribute the write to; P18 retired the 401 refusal).
+        // P21：approver 从 seat 环境派生（X-OpenRig-Session，由 DaemonClient
+        // 从 OPENRIG_SESSION_NAME 盖章）——绝不是 flag/body 声明。--actor 已废弃 + 忽略。
+        // 如果环境未设置，提前用友好消息失败（否则后台服务返回 400 actor_required——
+        // 没有 seat 身份可归因这次写；P18 已退役 401 拒绝）。
         if (!process.env.OPENRIG_SESSION_NAME) {
           throw new ScopeCliError({
-            fact: "No seat identity: OPENRIG_SESSION_NAME is unset (the approver is derived from the seat env, not a flag).",
-            consequence: "The daemon has no seat identity to attribute the approval write to (400 actor_required — a missing parameter, not a distrust refusal).",
-            action: "Run from a managed seat (OPENRIG_SESSION_NAME set).",
+            fact: "没有 seat 身份：OPENRIG_SESSION_NAME 未设置（approver 从 seat 环境派生，不是 flag）。",
+            consequence: "后台服务没有 seat 身份可归因这次批准写（400 actor_required——缺参数，不是不信任拒绝）。",
+            action: "从一个受管 seat（OPENRIG_SESSION_NAME 已设置）运行。",
           });
         }
-        // Resolve the scope target LOCALLY (rich NN-slug resolution), then
-        // send the canonical missions-root-relative path to the daemon.
+        // 在本地解析 scope target（富 NN-slug 解析），然后
+        // 把 canonical missions-root 相对路径发给后台服务。
         const missionsRoot = resolveMissionsRoot({ override: getOpts(command).workspace });
         let scopeAbsPath: string;
         if (tier === "slice") {
@@ -1981,9 +1978,9 @@ function buildApproveCommand(tier: "slice" | "mission"): Command {
         const status = await getDaemonStatus(lifecycleDeps);
         if (status.state !== "running" || status.healthy === false) {
           throw new ScopeCliError({
-            fact: statusGuardMessage(status).fact, // B8-1b: down ≠ busy
-            consequence: "scope approve writes the stamp + audit row through the daemon (one operation).",
-            action: "Start it with: rig daemon start",
+            fact: statusGuardMessage(status).fact, // B8-1b：down ≠ busy
+            consequence: "scope approve 通过后台服务写盖章 + 审计行（一个操作）。",
+            action: "用以下命令启动：zrig daemon start",
           });
         }
         const client = new DaemonClient(getDaemonUrl(status));
@@ -1991,7 +1988,7 @@ function buildApproveCommand(tier: "slice" | "mission"): Command {
           scopeTier: tier,
           scopePath,
           approvalScope: opts.scope,
-          // P21: no body actorSession — the daemon derives the approver from the transport header.
+          // P21：body 不带 actorSession——后台服务从传输头派生 approver。
           onBehalfOf: opts.onBehalfOf ?? null,
           reApprove: opts.reApprove === true,
           reason: opts.reason ?? null,
@@ -2000,20 +1997,20 @@ function buildApproveCommand(tier: "slice" | "mission"): Command {
         if (res.status >= 400) {
           const err = res.data as { error?: string; message?: string; action?: string };
           throw new ScopeCliError({
-            fact: `Approve failed (${err.error ?? res.status}): ${err.message ?? "unknown error"}.`,
-            consequence: "No stamp and no audit row were left behind (no half-stamp).",
+            fact: `批准失败（${err.error ?? res.status}）：${err.message ?? "未知错误"}。`,
+            consequence: "没留下盖章，也没留下审计行（无半盖章）。",
             action: err.error === "already_approved"
-              ? 'The scope already carries this stamp; amend it with --re-approve --reason "<why>" (new attestation; prior preserved in the audit log).'
-              : err.action ?? "Fix the named issue and re-run.",
+              ? '该 scope 已带这枚盖章；用 --re-approve --reason "<why>" amend 它（新 attestation；prior 保留在审计日志）。'
+              : err.action ?? "修掉命名的问题并重跑。",
           });
         }
         const data = res.data;
         emit(out, { ok: true, ...data }, json, [
-          `${data.reApproved ? "Re-approved" : "Approved"} (${String(data.approvalScope)}) ${tier} ${String(data.scopeId)} — ${String(data.approvedBy)} at ${String(data.approvedAt)}${data.onBehalfOf ? ` on behalf of ${String(data.onBehalfOf)}` : ""}`,
+          `${data.reApproved ? "已重新批准" : "已批准"}（${String(data.approvalScope)}）${tier} ${String(data.scopeId)}——${String(data.approvedBy)} 于 ${String(data.approvedAt)}${data.onBehalfOf ? ` 代表 ${String(data.onBehalfOf)}` : ""}`,
           ...(data.reApproved
-            ? [`Superseded prior attestation: ${String(data.priorApprovedBy)} at ${String(data.priorApprovedAt ?? "?")} (preserved in the audit log)`]
+            ? [`已取代 prior attestation：${String(data.priorApprovedBy)} 于 ${String(data.priorApprovedAt ?? "?")}（保留在审计日志）`]
             : []),
-          `Audit action: ${String(data.actionId)} (scope_path=${String(data.scopePath)})`,
+          `审计动作：${String(data.actionId)}（scope_path=${String(data.scopePath)}）`,
         ]);
       } catch (err) {
         fail(err, json, out);
@@ -2026,11 +2023,11 @@ function buildApproveCommand(tier: "slice" | "mission"): Command {
 // ---------------------------------------------------------------------
 
 /**
- * Advisory-only: a work node carrying BOTH authored files.
+ * 仅建议性：一个同时带两份 authored 文件的工作节点。
  *
- * SPEC.md wins and nothing here blocks — but a shadowed README.md is a real hazard worth naming,
- * because every surface that still reads the legacy name is quietly reading the OTHER file. Low
- * severity on purpose: a state to notice, not a failure to gate on.
+ * SPEC.md 胜出，这里不阻塞任何东西——但被 shadow 的 README.md 是一个值得命名的真实隐患，
+ * 因为每个仍读旧名的表面都在悄悄读另一个文件。故意低
+ * severity：一个值得注意的状态，不是一个要 gate 的失败。
  */
 function shadowedNodeFileFinding(dir: string, level: "mission" | "slice"): {
   kind: "shadowed_node_file"; severity: "low"; path: string; message: string; remediation: string;
@@ -2040,17 +2037,17 @@ function shadowedNodeFileFinding(dir: string, level: "mission" | "slice"): {
     kind: "shadowed_node_file",
     severity: "low",
     path: dir,
-    message: `${level} has BOTH SPEC.md and README.md; SPEC.md is the authored node file and wins, so README.md is shadowed and any surface still reading the legacy name sees different content.`,
-    remediation: "Fold anything still needed from README.md into SPEC.md and remove the shadowed file. Advisory only — nothing is blocked.",
+    message: `${level} 同时有 SPEC.md 和 README.md；SPEC.md 是 authored node 文件并胜出，所以 README.md 被 shadow，任何仍读旧名的表面看到的是不同内容。`,
+    remediation: "把 README.md 里仍需要的东西折进 SPEC.md，然后删掉被 shadow 的文件。仅建议性——不阻塞任何东西。",
   };
 }
 
 export function scopeCommand(): Command {
   const cmd = new Command("scope")
-    .description("Scope tree primitive: missions, slices, sub-slices (per conventions/scope-and-versioning)")
-    .option("--workspace <path>", "Override workspace root (otherwise inferred from cwd or $OPENRIG_WORK_ROOT)");
+    .description("scope 树原语：missions、slices、sub-slices（按 conventions/scope-and-versioning）")
+    .option("--workspace <path>", "覆盖 workspace 根（否则从 cwd 或 $OPENRIG_WORK_ROOT 推断）");
 
-  const slice = new Command("slice").description("Slice-tier commands");
+  const slice = new Command("slice").description("Slice tier 命令");
   slice.addCommand(buildSliceLsCommand());
   slice.addCommand(buildSliceShowCommand());
   slice.addCommand(buildSliceCreateCommand());
@@ -2064,7 +2061,7 @@ export function scopeCommand(): Command {
   slice.addCommand(buildApproveCommand("slice"));
   cmd.addCommand(slice);
 
-  const mission = new Command("mission").description("Mission-tier commands");
+  const mission = new Command("mission").description("Mission tier 命令");
   mission.addCommand(buildMissionLsCommand());
   mission.addCommand(buildMissionShowCommand());
   mission.addCommand(buildMissionCreateCommand());
@@ -2081,5 +2078,5 @@ export function scopeCommand(): Command {
   return cmd;
 }
 
-// Re-exports for tests.
+// 给测试用的再导出。
 export { DEFAULT_PROJECT_PREFIX, splitFrontmatter };

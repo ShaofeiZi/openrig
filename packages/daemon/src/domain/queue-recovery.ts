@@ -2,8 +2,8 @@ import type Database from "better-sqlite3";
 import { createHash } from "node:crypto";
 import { lastMeaningfulTransition } from "./queue-waiting.js";
 
-/** Common provenance on existing diagnostic queue rows, never a second ledger.
- * Both deadline and delivery detectors consult the same recovery disposition. */
+/** 现有诊断 queue row 上的共享 provenance，绝不是第二份 ledger。
+ * deadline 与 delivery detector 都查询同一个 recovery disposition。 */
 export const recoveryTag = (qitemId: string): string => `recovery-for:${qitemId}`;
 function failedAttempt(db: Database.Database, qitemId: string): string | null {
   return (db.prepare("SELECT last_nudge_attempt AS at FROM queue_items WHERE qitem_id = ? AND last_nudge_result LIKE 'failed:%'").get(qitemId) as { at: string | null } | undefined)?.at ?? null;

@@ -1,14 +1,11 @@
-// OPR.0.5.3.5 mini-req 6 — ADDRESSABLE MARKDOWN, the resolver core (Atom 1).
-// RED-first against the locked Q1 ruling (SPEC.md, approved-spec-by review-r1):
-// an address is `file#H2-slug/H3-slug`; it resolves to everything until the next
-// SAME-OR-HIGHER-level header; headers inside code fences are never addresses;
-// resolution FAILS LOUD (an address that matches nothing is an error with a
-// reason, never a silent empty); the validator enforces unique header-paths and
-// one memorable slug rule. The bare-address vs own-text rule is STATED and
-// ENFORCED: a bare address returns the FULL section span (children included);
-// own text (until the next header of ANY level) is the `ownText` field of the
-// same resolution — never a second address syntax (the May separator-ambiguity
-// lesson: exactly one grammar form).
+// OPR.0.5.3.5 mini-req 6——可寻址 Markdown，解析器核心（Atom 1）。
+// 对照锁定的 Q1 裁定（SPEC.md，approved-spec-by review-r1）先 RED：
+// 地址形如 `file#H2-slug/H3-slug`；它解析到下一个同级或更高级标题之前的全部内容；
+// 代码围栏内的标题绝不是地址；解析响亮失败（匹配不到任何内容的地址是带原因的错误，
+// 绝非静默为空）；校验器强制唯一 header-path 与一条好记的 slug 规则。裸地址 vs 自身
+// 文本规则被陈述并强制执行：裸地址返回完整区段跨度（含子级）；自身文本（直到任意级别
+// 的下一个标题）是同一解析结果的 `ownText` 字段——绝不出现第二种地址语法
+//（五月分隔符歧义教训：恰好一种语法形式）。
 
 import { describe, it, expect } from "vitest";
 import {
@@ -126,7 +123,7 @@ describe("resolveAddress — fail-loud resolution on real text", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(AddressResolutionError);
       const msg = (err as Error).message;
-      expect(msg).toMatch(/ambiguous/i);
+      expect(msg).toContain("存在歧义");
       expect(msg).toContain("0"); // first match's line
       expect(msg).toContain("4"); // second match's line
     }

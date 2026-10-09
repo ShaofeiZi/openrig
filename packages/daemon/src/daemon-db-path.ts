@@ -1,12 +1,11 @@
 import { lstatSync, readlinkSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
-/** Resolve existing path components, including a dangling final symlink, while
- * preserving a not-yet-created tail. SQLite paths commonly do not exist yet at
- * first boot, so realpathSync alone cannot answer the containment question. */
+/** 解析现有路径组成部分，包括末尾的悬空 symlink，同时保留尚未创建的尾部。SQLite 路径在首次
+ * 启动时通常尚不存在，因此仅靠 realpathSync 无法回答包含关系问题。 */
 function resolveForContainment(path: string, seen = new Set<string>()): string {
   const absolute = resolve(path);
-  if (seen.has(absolute)) throw new Error(`symlink cycle while resolving ${path}`);
+  if (seen.has(absolute)) throw new Error(`解析 ${path} 时遇到 symlink 循环`);
   seen.add(absolute);
   try {
     return realpathSync(absolute);
@@ -28,9 +27,8 @@ function resolveForContainment(path: string, seen = new Set<string>()): string {
       const target = readlinkSync(absolute);
       return resolveForContainment(resolve(dirname(absolute), target), seen);
     }
-    // The path exists but realpath could not establish its identity (for
-    // example EACCES or ENOTDIR). Treating that as an absent tail would turn
-    // an unverified path into authority.
+    // 路径存在，但 realpath 无法确认其身份（例如 EACCES 或 ENOTDIR）。若把它视为缺失尾部，
+    // 就会错误地让未经验证的路径成为权威。
     throw realpathError;
   }
 }
@@ -41,15 +39,13 @@ function isWithin(root: string, candidate: string): boolean {
 }
 
 /**
- * D15 — resolve the daemon's SQLite path. An explicit OPENRIG_DB / RIGGED_DB wins
- * (the operator takes responsibility for that path); otherwise the db is anchored
- * under OPENRIG_HOME, NEVER a bare CWD-relative filename.
+ * D15——解析后台服务的 SQLite 路径。显式 OPENRIG_DB/RIGGED_DB 优先（操作员对该路径负责）；
+ * 否则数据库锚定在 OPENRIG_HOME 下，绝不使用裸的 CWD 相对文件名。
  *
- * Incident 2026-08-07: the entrypoint defaulted `dbPath` to a bare "openrig.sqlite"
- * which resolves against the process CWD — so a daemon launched with an isolated
- * OPENRIG_HOME could still open the SHARED fleet db (whatever sat in its CWD).
- * Anchoring the default to OPENRIG_HOME makes an isolated-home daemon isolate its
- * db too, which is the whole point of setting OPENRIG_HOME.
+ * 2026-08-07 事故：入口把 `dbPath` 默认为裸的 "openrig.sqlite"，它相对于进程 CWD 解析；
+ * 因此即使用隔离 OPENRIG_HOME 启动后台服务，仍可能打开共享 fleet 数据库（即 CWD 中的文件）。
+ * 将默认值锚定到 OPENRIG_HOME，可使主目录隔离的后台服务也隔离其数据库；这正是设置
+ * OPENRIG_HOME 的目的。
  */
 export function resolveDaemonDbPath(explicitDb: string | undefined | null, openrigHome: string): string {
   if (explicitDb && explicitDb.length > 0) {
@@ -60,8 +56,8 @@ export function resolveDaemonDbPath(explicitDb: string | undefined | null, openr
   const resolvedDb = resolveForContainment(dbPath);
   if (!isWithin(resolvedHome, resolvedDb)) {
     throw new Error(
-      `Refusing implicit database outside resolved OPENRIG_HOME: ${dbPath} resolves to ${resolvedDb}, ` +
-      `outside ${resolvedHome}. Set OPENRIG_DB explicitly to authorize a deliberate split-path configuration.`,
+      `拒绝使用解析后位于 OPENRIG_HOME 之外的隐式数据库：${dbPath} 解析为 ${resolvedDb}，` +
+      `不在 ${resolvedHome} 内。若要明确授权分离路径配置，请显式设置 OPENRIG_DB。`,
     );
   }
   return dbPath;

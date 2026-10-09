@@ -1,0 +1,57 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch11",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/ps-compact.test.ts",
+      "before_sha256_16": "8a1a737cd63bf0c8",
+      "after_sha256_16": "15847dd6ba412ec6",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/daemon/test/ps-summary-stall-red.test.ts",
+      "before_sha256_16": "c742bb814d586b92",
+      "after_sha256_16": "c742bb814d586b92",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/cli/test/down.test.ts",
+      "before_sha256_16": "1180c504f5515bb6",
+      "after_sha256_16": "d73f917ac14010dc",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/cli/test/bundle.test.ts",
+      "before_sha256_16": "f9467c1567b4621b",
+      "after_sha256_16": "d08477519a48ab43",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/daemon/test/opr-0.4.1.09-bridge-reader.test.ts",
+      "before_sha256_16": "b86a55e0d503b691",
+      "after_sha256_16": "9e9ac683be031aa0",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    }
+  ]
+}

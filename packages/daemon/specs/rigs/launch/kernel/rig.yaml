@@ -1,26 +1,21 @@
 version: "0.2"
 name: kernel
 summary: >
-  Library preview of the default dual-runtime template, not the running kernel.
-  Automatic first boot selects the Claude-only, Codex-only or dual-runtime variant
-  from available authenticated runtimes. Check the current seats with
-  `rig ps --nodes --rig kernel`; the managed rig's spec shows its selected topology.
-  Class-of-one always-on rig: advisor pilots user intent, operator runs
-  OpenRig itself, queue worker classifies stream-to-queue substrate.
-  Auto-boots on first rig daemon start (V0.3.1 slice 05). On
-  subsequent daemon-restarts the rig record persists in SQLite and the
-  daemon's kernel-boot path short-circuits already-managed without
-  re-creating the rig. Member tmux sessions survive daemon-restart-only;
-  a HOST reboot drops tmux and the reconciler marks sessions detached,
-  at which point the operator pod owns the agent-restart workflow
-  through the current operator workflow. Dual-runtime variant; Claude Code +
-  Codex both authenticated.
+  默认双运行时模板的资源库预览，并非正在运行的内核。首次自动启动会根据可用且已鉴权的
+  运行时，从仅 Claude、仅 Codex 或双运行时变体中选择。使用
+  `zrig ps --nodes --rig kernel` 查看当前席位；托管工作组的规范会显示已选拓扑。
+  这是单实例常驻工作组：顾问引导用户意图，操作员运行 OpenRig 本身，队列 worker 对
+  流转队列基础数据分类。首次启动 zrig 后台服务时自动引导（V0.3.1 slice 05）。后续后台服务
+  重启时，工作组记录持久化在 SQLite 中，内核启动路径会对已托管项短路，不会重新创建工作组。
+  仅重启后台服务时，成员 tmux 会话继续存活；主机重启会终止 tmux，协调器将会话标为 detached，
+  此时操作员 Pod 通过当前操作员工作流负责智能体重启流程。双运行时变体要求 Claude Code 与
+  Codex 均已鉴权。
 
 culture_file: culture/CULTURE.md
 
 pods:
   - id: advisor
-    label: Advisor
+    label: 顾问
     members:
       - id: lead
         agent_ref: "local:agents/advisor/lead"
@@ -29,10 +24,10 @@ pods:
         cwd: "."
 
   - id: operator
-    label: Operator
+    label: 操作员
     members:
       - id: human
-        # Shared mission control; humans attach and agents use the same pane.
+        # 共享任务控制；人类接入并与智能体使用同一窗格。
         agent_ref: "builtin:terminal"
         runtime: terminal
         profile: none
@@ -58,7 +53,7 @@ pods:
         to: human
 
   - id: queue
-    label: Queue
+    label: 队列
     members:
       - id: worker
         agent_ref: "local:agents/queue/worker"

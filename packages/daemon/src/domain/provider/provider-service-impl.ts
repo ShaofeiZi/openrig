@@ -1,8 +1,8 @@
-// Slice-04 (OPR.0.5.0.4) C1 (resume) — the production ProviderService. getReadModel is fully
-// wired over the collection seam (real codex-auth reader + node-inventory across rigs + clock).
-// precheck composes the pure precheckSwitch gate (fails closed on unknown auth per BR-3). switch
-// is precheck-gated and NEVER fabricates success — the switch-execution + BR-1 action-record path
-// is the D seam; until it lands, switch returns an honest failed_safely with an operational reason.
+// Slice-04（OPR.0.5.0.4）C1（恢复）——生产 ProviderService。getReadModel 已完整接入
+// 采集接缝（真实 codex-auth 读取器 + 跨工作组 node-inventory + 时钟）。precheck 组合纯函数
+// precheckSwitch 门禁（按 BR-3，对未知认证采取失败关闭）。switch 受 precheck 门禁约束，
+// 绝不伪造成功——切换执行 + BR-1 动作记录路径属于 D 接缝；在其落地前，switch 会如实
+// 返回 failed_safely 并附带操作原因。
 
 import type Database from "better-sqlite3";
 import {
@@ -24,13 +24,13 @@ import type { FourBlockReadModel, PrecheckResult, ProviderSignal } from "./provi
 
 export interface ProviderServiceImplDeps {
   db: Database.Database;
-  /** The rig universe (rigRepo.listRigs()) — each rig's node-inventory contributes seats. */
+  /** 工作组全集（rigRepo.listRigs()）——每个工作组的 node-inventory 提供席位。 */
   listRigs: () => Array<{ id: string }>;
-  /** Slice-04 C3: the Claude statusline provider_usage signal source (undefined → signals []). */
+  /** Slice-04 C3：Claude 状态栏 provider_usage 信号源（undefined → signals []）。 */
   collectClaudeSignals?: () => ProviderSignal[];
-  /** Slice-04 C4: the shipped structured activity detector. Undefined keeps the reactive lane empty. */
+  /** Slice-04 C4：已发布的结构化活动检测器。undefined 会保持响应式泳道为空。 */
   agentActivityStore?: Pick<AgentActivityStore, "getLatestForNode">;
-  /** W2a tap: operator-visible disposition sink. Observability only; never a verification producer. */
+  /** W2a tap：操作者可见的处置输出。仅用于可观测性，绝不产生验证结论。 */
   warn?: (message: string) => void;
   env?: NodeJS.ProcessEnv;
   now?: () => string;
@@ -91,10 +91,9 @@ export class ProviderServiceImpl implements ProviderService {
   async precheck(input: ProviderPrecheckInput): Promise<PrecheckResult> {
     const model = await this.getReadModel();
     const target = model.accounts.find((a) => a.accountId === input.toAccount);
-    // Validate-at-use: an unknown target OR unknown auth fails closed (BR-3 — disk presence never
-    // asserts active). Live-conversation state is not yet wired (the C2 activity seam), so assume
-    // live — the conservative direction never strands a conversation silently. This is the MANUAL
-    // precheck variant (no triggeringSignal; that's for automated policy-driven switches).
+    // 使用时校验：目标未知或认证状态未知时均失败关闭（BR-3——磁盘上存在凭据不代表已激活）。
+    // 实时会话状态尚未接入（C2 活动接缝），因此保守地按会话仍存活处理，避免静默搁置会话。
+    // 这是手动 precheck 变体（没有 triggeringSignal；该字段用于策略驱动的自动切换）。
     return precheckSwitch({
       targetProvider: target?.provider ?? "codex",
       targetAuthState: target?.authState ?? "unknown",
@@ -103,14 +102,14 @@ export class ProviderServiceImpl implements ProviderService {
   }
 
   async switchAccount(input: ProviderSwitchInput): Promise<ProviderSwitchResult> {
-    // Precheck-gate: never switch past an unsafe verdict unless explicitly forced.
+    // Precheck 门禁：除非显式强制，否则绝不越过不安全判决执行切换。
     const verdict = await this.precheck({ seat: input.seat, toAccount: input.toAccount });
     if (verdict.safe === false && !input.forceUnsafe) {
       const reasons = verdict.reasons.length > 0 ? verdict.reasons : ["precheck_unsafe"];
       return { outcome: "failed_safely", reasons: reasons as [string, ...string[]] };
     }
-    // D seam (compose the rig-auth codex switch + BR-1 durable action record) is NOT yet wired.
-    // Honest operational failure — never fabricate a succeeded/rebind_in_progress outcome.
+    // D 接缝（组合 rig-auth Codex 切换 + BR-1 持久动作记录）尚未接入。
+    // 如实返回操作失败，绝不伪造 succeeded/rebind_in_progress 结果。
     return { outcome: "failed_safely", reasons: ["switch_execution_not_yet_wired"] };
   }
 }

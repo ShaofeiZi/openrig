@@ -1,0 +1,253 @@
+{
+  "owner": "docs-asbuilt",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": "docs/as-built/README.md",
+      "target_path": "docs/as-built/README.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 101,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture.md",
+      "target_path": "docs/as-built/architecture.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 57,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/adapters-and-runtimes.md",
+      "target_path": "docs/as-built/architecture/adapters-and-runtimes.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 228,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/agent-spec-and-startup.md",
+      "target_path": "docs/as-built/architecture/agent-spec-and-startup.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 232,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/architecture-rules-and-event-system.md",
+      "target_path": "docs/as-built/architecture/architecture-rules-and-event-system.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 216,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/content-surfaces.md",
+      "target_path": "docs/as-built/architecture/content-surfaces.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 320,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/coordination-primitive.md",
+      "target_path": "docs/as-built/architecture/coordination-primitive.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 242,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/daemon-core.md",
+      "target_path": "docs/as-built/architecture/daemon-core.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 260,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/lifecycle-snapshot-restore.md",
+      "target_path": "docs/as-built/architecture/lifecycle-snapshot-restore.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 214,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/living-notes-review.md",
+      "target_path": "docs/as-built/architecture/living-notes-review.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 205,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/mission-control.md",
+      "target_path": "docs/as-built/architecture/mission-control.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 165,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/packaging-bootstrap-bundles.md",
+      "target_path": "docs/as-built/architecture/packaging-bootstrap-bundles.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 143,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/plugin-agent-image-context-pack.md",
+      "target_path": "docs/as-built/architecture/plugin-agent-image-context-pack.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 357,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/transport-and-transcripts.md",
+      "target_path": "docs/as-built/architecture/transport-and-transcripts.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 242,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/workflow-runtime.md",
+      "target_path": "docs/as-built/architecture/workflow-runtime.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 509,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/architecture/workspace-primitive.md",
+      "target_path": "docs/as-built/architecture/workspace-primitive.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 414,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/cli-reference.md",
+      "target_path": "docs/as-built/cli-reference.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 1934,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 原文保留，新增完整 zh-CN 配套译文；97 个正文标题、75 个三级标题、67 处用法、23 处子命令、52 个说明段、85 行表格、12 个围栏、5 个链接及 69 个 rig 命令章节核对一致 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/codemap.md",
+      "target_path": "docs/as-built/codemap.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 197,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/frontmatter-schema.md",
+      "target_path": "docs/as-built/frontmatter-schema.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 65,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/ui.md",
+      "target_path": "docs/as-built/ui.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 44,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/ui/library-specs-and-design-system.md",
+      "target_path": "docs/as-built/ui/library-specs-and-design-system.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 129,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 中文伴随版已生成 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/ui/project-and-for-you.md",
+      "target_path": "docs/as-built/ui/project-and-for-you.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 433,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 原文保留，新增完整 zh-CN 配套译文；18 个标题、17 行表格、19 个 Source 引用与链接结构核对一致 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/ui/shell-and-routing.md",
+      "target_path": "docs/as-built/ui/shell-and-routing.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 163,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 原文保留，新增完整 zh-CN 配套译文；frontmatter、标题、路由表与源码引用核对一致 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/as-built/ui/topology.md",
+      "target_path": "docs/as-built/ui/topology.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 109,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 原文保留，新增完整 zh-CN 配套译文；frontmatter、标题与源码引用核对一致 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    }
+  ]
+}

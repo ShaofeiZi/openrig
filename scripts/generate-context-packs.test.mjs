@@ -1,4 +1,4 @@
-// OPR.0.5.3.7 R2 — tests for the package-time context-pack generator.
+// OPR.0.5.3.7 R2——打包时 context-pack 生成器的测试。
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -19,8 +19,8 @@ const REAL_SKILLS = join(REPO, "packages/daemon/specs/agents/shared/skills");
 const REAL_PLUGIN_SKILLS = join(REPO, "packages/daemon/assets/plugins/openrig-core/skills");
 const REAL_STATIC_PACKS = join(REPO, "packages/daemon/context-packs-src");
 
-// Independent computation of the mirror's exclude-only ship set on a real tree —
-// the discriminator that catches any narrowing of the projection (r2 HIGH-1).
+// 在真实源码树上独立计算 mirror 的“仅排除”ship 集合——
+// 这是能抓住投影被任何方式收窄的判别信号（r2 HIGH-1）。
 function mirrorShipSet(dir, rel = "") {
   const names = new Set(EXCLUDES.filter((p) => !p.includes("/") && !p.includes("*")));
   const dirs = new Set(EXCLUDES.filter((p) => p.endsWith("/")).map((p) => p.replace(/\/+$/, "")));
@@ -74,6 +74,7 @@ test("generates a valid, daemon-parseable pack per skill; SKILL.md is the instru
       name: "test-driven-development",
       description: "Write the test first.",
       files: {
+        "SKILL.zh-CN.md": "# 测试驱动开发\n",
         "anti-patterns.md": "# anti-patterns\n",
         "helper.sh": "#!/bin/sh\necho no\n",
         "example.ts": "export const x = 1;\n",
@@ -83,23 +84,25 @@ test("generates a valid, daemon-parseable pack per skill; SKILL.md is the instru
     });
     run(source, out);
 
-    // both packs exist under skills/<rel>
+    // 两个 pack 都存在于 skills/<rel> 下
     assert.ok(existsSync(join(out, "skills/core/attention-queue/manifest.yaml")));
     assert.ok(existsSync(join(out, "skills/process/tdd/manifest.yaml")));
     assert.ok(!existsSync(join(out, "skills/mission-slice-sop")), "an explicit source override must remain isolated");
 
-    // manifest parses through the DAEMON's parser and SKILL.md leads as instruction
+    // manifest 通过 DAEMON 的解析器，且 SKILL.md 作为 instruction 引导
     const m1 = parseManifest(readFileSync(join(out, "skills/core/attention-queue/manifest.yaml"), "utf8"), "m1");
     assert.equal(m1.name, "attention-queue");
     assert.equal(m1.version, "0.5.3");
     assert.equal(m1.files[0].path, "SKILL.md");
     assert.equal(m1.files[0].role, "instruction");
 
-    // the .sh/.ts helpers ARE packed + copied (mirror ship set — served as text);
-    // the mirror EXCLUDES (feedback.md, *.local.md) are dropped.
+    // .sh/.ts 辅助文件确实被打包 + 复制（mirror ship set——作为文本提供）；
+    // mirror EXCLUDES（feedback.md、*.local.md）被丢弃。
     const m2 = parseManifest(readFileSync(join(out, "skills/process/tdd/manifest.yaml"), "utf8"), "m2");
     const paths = m2.files.map((f) => f.path);
     assert.ok(paths.includes("SKILL.md"));
+    assert.ok(paths.includes("SKILL.zh-CN.md"));
+    assert.equal(m2.files.find((f) => f.path === "SKILL.zh-CN.md").role, "reference");
     assert.ok(paths.includes("anti-patterns.md"));
     assert.ok(paths.includes("helper.sh"), "helper.sh must be packed (mirror ship set)");
     assert.ok(paths.includes("example.ts"), "example.ts must be packed (mirror ship set)");
@@ -116,8 +119,8 @@ test("MALFORMED PROJECTION FAILS THE BUILD — a '..' content path is rejected a
   const { source, out, base } = scratch();
   try {
     skill(source, "core/ok", { name: "ok", description: "fine", files: {} });
-    // a content file whose name forges a traversal segment: the daemon parser
-    // rejects the resulting files[].path, and the generator must fail the build.
+    // 一个文件名伪造穿越段的内容文件：daemon 解析器拒绝产生的
+    // files[].path，生成器必须让构建失败。
     skill(source, "core/bad", { name: "bad", description: "trap", files: { "notes..md": "x" } });
     let failed = false;
     try {
@@ -125,10 +128,10 @@ test("MALFORMED PROJECTION FAILS THE BUILD — a '..' content path is rejected a
     } catch (err) {
       failed = true;
       assert.equal(err.status, 1, "exit code must be 1 (build failure)");
-      assert.match(String(err.stderr), /FAILING THE BUILD/);
+      assert.match(String(err.stderr), /构建失败/);
     }
     assert.ok(failed, "generator must exit non-zero on a malformed projection");
-    // and it must NOT have written a partial/invalid library
+    // 且它绝不能写出部分/无效的库
     assert.ok(!existsSync(join(out, "skills/core/bad")), "no invalid pack should be written");
   } finally {
     rmSync(base, { recursive: true, force: true });
@@ -140,7 +143,7 @@ test("--check validates without writing (the build/CI drift gate)", () => {
   try {
     skill(source, "core/x", { name: "x", description: "d", files: {} });
     const stdout = run(source, out, ["--check"]);
-    assert.match(stdout, /--check OK/);
+    assert.match(stdout, /--check 通过/);
     assert.ok(!existsSync(out), "--check must not write the output tree");
   } finally {
     rmSync(base, { recursive: true, force: true });
@@ -153,7 +156,7 @@ test("STALENESS BY CONSTRUCTION — editing canon after generation does not chan
     skill(source, "core/x", { name: "x", description: "d", files: {} });
     run(source, out);
     const before = readFileSync(join(out, "skills/core/x/SKILL.md"), "utf8");
-    // mutate the CANON after packing
+    // 打包后再修改 CANON
     writeFileSync(join(source, "core/x/SKILL.md"), "---\nname: x\ndescription: d\n---\n# HACKED\n");
     const after = readFileSync(join(out, "skills/core/x/SKILL.md"), "utf8");
     assert.equal(after, before, "packed bytes must be decoupled from canon after generation");
@@ -188,10 +191,10 @@ test("REAL CANON: projected membership == the mirror ship set (no narrowing) —
     const m = parseManifest(readFileSync(join(out, "skills", ref, "manifest.yaml"), "utf8"), "m");
     const got = m.files.map((f) => f.path).sort();
     assert.deepEqual(got, expected, "pack files[] must equal the mirror ship set for the skill (no dropped assets)");
-    // the exact helpers r2 flagged, referenced by the served prose:
+    // r2 标记的确切辅助文件，由所提供的 prose 引用：
     assert.ok(got.includes("find-polluter.sh"), "find-polluter.sh must be projected");
     assert.ok(got.includes("condition-based-waiting-example.ts"), "condition-based-waiting-example.ts must be projected");
-    // and copied to disk
+    // 并复制到磁盘
     assert.ok(existsSync(join(out, "skills", ref, "find-polluter.sh")));
     assert.ok(existsSync(join(out, "skills", ref, "condition-based-waiting-example.ts")));
   } finally {
@@ -209,7 +212,7 @@ test("REAL CANON: referenced helpers are DELIVERED in the served bundle (packed-
     assert.ok(entry, "systematic-debugging must be served from the builtin root");
     const bundle = assembleBundle({ packEntry: entry });
     assert.equal(bundle.missingFiles.length, 0, "no dangling files — the referenced helpers are present");
-    // the helper the prose points at must be in the served bundle, header AND content:
+    // prose 指向的辅助文件必须在所提供的 bundle 中，头部 AND 内容：
     assert.match(bundle.text, /find-polluter\.sh/, "helper .sh path must be in the served bundle");
     assert.match(bundle.text, /find-polluter\.sh <file_or_dir_to_check>/, "helper .sh CONTENT must be served");
     assert.match(bundle.text, /condition-based-waiting-example\.ts/, "helper .ts path must be in the served bundle");
@@ -261,10 +264,9 @@ test("PRODUCTION PUBLIC PLUGIN-ONLY: mission-slice-sop catalogs once and helper 
   }
 });
 
-// ── Test-A preflight repair (row 0ac358a9): STATIC packs projection ─────────
-// The builtin library previously carried only skill projections; the world
-// install ships as a STATIC committed pack (manifest + parent files) projected
-// through the same script and validated by the same daemon parser.
+// ── Test-A 预检修复（row 0ac358a9）：STATIC pack 投影 ─────────
+// builtin 库此前只带 skill 投影；world install 作为一个 STATIC 已提交 pack
+// （manifest + 父级文件）发货，经同一脚本投影、由同一 daemon 解析器校验。
 
 function runWithStatic(source, staticSource, out, args = []) {
   return execFileSync("node", [GEN, ...args], {
@@ -428,7 +430,7 @@ test("LORE PACK REFUSAL is structural even when its content has no leak-rule tok
     assert.ok(failure, "a lore-classed pack must fail before projection");
     assert.equal(failure.status, 1);
     assert.match(String(failure.stderr), /lore-class|taxonomy:\s*lore/i);
-    assert.match(String(failure.stderr), /genericize|public home|re-home/i);
+    assert.match(String(failure.stderr), /泛化|公开出处|迁回内部/);
     assert.ok(!existsSync(out), "no projection may be written after lore refusal");
   } finally {
     rmSync(base, { recursive: true, force: true });
@@ -440,9 +442,9 @@ test("REF COLLISION across sources FAILS THE BUILD with no output mutation (B3)"
   try {
     const source = join(base, "skills");
     const out = join(base, "out");
-    // a skill projecting to ref skills/world/install ...
+    // 一个投影到 ref skills/world/install 的 skill ...
     skill(source, "world/install", { name: "world-install-skill", description: "d", files: {} });
-    // ... and a static pack claiming the SAME ref
+    // ... 以及一个声称同一 ref 的静态 pack
     const staticSrc = join(base, "static");
     staticWorldPack(staticSrc, "skills/world/install");
     let failed = false;
@@ -451,7 +453,7 @@ test("REF COLLISION across sources FAILS THE BUILD with no output mutation (B3)"
     } catch (err) {
       failed = true;
       assert.equal(err.status, 1, "collision must exit 1");
-      assert.match(String(err.stderr), /duplicate|collid/i);
+      assert.match(String(err.stderr), /重复|相撞/);
     }
     assert.ok(failed, "duplicate pack ref across sources must fail the build");
     assert.ok(!existsSync(out), "no output may be written on a collision");
@@ -473,27 +475,34 @@ test("PRODUCTION LIBRARY: only the public onboarding-width, world, and example s
     assert.deepEqual(readdirSync(widthDir).sort(), [
       "manifest.yaml",
       "public-reference-material.md",
+      "public-reference-material.zh-CN.md",
       "public-what-you-can-do.md",
+      "public-what-you-can-do.zh-CN.md",
     ]);
     const manifest = parseManifest(readFileSync(join(widthDir, "manifest.yaml"), "utf8"), "onboarding-width");
     assert.equal(manifest.name, "onboarding-width");
     assert.deepEqual(manifest.files.map((file) => file.path), [
       "public-what-you-can-do.md",
+      "public-what-you-can-do.zh-CN.md",
       "public-reference-material.md",
+      "public-reference-material.zh-CN.md",
     ]);
     const exampleDir = join(out, "world-example");
-    assert.deepEqual(readdirSync(exampleDir).sort(), ["manifest.yaml", "your-world.md"]);
+    assert.deepEqual(readdirSync(exampleDir).sort(), ["manifest.yaml", "your-world.md", "your-world.zh-CN.md"]);
     const exampleManifest = parseManifest(readFileSync(join(exampleDir, "manifest.yaml"), "utf8"), "world-example");
     assert.equal(exampleManifest.name, "world-example");
-    assert.deepEqual(exampleManifest.files.map((file) => file.path), ["your-world.md"]);
+    assert.deepEqual(exampleManifest.files.map((file) => file.path), ["your-world.md", "your-world.zh-CN.md"]);
     assert.ok(exampleManifest.atoms?.length > 0, "world-example must demonstrate the atom convention");
     const publicDir = join(out, "world-public");
     assert.deepEqual(readdirSync(publicDir).sort(), [
       "boundaries.md",
+      "boundaries.zh-CN.md",
       "build-your-world.md",
+      "build-your-world.zh-CN.md",
       "claims.yaml",
       "manifest.yaml",
       "start-here.md",
+      "start-here.zh-CN.md",
       "verify-world.sh",
     ]);
     const publicManifest = parseManifest(readFileSync(join(publicDir, "manifest.yaml"), "utf8"), "world-public");
@@ -505,9 +514,9 @@ test("PRODUCTION LIBRARY: only the public onboarding-width, world, and example s
   }
 });
 
-// OPR.0.5.6.10 mini-req 3 — the projection stamps its packs "skills": every
-// skill-projected manifest carries the pack-level taxonomy, emitted by the
-// generator (never hand-edited), and still parses through the daemon parser.
+// OPR.0.5.6.10 mini-req 3——投影把它的 pack 标记为 "skills"：每个
+// skill 投影出的 manifest 都带上 pack 级 taxonomy，由生成器发出（绝不手编），
+// 且仍能通过 daemon 解析器。
 test("OPR.0.5.6.10 GENERATOR STAMPS — skill-projected packs carry pack-level taxonomy: skills", () => {
   const { source, out, base } = scratch();
   try {

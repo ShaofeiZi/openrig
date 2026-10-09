@@ -1,8 +1,5 @@
-// L-shaped 90° corner bracket. Used at each of the 4 corners of a
-// destination card to register the card's bounding box (print/CAD
-// register marks). The "L" leg lengths are ~10px at a 10×10 viewBox;
-// the bracket faces inward so the corner-of-the-L hugs the card's
-// outer corner.
+// L 形 90° 角括号。用在目标卡片的 4 个角，登记卡片的包围盒（印刷/CAD 对位标记）。
+// “L”的两腿在 10×10 viewBox 下约 10px；括号朝内，使 L 的拐角贴住卡片外角。
 
 interface CornerBracketProps {
   position: "tl" | "tr" | "bl" | "br";

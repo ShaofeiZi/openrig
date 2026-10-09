@@ -68,9 +68,8 @@ function makeDetail(name: string, missionId: string | null, qitemIds: string[]):
   };
 }
 
-// V0.3.1 slice 12.5 — workspace topology now renders via
-// HostMultiRigGraph; tests may override /api/ps to exercise the N=1 vs
-// N=2 rig-clustering paths.
+// V0.3.1 slice 12.5——工作区拓扑现通过 HostMultiRigGraph 渲染；测试可覆盖 /api/ps，
+// 以验证 N=1 与 N=2 的工作组聚类路径。
 type PsEntry = {
   rigId: string;
   name: string;
@@ -96,7 +95,7 @@ const SINGLE_RIG_PS: PsEntry[] = [
 function installFetchMock(opts: { psEntries?: PsEntry[] } = {}) {
   const psEntries = opts.psEntries ?? SINGLE_RIG_PS;
   mockFetch.mockImplementation(async (url: string) => {
-    // MH-2: the selection-known files gate needs the hosts payload (local).
+    // MH-2：选择已知文件门禁需要本地主机 payload。
     if (url.includes("/api/hosts")) {
       return new Response(JSON.stringify({ ownName: "localhost", selected: "local", hosts: [] }), { status: 200 });
     }
@@ -106,9 +105,8 @@ function installFetchMock(opts: { psEntries?: PsEntry[] } = {}) {
         { status: 200 },
       );
     }
-    // HostMultiRigGraph fetches /api/ps for rig inventory + per-rig
-    // /api/rigs/<id>/graph for expanded rig contents. Provide minimal
-    // responses so the swap test renders without network errors.
+    // HostMultiRigGraph 通过 /api/ps 获取工作组清单，并通过逐工作组
+    // /api/rigs/<id>/graph 获取展开内容。提供最小响应，使切换测试渲染时不出现网络错误。
     if (url === "/api/ps" || url.startsWith("/api/ps?")) {
       return new Response(JSON.stringify(psEntries), { status: 200 });
     }
@@ -177,9 +175,9 @@ function renderWorkspaceScope(
   installFetchMock(opts);
 
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  // V0.3.1 slice 12.5 — TopologyOverlayProvider must be INSIDE the
-  // router (HostMultiRigGraph's useRouterState dependency), so wrap
-  // <Outlet /> in the root route component, not the RouterProvider.
+  // V0.3.1 slice 12.5——TopologyOverlayProvider 必须位于 router 内部，因为
+  // HostMultiRigGraph 依赖 useRouterState；所以包装根路由组件中的 <Outlet />，
+  // 而不是包装 RouterProvider。
   const rootRoute = createRootRoute({
     component: () => (
       <TopologyOverlayProvider>
@@ -213,12 +211,9 @@ function renderMissionScope(): ReturnType<typeof render> {
   installFetchMock();
 
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  // V0.3.1 slice 12.5 — mission scope topology fallback still uses
-  // ScopeTopologyRollup when no specGraph is declared, so the
-  // TopologyOverlayProvider isn't strictly required here. Wrap anyway
-  // for symmetry with the workspace helper above (and so future tests
-  // that exercise HostMultiRigGraph-shaped fallbacks have a working
-  // context).
+  // V0.3.1 slice 12.5——未声明 specGraph 时，任务目标工作范围的拓扑回退仍使用
+  // ScopeTopologyRollup，因此此处不严格要求 TopologyOverlayProvider。仍加以包装，以便与上方
+  // 工作区辅助函数保持对称，也让未来验证 HostMultiRigGraph 形态回退的测试拥有可用上下文。
   const rootRoute = createRootRoute({
     component: () => (
       <TopologyOverlayProvider>
@@ -254,25 +249,24 @@ function renderMissionScope(): ReturnType<typeof render> {
 }
 
 describe("WorkspaceScopePage overview", () => {
-  // OPR.0.4.1.24 — the workspace parent altitude now lands on the cross-mission
-  // portfolio (supersedes the prior WorkspaceOverviewPanel mission grid). The
-  // thorough portfolio behavior is covered in workspace-portfolio.test.tsx; these
-  // integration checks assert the landing mounts the portfolio over the real shell.
+  // OPR.0.4.1.24——工作区父层级现在落在跨任务目标组合视图，取代原有
+  // WorkspaceOverviewPanel 任务目标网格。完整组合行为由 workspace-portfolio.test.tsx 覆盖；
+  // 这些集成检查断言入口会在真实外壳中挂载组合视图。
   it("OPR.0.4.1.24: the workspace overview lands on the cross-mission portfolio, missions derived from the slice index", async () => {
     const { findByTestId } = renderWorkspaceScope();
 
     expect(await findByTestId("workspace-portfolio")).toBeTruthy();
-    // Missions are DERIVED by grouping slices: idea-ledger -> RELEASE-PROOF; the
-    // railItem-less slice -> unsorted. Each is a collapsed row.
+    // 任务目标通过对 slices 分组派生：idea-ledger → RELEASE-PROOF；无 railItem 的 slice →
+    // unsorted。每个任务目标都是折叠行。
     expect(await findByTestId("portfolio-mission-RELEASE-PROOF")).toBeTruthy();
     expect(await findByTestId("portfolio-mission-unsorted")).toBeTruthy();
   });
 
   it("OPR.0.4.1.24: portfolio rows are collapsed by default with an Open-mission jump", async () => {
     const { findByTestId, queryByTestId } = renderWorkspaceScope();
-    // each mission row carries an Open jump to its mission page.
+    // 每个任务目标行都有跳转到其页面的“打开”入口。
     expect(await findByTestId("portfolio-open-RELEASE-PROOF")).toBeTruthy();
-    // collapsed by default: no steering glance (and so no MISSION_BRIEF fetch) until expand.
+    // 默认折叠：展开前没有引导概览，也不会获取 MISSION_BRIEF。
     expect(queryByTestId("portfolio-glance-RELEASE-PROOF")).toBeNull();
     expect(queryByTestId("portfolio-glance-loading-RELEASE-PROOF")).toBeNull();
     expect(queryByTestId("portfolio-glance-empty-RELEASE-PROOF")).toBeNull();
@@ -283,8 +277,8 @@ describe("WorkspaceScopePage overview", () => {
 
     fireEvent.click(await findByTestId("project-tab-story"));
     expect(await findByTestId("scope-story-rollup")).toBeTruthy();
-    // OPR.0.4.1.19 — the Story tab is now the queue-lineage git-graph: one row per
-    // qitem (keyed by qitemId), summary degraded to the first body line.
+    // OPR.0.4.1.19——“故事”标签页现在是队列谱系 git 图：每个 qitem 一行，以 qitemId 为键；
+    // 缺少摘要时降级为正文首行。
     expect((await findByTestId("story-row-qitem-A")).textContent).toContain("Full queue body");
 
     fireEvent.click(await findByTestId("project-tab-progress"));
@@ -297,19 +291,16 @@ describe("WorkspaceScopePage overview", () => {
     expect(await findByTestId("scope-queue-rollup")).toBeTruthy();
     expect((await findByTestId("scope-queue-trigger-qitem-A")).textContent).toContain("Full queue body");
 
-    // V0.3.1 slice 12.5 — workspace topology now renders via
-    // HostMultiRigGraph (rigs as distinct visual clusters) instead of
-    // the flat session-name ScopeTopologyRollup. Mission-scope topology
-    // fallback continues to use ScopeTopologyRollup when no specGraph
-    // is declared.
+    // V0.3.1 slice 12.5——工作区拓扑现通过 HostMultiRigGraph 渲染，把工作组显示为独立
+    // 视觉集群，而不是平铺会话名的 ScopeTopologyRollup。任务目标工作范围未声明 specGraph 时，
+    // 拓扑回退仍使用 ScopeTopologyRollup。
     fireEvent.click(await findByTestId("project-tab-topology"));
     expect(await findByTestId("workspace-topology-hostmultirig")).toBeTruthy();
     expect(await findByTestId("host-multi-rig-graph")).toBeTruthy();
   });
 
-  // V0.3.1 slice 12.5 HG-3 — N=1 rig fixture renders cleanly as a
-  // single rig cluster on the workspace topology surface (no flat
-  // session-name aggregation).
+  // V0.3.1 slice 12.5 HG-3——N=1 工作组 fixture 在工作区拓扑表面清晰渲染为单个工作组集群，
+  // 不平铺聚合会话名。
   it("slice 12.5 HG-3: single-rig workspace renders a single rig cluster on /topology", async () => {
     const { findByTestId, queryByTestId } = renderWorkspaceScope({
       psEntries: SINGLE_RIG_PS,
@@ -319,16 +310,13 @@ describe("WorkspaceScopePage overview", () => {
     expect(await findByTestId("host-multi-rig-graph")).toBeTruthy();
     expect(await findByTestId("rig-group-node-rig-1")).toBeTruthy();
     expect(queryByTestId("rig-group-node-rig-2")).toBeNull();
-    // Back-compat: the legacy flat session-name rollup is NOT mounted
-    // for the workspace topology surface anymore.
+    // 向后兼容：工作区拓扑表面不再挂载旧版平铺会话名汇总。
     expect(queryByTestId("scope-topology-rollup")).toBeNull();
   });
 
-  // V0.3.1 slice 12.5 HG-2 — N=2+ rig fixture renders distinct visual
-  // rig clusters. Compounds with slice 05 (kernel-rig-as-default ships
-  // multi-rig workspaces): without rig-clustering, kernel agents make
-  // the flat view noisier; with rig-clustering, structure stays legible
-  // as rigs multiply.
+  // V0.3.1 slice 12.5 HG-2——N>=2 工作组 fixture 渲染为不同视觉集群。它与 slice 05
+  //（kernel-rig-as-default 交付多工作组工作区）共同作用：没有工作组聚类时，kernel 智能体会让
+  // 平铺视图更嘈杂；加入聚类后，工作组增多时结构仍清晰可读。
   it("slice 12.5 HG-2: multi-rig workspace renders distinct rig clusters on /topology", async () => {
     const { findByTestId } = renderWorkspaceScope({
       psEntries: [
@@ -354,8 +342,7 @@ describe("WorkspaceScopePage overview", () => {
   it("mission scope page filters workspace data to that mission", async () => {
     const { findByTestId, queryByText } = renderMissionScope();
 
-    // OPR.0.4.1.17: the mission now LANDS on the Steering tab; navigate to
-    // Overview to assert the mission-overview filtering behavior.
+    // OPR.0.4.1.17：任务目标现在默认进入“引导”标签页；导航到“概览”以断言任务目标概览筛选行为。
     fireEvent.click(await findByTestId("project-tab-overview"));
     expect(await findByTestId("mission-overview-panel")).toBeTruthy();
     expect((await findByTestId("mission-overview-panel")).textContent).toContain("Idea Ledger release proof slice");

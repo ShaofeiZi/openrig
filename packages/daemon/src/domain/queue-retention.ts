@@ -2,91 +2,74 @@ import type Database from "better-sqlite3";
 import { TERMINAL_QUEUE_STATES } from "./queue-repository.js";
 
 /**
- * OPR.0.4.6 FS-1 (daemon read-path hardening) — W2 retention/prune runner.
+ * OPR.0.4.6 FS-1（后台服务读取路径加固）—— W2 保留/清理执行器。
  *
- * Two tables, two CONTRACTS (arch D3 — never collapsed into one policy):
+ * 两张表、两份契约（架构 D3——绝不合并为一个策略）：
  *
- *  1. `queue_transitions` = an AUDIT surface with product meaning (chain of
- *     record; `rig queue resolve` decision text). Contract: ARCHIVE, never
- *     plain-delete. A terminal qitem whose LAST transition is older than the
- *     retention window is MOVED (INSERT..SELECT + DELETE in ONE txn) into the
- *     `queue_transitions_archive` sibling (migration 054) — the trail is
- *     preserved, queryable in place, never lost.
- *     THE ACTIVE-FRONTIER INVARIANT (binding, testable): transitions of any
- *     NON-terminal qitem are NEVER touched, at any age. Enforced structurally —
- *     only qitems whose `queue_items.state` is terminal are ever selected.
+ *  1. `queue_transitions` 是具有产品含义的审计表面（记录链；`zrig queue resolve`
+ *     决策文本）。契约要求归档而非直接删除。若终态 qitem 的最后一次转换早于保留
+ *     窗口，则在同一事务中通过 INSERT..SELECT + DELETE 移入同级
+ *     `queue_transitions_archive`（迁移 054）；轨迹得以保留、原位可查、绝不丢失。
+ *     ACTIVE-FRONTIER 不变量（有约束且可测试）：任何非终态 qitem 的转换无论多旧都
+ *     不得触碰。结构上只选择 `queue_items.state` 为终态的 qitem。
  *
- *  2b. `usage_samples` (51-08 A2) = telemetry, same contract as watchdog_history:
- *     plain bounded DELETE past the PM-ruled 14d default (`retention.usage_samples_days`).
- *  2. `watchdog_history` = telemetry, no audit contract. Contract: plain DELETE
- *     older than the window, PLUS keep the most recent K per job regardless of
- *     age (respects `idx_watchdog_history_job_recent`, the recent-per-job reader).
+ *  2b. `usage_samples`（51-08 A2）是遥测数据，与 watchdog_history 契约相同：
+ *     超过 PM 裁定的默认 14 天（`retention.usage_samples_days`）后做有界直接删除。
+ *  2. `watchdog_history` 是遥测数据，没有审计契约。窗口外记录直接删除，但无论
+ *     时长如何始终保留每个 job 最近 K 条（符合逐 job 最近记录读取索引
+ *     `idx_watchdog_history_job_recent`）。
  *
- * Runner mechanics: a boot-time sweep + a daily in-daemon maintenance tick (NOT
- * a watchdog policy). Every DB pass is a BOUNDED batch (LIMIT-ed) and the async
- * orchestrator yields to the event loop between batches, so the prune itself can
- * NEVER wedge the loop — the fix must not carry the disease it cures. `nowIso` is
- * injectable for deterministic VM seeding.
+ * 执行机制：启动时扫描一次，之后由后台服务每日维护 tick 执行（不是看门狗策略）。
+ * 每次数据库处理都是带 LIMIT 的有界批次，异步编排器在批次间让出事件循环，因此
+ * 清理本身绝不会卡死循环。`nowIso` 可注入，以便 VM 确定性播种。
  *
- * HONESTY LINE (arch F3): this bounds DB growth, backup size, and any
- * transitions-reading surface. It does NOT move `/api/ps` latency (that is W1's
- * sessions index + N+1 collapse). Kept separate so the ship-gate credits the
- * right fix.
+ * 真实性边界（架构 F3）：它限制数据库增长、备份大小及任何读取转换的表面，但不会
+ * 改善 `/api/ps` 延迟（后者由 W1 的 sessions 索引与 N+1 消除负责）。二者分离，
+ * 使发布门禁准确归因修复。
  *
- * ── REBASE-RECONCILE (this module is greenfield-authored on worktree 384e60f1;
- *    the following land against the merged tip, per PLAN §J/§K, NOT this stale
- *    checkout) ──
- *  • P1 — ONE SHARED TERMINAL PREDICATE. Today `queue-repository.ts` has the
- *    terminal set only as INLINE literals (`state === "done" || state ===
- *    "handed-off"` at :522/:663 here; arch cites :550/:691/:1058 at the merged
- *    tip a6c27e74). At rebase, export a single named `TERMINAL_QUEUE_STATES`
- *    from queue-repository, refactor those inline sites to consume it, and
- *    replace this module's local `DEFAULT_TERMINAL_STATES` with that import — a
- *    pure-naming, byte-identical change swept by FUNCTION not line#. Until then
- *    the local default IS the code's terminal set (`['done','handed-off']`), so
- *    behavior is identical; only the SSOT wiring is deferred.
- *  • P2 — FRONTIER-LIVENESS EXCLUSION. Add one WHERE clause (+ one named test)
- *    excluding any qitem referenced in a NON-terminal workflow instance's
- *    current frontier, regardless of state/age. This is active protection for
- *    packet-addressed parallel frontiers; serial close mechanics remain covered
- *    by the same predicate.
- *  • WIRING — register the retention settings keys in `SETTINGS_VALID_KEYS`
- *    (settings-store) and call `runQueueRetentionSweep` from the daemon's
- *    maintenance scheduler (where the watchdog runner is started, index.ts/
- *    server.ts) at boot + on a daily tick. Both integration points live at the
- *    merged tip; wired there.
+ * ── REBASE 协调（本模块在工作树 384e60f1 中从零编写；按计划 §J/§K，以下内容应落到合并后的
+ *    最新提交，而不是这个陈旧检出）──
+ *  • P1——唯一共享的终态谓词。`queue-repository.ts` 当时只以内联字面量保存终态集合
+ *   （此处 :522/:663 的 `state === "done" || state === "handed-off"`；架构说明引用合并后
+ *    a6c27e74 的 :550/:691/:1058）。rebase 时，从 queue-repository 导出唯一具名
+ *    `TERMINAL_QUEUE_STATES`，重构这些内联位置使其复用，并用该导入替换本模块本地的
+ *    `DEFAULT_TERMINAL_STATES`。这是纯命名且字节行为一致的变更，应按函数而非行号扫查。
+ *    在此之前，本地默认值就是代码的终态集合 `['done','handed-off']`，所以行为一致，
+ *    只是唯一事实来源接线延后。
+ *  • P2——前沿存活排除。增加一条 WHERE 子句和一个具名测试，无论状态和时长如何，排除任何
+ *    仍被非终态工作流实例当前前沿引用的 qitem。这会主动保护按 packet 寻址的并行前沿；
+ *    串行关闭机制仍由同一谓词覆盖。
+ *  • 接线——在 `SETTINGS_VALID_KEYS`（settings-store）登记保留设置键，并在启动时及每日 tick
+ *    从后台服务维护调度器（启动 watchdog runner 的 index.ts/server.ts）调用
+ *    `runQueueRetentionSweep`。两个集成点都位于合并后最新提交，已在那里接线。
  */
 
 /**
- * The queue's terminal state set — P1 LANDED: sourced from the SINGLE shared
- * `TERMINAL_QUEUE_STATES` SSOT exported by queue-repository (the same predicate
- * the queue's own closure guards consume via `isTerminalState`), so a future
- * terminal-state addition can never silently diverge the archiver from the queue
- * (arch D3-REFINEMENT P1; widen-never-sibling). `['done','handed-off']` is the
- * full terminal set — done-only would exempt the highest-volume class (workflow
- * step closures exit `handoff -> state=handed-off`).
+ * 队列终态集合——P1 已落地：来自 queue-repository 导出的唯一共享真源
+ * `TERMINAL_QUEUE_STATES`（队列自身关闭守卫通过 `isTerminalState` 使用同一谓词），
+ * 因此未来新增终态时，归档器不会静默偏离队列（架构 D3-REFINEMENT P1）。完整终态
+ * 集合为 `['done','handed-off']`；仅保留 done 会漏掉量最大的工作流步骤关闭类别。
  */
 export const DEFAULT_TERMINAL_STATES = TERMINAL_QUEUE_STATES;
 
-/** Retention defaults (arch D3). BAKED closed-set knobs — registered as settings
- *  keys at rebase; no free-form config. */
+/** 保留策略默认值（架构 D3）。内置闭集参数，在 rebase 时登记为设置键，不接受自由配置。 */
 export const RETENTION_DEFAULTS = {
-  /** archive terminal transitions whose last transition is older than this */
+  /** 归档最后一次转换早于此时长的终态转换。 */
   transitionsRetentionDays: 30,
-  /** delete watchdog_history older than this ... */
+  /** 删除早于此时长的 watchdog_history…… */
   watchdogRetentionDays: 14,
-  /** ... EXCEPT always keep this many most-recent rows per job */
+  /** ……但始终保留每个 job 最近的这些记录。 */
   watchdogKeepPerJob: 50,
-  /** delete usage_samples telemetry older than this (51-08 A2, PM decision 2) */
+  /** 删除早于此时长的 usage_samples 遥测（51-08 A2，PM 决策 2）。 */
   usageSamplesRetentionDays: 14,
-  /** rows/qitems touched per bounded batch (the anti-wedge bound) */
+  /** 每个有界批次处理的记录/qitem 数（防卡死边界）。 */
   batchSize: 500,
-  /** safety cap on batches per table per sweep (defense-in-depth vs a runaway loop) */
+  /** 每次扫描中每张表的批次数安全上限（纵深防御失控循环）。 */
   maxBatchesPerTable: 10_000,
 } as const;
 
 export interface RetentionOptions {
-  /** injected clock (ISO-8601); deterministic for VM seeding */
+  /** 注入时钟（ISO-8601），供 VM 确定性播种。 */
   nowIso: string;
   terminalStates?: readonly string[];
   transitionsRetentionDays?: number;
@@ -97,36 +80,33 @@ export interface RetentionOptions {
   maxBatchesPerTable?: number;
 }
 
-/** ISO cutoff = now minus `days`. Pure; derived from the injected `nowIso` so
- *  the same seed always yields the same boundary (no ambient Date). */
+/** ISO 截止时间 = 当前时间减 `days`。这是纯函数，由注入的 `nowIso` 派生，
+ * 因此同一播种值始终得到同一边界，不依赖环境 Date。 */
 function cutoffIso(nowIso: string, days: number): string {
   const now = new Date(nowIso);
   if (Number.isNaN(now.getTime())) {
-    throw new Error(`queue-retention: invalid nowIso ${JSON.stringify(nowIso)}`);
+    throw new Error(`queue-retention：nowIso 无效：${JSON.stringify(nowIso)}`);
   }
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
-/** Cooperative yield between bounded batches so a large prune cannot starve the
- *  event loop (better-sqlite3 is synchronous — each batch runs to completion,
- *  the yield is what keeps the loop responsive across batches). */
+/** 在有界批次之间协作让出执行权，避免大规模清理饿死事件循环。better-sqlite3
+ * 同步执行，每批都会跑完；批次间让出才能保持事件循环响应。 */
 function yieldToLoop(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
 export interface ArchiveBatchResult {
-  /** distinct terminal qitems whose transitions were archived this batch */
+  /** 本批次已归档转换的不同终态 qitem 数。 */
   archivedQitems: number;
-  /** transition rows moved this batch */
+  /** 本批次移动的转换记录数。 */
   archivedRows: number;
 }
 
 /**
- * ONE bounded batch: move (archive-then-delete, single txn per qitem) the
- * transitions of up to `batchSize` TERMINAL qitems whose LAST transition is
- * older than the cutoff. Returns the counts so the orchestrator can loop until
- * a batch is empty. Non-terminal qitems are never selected (active-frontier
- * invariant, structural).
+ * 一个有界批次：移动最多 `batchSize` 个终态 qitem 的转换，这些 qitem 的最后一次
+ * 转换早于截止时间。每个 qitem 在单一事务中先归档再删除。返回数量，供编排器循环
+ * 直到批次为空。非终态 qitem 永不被选择，这是结构化的 active-frontier 不变量。
  */
 export function archiveAgedTerminalTransitions(
   db: Database.Database,
@@ -139,21 +119,17 @@ export function archiveAgedTerminalTransitions(
     opts.transitionsRetentionDays ?? RETENTION_DEFAULTS.transitionsRetentionDays,
   );
 
-  // Eligible = terminal qitems whose newest transition predates the cutoff.
-  // Driven off queue_items (terminal filter) with a correlated MAX(ts) that
-  // rides idx_queue_transitions_qitem (qitem_id, ts). LIMIT bounds the batch.
+  // 合格项是最新转换早于截止时间的终态 qitem。从 queue_items 进行终态筛选，并用
+  // 可利用 idx_queue_transitions_qitem (qitem_id, ts) 的相关 MAX(ts)；LIMIT 限制批次。
   //
-  // P2 (arch, frontier-liveness exclusion): the AND NOT EXISTS below NEVER
-  // archives a terminal qitem still referenced by a LIVE (active/waiting)
-  // workflow instance's current frontier. It MIRRORS the queue-CLOSE-path
-  // sibling `createWorkflowFrontierPredicate` (workflow-frontier-guard.ts,
-  // WF3 FR-6) — same invariant (`status IN ('active','waiting')` +
-  // `current_frontier_json LIKE '%"<qitemId>"%'`), enforced here at the
-  // ARCHIVAL-SELECTION seam instead of the close seam (orch ruling: keep this
-  // maintenance module standalone/DB-scoped rather than threading the injected
-  // predicate). It now protects packet-addressed parallel frontiers as well as
-  // the legacy serial case. `workflow_instances` is a core
-  // migrated table (always present when the tick runs post-migration).
+  // P2（架构，前沿存活排除）：下方 AND NOT EXISTS 绝不会归档仍被存活（active/waiting）
+  // 工作流实例当前前沿引用的终态 qitem。它镜像队列关闭路径的同级函数
+  // `createWorkflowFrontierPredicate`（workflow-frontier-guard.ts，WF3 FR-6），保持同一不变量：
+  // `status IN ('active','waiting')` 加
+  // `current_frontier_json LIKE '%"<qitemId>"%'`。区别是这里在归档选择接缝强制执行，
+  // 而非关闭接缝；编排裁定要求维护模块保持独立且限定于 DB，不传递注入谓词。现在它同时保护
+  // 按 packet 寻址的并行前沿和旧版串行情形。`workflow_instances` 是核心迁移表，迁移后的
+  // tick 运行时始终存在。
   const placeholders = terminalStates.map(() => "?").join(", ");
   const eligible = db
     .prepare(
@@ -183,7 +159,7 @@ export function archiveAgedTerminalTransitions(
     (db.prepare("PRAGMA table_info(queue_transitions_archive)").all() as Array<{ name: string }>).map((row) => row.name),
   );
   if (activeColumns.has("identity_provenance") && !archiveColumns.has("identity_provenance")) {
-    throw new Error("queue-retention: archive lacks identity_provenance; apply migrations before archiving");
+    throw new Error("queue-retention：归档缺少 identity_provenance；请先应用迁移再归档");
   }
   const identityColumn = activeColumns.has("identity_provenance") ? ", identity_provenance" : "";
   const carriesOwnerNotification = ["owner_notification_kind", "owner_notification_level"]
@@ -202,8 +178,8 @@ export function archiveAgedTerminalTransitions(
   );
   const deleteRows = db.prepare(`DELETE FROM queue_transitions WHERE qitem_id = ?`);
 
-  // One transaction PER qitem: the move for a given qitem is all-or-nothing, and
-  // a batch that fails partway leaves already-moved qitems durably archived.
+  // 每个 qitem 使用一个事务：单个 qitem 的移动要么全部成功，要么完全不发生；
+  // 批次中途失败时，之前已移动的 qitem 保持持久归档。
   const moveOne = db.transaction((qitemId: string): number => {
     const inserted = selectRows.run(opts.nowIso, qitemId).changes;
     deleteRows.run(qitemId);
@@ -218,16 +194,15 @@ export function archiveAgedTerminalTransitions(
 }
 
 export interface PruneBatchResult {
-  /** watchdog_history rows deleted this batch */
+  /** 本批次删除的 watchdog_history 记录数。 */
   deletedRows: number;
 }
 
 /**
- * ONE bounded batch: DELETE up to `batchSize` watchdog_history rows that are
- * older than the cutoff AND outside the most-recent-K per job. The per-job
- * recency rank rides idx_watchdog_history_job_recent (job_id, evaluated_at DESC).
- * `>=` in the rank subquery means exact-timestamp ties over-KEEP (never
- * over-delete) — the safe direction.
+ * 一个有界批次：删除最多 `batchSize` 条早于截止时间，且不属于每个 job 最近 K 条的
+ * watchdog_history 记录。逐 job 新旧排序利用 idx_watchdog_history_job_recent
+ * (job_id, evaluated_at DESC)。排序子查询中的 `>=` 会在时间戳相同时多保留而非
+ * 多删除，这是安全方向。
  */
 export function pruneWatchdogHistory(
   db: Database.Database,
@@ -261,12 +236,11 @@ export function pruneWatchdogHistory(
 }
 
 /**
- * 51-08 A2 — ONE bounded batch: DELETE up to `batchSize` usage_samples rows
- * whose captured_at predates the retention cutoff (PM-ruled default 14d,
- * tunable). usage_samples is TELEMETRY under the watchdog_history contract —
- * plain delete, no audit archive. A seat idle past the window loses its rows;
- * the query surfaces render honest-unknown, never a preserved stale value.
- * `<` semantics: an exact-cutoff row survives (over-keep, the safe direction).
+ * 51-08 A2 —— 一个有界批次：删除最多 `batchSize` 条 captured_at 早于保留截止时间
+ * 的 usage_samples 记录（PM 裁定默认 14 天，可调）。usage_samples 按
+ * watchdog_history 契约属于遥测数据，直接删除且不做审计归档。席位闲置超过窗口后
+ * 会失去这些记录，查询表面应如实显示 unknown，而不保留陈旧值。`<` 语义使恰好
+ * 等于截止时间的记录继续保留，这是安全方向。
  */
 export function pruneUsageSamples(
   db: Database.Database,
@@ -299,10 +273,9 @@ export interface RetentionSweepSummary {
 }
 
 /**
- * The boot-sweep / daily-tick entry point: drain both retention passes in
- * bounded batches, yielding to the event loop between batches so a large
- * backlog can never wedge the daemon. Idempotent and safe to run on every boot.
- * Each pass stops when a batch is empty or the safety batch-cap is hit.
+ * 启动扫描/每日 tick 的入口：以有界批次排空各项保留处理，并在批次间让出事件循环，
+ * 避免大量积压卡死后台服务。操作幂等，每次启动都可安全运行。每项处理在批次为空
+ * 或达到安全批次数上限时停止。
  */
 export async function runQueueRetentionSweep(
   db: Database.Database,

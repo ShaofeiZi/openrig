@@ -1,25 +1,22 @@
 #!/usr/bin/env -S node --import tsx
 /*
- * slice-07 R6 — the eval runner CLI (sibling to run-scenarios.mjs; the eval gate, not the
- * determinism gate). Loads the authored cases, runs them through a provider, grades each captured
- * transcript at the deterministic DOOR, writes recorded grades, and exits nonzero on any
- * fail/error.
+ * slice-07 R6——评测运行器 CLI（与 run-scenarios.mjs 同级；这是评测闸门，不是确定性闸门）。
+ * 加载人工编写的用例，经 provider 运行，在确定性的 DOOR 处为每份捕获转录评分，写入评分记录，
+ * 任何 fail/error 都以非零状态退出。
  *
- *   RUN IT (the TS helpers need the tsx loader, so use the package command, which supplies it):
+ *   运行方式（TS 辅助代码需要 tsx loader，因此请使用会提供它的包命令）：
  *     npm run eval -w packages/daemon -- [--provider fake|rig] [--transcripts <json>] [--out <json>]
- *   Or directly: node --import tsx packages/daemon/scripts/run-evals.mjs [args]
- *   (The file ships executable; ./run-evals.mjs works where `env -S` is supported.)
+ *   或直接运行：node --import tsx packages/daemon/scripts/run-evals.mjs [args]
+ *   （文件以可执行形式发布；支持 `env -S` 的环境可使用 ./run-evals.mjs。）
  *
- * --provider fake (default): a deterministic provider whose transcripts come from --transcripts
- *   (a JSON map of prompt -> transcript); absent prompts ERROR (never a silent green). This is the
- *   CI-runnable path.
- * --provider rig: the LIVE-seat provider (the proof-contract door). Requires ONE of:
- *     --seat <session>      attach to an existing live seat (never torn down), or
- *     --seat-spec <rig.yaml> `rig up` a scratch rig and drive its single seat
- *                            (torn down via `rig down` at the end).
- *   One persistent seat/generation serves every case; the boundary is the seat's
- *   append-only transcript (read out-of-band, no marker send — round-5 custody);
- *   the leading input echo is excluded from grading by the provider.
+ * --provider fake（默认）：确定性 provider，转录来自 --transcripts（prompt -> transcript 的
+ *   JSON 映射）；缺少 prompt 时记为 ERROR，绝不静默通过。这是可在 CI 中运行的路径。
+ * --provider rig：真实席位 provider（证明契约闸门）。必须二选一：
+ *     --seat <session>      连接现有真实席位（绝不销毁），或
+ *     --seat-spec <rig.yaml> 通过 `rig up` 启动临时 rig 并驱动其唯一席位
+ *                            （结束时通过 `rig down` 销毁）。
+ *   所有用例共用一个持久席位/代；边界是席位的只追加转录（带外读取，不发送 marker——round-5
+ *   保管规则）；provider 会把开头的输入回显排除在评分之外。
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -34,10 +31,9 @@ import { buildProductionPackage, resolveCaseRefs, unresolvedCases } from "../tes
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "..", "..", "..");
 const CASES_DIR = resolve(HERE, "..", "..", "test-system", "evals", "cases");
-// REPAIR (re-review HIGH-1): the eval RUN resolves refs against the EXACT production package, BUILT
-// hermetically into a temp dir (never the gitignored context-packs residue), and validates them in
-// its OWN preflight for EVERY provider — not just rig.
-// The temp package is removed on process exit (fail-safe registered inside buildProductionPackage).
+// 修复（复审 HIGH-1）：评测运行会针对以隔离方式构建到临时目录中的精确生产包解析 ref，
+// 绝不使用被 gitignore 的 context-packs 残留；而且对每个 provider（不只是 rig）都在自身
+// 预检中验证。进程退出时删除临时包（故障安全清理由 buildProductionPackage 内部注册）。
 const PRODUCTION_PACKAGE = buildProductionPackage(REPO).dir;
 
 const argv = process.argv.slice(2);
@@ -50,17 +46,16 @@ const outPath = opt("--out", null);
 
 const { cases, errors } = loadEvalCasesFromDir(CASES_DIR);
 if (errors.length > 0) {
-  console.error("[REFUSED] invalid eval cases:", JSON.stringify(errors));
+  console.error("[REFUSED] 评测用例无效：", JSON.stringify(errors));
   process.exit(2);
 }
 
-// PREFLIGHT (shared validator — the same one the guard test uses): every case must yield a canonical
-// ref that resolves in the built production package, or the whole run refuses. This makes production
-// resolution part of the run, not a side test.
+// 预检（与守卫测试共用同一验证器）：每个用例都必须给出能在已构建生产包中解析的 canonical
+// ref，否则拒绝整次运行。这样，生产解析属于运行本身，而不是旁路测试。
 const unresolved = unresolvedCases(resolveCaseRefs(cases, PRODUCTION_PACKAGE));
 if (unresolved.length > 0) {
   console.error(
-    "[REFUSED] eval refs do not resolve in the production package: " +
+    "[REFUSED] 评测 ref 无法在生产包中解析：" +
       unresolved.map((u) => `${u.caseId}:${u.ref ?? "<none>"}`).join(", "),
   );
   process.exit(2);
@@ -72,19 +67,18 @@ if (providerName === "rig") {
   const spec = opt("--seat-spec", null);
   if ((seat === null) === (spec === null)) {
     console.error(
-      "[REFUSED] --provider rig drives ONE persistent real seat and needs exactly one of:\n" +
-        "  --seat <session>       attach to an existing live seat (never torn down)\n" +
-        "  --seat-spec <rig.yaml> spawn a scratch rig via `rig up` and drive its seat",
+      "[REFUSED] --provider rig 驱动一个持久真实席位，必须且只能选择以下一项：\n" +
+        "  --seat <session>       连接现有真实席位（绝不销毁）\n" +
+        "  --seat-spec <rig.yaml> 通过 `rig up` 启动临时 rig 并驱动其席位",
     );
     process.exit(2);
   }
   const { buildRigProviderSession } = await import("../test/helpers/eval-rig-runner.ts");
   provider = new RigSeatProvider({
     productionPackage: PRODUCTION_PACKAGE,
-    // Round-6 Option B (r2 round-6 HIGH-1): the out-of-band boundary binds to the seat's
-    // CURRENT-generation append-only Claude conversation record via the authoritative default reader,
-    // wired HERE in the shipped entry (not only in tests). A Codex/unprimed seat or a rolled generation
-    // refuses loud — never a silent degrade, never the bounded-overwrite pane.
+    // Round-6 方案 B（r2 round-6 HIGH-1）：带外边界通过权威默认读取器绑定到席位当前代的
+    // 只追加 Claude 会话记录；绑定实现在此发布入口中，而不只存在于测试。Codex/未预热席位或
+    // 已滚动的代都会明确拒绝，绝不静默降级，也绝不使用有界覆盖窗格。
     session: buildRigProviderSession({ seat, spec }),
   });
 } else {
@@ -97,14 +91,13 @@ let summary;
 try {
   summary = await runEvals(cases, provider);
 } finally {
-  // Retire the persistent seat exactly once (idempotent; no-op for fake/attach).
-  // A teardown failure must NOT destroy the run's results — the grades are the
-  // product; a leftover rig is a named warning for manual `rig down`.
+  // 只退役一次持久席位（幂等；fake/attach 模式为空操作）。销毁失败不得破坏运行结果——评分才是
+  // 产物；残留 rig 通过明确告警提示操作员手动执行 `rig down`。
   if (typeof provider.dispose === "function") {
     try {
       await provider.dispose();
     } catch (e) {
-      console.error(`[WARN] seat retirement failed — tear the scratch rig down manually with 'rig down': ${e.message}`);
+      console.error(`[WARN] 席位退役失败——请手动执行 'rig down' 销毁临时 rig：${e.message}`);
     }
   }
 }
@@ -115,13 +108,13 @@ const recorded = {
   failed: summary.failed,
   errored: summary.errored,
   byCategory: summary.byCategory,
-  // Each recorded grade carries its own evidence (patternResults + order + a FAIL reason), so the
-  // artifact explains its verdict — CE-08 must tell "pulled nothing" from "pulled late" from "wrong".
+  // 每条评分记录都携带自身证据（patternResults + 顺序 + FAIL 原因），因此产物能够解释判定；
+  // CE-08 必须区分“未拉取”“拉取过晚”和“拉取错误”。
   grades: summary.outcomes.map(recordedGrade),
 };
 if (outPath) writeFileSync(outPath, JSON.stringify(recorded, null, 2));
 
-console.log(`evals[${provider.name}] ${summary.passed}/${summary.total} pass, ${summary.failed} fail, ${summary.errored} error`);
+console.log(`评测[${provider.name}] ${summary.passed}/${summary.total} 通过，${summary.failed} 失败，${summary.errored} 错误`);
 for (const g of recorded.grades) {
   const tag = g.pass ? "PASS" : g.error ? "ERROR" : "FAIL";
   const detail = g.error ? ` — ${g.error}` : !g.pass && g.reason ? ` — ${g.reason}` : "";

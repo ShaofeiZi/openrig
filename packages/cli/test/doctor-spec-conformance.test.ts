@@ -1,11 +1,11 @@
 // Build B — `rig doctor` spec-vs-live conformance check. RED-first.
 //
-// This check cannot discover its own input, and that is a finding rather than a shortcoming: NOTHING
-// persists a running rig's spec path. The `rigs` table has no spec/rigRoot column, `rig_services.
-// rig_root` is empty, and `projection_manifest.source_spec` is empty. The daemon does not remember
-// where the file that describes a rig came from. So the check takes `--spec` explicitly, and when it
-// is not given it must SKIP WITH THE REASON rather than pass — a check that cannot find its input
-// and stays quiet is indistinguishable from one that looked and found nothing wrong.
+// 此检查无法自发现其输入，而这是一个发现而非缺陷：没有任何东西
+// 持久化运行中 rig 的 spec 路径。`rigs` 表无 spec/rigRoot 列，`rig_services.
+// rig_root` 为空，`projection_manifest.source_spec` 为空。daemon 不记得
+// 描述一个 rig 的文件来自何处。故检查显式接收 `--spec`，未给时
+// 必须带原因跳过而非通过——一个找不到输入且保持沉默的检查，
+// 与查过却未发现问题的检查无法区分。
 
 import { describe, it, expect } from "vitest";
 import { runDoctorChecks, type DoctorDeps } from "../src/commands/doctor.js";
@@ -56,7 +56,7 @@ describe("rig doctor — spec vs live conformance", () => {
     const check = await conformanceCheck(baseDeps());
     expect(check).toBeDefined();
     expect(check!.status).toBe("skipped");
-    // The reason has to name WHY it cannot self-discover, or the next reader files a bug.
+    // 原因必须说明为何无法自发现，否则下一位读者会提单。
     expect(`${check!.message} ${check!.reason ?? ""}`).toMatch(/not persisted|--spec/i);
   });
 

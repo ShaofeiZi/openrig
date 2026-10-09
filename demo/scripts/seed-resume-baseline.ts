@@ -24,7 +24,7 @@ async function main(): Promise<void> {
 
   const allNodes = listRigNodes(rig).filter((node) => isAgentRuntime(node.runtime));
   if (allNodes.length === 0) {
-    console.error(`No agent nodes found for rig '${rig}'.`);
+    console.error(`工作组 '${rig}' 中未找到智能体节点。`);
     process.exitCode = 1;
     return;
   }
@@ -76,16 +76,16 @@ async function main(): Promise<void> {
   if (json) {
     console.log(JSON.stringify(summary, null, 2));
   } else {
-    console.log(`Resume baseline seeding: ${rig}`);
-    console.log(`Verified: ${summary.verified.length}/${finalNodes.length}`);
+    console.log(`恢复基线填充：${rig}`);
+    console.log(`已验证：${summary.verified.length}/${finalNodes.length}`);
     for (const round of rounds) {
-      console.log(`- Round ${round.round}: ${round.sentTo.join(", ")}`);
+      console.log(`- 第 ${round.round} 轮：${round.sentTo.join(", ")}`);
       for (const result of round.probe) {
         console.log(`  ${result.logicalId}: ${result.status} (${result.code})`);
       }
     }
     if (summary.unverified.length > 0) {
-      console.log(`Unverified after seeding: ${summary.unverified.join(", ")}`);
+      console.log(`填充后仍未验证：${summary.unverified.join(", ")}`);
     }
   }
 
@@ -96,11 +96,11 @@ async function main(): Promise<void> {
 
 function sendWarmup(sessionName: string | null, text: string): void {
   if (!sessionName) {
-    throw new Error("Cannot seed a node without a canonical session name.");
+    throw new Error("缺少 canonical 会话名称，无法为节点填充基线。");
   }
 
   execFileSync(
-    "rig",
+    "zrig",
     ["send", sessionName, text, "--verify", "--force", "--json"],
     { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] }
   );

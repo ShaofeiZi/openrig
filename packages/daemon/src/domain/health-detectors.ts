@@ -135,7 +135,7 @@ export class HealthProjectionService {
   list(query: HealthListQuery = {}): HealthListProjection {
     const limit = query.limit ?? 100;
     if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
-      throw new Error("limit must be an integer from 1 to 200");
+      throw new Error("limit 必须是 1 到 200 之间的整数");
     }
     const evaluated = this.records();
     const filtered = evaluated.filter((record) =>
@@ -143,8 +143,8 @@ export class HealthProjectionService {
       && (query.scopeId === undefined || healthScopeId(record.scope) === query.scopeId)
       && (query.severity === undefined || record.severity === query.severity)
       && (query.status === undefined ? record.status !== "cleared" : record.status === query.status))
-      // Reserve visibility for the primary signal before the query cap. A hundred
-      // context samples must not hide ceremony from the default CLI/TUI read.
+// 在查询上限前为主信号预留可见性。即使有上百条上下文样本，也不能让仪式性信号
+// 从默认 CLI/TUI 读取结果中消失。
       .sort((a, b) => Number(b.detector === "process.ceremony-amplification") - Number(a.detector === "process.ceremony-amplification"));
     return {
       schema: HEALTH_LIST_SCHEMA,
@@ -161,9 +161,8 @@ export class HealthProjectionService {
   }
 }
 
-/** The live v1 adapter intentionally supplies only context observations. The other
- * detectors require structured product-change, directive, or admission facts that
- * current tables cannot express without inference. Replay sources can supply them. */
+/** 实时 v1 适配器刻意只提供上下文观察。其他检测器需要结构化的产品变化、指令或
+ * 准入事实，而当前表结构无法在不推断的情况下表达这些事实；回放来源可以提供。 */
 export class LiveContextHealthSource implements HealthObservationSource {
   constructor(private readonly deps: {
     db: Database.Database;
@@ -333,13 +332,13 @@ function evaluateCoordination(
       severity: "warning",
       ...(ratio === null ? { status: "indeterminate" as const } : {}),
       summary: ratio === null
-        ? `Ceremony proportionality is indeterminate for ${observation.lineageId}.`
-        : `Coordination activity is disproportionate for ${observation.lineageId}.`,
+        ? `无法确定 ${observation.lineageId} 的仪式性比例。`
+        : `${observation.lineageId} 的协调活动比例失衡。`,
       threshold: `coordinationTransitions >= ${policy.thresholds.ceremonyTransitions} AND coordinationTransitions / max(productStateChanges, 1) >= ${policy.thresholds.ceremonyRatio} AND boundedAuthority = false`,
       explanation: ratio === null
-        ? `${observation.coordinationTransitions} coordination transitions in one lineage; product-outcome census unavailable, so no ratio is computed.`
-        : `${observation.coordinationTransitions} coordination transitions for ${observation.productStateChanges} product-state change${observation.productStateChanges === 1 ? "" : "s"} in one lineage (${ratio.toFixed(1)}:1).`,
-      suggestedInspection: `Inspect queue transitions and product checkpoints for ${observation.lineageId}.`,
+        ? `一个谱系中有 ${observation.coordinationTransitions} 次协调转换；产品结果统计不可用，因此不计算比例。`
+        : `一个谱系中，${observation.productStateChanges} 次产品状态变化对应 ${observation.coordinationTransitions} 次协调转换（${ratio.toFixed(1)}:1）。`,
+      suggestedInspection: `检查 ${observation.lineageId} 的队列转换和产品检查点。`,
     }));
   }
   if (observation.reviewReturns >= policy.thresholds.reviewReturns
@@ -349,10 +348,10 @@ function evaluateCoordination(
       detector: "process.review-carousel",
       category: "process",
       severity: "warning",
-      summary: `Review repeatedly returned the unchanged ${observation.lineageId} lineage.`,
+      summary: `审查反复返回未变化的 ${observation.lineageId} 谱系。`,
       threshold: `reviewReturns >= ${policy.thresholds.reviewReturns} AND candidateChanges = 0 AND newRiskClasses = 0`,
-      explanation: `${observation.reviewReturns} review returns occurred with no candidate change and no newly recorded risk class.`,
-      suggestedInspection: `Inspect the review return sequence for ${observation.lineageId}.`,
+      explanation: `审查返回了 ${observation.reviewReturns} 次，但候选项没有变化，也没有新记录的风险类别。`,
+      suggestedInspection: `检查 ${observation.lineageId} 的审查返回序列。`,
     }));
   }
   return records;
@@ -367,16 +366,16 @@ function evaluatePassiveCeremony(o: Extract<HealthDetectorObservation, { kind: "
   const ratio = known ? o.coordinationTransitions / Math.max(result.outcomes.length, 1) : null;
   const cleared = current && complete && (result?.conclusion === "false-positive" || (known && (result.boundedAuthority || ratio! < policy.thresholds.ceremonyRatio)));
   c.stage = cleared ? "cleared" : known ? "confirmed" : !current || c.assessment || c.missingFacts.length ? "indeterminate" : "needs-diagnosis";
-  const count = `${o.coordinationTransitions} coordination transitions in the declared ${o.lineageId} handoff family`;
-  const explanation = ratio === null ? `${count}; no ratio is computed. Product progress and the selected SDLC boundary require agent judgment.`
-    : `${count} for ${result!.outcomes.length} attributed meaningful product outcomes (${ratio.toFixed(1)}:1). Bounded authority: ${String(result!.boundedAuthority)}.`;
+  const count = `声明的 ${o.lineageId} 交接族中有 ${o.coordinationTransitions} 次协调转换`;
+  const explanation = ratio === null ? `${count}；未计算比例。产品进展和所选 SDLC 边界需要智能体判断。`
+    : `${count}，对应 ${result!.outcomes.length} 个已归因的有效产品结果（${ratio.toFixed(1)}:1）。受限权限：${String(result!.boundedAuthority)}。`;
   return record({ ...o, ceremony: c, conditionCleared: cleared }, {
     detector: "process.ceremony-amplification", category: "process", severity: c.stage === "confirmed" ? "warning" : "info",
     status: c.stage === "confirmed" ? "active" : cleared ? "cleared" : "indeterminate", confidence: "medium",
-    summary: `${c.stage === "needs-diagnosis" ? "Needs diagnosis: suspected ceremony amplification" : c.stage === "confirmed" ? "Confirmed ceremony signal from attributed progress" : cleared ? "Ceremony suspicion cleared by agent assessment" : "Ceremony assessment is indeterminate"} for ${o.lineageId}.`,
+    summary: `${c.stage === "needs-diagnosis" ? "需要诊断：疑似仪式性放大" : c.stage === "confirmed" ? "从归因进度中确认仪式性信号" : cleared ? "智能体评估已排除仪式性嫌疑" : "仪式性评估无法确定"}：${o.lineageId}。`,
     threshold: `Candidate: coordinationTransitions >= ${policy.thresholds.ceremonyTransitions}; confirmation requires attributed outcomes, ratio >= ${policy.thresholds.ceremonyRatio}, and boundedAuthority = false. Counts alone never confirm.`,
     explanation: `${explanation}${c.assessment ? ` Assessed by ${c.assessment.actor} at ${c.assessment.at}, transition ${c.assessment.transitionId}. Boundary: ${result!.boundary}.` : ""} Missing facts: ${[...c.missingFacts, ...result?.missingFacts ?? [], ...(!current ? [`source freshness is ${o.source.freshness.state}`] : [])].join("; ") || (result ? "none declared by assessor" : "semantic outcome/boundary assessment pending")}.`,
-    suggestedInspection: `Read the normal scope/proof/workflow evidence and current authority; extend beyond this packet. Record a progress assessment with the existing diagnosis disposition for ${o.lineageId}.`,
+    suggestedInspection: `读取正常的工作范围、证明、工作流证据及当前权限；不要局限于此数据包。使用现有诊断处置为 ${o.lineageId} 记录进度评估。`,
   });
 }
 
@@ -390,10 +389,10 @@ function evaluateWake(
     detector: "process.redundant-wake-storm",
     category: "process",
     severity: "warning",
-    summary: `Repeated wakes duplicated an existing next action for ${observation.lineageId}.`,
+    summary: `重复唤醒复制了 ${observation.lineageId} 已存在的下一步动作。`,
     threshold: `wakeCount - rescueWakeCount >= ${policy.thresholds.redundantWakes} AND existingNextAction = true`,
     explanation: `${observation.wakeCount} wakes minus ${observation.rescueWakeCount} liveness rescues left ${redundant} redundant wakes while a next action was already recorded.`,
-    suggestedInspection: `Inspect watchdog and queue wake receipts for ${observation.lineageId}.`,
+    suggestedInspection: `检查 ${observation.lineageId} 的看门狗和队列唤醒回执。`,
   })];
 }
 
@@ -416,10 +415,10 @@ function evaluateDirective(
     detector: "governance.stale-directive",
     category: "governance",
     severity: "warning",
-    summary: `Directive ${observation.directiveId} conflicts with current structured state.`,
+    summary: `指令 ${observation.directiveId} 与当前结构化状态冲突。`,
     threshold: "a declared phase or rigor differs from newer structured state and both sources are addressable",
     explanation: `${conflicts.join("; ")}; current state is addressed by ${observation.conflictSourceAddress}. Age alone was not used.`,
-    suggestedInspection: `Compare directive ${observation.directiveId} with ${observation.conflictSourceAddress}.`,
+    suggestedInspection: `比较指令 ${observation.directiveId} 与 ${observation.conflictSourceAddress}。`,
   })];
 }
 
@@ -438,10 +437,10 @@ function evaluateAdmission(
     detector: "governance.scope-admission-drift",
     category: "governance",
     severity: "warning",
-    summary: `Buildable slice ${observation.sliceId} lacks its mission's required admission.`,
+    summary: `可构建切片 ${observation.sliceId} 缺少其任务目标要求的准入。`,
     threshold: "missionActive = true AND buildable = true AND a governing authority rule is available AND admission is missing or contradictory",
     explanation: `The mission requires ${observation.requiredAuthority}; admission is ${observation.admissionState}${observation.admissionAuthority ? ` from ${observation.admissionAuthority}` : ""}.`,
-    suggestedInspection: `Inspect ${observation.authoritySourceAddress} and the admission record for ${observation.sliceId}.`,
+    suggestedInspection: `检查 ${observation.authoritySourceAddress} 以及 ${observation.sliceId} 的准入记录。`,
   })];
 }
 
@@ -480,11 +479,11 @@ function evaluateContext(
     severity,
     status,
     summary: active
-      ? `Seat context utilization reached ${latest.usedPercentage}%.`
-      : `Seat context pressure cleared naturally at ${latest.usedPercentage}%.`,
+      ? `席位上下文使用率达到 ${latest.usedPercentage}%。`
+      : `席位上下文压力在 ${latest.usedPercentage}% 时自然解除。`,
     threshold: `fresh context utilization >= ${warningPercent}% (critical at >= ${criticalPercent}%)`,
     explanation: `The latest ${observation.sourceName ?? "unknown"} sample reports ${latest.usedPercentage}% utilization; source freshness is ${observation.source.freshness.state}; continuity is ${observation.continuity ?? "unavailable"}.`,
-    suggestedInspection: "Inspect the seat's context source, recency, and continuity state.",
+    suggestedInspection: "检查席位的上下文来源、新鲜度和连续性状态。",
   })];
 }
 

@@ -1,6 +1,6 @@
 name: shared
 version: "1.0"
-description: Shared builtin OpenRig resources for packaged starter agents
+description: 供打包 starter 智能体使用的 OpenRig 内置共享资源
 
 resources:
   skills:
@@ -28,7 +28,7 @@ resources:
       path: skills/pods/development-team
     - id: review-team
       path: skills/pods/review-team
-    # PM skills
+    # 产品管理技能。
     - id: office-hours
       path: skills/pm/office-hours
     - id: context-builder

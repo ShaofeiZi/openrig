@@ -1,20 +1,18 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * L3 — Queue (PL-004 Phase A).
+ * L3——Queue（PL-004 阶段 A）。
  *
- * Owned work for a specific seat. Carries state, provenance, the closure
- * obligation, and the daemon-tracked nudge result. Live runtime state is
- * SQLite-canonical; markdown queue mirrors are read-only debug/export only.
+ * 特定席位拥有的工作。携带状态、来源、闭环义务及后台服务跟踪的提醒结果。实时 runtime 状态以
+ * SQLite 为 canonical；Markdown 队列镜像仅用于只读调试/导出。
  *
- * State enum (validated at the domain layer):
+ * 状态枚举（在领域层验证）：
  *   pending | in-progress | done | blocked | failed | denied | canceled | handed-off
  *
- * Closure-reason enum (required on `done` transitions; hot-potato strict-rejection):
+ * 闭环原因枚举（`done` 转换时必需；hot-potato 严格拒绝）：
  *   handed_off_to | blocked_on | denied | canceled | no-follow-on | escalation
  *
- * `chain_of_record` and `tags` carry JSON arrays (TEXT-encoded) for forward
- * compat with structured query layers.
+ * `chain_of_record` 和 `tags` 保存以 TEXT 编码的 JSON 数组，以便向前兼容结构化查询层。
  */
 export const queueItemsSchema: Migration = {
   name: "024_queue_items.sql",

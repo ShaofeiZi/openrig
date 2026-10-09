@@ -1,8 +1,7 @@
-// Slice-04 (OPR.0.5.0.4) — the four-block ASSEMBLY (packet 3ffa3c22 §1, proof item 4).
-// A PURE assembler over already-collected inputs (no CLI/auth I/O — collection is a separate
-// seam). It emits real bound rows + explicit unbound rows (seat_with_no_account), computes
-// same_account_on_n_seats ONLY from repeated real account IDs, attaches anomalies
-// deterministically, preserves signals unchanged, and invents no IDs/boundAt/asOf.
+// Slice-04（OPR.0.5.0.4）——四块 ASSEMBLY（packet 3ffa3c22 §1，证明项 4）。基于已收集输入的
+// 纯 assembler（无 CLI/auth I/O，收集是独立接缝）。它输出真实 bound 行和显式 unbound 行
+//（seat_with_no_account），只根据重复的真实 account ID 计算 same_account_on_n_seats，确定性附加
+// anomaly，原样保留 signal，且不虚构 ID/boundAt/asOf。
 
 import type {
   BindingAnomaly,
@@ -15,9 +14,8 @@ import type {
 } from "./provider-types.js";
 
 /**
- * A collected seat↔account fact — a discriminated bound/unbound union over the honest field
- * set (no anomalies; the assembler computes those). Mirrors ProviderBinding so the collector
- * never has to fabricate account/binding data for an unbound seat.
+ * 收集到的 seat↔account 事实——基于真实字段集合的判别式 bound/unbound union（不含 anomaly，
+ * 由 assembler 计算）。镜像 ProviderBinding，使 collector 无需为 unbound 席位伪造 account/binding 数据。
  */
 export type RawSeatBinding =
   | { accountId: string; seatSession: string; rigName: string; boundAt: string; bindingSource: string }
@@ -27,15 +25,15 @@ export interface AssembleInput {
   accounts: ProviderAccount[];
   rawBindings: RawSeatBinding[];
   signals: ProviderSignal[];
-  /** The read model's asOf — a real caller-provided timestamp; anomalies borrow it (not invented). */
+  /** read model 的 asOf——调用方提供的真实时间戳；anomaly 借用该值而非虚构。 */
   asOf: string;
 }
 
 export function assembleFourBlock(input: AssembleInput): FourBlockReadModel {
   const { accounts, rawBindings, signals, asOf } = input;
 
-  // Group DISTINCT seat sessions by REAL account id (unbound/null-account seats never
-  // contribute). A Set so duplicate raw rows for the same account+seat cannot inflate the count.
+  // 按真实 account id 对不同 seat session 分组（unbound/null-account 席位绝不参与）。使用 Set，
+  // 避免同一 account+seat 的重复原始行抬高计数。
   const seatsByAccount = new Map<string, Set<string>>();
   for (const rb of rawBindings) {
     if (rb.accountId === null) continue;
@@ -44,7 +42,7 @@ export function assembleFourBlock(input: AssembleInput): FourBlockReadModel {
     seatsByAccount.set(rb.accountId, set);
   }
 
-  // A same_account_on_n_seats anomaly per account genuinely shared across >= 2 DISTINCT seats.
+  // 每个确实由两个以上不同席位共享的 account 产生一个 same_account_on_n_seats anomaly。
   const sharedAnomalyByAccount = new Map<string, SameAccountOnNSeatsAnomaly>();
   for (const [accountId, seats] of seatsByAccount) {
     if (seats.size < 2) continue;
@@ -53,7 +51,7 @@ export function assembleFourBlock(input: AssembleInput): FourBlockReadModel {
       kind: "same_account_on_n_seats",
       count: sortedSeats.length,
       seats: sortedSeats,
-      evidence: `account ${accountId} bound on ${sortedSeats.length} seats: ${sortedSeats.join(", ")}`,
+      evidence: `账户 ${accountId} 绑定到 ${sortedSeats.length} 个席位：${sortedSeats.join(", ")}`,
       asOf,
     });
   }
@@ -63,10 +61,10 @@ export function assembleFourBlock(input: AssembleInput): FourBlockReadModel {
       const anomaly: SeatWithNoAccountAnomaly = {
         kind: "seat_with_no_account",
         seat: rb.seatSession,
-        evidence: `seat ${rb.seatSession} in rig ${rb.rigName} has no bound account`,
+        evidence: `工作组 ${rb.rigName} 中的席位 ${rb.seatSession} 没有绑定账户`,
         asOf,
       };
-      // Non-empty tuple: the seat_with_no_account anomaly is required and always first.
+      // 非空 tuple：seat_with_no_account anomaly 必填且始终位于首位。
       return {
         accountId: null,
         seatSession: rb.seatSession,
@@ -91,7 +89,7 @@ export function assembleFourBlock(input: AssembleInput): FourBlockReadModel {
   return {
     accounts,
     bindings,
-    signals, // preserved unchanged
+    signals, // 原样保留。
     asOf,
   };
 }

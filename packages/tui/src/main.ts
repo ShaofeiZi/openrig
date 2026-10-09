@@ -2,10 +2,10 @@
 import { pageReadKey } from "./page-read.js";
 import { completeCommand } from "./commands/completion.js";
 import { resolveTimeZone } from "./time.js";
-// Entry: wires the four input adapters (command bar / keyboard / mouse /
-// control socket) onto ONE instance-scoped view-state (PIN 1). tmux send-keys
-// against this process is the drivability floor and needs no adapter at all —
-// keystrokes ARE the keyboard adapter.
+// 入口：将四个输入适配器（命令栏/键盘/鼠标/
+// 控制套接字）连接到一个实例范围视图状态（PIN 1）。tmux send-keys
+// 对此进程是可驱动底线，完全不需要适配器——
+// 击键就是键盘适配器。
 //
 //   openrig-tui [--instance <id>] [--socket <path>] [--url <daemon>] [--demo]
 import { createViewState, computeExplorerRows, emptySnapshot, locationKey } from "./state.js";
@@ -47,14 +47,14 @@ async function run(): Promise<void> {
   const args = process.argv.slice(2);
   const instanceId = argOf(args, "--instance") ?? "tui-1";
   const demo = args.includes("--demo");
-  // Reuse the entry/runtime that opened this TUI, even under a conflicting PATH.
+  // 重用打开此 TUI 的入口/运行时，即使在冲突的 PATH 下。
   const cliEntry = process.env["OPENRIG_TUI_CLI_ENTRY"];
   const cliExecutable = cliEntry ? process.execPath : "rig";
   const cliArgs = (args: string[]): string[] => cliEntry ? [cliEntry, ...args] : args;
 
-  // --demo renders the labeled fixture; otherwise the §4.A reads hydrate the
-  // snapshot (honest-empty until the first read answers; failed reads surface
-  // as named readErrors in the status line, never fabricated content).
+  // --demo 渲染带标签 fixture；否则 §4.A 读取水合
+  // 快照（首次读取应答前诚实空；失败读取
+  // 显示为状态行中的命名 readErrors，绝不伪造内容）。
   let snapshot: FleetSnapshot = demo ? demoSnapshot() : emptySnapshot();
   let timeReadWarning = false;
   const timeSetting = new Promise<unknown>((resolve) => {
@@ -64,13 +64,13 @@ async function run(): Promise<void> {
       try { resolve(JSON.parse(stdout).value); } catch { resolve(null); }
     });
   });
-  const view = createViewState({ instanceId, getSnapshot: () => snapshot, timeZoneWarning: "Reading configured timezone…" });
+  const view = createViewState({ instanceId, getSnapshot: () => snapshot, timeZoneWarning: "正在读取配置时区…" });
   let startupHeaders: () => Record<string, string> = () => ({});
   if (cliEntry) {
     try {
       const cli = await import(pathToFileURL(join(dirname(cliEntry), "client.js")).href);
       startupHeaders = cli.terminalAuthHeaders;
-    } catch { /* the startup read will expose an unavailable/unauthorized prerequisite */ }
+    } catch { /* 启动读取将暴露不可用/未授权前提 */ }
   }
   const client = demo ? null : new DaemonClient({ baseUrl: argOf(args, "--url"), headers: startupHeaders });
   let startup: StartupController | null = null;
@@ -80,18 +80,18 @@ async function run(): Promise<void> {
   let inputLine = "";
   let completion: ReturnType<typeof completeCommand> | null = null;
   let lastScreen: Screen | null = null;
-  // 5.2 crash-cart: the daemon-down verdict (probed from the `rig crash-cart --json` verb). Empty ⇒
-  // normal fleet views; DOWN ⇒ the recovery cockpit; UNVERIFIED ⇒ the cannot-verify screen.
+  // 5.2 故障诊断：后台服务关闭判定（从 `rig crash-cart --json` 动词探测）。空 ⇒
+  // 正常组视图；DOWN ⇒ 恢复驾驶舱；UNVERIFIED ⇒ 无法验证屏幕。
   let crashCartOpts: CrashCartRenderOpts = {};
   let startingDaemon = false;
-  // H2 — a non-zero-generation ⏎ arms a confirm: the NEXT ⏎ proceeds, Esc cancels. Never a silent
-  // resume→fresh downgrade — the confirm NAMES the seats that will need a decision.
+  // H2——非零代数 ⏎ 武装确认：下一个 ⏎ 继续，Esc 取消。绝不是静默
+  // 恢复→全新降级——确认命名需要决定的席位。
   let pendingRestoreConfirm = false;
-  // B1 ROUND 2 — the operator's mid-run cancel request for the active fleet restore (the lifecycle
-  // driver polls this and reaches the cancel endpoint stop-before-next-rig).
+  // B1 ROUND 2——操作员对活动组恢复的运行中取消请求（生命周期
+  // 驱动轮询此并到达取消端点 stop-before-next-rig）。
   let restoreCancelRequested = false;
-  // B1 ROUND 3 (HIGH-2) — vertical scroll offset into the restore triage list, so a fleet with more
-  // needs than the viewport stays keyboard-walkable (arrow/j-k on the done view).
+  // B1 ROUND 3 (HIGH-2)——恢复分类列表的垂直滚动偏移，因此需求多于
+  // 视口的组保持键盘可走（完成视图上的 arrow/j-k）。
   let restoreScrollOffset = 0;
   const inputDecoder = createInputDecoder();
   const style = createStyle(args.includes("--no-color") ? "none" : detectColorMode());
@@ -102,10 +102,10 @@ async function run(): Promise<void> {
     process.stdout.write(state.copyMode ? MOUSE_DISABLE : MOUSE_ENABLE);
   });
 
-  // S19 round-5 (guard): the refresh OWNER (live.ts) carries the honest load
-  // lifecycle and the per-seat fresh-pane-output events; renderScreen stays
-  // pure and takes the clock + owner state as inputs. motionTimer keeps
-  // redrawing ONLY while the frame reports live motion (spinner or flash).
+  // S19 round-5（守卫）：刷新所有者（live.ts）承载诚实负载
+  // 生命周期和每席位新窗格输出事件；renderScreen 保持
+  // 纯并以时钟 + 所有者状态为输入。motionTimer 保持
+  // 仅在帧报告活跃运动（旋转器或闪烁）时重绘。
   const reviewCache: SpecReviewCache = new Map();
   const selectedSliceDirectory = (): string | null => {
     const current = view.get();
@@ -121,10 +121,10 @@ async function run(): Promise<void> {
     ? createLiveRefresh({ scopeKey: () => pageReadKey(view.get()), hydrate: (page, signal) => hydrateSnapshot(client.forPage(page, signal), reviewCache, view.get().scopesMission, selectedSliceDirectory(), selectedRigName(), view.get()), onFrame: () => draw(), now: () => Date.now() })
     : null;
   let motionTimer: NodeJS.Timeout | null = null;
-  // S19 AM-R18 — the open view updates ITSELF: oracle pushes drive the refresh owner.
-  // Notification-only; the refresh rehydrates the same ps projection through the
-  // daemon client (one oracle, with the owner's bounded quiet fallback; HTTP stays
-  // in the client module).
+  // S19 AM-R18——打开视图自更新：oracle 推送驱动刷新所有者。
+  // 仅通知；刷新通过
+  // 后台服务客户端重新水合同一 ps 投影（一个 oracle，带
+  // 所有者的有界安静回退；HTTP 留在客户端模块中）。
   let liveEnabled = false;
   let inputRevision = 0;
   let drawnScope = pageReadKey(view.get());
@@ -162,55 +162,55 @@ async function run(): Promise<void> {
       drawnScope = scope; drawnSnapshot = next; drawnSettled = live.load().settled;
     }
     if (live) snapshot = { ...live.snapshot(),
-      ...(!liveEnabled ? { readErrors: [`Live data not loaded · connection ${startup?.state.connection ?? "probing"} · L Local reading · S Startup`] } : {}),
+      ...(!liveEnabled ? { readErrors: [`实时数据未加载 · 连接 ${startup?.state.connection ?? "探测中"} · S 启动 · L 本地读取`] } : {}),
       launchingCli: process.env["OPENRIG_TUI_CLI_IDENTITY"]?.replace(/[\x00-\x1f\x7f]/g, " ").slice(0, 180) };
     const opts = { cols, rows, nowMs, completion, colorMode: style.mode, commandContext: commandContext(), ...crashCartOpts, ...(startup?.state.open && !view.get().palette ? { startup: startup.state } : {}), restoreScroll: restoreScrollOffset, ...(liveEnabled && live ? { load: live.load(), rowFlashes: live.flashes() } : {}) };
     if (liveEnabled && live?.load().settled) previousPage = { state: { ...view.get() }, snapshot };
     const pageOptions = { ...opts, ...(liveEnabled && !live?.load().settled ? { previousPage } : {}) };
     lastScreen = renderScreen(view.get(), snapshot, pageOptions, inputLine);
     if (startup?.state.local) startup.state.local.scroll = Math.min(startup.state.local.scroll, lastScreen.contentMaxOffset);
-    // Startup has its own selection/scroll; keep the underlying reader bookmark intact.
+    // 启动有自己的选择/滚动；保持底层读取器书签完整。
     if (!startup?.state.open && !view.get().palette && (!liveEnabled || live?.load().settled) && (view.get().contentMaxOffset !== lastScreen.contentMaxOffset || view.get().contentTargetCount !== lastScreen.contentTargets.length)) {
       view.dispatch({ type: "layout", contentMaxOffset: lastScreen.contentMaxOffset, contentTargetCount: lastScreen.contentTargets.length });
       lastScreen = renderScreen(view.get(), snapshot, pageOptions, inputLine);
     }
-    // styling is a zero-width post-pass over the tested plain layer — the
-    // hitMap coordinates always match what is on screen
-    // The renderer owns line breaks. Wide pasted characters must not wrap a
-    // padded row and scroll the entire frame; restore normal wrapping after paint.
+    // 样式是测试过的纯文本层上的零宽后处理——
+    // hitMap 坐标始终与屏幕上的内容匹配
+    // 渲染器拥有换行。宽粘贴字符绝不能换行
+    // 填充行并滚动整个帧；绘制后恢复正常换行。
     process.stdout.write("\x1b[?7l\x1b[H" + stylizeLines(lastScreen, style).map((l) => "\x1b[2K" + l).join("\r\n") + "\x1b[?7h");
     if (motionTimer) clearTimeout(motionTimer);
     motionTimer = lastScreen.motionActive || lastScreen.commandMotionActive ? setTimeout(draw, MOTION_FRAME_MS) : null;
   }
 
-  // 5.2 crash-cart: probe the daemon-down verdict via the shipped `rig crash-cart --json` verb (its
-  // JSON is the truth even on a hint non-zero exit). Any failure → normal TUI (never a fabricated cockpit).
+  // 5.2 故障诊断：通过已交付的 `rig crash-cart --json` 动词探测后台服务关闭判定（其
+  // JSON 是真相，即使在提示非零退出时）。任何失败 → 正常 TUI（绝不伪造驾驶舱）。
   const runCrashCartVerb = (): Promise<string> =>
     new Promise((resolve, reject) => {
       execFile(cliExecutable, cliArgs(["crash-cart", "--json"]), { timeout: 5000, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => {
         if (stdout && stdout.trim()) resolve(stdout);
-        else reject(new Error(stderr.trim() || err?.message || "crash-cart: no output"));
+        else reject(new Error(stderr.trim() || err?.message || "crash-cart: 无输出"));
       });
     });
   if (client) startup = new StartupController({
-    client, home: process.env["OPENRIG_HOME"] ?? "default local instance", probe: runCrashCartVerb,
+    client, home: process.env["OPENRIG_HOME"] ?? "默认本地实例", probe: runCrashCartVerb,
     startDaemon: () => new Promise<void>((resolve, reject) => {
       execFile(cliExecutable, cliArgs(daemonStartArgs(client.baseUrl)), { timeout: 30_000 }, (error, stdout, stderr) => {
-        if (error) reject(new Error(`Daemon start did not confirm completion: ${stderr.trim() || stdout.trim() || error.message}`));
+        if (error) reject(new Error(`后台服务启动未确认完成: ${stderr.trim() || stdout.trim() || error.message}`));
         else resolve();
       });
     }),
     onChange: () => {
       draw();
-      // Skip during the probe must remain skipped, but can start reads when
-      // the connection later answers. This never changes the chosen page.
+      // 探测期间的跳过必须保持跳过，但可以在
+      // 连接稍后应答时开始读取。这绝不改变所选页面。
       if (!startup?.state.open && startup?.state.connection === "up" && !liveEnabled && enableLive()) void live?.refresh();
     },
     onHelp: () => { view.dispatch({ type: "palette-open" }); draw(); },
     readLocal: (request) => readLocal(cliEntry, request),
     onNative: async (seat) => {
       if (!cliEntry || !["localhost", "127.0.0.1", "[::1]"].includes(new URL(client.baseUrl).hostname)) {
-        throw new Error("Native terminal access requires this TUI on the selected daemon's machine.");
+        throw new Error("原生终端访问需要此 TUI 在所选后台服务的机器上。");
       }
       const { attachSharedTui } = await import(pathToFileURL(join(dirname(cliEntry), "shared-tui.js")).href);
       nativeAttached = true;
@@ -219,7 +219,7 @@ async function run(): Promise<void> {
       process.stdout.write(PASTE_DISABLE + MOUSE_DISABLE + ALT_SCREEN_OFF);
       try {
         const code = await attachSharedTui(seat.observed.sessionName);
-        if (code !== 0) throw new Error(`Native terminal attachment exited ${code}. Refresh to inspect the existing occupant.`);
+        if (code !== 0) throw new Error(`原生终端附加退出 ${code}。刷新以检查现有占用者。`);
       } finally {
         if (process.stdin.isTTY) process.stdin.setRawMode(true);
         process.stdin.resume();
@@ -230,7 +230,7 @@ async function run(): Promise<void> {
     onWork: async (rig, seat) => {
       const revision = inputRevision;
       crashCartOpts = {};
-      view.dispatch({ type: "notice", message: startup?.state.connection === "up" ? "" : "Live data waits for a confirmed connection · S Startup · L Local" });
+      view.dispatch({ type: "notice", message: startup?.state.connection === "up" ? "" : "实时数据等待已确认连接 · S 启动 · L 本地" });
       draw();
       if (!enableLive()) return;
       await live?.refresh();
@@ -250,37 +250,37 @@ async function run(): Promise<void> {
     crashCartOpts = await probeCrashCart(runCrashCartVerb);
     draw();
   }
-  // Perform a cockpit action key. start-daemon/restore exec `rig daemon start` (the ⏎ flow's `s` step;
-  // the C1 batch conductor that RESTORE ultimately drives is EXCLUDED this wave) then re-probe; retry
-  // re-probes (UNVERIFIED). inspect/onboarding are entry-point seams this wave.
-  // ⏎ RESTORE EVERYTHING: start the daemon (the `s` step), then the TUI OWNS the restore lifecycle
-  // against it — kick/poll/cancel via the daemon client, retaining the attempt id (r2: no more blind
-  // delegation to a buffered child). Each poll updates the restore render (progress from the rollup
-  // stream); on done the rollup + keyboard-walkable triage list render; 'c' cancels mid-run.
-  // Poll one restore attempt to done/detached, rendering a frame per poll. Shared by the initial ⏎
-  // restore and by reattach (attemptId set) from the detached view. The driver TOLERATES transient poll
-  // errors internally (it detaches after a sustained streak, never throws on a blip), so this .catch
-  // fires ONLY on a genuine kick/start-side failure — never on a single blipped poll (r1 refinement 2).
+  // 执行驾驶舱动作键。start-daemon/restore 执行 `rig daemon start`（⏎ 流的 `s` 步；
+  // RESTORE 最终驱动的 C1 批次导体此波排除）然后重新探测；重试
+  // 重新探测（UNVERIFIED）。inspect/onboarding 是此波的入口接缝。
+  // ⏎ 恢复全部：启动后台服务（`s` 步），然后 TUI 拥有恢复生命周期
+  // 针对它——通过后台服务客户端 kick/poll/cancel，保留尝试 id（r2：不再盲目
+  // 委托给缓冲子进程）。每次轮询更新恢复渲染（进度来自汇总
+  // 流）；完成时汇总 + 键盘可走分类列表渲染；'c' 运行中取消。
+  // 轮询一次恢复尝试到完成/分离，每次轮询渲染一帧。被初始 ⏎
+  // 恢复和从分离视图重新附加（attemptId 设置）共享。驱动内部容忍瞬时轮询
+  // 错误（持续连续后分离，绝不因单次闪烁抛出），因此此 .catch
+  // 仅在真实 kick/启动侧失败时触发——绝不在单次闪烁轮询上（r1 细化 2）。
   function pollRestore(daemonClient: DaemonClient, attemptId?: string): void {
     void driveRestoreLifecycle({
       client: daemonClient,
       attemptId,
       onFrame: (frame) => {
-        // render progress from the poll stream — a mid-run frame every poll, not only at completion
+        // 从轮询流渲染进度——每次轮询的运行中帧，不仅在完成时
         crashCartOpts = { ...crashCartOpts, restore: buildRestoreLifecycleVM(frame) };
         draw();
       },
       isCancelRequested: () => restoreCancelRequested,
     }).catch((e: unknown) => {
       crashCartOpts = { ...crashCartOpts, restore: undefined };
-      view.dispatch({ type: "notice", message: `fleet restore failed: ${e instanceof Error ? e.message : String(e)}` });
+      view.dispatch({ type: "notice", message: `组恢复失败: ${e instanceof Error ? e.message : String(e)}` });
       void refreshCrashCart();
     });
   }
 
   function runFleetRestore(): void {
     if (!client) {
-      view.dispatch({ type: "notice", message: "demo mode: restore disabled" });
+      view.dispatch({ type: "notice", message: "演示模式: 恢复已禁用" });
       draw();
       return;
     }
@@ -293,14 +293,14 @@ async function run(): Promise<void> {
       .then(() => pollRestore(daemonClient))
       .catch((e: unknown) => {
         crashCartOpts = { ...crashCartOpts, restore: undefined };
-        view.dispatch({ type: "notice", message: `fleet restore failed: ${e instanceof Error ? e.message : String(e)}` });
+        view.dispatch({ type: "notice", message: `组恢复失败: ${e instanceof Error ? e.message : String(e)}` });
         void refreshCrashCart();
       });
   }
 
-  // Detached view `r`/`c`: resume the live view against the STILL-RUNNING attempt. `c` sets the cancel
-  // flag first so the resumed driver POSTs cancel and the operator SEES it take effect (observable
-  // confirmation, not a silent successful POST — r1 question 1). Reattach never resets the cancel flag.
+  // 分离视图 `r`/`c`：针对仍在运行的尝试恢复实时视图。`c` 先设置取消
+  // 标志，因此恢复的驱动 POST 取消且操作员看到它生效（可观察
+  // 确认，不是静默成功 POST——r1 问题 1）。重新附加绝不重置取消标志。
   function reattachRestore(attemptId: string): void {
     if (!client) return;
     pollRestore(client, attemptId);
@@ -328,7 +328,7 @@ async function run(): Promise<void> {
       execFile(cliExecutable, cliArgs(startArgs), { timeout: 30_000 }, (error, stdout, stderr) => {
         startingDaemon = false;
         if (error) {
-          crashCartOpts = { unavailable: `Daemon start did not confirm completion. Retry reads actual state before another attempt. ${stderr.trim() || stdout.trim() || error.message}` };
+          crashCartOpts = { unavailable: `后台服务启动未确认完成。重试在再次尝试前读取实际状态。 ${stderr.trim() || stdout.trim() || error.message}` };
           draw();
         } else {
           void refreshCrashCart();
@@ -338,13 +338,13 @@ async function run(): Promise<void> {
       return;
     }
     if (action === "restore") {
-      // zero-generation one-click (the gate cleared it) — restore directly.
+      // 零代数一键（门已清除）——直接恢复。
       runFleetRestore();
       return;
     }
     if (action === "restore-confirm") {
-      // H2 — some rig has non-resumable seats: NAME the deltas and arm a confirm (the next ⏎
-      // proceeds and fresh-primes them; Esc cancels). Never a silent resume→fresh downgrade.
+      // H2——某些工作组有不可恢复席位：命名增量并武装确认（下一个 ⏎
+      // 继续并全新启动它们；Esc 取消）。绝不是静默恢复→全新降级。
       const gate = evaluateOneClickGate({
         foundOnHost: (crashCartOpts.crashCart?.foundOnHost ?? []).map((r) => ({
           rigName: r.name,
@@ -353,10 +353,10 @@ async function run(): Promise<void> {
         })),
       });
       pendingRestoreConfirm = true;
-      // Truthful (r2 HIGH-2): describe the awaiting-decision the restore actually produces — never a
-      // fresh-prime the parameterless restore does not request. ROUND 10: render it IN the cockpit
-      // (crashCartOpts.confirm) — ViewState.notice is not shown in the daemon-down cockpit, so the
-      // first ⏎ used to appear to do nothing. The notice is kept as a belt for non-cockpit contexts.
+      // 真实（r2 HIGH-2）：描述恢复实际产生的等待决定——绝不
+      // 无参数恢复不请求的全新启动。ROUND 10：在驾驶舱中渲染它
+      //（crashCartOpts.confirm）——ViewState.notice 不在后台服务关闭驾驶舱中显示，因此
+      // 第一个 ⏎ 过去看似无动作。notice 作为非驾驶舱上下文的备份保留。
       const confirmMsg = restoreConfirmMessage(gate.deltas);
       crashCartOpts = { ...crashCartOpts, confirm: confirmMsg };
       view.dispatch({ type: "notice", message: confirmMsg });
@@ -364,7 +364,7 @@ async function run(): Promise<void> {
       return;
     }
     if (action === "retry") void refreshCrashCart();
-    // inspect / onboarding: entry-point seams (no cockpit notice channel this wave).
+    // inspect / onboarding：入口接缝（此波无驾驶舱 notice 通道）。
   }
 
   function refreshFromActivity(): void {
@@ -384,11 +384,11 @@ async function run(): Promise<void> {
     currentContext: () => commandContext(),
   });
 
-  // Acts are drive-structure daemon WRITES (BR-8/BR-9) — executed here against
-  // the two existing contracts; the view-state is only told the outcome.
+  // 动作是驱动结构后台服务写入（BR-8/BR-9）——在此针对
+  // 两个现有契约执行；视图状态仅被告知结果。
   async function executeAct(action: Extract<Action, { type: "act" }>): Promise<void> {
     if (!client || startup?.state.connection !== "up") {
-      view.dispatch({ type: "notice", message: "Live actions require a confirmed daemon connection. S opens startup; L opens local reading." });
+      view.dispatch({ type: "notice", message: "实时动作需要已确认的后台服务连接。S 打开启动；L 打开本地读取。" });
       draw();
       return;
     }
@@ -397,9 +397,9 @@ async function run(): Promise<void> {
         const result = await client.openTerminal(action.view, action.expectedPlan);
         view.dispatch({
           type: "terminal-result", view: action.view,
-          message: `${result.absent.length || result.degraded.length ? "Partial Open" : "Opened"}: ${result.opened.length} opened, ${result.absent.length} absent, ${result.degraded.length} degraded · ${action.view}${result.error ? ` · ${result.error}` : ""}${result.degraded.map(m => ` · ${m.seat}: ${m.reason}`).join("")}${(result.notes ?? []).map(n => ` · ${n}`).join("")}`,
+          message: `${result.absent.length || result.degraded.length ? "部分打开" : "已打开"}: ${result.opened.length} 已打开, ${result.absent.length} 缺失, ${result.degraded.length} 降级 · ${action.view}${result.error ? ` · ${result.error}` : ""}${result.degraded.map(m => ` · ${m.seat}: ${m.reason}`).join("")}${(result.notes ?? []).map(n => ` · ${n}`).join("")}`,
         });
-        if (action.expectedPlan === undefined) view.dispatch({ type: "notice", message: `${result.opened.length} terminals opened; ${result.absent.length} absent; ${result.degraded.length} degraded${(result.notes ?? []).map(n => ` · ${n}`).join("")}` });
+        if (action.expectedPlan === undefined) view.dispatch({ type: "notice", message: `${result.opened.length} 个终端已打开; ${result.absent.length} 缺失; ${result.degraded.length} 降级${(result.notes ?? []).map(n => ` · ${n}`).join("")}` });
       } else {
         const result = await client.launchNode(action.rigId, action.agent);
         view.dispatch({ type: "notice", message: launchNodeNotice(action.agent, result) });
@@ -414,7 +414,7 @@ async function run(): Promise<void> {
 
   function perform(action: Action): void {
     if (action.type === "print-for-copy") {
-      // runCopySession never rejects; while suspended, handleInput and draw return early.
+      // runCopySession 永不拒绝；挂起时，handleInput 和 draw 提前返回。
       void runCopySession({
         terminal: processCopyTerminal(), label: action.label, value: action.value,
         setSuspended: (on) => { nativeAttached = on; },
@@ -484,9 +484,9 @@ async function run(): Promise<void> {
         continue;
       }
       if (!(ev.type === "key" && ev.key === "tab")) completion = null;
-      // REGISTRY I3 — palette mode captures input while open. Execution is BYTE-EQUAL to
-      // direct typing: an argless selection runs perform(parseCommand(line)) — the exact
-      // BR-9 one-resolver path the command bar uses; argful selections PRE-FILL the bar.
+      // REGISTRY I3——面板模式打开时捕获输入。执行与
+      // 直接键入字节相等：无参数选择运行 perform(parseCommand(line))——命令栏
+      // 使用的确切 BR-9 单解析器路径；有参数选择预填充栏。
       const pal = view.get().palette;
       if (pal) {
         if (ev.type === "paste") { view.dispatch({ type: "palette-query", query: pal.query + ev.text }); continue; }
@@ -519,11 +519,11 @@ async function run(): Promise<void> {
         }
         continue;
       }
-      // An ACTIVE fleet restore owns its keys (takes precedence over cockpit/command-bar). The key→action
-      // decision is the PURE restoreKeyAction reducer (r1: every affordance the screen advertises must
-      // act in that state); main.ts here is only the executor. Scroll works in EVERY phase, so the
-      // "↑↓ scroll" the footer advertises when overflowing is real — and the lifecycle action row below
-      // the fold on a large fleet is reachable.
+      // 活动组恢复拥有其键（优先于驾驶舱/命令栏）。键→动作
+      // 决策是纯 restoreKeyAction reducer（r1：屏幕广告的每个提示必须
+      // 在该状态下起作用）；main.ts 这里只是执行器。滚动在每个阶段都有效，因此
+      // 溢出时页脚广告的"↑↓ 滚动"是真实的——大型组上
+      // 折叠下方的生命周期动作行可达。
       if (crashCartOpts.restore) {
         const rvm = crashCartOpts.restore;
         const action = restoreKeyAction(ev as RestoreInputEvent, {
@@ -542,7 +542,7 @@ async function run(): Promise<void> {
             continue;
           case "cancel":
             restoreCancelRequested = true;
-            view.dispatch({ type: "notice", message: "cancelling after the current rig…" });
+            view.dispatch({ type: "notice", message: "在当前工作组后取消…" });
             draw();
             continue;
           case "reattach":
@@ -550,9 +550,9 @@ async function run(): Promise<void> {
             continue;
           case "cancel-reattach":
             restoreCancelRequested = true;
-            // r1 LOW: "requested", not "sent" — no POST has happened yet (the reattached driver POSTs,
-            // and in the unreachable-daemon case that caused the detach it may not land).
-            view.dispatch({ type: "notice", message: "cancel requested — reattaching to confirm…" });
+            // r1 LOW："已请求"，非"已发送"——尚未发生 POST（重新附加的驱动 POST，
+            // 而在导致分离的不可达后台服务情况下它可能无法送达）。
+            view.dispatch({ type: "notice", message: "已请求取消——重新附加以确认…" });
             reattachRestore(rvm.attemptId);
             continue;
           case "dismiss":
@@ -560,7 +560,7 @@ async function run(): Promise<void> {
             void refreshCrashCart();
             continue;
           case "none":
-            continue; // swallowed while the fleet restores
+            continue; // 组恢复时吞掉
         }
       }
       if (ev.type === "paste") {
@@ -579,13 +579,13 @@ async function run(): Promise<void> {
           perform(parseCommand("select-text", view.get().sections));
           continue;
         }
-        // SCOPES accelerators: m/n ride the REGISTERED commands (one path).
+        // SCOPES 加速器：m/n 乘坐注册命令（一个路径）。
         if (inputLine === "" && view.get().section === "scopes" && view.get().scopesSelected) {
           if (ev.ch === "m") { perform(parseCommand("reqs", view.get().sections)); continue; }
           if (ev.ch === "n") { perform(parseCommand("narrative", view.get().sections)); continue; }
         }
         if (ev.ch === "?" && inputLine === "") {
-          // The registered palette trigger — through the grammar, never beside it.
+          // 注册的面板触发器——通过语法，绝不偏离它。
           perform(parseCommand("?", view.get().sections));
           continue;
         }
@@ -597,8 +597,8 @@ async function run(): Promise<void> {
           view.dispatch({ type: "footer" });
           continue;
         }
-        // 5.2 crash-cart: while a daemon-down screen is active, single keys are cockpit actions
-        // (s/i/n/r), not command-bar input.
+        // 5.2 故障诊断：后台服务关闭屏幕活动时，单键是驾驶舱动作
+        // （s/i/n/r），不是命令栏输入。
         if ((crashCartOpts.daemonState || crashCartOpts.unavailable) && inputLine === "") {
           const cca = resolveCrashCartKey(ev.ch, crashCartOpts);
           if (cca) {
@@ -611,10 +611,10 @@ async function run(): Promise<void> {
         inputLine = [...inputLine].slice(0, -1).join("");
       } else if (ev.type === "key" && ev.key === "escape") {
         if (pendingRestoreConfirm) {
-          // H2 — cancel the armed restore confirm (no fresh-prime happens). Clear the cockpit banner.
+          // H2——取消武装的恢复确认（不发生全新启动）。清除驾驶舱横幅。
           pendingRestoreConfirm = false;
           crashCartOpts = { ...crashCartOpts, confirm: undefined };
-          view.dispatch({ type: "notice", message: "restore cancelled" });
+          view.dispatch({ type: "notice", message: "已取消恢复" });
           draw();
         } else {
           const action = resolveEscapeAction(ev, view.get(), inputLine !== "");
@@ -626,12 +626,12 @@ async function run(): Promise<void> {
           perform(parseCommand(inputLine, view.get().sections));
           inputLine = "";
         } else if (pendingRestoreConfirm) {
-          // H2 — the operator confirmed the non-zero-generation restore: proceed. Clear the cockpit banner.
+          // H2——操作员确认非零代数恢复：继续。清除驾驶舱横幅。
           pendingRestoreConfirm = false;
           crashCartOpts = { ...crashCartOpts, confirm: undefined };
           runFleetRestore();
         } else if (crashCartOpts.daemonState) {
-          // 5.2 crash-cart: ⏎ is the cockpit primary action (RESTORE EVERYTHING) when daemon-down.
+          // 5.2 故障诊断：⏎ 是后台服务关闭时的驾驶舱主动作（恢复全部）。
           const cca = resolveCrashCartKey("enter", crashCartOpts);
           if (cca) performCrashCart(cca);
         } else {
@@ -657,10 +657,10 @@ async function run(): Promise<void> {
     draw();
   }
 
-  // A bare Esc keypress is byte-identical to the START of an arrow/mouse sequence, so the
-  // decoder holds it. Flush after a short quiet gap (the terminal convention) so the Esc the
-  // screens advertise ("esc back", palette close) actually lands instead of waiting for the
-  // next keystroke.
+  // 裸 Esc 按键与箭头/鼠标序列的起始字节相同，因此
+  // 解码器持有它。短暂安静间隙后刷新（终端约定），因此
+  // 屏幕广告的 Esc（"esc 返回"、面板关闭）实际落地，而非等待
+  // 下一次击键。
   let escapeFlush: NodeJS.Timeout | null = null;
   process.stdin.on("data", (bytes: Buffer) => {
     if (escapeFlush) { clearTimeout(escapeFlush); escapeFlush = null; }
@@ -674,18 +674,18 @@ async function run(): Promise<void> {
   });
 
   process.stdout.write(ALT_SCREEN_ON + MOUSE_ENABLE + PASTE_ENABLE);
-  // round-5 (guard): the FIRST terminal frame draws the honest in-flight
-  // state — the refresh starts after entering the alt screen, never before,
-  // so loading is VISIBLE instead of awaited behind a blank terminal
+  // round-5（守卫）：第一终端帧绘制诚实在飞
+  // 状态——刷新在进入备用屏幕后启动，绝不提前，
+  // 因此加载可见而非在空白终端后等待
   draw();
-  // Probe the daemon-down verdict once on launch: bare `rig` with the daemon down renders the cockpit.
-  // (Key-triggered re-probe after `s start daemon` / `r retry` is the follow-on increment.)
+  // 启动时探测一次后台服务关闭判定：后台服务关闭时裸 `rig` 渲染驾驶舱。
+  // （`s 启动后台服务` / `r 重试` 后的键触发重新探测是后续增量。）
   if (startup) void startup.refresh();
-  else void refreshCrashCart();
-  // A merely-open TUI must impose no steady-state fleet load. The initial
-  // hydrate establishes honest state; navigation, commands, and socket-driven
-  // mutations request later truth through the same single-flight owner.
-  // Optional data and event subscriptions start only on confirmed live entry.
+  else if (!demo) void refreshCrashCart();
+  // 仅打开的 TUI 不得施加稳态组负载。初始
+  // 水合建立诚实状态；导航、命令和套接字驱动
+  // 变更通过同一单飞所有者请求后续真相。
+  // 可选数据和事件订阅仅在已确认实时入口时启动。
   void timeSetting.then((setting) => {
     const timezone = resolveTimeZone(setting, timeReadWarning);
     view.dispatch({ type: "time-setting", timeZone: timezone.timeZone, timeZoneWarning: timezone.warning }); draw();

@@ -1,11 +1,11 @@
-# 51-09 live-leg fixture — LEG A origin rig (runs on H_A)
-# Canonical seat = <pod>-<member>@<rigName> (deriveCanonicalSessionName) => orch-main@rig-a
+# 51-09 live-leg fixture——LEG A 的源工作组（运行于 H_A）。
+# Canonical 席位 = <pod>-<member>@<rigName>（deriveCanonicalSessionName）=> orch-main@rig-a
 version: "0.2"
 name: rig-a
 culture_file: culture.md
 pods:
   - id: orch
-    label: Orch
+    label: 编排
     members:
       - id: main
         agent_ref: "local:agents/orch"

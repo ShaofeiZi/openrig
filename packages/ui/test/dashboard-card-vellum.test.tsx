@@ -1,14 +1,12 @@
-// Dashboard source-level tests.
+// Dashboard 源码级测试。
 //
-// OPR.0.4.1.14 — the Dashboard route is now the founder-LOCKED fidelity
-// refresh: a paper-draft launcher grid + Field Environment + drafting footer
-// built from ./vellum/fidelity-glyphs.js + the scoped ./dashboard-fidelity.css.
-// The legacy big-numeral vellum primitives (DestinationsLayer / TopLayerContent
-// / VellumDestinationCard / etc.) are NO LONGER used by the production
-// dashboard — they are retained only for the /lab/vellum-lab design
-// experiment. This test verifies (a) Dashboard.tsx composes the new fidelity
-// surface + wires the right real-data hooks, and (b) the legacy primitives are
-// still intact for the lab.
+// OPR.0.4.1.14——Dashboard 路由现为 founder 锁定的 fidelity
+// 刷新：paper-draft 启动器网格 + Field Environment + 起草 footer，
+// 由 ./vellum/fidelity-glyphs.js + 作用域 ./dashboard-fidelity.css 构建。
+// 旧大数字 vellum 原语（DestinationsLayer / TopLayerContent
+// / VellumDestinationCard 等）不再被生产 dashboard 使用——
+// 仅为 /lab/vellum-lab 设计实验保留。本测试验证 (a) Dashboard.tsx 组合新 fidelity
+// 表面 + 接对真实数据 hooks，且 (b) 旧原语仍完整供 lab 用。
 
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -33,15 +31,14 @@ const CARD_SRC = readFileSync(
 
 describe("Dashboard (OPR.0.4.1.14 fidelity refresh)", () => {
   it("Dashboard.tsx composes the fidelity launcher surface", () => {
-    // New fidelity primitives + scoped stylesheet.
+    // 新 fidelity 原语 + 作用域样式表。
     expect(DASHBOARD_SRC).toContain('from "./vellum/fidelity-glyphs.js"');
     expect(DASHBOARD_SRC).toContain('import "./dashboard-fidelity.css"');
-    // Paper-draft surface + Field Environment + footer.
+    // Paper-draft 表面 + Field Environment + footer。
     expect(DASHBOARD_SRC).toContain("df-root");
     expect(DASHBOARD_SRC).toContain("FieldEnvironment");
     expect(DASHBOARD_SRC).toContain("DashboardFooter");
-    // The legacy big-numeral layer composition is gone from the production
-    // dashboard (moved to lab-only).
+    // 旧大数字层组合已从生产 dashboard 消失（迁到仅 lab）。
     expect(DASHBOARD_SRC).not.toContain("DestinationsLayer");
     expect(DASHBOARD_SRC).not.toContain("TopLayerContent");
   });
@@ -56,9 +53,9 @@ describe("Dashboard (OPR.0.4.1.14 fidelity refresh)", () => {
   });
 
   it("Dashboard.tsx wires real-data hooks for the Field Environment", () => {
-    // OPR.0.4.1.14 functional refinement: STATION/RIGS/AGENTS/OPERATOR were
-    // already real; VERSION is the new real wire (running daemon version). The
-    // active sub-count was dropped (AGENTS is a single live count per its row).
+    // OPR.0.4.1.14 功能细化：STATION/RIGS/AGENTS/OPERATOR 已是真实；
+    // VERSION 是新真实接线（运行中 daemon 版本）。
+    // active 子计数已弃（AGENTS 每行单一 live 计数）。
     expect(DASHBOARD_SRC).toContain("useRigSummary");
     expect(DASHBOARD_SRC).toContain("usePsEntries");
     expect(DASHBOARD_SRC).toContain("useSettings");
@@ -69,7 +66,7 @@ describe("Dashboard (OPR.0.4.1.14 fidelity refresh)", () => {
     expect(DASHBOARD_SRC).toContain("hostname");
   });
 
-  // ── Legacy vellum primitives — retained ONLY for /lab/vellum-lab ──────────
+  // ── 旧 vellum 原语——仅为 /lab/vellum-lab 保留 ──────────
   it("legacy DestinationsLayer still declares all 6 routes (lab primitive intact)", () => {
     for (const route of ["/topology", "/project", "/for-you", "/specs", "/search", "/settings"]) {
       expect(DESTINATIONS_LAYER_SRC).toContain(`to="${route}"`);
@@ -88,11 +85,11 @@ describe("Dashboard (OPR.0.4.1.14 fidelity refresh)", () => {
   });
 
   it("legacy TopLayerContent keeps its classification chrome (lab primitive intact)", () => {
-    expect(TOP_LAYER_SRC).toContain("Welcome back");
+    expect(TOP_LAYER_SRC).toContain("欢迎回来");
     expect(TOP_LAYER_SRC).toContain("(s*)");
     expect(TOP_LAYER_SRC).toContain("Operator");
     expect(TOP_LAYER_SRC).toContain("Field Station");
-    expect(TOP_LAYER_SRC).toContain("Eyes Everywhere");
+    expect(TOP_LAYER_SRC).toContain("监视无处不在");
     expect(TOP_LAYER_SRC).toContain("backdrop-blur-[6px]");
   });
 });

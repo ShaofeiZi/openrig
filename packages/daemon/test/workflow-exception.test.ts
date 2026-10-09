@@ -1,6 +1,5 @@
-// OPR.0.4.6.WF5 FR-1: taxonomy tests — deterministic classification over
-// recorded state, the per-class negatives, the handler-role split, and the
-// occurrence-identity semantics (the single-home JSDoc contract).
+// OPR.0.4.6.WF5 FR-1：taxonomy 测试——基于记录状态的确定性分类、逐类别负例、handler-role 拆分，
+// 以及 occurrence-identity 语义（single-home JSDoc 契约）。
 
 import { describe, expect, it } from "vitest";
 
@@ -57,7 +56,7 @@ const gateTrip = (over: Partial<GateTripView> = {}): GateTripView => ({
 });
 
 describe("WF-5 FR-1 taxonomy", () => {
-  it("the class set is closed at exactly three", () => {
+  it("class 集合封闭且恰有三种", () => {
     expect(WORKFLOW_EXCEPTION_CLASSES).toEqual([
       "unmapped_failed",
       "stuck_overdue",
@@ -65,25 +64,25 @@ describe("WF-5 FR-1 taxonomy", () => {
     ]);
   });
 
-  it("class (a): failed instance classifies unmapped_failed, deterministic over N replays", () => {
+  it("class (a)：failed instance 分类为 unmapped_failed，N 次 replay 结果确定", () => {
     const results = Array.from({ length: 5 }, () => classifyFailedInstance(failedView()));
     for (const r of results) {
       expect(r?.identity.exceptionClass).toBe("unmapped_failed");
       expect(r?.identity.occurrenceKey).toBe("qitem-000-failpacket");
       expect(r?.identity.stepId).toBe("review");
-      expect(r?.reason).toContain("no remediation branch");
+      expect(r?.reason).toContain("没有补救分支");
       expect(r?.reason).toContain("boom");
     }
     expect(new Set(results.map((r) => JSON.stringify(r))).size).toBe(1);
   });
 
-  it("class (a) negative: a non-failed instance NEVER classifies (mapped-failed stays active = deterministic remediation, not an exception)", () => {
+  it("class (a) 负例：非 failed instance 绝不分类（mapped-failed 保持 active，属于确定性修复而非 exception）", () => {
     for (const status of ["active", "waiting", "completed"] as const) {
       expect(classifyFailedInstance(failedView({ status }))).toBeNull();
     }
   });
 
-  it("class (b): a non-healthy evaluator verdict lifts verbatim — evidence carried, never recomputed", () => {
+  it("class (b)：非 healthy evaluator verdict 逐字提升，携带 evidence 且绝不重算", () => {
     const r = classifyDeadlineVerdict("wf5-pipeline", overdueVerdict);
     expect(r?.identity.exceptionClass).toBe("stuck_overdue");
     expect(r?.identity.occurrenceKey).toBe("qitem-000-stuckpacket");
@@ -92,24 +91,24 @@ describe("WF-5 FR-1 taxonomy", () => {
     expect(r?.reason).toContain("created_at");
   });
 
-  it("class (b) negative: healthy verdict → null (in-deadline steps are not exceptions)", () => {
+  it("class (b) 负例：healthy verdict 返回 null（deadline 内的 step 不是 exception）", () => {
     expect(
       classifyDeadlineVerdict("wf5-pipeline", { state: "healthy", evidence: null }),
     ).toBeNull();
   });
 
-  it("class (c): a HUMAN gate reach classifies human_gate_trip keyed by the compiled gate packet", () => {
+  it("class (c)：到达 HUMAN gate 时按编译后的 gate packet 定键为 human_gate_trip", () => {
     const r = classifyGateTrip(gateTrip());
     expect(r?.identity.exceptionClass).toBe("human_gate_trip");
     expect(r?.identity.occurrenceKey).toBe("qitem-000-gatepacket");
     expect(r?.reason).toContain("human@kernel");
   });
 
-  it("THE HANDLER-ROLE SPLIT: a handler-role gate is NOT an exception", () => {
+  it("HANDLER-ROLE 拆分：handler-role gate 不是 exception", () => {
     expect(classifyGateTrip(gateTrip({ gateKind: "handler-role", parkOn: null }))).toBeNull();
   });
 
-  it("occurrence semantics: same episode = same key; a fresh packet after resume = a NEW occurrence", () => {
+  it("occurrence 语义：同一 episode 使用同一 key；resume 后的新 packet 产生新 occurrence", () => {
     const first = classifyFailedInstance(failedView());
     const reDetected = classifyFailedInstance(failedView());
     expect(occurrenceDedupKey(first!.identity)).toBe(occurrenceDedupKey(reDetected!.identity));
@@ -122,7 +121,7 @@ describe("WF-5 FR-1 taxonomy", () => {
     );
   });
 
-  it("identity tags extend the shipped stamp and carry every join dimension", () => {
+  it("identity tag 扩展已发布 stamp，并携带每个 join 维度", () => {
     const r = classifyFailedInstance(failedView());
     expect(workflowExceptionTags(r!.identity)).toEqual([
       "workflow-exception",
@@ -134,7 +133,7 @@ describe("WF-5 FR-1 taxonomy", () => {
     ]);
   });
 
-  it("identity tags omit step: cleanly when the step binding is null (pre-R2 rows)", () => {
+  it("step binding 为 null（pre-R2 行）时 identity tag 干净省略 step", () => {
     const r = classifyFailedInstance({ ...failedView(), failedStepId: null });
     const tags = workflowExceptionTags(r!.identity);
     expect(tags).not.toContainEqual(expect.stringMatching(/^step:/));

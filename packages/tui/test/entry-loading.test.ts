@@ -5,18 +5,18 @@ import { createLiveRefresh } from "../src/live.js";
 import { createViewState, emptySnapshot } from "../src/state.js";
 import { renderScreen } from "../src/render.js";
 
-describe("S01 entry and page reads", () => {
-  it("enters ordinary views on a positive running observation without any launch", async () => {
+describe("S01 入口与页读取", () => {
+  it("凭 positive running 观察进入常规视图，无需任何启动", async () => {
     const onWork = vi.fn();
     const startDaemon = vi.fn();
-    const client = new DaemonClient({ fetchImpl: vi.fn(async () => new Response(JSON.stringify([{ id: "stopped", name: "first", lifecycleState: "stopped" }, { id: "r", name: "active", lifecycleState: "running" }]))) });
+    const client = new DaemonClient({ fetchImpl: vi.fn(async () => new Response(JSON.stringify([{ id: "stopped", name: "first", lifecycleState: "stopped" }, { id: "r", name: "活跃", lifecycleState: "running" }]))) });
     const startup = new StartupController({ client, home: "/fixture", probe: async () => '{"state":"up"}', startDaemon, onWork, onChange: () => {} });
     await startup.refresh();
     expect(startup.state.open).toBe(false);
     expect(onWork).toHaveBeenCalledWith();
     expect(startDaemon).not.toHaveBeenCalled();
   });
-  it("marks a terminal source failure stale", async () => {
+  it("把终态源失败标记为 stale", async () => {
     const failed = emptySnapshot(); failed.readErrors = ["terminals: timeout"];
     const live = createLiveRefresh({ hydrate: async () => failed, now: () => 0, onFrame: () => {} });
     await live.refresh();
@@ -27,13 +27,13 @@ describe("S01 entry and page reads", () => {
     const view = createViewState({ instanceId: "fixture", getSnapshot: emptySnapshot });
     const state = { ...view.get(), section };
     const text = renderScreen(state, emptySnapshot(), { cols: 80, rows: 24, load: { inFlight: true, settled: false } }).lines.join("\n");
-    expect(text).toMatch(/loading|pending/i);
-    expect(text).not.toMatch(/Unavailable|Saved \(0\)|Derived \(0\)|0 rigs|0 agents/);
+    expect(text).toMatch(/加载中|待处理|读取挂起/);
+    expect(text).not.toMatch(/不可用|已保存 \(0\)|派生 \(0\)|0 个工作组|0 个智能体/);
   });
 });
 
-describe("request identity and partial refresh", () => {
-  it("retains a catalog on timeout, accepts a later successful empty answer, and keeps the time basis", async () => {
+describe("请求标识与部分刷新", () => {
+  it("超时保留目录，接受后续成功的空回答，并保持时间基准", async () => {
     const { hydrateSnapshot } = await import("../src/hydrate.js");
     let mode = "success"; let now = 1000;
     const client = new DaemonClient({ fetchImpl: (async () => {
@@ -54,7 +54,7 @@ describe("request identity and partial refresh", () => {
     live.close();
   });
 
-  it("rejects an old page's late response, even when its transport ignores cancellation", async () => {
+  it("拒绝旧页迟到的响应，即使其传输层忽略取消", async () => {
     let scope = "project:a";
     let release!: () => void;
     let oldSignal!: AbortSignal;
@@ -73,7 +73,7 @@ describe("request identity and partial refresh", () => {
     live.close();
   });
 
-  it("does not retain a file after an access refusal or successful deletion response", async () => {
+  it("访问被拒或成功删除后不再保留该文件", async () => {
     const { PageRead } = await import("../src/page-read.js");
     const page = new PageRead(() => 0);
     let status = 200;
@@ -84,13 +84,13 @@ describe("request identity and partial refresh", () => {
   });
 });
 
-describe("entry never takes navigation from the user", () => {
+describe("entry 绝不接管用户的导航", () => {
   it.each(["?", "w", "L", "escape"])("preserves %s during a late positive observation", async key => {
     let release!: () => void;
     const onWork = vi.fn(); const onHelp = vi.fn();
     const client = new DaemonClient({ fetchImpl: (async () => {
       await new Promise<void>(resolve => { release = resolve; });
-      return new Response('[{"id":"r","name":"active","lifecycleState":"running"}]');
+      return new Response('[{"id":"r","name":"活跃","lifecycleState":"running"}]');
     }) as typeof fetch });
     const startup = new StartupController({ client, home: "/fixture", probe: async () => '{"state":"up"}', startDaemon: vi.fn(), onWork, onHelp, onChange: () => {} });
     const pending = startup.refresh();
@@ -110,7 +110,7 @@ describe("entry never takes navigation from the user", () => {
   });
 });
 
-it("a missing-file response clears content without advancing the last successful read", async () => {
+it("文件缺失响应清空内容，但不推进上次成功读取", async () => {
   const { hydrateSnapshot } = await import("../src/hydrate.js");
   let now = 1000; let missing = false;
   const client = new DaemonClient({ fetchImpl: (async input => {

@@ -11,10 +11,10 @@ export interface HookActivityInput {
   hookEvent: string;
   subtype?: string | null;
   occurredAt?: string | null;
-  /** W2a-1 — the EMITTING occupant's generation, CARRIED source-bound on the hook (the producer/relay
-   *  supplies it at fire time; the route ingests it). NOT inferred from record-time state — that
-   *  inference mis-attributes a delayed prior-occupant hook to the live occupant. Absent on a legacy,
-   *  excluded, or no-tenure emitting path ⇒ stamped null ⇒ unresolved at read (never false-fresh). */
+  /** W2a-1——发出事件的 occupant generation 随 hook 携带并绑定来源（producer/relay 在触发时
+   *  提供，route 负责摄入），绝不从记录时状态推断——那会把延迟到达的前任 occupant hook
+   *  错归给当前 occupant。旧版、被排除或没有 tenure 的发出路径缺失该值 ⇒ 记录 null ⇒
+   *  读取时为 unresolved（绝不假新鲜）。 */
   generation?: string | null;
 }
 
@@ -27,15 +27,14 @@ interface AgentActivityStoreDeps {
   eventBus: EventBus;
   now?: () => Date;
   freshnessMs?: number;
-  /** W2a-1 — resolve the LIVE occupant generation for a node (the shipped occupant-tenure
-   *  generation_uuid), or null when UNKNOWN. Injected (not self-constructed) so the store stays
-   *  decoupled from SessionRegistry and unit-testable with a fake. When ABSENT the store applies no
-   *  generation gate — legacy clock-only freshness — so the existing callers are unchanged until the
-   *  producer wiring injects the real resolver. Resolution is SYNCHRONOUS (a better-sqlite3 read),
-   *  which is why the gate lives inline in the sync read path with no signature churn to 9 callers. */
+  /** W2a-1——解析节点当前 occupant 的 generation（已交付 occupant-tenure generation_uuid），
+   *  未知时返回 null。通过注入而非内部构造，使 store 与 SessionRegistry 解耦，并可用 fake
+   *  做单元测试。缺失时 store 不应用 generation 门禁——沿用旧版仅按时钟判断新鲜度——因此在
+   *  producer 接线注入真实解析器之前，现有调用方保持不变。解析是同步的（better-sqlite3 读取），
+   *  所以门禁内联在同步读取路径中，不改动 9 个调用方的签名。 */
   resolveOccupantGeneration?: (nodeId: string) => string | null;
-  /** Confirm that a carried generation is registered for this node. A side-effect-free reservation
-   * that never committed must remain unresolvable, not become positive mismatch evidence. */
+  /** 确认携带的 generation 已为该节点登记。未提交且无副作用的 reservation 必须保持
+   *  unresolvable，不能成为肯定的 mismatch 证据。 */
   isRegisteredOccupantGeneration?: (nodeId: string, generation: string) => boolean;
 }
 
@@ -72,7 +71,7 @@ export class AgentActivityStore {
       return {
         ok: false,
         code: "missing_session_identity",
-        error: "Hook activity requires a managed sessionName or nodeId",
+        error: "Hook 活动需要受管的 sessionName 或 nodeId",
       };
     }
 
@@ -81,20 +80,18 @@ export class AgentActivityStore {
       return {
         ok: false,
         code: "session_not_found",
-        error: "Hook activity did not match a managed session. List seats with: rig ps --nodes",
+        error: "Hook 活动未匹配到受管会话。请运行 zrig ps --nodes 列出席位",
       };
     }
 
     const sampledAt = this.now().toISOString();
     const eventAt = parseTimestamp(input.occurredAt) ?? sampledAt;
-    // W2a-1 — SOURCE-BOUND stamp: the emitting occupant's generation is CARRIED on the hook (supplied
-    // by the producer/relay at fire time, ingested by the route), NEVER inferred from record-time
-    // state. A delayed prior-occupant hook recorded after a new tenure minted carries its OWN (prior)
-    // generation, so the read detects a mismatch rather than crediting it to the live occupant — and
-    // this is immune to boot_at precision / clock skew because nothing is timed. Absent on a legacy,
-    // excluded, or no-tenure emitting path ⇒ null ⇒ unresolved at read (the P21 claimed-era pattern:
-    // absence recorded as its own state, never false-fresh). No record-time
-    // resolver call — the live-gen resolver is used only at READ, for the comparison.
+    // W2a-1——绑定来源的标记：发出事件的 occupant generation 随 hook 携带（producer/relay
+    // 在触发时提供，由 route 摄入），绝不从记录时状态推断。前任 occupant 的延迟 hook 在新 tenure
+    // 生成后才被记录时，仍携带自己的旧 generation，因此读取会检测到不匹配，而不是误归给当前
+    // occupant；由于不依赖时间，此逻辑不受 boot_at 精度或时钟偏移影响。旧版、被排除或无 tenure
+    // 的发出路径缺失该值 ⇒ null ⇒ 读取时 unresolved（P21 claimed-era 模式：缺失本身被记录为
+    // 一种状态，绝不假新鲜）。记录时不调用 resolver——live-gen resolver 只在读取时用于比较。
     const generation = input.generation ?? null;
     const activity = normalizeHookActivity({
       runtime: input.runtime ?? session.runtime,
@@ -138,32 +135,29 @@ export class AgentActivityStore {
 
     const referenceTime = input.now ?? this.now();
 
-    // W2a-1 — compare-at-read against the shipped occupant-tenure generation_uuid (pm ruling
-    // 2026-08-08, the fully-specified Variant C):
-    //  (1) the carried generation is REGISTERED FOR THIS NODE and differs from live ⇒ MISMATCH:
-    //      positive evidence the claim belongs to a prior, dead tenure ⇒ unknown +
-    //      `generation_mismatch`, stale:true, provenance RESOLVED. An unregistered prelaunch
-    //      reservation is absence of evidence and stays UNRESOLVABLE, never mismatch.
-    //  (2) both known and EQUAL (incl. a same-native-session relaunch — the ledger treats it as a
-    //      continuation with no new generation) ⇒ provenance RESOLVED, deliver normally (fresh).
-    //  (3) null on EITHER side ⇒ UNRESOLVABLE: ABSENCE of evidence, not a dead-tenure finding. State
-    //      UNKNOWN + its distinct reason, stale:true — NEVER fresh (fresh is a positive liveness claim
-    //      the seat has not earned; marking null-tenure fresh is bare-attribution one field over). The
-    //      STORE delivers the row carrying generationProvenance='unresolved' at the ACTIVITY layer. The
-    //      tap's discard-condition change that turns this label into a still-flowing consumer row is a
-    //      FOLLOW-ON (qitem-20260808183747-f7f04662, verify-demotion) — NOT this fold; in the INTERIM
-    //      the unchanged tap still discards it (a bounded regression whose exposure is the mint-race
-    //      transient; mm2 is unaffected — its daemon carries no occupant_tenures table until 0.5.1).
-    //      Ignorance and evidence get DIFFERENT verdicts; the two paths must not collapse.
-    // Gate runs only when a resolver is injected (else legacy clock-only, no label).
+    // W2a-1——读取时与已交付 occupant-tenure generation_uuid 比较（PM 于 2026-08-08 裁定的
+    // 完整变体 C）：
+    //  (1) 携带的 generation 已为此节点登记且不同于当前值 ⇒ MISMATCH：这是认领属于已终止
+    //      前任 tenure 的肯定证据 ⇒ unknown + `generation_mismatch`、stale:true、provenance
+    //      RESOLVED。未登记的启动前 reservation 是证据缺失，保持 UNRESOLVABLE，绝非 mismatch。
+    //  (2) 两者均已知且相同（包括相同原生会话的重新启动——台账将其视为延续，不产生新
+    //      generation）⇒ provenance RESOLVED，正常投递（fresh）。
+    //  (3) 任一侧为 null ⇒ UNRESOLVABLE：这是证据缺失，而非前任 tenure 判定。状态 UNKNOWN +
+    //      独立 reason、stale:true——绝不 fresh（fresh 是该席位尚未赢得的肯定存活声明；将 null
+    //      tenure 标为 fresh 会越过裸归因边界）。STORE 在 ACTIVITY 层交付带
+    //      generationProvenance='unresolved' 的行。让此标签成为仍流向消费者的行，需要修改 tap
+    //      的丢弃条件，属于后续项（qitem-20260808183747-f7f04662，verify-demotion），不属于本次
+    //      fold；过渡期内未变的 tap 仍会丢弃它（这是暴露于 mint-race 瞬间的有界回归；mm2 在
+    //      0.5.1 前没有 occupant_tenures 表，不受影响）。未知与证据必须得到不同判定，不能合并。
+    // 仅在注入 resolver 时运行门禁（否则沿用仅按时钟判断、无标签的旧行为）。
     let generationProvenance: "resolved" | "unresolved" | undefined;
     if (this.resolveOccupantGeneration) {
       let liveGeneration: string | null;
       try {
         liveGeneration = this.resolveOccupantGeneration(nodeId);
       } catch {
-        // Resolver EXCEPTION (e.g. a transient ledger/db fault) ⇒ DEGRADE to a distinct unknown
-        // branch: never crash the read, never render fresh. Distinct from a clean null (unresolvable).
+        // Resolver 异常（例如瞬时台账/数据库故障）⇒ 降级到独立 unknown 分支：
+        // 读取绝不崩溃，也绝不渲染为 fresh。与正常 null（unresolvable）区分。
         return this.generationDegraded(activity, referenceTime);
       }
       const recordedGeneration = activity.generation ?? null;
@@ -215,13 +209,12 @@ export class AgentActivityStore {
     };
   }
 
-  /** W2a-1 — the dead-tenure verdict: the claim's occupant generation is REGISTERED FOR THIS NODE and
-   *  DIFFERENT from the live generation. The membership gate runs before this helper, so an uncommitted
-   *  reservation can never manufacture a positive dead-tenure finding.
-   *  It must not be honored as the live seat. Returns unknown + `generation_mismatch`,
-   *  stale:true (detection fires), provenance `resolved` (both generations WERE resolved — they simply
-   *  differ). This is the ONLY generation case that abstains; a null on either side is UNRESOLVED
-   *  provenance and is DELIVERED labelled, never routed here. */
+  /** W2a-1——已终止 tenure 判定：认领的 occupant generation 已为此节点登记，且与当前
+   *  generation 不同。成员门禁先于此辅助函数运行，所以未提交的 reservation 绝不能伪造
+   *  肯定的已终止 tenure 结论。不得把它当成当前席位。返回 unknown +
+   *  `generation_mismatch`、stale:true（触发检测）、provenance `resolved`（两个 generation
+   *  均已解析，只是不同）。这是唯一会放弃投递的 generation 情况；任一侧为 null 都属于
+   *  UNRESOLVED provenance，并带标签交付，绝不进入此路径。 */
   private generationMismatch(activity: AgentActivity, referenceTime: Date): AgentActivity {
     return {
       ...activity,
@@ -235,14 +228,13 @@ export class AgentActivityStore {
     };
   }
 
-  /** W2a-1 — the UNRESOLVABLE-provenance verdict (ABSENCE of evidence, not a dead-tenure finding).
-   *  State UNKNOWN + a distinct reason + stale:true so no consumer reads it as verified-live (fresh is
-   *  a positive liveness claim). The STORE delivers the row carrying generationProvenance:"unresolved"
-   *  at the ACTIVITY layer; turning that label into a still-flowing CONSUMER row is the tap FOLLOW-ON
-   *  (verify-demotion, qitem-20260808183747-f7f04662) — the unchanged tap still discards it in the
-   *  INTERIM (a bounded regression, mint-race-transient exposure; mm2 has no occupant_tenures table
-   *  until 0.5.1). Kept DISTINCT from generationMismatch: ignorance and evidence get different verdicts,
-   *  and the paths must not collapse — at the store now, and at the tap when the follow-on lands. */
+  /** W2a-1——UNRESOLVABLE provenance 判定（缺乏证据，而非已终止 tenure 结论）。状态为
+   *  UNKNOWN + 独立 reason + stale:true，使消费者不会将其读作已验证存活（fresh 是肯定的存活
+   *  声明）。STORE 在 ACTIVITY 层交付带 generationProvenance:"unresolved" 的行；把此标签改为
+   *  仍可流向消费者的行属于 tap 的后续项（verify-demotion，qitem-20260808183747-f7f04662）。
+   *  过渡期内未变的 tap 仍会丢弃它（有界回归，仅暴露于 mint-race 瞬间；mm2 在 0.5.1 前
+   *  没有 occupant_tenures 表）。它与 generationMismatch 保持区分：未知和证据得到不同判定，
+   *  在当前 store 以及后续 tap 中都不能合并。 */
   private generationUnresolved(
     activity: AgentActivity,
     referenceTime: Date,
@@ -260,10 +252,10 @@ export class AgentActivityStore {
     };
   }
 
-  /** W2a-1 — the resolver-EXCEPTION verdict: the live-generation resolver threw (a transient ledger/db
-   *  fault). DEGRADE to unknown + a DISTINCT reason (`generation_resolver_error`) + stale:true, so the
-   *  read never crashes and the claim is never rendered fresh; provenance `unresolved`. Kept separate
-   *  from a clean null (unresolvable) so a resolver FAULT is distinguishable from an honest ABSENCE. */
+  /** W2a-1——resolver 异常判定：live-generation resolver 抛错（瞬时台账/数据库故障）。
+   *  降级为 unknown + 独立 reason（`generation_resolver_error`）+ stale:true，使读取不崩溃且
+   *  认领绝不渲染为 fresh；provenance 为 `unresolved`。与正常 null（unresolvable）分开，
+   *  从而区分 resolver 故障与真实缺失。 */
   private generationDegraded(activity: AgentActivity, referenceTime: Date): AgentActivity {
     return {
       ...activity,
@@ -331,13 +323,13 @@ function normalizeHookActivity(input: {
   if (rawEvent === "UserPromptSubmit" || rawEvent === "PreToolUse" || rawEvent === "active") {
     state = "running";
   } else if (rawEvent === "PermissionRequest") {
-    // OPR.0.4.1.10 — Codex's official approval hook (openai/codex PR #17563). A PermissionRequest
-    // means the agent is BLOCKED waiting on a command / patch / network approval = needs_input. This is
-    // the HOOK-PRIMARY signal for Codex, which emits no Claude-style Notification; classifySendReadiness
-    // already prefers a fresh runtime_hook needs_input runtime-agnostically, so wiring this event makes
-    // the Codex rig-send guard hook-primary by construction (capture-pane scan stays as the fallback).
-    // The official payload carries session_id/turn_id/cwd/model/permission_mode/tool_name/tool_input;
-    // the relay forwards tool_name as the subtype, so `evidence` names the tool being approved.
+    // OPR.0.4.1.10——Codex 官方批准 hook（openai/codex PR #17563）。PermissionRequest 表示
+    // agent 正因等待命令 / 补丁 / 网络批准而阻塞，即 needs_input。这是 Codex 的 hook-primary
+    // 信号；Codex 不发出 Claude 风格的 Notification。classifySendReadiness 已能跨 runtime 优先
+    // 采用新鲜的 runtime_hook needs_input，因此接入该事件即可让 Codex rig-send guard 在结构上
+    // 以 hook 为主（capture-pane 扫描仍是回退）。官方 payload 携带
+    // session_id/turn_id/cwd/model/permission_mode/tool_name/tool_input；relay 将 tool_name 转发为
+    // subtype，因此 `evidence` 会指出正在审批的工具。
     state = "needs_input";
     normalizedReason = "permission_request";
   } else if (rawEvent === "Notification") {

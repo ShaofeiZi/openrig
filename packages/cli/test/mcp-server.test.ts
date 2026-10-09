@@ -41,7 +41,7 @@ describe("MCP Server", () => {
     if (cleanup) await cleanup();
   });
 
-  // T1: MCP server lists all 18 tools
+  // T1：MCP server 列出全部 18 个工具
   it("lists all 18 tools", async () => {
     await setup();
     const result = await mcpClient.listTools();
@@ -69,7 +69,7 @@ describe("MCP Server", () => {
     await cleanup();
   });
 
-  // rig_add: posts the member fragment to the pod-members route.
+  // rig_add：把 member fragment POST 到 pod-members 路由。
   it("rig_add posts to the pod-members route and returns the added node", async () => {
     const postFn = vi.fn(async () => ({
       status: 201,
@@ -288,15 +288,15 @@ describe("MCP Server", () => {
     await cleanup();
   });
 
-  // T8: Transport connect/disconnect lifecycle
+  // T8：transport 连接/断开生命周期
   it("transport connects and disconnects cleanly", async () => {
     await setup();
 
-    // Verify server is responsive
+    // 验证 server 有响应
     const result = await mcpClient.listTools();
     expect(result.tools.length).toBe(18);
 
-    // Clean disconnect
+    // 干净断开
     await cleanup();
 
     // Create a fresh pair to verify we can reconnect
@@ -484,7 +484,7 @@ describe("MCP Server", () => {
     expect(result.isError).toBe(true);
     expect(postFn).not.toHaveBeenCalled();
     const parsed = JSON.parse((result.content as Array<{ text: string }>)[0]!.text);
-    expect(parsed.error).toContain("cannot be combined");
+    expect(parsed.error).toContain("不能与 force 同时使用");
     await cleanup();
   });
 
@@ -563,7 +563,7 @@ describe("MCP Server", () => {
 
     expect(result.isError).toBe(true);
     const parsed = JSON.parse((result.content as Array<{ text: string }>)[0]!.text);
-    expect(parsed.error).toContain("ambiguous");
+    expect(parsed.error).toContain("有歧义");
     await cleanup();
   });
 

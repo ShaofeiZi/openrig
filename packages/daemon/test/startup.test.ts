@@ -47,14 +47,11 @@ function seedDbWithStaleSessions(dbPath: string, rigs: { rigName: string; logica
   db.close();
 }
 
-describe("createDaemon startup composition", () => {
-  // V0.3.1 slice 05 kernel-rig-as-default — startup tests construct
-  // the daemon without booting the kernel rig. The kernel-boot path
-  // is exercised separately in kernel-boot.test.ts (unit) +
-  // kernel-rig-spec-validate.test.ts (variant gate); these tests
-  // assert the surrounding daemon-composition contract, so the
-  // OPENRIG_NO_KERNEL=1 escape hatch keeps them fast + deterministic
-  // regardless of the host's runtime-auth state.
+describe("createDaemon 启动组合", () => {
+  // V0.3.1 slice 05 kernel-rig-as-default——启动测试构造 daemon，但不启动 kernel rig。
+  // kernel 启动路径由 kernel-boot.test.ts（单元）与 kernel-rig-spec-validate.test.ts（variant gate）
+  // 分别覆盖；这些测试断言外围 daemon 组合契约，因此无论 host 的 runtime auth 状态如何，
+  // OPENRIG_NO_KERNEL=1 escape hatch 都能使它们快速且确定。
   beforeAll(() => {
     process.env.OPENRIG_NO_KERNEL = "1";
   });
@@ -62,7 +59,7 @@ describe("createDaemon startup composition", () => {
     delete process.env.OPENRIG_NO_KERNEL;
   });
 
-  it("calls cmuxAdapter.connect() during startup", async () => {
+  it("启动期间调用 cmuxAdapter.connect()", async () => {
     const connectCalled = vi.fn();
     const cmuxFactory: CmuxTransportFactory = async () => {
       connectCalled();
@@ -74,67 +71,66 @@ describe("createDaemon startup composition", () => {
 
     const { db } = await createDaemon({ cmuxFactory, tmuxExec });
 
-    // Factory was called during startup (connect() invoked)
+    // 启动期间调用了 factory（调用 connect()）。
     expect(connectCalled).toHaveBeenCalled();
 
     db.close();
   });
 
-  // Slice 51-01 stub-runtime — STEP 2 (Registry-B composition, RED-first): the PRODUCTION runtime-adapter
-  // registry assembled by createDaemon must register the "stub" adapter, so a runtime:stub seat resolves at
-  // the exposed AppDeps.runtimeAdapters map (NOT only via a test-injected instantiator map). RED now:
-  // startup.ts:898 runtimeAdapters = {claude-code, codex, pi, terminal} — no stub; goes green when the stub
-  // adapter is constructed + registered (step 4). Drives the REAL createDaemon composition, not a mock.
-  it("STEP2: createDaemon registers the stub adapter in the production runtimeAdapters registry [RED until startup.ts:898 adds stub]", async () => {
+  // Slice 51-01 stub-runtime——步骤 2（Registry-B 组合，RED-first）：createDaemon 组装的生产
+  // runtime-adapter registry 必须注册 "stub" adapter，使 runtime:stub seat 能在暴露的
+  // AppDeps.runtimeAdapters map 中解析（而不只是通过测试注入的 instantiator map）。当前为 RED：
+  // startup.ts:898 runtimeAdapters = {claude-code, codex, pi, terminal}——没有 stub；构造并注册 stub
+  // adapter（步骤 4）后转绿。驱动真实 createDaemon 组合，而非 mock。
+  it("步骤 2：createDaemon 在生产 runtimeAdapters registry 中注册 stub adapter [startup.ts:898 添加 stub 前为 RED]", async () => {
     const cmuxFactory: CmuxTransportFactory = async () => {
       throw Object.assign(new Error("no socket"), { code: "ENOENT" });
     };
     const tmuxExec: ExecFn = async () => "";
     const { db, deps } = await createDaemon({ cmuxFactory, tmuxExec });
     try {
-      expect(deps.runtimeAdapters, "AppDeps.runtimeAdapters exposed").toBeDefined();
-      expect(deps.runtimeAdapters!["stub"], "production runtimeAdapters registry must register the stub adapter").toBeDefined();
+      expect(deps.runtimeAdapters, "已暴露 AppDeps.runtimeAdapters").toBeDefined();
+      expect(deps.runtimeAdapters!["stub"], "生产 runtimeAdapters registry 必须注册 stub adapter").toBeDefined();
     } finally {
       db.close();
     }
-  }, 30000); // createDaemon full composition can exceed the 5s default on a cold start
+  }, 30000); // createDaemon 完整组合在冷启动时可能超过默认 5 秒。
 
-  // GHOST-STAGE (e/Class-B) seam-coexist pin: dev-driver's fold added the invalidateRetiringOccupant
-  // CALL at SeatHandoverService.commit() but no concrete invalidator was ever wired, so in production
-  // the call was a silent no-op. This asserts createDaemon now constructs + injects a real
-  // OccupantInvalidator — so the re-key invalidation actually FIRES (the service-level call-fires is
-  // pinned separately in seat-handover-service.test.ts). Never lose a live call while deduping.
-  it("wires a concrete OccupantInvalidator so the seat-handover re-key invalidation FIRES in production", async () => {
+  // GHOST-STAGE（e/Class-B）接缝共存锁定：dev-driver 的 fold 在 SeatHandoverService.commit() 中
+  // 增加了 invalidateRetiringOccupant 调用，但从未接入具体 invalidator，因此生产环境中该调用会
+  // 静默无效。这里断言 createDaemon 现在会构造并注入真实 OccupantInvalidator，使 re-key 失效在
+  // 生产环境中实际触发（service 级调用触发由 seat-handover-service.test.ts 单独锁定）。去重时绝不能
+  // 丢失 live 调用。
+  it("接入具体 OccupantInvalidator，使 seat-handover re-key 失效在生产环境中实际触发", async () => {
     const cmuxFactory: CmuxTransportFactory = async () => {
       throw Object.assign(new Error("no socket"), { code: "ENOENT" });
     };
     const tmuxExec: ExecFn = async () => "";
     const { db, deps } = await createDaemon({ cmuxFactory, tmuxExec });
     try {
-      expect(deps.occupantInvalidator, "AppDeps.occupantInvalidator must be constructed + injected").toBeDefined();
+      expect(deps.occupantInvalidator, "必须构造并注入 AppDeps.occupantInvalidator").toBeDefined();
       expect(typeof deps.occupantInvalidator!.invalidateRetiringOccupant).toBe("function");
     } finally {
       db.close();
     }
   }, 30000);
 
-  // Slice 51-01 stub-runtime — STEP 3 (first PRODUCTION dispatch proof, RED-first): the assembled
-  // PodRigInstantiator's PRIVATE adapters map (startup.ts:710 — a SEPARATE literal from the :898
-  // runtimeAdapters map STEP2 checks) must DISPATCH a runtime:stub seat to the stub adapter so its
-  // project() lifecycle method is REACHED. Drives the REAL createDaemon composition + the production
-  // instantiate() entry (NOT a test-injected adapters map; NOT error-string absence). RED now:
-  // adapters[:710] = {claude-code,codex,pi,terminal}, no stub → instantiate hits "No adapter for
-  // runtime stub" (rigspec-instantiator.ts:1669) and startNode/project (:130) are never reached.
-  // GREEN when step 4 registers the stub adapter at :710. The 30s timeout is HARNESS BUDGET (cold
-  // createDaemon compose), not product readiness.
-  it("STEP3: the assembled instantiator dispatches runtime:stub → the stub adapter's project() is REACHED [RED until startup.ts:710 adds stub]", async () => {
+  // Slice 51-01 stub-runtime——步骤 3（首个生产 dispatch 证明，RED-first）：组装后的
+  // PodRigInstantiator 私有 adapters map（startup.ts:710——与步骤 2 检查的 :898 runtimeAdapters map
+  // 是不同字面量）必须把 runtime:stub seat dispatch 给 stub adapter，从而到达其 project() 生命周期
+  // 方法。这里驱动真实 createDaemon 组合与生产 instantiate() entry（不是测试注入的 adapters map，
+  // 也不只检查错误字符串缺失）。当前为 RED：adapters[:710] = {claude-code,codex,pi,terminal}，
+  // 没有 stub → instantiate 遇到 "No adapter for runtime stub"（rigspec-instantiator.ts:1669），
+  // 永远不会到达 startNode/project（:130）。步骤 4 在 :710 注册 stub adapter 后转绿。30 秒超时是
+  // harness 预算（createDaemon 冷启动组合），不是产品 readiness。
+  it("步骤 3：组装后的 instantiator 将 runtime:stub dispatch 到 stub adapter 并到达 project() [startup.ts:710 添加 stub 前为 RED]", async () => {
     const cmuxFactory: CmuxTransportFactory = async () => {
       throw Object.assign(new Error("no socket"), { code: "ENOENT" });
     };
     const tmuxExec: ExecFn = async () => "";
 
-    // REAL fs: the assembled instantiator uses fs.readFileSync (startup.ts:709), so agent_ref must
-    // resolve to a real file at <rigRoot>/agents/impl/agent.yaml.
+    // 真实 fs：组装后的 instantiator 使用 fs.readFileSync（startup.ts:709），因此 agent_ref 必须
+    // 解析到 <rigRoot>/agents/impl/agent.yaml 上的真实文件。
     const rigRoot = fs.mkdtempSync(path.join(os.tmpdir(), "openrig-stub-dispatch-"));
     fs.mkdirSync(path.join(rigRoot, "agents", "impl"), { recursive: true });
     fs.writeFileSync(
@@ -142,8 +138,7 @@ describe("createDaemon startup composition", () => {
       `name: impl\nversion: "1.0.0"\nresources:\n  skills: []\nprofiles:\n  default:\n    uses:\n      skills: []`,
     );
 
-    // A real selected World is required before dispatch. Supply the shipped
-    // selector privately instead of relying on the operator's installation.
+    // dispatch 前需要真实的 selected World。私下提供随附 selector，不依赖操作员的安装。
     const worldPath = path.join(rigRoot, "world.yaml");
     fs.writeFileSync(worldPath, DEFAULT_SYSTEM_WORLD_MANIFEST);
     const saved = saveEnv("OPENRIG_CONTEXT_SYSTEM_WORLD");
@@ -153,16 +148,16 @@ describe("createDaemon startup composition", () => {
       const daemon = await createDaemon({ cmuxFactory, tmuxExec });
       db = daemon.db;
       const { deps } = daemon;
-      // Reach the PRODUCTION instantiator's private adapters map (startup.ts:710).
+      // 访问生产 instantiator 的私有 adapters map（startup.ts:710）。
       const adapters = (deps.podInstantiator as unknown as {
         deps: { adapters: Record<string, RuntimeAdapter> };
       }).deps.adapters;
 
       const stub = adapters["stub"];
-      // RED-now guard: pre-step-4 the production instantiator adapters map has no stub adapter.
-      expect(stub, "production instantiator adapters map (startup.ts:710) must register the stub adapter").toBeDefined();
+      // 当前 RED guard：步骤 4 前，生产 instantiator adapters map 没有 stub adapter。
+      expect(stub, "生产 instantiator adapters map（startup.ts:710）必须注册 stub adapter").toBeDefined();
 
-      // Observe the NAMED lifecycle method on the REAL production adapter (spy calls through).
+      // 观测真实生产 adapter 上具名的生命周期方法（spy 会透传调用）。
       const projectSpy = vi.spyOn(stub!, "project");
 
       const specYaml = RigSpecCodec.serialize({
@@ -179,16 +174,16 @@ describe("createDaemon startup composition", () => {
 
       const result = await deps.podInstantiator.instantiate(specYaml, rigRoot);
 
-      // Load-bearing assertion: dispatch reached the stub adapter's project() (startup-orchestrator.ts:130).
-      expect(projectSpy, `instantiate must dispatch project() to the production stub adapter: ${JSON.stringify(result)}`).toHaveBeenCalled();
+      // 承重断言：dispatch 到达 stub adapter 的 project()（startup-orchestrator.ts:130）。
+      expect(projectSpy, `instantiate 必须将 project() dispatch 到生产 stub adapter：${JSON.stringify(result)}`).toHaveBeenCalled();
     } finally {
       restoreEnv(saved);
       db?.close();
       fs.rmSync(rigRoot, { recursive: true, force: true });
     }
-  }, 30000); // harness budget (cold createDaemon compose), not product readiness
+  }, 30000); // harness 预算（createDaemon 冷启动组合），不是产品 readiness。
 
-  it("defaults terminal auth to local-trusted mode without minting a token file", async () => {
+  it("terminal auth 默认为 local-trusted 模式，且不创建 token 文件", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "openrig-terminal-auth-"));
     const priorHome = process.env.OPENRIG_HOME;
     const priorToken = process.env.OPENRIG_TERMINAL_BEARER_TOKEN;
@@ -215,7 +210,7 @@ describe("createDaemon startup composition", () => {
     }
   });
 
-  it("createDaemon app: GET /api/rigs/:rigId/sessions returns 200 (session routes mounted)", async () => {
+  it("createDaemon app：GET /api/rigs/:rigId/sessions 返回 200（session 路由已挂载）", async () => {
     const cmuxFactory: CmuxTransportFactory = async () => {
       throw Object.assign(new Error(""), { code: "ENOENT" });
     };
@@ -223,7 +218,7 @@ describe("createDaemon startup composition", () => {
 
     const { app, db, deps } = await createDaemon({ cmuxFactory, tmuxExec });
 
-    // Seed a rig so the sessions endpoint has something to query
+    // 预置 rig，使 sessions endpoint 有内容可查询。
     const rig = deps.rigRepo.createRig("r01");
 
     const res = await app.request(`/api/rigs/${rig.id}/sessions`);
@@ -234,7 +229,7 @@ describe("createDaemon startup composition", () => {
     db.close();
   });
 
-  it("createDaemon queue validation accepts first-class human seats without a materialized kernel rig", async () => {
+  it("没有实体化 kernel rig 时，createDaemon queue 校验仍接受一等 human seat", async () => {
     const cmuxFactory: CmuxTransportFactory = async () => {
       throw Object.assign(new Error(""), { code: "ENOENT" });
     };
@@ -270,12 +265,12 @@ describe("createDaemon startup composition", () => {
         body: "must still reject phantom rigs",
         nudge: false,
       }),
-    ).rejects.toThrow(/unknown rig/);
+    ).rejects.toThrow(/未知 rig/);
 
     db.close();
   });
 
-  it("createDaemon app: GET /api/adapters/cmux/status returns 200 (adapter routes mounted)", async () => {
+  it("createDaemon app：GET /api/adapters/cmux/status 返回 200（adapter 路由已挂载）", async () => {
     const cmuxFactory: CmuxTransportFactory = async () => {
       throw Object.assign(new Error(""), { code: "ENOENT" });
     };
@@ -291,7 +286,7 @@ describe("createDaemon startup composition", () => {
     db.close();
   });
 
-  it("passes daemon CLI reachability env and PATH into launched tmux sessions", async () => {
+  it("将 daemon CLI 可达性环境变量与 PATH 传入已启动的 tmux session", async () => {
     vi.stubEnv("PATH", "/proof/openrig/bin:/usr/bin:/bin");
     vi.stubEnv("OPENRIG_PORT", "17433");
     vi.stubEnv("OPENRIG_HOST", "127.0.0.1");
@@ -322,7 +317,7 @@ describe("createDaemon startup composition", () => {
     }
   });
 
-  it("GAP-7 projects the daemon HOME and default absolute CODEX_HOME into the production launch env", async () => {
+  it("GAP-7 将 daemon HOME 与默认绝对 CODEX_HOME 投影到生产 launch env", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "openrig-gap7-default-"));
     const daemonHome = path.join(root, "daemon-home");
     fs.mkdirSync(daemonHome, { recursive: true });
@@ -362,7 +357,7 @@ describe("createDaemon startup composition", () => {
     }
   });
 
-  it("GAP-7 shares one custom absolute CODEX_HOME between production session env and adapter config writes", async () => {
+  it("GAP-7 在生产 session env 与 adapter config 写入之间共享同一个自定义绝对 CODEX_HOME", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "openrig-gap7-custom-"));
     const daemonHome = path.join(root, "daemon-home");
     const codexHome = path.join(root, "daemon-codex");
@@ -396,7 +391,7 @@ describe("createDaemon startup composition", () => {
     }
   });
 
-  it("GAP-7 rejects relative CODEX_HOME during composition before any tmux session launch", async () => {
+  it("GAP-7 在组合期间、启动任何 tmux session 前拒绝相对 CODEX_HOME", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "openrig-gap7-relative-"));
     const saved = saveEnv("HOME", "CODEX_HOME");
     process.env.HOME = path.join(root, "daemon-home");
@@ -415,7 +410,7 @@ describe("createDaemon startup composition", () => {
         thrown = error;
       }
       expect(thrown).toBeInstanceOf(Error);
-      expect((thrown as Error).message).toMatch(/CODEX_HOME.*absolute/i);
+      expect((thrown as Error).message).toMatch(/CODEX_HOME.*绝对路径/);
       expect(tmuxExec.mock.calls.some((call) => call[0].includes("tmux new-session"))).toBe(false);
     } finally {
       result?.db.close();
@@ -424,13 +419,12 @@ describe("createDaemon startup composition", () => {
     }
   });
 
-  // OPR.0.4.3.28 Blocker 2 — the self-provisioned OPENRIG_URL must honor an
-  // explicit daemon bind host (the daemon binds only that host), not a hardcoded
-  // loopback that a tailnet/hostname-bound daemon is not listening on.
-  it("self-provisions OPENRIG_URL from an explicit bind host into launched tmux sessions", async () => {
+  // OPR.0.4.3.28 阻塞项 2——自动配置的 OPENRIG_URL 必须遵循显式 daemon bind host（daemon 只
+  // 绑定该 host），不能使用 tailnet/hostname-bound daemon 未监听的硬编码 loopback。
+  it("根据显式 bind host 自动配置 OPENRIG_URL，并传入已启动 tmux session", async () => {
     vi.stubEnv("OPENRIG_PORT", "17433");
     vi.stubEnv("OPENRIG_HOST", "100.64.0.5");
-    vi.stubEnv("OPENRIG_URL", ""); // NOT operator-supplied → daemon derives it
+    vi.stubEnv("OPENRIG_URL", ""); // 非操作员提供 → 由 daemon 推导。
     vi.stubEnv("OPENRIG_ACTIVITY_HOOK_TOKEN", "");
     const cmuxFactory: CmuxTransportFactory = async () => {
       throw Object.assign(new Error(""), { code: "ENOENT" });
@@ -453,7 +447,7 @@ describe("createDaemon startup composition", () => {
     }
   });
 
-  it("passes only explicitly allowlisted provider auth env into launched tmux sessions", async () => {
+  it("只将显式 allowlist 中的 provider auth env 传入已启动 tmux session", async () => {
     vi.stubEnv("OPENRIG_RECOVERY_PROVIDER_AUTH_ENV_ALLOWLIST", "ANTHROPIC_API_KEY,CLAUDE_CODE_OAUTH_TOKEN,OPENAI_API_KEY,BOGUS_TOKEN");
     vi.stubEnv("ANTHROPIC_API_KEY", "anthropic-test-key");
     vi.stubEnv("CLAUDE_CODE_OAUTH_TOKEN", "claude-oauth-test-token");
@@ -487,7 +481,7 @@ describe("createDaemon startup composition", () => {
     }
   });
 
-  it("collectAllowlistedProviderAuthEnv ignores empty, invalid, and unknown names", () => {
+  it("collectAllowlistedProviderAuthEnv 忽略空、非法与未知名称", () => {
     expect(collectAllowlistedProviderAuthEnv(
       "ANTHROPIC_API_KEY, nope, ../BAD, OPENAI_API_KEY, BOGUS_TOKEN, CLAUDE_CODE_OAUTH_TOKEN",
       {
@@ -502,7 +496,7 @@ describe("createDaemon startup composition", () => {
     });
   });
 
-  it("createDaemon wires node cmux service for POST /api/rigs/:rigId/nodes/:logicalId/open-cmux", async () => {
+  it("createDaemon 为 POST /api/rigs/:rigId/nodes/:logicalId/open-cmux 接入 node cmux service", async () => {
     const cmuxFactory: CmuxTransportFactory = async () => ({
       request: async (method: string) => {
         if (method === "capabilities") return { capabilities: ["workspace.current", "surface.create", "surface.focus"] };
@@ -536,7 +530,7 @@ describe("createDaemon startup composition", () => {
     db.close();
   });
 
-  it("createDaemon accepts cmuxExec, connect() probes the live cmux surface through it", async () => {
+  it("createDaemon 接受 cmuxExec，connect() 通过它探测 live cmux surface", async () => {
     const cmuxExec = vi.fn<ExecFn>().mockRejectedValue(
       Object.assign(new Error("command not found"), { code: "ENOENT" })
     );
@@ -544,9 +538,8 @@ describe("createDaemon startup composition", () => {
 
     const { db } = await createDaemon({ cmuxExec, tmuxExec });
 
-    // The injected cmuxExec was called during startup connect().
-    // The transport now probes the live command surface via `cmux --help`
-    // before issuing version-adaptive requests.
+    // 启动 connect() 期间调用了注入的 cmuxExec。transport 现在会先通过 `cmux --help` 探测 live
+    // command surface，再发出适配版本的请求。
     expect(cmuxExec).toHaveBeenCalled();
     const helpCall = cmuxExec.mock.calls.find(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("cmux --help")
@@ -556,7 +549,7 @@ describe("createDaemon startup composition", () => {
     db.close();
   });
 
-  it("createDaemon with cmuxExec that throws -> still degrades cleanly", async () => {
+  it("cmuxExec 抛错时，createDaemon 仍可干净降级", async () => {
     const cmuxExec = vi.fn<ExecFn>().mockRejectedValue(
       Object.assign(new Error("command not found"), { code: "ENOENT" })
     );
@@ -572,7 +565,7 @@ describe("createDaemon startup composition", () => {
     db.close();
   });
 
-  it("startup reconciles stale session: status=detached + event row in DB", async () => {
+  it("启动时对账陈旧 session：status=detached，且 DB 中存在 event row", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rigged-test-"));
     const dbPath = path.join(tmpDir, "test.sqlite");
 
@@ -580,8 +573,8 @@ describe("createDaemon startup composition", () => {
       { rigName: "r01", logicalId: "dev1-impl", sessionName: "r01-dev1-impl" },
     ]);
 
-    // tmux reports no sessions (session is gone):
-    // list-sessions returns empty; has-session throws (session not found)
+    // tmux 报告没有 session（session 已消失）：list-sessions 返回空；has-session 抛错
+    //（session not found）。
     const tmuxExec: ExecFn = async (cmd: string) => {
       if (cmd.includes("has-session")) throw new Error("session not found");
       return "";
@@ -590,12 +583,12 @@ describe("createDaemon startup composition", () => {
 
     const { db } = await createDaemon({ dbPath, tmuxExec, cmuxExec });
 
-    // After createDaemon returns, session should be detached
+    // createDaemon 返回后，session 应为 detached。
     const sessions = db.prepare("SELECT status FROM sessions").all() as { status: string }[];
     expect(sessions).toHaveLength(1);
     expect(sessions[0]!.status).toBe("detached");
 
-    // Event row should exist
+    // event row 应存在。
     const events = db.prepare("SELECT type FROM events WHERE type = 'session.detached'").all();
     expect(events).toHaveLength(1);
 
@@ -603,7 +596,7 @@ describe("createDaemon startup composition", () => {
     fs.rmSync(tmpDir, { recursive: true });
   });
 
-  it("startup reconciles multiple rigs: all stale sessions detached", async () => {
+  it("启动时对账多个 rig：所有陈旧 session 均 detached", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rigged-test-"));
     const dbPath = path.join(tmpDir, "test.sqlite");
 
@@ -620,13 +613,13 @@ describe("createDaemon startup composition", () => {
 
     const { db } = await createDaemon({ dbPath, tmuxExec, cmuxExec });
 
-    // Both sessions should be detached
+    // 两个 session 都应为 detached。
     const sessions = db.prepare("SELECT status FROM sessions ORDER BY session_name").all() as { status: string }[];
     expect(sessions).toHaveLength(2);
     expect(sessions[0]!.status).toBe("detached");
     expect(sessions[1]!.status).toBe("detached");
 
-    // Both events should exist
+    // 两个 event 都应存在。
     const events = db.prepare("SELECT type FROM events WHERE type = 'session.detached'").all();
     expect(events).toHaveLength(2);
 
@@ -634,22 +627,22 @@ describe("createDaemon startup composition", () => {
     fs.rmSync(tmpDir, { recursive: true });
   });
 
-  it("startup reconcile with empty DB runs without error", async () => {
+  it("空 DB 上的启动对账可无错运行", async () => {
     const tmuxExec: ExecFn = async () => "";
     const cmuxExec: ExecFn = async () => { throw Object.assign(new Error(""), { code: "ENOENT" }); };
 
     const { db } = await createDaemon({ tmuxExec, cmuxExec });
 
-    // No sessions, no events, no errors
+    // 没有 session、event 或错误。
     const sessions = db.prepare("SELECT * FROM sessions").all();
     expect(sessions).toHaveLength(0);
 
     db.close();
   });
 
-  // L1 cold-start tmux truth repair: startup must surface a compact reconcile
-  // summary so silent reconciliation drift is visible in daemon output.
-  it("startup logs compact reconcile summary line", async () => {
+  // L1 冷启动 tmux truth 修复：启动必须呈现紧凑 reconcile 摘要，使静默对账 drift 在 daemon
+  // 输出中可见。
+  it("启动时记录紧凑 reconcile 摘要行", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rigged-test-"));
     const dbPath = path.join(tmpDir, "test.sqlite");
 
@@ -668,7 +661,7 @@ describe("createDaemon startup composition", () => {
       const { db } = await createDaemon({ dbPath, tmuxExec, cmuxExec });
 
       const calls = logSpy.mock.calls.map((c: unknown[]) => String(c[0]));
-      const summary = calls.find((line) => line.startsWith("startup reconcile:"));
+      const summary = calls.find((line) => line.startsWith("启动协调："));
       expect(summary).toBeDefined();
       expect(summary).toMatch(/rigs=1\b/);
       expect(summary).toMatch(/checked=1\b/);
@@ -682,7 +675,7 @@ describe("createDaemon startup composition", () => {
     }
   });
 
-  it("does not let a throwing setDegradedHandler registration abort createDaemon", async () => {
+  it("setDegradedHandler 注册抛错不会中止 createDaemon", async () => {
     const cmuxFactory: CmuxTransportFactory = async () => {
       throw Object.assign(new Error(""), { code: "ENOENT" });
     };
@@ -702,7 +695,7 @@ describe("createDaemon startup composition", () => {
     db.close();
   });
 
-  it("isolates a throwing degradation callback body (streamStore.emit) from later work", async () => {
+  it("将抛错的 degradation callback body（streamStore.emit）与后续工作隔离", async () => {
     const cmuxFactory: CmuxTransportFactory = async () => {
       throw Object.assign(new Error(""), { code: "ENOENT" });
     };
@@ -730,8 +723,8 @@ describe("createDaemon startup composition", () => {
         slowOpRecorder: recorder,
       } as never);
       expect(captured).toBeTypeOf("function");
-      // A later degradation fires the supplied callback; a throwing emit inside
-      // its body must be swallowed, never escaping into wrapped work.
+      // 后续 degradation 会触发所提供 callback；其 body 内抛错的 emit 必须被吞掉，绝不能逸出到
+      // 被包装的工作。
       expect(() => captured!({ reason: "recorder_worker_failed", site: "recorder.worker" })).not.toThrow();
       eventLoopMonitor.stop();
       db.close();

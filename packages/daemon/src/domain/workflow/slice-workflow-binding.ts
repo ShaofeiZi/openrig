@@ -1,37 +1,32 @@
-// Slice Story View v1 — slice → workflow_instance binding helper.
+// 切片故事视图 v1——切片到 workflow_instance 的绑定辅助函数。
 //
-// Given a slice's qitem set, find the workflow_instance(s) that touch
-// any of those qitems. Two signals (UNION):
+// 给定切片的 qitem 集合，查找涉及其中任一 qitem 的 workflow_instance。使用两个信号取并集：
 //
-//   1. workflow_step_trails.prior_qitem_id IN (slice qitems)  -- step closure
-//      OR workflow_step_trails.next_qitem_id IN (slice qitems) -- step projection
-//      → instance has historically touched this slice
+//   1. workflow_step_trails.prior_qitem_id IN (slice qitems)——步骤关闭
+//      或 workflow_step_trails.next_qitem_id IN (slice qitems)——步骤投影
+//      → 表示实例历史上涉及该切片
 //   2. workflow_instances.current_frontier_json LIKE '%qitemId%'
-//      → instance is currently active on a slice qitem
+//      → 实例当前活跃在某个切片 qitem 上
 //
-// Returns the instance id(s) sorted by created_at DESC. v1 picks the
-// most-recent instance when multiple bind to the slice (per PRD: "when
-// a slice has more than one workflow_instance, v1 picks the most recent
-// or surfaces a 'multiple instances' indicator; driver picks the exact
-// UX with review at audit time"). The picked-most-recent
-// behavior is the operator-friendly default; the multiple-instance
-// indicator is exposed via the `additionalInstanceIds` field so the UI
-// can surface a "+N more" hint without losing data.
+// 返回按 created_at DESC 排序的实例 ID。多个实例绑定同一切片时，v1 选择最近
+// 实例（依据 PRD：“切片有多个 workflow_instance 时，v1 选择最近一个或显示
+// ‘多个实例’提示；具体 UX 由实现者在审计时评审确定”）。选择最近实例是对操作员
+// 友好的默认行为；同时通过 `additionalInstanceIds` 暴露其他实例，使 UI 可显示
+// “另有 N 个”而不丢失数据。
 //
-// MVP single-host context: this query runs ad-hoc per slice detail
-// fetch; not cached. The detail projector itself caches at the slice
-// indexer's TTL boundary.
+// MVP 单主机场景：查询在每次获取切片详情时临时运行，不缓存；详情投影器自身按切片
+// 索引器的 TTL 边界。
 
 import type Database from "better-sqlite3";
 
 export interface SliceWorkflowBinding {
-  /** The most recent workflow_instance touching the slice's qitem set. */
+/** 最近涉及切片 qitem 集合的 workflow_instance。 */
   instanceId: string;
   workflowName: string;
   workflowVersion: string;
   status: string;
   currentStepId: string | null;
-  /** Frontier qitem_ids parsed from the JSON column. */
+/** 从 JSON 列解析出的前沿 qitem_id。 */
   currentFrontier: string[];
   hopCount: number;
   createdAt: string;
@@ -40,7 +35,7 @@ export interface SliceWorkflowBinding {
 
 export interface SliceWorkflowBindingResult {
   primary: SliceWorkflowBinding | null;
-  /** Other instances touching the slice; surfaced for "+N more" UI. */
+/** 涉及该切片的其他实例，供 UI 显示“另有 N 个”。 */
   additionalInstanceIds: string[];
 }
 
@@ -64,7 +59,7 @@ export function findSliceWorkflowBinding(
 
   const instanceIds = new Set<string>();
 
-  // Signal 1: trails referencing slice qitems via prior_qitem_id or next_qitem_id.
+// 信号 1：轨迹通过 prior_qitem_id 或 next_qitem_id 引用切片 qitem。
   try {
     const placeholders = qitemIds.map(() => "?").join(",");
     const trailRows = db.prepare(
@@ -74,15 +69,14 @@ export function findSliceWorkflowBinding(
     ).all(...qitemIds, ...qitemIds) as Array<{ instance_id: string }>;
     for (const r of trailRows) instanceIds.add(r.instance_id);
   } catch {
-    // workflow_step_trails absent — skip
+    // workflow_step_trails 缺失，跳过。
   }
 
-  // Signal 2: live frontier on a slice qitem (active step packet).
-  // current_frontier_json is a JSON array of strings; LIKE '%"qitem"%'
-  // is a cheap heuristic that matches the JSON-encoded form. False
-  // positives possible if a qitem id appears as a substring of an
-  // unrelated id, but ULID prefix discipline (timestamps + random) makes
-  // collisions astronomically unlikely at single-host MVP scale.
+  // 信号 2：切片 qitem 上的实时前沿（活跃步骤 packet）。
+  // current_frontier_json 是字符串 JSON 数组；LIKE '%"qitem"%'
+// 这是匹配 JSON 编码形式的低成本启发式方法。若 qitem ID 作为其他字符串的子串
+  // 可能理论上匹配无关 ID，但 ULID 前缀规则（时间戳加随机值）使单主机 MVP 规模下的冲突概率
+  // 极低。
   try {
     for (const qid of qitemIds) {
       const liveRows = db.prepare(
@@ -92,12 +86,12 @@ export function findSliceWorkflowBinding(
       for (const r of liveRows) instanceIds.add(r.instance_id);
     }
   } catch {
-    // workflow_instances absent — skip
+    // workflow_instances 缺失，跳过。
   }
 
   if (instanceIds.size === 0) return { primary: null, additionalInstanceIds: [] };
 
-  // Resolve full rows; sort by created_at DESC; pick most recent as primary.
+// 解析完整记录，按 created_at DESC 排序，并选择最近一条作为主实例。
   const idList = Array.from(instanceIds);
   const idPlaceholders = idList.map(() => "?").join(",");
   let rows: InstanceRow[] = [];
@@ -127,8 +121,7 @@ function rowToBinding(row: InstanceRow): SliceWorkflowBinding {
     const parsed = JSON.parse(row.current_frontier_json);
     if (Array.isArray(parsed)) frontier = parsed.filter((x): x is string => typeof x === "string");
   } catch {
-    // malformed JSON — empty frontier (instance is in a degraded state;
-    // the v1 UI will still render the bound workflow_name + status).
+    // JSON 畸形时使用空前沿；实例处于降级状态，但 v1 UI 仍会渲染已绑定 workflow_name 和 status。
   }
   return {
     instanceId: row.instance_id,

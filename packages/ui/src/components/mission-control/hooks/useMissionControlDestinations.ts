@@ -1,4 +1,4 @@
-// PL-005 Phase B: phone-friendly destination candidates for route/handoff.
+// PL-005 B 阶段：适合手机端的路由/交接目标候选列表。
 import { useQuery } from "@tanstack/react-query";
 
 export interface MissionControlDestination {

@@ -1,11 +1,8 @@
-// PL-016 hardening v0+1 — fork_count gating integration test
-// for failed-launch accounting.
+// PL-016 加固 v0+1——失败启动计数的 fork_count gate 集成测试。
 //
-// Pins: when an agent_image-backed launch FAILS at the
-// startupOrchestrator stage, the AgentImageLibraryService receives
-// recordConsumption(id, { incrementForkCount: false }) ONLY — the
-// post-launch fork-count bump is gated on startupResult.ok===true.
-// Asserts via a spy on the library's recordConsumption method.
+// 固定项：agent_image 支持的启动在 startupOrchestrator 阶段失败时，AgentImageLibraryService
+// 只接收 recordConsumption(id, { incrementForkCount: false })；启动后的 fork-count 增量受
+// startupResult.ok===true 约束。通过监听 library 的 recordConsumption method 断言。
 
 import { describe, it, expect, vi } from "vitest";
 import { createFullTestDb } from "./helpers/test-app.js";
@@ -37,8 +34,7 @@ function mockTmux(): TmuxAdapter {
   } as unknown as TmuxAdapter;
 }
 
-/** Minimal RuntimeAdapter whose launchHarness returns failure —
- *  forces the instantiator's startupResult.ok to be false. */
+/** launchHarness 返回失败的最小 RuntimeAdapter，使 instantiator 的 startupResult.ok 为 false。 */
 function mockFailingAdapter(runtime = "claude-code"): RuntimeAdapter {
   return {
     runtime,
@@ -66,7 +62,7 @@ function mockSucceedingAdapter(runtime = "claude-code"): RuntimeAdapter {
 
 function mockFs(files: Record<string, string>): AgentResolverFsOps {
   return {
-    readFile: (p: string) => { if (p in files) return files[p]!; throw new Error(`Not found: ${p}`); },
+      readFile: (p: string) => { if (p in files) return files[p]!; throw new Error(`未找到：${p}`); },
     exists: (p: string) => p in files,
   };
 }
@@ -101,13 +97,11 @@ function makeRigSpec(): RigSpec {
   };
 }
 
-/** Hand-built in-memory AgentImageLibraryService — populated with a
- *  fake AgentImageEntry so getByNameVersion returns a usable image
- *  without needing a real on-disk manifest fixture. */
+/** 手工构建的内存 AgentImageLibraryService——填入虚假 AgentImageEntry，使 getByNameVersion
+ * 无需真实磁盘 manifest fixture 即可返回可用 image。 */
 function makeStubLibrary(): AgentImageLibraryService {
-  // Construct a real instance backed by an empty roots[] (no scan
-  // walks the filesystem); inject a fake entry into its internal
-  // map directly via type-cast.
+  // 构造由空 roots[] 支持的真实实例（扫描不会遍历文件系统），通过类型转换把虚假条目直接注入
+  // 内部 map。
   const lib = new AgentImageLibraryService({ roots: [] });
   const entry: AgentImageEntry = {
     id: "agent-image:test-image:1",
@@ -136,8 +130,8 @@ function makeStubLibrary(): AgentImageLibraryService {
   return lib;
 }
 
-describe("agent_image fork_count gating on launch outcome", () => {
-  it("FAILED launch: recordConsumption called once with { incrementForkCount: false } only", async () => {
+describe("基于启动结果的 agent_image fork_count gate", () => {
+  it("启动失败：recordConsumption 只调用一次，参数为 { incrementForkCount: false }", async () => {
     const db = createFullTestDb();
     const rigRepo = new RigRepository(db);
     const podRepo = new PodRepository(db);
@@ -150,8 +144,7 @@ describe("agent_image fork_count gating on launch outcome", () => {
     const fsOps = mockFs({ [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl") });
 
     const library = makeStubLibrary();
-    // Stub recordConsumption so the test doesn't try to write stats.json
-    // to /tmp/nonexistent — verifies call shape only.
+    // Stub recordConsumption，避免测试尝试把 stats.json 写入 /tmp/nonexistent；只验证调用结构。
     const recordConsumption = vi.spyOn(library, "recordConsumption").mockImplementation(() => {});
 
     const inst = new PodRigInstantiator({
@@ -166,7 +159,7 @@ describe("agent_image fork_count gating on launch outcome", () => {
     const yaml = RigSpecCodec.serialize(makeRigSpec());
     await inst.instantiate(yaml, RIG_ROOT);
 
-    // Pre-launch optimistic call must have happened with incrementForkCount: false
+    // 启动前的乐观调用必须已发生，且 incrementForkCount: false。
     const calls = recordConsumption.mock.calls;
     expect(calls.length).toBe(1);
     expect(calls[0]![0]).toBe("agent-image:test-image:1");
@@ -175,7 +168,7 @@ describe("agent_image fork_count gating on launch outcome", () => {
     db.close();
   });
 
-  it("SUCCESSFUL launch: recordConsumption called twice — pre-launch (false) + post-launch success (true)", async () => {
+  it("启动成功：recordConsumption 调用两次——启动前为 false，启动后成功时为 true", async () => {
     const db = createFullTestDb();
     const rigRepo = new RigRepository(db);
     const podRepo = new PodRepository(db);
@@ -202,7 +195,7 @@ describe("agent_image fork_count gating on launch outcome", () => {
     const yaml = RigSpecCodec.serialize(makeRigSpec());
     await inst.instantiate(yaml, RIG_ROOT);
 
-    // Two calls: pre-launch false, post-launch success true.
+    // 两次调用：启动前 false，启动后成功时 true。
     const calls = recordConsumption.mock.calls;
     expect(calls.length).toBe(2);
     expect(calls[0]![1]).toEqual({ incrementForkCount: false });

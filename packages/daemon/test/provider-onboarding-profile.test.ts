@@ -138,7 +138,7 @@ missions:
     `/api/context-packs/library/by-ref/profile?ref=world%2Finstall&situation=fresh&runtime=${runtime}` +
     `&profile=${profile}&mission=release-x&slice=08-provider-onboarding&rig=r1&seat=dev-guard`;
 
-  it("inspects the Codex bootstrap -> project/mission/role/task -> coverage-map sequence before delivery", async () => {
+  it("交付前检查 Codex bootstrap → project/mission/role/task → coverage-map 顺序", async () => {
     const res = await app.request(profileUrl("codex-coverage"));
     expect(res.status).toBe(200);
     const body = await res.json() as {
@@ -194,7 +194,7 @@ missions:
     expect(body.phases[1]?.pieces.every((piece) => piece.provenance.nominalPath.length > 0)).toBe(true);
   });
 
-  it("keeps the fuller guided profile selectable without copying its source", async () => {
+  it("保持更完整的引导 profile 可选，但不复制其来源", async () => {
     const coverageRes = await app.request(profileUrl("codex-coverage"));
     const guidedRes = await app.request(profileUrl("guided"));
     expect(coverageRes.status).toBe(200);
@@ -208,7 +208,7 @@ missions:
       .toBe(coverage.pieces.find((piece) => piece.atomId === "bootstrap")?.sha256);
   });
 
-  it("serves an exact authoritative section reached from the coverage map address", async () => {
+  it("提供通过 coverage map 地址到达的精确权威区段", async () => {
     const profileRes = await app.request(profileUrl("codex-coverage"));
     expect(profileRes.status).toBe(200);
     const profile = await profileRes.json() as { pieces: Array<{ atomId: string; text: string }> };
@@ -224,7 +224,7 @@ missions:
     });
   });
 
-  it("the map-removed negative control has no filename or source bytes to pass from", async () => {
+  it("移除 map 的反例没有可透传的文件名或来源字节", async () => {
     const negative = MANIFEST.replace([
       "      - id: coverage-map",
       "        atoms: [coverage-map]",
@@ -250,7 +250,7 @@ missions:
     expect(body.pieces.map((piece) => piece.text).join("\n")).not.toContain("Authoritative proof rule sentinel");
   });
 
-  it("refuses an unknown profile, runtime mismatch, or missing situated-context grant", async () => {
+  it("拒绝未知 profile、runtime 不匹配或缺少 situated-context 授权", async () => {
     const unknown = await app.request(profileUrl("not-real"));
     expect(unknown.status).toBe(400);
     expect(await unknown.json()).toMatchObject({ error: "profile_not_found" });

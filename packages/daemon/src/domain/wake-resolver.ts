@@ -1,10 +1,8 @@
 /**
- * L3b — resolve a seat[@generation] to a resume token for a wake, on the stores
- * that exist TODAY (ruling A): the `sessions` rows for the seat's session_name,
- * newest-first. No dedicated tenure ledger exists yet (that is the pooled
- * boot-capture atom); until it lands, "which tenures exist" = the sessions rows,
- * and a wake target that cannot be resolved REFUSES with a teaching listing —
- * raw tokens accepted, guessed tokens never.
+ * L3b——基于当前已有存储（裁决 A），将 seat[@generation] 解析为唤醒所需的恢复 token：
+ * 即该席位 session_name 对应的 `sessions` 行，按最新优先排列。目前尚无专用任期台账
+ *（它属于集中启动捕获原子）；在其落地前，“有哪些任期”等同于 sessions 行。无法解析的
+ * 唤醒目标会拒绝执行并列出可选项——允许显式原始 token，绝不猜测 token。
  */
 
 export interface WakeSessionRow {
@@ -17,7 +15,7 @@ export interface WakeSessionRow {
 
 export interface WakeResolveInput {
   seat: string;
-  /** 1 = newest tenure (default), 2 = next-older, … */
+  /** 1 = 最新任期（默认），2 = 再前一个任期，依此类推。 */
   generation?: number;
 }
 
@@ -33,7 +31,7 @@ export type WakeResolution =
   | { resolved: false; reason: string; known: KnownTenure[] };
 
 /**
- * @param rows sessions for the seat's session_name, NEWEST-FIRST (id DESC).
+ * @param rows 席位 session_name 对应的 sessions，按最新优先排列（id DESC）。
  */
 export function resolveWakeTarget(rows: WakeSessionRow[], input: WakeResolveInput): WakeResolution {
   const known: KnownTenure[] = rows.map((r, i) => ({
@@ -46,7 +44,7 @@ export function resolveWakeTarget(rows: WakeSessionRow[], input: WakeResolveInpu
   if (rows.length === 0) {
     return {
       resolved: false,
-      reason: `No known sessions for seat '${input.seat}'. It may never have run on this host, or its sessions predate resume-token capture.`,
+      reason: `席位 '${input.seat}' 没有已知会话。它可能从未在此主机上运行，或其会话早于恢复 token 捕获功能。`,
       known,
     };
   }
@@ -55,7 +53,7 @@ export function resolveWakeTarget(rows: WakeSessionRow[], input: WakeResolveInpu
   if (gen < 1 || gen > rows.length) {
     return {
       resolved: false,
-      reason: `Generation ${gen} does not exist for seat '${input.seat}' — only ${rows.length} tenure(s) recorded. Pick 1..${rows.length} (1 = newest).`,
+      reason: `席位 '${input.seat}' 不存在第 ${gen} 代——仅记录了 ${rows.length} 个任期。请选择 1..${rows.length}（1 = 最新）。`,
       known,
     };
   }
@@ -64,7 +62,7 @@ export function resolveWakeTarget(rows: WakeSessionRow[], input: WakeResolveInpu
   if (!row.resumeToken) {
     return {
       resolved: false,
-      reason: `Tenure ${gen} of seat '${input.seat}' has no captured resume token (not resumable). Try another generation, or pass a raw token to --wake.`,
+      reason: `席位 '${input.seat}' 的第 ${gen} 个任期没有捕获到恢复 token（不可恢复）。请尝试其他代，或向 --wake 传入原始 token。`,
       known,
     };
   }

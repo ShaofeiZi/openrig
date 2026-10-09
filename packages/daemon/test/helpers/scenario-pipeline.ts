@@ -1,17 +1,14 @@
 /**
- * Slice 51-02 (L2 test-system) — the scenario PIPELINE (parse → validate → run).
+ * Slice 51-02（L2 test-system）——scenario PIPELINE（parse → validate → run）。
  *
- * loadScenarioFile is the pure front: read a scenario YAML, resolve its `topology`
- * rig-spec path relative to the scenario file, validate the arch shape. I/O and
- * YAML-syntax failures throw a LOUD ScenarioLoadError; content problems return the
- * validator's error list (never a silent no-op).
+ * loadScenarioFile 是纯前端：读取 scenario YAML，相对 scenario 文件解析其 `topology` rig-spec
+ * 路径，再验证架构结构。I/O 和 YAML 语法失败会明确抛出 ScenarioLoadError；内容问题返回
+ * validator error list，绝不静默 no-op。
  *
- * runScenarioFile is the heavy integration back: it spawns a forced-local
- * scenario-local daemon under a hermetic scaffold, wires the real-deps adapter,
- * runs the validated scenario against the SHIPPED `rig` CLI as real subprocesses,
- * and tears the daemon down. The `up` verb stands up runtime:stub seats in real
- * tmux, so this path is the product-is-truth e2e — reserved for the integration
- * suite, not the pure unit tests.
+ * runScenarioFile 是重型 integration 后端：在 hermetic scaffold 下启动强制本地的 scenario-local
+ * 后台服务，接入 real-deps adapter，以真实子进程对正式 `zrig` CLI 运行已验证 scenario，最后
+ * 关闭后台服务。`up` verb 在真实 tmux 中启动 runtime:stub 席位，因此该路径是
+ * product-is-truth e2e，只供 integration suite 使用，不属于纯单元测试。
  */
 
 import { readFileSync, mkdirSync } from "node:fs";
@@ -36,10 +33,10 @@ import type { RunRecord } from "./scenario-run-record.js";
 import { stageTopologyRoot, deliverStubScripts, resolveStubScriptTargets } from "./scenario-stage.js";
 import { provisionTui, spawnShippedTui, type ProvisionedTui, type TuiProcessLike } from "./scenario-tui.js";
 
-/** The tui package root, resolved from this helper's own location. */
+/** 从本 helper 自身位置解析出的 tui package root。 */
 const TUI_PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "tui");
 
-/** Thrown when a scenario file cannot be read or parsed (loud I/O/syntax floor). */
+/** scenario 文件无法读取或解析时抛出，构成明确的 I/O/语法下限。 */
 export class ScenarioLoadError extends Error {
   readonly path: string;
   constructor(path: string, detail: string) {
@@ -49,7 +46,7 @@ export class ScenarioLoadError extends Error {
   }
 }
 
-/** Thrown when an `env` precondition (the fixture-level baton setup) fails. */
+/** `env` 前置条件（fixture 级 baton 设置）失败时抛出。 */
 export class ScenarioPreconditionError extends Error {
   constructor(detail: string) {
     super(`scenario precondition failed: ${detail}`);
@@ -57,7 +54,7 @@ export class ScenarioPreconditionError extends Error {
   }
 }
 
-/** Thrown when a scenario asks for a capability this daemon mode cannot honor. */
+/** scenario 请求当前后台服务模式无法满足的 capability 时抛出。 */
 export class ScenarioModeUnsupportedError extends Error {
   constructor(detail: string) {
     super(detail);
@@ -65,8 +62,8 @@ export class ScenarioModeUnsupportedError extends Error {
   }
 }
 
-/** Extract + shape-check `env.stub_scripts` (D1). Shape is validator-checked at
- *  load; this is the pipeline's own read of the same field. */
+/** 提取并检查 `env.stub_scripts` 结构（D1）。load 时 validator 已检查结构；这里是 pipeline
+ *  对同一字段的自身读取。 */
 export function extractStubScripts(env: Record<string, unknown> | undefined): Record<string, string> {
   const raw = env?.stub_scripts;
   if (raw === undefined) return {};
@@ -84,11 +81,10 @@ export function extractStubScripts(env: Record<string, unknown> | undefined): Re
 }
 
 /**
- * A queue-baton precondition (fixture level). The scenario asserts observables;
- * `env.queue` establishes a claimed baton via the SHIPPED `rig queue create|claim`
- * writes BEFORE the steps run — there is no queue action verb, so the baton lives
- * outside the scenario grammar (per the locked verb set), visibly documented in
- * the scenario file. Queue state is daemon-side, independent of any seat process.
+ * queue-baton 前置条件（fixture 级）。scenario 断言 observable；`env.queue` 在 step 运行前通过
+ * 正式 `zrig queue create|claim` 写入建立 claimed baton。由于没有 queue action verb，baton 按
+ * 锁定 verb set 位于 scenario grammar 外，并在 scenario 文件中显式记录。Queue state 位于
+ * 后台服务侧，与任何席位进程无关。
  */
 export interface QueuePrecondition {
   id: string;
@@ -96,11 +92,11 @@ export interface QueuePrecondition {
   destination: string;
   summary?: string;
   body?: string;
-  /** Claim the created qitem so it lands in-progress + owned by `destination`. */
+  /** claim 已创建 qitem，使其进入 in-progress 并归 `destination` 所有。 */
   claim?: boolean;
 }
 
-/** Extract + shape-check the `env.queue` preconditions (loud on a malformed entry). */
+/** 提取并检查 `env.queue` 前置条件结构；malformed entry 会明确失败。 */
 export function extractQueuePreconditions(env: Record<string, unknown> | undefined): QueuePrecondition[] {
   const q = env?.queue;
   if (q === undefined) return [];
@@ -128,7 +124,7 @@ export function extractQueuePreconditions(env: Record<string, unknown> | undefin
 export interface PreconditionContext {
   rigBin: string;
   readEnv: Record<string, string | undefined>;
-  /** Injected `rig` runner (defaults to the real subprocess runner; tests inject a spy). */
+  /** 注入的 `zrig` runner；默认真实子进程 runner，测试注入 spy。 */
   runRig?: (
     args: string[],
     env: Record<string, string | undefined>,
@@ -138,14 +134,13 @@ export interface PreconditionContext {
 }
 
 /**
- * Apply the queue-baton preconditions via shipped `rig queue` writes. Fail-closed.
+ * 通过正式 `zrig queue` 写入应用 queue-baton 前置条件。Fail-closed。
  *
- * Identity (post-P21): `--source` was RETIRED by P21 I3 (c4fad7b39, 2026-08-07 —
- * deprecated + IGNORED; queue-spine verbs stop sending body identity). The sender
- * now rides the transport header, which the CLI derives from OPENRIG_SESSION_NAME.
- * The fixture's declared provenance therefore travels as the per-call ENV identity
- * — creator = `source`, claimant = `destination` — the same transport-not-body
- * doctrine the product enforces, converging with it rather than working around it.
+ * Identity（P21 之后）：`--source` 已由 P21 I3 退役（c4fad7b39，2026-08-07），现已 deprecated
+ * 且忽略；queue-spine verb 不再发送 body identity。sender 现在通过 transport header 传递，CLI
+ * 从 OPENRIG_SESSION_NAME 派生。fixture 声明的 provenance 因此作为逐调用 ENV identity 传递：
+ * creator = `source`，claimant = `destination`。这与产品强制的 transport-not-body 原则一致，
+ * 不是绕过它。
  */
 export async function applyQueuePreconditions(
   preconditions: QueuePrecondition[],
@@ -175,7 +170,7 @@ export async function applyQueuePreconditions(
 
 export interface LoadedScenario {
   scenario: ValidatedScenario;
-  /** Absolute rig-spec path, resolved relative to the scenario file's directory. */
+  /** 相对 scenario 文件目录解析出的 rig-spec 绝对路径。 */
   topologyPath: string;
 }
 
@@ -187,7 +182,7 @@ export interface LoadScenarioOptions {
   topologyKind?: "stub" | "real";
 }
 
-/** Read + parse + validate a scenario file. Throws ScenarioLoadError on I/O/YAML failure. */
+/** 读取、解析并验证 scenario 文件；I/O/YAML 失败时抛出 ScenarioLoadError。 */
 export function loadScenarioFile(path: string, opts: LoadScenarioOptions = {}): LoadScenarioResult {
   let raw: string;
   try {
@@ -210,58 +205,53 @@ export function loadScenarioFile(path: string, opts: LoadScenarioOptions = {}): 
 }
 
 export interface RunScenarioFileOptions {
-  /** Path to the shipped `rig` bin (the single 51-04 invocation seam). */
+  /** 正式 `zrig` bin 路径（唯一 51-04 调用 seam）。 */
   rigBin: string;
   topologyKind?: "stub" | "real";
-  /** Base environment for the hermetic scaffold (HOME/PATH/TERM). */
+  /** hermetic scaffold 的基础环境（HOME/PATH/TERM）。 */
   baseEnv?: Record<string, string | undefined>;
-  /** Overrides forwarded to buildRealDeps (clock/sleep/appendRecord/defaults/normalizer). */
+  /** 转发给 buildRealDeps 的覆盖项（clock/sleep/appendRecord/defaults/normalizer）。 */
   deps?: Partial<Pick<RealDepsOptions, "now" | "sleep" | "appendRecord" | "defaults" | "normalizer">>;
   /**
-   * 51-04 opt-in: how the scenario-local daemon is stood up. ABSENT => host-mode,
-   * byte-identical to pre-51-04 (`defaultHostDaemon` = spawnScenarioDaemon with rigBin).
-   * Container-mode (scenario-container.ts) supplies its own spawner here; nothing else
-   * on the host-mode path changes, so the 51-02 contract stays byte-intact.
+   * 51-04 opt-in：如何启动 scenario-local 后台服务。缺失时使用 host-mode，与 51-04 之前
+   * 逐字节相同（`defaultHostDaemon` = 使用 rigBin 的 spawnScenarioDaemon）。Container-mode
+   *（scenario-container.ts）在这里提供自身 spawner；host-mode 路径的其他部分不变，因此
+   * 51-02 契约保持字节完整。
    */
   daemon?: ScenarioDaemonSpawner;
   /**
-   * 51-04 container-mode: the testbed image manifest identity (digest) this run
-   * executed against. When set, it is stamped onto every results-ledger record so
-   * runs are comparable across image versions (plan §4). ABSENT in host-mode.
+   * 51-04 container-mode：本次运行使用的 testbed image manifest identity（digest）。设置后
+   * 会盖到每条 results-ledger record 上，使不同 image version 的运行可比较（plan §4）。
+   * host-mode 下缺失。
    */
   imageId?: string;
   /**
-   * D7: how the shipped TUI is spawned when a scenario declares `env.tui: true`
-   * (the tui_socket surface reads a control socket that exists only inside a
-   * running TUI). ABSENT => the real binary. Injected by tests so the readiness
-   * and early-exit paths are exercisable without a terminal.
+   * D7：scenario 声明 `env.tui: true` 时如何启动正式 TUI。tui_socket surface 读取只存在于
+   * 运行中 TUI 内的 control socket。缺失时使用真实 binary；测试通过注入，使 readiness 与
+   * early-exit 路径无需 terminal 也可执行。
    */
   spawnTui?: (env: Record<string, string | undefined>) => TuiProcessLike;
-  /** D7: path to the shipped TUI entry (defaults to the built tui package main). */
+  /** D7：正式 TUI entry 路径，默认指向已构建 tui package main。 */
   tuiBin?: string;
   /**
-   * D8: the A3-R3 injected clock (an ISO instant) for this run. Threaded into the
-   * hermetic scaffold, which sets OPENRIG_TEST_CLOCK_NOW for every child — the
-   * daemon, the `rig` CLI, and the stub runner — so compaction-asset stamps and
-   * the stub's own stamps are deterministic. ABSENT => unset => real wall clock
-   * (production behavior). A determinism claim that does not pass this is
-   * asserting stability it never asked for.
+   * D8：本次运行注入的 A3-R3 时钟（ISO 时间点）。传入 hermetic scaffold，由其为后台服务、
+   * `zrig` CLI 与 stub runner 等每个 child 设置 OPENRIG_TEST_CLOCK_NOW，使 compaction-asset
+   * stamp 和 stub 自身 stamp 保持确定。缺失表示 unset，使用真实 wall clock（生产行为）。
+   * 未传递该值却声称确定性，等于断言并未请求的稳定性。
    */
   injectClockNow?: string;
   /**
-   * D7: readiness bounds for TUI provisioning. Exposed so the failure matrix can
-   * be exercised THROUGH this function (guard finding 3) rather than only against
-   * the helper — a helper-only pin cannot show that the pipeline propagates the
-   * named failure and still tears down.
+   * D7：TUI provisioning 的 readiness 边界。将其暴露，使 failure matrix 能穿过本函数执行
+   *（guard finding 3），而不是只测试 helper；只固定 helper 无法证明 pipeline 会传播具名失败
+   * 并继续 teardown。
    */
   tuiReadiness?: { readinessTimeoutMs?: number; probeIntervalMs?: number };
 }
 
 /**
- * Stamp the image manifest id onto every record an appendRecord sink receives. Returns
- * the ORIGINAL sink unchanged when no image id is supplied (host-mode: the ledger rows
- * stay byte-for-byte pre-51-04) or when there is no sink to record into. The stamp is a
- * COPY — the caller's record object is never mutated.
+ * 把 image manifest id 盖到 appendRecord sink 收到的每条 record。未提供 image id 时
+ *（host-mode：ledger row 与 51-04 之前逐字节相同），或没有可写入的 sink 时，原样返回原始
+ * sink。stamp 使用副本，绝不修改调用方 record object。
  */
 export function withImageId(
   appendRecord: ((rec: RunRecord) => void) | undefined,
@@ -272,33 +262,32 @@ export function withImageId(
 }
 
 /**
- * Stand a scenario-local daemon up and return the ScenarioDaemon contract. The default
- * is host-mode (`defaultHostDaemon`); 51-04 container-mode injects its own spawner via
- * RunScenarioFileOptions.daemon. runScenarioFile binds to whatever this returns purely
- * through the ScenarioDaemon interface, so the two modes are interchangeable.
+ * 启动 scenario-local 后台服务并返回 ScenarioDaemon contract。默认使用 host-mode
+ *（`defaultHostDaemon`）；51-04 container-mode 通过 RunScenarioFileOptions.daemon 注入自身
+ * spawner。runScenarioFile 只通过 ScenarioDaemon interface 绑定返回值，因此两种模式可互换。
  */
 export type ScenarioDaemonSpawner = (
   scaffold: HermeticScaffold,
   opts: RunScenarioFileOptions,
 ) => Promise<ScenarioDaemon>;
 
-/** Host-mode default — the verbatim pre-51-04 standup (spawnScenarioDaemon + rigBin). */
+/** Host-mode 默认值——逐字保留 51-04 之前的启动方式（spawnScenarioDaemon + rigBin）。 */
 export const defaultHostDaemon: ScenarioDaemonSpawner = (scaffold, opts) =>
   spawnScenarioDaemon(scaffold, { rigBin: opts.rigBin });
 
 /**
- * Pick the daemon spawner: the caller's opt-in override, else host-mode. An ABSENT
- * override yields the exact host-mode standup unchanged (the additive-opt-in fence that
- * keeps the 51-02 host-mode contract byte-intact — no PM 51-02 gate crossed).
+ * 选择后台服务 spawner：优先调用方 opt-in 覆盖，否则用 host-mode。覆盖缺失时完整保留原
+ * host-mode 启动方式；这是 additive-opt-in fence，使 51-02 host-mode 契约字节完整，不跨越
+ * PM 51-02 gate。
  */
 export function resolveScenarioDaemonSpawner(opts: RunScenarioFileOptions): ScenarioDaemonSpawner {
   return opts.daemon ?? defaultHostDaemon;
 }
 
 /**
- * Full e2e: load a scenario, spawn a forced-local scenario-local daemon, run the
- * validated scenario against the shipped `rig` CLI, and tear down. Throws
- * ScenarioLoadError (I/O/YAML) or an aggregated validation error before any spawn.
+ * 完整 e2e：加载 scenario，启动强制本地的 scenario-local 后台服务，对正式 `zrig` CLI 运行
+ * 已验证 scenario，再 teardown。任何 spawn 前，I/O/YAML 问题抛 ScenarioLoadError，内容问题
+ * 抛聚合 validation error。
  */
 export async function runScenarioFile(
   path: string,
@@ -312,9 +301,8 @@ export async function runScenarioFile(
   const preconditions = extractQueuePreconditions(loaded.loaded.scenario.env);
   const stubScripts = extractStubScripts(loaded.loaded.scenario.env);
 
-  // D1 key contract, checked against the SOURCE topology BEFORE any filesystem
-  // or process effect: a misspelled/ambiguous/duplicate/non-stub target must
-  // fail here, not after a daemon and a rig full of seats are already up.
+  // D1 key contract：在任何文件系统或进程 effect 前对 source topology 检查。拼错、有歧义、
+  // 重复或非 stub target 必须在这里失败，不能等后台服务和满席位工作组都启动后才失败。
   if (Object.keys(stubScripts).length > 0) {
     resolveStubScriptTargets(
       parseYaml(readFileSync(loaded.loaded.topologyPath, "utf-8")),
@@ -326,22 +314,20 @@ export async function runScenarioFile(
     ...(opts.baseEnv ? { baseEnv: opts.baseEnv } : {}),
     ...(opts.injectClockNow !== undefined ? { injectClockNow: opts.injectClockNow } : {}),
   });
-  // Seats launch with cwd under the scaffold so their managed writes (AGENTS.md,
-  // the stub sidecar) stay in scratch and never pollute the launch cwd.
+  // 席位以 scaffold 下的 cwd 启动，使其托管写入（AGENTS.md、stub sidecar）留在 scratch，
+  // 绝不污染 launch cwd。
   const seatCwd = join(scaffold.root, "seat-cwd");
   mkdirSync(seatCwd, { recursive: true });
   const daemon = await resolveScenarioDaemonSpawner(opts)(scaffold, opts);
   let tui: ProvisionedTui | undefined;
   try {
-    // L6 STEP-0 — container-mode translates the HOST topology path to the in-container staged path
-    // (host-mode has no stageTopology → the host path passes through unchanged). A stage/fence
-    // failure throws here (loud, named) and the finally tears the container down — never a mystery
-    // "Source not found" from `rig up` reading a host path it cannot see inside the container.
-    // D1 per-seat scripts (host-mode only). Container mode translates host paths
-    // into the container; composing that with host-side per-seat staging is not
-    // proven, so a scripted scenario there fails LOUD and named (routed to 51-04)
-    // rather than silently delivering scripts the container cannot see. Container
-    // mode WITHOUT scripts keeps its existing stage path byte-untouched.
+    // L6 STEP-0——container-mode 把主机 topology 路径转换为容器内 staged 路径；host-mode 没有
+    // stageTopology，主机路径原样透传。stage/fence 失败在此明确、具名抛出，finally 会 teardown
+    // 容器；绝不会让 `zrig up` 在容器内读取不可见主机路径后只报难解的 "Source not found"。
+    // D1 逐席位 script（仅 host-mode）。Container mode 把主机路径转换到容器内；尚未证明它与
+    // 主机侧逐席位 staging 可组合，因此带 script 的 container scenario 会明确、具名失败并路由到
+    // 51-04，而不是静默交付容器看不到的 script。无 script 的 container mode 保持现有 stage
+    // 路径字节不变。
     const wantsStubScripts = Object.keys(stubScripts).length > 0;
     if (wantsStubScripts && daemon.stageTopology) {
       throw new ScenarioModeUnsupportedError(
@@ -351,11 +337,10 @@ export async function runScenarioFile(
       );
     }
 
-    // Host mode with scripts: stage a SELF-CONTAINED topology root (the relative
-    // culture_file / local: agent closure travels), author a distinct cwd per seat
-    // in the staged copy, and deliver each mapped seat's script into its own cwd.
-    // No `--cwd` override then — resolveLaunchCwd would make one dir win for every
-    // seat, which is exactly what makes per-seat scripts impossible.
+    // 带 script 的 host mode：暂存自包含 topology root，让相对 culture_file / local: agent
+    // closure 一并传递；在 staged copy 中为每个席位编写不同 cwd，再把每个已映射席位的 script
+    // 投递到各自 cwd。此时不使用 `--cwd` 覆盖，否则 resolveLaunchCwd 会让一个目录覆盖所有席位，
+    // 正是导致逐席位 script 无法实现的原因。
     let staged: ReturnType<typeof stageTopologyRoot> | undefined;
     if (wantsStubScripts) {
       staged = stageTopologyRoot(loaded.loaded.topologyPath, join(scaffold.root, "topology"));
@@ -371,28 +356,25 @@ export async function runScenarioFile(
       daemon,
       rigBin: opts.rigBin,
       topologyPath: upTopologyPath,
-      // Staged runs author per-seat cwds IN the spec; a --cwd override would
-      // collapse them back to one directory.
+      // staged run 在 spec 内编写逐席位 cwd；--cwd 覆盖会把它们重新折叠到同一目录。
       seatCwd: staged ? undefined : seatCwd,
       scopeMission: typeof loaded.loaded.scenario.env?.scope_mission === "string"
         ? (loaded.loaded.scenario.env.scope_mission as string)
         : undefined,
       ...opts.deps,
-      // Container-mode stamps the image id onto every ledger row; host-mode (no
-      // imageId) leaves opts.deps.appendRecord exactly as supplied (byte-intact).
+      // Container-mode 把 image id 盖到每条 ledger row；host-mode 无 imageId，逐字保留
+      // opts.deps.appendRecord。
       appendRecord: withImageId(opts.deps?.appendRecord, opts.imageId),
     });
 
-    // Fixture-level preconditions (the baton) are applied RIGHT AFTER the topology
-    // is up: `rig queue create` rejects a destination whose rig is not yet up
-    // (unknown_destination_rig), so the baton cannot precede `up`. It is still setup,
-    // not an asserted observable — visibly declared in the scenario `env` block.
+    // Fixture 级前置条件（baton）在 topology 启动后立即应用：`zrig queue create` 会拒绝工作组
+    // 尚未启动的 destination（unknown_destination_rig），因此 baton 不能先于 `up`。它仍属于
+    // setup，而不是被断言的 observable，并在 scenario `env` block 中明确声明。
     let batonApplied = preconditions.length === 0;
-    // D7: the control socket lives INSIDE a running TUI, so an opted-in scenario
-    // provisions one after `up` — bounded readiness on a real `state` round-trip,
-    // named failure on early exit/timeout, and the socket path threaded into the
-    // read env so the tui_socket surface can find it. Never the operator's TUI:
-    // it runs in the scaffold's own tmux server (D5) on a scaffold socket path.
+    // D7：control socket 位于运行中的 TUI 内，因此 opt-in scenario 在 `up` 后 provision 一个。
+    // readiness 以真实 `state` 往返为有界条件，early exit/timeout 产生具名失败；socket path 注入
+    // read env，使 tui_socket surface 可找到它。绝不使用操作员 TUI：它运行在 scaffold 自身
+    // tmux server（D5）和 scaffold socket path 上。
     const wantsTui = loaded.loaded.scenario.env?.tui === true;
     const tuiSocketPath = join(scaffold.root, "tui.sock");
     const runAction: typeof baseDeps.runAction = async (verb, payload, seat) => {
@@ -408,7 +390,7 @@ export async function runScenarioFile(
           spawnTui: () => (opts.spawnTui ? opts.spawnTui(tuiEnv) : spawnShippedTui(resolveTuiBin(opts), tuiEnv)),
           ...(opts.tuiReadiness ?? {}),
         });
-        // the surface reader finds the socket through the SAME env the CLI reads
+        // surface reader 通过 CLI 读取的同一 env 找到 socket。
         daemon.readEnv.OPENRIG_TUI_SOCKET = tuiSocketPath;
       }
       return res;
@@ -416,13 +398,13 @@ export async function runScenarioFile(
 
     return await runValidatedScenario(loaded.loaded.scenario, { ...baseDeps, runAction });
   } finally {
-    // Teardown on EVERY path — success, assertion failure, or provisioning error.
+    // 每条路径都 teardown，包括成功、assertion failure 和 provisioning error。
     await tui?.stop().catch(() => {});
     await daemon.stop().catch(() => {});
   }
 }
 
-/** The shipped TUI entry (built package main); overridable for container/test runs. */
+/** 正式 TUI entry（已构建 package main）；container/test 运行可覆盖。 */
 function resolveTuiBin(opts: RunScenarioFileOptions): string {
   return opts.tuiBin ?? resolve(TUI_PACKAGE_ROOT, "dist", "main.js");
 }

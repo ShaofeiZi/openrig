@@ -1,15 +1,14 @@
-// Slice Story View v1 — slice → workflow_instance binding helper.
+// Slice Story View v1——slice → workflow_instance binding helper。
 //
-// Pins the load-bearing behaviors of findSliceWorkflowBinding:
+// 固定 findSliceWorkflowBinding 的承重行为：
 //
-//   - empty qitem set → no binding
-//   - no instance touches the slice qitems → no binding
-//   - trail signal: instance found via prior_qitem_id / next_qitem_id
-//   - live frontier signal: instance found via current_frontier_json LIKE
-//   - multiple instances bind: most-recent picked as primary; rest as
-//     additionalInstanceIds
-//   - terminal instance with empty frontier still binds via trail history
-//   - empty frontier_json parses to []
+//   - 空 qitem 集合 → 无 binding
+//   - 没有 instance 接触 slice qitem → 无 binding
+//   - trail signal：通过 prior_qitem_id / next_qitem_id 找到 instance
+//   - live frontier signal：通过 current_frontier_json LIKE 找到 instance
+//   - 多个 instance 绑定：最新者作为 primary，其余作为 additionalInstanceIds
+//   - frontier 为空的 terminal instance 仍通过 trail 历史绑定
+//   - 空 frontier_json 解析为 []
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -54,9 +53,8 @@ function insertInstance(db: Database.Database, opts: {
 }
 
 function ensureQitem(db: Database.Database, qitemId: string): void {
-  // workflow_step_trails has FK constraints to queue_items on both
-  // prior_qitem_id and next_qitem_id; FK enforcement is on, so the
-  // qitem rows have to exist before the trail rows can land.
+  // workflow_step_trails 在 prior_qitem_id 和 next_qitem_id 上都有指向 queue_items 的 FK 约束；
+  // FK enforcement 已启用，因此 qitem 行必须先于 trail 行存在。
   db.prepare(
     `INSERT OR IGNORE INTO queue_items
        (qitem_id, ts_created, ts_updated, source_session, destination_session, state, priority, body)
@@ -111,17 +109,17 @@ describe("PL-slice-story-view-v1 findSliceWorkflowBinding", () => {
 
   afterEach(() => db.close());
 
-  it("returns no binding for empty qitem set", () => {
+  it("空 qitem 集合不返回 binding", () => {
     expect(findSliceWorkflowBinding(db, [])).toEqual({ primary: null, additionalInstanceIds: [] });
   });
 
-  it("returns no binding when no instance touches the slice qitems", () => {
+  it("没有 instance 接触 slice qitem 时不返回 binding", () => {
     insertInstance(db, { instanceId: "inst-other", currentFrontier: ["q-other"] });
     insertTrail(db, { trailId: "t1", instanceId: "inst-other", stepId: "discovery", stepRole: "discovery-router", priorQitemId: "q-other" });
     expect(findSliceWorkflowBinding(db, ["q-slice-1", "q-slice-2"])).toEqual({ primary: null, additionalInstanceIds: [] });
   });
 
-  it("trail signal: binds when prior_qitem_id is in slice qitems", () => {
+  it("trail signal：prior_qitem_id 位于 slice qitem 中时绑定", () => {
     insertInstance(db, { instanceId: "inst-1", currentFrontier: [], currentStepId: "qa", hopCount: 4, status: "active" });
     insertTrail(db, { trailId: "t1", instanceId: "inst-1", stepId: "discovery", stepRole: "discovery-router", priorQitemId: "q-slice-1" });
     const result = findSliceWorkflowBinding(db, ["q-slice-1"]);
@@ -132,14 +130,14 @@ describe("PL-slice-story-view-v1 findSliceWorkflowBinding", () => {
     expect(result.additionalInstanceIds).toEqual([]);
   });
 
-  it("trail signal: binds when next_qitem_id is in slice qitems", () => {
+  it("trail signal：next_qitem_id 位于 slice qitem 中时绑定", () => {
     insertInstance(db, { instanceId: "inst-2", currentFrontier: [] });
     insertTrail(db, { trailId: "t2", instanceId: "inst-2", stepId: "delivery", stepRole: "delivery-driver", priorQitemId: "q-prior", nextQitemId: "q-slice-1" });
     const result = findSliceWorkflowBinding(db, ["q-slice-1"]);
     expect(result.primary?.instanceId).toBe("inst-2");
   });
 
-  it("live frontier signal: binds when current_frontier_json contains a slice qitem", () => {
+  it("live frontier signal：current_frontier_json 包含 slice qitem 时绑定", () => {
     insertInstance(db, { instanceId: "inst-live", currentFrontier: ["q-slice-active"], currentStepId: "delivery", status: "active" });
     const result = findSliceWorkflowBinding(db, ["q-slice-active"]);
     expect(result.primary?.instanceId).toBe("inst-live");
@@ -147,7 +145,7 @@ describe("PL-slice-story-view-v1 findSliceWorkflowBinding", () => {
     expect(result.primary?.status).toBe("active");
   });
 
-  it("multiple instances bind: most-recent picked as primary; rest exposed as additionalInstanceIds", () => {
+  it("多个 instance 绑定时选择最新者为 primary，其余公开为 additionalInstanceIds", () => {
     insertInstance(db, { instanceId: "inst-old", createdAt: "2026-05-01T00:00:00.000Z", currentFrontier: [] });
     insertInstance(db, { instanceId: "inst-mid", createdAt: "2026-05-02T00:00:00.000Z", currentFrontier: [] });
     insertInstance(db, { instanceId: "inst-new", createdAt: "2026-05-04T00:00:00.000Z", currentFrontier: [] });
@@ -159,7 +157,7 @@ describe("PL-slice-story-view-v1 findSliceWorkflowBinding", () => {
     expect(result.additionalInstanceIds.sort()).toEqual(["inst-mid", "inst-old"]);
   });
 
-  it("terminal instance with empty frontier still binds via trail history", () => {
+  it("frontier 为空的 terminal instance 仍通过 trail 历史绑定", () => {
     insertInstance(db, { instanceId: "inst-done", status: "completed", currentFrontier: [], currentStepId: null });
     insertTrail(db, { trailId: "t-done", instanceId: "inst-done", stepId: "qa", stepRole: "qa-tester", priorQitemId: "q-final", closureReason: "done" });
     const result = findSliceWorkflowBinding(db, ["q-final"]);
@@ -169,7 +167,7 @@ describe("PL-slice-story-view-v1 findSliceWorkflowBinding", () => {
     expect(result.primary?.currentFrontier).toEqual([]);
   });
 
-  it("malformed current_frontier_json parses to empty array (graceful)", () => {
+  it("格式错误的 current_frontier_json 优雅解析为空数组", () => {
     db.prepare(
       `INSERT INTO workflow_instances (instance_id, workflow_name, workflow_version, created_by_session, created_at, status, current_frontier_json)
        VALUES ('inst-bad', 'x', '1', 'c@r', '2026-05-04T00:00:00.000Z', 'active', 'not-valid-json')`
@@ -179,8 +177,8 @@ describe("PL-slice-story-view-v1 findSliceWorkflowBinding", () => {
     expect(result.primary?.currentFrontier).toEqual([]);
   });
 
-  it("union of trail + frontier signals deduplicates the same instance", () => {
-    // Single instance reachable via BOTH signals — should not appear twice.
+  it("trail + frontier signal 的 union 会对同一 instance 去重", () => {
+    // 同一 instance 可通过两种 signal 触达，不应出现两次。
     insertInstance(db, { instanceId: "inst-both", currentFrontier: ["q-1"] });
     insertTrail(db, { trailId: "t-both", instanceId: "inst-both", stepId: "x", stepRole: "r", priorQitemId: "q-1" });
     const result = findSliceWorkflowBinding(db, ["q-1"]);

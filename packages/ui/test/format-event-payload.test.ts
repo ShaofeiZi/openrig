@@ -1,4 +1,4 @@
-// V1 attempt-3 Phase 3 bounce-fix — A3 formatter tests.
+// V1 第三次尝试阶段 3 回修——A3 格式化器测试。
 
 import { describe, it, expect } from "vitest";
 import { formatEventPayload } from "../src/lib/format-event-payload.js";

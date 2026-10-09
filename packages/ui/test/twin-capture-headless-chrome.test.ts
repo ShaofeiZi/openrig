@@ -1,8 +1,8 @@
-// OPR.0.4.1.11.2 (FR-2 + FR-6) — deterministic headless-chrome screenshot argv + bounded verdict.
-// The timing flag is parameterized by capture kind: intent (static file://) RETAINS
-// --virtual-time-budget for a deterministic settle (D-1); proof (live http://) OMITS it because it
-// hangs on never-idle live routes (qa repro on candidate 7a578b32). classifyCaptureResult makes any
-// failure (timeout / non-zero / no-png) loud and bounded — never a silent hang.
+// OPR.0.4.1.11.2（FR-2 + FR-6）——确定性 headless-chrome 截图 argv + 有界判定。
+// timing 标志按捕获种类参数化：intent（静态 file://）保留
+// --virtual-time-budget 以确定性 settle（D-1）；proof（live http://）省略它，因它
+// 在永不 idle 的 live 路由上挂起（candidate 7a578b32 上 qa 复现）。classifyCaptureResult 使任何
+// 失败（超时 / 非零 / 无 png）响亮且有界——绝不静默挂起。
 import { describe, it, expect } from "vitest";
 import { buildChromeScreenshotArgs, classifyCaptureResult, fileUrl } from "../twin/capture/headless-chrome.js";
 

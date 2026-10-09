@@ -16,7 +16,7 @@ import { NativePermissionStore } from "./native-permission-store.js";
 import { RigRepository } from "./rig-repository.js";
 import type { AppliedLaunchObservation } from "./permission-drift.js";
 
-// -- Types --
+// -- 类型 --
 
 export interface StartupInput {
   rigId: string;
@@ -28,48 +28,43 @@ export interface StartupInput {
   resolvedStartupFiles: ResolvedStartupFile[];
   startupActions: StartupAction[];
   isRestore: boolean;
-  /** Session name for harness launch (used as --name flag). */
+  /** 运行环境启动使用的会话名称（用作 --name 参数）。 */
   sessionName?: string;
-  /** Resume token for restore path. Mutually exclusive with forkSource. */
+  /** 恢复路径使用的恢复令牌，与 forkSource 互斥。 */
   resumeToken?: string;
-  /** Runtime-native type for resumeToken (for example claude_id or codex_id). */
+  /** resumeToken 的运行时原生类型，例如 claude_id 或 codex_id。 */
   resumeType?: string;
   /**
-   * Fork-source for new-seat-from-prior-conversation path. Mutually
-   * exclusive with resumeToken. v1: kind="native_id" only. The captured
-   * post-fork token (returned by the adapter) is what gets persisted on
-   * the new seat — the parent token is NEVER persisted.
+   * 从旧对话创建新席位路径所用的分叉来源，与 resumeToken 互斥。v1 只支持
+   * kind="native_id"。新席位持久化的是适配器返回的分叉后令牌，绝不持久化父令牌。
    */
   forkSource?: ForkSource;
   /**
-   * Rebuild-mode artifact set (operator-declared via
-   * `session_source.mode: rebuild`). When set, the orchestrator merges
-   * these artifacts into the post-launch delivery path, fresh-launches
-   * the harness with NO `resumeToken` and NO `forkSource`, and records
-   * `continuityOutcome: "rebuilt"` on the seat. NEVER paired with
-   * `resumeToken` or `forkSource` — rebuild is a distinct creation path.
+   * 重建模式制品集合，由操作员通过 `session_source.mode: rebuild` 声明。设置后，编排器
+   * 会把这些制品合并到启动后交付路径，不带 `resumeToken` 或 `forkSource` 全新启动
+   * 运行环境，并在席位上记录 `continuityOutcome: "rebuilt"`。绝不与 `resumeToken` 或
+   * `forkSource` 搭配；rebuild 是独立的创建路径。
    */
   rebuildArtifacts?: ResolvedStartupFile[];
-  /** Skip harness launch (legacy nodes that already resumed via old helpers). */
+  /** 跳过运行环境启动，用于已通过旧辅助逻辑恢复的旧式节点。 */
   skipHarnessLaunch?: boolean;
-  /** Allow runtime adapter retry_fresh fallback when native resume data is stale. */
+  /** 原生恢复数据过期时，允许运行时适配器回退到 retry_fresh。 */
   allowFreshFallback?: boolean;
-  /** Exact resume must not overwrite the authored fresh-start context with its empty replay plan. */
+  /** 精确恢复不得用空重放计划覆盖用户编写的全新启动上下文。 */
   preserveStartupContext?: boolean;
-  /** Continue the same fresh occupant after a prerequisite, without another harness launch. */
+  /** 前置条件满足后继续使用同一全新使用者，不再次启动运行环境。 */
   continueFreshStartup?: boolean;
-  /** Deliberate fresh replacement retains the seat’s durable destination obligations. */
+  /** 主动全新替换会保留席位的持久目标义务。 */
   includeDurableObligations?: boolean;
-  /** Readiness timeout in ms (default 30000). */
+  /** 就绪超时，单位毫秒，默认 30000。 */
   readinessTimeoutMs?: number;
 }
 
 export type StartupResult =
   | { ok: true; startupStatus: "ready"; continuityOutcome: "resumed" | "fresh" | "forked" | "rebuilt" }
-  // `evidence` carries the last-N pane lines for `attention_required`
-  // outcomes so restore-orchestrator's per-node mapping can populate
-  // `attentionEvidence` on the RestoreNodeResult. Internal type only;
-  // not persisted on the failure event.
+  // `evidence` 为 `attention_required` 结果携带窗格末尾 N 行，使 restore-orchestrator
+  // 的逐节点映射能填充 RestoreNodeResult.attentionEvidence。它只属于内部类型，不会
+  // 持久化到失败事件。
   | { ok: false; startupStatus: "attention_required" | "failed"; errors: string[]; evidence?: string };
 
 interface StartupOrchestratorDeps {
@@ -77,31 +72,30 @@ interface StartupOrchestratorDeps {
   sessionRegistry: SessionRegistry;
   eventBus: EventBus;
   tmuxAdapter: TmuxAdapter;
-  /** Read file content for concrete-hint resolution. */
+  /** 读取文件内容，用于解析具体交付提示。 */
   readFile?: (path: string) => string;
-  /** Sleep between paste and submit for tmux-driven TUIs. */
+  /** 在由 tmux 驱动的 TUI 中，粘贴与提交之间等待。 */
   sleep?: (ms: number) => Promise<void>;
 }
 
 /**
- * Drives one node from projected resources to startup_status: ready.
+ * 驱动单个节点从资源投影走到 startup_status: ready。
  *
- * Sequence (NS-T05):
- * 1. Mark pending, emit node.startup_pending
- * 2. Project resources (filesystem)
- * 3. Deliver pre-launch files (guidance_merge, skill_install → filesystem)
- * 4. Launch harness via adapter.launchHarness()
- * 5. Wait for harness ready (retry with exponential backoff, 30s timeout)
- * 6. For fresh sessions, inject the built-in identity anchor as the first prompt
- *    and deliver remaining post-launch files (send_text → TUI)
- * 7. Execute after_files actions
- * 8. Execute after_ready actions
- * 9. Persist startup context + resume token
- * 10. Mark ready, emit node.startup_ready
+ * 执行顺序（NS-T05）：
+ * 1. 标记 pending，发出 node.startup_pending
+ * 2. 投影资源（文件系统）
+ * 3. 交付启动前文件（guidance_merge、skill_install → 文件系统）
+ * 4. 通过 adapter.launchHarness() 启动运行环境
+ * 5. 等待运行环境就绪（指数退避重试，30 秒超时）
+ * 6. 对全新会话，将内置身份锚点作为首条提示注入，并交付剩余启动后文件
+ *    （send_text → TUI）
+ * 7. 执行 after_files 操作
+ * 8. 执行 after_ready 操作
+ * 9. 持久化启动上下文与恢复令牌
+ * 10. 标记 ready，发出 node.startup_ready
  *
- * Failure leaves startup_status: failed, node visible.
- * The caller creates session + binding first via NodeLauncher,
- * then calls startNode() with the full startup payload.
+ * 失败时保留 startup_status: failed，节点仍可见。调用方先通过 NodeLauncher 创建
+ * 会话和绑定，再以完整启动载荷调用 startNode()。
  */
 export class StartupOrchestrator {
   readonly db: Database.Database;
@@ -112,8 +106,8 @@ export class StartupOrchestrator {
   private appliedLaunchStore: AppliedLaunchObservationStore;
 
   constructor(deps: StartupOrchestratorDeps) {
-    if (deps.db !== deps.sessionRegistry.db) throw new Error("StartupOrchestrator: sessionRegistry must share the same db handle");
-    if (deps.db !== deps.eventBus.db) throw new Error("StartupOrchestrator: eventBus must share the same db handle");
+    if (deps.db !== deps.sessionRegistry.db) throw new Error("StartupOrchestrator：sessionRegistry 必须共享同一个数据库句柄");
+    if (deps.db !== deps.eventBus.db) throw new Error("StartupOrchestrator：eventBus 必须共享同一个数据库句柄");
     this.db = deps.db;
     this.sessionRegistry = deps.sessionRegistry;
     this.eventBus = deps.eventBus;
@@ -133,12 +127,11 @@ export class StartupOrchestrator {
     try {
       input = { ...input, binding: new NativePermissionStore(this.db).apply(input.binding, input.adapter.runtime) };
     } catch (error) {
-      return this.fail(input, "failed", [`Permission selection: ${(error as Error).message}`]);
+      return this.fail(input, "failed", [`权限选择：${(error as Error).message}`]);
     }
-    // #25: launch, restore replay, relaunch, continue and added members deliver
-    // guidance through here, so the rig's managed-block destination is bound once
-    // for the adapter. Handover does not come here: the successor launches directly
-    // and reads the file already written in its cwd.
+    // #25：启动、恢复重放、重新启动、继续以及新增成员都从这里交付指引，因此工作组的
+    // 受管区块目标只需为适配器绑定一次。交接不经过这里：后继者直接启动，并读取已写入
+    // 其 cwd 的文件。
     const claudeManagedBlockFile = new RigRepository(this.db).getRigClaudeManagedBlockFile(input.rigId);
     if (claudeManagedBlockFile) input = { ...input, binding: { ...input.binding, claudeManagedBlockFile } };
     const errors: string[] = [];
@@ -152,40 +145,42 @@ export class StartupOrchestrator {
     let appliedLaunch: AppliedLaunchObservation | undefined;
     const launchGeneration = this.sessionRegistry.currentOccupantTenure(input.nodeId)?.generationUuid;
 
-    // 1. Mark pending
+    // 1. 标记为 pending。
     this.sessionRegistry.updateStartupStatus(input.sessionId, "pending");
     const context = input.isRestore ? "restore" : "fresh_start";
     let startupProof: StartupProofSelection;
     try {
       startupProof = resolveStartupProof(input.startupActions, context);
     } catch (err) {
-      return this.fail(input, "failed", [`Startup proof selection: ${(err as Error).message}`]);
+      return this.fail(input, "failed", [`启动证明选择：${(err as Error).message}`]);
     }
     this.eventBus.emit({ type: "node.startup_pending", rigId: input.rigId, nodeId: input.nodeId, startupProof });
 
-    // 2. Project resources
+    // 2. 投影资源。
     let projectionResult: ProjectionResult;
     try {
       projectionResult = await input.adapter.project(input.plan, input.binding);
       if (projectionResult.failed.length > 0) {
         for (const f of projectionResult.failed) {
-          errors.push(`Projection failed for ${f.effectiveId}: ${f.error}`);
+          // 保留英文前缀：retry-first-start 会用它识别首次启动在原生运行环境启动前失败的
+          // 持久事件。前缀之后的说明可以本地化，但 marker 本身属于兼容协议。
+          errors.push(`Projection failed for ${f.effectiveId}: 投影失败：${f.error}`);
         }
         return this.fail(input, "failed", errors);
       }
     } catch (err) {
-      errors.push(`Projection error: ${(err as Error).message}`);
+      // 与上面的失败前缀相同，这是 retry-first-start 识别旧事件所需的稳定 marker。
+      errors.push(`Projection error: 投影错误：${(err as Error).message}`);
       return this.fail(input, "failed", errors);
     }
 
-    // 3. Partition startup files by concrete hint: pre-launch (filesystem) vs post-launch (TUI)
-    // Note: new file-building paths (NS-T05+) emit only concrete hints. The auto fallback
-    // is compatibility-only for pre-NS-T05 persisted startup contexts in node_startup_context.
+    // 3. 按具体提示划分启动文件：启动前（文件系统）与启动后（TUI）。注意：新的文件构建
+    // 路径（NS-T05+）只生成具体提示；auto 回退仅用于兼容 node_startup_context 中 NS-T05
+    // 之前持久化的启动上下文。
     //
-    // Rebuild-mode artifacts (when set) are merged in front of resolvedStartupFiles
-    // so the operator's trust-precedence ordering is preserved when the post-launch
-    // delivery loop walks the array. Rebuild artifacts are tagged
-    // appliesOn: ["fresh_start"] by the resolver, which matches the rebuild context.
+    // 设置重建模式制品后，将其合并到 resolvedStartupFiles 前面，使启动后交付循环遍历数组
+    // 时保留操作员信任优先顺序。解析器会把重建制品标记为 appliesOn: ["fresh_start"]，
+    // 与重建上下文一致。
     const sourceFiles = input.rebuildArtifacts && input.rebuildArtifacts.length > 0
       ? [...input.rebuildArtifacts, ...input.resolvedStartupFiles]
       : input.resolvedStartupFiles;
@@ -203,22 +198,22 @@ export class StartupOrchestrator {
       }
     }
 
-    // 4. Deliver pre-launch files (filesystem: guidance_merge, skill_install)
-    // Always call even with empty list so adapters can provision runtime-specific config (e.g. context collectors)
+    // 4. 交付启动前文件（文件系统：guidance_merge、skill_install）。即使列表为空也始终调用，
+    // 使适配器可以配置运行时专用设置，例如上下文收集器。
     try {
       const deliveryResult = await input.adapter.deliverStartup(preLaunchFiles, input.binding);
       if (deliveryResult.failed.length > 0) {
         for (const f of deliveryResult.failed) {
-          errors.push(`Pre-launch file delivery failed: ${f.path}: ${f.error}`);
+          errors.push(`启动前文件交付失败：${f.path}：${f.error}`);
         }
         return this.fail(input, "failed", errors);
       }
     } catch (err) {
-      errors.push(`Pre-launch delivery error: ${(err as Error).message}`);
+      errors.push(`启动前交付错误：${(err as Error).message}`);
       return this.fail(input, "failed", errors);
     }
 
-    // 7. Persist startup context for restore replay
+    // 7. 持久化启动上下文，供恢复时重放。
     if (!input.preserveStartupContext) try {
       this.db.prepare(
         "INSERT OR REPLACE INTO node_startup_context (node_id, projection_entries_json, resolved_files_json, startup_actions_json, runtime) VALUES (?, ?, ?, ?, ?)"
@@ -230,10 +225,10 @@ export class StartupOrchestrator {
         input.adapter.runtime,
       );
     } catch (error) {
-      return this.fail(input, "failed", [`Startup context persistence failed: ${String(error)}`]);
+      return this.fail(input, "failed", [`启动上下文持久化失败：${String(error)}`]);
     }
 
-    // 5. Launch harness (unless skipped for legacy nodes)
+    // 5. 启动运行环境，旧式节点明确跳过时除外。
     if (!input.skipHarnessLaunch) {
       try {
         let launchResumeToken = input.resumeToken;
@@ -269,17 +264,13 @@ export class StartupOrchestrator {
             continue;
           }
 
-          // Pod-aware Codex auth-refusal (probe → verifyResumeLaunch →
-          // recovery: "attention_required"). Surface as attention_required
-          // startup_status with evidence so restore-orchestrator's per-node
-          // mapping at lines 867-877 can return RestoreNodeResult with
-          // status: "attention_required" + attentionEvidence (mirroring the
-          // legacy mapping at :725-735).
+          // pod 感知的 Codex 认证拒绝（probe → verifyResumeLaunch → recovery:
+          // "attention_required"）。将其显示为带证据的 attention_required startup_status，
+          // 使 restore-orchestrator 的逐节点映射能返回 status: "attention_required" 与
+          // attentionEvidence，与旧式映射保持一致。
           if (launchResult.recovery === "attention_required") {
-            // Preserve the attempted lineage for later no-input reconciliation,
-            // but do not certify it: attention also covers runner exits/timeouts.
-            // retry_fresh already cleared launchResumeToken; ordinary failures
-            // skip this branch.
+            // 保留本次尝试的谱系，供之后无输入协调使用，但不认证它；attention 也涵盖 runner
+            // 退出或超时。retry_fresh 已清除 launchResumeToken；普通失败不会进入此分支。
             const normalizedResumeToken = launchResumeToken?.trim();
             const normalizedResumeType = input.resumeType?.trim();
             if (normalizedResumeToken && normalizedResumeType) {
@@ -289,25 +280,25 @@ export class StartupOrchestrator {
                   normalizedResumeType,
                   normalizedResumeToken,
                 );
-              } catch { /* best-effort */ }
+              } catch { /* 尽力而为 */ }
             }
-            errors.push(`Harness launch requires attention: ${launchResult.error}`);
-            // isRestore selects context, not native continuity: pod-aware exact
-            // resume also uses false. Only an actual fresh launch may re-prime.
+            errors.push(`运行环境启动需要处理：${launchResult.error}`);
+            // isRestore 选择上下文而非原生连续性；pod 感知的精确恢复也使用 false。只有真正的
+            // 全新启动才能重新预热。
             return this.fail(input, "attention_required", errors, launchResult.evidence, continuityOutcome === "fresh");
           }
 
-          errors.push(`Harness launch failed: ${launchResult.error}`);
+          errors.push(`运行环境启动失败：${launchResult.error}`);
           return this.fail(input, "failed", errors);
         }
       } catch (err) {
-        errors.push(`Harness launch error: ${(err as Error).message}`);
+        errors.push(`运行环境启动错误：${(err as Error).message}`);
         return this.fail(input, "failed", errors);
       }
     }
 
-    // A successful new lean launch replaces the occupant's proof boundary even
-    // if readiness later fails. Failed launches and resume/adopt retain history.
+    // 新精简启动成功后，即使后续就绪检查失败，也会替换使用者的证明边界。启动失败以及
+    // resume/adopt 会保留历史。
     const isFreshLaunch = continuityOutcome === "fresh" && (!input.skipHarnessLaunch || input.continueFreshStartup === true);
     const shouldChallenge = isFreshLaunch
       && input.adapter.runtime !== "terminal" && startupProof.mode === "authenticated";
@@ -318,31 +309,29 @@ export class StartupOrchestrator {
       });
     }
 
-    // 6. Wait for harness readiness (retry with exponential backoff, 30s timeout)
+    // 6. 等待运行环境就绪，使用指数退避重试，默认 30 秒超时。
     try {
       const readiness = await this.waitForReady(input.adapter, input.binding, input.readinessTimeoutMs ?? 30_000);
       if (!readiness.ready) {
         if (isAttentionRequiredReadinessCode(readiness.code)) {
-          errors.push(`Startup requires attention: ${readiness.reason ?? "unknown"}`);
+          errors.push(`启动需要处理：${readiness.reason ?? "unknown"}`);
           return this.fail(input, "attention_required", errors, undefined, isFreshLaunch);
         }
-        errors.push(`Readiness timeout after 30s — harness did not become interactive: ${readiness.reason ?? "unknown"}`);
+        errors.push(`就绪检查在 30 秒后超时——运行环境未进入可交互状态：${readiness.reason ?? "unknown"}`);
         return this.fail(input, "failed", errors);
       }
     } catch (err) {
-      errors.push(`Readiness check error: ${(err as Error).message}`);
+      errors.push(`就绪检查错误：${(err as Error).message}`);
       return this.fail(input, "failed", errors);
     }
 
-    // The adapter returned the exact enforcing value it inserted, and readiness
-    // proved this managed launch became live. Persistence is deliberately
-    // best-effort: observation failure yields UNKNOWN, never a failed launch.
+    // 适配器返回它实际插入的强制值，且就绪检查证明本次受管启动已存活。持久化刻意采用
+    // 尽力而为策略：观测失败会得到 UNKNOWN，绝不会让启动失败。
     if (appliedLaunch && launchGeneration) {
       this.appliedLaunchStore.recordGeneration(launchGeneration, appliedLaunch);
     }
 
-    // Issue selected proof only once the runtime can receive its prompt.
-    // Persist ground truth BEFORE delivering any proof prompt.
+    // 只有运行时能够接收提示后才发出所选证明；在交付任何证明提示前持久化事实。
     const identityAction = this.extractSessionIdentityAction(input.startupActions, context);
     const challenge = shouldChallenge
       ? issueStartupChallenge(this.eventBus, {
@@ -352,8 +341,8 @@ export class StartupOrchestrator {
         })
       : null;
 
-    // A selected proof still works without a session_identity action: deliver
-    // its standalone prompt after the post-launch contract files below.
+    // 即使没有 session_identity 操作，所选证明仍然有效：在下方启动后契约文件之后交付其
+    // 独立提示。
     const consumedActions = new Set<StartupAction>();
     let challengeOnlyPrompt: string | null = null;
     if (continuityOutcome === "fresh" && identityAction) {
@@ -367,18 +356,14 @@ export class StartupOrchestrator {
       challengeOnlyPrompt = challenge.promptBlock;
     }
 
-    // OPR.0.4.7.17 restore-order-correction (qitem-e99624f7). On a resumed
-    // restore the work-triggering guidance/role.md is delivered as a post-launch
-    // send_text file (step 7 below) and starts the seat's first turn at once. An
-    // after_ready send_text "BEFORE you do anything else, load skills" preload
-    // delivered later (step 9) therefore lands AFTER work has begun — the locked
-    // action-before-work contract fails. Fix CAUSALLY, not by widening the send
-    // delay: on restore, bundle the applicable after_ready send_text preload
-    // action(s) IN FRONT of the first send_text post-launch file and deliver them
-    // as the single leading turn — the restore analogue of the fresh
-    // deliverInitialSessionPrompt identity+role.md bundle. Sequencing (not
-    // timing) guarantees the preload precedes the role-triggered work turn; the
-    // bundled actions are marked consumed so step 9 does not re-send them.
+    // OPR.0.4.7.17 恢复顺序修正（qitem-e99624f7）。恢复已有会话时，触发工作的
+    // guidance/role.md 作为启动后 send_text 文件交付（下方步骤 7），会立即开启席位第一轮。
+    // 如果之后才在步骤 9 交付 after_ready send_text 的“先加载 Skill 再做其他事”预载，
+    // 它会落在工作开始之后，违反已锁定的“操作先于工作”契约。修复必须基于因果顺序，
+    // 而不是延长发送等待：恢复时，把适用的 after_ready send_text 预载操作放在第一个
+    // 启动后 send_text 文件前，一并作为首轮交付。这相当于全新启动中的
+    // deliverInitialSessionPrompt 身份 + role.md 组合。顺序而非时间保证预载先于角色触发的
+    // 工作轮次；组合后的操作标记为已消费，步骤 9 不再重复发送。
     if (continuityOutcome !== "fresh") {
       const preloadActions = input.startupActions.filter(
         (a) =>
@@ -399,66 +384,61 @@ export class StartupOrchestrator {
       }
     }
 
-    // 7. Deliver post-launch files (send_text → TUI, now that harness is ready)
+    // 7. 运行环境就绪后交付启动后文件（send_text → TUI）。
     if (postLaunchFiles.length > 0) {
       try {
         const deliveryResult = await input.adapter.deliverStartup(postLaunchFiles, input.binding);
         if (deliveryResult.failed.length > 0) {
           for (const f of deliveryResult.failed) {
-            errors.push(`Post-launch file delivery failed: ${f.path}: ${f.error}`);
+            errors.push(`启动后文件交付失败：${f.path}：${f.error}`);
           }
           return this.fail(input, "failed", errors);
         }
       } catch (err) {
-        errors.push(`Post-launch delivery error: ${(err as Error).message}`);
+        errors.push(`启动后交付错误：${(err as Error).message}`);
         return this.fail(input, "failed", errors);
       }
     }
 
-    // OPR.0.4.3.06 — deliver the synthesized challenge-only prompt after the
-    // contract files. Best-effort: a failed send leaves oriented `missing`
-    // (honest), it does NOT fail an otherwise-good startup.
+    // OPR.0.4.3.06 —— 在契约文件之后交付合成的纯 challenge 提示。采用尽力而为策略：
+    // 发送失败会让 oriented 如实保持 `missing`，但不会让原本正常的启动失败。
     if (challengeOnlyPrompt && input.binding.tmuxSession) {
       await this.sendInteractiveText(input.binding.tmuxSession, challengeOnlyPrompt);
     }
 
-    // 8. Execute after_files actions
+    // 8. 执行 after_files 操作。
     const afterFilesResult = await this.executeActions(input, "after_files");
     if (!afterFilesResult.ok) {
       return this.fail(input, "failed", afterFilesResult.errors);
     }
 
-    // 9. Execute after_ready actions (skipping any preload actions already
-    // delivered ahead of role.md by the restore-order bundling above).
+    // 9. 执行 after_ready 操作，跳过上方恢复顺序组合中已在 role.md 前交付的预载操作。
     const afterReadyResult = await this.executeActions(input, "after_ready", consumedActions);
     if (!afterReadyResult.ok) {
       return this.fail(input, "failed", afterReadyResult.errors);
     }
 
-    // Delivering the first native prompt can reveal a provider refusal or
-    // interactive gate. A positive attention requirement is not ready.
+    // 交付首个原生提示可能暴露提供方拒绝或交互门禁；明确需要处理并不等于就绪。
     if (postLaunchFiles.length > 0) {
       try {
         const readiness = await input.adapter.checkReady(input.binding);
         if (!readiness.ready && isAttentionRequiredReadinessCode(readiness.code)) {
-          return this.fail(input, "attention_required", [readiness.reason ?? "The native provider prerequisite failed after context delivery."]);
+          return this.fail(input, "attention_required", [readiness.reason ?? "上下文交付后，原生提供方前置条件失败。"]);
         }
       } catch (error) {
-        return this.fail(input, "attention_required", [`Post-delivery runtime state is unavailable: ${(error as Error).message}`]);
+        return this.fail(input, "attention_required", [`交付后的运行时状态不可用：${(error as Error).message}`]);
       }
     }
 
-    // 8. Mark ready
+    // 10. 标记为 ready。
     this.sessionRegistry.updateStartupStatus(input.sessionId, "ready", new Date().toISOString());
     this.eventBus.emit({ type: "node.startup_ready", rigId: input.rigId, nodeId: input.nodeId });
 
     return { ok: true, startupStatus: "ready", continuityOutcome };
   }
 
-  /** A failed attempt can continue only when it stopped before sending context.
-   * Any newer pending/ready/failure event consumes that permission, including a
-   * daemon loss during delivery: uncertain delivery is never blindly replayed.
-   */
+  /** 失败尝试只有在发送上下文前停止时才能继续。任何更新的 pending/ready/failure 事件都会
+   *  消耗该许可，包括交付期间后台服务中断；绝不盲目重放状态不确定的交付。 */
   canContinueFresh(nodeId: string, sessionId: string): boolean {
     const row = this.db.prepare("SELECT payload FROM events WHERE node_id = ? AND type IN ('node.startup_pending', 'node.startup_ready', 'node.startup_failed') ORDER BY seq DESC LIMIT 1").get(nodeId) as { payload: string } | undefined;
     if (!row) return false;
@@ -467,8 +447,8 @@ export class StartupOrchestrator {
   }
 
   /**
-   * Wait for harness readiness with exponential backoff.
-   * Backoff: 1s → 2s → 4s → 8s → 16s (capped), total timeout default 30s.
+   * 使用指数退避等待运行环境就绪。退避间隔为 1 秒 → 2 秒 → 4 秒 → 8 秒 → 16 秒
+   *（封顶），总超时默认 30 秒。
    */
   private async waitForReady(
     adapter: RuntimeAdapter,
@@ -476,7 +456,7 @@ export class StartupOrchestrator {
     timeoutMs: number = 30_000,
   ): Promise<import("./runtime-adapter.js").ReadinessResult> {
     const startTime = Date.now();
-    let delay = 1000; // Start at 1s
+    let delay = 1000; // 从 1 秒开始。
     const maxDelay = 16_000;
 
     while (true) {
@@ -488,10 +468,10 @@ export class StartupOrchestrator {
 
       const elapsed = Date.now() - startTime;
       if (elapsed + delay > timeoutMs) {
-        // One final check before timing out
+        // 超时前再检查最后一次。
         const finalResult = await adapter.checkReady(binding);
         if (finalResult.ready) return finalResult;
-        return { ready: false, reason: result.reason ?? "readiness timeout" };
+        return { ready: false, reason: result.reason ?? "就绪检查超时" };
       }
 
       await new Promise((resolve) => setTimeout(resolve, delay));
@@ -531,32 +511,32 @@ export class StartupOrchestrator {
     const context = input.isRestore ? "restore" : "fresh_start";
 
     for (const action of input.startupActions) {
-      if (action.type === "startup_proof") continue; // declaration, never terminal input
+      if (action.type === "startup_proof") continue; // 仅为声明，绝不作为终端输入
       if (isSessionIdentityAction(action)) continue;
       if (skip?.has(action)) continue;
 
-      // Phase filter
+      // 阶段过滤。
       if (action.phase !== phase) continue;
 
-      // appliesOn filter
+      // appliesOn 过滤。
       if (!action.appliesOn.includes(context)) continue;
 
-      // Non-idempotent actions skipped on restore (retry-as-restore safety)
+      // 恢复时跳过非幂等操作，确保以恢复方式重试的安全性。
       if (input.isRestore && !action.idempotent) continue;
 
-      // Execute via tmux
+      // 通过 tmux 执行。
       try {
         if (!input.binding.tmuxSession) {
-          errors.push(`No tmux session for action: ${action.value}`);
+          errors.push(`操作没有对应的 tmux 会话：${action.value}`);
           continue;
         }
 
         const sendError = await this.sendInteractiveText(input.binding.tmuxSession, action.value);
         if (sendError) {
-          errors.push(`Action failed (${action.type}): ${sendError}`);
+          errors.push(`操作失败（${action.type}）：${sendError}`);
         }
       } catch (err) {
-        errors.push(`Action error (${action.type}): ${(err as Error).message}`);
+        errors.push(`操作出错（${action.type}）：${(err as Error).message}`);
       }
     }
 
@@ -578,7 +558,7 @@ export class StartupOrchestrator {
     includeDurableObligations = false,
   ): Promise<{ ok: true; remainingFiles: ResolvedStartupFile[] } | { ok: false; error: string }> {
     if (!binding.tmuxSession) {
-      return { ok: false, error: "No tmux session for the initial session identity prompt" };
+      return { ok: false, error: "初始 session 身份提示没有对应的 tmux session" };
     }
 
     const firstSendTextIndex = postLaunchFiles.findIndex((file) => file.deliveryHint === "send_text");
@@ -594,34 +574,31 @@ export class StartupOrchestrator {
           remainingFiles = postLaunchFiles.filter((_, index) => index !== firstSendTextIndex);
         }
       } catch {
-        // Fall back to a standalone identity prompt and let the adapter handle
-        // the original startup file using its normal failure semantics.
+        // 回退到独立 identity prompt，并让 adapter 按正常失败语义处理原始 startup file。
       }
     }
 
-    if (includeDurableObligations) prompt += `\n\nThis is a fresh conversation. Before choosing work, derive your identity with rig whoami --json and read durable obligations with rig queue list --destination ${binding.tmuxSession} --state pending,in-progress,blocked --limit 10000 --full --json. Report truncation at the limit; a destination row is not permission to claim unrelated work.`;
+    if (includeDurableObligations) prompt += `\n\n这是一个全新会话。选择工作前，请运行 zrig whoami --json 确认身份，并运行 zrig queue list --destination ${binding.tmuxSession} --state pending,in-progress,blocked --limit 10000 --full --json 读取持久义务。若结果达到上限，请报告截断情况；目标指向你的记录不代表你有权认领无关工作。`;
 
-    // OPR.0.4.3.06 — the per-launch orientation challenge rides along with the
-    // identity prompt (after the contract) so no extra send is added.
+    // OPR.0.4.3.06——每次启动的 orientation challenge 会随 identity prompt 一并发送
+    //（位于 contract 后），因此不增加额外发送。
     if (challengeBlock) {
       prompt = `${prompt}\n\n${challengeBlock}`;
     }
 
     const sendError = await this.sendInteractiveText(binding.tmuxSession, prompt);
     if (sendError) {
-      return { ok: false, error: `Initial session identity prompt failed: ${sendError}` };
+      return { ok: false, error: `初始 session 身份提示发送失败：${sendError}` };
     }
 
     return { ok: true, remainingFiles };
   }
 
   /**
-   * OPR.0.4.7.17 restore-order-correction. Deliver the after_ready send_text
-   * preload action(s) as the single leading turn on a resumed restore, bundling
-   * the first work-triggering send_text post-launch file (guidance/role.md)
-   * behind them so "load skills BEFORE anything else" causally precedes the role
-   * content in one submission. Returns the post-launch files still to deliver
-   * normally (role.md removed once bundled).
+   * OPR.0.4.7.17 恢复顺序修正。恢复已有会话时，把 after_ready send_text 预载操作作为
+   * 唯一首轮交付，并把第一个会触发工作的启动后 send_text 文件（guidance/role.md）组合
+   * 在其后，使“先加载 Skill 再做其他事”在同一次提交中因果先于角色内容。返回仍需正常
+   * 交付的启动后文件；role.md 一旦被组合就从中移除。
    */
   private async deliverRestorePreloadPrompt(
     binding: NodeBinding,
@@ -629,7 +606,7 @@ export class StartupOrchestrator {
     postLaunchFiles: ResolvedStartupFile[],
   ): Promise<{ ok: true; remainingFiles: ResolvedStartupFile[] } | { ok: false; error: string }> {
     if (!binding.tmuxSession) {
-      return { ok: false, error: "No tmux session for the restore preload prompt" };
+      return { ok: false, error: "恢复预载提示没有对应的 tmux 会话" };
     }
 
     const parts = preloadActions.map((a) => a.value);
@@ -645,14 +622,13 @@ export class StartupOrchestrator {
           remainingFiles = postLaunchFiles.filter((_, index) => index !== firstSendTextIndex);
         }
       } catch {
-        // Leave role.md in postLaunchFiles for normal delivery; the preload
-        // still leads as its own turn.
+        // 将 role.md 留在 postLaunchFiles 中正常交付；预载仍作为独立的首轮内容。
       }
     }
 
     const sendError = await this.sendInteractiveText(binding.tmuxSession, parts.join("\n\n"));
     if (sendError) {
-      return { ok: false, error: `Restore preload prompt failed: ${sendError}` };
+      return { ok: false, error: `恢复预载提示发送失败：${sendError}` };
     }
 
     return { ok: true, remainingFiles };

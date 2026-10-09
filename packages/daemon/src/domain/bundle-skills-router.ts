@@ -1,25 +1,22 @@
 /**
- * Bundle skills router (Item 6 / slice-05 Checkpoint 7.2).
+ * Bundle skill router（第 6 项 / slice-05 Checkpoint 7.2）。
  *
- * Pure function. Copies skill files declared in a bundle manifest's skills[]
- * block from the bundle's extracted tree to the operator skills library.
- * No daemon dependencies — fully unit-testable via FsOps injection.
+ * 纯函数。将 bundle manifest 的 skills[] block 中声明的 skill file，从 bundle 解压目录树复制到
+ * 用户 skill library。没有 daemon dependency——可通过 FsOps 注入完整执行单元测试。
  *
- * Safety: each declared skill path is treated as untrusted manifest content;
- * the helper rejects paths that escape the bundle tree (path containment
- * check mirrors the bundle-source-resolver pattern). The output target
- * directory is created via mkdirp.
+ * 安全性：每个已声明 skill path 都视为不可信 manifest content；helper 会拒绝逃逸 bundle tree 的
+ * path（path containment check 镜像 bundle-source-resolver pattern）。output target directory
+ * 通过 mkdirp 创建。
  *
- * Honest-scoping: missing source files surface as warnings in the result
- * (NOT thrown errors) so the install lifecycle can continue with what's
- * available. Same for absent skills library: caller decides to skip-or-fail.
+ * 诚实限定 scope：缺失 source file 会在结果中呈现为 warning（不抛错），使 install lifecycle
+ * 能继续处理可用内容。skill library 缺失时同理：由 caller 决定 skip 或 fail。
  *
- * /install handler integration lands at Checkpoint 7.3.
+ * /install handler 集成在 Checkpoint 7.3 落地。
  */
 
 import nodePath from "node:path";
 
-/** Filesystem injection point — real impl wraps node:fs. Tests substitute in-memory. */
+/** Filesystem 注入点——真实实现封装 node:fs；测试替换为内存实现。 */
 export interface SkillsRouterFsOps {
   exists: (path: string) => boolean;
   readFile: (path: string) => string;
@@ -27,35 +24,34 @@ export interface SkillsRouterFsOps {
   mkdirp: (path: string) => void;
 }
 
-/** Inputs to routeSkills. */
+/** routeSkills 的输入。 */
 export interface RouteSkillsInput {
-  /** Absolute path to the bundle's extracted root (tmp dir from unpack). */
+  /** bundle 解压根目录的绝对路径（unpack 创建的临时目录）。 */
   bundleRoot: string;
-  /** Relative skill paths declared in the manifest's skills[] block. */
+  /** manifest skills[] block 中声明的相对 skill path。 */
   declaredSkills: string[];
-  /** Absolute path to the operator skills library (default ~/.openrig/skills). */
+  /** 用户 skill library 的绝对路径（默认 ~/.openrig/skills）。 */
   targetSkillsDir: string;
-  /** Optional package-layout prefix removed only from the destination path.
-   *  The source path always remains the exact bundle-declared path. */
+  /** 可选 package-layout prefix，仅从 destination path 中移除。source path 始终保持
+   *  bundle 声明的精确路径。 */
   targetPrefixToStrip?: string;
 }
 
-/** One routed skill (or one rejection). */
+/** 一个已路由 skill（或一项拒绝）。 */
 export interface RoutedSkillRecord {
-  /** Declared path from manifest.skills[]. */
+  /** manifest.skills[] 中声明的路径。 */
   declaredPath: string;
-  /** "routed" = copied successfully; "missing" = source not in bundle;
-   * "unsafe" = escapes bundle workspace; "no_library" = target dir not
-   * present and caller did not request creation (reserved for future
-   * library-reachability mode). */
+  /** "routed" = 复制成功；"missing" = source 不在 bundle 中；"unsafe" = 逃逸 bundle
+   * workspace；"no_library" = target dir 不存在且 caller 未要求创建（为未来
+   * library-reachability mode 保留）。 */
   status: "routed" | "missing" | "unsafe";
-  /** Where the skill landed in the target library (absolute path), if routed. */
+  /** 路由成功时 skill 在 target library 中的落点（绝对路径）。 */
   installedAt?: string;
-  /** Human-readable detail (3-part error shape input for caller). */
+  /** 人类可读详情（供 caller 构造三段式 error shape）。 */
   detail?: string;
 }
 
-/** Aggregate routing result. */
+/** 聚合 routing result。 */
 export interface RouteSkillsResult {
   records: RoutedSkillRecord[];
   routedCount: number;
@@ -63,10 +59,9 @@ export interface RouteSkillsResult {
 }
 
 /**
- * Route each declared skill from the bundle tree to the operator skills
- * library. Per-skill safety: resolved source path must stay inside bundleRoot;
- * skipped if missing from bundle. Caller writes the install audit record
- * (Item 4 chain) using the records returned here.
+ * 将每个已声明 skill 从 bundle tree 路由到用户 skill library。逐 skill 安全性：resolved source
+ * path 必须位于 bundleRoot 内；若 bundle 中缺失则跳过。caller 使用此处返回的 record 写入
+ * install audit record（第 4 项 chain）。
  */
 export function routeSkills(input: RouteSkillsInput, fs: SkillsRouterFsOps): RouteSkillsResult {
   const records: RoutedSkillRecord[] = [];
@@ -76,15 +71,13 @@ export function routeSkills(input: RouteSkillsInput, fs: SkillsRouterFsOps): Rou
 
   for (const declared of input.declaredSkills) {
     const sourceAbs = nodePath.resolve(input.bundleRoot, declared);
-    // Defense-in-depth path-containment on SOURCE (mirrors bundle-source-
-    // resolver pattern; the manifest validator already rejects unsafe paths
-    // via isRelativeSafePath but we re-check here in case the input bypassed
-    // validation upstream).
+    // 对 source 做纵深 path-containment 防御（镜像 bundle-source-resolver pattern；manifest
+    // validator 已通过 isRelativeSafePath 拒绝不安全 path，但此处重新检查以防 input 绕过上游校验）。
     if (sourceAbs !== bundleRootResolved && !sourceAbs.startsWith(bundleRootResolved + nodePath.sep)) {
       records.push({
         declaredPath: declared,
         status: "unsafe",
-        detail: `skill path '${declared}' escapes bundle workspace; rejected`,
+        detail: `skill path '${declared}' 逃逸 bundle workspace；已拒绝`,
       });
       continue;
     }
@@ -92,35 +85,31 @@ export function routeSkills(input: RouteSkillsInput, fs: SkillsRouterFsOps): Rou
       records.push({
         declaredPath: declared,
         status: "missing",
-        detail: `skill source '${declared}' not present in bundle; skipped`,
+        detail: `bundle 中不存在 skill source '${declared}'；已跳过`,
       });
       continue;
     }
-    // Target path mirrors the declared path under the target skills directory.
-    // Operator's skill library inherits the bundle's directory layout for the
-    // declared skills (e.g., skills/foo/SKILL.md → <target>/foo/SKILL.md);
-    // strip the leading "skills/" prefix if present so the target dir is the
-    // root of the operator's skill tree.
+    // target path 在 target skill directory 下镜像声明路径。用户 skill library 继承 bundle
+    // 中已声明 skill 的目录布局（例如 skills/foo/SKILL.md → <target>/foo/SKILL.md）；若存在
+    // 前导 "skills/" prefix，则将其移除，使 target dir 成为用户 skill tree 的根。
     const declaredTrimmed = input.targetPrefixToStrip && declared.startsWith(input.targetPrefixToStrip)
       ? declared.slice(input.targetPrefixToStrip.length)
       : declared.startsWith("skills/")
         ? declared.slice("skills/".length)
         : declared;
     const targetAbs = nodePath.resolve(input.targetSkillsDir, declaredTrimmed);
-    // Defense-in-depth path-containment on TARGET (B1 repair on
-    // qitem-20260518215234-f84fff45). The leading "skills/" strip can promote
-    // a relative segment that looks safe under bundleRoot (e.g.
-    // "skills/../outside/SKILL.md" passes source-containment because the bundle
-    // tree may contain "outside/SKILL.md", but stripping yields
-    // "../outside/SKILL.md" which would escape targetSkillsDir). Reject if the
-    // target resolves outside the target library. Banked lesson:
-    // feedback_pre_existing_trust_boundary_reuse_canonical_helper — contain
-    // BOTH source and target when handling untrusted path input.
+    // 对 target 做纵深 path-containment 防御（qitem-20260518215234-f84fff45 的 B1 修复）。
+    // 移除前导 "skills/" 可能提升一个在 bundleRoot 下看似安全的 relative segment（例如
+    // "skills/../outside/SKILL.md" 会通过 source-containment，因为 bundle tree 可能包含
+    // "outside/SKILL.md"），但移除后得到的 "../outside/SKILL.md" 会逃逸 targetSkillsDir。
+    // 若 target 解析到 target library 外，则拒绝。已沉淀教训：
+    // feedback_pre_existing_trust_boundary_reuse_canonical_helper——处理不可信 path input 时，
+    // 必须同时约束 source 与 target。
     if (targetAbs !== targetRootResolved && !targetAbs.startsWith(targetRootResolved + nodePath.sep)) {
       records.push({
         declaredPath: declared,
         status: "unsafe",
-        detail: `skill target path for '${declared}' escapes target skills library; rejected`,
+        detail: `'${declared}' 的 skill target path 逃逸 target skill library；已拒绝`,
       });
       continue;
     }

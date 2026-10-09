@@ -1,9 +1,8 @@
-// OPR.0.3.3.19 - TopologyTreeView "Archive" section.
+// OPR.0.3.3.19——TopologyTreeView 的“归档”分区。
 //
-// Proves: the Archive node renders under the localhost host; archived rigs are
-// fetched LAZILY (no archived-only call while collapsed); expanding it fetches
-// /api/rigs/summary?archived=only and lists the archived rig. The default tree
-// stays active-only (it never shows archived rigs in the main list).
+// 证明：“归档”节点渲染在 localhost 主机下；已归档工作组按需获取，折叠时不调用仅归档端点；
+// 展开后获取 /api/rigs/summary?archived=only 并列出已归档工作组。默认树仍只显示活动项，
+// 绝不在主列表中显示已归档工作组。
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/react";
 import {
@@ -25,7 +24,7 @@ beforeEach(() => {
   mockFetch.mockReset();
   mockFetch.mockImplementation(async (url: string) => {
     if (url === "/api/rigs/summary") {
-      // default view: active rigs only (none here)
+      // 默认视图只含活动工作组，此处为空。
       return { ok: true, json: async () => [] };
     }
     if (url === "/api/rigs/summary?archived=only") {
@@ -61,7 +60,7 @@ describe("TopologyTreeView Archive section (OPR.0.3.3.19)", () => {
   it("renders the Archive node and does NOT fetch archived rigs while collapsed", async () => {
     renderTree();
     await waitFor(() => expect(screen.getByTestId("topology-archive-section")).toBeTruthy());
-    // Lazy: the archived-only endpoint must not be hit before expansion.
+    // 延迟加载：展开前不得访问仅归档端点。
     const archivedCalls = mockFetch.mock.calls.filter((c) => c[0] === "/api/rigs/summary?archived=only");
     expect(archivedCalls.length).toBe(0);
   });
@@ -73,7 +72,7 @@ describe("TopologyTreeView Archive section (OPR.0.3.3.19)", () => {
     fireEvent.click(toggle);
     await waitFor(() => expect(screen.getByTestId("topology-rig-r-arc")).toBeTruthy());
     expect(mockFetch).toHaveBeenCalledWith("/api/rigs/summary?archived=only");
-    // The default (active) list never surfaced the archived rig on its own.
+    // 默认活动列表不会自行呈现已归档工作组。
     expect(screen.getByText("tidy-me")).toBeTruthy();
   });
 });

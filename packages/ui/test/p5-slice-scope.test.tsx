@@ -1,10 +1,10 @@
-// V1 attempt-3 Phase 5 P5-2 — SliceScopePage tab content piping reachability.
+// V1 attempt-3 Phase 5 P5-2——SliceScopePage tab 内容管道可达性。
 //
-// Each canonical slice tab (story/overview/progress/artifacts/tests/queue/
-// topology) renders its mounted component once /api/slices/:name resolves.
-// Loading + error states get their own EmptyState renders. The fold
-// mapping (AcceptanceTab → progress; ArtifactsNavigator → artifacts per
-// OPR.0.4.1 AC-4-FF; QueueItemTrigger → queue) is verified via testid presence.
+// 每个规范 slice tab（story/overview/progress/artifacts/tests/queue/
+// topology）在 /api/slices/:name 解析后渲染其挂载组件。Loading + 错误状态
+// 各自有 EmptyState 渲染。折叠映射（AcceptanceTab -> progress；
+// ArtifactsNavigator -> artifacts 按 OPR.0.4.1 AC-4-FF；
+// QueueItemTrigger -> queue）经 testid 存在性验证。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, waitFor, fireEvent } from "@testing-library/react";
@@ -38,7 +38,7 @@ function renderSliceScope(opts: {
   status?: number;
 }): { setSelection: ReturnType<typeof vi.fn> } & ReturnType<typeof render> {
   const setSelection = vi.fn();
-  // Mock /api/slices/:name response.
+  // mock /api/slices/:name 响应。
   mockFetch.mockImplementation(async (url: string) => {
     if (url.includes(`/api/slices/${opts.sliceId}/doc/`)) {
       return new Response(JSON.stringify({ relPath: "README.md", content: "# Readme" }), { status: 200 });
@@ -56,9 +56,9 @@ function renderSliceScope(opts: {
       return new Response(JSON.stringify(makeQueueItem("qitem-B", "Body for qitem-B")));
     }
     if (url.includes("/api/files/roots")) {
-      // OPR.0.4.1 AC-4-FF: the Artifacts tab now mounts ArtifactsNavigator. With no
-      // allowlist roots it deterministically renders its unavailable setup hint
-      // (only the navigator renders that testid — proves the swap from the card wall).
+      // OPR.0.4.1 AC-4-FF：Artifacts tab 现挂载 ArtifactsNavigator。无
+      // allowlist root 时它确定性渲染其不可用 setup 提示（仅 navigator
+      // 渲染该 testid——证明从 card wall 切换）。
       return new Response(JSON.stringify({ roots: [] }));
     }
     return new Response("[]");
@@ -74,8 +74,8 @@ function renderSliceScope(opts: {
       </DrawerSelectionContext.Provider>
     ),
   });
-  // Stub other routes that tabs may try to Link to (TopologyTab uses
-  // /topology/seat/... links etc).
+  // stub tab 可能尝试 Link 的其他路由（TopologyTab 用 /topology/seat/...
+  // 链接等）。
   const fallbackRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "$",
@@ -144,7 +144,7 @@ function makeDetail(overrides: Partial<SliceDetail> = {}): SliceDetail {
 
 describe("SliceScopePage P5-2 tab content piping", () => {
   it("loading state renders EmptyState with slice id", async () => {
-    // Don't resolve fetch — keep query in-flight.
+    // 不 resolve fetch——保持 query in-flight。
     mockFetch.mockImplementation(() => new Promise(() => {}));
     const { findByTestId } = renderSliceScope({ sliceId: "idea-ledger", detail: null });
     expect(await findByTestId("slice-scope-loading")).toBeTruthy();
@@ -160,17 +160,17 @@ describe("SliceScopePage P5-2 tab content piping", () => {
       sliceId: "idea-ledger",
       detail: makeDetail(),
     });
-    // ScopeShell mounts; project-tab-nav rendered.
+    // ScopeShell 挂载；project-tab-nav 已渲染。
     await findByTestId("project-tab-nav");
-    // OPR.0.4.4.20 FR-4 — P2 lands slices on Review first so NEEDS YOU
-    // and the phase-aware compare are the first visible surface.
+    // OPR.0.4.4.20 FR-4——P2 把 slices 先落在 Review，使 NEEDS YOU
+    // 和 phase-aware compare 成为首个可见表面。
     const reviewTab = container.querySelector("[data-testid='project-tab-review']");
     const overviewTab = container.querySelector("[data-testid='project-tab-overview']");
     const storyTabBefore = container.querySelector("[data-testid='project-tab-story']");
     expect(reviewTab?.getAttribute("data-active")).toBe("true");
     expect(overviewTab?.getAttribute("data-active")).toBe("false");
     expect(storyTabBefore?.getAttribute("data-active")).toBe("false");
-    // Clicking the story tab still activates the TimelineTab panel.
+    // 点 story tab 仍激活 TimelineTab 面板。
     fireEvent.click(storyTabBefore!);
     const storyTabAfter = container.querySelector("[data-testid='project-tab-story']");
     expect(storyTabAfter?.getAttribute("data-active")).toBe("true");
@@ -182,12 +182,12 @@ describe("SliceScopePage P5-2 tab content piping", () => {
       detail: makeDetail(),
     });
     await findByTestId("project-tab-nav");
-    // id-stable rename: the tab keeps id=topology (routing / active-state /
-    // test-ids unchanged) but the visible LABEL is now Workflow.
+    // id 稳定重命名：tab 保持 id=topology（路由 / 活动状态 / test-id 不变），
+    // 但可见标签现为 Workflow。
     const tab = container.querySelector("[data-testid='project-tab-topology']");
     expect(tab).toBeTruthy();
-    expect(tab?.textContent).toContain("Workflow");
-    expect(tab?.textContent).not.toContain("Topology");
+    expect(tab?.textContent).toContain("工作流");
+    expect(tab?.textContent).not.toContain("拓扑");
   });
 
   it("progress tab mounts AcceptanceTab (FOLDED per code-map)", async () => {
@@ -197,8 +197,8 @@ describe("SliceScopePage P5-2 tab content piping", () => {
     });
     await findByTestId("project-tab-nav");
     fireEvent.click(container.querySelector("[data-testid='project-tab-progress']")!);
-    // AcceptanceTab renders a header progress bar with percentage. Smoke
-    // test: tabpanel exists + does NOT show the placeholder.
+    // AcceptanceTab 渲染带百分比的 header 进度条。冒烟测试：tabpanel 存在
+    // 且不显示占位。
     await waitFor(() => {
       expect(container.querySelector("[data-testid='project-tab-placeholder-slice progress']")).toBeNull();
     });
@@ -211,12 +211,12 @@ describe("SliceScopePage P5-2 tab content piping", () => {
     });
     await findByTestId("project-tab-nav");
     fireEvent.click(container.querySelector("[data-testid='project-tab-artifacts']")!);
-    // The slice Artifacts view IS the ArtifactsNavigator now (slice 21's pattern at
-    // slice altitude). With no allowlist roots it mounts the navigator's unavailable
-    // setup hint — only the navigator renders this, proving the swap from the card wall.
+    // slice Artifacts 视图现即 ArtifactsNavigator（slice 21 在 slice 高度的
+    // 模式）。无 allowlist root 时挂载 navigator 不可用 setup 提示——仅
+    // navigator 渲染此，证明从 card wall 切换。
     expect(await findByTestId("artifacts-navigator-unavailable")).toBeTruthy();
-    // The dropped sections are gone: Commits + Decisions re-homed; Files + Docs
-    // subsumed by the navigator; the SliceArtifactsTab wrapper is removed.
+    // 被弃 section 消失：Commits + Decisions 重新归位；Files + Docs 被
+    // navigator 吞并；SliceArtifactsTab 包装移除。
     expect(container.querySelector("[data-testid='slice-artifacts-tab']")).toBeNull();
     expect(container.querySelector("[data-testid='slice-artifacts-files']")).toBeNull();
     expect(container.querySelector("[data-testid='slice-artifacts-commits']")).toBeNull();
@@ -278,8 +278,8 @@ describe("SliceScopePage P5-2 tab content piping", () => {
     });
     await findByTestId("project-tab-nav");
     fireEvent.click(container.querySelector("[data-testid='project-tab-topology']")!);
-    // TopologyTab renders empty state when no rigs + no specGraph; the
-    // tab panel itself just must exist + have no placeholder.
+    // 无 rigs + 无 specGraph 时 TopologyTab 渲染空状态；tab 面板本身只需
+    // 存在 + 无占位。
     await waitFor(() => {
       expect(container.querySelector("[data-testid='project-tab-placeholder-slice topology']")).toBeNull();
     });
@@ -292,7 +292,7 @@ describe("SliceScopePage P5-2 tab content piping", () => {
     });
     await findByTestId("project-tab-nav");
     fireEvent.click(container.querySelector("[data-testid='project-tab-proof']")!);
-    // The PROOF tab projects the slice's proof/ + PROOF.md AS-IS via /api/files.
+    // PROOF tab 经 /api/files 原样投影 slice 的 proof/ + PROOF.md。
     expect(await findByTestId("proof-tab")).toBeTruthy();
   });
 });

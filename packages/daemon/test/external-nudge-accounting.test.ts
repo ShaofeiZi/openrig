@@ -7,19 +7,17 @@ import { EventBus } from "../src/domain/event-bus.js";
 import { OutboxHandler } from "../src/domain/outbox-handler.js";
 import { QueueRepository } from "../src/domain/queue-repository.js";
 
-// DEFECT qitem-20260827065907-b9ae334c (S1-class, desk-verified live, 3 specimens): the
-// queue NUDGE path fell through to tmux resolution for @external human destinations and
-// recorded `failed: Session 'human-founder@external' not found: tmux reports no session`
-// while the gateway subsystem (the Slack connector's queue-polling bridge) delivered the
-// actual message. Two halves: (a) an @external wake is GATEWAY-OWNED — the row itself is
-// the connector's input and the connector's ledger is the delivery record; tmux must
-// never be consulted; (b) the recorded wording must be honest for an address class tmux
-// can never hold. The poisoned `failed:` literal also corrupted the undelivered surface
-// (a delivered founder message read as a failed wake — the dogfood-aggregation caveat).
+// 缺陷 qitem-20260827065907-b9ae334c（S1-class，desk 已在 live 验证，3 个样本）：queue NUDGE
+// 路径会对 @external human 目标落入 tmux 解析，并记录
+// `failed: Session 'human-founder@external' not found: tmux reports no session`，而 gateway 子系统
+//（Slack connector 的 queue-polling bridge）实际上已经投递消息。问题分两部分：(a) @external wake
+// 由 gateway 所有——row 本身是 connector 的输入，connector ledger 是投递记录；绝不能查询 tmux；
+// (b) 对 tmux 永远无法承载的地址类别，记录措辞必须诚实。受污染的 `failed:` 字面量还破坏了
+// undelivered surface（已投递给 founder 的消息被读成失败 wake——dogfood aggregation caveat）。
 
 const FOUNDER = "human-founder@external";
 
-describe("external-nudge accounting (gateway-owned, never tmux)", () => {
+describe("external-nudge 记账（gateway 所有，绝不走 tmux）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let sends: Array<{ session: string; text: string }>;
@@ -32,7 +30,7 @@ describe("external-nudge accounting (gateway-owned, never tmux)", () => {
     sends = [];
     repo = new QueueRepository(db, bus, {
       transport: {
-        // The live specimens' exact transport behavior for the class: tmux cannot hold it.
+        // 此类别 live 样本的准确 transport 行为：tmux 无法承载它。
         send: async (sessionName: string, text: string) => {
           sends.push({ session: sessionName, text });
           return sessionName.endsWith("@external")
@@ -46,7 +44,7 @@ describe("external-nudge accounting (gateway-owned, never tmux)", () => {
 
   afterEach(() => db.close());
 
-  it("SPECIMEN SHAPE: a create nudging @external never touches tmux transport and records a gateway-owned result", async () => {
+  it("样本形态：create nudge @external 时绝不触碰 tmux transport，并记录 gateway-owned 结果", async () => {
     const item = await repo.create({
       sourceSession: "orch-lead@v-openrig-build",
       destinationSession: FOUNDER,
@@ -54,19 +52,19 @@ describe("external-nudge accounting (gateway-owned, never tmux)", () => {
       summary: "Founder alert: plain-language decision ask",
       evidenceRef: "shared-docs/rigs/v-openrig-build/state/evidence-a.md",
     });
-    // (a) tmux was NOT consulted — the row itself is the gateway's input:
+    // (a) 未查询 tmux——row 本身就是 gateway 输入：
     expect(sends).toHaveLength(0);
     const fresh = repo.getById(item.qitemId)!;
-    // (b) honest wording: names the owning subsystem AND that tmux was not consulted,
-    // and never claims positive tmux evidence for an address class tmux can never hold.
+    // (b) 措辞如实：点名所属子系统及未查询 tmux；对 tmux 永远无法承载的地址类别，绝不声称存在
+    // 正向 tmux evidence。
     expect(fresh.lastNudgeResult).toMatch(/^gateway-owned/);
-    expect(fresh.lastNudgeResult).toMatch(/tmux was not consulted/i);
+    expect(fresh.lastNudgeResult).toMatch(/未查询 tmux/i);
     expect(fresh.lastNudgeResult).not.toMatch(/^failed:/);
     expect(fresh.lastNudgeResult).not.toMatch(/tmux reports no session/);
-    expect(fresh.lastNudgeAttempt).not.toBeNull(); // the attempt is still recorded
+    expect(fresh.lastNudgeAttempt).not.toBeNull(); // attempt 仍会记录。
   });
 
-  it("DOGFOOD SURFACE HEALED: an @external row never appears on the undelivered (failed-nudge) surface", async () => {
+  it("DOGFOOD SURFACE 已修复：@external row 绝不出现在 undelivered（failed-nudge）surface", async () => {
     const item = await repo.create({
       sourceSession: "orch-lead@v-openrig-build",
       destinationSession: FOUNDER,
@@ -78,7 +76,7 @@ describe("external-nudge accounting (gateway-owned, never tmux)", () => {
     expect(undelivered.map((u) => u.qitemId)).not.toContain(item.qitemId);
   });
 
-  it("HANDOFF INTENT PATH: a wake intent to @external drains as gateway-owned without touching transport", async () => {
+  it("HANDOFF INTENT 路径：发往 @external 的 wake intent 以 gateway-owned 方式 drain，且不触碰 transport", async () => {
     const item = await repo.create({
       sourceSession: "orch-lead@v-openrig-build",
       destinationSession: "dev50-driver@v-openrig-build",
@@ -102,7 +100,7 @@ describe("external-nudge accounting (gateway-owned, never tmux)", () => {
     expect(successor.lastNudgeResult ?? "").toMatch(/^gateway-owned/);
   });
 
-  it("CONTROL: an ordinary agent destination still nudges through tmux transport exactly as before", async () => {
+  it("对照：普通 agent 目标仍与此前一样通过 tmux transport nudge", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -113,7 +111,7 @@ describe("external-nudge accounting (gateway-owned, never tmux)", () => {
     expect(repo.getById(item.qitemId)!.lastNudgeResult).toBe("verified");
   });
 
-  it("CONTROL: a human-CLASS seat with a REAL pane (human-*@kernel) keeps tmux transport — only the virtual @external domain is gateway-owned", async () => {
+  it("对照：带真实 pane 的 human 类 seat（human-*@kernel）保留 tmux transport——只有虚拟 @external domain 归 gateway 所有", async () => {
     const item = await repo.create({
       sourceSession: "orch-lead@v-openrig-build",
       destinationSession: "human-operator@kernel",

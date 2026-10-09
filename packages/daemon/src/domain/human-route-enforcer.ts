@@ -1,28 +1,24 @@
 /**
- * Human-route enforcement (OPR.0.4.4.19 FR-4 + FR-5; conventions C6 + C3).
+ * 人类路由强制规则（OPR.0.4.4.19 FR-4 + FR-5；约定 C6 + C3）。
  *
- * Sibling of hot-potato-enforcer.ts: a pure domain validator wired at the
- * QueueRepository write paths (create / handoff / handoff-and-complete, and
- * the FR-6 park transition) so every surface — CLI, HTTP, future UI —
- * inherits the same guarantee. NOT enforced at the route, NOT at the CLI.
+ * 与 hot-potato-enforcer.ts 并列：这是接在 QueueRepository 写路径上的纯 domain validator，
+ * 覆盖 create、handoff、handoff-and-complete 以及 FR-6 park transition，让 CLI、HTTP 和未来
+ * UI 都继承同一保证。规则不在 route 层执行，也不在 CLI 层执行。
  *
- * THE scoping predicate (PRD §5 — the complete trigger list, BR-1):
+ * 唯一作用域谓词（PRD §5 的完整触发列表，BR-1）：
  *
  *   tier = 'human-gate'
  *   OR is_human_seat_session(destination_session)
  *   OR (state = 'blocked' AND is_human_seat_session(blocked_on))   [FR-6]
  *
- * When the predicate is FALSE, this module validates NOTHING: ordinary
- * agent-to-agent queue traffic gains zero new required fields, zero new
- * rejection paths, zero new warns (BR-1 zero-friction boundary). Do not
- * broaden the trigger by destination tag, body text, or state alone.
+ * 谓词为 FALSE 时，本模块不执行任何校验：普通智能体间队列流量不会新增必填字段、拒绝路径或
+ * warning（BR-1 零摩擦边界）。不得仅凭 destination tag、body 文本或 state 扩大触发范围。
  */
 
 /**
- * The EXACT human-seat regex. Single TS source of truth — the same pattern
- * QueueRepository registers as the SQLite `is_human_seat_session` function
- * (queue-repository.ts constructor) so SQL-side and TS-side checks cannot
- * drift. Mirrors the UI's feed-classifier isHumanSeat.
+ * 精确的人类席位正则，也是唯一 TypeScript 真源。QueueRepository 在构造器中把同一 pattern
+ * 注册为 SQLite `is_human_seat_session` 函数，使 SQL 侧与 TS 侧校验无法漂移；同时镜像 UI
+ * feed-classifier 的 isHumanSeat。
  */
 export const HUMAN_SEAT_SESSION_PATTERN = /^human(?:-[A-Za-z0-9._-]+)?@(kernel|host)$/;
 
@@ -39,7 +35,7 @@ export interface HumanRouteRequest {
 
 export interface HumanRouteValidationOk {
   ok: true;
-  /** True when the §5 predicate matched (the item is human-routed). */
+  /** §5 谓词命中（item 路由给人类）时为 true。 */
   humanRouted: boolean;
 }
 
@@ -57,46 +53,41 @@ function isBlank(value: string | null | undefined): boolean {
 }
 
 /**
- * Validate the C6/C3 structure of a NEW qitem (create / the created half of a
- * handoff). Fires ONLY when the item is human-routed via legs 1–2 of the §5
- * predicate (human-gate tier, human-seat destination). The park leg
- * (blocked_on a human seat) is validated by {@link validateHumanPark} at the
- * blocked-transition write path.
+ * 校验新 qitem（create 或 handoff 新建侧）的 C6/C3 结构。只有 item 经 §5 谓词第 1–2 条
+ *（human-gate tier、human-seat destination）路由给人类时才触发。park 分支（blocked_on
+ * 人类席位）由 blocked-transition 写路径中的 {@link validateHumanPark} 校验。
  */
 export function validateHumanRoute(req: HumanRouteRequest): HumanRouteValidation {
   return validateRequiredFields(
     req.tier === "human-gate" || isHumanSeatSession(req.destinationSession),
     req.summary,
     req.evidenceRef,
-    "human-routed queue items",
-    "Provide --summary / --evidence-ref (ordinary agent-to-agent items are unaffected).",
+    "路由给人类的队列 item",
+    "请提供 --summary / --evidence-ref（普通智能体间 item 不受影响）。",
   );
 }
 
 export interface HumanParkRequest {
-  /** The blocker the item is being parked on (qitem id OR human-seat session). */
+  /** item 停放等待的 blocker（qitem id 或 human-seat session）。 */
   blockedOn: string | null | undefined;
-  /** Effective values at park time: the value provided on the park call,
-   *  falling back to what the item already carries. */
+  /** park 时的生效值：优先使用 park 调用提供的值，否则回退到 item 已携带的值。 */
   summary: string | null | undefined;
   evidenceRef: string | null | undefined;
 }
 
 /**
- * OPR.0.4.4.19 FR-6 — leg-1 park enforcement (§5 predicate leg 3). Fires
- * ONLY when the blocker is a human seat; blocking on another qitem (today's
- * shipped usage) requires nothing new. The parked qitem itself — id, slice
- * tag, summary — IS the what-it-unblocks (arch-ruled: no decision_descriptor
- * field). Enforcement symmetry: park requires summary + evidence_ref like
- * FR-7's resolve requires non-empty decision text.
+ * OPR.0.4.4.19 FR-6——第 1 阶段 park 强制规则（§5 谓词第 3 条）。只在 blocker 为人类
+ * 席位时触发；阻塞于另一个 qitem（当前正式用法）不新增要求。被 park 的 qitem 自身——id、
+ * slice tag、summary——就是“解除后会放行什么”（架构裁定：没有 decision_descriptor 字段）。
+ * 强制规则保持对称：正如 FR-7 resolve 要求非空 decision 文本，park 要求 summary + evidence_ref。
  */
 export function validateHumanPark(req: HumanParkRequest): HumanRouteValidation {
   return validateRequiredFields(
     isHumanSeatSession(req.blockedOn),
     req.summary,
     req.evidenceRef,
-    "parking a qitem on a human seat",
-    "Provide them at park time (rig queue block --summary --evidence-ref) or on the item beforehand; blocking on another qitem requires nothing new.",
+    "把 qitem 停放到人类席位",
+    "请在 park 时（zrig queue block --summary --evidence-ref）提供这些字段，或预先写入 item；阻塞于另一个 qitem 不新增要求。",
   );
 }
 
@@ -118,10 +109,10 @@ function validateRequiredFields(
   }
   const why: string[] = [];
   if (missing.includes("summary")) {
-    why.push("summary: a decision the human reads must be in plain language (convention C6)");
+    why.push("summary：供人类阅读的 decision 必须使用自然语言（约定 C6）");
   }
   if (missing.includes("evidence_ref")) {
-    why.push("evidence_ref: the human must have a durable artifact to judge (convention C3)");
+    why.push("evidence_ref：必须向人类提供可持久引用的 artifact 以供判断（约定 C3）");
   }
   return {
     ok: false,

@@ -1,8 +1,7 @@
-// Slice-21 FR-5 — workspace doctor check unit tests.
+// Slice-21 FR-5——工作区诊断检查单元测试。
 //
-// Per banked feedback_handoff_body_claims_need_discriminator_verification,
-// each check ships with a discriminator-flip negative test: if the
-// production code were wrong, the assertion would catch it.
+// 按已沉淀的 feedback_handoff_body_claims_need_discriminator_verification，
+// 每项检查都附带判别器翻转反例：若生产代码出错，断言就会捕获。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
@@ -34,7 +33,7 @@ afterEach(() => {
 });
 
 describe("FR-5 check #1 — workspace root reachable", () => {
-  it("returns ok when workspace root is an existing directory", () => {
+  it("工作区根目录存在且为目录时返回 ok", () => {
     const result: DoctorCheck = checkWorkspaceRootReachable({ workspaceRoot: dir, source: "default" });
     expect(result.check).toBe("workspace_root_reachable");
     expect(result.status).toBe("ok");
@@ -43,51 +42,47 @@ describe("FR-5 check #1 — workspace root reachable", () => {
     expect(result.evidence).toEqual({ workspaceRoot: dir, source: "default" });
   });
 
-  // Discriminator-flip: ENOENT path MUST be a fail, not silently pass.
-  it("returns fail with ENOENT evidence when workspace root does not exist", () => {
+  // 判别器翻转：ENOENT 路径必须失败，不能静默通过。
+  it("工作区根目录不存在时返回 fail，并附 ENOENT 证据", () => {
     const missing = path.join(dir, "definitely-not-here");
     const result = checkWorkspaceRootReachable({ workspaceRoot: missing, source: "env" });
     expect(result.status).toBe("fail");
-    expect(result.message).toContain("does not exist");
+    expect(result.message).toContain("不存在");
     expect(result.message).toContain("env");
     expect(result.fixHint).toContain("OPENRIG_WORKSPACE_ROOT");
     expect(result.evidence?.errorCode).toBe("ENOENT");
   });
 
-  // Discriminator-flip: a file (not directory) at the root MUST fail, not pass.
-  // Without isDirectory() check, statSync would succeed and the check
-  // would return ok — this test catches that regression.
-  it("returns fail when workspace root is a regular file, not a directory", () => {
+  // 判别器翻转：根路径是文件而非目录时必须失败。若没有 isDirectory() 检查，
+  // statSync 会成功且检查会返回 ok；本测试捕获该回归。
+  it("工作区根路径是普通文件而非目录时返回 fail", () => {
     const filePath = path.join(dir, "not-a-dir");
     fs.writeFileSync(filePath, "");
     const result = checkWorkspaceRootReachable({ workspaceRoot: filePath, source: "file" });
     expect(result.status).toBe("fail");
-    expect(result.message).toContain("not a directory");
+    expect(result.message).toContain("不是目录");
     expect(result.fixHint).toContain("config.json");
     expect(result.evidence?.kind).toBe("not_a_directory");
   });
 
-  // Source-aware fix-hint discriminator. If fix-hint resolution were
-  // hard-coded to one source, this would catch it.
-  it("emits source-aware fix-hints (env vs file vs default)", () => {
+  // 感知来源的修复提示判别器。若修复提示解析硬编码为单一来源，本测试会捕获。
+  it("根据来源给出修复提示（环境变量、文件或默认值）", () => {
     const missing = path.join(dir, "missing");
     const envResult = checkWorkspaceRootReachable({ workspaceRoot: missing, source: "env" });
     const fileResult = checkWorkspaceRootReachable({ workspaceRoot: missing, source: "file" });
     const defaultResult = checkWorkspaceRootReachable({ workspaceRoot: missing, source: "default" });
     expect(envResult.fixHint).toContain("OPENRIG_WORKSPACE_ROOT");
-    expect(envResult.fixHint).not.toContain("workspace.root in config.json");
-    expect(fileResult.fixHint).toContain("workspace.root in config.json");
+    expect(envResult.fixHint).not.toContain("config.json 中的 workspace.root");
+    expect(fileResult.fixHint).toContain("config.json 中的 workspace.root");
     expect(fileResult.fixHint).not.toContain("OPENRIG_WORKSPACE_ROOT");
-    expect(defaultResult.fixHint).toContain("rig config init-workspace");
+    expect(defaultResult.fixHint).toContain("zrig config init-workspace");
   });
 
-  // Discriminator-flip: non-ENOENT IO error must still fail with a
-  // useful message + evidence.errorCode (e.g., EACCES on permission
-  // denied). Simulate by chmod 000 on a created subdir.
-  it("returns fail with errorCode evidence on non-ENOENT stat error", () => {
-    // Skip on platforms where chmod doesn't restrict stat (e.g. Windows,
-    // root user). The check is the discriminator-flip we want, but it
-    // must be robust under varied test environments.
+  // 判别器翻转：非 ENOENT 的 I/O 错误仍必须失败，并提供有用消息和 evidence.errorCode
+  //（如权限拒绝时的 EACCES）。通过将已创建子目录 chmod 000 模拟。
+  it("非 ENOENT 的 stat 错误返回 fail，并附 errorCode 证据", () => {
+    // 在 chmod 不限制 stat 的平台（如 Windows 或 root 用户）跳过。该检查是所需的判别器翻转，
+    // 但必须适应不同测试环境。
     if (process.platform === "win32" || process.getuid?.() === 0) return;
     const lockedParent = path.join(dir, "locked-parent");
     fs.mkdirSync(lockedParent);
@@ -106,7 +101,7 @@ describe("FR-5 check #1 — workspace root reachable", () => {
 });
 
 describe("FR-5 check #2 — missions folder present", () => {
-  it("returns ok when default missions folder exists", () => {
+  it("默认 missions 目录存在时返回 ok", () => {
     const missionsDir = path.join(dir, "missions");
     fs.mkdirSync(missionsDir);
     const result = checkMissionsFolder({ workspaceRoot: dir, slicesRoot: missionsDir });
@@ -115,41 +110,38 @@ describe("FR-5 check #2 — missions folder present", () => {
     expect(result.evidence?.slicesRoot).toBe(missionsDir);
   });
 
-  // Discriminator-flip: missing folder must fail with default-fix-hint
-  // since slicesRoot equals workspaceRoot/missions.
-  it("returns fail with default fix-hint when missions folder is absent (default path)", () => {
+  // 判别器翻转：由于 slicesRoot 等于 workspaceRoot/missions，目录缺失必须失败并给出默认修复提示。
+  it("默认 missions 目录缺失时返回 fail，并附默认修复提示", () => {
     const missing = path.join(dir, "missions");
     const result = checkMissionsFolder({ workspaceRoot: dir, slicesRoot: missing });
     expect(result.status).toBe("fail");
-    expect(result.fixHint).toContain("rig config init-workspace");
+    expect(result.fixHint).toContain("zrig config init-workspace");
     expect(result.evidence?.errorCode).toBe("ENOENT");
   });
 
-  // Discriminator-flip: when operator overrode slicesRoot, fix-hint
-  // should NOT recommend running init-workspace (that creates the
-  // default missions/ in the workspace root, not the custom path).
-  it("returns fail with custom-path fix-hint when overridden slicesRoot is absent", () => {
+  // 判别器翻转：操作人员覆盖 slicesRoot 后，修复提示不应建议运行 init-workspace；
+  // 该命令会在工作区根目录创建默认 missions/，而非自定义路径。
+  it("覆盖后的 slicesRoot 缺失时返回 fail，并附自定义路径修复提示", () => {
     const custom = path.join(dir, "custom-elsewhere");
     const result = checkMissionsFolder({ workspaceRoot: dir, slicesRoot: custom });
     expect(result.status).toBe("fail");
-    expect(result.fixHint).toContain("unset workspace.slices_root");
-    expect(result.fixHint).not.toContain("rig config init-workspace");
+    expect(result.fixHint).toContain("取消设置 workspace.slices_root");
+    expect(result.fixHint).not.toContain("zrig config init-workspace");
   });
 
-  // Discriminator-flip: file-at-missions-path. Without isDirectory()
-  // gate the check would falsely return ok.
-  it("returns fail when missions path is a regular file", () => {
+  // 判别器翻转：missions 路径是文件。若没有 isDirectory() 门，检查会错误返回 ok。
+  it("missions 路径是普通文件时返回 fail", () => {
     const filePath = path.join(dir, "missions");
     fs.writeFileSync(filePath, "");
     const result = checkMissionsFolder({ workspaceRoot: dir, slicesRoot: filePath });
     expect(result.status).toBe("fail");
-    expect(result.message).toContain("not a directory");
+    expect(result.message).toContain("不是目录");
     expect(result.evidence?.kind).toBe("not_a_directory");
   });
 });
 
-describe("FR-5 check #3 — file allowlist sane", () => {
-  it("returns ok when allowlist has at least one entry covering workspace root", () => {
+describe("FR-5 检查 #3——文件 allowlist 合理", () => {
+  it("allowlist 至少有一个条目覆盖工作区根目录时返回 ok", () => {
     const result = checkFileAllowlist({
       workspaceRoot: dir,
       allowlistValue: `workspace:${dir}`,
@@ -160,9 +152,8 @@ describe("FR-5 check #3 — file allowlist sane", () => {
     expect(result.evidence?.entryCount).toBe(1);
   });
 
-  // Discriminator-flip: empty value must fail; without the entries.
-  // length === 0 check it would pass through to coverage logic.
-  it("returns fail with explicit fix-hint when allowlist is empty", () => {
+  // 判别器翻转：空值必须失败；没有 entries.length === 0 检查时会进入覆盖逻辑。
+  it("allowlist 为空时返回 fail，并附明确修复提示", () => {
     const result = checkFileAllowlist({
       workspaceRoot: dir,
       allowlistValue: "",
@@ -174,9 +165,9 @@ describe("FR-5 check #3 — file allowlist sane", () => {
     expect(result.evidence?.entryCount).toBe(0);
   });
 
-  // Discriminator-flip: unparseable value (no colon) must fail. Without
-  // the parseAllowlistPairs colon-required check, garbage would pass.
-  it("returns fail when allowlist is malformed (no colon)", () => {
+  // 判别器翻转：无法解析的值（无冒号）必须失败。若 parseAllowlistPairs 不要求冒号，
+  // 垃圾值会通过。
+  it("allowlist 畸形（无冒号）时返回 fail", () => {
     const result = checkFileAllowlist({
       workspaceRoot: dir,
       allowlistValue: "garbage-no-colon-here",
@@ -186,10 +177,9 @@ describe("FR-5 check #3 — file allowlist sane", () => {
     expect(result.evidence?.entryCount).toBe(0);
   });
 
-  // Discriminator-flip: allowlist with valid entries but NONE covering
-  // workspace must warn (not ok, not fail). Without the covers check
-  // it would falsely return ok.
-  it("returns warn when allowlist entries are valid but none cover the workspace root", () => {
+  // 判别器翻转：allowlist 含合法条目但没有任何条目覆盖工作区时必须警告（不是 ok 或 fail）。
+  // 若没有 covers 检查，会错误返回 ok。
+  it("allowlist 条目合法但均未覆盖工作区根目录时返回 warn", () => {
     const elsewhere = path.join(dir, "elsewhere-1");
     fs.mkdirSync(elsewhere);
     const result = checkFileAllowlist({
@@ -198,14 +188,13 @@ describe("FR-5 check #3 — file allowlist sane", () => {
       allowlistSource: "file",
     });
     expect(result.status).toBe("warn");
-    expect(result.message).toContain("none cover workspace root");
+    expect(result.message).toContain("没有任何条目覆盖工作区根目录");
     expect(result.fixHint).toContain("workspace:");
     expect(result.evidence?.entryCount).toBe(1);
   });
 
-  // Sub-directory coverage discriminator: an allowlist entry that is
-  // an ANCESTOR of the workspace root SHOULD cover it.
-  it("returns ok when an allowlist entry is an ancestor of the workspace root", () => {
+  // 子目录覆盖判别器：作为工作区根目录祖先的 allowlist 条目应覆盖它。
+  it("allowlist 条目是工作区根目录祖先时返回 ok", () => {
     const sub = path.join(dir, "deep-sub");
     fs.mkdirSync(sub);
     const result = checkFileAllowlist({
@@ -216,10 +205,9 @@ describe("FR-5 check #3 — file allowlist sane", () => {
     expect(result.status).toBe("ok");
   });
 
-  // Pre-decoded entries path: pre-parsed entries should bypass the
-  // canonical decoder and be honored verbatim. Discriminator: pass an
-  // entry shape that the decoder couldn't have produced.
-  it("uses pre-decoded entries when provided", () => {
+  // 预解码条目路径：预解析条目应绕过权威 decoder，并逐字采用。判别方法是传入 decoder
+  // 不可能生成的条目形状。
+  it("提供预解码条目时使用它们", () => {
     const result = checkFileAllowlist({
       workspaceRoot: dir,
       allowlistValue: "raw-value-different-from-entries",
@@ -230,24 +218,22 @@ describe("FR-5 check #3 — file allowlist sane", () => {
     expect(result.evidence?.entryCount).toBe(1);
   });
 
-  // GUARD BLOCKER-1 discriminator (qitem-20260602041334-55985aa9):
-  // a relative path like `workspace:.` must NOT silently resolve into
-  // process.cwd() and return ok. The shipped file API's decodeAllowlist
-  // silently drops non-absolute paths at path-safety.ts:71; the doctor
-  // must mirror that or it lies about the workspace being read-ready.
-  it("returns fail when allowlist contains only relative paths (mirrors shipped file API drop)", () => {
+  // GUARD BLOCKER-1 判别器（qitem-20260602041334-55985aa9）：`workspace:.` 这样的相对路径
+  // 不得静默解析到 process.cwd() 后返回 ok。已交付文件 API 的 decodeAllowlist 会在
+  // path-safety.ts:71 静默丢弃非绝对路径；doctor 必须保持一致，否则会谎报工作区可读取。
+  it("allowlist 仅含相对路径时返回 fail（对应已交付文件 API 的丢弃行为）", () => {
     const result = checkFileAllowlist({
       workspaceRoot: dir,
       allowlistValue: "workspace:.",
       allowlistSource: "file",
     });
     expect(result.status).toBe("fail");
-    expect(result.message).toContain("no usable entries");
-    expect(result.fixHint).toContain("absolute paths only");
+    expect(result.message).toContain("未解析出可用条目");
+    expect(result.fixHint).toContain("仅限绝对路径");
     expect(result.evidence?.entryCount).toBe(0);
   });
 
-  it("returns fail when allowlist mixes a relative-only entry without absolute fallback", () => {
+  it("allowlist 混入仅相对条目且没有绝对路径兜底时返回 fail", () => {
     const result = checkFileAllowlist({
       workspaceRoot: dir,
       allowlistValue: "workspace:relative/path/here",
@@ -257,11 +243,9 @@ describe("FR-5 check #3 — file allowlist sane", () => {
     expect(result.evidence?.entryCount).toBe(0);
   });
 
-  // Positive-guard discriminator: a malformed relative entry should
-  // be dropped but a valid absolute companion should still produce ok.
-  // This protects against an over-eager fix where relative-presence
-  // causes the whole check to fail.
-  it("returns ok when allowlist mixes relative (dropped) with absolute (kept) entries covering root", () => {
+  // 正向守卫判别器：畸形相对条目应被丢弃，但同行的合法绝对条目仍应使结果为 ok。
+  // 这防止过度修复导致只要存在相对条目就让整项检查失败。
+  it("allowlist 同时含被丢弃的相对路径和覆盖根目录的保留绝对路径时返回 ok", () => {
     const result = checkFileAllowlist({
       workspaceRoot: dir,
       allowlistValue: `bad:./relative,workspace:${dir}`,
@@ -273,15 +257,14 @@ describe("FR-5 check #3 — file allowlist sane", () => {
 });
 
 describe("FR-5 check #4 — daemon points at this workspace", () => {
-  it("returns ok when daemon and caller agree on workspace root", () => {
+  it("后台服务与调用方对工作区根目录一致时返回 ok", () => {
     const result = checkDaemonWorkspace({ daemonResolvedRoot: dir, expectedRoot: dir });
     expect(result.check).toBe("daemon_points_at_this_workspace");
     expect(result.status).toBe("ok");
   });
 
-  // Discriminator-flip: differing paths must fail. Without the
-  // string comparison the check would falsely return ok.
-  it("returns fail when daemon resolved a different workspace root", () => {
+  // 判别器翻转：路径不同必须失败。没有字符串比较时，检查会错误返回 ok。
+  it("后台服务解析出不同工作区根目录时返回 fail", () => {
     const otherDir = fs.mkdtempSync(path.join(os.tmpdir(), "fr5-other-"));
     try {
       const result = checkDaemonWorkspace({
@@ -298,10 +281,9 @@ describe("FR-5 check #4 — daemon points at this workspace", () => {
     }
   });
 
-  // Discriminator-flip: path.resolve normalization. A daemon path
-  // with redundant `./` segments equal to expected should still
-  // compare equal post-normalization.
-  it("normalizes paths before comparing", () => {
+  // 判别器翻转：path.resolve 归一化。带冗余 `./` 段但等价于预期路径的后台服务路径，
+  // 归一化后仍应相等。
+  it("比较前归一化路径", () => {
     const result = checkDaemonWorkspace({
       daemonResolvedRoot: path.join(dir, ".", "sub", ".."),
       expectedRoot: dir,
@@ -311,7 +293,7 @@ describe("FR-5 check #4 — daemon points at this workspace", () => {
 });
 
 describe("FR-5 check #5 — daemon reload needed", () => {
-  it("returns ok when config file is older than daemon start", () => {
+  it("配置文件早于后台服务启动时返回 ok", () => {
     const cfg = path.join(dir, "config.json");
     fs.writeFileSync(cfg, "{}");
     const oldMtime = new Date(Date.now() - 60_000);
@@ -322,9 +304,9 @@ describe("FR-5 check #5 — daemon reload needed", () => {
     expect(result.status).toBe("ok");
   });
 
-  // Discriminator-flip: config newer than daemon start MUST warn.
-  // Without the mtimeMs > startMs comparison, freshness would never trip.
-  it("returns warn when config file mtime is newer than daemon start", () => {
+  // 判别器翻转：配置晚于后台服务启动时必须警告。没有 mtimeMs > startMs 比较，
+  // 新鲜度检查永远不会触发。
+  it("配置文件 mtime 晚于后台服务启动时返回 warn", () => {
     const cfg = path.join(dir, "config.json");
     fs.writeFileSync(cfg, "{}");
     const newMtime = new Date(Date.now());
@@ -336,9 +318,8 @@ describe("FR-5 check #5 — daemon reload needed", () => {
     expect(result.evidence?.staleMs).toBeGreaterThan(0);
   });
 
-  // Discriminator-flip: ENOENT must NOT fail or warn. A daemon
-  // running on pure defaults (no config file) is healthy state.
-  it("returns ok when config file does not exist (defaults-only daemon)", () => {
+  // 判别器翻转：ENOENT 不得失败或警告。仅使用默认值运行（无配置文件）的后台服务是健康状态。
+  it("配置文件不存在时返回 ok（后台服务仅使用默认值）", () => {
     const missing = path.join(dir, "no-such-config.json");
     const result = checkDaemonReload({
       configFilePath: missing,
@@ -350,7 +331,7 @@ describe("FR-5 check #5 — daemon reload needed", () => {
 });
 
 describe("FR-5 check #6 — optional slice docs", () => {
-  it("returns ok when every slice has README, IMPLEMENTATION-PRD, or IMPL-PRD", () => {
+  it("每个 slice 都有 README、IMPLEMENTATION-PRD 或 IMPL-PRD 时返回 ok", () => {
     const missions = path.join(dir, "missions");
     fs.mkdirSync(path.join(missions, "m1", "slices", "s1"), { recursive: true });
     fs.mkdirSync(path.join(missions, "m1", "slices", "s2"), { recursive: true });
@@ -362,10 +343,9 @@ describe("FR-5 check #6 — optional slice docs", () => {
     expect(result.evidence?.bareSlices).toEqual([]);
   });
 
-  // Discriminator-flip: a slice with NEITHER doc shape must warn.
-  // Without the SLICE_DOC_FILES.some() check, bare slices would
-  // silently pass.
-  it("returns warn naming bare slices that have no doc shape", () => {
+  // 判别器翻转：两种文档形状都没有的 slice 必须警告。没有 SLICE_DOC_FILES.some() 检查，
+  // 裸 slice 会静默通过。
+  it("对没有文档结构的裸 slice 返回 warn 并点名", () => {
     const missions = path.join(dir, "missions");
     fs.mkdirSync(path.join(missions, "m1", "slices", "bare-slice"), { recursive: true });
     fs.mkdirSync(path.join(missions, "m1", "slices", "ok-slice"), { recursive: true });
@@ -377,8 +357,8 @@ describe("FR-5 check #6 — optional slice docs", () => {
     expect(bare[0]?.slice).toBe("bare-slice");
   });
 
-  // Discriminator-flip: any of the 3 doc-file names should pass.
-  it("treats IMPLEMENTATION-PRD.md as equivalent to README.md and IMPL-PRD.md", () => {
+  // 判别器翻转：三个文档文件名中的任意一个都应通过。
+  it("将 IMPLEMENTATION-PRD.md 与 README.md、IMPL-PRD.md 等同处理", () => {
     const missions = path.join(dir, "missions");
     fs.mkdirSync(path.join(missions, "m1", "slices", "s1"), { recursive: true });
     fs.writeFileSync(path.join(missions, "m1", "slices", "s1", "IMPLEMENTATION-PRD.md"), "");
@@ -386,9 +366,8 @@ describe("FR-5 check #6 — optional slice docs", () => {
     expect(result.status).toBe("ok");
   });
 
-  // Discriminator-flip: missing missions root must warn (not fail).
-  // The check is warn-only per IMPL-PRD §57-59.
-  it("returns warn (not fail) when missions root is absent", () => {
+  // 判别器翻转：missions 根目录缺失必须警告而非失败。按 IMPL-PRD §57-59，本检查仅告警。
+  it("missions 根目录缺失时返回 warn 而非 fail", () => {
     const result = checkOptionalSliceDocs({ missionsRoot: path.join(dir, "no-missions") });
     expect(result.status).toBe("warn");
     expect(result.evidence?.errorCode).toBe("ENOENT");
@@ -396,7 +375,7 @@ describe("FR-5 check #6 — optional slice docs", () => {
 });
 
 describe("FR-5 check #7 — mission notes presence", () => {
-  it("uses current-first legacy-fallback resolution for every mission", () => {
+  it("为每个 mission 使用当前优先、旧版兜底的解析顺序", () => {
     const missions = path.join(dir, "missions");
     fs.mkdirSync(path.join(missions, "m1"), { recursive: true });
     fs.mkdirSync(path.join(missions, "m2"), { recursive: true });
@@ -411,9 +390,8 @@ describe("FR-5 check #7 — mission notes presence", () => {
     expect(result.evidence?.missing).toEqual([]);
   });
 
-  // Discriminator-flip: missing MISSION_NOTES must warn and name the
-  // specific missions; without naming, operator can't act.
-  it("returns warn naming missions without MISSION_NOTES.md", () => {
+  // 判别器翻转：缺少 MISSION_NOTES 必须警告并点名具体 mission，否则操作人员无法行动。
+  it("对缺少 MISSION_NOTES.md 的 mission 返回 warn 并点名", () => {
     const missions = path.join(dir, "missions");
     fs.mkdirSync(path.join(missions, "with-notes"), { recursive: true });
     fs.mkdirSync(path.join(missions, "no-notes-1"), { recursive: true });
@@ -426,8 +404,8 @@ describe("FR-5 check #7 — mission notes presence", () => {
     expect(result.fixHint).toContain("rig scope mission create");
   });
 
-  // Discriminator-flip: missions root absent should warn-only.
-  it("returns warn (not fail) when missions root is absent", () => {
+  // 判别器翻转：missions 根目录缺失应只告警。
+  it("missions 根目录缺失时返回 warn 而非 fail", () => {
     const result = checkMissionNotesPresence({ missionsRoot: path.join(dir, "no-missions") });
     expect(result.status).toBe("warn");
     expect(result.evidence?.errorCode).toBe("ENOENT");
@@ -449,7 +427,7 @@ describe("FR-5 runWorkspaceDoctor — orchestrator", () => {
     return { missions, configPath };
   }
 
-  it("returns an 8-check report with summary counts on a healthy workspace", () => {
+  it("健康工作区返回含汇总计数的 8 项检查报告", () => {
     const { missions, configPath } = scaffoldHealthyWorkspace(dir);
     const report = runWorkspaceDoctor({
       workspaceRoot: dir,
@@ -480,13 +458,12 @@ describe("FR-5 runWorkspaceDoctor — orchestrator", () => {
     expect(report.daemonResolvedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  // Discriminator-flip: the orchestrator must aggregate WARN status
-  // when at least one check warns. Without the for-loop summary
-  // tally, this would stay 0/0/0.
-  it("aggregates warn count when a single check warns (mission notes missing)", () => {
+  // 判别器翻转：至少一项检查告警时，orchestrator 必须汇总 WARN 状态。
+  // 若没有 for-loop 摘要计数，结果会保持 0/0/0。
+  it("单项检查告警（缺少 mission notes）时汇总 warn 数量", () => {
     const missions = path.join(dir, "missions");
     fs.mkdirSync(path.join(missions, "m1"), { recursive: true });
-    // intentionally no MISSION_NOTES.md
+    // 刻意不创建 MISSION_NOTES.md。
     const configPath = path.join(dir, ".test-config.json");
     fs.writeFileSync(configPath, "{}");
     fs.utimesSync(configPath, new Date(Date.now() - 60_000), new Date(Date.now() - 60_000));
@@ -505,10 +482,9 @@ describe("FR-5 runWorkspaceDoctor — orchestrator", () => {
     expect(notes?.status).toBe("warn");
   });
 
-  // Discriminator-flip: orchestrator must aggregate FAIL status when
-  // at least one check fails. Routes check #1 fails when workspace
-  // root is bogus.
-  it("aggregates fail count when workspace root is unreachable", () => {
+  // 判别器翻转：至少一项检查失败时，orchestrator 必须汇总 FAIL 状态。
+  // 工作区根目录无效时，路由检查 #1 会失败。
+  it("工作区根目录不可达时汇总 fail 数量", () => {
     const bogus = path.join(dir, "does-not-exist");
     const configPath = path.join(dir, ".test-config.json");
     fs.writeFileSync(configPath, "{}");
@@ -528,10 +504,9 @@ describe("FR-5 runWorkspaceDoctor — orchestrator", () => {
     expect(reachable?.status).toBe("fail");
   });
 
-  // Discriminator-flip: check ordering is stable. The CLI human
-  // formatter (FR-5d) groups by category in this order; a reordered
-  // checks[] would break the formatter's category assumption.
-  it("emits checks in the documented fixed order regardless of input timing", () => {
+  // 判别器翻转：检查顺序稳定。CLI 人类可读 formatter（FR-5d）按此顺序分组；
+  // checks[] 重排会破坏 formatter 的类别假设。
+  it("无论输入时序如何，都按文档规定的固定顺序输出检查", () => {
     const { missions, configPath } = scaffoldHealthyWorkspace(dir);
     const reports = Array.from({ length: 3 }, () =>
       runWorkspaceDoctor({
@@ -550,9 +525,9 @@ describe("FR-5 runWorkspaceDoctor — orchestrator", () => {
   });
 });
 
-// OPR.0.4.4.23 check #8 — SDLC convention sections (advisory warn).
+// OPR.0.4.4.23 检查 #8——SDLC 约定章节（建议性警告）。
 describe("OPR.0.4.4.23 check #8 — SDLC convention sections", () => {
-  it("returns ok when every slice README carries the three convention sections", () => {
+  it("每个 slice README 都包含三个约定章节时返回 ok", () => {
     const missions = path.join(dir, "missions");
     fs.mkdirSync(path.join(missions, "m1", "slices", "s1"), { recursive: true });
     fs.writeFileSync(path.join(missions, "m1", "slices", "s1", "README.md"), CONVENTION_BODY);
@@ -562,9 +537,8 @@ describe("OPR.0.4.4.23 check #8 — SDLC convention sections", () => {
     expect(result.evidence?.offenders).toEqual([]);
   });
 
-  // Discriminator-flip: an old-shape README (Goal/Acceptance) must warn
-  // and NAME which sections are missing.
-  it("returns warn naming slices whose README misses convention sections", () => {
+  // 判别器翻转：旧形状 README（Goal/Acceptance）必须警告并点名缺失章节。
+  it("对 README 缺少约定章节的 slice 返回 warn 并点名", () => {
     const missions = path.join(dir, "missions");
     fs.mkdirSync(path.join(missions, "m1", "slices", "old-shape"), { recursive: true });
     fs.mkdirSync(path.join(missions, "m1", "slices", "ok-slice"), { recursive: true });
@@ -578,9 +552,9 @@ describe("OPR.0.4.4.23 check #8 — SDLC convention sections", () => {
     expect(offenders[0]?.missing).toEqual(["## Intent", "## Mini-requirements", "## Proof contract"]);
   });
 
-  // Fail-open boundary: a slice with NO README is check #6's finding, not
-  // a section offender here (no double-reporting).
-  it("skips slices with no README (check #6 owns bare slices)", () => {
+  // 失败开放边界：没有 README 的 slice 属于检查 #6 的发现，不是本检查的章节违规项，
+  // 避免重复报告。
+  it("跳过没有 README 的 slice（裸 slice 由检查 #6 负责）", () => {
     const missions = path.join(dir, "missions");
     fs.mkdirSync(path.join(missions, "m1", "slices", "bare"), { recursive: true });
     const result = checkSdlcConventionSections({ missionsRoot: missions });
@@ -588,14 +562,14 @@ describe("OPR.0.4.4.23 check #8 — SDLC convention sections", () => {
     expect(result.evidence?.slicesChecked).toBe(0);
   });
 
-  // Advisory posture: missing missions root warns, never fails.
-  it("returns warn (not fail) when missions root is absent", () => {
+  // 建议性姿态：missions 根目录缺失只警告，绝不失败。
+  it("missions 根目录缺失时返回 warn 而非 fail", () => {
     const result = checkSdlcConventionSections({ missionsRoot: path.join(dir, "no-missions") });
     expect(result.status).toBe("warn");
     expect(result.evidence?.errorCode).toBe("ENOENT");
   });
 
-  it("runWorkspaceDoctor includes check #8 in the report", () => {
+  it("runWorkspaceDoctor 在报告中包含检查 #8", () => {
     const missions = path.join(dir, "missions");
     fs.mkdirSync(missions, { recursive: true });
     const configPath = path.join(dir, "config.json");

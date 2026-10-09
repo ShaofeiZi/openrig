@@ -90,9 +90,8 @@ export interface NodeDetailData {
 }
 
 async function fetchNodeDetail(rigId: string, logicalId: string, hostId: string): Promise<NodeDetailData> {
-  // OPR.0.4.6.MH2 rev1-r2 B2 (arch-ruled Option A) — the seat-detail leaf
-  // rides the selected-host envelope like its /nodes sibling; local path
-  // unchanged (withHostParam is identity for local).
+  // OPR.0.4.6.MH2 rev1-r2 B2（架构裁定 Option A）——席位详情叶子节点与它的 /nodes
+  // 同级接口一样走“所选主机”信封；本地路径不变（对本地而言 withHostParam 是恒等变换）。
   const res = await fetch(withHostParam(`/api/rigs/${encodeURIComponent(rigId)}/nodes/${encodeURIComponent(logicalId)}`, hostId));
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -104,7 +103,7 @@ export function useNodeDetail(rigId: string | null, logicalId: string | null) {
     queryKey: ["rig", rigId, "nodes", logicalId, hostId],
     queryFn: () => fetchNodeDetail(rigId!, logicalId!, hostId),
     enabled: !!rigId && !!logicalId,
-    refetchInterval: 30_000, // Refetch every 30s for context usage updates
+    refetchInterval: 30_000, // 每 30 秒重拉一次，用于更新上下文用量
     placeholderData: keepPreviousData,
   });
 }

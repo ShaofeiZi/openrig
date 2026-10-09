@@ -1,7 +1,6 @@
-// V1 pre-release CLI/daemon Item 1 — transcript rotation contract.
+// V1 预发布 CLI/后台服务第 1 项——transcript 轮转契约。
 //
-// Covers the new capture-pane periodic-overwrite mechanism that replaced
-// the legacy pipe-pane infinite-growth file pattern.
+// 覆盖替代旧版 pipe-pane 无限增长文件模式的新 capture-pane 周期覆盖机制。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as fs from "node:fs";
@@ -21,7 +20,7 @@ import type { TmuxAdapter } from "../src/adapters/tmux.js";
 
 interface FakeAdapter {
   capturePaneContent: ReturnType<typeof vi.fn>;
-  /** rest of TmuxAdapter is unused by rotation; cast at call site. */
+  /** TmuxAdapter 其余部分不被轮转使用；在调用点做类型转换。 */
 }
 
 function makeFakeAdapter(captureValue: string | null = "captured-content"): FakeAdapter {
@@ -39,13 +38,13 @@ beforeEach(() => {
 afterEach(() => {
   clearAllTranscriptRotationsForTest();
   if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true });
-  // Clear env var overrides set by individual tests.
+  // 清除各测试设置的环境变量覆盖值。
   delete process.env.OPENRIG_TRANSCRIPTS_LINES;
   delete process.env.OPENRIG_TRANSCRIPTS_POLL_INTERVAL_SECONDS;
 });
 
-describe("startTranscriptRotation — capture-pane invocation contract", () => {
-  it("calls tmuxAdapter.capturePaneContent with sessionName + lines on first tick", async () => {
+describe("startTranscriptRotation——capture-pane 调用契约", () => {
+  it("首个 tick 使用 sessionName + lines 调用 tmuxAdapter.capturePaneContent", async () => {
     const adapter = makeFakeAdapter("hello\nworld\n");
     const outputPath = path.join(tmpDir, "rig", "session.log");
     startTranscriptRotation(
@@ -54,13 +53,13 @@ describe("startTranscriptRotation — capture-pane invocation contract", () => {
       outputPath,
       { lines: 500, pollIntervalMs: 60_000 },
     );
-    // First tick is async; allow microtasks to flush.
+    // 首个 tick 异步执行；等待 microtask 排空。
     await new Promise((r) => setImmediate(r));
     expect(adapter.capturePaneContent).toHaveBeenCalledWith("session@rig", 500);
     stopTranscriptRotation("session@rig");
   });
 
-  it("writes the captured content to the output path atomically", async () => {
+  it("把 capture 内容原子写入输出路径", async () => {
     const adapter = makeFakeAdapter("line1\nline2\nline3\n");
     const outputPath = path.join(tmpDir, "rig", "session.log");
     startTranscriptRotation(
@@ -72,13 +71,13 @@ describe("startTranscriptRotation — capture-pane invocation contract", () => {
     await new Promise((r) => setImmediate(r));
     expect(fs.existsSync(outputPath)).toBe(true);
     expect(fs.readFileSync(outputPath, "utf8")).toBe("line1\nline2\nline3\n");
-    // Partial-write tmp file must NOT remain after rename.
+    // rename 后不得残留部分写入的临时文件。
     const dirEntries = fs.readdirSync(path.dirname(outputPath));
     expect(dirEntries.filter((e) => e.includes(".tmp."))).toEqual([]);
     stopTranscriptRotation("session@rig");
   });
 
-  it("overwrites the file each tick rather than appending (bounded size)", async () => {
+  it("每个 tick 覆盖文件而非追加（大小有界）", async () => {
     const adapter = makeFakeAdapter("first-tick");
     const outputPath = path.join(tmpDir, "rig", "session.log");
     startTranscriptRotation(
@@ -88,8 +87,7 @@ describe("startTranscriptRotation — capture-pane invocation contract", () => {
       { lines: 1000, pollIntervalMs: 60_000 },
     );
     await new Promise((r) => setImmediate(r));
-    // Swap the adapter return value and trigger a fresh start (idempotent
-    // replace). The rewrite path must replace, not append.
+    // 替换 adapter 返回值并触发新的 start（幂等替换）；重写路径必须替换而非追加。
     adapter.capturePaneContent.mockResolvedValueOnce("second-tick");
     startTranscriptRotation(
       adapter as unknown as TmuxAdapter,
@@ -98,13 +96,12 @@ describe("startTranscriptRotation — capture-pane invocation contract", () => {
       { lines: 1000, pollIntervalMs: 60_000 },
     );
     await new Promise((r) => setImmediate(r));
-    // File holds the second tick's content only — no concatenation of
-    // first + second.
+    // 文件只包含第二个 tick 的内容，不拼接第一与第二次结果。
     expect(fs.readFileSync(outputPath, "utf8")).toBe("second-tick");
     stopTranscriptRotation("session@rig");
   });
 
-  it("silently skips the write when capturePaneContent returns null", async () => {
+  it("capturePaneContent 返回 null 时静默跳过写入", async () => {
     const adapter = makeFakeAdapter(null);
     const outputPath = path.join(tmpDir, "rig", "session.log");
     startTranscriptRotation(
@@ -119,14 +116,11 @@ describe("startTranscriptRotation — capture-pane invocation contract", () => {
   });
 });
 
-describe("startTranscriptRotation — unchanged-content write suppression (hotfix qitem-20260822222746-3a64ae43)", () => {
-  // The 2s-cadence tick rewrote the transcript file unconditionally on every
-  // tick; across hundreds of live seats macOS amplifies each rename through
-  // fseventsd into a host CPU/RSS storm. Two byte-identical captures must
-  // perform NO second temp-write/rename. Observed via inode stability: the
-  // atomic rename replaces the file's inode, so an unchanged inode proves no
-  // rewrite occurred — no fs mocking required.
-  it("does NOT temp-write/rename when two successive captures are byte-identical (inode stable)", async () => {
+describe("startTranscriptRotation——抑制未变化内容写入（hotfix qitem-20260822222746-3a64ae43）", () => {
+  // 每 2 秒的 tick 曾无条件重写 transcript 文件；数百实时席位下，macOS 会通过 fseventsd 放大
+  // 每次 rename，造成主机 CPU/RSS 风暴。两次逐字节相同的 capture 不得再次临时写入/rename。
+  // 通过 inode 稳定性观测：原子 rename 会替换 inode，因此 inode 不变证明没有重写，无需 mock fs。
+  it("连续两次 capture 逐字节相同时不临时写入/rename（inode 稳定）", async () => {
     const adapter = makeFakeAdapter("stable-1\nstable-2\n");
     const outputPath = path.join(tmpDir, "rig", "session.log");
 
@@ -140,7 +134,7 @@ describe("startTranscriptRotation — unchanged-content write suppression (hotfi
     expect(fs.readFileSync(outputPath, "utf8")).toBe("stable-1\nstable-2\n");
     const inoAfterFirst = fs.statSync(outputPath).ino;
 
-    // Second immediate tick captures identical content (idempotent replace).
+    // 紧接的第二 tick capture 相同内容（幂等替换）。
     startTranscriptRotation(
       adapter as unknown as TmuxAdapter,
       "session@rig",
@@ -149,9 +143,9 @@ describe("startTranscriptRotation — unchanged-content write suppression (hotfi
     );
     await new Promise((r) => setImmediate(r));
 
-    // Bounded output preserved ...
+    // 有界输出得到保留……
     expect(fs.readFileSync(outputPath, "utf8")).toBe("stable-1\nstable-2\n");
-    // ... and NO second temp-write/rename occurred (inode unchanged, no tmp litter).
+    // ……且未发生第二次临时写入/rename（inode 不变，无临时文件残留）。
     expect(fs.statSync(outputPath).ino).toBe(inoAfterFirst);
     expect(
       fs.readdirSync(path.dirname(outputPath)).filter((e) => e.includes(".tmp.")),
@@ -160,7 +154,7 @@ describe("startTranscriptRotation — unchanged-content write suppression (hotfi
     stopTranscriptRotation("session@rig");
   });
 
-  it("STILL rewrites when the capture content genuinely changes (no over-suppression)", async () => {
+  it("capture 内容确实变化时仍会重写（不过度抑制）", async () => {
     const adapter = makeFakeAdapter("first\n");
     const outputPath = path.join(tmpDir, "rig", "session.log");
     startTranscriptRotation(
@@ -186,10 +180,10 @@ describe("startTranscriptRotation — unchanged-content write suppression (hotfi
     stopTranscriptRotation("session@rig");
   });
 
-  it("preserves the SESSION BOUNDARY header while suppressing an unchanged rewrite", async () => {
+  it("抑制未变化重写时保留 SESSION BOUNDARY header", async () => {
     const adapter = makeFakeAdapter("scrollback-A\n");
     const outputPath = path.join(tmpDir, "rig", "session.log");
-    // Restore orchestrator seeds a boundary line before launch.
+    // Restore orchestrator 在启动前写入 boundary 行。
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, "--- SESSION BOUNDARY: 2026-08-22 restore\n");
 
@@ -205,7 +199,7 @@ describe("startTranscriptRotation — unchanged-content write suppression (hotfi
     );
     const inoAfterFirst = fs.statSync(outputPath).ino;
 
-    // Identical second tick: boundary + body byte-identical → suppressed.
+    // 第二 tick 相同：boundary + body 逐字节一致 → 抑制。
     startTranscriptRotation(
       adapter as unknown as TmuxAdapter,
       "session@rig",
@@ -221,8 +215,8 @@ describe("startTranscriptRotation — unchanged-content write suppression (hotfi
   });
 });
 
-describe("startTranscriptRotation — timer lifecycle", () => {
-  it("registers exactly one active timer per session and replaces on second start", () => {
+describe("startTranscriptRotation——timer 生命周期", () => {
+  it("每个会话只登记一个活动 timer，第二次 start 会替换", () => {
     const adapter = makeFakeAdapter();
     const outputPath = path.join(tmpDir, "rig", "session.log");
     expect(getActiveRotationCount()).toBe(0);
@@ -244,13 +238,13 @@ describe("startTranscriptRotation — timer lifecycle", () => {
     expect(getActiveRotationCount()).toBe(0);
   });
 
-  it("stopTranscriptRotation is a safe no-op when no timer is registered", () => {
+  it("未登记 timer 时 stopTranscriptRotation 是安全 no-op", () => {
     expect(getActiveRotationCount()).toBe(0);
     stopTranscriptRotation("never-started@rig");
     expect(getActiveRotationCount()).toBe(0);
   });
 
-  it("tracks separate timers for separate sessions", () => {
+  it("为不同会话分别跟踪 timer", () => {
     const adapter = makeFakeAdapter();
     startTranscriptRotation(
       adapter as unknown as TmuxAdapter,
@@ -272,8 +266,8 @@ describe("startTranscriptRotation — timer lifecycle", () => {
   });
 });
 
-describe("getTranscriptRotationOptionsFromEnv — env override + defaults", () => {
-  it("returns the documented defaults when no env vars are set", () => {
+describe("getTranscriptRotationOptionsFromEnv——env 覆盖 + 默认值", () => {
+  it("未设置环境变量时返回文档化默认值", () => {
     const opts = getTranscriptRotationOptionsFromEnv();
     expect(opts.lines).toBe(DEFAULT_TRANSCRIPT_LINES);
     expect(opts.pollIntervalMs).toBe(DEFAULT_TRANSCRIPT_POLL_INTERVAL_MS);
@@ -281,7 +275,7 @@ describe("getTranscriptRotationOptionsFromEnv — env override + defaults", () =
     expect(opts.pollIntervalMs).toBe(2000);
   });
 
-  it("honors OPENRIG_TRANSCRIPTS_LINES + OPENRIG_TRANSCRIPTS_POLL_INTERVAL_SECONDS overrides", () => {
+  it("遵循 OPENRIG_TRANSCRIPTS_LINES 与 OPENRIG_TRANSCRIPTS_POLL_INTERVAL_SECONDS 覆盖值", () => {
     process.env.OPENRIG_TRANSCRIPTS_LINES = "500";
     process.env.OPENRIG_TRANSCRIPTS_POLL_INTERVAL_SECONDS = "5";
     const opts = getTranscriptRotationOptionsFromEnv();
@@ -289,7 +283,7 @@ describe("getTranscriptRotationOptionsFromEnv — env override + defaults", () =
     expect(opts.pollIntervalMs).toBe(5000);
   });
 
-  it("rejects non-positive / non-numeric values and uses defaults", () => {
+  it("拒绝非正数/非数值并使用默认值", () => {
     process.env.OPENRIG_TRANSCRIPTS_LINES = "0";
     process.env.OPENRIG_TRANSCRIPTS_POLL_INTERVAL_SECONDS = "not-a-number";
     const opts = getTranscriptRotationOptionsFromEnv();
@@ -298,8 +292,8 @@ describe("getTranscriptRotationOptionsFromEnv — env override + defaults", () =
   });
 });
 
-describe("startTranscriptRotation — generation guard (r2 HIGH-2: in-flight tick after stop)", () => {
-  it("does NOT resurrect liveness or write when a tick is in-flight during stop", async () => {
+describe("startTranscriptRotation——generation 守卫（r2 HIGH-2：stop 时 tick 仍在途）", () => {
+  it("stop 时存在在途 tick，不会复活存活性或写入", async () => {
     let resolveCapture!: (v: string) => void;
     const deferred = new Promise<string>((res) => {
       resolveCapture = res;
@@ -313,7 +307,7 @@ describe("startTranscriptRotation — generation guard (r2 HIGH-2: in-flight tic
       outputPath,
       { lines: 1000, pollIntervalMs: 60_000 },
     );
-    // The immediate first tick is now awaiting the deferred capture.
+    // 立即执行的首个 tick 正在等待延迟 capture。
     stopTranscriptRotation("s@rig"); // invalidates the generation
     resolveCapture("late-content\n"); // capture resolves AFTER stop
     await new Promise((r) => setImmediate(r));
@@ -323,7 +317,7 @@ describe("startTranscriptRotation — generation guard (r2 HIGH-2: in-flight tic
     expect(fs.existsSync(outputPath)).toBe(false); // no write after stop
   });
 
-  it("a stale in-flight tick from a REPLACED start does not clobber the newer rotation", async () => {
+  it("已替换 start 的陈旧在途 tick 不会覆盖较新的轮转", async () => {
     let resolveFirst!: (v: string) => void;
     const firstCapture = new Promise<string>((res) => {
       resolveFirst = res;
@@ -337,7 +331,7 @@ describe("startTranscriptRotation — generation guard (r2 HIGH-2: in-flight tic
       outputPath,
       { lines: 1000, pollIntervalMs: 60_000 },
     );
-    // First tick in-flight; REPLACE with a new start whose capture resolves at once.
+    // 首个 tick 在途；用 capture 立即完成的新 start 替换。
     const adapterB = { capturePaneContent: vi.fn(async () => "new-gen\n") };
     startTranscriptRotation(
       adapterB as unknown as TmuxAdapter,
@@ -349,7 +343,7 @@ describe("startTranscriptRotation — generation guard (r2 HIGH-2: in-flight tic
     expect(getLastCaptureAt("s@rig")).toBeDefined();
     expect(fs.readFileSync(outputPath, "utf8")).toBe("new-gen\n");
 
-    // Now resolve A's stale capture — it must NOT overwrite B's file or record.
+    // 现在完成 A 的陈旧 capture；它不得覆盖 B 的文件或记录。
     resolveFirst("old-gen\n");
     await new Promise((r) => setImmediate(r));
     await new Promise((r) => setImmediate(r));

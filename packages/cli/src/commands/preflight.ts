@@ -12,10 +12,10 @@ interface PreflightCommandDeps {
 }
 
 export function preflightCommand(depsOverride?: PreflightCommandDeps): Command {
-  const cmd = new Command("preflight").description("Check system readiness for OpenRig");
+  const cmd = new Command("preflight").description("检查本机是否满足运行 zrig 的条件");
 
   cmd
-    .option("--json", "JSON output for agents")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: { json?: boolean }) => {
       const configStore = new ConfigStore(depsOverride?.configPath);
       const config = configStore.resolve();
@@ -43,19 +43,19 @@ export function preflightCommand(depsOverride?: PreflightCommandDeps): Command {
       for (const check of result.checks) {
         if (check.ok) {
           console.log(`✓ ${check.name}`);
-          if (check.warning) console.log(`  Note: ${check.warning}`);
+          if (check.warning) console.log(`  注意：${check.warning}`);
         } else {
-          console.log(`✗ ${check.name}: ${check.error}`);
-          if (check.reason) console.log(`  Why: ${check.reason}`);
-          if (check.fix) console.log(`  Fix: ${check.fix}`);
+          console.log(`✗ ${check.name}：${check.error}`);
+          if (check.reason) console.log(`  原因：${check.reason}`);
+          if (check.fix) console.log(`  修复：${check.fix}`);
         }
       }
 
       if (result.ready) {
-        console.log("\nAll checks passed. Ready to run.");
+        console.log("\n全部检查通过。可以开始运行。");
       } else {
         const failCount = result.checks.filter((c) => !c.ok).length;
-        console.log(`\n${failCount} check(s) failed. Fix the issues above and run rig preflight again.`);
+        console.log(`\n${failCount} 项检查未通过。请修复上述问题后重新运行 zrig preflight。`);
         process.exitCode = 1;
       }
     });

@@ -12,7 +12,7 @@ import { QueueRepository } from "../src/domain/queue-repository.js";
 import { InboxHandler, InboxHandlerError } from "../src/domain/inbox-handler.js";
 import type { PersistedEvent } from "../src/domain/types.js";
 
-describe("InboxHandler", () => {
+describe("InboxHandler 收件箱处理器", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -37,11 +37,11 @@ describe("InboxHandler", () => {
 
   afterEach(() => db.close());
 
-  it("drop records sender + tags + audit_pointer", () => {
+  it("drop 记录发送者、标签与 audit_pointer", () => {
     const e = inbox.drop({
       destinationSession: "bob@rig",
       senderSession: "alice@rig",
-      body: "async work",
+      body: "异步工作",
       tags: ["batch", "low-prio"],
       auditPointer: "audit/2026/04/28/x.md",
     });
@@ -52,39 +52,38 @@ describe("InboxHandler", () => {
     expect(e.auditPointer).toBe("audit/2026/04/28/x.md");
   });
 
-  it("drop is idempotent on inbox_id", () => {
+  it("drop 对 inbox_id 幂等", () => {
     const id = "inbox-fixed-test-id-0001";
     const a = inbox.drop({
       inboxId: id,
       destinationSession: "bob@rig",
       senderSession: "alice@rig",
-      body: "first",
+      body: "第一条",
     });
     const b = inbox.drop({
       inboxId: id,
       destinationSession: "bob@rig",
       senderSession: "alice@rig",
-      body: "second-ignored",
+      body: "第二条（忽略）",
     });
     expect(a.inboxId).toBe(b.inboxId);
-    expect(b.body).toBe("first");
+    expect(b.body).toBe("第一条");
   });
 
-  // P18 sender-provenance: identity verification moved OUT of the handler to the ONE transport
-  // chokepoint. The handler no longer carries an `authenticate` predicate — its allow-all default +
-  // body-forwarded principal WERE the fabricated-authority surface. It faithfully records the
-  // transport-derived senderSession its caller (the /inbox/drop route) supplies; the forged-sender
-  // proof (header-derived vs body-claim + refuse-unattributable) lives at the route.
-  it("records exactly the (transport-derived) senderSession it is given", () => {
+  // P18 发送者来源：身份验证已从处理器移到唯一传输关口。处理器不再携带 `authenticate`
+  // 谓词——其默认全允许加正文转发主体曾构成伪造权限表层。它如实记录调用方
+  //（/inbox/drop 路由）提供的、从传输层派生的 senderSession；伪造发送者证明
+  //（从 header 派生与正文声明对比，并拒绝无法归因者）位于路由层。
+  it("原样记录传入的、从传输层派生的 senderSession", () => {
     const entry = inbox.drop({ destinationSession: "bob@rig", senderSession: "alice@rig", body: "x" });
     expect(entry.senderSession).toBe("alice@rig");
   });
 
-  it("absorb promotes pending entry to a queue_item, emits inbox.absorbed", async () => {
+  it("absorb 将待处理条目提升为 queue_item，并发出 inbox.absorbed", async () => {
     const entry = inbox.drop({
       destinationSession: "bob@rig",
       senderSession: "alice@rig",
-      body: "review this",
+      body: "审查此项",
       urgency: "urgent",
     });
     const result = await inbox.absorb(entry.inboxId, "bob@rig");
@@ -92,7 +91,7 @@ describe("InboxHandler", () => {
     expect(result.entry.absorbedQitemId).toBe(result.qitemId);
 
     const qitem = queueRepo.getById(result.qitemId)!;
-    expect(qitem.body).toBe("review this");
+    expect(qitem.body).toBe("审查此项");
     expect(qitem.priority).toBe("urgent");
     expect(qitem.sourceSession).toBe("alice@rig");
     expect(qitem.destinationSession).toBe("bob@rig");
@@ -100,7 +99,7 @@ describe("InboxHandler", () => {
     expect(captured.some((e) => e.type === "inbox.absorbed")).toBe(true);
   });
 
-  it("absorb is idempotent — second call returns same qitem_id", async () => {
+  it("absorb 幂等——第二次调用返回相同 qitem_id", async () => {
     const entry = inbox.drop({
       destinationSession: "bob@rig",
       senderSession: "alice@rig",
@@ -111,29 +110,29 @@ describe("InboxHandler", () => {
     expect(a.qitemId).toBe(b.qitemId);
   });
 
-  it("absorb refuses if destination doesn't match", async () => {
+  it("目标不匹配时 absorb 拒绝操作", async () => {
     const entry = inbox.drop({
       destinationSession: "bob@rig",
       senderSession: "alice@rig",
       body: "x",
     });
-    await expect(inbox.absorb(entry.inboxId, "carol@rig")).rejects.toThrow(/destined for/);
+    await expect(inbox.absorb(entry.inboxId, "carol@rig")).rejects.toThrow(/目标是/);
   });
 
-  it("deny records reason + emits inbox.denied; cannot subsequently absorb", async () => {
+  it("deny 记录原因并发出 inbox.denied；之后无法 absorb", async () => {
     const entry = inbox.drop({
       destinationSession: "bob@rig",
       senderSession: "alice@rig",
-      body: "off-topic",
+      body: "偏离主题",
     });
-    const denied = inbox.deny(entry.inboxId, "bob@rig", "off-topic-for-this-rig");
+    const denied = inbox.deny(entry.inboxId, "bob@rig", "与此装备无关");
     expect(denied.state).toBe("denied");
-    expect(denied.deniedReason).toBe("off-topic-for-this-rig");
+    expect(denied.deniedReason).toBe("与此装备无关");
     expect(captured.some((e) => e.type === "inbox.denied")).toBe(true);
-    await expect(inbox.absorb(entry.inboxId, "bob@rig")).rejects.toThrow(/denied/);
+    await expect(inbox.absorb(entry.inboxId, "bob@rig")).rejects.toThrow(/已被拒绝/);
   });
 
-  it("listPending returns only pending entries for the given destination", () => {
+  it("listPending 仅返回指定目标的待处理条目", () => {
     inbox.drop({ destinationSession: "bob@rig", senderSession: "a@r", body: "1" });
     const e2 = inbox.drop({ destinationSession: "bob@rig", senderSession: "a@r", body: "2" });
     inbox.drop({ destinationSession: "carol@rig", senderSession: "a@r", body: "3" });

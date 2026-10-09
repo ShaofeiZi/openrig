@@ -9,7 +9,7 @@ import { runWakeLadderTick, WAKE_SUSPEND_OVERRIDE_ENV } from "../src/domain/queu
 import { lastMeaningfulTransition } from "../src/domain/queue-waiting.js";
 import { recoveryTag } from "../src/domain/queue-recovery.js";
 
-describe("waiting face names the next action the existing ladder can actually take", () => {
+describe("waiting 视图点明现有 ladder 实际可执行的下一步操作", () => {
   let db: Database.Database, queue: QueueRepository, sends: string[];
   const advance = (seconds: number) => vi.setSystemTime(Date.now() + seconds * 1000);
   beforeEach(() => {
@@ -32,7 +32,7 @@ describe("waiting face names the next action the existing ladder can actually ta
   const view = (id: string) => queue.getByIdOrThrow(id).waiting!;
   const tick = () => runWakeLadderTick({ db, queueRepo: queue, now: new Date(), resolveOrchestrator: () => null, log: () => {} });
 
-  it("separates failed retry and verified unclaimed grace, and advances only after the actual attempt", async () => {
+  it("区分失败 retry 与 verified unclaimed grace，且仅在实际 attempt 后推进", async () => {
     const good = await handoff("healthy@rig"), failed = await handoff();
     expect(view(good).nextBackstop).toMatchObject({ mechanism: "queue-stuck-sweep:unclaimed", dueAt: "2026-09-08T01:00:00.000Z" });
     expect(view(failed).nextBackstop).toMatchObject({ owner: "worker@rig", mechanism: "queue-wake-ladder:retry", dueAt: "2026-09-08T00:05:00.000Z" });
@@ -44,7 +44,7 @@ describe("waiting face names the next action the existing ladder can actually ta
     expect(view(failed).nextBackstop.dueAt).toBe("2026-09-08T00:10:01.000Z");
   });
 
-  it("shows the existing suspension deadline and resumes at it without mutating policy", async () => {
+  it("显示现有 suspension deadline，并在到期时恢复且不修改 policy", async () => {
     const id = await handoff();
     vi.stubEnv(WAKE_SUSPEND_OVERRIDE_ENV, "worker@rig:2026-09-08T00:20:00.000Z");
     expect(view(id).nextBackstop).toMatchObject({ mechanism: "queue-wake-ladder:retry", dueAt: "2026-09-08T00:20:00.000Z", suspendedUntil: "2026-09-08T00:20:00.000Z" });
@@ -55,7 +55,7 @@ describe("waiting face names the next action the existing ladder can actually ta
     expect(view(id).nextBackstop.dueAt).toBe("2026-09-08T00:25:00.000Z");
   });
 
-  it("derives post-swap suspension from the current seat binding", async () => {
+  it("从当前 seat binding 派生 post-swap suspension", async () => {
     const id = await handoff(); advance(301);
     db.prepare("INSERT INTO nodes (id,rig_id,logical_id,handover_at) VALUES ('worker-node','r','work.seat',?)").run(new Date().toISOString());
     db.prepare("INSERT INTO sessions (id,node_id,session_name,status) VALUES ('worker-session','worker-node','worker@rig','running')").run();
@@ -65,7 +65,7 @@ describe("waiting face names the next action the existing ladder can actually ta
     advance(180); expect((await tick()).actions).toContainEqual({ qitemId: id, action: "retry", target: "worker@rig" });
   });
 
-  it("honors a closed recovery and exposes retry again only after a new meaningful source event", async () => {
+  it("遵守 closed recovery，且仅在出现新的 meaningful source event 后重新提供 retry", async () => {
     const id = await handoff();
     const recovery = await queue.create({ sourceSession: "owner@rig", destinationSession: "orch@rig", body: "Inspect failed delivery", tags: [recoveryTag(id)], nudge: false });
     await queue.update({ qitemId: recovery.qitemId, actorSession: "orch@rig", state: "done", closureReason: "no-follow-on", resolution: "Do not retry this episode" });
@@ -76,7 +76,7 @@ describe("waiting face names the next action the existing ladder can actually ta
     expect((await tick()).actions).toContainEqual({ qitemId: id, action: "retry", target: "worker@rig" });
   });
 
-  it("uses configured retry cadence and the shared destination budget", async () => {
+  it("使用已配置的 retry cadence 与共享 destination budget", async () => {
     vi.stubEnv("OPENRIG_QUEUE_WAKE_RETRY_INTERVAL_SECONDS", "40");
     vi.stubEnv("OPENRIG_QUEUE_WAKE_RETRY_CAP", "1");
     const first = await handoff(), second = await handoff();
@@ -87,7 +87,7 @@ describe("waiting face names the next action the existing ladder can actually ta
     expect(view(untried).nextBackstop.owner).toBe("worker@rig");
   });
 
-  it("shows confirmation escalation rather than retry, and current recovery after the rung completes", async () => {
+  it("显示 confirmation escalation 而非 retry，并在 rung 完成后显示当前 recovery", async () => {
     const id = await handoff(); queue.recordNudgeAttempt(id, "delivered-ack-pending");
     expect(view(id).nextBackstop).toMatchObject({ mechanism: "queue-wake-ladder:operator", dueAt: "2026-09-08T00:29:30.000Z" });
     const count = sends.length; advance(301); expect((await tick()).actions).toEqual([]); expect(sends).toHaveLength(count);
@@ -98,7 +98,7 @@ describe("waiting face names the next action the existing ladder can actually ta
     expect(view(id).nextBackstop.recovery?.state).toBe("pending");
   });
 
-  it.each(["daemon@kernel", "daemon@system"])("%s delivery bookkeeping preserves the episode; author notes and state changes still advance it", async (actorSession) => {
+  it.each(["daemon@kernel", "daemon@system"])("%s delivery bookkeeping 保留 episode；author note 与 state change 仍会推进它", async (actorSession) => {
     const id = await handoff();
     const before = lastMeaningfulTransition(db, id);
     for (const transitionNote of [
@@ -110,7 +110,7 @@ describe("waiting face names the next action the existing ladder can actually ta
       queue.update({ qitemId: id, actorSession, transitionNote });
       expect(lastMeaningfulTransition(db, id)).toEqual(before);
     }
-    // Identical prose from an author remains testimony; no keyword classifier.
+    // author 写入的相同 prose 仍是 testimony；不使用 keyword classifier。
     queue.update({ qitemId: id, actorSession: "owner@rig", transitionNote: "delivery-termination: author investigated the actual outcome" });
     const authored = lastMeaningfulTransition(db, id);
     expect(authored!.id).toBeGreaterThan(before!.id);

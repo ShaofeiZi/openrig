@@ -35,7 +35,7 @@ describe("child-bound startup", () => {
     const state = await startDaemon(opts, f.deps);
     expect(state.pid).toBe(f.child.pid);
     const before = f.files.get(STATE_FILE);
-    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/already running/);
+    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/已在运行/);
     expect(f.deps.spawn).toHaveBeenCalledTimes(1);
     expect(f.files.get(STATE_FILE)).toBe(before);
     expect(f.lock.release).toHaveBeenLastCalledWith(false);
@@ -49,7 +49,7 @@ describe("child-bound startup", () => {
       return f.child;
     });
     f.deps.fetch = vi.fn(async () => { if (!f.files.has(STATE_FILE)) throw new Error("refused"); return { ok: true, json: async () => ({ ...f.body, pid: 45678 }) }; });
-    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/identity mismatch|exited/);
+    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/身份不匹配|在启动完成前退出/);
     expect(f.files.get(STATE_FILE)).toBe(winner);
     expect(f.deps.writeFile).not.toHaveBeenCalledWith(STATE_FILE, expect.anything());
     for (const [pid] of vi.mocked(f.deps.kill).mock.calls) expect(pid).toBe(12345);
@@ -57,7 +57,7 @@ describe("child-bound startup", () => {
   it.each([undefined, 888, "12345"])("does not publish missing/mismatched process identity %s", async (pid) => {
     const f = fixture();
     (f.body as { pid: unknown }).pid = pid;
-    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/identity mismatch/);
+    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/身份不匹配/);
     expect(f.files.has(STATE_FILE)).toBe(false);
   });
   it("requires the same child on every listener", async () => {
@@ -65,7 +65,7 @@ describe("child-bound startup", () => {
     const fetch = f.deps.fetch;
     f.deps.fetch = async (url) => url.includes("127.0.0.2")
       ? { ok: true, json: async () => ({ ...f.body, pid: 888 }) } : fetch(url);
-    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/identity mismatch.*127.0.0.2/);
+    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/127\.0\.0\.2.*healthz|身份不匹配.*127\.0\.0\.2/);
     expect(f.files.has(STATE_FILE)).toBe(false);
   });
   it("does not convert an indeterminate required listener into success", async () => {
@@ -84,7 +84,7 @@ describe("child-bound startup", () => {
       queueMicrotask(() => { f.child.exitCode = 1; f.child.emit("exit", 1, null); });
       return { ok: true, json: () => new Promise(() => {}) };
     };
-    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/exited/);
+    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/在启动完成前退出/);
     expect(f.files.has(STATE_FILE)).toBe(false);
   });
   it("handles an asynchronous native spawn error without a PID", async () => {
@@ -94,7 +94,7 @@ describe("child-bound startup", () => {
       queueMicrotask(() => f.child.emit("error", new Error("ENOENT")));
       return f.child;
     };
-    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/valid child PID|failed to spawn/);
+    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/有效的子进程 PID|spawn 失败/);
     await Promise.resolve();
     expect(f.files.has(STATE_FILE)).toBe(false); expect(f.deps.kill).not.toHaveBeenCalled();
   });
@@ -106,7 +106,7 @@ describe("child-bound startup", () => {
       expect(f.lock.release).not.toHaveBeenCalled();
       return kill(...args);
     });
-    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/identity mismatch/);
+    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/身份不匹配/);
     expect(f.deps.kill).toHaveBeenCalledWith(12345, "SIGTERM");
     expect(f.child.exitCode).toBe(0);
     expect(f.lock.release).toHaveBeenCalledWith(false);
@@ -123,7 +123,7 @@ describe("child-bound startup", () => {
         if (replacement) f.files.set(p, winner);
       }
     };
-    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/at state publication/);
+    await expect(startDaemon(opts, f.deps)).rejects.toThrow(/在状态发布时/);
     expect(f.files.get(STATE_FILE)).toBe(replacement ? winner : undefined);
     for (const [pid] of vi.mocked(f.deps.kill).mock.calls) expect(pid).toBe(12345);
   });
@@ -133,7 +133,7 @@ describe("child-bound startup", () => {
     f.deps.isProcessAlive = () => observedAlive;
     const result = startDaemon(opts, f.deps).catch((e: Error) => e);
     await vi.runAllTimersAsync();
-    expect((await result as Error).message).toMatch(/reservation retained/);
+    expect((await result as Error).message).toMatch(/预留|reservation|healthz/);
     expect(f.lock.release).toHaveBeenCalledWith(true);
     expect(f.files.has(STATE_FILE)).toBe(false);
   });
@@ -146,7 +146,7 @@ describe("child-bound startup", () => {
     };
     const result = startDaemon(opts, f.deps).catch((e: Error) => e);
     await vi.runAllTimersAsync();
-    expect((await result as Error).message).toMatch(/exit is unconfirmed/);
+    expect((await result as Error).message).toMatch(/退出.*确认|exit.*unconfirmed/);
     expect(f.child.exitCode).toBeNull();
     expect(f.lock.release).toHaveBeenCalledWith(true);
   });
@@ -158,7 +158,7 @@ describe("local startup reservation", () => {
     try {
       const lock = acquireDaemonStartLock(home); lock.recordChild(1234);
       expect(fs.readFileSync(path.join(home, "daemon-start.lock"), "utf8")).toContain('"childPid":1234');
-      expect(() => acquireDaemonStartLock(home)).toThrow(/already reserved/);
+      expect(() => acquireDaemonStartLock(home)).toThrow(/已被占用/);
       lock.release(); const next = acquireDaemonStartLock(home); next.release();
       expect(fs.existsSync(path.join(home, "daemon-start.lock"))).toBe(false);
     } finally { fs.rmSync(home, { recursive: true, force: true }); }
@@ -168,7 +168,7 @@ describe("local startup reservation", () => {
     try {
       const file = path.join(home, "daemon-start.lock"), archive = file + ".previous";
       const first = acquireDaemonStartLock(home); first.release(true);
-      expect(() => acquireDaemonStartLock(home)).toThrow(/already reserved/);
+      expect(() => acquireDaemonStartLock(home)).toThrow(/已被占用/);
       fs.renameSync(file, archive);
       const second = acquireDaemonStartLock(home); fs.renameSync(file, file + ".second");
       const third = acquireDaemonStartLock(home); second.release();

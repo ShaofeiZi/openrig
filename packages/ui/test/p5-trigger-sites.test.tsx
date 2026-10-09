@@ -1,16 +1,13 @@
-// V1 attempt-3 Phase 5 P5-1 — site-of-use trigger reachability proof (ritual #6).
+// V1 attempt-3 Phase 5 P5-1——site-of-use trigger 可达性证明（ritual #6）。
 //
-// drawer-primitives.test.tsx (Phase 4 process-gap fix) covers the unit-level
-// reachability of the 4 viewer + 4 trigger primitives. P5-1 wires those
-// triggers into 4 production surfaces (FeedCard / LibraryReview file lists /
-// RigSpecDisplay agentRef cells / TopologyTreeView seat leaves). This file
-// covers ROUTE-COMPONENT reachability per ritual #6 — a click on the named
-// affordance fires setSelection with the correct DrawerSelection
-// discriminator.
+// drawer-primitives.test.tsx（Phase 4 process-gap 修复）覆盖 4 viewer + 4 trigger
+// 原语的 unit 级可达性。P5-1 把这些 trigger 接入 4 个生产表面（FeedCard /
+// LibraryReview 文件列表 / RigSpecDisplay agentRef 单元 / TopologyTreeView seat
+// 叶子）。本文件按 ritual #6 覆盖 ROUTE-COMPONENT 可达性——点击命名 affordance
+// 以正确 DrawerSelection discriminator 触发 setSelection。
 //
-// Project queue tab (the 5th P5-1 surface in the ACK list) is wired in P5-2
-// alongside the slice-tab content piping so the qitem rows arrive with the
-// rest of the slice data; tested there.
+// Project queue tab（ACK 列表中第 5 个 P5-1 表面）在 P5-2 与 slice-tab 内容管道
+// 一并接入，使 qitem 行随其余 slice 数据到达；在该处测试。
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
@@ -24,10 +21,10 @@ import {
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// SubSpecPreview internally uses TanStack Link when entryId is present; in
-// these tests we don't render SubSpecPreview directly (only its trigger).
-// FeedCard renders AuthorAgentTag → useCmuxLaunch (useMutation) and a Link,
-// so it needs both a QueryClientProvider and a TanStack Router context.
+// SubSpecPreview 在 entryId 存在时内部使用 TanStack Link；这些测试中我们不直接
+// 渲染 SubSpecPreview（仅其 trigger）。FeedCard 渲染 AuthorAgentTag ->
+// useCmuxLaunch（useMutation）和一个 Link，故它同时需要 QueryClientProvider 和
+// TanStack Router 上下文。
 
 import { DrawerSelectionContext } from "../src/components/AppShell.js";
 
@@ -47,8 +44,8 @@ function renderWithDrawerCtx(
   return { setSelection, ...utils };
 }
 
-// Wrapper for components that touch TanStack Router (Link) + React Query.
-// FeedCard does both via the AuthorAgentTag → useCmuxLaunch path.
+// 包裹触碰 TanStack Router（Link）+ React Query 的组件。
+// FeedCard 经 AuthorAgentTag -> useCmuxLaunch 路径两者都做。
 function renderWithRouterAndQuery(
   ui: React.ReactNode,
 ): { setSelection: ReturnType<typeof vi.fn> } & ReturnType<typeof render> {
@@ -82,8 +79,8 @@ function renderWithRouterAndQuery(
 }
 
 // -----------------------------------------------------------------------
-// FeedCard: "show context" QueueItemTrigger renders when source.payload has
-// a qitem_id; click → setSelection({ type: 'qitem', data: {...} }).
+// FeedCard：source.payload 含 qitem_id 时渲染 "show context" QueueItemTrigger；
+// 点击 -> setSelection({ type: 'qitem', data: {...} })。
 // -----------------------------------------------------------------------
 
 import { FeedCard } from "../src/components/for-you/FeedCard.js";
@@ -136,8 +133,8 @@ describe("FeedCard P5-1 wiring: show-context QueueItemTrigger", () => {
       } as FeedCardModel["source"],
     });
     const { findByTestId, queryByTestId } = renderWithRouterAndQuery(<FeedCard card={card} />);
-    // Wait for the card body itself to render (router resolution is async),
-    // then assert the show-context trigger is absent.
+    // 等 card body 本身渲染（router 解析异步），然后断言 show-context
+    // trigger 缺席。
     await findByTestId("feed-card-action");
     expect(queryByTestId(`feed-card-show-context-${card.id}`)).toBeNull();
   });
@@ -257,14 +254,13 @@ describe("FeedCard P5-1 wiring: show-context QueueItemTrigger", () => {
       />,
     );
 
-    // CORRECTIVE §7.1 (founder N-1, 2026-07-05 + guard fixback 2026-07-06):
-    // the actionable card renders bare APPROVE + CHAT only. "Your turn" and
-    // "Choose response" chrome are GONE; deny/route are retired from the
-    // surface; the kind tag is the status label "Action required".
+    // CORRECTIVE §7.1（创建者 N-1，2026-07-05；守卫回修 2026-07-06）：
+    // 可操作卡片只呈现简洁的“批准”与“对话”。“轮到你了”和“选择响应”装饰已移除；
+    // 拒绝/路由不再出现在此表面；类型标签是状态文案“需要处理”。
     expect(await findByTestId(`feed-card-actions-${card.id}`)).toBeTruthy();
-    expect((await findAllByText("Action required")).length).toBeGreaterThanOrEqual(1);
-    expect(queryByText("Your turn")).toBeNull();
-    expect(queryByText("Choose response")).toBeNull();
+    expect((await findAllByText("需要处理")).length).toBeGreaterThanOrEqual(1);
+    expect(queryByText("轮到你了")).toBeNull();
+    expect(queryByText("选择响应")).toBeNull();
     expect(await findByTestId("mc-verb-approve")).toBeTruthy();
     expect(await findByTestId(`feed-card-chat-${card.id}`)).toBeTruthy();
     expect(queryByTestId("mc-verb-deny")).toBeNull();
@@ -299,8 +295,8 @@ describe("FeedCard P5-1 wiring: show-context QueueItemTrigger", () => {
     );
 
     expect(await findByTestId("feed-card-action-outcome")).toBeTruthy();
-    expect(await findByText("Decision recorded")).toBeTruthy();
-    expect(await findByText("Approved by human-operator@kernel.")).toBeTruthy();
+    expect(await findByText("已记录决策")).toBeTruthy();
+    expect(await findByText("已由 human-operator@kernel 批准。")).toBeTruthy();
     expect(queryByTestId(`feed-card-actions-${card.id}`)).toBeNull();
     expect(queryByTestId("mc-verb-approve")).toBeNull();
   });
@@ -320,7 +316,7 @@ describe("FeedCard P5-1 wiring: show-context QueueItemTrigger", () => {
       />,
     );
 
-    expect(await findByText("Routed by human@host to driver@openrig-velocity.")).toBeTruthy();
+    expect(await findByText("已由 human@host 转交至 driver@openrig-velocity。")).toBeTruthy();
     expect(queryByTestId(`feed-card-actions-${card.id}`)).toBeNull();
   });
 
@@ -348,7 +344,7 @@ describe("FeedCard P5-1 wiring: show-context QueueItemTrigger", () => {
     );
 
     expect(await findByTestId("feed-card-action-outcome")).toBeTruthy();
-    expect(await findByText("Routed by human@host to driver@openrig-velocity.")).toBeTruthy();
+    expect(await findByText("已由 human@host 转交至 driver@openrig-velocity。")).toBeTruthy();
     expect(queryByTestId(`feed-card-actions-${card.id}`)).toBeNull();
   });
 
@@ -388,15 +384,14 @@ describe("FeedCard P5-1 wiring: show-context QueueItemTrigger", () => {
   });
 });
 
-// V1 polish slice Phase 5.1 P5.1-D2: TopologyTreeView SeatLeaf details
-// icon RETIRED. SeatDetailTrigger primitive RETIRED. SeatLeaf is now
-// Link-only navigation to /topology/seat/$rigId/$logicalId. Retirement-
-// regression guard lives in test/node-selection-migration.test.tsx
-// (file-doesn't-exist for SeatDetailTrigger.tsx + SharedDetailDrawer
-// has no 'seat-detail' kind).
+// V1 polish slice Phase 5.1 P5.1-D2：TopologyTreeView SeatLeaf details 图标已
+// 退役。SeatDetailTrigger 原语已退役。SeatLeaf 现为到
+// /topology/seat/$rigId/$logicalId 的 Link-only 导航。退役回归守卫在
+// test/node-selection-migration.test.tsx（SeatDetailTrigger.tsx 文件不存在 +
+// SharedDetailDrawer 无 'seat-detail' kind）。
 
 // -----------------------------------------------------------------------
-// RigSpecDisplay pod-member agentRef cell → SubSpecTrigger → drawer.
+// RigSpecDisplay pod-member agentRef 单元 -> SubSpecTrigger -> drawer。
 // -----------------------------------------------------------------------
 
 import { SubSpecTrigger } from "../src/components/drawer-triggers/SubSpecTrigger.js";
@@ -427,14 +422,14 @@ describe("RigSpecDisplay P5-1 wiring: agentRef SubSpecTrigger contract", () => {
     );
     expect(src).toMatch(/import\s*\{\s*SubSpecTrigger\s*\}/);
     expect(src).toMatch(/<SubSpecTrigger/);
-    // parseAgentRef helper present (extracts specName + source from
-    // local:agents/foo / fork:agents/foo / etc).
+    // parseAgentRef helper 存在（从 local:agents/foo / fork:agents/foo 等
+    // 提取 specName + source）。
     expect(src).toMatch(/parseAgentRef/);
   });
 });
 
 // -----------------------------------------------------------------------
-// LibraryReview Files list (context-pack + agent-image) → FileReferenceTrigger.
+// LibraryReview Files 列表（context-pack + agent-image）-> FileReferenceTrigger。
 // -----------------------------------------------------------------------
 
 import { FileReferenceTrigger } from "../src/components/drawer-triggers/FileReferenceTrigger.js";
@@ -464,8 +459,8 @@ describe("LibraryReview P5-1 wiring: file-list FileReferenceTrigger contract", (
       "utf8",
     );
     expect(src).toMatch(/import\s*\{\s*FileReferenceTrigger\s*\}/);
-    // Both file-list sites (context-pack lib-pack-file-trigger-* and
-    // agent-image lib-image-file-trigger-*) must be present.
+    // 两个 file-list 站点（context-pack lib-pack-file-trigger-* 和
+    // agent-image lib-image-file-trigger-*）都必须存在。
     expect(src).toMatch(/lib-pack-file-trigger-/);
     expect(src).toMatch(/lib-image-file-trigger-/);
   });

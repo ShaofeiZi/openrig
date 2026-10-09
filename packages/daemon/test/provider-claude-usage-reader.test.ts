@@ -1,4 +1,4 @@
-// Slice-04 (OPR.0.5.0.4) C3 — Claude statusline provider_usage cache lane pins.
+// Slice-04（OPR.0.5.0.4）C3——Claude statusline provider_usage 缓存通道固定项。
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -20,8 +20,8 @@ function readerDeps(over: Partial<ClaudeUsageReaderDeps>): ClaudeUsageReaderDeps
   return { listClaudeSeats: () => [], readCacheRaw: () => null, now: () => ASOF, ...over };
 }
 
-describe("writeProviderUsageCacheAtomic — tmp+rename (no torn read)", () => {
-  it("writes a tmp sibling FIRST, then renames it over the target (never writes the target directly)", () => {
+describe("writeProviderUsageCacheAtomic——tmp+rename（不会读到撕裂内容）", () => {
+  it("先写同级 tmp，再将其重命名覆盖目标（绝不直接写目标）", () => {
     const ops: string[] = [];
     const fs: ProviderUsageCacheFs = {
       readFile: () => "", exists: () => false,
@@ -31,15 +31,15 @@ describe("writeProviderUsageCacheAtomic — tmp+rename (no torn read)", () => {
     const cache: ProviderUsageCache = { seatSession: "dev-impl@rig", asOf: CACHE_ASOF };
     writeProviderUsageCacheAtomic(fs, "/cache/acct.json", cache);
     expect(ops).toHaveLength(2);
-    expect(ops[0]!.startsWith("write:/cache/acct.json.tmp-")).toBe(true); // tmp, NOT the target
+    expect(ops[0]!.startsWith("write:/cache/acct.json.tmp-")).toBe(true); // 写 tmp，而不是目标。
     expect(ops[1]).toBe(`rename:${ops[0]!.slice("write:".length)}->/cache/acct.json`);
-    // The target is never written directly — a concurrent reader sees old-or-new, never torn.
+    // 目标绝不被直接写入；并发读取者只能看到旧值或新值，不会看到撕裂内容。
     expect(ops.some((o) => o === "write:/cache/acct.json")).toBe(false);
   });
 });
 
-describe("collectClaudeStatuslineSignals — reader → provider_statusline / explicit unknown", () => {
-  it("absent cache (pre-first-response) → explicit unknown(no_statusline_cache_yet)", () => {
+describe("collectClaudeStatuslineSignals——reader 转为 provider_statusline / explicit unknown", () => {
+  it("缓存缺失（首次响应前）时产生 explicit unknown(no_statusline_cache_yet)", () => {
     const sigs = collectClaudeStatuslineSignals(readerDeps({
       listClaudeSeats: () => [{ seatSession: "dev-impl@rig" }],
       readCacheRaw: () => null,
@@ -47,12 +47,12 @@ describe("collectClaudeStatuslineSignals — reader → provider_statusline / ex
     expect(sigs).toHaveLength(1);
     expect(sigs[0]!.sourceClass).toBe("unknown");
     expect(sigs[0]!.unknownReason).toBe(CLAUDE_UNKNOWN_REASON.no_statusline_cache_yet);
-    expect(sigs[0]!.usedPercent).toBeUndefined(); // never a fabricated zero
+    expect(sigs[0]!.usedPercent).toBeUndefined(); // 绝不伪造零值。
     expect(sigs[0]!.seatSession).toBe("dev-impl@rig");
     expect(sigs[0]!.accountRef).toBeUndefined();
   });
 
-  it("subscription + windows → provider_statusline rows (five_hour + weekly), asOf = the cache's asOf", () => {
+  it("subscription + windows 产生 provider_statusline 行（five_hour + weekly），asOf 取缓存值", () => {
     const cache: ProviderUsageCache = {
       seatSession: "dev-impl@rig", accountKind: "subscription", asOf: CACHE_ASOF,
       rateLimits: { five_hour: { usedPercent: 42, resetsAt: "2026-08-03T17:00:00Z" }, seven_day: { usedPercent: 10, resetsAt: "2026-08-10T00:00:00Z" } },
@@ -62,13 +62,13 @@ describe("collectClaudeStatuslineSignals — reader → provider_statusline / ex
       readCacheRaw: () => JSON.stringify(cache),
     }));
     expect(sigs.every((s) => s.sourceClass === "provider_statusline")).toBe(true);
-    expect(sigs.every((s) => s.asOf === CACHE_ASOF)).toBe(true); // captured-at, not now
+    expect(sigs.every((s) => s.asOf === CACHE_ASOF)).toBe(true); // 使用捕获时间，而非当前时间。
     expect(sigs.map((s) => s.window).sort()).toEqual(["five_hour", "weekly"]);
     expect(sigs.find((s) => s.window === "five_hour")!.usedPercent).toBe(42);
     expect(sigs.every((s) => s.seatSession === "dev-impl@rig" && s.accountRef === undefined)).toBe(true);
   });
 
-  it("cache present but no rate_limits → explicit unknown(empty_reading)", () => {
+  it("存在缓存但没有 rate_limits 时产生 explicit unknown(empty_reading)", () => {
     const sigs = collectClaudeStatuslineSignals(readerDeps({
       listClaudeSeats: () => [{ seatSession: "dev-impl@rig" }],
       readCacheRaw: () => JSON.stringify({ seatSession: "dev-impl@rig", asOf: CACHE_ASOF }),
@@ -76,7 +76,7 @@ describe("collectClaudeStatuslineSignals — reader → provider_statusline / ex
     expect(sigs[0]!.unknownReason).toBe(CLAUDE_UNKNOWN_REASON.empty_reading);
   });
 
-  it("malformed cache JSON → unknown(empty_reading), never throws", () => {
+  it("格式错误的缓存 JSON 产生 unknown(empty_reading)，绝不抛错", () => {
     const sigs = collectClaudeStatuslineSignals(readerDeps({
       listClaudeSeats: () => [{ seatSession: "dev-impl@rig" }],
       readCacheRaw: () => "{ not json",
@@ -86,8 +86,8 @@ describe("collectClaudeStatuslineSignals — reader → provider_statusline / ex
   });
 });
 
-describe("0.5.8 provider-usage compatibility bridge", () => {
-  it("prefers canonical caches and falls back per seat to the legacy root", () => {
+describe("0.5.8 provider-usage 兼容桥", () => {
+  it("优先使用 canonical 缓存，并按席位回退到 legacy 根目录", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "provider-bridge-"));
     const canonical = path.join(home, "state", "provider-usage");
     const legacy = path.join(home, "provider-usage");

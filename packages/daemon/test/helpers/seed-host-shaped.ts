@@ -1,12 +1,11 @@
-// Host-shaped synthetic seeder for the /api/ps + /api/rigs/summary event-loop
-// regression asset (qitem-20260721000001-ps-stall-driver, slice-04).
+// 面向 /api/ps + /api/rigs/summary 事件循环回归资产的主机形态合成数据播种器
+//（qitem-20260721000001-ps-stall-driver，slice-04）。
 //
-// Byte-scale-faithful to the copied host snapshot SHAPE — NOT the copied DB and
-// NOT enlarged-to-force: 27 rigs / 198 nodes (active 10/75 + archived 17/123) and
-// EXACTLY 219,541 events, inserted in ONE transaction, in the authoritative
-// per-type distribution captured from the host snapshot's
-// `SELECT type, COUNT(*) FROM events GROUP BY type`. Fully deterministic — no
-// Date.now / Math.random — so the fixture is CI-rerunnable.
+// 在字节规模上忠实于所复制主机快照的形态——不是复制数据库，也没有为强制触发而扩大：
+// 27 个 rig / 198 个节点（活跃 10/75 + 已归档 17/123），并在一个 transaction 中准确插入
+// 219,541 个事件；各类型分布取自主机快照的权威查询
+// `SELECT type, COUNT(*) FROM events GROUP BY type`。完全确定性——不使用
+// Date.now / Math.random——因此该 fixture 可在 CI 中重复运行。
 import type Database from "better-sqlite3";
 import { createDb } from "../../src/db/connection.js";
 import { migrate } from "../../src/db/migrate.js";
@@ -44,19 +43,16 @@ import { rigArchiveSchema } from "../../src/db/migrations/042_rig_archive.js";
 import { resumeProvenanceSchema } from "../../src/db/migrations/043_resume_provenance.js";
 import { resumeVerificationSchema } from "../../src/db/migrations/045_resume_verification.js";
 import { seatIdentityVerdictsSchema } from "../../src/db/migrations/046_seat_identity_verdicts.js";
-// slice-04: the shipped hot-path indexes this fixture exercises. startup.ts applies
-// BOTH; without them a readonly WAL copy full-scans/temp-sorts the events + sessions
-// tables, inflating latency vs the real host. createFullTestDb's list stops at 046 —
-// this fixture must be production-migration-faithful for the D2 latency budget.
+// slice-04：此 fixture 覆盖的已发布热路径索引。startup.ts 会同时应用二者；缺少它们时，
+// 只读 WAL 副本会全表扫描/临时排序 events + sessions 表，导致延迟高于真实主机。
+// createFullTestDb 的列表止于 046——为满足 D2 延迟预算，此 fixture 必须忠实反映生产 migration。
 import { eventsNodeTypeIndexSchema } from "../../src/db/migrations/047_events_node_type_index.js";      // idx_events_node_type_seq
 import { sessionsNodeIdIndexSchema } from "../../src/db/migrations/053_sessions_node_id_index.js";       // idx_sessions_node_created_id
 
-// Vitest-free migrated in-memory DB — the same base migration list as
-// test-app.ts::createFullTestDb PLUS the shipped 047/053 hot-path indexes, and
-// with no `vitest` import, so the D2 child (a standalone `node --import tsx`
-// process) can build production-index-faithful state without the vitest runtime.
-// Used ONLY by the D2 child fixture; D1/D3 keep createFullTestDb (scan-count tests,
-// index-independent).
+// 不依赖 Vitest 的已迁移内存数据库——使用与 test-app.ts::createFullTestDb 相同的基础 migration
+// 列表，再加上已发布的 047/053 热路径索引；且不导入 `vitest`，因此 D2 子进程（独立的
+// `node --import tsx` 进程）无需 vitest runtime 即可构建忠实反映生产索引的状态。
+// 仅供 D2 子 fixture 使用；D1/D3 继续使用 createFullTestDb（扫描计数测试，与索引无关）。
 export function createMigratedDb(): Database.Database {
   const db = createDb();
   migrate(db, [coreSchema, bindingsSessionsSchema, eventsSchema, snapshotsSchema, checkpointsSchema, resumeMetadataSchema, nodeSpecFieldsSchema, packagesSchema, installJournalSchema, journalSeqSchema, bootstrapSchema, discoverySchema, discoveryFkFix, agentspecRebootSchema, startupContextSchema, chatMessagesSchema, podNamespaceSchema, contextUsageSchema, externalCliAttachmentSchema, rigServicesSchema, seatHandoverObservabilitySchema, nodeCodexConfigProfileSchema, nodePermissionPolicySchema, rigPermissionPolicySchema, nodePolicyProvenanceSchema, rigPolicyProvenanceSchema, streamItemsSchema, queueItemsSchema, queueTransitionsSchema, rigPolicySchema, rigArchiveSchema, resumeProvenanceSchema, resumeVerificationSchema, seatIdentityVerdictsSchema, eventsNodeTypeIndexSchema, sessionsNodeIdIndexSchema]);
@@ -65,7 +61,7 @@ export function createMigratedDb(): Database.Database {
 
 const BASE_TS = "2026-07-01 00:00:00";
 
-// Authoritative event-type vector from the host snapshot (sums to 219,541).
+// 来自主机快照的权威事件类型向量（总计 219,541）。
 export const EVENT_TYPE_VECTOR: ReadonlyArray<readonly [string, number]> = [
   ["snapshot.created", 89083], ["view.changed", 76658], ["agent.activity", 26329],
   ["queue.created", 6262], ["queue.updated", 5825], ["watchdog.evaluation_fired", 4436],
@@ -100,7 +96,7 @@ const NODE_SCOPED = new Set([
   "session.resume_token_captured", "session.resume_token_set",
 ]);
 
-// Evenly distribute `total` items across `bins` (deterministic).
+// 将 `total` 个条目均匀分配到 `bins`（确定性）。
 function spread(total: number, bins: number): number[] {
   const base = Math.floor(total / bins);
   const extra = total - base * bins;
@@ -131,7 +127,7 @@ export interface HostShape {
   sessionNameByNode: Map<string, string>;
 }
 
-/** Seed the db to the host shape. Returns the id maps. One transaction for events. */
+/** 将数据库播种为主机形态。返回 ID 映射。事件使用一个 transaction。 */
 export function seedHostShaped(db: Database.Database): HostShape {
   const insRig = db.prepare("INSERT INTO rigs (id, name, created_at, archived_at) VALUES (?, ?, ?, ?)");
   const insNode = db.prepare("INSERT INTO nodes (id, rig_id, logical_id, runtime, created_at) VALUES (?, ?, ?, ?, ?)");
@@ -145,11 +141,11 @@ export function seedHostShaped(db: Database.Database): HostShape {
   const sessionNameByNode = new Map<string, string>();
 
   const seedAll = db.transaction(() => {
-    // rigs
+    // rig
     for (let i = 0; i < ACTIVE_RIGS; i++) { const id = `rig-act-${String(i).padStart(2, "0")}`; insRig.run(id, id, BASE_TS, null); activeRigIds.push(id); nodeByRig.set(id, []); }
     for (let i = 0; i < ARCHIVED_RIGS; i++) { const id = `rig-arc-${String(i).padStart(2, "0")}`; insRig.run(id, id, BASE_TS, "2026-07-05 00:00:00"); archivedRigIds.push(id); nodeByRig.set(id, []); }
 
-    // nodes + one latest session each, with a deterministic mixed lifecycle
+    // 节点及其各自最新的一个 session，采用确定性的混合生命周期
     const mkNodes = (rigIds: string[], perRig: number[]) => {
       rigIds.forEach((rid, ri) => {
         for (let k = 0; k < perRig[ri]; k++) {
@@ -159,7 +155,7 @@ export function seedHostShaped(db: Database.Database): HostShape {
           allNodeIds.push(nid);
           const sname = `sess-${nid}`;
           sessionNameByNode.set(nid, sname);
-          // mix: 0 -> running/ready, 1 -> exited/ready (non-running, held-eligible), 2 -> exited/pending (non-ready)
+          // 混合：0 -> running/ready，1 -> exited/ready（非运行、可 held），2 -> exited/pending（未 ready）
           const m = allNodeIds.length % 3;
           const status = m === 0 ? "running" : "exited";
           const startup = m === 2 ? "pending" : "ready";
@@ -170,7 +166,7 @@ export function seedHostShaped(db: Database.Database): HostShape {
     mkNodes(activeRigIds, spread(ACTIVE_NODES, ACTIVE_RIGS));
     mkNodes(archivedRigIds, spread(ARCHIVED_NODES, ARCHIVED_RIGS));
 
-    // events — EXACTLY the authoritative vector, one transaction
+    // 事件——严格采用权威向量，并使用一个 transaction
     const allRigIds = [...activeRigIds, ...archivedRigIds];
     let ni = 0, ri = 0;
     for (const [type, count] of EVENT_TYPE_VECTOR) {
@@ -182,7 +178,7 @@ export function seedHostShaped(db: Database.Database): HostShape {
           insEvent.run(rid, nid, type, payloadFor(type, nid, rid, sessionNameByNode.get(nid) ?? ""), BASE_TS);
         } else {
           const rid = allRigIds[ri % allRigIds.length]; ri++;
-          // restore.* are rig-scoped but reference a node in payload for the outcome fold
+          // restore.* 以 rig 为范围，但在 payload 中引用节点以聚合 outcome
           const anchorNode = nodeByRig.get(rid)?.[0] ?? allNodeIds[0];
           insEvent.run(rid, null, type, payloadFor(type, anchorNode, rid, ""), BASE_TS);
         }

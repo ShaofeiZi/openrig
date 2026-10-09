@@ -1,58 +1,47 @@
-// OPR.0.4.6.FAC1 — the PURE role→seat selection policy (BR-1).
+// OPR.0.4.6.FAC1——纯 role→seat 选择策略（BR-1）。
 //
-// THE PURITY CONTRACT (arch Q1 = guard B4, binding): this module is a
-// pure function over an already-materialized fact array. It has ZERO
-// runtime imports — no db, no clock, no randomness, no locale, no
-// tmux/activity probes. The commit-4 import-audit test pins that this
-// file never grows a `Date`/`Math.random`/`localeCompare`/async
-// dependency: same candidate facts in → same seat out, on every
-// process, every replay, every version.
+// 纯度契约（arch Q1 = guard B4，强约束）：本模块是对已物化事实数组的纯函数。
+// 它没有任何运行时导入——无数据库、时钟、随机性、locale 或 tmux/activity 探针。
+// commit-4 的 import-audit 测试固定本文件绝不能引入 `Date`、`Math.random`、
+// `localeCompare` 或 async 依赖：相同候选事实，在每个进程、每次重放和每个版本中
+// 都必须选出相同席位。
 //
-// THE CLOSED FACT SET (arch Q1): role · nodeKind · lifecycleState ·
-// runtime · pendingWorkCount (the sync pending-only SQL map) · the
-// derived canonical coordinate. Nothing else may influence selection.
+// 封闭事实集（arch Q1）：role、nodeKind、lifecycleState、runtime、pendingWorkCount
+//（同步且仅 pending 的 SQL 映射）以及派生规范坐标。其他因素一律不得影响选择。
 //
-// GATE ORDER (guard B4, pinned): nodeKind === "agent" AND
-// lifecycleState === "running" filter FIRST, then the managed-seat /
-// coordinate gates, then runtime match, then capacity ordering.
+// 门控顺序（guard B4，已固定）：先过滤 nodeKind === "agent" 且
+// lifecycleState === "running"，再过受管席位/坐标门、runtime 匹配，最后按容量排序。
 //
-// THE ONE STRING RULE (arch Q5 = guard B2): the seat identity used for
-// BOTH the tiebreak key AND the recorded destination is the DERIVED
-// canonical coordinate `{pod}-{member}@{rig}` — never a raw
-// occupant-era session name. Adopted seats (raw tmux name ≠ derived
-// coordinate) are EXCLUDED from the v1 candidate set LOUDLY with the
-// named disqualifier `adopted_seat_not_role_resolvable_v1`
-// (un-exclusion is a named follow-up carrying the delivery-duality
-// test — planner2 §3.7).
+// 单字符串规则（arch Q5 = guard B2）：用于平局决胜键和记录目标的席位身份，
+// 都必须是派生规范坐标 `{pod}-{member}@{rig}`，绝不能是占用者时代的原始会话名。
+// 已采纳席位（原始 tmux 名 ≠ 派生坐标）会以具名 disqualifier
+// `adopted_seat_not_role_resolvable_v1` 响亮排除在 v1 候选集之外；解除排除是
+// 一个具名后续项，并携带投递双重性测试（planner2 第 3.7 节）。
 //
-// TIEBREAK (BR-1): ascending pendingWorkCount, then the coordinate by
-// PLAIN CODEPOINT comparison (`<`), never localeCompare/natural sort —
-// `driver10@rig < driver2@rig` is the pinned counterintuitive vector;
-// "fixing" it into natural sort is a cross-version determinism break.
+// 平局决胜（BR-1）：先按 pendingWorkCount 升序，再用普通码点比较（`<`）排序坐标，
+// 绝不使用 localeCompare/自然排序。`driver10@rig < driver2@rig` 是固定的反直觉向量；
+// 把它“修正”为自然排序会破坏跨版本确定性。
 
-/** The synchronous facts a candidate seat is judged by — materialized
- *  by the caller (workflow-role-context.ts) from the shipped
- *  rig-scoped inventory projection + sync work-enrichment. */
+/** 判断候选席位所用的同步事实——由调用方 workflow-role-context.ts 从已交付的
+ *  工作组作用域 inventory 投影和同步工作补充中物化。 */
 export interface RoleSeatCandidateFacts {
   logicalId: string;
-  /** nodes.role (the commit-1 dimension). null = role-less. */
+  /** nodes.role（commit-1 维度）；null 表示无角色。 */
   role: string | null;
   nodeKind: "agent" | "infrastructure";
   lifecycleState: string;
   runtime: string | null;
-  /** Pending-only backlog (state='pending' items; claimed/in-progress
-   *  rank zero) — "least-loaded" = "least unclaimed backlog". */
+  /** 仅 pending 的积压（state='pending' 条目；claimed/in-progress 排名为零）；
+   *  “负载最小”即“未认领积压最少”。 */
   pendingWorkCount: number;
-  /** The derived canonical coordinate `{pod}-{member}@{rig}`; null
-   *  when underivable (no pod-aware logical id). */
+  /** 派生规范坐标 `{pod}-{member}@{rig}`；无法派生时为 null（无 pod 感知 logical id）。 */
   coordinate: string | null;
-  /** The occupant-era session name (latest session row). Managed seats:
-   *  equals `coordinate`. Adopted seats: the raw tmux name. */
+  /** 占用者时代的会话名（最新会话行）。受管席位等于 `coordinate`；
+   *  已采纳席位则是原始 tmux 名。 */
   rawSessionName: string | null;
 }
 
-/** One evaluated-and-disqualified candidate — the loud-with-candidates
- *  evidence unit (BR-5). */
+/** 一个已评估但不合格的候选——带候选响亮报告的证据单元（BR-5）。 */
 export interface RoleCandidateVerdict {
   coordinate: string | null;
   logicalId: string;
@@ -66,16 +55,13 @@ export interface RoleCandidateVerdict {
 }
 
 export interface RoleSelectionResult {
-  /** The winning seat's DERIVED canonical coordinate (the one string —
-   *  tiebreak key AND recorded destination). null = no qualified seat. */
+  /** 胜出席位的派生规范坐标（唯一字符串，同时用于平局决胜键和记录目标）；
+   *  null 表示没有合格席位。 */
   seat: string | null;
-  /** Every evaluated agent seat that did NOT win, with its named
-   *  disqualifier — the structured details a resolution failure (and
-   *  the proof captures) surface. Qualified-but-outranked seats appear
-   *  under `qualified` instead, never here. */
+  /** 每个已评估但未胜出的智能体席位及其具名 disqualifier——解析失败和 proof capture
+   *  所展示的结构化详情。合格但排名较后的席位列入 `qualified`，绝不列在此处。 */
   disqualified: RoleCandidateVerdict[];
-  /** The qualified set in final ranked order (winner first) — makes
-   *  the load/tiebreak proofs legible. */
+  /** 最终排名顺序的合格集合（胜者在前），便于阅读负载/平局决胜证明。 */
   qualified: Array<{ coordinate: string; logicalId: string; pendingWorkCount: number }>;
 }
 
@@ -94,13 +80,11 @@ function verdictOf(c: RoleSeatCandidateFacts, disqualifier: string): RoleCandida
 }
 
 /**
- * Select the seat for `role` from the candidate facts. Pure; order of
- * the input array never affects the outcome (commit-4 permutation
- * vector).
+ * 从候选事实中选择承担 `role` 的席位。此函数为纯函数，输入数组顺序绝不影响结果
+ *（commit-4 排列向量）。
  *
- * `harness` = the step's WF-2 pin: when set, a qualified seat must run
- * exactly that runtime; when absent, any AGENT runtime qualifies (the
- * nodeKind gate already excludes infrastructure/terminal).
+ * `harness` 是步骤的 WF-2 固定项：设置时，合格席位必须恰好运行该 runtime；
+ * 缺失时任意智能体 runtime 均合格，因为 nodeKind 门已排除 infrastructure/terminal。
  */
 export function selectRoleSeat(input: {
   role: string;
@@ -111,9 +95,8 @@ export function selectRoleSeat(input: {
   const qualified: RoleSeatCandidateFacts[] = [];
 
   for (const c of input.candidates) {
-    // Infrastructure/terminal nodes are not agent seats — schema
-    // rejects role on them; they are silently out of scope (never
-    // listed: a terminal server is not an actionable candidate).
+    // infrastructure/terminal 节点不是智能体席位——schema 会拒绝其 role；
+    // 它们静默排除在作用域外，不会列出，因为终端服务器不是可操作候选。
     if (c.nodeKind !== "agent") continue;
     if (c.role !== input.role) {
       disqualified.push(verdictOf(c, "role_not_declared"));
@@ -123,9 +106,8 @@ export function selectRoleSeat(input: {
       disqualified.push(verdictOf(c, `not_live(lifecycleState=${c.lifecycleState})`));
       continue;
     }
-    // The v1 managed-seat scope pin (arch Q5): an adopted seat's
-    // raw-name/derived-name delivery duality is the handover-stranding
-    // hazard — excluded LOUDLY, visible in every candidates output.
+    // v1 受管席位作用域固定项（arch Q5）：已采纳席位的原始名/派生名投递双重性
+    // 会造成交接搁浅，因此必须响亮排除，并在每份 candidates 输出中可见。
     if (c.coordinate === null) {
       disqualified.push(verdictOf(c, "coordinate_underivable"));
       continue;
@@ -143,8 +125,8 @@ export function selectRoleSeat(input: {
     qualified.push(c);
   }
 
-  // Capacity ordering: least unclaimed backlog first; tiebreak by the
-  // coordinate, PLAIN codepoint ascending (driver10@rig < driver2@rig).
+  // 容量排序：未认领积压最少者优先；平局时按坐标普通码点升序
+  //（driver10@rig < driver2@rig）。
   qualified.sort((a, b) => {
     if (a.pendingWorkCount !== b.pendingWorkCount) {
       return a.pendingWorkCount - b.pendingWorkCount;

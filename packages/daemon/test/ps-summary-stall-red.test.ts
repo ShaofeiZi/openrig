@@ -1,14 +1,13 @@
-// slice-04 /api/ps event-loop stall — daemon regression pins + GREEN characterization.
-// The D1/D2 titles carry the word "regression": they were genuine RED at the
-// test-only gate and pin the target behavior. The production fix is NOT yet
-// committed or shipped — these pins guard the pending candidate.
-// qitem-20260721000001-ps-stall-driver. Host-shaped SYNTHETIC only (never the
-// copied host DB). CI-rerunnable; reads no external lane marker.
+// slice-04 /api/ps 事件循环 stall——daemon 回归 pin + 绿色特征化。
+// D1/D2 标题带"regression"字样：它们在仅测试闸门处曾是真正的红，并
+// 钉住目标行为。生产修复尚未提交或发货——这些 pin 守卫待发布候选。
+// qitem-20260721000001-ps-stall-driver。仅 host 形态合成（绝不用复制的 host DB）。
+// CI 可重跑；不读外部 lane 标记。
 //
-// Fail-safety contract: D1/D3 restore spies and close their DB in `finally` even
-// when an assertion throws; D2 uses a whole-run watchdog + parent try/finally so
-// the spawned child is always TERM/KILL'd and its listener proven closed on every
-// path. Regression-pin semantics / N=24 / event vector / 250ms budget are frozen.
+// 失败安全契约：D1/D3 恢复 spy 并在 `finally` 中关闭其 DB，即使断言抛错；
+// D2 用整轮 watchdog + 父 try/finally，使派生的子进程在每条路径上始终被
+// TERM/KILL、其监听器被证明已关闭。回归 pin 语义 / N=24 / 事件向量 /
+// 250ms 预算均已冻结。
 import { describe, it, expect, vi } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
 import { performance } from "node:perf_hooks";
@@ -62,9 +61,9 @@ function tcpClosed(host: string, port: number, timeoutMs: number): Promise<boole
   });
 }
 
-describe("slice-04 ps/summary event-loop regression", () => {
+describe("slice-04 ps/summary 事件循环回归", () => {
   // ---------- D1 (regression pin): split-classifier scan counts ----------
-  it("D1 regression: summary performs exactly ONE fleet startup-orientation + ONE restore-outcome scan", async () => {
+  it("D1 回归：summary 恰好执行一次舰队启动定向扫描和一次恢复结果扫描", async () => {
     const db = createFullTestDb();
     seedHostShaped(db);
     const app = buildStallApp(db);
@@ -92,7 +91,7 @@ describe("slice-04 ps/summary event-loop regression", () => {
   }, 60_000);
 
   // ---------- D3 (GREEN): membership/fields/freshness + fail-loud pin ----------
-  it("D3 GREEN: archive membership + fields + request-boundary freshness + existing 500", async () => {
+  it("D3 通过：归档成员关系、字段、请求边界新鲜度和既有 500", async () => {
     const db = createFullTestDb();
     const shape = seedHostShaped(db);
     const app = buildStallApp(db);
@@ -123,7 +122,7 @@ describe("slice-04 ps/summary event-loop regression", () => {
       expect(def2).toHaveLength(9);
 
       // fail-loud: a deterministic prepare throw at the ps boundary returns the EXISTING 500,
-      // no partial/stale payload published; a subsequent call recovers fully.
+      // 不发布任何部分/陈旧 payload；后续调用完全恢复。
       const real = db.prepare.bind(db);
       spy = vi.spyOn(db, "prepare").mockImplementation(((sql: string) => {
         if (String(sql).includes("running_count")) throw new Error("injected ps-boundary failure");
@@ -144,7 +143,7 @@ describe("slice-04 ps/summary event-loop regression", () => {
   }, 60_000);
 
   // ---------- D2 (regression pin): real localhost N=24 burst health budget ----------
-  it("D2 regression: N=24 real-HTTP ps+summary burst keeps worst /healthz < budget", async () => {
+  it("D2 回归：N=24 的真实 HTTP ps+summary 突发使最差 /healthz 仍低于预算", async () => {
     const env: NodeJS.ProcessEnv = { ...process.env };
     for (const k of ["OPENRIG_URL", "OPENRIG_PORT", "OPENRIG_HOME", "OPENRIG_HOST", "OPENRIG_DB",
       "RIGGED_URL", "RIGGED_PORT", "RIGGED_HOME", "RIGGED_HOST", "RIGGED_DB"]) delete env[k];
@@ -173,8 +172,8 @@ describe("slice-04 ps/summary event-loop regression", () => {
       // whole-run watchdog: force-terminate the child if the run overruns 45s.
       watchdog = setTimeout(() => {
         try { if (child && child.exitCode === null && child.signalCode === null) child.kill("SIGTERM"); } catch { /* noop */ }
-        // TRACKED escalation timer; re-checks liveness before KILL so it can never
-        // signal a stale/OS-reused PID after the child already exited.
+        // 受跟踪的升级定时器；KILL 前复查存活，使它绝不可能在子进程已退出后
+        // 对一个陈旧/OS 复用的 PID 发信号。
         watchdogKill = setTimeout(() => {
           try { if (child && child.exitCode === null && child.signalCode === null) child.kill("SIGKILL"); } catch { /* noop */ }
         }, 3_000);
@@ -235,8 +234,8 @@ describe("slice-04 ps/summary event-loop regression", () => {
       probeAbort.abort();
       try {
         // Terminate + await the child BEFORE draining the probe, with the whole-run
-        // watchdog STILL ARMED (timers are cleared only in the nested finally below,
-        // after the child has exited) — so a stall here can never leak the child.
+        // watchdog 仍处于挂起状态（定时器仅在下方嵌套 finally 中、
+        // 子进程退出后才清除）——故此处 stall 绝不会泄漏子进程。
         if (child) {
           if (child.exitCode === null && child.signalCode === null) {
             child.kill("SIGTERM");
@@ -244,7 +243,7 @@ describe("slice-04 ps/summary event-loop regression", () => {
             if (!exited) { child.kill("SIGKILL"); await waitExit(child, 5_000); }
           }
           pidGone = child.exitCode !== null || child.signalCode !== null;
-          // Only ECONNREFUSED proves closed; timeout/other => not closed.
+          // 只有 ECONNREFUSED 证明已关闭；超时/其他 => 未关闭。
           portClosed = port > 0 ? await tcpClosed("127.0.0.1", port, 2_000) : false;
         }
         // Drain the now-aborted probe (its fetch carries probeAbort.signal, so it settles).

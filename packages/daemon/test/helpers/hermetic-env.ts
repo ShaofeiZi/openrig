@@ -1,19 +1,15 @@
 /**
- * Slice 51-02 (L2 test-system) — the SHARED hermetic env-discipline helper.
+ * Slice 51-02（L2 测试系统）——共享的封闭环境纪律辅助模块。
  *
- * The safety keystone of the scenario runner: it makes it impossible for a test
- * to silently run against a live or shared daemon. Built ONCE here, imported by
- * two consumers — the scenario runner and the D-class hermetic-harness hardening
- * intake.
+ * 场景 runner 的安全基石：确保测试不可能静默连接实时或共享后台服务。只在这里实现
+ * 一次，由场景 runner 和 D 类 hermetic-harness 加固入口两个消费者导入。
  *
- * This module currently provides the FAIL-CLOSED guard (proof item 4). The
- * scratch HOME/OPENRIG_HOME scaffold + forced-local daemon spawn + injected-clock
- * plumb-through layer on top of this guard (added as subsequent units).
+ * 本模块目前提供失败关闭守卫（证明条目 4）。临时 HOME/OPENRIG_HOME 脚手架、
+ * 强制本地后台服务启动和注入时钟贯通层构建在此守卫之上（作为后续单元加入）。
  *
- * Doctrine: a helper that silently falls back to an ambient daemon reproduces the
- * exact D-class hazard this slice exists to kill. Detection is pure, synchronous
- * env inspection — it sends ZERO traffic — and on a foreign target it REFUSES with
- * a hard error NAMING the target. Never a degrade, never a fabrication.
+ * 原则：静默回退到环境后台服务的辅助模块会重现本切片旨在消除的 D 类风险。检测是
+ * 纯同步环境检查，不发送任何流量；遇到外部目标时以明确点名目标的硬错误拒绝，
+ * 绝不降级，也不伪造结果。
  */
 
 import { execFileSync } from "node:child_process";
@@ -28,23 +24,20 @@ import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 
 /**
- * Inherited environment variables that redirect the CLI/daemon client at a
- * daemon TARGET the helper did not create. Presence of any of these in the
- * ambient environment is a foreign-daemon signal → hard refuse.
+ * 会把 CLI/daemon 客户端重定向到一个本辅助模块未曾创建的后台服务目标的继承环境变量。
+ * 环境中出现其中任意一个即为外部后台服务信号 → 硬拒绝。
  *
- * Order is the detection order (first match wins), kept deterministic so the
- * refusal message is stable across runs.
+ * 顺序即检测顺序（先匹配先生效），保持确定性，使拒绝消息在各次运行间稳定。
  *
- * Provenance (verified at source, base 13e26355):
- * - OPENRIG_URL / RIGGED_URL   — client base URL (cli/src/client.ts:86, default http://127.0.0.1:7433)
- * - OPENRIG_HOST / RIGGED_HOST — client host override (cli/src/index.test.ts:24-31)
- * - OPENRIG_HOST_SELECTED      — host-selection env half; resolution order
- *     env OPENRIG_HOST_SELECTED > ~/.openrig/config.json (disk) > "local"
- *     (cli/src/host-selection.ts:7). The scratch-HOME layer covers the DISK half;
- *     this guard covers the ENV half — without it a persisted/env selection
- *     silently retargets a remote daemon BEFORE the scratch layer applies
- *     (the documented D-class third leak vector).
- * - OPENRIG_PORT / RIGGED_PORT — client port (cli/src/config-store.ts:343)
+ * 出处（已在源码核实，base 13e26355）：
+ * - OPENRIG_URL / RIGGED_URL   —— 客户端 base URL（cli/src/client.ts:86，默认 http://127.0.0.1:7433）
+ * - OPENRIG_HOST / RIGGED_HOST —— 客户端 host 覆盖（cli/src/index.test.ts:24-31）
+ * - OPENRIG_HOST_SELECTED      —— host 选择 env 半侧；解析顺序
+ *     env OPENRIG_HOST_SELECTED > ~/.openrig/config.json（磁盘）> "local"
+ *     （cli/src/host-selection.ts:7）。scratch-HOME 层覆盖磁盘半侧；
+ *     本守卫覆盖 env 半侧——否则持久化/env 选择会在 scratch 层生效之前
+ *     静默重定向到远程后台服务（已记录的 D 类第三条泄漏向量）。
+ * - OPENRIG_PORT / RIGGED_PORT —— 客户端端口（cli/src/config-store.ts:343）
  */
 export const DAEMON_TARGET_ENV_VARS = [
   "OPENRIG_URL",
@@ -58,13 +51,13 @@ export const DAEMON_TARGET_ENV_VARS = [
 
 export type DaemonTargetEnvVar = (typeof DAEMON_TARGET_ENV_VARS)[number];
 
-/** A detected foreign daemon target: the offending var name and its value. */
+/** 检测到的外部后台服务目标：违规变量名及其值。 */
 export interface ForeignDaemonTarget {
   name: DaemonTargetEnvVar;
   value: string;
 }
 
-/** Hard-refusal error thrown when the ambient env points at a foreign daemon. */
+/** 环境指向外部后台服务时抛出的硬拒绝错误。 */
 export class HermeticEnvError extends Error {
   readonly foreignTarget: ForeignDaemonTarget;
   constructor(target: ForeignDaemonTarget) {
@@ -82,11 +75,11 @@ export class HermeticEnvError extends Error {
 type EnvLike = Record<string, string | undefined>;
 
 /**
- * Inspect an environment for an inherited daemon-target var. Returns the FIRST
- * (in DAEMON_TARGET_ENV_VARS order) non-empty match, or null when clean.
+ * 检查环境中继承的后台服务目标变量。按 DAEMON_TARGET_ENV_VARS 顺序返回第一个
+ * 非空匹配；环境干净时返回 null。
  *
- * An exported-but-empty var (e.g. `OPENRIG_URL=`) does not point at a daemon and
- * is treated as absent. Pure and synchronous — no network, no side effects.
+ * 已导出但为空的变量（如 `OPENRIG_URL=`）不指向后台服务，按缺失处理。该检查
+ * 纯净且同步，不访问网络，也无副作用。
  */
 export function detectForeignDaemonTarget(
   env: EnvLike = process.env,
@@ -101,9 +94,8 @@ export function detectForeignDaemonTarget(
 }
 
 /**
- * FAIL-CLOSED assertion: throw a named HermeticEnvError if the environment points
- * at a foreign daemon target. Call this BEFORE constructing/dialing any daemon —
- * it is the boundary the D-class census exists to enforce. Sends ZERO traffic.
+ * 失败关闭断言：环境指向外部后台服务目标时抛出具名 HermeticEnvError。必须在构造
+ * 或连接任何后台服务前调用；这是 D 类清单要强制执行的边界，不发送任何流量。
  */
 export function assertNoForeignDaemon(env: EnvLike = process.env): void {
   const foreign = detectForeignDaemonTarget(env);
@@ -113,27 +105,25 @@ export function assertNoForeignDaemon(env: EnvLike = process.env): void {
 }
 
 /**
- * The A3-R3 injected-clock env var (OPR.0.5.1.1 items 6-8). The compaction-restore
- * bridge — a GENERAL production hook (real seats, real compactions) — reads it for a
- * deterministic timestamp, falling back to `new Date()` when ABSENT (absence = the
- * production state). A PRESENT clock var in a REAL seat silently FREEZES production
- * compaction-asset stamps: the temporal edition of the silent-retarget class this
- * slice's env-discipline exists to kill. So the hermetic guard hard-refuses an
- * ambient clock var it did NOT set itself (belt); the scaffold sets it ONLY via
- * `injectClockNow`. Named with TEST semantics on purpose — a `TEST` var visible in
- * production reads as obviously wrong.
+ * A3-R3 注入时钟环境变量（OPR.0.5.1.1 第 6-8 项）。compaction-restore
+ * bridge——通用生产 hook（真实 seat、真实 compaction）——读取它获取确定性时间戳，
+ * 缺失时回退 `new Date()`（缺失=生产状态）。真实 seat 中存在 clock 变量会静默冻结
+ * 生产 compaction-asset 时间戳：本 slice env-discipline 旨在消灭的 silent-retarget
+ * 类的时间版本。故 hermetic guard 硬拒绝非自身设置的环境 clock 变量（兜底）；scaffold
+ * 仅通过 `injectClockNow` 设置。故意用 TEST 语义命名——生产中可见的 `TEST` 变量
+ * 显然错误。
  */
 export const TEST_CLOCK_ENV_VARS = ["OPENRIG_TEST_CLOCK_NOW"] as const;
 
 export type TestClockEnvVar = (typeof TEST_CLOCK_ENV_VARS)[number];
 
-/** A detected ambient injected-clock var: the offending var name and its value. */
+/** 检测到的环境注入时钟变量：违规变量名及其值。 */
 export interface AmbientClockHazard {
   name: TestClockEnvVar;
   value: string;
 }
 
-/** Hard-refusal error thrown when the ambient env carries an injected-clock var. */
+/** 环境携带注入时钟变量时抛出的硬拒绝错误。 */
 export class AmbientClockHazardError extends Error {
   readonly hazard: AmbientClockHazard;
   constructor(hazard: AmbientClockHazard) {
@@ -149,9 +139,8 @@ export class AmbientClockHazardError extends Error {
 }
 
 /**
- * Inspect an environment for an inherited injected-clock var. Returns the first
- * non-empty match, or null when clean. Empty (`OPENRIG_TEST_CLOCK_NOW=`) is absent.
- * Pure and synchronous — no network, no side effects.
+ * 检查环境中是否有继承来的注入时钟变量。返回首个非空匹配，干净时返回 null。
+ * 空值（`OPENRIG_TEST_CLOCK_NOW=`）视为不存在。纯同步——无网络、无副作用。
  */
 export function detectAmbientClockHazard(env: EnvLike = process.env): AmbientClockHazard | null {
   for (const name of TEST_CLOCK_ENV_VARS) {
@@ -164,9 +153,9 @@ export function detectAmbientClockHazard(env: EnvLike = process.env): AmbientClo
 }
 
 /**
- * FAIL-CLOSED assertion: throw AmbientClockHazardError if the environment already
- * carries an injected-clock var. The scaffold sets the clock ONLY via injectClockNow,
- * so a pre-existing value is a leak that would freeze production stamps. Sends ZERO
+ * FAIL-CLOSED 断言：若环境已携带注入 clock 变量则抛 AmbientClockHazardError。
+ * scaffold 仅通过 injectClockNow 设置 clock，故预存值是会冻结生产时间戳的泄漏。
+ * 发送 ZERO
  * traffic.
  */
 export function assertNoAmbientClock(env: EnvLike = process.env): void {
@@ -177,18 +166,15 @@ export function assertNoAmbientClock(env: EnvLike = process.env): void {
 }
 
 /**
- * The tmux ATTACHMENT var (D5). A scenario `up` stands up REAL tmux seats; if the
- * scaffold does not own the server dir, those seats land on the OPERATOR's tmux
- * server — a live fleet-safety hazard (a kill-server from a seat reaps the whole
- * fleet, and a stray seat pollutes the operator's session list). `TMUX` present
- * means this process is INSIDE a tmux client: spawned children would inherit that
- * attachment and act on a server the helper did not create, which is the tmux
- * edition of the silent-retarget class. Its own hazard category so the refusal
- * message is accurate — distinct from a daemon target and from a clock leak.
+ * tmux 附着变量（D5）。场景 `up` 会拉起真实 tmux 席位；若脚手架不拥有 server 目录，
+ * 这些席位会落到操作者的 tmux server 上——这是真实的 fleet 安全隐患（从某个席位 kill-server
+ * 会收割整个 fleet，游离席位也会污染操作者的会话列表）。`TMUX` 存在意味着本进程
+ * 处在 tmux 客户端内部：派生出的子进程会继承该附着，并对本辅助模块未曾创建的
+ * server 动手，这是静默重定向类的 tmux 版本。单列 hazard 类别，使拒绝消息
+ * 准确——区别于后台服务目标与时钟泄漏。
  *
- * TMUX_TMPDIR is deliberately NOT a refusal trigger: it names a compatibility
- * directory rather than an active attachment. The scaffold replaces it and uses
- * an explicit private socket as the server identity.
+ * TMUX_TMPDIR 刻意不作为拒绝触发项：它指的是一个兼容目录，而非活动附着。
+ * 脚手架会替换它并使用显式私有 socket 作为 server 身份。
  */
 export const TMUX_ATTACHMENT_ENV_VARS = ["TMUX"] as const;
 
@@ -217,8 +203,8 @@ export class AmbientTmuxHazardError extends Error {
 }
 
 /**
- * Inspect an environment for an inherited tmux attachment. Returns the first
- * non-empty match, or null when clean. Empty (`TMUX=`) is absent. Pure and
+ * 检查环境中是否继承了 tmux attachment。返回首个非空匹配，干净时返回 null。
+ * 空（`TMUX=`）视为缺失。纯函数且
  * synchronous — no network, no side effects.
  */
 export function detectAmbientTmuxHazard(env: EnvLike = process.env): AmbientTmuxHazard | null {
@@ -232,9 +218,8 @@ export function detectAmbientTmuxHazard(env: EnvLike = process.env): AmbientTmux
 }
 
 /**
- * FAIL-CLOSED assertion: throw AmbientTmuxHazardError if the environment carries a
- * tmux attachment. Call before any scaffold/process side effect — scenario seats
- * must only ever reach a server the scaffold owns. Sends ZERO traffic.
+ * 失败关闭断言：若环境携带 tmux 附着则抛 AmbientTmuxHazardError。
+ * 在任何脚手架/进程副作用之前调用——场景席位只能到达脚手架自有的 server。零流量。
  */
 export function assertNoAmbientTmux(env: EnvLike = process.env): void {
   const hazard = detectAmbientTmuxHazard(env);
@@ -244,84 +229,79 @@ export function assertNoAmbientTmux(env: EnvLike = process.env): void {
 }
 
 /**
- * Credential vars scrubbed from the child env alongside the daemon-target vars.
- * Not fail-closed triggers on their own (they carry no target address), but they
- * must never bleed into a scenario-local daemon's environment.
+ * 与 daemon-target 变量一同从子环境清除的 credential 变量。
+ * 自身不触发 fail-closed（不携带目标地址），但绝不得渗入 scenario-local
+ * daemon 的环境。
  */
 const CREDENTIAL_ENV_VARS = ["OPENRIG_AUTH_BEARER_TOKEN", "RIGGED_AUTH_BEARER_TOKEN"] as const;
 
-/** A per-run hermetic scaffold: scratch dirs + a clean child-process env + teardown. */
+/** 逐次运行的封闭脚手架：临时目录、干净的子进程环境与拆除。 */
 export interface HermeticScaffold {
-  /** The scaffold root (a fresh temp dir); everything lives INSIDE it. */
+  /** 脚手架根目录（全新临时目录）；所有内容都位于其中。 */
   root: string;
-  /** Scratch HOME (no real settings/policy/trust bleed in or out). */
+  /** 临时 HOME，不允许真实设置、策略或信任状态流入或流出。 */
   home: string;
-  /** Scratch OPENRIG_HOME (operator state, incl. the host-selection config.json disk half). */
+  /** 临时 OPENRIG_HOME（操作员状态，包括主机选择 config.json 的磁盘侧）。 */
   openrigHome: string;
   /** Scratch state dir (the scenario-local daemon's db lives here). */
   stateDir: string;
   /**
-   * A scaffold-owned compatibility directory exported as TMUX_TMPDIR. The
-   * explicit tmuxSocketPath below is the server identity; this directory is not.
+   * scaffold 自有的兼容目录，导出为 TMUX_TMPDIR。下方显式 tmuxSocketPath
+   * 才是 server 身份；本目录不是。
    */
   tmuxTmpDir: string;
   /** Explicit private tmux socket used by every scaffold child invocation. */
   tmuxSocketPath: string;
   /**
-   * A CLEAN environment for child processes (the scenario-local daemon + `rig`
-   * CLI invocations): the caller's env with daemon-target + credential vars
-   * scrubbed and the scratch paths set. A distinct object — never the caller's
-   * env nor `process.env`.
+   * 子进程（scenario-local daemon + `rig` CLI 调用）的干净环境：调用方环境
+   * 清除 daemon-target + credential 变量并设置 scratch 路径。独立对象——绝非调用方的
+   * env 或 `process.env`。
    */
   env: Record<string, string | undefined>;
-  /** Remove the scaffold root. Idempotent. */
+  /** 删除脚手架根目录。幂等。 */
   cleanup(): void;
 }
 
 export interface PrepareHermeticEnvOptions {
-  /** Base environment to derive the clean child env from. Defaults to process.env. */
+  /** 派生干净子进程 env 所用的基础环境。默认 process.env。 */
   baseEnv?: EnvLike;
   /**
-   * The A3-R3 injected clock. When set, the scaffold's child env carries
-   * OPENRIG_TEST_CLOCK_NOW = this value (an ISO timestamp) so the compaction bridge
-   * stamps deterministically; when omitted, the var stays UNSET and the bridge falls
-   * back to real-time `new Date()` (production behavior). This is the ONLY sanctioned
-   * way the var is set — a pre-existing one in baseEnv is refused as a leak.
+   * A3-R3 注入时钟。设置时，scaffold 子环境携带
+   * OPENRIG_TEST_CLOCK_NOW = 此值（ISO 时间戳），使 compaction bridge 确定性打戳；
+   * 省略时变量保持 UNSET，bridge 回退实时 `new Date()`（生产行为）。这是唯一获准的
+   * 设置方式——baseEnv 中预存值作为泄漏被拒绝。
    */
   injectClockNow?: string;
 }
 
 /**
- * Build a per-run hermetic scaffold. FAILS CLOSED FIRST: if the base env points at
- * a foreign daemon target, throws HermeticEnvError before creating any scaffold
- * (zero traffic, zero filesystem side effects). Otherwise creates scratch
- * HOME/OPENRIG_HOME/state dirs and returns a CLEAN child-process env with the
- * daemon-target + credential vars scrubbed and the scratch paths set.
+ * 构建每次运行的封闭脚手架。先失败关闭：若基础 env 指向外部后台服务目标，
+ * 在创建任何脚手架之前抛 HermeticEnvError（零流量、零文件系统副作用）。否则创建
+ * 临时 HOME/OPENRIG_HOME/state 目录，并返回一个干净的子进程 env——已清除
+ * 后台服务目标 + 凭证变量，并设置临时路径。
  *
- * Does NOT mutate the caller's env object or process.env — the runner process
- * stays as it is; only spawned children receive the scrubbed scratch env. State
- * lives INSIDE the scaffold (the hermeticity lesson).
+ * 不改变调用方的 env 对象或 process.env——runner 进程保持原样；只有派生的子进程
+ * 收到清洗后的临时 env。状态存活在脚手架内部（封闭性教训）。
  *
- * The scratch OPENRIG_HOME covers the DISK half of the host-selection leak vector
- * (~/.openrig/config.json); the fail-closed guard covers the ENV half
- * (OPENRIG_HOST_SELECTED). Together the scaffold cannot silently retarget.
+ * 临时 OPENRIG_HOME 覆盖 host 选择泄漏向量的磁盘半侧（~/.openrig/config.json）；
+ * 失败关闭守卫覆盖 env 半侧（OPENRIG_HOST_SELECTED）。二者合起来，脚手架无法静默重定向。
  */
 export function prepareHermeticEnv(opts: PrepareHermeticEnvOptions = {}): HermeticScaffold {
   const baseEnv = opts.baseEnv ?? process.env;
 
-  // Fail-closed BEFORE any filesystem side effect: a foreign daemon target OR a
-  // leaked injected-clock var (temporal silent-retarget) both hard-refuse here.
+  // 在任何文件系统副作用之前失败关闭：外部后台服务目标，或泄漏的注入时钟变量
+  // （时间维静默重定向），都在此硬拒绝。
   assertNoForeignDaemon(baseEnv);
   assertNoAmbientClock(baseEnv);
-  // D5: an inherited tmux ATTACHMENT would put real scenario seats on the
-  // operator's server. Refuse before any filesystem effect, like the others.
+  // D5：继承的 tmux ATTACHMENT 会把真实 scenario seat 放到
+  // operator 的 server 上。像其他项一样在任何文件系统效果前拒绝。
   assertNoAmbientTmux(baseEnv);
 
   const root = mkdtempSync(join(tmpdir(), "openrig-scenario-"));
   const home = join(root, "home");
   const openrigHome = join(root, "openrig-home");
   const stateDir = join(root, "state");
-  // Keep both compatibility and explicit socket paths below sun_path's cap.
+  // 让兼容路径与显式 socket 路径都保持在 sun_path 上限之内。
   const tmuxTmpDir = join(root, "tx");
   const tmuxSocketPath = join(root, "tmux.sock");
   const tmuxWrapperDir = join(root, "bin");
@@ -330,8 +310,8 @@ export function prepareHermeticEnv(opts: PrepareHermeticEnvOptions = {}): Hermet
     mkdirSync(dir, { recursive: true });
   }
 
-  // Test-only command seam: every child `tmux` call gets one explicit private
-  // socket. TMUX_TMPDIR remains for compatibility, but is never the selector.
+  // 仅测试用命令接缝：每次子 `tmux` 调用获得一个显式私有
+  // socket。TMUX_TMPDIR 保留兼容，但绝非选择器。
   const originalPath = baseEnv.PATH ?? process.env.PATH ?? "";
   writeFileSync(
     tmuxWrapperPath,
@@ -350,12 +330,12 @@ process.exit(result.status ?? 1);
     { mode: 0o755 },
   );
 
-  // Clean child env: copy, scrub every redirect/credential var, then set scratch paths.
+  // 干净子环境：复制、清除每个 redirect/credential 变量，再设 scratch 路径。
   const env: Record<string, string | undefined> = { ...baseEnv };
   for (const name of DAEMON_TARGET_ENV_VARS) delete env[name];
   for (const name of CREDENTIAL_ENV_VARS) delete env[name];
-  // Scrub any injected-clock var (defense in depth behind the fail-closed guard) so
-  // only an explicit injectClockNow can set it below — never an inherited value.
+  // 清除任何注入 clock 变量（fail-closed guard 后的纵深防御），使
+  // 下方仅显式 injectClockNow 可设置——绝非继承值。
   for (const name of TEST_CLOCK_ENV_VARS) delete env[name];
   env.HOME = home;
   env.XDG_CONFIG_HOME = join(home, ".config");
@@ -363,15 +343,15 @@ process.exit(result.status ?? 1);
   env.XDG_DATA_HOME = join(home, ".local", "share");
   env.XDG_CACHE_HOME = join(home, ".cache");
   env.OPENRIG_HOME = openrigHome;
-  // D5 compatibility half: replace inherited TMUX_TMPDIR. The wrapper's explicit
-  // -S socket is the identity-bearing half, so a missing directory cannot make a
-  // later invocation fall back to the operator's default server.
+  // D5 兼容半：替换继承的 TMUX_TMPDIR。wrapper 的显式
+  // -S socket 才是承载身份的半，故缺失目录不能使
+  // 后续调用回退到 operator 默认 server。
   env.TMUX_TMPDIR = tmuxTmpDir;
   env.PATH = `${tmuxWrapperDir}${delimiter}${originalPath}`;
-  // Forced-local: never resolve/attach the shared fleet kernel.
+  // 强制本地：绝不解析/attach 共享 fleet kernel。
   env.OPENRIG_NO_KERNEL = "1";
-  // A3-R3 injected clock: the ONLY sanctioned way OPENRIG_TEST_CLOCK_NOW is set —
-  // the scaffold's own value, never an inherited one. Omitted => unset => the bridge
+  // A3-R3 注入时钟：OPENRIG_TEST_CLOCK_NOW 唯一获准的设置方式——
+  // scaffold 自有值，绝非继承值。省略=>unset=>bridge
   // stamps real-time (production behavior).
   if (opts.injectClockNow !== undefined) {
     env.OPENRIG_TEST_CLOCK_NOW = opts.injectClockNow;

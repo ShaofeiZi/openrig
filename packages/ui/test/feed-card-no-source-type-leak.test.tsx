@@ -1,12 +1,12 @@
-// OPR.0.4.1.27 real-data fidelity — FeedCard must NEVER render the internal
-// card.source.type string user-visible. The attention/needs-input projections
-// wrap real data in synthetic ActivityEvents whose `type` is an internal
-// wrapper code (queue.attention.synthetic / activity.needs_input.synthetic).
-// Two old leak sites: FeedCard.tsx :554 rendered the raw source.type as the
-// author fallback (needs-input has no authorSession), and :460 fed source.type
-// to eventToken whose unknown-kind fallback humanized the code into a visible
-// "...Synthetic" mark. This pins the invariant: no "synthetic" / no raw type
-// in the rendered DOM, while the human title still renders.
+// OPR.0.4.1.27 真实数据保真——FeedCard 绝不可把内部
+// card.source.type 字符串渲染为用户可见。attention/needs-input 投影
+// 把真实数据包进合成 ActivityEvents，其 `type` 是内部
+// 包装码（queue.attention.synthetic / activity.needs_input.synthetic）。
+// 两个旧泄漏点：FeedCard.tsx :554 把原始 source.type 渲染为
+// author 回退（needs-input 无 authorSession），:460 把 source.type
+// 喂给 eventToken，其未知种类回退把该码人化为可见的
+// "...Synthetic" 标记。此锚定不变量：渲染 DOM 中无 "synthetic" / 无原始 type，
+// 同时人类标题仍渲染。
 
 import type { ReactNode } from "react";
 import { describe, it, expect, afterEach } from "vitest";
@@ -50,7 +50,7 @@ describe("FeedCard — no internal source.type leak (OPR.0.4.1.27 real-data fide
     const text = container.textContent ?? "";
     expect(text).not.toMatch(/synthetic/i);
     expect(text).not.toContain("activity.needs_input.synthetic");
-    // human title still renders
+    // 人类标题仍渲染
     expect(text).toContain("orch.lead needs input");
   });
 
@@ -77,7 +77,7 @@ describe("FeedCard — no internal source.type leak (OPR.0.4.1.27 real-data fide
     );
     const text = container.textContent ?? "";
     expect(text).not.toMatch(/synthetic/i);
-    // the real event token still surfaces (eventToken maps transition.done -> "Marked done")
-    expect(text).toContain("Marked done");
+    // 真实事件 token 仍会呈现（eventToken 把 transition.done 映射为“标记完成”）。
+    expect(text).toContain("标记完成");
   });
 });

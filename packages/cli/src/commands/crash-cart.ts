@@ -4,15 +4,15 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { ConfigStore } from "../config-store.js";
 
-// `rig crash-cart --json` — the daemon-DOWN recovery verdict emit (plan c015d9ed §C3, coupling ruling
-// option A). Prints ONE JSON = the 3-state detector verdict + (on DOWN) the discovery — READ-ONLY, a
-// public agent-readable surface (the 4 rails). A fail-closed refusal still prints STRUCTURED JSON
-// (never exit-code-only). The `emit` is injected: the real wiring imports emitCrashCartState from the
-// scoped @openrig/daemon/crash-cart subpath (reuse VERBATIM) — set up alongside this command.
+// `zrig crash-cart --json` —— 后台服务宕机时的恢复判定输出（plan c015d9ed §C3，耦合裁决
+// 选项 A）。打印一个 JSON = 三态探测器判定 +（宕机时）发现物——只读，是
+// 智能体可读的公开面（4 条轨道）。即使是 fail-closed 拒绝也仍打印结构化 JSON
+// （绝不只靠退出码）。`emit` 是注入进来的：真实接线从
+// 作用域化的 @openrig/daemon/crash-cart 子路径导入 emitCrashCartState（原样复用）——与本命令一同装配。
 //
-// SCOPE FENCE (plan R10 / Boundaries): "no new CLI verb v1; bare `rig` is the cart." There are NO
-// `restore-fleet` / `cancel-fleet` public verbs — the TUI drives the conductor through the daemon client
-// directly against the R2-sanctioned daemon-side batch route. This command emits the read-only verdict only.
+// 范围围栏（plan R10 / Boundaries）："v1 不新增 CLI 动词；裸 `rig` 即是故障车。"
+// 不存在公开的 `restore-fleet` / `cancel-fleet` 动词——TUI 通过后台服务客户端
+// 直接驱动 conductor，打向 R2 批准的后台服务端批量路由。本命令只输出只读判定。
 
 export type DaemonState = "up" | "down" | "unverified";
 
@@ -24,9 +24,9 @@ export interface CrashCartEmit {
 }
 
 export interface CrashCartCommandDeps {
-  /** Produce the verdict (the real wiring: emitCrashCartState with live probes + the C2 read). */
+  /** 产出判定（真实接线：emitCrashCartState，带实时探测 + C2 读取）。 */
   emit: () => Promise<CrashCartEmit>;
-  /** Emit one line (default: stdout). */
+  /** 输出一行（默认：stdout）。 */
   write: (line: string) => void;
 }
 
@@ -34,8 +34,8 @@ function openrigHome(): string {
   return process.env.OPENRIG_HOME ?? join(homedir(), ".openrig");
 }
 
-/** Read daemon.json returning the FULL record incl. `db` (loadCrashCartDiscovery needs the db path;
- *  the detector's readDaemonJson omits it). */
+/** 读取 daemon.json，返回完整记录（含 `db`；loadCrashCartDiscovery 需要 db 路径；
+ *  探测器的 readDaemonJson 会省略它）。 */
 function readDaemonJsonWithDb(home: string): { pid: number; port: number; host?: string; db: string } | undefined {
   const p = join(home, "daemon.json");
   if (!existsOrThrow(p)) return undefined;
@@ -44,23 +44,23 @@ function readDaemonJsonWithDb(home: string): { pid: number; port: number; host?:
     if (typeof j.pid === "number" && typeof j.port === "number" && typeof j.db === "string") {
       return { pid: j.pid, port: j.port, host: typeof j.host === "string" ? j.host : undefined, db: j.db };
     }
-    throw new Error("daemon.json has no usable PID, port and database path");
+    throw new Error("daemon.json 缺少可用的 PID、端口与数据库路径");
   } catch (error) {
-    throw new Error(`Cannot read recorded daemon state at ${p}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`无法读取已记录的后台服务状态 ${p}：${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-/** Only ENOENT means absent; permissions and dangling links must fail visibly. */
+/** 只有 ENOENT 表示不存在；权限错误与悬空链接必须显式失败。 */
 function existsOrThrow(path: string): boolean {
   try { lstatSync(path); return true; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
 }
 
 /**
- * The real verdict: LAZY-imports the narrow @openrig/daemon/crash-cart subpath at invocation (dep
- * rail 2 — rig startup + other verbs never load the daemon module) and composes the shipped detector
- * + C2 read VERBATIM (rail 2) with live probes + read-only IO. This is real-run glue over the tested
- * emit/detector/read cores.
+ * 真实判定：在调用时惰性 import 窄的 @openrig/daemon/crash-cart 子路径
+ * （依赖轨道 2——rig 启动与其他动词从不加载 daemon 模块），并把随附的探测器
+ * + C2 读取原样（轨道 2）与实时探测 + 只读 IO 拼装起来。这是建立在已测的
+ * emit/detector/read 核心之上的真实运行胶水。
  */
 async function realEmit(): Promise<CrashCartEmit> {
   const cc = await import("@openrig/daemon/crash-cart");
@@ -112,16 +112,16 @@ async function realEmit(): Promise<CrashCartEmit> {
 
 export function crashCartCommand(deps?: Partial<CrashCartCommandDeps>): Command {
   const cmd = new Command("crash-cart").description(
-    "Emit the daemon-down recovery verdict + discovery as JSON (read-only).",
+    "以后台服务宕机时的恢复判定 + 发现物输出为 JSON（只读）。",
   );
-  cmd.option("--json", "emit JSON (the default machine-readable form)");
+  cmd.option("--json", "输出 JSON（默认的机器可读形式）");
   cmd.action(async () => {
     const emit = deps?.emit ?? realEmit;
     const write = deps?.write ?? ((line: string) => process.stdout.write(line + "\n"));
     const result = await emit();
-    // Rail 3: the JSON is the truth (verdict + discovery, or a structured refusal). Always printed.
+    // 轨道 3：JSON 即真相（判定 + 发现物，或结构化拒绝）。始终打印。
     write(JSON.stringify(result));
-    // A non-zero exit is a HINT only (not-cleanly-up); the JSON remains the contract.
+    // 非零退出只是提示（未干净起来）；JSON 才是契约。
     process.exitCode = result.state === "up" ? 0 : 1;
   });
 

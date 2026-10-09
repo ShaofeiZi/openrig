@@ -5,10 +5,10 @@ import { migrate } from "../src/db/migrate.js";
 import { ALL_MIGRATIONS } from "../src/db/all-migrations.js";
 import { readCrashCartDiscovery } from "../src/domain/crash-cart-discovery.js";
 
-// Crash-cart C2 read-model — reproduce the daemon's discovery facts from the (copied) DB with the
-// daemon DOWN. Seeded from the CANONICAL ALL_MIGRATIONS (schema parity, not a hand-copied subset).
-// Two facts are honest-null by construction (no persisted substrate exists daemon-down): the header
-// stop-reason / prior-uptime (there is NO shutdown record anywhere) — surfaced null, never fabricated.
+// Crash-cart C2 read-model——在 daemon 关闭时从（拷贝的）DB 复现 daemon 的 discovery 事实。
+// 从 CANONICAL ALL_MIGRATIONS 播种（schema parity，不是手抄子集）。
+// 两个事实按构造 honest-null（daemon-down 时无持久 substrate）：header 的 stop-reason /
+// prior-uptime（任何地方都无 shutdown 记录）——呈现 null，绝不虚构。
 
 let db: BetterSqlite3.Database;
 beforeEach(() => {
@@ -39,8 +39,8 @@ function seedSession(over: {
   ).run({
     status: "unknown",
     lastSeenAt: null,
-    // Pin created_at to a fixed OLD value so the default datetime('now') never pollutes the
-    // header's last-activity union with wall-clock (deterministic tests).
+    // 把 created_at 钉到固定旧值，使默认 datetime('now') 绝不以 wall-clock 污染
+    // header 的 last-activity union（确定性测试）。
     createdAt: "2000-01-01T00:00:00Z",
     probe: null,
     resumeToken: null,
@@ -48,12 +48,12 @@ function seedSession(over: {
   });
 }
 
-describe("readCrashCartDiscovery — FOUND ON THIS HOST", () => {
-  it("reports per-rig seat count, running count, resumable count, and last-active", () => {
+describe("readCrashCartDiscovery——本机发现", () => {
+  it("报告每 rig 的 seat 数、running 数、resumable 数与最近活跃", () => {
     seedRig("r1", "alpha");
     seedNode("n1", "r1", "worker");
     seedNode("n2", "r1", "guard");
-    // n1: latest session running + resumable (probe=resumable); n2: stopped, not resumable.
+    // n1：最新 session running + resumable（probe=resumable）；n2：stopped，不可 resume。
     seedSession({ id: "01A", nodeId: "n1", name: "worker@alpha", status: "running", lastSeenAt: "2026-08-06T07:00:00Z", probe: "resumable", resumeToken: "tok" });
     seedSession({ id: "01B", nodeId: "n2", name: "guard@alpha", status: "stopped", lastSeenAt: "2026-08-06T06:00:00Z", probe: "not_resumable" });
 
@@ -68,10 +68,10 @@ describe("readCrashCartDiscovery — FOUND ON THIS HOST", () => {
     expect(rig.lastActiveAt).toBe("2026-08-06T07:00:00Z");
   });
 
-  it("uses only the LATEST session per node (max ULID id) for status/resumable", () => {
+  it("每 node 只用最新 session（max ULID id）判断 status/resumable", () => {
     seedRig("r1", "alpha");
     seedNode("n1", "r1", "worker");
-    // older running+resumable, newer stopped+not — latest wins ⇒ not running, not resumable.
+    // 旧 running+resumable，新 stopped+not——最新者胜 ⇒ 非 running、不可 resume。
     seedSession({ id: "01A", nodeId: "n1", name: "w@a", status: "running", probe: "resumable", resumeToken: "t" });
     seedSession({ id: "01Z", nodeId: "n1", name: "w@a", status: "stopped", probe: "not_resumable" });
     const { foundOnHost } = readCrashCartDiscovery(db);
@@ -79,7 +79,7 @@ describe("readCrashCartDiscovery — FOUND ON THIS HOST", () => {
     expect(foundOnHost[0].resumableCount).toBe(0);
   });
 
-  it("excludes archived rigs", () => {
+  it("排除 archived rig", () => {
     seedRig("r1", "alpha");
     seedRig("r2", "beta");
     db.prepare("UPDATE rigs SET archived_at = ? WHERE id = 'r2'").run("2026-08-06T00:00:00Z");
@@ -88,8 +88,8 @@ describe("readCrashCartDiscovery — FOUND ON THIS HOST", () => {
   });
 });
 
-describe("readCrashCartDiscovery — WHERE WORK STOPPED (in-progress queue, display-only)", () => {
-  it("lists only in-progress queue items with owner + claimed_at, newest first", () => {
+describe("readCrashCartDiscovery——工作停处（in-progress 队列，仅展示）", () => {
+  it("只列 in-progress queue item，带 owner + claimed_at，最新在前", () => {
     const ins = db.prepare(
       `INSERT INTO queue_items (qitem_id, ts_created, ts_updated, source_session, destination_session, state, body, claimed_at)
        VALUES (@id, @c, @u, @src, @dst, @state, @body, @claimed)`,
@@ -100,13 +100,13 @@ describe("readCrashCartDiscovery — WHERE WORK STOPPED (in-progress queue, disp
     ins.run({ id: "q4", c: "t0", u: "t9", src: "orch@r", dst: "worker@alpha", state: "pending", body: "future", claimed: null });
 
     const { whereWorkStopped } = readCrashCartDiscovery(db);
-    expect(whereWorkStopped.map((w) => w.qitemId)).toEqual(["q2", "q1"]); // newest ts_updated first, in-progress only
+    expect(whereWorkStopped.map((w) => w.qitemId)).toEqual(["q2", "q1"]); // ts_updated 最新在前，仅 in-progress
     expect(whereWorkStopped[0]).toMatchObject({ destinationSession: "guard@alpha", state: "in-progress", claimedAt: "2026-08-06T06:00:00Z" });
   });
 });
 
-describe("readCrashCartDiscovery — HEADER (derived; honest-null for the unrecoverable)", () => {
-  it("derives last-activity from the newest write-timestamp and exposes boot times; stop-reason + prior-uptime are honest-null", () => {
+describe("readCrashCartDiscovery——HEADER（派生；不可恢复项 honest-null）", () => {
+  it("从最新写时间戳派生 last-activity 并暴露启动时间；stop-reason + prior-uptime 为 honest-null", () => {
     db.prepare(
       "INSERT INTO self_host_identity (singleton, host_id, minted_at, reconciled_at) VALUES (1, ?, ?, ?)",
     ).run("host-A", "2026-08-01T00:00:00Z", "2026-08-06T04:00:00Z");
@@ -115,16 +115,16 @@ describe("readCrashCartDiscovery — HEADER (derived; honest-null for the unreco
     seedSession({ id: "01A", nodeId: "n1", name: "w@a", status: "running", lastSeenAt: "2026-08-06T07:30:00Z" });
 
     const { header } = readCrashCartDiscovery(db);
-    expect(header.lastActivityAt).toBe("2026-08-06T07:30:00Z"); // newest across write-timestamps
+    expect(header.lastActivityAt).toBe("2026-08-06T07:30:00Z"); // 跨写时间戳最新
     expect(header.lastBootAt).toBe("2026-08-06T04:00:00Z");
     expect(header.firstBootAt).toBe("2026-08-01T00:00:00Z");
     expect(header.hostId).toBe("host-A");
-    // Load-bearing gap (flagged): no persisted shutdown record exists → never fabricated.
+    // 承重缺口（已标记）：无持久 shutdown 记录 → 绝不虚构。
     expect(header.stopReason).toBeNull();
     expect(header.priorUptimeMs).toBeNull();
   });
 
-  it("is honest-null across the header when the DB is empty (no fabrication)", () => {
+  it("DB 空时整个 header 为 honest-null（不虚构）", () => {
     const { header, foundOnHost, whereWorkStopped } = readCrashCartDiscovery(db);
     expect(header).toEqual({
       lastActivityAt: null,

@@ -1,9 +1,9 @@
-// V1 attempt-3 Phase 5 P5-8 — HumanSeatCard VellumCard refactor.
+// V1 attempt-3 Phase 5 P5-8——HumanSeatCard VellumCard 重构。
 //
-// Verifies HumanSeatCard composes the VellumCard primitive (Phase 1) +
-// renders RegistrationMarks at the canonical 4 corners + uses the
-// StatusPip primitive for pending/blocked state. Per ritual #6
-// (named-surface adopts primitive verifies at consumer level).
+// 验证 HumanSeatCard 组合 VellumCard 原语（Phase 1）+
+// 在规范四角渲染 RegistrationMarks + 对 pending/blocked 状态用
+// StatusPip 原语。按仪式 #6
+//（命名表面在消费级验证采用的原语）。
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
@@ -35,10 +35,10 @@ describe("HumanSeatCard P5-8 VellumCard composition", () => {
         rows={[makeRow("idle"), makeRow("attention")]}
       />,
     );
-    // VellumCard composes RegistrationMarks; reg-mark testids should be
-    // present at all 4 corners.
+    // VellumCard 组合 RegistrationMarks；reg-mark testid 应
+    // 出现在全部四角。
     expect(container.querySelector(".reg-mark, [data-testid$='-reg-tl']")).toBeTruthy();
-    // The card root has the canonical testid.
+    // 卡根有规范 testid。
     expect(container.querySelector("[data-testid='mc-human-seat-card']")).toBeTruthy();
   });
 
@@ -50,7 +50,7 @@ describe("HumanSeatCard P5-8 VellumCard composition", () => {
       />,
     );
     expect(getByTestId("mc-human-seat-pending").textContent).toBe("2");
-    // No blocked StatusPip when 0 blocked.
+    // 0 blocked 时无 blocked StatusPip。
     expect(container.querySelector("[data-testid='mc-human-seat-blocked']")).toBeNull();
   });
 
@@ -62,7 +62,7 @@ describe("HumanSeatCard P5-8 VellumCard composition", () => {
       />,
     );
     const pip = getByTestId("mc-human-seat-blocked");
-    expect(pip.textContent).toContain("1 blocked");
+    expect(pip.textContent).toContain("1 个已阻塞");
   });
 
   it("renders capability pills with outline-variant border (vellum aesthetic)", () => {
@@ -77,7 +77,7 @@ describe("HumanSeatCard P5-8 VellumCard composition", () => {
       ["approve", "deny"].includes(s.textContent?.trim() ?? ""),
     );
     expect(pills.length).toBe(2);
-    // Each pill has the outline-variant border class (1px doctrine).
+    // 每个 pill 有 outline 变体边框类（1px 教条）。
     for (const pill of pills) {
       expect(pill.className).toMatch(/border-outline-variant/);
     }
@@ -93,9 +93,9 @@ describe("HumanSeatCard P5-8 VellumCard composition", () => {
       ),
       "utf8",
     );
-    // The legacy chrome was `border border-stone-300 bg-stone-50 p-3` —
-    // negative-assertion that none of those literal patterns survive
-    // outside the historical comment.
+    // 旧 chrome 是 `border border-stone-300 bg-stone-50 p-3`——
+    // 负向断言这些字面模式无一存活到
+    // 历史注释之外。
     const codeOnly = src.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
     expect(codeOnly).not.toMatch(/border-stone-300\s+bg-stone-50/);
     expect(codeOnly).toMatch(/VellumCard/);

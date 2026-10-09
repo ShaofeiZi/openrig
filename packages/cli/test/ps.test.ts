@@ -66,7 +66,7 @@ describe("Ps CLI", () => {
     nodesData = {};
     server = http.createServer(async (req, res) => {
       // OPR.0.4.4.21: the rig tier always requests ?includeArchived=true
-      // (client-side visibility split) — match by prefix, not exact URL.
+      //（client 侧可见性切分）——按前缀匹配，而非精确 URL。
       if (req.url?.startsWith("/api/ps") && req.method === "GET") {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify(psData));
@@ -100,7 +100,7 @@ describe("Ps CLI", () => {
     return prog;
   }
 
-  // T9: ps table output with rigs
+  // T9：带 rigs 的 ps 表格输出
   it("ps prints formatted table", async () => {
     psData = [
       { rigId: "rig-1", name: "review-rig", nodeCount: 3, runningCount: 3, status: "running", uptime: "2h 15m", latestSnapshot: "5m ago" },
@@ -115,13 +115,13 @@ describe("Ps CLI", () => {
     expect(output).toContain("RUNNING");
     expect(output).toContain("STATUS");
     expect(output).toContain("review-rig");
-    // OPR.0.4.4.21 FR-1: on the bare default, stopped rigs are HISTORY —
-    // one count line, not rows (field of view stays O(active rigs)).
+    // OPR.0.4.4.21 FR-1：在裸默认下，已停 rig 是 HISTORY——
+    // 一行计数，而非多行（视域保持 O(active rigs)）。
     expect(output).not.toContain("dev-rig");
-    expect(output).toContain("not shown: 1 stopped (rig ps --filter status=stopped)");
-    // FR-1 display elements: host rollup line + affordance footer.
-    expect(output).toContain("1 rig · 3 seats · 0 need attention");
-    expect(output).toContain("drill: rig ps --rig <name>");
+    expect(output).toContain("未显示：1 个已停止（zrig ps --filter status=stopped");
+    // FR-1 展示元素：host 汇总行 + affordance 页脚。
+    expect(output).toContain("1 个rig · 3 个席位 · 0 需关注");
+    expect(output).toContain("下钻：zrig ps --rig <name>");
     expect(output).toContain("running");
     expect(exitCode).toBeUndefined(); // 0
   });
@@ -147,11 +147,11 @@ describe("Ps CLI", () => {
     const output = humanLogs.join("\n");
     expect(output).toContain("live-rig");
     expect(output).not.toContain("halted-rig");
-    expect(output).toContain("not shown: 1 stopped (rig ps --filter status=stopped)");
+    expect(output).toContain("未显示：1 个已停止（zrig ps --filter status=stopped");
   });
 
-  // OPR.0.4.4.21 fixback (qa1 F4): attentionCount is selectable via --fields
-  // (it is emitted by default JSON, so the allow-list must carry it).
+  // OPR.0.4.4.21 fixback（qa1 F4）：attentionCount 可经 --fields 选择
+  //（它默认由 JSON 发出，故白名单必须带上它）。
   it("OPR.0.4.4.21: --fields attentionCount projects the additive field", async () => {
     psData = [
       { rigId: "rig-1", name: "attn-rig", rigName: "attn-rig", nodeCount: 2, runningCount: 2, status: "running", uptime: "1m", latestSnapshot: null, attentionCount: 1 },
@@ -182,7 +182,7 @@ describe("Ps CLI", () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps"]);
     });
-    expect(logs.some((l) => l.includes("No rigs"))).toBe(true);
+    expect(logs.some((l) => l.includes("没有 rig"))).toBe(true);
   });
 
   it("ps recovers when daemon.json is missing but configured daemon is healthy", async () => {
@@ -429,8 +429,8 @@ describe("Ps CLI", () => {
     let helpOutput = "";
     psCmd.configureOutput({ writeOut: (s) => { helpOutput += s; } });
     psCmd.outputHelp();
-    expect(helpOutput).toContain("rig ps --nodes");
-    expect(helpOutput).toContain("Exit codes");
+    expect(helpOutput).toContain("zrig ps --nodes");
+    expect(helpOutput).toContain("退出码");
   });
 
   it("ps --nodes warns on per-rig fetch failure", async () => {
@@ -442,7 +442,7 @@ describe("Ps CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("Warning");
+    expect(output).toContain("警告");
     expect(output).toContain("bad-rig");
   });
 
@@ -658,8 +658,8 @@ describe("Ps CLI", () => {
       const { logs, exitCode } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "ps", "--json", "--filter", "unknown=foo"]);
       });
-      expect(logs.some((l) => l.includes("Unknown --filter key 'unknown'"))).toBe(true);
-      expect(logs.some((l) => l.includes("Supported:"))).toBe(true);
+      expect(logs.some((l) => l.includes("未知 --filter key 'unknown'"))).toBe(true);
+      expect(logs.some((l) => l.includes("支持："))).toBe(true);
       expect(exitCode).toBe(1);
     });
 
@@ -668,9 +668,8 @@ describe("Ps CLI", () => {
       const { logs, exitCode } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "ps", "--json", "--filter", "noequals"]);
       });
-      // PL-012: error message now names the comparator family since
-      // numeric ops (>=, >, <=, <, =) are accepted.
-      expect(logs.some((l) => l.includes("--filter must be key") && l.includes("op = "))).toBe(true);
+      // PL-012：错误消息现在点名比较符族，因为接受数值操作（>=、>、<=、<、=）。
+      expect(logs.some((l) => l.includes("--filter 必须是 key") && l.includes("op = "))).toBe(true);
       expect(exitCode).toBe(1);
     });
 
@@ -679,11 +678,11 @@ describe("Ps CLI", () => {
       const { logs, exitCode } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "ps", "--json", "--limit", "abc"]);
       });
-      expect(logs.some((l) => l.includes("--limit must be a non-negative integer"))).toBe(true);
+      expect(logs.some((l) => l.includes("--limit 必须是非负整数"))).toBe(true);
       expect(exitCode).toBe(1);
     });
 
-    // C9a: --fields UX rejection alignment with --filter pattern.
+    // C9a：--fields 的 UX 拒绝与 --filter 模式对齐。
 
     it("ps --json --fields rejects unknown field with sorted supported list (rig-level)", async () => {
       psData = [];
@@ -691,8 +690,8 @@ describe("Ps CLI", () => {
         await makeCmd().parseAsync(["node", "rig", "ps", "--json", "--fields", "rigId,bogus"]);
       });
       const stderr = logs.join("\n");
-      expect(stderr).toContain("Unknown --fields key 'bogus'");
-      expect(stderr).toContain("Supported:");
+      expect(stderr).toContain("未知 --fields key 'bogus'");
+      expect(stderr).toContain("支持：");
       // Sorted rig-level allow-list keys appear in the message.
       expect(stderr).toContain("latestSnapshot");
       expect(stderr).toContain("rigName");
@@ -706,7 +705,7 @@ describe("Ps CLI", () => {
         await makeCmd().parseAsync(["node", "rig", "ps", "--json", "--fields", "foo,bar"]);
       });
       const stderr = logs.join("\n");
-      expect(stderr).toContain("Unknown --fields keys 'foo', 'bar'");
+      expect(stderr).toContain("未知 --fields keys 'foo', 'bar'");
       expect(exitCode).toBe(1);
     });
 
@@ -715,7 +714,7 @@ describe("Ps CLI", () => {
       const { logs, exitCode } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "ps", "--json", "--fields", ""]);
       });
-      expect(logs.some((l) => l.includes("--fields cannot be empty"))).toBe(true);
+      expect(logs.some((l) => l.includes("--fields 不能为空"))).toBe(true);
       expect(exitCode).toBe(1);
     });
 
@@ -724,7 +723,7 @@ describe("Ps CLI", () => {
       const { logs, exitCode } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "ps", "--json", "--fields", ",,"]);
       });
-      expect(logs.some((l) => l.includes("--fields cannot be empty"))).toBe(true);
+      expect(logs.some((l) => l.includes("--fields 不能为空"))).toBe(true);
       expect(exitCode).toBe(1);
     });
 
@@ -733,7 +732,7 @@ describe("Ps CLI", () => {
       const { logs, exitCode } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "ps", "--json", "--fields", "rigId,logicalId"]);
       });
-      expect(logs.some((l) => l.includes("Unknown --fields key 'logicalId'"))).toBe(true);
+      expect(logs.some((l) => l.includes("未知 --fields key 'logicalId'"))).toBe(true);
       expect(exitCode).toBe(1);
     });
 
@@ -754,8 +753,8 @@ describe("Ps CLI", () => {
         await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--fields", "name,logicalId"]);
       });
       const stderr = logs.join("\n");
-      expect(stderr).toContain("Unknown --fields key 'name'");
-      expect(stderr).toContain("Hint: 'name' is a rig-level field; use 'rigName' for node entries.");
+      expect(stderr).toContain("未知 --fields key 'name'");
+      expect(stderr).toContain("提示：'name' 是 rig 级字段；node 条目请用 'rigName'。");
       expect(exitCode).toBe(1);
     });
 
@@ -764,13 +763,13 @@ describe("Ps CLI", () => {
         await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--fields", "rigName,bogus"]);
       });
       const stderr = logs.join("\n");
-      expect(stderr).toContain("Unknown --fields key 'bogus'");
-      expect(stderr).toContain("Supported:");
-      // Sorted node-level allow-list — node-level-only key must be present.
+      expect(stderr).toContain("未知 --fields key 'bogus'");
+      expect(stderr).toContain("支持：");
+      // 已排序的节点级白名单——节点级专用键必须存在。
       expect(stderr).toContain("agentActivity");
       expect(stderr).toContain("logicalId");
       // Rig-level-only key must NOT be in the node-level supported list.
-      expect(stderr).not.toMatch(/Supported:[^.]*\bname\b/);
+      expect(stderr).not.toMatch(/支持：[^。]*\bname\b/);
       expect(exitCode).toBe(1);
     });
 
@@ -779,7 +778,7 @@ describe("Ps CLI", () => {
       const { logs, exitCode } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "ps", "--json", "--filter", "unknown=v"]);
       });
-      expect(logs.some((l) => l.includes("Unknown --filter key 'unknown'"))).toBe(true);
+      expect(logs.some((l) => l.includes("未知 --filter key 'unknown'"))).toBe(true);
       expect(exitCode).toBe(1);
     });
 
@@ -797,11 +796,9 @@ describe("Ps CLI", () => {
       expect(parsed.entries[0]).toEqual({ rigName: "a", status: "running" });
     });
 
-    // Synthetic large-host fixture: 60 rigs (just over default 50 budget) is
-    // the smallest fixture that proves human-truncation behavior. Per Amendment
-    // C: the L4 proof already exercised real 100x10 scale; this test asserts
-    // the truncation path fires and the footer is honest. Using 60 instead of
-    // 100 keeps the test fast while still proving the budget boundary.
+    // 合成大 host fixture：60 个 rig（略超默认 50 预算）是证明人类截断行为的
+    // 最小 fixture。按 Amendment C：L4 证明已演练真实 100x10 规模；本测试断言
+    // 截断路径触发且 footer 诚实。用 60 而非 100 保持测试快速，仍证明预算边界。
     it("ps human output truncates above HUMAN_RIG_BUDGET (50) with honest footer (Amendment C)", async () => {
       psData = Array.from({ length: 60 }, (_, i) => ({
         rigId: `rig-${String(i).padStart(2, "0")}`,
@@ -823,8 +820,8 @@ describe("Ps CLI", () => {
       // Beyond-budget rigs not in default human output
       expect(output).not.toContain("r59");
       // Truncation footer with actual remaining count
-      expect(output).toMatch(/and 10 more rigs \(truncated at 50\)/);
-      expect(output).toContain("rig ps --full");
+      expect(output).toMatch(/…还有 10 个 rig（截断于 50）/);
+      expect(output).toContain("zrig ps --full");
     });
 
     it("ps --full disables human truncation; all 60 rigs printed", async () => {

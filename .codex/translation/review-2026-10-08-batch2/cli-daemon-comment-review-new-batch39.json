@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch39",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/cli/test/tui-commands-dump.test.ts",
+      "before_sha256_16": "fbe876751b871846",
+      "after_sha256_16": "21b35ef4be3a29e4",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/event-bus.test.ts",
+      "before_sha256_16": "ce6382ad06d4cea6",
+      "after_sha256_16": "9dcdb12d322d258f",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/profile-resolver.test.ts",
+      "before_sha256_16": "af17fa3b0d1036f0",
+      "after_sha256_16": "1cc8bdfc9c2e3adb",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/seat-delivery-guard-correction.test.ts",
+      "before_sha256_16": "174a12e0e0fdb3b9",
+      "after_sha256_16": "e22114b009eea126",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/seat-fresh-launch.test.ts",
+      "before_sha256_16": "33870bb92d31eafd",
+      "after_sha256_16": "d84bc1c916ce1ca7",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

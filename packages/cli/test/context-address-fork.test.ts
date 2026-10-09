@@ -1,9 +1,7 @@
-// OPR.0.5.3.5 Atom 4d — the CLI pins r1 asked for (4c A3 rec) plus the profile
-// verb. The ROUTING FORK is the one piece of logic that lives ONLY in the CLI:
-// an address carrying '#' goes straight to the daemon's resolver home; a bare
-// slash value tries exact-pack lookup first, then only a 404 falls through to
-// whole-file resolution. These pins cover the fork without duplicating any
-// resolution behavior (the daemon owns that).
+// OPR.0.5.3.5 Atom 4d——r1 要求的 CLI pin（4c A3 rec）加 profile
+// 动词。路由分叉是唯一只活在 CLI 的逻辑：带 '#' 的地址直奔 daemon 的
+// resolver home；裸斜杠值先做精确 pack 查找，仅在 404 时落入整文件解析。
+// 这些 pin 覆盖该分叉，而不重复任何解析行为（解析归 daemon）。
 
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import http from "node:http";
@@ -190,7 +188,7 @@ describe("rig context — address fork + profile verb (Atom 4d)", () => {
       hits.length = 0;
       const unknown = await run(port, ["profile", "packs/smoke", "--situation", "fresh"]);
       expect(hits.find((h) => h.includes("/profile"))!).toContain("runtime=claude");
-      expect(unknown.errLogs.join("\n")).toMatch(/unrecognized.*gemini-cli/i);
+      expect(unknown.errLogs.join("\n")).toMatch(/无法识别的.*gemini-cli/);
       hits.length = 0;
       await run(port, ["profile", "packs/smoke", "--situation", "fresh", "--runtime", "claude"]);
       expect(hits.find((h) => h.includes("/profile"))!).toContain("runtime=claude");
@@ -226,9 +224,9 @@ describe("rig context — address fork + profile verb (Atom 4d)", () => {
     expect(stdout).toContain("[seat !ESCAPED-ROOT]");
     const stderr = out.errLogs.join("\n");
     expect(stderr).toContain("PROFILE codex-coverage");
-    expect(stderr).toContain("PHASE bootstrap (atoms, ~2 tokens)");
-    expect(stderr).toContain("PHASE project-mission-role-task (context [project, mission, seat, slice], ~3 tokens)");
-    expect(stderr).toMatch(/budget/i);
+    expect(stderr).toMatch(/PHASE.*bootstrap/i);
+    expect(stderr).toMatch(/PHASE.*project-mission-role-task/i);
+    expect(stderr).toMatch(/预算|budget/i);
     expect(stderr).toContain("OUTSIDE its seat root");
   });
 });

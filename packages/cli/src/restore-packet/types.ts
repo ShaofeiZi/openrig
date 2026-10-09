@@ -1,23 +1,23 @@
-// types.ts — shared TypeScript types for the restore-packet generator.
+// types.ts — restore-packet 生成器的共享 TypeScript 类型。
 //
-// Both runtime adapters (codex-jsonl-parser, claude-transcript-parser)
-// emit the same StructuredTranscript shape. Downstream modules
-// (redaction, omitted-records, packet-writer) consume this shape
-// without caring about the source runtime.
+// 两个运行时适配器（codex-jsonl-parser、claude-transcript-parser）
+// 都输出相同的 StructuredTranscript 形状。下游模块
+// （redaction、omitted-records、packet-writer）消费此形状，
+// 不关心源运行时。
 
-/** A single user-visible message extracted from a transcript. */
+/** 从转录中提取的单条用户可见消息。 */
 export interface ExtractedMessage {
-  /** ISO-8601 timestamp if the source provides one; else null. */
+  /** ISO-8601 时间戳（如果源提供）；否则为 null。 */
   timestamp: string | null;
-  /** Speaker role. Restricted to user-visible roles (developer/user/assistant). */
+  /** 发言者角色。限于用户可见角色（developer/user/assistant）。 */
   role: "developer" | "user" | "assistant";
-  /** Redacted message text. */
+  /** 已脱敏的消息文本。 */
   text: string;
-  /** First non-empty line of the text, truncated to ~180 chars. Used in summaries. */
+  /** 文本的第一行非空行，截断到约 180 字符。用于摘要。 */
   preview: string;
 }
 
-/** Canonical record-class enum per M1 contract § 5. */
+/** M1 契约 § 5 的规范记录类枚举。 */
 export type OmittedRecordClass =
   | "reasoning_records"
   | "raw_tool_outputs"
@@ -25,8 +25,8 @@ export type OmittedRecordClass =
   | "redacted_secrets";
 
 /**
- * A path frequency entry from path extraction. Sorted by count
- * descending then path ascending; used to populate `touched_files.top_paths`.
+ * 路径提取的路径频率条目。按计数降序、路径升序排列；
+ * 用于填充 `touched_files.top_paths`。
  */
 export interface PathCount {
   path: string;
@@ -34,61 +34,60 @@ export interface PathCount {
 }
 
 /**
- * Per-runtime per-record-type counter. Flexible string keys because
- * Codex JSONL uses `record.type` strings and Claude transcript uses
- * `record.type` strings; both are runtime-defined.
+ * 每个运行时、每种记录类型的计数器。灵活的字符串键，因为
+ * Codex JSONL 使用 `record.type` 字符串，Claude 转录也使用
+ * `record.type` 字符串；两者都是运行时定义的。
  */
 export type TypeCounts = Record<string, number>;
 
 /**
- * Per-omitted-class counter. Records how many records were filtered
- * for each of the 4 contract enums during parsing/redaction.
+ * 每个省略类的计数器。记录在解析/脱敏期间，
+ * 4 个契约枚举各过滤了多少条记录。
  */
 export type OmittedCounts = Record<OmittedRecordClass, number>;
 
 /**
- * Optional session metadata extracted from the source. Codex emits a
- * `session_meta` record at the top of a JSONL; Claude transcripts
- * carry per-record `cwd` etc.
+ * 从源中提取的可选会话元数据。Codex 在 JSONL 顶部发出
+ * `session_meta` 记录；Claude 转录携带每条记录的 `cwd` 等。
  */
 export interface SessionMeta {
   cwd: string | null;
   sessionId: string | null;
-  /** Free-form additional fields the runtime emitted; not load-bearing. */
+  /** 运行时发出的自由格式附加字段；不承重。 */
   raw?: Record<string, unknown>;
 }
 
 /**
- * Structured representation produced by both parsers. The packet-writer
- * (M2c) consumes this to assemble a v0 restore packet.
+ * 两个解析器产生的结构化表示。packet-writer（M2c）
+ * 消费此结构来组装 v0 恢复包。
  */
 export interface StructuredTranscript {
-  /** Top-level session metadata (cwd, sessionId). */
+  /** 顶层会话元数据（cwd、sessionId）。 */
   sessionMeta: SessionMeta | null;
-  /** Total source lines processed (raw JSONL line count, including malformed/skipped). */
+  /** 处理的源总行数（原始 JSONL 行数，包括格式错误/跳过的行）。 */
   lineCount: number;
-  /** Number of user-visible messages extracted into `messages`. */
+  /** 提取到 `messages` 中的用户可见消息数。 */
   messageCount: number;
   /**
-   * Number of "compaction" records seen. Codex emits these explicitly
-   * (`type: "compacted"`); Claude doesn't. The field is parser-specific
-   * but always present (zero when not applicable).
+   * 看到的"压缩"记录数。Codex 显式发出这些
+   * （`type: "compacted"`）；Claude 不发。此字段是解析器特定的，
+   * 但始终存在（不适用时为零）。
    */
   compactedCount: number;
-  /** Per-record-type frequency map; used in human reports / debug. */
+  /** 按记录类型的频率映射；用于人工报告/调试。 */
   typeCounts: TypeCounts;
-  /** Per-omitted-class counter; populated as the parser filters records. */
+  /** 按省略类的计数器；在解析器过滤记录时填充。 */
   omittedCounts: OmittedCounts;
-  /** Extracted messages in chronological order; redaction has been applied. */
+  /** 按时间顺序排列的提取消息；已应用脱敏。 */
   messages: ExtractedMessage[];
   /**
-   * Path frequency inventory; sorted by count desc then path asc.
-   * Capped at 200 entries.
+   * 路径频率清单；按计数降序、路径升序排列。
+   * 上限 200 条。
    */
   paths: PathCount[];
 }
 
-/** Source-runtime kind. v0 supports codex + claude-code transcript shapes. */
+/** 源运行时类型。v0 支持 codex + claude-code 转录形状。 */
 export type SourceRuntime = "codex" | "claude-code";
 
 export function emptyOmittedCounts(): OmittedCounts {

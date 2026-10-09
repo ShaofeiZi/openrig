@@ -1,13 +1,12 @@
-// S10 — the thread↔seat MAP (FROM-SCRATCH §4.4): deterministic thread routing state.
-// One row per Slack thread root: (thread_ts, channel, human, seat, conversation_id, state).
-// Zero LLM inference anywhere near routing — a reply routes by exact thread_ts lookup or it is
-// UNMAPPED (and unmapped is a first-class outcome routed to the orchestrator's unrouted-signal
-// row, never dropped, never guessed).
+// S10——thread↔seat MAP（FROM-SCRATCH §4.4）：确定性的 thread routing state。
+// 每个 Slack thread root 一行：(thread_ts, channel, human, seat, conversation_id, state)。
+// routing 周围不进行任何 LLM 推断——reply 要么通过精确 thread_ts 查询路由，要么就是 UNMAPPED
+//（unmapped 是一等 outcome，会路由到 orchestrator 的 unrouted-signal row，绝不丢弃或猜测）。
 //
-// Rebuildability: every posted root ALSO stamps its queue row with a structured transition note
-// (`slack-posted thread_ts=… message_ts=… channel=… human=… seat=…` — see stampFormat/parse
-// below). rebuildFromStamps() re-derives the table from those stamps, so the map is a cache of
-// queue-row truth, not a second source that can silently diverge.
+// 可重建性：每个已发布 root 还会在其 queue row 上盖一条结构化 transition note
+//（`slack-posted thread_ts=… message_ts=… channel=… human=… seat=…`——见下方 stampFormat/parse）。
+// rebuildFromStamps() 从这些 stamp 重新派生 table，因此 map 是 queue-row truth 的 cache，
+// 而非可能静默分歧的第二数据源。
 
 import type Database from "better-sqlite3";
 
@@ -24,12 +23,12 @@ export interface ThreadMapping {
 
 export const SLACK_POSTED_STAMP_PREFIX = "slack-posted";
 
-/** The structured queue-row stamp for a posted thread root (the rebuild source). */
+/** 已发布 thread root 的结构化 queue-row stamp（重建来源）。 */
 export function formatPostedStamp(m: { threadTs: string; messageTs: string; channel: string; human: string; seat: string; conversationId: string }): string {
   return `${SLACK_POSTED_STAMP_PREFIX} thread_ts=${m.threadTs} message_ts=${m.messageTs} channel=${m.channel} human=${m.human} seat=${m.seat} conversation=${m.conversationId}`;
 }
 
-/** Parse a posted stamp (null when the note is not one). Field order is not significant. */
+/** 解析 posted stamp（note 不是 stamp 时返回 null）。字段顺序无关紧要。 */
 export function parsePostedStamp(note: string): { threadTs: string; messageTs: string; channel: string; human: string; seat: string; conversationId: string } | null {
   if (!note.startsWith(SLACK_POSTED_STAMP_PREFIX + " ")) return null;
   const fields = new Map<string, string>();
@@ -53,7 +52,7 @@ export class ThreadSeatMap {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  /** Record a NEW thread root (idempotent on thread_ts — a replayed root keeps one row). */
+  /** 记录新的 thread root（按 thread_ts 幂等——重放 root 仍只保留一行）。 */
   open(m: { threadTs: string; channel: string; human: string; seat: string; conversationId: string }): void {
     this.db
       .prepare(
@@ -64,8 +63,8 @@ export class ThreadSeatMap {
       .run(m.threadTs, m.channel, m.human, m.seat, m.conversationId, this.now().toISOString());
   }
 
-  /** Deterministic inbound lookup: the mapping for a thread root, open OR closed (a closed
-   *  thread still routes to exactly its mapped seat — the class receipt), or null = UNMAPPED. */
+  /** 确定性 inbound 查询：返回 thread root 的 mapping，无论 open 还是 closed（closed thread 仍精确
+   *  路由到其 mapped seat——类别 receipt）；null 表示 UNMAPPED。 */
   resolveByThread(threadTs: string): ThreadMapping | null {
     const row = this.db.prepare(`SELECT * FROM thread_seat_map WHERE thread_ts = ?`).get(threadTs) as
       | Record<string, unknown>
@@ -73,7 +72,7 @@ export class ThreadSeatMap {
     return row ? project(row) : null;
   }
 
-  /** Outbound thread reuse: the OPEN conversation for (human, seat), newest first. */
+  /** outbound thread 复用：查询（human、seat）的 open conversation，最新优先。 */
   resolveOpenForPair(human: string, seat: string): ThreadMapping | null {
     const row = this.db
       .prepare(`SELECT * FROM thread_seat_map WHERE human = ? AND seat = ? AND state = 'open' ORDER BY opened_at DESC LIMIT 1`)
@@ -81,9 +80,8 @@ export class ThreadSeatMap {
     return row ? project(row) : null;
   }
 
-  /** Outbound reply correlation is qitem-scoped. Reuse a thread only for another
-   * notification episode of the SAME durable conversation; a different human
-   * gate gets a fresh root so its reply cannot resolve an older/newer qitem. */
+  /** outbound reply correlation 以 qitem 为 scope。仅同一持久 conversation 的另一 notification
+   *  episode 才复用 thread；不同 human gate 获得新 root，使其 reply 无法解决更早或更新的 qitem。 */
   resolveOpenForConversation(human: string, seat: string, conversationId: string): ThreadMapping | null {
     const row = this.db
       .prepare(
@@ -101,8 +99,8 @@ export class ThreadSeatMap {
       .run(this.now().toISOString(), threadTs);
   }
 
-  /** Rebuild the table from queue-row stamps (the durable source): INSERT-only, never
-   *  overwriting a live row — the map converges toward the stamps without destroying state. */
+  /** 从 queue-row stamp（持久来源）重建 table：只 INSERT，绝不覆盖 live row——map 在不破坏 state
+   *  的前提下向 stamp 收敛。 */
   rebuildFromStamps(stamps: string[]): { inserted: number; skipped: number } {
     let inserted = 0;
     let skipped = 0;

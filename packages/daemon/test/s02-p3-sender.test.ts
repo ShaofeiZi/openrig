@@ -21,7 +21,7 @@ describe("S02 P3 project sender identity",()=>{
     const r=await app.request(`/api/projects${path}`,{method:"POST",headers:{"content-type":"application/json",...headers},body:JSON.stringify(body)});
     return {status:r.status,body:await r.json() as Record<string,any>};
   };
-  it("transport actor wins across acquire, heartbeat, begin, classify, fail/abstain and reclaim",async()=>{
+  it("在 acquire、heartbeat、begin、classify、fail/abstain 与 reclaim 中 transport actor 优先",async()=>{
     const headers={"x-openrig-session":"wire@rig"};
     const lease=await post("/lease/acquire",{classifierSession:"body@rig",evaluateDeadnessFirst:true},headers);
     expect(lease.status).toBe(201);expect(lease.body.classifierSession).toBe("wire@rig");
@@ -40,7 +40,7 @@ describe("S02 P3 project sender identity",()=>{
     const reclaimed=await post("/reclaim-classifier",{byClassifierSession:"body@rig",reason:"test"},{"x-openrig-session":"operator@rig"});
     expect(reclaimed.status).toBe(200);expect(reclaimed.body.reclaimedBySession).toBe("operator@rig");
   });
-  it("keeps claimed fallback and does not promote a body provenance field",async()=>{
+  it("保留 claimed fallback，且不提升 body provenance 字段",async()=>{
     const lease=await post("/lease/acquire",{classifierSession:"claimed@rig"});
     const result=await post("/project",{streamItemId:"a",leaseId:lease.body.leaseId,classifierSession:"claimed@rig",identityProvenance:"transport:v1"});
     expect(result.status).toBe(201);expect(result.body).toMatchObject({classifierSession:"claimed@rig",identityProvenance:"claimed:v1"});
@@ -50,14 +50,14 @@ describe("S02 P3 project sender identity",()=>{
     [{"x-openrig-relay":"true"},"claimed:v1"],
     [{"x-openrig-relay":"true","x-openrig-provenance":"claimed:v1"},"claimed:v1"],
     [{"x-openrig-origin-unknown":"true"},"origin-unknown:v1"],
-  ] as Array<[Record<string,string>,string]>)("records existing relay degradation %j",async(extra,expected)=>{
+  ] as Array<[Record<string,string>,string]>)("记录现有 relay 降级 %j",async(extra,expected)=>{
     const headers={"x-openrig-session":"wire@rig",...extra};
     const lease=await post("/lease/acquire",{},headers);
     const r=await post("/project",{streamItemId:"a",leaseId:lease.body.leaseId},headers);
     expect(r.status).toBe(201);expect(r.body.identityProvenance).toBe(expected);
     expect(w.classifier.getByStreamItemId("a")?.identityProvenance).toBe(expected);
   });
-  it("requires an actor, validates claim shape, but a wire actor supersedes malformed body claims",async()=>{
+  it("要求 actor 并校验 claim 形态，但 wire actor 优先于格式错误的 body claim",async()=>{
     for(const value of [42,{},null])expect((await post("/lease/acquire",{classifierSession:value}))).toMatchObject({status:400,body:{field:"classifierSession"}});
     expect((await post("/lease/acquire",{}))).toMatchObject({status:400,body:{error:"actor_required"}});
     const headers={"x-openrig-session":"wire@rig"};
@@ -65,7 +65,7 @@ describe("S02 P3 project sender identity",()=>{
     expect(lease.status).toBe(201);
     expect((await post("/project",{streamItemId:"a",leaseId:lease.body.leaseId,classifierSession:{}},headers)).status).toBe(201);
   });
-  it("a different wire actor cannot finish using the body holder or revive its lease",async()=>{
+  it("不同 wire actor 不能借用 body holder 完成，也不能复活其 lease",async()=>{
     const lease=w.leases.acquire("holder@rig");const common={leaseId:lease.leaseId,classifierSession:"holder@rig"};
     const attempt=w.attempts.begin({...common,...V,streamItemId:"a"});const headers={"x-openrig-session":"different@rig"};
     expect((await post("/project",{...common,...V,streamItemId:"a",attemptId:attempt.attemptId,executionId:attempt.executionId},headers)).status).toBe(409);
@@ -73,7 +73,7 @@ describe("S02 P3 project sender identity",()=>{
     expect((await post(`/attempts/${attempt.attemptId}/abstain`,{...common,executionId:attempt.executionId,reason:"no"},headers)).status).toBe(409);
     expect(w.classifier.getByStreamItemId("a")).toBeNull();expect(w.attempts.getById(attempt.attemptId)?.status).toBe("in_flight");
   });
-  it("upgrades a populated legacy table with one nullable column and preserves old bytes",()=>{
+  it("用一个 nullable column 升级已有数据的 legacy table，并保留旧字节",()=>{
     const db=createDb();
     try {
       migrate(db,[streamItemsSchema,projectClassificationsSchema]);

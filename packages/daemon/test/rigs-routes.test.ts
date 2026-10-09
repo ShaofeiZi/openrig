@@ -14,7 +14,7 @@ function insertStartupContextRow(db: Database.Database, nodeId: string) {
   ).run(nodeId, "[]", "[]", "[]", "claude-code");
 }
 
-describe("Rig CRUD routes", () => {
+describe("Rig CRUD 路由", () => {
   let db: Database.Database;
   let app: Hono;
   let repo: RigRepository;
@@ -38,7 +38,7 @@ describe("Rig CRUD routes", () => {
     db.close();
   });
 
-  it("POST /api/rigs -> 201 + created rig with id and name", async () => {
+  it("POST /api/rigs 返回 201 及带 id/name 的新建 rig", async () => {
     const res = await app.request("/api/rigs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -51,7 +51,7 @@ describe("Rig CRUD routes", () => {
     expect(body.name).toBe("test-rig");
   });
 
-  it("GET /api/rigs -> list of rigs", async () => {
+  it("GET /api/rigs 返回 rig 列表", async () => {
     repo.createRig("rig-a");
     repo.createRig("rig-b");
 
@@ -62,7 +62,7 @@ describe("Rig CRUD routes", () => {
     expect(body[0].name).toBeDefined();
   });
 
-  it("GET /api/rigs/:id -> full graph with nodes, edges, bindings", async () => {
+  it("GET /api/rigs/:id 返回包含 nodes、edges、bindings 的完整 graph", async () => {
     const rig = repo.createRig("test-rig");
     const n1 = repo.addNode(rig.id, "orchestrator", { role: "orchestrator" });
     const n2 = repo.addNode(rig.id, "worker", { role: "worker" });
@@ -77,7 +77,7 @@ describe("Rig CRUD routes", () => {
     expect(body.edges[0].kind).toBe("delegates_to");
   });
 
-  it("GET /api/rigs/:id -> unbound nodes have binding: null (not omitted)", async () => {
+  it("GET /api/rigs/:id 中未绑定节点的 binding 为 null（不省略）", async () => {
     const rig = repo.createRig("test-rig");
     repo.addNode(rig.id, "worker", { role: "worker" });
 
@@ -91,12 +91,12 @@ describe("Rig CRUD routes", () => {
     expect(worker.binding).toBeNull();
   });
 
-  it("GET /api/rigs/:id with nonexistent id -> 404", async () => {
+  it("GET /api/rigs/:id 的 id 不存在时返回 404", async () => {
     const res = await app.request("/api/rigs/nonexistent");
     expect(res.status).toBe(404);
   });
 
-  it("DELETE /api/rigs/:id -> 204", async () => {
+  it("DELETE /api/rigs/:id 返回 204", async () => {
     const rig = repo.createRig("test-rig");
 
     const res = await app.request(`/api/rigs/${rig.id}`, { method: "DELETE" });
@@ -104,7 +104,7 @@ describe("Rig CRUD routes", () => {
     expect(repo.getRig(rig.id)).toBeNull();
   });
 
-  it("DELETE /api/rigs/:id -> rig.deleted event row in DB", async () => {
+  it("DELETE /api/rigs/:id 在 DB 中写入 rig.deleted event 行", async () => {
     const rig = repo.createRig("test-rig");
 
     const res = await app.request(`/api/rigs/${rig.id}`, { method: "DELETE" });
@@ -118,7 +118,7 @@ describe("Rig CRUD routes", () => {
     expect(payload.rigId).toBe(rig.id);
   });
 
-  it("DELETE /api/rigs/:id with nonexistent id -> 204 + no rig.deleted event", async () => {
+  it("DELETE /api/rigs/:id 的 id 不存在时返回 204 且无 rig.deleted event", async () => {
     const res = await app.request("/api/rigs/nonexistent", { method: "DELETE" });
     expect(res.status).toBe(204);
 
@@ -128,28 +128,28 @@ describe("Rig CRUD routes", () => {
     expect(events).toHaveLength(0);
   });
 
-  it("DELETE /api/rigs/:id with sabotaged events -> rig still exists + no event row", async () => {
+  it("events 被破坏时 DELETE /api/rigs/:id 保留 rig 且不写 event 行", async () => {
     const rig = repo.createRig("test-rig");
 
-    // Sabotage events table so event insert fails inside the transaction
+    // 破坏 events 表，使 event insert 在事务内失败。
     db.exec("DROP TABLE events");
     db.exec(
       "CREATE TABLE events (seq INTEGER PRIMARY KEY AUTOINCREMENT, rig_id TEXT, node_id TEXT, type TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), CONSTRAINT force_fail CHECK(length(type) < 1))"
     );
 
     const res = await app.request(`/api/rigs/${rig.id}`, { method: "DELETE" });
-    // Should fail (transaction rolled back)
+    // 应失败（事务回滚）。
     expect(res.status).toBe(500);
 
-    // Rig still exists (rollback)
+    // Rig 仍存在（已回滚）。
     expect(repo.getRig(rig.id)).not.toBeNull();
 
-    // No partial event row
+    // 没有部分写入的 event 行。
     const events = db.prepare("SELECT * FROM events").all();
     expect(events).toHaveLength(0);
   });
 
-  it("POST /api/rigs with invalid body -> 400", async () => {
+  it("POST /api/rigs 的 body 无效时返回 400", async () => {
     const res = await app.request("/api/rigs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -158,7 +158,7 @@ describe("Rig CRUD routes", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /api/rigs/:id/attach-self binds an external_cli agent to an existing node", async () => {
+  it("POST /api/rigs/:id/attach-self 将 external_cli agent 绑定到现有节点", async () => {
     const rig = repo.createRig("rigged-buildout");
     const node = repo.addNode(rig.id, "orch1.lead", { runtime: "claude-code" });
 
@@ -181,7 +181,7 @@ describe("Rig CRUD routes", () => {
     expect(body.env.OPENRIG_SESSION_NAME).toBe("orch1-lead@rigged-buildout");
   });
 
-  it("POST /api/rigs/:id/attach-self can self-attach a tmux-backed shell without discovery", async () => {
+  it("POST /api/rigs/:id/attach-self 可在不发现的情况下自附加 tmux-backed shell", async () => {
     const rig = repo.createRig("rigged-buildout");
     const node = repo.addNode(rig.id, "dev1.impl2", { runtime: "claude-code" });
 
@@ -214,7 +214,7 @@ describe("Rig CRUD routes", () => {
     expect(attached?.binding?.externalSessionName).toBeNull();
   });
 
-  it("POST /api/rigs/:id/attach-self creates a new pod member when podNamespace + memberName are provided", async () => {
+  it("提供 podNamespace + memberName 时 POST /api/rigs/:id/attach-self 创建新 pod 成员", async () => {
     const rig = repo.createRig("rigged-buildout");
     db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)").run("pod-orch1", rig.id, "orch1", "Orchestrator");
 
@@ -240,7 +240,7 @@ describe("Rig CRUD routes", () => {
     expect(node?.binding?.attachmentType).toBe("external_cli");
   });
 
-  it("POST /api/rigs/:id/attach-self rejects both logicalId and pod mode together", async () => {
+  it("POST /api/rigs/:id/attach-self 拒绝同时使用 logicalId 和 pod mode", async () => {
     const rig = repo.createRig("rigged-buildout");
 
     const res = await app.request(`/api/rigs/${rig.id}/attach-self`, {
@@ -256,10 +256,10 @@ describe("Rig CRUD routes", () => {
 
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toContain("either logicalId");
+    expect(body.error).toContain("请指定 logicalId");
   });
 
-  it("POST /api/rigs/:id/attach-self returns 409 when the target node is already bound", async () => {
+  it("目标节点已绑定时 POST /api/rigs/:id/attach-self 返回 409", async () => {
     const rig = repo.createRig("rigged-buildout");
     const node = repo.addNode(rig.id, "orch1.lead", { runtime: "claude-code" });
     sessionRegistry.updateBinding(node.id, {
@@ -282,9 +282,9 @@ describe("Rig CRUD routes", () => {
     expect(body.code).toBe("already_bound");
   });
 
-  // -- T21: Graph projection endpoint --
+  // -- T21：Graph projection endpoint --
 
-  it("GET /api/rigs/:id/graph -> RF JSON with correct node/edge counts", async () => {
+  it("GET /api/rigs/:id/graph 返回节点和边数量正确的 RF JSON", async () => {
     const rig = repo.createRig("r01");
     const n1 = repo.addNode(rig.id, "orchestrator", { role: "orchestrator" });
     const n2 = repo.addNode(rig.id, "worker", { role: "worker" });
@@ -297,10 +297,10 @@ describe("Rig CRUD routes", () => {
     expect(body.edges).toHaveLength(1);
   });
 
-  it("GET /api/rigs/:id/graph -> node.data includes status from session", async () => {
+  it("GET /api/rigs/:id/graph 的 node.data 包含 session 状态", async () => {
     const rig = repo.createRig("r01");
     const node = repo.addNode(rig.id, "dev1-impl", { role: "worker" });
-    // Seed session through the app's injected sessionRegistry
+    // 通过 app 注入的 sessionRegistry 播种 session。
     const session = sessionRegistry.registerSession(node.id, "r01-dev1-impl");
     sessionRegistry.updateStatus(session.id, "running");
 
@@ -310,7 +310,7 @@ describe("Rig CRUD routes", () => {
     expect(nodeData.data.status).toBe("running");
   });
 
-  it("GET /api/rigs/:id/graph -> node.data carries the honest assigned-work breakdown", async () => {
+  it("GET /api/rigs/:id/graph 的 node.data 携带真实的 assigned-work 明细", async () => {
     const rig = repo.createRig("r01");
     const node = repo.addNode(rig.id, "dev.impl", { role: "worker" });
     const session = sessionRegistry.registerSession(node.id, "dev-impl@r01");
@@ -335,7 +335,7 @@ describe("Rig CRUD routes", () => {
     expect(data.blockedWorkCount).toBe(1);
   });
 
-  it("GET /api/rigs/:id/graph -> unbound node has binding: null in data", async () => {
+  it("GET /api/rigs/:id/graph 中未绑定节点的数据含 binding: null", async () => {
     const rig = repo.createRig("r01");
     repo.addNode(rig.id, "worker");
 
@@ -346,7 +346,7 @@ describe("Rig CRUD routes", () => {
     expect(nodeData.data.binding).toBeNull();
   });
 
-  it("GET /api/rigs/:id/graph -> nodes have type: 'rigNode'", async () => {
+  it("GET /api/rigs/:id/graph 中节点的 type 为 'rigNode'", async () => {
     const rig = repo.createRig("r01");
     repo.addNode(rig.id, "worker");
 
@@ -355,7 +355,7 @@ describe("Rig CRUD routes", () => {
     expect(body.nodes[0].type).toBe("rigNode");
   });
 
-  it("GET /api/rigs/:id/graph -> RF identity: node.id = opaque PK, edge uses PKs", async () => {
+  it("GET /api/rigs/:id/graph 的 RF identity：node.id 为不透明 PK，edge 使用 PK", async () => {
     const rig = repo.createRig("r01");
     const n1 = repo.addNode(rig.id, "a");
     const n2 = repo.addNode(rig.id, "b");
@@ -370,7 +370,7 @@ describe("Rig CRUD routes", () => {
     expect(body.edges[0].target).toBe(n2.id);
   });
 
-  it("GET /api/rigs/:id/graph -> node with no session has status: null", async () => {
+  it("GET /api/rigs/:id/graph 中没有 session 的节点 status 为 null", async () => {
     const rig = repo.createRig("r01");
     repo.addNode(rig.id, "worker");
 
@@ -380,14 +380,14 @@ describe("Rig CRUD routes", () => {
     expect(body.nodes[0].data.status).toBeNull();
   });
 
-  it("GET /api/rigs/:id/graph with nonexistent id -> 404", async () => {
+  it("GET /api/rigs/:id/graph 的 id 不存在时返回 404", async () => {
     const res = await app.request("/api/rigs/nonexistent/graph");
     expect(res.status).toBe(404);
   });
 
-  // -- UX-T01b: Rig summary endpoint --
+  // -- UX-T01b：Rig summary endpoint --
 
-  it("GET /api/rigs/summary -> rig list with node counts", async () => {
+  it("GET /api/rigs/summary 返回带节点数量的 rig 列表", async () => {
     const rig1 = repo.createRig("alpha");
     repo.addNode(rig1.id, "orchestrator", { runtime: "claude-code" });
     repo.addNode(rig1.id, "worker", { runtime: "codex" });
@@ -408,7 +408,7 @@ describe("Rig CRUD routes", () => {
     expect(beta.nodeCount).toBe(1);
   });
 
-  it("summary separates observed agent presence from attention, idle work and infrastructure", async () => {
+  it("summary 将观察到的 agent presence 与 attention、idle work 和 infrastructure 分离", async () => {
     const add = (name: string, status: string | null, runtime = "codex", attention = false) => {
       const rig = repo.createRig(name);
       const node = repo.addNode(rig.id, "worker", { runtime });
@@ -435,7 +435,7 @@ describe("Rig CRUD routes", () => {
     expect(row("unknown").hasLiveAgents).toBeNull();
   });
 
-  it("GET /api/rigs/summary -> includes hasServices from persisted rig services metadata", async () => {
+  it("GET /api/rigs/summary 包含持久化 rig services 元数据中的 hasServices", async () => {
     const rig1 = repo.createRig("svc-rig");
     repo.addNode(rig1.id, "worker", { runtime: "claude-code" });
     repo.setServicesRecord(rig1.id, {
@@ -460,11 +460,11 @@ describe("Rig CRUD routes", () => {
     expect(plainRig.hasServices).toBe(false);
   });
 
-  it("GET /api/rigs/summary -> multiple snapshots with explicit timestamps, newest wins", async () => {
+  it("GET /api/rigs/summary 面对多个显式时间戳 snapshot 时由最新者胜出", async () => {
     const rig = repo.createRig("gamma");
     repo.addNode(rig.id, "worker", { runtime: "codex" });
 
-    // Insert snapshots with explicit timestamps to prove newest-wins
+    // 插入带显式时间戳的 snapshot，证明最新者胜出。
     db.prepare(
       "INSERT INTO snapshots (id, rig_id, kind, status, data, created_at) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("snap-old", rig.id, "manual", "complete", "{}", "2026-03-23 01:00:00");
@@ -484,7 +484,7 @@ describe("Rig CRUD routes", () => {
     expect(gamma.latestSnapshotAt).toBe("2026-03-23 03:00:00");
   });
 
-  it("GET /api/rigs/summary -> no snapshots: both latestSnapshotAt and latestSnapshotId are null", async () => {
+  it("GET /api/rigs/summary 没有 snapshot 时 latestSnapshotAt 和 latestSnapshotId 都为 null", async () => {
     const rig = repo.createRig("delta");
     repo.addNode(rig.id, "worker", { runtime: "codex" });
 
@@ -498,30 +498,29 @@ describe("Rig CRUD routes", () => {
     expect(delta.latestSnapshotId).toBeNull();
   });
 
-  it("GET /api/rigs/summary -> empty DB returns empty array", async () => {
+  it("GET /api/rigs/summary 对空 DB 返回空数组", async () => {
     const res = await app.request("/api/rigs/summary");
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual([]);
   });
 
-  it("GET /api/rigs/summary -> returns array shape, not rig-by-id shape (route order guardrail)", async () => {
-    // This test proves /summary is not swallowed by /:id
-    // If /:id resolves first, "summary" would be treated as a rig ID
-    // and return either a 404 or a rig-by-id object — not an array
+  it("GET /api/rigs/summary 返回数组结构而非 rig-by-id 结构（路由顺序护栏）", async () => {
+    // 此测试证明 /summary 不会被 /:id 吞掉。若 /:id 先解析，"summary" 会被视为 rig ID，
+    // 并返回 404 或 rig-by-id 对象，而非数组。
     const res = await app.request("/api/rigs/summary");
     expect(res.status).toBe(200);
     const body = await res.json();
 
-    // Must be an array (summary shape), not an object (rig-by-id shape or 404 error shape)
+    // 必须是数组（summary 结构），而不是对象（rig-by-id 或 404 error 结构）。
     expect(Array.isArray(body)).toBe(true);
   });
 
-  it("GET /api/rigs/summary -> same-second snapshots: no duplicate rig rows, deterministic tiebreak by id", async () => {
+  it("GET /api/rigs/summary 面对同秒 snapshot 时无重复 rig 行，并按 id 确定性决胜", async () => {
     const rig = repo.createRig("epsilon");
     repo.addNode(rig.id, "worker", { runtime: "codex" });
 
-    // Two snapshots with identical created_at — ULID "ZZZZ" sorts after "AAAA"
+    // 两个 snapshot 的 created_at 相同，ULID "ZZZZ" 排在 "AAAA" 后。
     db.prepare(
       "INSERT INTO snapshots (id, rig_id, kind, status, data, created_at) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("AAAA_snap", rig.id, "manual", "complete", "{}", "2026-03-23 05:00:00");
@@ -533,15 +532,15 @@ describe("Rig CRUD routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
 
-    // Must have exactly one row for epsilon (no duplicates)
+    // epsilon 必须恰好有一行（无重复）。
     const epsilons = body.filter((r: { name: string }) => r.name === "epsilon");
     expect(epsilons).toHaveLength(1);
-    // ZZZZ sorts after AAAA, so ZZZZ_snap should win the tiebreak
+    // ZZZZ 排在 AAAA 后，因此 ZZZZ_snap 应在决胜中胜出。
     expect(epsilons[0].latestSnapshotId).toBe("ZZZZ_snap");
   });
 
-  // NS-T12: graph route returns enriched data with inventory overlay
-  it("GET /api/rigs/:id/graph returns enriched node data with startupStatus and podId", async () => {
+  // NS-T12：graph 路由返回带 inventory overlay 的增强数据。
+  it("GET /api/rigs/:id/graph 返回带 startupStatus 和 podId 的增强节点数据", async () => {
     const rig = repo.createRig("test-rig");
     db.prepare("INSERT INTO pods (id, rig_id, label) VALUES (?, ?, ?)").run("pod-1", rig.id, "Dev");
     const node = repo.addNode(rig.id, "dev.impl", { runtime: "claude-code", podId: "pod-1" });
@@ -552,7 +551,7 @@ describe("Rig CRUD routes", () => {
     const res = await app.request(`/api/rigs/${rig.id}/graph`);
     expect(res.status).toBe(200);
     const body = await res.json();
-    // Find the enriched node (not the group node)
+    // 查找增强节点（不是 group 节点）。
     const graphNode = body.nodes.find((n: any) => n.data?.logicalId === "dev.impl");
     expect(graphNode).toBeDefined();
     expect(graphNode.data.startupStatus).toBe("ready");
@@ -560,15 +559,15 @@ describe("Rig CRUD routes", () => {
     expect(graphNode.data.canonicalSessionName).toBe("dev-impl@test-rig");
     expect(graphNode.data.restoreOutcome).toBe("n-a");
     expect(graphNode.data.rigId).toBeDefined();
-    // Group node for pod
+    // pod 的 group 节点。
     const groupNode = body.nodes.find((n: any) => n.id === "pod-pod-1");
     expect(groupNode).toBeDefined();
     expect(groupNode.type).toBe("podGroup");
     expect(groupNode.data.podLabel).toBe("Dev");
   });
 
-  // NS-T06: POST /api/rigs/:id/up — power-on from auto-pre-down snapshot
-  it("POST /api/rigs/:id/up returns 404 when no auto-pre-down snapshot exists", async () => {
+  // NS-T06：POST /api/rigs/:id/up——从 auto-pre-down snapshot 启动。
+  it("不存在 auto-pre-down snapshot 时 POST /api/rigs/:id/up 返回 404", async () => {
     const rig = repo.createRig("no-snap-rig");
     const res = await app.request(`/api/rigs/${rig.id}/up`, { method: "POST" });
     expect(res.status).toBe(404);
@@ -576,7 +575,7 @@ describe("Rig CRUD routes", () => {
     expect(body.code).toBe("no_snapshot");
   });
 
-  it("POST /api/rigs/:id/up captures auto-rehydrate snapshot from durable current state", async () => {
+  it("POST /api/rigs/:id/up 从持久当前状态捕获 auto-rehydrate snapshot", async () => {
     const rig = repo.createRig("rehydrate-rig");
     const node = repo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "dev-impl@rehydrate-rig");
@@ -589,14 +588,14 @@ describe("Rig CRUD routes", () => {
     const body = await res.json();
     expect(body.status).toBe("restored");
     expect(body.snapshotKind).toBe("auto-rehydrate");
-    expect(body.warnings).toContain("No restore-usable snapshot existed; captured current DB state as auto-rehydrate snapshot for reboot recovery.");
+    expect(body.warnings).toContain("无可用恢复快照；已捕获当前 DB 状态作为 auto-rehydrate 快照用于重启恢复。");
     const autoRehydrate = db
       .prepare("SELECT kind FROM snapshots WHERE rig_id = ? AND kind = 'auto-rehydrate'")
       .get(rig.id) as { kind: string } | undefined;
     expect(autoRehydrate?.kind).toBe("auto-rehydrate");
   });
 
-  it("POST /api/rigs/:id/up includes rigResult from restore rollup", async () => {
+  it("POST /api/rigs/:id/up 包含 restore rollup 的 rigResult", async () => {
     const rig = repo.createRig("restore-rig");
     const node = repo.addNode(rig.id, "worker", { role: "worker" });
     const session = sessionRegistry.registerSession(node.id, "worker@restore-rig");
@@ -614,7 +613,7 @@ describe("Rig CRUD routes", () => {
     expect(body.nodes[0].status).toBe("fresh-primed");
   });
 
-  it("POST /api/rigs/:id/up returns validation blockers as not_attempted", async () => {
+  it("POST /api/rigs/:id/up 将验证 blocker 返回为 not_attempted", async () => {
     const rig = repo.createRig("restore-rig");
     const fixtureNode = repo.addNode(rig.id, "worker", { role: "worker" });
     const session = sessionRegistry.registerSession(fixtureNode.id, "worker@restore-rig");
@@ -650,15 +649,15 @@ describe("Rig CRUD routes", () => {
     expect(body.blockers[0].path).toBe(missingPath);
   });
 
-  it("POST /api/rigs/:id/up returns 404 for nonexistent rig", async () => {
+  it("POST /api/rigs/:id/up 对不存在的 rig 返回 404", async () => {
     const res = await app.request("/api/rigs/nonexistent/up", { method: "POST" });
     expect(res.status).toBe(404);
-    expect((await res.json()).error).toContain("not found");
+    expect((await res.json()).error).toContain("未找到工作组");
   });
 
-  // L3b: /:id/up mirrors the rig-name path: prefer auto-pre-down, fall back to
-  // latest restore-usable manual snapshot, echo `snapshotKind`.
-  it("L3b: POST /api/rigs/:id/up falls back to manual snapshot when no auto-pre-down exists; echoes snapshotKind", async () => {
+  // L3b：/:id/up 镜像 rig-name 路径：优先 auto-pre-down，回退到最新可用于恢复的 manual snapshot，
+  // 并回显 `snapshotKind`。
+  it("L3b：无 auto-pre-down 时 POST /api/rigs/:id/up 回退到 manual snapshot 并回显 snapshotKind", async () => {
     const rig = repo.createRig("manual-only-byid");
     repo.addNode(rig.id, "worker", { role: "worker" });
     snapshotCapture.captureSnapshot(rig.id, "manual");
@@ -670,10 +669,10 @@ describe("Rig CRUD routes", () => {
     expect(body.snapshotKind).toBe("manual");
   });
 
-  it("L3b: POST /api/rigs/:id/up prefers auto-pre-down over a newer manual snapshot", async () => {
+  it("L3b：POST /api/rigs/:id/up 优先 auto-pre-down，而非更新的 manual snapshot", async () => {
     const rig = repo.createRig("auto-pref-byid");
     repo.addNode(rig.id, "worker", { role: "worker" });
-    // Capture order doesn't matter; the helper orders by `(kind = 'auto-pre-down') DESC`.
+    // 捕获顺序无关；helper 按 `(kind = 'auto-pre-down') DESC` 排序。
     snapshotCapture.captureSnapshot(rig.id, "manual");
     snapshotCapture.captureSnapshot(rig.id, "auto-pre-down");
 
@@ -683,19 +682,19 @@ describe("Rig CRUD routes", () => {
     expect(body.snapshotKind).toBe("auto-pre-down");
   });
 
-  it("L3b: POST /api/rigs/:id/up returns 404 with updated 'no restore-usable snapshot' message", async () => {
+  it("L3b：POST /api/rigs/:id/up 返回 404 及更新后的“无可用恢复 snapshot”消息", async () => {
     const rig = repo.createRig("no-usable-snap");
 
     const res = await app.request(`/api/rigs/${rig.id}/up`, { method: "POST" });
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.code).toBe("no_snapshot");
-    expect(body.error).toContain("restore-usable");
+    expect(body.error).toContain("没有可用恢复快照");
     expect(body.error).not.toContain("auto-pre-down snapshot");
   });
 
-  // OPR.0.3.4.9 — Option Y: auto-periodic co-equal with auto-pre-down via Explorer /:id/up.
-  it("OPR.0.3.4.9 Option Y: stale auto-pre-down + newer auto-periodic -> restores from auto-periodic via /:id/up", async () => {
+  // OPR.0.3.4.9——方案 Y：通过 Explorer /:id/up 将 auto-periodic 与 auto-pre-down 等同。
+  it("OPR.0.3.4.9 方案 Y：陈旧 auto-pre-down + 更新 auto-periodic 时通过 /:id/up 从后者恢复", async () => {
     const rig = repo.createRig("option-y-explorer");
     repo.addNode(rig.id, "worker", { role: "worker" });
     snapshotCapture.captureSnapshot(rig.id, "auto-pre-down");
@@ -708,11 +707,10 @@ describe("Rig CRUD routes", () => {
     expect(body.snapshotKind).toBe("auto-periodic");
   });
 
-  // OPR.0.3.4.4 — the Explorer restore route is INDEPENDENT of /api/up (it
-  // parsed no body at all), so plan:true was silently ignored and the route
-  // always mutated. These tests pin the daemon-level read-only gate here too.
-  describe("OPR.0.3.4.4 --plan read-only restore gate (Explorer /:id/up)", () => {
-    it("plan:true returns a read-only preview: restore() NOT called, zero session/snapshot mutation", async () => {
+  // OPR.0.3.4.4——Explorer restore 路由独立于 /api/up（此前完全不解析 body），因此 plan:true 被
+  // 静默忽略且路由总会修改状态。以下测试也固定此处的后台服务只读 gate。
+  describe("OPR.0.3.4.4 --plan 只读 restore gate（Explorer /:id/up）", () => {
+    it("plan:true 返回只读预览：不调用 restore()，session/snapshot 零修改", async () => {
       const rig = repo.createRig("explorer-plan-rig");
       const node = repo.addNode(rig.id, "worker", { role: "worker", runtime: "claude-code" });
       const sess = sessionRegistry.registerSession(node.id, "worker@explorer-plan-rig");
@@ -738,14 +736,14 @@ describe("Rig CRUD routes", () => {
       expect(body.mutated).toBe(false);
       expect(body.nodes).toHaveLength(1);
       expect(body.nodes[0].intendedAction).toBe("resume-original");
-      // THE gate: no restore mutation of any kind.
+      // 关键 gate：不发生任何形式的 restore 修改。
       expect(restoreSpy).not.toHaveBeenCalled();
       expect(db.prepare("SELECT * FROM sessions ORDER BY id").all()).toEqual(sessionsBefore);
       expect(db.prepare("SELECT * FROM snapshots ORDER BY id").all()).toEqual(snapshotsBefore);
       expect(db.prepare("SELECT * FROM bindings ORDER BY id").all()).toEqual(bindingsBefore);
     });
 
-    it("plan:true with no usable snapshot reports wouldCaptureCurrentState WITHOUT capturing", async () => {
+    it("plan:true 且无可用 snapshot 时报告 wouldCaptureCurrentState，但不捕获", async () => {
       const rig = repo.createRig("explorer-plan-rehydrate");
       const node = repo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
       const session = sessionRegistry.registerSession(node.id, "dev-impl@explorer-plan-rehydrate");
@@ -769,7 +767,7 @@ describe("Rig CRUD routes", () => {
       expect(restoreSpy).not.toHaveBeenCalled();
     });
 
-    it("APPLY regression: body without plan still restores; bodyless POST unchanged", async () => {
+    it("APPLY 回归：body 不含 plan 时仍恢复；无 body 的 POST 保持不变", async () => {
       const rig = repo.createRig("explorer-apply-rig");
       repo.addNode(rig.id, "worker", { role: "worker" });
       snapshotCapture.captureSnapshot(rig.id, "auto-pre-down");

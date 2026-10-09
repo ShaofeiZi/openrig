@@ -12,15 +12,12 @@ import { transportRoutes } from "../src/routes/transport.js";
 import { PsProjectionService } from "../src/domain/ps-projection.js";
 import { createFullTestDb } from "./helpers/test-app.js";
 
-// OPR.0.5.4.2 — one honest resolution path. The deterministic injected-exec
-// reproduction (diagnosis row 2b986f35) inverted into regression tests: the
-// adapter's probe classifies three error classes and the shared resolution
-// path must surface each as itself — a transport blip may never read as a
-// dead seat, and no absence verdict may be fabricated from a blip.
+// OPR.0.5.4.2——唯一真实解析路径。把 deterministic injected-exec 复现（诊断 row
+// 2b986f35）转成回归测试：adapter probe 分类三种错误，shared resolution path 必须按原类别
+// 呈现。transport 短暂故障绝不能被读成 dead seat，也不能从故障中伪造 absence verdict。
 //
-// The four specimens are the real error shapes tmux produces (classifier
-// source: adapters/tmux.ts isNoServerError / isSessionAbsenceError /
-// isTmuxTransportAbsentError):
+// 四个样本是 tmux 产生的真实错误结构；classifier source 为 adapters/tmux.ts 中的
+// isNoServerError / isSessionAbsenceError / isTmuxTransportAbsentError：
 const NO_SERVER = () => new Error("no server running on /private/tmp/tmux-501/default");
 const SOCKET_GONE = () => new Error("error connecting to /private/tmp/tmux-501/default (No such file or directory)");
 const SESSION_GONE = () => new Error("can't find session: dev-impl@my-rig");
@@ -32,47 +29,46 @@ const failingExec = (make: () => Error): ExecFn => async () => {
 
 const SEAT = "dev-impl@my-rig";
 
-describe("adapter gate: probeSession classifies instead of collapsing", () => {
-  it("no-server → transport answer, not absence", async () => {
+describe("adapter gate：probeSession 执行分类而非折叠", () => {
+  it("no-server → transport 结果，而非 absence", async () => {
     const adapter = new TmuxAdapter(failingExec(NO_SERVER));
     const probe = await adapter.probeSession(SEAT);
     expect(probe.state).toBe("transport_unavailable");
   });
 
-  it("socket-gone → transport answer, not absence", async () => {
+  it("socket-gone → transport 结果，而非 absence", async () => {
     const adapter = new TmuxAdapter(failingExec(SOCKET_GONE));
     const probe = await adapter.probeSession(SEAT);
     expect(probe.state).toBe("transport_unavailable");
   });
 
-  it("can't find session → positive absence", async () => {
+  it("can't find session → 正向 absence", async () => {
     const adapter = new TmuxAdapter(failingExec(SESSION_GONE));
     const probe = await adapter.probeSession(SEAT);
     expect(probe.state).toBe("absent");
   });
 
-  it("permission denied → fail-closed throw, distinct from both classes", async () => {
+  it("permission denied → fail-closed 抛错，与前两类不同", async () => {
     const adapter = new TmuxAdapter(failingExec(PERMISSION));
     await expect(adapter.probeSession(SEAT)).rejects.toThrow("permission denied");
   });
 
-  it("present session → present", async () => {
+  it("会话存在 → present", async () => {
     const adapter = new TmuxAdapter(async () => "");
     const probe = await adapter.probeSession(SEAT);
     expect(probe.state).toBe("present");
   });
 
-  // Mini-req 6 disposition pin: the wider hasSession population keeps its
-  // collapsed semantics; this slice must not change them out from under the
-  // 28 unbound call sites.
-  it("hasSession keeps the collapsed view for unbound consumers", async () => {
+  // Mini-req 6 disposition pin：更广泛的 hasSession 使用方保留折叠语义；本 slice 不得从
+  // 28 个未绑定调用点下方改变它们。
+  it("hasSession 为未绑定 consumer 保留折叠 view", async () => {
     await expect(new TmuxAdapter(failingExec(NO_SERVER)).hasSession(SEAT)).resolves.toBe(false);
     await expect(new TmuxAdapter(failingExec(SESSION_GONE)).hasSession(SEAT)).resolves.toBe(false);
     await expect(new TmuxAdapter(failingExec(PERMISSION)).hasSession(SEAT)).rejects.toThrow();
   });
 });
 
-describe("one path at the verbs: send and capture surface the transport outcome", () => {
+describe("verb 使用同一路径：send 与 capture 呈现 transport outcome", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -97,8 +93,8 @@ describe("one path at the verbs: send and capture surface the transport outcome"
   }
 
   function transportOver(make: () => Error): SessionTransport {
-    // The REAL adapter over an injected failing exec — the diagnosis repro
-    // shape, not a stubbed error at the seam under test.
+    // 使用注入 failing exec 的真实 adapter，也就是诊断 repro 结构，而不是在被测 seam 上
+    // stub error。
     return new SessionTransport({
       db,
       rigRepo,
@@ -110,62 +106,60 @@ describe("one path at the verbs: send and capture surface the transport outcome"
   const verdictRows = () =>
     db.prepare("SELECT * FROM seat_identity_verdicts").all() as Array<{ reason: string }>;
 
-  it("send under no-server surfaces tmux_unavailable, never session_missing", async () => {
+  it("no-server 下 send 呈现 tmux_unavailable，绝不是 session_missing", async () => {
     seedSeat();
     const result = await transportOver(NO_SERVER).send(SEAT, "hello");
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("tmux_unavailable");
   });
 
-  it("send under socket-gone surfaces tmux_unavailable, never session_missing", async () => {
+  it("socket-gone 下 send 呈现 tmux_unavailable，绝不是 session_missing", async () => {
     seedSeat();
     const result = await transportOver(SOCKET_GONE).send(SEAT, "hello");
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("tmux_unavailable");
   });
 
-  it("capture under no-server surfaces tmux_unavailable, never session_missing", async () => {
+  it("no-server 下 capture 呈现 tmux_unavailable，绝不是 session_missing", async () => {
     seedSeat();
     const result = await transportOver(NO_SERVER).capture(SEAT);
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("tmux_unavailable");
   });
 
-  it("send under genuine absence still surfaces session_missing", async () => {
+  it("真实 absence 下 send 仍呈现 session_missing", async () => {
     seedSeat();
     const result = await transportOver(SESSION_GONE).send(SEAT, "hello");
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("session_missing");
   });
 
-  describe("error text names what was actually checked (queue-create bar)", () => {
-    it("transport text states the failed reach AND that existence was not determined", async () => {
+  describe("错误文本点明实际检查内容（queue-create 标准）", () => {
+    it("transport 文本同时说明连接失败和未能确定是否存在", async () => {
       seedSeat();
       const result = await transportOver(NO_SERVER).send(SEAT, "hello");
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error).toMatch(/could not be reached|not reachable/i);
-      expect(result.error).toMatch(/not determined/i);
-      // No false world-conclusion: the text may not claim the session is gone.
+      expect(result.error).toContain("无法连接 tmux server");
+      expect(result.error).toContain("未能确定");
+      // 不得产生错误的世界结论：文本不能声称 session 已消失。
       expect(result.error).not.toMatch(/not found/i);
     });
 
-    it("session-missing text states its positive tmux evidence", async () => {
+    it("session-missing 文本说明其正向 tmux evidence", async () => {
       seedSeat();
       const result = await transportOver(SESSION_GONE).send(SEAT, "hello");
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error).toMatch(/tmux reports no session/i);
+      expect(result.error).toContain("tmux 报告不存在该名称的会话");
     });
   });
 
-  // Walk and nudge inherit the gate through the same shared path (mini-req 3):
-  // every walk piece POSTs /api/transport/send (packages/cli/src/commands/walk.ts
-  // — piece send and staged-text Enter submit both post this route), and the
-  // queue's nudge path wires the SAME SessionTransport instance via
-  // QueueRepository.attachTransport (startup.ts). This is the representative
-  // execution of that route under an injected no-server condition.
-  it("walk's route (/api/transport/send) surfaces the transport outcome under no-server", async () => {
+  // Walk 和 nudge 经同一 shared path 继承 gate（mini-req 3）：每个 walk piece 都 POST
+  // /api/transport/send；packages/cli/src/commands/walk.ts 中 piece send 与 staged-text Enter
+  // submit 都调用该路由。queue nudge 路径则通过 QueueRepository.attachTransport（startup.ts）
+  // 接入同一个 SessionTransport instance。这里代表性执行注入 no-server 条件下的该路由。
+  it("walk 路由 /api/transport/send 在 no-server 下呈现 transport outcome", async () => {
     seedSeat();
     const app = new Hono();
     const transport = transportOver(NO_SERVER);
@@ -182,22 +176,21 @@ describe("one path at the verbs: send and capture surface the transport outcome"
     });
     const body = (await res.json()) as { reason?: string; error?: string };
     expect(body.reason).toBe("tmux_unavailable");
-    expect(body.error).toMatch(/not determined/i);
+    expect(body.error).toContain("未能确定");
   });
 
-  describe("no fabricated verdicts (mini-req 5)", () => {
-    it("a transport blip against a live registered seat writes NO absence verdict and ps does not down-rank it", async () => {
+  describe("不伪造 verdict（mini-req 5）", () => {
+    it("存活注册席位上的 transport blip 不写 absence verdict，ps 也不降级", async () => {
       seedSeat();
       await transportOver(NO_SERVER).send(SEAT, "hello");
       expect(verdictRows()).toHaveLength(0);
-      // The EFFECT, not just the indicator (proof item 4): the live seat stays
-      // projected as running after the blip.
+      // 验证 EFFECT 而不只是 indicator（证明项 4）：故障后存活席位仍投影为 running。
       const entry = new PsProjectionService({ db }).getEntries()[0]!;
       expect(entry.runningCount).toBe(1);
       expect(entry.status).toBe("running");
     });
 
-    it("a socket-gone blip likewise writes NO absence verdict and ps does not down-rank it", async () => {
+    it("socket-gone blip 同样不写 absence verdict，ps 也不降级", async () => {
       seedSeat();
       await transportOver(SOCKET_GONE).capture(SEAT);
       expect(verdictRows()).toHaveLength(0);
@@ -206,13 +199,13 @@ describe("one path at the verbs: send and capture surface the transport outcome"
       expect(entry.status).toBe("running");
     });
 
-    it("genuine session absence still writes the verdict and ps down-ranks the seat", async () => {
+    it("真实 session absence 仍写入 verdict，ps 会降低席位等级", async () => {
       seedSeat();
       await transportOver(SESSION_GONE).send(SEAT, "hello");
       const rows = verdictRows();
       expect(rows).toHaveLength(1);
       expect(rows[0]!.reason).toBe("session_missing");
-      // Opposite discriminator: positive absence DOES change the projection.
+      // 反向判别项：正向 absence 确实会改变 projection。
       const entry = new PsProjectionService({ db }).getEntries()[0]!;
       expect(entry.runningCount).toBe(0);
       expect(entry.status).not.toBe("running");
@@ -220,7 +213,7 @@ describe("one path at the verbs: send and capture surface the transport outcome"
   });
 });
 
-describe("cold-start preserved: boot reconciliation still detaches under a dead server (mini-req 2)", () => {
+describe("保留 cold-start：dead server 下 boot reconciliation 仍会 detach（mini-req 2）", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -245,7 +238,7 @@ describe("cold-start preserved: boot reconciliation still detaches under a dead 
     return { rig, node, session };
   }
 
-  it("no-server: stale rows are detached, not errored", async () => {
+  it("no-server：stale row 被 detach，而不是报错", async () => {
     const { rig } = seedRunningSession();
     const reconciler = new Reconciler({
       db,
@@ -258,7 +251,7 @@ describe("cold-start preserved: boot reconciliation still detaches under a dead 
     expect(result.errors).toEqual([]);
   });
 
-  it("socket-gone: stale rows are detached, not errored", async () => {
+  it("socket-gone：stale row 被 detach，而不是报错", async () => {
     const { rig } = seedRunningSession();
     const reconciler = new Reconciler({
       db,
@@ -271,7 +264,7 @@ describe("cold-start preserved: boot reconciliation still detaches under a dead 
     expect(result.errors).toEqual([]);
   });
 
-  it("permission denied stays fail-closed: errored, never detached", async () => {
+  it("permission denied 保持 fail-closed：报错，绝不 detach", async () => {
     const { rig } = seedRunningSession();
     const reconciler = new Reconciler({
       db,

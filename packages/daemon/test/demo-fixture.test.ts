@@ -7,20 +7,20 @@ import { parseAgentSpec } from "../src/domain/agent-manifest.js";
 
 const DEMO_ROOT = path.resolve(__dirname, "../../../demo");
 
-describe("Demo fixture validation", () => {
-  // Test 1: Demo rig.yaml validates
-  it("demo rig.yaml passes RigSpecSchema validation", () => {
+describe("Demo fixture 验证", () => {
+  // 测试 1：Demo rig.yaml 验证通过。
+  it("demo rig.yaml 通过 RigSpecSchema 验证", () => {
     const yaml = fs.readFileSync(path.join(DEMO_ROOT, "rig.yaml"), "utf-8");
     const raw = RigSpecCodec.parse(yaml);
     const validation = RigSpecSchema.validate(raw);
     expect(validation.valid).toBe(true);
     if (!validation.valid) {
-      console.error("Validation errors:", validation.errors);
+      console.error("验证错误：", validation.errors);
     }
   });
 
-  // Test 2: All demo agent specs validate
-  it("all demo agent specs parse and validate", () => {
+  // 测试 2：所有 demo agent spec 验证通过。
+  it("所有 demo agent spec 都可解析并通过验证", () => {
     const agentDirs = fs.readdirSync(path.join(DEMO_ROOT, "agents"));
     expect(agentDirs.length).toBeGreaterThanOrEqual(6);
 
@@ -33,8 +33,8 @@ describe("Demo fixture validation", () => {
     }
   });
 
-  // Test 3: Demo rig spec has correct topology
-  it("demo rig has 4 pods with 8 members total", () => {
+  // 测试 3：Demo rig spec 具有正确 topology。
+  it("demo rig 有 4 个 pod、共 8 个成员", () => {
     const yaml = fs.readFileSync(path.join(DEMO_ROOT, "rig.yaml"), "utf-8");
     const raw = RigSpecCodec.parse(yaml);
     const spec = RigSpecSchema.normalize(raw as Record<string, unknown>);
@@ -43,7 +43,7 @@ describe("Demo fixture validation", () => {
     expect(totalMembers).toBe(8);
   });
 
-  it("demo infra.ui startup binds the dev server to 127.0.0.1 for rig ui open", () => {
+  it("demo infra.ui startup 把 dev server 绑定到 127.0.0.1，供 rig ui open 使用", () => {
     const yaml = fs.readFileSync(path.join(DEMO_ROOT, "rig.yaml"), "utf-8");
     const raw = RigSpecCodec.parse(yaml);
     const spec = RigSpecSchema.normalize(raw as Record<string, unknown>);
@@ -54,17 +54,17 @@ describe("Demo fixture validation", () => {
     expect(startupAction?.value).toBe("npm run dev -- --host 127.0.0.1");
   });
 
-  // Test 4: Demo rig-root inference resolves correctly
-  it("rig-root infers to demo/ directory from rig.yaml path", () => {
+  // 测试 4：Demo rig-root 推断正确。
+  it("从 rig.yaml 路径将 rig-root 推断为 demo/ 目录", () => {
     const rigYamlPath = path.join(DEMO_ROOT, "rig.yaml");
     const inferredRoot = path.dirname(rigYamlPath);
     expect(inferredRoot).toBe(DEMO_ROOT);
-    // Agent refs should resolve from this root
+    // Agent ref 应从此 root 解析。
     expect(fs.existsSync(path.join(inferredRoot, "agents", "lead", "agent.yaml"))).toBe(true);
   });
 
-  // Test 5: No absolute paths or path traversal in fixture
-  it("demo fixture has no absolute paths or path traversal", () => {
+  // 测试 5：Fixture 中没有绝对路径或路径遍历。
+  it("demo fixture 不含绝对路径或路径遍历", () => {
     const rigYaml = fs.readFileSync(path.join(DEMO_ROOT, "rig.yaml"), "utf-8");
     expect(rigYaml).not.toMatch(/path:\s*\//); // No absolute paths
     expect(rigYaml).not.toContain("../"); // No path traversal
@@ -77,13 +77,13 @@ describe("Demo fixture validation", () => {
     }
   });
 
-  // Test 6: Culture file exists
-  it("demo culture.md exists", () => {
+  // 测试 6：Culture 文件存在。
+  it("demo culture.md 存在", () => {
     expect(fs.existsSync(path.join(DEMO_ROOT, "culture.md"))).toBe(true);
   });
 
-  // Test 7: Demo rig preflight resolves all agent refs
-  it("demo rig preflight resolves all agent refs", async () => {
+  // 测试 7：Demo rig preflight 解析所有 agent ref。
+  it("demo rig preflight 解析所有 agent ref", async () => {
     const { rigPreflight } = await import("../src/domain/rigspec-preflight.js");
     const yaml = fs.readFileSync(path.join(DEMO_ROOT, "rig.yaml"), "utf-8");
     const fsOps = {
@@ -91,18 +91,17 @@ describe("Demo fixture validation", () => {
       exists: (p: string) => fs.existsSync(p),
     };
     const result = await rigPreflight({ rigSpecYaml: yaml, rigRoot: DEMO_ROOT, fsOps });
-    const agentErrors = result.errors.filter((e: string) => e.includes("agent_ref resolution failed"));
+    const agentErrors = result.errors.filter((e: string) => e.includes("agent_ref 解析失败"));
     expect(agentErrors).toHaveLength(0);
-    // Full preflight should pass (may have runtime warnings in test env, but ready should be true
-    // if only runtime availability is the issue)
-    const nonRuntimeErrors = result.errors.filter((e: string) => !e.includes("unsupported runtime") && !e.includes("not available"));
+    // 完整 preflight 应通过（测试环境可能有 runtime 警告；若唯一问题是 runtime 可用性，ready 应为 true）。
+    const nonRuntimeErrors = result.errors.filter((e: string) => !e.includes("不支持运行时") && !e.includes("不可用"));
     expect(nonRuntimeErrors).toHaveLength(0);
-    // Demo rig preflight should pass — all agent specs exist and runtimes are supported
+    // Demo rig preflight 应通过：所有 agent spec 都存在，且 runtime 受支持。
     expect(result.ready).toBe(true);
   });
 
-  // Test 8: Demo teardown leaves clean state (via RigTeardownOrchestrator mock)
-  it("demo rig teardown cleans up sessions and bindings", async () => {
+  // 测试 8：Demo teardown 留下干净状态（通过 RigTeardownOrchestrator mock）。
+  it("demo rig teardown 清理 session 和 binding", async () => {
     const { createFullTestDb } = await import("./helpers/test-app.js");
     const { RigRepository } = await import("../src/domain/rig-repository.js");
     const { SessionRegistry } = await import("../src/domain/session-registry.js");
@@ -120,7 +119,7 @@ describe("Demo fixture validation", () => {
     const checkpointStore = new CheckpointStore(db);
     const snapshotCapture = new SnapshotCapture({ db, rigRepo, sessionRegistry, eventBus, snapshotRepo, checkpointStore });
 
-    // Create a rig with a session (simulating demo state)
+    // 创建带 session 的 rig（模拟 demo 状态）。
     const rig = rigRepo.createRig("demo-rig");
     const node = rigRepo.addNode(rig.id, "orch.lead", { runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "orch-lead@demo-rig");
@@ -144,7 +143,7 @@ describe("Demo fixture validation", () => {
     expect(result.snapshotId).toBeTruthy(); // auto-pre-down snapshot created
     expect(result.errors).toHaveLength(0);
 
-    // Session should be exited
+    // Session 应为 exited。
     const sessions = sessionRegistry.getSessionsForRig(rig.id);
     const latest = sessions[sessions.length - 1];
     expect(latest?.status).toBe("exited");

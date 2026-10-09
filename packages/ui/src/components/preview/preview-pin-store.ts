@@ -1,10 +1,9 @@
-// Preview Terminal v0 (PL-018) — pinned preview store.
+// Preview Terminal v0（PL-018）—— 钉住预览 store。
 //
-// Per-session UI state (no daemon roundtrip). Pin persistence across
-// browser refresh is OUT at v0 per PRD; this is in-memory only via a
-// simple subscribable store (no Zustand dep needed for ~50 lines).
+// 按会话的 UI 状态（无后台服务往返）。依 PRD，v0 不含浏览器刷新后的钉住持久化；
+// 这里仅用简单可订阅 store 存于内存（约 50 行无需引入 Zustand 依赖）。
 //
-// Cap: ui.preview.max_pins (default 4) — enforced at pin time.
+// 上限：ui.preview.max_pins（默认 4）——在钉住时强制。
 
 export interface PreviewPin {
   rigId: string;
@@ -41,8 +40,7 @@ class PreviewPinStore {
   }
 
   /**
-   * Pin a seat. Returns true on success; false when the cap would be
-   * exceeded (caller surfaces a UI hint).
+   * 钉住一个席位。成功返回 true；将超出上限时返回 false（调用方据此给出 UI 提示）。
    */
   pin(pin: PreviewPin): boolean {
     if (this.isPinned(pin.rigId, pin.logicalId)) return true;

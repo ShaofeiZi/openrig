@@ -1,8 +1,7 @@
-// Tier 1 proof for the Agent Starter v1 vertical M2 Revision 2 — real
-// `CodexRuntimeAdapter` proof. Mirror of the Claude adapter R2 test:
-// instantiates the real adapter and mocks at the tmux boundary; verifies
-// `deliverStartup`'s `guidance_merge` branch writes the starter content
-// into the per-seat AGENTS.md managed block.
+// Agent Starter v1 垂直切片 M2 Revision 2 的 Tier 1 证明——真实的
+// `CodexRuntimeAdapter` 证明。它与 Claude adapter R2 测试互为镜像：
+// 实例化真实 adapter，并在 tmux 边界 mock；验证 `deliverStartup` 的
+// `guidance_merge` 分支会将 starter 内容写入每席位 AGENTS.md 的受管区块。
 
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
@@ -78,8 +77,8 @@ status: captured
 state: 2-named
 `;
 
-describe("Agent Starter v1 vertical — real Codex adapter delivery (M2 R2)", () => {
-  it("real CodexRuntimeAdapter.deliverStartup writes STARTER content to AGENTS.md via guidance_merge", async () => {
+describe("Agent Starter v1 垂直切片——真实 Codex adapter 投递（M2 R2）", () => {
+  it("真实 CodexRuntimeAdapter.deliverStartup 通过 guidance_merge 将 STARTER 内容写入 AGENTS.md", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "starter-adapter-codex-r2-"));
     const registryRoot = path.join(tmpDir, "registry");
     fs.mkdirSync(registryRoot, { recursive: true });
@@ -105,7 +104,7 @@ describe("Agent Starter v1 vertical — real Codex adapter delivery (M2 R2)", ()
       const codexAdapter = new CodexRuntimeAdapter({
         tmux,
         fsOps: codexFs,
-        // Stub out process-tree probes so the adapter doesn't shell out.
+        // Stub 掉进程树探测，避免 adapter 执行外部 shell 命令。
         listProcesses: () => [],
         readThreadIdByPid: () => undefined,
         resolveHomeDirByPid: () => undefined,
@@ -166,7 +165,7 @@ describe("Agent Starter v1 vertical — real Codex adapter delivery (M2 R2)", ()
 
       const expectedAgentsMdPath = path.join(RIG_ROOT, "AGENTS.md");
       const agentsMd = codexFs._store[expectedAgentsMdPath];
-      expect(agentsMd, "expected real CodexRuntimeAdapter to have written AGENTS.md via guidance_merge").toBeDefined();
+      expect(agentsMd, "预期真实 CodexRuntimeAdapter 已通过 guidance_merge 写入 AGENTS.md").toBeDefined();
       expect(agentsMd).toContain("BEGIN OpenRig MANAGED BLOCK: codex-fixture-starter.yaml");
       expect(agentsMd).toContain("END OpenRig MANAGED BLOCK: codex-fixture-starter.yaml");
       expect(agentsMd).toContain("starter_id: codex-fixture-starter");

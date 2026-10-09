@@ -1,10 +1,10 @@
 import type { ProbeResult } from "./requirements-probe.js";
 import { shellQuote } from "../adapters/shell-quote.js";
 
-/** Approval classification for an external install action */
+/** external install action 的审批分类 */
 export type ApprovalClassification = "auto_approvable" | "review_required" | "manual_only";
 
-/** A single external install action in the plan */
+/** plan 中的单个 external install action */
 export interface ExternalInstallAction {
   requirementName: string;
   kind: "cli_tool" | "system_package";
@@ -15,7 +15,7 @@ export interface ExternalInstallAction {
   reason: string;
 }
 
-/** The full external install plan */
+/** 完整的 external install plan */
 export interface ExternalInstallPlan {
   actions: ExternalInstallAction[];
   autoApprovable: ExternalInstallAction[];
@@ -29,9 +29,8 @@ interface PlannerOptions {
 }
 
 /**
- * Maps missing requirements to trusted provider install actions.
- * Phase 5 ships Homebrew (darwin) only. All other platforms produce manual_only.
- * install_hints from manifests are display-only — never executed.
+ * 将缺失 requirement 映射为可信 provider install action。Phase 5 仅交付 Homebrew（darwin）。
+ * 其他所有 platform 都产生 manual_only。manifest 中的 install_hints 仅用于展示——绝不执行。
  */
 export class ExternalInstallPlanner {
   private platform: string;
@@ -41,8 +40,8 @@ export class ExternalInstallPlanner {
   }
 
   /**
-   * Build an install plan from probe results.
-   * @param probeResults - results from RequirementsProbeRegistry.probeAll()
+   * 从 probe result 构建 install plan。
+   * @param probeResults RequirementsProbeRegistry.probeAll() 的结果
    */
   planInstalls(probeResults: ProbeResult[]): ExternalInstallPlan {
     const actions: ExternalInstallAction[] = [];
@@ -68,7 +67,7 @@ export class ExternalInstallPlanner {
   }
 
   private mapToAction(probe: ProbeResult): ExternalInstallAction {
-    // Unsupported platform probe or unknown (probe failed) -> manual_only
+    // 不支持的 platform probe 或 unknown（probe 失败）-> manual_only
     if (probe.status === "unsupported") {
       return {
         requirementName: probe.name,
@@ -77,7 +76,7 @@ export class ExternalInstallPlanner {
         commandPreview: null,
         classification: "manual_only",
         installHints: probe.installHints,
-        reason: "no trusted provider for this platform",
+        reason: "此平台没有可信 provider",
       };
     }
 
@@ -89,11 +88,11 @@ export class ExternalInstallPlanner {
         commandPreview: null,
         classification: "manual_only",
         installHints: probe.installHints,
-        reason: "probe failed — cannot determine install action",
+        reason: "probe 失败——无法确定 install action",
       };
     }
 
-    // status === "missing" — try to map to a trusted provider
+    // status === "missing"——尝试映射到可信 provider
     if (this.platform === "darwin") {
       return {
         requirementName: probe.name,
@@ -102,11 +101,11 @@ export class ExternalInstallPlanner {
         commandPreview: `brew install ${shellQuote(probe.name)}`,
         classification: "auto_approvable",
         installHints: probe.installHints,
-        reason: "trusted Homebrew install",
+        reason: "可信 Homebrew 安装",
       };
     }
 
-    // Non-darwin with missing requirement -> manual_only
+    // 非 darwin 且 requirement 缺失 -> manual_only
     return {
       requirementName: probe.name,
       kind: probe.kind,
@@ -114,7 +113,7 @@ export class ExternalInstallPlanner {
       commandPreview: null,
       classification: "manual_only",
       installHints: probe.installHints,
-      reason: "no trusted provider for this platform",
+      reason: "此平台没有可信 provider",
     };
   }
 }

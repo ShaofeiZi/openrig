@@ -1,17 +1,16 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * L1 — Stream (PL-004 Phase A).
+ * L1——Stream（PL-004 阶段 A）。
  *
- * Append-only intake/audit root for the coordination primitive. Items are
- * immutable after emit; ordered by `(ts_emitted, stream_sort_key)`. Hints
- * are advisory; classifier (L2, future Phase B) is authoritative on routing.
+ * 协调原语的只追加接收/审计根。条目发出后不可变，按 `(ts_emitted, stream_sort_key)` 排序。
+ * hint 仅供参考；classifier（L2，未来阶段 B）是路由权威。
  *
- * Indexes:
- *   - PRIMARY KEY on stream_item_id (ULID; monotonic per host)
- *   - source-session lookup
- *   - hint-destination lookup
- *   - composite (ts_emitted, stream_sort_key) for chronological cursor pagination
+ * 索引：
+ *   - stream_item_id 上的 PRIMARY KEY（ULID；逐主机单调递增）
+ *   - source-session 查询
+ *   - hint-destination 查询
+ *   - 用于按时间顺序游标分页的复合索引 (ts_emitted, stream_sort_key)
  */
 export const streamItemsSchema: Migration = {
   name: "023_stream_items.sql",

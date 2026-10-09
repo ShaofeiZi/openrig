@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-// TODO: AS-T12 — migrate to pod-aware bundle types
+// TODO：AS-T12——迁移到感知 pod 的 bundle 类型。
 import {
   validateLegacyBundleManifest as validateBundleManifest,
   parseLegacyBundleManifest as parseBundleManifest,
@@ -30,24 +30,24 @@ const VALID_RAW = {
   },
 };
 
-describe("Bundle types", () => {
-  // T1: Valid manifest passes validation
-  it("valid manifest with integrity passes validation", () => {
+describe("Bundle 类型", () => {
+  // T1：合法 manifest 通过校验
+  it("带 integrity 的合法 manifest 可通过校验", () => {
     const result = validateBundleManifest(VALID_RAW);
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
   });
 
-  // T2: Package entries validated
-  it("package entries require name, version, path", () => {
+  // T2：校验 package 条目
+  it("package 条目必须包含 name、version 和 path", () => {
     const raw = { ...VALID_RAW, packages: [{ name: "", version: "1.0", path: "pkg" }] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("name"))).toBe(true);
   });
 
-  // T3: Integrity section validated
-  it("integrity requires algorithm=sha256 and non-empty files", () => {
+  // T3：校验 integrity 区段
+  it("integrity 要求 algorithm=sha256 且 files 非空", () => {
     const raw = { ...VALID_RAW, integrity: { algorithm: "md5", files: {} } };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
@@ -55,24 +55,24 @@ describe("Bundle types", () => {
     expect(result.errors.some((e) => e.includes("files"))).toBe(true);
   });
 
-  // T4: Missing rig_spec rejected
-  it("missing rig_spec path rejected", () => {
+  // T4：拒绝缺少 rig_spec
+  it("拒绝缺少 rig_spec 路径的 manifest", () => {
     const raw = { ...VALID_RAW, rig_spec: undefined };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("rig_spec"))).toBe(true);
   });
 
-  // T5: Empty packages rejected
-  it("empty packages array rejected", () => {
+  // T5：拒绝空 packages
+  it("拒绝空 packages 数组", () => {
     const raw = { ...VALID_RAW, packages: [] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("packages"))).toBe(true);
   });
 
-  // T6: Round-trip
-  it("round-trip: create → serialize → parse → validate", () => {
+  // T6：往返
+  it("往返：创建 → 序列化 → 解析 → 校验", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "test-bundle",
@@ -99,54 +99,54 @@ describe("Bundle types", () => {
     expect(normalized.integrity?.files["rig.yaml"]).toBe("c".repeat(64));
   });
 
-  // T7: Absolute rig_spec path rejected
-  it("absolute rig_spec path rejected", () => {
+  // T7：拒绝 rig_spec 绝对路径
+  it("拒绝 rig_spec 绝对路径", () => {
     const raw = { ...VALID_RAW, rig_spec: "/etc/passwd" };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("safe relative path"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("安全的相对路径"))).toBe(true);
   });
 
-  // T8: ../ in package path rejected
-  it("path traversal in package path rejected", () => {
+  // T8：拒绝 package 路径中的 ../。
+  it("拒绝 package 路径中的目录遍历", () => {
     const raw = { ...VALID_RAW, packages: [{ name: "evil", version: "1.0", path: "../outside", original_source: "" }] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("safe relative path"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("安全的相对路径"))).toBe(true);
   });
 
-  // T9: ../ in integrity file key rejected
-  it("path traversal in integrity file key rejected", () => {
+  // T9：拒绝 integrity 文件 key 中的 ../。
+  it("拒绝 integrity 文件 key 中的目录遍历", () => {
     const raw = { ...VALID_RAW, integrity: { algorithm: "sha256", files: { "../etc/passwd": "hash" } } };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("safe relative path"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("安全的相对路径"))).toBe(true);
   });
 
-  // T10: ./rig.yaml rejected (dot segment)
+  // T10：拒绝 ./rig.yaml（点路径段）。
   it("dot segment in rig_spec rejected", () => {
     const raw = { ...VALID_RAW, rig_spec: "./rig.yaml" };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("safe relative path"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("安全的相对路径"))).toBe(true);
   });
 
-  // T11: packages//review-kit rejected (empty segment)
-  it("empty segment in package path rejected", () => {
+  // T11：拒绝 packages//review-kit（空路径段）
+  it("拒绝 package 路径中的空段", () => {
     const raw = { ...VALID_RAW, packages: [{ name: "pkg", version: "1.0", path: "packages//review-kit", original_source: "" }] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("safe relative path"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("安全的相对路径"))).toBe(true);
   });
 
-  // T12: missing provenance is valid (backward compat — pre-Item-1 bundles install)
-  it("missing provenance block passes validation (backward compat)", () => {
+  // T12：缺少 provenance 仍合法（向后兼容——第 1 项前的 bundle 可安装）
+  it("缺少 provenance 块仍可通过校验（向后兼容）", () => {
     const raw = { ...VALID_RAW };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  // T13: full provenance block passes validation
+  // T13：完整 provenance 块通过校验
   it("full provenance block passes validation", () => {
     const raw = {
       ...VALID_RAW,
@@ -165,15 +165,15 @@ describe("Bundle types", () => {
     expect(result.valid).toBe(true);
   });
 
-  // T14: partial provenance (only notes) passes validation — all fields optional
-  it("partial provenance block (only notes) passes validation", () => {
+  // T14：部分 provenance（仅 notes）通过校验——所有字段均可选
+  it("仅含 notes 的部分 provenance 块可通过校验", () => {
     const raw = { ...VALID_RAW, provenance: { notes: "ad-hoc" } };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  // T15: provenance must be an object when present (not null, not array, not string)
-  it("provenance present but not an object rejected", () => {
+  // T15：provenance 存在时必须是对象（不能是 null、数组或字符串）
+  it("拒绝非对象的 provenance", () => {
     const raw1 = { ...VALID_RAW, provenance: "not-an-object" };
     const result1 = validateBundleManifest(raw1);
     expect(result1.valid).toBe(false);
@@ -185,16 +185,16 @@ describe("Bundle types", () => {
     expect(result2.errors.some((e) => e.includes("provenance"))).toBe(true);
   });
 
-  // T16: malformed provenance field type rejected (numeric created_at)
-  it("provenance field with wrong type rejected", () => {
+  // T16：拒绝类型错误的 provenance 字段（数字 created_at）
+  it("拒绝类型错误的 provenance 字段", () => {
     const raw = { ...VALID_RAW, provenance: { created_at: 12345, source_host: "h" } };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("provenance.created_at"))).toBe(true);
   });
 
-  // T17: round-trip preserves provenance through serialize → parse → normalize
-  it("round-trip preserves provenance through serialize → parse → normalize", () => {
+  // T17：序列化 → 解析 → 归一化往返保留 provenance
+  it("序列化、解析、归一化往返会保留 provenance", () => {
     const provenance: BundleProvenance = {
       createdAt: "2026-05-18T12:00:00Z",
       sourceHost: "rt-host",
@@ -237,8 +237,8 @@ describe("Bundle types", () => {
     expect(normalized.provenance?.notes).toBe("round-trip fixture");
   });
 
-  // T18: missing provenance round-trips as undefined (no field in YAML)
-  it("missing provenance round-trips cleanly (no field emitted in YAML)", () => {
+  // T18：缺少 provenance 时往返结果为 undefined（YAML 中无该字段）
+  it("缺少 provenance 时可干净往返（YAML 不输出该字段）", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "no-prov",
@@ -254,16 +254,16 @@ describe("Bundle types", () => {
     expect(normalized.provenance).toBeUndefined();
   });
 
-  // -- Item 2 compatibility block tests (slice-05 Checkpoint 3.1) --
+  // ——第 2 项 compatibility 块测试（slice-05 Checkpoint 3.1）——
 
-  // C1: missing compatibility is valid (backward compat)
-  it("missing compatibility block passes validation (backward compat)", () => {
+  // C1：缺少 compatibility 仍合法（向后兼容）
+  it("缺少 compatibility 块仍可通过校验（向后兼容）", () => {
     const raw = { ...VALID_RAW };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  // C2: full compatibility block passes validation
+  // C2：完整 compatibility 块通过校验
   it("full compatibility block passes validation", () => {
     const raw = {
       ...VALID_RAW,
@@ -277,15 +277,15 @@ describe("Bundle types", () => {
     expect(result.valid).toBe(true);
   });
 
-  // C3: partial compatibility (only min_daemon_version) passes — all fields optional
-  it("partial compatibility block (only min_daemon_version) passes validation", () => {
+  // C3：部分 compatibility（仅 min_daemon_version）通过——所有字段均可选
+  it("仅含 min_daemon_version 的部分 compatibility 块可通过校验", () => {
     const raw = { ...VALID_RAW, compatibility: { min_daemon_version: "0.3.2" } };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  // C4: compatibility present but not an object rejected
-  it("compatibility present but not an object rejected", () => {
+  // C4：拒绝存在但非对象的 compatibility
+  it("拒绝非对象的 compatibility", () => {
     const raw1 = { ...VALID_RAW, compatibility: "0.3.2" };
     const r1 = validateBundleManifest(raw1);
     expect(r1.valid).toBe(false);
@@ -297,8 +297,8 @@ describe("Bundle types", () => {
     expect(r2.errors.some((e) => e.includes("compatibility"))).toBe(true);
   });
 
-  // C5: compatibility field with wrong type rejected
-  it("compatibility field with wrong type rejected", () => {
+  // C5：拒绝类型错误的 compatibility 字段
+  it("拒绝类型错误的 compatibility 字段", () => {
     const raw1 = { ...VALID_RAW, compatibility: { min_daemon_version: 0.3 } };
     const r1 = validateBundleManifest(raw1);
     expect(r1.valid).toBe(false);
@@ -310,8 +310,8 @@ describe("Bundle types", () => {
     expect(r2.errors.some((e) => e.includes("compatibility.schema_version"))).toBe(true);
   });
 
-  // C6: round-trip preserves compatibility through serialize → parse → normalize
-  it("round-trip preserves compatibility through serialize → parse → normalize", () => {
+  // C6：序列化 → 解析 → 归一化往返保留 compatibility
+  it("序列化、解析、归一化往返会保留 compatibility", () => {
     const compatibility: BundleCompatibility = {
       minDaemonVersion: "0.3.2",
       minCliVersion: "0.3.2",
@@ -346,8 +346,8 @@ describe("Bundle types", () => {
     expect(normalized.compatibility?.schemaVersion).toBe(1);
   });
 
-  // C7: missing compatibility round-trips cleanly (no field emitted in YAML)
-  it("missing compatibility round-trips cleanly (no field emitted in YAML)", () => {
+  // C7：缺少 compatibility 时可干净往返（YAML 不输出该字段）
+  it("缺少 compatibility 时可干净往返（YAML 不输出该字段）", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "no-compat",
@@ -363,25 +363,25 @@ describe("Bundle types", () => {
     expect(normalized.compatibility).toBeUndefined();
   });
 
-  // -- Item 6 skills block tests (slice-05 Checkpoint 7.1) --
+  // ——第 6 项 skills 块测试（slice-05 Checkpoint 7.1）——
 
-  it("missing skills block passes validation (backward compat)", () => {
+  it("缺少 skills 块仍可通过校验（向后兼容）", () => {
     const raw = { ...VALID_RAW };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  it("skills as a string array of safe relative paths passes validation", () => {
+  it("由安全相对路径字符串组成的 skills 数组可通过校验", () => {
     const raw = { ...VALID_RAW, skills: ["skills/review-kit/SKILL.md", "skills/test-runner/SKILL.md"] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  it("skills as a non-array rejected", () => {
+  it("拒绝非数组的 skills", () => {
     const raw = { ...VALID_RAW, skills: "skills/a.md" };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("skills must be an array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("skills 必须是数组"))).toBe(true);
   });
 
   it("non-string skill entry rejected", () => {
@@ -391,15 +391,15 @@ describe("Bundle types", () => {
     expect(result.errors.some((e) => e.includes("skills[0]"))).toBe(true);
   });
 
-  it("unsafe skill path (dot-dot traversal) rejected", () => {
+  it("拒绝不安全的 skill 路径（.. 遍历）", () => {
     const raw = { ...VALID_RAW, skills: ["../escape/skill.md"] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("skills[0]"))).toBe(true);
-    expect(result.errors.some((e) => e.includes("not safe"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("不安全"))).toBe(true);
   });
 
-  it("round-trip preserves skills through serialize → parse → normalize", () => {
+  it("序列化、解析、归一化往返会保留 skills", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "rt-skills",
@@ -424,7 +424,7 @@ describe("Bundle types", () => {
     expect(normalized.skills).toEqual(["skills/foo/SKILL.md", "skills/bar/SKILL.md"]);
   });
 
-  it("missing skills round-trips cleanly (no field emitted in YAML)", () => {
+  it("缺少 skills 时可干净往返（YAML 不输出该字段）", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "no-skills",
@@ -440,15 +440,15 @@ describe("Bundle types", () => {
     expect(normalized.skills).toBeUndefined();
   });
 
-  // -- Item 6 plugins block tests (slice-05 Checkpoint 7.3b) --
+  // ——第 6 项 plugins 块测试（slice-05 Checkpoint 7.3b）——
 
-  it("missing plugins block passes validation (backward compat)", () => {
+  it("缺少 plugins 块仍可通过校验（向后兼容）", () => {
     const raw = { ...VALID_RAW };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  it("plugins as array of valid {id, source} entries passes validation", () => {
+  it("由合法 {id, source} 条目组成的 plugins 数组可通过校验", () => {
     const raw = {
       ...VALID_RAW,
       plugins: [
@@ -464,32 +464,32 @@ describe("Bundle types", () => {
     const raw = { ...VALID_RAW, plugins: "gstack" };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("plugins must be an array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("plugins 必须是数组"))).toBe(true);
   });
 
-  it("plugin entry missing id is rejected", () => {
+  it("拒绝缺少 id 的 plugin 条目", () => {
     const raw = { ...VALID_RAW, plugins: [{ source: { kind: "local", path: "plugins/gstack" } }] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("plugins[0].id"))).toBe(true);
   });
 
-  it("plugin entry with non-local source.kind rejected", () => {
+  it("拒绝 source.kind 非 local 的 plugin 条目", () => {
     const raw = { ...VALID_RAW, plugins: [{ id: "x", source: { kind: "remote", path: "plugins/x" } }] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("source.kind must be 'local'"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("source.kind 必须为 'local'"))).toBe(true);
   });
 
-  it("plugin entry with unsafe source.path rejected", () => {
+  it("拒绝 source.path 不安全的 plugin 条目", () => {
     const raw = { ...VALID_RAW, plugins: [{ id: "x", source: { kind: "local", path: "../escape" } }] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("plugins[0].source.path"))).toBe(true);
-    expect(result.errors.some((e) => e.includes("not safe"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("不安全"))).toBe(true);
   });
 
-  it("round-trip preserves plugins through serialize → parse → normalize", () => {
+  it("序列化、解析、归一化往返会保留 plugins", () => {
     const plugins: BundlePluginReference[] = [
       { id: "gstack", source: { kind: "local", path: "plugins/gstack" } },
     ];
@@ -518,7 +518,7 @@ describe("Bundle types", () => {
     expect(normalized.plugins).toEqual(plugins);
   });
 
-  it("missing plugins round-trips cleanly (no field emitted in YAML)", () => {
+  it("缺少 plugins 时可干净往返（YAML 不输出该字段）", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "no-plugins",
@@ -534,25 +534,25 @@ describe("Bundle types", () => {
     expect(normalized.plugins).toBeUndefined();
   });
 
-  // -- Item 6 workflow_specs block tests (slice-05 Checkpoint 7.3e) --
+  // ——第 6 项 workflow_specs 块测试（slice-05 Checkpoint 7.3e）——
 
-  it("missing workflow_specs block passes validation (backward compat)", () => {
+  it("缺少 workflow_specs 块仍可通过校验（向后兼容）", () => {
     const raw = { ...VALID_RAW };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  it("workflow_specs as a string array of safe relative paths passes validation", () => {
+  it("由安全相对路径字符串组成的 workflow_specs 数组可通过校验", () => {
     const raw = { ...VALID_RAW, workflow_specs: ["workflows/onboarding.yaml", "workflows/release.yaml"] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  it("workflow_specs as a non-array rejected", () => {
+  it("拒绝非数组的 workflow_specs", () => {
     const raw = { ...VALID_RAW, workflow_specs: "workflows/a.yaml" };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("workflow_specs must be an array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("workflow_specs 必须是数组"))).toBe(true);
   });
 
   it("non-string workflow_specs entry rejected", () => {
@@ -562,15 +562,15 @@ describe("Bundle types", () => {
     expect(result.errors.some((e) => e.includes("workflow_specs[0]"))).toBe(true);
   });
 
-  it("unsafe workflow_specs path (dot-dot traversal) rejected", () => {
+  it("拒绝不安全的 workflow_specs 路径（.. 遍历）", () => {
     const raw = { ...VALID_RAW, workflow_specs: ["../escape/spec.yaml"] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("workflow_specs[0]"))).toBe(true);
-    expect(result.errors.some((e) => e.includes("not safe"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("不安全"))).toBe(true);
   });
 
-  it("round-trip preserves workflow_specs through serialize → parse → normalize", () => {
+  it("序列化、解析、归一化往返会保留 workflow_specs", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "rt-workflow-specs",
@@ -595,7 +595,7 @@ describe("Bundle types", () => {
     expect(normalized.workflowSpecs).toEqual(["workflows/onboarding.yaml", "workflows/release.yaml"]);
   });
 
-  it("missing workflow_specs round-trips cleanly (no field emitted in YAML)", () => {
+  it("缺少 workflow_specs 时可干净往返（YAML 不输出该字段）", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "no-workflow-specs",
@@ -611,43 +611,43 @@ describe("Bundle types", () => {
     expect(normalized.workflowSpecs).toBeUndefined();
   });
 
-  // -- Item 6 context_packs block tests (slice-05 Checkpoint 7.3f) --
+  // ——第 6 项 context_packs 块测试（slice-05 Checkpoint 7.3f）——
 
-  it("missing context_packs block passes validation (backward compat)", () => {
+  it("缺少 context_packs 块仍可通过校验（向后兼容）", () => {
     const raw = { ...VALID_RAW };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  it("context_packs as a string array of safe relative paths passes validation", () => {
+  it("由安全相对路径字符串组成的 context_packs 数组可通过校验", () => {
     const raw = { ...VALID_RAW, context_packs: ["context-packs/intent/manifest.yaml", "context-packs/persona/manifest.yaml"] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  it("context_packs as a non-array rejected", () => {
+  it("拒绝非数组的 context_packs", () => {
     const raw = { ...VALID_RAW, context_packs: "context-packs/intent/manifest.yaml" };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("context_packs must be an array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("context_packs 必须是数组"))).toBe(true);
   });
 
   it("non-string context_packs entry rejected", () => {
     const raw = { ...VALID_RAW, context_packs: [42, "context-packs/ok/manifest.yaml"] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("context_packs[0]") && e.includes("must be a string"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("context_packs[0]") && e.includes("必须是字符串"))).toBe(true);
   });
 
-  it("unsafe context_packs path (dot-dot traversal) rejected", () => {
+  it("拒绝不安全的 context_packs 路径（.. 遍历）", () => {
     const raw = { ...VALID_RAW, context_packs: ["../escape/manifest.yaml"] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("context_packs[0]"))).toBe(true);
-    expect(result.errors.some((e) => e.includes("not safe"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("不安全"))).toBe(true);
   });
 
-  it("round-trip preserves context_packs through serialize → parse → normalize", () => {
+  it("序列化、解析、归一化往返会保留 context_packs", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "rt-context-packs",
@@ -672,7 +672,7 @@ describe("Bundle types", () => {
     expect(normalized.contextPacks).toEqual(["context-packs/intent/manifest.yaml", "context-packs/persona/manifest.yaml"]);
   });
 
-  it("missing context_packs round-trips cleanly (no field emitted in YAML)", () => {
+  it("缺少 context_packs 时可干净往返（YAML 不输出该字段）", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "no-context-packs",
@@ -688,43 +688,43 @@ describe("Bundle types", () => {
     expect(normalized.contextPacks).toBeUndefined();
   });
 
-  // -- Item 6 agent_images block tests (slice-05 Checkpoint 7.3g) --
+  // ——第 6 项 agent_images 块测试（slice-05 Checkpoint 7.3g）——
 
-  it("missing agent_images block passes validation (backward compat)", () => {
+  it("缺少 agent_images 块仍可通过校验（向后兼容）", () => {
     const raw = { ...VALID_RAW };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  it("agent_images as a string array of safe relative paths passes validation", () => {
+  it("由安全相对路径字符串组成的 agent_images 数组可通过校验", () => {
     const raw = { ...VALID_RAW, agent_images: ["agent-images/seat-a", "agent-images/seat-b"] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(true);
   });
 
-  it("agent_images as a non-array rejected", () => {
+  it("拒绝非数组的 agent_images", () => {
     const raw = { ...VALID_RAW, agent_images: "agent-images/x" };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("agent_images must be an array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("agent_images 必须是数组"))).toBe(true);
   });
 
   it("non-string agent_images entry rejected", () => {
     const raw = { ...VALID_RAW, agent_images: [99, "agent-images/ok"] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("agent_images[0]") && e.includes("must be a string"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("agent_images[0]") && e.includes("必须是字符串"))).toBe(true);
   });
 
-  it("unsafe agent_images path (dot-dot traversal) rejected", () => {
+  it("拒绝不安全的 agent_images 路径（.. 遍历）", () => {
     const raw = { ...VALID_RAW, agent_images: ["../escape"] };
     const result = validateBundleManifest(raw);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("agent_images[0]"))).toBe(true);
-    expect(result.errors.some((e) => e.includes("not safe"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("不安全"))).toBe(true);
   });
 
-  it("round-trip preserves agent_images through serialize → parse → normalize", () => {
+  it("序列化、解析、归一化往返会保留 agent_images", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "rt-agent-images",
@@ -749,7 +749,7 @@ describe("Bundle types", () => {
     expect(normalized.agentImages).toEqual(["agent-images/seat-a", "agent-images/seat-b"]);
   });
 
-  it("missing agent_images round-trips cleanly (no field emitted in YAML)", () => {
+  it("缺少 agent_images 时可干净往返（YAML 不输出该字段）", () => {
     const manifest: BundleManifest = {
       schemaVersion: 1,
       name: "no-agent-images",
@@ -767,14 +767,14 @@ describe("Bundle types", () => {
 });
 
 describe("isRelativeSafePath", () => {
-  it("accepts simple relative paths including names with dots", () => {
+  it("接受简单相对路径，包括名称中带点的路径", () => {
     expect(isRelativeSafePath("rig.yaml")).toBe(true);
     expect(isRelativeSafePath("packages/review-kit/package.yaml")).toBe(true);
     expect(isRelativeSafePath("packages/my-package.v2")).toBe(true);
     expect(isRelativeSafePath("skills/deep..review/SKILL.md")).toBe(true);
   });
 
-  it("rejects unsafe paths", () => {
+  it("拒绝不安全路径", () => {
     expect(isRelativeSafePath("")).toBe(false);
     expect(isRelativeSafePath("/absolute")).toBe(false);
     expect(isRelativeSafePath("../traversal")).toBe(false);

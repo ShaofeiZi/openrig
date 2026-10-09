@@ -23,7 +23,7 @@ function commandAvailable(command: string): boolean {
       fs.accessSync(nodePath.join(entry, command), fs.constants.X_OK);
       return true;
     } catch {
-      // Try the next PATH entry.
+      // 尝试下一个 PATH entry。
     }
   }
   return false;
@@ -39,7 +39,7 @@ export async function loadClaudePermissionModes(): Promise<string[] | null> {
   });
 }
 
-/** Warmed outside request handling; cold reads are immediate UNKNOWN. */
+/** 在 request handling 外预热；cold read 会立即返回 UNKNOWN。 */
 export class ClaudePermissionModeCache {
   private value: string[] | null = null;
   private loading = false;
@@ -89,7 +89,7 @@ function productionFs(permissionModes: ClaudePermissionModeCache, accessSync: Ac
   };
 }
 
-/** Strict, read-only, generation-aware observer for an explicitly requested seat. */
+/** 面向显式请求 seat 的严格、只读、generation-aware observer。 */
 export class PermissionDriftObserver implements PermissionDriftReader {
   private readonly observations: AppliedLaunchObservationStore;
   private readonly fs: PermissionDriftFs;
@@ -105,12 +105,11 @@ export class PermissionDriftObserver implements PermissionDriftReader {
     },
   ) {
     this.observations = new AppliedLaunchObservationStore(input.db);
-    // Hermeticity (hotfix qitem-20260822230440-da0d2ad6 FIX 2): construction no
-    // longer eagerly warms the mode cache — `read()` self-warms (see the cache),
-    // so the eager call added nothing but an execFile("claude","--help") from
-    // every constructed-but-unconsulted observer (the daemon test suite built
-    // ~72 such apps per run). The production daemon keeps its boot-time warm:
-    // startup.ts constructs the observer with an explicitly warmed cache.
+    // Hermeticity（hotfix qitem-20260822230440-da0d2ad6 FIX 2）：构造时不再立即预热 mode
+    // cache——`read()` 会自行预热（见该 cache），因此 eager call 除了让每个已构造但未查询的
+    // observer 都执行一次 execFile("claude","--help") 外毫无作用（daemon 测试套件每轮约构建
+    // 72 个此类 app）。production daemon 仍在 boot 时预热：startup.ts 使用显式预热的 cache
+    // 构造 observer。
     const permissionModes = input.permissionModes ?? new ClaudePermissionModeCache();
     this.fs = input.fs ?? productionFs(permissionModes, input.accessSync ?? ((path, mode) => fs.accessSync(path, mode)));
     this.now = input.now;

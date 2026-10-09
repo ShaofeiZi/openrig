@@ -2,16 +2,13 @@ import type Database from "better-sqlite3";
 import { ulid } from "ulid";
 
 /**
- * Watchdog history log (PL-004 Phase C; append-only audit writer).
+ * Watchdog 历史日志（PL-004 阶段 C；仅追加审计写入器）。
  *
- * Per slice IMPL § Guard Checkpoint Focus item 2:
- * - Pure `not_due` polls are NOT recorded (matches POC; minimizes
- *   table size). Only `sent` / `skipped` / `terminal` outcomes pass
- *   through this log.
- * - Append-only API surface: only `record()` exposed. UPDATE/DELETE
- *   are not exposed. SQLite has no view/role layer so direct SQL
- *   could mutate, but the contract is enforced at this domain
- *   boundary.
+ * 根据 slice IMPL § Guard Checkpoint Focus item 2：
+ * - 不记录纯 `not_due` 轮询（与 POC 一致，以减小表大小）；只有
+ *   `sent` / `skipped` / `terminal` 结果进入此日志。
+ * - API 表面仅追加，只暴露 `record()`，不暴露 UPDATE/DELETE。SQLite 没有 view/role 层，
+ *   直接 SQL 仍可修改，但此 domain 边界会强制契约。
  */
 
 export type WatchdogOutcome = "sent" | "skipped" | "terminal";
@@ -55,9 +52,8 @@ export class WatchdogHistoryLog {
   constructor(private readonly db: Database.Database) {}
 
   /**
-   * Append a meaningful evaluation outcome. Returns the persisted entry.
-   * Caller MUST NOT invoke this for `not_due` pure-skip outcomes — those
-   * are not recorded (per POC + IMPL guidance).
+   * 追加有意义的评估结果并返回持久化条目。调用方不得为纯跳过的 `not_due` 结果调用本方法；
+   * 按 POC 与 IMPL 指引，此类结果不记录。
    */
   record(input: WatchdogHistoryRecordInput): WatchdogHistoryEntry {
     const historyId = ulid();

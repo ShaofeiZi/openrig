@@ -1,0 +1,23 @@
+#!/bin/sh
+# zrig —— OpenRig 中文版（zrig）本地执行入口（源码检出开发用）。
+#
+# 这是给开发者在本仓库根目录直接使用的薄包装：它把参数原样转发给已构建的
+# CLI 包装器 packages/cli/dist/bin-wrapper.js。npm 发布安装后，用户并不使用本
+# 文件，而是由 packages/cli/package.json 里的 bin 提供名为 zrig 的可执行命令。
+#
+# 兼容性：旧命令名 rig 与 openrig 仍可用，行为完全一致；本脚本只是把
+# OPENRIG_INVOKED_AS 标记为 zrig，让帮助/版本以中文品牌名 zrig 展示。
+# 业务协议、环境变量、socket、内部包名一律保持 openrig 不变。
+set -e
+
+dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+entry="$dir/packages/cli/dist/bin-wrapper.js"
+
+if [ ! -f "$entry" ]; then
+  echo "zrig：尚未找到已构建的 CLI（$entry）。" >&2
+  echo "请先在本仓库根目录执行：npm run build" >&2
+  exit 1
+fi
+
+# 透传调用身份，供 CLI 以 zrig 品牌渲染帮助/版本；不改变任何协议数据。
+OPENRIG_INVOKED_AS=zrig exec node "$entry" "$@"

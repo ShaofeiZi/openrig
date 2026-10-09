@@ -1,9 +1,9 @@
-// S19 ROUND-5 (guard NOT-CLEAR at b92c2a58, qitem e858ee70): motion rides its
-// REAL lifecycle/event OWNER. These pins cross the refresh owner itself — the
-// component main.ts wires between hydrateSnapshot and the terminal — proving
-// start → in-flight → settle, rejection-release/retry, and per-seat
-// pane-output event identity (served terminalActive false→true), NOT a
-// fabricated render option.
+// S19 ROUND-5（guard 在 b92c2a58 NOT-CLEAR，qitem e858ee70）：motion 骑其
+// 真实生命周期/事件 owner。这些锚点穿过 refresh owner 本身——
+// 组件 main.ts 接在 hydrateSnapshot 与 terminal 之间——证明
+// start → in-flight → settle、rejection-release/retry，以及每席
+// pane-output 事件身份（服务 terminalActive false→true），非
+// 伪造的 render 选项。
 import { describe, it, expect } from "vitest";
 import { createLiveRefresh, FLASH_WINDOW_MS } from "../src/live.js";
 import { demoSnapshot } from "../src/demo-data.js";
@@ -13,7 +13,7 @@ import type { FleetSnapshot } from "../src/types.js";
 
 const DRIVER_KEY = "agent:vm-host/openrig-build/dev50/dev50.driver";
 
-/** demo snapshot with per-agent served pane-activity (terminalActive verbatim) */
+/** 带每 agent 服务 pane-activity 的 demo snapshot（terminalActive 逐字） */
 function snapWithPanes(panes: Record<string, boolean | null>): FleetSnapshot {
   const snap = structuredClone(demoSnapshot());
   for (const host of snap.hosts)
@@ -29,13 +29,13 @@ function sequenced(snaps: FleetSnapshot[]): () => Promise<FleetSnapshot> {
   return () => Promise.resolve(snaps[Math.min(i++, snaps.length - 1)]!);
 }
 
-describe("refresh owner — load lifecycle (guard round-5 finding 1)", () => {
-  it("refresh START exposes in-flight (drawn immediately) and SETTLE clears it, replacing the snapshot", async () => {
+describe("refresh owner——加载生命周期（guard round-5 finding 1）", () => {
+  it("refresh START 暴露 in-flight（立即绘制），SETTLE 清除并替换快照", async () => {
     let release!: (s: FleetSnapshot) => void;
     const gate = new Promise<FleetSnapshot>((r) => { release = r; });
     const frames: Array<{ inFlight: boolean; settled: boolean }> = [];
     const live = createLiveRefresh({ hydrate: () => gate, onFrame: () => frames.push(live.load()), now: () => 0 });
-    // before any refresh: nothing has answered yet — un-settled, not in flight
+    // 任何 refresh 前：尚无应答——未 settle，也不在飞
     expect(live.load()).toEqual({ inFlight: false, settled: false });
     const done = live.refresh();
     expect(live.load()).toEqual({ inFlight: true, settled: false });
@@ -47,7 +47,7 @@ describe("refresh owner — load lifecycle (guard round-5 finding 1)", () => {
     expect(live.snapshot().hosts.length).toBeGreaterThan(0);
   });
 
-  it("a REJECTED hydrate releases in-flight, keeps the prior snapshot, and a later refresh retries", async () => {
+  it("被 REJECTED 的 hydrate 释放 in-flight、保留先前快照，后续刷新重试", async () => {
     let fail = true;
     const live = createLiveRefresh({
       hydrate: () => (fail ? Promise.reject(new Error("daemon unreachable")) : Promise.resolve(demoSnapshot())),
@@ -63,56 +63,56 @@ describe("refresh owner — load lifecycle (guard round-5 finding 1)", () => {
   });
 });
 
-describe("COLD START root topology through the OWNER — guard round-6 finding 1 (the no-rig branch consumes load truth)", () => {
-  const BRAILLE = /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] topology read pending/;
+describe("经 OWNER 的 COLD START 根 topology——guard round-6 finding 1（无 rig 分支消费加载真相）", () => {
+  const BRAILLE = /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] 拓扑 读取挂起/;
   function composed(live: ReturnType<typeof createLiveRefresh>, opts?: { colorMode?: "truecolor" | "16" }) {
-    // the application's REAL default entry: empty snapshot, default Topology
-    // view — exactly what main.ts draws before the first hydrate settles
+    // 应用真实默认入口：空 snapshot，默认 Topology
+    // 视图——正是首次 hydrate settle 前 main.ts 所绘
     const s = createViewState({ instanceId: "cold", getSnapshot: () => live.snapshot() });
     return (nowMs: number) =>
       renderScreen(s.get(), live.snapshot(), { cols: 140, rows: 34, nowMs, colorMode: opts?.colorMode ?? "truecolor", load: live.load() });
   }
 
-  it("a real in-flight cold start renders the braille spinner at the root, ANIMATES across frames, and marks motion-active", async () => {
+  it("真实 in-flight cold start 在根渲染 braille spinner、跨帧动画，并标 motion-active", async () => {
     let release!: (s: FleetSnapshot) => void;
     const gate = new Promise<FleetSnapshot>((r) => { release = r; });
     const live = createLiveRefresh({ hydrate: () => gate, onFrame: () => {}, now: () => 0 });
     const done = live.refresh();
     const frame = composed(live);
     const f0 = frame(0);
-    const l0 = f0.lines.find((l) => l.includes("read pending"))!;
+    const l0 = f0.lines.find((l) => l.includes("读取挂起"))!;
     expect(l0).toMatch(BRAILLE);
-    expect(frame(500).lines.find((l) => l.includes("read pending"))!).not.toBe(l0); // approved 2 fps frame phase
+    expect(frame(500).lines.find((l) => l.includes("读取挂起"))!).not.toBe(l0); // approved 2 fps frame phase
     expect(f0.motionActive).toBe(true);
-    // 16-color fallback renders the LINE spinner on the same real path
-    expect(composed(live, { colorMode: "16" })(0).lines.find((l) => l.includes("read pending"))!).toMatch(/[|/\-\\] topology read pending/);
+    // 16 色回退在同一真实路径渲染 LINE spinner
+    expect(composed(live, { colorMode: "16" })(0).lines.find((l) => l.includes("读取挂起"))!).toMatch(/[|/\-\\] 拓扑 读取挂起/);
     release(demoSnapshot());
     await done;
-    expect(frame(0).lines.join("\n")).not.toMatch(/read pending/); // settled rigs render, no pending claim
+    expect(frame(0).lines.join("\n")).not.toMatch(/读取挂起/); // settled rigs render, no pending claim
   });
 
-  it("settle-success-EMPTY renders the static proven-no-rigs truth — never 'waiting', never a spinner", async () => {
+  it("settle-success-EMPTY renders the static proven-no-rigs truth — never '等待中', never a spinner", async () => {
     const live = createLiveRefresh({ hydrate: () => Promise.resolve(emptySnapshot()), onFrame: () => {}, now: () => 0 });
     await live.refresh();
     const screen = composed(live)(0);
-    const line = screen.lines.find((l) => l.includes("no rigs"))!;
-    expect(line).toMatch(/no rigs served — proven empty/);
-    expect(screen.lines.join("\n")).not.toMatch(/waiting|[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
+    const line = screen.lines.find((l) => l.includes("未服务工作组"))!;
+    expect(line).toMatch(/未服务工作组 — 已证明为空/);
+    expect(screen.lines.join("\n")).not.toMatch(/读取挂起|[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
     expect(screen.motionActive).toBeFalsy();
   });
 
-  it("settle-NAMED-FAILURE renders the static rigs-summary failure — never 'waiting', never a spinner", async () => {
+  it("settle-NAMED-FAILURE renders the static rigs-summary failure — never '等待中', never a spinner", async () => {
     const failed = emptySnapshot();
     failed.readErrors.push("rigs-summary: connect ECONNREFUSED");
     const live = createLiveRefresh({ hydrate: () => Promise.resolve(failed), onFrame: () => {}, now: () => 0 });
     await live.refresh();
     const screen = composed(live)(0);
-    expect(screen.lines.find((l) => l.includes("rigs read"))!).toMatch(/✕ rigs read failed/);
-    expect(screen.lines.join("\n")).not.toMatch(/waiting|[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
+    expect(screen.lines.find((l) => l.includes("工作组读取"))!).toMatch(/✕ 工作组读取失败/);
+    expect(screen.lines.join("\n")).not.toMatch(/读取挂起|[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
     expect(screen.motionActive).toBeFalsy();
   });
 
-  it("reduced motion renders the honest STATIC loading mark on the in-flight cold start, with no motion-active", async () => {
+  it("reduced motion 在 in-flight cold start 渲染诚实静态加载标记，无 motion-active", async () => {
     let release!: (s: FleetSnapshot) => void;
     const gate = new Promise<FleetSnapshot>((r) => { release = r; });
     const live = createLiveRefresh({ hydrate: () => gate, onFrame: () => {}, now: () => 0 });
@@ -120,7 +120,7 @@ describe("COLD START root topology through the OWNER — guard round-6 finding 1
     process.env["OPENRIG_REDUCED_MOTION"] = "1";
     try {
       const screen = composed(live)(0);
-      expect(screen.lines.find((l) => l.includes("read pending"))!).toMatch(/· topology read pending/);
+      expect(screen.lines.find((l) => l.includes("读取挂起"))!).toMatch(/· 拓扑 读取挂起/);
       expect(screen.motionActive).toBeFalsy();
     } finally {
       delete process.env["OPENRIG_REDUCED_MOTION"];
@@ -130,8 +130,8 @@ describe("COLD START root topology through the OWNER — guard round-6 finding 1
   });
 });
 
-describe("refresh owner — fresh pane-output event identity (guard round-5 finding 2)", () => {
-  it("the FIRST hydrate never flashes: a load is not fresh output", async () => {
+describe("refresh owner——新鲜 pane-output 事件身份（guard round-5 finding 2）", () => {
+  it("首次 hydrate 绝不闪烁：加载不是新鲜输出", async () => {
     const live = createLiveRefresh({
       hydrate: () => Promise.resolve(snapWithPanes({ "dev50.driver": true, "dev50.guard": true })),
       onFrame: () => {},
@@ -141,7 +141,7 @@ describe("refresh owner — fresh pane-output event identity (guard round-5 find
     expect(live.flashes()).toEqual([]);
   });
 
-  it("served terminalActive false→true flashes EXACTLY that agent's row key; true→true and null→true never flash", async () => {
+  it("served terminalActive false→true 恰好闪烁该 agent 的行键；true→true 与 null→true 绝不闪烁", async () => {
     const live = createLiveRefresh({
       hydrate: sequenced([
         snapWithPanes({ "dev50.driver": false, "dev50.guard": true, "dev50.qa": null }),
@@ -155,7 +155,7 @@ describe("refresh owner — fresh pane-output event identity (guard round-5 find
     expect(live.flashes()).toEqual([{ key: DRIVER_KEY, at: 5000 }]);
   });
 
-  it("the ambient rig-stream tail is NOT a flash source (round-4 wiring rejected: event identity)", async () => {
+  it("环境 rig-stream 尾部不是闪烁源（round-4 接线已拒绝：事件身份）", async () => {
     const base = snapWithPanes({ "dev50.driver": true });
     const streamed = structuredClone(base);
     streamed.stream.push({ tsEmitted: "2026-08-04T09:00:00Z", sourceSession: "someone@somewhere", body: "ambient chatter" });
@@ -165,7 +165,7 @@ describe("refresh owner — fresh pane-output event identity (guard round-5 find
     expect(live.flashes()).toEqual([]);
   });
 
-  it("expired flashes are pruned on the next refresh (one-shot, never a growing list)", async () => {
+  it("过期闪烁在下次刷新被修剪（一次性，绝不增长列表）", async () => {
     let now = 0;
     const live = createLiveRefresh({
       hydrate: sequenced([

@@ -28,7 +28,7 @@ function seed(db: Database.Database) {
   emit(db, "a", "a", "node.startup_challenged", { challengeId: "new" });
   emit(db, "a", "a", "node.startup_proof_rejected", { challengeId: "new" });
   emit(db, "b", "b", "node.startup_proof_skipped", { reason: "not_selected" });
-  // Malformed history remains present; the existing fold skips it.
+  // 格式错误的 history 仍保留，由现有 fold 跳过。
   db.prepare("INSERT INTO events(rig_id,type,payload) VALUES('a','restore.completed','{')").run();
   db.transaction(() => {
     for (let i = 0; i < 2000; i++) emit(db, i % 2 ? "a" : "b", null, "agent.activity", { i });
@@ -66,8 +66,8 @@ function expectIndexed(db: Database.Database) {
   expect(plans.find(p => p.sql.includes("node.startup_challenged"))?.detail).toContain("idx_events_startup_node_seq");
 }
 
-describe("084 inventory event read indexes", () => {
-  it("upgrades the actual read plans without changing history, membership or newest-event meaning", () => {
+describe("084 inventory event 读取索引", () => {
+  it("升级实际读取计划，但不改变 history、membership 或最新 event 语义", () => {
     const db = database(); migrate(db, BEFORE); seed(db);
     const value = projection(db), history = rows(db);
     expect(value.selected[0]?.restoreOutcome).toBe("operator_recovered");
@@ -80,13 +80,13 @@ describe("084 inventory event read indexes", () => {
     const added = (db.prepare("SELECT name FROM sqlite_master WHERE type='index' ORDER BY name").all() as { name: string }[])
       .map(r => r.name).filter(name => !indexes.some(r => r.name === name));
     expect(added).toEqual(["idx_events_restore_rig_seq", "idx_events_restore_seq", "idx_events_startup_node_seq"]);
-    // Later real writes still change the projection; the indexes are not a cache.
+    // 后续真实写入仍会改变 projection；索引不是 cache。
     emit(db, "a", null, "restore.completed", { result: { nodes: [{ nodeId: "a", status: "rebuilt" }] } });
     expect(getNodeInventory(db, "a")[0]?.restoreOutcome).toBe("rebuilt");
     expect(rows(db).slice(0, history.length)).toEqual(history);
   });
 
-  it("fresh schema and idempotent replay preserve the same reads", () => {
+  it("全新 schema 与幂等 replay 保持相同读取结果", () => {
     const db = database(); migrate(db, THROUGH); seed(db); expectIndexed(db);
     const before = { value: projection(db), history: rows(db), migrations: db.prepare("SELECT * FROM schema_migrations ORDER BY name").all() };
     migrate(db, THROUGH);

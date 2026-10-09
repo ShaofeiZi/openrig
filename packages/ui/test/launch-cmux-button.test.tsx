@@ -1,8 +1,6 @@
-// Slice 24 Checkpoint D — LaunchCmuxButton component tests.
-// Verifies: button renders with "Launch in CMUX" label; click triggers
-// POST + sets loading state; success surfaces a status message;
-// error surfaces honest 3-part error; button hidden on mobile via
-// responsive class.
+// Slice 24 Checkpoint D——LaunchCmuxButton 组件测试。
+// 验证：按钮以 "Launch in CMUX" 标签渲染；点击触发 POST + 置 loading 状态；
+// 成功呈现状态消息；错误呈现诚实三段式错误；按钮在移动端经响应式 class 隐藏。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
@@ -37,7 +35,7 @@ describe("LaunchCmuxButton", () => {
     );
     const button = screen.getByTestId("launch-cmux-button");
     expect(button).toBeTruthy();
-    expect(button.textContent?.toLowerCase()).toMatch(/launch in cmux/i);
+    expect(button.textContent?.toLowerCase()).toMatch(/在 cmux 中启动/);
   });
 
   it("button has lg:inline + hidden classes (visible on desktop, hidden on mobile)", () => {
@@ -88,9 +86,9 @@ describe("LaunchCmuxButton", () => {
       const button = screen.getByTestId("launch-cmux-button") as HTMLButtonElement;
       expect(button.disabled).toBe(true);
     });
-    expect(screen.getByTestId("launch-cmux-button").textContent?.toLowerCase()).toMatch(/launching|loading/);
+    expect(screen.getByTestId("launch-cmux-button").textContent?.toLowerCase()).toMatch(/正在启动|正在加载/);
 
-    // Resolve to clean up
+    // resolve 以清理
     resolveFetch({
       ok: true,
       status: 200,
@@ -119,7 +117,7 @@ describe("LaunchCmuxButton", () => {
     fireEvent.click(screen.getByTestId("launch-cmux-button"));
     await waitFor(() => {
       const toast = screen.getByTestId("launch-cmux-status");
-      expect(toast.textContent?.toLowerCase()).toMatch(/launched/);
+      expect(toast.textContent?.toLowerCase()).toMatch(/已启动/);
       expect(toast.textContent).toContain("my-rig");
       expect(toast.textContent).toMatch(/3/); // 3 agents
     });
@@ -167,11 +165,10 @@ describe("LaunchCmuxButton", () => {
     });
   });
 
-  // velocity-guard 24.D BLOCKING-CONCERN repair (primary):
-  // honest 3-part error must NOT be visually truncated. Operators
-  // need to see the action phrase (e.g., "cmux ping", "rig up <name>")
-  // to recover. Truncation would only show the FACT but hide the
-  // ACTION guidance, violating HG-10/HG-13 honest-error contract.
+  // velocity-guard 24.D BLOCKING-CONCERN 修复（主要）：诚实三段式错误绝不能被
+  // 视觉截断。operator 需要看到动作短语（如 "cmux ping"、"rig up <name>"）
+  // 才能恢复。截断只会显示 FACT 而隐藏 ACTION 指引，违反 HG-10/HG-13
+  // honest-error 契约。
 
   it("error status does NOT have truncate class (full message visible) — DISCRIMINATING", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -213,9 +210,8 @@ describe("LaunchCmuxButton", () => {
     fireEvent.click(screen.getByTestId("launch-cmux-button"));
     await waitFor(() => {
       const toast = screen.getByTestId("launch-cmux-status");
-      // Full 3-part message in DOM text: fact + consequence + action.
-      // The action phrase 'cmux ping' must be present, not just the
-      // opening fact 'cmux is not available...'.
+      // DOM 文本中完整三段式消息：fact + consequence + action。
+      // 动作短语 'cmux ping' 必须存在，而非仅开头 fact 'cmux is not available...'。
       expect(toast.textContent).toContain("cmux ping");
     });
   });
@@ -241,7 +237,7 @@ describe("LaunchCmuxButton", () => {
     });
   });
 
-  // OPR.0.3.4.8 — open-missing button recovery + exact target set.
+  // OPR.0.3.4.8——open-missing 按钮恢复 + 精确目标集合。
 
   it("partial launch shows open-missing button; clicking it POSTs to exactly the missing logicalIds' /open-cmux", async () => {
     const fetchCalls: string[] = [];
@@ -275,7 +271,7 @@ describe("LaunchCmuxButton", () => {
     fireEvent.click(screen.getByTestId("launch-cmux-button"));
     await waitFor(() => {
       const toast = screen.getByTestId("launch-cmux-status");
-      expect(toast.textContent).toContain("Missing");
+      expect(toast.textContent).toContain("缺失");
     });
 
     const openMissing = screen.getByTestId("open-missing-button");
@@ -322,13 +318,13 @@ describe("LaunchCmuxButton", () => {
     );
     fireEvent.click(screen.getByTestId("launch-cmux-button"));
     await waitFor(() => {
-      expect(screen.getByTestId("launch-cmux-status").textContent).toContain("Missing");
+      expect(screen.getByTestId("launch-cmux-status").textContent).toContain("缺失");
     });
 
     fireEvent.click(screen.getByTestId("open-missing-button"));
     await waitFor(() => {
       const toast = screen.getByTestId("launch-cmux-status");
-      expect(toast.textContent).toContain("still unavailable");
+      expect(toast.textContent).toContain("仍不可用");
       expect(toast.textContent).not.toContain("Opened 1 missing seat");
     });
   });
@@ -352,7 +348,7 @@ describe("LaunchCmuxButton", () => {
     fireEvent.click(screen.getByTestId("launch-cmux-button"));
     await waitFor(() => {
       const toast = screen.getByTestId("launch-cmux-status");
-      expect(toast.textContent).toContain("1 of 2");
+      expect(toast.textContent).toContain("1/2");
       expect(toast.textContent).toContain("b (session-missing)");
     });
   });

@@ -1,0 +1,15 @@
+validated 890 证据分层（2026-10-08 batch2，脚本读 _records note，不自动 passed）
+
+== 本轮新升 validated（带 batch2 note）==
+- daemon-full-review-no-1:1：73（整文件人类注释/串审读已中文、机器 token 保留；未改源、相关全套覆盖无一对一测试映射）
+- config-template：fixture/scenario 中文 present（已 passed，不计入此 890）
+
+== 历史 validated（817，无 batch2 note，按来源）==
+- UI display-surface reviewed（189 TSX 可见串提取，非整源全文）
+- TUI 标题批（标题翻译+测试过，非整文件注释）
+- UI test comment/title（b2-105/109 已 passed，不计）
+- cli-assertion-fix-only（ps-scope 5/5 仅断言修）
+- 其他历史 validated
+
+口径：validated ≠ passed。整文件人类文本审读+机器保留方达 passed 标准；
+标题/可见串/相关覆盖仅 validated，待整文件全文证据。

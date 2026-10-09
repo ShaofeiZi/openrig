@@ -1,22 +1,20 @@
-// claude-transcript-parser.ts — parses Claude transcript JSONL into the
-// same StructuredTranscript shape as the Codex parser.
+// claude-transcript-parser.ts —— 把 Claude 转录 JSONL 解析成与 Codex 解析器
+// 相同的 StructuredTranscript 形态。
 //
-// NEW work for the Restore-Packet vertical M2b. No prior art. Inspected
-// host's Claude transcript files at ~/.claude/projects/<project>/<id>.jsonl.
+// 这是 Restore-Packet 纵切 M2b 的新工作，无既有参考实现。
+// 已检视宿主上 ~/.claude/projects/<project>/<id>.jsonl 的 Claude 转录文件。
 //
-// Claude JSONL semantics (observed):
-// - First few lines may carry meta records: { type, customTitle, sessionId }
-//   or { type, agentName, sessionId } or { type, permissionMode, sessionId }.
-// - Message records have type: "user" | "assistant" with fields:
-//   { type, message, cwd, timestamp, parentUuid, sessionId, ... }.
-//   `message` is an object whose shape is provider-API-specific:
+// Claude JSONL 语义（实测）：
+// - 开头几行可能携带元记录：{ type, customTitle, sessionId }
+//   或 { type, agentName, sessionId } 或 { type, permissionMode, sessionId }。
+// - 消息记录 type 为 "user" | "assistant"，字段：
+//   { type, message, cwd, timestamp, parentUuid, sessionId, ... }。
+//   `message` 是对象，其形态取决于 provider API：
 //   - user: { role: "user", content: string | array }
-//   - assistant: { role: "assistant", content: array of { type: "text", text } }
-// - Attachment records ({ type: "attachment", attachment, ... }) carry tool
-//   input/output content; mapped to raw_tool_outputs by the omitted-records
-//   classifier and skipped from the message stream.
-// - Other types ({ type: "summary" }, sessionId-only meta records, etc.)
-//   are mapped to reasoning_records.
+//   - assistant: { role: "assistant", content: { type: "text", text } 的数组 }
+// - 附件记录（{ type: "attachment", attachment, ... }）携带工具输入/输出内容，
+//   由 omitted-records 分类器映射为 raw_tool_outputs，并从消息流中跳过。
+// - 其他类型（{ type: "summary" }、仅含 sessionId 的元记录等）映射为 reasoning_records。
 
 import { redact, hasSecretPattern } from "./redaction.js";
 import { classifyClaudeRecord, OmittedCounter } from "./omitted-records.js";
@@ -50,25 +48,22 @@ function firstLine(text: string): string {
 }
 
 /**
- * Result of walking a Claude `message.content` field. Returns:
- * - `text`: concatenated user-visible text from `{ type: "text" }` parts.
- * - `toolUseCount`: number of `{ type: "tool_use" }` parts seen.
- *   These are nested function-call records inside an assistant turn;
- *   per M1 contract § 5 they map to `function_call_output`.
- * - `toolResultCount`: number of `{ type: "tool_result" }` parts seen.
- *   These are nested tool-output records inside a user turn; per
- *   contract § 5 they map to `raw_tool_outputs`.
- * - `toolPaths`: paths extracted from omitted tool_use inputs and
- *   tool_result content (mirrors `codex-jsonl-parser.ts`'s tool-call
- *   path-inventory behavior; the tool record itself is NOT in the
- *   message text but its file references stay in the touched-files
- *   inventory).
+ * 遍历一条 Claude `message.content` 字段的结果。返回：
+ * - `text`：由 `{ type: "text" }` 片段拼接出的用户可见文本。
+ * - `toolUseCount`：见到的 `{ type: "tool_use" }` 片段数。
+ *   它们是 assistant 一轮内嵌套的函数调用记录；按 M1 契约 § 5 映射为
+ *   `function_call_output`。
+ * - `toolResultCount`：见到的 `{ type: "tool_result" }` 片段数。
+ *   它们是 user 一轮内嵌套的工具输出记录；按契约 § 5 映射为
+ *   `raw_tool_outputs`。
+ * - `toolPaths`：从被省略的 tool_use 输入与 tool_result 内容中抽取的路径
+ *  （对应 `codex-jsonl-parser.ts` 的工具调用路径清点行为；工具记录本身
+ *   不在消息文本中，但它引用的文件保留在“触碰文件”清单里）。
  *
- * R2 fix (per M2b R2 dispatch qitem-20260502011841-fb53d7fd): inspect
- * nested content parts BEFORE discarding non-text. Previously dropped
- * tool_use / tool_result silently, leading to misleading all-zero
- * omittedCounts on real Claude transcripts where nearly every assistant
- * turn has tool_use and most user turns have tool_result.
+ * R2 修复（按 M2b R2 分发 qitem-20260502011841-fb53d7fd）：在丢弃非文本
+ * 【之前】先检查嵌套 content 片段。此前会静默丢弃 tool_use / tool_result，
+ * 导致在真实 Claude 转录上 omittedCounts 全为 0 的误导结果——那里几乎每个
+ * assistant 轮都有 tool_use、多数 user 轮有 tool_result。
  */
 interface ContentWalkResult {
   text: string;
@@ -78,12 +73,11 @@ interface ContentWalkResult {
 }
 
 /**
- * Extract `text` candidates from a tool_result `content` field. The
- * Claude API allows two shapes for `tool_result.content`:
- * - string (the most common; e.g., a command's stdout): use directly.
- * - array of part objects (when the tool returned structured content):
- *   collect each part's `text` field.
- * Returns a flat string suitable for path extraction.
+ * 从 tool_result 的 `content` 字段抽取 `text` 候选。Claude API 允许
+ * `tool_result.content` 有两种形态：
+ * - string（最常见；例如某命令的 stdout）：直接使用。
+ * - 片段对象数组（工具返回结构化内容时）：收集每个片段的 `text` 字段。
+ * 返回一个扁平字符串，供路径抽取使用。
  */
 function toolResultText(content: unknown): string {
   if (typeof content === "string") return content;
@@ -130,8 +124,8 @@ function walkClaudeContent(message: unknown): ContentWalkResult {
 
     if (partType === "tool_use") {
       out.toolUseCount += 1;
-      // Extract paths from the tool_use input. Mirrors the Codex parser's
-      // tool-call path-inventory behavior at codex-jsonl-parser.ts.
+      // 从 tool_use 输入抽取路径。对应 Codex 解析器
+      // codex-jsonl-parser.ts 里工具调用路径清点的行为。
       const input = p.input;
       const inputStr = typeof input === "string" ? input : JSON.stringify(input ?? {});
       out.toolPaths.push(inputStr);
@@ -140,15 +134,13 @@ function walkClaudeContent(message: unknown): ContentWalkResult {
 
     if (partType === "tool_result") {
       out.toolResultCount += 1;
-      // tool_result.content can be string OR array; both extract a flat
-      // text body for path scanning.
+      // tool_result.content 可能是 string 或 array；两者都抽成扁平文本体以扫描路径。
       const resultText = toolResultText(p.content);
       out.toolPaths.push(resultText);
       continue;
     }
 
-    // Other part types (image, etc.) are not user-visible text and not
-    // counted in the M1 contract enums; skip without counting.
+    // 其他片段类型（image 等）不是用户可见文本，也不计入 M1 契约枚举；跳过不计数。
   }
   out.text = textParts.filter((s) => s.length > 0).join("\n");
   return out;
@@ -166,13 +158,11 @@ interface ClaudeRecord {
 }
 
 /**
- * Parse a Claude transcript JSONL string into a StructuredTranscript.
- * Pure function; no I/O.
+ * 把一条 Claude 转录 JSONL 字符串解析为 StructuredTranscript。
+ * 纯函数，无 I/O。
  *
- * Output is the SAME shape as the Codex parser per the M2b dispatch's
- * "emit the same structured representation as the Codex parser"
- * requirement. Downstream modules (packet-writer, redaction-counter)
- * see no runtime difference.
+ * 按 M2b 分发“输出与 Codex 解析器相同的结构化表示”的要求，输出与 Codex 解析器
+ * 形态一致。下游模块（packet-writer、redaction-counter）在运行时感受不到差异。
  */
 export function parseClaudeTranscript(content: string): StructuredTranscript {
   const messages: ExtractedMessage[] = [];
@@ -182,7 +172,7 @@ export function parseClaudeTranscript(content: string): StructuredTranscript {
   let sessionMeta: SessionMeta | null = null;
   let lineCount = 0;
   let messageCount = 0;
-  // Claude transcripts don't have "compacted" records; field stays at 0.
+  // Claude 转录没有 "compacted" 记录；该字段恒为 0。
 
   for (const rawLine of content.split("\n")) {
     if (!rawLine.trim()) continue;
@@ -198,7 +188,7 @@ export function parseClaudeTranscript(content: string): StructuredTranscript {
     const recordType = typeof record.type === "string" ? record.type : "";
     typeCounts[recordType] = (typeCounts[recordType] ?? 0) + 1;
 
-    // Capture sessionMeta from the first record that carries cwd + sessionId.
+    // 从第一条同时带 cwd + sessionId 的记录捕获 sessionMeta。
     if (
       sessionMeta === null &&
       typeof record.cwd === "string" &&
@@ -213,8 +203,8 @@ export function parseClaudeTranscript(content: string): StructuredTranscript {
     const classification = classifyClaudeRecord(record);
     if (classification.kind === "omitted") {
       omittedCounter.recordOmission(classification.reason);
-      // For attachment records, walk the attachment payload for paths
-      // (mirrors the Codex parser's tool-call path-extraction behavior).
+      // 对附件记录，遍历附件负载以抽取路径
+      //（对应 Codex 解析器的工具调用路径抽取行为）。
       if (recordType === "attachment" && record.attachment) {
         const attachStr = typeof record.attachment === "string"
           ? record.attachment
@@ -224,24 +214,21 @@ export function parseClaudeTranscript(content: string): StructuredTranscript {
       continue;
     }
 
-    // Kept message.
+    // 保留的消息。
     const role: "user" | "assistant" = recordType === "user" ? "user" : "assistant";
     const walked = walkClaudeContent(record.message);
 
-    // R2 fix: count nested tool_use / tool_result parts BEFORE deciding
-    // whether to emit a visible-text message. These counters fire
-    // regardless of whether the record contributes a message to the
-    // visible transcript — capturing them here is what M1 contract § 5
-    // requires for an honest `omitted_classes` field downstream.
+    // R2 修复：在决定是否产出一条可见文本消息【之前】就计数嵌套的 tool_use / tool_result。
+    // 无论该记录是否向可见转录贡献一条消息，这些计数器都要触发——在这里捕获它们，
+    // 正是 M1 契约 § 5 对下游诚实的 `omitted_classes` 字段所要求的。
     for (let i = 0; i < walked.toolUseCount; i++) {
       omittedCounter.recordOmission("function_call_output");
     }
     for (let i = 0; i < walked.toolResultCount; i++) {
       omittedCounter.recordOmission("raw_tool_outputs");
     }
-    // Path extraction from omitted tool parts (mirrors Codex parser
-    // behavior of walking tool-call args / inputs for path inventory
-    // even though the records themselves are omitted from messages).
+    // 从被省略的工具片段抽取路径（对应 Codex 解析器即使记录本身从消息中省略、
+    // 仍遍历工具调用参数/输入做路径清点的行为）。
     for (const toolText of walked.toolPaths) {
       extractPaths(toolText, pathCounts);
     }

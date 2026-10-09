@@ -3,29 +3,25 @@ import { ulid } from "ulid";
 import type { ClassifierLeaseManager } from "./classifier-lease-manager.js";
 
 /**
- * Classification attempt ledger (0.6.0 S02 P1).
+ * 分类尝试台账（0.6.0 S02 P1）。
  *
- * Holds everything a classifier occupant must remember that does NOT belong in
- * the immutable `project_classifications` row: in-flight work, abstentions and
- * errors. It is a ledger, not a scheduler — the occupant is woken by the
- * existing watchdog/wake cadence and asks `eligible()` what to do next.
+ * 保存分类器占用者必须记住、但不属于不可变 `project_classifications` 行的一切：
+ * 在途工作、弃权和错误。它是台账，不是调度器——占用者由现有 watchdog/wake
+ * 节奏唤醒，再询问 `eligible()` 下一步做什么。
  *
- * Identity: (stream_item_id, classifier_version, taxonomy_version, evidence_epoch).
- * - abstained: terminal for that identity only. A new classifier/taxonomy
- *   version or an owner-authorized evidence epoch is a new identity.
- * - error / abandoned in_flight: retried after a bounded, doubling delay until
- *   the retry budget is spent, then `exhausted` (terminal, visible).
- * - written: set by ProjectClassifier in the same transaction as the row.
+ * 身份：(stream_item_id, classifier_version, taxonomy_version, evidence_epoch)。
+ * - abstained：仅对该身份为终态。新的 classifier/taxonomy 版本，或负责人授权的
+ *   evidence epoch，构成新身份。
+ * - error / 遗弃的 in_flight：按有界倍增延迟重试，耗尽预算后进入 `exhausted`
+ *   （终态、可见）。
+ * - written：由 ProjectClassifier 在与该行相同的事务中设置。
  *
- * Every state change validates the lease (active, same session, same lease id,
- * not expired) inside its write transaction.
+ * 每次状态变更都在写事务内验证租约：有效、同一会话、同一 lease id 且未过期。
  *
- * Execution fence: each begin — first try, timeout reissue or error retry —
- * mints a new executionId. abstain / fail / the classify attempt binding must
- * present the CURRENT executionId; an older execution is refused
- * (`attempt_superseded`) without touching the current one. A lease can be
- * renewed indefinitely, so lease validity never proves an older execution is
- * dead; only the fence does.
+ * 执行围栏：每次 begin——首次尝试、超时重发或错误重试——都会生成新的 executionId。
+ * abstain、fail 和 classify 尝试绑定必须携带当前 executionId；旧执行会以
+ * `attempt_superseded` 被拒绝，且不触碰当前执行。租约可以无限续期，因此租约有效
+ * 不能证明旧执行已死，只有此围栏可以。
  */
 
 export const ATTEMPT_STATUSES = ["in_flight", "abstained", "written", "error", "exhausted"] as const;
@@ -33,19 +29,15 @@ export type AttemptStatus = (typeof ATTEMPT_STATUSES)[number];
 const TERMINAL: readonly AttemptStatus[] = ["abstained", "written", "exhausted"];
 
 /**
- * Retry defaults, chosen against the existing cadence rather than a new
- * scheduler:
- * - budget 3 attempts per identity: one try plus two retries is enough to ride
- *   out a transient provider or daemon blip without looping on a poison item;
- * - backoff 5 min, doubling, capped at 60 min: coarser than the occupant's own
- *   wake so a failing item never spins, and bounded so a recovered provider is
- *   retried within the hour;
- * - in-flight timeout 15 min: after this long without a finish, the attempt
- *   may be reissued as a new execution (a crash is the common cause). This is
- *   NOT proof the older execution is dead — leases are renewable — which is why
- *   the reissue mints a new executionId and the old one can no longer finish.
- *   Reissues count against the budget.
- * All are constructor options; tests inject time instead of sleeping.
+ * 重试默认值基于现有节奏选择，不另建调度器：
+ * - 每个身份预算 3 次：一次尝试加两次重试，足以跨过临时 provider 或后台服务抖动，
+ *   又不会在毒条目上循环；
+ * - 退避从 5 分钟开始倍增，上限 60 分钟：比占用者自己的 wake 更粗，失败条目不会空转；
+ *   同时有界，provider 恢复后可在一小时内重试；
+ * - 在途超时 15 分钟：超过时间仍未完成，可作为新执行重发（常见原因是崩溃）。
+ *   这不能证明旧执行已死，因为租约可续期；所以重发会生成新 executionId，旧执行不能再完成。
+ *   重发计入预算。
+ * 所有值都是构造器选项；测试注入时间而不 sleep。
  */
 export const DEFAULT_RETRY_BUDGET = 3;
 export const DEFAULT_BASE_BACKOFF_MS = 5 * 60 * 1000;
@@ -57,13 +49,13 @@ export interface AttemptIdentity {
   streamItemId: string;
   classifierVersion: string;
   taxonomyVersion: string;
-  /** Owner-authorized retry epoch bound to changed evidence; "0" when unused. */
+  /** 负责人授权、绑定变更证据的重试 epoch；未使用时为 "0"。 */
   evidenceEpoch: string;
 }
 
 export interface ClassificationAttempt extends AttemptIdentity {
   attemptId: string;
-  /** Current execution; only this value may finish the attempt. */
+  /** 当前执行；只有此值可以结束尝试。 */
   executionId: string;
   status: AttemptStatus;
   attemptCount: number;
@@ -84,7 +76,7 @@ export interface EligibleItem {
 
 export interface EligiblePage {
   items: EligibleItem[];
-  /** Pass as `afterSortKey` to read the next page of THIS pass; null when done. */
+  /** 作为 `afterSortKey` 传入以读取本轮下一页；结束时为 null。 */
   nextAfterSortKey: string | null;
 }
 
@@ -143,10 +135,8 @@ export class ClassificationAttemptLedger {
   }
 
   /**
-   * Start (or legitimately resume) an attempt for one identity under the
-   * caller's lease. Refuses terminal identities, fresh in-flight attempts and
-   * errors that are not yet due. An in-flight attempt older than the in-flight
-   * timeout, or owned by a replaced lease, counts as an abandoned crash.
+   * 在调用方租约下启动或合法恢复某个身份的一次尝试。拒绝终态身份、新鲜的在途尝试，
+   * 以及尚未到期的错误。超过在途超时，或由已替换租约持有的在途尝试，视为崩溃后遗弃。
    */
   begin(input: AttemptIdentity & { leaseId: string; classifierSession: string }): ClassificationAttempt {
     requireIdentity(input);
@@ -157,7 +147,7 @@ export class ClassificationAttemptLedger {
         .prepare(`SELECT 1 FROM stream_items WHERE stream_item_id = ?`)
         .get(input.streamItemId);
       if (!stream) {
-        throw new ClassificationAttemptError("unknown_stream_item", `stream_item_id ${input.streamItemId} does not exist`, {
+        throw new ClassificationAttemptError("unknown_stream_item", `stream_item_id ${input.streamItemId} 不存在`, {
           streamItemId: input.streamItemId,
         });
       }
@@ -165,7 +155,7 @@ export class ClassificationAttemptLedger {
         .prepare(`SELECT project_id FROM project_classifications WHERE stream_item_id = ?`)
         .get(input.streamItemId) as { project_id: string } | undefined;
       if (classified) {
-        throw new ClassificationAttemptError("already_classified", `stream_item_id ${input.streamItemId} is already classified`, {
+        throw new ClassificationAttemptError("already_classified", `stream_item_id ${input.streamItemId} 已分类`, {
           existingProjectId: classified.project_id,
         });
       }
@@ -190,7 +180,7 @@ export class ClassificationAttemptLedger {
 
       const status = existing.status as AttemptStatus;
       if (TERMINAL.includes(status)) {
-        throw new ClassificationAttemptError("attempt_terminal", `attempt for this identity is ${status}`, {
+        throw new ClassificationAttemptError("attempt_terminal", `此身份的 attempt 已处于 ${status}`, {
           attemptId: existing.attempt_id,
           status,
         });
@@ -200,13 +190,13 @@ export class ClassificationAttemptLedger {
           existing.lease_id !== input.leaseId ||
           Date.parse(existing.updated_at) + this.inFlightTimeoutMs <= this.now().getTime();
         if (!abandoned) {
-          throw new ClassificationAttemptError("attempt_in_flight", "an attempt for this identity is already in flight", {
+          throw new ClassificationAttemptError("attempt_in_flight", "此身份已有 attempt 正在执行", {
             attemptId: existing.attempt_id,
           });
         }
       }
       if (status === "error" && existing.retry_after !== null && existing.retry_after > nowIso) {
-        throw new ClassificationAttemptError("attempt_not_due", `retry is not due until ${existing.retry_after}`, {
+        throw new ClassificationAttemptError("attempt_not_due", `重试要到 ${existing.retry_after} 才到期`, {
           attemptId: existing.attempt_id,
           retryAfter: existing.retry_after,
         });
@@ -220,7 +210,7 @@ export class ClassificationAttemptLedger {
              WHERE attempt_id = ?`,
           )
           .run(nowIso, existing.attempt_id);
-        // Commit the terminal transition; the refusal is raised after commit.
+        // 先提交终态迁移，再在提交后抛出拒绝。
         return { attemptId: existing.attempt_id, exhausted: true };
       }
       this.db
@@ -235,14 +225,14 @@ export class ClassificationAttemptLedger {
     });
     const result = txn();
     if (result.exhausted) {
-      throw new ClassificationAttemptError("attempt_exhausted", `retry budget of ${this.retryBudget} is spent`, {
+      throw new ClassificationAttemptError("attempt_exhausted", `${this.retryBudget} 次重试预算已耗尽`, {
         attemptId: result.attemptId,
       });
     }
     return this.getByIdOrThrow(result.attemptId);
   }
 
-  /** Terminal abstention for this identity (below threshold / INDETERMINATE). */
+  /** 此身份的终态弃权（低于阈值或 INDETERMINATE）。 */
   abstain(input: FinishInput): ClassificationAttempt {
     return this.finish(input, (row, nowIso) => {
       this.db
@@ -251,7 +241,7 @@ export class ClassificationAttemptLedger {
     });
   }
 
-  /** Transient failure: schedule a bounded retry, or exhaust the budget. */
+  /** 临时失败：安排有界重试，或耗尽预算。 */
   fail(input: FinishInput): ClassificationAttempt {
     return this.finish(input, (row, nowIso) => {
       if (row.attempt_count >= this.retryBudget) {
@@ -268,10 +258,9 @@ export class ClassificationAttemptLedger {
   }
 
   /**
-   * One bounded page of items the occupant may attempt now for the given
-   * versions and epoch, in stream order. Derived by anti-join every call, so a
-   * later-due retry reappears on the next pass without any stored cursor
-   * skipping it. `afterSortKey` pages within a single pass only.
+   * 按流顺序返回一页有界条目，表示占用者在指定版本和 epoch 下当前可尝试的工作。
+   * 每次调用都通过 anti-join 派生，因此稍后到期的重试会在下一轮重新出现，
+   * 不会被持久化游标跳过。`afterSortKey` 只在单轮内分页。
    */
   eligible(opts: {
     classifierVersion: string;
@@ -293,7 +282,7 @@ export class ClassificationAttemptLedger {
         .prepare(`SELECT ts_emitted, stream_sort_key FROM stream_items WHERE stream_sort_key = ?`)
         .get(opts.afterSortKey) as { ts_emitted: string; stream_sort_key: string } | undefined;
       if (!cursor) {
-        throw new ClassificationAttemptError("unknown_cursor", `afterSortKey ${opts.afterSortKey} is not a stream sort key`);
+        throw new ClassificationAttemptError("unknown_cursor", `afterSortKey ${opts.afterSortKey} 不是 stream sort key`);
       }
       cursorClause = "AND (s.ts_emitted, s.stream_sort_key) > (?, ?)";
       params.push(cursor.ts_emitted, cursor.stream_sort_key);
@@ -343,14 +332,14 @@ export class ClassificationAttemptLedger {
       const row = this.db.prepare(`SELECT * FROM classification_attempts WHERE attempt_id = ?`).get(input.attemptId) as
         | AttemptRow
         | undefined;
-      if (!row) throw new ClassificationAttemptError("attempt_not_found", `attempt ${input.attemptId} not found`);
+      if (!row) throw new ClassificationAttemptError("attempt_not_found", `未找到 attempt ${input.attemptId}`);
       if (row.execution_id !== input.executionId) {
-        throw new ClassificationAttemptError("attempt_superseded", "this execution was superseded by a newer execution of the attempt", {
+        throw new ClassificationAttemptError("attempt_superseded", "本次执行已被该 attempt 的更新执行取代", {
           attemptId: row.attempt_id,
         });
       }
       if (row.status !== "in_flight" || row.lease_id !== input.leaseId) {
-        throw new ClassificationAttemptError("attempt_mismatch", "attempt is not in flight under this lease", {
+        throw new ClassificationAttemptError("attempt_mismatch", "attempt 并未在此租约下执行", {
           attemptId: row.attempt_id,
           status: row.status,
           attemptLeaseId: row.lease_id,
@@ -377,26 +366,26 @@ export class ClassificationAttemptLedger {
 
   private getByIdOrThrow(attemptId: string): ClassificationAttempt {
     const a = this.getById(attemptId);
-    if (!a) throw new ClassificationAttemptError("attempt_not_found", `attempt ${attemptId} not found after write`);
+    if (!a) throw new ClassificationAttemptError("attempt_not_found", `写入后未找到 attempt ${attemptId}`);
     return a;
   }
 }
 
 export interface FinishInput {
   attemptId: string;
-  /** The executionId returned by the begin() that started THIS execution. */
+  /** 启动本次执行的 begin() 所返回的 executionId。 */
   executionId: string;
   leaseId: string;
   classifierSession: string;
   reason: string;
 }
 
-/** Shape check for code-consumed string fields: present, a string, not blank. */
+/** 对代码消费的字符串字段做形状检查：存在、为字符串且非空白。 */
 function requireStringFields(input: object, fields: readonly string[]): void {
   for (const field of fields) {
     const value = (input as Record<string, unknown>)[field];
     if (typeof value !== "string" || value.trim() === "") {
-      throw new ClassificationAttemptError("invalid_field", `${field} must be a non-empty string`, { field });
+      throw new ClassificationAttemptError("invalid_field", `${field} 必须是非空字符串`, { field });
     }
   }
 }
@@ -404,7 +393,7 @@ function requireStringFields(input: object, fields: readonly string[]): void {
 function requireIdentity(id: AttemptIdentity): void {
   for (const key of ["streamItemId", "classifierVersion", "taxonomyVersion", "evidenceEpoch"] as const) {
     if (typeof id[key] !== "string" || id[key].trim() === "") {
-      throw new ClassificationAttemptError("invalid_attempt_identity", `${key} is required`, { field: key });
+      throw new ClassificationAttemptError("invalid_attempt_identity", `${key} 为必填项`, { field: key });
     }
   }
 }

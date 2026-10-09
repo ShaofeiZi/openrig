@@ -10,15 +10,14 @@ export function whoamiRoutes(): Hono {
     const nodeId = c.req.query("nodeId");
     const sessionName = c.req.query("sessionName");
     const targetRepo = c.req.query("targetRepo");
-    // OPR.0.4.0.27: the CLI opts into compact (skips contextUsage/runtimeContext
-    // compute). A direct /api/whoami with NO compact param stays FULL (API
-    // back-compat for external consumers).
+    // OPR.0.4.0.27：CLI 会选择 compact（跳过 contextUsage/runtimeContext 的计算）。
+    // 直接访问 /api/whoami 且不带 compact 参数时保持 FULL（对外消费者的 API 向后兼容）。
     const compact = c.req.query("compact") === "1";
     const permissionDiagnostics = c.req.query("diagnostics") === "permission";
 
     if (!nodeId && !sessionName) {
       return c.json({
-        error: "Missing query parameter: provide nodeId or sessionName. Run rig ps --nodes to find available sessions.",
+        error: "缺少查询参数：请提供 nodeId 或 sessionName。运行 zrig ps --nodes 查看可用会话。",
       }, 400);
     }
 
@@ -33,7 +32,7 @@ export function whoamiRoutes(): Hono {
       if (!result) {
         const identifier = nodeId ?? sessionName;
         return c.json({
-          error: `Session or node '${identifier}' not found in any managed rig. Check available sessions with: rig ps --nodes`,
+          error: `在任何受管工作组中都找不到会话或节点 '${identifier}'。用 zrig ps --nodes 查看可用会话`,
         }, 404);
       }
 

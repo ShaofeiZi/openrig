@@ -1,26 +1,26 @@
-// V1 attempt-3 Phase 3 — Project scope pages per project-tree.md L46–L49 + SC-24.
+// V1 attempt-3 Phase 3——按 project-tree.md L46–L49 + SC-24 的项目工作范围页。
 //
-// workspace = overview/progress/artifacts/queue/topology (5 tabs)
-// mission = same 5 tabs
-// slice = +story +tests = 7 tabs
+// workspace = 概览/进展/产物/队列/拓扑（5 个标签页）
+// mission = 同样 5 个标签页
+// slice = +故事 +测试 = 7 个标签页
 //
-// V1 attempt-3 Phase 5 P5-2: SliceScopePage tab content piping.
-// Per code-map AFTER tree fold mapping from Phase 5 dispatch:
-//   - StoryGraph → story tab (OPR.0.4.1.19; queue-lineage git-graph, replaces the events TimelineTab)
-//   - TestsVerificationTab → tests tab (preserved; tests prop)
-//   - TopologyTab → topology tab (preserved; topology prop)
-//   - AcceptanceTab → progress tab (FOLDED; canon-7 progress is acceptance + currentStep)
-//   - Artifacts tab → ArtifactsNavigator at slice altitude (OPR.0.4.1 AC-4-FF):
-//     the slice Artifacts view IS the altitude-scoped file navigator, mirroring the
-//     mission-altitude wiring. The prior Files / Commits / Proof / Docs / Decisions
-//     sections are dropped — Files+Docs subsumed by the navigator, Proof has its own
-//     tab + appears in the tree, Decisions live in the Story DAG (decision-of-record
-//     qitems) + decision docs via the navigator, and Commits are FLAGGED 0.4.2 (no
-//     qitem->commit linkage; slice-level commitRefs stay in the SliceDetail payload).
-//   - Overview tab → README via useScopeMarkdown
-//   - Queue tab → qitemIds list with QueueItemTrigger (P5-1 wiring) per content-drawer.md L26
-// Workspace + Mission scope tab piping remains Phase 5 polish (filesystem-walk
-// dependent; P5-5 lays the data layer).
+// V1 attempt-3 Phase 5 P5-2：SliceScopePage 标签页内容接线。
+// 按 Phase 5 派发的 code-map 树折叠后映射：
+//   - StoryGraph → 故事标签页（OPR.0.4.1.19；队列血缘 git-graph，取代事件 TimelineTab）
+//   - TestsVerificationTab → 测试标签页（保留；tests prop）
+//   - TopologyTab → 拓扑标签页（保留；topology prop）
+//   - AcceptanceTab → 进展标签页（已折叠；canon-7 进展即 acceptance + currentStep）
+//   - 产物标签页 → slice 高度的 ArtifactsNavigator（OPR.0.4.1 AC-4-FF）：
+//     slice 产物视图就是高度作用域的文件浏览器，镜像
+//     mission 高度的接线。先前的 Files / Commits / Proof / Docs / Decisions
+//     区块已删除——Files+Docs 由浏览器吞并，Proof 有自己的
+//     标签页 + 出现在树中，Decisions 住在 Story DAG（decision-of-record
+//     qitem）+ 经浏览器的决策文档，Commits 标记为 0.4.2（无
+//     qitem→提交链接；slice 级 commitRefs 留在 SliceDetail 负载中）。
+//   - 概览标签页 → 经 useScopeMarkdown 的 README
+//   - 队列标签页 → 带 QueueItemTrigger 的 qitemIds 列表（P5-1 接线），按 content-drawer.md L26
+// Workspace + Mission 工作范围标签页接线仍是 Phase 5 打磨（依赖文件系统遍历；
+// P5-5 铺数据层）。
 
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "@tanstack/react-router";
@@ -67,6 +67,7 @@ import {
   ProjectPill,
   QueueCountIcon,
   QueueStateBadge,
+  sliceStatusLabel,
   sliceStatusTone,
   StatusDot,
   TagPill,
@@ -84,42 +85,42 @@ type SharedTab = "overview" | "story" | "progress" | "artifacts" | "proof" | "qu
 type SliceTab = SharedTab | "story" | "proof";
 
 const SHARED_TABS: { id: SharedTab; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "story", label: "Story" },
-  { id: "progress", label: "Progress" },
-  { id: "artifacts", label: "Artifacts" },
-  { id: "proof", label: "Proof" },
-  { id: "queue", label: "Queue" },
-  { id: "topology", label: "Workflow" },
+  { id: "overview", label: "概览" },
+  { id: "story", label: "故事" },
+  { id: "progress", label: "进展" },
+  { id: "artifacts", label: "产物" },
+  { id: "proof", label: "校验" },
+  { id: "queue", label: "队列" },
+  { id: "topology", label: "工作流" },
 ];
 
-// OPR.0.4.1.17 — mission tab set adds Steering as the LANDING (mission-only; not on the parent
-// or slice altitudes). Other taxonomy moves (Workflow add, Queue/Topology drop) = separate slices.
+// OPR.0.4.1.17——mission 标签页集新增 Steering 作为落地页（仅 mission；不在父
+// 或 slice 高度）。其他分类调整（加 Workflow、去 Queue/Topology）= 独立 slice。
 const MISSION_TABS: { id: SharedTab; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "steering", label: "Steering" },
-  // OPR.0.4.4.20 FR-7: board-first mission review BESIDE Steering — NOT the
-  // landing in v1 (Steering stays primary; the flip is an I5 founder decision).
-  { id: "review", label: "Review" },
-  { id: "story", label: "Story" },
-  { id: "progress", label: "Progress" },
-  { id: "artifacts", label: "Artifacts" },
-  { id: "proof", label: "Proof" },
-  { id: "queue", label: "Queue" },
-  { id: "topology", label: "Workflow" },
+  { id: "overview", label: "概览" },
+  { id: "steering", label: "引导" },
+  // OPR.0.4.4.20 FR-7：board 优先的 mission 评审在 Steering 旁——v1 中不是
+  // 落地页（Steering 仍为主；翻转是 I5 创始人决定）。
+  { id: "review", label: "评审" },
+  { id: "story", label: "故事" },
+  { id: "progress", label: "进展" },
+  { id: "artifacts", label: "产物" },
+  { id: "proof", label: "校验" },
+  { id: "queue", label: "队列" },
+  { id: "topology", label: "工作流" },
 ];
 
 const SLICE_TABS: { id: SliceTab; label: string }[] = [
-  // OPR.0.4.4.20 FR-4: the Review tab is the DEFAULT landing (additive —
-  // Overview stays; the default flip below is the one reversible line).
-  { id: "review", label: "Review" },
-  { id: "story", label: "Story" },
-  { id: "overview", label: "Overview" },
-  { id: "progress", label: "Progress" },
-  { id: "artifacts", label: "Artifacts" },
-  { id: "proof", label: "Proof" },
-  { id: "queue", label: "Queue" },
-  { id: "topology", label: "Workflow" },
+  // OPR.0.4.4.20 FR-4：评审标签页是默认落地页（叠加——
+  // 概览保留；下方默认翻转是唯一可逆行）。
+  { id: "review", label: "评审" },
+  { id: "story", label: "故事" },
+  { id: "overview", label: "概览" },
+  { id: "progress", label: "进展" },
+  { id: "artifacts", label: "产物" },
+  { id: "proof", label: "校验" },
+  { id: "queue", label: "队列" },
+  { id: "topology", label: "工作流" },
 ];
 
 function TabNav<T extends string>({
@@ -132,7 +133,7 @@ function TabNav<T extends string>({
   onSelect: (id: T) => void;
 }) {
   return (
-    // Internal tablist — div, not <nav>, to keep SC-1 chrome count clean.
+    // 内部 tablist——div 而非 <nav>，以保持 SC-1 chrome 计数干净。
     <div
       role="tablist"
       data-testid="project-tab-nav"
@@ -162,15 +163,15 @@ function TabNav<T extends string>({
 }
 
 
-/** OPR.0.4.6.MH2 guard-B1 round 2 — the LOCAL-only review composer
- *  (/api/review is not read-through-allowlisted) gets the same
- *  selection-known treatment as local files: unknown ⇒ this pending state
- *  (the tab component never mounts, so zero /api/review fires);
- *  known-remote ⇒ the honest not-available state below. */
+/** OPR.0.4.6.MH2 guard-B1 第 2 轮——仅本地的评审编排器
+ *  （/api/review 不在读取白名单）获得与本地文件相同的
+ *  选择已知处理：未知 ⇒ 此待处理态
+ *  （标签页组件从不挂载，故零 /api/review 触发）；
+ *  已知远程 ⇒ 下方诚实的不可用态。 */
 function ReviewSelectionPending({ testId }: { testId: string }) {
   return (
     <div data-testid={testId} className="font-mono text-[11px] text-on-surface-variant">
-      Resolving host selection…
+      正在解析主机选择…
     </div>
   );
 }
@@ -178,8 +179,8 @@ function ReviewSelectionPending({ testId }: { testId: string }) {
 function ReviewRemoteGated({ testId }: { testId: string }) {
   return (
     <EmptyState
-      label="REVIEW NOT AVAILABLE FOR REMOTE HOSTS"
-      description="Review composition reads this host's local records. Select the local host to review local work; remote review lands with the MH-3/MH-4 acting lanes."
+      label="远程主机不可用评审"
+      description="评审编排读取本机本地记录。请选择本地主机以评审本地工作；远程评审随 MH-3/MH-4 行动通道落地。"
       variant="card"
       testId={testId}
     />
@@ -197,20 +198,19 @@ function ScopeShell({
 }: {
   eyebrow: string;
   title: string;
-  /** OPR.0.4.6.MH2 FR-4 — the `ON <HOST>` header chip (fr4a's free FR-3
-   *  reinforcement); null/absent renders nothing (local today-shape). */
+  /** OPR.0.4.6.MH2 FR-4——`ON <HOST>` 头部 chip（fr4a 免费的 FR-3
+   *  强化）；null/缺省不渲染任何内容（本地今日形态）。 */
   hostChip?: string | null;
   tabs: { id: string; label: string }[];
   active: string;
   onSelect: (id: string) => void;
   children: ReactNode;
 }) {
-  // OPR.0.4.0.1 forward-fix (FR-2): mount ONE explicit LiveTerminalProvider for
-  // every project scope page so all of the page's progressive terminals (the
-  // Topology tab + HostMultiRigGraph etc.) share ONE global live-terminal
-  // registry + configured cap, instead of TopologyTab resolving to the separate
-  // module-singleton fallback (which would silently UNSHARE the cap). Mirrors the
-  // topology/ScopePages provider mount.
+  // OPR.0.4.0.1 前向修复（FR-2）：为每个项目工作范围页挂载一个显式
+  // LiveTerminalProvider，使页面所有渐进终端（
+  // TopologyTab + HostMultiRigGraph 等）共享一个全局 live-terminal
+  // 注册表 + 配置的上限，而非让 TopologyTab 解析到独立的
+  // 模块单例回退（那会静默地不共享上限）。镜像 topology/ScopePages provider 挂载。
   const liveCap = useTerminalCap();
   return (
     <LiveTerminalProvider cap={liveCap}>
@@ -224,7 +224,7 @@ function ScopeShell({
               data-testid="scope-host-chip"
               className="ml-3 inline-flex translate-y-[-0.15em] items-center bg-inverse-surface px-2 py-0.5 align-middle font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-background"
             >
-              on {hostChip}
+              在 {hostChip} 上
             </span>
           ) : null}
         </h1>
@@ -242,7 +242,7 @@ function PlaceholderTab({ label, description }: { label: string; description?: s
   return (
     <EmptyState
       label={label}
-      description={description ?? "Phase 5 polish."}
+      description={description ?? "Phase 5 打磨中。"}
       variant="card"
       testId={`project-tab-placeholder-${label.toLowerCase()}`}
     />
@@ -250,7 +250,7 @@ function PlaceholderTab({ label, description }: { label: string; description?: s
 }
 
 function formatLastActivity(ts: number): string {
-  if (ts <= 0) return "no recent activity";
+  if (ts <= 0) return "近期无活动";
   return new Date(ts).toLocaleString(undefined, {
     month: "short",
     day: "numeric",
@@ -299,10 +299,10 @@ function ScopeProgressRollup({
   isLoading: boolean;
 }) {
   if (isLoading && rows.length === 0) {
-    return <PlaceholderTab label="LOADING PROGRESS" description="Reading scoped slice progress." />;
+    return <PlaceholderTab label="正在加载进展" description="正在读取工作范围内的切片进展。" />;
   }
   if (rows.length === 0) {
-    return <EmptyState label="NO SCOPED SLICES" description="No slices are indexed for this scope." variant="card" testId="scope-progress-empty" />;
+    return <EmptyState label="工作范围内无切片" description="该工作范围尚未索引任何切片。" variant="card" testId="scope-progress-empty" />;
   }
   return (
     <div data-testid="scope-progress-rollup" className="space-y-3">
@@ -321,16 +321,16 @@ function ScopeProgressRollup({
                 </Link>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <ProjectPill token={scopeToken("slice")} compact />
-                  <ProjectPill token={{ label: row.status, tone: stateTone(row.status) }} compact />
+                  <ProjectPill token={{ label: sliceStatusLabel(row.status), tone: stateTone(row.status) }} compact />
                   <DateChip value={row.lastActivityAt} />
                 </div>
               </div>
             </div>
             <div className="mt-3 grid gap-2 font-mono text-[10px] text-on-surface sm:grid-cols-4">
-              <SliceMetric label="Qitems" value={detail?.qitemIds.length ?? row.qitemCount} />
-              <SliceMetric label="Proof" value={detail ? detail.tests.proofPackets.length : row.hasProofPacket ? 1 : 0} />
-              <SliceMetric label="Progress" value={detail ? `${detail.acceptance.percentage}%` : "unknown"} />
-              <SliceMetric label="Last activity" value={formatMaybeDate(row.lastActivityAt)} />
+              <SliceMetric label="队列项" value={detail?.qitemIds.length ?? row.qitemCount} />
+              <SliceMetric label="校验" value={detail ? detail.tests.proofPackets.length : row.hasProofPacket ? 1 : 0} />
+              <SliceMetric label="进展" value={detail ? `${detail.acceptance.percentage}%` : "未知"} />
+              <SliceMetric label="最近活动" value={formatMaybeDate(row.lastActivityAt)} />
             </div>
           </article>
         );
@@ -348,10 +348,10 @@ function ScopeQueueRollup({
   queueItemsById: Map<string, QueueItemDetail>;
   isFetching: boolean;
 }) {
-  // V0.3.1 slice 17 founder-walk-workspace-state-correctness — walk item 10 (slice queue descending order). Latest qitem at top. Prefer
-  // tsCreated when the loaded detail is available; fall back to the
-  // qitem-id (which encodes a timestamp prefix `qitem-YYYYMMDD...`) so
-  // sort works before queueItemsById has finished loading.
+  // V0.3.1 slice 17 founder-walk-workspace-state-correctness——遍历第 10 项（slice 队列降序）。最新 qitem 在前。优先
+  // 已加载 detail 的 tsCreated；回退到
+  // qitem-id（其编码时间戳前缀 `qitem-YYYYMMDD...`），使
+  // 在 queueItemsById 加载完成前排序仍生效。
   const sortedQitemIds = [...qitemIds].sort((a, b) => {
     const itemA = queueItemsById.get(a);
     const itemB = queueItemsById.get(b);
@@ -361,13 +361,13 @@ function ScopeQueueRollup({
     return tsA < tsB ? 1 : -1; // DESC
   });
   if (sortedQitemIds.length === 0) {
-    return <EmptyState label="NO QITEMS" description="No queue items are indexed for this scope." variant="card" testId="scope-queue-empty" />;
+    return <EmptyState label="无队列项" description="该工作范围尚未索引任何队列项。" variant="card" testId="scope-queue-empty" />;
   }
   return (
     <div data-testid="scope-queue-rollup">
       {isFetching ? (
         <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-on-surface-variant">
-          Loading queue bodies...
+          正在加载队列正文...
         </div>
       ) : null}
       <ul className="divide-y divide-outline-variant border border-outline-variant">
@@ -412,7 +412,7 @@ function ScopeArtifactsRollup({
   detailsByName: Map<string, SliceDetail>;
 }) {
   if (rows.length === 0) {
-    return <EmptyState label="NO ARTIFACTS" description="No slices are indexed for this scope." variant="card" testId="scope-artifacts-empty" />;
+    return <EmptyState label="无产物" description="该工作范围尚未索引任何切片。" variant="card" testId="scope-artifacts-empty" />;
   }
   return (
     <div data-testid="scope-artifacts-rollup" className="space-y-3">
@@ -431,13 +431,13 @@ function ScopeArtifactsRollup({
             </Link>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <ProjectPill token={scopeToken("slice")} compact />
-              <ProjectPill token={{ label: row.status, tone: stateTone(row.status) }} compact />
+              <ProjectPill token={{ label: sliceStatusLabel(row.status), tone: stateTone(row.status) }} compact />
             </div>
             <div className="mt-3 grid gap-2 font-mono text-[10px] text-on-surface sm:grid-cols-4">
-              <SliceMetric label="Files" value={detail?.docs.tree.length ?? "unknown"} />
-              <SliceMetric label="Commits" value={detail?.commitRefs.length ?? "unknown"} />
-              <SliceMetric label="Proof packets" value={proofCount} />
-              <SliceMetric label="Screenshots" value={screenshotCount} />
+              <SliceMetric label="文件" value={detail?.docs.tree.length ?? "未知"} />
+              <SliceMetric label="提交" value={detail?.commitRefs.length ?? "未知"} />
+              <SliceMetric label="校验包" value={proofCount} />
+              <SliceMetric label="截图" value={screenshotCount} />
             </div>
           </article>
         );
@@ -446,8 +446,8 @@ function ScopeArtifactsRollup({
   );
 }
 
-// Exported for focused unit coverage (OPR.0.4.1.18): the QA-blocking bug was
-// this mapper hardcoding summary: null, so the regression guard tests it directly.
+// 导出以供聚焦单测覆盖（OPR.0.4.1.18）：曾阻塞 QA 的 bug 是
+// 此映射器硬编码 summary: null，故回归守卫直接测它。
 export function toStoryInput(item: QueueItemDetail): StoryQitemInput {
   return {
     qitemId: item.qitemId,
@@ -463,12 +463,12 @@ export function toStoryInput(item: QueueItemDetail): StoryQitemInput {
     blockedOn: item.blockedOn ?? null,
     tags: item.tags ?? [],
     body: item.body,
-    // OPR.0.4.1.18: the authored human summary now rides on QueueItemDetail
-    // (served by /api/queue/:id). Pass it through; story-graph-model's
-    // deriveSummary prefers it and degrades to the first body line when null
-    // (pre-18 qitems + any an author omitted). body stays the source of truth
-    // for the drawer / drill-in; the handoff child's own summary is used (the
-    // model reads each item's summary, never the parent's).
+    // OPR.0.4.1.18：作者撰写的人工摘要现挂在 QueueItemDetail
+    // （由 /api/queue/:id 提供）。透传；story-graph-model 的
+    // deriveSummary 优先采用它，为 null 时退化为正文首行
+    // （18 之前的 qitem + 作者省略的任何项）。body 仍是
+    // 抽屉/钻取的真相来源；使用交接子项自身的摘要（
+    // 模型读每项的 summary，从不读父项的）。
     summary: item.summary ?? null,
     chainOfRecord: item.chainOfRecord ?? null,
     handedOffFrom: item.handedOffFrom ?? null,
@@ -484,9 +484,8 @@ export function toStoryInput(item: QueueItemDetail): StoryQitemInput {
   };
 }
 
-// OPR.0.4.1.19 — the Story tab IS the queue-lineage git-graph (replaces the prior
-// events timeline at both mission and slice altitude). The forest reconstructs
-// from the scope's queue items (chain_of_record + handoff lineage).
+// OPR.0.4.1.19——故事标签页即队列血缘 git-graph（在 mission 和 slice 高度取代先前
+// 事件时间线）。森林从工作范围的队列项（chain_of_record + 交接血缘）重构。
 function ScopeStoryRollup({
   queueItemsById,
   isFetching,
@@ -501,7 +500,7 @@ function ScopeStoryRollup({
     [queueItemsById],
   );
   if (isFetching && forest.nodes.length === 0) {
-    return <PlaceholderTab label="LOADING STORY" description="Reading queue lineage." />;
+    return <PlaceholderTab label="正在加载故事" description="正在读取队列血缘。" />;
   }
   return (
     <div data-testid="scope-story-rollup">
@@ -555,14 +554,14 @@ function WorkspaceOverviewPanel() {
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key)!.push(row);
     }
-    // VM-005: authored-wins precedence via the daemon's missions sidecar;
-    // railItem/unsorted keys have no sidecar entry and fall to derived.
+    // VM-005：经后台服务 missions sidecar 的"作者优先"优先级；
+    // railItem/unsorted 键无 sidecar 条目，回退到推导值。
     const authored = data.missions ?? {};
     return Array.from(buckets.entries()).map(([key, slices]) => {
       const rec = reconcileMissionStatus(authored[key]?.authoredStatus ?? null, slices, undefined, authored[key]?.readiness);
       return {
         id: key,
-        label: key === "unsorted" ? "Unsorted" : key,
+        label: key === "unsorted" ? "未排序" : key,
         status: rec.state,
         statusLabel: rec.label,
         statusSource: rec.source,
@@ -575,8 +574,8 @@ function WorkspaceOverviewPanel() {
   if (isLoading) {
     return (
       <EmptyState
-        label="LOADING WORKSPACE"
-        description="Reading slice index."
+        label="正在加载工作区"
+        description="正在读取切片索引。"
         variant="card"
         testId="workspace-overview-loading"
       />
@@ -586,8 +585,8 @@ function WorkspaceOverviewPanel() {
   if (data && "unavailable" in data) {
     return (
       <EmptyState
-        label="WORKSPACE INDEX UNAVAILABLE"
-        description={data.hint ?? "Slice index is not available from the configured workspace."}
+        label="工作区索引不可用"
+        description={data.hint ?? "已配置工作区未提供切片索引。"}
         variant="card"
         testId="workspace-overview-unavailable"
       />
@@ -607,7 +606,7 @@ function WorkspaceOverviewPanel() {
             {mission.label}
           </h3>
           <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">
-            {mission.slices.length} slice{mission.slices.length === 1 ? "" : "s"} ·{" "}
+            {mission.slices.length} 个切片 ·{" "}
             {formatLastActivity(latestProjectMissionActivity(mission))}
           </p>
         </div>
@@ -653,7 +652,7 @@ function WorkspaceOverviewPanel() {
       <section data-testid="workspace-overview-current" className="space-y-3">
         <div className="flex items-center justify-between border-b border-outline-variant pb-2">
           <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-on-surface">
-            Current Work
+            当前工作
           </h2>
           <span className="font-mono text-[10px] text-on-surface-variant">
             {sections.current.length}
@@ -663,8 +662,8 @@ function WorkspaceOverviewPanel() {
           sections.current.map((mission) => renderMissionCard(mission, "current"))
         ) : (
           <EmptyState
-            label="NO CURRENT WORK"
-            description="No live qitem-backed or recent active slices are indexed."
+            label="无当前工作"
+            description="尚未索引任何有实时队列项支撑或近期活跃的切片。"
             variant="card"
             testId="workspace-overview-current-empty"
           />
@@ -673,7 +672,7 @@ function WorkspaceOverviewPanel() {
       <section data-testid="workspace-overview-archive" className="space-y-3">
         <div className="flex items-center justify-between border-b border-outline-variant pb-2">
           <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-on-surface">
-            Archive
+            归档
           </h2>
           <span className="font-mono text-[10px] text-on-surface-variant">
             {sections.archive.length}
@@ -683,8 +682,8 @@ function WorkspaceOverviewPanel() {
           sections.archive.map((mission) => renderMissionCard(mission, "archive"))
         ) : (
           <EmptyState
-            label="NO ARCHIVE"
-            description="No archived slices are indexed."
+            label="无归档"
+            description="尚未索引任何已归档切片。"
             variant="card"
             testId="workspace-overview-archive-empty"
           />
@@ -698,32 +697,31 @@ export function WorkspaceScopePage() {
   const [active, setActive] = useState<SharedTab>("overview");
   const workspace = useWorkspaceName();
   const rollup = useProjectScopeRollup(null, active !== "overview");
-  // OPR.0.4.6.MH2 FR-4 — the selected host owns this workspace view. A
-  // remote host's workspace NAME is not readable in v1 (honest generic
-  // title); the ON <host> chip names the owner (fr4a ruling).
+  // OPR.0.4.6.MH2 FR-4——所选主机拥有此工作区视图。v1 中远程主机的工作区
+  // 名称不可读（诚实通用标题）；ON <host> chip 命名属主（fr4a 裁决）。
   const { data: hostsData } = useHosts();
   const selectedHost = hostsData?.selected ?? LOCAL_HOST_ID;
   const isRemote = selectedHost !== LOCAL_HOST_ID;
-  // OPR.0.4.6.MH5 FR-4 drill continuity: reached FROM the fleet altitude
-  // the eyebrow shows the spine above (FLEET ▸ host); everything below is
-  // unchanged MH-2. Window-side read = this family's query-param idiom.
+  // OPR.0.4.6.MH5 FR-4 钻取连续性：从 fleet 高度进入时
+  // eyebrow 显示上方主干（FLEET ▸ host）；以下全部为
+  // 不变的 MH-2。窗口侧读取 = 本家族的 query-param 惯用法。
   const fromFleet =
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("from") === "fleet";
-  // guard-B1: the ONE shared local-files gate (selection-known && local).
+  // guard-B1：唯一共享的本地文件门（选择已知 && 本地）。
   const filesAllowed = useLocalFilesAllowed();
 
-  // A5 bounce-fix: live-wired workspace name; honest empty-state when unset.
-  // MH-2: local-only — workspace.name is LOCAL config; a remote selection
-  // renders the remote view regardless of local workspace state.
+  // A5 回弹修复：实时接线的工作区名称；未设置时诚实空态。
+  // MH-2：仅本地——workspace.name 是本地配置；远程选择
+  // 渲染远程视图，与本地工作区状态无关。
   if (!isRemote && !workspace.isLoading && workspace.name === null) {
     return (
       <div className="mx-auto w-full max-w-[960px] px-6 py-12">
         <EmptyState
-          label="NO WORKSPACE CONNECTED"
-          description="Configure a workspace root to browse missions and slices in this destination."
+          label="未连接工作区"
+          description="请配置工作区根目录，以便在此页面浏览任务与切片。"
           variant="card"
           testId="workspace-scope-no-workspace"
-          action={{ label: "Open settings", href: "/settings" }}
+          action={{ label: "打开设置", href: "/settings" }}
         />
       </div>
     );
@@ -731,17 +729,17 @@ export function WorkspaceScopePage() {
 
   return (
     <ScopeShell
-      eyebrow={fromFleet ? `Fleet ▸ ${selectedHost} · Workspace` : "Workspace"}
-      title={isRemote ? "workspace" : (workspace.name ?? "loading…")}
+      eyebrow={fromFleet ? `Fleet ▸ ${selectedHost} · 工作区` : "工作区"}
+      title={isRemote ? "工作区" : (workspace.name ?? "加载中…")}
       hostChip={isRemote ? selectedHost : null}
       tabs={SHARED_TABS}
       active={active}
       onSelect={(id) => setActive(id as SharedTab)}
     >
       {active === "overview" ? (
-        // OPR.0.4.1.24 — the workspace parent altitude lands on the cross-mission
-        // portfolio (collapsed missions, most-recently-modified, expand→steering glance).
-        // Supersedes the prior WorkspaceOverviewPanel mission grid.
+        // OPR.0.4.1.24——工作区父高度落地到跨任务
+        // 组合面板（折叠任务、最近修改、展开→引导一瞥）。
+        // 取代先前的 WorkspaceOverviewPanel 任务网格。
         <WorkspacePortfolioPanel />
       ) : null}
       {active === "story" ? (
@@ -767,8 +765,7 @@ export function WorkspaceScopePage() {
           rows={rollup.rows.map((r) => ({
             name: r.name,
             displayName: r.displayName,
-            // MH-2 guard-B1: remote/unknown-selection slice paths never
-            // resolve locally.
+            // MH-2 guard-B1：远程或未知选择下的切片路径绝不在本地解析。
             slicePath: filesAllowed ? (r.slicePath ?? null) : null,
           }))}
         />
@@ -794,28 +791,28 @@ export function WorkspaceScopePage() {
 
 export function MissionScopePage() {
   const { missionId } = useParams({ from: "/project/mission/$missionId" });
-  // OPR.0.4.1.17 — Steering is the mission LANDING tab.
+  // OPR.0.4.1.17——引导是任务落地标签页。
   const [active, setActive] = useState<SharedTab>("steering");
-  // Steering (the landing) + Overview need only the slice LIST, not per-slice
-  // details or queue bodies. Gate the detail+queue cascade off BOTH so the
-  // two-projection landing never fires hidden slice-detail/queue-body fetches
-  // (guard forward-fix: steering !== overview would otherwise load them).
+  // 引导（落地页）+ 概览只需 slice 列表，不需要逐 slice
+  // 详情或队列正文。对两者都关闭详情+队列级联，使
+  // 双投影落地页从不触发隐藏的 slice 详情/队列正文拉取
+  // （前向修复：否则 steering !== overview 会加载它们）。
   const rollup = useProjectScopeRollup(missionId, active !== "overview" && active !== "steering");
-  // V0.3.1 slice 12 walk-item 1 — fetch aggregated mission metadata
-  // (missionPath for README/PROGRESS lookup; slices already covered
-  // by rollup). README + PROGRESS render via useScopeMarkdown above
-  // the existing slice rail.
+  // V0.3.1 slice 12 walk-item 1——拉取聚合的任务元数据
+  // （用于 README/PROGRESS 查找的 missionPath；slice 已由
+  // rollup 覆盖）。README + PROGRESS 经 useScopeMarkdown 渲染在
+  // 既有 slice 轨道之上。
   const missionData = useMission(missionId);
-  // OPR.0.4.6.MH2 FR-4 — README/PROGRESS render via /api/files/read, a
-  // LOCAL filesystem read. For a remote selection the path is GATED OFF
-  // (null) so local folders are never rendered under the remote host's
-  // label; the remote mission view derives from the read-through data.
+  // OPR.0.4.6.MH2 FR-4——README/PROGRESS 经 /api/files/read 渲染，这是
+  // 本地文件系统读取。对远程选择，路径被门控关闭
+  // （null），使本地文件夹绝不会渲染在远程主机的
+  // 标签下；远程任务视图来自读取透传数据。
   const { data: hostsData } = useHosts();
   const selectedHost = hostsData?.selected ?? LOCAL_HOST_ID;
   const isRemote = selectedHost !== LOCAL_HOST_ID;
-  // guard-B1: the ONE shared local-files gate (selection-known && local).
+  // guard-B1：唯一共享的本地文件门（选择已知 && 本地）。
   const filesAllowed = useLocalFilesAllowed();
-  // guard-B1 round 2: the review composer is LOCAL-only — same treatment.
+  // guard-B1 第 2 轮：评审编排器仅本地——同样处理。
   const { known: hostSelectionKnown, isLocal: hostIsLocal } = useHostSelection();
   const missionPath =
     filesAllowed && missionData.data && "missionPath" in missionData.data ? missionData.data.missionPath : null;
@@ -824,7 +821,7 @@ export function MissionScopePage() {
   const scopeAudit = useScopeAudit(missionId);
   return (
     <ScopeShell
-      eyebrow="Mission"
+      eyebrow="任务"
       title={missionId}
       hostChip={isRemote ? selectedHost : null}
       tabs={MISSION_TABS}
@@ -833,8 +830,8 @@ export function MissionScopePage() {
     >
       {active === "steering" ? <SteeringTab missionId={missionId} /> : null}
       {active === "review" ? (
-        // guard-B1 round 2: /api/review is LOCAL-only — selection-known
-        // three-way branch (unknown ⇒ pending, remote ⇒ honest gate).
+        // guard-B1 第 2 轮：/api/review 仅本地——选择已知的
+        // 三向分支（未知 ⇒ 待处理，远程 ⇒ 诚实门控）。
         !hostSelectionKnown ? (
           <ReviewSelectionPending testId="mission-review-selection-pending" />
         ) : !hostIsLocal ? (
@@ -884,8 +881,8 @@ export function MissionScopePage() {
               })
             ) : (
               <EmptyState
-                label="NO SLICES"
-                description="No indexed slices are attached to this mission."
+                label="无切片"
+                description="该任务尚未挂载任何已索引切片。"
                 variant="card"
                 testId="mission-overview-empty"
               />
@@ -910,29 +907,29 @@ export function MissionScopePage() {
           />
           {scopeAudit.data && (scopeAudit.data.mission.railStatus === "missing" || scopeAudit.data.mission.railStatus === "malformed") ? (
             <EmptyState
-              label={scopeAudit.data.mission.railStatus === "malformed" ? "PROGRESS RAIL MALFORMED" : "PROGRESS RAIL MISSING"}
+              label={scopeAudit.data.mission.railStatus === "malformed" ? "进展轨道格式错误" : "缺少进展轨道"}
               description={
                 scopeAudit.data.mission.railStatus === "malformed"
-                  ? `Mission progress rail has errors (${scopeAudit.data.mission.frontmatterError ?? "malformed frontmatter"}). Run the audit command to diagnose.`
-                  : "This mission has no PROGRESS.md. Scaffold one or run the audit to check scope health."
+                  ? `任务进展轨道存在错误（${scopeAudit.data.mission.frontmatterError ?? "frontmatter 格式错误"}）。请运行审计命令诊断。`
+                  : "该任务无 PROGRESS.md。请脚手架生成一份或运行审计以检查工作范围健康状态。"
               }
               variant="card"
               testId="mission-progress-rail-status"
-              action={{ label: `rig scope audit --mission ${missionId}` }}
+              action={{ label: `zrig scope audit --mission ${missionId}` }}
             />
           ) : hostSelectionKnown && !hostIsLocal ? (
-            // R1 (release-0.4.7) req-5 (G16; v1.2 gate fix): a KNOWN-remote selection
-            // gates the LOCAL /api/files read off (missionPath is null above). Say so
-            // honestly instead of falling through to "NO PROGRESS YET" — a remote read
-            // must never masquerade as a local absence. Gate on KNOWN-remote ONLY (not
-            // !filesAllowed, which includes the UNKNOWN cold-start window and would
-            // flash this notice locally — the misleading-gated-flash the SteeringTab +
-            // WorkspacePortfolioPanel precedents forbid); an unknown selection falls
-            // through to the loading/absence treatment. The data-level null-path gating
-            // via filesAllowed (missionPath above) is unchanged.
+            // R1（release-0.4.7）req-5（G16；v1.2 门控修复）：已知远程选择
+            // 关闭本地 /api/files 读取（上方 missionPath 为 null）。诚实地
+            // 说明，而非落到"尚无进展"——远程读取
+            // 绝不能冒充本地缺失。仅对已知远程门控（不
+            // 对 !filesAllowed，那包含未知冷启动窗口，会
+            // 在本地闪现此提示——即 SteeringTab +
+            // WorkspacePortfolioPanel 先例禁止的误导性门控闪现）；未知选择
+            // 落到加载/缺失处理。数据层 null 路径门控
+            // 经 filesAllowed（上方 missionPath）保持不变。
             <EmptyState
-              label="LOCAL FILES NOT SHOWN"
-              description="Local files not shown — mission progress markdown reads this host's local filesystem, which the remote read view does not browse."
+              label="不显示本地文件"
+              description="不显示本地文件——任务进展 markdown 读取本机本地文件系统，远程读取视图不浏览它。"
               variant="card"
               testId="mission-progress-remote-gated"
             />
@@ -941,32 +938,32 @@ export function MissionScopePage() {
               <MarkdownViewer content={missionProgress.content} hideFrontmatter hideRawToggle />
             </section>
           ) : missionProgress.state === "read_error" ? (
-            // R1: the read failed — NOT an empty progress file.
+            // R1：读取失败——不是空进展文件。
             <EmptyState
-              label="PROGRESS READ FAILED"
-              description="The daemon could not read PROGRESS.md — this is a read failure, not an empty progress file. Check daemon logs and file permissions."
+              label="进展读取失败"
+              description="后台服务无法读取 PROGRESS.md——这是读取失败，而非空进展文件。请检查后台服务日志与文件权限。"
               variant="card"
               testId="mission-progress-read-error"
             />
           ) : missionProgress.state === "unresolved" ? (
-            // R1: the mission path is outside the allowlisted file roots (config).
+            // R1：任务路径不在白名单文件根（配置）之下。
             <EmptyState
-              label="PROGRESS OUTSIDE FILE ROOTS"
-              description="The mission path is not under any allowlisted file root, so PROGRESS.md cannot be read. Check OPENRIG_FILES_ALLOWLIST / the daemon's file-roots settings."
+              label="进展在文件根之外"
+              description="任务路径不在任何白名单文件根之下，故无法读取 PROGRESS.md。请检查 OPENRIG_FILES_ALLOWLIST / 后台服务的文件根设置。"
               variant="card"
               testId="mission-progress-unresolved"
             />
           ) : !scopeAudit.isLoading ? (
             <EmptyState
-              label="NO PROGRESS YET"
-              description="No progress data has been written for this mission."
+              label="尚无进展"
+              description="该任务尚未写入任何进展数据。"
               variant="card"
               testId="mission-progress-empty"
             />
           ) : null}
           {scopeAudit.data && scopeAudit.data.totalFindings > 0 && (
             <section data-testid="mission-scope-findings" className="border border-outline-variant bg-amber-50/40 p-4">
-              <SectionHeader>Scope Audit Findings ({scopeAudit.data.totalFindings})</SectionHeader>
+              <SectionHeader>工作范围审计发现（{scopeAudit.data.totalFindings}）</SectionHeader>
               <ul className="mt-2 space-y-1 font-mono text-[11px]">
                 {[...scopeAudit.data.mission.findings, ...scopeAudit.data.slices.flatMap((s) => s.findings)].map((f, i) => (
                   <li key={i} className={cn("px-2 py-1", f.severity === "high" ? "text-red-700" : "text-on-surface-variant")}>
@@ -976,17 +973,17 @@ export function MissionScopePage() {
               </ul>
             </section>
           )}
-          {/* OPR.0.4.1.22 — per-slice rollup CARDS removed from the mission
-              Progress tab (founder round-8: remove cards, keep heatmap). The
-              MissionProgressHeatmap above is the per-slice acceptance view; the
-              redundant ScopeProgressRollup card wall is cut. (rollup.details
-              still loads — the heat-map's acceptance cells read it.) */}
+          {/* OPR.0.4.1.22——逐 slice rollup 卡片已从任务
+              进展标签页移除（创始人第 8 轮：移除卡片，保留热力图）。上方
+              MissionProgressHeatmap 即逐 slice 验收视图；冗余的
+              ScopeProgressRollup 卡墙已剪除。（rollup.details
+              仍加载——热力图的验收单元格读取它。） */}
         </div>
       ) : null}
       {active === "artifacts" ? (
-        // OPR.0.4.1.21 — mission Artifacts is now the altitude-scoped file
-        // navigator (rooted at the mission dir = all mission artifacts),
-        // replacing the per-slice ScopeArtifactsRollup card wall.
+        // OPR.0.4.1.21——任务产物现为高度作用域的文件
+        // 浏览器（根为任务目录 = 全部任务产物），
+        // 取代逐 slice 的 ScopeArtifactsRollup 卡墙。
         <ArtifactsNavigator scopePath={missionPath} scopeLabel={missionId} remoteGated={isRemote} />
       ) : null}
       {active === "proof" ? (
@@ -994,8 +991,7 @@ export function MissionScopePage() {
           rows={rollup.rows.map((r) => ({
             name: r.name,
             displayName: r.displayName,
-            // MH-2 guard-B1: remote/unknown-selection slice paths never
-            // resolve locally.
+            // MH-2 guard-B1：远程或未知选择下的切片路径绝不在本地解析。
             slicePath: filesAllowed ? (r.slicePath ?? null) : null,
           }))}
         />
@@ -1009,13 +1005,12 @@ export function MissionScopePage() {
       ) : null}
       {active === "topology" ? (
         (() => {
-          // V0.3.1 slice 13 walk-item 7 — when the mission declares
-          // `workflow_spec: <name>@<version>` in its README frontmatter
-          // AND the spec is in the WorkflowSpecCache, the missions
-          // route returns a projected spec graph. Render it via
-          // TopologyTab (same component the slice scope uses). Fall
-          // back to the session-name aggregation when the declaration
-          // is absent or the spec isn't cached.
+          // V0.3.1 slice 13 walk-item 7——当任务在其 README frontmatter
+          // 中声明 `workflow_spec: <name>@<version>`
+          // 且该 spec 在 WorkflowSpecCache 中时，任务
+          // 路由返回投影的 spec 图。经
+          // TopologyTab 渲染（与 slice 工作范围用的同一组件）。声明
+          // 缺失或 spec 未缓存时回退到会话名聚合。
           const missionTopology =
             missionData.data && "topology" in missionData.data
               ? missionData.data.topology
@@ -1054,7 +1049,7 @@ function queueBodyPreview(qitemId: string, item: QueueItemDetail | undefined): s
   if (!item?.body) return qitemId;
   const lines = item.body.split("\n");
   if (lines.length <= 8) return item.body;
-  return `${lines.slice(0, 8).join("\n")}\n... ${lines.length - 8} more lines`;
+  return `${lines.slice(0, 8).join("\n")}\n… 另有 ${lines.length - 8} 行`;
 }
 
 function SliceQueueTab({
@@ -1066,14 +1061,14 @@ function SliceQueueTab({
   queueItemsById: Map<string, QueueItemDetail>;
   queueItemsFetching: boolean;
 }) {
-  // V1 attempt-3 Phase 5 P5-2: slice queue tab. Each qitem id is wrapped in
-  // QueueItemTrigger (P5-1 trigger primitive). Phase B supplies the body and
-  // provenance from the existing queue detail endpoint when available.
+  // V1 attempt-3 Phase 5 P5-2：slice 队列标签页。每个 qitem id 包在
+  // QueueItemTrigger（P5-1 触发原语）中。Phase B 在可用时从既有
+  // 队列详情端点提供正文与来源。
   if (qitemIds.length === 0) {
     return (
       <EmptyState
-        label="NO QITEMS"
-        description="No queue items associated with this slice."
+        label="无队列项"
+        description="该切片未关联任何队列项。"
         variant="card"
         testId="slice-queue-empty"
       />
@@ -1086,7 +1081,7 @@ function SliceQueueTab({
           data-testid="slice-queue-fetching"
           className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-on-surface-variant"
         >
-          Loading queue bodies...
+          正在加载队列正文...
         </div>
       ) : null}
       <ul
@@ -1145,20 +1140,20 @@ function SliceMetric({ label, value }: { label: string; value: string | number }
 
 function SliceOverviewTab({ detail, remoteGated }: { detail: SliceDetail; remoteGated?: boolean }) {
   const currentStep = detail.acceptance.currentStep;
-  // V0.3.1 slice 12 walk-item 1 — render slice README via the
-  // generalized scope-markdown reader; the Primary Docs filename
-  // duplication section is dropped (the README itself + the Docs tab
-  // tree are sufficient).
-  // MH-2 guard-B1: remote slicePath never resolves against local roots.
+  // V0.3.1 slice 12 walk-item 1——经
+  // 通用 scope-markdown 读取器渲染 slice README；Primary Docs 文件名
+  // 重复区块已删除（README 自身 + Docs 标签页
+  // 树已足够）。
+  // MH-2 guard-B1：远程 slicePath 从不针对本地根解析。
   const readmeMd = useScopeMarkdown(remoteGated ? null : (detail.slicePath ?? null), "README.md");
 
   return (
     <div data-testid="slice-overview-tab" className="space-y-6">
       <section data-testid="slice-overview-summary" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SliceMetric label="Status" value={detail.status} />
-        <SliceMetric label="Progress" value={`${detail.acceptance.percentage}%`} />
-        <SliceMetric label="Qitems" value={detail.qitemIds.length} />
-        <SliceMetric label="Last Activity" value={formatMaybeDate(detail.lastActivityAt)} />
+        <SliceMetric label="状态" value={detail.status} />
+        <SliceMetric label="进展" value={`${detail.acceptance.percentage}%`} />
+        <SliceMetric label="队列项" value={detail.qitemIds.length} />
+        <SliceMetric label="最近活动" value={formatMaybeDate(detail.lastActivityAt)} />
       </section>
 
       {readmeMd.content && (
@@ -1168,40 +1163,40 @@ function SliceOverviewTab({ detail, remoteGated }: { detail: SliceDetail; remote
       )}
 
       <section data-testid="slice-overview-current-step" className="border border-outline-variant bg-surface-lowest/20 p-4">
-        <SectionHeader tone="muted">Current Step</SectionHeader>
+        <SectionHeader tone="muted">当前步骤</SectionHeader>
         {currentStep ? (
           <div className="mt-3 grid gap-2 font-mono text-[10px] text-on-surface sm:grid-cols-2">
             <div>
-              <div className="text-[8px] uppercase tracking-[0.14em] text-on-surface-variant">Step</div>
+              <div className="text-[8px] uppercase tracking-[0.14em] text-on-surface-variant">步骤</div>
               <div className="font-bold text-on-surface">{currentStep.stepId}</div>
             </div>
             <div>
-              <div className="text-[8px] uppercase tracking-[0.14em] text-on-surface-variant">Role</div>
+              <div className="text-[8px] uppercase tracking-[0.14em] text-on-surface-variant">角色</div>
               <div className="font-bold text-on-surface">{currentStep.role}</div>
             </div>
             <div className="sm:col-span-2">
-              <div className="text-[8px] uppercase tracking-[0.14em] text-on-surface-variant">Objective</div>
-              <div>{currentStep.objective ?? "No objective declared."}</div>
+              <div className="text-[8px] uppercase tracking-[0.14em] text-on-surface-variant">目标</div>
+              <div>{currentStep.objective ?? "未声明目标。"}</div>
             </div>
             <div>
-              <div className="text-[8px] uppercase tracking-[0.14em] text-on-surface-variant">Allowed exits</div>
+              <div className="text-[8px] uppercase tracking-[0.14em] text-on-surface-variant">允许出口</div>
               <div>{currentStep.allowedExits.join(", ") || "-"}</div>
             </div>
             <div>
-              <div className="text-[8px] uppercase tracking-[0.14em] text-on-surface-variant">Hop count</div>
+              <div className="text-[8px] uppercase tracking-[0.14em] text-on-surface-variant">跳数</div>
               <div>{currentStep.hopCount}</div>
             </div>
           </div>
         ) : (
-          <div className="mt-3 font-mono text-[10px] text-on-surface-variant">No workflow step is currently bound.</div>
+          <div className="mt-3 font-mono text-[10px] text-on-surface-variant">当前未绑定任何工作流步骤。</div>
         )}
       </section>
 
       <section data-testid="slice-overview-readiness" className="border border-outline-variant bg-surface-lowest/20 p-4">
-        <SectionHeader tone="muted">Readiness</SectionHeader>
+        <SectionHeader tone="muted">就绪度</SectionHeader>
         <div className="mt-3 space-y-2 font-mono text-[10px] text-on-surface">
-          <div>{detail.acceptance.doneItems} of {detail.acceptance.totalItems} acceptance items complete.</div>
-          <div>{detail.tests.aggregate.passCount} proof packets passing / {detail.tests.aggregate.failCount} failing.</div>
+          <div>{detail.acceptance.doneItems} / {detail.acceptance.totalItems} 项验收已完成。</div>
+          <div>{detail.tests.aggregate.passCount} 个校验包通过 / {detail.tests.aggregate.failCount} 个失败。</div>
           {detail.acceptance.closureCallout && (
             <div className="border border-amber-300 bg-amber-50 px-2 py-1 text-amber-800">
               {detail.acceptance.closureCallout}
@@ -1209,7 +1204,7 @@ function SliceOverviewTab({ detail, remoteGated }: { detail: SliceDetail; remote
           )}
           {detail.workflowBinding && (
             <div className="text-on-surface-variant">
-              Workflow: {detail.workflowBinding.workflowName} v{detail.workflowBinding.workflowVersion}
+              工作流：{detail.workflowBinding.workflowName} v{detail.workflowBinding.workflowVersion}
             </div>
           )}
         </div>
@@ -1220,20 +1215,20 @@ function SliceOverviewTab({ detail, remoteGated }: { detail: SliceDetail; remote
 
 export function SliceScopePage() {
   const { sliceId } = useParams({ from: "/project/slice/$sliceId" });
-  // OPR.0.4.4.20 FR-4: default tab is Review (the phase-aware compare +
-  // NEEDS YOU). One reversible line — flip back to "overview" to restore
-  // the v0.3.1 landing.
+  // OPR.0.4.4.20 FR-4：默认标签页为评审（阶段感知对比 +
+  // NEEDS YOU）。一行可逆行——翻回 "overview" 即恢复
+  // v0.3.1 落地页。
   const [active, setActive] = useState<SliceTab>("review");
-  // OPR.0.4.6.MH2 guard-B1 — under a remote selection detail.slicePath is
-  // a REMOTE filesystem path; the file-backed tabs below must never
-  // resolve it against LOCAL allowlist roots (null/remoteGated ⇒ zero
-  // /api/files/* requests + honest absence states). File reads wait for
-  // the selection to be KNOWN — !isRemote alone raced on first render.
+  // OPR.0.4.6.MH2 guard-B1——远程选择下 detail.slicePath 是
+  // 远程文件系统路径；下方文件支撑标签页绝不能
+  // 针对本地白名单根解析它（null/remoteGated ⇒ 零
+  // /api/files/* 请求 + 诚实缺失态）。文件读取等待
+  // 选择变为已知——首渲染时单靠 !isRemote 会竞态。
   const { data: sliceHostsData } = useHosts();
   const isRemote = (sliceHostsData?.selected ?? LOCAL_HOST_ID) !== LOCAL_HOST_ID;
-  // guard-B1: the ONE shared local-files gate (selection-known && local).
+  // guard-B1：唯一共享的本地文件门（选择已知 && 本地）。
   const filesAllowed = useLocalFilesAllowed();
-  // guard-B1 round 2: the review composer is LOCAL-only — same treatment.
+  // guard-B1 第 2 轮：评审组合器仅限本地，采用相同处理。
   const { known: hostSelectionKnown, isLocal: hostIsLocal } = useHostSelection();
   const detailQuery = useSliceDetail(sliceId);
   const queueItems = useQueueItemMap(detailQuery.data?.qitemIds ?? []);
@@ -1243,15 +1238,15 @@ export function SliceScopePage() {
   if (detailQuery.isLoading) {
     return (
       <ScopeShell
-        eyebrow="Slice"
+        eyebrow="切片"
         title={sliceId}
         tabs={SLICE_TABS}
         active={active}
         onSelect={(id) => setActive(id as SliceTab)}
       >
         <EmptyState
-          label="LOADING"
-          description={`Fetching /api/slices/${sliceId}…`}
+          label="正在加载"
+          description={`正在拉取 /api/slices/${sliceId}…`}
           variant="card"
           testId="slice-scope-loading"
         />
@@ -1262,18 +1257,18 @@ export function SliceScopePage() {
   if (detailQuery.isError || !detailQuery.data) {
     return (
       <ScopeShell
-        eyebrow="Slice"
+        eyebrow="切片"
         title={sliceId}
         tabs={SLICE_TABS}
         active={active}
         onSelect={(id) => setActive(id as SliceTab)}
       >
         <EmptyState
-          label="SLICE NOT AVAILABLE"
+          label="切片不可用"
           description={
             detailQuery.error instanceof Error
               ? detailQuery.error.message
-              : `Could not load slice "${sliceId}". The slices indexer may not be configured (rig config get workspace.slices_root).`
+              : `无法加载 slice "${sliceId}"。slice 索引器可能未配置（zrig config get workspace.slices_root）。`
           }
           variant="card"
           testId="slice-scope-error"
@@ -1287,18 +1282,18 @@ export function SliceScopePage() {
 
   return (
     <ScopeShell
-      eyebrow="Slice"
+      eyebrow="切片"
       title={detail.displayName || detail.name}
       tabs={SLICE_TABS}
       active={active}
       onSelect={(id) => setActive(id as SliceTab)}
     >
       {active === "review" ? (
-        // guard-B1 round 2: the review COMPOSER reads LOCAL /api/review
-        // (not read-through-allowlisted) — selection-known three-way
-        // branch, same as local files: unknown ⇒ pending (zero /api/review
-        // fires — the isRemote-only gate raced on first render),
-        // known-remote ⇒ honest gate, known-local ⇒ the real tab.
+        // guard-B1 第 2 轮：评审编排器读本地 /api/review
+        //（不在读取透传白名单）——选择已知三向
+        // 分支，同本地文件：未知 ⇒ 待处理（零 /api/review
+        // 触发——仅 isRemote 门控在首渲染竞态），
+        // 已知远程 ⇒ 诚实门控，已知本地 ⇒ 真正标签页。
         !hostSelectionKnown ? (
           <ReviewSelectionPending testId="slice-review-selection-pending" />
         ) : !hostIsLocal ? (
@@ -1328,20 +1323,20 @@ export function SliceScopePage() {
         <div className="space-y-6">
           {sliceAuditEntry && (sliceAuditEntry.railStatus === "missing" || sliceAuditEntry.railStatus === "malformed") && (
             <EmptyState
-              label={sliceAuditEntry.railStatus === "malformed" ? "PROGRESS RAIL MALFORMED" : "PROGRESS RAIL MISSING"}
+              label={sliceAuditEntry.railStatus === "malformed" ? "进展轨道格式错误" : "缺少进展轨道"}
               description={
                 sliceAuditEntry.railStatus === "malformed"
-                  ? `Slice progress rail has errors (${sliceAuditEntry.frontmatterError ?? "malformed frontmatter"}). Run the audit command to diagnose.`
-                  : "This slice has no PROGRESS.md and no readme-only marker."
+                  ? `slice 进展轨道存在错误（${sliceAuditEntry.frontmatterError ?? "frontmatter 格式错误"}）。请运行审计命令诊断。`
+                  : "该切片无 PROGRESS.md，也无仅 README 标记。"
               }
               variant="card"
               testId="slice-progress-rail-status"
-              action={{ label: `rig scope audit --mission ${detail.missionId}` }}
+              action={{ label: `zrig scope audit --mission ${detail.missionId}` }}
             />
           )}
           {sliceAuditEntry && sliceAuditEntry.findings.length > 0 && (
             <section data-testid="slice-scope-findings" className="border border-outline-variant bg-amber-50/40 p-4">
-              <SectionHeader>Scope Findings ({sliceAuditEntry.findings.length})</SectionHeader>
+              <SectionHeader>工作范围发现（{sliceAuditEntry.findings.length}）</SectionHeader>
               <ul className="mt-2 space-y-1 font-mono text-[11px]">
                 {sliceAuditEntry.findings.map((f, i) => (
                   <li key={i} className={cn("px-2 py-1", f.severity === "high" ? "text-red-700" : "text-on-surface-variant")}>
@@ -1355,11 +1350,11 @@ export function SliceScopePage() {
         </div>
       ) : null}
       {active === "artifacts" ? (
-        // OPR.0.4.1 AC-4-FF — the slice Artifacts view IS the altitude-scoped file
-        // navigator (slice 21's pattern at slice altitude), rooted at the slice dir.
-        // The prior Files/Commits/Proof/Docs/Decisions card wall is dropped; commits
-        // are flagged 0.4.2 (no qitem->commit linkage), decisions live in the Story
-        // DAG + decision docs surface in this navigator tree.
+        // OPR.0.4.1 AC-4-FF——slice 产物视图即高度作用域文件
+        // 浏览器（slice 21 在 slice 高度的模式），根为 slice 目录。
+        // 先前的 Files/Commits/Proof/Docs/Decisions 卡墙已删除；commits
+        // 标记为 0.4.2（无 qitem→提交链接），decisions 住在 Story
+        // DAG + 决策文档出现在此浏览器树中。
         <ArtifactsNavigator scopePath={filesAllowed ? detail.slicePath : null} scopeLabel={detail.displayName || detail.name} remoteGated={isRemote} />
       ) : null}
       {active === "proof" ? (

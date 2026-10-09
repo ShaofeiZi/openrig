@@ -5,19 +5,18 @@ export const eventsSchema: Migration = {
   sql: `
     CREATE TABLE events (
       seq         INTEGER PRIMARY KEY AUTOINCREMENT,
-      -- INTENTIONALLY NOT AN FK to rigs(id).
-      -- Events are an append-only history log. They must survive rig deletion
-      -- so the full timeline is preserved for replay and audit.
+      -- 有意不设为指向 rigs(id) 的外键。
+      -- 事件是只追加的历史日志，必须在 rig 删除后仍然保留，以便保存完整时间线用于重放和审计。
       rig_id      TEXT,
-      -- INTENTIONALLY NOT AN FK to nodes(id).
-      -- Same rationale: events must survive node deletion.
+      -- 有意不设为指向 nodes(id) 的外键。
+      -- 理由相同：事件必须在节点删除后仍然保留。
       node_id     TEXT,
       type        TEXT NOT NULL,
       payload     TEXT NOT NULL,
       created_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- Primary query pattern: "all events for rig X after sequence N" (SSE replay)
+    -- 主要查询模式：“rig X 在序号 N 之后的所有事件”（SSE 重放）。
     CREATE INDEX idx_events_rig_seq ON events(rig_id, seq);
   `,
 };

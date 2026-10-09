@@ -44,14 +44,14 @@ export function useRigChat(rigId: string) {
     },
   });
 
-  // SSE live updates — listen for chat.message events
+  // SSE 实时更新——监听 chat.message 事件
   useEffect(() => {
     if (!rigId) return;
 
     const es = new EventSource(`/api/rigs/${encodeURIComponent(rigId)}/chat/watch`);
 
     es.addEventListener("message", () => {
-      // Invalidate to refetch on new messages
+      // 失效缓存以在新消息到达时重新拉取
       queryClient.invalidateQueries({ queryKey: ["rig", rigId, "chat"] });
     });
 

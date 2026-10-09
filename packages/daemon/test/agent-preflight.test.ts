@@ -4,7 +4,7 @@ import type { AgentResolverFsOps } from "../src/domain/agent-resolver.js";
 
 function mockFs(files: Record<string, string>): AgentResolverFsOps {
   return {
-    readFile: (p: string) => { if (p in files) return files[p]!; throw new Error(`Not found: ${p}`); },
+    readFile: (p: string) => { if (p in files) return files[p]!; throw new Error(`未找到：${p}`); },
     exists: (p: string) => p in files,
   };
 }
@@ -15,8 +15,8 @@ function validAgentYaml(name: string): string {
 
 const RIG_ROOT = "/project/rigs/my-rig";
 
-describe("Agent preflight", () => {
-  it("resolves valid agent ref successfully", () => {
+describe("Agent 预检", () => {
+  it("成功解析有效的 agent 引用", () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: validAgentYaml("impl"),
     };
@@ -25,19 +25,19 @@ describe("Agent preflight", () => {
     expect(result.errors).toEqual([]);
   });
 
-  it("fails on missing agent.yaml", () => {
+  it("缺少 agent.yaml 时失败", () => {
     const result = agentPreflight("local:agents/missing", RIG_ROOT, mockFs({}));
     expect(result.ready).toBe(false);
     expect(result.errors[0]).toMatch(/agent\.yaml/);
   });
 
-  it("reports import collisions as warnings", () => {
+  it("将导入冲突报告为警告", () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: `name: impl\nversion: "1.0.0"\nimports:\n  - ref: local:../lib\nresources:\n  skills:\n    - id: shared\n      path: skills/shared\nprofiles:\n  default:\n    uses:\n      skills: [shared]`,
       [`${RIG_ROOT}/agents/lib/agent.yaml`]: `name: lib\nversion: "1.0.0"\nresources:\n  skills:\n    - id: shared\n      path: skills/shared\nprofiles: {}`,
     };
     const result = agentPreflight("local:agents/impl", RIG_ROOT, mockFs(files));
     expect(result.ready).toBe(true);
-    expect(result.warnings.some((w) => w.includes("collision"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("冲突"))).toBe(true);
   });
 });

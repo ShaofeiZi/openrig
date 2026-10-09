@@ -57,7 +57,7 @@ function hangingFactory(): CmuxTransportFactory {
 }
 
 describe("CmuxAdapter", () => {
-  it("connect with working factory: available=true, capabilities populated", async () => {
+  it("连接可用 factory 时 available=true 且填充 capabilities", async () => {
     const adapter = new CmuxAdapter(workingFactory(), { timeoutMs: 1000 });
     await adapter.connect();
 
@@ -68,7 +68,7 @@ describe("CmuxAdapter", () => {
     expect(status.capabilities["surface.focus"]).toBe(true);
   });
 
-  it("connect normalizes capability map payloads from system.capabilities", async () => {
+  it("连接时规范化 system.capabilities 返回的 capability map payload", async () => {
     const factory: CmuxTransportFactory = async () => ({
       request: async (method: string) => {
         if (method === "capabilities") {
@@ -94,7 +94,7 @@ describe("CmuxAdapter", () => {
     expect(adapter.getStatus().capabilities["surface.focus"]).toBe(true);
   });
 
-  it("connect with factory throwing ENOENT: available=false, capabilities={}", async () => {
+  it("factory 抛出 ENOENT 时连接结果为 available=false、capabilities={}", async () => {
     const adapter = new CmuxAdapter(failingFactory("ENOENT"), { timeoutMs: 1000 });
     await adapter.connect();
 
@@ -103,7 +103,7 @@ describe("CmuxAdapter", () => {
     expect(status.capabilities).toEqual({});
   });
 
-  it("connect with factory throwing ECONNREFUSED: available=false, capabilities={}", async () => {
+  it("factory 抛出 ECONNREFUSED 时连接结果为 available=false、capabilities={}", async () => {
     const adapter = new CmuxAdapter(failingFactory("ECONNREFUSED"), { timeoutMs: 1000 });
     await adapter.connect();
 
@@ -112,7 +112,7 @@ describe("CmuxAdapter", () => {
     expect(status.capabilities).toEqual({});
   });
 
-  it("connect with factory that times out: available=false, capabilities={}", async () => {
+  it("factory 超时时连接结果为 available=false、capabilities={}", async () => {
     const adapter = new CmuxAdapter(hangingFactory(), { timeoutMs: 50 });
     await adapter.connect();
 
@@ -121,12 +121,12 @@ describe("CmuxAdapter", () => {
     expect(status.capabilities).toEqual({});
   });
 
-  it("connect where factory succeeds but capabilities hang: available=false", async () => {
-    // Factory connects fine, but request("capabilities") never resolves
+  it("factory 成功但 capabilities 挂起时连接结果为 available=false", async () => {
+    // factory 连接正常，但 request("capabilities") 永不返回。
     const closeSpy = vi.fn();
     const factory: CmuxTransportFactory = async () => ({
       request: () => new Promise(() => {
-        // Never resolves
+        // 永不返回。
       }),
       close: closeSpy,
     });
@@ -139,7 +139,7 @@ describe("CmuxAdapter", () => {
     expect(status.capabilities).toEqual({});
   });
 
-  it("transport is closed when factory succeeds but capabilities hang", async () => {
+  it("factory 成功但 capabilities 挂起时关闭 transport", async () => {
     const closeSpy = vi.fn();
     const factory: CmuxTransportFactory = async () => ({
       request: () => new Promise(() => {
@@ -151,12 +151,11 @@ describe("CmuxAdapter", () => {
     const adapter = new CmuxAdapter(factory, { timeoutMs: 50 });
     await adapter.connect();
 
-    // Transport was opened by factory, but capabilities timed out.
-    // The adapter must close the transient transport to avoid leak.
+    // factory 已打开 transport，但 capabilities 超时；适配器必须关闭临时 transport，避免泄漏。
     expect(closeSpy).toHaveBeenCalledOnce();
   });
 
-  it("transport is closed when factory succeeds but capabilities throw", async () => {
+  it("factory 成功但 capabilities 抛错时关闭 transport", async () => {
     const closeSpy = vi.fn();
     const factory: CmuxTransportFactory = async () => ({
       request: async () => {
@@ -172,7 +171,7 @@ describe("CmuxAdapter", () => {
     expect(closeSpy).toHaveBeenCalledOnce();
   });
 
-  it("connect reports unavailable when workspace.current fails after capabilities succeed", async () => {
+  it("capabilities 成功后 workspace.current 失败时 connect 报告 unavailable", async () => {
     const closeSpy = vi.fn();
     const factory: CmuxTransportFactory = async () => ({
       request: async (method: string) => {
@@ -195,7 +194,7 @@ describe("CmuxAdapter", () => {
     expect(closeSpy).toHaveBeenCalledOnce();
   });
 
-  it("getStatus returns typed CmuxStatus", async () => {
+  it("getStatus 返回类型化的 CmuxStatus", async () => {
     const adapter = new CmuxAdapter(workingFactory(["workspace.list"]), { timeoutMs: 1000 });
     await adapter.connect();
 
@@ -206,13 +205,13 @@ describe("CmuxAdapter", () => {
     expect(typeof status.capabilities).toBe("object");
   });
 
-  it("isAvailable returns false when not connected", () => {
+  it("未连接时 isAvailable 返回 false", () => {
     const adapter = new CmuxAdapter(workingFactory(), { timeoutMs: 1000 });
-    // No connect() called
+    // 未调用 connect()。
     expect(adapter.isAvailable()).toBe(false);
   });
 
-  it("capability detection: transport returns feature list, maps to capability record", async () => {
+  it("能力检测：transport 返回 feature 列表并映射为 capability record", async () => {
     const features = ["workspace.list", "workspace.create", "surface.focus", "sidebar.metadata"];
     const adapter = new CmuxAdapter(workingFactory(features), { timeoutMs: 1000 });
     await adapter.connect();
@@ -222,11 +221,11 @@ describe("CmuxAdapter", () => {
     for (const f of features) {
       expect(status.capabilities[f]).toBe(true);
     }
-    // A capability not in the list should be undefined/falsy
+    // 列表中没有的 capability 应为 undefined/falsy。
     expect(status.capabilities["nonexistent.capability"]).toBeFalsy();
   });
 
-  it("reconnect after failure: second connect() with working factory succeeds", async () => {
+  it("失败后重连：第二次 connect() 使用可用 factory 时成功", async () => {
     let callCount = 0;
     const factory: CmuxTransportFactory = async () => {
       callCount++;
@@ -248,7 +247,7 @@ describe("CmuxAdapter", () => {
 
     const adapter = new CmuxAdapter(factory, { timeoutMs: 1000 });
 
-    // First connect fails
+    // 第一次连接失败。
     await adapter.connect();
     expect(adapter.isAvailable()).toBe(false);
 
@@ -259,10 +258,10 @@ describe("CmuxAdapter", () => {
     expect(callCount).toBe(2);
   });
 
-  // -- Surface operations (T14) --
+  // -- Surface 操作（T14）--
 
   describe("listWorkspaces", () => {
-    it("returns typed workspace list from transport", async () => {
+    it("从 transport 返回类型化的 workspace 列表", async () => {
       const factory = surfaceFactory({
         "workspace.list": { workspaces: [{ id: "ws-1", name: "review" }, { id: "ws-2", name: "dev" }] },
       });
@@ -279,16 +278,16 @@ describe("CmuxAdapter", () => {
       }
     });
 
-    it("returns { ok: false, code: 'unavailable' } when not connected", async () => {
+    it("未连接时返回 { ok: false, code: 'unavailable' }", async () => {
       const adapter = new CmuxAdapter(workingFactory(), { timeoutMs: 1000 });
-      // No connect()
+      // 未调用 connect()。
       const result = await adapter.listWorkspaces();
-      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux is not connected" });
+      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux 未连接" });
     });
   });
 
   describe("listSurfaces", () => {
-    it("returns typed surface list from transport", async () => {
+    it("从 transport 返回类型化的 surface 列表", async () => {
       const factory = surfaceFactory({
         "surface.list": { surfaces: [{ id: "s-1", title: "orchestrator", type: "terminal" }] },
       });
@@ -304,7 +303,7 @@ describe("CmuxAdapter", () => {
       }
     });
 
-    it("with workspaceId forwards filter param to transport", async () => {
+    it("提供 workspaceId 时把过滤参数转发给 transport", async () => {
       const requestSpy = vi.fn().mockImplementation(async (method: string) => {
         if (method === "capabilities") return { capabilities: ["surface.list"] };
         if (method === "surface.list") return { surfaces: [] };
@@ -319,21 +318,21 @@ describe("CmuxAdapter", () => {
 
       await adapter.listSurfaces("ws-1");
 
-      // Find the surface.list call (not the capabilities call)
+      // 查找 surface.list 调用，而不是 capabilities 调用。
       const surfaceCall = requestSpy.mock.calls.find((c: unknown[]) => c[0] === "surface.list");
       expect(surfaceCall).toBeDefined();
       expect(surfaceCall![1]).toEqual({ workspaceId: "ws-1" });
     });
 
-    it("returns { ok: false, code: 'unavailable' } when not connected", async () => {
+    it("未连接时返回 { ok: false, code: 'unavailable' }", async () => {
       const adapter = new CmuxAdapter(workingFactory(), { timeoutMs: 1000 });
       const result = await adapter.listSurfaces();
-      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux is not connected" });
+      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux 未连接" });
     });
   });
 
   describe("focusSurface", () => {
-    it("calls transport with correct method and params", async () => {
+    it("使用正确 method 与参数调用 transport", async () => {
       const requestSpy = vi.fn().mockImplementation(async (method: string) => {
         if (method === "capabilities") return { capabilities: ["surface.focus"] };
         return {};
@@ -352,7 +351,7 @@ describe("CmuxAdapter", () => {
       expect(focusCall![1]).toEqual({ surfaceId: "s-1" });
     });
 
-    it("returns { ok: true, data: undefined } on success", async () => {
+    it("成功时返回 { ok: true, data: undefined }", async () => {
       const factory = surfaceFactory({ "surface.focus": {} });
       const adapter = new CmuxAdapter(factory, { timeoutMs: 1000 });
       await adapter.connect();
@@ -361,15 +360,15 @@ describe("CmuxAdapter", () => {
       expect(result).toEqual({ ok: true, data: undefined });
     });
 
-    it("returns { ok: false, code: 'unavailable' } when not connected", async () => {
+    it("未连接时返回 { ok: false, code: 'unavailable' }", async () => {
       const adapter = new CmuxAdapter(workingFactory(), { timeoutMs: 1000 });
       const result = await adapter.focusSurface("s-1");
-      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux is not connected" });
+      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux 未连接" });
     });
   });
 
   describe("sendText (cmux)", () => {
-    it("calls transport with correct method and params", async () => {
+    it("使用正确 method 与参数调用 transport", async () => {
       const requestSpy = vi.fn().mockImplementation(async (method: string) => {
         if (method === "capabilities") return { capabilities: ["surface.sendText"] };
         return {};
@@ -388,7 +387,7 @@ describe("CmuxAdapter", () => {
       expect(sendCall![1]).toEqual({ surfaceId: "s-1", text: "hello world" });
     });
 
-    it("returns { ok: true, data: undefined } on success", async () => {
+    it("成功时返回 { ok: true, data: undefined }", async () => {
       const factory = surfaceFactory({ "surface.sendText": {} });
       const adapter = new CmuxAdapter(factory, { timeoutMs: 1000 });
       await adapter.connect();
@@ -397,16 +396,16 @@ describe("CmuxAdapter", () => {
       expect(result).toEqual({ ok: true, data: undefined });
     });
 
-    it("returns { ok: false, code: 'unavailable' } when not connected", async () => {
+    it("未连接时返回 { ok: false, code: 'unavailable' }", async () => {
       const adapter = new CmuxAdapter(workingFactory(), { timeoutMs: 1000 });
       const result = await adapter.sendText("s-1", "test");
-      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux is not connected" });
+      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux 未连接" });
     });
   });
 
   describe("currentWorkspace", () => {
-    it("normalizes real cmux workspace_id payload into a handle string", async () => {
-      // Real cmux CLI output: { "workspace_id": "workspace:1" }
+    it("把真实 cmux workspace_id payload 规范化为 handle 字符串", async () => {
+      // 真实 cmux CLI 输出：{ "workspace_id": "workspace:1" }。
       const factory = surfaceFactory({
         "workspace.current": { workspace_id: "workspace:1" },
       });
@@ -420,16 +419,16 @@ describe("CmuxAdapter", () => {
       }
     });
 
-    it("returns { ok: false, code: 'unavailable' } when not connected", async () => {
+    it("未连接时返回 { ok: false, code: 'unavailable' }", async () => {
       const adapter = new CmuxAdapter(workingFactory(), { timeoutMs: 1000 });
       const result = await adapter.currentWorkspace();
-      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux is not connected" });
+      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux 未连接" });
     });
   });
 
   describe("createTerminalSurface", () => {
-    it("normalizes real cmux created_surface_id payload into a handle string", async () => {
-      // Real cmux CLI output contains created_surface_id / surface_id
+    it("把真实 cmux created_surface_id payload 规范化为 handle 字符串", async () => {
+      // 真实 cmux CLI 输出包含 created_surface_id / surface_id。
       const requestSpy = vi.fn().mockImplementation(async (method: string) => {
         if (method === "capabilities") return { capabilities: ["surface.create"] };
         if (method === "surface.create") return { created_surface_id: "surface:9", workspace_id: "workspace:2", pane_id: "pane:3" };
@@ -453,7 +452,7 @@ describe("CmuxAdapter", () => {
       expect(createCall![1]).toEqual({ workspaceId: "workspace:2", type: "terminal" });
     });
 
-    it("prefers created_surface_ref over created_surface_id (refs idFormat default)", async () => {
+    it("优先使用 created_surface_ref 而非 created_surface_id（refs idFormat 默认值）", async () => {
       const factory = surfaceFactory({
         "surface.create": { created_surface_ref: "surface:9", created_surface_id: "abc-uuid-123" },
       });
@@ -467,7 +466,7 @@ describe("CmuxAdapter", () => {
       }
     });
 
-    it("extracts the surface ref from legacy summary strings", async () => {
+    it("从旧式 summary 字符串提取 surface ref", async () => {
       const factory = surfaceFactory({
         "surface.create": { created_surface_ref: "OK surface:78 pane:2 workspace:1" },
       });
@@ -481,7 +480,7 @@ describe("CmuxAdapter", () => {
       }
     });
 
-    it("falls back to surface_ref when created_surface_ref is missing", async () => {
+    it("created_surface_ref 缺失时回退到 surface_ref", async () => {
       const factory = surfaceFactory({
         "surface.create": { surface_ref: "surface:5" },
       });
@@ -495,7 +494,7 @@ describe("CmuxAdapter", () => {
       }
     });
 
-    it("falls back through id chain: created_surface_id -> surface_id", async () => {
+    it("沿 ID 链回退：created_surface_id → surface_id", async () => {
       const factory = surfaceFactory({
         "surface.create": { surface_id: "surface:3" },
       });
@@ -509,15 +508,15 @@ describe("CmuxAdapter", () => {
       }
     });
 
-    it("returns { ok: false, code: 'unavailable' } when not connected", async () => {
+    it("未连接时返回 { ok: false, code: 'unavailable' }", async () => {
       const adapter = new CmuxAdapter(workingFactory(), { timeoutMs: 1000 });
       const result = await adapter.createTerminalSurface("workspace:1");
-      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux is not connected" });
+      expect(result).toEqual({ ok: false, code: "unavailable", message: "cmux 未连接" });
     });
   });
 
-  describe("transport request failure", () => {
-    it("returns { ok: false, code: 'request_failed' }", async () => {
+  describe("transport 请求失败", () => {
+    it("返回 { ok: false, code: 'request_failed' }", async () => {
       const requestSpy = vi.fn().mockImplementation(async (method: string) => {
         if (method === "capabilities") return { capabilities: ["workspace.list"] };
         if (method === "workspace.current") return { workspace_id: "workspace:1" };

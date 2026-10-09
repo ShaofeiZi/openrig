@@ -21,7 +21,7 @@ import {
   type CompactStatusRow,
 } from "../src/domain/mission-control/mission-control-read-layer.js";
 
-describe("MissionControlReadLayer (PL-005 Phase A; 7 views)", () => {
+describe("MissionControlReadLayer（PL-005 阶段 A；7 个视图）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -48,20 +48,17 @@ describe("MissionControlReadLayer (PL-005 Phase A; 7 views)", () => {
       viewProjector,
       streamStore,
       fleetCliCapability: fleetCli,
-      // V0.3.1 slice 05 kernel-rig-as-default — the ReadLayer's
-      // defaultOperatorSession is now injected from the resolved
-      // workspace.operator_seat_name setting (rather than a hardcoded
-      // constant). Existing fixtures use "human-operator@kernel" as the
-      // destinationSession; preserve that here so the fixture data
-      // and the my-queue routing align. Production startup.ts injects
-      // the SettingsStore-resolved value.
+      // V0.3.1 切片 05 kernel-rig-as-default——ReadLayer 的 defaultOperatorSession
+      // 现在从解析后的 workspace.operator_seat_name 设置注入（不再使用硬编码常量）。
+      // 现有 fixture 使用 "human-operator@kernel" 作为 destinationSession；此处保留该值，
+      // 使 fixture 数据与 my-queue 路由一致。生产环境 startup.ts 注入 SettingsStore 解析值。
       defaultOperatorSession: "human-operator@kernel",
     });
   });
 
   afterEach(() => db.close());
 
-  it("readView returns a result for all 7 views (no throw, structurally valid)", async () => {
+  it("readView 为全部 7 个视图返回结果（不抛错且结构有效）", async () => {
     for (const viewName of MISSION_CONTROL_VIEWS) {
       const result = await readLayer.readView(viewName);
       expect(result.viewName).toBe(viewName);
@@ -70,26 +67,26 @@ describe("MissionControlReadLayer (PL-005 Phase A; 7 views)", () => {
     }
   });
 
-  it("9-FIELD CONTENT MODEL: every row across every view exposes all 9 fields", async () => {
-    // Seed varied content so every view has at least one row.
+  it("九字段内容模型：每个视图的每一行都公开全部 9 个字段", async () => {
+    // 植入多样内容，使每个视图至少有一行。
     await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "human-operator@kernel",
-      body: "needs human approval",
+      body: "需要人工批准",
       tier: "human-gate",
-      summary: "test summary (FR-4 human-routed fixture)",
+      summary: "测试摘要（FR-4 人员路由 fixture）",
       evidenceRef: "proof/test-evidence.md",
     });
     await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "agent@rig",
-      body: "agent task",
+      body: "agent 任务",
       priority: "high",
     });
     streamStore.emit({
       streamItemId: "stream-1",
       sourceSession: "discovery@rig",
-      body: "observation",
+      body: "观察记录",
     });
 
     const fields: Array<keyof CompactStatusRow> = [
@@ -114,54 +111,54 @@ describe("MissionControlReadLayer (PL-005 Phase A; 7 views)", () => {
     }
   });
 
-  it("my-queue filters to operator's human-gate items only", async () => {
+  it("my-queue 仅筛选操作者的 human-gate 条目", async () => {
     await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "human-operator@kernel",
-      body: "for the operator",
+      body: "交给操作者",
       tier: "human-gate",
-      summary: "test summary (FR-4 human-routed fixture)",
+      summary: "测试摘要（FR-4 人员路由 fixture）",
       evidenceRef: "proof/test-evidence.md",
     });
     await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "agent@rig",
-      body: "not human-gate",
+      body: "非 human-gate",
     });
     await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "human-operator@kernel",
-      summary: "test summary (FR-4 human-routed fixture)",
+      summary: "测试摘要（FR-4 人员路由 fixture）",
       evidenceRef: "proof/test-evidence.md",
-      body: "non-human-gate from operator",
+      body: "来自操作者的非 human-gate 条目",
     });
     const result = await readLayer.readView("my-queue");
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]?.rigOrMissionName).toBe("human-operator@kernel");
   });
 
-  it("qitem-backed rows preserve the queue body for phone human-gate decisions", async () => {
+  it("由 qitem 支持的行会保留手机端 human-gate 决策的队列正文", async () => {
     await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "human-operator@kernel",
-      body: "Approve the release candidate after checking the phone notification path.",
+      body: "检查手机通知路径后批准发布候选项。",
       tier: "human-gate",
-      summary: "test summary (FR-4 human-routed fixture)",
+      summary: "测试摘要（FR-4 人员路由 fixture）",
       evidenceRef: "proof/test-evidence.md",
     });
 
     const result = await readLayer.readView("my-queue");
     const row = result.rows[0] as Record<string, unknown>;
-    expect(row.qitemBody).toBe("Approve the release candidate after checking the phone notification path.");
-    expect(row.qitemSummary).toContain("Approve the release candidate");
+    expect(row.qitemBody).toBe("检查手机通知路径后批准发布候选项。");
+    expect(row.qitemSummary).toContain("批准发布候选项");
   });
 
-  it("recent-ships caps at 10", async () => {
+  it("recent-ships 最多返回 10 条", async () => {
     for (let i = 0; i < 15; i++) {
       const created = await queueRepo.create({
         sourceSession: "src@rig",
         destinationSession: "agent@rig",
-        body: `ship ${i}`,
+        body: `交付 ${i}`,
       });
       queueRepo.update({
         qitemId: created.qitemId,
@@ -174,7 +171,7 @@ describe("MissionControlReadLayer (PL-005 Phase A; 7 views)", () => {
     expect(result.rows).toHaveLength(10);
   });
 
-  it("active-work sorts priority-first (critical > high > routine > background)", async () => {
+  it("active-work 优先按优先级排序（critical > high > routine > background）", async () => {
     await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body: "x", priority: "routine" });
     await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body: "x", priority: "critical" });
     await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body: "x", priority: "high" });
@@ -184,28 +181,28 @@ describe("MissionControlReadLayer (PL-005 Phase A; 7 views)", () => {
     expect(result.rows[2]?.confidenceFreshness).toBe("routine");
   });
 
-  it("recent-observations reads from stream_items (PL-004 Phase A daemon-backed source)", async () => {
+  it("recent-observations 从 stream_items 读取（PL-004 阶段 A 的 daemon 支持数据源）", async () => {
     streamStore.emit({
       streamItemId: "stream-1",
       sourceSession: "discovery@rig",
-      body: "observation 1",
+      body: "观察记录 1",
       hintType: "feature-request",
     });
     streamStore.emit({
       streamItemId: "stream-2",
       sourceSession: "discovery@rig",
-      body: "observation 2",
+      body: "观察记录 2",
     });
     const result = await readLayer.readView("recent-observations");
     expect(result.rows).toHaveLength(2);
     expect(result.rows[0]?.rigOrMissionName).toBe("discovery@rig");
   });
 
-  it("fleet view returns rows + drift indicator metadata", async () => {
+  it("fleet 视图返回行及漂移指示器元数据", async () => {
     const result = await readLayer.readView("fleet");
     expect(result.viewName).toBe("fleet");
     expect(typeof result.meta.rowCount).toBe("number");
-    // staleCliCount is present (may be 0 with default no-op probe).
+    // staleCliCount 存在（使用默认空操作探针时可能为 0）。
     expect(typeof result.meta.rigsRunningStaleCli).toBe("number");
   });
 });

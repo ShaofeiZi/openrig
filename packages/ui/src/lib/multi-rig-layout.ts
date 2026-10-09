@@ -1,19 +1,16 @@
-// V1 polish slice Phase 5.2 P5.2-3 + P5.2-6 — multi-rig canvas helpers.
+// V1 润色切片 Phase 5.2 P5.2-3 + P5.2-6 —— 多工作组画布辅助函数。
 //
-// Two responsibilities:
-//   1. prefixRigData(rigId, nodes, edges): cross-rig node-ID prefixing
-//      so the merged canvas satisfies react-flow's unique-ID requirement.
-//      Each prefixed node carries `data.rigId` so downstream click
-//      handlers read rigId from `node.data.rigId` (NOT closure).
-//   2. packRigGroups(rigBounds, viewportWidth): outer offset packing.
-//      Per-rig layout already happened via applyTreeLayout (or fixed
-//      collapsed-card dimensions when not yet expanded); this helper
-//      places each rig group at a grid offset in the host canvas.
+// 两个职责：
+//   1. prefixRigData(rigId, nodes, edges)：跨工作组节点 ID 加前缀，
+//      使合并后的画布满足 react-flow 的唯一 ID 要求。每个加前缀的节点携带
+//      `data.rigId`，下游点击处理函数从 `node.data.rigId` 读取（而非闭包）。
+//   2. packRigGroups(rigBounds, viewportWidth)：外层偏移排布。
+//      单工作组内部布局已通过 applyTreeLayout 完成（或未展开时用固定折叠卡片尺寸）；
+//      本辅助函数把每个工作组组放到宿主画布的网格偏移上。
 //
-// Layout strategy = option (a) per-rig + outer offset (per Phase 5.2
-// ACK §2). Rationale: collapse stability — toggling rig N doesn't
-// reflow rigs 1..N-1 because each rig's internal layout is independent
-// and its outer offset is fixed by its grid slot.
+// 布局策略 = 选项 (a)：单工作组内部布局 + 外层偏移（依 Phase 5.2 ACK §2）。
+// 理由：折叠稳定性——切换工作组 N 不会重排 1..N-1，因为每个工作组内部布局独立、
+// 且其外层偏移由网格槽位固定。
 
 const PREFIX_DELIMITER = "::";
 
@@ -21,14 +18,13 @@ export const COLLAPSED_RIG_WIDTH = 280;
 export const COLLAPSED_RIG_HEIGHT = 120;
 const RIG_GUTTER_X = 48;
 const RIG_GUTTER_Y = 48;
-/** Extra height the rig group adds above its expanded children
- *  (header + counts strip + padding). Used by expanded-bounds calc. */
+/** 工作组组在其展开子节点之上额外增加的高度
+ *  （表头 + 计数条 + 内边距）。用于展开边界计算。 */
 export const RIG_HEADER_HEIGHT = 60;
 export const RIG_PADDING = 16;
 
-/** Prefix every node ID + edge endpoint with `${rigId}::` so the merged
- *  multi-rig graph has globally-unique IDs. Threads `data.rigId` onto
- *  every node so click handlers can read it without closure capture. */
+/** 给每个节点 ID + 边端点加前缀 `${rigId}::`，使合并后的多工作组图
+ *  拥有全局唯一 ID。把 `data.rigId` 穿到每个节点上，让点击处理函数无需闭包捕获即可读取。 */
 export function prefixRigData<
   N extends { id: string; data?: Record<string, unknown> },
   E extends { id: string; source: string; target: string },
@@ -42,8 +38,7 @@ export function prefixRigData<
     nodes: nodes.map((n) => ({
       ...n,
       id: prefixed(n.id),
-      // Some node shapes carry parentId for react-flow parent/child;
-      // prefix that too if present.
+      // 某些节点形状携带用于 react-flow 父子关系的 parentId；若存在也加前缀。
       ...((n as unknown as { parentId?: string }).parentId
         ? { parentId: prefixed((n as unknown as { parentId: string }).parentId) }
         : {}),
@@ -58,10 +53,8 @@ export function prefixRigData<
   };
 }
 
-/** Compute the bounding box of a set of laid-out nodes (per-rig
- *  expanded children) so the outer rig group can size correctly.
- *  Returns rig-internal-relative coordinates (the top-left node at
- *  origin); the outer offset is added by packRigGroups. */
+/** 计算一组已布局节点（单工作组展开子节点）的包围盒，使外层工作组组尺寸正确。
+ *  返回工作组内部相对坐标（左上角节点在原点）；外层偏移由 packRigGroups 添加。 */
 export function computeBounds(
   nodes: ReadonlyArray<{ position: { x: number; y: number }; initialWidth?: number; initialHeight?: number }>,
 ): { width: number; height: number; minX: number; minY: number } {
@@ -102,10 +95,9 @@ export interface PackedRig {
   height: number;
 }
 
-/** Pack rig groups in a grid given a viewport width. Each rig keeps its
- *  own (possibly-different-sized) bounds; the grid uses a max-width
- *  column tracker per row so wider rigs don't squeeze narrower ones.
- *  Simple greedy row-fill — sufficient for V1 fleet sizes. */
+/** 在给定视口宽度下把工作组组打包进网格。每个工作组保留各自（可能不同的）边界；
+ *  网格每行用一个最大宽度列追踪器，使较宽工作组不会挤压较窄的。
+ *  简单贪心行填充——对 V1 集群规模足够。 */
 export function packRigGroups(
   rigs: readonly RigBounds[],
   viewportWidth: number,
@@ -117,7 +109,7 @@ export function packRigGroups(
   let rowMaxHeight = 0;
   for (const rig of rigs) {
     if (cursorX + rig.width > minViewport && cursorX > 0) {
-      // Wrap to next row.
+      // 换行到下一行。
       cursorX = 0;
       cursorY += rowMaxHeight + RIG_GUTTER_Y;
       rowMaxHeight = 0;

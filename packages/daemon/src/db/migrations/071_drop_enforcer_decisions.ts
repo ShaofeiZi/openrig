@@ -1,16 +1,14 @@
 import type { Migration } from "../migrate.js";
 
-// Unbuild of the W4 compaction-enforcement suite (founder-ruled, over-engineering audit).
+// 撤销 W4 压缩执行套件（创始人裁定，过度工程审计）。
 //
-// FORWARD-ONLY BY RULING: 068_enforcer_decisions is APPLIED on live DBs and 069/070 sit above it,
-// so its migration file stays as history and is NOT deleted — removing it would leave an applied
-// ledger row with no migration and two migrations above the gap. This drops the table instead, so
-// schema_migrations keeps an honest record of both the create and the drop.
+// 按裁定只能前进：068_enforcer_decisions 已应用于实时数据库，069/070 位于其后，因此其迁移
+// 文件必须作为历史保留，不得删除——删除会留下一个没有对应迁移的已应用台账行，且缺口之后还有
+// 两个迁移。这里改为删除表，使 schema_migrations 如实记录创建与删除。
 //
-// IF EXISTS is load-bearing, not defensive noise: 068 is excluded from the shared full-test DB
-// fixture (test-app.ts migrationsForFullTestDbExclusions), so on that fixture this migration runs
-// against a database where enforcer_decisions was never created. The indexes are dropped with the
-// table by SQLite.
+// IF EXISTS 承担实际语义，不是防御性噪声：068 被排除在共享完整测试数据库 fixture 之外
+//（test-app.ts migrationsForFullTestDbExclusions），因此在该 fixture 中，此迁移会对从未创建
+// enforcer_decisions 的数据库运行。SQLite 会随表一起删除索引。
 export const dropEnforcerDecisionsSchema: Migration = {
   name: "071_drop_enforcer_decisions.sql",
   sql: `

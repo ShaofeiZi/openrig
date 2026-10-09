@@ -54,12 +54,12 @@ const CLASSIFIER_FILES = [
   { cli: "packages/cli/src/lib/scope/scope-audit.ts", daemon: "packages/daemon/src/domain/scope/scope-audit.ts" },
   { cli: "packages/cli/src/lib/scope/dot-id.ts", daemon: "packages/daemon/src/domain/scope/dot-id.ts" },
   { cli: "packages/cli/src/lib/scope/types.ts", daemon: "packages/daemon/src/domain/scope/types.ts" },
-  // release-0.4.7 intent-stage: the shared scaffold-placeholder grammar twin
-  // (arch AR-1 ruling — one grammar, twin-pinned; see the module header).
+  // release-0.4.7 intent-stage：共享 scaffold-placeholder 语法孪生
+  //（arch AR-1 裁定——一套语法，孪生 pin；见模块头）。
   { cli: "packages/cli/src/lib/scope/scaffold-placeholder.ts", daemon: "packages/daemon/src/domain/scope/scaffold-placeholder.ts" },
-  // KI-5.3-2: the shared logical-checkbox item grammar twin — one grammar for
-  // the review composer, the slice-detail projector, and `rig proof add`, so a
-  // byIndex evidence ref names the same promise everywhere (see module header).
+  // KI-5.3-2：共享 logical-checkbox item 语法孪生——review composer、
+  // slice-detail projector 与 `rig proof add` 共用一套语法，故 byIndex
+  // evidence 引用在各处命名同一 promise（见模块头）。
   { cli: "packages/cli/src/lib/scope/logical-checkbox.ts", daemon: "packages/daemon/src/domain/scope/logical-checkbox.ts" },
 ];
 
@@ -106,17 +106,17 @@ const SHARED_FIXTURES: Array<{ label: string; input: ScopeAuditInput }> = [
   },
 ];
 
-describe("scope-audit CLI/daemon parity (CI-FAILING)", () => {
-  describe("byte-equivalence", () => {
+describe("scope-audit CLI/daemon 一致性（CI-FAILING）", () => {
+  describe("逐字等价", () => {
     for (const pair of CLASSIFIER_FILES) {
-      it(`${path.basename(pair.cli)} is byte-equivalent across CLI and daemon`, () => {
+      it(`${path.basename(pair.cli)} 在 CLI 与 daemon 间逐字等价`, () => {
         const cliContent = fs.readFileSync(path.join(REPO_ROOT, pair.cli), "utf-8");
         const daemonContent = fs.readFileSync(path.join(REPO_ROOT, pair.daemon), "utf-8");
         expect(daemonContent).toBe(cliContent);
       });
     }
 
-    it("retires the per-commit PROGRESS classifier and its CLI-only inputs everywhere", () => {
+    it("在所有位置移除 per-commit PROGRESS classifier 及其 CLI-only input", () => {
       const files = [
         "packages/cli/src/lib/scope/scope-audit.ts",
         "packages/daemon/src/domain/scope/scope-audit.ts",
@@ -131,7 +131,7 @@ describe("scope-audit CLI/daemon parity (CI-FAILING)", () => {
       }
     });
 
-    it("keeps private notes readers out of recursively enumerated production code", () => {
+    it("让 private notes reader 不进入递归枚举的 production code", () => {
       const files = PRODUCTION_CODE_ROOTS.flatMap((root) =>
         enumerateCodeFiles(path.join(REPO_ROOT, root)),
       );
@@ -148,10 +148,10 @@ describe("scope-audit CLI/daemon parity (CI-FAILING)", () => {
     });
   });
 
-  describe("shared-fixture output parity", () => {
+  describe("shared-fixture output 一致性", () => {
     let cliClassifier: typeof daemonClassifier;
 
-    it("loads CLI classifier", async () => {
+    it("加载 CLI classifier", async () => {
       const mod = await import(
         path.join(REPO_ROOT, "packages/cli/src/lib/scope/scope-audit.ts")
       );
@@ -160,7 +160,7 @@ describe("scope-audit CLI/daemon parity (CI-FAILING)", () => {
     });
 
     for (const fixture of SHARED_FIXTURES) {
-      it(`fixture: ${fixture.label}`, () => {
+      it(`fixture：${fixture.label}`, () => {
         if (!cliClassifier) throw new Error("CLI classifier not loaded");
         const cliResult = cliClassifier(fixture.input);
         const daemonResult = daemonClassifier(fixture.input);
@@ -170,8 +170,8 @@ describe("scope-audit CLI/daemon parity (CI-FAILING)", () => {
   });
 });
 
-describe("mission notes resolver parity", () => {
-  it("runs the same current/legacy precedence matrix through both twins", async () => {
+describe("mission notes resolver 一致性", () => {
+  it("让两个 twin 运行相同 current/legacy precedence matrix", async () => {
     const root = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "scope-notes-parity-"));
     const cli = await import(path.join(REPO_ROOT, "packages/cli/src/lib/scope/scope-fs.ts"));
     try {
@@ -200,8 +200,8 @@ describe("mission notes resolver parity", () => {
   });
 });
 
-describe("shipped refocus notes resolution", () => {
-  it("uses the real CLI resolver for every locked outcome and reports command failure honestly", () => {
+describe("已交付 refocus notes 解析", () => {
+  it("每个 locked outcome 都使用真实 CLI resolver，并诚实报告 command failure", () => {
     const root = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "scope-notes-refocus-"));
     const workNode = path.join(root, "work-node");
     const bin = path.join(root, "bin");
@@ -269,7 +269,7 @@ exec "$OPENRIG_TEST_NODE" --import tsx "$OPENRIG_TEST_SCOPE_LAUNCHER" "$@"
         "--work-start", workNode,
       ], { cwd: REPO_ROOT, encoding: "utf8", env: baseEnv });
       expect(missing.status).toBe(0);
-      expect(missing.stdout).toContain(`NOTES GAP — no readable mission notes at ${resolvedWorkNode}`);
+      expect(missing.stdout).toContain(`NOTES 缺口——${resolvedWorkNode} 中没有可读的 mission notes`);
 
       const failed = spawnSync("python3", [
         TRACE_TO_ROOT,
@@ -282,8 +282,9 @@ exec "$OPENRIG_TEST_NODE" --import tsx "$OPENRIG_TEST_SCOPE_LAUNCHER" "$@"
         env: { ...baseEnv, OPENRIG_TEST_SCOPE_RESOLVE_FAIL: "1" },
       });
       expect(failed.status).toBe(0);
-      expect(failed.stdout).toContain("NOTES RESOLUTION GAP — resolver command exited 23");
-      expect(failed.stdout).not.toContain("NOTES GAP — no readable mission notes");
+      expect(failed.stdout).toContain("NOTES 解析缺口");
+      expect(failed.stdout).toContain("解析命令退出，退出码 23");
+      expect(failed.stdout).not.toContain("没有可读的 mission notes");
     } finally {
       if (fs.existsSync(currentPath)) fs.chmodSync(currentPath, 0o600);
       fs.rmSync(root, { recursive: true, force: true });
@@ -291,12 +292,12 @@ exec "$OPENRIG_TEST_NODE" --import tsx "$OPENRIG_TEST_SCOPE_LAUNCHER" "$@"
   });
 });
 
-// OPR.0.4.4.19 FR-10 — classifier-level backstop tests (run against the
-// daemon copy; the parity test above guarantees the CLI copy is identical).
+// OPR.0.4.4.19 FR-10——classifier-level backstop 测试（针对 daemon 副本运行；上方 parity 测试
+// 保证 CLI 副本完全一致）。
 import { describe as describeFr10, it as itFr10, expect as expectFr10 } from "vitest";
 import { classifyScopeItem } from "../src/domain/scope/scope-audit.js";
 
-describeFr10("FR-10 backstops (OPR.0.4.4.19)", () => {
+describeFr10("FR-10 backstop（OPR.0.4.4.19）", () => {
   const base = {
     id: null,
     path: "/w/missions/release-x/slices/19-signal-layer",
@@ -307,7 +308,7 @@ describeFr10("FR-10 backstops (OPR.0.4.4.19)", () => {
     level: "slice" as const,
   };
 
-  itFr10("C1: a headerless proof artifact yields a finding naming the file, the missing fields, and the fix", () => {
+  itFr10("C1：无 header 的 proof artifact 生成点名文件、缺失字段与修复方法的 finding", () => {
     const result = classifyScopeItem({
       ...base,
       implementationPrdExists: true,
@@ -317,10 +318,10 @@ describeFr10("FR-10 backstops (OPR.0.4.4.19)", () => {
     expectFr10(finding).toBeDefined();
     expectFr10(finding!.path).toBe("/w/.../proof/rogue.md");
     expectFr10(finding!.message).toContain("slice, candidate_sha, artifact_type, verdict, money_evidence");
-    expectFr10(finding!.remediation).toContain("rig proof add");
+    expectFr10(finding!.remediation).toContain("zrig proof add");
   });
 
-  itFr10("C1: out-of-set values are flagged naming the closed sets; valid headers are clean", () => {
+  itFr10("C1：out-of-set value 会被标记并点名 closed set；有效 header 无 finding", () => {
     const bad = classifyScopeItem({
       ...base,
       implementationPrdExists: true,
@@ -345,12 +346,12 @@ describeFr10("FR-10 backstops (OPR.0.4.4.19)", () => {
     expectFr10(good.findings.some((f) => f.kind === "proof_artifact_c1_invalid")).toBe(false);
   });
 
-  itFr10("C7 retired: a current authored node never requires IMPLEMENTATION-PRD.md", () => {
+  itFr10("C7 已退役：当前 authored node 永不要求 IMPLEMENTATION-PRD.md", () => {
     const result = classifyScopeItem({ ...base, implementationPrdExists: false });
     expectFr10(result.findings.some((f) => f.kind === "missing_impl_prd")).toBe(false);
   });
 
-  itFr10("C7 NEGATIVE: shaping (pre-spec) status with no PRD yields NO missing-spec finding (status-gated)", () => {
+  itFr10("C7 阴性：无 PRD 的 shaping（pre-spec）status 不产生 missing-spec finding（status-gated）", () => {
     const result = classifyScopeItem({
       ...base,
       readmeFrontmatterRaw: "id: OPR.X.19\nstatus: shaping",
@@ -359,21 +360,21 @@ describeFr10("FR-10 backstops (OPR.0.4.4.19)", () => {
     expectFr10(result.findings.some((f) => f.kind === "missing_impl_prd")).toBe(false);
   });
 
-  itFr10("inert without caller context: undefined proofArtifacts/implementationPrdExists produce no FR-10 findings", () => {
+  itFr10("无 caller context 时不生效：undefined proofArtifacts/implementationPrdExists 不产生 FR-10 finding", () => {
     const result = classifyScopeItem(base);
     expectFr10(result.findings.some((f) => f.kind === "proof_artifact_c1_invalid" || f.kind === "missing_impl_prd")).toBe(false);
   });
 });
 
 // ---------------------------------------------------------------------------
-// PM dogfood #1 (qitem-20260720015700-630eef64) — the per-section selection
-// must land in BOTH twins identically (byte-parity above already pins the
-// classifier + scaffold-placeholder twin files; this pins the VERDICT).
+// PM dogfood #1（qitem-20260720015700-630eef64）——per-section selection 必须在两个 twin 中
+// 完全一致地落地（上方 byte-parity 已固定 classifier + scaffold-placeholder twin 文件；这里固定
+// VERDICT）。
 // ---------------------------------------------------------------------------
 
 import { describe as describeDf, it as itDf, expect as expectDf } from "vitest";
 
-describeDf("PM dogfood #1 — twin verdict parity: authored README vs pristine PRD", () => {
+describeDf("PM dogfood #1——twin verdict 一致性：authored README 与 pristine PRD", () => {
   const AUTHORED_README = "# S\n## Intent\nauthored intent\n## Mini-requirements\n1. first authored requirement\n## Proof contract\n- [ ] authored deliverable one — captured\n";
   const PRISTINE_PRD = [
     "# PRD",
@@ -397,14 +398,14 @@ describeDf("PM dogfood #1 — twin verdict parity: authored README vs pristine P
     implementationPrdContent: PRISTINE_PRD,
   };
 
-  itDf("both twins agree AND neither emits a convention finding for the authored-README/pristine-PRD fixture", async () => {
+  itDf("两个 twin 一致，且都不为 authored-README/pristine-PRD fixture 输出 convention finding", async () => {
     const mod = await import(path.join(REPO_ROOT, "packages/cli/src/lib/scope/scope-audit.ts"));
     const cliResult = (mod.classifyScopeItem as typeof daemonClassifier)(input);
     const daemonResult = daemonClassifier(input);
-    expectDf(daemonResult).toEqual(cliResult); // twin parity, verdict-for-verdict
+    expectDf(daemonResult).toEqual(cliResult); // twin parity，逐 verdict 一致
     const conventionKinds = daemonResult.findings
       .filter((f) => f.kind === "mini_requirements_missing_or_malformed" || f.kind === "proof_contract_missing_or_malformed")
       .map((f) => f.kind);
-    expectDf(conventionKinds).toEqual([]); // RED pre-fix: both findings fire
+    expectDf(conventionKinds).toEqual([]); // 修复前为 RED：两个 finding 都会触发
   });
 });

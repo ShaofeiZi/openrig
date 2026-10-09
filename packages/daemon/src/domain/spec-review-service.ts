@@ -3,7 +3,7 @@ import { RigSpecSchema, LegacyRigSpecSchema } from "./rigspec-schema.js";
 import { parseAgentSpec, validateAgentSpec } from "./agent-manifest.js";
 import type { ValidationResult } from "./types.js";
 
-// -- Shared types --
+// -- 共享类型 --
 
 export type SourceState = "draft" | "file_preview" | "library_item";
 
@@ -12,7 +12,7 @@ export interface SpecGraphData {
   edges: Array<{ source: string; target: string; kind: string }>;
 }
 
-// -- RigSpec review --
+// -- RigSpec 审阅 --
 
 export interface RigSpecServicesReview {
   kind: "compose";
@@ -66,7 +66,7 @@ export interface LegacyRigSpecReview extends RigSpecReviewBase {
 
 export type RigSpecReview = PodAwareRigSpecReview | LegacyRigSpecReview;
 
-// -- AgentSpec review --
+// -- AgentSpec 审阅 --
 
 export interface AgentSpecReview {
   sourceState: SourceState;
@@ -88,16 +88,16 @@ export interface AgentSpecReview {
   raw: string;
 }
 
-// -- Review errors --
+// -- 审阅错误 --
 
 export class SpecReviewError extends Error {
   constructor(public readonly errors: string[]) {
-    super(`Spec validation failed: ${errors.join("; ")}`);
+    super(`Spec 校验失败：${errors.join("; ")}`);
     this.name = "SpecReviewError";
   }
 }
 
-// -- Service --
+// -- 服务 --
 
 function isPodAware(raw: Record<string, unknown>): boolean {
   return Array.isArray(raw["pods"]);
@@ -113,10 +113,10 @@ export class SpecReviewService {
     try {
       raw = RigSpecCodec.parse(yaml);
     } catch (err) {
-      throw new SpecReviewError([`YAML parse error: ${(err as Error).message}`]);
+      throw new SpecReviewError([`YAML 解析错误：${(err as Error).message}`]);
     }
     if (!raw || typeof raw !== "object") {
-      throw new SpecReviewError(["Failed to parse YAML"]);
+      throw new SpecReviewError(["无法解析 YAML"]);
     }
 
     const obj = raw as Record<string, unknown>;
@@ -171,7 +171,7 @@ export class SpecReviewService {
       kind: e["kind"] as string,
     }));
 
-    // Build graph
+    // 构建 graph
     const graphNodes: SpecGraphData["nodes"] = [];
     const graphEdges: SpecGraphData["edges"] = [];
 
@@ -198,7 +198,7 @@ export class SpecReviewService {
       graphEdges.push({ source: edge.from, target: edge.to, kind: edge.kind });
     }
 
-    // Extract services metadata if present
+    // 提取存在的 services metadata
     let services: RigSpecServicesReview | undefined;
     const rawServices = obj["services"] as Record<string, unknown> | undefined;
     if (rawServices && typeof rawServices === "object" && rawServices["kind"] === "compose") {
@@ -300,7 +300,7 @@ export class SpecReviewService {
     try {
       raw = parseAgentSpec(yaml);
     } catch (err) {
-      throw new SpecReviewError([`YAML parse error: ${(err as Error).message}`]);
+      throw new SpecReviewError([`YAML 解析错误：${(err as Error).message}`]);
     }
     const validation = validateAgentSpec(raw);
     if (!validation.valid) {
@@ -312,14 +312,14 @@ export class SpecReviewService {
     const version = obj["version"] as string;
     const description = obj["description"] as string | undefined;
 
-    // Profiles — AgentSpec stores profiles as a map, not an array
+    // Profile——AgentSpec 将 profile 存为 map，而非 array
     const rawProfiles = (obj["profiles"] ?? {}) as Record<string, unknown>;
     const profiles = Object.entries(rawProfiles).map(([name, value]) => ({
       name,
       description: (value as Record<string, unknown> | null)?.["description"] as string | undefined,
     }));
 
-    // Resources
+    // Resource
     const rawResources = (obj["resources"] ?? {}) as Record<string, unknown>;
     const extractPaths = (arr: unknown): string[] => {
       if (!Array.isArray(arr)) return [];
@@ -330,9 +330,8 @@ export class SpecReviewService {
       }).filter(Boolean);
     };
 
-    // Plugin entries have a different shape: { id, source: { kind, path } }.
-    // The id is the human-readable handle for the review surface (operator
-    // recognizes "openrig-core" not "/Users/op/.openrig/plugins/openrig-core").
+    // Plugin entry 的 shape 不同：{ id, source: { kind, path } }。id 是 review surface 的人类可读
+    // handle（operator 识别 "openrig-core"，而不是 "/Users/op/.openrig/plugins/openrig-core"）。
     const extractPluginIds = (raw: unknown): string[] => {
       if (!Array.isArray(raw)) return [];
       return raw.map((item) => {

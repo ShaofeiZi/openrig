@@ -29,7 +29,7 @@ class FakeAdapter implements NotificationAdapter {
   }
 }
 
-describe("MissionControlNotificationDispatcher (PL-005 Phase B)", () => {
+describe("MissionControlNotificationDispatcher（PL-005 阶段 B）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -52,23 +52,23 @@ describe("MissionControlNotificationDispatcher (PL-005 Phase B)", () => {
     db.close();
   });
 
-  it("dispatches on human-gate qitem arrival (mandatory trigger)", async () => {
+  it("human-gate qitem 到达时派发（必选触发条件）", async () => {
     await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "human-operator@kernel",
-      body: "needs human approval",
+      body: "需要人工批准",
       tier: "human-gate",
-      summary: "test summary (FR-4 human-routed fixture)",
+      summary: "测试摘要（FR-4 人工路由夹具）",
       evidenceRef: "proof/test-evidence.md",
     });
-    // Yield event loop so dispatcher's async handler completes.
+    // 让出事件循环，使派发器的异步处理器完成。
     await new Promise((r) => setTimeout(r, 10));
     expect(adapter.calls).toHaveLength(1);
     expect(adapter.calls[0]!.title).toContain("human-gate");
     expect(adapter.calls[0]!.tags).toContain("human-gate");
   });
 
-  it("includes a Mission Control deep link for human-gate qitem notifications", async () => {
+  it("human-gate qitem 通知包含 Mission Control 深层链接", async () => {
     dispatcher.stop();
     dispatcher = new MissionControlNotificationDispatcher({
       db,
@@ -81,9 +81,9 @@ describe("MissionControlNotificationDispatcher (PL-005 Phase B)", () => {
     const created = await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "human-operator@kernel",
-      body: "needs human approval",
+      body: "需要人工批准",
       tier: "human-gate",
-      summary: "test summary (FR-4 human-routed fixture)",
+      summary: "测试摘要（FR-4 人工路由夹具）",
       evidenceRef: "proof/test-evidence.md",
     });
     await new Promise((r) => setTimeout(r, 10));
@@ -93,23 +93,23 @@ describe("MissionControlNotificationDispatcher (PL-005 Phase B)", () => {
     );
   });
 
-  it("does NOT dispatch on non-human-gate qitem arrival", async () => {
+  it("非 human-gate qitem 到达时不派发", async () => {
     await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "agent@rig",
-      body: "agent task",
+      body: "智能体任务",
     });
     await new Promise((r) => setTimeout(r, 10));
     expect(adapter.calls).toHaveLength(0);
   });
 
-  it("does NOT dispatch on action_executed by default (verb-completion opt-in)", async () => {
+  it("默认不在 action_executed 时派发（动词完成需选择加入）", async () => {
     const created = await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "human@rig",
       body: "x",
       tier: "human-gate",
-      summary: "test summary (FR-4 human-routed fixture)",
+      summary: "测试摘要（FR-4 人工路由夹具）",
       evidenceRef: "proof/test-evidence.md",
     });
     await new Promise((r) => setTimeout(r, 10));
@@ -121,7 +121,7 @@ describe("MissionControlNotificationDispatcher (PL-005 Phase B)", () => {
     expect(adapter.calls).toHaveLength(0);
   });
 
-  it("DOES dispatch on action_executed when includeVerbCompletion=true", async () => {
+  it("includeVerbCompletion=true 时会在 action_executed 时派发", async () => {
     dispatcher.stop();
     const dispatcher2 = new MissionControlNotificationDispatcher({
       db,
@@ -135,7 +135,7 @@ describe("MissionControlNotificationDispatcher (PL-005 Phase B)", () => {
       destinationSession: "human@rig",
       body: "x",
       tier: "human-gate",
-      summary: "test summary (FR-4 human-routed fixture)",
+      summary: "测试摘要（FR-4 人工路由夹具）",
       evidenceRef: "proof/test-evidence.md",
     });
     await new Promise((r) => setTimeout(r, 10));
@@ -144,12 +144,12 @@ describe("MissionControlNotificationDispatcher (PL-005 Phase B)", () => {
     const writeContract = new MissionControlWriteContract({ db, eventBus: bus, queueRepo, actionLog });
     await writeContract.act({ verb: "approve", qitemId: created.qitemId, actorSession: "human@rig" });
     await new Promise((r) => setTimeout(r, 10));
-    const verbCalls = adapter.calls.filter((c) => c.title.includes("verb completed"));
+    const verbCalls = adapter.calls.filter((c) => c.title.includes("verb 已完成"));
     expect(verbCalls).toHaveLength(1);
     dispatcher2.stop();
   });
 
-  it("emits mission_control.notification_sent on success", async () => {
+  it("成功时发出 mission_control.notification_sent", async () => {
     const events: Array<{ type: string }> = [];
     bus.subscribe((e) => events.push(e));
     await queueRepo.create({
@@ -157,14 +157,14 @@ describe("MissionControlNotificationDispatcher (PL-005 Phase B)", () => {
       destinationSession: "human@rig",
       body: "x",
       tier: "human-gate",
-      summary: "test summary (FR-4 human-routed fixture)",
+      summary: "测试摘要（FR-4 人工路由夹具）",
       evidenceRef: "proof/test-evidence.md",
     });
     await new Promise((r) => setTimeout(r, 10));
     expect(events.find((e) => e.type === "mission_control.notification_sent")).toBeDefined();
   });
 
-  it("emits mission_control.notification_failed when adapter returns ok=false (best-effort; underlying action proceeds)", async () => {
+  it("适配器返回 ok=false 时发出 mission_control.notification_failed（尽力而为；底层动作继续）", async () => {
     adapter.nextResult = { ok: false, error: "ntfy POST 503" };
     const events: Array<{ type: string }> = [];
     bus.subscribe((e) => events.push(e));
@@ -173,26 +173,26 @@ describe("MissionControlNotificationDispatcher (PL-005 Phase B)", () => {
       destinationSession: "human@rig",
       body: "x",
       tier: "human-gate",
-      summary: "test summary (FR-4 human-routed fixture)",
+      summary: "测试摘要（FR-4 人工路由夹具）",
       evidenceRef: "proof/test-evidence.md",
     });
     await new Promise((r) => setTimeout(r, 10));
     expect(events.find((e) => e.type === "mission_control.notification_failed")).toBeDefined();
-    // Underlying queue item is still present (notification failure doesn't undo durable mutations).
+    // 底层队列项仍存在（通知失败不会撤销持久变更）。
     expect(queueRepo.getById(created.qitemId)).not.toBeNull();
   });
 
-  it("dedups same qitem (no duplicate notification on re-emit)", async () => {
+  it("对同一 qitem 去重（重新发出时不产生重复通知）", async () => {
     const created = await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "human@rig",
       body: "x",
       tier: "human-gate",
-      summary: "test summary (FR-4 human-routed fixture)",
+      summary: "测试摘要（FR-4 人工路由夹具）",
       evidenceRef: "proof/test-evidence.md",
     });
     await new Promise((r) => setTimeout(r, 10));
-    // Re-emit a synthetic queue.created event for same qitem (defensive dedup).
+    // 为同一 qitem 重新发出合成 queue.created 事件（防御性去重）。
     bus.emit({
       type: "queue.created",
       qitemId: created.qitemId,
@@ -205,11 +205,11 @@ describe("MissionControlNotificationDispatcher (PL-005 Phase B)", () => {
     expect(adapter.calls).toHaveLength(1);
   });
 
-  it("sendTest dispatches synthetic notification through adapter", async () => {
+  it("sendTest 通过适配器派发合成通知", async () => {
     const result = await dispatcher.sendTest();
     expect(result.ok).toBe(true);
     expect(result.mechanism).toBe("fake");
     expect(adapter.calls).toHaveLength(1);
-    expect(adapter.calls[0]!.title).toContain("test");
+    expect(adapter.calls[0]!.title).toContain("测试");
   });
 });

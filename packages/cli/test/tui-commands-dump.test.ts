@@ -1,5 +1,5 @@
-// REGISTRY I2 (ruling 64f1dbdf, PM pin 2) — `rig tui commands [--json]`: the SERIALIZED
-// registry projection; never a hand-maintained list. RED-first pre-implementation.
+// REGISTRY I2（裁定 64f1dbdf，PM pin 2）——`rig tui commands [--json]`：序列化
+// registry projection；绝非手工维护列表。先 RED 后实现。
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { tuiCommand } from "../src/commands/tui.js";
 

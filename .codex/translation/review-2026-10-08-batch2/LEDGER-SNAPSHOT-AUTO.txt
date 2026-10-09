@@ -1,0 +1,4 @@
+== 自动快照（gen-snapshot.py 读 _records.json，勿手改）==
+total 3068  status {'skipped': 146, 'done': 2922}
+done 2922  validation {'passed': 940, 'validated': 1982}
+self_reported-by-category {}

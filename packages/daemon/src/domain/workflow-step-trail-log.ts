@@ -1,11 +1,10 @@
-// PL-004 Phase D: workflow step trail log (append-only).
+// PL-004 Phase D：工作流步骤轨迹日志（仅追加）。
 //
-// Owns inserts into workflow_step_trails. Append-only at the API
-// surface: only `record()` is exposed. UPDATE/DELETE/remove are not
-// methods — direct SQL could mutate but is a contract violation
-// enforced at this domain boundary (per PRD § L4 Workflow Runtime).
+// 负责写入 workflow_step_trails。API 表面仅追加，只暴露 `record()`，不暴露
+// UPDATE/DELETE/remove。
+// 方法；直接 SQL 虽能修改，但违反契约。此领域边界按 PRD § L4 工作流运行时强制执行该规则。
 //
-// Pattern mirrors Phase C's WatchdogHistoryLog and Phase A's
+// 结构与 Phase C 的 WatchdogHistoryLog 和 Phase A 的
 // QueueTransitionLog.
 
 import type Database from "better-sqlite3";
@@ -20,7 +19,7 @@ export interface WorkflowStepTrailRecordInput {
   closureReason: WorkflowExitKind;
   closureEvidence?: Record<string, unknown> | null;
   actorSession: string;
-  /** null for terminal closures (`done`, `failed`, `waiting`). */
+/** 终态关闭（`done`、`failed`、`waiting`）时为 null。 */
   nextQitemId?: string | null;
   priorQitemId: string;
 }
@@ -42,9 +41,8 @@ export class WorkflowStepTrailLog {
   constructor(private readonly db: Database.Database) {}
 
   /**
-   * Append a step trail entry. Returns the persisted entry. Designed
-   * to compose inside an outer caller-managed transaction (used by
-   * workflow-projector for the transactional-scribe contract).
+ * 追加一条步骤轨迹并返回持久化记录。可组合在调用方管理的外层事务中
+ * （workflow-projector 使用它实现事务式记录契约）。
    */
   record(input: WorkflowStepTrailRecordInput): WorkflowStepTrailEntry {
     const trailId = ulid();

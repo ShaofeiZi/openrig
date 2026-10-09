@@ -1,4 +1,4 @@
-// SCOPES VIEW (plan d64d2f5c) — render pins per the v4 mock contract + the data-path rule.
+// SCOPES VIEW（plan d64d2f5c）——按 v4 mock 契约 + data-path 规则的 render 锚点。
 import { describe, it, expect } from "vitest";
 import { createViewState, computeExplorerRows } from "../src/state.js";
 import { renderScreen } from "../src/render.js";
@@ -15,8 +15,8 @@ function openGateway() {
   return { snap, view };
 }
 
-describe("scopes view (store-direct render, v4 mock contract)", () => {
-  it("explorer: selecting a mission atomically opens it and reveals its slices", () => {
+describe("scopes 视图（store 直渲染，v4 mock 契约）", () => {
+  it("explorer：选中任务原子打开并揭示其 slices", () => {
     const snap = demoSnapshot();
     const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
     view.dispatch(parseCommand(":scopes"));
@@ -29,7 +29,7 @@ describe("scopes view (store-direct render, v4 mock contract)", () => {
     expect(labels.some((l) => l.includes("✓ crash-cart"))).toBe(true);
   });
 
-  it("never renders a prior mission's execution data under the newly selected mission heading", () => {
+  it("绝不把先前任务的执行数据渲染到新选任务标题下", () => {
     const snap = {
       ...demoSnapshot(),
       executionMission: "older-release",
@@ -39,47 +39,47 @@ describe("scopes view (store-direct render, v4 mock contract)", () => {
     view.dispatch(parseCommand(":scopes"));
     view.dispatch({ type: "scopes-mission-open", mission: "release-0.5.2" });
     const out = renderScreen(view.get(), snap, { cols: 160, rows: 40 }).lines.join("\n");
-    expect(out).toContain("release-0.5.2 EXECUTION");
-    expect(out).toContain("read pending");
+    expect(out).toContain("release-0.5.2 执行");
+    expect(out).toContain("读取挂起");
     expect(out).not.toContain("older-release");
   });
 
-  it("detail renders a compact identity/state header and separated Intent, Requirements, and Proof regions", () => {
+  it("详情渲染紧凑身份/状态头，并分隔 Intent、Requirements、Proof 区", () => {
     const { snap, view } = openGateway();
     const out = renderScreen(view.get(), snap, { cols: 160, rows: 220 }).lines.join("\n");
     expect(out).toContain("● gateway-m1 · OPR.0.5.2.9 · release-0.5.2");
-    expect(out).toContain("STATE building · PROOF 2/9 · LOCKS spec locked · delivery open");
-    expect(out).toContain("── INTENT ");
-    expect(out).toContain("Slack to the founder");
-    expect(out).toContain("── REQUIREMENTS (2)");
-    expect(out).toContain("── PROOF · 2/9 paired");
-    expect(out).toMatch(/STATE\s+#\s+REQUIREMENT\s+EVIDENCE/);
-    expect(out).toMatch(/PAIRED\s+1\s+The ack-after-delivery repair/);
-    expect(out).toMatch(/OPEN\s+2\s+A registered entity/);
+    expect(out).toContain("状态 构建中 · 证明 2/9 · 锁定 规范已锁定 · 交付开放");
+    expect(out).toContain("── 意图 ");
+    expect(out).toContain("Slack 到创建者");
+    expect(out).toContain("── 需求 (2)");
+    expect(out).toContain("── 证明 · 2/9 已配对");
+    expect(out).toMatch(/状态\s+#\s+需求\s+证据/);
+    expect(out).toMatch(/已配对\s+1\s+在已发布中继路径上演示的投递后确认修复/);
+    expect(out).toMatch(/未配对\s+2\s+已注册实体从 Slack 冷 DM/);
     expect(out).toContain("↳ QA PASS");
     expect(out).toContain("qa-relay.md");
-    expect(out).toContain("media relay-repair-e2e.txt");
+    expect(out).toContain("媒体 relay-repair-e2e.txt");
   });
 
-  it("the founder lock-glyph form: 🔒 renders ONLY when delivery-locked; the count carries the honesty", () => {
+  it("founder 锁字形形态：仅 delivery-locked 时渲染 🔒；计数承载诚实", () => {
     const snap = demoSnapshot();
     const cc = snap.scopes![0]!.slices.find((s) => s.dirName === "crash-cart")!;
-    expect(proofBadge(cc)).toBe("proof: 4/4 paired 🔒");
+    expect(proofBadge(cc)).toBe("证明: 4/4 已配对 🔒");
     const gm = snap.scopes![0]!.slices.find((s) => s.dirName === "gateway-m1")!;
-    expect(proofBadge(gm)).toBe("proof: 2/9 paired"); // no del token, no unproven suffix — the count speaks
+    expect(proofBadge(gm)).toBe("证明: 2/9 已配对"); // no del token, no unproven suffix — the count speaks
   });
 
-  it("m collapses mini-requirements; n shows PROGRESS.md as narrative DISPLAY (never feeding counts)", () => {
+  it("m 折叠 mini-requirements；n 把 PROGRESS.md 作叙事展示（绝不喂计数）", () => {
     const { snap, view } = openGateway();
     view.dispatch(parseCommand("reqs"));
     let out = renderScreen(view.get(), snap, { cols: 160, rows: 220 }).lines.join("\n");
-    expect(out).toContain("collapsed · m expands");
+    expect(out).toContain("已折叠 · m 展开");
     view.dispatch(parseCommand("narrative"));
     out = renderScreen(view.get(), snap, { cols: 160, rows: 220 }).lines.join("\n");
-    expect(out).toContain("PROGRESS · narrative only · n closes");
-    expect(out).toContain("A2 held on arch consult");
-    // the data-path rule: the narrative panel does NOT change the store-derived counts
-    expect(out).toContain("PROOF 2/9");
+    expect(out).toContain("进度 · 仅叙事 · n 关闭");
+    expect(out).toContain("A2 等待架构咨询");
+    // data-path 规则：narrative 面板不改变 store 派生计数
+    expect(out).toContain("证明 2/9");
   });
 });
 
@@ -97,9 +97,9 @@ it.each([60, 160])("joins scope states and evidence by ID at width %i, not posit
   ] };
   const render = scopeContractLines(detail, { collapseReqs: false, narrative: null, width }).map(l => l.text).join("\n");
   const b = render.indexOf("Second item"), a = render.indexOf("First item"), missing = render.indexOf("Unknown item");
-  expect(render).toMatch(width === 60 ? /REQ 1 · ACCEPTED/ : /ACCEPTED\s+1\s+Second item/);
-  expect(render).toMatch(width === 60 ? /REQ 2 · REJECTED/ : /REJECTED\s+2\s+First item/);
+  expect(render).toMatch(width === 60 ? /需求 1 · 已接受/ : /已接受\s+1\s+Second item/);
+  expect(render).toMatch(width === 60 ? /需求 2 · 已拒绝/ : /已拒绝\s+2\s+First item/);
   expect(render.slice(b, a)).toContain("Only B accepted");
   expect(render.slice(a, missing)).toContain("Only A rejected");
-  expect(render).toContain("UNKNOWN");
+  expect(render).toContain("未知");
 });

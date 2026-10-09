@@ -1,7 +1,6 @@
-// S10 — the narrow @openrig/daemon/gateway-slack surface: exactly what the CLI's surviving
-// config verbs (`rig slack setup/status/verify`) consume after the relay cutover re-homed the
-// slack modules into the daemon. Same dep-rail pattern as gateway-protocol / human-registry:
-// the CLI lazy-imports this at invocation; nothing else is exported.
+// S10 —— @openrig/daemon/gateway-slack 的窄表面：relay 切换把 slack 模块归位到后台服务后，
+// CLI 存活的配置动词（`rig slack setup/status/verify`）恰好消费的内容。与 gateway-protocol /
+// human-registry 同一依赖轨道模式：CLI 在调用时惰性 import 本表面；不导出其他任何东西。
 
 export {
   loadConfig,

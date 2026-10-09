@@ -1,8 +1,7 @@
-// OPR activity-hook r3 Part 3 — production-altitude: a managed-activity-hook DELIVERY gap
-// (missing relay / missing/malformed/zero-relay-event canonical manifest) must surface as a
-// NONFATAL rig-up warning on the READY path — rig up succeeds (ok:true, rc0) and the warning
-// rides along in the materialize result (→ up route → CLI). It must NOT gate startup, and it
-// must NOT appear when delivery is possible. Validation is the SHARED module the adapter uses.
+// OPR activity-hook r3 第 3 部分——生产高度：managed-activity-hook DELIVERY gap（relay 缺失 /
+// canonical manifest 缺失、格式错误或没有 relay event）必须在 READY 路径上呈现为非致命 rig-up
+// warning——rig up 成功（ok:true、rc0），warning 随 materialize result（→ up route → CLI）传递。
+// 它不得 gate startup，且 delivery 可行时不得出现。Validation 使用 adapter 共用的 module。
 
 import { describe, it, expect, vi } from "vitest";
 import { createFullTestDb } from "./helpers/test-app.js";
@@ -24,7 +23,7 @@ const RELAY_FIX = "/fixtures/activity-relay.cjs";
 const MANIFEST_FIX = "/fixtures/claude.json";
 const GOOD_MANIFEST = JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: 'node "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/activity-relay.cjs"', timeout: 5 }] }] } });
 
-// An agent.yaml that DECLARES + SELECTS the claude_activity_hooks runtime resource.
+// 声明并选择 claude_activity_hooks runtime resource 的 agent.yaml。
 const AGENT_YAML = `name: impl
 version: "1.0.0"
 resources:
@@ -88,20 +87,20 @@ function setup(activityAssets: { relayPath?: string; manifestPath?: string }, ex
   return { db, inst };
 }
 
-describe("rig up — managed activity-hook delivery-gap warning (nonfatal, rc0)", () => {
-  it("MISSING relay/manifest assets → rig up SUCCEEDS (ok:true) with the exact nonfatal warning", async () => {
-    // claudeActivityAssets point at paths absent from fsOps → not deliverable.
+describe("rig up——managed activity-hook delivery-gap warning（非致命，rc0）", () => {
+  it("relay/manifest asset 缺失 → rig up 成功（ok:true）并返回准确的非致命 warning", async () => {
+    // claudeActivityAssets 指向 fsOps 中不存在的 path → 无法投递。
     const { db, inst } = setup({ relayPath: "/nope/relay.cjs", manifestPath: "/nope/claude.json" });
     const result = await inst.instantiate(RigSpecCodec.serialize(makeRigSpec()), RIG_ROOT);
-    expect(result.ok).toBe(true); // rc0 — NOT a hard failure
+    expect(result.ok).toBe(true); // rc0——不是 hard failure。
     if (!result.ok) return;
     const warnings = result.result.warnings ?? [];
-    expect(warnings.some((w) => /managed Claude activity hooks cannot be delivered/.test(w))).toBe(true);
+    expect(warnings.some((w) => /无法交付受管 Claude 活动 hook/.test(w))).toBe(true);
     expect(warnings.some((w) => w.includes("dev.impl"))).toBe(true);
     db.close();
   });
 
-  it("DELIVERABLE assets (relay + valid manifest present) → rig up SUCCEEDS with NO activity-hook warning", async () => {
+  it("asset 可投递（relay + 有效 manifest 存在）→ rig up 成功且无 activity-hook warning", async () => {
     const { db, inst } = setup(
       { relayPath: RELAY_FIX, manifestPath: MANIFEST_FIX },
       { [RELAY_FIX]: "// relay", [MANIFEST_FIX]: GOOD_MANIFEST },
@@ -110,7 +109,7 @@ describe("rig up — managed activity-hook delivery-gap warning (nonfatal, rc0)"
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const warnings = result.result.warnings ?? [];
-    expect(warnings.some((w) => /activity hooks cannot be delivered/.test(w))).toBe(false);
+    expect(warnings.some((w) => /无法交付受管 Claude 活动 hook/.test(w))).toBe(false);
     db.close();
   });
 });

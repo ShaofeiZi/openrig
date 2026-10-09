@@ -1,13 +1,12 @@
-// VM-005 (release-0.4.7) — daemon leg, structured per the B3 differential
-// ruling (plan v1.3 §D-bis; ARCH-RULING-b3, sha 632ff319…):
+// VM-005（release-0.4.7）——daemon 段，按 B3 差分裁定组织
+//（plan v1.3 §D-bis；ARCH-RULING-b3，sha 632ff319…）：
 //
-// Tier A (both-ends surfaces, one code path, candidate expectations
-// verbatim): mapStatus `placeholder`→draft (named RED at base:
-// expected 'active' to be 'draft') · terminal-default-unchanged (green both)
-// · SliceListEntry key-set carve (green both).
+// Tier A（两端表面、单代码路径，候选期望逐字）：mapStatus `placeholder`→draft
+//（在 base 处命名为 RED：期望 'active' 为 'draft'）· terminal-default-unchanged
+//（两端绿）· SliceListEntry key-set carve（两端绿）。
 //
-// Tier B (new-symbol units, t1/t2/t3): the sidecar method + LOCKSTEP with
-// routes/missions.ts readMissionStatus — t1 presence assertion UNCONDITIONAL
+// Tier B（新符号单元，t1/t2/t3）：sidecar 方法 + 与
+// routes/missions.ts readMissionStatus 的 LOCKSTEP——t1 存在性断言无条件
 // and FIRST (the counted named RED at base), cases conditional, t3
 // executed-count pin at the candidate.
 
@@ -89,8 +88,8 @@ afterEach(() => {
 // TIER A — both-ends differentials + carves
 // ---------------------------------------------------------------------------
 
-describe("Tier A — mapStatus scaffold literal (C-vi, FR-3): differential", () => {
-  it("status: placeholder classifies as draft (not the terminal-default active)", () => {
+describe("A 层 — mapStatus 脚手架文字（C-vi、FR-3）：差异", () => {
+  it("status: placeholder 被分类为 draft，而不是末端默认 active", () => {
     writeMission("scaffolded", V6_FROZEN_README, {
       "fresh-slice": "---\nstatus: placeholder\n---\n# Fresh\n",
     });
@@ -101,8 +100,8 @@ describe("Tier A — mapStatus scaffold literal (C-vi, FR-3): differential", () 
   });
 });
 
-describe("Tier A — regression carves (green at BOTH SHAs)", () => {
-  it("the terminal default stays UNCHANGED: an unrecognized word still maps active (named follow-up)", () => {
+describe("A 层 — 回归雕刻（两个 SHA 均为绿色）", () => {
+  it("终端默认保持不变：无法识别的单词仍然映射为活动状态（命名为后续）", () => {
     writeMission("m2", null, {
       "odd-slice": "---\nstatus: percolating\n---\n# Odd\n",
     });
@@ -110,7 +109,7 @@ describe("Tier A — regression carves (green at BOTH SHAs)", () => {
     expect(entries.find((e) => e.name === "odd-slice")?.status).toBe("active");
   });
 
-  it("SliceListEntry shape is untouched — the sidecar is additive (pinned key set)", () => {
+  it("SliceListEntry 形状未受影响 - sidecar 是附加的（固定键集）", () => {
     writeMission("m3", "---\nstatus: complete\n---\n", { s9: "---\nstatus: active\n---\n# S9\n" });
     const entries = makeIndexer().list();
     const entry = entries.find((e) => e.name === "s9")!;
@@ -146,9 +145,9 @@ const TIER_B_CASES = [
   "lockstep-agreement",
 ] as const;
 
-describe("Tier B — missionAuthoredStatuses sidecar (t1 presence FIRST)", () => {
+describe("B 层 — MissionAuthoredStatuses sidecar（t1 存在优先）", () => {
   // t1 — UNCONDITIONAL, FIRST: the counted named RED at base.
-  it("t1: the sidecar method exists on the indexer", () => {
+  it("t1：索引器上存在 sidecar 方法", () => {
     const indexer = makeIndexer() as unknown as Record<string, unknown>;
     expect(typeof indexer["missionAuthoredStatuses"]).toBe("function");
   });
@@ -160,7 +159,7 @@ describe("Tier B — missionAuthoredStatuses sidecar (t1 presence FIRST)", () =>
     typeof (makeIndexer() as unknown as Record<string, unknown>)["missionAuthoredStatuses"] ===
     "function";
 
-  it("carries the raw authored word for a mission with README status", () => {
+  it("带有具有自述文件状态的任务的原始创作词", () => {
     if (!hasSidecar()) return;
     executed.push("sidecar-authored-word");
     writeMission("relx", "---\nstatus: complete\n---\n# Relx\n", {
@@ -169,7 +168,7 @@ describe("Tier B — missionAuthoredStatuses sidecar (t1 presence FIRST)", () =>
     expect(makeIndexer().missionAuthoredStatuses()["relx"]).toEqual({ authoredStatus: "complete" });
   });
 
-  it("V6 frozen bytes (packet …5d184b24): stage/wip frontmatter, NO status field → null", () => {
+  it("V6 冻结字节（数据包 …5d184b24）：stage/wip frontmatter 无 status 字段时返回 null", () => {
     if (!hasSidecar()) return;
     executed.push("sidecar-v6-frozen-null");
     writeMission("release-0.4.7", V6_FROZEN_README, {
@@ -178,7 +177,7 @@ describe("Tier B — missionAuthoredStatuses sidecar (t1 presence FIRST)", () =>
     expect(makeIndexer().missionAuthoredStatuses()["release-0.4.7"]).toEqual({ authoredStatus: null });
   });
 
-  it("missing README → null; zero-indexed-slice missions never appear", () => {
+  it("缺少自述文件 → null；零索引切片任务永远不会出现", () => {
     if (!hasSidecar()) return;
     executed.push("sidecar-population");
     writeMission("no-readme", null, { s1: "---\nstatus: active\n---\n" });
@@ -188,7 +187,7 @@ describe("Tier B — missionAuthoredStatuses sidecar (t1 presence FIRST)", () =>
     expect("zero-slices" in sidecar).toBe(false);
   });
 
-  it("invalidate() drops the sidecar cache (a status edit lands after refresh)", () => {
+  it("invalidate() 会删除 sidecar 缓存（刷新后会出现状态编辑）", () => {
     if (!hasSidecar()) return;
     executed.push("sidecar-cache-invalidate");
     writeMission("m", "---\nstatus: active\n---\n", { s1: "---\nstatus: active\n---\n" });
@@ -200,7 +199,7 @@ describe("Tier B — missionAuthoredStatuses sidecar (t1 presence FIRST)", () =>
     expect(indexer.missionAuthoredStatuses()["m"]).toEqual({ authoredStatus: "complete" });
   });
 
-  it("LOCKSTEP: sidecar read ≡ routes/missions.ts readMissionStatus on every fixture class", async () => {
+  it("LOCKSTEP：在每个fixture类上，边车读取 == paths/missions.ts readMissionStatus", async () => {
     if (!hasSidecar()) return;
     executed.push("lockstep-agreement");
     const missionsRoute = (await import("../src/routes/missions.js")) as unknown as Record<
@@ -221,7 +220,7 @@ describe("Tier B — missionAuthoredStatuses sidecar (t1 presence FIRST)", () =>
   });
 
   // t3 — at the candidate, ALL Tier-B cases must have executed.
-  it("t3: all Tier-B cases executed at the candidate", () => {
+  it("t3：在候选者处执行的所有 B 级案例", () => {
     if (!hasSidecar()) return;
     expect(executed.sort()).toEqual([...TIER_B_CASES].sort());
   });

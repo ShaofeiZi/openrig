@@ -1,22 +1,21 @@
 /**
- * slice-07 R6 — the live-model eval GRADER (the deterministic DOOR).
+ * slice-07 R6——live-model eval GRADER（确定性 DOOR）。
  *
- * A DIFFERENT gate from the scenario runner: scenarios ask "does the structure hold?" with
- * stub seats; evals ask "does a REAL seat pull the right context entry and follow it?" The
- * DOOR grade here is judgment-free and deterministic — expected/forbidden command-pattern match
- * over the captured transcript, plus (loading) a get-precedes-action order check. The authored
- * 1-5 rubric rides each case and is scored by an OPTIONAL, DEFERRED LLM judge — never by grade()
- * (this file mirrors the scenario runner's "judgment is L3, never here" split).
+ * 这是与 scenario runner 不同的 gate：scenario 用 stub 席位询问“结构是否成立？”，eval 则询问
+ * “真实席位是否拉取正确 context entry 并遵循它？”此处 DOOR grade 无判断且确定：对捕获 transcript
+ * 匹配 expected/forbidden command pattern，并在 loading 时检查 get 先于 action。每个 case 携带已编写
+ * 的 1–5 rubric，由可选、延后的 LLM judge 评分，绝不由 grade() 评分（本文件镜像 scenario runner
+ * “判断属于 L3，绝不在此”的分层）。
  */
 
-// OPR.0.5.3.5 Q3 bridge (mini-req 8): "behavior" is slice-05's case kind —
-// behavior-after-delivery probes graded by the SAME door in the SAME runner.
+// OPR.0.5.3.5 Q3 bridge（mini-req 8）："behavior" 是 slice-05 的 case kind；delivery 后行为
+// probe 在同一 runner 中由同一 door 评分。
 export type EvalCategory = "selection" | "loading" | "behavior";
 
 export interface EvalOrder {
-  /** The context pull the seat must run (regex source). */
+  /** 席位必须运行的 context 拉取（正则源码）。 */
   getPattern: string;
-  /** The domain action the pull must precede (regex source). */
+  /** context 拉取必须先于的 domain action（正则源码）。 */
   actionPattern: string;
 }
 
@@ -24,15 +23,15 @@ export interface EvalCase {
   id: string;
   name: string;
   category: EvalCategory;
-  /** Natural prompt — NO verb named. */
+  /** 自然语言 prompt，不点名任何动词。 */
   prompt: string;
-  /** Regex sources that must ALL match the captured transcript. */
+  /** 必须全部匹配已捕获 transcript 的正则源码。 */
   expectedPatterns: string[];
-  /** Regex sources that must NOT match. */
+  /** 绝不能匹配的正则源码。 */
   forbiddenPatterns?: string[];
-  /** Loading-only: the get must precede the action, and no action may occur with no preceding get. */
+  /** 仅 loading：get 必须先于 action，且没有先行 get 时不得发生 action。 */
   order?: EvalOrder;
-  /** Authored 1-5 rubric text; judged optionally/deferred, NEVER by grade(). */
+  /** 已编写的 1–5 rubric 文本；可选、延后评判，绝不由 grade() 评判。 */
   rubric?: string;
 }
 
@@ -52,25 +51,24 @@ export interface OrderResult {
 export interface GradeResult {
   caseId: string;
   category: EvalCategory;
-  /** The deterministic DOOR grade (what CE-08 thinning consumes). */
+  /** 确定性 DOOR grade（CE-08 thinning 消费的结果）。 */
   pass: boolean;
   patternResults: PatternResult[];
   order?: OrderResult;
 }
 
-/** First match index of a regex source in the transcript, or -1 if absent. */
+/** 正则源码在 transcript 中首次匹配的索引；不存在时为 -1。 */
 function firstIndex(source: string, transcript: string): number {
   const m = new RegExp(source).exec(transcript);
   return m ? m.index : -1;
 }
 
 /**
- * Grade one case against a captured agent transcript. Pure + deterministic — the DOOR.
+ * 根据捕获的 agent transcript 对一个 case 评分。纯且确定，即 DOOR。
  *
- * Selection door = every expectedPattern matches AND no forbiddenPattern matches.
- * Loading door additionally requires the get-before-action ORDER: the get must have happened,
- * and any domain action must come AFTER it (an action with no preceding get is the "acted
- * without loading" failure). The 1-5 rubric is never scored here.
+ * Selection door = 每个 expectedPattern 都匹配，且没有 forbiddenPattern 匹配。Loading door 还要求
+ * get-before-action 顺序：get 必须已发生，任何 domain action 都必须位于其后（没有先行 get 的 action
+ * 属于“未加载便行动”失败）。此处绝不为 1–5 rubric 评分。
  */
 export function grade(evalCase: EvalCase, transcript: string): GradeResult {
   const patternResults: PatternResult[] = [];
@@ -100,8 +98,8 @@ export function grade(evalCase: EvalCase, transcript: string): GradeResult {
     const reason = orderOk
       ? undefined
       : getIndex === -1
-        ? "domain action taken with no preceding `rig context get`"
-        : "domain action precedes the context get";
+        ? "执行 domain action 前未运行 `rig context get`"
+        : "domain action 早于 context get";
     order = { getIndex, actionIndex, ok: orderOk, reason };
   }
 

@@ -1,14 +1,13 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * L3 — Queue transitions append-only log (PL-004 Phase A).
+ * L3——Queue transition 只追加日志（PL-004 阶段 A）。
  *
- * Every state mutation on a queue_item is appended here; the queue_items.state
- * column is the latest transition's value. This log is the authoritative
- * audit trail for hot-potato closure reasoning, watchdog evaluation, and
- * future workflow-runtime transactional-scribe semantics (Phase D).
+ * queue_item 的每次状态变更都会追加到此处；queue_items.state 列保存最新 transition 的值。
+ * 此日志是 hot-potato 闭环推理、watchdog 评估和未来 workflow-runtime 事务记录语义
+ *（阶段 D）的权威审计轨迹。
  *
- * Append-only: no UPDATE / DELETE on this table from domain code.
+ * 只追加：领域代码不得对此表执行 UPDATE/DELETE。
  */
 export const queueTransitionsSchema: Migration = {
   name: "025_queue_transitions.sql",

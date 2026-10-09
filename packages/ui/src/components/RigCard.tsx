@@ -20,23 +20,23 @@ interface RigCardProps {
 }
 
 function formatAge(timestamp: string | null): string {
-  if (!timestamp) return "none";
+  if (!timestamp) return "无";
   const now = Date.now();
   const then = new Date(timestamp).getTime();
   const diffMs = now - then;
   const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 1) return "刚刚";
+  if (diffMin < 60) return `${diffMin} 分钟前`;
   const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffHr < 24) return `${diffHr} 小时前`;
   const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
+  return `${diffDay} 天前`;
 }
 
 export function RigCard({ rig, psEntry, onSelect, onSnapshot, onExport, onDown }: RigCardProps) {
   const animatedCount = useCountUp(rig.nodeCount);
   const isRunning = psEntry && psEntry.runningCount > 0;
-  const statusLabel = isRunning ? "RUNNING" : "STOPPED";
+  const statusLabel = isRunning ? "运行中" : "已停止";
 
   return (
     <div
@@ -47,17 +47,17 @@ export function RigCard({ rig, psEntry, onSelect, onSnapshot, onExport, onDown }
       onClick={() => onSelect(rig.id)}
       onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); onSelect(rig.id); } }}
     >
-      {/* Dark header stripe */}
+      {/* 深色头部条 */}
       <div className="bg-inverse-surface text-background px-4 py-1.5 font-mono text-[10px] flex justify-between items-center">
-        <span>RIG: {rig.name.toUpperCase()}</span>
+        <span>工作组：{rig.name.toUpperCase()}</span>
         <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 300" }}>
           settings
         </span>
       </div>
 
-      {/* Body */}
+      {/* 主体 */}
       <div className="p-4 space-y-3">
-        {/* Name + status */}
+        {/* 名称 + 状态 */}
         <div className="flex justify-between items-end border-b border-outline-variant pb-2">
           <span className="font-headline font-bold text-lg tracking-tight uppercase">{rig.name}</span>
           <span className={`px-2 py-0.5 border font-mono text-[8px] uppercase ${
@@ -67,59 +67,59 @@ export function RigCard({ rig, psEntry, onSelect, onSnapshot, onExport, onDown }
           </span>
         </div>
 
-        {/* Telemetry grid */}
+        {/* 遥测网格 */}
         <div className="space-y-1">
           <div className="flex justify-between font-mono text-[9px] text-secondary">
-            <span>NODES</span>
+            <span>节点</span>
             <span data-testid={`node-count-${rig.id}`}>{animatedCount}</span>
           </div>
           <div className="flex justify-between font-mono text-[9px] text-secondary">
-            <span>SNAPSHOT</span>
+            <span>快照</span>
             <span data-testid={`snapshot-age-${rig.id}`}>{formatAge(rig.latestSnapshotAt)}</span>
           </div>
           {psEntry && psEntry.uptime != null && (
             <div className="flex justify-between font-mono text-[9px] text-secondary">
-              <span>UPTIME</span>
+              <span>运行时长</span>
               <span>{psEntry.uptime}</span>
             </div>
           )}
         </div>
 
-        {/* Status indicator */}
+        {/* 状态指示 */}
         {isRunning && (
           <div className="bg-success/10 border border-success/20 px-2 py-1 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-success" />
-            <span className="font-mono text-[9px] text-success font-bold">ACTIVE</span>
+            <span className="font-mono text-[9px] text-success font-bold">活动中</span>
           </div>
         )}
 
-        {/* Action buttons */}
+        {/* 操作按钮 */}
         <div className="flex gap-spacing-2 pt-1">
           <button
             className="px-2 py-0.5 border border-outline font-mono text-[9px] text-secondary hover:border-on-surface hover:text-on-surface transition-colors"
             onClick={(e) => { e.stopPropagation(); onSnapshot(); }}
           >
-            SNAPSHOT
+            快照
           </button>
           <button
             className="px-2 py-0.5 border border-outline font-mono text-[9px] text-secondary hover:border-on-surface hover:text-on-surface transition-colors"
             onClick={(e) => { e.stopPropagation(); onExport(); }}
           >
-            EXPORT
+            导出
           </button>
           {isRunning && (
             <button
               className="px-2 py-0.5 border border-tertiary/30 font-mono text-[9px] text-tertiary hover:bg-tertiary hover:text-white transition-colors"
               onClick={(e) => { e.stopPropagation(); onDown(); }}
             >
-              DOWN
+              下线
             </button>
           )}
           <button
             className="px-2 py-0.5 bg-inverse-surface text-background font-mono text-[9px] hover:bg-inverse-surface transition-colors ml-auto"
             onClick={(e) => { e.stopPropagation(); onSelect(rig.id); }}
           >
-            GRAPH &rarr;
+            拓扑图 &rarr;
           </button>
         </div>
       </div>

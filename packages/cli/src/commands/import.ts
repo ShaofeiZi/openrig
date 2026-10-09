@@ -13,7 +13,7 @@ export interface ImportDeps extends StatusDeps {
 const LONG_RUNNING_IMPORT_TIMEOUT_MS = 120_000;
 
 export function importCommand(depsOverride?: ImportDeps): Command {
-  const cmd = new Command("import").description("Import a rig spec from YAML");
+  const cmd = new Command("import").description("从 YAML 导入工作组规格");
   const getDeps = (): ImportDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
     clientFactory: (url: string) => new DaemonClient(url),
@@ -21,23 +21,23 @@ export function importCommand(depsOverride?: ImportDeps): Command {
   };
 
   cmd
-    .argument("<path>", "Path to YAML rig spec file")
-    .option("--instantiate", "Instantiate the rig after import")
-    .option("--materialize-only", "Create rig topology without launching sessions")
-    .option("--workspace-only", "Apply only the workspace declaration to an existing rig")
-    .option("--preflight", "Run preflight checks")
-    .option("--target-rig <rigId>", "Target existing rig for materialization or workspace apply")
-    .option("--rig-root <root>", "Root directory for pod-aware resolution")
-    .option("--cwd <path>", "Override launch/materialization working directory for all members")
+    .argument("<path>", "YAML 工作组规格文件路径")
+    .option("--instantiate", "导入后实例化工作组")
+    .option("--materialize-only", "创建工作组拓扑但不启动会话")
+    .option("--workspace-only", "只把工作区声明应用到已有工作组")
+    .option("--preflight", "运行预检")
+    .option("--target-rig <rigId>", "要拓扑落地或应用工作区的目标已有工作组")
+    .option("--rig-root <root>", "pod 感知解析的根目录")
+    .option("--cwd <path>", "覆盖所有成员启动/拓扑落地的工作目录")
     .action(async (filePath: string, opts: { instantiate?: boolean; materializeOnly?: boolean; workspaceOnly?: boolean; preflight?: boolean; targetRig?: string; rigRoot?: string; cwd?: string }) => {
       const deps = getDeps();
 
-      // Read local file first (before daemon check — fail fast on missing file)
+      // 先读本地文件（在检查后台服务之前——文件缺失时快速失败）
       let yaml: string;
       try {
         yaml = deps.readFile(filePath);
       } catch {
-        console.error(`Cannot read file: ${filePath}`);
+        console.error(`无法读取文件：${filePath}`);
         process.exitCode = 1;
         return;
       }
@@ -47,9 +47,9 @@ export function importCommand(depsOverride?: ImportDeps): Command {
 
       const client = deps.clientFactory(getDaemonUrl(status));
 
-      // Detect pod-aware specs for X-Rig-Root header
+      // 检测 pod 感知规格，用于 X-Rig-Root 请求头
       let podAware = false;
-      try { const { parse } = await import("yaml"); const parsed = parse(yaml); podAware = !!parsed && Array.isArray(parsed.pods); } catch { /* not parseable — let daemon validate */ }
+      try { const { parse } = await import("yaml"); const parsed = parse(yaml); podAware = !!parsed && Array.isArray(parsed.pods); } catch { /* 无法解析——交给后台服务校验 */ }
       const rigRoot = podAware
         ? (opts.rigRoot ? nodePath.resolve(opts.rigRoot) : nodePath.dirname(nodePath.resolve(filePath)))
         : undefined;
@@ -60,19 +60,19 @@ export function importCommand(depsOverride?: ImportDeps): Command {
       };
 
       if (opts.instantiate && opts.materializeOnly) {
-        console.error("Choose either --instantiate or --materialize-only, not both.");
+        console.error("--instantiate 与 --materialize-only 只能二选一。");
         process.exitCode = 1;
         return;
       }
       if (opts.workspaceOnly && (opts.instantiate || opts.materializeOnly || opts.preflight)) {
-        console.error("--workspace-only cannot be combined with --instantiate, --materialize-only, or --preflight.");
+        console.error("--workspace-only 不能与 --instantiate、--materialize-only 或 --preflight 同时使用。");
         process.exitCode = 1;
         return;
       }
 
       if (opts.workspaceOnly) {
         if (!opts.targetRig) {
-          console.error("--workspace-only requires --target-rig <rigId>.");
+          console.error("--workspace-only 需要 --target-rig <rigId>。");
           process.exitCode = 1;
           return;
         }
@@ -83,35 +83,35 @@ export function importCommand(depsOverride?: ImportDeps): Command {
         if (res.status >= 400) {
           const data = res.data as { errors?: string[]; message?: string; error?: string };
           const detail = data.errors?.join("\n  ") ?? data.message ?? data.error ?? `status ${res.status}`;
-          console.error(`Workspace apply failed:\n  ${detail}\nFix: update the RigSpec workspace or target rig and retry.`);
+          console.error(`工作区应用失败：\n  ${detail}\n修复：更新 RigSpec 工作区或目标工作组后重试。`);
           process.exitCode = 1;
           return;
         }
         const data = res.data as { rigId: string; changed: boolean };
         console.log(data.changed
-          ? `Workspace applied to rig ${data.rigId}`
-          : `Workspace already matches rig ${data.rigId}`);
+          ? `工作区已应用到工作组 ${data.rigId}`
+          : `工作区与工作组 ${data.rigId} 已一致`);
         return;
       }
 
       if (opts.preflight) {
         const res = await client.postText<{ ready?: boolean; warnings?: string[]; errors?: string[] }>("/api/rigs/import/preflight", yaml, "text/yaml", extraHeaders);
         if (res.status >= 400) {
-          console.error(`Preflight failed (HTTP ${res.status}). Check your spec syntax and rig-root path.`);
+          console.error(`预检失败（HTTP ${res.status}）。请检查规格语法与 rig-root 路径。`);
           process.exitCode = 1;
           return;
         }
         const data = res.data;
         if (data.errors && data.errors.length > 0) {
-          console.error(`Preflight errors:\n${data.errors.map((e) => `  ${e}`).join("\n")}`);
+          console.error(`预检错误：\n${data.errors.map((e) => `  ${e}`).join("\n")}`);
         }
         if (data.warnings && data.warnings.length > 0) {
-          console.log(`Preflight warnings:\n${data.warnings.map((w) => `  ${w}`).join("\n")}`);
+          console.log(`预检警告：\n${data.warnings.map((w) => `  ${w}`).join("\n")}`);
         }
         if (data.ready) {
-          console.log("Preflight passed");
+          console.log("预检通过");
         } else {
-          console.error("Preflight not ready. Fix: resolve the errors above and retry.");
+          console.error("预检未通过。修复：解决上述错误后重试。");
           process.exitCode = 1;
         }
         return;
@@ -119,7 +119,7 @@ export function importCommand(depsOverride?: ImportDeps): Command {
 
       if (opts.materializeOnly) {
         if (!podAware) {
-          console.error("Materialize-only requires a pod-aware RigSpec with pods.");
+          console.error("materialize-only 需要带 pods 的 pod 感知 RigSpec。");
           process.exitCode = 1;
           return;
         }
@@ -131,22 +131,22 @@ export function importCommand(depsOverride?: ImportDeps): Command {
         if (res.status === 409 || res.status === 400 || res.status === 404) {
           const data = res.data as { ok?: false; code?: string; errors?: string[]; message?: string; error?: string };
           if (data.code === "rig_name_running") {
-            console.error(data.error ?? data.message ?? "A rig with this name is already running.");
+            console.error(data.error ?? data.message ?? "已有同名工作组在运行。");
             process.exitCode = 1;
             return;
           }
           const detail = data.errors?.join("\n  ") ?? data.message ?? data.error ?? `status ${res.status}`;
-          console.error(`Materialize failed:\n  ${detail}\nFix: update your spec or target rig and retry.`);
+          console.error(`拓扑落地失败：\n  ${detail}\n修复：更新规格或目标工作组后重试。`);
           process.exitCode = 1;
           return;
         }
         if (res.status >= 400) {
-          console.error(`Materialize failed (HTTP ${res.status}). Check spec and daemon logs.`);
+          console.error(`拓扑落地失败（HTTP ${res.status}）。请检查规格与后台服务日志。`);
           process.exitCode = 1;
           return;
         }
         const data = res.data as { rigId: string; specName: string; specVersion: string; nodes: Array<{ logicalId: string; status: string }> };
-        console.log(`Rig materialized: ${data.specName} (${data.rigId})`);
+        console.log(`工作组已拓扑落地：${data.specName}（${data.rigId}）`);
         for (const n of data.nodes) {
           console.log(`  ${n.logicalId}: ${n.status}`);
         }
@@ -164,41 +164,41 @@ export function importCommand(depsOverride?: ImportDeps): Command {
         if (res.status === 409 || res.status === 400) {
           const data = res.data as { ok: false; code: string; errors?: string[]; message?: string; error?: string };
           if (data.code === "rig_name_running") {
-            console.error(data.error ?? data.message ?? "A rig with this name is already running.");
+            console.error(data.error ?? data.message ?? "已有同名工作组在运行。");
             process.exitCode = 1;
             return;
           }
           const detail = data.errors?.join("\n  ") ?? data.message ?? `status ${res.status}`;
-          console.error(`Import failed:\n  ${detail}\nFix: check your rig spec and retry. Validate first with: rig spec validate <path>`);
+          console.error(`导入失败：\n  ${detail}\n修复：检查工作组规格后重试。先用 zrig spec validate <path> 校验。`);
           process.exitCode = 1;
         } else if (res.status >= 400) {
-          console.error(`Import failed (HTTP ${res.status}). Check spec and daemon logs.`);
+          console.error(`导入失败（HTTP ${res.status}）。请检查规格与后台服务日志。`);
           process.exitCode = 1;
         } else {
           const data = res.data as { rigId: string; specName: string; specVersion: string; nodes: Array<{ logicalId: string; status: string }>; attachCommand?: string };
-          console.log(`Rig created: ${data.specName} (${data.rigId})`);
+          console.log(`工作组已创建：${data.specName}（${data.rigId}）`);
           for (const n of data.nodes) {
             console.log(`  ${n.logicalId}: ${n.status}`);
           }
           if (data.attachCommand) {
-            console.log(`Attach: ${data.attachCommand}`);
+            console.log(`挂载命令：${data.attachCommand}`);
           }
         }
         return;
       }
 
-      // Default: validate only
+      // 默认：仅校验
       const res = await client.postText<{ valid?: boolean; errors?: string[] }>("/api/rigs/import/validate", yaml);
       if (res.status >= 400) {
-        console.error(`Validation failed: invalid spec (HTTP ${res.status}). Check your YAML syntax and retry.`);
+        console.error(`校验失败：规格无效（HTTP ${res.status}）。请检查 YAML 语法后重试。`);
         process.exitCode = 1;
         return;
       }
       const data = res.data;
       if (data.valid) {
-        console.log("Valid");
+        console.log("有效");
       } else {
-        console.error(`Rig spec invalid:\n${(data.errors ?? []).map((e) => `  ${e}`).join("\n")}\nFix: update your spec and re-validate with: rig spec validate <path>`);
+        console.error(`工作组规格无效：\n${(data.errors ?? []).map((e) => `  ${e}`).join("\n")}\n修复：更新规格后用 zrig spec validate <path> 重新校验。`);
         process.exitCode = 1;
       }
     });

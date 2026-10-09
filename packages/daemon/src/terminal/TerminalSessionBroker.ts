@@ -3,56 +3,50 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { TmuxResult, TmuxCursorPosition } from "../adapters/tmux.js";
 
-// OPR.0.4.0.38 - real-terminal session broker.
+// OPR.0.4.0.38——真实终端 session broker。
 //
-// The product invariant from the founder is: NO LIVE TERMINAL LIES. A live
-// terminal surface must show the true session state and report honestly when a
-// session dies - never a silently stale "live" pane.
+// 创始人给出的产品不变量：实时终端绝不说谎。实时终端界面必须显示真实 session 状态，并在
+// session 终止时如实报告，绝不能保留静默陈旧的“实时”pane。
 //
-// Before this slice, every WebSocket connection opened its OWN tmux pipe-pane
-// for the same session (the per-connection bug): a second viewer of one seat
-// fought the first for output. The broker fixes that: ONE tmux pipe per
-// session, MANY subscribers, output fanned out to all, each subscriber seeded
-// with a cursor-safe snapshot of the current screen on attach, fixed geometry
-// (no client-driven resize), honest session-death reporting to ALL subscribers,
-// and full cleanup when the last subscriber leaves.
+// 此 slice 之前，每个 WebSocket 连接都会为同一 session 打开自己的 tmux pipe-pane
+//（逐连接缺陷）：同一席位的第二个查看者会与第一个争抢输出。broker 将其修复为：每个 session
+// 一个 tmux pipe、多个订阅者、向所有订阅者扇出输出；每个订阅者连接时先获得当前屏幕的光标
+// 安全快照；固定几何尺寸（客户端不可调整）；向所有订阅者如实报告 session 终止；最后一个
+// 订阅者离开时完整清理。
 
 const PIPE_PANE_POLL_MS = 50;
 const MAX_OUTPUT_BUFFER = 64 * 1024;
 const DEFAULT_LIVENESS_MS = 2000;
 
 /**
- * Bounded size of the broker-owned recent-output history ring (AC-5 / FR-4).
- * Mirrors the 64KB per-read tail sizing: a session-level window of recent
- * output, replayed to late subscribers so they share the scrollback the
- * earlier subscribers have - NOT per-xterm local. Bounded so a long-lived
- * session never accumulates unbounded memory.
+ * broker 所有的近期输出历史环的有界大小（AC-5/FR-4）。镜像每次读取 64KB 的尾部大小：
+ * session 级近期输出窗口会重放给后来订阅者，使其共享早先订阅者拥有的 scrollback，而不是逐
+ * xterm 本地保存。设置上限可防止长寿命 session 无限占用内存。
  */
 const MAX_HISTORY_BYTES = 64 * 1024;
 
 /**
- * Canonical fixed terminal geometry (FR-7). 90 cols (OPR.0.4.0.39, founder-directed):
- * Claude Code (Ink) + Codex CLI are RESPONSIVE TUIs that reflow to whatever width they
- * are given - they have no required width; 80 is the legacy fallback that users find
- * too narrow, so 90 sits comfortably above the 80 floor while being narrower than 120 so
- * the scaled static/live mirror reads bigger (more legible) in the topology grid cells.
- * 27 rows gives the classic-terminal 1.72:1 landscape shape (90x27 = ~650x378px, matching the canonical 80x24 aspect) (founder: classic terminal rectangle) while staying a workable agent-TUI height; subscribers fit/scroll/pan their
- * viewport but never resize the pane - so multiple viewers cannot shrink the session to
- * the smallest one. MUST stay in sync with the client mirror LIVE_TERMINAL_COLS
- * (packages/ui/.../terminal/terminal-geometry.ts) - the xterm grid must match the pane.
+ * Canonical 固定终端几何尺寸（FR-7）。90 列（OPR.0.4.0.39，创始人指定）：Claude Code
+ *（Ink）与 Codex CLI 都是响应式 TUI，会按给定宽度重排，没有必需宽度；80 是用户认为过窄的
+ * legacy 回退值，因此 90 明显高于 80 下限，同时窄于 120，使缩放后的静态/实时镜像在拓扑网格
+ * 单元中显示得更大、更易读。27 行形成经典终端的 1.72:1 横向比例（90x27 约 650x378px，
+ * 对应 canonical 80x24 比例），同时保持可用的智能体 TUI 高度；订阅者可适配/滚动/平移自己的
+ * viewport，但绝不调整 pane 大小，因此多个查看者无法把 session 缩到最小查看者的尺寸。必须与
+ * 客户端孪生 LIVE_TERMINAL_COLS（packages/ui/.../terminal/terminal-geometry.ts）保持同步；
+ * xterm 网格必须匹配 pane。
  */
 export const CANONICAL_COLS = 90;
 export const CANONICAL_ROWS = 27;
 
-/** A connected viewer of one broker. The route adapts a WebSocket to this. */
+/** broker 的一个已连接查看者；路由把 WebSocket 适配到此接口。 */
 export interface TerminalSubscriber {
   send(data: string): void;
   close(code: number, reason: string): void;
 }
 
 /**
- * The subset of TmuxAdapter the broker drives. Declared structurally so the
- * broker is unit-testable with a plain mock; the real TmuxAdapter satisfies it.
+ * broker 驱动的 TmuxAdapter 子集。以结构方式声明，使 broker 可用普通 mock 做单元测试；
+ * 真实 TmuxAdapter 满足此接口。
  */
 export interface BrokerTmux {
   humanInput?<T>(name: string, fn: () => Promise<T>): Promise<T>;
@@ -65,43 +59,40 @@ export interface BrokerTmux {
   sendText(name: string, text: string): Promise<TmuxResult>;
   capturePaneScreen(name: string): Promise<string | null>;
   getPaneCursorPosition(name: string): Promise<TmuxCursorPosition | null>;
-  /** Capture the last `lines` lines INCLUDING scrollback history (tmux
-   *  capture-pane -S -lines). Used for the per-subscriber scroll-back window. */
+  /** 捕获最后 `lines` 行，包括 scrollback 历史（tmux capture-pane -S -lines）。
+   * 用于逐订阅者 scroll-back 窗口。 */
   capturePaneContent(name: string, lines: number): Promise<string | null>;
 }
 
 export interface BrokerOptions {
-  /** File-tail poll interval (ms). Default 50. */
+  /** 文件尾部轮询间隔（ms），默认 50。 */
   pollMs?: number;
-  /** Session-liveness probe interval (ms). Default 2000. */
+  /** Session 活性探测间隔（ms），默认 2000。 */
   livenessMs?: number;
-  /** Canonical pane width. Default CANONICAL_COLS (90). */
+  /** Canonical pane 宽度，默认 CANONICAL_COLS（90）。 */
   cols?: number;
-  /** Canonical pane height. Default CANONICAL_ROWS (27). */
+  /** Canonical pane 高度，默认 CANONICAL_ROWS（27）。 */
   rows?: number;
-  /** Bounded size of the recent-output history ring in bytes. Default 64KB. */
+  /** 近期输出历史环的字节上限，默认 64KB。 */
   maxHistoryBytes?: number;
-  /** Called when the broker has no remaining subscribers (or open failed). */
+  /** broker 没有剩余订阅者（或打开失败）时调用。 */
   onEmpty?: (sessionName: string) => void;
 }
 
-/** Client-driven input. There is deliberately NO resize message (FR-7). */
+/** 客户端驱动的输入。有意不提供 resize 消息（FR-7）。 */
 export type TerminalInputMessage =
   | { type: "keys"; keys: string[] }
   | { type: "text"; text: string };
 
-/** ANSI 1-based absolute cursor move (terminal coords are 1-based; tmux is 0-based). */
+/** ANSI 从 1 开始的绝对光标移动（终端坐标从 1 开始，tmux 从 0 开始）。 */
 export function cursorPositionEscape(x: number, y: number): string {
   return `\x1b[${y + 1};${x + 1}H`;
 }
 
 /**
- * Build the cursor-safe seed escape sequence for a captured screen. Each row is
- * painted with an ABSOLUTE cursor move so the client renders the screen at the
- * exact same rows tmux has it - never a relative append that drifts as content
- * scrolls. Normalizes CRLF, drops one trailing print newline, and (when a pane
- * height is known and the capture is taller) keeps only the last `height` rows.
- * Lifted from the FR-4 seed work.
+ * 为捕获的屏幕构建光标安全的初始转义序列。每行都以绝对光标移动绘制，使客户端在与 tmux
+ * 完全相同的行渲染屏幕，而不是随内容滚动产生偏移的相对追加。规范化 CRLF，移除一个尾部打印
+ * 换行；已知 pane 高度且捕获内容更高时，只保留最后 `height` 行。源自 FR-4 seed 工作。
  */
 export function screenSnapshotEscape(
   snapshot: string,
@@ -124,12 +115,9 @@ export function screenSnapshotEscape(
 }
 
 /**
- * Raw pipe output from a full-screen TUI is a repaint stream, not durable
- * scrollback. Replaying cursor-addressed history into a fresh xterm before the
- * current snapshot causes stale prompt/status rows to appear above or under the
- * real screen. Preserve the AC-5 shared-history behavior for plain line output
- * (and simple SGR color), but skip history that contains cursor movement,
- * erase, alternate-screen, OSC, or carriage-return repaint semantics.
+ * 全屏 TUI 的原始 pipe 输出是重绘流，不是持久 scrollback。在当前快照前向全新 xterm 重放按
+ * 光标寻址的历史，会使陈旧提示/状态行出现在真实屏幕上方或下方。对普通行输出（及简单 SGR
+ * 颜色）保留 AC-5 共享历史行为，但跳过含光标移动、擦除、备用屏幕、OSC 或回车重绘语义的历史。
  */
 export function isSafeHistoryReplay(data: string): boolean {
   if (!data) return false;
@@ -146,8 +134,7 @@ export function isSafeHistoryReplay(data: string): boolean {
 }
 
 /**
- * One broker per live tmux session. Owns a single pipe-pane and fans its output
- * out to every attached subscriber.
+ * 每个实时 tmux session 一个 broker。拥有单个 pipe-pane，并向每个已连接订阅者扇出输出。
  */
 export class TerminalSessionBroker {
   readonly sessionName: string;
@@ -160,14 +147,13 @@ export class TerminalSessionBroker {
   private readonly onEmpty?: (sessionName: string) => void;
 
   private readonly subscribers = new Set<TerminalSubscriber>();
-  // OPR.0.4.0.39: per-subscriber scroll-back offset (lines above the live bottom).
-  // 0/absent = live. A scrolled subscriber is PAINTED a tmux history window and is
-  // SKIPPED by the live fanout (so live output doesn't yank it back); read-only on
-  // the pane (capture-pane), so every viewer scrolls independently and nobody else's
-  // live view is disturbed (multi-subscriber-safe scrollback - vs pane-global copy-mode).
+  // OPR.0.4.0.39：逐订阅者 scroll-back 偏移（实时底部上方的行数）。0/缺失 = 实时。已滚动的
+  // 订阅者会绘制 tmux 历史窗口，并被实时扇出跳过（避免实时输出把它拉回底部）；对 pane 只读
+  //（capture-pane），因此每个查看者独立滚动，不会干扰他人的实时视图（多订阅者安全的
+  // scrollback，而非 pane 全局 copy-mode）。
   private readonly scrollOffsets = new Map<TerminalSubscriber, number>();
-  // Broker-owned recent-output ring (AC-5): raw fanned-out bytes, bounded,
-  // replayed to late subscribers so their scrollback matches the earlier ones.
+  // broker 所有的近期输出环（AC-5）：有界的原始扇出字节，重放给后来订阅者，使其 scrollback
+  // 与早先订阅者一致。
   private history: string[] = [];
   private historyBytes = 0;
   private outputPath: string | null = null;
@@ -176,16 +162,14 @@ export class TerminalSessionBroker {
   private livenessInterval: ReturnType<typeof setInterval> | null = null;
   private lastSize = 0;
   private inputQueue: Promise<void> = Promise.resolve();
-  // Singleflight the pipe-open as a shared promise so EVERY concurrent attach
-  // awaits the SAME open result before it seeds/adds (a bare boolean would let a
-  // later attach add itself before the open result is known, then never be
-  // closed if the open fails). Null until the first attach starts the open.
+  // 将 pipe-open singleflight 化为共享 promise，使所有并发 attach 在 seed/add 前等待同一个打开
+  // 结果（裸 boolean 会让后来的 attach 在打开结果未知时加入；若打开失败，它将永远不会关闭）。
+  // 第一次 attach 开始打开前为 null。
   private openPromise: Promise<{ ok: true } | { ok: false; code: number; reason: string }> | null = null;
   private tailStarted = false;
   private torndown = false;
-  // The honest close reason a subscriber should get if it resumes (after an
-  // async open/seed) to find the broker already torn down. Set on every
-  // teardown path so a late/racing attach never goes silently live.
+  // 订阅者在异步 open/seed 后恢复，却发现 broker 已销毁时应收到的真实关闭原因。每条 teardown
+  // 路径都设置它，使延迟/竞态 attach 绝不会静默进入貌似实时的状态。
   private lastClose: { code: number; reason: string } | null = null;
 
   constructor(sessionName: string, tmux: BrokerTmux, opts: BrokerOptions = {}) {
@@ -203,46 +187,42 @@ export class TerminalSessionBroker {
     return this.subscribers.size;
   }
 
-  /** Current size of the broker-owned history ring in bytes (bounded). */
+  /** broker 所有历史环的当前字节数（有界）。 */
   get historyByteLength(): number {
     return this.historyBytes;
   }
 
-  /** The session-scoped pipe output file (one per session). Null until open. */
+  /** session 范围的 pipe 输出文件（每个 session 一个）。打开前为 null。 */
   get pipeOutputPath(): string | null {
     return this.outputPath;
   }
 
   /**
-   * Attach a subscriber. The FIRST subscriber stands up the single pipe-pane
-   * (fixed geometry, one outputPath, tail + liveness). Every subscriber - first
-   * or later - is seeded with the current screen BEFORE it joins the fanout, so
-   * it sees coherent state immediately and does not depend on a resize message.
+   * 连接订阅者。第一个订阅者建立唯一 pipe-pane（固定几何尺寸、一个 outputPath、tail +
+   * liveness）。每个订阅者无论先后，都在加入扇出前以当前屏幕初始化，因此会立即看到一致状态，
+   * 且不依赖 resize 消息。
    */
   async attach(sub: TerminalSubscriber): Promise<void> {
     if (this.torndown) {
       this.closeTorndown(sub);
       return;
     }
-    // Start the single pipe-open exactly once; every concurrent attach awaits
-    // the SAME result before it seeds/adds.
+    // 只启动一次 pipe-open；每个并发 attach 在 seed/add 前等待同一个结果。
     if (!this.openPromise) {
       this.openPromise = this.openPipe();
     }
     const open = await this.openPromise;
 
-    // The broker may have been torn down while we awaited - a co-waiter's open
-    // failed, or the session died. Close this subscriber HONESTLY; never leave a
-    // live-looking subscriber on a dead broker (the no-live-terminal-lies rule).
+    // 等待期间 broker 可能已被销毁——共同等待者的打开失败，或 session 已终止。如实关闭当前
+    // 订阅者；绝不在已死亡 broker 上留下貌似实时的订阅者（实时终端不说谎规则）。
     if (this.torndown) {
       this.closeTorndown(sub);
       return;
     }
 
     if (!open.ok) {
-      // Open failed: remember the reason and tear down ONCE, then close THIS
-      // subscriber. Every co-waiter takes a torndown branch and closes with the
-      // same remembered reason - none is left live.
+      // 打开失败：记录原因，只销毁一次，然后关闭当前订阅者。所有共同等待者都走已销毁分支，
+      // 并以同一已记录原因关闭，不留下任何实时连接。
       this.lastClose = { code: open.code, reason: open.reason };
       this.torndown = true;
       this.teardownResources();
@@ -251,12 +231,10 @@ export class TerminalSessionBroker {
       return;
     }
 
-    // Open succeeded: seed this subscriber (ring replay + current screen) BEFORE
-    // it joins the fanout.
+    // 打开成功：在订阅者加入扇出前，以环重放 + 当前屏幕初始化它。
     await this.seed(sub);
-    // RECHECK after the async seed: liveness/dispose may have torn the broker
-    // down while the capture was pending. Never add a subscriber to a dead
-    // broker - close it honestly with the remembered teardown reason.
+    // 异步 seed 后重新检查：捕获等待期间 liveness/dispose 可能已销毁 broker。绝不把订阅者加入
+    // 已死亡 broker；用已记录的销毁原因如实关闭它。
     if (this.torndown) {
       this.closeTorndown(sub);
       return;
@@ -269,17 +247,17 @@ export class TerminalSessionBroker {
     }
   }
 
-  /** Close a subscriber that resumed after teardown, with the remembered reason. */
+  /** 使用已记录原因关闭在 teardown 后恢复的订阅者。 */
   private closeTorndown(sub: TerminalSubscriber): void {
-    const c = this.lastClose ?? { code: 1011, reason: "terminal broker unavailable" };
+    const c = this.lastClose ?? { code: 1011, reason: "终端 broker 不可用" };
     try {
       sub.close(c.code, c.reason);
     } catch {
-      // already-closed subscriber is fine
+      // 订阅者已关闭也无妨。
     }
   }
 
-  /** Forward client input to tmux, serialized so rapid input keeps order (FR-3). */
+  /** 将客户端输入转发给 tmux；串行化处理，使快速输入保持顺序（FR-3）。 */
   async input(msg: TerminalInputMessage): Promise<void> {
     if (this.torndown) return;
     await this.enqueueInput(async () => {
@@ -293,11 +271,9 @@ export class TerminalSessionBroker {
   }
 
   /**
-   * OPR.0.4.0.39: per-subscriber scroll-back. `offset` = lines above the live
-   * bottom (0 = live). Reads tmux scrollback via capture-pane (READ-ONLY on the
-   * pane, so it never disturbs the live view of OTHER subscribers) and paints the
-   * windowed history to THIS subscriber. At offset 0 it repaints the current screen
-   * and the subscriber rejoins the live fanout.
+   * OPR.0.4.0.39：逐订阅者 scroll-back。`offset` = 实时底部上方的行数（0 = 实时）。通过
+   * capture-pane 读取 tmux scrollback（对 pane 只读，因此绝不干扰其他订阅者的实时视图），
+   * 并只向当前订阅者绘制窗口化历史。offset 为 0 时重绘当前屏幕，订阅者重新加入实时扇出。
    */
   async scroll(sub: TerminalSubscriber, offset: number): Promise<void> {
     if (this.torndown || !this.subscribers.has(sub)) return;
@@ -308,12 +284,10 @@ export class TerminalSessionBroker {
       return;
     }
     this.scrollOffsets.set(sub, clamped);
-    // tmux `capture-pane -p -S -(offset+rows)` returns a buffer that ENDS at the live
-    // bottom (verified against real tmux: `-S -N` returns ~N history lines above the
-    // visible screen PLUS the screen, ending at the bottom row). To show a window
-    // `offset` lines ABOVE the live bottom, the slice must be BOTTOM-anchored: drop
-    // the last `offset` lines (toward live) and take the `rows` above them. Slicing
-    // the TOP `rows` would jump a whole extra screen up on the first wheel notch.
+    // tmux `capture-pane -p -S -(offset+rows)` 返回以实时底部结束的缓冲区（真实 tmux 已验证：
+    // `-S -N` 返回可见屏幕上方约 N 行历史加当前屏幕，并以底行结束）。要显示实时底部上方
+    // `offset` 行的窗口，切片必须锚定底部：丢弃末尾朝实时方向的 `offset` 行，再取其上方的
+    // `rows` 行。若取顶部 `rows`，第一次滚轮操作就会额外向上跳整屏。
     let content: string | null = null;
     try {
       content = await this.tmux.capturePaneContent(this.sessionName, clamped + this.rows);
@@ -322,32 +296,32 @@ export class TerminalSessionBroker {
     }
     if (content === null) return;
     const lines = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-    // Drop a single trailing empty line (capture-pane's trailing newline) so the last
-    // element is the true live-bottom row and the offset stays honest.
+    // 移除一个尾部空行（capture-pane 的尾随换行），使最后一个元素是真正的实时底行，
+    // 保证 offset 如实。
     if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
-    const bottom = lines.length - clamped; // exclusive end: the window sits `offset` up
+    const bottom = lines.length - clamped; // 不含结束位置：窗口位于上方 `offset` 行处。
     const window = bottom <= this.rows
-      ? lines.slice(0, this.rows) // scrolled at/past the top of history: oldest screenful
+      ? lines.slice(0, this.rows) // 已滚到/越过历史顶部：显示最早的一屏。
       : lines.slice(bottom - this.rows, bottom);
     try {
       sub.send(screenSnapshotEscape(window.join("\n"), null));
     } catch { /* dead subscriber */ }
   }
 
-  /** Repaint the current visible screen to ONE subscriber (scroll-back to live). */
+  /** 只为一个订阅者重绘当前可见屏幕（scroll-back 回到实时）。 */
   private async repaintScreen(sub: TerminalSubscriber): Promise<void> {
     let snapshot: string | null = null;
     let cursor: TmuxCursorPosition | null = null;
     try { snapshot = await this.tmux.capturePaneScreen(this.sessionName); } catch { snapshot = null; }
     try { cursor = await this.tmux.getPaneCursorPosition(this.sessionName); } catch { cursor = null; }
     if (snapshot !== null) {
-      try { sub.send(screenSnapshotEscape(snapshot, cursor)); } catch { /* dead */ }
+      try { sub.send(screenSnapshotEscape(snapshot, cursor)); } catch { /* 已断开 */ }
     }
   }
 
   /**
-   * Detach a subscriber. The broker SURVIVES while other subscribers remain
-   * (FR-6); the LAST detach tears the pipe down and deletes the temp file.
+   * 分离订阅者。仍有其他订阅者时 broker 继续存活（FR-6）；最后一个订阅者分离时销毁 pipe
+   * 并删除临时文件。
    */
   detach(sub: TerminalSubscriber): void {
     if (!this.subscribers.delete(sub)) return;
@@ -357,10 +331,10 @@ export class TerminalSessionBroker {
     }
   }
 
-  /** Force teardown (used by the registry/route on shutdown and by tests). */
+  /** 强制 teardown（由 registry/route 在关闭时及测试中使用）。 */
   dispose(): void {
     if (this.torndown) return;
-    this.lastClose = { code: 1011, reason: "terminal broker unavailable" };
+    this.lastClose = { code: 1011, reason: "终端 broker 不可用" };
     this.torndown = true;
     this.subscribers.clear();
     this.scrollOffsets.clear();
@@ -373,15 +347,13 @@ export class TerminalSessionBroker {
   }
 
   private async openPipe(): Promise<{ ok: true } | { ok: false; code: number; reason: string }> {
-    // Close codes mirror the pre-broker route so the UI keeps its semantics:
-    // 1008 (policy) = the session genuinely does not exist; 1011 (server error)
-    // = the pipe/temp-file machinery failed. Both are honest; neither is a lie.
+    // 关闭码镜像 broker 之前的路由，使 UI 保持其语义：1008（policy）= session 确实不存在；
+    // 1011（server error）= pipe/临时文件机制失败。两者都如实反映状态。
     const alive = await this.tmux.hasSession(this.sessionName);
-    if (!alive) return { ok: false, code: 1008, reason: `session not found: ${this.sessionName}` };
+    if (!alive) return { ok: false, code: 1008, reason: `未找到 session：${this.sessionName}` };
 
-    // FR-7 fixed geometry: window-size manual so tmux will NOT auto-shrink the
-    // window to the smallest attached client; then the canonical width/height
-    // ONCE. Deliberately NOT aggressive-resize, which does the opposite.
+    // FR-7 固定几何尺寸：将 window-size 设为 manual，使 tmux 不会自动缩到最小已连接客户端；
+    // 随后只设置一次 canonical 宽高。有意不使用 aggressive-resize，后者会产生相反效果。
     await this.tmux.setWindowOption(this.sessionName, "window-size", "manual").catch(() => {});
     await this.tmux.resizeWindow(this.sessionName, this.cols, this.rows).catch(() => {});
 
@@ -392,36 +364,32 @@ export class TerminalSessionBroker {
     try {
       fs.writeFileSync(outputPath, "", "utf-8");
     } catch (err) {
-      return { ok: false, code: 1011, reason: `pipe output file failed: ${String(err)}` };
+      return { ok: false, code: 1011, reason: `pipe 输出文件失败：${String(err)}` };
     }
     this.outputPath = outputPath;
 
     const pipe = await this.tmux.startPipePane(this.sessionName, outputPath);
     if (!pipe.ok) {
-      return { ok: false, code: 1011, reason: `pipe-pane failed: ${pipe.message}` };
+      return { ok: false, code: 1011, reason: `pipe-pane 失败：${pipe.message}` };
     }
     this.pipeActive = true;
 
-    // Nudge a redraw so the freshly attached pipe captures current pane content
-    // (parity with the prior single-connection behavior; FR-9 no regression).
+    // 触发一次重绘，使刚连接的 pipe 捕获当前 pane 内容（与之前单连接行为一致；FR-9 无回归）。
     await this.tmux.sendKeys(this.sessionName, ["", ""]).catch(() => {});
     return { ok: true };
   }
 
   private async seed(sub: TerminalSubscriber): Promise<void> {
-    // AC-5: replay the broker-owned recent-output ring FIRST so the late
-    // subscriber's xterm builds the same scrollback the earlier subscribers
-    // have for plain terminal streams. Cursor-addressed TUI repaint history is
-    // not scrollback; replaying it corrupts late subscribers, so those sessions
-    // seed from the current visible-screen snapshot only.
+    // AC-5：先重放 broker 所有的近期输出环，使后来订阅者的 xterm 对普通终端流构建出与早先
+    // 订阅者相同的 scrollback。按光标寻址的 TUI 重绘历史不是 scrollback；重放会破坏后来订阅者，
+    // 因此这些 session 只从当前可见屏幕快照初始化。
     if (this.historyBytes > 0) {
       const history = this.history.join("");
       if (isSafeHistoryReplay(history)) {
-        try { sub.send(history); } catch { /* dead subscriber */ }
+        try { sub.send(history); } catch { /* 已断开的订阅者 */ }
       }
     }
-    // Best-effort: a failed capture (or an adapter without the seed methods)
-    // must never break the attach - the tail still streams live output.
+    // 尽力而为：捕获失败（或 adapter 没有 seed 方法）绝不能中断 attach；tail 仍会传输实时输出。
     let snapshot: string | null = null;
     let cursor: TmuxCursorPosition | null = null;
     try {
@@ -438,7 +406,7 @@ export class TerminalSessionBroker {
       try {
         sub.send(screenSnapshotEscape(snapshot, cursor));
       } catch {
-        // a dead subscriber is harmless here; the route handles its own close
+        // 已断开的订阅者在此无害；路由会自行处理关闭。
       }
     }
   }
@@ -459,22 +427,20 @@ export class TerminalSessionBroker {
           this.fanout(buf.toString("utf-8"));
         }
       } catch {
-        // transient stat/read failures are tolerated; liveness owns death
+        // 容忍瞬态 stat/read 失败；死亡判定归 liveness 所有。
       }
     }, this.pollMs);
   }
 
   private fanout(data: string): void {
-    // Feed the broker-owned ring from the SAME single tail that fans out, so
-    // late subscribers can replay the recent window before going live (AC-5).
+    // 从执行扇出的同一个 tail 填充 broker 所有的环，使后来订阅者可在进入实时状态前重放近期窗口
+    //（AC-5）。
     this.appendHistory(data);
-    // One subscriber whose send throws must not break delivery to the others,
-    // and it should be detached cleanly (a throwing send means a dead socket).
+    // 单个订阅者发送时抛错不得中断向其他订阅者投递，并应干净分离（发送抛错表示 socket 已死）。
     let dead: TerminalSubscriber[] | null = null;
     for (const sub of this.subscribers) {
-      // OPR.0.4.0.39: a subscriber scrolled back into history is viewing a static
-      // tmux capture window; skip the live fanout so output does not overwrite it.
-      // It rejoins live when it scrolls back to the bottom (offset 0).
+      // OPR.0.4.0.39：回滚到历史中的订阅者正在查看静态 tmux 捕获窗口；跳过实时扇出，避免
+      // 输出覆盖它。滚回底部（offset 0）时重新加入实时。
       if ((this.scrollOffsets.get(sub) ?? 0) > 0) continue;
       try {
         sub.send(data);
@@ -482,19 +448,18 @@ export class TerminalSessionBroker {
         (dead ??= []).push(sub);
       }
     }
-    // Detach AFTER the loop so we never mutate the set mid-iteration.
+    // 循环结束后再分离，避免迭代期间修改集合。
     if (dead) {
       for (const sub of dead) this.detach(sub);
     }
   }
 
-  /** Append to the bounded ring, dropping oldest chunks past the byte cap. */
+  /** 追加到有界环，超过字节上限时丢弃最旧的数据块。 */
   private appendHistory(data: string): void {
     if (!data) return;
     this.history.push(data);
     this.historyBytes += Buffer.byteLength(data, "utf-8");
-    // Keep at least the most recent chunk so a single large burst is never
-    // fully discarded; otherwise drop oldest until within the cap.
+    // 至少保留最新的数据块，使单次大爆发不会被完全丢弃；其余情况下丢弃最旧块，直到回到上限内。
     while (this.historyBytes > this.maxHistoryBytes && this.history.length > 1) {
       const dropped = this.history.shift()!;
       this.historyBytes -= Buffer.byteLength(dropped, "utf-8");
@@ -515,10 +480,10 @@ export class TerminalSessionBroker {
     }, this.livenessMs);
   }
 
-  /** FR-5: a dead session closes ALL subscribers honestly - never silent stale-live. */
+  /** FR-5：已死亡 session 如实关闭所有订阅者，绝不静默保留陈旧实时状态。 */
   private handleSessionDeath(): void {
     if (this.torndown) return;
-    this.lastClose = { code: 1001, reason: "tmux session terminated" };
+    this.lastClose = { code: 1001, reason: "tmux session 已终止" };
     this.torndown = true;
     const subs = [...this.subscribers];
     this.subscribers.clear();
@@ -529,9 +494,9 @@ export class TerminalSessionBroker {
     this.teardownResources();
     for (const sub of subs) {
       try {
-        sub.close(1001, "tmux session terminated");
+        sub.close(1001, "tmux session 已终止");
       } catch {
-        // already-closed subscriber is fine
+        // 订阅者已关闭也无妨。
       }
     }
     this.onEmpty?.(this.sessionName);
@@ -539,7 +504,7 @@ export class TerminalSessionBroker {
 
   private async teardown(): Promise<void> {
     if (this.torndown) return;
-    this.lastClose = { code: 1011, reason: "terminal broker unavailable" };
+    this.lastClose = { code: 1011, reason: "终端 broker 不可用" };
     this.torndown = true;
     if (this.pipeActive) {
       this.pipeActive = false;
@@ -562,12 +527,12 @@ export class TerminalSessionBroker {
       try {
         fs.unlinkSync(this.outputPath);
       } catch {
-        // temp file may already be gone
+        // 临时文件可能已不存在。
       }
       this.outputPath = null;
     }
     this.lastSize = 0;
-    // Clear the history ring so a torn-down broker leaks no retained output.
+    // 清空历史环，使已销毁的 broker 不会泄漏保留输出。
     this.history = [];
     this.historyBytes = 0;
   }
@@ -580,9 +545,8 @@ export class TerminalSessionBroker {
 }
 
 /**
- * Daemon-owned registry of brokers keyed by canonical session name. Create the
- * broker on the first subscriber for a session; reuse it for later subscribers
- * (so only one pipe-pane exists per session); evict it when it empties.
+ * 后台服务所有的 broker registry，以 canonical session 名称为键。某 session 的第一个订阅者
+ * 到来时创建 broker，后续订阅者复用（每个 session 只存在一个 pipe-pane）；为空时驱逐。
  */
 export class TerminalBrokerRegistry {
   private readonly brokers = new Map<string, TerminalSessionBroker>();
@@ -597,7 +561,7 @@ export class TerminalBrokerRegistry {
     return this.brokers.get(sessionName);
   }
 
-  /** Get-or-create the broker for a session, attach the subscriber, return the broker. */
+  /** 获取或创建 session 的 broker，连接订阅者并返回 broker。 */
   async attach(sessionName: string, sub: TerminalSubscriber): Promise<TerminalSessionBroker> {
     let broker = this.brokers.get(sessionName);
     if (!broker) {

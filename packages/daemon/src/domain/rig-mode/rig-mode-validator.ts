@@ -1,18 +1,15 @@
-// Slice 09 — runtime validator for OperatorContextModeRecord input.
+// 分片 09——OperatorContextModeRecord 输入的运行时校验器。
 //
-// The type system (rig-mode-types.ts) blocks invalid values at
-// compile time when callers go through the typed surface. This
-// validator is the defense for inputs that bypass types: JSON file
-// reads, HTTP request bodies, env-var-derived configuration, CLI
-// argument parsing, and migrations from older record shapes.
+// 调用方通过类型化接口时，类型系统（rig-mode-types.ts）会在编译期阻止无效值。
+// 此校验器用于防御绕过类型的输入：JSON 文件读取、HTTP 请求正文、从环境变量派生的配置、
+// CLI 参数解析，以及旧记录结构的迁移。
 //
-// HG-2: every record must carry all 10 fields. Reject missing/extra.
-// HG-1 / HG-SAFE / HG-8: closed enums; auto-accept rejected; no
-// silent-switch value.
+// HG-2：每条记录必须携带全部 10 个字段，拒绝缺失或多余字段。
+// HG-1 / HG-SAFE / HG-8：封闭枚举；拒绝自动接受；不存在静默切换值。
 //
-// Error format follows the 3-part convention from the velocity team:
-//   what failed / what's allowed / what to do
-// so an operator gets a useful CLI message.
+// 错误格式遵循 velocity 团队的三段式约定：
+//   失败内容 / 允许内容 / 处理方式
+// 从而向操作人员提供有用的 CLI 消息。
 
 import {
   type AutonomyScope,
@@ -55,14 +52,11 @@ const ALLOWED_ESCALATION_THRESHOLDS: readonly EscalationThreshold[] = [
 const ALLOWED_CONCURRENCY_LIMITS: readonly ConcurrencyLimit[] = ["serial", "2", "4", "unlimited"];
 
 /**
- * The 10 required fields of an OperatorContextModeRecord. Used by
- * validateRecord to enumerate field-set integrity (HG-2) — both
- * presence and exhaustiveness.
+ * OperatorContextModeRecord 的 10 个必填字段。validateRecord 用它枚举字段集完整性
+ * （HG-2）——同时检查存在性和穷尽性。
  *
- * NOTE: `mode` is NOT in this list. Mode is the binding selector
- * (Component 2 vocabulary), not part of the Component-3 settings
- * record. The store/route validate mode separately at the binding
- * boundary; this validator enforces only the 10 Component-3 fields.
+ * 注意：`mode` 不在此列表中。模式是绑定选择器（组件 2 词汇），并非组件 3 设置记录的
+ * 一部分。store/route 在绑定边界单独校验 mode；此校验器只强制执行组件 3 的 10 个字段。
  */
 export const REQUIRED_RECORD_FIELDS: readonly (keyof OperatorContextModeRecord)[] = [
   "autonomy_scope",
@@ -90,7 +84,7 @@ export interface ValidationError {
 export type ValidationResult = ValidationOk | ValidationError;
 
 function threePart(failed: string, allowed: string, recovery: string): string {
-  return `${failed}. Allowed: ${allowed}. ${recovery}`;
+  return `${failed}。允许值：${allowed}。${recovery}`;
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -106,9 +100,9 @@ function checkEnum<T extends string>(
   if (typeof value !== "string") {
     errors.push(
       threePart(
-        `${fieldName} is not a string (got ${typeof value})`,
+        `${fieldName} 不是字符串（收到 ${typeof value}）`,
         allowed.join(", "),
-        `Set ${fieldName} to one of the allowed values.`,
+        `请将 ${fieldName} 设为允许值之一。`,
       ),
     );
     return null;
@@ -116,9 +110,9 @@ function checkEnum<T extends string>(
   if (!(allowed as readonly string[]).includes(value)) {
     errors.push(
       threePart(
-        `${fieldName}="${value}" is not a recognized value`,
+        `${fieldName}="${value}" 不是可识别的值`,
         allowed.join(", "),
-        `Set ${fieldName} to one of the allowed values.`,
+        `请将 ${fieldName} 设为允许值之一。`,
       ),
     );
     return null;
@@ -127,13 +121,11 @@ function checkEnum<T extends string>(
 }
 
 /**
- * Validate a candidate record against the FROZEN contract. Returns
- * the typed record on success OR a list of 3-part error messages on
- * failure (one per offending field; report all at once so an
- * operator doesn't have to retry per error).
+ * 按冻结契约校验候选记录。成功时返回类型化记录，失败时返回三段式错误消息列表
+ * （每个违规字段一条；一次性报告全部问题，避免操作人员逐个错误重试）。
  *
- * Strict: any field outside REQUIRED_RECORD_FIELDS is rejected
- * (HG-2 — field-set integrity; "no merged/dropped fields").
+ * 严格模式：拒绝 REQUIRED_RECORD_FIELDS 之外的任何字段
+ * （HG-2——字段集完整性；“不合并或丢弃字段”）。
  */
 export function validateRecord(raw: unknown): ValidationResult {
   const errors: string[] = [];
@@ -143,25 +135,23 @@ export function validateRecord(raw: unknown): ValidationResult {
       ok: false,
       errors: [
         threePart(
-          "Record is not an object",
-          "an object with the 10 required fields",
-          "See conventions/operator-context-mode-system/README.md §Component 3 for the schema.",
+          "记录不是对象",
+          "包含 10 个必填字段的对象",
+          "请参阅 conventions/operator-context-mode-system/README.md 的组件 3 了解 schema。",
         ),
       ],
     };
   }
 
-  // HG-2 — field-set integrity. Reject missing AND extra fields. The
-  // convention says "All ten fields MUST be present in any descendant
-  // that publishes a current-mode artifact. None may be silently
-  // merged or dropped."
+  // HG-2——字段集完整性。同时拒绝缺失和多余字段。约定规定：“发布当前模式工件的任何
+  // 后代记录都必须包含全部十个字段，任何字段都不得被静默合并或丢弃。”
   for (const field of REQUIRED_RECORD_FIELDS) {
     if (!(field in raw)) {
       errors.push(
         threePart(
-          `Missing required field "${field}"`,
+          `缺少必填字段 "${field}"`,
           REQUIRED_RECORD_FIELDS.join(", "),
-          `Add the field to the record. See convention §Component 3.`,
+          `请将该字段添加到记录中。参见约定的组件 3。`,
         ),
       );
     }
@@ -171,16 +161,15 @@ export function validateRecord(raw: unknown): ValidationResult {
     if (!requiredSet.has(key)) {
       errors.push(
         threePart(
-          `Unknown field "${key}"`,
+          `未知字段 "${key}"`,
           REQUIRED_RECORD_FIELDS.join(", "),
-          `Drop the unknown field. The schema is closed at v0; an extension requires a Mode 1.5 amendment.`,
+          `请删除未知字段。v0 的 schema 是封闭的；扩展需要 Mode 1.5 修订。`,
         ),
       );
     }
   }
-  // If we already failed field-set integrity, return early so the
-  // operator sees only the structural error and not cascade per-field
-  // noise.
+  // 若字段集完整性已失败，则提前返回，使操作人员只看到结构错误，而不会看到连锁产生的
+  // 逐字段噪声。
   if (errors.length > 0) return { ok: false, errors };
 
   const autonomy_scope = checkEnum<AutonomyScope>(
@@ -220,11 +209,9 @@ export function validateRecord(raw: unknown): ValidationResult {
     errors,
   );
 
-  // HG-SAFE (runtime) — the type system blocks auto-accept at
-  // compile time; this branch rejects it at runtime for inputs that
-  // bypass typing (JSON / env / HTTP body). The validator does NOT
-  // tolerate any "auto*" / "yes_to_all" / etc. value; it accepts
-  // EXACTLY the three SAFE values.
+  // HG-SAFE（运行时）——类型系统在编译期阻止自动接受；此分支则在运行时拒绝绕过类型的
+  // 输入（JSON / 环境变量 / HTTP 正文）。校验器不容许任何 "auto*" / "yes_to_all" 等值；
+  // 它只接受三个 SAFE 值。
   const permission_prompt_posture = checkEnum<PermissionPromptPosture>(
     "permission_prompt_posture",
     raw["permission_prompt_posture"],
@@ -250,17 +237,17 @@ export function validateRecord(raw: unknown): ValidationResult {
   if (typeof evidence_citation_raw !== "string") {
     errors.push(
       threePart(
-        `evidence_citation is not a string (got ${typeof evidence_citation_raw})`,
-        "a non-empty source-citation string (e.g., qitem id, file path, chatroom topic)",
-        "Provide a brief citation per convention §Citation Rules.",
+        `evidence_citation 不是字符串（收到 ${typeof evidence_citation_raw}）`,
+        "非空来源引用字符串（例如 qitem 标识、文件路径、聊天室主题）",
+        "请按约定的“引用规则”提供简短引用。",
       ),
     );
   } else if (evidence_citation_raw.trim().length === 0) {
     errors.push(
       threePart(
-        "evidence_citation is empty",
-        "a non-empty source-citation string",
-        "Provide a brief citation per convention §Citation Rules.",
+        "evidence_citation 为空",
+        "非空来源引用字符串",
+        "请按约定的“引用规则”提供简短引用。",
       ),
     );
   }
@@ -298,38 +285,34 @@ export function validateRecord(raw: unknown): ValidationResult {
 }
 
 /**
- * Validate an operator-supplied mode name. Mode lives outside the
- * 10-field record (Component 2 vocabulary, not Component 3 settings).
- * The route + store call this at the binding boundary; the
- * disambiguator below (for invocation parsing) is separate.
+ * 校验操作人员提供的模式名。模式位于 10 字段记录之外（属于组件 2 词汇，而非组件 3 设置）。
+ * route 与 store 在绑定边界调用它；下方用于调用解析的消歧器与其分离。
  */
 export function validateModeName(raw: unknown): { ok: true; mode: OperatorContextMode } | { ok: false; error: string } {
   if (typeof raw !== "string") {
-    return { ok: false, error: threePart(`mode is not a string (got ${typeof raw})`, OPERATOR_CONTEXT_MODES.join(", "), "Provide one of the six reserved mode names.") };
+    return { ok: false, error: threePart(`mode 不是字符串（收到 ${typeof raw}）`, OPERATOR_CONTEXT_MODES.join(", "), "请提供六个保留模式名之一。") };
   }
   if (!(OPERATOR_CONTEXT_MODES as readonly string[]).includes(raw)) {
-    return { ok: false, error: threePart(`mode="${raw}" is not a recognized mode name`, OPERATOR_CONTEXT_MODES.join(", "), "Provide one of the six reserved mode names. See convention §Component 2.") };
+    return { ok: false, error: threePart(`mode="${raw}" 不是可识别的模式名`, OPERATOR_CONTEXT_MODES.join(", "), "请提供六个保留模式名之一。参见约定的组件 2。") };
   }
   return { ok: true, mode: raw as OperatorContextMode };
 }
 
 /**
- * Disambiguate operator-supplied mode input. Per convention §Component 4
- * "Bare-Word Disambiguation":
+ * 对操作人员提供的模式输入消歧。根据约定的组件 4“裸词消歧”：
  *
- * - A bare word that is one of the six reserved modes → invocation
- * - An explicit `mode:` prefix → invocation
- * - A word embedded in a sentence → NOT invocation (caller treats as topic)
+ * - 属于六个保留模式之一的裸词 → 调用
+ * - 带显式 `mode:` 前缀 → 调用
+ * - 嵌入句子中的词 → 不是调用（调用方将其视为主题）
  *
- * Returns the canonical mode name when the input is unambiguously an
- * invocation; null otherwise. Caller emits a clarification question
- * for null+bare-multi-word inputs (per convention "ask once").
+ * 输入可明确判定为调用时返回规范模式名，否则返回 null。对于 null + 裸多词输入，调用方
+ * 按“一次询问”约定发出澄清问题。
  */
 export function disambiguateModeInvocation(rawInput: string): OperatorContextMode | null {
   const trimmed = rawInput.trim();
   if (trimmed.length === 0) return null;
 
-  // Explicit prefix wins.
+  // 显式前缀优先。
   const prefixMatch = trimmed.match(/^mode\s*:\s*(\S+)/i);
   if (prefixMatch) {
     const candidate = prefixMatch[1]!.toLowerCase();
@@ -339,7 +322,7 @@ export function disambiguateModeInvocation(rawInput: string): OperatorContextMod
     return null;
   }
 
-  // Bare-word: exactly one word AND it's a reserved mode.
+  // 裸词：恰好一个词，且是保留模式。
   if (/^\S+$/.test(trimmed)) {
     const lower = trimmed.toLowerCase();
     if ((OPERATOR_CONTEXT_MODES as readonly string[]).includes(lower)) {
@@ -348,6 +331,6 @@ export function disambiguateModeInvocation(rawInput: string): OperatorContextMod
     return null;
   }
 
-  // Embedded — let the caller ask.
+  // 嵌入句子——由调用方询问。
   return null;
 }

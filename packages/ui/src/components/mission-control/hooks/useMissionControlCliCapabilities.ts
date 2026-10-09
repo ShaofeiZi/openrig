@@ -1,4 +1,4 @@
-// PL-005 Phase A: hook to fetch fleet CLI capability cache (drift indicator).
+// PL-005 A 阶段：获取机队 CLI 能力缓存的 hook（漂移指示器）。
 import { useQuery } from "@tanstack/react-query";
 
 export interface FleetRollupRow {

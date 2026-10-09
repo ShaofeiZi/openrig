@@ -1,4 +1,4 @@
-/** Passive projection over queue, native proof judgments and canonical health. */
+/** 对 queue、原生 proof 判断与 canonical health 的被动投影。 */
 export interface AttentionItem {
   id: string;
   kind: "action" | "update";
@@ -25,5 +25,5 @@ export interface AttentionRead {
   detailError: string | null;
 }
 
-// Consumers must use the same lexical human classification as queue selection.
+// 消费方必须使用与 queue 选择相同的词法人工分类。
 export { isHumanSeatSessionRef } from "./domain/session-name.js";

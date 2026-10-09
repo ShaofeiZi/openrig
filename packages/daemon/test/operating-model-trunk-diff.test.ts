@@ -37,7 +37,7 @@ describe("trunk-diff filename selection", () => {
       f.run();
       f.write(name, "beta");
       expect(f.run()).toContain("+intent: beta");
-      expect(f.run()).toContain("no changes since your last render");
+      expect(f.run()).toContain("自上次渲染后无变化");
     },
   );
 
@@ -55,7 +55,7 @@ describe("trunk-diff filename selection", () => {
     f.write("LEARNED.md", "alpha");
     f.run("--name", "LEARNED.md");
     f.write("SPEC.md", "beta");
-    expect(f.run("--name", "LEARNED.md")).toContain("no changes since your last render");
+    expect(f.run("--name", "LEARNED.md")).toContain("自上次渲染后无变化");
     f.write("LEARNED.md", "gamma");
     expect(f.run("--name", "LEARNED.md")).toContain("+intent: gamma");
   });

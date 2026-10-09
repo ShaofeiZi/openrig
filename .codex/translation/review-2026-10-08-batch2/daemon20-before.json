@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/agent-images/agent-image-library-service.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/adapters/claude-code-adapter.ts": [
+"daemon-runtime",
+"self_reported"
+],
+"packages/daemon/src/adapters/codex-runtime-adapter.ts": [
+"daemon-runtime",
+"self_reported"
+],
+"packages/daemon/src/adapters/tmux.ts": [
+"daemon-runtime",
+"self_reported"
+],
+"packages/daemon/src/domain/activity-endpoint.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/agent-images/agent-image-types.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/bind-plan.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/agent-images/manifest-parser.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/agent-images/resume-token-discovery.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/agent-manifest.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/agent-resolver.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/agent-preflight.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/active-lens-store.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/active-occupant.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/agent-starter-resolver.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/ask-service.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/activity-taxonomy.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/agent-activity-store.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/agent-images/evidence-guard.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/applied-launch-observation-store.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

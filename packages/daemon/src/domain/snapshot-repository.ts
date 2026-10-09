@@ -48,25 +48,20 @@ export class SnapshotRepository {
   }
 
   /**
-   * Returns the latest snapshot whose persisted `data` carries the minimum
-   * structural metadata `RestoreOrchestrator.restore`'s pre-validation requires.
+   * 返回最新快照，其持久化 `data` 必须包含 `RestoreOrchestrator.restore` 预校验要求的
+   * 最小结构 metadata。
    *
-   * OPR.0.3.4.9 Option Y: prefers the most-recent of the crash-insurance tier
-   * {auto-pre-down, auto-periodic} -- the freshest of the two wins. A newer
-   * auto-periodic beats a stale auto-pre-down (the crash fix); a genuinely-
-   * fresher auto-pre-down still wins (graceful-cycle preserved). Manual,
-   * pre_restore, and auto-rehydrate remain below the tier (unchanged).
+   * OPR.0.3.4.9 方案 Y：优先选择崩溃保险层 {auto-pre-down, auto-periodic} 中最新的一项。
+   * 较新的 auto-periodic 胜过陈旧 auto-pre-down（崩溃修复）；真正更新的 auto-pre-down
+   * 仍然胜出（保留优雅周期）。manual、pre_restore 和 auto-rehydrate 继续位于该层之下。
    *
-   * The SQL query orders by `(kind IN ('auto-pre-down','auto-periodic')) DESC,
-   * created_at DESC, id DESC`. The in-memory loop validates each candidate and
-   * skips snapshots with corrupted JSON or missing topology metadata, returning
-   * the first usable row. Returns null when no usable snapshot exists.
+   * SQL 按 `(kind IN ('auto-pre-down','auto-periodic')) DESC, created_at DESC, id DESC` 排序。
+   * 内存循环逐个校验候选，跳过 JSON 损坏或拓扑 metadata 缺失的快照，返回第一条可用记录；
+   * 没有可用快照时返回 null。
    *
-   * Distinct from `findLatestUsableSnapshot` (rig-repository.ts, L2): that
-   * helper requires at least one persisted resume token and is consumed by
-   * the lifecycle projection. This helper only requires structural metadata
-   * `RestoreOrchestrator.restore` actually inspects, so terminal-only or
-   * resume-tokenless rigs still resolve.
+   * 与 `findLatestUsableSnapshot`（rig-repository.ts，L2）不同：后者要求至少一个已持久化 resume
+   * token，供生命周期投影消费。本辅助函数只要求 `RestoreOrchestrator.restore` 实际检查的结构
+   * metadata，因此只有 terminal 或没有 resume token 的工作组仍可解析。
    */
   findLatestRestoreUsable(rigId: string): Snapshot | null {
     const rows = this.db
@@ -88,22 +83,21 @@ export class SnapshotRepository {
     return null;
   }
 
-  /** Resolve an exact or policy-ranked restore source and return the evidence
-   * needed to make that decision legible before any restore mutation. */
+  /** 解析精确或按策略排序的恢复来源，并返回在任何恢复变更前解释该决策所需的证据。 */
   selectRestoreUsable(rigId: string, snapshotId?: string, nowMs: number = Date.now()): RestoreSnapshotSelectionOutcome {
     let snapshot: Snapshot | null;
     if (snapshotId) {
       snapshot = this.getSnapshot(snapshotId);
-      if (!snapshot) return { ok: false, code: "snapshot_not_found", message: `Snapshot ${snapshotId} not found` };
+      if (!snapshot) return { ok: false, code: "snapshot_not_found", message: `未找到快照 ${snapshotId}` };
       if (snapshot.rigId !== rigId) {
-        return { ok: false, code: "snapshot_wrong_rig", message: `Snapshot ${snapshotId} belongs to rig ${snapshot.rigId}, not ${rigId}` };
+        return { ok: false, code: "snapshot_wrong_rig", message: `快照 ${snapshotId} 属于工作组 ${snapshot.rigId}，不是 ${rigId}` };
       }
       if (!isRestoreUsableSnapshotData(snapshot.data)) {
-        return { ok: false, code: "snapshot_unusable", message: `Snapshot ${snapshotId} is not structurally restore-usable` };
+        return { ok: false, code: "snapshot_unusable", message: `快照 ${snapshotId} 的结构不满足恢复要求` };
       }
     } else {
       snapshot = this.findLatestRestoreUsable(rigId);
-      if (!snapshot) return { ok: false, code: "no_usable_snapshot", message: `No usable snapshot for rig ${rigId}` };
+      if (!snapshot) return { ok: false, code: "no_usable_snapshot", message: `工作组 ${rigId} 没有可用快照` };
     }
 
     const newer = this.listSnapshots(rigId)
@@ -118,8 +112,8 @@ export class SnapshotRepository {
         ...summarizeSnapshot(snapshot, nowMs),
         mode,
         rationale: mode === "explicit"
-          ? "operator selected this exact restore-usable snapshot"
-          : "automatic crash-insurance ranking prefers auto-pre-down/auto-periodic, then newest usable",
+          ? "操作者选择了这个确切的可恢复快照"
+          : "自动崩溃保障排序优先选择 auto-pre-down/auto-periodic，其次选择最新可用快照",
         newerUsableAlternative: newer ? summarizeSnapshot(newer, nowMs) : null,
       },
     };
@@ -155,7 +149,7 @@ export class SnapshotRepository {
   }
 
   pruneSnapshots(rigId: string, keepCount: number): number {
-    // Find IDs to keep (newest N)
+    // 找出要保留的最新 N 个 ID。
     const keepers = this.db
       .prepare(
         "SELECT id FROM snapshots WHERE rig_id = ? ORDER BY created_at DESC LIMIT ?"
@@ -164,7 +158,7 @@ export class SnapshotRepository {
 
     const keepIds = new Set(keepers.map((r) => r.id));
 
-    // Delete everything else for this rig
+    // 删除该工作组的其余快照。
     const all = this.db
       .prepare("SELECT id FROM snapshots WHERE rig_id = ?")
       .all(rigId) as { id: string }[];
@@ -181,9 +175,8 @@ export class SnapshotRepository {
     return toDelete.length;
   }
 
-  /** OPR.0.3.4.9 — kind-scoped retention. Keeps the newest `keepCount` rows
-   *  of the given kind and deletes only older rows of THAT kind. Never touches
-   *  other kinds. Hard floor: keepCount >= 1 (never prune to zero). */
+  /** OPR.0.3.4.9——按 kind 限定的保留策略。保留指定 kind 最新的 `keepCount` 行，
+   * 只删除该 kind 的较旧行，绝不触碰其他 kind。硬下限：keepCount >= 1，不会清理为零。 */
   pruneSnapshotsByKind(rigId: string, kind: string, keepCount: number): number {
     const effectiveKeep = Math.max(1, keepCount);
     const keepers = this.db
@@ -243,24 +236,20 @@ interface SnapshotRow {
   created_at: string;
 }
 
-// Validates `SnapshotData` carries the minimum structural metadata
-// `RestoreOrchestrator.restore`'s pre-validation requires.
+// 校验 `SnapshotData` 是否包含 `RestoreOrchestrator.restore` 预校验要求的最小结构 metadata。
 //
-// Per the L3b orch amendment: validate against actual SnapshotData. There is
-// NO `data.bindings[]` field and `Session` has NO `runtime` field (runtime
-// lives on nodes). Resume tokens are NOT required (resume-tokenless rigs are
-// still restorable).
+// 按 L3b orch 修订：针对实际 SnapshotData 校验。不存在 `data.bindings[]` 字段，`Session`
+// 也没有 `runtime` 字段（runtime 位于 node）。不要求 resume token，没有 token 的工作组仍可恢复。
 //
-// Required:
-//   - rig with non-empty id
-//   - nodes array (may be empty — restore handles empty topologies)
-//   - edges array (may be empty)
-//   - sessions array (may be empty — `validatePreRestore` accepts empty)
-//   - checkpoints object
+// 必需结构：
+//   - id 非空的 rig
+//   - nodes 数组（可为空，恢复流程能处理空拓扑）
+//   - edges 数组（可为空）
+//   - sessions 数组（可为空，`validatePreRestore` 接受空数组）
+//   - checkpoints 对象
 //
-// When sessions is non-empty, each session must have a non-empty sessionName
-// and nodeId so node linkage can be resolved during restore. We do NOT check
-// session.runtime because that field doesn't exist on Session (orch amendment).
+// sessions 非空时，每个 session 必须具有非空 sessionName 与 nodeId，供恢复期间解析节点关联。
+// 不检查 session.runtime，因为 Session 上不存在该字段（orch 修订）。
 export function isRestoreUsableSnapshotData(data: unknown): data is SnapshotData {
   if (!data || typeof data !== "object") return false;
   const d = data as SnapshotData;

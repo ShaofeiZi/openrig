@@ -1,4 +1,4 @@
-// PL-016 — manifest parser tests.
+// PL-016——manifest 解析器测试。
 
 import { describe, it, expect } from "vitest";
 import { parseAgentImageManifest } from "../src/domain/agent-images/manifest-parser.js";
@@ -24,7 +24,7 @@ lineage:
 `;
 
 describe("parseAgentImageManifest", () => {
-  it("parses a valid manifest into the typed shape", () => {
+  it("将有效 manifest 解析为带类型的结构", () => {
     const m = parseAgentImageManifest(validManifest, "/test/manifest.yaml");
     expect(m.name).toBe("driver-release-primed");
     expect(m.version).toBe("1");
@@ -38,7 +38,7 @@ describe("parseAgentImageManifest", () => {
     expect(m.files).toHaveLength(1);
   });
 
-  it("normalizes numeric versions to strings", () => {
+  it("将数字版本规范化为字符串", () => {
     const m = parseAgentImageManifest(`
 name: x
 version: 2
@@ -51,34 +51,34 @@ files: []
     expect(m.version).toBe("2");
   });
 
-  it("rejects non-YAML content", () => {
+  it("拒绝非 YAML 内容", () => {
     expect(() => parseAgentImageManifest("{not valid", "/x.yaml")).toThrow(AgentImageError);
     try { parseAgentImageManifest("{not valid", "/x.yaml"); } catch (err) {
       expect((err as AgentImageError).code).toBe("manifest_parse_error");
     }
   });
 
-  it("rejects missing name", () => {
+  it("拒绝缺少 name 的 manifest", () => {
     expect(() => parseAgentImageManifest("version: 1\nruntime: claude-code\nsource_seat: x\nsource_session_id: s\nsource_resume_token: t\nfiles: []", "/x.yaml")).toThrow(/name/);
   });
 
-  it("rejects missing version", () => {
+  it("拒绝缺少 version 的 manifest", () => {
     expect(() => parseAgentImageManifest("name: x\nruntime: claude-code\nsource_seat: x\nsource_session_id: s\nsource_resume_token: t\nfiles: []", "/x.yaml")).toThrow(/version/);
   });
 
-  it("rejects invalid runtime", () => {
+  it("拒绝无效的 runtime", () => {
     expect(() => parseAgentImageManifest("name: x\nversion: 1\nruntime: bash\nsource_seat: x\nsource_session_id: s\nsource_resume_token: t\nfiles: []", "/x.yaml")).toThrow(/runtime/);
   });
 
-  it("rejects missing source_seat", () => {
+  it("拒绝缺少 source_seat 的 manifest", () => {
     expect(() => parseAgentImageManifest("name: x\nversion: 1\nruntime: claude-code\nsource_session_id: s\nsource_resume_token: t\nfiles: []", "/x.yaml")).toThrow(/source_seat/);
   });
 
-  it("rejects missing source_resume_token", () => {
+  it("拒绝缺少 source_resume_token 的 manifest", () => {
     expect(() => parseAgentImageManifest("name: x\nversion: 1\nruntime: claude-code\nsource_seat: x\nsource_session_id: s\nfiles: []", "/x.yaml")).toThrow(/source_resume_token/);
   });
 
-  it("rejects file with .. in path", () => {
+  it("拒绝路径中含有 .. 的文件", () => {
     expect(() => parseAgentImageManifest(`
 name: x
 version: 1
@@ -89,10 +89,10 @@ source_resume_token: t
 files:
   - path: ../escape.md
     role: r
-`, "/x.yaml")).toThrow(/relative path inside the image/);
+`, "/x.yaml")).toThrow(/镜像内的相对路径/);
   });
 
-  it("rejects file with unsupported suffix", () => {
+  it("拒绝使用不受支持后缀的文件", () => {
     expect(() => parseAgentImageManifest(`
 name: x
 version: 1
@@ -103,10 +103,10 @@ source_resume_token: t
 files:
   - path: code.ts
     role: r
-`, "/x.yaml")).toThrow(/unsupported suffix/);
+`, "/x.yaml")).toThrow(/不支持的后缀/);
   });
 
-  it("accepts both camelCase and snake_case manifest keys", () => {
+  it("同时接受 camelCase 和 snake_case manifest key", () => {
     const camelManifest = `
 name: x
 version: 1

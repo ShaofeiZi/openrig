@@ -1,6 +1,6 @@
 name: conveyor-reviewer
 version: "1.0"
-description: Conveyor reviewer - checks build output, asks for rework, or clears the packet for close
+description: 流水线评审智能体——检查构建产物、要求返工，或批准关闭工作包
 
 defaults:
   runtime: codex

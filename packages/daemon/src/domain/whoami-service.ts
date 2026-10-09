@@ -34,11 +34,10 @@ export interface WhoamiResult {
     memberId: string;
   }>;
   /**
-   * OPR.99.0.6.1 — the peers[] roster contract, stated in-band so a fresh
-   * agent cannot misread the field. `peers[]` is the same-rig ROSTER excluding
-   * self (no edge/status filter); `edges{}` is the directional graph;
-   * `rig ps --nodes` is the node inventory including self + live state.
-   * Additive note only — `peers[]` name and shape are unchanged.
+   * OPR.99.0.6.1——peers[] roster 契约以内嵌方式说明，避免新智能体误读字段。`peers[]` 是同一
+   * 工作组中排除自身后的 ROSTER，不按 edge/status 过滤；`edges{}` 是有向图；
+   * `zrig ps --nodes` 是包含自身与实时状态的 node inventory。这里只增补说明，
+   * `peers[]` 的名称和结构不变。
    */
   peersNote: string;
   edges: {
@@ -56,16 +55,14 @@ export interface WhoamiResult {
     captureExamples: string[];
   };
   contextUsage?: import("./types.js").ContextUsage;
-  /** PL-012 Token / Context Usage Surface v0 — runtime-specific context
-   *  detail surfaced alongside the cross-runtime contextUsage primitive.
-   *  Codex: threadId from the per-pid logs DB. Claude Code: resumeToken
-   *  + current usage from the context-usage sample. Terminal: null. */
+  /** PL-012 Token / Context Usage Surface v0——在跨运行时 contextUsage primitive 旁呈现
+   *  运行时专属上下文详情。Codex：来自逐 PID logs DB 的 threadId。Claude Code：resumeToken
+   *  加 context-usage sample 中的当前用量。Terminal：null。 */
   runtimeContext?: RuntimeContext | null;
-  /** PL-007 Workspace Primitive v0 — typed workspace block when the
-   *  rig's RigSpec declares one. null when the rig has no workspace
-   *  declaration; agents fall back to cwd-only orientation. */
+  /** PL-007 Workspace Primitive v0——工作组 RigSpec 声明 workspace 时提供类型化 workspace block。
+   *  工作组未声明 workspace 时为 null；智能体回退到只使用 cwd 定位。 */
   workspace?: WhoamiWorkspaceBlock | null;
-  /** W3 explicit current-seat diagnostic; omitted from ordinary whoami reads. */
+  /** W3 显式当前席位诊断；普通 whoami 读取时省略。 */
   permissionDrift?: import("./permission-drift.js").PermissionDriftDiagnostic | null;
 }
 
@@ -165,14 +162,14 @@ export class WhoamiService {
       resolvedBy = "node_id";
       currentSessionName = this.getCurrentSessionName(nodeRow.id, nodeRow.rig_id);
     } else if (query.sessionName) {
-      // Find sessions matching this name — check for ambiguity across rigs
+      // 查找匹配该名称的会话，并检查是否跨工作组存在歧义。
       const sessionRows = this.db
         .prepare("SELECT * FROM sessions WHERE session_name = ? ORDER BY id DESC")
         .all(query.sessionName) as SessionRow[];
 
       if (sessionRows.length === 0) return null;
 
-      // Check distinct rigs
+      // 检查不同工作组。
       const rigIds = new Set<string>();
       for (const sess of sessionRows) {
         const node = this.db.prepare("SELECT rig_id FROM nodes WHERE id = ?").get(sess.node_id) as { rig_id: string } | undefined;
@@ -181,7 +178,7 @@ export class WhoamiService {
 
       if (rigIds.size > 1) {
         throw new WhoamiAmbiguousError(
-          `Session '${query.sessionName}' is ambiguous — found in ${rigIds.size} rigs. Use --node-id instead.`
+          `会话 '${query.sessionName}' 存在歧义：在 ${rigIds.size} 个工作组中找到。请改用 --node-id。`
         );
       }
 
@@ -194,15 +191,15 @@ export class WhoamiService {
       return null;
     }
 
-    // Get rig
+    // 获取工作组。
     const rig = this.rigRepo.getRig(nodeRow.rig_id);
     if (!rig) return null;
 
-    // Derive member identity
+    // 派生 member identity。
     const parts = nodeRow.logical_id.split(".");
     const memberId = parts.length > 1 ? parts.slice(1).join(".") : nodeRow.logical_id;
 
-    // Get pod info
+    // 获取 pod 信息。
     let podLabel: string | null = null;
     let podNamespace: string | null = null;
     if (nodeRow.pod_id) {
@@ -211,12 +208,12 @@ export class WhoamiService {
       podNamespace = pod?.namespace ?? null;
     }
 
-    // If resolved by nodeId, get current session name
+    // 通过 nodeId 解析时，获取当前会话名。
     if (resolvedBy === "node_id") {
       currentSessionName = this.getCurrentSessionName(nodeRow.id, nodeRow.rig_id);
     }
 
-    // Build identity
+    // 构建 identity。
     const binding = this.db
       .prepare("SELECT attachment_type, tmux_session, external_session_name FROM bindings WHERE node_id = ?")
       .get(nodeRow.id) as BindingRow | undefined;
@@ -241,7 +238,7 @@ export class WhoamiService {
       resolvedSpecVersion: nodeRow.resolved_spec_version,
     };
 
-    // Build peers — other nodes in this rig with their current sessions
+    // 构建 peer：工作组内其他节点及其当前会话。
     const peers: WhoamiResult["peers"] = [];
     for (const peerNode of rig.nodes) {
       if (peerNode.id === nodeRow.id) continue;
@@ -264,7 +261,7 @@ export class WhoamiService {
       });
     }
 
-    // Build edges — classify as outgoing/incoming relative to this node
+    // 构建 edge：相对于当前节点分类为 outgoing/incoming。
     const outgoing: WhoamiResult["edges"]["outgoing"] = [];
     const incoming: WhoamiResult["edges"]["incoming"] = [];
 
@@ -272,7 +269,7 @@ export class WhoamiService {
       .prepare("SELECT source_id, target_id, kind FROM edges WHERE rig_id = ?")
       .all(nodeRow.rig_id) as EdgeRow[];
 
-    // Build node ID → logicalId + sessionName map
+    // 构建 node ID → logicalId + sessionName 映射。
     const nodeMap = new Map<string, { logicalId: string; sessionName: string | null }>();
     for (const n of rig.nodes) {
       nodeMap.set(n.id, {
@@ -295,7 +292,7 @@ export class WhoamiService {
       }
     }
 
-    // Build transcript info
+    // 构建 transcript 信息。
     const transcriptEnabled = this.transcriptStore.enabled && currentSessionName !== null;
     const transcriptPath = currentSessionName && transcriptEnabled
       ? this.transcriptStore.getTranscriptPath(rig.rig.name, currentSessionName)
@@ -304,32 +301,29 @@ export class WhoamiService {
     const transcript: WhoamiResult["transcript"] = {
       enabled: transcriptEnabled,
       path: transcriptPath,
-      tailCommand: transcriptEnabled ? `rig transcript ${currentSessionName} --tail 100` : null,
-      grepCommand: transcriptEnabled ? `rig transcript ${currentSessionName} --grep <pattern>` : null,
+      tailCommand: transcriptEnabled ? `zrig transcript ${currentSessionName} --tail 100` : null,
+      grepCommand: transcriptEnabled ? `zrig transcript ${currentSessionName} --grep <pattern>` : null,
     };
 
-    // Build command examples from peers
+    // 根据 peer 构建命令示例。
     const reachablePeers = peers.filter((p) => p.sessionName !== null);
-    const sendExamples = reachablePeers.slice(0, 3).map((p) => `rig send ${p.sessionName} 'message' --verify`);
-    const captureExamples = reachablePeers.slice(0, 3).map((p) => `rig capture ${p.sessionName}`);
+    const sendExamples = reachablePeers.slice(0, 3).map((p) => `zrig send ${p.sessionName} '消息' --verify`);
+    const captureExamples = reachablePeers.slice(0, 3).map((p) => `zrig capture ${p.sessionName}`);
 
-    // Context usage. OPR.0.4.0.27: compact whoami SKIPS the contextUsageStore
-    // lookup entirely (the every-boot token win + the daemon compute skip);
-    // --full keeps it.
+    // 上下文用量。OPR.0.4.0.27：compact whoami 完全跳过 contextUsageStore 查询
+    //（每次启动节省 token，同时省去后台服务计算）；--full 保留该查询。
     const contextUsage = (!query.compact && this.contextUsageStore && currentSessionName)
       ? this.contextUsageStore.getForNode(nodeRow.id, currentSessionName)
       : undefined;
 
-    // PL-012: runtime-specific context block. Codex/Claude Code surface
-    // additional debug-friendly detail; terminal seats have no
-    // conversation context and report null. OPR.0.4.0.27: skipped when compact.
+    // PL-012：运行时专属 context block。Codex/Claude Code 会呈现额外的调试友好详情；
+    // terminal 席位没有 conversation context，返回 null。OPR.0.4.0.27：compact 时跳过。
     const runtimeContext = query.compact
       ? undefined
       : this.computeRuntimeContext(nodeRow.id, identity.runtime, contextUsage);
 
-    // PL-007: workspace block resolved from RigSpec.workspace. activeRepo
-    // resolves per-rig default first; envOverride lets per-session
-    // OPENRIG_TARGET_REPO override (subject to repo-name validation).
+    // PL-007：workspace block 从 RigSpec.workspace 解析。activeRepo 优先解析工作组默认值；
+    // envOverride 允许逐会话 OPENRIG_TARGET_REPO 覆盖，但仍需通过 repo 名称校验。
     const workspaceSpec = this.rigRepo.getRigWorkspace(nodeRow.rig_id);
     const workspace = resolveWorkspaceContext({
       spec: workspaceSpec,
@@ -341,7 +335,7 @@ export class WhoamiService {
       resolvedBy,
       identity,
       peers,
-      peersNote: "peers = this rig's roster excluding self (no edge filter); edges = directional relationships; use `rig ps --nodes` for node inventory including self + live state",
+      peersNote: "peers = 当前工作组中排除自身后的 roster（不按 edge 过滤）；edges = 有向关系；使用 `zrig ps --nodes` 查看包含自身与实时状态的 node inventory",
       edges: { outgoing, incoming },
       transcript,
       commands: { sendExamples, captureExamples },
@@ -351,11 +345,9 @@ export class WhoamiService {
     };
   }
 
-  /** PL-012: produce the runtime-specific context block. v0 surfaces
-   *  what the daemon already has captured without taking on new pid /
-   *  log lookups (those need helper plumbing across the daemon's tmux
-   *  adapter). When data isn't available, fields return null honestly
-   *  instead of fabricating. Terminal seats: null entire block. */
+  /** PL-012：生成运行时专属 context block。v0 只呈现后台服务已经捕获的内容，不新增 PID/log 查询；
+   *  后者需要跨后台服务 tmux adapter 的 helper 接线。数据不可用时字段如实返回 null，而不虚构。
+   *  Terminal 席位的整个 block 为 null。 */
   private computeRuntimeContext(
     nodeId: string,
     runtime: string,
@@ -371,10 +363,9 @@ export class WhoamiService {
     const lastSampledAt = contextUsage?.sampledAt ?? null;
 
     if (runtime === "codex") {
-      // Codex thread-id resolution requires a pid (codex-thread-id.ts is
-      // pid-keyed). Surface null at v0 — the operator drops to terminal
-      // for thread-id extraction. NAMED v0+1 trigger: dogfood reports
-      // needing UI-side thread-id without terminal drop.
+      // Codex thread-id 解析需要 PID（codex-thread-id.ts 以 PID 为 key）。v0 如实返回 null，
+      // 操作员需进入 terminal 提取 thread-id。具名 v0+1 触发条件：dogfood 报告需要无需进入
+      // terminal 的 UI 侧 thread-id。
       return {
         runtime: "codex",
         threadId: null,
@@ -384,8 +375,7 @@ export class WhoamiService {
       };
     }
     if (runtime === "claude-code") {
-      // resumeToken lives on sessions.resume_token (migration 006).
-      // Read the most-recent session for this node.
+      // resumeToken 位于 sessions.resume_token（migration 006）。读取此节点最新的会话。
       let resumeToken: string | null = null;
       try {
         const row = this.db
@@ -393,7 +383,7 @@ export class WhoamiService {
           .get(nodeId) as { resume_token: string | null } | undefined;
         resumeToken = row?.resume_token ?? null;
       } catch {
-        // Migration absent (test harness) — surface null honestly.
+        // migration 缺失（测试 harness）时如实呈现 null。
         resumeToken = null;
       }
       return {
@@ -403,20 +393,19 @@ export class WhoamiService {
         lastSampledAt,
       };
     }
-    // Unknown runtime: surface null until the daemon learns the
-    // runtime's context exposure shape. PL-005 honest-degradation.
+    // 未知运行时：在后台服务了解其 context exposure shape 前返回 null。PL-005 诚实降级。
     return null;
   }
 
   private getCurrentSessionName(nodeId: string, rigId: string): string | null {
-    // Prefer binding's current transport/session anchor
+    // 优先使用 binding 当前的 transport/session 锚点。
     const binding = this.db
       .prepare("SELECT tmux_session, external_session_name FROM bindings WHERE node_id = ?")
       .get(nodeId) as { tmux_session: string | null; external_session_name: string | null } | undefined;
     if (binding?.tmux_session) return binding.tmux_session;
     if (binding?.external_session_name) return binding.external_session_name;
 
-    // Fall back to newest session by ULID
+    // 按 ULID 回退到最新会话。
     const sess = this.db
       .prepare("SELECT session_name FROM sessions WHERE node_id = ? ORDER BY id DESC LIMIT 1")
       .get(nodeId) as { session_name: string } | undefined;

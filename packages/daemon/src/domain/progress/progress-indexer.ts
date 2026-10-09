@@ -1,26 +1,21 @@
-// UI Enhancement Pack v0 — workspace PROGRESS.md indexer.
+// UI Enhancement Pack v0——workspace PROGRESS.md 索引器。
 //
-// Walks operator-allowlisted scan roots, finds PROGRESS.md files,
-// parses each into a checkbox-hierarchy tree, and emits a normalized
-// payload consumed by:
-//   - GET /api/progress/tree (the new top-level Progress browse view)
-//   - the new ProgressTree React component
+// 遍历操作员 allowlist 中的扫描根目录，查找 PROGRESS.md，将每个文件解析为 checkbox 层次树，
+// 并生成以下位置消费的规范化 payload：
+//   - GET /api/progress/tree（新的顶层进度浏览 view）
+//   - 新的 ProgressTree React 组件
 //
-// Scan strategy (item 1B):
-//   - Operator configures progress-scan roots via env var
+// 扫描策略（第 1B 项）：
+//   - 操作员通过环境变量配置 progress 扫描根目录
 //     OPENRIG_PROGRESS_SCAN_ROOTS=root1:/abs/path,root2:/abs/path
-//     (same delimited-pair shape as OPENRIG_FILES_ALLOWLIST).
-//   - For each configured root, recursively find PROGRESS.md files
-//     up to a small max depth (default 6) — enough to catch
-//     mission/lane/slice nesting without descending into node_modules
-//     or other deep trees.
-//   - Each PROGRESS.md becomes one mission/lane/slice node; rows
-//     parsed from `[ ]` / `[x]` / `[~]` checkbox lines + Markdown
-//     headings (## / ###) for hierarchy.
+//     （与 OPENRIG_FILES_ALLOWLIST 使用相同的分隔 pair 结构）。
+//   - 对每个已配置根目录，递归查找 PROGRESS.md，最大深度较小（默认 6），足以捕获
+//     mission/lane/slice 嵌套，同时避免进入 node_modules 或其他深层目录树。
+//   - 每个 PROGRESS.md 成为一个 mission/lane/slice 节点；从 `[ ]` / `[x]` / `[~]` checkbox
+//     行与 Markdown 标题（## / ###）解析各行，形成层次结构。
 //
-// MVP single-host: in-memory walk per request; no caching at v0
-// (file count is bounded by operator's allowlist scope; sub-second
-// for the typical workspace).
+// MVP 单 host：每次请求在内存中遍历；v0 不缓存（文件数受操作员 allowlist 范围约束，典型
+// workspace 在一秒内完成）。
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -28,30 +23,30 @@ import * as path from "node:path";
 export type CheckboxStatus = "active" | "done" | "blocked" | "unknown";
 
 export interface ProgressRow {
-  /** 1-based source line number. */
+  /** 从 1 开始的源代码行号。 */
   line: number;
-  /** Indent depth (0 = top-level; nested by 2-space indent / Markdown heading depth). */
+  /** 缩进深度（0 = 顶层；按 2 空格缩进或 Markdown 标题深度嵌套）。 */
   depth: number;
-  /** Parsed status from the `[x]` / `[ ]` / `[~]` syntax. */
+  /** 从 `[x]` / `[ ]` / `[~]` 语法解析出的状态。 */
   status: CheckboxStatus;
-  /** The text after the checkbox (or the heading text when this row is a heading). */
+  /** checkbox 后的文本（若该行为标题，则为标题文本）。 */
   text: string;
-  /** "checkbox" for `[ ]` lines; "heading" for `##` / `###`. */
+  /** `[ ]` 行为 "checkbox"；`##` / `###` 行为 "heading"。 */
   kind: "checkbox" | "heading";
 }
 
 export interface ProgressFileNode {
-  /** Operator-supplied scan-root display name. */
+  /** 操作员提供的扫描根目录显示名称。 */
   rootName: string;
-  /** Path relative to the scan root (e.g., "missions/foo/PROGRESS.md"). */
+  /** 相对于扫描根目录的路径（例如 "missions/foo/PROGRESS.md"）。 */
   relPath: string;
-  /** Canonical absolute path on disk (handy for the UI's "open in editor" affordance). */
+  /** 磁盘上的 canonical 绝对路径（便于 UI 提供“在编辑器中打开”操作）。 */
   absolutePath: string;
   mtime: string;
   rows: ProgressRow[];
-  /** Top-level title (from frontmatter or first H1). */
+  /** 顶层标题（来自 frontmatter 或第一个 H1）。 */
   title: string | null;
-  /** Aggregate counts derived from rows (kind === "checkbox"). */
+  /** 从行（kind === "checkbox"）派生的聚合计数。 */
   counts: { total: number; done: number; blocked: number; active: number };
 }
 
@@ -62,20 +57,17 @@ export interface ProgressScanRoot {
 
 export interface ProgressTreeResult {
   files: ProgressFileNode[];
-  /** Aggregate over all files. */
+  /** 所有文件的聚合结果。 */
   aggregate: { totalFiles: number; totalRows: number; totalDone: number; totalBlocked: number; totalActive: number };
-  /** Roots that were scanned (for the UI to render "scanned N roots"). */
+  /** 已扫描的根目录（供 UI 渲染“已扫描 N 个根目录”）。 */
   scannedRoots: ProgressScanRoot[];
 }
 
 const DEFAULT_MAX_DEPTH = 6;
 const PROGRESS_FILENAME = "PROGRESS.md";
-// OSR v0 Item 2 anchors STEERING.md as the constraint-frame node at the
-// top of the Priority Rail Rule tree. The classifier already maps the
-// STEERING basename to the `steering` level; we also need the indexer
-// to actually pick it up. Walk both filenames; the row-counts machinery
-// is filename-agnostic and treats STEERING.md content the same as any
-// other markdown rail.
+// OSR v0 第 2 项将 STEERING.md 锚定为 Priority Rail Rule 树顶部的 constraint-frame 节点。
+// classifier 已将 STEERING basename 映射到 `steering` level；索引器也必须实际收录它。遍历这两个
+// 文件名；行计数机制与文件名无关，对待 STEERING.md 内容与其他 Markdown rail 相同。
 const STEERING_FILENAME = "STEERING.md";
 const TREE_FILENAMES = new Set([PROGRESS_FILENAME, STEERING_FILENAME]);
 const SKIP_DIRS = new Set(["node_modules", ".git", ".worktrees", "dist", "build", ".turbo", ".next"]);
@@ -84,10 +76,9 @@ const ENV_VAR = "OPENRIG_PROGRESS_SCAN_ROOTS";
 const LEGACY_ENV_VAR = "RIGGED_PROGRESS_SCAN_ROOTS";
 
 /**
- * Decodes a raw `name:/abs/path,...` progress-roots string into a
- * ProgressScanRoot[]. Same semantics as decodeAllowlist in path-safety;
- * keep them parallel. Used by both the env-only legacy path and the
- * settings-resolved (env > file > empty) path.
+ * 将原始 `name:/abs/path,...` progress-roots 字符串解码为 ProgressScanRoot[]。语义与
+ * path-safety 中的 decodeAllowlist 相同，应保持并行。供仅 env 的旧路径和经 settings 解析的
+ * 路径（env > file > empty）共同使用。
  */
 export function decodeProgressScanRoots(raw: string): ProgressScanRoot[] {
   if (!raw.trim()) return [];
@@ -114,7 +105,7 @@ export function readProgressRootsFromEnv(env: NodeJS.ProcessEnv = process.env): 
 
 export interface ProgressIndexerOpts {
   roots: ProgressScanRoot[];
-  /** Override max recursion depth for tests. */
+  /** 为测试覆盖最大递归深度。 */
   maxDepth?: number;
 }
 
@@ -188,25 +179,25 @@ export class ProgressIndexer {
       const line = lines[i]!;
       const lineNumber = i + 1;
 
-      // Skip YAML frontmatter.
+      // 跳过 YAML frontmatter。
       if (lineNumber === 1 && line.trim() === "---") { inFrontmatter = true; continue; }
       if (inFrontmatter) {
         if (line.trim() === "---") inFrontmatter = false;
         continue;
       }
 
-      // First H1 → title (if frontmatter didn't supply one).
+      // 第一个 H1 → title（若 frontmatter 未提供）。
       if (!title) {
         const h1 = line.match(/^#\s+(.+?)$/);
         if (h1) title = h1[1]!.trim();
       }
 
-      // Heading rows (## / ###).
+      // 标题行（## / ###）。
       const h = line.match(/^(#{2,4})\s+(.+?)$/);
       if (h) {
         rows.push({
           line: lineNumber,
-          depth: h[1]!.length - 2, // ## → 0, ### → 1, #### → 2
+          depth: h[1]!.length - 2, // ## → 0，### → 1，#### → 2。
           status: "unknown",
           text: h[2]!.trim(),
           kind: "heading",
@@ -214,8 +205,8 @@ export class ProgressIndexer {
         continue;
       }
 
-      // Checkbox rows. Match either bare `[ ]` (no list bullet) or
-      // `- [ ]` / `* [ ]`. The bullet's leading indent determines depth.
+      // Checkbox 行。匹配裸 `[ ]`（无列表 bullet）或 `- [ ]` / `* [ ]`。bullet 的前导缩进
+      // 决定深度。
       const cb = line.match(/^(\s*)(?:[-*]\s+)?\[([ xX~])\]\s+(.+)$/);
       if (cb) {
         const indentSpaces = cb[1]!.length;

@@ -1,8 +1,8 @@
-// SPIKE — `--style braille`: the optional smooth end (TIER-2, modern
-// terminals). Same boxed nodes as the Hatchet mainline; edges drawn at 2×4
-// sub-cell resolution as braille dot runs. DEMOTED by the founder refinement
-// to an optional style — the proven TIER-1 fallback IS renderHatchet (same
-// layout, box-drawing edges), so degrading loses smoothness, never meaning.
+// SPIKE——`--style braille`：可选平滑端（TIER-2，现代
+// 终端）。与 Hatchet 主线相同的盒装节点；边以 2×4
+// 子单元格分辨率绘为盲文点运行。被创建者细化
+// 降级为可选样式——已证明的 TIER-1 回退就是 renderHatchet（相同
+// 布局，盒绘边），因此降级失去平滑度，绝不失去含义。
 import { GraphCanvas } from "../canvas.js";
 import { edgeToken } from "../glyphs.js";
 import type { GraphLayout } from "../layout.js";
@@ -10,7 +10,7 @@ import type { StyleContext } from "./hatchet.js";
 import { drawClipIndicator, drawContainers, drawNodeBox, renderHatchet } from "./hatchet.js";
 import type { Token } from "../../theme.js";
 
-// braille dot bits by (subCol 0-1, subRow 0-3)
+// 盲文点位按 (subCol 0-1, subRow 0-3)
 const DOT_BITS = [
   [0x01, 0x02, 0x04, 0x40],
   [0x08, 0x10, 0x20, 0x80],
@@ -38,18 +38,18 @@ class BrailleField {
   blit(canvas: GraphCanvas): void {
     for (const [key, cell] of this.cells) {
       const [x, y] = key.split(",").map(Number) as [number, number];
-      if (canvas.charAt(x, y) !== " " || canvas.isProtected(x, y)) continue; // never dot boxes/text
+      if (canvas.charAt(x, y) !== " " || canvas.isProtected(x, y)) continue; // 绝不给框/文字打点
       canvas.set(x, y, String.fromCharCode(0x2800 + cell.bits), cell.token);
     }
   }
 }
 
 export function renderBraille(layout: GraphLayout, ctx: StyleContext, width: number, tier1Fallback: boolean): GraphCanvas {
-  if (tier1Fallback) return renderHatchet(layout, ctx, width); // the PROVEN fallback path
-  // DRAW ORDER = the hatchet semantics (pm kickback: opacity must be a CLASS
-  // invariant, never a draw-order artifact): (1) box-drawing edge runs first,
-  // (2) OPAQUE boxes clear any pass-through segment, (3) the braille field
-  // blits last but is protected-cell-aware, (4) arrowheads last of all.
+  if (tier1Fallback) return renderHatchet(layout, ctx, width); // 已证明的回退路径
+  // 绘制顺序 = hatchet 语义（pm 回扣：不透明度必须是类
+  // 不变量，绝非绘制顺序伪影）：(1) 盒绘边运行先，
+  // (2) 不透明框清除任何穿过段，(3) 盲文字段
+  // 最后 blit 但感知保护单元格，(4) 箭头最后。
   const canvas = new GraphCanvas(width);
   drawContainers(canvas, layout, ctx);
   const field = new BrailleField();
@@ -62,9 +62,9 @@ export function renderBraille(layout: GraphLayout, ctx: StyleContext, width: num
     const rightward = to.x > from.x;
     const txCell = rightward ? to.x - 1 : to.x + to.w;
     if (from.y === to.y) {
-      // CLEAN-BOX refinement: a straight horizontal is already straight —
-      // box-drawing ─ aligns mid-cell with the arrowhead (braille ⠤ sits low
-      // and kinks the junction); braille earns its keep on DIAGONALS only.
+      // 净框细化：水平直线已经直——
+      // 盒绘 ─ 与箭头中单元格对齐（盲文 ⠤ 位置低
+      // 并使连接点扭结）；盲文仅在对角线上发挥作用。
       const [x1, x2] = rightward ? [from.x + from.w, txCell - 1] : [txCell + 1, from.x - 1];
       canvas.hline(x1, x2, from.y + 1, "─", token);
     } else {
@@ -77,9 +77,9 @@ export function renderBraille(layout: GraphLayout, ctx: StyleContext, width: num
     arrows.push({ x: txCell, y: to.y + 1, ch: rightward ? "▸" : "◂", token });
   }
   for (const p of layout.placed) drawNodeBox(canvas, p, ctx);
-  field.blit(canvas); // protected-aware: never dots a box cell
+  field.blit(canvas); // 感知保护：绝不给框单元格打点
   for (const a of arrows) if (!canvas.isProtected(a.x, a.y)) canvas.set(a.x, a.y, a.ch, a.token, true);
   drawClipIndicator(canvas, layout, width);
-  canvas.text(2, canvas.height + 1, "braille sub-cell edges · TIER-2 (modern terminals) · fallback = hatchet box-drawing", "dim");
+  canvas.text(2, canvas.height + 1, "盲文子单元格边 · TIER-2（现代终端）· 回退 = hatchet 盒绘", "dim");
   return canvas;
 }

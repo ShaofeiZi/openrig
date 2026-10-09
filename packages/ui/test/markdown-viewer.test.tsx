@@ -1,8 +1,7 @@
-// UI Enhancement Pack v0 — MarkdownViewer focused tests.
+// UI Enhancement Pack v0——MarkdownViewer 聚焦测试。
 //
-// Pins the load-bearing rendering primitives so future refactors of
-// the inline parser (e.g., swapping in a marked / react-markdown lib
-// later) preserve operator-visible behavior.
+// 锁定承重渲染原语，使内联 parser 未来重构（如后续换 marked /
+// react-markdown 库）保留 operator 可见行为。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
@@ -116,16 +115,15 @@ describe("UI Enhancement Pack v0 — MarkdownViewer", () => {
 });
 
 // ---------------------------------------------------------------------------
-// qitem-render-driver D2 — authored ordered-list numbering + indented
-// continuations. Roots (MarkdownViewer.tsx): the parser captures indent+text
-// but DISCARDS the numeric value (:167-172), and the renderer emits
-// <ol class="list-decimal"> with no start=/value= (:302-312), so CSS
-// renumbers from 1. The list collector (:168) only continues on lines that
-// themselves start with a marker, so a hanging-indent continuation exits the
-// list and becomes a separate paragraph (:199-209).
+// qitem-render-driver D2——作者有序列表编号 + 缩进续行。根
+//（MarkdownViewer.tsx）：parser 捕获 indent+text 但丢弃数值
+//（:167-172），renderer 发出无 start=/value= 的
+// <ol class="list-decimal">（:302-312），故 CSS 从 1 重新编号。
+// list collector（:168）仅在自身以 marker 开头的行上继续，故悬挂缩进
+// 续行退出 list 并成为独立段落（:199-209）。
 //
-// The ordinal fixture is deliberately NON-CONSECUTIVE (3. then 5.): an
-// <ol start="3"> only fix renders 3,4 and MUST still fail here.
+// 序号 fixture 故意非连续（3. 然后 5.）：仅 `<ol start="3">` 的修复
+// 渲染 3,4，此处仍必须失败。
 // ---------------------------------------------------------------------------
 
 describe("qitem-render-driver D2 — authored ordinals + continuation containment", () => {
@@ -133,8 +131,8 @@ describe("qitem-render-driver D2 — authored ordinals + continuation containmen
     const { container } = render(<MarkdownViewer content={"3. three\n5. five"} hideFrontmatter hideRawToggle />);
     const items = Array.from(container.querySelectorAll("li"));
     expect(items).toHaveLength(2);
-    // Ordinal semantics, however the fix carries them (per-item value= or an
-    // equivalent explicit number) — read back as the effective ordinals.
+    // 序号语义，无论修复如何携带（per-item value= 或等价显式数字）——
+    // 读回为有效序号。
     const ordinals = items.map((li) => {
       const v = li.getAttribute("value");
       if (v) return Number(v);
@@ -156,8 +154,8 @@ describe("qitem-render-driver D2 — authored ordinals + continuation containmen
     expect(strayParagraph, "no sibling <p> may carry the continuation").toBe(false);
   });
 
-  // Preservation pins — must stay GREEN. Per guard: assert no throw / no
-  // silent drop rather than freezing an incorrect DOM numbering model.
+  // 保留锁——必须保持 GREEN。按 guard：断言无 throw / 无静默丢弃，
+  // 而非冻结错误的 DOM 编号模型。
   it("GREEN pin: bullets, nesting, and mixed ordered+unordered render without throw or content loss", () => {
     const mixed = "- alpha\n  - nested-alpha\n1. one\n- beta";
     const { container } = render(<MarkdownViewer content={mixed} hideFrontmatter hideRawToggle />);
@@ -169,11 +167,10 @@ describe("qitem-render-driver D2 — authored ordinals + continuation containmen
   });
 
   it("GREEN pin: malformed/ragged list input degrades without throwing and keeps its text", () => {
-    // NOTE: a BARE marker line ("- " / "1. ") is deliberately EXCLUDED here —
-    // it triggers a parser infinite loop (MarkdownViewer.tsx:164-176 breaks
-    // without advancing i), which OOMs the runner. That hang is reported as a
-    // separate tracked defect with its own bounded RED, so this pin stays
-    // focused on ragged-but-terminating input.
+    // 注意：裸 marker 行（"- " / "1. "）此处故意排除——它触发 parser
+    // 无限循环（MarkdownViewer.tsx:164-176 break 而不推进 i），使 runner
+    // OOM。该 hang 作为独立跟踪缺陷报告，有其自己的有界 RED，故本锁聚焦
+    // 于参差但终止的输入。
     const ragged = "1.\n   \n2. real item\nplain trailing prose";
     const { container } = render(<MarkdownViewer content={ragged} hideFrontmatter hideRawToggle />);
     const text = container.textContent ?? "";
@@ -183,21 +180,19 @@ describe("qitem-render-driver D2 — authored ordinals + continuation containmen
 });
 
 // ---------------------------------------------------------------------------
-// qitem-markdown-bare-marker-loop (CRITICAL) — the parser must TERMINATE on a
-// bare list marker.
+// qitem-markdown-bare-marker-loop（CRITICAL）——parser 必须在裸 list
+// marker 上终止。
 //
-// Root (MarkdownViewer.tsx:164-176): the outer guard recognizes a list line by
-// `/^\s*([-*]|\d+\.)\s+/` (marker + whitespace) while the inner capture
-// additionally demands text via `/^(\s*)([-*]|\d+\.)\s+(.+)$/`. A line that is
-// marker+whitespace with NO text — a trailing "- " or "1. ", plausible in any
-// authored README/PRD — satisfies the outer guard, fails the inner match, and
-// hits `if (!m) break;` WITHOUT advancing `i`. The outer loop re-reads the
-// same line forever: a pinned CPU and heap exhaustion (browser-tab hang).
+// 根（MarkdownViewer.tsx:164-176）：外层守卫按
+// `/^\s*([-*]|\d+\.)\s+/`（marker + 空白）识别 list 行，而内层捕获
+// 另经 `/^(\s*)([-*]|\d+\.)\s+(.+)$/` 要求文本。一行仅 marker+空白无文本
+// ——尾部 "- " 或 "1. "，在任何 authored README/PRD 中都可能——满足外层守卫、
+// 内层匹配失败，并命中 `if (!m) break;` 而不推进 `i`。外层循环永远重读同一行：
+// CPU 钉死 + 堆耗尽（browser-tab hang）。
 //
-// SAFETY: the render runs in an ISOLATED child (its own low heap cap + hard
-// timeout/kill), never in this Vitest worker — a direct render here would hang
-// or OOM CI instead of failing. Pre-fix the child times out or exits nonzero;
-// post-fix it must exit 0 within the bound AND show visible degradation.
+// 安全：渲染在隔离子进程中运行（自有低堆上限 + 硬超时/kill），绝不在此
+// Vitest worker——此处直接渲染会 hang 或 OOM CI 而非失败。修复前子进程超时
+// 或非零退出；修复后它必须在界限内 exit 0 且显示可见降级。
 // ---------------------------------------------------------------------------
 
 describe("qitem-markdown-bare-marker-loop — parser terminates on a bare list marker", () => {
@@ -210,14 +205,14 @@ describe("qitem-markdown-bare-marker-loop — parser terminates on a bare list m
     const outcome = await new Promise<{ code: number | null; signal: string | null; killed: boolean; out: string; err: string }>((resolve) => {
       const child = spawn(runner, [childScript], {
         cwd: path.resolve(import.meta.dirname, ".."),
-        // Low heap so a runaway parser dies fast instead of eating the box.
+        // 低堆，使失控 parser 快速死亡而非吃光机器。
         env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=256" },
         stdio: ["ignore", "pipe", "pipe"],
       });
       let out = "";
       let err = "";
       let killed = false;
-      // Bounded stdout/stderr so an OOM backtrace cannot balloon memory here.
+      // 有界 stdout/stderr，使 OOM backtrace 不在这里气球式膨胀内存。
       const CAP = 8_000;
       child.stdout.on("data", (c: Buffer) => { if (out.length < CAP) out += c.toString("utf8"); });
       child.stderr.on("data", (c: Buffer) => { if (err.length < CAP) err += c.toString("utf8"); });
@@ -230,9 +225,9 @@ describe("qitem-markdown-bare-marker-loop — parser terminates on a bare list m
       outcome.killed,
       `parser must TERMINATE on a bare list marker — child hit the 5s bound (infinite loop). stderr: ${outcome.err.slice(0, 300)}`,
     ).toBe(false);
-    // exit 134 / SIGABRT here is V8's OOM abort: the runaway parser exhausted
-    // the child's 256MB cap. Surfaced explicitly so the RED reads as the
-    // infinite loop it is, not as an opaque nonzero exit.
+    // 此处 exit 134 / SIGABRT 是 V8 的 OOM abort：失控 parser 耗尽子进程
+    // 256MB 上限。显式呈现，使 RED 读作它本来的无限循环，而非不透明的
+    // 非零退出。
     expect(
       outcome.code,
       `child must exit 0 (terminated + visible degradation); got code=${outcome.code} signal=${outcome.signal}` +

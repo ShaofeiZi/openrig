@@ -19,11 +19,11 @@ import {
 import type { TmuxAdapter, TmuxResult } from "../src/adapters/tmux.js";
 
 /**
- * 0.6.0 S01/S02 P2 — read-only capture observer.
- * Contract: evidence/offline-contract-s01-s02-dev60/CONTRACT.md rev 2.2 §1.5 and
- * HOOK-SEAM-AGREEMENT.md (with dev50-guard's 03:03Z source qualifications).
- * Real SessionTransport / probeSessionActivity / SeatDeliveryGuard with an injected
- * terminal; in-memory SQLite; no tmux, network, provider or daemon startup.
+ * 0.6.0 S01/S02 P2——只读 capture observer。
+ * 契约：evidence/offline-contract-s01-s02-dev60/CONTRACT.md rev 2.2 §1.5 和
+ * HOOK-SEAM-AGREEMENT.md（包含 dev50-guard 的 03:03Z source 限定）。
+ * 使用真实 SessionTransport / probeSessionActivity / SeatDeliveryGuard 和注入的 terminal；
+ * 使用内存 SQLite；不启动 tmux、网络、provider 或 daemon。
  */
 
 type Capture = (target: string, lines?: number) => Promise<string | null>;
@@ -62,7 +62,7 @@ describe("S01/S02 P2 capture observer", () => {
     const s = sessions.registerSession(node.id, "dev-impl@obs-rig");
     sessions.updateStatus(s.id, "running");
     sessions.updateBinding(node.id, { tmuxSession: "dev-impl@obs-rig", tmuxPane: pane });
-    // registerSession mints the first occupant tenure; read the real one back.
+    // registerSession 生成首个 occupant tenure；读取真实值。
     occupant = (db.prepare(`SELECT generation_uuid AS g FROM occupant_tenures WHERE node_id = ? ORDER BY generation_ordinal DESC LIMIT 1`)
       .get(node.id) as { g: string }).g;
     return node;
@@ -77,7 +77,7 @@ describe("S01/S02 P2 capture observer", () => {
     while (o.stats().queued > 0) await o.drain((batch) => { out.push(...batch); });
     return out;
   }
-  /** An ordinary send first runs its readiness probe (its own probe_activity observation). */
+  /** 普通 send 首先运行 readiness probe（其自身的 probe_activity observation）。 */
   async function sendObs(o: CaptureObserver): Promise<Observation[]> {
     return (await drainAll(o)).filter((x) => x.seam === "send_verify");
   }
@@ -92,10 +92,10 @@ describe("S01/S02 P2 capture observer", () => {
   afterEach(() => db.close());
 
   describe("send_verify seam", () => {
-    it("records both captures, frozen entry binding, sent hash and the regex verdict", async () => {
+    it("记录两次 capture、冻结的入口 binding、发送哈希和正则 verdict", async () => {
       const node = seed();
       let n = 0;
-      // 20-line calls are the readiness probe; 30-line calls are the verify pre/post captures.
+      // 20 行调用用于 readiness probe；30 行调用用于 verify 前后 capture。
       const t = terminal({ capture: async (_t, lines) => (lines === 20 ? "idle\n❯ " : ++n === 1 ? "before\n❯ " : "before\nhello world\n❯ ") });
       const o = new CaptureObserver();
       const result = await transport(t.adapter, o).send("dev-impl@obs-rig", "hello world", { verify: true });
@@ -110,13 +110,13 @@ describe("S01/S02 P2 capture observer", () => {
         post: { state: "captured", content: "before\nhello world\n❯ " },
         regexResult: { ok: true, outcome: "delivered", verified: true },
       });
-      expect(obs!.seq).toBe(2); // seq 1 is this send's readiness probe
+      expect(obs!.seq).toBe(2); // seq 1 是此次 send 的 readiness probe
       expect(typeof obs!.attemptId).toBe("string");
       expect(Object.isFrozen(obs)).toBe(true);
       expect(Object.isFrozen(obs!.binding)).toBe(true);
     });
 
-    it("null capture is unavailable(empty_or_failed); a thrown capture is capture_error", async () => {
+    it("null capture 为 unavailable(empty_or_failed)；抛出异常的 capture 为 capture_error", async () => {
       seed();
       let n = 0;
       const t = terminal({ capture: async (_t, lines) => { if (lines === 20) return "idle\n❯ "; if (++n === 1) return null; throw new Error("tmux gone"); } });
@@ -126,10 +126,10 @@ describe("S01/S02 P2 capture observer", () => {
       const [obs] = await sendObs(o);
       expect(obs!.pre).toMatchObject({ state: "unavailable", cause: "empty_or_failed" });
       expect(obs!.post).toMatchObject({ state: "unavailable", cause: "capture_error" });
-      expect(o.stats().missingCaptures).toBe(2); // the probe's capture succeeded
+      expect(o.stats().missingCaptures).toBe(2); // probe 的 capture 成功
     });
 
-    it("without verify both slots are not_requested and no verdict is invented", async () => {
+    it("不带 verify 时两个 slot 均为 not_requested，且不虚构 verdict", async () => {
       seed();
       const t = terminal();
       const o = new CaptureObserver();
@@ -138,10 +138,10 @@ describe("S01/S02 P2 capture observer", () => {
       expect(obs!.pre).toEqual({ state: "not_requested" });
       expect(obs!.post).toEqual({ state: "not_requested" });
       expect(obs!.regexResult).toEqual({ ok: true });
-      expect(t.calls.capture).toBe(1); // only the pre-existing readiness-probe capture; P2 adds none
+      expect(t.calls.capture).toBe(1); // 只有原有 readiness-probe capture；P2 未新增
     });
 
-    it("a failed paste leaves the post capture not_reached", async () => {
+    it("paste 失败时 post capture 保持 not_reached", async () => {
       seed();
       const t = terminal({ sendText: async () => ({ ok: false, code: "x", message: "boom" }) as TmuxResult });
       const o = new CaptureObserver();
@@ -154,7 +154,7 @@ describe("S01/S02 P2 capture observer", () => {
       expect(o.stats().notReachedCaptures).toBe(1);
     });
 
-    it("identity is frozen at attempt entry even if the binding changes mid-send", async () => {
+    it("即使 binding 在 send 期间变化，identity 仍冻结于 attempt 入口", async () => {
       const node = seed("%7");
       const t = terminal({
         sendText: async () => { sessions.updateBinding(node.id, { tmuxPane: "%99" }); return { ok: true as const }; },
@@ -165,7 +165,7 @@ describe("S01/S02 P2 capture observer", () => {
       expect(obs!.binding.pane).toBe("%7");
     });
 
-    it.each([undefined, 100])("readiness probes carry the send-entry binding after a rebind (wait=%s)", async (waitForIdleMs) => {
+    it.each([undefined, 100])("rebind 后 readiness probe 仍携带 send 入口 binding（wait=%s）", async (waitForIdleMs) => {
       const node = seed();
       const t = terminal({ capture: async () => {
         sessions.updateBinding(node.id, { tmuxPane: "%99" });
@@ -179,7 +179,7 @@ describe("S01/S02 P2 capture observer", () => {
       expect(send!.binding).toEqual(expected);
     });
 
-    it("capture sequence and time survive sends completing in reverse order", async () => {
+    it("send 以相反顺序完成时仍保留 capture 顺序和时间", async () => {
       seed();
       let release!: () => void;
       let started!: () => void;
@@ -212,19 +212,19 @@ describe("S01/S02 P2 capture observer", () => {
       expect(Date.parse(earlier!.pre.capturedAt)).toBeLessThan(Date.parse(earlier!.completedAt));
     });
 
-    it("a historical session row does not label the current binding's pane/occupant", async () => {
+    it("历史 session 行不会标记当前 binding 的 pane/occupant", async () => {
       const node = seed("%7");
       const old = sessions.registerSession(node.id, "dev-impl-old@obs-rig");
       sessions.updateStatus(old.id, "running");
       const o = new CaptureObserver();
-      // The node's binding still names dev-impl@obs-rig; sending to the OLD name must not borrow it.
+      // 节点 binding 仍指向 dev-impl@obs-rig；向旧名称发送时不得借用该 binding。
       await transport(terminal().adapter, o).send("dev-impl-old@obs-rig", "x");
       const [obs] = await sendObs(o);
       expect(obs!.binding).toMatchObject({ sessionName: "dev-impl-old@obs-rig", pane: null, occupant: null });
     });
   });
 
-  describe("observer can never alter the transport", () => {
+  describe("observer 绝不能改变 transport", () => {
     const input = (i: number): ObservationInput => ({
       seam: "probe_activity", attemptId: `bounded-${i}`,
       binding: { sessionName: "s", nodeId: null, occupant: null, pane: null },
@@ -232,7 +232,7 @@ describe("S01/S02 P2 capture observer", () => {
       regexResult: {}, completedAt: "t",
     });
 
-    it("invalid capacity and drain sizes cannot disable finite bounds or strand the queue", async () => {
+    it("无效 capacity 和 drain size 不能禁用有限边界或使队列搁浅", async () => {
       for (const capacity of [NaN, Infinity, -1, 0, 0.5]) {
         const o = new CaptureObserver({ capacity });
         for (let i = 0; i < DEFAULT_OBSERVER_CAPACITY + 1; i++) o.record(input(i));
@@ -242,7 +242,7 @@ describe("S01/S02 P2 capture observer", () => {
       }
     });
 
-    it("consumer mutation cannot erase or inflate batch accounting", async () => {
+    it("consumer 修改不能清除或夸大 batch 计数", async () => {
       const o = new CaptureObserver();
       o.record(input(1)); o.record(input(2));
       expect(await o.drain((batch) => {
@@ -251,7 +251,7 @@ describe("S01/S02 P2 capture observer", () => {
       expect(o.stats()).toMatchObject({ drained: 2, queued: 0, consumerFailures: 0 });
     });
 
-    it("overflow still counts missing/not-requested/not-reached slots", () => {
+    it("overflow 时仍统计 missing/not-requested/not-reached slot", () => {
       const o = new CaptureObserver({ capacity: 1 });
       o.record(input(1));
       o.record({ ...input(2), pre: { state: "unavailable", cause: "empty_or_failed", capturedAt: "t", captureSeq: 1 } });
@@ -265,7 +265,7 @@ describe("S01/S02 P2 capture observer", () => {
       return { result, calls: t.calls };
     }
 
-    it("a throwing sink, a full buffer and no observer all give identical results and terminal calls", async () => {
+    it("抛出异常的 sink、已满 buffer 和无 observer 都产生相同结果及 terminal 调用", async () => {
       const baseline = await run(undefined);
       db.close(); db = createDb(); migrate(db, ALL_MIGRATIONS); rigRepo = new RigRepository(db); sessions = new SessionRegistry(db);
       const throwing = await run({ record: () => { throw new Error("sink exploded"); } });
@@ -278,18 +278,18 @@ describe("S01/S02 P2 capture observer", () => {
         expect(other.result).toEqual(baseline.result);
         expect(other.calls).toEqual(baseline.calls);
       }
-      expect(full.stats()).toMatchObject({ recorded: 1, dropped: 2, queued: 1 }); // probe + send both dropped
+      expect(full.stats()).toMatchObject({ recorded: 1, dropped: 2, queued: 1 }); // probe + send 均被丢弃
     });
 
-    it("a slow or failing consumer never blocks recording and nothing is replayed", async () => {
+    it("缓慢或失败的 consumer 绝不阻塞记录，且不重放任何内容", async () => {
       seed();
       const o = new CaptureObserver();
       const tr = transport(terminal().adapter, o);
-      await tr.send("dev-impl@obs-rig", "one"); // seq 1 probe, 2 send
+      await tr.send("dev-impl@obs-rig", "one"); // seq 1 为 probe，2 为 send
       let release!: () => void;
       const slow = o.drain(() => new Promise<void>((r) => { release = r; }));
-      expect(await o.drain(() => {})).toBe(0); // concurrent drain refused, not awaited
-      await tr.send("dev-impl@obs-rig", "two"); // seq 3, 4: recording continues while the consumer is stuck
+      expect(await o.drain(() => {})).toBe(0); // 拒绝并发 drain，不等待
+      await tr.send("dev-impl@obs-rig", "two"); // seq 3、4：consumer 卡住时继续记录
       expect(o.stats().queued).toBe(2);
       release();
       expect(await slow).toBe(2);
@@ -297,10 +297,10 @@ describe("S01/S02 P2 capture observer", () => {
       expect(o.stats()).toMatchObject({ drained: 2, consumerFailures: 1, consumerFailedObservations: 2, queued: 0 });
       await tr.send("dev-impl@obs-rig", "three");
       const later = await drainAll(o);
-      expect(later.map((x) => x.seq)).toEqual([5, 6]); // the failed batch (3, 4) is not replayed
+      expect(later.map((x) => x.seq)).toEqual([5, 6]); // 不重放失败 batch（3、4）
     });
 
-    it("sequence numbers are ordered across observations", async () => {
+    it("sequence number 在各 observation 之间有序", async () => {
       seed();
       const o = new CaptureObserver();
       const tr = transport(terminal().adapter, o);
@@ -308,13 +308,13 @@ describe("S01/S02 P2 capture observer", () => {
       const all = await drainAll(o);
       expect(all.map((x) => x.seq)).toEqual([1, 2, 3, 4, 5, 6]);
       expect(all.map((x) => x.seam)).toEqual(["probe_activity", "send_verify", "probe_activity", "send_verify", "probe_activity", "send_verify"]);
-      // The readiness probe is its own attempt; it never borrows the send's identity.
+      // readiness probe 是独立 attempt；绝不借用 send 的 identity。
       expect(new Set(all.map((x) => x.attemptId)).size).toBe(6);
     });
   });
 
   describe("probe_activity seam", () => {
-    it("snapshots caller identity before the first await, not after capture", async () => {
+    it("在首次 await 前而非 capture 后快照 caller identity", async () => {
       const o = new CaptureObserver();
       let release!: () => void;
       const t = terminal();
@@ -327,7 +327,7 @@ describe("S01/S02 P2 capture observer", () => {
       const [obs] = await drainAll(o);
       expect(obs!.binding).toEqual({ sessionName: "s@r", nodeId: "original", occupant: "original-occupant", pane: "%7" });
     });
-    it("records captured, null and thrown captures with the classification verdict", async () => {
+    it("记录 captured、null 和抛出异常的 capture 及其分类 verdict", async () => {
       const o = new CaptureObserver();
       const probe = (capture: Capture) =>
         probeSessionActivity({ sessionName: "s@r", runtime: "codex", attachmentType: "tmux", tmuxAdapter: terminal({ capture }).adapter, captureObserver: o });
@@ -341,7 +341,7 @@ describe("S01/S02 P2 capture observer", () => {
       expect(c!.regexResult).toEqual({ state: failed.state, reason: "capture_failed" });
     });
 
-    it("with no observer the probe result is unchanged", async () => {
+    it("没有 observer 时 probe 结果不变", async () => {
       const args = { sessionName: "s@r", runtime: "codex", attachmentType: "tmux" as const, now: new Date(0) };
       const plain = await probeSessionActivity({ ...args, tmuxAdapter: terminal().adapter });
       const observed = await probeSessionActivity({ ...args, tmuxAdapter: terminal().adapter, captureObserver: { record: () => { throw new Error("x"); } } });
@@ -350,7 +350,7 @@ describe("S01/S02 P2 capture observer", () => {
   });
 
   describe("retained_no_write seam", () => {
-    it("records the guard's bound target after a real retention, and never as delivery", async () => {
+    it("真实 retention 后记录 guard 绑定的目标，且绝不记为 delivery", async () => {
       const node = seed();
       const guard = new SeatDeliveryGuard(db, (name) => resolveGuardTarget(db, name));
       await guard.set(node.id, true, "tester", "protect draft");
@@ -369,12 +369,12 @@ describe("S01/S02 P2 capture observer", () => {
         regexResult: { outcome: "retained" },
       });
       expect(t.calls.capture).toBe(0);
-      // A readback of the same retained id is not a new retention.
+      // 回读同一 retained ID 不属于新的 retention。
       await transport(t.adapter, o).send("dev-impl@obs-rig", "held text", { deliveryId: "d-1", actorSession: "orch@r" });
       expect(o.stats().recorded).toBe(1);
     });
 
-    it("a submit-only refusal under the guard is not a retained event", async () => {
+    it("guard 下仅提交的拒绝不属于 retained 事件", async () => {
       const node = seed();
       const guard = new SeatDeliveryGuard(db, (name) => resolveGuardTarget(db, name));
       await guard.set(node.id, true, "tester", "protect draft");

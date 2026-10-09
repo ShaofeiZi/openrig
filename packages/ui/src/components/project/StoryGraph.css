@@ -1,9 +1,9 @@
-/* OPR.0.4.1.19 — Story tab: queue-lineage as a git-graph UI (3-tier).
- * Light-mode, git-client aesthetic, from the founder-approved mockup
- * (digital-twin/opr-0.4.1.19/story-gitgraph-ui.intent.html).
+/* OPR.0.4.1.19——Story 标签页：把队列血缘画成 git-graph UI（三层）。
+ * 浅色模式、git 客户端美感，来自创始人批准的 mockup
+ * （digital-twin/opr-0.4.1.19/story-gitgraph-ui.intent.html）。
  *
- * Font-gotcha (twin/README): component-scoped CSS MUST lead with the registered
- * "<Family> Variable" name or it falls through to a system font silently. */
+ * 字体坑（twin/README）：组件作用域 CSS 必须以已注册的
+ * "<Family> Variable" 名开头，否则会静默回退到系统字体。 */
 .sg-mono {
   font-family: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
 }
@@ -57,12 +57,11 @@
 .sg-gutcol svg { position: absolute; inset: 0; }
 .sg-rows { flex: 1; min-width: 0; }
 
-/* The row is a BLOCK container (mockup `.trow.hrow{display:block}` pattern): the
- * topline IS the 5-column grid, and the expanded detail is a full-width band
- * STACKED below it. A grid `.sg-trow` would auto-place the detail sibling into
- * the final column (the QA "12.4% width" blocker) and squeeze the topline into
- * the 1fr column. Block stacking keeps both full-width; row heights are unchanged
- * (JS-computed), so the gutter centerY/lane geometry is preserved. */
+/* 行是块级容器（mockup `.trow.hrow{display:block}` 模式）：
+ * 顶行就是 5 列网格，展开详情是其下堆叠的全宽带。网格 `.sg-trow` 会把
+ * 详情兄弟节点自动放到最后一列（QA 的“12.4% 宽度”阻塞），并把顶行挤进
+ * 1fr 列。块堆叠使两者都全宽；行高不变
+ * （JS 计算），故 gutter centerY/lane 几何保留。 */
 .sg-trow {
   display: block;
   border-bottom: 1px solid var(--sg-line-2);
@@ -124,7 +123,7 @@
 }
 .sg-chev { color: var(--sg-ink-2); font-size: 9px; margin-left: 8px; }
 
-/* TIER 2 — full-width BANDS (commit-body lead + labeled bands; no columns) */
+/* 第二层——全宽带（提交正文导语 + 带标签的带；无列） */
 .sg-detail {
   padding: 10px 18px 12px 18px;
   border-top: 1px dashed var(--sg-line);
@@ -178,9 +177,9 @@
   color: #3a403a;
   background: #fff;
 }
-/* viewable artifact -> clickable open affordance (FileLink) */
+/* 可查看产物 → 可点击的打开提示（FileLink） */
 .sg-chip-link { color: var(--sg-blue); text-decoration: underline; cursor: pointer; }
-/* non-viewable ref -> inert, explicitly muted so it does not read as openable */
+/* 不可查看的引用 → 惰性，明确弱化，使其不被读成可打开 */
 .sg-chip-inert { color: var(--sg-ink-2); border-style: dashed; cursor: default; }
 .sg-metarow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 0; border-top: 1px solid var(--sg-line-2); }
 .sg-tags { display: flex; gap: 5px; flex-wrap: wrap; }

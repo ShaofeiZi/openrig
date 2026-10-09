@@ -1,14 +1,12 @@
-// OPR.0.4.6.MH5 C5 — the /fleet route page twin-state smokes (the 3
-// regenerable twins' deep-link states: the glance, ?open=<fleetKey>
-// expanded, and the band's target route existing) + the contract pins the
-// locked frames make visual: the page renders the DAEMON's rollup VERBATIM
-// (never recomputed client-side), unreachable = absent-not-zero + a REAL
-// refetch RETRY, the Q4 fleetKey verbatim on the drawer, the FR-5
-// read-only boundary line, and the loud registryError state.
+// OPR.0.4.6.MH5 C5——/fleet 路由页双态冒烟（3 个可再生 twin 的深链状态：
+// glance、?open=<fleetKey> 展开、band 目标路由存在）+ 契约锁定使锁定帧
+// 可视化：页面逐字渲染 DAEMON 的 rollup（绝不客户端重算）、不可达 = 缺席
+// 而非零 + 真实 refetch 重试、drawer 上逐字 Q4 fleetKey、FR-5 只读边界
+// 行、以及响亮 registryError 状态。
 //
-// Harness = the WF-4 leg-8 lessons applied at authoring time:
-// QueryClientProvider (hooks throw without it), a memory-history router
-// (the page renders TanStack Links), and async waitFor route resolution.
+// harness = 编写时应用的 WF-4 leg-8 教训：QueryClientProvider
+//（无它 hooks 抛错）、memory-history router（页面渲染 TanStack Link）、
+// 以及异步 waitFor 路由解析。
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, cleanup, fireEvent, waitFor } from "@testing-library/react";
@@ -30,9 +28,9 @@ afterEach(() => {
 });
 
 const FLEET: ComposedFleet = {
-  // DELIBERATELY not the client-recomputable sums of the rows below in one
-  // vector's eyes: the rollup is the daemon's math and the page must render
-  // IT (see the render-the-daemon-rollup test, which uses SKEWED numbers).
+  // 故意非下面行在单 vector 视角下客户端可重算的求和：rollup 是
+  // daemon 的数学，页面必须渲染它（见 render-the-daemon-rollup 测试，
+  // 其用 SKEWED 数字）。
   rollup: {
     needsYouCount: 1,
     exceptionCount: 2,
@@ -154,34 +152,34 @@ describe("FleetPage — the glance (locked twin fleet-glance-route-dark anatomy)
     stubFleetFetch(FLEET);
     const { getByTestId } = renderFleetPage();
     await waitFor(() => expect(getByTestId("fleet-page")).toBeTruthy());
-    // ● and ▲ rows, each host-chipped.
+    // ● 与 ▲ 行都带有主机标签。
     const stuck = getByTestId("fleet-needs-you-vps-a|qi-a2|stuck|t0");
     expect(stuck.getAttribute("data-source")).toBe("derived");
     expect(stuck.textContent).toContain("packer2 idle 47m with work");
     expect(stuck.textContent).toContain("idle 47m >= 30m default · holds 2");
-    expect(stuck.textContent).toContain("threshold: stuck >= 30m idle");
-    expect(stuck.textContent).toContain("counted once · seen from rig on vps-a");
+    expect(stuck.textContent).toContain("阈值：stuck >= 30m idle");
+    expect(stuck.textContent).toContain("计一次 · 从 rig 在 vps-a 上可见");
     const gate = getByTestId("fleet-needs-you-local|qi-l1");
     expect(gate.getAttribute("data-source")).toBe("agent");
-    // The union provenance line renders verbatim.
+    // 联合来源行逐字呈现。
     expect(getByTestId("fleet-needs-you").textContent).toContain("counted once per identity+host");
-    // Footer: fan-out honesty from the hosts' embedded statuses.
-    expect(getByTestId("fleet-fanout-footer").textContent).toContain("fleet fan-out 2/3 hosts ok");
+    // 页脚依据主机内嵌状态如实呈现扇出结果。
+    expect(getByTestId("fleet-fanout-footer").textContent).toContain("车队分发 2/3 台主机正常");
   });
 
   it("renders the DAEMON's rollup VERBATIM — never recomputed from rows client-side", async () => {
     stubFleetFetch({
       ...FLEET,
-      // SKEWED on purpose: rows sum to 1●/2▲ but the daemon says 7●/9▲.
+      // 故意制造偏差：行合计 1●/2▲，但后台服务返回 7●/9▲。
       rollup: { needsYouCount: 7, exceptionCount: 9, exceptionsByKind: [{ kind: "stuck", count: 9 }], hostCount: 3, unreachableCount: 1 },
     });
     const { getByTestId } = renderFleetPage();
     await waitFor(() => expect(getByTestId("fleet-rollup")).toBeTruthy());
     const rollup = getByTestId("fleet-rollup").textContent ?? "";
-    expect(rollup).toContain("● 7 need you");
-    expect(rollup).toContain("▲ 9 exceptions");
-    expect(rollup).toContain("3 hosts");
-    expect(rollup).toContain("1 unreachable");
+    expect(rollup).toContain("● 7 需要你处理");
+    expect(rollup).toContain("▲ 9 个异常");
+    expect(rollup).toContain("3 台主机");
+    expect(rollup).toContain("1 台不可达");
   });
 
   it("HOSTS band: ok rows carry counts + seat/rig math + open →; header math is checkable against them", async () => {
@@ -191,12 +189,12 @@ describe("FleetPage — the glance (locked twin fleet-glance-route-dark anatomy)
     const vpsA = getByTestId("fleet-host-vps-a");
     expect(vpsA.textContent).toContain("▲ 1 overdue");
     expect(vpsA.textContent).toContain("▲ 1 stuck");
-    expect(vpsA.textContent).toContain("1 rigs · 4 seats");
+    expect(vpsA.textContent).toContain("1 个工作组 · 4 个席位");
     expect(getByTestId("fleet-host-vps-a-open")).toBeTruthy();
-    // Header-math property on an HONEST payload: rollup == per-host sums.
+    // 如实 payload 的表头算术属性：汇总值等于逐主机之和。
     const local = getByTestId("fleet-host-local");
     expect(local.textContent).toContain("● 1");
-    // 1 (local ●) == rollup.needsYouCount; 1+1 (vps-a ▲) == rollup.exceptionCount.
+    // 1（本地 ●）== rollup.needsYouCount；1+1（vps-a ▲）== rollup.exceptionCount。
   });
 });
 
@@ -207,7 +205,7 @@ describe("FleetPage — unreachable honesty (absent-not-zero + a REAL refetch re
     await waitFor(() => expect(getByTestId("fleet-hosts")).toBeTruthy());
     const vpsB = getByTestId("fleet-host-vps-b");
     expect(vpsB.textContent).toContain("unreachable — ECONNREFUSED");
-    expect(vpsB.textContent).toContain("items absent from this glance, not zero");
+    expect(vpsB.textContent).toContain("事项在此概览中缺失，非零");
     expect(vpsB.textContent).not.toContain("rigs ·");
     expect(getByTestId("fleet-host-vps-b-retry")).toBeTruthy();
   });
@@ -231,10 +229,10 @@ describe("FleetPage — ?open=<fleetKey> expanded drawer (locked twin fleet-exce
     const { getByTestId } = renderFleetPage();
     await waitFor(() => expect(getByTestId("fleet-item-expanded-vps-a|qi-a2|stuck|t0")).toBeTruthy());
     const drawer = getByTestId("fleet-item-expanded-vps-a|qi-a2|stuck|t0");
-    expect(drawer.textContent).toContain("identity: vps-a|qi-a2|stuck|t0");
-    expect(drawer.textContent).toContain("evidence: idle 47m >= 30m default · holds 2");
-    expect(drawer.textContent).toContain("read-only here — acting on a remote host's item rides cross-host routing (MH-3/MH-4)");
-    expect(drawer.textContent).toContain("open vps-a →");
+    expect(drawer.textContent).toContain("身份：vps-a|qi-a2|stuck|t0");
+    expect(drawer.textContent).toContain("证据：idle 47m >= 30m default · holds 2");
+    expect(drawer.textContent).toContain("此处只读——对远端主机事项的操作走跨主机路由 (MH-3/MH-4)");
+    expect(drawer.textContent).toContain("打开 vps-a →");
   });
 });
 
@@ -243,7 +241,7 @@ describe("FleetPage — the loud registryError state", () => {
     stubFleetFetch({ ...FLEET, registryError: "failed to parse host registry YAML at ~/.openrig/hosts.yaml" });
     const { getByTestId } = renderFleetPage();
     await waitFor(() => expect(getByTestId("fleet-registry-error")).toBeTruthy());
-    expect(getByTestId("fleet-registry-error").textContent).toContain("LOCAL-ONLY, not the fleet");
+    expect(getByTestId("fleet-registry-error").textContent).toContain("此概览仅本地，非车队");
     expect(getByTestId("fleet-registry-error").textContent).toContain("failed to parse");
   });
 });

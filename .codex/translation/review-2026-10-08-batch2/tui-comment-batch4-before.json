@@ -1,0 +1,42 @@
+{
+"packages/tui/test/command-palette.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/command-registry-parity.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/config-model.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-from-emit.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-triage.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/one-click-gate.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/organizer.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/refresh-trailing.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/runtime-marks.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/startup-connection.test.ts": [
+"tui",
+"passed"
+]
+}

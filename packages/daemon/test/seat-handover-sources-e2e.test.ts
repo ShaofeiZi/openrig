@@ -14,17 +14,14 @@ import { migrate } from "../src/db/migrate.js";
 import { ALL_MIGRATIONS } from "../src/db/all-migrations.js";
 import { createDb } from "../src/db/connection.js";
 
-// OPR.0.5.5.5 — end-to-end money proof for the two NEW executable handover
-// sources against an ISOLATED tmux server (same D15 isolation discipline as
-// seat-handover-cutover-e2e: per-run -L socket, no $TMUX, teardown BY SESSION
-// NAME, never kill-server; skips when tmux is unavailable).
+// OPR.0.5.5.5——针对隔离 tmux server 的两个新增可执行 handover source 端到端关键证明
+//（与 seat-handover-cutover-e2e 使用相同 D15 隔离纪律：每次运行使用独立 -L socket，不设置
+// $TMUX，按 session 名 teardown，绝不 kill-server；tmux 不可用时跳过）。
 //
-// FORK: the real cutover runs and the resolved native id ARRIVES at the launch
-// surface (the marker adapter renders the forkSource it received into the real
-// pane) — proving fork execution is a native-fork launch, not a blank fresh
-// launch relabeled. REBUILD: a real on-disk artifact chain is resolved and the
-// priming packet is REALLY delivered (visible in the pane), with the executed
-// set recorded on the result.
+// FORK：执行真实 cutover，已解析 native id 到达 launch surface（marker adapter 将收到的
+// forkSource 渲染到真实 pane），证明 fork 执行是 native-fork launch，而不是重新标记的空白 fresh
+// launch。REBUILD：解析真实磁盘 artifact 链，并实际投递 priming packet（在 pane 中可见），结果中
+// 记录已执行集合。
 
 const pexec = promisify(execFile);
 const SOCK = `openrig-s05e2e-${process.pid}`;
@@ -47,8 +44,8 @@ function tmuxAvailableSync(): boolean {
 const seats: string[] = [];
 const tempDirs: string[] = [];
 afterAll(async () => {
-  for (const s of seats) await tmux(`kill-session -t ${q(s)}`).catch(() => {}); // BY NAME, never kill-server
-  for (const d of tempDirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best-effort */ } }
+  for (const s of seats) await tmux(`kill-session -t ${q(s)}`).catch(() => {}); // 按名称，绝不 kill-server。
+  for (const d of tempDirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best-effort。 */ } }
 });
 
 async function seedPane(seat: string): Promise<string> {
@@ -59,9 +56,8 @@ async function seedPane(seat: string): Promise<string> {
   const pane = (await tmux(`list-panes -t ${q(seat)} -F '#{pane_id}'`)).trim();
   await tmux(`send-keys -t ${q(pane)} -l -- ${q("trap 'exit 0' TERM")}`);
   await tmux(`send-keys -t ${q(pane)} Enter`);
-  // A just-created shell can swallow early send-keys during init — poll until
-  // the predecessor sentinel has ACTUALLY rendered, so the post-cutover
-  // scrollback assertion tests preservation, not send-keys timing.
+  // 新建 shell 在初始化期间可能吞掉早期 send-keys，因此轮询至 predecessor sentinel 确实渲染，
+  // 使 cutover 后的 scrollback 断言测试保留行为，而非 send-keys 时序。
   for (let attempt = 0; attempt < 10; attempt++) {
     await tmux(`send-keys -t ${q(pane)} -l -- ${q("echo predecessor_line_S05")}`);
     await tmux(`send-keys -t ${q(pane)} Enter`);
@@ -72,9 +68,9 @@ async function seedPane(seat: string): Promise<string> {
   return pane;
 }
 
-describe("seat-handover source execution e2e (isolated tmux)", () => {
+describe("seat-handover source 执行 E2E（隔离 tmux）", () => {
   it.runIf(tmuxAvailableSync())(
-    "FORK end-to-end: the resolved native id reaches the real launch in the preserved pane; continuity records forked",
+    "FORK 端到端：已解析 native id 到达保留 pane 中的真实启动；continuity 记录 forked",
     async () => {
       const SEAT = "dev-impl@fork-e2e-rig";
       const pane = await seedPane(SEAT);
@@ -88,14 +84,13 @@ describe("seat-handover source execution e2e (isolated tmux)", () => {
       sessionRegistry.updateStatus(session.id, "running");
       sessionRegistry.updateStartupStatus(session.id, "ready", new Date("2026-08-07T09:00:00Z").toISOString());
       sessionRegistry.updateBinding(node.id, { tmuxSession: SEAT, tmuxPane: pane });
-      // The incumbent's native conversation id — what fork must resolve + carry.
+      // incumbent 的 native conversation id——fork 必须解析并携带的值。
       sessionRegistry.updateResumeToken(session.id, "codex_id", "native-e2e-abc123", "scrape");
 
       const marker = {
         runtime: "codex",
         async launchHarness(binding: any, opts: any) {
-          // Render the RECEIVED fork source into the real pane — the pin below
-          // reads it back from capture, proving the id crossed the whole path.
+          // 将收到的 fork source 渲染到真实 pane；下方钉扎从 capture 读回，证明 id 穿过完整路径。
           const stamp = opts?.forkSource ? `FORKED_FROM_${opts.forkSource.value}` : "NO_FORK_SOURCE";
           await tmux(`send-keys -t ${q(binding.tmuxSession)} -l -- ${q(`printf '\\n=== SUCCESSOR ${stamp} ===\\n'; stty -echo 2>/dev/null; cat`)}`);
           await tmux(`send-keys -t ${q(binding.tmuxSession)} Enter`); await sleep(150);
@@ -114,12 +109,11 @@ describe("seat-handover source execution e2e (isolated tmux)", () => {
       const paneAfter = (await tmux(`list-panes -t ${q(SEAT)} -F '#{pane_id}'`)).trim();
       const cap = await tmux(`capture-pane -p -t ${q(pane)} -S -400`);
 
-      expect(result.ok, "fork handover executes").toBe(true);
-      expect(paneAfter, "SAME pane id (seat identity preserved)").toBe(pane);
-      expect(cap, "the resolved native id reached the launch surface").toContain("FORKED_FROM_native-e2e-abc123");
-      // Scrollback preservation (deep-history money proof) is owned by
-      // seat-handover-cutover-e2e — fork rides the SAME respawn path; this file
-      // pins what S05 adds: the native id arriving at the launch in-place.
+      expect(result.ok, "执行 fork handover").toBe(true);
+      expect(paneAfter, "pane id 相同（保留 seat identity）").toBe(pane);
+      expect(cap, "已解析 native id 到达 launch surface").toContain("FORKED_FROM_native-e2e-abc123");
+      // scrollback 保留（deep-history 关键证明）由 seat-handover-cutover-e2e 负责；fork 使用同一
+      // respawn 路径。此文件锁定 S05 新增内容：native id 原地到达 launch。
       expect(result.result.currentStatus.continuityOutcome).toBe("forked");
       expect(result.result.sourceOutcome).toMatchObject({ mode: "fork", forkedFrom: SEAT });
       db.close();
@@ -128,18 +122,17 @@ describe("seat-handover source execution e2e (isolated tmux)", () => {
   );
 
   it.runIf(tmuxAvailableSync())(
-    "REBUILD end-to-end: a real on-disk chain primes the successor through real delivery; the executed set is recorded; continuity records rebuilt",
+    "REBUILD 端到端：真实磁盘链通过真实投递初始化 successor；记录已执行集合；continuity 记录 rebuilt",
     async () => {
       const SEAT = "dev-impl@rebuild-e2e-rig";
       const pane = await seedPane(SEAT);
 
-      // Real durable chain on disk: RECAP.md present, LEARNED.md deliberately
-      // ABSENT so the gap leg is proven end-to-end too.
+      // 磁盘上的真实持久链：RECAP.md 存在，LEARNED.md 有意缺席，同时端到端证明 gap 分支。
       const seatDir = mkdtempSync(join(tmpdir(), "s05-rebuild-e2e-"));
       tempDirs.push(seatDir);
       writeFileSync(join(seatDir, "RECAP.md"), "# RECAP\nS05 e2e recap body\n");
       const recapAddress = join(seatDir, "RECAP.md");
-      const learnedAddress = join(seatDir, "LEARNED.md"); // not written — a real gap
+      const learnedAddress = join(seatDir, "LEARNED.md"); // 未写入——真实 gap。
 
       const db = createDb(); db.pragma("foreign_keys = ON"); migrate(db, ALL_MIGRATIONS);
       const rigRepo = new RigRepository(db), sessionRegistry = new SessionRegistry(db);
@@ -164,8 +157,7 @@ describe("seat-handover source execution e2e (isolated tmux)", () => {
       const service = new SeatHandoverService({
         db, rigRepo, sessionRegistry, discoveryRepo, eventBus,
         tmuxAdapter: new TmuxAdapter(exec) as any, runtimeAdapters: { codex: marker as any },
-        // Production-shaped resolver: DECLARES addresses; the service existence-
-        // filters them against the REAL filesystem (default existsSync).
+        // 生产结构 resolver：声明 address；service 根据真实文件系统（默认 existsSync）过滤是否存在。
         rebuildPrimingResolver: () => ({
           artifacts: [
             { address: recapAddress, label: "authored seat recap (highest trust)" },
@@ -179,11 +171,11 @@ describe("seat-handover source execution e2e (isolated tmux)", () => {
       await sleep(500);
       const cap = await tmux(`capture-pane -p -t ${q(pane)} -S -400`);
 
-      expect(result.ok, "rebuild handover executes").toBe(true);
-      expect(cap, "successor launched fresh (no fork/resume)").toContain("FRESH_REBUILD_TARGET");
-      // The priming packet REALLY landed in the pane and points at the artifact.
-      expect(cap, "priming packet delivered end-to-end").toContain("Seat rebuild handover");
-      expect(cap, "resolved artifact address delivered").toContain(recapAddress);
+      expect(result.ok, "执行 rebuild handover").toBe(true);
+      expect(cap, "successor 以 fresh 方式启动（无 fork/resume）").toContain("FRESH_REBUILD_TARGET");
+      // priming packet 确实落入 pane 并指向 artifact。
+      expect(cap, "端到端投递 priming packet").toContain("Seat rebuild handover");
+      expect(cap, "投递已解析 artifact address").toContain(recapAddress);
       expect(result.result.currentStatus.continuityOutcome).toBe("rebuilt");
       expect(result.result.sourceOutcome).toMatchObject({
         mode: "rebuild",

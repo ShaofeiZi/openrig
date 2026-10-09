@@ -81,7 +81,7 @@ test("candidate binding: tracked dirt refuses before the first cleanup mutation"
   write(sentinel, "must survive refusal\n");
   write(join(root, "tracked.txt"), "dirty\n");
   const result = await runGate(root);
-  assertCandidateRefusal(result, /candidate.*dirty|tracked.*change/i);
+  assertCandidateRefusal(result, /候选工作树不干净|tracked\.txt/i);
   assert.equal(existsSync(sentinel), true, "pre-mutation refusal preserves the stale-bundle sentinel");
 });
 
@@ -97,10 +97,9 @@ test("candidate binding: same verdict basename at a different path is not exclud
   assertCandidateRefusal(await runGate(root), /sub\/dir\/gate-lane-verdict\.json|candidate.*dirty/i);
 });
 
-// The tracked-destination, tracked-symlink-leaf, tracked-symlink-parent, .git-metadata and
-// linked-worktree-pointer fixtures were unbuilt with the legs they pinned (founder ruling,
-// over-engineering audit — each required an adversary inside this trust domain). The plain
-// outside-the-worktree typo guard below is the one that stayed.
+// 跟踪目标、跟踪软链叶子、跟踪软链父级、.git 元数据、linked-worktree 指针这几类夹具，
+// 连同它们所钉的腿一起并未实现（创始人裁决，过度工程审查——每一条都需要本信任域内有攻击者）。
+// 下面这个朴素的“工作树外笔误”守卫，是唯一保留下来的。
 test("candidate binding: a foreign verdict destination is refused without replacing owner data", async () => {
   const root = makeRepo();
   const foreignRoot = mkdtempSync(join(tmpdir(), "gate-foreign-owner-"));
@@ -110,7 +109,7 @@ test("candidate binding: a foreign verdict destination is refused without replac
 
   const result = await runGate(root, { OPENRIG_GATE_VERDICT: verdictPath });
 
-  assertCandidateRefusal(result, /verdict.*(outside|worktree)|outside.*worktree/i);
+  assertCandidateRefusal(result, /裁决目标必须位于当前工作树内/);
   assert.equal(readFileSync(verdictPath, "utf8"), ownerData);
 });
 
@@ -163,7 +162,7 @@ test("candidate binding: HEAD drift during the gate refuses before writing a ver
   git(root, "commit", "-qm", "move head during gate");
 
   const status = await closed;
-  assertCandidateRefusal({ status, stdout, stderr }, /HEAD.*(drift|changed)|candidateSha/i);
+  assertCandidateRefusal({ status, stdout, stderr }, /候选 HEAD 发生变化/);
   assert.equal(existsSync(verdictPath), false, "a drifted run writes no verdict");
 });
 

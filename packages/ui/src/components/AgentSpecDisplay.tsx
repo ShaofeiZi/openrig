@@ -59,10 +59,10 @@ export function AgentSpecDisplay({ review, yaml, testIdPrefix = "agent", sourceP
 
   return (
     <>
-      {/* Profiles */}
+      {/* 配置档案 */}
       {profiles.length > 0 && (
         <div data-testid={`${testIdPrefix}-profiles-section`} className="border border-outline-variant p-3">
-          <div className="font-mono text-xs font-bold mb-2">Profiles</div>
+          <div className="font-mono text-xs font-bold mb-2">配置档案</div>
           <div className="space-y-1">
             {profiles.map((p) => (
               <div key={p.name} className="font-mono text-[10px] flex justify-between">
@@ -74,13 +74,13 @@ export function AgentSpecDisplay({ review, yaml, testIdPrefix = "agent", sourceP
         </div>
       )}
 
-      {/* Resources */}
+      {/* 资源 */}
       <div data-testid={`${testIdPrefix}-resources-section`} className="border border-outline-variant p-3">
-        <div className="font-mono text-xs font-bold mb-2">Resources</div>
+        <div className="font-mono text-xs font-bold mb-2">资源</div>
         <div className="space-y-2 font-mono text-[10px]">
           {resources.skills.length > 0 && (
             <div>
-              <span className="text-on-surface-variant">Skills:</span>{" "}
+              <span className="text-on-surface-variant">技能：</span>{" "}
               {resources.skills.map((s, i) => (
                 <span key={i} className="mr-1 mb-0.5 inline-flex items-center gap-1 bg-surface-low px-1.5 py-0.5">
                   <ToolMark tool="file" size="xs" decorative />
@@ -91,7 +91,7 @@ export function AgentSpecDisplay({ review, yaml, testIdPrefix = "agent", sourceP
           )}
           {resources.guidance.length > 0 && (
             <div>
-              <span className="text-on-surface-variant">Guidance:</span>{" "}
+              <span className="text-on-surface-variant">指引：</span>{" "}
               {resources.guidance.map((g, i) => (
                 <FileChip
                   key={`${g}-${i}`}
@@ -109,7 +109,7 @@ export function AgentSpecDisplay({ review, yaml, testIdPrefix = "agent", sourceP
           )}
           {resources.plugins.length > 0 && (
             <div>
-              <span className="text-on-surface-variant">Plugins:</span>{" "}
+              <span className="text-on-surface-variant">插件：</span>{" "}
               {resources.plugins.map((p, i) => (
                 <span key={`${p}-${i}`} className="mr-1 mb-0.5 inline-flex items-center gap-1 bg-surface-low px-1.5 py-0.5">
                   <ToolMark tool="file" size="xs" decorative />
@@ -121,13 +121,13 @@ export function AgentSpecDisplay({ review, yaml, testIdPrefix = "agent", sourceP
         </div>
       </div>
 
-      {/* Startup */}
+      {/* 启动 */}
       {(startup.files.length > 0 || startup.actions.length > 0) && (
         <div data-testid={`${testIdPrefix}-startup-section`} className="border border-outline-variant p-3">
-          <div className="font-mono text-xs font-bold mb-2">Startup</div>
+          <div className="font-mono text-xs font-bold mb-2">启动</div>
           {startup.files.length > 0 && (
             <div className="mb-2">
-              <div className="font-mono text-[9px] text-on-surface-variant uppercase mb-1">Files</div>
+              <div className="font-mono text-[9px] text-on-surface-variant uppercase mb-1">文件</div>
               {startup.files.map((f, i) => (
                 <div key={i} className="font-mono text-[10px]">
                   <FileChip
@@ -140,14 +140,14 @@ export function AgentSpecDisplay({ review, yaml, testIdPrefix = "agent", sourceP
                       {f.path}
                     </span>
                   </FileChip>{" "}
-                  {f.required && <span className="text-red-500 text-[8px]">REQUIRED</span>}
+                  {f.required && <span className="text-red-500 text-[8px]">必需</span>}
                 </div>
               ))}
             </div>
           )}
           {startup.actions.length > 0 && (
             <div>
-              <div className="font-mono text-[9px] text-on-surface-variant uppercase mb-1">Actions</div>
+              <div className="font-mono text-[9px] text-on-surface-variant uppercase mb-1">动作</div>
               {startup.actions.map((a, i) => (
                 <div key={i} className="font-mono text-[10px]">
                   <span className="inline-flex items-center gap-1 text-on-surface-variant">
@@ -162,8 +162,8 @@ export function AgentSpecDisplay({ review, yaml, testIdPrefix = "agent", sourceP
         </div>
       )}
 
-      {/* YAML */}
-      <WorkflowCodePreview title="YAML Preview" testId={`${testIdPrefix}-spec-yaml`}>
+      {/* YAML 预览 */}
+      <WorkflowCodePreview title="YAML 预览" testId={`${testIdPrefix}-spec-yaml`}>
         {yaml}
       </WorkflowCodePreview>
     </>

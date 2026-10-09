@@ -12,7 +12,7 @@ export interface ClaudeLaunchTarget {
   cwd?: string;
   session?: string;
   pane?: string | null;
-  /** A successor may have a reserved generation before its tenure is committed. */
+  /** 继任者任期提交前可能已经预留了 generation。 */
   generation?: string;
 }
 
@@ -21,11 +21,9 @@ interface TargetSnapshot {
   session: string | null; pane: string | null; generation: string | null;
 }
 
-/** Dynamic choices use the managed launch environment, not an interactive shell's
- * aliases or startup files. No cache and no persisted environment/credentials.
- * The help child has only the capability environment. Launch adds the existing
- * managed identity/auth channel by variable NAME, never secret values in text.
- */
+/** 动态选择使用受管启动环境，而不是交互式 shell 的别名或启动文件。
+ * 不使用缓存，也不持久化环境或凭据。help 子进程只拥有能力探测所需环境；
+ * 启动时按变量名加入现有的受管身份/认证通道，绝不把机密值写入文本。 */
 export class ClaudeManagedLaunch {
   constructor(private readonly db: Database.Database,
     private readonly sessionEnv: Readonly<Record<string, string | undefined>>,
@@ -38,16 +36,16 @@ export class ClaudeManagedLaunch {
        ORDER BY generation_ordinal DESC LIMIT 1) AS generation
       FROM nodes n LEFT JOIN bindings b ON b.node_id=n.id WHERE n.id=?`).get(nodeId) as TargetSnapshot | undefined;
     if (!row || row.runtime !== "claude-code" || !row.cwd || !path.isAbsolute(row.cwd)) {
-      throw new Error("Claude managed launch context is unresolved: an absolute seat cwd and Claude node are required.");
+      throw new Error("Claude 受管启动上下文无法解析：必须提供席位的绝对 cwd 和 Claude 节点。");
     }
     return row;
   }
 
   private context(cwd: string) {
     const { PATH, HOME, CLAUDE_CONFIG_DIR } = this.sessionEnv;
-    if (!PATH || !HOME || !path.isAbsolute(HOME)) throw new Error("Claude managed launch context is unresolved: managed PATH and absolute HOME are required.");
-    // Relative/empty PATH entries are interpreted at the intended seat cwd,
-    // including for /usr/bin/env shebangs inside the selected executable.
+    if (!PATH || !HOME || !path.isAbsolute(HOME)) throw new Error("Claude 受管启动上下文无法解析：必须提供受管 PATH 和绝对 HOME。");
+    // 相对或空的 PATH 条目以目标席位 cwd 为基准解释；选中可执行文件内的
+    // /usr/bin/env shebang 也遵循该规则。
     const search = PATH.split(path.delimiter).map(p => path.resolve(cwd, p));
     const env: Record<string, string> = { PATH: search.join(path.delimiter), HOME,
       CLAUDE_CONFIG_DIR: path.resolve(cwd, CLAUDE_CONFIG_DIR ?? path.join(HOME, ".claude")) };
@@ -59,7 +57,7 @@ export class ClaudeManagedLaunch {
       catch { continue; }
       executable = realpathSync(candidate); break;
     }
-    if (!executable) throw new Error("Claude managed launch executable is unavailable on the intended PATH; no fallback was selected.");
+    if (!executable) throw new Error("目标 PATH 上没有可用的 Claude 受管启动程序；未选择任何回退。");
     const identity = (file: string) => {
       const s = statSync(file);
       return [realpathSync(file), s.dev, s.ino, s.mode, s.size, s.mtimeMs, s.ctimeMs];
@@ -75,30 +73,29 @@ export class ClaudeManagedLaunch {
     const before = this.target(target.nodeId);
     const cwd = before.cwd!;
     if (target.session !== undefined && (!before.pane || !before.generation)) {
-      throw new Error("Claude managed launch context is unresolved: a bound pane and current occupant are required.");
+      throw new Error("Claude 受管启动上下文无法解析：必须有已绑定窗格和当前占用者。");
     }
     if ((target.cwd !== undefined && target.cwd !== cwd)
       || (target.session !== undefined && target.session !== before.session)
       || (target.pane != null && target.pane !== before.pane)) {
-      throw new Error("Claude managed launch target disagrees with the current binding; no input or selection changed.");
+      throw new Error("Claude 受管启动目标与当前绑定不一致；输入和选择均未改变。");
     }
     const context = this.context(cwd);
-    // This is the existing managed session channel, not arbitrary shell variables.
-    // Filter out the explicit capability environment and overwrite launch identity.
+    // 这是现有受管会话通道，不是任意 shell 变量。滤除显式能力环境，并覆盖启动身份。
     const inherited = Object.keys(this.sessionEnv).filter(key => this.sessionEnv[key] !== undefined
       && !["PATH", "HOME", "CLAUDE_CONFIG_DIR", "CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN"].includes(key));
-    if (inherited.some(key => !/^[A-Z_][A-Z0-9_]*$/.test(key))) throw new Error("Invalid managed environment key.");
+    if (inherited.some(key => !/^[A-Z_][A-Z0-9_]*$/.test(key))) throw new Error("受管环境变量名无效。");
     const assertCurrent = () => {
       if (JSON.stringify(this.target(target.nodeId)) !== JSON.stringify(before)
         || JSON.stringify(this.context(cwd)) !== JSON.stringify(context)
         || JSON.stringify(Object.keys(this.sessionEnv).filter(key => this.sessionEnv[key] !== undefined
           && !["PATH", "HOME", "CLAUDE_CONFIG_DIR", "CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN"].includes(key))) !== JSON.stringify(inherited)) {
-        throw new Error("Claude managed launch context changed during capability discovery/input; retry explicitly.");
+        throw new Error("能力发现或输入期间 Claude 受管启动上下文发生变化；请显式重试。");
       }
     };
     const help = await new Promise<string>((resolve, reject) => {
       execFile(context.executable, ["--help"], { cwd, env: context.env, encoding: "utf8", timeout: 1000, maxBuffer: 1024 * 1024 },
-        (error, stdout) => error ? reject(new Error("Claude managed capability query failed; no fallback was selected.")) : resolve(stdout));
+        (error, stdout) => error ? reject(new Error("Claude 受管能力查询失败；未选择任何回退。")) : resolve(stdout));
     });
     assertCurrent();
     validateNativePermissionSelection("claude-code", mode, parseClaudePermissionModes(help));

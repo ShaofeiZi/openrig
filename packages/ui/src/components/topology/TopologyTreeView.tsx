@@ -1,18 +1,17 @@
-// V1 attempt-3 Phase 3 — Topology tree per topology-tree.md L13–L29 + SC-9 + SC-11b.
+// V1 attempt-3 Phase 3 —— 依 topology-tree.md L13–L29 + SC-9 + SC-11b 的拓扑树。
 //
-// host > rig > pod > seat. Multi-host envelope: V1 has only one host
-// node ("localhost") above all rigs; V2 adds remote host registration.
+// host > rig > pod > seat。多 host 信封：V1 在所有 rig 之上只有一个 host 节点
+// （"localhost"）；V2 增加远端 host 注册。
 //
-// V1 polish slice Phase 5.1 P5.1-2 + DRIFT P5.1-D2: SeatLeaf details
-// icon (P5-1) RETIRED at V1 polish. Graph node
-// click + tree click + table row click all navigate to the canonical
-// /topology/seat/$rigId/$logicalId center page. The drawer-as-seat-
-// detail mode is gone; SeatDetailTrigger primitive deleted.
+// V1 polish slice Phase 5.1 P5.1-2 + DRIFT P5.1-D2：SeatLeaf 详情
+// 图标（P5-1）在 V1 polish 退役。图节点
+// 点击 + 树点击 + 表格行点击都导航到规范的
+// /topology/seat/$rigId/$logicalId 中心页。抽屉式 seat 详情模式已移除；
+// SeatDetailTrigger 原语删除。
 //
-// P5.1-2 second part — auto-expand: when the route is on a seat URL,
-// expand the matching rig + pod branches automatically so the user
-// sees where the agent lives in the tree. Implemented via
-// useRouterState pathname parsing inside RigBranch + PodBranch.
+// P5.1-2 第二部分——自动展开：当路由在 seat URL 上时，
+// 自动展开匹配的 rig + pod 分支，使用户看到智能体在树中的位置。
+// 经 RigBranch + PodBranch 内 useRouterState pathname 解析实现。
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
@@ -27,9 +26,8 @@ import { LOCAL_HOST_ID } from "../../lib/host-param.js";
 import { displayPodName, inferPodName } from "../../lib/display-name.js";
 import { RuntimeMark } from "../graphics/RuntimeMark.js";
 
-/** Parse the active topology pathname for the seat-scope rigId+logicalId
- *  and (when on a rig/pod URL) the active rigId / podName. Used for
- *  auto-expand of the matching branches. */
+/** 解析当前拓扑 pathname 中的 seat 作用域 rigId+logicalId，
+ *  以及（在 rig/pod URL 上时）激活的 rigId / podName。用于匹配分支的自动展开。 */
 function useActiveTopologyContext(): {
   rigId: string | null;
   podName: string | null;
@@ -98,8 +96,8 @@ function PodBranch({ rigId, podName, seats, activeRigId, activePodName, activeLo
   activeLogicalId: string | null;
 }) {
   const [open, setOpen] = useState(false);
-  // P5.1-2 auto-expand: when current route is on this pod (via pod URL
-  // OR via a seat URL whose pod resolves to this pod), force-expand.
+  // P5.1-2 自动展开：当当前路由在本 pod 上（经 pod URL，
+  // 或经 pod 解析到本 pod 的 seat URL）时，强制展开。
   const shouldAutoExpand =
     activeRigId === rigId && activePodName === podName;
   useEffect(() => {
@@ -148,15 +146,15 @@ function RigBranch({ rigId, rigName, activeRigId, activePodName, activeLogicalId
   activePodName: string | null;
   activeLogicalId: string | null;
 }) {
-  // P5.1-2 auto-expand: when the active route lives in this rig (rig
-  // scope URL OR pod/seat scope URL whose rigId matches), force-expand.
+  // P5.1-2 自动展开：当激活路由位于本 rig 内（rig 作用域 URL，
+  // 或 rigId 匹配的 pod/seat 作用域 URL）时，强制展开。
   const shouldAutoExpand = activeRigId === rigId;
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (shouldAutoExpand && !open) setOpen(true);
   }, [shouldAutoExpand, open]);
-  // When auto-expanded, fetch nodes eagerly so the pod tree resolves
-  // even if user lands on a deep URL without manually expanding the rig.
+  // 自动展开时 eagerly 抓取节点，使用户落在深层 URL 而未手动展开 rig 时
+  // pod 树也能解析。
   const eagerFetch = open || shouldAutoExpand;
   const { data: nodes } = useNodeInventory(eagerFetch ? rigId : null);
   const podsMap = new Map<string, Array<{ logicalId: string; label: string; runtime?: string | null }>>();
@@ -192,7 +190,7 @@ function RigBranch({ rigId, rigName, activeRigId, activePodName, activeLogicalId
         <ul className="ml-4 border-l border-outline-variant">
           {pods.length === 0 ? (
             <li className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic">
-              Loading…
+              加载中…
             </li>
           ) : (
             pods.map(([pod, seats]) => (
@@ -213,11 +211,10 @@ function RigBranch({ rigId, rigName, activeRigId, activePodName, activeLogicalId
   );
 }
 
-// OPR.0.3.3.19 - the per-host "Archive" section. Archived rigs are hidden from
-// the default tree above; this collapsible section (default collapsed) lists
-// them so they stay discoverable + reversible. Fetch is LAZY: the archived-only
-// query only fires once the section is expanded, so a collapsed archive costs
-// nothing (mirrors the lazy per-rig graph fan-out elsewhere in the tree).
+// OPR.0.3.3.19 —— 每 host 的“归档”区。已归档 rig 从上面默认树中隐藏；
+// 这个可折叠区（默认折叠）列出它们，使其可被发现且可逆。抓取是惰性的：
+// 仅在该区展开后才发 archived-only 查询，故折叠归档零成本
+// （镜像树其他地方惰性按 rig 扇出）。
 function ArchiveSection({ activeRigId, activePodName, activeLogicalId }: {
   activeRigId: string | null;
   activePodName: string | null;
@@ -236,14 +233,14 @@ function ArchiveSection({ activeRigId, activePodName, activeLogicalId }: {
       >
         {open ? <ChevronDown className="h-3 w-3 text-on-surface-variant" /> : <ChevronRight className="h-3 w-3 text-on-surface-variant" />}
         <Archive className="h-3 w-3 text-on-surface-variant" />
-        <span className="font-mono text-[11px] uppercase text-on-surface-variant flex-1">Archive</span>
+        <span className="font-mono text-[11px] uppercase text-on-surface-variant flex-1">归档</span>
         {open ? <span className="font-mono text-[9px] text-on-surface-variant">{count}</span> : null}
       </button>
       {open ? (
         <ul className="ml-5">
           {count === 0 ? (
             <li className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic">
-              No archived rigs.
+              无已归档工作组。
             </li>
           ) : (
             archived!.map((r) => (
@@ -263,16 +260,13 @@ function ArchiveSection({ activeRigId, activePodName, activeLogicalId }: {
   );
 }
 
-// OPR.0.4.6.MH2 FR-1 — one host node in the enumerated host level. The
-// SELECTED host is the expanded one (expand = select: one selection
-// retargets every read screen, so exactly one host's workspace is on
-// screen at a time — indicator + tree + data move together). Collapsed
-// hosts render as rows; clicking one writes the selection through the
-// same one write path as the CLI. Honest v1 deviation from the twin
-// frames (recorded in the plan log): collapsed hosts carry NO rig-count
-// badge — counting an unselected host's rigs would need per-host fan-out
-// reads, which is MH-5 fleet altitude, not single-selected-host
-// read-through.
+// OPR.0.4.6.MH2 FR-1 —— 枚举 host 层中的一个 host 节点。
+// 选中的 host 即展开者（展开 = 选中：一次选中重定向所有读取屏幕，
+// 故屏幕上一次只有一个 host 的工作区——指示器 + 树 + 数据一起移动）。
+// 折叠的 host 渲染为行；点击它通过与 CLI 相同的单写路径写入选择。
+// 相对 twin 帧的诚实 v1 偏差（记录在计划日志）：折叠的 host 不携带 rig 计数
+// badge——统计未选 host 的 rig 需逐 host 扇出读取，那是 MH-5 fleet 高度，
+// 不是单选 host 的读取穿透。
 function HostBranch({ hostId, label, chip, isSelected, isLocal, onSelect, rigs, rigsError, rigsLoading, children }: {
   hostId: string;
   label: string;
@@ -323,17 +317,16 @@ function HostBranch({ hostId, label, chip, isSelected, isLocal, onSelect, rigs, 
       {isSelected ? (
         <ul className="ml-5">
           {rigsError ? (
-            // FR-6 — the honest inline unreachable note (fr6-unreachable
-            // tree leg): what happened + where the retry lives.
+            // FR-6 —— 诚实的内联不可达提示（fr6-unreachable 树行）：发生了什么 + 重试在哪。
             <li
               data-testid={`topology-host-error-${hostId}`}
               className="px-2 py-1 font-mono text-[10px] text-error"
             >
-              Host unreachable — its rigs can&apos;t be listed. See the page for retry.
+              主机不可达——无法列出其工作组。请在页面上重试。
             </li>
           ) : rigsLoading && (rigs === undefined || rigs.length === 0) ? (
             <li className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic">
-              Pulling {label}&apos;s workspace…
+              正在拉取 {label} 的工作区…
             </li>
           ) : (
             children
@@ -348,13 +341,13 @@ export function TopologyTreeView() {
   const { data: rigs, error: rigsQueryError, isFetching: rigsFetching } = useRigSummary();
   const { data: hostsData } = useHosts();
   const selectHost = useSelectHost();
-  // OPR.0.4.6.MH1 FR-4: the own-host display name (one stored name, every
-  // surface reads it). Default/unset renders "localhost" exactly as today.
+  // OPR.0.4.6.MH1 FR-4：本机 host 显示名（一个存储名，各表面统一读取）。
+  // 默认/未设置时精确如今天渲染 "localhost"。
   const { data: settingsData } = useSettings();
   const ownHostNameRaw = (settingsData?.settings?.["host.name" as never] as { value?: unknown } | undefined)?.value;
   const ownHostName = typeof ownHostNameRaw === "string" && ownHostNameRaw.trim() !== "" ? ownHostNameRaw : "localhost";
-  // P5.1-2 auto-expand: pull active route context once at the tree root
-  // and thread down through RigBranch + PodBranch.
+  // P5.1-2 自动展开：在树根拉取一次激活路由上下文，
+  // 向下穿入 RigBranch + PodBranch。
   const { rigId: activeRigId, podName: activePodName, logicalId: activeLogicalId } =
     useActiveTopologyContext();
 
@@ -377,12 +370,11 @@ export function TopologyTreeView() {
         ))
       ) : (
         <li className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic">
-          No rigs.
+          无工作组。
         </li>
       )}
-      {/* OPR.0.3.3.19 - archived rigs nest under the LOCAL host only: the
-          archived-rigs read is not on the MH-2 read allowlist, so a remote
-          host's archive is honestly absent rather than silently local. */}
+      {/* OPR.0.3.3.19 —— 已归档工作组仅挂在本地 host 下：
+          archived-rigs 读取不在 MH-2 读取白名单上，故远端 host 的归档如实缺席，而非静默本地。 */}
       {selected === LOCAL_HOST_ID ? (
         <ArchiveSection
           activeRigId={activeRigId}
@@ -399,9 +391,8 @@ export function TopologyTreeView() {
         <HostBranch
           hostId={LOCAL_HOST_ID}
           label={ownHostName}
-          // Zero-regression: with an empty registry the local node renders
-          // chip-less, exactly as today; the LOCAL/viewing chips appear only
-          // once the host level is real (registry non-empty).
+          // 零回归：注册表为空时本地节点不渲染 chip，精确如今天；
+          // LOCAL/viewing chip 仅在 host 层真实（注册表非空）后出现。
           chip={remoteHosts.length === 0 ? null : selected === LOCAL_HOST_ID ? "viewing" : "local"}
           isSelected={selected === LOCAL_HOST_ID}
           isLocal

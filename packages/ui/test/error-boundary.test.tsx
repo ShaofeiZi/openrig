@@ -1,6 +1,5 @@
-// OPR.0.4.1.13: the reusable ErrorBoundary contains a child render-throw to its
-// subtree (default fallback or a provided one) instead of letting it white-screen the
-// page - the "render stably" insurance behind the table-view crash fix.
+// OPR.0.4.1.13：可复用 ErrorBoundary 将子组件渲染异常限制在其子树内
+//（使用默认或传入的回退内容），避免整页白屏；这是表格视图崩溃修复背后的“稳定渲染”保障。
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, cleanup, screen } from "@testing-library/react";

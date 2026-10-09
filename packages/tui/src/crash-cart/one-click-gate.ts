@@ -1,7 +1,7 @@
-// Crash-cart C3 — the one-click gate (founder rule, binding on ⏎). ⏎ is ONE keystroke IFF the restore
-// plan is ZERO GENERATION (every seat resume-original). Daemon-DOWN, we compute the proxy from the C2
-// read: a rig is fully recoverable when resumableCount == seatCount. Any rig with non-resumable seats
-// makes ⏎ lead to a confirm screen naming those deltas — never a silent resume→fresh downgrade.
+// 故障诊断 C3 —— 一键门禁（创建者规则，对 ⏎ 有约束力）。⏎ 是单次按键当且仅当恢复
+// 计划为零代（每个席位恢复原始）。后台服务停止时，我们从 C2 读取计算代理：
+// 当 resumableCount == seatCount 时工作组完全可恢复。任何有不可恢复席位的工作组
+// 使 ⏎ 进入确认屏幕，列出这些差异——绝不静默恢复→全新降级。
 
 export interface OneClickRigInput {
   rigName: string;
@@ -9,7 +9,7 @@ export interface OneClickRigInput {
   resumableCount: number;
 }
 
-/** A rig that is NOT fully resumable — the seats that would be fresh-primed/awaiting-decision. */
+/** 不完全可恢复的工作组——将被全新初始化/等待决策的席位。 */
 export interface OneClickDelta {
   rigName: string;
   seatCount: number;
@@ -18,22 +18,21 @@ export interface OneClickDelta {
 }
 
 export interface OneClickGate {
-  /** True ⇒ ⏎ RESTORE EVERYTHING is a single keystroke (no confirm). */
+  /** True ⇒ ⏎ 恢复全部是单次按键（无需确认）。 */
   zeroGeneration: boolean;
-  /** Rigs with non-resumable seats — the confirm screen names exactly these. Empty ⇔ zeroGeneration. */
+  /** 有不可恢复席位的工作组——确认屏幕精确列出这些。空 ⇔ zeroGeneration。 */
   deltas: OneClickDelta[];
 }
 
-/** The confirm-screen message for a non-zero-generation restore. TRUTHFUL (r2 HIGH-2): the restore
- *  does NOT auto-fresh-prime — non-resumable seats land in the triage list AWAITING A DECISION
- *  (fresh-prime or skip). It NAMES the deltas (R7: no silent resume→fresh downgrade) and describes the
- *  decision that follows; it never promises an action the restore doesn't request. */
+/** 非零代恢复的确认屏幕消息。诚实（r2 HIGH-2）：恢复不会自动全新初始化——
+ *  不可恢复席位落入诊断列表，等待决策（全新初始化或跳过）。它列出差异
+ *  （R7：无静默恢复→全新降级）并描述后续决策；绝不承诺恢复不请求的动作。 */
 export function restoreConfirmMessage(deltas: OneClickDelta[]): string {
   const names = deltas.map((d) => `${d.rigName} (${d.nonResumable}/${d.seatCount})`).join(", ");
-  return `⏎ RESTORE: ${names} have seats that can't resume — they'll need a decision (fresh-prime or skip) in the triage list. Press ⏎ to proceed, Esc to cancel.`;
+  return `⏎ 恢复：${names} 有无法恢复的席位——它们需要在诊断列表中做出决策（全新初始化或跳过）。按 ⏎ 继续，按 Esc 取消。`;
 }
 
-/** Evaluate the one-click gate over the C2 discovery's per-rig resumable/seat counts. */
+/** 在 C2 发现的按工作组可恢复/席位计数上评估一键门禁。 */
 export function evaluateOneClickGate(discovery: { foundOnHost: OneClickRigInput[] }): OneClickGate {
   const deltas: OneClickDelta[] = discovery.foundOnHost
     .filter((r) => r.resumableCount < r.seatCount)

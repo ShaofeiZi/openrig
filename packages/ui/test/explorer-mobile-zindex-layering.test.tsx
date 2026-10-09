@@ -1,23 +1,20 @@
-// Slice 26.B HG-8 mobile-drawer-layering regression (OPT-B repair).
+// Slice 26.B HG-8 mobile-drawer 分层回归（OPT-B 修复）。
 //
-// Pre-repair: opaque-mode Explorer mobile drawer rendered at z-20
-// while the AppShell mobile-rail-tray rendered at z-30. Both attach
-// at left-0 on mobile and share `explorerOpen` state, so they
-// overlap geometrically. The rail-tray covered the Explorer; click
-// hits registered on rail items, not Explorer items. velocity-qa
-// caught this at 375px for Settings (the 5th Explorer-bearing
-// destination); pre-existing bug exposed by slice 26.
+// 修复前：opaque 模式 Explorer mobile drawer 渲染于 z-20，
+// 而 AppShell mobile-rail-tray 渲染于 z-30。两者在 mobile 上都附于
+// left-0 且共享 `explorerOpen` 状态，故几何上重叠。rail-tray 盖住
+// Explorer；点击命中登记在 rail 项，而非 Explorer 项。velocity-qa
+// 在 Settings（第 5 个带 Explorer 的 destination）375px 抓到；
+// slice 26 暴露的既有 bug。
 //
-// Repair: bump opaque-mode Explorer to z-40 so it layers above
-// rail-tray (z-30) on mobile. Overlay-mode (Topology graph) stays
-// z-30 — equal to rail-tray; DOM render order resolves Explorer
-// above since AppShell renders the Explorer aside AFTER the
-// rail-tray.
+// 修复：opaque 模式 Explorer 提到 z-40，使其在 mobile 上分层于
+// rail-tray（z-30）之上。Overlay 模式（Topology graph）保持
+// z-30——等于 rail-tray；DOM 渲染顺序使 Explorer 居上，因 AppShell
+// 在 rail-tray 之后渲染 Explorer aside。
 //
-// Cross-destination scope: the change in Explorer.tsx applies to
-// all 5 Explorer-bearing destinations (Topology, Project, Library,
-// For-You, Settings). Tests verify the className contract across
-// surfaces so the cross-destination fix is exercised.
+// 跨 destination 范围：Explorer.tsx 的改动应用于全部 5 个带 Explorer 的
+// destination（Topology、Project、Library、For-You、Settings）。测试跨表面
+// 验证 className 契约，使跨 destination 修复被行使。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
@@ -57,9 +54,8 @@ const MOBILE_RAIL_TRAY_Z = 30; // packages/ui/src/components/AppShell.tsx L560
 const EXPLORER_REPAIRED_OPAQUE_Z = 40; // slice 26.B HG-8 OPT-B bumped value
 
 describe("Explorer mobile drawer z-index layering (slice 26.B HG-8 OPT-B repair)", () => {
-  // CROSS-DESTINATION assertion: the Explorer.tsx z-index change
-  // applies to ALL Explorer-bearing surfaces — verifying for each
-  // proves the fix is structural, not surface-specific.
+  // 跨 destination 断言：Explorer.tsx z-index 改动应用于全部带 Explorer
+  // 表面——逐个验证证明修复是结构性的，非表面特定。
   const opaqueSurfaces: ExplorerSurface[] = ["project", "specs", "for-you", "settings"];
 
   for (const surface of opaqueSurfaces) {
@@ -70,7 +66,7 @@ describe("Explorer mobile drawer z-index layering (slice 26.B HG-8 OPT-B repair)
           expect(screen.getByTestId("explorer")).toBeTruthy();
         });
         const explorer = screen.getByTestId("explorer");
-        // Repaired class contract: z-40 is present
+        // 修复后 class 契约：z-40 存在
         expect(explorer.className).toMatch(/\bz-40\b/);
       });
 
@@ -80,8 +76,8 @@ describe("Explorer mobile drawer z-index layering (slice 26.B HG-8 OPT-B repair)
           expect(screen.getByTestId("explorer")).toBeTruthy();
         });
         const explorer = screen.getByTestId("explorer");
-        // Pre-repair broken value: z-20 must NOT appear; would
-        // re-introduce the rail-tray-covers-Explorer bug
+        // 修复前坏值：z-20 绝不出现；否则会重新引入
+        // rail-tray 盖 Explorer 的 bug
         expect(explorer.className).not.toMatch(/\bz-20\b/);
       });
 
@@ -91,8 +87,8 @@ describe("Explorer mobile drawer z-index layering (slice 26.B HG-8 OPT-B repair)
           expect(screen.getByTestId("explorer")).toBeTruthy();
         });
         const explorer = screen.getByTestId("explorer");
-        // Discriminating layering invariant: pull the z-N class and
-        // verify N > rail-tray-z. Without the repair this would be 20.
+        // 判别分层不变量：取 z-N class 并验证 N > rail-tray-z。
+        // 无修复则此值为 20。
         const zMatch = explorer.className.match(/\bz-(\d+)\b/);
         expect(zMatch).toBeTruthy();
         const explorerZ = Number(zMatch![1]);
@@ -130,24 +126,21 @@ describe("Explorer mobile drawer z-index layering (slice 26.B HG-8 OPT-B repair)
       });
       const explorer = screen.getByTestId("explorer");
       expect(explorer.className).toMatch(/\bz-30\b/);
-      // Overlay mode: z-30 equals mobile-rail-tray z-30 — DOM render
-      // order resolves Explorer above (AppShell renders Explorer
-      // aside AFTER the rail-tray div). This is the same layer that
-      // worked correctly before slice 26 for Topology graph; not
-      // changed by this repair.
+      // Overlay 模式：z-30 等于 mobile-rail-tray z-30——DOM 渲染顺序
+      // 使 Explorer 居上（AppShell 在 rail-tray div 之后渲染 Explorer
+      // aside）。这是 slice 26 前 Topology graph 正确工作的同层；
+      // 本修复未改。
     });
   });
 
 });
 
-// Slice 26.D OPT-D3 Topology mobile Explorer mount-suppression.
+// Slice 26.D OPT-D3 Topology mobile Explorer mount 抑制。
 //
-// OPT-C3 z-index carve-out was invalidated by velocity-qa recheck:
-// z-index suppresses visibility but NOT React MOUNT. The peg trigger
-// is the Explorer drawer MOUNTING on hamburger click, which causes
-// adjacent Topology re-render cascade — independent of whether the
-// drawer is visible. OPT-D3 suppresses the mount itself for Topology
-// at narrow viewports. Pure predicate; trivially testable.
+// OPT-C3 z-index carve-out 被 velocity-qa 复查作废：z-index 抑制可见性，
+// 但不抑制 React MOUNT。peg 触发是 hamburger 点击时 Explorer drawer
+// MOUNTING，它引发相邻 Topology 重渲染级联——与 drawer 是否可见无关。
+// OPT-D3 在窄 viewport 为 Topology 抑制 mount 本身。纯谓词；易测。
 
 describe("shouldSuppressExplorerMount (slice 26.D OPT-D3 mount-suppression predicate)", () => {
   it("Topology + narrow viewport (isWideLayout=false) → SUPPRESS mount (true)", () => {
@@ -158,9 +151,8 @@ describe("shouldSuppressExplorerMount (slice 26.D OPT-D3 mount-suppression predi
     expect(shouldSuppressExplorerMount("topology", true)).toBe(false);
   });
 
-  // Cross-destination preservation: all 4 other Explorer-bearing
-  // surfaces mount regardless of viewport. The carve-out is
-  // Topology-specific.
+  // 跨 destination 保持：其他 4 个带 Explorer 表面无论 viewport 都 mount。
+  // carve-out 是 Topology 特定。
   const otherSurfaces: ExplorerSurface[] = ["settings", "project", "specs", "for-you"];
   for (const surface of otherSurfaces) {
     it(`${surface} + narrow viewport → mount normally (false)`, () => {
@@ -177,22 +169,18 @@ describe("shouldSuppressExplorerMount (slice 26.D OPT-D3 mount-suppression predi
   });
 });
 
-// Slice 26.E OPT-E Topology mobile menu-toggle carve-out.
+// Slice 26.E OPT-E Topology mobile menu-toggle carve-out。
 //
-// OPT-D3 (mount-suppression) was invalidated by velocity-qa recheck:
-// the peg trigger is NOT Explorer mount but the click handler on the
-// mobile-menu-toggle itself. setExplorerOpen flips state, which re-
-// renders AppShellInner's children including the Topology mobile
-// render path. OPT-E suppresses the toggle button on Topology mobile
-// surface so the state-flip cascade can never be triggered. Reuses
-// shouldSuppressExplorerMount predicate (same underlying carve-out
-// condition). 0.3.2 will fix the Topology render-path; this carve-out
-// reverts at that time.
+// OPT-D3（mount 抑制）被 velocity-qa 复查作废：peg 触发不是 Explorer
+// mount，而是 mobile-menu-toggle 本身的点击 handler。setExplorerOpen
+// 翻转状态，重渲染 AppShellInner 子节点（含 Topology mobile 渲染路径）。
+// OPT-E 在 Topology mobile 表面抑制 toggle 按钮，使状态翻转级联永不触发。
+// 复用 shouldSuppressExplorerMount 谓词（同底层 carve-out 条件）。
+// 0.3.2 将修 Topology render-path；届时本 carve-out 回退。
 //
-// JSX-shape discriminator: mirrors AppShell.tsx's conditional render
-// of the toggle button. Predicate logic is already covered by OPT-D3
-// tests above; these tests verify the JSX wiring uses the predicate
-// correctly (negative + positive assertions per surface).
+// JSX 形状判别：镜像 AppShell.tsx 对 toggle 按钮的条件渲染。谓词逻辑
+// 已由上面 OPT-D3 测试覆盖；这些测试验证 JSX 接线正确使用谓词
+//（每表面负面 + 正面断言）。
 
 function MenuToggleProbe({
   surface,
@@ -221,9 +209,8 @@ describe("OPT-E mobile-menu-toggle conditional render (slice 26.E)", () => {
     expect(screen.queryByTestId("mobile-menu-toggle")).not.toBeNull();
   });
 
-  // Cross-destination preservation: 4 other Explorer-bearing surfaces
-  // keep the toggle button at narrow viewports so users can open the
-  // Explorer drawer (OPT-B + OPT-D3 fixes apply normally).
+  // 跨 destination 保持：其他 4 个带 Explorer 表面在窄 viewport 保留
+  // toggle 按钮，使用户能打开 Explorer drawer（OPT-B + OPT-D3 修复正常应用）。
   const otherSurfaces: ExplorerSurface[] = ["settings", "project", "specs", "for-you"];
   for (const surface of otherSurfaces) {
     it(`${surface} + narrow viewport → toggle button is PRESENT (cross-destination preservation)`, () => {

@@ -1,45 +1,37 @@
 import { findQueueRecovery, recoveryTag } from "./queue-recovery.js";
 import { lastMeaningfulTransition, type WaitingView } from "./queue-waiting.js";
-// S01 (OPR.0.5.5.1) — WAKE OR ESCALATE ON BATONS. A handoff whose wake fails must never
-// silently park: today one failed nudge is recorded and nothing follows (the measured
-// dominant 0.5.3 failure class — a perfect surviving packet, a recipient never woken).
-// This module gives every baton (handed-off row) whose wake FAILED a bounded retry ladder,
-// then named escalation rungs — the destination's orchestrator (aggregated per destination,
-// never a duplicate row per baton), then the operator surface — each step a recorded
-// transition, none silent.
+// S01（OPR.0.5.5.1）——唤醒或升级 baton。wake 失败的 handoff 绝不能静默停放：此前只记录一次
+// failed nudge，之后再无动作（实测 0.5.3 主要 failure class——packet 完好保留，recipient 却从未唤醒）。
+// 本模块为每个 wake 失败的 baton（handed-off row）提供有界 retry ladder，随后是具名 escalation rung——
+// destination 的 orchestrator（按 destination 聚合，绝不每个 baton 重复一行），再到 operator surface——
+// 每一步都记录 transition，无一步静默。
 //
-// NAMED INVARIANT (mini-req 7): THE ROW CARRIES THE OBLIGATION EXACTLY-ONCE; THE WAKE IS
-// AT-LEAST-ONCE. The ladder retries the NUDGE — an envelope pointer at the row — never the
-// content, so a re-attempt can never double-deliver the obligation.
+// 具名不变量（mini-req 7）：ROW 恰好一次地承载 obligation；WAKE 至少一次。ladder 重试的是 NUDGE——
+// 指向 row 的 envelope pointer——绝不是 content，因此再次尝试绝不会重复投递 obligation。
 //
-// AM-P3-F6: the transitions ARE the ladder state. Attempts, rungs, suspension and
-// exhaustion are all markers on the row's transition log, and every tick DERIVES its
-// position from them — a daemon restart can neither forget a ladder (silent park returns)
-// nor restart its counts (cap violated by repetition). Marker vocabulary is imported from
-// queue-stuck-sweep (AM-P3-F5): S02's undelivered half skips rows whose ladder is live and
-// remains the net for the exhausted handback; created-with-destination obligations stay
-// S02 territory (the baton filter here is handed_off_from — the named hole is explicit).
+// AM-P3-F6：transition 就是 ladder state。attempt、rung、suspension 与 exhaustion 全是 row
+// transition log 上的 marker，每次 tick 都从中派生位置——daemon restart 既不能忘记 ladder（静默 park
+// 再现），也不能重置计数（重复导致超出 cap）。Marker vocabulary 从 queue-stuck-sweep import
+//（AM-P3-F5）：S02 的 undelivered 部分跳过 ladder 为 live 的 row，并继续兜底 exhausted handback；
+// created-with-destination obligation 仍属于 S02（这里的 baton filter 是 handed_off_from——明确指出
+// 该空缺）。
 //
-// AM-P3-F1: `rendered-unconfirmed`-class outcomes (queue grammar: delivered-ack-pending,
-// indeterminate:*, gateway-owned:*) NEVER retry — the measured false-negative class — but
-// they enter the ladder on a confirmation path: unconfirmed + zero pickup evidence within
-// the config-keyed window escalates directly, skipping the retry rung entirely (escalation
-// is not a re-send; it cannot double-deliver).
+// AM-P3-F1：`rendered-unconfirmed` 类 outcome（queue grammar：delivered-ack-pending、
+// indeterminate:*、gateway-owned:*）绝不重试——这是实测 false-negative 类别——但它们会通过
+// confirmation path 进入 ladder：unconfirmed + config 指定 window 内零 pickup evidence 时直接
+// escalate，完全跳过 retry rung（escalation 不是重发，不能重复投递）。
 //
-// AM-P3-F2: suspension is DERIVED, never declared — the destination's post-swap state
-// (nodes.handover_at within a bounded grace; the handover txn itself is atomic and
-// unobservable) suspends wake attempts, with suspend/resume recorded. The manually
-// declared window survives ONLY as an operator override (OPENRIG_WAKE_SUSPEND, fresh-read).
+// AM-P3-F2：suspension 是派生而非声明——destination 的 post-swap state（nodes.handover_at 位于
+// 有界 grace 内；handover transaction 本身原子且不可观测）暂停 wake attempt，并记录 suspend/resume。
+// 手工声明 window 只作为 operator override 保留（OPENRIG_WAKE_SUSPEND，每次 fresh read）。
 //
-// AM-P3-F4 + AM-R25: rungs DELIVER, not just record. The orchestrator rung attempts a real
-// wake on the aggregate escalation row; a rung whose own wake fails advances after one
-// bounded cycle. OPR.0.5.6.1 (A1.2/AM-F3): the operator rung's delivery leg IS the
-// delivery rules engine — the rung dispatches through the injected engine port, records
-// dispatched-to-engine with the decision, and the ladder does NOT advance past the rung
-// until the engine's outcome resolves (a posted receipt or a delivery-termination record);
-// exactly one delivery per episode, never immediate-plus-deferred. When no engine port is
-// wired (fixtures, pre-wire boot), the rung keeps the pre-engine floor honestly
-// (escalation view + daemon-health) and exhausts as before.
+// AM-P3-F4 + AM-R25：rung 会投递，而非只记录。orchestrator rung 在聚合 escalation row 上尝试真实
+// wake；自身 wake 失败的 rung 在一个有界 cycle 后推进。OPR.0.5.6.1（A1.2/AM-F3）：operator rung
+// 的 delivery leg 就是 delivery rules engine——rung 经注入 engine port dispatch，记录带 decision 的
+// dispatched-to-engine；在 engine outcome resolve（posted receipt 或 delivery-termination record）前，
+// ladder 不会越过该 rung；每个 episode 恰好一次 delivery，绝不 immediate-plus-deferred。未接入 engine
+// port（fixture、接线前 boot）时，rung 如实保留 pre-engine floor（escalation view + daemon-health），
+// 并像以前一样 exhaust。
 
 import type Database from "better-sqlite3";
 import type { QueueItem, QueueRepository } from "./queue-repository.js";
@@ -67,9 +59,8 @@ export const DEFAULT_WAKE_UNCONFIRMED_WINDOW_MINUTES = 30;
 export const WAKE_SWAP_GRACE_KEY = "queue.wake_swap_grace_seconds";
 export const DEFAULT_WAKE_SWAP_GRACE_SECONDS = 180;
 
-// S16: this margin absorbs provider reset granularity and host/provider clock
-// skew. Fleet dedup already prevents a thundering herd; narrowing it toward zero
-// would recreate a wake delivered while the seat is still usage-limited.
+// S16：此 margin 吸收 provider reset 粒度与 host/provider clock skew。Fleet dedup 已防止
+// thundering herd；将其缩小到接近零会重现 seat 仍受 usage limit 时就投递 wake 的问题。
 export const USAGE_LIMIT_JITTER_FLOOR_SECONDS = 30;
 export const USAGE_LIMIT_JITTER_CEILING_SECONDS = 90;
 export function drawUsageLimitJitterSeconds(random: () => number = Math.random): number {
@@ -78,17 +69,17 @@ export function drawUsageLimitJitterSeconds(random: () => number = Math.random):
   );
 }
 
-/** The operator-declared suspension override (F2: override, never the mechanism).
- *  Format: comma-separated `<session>:<untilIso>` pairs; fresh-read every tick. */
+/** operator 声明的 suspension override（F2：override，绝不是机制）。格式：逗号分隔的
+ *  `<session>:<untilIso>` pair；每个 tick fresh read。 */
 export const WAKE_SUSPEND_OVERRIDE_ENV = "OPENRIG_WAKE_SUSPEND";
 
-/** Stamp tag on the per-destination aggregate escalation row. */
+/** 每个 destination 聚合 escalation row 上的 stamp tag。 */
 export const WAKE_ESCALATION_TAG = "wake-escalation";
 export function escalationDedupTag(destination: string): string {
   return `wake-escalation:${destination}`;
 }
 
-// Suspension markers (attempt/rung/exhausted come from the S02 seam vocabulary).
+// Suspension marker（attempt/rung/exhausted 来自 S02 接缝 vocabulary）。
 export const LADDER_SUSPEND_PREFIX = "ladder-suspend:";
 export const LADDER_RESUME_PREFIX = "ladder-resume:";
 
@@ -109,7 +100,7 @@ export interface WakeLadderStatus {
   snapshot(): WakeLadderStatusSnapshot;
 }
 
-/** The loop's observable heartbeat — rides /healthz beside the S02 sweep's. */
+/** loop 的可观测 heartbeat——与 S02 sweep 一起进入 /healthz。 */
 export function createWakeLadderStatus(): WakeLadderStatus {
   const state: WakeLadderStatusSnapshot = {
     lastTickAt: null,
@@ -124,7 +115,7 @@ export function createWakeLadderStatus(): WakeLadderStatus {
     record(outcome, detail) {
       state.lastTickAt = new Date().toISOString();
       state.lastOutcome = outcome;
-      state.lastError = outcome === "failed" ? (detail?.error ?? "unknown error") : null;
+      state.lastError = outcome === "failed" ? (detail?.error ?? "未知错误") : null;
       state.consecutiveFailures = outcome === "failed" ? state.consecutiveFailures + 1 : 0;
       if (detail?.active !== undefined) state.activeLadders = detail.active;
       if (detail?.escalations !== undefined) state.escalationsOpen = detail.escalations;
@@ -136,8 +127,8 @@ export function createWakeLadderStatus(): WakeLadderStatus {
   };
 }
 
-/** The operator seat for the self-skip floor (workspace.operator_seat_name — the
- *  conventional `operator-${USER}@kernel`); null when settings resolution fails. */
+/** self-skip floor 的 operator seat（workspace.operator_seat_name——约定的
+ *  `operator-${USER}@kernel`）；settings 解析失败时为 null。 */
 function resolveOperatorSeat(): string | null {
   try {
     const v = new SettingsStore().resolveOne("workspace.operator_seat_name" as never).value;
@@ -169,24 +160,23 @@ export interface WakeLadderDeps {
   db: Database.Database;
   queueRepo: QueueRepository;
   status?: WakeLadderStatus;
-  /** Attempt a wake to `target` for `qitemId`; returns the outcome in the queue nudge
-   *  grammar (verified | delivered-ack-pending | indeterminate:* | failed:*). Default
-   *  rides maybeNudge — the wake is the envelope pointer, never the content. */
+  /** 尝试为 `qitemId` wake `target`；以 queue nudge grammar 返回 outcome
+   *  （verified | delivered-ack-pending | indeterminate:* | failed:*）。默认走 maybeNudge——wake
+   *  是 envelope pointer，绝不是 content。 */
   attemptWake?: (qitemId: string, target: string) => Promise<string>;
   resolveOrchestrator?: (session: string) => string | null;
   retryIntervalSeconds?: number;
   retryCap?: number;
   unconfirmedWindowMinutes?: number;
   swapGraceSeconds?: number;
-  /** Shipped provider telemetry, injected by the daemon. Absent/read failure keeps
-   *  every pre-S16 ladder path byte-identical. */
+  /** 由 daemon 注入的已发布 provider telemetry。缺失/读取失败时，每条 pre-S16 ladder 路径保持
+   *  字节级一致。 */
   getProviderReadModel?: () => Promise<Pick<FourBlockReadModel, "signals" | "bindings">>;
   usageLimitJitterSeconds?: number;
   now?: Date;
   log?: (line: string) => void;
-  /** OPR.0.5.6.1 — the operator rung's delivery leg. dispatchEscalation delivers
-   *  (or defers) through the rules engine and reports whether the outcome
-   *  resolved synchronously; absent = pre-engine floor behavior. */
+  /** OPR.0.5.6.1——operator rung 的 delivery leg。dispatchEscalation 通过 rules engine 投递
+   *  （或 defer），并报告 outcome 是否同步 resolve；缺失 = pre-engine floor 行为。 */
   deliveryEngine?: {
     dispatchEscalation: (row: QueueItem, reason: string) => Promise<{ decision: string; resolved: boolean; notificationKey?: string }>;
   };
@@ -256,17 +246,14 @@ function readLadder(db: Database.Database, qitemId: string): LadderView {
       view.opEngineDispatched = true;
       const keyMatch = note.match(/notification_key=(\S+)/);
       if (keyMatch) view.opEngineKey = keyMatch[1]!;
-      // R2 003f4786: the key derives BEFORE any resolution note counts — a
-      // receipt that PRECEDES this dispatch belongs to an older episode, so
-      // any provisional resolution seen so far is discarded here.
+      // R2 003f4786：key 在任何 resolution note 生效前派生——早于此次 dispatch 的 receipt 属于旧
+      // episode，因此在此丢弃此前看到的任何 provisional resolution。
       view.opOutcomeResolved = false;
     }
-    // Outcome resolution (AM-F3, R1 B-3, R2 pre-marker discriminator): the S14
-    // posted receipt or the termination record closes the episode ONLY when it
-    // (a) follows the dispatch marker chronologically (this loop resets the
-    // flag at each dispatch, so pre-marker notes never survive) and (b) carries
-    // the dispatched key when the marker is keyed. An unkeyed dispatch
-    // (injected legacy ports) keeps the any-following-note shape.
+    // Outcome resolution（AM-F3、R1 B-3、R2 pre-marker discriminator）：S14 posted receipt 或
+    // termination record 只有在以下条件下才关闭 episode：(a) 时间上晚于 dispatch marker（此 loop 在每次
+    // dispatch 时重置 flag，因此 marker 前 note 不会残留）；(b) marker 带 key 时，它也携带已 dispatch key。
+    // 无 key dispatch（注入的 legacy port）保持“任意后续 note”形态。
     if (note.startsWith("slack-owner-notification-posted ") || note.startsWith("delivery-termination:")) {
       if (view.opEngineKey === null || note.split(/\s+/).includes(`notification_key=${view.opEngineKey}`)) {
         view.opOutcomeResolved = true;
@@ -287,12 +274,12 @@ function readLadder(db: Database.Database, qitemId: string): LadderView {
   return view;
 }
 
-/** Pickup evidence (the S04 receipt join, F1): a claim, a heartbeat, or any transition
- *  that is neither a founding record nor ladder machinery — someone real moved. */
+/** Pickup evidence（S04 receipt join，F1）：claim、heartbeat，或任何既非 founding record 也非
+ *  ladder machinery 的 transition——有真实主体采取了行动。 */
 function hasPickupEvidence(db: Database.Database, row: Pick<QueueItem, "qitemId" | "claimedAt" | "lastHeartbeat">): boolean {
   if (row.claimedAt) return true;
-  // Keep this null arm for the 0.5.7 mechanized-pull turn-end hook that knows the in-flight row;
-  // it is the first honest row-scoped writer, and wiring reopens only in that slice.
+  // 为知道 in-flight row 的 0.5.7 mechanized-pull turn-end hook 保留此 null 分支；
+  // 它是首个诚实的 row-scoped writer，且只有该 slice 会重新开启接线。
   if (row.lastHeartbeat) return true;
   const rows = db
     .prepare("SELECT transition_note FROM queue_transitions WHERE qitem_id = ?")
@@ -307,9 +294,8 @@ function hasPickupEvidence(db: Database.Database, row: Pick<QueueItem, "qitemId"
       note.startsWith(LADDER_EXHAUSTED_PREFIX) ||
       note.startsWith(LADDER_SUSPEND_PREFIX) ||
       note.startsWith(LADDER_RESUME_PREFIX) ||
-      // OPR.0.5.6.1: delivery-leg records are ladder machinery, not pickup —
-      // a receipt/termination/deferral stamp must not pull the row out of the
-      // ladder before the resolution pass reads it.
+      // OPR.0.5.6.1：delivery-leg record 是 ladder machinery，而非 pickup——receipt/termination/
+      // deferral stamp 不得在 resolution pass 读取前将 row 移出 ladder。
       note.startsWith("slack-owner-notification-") ||
       note.startsWith("delivery-termination:") ||
       note.startsWith("delivery-deferral-")
@@ -331,12 +317,11 @@ function classifyWakeResult(lastNudgeResult: string | null): WakeMode | null {
     lastNudgeResult.startsWith("gateway-owned:")
   )
     return "unconfirmed";
-  return null; // verified (or unknown vocabulary) — never enters the ladder
+  return null; // verified（或未知 vocabulary）——永不进入 ladder。
 }
 
-/** Another consumer may diagnose the same parked seat, but the existing
- * delivery ladder/disposition already owns these obligations' next wake.
- * Diagnosis remains visible; only duplicate delivery is suppressed. */
+/** 另一 consumer 可能诊断同一 parked seat，但已有 delivery ladder/disposition 已拥有这些 obligation
+ *  的下一次 wake。Diagnosis 保持可见；只抑制重复投递。 */
 export function queueRecoveryOwnsWake(db: Database.Database, row: QueueItem | null): boolean {
   if (!row || !["pending", "in-progress", "blocked"].includes(row.state)) return false;
   if (findQueueRecovery(db, row.qitemId)) return true;
@@ -350,8 +335,8 @@ export function queueRecoveryOwnsWake(db: Database.Database, row: QueueItem | nu
   ).get(row.qitemId));
 }
 
-/** F2 — derived suspension: the destination's post-swap grace (nodes.handover_at within
- *  the bound), or the operator-declared override. Returns the reason, or null. */
+/** F2——派生 suspension：destination 的 post-swap grace（nodes.handover_at 位于 bound 内），
+ *  或 operator 声明的 override。返回 reason 或 null。 */
 function readSuspension(
   db: Database.Database,
   destination: string,
@@ -368,13 +353,13 @@ function readSuspension(
       if (session === destination) {
         const until = Date.parse(untilIso);
         if (!Number.isNaN(until) && now.getTime() < until) {
-          return { reason: `operator override (${WAKE_SUSPEND_OVERRIDE_ENV}) until ${untilIso}`, until: untilIso };
+          return { reason: `operator override（${WAKE_SUSPEND_OVERRIDE_ENV}）持续到 ${untilIso}`, until: untilIso };
         }
       }
     }
   }
-  // The durable session→node binding — never a string transform of the session name
-  // (canonical dash-form sessions and dotted logical ids are independent identities).
+  // 持久 session→node binding——绝不是 session name 的字符串转换（canonical dash-form session 与
+  // dotted logical id 是独立 identity）。
   const nodeId = resolveSessionNodeId(db, destination);
   if (!nodeId) return null;
   const row = db
@@ -385,7 +370,7 @@ function readSuspension(
   if (Number.isNaN(swapAt)) return null;
   const ageS = (now.getTime() - swapAt) / 1000;
   if (ageS >= 0 && ageS < graceSeconds) {
-    return { reason: `destination in post-swap grace (handover ${Math.round(ageS)}s ago, grace ${graceSeconds}s)`, until: new Date(swapAt + graceSeconds * 1000).toISOString() };
+    return { reason: `destination 处于 post-swap grace（${Math.round(ageS)} 秒前 handover，grace ${graceSeconds} 秒）`, until: new Date(swapAt + graceSeconds * 1000).toISOString() };
   }
   return null;
 }
@@ -394,9 +379,8 @@ function suspensionReason(db: Database.Database, destination: string, graceSecon
   return readSuspension(db, destination, graceSeconds, now)?.reason ?? null;
 }
 
-/** Read the existing ladder's next eligible action; never create an intent,
- * reserve a retry, consume provider state or change its policy. The scheduler
- * still makes the final live-state decision at delivery time. */
+/** 读取已有 ladder 的下一 eligible action；绝不创建 intent、预留 retry、消费 provider state 或
+ * 改变其 policy。scheduler 仍在 delivery 时做最终 live-state 决策。 */
 export function readWakeLadderBackstop(db: Database.Database, qitemId: string): WaitingView["nextBackstop"] | null {
   const row = db.prepare(`SELECT qitem_id AS qitemId, state, source_session AS sourceSession,
     destination_session AS destinationSession, claimed_at AS claimedAt, handed_off_from AS handedOffFrom,
@@ -410,7 +394,7 @@ export function readWakeLadderBackstop(db: Database.Database, qitemId: string): 
   const recoveryBackstop = (): WaitingView["nextBackstop"] => ({
     owner: disposition!.destination_session, mechanism: `queue-recovery:${["pending", "in-progress", "blocked"].includes(recovery!.state) ? "delegated" : "resolved"}`,
     dueAt: null, intervalSeconds: null, recovery: { qitemId: recovery!.qitemId, state: recovery!.state },
-    note: "Current recovery disposition owns the continuation; inspect that row. New source evidence is evaluated afresh.",
+    note: "当前 recovery disposition 拥有 continuation；请检查该 row。新的 source evidence 会重新评估。",
   });
   if (recovery && !["pending", "in-progress", "blocked"].includes(recovery.state)) return recoveryBackstop();
   const mode = classifyWakeResult(row.lastNudgeResult);
@@ -423,7 +407,7 @@ export function readWakeLadderBackstop(db: Database.Database, qitemId: string): 
   if (ladder.exhausted) return recovery ? recoveryBackstop() : {
     owner: defaultResolveOrchestrator(db, row.destinationSession) ?? row.destinationSession,
     mechanism: "queue-wake-ladder:exhausted; queue-stuck-sweep:undelivered", dueAt: null, intervalSeconds: null,
-    note: "No further ladder retry. Inspect the retained exhaustion and delivery evidence; the stuck sweep is the safety net.",
+    note: "不再进行 ladder retry。请检查保留的 exhaustion 与 delivery evidence；stuck sweep 是安全网。",
   };
   const interval = resolveWakeRetryIntervalSeconds(), cap = resolveWakeRetryCap(), now = new Date();
   const retry = mode === "failed" && ladder.attempts < cap;
@@ -431,13 +415,12 @@ export function readWakeLadderBackstop(db: Database.Database, qitemId: string): 
   const last = ladder.lastMarkerTs ?? (row.lastNudgeAttempt ? Date.parse(row.lastNudgeAttempt) : null);
   let due = last === null || Number.isNaN(last) ? now.getTime() : last + interval * 1000;
   if (mode === "unconfirmed") {
-    // The existing gate compares rounded age-minutes; display its actual
-    // earliest eligibility, without changing that policy to fit the face.
+    // 现有 gate 比较四舍五入后的 age minute；显示其实际最早 eligibility，不为适配界面而改变 policy。
     due = Math.max(due, Date.parse(row.tsCreated) + Math.max(0, resolveWakeUnconfirmedWindowMinutes() - 0.5) * 60_000);
   }
   if (retry) {
-    // Same per-destination attempt budget as the executing ladder. An attempt
-    // exactly on the lower bound still counts, hence the one millisecond edge.
+    // 使用与执行 ladder 相同的 per-destination attempt budget。正好位于下界的 attempt 仍计数，
+    // 因此存在一毫秒边界。
     const attempts = db.prepare(`SELECT t.ts FROM queue_transitions t JOIN queue_items q ON q.qitem_id = t.qitem_id
       WHERE q.destination_session = ? AND t.transition_note LIKE ? AND t.ts >= ? ORDER BY t.ts DESC LIMIT ?`)
       .all(row.destinationSession, `${LADDER_ATTEMPT_PREFIX}%`, new Date(now.getTime() - interval * 1000).toISOString(), cap) as Array<{ ts: string }>;
@@ -451,7 +434,7 @@ export function readWakeLadderBackstop(db: Database.Database, qitemId: string): 
     owner: retry ? row.destinationSession : operator ? resolveOperatorSeat() ?? row.sourceSession : orch!,
     mechanism: retry ? "queue-wake-ladder:retry" : ladder.opEngineDispatched ? "queue-wake-ladder:operator-outcome" : operator ? "queue-wake-ladder:operator" : "queue-wake-ladder:orchestrator",
     dueAt: ladder.opEngineDispatched ? null : new Date(due).toISOString(), intervalSeconds: interval,
-    ...(suspension ? { suspendedUntil: suspension.until, note: suspension.reason } : { note: "Earliest eligibility; the next scheduler pass rechecks provider state, custody and the shared destination budget." }),
+    ...(suspension ? { suspendedUntil: suspension.until, note: suspension.reason } : { note: "最早 eligibility；下一次 scheduler pass 会重新检查 provider state、custody 与共享 destination budget。" }),
   };
 }
 
@@ -498,13 +481,13 @@ async function ensureUsageLimitBlocker(
   if (blocker) {
     const wake = deps.queueRepo.getParkWakeStatus(blocker.qitemId);
     if (wake?.kind === "timer" && wake.live) return blocker;
-    if (wake) throw new Error(`usage-limit blocker ${blocker.qitemId} has a non-live timer`);
+    if (wake) throw new Error(`usage-limit blocker ${blocker.qitemId} 的 timer 不处于 live 状态`);
   } else {
     const rig = rigOf(pool.seatSessions[0]!);
     blocker = await deps.queueRepo.create({
       sourceSession: LADDER_ACTOR,
       destinationSession: `wake-ladder@${rig}`,
-      body: `Provider usage limit for ${pool.poolKey}; release every dependent once at ${pool.expiresAt}.`,
+      body: `Provider usage limit：${pool.poolKey}；在 ${pool.expiresAt} 一次性释放每个 dependent。`,
       tags: [USAGE_LIMIT_BLOCKER_TAG, poolTag],
       expiresAt: new Date(Date.parse(pool.expiresAt) + jitterSeconds * 1000).toISOString(),
       nudge: false,
@@ -525,24 +508,22 @@ async function ensureUsageLimitBlocker(
 }
 
 /**
- * One ladder tick. Everything is derived from the row + transition log — the tick holds
- * no memory (F6). Never throws: a tick that cannot run is loud on the status surface
- * and the log, because a silent skip is the exact class this slice kills.
+ * 一次 ladder tick。所有内容均从 row + transition log 派生——tick 不保存 memory（F6）。永不抛错：
+ * 无法运行的 tick 会在 status surface 与 log 上显著报告，因为静默 skip 正是此 slice 要消除的类别。
  */
 export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadderTickResult> {
   const log = deps.log ?? ((line: string) => console.error(line));
   const status = deps.status;
   try {
     const now = deps.now ?? new Date();
-    // Retire only aggregates whose explicitly tagged underlying members all
-    // resolved. Legacy untagged history is not interpreted from its body.
+    // 只退役底层显式标记 member 全部 resolved 的 aggregate。不根据 body 解释 legacy untagged history。
     const aggregates = deps.db.prepare("SELECT qitem_id, source_session, tags, ts_created FROM queue_items WHERE state IN ('pending','in-progress','blocked') AND tags LIKE ?").all(`%"${WAKE_ESCALATION_TAG}"%`) as Array<{ qitem_id: string; source_session: string; tags: string; ts_created: string }>;
     for (const aggregate of aggregates) {
       const ids = (JSON.parse(aggregate.tags) as string[]).filter(t => t.startsWith("recovery-for:")).map(t => t.slice("recovery-for:".length));
       if (ids.length && ids.every(id => {
         const row = deps.queueRepo.getById(id);
         return row && (!["pending", "in-progress", "blocked"].includes(row.state) || row.lastNudgeResult === "verified" || Boolean(row.claimedAt && row.claimedAt > aggregate.ts_created));
-      })) await deps.queueRepo.update({ qitemId: aggregate.qitem_id, actorSession: aggregate.source_session, state: "done", closureReason: "no-follow-on", transitionNote: "wake recovery resolved: tagged obligations no longer require delivery recovery" });
+      })) await deps.queueRepo.update({ qitemId: aggregate.qitem_id, actorSession: aggregate.source_session, state: "done", closureReason: "no-follow-on", transitionNote: "wake recovery resolved: tagged obligation 不再需要 delivery recovery" });
     }
     const intervalS = deps.retryIntervalSeconds ?? resolveWakeRetryIntervalSeconds();
     const cap = deps.retryCap ?? resolveWakeRetryCap();
@@ -554,7 +535,7 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
       deps.attemptWake ??
       (async (qitemId: string, target: string): Promise<string> => {
         await deps.queueRepo.maybeNudge(qitemId, target, true);
-        return deps.queueRepo.getById(qitemId)?.lastNudgeResult ?? "indeterminate:no transport available";
+        return deps.queueRepo.getById(qitemId)?.lastNudgeResult ?? "indeterminate:无可用 transport";
       });
 
     const actions: WakeLadderAction[] = [];
@@ -572,13 +553,13 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
           for (const seat of pool.seatSessions) usagePoolBySeat.set(seat, pool);
         }
       } catch (err) {
-        log(`[wake-ladder] provider signal read unavailable; preserving shipped ladder: ${err instanceof Error ? err.message : String(err)}`);
+        log(`[wake-ladder] provider signal 读取不可用；保留已发布 ladder：${err instanceof Error ? err.message : String(err)}`);
       }
     }
     const blockerByPool = new Map<string, QueueItem>();
 
-    // Batons: handed-off rows still pending and unclaimed. Created-with-destination rows
-    // are explicitly NOT here — that hole is S02's net (F5).
+    // Baton：仍 pending 且未 claim 的 handed-off row。created-with-destination row 明确不在这里——
+    // 该缺口由 S02 兜底（F5）。
     const batonRows = deps.db
       .prepare(
         `SELECT qitem_id FROM queue_items
@@ -586,13 +567,11 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
       )
       .all() as Array<{ qitem_id: string }>;
 
-    // OPR.0.5.6.24 B2 (advisor-ruled one-engine arm): claimed in-progress rows
-    // that a parked-owner consumer wake FAILED into join the SAME ladder flow.
-    // Consumer ORIGIN is the row's durable FAILED transition note (the ladder's
-    // own retries overwrite last_nudge_result with generic transport detail, so
-    // the column carries only failed-CLASS eligibility, never origin — R2's
-    // one-shot-entry finding). Retry cap and exhaustion stay bounded by the
-    // ladder's own derived markers; the consumer never retries.
+    // OPR.0.5.6.24 B2（advisor 裁定的 one-engine 分支）：parked-owner consumer wake 失败后形成的
+    // claimed in-progress row 加入同一 ladder 流程。Consumer ORIGIN 是 row 上的持久 FAILED
+    // transition note（ladder 自身 retry 会用通用 transport detail 覆盖 last_nudge_result，因此该列只
+    // 携带 failed 类 eligibility，绝不携带 origin——R2 的 one-shot-entry finding）。retry cap 与
+    // exhaustion 继续受 ladder 自己的派生 marker 限制；consumer 永不重试。
     const parkedOwnerFailureRows = deps.db
       .prepare(
         `SELECT q.qitem_id FROM queue_items q
@@ -611,15 +590,15 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
       view: LadderView;
       mode: WakeMode;
       reason: string;
-      /** Actions (wakes, rung advances) are due-gated and suspension-gated; the
-       *  aggregate REFRESH is detection-gated only (the S02 shape — F3). */
+      /** action（wake、rung advance）受到期 gate 与 suspension gate 控制；aggregate REFRESH 只受
+       *  detection gate 控制（S02 形态——F3）。 */
       due: boolean;
       suspended: string | null;
     }
-    /** Escalation-phase members grouped per destination (F3 aggregation). */
+    /** 按 destination 分组的 escalation-phase member（F3 聚合）。 */
     const escalating = new Map<string, Member[]>();
-    /** Per-destination wake attempts inside the current window, across ALL ladders (F3
-     *  rate bound). Seeded from recorded markers so restarts keep the bound too. */
+    /** 当前 window 内跨所有 ladder 的 per-destination wake attempt（F3 rate bound）。从已记录 marker
+     *  seed，使 restart 也保持该 bound。 */
     const windowBudget = new Map<string, number>();
     let activeLadders = 0;
 
@@ -641,9 +620,8 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
       const row = deps.queueRepo.getById(qitem_id);
       if (!row) continue;
       const usagePool = usagePoolBySeat.get(row.destinationSession);
-      // OPR.0.5.6.24: the usage-limit PARK mutation applies only to pending
-      // batons — a claimed in-progress row is someone's live work and is never
-      // state-mutated here; it falls through to ordinary mode classification.
+      // OPR.0.5.6.24：usage-limit PARK mutation 只适用于 pending baton——claimed in-progress row
+      // 是某人的 live work，这里绝不改变其 state；它会落入普通 mode classification。
       if (usagePool && row.state === "pending") {
         let blocker = blockerByPool.get(usagePool.poolKey);
         if (!blocker) {
@@ -660,7 +638,7 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
           actorSession: LADDER_ACTOR,
           state: "blocked",
           blockedOn: blocker.qitemId,
-          transitionNote: `usage-limit suppressed: pool=${usagePool.poolKey} reset=${usagePool.expiresAt}; waiting on shared blocker ${blocker.qitemId}`,
+          transitionNote: `usage-limit suppressed: pool=${usagePool.poolKey} reset=${usagePool.expiresAt}; 等待共享 blocker ${blocker.qitemId}`,
         });
         actions.push({ qitemId: row.qitemId, action: "park-usage-limit" });
         continue;
@@ -670,29 +648,27 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
       const disposition = findQueueRecovery(deps.db, row.qitemId);
       if (disposition && !["pending", "in-progress", "blocked"].includes(disposition.state)) continue;
       const view = readLadder(deps.db, row.qitemId);
-      if (view.exhausted) continue; // finite: an exhausted ladder never re-fires
+      if (view.exhausted) continue; // 有限：已 exhausted ladder 永不再次触发。
 
-      // F1 gates for the unconfirmed class: never re-nudge; enter only past the window
-      // with zero pickup evidence.
+      // unconfirmed 类的 F1 gate：绝不再次 nudge；只有超过 window 且零 pickup evidence 时才进入。
       if (mode === "unconfirmed") {
         if (minutesSince(row.tsCreated, now) < windowMin) continue;
         if (hasPickupEvidence(deps.db, row)) continue;
       }
       activeLadders += 1;
 
-      // Due-ness: the latest ladder marker (or the original nudge attempt) is older than
-      // the retry interval. No markers + no recorded attempt = due now. Gates ACTIONS
-      // only — detection (and the aggregate refresh) is not throttled by it.
+      // 到期性：最新 ladder marker（或原始 nudge attempt）早于 retry interval。无 marker + 无已记录
+      // attempt = 现在到期。它只控制 action——detection（以及 aggregate refresh）不受其节流。
       const lastActivity =
         view.lastMarkerTs ?? (row.lastNudgeAttempt ? Date.parse(row.lastNudgeAttempt) : null);
       const due =
         lastActivity === null || Number.isNaN(lastActivity) || now.getTime() - lastActivity >= intervalS * 1000;
       const suspended = due ? suspensionReason(deps.db, row.destinationSession, graceS, now) : null;
 
-      // Retry rung — failed outcomes only, under the cap, inside the destination budget.
+      // Retry rung——只处理 failed outcome，低于 cap 且处于 destination budget 内。
       if (mode === "failed" && view.attempts < cap) {
         if (!due) continue;
-        // F2 — derived suspension, checked only when the ladder would otherwise act.
+        // F2——派生 suspension，只在 ladder 本应采取行动时检查。
         if (suspended) {
           if (!view.suspendEpisodeOpen) {
             appendMarker(deps.queueRepo, row, `${LADDER_SUSPEND_PREFIX} ${suspended}`);
@@ -701,7 +677,7 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
           continue;
         }
         if (view.suspendEpisodeOpen) {
-          appendMarker(deps.queueRepo, row, `${LADDER_RESUME_PREFIX} suspension over; ladder resumes`);
+          appendMarker(deps.queueRepo, row, `${LADDER_RESUME_PREFIX} suspension 已结束；ladder 恢复`);
           actions.push({ qitemId: row.qitemId, action: "resume" });
         }
         if (budgetFor(row.destinationSession) >= cap) continue; // destination-bounded (F3)
@@ -718,28 +694,28 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
 
       const recovery = findQueueRecovery(deps.db, row.qitemId);
       if (recovery && !deps.queueRepo.getById(recovery.qitemId)?.tags?.includes(WAKE_ESCALATION_TAG)) {
-        appendExhausted(deps.queueRepo, row, `recovery disposition already held by ${recovery.qitemId} (${recovery.state})`);
+        appendExhausted(deps.queueRepo, row, `recovery disposition 已由 ${recovery.qitemId}（${recovery.state}）持有`);
         continue;
       }
 
-      // Escalation phase (past the cap, or the F1 direct path). Grouped per destination
-      // regardless of due-ness so the aggregate refresh rides every detection pass.
+      // Escalation phase（超过 cap，或 F1 direct path）。无论是否到期，都按 destination 分组，使
+      // aggregate refresh 随每次 detection pass 执行。
       const reason =
         mode === "failed"
-          ? `wake failed ${view.attempts} times over ${minutesSince(view.firstMarkerTs ?? row.tsCreated, now)} min`
-          : `unconfirmed delivery with no pickup evidence over ${minutesSince(row.tsCreated, now)} min`;
+          ? `wake 失败 ${view.attempts} 次，历时 ${minutesSince(view.firstMarkerTs ?? row.tsCreated, now)} 分钟`
+          : `unconfirmed delivery 在 ${minutesSince(row.tsCreated, now)} 分钟内没有 pickup evidence`;
       const dest = row.destinationSession;
       if (!escalating.has(dest)) escalating.set(dest, []);
       escalating.get(dest)!.push({ row, view, mode, reason, due, suspended });
     }
 
-    // F3 — per-destination aggregation: ONE escalation carrying the row list, refreshed
-    // not duplicated (the S02 idempotency shape), and rung markers on every member baton.
+    // F3——per-destination 聚合：一个 escalation 携带 row list，只 refresh 不重复（S02 幂等形态），
+    // 且每个 member baton 都带 rung marker。
     for (const [dest, members] of escalating) {
       const orch = resolveOrch(dest);
 
-      // F3 — the aggregate refresh is detection-gated (the S02 idempotency shape): a
-      // live escalation group refreshes its one open row every pass, no wake attached.
+      // F3——aggregate refresh 只受 detection gate 控制（S02 幂等形态）：live escalation group 每次
+      // pass 都 refresh 其唯一 open row，不附带 wake。
       await refreshEscalationRowIfExists(deps, dest, members);
 
       const actionable = members.filter((m) => m.due && !m.suspended);
@@ -748,12 +724,10 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
 
       if (needsOrchRung.length > 0) {
         if (orch === null || orch === dest) {
-          // F4: rung 1 self-skips when it resolves to the destination itself (or nowhere)
-          // — never escalate INTO the dead seat; fall through to the operator rung now.
-          // The operator floor must be a VISIBLE OBJECT, not markers alone: ensure the
-          // per-destination escalation row exists (addressed to the operator seat, else
-          // the obligation's own creator) so the escalations view and the health count
-          // expose it — it stays open past the batons' exhaustion.
+          // F4：rung 1 解析到 destination 自身（或无结果）时自行跳过——绝不向 dead seat escalate；
+          // 立即落入 operator rung。operator floor 必须是可见 object，不能只有 marker：确保
+          // per-destination escalation row 存在（发给 operator seat，否则发给 obligation 自身 creator），
+          // 使 escalations view 与 health count 呈现它——baton exhausted 后仍保持 open。
           const floorDest = resolveOperatorSeat() ?? needsOrchRung[0]!.row.sourceSession;
           await ensureEscalationRow(deps, dest, floorDest, needsOrchRung, reason);
           for (const m of needsOrchRung) {
@@ -778,8 +752,8 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
             );
             actions.push({ qitemId: m.row.qitemId, action: "escalate-orchestrator", target: orch });
             if (!outcome.startsWith("failed:")) {
-              // Delivered (or durable-unconfirmed — the aggregate row itself is now the
-              // orchestrator's durable obligation; S02 nets it if it sits unclaimed).
+              // 已 delivered（或 durable-unconfirmed——aggregate row 本身现在是 orchestrator 的持久
+              // obligation；若它一直 unclaimed，S02 会兜底）。
               appendExhausted(
                 deps.queueRepo,
                 m.row,
@@ -792,7 +766,7 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
         continue; // one rung per destination per tick — bounded advance (F4)
       }
 
-      // Orchestrator rung recorded and failed → advance to the operator rung.
+      // orchestrator rung 已记录且失败 → 推进到 operator rung。
       for (const m of actionable) {
         if (m.view.orchRung && m.view.orchRungFailed && !m.view.opRung) {
           if (await operatorRung(deps, m.row, m.reason, actions, m.view)) {
@@ -802,9 +776,8 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
         }
       }
 
-      // AM-F3 resolution pass: a rung whose engine outcome was pending exhausts
-      // once the row carries its resolution (posted receipt or termination) —
-      // never before, never silently.
+      // AM-F3 resolution pass：engine outcome 曾为 pending 的 rung，只有 row 携带其 resolution
+      //（posted receipt 或 termination）后才 exhaust——绝不提前，绝不静默。
       for (const m of members) {
         if (m.view.opEngineDispatched && !m.view.exhausted && m.view.opOutcomeResolved) {
           appendExhausted(deps.queueRepo, m.row, "engine outcome resolved");
@@ -826,18 +799,17 @@ export async function runWakeLadderTick(deps: WakeLadderDeps): Promise<WakeLadde
     return { outcome, actions };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    log(`[wake-ladder] TICK FAILED (skipping loudly): ${message}`);
+    log(`[wake-ladder] tick 失败（显著跳过）：${message}`);
     status?.record("failed", { error: message });
     return { outcome: "failed", actions: [], error: message };
   }
 }
 
-/** The operator rung (OPR.0.5.6.1 A1.2/AM-F3): the delivery rules engine IS the rung's
- *  delivery leg. With an engine port wired, the rung dispatches exactly once per episode,
- *  records the decision, and exhausts ONLY when the outcome resolves (synchronously, or
- *  later via the posted receipt / termination record the resolution pass reads). Without
- *  a port the pre-engine floor stands honestly and exhausts as before.
- *  Returns true when the ladder may append its exhausted marker now. */
+/** operator rung（OPR.0.5.6.1 A1.2/AM-F3）：delivery rules engine 就是 rung 的 delivery leg。
+ *  接入 engine port 时，每个 episode 只 dispatch 一次并记录 decision；只有 outcome resolve 后
+ *  才 exhaust（同步完成，或稍后由 resolution pass 读取 posted receipt / termination record）。
+ *  无 port 时，如实保留 pre-engine floor 并像以前一样 exhaust。ladder 现在可追加 exhausted marker
+ *  时返回 true。 */
 async function operatorRung(
   deps: WakeLadderDeps,
   row: QueueItem,
@@ -856,7 +828,7 @@ async function operatorRung(
     return true;
   }
   if (view.opEngineDispatched) {
-    // Exactly-once per episode: never re-dispatch; the resolution pass decides advance.
+    // 每个 episode 恰好一次：绝不重新 dispatch；由 resolution pass 决定推进。
     return view.opOutcomeResolved;
   }
   const outcome = await deps.deliveryEngine.dispatchEscalation(row, reason);
@@ -873,12 +845,10 @@ function appendExhausted(repo: QueueRepository, row: QueueItem, why: string): vo
   appendMarker(repo, row, `${LADDER_EXHAUSTED_PREFIX} ${why}`);
 }
 
-/** Ensure the per-destination aggregate escalation row (F3): one open row, deduped by
- *  tag, refreshed on re-detection — never one row per baton. The row is a NEW durable
- *  obligation addressed to the orchestrator; the baton itself is never duplicated. */
-/** Refresh-only leg of the F3 aggregate: an already-open escalation row gains a
- *  detection-pass note naming the current member list; creation stays with the rung
- *  action so a row never exists before its first delivery attempt. */
+/** 确保 per-destination aggregate escalation row（F3）：一个 open row，按 tag 去重，重新检测时
+ *  refresh——绝不每个 baton 一行。该 row 是发给 orchestrator 的新持久 obligation；baton 本身永不重复。 */
+/** F3 aggregate 的仅 refresh 环节：已有 open escalation row 获得一条点名当前 member list 的
+ *  detection-pass note；creation 仍属于 rung action，确保首次 delivery attempt 前绝不存在 row。 */
 async function refreshEscalationRowIfExists(
   deps: WakeLadderDeps,
   dest: string,
@@ -921,19 +891,19 @@ async function ensureEscalationRow(
     return { qitemId: existing.qitem_id };
   }
   const body =
-    `WAKE ESCALATION (aggregated per destination)\n` +
+    `WAKE ESCALATION（按 destination 聚合）\n` +
     `destination: ${dest}\n` +
     `reason: ${reason}\n` +
-    `stuck batons (${members.length}):\n` +
+    `卡住的 baton（${members.length}）：\n` +
     members.map((m) => `- ${m.row.qitemId} (${m.reason})`).join("\n") +
-    `\nThe rows above still carry their obligations exactly-once; this escalation is the wake, not the content.`;
+    `\n以上 row 仍恰好一次地承载其 obligation；此 escalation 是 wake，而非 content。`;
   const created = await deps.queueRepo.create({
     sourceSession: members[0]!.row.sourceSession,
     destinationSession: orch,
     body,
-    summary: `Wake escalation: ${members.length} baton(s) stuck at ${dest} — ${reason}`,
+    summary: `Wake escalation：${members.length} 个 baton 卡在 ${dest}——${reason}`,
     tags: [WAKE_ESCALATION_TAG, dedupTag, ...members.map(m => recoveryTag(m.row.qitemId))],
-    nudge: false, // delivery is the ladder's own rung attempt, recorded with its outcome
+    nudge: false, // delivery 是 ladder 自身的 rung attempt，会连同 outcome 一起记录。
   });
   return { qitemId: created.qitemId };
 }
@@ -946,8 +916,8 @@ export interface WakeLadderSchedulerDeps {
   onTickError?: (err: unknown) => void;
 }
 
-/** The standing loop — the watchdog-scheduler pattern (injected seams, runTickNow, no
- *  overlapping ticks), so the ladder is unit-drivable without timers. */
+/** 常驻 loop——watchdog-scheduler 模式（注入 seam、runTickNow、无重叠 tick），使 ladder 无需 timer
+ *  即可由单元测试驱动。 */
 export class WakeLadderScheduler {
   private readonly deps: Required<Pick<WakeLadderSchedulerDeps, "runTick">> & WakeLadderSchedulerDeps;
   private timer: NodeJS.Timeout | null = null;

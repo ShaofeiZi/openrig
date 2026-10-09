@@ -1,0 +1,5512 @@
+{
+  "scope": "cli+daemon test comment classification 2026-10-08-batch2",
+  "union_reviewed": 140,
+  "total_scanned": 789,
+  "class_counts": {
+    "english_nl_1_5": 84,
+    "no_comments": 116,
+    "chinese_or_machine_only": 589
+  },
+  "files": [
+    {
+      "path": "packages/cli/test/ask-wake.test.ts",
+      "sha256_16": "7e0236d8025e46c2",
+      "comment_count": 3,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/ask.test.ts",
+      "sha256_16": "753ffda18e262cfa",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/attach.test.ts",
+      "sha256_16": "996dfdaf194ca4b8",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/bin-wrapper.test.ts",
+      "sha256_16": "e3c543c61868c466",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/bootstrap.test.ts",
+      "sha256_16": "6855d86cfa55ece4",
+      "comment_count": 11,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/capture.test.ts",
+      "sha256_16": "a64b003800403845",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/check-abi.test.ts",
+      "sha256_16": "fffd2f70a24a2f3a",
+      "comment_count": 3,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/client.test.ts",
+      "sha256_16": "db820aaa23d9b317",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/codex-auth-command.test.ts",
+      "sha256_16": "f3b5a0be1751b782",
+      "comment_count": 3,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/codex-auth-lib.test.ts",
+      "sha256_16": "a49517b0ceaf6759",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/codex-auth-ops.test.ts",
+      "sha256_16": "486b8654a04e2560",
+      "comment_count": 2,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/codex-auth-saveswitch.test.ts",
+      "sha256_16": "ec8a97fb7d389b25",
+      "comment_count": 3,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/codex-auth-seats.test.ts",
+      "sha256_16": "3aee3f597c881127",
+      "comment_count": 1,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/compact-plan.test.ts",
+      "sha256_16": "255fa766138a598c",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/context-git.test.ts",
+      "sha256_16": "0a2c3566cdf550aa",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/context-resolve.test.ts",
+      "sha256_16": "2779b408c089626e",
+      "comment_count": 4,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/context-work-install.test.ts",
+      "sha256_16": "908c6b18624fe876",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/crash-cart-command.test.ts",
+      "sha256_16": "1d484e6c7516f09e",
+      "comment_count": 4,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/create-grow.test.ts",
+      "sha256_16": "70f82efb468b6460",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/daemon-lifecycle-event-loop.test.ts",
+      "sha256_16": "308d0e39552e27c8",
+      "comment_count": 2,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/daemon-lifecycle-status.test.ts",
+      "sha256_16": "28c86818c56f6882",
+      "comment_count": 1,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/daemon-start-identity.test.ts",
+      "sha256_16": "2bbbe09004b72d1f",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/daemon-stop-outcome.test.ts",
+      "sha256_16": "6ef87498cb3fe78f",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/destroy.test.ts",
+      "sha256_16": "0c42cc95d3de882f",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/discover.test.ts",
+      "sha256_16": "d4e3f3f08231725c",
+      "comment_count": 6,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/env.test.ts",
+      "sha256_16": "dfff9a44f172dd24",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/fetch-guard.test.ts",
+      "sha256_16": "e72b214f592baa20",
+      "comment_count": 10,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/fetch-with-timeout.test.ts",
+      "sha256_16": "23f197964262d655",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/file-command.test.ts",
+      "sha256_16": "64b88df550870419",
+      "comment_count": 4,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/fork.test.ts",
+      "sha256_16": "a0099caef431290d",
+      "comment_count": 3,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/gateway-human-registry-verb.test.ts",
+      "sha256_16": "6add45f6ab14cd59",
+      "comment_count": 4,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/health.test.ts",
+      "sha256_16": "26fd8929f47d3e7a",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/heartbeat.test.ts",
+      "sha256_16": "d05264b1723c5409",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/host-bindings.test.ts",
+      "sha256_16": "0412e3af11a6c903",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/host-registry-http.test.ts",
+      "sha256_16": "50f7c6d88aabe513",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/host-registry-write.test.ts",
+      "sha256_16": "ace04edbb10d89de",
+      "comment_count": 3,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/host-registry.test.ts",
+      "sha256_16": "15f546977db43ac3",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/import-running-name-render.test.ts",
+      "sha256_16": "b417e9ecf3a33efb",
+      "comment_count": 4,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/index.test.ts",
+      "sha256_16": "656ccaca2c23849e",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/init-workspace-mission-notes.test.ts",
+      "sha256_16": "ccff5e42bdf54fc2",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/launch.test.ts",
+      "sha256_16": "6889ad3622d2dc69",
+      "comment_count": 6,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/lifecycle.test.ts",
+      "sha256_16": "4360f32e233b4d75",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/local-origin.test.ts",
+      "sha256_16": "dcc9fbb04d8a7924",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/local-reading.test.ts",
+      "sha256_16": "937169b6a95503a8",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/node-support.test.ts",
+      "sha256_16": "3481fd9faf357c3d",
+      "comment_count": 2,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/openrig-compat.test.ts",
+      "sha256_16": "1c2981d5885144fa",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/parked-verb.test.ts",
+      "sha256_16": "11d7cc77ea5bdf8b",
+      "comment_count": 3,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/permission-policy-parity.test.ts",
+      "sha256_16": "049df39003353caa",
+      "comment_count": 6,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/policy.test.ts",
+      "sha256_16": "c2494d6900e51d7f",
+      "comment_count": 3,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/progress-ui-conformance.test.ts",
+      "sha256_16": "980247f538a3d06f",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/project-jev.test.ts",
+      "sha256_16": "e2475519a7401ccd",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/project-worker-entry.test.ts",
+      "sha256_16": "3462a371b9d45be2",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/project.test.ts",
+      "sha256_16": "2a34273f3ed0dd98",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/ps-pl012-context-usage.test.ts",
+      "sha256_16": "d557e1037b1cfd47",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/ps-pl019-active.test.ts",
+      "sha256_16": "6307738a2ae08153",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/read-defaults.test.ts",
+      "sha256_16": "1c763ea1831b062d",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/reconcile-session.test.ts",
+      "sha256_16": "f45268f5badc147d",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/remote-http-ops.test.ts",
+      "sha256_16": "a76a8b0314dafa55",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/requirements.test.ts",
+      "sha256_16": "93959c2941233e3b",
+      "comment_count": 8,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/s03-permissions-cli.test.ts",
+      "sha256_16": "7422c450d5457fbf",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/scope-frontmatter.test.ts",
+      "sha256_16": "a1e7cf24207f1c87",
+      "comment_count": 4,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/scope-intent-visual-template.test.ts",
+      "sha256_16": "ff3b085ac000cc77",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/scope-progress.test.ts",
+      "sha256_16": "cb6d8d3925201168",
+      "comment_count": 12,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/scope-trust.test.ts",
+      "sha256_16": "96198b57d4902563",
+      "comment_count": 4,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/seat-lifecycle-verbs.test.ts",
+      "sha256_16": "eb0a09bcbbf9a221",
+      "comment_count": 3,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/seat-set-resume-token.test.ts",
+      "sha256_16": "41b7e58592bbcae3",
+      "comment_count": 4,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/self-host-triple.test.ts",
+      "sha256_16": "608cb3f4756d8bcc",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/shared-tui.test.ts",
+      "sha256_16": "5ff205731ef1488f",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/skill-loadout.test.ts",
+      "sha256_16": "5a8f1a9c76ee5a58",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/skill.test.ts",
+      "sha256_16": "4a206c1c49e5f44f",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/slack-cutover-cli.test.ts",
+      "sha256_16": "42782c2ec1025a4c",
+      "comment_count": 4,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/slack-manifest-cli.test.ts",
+      "sha256_16": "99debc610e1cd408",
+      "comment_count": 2,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/slice15-cli-contract.test.ts",
+      "sha256_16": "1939d0fc08c4a13a",
+      "comment_count": 8,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/specs.test.ts",
+      "sha256_16": "b0db3ac6b45bfde8",
+      "comment_count": 3,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/startup-proof.test.ts",
+      "sha256_16": "194e10ad10a0a7af",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/stream.test.ts",
+      "sha256_16": "333dcb2a321fdc0d",
+      "comment_count": 7,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/sweep-b-ps-session-ladder.test.ts",
+      "sha256_16": "51dd70d6d62bd618",
+      "comment_count": 2,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/terminal.test.ts",
+      "sha256_16": "1006fe1e03ed42b6",
+      "comment_count": 3,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/transcript.test.ts",
+      "sha256_16": "3bde2b417aa3a646",
+      "comment_count": 1,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/tui-command.test.ts",
+      "sha256_16": "92540cf80d0df537",
+      "comment_count": 5,
+      "english_nl_count": 5,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/tui-commands-dump.test.ts",
+      "sha256_16": "fbe876751b871846",
+      "comment_count": 2,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/tui-timezone.test.ts",
+      "sha256_16": "e576c15deeb0bc3a",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/up-attention-render.test.ts",
+      "sha256_16": "627fc581cd760139",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/up-topology-host-rejection.test.ts",
+      "sha256_16": "84ea336c7209c6b9",
+      "comment_count": 4,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/usage.test.ts",
+      "sha256_16": "6b8d56d62e009507",
+      "comment_count": 6,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/version-build-info.test.ts",
+      "sha256_16": "6083a99466ea6a6c",
+      "comment_count": 6,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/view.test.ts",
+      "sha256_16": "4007df2b708c06e6",
+      "comment_count": 2,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/watchdog.test.ts",
+      "sha256_16": "a554e42e059fc1ec",
+      "comment_count": 4,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/workflow-acceptance-cli.test.ts",
+      "sha256_16": "1d2e83cd610447e0",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/cli/test/workflow-render.test.ts",
+      "sha256_16": "b8989e07ad5c145c",
+      "comment_count": 7,
+      "english_nl_count": 5,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/cli/test/workflow-ux.test.ts",
+      "sha256_16": "2e4db8c9efc86141",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/cli/test/workflow.test.ts",
+      "sha256_16": "543b555b309ed250",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/active-lens-store.test.ts",
+      "sha256_16": "4a5ac6bc073da4c2",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-adapter-rungs.test.ts",
+      "sha256_16": "1f32471a12135c06",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-consumers.test.ts",
+      "sha256_16": "784d07ce1a31342a",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-endpoint.test.ts",
+      "sha256_16": "9ce4a9ab473ceca4",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-events-stream.test.ts",
+      "sha256_16": "d3ba87e974d02a0e",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-hook-rip-proof.test.ts",
+      "sha256_16": "013fcea15626e9da",
+      "comment_count": 26,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-ingest-seam.test.ts",
+      "sha256_16": "7c81f77d3778643e",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-parked-rig-scope.test.ts",
+      "sha256_16": "c931de0f247ade01",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-parked-route.test.ts",
+      "sha256_16": "c08690bf7ad38232",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-relay-endpoint.test.ts",
+      "sha256_16": "1814d5e98fe46f86",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-route-structural.test.ts",
+      "sha256_16": "9d8a8489186723df",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-structural-signal.test.ts",
+      "sha256_16": "ae9c27c3bea4a352",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/activity-taxonomy.test.ts",
+      "sha256_16": "7aa1c165c83b9a40",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/adapter-plugin-exec-mode.test.ts",
+      "sha256_16": "abdb5fe0e6be68f2",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/adapter-plugin-projection.test.ts",
+      "sha256_16": "ff84105e8b34fd54",
+      "comment_count": 37,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/adapters-routes.test.ts",
+      "sha256_16": "082794741fb6ee76",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/add-member-route.test.ts",
+      "sha256_16": "245b04f09d207bea",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/add-member-to-pod.test.ts",
+      "sha256_16": "875d6c7374c071a8",
+      "comment_count": 19,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-activity-store-construction-site.test.ts",
+      "sha256_16": "20fe1c5f3a37ce5e",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-activity-store.test.ts",
+      "sha256_16": "670ae9b97484cf6e",
+      "comment_count": 52,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-image-evidence-guard.test.ts",
+      "sha256_16": "f3b27910a0919c37",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-image-fork-count-gate.test.ts",
+      "sha256_16": "8986ef2d6411f00d",
+      "comment_count": 14,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/agent-image-fork-route.test.ts",
+      "sha256_16": "992ff418732bbc59",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-image-library-service.test.ts",
+      "sha256_16": "e3691e15e2e93440",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-image-manifest-parser.test.ts",
+      "sha256_16": "6f1f8531ba0d2373",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-image-routes.test.ts",
+      "sha256_16": "88a66ff29bb38cb7",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-image-session-source.test.ts",
+      "sha256_16": "1bcbec306c0f1dfa",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-image-source-cwd.test.ts",
+      "sha256_16": "d32411e97540be7e",
+      "comment_count": 35,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-manifest-plugins.test.ts",
+      "sha256_16": "6b2941c6d2d88693",
+      "comment_count": 18,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-manifest.test.ts",
+      "sha256_16": "c15bc011d6eea215",
+      "comment_count": 39,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-preflight.test.ts",
+      "sha256_16": "9210ec4efe3ad8db",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/agent-resolver.test.ts",
+      "sha256_16": "adbccd49a10d1829",
+      "comment_count": 19,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-starter-adapter-claude.test.ts",
+      "sha256_16": "51b76f138cb21e98",
+      "comment_count": 18,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-starter-adapter-codex.test.ts",
+      "sha256_16": "a297c1c980a98098",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-starter-instantiator.test.ts",
+      "sha256_16": "d3caec13d5ececbc",
+      "comment_count": 50,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-starter-resolver.test.ts",
+      "sha256_16": "c9cb0849b0cd6906",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agent-starter-schema.test.ts",
+      "sha256_16": "4b1eb9d6ed4449bc",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agentspec-restore.integration.test.ts",
+      "sha256_16": "433a48312401a0c4",
+      "comment_count": 42,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agentspec-startup.integration.test.ts",
+      "sha256_16": "b554913908b6e64c",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/agnostic-rip-out.test.ts",
+      "sha256_16": "003506d50061bbb8",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/applied-launch-observation-store.test.ts",
+      "sha256_16": "d32c968cb4632a35",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/archive-identity-provenance.test.ts",
+      "sha256_16": "7a322179d897f19a",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/ask-service-seat.test.ts",
+      "sha256_16": "40981aab50e209f7",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/ask-service-session.test.ts",
+      "sha256_16": "247f36f867fa04bd",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/ask-service.test.ts",
+      "sha256_16": "cda984019211a2c4",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/attach-terminal-activity-and-work.test.ts",
+      "sha256_16": "c34cdd9d64d57fff",
+      "comment_count": 38,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/attention-aggregate-route.test.ts",
+      "sha256_16": "852c87582c4acba3",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/attention-aggregator.test.ts",
+      "sha256_16": "7ba22fa2797c6e25",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/attention.test.ts",
+      "sha256_16": "e0f09968d3d81c3c",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/audit-browse.test.ts",
+      "sha256_16": "4cf90734ba2b02dd",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/auth-bearer-token.test.ts",
+      "sha256_16": "1bbc2945cf777131",
+      "comment_count": 20,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bind-plan.test.ts",
+      "sha256_16": "84b514426e1fb0b6",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bootstrap-orchestrator.test.ts",
+      "sha256_16": "0088dfeca15bd41c",
+      "comment_count": 72,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bootstrap-routes.test.ts",
+      "sha256_16": "87d437df73d96e36",
+      "comment_count": 34,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/build-info.test.ts",
+      "sha256_16": "46670a7044eaa57f",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/builtin-policy-reference.test.ts",
+      "sha256_16": "d4fd6098f2531d28",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-agent-images-router.test.ts",
+      "sha256_16": "ea104a3d257adc07",
+      "comment_count": 20,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-archive.test.ts",
+      "sha256_16": "a73868b454baad90",
+      "comment_count": 30,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-assembler.test.ts",
+      "sha256_16": "d18e0813fc3035dc",
+      "comment_count": 22,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-audit.test.ts",
+      "sha256_16": "0bbe042fb51748a1",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-conflict-detector.test.ts",
+      "sha256_16": "c9808203ac5d1618",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-context-packs-router.test.ts",
+      "sha256_16": "b25a5870a8da56be",
+      "comment_count": 33,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-create-drift-refusal.test.ts",
+      "sha256_16": "d24cf3258400a652",
+      "comment_count": 35,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-export-drift-warning.test.ts",
+      "sha256_16": "d2e539beef7821c1",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-integrity.test.ts",
+      "sha256_16": "1861a7a81e4573a0",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-plugins-router.test.ts",
+      "sha256_16": "2880c1201c24c7dd",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-routes.test.ts",
+      "sha256_16": "cb6a44099bbcf84a",
+      "comment_count": 202,
+      "english_nl_count": 5,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/bundle-skills-router.test.ts",
+      "sha256_16": "631e042418bdff31",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-source-resolver.test.ts",
+      "sha256_16": "ecd57bf2c4cbe551",
+      "comment_count": 37,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-types.test.ts",
+      "sha256_16": "b7e31ccdd340716c",
+      "comment_count": 32,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/bundle-workflow-specs-router.test.ts",
+      "sha256_16": "dbf2c00739433d7f",
+      "comment_count": 36,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/chat-repository.test.ts",
+      "sha256_16": "d88c6c3b85b0853b",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/chat-routes.test.ts",
+      "sha256_16": "ff4d7b1f9da23e86",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/checkpoint-store.test.ts",
+      "sha256_16": "55a7f7671ef2c634",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/claim-service-resume-capture.test.ts",
+      "sha256_16": "faef146e1a03e226",
+      "comment_count": 21,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/claim-service.test.ts",
+      "sha256_16": "7ac1213c9bd1c259",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/classifier-lease-manager.test.ts",
+      "sha256_16": "fdaf485ae1fb743b",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/claude-activity-hook-delivery.test.ts",
+      "sha256_16": "f08bcbeb79566f17",
+      "comment_count": 38,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/claude-activity-hook-rigup-warning.test.ts",
+      "sha256_16": "6abbd534982abad0",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/claude-activity-hook-up-route.test.ts",
+      "sha256_16": "8760b9eb2260be28",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/claude-adapter-record-projection.test.ts",
+      "sha256_16": "18f8e7cc5e4634fb",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/claude-code-adapter-fork-poll.test.ts",
+      "sha256_16": "ef82b1338663dd5b",
+      "comment_count": 30,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/claude-compaction-enforcer.test.ts",
+      "sha256_16": "6ac2493c36f0f714",
+      "comment_count": 89,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/claude-managed-block-destination.test.ts",
+      "sha256_16": "758146506485582e",
+      "comment_count": 10,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/claude-resume.test.ts",
+      "sha256_16": "aad6b0af6a96b99c",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/claude-runtime-adapter.test.ts",
+      "sha256_16": "ceb6c3dc30d8fa16",
+      "comment_count": 47,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/cmux-adapter-layout-methods.test.ts",
+      "sha256_16": "81cf179150f65f89",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/cmux-adapter.test.ts",
+      "sha256_16": "76f38e853e0fc5bb",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/cmux-layout-service.test.ts",
+      "sha256_16": "fec486aebce30c1f",
+      "comment_count": 44,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/cmux-transport-layout-methods.test.ts",
+      "sha256_16": "adc4f1c413e6056c",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/cmux-transport.test.ts",
+      "sha256_16": "286c679c82ebfcee",
+      "comment_count": 18,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/codex-activity-hooks.test.ts",
+      "sha256_16": "98107dffb764b359",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/codex-daemon-optout.test.ts",
+      "sha256_16": "fde70832cfd7ec7c",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/codex-hook-trust.test.ts",
+      "sha256_16": "2ee1ed2968bfebeb",
+      "comment_count": 22,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/codex-hooks-feature-flag.test.ts",
+      "sha256_16": "a39911d03b634363",
+      "comment_count": 24,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/codex-process-observation.test.ts",
+      "sha256_16": "2c7c4fb8795d3b05",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/codex-profile-preflight.test.ts",
+      "sha256_16": "d35f90b783ee1469",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/codex-resume.test.ts",
+      "sha256_16": "dd1dc0a31f585b74",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/codex-runtime-adapter.test.ts",
+      "sha256_16": "f4b56f9f99d30967",
+      "comment_count": 126,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/codex-thread-id.test.ts",
+      "sha256_16": "401a4c66e403c864",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/compaction-clock-injection.test.ts",
+      "sha256_16": "a5dbc8552d4ed211",
+      "comment_count": 48,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/compaction-routes.test.ts",
+      "sha256_16": "22648ffcd66986c2",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/complete-human-notifications.test.ts",
+      "sha256_16": "0d9f0bc6a994371c",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/conflict-detector-discrimination.test.ts",
+      "sha256_16": "c545a85c9a77ac61",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/conflict-detector.test.ts",
+      "sha256_16": "dda74aae6df18150",
+      "comment_count": 18,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-monitor.test.ts",
+      "sha256_16": "946f4b33e8cd841d",
+      "comment_count": 21,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-address-route.test.ts",
+      "sha256_16": "fa55001c25da84be",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-atoms.test.ts",
+      "sha256_16": "d2b10b3992a45f70",
+      "comment_count": 20,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-bundle-assembler.test.ts",
+      "sha256_16": "3b2377d1f4de4b10",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-compose.test.ts",
+      "sha256_16": "40c9bc41eeccb3bd",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-library-service.test.ts",
+      "sha256_16": "de19c129c0d4e9b1",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-manifest-parser.test.ts",
+      "sha256_16": "782316a1368a31e3",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-pack-taxonomy.test.ts",
+      "sha256_16": "2e93e2b462f02c16",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-profile-route.test.ts",
+      "sha256_16": "f2e359f8d13601c4",
+      "comment_count": 27,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-ref-safety.test.ts",
+      "sha256_16": "561c18bbb3044fc5",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-rm.test.ts",
+      "sha256_16": "33775f846118fe31",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-routes.test.ts",
+      "sha256_16": "db9ef57247e6ad4a",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-startup-files.test.ts",
+      "sha256_16": "eb1a0c2424b2ee0b",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-pack-store-recursion.test.ts",
+      "sha256_16": "0f476b1562240d84",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-projection.test.ts",
+      "sha256_16": "230bc5538d994c62",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-usage-store.test.ts",
+      "sha256_16": "bb51cab2b211d578",
+      "comment_count": 30,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/context-usage-watchdog.test.ts",
+      "sha256_16": "37a6ef82ad4d479a",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/continuity-observer-contract.test.ts",
+      "sha256_16": "bd7a706676106fd9",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/continuity-policy-materializer.test.ts",
+      "sha256_16": "4a489b5d2d5094bf",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/continuity-role-guidance.test.ts",
+      "sha256_16": "0c259e8d32ce81db",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/continuity-stack-packets.test.ts",
+      "sha256_16": "d651f1265ec66b16",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/contract-source-selection.test.ts",
+      "sha256_16": "42950e4bab746012",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/control-plane-census.test.ts",
+      "sha256_16": "89c889206f9d275c",
+      "comment_count": 90,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/control-plane-json-generator.test.ts",
+      "sha256_16": "e25ca8500791a5be",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/conveyor-starter.test.ts",
+      "sha256_16": "5d21d4a0fd87034d",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/crash-cart-conductor.test.ts",
+      "sha256_16": "7e458524e3159132",
+      "comment_count": 19,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/crash-cart-copy-read.test.ts",
+      "sha256_16": "1c0dbfe80eff2b26",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/crash-cart-detect.test.ts",
+      "sha256_16": "55f9d1451fb86ae8",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/crash-cart-emit.test.ts",
+      "sha256_16": "8c4f77f60caedd9f",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/crash-cart-guard.test.ts",
+      "sha256_16": "17036064e1ea4ef0",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/crash-cart-load.test.ts",
+      "sha256_16": "67afd07b5bb9f2ba",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/crash-cart-probes.test.ts",
+      "sha256_16": "ac4e0f1e8c7ad39c",
+      "comment_count": 21,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/crash-cart-readmodel.test.ts",
+      "sha256_16": "e2ea5f068b0ad3fa",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/crash-cart-route.test.ts",
+      "sha256_16": "f48a270c710cef5c",
+      "comment_count": 26,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/current-generation-record.test.ts",
+      "sha256_16": "739995c2bd2d30a1",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/current-work.test.ts",
+      "sha256_16": "b5bdc8b7a4d78956",
+      "comment_count": 29,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/daemon-db-path.test.ts",
+      "sha256_16": "fb0e1141385da199",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/daemon-lifecycle-store.test.ts",
+      "sha256_16": "9c2cb4a29d347294",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/daemon-lifecycle-wiring.test.ts",
+      "sha256_16": "459ebc2e1d4bc33e",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/daemon-shutdown.test.ts",
+      "sha256_16": "2da601a4c8e87af3",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/db.test.ts",
+      "sha256_16": "f160a5117eb8f7cd",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/default-onboarding-pack.test.ts",
+      "sha256_16": "2298e1ebe86b5f81",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/deliberate-none-amendment.test.ts",
+      "sha256_16": "f1adeceb12d99839",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/delivery-rules-engine.test.ts",
+      "sha256_16": "c6dedc7d93622b2a",
+      "comment_count": 86,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/demo-fixture.test.ts",
+      "sha256_16": "98af829e10fe6a23",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/demo-rig-selector.test.ts",
+      "sha256_16": "1022bedc84e4a49b",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/discovery-coordinator.test.ts",
+      "sha256_16": "79d12290db7c9665",
+      "comment_count": 27,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/discovery-routes.test.ts",
+      "sha256_16": "c303b0c5c7b00e47",
+      "comment_count": 27,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/down-route.test.ts",
+      "sha256_16": "166e7bf78d5c259f",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/draft-rig-generator.test.ts",
+      "sha256_16": "ed24915595a7b065",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/effective-model-occupant-identity.test.ts",
+      "sha256_16": "0196e86bf1530349",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/effective-model-readers.test.ts",
+      "sha256_16": "bde0b34ac1ef5632",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/env-routes.test.ts",
+      "sha256_16": "134d5cf8b640f0d5",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/envelope-scope.test.ts",
+      "sha256_16": "0353b8582b8e9664",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-behavior-bridge.test.ts",
+      "sha256_16": "cf90d953913cdbd9",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-cases.test.ts",
+      "sha256_16": "58e3ac2dc0a902db",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-entry.test.ts",
+      "sha256_16": "b16042f819b33e89",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-fixtures.test.ts",
+      "sha256_16": "4b9203183a2e7563",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-grader.test.ts",
+      "sha256_16": "3d151b5150278ebe",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-production-refs.test.ts",
+      "sha256_16": "e1835402486c06bc",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-ref-resolution.test.ts",
+      "sha256_16": "f10f1fb182d82c31",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-report.test.ts",
+      "sha256_16": "3066c263c5b0bbec",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-rig-provider.test.ts",
+      "sha256_16": "61b66b1172c9883b",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-rig-runner.test.ts",
+      "sha256_16": "c83effd1c510b4c0",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-rig-session.test.ts",
+      "sha256_16": "b2475754cba5b8b3",
+      "comment_count": 58,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-runner.test.ts",
+      "sha256_16": "5e6f4ac95588eb7e",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/eval-schema.test.ts",
+      "sha256_16": "86ff7c3303ed1ce6",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/event-bus.test.ts",
+      "sha256_16": "ce6382ad06d4cea6",
+      "comment_count": 10,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/event-loop-health-server.test.ts",
+      "sha256_16": "e92bd298f0926c20",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/event-loop-monitor.test.ts",
+      "sha256_16": "5782481af8c5f0f5",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/event-notify-envelope.test.ts",
+      "sha256_16": "ca18e7f4cd468dc1",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/events-route.test.ts",
+      "sha256_16": "c9ab73993770fc3e",
+      "comment_count": 18,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/external-admission.test.ts",
+      "sha256_16": "9dc4a45e98b2f6f4",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/external-install-executor.test.ts",
+      "sha256_16": "117c271bef25cdf3",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/external-install-planner.test.ts",
+      "sha256_16": "31e4e48fdb5051db",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/external-nudge-accounting.test.ts",
+      "sha256_16": "3dc8d7cbcf00cf72",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/factory-rsi-rig.test.ts",
+      "sha256_16": "b7b960418f14352d",
+      "comment_count": 19,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/factory-rsi-starter.test.ts",
+      "sha256_16": "889022e541d9b9d0",
+      "comment_count": 32,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/feed-host-subscriptions-config.test.ts",
+      "sha256_16": "1739af7f9ee3f759",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/files-asset-range.test.ts",
+      "sha256_16": "7189d6c2cbef09a2",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/files-path-safety.test.ts",
+      "sha256_16": "e4e9e7ee959ee233",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/files-routes.test.ts",
+      "sha256_16": "517fa9a38cc1aa17",
+      "comment_count": 20,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/files-truncation.test.ts",
+      "sha256_16": "5c461bca4b8a88d1",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/find-polluter-script.test.ts",
+      "sha256_16": "35db18956d4497ac",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/fleet-compose.test.ts",
+      "sha256_16": "50af894de28a519d",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/fleet-route.test.ts",
+      "sha256_16": "4dd7f7fb5c9c7707",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gate-predicate.test.ts",
+      "sha256_16": "1a8cc9ccc8727edf",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/gateway-admission-gate.test.ts",
+      "sha256_16": "7e1b54ce75b65a94",
+      "comment_count": 10,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-channel-lifecycle.test.ts",
+      "sha256_16": "dfaebde3042790c4",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/gateway-destination-routing.test.ts",
+      "sha256_16": "72e8ad935c6a4387",
+      "comment_count": 24,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-dispatch-buffer.test.ts",
+      "sha256_16": "e0e378882b2c7839",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-dispatcher.test.ts",
+      "sha256_16": "0c896612e60f5789",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-human-handle.test.ts",
+      "sha256_16": "e61852aa09e20db0",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-human-lifecycle.test.ts",
+      "sha256_16": "bce76a5e1f904625",
+      "comment_count": 20,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-human-queue-journey.test.ts",
+      "sha256_16": "b251bab0a9089d5b",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/gateway-human-readiness.test.ts",
+      "sha256_16": "f738d4b2652f1813",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/gateway-human-registry.test.ts",
+      "sha256_16": "385b66bf5647cac8",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-process.test.ts",
+      "sha256_16": "f6726fbbcd102ca5",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-protocol.test.ts",
+      "sha256_16": "41bcb33c09846f44",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-spawn-e2e.test.ts",
+      "sha256_16": "40f77af916e5085d",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-subsystem-activation.test.ts",
+      "sha256_16": "3c8fb941f71c6c1a",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-subsystem-wire.test.ts",
+      "sha256_16": "16e80c0c1c4f866a",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/gateway-transport-e2e.test.ts",
+      "sha256_16": "0a675745a8082c1e",
+      "comment_count": 23,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/getting-started-narrative-parity.test.ts",
+      "sha256_16": "741a2f4a7834dc5e",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/graph-projection-pl019.test.ts",
+      "sha256_16": "bf50fc0763f3f27d",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/health-ceremony.test.ts",
+      "sha256_16": "f83f32ec46095c72",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/health-correction.test.ts",
+      "sha256_16": "97b058f97a183b79",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/health-detectors.test.ts",
+      "sha256_16": "831af4f919663a97",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/health-diagnosis.test.ts",
+      "sha256_16": "0a666c907df69816",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/health-passive-ceremony.test.ts",
+      "sha256_16": "de7afe71cbe1db51",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/health-projection.test.ts",
+      "sha256_16": "3dd2fb6257f84b51",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/healthz-wedge-cheap-default.test.ts",
+      "sha256_16": "ac0ebe85f206919e",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/healthz-wedge-events-index.test.ts",
+      "sha256_16": "c60bf9a6ac91f473",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/hermetic-clock.test.ts",
+      "sha256_16": "9dbab428b6c86f89",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/hermetic-env.test.ts",
+      "sha256_16": "f8ab9dab07bf2bbd",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/hermetic-scaffold.test.ts",
+      "sha256_16": "5e7d0c5efce375af",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/hermetic-tmux.test.ts",
+      "sha256_16": "0901aee58cc2bda2",
+      "comment_count": 27,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/history-query-seat.test.ts",
+      "sha256_16": "7512efcaf33bdf52",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/history-query-session.test.ts",
+      "sha256_16": "94367bc4c5122765",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/history-query.test.ts",
+      "sha256_16": "cbebecaa79e43a2f",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/host-read-through.test.ts",
+      "sha256_16": "619a306c32e7d66c",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/hosts-add-pair-routes.test.ts",
+      "sha256_16": "cbbe68f5837320a2",
+      "comment_count": 23,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/hosts-registry-parity.test.ts",
+      "sha256_16": "fbbda5ef30d3045d",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/hot-potato-enforcer.test.ts",
+      "sha256_16": "9b2c3af612dc5453",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/human-route-enforcer.test.ts",
+      "sha256_16": "3c288866741e59de",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/idle-gate-qitem-policy.test.ts",
+      "sha256_16": "e3c26c6513def9a7",
+      "comment_count": 48,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/inbox-handler.test.ts",
+      "sha256_16": "702e46bdff3924f1",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/index.test.ts",
+      "sha256_16": "270a34ee735ba2a8",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/info-routes.test.ts",
+      "sha256_16": "c7b888b27c8a5ae4",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/install-engine.test.ts",
+      "sha256_16": "0d4f2bc3873595ba",
+      "comment_count": 33,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/install-policy.test.ts",
+      "sha256_16": "2d67ed5f85584f3f",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/install-verifier.test.ts",
+      "sha256_16": "ee95e0e0c16364e3",
+      "comment_count": 18,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/instance-initialization.test.ts",
+      "sha256_16": "ab32d93aa7e4ee93",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/inventory-event-indexes.test.ts",
+      "sha256_16": "f2b9c92689b50e1d",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/kernel-boot-tracker.test.ts",
+      "sha256_16": "ebed0a1d28f051ae",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/kernel-boot.test.ts",
+      "sha256_16": "fd7dc33a0cee3878",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/kernel-catalog-preview.test.ts",
+      "sha256_16": "0ea9b86d154f14a6",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/kernel-rig-spec-validate.test.ts",
+      "sha256_16": "4a88a24eaa22b0fb",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/kernel-status-route.test.ts",
+      "sha256_16": "ff419e8889402c17",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/launch-node-subset.test.ts",
+      "sha256_16": "db84eeedf13cc207",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/list-processes-async.test.ts",
+      "sha256_16": "448b2847051a415a",
+      "comment_count": 21,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/liveness-identity-verify.test.ts",
+      "sha256_16": "e23431d6d1ad89ee",
+      "comment_count": 24,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/local-bare-identity.test.ts",
+      "sha256_16": "66fbd1c1765d4906",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/migration-067-i3-identity-provenance.test.ts",
+      "sha256_16": "6c51c10594c16a75",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/migration-fixture-parity.test.ts",
+      "sha256_16": "1bed540eb86bcf24",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/mission-control-action-log.test.ts",
+      "sha256_16": "2622681e834aea2f",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/mission-control-fleet-cli-capability.test.ts",
+      "sha256_16": "da735954b15dca81",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/mission-control-read-layer.test.ts",
+      "sha256_16": "a7f2cb385b826759",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/mission-control-remote-action.test.ts",
+      "sha256_16": "2d9a0e9dc89e0ed6",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/mission-control-routes-phase-b.test.ts",
+      "sha256_16": "7154db4d85ed21a3",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/mission-control-routes.test.ts",
+      "sha256_16": "59eab219b516f2b4",
+      "comment_count": 24,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/mission-control-write-contract.test.ts",
+      "sha256_16": "fd386b7493b964c2",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/mission-slice-sop-plugin-parity.test.ts",
+      "sha256_16": "d7eee02ef89185d4",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/missions-complete-endpoint.test.ts",
+      "sha256_16": "603ddd4ab0b53814",
+      "comment_count": 25,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/missions-routes.test.ts",
+      "sha256_16": "ebfb4cc5a8081acc",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/model-divergence-monitor.test.ts",
+      "sha256_16": "6a3f0f03f105e3f2",
+      "comment_count": 31,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/model-fidelity-enumeration-guard.test.ts",
+      "sha256_16": "ed8aae830acbde15",
+      "comment_count": 23,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/native-process-lineage.test.ts",
+      "sha256_16": "f49f7427533e13a5",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/native-resume-probe.test.ts",
+      "sha256_16": "256930b6d5149e41",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/node-inventory.test.ts",
+      "sha256_16": "3503c612c9f46ccf",
+      "comment_count": 43,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/node-launcher.test.ts",
+      "sha256_16": "4080c9d77888d744",
+      "comment_count": 19,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/notification-adapters.test.ts",
+      "sha256_16": "6010d34b42b7bbde",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/notification-dispatcher.test.ts",
+      "sha256_16": "b4eeec2a438b2550",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/occupant-generation-producer-carry.test.ts",
+      "sha256_16": "a57cb35693082eaf",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/occupant-invalidator.test.ts",
+      "sha256_16": "cb38d3db2051e114",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/occupant-shadow-integration.test.ts",
+      "sha256_16": "d2c6d9758d450f26",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/one-honest-resolution-path.test.ts",
+      "sha256_16": "37a660d85f381579",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/openrig-compat.test.ts",
+      "sha256_16": "3f31de9e06800a40",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/openrig-skills-router-coverage.test.ts",
+      "sha256_16": "e82bfde7444a62a4",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/operating-model-trunk-diff.test.ts",
+      "sha256_16": "539b14302cdeac62",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/operating-posture.test.ts",
+      "sha256_16": "afe1c28e10aa664a",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/opr-0.4.1.09-seat-scoped-extra.test.ts",
+      "sha256_16": "2c64228f88e5ecd4",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/outbox-handler.test.ts",
+      "sha256_16": "00e1e591ba9ef758",
+      "comment_count": 10,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/owner-notification-routing.test.ts",
+      "sha256_16": "fd93a80f8e44c323",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/p18-provenance-thread.test.ts",
+      "sha256_16": "ae4e15bcaef03e4c",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/p34-call-site-allowlist.test.ts",
+      "sha256_16": "642532bcecc01e03",
+      "comment_count": 61,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/package-manifest.test.ts",
+      "sha256_16": "d9b5d8dba7248049",
+      "comment_count": 35,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/package-repository.test.ts",
+      "sha256_16": "51c053e119922c5e",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/package-resolver.test.ts",
+      "sha256_16": "a935ead3c646598c",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/packages-routes.test.ts",
+      "sha256_16": "95279d13495d6e7a",
+      "comment_count": 111,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/pane-envelope.test.ts",
+      "sha256_16": "58e02ff518178fec",
+      "comment_count": 35,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/parked-owner-consumer.test.ts",
+      "sha256_16": "069b00696a5c77d1",
+      "comment_count": 22,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/parked-query.test.ts",
+      "sha256_16": "8678ab55cc18dc31",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/periodic-snapshot-scheduler.test.ts",
+      "sha256_16": "81d8a696db0fb69a",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/permission-drift-observer.test.ts",
+      "sha256_16": "fc9888cef0014a9a",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/permission-drift.test.ts",
+      "sha256_16": "3afb3b355a822953",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/permission-policy-bootstrap-provenance.test.ts",
+      "sha256_16": "1e8567165ad59c65",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/permission-policy-discovery.test.ts",
+      "sha256_16": "1151d8a150ec4bba",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/permission-policy-lifecycle.test.ts",
+      "sha256_16": "f10310586389f5bb",
+      "comment_count": 38,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/permission-policy-plumb.test.ts",
+      "sha256_16": "ce34ada5c4a3b079",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/permission-policy-r2-adversarial.test.ts",
+      "sha256_16": "72d209d5cdab7909",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/permission-policy-ref.test.ts",
+      "sha256_16": "547da51dd933729a",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/pi-activity-generation.test.ts",
+      "sha256_16": "6167eae6f1a8e443",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/pi-runner.test.ts",
+      "sha256_16": "5f5bc83e1ca79dd4",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/pi-runtime-adapter.test.ts",
+      "sha256_16": "de0ed4656d3e1ad1",
+      "comment_count": 28,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/pi-session-identity-generation.test.ts",
+      "sha256_16": "1ace7b83b61f53ad",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/plugin-discovery-openrig-home-wiring.test.ts",
+      "sha256_16": "31df860b3d982005",
+      "comment_count": 25,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/plugin-discovery-service.test.ts",
+      "sha256_16": "d487b26e1ebe384a",
+      "comment_count": 50,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/plugin-files-routes.test.ts",
+      "sha256_16": "2d931ce8fdcff897",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/plugin-manifest-detection.test.ts",
+      "sha256_16": "2901abb5480970ca",
+      "comment_count": 30,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/plugin-vendor-exec-mode.test.ts",
+      "sha256_16": "2e710fd1d2c72f8f",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/plugin-vendor-service.test.ts",
+      "sha256_16": "2db57af262aa34a1",
+      "comment_count": 31,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/plugins-routes.test.ts",
+      "sha256_16": "f1a28072d2d80936",
+      "comment_count": 19,
+      "english_nl_count": 5,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/pod-bundle-assembler.test.ts",
+      "sha256_16": "d20bf543ef8623f9",
+      "comment_count": 49,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/pod-repository.test.ts",
+      "sha256_16": "89c503b688109e6e",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/pod-rigspec-instantiator.test.ts",
+      "sha256_16": "d2bbd696ac626fb3",
+      "comment_count": 110,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/policy-spec.test.ts",
+      "sha256_16": "dcbd85c3c7d3e0c3",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/precompact-hook.test.ts",
+      "sha256_16": "f6f15af45c3c5d2d",
+      "comment_count": 30,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/predecessor-recap-resolver.test.ts",
+      "sha256_16": "61a23a05c408d8cb",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/preview-rate-limiter.test.ts",
+      "sha256_16": "3aec496ddeec1374",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/preview-routes.test.ts",
+      "sha256_16": "bd8e8dfa893e579a",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/process-census.test.ts",
+      "sha256_16": "b74146b417e1e9bc",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/profile-composer.test.ts",
+      "sha256_16": "325b736616158370",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/profile-resolver.test.ts",
+      "sha256_16": "af17fa3b0d1036f0",
+      "comment_count": 47,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/profile-source-resolver.test.ts",
+      "sha256_16": "922a30f6ca631754",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/progress-indexer.test.ts",
+      "sha256_16": "f938463c20c5559b",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/progress-review-done-coherence.test.ts",
+      "sha256_16": "4cf1e84bff263348",
+      "comment_count": 135,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/project-boundary-profile.test.ts",
+      "sha256_16": "3dcba7a6149d19e8",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/project-classifier.test.ts",
+      "sha256_16": "fc04c75ada89acdf",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/project-lifecycle-compiler.test.ts",
+      "sha256_16": "0d09797ec7689abe",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/project-navigation.test.ts",
+      "sha256_16": "97f466556add5ea1",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/projection-manifest-store.test.ts",
+      "sha256_16": "7d7bf23c9938bdf9",
+      "comment_count": 4,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/projection-manifest-wiring.test.ts",
+      "sha256_16": "752a9a00aeb0573f",
+      "comment_count": 23,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/projection-planner-plugins.test.ts",
+      "sha256_16": "d000843d6a2bbf11",
+      "comment_count": 34,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/projection-planner.test.ts",
+      "sha256_16": "1c15e5632cead200",
+      "comment_count": 22,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/projection-protect.test.ts",
+      "sha256_16": "083d6558280524bb",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/projects-routes.test.ts",
+      "sha256_16": "4855d879724d28bb",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/proof-judgments.test.ts",
+      "sha256_16": "7e4955e153460b39",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/proof-policy-reuse.test.ts",
+      "sha256_16": "6390c807e309f142",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/provider-c3-seat-keyed-discovery.test.ts",
+      "sha256_16": "9dc459fb5c204ae0",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/provider-c4-reactive-tap.test.ts",
+      "sha256_16": "a48e6245e3456a67",
+      "comment_count": 24,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/provider-claude-usage-reader.test.ts",
+      "sha256_16": "710076548943eec2",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/provider-codex-auth-reader.test.ts",
+      "sha256_16": "69cd3a8551d1928e",
+      "comment_count": 4,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/provider-collect.test.ts",
+      "sha256_16": "1900d7612bed7d59",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/provider-host-usage-rollup.test.ts",
+      "sha256_16": "77204a66a03a8c82",
+      "comment_count": 15,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/provider-onboarding-profile.test.ts",
+      "sha256_16": "7efb2ad459709ddf",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/provider-precheck.test.ts",
+      "sha256_16": "e0bf4179574703da",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/provider-read-model.test.ts",
+      "sha256_16": "fb0fc1f67b8894fb",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/provider-routes.test.ts",
+      "sha256_16": "aa6a197c0f088a92",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/provider-service-impl.test.ts",
+      "sha256_16": "b7adc7e417f400e6",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/provider-signals-claude.test.ts",
+      "sha256_16": "a7f4d918e3a82f34",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/provider-signals.test.ts",
+      "sha256_16": "d6c0504ffe302eba",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/provider-usage-route.test.ts",
+      "sha256_16": "c4ff542e20d3e271",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/ps-projection.test.ts",
+      "sha256_16": "a37c210f5163533c",
+      "comment_count": 42,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/public-world-pack.test.ts",
+      "sha256_16": "06a817ebecb23502",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/qitem-membership.test.ts",
+      "sha256_16": "a3ededaccaffd806",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-blocker-refusal-shape.test.ts",
+      "sha256_16": "f1528c6b006793cd",
+      "comment_count": 5,
+      "english_nl_count": 5,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/queue-cross-host-br1.test.ts",
+      "sha256_16": "b1359a99899a42d1",
+      "comment_count": 26,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-cross-host-create.test.ts",
+      "sha256_16": "dae198a2b4aa5065",
+      "comment_count": 24,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-cross-host-handoff.test.ts",
+      "sha256_16": "0d33866382e91934",
+      "comment_count": 29,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-cross-host-target-repo.test.ts",
+      "sha256_16": "e840cc1ba85e5e6e",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-list-compact.test.ts",
+      "sha256_16": "ea0f95275bad90f7",
+      "comment_count": 5,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/queue-list-grammar.test.ts",
+      "sha256_16": "8c558f9efbf723a0",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-note-state-honesty.test.ts",
+      "sha256_16": "c0b526683861e607",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/queue-park-wake.test.ts",
+      "sha256_16": "7758e2ba79a3424b",
+      "comment_count": 66,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-pickup.test.ts",
+      "sha256_16": "13aec755edb45c5d",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-recent-transitions.test.ts",
+      "sha256_16": "4e959379678b1a3a",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/queue-recovery-read-work.test.ts",
+      "sha256_16": "40477614bb77b548",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/queue-repository.test.ts",
+      "sha256_16": "5653cd95b9920636",
+      "comment_count": 90,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-retention.test.ts",
+      "sha256_16": "52301f5218fbf9bd",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-routes.test.ts",
+      "sha256_16": "4e35c7212068ac47",
+      "comment_count": 71,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-target-repo.test.ts",
+      "sha256_16": "8392f8deea4fde07",
+      "comment_count": 10,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-transactional-closure.test.ts",
+      "sha256_16": "51f91426a9a1fcd8",
+      "comment_count": 83,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-update-metadata-reject.test.ts",
+      "sha256_16": "bdf7d76503d28b46",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/queue-wake-ladder.test.ts",
+      "sha256_16": "fb5fdc6e4c662cf8",
+      "comment_count": 38,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/quiet-waiting.test.ts",
+      "sha256_16": "280ba5b053c7ca2c",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/reconcile-session.test.ts",
+      "sha256_16": "729d1e93d69b83f6",
+      "comment_count": 24,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/reconcile-warning-order.test.ts",
+      "sha256_16": "f57326f260bd1b2a",
+      "comment_count": 18,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/reconciler.test.ts",
+      "sha256_16": "eda91c12ea08cc4c",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/remote-daemon-http.test.ts",
+      "sha256_16": "86c3e0164c730eb9",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/remote-up-leaf.test.ts",
+      "sha256_16": "5b43629274fc55d3",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/requirements-probe.test.ts",
+      "sha256_16": "a224c4b8ddcea596",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/restore-attempt-receipt.test.ts",
+      "sha256_16": "2cac16a2f24369ab",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/restore-check-compact.test.ts",
+      "sha256_16": "f9b8e5291d2d0a85",
+      "comment_count": 44,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/restore-check-constants-dedup.test.ts",
+      "sha256_16": "d9f65ac90a385add",
+      "comment_count": 23,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/restore-check-routes.test.ts",
+      "sha256_16": "43ff4cf27a10e9bc",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/restore-check-service.test.ts",
+      "sha256_16": "50454723b19540fc",
+      "comment_count": 30,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/restore-honesty-d1-consumers.test.ts",
+      "sha256_16": "c90ff5842deee12f",
+      "comment_count": 24,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/restore-honesty-d1-continuity-order.test.ts",
+      "sha256_16": "ca926bc25d3ed92c",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/restore-honesty-d1-d6.test.ts",
+      "sha256_16": "3cec9fffe02a8331",
+      "comment_count": 31,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/restore-packet-recap.test.ts",
+      "sha256_16": "1e233a6a5d1eb394",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/resume-metadata-refresher.test.ts",
+      "sha256_16": "2cf396e5d1af5500",
+      "comment_count": 21,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/resume-token-capture-pi.test.ts",
+      "sha256_16": "8c70fb454c3d3786",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/resume-token-route.test.ts",
+      "sha256_16": "b9fca7c00f96b7d4",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/resume-token-validation.test.ts",
+      "sha256_16": "3835f73ba7d8ad55",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/retry-first-start.test.ts",
+      "sha256_16": "1122a3d232a6e315",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/review-brief-spine.test.ts",
+      "sha256_16": "3da0dff234f39414",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/review-composer.test.ts",
+      "sha256_16": "644d09ad9efe2e56",
+      "comment_count": 55,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/review-import-audit.test.ts",
+      "sha256_16": "ba9128d5e8bd6b9b",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/review-read-indexes.test.ts",
+      "sha256_16": "82425c24da181af5",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/review-routes.test.ts",
+      "sha256_16": "c76a5ed3fc45ff4f",
+      "comment_count": 30,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-agents-compose.test.ts",
+      "sha256_16": "bb86973a8f7c1a1a",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-archive.test.ts",
+      "sha256_16": "28f27817a1d21393",
+      "comment_count": 23,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-cmux-launch-route.test.ts",
+      "sha256_16": "8ab7e1906a5da305",
+      "comment_count": 33,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-expansion-route.test.ts",
+      "sha256_16": "744a588b2faaaa20",
+      "comment_count": 27,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-expansion-service.test.ts",
+      "sha256_16": "e5c591926a40fbc6",
+      "comment_count": 36,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-expansion-snapshot.test.ts",
+      "sha256_16": "9a946d22262c0a46",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-lifecycle-route.test.ts",
+      "sha256_16": "6984610e29b7abd7",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/rig-mode-defaults.test.ts",
+      "sha256_16": "1aacd697a460ca7a",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-mode-drift-rule.test.ts",
+      "sha256_16": "17e1609cad1620c3",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-mode-routes.test.ts",
+      "sha256_16": "4d9cb589d1aef54c",
+      "comment_count": 22,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-mode-store.test.ts",
+      "sha256_16": "64a5c455494f1460",
+      "comment_count": 28,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-mode-types.test.ts",
+      "sha256_16": "86583feb4594aaa2",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-mode-validator.test.ts",
+      "sha256_16": "c9182c951cfad801",
+      "comment_count": 19,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-repository.test.ts",
+      "sha256_16": "6aa3a7c271243b4e",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-status-compose.test.ts",
+      "sha256_16": "0cb372e170aedd45",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-status-routes.test.ts",
+      "sha256_16": "3b7b43412e840672",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rig-teardown.test.ts",
+      "sha256_16": "8e39da2fdcb67b0e",
+      "comment_count": 23,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rigs-routes-pl019-current-qitems.test.ts",
+      "sha256_16": "114df393238a5cb1",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rigs-routes.test.ts",
+      "sha256_16": "342ffbc0579d1e40",
+      "comment_count": 25,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rigspec-codec.test.ts",
+      "sha256_16": "2154430f4f05f163",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rigspec-exporter.test.ts",
+      "sha256_16": "72cd11ce9f5c7487",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rigspec-instantiator.test.ts",
+      "sha256_16": "84bc545707684ca2",
+      "comment_count": 21,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rigspec-preflight.test.ts",
+      "sha256_16": "05e15c702bd81f06",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rigspec-role-plumb.test.ts",
+      "sha256_16": "a2bed2fe2fef5607",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rigspec-routes.test.ts",
+      "sha256_16": "e765739dd573e4f9",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rigspec-schema-docs.test.ts",
+      "sha256_16": "d3abc3f446be12d7",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/rigspec-schema.test.ts",
+      "sha256_16": "5b477a89d7ec4bf4",
+      "comment_count": 37,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/rigspec-services.test.ts",
+      "sha256_16": "f18c6c284880bc58",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/rigspec-workspace.test.ts",
+      "sha256_16": "2734024ccf63e45d",
+      "comment_count": 12,
+      "english_nl_count": 5,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/role-resolver.test.ts",
+      "sha256_16": "cbb642f79bad8bc5",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/route-timing-recorder.test.ts",
+      "sha256_16": "cc8d096d601223ab",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/router-stub.test.ts",
+      "sha256_16": "1b5068756252d530",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/run-scenarios-flag-refusal.test.ts",
+      "sha256_16": "8736c6a4025c04c5",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/running-name-guard.test.ts",
+      "sha256_16": "ee5427b3f85d7a55",
+      "comment_count": 21,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/runtime-verifier.test.ts",
+      "sha256_16": "e0eebdf5724a7a04",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/s01-p2-capture-observer.test.ts",
+      "sha256_16": "1f62f971e56fdd25",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/s01-p2-probe-context.test.ts",
+      "sha256_16": "b3b34ab9f377817e",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/s02-p1-classification-persistence.test.ts",
+      "sha256_16": "bc5e2e707a764ea1",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/s02-p3-sender.test.ts",
+      "sha256_16": "df369ef3174dc885",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/s02-p3-worker.test.ts",
+      "sha256_16": "5d6bb29fb451bfee",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/s03-bound-launch.test.ts",
+      "sha256_16": "0daa345c38b48b6d",
+      "comment_count": 4,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/s03-native-permissions.test.ts",
+      "sha256_16": "6c7709fae3de2efa",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/s03-permission-corrections.test.ts",
+      "sha256_16": "dfd04dda823e9b22",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/s08-open-rig-herdr.test.ts",
+      "sha256_16": "383868ebffe26fb8",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/s23-silent-erasure.test.ts",
+      "sha256_16": "d789d3c6e6984823",
+      "comment_count": 21,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scaffold-cross-reader.test.ts",
+      "sha256_16": "825bea1fee72b81b",
+      "comment_count": 30,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scaffold-placeholder.test.ts",
+      "sha256_16": "843fd68f612ed857",
+      "comment_count": 23,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/scenario-container-stage.test.ts",
+      "sha256_16": "1cc675d9ac8b0783",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-container.test.ts",
+      "sha256_16": "44983a30a9d9951f",
+      "comment_count": 27,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-daemon-mode.test.ts",
+      "sha256_16": "a1452d9781d78673",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-daemon.integration.test.ts",
+      "sha256_16": "5763813ddeaba7d6",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-determinism.test.ts",
+      "sha256_16": "d0ce612b07054dd8",
+      "comment_count": 29,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/scenario-expect.test.ts",
+      "sha256_16": "0f5b5239cb3cb70c",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-normalizer.test.ts",
+      "sha256_16": "c4ef676b554e66d5",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-pipeline.test.ts",
+      "sha256_16": "071a3652797a58da",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-real-deps.test.ts",
+      "sha256_16": "40ea4d96109f8974",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-run-record.test.ts",
+      "sha256_16": "0eb4a24e6b5c4f33",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-runner.test.ts",
+      "sha256_16": "52990a90ce76a265",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-schema-delta.test.ts",
+      "sha256_16": "6ca4bd78e0651df3",
+      "comment_count": 14,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/scenario-schema.test.ts",
+      "sha256_16": "ed6bcf932519a36c",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-stage.test.ts",
+      "sha256_16": "a7c9363e33ce9944",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-surfaces.test.ts",
+      "sha256_16": "06a33c0cd5593736",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scenario-tui.test.ts",
+      "sha256_16": "35d224ac8eec708c",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/schema-agentspec-runtime.test.ts",
+      "sha256_16": "226e730e2740d4a8",
+      "comment_count": 22,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/schema-bindings.test.ts",
+      "sha256_16": "ddddc47393d6fd12",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/schema-bootstrap.test.ts",
+      "sha256_16": "a8f5dfcbbe506df5",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/schema-checkpoints.test.ts",
+      "sha256_16": "f2fdb039239fb5d3",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/schema-core.test.ts",
+      "sha256_16": "d4b58530a5365dc3",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/schema-discovery.test.ts",
+      "sha256_16": "569825e36df71f02",
+      "comment_count": 21,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/schema-events.test.ts",
+      "sha256_16": "80ec9a15e108b687",
+      "comment_count": 10,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/schema-node-spec-fields.test.ts",
+      "sha256_16": "86fa87a270e17d12",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/schema-packages.test.ts",
+      "sha256_16": "5cadf456641d0673",
+      "comment_count": 18,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/schema-resume-metadata.test.ts",
+      "sha256_16": "6d8f2722805ef44b",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/schema-snapshots.test.ts",
+      "sha256_16": "eeb1748e45d986c0",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scope-approve-append-only.test.ts",
+      "sha256_16": "996938850c98bde4",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scope-approve.test.ts",
+      "sha256_16": "192dd1b677dd8636",
+      "comment_count": 37,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scope-audit-parity.test.ts",
+      "sha256_16": "8b8547ec06c07fab",
+      "comment_count": 12,
+      "english_nl_count": 5,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/scope-audit-routes.test.ts",
+      "sha256_16": "459443daafa8571b",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scope-lineage-parity.test.ts",
+      "sha256_16": "76933ceb796ff831",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scope-membership-agreement.test.ts",
+      "sha256_16": "d6007e09dc7976d9",
+      "comment_count": 28,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scope-node-file-spec-md.test.ts",
+      "sha256_16": "723520673a6983c8",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scope-reapprove.test.ts",
+      "sha256_16": "190366a0330a0956",
+      "comment_count": 27,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scope-view-projection.test.ts",
+      "sha256_16": "ec0789264d82ebef",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/scopes-routes.test.ts",
+      "sha256_16": "3bbd502e38c5ef79",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/sdlc-role-startup.test.ts",
+      "sha256_16": "0b8c61b7d4562045",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-activity-service.test.ts",
+      "sha256_16": "f1e12578d83b2933",
+      "comment_count": 30,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-attention-reconciler.test.ts",
+      "sha256_16": "9c76df3215180072",
+      "comment_count": 22,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-delivery-guard-correction.test.ts",
+      "sha256_16": "174a12e0e0fdb3b9",
+      "comment_count": 2,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/seat-delivery-guard.test.ts",
+      "sha256_16": "2da8203f3f412b29",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/seat-fresh-launch.test.ts",
+      "sha256_16": "33870bb92d31eafd",
+      "comment_count": 2,
+      "english_nl_count": 2,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/seat-handover-cutover-e2e.test.ts",
+      "sha256_16": "4518935a1a00717d",
+      "comment_count": 20,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-handover-model-fidelity-e2e.test.ts",
+      "sha256_16": "975dce1fd2801d4c",
+      "comment_count": 46,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-handover-planner.test.ts",
+      "sha256_16": "a456bc6f66dac158",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/seat-handover-service.test.ts",
+      "sha256_16": "a7e06c9c1b28eb87",
+      "comment_count": 61,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-handover-sources-e2e.test.ts",
+      "sha256_16": "a8dc650bc407f979",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-handover-sources.test.ts",
+      "sha256_16": "9714360b217ea134",
+      "comment_count": 22,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-identity-reconciler.test.ts",
+      "sha256_16": "b8ea5721bb7d0adc",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-lifecycle-route.test.ts",
+      "sha256_16": "056848e8bdc30b9a",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-lifecycle-service.test.ts",
+      "sha256_16": "a21e48df9c217c05",
+      "comment_count": 40,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-lifecycle-set-model-resume-e2e.test.ts",
+      "sha256_16": "2947036087bb1b08",
+      "comment_count": 25,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/seat-recap-store.test.ts",
+      "sha256_16": "750cf29365f06603",
+      "comment_count": 20,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-route-oracle-injection.test.ts",
+      "sha256_16": "f8ef38ca72115c5f",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-status-service.test.ts",
+      "sha256_16": "ad88f3a7108a53b2",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/seat-structural-activity-service.test.ts",
+      "sha256_16": "21edf572a834c7bc",
+      "comment_count": 10,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-switch-client-route.test.ts",
+      "sha256_16": "82f7da54404bdbbd",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/seat-switch-client-service.test.ts",
+      "sha256_16": "46fc0f0bc242ff7f",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/self-attach-service.test.ts",
+      "sha256_16": "966977ae98294e25",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/self-host-alignment.test.ts",
+      "sha256_16": "99a319152217eca1",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/self-host-destination-teaching.test.ts",
+      "sha256_16": "1dad93390bf6c4b8",
+      "comment_count": 10,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/self-host-envelope-sweep.test.ts",
+      "sha256_16": "e18769bc5edc6443",
+      "comment_count": 37,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/self-host-envelope-triple.test.ts",
+      "sha256_16": "be580da753dacef1",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/self-host-id-source.test.ts",
+      "sha256_16": "3e37e09c16db794c",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/self-host-identity.test.ts",
+      "sha256_16": "eb13408304daaddc",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/self-host-queue-sender.test.ts",
+      "sha256_16": "72f2ce377cdc188b",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/self-host-registry-alignment.test.ts",
+      "sha256_16": "dfc6869d7cc6cc27",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/send-prompt-guard.test.ts",
+      "sha256_16": "4908efa4ea1a8146",
+      "comment_count": 71,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/server.test.ts",
+      "sha256_16": "8307dfc47e53462d",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/service-orchestrator.test.ts",
+      "sha256_16": "4a2a635d5f4c280c",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/services-snapshot-restore.test.ts",
+      "sha256_16": "3ff0ba136edc7638",
+      "comment_count": 5,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/services-up.test.ts",
+      "sha256_16": "4ce581acac3b26fc",
+      "comment_count": 21,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/session-admin-auth-guard.test.ts",
+      "sha256_16": "eda51a86822a6140",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/session-enricher.test.ts",
+      "sha256_16": "9b678fd264eb84fb",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/session-fingerprinter.test.ts",
+      "sha256_16": "0ea797d899e79bba",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/session-identity.test.ts",
+      "sha256_16": "68f70fa11e4e4f0b",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/session-jsonl.test.ts",
+      "sha256_16": "0bdbfcb6fc870303",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/session-name-parity.test.ts",
+      "sha256_16": "2748da7e96a54b54",
+      "comment_count": 22,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/session-name.test.ts",
+      "sha256_16": "31f6dc7e95dd17d2",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/session-registry.test.ts",
+      "sha256_16": "ebbb5c33fffc4887",
+      "comment_count": 20,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/session-source-fork.test.ts",
+      "sha256_16": "712188db2b5d81e0",
+      "comment_count": 51,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/session-source-rebuild.test.ts",
+      "sha256_16": "db812492271a0529",
+      "comment_count": 33,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/session-source-roundtrip.test.ts",
+      "sha256_16": "5f78bd40e2074f72",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/session-transport-stage-timing.test.ts",
+      "sha256_16": "798fa91cb86fffe4",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/session-transport.test.ts",
+      "sha256_16": "cb2fc14897ca952f",
+      "comment_count": 57,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/sessions-routes.test.ts",
+      "sha256_16": "b81fa5373080a824",
+      "comment_count": 44,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/settings-browser.test.ts",
+      "sha256_16": "be77987a51101eda",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/skill-audit.test.ts",
+      "sha256_16": "00eb137d715c9c3f",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/skill-catalog-loadout.test.ts",
+      "sha256_16": "a0967d0381b8d649",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/skill-discovery.test.ts",
+      "sha256_16": "da67a3f1c9c63d7c",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/skill-library-routes.test.ts",
+      "sha256_16": "067f32b7b961eca0",
+      "comment_count": 11,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/skill-mirror-drift.test.ts",
+      "sha256_16": "d9b2890337a89ad2",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-api.test.ts",
+      "sha256_16": "1af50ec036d0ed4b",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-app-manifest.test.ts",
+      "sha256_16": "8166d929fcd870be",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-attribution.test.ts",
+      "sha256_16": "ec518a17df8dade8",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-config.test.ts",
+      "sha256_16": "dc4ded40be70bdb1",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-durability.test.ts",
+      "sha256_16": "176e2c0121433b72",
+      "comment_count": 21,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-images.test.ts",
+      "sha256_16": "d2209be3f1f06cf1",
+      "comment_count": 6,
+      "english_nl_count": 4,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/slack-inbound-files.test.ts",
+      "sha256_16": "acd24246fcba33a8",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-inbound-gate.test.ts",
+      "sha256_16": "dbbc622d929ebc97",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-mention-injection.test.ts",
+      "sha256_16": "0171bc4c20fb6f9c",
+      "comment_count": 19,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-message.test.ts",
+      "sha256_16": "1b9b2c0980d76c41",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-request-shape.test.ts",
+      "sha256_16": "fc69292491ad2511",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-socket-inbound.test.ts",
+      "sha256_16": "fd344d81a4889929",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-state-store.test.ts",
+      "sha256_16": "888375eea766fb3d",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-subsystem-cutover.test.ts",
+      "sha256_16": "54493e141087afc4",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-thread-return.test.ts",
+      "sha256_16": "2028af17d3b9b749",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slack-thread-routing.test.ts",
+      "sha256_16": "d71ad4f52037d550",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slice-workflow-binding.test.ts",
+      "sha256_16": "d58c696364653fd2",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slice-workflow-projection.test.ts",
+      "sha256_16": "9aa676de96992211",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slice13-host-attribution-resume-type.test.ts",
+      "sha256_16": "dbc08b90ac3bce69",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slice16-starter-hygiene.test.ts",
+      "sha256_16": "5652bf403d52b8f4",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slice17-sendtext-preload.test.ts",
+      "sha256_16": "30411f10ff42fcf7",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slices-bound-to-workflow.test.ts",
+      "sha256_16": "f897be65c406ff8c",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slow-op-recorder-shutdown.test.ts",
+      "sha256_16": "acce2548ebbbd077",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/slow-op-recorder.test.ts",
+      "sha256_16": "5950544cf8633199",
+      "comment_count": 25,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/snapshot-capture.test.ts",
+      "sha256_16": "03f51e04a6c1f505",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/snapshot-repository.test.ts",
+      "sha256_16": "a186cd4e71708112",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/snapshots-routes.test.ts",
+      "sha256_16": "14f9d820a552bfcb",
+      "comment_count": 19,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/spec-library-routes.test.ts",
+      "sha256_16": "441fdcd8faddf564",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/spec-library-service.test.ts",
+      "sha256_16": "428b5c00da55115d",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/spec-library-workflow-folder-route.test.ts",
+      "sha256_16": "b714f485cd573f4d",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/spec-library-workflow-routes.test.ts",
+      "sha256_16": "de2845699db0f5b8",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/spec-library-workflow-scanner.test.ts",
+      "sha256_16": "978034206ee21516",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/spec-live-conformance.test.ts",
+      "sha256_16": "b04249676c2b9723",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/spec-review-routes.test.ts",
+      "sha256_16": "79bbdc03fbc10989",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/spec-review-service.test.ts",
+      "sha256_16": "dff1d9a1204edbc1",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/spec-validation-advisory.test.ts",
+      "sha256_16": "b2bfc8ff19e7e661",
+      "comment_count": 10,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/spec-validation-service.test.ts",
+      "sha256_16": "47e6ad363f68f584",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/staging-docker-invoker.test.ts",
+      "sha256_16": "8ace6b21b7ae2893",
+      "comment_count": 20,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/starter-spec-loader.test.ts",
+      "sha256_16": "d200a78d2f1aa75a",
+      "comment_count": 19,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/startup-migrations-mirror.test.ts",
+      "sha256_16": "520385bdadf6e8f6",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/startup-orchestrator.test.ts",
+      "sha256_16": "e216bb63f94ad6f9",
+      "comment_count": 65,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/startup-proof.test.ts",
+      "sha256_16": "bfecae4cb53c5a24",
+      "comment_count": 22,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/startup-resolver.test.ts",
+      "sha256_16": "d5432318ad289054",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/startup-route.test.ts",
+      "sha256_16": "24d163d7766c9b9a",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/startup.test.ts",
+      "sha256_16": "abab09ddd322471a",
+      "comment_count": 46,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/steering-composer.test.ts",
+      "sha256_16": "457401d328873880",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stream-routes.test.ts",
+      "sha256_16": "2aa3b6fab58878c4",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stream-store.test.ts",
+      "sha256_16": "ce54f5551fc34eb8",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/stub-clock-announcement.test.ts",
+      "sha256_16": "1ab4bbf65021d57b",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stub-compaction.test.ts",
+      "sha256_16": "7c81df5bfb3a4cbe",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stub-runner-activity-e2e.test.ts",
+      "sha256_16": "19eb89bbbc4c8ced",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stub-runner-clock.test.ts",
+      "sha256_16": "9348951eae12c10d",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stub-runner-determinism.test.ts",
+      "sha256_16": "54bbf4b224baae59",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stub-runner-exec.test.ts",
+      "sha256_16": "0a81f5a8e748ff01",
+      "comment_count": 24,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stub-runner-liveness.test.ts",
+      "sha256_16": "a7e680e3c6783500",
+      "comment_count": 10,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stub-runner-mid-turn-death-e2e.test.ts",
+      "sha256_16": "6683ada4e92abf3e",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stub-runner-restore-e2e.test.ts",
+      "sha256_16": "fcff6ad91d26e2ed",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stub-runner-slow-output-e2e.test.ts",
+      "sha256_16": "3d0fe622a9b3c0b5",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stub-runtime-adapter.test.ts",
+      "sha256_16": "a9ae117c5d07ab67",
+      "comment_count": 23,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/stub-script.test.ts",
+      "sha256_16": "1da7eb2a3a66e240",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/successor-session-launcher.test.ts",
+      "sha256_16": "9e9052822bbf7bcc",
+      "comment_count": 56,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/sweep-a-closure-coherence.test.ts",
+      "sha256_16": "1479bd6a7f41e373",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/system-world.test.ts",
+      "sha256_16": "1e32c852edda31ad",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/telemetry-routes.test.ts",
+      "sha256_16": "467ac10b145ae74f",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/telemetry-state-paths.test.ts",
+      "sha256_16": "2c41ea3731521932",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/terminal-adapter.test.ts",
+      "sha256_16": "c9593b70db219fa2",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/terminal-auth.test.ts",
+      "sha256_16": "97e1e5b091eceb3c",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/terminal-provider-ride.test.ts",
+      "sha256_16": "a0a12284f00b4adc",
+      "comment_count": 42,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/terminal-routes.test.ts",
+      "sha256_16": "392a7b28c435f512",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/terminal-service.test.ts",
+      "sha256_16": "72d8e0454bdc9b49",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/terminal-session-broker.test.ts",
+      "sha256_16": "b76fae76637e3366",
+      "comment_count": 40,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/terminal-ws-route.test.ts",
+      "sha256_16": "17b9d6fa9f01e5d5",
+      "comment_count": 18,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/test-app-hermeticity.test.ts",
+      "sha256_16": "3ba3504bd5db2eed",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/testbed-published-daemon.test.ts",
+      "sha256_16": "fdbab9f7a8987393",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/tmux-adapter.test.ts",
+      "sha256_16": "b038c926440201f1",
+      "comment_count": 37,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/tmux-discovery-scanner.test.ts",
+      "sha256_16": "71c44d832072ec6d",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/tmux-option-defaults.test.ts",
+      "sha256_16": "7833da442ecbcb44",
+      "comment_count": 10,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/tmux-shell-command.test.ts",
+      "sha256_16": "275057e32b8142d5",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/topology-creation-ingress.test.ts",
+      "sha256_16": "88560e796f73643c",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/topology-defaults-door.e2e.test.ts",
+      "sha256_16": "9ebd2581dc4fab0b",
+      "comment_count": 18,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/topology-defaults-installer.test.ts",
+      "sha256_16": "e32eb827c8e1ed5f",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/topology-manifest.test.ts",
+      "sha256_16": "8f7a4aa457470e04",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/topology-route.test.ts",
+      "sha256_16": "b766a8f11224d0a8",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/transcript-capture.test.ts",
+      "sha256_16": "e38dc035eac078a4",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/transcript-rotation.test.ts",
+      "sha256_16": "a495a7050b242ee6",
+      "comment_count": 20,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/transcript-routes.test.ts",
+      "sha256_16": "37ee79c4ff4ff361",
+      "comment_count": 31,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/transcript-store.test.ts",
+      "sha256_16": "b0cf72b5a603e163",
+      "comment_count": 34,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/transport-routes.test.ts",
+      "sha256_16": "9e58c1ebb4171bfc",
+      "comment_count": 41,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/up-command-router.test.ts",
+      "sha256_16": "0f0a6b52bd9f50de",
+      "comment_count": 19,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/up-route-running-name.test.ts",
+      "sha256_16": "31e3ad7449307141",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/usage-samples-store.test.ts",
+      "sha256_16": "f9d157ae080b5c78",
+      "comment_count": 9,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/usage-samples-wiring.test.ts",
+      "sha256_16": "f3fa7fec92d1f2e8",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/usage-series.test.ts",
+      "sha256_16": "6f28297cfcef7da8",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/user-settings-routes.test.ts",
+      "sha256_16": "151ff94688c66dd7",
+      "comment_count": 42,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/user-settings-store.test.ts",
+      "sha256_16": "fed04093cccbb54f",
+      "comment_count": 39,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/view-event-bridge.test.ts",
+      "sha256_16": "9f5847afa0bb33ac",
+      "comment_count": 14,
+      "english_nl_count": 3,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/view-projector.test.ts",
+      "sha256_16": "48ae54978fa0e91b",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/views-routes.test.ts",
+      "sha256_16": "d0aebcefee20bc00",
+      "comment_count": 18,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/waiting-backstop.test.ts",
+      "sha256_16": "3f61f91a5768a946",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/wake-resolve-service.test.ts",
+      "sha256_16": "f8a9385b0257ab22",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/wake-resolver.test.ts",
+      "sha256_16": "86cacf98fa9ee0b5",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/watchdog-auto-registration.test.ts",
+      "sha256_16": "640fbcd4ec089437",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/watchdog-history-log.test.ts",
+      "sha256_16": "b0fa7ccea805f4e9",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/watchdog-jobs-repository.test.ts",
+      "sha256_16": "72b0ea5f37afe133",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/watchdog-policies.test.ts",
+      "sha256_16": "5b6655418cb9f05c",
+      "comment_count": 6,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/watchdog-policy-engine.test.ts",
+      "sha256_16": "123328f9f4c8a0a3",
+      "comment_count": 24,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/watchdog-routes.test.ts",
+      "sha256_16": "59dadd96716c183d",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/watchdog-scheduler.test.ts",
+      "sha256_16": "7c55235980d9b638",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/watchdog-target-gen-wiring.test.ts",
+      "sha256_16": "6e57e939d60e6c37",
+      "comment_count": 5,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/whoami-routes.test.ts",
+      "sha256_16": "be5f4393aa501c5d",
+      "comment_count": 1,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/whoami-service.test.ts",
+      "sha256_16": "73feb1a37393e78c",
+      "comment_count": 12,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/whoami-workspace.test.ts",
+      "sha256_16": "19152d6912e33a4e",
+      "comment_count": 9,
+      "english_nl_count": 5,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/workflow-band.test.ts",
+      "sha256_16": "2549148d31a30923",
+      "comment_count": 7,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-boot-sweep.test.ts",
+      "sha256_16": "c86f9b9085ffe19c",
+      "comment_count": 13,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-bound-rig.test.ts",
+      "sha256_16": "56148b56bdabb77c",
+      "comment_count": 40,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-continue-honesty.test.ts",
+      "sha256_16": "6a7bbeab95024c89",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-deadline-read-surfaces.test.ts",
+      "sha256_16": "0c894129efa15ad5",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-deadline.test.ts",
+      "sha256_16": "61e671f74b6e7a37",
+      "comment_count": 39,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-dependency-exception.test.ts",
+      "sha256_16": "086e399fcdb8e086",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/workflow-exception-item.test.ts",
+      "sha256_16": "006987bd95c93ec9",
+      "comment_count": 18,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-exception-router.test.ts",
+      "sha256_16": "2f46d34add2d1383",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-exception-stuck.test.ts",
+      "sha256_16": "7975dbe5400714d2",
+      "comment_count": 8,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-exception.test.ts",
+      "sha256_16": "d6837b7592a0c488",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-frontier-guard.test.ts",
+      "sha256_16": "f0498d043be0a48e",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-guidance.test.ts",
+      "sha256_16": "e954c9140bb0920c",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/workflow-human-destination.test.ts",
+      "sha256_16": "b5b13ba2f33aa34b",
+      "comment_count": 2,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-instance-store.test.ts",
+      "sha256_16": "a719d636979957ad",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/workflow-keepalive-arming.test.ts",
+      "sha256_16": "99a36941e8ff107a",
+      "comment_count": 22,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-keepalive-policy.test.ts",
+      "sha256_16": "af54cd1d4ed16327",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-lifecycle-productization.test.ts",
+      "sha256_16": "24ad4c3c67760834",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/workflow-lifecycle-routes.test.ts",
+      "sha256_16": "14689e13eb6ced33",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/workflow-mission-boundary.test.ts",
+      "sha256_16": "4b62377d86e09c65",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/workflow-projector.test.ts",
+      "sha256_16": "d3aecadb1edf1747",
+      "comment_count": 61,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-reconciliation.test.ts",
+      "sha256_16": "0f3b7f98f595de38",
+      "comment_count": 1,
+      "english_nl_count": 1,
+      "class": "english_nl_1_5"
+    },
+    {
+      "path": "packages/daemon/test/workflow-replay-idempotency.test.ts",
+      "sha256_16": "c0ff9f8b007d6ba2",
+      "comment_count": 24,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-resume.test.ts",
+      "sha256_16": "f877e17938737dd7",
+      "comment_count": 25,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-role-determinism.test.ts",
+      "sha256_16": "63d1c4323a4a9605",
+      "comment_count": 29,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-role-resolution.test.ts",
+      "sha256_16": "ab038f38e7de40f1",
+      "comment_count": 35,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-route.test.ts",
+      "sha256_16": "8612202cf98e8348",
+      "comment_count": 48,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-routes-specs.test.ts",
+      "sha256_16": "808f8de088c881c1",
+      "comment_count": 16,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-routes.test.ts",
+      "sha256_16": "5bef8257e063f397",
+      "comment_count": 46,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-row-ref.test.ts",
+      "sha256_16": "b332710f6342006e",
+      "comment_count": 4,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-runtime.test.ts",
+      "sha256_16": "2478bc6ff4459b0c",
+      "comment_count": 37,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-spec-cache.test.ts",
+      "sha256_16": "40f0858a74d598ac",
+      "comment_count": 14,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-spec-folder-scanner.test.ts",
+      "sha256_16": "9a83cf4b7ca2fcc6",
+      "comment_count": 19,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-specs-diagnostic-migration.test.ts",
+      "sha256_16": "62a3eb6b359d8185",
+      "comment_count": 15,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-step-trail-log.test.ts",
+      "sha256_16": "d8fce92fad97696d",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/workflow-validation-strictness.test.ts",
+      "sha256_16": "6f605275ed5fa44c",
+      "comment_count": 17,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workflow-validator.test.ts",
+      "sha256_16": "6e56d408b9d92dc8",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/workflow-wait-representation.test.ts",
+      "sha256_16": "0388115d6b7a1db0",
+      "comment_count": 0,
+      "english_nl_count": 0,
+      "class": "no_comments"
+    },
+    {
+      "path": "packages/daemon/test/workflow-wf2-spec-language.test.ts",
+      "sha256_16": "e89440fc317c86a7",
+      "comment_count": 39,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workspace-doctor.test.ts",
+      "sha256_16": "62428d2412bca5a1",
+      "comment_count": 53,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workspace-frontmatter-validator.test.ts",
+      "sha256_16": "cc9bb35b95dea6a6",
+      "comment_count": 9,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workspace-resolver.test.ts",
+      "sha256_16": "6ef3fb4d088bb40e",
+      "comment_count": 11,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/workspace-routes.test.ts",
+      "sha256_16": "7e3ec81bdfbe3159",
+      "comment_count": 50,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    },
+    {
+      "path": "packages/daemon/test/yolo-mode.test.ts",
+      "sha256_16": "b5710394f50c99c3",
+      "comment_count": 3,
+      "english_nl_count": 0,
+      "class": "chinese_or_machine_only"
+    }
+  ],
+  "audit_note": "v2 2026-10-09: batch28 5 files moved to manifest union. exclusive_scan=784 = english_nl_1_5(79) + no_comments(116) + chinese_or_machine_only(589). manifest_union=140 (batch1-28). external_qualified=5 (peer old-batch). 140+5+784=929. overlap=0 missing=0.",
+  "manifest_union_after_batch28": 140,
+  "external_qualified_peer_oldbatch": 5,
+  "exclusive_scan_total": 784,
+  "class_counts_exclusive": {
+    "english_nl_1_5": 79,
+    "no_comments": 116,
+    "chinese_or_machine_only": 589
+  },
+  "union_total": 929,
+  "overlap": 0,
+  "missing": 0
+}

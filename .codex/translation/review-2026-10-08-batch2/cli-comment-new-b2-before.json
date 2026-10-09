@@ -1,0 +1,22 @@
+{
+"packages/cli/test/proof.test.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/test/queue-cross-host-cli.test.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/test/ps-current-rig.test.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/test/scope-convention-scaffold.test.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/test/preflight.test.ts": [
+"cli-a",
+"self_reported"
+]
+}

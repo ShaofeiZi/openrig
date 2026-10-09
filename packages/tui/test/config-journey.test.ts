@@ -66,8 +66,8 @@ function click(screen: Screen, matches: (action: Screen["hitMap"][number]["actio
   view.dispatch(target!.action);
 }
 
-describe("CONFIG in the normal TUI journey", () => {
-  it("enters from the explorer, answers non-Slack questions, opens Slack as a child and returns to work passively", async () => {
+describe("CONFIG 在常规 TUI 旅程中", () => {
+  it("从 explorer 进入，回答非 Slack 问题，把 Slack 作为子项打开并被动返回工作", async () => {
     view.dispatch(parseCommand(":scopes"));
     const work = view.get();
     const sources = [join(home, "config.json"), configPathFor(home), join(home, "private.env")];
@@ -75,9 +75,9 @@ describe("CONFIG in the normal TUI journey", () => {
     click(draw(), (a) => a.type === "jump" && a.section === "system");
     click(draw(), (a) => a.type === "jump" && a.section === "config");
     await refresh();
-    expect(draw().lines.join("\n")).toContain("Your instance settings");
+    expect(draw().lines.join("\n")).toContain("你的实例设置");
     click(draw(), (a) => a.type === "config-category" && a.category === "waiting");
-    expect(draw().lines.join("\n")).toContain("5 min");
+    expect(draw().lines.join("\n")).toContain("5 分钟");
     key("right"); key("enter");
     expect(view.get().configKey).toBeTruthy();
     escape();
@@ -96,7 +96,7 @@ describe("CONFIG in the normal TUI journey", () => {
     view.dispatch(parseCommand("/workspace.root"));
     const list = view.get();
     let screen = draw(cols, rows);
-    expect(screen.lines.join("\n")).toContain("1 settings");
+    expect(screen.lines.join("\n")).toContain("1 个设置");
     key("enter", screen);
     expect(view.get().configKey).toBe("workspace.root");
     const seen: string[] = [];
@@ -111,11 +111,11 @@ describe("CONFIG in the normal TUI journey", () => {
     expect(seen.join(" ")).toContain("exact-tail");
     expect(snap.config!.entries.find((e) => e.key === "workspace.root")!.value).toBe(longPath);
     view.dispatch(parseCommand("select-text")); expect(view.get().copyMode).toBe(true);
-    // Search clears before back; explicit back restores the exact list frame.
+    // 返回前搜索清空；显式返回恢复精确列表帧。
     view.dispatch(parseCommand("back"));
     expect(view.get()).toMatchObject({ configKey: null, filter: list.filter, contentOffset: list.contentOffset });
   });
-  it("refreshes the selected key, keeps failures local and does not expose raw read errors", async () => {
+  it("刷新所选 key，失败保持局部，不暴露原始读取错误", async () => {
     view.dispatch(parseCommand("config display")); await refresh();
     view.dispatch(parseCommand("setting ui.timezone"));
     settings.set("ui.timezone", "America/New_York");
@@ -126,39 +126,39 @@ describe("CONFIG in the normal TUI journey", () => {
     expect(snap.config!.sources.find((s) => s.id === "slack")!.state).toBe("malformed");
     fail = true; await refresh();
     expect(snap.config).toBeNull();
-    expect(draw().lines.join("\n")).toContain("unavailable after refresh");
+    expect(draw().lines.join("\n")).toContain("刷新后设置不可用");
     expect(JSON.stringify(snap)).not.toContain(secret);
     expect(external).not.toHaveBeenCalled();
   });
-  it("wheel scrolls the content and a removed setting has an honest detail", async () => {
+  it("滚轮滚动内容，被移除的设置给出诚实详情", async () => {
     view.dispatch(parseCommand("config all")); await refresh();
     const screen = draw();
     const wheel = resolveMouseAction({ type: "mouse", button: 65, x: 70, y: 10, release: false } as never, view.get(), screen, 20);
     view.dispatch(wheel!);
     expect(view.get().contentOffset).toBe(3);
     view.dispatch(parseCommand("setting removed.setting"));
-    expect(draw().lines.join("\n")).toContain("unavailable after refresh");
+    expect(draw().lines.join("\n")).toContain("刷新后设置不可用");
   });
-  it("treats an older daemon's raw config response as unavailable", async () => {
+  it("把旧版 daemon 的原始 config 响应视为不可用", async () => {
     client = new DaemonClient({ baseUrl: "http://older", fetchImpl: (async () => Response.json({ settings: { private: secret } })) as typeof fetch });
     view.dispatch(parseCommand("config")); await refresh();
     expect(snap.config).toBeNull();
-    expect(draw().lines.join("\n")).toContain("CONFIG unavailable");
+    expect(draw().lines.join("\n")).toContain("配置不可用");
     expect(draw().lines.join("\n")).not.toContain(secret);
   });
-  it("advertises arrow scrolling only when detail actually overflows", async () => {
+  it("仅在详情确实溢出时才提示可方向键滚动", async () => {
     view.dispatch(parseCommand("config")); await refresh();
     view.dispatch(parseCommand("setting ui.timezone"));
-    expect(draw(120, 40).lines.join("\n")).toContain("↑↓ move");
+    expect(draw(120, 40).lines.join("\n")).toContain("↑↓ 移动");
     view.dispatch(parseCommand("setting workspace.root"));
     const screen = draw(80, 16);
-    expect(screen.lines.join("\n")).toContain("↑↓ scroll");
+    expect(screen.lines.join("\n")).toContain("↑↓ 滚动");
     const selection = view.get().selection;
     key("down", screen);
     expect(view.get().contentOffset).toBe(1);
     expect(view.get().selection).toBe(selection);
   });
-  it("Escape returns from a searched detail to work without a history cycle", async () => {
+  it("Escape 从搜索详情返回工作，不产生历史循环", async () => {
     view.dispatch(parseCommand(":scopes"));
     view.dispatch(parseCommand("config waiting")); await refresh();
     view.dispatch(parseCommand("/timezone")); key("enter");

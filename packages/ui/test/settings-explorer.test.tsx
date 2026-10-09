@@ -1,4 +1,4 @@
-// Slice 26 Checkpoint A — SettingsExplorer (sidebar) tests.
+// Slice 26 Checkpoint A——SettingsExplorer（侧边栏）测试。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
@@ -10,8 +10,8 @@ afterEach(() => {
 });
 
 function renderAt(initialPath: string) {
-  // All 4 Settings sub-routes mount the SettingsExplorer so the Link
-  // active-state derivation can be exercised at any of them.
+  // 全部 4 个 Settings 子路由都挂载 SettingsExplorer，使 Link
+  // active 态派生可在任一个上演练。
   const explorerComponent = () => <SettingsExplorer />;
   return render(
     createAppTestRouter({
@@ -90,9 +90,9 @@ describe("SettingsExplorer", () => {
     await waitFor(() => {
       expect(screen.getByTestId("settings-explorer-item-settings")).toBeTruthy();
     });
-    expect(screen.getByTestId("settings-explorer-item-settings").textContent).toMatch(/settings/i);
-    expect(screen.getByTestId("settings-explorer-item-policies").textContent).toMatch(/policies/i);
-    expect(screen.getByTestId("settings-explorer-item-log").textContent).toMatch(/log/i);
-    expect(screen.getByTestId("settings-explorer-item-status").textContent).toMatch(/status/i);
+    expect(screen.getByTestId("settings-explorer-item-settings").textContent).toContain("设置");
+    expect(screen.getByTestId("settings-explorer-item-policies").textContent).toContain("策略");
+    expect(screen.getByTestId("settings-explorer-item-log").textContent).toContain("日志");
+    expect(screen.getByTestId("settings-explorer-item-status").textContent).toContain("状态");
   });
 });

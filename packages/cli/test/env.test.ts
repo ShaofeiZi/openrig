@@ -125,8 +125,8 @@ describe("rig env", () => {
     cmd.configureOutput({ writeOut: (str) => logs.push(str), writeErr: (str) => logs.push(str) });
     cmd.outputHelp();
     const help = logs.join("");
-    expect(help).toContain("Inspect and control rig environment services");
-    expect(help).toContain("service-backed rigs and managed");
+    expect(help).toContain("查看并控制服务型工作组的环境服务");
+    expect(help).toContain("服务型工作组的环境服务与受管应用");
     expect(help).toContain("rig env status secrets-manager");
     expect(help).toContain("rig env logs secrets-manager vault");
   });
@@ -164,7 +164,7 @@ describe("rig env", () => {
       await makeCmd().parseAsync(["node", "rig", "env", "down", "my-rig"]);
     });
 
-    expect(logs.join("\n")).toContain("Services stopped");
+    expect(logs.join("\n")).toContain("已停止 my-rig 的服务。");
   });
 
   it("env is wired via createProgram", async () => {

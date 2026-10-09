@@ -1,64 +1,54 @@
 import { monitorEventLoopDelay, performance, type EventLoopUtilization } from "node:perf_hooks";
 
 /**
- * OPR.0.4.3.21 — daemon event-loop health instrumentation.
+ * OPR.0.4.3.21——后台服务事件循环健康状态监测。
  *
- * A daemon can be alive + listening (PID up, port bound) yet have a WEDGED /
- * starved event loop (~100% CPU) so it cannot service requests — `/healthz`
- * goes silent because it runs on the same loop. This monitor is the cheap
- * wedge detector: a continuously-enabled libuv-timer delay histogram
- * (monitorEventLoopDelay) plus a `lastTickAt` timestamp refreshed by a cheap
- * unref'd interval. A starving loop stops firing the interval, so
- * `lastTickAgeMs` grows without bound — the deterministic stall signal.
+ * 后台服务可能仍存活并监听（PID 存在、端口已绑定），但事件循环已经卡死或饥饿
+ * （CPU 接近 100%），因此无法处理请求。`/healthz` 运行在同一事件循环上，也会随之沉默。
+ * 此监控器以低成本检测卡死：持续启用 libuv timer 延迟直方图（monitorEventLoopDelay），
+ * 并用一个已 unref 的轻量 interval 刷新 `lastTickAt`。事件循环饥饿时 interval 不再触发，
+ * `lastTickAgeMs` 会持续增长，从而形成确定性的停滞信号。
  *
- * Reuse-first (ponytail): all instrumentation is Node's own `perf_hooks`; no
- * new external primitive. Exposed via the existing `/healthz` surface.
+ * 优先复用：全部监测均使用 Node 自带的 `perf_hooks`，不引入新的外部原语；
+ * 通过既有 `/healthz` 界面公开。
  */
 
 // ---------------------------------------------------------------------------
-// Named thresholds (PROVEN by tests — see event-loop-monitor.test.ts and the
-// backend stress proof). No magic numbers: every constant below is anchored to
-// the daemon's EXISTING, already-proven 250 ms healthz-probe bound
-// (packages/cli/src/daemon-lifecycle.ts HEALTHZ_PROBE_TIMEOUT_MS) so the
-// event-loop verdict and the CLI's healthz timeout agree on what "starved"
-// means, rather than inventing a fresh number.
+// 具名阈值（已有测试证明，见 event-loop-monitor.test.ts 与后端压力证明）。不使用魔法数字：
+// 下方每个常量都以后台服务既有且已验证的 250 ms healthz probe 上限为基准
+//（packages/cli/src/daemon-lifecycle.ts 中的 HEALTHZ_PROBE_TIMEOUT_MS），确保事件循环判定与
+// CLI healthz 超时对“饥饿”的定义一致，而不是另造一套数值。
 // ---------------------------------------------------------------------------
 
 /**
- * Histogram sampling resolution (ms). Node's default for
- * monitorEventLoopDelay; fine enough to catch sub-second stalls at negligible
- * (libuv-timer) overhead.
+ * 直方图采样分辨率（毫秒）。采用 monitorEventLoopDelay 的 Node 默认值；在 libuv timer
+ * 开销可忽略的前提下，足以捕获亚秒级停滞。
  */
 export const EVENT_LOOP_DELAY_RESOLUTION_MS = 10;
 
 /**
- * How often `lastTickAt` is refreshed (ms). 4 Hz is cheap; a wedged loop stops
- * firing this interval, so `lastTickAgeMs` becomes the deterministic stall
- * signal (it grows by real wall-clock time while the loop is blocked).
+ * `lastTickAt` 的刷新间隔（毫秒）。4 Hz 开销很低；卡死的事件循环会停止触发该 interval，
+ * 因而 `lastTickAgeMs` 成为确定性的停滞信号，并在循环阻塞期间随真实墙钟时间增长。
  */
 export const EVENT_LOOP_TICK_INTERVAL_MS = 250;
 
 /**
- * Mean event-loop delay (ms) at/above which the loop is considered starved.
- * Anchored to the existing 250 ms healthz-probe timeout: a loop whose mean
- * scheduling delay reaches the probe timeout will start FAILING healthz, so
- * this is the coherent boundary already lived-in by the codebase.
+ * 事件循环平均延迟阈值（毫秒）；达到或超过该值即视为饥饿。它以既有 250 ms healthz probe
+ * 超时为基准：平均调度延迟达到 probe 超时时，healthz 已会开始失败，因此这是代码库既有且一致的边界。
  */
 export const EVENT_LOOP_LAG_UNHEALTHY_MS = 250;
 
 /**
- * `lastTickAgeMs` (ms) at/above which the loop is considered stalled. 4x the
- * tick interval — an unambiguous stall (four missed ticks), well clear of
- * scheduler jitter, and equal to the healthz retry envelope so a stall this
- * long is one the operator would already be seeing as an unresponsive daemon.
+ * `lastTickAgeMs` 的停滞阈值（毫秒）；达到或超过该值即视为已停滞。该值为 tick 间隔的 4 倍，
+ * 即明确漏掉四次 tick，足以避开调度抖动；它也等于 healthz 重试窗口，因此如此长的停滞已经会被
+ * 操作员观察为后台服务无响应。
  */
 export const LAST_TICK_STALE_MS = 1000;
 
 /**
- * The stress-proof bound: under route load `/healthz` MUST answer within this
- * many ms. Same 250 ms anchor — if healthz can't answer within the probe
- * timeout, the CLI already reports the daemon unresponsive, so the proof holds
- * the hot paths to that same responsiveness contract.
+ * 压力证明上限：存在路由负载时，`/healthz` 必须在此毫秒数内响应。仍采用 250 ms 基准；
+ * 若 healthz 无法在 probe 超时前响应，CLI 已会报告后台服务无响应，因此压力证明也用同一响应契约
+ * 约束热点路径。
  */
 export const HEALTHZ_RESPONSIVENESS_BUDGET_MS = 250;
 
@@ -68,9 +58,8 @@ export interface EventLoopHealthInput {
 }
 
 /**
- * Pure health verdict over the two thresholds. Kept pure + exported so the
- * exact boundaries are unit-provable without depending on real event-loop
- * timing (which is inherently non-deterministic).
+ * 根据两个阈值作出的纯健康判定。保持为纯函数并导出，使精确边界可通过单元测试证明，
+ * 无需依赖本质上不确定的真实事件循环时序。
  */
 export function evaluateEventLoopHealthy(input: EventLoopHealthInput): boolean {
   return input.lagMeanMs < EVENT_LOOP_LAG_UNHEALTHY_MS
@@ -78,28 +67,28 @@ export function evaluateEventLoopHealthy(input: EventLoopHealthInput): boolean {
 }
 
 export interface EventLoopSnapshot {
-  /** Mean event-loop delay in ms (histogram mean, ns→ms). */
+  /** 事件循环平均延迟（毫秒；直方图均值由 ns 转换为 ms）。 */
   lagMeanMs: number;
-  /** p99 event-loop delay in ms (ns→ms). */
+  /** 事件循环 p99 延迟（毫秒；由 ns 转换为 ms）。 */
   lagP99Ms: number;
-  /** Event-loop utilization ratio (0..1) over the monitor's lifetime. */
+  /** 监控器生命周期内的事件循环利用率（0..1）。 */
   utilization: number;
-  /** Wall-clock ms since the last recorded tick (grows while the loop stalls). */
+  /** 距离上次记录 tick 的墙钟毫秒数；事件循环停滞时会持续增长。 */
   lastTickAgeMs: number;
-  /** Verdict from {@link evaluateEventLoopHealthy}. */
+  /** {@link evaluateEventLoopHealthy} 给出的判定。 */
   healthy: boolean;
 }
 
 export interface EventLoopMonitorOptions {
-  /** Injectable clock for deterministic tests. Defaults to Date.now. */
+  /** 可注入时钟，供确定性测试使用；默认为 Date.now。 */
   now?: () => number;
-  /** Histogram resolution (ms). Defaults to {@link EVENT_LOOP_DELAY_RESOLUTION_MS}. */
+  /** 直方图分辨率（毫秒）；默认为 {@link EVENT_LOOP_DELAY_RESOLUTION_MS}。 */
   resolutionMs?: number;
-  /** lastTick refresh interval (ms). Defaults to {@link EVENT_LOOP_TICK_INTERVAL_MS}. */
+  /** lastTick 刷新间隔（毫秒）；默认为 {@link EVENT_LOOP_TICK_INTERVAL_MS}。 */
   tickIntervalMs?: number;
   /**
-   * Start the histogram + tick interval immediately. Default true. Tests pass
-   * false to drive `recordTick()` + an injected clock deterministically.
+   * 是否立即启动直方图和 tick interval，默认为 true。测试传入 false 后，可通过 `recordTick()`
+   * 与注入时钟进行确定性驱动。
    */
   autoStart?: boolean;
 }
@@ -126,7 +115,7 @@ export class EventLoopMonitor {
     if (opts.autoStart !== false) this.start();
   }
 
-  /** Enable the histogram and start the tick interval (unref'd — never holds the process open). */
+  /** 启用直方图并启动已 unref 的 tick interval，因此不会单独阻止进程退出。 */
   start(): void {
     if (this.started) return;
     this.started = true;
@@ -134,11 +123,11 @@ export class EventLoopMonitor {
     this.eluBaseline = performance.eventLoopUtilization();
     this.lastTickAt = this.now();
     this.timer = setInterval(() => this.recordTick(), this.tickIntervalMs);
-    // A monitor tick must never keep the daemon alive on its own.
+    // 监控 tick 绝不能单独让后台服务进程保持存活。
     this.timer.unref?.();
   }
 
-  /** Refresh the last-tick timestamp. Exposed for deterministic tests. */
+  /** 刷新最后一次 tick 的时间戳；公开此方法以支持确定性测试。 */
   recordTick(): void {
     this.lastTickAt = this.now();
   }
@@ -157,7 +146,7 @@ export class EventLoopMonitor {
     };
   }
 
-  /** Disable the histogram and clear the tick interval. Idempotent. */
+  /** 禁用直方图并清除 tick interval；可幂等调用。 */
   stop(): void {
     if (this.timer) {
       clearInterval(this.timer);

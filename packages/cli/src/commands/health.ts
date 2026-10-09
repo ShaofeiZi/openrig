@@ -41,7 +41,7 @@ interface DiagnosisEntry {
 
 function diagnosisPreview(entry: DiagnosisEntry) {
   const omitted: ReturnType<typeof omittedReadField>[] = [];
-  // ponytail: omit only known evidence payloads; keep current decisions and unknowns intact.
+  // ponytail：只省略已知证据载荷；保持当前决策与未知项原样。
   function without<T extends object>(record: T, keys: string[], prefix = ""): T {
     const copy = { ...record } as Record<string, unknown>;
     for (const key of keys) {
@@ -61,7 +61,7 @@ function diagnosisPreview(entry: DiagnosisEntry) {
       workflowReceipts: entry.finding.ceremony.workflowReceipts.map((receipt, index) => {
         const envelope = without(receipt, ["evidence"], `finding.ceremony.workflowReceipts[${index}].`);
         const evidence = receipt.evidence;
-        // These are the existing cut/acceptance identity spellings, not a verdict on the receipt.
+        // 这些是既有 cut/acceptance 身份拼写，不是对 receipt 的判定。
         const identity = evidence && typeof evidence === "object" && !Array.isArray(evidence)
           ? Object.fromEntries(Object.entries(evidence).filter(([key, value]) =>
             ["candidate", "candidateSha", "candidate_sha", "cutSha", "tree", "verdict", "evidenceRef", "evidence_ref"].includes(key)
@@ -113,7 +113,7 @@ function defaultDeps(): HealthDeps {
 function parseLimit(value: string): number {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 200) {
-    throw new InvalidArgumentError("must be an integer from 1 to 200");
+    throw new InvalidArgumentError("必须是 1 到 200 之间的整数");
   }
   return parsed;
 }
@@ -122,8 +122,8 @@ function emitError(error: HealthCliError, json: boolean): void {
   if (json) {
     console.log(JSON.stringify(error));
   } else {
-    console.error(`Error: ${error.message}`);
-    console.error(`  Next inspection: ${error.nextInspection}`);
+    console.error(`错误：${error.message}`);
+    console.error(`  下一步检查：${error.nextInspection}`);
   }
   process.exitCode = 1;
 }
@@ -132,8 +132,8 @@ function daemonError(details: unknown): HealthCliError {
   return {
     schema: HEALTH_ERROR_SCHEMA,
     error: "health_daemon_unavailable",
-    message: "The health projection could not be read because the daemon did not respond.",
-    nextInspection: "rig daemon status",
+    message: "无法读取健康投影，因为后台服务没有响应。",
+    nextInspection: "zrig daemon status",
     details,
   };
 }
@@ -146,15 +146,15 @@ function responseError(status: number, data: unknown): HealthCliError {
     return {
       schema: HEALTH_ERROR_SCHEMA,
       error: daemonCode,
-      message: "The daemon is reachable, but its health projection is unavailable.",
-      nextInspection: "rig daemon status",
+      message: "后台服务可连接，但健康投影不可用。",
+      nextInspection: "zrig daemon status",
     };
   }
   if (status === 404 && daemonCode === "health_finding_not_found") {
     return {
       schema: HEALTH_ERROR_SCHEMA,
       error: daemonCode,
-      message: "No health finding exists with that ID in the current projection.",
+      message: "当前投影中不存在该 ID 的健康发现。",
       nextInspection: "rig health --instance --json",
     };
   }
@@ -162,7 +162,7 @@ function responseError(status: number, data: unknown): HealthCliError {
     return {
       schema: HEALTH_ERROR_SCHEMA,
       error: "health_projection_unavailable",
-      message: "The daemon is reachable, but it does not expose the health projection.",
+      message: "后台服务可连接，但它没有暴露健康投影。",
       nextInspection: "rig --version",
       details: data,
     };
@@ -170,7 +170,7 @@ function responseError(status: number, data: unknown): HealthCliError {
   return {
     schema: HEALTH_ERROR_SCHEMA,
     error: "health_query_failed",
-    message: `The daemon rejected the health query (HTTP ${status}).`,
+    message: `后台服务拒绝了健康查询（HTTP ${status}）。`,
     nextInspection: "rig health --help",
     details: data,
   };
@@ -191,7 +191,7 @@ async function readSelfSeatId(client: DaemonClient, deps: HealthDeps, json: bool
     emitError({
       schema: HEALTH_ERROR_SCHEMA,
       error: "health_identity_unavailable",
-      message: "The current seat identity is unavailable, so self health cannot be scoped safely.",
+      message: "当前席位身份不可用，无法安全地把自身健康限定到范围。",
       nextInspection: "rig whoami --json",
     }, json);
     return null;
@@ -206,8 +206,8 @@ async function readSelfSeatId(client: DaemonClient, deps: HealthDeps, json: bool
     emitError({
       schema: HEALTH_ERROR_SCHEMA,
       error: "health_identity_ambiguous",
-      message: "More than one managed seat matches the current identity.",
-      nextInspection: "rig ps --nodes -A",
+      message: "当前身份匹配到多个受管席位。",
+      nextInspection: "zrig ps --nodes -A",
       details: response.data,
     }, json);
     return null;
@@ -216,7 +216,7 @@ async function readSelfSeatId(client: DaemonClient, deps: HealthDeps, json: bool
     emitError({
       schema: HEALTH_ERROR_SCHEMA,
       error: "health_identity_unavailable",
-      message: "The daemon could not resolve the current seat identity.",
+      message: "后台服务无法解析当前席位身份。",
       nextInspection: "rig whoami --json",
       details: response.data,
     }, json);
@@ -230,7 +230,7 @@ async function readSelfSeatId(client: DaemonClient, deps: HealthDeps, json: bool
     emitError({
       schema: HEALTH_ERROR_SCHEMA,
       error: "health_identity_indeterminate",
-      message: "The identity response did not carry a stable node ID, so self health is indeterminate.",
+      message: "身份响应未携带稳定节点 ID，因此自身健康状态不确定。",
       nextInspection: "rig whoami --full --json",
       details: response.data,
     }, json);
@@ -250,40 +250,40 @@ function scopeLabel(scope: HealthScope): string {
 }
 
 function renderList(projection: HealthListProjection): void {
-  const evaluated = projection.evaluatedAt ?? "unavailable";
-  console.log(`Fleet health — evaluated=${evaluated} findings=${projection.total} limit=${projection.limit}`);
+  const evaluated = projection.evaluatedAt ?? "不可用";
+  console.log(`机队健康——评估时间=${evaluated} 发现数=${projection.total} 上限=${projection.limit}`);
   if (projection.records.length === 0) {
-    console.log("No health findings match this bounded query. This is not a healthy assertion.");
-    console.log("Next inspection: widen only as needed with `rig health --instance --json`.");
+    console.log("没有健康发现匹配这个有界查询。这不等于健康断言。");
+    console.log("下一步检查：按需用 `rig health --instance --json` 扩大范围。");
     return;
   }
   for (const record of projection.records) {
     console.log(`${record.id}  ${record.severity}  ${record.status}  ${record.detector}`);
-    console.log(`  ${scopeLabel(record.scope)}  ${record.confidence} confidence  freshness=${record.freshness.state}${record.indeterminateReason ? `  indeterminate=${record.indeterminateReason}` : ""}`);
+    console.log(`  ${scopeLabel(record.scope)}  ${record.confidence} 置信度  新鲜度=${record.freshness.state}${record.indeterminateReason ? `  不确定原因=${record.indeterminateReason}` : ""}`);
     console.log(`  ${record.summary}`);
-    if (record.operatingPosture) console.log(`  Operating posture: ${record.operatingPosture.posture} (${record.operatingPosture.source}); phase=${record.operatingPosture.context?.phase.value ?? "unknown"}`);
+    if (record.operatingPosture) console.log(`  运行姿态：${record.operatingPosture.posture}（${record.operatingPosture.source}）；阶段=${record.operatingPosture.context?.phase.value ?? "未知"}`);
   }
   if (projection.truncated) {
-    console.log(`Truncated at ${projection.limit} of ${projection.total}; narrow the scope or raise --limit (maximum 200).`);
+    console.log(`已在 ${projection.total} 条中截断到 ${projection.limit} 条；请缩小范围或提高 --limit（最大 200）。`);
   }
 }
 
 function renderExplanation(record: HealthRecord): void {
-  console.log(`Health finding ${record.id}`);
-  console.log(`  Detector:    ${record.detector} (${record.category})`);
-  console.log(`  Scope:       ${scopeLabel(record.scope)}`);
-  console.log(`  Outcome:     ${record.severity} / ${record.status} / ${record.confidence} confidence`);
-  console.log(`  Observed:    ${record.startedAt ?? "unavailable"} → ${record.lastObservedAt ?? "unavailable"}`);
-  console.log(`  Window:      ${record.window.startedAt} → ${record.window.endedAt}; source=${record.window.source}; limit=${record.window.limit}; retention=${record.window.retentionSeconds}s`);
-  console.log(`  Freshness:   ${record.freshness.state}; evaluated=${record.freshness.evaluatedAt}; newest=${record.freshness.newestSourceAt ?? "unavailable"}; max-age=${record.freshness.maxAgeSeconds}s; age=${record.freshness.ageSeconds ?? "unavailable"}s`);
-  if (record.indeterminateReason) console.log(`  Indeterminate: ${record.indeterminateReason}`);
-  console.log(`  Rule:        ${record.threshold}`);
-  console.log(`  Policy:      ${record.policyVersion ?? "not reported by source"}`);
-  if (record.operatingPosture) console.log(`  Posture:     ${JSON.stringify(record.operatingPosture)}`);
-  console.log(`  Explanation: ${record.explanation}`);
-  console.log(`  Evidence:    ${JSON.stringify(record.evidence)}`);
-  if (record.ceremony) console.log(`  Diagnosis stage: ${record.ceremony.stage}\n  Normal context: ${JSON.stringify(record.ceremony)}`);
-  console.log(`  Inspect:     ${record.suggestedInspection}`);
+  console.log(`健康发现 ${record.id}`);
+  console.log(`  探测器：    ${record.detector}（${record.category}）`);
+  console.log(`  范围：      ${scopeLabel(record.scope)}`);
+  console.log(`  结果：      ${record.severity} / ${record.status} / ${record.confidence} 置信度`);
+  console.log(`  观测：      ${record.startedAt ?? "不可用"} → ${record.lastObservedAt ?? "不可用"}`);
+  console.log(`  窗口：      ${record.window.startedAt} → ${record.window.endedAt}；来源=${record.window.source}；上限=${record.window.limit}；保留=${record.window.retentionSeconds}s`);
+  console.log(`  新鲜度：    ${record.freshness.state}；评估时间=${record.freshness.evaluatedAt}；最新=${record.freshness.newestSourceAt ?? "不可用"}；最大年龄=${record.freshness.maxAgeSeconds}s；年龄=${record.freshness.ageSeconds ?? "不可用"}s`);
+  if (record.indeterminateReason) console.log(`  不确定：${record.indeterminateReason}`);
+  console.log(`  规则：      ${record.threshold}`);
+  console.log(`  策略：      ${record.policyVersion ?? "来源未报告"}`);
+  if (record.operatingPosture) console.log(`  姿态：      ${JSON.stringify(record.operatingPosture)}`);
+  console.log(`  解释：      ${record.explanation}`);
+  console.log(`  证据：      ${JSON.stringify(record.evidence)}`);
+  if (record.ceremony) console.log(`  诊断阶段：${record.ceremony.stage}\n  常规上下文：${JSON.stringify(record.ceremony)}`);
+  console.log(`  检查：      ${record.suggestedInspection}`);
 }
 
 async function guardedRequest<T>(
@@ -308,20 +308,20 @@ async function guardedRequest<T>(
 export function healthCommand(depsOverride?: HealthDeps): Command {
   const deps = depsOverride ?? defaultDeps();
   const command = new Command("health")
-    .description("Inspect read-only, explainable system health records")
-    .addOption(new Option("--self", "Inspect the current seat (default)").conflicts(["seat", "rig", "instance"]))
-    .addOption(new Option("--seat <node-id>", "Inspect one seat by stable node ID").conflicts(["self", "rig", "instance"]))
-    .addOption(new Option("--rig <rig-id>", "Inspect findings whose canonical scope is this rig").conflicts(["self", "seat", "instance"]))
-    .addOption(new Option("--instance [instance-id]", "Inspect the whole local instance, or one canonical instance scope by ID").conflicts(["self", "seat", "rig"]))
-    .addOption(new Option("--severity <severity>", "Filter by severity").choices([...HEALTH_SEVERITIES]))
-    .addOption(new Option("--status <status>", "Filter by finding status").choices([...HEALTH_STATUSES]))
-    .option("--limit <count>", "Maximum findings (1-200)", parseLimit, 100)
-    .option("--json", "JSON output; diagnosis list/show need --full for complete evidence")
-    .option("--actor <name>", "Attribute explicit diagnosis writes when operating outside a managed seat")
+    .description("检查只读、可解释的系统健康记录")
+    .addOption(new Option("--self", "检查当前席位（默认）").conflicts(["seat", "rig", "instance"]))
+    .addOption(new Option("--seat <node-id>", "按稳定节点 ID 检查一个席位").conflicts(["self", "rig", "instance"]))
+    .addOption(new Option("--rig <rig-id>", "检查规范范围为该工作组的发现").conflicts(["self", "seat", "instance"]))
+    .addOption(new Option("--instance [instance-id]", "检查整个本地实例，或按 ID 检查一个规范实例范围").conflicts(["self", "seat", "rig"]))
+    .addOption(new Option("--severity <severity>", "按严重程度过滤").choices([...HEALTH_SEVERITIES]))
+    .addOption(new Option("--status <status>", "按发现状态过滤").choices([...HEALTH_STATUSES]))
+    .option("--limit <count>", "最大发现条数（1-200）", parseLimit, 100)
+    .option("--json", "以 JSON 输出；diagnosis list/show 需要 --full 才能拿到完整证据")
+    .option("--actor <name>", "不在受管席位内操作时，为显式诊断写入署名")
     .addHelpText("after", `
-The default scope is the current seat. --instance without an ID is the bounded
-instance-wide projection. Empty output is not a healthy assertion. This command
-list/explain never mutate. Diagnosis mutations use explicit subcommands; automatic diagnostic presentation is opt-in policy.`);
+默认范围是当前席位。不带 ID 的 --instance 是有界的实例范围投影。
+空输出不等于健康断言。本命令的 list/explain 永不修改状态。诊断修改使用显式子命令；
+自动诊断展示是可选策略。`);
 
   command.action(async (options: HealthListOptions) => {
     const json = Boolean(options.json);
@@ -372,8 +372,8 @@ list/explain never mutate. Diagnosis mutations use explicit subcommands; automat
 
   command
     .command("explain <finding-id>")
-    .description("Explain one health finding from its canonical bounded record")
-    .option("--json", "Emit the canonical daemon health record as JSON")
+    .description("根据规范的有界记录解释一条健康发现")
+    .option("--json", "以 JSON 输出规范的后台服务健康记录")
     .action(async (findingId: string, options: { json?: boolean }) => {
       const json = Boolean(options.json || command.opts().json);
       const client = await readyClient(deps, json);
@@ -406,32 +406,32 @@ list/explain never mutate. Diagnosis mutations use explicit subcommands; automat
       console.log(JSON.stringify(data, null, json ? undefined : 2));
     } else {
       const entries = Array.isArray(response.data) ? response.data : [response.data];
-      if (!entries.length) console.log("No diagnostic occurrences. This is not a healthy assertion.");
+      if (!entries.length) console.log("没有诊断发生记录。这不等于健康断言。");
       for (const entry of entries as DiagnosisEntry[]) {
         console.log(`${entry.row.qitemId}  ${entry.finding.status}  ${entry.finding.detector}`);
-        console.log(`  Disposition: ${entry.disposition?.verdict ?? "awaiting agent investigation"}`);
+        console.log(`  判定：${entry.disposition?.verdict ?? "等待智能体调查"}`);
         if (path) {
-          console.log(`  Queue: ${entry.row.state ?? "unknown"}  Owner: ${entry.row.destinationSession ?? "unknown"}  Blocker: ${entry.row.blockedOn ?? "none recorded"}`);
-          if (entry.notificationReadiness) console.log(`  Human readiness: ${entry.notificationReadiness.ready ? "ready" : "unavailable"} — ${entry.notificationReadiness.reason}`);
-          if (entry.humanDelivery) console.log(`  Human delivery: ${entry.humanDelivery.outcome} (${entry.humanDelivery.qitemId})`);
-          console.log(`  Finding: ${entry.finding.id}  Policy: ${entry.finding.policyVersion ?? "unreported"}`);
+          console.log(`  队列：${entry.row.state ?? "未知"}  负责人：${entry.row.destinationSession ?? "未知"}  阻塞于：${entry.row.blockedOn ?? "未记录"}`);
+          if (entry.notificationReadiness) console.log(`  人类 readiness：${entry.notificationReadiness.ready ? "就绪" : "不可用"} — ${entry.notificationReadiness.reason}`);
+          if (entry.humanDelivery) console.log(`  人类投递：${entry.humanDelivery.outcome}（${entry.humanDelivery.qitemId}）`);
+          console.log(`  发现：${entry.finding.id}  策略：${entry.finding.policyVersion ?? "未报告"}`);
           console.log(`  ${entry.finding.explanation}`);
-          if (entry.finding.operatingPosture) console.log(`  Posture: ${entry.finding.operatingPosture.posture} (${entry.finding.operatingPosture.source}); phase=${entry.finding.operatingPosture.context?.phase.value ?? "unknown"}; ${entry.finding.operatingPosture.reason}`);
-          console.log(`  Start: ${entry.disposition?.causalStart ?? "unknown"}`);
-          console.log(`  Steering: ${entry.disposition?.steering ?? "not yet recorded"}`);
-          console.log(`  Uncertainty: ${entry.disposition?.uncertainty ?? entry.finding.indeterminateReason ?? "diagnosis pending"}`);
-          if (entry.assessment) console.log(`  Attributed assessment: ${entry.assessment.actor ?? "unknown"} at ${entry.assessment.at}`);
+          if (entry.finding.operatingPosture) console.log(`  姿态：${entry.finding.operatingPosture.posture}（${entry.finding.operatingPosture.source}）；阶段=${entry.finding.operatingPosture.context?.phase.value ?? "未知"}；${entry.finding.operatingPosture.reason}`);
+          console.log(`  起点：${entry.disposition?.causalStart ?? "未知"}`);
+          console.log(`  引导：${entry.disposition?.steering ?? "尚未记录"}`);
+          console.log(`  不确定性：${entry.disposition?.uncertainty ?? entry.finding.indeterminateReason ?? "诊断待处理"}`);
+          if (entry.assessment) console.log(`  署名评估：${entry.assessment.actor ?? "未知"} 于 ${entry.assessment.at}`);
           const correction = entry.disposition?.correction;
           if (correction) {
-            console.log(`  Applicability: ${correction.applicability}`);
-            console.log(`  Causal judgment: ${correction.causalJudgment}`);
-            console.log(`  Action (${correction.action.state}): ${correction.action.summary}`);
+            console.log(`  适用性：${correction.applicability}`);
+            console.log(`  因果判定：${correction.causalJudgment}`);
+            console.log(`  动作（${correction.action.state}）：${correction.action.summary}`);
           }
-          console.log(`  Later behavioral effect (owner report): ${correction?.effect.state ?? "unobserved"}${correction ? " — " + correction.effect.summary : " — a disposition or clearance alone is not changed behavior"}`);
-          for (const ref of entry.authority) console.log(`  ${ref.role ?? "Authority"} (${ref.state}): ${ref.path}${ref.selectedBy ? " selected by " + ref.selectedBy : ""}${ref.reason ? " — " + ref.reason : ""}`);
+          console.log(`  后续行为效果（负责人报告）：${correction?.effect.state ?? "未观测"}${correction ? " — " + correction.effect.summary : " — 仅有判定或放行本身并不构成行为改变"}`);
+          for (const ref of entry.authority) console.log(`  ${ref.role ?? "权威来源"}（${ref.state}）：${ref.path}${ref.selectedBy ? " 选择者 " + ref.selectedBy : ""}${ref.reason ? " — " + ref.reason : ""}`);
           if (occurrenceRead) {
             const view = diagnosisPreview(entry).readView;
-            console.log(`  Evidence preview; full record ${view.fullJsonBytes} JSON bytes: ${view.fullCommand}`);
+            console.log(`  证据预览；完整记录 ${view.fullJsonBytes} JSON 字节：${view.fullCommand}`);
           } else console.log(`  ${entry.packet.instructions}`);
         }
       }
@@ -439,29 +439,29 @@ list/explain never mutate. Diagnosis mutations use explicit subcommands; automat
   }
   function fromFile(file: string): unknown {
     const text = readFileSync(file, "utf8");
-    if (Buffer.byteLength(text) > 1048576) throw new Error("Health input exceeds 1 MiB");
+    if (Buffer.byteLength(text) > 1048576) throw new Error("健康输入超过 1 MiB");
     return JSON.parse(text);
   }
-  command.command("policy").description("Inspect effective policy and engine state; apply edited JSON with --file")
-    .option("--file <path>", "Apply policy JSON with an audit record").option("--json")
+  command.command("policy").description("检查生效策略与引擎状态；用 --file 应用编辑后的 JSON")
+    .option("--file <path>", "应用策略 JSON 并附审计记录").option("--json")
     .action(async (o: { file?: string; json?: boolean }) => diagnosisRequest("/policy", o, o.file ? { value: fromFile(o.file) } : undefined));
-  command.command("checkpoint").description("Inspect or submit an outcome-boundary lineage census (not a per-edit ritual)")
-    .option("--file <path>", "Submit checkpoint JSON with exact queue and product evidence").option("--json")
+  command.command("checkpoint").description("检查或提交结果边界谱系普查（不是每次编辑的仪式）")
+    .option("--file <path>", "提交 checkpoint JSON 并附准确的队列与产品证据").option("--json")
     .action(async (o: { file?: string; json?: boolean }) => diagnosisRequest("/checkpoints", o, o.file ? { value: fromFile(o.file) } : undefined));
-  command.command("diagnose").description("Preview policy admission; --apply creates or re-presents bounded diagnostic context")
+  command.command("diagnose").description("预览策略准入；--apply 创建或重新呈现有界诊断上下文")
     .option("--apply").option("--json").action(async (o: { apply?: boolean; json?: boolean }) => diagnosisRequest("/evaluate", o, { apply: Boolean(o.apply) }));
-  const diagnosis = command.command("diagnosis").description("Read occurrences and record agent-owned dispositions");
-  diagnosis.command("list").description("List occurrence summaries; evidence payloads require --full")
-    .option("--json", "Summary array with explicit omitted fields and per-occurrence expansion commands")
-    .option("--full", "Complete records including all evidence and receipts; may be large")
+  const diagnosis = command.command("diagnosis").description("读取发生记录并记录智能体拥有的判定");
+  diagnosis.command("list").description("列出发生记录摘要；证据载荷需要 --full")
+    .option("--json", "摘要数组，含明确省略字段与每条发生记录的展开命令")
+    .option("--full", "完整记录，含全部证据与 receipt；可能很大")
     .action(async (o: { json?: boolean; full?: boolean }) => diagnosisRequest("", o));
-  diagnosis.command("show <qitem-id>").description("Inspect current state and decisions; expand retained evidence deliberately")
-    .option("--json", "Summary JSON with omitted fields, original byte size and exact full command")
-    .option("--full", "Complete original record; use --full --json for lossless JSON (may be large)")
+  diagnosis.command("show <qitem-id>").description("检查当前状态与决策；有意识地展开保留的证据")
+    .option("--json", "摘要 JSON，含省略字段、原始字节数与完整命令")
+    .option("--full", "完整原始记录；用 --full --json 得到无损 JSON（可能很大）")
     .action(async (id: string, o: { json?: boolean; full?: boolean }) => diagnosisRequest(`/${encodeURIComponent(id)}`, o));
-  diagnosis.command("record <qitem-id>").requiredOption("--file <path>", "Disposition JSON with verdict, causalStart, steering, uncertainty, evidenceRefs").option("--json")
+  diagnosis.command("record <qitem-id>").requiredOption("--file <path>", "判定 JSON，含 verdict、causalStart、steering、uncertainty、evidenceRefs").option("--json")
     .action(async (id: string, o: { file: string; json?: boolean }) => diagnosisRequest(`/${encodeURIComponent(id)}/disposition`, o, { value: fromFile(o.file) }));
-  diagnosis.command("notify <qitem-id>").description("Explicitly request human delivery under policy and verified connector readiness").option("--json")
+  diagnosis.command("notify <qitem-id>").description("在策略与已核验的连接器 readiness 下显式请求人类投递").option("--json")
     .action(async (id: string, o: { json?: boolean }) => diagnosisRequest(`/${encodeURIComponent(id)}/notify`, o, {}));
   return command;
 }

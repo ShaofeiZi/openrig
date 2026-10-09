@@ -17,24 +17,21 @@ import { resolveContextRef, walkSizedWarning } from "../context-resolve.js";
 const WAIT_FOR_IDLE_REQUEST_OVERHEAD_MS = 5_000;
 
 /**
- * Wrap a `rig send` body with an email-style envelope so the recipient
- * pane has both the sender's identity and a copy-pasteable reply hint.
- * Cross-host sends do NOT wrap locally: the remote rig wraps when it
- * runs the same command, and double-wrapping would nest envelopes.
+ * 用邮件风格信封包裹 `rig send` 正文，让接收方面板同时看到发送方身份和
+ * 可粘贴的回复提示。跨主机发送不在本地包裹：远程 rig 跑同一命令时会自己包裹，
+ * 双重包裹会嵌套信封。
  *
- * V0.3.1 slice 23 parity contract: `packages/daemon/src/lib/pane-envelope.ts`
- * exports `wrapPaneEnvelope` with BYTE-IDENTICAL output for the same inputs.
- * P18 (deletion atom) REVERSES A1: an env-less `rig send`/`broadcast` no longer
- * refuses at the seat boundary — it DELIVERS carrying the honest `<unknown sender>`
- * fallback (the daemon half delivers-and-labels the header-absent write, so the
- * marker reaches the pane instead of a downstream 401). So this twin RE-GAINS the
- * fallback branch and is byte-identical with wrapPaneEnvelope across the FULL input
- * domain again (resolved AND undefined). The implementations live in separate
- * packages because cli + daemon don't cross-import today. If you update this
- * function, update wrapPaneEnvelope in lockstep.
+ * V0.3.1 slice 23 一致性契约：`packages/daemon/src/lib/pane-envelope.ts`
+ * 导出 `wrapPaneEnvelope`，相同输入产出逐字节相同输出。
+ * P18（删除原子）反转 A1：无 env 的 `rig send`/`broadcast` 不再在席位边界拒绝——
+ * 它带着诚实的 `<unknown sender>` 兜底投递（后台服务侧投递并标记 header 缺席的写，
+ * 所以标记到达面板而不是下游 401）。所以这个孪生版本重新获得兜底分支，
+ * 在整个输入域（已解析和 undefined）上再次与 wrapPaneEnvelope 逐字节相同。
+ * 实现分处两个包，因为 cli 和 daemon 今天不互相导入。改这个函数时，
+ * 同步更新 wrapPaneEnvelope。
  */
-/** Send/broadcast header envelope metadata (ruling 03c35295) — the BYTE-IDENTICAL twin of the daemon's
- *  pane-envelope EnvelopeMeta. Envelope = machine truth; rendered header = projection. */
+/** Send/broadcast 头部信封元数据（ruling 03c35295）——后台服务 pane-envelope
+ *  EnvelopeMeta 的逐字节孪生。Envelope = 机器真相；渲染头部 = 投影。 */
 export interface EnvelopeScope {
   kind: "dm" | "multi" | "rig-broadcast" | "topology";
   recipients?: string[];
@@ -42,23 +39,23 @@ export interface EnvelopeScope {
   seats?: number;
 }
 export interface EnvelopeMeta {
-  /** ISO-8601, stamped ONCE at transport send-time; render READS it, never re-derives. */
+/** ISO-8601 时间戳，只在传输发送时盖章一次；渲染时只读取，绝不重新派生。 */
   stampISO?: string;
   scope?: EnvelopeScope;
-  /** GHOST-STAGE (g): the SENDER's atom-B occupant generation-uuid, stamped ONCE at transport.
-   *  ABSENT ⇒ UNKNOWN → the render OMITS the suffix (never forges). Twin of pane-envelope's field. */
+/** GHOST-STAGE（g）：发送方 atom-B 占用者 generation-uuid，只在传输层盖章一次。
+ *  缺失意味着未知，渲染时省略后缀而绝不伪造。与 pane-envelope 字段孪生。 */
   genUuid?: string;
 }
 
-/** The To-line projection + anti-storm scale (header-alone distinguishability). */
+/** To 行投影 + 防风暴规模（仅头部即可区分）。 */
 export function renderToLine(recipient: string, scope?: EnvelopeScope): string {
   if (!scope || scope.kind === "dm") return `To: ${recipient}`;
   if (scope.kind === "multi") return `To: ${(scope.recipients ?? [recipient]).join(", ")}`;
-  if (scope.kind === "rig-broadcast") return `To: broadcast to ${scope.rig} (${scope.seats} seats)`;
-  return "To: broadcast to topology";
+  if (scope.kind === "rig-broadcast") return `To: 广播到 ${scope.rig}（${scope.seats} 个席位）`;
+  return "To: 广播到 topology";
 }
 
-/** Short glanceable stamp MM-DD HH:MMZ from the transport ISO. */
+/** 从传输层 ISO 时间生成便于扫读的短戳 MM-DD HH:MMZ。 */
 export function renderShortStamp(stampISO: string): string {
   return `${stampISO.slice(5, 7)}-${stampISO.slice(8, 10)} ${stampISO.slice(11, 16)}Z`;
 }
@@ -69,72 +66,66 @@ export function wrapSendBody(
   body: string,
   meta?: EnvelopeMeta,
 ): string {
-  // P18 DELIVER-AND-LABEL: an env-less dispatch no longer refuses; the CLI RE-GAINS the honest
-  // `<unknown sender>` fallback so an unattributable send is DELIVERED with a truthful marker (the daemon
-  // half delivers-and-labels the header-absent write — no laundering, no downstream 401). Byte-identical
-  // with the daemon twin wrapPaneEnvelope across the full input domain.
+  // P18 投递并标记：无 env 的分发不再拒绝；CLI 重新获得诚实的
+  // `<unknown sender>` 兜底，让无法归因的发送带着真实标记投递（后台服务侧
+  // 投递并标记 header 缺席的写——不洗白，不下游 401）。在整个输入域上与
+  // 后台服务孪生 wrapPaneEnvelope 逐字节相同。
   //
-  // FOUNDER ROOT INVARIANT (2026-08-27, supersedes 51-09 incr 3 always-suffix): the sender
-  // renders EXACTLY AS RECEIVED — bare member@rig locally (copy-paste reply hint), and a
-  // cross-host caller constructs the origin triple at the forwarding boundary before wrapping.
+  // 创始人根不变量（2026-08-27，取代 51-09 incr 3 的总是后缀）：发送方按收到的
+  // 原样渲染——本地裸 member@rig（可粘贴回复提示），跨主机调用方在转发边界
+  // 构造 origin 三元组后再包裹。
   const senderLabel = sender && sender.trim().length > 0 ? sender : SENDER_FALLBACK;
   const header = [`From: ${senderLabel}`, renderToLine(recipient, meta?.scope)];
   if (meta?.stampISO) {
-    // GHOST-STAGE (g): the sender's occupant generation rides the Sent: line as a short suffix
-    // (first8 of the uuid — discriminates at per-node scale; the ledger keeps the full uuid for
-    // exact joins). ABSENT gen ⇒ OMIT the suffix entirely — never "gen unknown", never a forged
-    // value. The suffix is positionally bound to the Sent: header line (a body line, always after
-    // the first "---", can contain " · gen …" but cannot inject a Sent: line — containment).
+    // GHOST-STAGE (g)：发送方的原子 B occupant generation uuid 作为短后缀骑在
+    // Sent: 行上（uuid 前 8 位——按节点规模区分；账本保留完整 uuid 用于精确 join）。
+    // gen 缺席 ⇒ 完全省略后缀——绝不写 "gen unknown"，绝不伪造值。后缀在位置上绑定
+    // 到 Sent: 头部行（正文行，总在第一个 "---" 之后，可以含 " · gen …"，但不能注入
+    // Sent: 行—— containment）。
     const genSuffix = meta.genUuid && meta.genUuid.length > 0 ? ` · gen ${meta.genUuid.slice(0, 8)}` : "";
     header.push(`Sent: ${renderShortStamp(meta.stampISO)}${genSuffix}`);
   }
   const reply = senderLabel.endsWith("@external")
-    ? `↩ Reply if needed: rig queue create --destination ${senderLabel} --body "..." --verify`
-    : `↩ Reply: rig send ${senderLabel} "..."`;
+    ? `↩ 如需回复：zrig queue create --destination ${senderLabel} --body "..." --verify`
+    : `↩ 回复：zrig send ${senderLabel} "..."`;
   return [...header, "---", body, "---", reply].join("\n");
 }
 
 /**
- * 1b45cf21 — remediation after an ACTUAL transport failure, in the repo's
- * fact / consequence / action shape (`daemon-lifecycle.ts:61-73`).
+ * 1b45cf21——在一次真实传输失败后的补救，采用仓库的
+ * 事实/后果/动作形状（`daemon-lifecycle.ts:61-73`）。
  *
- * Deliberately NOT `daemonNotRunningError()`: that helper's text ("Daemon not
- * running." + restart advice) is the probe-derived claim qitem-c113bd41
- * removed. The SHAPE is reused; the TEXT is not.
+ * 刻意不用 `daemonNotRunningError()`：那个助手的文本（"Daemon not
+ * running." + 重启建议）是探测推出的论断，qitem-c113bd41 已移除。
+ * 形状复用；文本不复用。
  *
- * A `DaemonConnectionError` proves the resolved target was UNREACHABLE — not
- * why. Daemon down, wrong port, wrong host, firewall, and a wedged event loop
- * are all live explanations, so the action stays diagnostic and asserts no
- * daemon state. It also refuses to oversell `rig status`: with an env URL set,
- * that command's own probe can report `stopped` for a mere timeout
- * (`daemon-lifecycle.ts:575-585`) — the same false-stopped class this slice
- * exists to remove — so the copy names that limitation instead of hiding it,
- * and gates `rig daemon start` behind operator confirmation.
+ * `DaemonConnectionError` 证明解析出的目标不可达——但不证明为什么。后台服务宕、
+ * 端口错、主机错、防火墙、事件循环卡死都是活解释，所以动作保持诊断性，
+ * 不断言任何后台服务状态。它也拒绝过度推销 `rig status`：设了 env URL 时，
+ * 那个命令自己的探测对一次单纯超时也会报 `stopped`
+ *（`daemon-lifecycle.ts:575-585`）——正是这个 slice 要移除的假 stopped 类——
+ * 所以文案点出这个局限而不是藏起来，并把 `rig daemon start` 放在操作人员确认之后。
  *
- * Shared by both local paths so single-seat and fan-out remediation are
- * IDENTICAL BY CONSTRUCTION rather than by hand-maintained duplication.
+ * 两条本地路径共用它，让单席位和扇出补救在构造上逐字节相同，而不是手工维护重复。
  */
 function printTransportFailure(err: DaemonConnectionError, opts?: { json?: boolean }): void {
-  // Remediation values are defined ONCE; the human path adds its two-space
-  // indentation at render so the existing three-line output stays byte-identical,
-  // while the --json envelope carries the clean strings. Same
-  // {error:{fact,consequence,action}} shape as printDaemonNotRunning
-  // (daemon-lifecycle.ts) so an agent on the --json path gets a parseable record
-  // instead of empty stdout plus human prose on stderr.
+  // 补救值只定义一次；人类路径在渲染时加两空格缩进，让已有的三行输出保持
+  // 逐字节相同，而 --json 信封带干净字符串。与 printDaemonNotRunning
+  //（daemon-lifecycle.ts）同样的 {error:{fact,consequence,action}} 形状，
+  // 让 --json 路径上的智能体拿到可解析记录，而不是空 stdout 加 stderr 上的人类散文。
   const fact = err.message;
-  // B8-2 (shape 73ee4b25): a TIMEOUT is delivery-UNCONFIRMED — the daemon may have
-  // received AND delivered (two seats proved delivery-after-"not sent" live). Only a
-  // hard connection failure earns the "was not sent" consequence.
+  // B8-2（shape 73ee4b25）：超时是投递未确认——后台服务可能已收到并投递
+  //（两个席位证明了在"未发送"之后仍投递）。只有硬连接失败才配得上"未发送"后果。
   const timedOut = err instanceof DaemonTimeoutError;
   const consequence = timedOut
-    ? "Delivery UNCONFIRMED — the daemon may have received and delivered the message."
-    : "The message was not sent.";
+    ? "投递未确认——后台服务可能已收到并投递了这条消息。"
+    : "消息未发送。";
   const action = timedOut
-    ? "Reconcile by EFFECT before any resend: check the pane/target for the message (rig capture <session>). " +
-      "A resend without checking risks a duplicate. Then 'rig daemon status' for the probe picture."
-    : "Inspect the configured target with 'rig status'; a failed health probe does not prove the daemon is stopped. " +
-      "If the target is wrong, check OPENRIG_URL / RIGGED_URL or daemon.host + daemon.port. " +
-      "If the daemon is confirmed stopped, run 'rig daemon start'.";
+    ? "重发前先按效果对账：检查面板/目标里有没有这条消息（zrig capture <session>）。" +
+      " 不检查就重发有重复风险。然后用 'zrig daemon status' 看探测图景。"
+    : "用 'zrig status' 检查配置的目标；健康探测失败不证明后台服务已停。" +
+      " 如果目标错了，查 OPENRIG_URL / RIGGED_URL 或 daemon.host + daemon.port。" +
+      " 如果确认后台服务已停，跑 'zrig daemon start'.";
   if (opts?.json) {
     console.log(JSON.stringify({ error: { fact, consequence, action } }));
     return;
@@ -144,53 +135,46 @@ function printTransportFailure(err: DaemonConnectionError, opts?: { json?: boole
   console.error(`  ${action}`);
 }
 
-/** Reject content that cannot communicate anything, before a transport call. */
+/** 在传输调用前拒绝任何无法传达内容的输入。 */
 export function refuseEmptyMessage(body: string, verb: "send" | "broadcast", json = false): boolean {
   if (body.trim().length > 0) return false;
-  const fact = `rig ${verb}: message is empty or whitespace-only.`;
-  const consequence = "The message transport did not run and nothing was delivered.";
-  const action = "Check whether shell backtick or $() substitution collapsed the argument, or whether a --body-file/stdin source resolved to 0 bytes; provide non-empty content.";
+  const fact = `rig ${verb}：消息为空或仅空白。`;
+  const consequence = "未运行消息传输，什么都没投递。";
+  const action = "检查 shell 反引号或 $() 替换是否把参数吞成了空，或 --body-file/stdin 来源是否解析成 0 字节；请提供非空内容。";
   if (json) {
     console.log(JSON.stringify({ ok: false, error: { fact, consequence, action } }));
   } else {
-    console.error(`Error: ${fact}\n${consequence}\n${action}`);
+    console.error(`错误：${fact}\n${consequence}\n${action}`);
   }
   process.exitCode = 1;
   return true;
 }
 
-/** qitem-c113bd41 — the LOCAL send target. The status probe is advisory,
- *  never authoritative: a busy/wedged daemon fails the probe while the
- *  transport would succeed (the false-daemon-down incident). Resolution:
- *  the configured env alias FIRST (exact string, custom port preserved;
- *  OPENRIG_URL wins over legacy RIGGED_URL), else the status/state-derived
- *  host:port when the probe found one, else the configured file/default
- *  target (arg-less DaemonClient resolution).
- *  The ACTUAL transport call decides success — its DaemonConnectionError
- *  is the honest failure surface.
+/** qitem-c113bd41——本地发送目标。状态探测只是建议性的，绝不权威：忙碌/卡死的
+ *  后台服务会让探测失败，而传输本会成功（假后台服务宕事故）。解析顺序：
+ *  配置的 env 别名优先（精确字符串，自定义端口保留；OPENRIG_URL 胜过旧的 RIGGED_URL），
+ *  否则探测找到的状态/状态派生 host:port，否则配置文件/默认目标
+ * （无参 DaemonClient 解析）。真正的传输调用决定成败——它的 DaemonConnectionError
+ *  才是诚实的失败面。
  *
- *  ff13bcdf — the probe is taken LAZILY, by this resolver, because an
- *  explicit env alias already determines the target: probing first cost
- *  ~818ms (instantly-failing probe) to ~2.05s (timeout-shaped: 5x250ms
- *  bounds + 4x200ms backoff) of pure latency on the incident path, then
- *  threw the result away at the first branch. Owning the probe here also
- *  keeps the single-seat and fan-out callers from having to sequence it
- *  identically in two places. */
+ *  ff13bcdf——探测由这个 resolver 惰性发起，因为显式 env 别名已经决定了目标：
+ *  先探测在事故路径上白付约 818ms（秒败探测）到约 2.05s（超时形：5x250ms 边界
+ *  + 4x200ms 退避）的纯延迟，然后在第一个分支就把结果丢掉。在这里拥有探测，
+ *  也让单席位和扇出调用方不必在两处按相同顺序编排它。 */
 async function resolveLocalDaemonUrl(deps: SendDeps): Promise<string> {
   const envUrl = readOpenRigEnv("OPENRIG_URL", "RIGGED_URL");
   if (envUrl) return envUrl;
   const status = await getDaemonStatus(deps.lifecycleDeps);
   if (status.state === "running" && status.port !== undefined) return getDaemonUrl(status);
-  // Configured-target resolution reused verbatim from the arg-less
-  // DaemonClient (env alias > ConfigStore file > default) — never a
-  // hardcoded literal, so a config-file custom daemon.host/port is honored.
+// 配置目标解析逐字复用无参数 DaemonClient 的规则：环境别名 > ConfigStore 文件 > 默认值。
+// 绝不使用硬编码字面量，因此会遵守配置文件中的自定义 daemon.host/port。
   return new DaemonClient().baseUrl;
 }
 
 /**
- * OPR.0.4.3.30 — Commander collector for `--to`: accepts BOTH a comma-list
- * (`--to a,b`) and repetition (`--to a --to b`), accumulating into one array.
- * Blank entries are dropped so a trailing comma is harmless.
+ * OPR.0.4.3.30——`--to` 的 Commander collector：同时接受逗号列表
+ * （`--to a,b`）和重复（`--to a --to b`），累积进一个数组。
+ * 空白条目被丢掉，所以尾随逗号无害。
  */
 function collectSessions(value: string, previous: string[]): string[] {
   const parts = value.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
@@ -198,11 +182,8 @@ function collectSessions(value: string, previous: string[]): string[] {
 }
 
 export interface SendDeps extends StatusDeps {
-  /**
-   * Cross-host hooks. Both default to the production loaders/executors; tests
-   * inject in-package mocks so no real ssh / no real ~/.ssh / no real network
-   * is touched.
-   */
+  /** 跨主机 hook。两者默认使用生产加载器/执行器；测试注入包内 mock，因此不会接触
+   * 真实 ssh、真实 ~/.ssh 或真实网络。 */
   hostRegistryLoader?: () => ReturnType<typeof loadHostRegistry>;
   crossHostRun?: (
     host: Parameters<typeof runCrossHostCommand>[0],
@@ -212,158 +193,146 @@ export interface SendDeps extends StatusDeps {
 }
 
 export function sendCommand(depsOverride?: SendDeps): Command {
-  const cmd = new Command("send").description("Send a message to an agent's terminal");
+  const cmd = new Command("send").description("向智能体的终端发送一条消息");
   const getDeps = (): SendDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
     clientFactory: (url: string) => new DaemonClient(url),
   };
 
   cmd
-    // OPR.0.4.3.30 — both positionals are optional so the message can stand alone with a
-    // targeting flag (`rig send --pod x "text"`). Disambiguated in the action: with a
-    // targeting flag the FIRST positional IS the message; without one it's `<session> <text>`.
-    .argument("[session]", "Target session name for a single-seat send (e.g. dev-impl@my-rig)")
-    .argument("[text]", "Message text to send")
-    .option("--to <sessions>", "Multi-recipient: comma-list or repeated (--to a,b or --to a --to b)", collectSessions, [] as string[])
-    .option("--pod <name>", "Send to every seat in a pod (fan-out, per-recipient results)")
-    .option("--rig <name>", "Send to every seat in a rig (fan-out, per-recipient results)")
-    .option("--verify", "Verify pane only delivery by checking content after send")
-    .option("--force", "Back-compat no-op: a mid-task/busy pane already sends-with-advisory by default; --force never bypasses the interactive-prompt/permission guard")
-    .option("--wait-for-idle <seconds>", "Wait until the target is explicitly idle before sending")
-    .option("--raw", "Send exact text/keystrokes without the From/To messaging envelope (still guarded against interactive prompts)")
-    .option("--dangerously-interact", "DANGEROUS: deliberately drive an interactive prompt/permission block (implies --raw; requires --reason). The ONLY override of the prompt/permission guard.")
-    .option("--reason <text>", "Why the prompt is being driven (required with --dangerously-interact; recorded in the audit log)")
-    .option("--host <id>", "Send on a remote host declared in ~/.openrig/hosts.yaml (ssh hosts shell out; http hosts go CLI-direct to the remote daemon)")
-    .option("--from <session>", "DEPRECATED + IGNORED (P21 I4). The rendered From:/actor now DERIVES from the transport identity ($OPENRIG_SESSION_NAME, stamped as X-OpenRig-Session) — never a caller-supplied string, which was specimen-5's forgeable surface. Cross-host origin is carried by the relay re-stamping from its authenticated context.")
-    .option("--context <ref>", "Deliver a context pack by its path-like ref (e.g. packs/compaction-restore). The resolved content is sent; an oversized ref is flagged as 'walk-sized'.")
-    .option("--json", "JSON output for agents")
+    // OPR.0.4.3.30——两个位置参数都可选，这样消息可以单独带一个目标标志
+    //（`zrig send --pod x "text"`）。action 里消歧：带目标标志时第一个位置参数
+    // 就是消息；没有时是 `<session> <text>`。
+    .argument("[session]", "单席位发送的目标会话名（例如 dev-impl@my-rig）")
+    .argument("[text]", "要发送的消息文本")
+    .option("--to <sessions>", "多接收方：逗号列表或重复（--to a,b 或 --to a --to b）", collectSessions, [] as string[])
+    .option("--pod <name>", "发送给一个 pod 里的每个席位（扇出，按接收方出结果）")
+    .option("--rig <name>", "发送给一个工作组里的每个席位（扇出，按接收方出结果）")
+    .option("--verify", "发送后检查内容，验证仅面板投递")
+    .option("--force", "向后兼容 no-op：任务中/忙碌面板默认就带提示发送；--force 绝不绕过交互提示/权限守卫")
+    .option("--wait-for-idle <seconds>", "等待目标显式空闲后再发送")
+    .option("--raw", "发送精确文本/按键，不带 From/To 消息信封（仍受交互提示守卫）")
+    .option("--dangerously-interact", "危险：刻意驱动交互提示/权限阻断（隐含 --raw；需要 --reason）。这是提示/权限守卫的唯一覆盖。")
+    .option("--reason <text>", "为什么要驱动提示（与 --dangerously-interact 一起用；记入审计日志）")
+    .option("--host <id>", "在 ~/.openrig/hosts.yaml 中声明的远程主机上发送（ssh 主机 shell out；http 主机 CLI 直连远程后台服务）")
+    .option("--from <session>", "已废弃 + 被忽略（P21 I4）。渲染的 From:/actor 现在从传输身份派生（$OPENRIG_SESSION_NAME，盖成 X-OpenRig-Session）——绝不接受调用方字符串，那是 specimen-5 可伪造的面。跨主机 origin 由中继从其认证上下文重新盖章携带。")
+    .option("--context <ref>", "按路径式 ref 投递一个上下文包（例如 packs/compaction-restore）。发送解析出的内容；超大 ref 标记为 'walk-sized'。")
+    .option("--json", "供智能体使用的 JSON 输出")
     .addHelpText("after", `
-Examples:
-  rig send dev-impl@my-rig "Context update: QA approved. Proceed."
-  rig send dev-impl@my-rig "message" --verify
-  rig send --to dev-impl@my-rig,dev-qa@my-rig "message to two seats"
-  rig send --pod dev "message to the whole dev pod"
-  rig send --rig my-rig "message to the whole rig"
-  rig send dev-impl@my-rig "safe proof prompt" --wait-for-idle 30 --verify
-  rig send dev-impl@my-rig "Stop and read the spec." --force
-  rig send dev-impl@my-rig "message" --json
-  rig send --host remote-dev dev-impl@my-rig "remote message" --verify
-  rig send dev-impl@my-rig@vps-b "host-qualified target sugar (suffix must be a registered host id)"
+示例：
+  zrig send dev-impl@my-rig "上下文更新：QA 已批准。继续。"
+  zrig send dev-impl@my-rig "消息" --verify
+  zrig send --to dev-impl@my-rig,dev-qa@my-rig "发给两个席位的消息"
+  zrig send --pod dev "发给整个 dev pod 的消息"
+  zrig send --rig my-rig "发给整个工作组的消息"
+  zrig send dev-impl@my-rig "安全验证提示" --wait-for-idle 30 --verify
+  zrig send dev-impl@my-rig "停下读 spec。" --force
+  zrig send dev-impl@my-rig "消息" --json
+  zrig send --host remote-dev dev-impl@my-rig "远程消息" --verify
+  zrig send dev-impl@my-rig@vps-b "主机限定目标糖（后缀必须是已注册主机 id）"
 
-Targeting: a bare seat (single send), OR one of --to / --pod / --rig (fan-out).
-Fan-out reports per-recipient results + an "N/M delivered" summary; one recipient's
-guard refusal does NOT block the others. Each recipient gets its own From/To envelope.
+目标：一个裸席位（单发送），或 --to / --pod / --rig 之一（扇出）。
+扇出按接收方出结果 + "N/M 已投递" 汇总；一个接收方的守卫拒绝不阻断其他人。
+每个接收方拿到自己的 From/To 信封。
 
-The two-step send pattern (paste text, wait, submit Enter) is handled
-automatically. By default a send is REFUSED only on POSITIVE evidence the target
-is at an interactive prompt or permission block (so a message can never
-select/approve another agent's prompt). When the target's activity CANNOT be
-determined (unknown / missing / stale telemetry) the send PROCEEDS with an
-advisory note — telemetry is advisory, not authority over whether agents can
-communicate. Use --wait-for-idle to send only after explicit idle evidence. Use
---verify to confirm the message appeared in the pane only; it is not agent
-acknowledgement.
+两步发送模式（粘贴文本、等待、回车提交）自动处理。默认只在有正面证据表明目标
+正处在交互提示或权限阻断时才拒绝发送（这样消息永远不会选中/批准另一个智能体的提示）。
+当目标活动无法确定（未知/缺失/陈旧遥测）时，发送带一条建议性提示继续——遥测是
+建议，不是智能体间能否通信的权威。用 --wait-for-idle 只在显式空闲证据后发送。
+用 --verify 确认消息出现在面板里；它不是智能体确认。
 
-A mid-task/busy target now sends-with-advisory by default (busy is not a block);
---force is a back-compat no-op and never bypasses the interactive-prompt/permission
-guard. Use --raw to send exact text/keystrokes
-without the From/To envelope (e.g. a slash command); it is still guarded. Use
---dangerously-interact --reason "<why>" to DELIBERATELY drive a prompt (select an
-option, approve a permission, send /compact to a blocked pane) — the only override
-of the prompt guard; it implies --raw and is audit-logged.
+任务中/忙碌目标现在默认带建议发送（忙碌不是阻断）；--force 是向后兼容 no-op，
+绝不绕过交互提示/权限守卫。用 --raw 发送精确文本/按键而不带 From/To 信封
+（例如斜杠命令）；它仍受守卫。用 --dangerously-interact --reason "<原因>" 刻意
+驱动提示（选一个选项、批准权限、给被阻断面板发 /compact）——这是提示守卫的唯一
+覆盖；它隐含 --raw 并记入审计日志。
 
---host sends on a remote host declared in ~/.openrig/hosts.yaml. The host
-entry's transport decides the path: ssh hosts run the same command via
-single-hop ssh (SSH success is NOT verify success: the remote rig's
-'Verified: yes/no' line is what counts and is surfaced verbatim); http hosts
-(e.g. pair-registered) go CLI-direct to the remote daemon's send route — the
-result and verify verdict are the REMOTE's, verbatim. A target of the form
-agent@rig@host is sugar for --host when the suffix is a REGISTERED host id
-(explicit --host > target sugar > persisted selection; a conflict between
---host and the sugar is an error).`)
+--host 在 ~/.openrig/hosts.yaml 中声明的远程主机上发送。主机条目的传输决定路径：
+ssh 主机通过单跳 ssh 跑同一命令（SSH 成功不等于验证成功：远程 rig 的
+'Verified: yes/no' 行才算数并逐字暴露）；http 主机（例如配对注册）CLI 直连远程
+后台服务的 send 路由——结果和验证结论是远程的，逐字。形如 agent@rig@host 的目标
+在后缀是已注册主机 id 时是 --host 的语法糖
+（显式 --host > 目标糖 > 持久选择；--host 与语法糖冲突是错误）。`)
     .action(async (session: string | undefined, text: string | undefined, opts: { to?: string[]; pod?: string; rig?: string; verify?: boolean; force?: boolean; waitForIdle?: string; raw?: boolean; dangerouslyInteract?: boolean; reason?: string; host?: string; from?: string; context?: string; json?: boolean }) => {
-      // OPR.0.4.6.MH1 FR-2: selected-host routing — explicit --host wins;
-      // else the persisted selection feeds the SHIPPED --host path; no
-      // selection = today exactly. OPR.0.4.6.MH4 §4: the raw flag is kept
-      // so the single-seat target sugar can slot BETWEEN explicit and
-      // selection (explicit > sugar > selection).
+    // OPR.0.4.6.MH1 FR-2：所选主机路由——显式 --host 优先；否则持久化选择进入已交付的
+    // --host 路径；没有选择时保持现有行为。OPR.0.4.6.MH4 §4：保留原始标志，使单席位
+    // 目标语法糖可插在显式指定与持久选择之间（显式 > 语法糖 > 选择）。
       const explicitHost = opts.host;
       opts.host = resolveEffectiveHost(opts.host);
       const waitForIdleMs = parseWaitForIdleMs(opts.waitForIdle);
       if (opts.force && waitForIdleMs !== undefined) {
-        console.error("--wait-for-idle cannot be combined with --force");
+        console.error("--wait-for-idle 不能与 --force 组合");
         process.exitCode = 1;
         return;
       }
       if (waitForIdleMs === null) {
-        console.error("--wait-for-idle must be a positive number of seconds");
+        console.error("--wait-for-idle 必须是正数秒数");
         process.exitCode = 1;
         return;
       }
-      // OPR.0.4.1.10 — the danger override requires a reason (for the audit) and cannot compose with
-      // wait mode. Reject locally before contacting the daemon.
+      // OPR.0.4.1.10——危险覆盖需要一个 reason（供审计），不能与 wait 模式组合。
+      // 在联系后台服务前本地拒绝。
       if (opts.dangerouslyInteract && (!opts.reason || opts.reason.trim().length === 0)) {
-        console.error("--dangerously-interact requires --reason \"<why>\" (recorded in the audit log)");
+        console.error("--dangerously-interact 需要 --reason \"<原因>\"（记入审计日志）");
         process.exitCode = 1;
         return;
       }
       if (opts.dangerouslyInteract && waitForIdleMs !== undefined) {
-        console.error("--dangerously-interact cannot be combined with --wait-for-idle");
+        console.error("--dangerously-interact 不能与 --wait-for-idle 组合");
         process.exitCode = 1;
         return;
       }
 
-      // OPR.0.4.3.30 — targeting-mode resolution. Exactly one of: a bare seat, --to, --pod, --rig.
+      // OPR.0.4.3.30——目标模式解析。恰好四选一：裸席位、--to、--pod、--rig。
       const toList = opts.to && opts.to.length > 0 ? opts.to : undefined;
       const fanModes = [toList ? "to" : null, opts.pod ? "pod" : null, opts.rig ? "rig" : null].filter(Boolean);
       if (fanModes.length > 1) {
-        console.error("Choose exactly ONE target: a seat, --to, --pod, or --rig (not several).");
+        console.error("请恰好选一个目标：席位、--to、--pod 或 --rig（不要多个）。");
         process.exitCode = 1;
         return;
       }
       const isFanOut = fanModes.length === 1;
 
-      // Slice-03 Atom 6b: --context is single-seat LOCAL in v1 (fan-out and
-      // cross-host --context are follow-ons). Reject loudly rather than silently
-      // dropping the requested context.
+      // Slice-03 Atom 6b：v1 中 --context 是单席位本地（扇出和跨主机 --context 是后续）。
+      // 大声拒绝，而不是静默丢掉请求的 context。
       if (opts.context && (isFanOut || opts.host)) {
-        console.error("--context is supported on a single-seat LOCAL send in v1 (not with --to/--pod/--rig or --host).");
+        console.error("v1 中 --context 只支持单席位本地发送（不能与 --to/--pod/--rig 或 --host 一起用）。");
         process.exitCode = 1;
         return;
       }
 
       const deps = getDeps();
 
-      // P18 DELIVER-AND-LABEL — the seat boundary no longer refuses. Resolve the sender from the seat env
-      // (OPENRIG_SESSION_NAME/RIGGED_SESSION_NAME; --from is deprecated + ignored); when it is unresolvable
-      // the dispatch STILL proceeds carrying the honest `<unknown sender>` marker and a NULL actorSession —
-      // never a forged actor. `seatSender` is therefore `string | undefined` and is threaded through every
-      // dispatch path (fan-out, cross-host, single-seat). Mirrors the daemon half, which delivers-and-labels
-      // the header-absent write (no 401): unverified is labelled unknown, never laundered to verified.
+      // P18 投递并标记——席位边界不再拒绝。从席位 env 解析发送方
+      //（OPENRIG_SESSION_NAME/RIGGED_SESSION_NAME；--from 已废弃 + 被忽略）；
+      // 无法解析时分发仍带着诚实的 `<unknown sender>` 标记和 NULL actorSession 继续——
+      // 绝不伪造 actor。`seatSender` 因此是 `string | undefined`，贯穿每条分发路径
+      //（扇出、跨主机、单席位）。镜像后台服务侧，后者投递并标记 header 缺席的写
+      //（不 401）：未验证标记为 unknown，绝不洗白成 verified。
       const seatSender = resolveSenderSession();
 
       if (isFanOut) {
-        // With a targeting flag the FIRST positional IS the message; a second positional (or a
-        // bare seat name) means the caller mixed a single-seat and a fan-out target — reject.
+        // 带目标标志时第一个位置参数就是消息；第二个位置参数（或裸席位名）意味着
+        // 调用方混了单席位和扇出目标——拒绝。
         if (text !== undefined) {
-          console.error("A bare seat name cannot be combined with --to/--pod/--rig. Provide only the message.");
+          console.error("裸席位名不能与 --to/--pod/--rig 组合。请只提供消息。");
           process.exitCode = 1;
           return;
         }
         const message = session;
         if (message === undefined) {
-          console.error("Provide a message to send.");
+          console.error("请提供要发送的消息。");
           process.exitCode = 1;
           return;
         }
         if (refuseEmptyMessage(message, "send", Boolean(opts.json))) return;
         if (opts.host) {
-          console.error("--host (cross-host) supports single-seat sends only; --to/--pod/--rig are local.");
+          console.error("--host（跨主机）只支持单席位发送；--to/--pod/--rig 是本地。");
           process.exitCode = 1;
           return;
         }
         if (waitForIdleMs !== undefined) {
-          console.error("--wait-for-idle is not supported with a multi/pod/rig target (cumulative wait risks a client timeout). Send single-seat, or drop --wait-for-idle.");
+          console.error("--wait-for-idle 不支持多/pod/rig 目标（累积等待有客户端超时风险）。请单发单席位，或去掉 --wait-for-idle。");
           process.exitCode = 1;
           return;
         }
@@ -371,25 +340,23 @@ agent@rig@host is sugar for --host when the suffix is a REGISTERED host id
         return;
       }
 
-      // --- Single-seat path (byte-identical to pre-0.4.3.30) ---
-      // Atom 6b: --context supplies the payload, so <text> is optional with it.
+      // --- 单席位路径（与 0.4.3.30 之前逐字节相同）---
+      // Atom 6b：--context 提供载荷，所以带它时 <text> 可选。
       if (session === undefined || (text === undefined && !opts.context)) {
-        console.error("Usage: rig send <session> <text>  (or rig send <session> --context <ref>, or --to/--pod/--rig <message> for fan-out)");
+        console.error("用法：zrig send <session> <text> （或 zrig send <session> --context <ref>，或 --to/--pod/--rig <message> 做扇出）");
         process.exitCode = 1;
         return;
       }
       if (!opts.context && refuseEmptyMessage(text!, "send", Boolean(opts.json))) return;
 
-      // The endpoint selects delivery; the local durable store identifies the origin.
+      // 端点选投递；本地持久存储标识 origin。
       const localDaemonUrl = await resolveLocalDaemonUrl(deps);
       const selfHostId = await fetchSelfHostId(deps.lifecycleDeps, localDaemonUrl);
 
-      // OPR.0.4.6.MH4 §4 — the `agent@rig@host` target sugar (single-seat
-      // only; the fan-out positional is message text). Suffix must match a
-      // REGISTERED host id, else the target passes through unchanged and
-      // the hint rides any later failure. Precedence: explicit --host >
-      // sugar > persisted selection (already folded into opts.host above).
-      // 51-09 incr 3: a suffix == this host's self-id strips-and-routes-home.
+      // OPR.0.4.6.MH4 §4——`agent@rig@host` 目标语法糖（仅单席位；扇出位置参数是消息文本）。
+      // 后缀必须匹配已注册主机 id，否则目标原样通过，提示骑在之后任何失败上。
+      // 优先级：显式 --host > 语法糖 > 持久选择（上面已折进 opts.host）。
+      // 51-09 incr 3：后缀 == 本机 self-id 时剥掉并路由回本地。
       const targetResolution = resolveCrossHostTarget(session, explicitHost, deps.hostRegistryLoader, selfHostId);
       if (!targetResolution.ok) {
         console.error(targetResolution.error);
@@ -401,46 +368,41 @@ agent@rig@host is sugar for --host when the suffix is a REGISTERED host id
       if (targetResolution.warning) console.error(targetResolution.warning);
       opts.host = explicitHost ?? targetResolution.sugarHost ?? opts.host;
 
-      // Atom 6b QA fix (root cause): re-reject --context on the cross-host path
-      // AFTER the agent@rig@host sugar host folds into opts.host. The early guard
-      // runs before resolveCrossHostTarget, so it cannot see the sugar host — the
-      // hole that let a sugar-form --context reach the remote argv (shipping a
-      // literal null with no message, or silently dropping the context with one).
-      // --context is single-seat LOCAL in v1; it is never handed to a remote send.
+      // Atom 6b QA 修复（根因）：在 agent@rig@host 语法糖主机折进 opts.host 之后，
+      // 再次在跨主机路径上拒绝 --context。早期守卫跑在 resolveCrossHostTarget 之前，
+      // 看不到语法糖主机——这个洞让语法糖形 --context 到达远程 argv
+      //（寄出一个没有消息的字面 null，或带消息时静默丢掉 context）。
+      // v1 中 --context 是单席位本地；绝不交给远程发送。
       if (opts.context && opts.host) {
-        console.error("--context is supported on a LOCAL send in v1 (not with --host or an agent@rig@host cross-host target).");
+        console.error("v1 中 --context 只支持本地发送（不能与 --host 或 agent@rig@host 跨主机目标一起用）。");
         process.exitCode = 1;
         return;
       }
 
-      // --- Cross-host short-circuit (CLI-side; ssh shell-out or the MH-4 http branch; daemon untouched) ---
+      // --- 跨主机短路（CLI 侧；ssh shell out 或 MH-4 http 分支；后台服务不动）---
       if (opts.host) {
-        // text is validated-defined here: --context is rejected with --host (above,
-        // for both explicit and sugar forms), and the single-seat (no text && no
-        // context) guard requires it on this path.
+        // text 在此处已校验为有定义：--context 与 --host 一起已被拒（上面，
+        // 显式和语法糖两种形），单席位（无 text 且无 context）守卫在这条路径上要求它。
         const originId = await resolveOriginSelfHostId(deps.lifecycleDeps);
         await runCrossHostSend(opts.host, session, text!, opts, deps, waitForIdleMs, crossHostHint, originId, seatSender);
         return;
       }
 
-      // qitem-c113bd41 — the status probe is ADVISORY (target discovery
-      // only); the actual transport is authoritative. A probe-timeout or
-      // running/unhealthy verdict no longer refuses the send. ff13bcdf —
-      // the resolver takes that probe lazily, and skips it entirely when an
-      // explicit env alias already names the target.
+      // qitem-c113bd41——状态探测只是建议性的（只用于目标发现）；真正的传输才权威。
+      // 探测超时或 running/unhealthy 结论不再拒绝发送。ff13bcdf——resolver 惰性发起
+      // 探测，显式 env 别名已命名目标时完全跳过它。
       const client = deps.clientFactory(localDaemonUrl);
-      // P21 I4: the rendered From: (specimen-5's forged surface) derives from the SEAT ENV, never
-      // --from. --from is deprecated + ignored here (its cross-host origin-carry is superseded by the
-      // relay re-stamping from its authenticated context). Env == the X-OpenRig-Session the DaemonClient
-      // stamps, so the client-side From: + the body actor stay consistent with the daemon's derived actor.
-      const senderSession = seatSender; // P18: seat env identity, or undefined → delivers-and-labels (unknown marker, null actor).
-      // --raw (and --dangerously-interact, which implies it) send EXACT text with no messaging envelope.
+      // P21 I4：渲染的 From:（specimen-5 可伪造面）从席位 env 派生，绝不从
+      // --from。--from 在此已废弃 + 被忽略（它的跨主机 origin 携带已被中继从其认证
+      // 上下文重新盖章取代）。Env == DaemonClient 盖的 X-OpenRig-Session，
+      // 所以客户端 From: + 正文 actor 与后台服务派生 actor 保持一致。
+      const senderSession = seatSender; // P18：席位 env 身份，或 undefined → 投递并标记（unknown 标记，null actor）。
+      // --raw（以及隐含它的 --dangerously-interact）发送精确文本，不带消息信封。
       const raw = Boolean(opts.raw || opts.dangerouslyInteract);
 
-      // Atom 6b: --context resolves a pack ref to its whole content (all-or-nothing
-      // — a missing member aborts before any send) and delivers it. A message +
-      // --context sends the message then the context, blank-line separated. An
-      // oversized context surfaces the §4 walk-sized advisory.
+      // Atom 6b：--context 把一个包 ref 解析成它的全部内容（全有或全无——
+      // 缺成员在任何发送前中止）并投递。消息 + --context 先发消息再发 context，
+      // 空行分隔。超大 context 暴露 §4 walk-sized 建议。
       let payload = text ?? "";
       if (opts.context) {
         let resolved;
@@ -453,11 +415,11 @@ agent@rig@host is sugar for --host when the suffix is a REGISTERED host id
         }
         payload = text && text.length > 0 ? `${text}\n\n${resolved.text}` : resolved.text;
         const warn = walkSizedWarning(resolved, session);
-        if (warn && !opts.json) console.log(`Advisory: ${warn}`);
+        if (warn && !opts.json) console.log(`建议：${warn}`);
       }
       if (refuseEmptyMessage(payload, "send", Boolean(opts.json))) return;
-      // Send/broadcast header (ruling 03c35295): a directed `rig send` is a DM — stamp it at send-time
-      // (Sent: MM-DD HH:MMZ) so transcripts are timestamped; the To line stays the single recipient.
+      // Send/broadcast 头部（ruling 03c35295）：定向 `rig send` 是 DM——在发送时盖章
+      //（Sent: MM-DD HH:MMZ）让 transcript 带时间戳；To 行保持单接收方。
       const outboundText = raw ? payload : wrapSendBody(senderSession, session, payload, { stampISO: new Date().toISOString() });
       let res: { status: number; data: Record<string, unknown> };
       try {
@@ -467,10 +429,8 @@ agent@rig@host is sugar for --host when the suffix is a REGISTERED host id
         }, transportRequestOptions(waitForIdleMs));
       } catch (err) {
         if (err instanceof DaemonConnectionError) {
-          // The REAL transport outcome, honestly surfaced (names the
-          // configured target + the underlying error) — never the bare
-          // probe-derived restart line. 1b45cf21 adds the actionable next
-          // step after that real failure.
+        // 如实展示真实传输结果，包括配置目标与底层错误；绝不只显示探针推导的裸重启提示。
+        // 1b45cf21 在真实失败后补充可执行的下一步。
           printTransportFailure(err, { json: opts.json });
           process.exitCode = 1;
           return;
@@ -479,22 +439,21 @@ agent@rig@host is sugar for --host when the suffix is a REGISTERED host id
       }
 
       if (res.data["outcome"] === "retained") {
-        console.log(opts.json ? JSON.stringify(res.data) : `Retained, not delivered to ${session}. ${String(res.data["warning"] ?? "")}`);
+        console.log(opts.json ? JSON.stringify(res.data) : `已保留，未投递给 ${session}。${String(res.data["warning"] ?? "")}`);
         return;
       }
 
-      // S3 wave-1 fix (r2 F2): effect classification runs BEFORE any output
-      // encoding or routing, so the human and JSON encoders render the same
-      // effect truth — no path may report sent/delivered from the transport
-      // return alone when --verify asked for consumption.
+      // S3 wave-1 修复（r2 F2）：效果分类跑在任何输出编码或路由之前，
+      // 这样人类和 JSON 编码器渲染同一份效果真相——当 --verify 要求消费确认时，
+      // 没有路径可以仅凭传输返回就报 sent/delivered。
       let effect: EffectCheck | undefined;
       if (opts.verify && res.status < 400) {
         effect = await classifyDeliveryEffect(client, session, stagedIdentityFor(payload, outboundText), waitForIdleMs);
       }
 
       if (opts.json) {
-        // Round-2 F1: ONE verdict — a staged-unresolved envelope carries no
-        // delivered claim beside the staged effect.
+        // Round-2 F1：一个结论——staged-unresolved 信封在 staged effect 旁不带任何
+        // delivered 主张。
         const envelope = !effect
           ? res.data
           : effectUnresolved(effect)
@@ -508,42 +467,39 @@ agent@rig@host is sugar for --host when the suffix is a REGISTERED host id
 
       if (res.status >= 400) {
         const error = res.data["error"] as string | undefined;
-        console.error(error ?? `Send failed (HTTP ${res.status})`);
-        // MH-4 §4 loud-failure hint: the target was 3-part-shaped but its
-        // suffix matched no registered host — name the near-miss.
-        if (crossHostHint) console.error(`hint: ${crossHostHint}`);
+        console.error(error ?? `发送失败（HTTP ${res.status}）`);
+        // MH-4 §4 大声失败提示：目标是三段形但后缀没匹配到已注册主机——点名这个近失。
+        if (crossHostHint) console.error(`提示：${crossHostHint}`);
         process.exitCode = res.status >= 500 ? 2 : 1;
         return;
       }
 
-      console.log(`Sent to ${session}`);
-      // OPR.0.4.3.28 correction — an `unknown`-telemetry send now PROCEEDS with a non-blocking
-      // advisory (was a fail-closed refusal). Surface it on the human output, not only in --json.
+      console.log(`已发送给 ${session}`);
+      // OPR.0.4.3.28 修正——`unknown` 遥测发送现在带非阻塞建议继续（之前是 fail-closed 拒绝）。
+      // 在人类输出上暴露它，不只在 --json 里。
       const advisory = res.data["warning"] as string | undefined;
       if (advisory) {
-        console.log(`Advisory: ${advisory}`);
+        console.log(`建议：${advisory}`);
       }
       if (opts.verify && effect) {
-        // S3 (OPR.0.5.4.6) — "sent" must mean CONSUMED, never merely typed. A
-        // positive staged residual overrides the transport's answer; absence of
-        // a residual proves nothing (a redrawn pane reads absent), so the
-        // transport's verdict stands unchanged in that case.
+        // S3（OPR.0.5.4.6）——"sent" 必须意味着被消费，绝不只是敲进去。
+        // 正面 staged 残压过传输的回答；残缺失什么也证明不了（重绘面板读成缺失），
+        // 所以那种情况下传输结论原样保留。
         if (effect.checked && effect.state === "staged") {
-          console.log("Verified: no");
+          console.log("验证：否");
           for (const line of effectHumanLines(effect, session)) console.log(line);
           if (effectUnresolved(effect)) process.exitCode = 1;
         } else {
-          // Legacy line preserved verbatim (existing scripts grep `Verified:`);
-          // the Delivery line below carries the honest three-outcome vocabulary
-          // (OPR.99.0.6.3): `Verified: no` alone collapsed a landed-but-redraw-
-          // raced send into the same line as a miss.
+          // 旧行逐字保留（已有脚本 grep `Verified:`）；下面的 Delivery 行带诚实的
+          // 三结论词汇（OPR.99.0.6.3）：单独的 `Verified: no` 会把已落地但重绘竞速的
+          // 发送和未命中压成同一行。
           const verified = res.data["verified"] as boolean | undefined;
-          console.log(`Verified: ${verified ? "yes" : "no"}`);
+          console.log(`验证：${verified ? "是" : "否"}`);
           const outcome = res.data["outcome"] as string | undefined;
           if (outcome === "delivered") {
-            console.log("Delivery: delivered (message landed; render confirmed)");
+            console.log("投递：delivered（消息已落地；渲染已确认）");
           } else if (outcome === "rendered-unconfirmed") {
-            console.log(`Delivery: rendered-unconfirmed (landed; pane re-render not confirmed - confirm with: rig capture ${session})`);
+            console.log(`投递：rendered-unconfirmed（已落地；面板重绘未确认——用 zrig capture ${session} 确认）`);
           }
           for (const line of effectHumanLines(effect, session)) console.log(line);
         }
@@ -554,11 +510,10 @@ agent@rig@host is sugar for --host when the suffix is a REGISTERED host id
 }
 
 /**
- * S3 (OPR.0.5.4.6) — the delivery-effect classification, run BEFORE any output
- * encoding or routing (r2 F2) so every encoder — human, JSON, fan-out — renders
- * the same effect truth. Runs the staged detector; a positive residual takes
- * the ONE guarded submit (types nothing, cannot double-deliver) and one
- * recheck, then stops. Pure classification: no printing here.
+ * S3（OPR.0.5.4.6）——投递效果分类，跑在任何输出编码或路由之前（r2 F2），
+ * 让每个编码器——人类、JSON、扇出——渲染同一份效果真相。跑 staged 探测器；
+ * 正面残压过 ONE guarded submit（什么都不敲，不会重复投递）加一次复查，然后停。
+ * 纯分类：这里不打印。
  */
 type EffectCheck =
   | { checked: true; state: "staged"; remedy: "submitted-cleared" | "submitted-still-staged" | "submit-refused"; detail?: string }
@@ -566,17 +521,16 @@ type EffectCheck =
   | { checked: false; why: string };
 
 /**
- * Round-2 F2 — ONE identity source for staged evidence AND submit safety: the
- * same bytes the guarded submit's precheck verifies decide what may count as
- * THIS send's staged evidence. The identity check runs BEFORE any placeholder
- * attribution (desk-binding refinement).
+ * Round-2 F2——staged 证据和 submit 安全的同一身份源：guarded submit 的 precheck
+ * 校验的同样字节决定什么算本次发送的 staged 证据。身份检查跑在任何占位符归因之前
+ * （桌面绑定精化）。
  */
 interface StagedIdentity {
-  /** the bytes the guarded submit verifies against the pane residual */
+  /** guarded submit 对照面板残压校验的字节 */
   expectedStagedText: string;
-  /** their line count — the binding for a pasted-text placeholder */
+  /** 它们的行数——粘贴文本占位符的绑定 */
   expectedLines: number;
-  /** recognizable head of the user's payload (contained in any wrap), daemon-precheck normalization */
+  /** 用户载荷的可识别头部（含在任何 wrap 里），后台服务 precheck 归一化 */
   payloadHead: string;
 }
 
@@ -612,37 +566,34 @@ async function classifyDeliveryEffect(
     : { checked: true, state: "staged", remedy: "submitted-cleared" };
 }
 
-/** Renders an EffectCheck on the human surface — shared wording across the
- *  single-send and fan-out paths so the report is identical everywhere. */
+/** 在人类界面渲染 EffectCheck；单发与扇出路径共用措辞，使各处报告一致。 */
 function effectHumanLines(effect: EffectCheck, session: string): string[] {
   if (!effect.checked) {
-    return [`Note: the pane-effect check could not run (${effect.why}); the verdict above is transport-level only.`];
+    return [`注意：面板效果检查未能运行（${effect.why}）；上面的结论只是传输级。`];
   }
   if (effect.state === "no-staged-residual") return [];
-  const out = ["Delivery: staged, not consumed (checked: post-send pane capture; observed: the sent text is still at the prompt — typed, never submitted)"];
+  const out = ["投递：staged，未消费（已检查：发送后面板捕获；观察：发送的文本仍在提示处——敲进去了，从未提交）"];
   if (effect.remedy === "submitted-cleared") {
-    out.push("Remedy: one guarded Enter submitted — the staged text left the prompt.");
+    out.push("补救：一次 guarded Enter 已提交——staged 文本已离开提示。");
   } else if (effect.remedy === "submitted-still-staged") {
-    out.push(`Remedy: one guarded Enter submitted, but the text is STILL at the prompt — not consumed; stopping here (one submit is the contract). Inspect with: rig capture ${session}`);
+    out.push(`补救：一次 guarded Enter 已提交，但文本仍在提示处——未消费；就此停手（一次提交是约定）。用 zrig capture ${session} 检查`);
   } else {
-    out.push(`Remedy: the single guarded Enter (submit path) was refused (${effect.detail}); stopping here — one submit is the contract. Inspect with: rig capture ${session}`);
+    out.push(`补救：唯一的 guarded Enter（提交路径）被拒（${effect.detail}）；就此停手——一次提交是约定。用 zrig capture ${session} 检查`);
   }
   return out;
 }
 
-/** True when a staged detection did not end consumed — a non-silent failure. */
+/** staged 检测未以 consumed 结束时为 true，表示不可静默的失败。 */
 function effectUnresolved(effect: EffectCheck | undefined): boolean {
   return !!effect && effect.checked && effect.state === "staged" && effect.remedy !== "submitted-cleared";
 }
 
 /**
- * S3 (OPR.0.5.4.6) — the staged-at-prompt detector, walk's staged-evidence
- * primitive generalized to plain sends. POSITIVE evidence only: text rendered
- * in the input-box region (on or after the LAST prompt line — scrollback above
- * it never counts) or the TUI's pasted-text placeholder. It proves STAGED; it
- * can never prove consumed (a redrawn pane reads absent — capture absence is
- * not evidence), so callers treat a non-staged answer as "no override", not as
- * a consumption proof.
+ * S3（OPR.0.5.4.6）——提示处已暂存检测器，把 walk 的 staged-evidence 原语推广到
+ * 普通发送。只接受正向证据：输入框区域（最后一个提示行之上属于回滚历史，绝不计入）
+ * 实际渲染的文本，或 TUI 的粘贴文本占位符。它能证明 STAGED，但绝不能证明已消费；
+ * pane 重绘后读不到内容不构成证据。因此调用方把“未检测为 staged”解释为“无覆盖”，
+ * 而不是消费证明。
  */
 async function detectStagedAtPrompt(
   client: DaemonClient,
@@ -659,10 +610,8 @@ async function detectStagedAtPrompt(
   if (cap.status !== 200 || typeof pane !== "string") {
     return { state: "unchecked", why: (cap.data?.["error"] as string | undefined) ?? `capture HTTP ${cap.status}` };
   }
-  // r2 F3: isolate the CURRENT input region FIRST — from the LAST prompt-marker
-  // line to the end of the pane. Everything above it is history; a stale
-  // pasted-text placeholder in scrollback is never staged evidence, and the
-  // guarded submit must never fire on history.
+  // r2 F3：先隔离当前输入区域，即从最后一个提示标记行到 pane 末尾。上方内容都是历史；
+  // 回滚区中过期的粘贴文本占位符绝不是 staged 证据，受保护提交也绝不能对历史触发。
   const lines = pane.split("\n");
   let lastPrompt = -1;
   for (let i = lines.length - 1; i >= 0; i--) {
@@ -670,19 +619,16 @@ async function detectStagedAtPrompt(
   }
   if (lastPrompt === -1) return { state: "not-staged" };
   const inputRegionRaw = lines.slice(lastPrompt).join("\n").replace(/^\s*[❯›]/, "");
-  // IDENTITY FIRST (round-2 F2, desk-binding): the literal-residual match uses
-  // the daemon submit-precheck's own normalization (strip ALL whitespace,
-  // contiguous containment) so a detector-positive is compatible with the
-  // guarded submit's precheck by construction.
+  // 身份优先（第二轮 F2，desk-binding）：字面残留匹配采用后台服务 submit-precheck
+  // 自身的规范化方式（移除所有空白后做连续包含），因此检测为阳性在构造上就与受保护
+  // 提交的预检兼容。
   const norm = (s: string): string => s.replace(/\s+/g, "");
   if (identity.payloadHead.length > 0 && norm(inputRegionRaw).includes(identity.payloadHead)) {
     return { state: "staged" };
   }
-  // Placeholder attribution ONLY AFTER identity: a pasted-text placeholder in
-  // the current input region is staged-as-THIS-send only when its line count
-  // binds to the same bytes the submit guard would verify. An unrelated
-  // placeholder (someone else's staged content) is UNVERIFIABLE — never
-  // staged-as-this-send, and the guarded submit must never fire on it.
+  // 只有确认身份后才归因占位符：当前输入区的粘贴文本占位符，仅在线数绑定到提交守卫
+  // 将校验的同一字节时，才算“本次发送已暂存”。无关占位符（他人暂存内容）不可验证，
+  // 绝不视为本次发送已暂存，受保护提交也绝不能对它触发。
   const placeholder = inputRegionRaw.match(/\[Pasted text #\d+ \+(\d+) lines\]/);
   if (placeholder) {
     const extra = Number(placeholder[1]);
@@ -722,18 +668,15 @@ async function runCrossHostSend(
   }
   const host = resolved.host;
 
-  // OPR.0.4.6.MH4 — the http transport branch: an http-registered host (the
-  // founder's `pair` front door) takes the CLI-direct path to the remote
-  // daemon's shipped /api/transport/send. The ssh path below stays
-  // byte-verbatim for ssh hosts (transport is dictated by the host entry —
-  // ssh XOR http, never a fallback).
+    // OPR.0.4.6.MH4——HTTP 传输分支：通过创建者 `pair` 前门注册的 HTTP 主机，
+    // 走 CLI 直连远端后台服务已交付 /api/transport/send 的路径。下方 SSH 路径对 SSH
+    // 主机保持逐字节不变；传输方式由主机条目决定，是 SSH 与 HTTP 二选一，绝不是回退。
   if (host.transport === "http") {
     await runHttpHostSend(host, session, text, opts, deps, waitForIdleMs, hint, selfHostId, seatSender);
     return;
   }
 
-  // Reconstruct argv for the remote `rig send` invocation. Order is positional
-  // first so the remote Commander parses it the same way local does.
+    // 为远端 `rig send` 调用重建 argv。位置参数优先排列，使远端 Commander 与本地解析一致。
   const argv: string[] = ["rig", "send", session, text];
   if (opts.verify) argv.push("--verify");
   if (opts.force) argv.push("--force");
@@ -741,20 +684,18 @@ async function runCrossHostSend(
   if (opts.raw) argv.push("--raw");
   if (opts.dangerouslyInteract) argv.push("--dangerously-interact");
   if (opts.reason !== undefined) argv.push("--reason", opts.reason);
-  // Sender provenance: the ssh relay re-runs `rig send` on the remote, which
-  // would otherwise resolve ITS OWN session and degrade the envelope sender
-  // to "unknown". Carry the origin so the remote envelope names the originating
-  // session. Plumbing, not a gate.
-  // P21 I4 rail 2: the origin is THIS relay's authenticated context ($OPENRIG_SESSION_NAME),
-  // never a caller-supplied --from string (deprecated + ignored). NOTE: the remote now derives
-  // From:/actor from ITS X-OpenRig-Session header, so the proper cross-host re-stamp is to set the
-  // remote env (OPENRIG_SESSION_NAME=originTriple) rather than the --from argv below — the argv is a
-  // deprecated no-op on the shipped remote pending that runner env-plumbing (flagged to orch).
+    // 发送方来源：SSH 中继会在远端重新运行 `rig send`；若不携带来源，它会解析自身会话，
+    // 并把信封发送方降级为 `unknown`。因此传递来源，让远端信封写入原始会话。
+    // 这是接线，不是门控。
+    // P21 I4 导轨 2：来源是本中继的已认证上下文（$OPENRIG_SESSION_NAME），绝不是调用方
+    // 提供的 --from 字符串，后者已弃用且忽略。远端现在从自身 X-OpenRig-Session 头派生
+    // From:/actor，因此正确的跨主机重盖章方式是设置远端环境
+    // OPENRIG_SESSION_NAME=originTriple，而不是下方 --from argv。在运行器环境接线完成前，
+    // 该 argv 对已交付远端是弃用的空操作，已标给 orch。
   const originSender = seatSender; // P18: origin seat env, or undefined → remote renders the unknown-sender marker.
-  // 51-09 increment 3: carry the ORIGIN's full <member>@<rig>@<selfHostId> triple
-  // so the remote envelope names the ORIGIN host, not the relay's. Append this
-  // host's self-id only when the origin isn't already a triple (a --from already
-  // carrying an origin triple is preserved verbatim — never re-stamped).
+    // 51-09 增量 3：携带来源的完整 <member>@<rig>@<selfHostId> 三元组，使远端信封
+    // 标记来源主机而非中继主机。仅当来源尚非三元组时附加本机 self-id；已经携带来源
+    // 三元组的 --from 保持原样，绝不重复盖章。
   const originTriple =
     originSender && selfHostId && originSender.split("@").length < 3
       ? `${originSender}@${selfHostId}`
@@ -762,10 +703,10 @@ async function runCrossHostSend(
   if (originTriple) argv.push("--from", originTriple);
   if (opts.json) argv.push("--json");
 
-  // A2 (P23): ADDITIVELY set OPENRIG_SESSION_NAME=<origin triple> on the remote command line so the
-  // remote's rig derives the ORIGIN identity from its env (the shipped derivation path), not its own
-  // seat. --from STAYS on argv above (a pre-I4 remote still reads origin from it; the argv removal is a
-  // separate P23-D1-gated increment). Same triple for both, composed once above.
+    // A2（P23）：在远端命令行上以加法方式设置 OPENRIG_SESSION_NAME=<origin triple>，使远端
+    // rig 从环境（已交付派生路径）得到来源身份，而非自身席位。上方 argv 仍保留 --from，
+    // 因为 I4 前的远端仍从中读取来源；移除该 argv 是另一个受 P23-D1 门控的增量。
+    // 两处复用上方只组装一次的同一三元组。
   const result = await runner(host, argv, originTriple ? { originTriple } : {});
 
   if (opts.json) {
@@ -777,7 +718,7 @@ async function runCrossHostSend(
     return;
   }
 
-  console.log(`[via host=${host.id} (${hostDisplayTarget(host)})]`);
+  console.log(`[经由主机 ${host.id}（${hostDisplayTarget(host)}）]`);
   if (result.ok) {
     if (result.stdout) process.stdout.write(result.stdout);
     if (result.stderr) process.stderr.write(result.stderr);
@@ -787,24 +728,19 @@ async function runCrossHostSend(
 }
 
 /**
- * OPR.0.4.6.MH4 C1 — cross-host send over http, CLI-DIRECT to the remote
- * daemon's shipped POST /api/transport/send (zero daemon-side changes).
- * Wrap parity BY CONSTRUCTION: the body is built exactly as the LOCAL path
- * builds it (same wrapSendBody call, same fields), so the remote daemon
- * receives what its own local CLI would post. `actorSession` is the local
- * sender verbatim — honest provenance; unknown on the remote it degrades to
- * the shipped non-blocking advisory, never a refusal. `--verify` prints the
- * REMOTE route's verified/outcome verbatim (remote-authoritative, never
- * locally synthesized). Deadline: the read-class client default, or
- * waitForIdleMs + overhead when --wait-for-idle (the local path's math).
+ * OPR.0.4.6.MH4 C1——通过 HTTP 跨主机发送，由 CLI 直接访问远端后台服务已交付的
+ * POST /api/transport/send，后台服务侧无需改动。构造上保证包装一致：正文与本地路径
+ * 使用完全相同的 wrapSendBody 调用和字段，因此远端收到的内容等同于其本地 CLI 所发送。
+ * `actorSession` 逐字使用本地发送者，保证来源诚实；远端无法识别时降级为已交付的
+ * 非阻塞建议，绝不拒绝。`--verify` 逐字打印远端路由的 verified/outcome，以远端为权威，
+ * 绝不在本地合成。截止时间使用读取类客户端默认值；指定 --wait-for-idle 时为
+ * waitForIdleMs 加额外开销，与本地路径计算一致。
  *
- * Auth posture (named, v0): runRemoteHttpOp presents the REGISTRY bearer
- * WHEN ONE IS CONFIGURED; for a URL-only anonymous host the Authorization
- * header is omitted entirely (optional-bearer, a0c17305).
- * /api/transport/* is gated by the remote's TERMINAL bearer class. Default
- * (null) + tailnet binds = pass-through by design; a remote enforcing a
- * DIFFERENT terminal bearer surfaces as the structured permission-gate step
- * (never a hang, never silent). Remedy documented in cli-reference.md.
+ * 认证姿态（具名，v0）：配置注册表 bearer 时，runRemoteHttpOp 会携带它；仅 URL 的匿名
+ * 主机完全省略 Authorization 头（optional-bearer，a0c17305）。/api/transport/* 由远端
+ * TERMINAL bearer 类门控。默认 null 加 tailnet 绑定按设计直接通过；若远端强制另一种
+ * terminal bearer，则以结构化权限门控步骤展示，绝不挂起、绝不静默。补救方法记录在
+ * cli-reference.md。
  */
 async function runHttpHostSend(
   host: HttpHostEntry,
@@ -817,11 +753,11 @@ async function runHttpHostSend(
   selfHostId?: string,
   seatSender: string | undefined = undefined,
 ): Promise<void> {
-  // P21 I4: cross-host send — the origin is the LOCAL seat env (this daemon's authenticated context per
-  // rail 2), never a caller --from string. The remote renders From: = env; --from is deprecated + ignored.
-  const senderSession = seatSender; // P18: seat env identity, or undefined → delivers-and-labels (unknown marker, null actor).
-  // ROOT INVARIANT: host identity is added HERE, at the cross-host forwarding boundary — the
-  // origin triple is constructed once for the remote render; local sends never carry it.
+  // P21 I4：跨主机发送的来源是本地席位环境，即按导轨 2 获得的本后台服务认证上下文；
+  // 绝不是调用方 --from 字符串。远端渲染 From: = env；--from 已弃用且忽略。
+  const senderSession = seatSender; // P18：席位环境身份；undefined 时仍投递并标注（unknown 标记、null actor）。
+  // 根不变量：主机身份只在此跨主机转发边界添加。来源三元组为远端渲染只构造一次；
+  // 本地发送绝不携带它。
   const originSender =
     senderSession && selfHostId && senderSession.split("@").length === 2
       ? `${senderSession}@${selfHostId}`
@@ -838,9 +774,9 @@ async function runHttpHostSend(
     console.log(JSON.stringify({
       cross_host: { host: host.id, target: hostDisplayTarget(host), transport: "http" },
       result,
-      // S3 wave-1 fix (r2 F2): the origin host cannot run the pane-effect
-      // check on a remote seat — say so, never imply effect verification.
-      ...(opts.verify ? { effectCheck: { checked: false, why: "cross-host http — the pane-effect check does not run cross-host" } } : {}),
+      // S3 波次 1 修复（r2 F2）：来源主机无法对远端席位运行 pane 效果检查；
+      // 必须明确说明，绝不能暗示已验证效果。
+      ...(opts.verify ? { effectCheck: { checked: false, why: "跨主机 http——面板效果检查不在跨主机上跑" } } : {}),
       ...(!result.ok && hint ? { hint } : {}),
     }));
     if (!result.ok) process.exitCode = 1;
@@ -852,67 +788,63 @@ async function runHttpHostSend(
     return;
   }
 
-  console.log(`[via host=${host.id} (${hostDisplayTarget(host)})]`);
+  console.log(`[经由主机 ${host.id}（${hostDisplayTarget(host)}）]`);
   const data = (result.data ?? {}) as Record<string, unknown>;
   if (data["outcome"] === "retained") {
-    console.log(`Retained for ${session}; not delivered. ${data["warning"] ?? ""}`);
+    console.log(`已为 ${session} 保留；未投递。${data["warning"] ?? ""}`);
     return;
   }
-  console.log(`Sent to ${session}`);
+  console.log(`已发送给 ${session}`);
   const advisory = data["warning"] as string | undefined;
   if (advisory) {
-    console.log(`Advisory: ${advisory}`);
+    console.log(`建议：${advisory}`);
   }
   if (opts.verify) {
-    // The REMOTE route's verdict, verbatim — mirrors the local render so
-    // scripts grepping `Verified:` behave identically across hosts.
+    // 远程路由的结论，逐字——镜像本地渲染，让 grep `Verified:` 的脚本跨主机行为一致。
     const verified = data["verified"] as boolean | undefined;
-    console.log(`Verified: ${verified ? "yes" : "no"}`);
+    console.log(`验证：${verified ? "是" : "否"}`);
     const outcome = data["outcome"] as string | undefined;
     if (outcome === "delivered") {
-      console.log("Delivery: delivered (message landed; render confirmed)");
+      console.log("投递：delivered（消息已落地；渲染已确认）");
     } else if (outcome === "rendered-unconfirmed") {
-      console.log(`Delivery: rendered-unconfirmed (landed; pane re-render not confirmed - confirm with: rig capture ${session})`);
+      console.log(`投递：rendered-unconfirmed（已落地；面板重绘未确认——用 zrig capture ${session} 确认）`);
     }
-    // S3 wave-1 fix (r2 F2): honest cross-host limit — the verdict above is
-    // the REMOTE transport's; the pane-effect check does not run cross-host.
-    console.log("Effect: UNCHECKED — the pane-effect check does not run cross-host; the verdict above is transport-level only.");
+    // S3 wave-1 修复（r2 F2）：诚实的跨主机局限——上面的结论是远程传输的；
+    // 面板效果检查不在跨主机上跑。
+    console.log("效果：未检查——面板效果检查不在跨主机上跑；上面的结论只是传输级。");
   }
 }
 
-// OPR.0.4.3.30 — fan-out send (`--to` / `--pod` / `--rig`). Reuses the DAEMON's broadcast
-// machinery (resolve → per-seat send loop → per-recipient results) via /api/transport/broadcast.
-// The message is sent BARE; the daemon wraps each recipient in its own From/To envelope
-// (envelopeSender). Ruling 03c35295: the daemon now renders the SCALE on the To line —
-// a `--to` multi-send shows the FULL recipient list (WHO got it), a `--rig`/`--pod` shows the
-// broadcast scale — plus a Sent stamp, so a recipient tells DM from broadcast header-alone.
-// --raw / --dangerously-interact send exact text with NO envelope (envelopeSender omitted).
-// Each recipient is guarded INDEPENDENTLY server-side; one refusal never aborts the set.
+// OPR.0.4.3.30——扇出发送（`--to` / `--pod` / `--rig`）。通过
+// /api/transport/broadcast 复用后台服务的广播机制：解析 → 逐席位发送循环 → 逐接收者结果。
+// 消息以裸文本发送；后台服务通过 envelopeSender 为每个接收者包装独立 From/To 信封。
+// 裁定 03c35295：后台服务现在在 To 行渲染范围；`--to` 多发送展示完整接收者列表，
+// `--rig`/`--pod` 展示广播规模，再加 Sent 时间戳，使接收者只看头部即可区分私信与广播。
+// --raw / --dangerously-interact 精确发送原文，不带信封（省略 envelopeSender）。
+// 服务端独立守卫每个接收者；单个拒绝绝不中止整个集合。
 async function runFanOutSend(params: {
   toList: string[] | undefined;
   pod: string | undefined;
   rig: string | undefined;
   message: string;
-  // ba41fea2 — `from` was omitted here while the caller already forwarded it
-  // at runtime, so an explicit --from was silently dropped on fan-out only
-  // (single-seat + both cross-host paths always honored it).
+  // ba41fea2——此前这里省略 `from`，而调用方运行时已转发它，导致显式 --from 只在
+  // 扇出路径被静默丢弃；单席位与两种跨主机路径一直会遵守它。
   opts: { verify?: boolean; force?: boolean; raw?: boolean; dangerouslyInteract?: boolean; reason?: string; from?: string; json?: boolean };
   deps: SendDeps;
-  /** P18: the seat identity resolved from the seat env, or `undefined` when unresolvable (env-less send
-   *  DELIVERS with the `<unknown sender>` marker + null actorSession — no refusal). */
+  /** P18：从席位环境解析出的席位身份；无法解析时为 undefined。无环境发送仍会投递，
+   *  携带 `<unknown sender>` 标记与 null actorSession，不会被拒绝。 */
   seatSender: string | undefined;
 }): Promise<void> {
   const { toList, pod, rig, message, opts, deps, seatSender } = params;
 
-  // qitem-c113bd41 — same advisory-probe/transport-authoritative contract
-  // as the single-seat path, including ff13bcdf's lazy probe (see
-  // resolveLocalDaemonUrl).
+  // qitem-c113bd41——与单席位路径使用同一“建议探针、传输权威”契约，包括 ff13bcdf
+  // 的惰性探针；见 resolveLocalDaemonUrl。
   const client = deps.clientFactory(await resolveLocalDaemonUrl(deps));
-  // P21 I4: the fan-out From: (specimen-5's forged surface, rendered into every recipient's terminal) is
-  // DERIVED daemon-side from the transport header — the body envelopeSender is now only the enveloped
-  // MARKER (its presence, not its value). So the origin is the seat env, never --from (deprecated +
-  // ignored). Env == the stamped X-OpenRig-Session, so the body actor matches the derived actor.
-  const senderSession = seatSender; // P18: seat env identity, or undefined → delivers-and-labels (unknown marker, null actor).
+  // P21 I4：扇出 From:（specimen-5 的伪造界面，会渲染到每个接收者终端）由后台服务
+  // 从传输头派生；正文 envelopeSender 现在只表示已包装这一标记，关键是是否存在而不是其值。
+  // 因此来源是席位环境，绝不是已弃用并忽略的 --from。环境等于盖章后的
+  // X-OpenRig-Session，所以正文操作者与派生操作者一致。
+  const senderSession = seatSender; // P18：席位环境身份；undefined 时仍投递并标注（unknown 标记、null actor）。
   const raw = Boolean(opts.raw || opts.dangerouslyInteract);
 
   const body: Record<string, unknown> = {
@@ -926,11 +858,10 @@ async function runFanOutSend(params: {
   if (toList) body.sessions = toList;
   else if (pod) body.pod = pod;
   else if (rig) body.rig = rig;
-  // Per-recipient envelope daemon-side unless raw/danger. The marker's PRESENCE (not its value) signals
-  // the enveloped fan-out so the daemon derives From: from the transport header; its VALUE is ignored
-  // daemon-side (I4). P18: fall open to the `<unknown sender>` marker when the seat is unresolvable so the
-  // marker is ALWAYS present — an env-less fan-out still carries the anti-storm scale header (no
-  // session-less storm), delivered-and-labelled rather than refused.
+  // 除 raw/danger 外，服务端为每个接收者单独包装信封。标记是否存在表示这是已包装扇出，
+  // 后台服务据此从传输头派生 From:；标记值在服务端忽略（I4）。P18：席位无法解析时
+  // 开放失败为 `<unknown sender>` 标记，使标记始终存在。无环境扇出仍携带防风暴的规模头，
+  // 避免无会话风暴；它会带标签投递，而不是被拒绝。
   if (!raw) {
     body.envelopeSender = senderSession ?? SENDER_FALLBACK;
   }
@@ -940,9 +871,8 @@ async function runFanOutSend(params: {
     res = await client.post<Record<string, unknown>>("/api/transport/broadcast", body, transportRequestOptions());
   } catch (err) {
     if (err instanceof DaemonConnectionError) {
-      // 1b45cf21 — same helper as single-seat, so the remediation is
-      // byte-identical across both local paths by construction (including the
-      // --json envelope, threaded identically).
+      // 1b45cf21——与单席位路径使用同一辅助函数，因此两条本地路径的补救说明在构造上
+      // 逐字节一致，包括以相同方式传递的 --json 信封。
       printTransportFailure(err, { json: opts.json });
       process.exitCode = 1;
       return;
@@ -950,10 +880,9 @@ async function runFanOutSend(params: {
     throw err;
   }
 
-  // S3 wave-1 fix (r2 F2): per-recipient effect classification BEFORE output
-  // encoding — a fan-out with --verify verifies each delivered recipient by
-  // pane effect (the daemon wraps per recipient, so the guarded submit's
-  // expected text is the bare payload, which the wrapped render contains).
+  // S3 波次 1 修复（r2 F2）：在输出编码前做逐接收者效果分类。带 --verify 的扇出
+  // 通过 pane 效果验证每个已投递接收者；后台服务逐接收者包装，因此受保护提交所期望的
+  // 文本是裸负载，而包装后的渲染包含它。
   let effects: Array<{ sessionName: string; effect: EffectCheck }> | undefined;
   if (opts.verify && res.status < 400) {
     effects = [];
@@ -966,17 +895,16 @@ async function runFanOutSend(params: {
   const unresolvedCount = (effects ?? []).filter((e) => effectUnresolved(e.effect)).length;
 
   if (opts.json) {
-    // Round-2 F1: ONE verdict per recipient — a staged-unresolved recipient's
-    // row is not a delivery claim in any encoding.
+    // 第二轮 F1：每个接收者只有一个判定；staged-unresolved 接收者行在任何编码中
+    // 都不是送达声明。
     const rawResults = (res.data["results"] as Array<{ sessionName: string; ok: boolean; outcome?: string }> | undefined) ?? [];
     const encodedResults = rawResults.map((r) =>
       effectUnresolved(effectBySeat.get(r.sessionName))
-        ? { ...r, ok: false, verified: false, outcome: "staged-not-consumed", error: "staged, not consumed (pane effect); the one guarded submit did not clear it" }
+        ? { ...r, ok: false, verified: false, outcome: "staged-not-consumed", error: "staged，未消费（面板效果）；唯一的 guarded submit 没清掉它" }
         : r
     );
-    // Round-3 (r2 row 00fb3a68): the machine-readable AGGREGATE derives from
-    // the classified encoded outcomes, never the raw transport counts — a
-    // staged-unresolved recipient is not sent/delivered in any field.
+    // 第三轮（r2 行 00fb3a68）：机器可读汇总从已分类编码结果派生，绝不取原始传输计数；
+    // staged-unresolved 接收者在任何字段中都不算 sent/delivered。
     const encodedSent = encodedResults.filter((r) => r.ok && r.outcome !== "retained").length;
     console.log(JSON.stringify(effects
       ? { ...res.data, results: encodedResults, sent: encodedSent, failed: encodedResults.filter(r => !r.ok).length, retained: encodedResults.filter(r => r.outcome === "retained").length, effectChecks: effects }
@@ -995,36 +923,35 @@ async function runFanOutSend(params: {
 
   const data = res.data;
   const results = (data["results"] as Array<{ sessionName: string; ok: boolean; error?: string; outcome?: string }>) ?? [];
-  // Round-2 F1 (desk-binding): ONE verdict line per recipient. A
-  // staged-unresolved recipient gets its staged verdict INSTEAD of "sent" —
-  // the false delivery claim is suppressed entirely, not qualified.
+  // 第二轮 F1（desk-binding）：每个接收者只有一条判定行。staged-unresolved 接收者
+  // 显示其 staged 判定而非 `sent`；虚假的送达声明会完全移除，而不是加限定词。
   for (const r of results) {
-    if (r.outcome === "retained") { console.log(`${r.sessionName}: retained, not delivered; inspect with rig seat held-messages`); continue; }
+    if (r.outcome === "retained") { console.log(`${r.sessionName}：已保留，未投递；用 zrig seat held-messages 查看`); continue; }
     if (!r.ok) {
-      console.log(`${r.sessionName}: FAILED — ${r.error ?? "unknown error"}`);
+      console.log(`${r.sessionName}：失败——${r.error ?? "未知错误"}`);
       continue;
     }
     const ec = effectBySeat.get(r.sessionName);
     if (ec && ec.checked && ec.state === "staged") {
       if (ec.remedy === "submitted-cleared") {
-        console.log(`${r.sessionName}: sent — staged at the prompt, cleared by one guarded Enter (consumed)`);
+        console.log(`${r.sessionName}：已发送——在提示处 staged，由一次 guarded Enter 清掉（已消费）`);
       } else {
-        console.log(`${r.sessionName}: staged, not consumed — ${effectHumanLines(ec, r.sessionName).slice(-1)[0]}`);
+        console.log(`${r.sessionName}：staged，未消费——${effectHumanLines(ec, r.sessionName).slice(-1)[0]}`);
       }
     } else if (ec && !ec.checked) {
-      console.log(`${r.sessionName}: sent (effect UNCHECKED: ${ec.why} — transport verdict only)`);
+      console.log(`${r.sessionName}：已发送（效果未检查：${ec.why}——仅传输结论）`);
     } else {
-      console.log(`${r.sessionName}: sent`);
+      console.log(`${r.sessionName}：已发送`);
     }
   }
-  // The delivered count never includes a staged-unresolved recipient.
+  // 已投递计数绝不包含 staged-unresolved 接收方。
   const deliveredCount = Math.max(0, ((data["sent"] as number) ?? 0) - unresolvedCount);
-  console.log(`${deliveredCount}/${data["total"]} delivered${unresolvedCount > 0 ? `, ${unresolvedCount} staged-not-consumed` : ""}`);
-  // S2 (OPR.0.5.4.3): surface additive advisories (e.g. the unknown-sender
-  // sign-it notice) — an env-less operator must see it, not "sent" lines alone.
+  console.log(`${deliveredCount}/${data["total"]} 已投递${unresolvedCount > 0 ? `，${unresolvedCount} 个 staged-未消费` : ""}`);
+  // S2（OPR.0.5.4.3）：暴露附加建议（例如 unknown-sender 的 sign-it 通知）——
+  // 无 env 的操作人员必须看到它，而不只是"已发送"行。
   const fanoutAdvisory = data["warning"] as string | undefined;
   if (fanoutAdvisory) {
-    console.log(`Advisory: ${fanoutAdvisory}`);
+    console.log(`建议：${fanoutAdvisory}`);
   }
   if (unresolvedCount > 0) process.exitCode = 1;
   if ((data["failed"] as number) > 0 || results.some((r) => !r.ok)) {
@@ -1055,7 +982,7 @@ function transportRequestOptions(waitForIdleMs?: number): { timeoutMs?: number; 
   };
 }
 
-/** B8-2 test seam: the transport-failure renderer, exported for the honesty pins. */
+/** B8-2 测试接缝：传输失败渲染器，导出供诚实性钉测试使用。 */
 export function printTransportFailureForTest(err: DaemonConnectionError, opts?: { json?: boolean }): void {
   printTransportFailure(err, opts);
 }

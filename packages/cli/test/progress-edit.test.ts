@@ -1,8 +1,8 @@
-// OPR.0.4.0.33 — pure markdown progress-edit helpers. These back the
-// `rig scope ... progress` update verb. They must edit surgically:
-// preserve the `# H1` title source + YAML frontmatter byte-for-byte,
-// touch only the targeted section/row, and write the UI-valid shape
-// (`- [ ]` / `- [x]` / `- [~]`) that progress-indexer.ts parses.
+// OPR.0.4.0.33——纯 markdown progress-edit helper。这些支撑
+// `rig scope ... progress` 更新动词。它们必须外科手术式编辑：
+// 逐字节保留 `# H1` 标题源 + YAML frontmatter，仅触碰目标 section/row，
+// 并写出 progress-indexer.ts 解析的 UI 合法形状
+//（`- [ ]` / `- [x]` / `- [~]`）。
 
 import { describe, expect, it } from "vitest";
 
@@ -46,7 +46,7 @@ describe("addProgressRow", () => {
       status: "active",
     });
     expect(changed).toBe(true);
-    // New row lands at the end of the Acceptance section, before ## Notes.
+    // 新行落在 Acceptance section 末尾、## Notes 之前。
     expect(content).toMatch(/- \[ \] Tests passing\n- \[ \] Guard approved\n\n## Notes/);
     // Frontmatter + H1 untouched.
     expect(content.startsWith("---\nid: OPR.0.4.0.1\n")).toBe(true);

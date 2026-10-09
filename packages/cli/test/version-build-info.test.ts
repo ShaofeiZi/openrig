@@ -1,8 +1,8 @@
 // OPR.0.4.4.11 FR-7 — rig --version identity, CLI side.
 //
-// Stamped: `<semver> (<shortsha>)` + dirty marker when dirty. Unstamped dev
-// run: the semver alone EXACTLY as today (negative AC: no fake identity).
-// The end-to-end stamp (build-package.sh writes the generated module) is a
+// 已盖章：`<semver> (<shortsha>)` + dirty 标记（脏时）。未盖章 dev
+// 运行：semver 单独，完全同今日（负 AC：无假身份）。
+// 端到端盖章（build-package.sh 写入生成模块）是
 // VM-gate proof.
 
 import { describe, it, expect } from "vitest";

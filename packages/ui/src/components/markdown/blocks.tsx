@@ -1,8 +1,6 @@
-// 0.3.1 slice 06 — fenced-block renderers. Each block language
-// (timeline / stats / risk-table / compare / slate) parses its body
-// and dispatches to the corresponding spatial primitive. Parser
-// failures fall back to a plain code block so the source stays
-// inspectable.
+// 0.3.1 slice 06——围栏块渲染器。每种块语言
+// （timeline / stats / risk-table / compare / slate）解析其正文并分发到对应的空间基础组件。
+// 解析失败回退为普通代码块，使源码仍可检视。
 
 import {
   parseTimelineBlock,
@@ -25,11 +23,9 @@ interface FencedBlockProps {
   text: string;
 }
 
-/** Dispatch a fenced block to its specialized renderer. Returns null
- *  when the language is not a known fenced-block grammar (the caller
- *  then falls through to the regular code-block renderer). When the
- *  language IS known but the body fails to parse, a plain code block
- *  is rendered so the source stays inspectable. */
+/** 把围栏块分发到其专用渲染器。当语言不是已知围栏块语法时返回 null
+ *  （调用方随后落到普通代码块渲染器）。当语言已知但正文解析失败时，渲染一个普通代码块，
+ *  使源码仍可检视。 */
 export function FencedBlockRenderer({ language, text }: FencedBlockProps): React.ReactElement | null {
   if (language === "timeline") {
     const r = parseTimelineBlock(text);
@@ -63,7 +59,7 @@ function FallbackCode({ language, text, reason }: { language: string; text: stri
   return (
     <div data-testid={`fenced-block-${language}-fallback`} className="my-3 border border-amber-300 bg-amber-50/60 p-3">
       <div className="mb-2 font-mono text-[8px] uppercase tracking-[0.18em] text-amber-700">
-        {language} block (fallback: {reason})
+        {language} 块（回退：{reason}）
       </div>
       <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[10px] text-on-surface">{text}</pre>
     </div>

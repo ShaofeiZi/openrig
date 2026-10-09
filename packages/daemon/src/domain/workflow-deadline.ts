@@ -1,59 +1,38 @@
-// OPR.0.4.6.WF1 FR-2: the step-deadline evaluator (pure).
+// OPR.0.4.6.WF1 FR-2：步骤截止时间评估器（纯函数）。
 //
-// Closes G1 — the 0.4.3 dead-seat class: before this slice a dead or
-// compacted seat parked a workflow step forever because NO deadline
-// existed anywhere in the workflow domain. This evaluator derives a
-// stuck/overdue verdict for an instance from queue mechanics the
-// system already records — it introduces NO new clock, NO new stored
-// state, and NO queue-layer change.
+// 关闭 G1——0.4.3 的失效席位问题：在此切片之前，失效或已压缩的席位会让工作流步骤永久停驻，
+// 因为工作流 domain 中没有任何截止时间。本评估器根据系统已记录的队列机制，为实例派生
+// stuck/overdue 判定；不引入新时钟、新存储状态或队列层变更。
 //
-// STUCK IS DERIVED STATE, NEVER STORED (ACK plan commit 2): every
-// caller (keepalive policy, boot sweep, list/show/trace surfaces)
-// recomputes the verdict from (instance, frontier packets, now); a
-// normal re-projection therefore self-clears the stuck marker (the
-// FR-2 AC) and nothing can go stale. BR-1 holds: this evaluator is
-// consumed by observability + nudge paths ONLY — never by a routing
-// decision.
+// STUCK 是派生状态，绝不存储（ACK 计划提交 2）：每个调用方（keepalive 策略、启动 sweep、
+// list/show/trace 表面）都根据（instance、frontier packets、now）重新计算判定；因此正常重新投影
+// 会自行清除 stuck 标记（FR-2 AC），不会产生陈旧状态。BR-1 保持成立：本评估器仅由可观测性
+// 与 nudge 路径消费，绝不参与路由决策。
 //
-// THE ANCHOR CLASSIFICATION (arch gate-leg ruling + third-state note,
-// Rev-1; extended by the mode2-tier source discovery, flagged to arch
-// 2026-07-06):
+// 锚点分类（架构 gate-leg 裁定与第三状态说明，Rev-1；由 mode2-tier 来源发现扩展，
+// 2026-07-06 已向架构方标记）：
 //
-//   1. CLAIMED with a deadline — state=in-progress and
-//      closure_required_at set (computed only at claim,
-//      queue-repository.ts:858-870). Anchor = closure_required_at.
-//      NOTE: workflow step packets ship with tier "mode2", which has
-//      no TIER_SLA_SECONDS entry, so TODAY this sub-state is empty for
-//      workflow packets — kept because it is the honest anchor the
-//      moment tiers change, and the evaluator must never silently
-//      ignore a real closure_required_at.
-//   2. CLAIMED with NO deadline — state=in-progress,
-//      closure_required_at NULL (the mode2 reality). Anchor =
-//      claimed_at + WORKFLOW_STEP_STUCK_THRESHOLD_SECONDS.
-//   3. NEVER-CLAIMED — state=pending, never claimed (the
-//      dead-seat-BEFORE-claim / lost-nudge case: the projector creates
-//      the next packet PENDING in-txn and nudges only post-commit, so
-//      a dead owner leaves it unclaimed forever). Anchor =
-//      created_at + threshold.
-//   4. UNCLAIMED-AFTER-CLAIM (the arch third state) — state=pending
-//      after an unclaim, which NULLs claimed_at AND
-//      closure_required_at (queue-repository.ts:908-917), making the
-//      row indistinguishable from never-claimed. Anchor = created_at +
-//      threshold — deliberately INCLUDING the elapsed claimed period,
-//      so the packet may surface overdue immediately after unclaim.
-//      That direction is safe (early nudge noise beats silent parking;
-//      BR-4 — nothing blocks). Claim history remains recoverable via
-//      queue_transitions; callers that render evidence may enrich from
-//      there.
+//   1. 已认领且有截止时间：state=in-progress，并设置 closure_required_at
+//      （仅在认领时计算，queue-repository.ts:858-870）。锚点 = closure_required_at。
+//      注意：工作流步骤 packet 使用 tier "mode2"，它没有 TIER_SLA_SECONDS 条目，
+//      因此当前工作流 packet 中此子状态为空；仍保留它，因为 tier 一旦变化，这就是如实锚点，
+//      评估器绝不能静默忽略真实 closure_required_at。
+//   2. 已认领但无截止时间：state=in-progress，closure_required_at 为 NULL（mode2 现状）。
+//      锚点 = claimed_at + WORKFLOW_STEP_STUCK_THRESHOLD_SECONDS。
+//   3. 从未认领：state=pending，且从未被认领（认领前席位失效/丢失 nudge 的场景：
+//      projector 在事务内以 PENDING 创建下一个 packet，提交后才 nudge，因此失效 owner
+//      会使它永久未认领）。锚点 = created_at + threshold。
+//   4. 认领后取消认领（架构第三状态）：取消认领后 state=pending，同时把 claimed_at 与
+//      closure_required_at 置为 NULL（queue-repository.ts:908-917），使该行无法与从未认领区分。
+//      锚点 = created_at + threshold，并刻意包含已认领期间经过的时间，因此 packet 可能在取消认领后
+//      立即显示 overdue。这个方向是安全的（早期 nudge 噪声优于静默停驻；BR-4 不阻塞任何内容）。
+//      认领历史仍可从 queue_transitions 恢复；渲染证据的调用方可从中补充。
 //
-// A `blocked` frontier packet (a waiting park) is HEALTHY here: the
-// park is an honest recorded state and waiting instances are already
-// keepalive-eligible; park-duration policy is WF-5's lane.
+// `blocked` frontier packet（等待中的 park）在此视为 HEALTHY：park 是如实记录的状态，
+// waiting 实例已经符合 keepalive 条件；park 时长策略属于 WF-5。
 
-// Structural views: the evaluator needs only these fields, so callers
-// (projector-adjacent surfaces pass full WorkflowInstance/QueueItem;
-// the keepalive policy passes its own minimal row mappings) satisfy
-// them structurally without fake-casting full objects.
+// 结构化视图：评估器只需要这些字段，因此调用方可按结构满足要求，无需伪造完整对象；
+// projector 相邻表面传入完整 WorkflowInstance/QueueItem，keepalive 策略传入自己的最小行映射。
 export interface DeadlineInstanceView {
   instanceId: string;
   status: string;
@@ -71,16 +50,13 @@ export interface DeadlinePacketView {
 }
 
 /**
- * THE single threshold home (arch gate-leg ruling: EXPORTED, documented
- * as the one place this number lives — WF-5's class-(b) stuck/overdue
- * thresholds bind to this constant by ruling; they never redefine it).
+ * 唯一阈值归属位置（架构 gate-leg 裁定：导出，并记录为此数值唯一存放处；
+ * WF-5 的 class-(b) stuck/overdue 阈值按裁定绑定此常量，绝不另行定义）。
  *
- * Derivation: the shipped routine-tier SLA (TIER_SLA_SECONDS.routine =
- * 4h in hot-potato-enforcer.ts — module-private there, so the value is
- * restated rather than imported; the derivation is this sentence).
- * Workflow step packets carry tier "mode2" with no SLA entry, so this
- * constant is the effective deadline for both unclaimed anchors and
- * the claimed-null-deadline anchor.
+ * 派生依据：已交付的 routine-tier SLA（hot-potato-enforcer.ts 中
+ * TIER_SLA_SECONDS.routine = 4h；该值在模块内私有，因此在此重述而不导入，本句即派生说明）。
+ * 工作流步骤 packet 使用没有 SLA 条目的 tier "mode2"，因此此常量是未认领锚点和
+ * 已认领但截止时间为空锚点的有效截止时间。
  */
 export const WORKFLOW_STEP_STUCK_THRESHOLD_SECONDS = 4 * 60 * 60;
 
@@ -91,38 +67,35 @@ export type WorkflowStepDeadlineState =
 
 export interface WorkflowStepDeadlineEvidence {
   instanceId: string;
-  /** The instance's durable current step binding (may be null pre-R2). */
+  /** 实例持久的当前步骤绑定（R2 之前可为 null）。 */
   stepId: string | null;
   packetId: string;
   ownerSession: string;
   packetState: string;
-  /** Which anchor classified this packet (the JSDoc classification). */
+  /** 用于分类此 packet 的锚点（见 JSDoc 分类）。 */
   anchor: "closure_required_at" | "claimed_at" | "created_at";
-  /** ISO timestamp the anchor points at (deadline or anchor start). */
+  /** 锚点指向的 ISO 时间戳（截止时间或锚点起点）。 */
   anchorAt: string;
-  /** Seconds past the effective deadline (>= 0 when overdue). */
+  /** 超出有效截止时间的秒数（overdue 时 >= 0）。 */
   overdueBySeconds: number;
-  /** Age of the packet since creation, seconds. */
+  /** packet 自创建起的年龄，单位秒。 */
   ageSeconds: number;
-  /** claimed_at when the row still carries it (sub-states 1/2). */
+  /** 行仍携带 claimed_at 时的值（子状态 1/2）。 */
   claimedAt: string | null;
 }
 
 export interface WorkflowDeadlineVerdict {
   state: WorkflowStepDeadlineState;
-  /** Present iff state != healthy. */
+  /** 当且仅当 state != healthy 时存在。 */
   evidence: WorkflowStepDeadlineEvidence | null;
 }
 
 /**
- * Evaluate one instance's frontier against the deadline model. Pure:
- * (instance, packets, now) -> verdict. `packets` are the queue rows
- * for instance.currentFrontier (missing rows are ignored — a frontier
- * id that no longer resolves is a different corruption class, guarded
- * elsewhere).
+ * 根据截止时间模型评估一个实例的 frontier。纯函数：
+ * (instance, packets, now) -> verdict。`packets` 是 instance.currentFrontier 对应的队列行；
+ * 缺失行会被忽略，因为无法再解析的 frontier id 属于另一类损坏，由其他位置守卫。
  *
- * Only `active` and `waiting` instances can be overdue; terminal
- * instances are always healthy (nothing to nudge).
+ * 只有 `active` 与 `waiting` 实例可能 overdue；终态实例始终健康，因为没有可 nudge 的内容。
  */
 export function evaluateStepDeadline(
   instance: DeadlineInstanceView,
@@ -140,7 +113,7 @@ export function evaluateStepDeadline(
     if (!instance.currentFrontier.includes(packet.qitemId)) continue;
 
     if (packet.state === "in-progress") {
-      // Sub-states 1 + 2: claimed.
+      // 子状态 1 + 2：已认领。
       const deadlineMs = packet.closureRequiredAt
         ? new Date(packet.closureRequiredAt).getTime()
         : packet.claimedAt
@@ -164,9 +137,8 @@ export function evaluateStepDeadline(
         };
       }
     } else if (packet.state === "pending") {
-      // Sub-states 3 + 4: never-claimed OR unclaimed-after-claim
-      // (indistinguishable at the row after unclaim NULLs claimed_at;
-      // both deliberately anchor on created_at).
+      // 子状态 3 + 4：从未认领或认领后取消。取消认领把 claimed_at 置为 NULL 后，
+      // 两者在行层面不可区分，因此都有意以 created_at 为锚点。
       const deadlineMs = new Date(packet.tsCreated).getTime() + thresholdMs;
       if (nowMs >= deadlineMs) {
         return {
@@ -179,8 +151,7 @@ export function evaluateStepDeadline(
         };
       }
     }
-    // `blocked` (waiting park) and any closed state on the frontier:
-    // healthy by classification.
+    // `blocked`（等待 park）以及 frontier 上任何已关闭状态，按分类均视为健康。
   }
   return { state: "healthy", evidence: null };
 }
@@ -213,13 +184,11 @@ function buildEvidence(
 }
 
 /**
- * FR-6 (G4) helper: the max_hops comparison, structured against an
- * EFFECTIVE BASELINE (arch N1 ruling). v1 pins baseline = 0
- * (MAX_HOPS_BASELINE_V1); WF-5 FR-4's resume later amends the baseline
- * so each redrive gets one bounded window — this helper is the seam,
- * never hard-welded to lifetime-total.
+ * FR-6（G4）辅助函数：以有效基线（架构 N1 裁定）为依据比较 max_hops。
+ * v1 固定 baseline = 0（MAX_HOPS_BASELINE_V1）；WF-5 FR-4 的 resume 随后会调整基线，
+ * 使每次 redrive 获得一个有界窗口。本辅助函数就是该接缝，绝不硬绑定到生命周期总数。
  *
- * Returns true when executing ONE MORE hop would exceed the guard.
+ * 再执行一次 hop 将超过守卫时返回 true。
  */
 export const MAX_HOPS_BASELINE_V1 = 0;
 
@@ -228,10 +197,8 @@ export function exceedsMaxHops(
   baseline: number,
   maxHops: number | undefined,
 ): boolean {
-  // Guard blocker 2 hardening: only an ENFORCEABLE guard compares.
-  // The parser rejects malformed values going forward; this check
-  // protects against pre-fix cached spec_json blobs (a string would
-  // silently never trip; a null would coerce to 0 and ALWAYS trip).
+  // Guard blocker 2 加固：只比较可执行的守卫。解析器今后会拒绝畸形值；此检查用于保护修复前
+  // 缓存的 spec_json blob（string 会静默地永不触发，null 会转换为 0 并始终触发）。
   if (typeof maxHops !== "number" || !Number.isInteger(maxHops) || maxHops < 1) {
     return false;
   }

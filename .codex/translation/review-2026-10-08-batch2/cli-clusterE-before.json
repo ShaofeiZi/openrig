@@ -1,0 +1,106 @@
+{
+"packages/cli/src/version.ts": [
+"entry",
+"self_reported"
+],
+"packages/cli/src/host-registry.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/host-selection.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/local-origin.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/node-support.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/release-surface/affected-skills.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/release-surface/extract-surface.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/restore-packet/codex-jsonl-parser.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/restore-packet/packet-writer.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/restore-packet/redaction.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/restore-packet/runtime-detect.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/restore-packet/schema-validator.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/restore-packet/types.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/sender-identity.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/session-name.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/system-preflight.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/local-reading.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/mcp-server.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/read-view.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/release-surface/generate.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/release-surface/surface-diff.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/remote-host-ops.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/restore-packet/claude-transcript-parser.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/restore-packet/omitted-records.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/shared-tui.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/tmux-health.ts": [
+"cli-core-a",
+"self_reported"
+]
+}

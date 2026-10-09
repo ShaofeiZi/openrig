@@ -2,21 +2,19 @@ import fs from "node:fs";
 import path from "node:path";
 
 /**
- * The authored contract file at a work node, most-preferred first.
+ * 工作节点上的作者契约文件，按优先级从高到低排列。
  *
- * `SPEC.md` is the current name; `README.md` is the legacy one and stays valid indefinitely — the
- * dormant missions and every historical proof receipt are README-backed and must keep resolving
- * with no migration and no warning. A node carrying both is not an error: SPEC.md wins, and audit
- * advises about the second file rather than blocking on it.
+ * `SPEC.md` 是当前名称；`README.md` 是旧名称并永久有效——休眠任务目标及所有历史校验回执
+ * 都以 README 为依据，必须无需迁移或警告即可继续解析。节点同时携带二者并非错误：
+ * SPEC.md 优先，审计只提示第二个文件而不会阻塞。
  *
- * THIS IS A DELIBERATE TWIN of the CLI's `lib/scope/scope-fs.ts` list, not an oversight. The daemon
- * cannot import packages/cli — there is no `@openrig/cli` dependency, stated in source in three
- * places — so the two scope implementations share a CONTRACT, never code. Change one and change the
- * other, or the product reads its own work tree two different ways.
+ * 这是 CLI `lib/scope/scope-fs.ts` 列表的有意镜像，并非疏漏。后台服务不能导入
+ * packages/cli——不存在 `@openrig/cli` 依赖，源码中已有三处声明——因此两套 scope 实现
+ * 共享契约而不共享代码。修改任一处时必须同步另一处，否则产品会以两种方式读取自己的工作树。
  */
 export const NODE_FILE_PRECEDENCE = ["SPEC.md", "README.md"] as const;
 
-/** Current mission notes name followed by the indefinitely-readable legacy name. */
+/** 当前任务目标说明文件名，其后是永久可读的旧文件名。 */
 export const NOTES_FILE_PRECEDENCE = ["NOTES.md", "MISSION_NOTES.md"] as const;
 
 export interface NotesFileResolution {
@@ -24,7 +22,7 @@ export interface NotesFileResolution {
   name: (typeof NOTES_FILE_PRECEDENCE)[number];
 }
 
-/** Resolve the first readable mission notes file, preferring the current name. */
+/** 解析第一个可读的任务目标说明文件，优先使用当前名称。 */
 export function resolveNotesFile(absPath: string): NotesFileResolution | null {
   for (const name of NOTES_FILE_PRECEDENCE) {
     const candidate = path.join(absPath, name);
@@ -33,25 +31,24 @@ export function resolveNotesFile(absPath: string): NotesFileResolution | null {
       fs.accessSync(candidate, fs.constants.R_OK);
       return { path: candidate, name };
     } catch {
-      // Missing, unreadable, and non-file candidates all fall through to the next name.
+      // 缺失、不可读或不是文件的候选项都继续尝试下一个名称。
     }
   }
   return null;
 }
 
 /**
- * Prepend the current node filename to a precedence list that already exists.
+ * 将当前节点文件名添加到既有优先级列表首位。
  *
- * Several readers here already searched multiple authored filenames in an order chosen for that
- * surface (`IMPLEMENTATION-PRD.md` ahead of `README.md` on slice bodies, for instance). Those
- * orders are load-bearing local decisions and this must not flatten them into one global ranking —
- * SPEC.md goes in front, everything else keeps the order it had.
+ * 此处多个读取器已按各自表面选定的顺序搜索多个作者文件名，例如 slice 正文中
+ * `IMPLEMENTATION-PRD.md` 排在 `README.md` 前。这些顺序是承重的局部决策，不能被压平成
+ * 单一全局排序；只把 SPEC.md 放到最前，其余项目保持原顺序。
  */
 export function withSpecFirst(candidates: readonly string[]): string[] {
   return ["SPEC.md", ...candidates.filter((c) => c !== "SPEC.md")];
 }
 
-/** Resolve a work node's authored contract file, or null when the directory declares no node. */
+/** 解析工作节点的作者契约文件；目录未声明节点时返回 null。 */
 export function resolveNodeFile(absPath: string): string | null {
   for (const name of NODE_FILE_PRECEDENCE) {
     const candidate = path.join(absPath, name);
@@ -61,9 +58,8 @@ export function resolveNodeFile(absPath: string): string | null {
 }
 
 /**
- * Resolver for callers that read through an injected reader rather than `fs` directly (the review
- * gatherers, which are tested against in-memory trees). Returns the first candidate the reader
- * answers for, with its path — null when the node declares no authored file.
+ * 供通过注入读取器而非直接使用 `fs` 的调用方使用（例如以纯内存树测试的评审收集器）。
+ * 返回读取器能够响应的第一个候选项及其路径；节点未声明作者文件时返回 null。
  */
 export function resolveNodeFileVia(
   dir: string,
@@ -77,7 +73,7 @@ export function resolveNodeFileVia(
   return null;
 }
 
-/** True when the filename is any authored node file — SPEC.md or the legacy README.md. */
+/** 文件名是任一作者节点文件（SPEC.md 或旧版 README.md）时返回 true。 */
 export function isNodeFile(fileName: string): boolean {
   return (NODE_FILE_PRECEDENCE as readonly string[]).includes(fileName);
 }

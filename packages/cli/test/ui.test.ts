@@ -60,7 +60,7 @@ function runningDeps(port: number, execFn?: UiDeps["exec"]): UiDeps {
 describe("rig ui open", () => {
   it("prints the maintenance notice to stderr on every invocation", async () => {
     expect(UI_MAINTENANCE_NOTICE).toBe(
-      "The OpenRig UI is experimental and in maintenance mode. It is not under active development; support is best-effort. The CLI is the primary supported interface. Contributions welcome.",
+      "zrig Web UI 仍为实验性且处于维护模式。它不在积极开发中，支持为尽力而为。CLI 是主要受支持的界面。欢迎贡献。",
     );
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const execFn = vi.fn(async () => {});
@@ -76,7 +76,7 @@ describe("rig ui open", () => {
     error.mockRestore();
   });
 
-  // Test 1: Daemon up -> exec open with UI URL AND prints URL
+  // 测试 1：daemon 在线 → 用 UI URL exec open 并打印 URL
   it("daemon up -> exec open with UI URL and prints URL", async () => {
     const execFn = vi.fn(async () => {});
     const deps = runningDeps(8888, execFn);
@@ -88,7 +88,7 @@ describe("rig ui open", () => {
     expect(logs.join("\n")).toContain("http://127.0.0.1:8888");
   });
 
-  // Test 2: Daemon down -> error, no exec
+  // 测试 2：daemon 宕机 → 报错，不 exec
   it("daemon down -> error, no exec", async () => {
     const execFn = vi.fn(async () => {});
     const deps: UiDeps = {
@@ -102,7 +102,7 @@ describe("rig ui open", () => {
     program.addCommand(uiCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "ui", "open"]));
 
-    expect(logs.join("\n")).toMatch(/not running/i);
+    expect(logs.join("\n")).toMatch(/后台服务未运行/);
     expect(execFn).not.toHaveBeenCalled();
   });
 
@@ -129,7 +129,7 @@ describe("rig ui open", () => {
 
       expect(execFn).toHaveBeenCalledWith("open", ["http://127.0.0.1:7555"]);
       expect(logs.join("\n")).toContain("http://127.0.0.1:7555");
-      expect(logs.join("\n")).not.toMatch(/not running/i);
+      expect(logs.join("\n")).not.toMatch(/后台服务未运行/);
     } finally {
       if (savedPort === undefined) delete process.env["OPENRIG_PORT"];
       else process.env["OPENRIG_PORT"] = savedPort;
@@ -150,7 +150,7 @@ describe("rig ui open", () => {
     expect(logs.join("\n")).toContain("http://127.0.0.1:9999");
   });
 
-  // Test 4: Unhealthy daemon -> error, no exec
+  // 测试 4：不健康 daemon → 报错，不 exec
   it("unhealthy daemon -> error, no exec", async () => {
     const execFn = vi.fn(async () => {});
     const deps: UiDeps = {
@@ -169,7 +169,7 @@ describe("rig ui open", () => {
     program.addCommand(uiCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "ui", "open"]));
 
-    expect(logs.join("\n")).toMatch(/did not respond|busy or stopped|unhealthy/i) // B8 supersession: epistemic guard language;
+    expect(logs.join("\n")).toMatch(/未响应|繁忙或已停止/) // B8 supersession: epistemic guard language;
     expect(execFn).not.toHaveBeenCalled();
   });
 
@@ -185,10 +185,10 @@ describe("rig ui open", () => {
     };
     const program = createProgram({ uiDeps: deps });
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "ui", "open"]));
-    expect(logs.join("\n")).toMatch(/not running/i);
+    expect(logs.join("\n")).toMatch(/后台服务未运行/);
   });
 
-  // Test 6: open exec fails -> UI URL still printed, clean error, non-zero exit
+  // 测试 6：open exec 失败 → UI URL 仍打印，干净错误，非零退出
   it("open exec fails -> UI URL still printed + clean error + exitCode 1", async () => {
     const execFn = vi.fn(async () => { throw new Error("no browser"); });
     const deps = runningDeps(7433, execFn);
@@ -201,10 +201,10 @@ describe("rig ui open", () => {
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "ui", "open"]));
 
     const output = logs.join("\n");
-    // URL must be printed even when open fails
+    // 即便 open 失败也必须打印 URL
     expect(output).toContain("http://127.0.0.1:7433");
     // Clean error message
-    expect(output).toMatch(/failed to open|manually/i);
+    expect(output).toMatch(/无法打开浏览器|手动打开/);
     // Non-zero exit code
     expect(process.exitCode).toBe(1);
 
@@ -241,7 +241,7 @@ describe("rig ui open", () => {
       expect(execFn).toHaveBeenCalledWith("open", ["http://localhost:5173"]);
       expect(logs.join("\n")).toContain("http://localhost:5173");
       // Should NOT see "not running" error
-      expect(logs.join("\n")).not.toMatch(/not running/i);
+      expect(logs.join("\n")).not.toMatch(/后台服务未运行/);
     } finally {
       if (prev === undefined) delete process.env["OPENRIG_UI_URL"];
       else process.env["OPENRIG_UI_URL"] = prev;

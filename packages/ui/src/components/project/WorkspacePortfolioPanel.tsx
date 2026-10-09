@@ -1,25 +1,20 @@
-// OPR.0.4.1.24 — Workspace PARENT-altitude portfolio (source build).
+// OPR.0.4.1.24——工作区父层级项目组合（真实数据实现）。
 //
-// Founder intent: "the workspace parent altitude is empty — give it a simple
-// portfolio of all missions + their steering; missions COLLAPSED by default,
-// sorted MOST-RECENTLY-MODIFIED, so I can jump straight to the one I want."
+// 创始人意图：“工作区父层级是空的；为它提供所有任务及其引导信息的简洁组合。任务默认折叠，
+// 按最近修改排序，使我能直接跳到想看的任务。”
 //
-// Promotes the founder-approved twin mockup (digital-twin/opr-0.4.1.24/) to real
-// data, REUSING the existing project-mission machinery:
-//   - missions DERIVED from useSlices (group SliceListEntry by missionId via
-//     projectSliceFromListEntry; status via the VM-005 reconciled home),
-//   - sorted most-recently-modified via sortProjectMissions
-//     (latestProjectMissionActivity desc), COLLAPSED by default.
-//   - PER-MISSION STEERING GLANCE = the shipped MISSION_BRIEF.md path
-//     (useMission -> useScopeMarkdown, the slice-17 Panel-2 mechanism): each
-//     mission's `## Building` + `## Needs you` sections. NO new per-mission
-//     STEERING.md source (settled operationally). A mission without a
-//     MISSION_BRIEF.md -> a graceful muted glance.
+// 将创始人批准的孪生模型图（digital-twin/opr-0.4.1.24/）接入真实数据，并复用现有项目任务机制：
+//   - 任务由 useSlices 派生；通过 projectSliceFromListEntry 按 missionId 对 SliceListEntry 分组，
+//     状态来自 VM-005 协调后的归属位置。
+//   - 通过 sortProjectMissions 按最近修改排序（latestProjectMissionActivity 降序），默认折叠。
+//   - 逐任务引导速览使用已交付的 MISSION_BRIEF.md 路径
+//    （useMission → useScopeMarkdown，即 slice-17 面板 2 机制），展示各任务的
+//     `## Building` 和 `## Needs you` 章节。不新增逐任务 STEERING.md 来源，该决定已在运行上确定。
+//     任务没有 MISSION_BRIEF.md 时，优雅降级为低调速览。
 //
-// LAZY-LOAD (the slice-17/21 over-fetch lesson): the collapsed landing reads only
-// the slice index (one useSlices query, already loaded). A mission's MISSION_BRIEF
-// is fetched ONLY when its row is expanded (MissionGlance mounts on expand) — never
-// N brief reads on landing.
+// 延迟加载（吸取 slice-17/21 过度获取的教训）：折叠的首次页面只读取切片索引，即一条已加载的
+// useSlices 查询。只有展开任务行时才获取其 MISSION_BRIEF（展开时挂载 MissionGlance），
+// 绝不会在首次进入时读取 N 份简报。
 
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -41,7 +36,7 @@ import { EmptyState } from "../ui/empty-state.js";
 import { cn } from "../../lib/utils.js";
 
 function formatActivity(ts: number): string {
-  if (!ts || ts <= 0) return "no recent activity";
+  if (!ts || ts <= 0) return "近期无活动";
   return new Date(ts).toLocaleString(undefined, {
     month: "short",
     day: "numeric",
@@ -50,8 +45,7 @@ function formatActivity(ts: number): string {
   });
 }
 
-/** Extract the named `## <header>` section body from a MISSION_BRIEF.md (slice-16
- *  schema). Returns null when the section is absent. */
+/** 从 MISSION_BRIEF.md（slice-16 规范）提取具名 `## <header>` 章节正文；章节缺失时返回 null。 */
 function briefSection(markdown: string, header: string): string | null {
   const lines = markdown.split("\n");
   let collecting = false;
@@ -69,13 +63,13 @@ function briefSection(markdown: string, header: string): string | null {
   return text.length > 0 ? text : null;
 }
 
-/** The expand-only per-mission steering glance: the mission's MISSION_BRIEF.md
- *  Building + Needs-you. Mounts only when the row is expanded → lazy by construction. */
+/** 仅展开时出现的逐任务引导速览：显示任务 MISSION_BRIEF.md 中的 Building 与 Needs-you。
+ * 只在行展开时挂载，因此结构上就是延迟加载。 */
 function MissionGlance({ missionId }: { missionId: string }) {
   const mission = useMission(missionId);
-  // OPR.0.4.6.MH2 guard-B1 — useMission is selected-host retargeted, so
-  // under a remote selection missionPath is a REMOTE path: it must never
-  // resolve against LOCAL allowlist roots (zero /api/files/* + honest copy).
+  // OPR.0.4.6.MH2 guard-B1：useMission 会根据选中主机重定向，因此选择远程主机时
+  // missionPath 是远程路径，绝不能依据本地白名单根目录解析；不发出 /api/files/* 请求，
+  // 并显示如实文案。
   const { known: selectionKnown, isLocal } = useHostSelection();
   const filesAllowed = useLocalFilesAllowed();
   const missionPath =
@@ -83,23 +77,23 @@ function MissionGlance({ missionId }: { missionId: string }) {
   const brief = useScopeMarkdown(missionPath, "MISSION_BRIEF.md");
 
   if (selectionKnown && !isLocal) {
-    // Known-REMOTE only — unknown renders the loading branch (fetches stay
-    // gated either way; no misleading gated flash on local cold start).
+    // 仅在明确已知为远程时进入。未知状态渲染加载分支；无论哪种情况获取都受门控，
+    // 避免本地冷启动时闪现误导性的门控文案。
     return (
       <div data-testid={`portfolio-glance-remote-gated-${missionId}`} className="font-mono text-[11px] text-on-surface-variant">
-        Local files not shown — the steering glance reads MISSION_BRIEF.md from the selected host&apos;s filesystem, which the remote read view does not browse.
+        不显示本地文件 —— 驾驶概览从所选主机的文件系统读取 MISSION_BRIEF.md，远程只读视图不会浏览它。
       </div>
     );
   }
 
   if (!selectionKnown || mission.isLoading || brief.isLoading) {
-    return <div data-testid={`portfolio-glance-loading-${missionId}`} className="font-mono text-[11px] text-on-surface-variant">Loading steering…</div>;
+    return <div data-testid={`portfolio-glance-loading-${missionId}`} className="font-mono text-[11px] text-on-surface-variant">正在加载驾驶概览…</div>;
   }
 
   if (brief.unavailable || !brief.content) {
     return (
       <div data-testid={`portfolio-glance-empty-${missionId}`} className="font-mono text-[11px] text-on-surface-variant">
-        No MISSION_BRIEF.md at this mission root yet — the steering glance projects here once it is briefed.
+        此任务根下尚无 MISSION_BRIEF.md —— 一旦完成简报，驾驶概览就会投影到这里。
       </div>
     );
   }
@@ -109,7 +103,7 @@ function MissionGlance({ missionId }: { missionId: string }) {
   if (!building && !needsYou) {
     return (
       <div data-testid={`portfolio-glance-thin-${missionId}`} className="font-mono text-[11px] text-on-surface-variant">
-        MISSION_BRIEF.md has no Building / Needs-you sections yet.
+        MISSION_BRIEF.md 尚无“构建中 / 需要你处理”段落。
       </div>
     );
   }
@@ -118,13 +112,13 @@ function MissionGlance({ missionId }: { missionId: string }) {
     <div data-testid={`portfolio-glance-${missionId}`} className="space-y-2">
       {building ? (
         <div>
-          <div className="mb-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-on-surface-variant">Building</div>
+          <div className="mb-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-on-surface-variant">构建中</div>
           <MarkdownViewer content={building} hideFrontmatter hideRawToggle />
         </div>
       ) : null}
       {needsYou ? (
         <div>
-          <div className="mb-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-on-surface-variant">Needs you</div>
+          <div className="mb-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-on-surface-variant">需要你处理</div>
           <MarkdownViewer content={needsYou} hideFrontmatter hideRawToggle />
         </div>
       ) : null}
@@ -135,9 +129,8 @@ function MissionGlance({ missionId }: { missionId: string }) {
 function MissionRow({ mission, expanded, onToggle }: { mission: ProjectMissionGroup; expanded: boolean; onToggle: () => void }) {
   const recency = latestProjectMissionActivity(mission);
   const sliceCount = mission.slices.length;
-  // OPR.0.4.1.24 rev1-r2 forward-fix: the founder-approved rollup is
-  // PROVEN/active/slices (proof-of-work, not done-status). hasProofPacket is
-  // the proven signal already carried on every ProjectSliceRow.
+  // OPR.0.4.1.24 rev1-r2 前向修复：创始人批准的汇总是已证明/活跃/切片，表示工作证明而非
+  // 完成状态。hasProofPacket 是每个 ProjectSliceRow 已携带的已证明信号。
   const provenCount = mission.slices.filter((s) => s.hasProofPacket).length;
   const activeCount = mission.slices.filter((s) => s.status === "active").length;
 
@@ -160,7 +153,7 @@ function MissionRow({ mission, expanded, onToggle }: { mission: ProjectMissionGr
               <MissionStatusBadge status={mission.status} label={mission.statusLabel} />
             </div>
             <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.06em] text-on-surface-variant">
-              {provenCount} proven · {activeCount} active · {sliceCount} slice{sliceCount === 1 ? "" : "s"} · {formatActivity(recency)}
+              {provenCount} 个已校验 · {activeCount} 个活跃 · {sliceCount} 个切片 · {formatActivity(recency)}
             </div>
           </div>
         </button>
@@ -170,12 +163,12 @@ function MissionRow({ mission, expanded, onToggle }: { mission: ProjectMissionGr
           data-testid={`portfolio-open-${mission.id}`}
           className="flex shrink-0 items-center border-l border-outline-variant px-3 font-mono text-[10px] uppercase tracking-[0.08em] text-on-surface-variant hover:bg-surface-lowest/50 hover:text-on-surface"
         >
-          Open →
+          打开 →
         </Link>
       </div>
       {expanded ? (
         <div className="border-t border-outline-variant bg-surface-lowest/20 px-4 py-3">
-          <div className="mb-1 font-mono text-[9px] uppercase tracking-[0.16em] text-on-surface-variant">Steering glance · MISSION_BRIEF.md</div>
+          <div className="mb-1 font-mono text-[9px] uppercase tracking-[0.16em] text-on-surface-variant">驾驶概览 · MISSION_BRIEF.md</div>
           <MissionGlance missionId={mission.id} />
         </div>
       ) : null}
@@ -195,14 +188,14 @@ export function WorkspacePortfolioPanel() {
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key)!.push(row);
     }
-    // VM-005: authored-wins precedence via the daemon's missions sidecar.
+    // VM-005：通过后台服务的任务伴随数据实现作者内容优先。
     const authored = data.missions ?? {};
     return Array.from(buckets.entries())
       .map(([key, slices]) => {
         const rec = reconcileMissionStatus(authored[key]?.authoredStatus ?? null, slices, undefined, authored[key]?.readiness);
         return {
           id: key,
-          label: key === "unsorted" ? "Unsorted" : key,
+          label: key === "unsorted" ? "未排序" : key,
           status: rec.state,
           statusLabel: rec.label,
           statusSource: rec.source,
@@ -212,17 +205,17 @@ export function WorkspacePortfolioPanel() {
       .sort(sortProjectMissions); // most-recently-modified first
   }, [data]);
 
-  // COLLAPSED by default (the founder's landing requirement). Empty set = all collapsed.
+  // 默认折叠，符合创始人的首次页面要求；空集合表示全部折叠。
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
   if (isLoading) {
-    return <EmptyState label="LOADING WORKSPACE" description="Reading the mission index." variant="card" testId="portfolio-loading" />;
+    return <EmptyState label="正在加载工作区" description="正在读取任务索引。" variant="card" testId="portfolio-loading" />;
   }
   if (data && "unavailable" in data) {
     return (
       <EmptyState
-        label="WORKSPACE INDEX UNAVAILABLE"
-        description={data.hint ?? "The slice index is not available from the configured workspace."}
+        label="工作区索引不可用"
+        description={data.hint ?? "当前配置的工作区无法提供切片索引。"}
         variant="card"
         testId="portfolio-unavailable"
       />
@@ -231,8 +224,8 @@ export function WorkspacePortfolioPanel() {
   if (missions.length === 0) {
     return (
       <EmptyState
-        label="NO MISSIONS YET"
-        description="No missions are indexed in this workspace. Missions appear here as you create them; each row opens to its steering glance."
+        label="暂无任务"
+        description="此工作区中尚未索引任何任务。任务会在你创建时出现在这里；每行可展开其驾驶概览。"
         variant="card"
         testId="portfolio-empty"
       />
@@ -242,9 +235,9 @@ export function WorkspacePortfolioPanel() {
   return (
     <div data-testid="workspace-portfolio" className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <SectionHeader>Portfolio · all missions</SectionHeader>
+        <SectionHeader>组合 · 全部任务</SectionHeader>
         <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-on-surface-variant">
-          {missions.length} mission{missions.length === 1 ? "" : "s"} · most recently modified
+          {missions.length} 个任务 · 按最近修改排序
         </span>
       </div>
       <div className="space-y-2">

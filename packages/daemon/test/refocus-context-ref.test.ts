@@ -56,9 +56,9 @@ function runHook(options: {
   }
 
   const rig = join(bin, "rig");
-  // The fake answers two verbs. `queue whoami` is dispatched first and returns its own
-  // stdout/status, so a whoami failure can be exercised without disturbing the context-get
-  // contract below, which stays byte-identical to keep the existing suites unaffected.
+  // fake 应答两个动词。`queue whoami` 先 dispatch 并返回它自己的
+  // stdout/status，故 whoami 失败可被练习而不打扰下方 context-get
+  // 契约——它保持逐字节一致，使既有 suite 不受影响。
   writeFileSync(rig, `#!/bin/sh
 printf '%s %s %s\\n' "$1" "$2" "$3" >> "$RIG_VERB_LOG"
 if [ "$1" = "queue" ] && [ "$2" = "whoami" ]; then
@@ -72,8 +72,8 @@ exit "\${RIG_STATUS:-0}"
 `, "utf8");
   chmodSync(rig, 0o755);
 
-  // The hook resolves its interpreter through PYTHON, so a shim there records the exact
-  // trace-to-root argv — which is where --work-start is observable as an effect.
+  // hook 经 PYTHON 解析其解释器，故那里的 shim 记录确切的
+  // trace-to-root argv——正是 --work-start 作为效果可观察之处。
   const pythonLog = join(root, "python-argv.log");
   const python = join(bin, "python-shim");
   writeFileSync(python, `#!/bin/sh
@@ -157,7 +157,7 @@ describe("openrig-core refocus hook — context library refs", () => {
     const context = result.payload?.hookSpecificOutput.additionalContext || "";
 
     expect(result.status).toBe(0);
-    expect(context.startsWith(`REFOCUS CONTENT REF FAILED: ${REF} — ${reason}`)).toBe(true);
+    expect(context.startsWith(`重新聚焦内容引用失败：${REF}——${reason}`)).toBe(true);
     expect(context).toContain("1. What is the person actually trying to get?");
     expect(context).not.toBe("1. What is the person actually trying to get?");
   });
@@ -226,10 +226,10 @@ describe("openrig-core refocus hook — S18 trigger and event contract", () => {
   it("is on by default, on-demand triggerable, and configurable off", () => {
     const onDemand = runHook({});
     expect(onDemand.stdout).not.toBe("");
-    expect(onDemand.payload?.hookSpecificOutput.additionalContext).toContain("REFOCUS (on demand)");
+    expect(onDemand.payload?.hookSpecificOutput.additionalContext).toContain("重新聚焦（按需触发）");
 
     const codexOnDemand = runHook({ runtime: "codex" });
-    expect(codexOnDemand.payload?.hookSpecificOutput.additionalContext).toContain("REFOCUS (on demand)");
+    expect(codexOnDemand.payload?.hookSpecificOutput.additionalContext).toContain("重新聚焦（按需触发）");
 
     const off = runHook({
       transcriptContent: "threshold crossed",
@@ -318,10 +318,10 @@ exit 1
       "--work-start", f.workStart,
     ], f.env);
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("TOPOLOGY TRACE");
+    expect(result.stdout).toContain("拓扑追踪");
     expect(result.stdout).toContain("Demo rig learned");
     expect(result.stdout).toContain("Builder learned");
-    expect(result.stdout).toContain("WORK TRACE");
+    expect(result.stdout).toContain("工作追踪");
     expect(result.stdout).toContain("Build useful things");
     expect(result.stdout).toContain("Ship the release");
     expect(result.stdout).toContain("Deliver refocus");
@@ -338,8 +338,8 @@ exit 1
       "--work-start", f.workStart,
     ], f.env);
     expect(topologyOnly.status).toBe(0);
-    expect(topologyOnly.stdout).toContain("MISSING LINK");
-    expect(topologyOnly.stdout).not.toContain("WORK TRACE");
+    expect(topologyOnly.stdout).toContain("缺失链路");
+    expect(topologyOnly.stdout).not.toContain("工作追踪");
 
     const workFull = trace([
       "--trees", "work", "--depth", "full",
@@ -348,7 +348,7 @@ exit 1
     ], f.env);
     expect(workFull.status).toBe(0);
     expect(workFull.stdout).toContain("feature observation secret");
-    expect(workFull.stdout).not.toContain("TOPOLOGY TRACE");
+    expect(workFull.stdout).not.toContain("拓扑追踪");
   });
 
   it("has one public refocus trace implementation and marks the old composer superseded for this use", () => {
@@ -400,7 +400,7 @@ describe("openrig-core refocus hook — delivery state", () => {
 
     const delivered = invoke("UserPromptSubmit");
     expect(delivered.status).toBe(0);
-    expect(JSON.parse(delivered.stdout).hookSpecificOutput.additionalContext).toContain("REFOCUS (");
+    expect(JSON.parse(delivered.stdout).hookSpecificOutput.additionalContext).toContain("重新聚焦（");
     const deliveredState = JSON.parse(readFileSync(state, "utf8"));
     expect(deliveredState).toMatchObject({
       lastBytes: Buffer.byteLength("due transcript bytes"),
@@ -439,7 +439,7 @@ describe("openrig-core refocus hook — delivery state", () => {
 
     const delivered = invoke("UserPromptSubmit");
     expect(delivered.status).toBe(0);
-    expect(JSON.parse(delivered.stdout).hookSpecificOutput.additionalContext).toContain("just compacted");
+    expect(JSON.parse(delivered.stdout).hookSpecificOutput.additionalContext).toContain("刚刚完成压缩");
     expect(JSON.parse(readFileSync(state, "utf8"))).not.toHaveProperty("pendingOn");
   });
 });

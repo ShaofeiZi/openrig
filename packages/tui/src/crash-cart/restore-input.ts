@@ -1,8 +1,8 @@
-// B1 ROUND 4 — the restore view's key handling as a PURE reducer, so the operator affordances the
-// screen advertises can be driven and asserted (r1: drive the test matrix from what the UI ADVERTISES,
-// not from the handlers — an advertised-but-unwired key has no handler to enumerate from). main.ts is a
-// thin executor over this reducer. The rule this closes: every affordance the screen offers in a state
-// MUST act in that state, and the screen must never offer one the state cannot honour.
+// B1 ROUND 4——恢复视图的按键处理，作为纯 reducer，使屏幕宣传的操作者可用性
+// 可以被驱动和断言（r1：从 UI 宣传的内容驱动测试矩阵，而非从处理器——
+// 宣传但未接线的键没有处理器可枚举）。main.ts 是此 reducer 上的薄执行器。
+// 此关闭的规则：屏幕在某状态下提供的每个可用性必须在该状态下起作用，
+// 且屏幕绝不能提供状态无法兑现的可用性。
 import { scrollKeyOf, nextScrollOffset } from "./restore-scroll.js";
 
 export interface RestoreInputEvent {
@@ -25,11 +25,11 @@ export type RestoreAction =
   | { kind: "reattach" }
   | { kind: "cancel-reattach" }
   | { kind: "dismiss" }
-  | { kind: "none" }; // swallowed (running ignores stray keys while the fleet restores)
+  | { kind: "none" }; // 吞掉（运行中在舰队恢复时忽略杂散键）
 
-/** Resolve one key in a restore phase to an action. Order: quit, then scroll (advertised in EVERY phase
- *  when the content overflows — so it must ACT in every phase), then the phase-specific lifecycle keys.
- *  A cancel already requested is NOT re-offered (the render drops `c cancel` once `cancelled`). */
+/** 在恢复阶段将一个键解析为动作。顺序：退出，然后滚动（内容溢出时在每个阶段宣传——
+ *  因此必须在每个阶段起作用），然后阶段特定的生命周期键。
+ *  已请求的取消不再提供（一旦 `cancelled`，渲染丢弃 `c cancel`）。 */
 export function restoreKeyAction(ev: RestoreInputEvent, ctx: RestoreInputContext): RestoreAction {
   if (ev.type === "char" && ev.ch === "q") return { kind: "quit" };
 
@@ -40,20 +40,20 @@ export function restoreKeyAction(ev: RestoreInputEvent, ctx: RestoreInputContext
   }
 
   if (ctx.phase === "running") {
-    // c cancels only while it is actually offerable (not already requested); other keys are swallowed
-    // (the fleet is restoring — no accidental dismissal).
+    // c 仅在实际可提供时取消（尚未请求）；其他键被吞掉
+    // （舰队正在恢复——避免意外关闭）。
     if (ev.type === "char" && ev.ch === "c" && !ctx.cancelled) return { kind: "cancel" };
     return { kind: "none" };
   }
 
   if (ctx.phase === "detached") {
     if (ev.type === "char" && ev.ch === "r") return { kind: "reattach" };
-    // c: if not yet requested, cancel + reattach (observable); if already requested, the render no
-    // longer offers `c cancel`, so c just reattaches to confirm.
+    // c：如果尚未请求，取消 + 重新附着（可观察）；如果已请求，渲染不再提供
+    // `c cancel`，因此 c 仅重新附着以确认。
     if (ev.type === "char" && ev.ch === "c") return ctx.cancelled ? { kind: "reattach" } : { kind: "cancel-reattach" };
     return { kind: "dismiss" };
   }
 
-  // done: the triage list is scrollable (handled above); any other key dismisses.
+  // done：诊断列表可滚动（上面已处理）；其他任何键关闭。
   return { kind: "dismiss" };
 }

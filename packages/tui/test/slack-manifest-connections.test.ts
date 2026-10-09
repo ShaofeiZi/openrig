@@ -1,6 +1,6 @@
-// OPR.0.6.0.5 — the Connections page's Slack section, when no Slack app exists yet, shows the
-// shipped manifest's create-app link as selectable text and a toggle that expands the manifest.
-// Real daemon gateway routes behind a fake client; no writes, no external calls.
+// OPR.0.6.0.5——尚未创建 Slack 应用时，连接页的 Slack 区域会把随附清单的 create-app
+// 链接显示为可选择文本，并提供展开清单的开关。fake client 背后使用真实 daemon gateway
+// 路由；不写入，也不发起外部调用。
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { mkdtempSync, rmSync, writeFileSync, readdirSync } from "node:fs";
@@ -46,7 +46,7 @@ const hydrate = (client: DaemonClient) =>
   hydrateSnapshot(client, undefined, null, null, "fixture", { section: "connections", viewTab: "table", drill: [] });
 const text = (lines: Array<{ text: string }>) => lines.map((l) => l.text).join("\n");
 const screenText = (lines: string[]) => lines.join("\n");
-/** The link rows: from the first row that starts the URL, through the rows that continue it. */
+/** 链接行：从 URL 起始行开始，直到所有续行结束。 */
 function linkRows(lines: Array<{ text: string }>): string {
   const start = lines.findIndex((l) => l.text.startsWith("https://api.slack.com/apps?"));
   let joined = "";
@@ -64,32 +64,33 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); rmSync(home, { recursive: true, force: true }); });
 
-describe("Connections · Slack not configured (no app tokens)", () => {
-  it("shows the not-configured line, the create-app link and a collapsed manifest; Next names the manifest", async () => {
+describe("连接 · Slack 未配置（没有应用 token）", () => {
+  it("显示未配置提示、create-app 链接和折叠清单，并在下一步中说明该清单", async () => {
     const snap = await hydrate(makeClient()) as FleetSnapshot;
     const bundle = buildSlackAppManifest();
     expect(snap.slackManifest?.url).toBe(bundle.url);
-    expect(snap.connections?.nextAction).toBe("rig slack manifest --url");
+    // 后台协议仍返回兼容入口，只有 TUI 展示切换为中文发行版入口。
+    expect(snap.connections?.nextAction).toBe("zrig slack manifest --url");
     const lines = connectionsLines(snap, 400);
     const body = text(lines);
-    expect(body).toContain("not configured · no Slack app tokens yet");
+    expect(body).toContain("未配置 · 尚无 Slack 应用令牌");
     expect(linkRows(lines)).toBe(bundle.url);
-    expect(body).toContain("▸ Show manifest (Enter)");
+    expect(body).toContain("▸ 显示 清单（回车）");
     expect(body).not.toContain("socket_mode_enabled: true");
-    expect(body).toContain("Next: rig slack manifest --url");
+    expect(body).toContain("下一步：zrig slack manifest --url");
     expect(external).not.toHaveBeenCalled();
     expect(readdirSync(home)).toEqual([]);
   });
 
-  it("the toggle line expands the manifest in place through the real view-state action, and collapses again", async () => {
+  it("开关行通过真实 view-state 动作原地展开清单，并可再次折叠", async () => {
     const snap = await hydrate(makeClient()) as FleetSnapshot;
     const view = createViewState({ instanceId: "fixture", getSnapshot: () => snap });
     view.dispatch(parseCommand("connections"));
-    const toggle = connectionsLines(snap, 400).find((l) => l.text.includes("Show manifest"))!;
+    const toggle = connectionsLines(snap, 400).find((l) => l.text.includes("显示 清单"))!;
     expect(toggle.action).toEqual({ type: "toggle-expand", key: SLACK_MANIFEST_EXPAND_KEY });
     view.dispatch(toggle.action!);
     const expanded = screenText(renderScreen(view.get(), snap, { cols: 160, rows: 200 }).lines);
-    expect(expanded).toContain("▾ Hide manifest (Enter)");
+    expect(expanded).toContain("▾ 隐藏 清单（回车）");
     expect(expanded).toContain("socket_mode_enabled: true");
     expect(expanded).toContain("app_mentions:read");
     view.dispatch(toggle.action!);
@@ -97,7 +98,7 @@ describe("Connections · Slack not configured (no app tokens)", () => {
     expect(collapsed).not.toContain("socket_mode_enabled: true");
   });
 
-  it("small terminal: every row fits and the wrapped link rows reassemble to the exact URL", async () => {
+  it("小终端中每行都不超宽，换行后的链接可重新拼成精确 URL", async () => {
     const snap = await hydrate(makeClient()) as FleetSnapshot;
     const narrow = connectionsLines(snap, 44);
     for (const l of narrow) expect(l.text.length).toBeLessThanOrEqual(44);
@@ -109,25 +110,25 @@ describe("Connections · Slack not configured (no app tokens)", () => {
   });
 });
 
-describe("Connections · Slack configured, and older daemons", () => {
-  it("configured (tokens resolve): no setup block, existing status unchanged", async () => {
+describe("连接 · Slack 已配置与旧版 daemon", () => {
+  it("已配置且 token 可解析时不显示设置区块，既有状态保持不变", async () => {
     const secrets = join(home, "secret.env");
     writeFileSync(secrets, "SLACK_BOT_TOKEN=fixture-bot\nSLACK_APP_TOKEN=fixture-app\n", { mode: 0o600 });
     config = { ...DEFAULT_CONFIG, secretsEnvFile: secrets, channel: "C-FIXTURE" };
     saveConfig(config, home);
     const snap = await hydrate(makeClient()) as FleetSnapshot;
     const body = text(connectionsLines(snap, 400));
-    expect(body).not.toContain("not configured · no Slack app tokens yet");
-    expect(body).not.toContain("Show manifest");
+    expect(body).not.toContain("未配置 · 尚无 Slack 应用令牌");
+    expect(body).not.toContain("显示 清单");
     expect(snap.connections?.nextAction).not.toContain("manifest");
   });
 
-  it("an older daemon without the manifest route falls back to the CLI command and adds no read error", async () => {
+  it("缺少清单路由的旧版 daemon 回退到 CLI 命令，且不添加读取错误", async () => {
     manifestRoute = false;
     const snap = await hydrate(makeClient()) as FleetSnapshot;
     expect(snap.slackManifest).toBeNull();
     expect(snap.readErrors.join("\n")).not.toMatch(/manifest/i);
     const body = text(connectionsLines(snap, 400));
-    expect(body).toContain("rig slack manifest --url (this daemon does not serve the manifest)");
+    expect(body).toContain("zrig slack manifest --url（此后台服务不提供清单）");
   });
 });

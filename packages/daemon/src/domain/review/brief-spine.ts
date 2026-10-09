@@ -1,14 +1,10 @@
-// Living Notes Packet 2 — MISSION_BRIEF status-spine convergence (OPR.0.4.4.20 FR-8).
+// Living Notes Packet 2——MISSION_BRIEF status spine 收敛（OPR.0.4.4.20 FR-8）。
 //
-// ONE computation path: the spine sections (Building / Progress / Proven /
-// Needs you) are rendered HERE from the composed mission review; the tab
-// serves them always-fresh (pure projection, zero writes) and the SAME
-// strings are written into MISSION_BRIEF.md ONLY at the deliberate freeze
-// moments — never a watcher, never a continuous writer. Generation is
-// SECTION-SCOPED: hand-authored prose in non-spine sections ("What & why",
-// "Pointers") is byte-untouched, and the pinned exact-order H2 schema the
-// scope audit enforces is preserved by construction (the header list is
-// IMPORTED from the audit, not re-declared).
+// 唯一计算路径：spine section（Building / Progress / Proven / Needs you）在此从已组合 mission review
+// 渲染；tab 始终以 fresh 方式提供（纯 projection、零写入），完全相同的字符串只会在有意 freeze 时刻
+// 写入 MISSION_BRIEF.md——绝不使用 watcher 或 continuous writer。Generation 以 section 为 scope：
+// 非 spine section（"What & why"、"Pointers"）中的手写 prose 字节不变，并且按构造保留 scope
+// audit 强制的准确顺序 H2 schema（header list 从 audit import，而非重新声明）。
 
 import { MISSION_BRIEF_HEADERS } from "../scope/scope-audit.js";
 import type { ComposedMissionReview } from "./types.js";
@@ -20,19 +16,18 @@ export interface BriefSpine {
   needsYou: string;
 }
 
-/** The four generated section bodies — derived from the same composer
- *  queries FR-7 renders (no second computation path). */
+/** 四个生成的 section body——从 FR-7 渲染所用的相同 composer query 派生（无第二条计算路径）。 */
 export function renderBriefSpine(m: ComposedMissionReview): BriefSpine {
   const byLane = (lane: string) => m.board.filter((b) => b.laneLabel === lane);
   const buildingRows = [...byLane("BUILD"), ...byLane("PLAN")];
   const building =
     buildingRows.length === 0
-      ? "_Nothing in flight._"
+      ? "_没有正在进行的工作。_"
       : buildingRows.map((b) => `- ${b.slice} — ${b.laneLabel} · ${b.stageCell}`).join("\n");
 
   const progress =
     m.board.length === 0
-      ? "_No slices yet._"
+      ? "_尚无 slice。_"
       : ["INTENT", "PLAN", "BUILD", "REVIEW", "LOCKED"]
           .map((lane) => `- ${lane}: ${byLane(lane).length}`)
           .join("\n");
@@ -40,10 +35,10 @@ export function renderBriefSpine(m: ComposedMissionReview): BriefSpine {
   const greenRows = m.ledger.filter((r) => r.green);
   const proven =
     greenRows.length === 0
-      ? "_Nothing proven yet._"
+      ? "_尚无已证明内容。_"
       : greenRows
-          .map((r) => `- ${r.slice} — proven at ${r.candidateSha ?? "unknown"} · merged ${r.mergeSha ?? "UNMERGED"}`)
-          .join("\n") + `\n\nCut-gating: ${m.cutComplete ? "COMPLETE" : "incomplete"} — ${m.cutCompleteBasis}`;
+          .map((r) => `- ${r.slice} — 在 ${r.candidateSha ?? "unknown"} 证明 · 已合并 ${r.mergeSha ?? "UNMERGED"}`)
+          .join("\n") + `\n\nCut gate：${m.cutComplete ? "COMPLETE" : "incomplete"}——${m.cutCompleteBasis}`;
 
   const needsYou =
     m.needsYou.items.length === 0
@@ -61,15 +56,13 @@ const SPINE_BY_HEADER: Record<string, keyof BriefSpine> = {
 };
 
 /**
- * Section-scoped application: replaces ONLY the four spine section bodies in
- * an existing MISSION_BRIEF.md, preserving every other byte (hand-authored
- * "What & why"/"Pointers", the H1, frontmatter, ordering). Returns null when
- * the brief does not carry the pinned schema (never guess-rewrite a
- * malformed brief — the audit owns that finding).
+ * section-scoped 应用：只替换已有 MISSION_BRIEF.md 中四个 spine section body，保留其他每个字节
+ *（手写 "What & why"/"Pointers"、H1、frontmatter、顺序）。brief 不含已 pin schema 时返回 null
+ *（绝不猜测并重写 malformed brief——该 finding 归 audit 所有）。
  */
 export function applyBriefSpine(briefContent: string, spine: BriefSpine): string | null {
   const lines = briefContent.split("\n");
-  // Locate each pinned H2 (exact-order schema).
+  // 定位每个已 pin H2（准确顺序 schema）。
   const headerIdx: number[] = [];
   const headerName: string[] = [];
   for (let i = 0; i < lines.length; i++) {
@@ -79,7 +72,7 @@ export function applyBriefSpine(briefContent: string, spine: BriefSpine): string
       headerName.push(m[1]!);
     }
   }
-  // The brief must carry the exact pinned sequence to be generation-safe.
+  // brief 必须携带准确的已 pin sequence，才能保证 generation 安全。
   if (headerName.length !== MISSION_BRIEF_HEADERS.length) return null;
   for (let i = 0; i < MISSION_BRIEF_HEADERS.length; i++) {
     if (headerName[i] !== MISSION_BRIEF_HEADERS[i]) return null;

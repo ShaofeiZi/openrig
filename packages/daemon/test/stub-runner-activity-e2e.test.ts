@@ -6,12 +6,10 @@ import { createServer, type Server } from "node:http";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Slice 51-01 items 6-8 — R2 real-spawn proof: the WIRED runner actually POSTs the
-// canonical activity event set over the WIRE to /api/activity/hooks. The hermetic
-// executor test proves the emission sequence; this closes the in-memory-hides-real-
-// spawn gap — a mocked seam can't prove the real process resolves the endpoint from
-// env, authenticates, and hits the real path. Uses a throwaway http sink (no full
-// daemon needed to prove the transport contract).
+// Slice 51-01 第 6-8 项——R2 真实进程证明：已接线 runner 确实经线上向
+// /api/activity/hooks POST 权威 activity 事件集合。封闭执行器测试证明发出顺序；这里弥合
+// 内存测试掩盖真实进程的缺口——mock 接缝无法证明真实进程从 env 解析端点、完成认证并命中
+// 真实路径。使用一次性 HTTP sink，无需完整后台服务即可证明传输契约。
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNNER = resolve(HERE, "../src/adapters/stub-runner.ts");
@@ -44,7 +42,7 @@ describe("stub-runner activity POST (real-spawn wire proof, R2)", () => {
     dir = undefined;
   });
 
-  it("POSTs SessionStart → UserPromptSubmit → Stop with runtime=stub + Bearer auth to /api/activity/hooks", async () => {
+  it("携带 runtime=stub 和 Bearer 认证向 /api/activity/hooks 依次 POST SessionStart → UserPromptSubmit → Stop", async () => {
     dir = mkdtempSync(join(tmpdir(), "stub-activity-e2e-"));
     const captured: Captured[] = [];
     server = createServer((req, res) => {
@@ -60,8 +58,8 @@ describe("stub-runner activity POST (real-spawn wire proof, R2)", () => {
     await new Promise<void>((r) => server!.listen(0, "127.0.0.1", r));
     const port = (server!.address() as { port: number }).port;
 
-    // No script.json → the DEFAULT say-only script (one turn, no compaction) — the
-    // turn still frames UserPromptSubmit … Stop, so all three lifecycle events fire.
+  // 没有 script.json 时使用默认的仅 say 脚本（一个 turn，不压缩）；该 turn 仍包住
+  // UserPromptSubmit … Stop，因此三个生命周期事件都会触发。
     child = execFile("node", ["--import", "tsx", RUNNER,
       "--session-name", SEAT, "--cwd", dir, "--launch-id", "act-1", "--posture", "floor"],
       { env: {
@@ -76,7 +74,7 @@ describe("stub-runner activity POST (real-spawn wire proof, R2)", () => {
     const events = () => captured.map((c) => String(c.body.hookEvent));
     await waitFor(() => events().includes("SessionStart") && events().includes("UserPromptSubmit") && events().includes("Stop"));
 
-    // Every POST hit the canonical path, authenticated, runtime-tagged, seat-keyed.
+    // 每个 POST 都命中权威路径，完成认证，带 runtime 标签并按席位区分。
     for (const c of captured) {
       expect(c.url).toBe("/api/activity/hooks");
       expect(c.auth).toBe(`Bearer ${TOKEN}`);
@@ -85,7 +83,7 @@ describe("stub-runner activity POST (real-spawn wire proof, R2)", () => {
       expect(c.body.nodeId).toBe("node-xyz");
       expect(c.body.occurredAt).toBe(INJECTED_ISO);
     }
-    // Turn ordering: SessionStart precedes the turn's UserPromptSubmit, which precedes Stop.
+    // turn 顺序：SessionStart 先于本 turn 的 UserPromptSubmit，后者先于 Stop。
     expect(events().indexOf("SessionStart")).toBeLessThan(events().indexOf("UserPromptSubmit"));
     expect(events().indexOf("UserPromptSubmit")).toBeLessThan(events().indexOf("Stop"));
   }, 30_000);

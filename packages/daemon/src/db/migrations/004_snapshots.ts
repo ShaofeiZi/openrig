@@ -3,9 +3,9 @@ import type { Migration } from "../migrate.js";
 export const snapshotsSchema: Migration = {
   name: "004_snapshots.sql",
   sql: `
-    -- snapshots: hybrid JSON blob + metadata for querying
-    -- rig_id is plain TEXT (not FK) — snapshots survive rig deletion
-    -- (same append-only history policy as events)
+    -- snapshots：混合 JSON blob 与用于查询的元数据。
+    -- rig_id 是普通 TEXT（不是外键）——快照会在 rig 删除后保留。
+    --（与事件采用相同的只追加历史策略。）
     CREATE TABLE snapshots (
       id          TEXT PRIMARY KEY,
       rig_id      TEXT NOT NULL,

@@ -12,8 +12,8 @@ import type { ExecFn } from "./adapters/tmux.js";
 import type { CmuxTransportFactory } from "./adapters/cmux.js";
 import { createDb } from "./db/connection.js";
 import { migrate } from "./db/migrate.js";
-// P8: apply the CANONICAL migration list — the single source of truth (db/all-migrations.ts),
-// never an inline copy that can drift out of sync with the daemon's schema.
+// P8：应用规范迁移列表——唯一事实源是 db/all-migrations.ts，
+// 绝不内联复制，以免与后台服务 schema 发生漂移。
 import { ALL_MIGRATIONS } from "./db/all-migrations.js";
 import { RigRepository } from "./domain/rig-repository.js";
 import { SessionRegistry } from "./domain/session-registry.js";
@@ -61,7 +61,7 @@ import { ClaimService } from "./domain/claim-service.js";
 import { SelfAttachService } from "./domain/self-attach-service.js";
 import { RigLifecycleService } from "./domain/rig-lifecycle-service.js";
 import { RigExpansionService } from "./domain/rig-expansion-service.js";
-// TODO: AS-T12 — migrate to pod-aware bundle source resolver
+// TODO：AS-T12——迁移到感知席位组的 bundle 来源解析器。
 import { LegacyBundleSourceResolver as BundleSourceResolver } from "./domain/bundle-source-resolver.js";
 import { PodBundleSourceResolver } from "./domain/bundle-source-resolver.js";
 import { PsProjectionService } from "./domain/ps-projection.js";
@@ -119,9 +119,9 @@ import { makeParkedOwnerConsumerPolicy, makeRigAnchor, PARKED_OWNER_POLICY_NAME 
 import { diagnoseRigParked } from "./domain/parked-query.js";
 import { SpecReviewService } from "./domain/spec-review-service.js";
 import { SpecLibraryService } from "./domain/spec-library-service.js";
-// Phase 3a slice 3.3 — plugin discovery service.
+// 阶段 3a slice 3.3——插件发现服务。
 import { PluginDiscoveryService } from "./domain/plugin-discovery-service.js";
-// Slice 28 Checkpoint C-3 — skill-library discovery (SC-29 #11 cumulative).
+// Slice 28 检查点 C-3——技能库发现（累计覆盖 SC-29 #11）。
 import { SkillLibraryDiscoveryService } from "./domain/skill-library-discovery.js";
 import { ContextPackLibraryService } from "./domain/context-packs/context-pack-library-service.js";
 import { openRigContextLibraryRoots } from "./domain/instance-initialization.js";
@@ -139,9 +139,8 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import nodePath from "node:path";
-// Slice 11 (release-0.3.1 workflow-spec-folder-discovery) — adds
-// status + error_message columns to workflow_specs so the scanner
-// can record diagnostic rows. SC-29 #10 declared verbatim in commit body.
+// Slice 11（release-0.3.1 workflow-spec-folder-discovery）——向 workflow_specs 添加
+// status 与 error_message 列，使扫描器能够记录诊断行。SC-29 #10 在提交正文中逐字声明。
 import { RigModeStore } from "./domain/rig-mode/rig-mode-store.js";
 import { OperatingPostureService } from "./domain/rig-mode/operating-posture.js";
 import { MissionControlActionLog } from "./domain/mission-control/mission-control-action-log.js";
@@ -167,9 +166,9 @@ import {
 
 interface DaemonOptions {
   dbPath?: string;
-  /** S20 — the effective bind plan (mode/hosts/tailscaleDetected/ignoredRoutingHost),
-   *  computed once in index.ts and exposed on /healthz so adoption gates verify
-   *  listeners by binding evidence. Absent (tests/legacy) = healthz body unchanged. */
+  /** S20——有效绑定计划（mode/hosts/tailscaleDetected/ignoredRoutingHost），
+   *  在 index.ts 中只计算一次，并通过 /healthz 暴露，使采用门禁能凭绑定证据验证监听器。
+   *  缺失（测试/旧版）时 healthz 正文保持不变。 */
   bindPlan?: import("./domain/bind-plan.js").BindPlan;
   tmuxExec?: ExecFn;
   cmuxExec?: ExecFn;
@@ -178,18 +177,16 @@ interface DaemonOptions {
   tmuxOptionPlatform?: NodeJS.Platform;
   slowOpRecorder?: SlowOperationInstrumentation;
   /**
-   * PL-005 Phase B: bearer token for Mission Control write verbs.
-   * When null, the auth-bearer-token middleware passes through (the
-   * index.ts startup-side check ensures this is only valid when bound
-   * on loopback). When set, the middleware enforces constant-time
-   * comparison + 401 on missing/mismatch.
+   * PL-005 阶段 B：任务控制写入动词的 bearer token。
+   * 为 null 时，auth-bearer-token 中间件放行（index.ts 启动侧检查确保
+   * 只有绑定到回环地址时才允许这样做）。设置后，中间件执行常量时间比较，
+   * 缺失或不匹配时返回 401。
    */
   bearerToken?: string | null;
   /**
-   * Terminal bearer token for live-terminal routes. Null means the
-   * daemon bind posture is already trusted (loopback/tailnet), matching
-   * the Mission Control auth boundary. Non-null enforces bearer auth on
-   * terminal preview/transport/websocket routes.
+   * 实时终端路由的 bearer token。null 表示后台服务绑定姿态已受信任
+   *（回环地址/tailnet），与任务控制鉴权边界一致。非 null 时，对终端
+   * 预览、传输和 WebSocket 路由强制执行 bearer 鉴权。
    */
   terminalBearerToken?: string | null;
 }
@@ -199,7 +196,7 @@ interface DaemonResult {
   db: Database.Database;
   deps: AppDeps;
   contextMonitor: import("./domain/context-monitor.js").ContextMonitor;
-  // OPR.0.4.3.21 — returned so index.ts can stop() it on graceful shutdown.
+  // OPR.0.4.3.21——返回该对象，使 index.ts 可在优雅关闭时调用 stop()。
   eventLoopMonitor: import("./domain/event-loop-monitor.js").EventLoopMonitor;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   injectWebSocket: (server: any) => void;
@@ -213,12 +210,11 @@ const KNOWN_PROVIDER_AUTH_ENV = new Set([
   "OPENAI_BASE_URL",
   "OPENAI_ORG_ID",
   "OPENAI_PROJECT_ID",
-  // OPR.0.4.6.PI1 FR-7 — Pi seat providers. Without these in the KNOWN set,
-  // a daemon-launched Pi seat can never receive its provider key (the
-  // pi-runner's own deny-by-default allowlist then has nothing to pass
-  // through). Double opt-in preserved: the operator must still name each var
-  // in recovery.provider_auth_env_allowlist. OpenRouter is the founder-ruled
-  // preferred path (2026-07-06); zai/kimi-coding are the secondary natives.
+  // OPR.0.4.6.PI1 FR-7——Pi 席位提供商。若不加入 KNOWN 集合，由后台服务启动的
+  // Pi 席位就无法获得提供商密钥（pi-runner 默认拒绝的白名单将没有内容可传递）。
+  // 仍保留双重选择加入：操作员必须在 recovery.provider_auth_env_allowlist 中明确列出
+  // 每个变量。OpenRouter 是创建者在 2026-07-06 裁定的首选路径，zai/kimi-coding
+  // 是次级原生路径。
   "OPENROUTER_API_KEY",
   "ZAI_API_KEY",
   "KIMI_API_KEY",
@@ -246,36 +242,32 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
   const daemonHome = os.homedir();
   const configuredCodexHome = process.env.CODEX_HOME;
   if (configuredCodexHome && !nodePath.isAbsolute(configuredCodexHome)) {
-    throw new Error(`CODEX_HOME must be an absolute path for managed seats: ${configuredCodexHome}`);
+    throw new Error(`托管席位的 CODEX_HOME 必须是绝对路径：${configuredCodexHome}`);
   }
   const codexHome = configuredCodexHome || nodePath.join(daemonHome, ".codex");
   const dbPath = opts?.dbPath ?? ":memory:";
   const db = createDb(dbPath);
   migrate(db, ALL_MIGRATIONS);
 
-  // 51-09 increment 1 — establish the daemon's durable self-host identity at
-  // boot (mint on first boot, reconcile thereafter). host.name is a display-only
-  // CANDIDATE SEED (arch ruling cb19867f / DP4). Boot proceeds on a host.name
-  // conflict (the stored id is kept and the conflict is surfaced loudly).
+  // 51-09 增量 1——启动时建立后台服务持久化的本机身份（首次启动创建，之后协调）。
+  // host.name 只是用于显示的候选种子（架构裁决 cb19867f / DP4）。host.name 冲突时
+  // 仍继续启动（保留已存储 id，并明确暴露冲突）。
   const hostNameCandidate = new ContextPackSettingsStore().resolveOne("host.name").value as string;
   const selfHost = reconcileSelfHostIdentity(new SelfHostIdentityStore(db), {
     nowIso: new Date().toISOString(),
     hostNameCandidate,
   });
-  // 51-09 increment 2 — publish the resolved self-host id so the read-through
-  // (and, in increment 4, the queue-destination validator) resolve a request
-  // addressed to THIS host's own id HOME, instead of dialing/validating it as a
-  // remote/unknown host. Distinct spelling from the 'local' sentinel.
+  // 51-09 增量 2——发布解析后的本机 id，使透传读取（以及增量 4 的队列目标校验器）
+  // 能在本机 id 对应的 HOME 中解析请求，而不是将其作为远程/未知主机拨号或校验。
+  // 其拼写与 `local` 哨兵值不同。
   setSelfHostId(selfHost.hostId);
-  // Slice 14 §2c — derived from the SAME candidate the reconcile just used, so the two can never
-  // disagree, and computed here rather than per request (see fanout-contract).
+  // Slice 14 §2c——从协调过程刚使用的同一候选值派生，因此两者不会分歧；
+  // 在此处一次性计算，而非逐请求计算（见 fanout-contract）。
   setSelfHostIdSource(deriveSelfHostIdSource(selfHost.hostId, hostNameCandidate));
 
-  // P7 — the daemon's LIFECYCLE record (distinct from the 059 identity record).
-  // A new boot mints a fresh epoch, stamps started_at, and clears any prior run's
-  // stopped_at/heartbeat. The heartbeat (index.ts post-bind) advances last-seen
-  // while running; a clean shutdown (index.ts shutdown, AFTER stopping the timer)
-  // stamps stopped_at for THIS epoch.
+  // P7——后台服务生命周期记录（不同于 059 身份记录）。新启动会创建新纪元、写入
+  // started_at，并清除上次运行的 stopped_at/heartbeat。运行期间心跳（index.ts 绑定后）
+  // 推进 last-seen；干净关闭时（index.ts 停止计时器之后）为本纪元写入 stopped_at。
   const daemonLifecycleStore = new DaemonLifecycleStore(db);
   const daemonBootEpoch = randomUUID();
   daemonLifecycleStore.recordBoot(daemonBootEpoch, new Date().toISOString());
@@ -284,7 +276,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
   const sessionRegistry = new SessionRegistry(db);
   const eventBus = new EventBus(db);
   const streamStore = new StreamStore(db, eventBus);
-  // Explicit source opt-in only. No sink I/O until a separate drain request.
+  // 仅显式选择加入来源；在单独的 drain 请求前不进行接收端 I/O。
   const shadow = configureShadowCapture(process.env.OPENRIG_SHADOW_CAPTURE);
   const slowOpRecorder = opts?.slowOpRecorder ?? (dbPath === ":memory:"
     ? undefined
@@ -292,42 +284,37 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
         logPath: nodePath.join(OPENRIG_HOME, "logs", "slow-operations.jsonl"),
       }));
   configureSyncSiteRecorder(slowOpRecorder);
-  // Instrumentation wiring is observe-only: neither a throwing registration
-  // call nor a throwing callback body (streamStore.emit) may abort createDaemon
-  // or later wrapped work. Guard both boundaries.
+  // 监测接线仅用于观察：注册调用抛错或回调正文（streamStore.emit）抛错都不得中止
+  // createDaemon 或后续包装工作，因此同时防护两个边界。
   try {
     slowOpRecorder?.setDegradedHandler?.(({ reason, site }) => {
       try {
         streamStore.emit({
           sourceSession: "daemon@kernel",
-          body: `slow-operation instrumentation degraded: ${reason} at ${site}`,
+          body: `慢操作监测已降级：${site}，原因：${reason}`,
           hintType: "observation",
           hintUrgency: "high",
           hintTags: ["daemon", "slow-operation", "observability-degraded"],
         });
       } catch (error) {
-        console.error("[slow-operation] degradation notification failed", error);
+        console.error("[slow-operation] 降级通知失败", error);
       }
     });
   } catch (error) {
-    console.error("[slow-operation] setDegradedHandler registration failed", error);
+    console.error("[slow-operation] setDegradedHandler 注册失败", error);
   }
-  // PL-004 Phase A revision (R1): topology-backed validateRig.
-  // Reject `<member>@<unknown-rig>` shapes by checking the rig portion
-  // against the rig registry. Bare ids without `@` are also rejected
-  // (no canonical rig binding).
-  // OPR.0.4.6.MH1 FR-8: this gate is the ARCHETYPE consumer of the shared
-  // parse contract — human-seat classification BEFORE parse, then the
-  // greedy first-@ rig (so "member@rig@x" looks up rig "rig@x", misses,
-  // and rejects with the same unknown_destination_rig as ever — BR-1).
+  // PL-004 阶段 A 修订（R1）：由拓扑支撑的 validateRig。通过工作组注册表检查
+  // 工作组部分，拒绝 `<member>@<unknown-rig>` 形态；不含 `@` 的裸 id 也会被拒绝
+  //（没有规范工作组绑定）。OPR.0.4.6.MH1 FR-8：此门禁是共享解析契约的典型消费者——
+  // 先进行人类席位分类，再按首个 @ 贪婪解析工作组（所以 "member@rig@x" 会查找
+  // "rig@x"，查找失败，并继续返回同一 unknown_destination_rig——BR-1）。
   const topologyValidateRig = (sessionRef: string): boolean => {
     const parsed = parseSessionName(sessionRef);
-    // M1 A4b — @external entity-admission (checked BEFORE the human-CLASS bare-admit,
-    // which A2 also makes true for <local>@external): a queue row destinationed to
-    // <local>@external is admitted ONLY if the human is REGISTERED (or it is a literal
-    // scheme address); an unregistered entity is REFUSED (the 4b site carries the
-    // entity-level teaching via externalAdmissionTeaching). Admission is the gateway's
-    // job, never the classifier's (arch 8cd30094).
+    // M1 A4b——@external 实体准入（在人类类别裸准入之前检查；A2 也会让
+    // <local>@external 满足后者）：目标为 <local>@external 的队列行仅在人类已注册
+    //（或它是字面 scheme 地址）时准入；未注册实体会被拒绝（4b 位置通过
+    // externalAdmissionTeaching 提供实体级说明）。准入属于网关职责，绝非分类器职责
+    //（架构 8cd30094）。
     if (parsed.kind === "external") {
       const reg = loadHumanRegistry();
       const entities = reg.ok ? reg.entities.map((e) => ({ entityId: e.entityId, address: e.address })) : [];
@@ -337,46 +324,39 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     if (parsed.kind !== "canonical") return false;
     return rigRepo.findRigsByName(parsed.rig).length > 0;
   };
-  // PL-004 Phase A — shared coordination services. Constructed early so
-  // both the queueRepo dep slot and inboxHandler can share one instance.
-  // Transport is wired after SessionTransport instantiation below via
-  // attachTransport().
+  // PL-004 阶段 A——共享协调服务。提前构造，使 queueRepo 依赖槽与 inboxHandler
+  // 可以共享同一实例。下面实例化 SessionTransport 后再通过 attachTransport() 接入传输层。
   const queueRepoInstance = new QueueRepository(db, eventBus, {
     validateRig: topologyValidateRig,
-    // OPR.0.4.6.WF3 FR-6 — the frontier close-path guard's predicate,
-    // INJECTED here (arch layering pin: the queue never imports the
-    // workflow domain; startup wires them — the validateRig precedent).
+    // OPR.0.4.6.WF3 FR-6——在此注入前沿关闭路径守卫的谓词（架构分层锚点：
+    // 队列绝不导入工作流领域；由启动过程接线——沿用 validateRig 先例）。
     workflowFrontierPredicate: createWorkflowFrontierPredicate(db),
-    // GHOST-STAGE (h): resolve the source seat's atom-B generation for the handoff-nudge Sent: line
-    // (same injected-predicate layering — the queue never imports the session domain).
+    // GHOST-STAGE (h)：为交接提醒的 Sent 行解析来源席位的 atom-B 代数
+    //（同一注入谓词分层；队列绝不导入会话领域）。
     resolveOccupantGeneration: (sessionName) => sessionRegistry.currentOccupantGenerationForSession(sessionName),
   });
-  // W1 (transactional closure): ONE OutboxHandler shared between the deps slot
-  // (sender-side audit surface) and the queue repo's durable wake-intent
-  // staging. Same `db`, so a stageWakeIntent() call inside a terminal
-  // db.transaction commits atomically with the close + successor create.
+  // W1（事务闭合）：deps 槽（发送端审计面）与队列仓库的持久唤醒意图暂存共享唯一
+  // OutboxHandler。两者使用同一个 `db`，因此终态 db.transaction 内的
+  // stageWakeIntent() 会与关闭及后继创建原子提交。
   const outboxHandlerInstance = new OutboxHandler(db);
   queueRepoInstance.attachOutbox(outboxHandlerInstance);
-  // PL-004 Phase B — classifier lease manager. Constructed early so both
-  // the leaseManager dep slot and project-classifier can share one instance.
-  // isAlive is post-attached after whoami-service is constructed.
+  // PL-004 阶段 B——分类器租约管理器。提前构造，使 leaseManager 依赖槽与
+  // project-classifier 共享同一实例；whoami-service 构造后再挂接 isAlive。
   const classifierLeaseManagerInstance = new ClassifierLeaseManager(db, eventBus);
-  // PL-004 Phase B — view-projector. Constructed early so both the
-  // viewProjector dep slot and the view-event-bridge can share one instance.
+  // PL-004 阶段 B——视图投影器。提前构造，使 viewProjector 依赖槽与
+  // view-event-bridge 共享同一实例。
   const viewProjectorInstance = new ViewProjector(db, eventBus);
-  // PL-004 Phase B R1 (closes guard BLOCKER 2): wire the view event bridge
-  // so queue/inbox/project mutations emit view.changed for affected built-in
-  // views. SSE consumers on /api/views/:name/sse now receive change events
-  // when underlying state mutates.
+  // PL-004 阶段 B R1（关闭守卫 BLOCKER 2）：连接视图事件桥，使 queue/inbox/project
+  // 变更为受影响的内置视图发出 view.changed。底层状态变更时，
+  // /api/views/:name/sse 的 SSE 消费者会收到变更事件。
   wireViewEventBridge(eventBus, viewProjectorInstance);
 
-  // PL-004 Phase C — watchdog supervision tree. Repository + history-log
-  // are constructed early; the policy engine + scheduler are constructed
-  // after SessionTransport is available so the engine can wire delivery.
+  // PL-004 阶段 C——看守器监督树。仓库与历史日志提前构造；策略引擎和调度器则在
+  // SessionTransport 可用后构造，以便引擎接入投递。
   const watchdogJobsRepoInstance = new WatchdogJobsRepository(
     db,
-    undefined, // now (default clock)
-    // GHOST-STAGE (e/Class-B): stamp the arming occupant's generation so a swap can drop its armed jobs.
+    undefined, // now（默认时钟）
+    // GHOST-STAGE（e/Class-B）：记录武装时占位者的代数，使换代时可丢弃其已武装任务。
     (sessionName) => sessionRegistry.currentOccupantGenerationForSession(sessionName),
   );
   queueRepoInstance.attachWatchdogJobsRepository(watchdogJobsRepoInstance);
@@ -387,8 +367,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     warn: (message) => console.warn(message),
   });
   sessionRegistry.setWatchdogRegistrationObserver(watchdogAutoRegistration);
-  // Existing sessions predate the structural mint hook. Audit them at every
-  // boot without creating jobs: additive coverage stays loud, core boot stays live.
+  // 现有会话早于结构化创建钩子。每次启动时审计它们但不创建任务：
+  // 增量覆盖保持显式，核心启动保持可用。
   watchdogAutoRegistration.assertLiveSeatCoverage();
   const watchdogHistoryLogInstance = new WatchdogHistoryLog(db);
 
@@ -397,36 +377,33 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
   deliveryGuard.recoverActivation();
   tmuxAdapter.deliveryGuard = deliveryGuard;
 
-  // Slice 15 — Seat-activity service for the `terminal-active` primitive.
-  // Lives at module scope so the projection chain (PsProjectionService,
-  // node-inventory enrichment) reads from one source. Default silence
-  // window: 3s per slice 15 README. Per-seat silenceWindowSeconds from
-  // AgentSpec.profile.activity is currently inert (the poller uses the
-  // global default; per-seat windows are not wired to the live poll).
+  // Slice 15——`terminal-active` 原语的席位活动服务。它位于模块作用域，
+  // 使投影链（PsProjectionService、节点清单丰富）读取同一来源。默认静默窗口为
+  // slice 15 README 规定的 3 秒。AgentSpec.profile.activity 中的逐席位
+  // silenceWindowSeconds 当前尚未生效（轮询器使用全局默认值，尚未接入逐席位窗口）。
   const seatActivityService = new SeatActivityService({
     tmux: tmuxAdapter,
     defaultWindowSeconds: 3,
     eventBus,
-    // S19 — the Claude self-report rung (pid.json), consulted per sweep for seats whose
-    // declared inventory staffs it; unreadable = null = the ladder falls, never errors.
+    // S19——Claude 自报告梯级（pid.json）；每轮扫描时为清单中声明的席位读取。
+    // 不可读时为 null，继续降级到下一梯级，而不抛错。
     selfReportReader: (sessionName, seatNodeId) => {
       const sessionsDir = nodePath.join(process.env.CLAUDE_CONFIG_DIR ?? nodePath.join(os.homedir(), ".claude"), "sessions");
       return readClaudeSelfReportEvidence({ sessionsDir, sessionName, seatNodeId });
     },
   });
-  // 5b82324b — the STRUCTURAL activity cache (sibling of SeatActivityService). Captures pane TEXT once
-  // per running seat per tick + classifies motion STRUCTURALLY, so the `rig ps` ACTIVITY column reflects
-  // real liveness for hook-less / stale-hook / turn-boundary seats WITHOUT a per-request capture storm.
+  // 5b82324b——结构化活动缓存（SeatActivityService 的同级组件）。每个 tick 为每个运行中
+  // 席位捕获一次窗格文本，并按结构分类活动，使 `rig ps` 的 ACTIVITY 列能反映无钩子、
+  // 钩子过期或轮次边界席位的真实活性，又不会形成逐请求捕获风暴。
   const seatStructuralActivityService = new SeatStructuralActivityService(tmuxAdapter);
-  // OPR.0.4.3.19 — SeatIdentityReconciler owns the liveness identity verdict
-  // (the THIRD axis). Reconciles each running seat's pane PID/command against
-  // the registered binding and persists the verdict so node-inventory can gate
-  // the running/active green derivations. Started post-bind in index.ts.
+  // OPR.0.4.3.19——SeatIdentityReconciler 拥有活性身份裁决（第三轴）。它把每个
+  // 运行中席位的窗格 PID/命令与已注册绑定协调，并持久化裁决，使节点清单可以门控
+  // running/active 的绿色派生；由 index.ts 在绑定后启动。
   const seatIdentityReconciler = new SeatIdentityReconciler({
     db,
     tmux: tmuxAdapter,
   });
-  // cmuxFactory takes precedence (for tests), then cmuxExec-based CLI transport, then default
+  // cmuxFactory（用于测试）优先，其次是基于 cmuxExec 的 CLI 传输，最后使用默认值。
   const cmuxFactory = opts?.cmuxFactory
     ?? createCmuxCliTransport(opts?.cmuxExec ?? execCommand);
   const cmuxAdapter = new CmuxAdapter(
@@ -434,25 +411,21 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     { timeoutMs: opts?.cmuxTimeoutMs ?? 5000 }
   );
 
-  // Read transcript config from env (passed by CLI via PNS-T02 config surface)
+  // 从环境读取转录配置（CLI 通过 PNS-T02 配置面传入）。
   const transcriptsEnabled = readOpenRigEnv("OPENRIG_TRANSCRIPTS_ENABLED", "RIGGED_TRANSCRIPTS_ENABLED") !== "false";
   const transcriptsPath = readOpenRigEnv("OPENRIG_TRANSCRIPTS_PATH", "RIGGED_TRANSCRIPTS_PATH") || undefined;
   const activityHookToken = readOpenRigEnv("OPENRIG_ACTIVITY_HOOK_TOKEN", "RIGGED_ACTIVITY_HOOK_TOKEN") || undefined;
   const activityHookUrl = readOpenRigEnv("OPENRIG_URL", "RIGGED_URL") || undefined;
   const openRigPort = readOpenRigEnv("OPENRIG_PORT", "RIGGED_PORT") || undefined;
   const openRigHost = readOpenRigEnv("OPENRIG_HOST", "RIGGED_HOST") || undefined;
-  // OPR.0.4.3.28 B2 — self-provision a STABLE activity url+token so launched
-  // seats reach the ingest endpoint without operator shell seeding (the
-  // confirmed live break). The token persists across daemon restarts (matches
-  // already-launched seats' frozen env); the URL derives from the daemon's
-  // loopback + port (DEFAULT_PORT 7433 fallback). The SAME token becomes both
-  // the ingest expected-token (server dep below) and the seats' env value, so
-  // hook POSTs authenticate. Also snapshotted to activity-endpoint.json for the
-  // relay file-discovery fallback used by reconcile/restored seats (B3).
+  // OPR.0.4.3.28 B2——自动配置稳定的活动 URL 与 token，使启动后的席位无需操作员
+  // 预先设置 shell 即可访问摄取端点（已确认的线上断点）。token 跨后台服务重启持久化，
+  // 与已启动席位冻结的环境一致；URL 由后台服务的回环地址和端口派生（回退到 DEFAULT_PORT 7433）。
+  // 同一个 token 同时作为摄取端预期值（见下方 server 依赖）和席位环境值，使钩子 POST 可鉴权。
+  // 同时快照到 activity-endpoint.json，供协调/恢复席位使用文件发现的中继回退（B3）。
   const resolvedActivityHookToken = activityHookToken ?? ensureActivityHookToken(OPENRIG_HOME);
-  // Derive from the daemon's OWN bound host+port (honors an explicit OPENRIG_HOST
-  // single-host bind; wildcard/absent → loopback) so seats post to a reachable
-  // address — a hardcoded 127.0.0.1 breaks an explicit tailnet/hostname bind.
+  // 从后台服务自身绑定的主机与端口派生（尊重显式 OPENRIG_HOST 单主机绑定；通配/缺失则回环），
+  // 使席位向可达地址发送请求；硬编码 127.0.0.1 会破坏显式 tailnet/主机名绑定。
   const resolvedActivityHookUrl = activityHookUrl ?? deriveActivityUrl(openRigHost, openRigPort);
   writeActivityEndpointFile(OPENRIG_HOME, { baseUrl: resolvedActivityHookUrl, token: resolvedActivityHookToken });
   const startupSettings = new ContextPackSettingsStore().resolveConfig();
@@ -465,10 +438,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     transcriptsRoot: transcriptsPath,
   });
 
-  // Shared launch identity/activity env — used by NodeLauncher at launch AND
-  // by the seat-handover full-cycle composer when it creates a successor
-  // session (OPR.0.4.3.04), so a handed-over successor self-identifies +
-  // reports activity exactly like a launched seat.
+  // 共享启动身份/活动环境——NodeLauncher 启动时使用，席位交接全周期组合器创建后继会话时
+  // 也使用（OPR.0.4.3.04），因此交接后的后继与正常启动席位一样自报身份和活动。
   const launchSessionEnv: Record<string, string | undefined> = {
     PATH: process.env.PATH,
     OPENRIG_HOME,
@@ -480,14 +451,11 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     HOME: daemonHome,
     CODEX_HOME: codexHome,
   };
-  // OPR.0.4.6.02 S1 — ONE shared tmux option-defaults applier, injected into
-  // BOTH NodeLauncher and (via AppDeps → the seat-handover route) the fresh
-  // successor launcher, so every fresh seat gets the same mouse/status/
-  // clipboard defaults and the server-scope defaults assert once per daemon
-  // lifetime (shared memo). The status-bar read resolves `terminal.status_bar`
-  // FRESH per launch (resolveOne re-reads the config file) so an operator flip
-  // applies to the NEXT launch without a daemon restart; a resolution failure
-  // falls back to off (bar hidden).
+  // OPR.0.4.6.02 S1——唯一共享的 tmux 选项默认值应用器，同时注入 NodeLauncher，
+  // 以及通过 AppDeps → 席位交接路由注入新的后继启动器。这样每个新席位获得相同的
+  // 鼠标、状态栏和剪贴板默认值，服务端范围默认值在每个后台服务生命周期中只断言一次
+  //（共享记忆）。每次启动都重新解析 `terminal.status_bar`（resolveOne 重读配置文件），
+  // 因而操作员的切换无需重启后台服务即可作用于下一次启动；解析失败时回退为关闭状态栏。
   const tmuxOptionSettings = new ContextPackSettingsStore();
   const tmuxOptionDefaults = new TmuxOptionDefaultsApplier({
     tmuxAdapter,
@@ -519,9 +487,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
   });
   const claudeResume = new ClaudeResumeAdapter(tmuxAdapter, { claudeManagedLaunch });
   const codexResume = new CodexResumeAdapter(tmuxAdapter, { launchPath: process.env.PATH, detectDaemonSupport: codexDaemonSupportProbe(process.env.PATH) });
-  // OPR.0.4.6.PI1 — the Pi seat-state root + the compiled runner entry (daemon
-  // dist). Shared by the Pi runtime adapter, the resume adapter, and the
-  // resume-token capture sidecar reader.
+  // OPR.0.4.6.PI1——Pi 席位状态根目录与编译后的 runner 入口（后台服务 dist）。
+  // 由 Pi 运行时适配器、恢复适配器和恢复 token 捕获 sidecar 读取器共享。
   const piStateRoot = nodePath.join(OPENRIG_HOME, "state", "pi");
   const piRunnerEntryPath = nodePath.resolve(import.meta.dirname, "./adapters/pi-runner.js");
   const piResume = new PiResumeAdapter(
@@ -529,7 +496,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     { readFile: (p: string) => fs.readFileSync(p, "utf-8"), writeFile: (p: string, c: string) => fs.writeFileSync(p, c, "utf-8"), exists: (p: string) => fs.existsSync(p), mkdirp: (p: string) => fs.mkdirSync(p, { recursive: true }) },
     { stateRoot: piStateRoot, runnerEntryPath: piRunnerEntryPath },
   );
-  // Services infrastructure (RigEnv) — created early so restore/bootstrap can use it
+  // 服务基础设施（RigEnv）——提前创建，供恢复与引导流程使用。
   const { ComposeServicesAdapter } = await import("./adapters/compose-services-adapter.js");
   const { ServiceOrchestrator } = await import("./domain/service-orchestrator.js");
   const composeAdapter = new ComposeServicesAdapter(opts?.tmuxExec ?? execCommand);
@@ -541,12 +508,11 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     transcriptStore, serviceOrchestrator,
   });
 
-  // Connect to cmux at startup — degrades gracefully if absent
+  // 启动时连接 cmux；缺失时优雅降级。
   await cmuxAdapter.connect();
 
-  // Reconcile all managed rigs — marks stale sessions as detached.
-  // Capture aggregate counts and log a compact summary so cold-start truth
-  // repair is visible in daemon output instead of silently swallowed.
+  // 协调所有托管工作组——把过期会话标记为已分离。汇总计数并记录紧凑摘要，
+  // 让冷启动事实修复在后台服务输出中可见，而不是被静默吞掉。
   const reconciler = new Reconciler({ db, sessionRegistry, eventBus, tmuxAdapter });
   const rigs = rigRepo.listRigs();
   let reconcileChecked = 0;
@@ -561,32 +527,31 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       for (const e of result.errors) {
         try {
           // eslint-disable-next-line no-console
-          console.warn(`startup reconcile warning: rig=${rig.id} session=${e.sessionId} error=${e.error}`);
-        } catch { /* logging must never throw */ }
+          console.warn(`启动协调警告：rig=${rig.id} session=${e.sessionId} error=${e.error}`);
+        } catch { /* 日志不得抛错 */ }
       }
     } catch (err) {
       reconcileErrors += 1;
       try {
         // eslint-disable-next-line no-console
-        console.warn(`startup reconcile warning: rig=${rig.id} error=${err instanceof Error ? err.message : String(err)}`);
-      } catch { /* logging must never throw */ }
+        console.warn(`启动协调警告：rig=${rig.id} error=${err instanceof Error ? err.message : String(err)}`);
+      } catch { /* 日志不得抛错 */ }
     }
   }
   try {
     // eslint-disable-next-line no-console
-    console.log(`startup reconcile: rigs=${rigs.length} checked=${reconcileChecked} detached=${reconcileDetached} errors=${reconcileErrors}`);
-  } catch { /* logging must never throw */ }
+    console.log(`启动协调：rigs=${rigs.length} checked=${reconcileChecked} detached=${reconcileDetached} errors=${reconcileErrors}`);
+  } catch { /* 日志不得抛错 */ }
 
-  // Transcript rotators are process-local. Reattach them after lifecycle
-  // reconciliation so surviving tmux sessions keep ingesting across daemon
-  // restarts while genuinely detached sessions stay excluded.
+  // 转录轮转器只存在于当前进程。生命周期协调后重新挂接，使存活的 tmux 会话跨后台服务
+  // 重启继续摄取，而真正已分离的会话仍被排除。
   try {
     await resumeRunningTranscriptCaptures(db, tmuxAdapter, transcriptStore);
   } catch (err) {
     try {
       // eslint-disable-next-line no-console
-      console.warn(`startup transcript capture warning: ${err instanceof Error ? err.message : String(err)}`);
-    } catch { /* logging must never throw */ }
+      console.warn(`启动转录捕获警告：${err instanceof Error ? err.message : String(err)}`);
+    } catch { /* 日志不得抛错 */ }
   }
 
   const podRepo = new PodRepository(db);
@@ -598,7 +563,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     db, rigRepo, sessionRegistry, eventBus, nodeLauncher, preflight: rigSpecPreflight, tmuxAdapter,
   });
 
-  // Phase 4: Package install services
+  // 阶段 4：包安装服务。
   const packageRepo = new PackageRepository(db);
   const installRepo = new InstallRepository(db);
   const engineFsOps = {
@@ -616,7 +581,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
   };
   const installVerifier = new InstallVerifier(installRepo, packageRepo, verifierFsOps);
 
-  // Phase 5: Bootstrap services
+  // 阶段 5：引导服务。
   const bootstrapRepo = new BootstrapRepository(db);
   const exec = opts?.tmuxExec ?? execCommand;
   const runtimeVerifier = new RuntimeVerifier({ exec, db });
@@ -640,24 +605,23 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     },
   };
   const bundleSourceResolver = new BundleSourceResolver({ fsOps: resolverFsOps });
-  // Pod-aware instantiator (AgentSpec reboot)
+  // 感知席位组的实例化器（AgentSpec 重启）。
   const { PodRigInstantiator } = await import("./domain/rigspec-instantiator.js");
   const { reconcileSkillLoadout } = await import("./domain/skill-catalog.js");
   const { StartupOrchestrator } = await import("./domain/startup-orchestrator.js");
   const { ClaudeCodeAdapter } = await import("./adapters/claude-code-adapter.js");
-  // P20 — the projection manifest: record-at-apply so the projector can later
-  // discriminate a stale re-projection (safe overwrite) from an operator edit (protect).
+  // P20——投影清单：应用时记录，使投影器之后能区分过期重投影（可安全覆盖）
+  // 与操作员编辑（应保护）。
   const { ProjectionManifestStore } = await import("./domain/projection-manifest-store.js");
   const { hashContent } = await import("./domain/conflict-detector.js");
   const projectionManifestStore = new ProjectionManifestStore(db);
-  // atom-4b — probe the manifest's readability AT BOOT. A rare per-lookup throw protects that one
-  // target (conflict-detector: broken≠absent → operator_conflict); but a WHOLE-TABLE-unreadable
-  // manifest degrades EVERY projection to protect — no overwrite ever applies — a safe but otherwise
-  // SILENT systemic degrade. Warn loudly at boot so the operator knows projections are held pending a
-  // DB repair, rather than silently discovering nothing projects.
+  // atom-4b——启动时探测清单可读性。罕见的逐次查找异常会保护单个目标
+  //（conflict-detector：broken≠absent → operator_conflict）；但整表不可读会让所有投影
+  // 降级为保护状态，任何覆盖都不会执行。这很安全却可能静默，因此启动时明确警告，
+  // 告知操作员投影正等待数据库修复，而不是静默表现为没有任何投影。
   if (!projectionManifestStore.isReadable()) {
     console.warn(
-      "projection-manifest UNREADABLE at boot — every projection will degrade to PROTECT (no overwrites apply) until the DB is repaired; investigate projection_manifest (migration 064).",
+      "启动时无法读取 projection-manifest——数据库修复前，所有投影都会降级为 PROTECT（不会应用覆盖）；请检查 projection_manifest（迁移 064）。",
     );
   }
   const { CodexRuntimeAdapter } = await import("./adapters/codex-runtime-adapter.js");
@@ -667,21 +631,20 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
   const runtimeSettings = new ContextPackSettingsStore().resolveConfig();
   const claudeAdapter = new ClaudeCodeAdapter({ tmux: tmuxAdapter, claudeManagedLaunch, fsOps: { readFile: (p: string) => fs.readFileSync(p, "utf-8"), writeFile: (p: string, c: string) => fs.writeFileSync(p, c, "utf-8"), exists: (p: string) => fs.existsSync(p), mkdirp: (p: string) => fs.mkdirSync(p, { recursive: true }), copyFile: (src: string, dest: string) => fs.copyFileSync(src, dest), listFiles: (dir: string) => { const r: string[] = []; function w(d: string, pre: string) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) w(nodePath.join(d, e.name), nodePath.join(pre, e.name)); else r.push(pre ? nodePath.join(pre, e.name) : e.name); } } w(dir, ""); return r; }, readdir: (dir: string) => fs.readdirSync(dir), statMode: (p: string) => fs.statSync(p).mode, chmod: (p: string, m: number) => fs.chmodSync(p, m), homedir: os.homedir() }, stateDir: OPENRIG_HOME, collectorAssetPath: nodePath.resolve(import.meta.dirname, "../assets/claude-statusline-context.cjs"), autoDriveProviderPrompts: runtimeSettings.recoveryAutoDriveProviderPrompts, activityRelayPath: nodePath.resolve(import.meta.dirname, "../assets/plugins/openrig-core/hooks/scripts/activity-relay.cjs"), claudeHooksManifestPath: nodePath.resolve(import.meta.dirname, "../assets/plugins/openrig-core/hooks/claude.json"), recordProjection: (targetPath: string, content: string) => projectionManifestStore.record({ targetPath, lastHash: hashContent(content), writtenAt: new Date().toISOString() }) });
   const codexAdapter = new CodexRuntimeAdapter({ tmux: tmuxAdapter, fsOps: { readFile: (p: string) => fs.readFileSync(p, "utf-8"), writeFile: (p: string, c: string) => fs.writeFileSync(p, c, "utf-8"), exists: (p: string) => fs.existsSync(p), mkdirp: (p: string) => fs.mkdirSync(p, { recursive: true }), listFiles: (dir: string) => { const r: string[] = []; function w(d: string, pre: string) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) w(nodePath.join(d, e.name), nodePath.join(pre, e.name)); else r.push(pre ? nodePath.join(pre, e.name) : e.name); } } w(dir, ""); return r; }, statMode: (p: string) => fs.statSync(p).mode, chmod: (p: string, m: number) => fs.chmodSync(p, m), homedir: daemonHome }, codexHome, launchPath: process.env.PATH, detectDaemonSupport: codexDaemonSupportProbe(process.env.PATH), activityRelayPath: nodePath.resolve(import.meta.dirname, "../assets/plugins/openrig-core/hooks/scripts/activity-relay.cjs") });
-  // OPR.0.4.6.PI1 — the RPC-first Pi adapter (runner-in-a-pane). Same fsOps
-  // shape as the Codex adapter; seat isolation roots under piStateRoot.
+  // OPR.0.4.6.PI1——RPC 优先的 Pi 适配器（窗格内 runner）。fsOps 形态与
+  // Codex 适配器相同；席位隔离根目录位于 piStateRoot 下。
   const piAdapter = new PiRuntimeAdapter({ tmux: tmuxAdapter, fsOps: { readFile: (p: string) => fs.readFileSync(p, "utf-8"), writeFile: (p: string, c: string) => fs.writeFileSync(p, c, "utf-8"), exists: (p: string) => fs.existsSync(p), mkdirp: (p: string) => fs.mkdirSync(p, { recursive: true }), listFiles: (dir: string) => { const r: string[] = []; function w(d: string, pre: string) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) w(nodePath.join(d, e.name), nodePath.join(pre, e.name)); else r.push(pre ? nodePath.join(pre, e.name) : e.name); } } w(dir, ""); return r; } }, stateRoot: piStateRoot, runnerEntryPath: piRunnerEntryPath });
-  // OPR.0.5.1.1 — the stub runtime adapter (Pi-shaped node-script runner in a pane).
-  // Same fsOps shape as Pi; the compiled runner entry lives in the daemon dist.
+  // OPR.0.5.1.1——stub 运行时适配器（窗格中、Pi 形态的 Node 脚本 runner）。
+  // fsOps 形态与 Pi 相同；编译后的 runner 入口位于后台服务 dist。
   const { StubRuntimeAdapter } = await import("./adapters/stub-runtime-adapter.js");
   const stubRunnerEntryPath = nodePath.resolve(import.meta.dirname, "./adapters/stub-runner.js");
   const stubAdapter = new StubRuntimeAdapter({ tmux: tmuxAdapter, fsOps: { readFile: (p: string) => fs.readFileSync(p, "utf-8"), writeFile: (p: string, c: string) => fs.writeFileSync(p, c, "utf-8"), exists: (p: string) => fs.existsSync(p), mkdirp: (p: string) => fs.mkdirSync(p, { recursive: true }), listFiles: (dir: string) => { const r: string[] = []; function w(d: string, pre: string) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) w(nodePath.join(d, e.name), nodePath.join(pre, e.name)); else r.push(pre ? nodePath.join(pre, e.name) : e.name); } } w(dir, ""); return r; } }, runnerEntryPath: stubRunnerEntryPath });
 
-  // plugin-primitive Phase 3a slice 3.5 — ensure Codex feature flag
-  // codex_hooks = true is set in ~/.codex/config.toml so plugin-shipped
-  // hooks fire on Codex runtime. Slice 27 also creates the default
-  // user-owned Claude compaction extra-instructions placeholder.
-  // Operator can disable Codex hooks via OPENRIG_RUNTIME_CODEX_HOOKS_ENABLED
-  // or rig config set runtime.codex.hooks_enabled false.
+  // plugin-primitive 阶段 3a slice 3.5——确保 ~/.codex/config.toml 中设置
+  // Codex 特性开关 codex_hooks = true，使插件随附钩子在 Codex 运行时触发。
+  // Slice 27 还会创建默认、由用户拥有的 Claude 压缩额外指令占位文件。操作员可通过
+  // OPENRIG_RUNTIME_CODEX_HOOKS_ENABLED 或 `zrig config set runtime.codex.hooks_enabled false`
+  // 禁用 Codex 钩子。
   try {
     const {
       SettingsStore,
@@ -700,28 +663,25 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       try {
         const verifyResult = await runtimeVerifier.verifyCodex();
         codexVersion = verifyResult.version ?? undefined;
-      } catch { /* codex not available — skip feature flag */ }
+      } catch { /* Codex 不可用——跳过特性开关 */ }
     }
     codexAdapter.ensureCodexFeatureFlag(enabled, { codexVersion });
-    // OPR.0.4.1.10 FR-A — project the OpenRig activity hooks into the Codex config
-    // layer so Codex seats are hook-PRIMARY for the rig-send prompt guard (and gain
-    // SessionStart/UserPromptSubmit/Stop observability) from clean shipped config.
-    // Same enable gate as the feature flag; trust is auto-cleared at launch.
+    // OPR.0.4.1.10 FR-A——把 OpenRig 活动钩子投影到 Codex 配置层，使 Codex 席位在
+    // 干净发布配置下成为 rig-send 提示守卫的钩子主路径，并获得
+    // SessionStart/UserPromptSubmit/Stop 可观测性。启用门禁与特性开关相同；启动时自动清除 trust。
     if (enabled) {
       codexAdapter.ensureCodexActivityHooks();
     } else {
-      // OPR.0.4.1.10 B3 — durable disable: strip any previously-written managed [hooks] block.
+      // OPR.0.4.1.10 B3——持久禁用：移除此前写入的托管 [hooks] 块。
       codexAdapter.removeCodexActivityHooks();
     }
   } catch (err) {
-    console.error(`[openrig] runtime setup warning: ${(err as Error).message}`);
+    console.error(`[openrig] 运行时设置警告：${(err as Error).message}`);
   }
 
-  // plugin-primitive Phase 3a slice 3.2 — vendor openrig-core plugin to
-  // ~/.openrig/plugins/openrig-core/ on first launch. Auto-fetch from
-  // github.com/mvschwarz/openrig-plugins is best-effort + 404-tolerant
-  // (repo currently empty as of 2026-05-10; vendored
-  // copy is the source of truth at v0).
+  // plugin-primitive 阶段 3a slice 3.2——首次启动时把 openrig-core 插件复制到
+  // ~/.openrig/plugins/openrig-core/。从 github.com/mvschwarz/openrig-plugins 自动获取
+  // 采用尽力而为策略并容忍 404（截至 2026-05-10 仓库为空；v0 以随附副本为事实源）。
   try {
     const { PluginVendorService } = await import("./domain/plugin-vendor-service.js");
     const vendoredAssetsDir = nodePath.resolve(import.meta.dirname, "../assets/plugins");
@@ -768,20 +728,18 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       nodePath.join(os.homedir(), ".agents", "skills"),
     ]);
   } catch (err) {
-    console.error(`[openrig] plugin vendor setup warning: ${(err as Error).message}`);
+    console.error(`[openrig] 插件随附设置警告：${(err as Error).message}`);
   }
 
-  // PL-014: one daemon-scoped ContextPackLibraryService backs the
-  // delivery-free /api/context-packs list/sync/compose/read/delete/preview/pieces
-  // routes. Startup context-pack expansion is intentionally unsupported;
-  // dedicated send/broadcast/walk/queue verbs own delivery.
+  // PL-014：一个后台服务范围的 ContextPackLibraryService 支撑无需投递的
+  // /api/context-packs list/sync/compose/read/delete/preview/pieces 路由。
+  // 有意不支持启动时展开上下文包；投递由专用 send/broadcast/walk/queue 动词负责。
   const contextPackLibrary = (() => {
-    // OPR.0.5.9.5 Wave B — config-resolved canonical context library. The
-    // shared instance initializer normally creates both roots; the mkdirs keep
-    // direct createDaemon test harnesses compatible.
+    // OPR.0.5.9.5 Wave B——由配置解析的规范上下文库。共享实例初始化器通常会创建
+    // 两个根目录；这里的 mkdir 用于保持直接调用 createDaemon 的测试夹具兼容。
     const userPacksRoot = new ContextPackSettingsStore().resolveOne("context.root").value as string;
     const [contextRoot, systemPacksRoot] = openRigContextLibraryRoots(userPacksRoot);
-    try { fs.mkdirSync(systemPacksRoot, { recursive: true }); } catch { /* best-effort */ }
+    try { fs.mkdirSync(systemPacksRoot, { recursive: true }); } catch { /* 尽力而为 */ }
     const roots: Array<{ path: string; sourceType: "builtin" | "user_file" | "workspace" }> = [
       { path: contextRoot, sourceType: "user_file" },
       { path: systemPacksRoot, sourceType: "user_file" },
@@ -793,7 +751,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       if (workspacePacksRoot !== userPacksRoot && workspacePacksRoot !== systemPacksRoot && fs.existsSync(workspacePacksRoot)) {
         roots.push({ path: workspacePacksRoot, sourceType: "workspace" });
       }
-    } catch { /* settings unavailable; fall through with user-file root only */ }
+    } catch { /* 设置不可用；仅使用用户文件根目录继续 */ }
     const builtinPacksRoot = nodePath.resolve(import.meta.dirname, "../context-packs");
     if (fs.existsSync(builtinPacksRoot)) {
       roots.unshift({ path: builtinPacksRoot, sourceType: "builtin" });
@@ -803,13 +761,12 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     return lib;
   })();
 
-  // PL-016 Item 2 + Item 4: hoist AgentImageLibraryService construction
-  // so the PodRigInstantiator can resolve `session_source: mode:
-  // agent_image` at materialize time. Same instance returned to deps
-  // below so /api/agent-images/* + the SnapshotCapturer share it.
+  // PL-016 第 2、4 项：提升 AgentImageLibraryService 的构造位置，使 PodRigInstantiator
+  // 能在实体化时解析 `session_source: mode: agent_image`。下方把同一实例返回到 deps，
+  // 供 /api/agent-images/* 与 SnapshotCapturer 共享。
   const agentImageRootBuilder = () => {
     const userImagesRoot = getDefaultOpenRigPath("agent-images");
-    try { fs.mkdirSync(userImagesRoot, { recursive: true }); } catch { /* best-effort */ }
+    try { fs.mkdirSync(userImagesRoot, { recursive: true }); } catch { /* 尽力而为 */ }
     const roots: Array<{ path: string; sourceType: "builtin" | "user_file" | "workspace" }> = [
       { path: userImagesRoot, sourceType: "user_file" },
     ];
@@ -820,7 +777,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       if (workspaceImagesRoot !== userImagesRoot && fs.existsSync(workspaceImagesRoot)) {
         roots.push({ path: workspaceImagesRoot, sourceType: "workspace" });
       }
-    } catch { /* settings unavailable */ }
+    } catch { /* 设置不可用 */ }
     return { userImagesRoot, roots };
   };
   const agentImageLibrary = (() => {
@@ -859,8 +816,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     agentImageLibrary,
     continuityPolicyMaterializer,
     exec,
-    // OPR.0.5.3.6 — shipped topology chain-file defaults install under the
-    // typed topology.root at materialization (copy-if-absent).
+    // OPR.0.5.3.6——实体化时把随附拓扑链文件默认值安装到类型化 topology.root 下
+    //（不存在时复制）。
     topologyRootResolver: () => String(new ContextPackSettingsStore().resolveOne("topology.root").value),
     onboardingEnabledResolver: () =>
       new ContextPackSettingsStore().resolveOne("onboarding.default_pack.enabled").value === true,
@@ -889,21 +846,16 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     serviceOrchestrator, rigRepo,
   });
 
-  // V0.3.1 slice 05 kernel-rig-as-default — auto-boot the kernel rig
-  // on daemon-start. Forward-fix #3 architectural: the bootstrap is
-  // FIRED in the background, not awaited. createDaemon completes as
-  // soon as the tracker is created so server.ts can bind healthz
-  // independent of kernel-agent readiness. A broken kernel agent no
-  // longer keeps the daemon HTTP surface from starting.
+  // V0.3.1 slice 05 kernel-rig-as-default——后台服务启动时自动引导 kernel 工作组。
+  // Forward-fix #3 架构要求：引导在后台触发而不等待。跟踪器创建后 createDaemon
+  // 即完成，使 server.ts 可独立于 kernel 智能体就绪状态绑定 healthz。损坏的 kernel
+  // 智能体不再阻止后台服务 HTTP 表面启动。
   //
-  // Tracker state is exposed via /api/kernel/status (route below) and
-  // the CLI's `rig daemon start --wait-for-kernel` flag polls it.
-  // After the configurable degraded-timer window (default 90s; env
-  // override OPENRIG_KERNEL_DEGRADED_MS for ops + test fixtures), the
-  // tracker emits a single `kernel.agent.degraded` event for
-  // observability. The kernel rig is still the only rig the daemon
-  // auto-boots; other rigs require explicit operator-initiated
-  // `rig up` / `rig restore` per amended IMPL-PRD §16.2.
+  // 跟踪器状态通过 /api/kernel/status（见下方路由）暴露，CLI 的
+  // `zrig daemon start --wait-for-kernel` 标志会轮询该状态。经过可配置的降级计时窗口
+  //（默认 90 秒；运维与测试夹具可用 OPENRIG_KERNEL_DEGRADED_MS 覆盖）后，跟踪器发出
+  // 单个 `kernel.agent.degraded` 事件用于观测。kernel 工作组仍是后台服务唯一自动引导的
+  // 工作组；按修订后的 IMPL-PRD §16.2，其他工作组需操作员显式执行 `zrig up` / `zrig restore`。
   let kernelBootTracker: import("./domain/kernel-boot-tracker.js").KernelBootTracker | undefined;
   try {
     const { bootKernelIfNeeded } = await import("./domain/kernel-boot.js");
@@ -917,26 +869,25 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       eventBus,
       bootstrapOrchestrator,
       specsDir: nodePath.resolve(nodePath.dirname(new URL(import.meta.url).pathname), "..", "specs"),
-      // V0.3.1 slice 05 — kernel members run against the operator's
-      // workspace, not the daemon installation tree. Without this
-      // cwdOverride, BootstrapOrchestrator refuses with
-      // "cwd is inside the OpenRig installation". Use the resolved
-      // workspace.root setting as the per-operator default.
+      // V0.3.1 slice 05——kernel 成员在操作员工作区而非后台服务安装树中运行。
+      // 缺少此 cwdOverride 时，BootstrapOrchestrator 会以
+      // “cwd 位于 zrig 安装目录内”拒绝。使用解析后的 workspace.root
+      // 设置作为每位操作员的默认值。
       cwdOverride: runtimeSettings.workspaceRoot,
       degradedTimeoutMs,
     });
     try {
       // eslint-disable-next-line no-console
-      console.log(`kernel-boot: tracker-state=${kernelBootTracker.getStatus().kernelState}`);
-    } catch { /* logging must never throw */ }
+      console.log(`kernel-boot：tracker-state=${kernelBootTracker.getStatus().kernelState}`);
+    } catch { /* 日志不得抛错 */ }
   } catch (err) {
     try {
       // eslint-disable-next-line no-console
-      console.warn(`kernel-boot: skipped due to error: ${err instanceof Error ? err.message : String(err)}`);
-    } catch { /* logging must never throw */ }
+      console.warn(`kernel-boot：因错误跳过：${err instanceof Error ? err.message : String(err)}`);
+    } catch { /* 日志不得抛错 */ }
   }
 
-  // Discovery services
+  // 发现服务。
   const tmuxScanner = new TmuxDiscoveryScanner({ tmuxAdapter });
   const sessionFingerprinter = new SessionFingerprinter({
     cmuxAdapter, tmuxAdapter, fsExists: (p: string) => fs.existsSync(p),
@@ -950,15 +901,14 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     scanner: tmuxScanner, fingerprinter: sessionFingerprinter, enricher: sessionEnricher,
     discoveryRepo, sessionRegistry, eventBus,
   });
-  // Context usage store — constructed ahead of the refresher + ClaimService so the
-  // Claude status-line sidecar reader can be injected into BOTH: FR-3
-  // adoption-boundary capture (ClaimService) and FR-4 snapshot null-fill (refresher).
-  // Also threaded through WhoamiService + routes below (same single instance).
+  // 上下文用量存储——在刷新器与 ClaimService 前构造，使 Claude 状态栏 sidecar 读取器
+  // 能同时注入 FR-3 采用边界捕获（ClaimService）和 FR-4 快照空值补全（刷新器）。
+  // 下方 WhoamiService 与路由也复用同一实例。
   const { ContextUsageStore } = await import("./domain/context-usage-store.js");
   const contextUsageStore = new ContextUsageStore(db, {
     stateDir: OPENRIG_HOME,
-    // GHOST-STAGE (c-id): reject context readings from before the live occupant booted (prior
-    // generation) so a frozen pre-handover sample can't drive the threshold. null = UNKNOWN (inert).
+    // GHOST-STAGE（c-id）：拒绝当前占位者启动前（前一代）的上下文读数，
+    // 避免交接前冻结样本驱动阈值。null = UNKNOWN（不生效）。
     resolveOccupantBootAt: (nodeId) => sessionRegistry.currentOccupantTenure(nodeId)?.bootAt ?? null,
   });
   const { HealthProjectionService, LiveContextHealthSource } = await import("./domain/health-detectors.js");
@@ -981,24 +931,24 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     resolveEvidence: (path, finding) => readHealthArtifact(finding.operatingPosture?.context?.paths?.project ?? healthSettingsStore.resolveOne("workspace.root").value as string, path),
     humanReadiness: (address) => healthHumanReadiness(OPENRIG_HOME, address, deps.gatewaySubsystem?.status().state === "active"),
   });
-  // OPR.0.4.3.20 FR-4 — inject contextUsageStore so refresh() can null-fill a
-  // Claude token from the sidecar during periodic/manual snapshot refresh.
+  // OPR.0.4.3.20 FR-4——注入 contextUsageStore，使 refresh() 在周期/手动快照刷新时
+  // 可从 sidecar 补全空的 Claude token。
   const resumeMetadataRefresher = new ResumeMetadataRefresher({ sessionRegistry, tmuxAdapter, contextUsageStore });
   const claimService = new ClaimService({
     db, rigRepo, sessionRegistry, discoveryRepo, eventBus, tmuxAdapter, transcriptStore,
     claudeContextProvisioner: claudeAdapter,
-    // OPR.0.4.3.20 FR-3 — adoption-boundary resume-token capture deps
-    // (Claude sidecar reader + Codex thread-id capturer, both reuse).
+    // OPR.0.4.3.20 FR-3——采用边界恢复 token 捕获依赖
+    //（Claude sidecar 读取器与 Codex thread-id 捕获器，二者复用）。
     contextUsageStore,
     resumeTokenCapturer: resumeMetadataRefresher,
-    // OPR.0.4.6.PI1 FR-6 — pi-runner sidecar reader (the adapter exposes it).
+    // OPR.0.4.6.PI1 FR-6——pi-runner sidecar 读取器（由适配器暴露）。
     piRunnerStateStore: piAdapter,
   });
   const selfAttachService = new SelfAttachService({
     db, rigRepo, podRepo, sessionRegistry, eventBus, tmuxAdapter, transcriptStore,
     claudeContextProvisioner: claudeAdapter,
-    // OPR.0.4.3.28 B3 — echo the resolved activity url+token into the self-attach
-    // response env so the caller's shell can produce activity signal.
+    // OPR.0.4.3.28 B3——把解析后的活动 URL 与 token 回显到 self-attach 响应环境，
+    // 使调用方 shell 能产生活动信号。
     activityEnv: { url: resolvedActivityHookUrl, token: resolvedActivityHookToken },
   });
   const rigLifecycleService = new RigLifecycleService({
@@ -1008,14 +958,13 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
 
   const specReviewService = new SpecReviewService();
 
-  // (ContextUsageStore is constructed above, ahead of ClaimService, for FR-3.)
+  //（为满足 FR-3，ContextUsageStore 已在上方先于 ClaimService 构造。）
   const whoamiService = new WhoamiService({ db, rigRepo, sessionRegistry, transcriptStore, contextUsageStore });
   const nodeCmuxService = new NodeCmuxService(rigRepo, sessionRegistry, cmuxAdapter, tmuxAdapter);
-  // W2a-1 — producer wiring: the live occupant generation resolves synchronously from the shipped
-  // occupant-tenure ledger. generation_uuid CHANGES for a new occupant and persists only within one
-  // tenure (a same-session relaunch is a continuation with no new generation); node_id is the stable-
-  // across-handover key, not this. null = UNKNOWN, honored by the store as abstain (never a stale claim
-  // rendered live). No tmux exec — a better-sqlite3 read on the hot path.
+  // W2a-1——生产者接线：当前占位者代数从发布的 occupant-tenure 台账同步解析。新占位者会
+  // 更换 generation_uuid，且该值只在一次任期内持久化（同会话重启属于延续，不创建新代数）；
+  // 跨交接稳定键是 node_id，而不是 generation_uuid。null = UNKNOWN，存储会据此弃权
+  //（绝不把过期声明实时渲染）。热路径只读 better-sqlite3，不执行 tmux。
   const agentActivityStore = new AgentActivityStore({
     db,
     eventBus,
@@ -1053,10 +1002,10 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     cmuxAdapter,
     snapshotCapture,
     snapshotRepo,
-    // Slice-04 OPR.0.5.0.4: production provider service — getReadModel over the codex-auth reader
-    // + node-inventory across rigs; precheck via the pure gate; switch honest-interim (D seam).
-    // C3: the Claude statusline provider_usage cache lane. Cache files are seat-keyed and the
-    // reader normalizes valid subscription windows. Live-seat fallback is owned by provider-collect.
+    // Slice-04 OPR.0.5.0.4：生产 provider 服务——在 codex-auth 读取器与跨工作组
+    // node-inventory 之上提供 getReadModel；通过纯门禁预检；切换时如实呈现过渡态（D 接缝）。
+    // C3：Claude 状态栏的 provider_usage 缓存通道。缓存文件以席位为键，读取器会规范化
+    // 有效订阅窗口；实时席位回退由 provider-collect 负责。
     providerService: new ProviderServiceImpl({
       db,
       listRigs: () => rigRepo.listRigs(),
@@ -1068,7 +1017,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       agentActivityStore,
     }),
     restoreOrchestrator,
-    resumeMetadataRefresher, // OPR.0.4.3.20 FR-4 — manual snapshot refresh-before-serialize
+    resumeMetadataRefresher, // OPR.0.4.3.20 FR-4——手动快照在序列化前刷新
     rigSpecExporter,
     rigSpecPreflight,
     rigInstantiator,
@@ -1084,15 +1033,14 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     selfAttachService,
     rigLifecycleService,
     rigExpansionService,
-    // Slice 15 — SeatActivityService owns the `terminal-active` primitive
-    // (tmux byte-stream). Wired into PsProjectionService so `rig ps`
-    // + UI surfaces read the latest observation per seat. NEVER reads
-    // queue/assignment state (non-inference contract; see slice 15 IMPL-PRD §2.3).
+    // Slice 15——SeatActivityService 拥有 `terminal-active` 原语（tmux 字节流）。
+    // 将其接入 PsProjectionService，使 `rig ps` 与 UI 表面读取各席位的最新观测。
+    // 绝不读取队列/分配状态（非推断契约；见 slice 15 IMPL-PRD §2.3）。
     seatActivityService,
     seatStructuralActivityService,
     seatIdentityReconciler,
-    // OPR.0.4.4.21 — agentActivity feeds the rig-rollup attention
-    // predicate's needs_input signal (synchronous events lookup only).
+    // OPR.0.4.4.21——agentActivity 为工作组汇总的待关注谓词提供 needs_input 信号
+    //（仅同步查询事件）。
     psProjectionService: new PsProjectionService({ db, seatActivity: seatActivityService, agentActivity: agentActivityStore }),
     upRouter: new UpCommandRouter({
       fsOps: {
@@ -1120,13 +1068,12 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
         activityEndpointFile: () => readActivityEndpointFile(OPENRIG_HOME),
         captureObserver: shadow.capture?.observer,
       });
-      // PL-004 Phase A revision (R1): wire QueueRepository's wake-path so
-      // create / handoff / handoff-and-complete nudge by default.
+      // PL-004 阶段 A 修订（R1）：接入 QueueRepository 的唤醒路径，使 create / handoff /
+      // handoff-and-complete 默认都会发出提醒。
       queueRepoInstance.attachTransport(t);
-      // PL-004 Phase B: wire classifier-lease-manager liveness check from
-      // the sessions table. Lease holder is "alive" iff there is at least
-      // one row in `sessions` with session_name == classifierSession AND
-      // status == 'running'.
+      // PL-004 阶段 B：从 sessions 表接入 classifier-lease-manager 活性检查。仅当
+      // `sessions` 至少存在一行 session_name == classifierSession 且 status == 'running' 时，
+      // 才视租约持有者为“存活”。
       classifierLeaseManagerInstance.attachIsAlive((classifierSession: string): boolean => {
         try {
           const row = db
@@ -1136,8 +1083,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
             .get(classifierSession) as { 1: number } | undefined;
           return row !== undefined;
         } catch {
-          // Conservative: on lookup error, treat as alive (do not falsely
-          // trigger deadness-based lease expiry).
+          // 保守处理：查询出错时视为存活，避免误触发基于死亡状态的租约过期。
           return true;
         }
       });
@@ -1169,8 +1115,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
           .all(seat) as WakeSessionRow[],
     }),
     askService: (() => {
-      // P19 A5 (finding graduated): inject seatActivity like the attention path
-      // (line ~919) — one terminalActive truth, never two divergent projections.
+      // P19 A5（发现项已转正）：像待关注路径（约第 919 行）一样注入 seatActivity——
+      // terminalActive 只有一个事实源，绝不维护两套可能分歧的投影。
       const psProjectionService = new PsProjectionService({ db, seatActivity: seatActivityService, agentActivity: agentActivityStore });
       const execDep = (cmd: string, args: string[]): Promise<{ stdout: string; exitCode: number }> =>
         new Promise((resolve) => {
@@ -1221,8 +1167,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     specLibraryService: (() => {
       const userSpecsRoot = getDefaultOpenRigPath("specs");
       const legacySpecsRoot = getCompatibleOpenRigPath("specs");
-      try { fs.mkdirSync(userSpecsRoot, { recursive: true }); } catch { /* best-effort */ }
-      // From src/ or dist/, ../specs points to packages/daemon/specs/
+      try { fs.mkdirSync(userSpecsRoot, { recursive: true }); } catch { /* 尽力而为 */ }
+      // 无论从 src/ 还是 dist/ 解析，../specs 都指向 packages/daemon/specs/。
       const builtinSpecsRoot = nodePath.resolve(import.meta.dirname, "../specs");
       const roots: Array<{ path: string; sourceType: "builtin" | "user_file" }> = [
         { path: userSpecsRoot, sourceType: "user_file" },
@@ -1230,7 +1176,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       if (legacySpecsRoot !== userSpecsRoot && fs.existsSync(legacySpecsRoot)) {
         roots.push({ path: legacySpecsRoot, sourceType: "user_file" });
       }
-      // Only add builtin root if it exists
+      // 仅在内置根目录存在时加入。
       if (fs.existsSync(builtinSpecsRoot)) {
         roots.unshift({ path: builtinSpecsRoot, sourceType: "builtin" });
       }
@@ -1238,45 +1184,38 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       lib.scan();
       return lib;
     })(),
-    // Phase 3a slice 3.3 — plugin discovery service.
-    // SC-29 EXCEPTION #8 verbatim: see packages/daemon/src/routes/plugins.ts
-    // header. Filesystem-scan over 3 source roots + agent.yaml-parse for
-    // used-by reverse query. No SQL; no mutation. Spec library directory
-    // for used-by uses the same default user spec root as SpecLibraryService
-    // above; one root at v0 (multi-root expansion deferred to a later slice
-    // when spec library hooks its full root list through to discovery).
-    // bug-fix slice plugin-discovery-respects-openrig-home: route the
-    // openrigPluginsDir through the OPENRIG_HOME-aware resolver so
-    // discovery + vendor (which already uses the helper at line 428)
-    // resolve to the same root. Operator-level test isolation + the
-    // slice 22 populated-VM-env story both depend on this symmetry.
-    // claudeCacheDir / codexCacheDir remain homedir-anchored because
-    // those cache locations belong to the runtime tools, not to the
-    // OpenRig state root.
+    // 阶段 3a slice 3.3——插件发现服务。
+    // SC-29 EXCEPTION #8 原文见 packages/daemon/src/routes/plugins.ts 文件头。
+    // 对三个来源根目录做文件系统扫描，并解析 agent.yaml，以支持 used-by 反向查询；
+    // 不使用 SQL，也不产生变更。used-by 的规范库目录与上方 SpecLibraryService 使用同一
+    // 默认用户规范根目录；v0 仅支持一个根目录（待后续 slice 将规范库的完整根目录列表
+    // 接入发现服务后再扩展为多根目录）。
+    // 修复 slice plugin-discovery-respects-openrig-home：让 openrigPluginsDir 通过感知
+    // OPENRIG_HOME 的解析器，使 discovery 与 vendor（已在第 428 行使用该辅助函数）解析到
+    // 同一根目录。操作员级测试隔离与 slice 22 的 populated-VM-env 场景都依赖这种对称性。
+    // claudeCacheDir / codexCacheDir 仍锚定 homedir，因为这些缓存位置属于运行时工具，
+    // 而非 OpenRig 状态根目录。
     pluginDiscoveryService: new PluginDiscoveryService({
       openrigPluginsDir: getDefaultOpenRigPath("plugins"),
       claudeCacheDir: nodePath.join(os.homedir(), ".claude", "plugins", "cache"),
       codexCacheDir: nodePath.join(os.homedir(), ".codex", "plugins", "cache"),
       specLibraryDir: getDefaultOpenRigPath("specs"),
     }),
-    // Slice 28 Checkpoint C-3 — skillLibraryDiscoveryService is constructed
-    // AFTER filesAllowlist resolution below (deps.skillLibraryDiscoveryService
-    // assignment near filesAllowlist binding).
-    // Shared context library backing the delivery-free context routes.
+    // Slice 28 检查点 C-3——skillLibraryDiscoveryService 在下方解析 filesAllowlist 后构造
+    //（deps.skillLibraryDiscoveryService 的赋值紧邻 filesAllowlist 绑定）。
+    // 支撑无投递上下文路由的共享上下文库。
     contextPackLibrary,
-    // PL-016 — agent_image typed primitive. Shared library + capturer
-    // + spec-roots supplier across /api/agent-images/* and the
-    // PodRigInstantiator's session_source: mode: agent_image dispatch.
+    // PL-016——agent_image 类型化原语。/api/agent-images/* 与 PodRigInstantiator 的
+    // session_source: mode: agent_image 分派共享库、捕获器和规范根目录提供器。
     agentImageLibrary,
     snapshotCapturer,
-    // Slice 09 (OPR.0.3.2.9) — operator-context-mode bindings store
-    // (typed primitive on the shared db handle; HG-5: no parallel store).
+    // Slice 09（OPR.0.3.2.9）——operator-context-mode 绑定存储
+    //（共享 db 句柄上的类型化原语；HG-5：不另建并行存储）。
     rigModeStore,
     operatingPosture,
     agentImageSpecRoots: () => {
-      // Spec-library roots scanned by the evidence guard. v0: user
-      // specs under ~/.openrig/specs + workspace-local specs root
-      // (from the SettingsStore-resolved workspace.specsRoot).
+      // 证据守卫扫描的规范库根目录。v0 包含 ~/.openrig/specs 下的用户规范，以及
+      // 工作区本地规范根目录（来自 SettingsStore 解析的 workspace.specsRoot）。
       const userSpecsRoot = getDefaultOpenRigPath("specs");
       const roots: string[] = [userSpecsRoot];
       try {
@@ -1285,13 +1224,13 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
         if (cfg.workspaceSpecsRoot && cfg.workspaceSpecsRoot !== userSpecsRoot) {
           roots.push(cfg.workspaceSpecsRoot);
         }
-      } catch { /* settings unavailable */ }
+      } catch { /* 设置不可用 */ }
       return roots;
     },
   };
   Object.assign(deps, { watchdogAutoRegistration });
 
-  // Copy bundled reference docs to ~/.openrig/reference/ so agents can find them at a stable path
+  // 把随附参考文档复制到 ~/.openrig/reference/，使智能体可通过稳定路径找到它们。
   try {
     const bundledDocsDir = nodePath.resolve(import.meta.dirname, "../docs/reference");
     if (fs.existsSync(bundledDocsDir)) {
@@ -1303,29 +1242,23 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
         }
       }
     }
-  } catch { /* best-effort — reference docs are not critical to daemon operation */ }
+  } catch { /* 尽力而为——参考文档不影响后台服务运行 */ }
 
-  // OPR.0.4.8.3 — materialize the packaged built-in policies as read-only
-  // inspection copies at $OPENRIG_HOME/reference/policies/builtin/ (same
-  // best-effort posture as the reference docs above; ../policies/builtin
-  // resolves from the compiled dist in BOTH the repo-run and assembled layouts)
+  // OPR.0.4.8.3——把打包的内置策略实体化为只读检查副本，存放在
+  // $OPENRIG_HOME/reference/policies/builtin/（与上方参考文档一样尽力而为；
+  // ../policies/builtin 在仓库运行和组装布局中都从编译后的 dist 解析）。
   try {
     materializeBuiltinPolicyReference({
       bundledDir: nodePath.resolve(import.meta.dirname, "../policies/builtin"),
       targetDir: getDefaultOpenRigPath(nodePath.join("reference", "policies", "builtin")),
     });
-  } catch { /* best-effort — inspection copies are not critical to daemon operation */ }
+  } catch { /* 尽力而为——检查副本不影响后台服务运行 */ }
 
-  // PL-004 Phase C — watchdog policy engine + scheduler. Wired here
-  // (after deps construction) so the engine can dispatch deliveries
-  // through the live SessionTransport. Scheduler is started by
-  // index.ts after listen() so the daemon's HTTP surface is ready
-  // before the scheduler's first tick.
-  // PL-004 Phase D — workflow runtime + workflow-keepalive policy.
-  // Workflow runtime is constructed first; then the watchdog policy
-  // engine is constructed with workflow-keepalive injected via
-  // additionalPolicies (orch-ratified Phase D extension point per
-  // slice IMPL § Write Set / § Driver Handoff Contract).
+  // PL-004 阶段 C——看守器策略引擎与调度器。在 deps 构造后于此接线，使引擎可通过
+  // 实时 SessionTransport 投递。index.ts 在 listen() 后启动调度器，确保首次 tick 前
+  // 后台服务 HTTP 表面已就绪。PL-004 阶段 D——工作流运行时与 workflow-keepalive 策略。
+  // 先构造工作流运行时，再通过 additionalPolicies 向看守器策略引擎注入 workflow-keepalive
+  //（按 slice IMPL 的 Write Set / Driver Handoff Contract，这是编排方批准的阶段 D 扩展点）。
   const queueRepoForWorkflow = deps.queueRepo;
   let workflowRuntime: WorkflowRuntime | undefined;
   let workflowExceptionEnsurer:
@@ -1337,12 +1270,10 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       db,
       eventBus,
       queueRepo: queueRepoForWorkflow,
-      // OPR.0.4.6.WF1 FR-3: instantiate/handoff auto-arm the
-      // per-instance workflow-keepalive job in-txn; terminal disarms.
+      // OPR.0.4.6.WF1 FR-3：实例化/交接在事务内自动武装逐实例 workflow-keepalive 任务；终态解除武装。
       watchdogJobsRepo: watchdogJobsRepoInstance,
-      // OPR.0.4.6.WF5 FR-2: the maturity dial — host default read LIVE
-      // per exception from the settings twin (dial flips affect future
-      // items only, never retroactive re-routing).
+      // OPR.0.4.6.WF5 FR-2：成熟度旋钮——每次异常都实时读取设置镜像中的主机默认值；
+      // 旋钮变化只影响未来条目，绝不追溯重路由。
       exceptionDial: {
         hostDefault: () => {
           const v = new ContextPackSettingsStore().resolveOne("workflow.exception_routing")
@@ -1354,8 +1285,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     });
     deps.workflowRuntime = workflowRuntime;
 
-    // OPR.0.4.6.WF5 FR-2 class (b): the shared detection-time exception
-    // ensurer — sweep + keepalive both call it; dedup by occurrence tags.
+    // OPR.0.4.6.WF5 FR-2 类别 (b)：共享的检测时异常确保器；扫描与 keepalive 均调用，
+    // 并按发生标签去重。
     {
       const { makeEnsureStuckExceptionItem } = await import(
         "./domain/workflow-exception-escalation.js"
@@ -1370,12 +1301,9 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       });
     }
 
-    // Seed built-in starter workflow_specs into the cache. Idempotent
-    // + workspace-surface-respecting — operator
-    // overrides at workspace paths are preserved (skip-if-cached).
-    // Errors are collected into the result for diagnostic logging but
-    // do NOT block startup; a malformed bundled spec should not bring
-    // the daemon down.
+    // 把内置 starter workflow_specs 注入缓存。操作幂等且尊重工作区表面；保留工作区路径中的
+    // 操作员覆盖（已缓存则跳过）。错误收集到结果中用于诊断日志，但不阻止启动；
+    // 损坏的随附规范不应拖垮后台服务。
     const { loadStarterWorkflowSpecs, defaultBuiltinSpecsDir } = await import(
       "./domain/workflow/starter-spec-loader.js"
     );
@@ -1384,33 +1312,25 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       cache: workflowRuntime.specCache,
       builtinDir: builtinSpecsDir,
     });
-    // Surface the resolved path to the routes layer so
-    // GET /api/workflow/specs can compute the per-row isBuiltIn flag.
+    // 将解析后的路径暴露给路由层，使 GET /api/workflow/specs 能计算逐行 isBuiltIn 标志。
     deps.workflowBuiltinSpecsDir = builtinSpecsDir;
 
-    // Slice 11 (workflow-spec-folder-discovery) — expose the shared
-    // WorkflowSpecCache + the resolved workspace workflows folder so
-    // GET /api/specs/library can opportunistically discover operator-
-    // dropped YAML on each list request. Folder path is
-    // `<workspace.specs_root>/workflows`; SettingsStore resolves
-    // workspaceSpecsRoot from env > config > workspace-default.
+    // Slice 11（workflow-spec-folder-discovery）——暴露共享 WorkflowSpecCache 与解析后的
+    // 工作区 workflows 目录，使 GET /api/specs/library 每次列表请求都能择机发现操作员放入的
+    // YAML。目录为 `<workspace.specs_root>/workflows`；SettingsStore 按
+    // env > config > workspace-default 解析 workspaceSpecsRoot。
     deps.workflowSpecCache = workflowRuntime.specCache;
 
-    // OPR.0.3.2.22 Bug 4 — one-time prune of cache rows whose source_path
-    // lives in noise directories (.worktrees, node_modules, etc.). The
-    // post-Bug-4 walkYamlFiles SKIP_DIRS guard prevents NEW rows from
-    // those locations, but legacy rows from prior daemon versions (or
-    // operators who hand-imported a spec via path-form before SKIP_DIRS
-    // shipped) would persist without this prune. Cheap (single DELETE
-    // with bounded LIKE patterns) and safe (matches only the same
-    // directories the walker now refuses to enter).
+    // OPR.0.3.2.22 Bug 4——一次性清理 source_path 位于噪声目录（.worktrees、
+    // node_modules 等）的缓存行。Bug 4 后的 walkYamlFiles SKIP_DIRS 守卫会阻止新行
+    // 来自这些位置；但若无此清理，旧版后台服务遗留的行（或 SKIP_DIRS 发布前由操作员
+    // 通过路径形式手动导入的规范）会继续存在。该操作成本低（单条带有界 LIKE 模式的 DELETE）
+    // 且安全（只匹配 walker 现在拒绝进入的相同目录）。
     //
-    // installRoot guard: shipped built-in workflow specs live at
-    // `<pkg>/dist/builtins/workflow-specs/` in production. Without the
-    // install-root preservation clause, the `%/dist/%` pattern would
-    // delete them on every boot (then loadStarterWorkflowSpecs re-seeds
-    // — wasteful at best, broken if the loader ever skips re-seeding).
-    // Pass the resolved install root so rows under it are preserved.
+    // installRoot 守卫：生产环境随附的内置工作流规范位于
+    // `<pkg>/dist/builtins/workflow-specs/`。若没有安装根保留条款，`%/dist/%` 模式会
+    // 每次启动都删除它们，随后再由 loadStarterWorkflowSpecs 重建；轻则浪费，若加载器
+    // 某次跳过重建则会损坏。传入解析后的安装根，保留其下的行。
     const { getOpenRigInstallRoot } = await import("./domain/cwd-resolution.js");
     workflowRuntime.specCache.pruneNoiseDirRows(getOpenRigInstallRoot());
 
@@ -1420,20 +1340,19 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       if (cfg.workspaceSpecsRoot) {
         deps.workflowsFolderDir = nodePath.join(cfg.workspaceSpecsRoot, "workflows");
       }
-    } catch { /* settings unavailable — folder scan stays disabled */ }
+    } catch { /* 设置不可用——目录扫描保持禁用 */ }
 
     if (starterResult.errors.length > 0) {
       console.warn(
-        `[starter-spec-loader] ${starterResult.errors.length} spec(s) failed to load:`,
+        `[starter-spec-loader] ${starterResult.errors.length} 个规范加载失败：`,
         starterResult.errors,
       );
     }
   }
 
-  // PL-005 Phase A: Mission Control / Queue Observability services.
-  // Wired AFTER WorkflowRuntime so all PL-004 daemon-backed coordination
-  // surfaces are available. Mission Control reads from queue/view/stream
-  // surfaces and writes through the atomic 7-verb contract.
+  // PL-005 阶段 A：任务控制 / 队列可观测性服务。在 WorkflowRuntime 之后接线，
+  // 使所有由 PL-004 后台服务支撑的协调表面都可用。任务控制从 queue/view/stream
+  // 表面读取，并通过原子的 7 动词契约写入。
   if (deps.queueRepo && deps.viewProjector) {
     const mcActionLog = new MissionControlActionLog(db);
     const mcWriteContract = new MissionControlWriteContract({
@@ -1446,23 +1365,18 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       db,
       eventBus,
       rigRepo,
-      // R1 fix per guard PL-005 Phase A review: wire the production
-      // capability probe so /api/mission-control/cli-capabilities
-      // honestly reports drift when MISSION_CONTROL_DESIRED_FIELDS
-      // are missing from the local CLI's allow-list. Without this
-      // probe injection, the production path defaulted to a no-op
-      // that always reported staleCliCount=0 even when the audit-
-      // row-5 case (recoveryGuidance not in CLI allow-list) was
-      // present.
+      // 按守卫 PL-005 阶段 A 评审的 R1 修复：接入生产能力探针，使
+      // /api/mission-control/cli-capabilities 在本地 CLI 白名单缺失
+      // MISSION_CONTROL_DESIRED_FIELDS 时如实报告漂移。若不注入该探针，生产路径会
+      // 默认使用空操作，即使存在审计第 5 行情形（recoveryGuidance 不在 CLI 白名单中），
+      // 也总是报告 staleCliCount=0。
       probeRig: makeLocalCliCapabilityProbe(),
     });
-    // V0.3.1 slice 05 kernel-rig-as-default — cascade the resolved
-    // workspace.operator_seat_name setting into the mission-control
-    // read layer so my-queue routes to the operator's configured seat
-    // (default `operator-${USER}@kernel`) instead of the legacy
-    // hardcoded constant. The setting reads OPENRIG_WORKSPACE_OPERATOR_SEAT_NAME
-    // env var first, then ~/.openrig/config.json, then the derived
-    // default — same cascade as every other typed setting.
+    // V0.3.1 slice 05 kernel-rig-as-default——把解析后的 workspace.operator_seat_name
+    // 设置级联到任务控制读取层，使 my-queue 路由到操作员配置的席位
+    //（默认 `operator-${USER}@kernel`），而非旧硬编码常量。该设置依次读取
+    // OPENRIG_WORKSPACE_OPERATOR_SEAT_NAME 环境变量、~/.openrig/config.json 和派生默认值，
+    // 与其他类型化设置使用相同级联。
     const mcReadLayer = new MissionControlReadLayer({
       db,
       queueRepo: deps.queueRepo,
@@ -1476,14 +1390,12 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     deps.missionControlFleetCliCapability = mcFleetCliCapability;
     deps.missionControlReadLayer = mcReadLayer;
 
-    // PL-005 Phase B: audit-history browse layer (read-only) +
-    // notification dispatcher + bearer-token plumbing.
+    // PL-005 阶段 B：审计历史浏览层（只读）、通知分发器与 bearer-token 接线。
     const mcAuditBrowse = new MissionControlAuditBrowse(db);
     deps.missionControlAuditBrowse = mcAuditBrowse;
 
-    // Bearer token from createDaemon options is propagated to the
-    // routes constructor via deps so the auth middleware is mounted
-    // at route mount time (not per-request).
+    // 将 createDaemon 选项中的 bearer token 通过 deps 传给路由构造器，
+    // 使鉴权中间件在挂载路由时安装，而不是逐请求安装。
     deps.missionControlBearerToken = opts?.bearerToken ?? null;
 
     const terminalTokenEnv = process.env.OPENRIG_TERMINAL_BEARER_TOKEN?.trim();
@@ -1492,13 +1404,12 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
         ? opts.terminalBearerToken ?? null
         : terminalTokenEnv || null;
 
-    // Notification dispatcher: chosen mechanism via env config.
-    // OPENRIG_NOTIFICATIONS_MECHANISM=ntfy|webhook|none (default none).
-    // OPENRIG_NOTIFICATIONS_TARGET=<topic url | webhook url>.
-    // OPENRIG_NOTIFICATIONS_INCLUDE_VERB_COMPLETION=1 to opt into the
-    // verb-completion trigger (default off; only human-gate arrivals
-    // trigger by default per planner brief).
-    // No legacy alias for these env vars (new in Phase B).
+    // 通知分发器：通过环境配置选择机制。
+    // OPENRIG_NOTIFICATIONS_MECHANISM=ntfy|webhook|none（默认 none）。
+    // OPENRIG_NOTIFICATIONS_TARGET=<主题 URL | webhook URL>。
+    // 设置 OPENRIG_NOTIFICATIONS_INCLUDE_VERB_COMPLETION=1 可选择启用
+    // verb-completion 触发器（默认关闭；按规划简报，默认只有 human-gate 到达会触发）。
+    // 这些环境变量在阶段 B 新增，没有旧版别名。
     const mechanism = process.env.OPENRIG_NOTIFICATIONS_MECHANISM ?? "none";
     const target = process.env.OPENRIG_NOTIFICATIONS_TARGET ?? "";
     const missionControlBaseUrl =
@@ -1515,7 +1426,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
         adapter = new WebhookNotificationAdapter({ endpointUrl: target });
       } else {
         throw new Error(
-          `OPENRIG_NOTIFICATIONS_MECHANISM='${mechanism}' is not recognized; supported: ntfy | webhook | none`,
+          `无法识别 OPENRIG_NOTIFICATIONS_MECHANISM='${mechanism}'；支持：ntfy | webhook | none`,
         );
       }
       const dispatcher = new MissionControlNotificationDispatcher({
@@ -1530,34 +1441,27 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     }
   }
 
-  // Slice Story View v0 — slice indexer + per-tab projector.
+  // Slice Story View v0——slice 索引器与逐标签页投影器。
   //
-  // User Settings v0 graduates `OPENRIG_SLICES_ROOT` env-var into the
-  // typed `workspace.slices_root` setting (resolution chain: env >
-  // config-file > default `<workspace.root>/missions`). Backward-compat:
-  // operators with OPENRIG_SLICES_ROOT set continue to work because the
-  // settings store reads env in the same resolution slot. Operators
-  // setting via `rig config set workspace.slices_root <path>` or via the
-  // System drawer Settings panel UI now flow through the indexer too —
-  // closes the PRD § Scenario B requirement that wasn't wired in v0.
+  // User Settings v0 将 `OPENRIG_SLICES_ROOT` 环境变量提升为类型化设置
+  // `workspace.slices_root`（解析链：环境变量 > 配置文件 > 默认
+  // `<workspace.root>/missions`）。为保持向后兼容，已设置 OPENRIG_SLICES_ROOT
+  // 的操作员仍可照常使用，因为设置存储会在同一解析层级读取环境变量。现在，通过
+  // `zrig config set workspace.slices_root <path>` 或系统抽屉的“设置”面板配置后，
+  // 数据也会进入索引器，从而补齐 v0 未接线的 PRD § Scenario B 要求。
   //
-  //   OPENRIG_SLICES_ROOT             legacy short env var (still honored
-  //                                   if set; preferred route is settings)
-  //   OPENRIG_WORKSPACE_SLICES_ROOT   typed-key env override
-  //   workspace.slices_root           typed setting in ~/.openrig/config.json
-  //   workspace.root                  cascade fallback (default ~/.openrig/workspace)
-  //   OPENRIG_DOGFOOD_EVIDENCE_ROOT   legacy proof-packet relocation override
+  //   OPENRIG_SLICES_ROOT             旧版短环境变量（若已设置仍然生效；建议改用设置）
+  //   OPENRIG_WORKSPACE_SLICES_ROOT   类型化键的环境变量覆盖值
+  //   workspace.slices_root           ~/.openrig/config.json 中的类型化设置
+  //   workspace.root                  级联回退值（默认 ~/.openrig/workspace）
+  //   OPENRIG_DOGFOOD_EVIDENCE_ROOT   旧版证明包迁移位置覆盖值
   //
-  // When the resolved slicesRoot path doesn't exist on disk, the indexer
-  // is still constructed but isReady() returns false — the routes return
-  // a clear "slices_root_not_configured" 503 with a setup hint.
+  // 当解析出的 slicesRoot 路径在磁盘上不存在时，仍会构造索引器，但 isReady() 返回 false；
+  // 路由会返回明确的 "slices_root_not_configured" 503 和设置提示。
   {
-    // Prefer the legacy short env var if explicitly set (existing
-    // dogfood / test daemons rely on it). Otherwise fall back to the
-    // settings-resolved path (env > file > default cascade inside
-    // SettingsStore). The SettingsStore is constructed locally here
-    // so the slices block doesn't depend on the User Settings v0 wiring
-    // block ordering further below.
+    // 若显式设置了旧版短环境变量，则优先使用它（现有 dogfood/测试后台服务依赖此行为）。
+    // 否则回退到设置解析出的路径（SettingsStore 内部按环境变量 > 文件 > 默认值级联）。
+    // SettingsStore 在此局部构造，使 slices 代码块不依赖下方 User Settings v0 接线块的顺序。
     const legacyEnvSlicesRoot = readOpenRigEnv("OPENRIG_SLICES_ROOT", "RIGGED_SLICES_ROOT") ?? "";
     let resolvedSlicesRoot = "";
     let resolvedWorkspaceRoot = "";
@@ -1569,13 +1473,11 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       }
       resolvedWorkspaceRoot = resolvedConfig.workspaceRoot;
     } catch {
-      // SettingsStore unavailable — keep roots empty; routes return 503.
+      // SettingsStore 不可用——保持根目录为空，由路由返回 503。
     }
     const slicesRoot = legacyEnvSlicesRoot || resolvedSlicesRoot;
-    // `workspace.dogfood_evidence_root` was retired with the eager legacy
-    // scaffold. Keep the existing proof-packet reader usable for old
-    // workspaces and explicit legacy relocations without exposing a second
-    // project-workspace setting.
+    // `workspace.dogfood_evidence_root` 已随旧版预创建脚手架退役。继续让现有证明包读取器
+    // 支持旧工作区和显式旧版迁移位置，但不再暴露第二个项目工作区设置。
     const resolvedDogfoodRoot = readOpenRigEnv("OPENRIG_DOGFOOD_EVIDENCE_ROOT")
       || (resolvedWorkspaceRoot ? nodePath.join(resolvedWorkspaceRoot, "dogfood-evidence") : "");
     const additionalSliceRoots = resolvedWorkspaceRoot
@@ -1584,14 +1486,14 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
           nodePath.join(resolvedWorkspaceRoot, "slices"),
         ].filter((root) => root !== slicesRoot)
       : [];
-    // S27 (OPR.0.5.6.27) — wire the execution view once the slices root is
-    // resolved; the thunk re-reads nothing (path resolution stays startup's).
+    // S27（OPR.0.5.6.27）——解析 slices 根目录后接入执行视图；thunk 不会重新读取任何内容
+    //（路径解析仍由启动过程负责）。
     viewProjectorInstance.setExecutionDeps({
       db,
       slicesRoot: () => slicesRoot || null,
-      // S19's locked one-oracle contract: the ARBITRATED seat-keyed read every
-      // surface (rig ps, node inventory, parked-query) consumes — never
-      // sessions.status, never the parallel AgentActivityStore ingest.
+      // S19 锁定的单一判定源契约：所有表面（rig ps、节点清单、parked-query）都消费这份
+      // 以席位为键的 ARBITRATED 读数；绝不读取 sessions.status，也绝不使用并行的
+      // AgentActivityStore 摄取通道。
       seatActivity: seatActivityService,
     });
     const { SliceIndexer } = await import("./domain/slices/slice-indexer.js");
@@ -1602,13 +1504,11 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       dogfoodEvidenceRoot: resolvedDogfoodRoot || null,
       db,
     });
-    // Slice Story View v1: pass workflowRuntime.specCache so the
-    // projector can resolve a bound workflow_instance's spec for
-    // spec-graph + phase + current-step projection. When the workflow
-    // runtime is not constructed (queueRepo absent — same condition
-    // already guards the workflowRuntime block above), the projector
-    // silently degrades to v0 behavior (workflowBinding=null,
-    // specGraph=null, phaseDefinitions=null, currentStep=null).
+    // Slice Story View v1：传入 workflowRuntime.specCache，使投影器能够解析已绑定
+    // workflow_instance 的规范，用于 spec-graph、phase 和 current-step 投影。若未构造
+    // 工作流运行时（queueRepo 缺失——上方 workflowRuntime 块使用同一条件守卫），
+    // 投影器会静默降级为 v0 行为（workflowBinding=null、specGraph=null、
+    // phaseDefinitions=null、currentStep=null）。
     const sliceDetailProjector = new SliceDetailProjector({
       db,
       indexer: sliceIndexer,
@@ -1620,24 +1520,22 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       deps.proofSourceWatch = watchProofSources(sliceIndexer.slicesRoot, () => sliceIndexer.invalidate(), eventBus);
     }
     deps.sliceDetailProjector = sliceDetailProjector;
-    // Living Notes Packet 2 (OPR.0.4.4.20): the composed-review gatherer.
-    // Git lineage facts come from OPENRIG_REVIEW_GIT_REPO when set; else
-    // lineage degrades honestly to unknown.
+    // Living Notes Packet 2（OPR.0.4.4.20）：组合评审收集器。设置
+    // OPENRIG_REVIEW_GIT_REPO 时从中读取 Git 血缘事实；否则如实降级为未知。
     const { ReviewGatherer } = await import("./domain/review/gather.js");
     deps.reviewGatherer = new ReviewGatherer({
       db,
       indexer: sliceIndexer,
       gitRepoPath: process.env["OPENRIG_REVIEW_GIT_REPO"] ?? null,
-      // OPR.0.4.4.22 FR-2: the agent state glyph reads recorded hook
-      // activity (honest-unknown when absent) - synchronous, never polls.
+      // OPR.0.4.4.22 FR-2：智能体状态图标读取已记录的钩子活动；缺失时如实显示未知。
+      // 此过程同步执行，绝不轮询。
       activityStore: agentActivityStore,
     });
   }
 
-  // OPR.0.4.6.02 C3 — the terminal-provider-ride service (ONE composer for
-  // every view kind). Built here (post-hoc) so it can read the lazily-built
-  // reviewGatherer for derived mission/slice views; if the gatherer never
-  // built, those scopes honestly return not-found rather than throwing.
+  // OPR.0.4.6.02 C3——terminal-provider-ride 服务（所有视图类型共用一个组合器）。
+  // 在此处后置构造，使其能为派生的 mission/slice 视图读取延迟构建的 reviewGatherer；
+  // 若收集器从未构建，这些工作范围会如实返回 not-found，而不是抛错。
   {
     const { TerminalService } = await import("./domain/terminal/terminal-service.js");
     const { HerdrAdapter } = await import("./domain/terminal/herdr-adapter.js");
@@ -1652,8 +1550,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       "./domain/hosts/hosts-registry-reader.js"
     );
 
-    // NodeInventoryEntry → the composer's minimal LiveSeatRow (single-host
-    // inventory: the canonical session name IS the tmux session; no host field).
+    // NodeInventoryEntry → 组合器所需的最小 LiveSeatRow（单主机清单：规范会话名就是
+    // tmux 会话名，不含 host 字段）。
     const toLiveSeatRow = (e: {
       canonicalSessionName: string | null;
       attachmentType?: "tmux" | "external_cli" | null;
@@ -1668,13 +1566,13 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     });
 
     const herdrProvider = new HerdrAdapter({
-      // FB4: herdr speaks its unix control socket (there is no `layout` CLI).
+      // FB4：herdr 通过 Unix 控制 socket 通信（不存在 `layout` CLI）。
       transportFactory: createHerdrSocketTransport(createHerdrSocketRpc()),
     });
     const cmuxProvider = new CmuxProviderAdapter({
       cmuxAdapter,
-      // One gridded workspace per composed page — the same grid machinery as
-      // the rig-scope /cmux/launch endpoint, never one window per seat.
+      // 每个组合页面只使用一个网格化工作区——与工作组工作范围的 /cmux/launch 端点
+      // 复用同一网格机制，绝不为每个席位单独创建窗口。
       layoutService: new CmuxLayoutService(cmuxAdapter),
     });
     const providerMap: Record<string, typeof herdrProvider | typeof cmuxProvider> = {
@@ -1687,7 +1585,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       viewsStore: new TerminalViewsStore(),
       listRigSeatsBatch: (names) => {
         const rigs = rigRepo.listRigs();
-        // Match listRigSeats' first-name resolution, including duplicate names.
+        // 与 listRigSeats 的首个名称解析规则一致，包括重名情况。
         const selected = new Map(names.flatMap(name => {
           const rig = rigs.find(rig => rig.name === name);
           return rig ? [[name, rig] as const] : [];
@@ -1708,14 +1606,14 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
         const rows = getNodeInventory(db, rig.id)
           .filter((e) => e.podNamespace === pod)
           .map(toLiveSeatRow);
-        // No node carries that pod namespace → an unknown pod (not an empty view).
+        // 没有节点携带该 pod 命名空间时，表示 pod 未知，而不是空视图。
         return rows.length > 0 ? rows : null;
       },
       listScopeSeats: (scope) => {
         const gatherer = deps.reviewGatherer;
         if (!gatherer) return null;
-        // N1 (dev44-driver2 pre-guard): cast to the real AgentsScope union (not
-        // `never`) so the compile guard on the scope grammar is restored.
+        // N1（dev44-driver2 前置守卫）：转换为真实的 AgentsScope 联合类型（而非 `never`），
+        // 从而恢复工作范围语法的编译期守卫。
         const band = gatherer.composeAgents(scope as import("./domain/review/types.js").AgentsScope);
         if (!band) return null;
         const wanted = new Set(band.rows.map((r) => r.sessionName));
@@ -1738,33 +1636,28 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     });
   }
 
-  // UI Enhancement Pack v0:
-  //   - file allowlist (item 3) from OPENRIG_FILES_ALLOWLIST
-  //   - atomic write service (item 4) wired only when allowlist non-empty
-  //   - progress scan-roots (item 1B) from OPENRIG_PROGRESS_SCAN_ROOTS
+  // UI 增强包 v0：
+  //   - 从 OPENRIG_FILES_ALLOWLIST 读取文件白名单（第 3 项）
+  //   - 仅在白名单非空时接入原子写入服务（第 4 项）
+  //   - 从 OPENRIG_PROGRESS_SCAN_ROOTS 读取进度扫描根目录（第 1B 项）
   //
-  // Empty env → empty allowlist / no-roots indexer; routes return 503
-  // with structured config hints so the UI can surface a setup message
-  // instead of a generic error.
+  // 环境变量为空时得到空白名单/无根目录索引器；路由返回带结构化配置提示的 503，
+  // 使 UI 能显示设置说明，而不是笼统错误。
   {
     const { decodeAllowlist } = await import("./domain/files/path-safety.js");
     const { FileWriteService } = await import("./domain/files/file-write-service.js");
     const { ProgressIndexer, decodeProgressScanRoots } = await import("./domain/progress/progress-indexer.js");
-    // User Settings v0 — UEP env-vars graduated to typed settings.
-    // Resolution: env > settings file > empty. SettingsStore handles
-    // the env > file > default precedence; we just decode the raw
-    // string into structured roots.
+    // User Settings v0——UEP 环境变量已提升为类型化设置。解析顺序：环境变量 > 设置文件 > 空。
+    // SettingsStore 负责环境变量 > 文件 > 默认值的优先级；此处只把原始字符串解码为结构化根目录。
     const { SettingsStore } = await import("./domain/user-settings/settings-store.js");
     const settingsStore = new SettingsStore();
     deps.settingsStore = settingsStore;
     const cfg = settingsStore.resolveConfig();
 
-    // Preview Terminal v0 (PL-018) — per-session rate limiter for the
-    // /preview route. 1-second window per (session, lines) cache key:
-    // short enough that legitimate polling at the operator's refresh
-    // interval (`ui.preview.refresh_interval_seconds`, default 3s) always
-    // sees fresh content, but multiple pinned-pane requests for the same
-    // seat within a single second collapse to one tmux capture.
+    // Preview Terminal v0（PL-018）——/preview 路由的逐会话限速器。每个
+    // (session, lines) 缓存键使用 1 秒窗口：窗口足够短，按操作员刷新间隔
+    //（`ui.preview.refresh_interval_seconds`，默认 3 秒）进行的正常轮询总能看到新内容；
+    // 同一秒内针对同一席位的多个固定窗格请求则会合并为一次 tmux 捕获。
     const { PreviewRateLimiter } = await import("./domain/preview/preview-rate-limiter.js");
     deps.previewRateLimiter = new PreviewRateLimiter(1000);
     const filesAllowlist = decodeAllowlist(cfg.filesAllowlistRaw);
@@ -1775,13 +1668,10 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
           auditFilePath: nodePath.join(OPENRIG_HOME, "file-edit-audit.jsonl"),
         })
       : null;
-    // Slice 28 Checkpoint C-3 — SkillLibraryDiscoveryService. sharedSkillsDir
-    // resolves to the daemon's bundled `specs/agents/shared/skills/`
-    // directory via import.meta.url (independent of operator allowlist
-    // configuration; closes HG-5 on the founder-walk VM where the operator
-    // allowlist doesn't include the daemon source tree). filesAllowlist
-    // is also passed so workspace `.openrig/skills/` skills surface via
-    // the same daemon endpoint.
+    // Slice 28 检查点 C-3——SkillLibraryDiscoveryService。sharedSkillsDir 通过
+    // import.meta.url 解析到后台服务随附的 `specs/agents/shared/skills/` 目录，与操作员白名单
+    // 配置无关；这补齐了 founder-walk VM 上的 HG-5，因为其操作员白名单不含后台服务源码树。
+    // 同时传入 filesAllowlist，使工作区 `.openrig/skills/` 中的技能也通过同一后台服务端点呈现。
     deps.skillLibraryDiscoveryService = new SkillLibraryDiscoveryService({
       sharedSkillsDir: nodePath.resolve(
         nodePath.dirname(new URL(import.meta.url).pathname),
@@ -1795,33 +1685,30 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     });
     deps.progressIndexer = new ProgressIndexer({ roots: decodeProgressScanRoots(cfg.progressScanRootsRaw) });
 
-    // Operator Surface Reconciliation v0 — steering composer (item 1).
-    // Reads typed workspace settings by default while preserving the
-    // OPENRIG_STEERING_* env override family for non-canonical layouts.
+    // Operator Surface Reconciliation v0——引导内容组合器（第 1 项）。默认读取类型化工作区设置，
+    // 同时为非规范布局保留 OPENRIG_STEERING_* 环境变量覆盖族。
     const { SteeringComposer, steeringOptsFromSettings } = await import("./domain/steering/steering-composer.js");
     deps.steeringComposer = new SteeringComposer(steeringOptsFromSettings({
       workspaceRoot: cfg.workspaceRoot,
       workspaceSteeringPath: cfg.workspaceSteeringPath,
     }));
 
-    // Workflows in Spec Library + Activation Lens v0 — active lens
-    // persistence under OPENRIG_HOME/active-workflow-lens.json. Same
-    // file-backed pattern as UI Enhancement Pack v0's audit JSONL —
-    // honors OPENRIG_HOME so isolated test/dogfood daemons keep their
-    // own lens state instead of bleeding into the operator's host.
+    // Workflows in Spec Library + Activation Lens v0——活动透镜状态持久化到
+    // OPENRIG_HOME/active-workflow-lens.json。它与 UI Enhancement Pack v0 的审计 JSONL
+    // 使用相同的文件后端模式，并尊重 OPENRIG_HOME，使隔离的测试/dogfood 后台服务各自保存
+    // 透镜状态，不会污染操作员主机。
     const { ActiveLensStore } = await import("./domain/active-lens-store.js");
     deps.activeLensStore = new ActiveLensStore({
       filePath: nodePath.join(OPENRIG_HOME, "active-workflow-lens.json"),
     });
   }
 
-  // OPR.0.5.6.1 — late-bound gateway dispatch for the delivery policies (the
-  // gateway subsystem is constructed after the watchdog engine; the ref fills
-  // at activation below, which is OUTSIDE the sessionTransport block — hence
-  // function scope). Registry loads through the shipped loader.
+  // OPR.0.5.6.1——投递策略使用延迟绑定的 gateway 分派。gateway 子系统在看守器引擎之后
+  // 构造，该引用会在下方激活时填充；激活位置位于 sessionTransport 块之外，因此引用声明在
+  // 函数作用域。注册表通过随附加载器读取。
   const lateGatewayDispatch: { fn?: (op: string, ref: string, payload: unknown, opts?: { decisionId?: string }) => { ok: boolean; error?: string } } = {};
   const { loadHumanRegistry: loadHumanRegistryForDelivery } = await import("./domain/gateway/human-registry.js");
-  void loadHumanRegistryForDelivery; // consumed inside the sessionTransport block below
+  void loadHumanRegistryForDelivery; // 由下方 sessionTransport 块使用
 
   const sessionTransport = deps.sessionTransport;
   if (sessionTransport) {
@@ -1857,10 +1744,10 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
           };
         }
       },
-      // (i-c) fire-time target-generation gate: resolve the target's LIVE occupant-generation (P12
-      // occupant_tenures) so a generation-bound wake is refused once the target has handed over.
-      // UNKNOWN (null) fails open → deliver. A drop of this line disables the gate silently (gen-bound
-      // wakes would fire at the successor) — pinned in watchdog-target-gen-wiring.test.ts.
+      // (i-c) 触发时的目标代数门禁：解析目标的实时占位者代数（P12 occupant_tenures），
+      // 使目标完成交接后，绑定旧代数的唤醒会被拒绝。UNKNOWN（null）采用开放式失败并继续投递。
+      // 删除此行会静默禁用门禁，使代数绑定唤醒误发给后继；
+      // watchdog-target-gen-wiring.test.ts 已锁定这条接线。
       resolveTargetGeneration: (s) => sessionRegistry.currentOccupantGenerationForSession(s),
       resolvePreDeliveryTerminalReason: ({ jobId }) =>
         queueRepoInstance.resolveWatchdogPreDeliveryTerminalReason(jobId),
@@ -1868,31 +1755,24 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       onWakeAttempt: ({ jobId, deliveryStatus }) => {
         queueRepoInstance.recordWatchdogWakeAttempt(jobId, deliveryStatus);
       },
-      // PL-004 Phase D: register workflow-keepalive policy alongside
-      // Phase C's three built-in policies. workflow-keepalive reads
-      // SQLite workflow_instances directly via the new Phase D tables
-      // (audit row 18: SQLite-source-only, no markdown read).
-      // OPR.0.4.3.16: register idle-gate-qitem — joins pending gate:*
-      // qitems (queue_items) with the shared arbitrated activity verdict
-      // rendered by public surfaces
-      // into one bounded wake. Wakes/flags only; cooldown via engine throttle.
+      // PL-004 阶段 D：在阶段 C 的三个内置策略旁注册 workflow-keepalive 策略。
+      // workflow-keepalive 通过新增的阶段 D 表直接读取 SQLite workflow_instances
+      //（审计第 18 行：仅以 SQLite 为来源，不读取 Markdown）。
+      // OPR.0.4.3.16：注册 idle-gate-qitem——把待处理的 gate:* qitem（queue_items）与
+      // 公共表面展示的共享仲裁活动裁决合并成一次有界唤醒。只做唤醒/标记；冷却由引擎节流负责。
       additionalPolicies: [
         makeWorkflowKeepalivePolicy({
           db,
-          // OPR.0.4.6.WF5 FR-2 class (b): detection-time exception items,
-          // dedup by occurrence; dial resolved via the runtime's cached
-          // spec (registered-human selection inside the helper).
+          // OPR.0.4.6.WF5 FR-2 类别 (b)：检测时异常条目，按发生实例去重；旋钮通过运行时
+          // 缓存的规范解析（registered-human 选择在辅助函数内完成）。
           ensureStuckExceptionItem: workflowExceptionEnsurer,
           reconcileStuckExceptions: (id) => workflowRuntime?.reconcileStuckExceptions(id) ?? 0,
         }),
         makeIdleGateQitemPolicy({ db, seatActivity: seatActivityService }),
-        // OPR.0.5.6.24 F-14: the parked-owner consumer — the WHOLE shipped
-        // parked diagnosis (diagnoseRigParked over the arbitrated oracle +
-        // destination-scoped obligations + wake status; the same derivation
-        // `rig parked` serves) consumed by one rig-level supervisor job.
-        // Episode receipts are TRANSITIONS on the obligation row, written
-        // reserve-before-deliver (the retention active-frontier invariant is
-        // the durability proof); watchdog history is telemetry only.
+        // OPR.0.5.6.24 F-14：parked-owner 消费者——由一个工作组级监管任务消费完整的随附
+        // 停滞诊断（diagnoseRigParked 基于仲裁判定源、目标范围义务和唤醒状态；与
+        // `rig parked` 使用同一推导）。回合回执是义务行上的 TRANSITIONS，按先预留后投递写入
+        //（保留活动前沿不变量即持久性证明）；看守器历史仅用于遥测。
         makeParkedOwnerConsumerPolicy({
           diagnoseRig: (rigName) => {
             const seats = db
@@ -1928,9 +1808,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
             listForJob: (jobId, limit) => watchdogHistoryLogInstance.listForJob(jobId, limit),
             countForJob: (jobId) => watchdogHistoryLogInstance.countForJob(jobId),
           },
-          // R2 repair: the durable row-side surfaces. Receipts are transitions on
-          // the obligation row (reserve-before-deliver); failures land in the
-          // ladder's native last_nudge_result vocabulary.
+          // R2 修复：行侧持久表面。回执是义务行上的状态转换（先预留后投递）；失败写入
+          // 阶梯原生的 last_nudge_result 词汇。
           rows: {
             recoveryOwnsWake: (qitemId) => queueRecoveryOwnsWake(db, queueRepoInstance.getById(qitemId)),
             listTransitions: (qitemId: string) =>
@@ -1955,9 +1834,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
                 .map((r) => r.qitemId),
           },
         }),
-        // OPR.0.5.6.1 AM-F1 — the delivery engine's two timing legs on THIS
-        // substrate. The gateway dispatch binds late (the subsystem is built
-        // after this engine): the ref below is populated at gateway activation.
+        // OPR.0.5.6.1 AM-F1——投递引擎在此基础上的两个计时分支。gateway 分派采用延迟绑定
+        //（子系统在本引擎之后构建）：下方引用会在 gateway 激活时填充。
         (await import("./domain/policies/delivery-deferral.js")).makeDeliveryDeferralPolicy({
           jobsRepo: watchdogJobsRepoInstance,
           queueRepo: queueRepoInstance,
@@ -1965,12 +1843,12 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
             const dispatch = lateGatewayDispatch.fn;
             const row = queueRepoInstance.getById(qitemId);
             if (!dispatch || !row) return { ok: false };
-            // R2/R1 B-1+B-3: the ADVERTISED op, the shared payload builder, and
-            // the EPISODE key riding through to the Slice 14 receipt.
+            // R2/R1 B-1+B-3：使用已声明的操作、共享 payload 构建器，并让 EPISODE 键
+            // 一路传递到 Slice 14 回执。
             const { buildDeferralFirePayload } = await import("./domain/gateway/operator-delivery-engine.js");
             const { OUTBOUND_OP } = await import("./domain/gateway/slack/outbound-driver.js");
             const payload = buildDeferralFirePayload(row, notificationKey);
-            // v3: durable episode-stable identity — replay and re-dispatch converge.
+            // v3：持久且回合稳定的标识——重放与再次分派会收敛。
             const res = dispatch(OUTBOUND_OP, String(payload["destinationSession"] ?? ""), payload, { decisionId: `deferral:${notificationKey}` });
             return { ok: res.ok };
           },
@@ -1979,11 +1857,11 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
           queueRepo: queueRepoInstance,
           registry: { loadHumanRegistry: (home: string) => loadHumanRegistryForDelivery(home) },
           home: OPENRIG_HOME,
-          // v3: the digest posts THROUGH THE GATEWAY on its stable decision id —
-          // one transport, one redrive/reconcile machinery, receipts after truth.
+          // v3：摘要使用稳定 decision id 经由 gateway 发布——统一传输、统一重驱动/协调机制，
+          // 并在事实成立后写入回执。
           dispatch: (op: string, ref: string, payload: unknown, opts?: { decisionId?: string }) => {
             const fn = lateGatewayDispatch.fn;
-            if (!fn) return { ok: false, error: "gateway not yet active" };
+            if (!fn) return { ok: false, error: "gateway 尚未激活" };
             return fn(op, ref, payload, opts);
           },
         }),
@@ -1998,14 +1876,12 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     deps.watchdogPolicyEngine = watchdogPolicyEngine;
     deps.watchdogScheduler = watchdogScheduler;
 
-    // OPR.0.5.6.24 F-14 — ONE parked-owner supervisor job per rig (mini-req 1):
-    // ensured idempotently on the (policy, target_session) tuple; the anchor is
-    // `parked-owner-consumer@<rigName>` (member@rig shape, policy name as the
-    // member slug). activeWakeIntervalSeconds stays NULL so the engine never
-    // throttles one seat's wake because another fired — per-seat dedup lives in
-    // the durable episode receipts. Rigs created after startup are BORN ARMED:
-    // rigRepo.onRigCreated (wired below) runs the same ensure in the creation
-    // act itself (the birth-property ruling) — no restart wait, no watcher.
+    // OPR.0.5.6.24 F-14——每个工作组恰有一个 parked-owner 监管任务（迷你要求 1）：
+    // 按 (policy, target_session) 元组幂等确保；锚点为
+    // `parked-owner-consumer@<rigName>`（member@rig 形态，以策略名作为成员 slug）。
+    // activeWakeIntervalSeconds 保持 NULL，避免某席位触发后引擎节流另一席位的唤醒；
+    // 逐席位去重由持久回合回执承担。启动后新建的工作组天生已武装：下方接线的
+    // rigRepo.onRigCreated 会在创建动作本身执行同一 ensure，无需等待重启或观察器。
     {
       const ensureParkedOwnerJob = (rigName: string) => {
         const anchor = makeRigAnchor(rigName);
@@ -2021,15 +1897,13 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       };
       const rigRows = db.prepare("SELECT name FROM rigs ORDER BY name").all() as Array<{ name: string }>;
       for (const r of rigRows) ensureParkedOwnerJob(r.name);
-      // R2 repair — born-armed (advisor-ruled): a rig created after startup gets
-      // its supervisor job in the same act that creates it, never at the next
-      // daemon restart.
+      // R2 修复——天生已武装（顾问裁决）：启动后新建的工作组会在同一创建动作中获得
+      // 监管任务，绝不推迟到下次后台服务重启。
       rigRepo.onRigCreated = (rig) => ensureParkedOwnerJob(rig.name);
     }
 
-    // OPR.0.5.6.1 — the two digest windows as idempotent watchdog jobs (AM-F1:
-    // the flush rides the same named substrate; restart-durable by the same
-    // SQLite schedule; a daemon down across a window flushes on the next tick).
+    // OPR.0.5.6.1——两个摘要窗口均实现为幂等看守器任务（AM-F1：刷新使用同一命名基础；
+    // 借助同一 SQLite 调度在重启后保持；若后台服务跨越一个窗口停机，则在下一 tick 刷新）。
     {
       const ensureDigestJob = (window: "4h" | "daily", intervalSeconds: number) => {
         watchdogJobsRepoInstance.ensureAutoRegistration({
@@ -2046,13 +1920,12 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       ensureDigestJob("daily", 24 * 60 * 60);
     }
 
-    // B8 / slice-07 A3 — the MODEL-DIVERGENCE MONITOR: cause-agnostic effective-vs-pinned
-    // comparison at the earliest reliable per-runtime read, one verdict per occupant generation,
-    // LOUD four-channel proclamation on divergence (orch seats + operator + oversight + the named
-    // Slack deferral per DS2). Channel targets per the desk ruling 2026-08-21: orch = the seat's
-    // own rig's orch.* seats; operator = derived from workspace.operator_seat_name (never
-    // hardcoded); oversight = the fleet judgment seat, locally resolvable or a NAMED deferral
-    // (no daemon-side cross-host send seam exists yet — the deferral names that, never silence).
+    // B8 / slice-07 A3——模型分歧监视器：在各运行时最早可靠的读取点，对有效模型与固定模型
+    // 做不依赖原因的比较；每个占位者代数只生成一次裁决；发现分歧时通过四个渠道高声公告
+    //（编排席位、操作员、监督席位，以及 DS2 指定的 Slack 延迟投递）。渠道目标遵循
+    // 2026-08-21 桌面裁决：orch = 席位所属工作组的 orch.* 席位；operator 从
+    // workspace.operator_seat_name 派生，绝不硬编码；oversight = 全局判断席位，可在本地解析，
+    // 否则生成具名延迟项（当前尚无后台服务侧跨主机发送接缝，因此必须明确延迟，绝不静默）。
     {
       const { ModelDivergenceMonitor } = await import("./domain/model-divergence/model-divergence-monitor.js");
       const { readClaudeEffectiveModel, readCodexEffectiveModel } = await import("./domain/model-divergence/effective-model-readers.js");
@@ -2062,9 +1935,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       const nodeOs = await import("node:os");
       const nodeFs = await import("node:fs");
       const seatIdentityStore = new SeatIdentityStore(db);
-      // OPR.0.5.3.10 — ONE shared census + ONE PID-home resolver for the whole
-      // divergence surface: no more `ps -Ao` per seat per poll, no more `ps eww`
-      // per pid (default-home-first + bounded PID cache).
+      // OPR.0.5.3.10——整个分歧表面共享一份进程普查和一个 PID-home 解析器：不再对每个席位
+      // 每轮执行 `ps -Ao`，也不再对每个 PID 执行 `ps eww`（优先默认 home，并使用有界 PID 缓存）。
       const { ProcessCensus } = await import("./domain/process-census.js");
       const { CodexThreadIdResolver } = await import("./domain/codex-thread-id.js");
       const divergenceCensus = new ProcessCensus();
@@ -2072,8 +1944,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       const currentGenDeps = {
         getPanePid: async (sessionTarget: string) => tmuxAdapter.getPanePid ? tmuxAdapter.getPanePid(sessionTarget) : null,
         listProcesses: () => divergenceCensus.list(),
-        // S10 follow-on: identity REQUIRED on resolve(); the identity-less case routes EXPLICITLY
-        // through the named ungated escape hatch — never a silent fallback (r1 owed item 3).
+        // S10 后续：resolve() 必须提供 identity；缺少 identity 时显式走具名的无门禁逃生口，
+        // 绝不静默回退（r1 欠项 3）。
         readThreadIdByPid: (pid: number, identity?: string) =>
           identity === undefined ? codexThreadIdResolver.resolveUngatedLegacy(pid) : codexThreadIdResolver.resolve(pid, identity),
       };
@@ -2093,21 +1965,20 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
             .filter((row): row is typeof row & { sessionName: string } => row.sessionName !== null)
             .map((row) => ({ ...row, generation: sessionRegistry.currentOccupantGenerationForSession(row.sessionName) }));
         },
-        // D-a / OPR.0.5.9.13 — the CURRENT GENERATION's record through the canonical binding and
-        // verified pane identity, never a name, registry token, or transcript recency lookup. A
-        // retained predecessor may keep writing under the canonical launch-time name forever.
-        // Every missing or ambiguous identity join is an explicit no-answer.
+        // D-a / OPR.0.5.9.13——通过规范绑定与已验证窗格身份读取当前代数的记录；绝不根据
+        // 名称、注册表 token 或转录新旧程度查询。被保留的前任可能一直以规范启动名继续写入。
+        // 身份关联缺失或有歧义时一律明确返回无答案。
         readEffectiveModel: async (seat, cycle) => {
-          // OPR.0.5.3.10 mini-req 1 — the poll-scoped census (one ps per pass) when the
-          // monitor threads it; the shared coalescing census otherwise.
+          // OPR.0.5.3.10 迷你要求 1——监视器传入轮询上下文时使用该轮范围的普查
+          //（每轮只执行一次 ps）；否则使用共享合并普查。
           const genDeps = cycle ? { ...currentGenDeps, listProcesses: cycle.listProcesses } : currentGenDeps;
           if (seat.runtime === "codex") {
             const live = await resolveLiveCodexThreadId(seat.sessionName, genDeps);
             if (!live.ok) return { ok: false as const, reason: live.reason };
             const rollout = contextUsageStore.readCodexAndNormalize({ threadId: live.id, sessionName: seat.sessionName }).transcriptPath;
-            if (!rollout) return { ok: false as const, reason: `live thread ${live.id.slice(0, 8)}… has no readable rollout` };
+            if (!rollout) return { ok: false as const, reason: `实时线程 ${live.id.slice(0, 8)}… 没有可读的 rollout` };
             const model = readCodexEffectiveModel(rollout);
-            return model ? { ok: true as const, model } : { ok: false as const, reason: `no model signal in the bounded read of ${rollout}` };
+            return model ? { ok: true as const, model } : { ok: false as const, reason: `对 ${rollout} 的有界读取中没有模型信号` };
           }
           if (seat.runtime === "claude-code") {
             const tenure = sessionRegistry.currentOccupantTenure(seat.nodeId);
@@ -2127,9 +1998,9 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
             const model = readClaudeEffectiveModel(selection.path);
             return model
               ? { ok: true as const, model }
-              : { ok: false as const, reason: `no assistant turn yet in the current occupant record ${selection.path} (selected from ${selection.source})` };
+              : { ok: false as const, reason: `当前占位者记录 ${selection.path} 中尚无助手轮次（来源：${selection.source}）` };
           }
-          return { ok: false as const, reason: `runtime ${seat.runtime ?? "unknown"} has no effective-model reader yet` };
+          return { ok: false as const, reason: `运行时 ${seat.runtime ?? "unknown"} 尚无有效模型读取器` };
         },
         sendToSession: async (target, message, deliveryId) => {
           try {
@@ -2172,12 +2043,9 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
       deps.modelDivergenceMonitor = modelDivergenceMonitor;
     }
 
-    // OPR.0.4.6.WF1 FR-4: the workflow startup resume sweep — re-arm
-    // keepalives, reissue lost post-commit nudges (pending frontier
-    // packets never nudged), surface stuck instances. Runs after the
-    // watchdog + transport are wired so re-nudges actually deliver.
-    // Failures are logged, never fatal: a sweep problem must not
-    // bring the daemon down.
+    // OPR.0.4.6.WF1 FR-4：工作流启动恢复扫描——重新武装 keepalive、补发丢失的提交后提醒
+    //（尚未提醒的待处理前沿包），并呈现卡住的实例。它在看守器和传输接线完成后运行，
+    // 使补发提醒能够真正投递。失败只记日志，绝不致命：扫描问题不得拖垮后台服务。
     if (workflowRuntime && queueRepoForWorkflow) {
       try {
         const { runWorkflowBootSweep } = await import("./domain/workflow-boot-sweep.js");
@@ -2186,56 +2054,49 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
           queueRepo: queueRepoForWorkflow,
           watchdogJobsRepo: watchdogJobsRepoInstance,
           log: (line) => console.log(line),
-          // OPR.0.4.6.WF5 FR-2 class (b): the sweep leg of detection.
+          // OPR.0.4.6.WF5 FR-2 类别 (b)：检测的扫描分支。
           ensureStuckExceptionItem: workflowExceptionEnsurer,
           reconcileStuckExceptions: () => workflowRuntime?.reconcileStuckExceptions() ?? 0,
         });
       } catch (err) {
         console.warn(
-          `workflow boot sweep: failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+          `工作流启动扫描失败（非致命）：${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }
 
-    // W1 (transactional closure) FR — the wake-intent RECOVERY SWEEP. Deliver
-    // any wake intents a crash left committed-but-undelivered (the terminal txn
-    // committed, so the intent is durable, but the process died before the
-    // post-commit deliver). Runs after transport is wired so the re-deliveries
-    // actually land. Non-fatal — a sweep failure must not bring the daemon down.
-    // No periodic timer (ruled out of scope): a transient failure lands the row
-    // in a VISIBLE state and is retried on the next start.
+    // W1（事务闭合）FR——唤醒意图恢复扫描。投递崩溃后遗留的已提交但未投递唤醒意图
+    //（终态事务已经提交，因此意图持久存在，但进程在提交后投递前退出）。它在传输接线完成后
+    // 运行，使补投真正送达。扫描失败非致命，不得拖垮后台服务。不设周期定时器（已裁定
+    // 不在范围内）：瞬时失败会让该行进入可见状态，并在下次启动时重试。
     try {
-      // BLOCKING 1: reconcile abandoned `sending` claims (a prior crash) FIRST,
-      // then drain committed `pending` intents. Reconcile is a one-time boundary
-      // step, separate from the drain.
+      // BLOCKING 1：先协调先前崩溃遗留的 `sending` 认领，再排空已提交的 `pending` 意图。
+      // 协调是一次性边界步骤，与排空操作分离。
       const reconciled = queueRepoInstance.reconcileAbandonedWakeIntents();
       const drained = await queueRepoInstance.drainPendingWakeIntents();
       if (drained.delivered || drained.indeterminate || drained.failed || reconciled) {
         console.log(
-          `wake-intent recovery sweep: delivered=${drained.delivered} indeterminate=${drained.indeterminate} failed=${drained.failed} reconciled=${reconciled}`,
+          `唤醒意图恢复扫描：已投递=${drained.delivered} 结果不确定=${drained.indeterminate} 失败=${drained.failed} 已协调=${reconciled}`,
         );
       }
     } catch (err) {
       console.warn(
-        `wake-intent recovery sweep: failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+        `唤醒意图恢复扫描失败（非致命）：${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
 
-  // Context monitor — constructed before createApp so routes can access pollOnce for refresh.
-  // Caller (index.ts) starts polling after listen.
-  // Slice 27: wire ClaudeCompactionEnforcer when sessionTransport is
-  // available (it always is in the assembled deps; the conditional keeps
-  // the type narrow for downstream consumers).
+  // 上下文监视器——在 createApp 前构造，使路由能调用 pollOnce 刷新。调用方（index.ts）
+  // 在 listen 后启动轮询。Slice 27：sessionTransport 可用时接入 ClaudeCompactionEnforcer
+  //（组装后的 deps 中始终可用；条件判断用于让下游消费者获得更窄的类型）。
   const { ContextMonitor } = await import("./domain/context-monitor.js");
   const { ClaudeCompactionEnforcer } = await import("./domain/claude-compaction-enforcer.js");
   const compactionEnforcer = deps.sessionTransport
     ? new ClaudeCompactionEnforcer(
         new ContextPackSettingsStore(),
         deps.sessionTransport,
-        // GHOST-STAGE (b): resolve the LIVE occupant generation (atom-B tenure ledger) for a session
-        // so a stage minted by a retired generation is refused for the successor. null = UNKNOWN → the
-        // gate is inert (never compares a stale generation as if live).
+        // GHOST-STAGE (b)：为会话解析实时占位者代数（atom-B 任期台账），使退役代数创建的
+        // stage 不会应用到后继。null = UNKNOWN，此时门禁不生效，绝不把过期代数当作实时值比较。
         {
           resolveOccupantGeneration: (sessionName) =>
             sessionRegistry.currentOccupantGenerationForSession(sessionName),
@@ -2249,9 +2110,8 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
         },
       )
     : undefined;
-  // 51-08 A1 — the over-time series rides the SAME 30s tick (PM decision 1):
-  // context lane appends beside the existing persist; the provider-window lane
-  // drains the same statusline cache directory the read model scans.
+  // 51-08 A1——时间序列复用同一个 30 秒 tick（PM 决策 1）：上下文通道在现有持久化旁追加；
+  // provider-window 通道排空读取模型扫描的同一状态栏缓存目录。
   const { UsageSamplesStore, providerWindowSamplesFromSignals } = await import("./domain/usage-samples-store.js");
   const usageSamplesStore = new UsageSamplesStore(db);
   const contextMonitor = new ContextMonitor(db, contextUsageStore, claudeAdapter, compactionEnforcer, {
@@ -2266,67 +2126,61 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
     ),
   ));
   deps.contextMonitor = contextMonitor;
-  // OPR.0.4.3.14 — expose the SAME enforcer instance to routes for the manual
-  // compaction trigger. Sharing one instance with ContextMonitor is what makes
-  // the manual back-half drain through the auto poll loop (no second path).
+  // OPR.0.4.3.14——向路由暴露同一个 enforcer 实例，用于手动压缩触发。与 ContextMonitor
+  // 共享一个实例，才能让手动流程后半段通过自动轮询循环排空，而不产生第二条路径。
   deps.compactionEnforcer = compactionEnforcer;
 
-  // GHOST-STAGE (e/Class-B) — construct the canonical OccupantInvalidator now that both Class-A deps
-  // exist (the enforcer's in-mem maps 1a-1f + the context sidecar 2a). Injected into SeatHandoverService
-  // via the app context so commit()'s re-key call FIRES (it was a no-op until wired). An absent enforcer
-  // (degraded boot, no sessionTransport) falls back to a sidecar-only invalidator — never throws.
+  // GHOST-STAGE (e/Class-B)——两个 Class-A 依赖均已存在（enforcer 的内存映射 1a-1f 与
+  // 上下文 sidecar 2a），此时构造规范 OccupantInvalidator。它通过应用上下文注入
+  // SeatHandoverService，使 commit() 的重新键控调用真正执行（接线前是空操作）。若 enforcer
+  // 缺失（降级启动、无 sessionTransport），则回退为仅处理 sidecar 的失效器，绝不抛错。
   const { DefaultOccupantInvalidator } = await import("./domain/occupant-invalidator.js");
   deps.occupantInvalidator = new DefaultOccupantInvalidator({
     enforcer: compactionEnforcer ?? { invalidateOccupant: () => {} },
     contextUsage: contextUsageStore,
-    // (e/Class-B) watchdog store — armed jobs registered by the retiring generation stop at swap.
+    // (e/Class-B) 看守器存储——退役代数注册的已武装任务在换代时停止。
     watchdog: watchdogJobsRepoInstance,
-    // (e/Class-B) queue store — in-progress items claimed by the retiring generation release to pending.
+    // (e/Class-B) 队列存储——退役代数认领的进行中条目会释放回待处理状态。
     queue: queueRepoInstance,
     log: (msg) => console.warn(msg),
   });
 
-  // OPR.0.3.4.9 — periodic snapshot scheduler (crash-insurance floor).
+  // OPR.0.3.4.9——周期快照调度器（崩溃保险底线）。
   const { PeriodicSnapshotScheduler } = await import("./domain/periodic-snapshot-scheduler.js");
-  // OPR.0.5.3.10 — the snapshot tick shares ONE census across all rigs/seats.
+  // OPR.0.5.3.10——一次快照 tick 在所有工作组/席位之间共享同一份进程普查。
   const { ProcessCensus: SnapshotProcessCensus } = await import("./domain/process-census.js");
   const snapshotProcessCensus = new SnapshotProcessCensus();
   const periodicSnapshotScheduler = new PeriodicSnapshotScheduler({
     db, snapshotCapture, snapshotRepo,
-    // OPR.0.4.3.20 FR-4 — refresh live tokens before each periodic snapshot serializes.
+    // OPR.0.4.3.20 FR-4——每次周期快照序列化前刷新实时 token。
     sessionRegistry, resumeMetadataRefresher,
     processCensus: snapshotProcessCensus,
   });
   deps.periodicSnapshotScheduler = periodicSnapshotScheduler;
 
-  // OPR.0.4.3.21 — daemon event-loop health instrumentation. Constructed once
-  // per daemon and wired into deps so `/healthz` can surface wedge evidence
-  // (loop lag / last-tick age) and the expensive topology routes are timed.
+  // OPR.0.4.3.21——后台服务事件循环健康检测。每个后台服务仅构造一次并接入 deps，使
+  // `/healthz` 能呈现卡死证据（循环延迟/距上次 tick 的时长），并统计高成本拓扑路由耗时。
   const { EventLoopMonitor } = await import("./domain/event-loop-monitor.js");
   const { RouteTimingRecorder } = await import("./domain/route-timing-recorder.js");
   const eventLoopMonitor = new EventLoopMonitor();
   const routeTimingRecorder = new RouteTimingRecorder();
   deps.eventLoopMonitor = eventLoopMonitor;
   deps.routeTimingRecorder = routeTimingRecorder;
-  // S20 — bind provenance rides the health surface (absent = legacy healthz body).
+  // S20——绑定来源随健康表面返回；缺失时保持旧版 healthz 响应体。
   deps.bindPlan = opts?.bindPlan;
 
-  // Hermeticity (hotfix qitem-20260822230440-da0d2ad6 FIX 2): the REAL daemon
-  // constructs the drift observer here with an eagerly-warmed mode cache — the
-  // boot-time warm the observer's constructor used to do. Constructing it at
-  // the boot boundary (not inside createApp) is what keeps test-built apps
-  // from ever shelling `claude --help`.
+  // 隔离性（热修 qitem-20260822230440-da0d2ad6 FIX 2）：真实后台服务在此构造漂移观察器，
+  // 并主动预热模式缓存；过去由观察器构造函数在启动时预热。把它放在启动边界而非 createApp
+  // 内部，才能确保测试构造的应用永远不会调用 shell 执行 `claude --help`。
   const { PermissionDriftObserver, ClaudePermissionModeCache } = await import("./domain/permission-drift-observer.js");
   const permissionModes = new ClaudePermissionModeCache();
   permissionModes.warm();
   deps.permissionDriftObserver = new PermissionDriftObserver({ db, permissionModes });
 
-  // S10 (OPR.0.5.5.10) — activate the gateway as an IN-DAEMON SUBSYSTEM at boot (M1 §3 as
-  // amended: no child process, no connector wire — the shipped dispatcher + durable buffer
-  // composed in-process, the Slack delivery/inbound services wired from config + secrets).
-  // start() never throws: a wiring failure surfaces as state=failed on the health surface and
-  // boot proceeds. An unconfigured connector is an INERT wire (honest refusal class, no ops,
-  // no drivers) — `rig slack status` names what is missing.
+  // S10（OPR.0.5.5.10）——启动时把 gateway 激活为后台服务内子系统（修订后的 M1 §3：
+  // 无子进程、无 connector 线缆；随附分派器和持久缓冲区在进程内组合，Slack 投递/入站服务
+  // 从配置与密钥接线）。start() 永不抛错：接线失败会在健康表面呈现 state=failed，启动继续。
+  // 未配置的 connector 是静默线路（如实拒绝，无操作、无驱动）；`zrig slack status` 会指出缺失项。
   const { GatewaySubsystem } = await import("./domain/gateway/gateway-subsystem.js");
   const { buildSlackGatewayWire, makeHumanReplyResolver } = await import("./domain/gateway/slack/slack-subsystem.js");
   const gatewaySubsystem = new GatewaySubsystem({
@@ -2341,7 +2195,7 @@ export async function createDaemon(opts?: DaemonOptions): Promise<DaemonResult> 
   });
   gatewaySubsystem.start();
   deps.gatewaySubsystem = gatewaySubsystem;
-  // OPR.0.5.6.1 — bind the delivery policies' late gateway ref.
+  // OPR.0.5.6.1——绑定投递策略延迟解析的 gateway 引用。
   lateGatewayDispatch.fn = (op, ref, payload, opts) => gatewaySubsystem.dispatch(op, ref, payload, opts);
 
   const { app, injectWebSocket } = createAppWithWebSocket(deps);

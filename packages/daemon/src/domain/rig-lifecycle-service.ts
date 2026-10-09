@@ -150,11 +150,11 @@ export class RigLifecycleService {
   private readonly tmuxAdapter: TmuxAdapter | null;
 
   constructor(deps: RigLifecycleDeps) {
-    if (deps.db !== deps.rigRepo.db) throw new Error("RigLifecycleService: rigRepo must share the same db handle");
-    if (deps.db !== deps.sessionRegistry.db) throw new Error("RigLifecycleService: sessionRegistry must share the same db handle");
-    if (deps.db !== deps.discoveryRepo.db) throw new Error("RigLifecycleService: discoveryRepo must share the same db handle");
-    if (deps.db !== deps.eventBus.db) throw new Error("RigLifecycleService: eventBus must share the same db handle");
-    if (deps.db !== deps.queueRepo.db) throw new Error("RigLifecycleService: queueRepo must share the same db handle");
+    if (deps.db !== deps.rigRepo.db) throw new Error("RigLifecycleService：rigRepo 必须共享同一个数据库句柄");
+    if (deps.db !== deps.sessionRegistry.db) throw new Error("RigLifecycleService：sessionRegistry 必须共享同一个数据库句柄");
+    if (deps.db !== deps.discoveryRepo.db) throw new Error("RigLifecycleService：discoveryRepo 必须共享同一个数据库句柄");
+    if (deps.db !== deps.eventBus.db) throw new Error("RigLifecycleService：eventBus 必须共享同一个数据库句柄");
+    if (deps.db !== deps.queueRepo.db) throw new Error("RigLifecycleService：queueRepo 必须共享同一个数据库句柄");
     this.db = deps.db;
     this.rigRepo = deps.rigRepo;
     this.sessionRegistry = deps.sessionRegistry;
@@ -188,19 +188,19 @@ export class RigLifecycleService {
         `).all(sessionRef) as ClaimedSessionRow[];
 
     if (matches.length === 0) {
-      return { ok: false, code: "session_not_found", error: `Claimed session '${sessionRef}' not found.` };
+      return { ok: false, code: "session_not_found", error: `未找到已接管会话 '${sessionRef}'。` };
     }
     if (!exactId && matches.length > 1) {
       return {
         ok: false,
         code: "session_ambiguous",
-        error: `Session '${sessionRef}' is ambiguous. Use the session ID instead.`,
+        error: `会话 '${sessionRef}' 存在歧义，请改用 session ID。`,
       };
     }
 
     const session = matches[0]!;
 
-    // Best-effort: clear OpenRig-owned tmux metadata from the adopted session.
+    // 尽力从已接管会话中清除 OpenRig 拥有的 tmux metadata。
     if (this.tmuxAdapter && session.tmux_session) {
       const keys = [
         "@rigged_node_id",
@@ -213,7 +213,7 @@ export class RigLifecycleService {
         try {
           await this.tmuxAdapter.setSessionOption(session.tmux_session, key, "");
         } catch {
-          // best-effort only
+          // 仅尽力而为。
         }
       }
     }
@@ -257,7 +257,7 @@ export class RigLifecycleService {
   async releaseRig(rigId: string, opts?: { delete?: boolean }): Promise<ReleaseRigResult> {
     const rig = this.rigRepo.getRig(rigId);
     if (!rig) {
-      return { ok: false, code: "rig_not_found", error: `Rig '${rigId}' not found.` };
+      return { ok: false, code: "rig_not_found", error: `未找到工作组 '${rigId}'。` };
     }
 
     const rows = this.db.prepare(`
@@ -286,7 +286,7 @@ export class RigLifecycleService {
       return {
         ok: false,
         code: "contains_launched_nodes",
-        error: "Rig contains launched nodes and cannot be released safely. Use rig down for OpenRig-launched rigs.",
+        error: "工作组包含已启动节点，无法安全释放。对于由 zrig 启动的工作组，请使用 zrig down。",
         launchedLogicalIds,
       };
     }
@@ -367,12 +367,12 @@ export class RigLifecycleService {
   ): Promise<RemoveNodeResult> {
     const rig = this.rigRepo.getRig(rigId);
     if (!rig) {
-      return { ok: false, code: "rig_not_found", error: `Rig '${rigId}' not found.` };
+      return { ok: false, code: "rig_not_found", error: `未找到工作组 '${rigId}'。` };
     }
 
     const node = this.resolveNodeRef(rigId, nodeRef);
     if (!node) {
-      return { ok: false, code: "node_not_found", error: `Node '${nodeRef}' not found in rig '${rigId}'.` };
+      return { ok: false, code: "node_not_found", error: `工作组 '${rigId}' 中未找到节点 '${nodeRef}'。` };
     }
 
     const guard = this.tmuxAdapter?.deliveryGuard;
@@ -393,16 +393,16 @@ export class RigLifecycleService {
         code: "active_qitems",
         activeQitemIds,
         error: this.activeQitemsError(
-          `Node '${node.logical_id}' still has active queue work addressed to '${node.latest_session_name}'.`,
+          `节点 '${node.logical_id}' 仍有发往 '${node.latest_session_name}' 的 active queue work。`,
           activeQitemIds,
-          "removing the node",
+          "移除节点",
         ),
       };
     }
 
     if (fallbackDestination !== undefined) {
       for (const qitemId of activeQitemIds) {
-        this.queueRepo.routeToFallback(qitemId, fallbackDestination, `explicit fallback while removing node ${node.logical_id}`);
+        this.queueRepo.routeToFallback(qitemId, fallbackDestination, `移除节点 ${node.logical_id} 时显式 fallback`);
       }
     }
 
@@ -415,7 +415,7 @@ export class RigLifecycleService {
         return {
           ok: false,
           code: "kill_failed",
-          error: `Failed to kill session '${node.latest_session_name}': ${kill.message}`,
+          error: `终止会话 '${node.latest_session_name}' 失败：${kill.message}`,
           fallbackDestination,
           reroutedQitemIds: activeQitemIds,
         };
@@ -492,12 +492,12 @@ export class RigLifecycleService {
   ): Promise<ShrinkPodResult> {
     const rig = this.rigRepo.getRig(rigId);
     if (!rig) {
-      return { ok: false, code: "rig_not_found", error: `Rig '${rigId}' not found.` };
+      return { ok: false, code: "rig_not_found", error: `未找到工作组 '${rigId}'。` };
     }
 
     const pod = this.resolvePodRef(rigId, podRef);
     if (!pod) {
-      return { ok: false, code: "pod_not_found", error: `Pod '${podRef}' not found in rig '${rigId}'.` };
+      return { ok: false, code: "pod_not_found", error: `工作组 '${rigId}' 中未找到 Pod '${podRef}'。` };
     }
 
     const nodes = this.db.prepare(`
@@ -530,7 +530,7 @@ export class RigLifecycleService {
         code: "active_qitems",
         activeQitemIds,
         error: this.activeQitemsError(
-          `Pod '${pod.namespace}' still has active queue work addressed to members being removed.`,
+          `Pod '${pod.namespace}' 仍有发往待移除成员的 active queue work。`,
           activeQitemIds,
         ),
       };
@@ -538,7 +538,7 @@ export class RigLifecycleService {
 
     if (fallbackDestination !== undefined) {
       for (const qitemId of activeQitemIds) {
-        this.queueRepo.routeToFallback(qitemId, fallbackDestination, `explicit fallback while shrinking pod ${pod.namespace}`);
+        this.queueRepo.routeToFallback(qitemId, fallbackDestination, `收缩 Pod ${pod.namespace} 时显式 fallback`);
       }
     }
 
@@ -555,7 +555,7 @@ export class RigLifecycleService {
       const removed = await this.removeNode(rigId, node.id);
       if (!removed.ok) {
         const error = removed.code === "node_not_found"
-          ? `Node '${node.logical_id}' disappeared while shrinking pod '${pod.namespace}'.`
+          ? `收缩 Pod '${pod.namespace}' 时节点 '${node.logical_id}' 消失。`
           : removed.error;
 
         if (removedLogicalIds.length > 0) {
@@ -665,11 +665,11 @@ export class RigLifecycleService {
     `).all(...uniqueSessionNames) as Array<{ qitem_id: string }>).map((row) => row.qitem_id);
   }
 
-  private activeQitemsError(subject: string, activeQitemIds: string[], before = "removal"): string {
+  private activeQitemsError(subject: string, activeQitemIds: string[], before = "移除"): string {
     const fallbackCommands = activeQitemIds
-      .map((qitemId) => `rig queue fallback ${qitemId} --destination <live-seat>`)
+      .map((qitemId) => `zrig queue fallback ${qitemId} --destination <live-seat>`)
       .join("\n");
-    return `${subject} Reroute each qitem before ${before}:\n${fallbackCommands}`;
+    return `${subject} 请在${before}前重新路由每个 qitem：\n${fallbackCommands}`;
   }
 
   private async validateFallbackDestination(
@@ -689,21 +689,21 @@ export class RigLifecycleService {
       return {
         ok: false,
         code: "fallback_not_running",
-        error: `Fallback destination '${fallbackDestination}' is not a currently running seat. No queue or topology changes were made.`,
+        error: `Fallback destination '${fallbackDestination}' 当前不是运行中的席位。未更改 queue 或 topology。`,
       };
     }
     if (targetNodeIds.has(row.node_id)) {
       return {
         ok: false,
         code: "fallback_in_target",
-        error: `Fallback destination '${fallbackDestination}' belongs to '${row.logical_id}', which is part of the removal target. No queue or topology changes were made.`,
+        error: `Fallback destination '${fallbackDestination}' 属于移除目标中的 '${row.logical_id}'。未更改 queue 或 topology。`,
       };
     }
     if (!this.tmuxAdapter || !(await this.tmuxAdapter.hasSession(fallbackDestination))) {
       return {
         ok: false,
         code: "fallback_not_running",
-        error: `Fallback destination '${fallbackDestination}' is not a currently running seat. No queue or topology changes were made.`,
+        error: `Fallback destination '${fallbackDestination}' 当前不是运行中的席位。未更改 queue 或 topology。`,
       };
     }
     return null;

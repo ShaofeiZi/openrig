@@ -1,14 +1,12 @@
-// OPR.0.5.6.10 — pack-level taxonomy (WORLD / LORE / SKILLS / MISSION becomes
-// first-class on EVERY pack, not only the one pack that declares atoms).
+// OPR.0.5.6.10——pack 级 taxonomy（WORLD / LORE / SKILLS / MISSION 成为每个 pack
+// 的一等属性，而不只属于声明 atoms 的那个 pack）。
 //
-// Mini-req 1: every manifest declares a pack-level `taxonomy` from the ONE
-// shared enum (ATOM_TAXONOMIES — imported, never a second literal list).
-// Mini-req 2: a missing or non-enum value fails LOUD at parse time with a
-// teaching error that names the field, lists the legal values, and says one
-// sentence about what each value means.
-// Mini-req 5: atom-level taxonomy is unchanged and may differ per atom.
-// Mini-req 6: `lore` admits with zero code change beyond this slice (slice 08's
-// seam, proven open).
+// Mini-req 1：每个 manifest 都从唯一共享 enum 声明 pack 级 `taxonomy`
+//（导入 ATOM_TAXONOMIES，绝不维护第二份字面量列表）。
+// Mini-req 2：缺失或不属于 enum 的值会在解析时响亮失败，并返回教学错误：
+// 点名字段、列出合法值，并用一句话说明每个值的含义。
+// Mini-req 5：atom 级 taxonomy 保持不变，每个 atom 可以不同。
+// Mini-req 6：`lore` 无需修改本 slice 以外的代码即可准入（slice 08 接缝已证明开放）。
 
 import { describe, it, expect } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -28,8 +26,8 @@ files:
     role: notes
 `;
 
-describe("pack-level taxonomy — the teaching refusal (proof contract NEGATIVE 1)", () => {
-  it("refuses a manifest with no taxonomy, naming the field and every legal value", () => {
+describe("pack 级 taxonomy——带教学信息的拒绝（proof contract NEGATIVE 1）", () => {
+  it("拒绝没有 taxonomy 的 manifest，并点名字段及所有合法值", () => {
     expect(() => parseManifest(manifestWith(""), "/t/manifest.yaml")).toThrow(ContextPackError);
     try {
       parseManifest(manifestWith(""), "/t/manifest.yaml");
@@ -38,21 +36,21 @@ describe("pack-level taxonomy — the teaching refusal (proof contract NEGATIVE 
       const e = err as ContextPackError;
       expect(e.code).toBe("manifest_invalid");
       expect(e.message).toContain("'taxonomy'");
-      // Every legal value is listed — the error is the migration instruction.
+      // 列出每个合法值——错误本身就是迁移指引。
       for (const value of ATOM_TAXONOMIES) expect(e.message).toContain(value);
-      // One sentence of meaning per value (the coining-session definitions).
-      expect(e.message).toContain("where you are");
-      expect(e.message).toContain("what has been learned here");
-      expect(e.message).toContain("what you know how to do");
-      expect(e.message).toContain("what you are doing now");
-      // The exact one line the author must add.
+      // 每个值都有一句含义说明（采用术语创设会话的定义）。
+      expect(e.message).toContain("你所在的环境");
+      expect(e.message).toContain("在此处积累的知识");
+      expect(e.message).toContain("你知道如何完成的事情");
+      expect(e.message).toContain("你当前正在做的事情");
+      // 作者必须添加的精确一行。
       expect(e.message).toMatch(/taxonomy: /);
     }
   });
 });
 
-describe("pack-level taxonomy — bad value (proof contract NEGATIVE 2)", () => {
-  it("refuses taxonomy: doctrine with the same teaching shape", () => {
+describe("pack 级 taxonomy——非法值（proof contract NEGATIVE 2）", () => {
+  it("拒绝 taxonomy: doctrine，并返回相同的教学信息结构", () => {
     try {
       parseManifest(manifestWith("taxonomy: doctrine"), "/t/manifest.yaml");
       expect.unreachable("non-enum taxonomy must not parse");
@@ -61,34 +59,34 @@ describe("pack-level taxonomy — bad value (proof contract NEGATIVE 2)", () => 
       expect(e.code).toBe("manifest_invalid");
       expect(e.message).toContain("doctrine");
       for (const value of ATOM_TAXONOMIES) expect(e.message).toContain(value);
-      expect(e.message).toContain("where you are");
-      expect(e.message).toContain("what has been learned here");
-      expect(e.message).toContain("what you know how to do");
-      expect(e.message).toContain("what you are doing now");
+      expect(e.message).toContain("你所在的环境");
+      expect(e.message).toContain("在此处积累的知识");
+      expect(e.message).toContain("你知道如何完成的事情");
+      expect(e.message).toContain("你当前正在做的事情");
     }
   });
 
-  it("refuses a non-string taxonomy", () => {
+  it("拒绝非字符串 taxonomy", () => {
     expect(() => parseManifest(manifestWith("taxonomy: [world]"), "/t/manifest.yaml")).toThrow(/taxonomy/);
   });
 });
 
-describe("pack-level taxonomy — admission", () => {
-  it("admits every value of the one shared enum", () => {
+describe("pack 级 taxonomy——准入", () => {
+  it("接受共享 enum 中的每个值", () => {
     for (const value of ATOM_TAXONOMIES) {
       const m = parseManifest(manifestWith(`taxonomy: ${value}`), "/t/manifest.yaml");
       expect(m.taxonomy).toBe(value);
     }
   });
 
-  it("admits taxonomy: lore with no code change beyond this slice (proof contract LORE ADMITS)", () => {
+  it("接受 taxonomy: lore，且本 slice 之外无需改代码（proof contract 接受 LORE）", () => {
     const m = parseManifest(manifestWith("taxonomy: lore"), "/t/manifest.yaml");
     expect(m.taxonomy).toBe("lore");
   });
 });
 
-describe("pack-level vs atom-level taxonomy (mini-req 5: they may differ; nothing overrides)", () => {
-  it("an atoms-bearing pack is not required to be uniform", () => {
+describe("pack 级与 atom 级 taxonomy（mini-req 5：二者可以不同，互不覆盖）", () => {
+  it("含 atoms 的 pack 无需保持 taxonomy 一致", () => {
     const manifest = `
 name: mixed-pack
 version: 1
@@ -111,7 +109,7 @@ atoms:
   });
 });
 
-describe("library entry projection (mini-req 4: derivable by command, list --json field)", () => {
+describe("库条目投影（mini-req 4：可由命令推导，并由 list --json 暴露字段）", () => {
   const pack = (taxonomyLine: string) => `
 name: projected
 version: 1
@@ -121,7 +119,7 @@ files:
     role: notes
 `;
 
-  it("projects the pack taxonomy onto the library entry", () => {
+  it("将 pack taxonomy 投影到库条目", () => {
     const tmp = mkdtempSync(join(tmpdir(), "pack-taxonomy-"));
     try {
       const dir = join(tmp, "projected");
@@ -137,7 +135,7 @@ files:
     }
   });
 
-  it("composeFromFiles stamps taxonomy: mission — its own output must pass its own parser (desk ruling on qitem-20260828092429-d2f94323; caller-supplied value deferred to slice 08)", () => {
+  it("composeFromFiles 盖上 taxonomy: mission——自身输出必须通过自身解析器（qitem-20260828092429-d2f94323 的评审裁决；调用方提供值延后到 slice 08）", () => {
     const tmp = mkdtempSync(join(tmpdir(), "pack-taxonomy-"));
     try {
       const src = join(tmp, "src.md");
@@ -156,7 +154,7 @@ files:
     }
   });
 
-  it("refuses an unstamped pack at scan — fail-visible error, never indexed", () => {
+  it("扫描时拒绝未盖戳 pack——错误可见，绝不建立索引", () => {
     const tmp = mkdtempSync(join(tmpdir(), "pack-taxonomy-"));
     try {
       const dir = join(tmp, "unstamped");

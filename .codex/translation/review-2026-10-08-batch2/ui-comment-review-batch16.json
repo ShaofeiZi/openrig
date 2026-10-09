@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T01:39:56",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch16",
+ "files": 10,
+ "changed": 8,
+ "reviewed_no_change": 2,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/explorer-mobile-zindex-layering.test.tsx",
+   "status": "changed",
+   "after_sha256": "bed5812a7e4a5aa30ed80518d2a28414ba272366acde4315a9300eb2659f6d96",
+   "natural_language_residual": 0,
+   "machine_classification": "Slice 26.B/D/E HG-8、z-20/30/40 rail-tray、Explorer.tsx/AppShell.tsx、shouldSuppressExplorerMount、Slice 28 Checkpoint C/C-2/C-4、LibraryTopLevelEntry、skills-index-row-<id> testid、SC-10/29、/api/plugins/:id/files、SC-10、HostScopePage/RigScopePage/useParams、data-explorer-mode overlay/opaque、OPR.0.3.3.19、AbortSignal/cancelQueries、qitem-20260721000001-ps-stall-driver、/api/config/:key、OPR.0.4.6.MH5 C5、FR-5 registryError、TanStack Link 保留"
+  },
+  {
+   "path": "packages/ui/test/slice-28-index-pages.test.tsx",
+   "status": "changed",
+   "after_sha256": "29802886dfc8e02963872d1bdb7a3de622905758129017b77c62893376d93002",
+   "natural_language_residual": 0,
+   "machine_classification": "Slice 26.B/D/E HG-8、z-20/30/40 rail-tray、Explorer.tsx/AppShell.tsx、shouldSuppressExplorerMount、Slice 28 Checkpoint C/C-2/C-4、LibraryTopLevelEntry、skills-index-row-<id> testid、SC-10/29、/api/plugins/:id/files、SC-10、HostScopePage/RigScopePage/useParams、data-explorer-mode overlay/opaque、OPR.0.3.3.19、AbortSignal/cancelQueries、qitem-20260721000001-ps-stall-driver、/api/config/:key、OPR.0.4.6.MH5 C5、FR-5 registryError、TanStack Link 保留"
+  },
+  {
+   "path": "packages/ui/test/plugin-detail-page.test.tsx",
+   "status": "changed",
+   "after_sha256": "53d59f383bdbd40de41beecb3a79636d3b4fff75e3c3f87f77bd8e12fbe330d3",
+   "natural_language_residual": 0,
+   "machine_classification": "Slice 26.B/D/E HG-8、z-20/30/40 rail-tray、Explorer.tsx/AppShell.tsx、shouldSuppressExplorerMount、Slice 28 Checkpoint C/C-2/C-4、LibraryTopLevelEntry、skills-index-row-<id> testid、SC-10/29、/api/plugins/:id/files、SC-10、HostScopePage/RigScopePage/useParams、data-explorer-mode overlay/opaque、OPR.0.3.3.19、AbortSignal/cancelQueries、qitem-20260721000001-ps-stall-driver、/api/config/:key、OPR.0.4.6.MH5 C5、FR-5 registryError、TanStack Link 保留"
+  },
+  {
+   "path": "packages/ui/test/topology-view-mode.test.tsx",
+   "status": "changed",
+   "after_sha256": "2ce1b59dc84ec43c47b918685a61587d74d68c4b03855af2335f6b63ee704273",
+   "natural_language_residual": 0,
+   "machine_classification": "Slice 26.B/D/E HG-8、z-20/30/40 rail-tray、Explorer.tsx/AppShell.tsx、shouldSuppressExplorerMount、Slice 28 Checkpoint C/C-2/C-4、LibraryTopLevelEntry、skills-index-row-<id> testid、SC-10/29、/api/plugins/:id/files、SC-10、HostScopePage/RigScopePage/useParams、data-explorer-mode overlay/opaque、OPR.0.3.3.19、AbortSignal/cancelQueries、qitem-20260721000001-ps-stall-driver、/api/config/:key、OPR.0.4.6.MH5 C5、FR-5 registryError、TanStack Link 保留"
+  },
+  {
+   "path": "packages/ui/test/activity-visuals-pl019.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "e5bf88e4744accbf3af4044f43b00f9a54fa8e71198dc388ff195a397c1587bf",
+   "natural_language_residual": 0,
+   "machine_classification": "Slice 26.B/D/E HG-8、z-20/30/40 rail-tray、Explorer.tsx/AppShell.tsx、shouldSuppressExplorerMount、Slice 28 Checkpoint C/C-2/C-4、LibraryTopLevelEntry、skills-index-row-<id> testid、SC-10/29、/api/plugins/:id/files、SC-10、HostScopePage/RigScopePage/useParams、data-explorer-mode overlay/opaque、OPR.0.3.3.19、AbortSignal/cancelQueries、qitem-20260721000001-ps-stall-driver、/api/config/:key、OPR.0.4.6.MH5 C5、FR-5 registryError、TanStack Link 保留"
+  },
+  {
+   "path": "packages/ui/test/specs-tree-view-sidebar.test.tsx",
+   "status": "changed",
+   "after_sha256": "6885e67f522798edb6c389f13bbf75012c8fbb0995422f895ce4af939a1cee24",
+   "natural_language_residual": 0,
+   "machine_classification": "Slice 26.B/D/E HG-8、z-20/30/40 rail-tray、Explorer.tsx/AppShell.tsx、shouldSuppressExplorerMount、Slice 28 Checkpoint C/C-2/C-4、LibraryTopLevelEntry、skills-index-row-<id> testid、SC-10/29、/api/plugins/:id/files、SC-10、HostScopePage/RigScopePage/useParams、data-explorer-mode overlay/opaque、OPR.0.3.3.19、AbortSignal/cancelQueries、qitem-20260721000001-ps-stall-driver、/api/config/:key、OPR.0.4.6.MH5 C5、FR-5 registryError、TanStack Link 保留"
+  },
+  {
+   "path": "packages/ui/test/query-hooks.test.tsx",
+   "status": "changed",
+   "after_sha256": "1b29b13d69408d0acdb347b0de92e2bca9794131a97cec9c007c29e89fb5680c",
+   "natural_language_residual": 0,
+   "machine_classification": "Slice 26.B/D/E HG-8、z-20/30/40 rail-tray、Explorer.tsx/AppShell.tsx、shouldSuppressExplorerMount、Slice 28 Checkpoint C/C-2/C-4、LibraryTopLevelEntry、skills-index-row-<id> testid、SC-10/29、/api/plugins/:id/files、SC-10、HostScopePage/RigScopePage/useParams、data-explorer-mode overlay/opaque、OPR.0.3.3.19、AbortSignal/cancelQueries、qitem-20260721000001-ps-stall-driver、/api/config/:key、OPR.0.4.6.MH5 C5、FR-5 registryError、TanStack Link 保留"
+  },
+  {
+   "path": "packages/ui/test/claude-compaction-policy-form.test.tsx",
+   "status": "changed",
+   "after_sha256": "8398051aa9caef734b989598f75c227a1294449104311d47703a04e5856e5b0e",
+   "natural_language_residual": 0,
+   "machine_classification": "Slice 26.B/D/E HG-8、z-20/30/40 rail-tray、Explorer.tsx/AppShell.tsx、shouldSuppressExplorerMount、Slice 28 Checkpoint C/C-2/C-4、LibraryTopLevelEntry、skills-index-row-<id> testid、SC-10/29、/api/plugins/:id/files、SC-10、HostScopePage/RigScopePage/useParams、data-explorer-mode overlay/opaque、OPR.0.3.3.19、AbortSignal/cancelQueries、qitem-20260721000001-ps-stall-driver、/api/config/:key、OPR.0.4.6.MH5 C5、FR-5 registryError、TanStack Link 保留"
+  },
+  {
+   "path": "packages/ui/test/fleet-page.test.tsx",
+   "status": "changed",
+   "after_sha256": "63d37a9ec1bc085dacc95c513ac19f2513431a74eb3f6f722246107811a35180",
+   "natural_language_residual": 0,
+   "machine_classification": "Slice 26.B/D/E HG-8、z-20/30/40 rail-tray、Explorer.tsx/AppShell.tsx、shouldSuppressExplorerMount、Slice 28 Checkpoint C/C-2/C-4、LibraryTopLevelEntry、skills-index-row-<id> testid、SC-10/29、/api/plugins/:id/files、SC-10、HostScopePage/RigScopePage/useParams、data-explorer-mode overlay/opaque、OPR.0.3.3.19、AbortSignal/cancelQueries、qitem-20260721000001-ps-stall-driver、/api/config/:key、OPR.0.4.6.MH5 C5、FR-5 registryError、TanStack Link 保留"
+  },
+  {
+   "path": "packages/ui/test/terminal-launcher.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "f299668eb88898348e04c234f407787aae024b8f4847c8ae4e85fa0ab4e58b1c",
+   "natural_language_residual": 0,
+   "machine_classification": "Slice 26.B/D/E HG-8、z-20/30/40 rail-tray、Explorer.tsx/AppShell.tsx、shouldSuppressExplorerMount、Slice 28 Checkpoint C/C-2/C-4、LibraryTopLevelEntry、skills-index-row-<id> testid、SC-10/29、/api/plugins/:id/files、SC-10、HostScopePage/RigScopePage/useParams、data-explorer-mode overlay/opaque、OPR.0.3.3.19、AbortSignal/cancelQueries、qitem-20260721000001-ps-stall-driver、/api/config/:key、OPR.0.4.6.MH5 C5、FR-5 registryError、TanStack Link 保留"
+  }
+ ]
+}

@@ -17,19 +17,19 @@ function fail(message, next) {
 const source = argument("--source");
 const destination = argument("--destination");
 if (!source || !destination) {
-  fail("--source and --destination are required", "choose an existing OpenRig SQLite database and a new backup path");
+  fail("必须提供 --source 和 --destination", "请选择现有 OpenRig SQLite 数据库和新的备份路径");
 }
 
 const sourcePath = path.resolve(source);
 const destinationPath = path.resolve(destination);
 if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
-  fail(`source database is not a regular file: ${sourcePath}`, "derive the live database path from daemon status before retrying");
+  fail(`源数据库不是普通文件：${sourcePath}`, "请先从后台服务状态确定实时数据库路径，再重试");
 }
 if (fs.existsSync(destinationPath)) {
-  fail(`destination already exists: ${destinationPath}`, "choose a new path; this helper never overwrites a backup");
+  fail(`目标已存在：${destinationPath}`, "请选择新路径；此辅助工具绝不会覆盖备份");
 }
 if (destinationPath.includes("'") || destinationPath.includes("\n")) {
-  fail("destination contains a quote or newline unsupported by the sqlite3 backup command", "choose a simple filesystem path");
+  fail("目标包含 sqlite3 备份命令不支持的引号或换行符", "请选择简单的文件系统路径");
 }
 
 fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
@@ -38,8 +38,8 @@ const backup = spawnSync(sqlite, [sourcePath, `.backup '${destinationPath}'`], {
 if (backup.status !== 0) {
   fs.rmSync(destinationPath, { force: true });
   fail(
-    backup.stderr?.trim() || backup.stdout?.trim() || backup.error?.message || "sqlite3 backup failed",
-    `run ${sqlite} against the source directly, resolve locking/path/tooling errors, then choose a fresh destination`,
+    backup.stderr?.trim() || backup.stdout?.trim() || backup.error?.message || "sqlite3 备份失败",
+    `请对源文件直接运行 ${sqlite}，解决锁定、路径或工具错误，再选择新的目标路径`,
   );
 }
 
@@ -47,8 +47,8 @@ const check = spawnSync(sqlite, [destinationPath, "PRAGMA integrity_check;"], { 
 const integrity = check.stdout?.trim();
 if (check.status !== 0 || integrity !== "ok") {
   fail(
-    check.stderr?.trim() || `backup integrity result was ${JSON.stringify(integrity)}`,
-    "preserve the failed backup for diagnosis only; do not use it for rollback",
+    check.stderr?.trim() || `备份完整性结果为 ${JSON.stringify(integrity)}`,
+    "仅保留失败备份用于诊断；不要用它回滚",
   );
 }
 

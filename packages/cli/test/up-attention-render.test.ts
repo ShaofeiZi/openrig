@@ -15,8 +15,8 @@ function attentionBody() {
   return { ...result, ...buildAttentionResponse(result)! };
 }
 
-// Execute the actual command and daemon response builder; transport/lifecycle
-// are injected. No listener, daemon, tmux or provider process is started.
+// 执行真实命令与后台服务响应构建器；注入 transport/lifecycle。
+// 不启动 listener、后台服务、tmux 或 provider 进程。
 async function render(data: Record<string, unknown>, status = 409, json = false) {
   const oldExit = process.exitCode;
   const out: string[] = [], err: string[] = [];
@@ -44,11 +44,11 @@ async function render(data: Record<string, unknown>, status = 409, json = false)
   } finally { process.exitCode = oldExit; log.mockRestore(); error.mockRestore(); }
 }
 
-describe("startup attention guidance", () => {
-  it("renders actual structured response and all affected members without spec advice", async () => {
+describe("启动待关注指导", () => {
+  it("渲染真实结构化响应及所有受影响成员，且不提供 spec 建议", async () => {
     const body = attentionBody();
     const r = await render(body);
-    expect(r.err).toContain(`Error: ${body.error.fact}`);
+    expect(r.err).toContain(`错误：${body.error.fact}`);
     expect(r.err).toContain(body.error.consequence);
     expect(r.err).toContain(body.error.action);
     for (const n of attentionNodes) {
@@ -60,24 +60,24 @@ describe("startup attention guidance", () => {
     expect(r.out).toContain("import_rig: blocked");
     expect(r.exit).toBe(1);
   });
-  it("daemon guidance does not assume a trust prompt or a live runtime", () => {
+  it("后台服务指导不假定存在信任提示或实时运行时", () => {
     const { error } = attentionBody();
     expect(error.consequence).toContain("attention_required");
-    expect(error.consequence).toMatch(/not.*proven|not.*confirmed/i);
-    expect(error.action).toMatch(/inspect/i);
-    expect(error.action).not.toMatch(/answer.*prompt|parked session/i);
+    expect(error.consequence).toContain("尚未被证明可交互");
+    expect(error.action).toContain("检查");
+    expect(error.action).not.toMatch(/回答.*提示|已停放会话/);
   });
-  it.each([409, 500])("preserves exact JSON body and exit for HTTP %i", async (status) => {
+  it.each([409, 500])("为 HTTP %i 保留精确 JSON 正文和退出码", async (status) => {
     const data = attentionBody();
     const r = await render(data, status, true);
     expect(r.out).toBe(JSON.stringify(data));
     expect(r.err).toBe("");
     expect(r.exit).toBe(status === 409 ? 1 : 2);
   });
-  it.each([409, 500])("preserves string fallback and exit for HTTP %i", async (status) => {
+  it.each([409, 500])("为 HTTP %i 保留字符串回退和退出码", async (status) => {
     const r = await render({ error: "agent_ref resolution failed", stages: [] }, status);
-    expect(r.err).toContain(`Up failed: agent_ref resolution failed (HTTP ${status})`);
-    expect(r.err).toContain("local: agent_ref paths resolve relative");
+    expect(r.err).toContain(`启动失败：agent_ref resolution failed（HTTP ${status}）`);
+    expect(r.err).toContain("local: agent_ref 路径相对于");
     expect(r.exit).toBe(status === 409 ? 1 : 2);
   });
 });

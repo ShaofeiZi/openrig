@@ -1,9 +1,8 @@
-// OPR.0.4.1.10 FR-A — config-layer Codex activity-hook projection.
-// ensureCodexActivityHooks() writes inline [hooks] for the four lifecycle events into
-// ~/.codex/config.toml so an OpenRig-launched Codex seat is hook-PRIMARY from clean
-// shipped config. Verified-firsthand on Codex 0.139 (VM de-risk 2026-06-30): this TOML
-// shape is discovered + trusted (via the "2 Trust all and continue" launch gate) and
-// the turn-scope hooks (incl. the PermissionRequest keystone) FIRE.
+// OPR.0.4.1.10 FR-A——配置层 Codex 活动 hook 投射。ensureCodexActivityHooks()
+// 将四个生命周期事件的内联 [hooks] 写入 ~/.codex/config.toml，使 OpenRig 启动的
+// Codex 席位从干净的随附配置开始就以 hook 为主。已在 Codex 0.139 上完成一手验证
+//（VM 风险排查，2026-06-30）：此 TOML 结构可被发现并信任（通过启动门禁
+// "2 Trust all and continue"），回合范围 hook（包括关键的 PermissionRequest）会触发。
 import { describe, it, expect, vi } from "vitest";
 import { CodexRuntimeAdapter, type CodexAdapterFsOps } from "../src/adapters/codex-runtime-adapter.js";
 import type { TmuxAdapter } from "../src/adapters/tmux.js";
@@ -33,8 +32,8 @@ function makeAdapter(fs: CodexAdapterFsOps, relay: string | undefined = RELAY): 
   return new CodexRuntimeAdapter({ tmux: mockTmux(), fsOps: fs, activityRelayPath: relay });
 }
 
-describe("OPR.0.4.1.10 FR-A — Codex config-layer activity hooks", () => {
-  it("writes inline [hooks] for all four events with the absolute relay command + timeout", () => {
+describe("OPR.0.4.1.10 FR-A——Codex 配置层活动 hooks", () => {
+  it("为全部四个事件写入内联 [hooks]，并包含绝对 relay 命令和超时", () => {
     const fs = mockCodexFs({ [RELAY]: "// relay" });
     makeAdapter(fs).ensureCodexActivityHooks();
     const cfg = fs._store[CONFIG];
@@ -47,7 +46,7 @@ describe("OPR.0.4.1.10 FR-A — Codex config-layer activity hooks", () => {
     expect(cfg).toContain("timeout = 5");
   });
 
-  it("GAP-7 adds hook trust and removes hooks through the injected Codex home", () => {
+  it("GAP-7 通过注入的 Codex home 添加 hook 信任并移除 hooks", () => {
     const customConfig = "/custom-codex/config.toml";
     const fs = mockCodexFs({ [RELAY]: "// relay" });
     const adapter = new CodexRuntimeAdapter({
@@ -64,7 +63,7 @@ describe("OPR.0.4.1.10 FR-A — Codex config-layer activity hooks", () => {
     expect(fs._store[CONFIG]).toBeUndefined();
   });
 
-  it("pins [features].hooks = true using the canonical key (not the deprecated codex_hooks alias)", () => {
+  it("使用规范键固定 [features].hooks = true（而非已弃用的 codex_hooks 别名）", () => {
     const fs = mockCodexFs({ [RELAY]: "// relay" });
     makeAdapter(fs).ensureCodexActivityHooks();
     const cfg = fs._store[CONFIG]!;
@@ -73,7 +72,7 @@ describe("OPR.0.4.1.10 FR-A — Codex config-layer activity hooks", () => {
     expect(cfg).not.toContain("codex_hooks");
   });
 
-  it("is idempotent — re-running produces identical content with no duplicated stanzas", () => {
+  it("保持幂等——重复运行生成相同内容且不产生重复节", () => {
     const fs = mockCodexFs({ [RELAY]: "// relay" });
     const adapter = makeAdapter(fs);
     adapter.ensureCodexActivityHooks();
@@ -84,7 +83,7 @@ describe("OPR.0.4.1.10 FR-A — Codex config-layer activity hooks", () => {
     expect(second.match(/\[\[hooks\.PermissionRequest\]\]/g)?.length).toBe(1);
   });
 
-  it("preserves existing config content (workspace trust survives the upsert)", () => {
+  it("保留现有配置内容（工作区信任在 upsert 后仍存在）", () => {
     const fs = mockCodexFs({
       [RELAY]: "// relay",
       [CONFIG]: '[projects."/some/project"]\ntrust_level = "trusted"\n',
@@ -96,7 +95,7 @@ describe("OPR.0.4.1.10 FR-A — Codex config-layer activity hooks", () => {
     expect(cfg).toContain("[[hooks.PermissionRequest]]");
   });
 
-  it("replaces the managed block (not duplicate) when the relay path changes", () => {
+  it("relay 路径变化时替换托管块，而非创建副本", () => {
     const fs = mockCodexFs({ [RELAY]: "// relay", "/new/relay.cjs": "// relay2" });
     makeAdapter(fs, RELAY).ensureCodexActivityHooks();
     makeAdapter(fs, "/new/relay.cjs").ensureCodexActivityHooks();
@@ -106,8 +105,8 @@ describe("OPR.0.4.1.10 FR-A — Codex config-layer activity hooks", () => {
     expect(cfg.match(/# BEGIN OPENRIG MANAGED ACTIVITY HOOKS/g)?.length).toBe(1);
   });
 
-  it("fail-safe: skips writing + warns when the relay asset is missing", () => {
-    const fs = mockCodexFs({}); // RELAY not present in the store
+  it("故障安全：relay 产物缺失时跳过写入并发出警告", () => {
+    const fs = mockCodexFs({}); // 存储中不存在 RELAY。
     const warn = vi.spyOn(console, "error").mockImplementation(() => {});
     makeAdapter(fs, RELAY).ensureCodexActivityHooks();
     expect(fs._store[CONFIG]).toBeUndefined();
@@ -115,10 +114,10 @@ describe("OPR.0.4.1.10 FR-A — Codex config-layer activity hooks", () => {
     warn.mockRestore();
   });
 
-  it("no-ops silently when no activityRelayPath is configured", () => {
+  it("未配置 activityRelayPath 时静默不操作", () => {
     const fs = mockCodexFs({});
     const warn = vi.spyOn(console, "error").mockImplementation(() => {});
-    // construct WITHOUT activityRelayPath (not via the default-param helper)
+    // 构造时不传 activityRelayPath（不通过默认参数辅助函数）。
     new CodexRuntimeAdapter({ tmux: mockTmux(), fsOps: fs }).ensureCodexActivityHooks();
     expect(fs._store[CONFIG]).toBeUndefined();
     expect(warn).not.toHaveBeenCalled();
@@ -126,43 +125,43 @@ describe("OPR.0.4.1.10 FR-A — Codex config-layer activity hooks", () => {
   });
 });
 
-// B2 (rev1-r2) — a NON-CANONICAL real [features] header (trailing comment / spacing) must not
-// be missed by the exact-match -> duplicate [features] table -> Codex 0.139 rejects the file.
-// A fully-commented "# [features]" line is NOT a section and must not be treated as one.
+// B2（rev1-r2）——精确匹配不得漏掉非规范但真实的 [features] 头（带尾随注释/空格），
+// 否则会产生重复的 [features] 表，导致 Codex 0.139 拒绝该文件。完全注释掉的
+// "# [features]" 行不是节，不能按节处理。
 const realFeaturesHeaders = (cfg: string) =>
   cfg.split("\n").filter((l) => /^\[features\]\s*(#.*)?$/.test(l.trim()));
 
-describe("OPR.0.4.1.10 B2 — comment-tolerant [features] header match", () => {
-  it("does NOT duplicate a real [features] header that carries a trailing comment", () => {
+describe("OPR.0.4.1.10 B2——容忍注释的 [features] 头匹配", () => {
+  it("不会复制带尾随注释的真实 [features] 头", () => {
     const fs = mockCodexFs({
       [RELAY]: "// relay",
       [CONFIG]: '[features] # user comment\nmodel_reasoning_summary = true\n\n[projects."/x"]\ntrust_level = "trusted"\n',
     });
     makeAdapter(fs).ensureCodexActivityHooks();
     const cfg = fs._store[CONFIG]!;
-    expect(realFeaturesHeaders(cfg).length).toBe(1); // no duplicate table -> strict-config valid
-    expect(cfg).toContain("[features] # user comment"); // original header preserved
+    expect(realFeaturesHeaders(cfg).length).toBe(1); // 无重复表 → strict-config 有效。
+    expect(cfg).toContain("[features] # user comment"); // 保留原始头。
     expect(cfg).toContain("model_reasoning_summary = true");
     expect(cfg).toMatch(/^\s*hooks = true\s*$/m);
   });
 
-  it("treats a fully-commented '# [features]' line as NOT a section (appends one real [features])", () => {
+  it("不把完全注释掉的 '# [features]' 行当作节（追加一个真实 [features]）", () => {
     const fs = mockCodexFs({
       [RELAY]: "// relay",
       [CONFIG]: '# [features]\n# operator notes\n\n[projects."/x"]\ntrust_level = "trusted"\n',
     });
     makeAdapter(fs).ensureCodexActivityHooks();
     const cfg = fs._store[CONFIG]!;
-    expect(realFeaturesHeaders(cfg).length).toBe(1); // a real [features] was appended
-    expect(cfg).toContain("# [features]"); // the commented line left untouched
+    expect(realFeaturesHeaders(cfg).length).toBe(1); // 已追加一个真实 [features]。
+    expect(cfg).toContain("# [features]"); // 注释行保持不变。
     expect(cfg).toMatch(/^\s*hooks = true\s*$/m);
   });
 });
 
-// B2 (rev1-r2 delta #2) — the [features] header must be matched in ANY valid TOML spelling
-// (TOML v1.0.0: whitespace around the bracketed key is ignored; the key may be bare or quoted),
-// else a missed header appends a duplicate table that Codex 0.139 --strict-config rejects.
-// normalize-and-compare counter, mirroring the production matcher.
+// B2（rev1-r2 增量 #2）——必须匹配所有有效 TOML 写法的 [features] 头
+//（TOML v1.0.0：忽略括号键周围的空格；键可不加引号，也可加引号），否则遗漏的头
+// 会导致追加重复表并被 Codex 0.139 --strict-config 拒绝。下面的规范化比较计数器
+// 与生产匹配器保持一致。
 const normFeaturesHeaders = (cfg: string) =>
   cfg.split("\n").filter((l) => {
     const t = l.trim();
@@ -174,18 +173,18 @@ const normFeaturesHeaders = (cfg: string) =>
     return k === "features";
   }).length;
 
-describe("OPR.0.4.1.10 B2 — robust [features] header across all valid TOML spellings", () => {
+describe("OPR.0.4.1.10 B2——稳健匹配所有有效 TOML 写法的 [features] 头", () => {
   for (const header of ["[features]", "[ features ]", "[  features  ]", "[features] # c", "[ features ] # c", '["features"]', "['features']"]) {
-    it(`does not duplicate the features table for spelling: ${header}`, () => {
+    it(`不会为此写法复制 features 表：${header}`, () => {
       const fs = mockCodexFs({ [RELAY]: "// relay", [CONFIG]: `${header}\nhooks = false\n\n[projects."/x"]\ntrust_level = "trusted"\n` });
       makeAdapter(fs).ensureCodexActivityHooks();
       const cfg = fs._store[CONFIG]!;
-      expect(normFeaturesHeaders(cfg)).toBe(1); // exactly one features table -> strict-config valid
-      expect(cfg).toContain(header); // original header spelling preserved
+      expect(normFeaturesHeaders(cfg)).toBe(1); // 仅有一个 features 表 → strict-config 有效。
+      expect(cfg).toContain(header); // 保留原始头写法。
     });
   }
 
-  it("a fully-commented '# [features]' is NOT a section (one real features appended)", () => {
+  it("完全注释掉的 '# [features]' 不是节（追加一个真实 features）", () => {
     const fs = mockCodexFs({ [RELAY]: "// relay", [CONFIG]: '# [features]\n\n[projects."/x"]\ntrust_level = "trusted"\n' });
     makeAdapter(fs).ensureCodexActivityHooks();
     const cfg = fs._store[CONFIG]!;
@@ -194,8 +193,8 @@ describe("OPR.0.4.1.10 B2 — robust [features] header across all valid TOML spe
   });
 });
 
-describe("OPR.0.4.1.10 B3 — durable disable via removeCodexActivityHooks", () => {
-  it("strips the managed sentinel block on disable, preserving user-owned hooks + [features]", () => {
+describe("OPR.0.4.1.10 B3——通过 removeCodexActivityHooks 持久禁用", () => {
+  it("禁用时移除托管哨兵块，并保留用户所有的 hooks 与 [features]", () => {
     const fs = mockCodexFs({
       [RELAY]: "// relay",
       [CONFIG]: '[features]\nhooks = true\n\n[[hooks.PreToolUse]]\n[[hooks.PreToolUse.hooks]]\ntype = "command"\ncommand = "/usr/bin/true"\n',
@@ -207,18 +206,18 @@ describe("OPR.0.4.1.10 B3 — durable disable via removeCodexActivityHooks", () 
     const cfg = fs._store[CONFIG]!;
     expect(cfg).not.toContain("# BEGIN OPENRIG MANAGED ACTIVITY HOOKS");
     expect(cfg).not.toContain("# END OPENRIG MANAGED ACTIVITY HOOKS");
-    expect(cfg).not.toContain(`command = 'node "${RELAY}"'`); // managed hooks removed
-    expect(cfg).toContain("[[hooks.PreToolUse]]"); // user-owned hook preserved
+    expect(cfg).not.toContain(`command = 'node "${RELAY}"'`); // 已移除托管 hooks。
+    expect(cfg).toContain("[[hooks.PreToolUse]]"); // 保留用户所有的 hook。
     expect(cfg).toContain('command = "/usr/bin/true"');
-    expect(cfg).toContain("[features]"); // left intact (0.139 default)
+    expect(cfg).toContain("[features]"); // 保持不变（0.139 默认值）。
   });
 
-  it("removeCodexActivityHooks is a no-op when there is no config / no managed block", () => {
+  it("没有配置或托管块时 removeCodexActivityHooks 不执行操作", () => {
     const fs = mockCodexFs({ [RELAY]: "// relay" });
     makeAdapter(fs).removeCodexActivityHooks();
     expect(fs._store[CONFIG]).toBeUndefined();
     const fs2 = mockCodexFs({ [RELAY]: "// relay", [CONFIG]: '[features]\nhooks = true\n' });
     makeAdapter(fs2).removeCodexActivityHooks();
-    expect(fs2._store[CONFIG]).toBe('[features]\nhooks = true\n'); // untouched
+    expect(fs2._store[CONFIG]).toBe('[features]\nhooks = true\n'); // 保持不变。
   });
 });

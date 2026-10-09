@@ -1,8 +1,7 @@
-// Slice-03 rig-context ATOM 2 (STORE) — the WRITE/ADD trust boundary: the CLI
-// add path must reject an unsafe install ref BEFORE any filesystem mutation
-// (spec §2 path-like refs; sealed Atom-1 per-segment contract, mirrored at
-// the CLI trust boundary like the existing manifest hardening). PM watch: the
-// matrix pins the ACTUAL reject + no-write behavior verbatim, per clause.
+// Slice-03 rig-context ATOM 2（STORE）——WRITE/ADD 信任边界：CLI
+// add 路径必须在任何文件系统变更之前拒绝不安全的 install ref
+//（spec §2 类路径 ref；密封的 Atom-1 逐段契约，如既有 manifest 加固般
+// 镜像到 CLI 信任边界）。PM 注意：矩阵逐条款钉住真实的拒绝 + 不写行为。
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -101,7 +100,7 @@ describe("ATOM 2 — `context add` write boundary rejects unsafe install refs BE
     console.error = origErr;
     process.exitCode = origExit;
     expect(failed, "add must fail").toBe(true);
-    expect(errLogs.join("\n")).toMatch(/unsafe/);
+    expect(errLogs.join("\n")).toMatch(/不安全/);
     // the REAL pin: rejection happened BEFORE any fs mutation — the target
     // store root was never created, nothing was copied anywhere under HOME
     expect(existsSync(join(home, "context")), "no store root created").toBe(false);
@@ -149,7 +148,7 @@ describe("ATOM 2 — `context add` write boundary rejects unsafe install refs BE
     console.error = origErr;
     process.exitCode = origExit;
     expect(failed, "add must fail on a symlinked destination namespace").toBe(true);
-    expect(errLogs.join("\n")).toMatch(/symlink|namespace|unsafe/i);
+    expect(errLogs.join("\n")).toMatch(/不安全|命名空间|符号链接/);
     // the REAL pin: nothing was copied THROUGH the symlink to the outside dir
     expect(existsSync(join(outside, "escape")), "no escape write outside the store").toBe(false);
     expect(readdirSync(outside), "outside dir untouched").toEqual([]);
@@ -175,7 +174,7 @@ describe("ATOM 2 — `context add` write boundary rejects unsafe install refs BE
       console.error = origErr;
       process.exitCode = origExit;
     }
-    expect(errLogs.join("\n")).toMatch(/symlink|already exists|unsafe/i);
+    expect(errLogs.join("\n")).toMatch(/已存在/);
     expect(lstatSync(leaf).isSymbolicLink(), "dangling leaf remains unchanged").toBe(true);
     expect(existsSync(outside), "outside target remains absent").toBe(false);
   });
@@ -200,7 +199,7 @@ describe("ATOM 2 — `context add` write boundary rejects unsafe install refs BE
     console.error = origErr;
     process.exitCode = origExit;
     expect(failed, "add must fail on an unsafe version").toBe(true);
-    expect(errLogs.join("\n")).toMatch(/version/i);
+    expect(errLogs.join("\n")).toMatch(/版本/);
     expect(existsSync(join(home, "context")), "no store root created — rejected before write").toBe(false);
   });
 });

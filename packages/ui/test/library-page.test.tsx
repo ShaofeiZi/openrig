@@ -98,7 +98,7 @@ describe("Library page taxonomy", () => {
           json: async () => ({ roots: [{ name: "workspace", path: "/workspace" }] }),
         };
       }
-      // C-4: daemon-owned skill discovery via /api/skills/library.
+      // C-4：经 /api/skills/library 的 daemon-owned skill discovery。
       if (url === "/api/skills/library") {
         return {
           ok: true,
@@ -123,7 +123,7 @@ describe("Library page taxonomy", () => {
 
     renderLibraryPage();
 
-    expect(await screen.findByRole("heading", { name: "Library" })).toBeDefined();
+    expect(await screen.findByRole("heading", { name: "库" })).toBeDefined();
     await waitFor(() => {
       expect(screen.getByTestId("library-section-rig-specs")).toBeDefined();
       expect(screen.getByTestId("library-section-workspace-specs")).toBeDefined();
@@ -133,7 +133,7 @@ describe("Library page taxonomy", () => {
       expect(screen.getByTestId("library-section-agent-images")).toBeDefined();
       expect(screen.getByTestId("library-section-applications")).toBeDefined();
       expect(screen.getByTestId("library-section-skills")).toBeDefined();
-      // Phase 3a slice 3.3 — Plugins category alongside Skills.
+      // Phase 3a slice 3.3——Plugins category 与 Skills 并列。
       expect(screen.getByTestId("library-section-plugins")).toBeDefined();
     });
 
@@ -148,10 +148,10 @@ describe("Library page taxonomy", () => {
     const imageRow = screen.getByTestId("library-row-agent-images-agent-image:driver:1");
     expect(imageRow.textContent).toContain("driver-image");
     expect(imageRow.textContent).toContain("v1");
-    expect(imageRow.textContent).toContain("~200 tok");
+    expect(imageRow.textContent).toContain("约 200 token");
     const skillLink = screen.getByTestId("library-skill-operator-skill") as HTMLAnchorElement;
     expect(skillLink).toBeDefined();
-    // C-4: ID format is now source:rootName:skillName (no .openrig/skills/ prefix).
+    // C-4：ID 格式现为 source:rootName:skillName（无 .openrig/skills/ 前缀）。
     expect(skillLink.getAttribute("href")).toBe(librarySkillHref("workspace:workspace:operator-skill"));
     expect(screen.queryByRole("img", { name: "operator-skill skill" })).toBeNull();
     expect(screen.getAllByTestId("library-skill-openrig-user")).toHaveLength(1);
@@ -183,7 +183,7 @@ describe("Library page taxonomy", () => {
 
     const badge = await screen.findByTestId("library-section-agent-images-badge");
     await waitFor(() => {
-      expect(badge.textContent).toContain("2 images");
+      expect(badge.textContent).toContain("2 个镜像");
       expect(badge.textContent).toContain("MB"); // 1 MB + 3 MB aggregated
     });
   });
@@ -340,7 +340,7 @@ describe("Library page taxonomy", () => {
       if (url === "/api/files/roots") {
         return { ok: true, json: async () => ({ roots: [{ name: "workspace", path: "/workspace" }] }) };
       }
-      // Skill scans return empty so the Skills section doesn't add noise here.
+      // skill scan 返回空，使 Skills section 在此不加噪声。
       if (url.startsWith("/api/files/list")) {
         return { status: 404, ok: false, json: async () => ({ error: "not_found" }) };
       }
@@ -349,7 +349,7 @@ describe("Library page taxonomy", () => {
 
     renderLibraryPage();
 
-    // Section renders with both plugins listed, but list rows stay name-only.
+    // Section 列出两个插件渲染，但 list 行保持仅名称。
     await waitFor(() => {
       expect(screen.getByTestId("library-section-plugins")).toBeDefined();
     });
@@ -396,14 +396,13 @@ describe("Library page taxonomy", () => {
     renderSpecsTree(`/specs/skills/${librarySkillToken(skillId)}`);
 
     expect(await screen.findByTestId("specs-section-skills")).toBeDefined();
-    // Slice 29 HG-3: skills sidebar is category-folder grouped. Workspace
-    // skills bucket under category "workspace"; click expands category;
-    // skill row is a single non-expandable Link (file drill-in removed
-    // — that's the detail page's job per HG-3).
+    // Slice 29 HG-3：skills sidebar 按 category-folder 分组。Workspace skills
+    // bucket 在 category "workspace" 下；点击展开 category；skill 行是单一不可
+    // 展开 Link（file drill-in 移除——按 HG-3 那是 detail 页的职责）。
     expect(await screen.findByTestId("skills-category-workspace")).toBeDefined();
     expect(await screen.findByTestId("specs-leaf-workspace:workspace:operator-skill")).toBeDefined();
-    // No more in-tree file drill-down (HG-3 anti-pattern); skill detail
-    // page surfaces files via the docs-browser.
+    // 不再有 in-tree file drill-down（HG-3 反模式）；skill detail 页经
+    // docs-browser 呈现 files。
     expect(screen.queryByTestId("specs-skill-file-SKILL.md")).toBeNull();
   });
 });

@@ -1,10 +1,9 @@
-// Slice 18 §3.5 — Getting Started complete-and-hide local state.
+// Slice 18 §3.5 —— “入门指引”中“标记完成并隐藏”的本地状态。
 //
-// Mirrors useDismissedSeqs's pattern: localStorage-backed soft state so
-// "Mark complete" gives the operator instant visual feedback (mission
-// disappears from the storytelling preview). The daemon-side
-// POST /api/missions/<id>/complete writes mission frontmatter for the
-// audit trail; this hook is the UI's optimistic mirror.
+// 沿用 useDismissedSeqs 的模式：用 localStorage 承载软状态，使“标记完成”能给操作者
+// 即时的视觉反馈（任务从 storytelling 预览中消失）。后台服务侧的
+// POST /api/missions/<id>/complete 会把任务 frontmatter 写入审计轨迹；
+// 本 hook 只是界面上的乐观镜像。
 
 import { useCallback, useState } from "react";
 
@@ -27,7 +26,7 @@ function writeToStorage(ids: Set<string>): void {
   try {
     localStorage.setItem(COMPLETED_MISSIONS_STORAGE_KEY, JSON.stringify(Array.from(ids)));
   } catch {
-    // localStorage unavailable; swallow.
+    // localStorage 不可用；静默吞掉。
   }
 }
 

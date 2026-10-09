@@ -1,6 +1,6 @@
 name: conveyor-planner
 version: "1.0"
-description: Conveyor planner - turns accepted packets into small executable plans
+description: 流水线规划智能体——把已接受的工作包转化为小型可执行计划
 
 defaults:
   runtime: codex

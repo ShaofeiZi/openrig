@@ -1,8 +1,8 @@
-// Slice-03 (OPR.0.4.8.3) Seam A — policy-spec parse + validate-by-convention pins.
+// Slice-03（OPR.0.4.8.3）接缝 A——policy spec 解析与按约定校验固定项。
 import { describe, it, expect } from "vitest";
 import { parsePolicySpec, validatePolicySpec, serializePolicySpec, type ParsedPolicySpec } from "../src/domain/permission-policy/policy-spec.js";
 
-// Real built-in shapes (frontmatter-contract + body).
+// 真实内置形状（frontmatter 契约 + 正文）。
 const FLAG_YOLO = `---
 source: builtin
 name: yolo
@@ -41,72 +41,72 @@ function parsed(raw: string): ParsedPolicySpec {
   return r;
 }
 
-describe("parsePolicySpec — frontmatter contract + preserved body", () => {
-  it("parses the WHOLE contract from frontmatter and PRESERVES the body verbatim", () => {
+describe("parsePolicySpec——frontmatter 契约 + 正文保留", () => {
+  it("从 frontmatter 解析完整契约，并逐字保留正文", () => {
     const p = parsed(FLAG_YOLO);
     expect(p.frontmatter).toMatchObject({ source: "builtin", name: "yolo", surface: "flag", launch_posture: "full_bypass", policy_schema_version: 1 });
     expect(p.body).toContain("# YOLO (built-in policy — flag surface)");
     expect(p.body).toContain("The maximum-permissive built-in.");
   });
-  it("config policy carries default_posture + action lists in frontmatter", () => {
+  it("config policy 在 frontmatter 中携带 default_posture 与 action 列表", () => {
     const p = parsed(CONFIG_STANDARD);
     expect(p.frontmatter).toMatchObject({ surface: "config", default_posture: "allow", allow: ["push_to_remote"], destructive_class: ["delete_everything"] });
   });
-  it("a spec with no frontmatter block is a parse error (never throws)", () => {
+  it("没有 frontmatter block 的 spec 返回解析错误（绝不抛错）", () => {
     const r = parsePolicySpec("# just a body\nno frontmatter\n");
     expect("error" in r).toBe(true);
   });
 });
 
-describe("validatePolicySpec — advisory, fail-open, surface-appropriate", () => {
-  it("valid flag policy → ok", () => { expect(validatePolicySpec(parsed(FLAG_YOLO).frontmatter)).toEqual({ ok: true, errors: [] }); });
-  it("valid config policy → ok", () => { expect(validatePolicySpec(parsed(CONFIG_STANDARD).frontmatter)).toEqual({ ok: true, errors: [] }); });
+describe("validatePolicySpec——提示性、失败开放、与表面匹配", () => {
+  it("有效 flag policy → ok", () => { expect(validatePolicySpec(parsed(FLAG_YOLO).frontmatter)).toEqual({ ok: true, errors: [] }); });
+  it("有效 config policy → ok", () => { expect(validatePolicySpec(parsed(CONFIG_STANDARD).frontmatter)).toEqual({ ok: true, errors: [] }); });
 
-  it("policy_schema_version ≠ 1 → error", () => {
+  it("policy_schema_version ≠ 1 → 错误", () => {
     const r = validatePolicySpec({ source: "builtin", name: "x", surface: "flag", launch_posture: "floor", policy_schema_version: 2 });
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => e.includes("policy_schema_version"))).toBe(true);
   });
-  it("surface EXCLUSIVITY: flag policy carrying an action set → error", () => {
+  it("surface 互斥：flag policy 携带 action 集合 → 错误", () => {
     const r = validatePolicySpec({ source: "builtin", name: "x", surface: "flag", launch_posture: "floor", policy_schema_version: 1, allow: ["push_to_remote"] });
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => e.includes("allow"))).toBe(true);
   });
-  it("surface EXCLUSIVITY: config policy carrying launch_posture → error", () => {
+  it("surface 互斥：config policy 携带 launch_posture → 错误", () => {
     const r = validatePolicySpec({ source: "builtin", name: "x", surface: "config", default_posture: "allow", launch_posture: "floor", policy_schema_version: 1 });
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => e.includes("launch_posture"))).toBe(true);
   });
-  it("non-list action field → error (shape)", () => {
+  it("非列表 action 字段 → 形状错误", () => {
     const r = validatePolicySpec({ source: "builtin", name: "x", surface: "config", default_posture: "ask", policy_schema_version: 1, deny: "not-a-list" });
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => e.includes("deny"))).toBe(true);
   });
-  it("bad enums (source/surface/default_posture) → errors", () => {
+  it("无效枚举（source/surface/default_posture）→ 错误", () => {
     expect(validatePolicySpec({ source: "nope", name: "x", surface: "flag", launch_posture: "floor", policy_schema_version: 1 }).ok).toBe(false);
     expect(validatePolicySpec({ source: "builtin", name: "x", surface: "sideways", policy_schema_version: 1 }).ok).toBe(false);
     expect(validatePolicySpec({ source: "builtin", name: "x", surface: "config", default_posture: "maybe", policy_schema_version: 1 }).ok).toBe(false);
   });
 
-  it("missing description → error (required field)", () => {
+  it("缺少 description → 必填字段错误", () => {
     const r = validatePolicySpec({ source: "builtin", name: "x", surface: "flag", launch_posture: "floor", policy_schema_version: 1 });
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => e.includes("description"))).toBe(true);
   });
-  it("non-string description → error", () => {
+  it("description 非字符串 → 错误", () => {
     const r = validatePolicySpec({ source: "builtin", name: "x", surface: "flag", launch_posture: "floor", policy_schema_version: 1, description: 42 });
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => e.includes("description"))).toBe(true);
   });
-  it("config policy MISSING an action list (destructive_class) → error (all four required)", () => {
+  it("config policy 缺少 action 列表（destructive_class）→ 错误（四项均必填）", () => {
     const r = validatePolicySpec({ source: "builtin", name: "x", surface: "config", description: "d", default_posture: "allow", policy_schema_version: 1, allow: [], ask: [], deny: [] });
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => e.includes("destructive_class"))).toBe(true);
   });
 });
 
-describe("round-trip — canonical serialize stability + semantic equality + body preservation", () => {
-  it("serialize∘parse is idempotent (canonical stable) and preserves body + semantics", () => {
+describe("往返——规范序列化稳定 + 语义相等 + 正文保留", () => {
+  it("serialize∘parse 幂等（规范稳定），并保留正文与语义", () => {
     const once = serializePolicySpec(parsed(CONFIG_STANDARD));
     const twice = serializePolicySpec(parsed(once));
     expect(twice).toBe(once); // canonical stability

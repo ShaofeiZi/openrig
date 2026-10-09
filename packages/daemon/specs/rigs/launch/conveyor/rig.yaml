@@ -1,15 +1,14 @@
 version: "0.2"
 name: conveyor
 summary: >
-  Launch-grade starter for OpenRig 0.3.0: a compact station pipeline with
-  intake, planning, build, and review seats. Use it to watch queued work move
-  through handoffs without inheriting any internal release coupling.
+  OpenRig 0.3.0 的可投产 starter：一条包含接入、规划、构建与评审席位的紧凑工位流水线。
+  可用它观察队列工作如何经过交接流转，同时不继承任何内部发布耦合。
 
 culture_file: CULTURE.md
 
 pods:
   - id: intake
-    label: Intake
+    label: 接入
     members:
       - id: lead
         agent_ref: "local:../../../agents/conveyor/lead"
@@ -19,7 +18,7 @@ pods:
     edges: []
 
   - id: plan
-    label: Planning
+    label: 规划
     members:
       - id: planner
         agent_ref: "local:../../../agents/conveyor/planner"
@@ -29,7 +28,7 @@ pods:
     edges: []
 
   - id: build
-    label: Build
+    label: 构建
     members:
       - id: builder
         agent_ref: "local:../../../agents/conveyor/builder"
@@ -39,7 +38,7 @@ pods:
     edges: []
 
   - id: review
-    label: Review
+    label: 评审
     members:
       - id: reviewer
         agent_ref: "local:../../../agents/conveyor/reviewer"

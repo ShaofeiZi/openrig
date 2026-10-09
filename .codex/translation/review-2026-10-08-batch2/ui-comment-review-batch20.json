@@ -1,0 +1,16 @@
+{
+  "schema": "openrig.ui-comment-review-batch/v1",
+  "batch": 20,
+  "captured_at": "2026-10-09T18:30:00+08:00",
+  "depth": "full_comment_title_failure_message_reviewed",
+  "natural_residual": 0,
+  "owner": "tui-comment-reviewer",
+  "files": [
+    {"path": "packages/ui/test/import-flow.test.tsx", "status": "nochange", "after_sha256": "2db43098725f28bbfc57fcfd215f3f43f845567b4d8961989b8a75695982b613", "machine_classification": "scan 0 residual"},
+    {"path": "packages/ui/test/live-node-details.test.tsx", "status": "nochange", "after_sha256": "7a3bfeba09fb08cd4cb1103990b195dad91c3abbbdc46e32e1ddf3e1030c2188", "machine_classification": "eslint-disable-next-line @typescript-eslint/no-explicit-any machine line"},
+    {"path": "packages/ui/test/app-shell.test.tsx", "status": "changed", "after_sha256": "9c7cacc87d663ce4698b6fe4f0ea301655210e82f4372dc61a2bc18a2c500cfa", "machine_classification": "testid names / Settings,Policies,Log,Status labels retained"},
+    {"path": "packages/ui/test/artifacts-navigator.test.tsx", "status": "changed", "after_sha256": "3e5b19ee00eb405baf627f50284f534f314c41b5fd38f9b9a6a96d2e214d33ce", "machine_classification": "qitem hash / DELIVERED proof drill-in retained"},
+    {"path": "packages/ui/test/mh2-host-level.test.tsx", "status": "changed", "after_sha256": "50cd48e74717ed5807ccb2c9f5c51312131eddbe4e08e6ed0314d55298115df0", "machine_classification": "OPR.0.4.6.MH2 / useSelectedHostId / gcTime / hosts cache retained"},
+    {"path": "packages/ui/test/rig-graph.test.tsx", "status": "changed", "after_sha256": "db398093b46ff89e0a123696e762fb9bea9cf2eb96e11016d9429fc116f92f9d", "machine_classification": "React Flow / rf__node / RigNode / UIF-T05 / NS-T12 / PUX-T05 section markers retained; no code change"}
+  ]
+}

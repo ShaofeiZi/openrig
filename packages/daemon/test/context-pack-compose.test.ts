@@ -29,16 +29,16 @@ function captureError(fn: () => unknown): ContextPackError {
     expect(err).toBeInstanceOf(ContextPackError);
     return err as ContextPackError;
   }
-  throw new Error("expected ContextPackError");
+  throw new Error("预期抛出 ContextPackError");
 }
 
-describe("ATOM 3 — plain ordered file assembly", () => {
+describe("ATOM 3——按顺序组合 plain file", () => {
   it.each([
     ["A", "B", `A${PLAIN_COMPOSE_SEPARATOR}B`],
     ["A\n", "B", `A\n${PLAIN_COMPOSE_SEPARATOR}B`],
     ["A", "B\n", `A${PLAIN_COMPOSE_SEPARATOR}B\n`],
     ["A\n", "B\n", `A\n${PLAIN_COMPOSE_SEPARATOR}B\n`],
-  ])("preserves EOF-newline bytes: %j + %j", (a, b, expected) => {
+  ])("保留 EOF 换行 byte：%j + %j", (a, b, expected) => {
     const result = assemblePlainFiles({
       files: [
         { path: "a.md", content: a },
@@ -46,12 +46,12 @@ describe("ATOM 3 — plain ordered file assembly", () => {
       ],
     });
     expect(result.text).toBe(expected);
-    expect(result.text).not.toContain("# OpenRig Context Pack:");
-    expect(result.text).not.toContain("## File:");
+    expect(result.text).not.toContain("# zrig 上下文包：");
+    expect(result.text).not.toContain("## 文件：");
     expect(result.bytes).toBe(Buffer.byteLength(expected));
   });
 
-  it("surfaces missing members instead of fabricating content", () => {
+  it("呈现缺失 member，而不伪造内容", () => {
     const result = assemblePlainFiles({
       files: [
         { path: "present.md", content: "present" },
@@ -63,7 +63,7 @@ describe("ATOM 3 — plain ordered file assembly", () => {
   });
 });
 
-describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
+describe("ATOM 3——durable compose 到 Atom-2 ref store", () => {
   let tmp: string;
   let userRoot: string;
   let sourceRoot: string;
@@ -90,7 +90,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     return path;
   }
 
-  it("writes one byte-identical member per source, deterministic manifest order, and a ref-resolvable pack", () => {
+  it("每个 source 写入一个逐字节一致的 member，manifest 顺序确定，pack 可按 ref 解析", () => {
     const a = source("a.md", "---\naudience: dev\n---\nA\n");
     const c = source("c.yaml", "audience: dev\n");
     const b = source("b.data", "B-without-newline");
@@ -115,7 +115,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     expect(manifest).toEqual({
       name: "qitem-brief",
       version: "1",
-      purpose: "Composed from 3 ordered files",
+      purpose: "由 3 个有序文件组合而成",
       taxonomy: "mission",
       files: [
         { path: "source-0001.md", role: "source", summary: injectionShapedLabel },
@@ -136,7 +136,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     expect(lib.getByRef("packs/qitem-brief")?.sourcePath).toBe(target);
   });
 
-  it("rejects unsafe refs before creating the store root", () => {
+  it("创建 store root 前拒绝不安全 ref", () => {
     const a = source("a.md", "A");
     const err = captureError(() => service().composeFromFiles({
       outRef: "../escape",
@@ -146,7 +146,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     expect(existsSync(userRoot)).toBe(false);
   });
 
-  it("surfaces missing sources and performs no store mutation", () => {
+  it("呈现缺失 source，且不修改 store", () => {
     const err = captureError(() => service().composeFromFiles({
       outRef: "packs/missing",
       sources: [{ path: join(sourceRoot, "absent.md"), label: "absent.md" }],
@@ -156,7 +156,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     expect(existsSync(userRoot)).toBe(false);
   });
 
-  it("uses missing_files for an empty source list before store inspection or mutation", () => {
+  it("在检查或修改 store 前，对空 source list 使用 missing_files", () => {
     const err = captureError(() => service().composeFromFiles({
       outRef: "packs/empty",
       sources: [],
@@ -166,7 +166,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     expect(existsSync(userRoot)).toBe(false);
   });
 
-  it("surfaces unreadable/non-file sources and performs no store mutation", () => {
+  it("呈现不可读/非文件 source，且不修改 store", () => {
     const dir = join(sourceRoot, "directory.md");
     mkdirSync(dir);
     const err = captureError(() => service().composeFromFiles({
@@ -177,7 +177,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     expect(existsSync(userRoot)).toBe(false);
   });
 
-  it("rejects an exact-ref conflict in ANY discovery root before touching the user target", () => {
+  it("触碰用户 target 前拒绝任意 discovery root 中的 exact-ref conflict", () => {
     const workspaceRoot = join(tmp, "workspace-store");
     writePack(workspaceRoot, "packs/taken", "workspace-pack");
     const a = source("a.md", "A");
@@ -196,7 +196,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     expect(lib.getByRef("packs/taken")?.name).toBe("workspace-pack");
   });
 
-  it("reports complete source preflight before an existing-ref conflict and mutates nothing", () => {
+  it("在 existing-ref conflict 前报告完整 source preflight，且不作修改", () => {
     const workspaceRoot = join(tmp, "workspace-store");
     writePack(workspaceRoot, "packs/taken", "workspace-pack");
     const existingManifest = readFileSync(join(workspaceRoot, "packs", "taken", "manifest.yaml"));
@@ -219,7 +219,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     expect(readFileSync(join(workspaceRoot, "packs", "taken", "manifest.yaml"))).toEqual(existingManifest);
   });
 
-  it("rejects a manifestless physical user target without overwriting it", () => {
+  it("拒绝没有 manifest 的实体用户 target，且不覆盖它", () => {
     const target = join(userRoot, "packs", "taken");
     mkdirSync(target, { recursive: true });
     writeFileSync(join(target, "sentinel"), "keep-me");
@@ -233,7 +233,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     expect(existsSync(join(target, "manifest.yaml"))).toBe(false);
   });
 
-  it("rejects a ref below a manifest-bearing leaf with zero mutation", () => {
+  it("拒绝位于 manifest-bearing leaf 下的 ref，且零修改", () => {
     writePack(userRoot, "packs", "leaf-pack");
     const a = source("a.md", "A");
     const err = captureError(() => service().composeFromFiles({
@@ -244,7 +244,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     expect(existsSync(join(userRoot, "packs", "hidden-child"))).toBe(false);
   });
 
-  it("rejects symlink and non-directory namespace segments with zero mutation", () => {
+  it("拒绝 symlink 与非目录 namespace segment，且零修改", () => {
     const a = source("a.md", "A");
     const outside = join(tmp, "outside");
     mkdirSync(outside);
@@ -266,7 +266,7 @@ describe("ATOM 3 — durable compose into the Atom-2 ref store", () => {
     expect(readFileSync(join(userRoot, "blocked"), "utf-8")).toBe("not-a-directory");
   });
 
-  it("cleans a newly-created target when a member write fails; no manifest/ref survives", () => {
+  it("member 写入失败时清理新建 target；不留下 manifest/ref", () => {
     const a = source("a.md", "A");
     const b = source("b.md", "B");
     let writes = 0;

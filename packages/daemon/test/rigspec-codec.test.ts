@@ -22,8 +22,8 @@ const VALID_RIG: RigSpec = {
   edges: [],
 };
 
-describe("RigSpec codec (pod-aware)", () => {
-  it("serialize -> parse -> validate round-trips", () => {
+describe("RigSpec 编解码器（pod 感知）", () => {
+  it("序列化 -> 解析 -> 校验 往返", () => {
     const yaml = RigSpecCodec.serialize(VALID_RIG);
     const parsed = RigSpecCodec.parse(yaml);
     const validation = RigSpecSchema.validate(parsed);
@@ -37,7 +37,7 @@ describe("RigSpec codec (pod-aware)", () => {
     expect(normalized.pods[0]!.edges).toHaveLength(1);
   });
 
-  it("preserves pod/member/edge ordering", () => {
+  it("保持 pod/成员/边 的顺序", () => {
     const yaml = RigSpecCodec.serialize(VALID_RIG);
     const parsed = RigSpecCodec.parse(yaml) as Record<string, unknown>;
     const pods = parsed["pods"] as Array<Record<string, unknown>>;
@@ -47,15 +47,15 @@ describe("RigSpec codec (pod-aware)", () => {
     expect(members[1]!["id"]).toBe("qa");
   });
 
-  it("culture_file round-trips through serialize/parse", () => {
+  it("culture_file 经序列化/解析往返", () => {
     const yaml = RigSpecCodec.serialize(VALID_RIG);
     expect(yaml).toContain("culture_file: culture.md");
     const parsed = RigSpecCodec.parse(yaml) as Record<string, unknown>;
     expect(parsed["culture_file"]).toBe("culture.md");
   });
 
-  // R1: continuity_policy nested booleans round-trip through serialize -> parse -> normalize
-  it("continuity_policy nested booleans round-trip correctly", () => {
+  // R1：continuity_policy 的嵌套布尔值经 序列化 -> 解析 -> 归一化 正确往返
+  it("continuity_policy 嵌套布尔值正确往返", () => {
     const rigWithCp: RigSpec = {
       version: "0.2",
       name: "cp-test",
@@ -88,7 +88,7 @@ describe("RigSpec codec (pod-aware)", () => {
     expect(cp.restoreProtocol!.verifyViaQuiz).toBe(false);
   });
 
-  it("legacy codec still serializes/parses old flat specs", () => {
+  it("旧版编解码器仍能序列化/解析旧的扁平 spec", () => {
     const legacySpec = {
       schemaVersion: 1, name: "test", version: "1.0",
       nodes: [{ id: "impl", runtime: "claude-code" }],
@@ -100,14 +100,14 @@ describe("RigSpec codec (pod-aware)", () => {
     expect(parsed["name"]).toBe("test");
   });
 
-  // Agent Starter v1 vertical M1 R2 — codec roundtrip for `starter_ref`.
-  // Guard finding: the M1 R1 commit normalized snake-case input into
-  // `member.starterRef` but the canonical pod-aware serializer never
-  // wrote `starter_ref` back out. The forward-compat smoke at
-  // pod-rigspec-instantiator was therefore a false proof. R2 fix: emit
-  // `starter_ref` in `RigSpecCodec.serialize()` and assert the wire
-  // shape end-to-end (serialize → parse → validate → normalize).
-  it("starter_ref round-trips through serialize → parse → validate → normalize (R2)", () => {
+  // Agent Starter v1 垂直切片 M1 R2 —— `starter_ref` 的编解码器往返。
+  // Guard 发现：M1 R1 提交把 snake-case 输入归一化成了
+  // `member.starterRef`，但规范化的 pod 感知序列化器从未把
+  // `starter_ref` 写回去。pod-rigspec-instantiator 上的前向兼容冒烟测试
+  // 因此是伪证。R2 修复：在 `RigSpecCodec.serialize()` 中输出
+  // `starter_ref`，并端到端断言线路形状
+  //（序列化 → 解析 → 校验 → 归一化）。
+  it("starter_ref 经 序列化 → 解析 → 校验 → 归一化 往返(R2)", () => {
     const spec: RigSpec = {
       ...VALID_RIG,
       pods: [
@@ -129,24 +129,24 @@ describe("RigSpec codec (pod-aware)", () => {
       ],
     };
 
-    // Serialize → wire shape MUST contain starter_ref:
+    // 序列化 → 线路形状必须包含 starter_ref：
     const yaml = RigSpecCodec.serialize(spec);
     expect(yaml).toContain("starter_ref:");
     expect(yaml).toContain("openrig-builder-base--claude-code");
 
-    // Parse → validate
+    // 解析 → 校验
     const parsed = RigSpecCodec.parse(yaml);
     const validation = RigSpecSchema.validate(parsed);
     expect(validation.valid).toBe(true);
     expect(validation.errors).toEqual([]);
 
-    // Normalize → starterRef preserved with the seed shape
+    // 归一化 → starterRef 按种子形状保留
     const normalized = RigSpecSchema.normalize(parsed);
     const member = normalized.pods[0]!.members[0]!;
     expect(member.starterRef).toEqual({ name: "openrig-builder-base--claude-code" });
   });
 
-  it("starter_ref + session_source.mode='rebuild' both survive roundtrip (composition allowed)", () => {
+  it("starter_ref + session_source.mode='rebuild' 同时经往返保留(允许组合)", () => {
     const spec: RigSpec = {
       ...VALID_RIG,
       pods: [
@@ -190,7 +190,7 @@ describe("RigSpec codec (pod-aware)", () => {
     });
   });
 
-  it("specs with no starter_ref roundtrip cleanly (no spurious field emitted)", () => {
+  it("无 starter_ref 的 spec 干净往返(不输出多余字段)", () => {
     const yaml = RigSpecCodec.serialize(VALID_RIG);
     expect(yaml).not.toContain("starter_ref:");
   });

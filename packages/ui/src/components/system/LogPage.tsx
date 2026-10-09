@@ -1,7 +1,7 @@
-// Slice 26 — Log destination page (route-driven).
+// 切片 26 —— 日志目标页面（路由驱动）。
 //
-// Lifts the LogPanel content that used to live inside SettingsCenter's
-// inline tab. Now mounted at /settings/log via its own page.
+// 将原本内联在 SettingsCenter 标签页中的 LogPanel 内容提升为独立页面。
+// 现在通过自身路由挂载到 /settings/log。
 
 import { SettingsPageShell } from "./SettingsPageShell.js";
 import { EmptyState } from "../ui/empty-state.js";
@@ -11,11 +11,11 @@ import { formatEventPayload } from "../../lib/format-event-payload.js";
 export function LogPage() {
   const { events } = useActivityFeed();
   return (
-    <SettingsPageShell testId="settings-page-log" title="Log">
+    <SettingsPageShell testId="settings-page-log" title="日志">
       {events.length === 0 ? (
         <EmptyState
-          label="LOG IS QUIET"
-          description="Activity events from rigs will stream here."
+          label="日志安静"
+          description="来自工作组的活动事件将在此流式显示。"
           variant="card"
           testId="settings-log-empty"
         />

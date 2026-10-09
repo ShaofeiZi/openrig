@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch27",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/up-running-name-render.test.ts",
+      "before_sha256_16": "d1008b995cc17335",
+      "after_sha256_16": "2126269142761dc4",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/provider.test.ts",
+      "before_sha256_16": "69dca55c67fcefd0",
+      "after_sha256_16": "fed178d71114bd4e",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/live-daemon-guard.test.ts",
+      "before_sha256_16": "a36824bcc55e427c",
+      "after_sha256_16": "0d9767719684af3b",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/fanout-contract-parity.test.ts",
+      "before_sha256_16": "4114bc3da6921c70",
+      "after_sha256_16": "2c1e6ed4d98fd3a9",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/b8-probe-honesty.test.ts",
+      "before_sha256_16": "f063c18648ff5247",
+      "after_sha256_16": "a420666de1a8f6e5",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

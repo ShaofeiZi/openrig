@@ -1,6 +1,5 @@
-// Slice 13 safe subset (B5): fixes 2 + 3 only — host attribution on node records, and the
-// resume_type label derived from the RUNTIME instead of a fixed default. Fix 1 (token value
-// surfacing) is deliberately absent.
+// Slice 13 安全子集（B5）：仅修复 2 + 3——node record 的 host attribution，以及从 runtime 派生
+// resume_type label，而非使用固定默认值。特意不包含修复 1（呈现 token value）。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { createFullTestDb, createTestApp } from "./helpers/test-app.js";
@@ -20,8 +19,8 @@ function seedRig(db: ReturnType<typeof createFullTestDb>) {
   return { rigRepo, reg, rig, node, sess };
 }
 
-describe("fix 2 — host attribution on node records", () => {
-  it("every /nodes row carries the serving daemon's boot-reconciled self-id", async () => {
+describe("修复 2——node record 上的 host attribution", () => {
+  it("每条 /nodes row 都携带 serving daemon 经 boot reconcile 的 self-id", async () => {
     const db = createFullTestDb();
     const { rig } = seedRig(db);
     setSelfHostId("host-84c37990");
@@ -35,7 +34,7 @@ describe("fix 2 — host attribution on node records", () => {
     db.close();
   });
 
-  it("before the boot reconcile the key is PRESENT with null — unknown is a value, not an absence", async () => {
+  it("boot reconcile 前 key 存在且值为 null——unknown 是值，不是缺失", async () => {
     const db = createFullTestDb();
     const { rig } = seedRig(db);
     setSelfHostId(null);
@@ -51,7 +50,7 @@ describe("fix 2 — host attribution on node records", () => {
     db.close();
   });
 
-  it("node DETAIL carries the same attribution", async () => {
+  it("node DETAIL 携带相同 attribution", async () => {
     const db = createFullTestDb();
     const { rig } = seedRig(db);
     setSelfHostId("host-84c37990");
@@ -65,7 +64,7 @@ describe("fix 2 — host attribution on node records", () => {
   });
 });
 
-describe("fix 3 — resume_type derives from the runtime on the identity hook", () => {
+describe("修复 3——identity hook 根据 runtime 派生 resume_type", () => {
   async function postIdentity(app: { request: (p: string, init?: RequestInit) => Promise<Response> }, body: Record<string, unknown>) {
     return app.request("/api/activity/hooks", {
       method: "POST",
@@ -74,7 +73,7 @@ describe("fix 3 — resume_type derives from the runtime on the identity hook", 
     });
   }
 
-  it("a claude-code seat's hook stamps claude_id (the lived mislabel: it stamped codex_id)", async () => {
+  it("claude-code seat 的 hook 标记 claude_id（实际出现过的误标是 codex_id）", async () => {
     const db = createFullTestDb();
     seedRig(db);
     const { app } = createTestApp(db, { activityHookToken: "tok" });
@@ -93,7 +92,7 @@ describe("fix 3 — resume_type derives from the runtime on the identity hook", 
     db.close();
   });
 
-  it("a codex seat's hook still stamps codex_id", async () => {
+  it("codex seat 的 hook 仍标记 codex_id", async () => {
     const db = createFullTestDb();
     const rigRepo = new RigRepository(db);
     const reg = new SessionRegistry(db);
@@ -111,7 +110,7 @@ describe("fix 3 — resume_type derives from the runtime on the identity hook", 
     db.close();
   });
 
-  it("an unmapped runtime SKIPS the persist instead of guessing a label (tokenPersisted: false)", async () => {
+  it("未映射 runtime 跳过 persist，而非猜测 label（tokenPersisted: false）", async () => {
     const db = createFullTestDb();
     seedRig(db);
     const { app } = createTestApp(db, { activityHookToken: "tok" });

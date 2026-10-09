@@ -1,8 +1,8 @@
-// Operator Surface Reconciliation v0 — Priority Rail Rule + lint helpers (UI side).
+// Operator Surface Reconciliation v0——Priority Rail 规则 + lint helpers（UI 侧）。
 //
-// Pure-logic tests (no React); pin classification + next-pull semantics
-// + lint heuristics so the Progress workspace renders consistent
-// signals without re-deriving from path strings each test.
+// 纯逻辑测试（无 React）；锁定分类 + next-pull 语义
+// + lint 启发式，使 Progress workspace 渲染一致信号，
+// 而不必每个测试都从路径字符串重派生。
 
 import { describe, it, expect } from "vitest";
 import {
@@ -70,7 +70,7 @@ describe("OSR v0 — getPriorityRailLevelStyle", () => {
   });
 
   it("steering has the most distinctive treatment (Constraint label)", () => {
-    expect(getPriorityRailLevelStyle("steering").label).toBe("Constraint");
+    expect(getPriorityRailLevelStyle("steering").label).toBe("约束");
   });
 });
 

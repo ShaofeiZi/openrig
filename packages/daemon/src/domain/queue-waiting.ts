@@ -6,11 +6,9 @@ import type { ArbitratedSeatState } from "./activity-taxonomy.js";
 
 export type WaitingActivityReader = (session: string) => Pick<ArbitratedSeatState, "activity" | "needsInput" | "decidedBy"> | null;
 
-/** A read of the existing transition log, not another progress receipt. Machine
- * actors and typed wake receipts are bookkeeping, never task progress. Historical
- * untyped author notes remain author testimony; their text is not classified.
- * Delivery bookkeeping uses the reserved daemon actors and must not reset the
- * ladder before it can join its dispatch marker to the delivery receipt. */
+/** 读取既有 transition log，而不是创建另一份进度回执。机器 actor 与类型化 wake 回执只是
+ * 记账信息，绝不代表任务进度。历史上无类型的作者备注仍作为作者证词保留，其文本不参与分类。
+ * 投递记账使用保留的后台服务 actor，且在阶梯把 dispatch marker 与投递回执关联前不得重置阶梯。 */
 export function lastMeaningfulTransition(db: Database.Database, id: string): { id: number; at: string } | null {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'queue_transitions'").get()) return null;
   const hasWakes = db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'queue_transition_wakes'").get();
@@ -22,8 +20,8 @@ export function lastMeaningfulTransition(db: Database.Database, id: string): { i
   return row ? { id: row.transition_id, at: row.ts } : null;
 }
 
-/** Grace starts when a row becomes actionable again, not at its birth before a
- * long healthy park. Same-state notes and deliveries cannot move this boundary. */
+/** 宽限期从该行再次变为可执行时开始，而非在长期正常停驻之前的创建时刻开始。
+ * 同状态备注和投递都不能移动这一边界。 */
 export function pendingSince(db: Database.Database, id: string): string | null {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'queue_transitions'").get()) return (db.prepare("SELECT ts_created FROM queue_items WHERE qitem_id = ?").get(id) as { ts_created: string } | undefined)?.ts_created ?? null;
   const row = db.prepare(`SELECT ts, previous_state FROM (SELECT ts, state, transition_id,
@@ -54,7 +52,7 @@ export interface WaitingView {
   lastMeaningfulChange: { id: number; at: string } | null;
   liveness: { subject: string; activity: string; needsInput: { count: number; reason: string | null }; confidence: "oracle" | "unknown" };
   nextBackstop: { owner: string; mechanism: string; dueAt: string | null; intervalSeconds: number | null; suspendedUntil?: string; recovery?: { qitemId: string; state: string }; note?: string };
-  /** Conditional later safety net, retained when delivery/recovery owns the next action. */
+  /** 条件式后续安全网；当投递/恢复拥有下一动作时仍予保留。 */
   laterBackstop?: WaitingView["nextBackstop"];
   deadlineAt: string | null;
   attention?: { scope: string; revision: string; source: "last observed by wait timer" };
@@ -70,10 +68,10 @@ export function readWaitingView(db: Database.Database, id: string, readActivity?
     "SELECT destination_session, state FROM queue_items WHERE qitem_id = ?",
   ).get(row.blocked_on) as { destination_session: string; state: string } | undefined : undefined;
   let recoveryOwner: string | null = null;
-  try { recoveryOwner = defaultResolveOrchestrator(db, row.destination_session); } catch { /* bootstrap schema has no routing evidence */ }
+  try { recoveryOwner = defaultResolveOrchestrator(db, row.destination_session); } catch { /* bootstrap schema 没有路由证据。 */ }
   const subject = row.blocked_on ? blocker?.destination_session ?? row.blocked_on : row.destination_session;
   let observed: ReturnType<WaitingActivityReader> = null;
-  try { observed = readActivity?.(subject) ?? null; } catch { /* unavailable remains unknown */ }
+  try { observed = readActivity?.(subject) ?? null; } catch { /* 不可用时继续保持 unknown。 */ }
   const meaningful = lastMeaningfulTransition(db, row.blocked_on?.startsWith("qitem-") ? row.blocked_on : id);
   const sweepInterval = sweepSeconds();
   const view: WaitingView = {
@@ -107,7 +105,7 @@ export function readWaitingView(db: Database.Database, id: string, readActivity?
         const state = JSON.parse(timer.spec_yaml).context?.queue_wait;
         notice = state?.notice;
         if (state?.evidence?.attention?.scope && state.attentionRevision) view.attention = { scope: state.evidence.attention.scope, revision: state.attentionRevision, source: "last observed by wait timer" };
-      } catch { /* operator YAML has no queue notice */ }
+      } catch { /* operator YAML 没有队列通知。 */ }
       if (notice) view.nextBackstop = { owner: recoveryOwner ?? row.source_session, mechanism: `unconsumed wait notice; delivery=${notice.deliveryStatus}`, intervalSeconds: sweepInterval,
         dueAt: new Date(Date.parse(notice.at) + resolvePickupThresholdMinutes() * 60_000).toISOString() };
     }

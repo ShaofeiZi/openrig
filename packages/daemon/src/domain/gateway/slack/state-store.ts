@@ -1,29 +1,24 @@
-// Slice-11 slack-connector — durable, restart-surviving state.
+// Slice-11 slack-connector——可跨重启保留的持久状态。
 //
-// Three append-only JSONL stores, written to disk so they survive BOTH a
-// connector restart AND a queue-daemon restart (locked item 2 + item 8):
-//   - SeenStore     : delivery-dedup by id; a line is appended ONLY AFTER the
-//                     side effect succeeds (outbound: after a 200 from Slack;
-//                     inbound: after the durable qitem exists). At-least-once —
-//                     a crash between success and append re-delivers a
-//                     BYTE-IDENTICAL duplicate next run, never a drop.
-//   - DeadLetterStore : the inbound never-drop net. An event that fails to land
-//                     in the queue is appended (attempt-counted) BEFORE the
-//                     failure path returns; drain() truncates and hands the
-//                     lines back so the caller re-appends any that fail again
-//                     ("zero-drop means zero, not zero-until-the-second-failure").
-//   - InboundReceiptStore : credential-free ingress/lifecycle observations,
-//                     with received recorded before filtering and a final disposition.
+// 三个仅追加的 JSONL store 会写入磁盘，因此可同时跨 connector 重启和 queue daemon 重启保留
+//（锁定项 2 + 项 8）：
+//   - SeenStore：按 id 做投递去重；仅在副作用成功后追加一行（outbound：Slack 返回 200 后；
+//                inbound：持久 qitem 存在后）。至少一次——若在成功与追加之间崩溃，下次运行会重新
+//                投递字节完全一致的副本，但绝不丢失。
+//   - DeadLetterStore：inbound 永不丢失的安全网。无法进入 queue 的事件会在失败路径返回前追加
+//                （含尝试次数）；drain() 截断并将行交回调用方，使其重新追加再次失败的项
+//                （"零丢失就是零，而不是直到第二次失败前为零"）。
+//   - InboundReceiptStore：无凭据的 ingress/lifecycle 观测，在过滤前记录 received，并记录最终处置。
 //
-// FS + clock are injected so the whole thing is unit-testable with no real disk.
+// 注入 FS 和时钟，使整体无需真实磁盘即可单元测试。
 import fs from "node:fs";
 import path from "node:path";
 
 export interface StateFsOps {
-  readFileSync(p: string): string; // throws (ENOENT) when absent — callers treat as empty
+  readFileSync(p: string): string; // 缺失时抛出 ENOENT，调用方按空内容处理。
   appendFileSync(p: string, data: string): void;
   writeFileSync(p: string, data: string): void;
-  rename(from: string, to: string): void; // atomic same-dir replace
+  rename(from: string, to: string): void; // 同目录原子替换。
   mkdirp(dir: string): void;
 }
 
@@ -46,7 +41,7 @@ function parseLines(raw: string): unknown[] {
       try {
         return JSON.parse(l);
       } catch {
-        return null; // tolerate a torn final line from a crash mid-append
+        return null; // 容忍追加中途崩溃造成的不完整末行。
       }
     })
     .filter((x): x is unknown => x !== null);
@@ -59,10 +54,9 @@ export interface SeenRecord {
 }
 
 /**
- * Delivery-dedup log. `load()` reads the durable set from disk; `mark()` appends
- * AFTER the guarded side effect. Idempotent on id: a repeated id collapses in
- * `load()`'s Set, and callers gate the side effect on `!seen.has(id)` so a
- * duplicate is never re-delivered within a run.
+ * 投递去重日志。`load()` 从磁盘读取持久集合；`mark()` 在受保护的副作用之后追加。对 id 幂等：
+ * 重复 id 会在 `load()` 的 Set 中合并，调用方以 `!seen.has(id)` 控制副作用，因此同一次运行中
+ * 不会重复投递。
  */
 export class SeenStore {
   constructor(
@@ -81,15 +75,15 @@ export class SeenStore {
     return new Set(parseLines(raw).map((r) => (r as SeenRecord).id).filter((id) => typeof id === "string"));
   }
 
-  /** Append a seen record. MUST be called only after the guarded side effect succeeds. */
+  /** 追加 seen 记录。必须只在受保护的副作用成功后调用。 */
   mark(id: string, status: string): void {
     this.fsops.mkdirp(path.dirname(this.file));
     this.fsops.appendFileSync(this.file, JSON.stringify({ id, ts: this.now().toISOString(), status }) + "\n");
   }
 
   /**
-   * Seed existing ids as already-seen WITHOUT triggering the side effect
-   * (locked item 9: enable-time backlog seeds as history, zero replay storm).
+   * 将现有 id 初始化为已见，但不触发副作用
+   *（锁定项 9：启用时把 backlog 初始化为历史，避免 replay 风暴）。
    */
   seed(ids: string[], status = "seeded"): number {
     if (ids.length === 0) return 0;
@@ -108,16 +102,12 @@ export interface DeadLetterEntry<T = unknown> {
 }
 
 /**
- * Inbound never-drop net. Every event that fails to land is appended
- * (attempt-counted) BEFORE the error path returns.
+ * Inbound 永不丢失安全网。每个无法落地的事件都会在错误路径返回前追加，并记录尝试次数。
  *
- * INTERRUPTION-SAFE retry (the B2 fix): retry does NOT truncate first. The
- * caller `readAll()`s (non-destructive), attempts each, then `replaceAll()`s the
- * file with ONLY the still-failing entries via an atomic temp-write + rename. So
- * the durable file always reflects the unrecovered set: a crash at ANY point
- * before the rename leaves the ORIGINAL file fully intact (at-least-once — a
- * since-landed event is skipped on re-read via the seen-set, so not even a dup).
- * There is no truncate-before-success window.
+ * 可安全中断的重试（B2 修复）：重试不会先截断。调用方以 `readAll()` 无损读取，逐项尝试，再通过
+ * 临时写入 + 原子 rename，用仍失败的项 `replaceAll()` 文件。因此持久文件始终反映未恢复集合：
+ * rename 前任一点崩溃都会让原文件完整保留（至少一次；其间已落地事件重读时会被 seen-set 跳过，
+ * 甚至不会重复）。不存在成功前先截断的窗口。
  */
 export class DeadLetterStore<T = unknown> {
   constructor(
@@ -134,7 +124,7 @@ export class DeadLetterStore<T = unknown> {
     );
   }
 
-  /** Non-destructive read of all durable entries. */
+  /** 无损读取全部持久项。 */
   readAll(): DeadLetterEntry<T>[] {
     let raw: string;
     try {
@@ -145,13 +135,13 @@ export class DeadLetterStore<T = unknown> {
     return parseLines(raw) as DeadLetterEntry<T>[];
   }
 
-  /** Atomically replace the durable set (temp-write + rename). Used after a retry pass. */
+  /** 原子替换持久集合（临时写入 + rename），在一轮重试后使用。 */
   replaceAll(entries: DeadLetterEntry<T>[]): void {
     this.fsops.mkdirp(path.dirname(this.file));
     const body = entries.map((e) => JSON.stringify(e)).join("\n") + (entries.length ? "\n" : "");
     const tmp = `${this.file}.tmp`;
     this.fsops.writeFileSync(tmp, body);
-    this.fsops.rename(tmp, this.file); // atomic: original intact until this instant
+    this.fsops.rename(tmp, this.file); // 原子操作：在此刻之前原文件保持完整。
   }
 }
 
@@ -177,9 +167,8 @@ export interface InboundReceipt {
   reason?: string;
 }
 
-/** Credential-free ingress/lifecycle ledger. A received receipt is appended before
- * handler filtering, then a final typed disposition follows. It deliberately has no
- * message body, sender, token, or secret fields. */
+/** 无凭据的 ingress/lifecycle 台账。在 handler 过滤前追加 received receipt，随后追加最终的类型化处置。
+ * 刻意不含消息 body、sender、token 或 secret 字段。 */
 export class InboundReceiptStore {
   constructor(
     private readonly file: string,

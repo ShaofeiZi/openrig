@@ -36,9 +36,9 @@ const VALID_RIG = {
   ],
 };
 
-describe("RigSpec schema (pod-aware)", () => {
-  // T1: valid rig with embedded pods passes validation
-  it("valid rig with embedded pods passes validation", () => {
+describe("RigSpec schema（支持 pod）", () => {
+  // T1：包含内嵌 pod 的有效工作组通过校验
+  it("包含内嵌 pod 的有效工作组通过校验", () => {
     const result = RigSpecSchema.validate(VALID_RIG);
     expect(result.valid).toBe(true);
     expect(result.errors).toEqual([]);
@@ -75,7 +75,7 @@ describe("RigSpec schema (pod-aware)", () => {
         ((((rig["pods"] as Record<string, unknown>[])[0]!["edges"] as Record<string, unknown>[])[0]!))["weight"] = 2;
       },
     },
-  ])("rejects an unknown $label key with its exact path and silent-normalization consequence", ({ path, key, mutate }) => {
+  ])("拒绝未知的 $label key，并提供精确 path 与静默 normalize 的后果", ({ path, key, mutate }) => {
     const rig = structuredClone(VALID_RIG) as unknown as Record<string, unknown>;
     mutate(rig);
 
@@ -83,11 +83,11 @@ describe("RigSpec schema (pod-aware)", () => {
 
     expect(result.valid).toBe(false);
     expect(result.errors).toContain(
-      `${path}: unknown key "${key}"; refusing the spec because normalization would otherwise discard it and alter the requested topology`,
+      `${path}：未知键 "${key}"；拒绝该规范，因为规范化会丢弃此键并改变请求的拓扑`,
     );
   });
 
-  it("allows codex_config_profile for Codex members and normalizes it", () => {
+  it("允许 Codex member 使用 codex_config_profile，并将其 normalize", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[1] as Record<string, unknown>)["codex_config_profile"] = "sysadmin";
 
@@ -98,98 +98,98 @@ describe("RigSpec schema (pod-aware)", () => {
     expect(normalized.pods[0]!.members[1]!.codexConfigProfile).toBe("sysadmin");
   });
 
-  it("rejects codex_config_profile on non-Codex members", () => {
+  it("拒绝非 Codex member 上的 codex_config_profile", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["codex_config_profile"] = "sysadmin";
 
     const result = RigSpecSchema.validate(rig);
 
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/codex_config_profile.*only valid/);
+    expect(result.errors[0]).toMatch(/codex_config_profile.*仅当.*有效/);
   });
 
-  // T2: missing pod member agent_ref fails
-  it("missing pod member agent_ref fails", () => {
+  // T2：缺失 pod member agent_ref 时失败
+  it("缺失 pod member agent_ref 时失败", () => {
     const rig = structuredClone(VALID_RIG);
     delete (rig.pods[0]!.members[0] as Record<string, unknown>)["agent_ref"];
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/agent_ref.*required/);
+    expect(result.errors[0]).toMatch(/agent_ref.*必填/);
   });
 
-  // T3: missing pod member profile fails
-  it("missing pod member profile fails", () => {
+  // T3：缺失 pod member profile 时失败
+  it("缺失 pod member profile 时失败", () => {
     const rig = structuredClone(VALID_RIG);
     delete (rig.pods[0]!.members[0] as Record<string, unknown>)["profile"];
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/profile.*required/);
+    expect(result.errors[0]).toMatch(/profile.*必填/);
   });
 
-  // T4: unknown edge kind fails
-  it("unknown edge kind fails", () => {
+  // T4：未知 edge kind 会失败
+  it("未知 edge kind 会失败", () => {
     const rig = structuredClone(VALID_RIG);
     rig.pods[0]!.edges[0]!.kind = "unknown_kind";
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/kind.*must be one of/);
+    expect(result.errors[0]).toMatch(/kind.*必须是.*之一/);
   });
 
-  // T5: cross-pod edge using unqualified id fails
-  it("cross-pod edge using unqualified id fails", () => {
+  // T5：cross-pod edge 使用未限定 id 时失败
+  it("cross-pod edge 使用未限定 id 时失败", () => {
     const rig = structuredClone(VALID_RIG);
     rig.edges[0]!.from = "impl";
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/fully-qualified.*pod\.member/);
+    expect(result.errors[0]).toMatch(/完全限定的 pod\.member/);
   });
 
-  // T6: pod-local edge using fully-qualified id fails
-  it("pod-local edge using fully-qualified id fails", () => {
+  // T6：pod-local edge 使用 fully-qualified id 时失败
+  it("pod-local edge 使用 fully-qualified id 时失败", () => {
     const rig = structuredClone(VALID_RIG);
     rig.pods[0]!.edges[0]!.from = "dev.qa";
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/pod-local.*unqualified/);
+    expect(result.errors[0]).toMatch(/pod 本地边.*非限定/);
   });
 
-  // T7: duplicate pod id fails
-  it("duplicate pod id fails", () => {
+  // T7：重复 pod id 会失败
+  it("重复 pod id 会失败", () => {
     const rig = structuredClone(VALID_RIG);
     rig.pods[1]!.id = "dev";
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/duplicate pod id "dev"/);
+    expect(result.errors[0]).toMatch(/pod id "dev" 重复/);
   });
 
-  // T8: duplicate member id inside one pod fails
-  it("duplicate member id inside one pod fails", () => {
+  // T8：同一个 pod 内重复 member id 会失败
+  it("同一个 pod 内重复 member id 会失败", () => {
     const rig = structuredClone(VALID_RIG);
     rig.pods[0]!.members[1]!.id = "impl";
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/duplicate member id "impl"/);
+    expect(result.errors[0]).toMatch(/member id "impl" 重复/);
   });
 
-  // T9: dot in pod id or member id fails
-  it("dot in pod id or member id fails", () => {
+  // T9：pod id 或 member id 中包含点号会失败
+  it("pod id 或 member id 中包含点号会失败", () => {
     const rig1 = structuredClone(VALID_RIG);
     rig1.pods[0]!.id = "dev.team";
-    expect(RigSpecSchema.validate(rig1).errors[0]).toMatch(/must not contain dots/);
+    expect(RigSpecSchema.validate(rig1).errors[0]).toMatch(/不得包含点号/);
 
     const rig2 = structuredClone(VALID_RIG);
     rig2.pods[0]!.members[0]!.id = "impl.main";
-    expect(RigSpecSchema.validate(rig2).errors[0]).toMatch(/must not contain dots/);
+    expect(RigSpecSchema.validate(rig2).errors[0]).toMatch(/不得包含点号/);
   });
 
-  // T10: culture_file round-trips through normalize
-  it("culture_file round-trips through normalize", () => {
+  // T10：culture_file 经 normalize 往返保持不变
+  it("culture_file 经 normalize 往返保持不变", () => {
     const normalized = RigSpecSchema.normalize(VALID_RIG);
     expect(normalized.cultureFile).toBe("culture.md");
   });
 
-  // T11: normalize preserves pod/member/edge ordering
-  it("normalize preserves pod/member/edge ordering", () => {
+  // T11：normalize 保留 pod/member/edge 顺序
+  it("normalize 保留 pod/member/edge 顺序", () => {
     const normalized = RigSpecSchema.normalize(VALID_RIG);
     expect(normalized.pods[0]!.id).toBe("dev");
     expect(normalized.pods[1]!.id).toBe("arch");
@@ -199,8 +199,8 @@ describe("RigSpec schema (pod-aware)", () => {
     expect(normalized.edges[0]!.from).toBe("dev.impl");
   });
 
-  // T12: serialize -> parse -> validate round-trips
-  it("normalize produces correct typed shape", () => {
+  // T12：serialize -> parse -> validate 往返
+  it("normalize 产生正确的 typed shape", () => {
     const normalized = RigSpecSchema.normalize(VALID_RIG);
     expect(normalized.version).toBe("0.2");
     expect(normalized.name).toBe("dev-rig");
@@ -210,28 +210,28 @@ describe("RigSpec schema (pod-aware)", () => {
     expect(normalized.edges).toHaveLength(1);
   });
 
-  // T13a: malformed member startup is rejected
-  it("malformed member startup block is rejected", () => {
+  // T13a：拒绝格式错误的 member startup
+  it("拒绝格式错误的 member startup block", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["startup"] = { files: "not-array" };
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("files") && e.includes("array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("files") && e.includes("数组"))).toBe(true);
   });
 
-  // T13b: malformed continuity_policy artifacts/restore_protocol rejected
-  it("malformed continuity_policy nested fields are rejected", () => {
+  // T13b：拒绝格式错误的 continuity_policy artifacts/restore_protocol
+  it("拒绝格式错误的 continuity_policy 嵌套字段", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.continuity_policy as Record<string, unknown>)["artifacts"] = "bad";
     (rig.pods[0]!.continuity_policy as Record<string, unknown>)["restore_protocol"] = "bad";
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("artifacts") && e.includes("object"))).toBe(true);
-    expect(result.errors.some((e) => e.includes("restore_protocol") && e.includes("object"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("artifacts") && e.includes("对象"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("restore_protocol") && e.includes("对象"))).toBe(true);
   });
 
-  // T13c: invalid startup action semantics in member startup are rejected
-  it("invalid startup action type in member startup is rejected", () => {
+  // T13c：拒绝 member startup 中无效的 startup action 语义
+  it("拒绝 member startup 中无效的 startup action type", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["startup"] = {
       files: [],
@@ -239,11 +239,11 @@ describe("RigSpec schema (pod-aware)", () => {
     };
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("shell") && e.includes("not supported"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("shell") && e.includes("不支持"))).toBe(true);
   });
 
-  // T13d: invalid startup action phase/applies_on in pod startup
-  it("invalid startup action phase and applies_on rejected", () => {
+  // T13d：pod startup 中无效的 startup action phase/applies_on
+  it("拒绝无效的 startup action phase 与 applies_on", () => {
     const rig = structuredClone(VALID_RIG);
     rig.pods[0] = { ...rig.pods[0]!, startup: {
       files: [],
@@ -251,12 +251,12 @@ describe("RigSpec schema (pod-aware)", () => {
     }};
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("phase") && e.includes("must be one of"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("phase") && e.includes("必须是") && e.includes("之一"))).toBe(true);
     expect(result.errors.some((e) => e.includes("applies_on") && e.includes("rehydrate"))).toBe(true);
   });
 
-  // T13e: invalid file delivery_hint and applies_on in member startup
-  it("invalid file delivery_hint and applies_on in startup rejected", () => {
+  // T13e：member startup 中无效的 file delivery_hint 与 applies_on
+  it("拒绝 startup 中无效的 file delivery_hint 与 applies_on", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["startup"] = {
       files: [{ path: "test.md", delivery_hint: "bogus", applies_on: ["rehydrate"] }],
@@ -268,8 +268,8 @@ describe("RigSpec schema (pod-aware)", () => {
     expect(result.errors.some((e) => e.includes("applies_on") && e.includes("rehydrate"))).toBe(true);
   });
 
-  // T13f: non-boolean idempotent in startup action rejected
-  it("non-boolean idempotent in startup action is rejected", () => {
+  // T13f：拒绝 startup action 中非 boolean 的 idempotent
+  it("拒绝 startup action 中非 boolean 的 idempotent", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["startup"] = {
       files: [],
@@ -277,11 +277,11 @@ describe("RigSpec schema (pod-aware)", () => {
     };
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("idempotent") && e.includes("boolean"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("idempotent") && e.includes("布尔值"))).toBe(true);
   });
 
-  // T13g: non-idempotent action on restore rejected
-  it("non-idempotent action on restore in member startup is rejected", () => {
+  // T13g：拒绝 restore 时执行非幂等 action
+  it("拒绝 member startup 中 restore 时执行的非幂等 action", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["startup"] = {
       files: [],
@@ -289,11 +289,11 @@ describe("RigSpec schema (pod-aware)", () => {
     };
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("non-idempotent") && e.includes("restore"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("非幂等") && e.includes("restore"))).toBe(true);
   });
 
-  // T13h: scalar applies_on on action rejected
-  it("scalar applies_on on startup action rejected", () => {
+  // T13h：拒绝 action 上标量形式的 applies_on
+  it("拒绝 startup action 上标量形式的 applies_on", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["startup"] = {
       files: [],
@@ -301,22 +301,22 @@ describe("RigSpec schema (pod-aware)", () => {
     };
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("applies_on") && e.includes("array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("applies_on") && e.includes("数组"))).toBe(true);
   });
 
-  // T13i: nested continuity-policy boolean typing validated
-  it("non-boolean continuity_policy nested fields rejected", () => {
+  // T13i：校验嵌套 continuity-policy 的 boolean 类型
+  it("拒绝非 boolean 的 continuity_policy 嵌套字段", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.continuity_policy as Record<string, unknown>)["artifacts"] = { session_log: "yes" };
     (rig.pods[0]!.continuity_policy as Record<string, unknown>)["restore_protocol"] = { peer_driven: "yes" };
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("session_log") && e.includes("boolean"))).toBe(true);
-    expect(result.errors.some((e) => e.includes("peer_driven") && e.includes("boolean"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("session_log") && e.includes("布尔值"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("peer_driven") && e.includes("布尔值"))).toBe(true);
   });
 
-  // T14: legacy flat-node schema still validates
-  it("legacy flat-node schema still validates old specs", () => {
+  // T14：legacy flat-node schema 仍可校验旧 spec
+  it("legacy flat-node schema 仍可校验旧 spec", () => {
     const legacySpec = {
       schema_version: 1, name: "test", version: "1.0",
       nodes: [
@@ -331,10 +331,10 @@ describe("RigSpec schema (pod-aware)", () => {
     expect(normalized.nodes).toHaveLength(2);
   });
 
-  // -- Checkpoint 1 review fix regressions --
+  // -- Checkpoint 1 review 修复回归 --
 
-  // R2: startup action missing value rejected
-  it("startup action missing value rejected", () => {
+  // R2：拒绝缺少 value 的 startup action
+  it("拒绝缺少 value 的 startup action", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["startup"] = {
       files: [],
@@ -342,11 +342,11 @@ describe("RigSpec schema (pod-aware)", () => {
     };
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("value") && e.includes("non-empty"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("value") && e.includes("非空"))).toBe(true);
   });
 
-  // R3: startup action missing idempotent rejected
-  it("startup action missing idempotent rejected", () => {
+  // R3：拒绝缺少 idempotent 的 startup action
+  it("拒绝缺少 idempotent 的 startup action", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["startup"] = {
       files: [],
@@ -354,11 +354,11 @@ describe("RigSpec schema (pod-aware)", () => {
     };
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("idempotent") && e.includes("required"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("idempotent") && e.includes("必填"))).toBe(true);
   });
 
-  // R4: restore-safety with undefined idempotent + default applies_on
-  it("undefined idempotent with default applies_on triggers restore-safety rejection", () => {
+  // R4：undefined idempotent + default applies_on 的 restore-safety
+  it("undefined idempotent 与 default applies_on 会触发 restore-safety 拒绝", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["startup"] = {
       files: [],
@@ -366,40 +366,40 @@ describe("RigSpec schema (pod-aware)", () => {
     };
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("non-idempotent") && e.includes("restore"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("非幂等") && e.includes("restore"))).toBe(true);
   });
 
-  // R5: member restore_policy "bogus" rejected
-  it("member restore_policy bogus rejected", () => {
+  // R5：拒绝 member restore_policy "bogus"
+  it("拒绝 member restore_policy bogus", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["restore_policy"] = "bogus";
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/restore_policy.*must be one of/);
+    expect(result.errors[0]).toMatch(/restore_policy.*必须是.*之一/);
   });
 
-  // R6: member agent_ref "github:foo/bar" rejected
-  it("member agent_ref github: rejected", () => {
+  // R6：拒绝 member agent_ref "github:foo/bar"
+  it("拒绝 github: 形式的 member agent_ref", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["agent_ref"] = "github:foo/bar";
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/agent_ref.*must start with "local:" or "path:"/);
+    expect(result.errors[0]).toMatch(/agent_ref.*必须以 "local:" 或 "path:" 开头/);
   });
 
-  // R7: cross-pod edge from dev.impl to dev.qa (same pod) rejected
-  it("cross-pod edge referencing same pod rejected", () => {
+  // R7：拒绝从 dev.impl 到 dev.qa（同 pod）的 cross-pod edge
+  it("拒绝引用同一 pod 的 cross-pod edge", () => {
     const rig = structuredClone(VALID_RIG);
     rig.edges = [{ kind: "can_observe", from: "dev.impl", to: "dev.qa" }];
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/cross-pod edge must reference different pods/);
+    expect(result.errors[0]).toMatch(/跨 pod 边必须引用不同的 pod/);
   });
 
-  // -- NS-T03: Terminal sentinel validation --
+  // -- NS-T03：Terminal sentinel 校验 --
 
-  // Test 4: validates terminal member with exact sentinel triple
-  it("validates terminal member with builtin:terminal + none + terminal", () => {
+  // 测试 4：使用精确 sentinel 三元组校验 terminal member
+  it("校验使用 builtin:terminal + none + terminal 的 terminal member", () => {
     const rig = structuredClone(VALID_RIG);
     rig.pods.push({
       id: "infra",
@@ -413,8 +413,8 @@ describe("RigSpec schema (pod-aware)", () => {
     expect(result.valid).toBe(true);
   });
 
-  // Test 5: rejects terminal member with wrong sentinel pair
-  it("rejects terminal member with builtin:terminal but profile != none", () => {
+  // 测试 5：拒绝 sentinel 配对错误的 terminal member
+  it("拒绝使用 builtin:terminal 但 profile != none 的 terminal member", () => {
     const rig = structuredClone(VALID_RIG);
     rig.pods.push({
       id: "infra",
@@ -429,8 +429,8 @@ describe("RigSpec schema (pod-aware)", () => {
     expect(result.errors.some((e) => e.includes("terminal") && e.includes("profile") && e.includes("none"))).toBe(true);
   });
 
-  // Test 6: rejects non-terminal member using builtin:terminal
-  it("rejects non-terminal member using builtin:terminal", () => {
+  // 测试 6：拒绝使用 builtin:terminal 的非 terminal member
+  it("拒绝使用 builtin:terminal 的非 terminal member", () => {
     const rig = structuredClone(VALID_RIG);
     rig.pods.push({
       id: "infra",
@@ -446,19 +446,18 @@ describe("RigSpec schema (pod-aware)", () => {
   });
 });
 
-// ─── OPR.0.5.6.20 A5 — member-level compaction_strategy live ingestion ─────────
-// RED-FIRST over d9e01f2e3: validateMember has no compaction_strategy leg and
-// normalizePod drops the field, so a member override never survives the real
-// YAML -> validate -> normalize path (the exact bypass the delivery review caught;
-// the P3 resolver test constructed members directly and could not see it).
-describe("member compaction_strategy — live ingestion (OPR.0.5.6.20 A5)", () => {
+// ─── OPR.0.5.6.20 A5——member-level compaction_strategy 实时摄取 ─────────
+// 基于 d9e01f2e3 的 RED-FIRST：validateMember 没有 compaction_strategy 分支，normalizePod
+// 会丢弃该字段，因此 member override 永远无法通过真实 YAML -> validate -> normalize 路径
+//（delivery review 发现的精确 bypass；P3 resolver 测试直接构造 member，无法发现此问题）。
+describe("member compaction_strategy——实时摄取（OPR.0.5.6.20 A5）", () => {
   const rigWithMemberStrategy = (value: string) => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["compaction_strategy"] = value;
     return rig;
   };
 
-  it("canonical member value validates and survives normalization to the resolved member", () => {
+  it("canonical member 值通过校验，并在 normalize 后保留至 resolved member", () => {
     const rig = rigWithMemberStrategy("managed-compaction");
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(true);
@@ -466,30 +465,30 @@ describe("member compaction_strategy — live ingestion (OPR.0.5.6.20 A5)", () =
     expect(normalized.pods[0]!.members[0]!.compactionStrategy).toBe("managed-compaction");
   });
 
-  it("deprecated alias at member level validates WITH advisory and normalizes to canonical (A1 at member level)", () => {
+  it("member-level deprecated alias 在带 advisory 时通过校验，并 normalize 为 canonical 值", () => {
     const rig = rigWithMemberStrategy("harness_native");
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(true);
-    expect((result.advisories ?? []).join(" ")).toMatch(/harness_native.*deprecated.*default-compaction/);
+    expect((result.advisories ?? []).join(" ")).toMatch(/harness_native.*已弃用.*default-compaction/);
     const normalized = RigSpecSchema.normalize(rig);
     expect(normalized.pods[0]!.members[0]!.compactionStrategy).toBe("default-compaction");
   });
 
-  it("invalid member value fails validation with an error naming the member", () => {
+  it("无效 member 值校验失败，error 会指出 member", () => {
     const rig = rigWithMemberStrategy("yolo-mode");
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
     expect(result.errors.join(" ")).toMatch(/members\[0\].*compaction_strategy.*yolo-mode/);
   });
 
-  it("custom_prompt keeps the byte-preserved teaching rejection at member level", () => {
+  it("custom_prompt 在 member level 保留逐字节一致的引导性拒绝", () => {
     const rig = rigWithMemberStrategy("custom_prompt");
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('"custom_prompt" is not supported in v1'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('v1 不支持 "custom_prompt"'))).toBe(true);
   });
 
-  it("absent member field stays undefined after normalization (resolver F-6 default owns absence — green at base, floor pin)", () => {
+  it("缺失的 member 字段在 normalize 后仍为 undefined（由 resolver F-6 default 处理缺失）", () => {
     const rig = structuredClone(VALID_RIG);
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(true);
@@ -498,8 +497,8 @@ describe("member compaction_strategy — live ingestion (OPR.0.5.6.20 A5)", () =
   });
 });
 
-describe("member mechanic — live ingestion (S20 A7/A8)", () => {
-  it("accepts and preserves a canonical member override", () => {
+describe("member mechanic——实时摄取（S20 A7/A8）", () => {
+  it("接受并保留 canonical member override", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["mechanic"] = "member-mechanic@kernel";
     const result = RigSpecSchema.validate(rig);
@@ -509,11 +508,11 @@ describe("member mechanic — live ingestion (S20 A7/A8)", () => {
     );
   });
 
-  it("rejects a non-canonical member mechanic instead of dropping it", () => {
+  it("拒绝非 canonical member mechanic，而非将其丢弃", () => {
     const rig = structuredClone(VALID_RIG);
     (rig.pods[0]!.members[0] as Record<string, unknown>)["mechanic"] = "member-mechanic";
     const result = RigSpecSchema.validate(rig);
     expect(result.valid).toBe(false);
-    expect(result.errors.join(" ")).toMatch(/members\[0\].*mechanic.*canonical.*seat@rig/i);
+    expect(result.errors.join(" ")).toMatch(/members\[0\].*mechanic.*规范.*seat@rig/i);
   });
 });

@@ -55,7 +55,7 @@ export function ForkNowAction({ entry }: { entry: AgentImageEntry }) {
   const forkMutation = useMutation({
     mutationFn: async () => {
       if (!selectedRigId || !selectedPod || !selectedSiblingNode || !newMemberId.trim()) {
-        throw new Error("Missing required fields");
+        throw new Error("缺少必填字段");
       }
 
       const member: Record<string, unknown> = {
@@ -90,7 +90,7 @@ export function ForkNowAction({ entry }: { entry: AgentImageEntry }) {
         return {
           ok: false,
           status: nodeStatus,
-          error: data.result?.node?.error ?? `Launch ${nodeStatus}`,
+          error: data.result?.node?.error ?? `启动 ${nodeStatus}`,
           logicalId: data.result?.node?.logicalId,
         };
       }
@@ -112,7 +112,7 @@ export function ForkNowAction({ entry }: { entry: AgentImageEntry }) {
   if (noCwd) {
     return (
       <div data-testid="fork-now-disabled-no-cwd" className="font-mono text-[9px] text-on-surface-variant">
-        Fork now unavailable: image lacks source cwd (pre-Finding-2 manifest)
+        暂不可用：镜像缺少源 cwd（Finding-2 之前的清单）
       </div>
     );
   }
@@ -125,25 +125,25 @@ export function ForkNowAction({ entry }: { entry: AgentImageEntry }) {
         data-testid="fork-now-button"
         onClick={() => { setOpen(true); setResult(null); }}
       >
-        Fork now
+        立即派生
       </Button>
 
       {open && (
         <div data-testid="fork-now-modal" className="border border-outline bg-surface-lowest px-3 py-3 space-y-3 mt-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.10em] text-on-surface">
-            Fork "{entry.name}" into a running rig
+            把镜像“{entry.name}”派生到运行中的工作组
           </div>
 
           <div className="space-y-2">
             <label className="block font-mono text-[9px] text-on-surface-variant">
-              Target rig
+              目标工作组
               <select
                 data-testid="fork-now-rig-select"
                 className="block w-full mt-0.5 border border-outline-variant bg-surface-lowest px-1 py-0.5 font-mono text-[10px]"
                 value={selectedRigId ?? ""}
                 onChange={(e) => { setSelectedRigId(e.target.value || null); setSelectedPod(null); setSelectedSibling(null); }}
               >
-                <option value="">Select rig…</option>
+                <option value="">选择工作组…</option>
                 {rigs.map((r) => (
                   <option key={r.rigId} value={r.rigId}>{r.name}</option>
                 ))}
@@ -152,14 +152,14 @@ export function ForkNowAction({ entry }: { entry: AgentImageEntry }) {
 
             {selectedRigId && (
               <label className="block font-mono text-[9px] text-on-surface-variant">
-                Target pod
+                目标 pod
                 <select
                   data-testid="fork-now-pod-select"
                   className="block w-full mt-0.5 border border-outline-variant bg-surface-lowest px-1 py-0.5 font-mono text-[10px]"
                   value={selectedPod ?? ""}
                   onChange={(e) => { setSelectedPod(e.target.value || null); setSelectedSibling(null); }}
                 >
-                  <option value="">Select pod…</option>
+                  <option value="">选择 pod…</option>
                   {pods.map((p) => (
                     <option key={p} value={p}>{p}</option>
                   ))}
@@ -169,20 +169,20 @@ export function ForkNowAction({ entry }: { entry: AgentImageEntry }) {
 
             {selectedPod && podNodes.length === 0 && (
               <div data-testid="fork-now-no-sibling" className="font-mono text-[9px] text-amber-600">
-                No {entry.runtime} member in this pod to clone identity from. Choose a different pod.
+                此 pod 中没有 {entry.runtime} 成员可克隆身份，请换一个 pod。
               </div>
             )}
 
             {selectedPod && podNodes.length > 0 && (
               <label className="block font-mono text-[9px] text-on-surface-variant">
-                Clone identity from ({entry.runtime} member)
+                从…克隆身份（{entry.runtime} 成员）
                 <select
                   data-testid="fork-now-sibling-select"
                   className="block w-full mt-0.5 border border-outline-variant bg-surface-lowest px-1 py-0.5 font-mono text-[10px]"
                   value={selectedSibling ?? ""}
                   onChange={(e) => setSelectedSibling(e.target.value || null)}
                 >
-                  <option value="">Select member…</option>
+                  <option value="">选择成员…</option>
                   {podNodes.map((n) => (
                     <option key={n.logicalId} value={n.logicalId}>{n.logicalId}</option>
                   ))}
@@ -192,14 +192,14 @@ export function ForkNowAction({ entry }: { entry: AgentImageEntry }) {
 
             {selectedSibling && (
               <label className="block font-mono text-[9px] text-on-surface-variant">
-                New member ID (no dots)
+                新成员 ID（不含点）
                 <input
                   data-testid="fork-now-member-id"
                   type="text"
                   className="block w-full mt-0.5 border border-outline-variant bg-surface-lowest px-1 py-0.5 font-mono text-[10px]"
                   value={newMemberId}
                   onChange={(e) => setNewMemberId(e.target.value.replace(/\./g, ""))}
-                  placeholder="e.g. forked-worker"
+                  placeholder="例如 forked-worker"
                 />
               </label>
             )}
@@ -213,14 +213,14 @@ export function ForkNowAction({ entry }: { entry: AgentImageEntry }) {
               disabled={!selectedSibling || !newMemberId.trim() || forkMutation.isPending}
               onClick={() => forkMutation.mutate()}
             >
-              {forkMutation.isPending ? "Forking…" : "Confirm fork"}
+              {forkMutation.isPending ? "正在派生…" : "确认派生"}
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setOpen(false)}
             >
-              Cancel
+              取消
             </Button>
           </div>
 
@@ -230,8 +230,8 @@ export function ForkNowAction({ entry }: { entry: AgentImageEntry }) {
               className={`font-mono text-[9px] ${result.ok ? "text-green-700" : "text-red-600"}`}
             >
               {result.ok
-                ? `Forked: ${result.logicalId ?? newMemberId} launched from image "${entry.name}" (${result.status})`
-                : `Fork failed: ${result.status ? `[${result.status}] ` : ""}${result.error}`}
+                ? `已派生：${result.logicalId ?? newMemberId} 已从镜像“${entry.name}”启动（${result.status}）`
+                : `派生失败：${result.status ? `[${result.status}] ` : ""}${result.error}`}
             </div>
           )}
         </div>

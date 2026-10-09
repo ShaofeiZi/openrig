@@ -1,18 +1,16 @@
-// Slice Story View v0 + UI Enhancement Pack v0 — Docs tab.
+// 切片故事视图 v0 + UI 增强包 v0 —— 文档标签页。
 //
-// Two-column layout: left = file tree (slice folder + descendants),
-// right = lazy markdown viewer for the selected file.
+// 双栏布局：左侧 = 文件树（切片文件夹 + 后代），
+// 右侧 = 所选文件的懒加载 Markdown 查看器。
 //
-// UI Enhancement Pack v0 item 2: the right pane now renders Markdown
-// via the new MarkdownViewer (YAML frontmatter as metadata header,
-// code blocks with syntax highlighting, lists, tables, links,
-// images, mermaid placeholder per carve-out). v0's plain-`<pre>`
-// fallback is preserved for non-`.md` files.
+// UI 增强包 v0 第 2 项：右侧窗格现在通过新的 MarkdownViewer 渲染 Markdown
+//（YAML frontmatter 作为元数据头、带语法高亮的代码块、列表、表格、链接、
+// 图片、按 carved-out 预留的 mermaid 占位）。v0 的纯 `<pre>` 回退
+// 对非 `.md` 文件保留。
 //
-// Image src resolution: relative paths in `.md` content are resolved
-// against the slice's proof-asset endpoint when applicable. v1 of
-// UI Enhancement Pack can extend this to the slice's docs endpoint
-// once the daemon adds an analogous static-asset path for slice docs.
+// 图片 src 解析：`.md` 内容中的相对路径在适用时对照切片的 proof-asset
+// 端点解析。UI 增强包 v1 可将此扩展到切片的 docs 端点，
+// 前提是后台服务为切片文档添加类似的静态资源路径。
 
 import { useState } from "react";
 import type { DocsTreeEntry } from "../../../hooks/useSlices.js";
@@ -32,7 +30,7 @@ export function DocsTab({ sliceName, tree }: { sliceName: string; tree: DocsTree
     <div data-testid="docs-tab" className="flex h-full flex-col sm:flex-row">
       <aside className="w-full max-h-48 shrink-0 overflow-y-auto border-b border-outline-variant bg-background p-2 sm:w-56 sm:max-h-none sm:border-b-0 sm:border-r" data-testid="docs-tree">
         {tree.length === 0 && (
-          <div className="font-mono text-[10px] text-on-surface-variant">Empty slice folder.</div>
+          <div className="font-mono text-[10px] text-on-surface-variant">切片文件夹为空。</div>
         )}
         {tree.map((entry) => (
           <button
@@ -62,13 +60,13 @@ export function DocsTab({ sliceName, tree }: { sliceName: string; tree: DocsTree
       </aside>
       <main className="flex-1 min-w-0 overflow-y-auto bg-surface-lowest" data-testid="docs-viewer">
         {!selected && (
-          <div className="m-auto p-4 font-mono text-[10px] text-on-surface-variant">Select a file from the tree</div>
+          <div className="m-auto p-4 font-mono text-[10px] text-on-surface-variant">从树中选择一个文件</div>
         )}
         {selected && doc.isLoading && (
-          <div className="p-4 font-mono text-[10px] text-on-surface-variant">Loading…</div>
+          <div className="p-4 font-mono text-[10px] text-on-surface-variant">加载中…</div>
         )}
         {selected && doc.isError && (
-          <div className="p-4 font-mono text-[10px] text-red-600">Error loading doc.</div>
+          <div className="p-4 font-mono text-[10px] text-red-600">加载文档时出错。</div>
         )}
         {selected && doc.data && (
           <div data-testid="docs-viewer-content" className="p-4">

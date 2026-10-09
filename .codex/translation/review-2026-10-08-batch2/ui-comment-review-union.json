@@ -1,0 +1,1193 @@
+{
+  "schema": "openrig.ui-comment-review-union/v1",
+  "captured_at": "2026-10-09T18:35:00+08:00",
+  "depth": "full_comment_title_failure_message_reviewed",
+  "disk_total": 197,
+  "union_total": 197,
+  "duplicate": 0,
+  "missing": [],
+  "files": [
+    {
+      "batch": "ui-comment-review-batch1.json",
+      "path": "packages/ui/test/index-html.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "f8881c3aed7fe56cfcdc76e1119d43e3e624f0b634d2b7582d148c8b27fce768"
+    },
+    {
+      "batch": "ui-comment-review-batch1.json",
+      "path": "packages/ui/test/display-id.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "b6057f42091655482be91a4c10b6aa70b38df58ad1556130273144407904ac18"
+    },
+    {
+      "batch": "ui-comment-review-batch1.json",
+      "path": "packages/ui/test/token-format.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "32ccb54e68af351fdfd848043aff1099ef5b8af91f14f10265c46dba84722b28"
+    },
+    {
+      "batch": "ui-comment-review-batch1.json",
+      "path": "packages/ui/test/workspace-page.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "1a9ee8ac8606eb71c8fbddc22b68dc89fa83f67cc03461e16771c668a527d984"
+    },
+    {
+      "batch": "ui-comment-review-batch1.json",
+      "path": "packages/ui/test/ui-maintenance-notice.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "35daff370b01394f7529113bb77799936943c0d5d338a1c2ffea4848325d0532"
+    },
+    {
+      "batch": "ui-comment-review-batch1.json",
+      "path": "packages/ui/test/workflow-resume.test.ts",
+      "status": "changed",
+      "after_sha256": "89b4cb96e503193c222f34a69e8e25fca1a496c2665642ac852f1572d1b26f90"
+    },
+    {
+      "batch": "ui-comment-review-batch1.json",
+      "path": "packages/ui/test/twin-capture-payload-diff.test.ts",
+      "status": "changed",
+      "after_sha256": "43689a4a280cc40ce0e0969c7f281b812db79ac59570e96414c323b575f1a766"
+    },
+    {
+      "batch": "ui-comment-review-batch1.json",
+      "path": "packages/ui/test/error-boundary.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "e61933a5862003e9e8f8f28822e777afc3b59d5b21d0170742bbdf727d4d5484"
+    },
+    {
+      "batch": "ui-comment-review-batch1.json",
+      "path": "packages/ui/test/undo-toast.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "3505a0a69aa60a0324908b89f54de5477bbf11d59f627505ef3626f4a4212b26"
+    },
+    {
+      "batch": "ui-comment-review-batch1.json",
+      "path": "packages/ui/test/feed-card-terminal-session.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "ded4ba87225e124e4f00baabfe3dc3564666243a14603d8ed2a0aa342e6155b8"
+    },
+    {
+      "batch": "ui-comment-review-batch2.json",
+      "path": "packages/ui/test/vellum-input.test.tsx",
+      "status": "changed",
+      "after_sha256": "114487a17558fb0bbb4ac8c84ac4835d8897c31bf514f764e2cc3f652cfc0585"
+    },
+    {
+      "batch": "ui-comment-review-batch2.json",
+      "path": "packages/ui/test/use-daemon-health-signal.test.ts",
+      "status": "changed",
+      "after_sha256": "45a015ff10bd4288819d2f34c206f15c8eb115437d90a9c3e8594f941fda278e"
+    },
+    {
+      "batch": "ui-comment-review-batch2.json",
+      "path": "packages/ui/test/use-needs-input-seats.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "c57ee32473424a1ef8a7b846e4079262c98824a2be7852b8e75eaf9771c88eb2"
+    },
+    {
+      "batch": "ui-comment-review-batch2.json",
+      "path": "packages/ui/test/mission-status-badge.test.tsx",
+      "status": "changed",
+      "after_sha256": "3400e2d60acd1b06e1c9a65797356201bd242dc3b5c6790f344b95b4d86d197e"
+    },
+    {
+      "batch": "ui-comment-review-batch2.json",
+      "path": "packages/ui/test/vellum-select.test.tsx",
+      "status": "changed",
+      "after_sha256": "0e4f5ca9c16f1b2e4bda6a3ad952f3e8bd181d06534d67ea0e3b76b20ade44f4"
+    },
+    {
+      "batch": "ui-comment-review-batch2.json",
+      "path": "packages/ui/test/feed-card-drill-ac3.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "a492cb030fab9ed70e34bfe8a0fb21499b5ae2cac8d23d55bb887881e9dd1c2d"
+    },
+    {
+      "batch": "ui-comment-review-batch2.json",
+      "path": "packages/ui/test/xterm-input-mapper.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "eeadee80736d48d38aa3924e9957ea4eaadc4a4c9b32bea080963dbd487a3073"
+    },
+    {
+      "batch": "ui-comment-review-batch2.json",
+      "path": "packages/ui/test/WorkspaceKindBadge.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "9af016c33d461e2bb0d2b86b00cba3e4a034d079f5ddc54430450435fd1bc398"
+    },
+    {
+      "batch": "ui-comment-review-batch2.json",
+      "path": "packages/ui/test/section-header.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "31c47a4e967efc80cfa4c98e12df6689dcb567d9daf5e77ab90b8eeffd05b031"
+    },
+    {
+      "batch": "ui-comment-review-batch2.json",
+      "path": "packages/ui/test/twin-capture-asciicast.test.ts",
+      "status": "changed",
+      "after_sha256": "3b4cc0a7c28b944cd2c537c05b9de74f4d59f5e44edb2a055231095a05521b2e"
+    },
+    {
+      "batch": "ui-comment-review-batch3.json",
+      "path": "packages/ui/test/static-terminal-plate.test.tsx",
+      "status": "changed",
+      "after_sha256": "b7452ff42483fa8ec2c50eae27ae9895fc5f5c82f317c39af8ac4c9ecfff6ed1"
+    },
+    {
+      "batch": "ui-comment-review-batch3.json",
+      "path": "packages/ui/test/feed-card-kind-structured.test.ts",
+      "status": "changed",
+      "after_sha256": "a274c9fe3391798d27d15b5e08270509eade13004619ab43fd48ba177fb2f105"
+    },
+    {
+      "batch": "ui-comment-review-batch3.json",
+      "path": "packages/ui/test/rig-node-progressive.test.tsx",
+      "status": "changed",
+      "after_sha256": "a5d644cc36796becff5334564994ad56a6f3cce7258872f03032ff00f1ed8f44"
+    },
+    {
+      "batch": "ui-comment-review-batch3.json",
+      "path": "packages/ui/test/format-event-payload.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "1824eed7b3584ae08093587ceaeccbfbb667f21069f8c23c51216fa7e7dc5469"
+    },
+    {
+      "batch": "ui-comment-review-batch3.json",
+      "path": "packages/ui/test/rig-stamp.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "1165f68928f441999a94623e47d5548df5b7281fa3a440a413b78bb08361b6f0"
+    },
+    {
+      "batch": "ui-comment-review-batch3.json",
+      "path": "packages/ui/test/harness-teardown-hygiene.test.tsx",
+      "status": "changed",
+      "after_sha256": "58ece032843f3fa81bddd79ab2c570dc34d85123e8121dadb3ea04a0f38fb56e"
+    },
+    {
+      "batch": "ui-comment-review-batch3.json",
+      "path": "packages/ui/test/topology-grid-responsive.test.ts",
+      "status": "changed",
+      "after_sha256": "1d412aa10fc35789ec0019277a41df81d16f53917950a2b1c3658434824cd790"
+    },
+    {
+      "batch": "ui-comment-review-batch3.json",
+      "path": "packages/ui/test/feed-levels.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "19b0b877fc57cf9b68bd259118d8dd7a5d54510aa1283214da5aa61f412bfb75"
+    },
+    {
+      "batch": "ui-comment-review-batch3.json",
+      "path": "packages/ui/test/agent-spec-review.test.tsx",
+      "status": "changed",
+      "after_sha256": "dbd241fd6a0ac9d25a1d54ea634977c31dac605f57676ebfa64bd31e83fc942b"
+    },
+    {
+      "batch": "ui-comment-review-batch3.json",
+      "path": "packages/ui/test/liveness-identity-visuals.test.ts",
+      "status": "changed",
+      "after_sha256": "466aef3788621ee1c73811fa5bbc6a75c767b659066de17affc57e50c8552a22"
+    },
+    {
+      "batch": "ui-comment-review-batch4.json",
+      "path": "packages/ui/test/empty-state.test.tsx",
+      "status": "changed",
+      "after_sha256": "9413e18dc7d7c16840aaa40432dbe160798aa605e0d55aa9c113cabf8e2e20b8"
+    },
+    {
+      "batch": "ui-comment-review-batch4.json",
+      "path": "packages/ui/test/use-completed-missions.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "5f62535a59a81ec1ee1190a7d5096c6bb19b48d586a99e5f78ee193c0c0496af"
+    },
+    {
+      "batch": "ui-comment-review-batch4.json",
+      "path": "packages/ui/test/context-pack-id-roundtrip.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "74596b0b8bffa6d94f984783f558ea5b28e2b334029a9887eb548fa1504cb283"
+    },
+    {
+      "batch": "ui-comment-review-batch4.json",
+      "path": "packages/ui/test/context-usage-ring.test.tsx",
+      "status": "changed",
+      "after_sha256": "3a0ad6677dafc6516d2e0e8c514ab41f76652965a2609766ec42ff7f6405d991"
+    },
+    {
+      "batch": "ui-comment-review-batch4.json",
+      "path": "packages/ui/test/p5-1-pod-name-truncation.test.ts",
+      "status": "changed",
+      "after_sha256": "97449e4f55a8e906a6ec6833ba4ab7773066adbdd8274c3255f388fd43e0bc3f"
+    },
+    {
+      "batch": "ui-comment-review-batch4.json",
+      "path": "packages/ui/test/p5-3-hybrid-layout.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "31aa3d6daa7c4c3cc15d47af247f6f57ff47a3de6cc56790ca501589791af275"
+    },
+    {
+      "batch": "ui-comment-review-batch4.json",
+      "path": "packages/ui/test/use-files-read-error.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "8c4464fc2cefa68797414f8755c0c054dc77213378593a3733e37fc9cf392567"
+    },
+    {
+      "batch": "ui-comment-review-batch4.json",
+      "path": "packages/ui/test/status-pip.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "4cc72dead9e6aeb6074606f9db03b38a1b29b56b72496ee28536f59587c42894"
+    },
+    {
+      "batch": "ui-comment-review-batch4.json",
+      "path": "packages/ui/test/twin-capture-artifact-paths.test.ts",
+      "status": "changed",
+      "after_sha256": "3844d4e8903bb5dc6f666d4ebfbe588e9bb0bfd1ef735f17f46c0aa66cf1e1c4"
+    },
+    {
+      "batch": "ui-comment-review-batch4.json",
+      "path": "packages/ui/test/twin-capture-headless-chrome.test.ts",
+      "status": "changed",
+      "after_sha256": "5c8c1ee35dfe78bb381a3a4c32ff315d32894e9b790aebd4ca6fa75a4117c804"
+    },
+    {
+      "batch": "ui-comment-review-batch5.json",
+      "path": "packages/ui/test/use-mission-progress-status.test.tsx",
+      "status": "changed",
+      "after_sha256": "641fe2bb2026fd7f7f9f724a9ef4caf2b46276e17c32e308e398fa137da197b2"
+    },
+    {
+      "batch": "ui-comment-review-batch5.json",
+      "path": "packages/ui/test/rig-node-orientation.test.tsx",
+      "status": "changed",
+      "after_sha256": "add4f4992e5afe9836cc198eb6cebcf57edf930a5175d31b21f2117479ffbae4"
+    },
+    {
+      "batch": "ui-comment-review-batch5.json",
+      "path": "packages/ui/test/focused-terminal-lifecycle.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "dd9c11997b1cace7d6900655e08a60e5e59e8b41c4ef00fd65be4bc604622cef"
+    },
+    {
+      "batch": "ui-comment-review-batch5.json",
+      "path": "packages/ui/test/verb-actions-remote-host.test.tsx",
+      "status": "changed",
+      "after_sha256": "9697e512f92c4e59183d7db9d514fc4dbca037a9b5d470084acc9c46be994584"
+    },
+    {
+      "batch": "ui-comment-review-batch5.json",
+      "path": "packages/ui/test/topology-edge-activity-pl019.test.ts",
+      "status": "changed",
+      "after_sha256": "e68111c2edaa49c462e23bfaa8fa9ebc39e983ac913376c5c7a2ae5528ff3e2f"
+    },
+    {
+      "batch": "ui-comment-review-batch5.json",
+      "path": "packages/ui/test/workflow-sse.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "6e6052457edd18e8289cb628ecd0ce054a8479c9e7b92fc4bf25beb6afec1a49"
+    },
+    {
+      "batch": "ui-comment-review-batch5.json",
+      "path": "packages/ui/test/polish-8-demo-readiness.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "7740ad28885add3693b5737f56dea1e948dd85c6205b762d3a90ea0d78c708e5"
+    },
+    {
+      "batch": "ui-comment-review-batch5.json",
+      "path": "packages/ui/test/topology-archive-section.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "f099a3e3440209d6fc418b15727f7a79e3bc7f5c25c129a342c0b74a59951e6c"
+    },
+    {
+      "batch": "ui-comment-review-batch5.json",
+      "path": "packages/ui/test/markdown-viewer-raw-toggle.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "44aa3a8f946bfa4269bed3b6680756bd6a9672ba980415dcf89bbbed99a126a0"
+    },
+    {
+      "batch": "ui-comment-review-batch5.json",
+      "path": "packages/ui/test/vellum-sheet.test.tsx",
+      "status": "changed",
+      "after_sha256": "145855512f6b5670ccefefeec70df04b0602ec39a83bb2834ba35835572692c6"
+    },
+    {
+      "batch": "ui-comment-review-batch6.json",
+      "path": "packages/ui/test/workflow-anti-prose.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "56e3e4cd27bbf2e02d9f840808d9dceb03894151cd6006267d17c53e5385f657"
+    },
+    {
+      "batch": "ui-comment-review-batch6.json",
+      "path": "packages/ui/test/feed-decision-band-sort.test.ts",
+      "status": "changed",
+      "after_sha256": "8a71ceb6bab9c8e9d6e893a48bc2104af779020092e9c9240284d0dbc8a217cc"
+    },
+    {
+      "batch": "ui-comment-review-batch6.json",
+      "path": "packages/ui/test/workflow-instances-band.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "9a109913bd6101d146831f5fbacc334c0a9a54efd7ed10add6652bd388f79a41"
+    },
+    {
+      "batch": "ui-comment-review-batch6.json",
+      "path": "packages/ui/test/topology-view-mode-tabs-trailing.test.tsx",
+      "status": "changed",
+      "after_sha256": "3e15b7173c3dd6511017384c76a8abd574ab821715c2c0d0cb711a6a3d438d69"
+    },
+    {
+      "batch": "ui-comment-review-batch6.json",
+      "path": "packages/ui/test/design-compliance.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "d6dbfd1d2bccbca339b4afca3212b6a320d0f45559b1a5586b539a1069c2c229"
+    },
+    {
+      "batch": "ui-comment-review-batch6.json",
+      "path": "packages/ui/test/system-panel-daemon-health.test.tsx",
+      "status": "changed",
+      "after_sha256": "d89bf7828bb16a4b656af53e8c22d3fc1100007d9bf3bc8f8358147b4c7fb39f"
+    },
+    {
+      "batch": "ui-comment-review-batch6.json",
+      "path": "packages/ui/test/tailwind-foundation.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "c301e031b846a2469ea08c8601e611f1f846ceb25d6d788109a789aac736c848"
+    },
+    {
+      "batch": "ui-comment-review-batch6.json",
+      "path": "packages/ui/test/agent-spec-validate-flow.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "caef8999e8df5fc7a337cd96d3cc1994c6e1afe915898b028aea89fda375d072"
+    },
+    {
+      "batch": "ui-comment-review-batch6.json",
+      "path": "packages/ui/test/feed-card-no-source-type-leak.test.tsx",
+      "status": "changed",
+      "after_sha256": "4588a37990746b8ba47489901be71d4f3c73e16964c536125831eaf3c3e7de3c"
+    },
+    {
+      "batch": "ui-comment-review-batch6.json",
+      "path": "packages/ui/test/progressive-terminal.test.tsx",
+      "status": "changed",
+      "after_sha256": "e309baab4b107f67c617294ac6c3a4afd5beff128c9cf7b49dc9f103408f2123"
+    },
+    {
+      "batch": "ui-comment-review-batch7.json",
+      "path": "packages/ui/test/p5-human-seat-card.test.tsx",
+      "status": "changed",
+      "after_sha256": "cac37711435776616606218d2c8910d4709fb4b28a67572dae954e360b8d49b2"
+    },
+    {
+      "batch": "ui-comment-review-batch7.json",
+      "path": "packages/ui/test/opr-0.4.1.31-hybrid-cmux-error.test.tsx",
+      "status": "changed",
+      "after_sha256": "e213112d817df4f80a1a241e328fcd68bfe53fa222714b2b66f5d10d20d84c03"
+    },
+    {
+      "batch": "ui-comment-review-batch7.json",
+      "path": "packages/ui/test/focused-terminal-initial-text.test.tsx",
+      "status": "changed",
+      "after_sha256": "6fbb56428e8b5a420323eadc76e66b79ec34f9bf71a1cc068fb3331b4a0cc21e"
+    },
+    {
+      "batch": "ui-comment-review-batch7.json",
+      "path": "packages/ui/test/storytelling-wires.test.tsx",
+      "status": "changed",
+      "after_sha256": "a829ca2dc46d8292a094f3d1d5dd2da6712299d680557c33e08b64fb3b16768c"
+    },
+    {
+      "batch": "ui-comment-review-batch7.json",
+      "path": "packages/ui/test/prooftab-state-copy.test.tsx",
+      "status": "changed",
+      "after_sha256": "244441d9e94c495512aa555fb00a696216939008dda61a0a87e18e600b733a5b"
+    },
+    {
+      "batch": "ui-comment-review-batch7.json",
+      "path": "packages/ui/test/file-link.test.tsx",
+      "status": "changed",
+      "after_sha256": "b39f208f3692cd26513cd417e75fcadc383e9603efd5c4aa171bdcb55bd32d64"
+    },
+    {
+      "batch": "ui-comment-review-batch7.json",
+      "path": "packages/ui/test/slice-16-typography-vellum.test.tsx",
+      "status": "changed",
+      "after_sha256": "c9145eb0c4747625acd089808bbf562a9808ca33820f3976be98ad20f31a2f56"
+    },
+    {
+      "batch": "ui-comment-review-batch7.json",
+      "path": "packages/ui/test/use-files-list-focus-refetch.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "80ecf9f04b9536e8b55d10bb212e3d1be09f8285ce1d4c0a8f274182b9f2699d"
+    },
+    {
+      "batch": "ui-comment-review-batch7.json",
+      "path": "packages/ui/test/host-config-card.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "b06e4fa0944156a059c9319d8f22074ece6dafecce3d35e5477ac70f543e5b36"
+    },
+    {
+      "batch": "ui-comment-review-batch7.json",
+      "path": "packages/ui/test/settings-pages.test.tsx",
+      "status": "changed",
+      "after_sha256": "59795c8a5ed1c972819a53e59cedef3b2af7ee241c39248e033e327f4686b4ab"
+    },
+    {
+      "batch": "ui-comment-review-batch8.json",
+      "path": "packages/ui/test/discovery-panel.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "d7ed26516bf7d23fe6e9c3ded48a12cf786e45701e269072fcfaf0201c82e81c"
+    },
+    {
+      "batch": "ui-comment-review-batch8.json",
+      "path": "packages/ui/test/bundle-install-flow.test.tsx",
+      "status": "changed",
+      "after_sha256": "dfd33ebfae68172742eac5b241155c0ffe77d043268b5603808ef2a3bc120dc2"
+    },
+    {
+      "batch": "ui-comment-review-batch8.json",
+      "path": "packages/ui/test/graph-layout.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "8cd9cfb67f692d08e3890abf831ff5030b982c73e10a3a23cea48a80610e5656"
+    },
+    {
+      "batch": "ui-comment-review-batch8.json",
+      "path": "packages/ui/test/steeringtab-brief-state-copy.test.tsx",
+      "status": "changed",
+      "after_sha256": "f90125afb849f77aae445b561b892ca9cd1c3e092214b866d649a62bbc349e66"
+    },
+    {
+      "batch": "ui-comment-review-batch8.json",
+      "path": "packages/ui/test/registration-marks.test.tsx",
+      "status": "changed",
+      "after_sha256": "184f2ae4e79eb6631246a2492e8fde5f11fd27fab7c7d946efc8f7622ab2d0df"
+    },
+    {
+      "batch": "ui-comment-review-batch8.json",
+      "path": "packages/ui/test/settings-explorer.test.tsx",
+      "status": "changed",
+      "after_sha256": "baa3ffa4b72cdbc49f3e7a1820fd86d74b7c8608d32fca8d32bdaffb9c04a5f9"
+    },
+    {
+      "batch": "ui-comment-review-batch8.json",
+      "path": "packages/ui/test/use-dismissed-seqs.test.ts",
+      "status": "changed",
+      "after_sha256": "075b1de8362a3b578654f69aa8fc8fa28668310c23755c6dbfb226ac498ea92e"
+    },
+    {
+      "batch": "ui-comment-review-batch8.json",
+      "path": "packages/ui/test/opr-0.4.1.31-table-terminal-errors.test.tsx",
+      "status": "changed",
+      "after_sha256": "d6a5293bc6aaa91526cbcb7f0244e0e9cf2f52548cf7e17062a2ad16e96155e9"
+    },
+    {
+      "batch": "ui-comment-review-batch8.json",
+      "path": "packages/ui/test/level-control.test.tsx",
+      "status": "changed",
+      "after_sha256": "197d8dbf73fed3e7316d549cef41482b40046c70f46d2a8c7d874829306b17b1"
+    },
+    {
+      "batch": "ui-comment-review-batch8.json",
+      "path": "packages/ui/test/topology-graph-collapse.test.ts",
+      "status": "changed",
+      "after_sha256": "9480d9b210d55ef6b3f58ca4b9358fbac0ed62e54c830530d6b03ba25fcfa814"
+    },
+    {
+      "batch": "ui-comment-review-batch9.json",
+      "path": "packages/ui/test/rig-spec-review.test.tsx",
+      "status": "changed",
+      "after_sha256": "be8995b6d8e3ea49e8502e6c84be438137d9fc01f49a270c21620e7ac8474712"
+    },
+    {
+      "batch": "ui-comment-review-batch9.json",
+      "path": "packages/ui/test/terminal-popover-multilive.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "8a978b40fbb5777b9d3996b797e7112e5fe4197962176609c676ddc520cc62f0"
+    },
+    {
+      "batch": "ui-comment-review-batch9.json",
+      "path": "packages/ui/test/live-terminal-registry.test.ts",
+      "status": "changed",
+      "after_sha256": "2e9e6be7bf6fd872473047496aa5586d84196ea8d8f54291600712b8e2f7cb1b"
+    },
+    {
+      "batch": "ui-comment-review-batch9.json",
+      "path": "packages/ui/test/dashboard-card-vellum.test.tsx",
+      "status": "changed",
+      "after_sha256": "51137c8fc25bcb8dbe19c70f54204a6db51ee5a3b7b4963e430649e565be262c"
+    },
+    {
+      "batch": "ui-comment-review-batch9.json",
+      "path": "packages/ui/test/workflow-topology-graph.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "33754a5d80308c22a400c55eecbf04abe0dc5995fe33d19e42eaa06f02f0b989"
+    },
+    {
+      "batch": "ui-comment-review-batch9.json",
+      "path": "packages/ui/test/scopepages-progress-remote-gate.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "672d08ded093c6d263f30bf8a8574d6331a9bf40c5247709b6222d5449707cc4"
+    },
+    {
+      "batch": "ui-comment-review-batch9.json",
+      "path": "packages/ui/test/daemon-health-terminal.test.tsx",
+      "status": "changed",
+      "after_sha256": "1206cc9866e50720a40ce9e43da41d17182471ed06e1fb4ae5c9b4fdf6ccc7d3"
+    },
+    {
+      "batch": "ui-comment-review-batch9.json",
+      "path": "packages/ui/test/vellum-card.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "5fc918ce7219956bd09dfa14f81c04b90fd270dfbe9c42480b941c12c2d873e8"
+    },
+    {
+      "batch": "ui-comment-review-batch9.json",
+      "path": "packages/ui/test/slice-20-mobile-density.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "f20658866d1ad68a9bb6b2e86b10a5060923eb8fec6d9502b4244457459c1d21"
+    },
+    {
+      "batch": "ui-comment-review-batch9.json",
+      "path": "packages/ui/test/acceptance-tab-enhancement.test.tsx",
+      "status": "changed",
+      "after_sha256": "eda2a2469d793d6a40f030ccb14c94e6b067493fe3bd5b934d321ee5e628d469"
+    },
+    {
+      "batch": "ui-comment-review-batch10.json",
+      "path": "packages/ui/test/feed-multi-host.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "292896ee6aa5fedb1f419bf0a00a8fa9857add98cdb4578e0abd4fb12522fd1d"
+    },
+    {
+      "batch": "ui-comment-review-batch10.json",
+      "path": "packages/ui/test/use-dismissed-card-ids.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "6e9427d2355665503419d7491b8b2bb3a5589e07f29e9a5af074cd4ad020877d"
+    },
+    {
+      "batch": "ui-comment-review-batch10.json",
+      "path": "packages/ui/test/p5-1-table-cmux.test.tsx",
+      "status": "changed",
+      "after_sha256": "624f4202c25c40e41822b65a5f6afb1f18ea60b59904466241861a618647dfd5"
+    },
+    {
+      "batch": "ui-comment-review-batch10.json",
+      "path": "packages/ui/test/graphics-runtime-mark.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "1471c3a4af082f6eb4a22ce64a1210742c838072664607f3bd584134769fa0b1"
+    },
+    {
+      "batch": "ui-comment-review-batch10.json",
+      "path": "packages/ui/test/topology-tab-progressive.test.tsx",
+      "status": "changed",
+      "after_sha256": "b0c0d1fc67c9979e82419c3870b4d4a37591597d20a9b7cf45864bcbe3e75a54"
+    },
+    {
+      "batch": "ui-comment-review-batch10.json",
+      "path": "packages/ui/test/library-page-workflow-diagnostic.test.tsx",
+      "status": "changed",
+      "after_sha256": "f53eb375b60998bc84cebff1935ba74ed7cf749fc25d26cf889b5af707798752"
+    },
+    {
+      "batch": "ui-comment-review-batch10.json",
+      "path": "packages/ui/test/dashboard-fidelity.test.tsx",
+      "status": "changed",
+      "after_sha256": "bbf741ede2ea158fbc6cf4aa92a7aa072434edf3c3bfc3d7d96e3089f829ba43"
+    },
+    {
+      "batch": "ui-comment-review-batch10.json",
+      "path": "packages/ui/test/terminal-token-carry.test.ts",
+      "status": "changed",
+      "after_sha256": "788239d9cf69b2eb373ea967a538521ce1c6efcb9fdc22127c81bb7f20abae46"
+    },
+    {
+      "batch": "ui-comment-review-batch10.json",
+      "path": "packages/ui/test/review-actions-and-evidence-containment.test.tsx",
+      "status": "changed",
+      "after_sha256": "9363a3336a6a1f4da53510103d598d04d39445e3c0f5b7b6150f5487d8b790a0"
+    },
+    {
+      "batch": "ui-comment-review-batch10.json",
+      "path": "packages/ui/test/theme.test.tsx",
+      "status": "changed",
+      "after_sha256": "2084900f9f33996bd383c5f866455ebf934b9f94da4f9ba5b1abba49102bb205"
+    },
+    {
+      "batch": "ui-comment-review-batch11.json",
+      "path": "packages/ui/test/shadcn-components.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "db0b0ac612488e6189dfb5aacbcf69f1e20ee3a3053af19d9033bac6b4540374"
+    },
+    {
+      "batch": "ui-comment-review-batch11.json",
+      "path": "packages/ui/test/use-scope-markdown-state.test.tsx",
+      "status": "changed",
+      "after_sha256": "d9e391dd46fd79ac8163b302af9cf608505d5f46ad9f53efbbd42ff54ffbeeb9"
+    },
+    {
+      "batch": "ui-comment-review-batch11.json",
+      "path": "packages/ui/test/agent-plugins-list.test.tsx",
+      "status": "changed",
+      "after_sha256": "4df406de68a0e3611a6c2b7ae71f4823550c9fca86fe67a11ef204204c99846c"
+    },
+    {
+      "batch": "ui-comment-review-batch11.json",
+      "path": "packages/ui/test/usePlugins.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "0506ab0880169edba64a32443b6f16790b4e9b1eca72ef7efd3aa00d1984ed7f"
+    },
+    {
+      "batch": "ui-comment-review-batch11.json",
+      "path": "packages/ui/test/feed-card-terminal-drill.test.tsx",
+      "status": "changed",
+      "after_sha256": "dbcff1eb1498e323f56163c3668d602327018e3b36345b84680389ae0f9dfd2d"
+    },
+    {
+      "batch": "ui-comment-review-batch11.json",
+      "path": "packages/ui/test/global-events.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "18cbd7ba2a48e21e44c554470ebffac0d528b4b4454e3cd9cf8a41e889496992"
+    },
+    {
+      "batch": "ui-comment-review-batch11.json",
+      "path": "packages/ui/test/priority-rail-rule.test.ts",
+      "status": "changed",
+      "after_sha256": "f403678225fc1f2596b306253eb3c0428cd36596073f838735be2d2e3a7cf5b9"
+    },
+    {
+      "batch": "ui-comment-review-batch11.json",
+      "path": "packages/ui/test/feed-card-dismiss.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "4285ea3ff806971763b06210fdeafc822597a18d03159835c8daca6bc911a17e"
+    },
+    {
+      "batch": "ui-comment-review-batch11.json",
+      "path": "packages/ui/test/node-selection-migration.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "9ea180774865582b348a80c44d7ea3506a0b689e1d915bcac2526992093810ea"
+    },
+    {
+      "batch": "ui-comment-review-batch12.json",
+      "path": "packages/ui/test/storytelling-primitives.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "335820f0fbbef28db50f0093c177b81297e4bf579b7965178cd8b05cbe421f6a"
+    },
+    {
+      "batch": "ui-comment-review-batch12.json",
+      "path": "packages/ui/test/rig-chat-panel.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "b57b6bed63a0cb3c0e75a932c160f135fae3ec06a0f5a5b5022a736392b9e7d3"
+    },
+    {
+      "batch": "ui-comment-review-batch12.json",
+      "path": "packages/ui/test/session-preview-pane.test.tsx",
+      "status": "changed",
+      "after_sha256": "841b19407b382f67a1aa79811bca1b59df12e3692a5045a5132066353a7ddb4c"
+    },
+    {
+      "batch": "ui-comment-review-batch12.json",
+      "path": "packages/ui/test/p5-3-topology-activity.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "06292dd01d52f6078e8998587016ba10a9e8c6cd02d5ca63df93c3f626ee2f8c"
+    },
+    {
+      "batch": "ui-comment-review-batch12.json",
+      "path": "packages/ui/test/fork-now-action.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "dc48e783b39462f5ec35b263d54644c399fe992a60127fd6413bc3688191a144"
+    },
+    {
+      "batch": "ui-comment-review-batch12.json",
+      "path": "packages/ui/test/p5-ship-gate-bounce.test.tsx",
+      "status": "changed",
+      "after_sha256": "449175697d37f8a0e156cdfb67963f7c3d1f1ee555520281effe4ab2e7a110fb"
+    },
+    {
+      "batch": "ui-comment-review-batch12.json",
+      "path": "packages/ui/test/review-needs-you-slice-ref.test.tsx",
+      "status": "changed",
+      "after_sha256": "9eb3c6b1ec5fc62336e9702ae16b2464d8051841ef534337c784f258bd63c147"
+    },
+    {
+      "batch": "ui-comment-review-batch12.json",
+      "path": "packages/ui/test/use-scope-markdown.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "feda5ae9b37e9a5edb8dc19dc7d990e3aec85b745b3e39274261e987d07248f8"
+    },
+    {
+      "batch": "ui-comment-review-batch12.json",
+      "path": "packages/ui/test/use-activity-feed-attention-invalidation.test.tsx",
+      "status": "changed",
+      "after_sha256": "c7e757544e7513e9d7aa81478d2f67a274801f87fde021ac96c7c924b11fe8a2"
+    },
+    {
+      "batch": "ui-comment-review-batch12.json",
+      "path": "packages/ui/test/use-slice-timeline-markdown.test.tsx",
+      "status": "changed",
+      "after_sha256": "179b801d9ab5c1812fae462d237795804bfdacf419ea29cfd2b4fffff305c967"
+    },
+    {
+      "batch": "ui-comment-review-batch13.json",
+      "path": "packages/ui/test/steering-tab.test.tsx",
+      "status": "changed",
+      "after_sha256": "bd51c3b1fdcc8abc41f5306255dfee57c0283bea0803fe7bfae427442c903c29"
+    },
+    {
+      "batch": "ui-comment-review-batch13.json",
+      "path": "packages/ui/test/feed-classifier.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "4c93ac545edae79c905830bf7c85c37c4f4d9d5339ae68ab9da3b01258c9e983"
+    },
+    {
+      "batch": "ui-comment-review-batch13.json",
+      "path": "packages/ui/test/rig-events.test.tsx",
+      "status": "changed",
+      "after_sha256": "2b4404ff4e5ece2edf385a956037f3cdef674de61d1389065b556d1f4f74b0e4"
+    },
+    {
+      "batch": "ui-comment-review-batch13.json",
+      "path": "packages/ui/test/settings-tab.test.tsx",
+      "status": "changed",
+      "after_sha256": "62ac0ba6f50ba39812b880b684a9832e8d9d2807eedaf48ae90caa19cc0e90db"
+    },
+    {
+      "batch": "ui-comment-review-batch13.json",
+      "path": "packages/ui/test/opr-0.4.1.13-table-crash.test.tsx",
+      "status": "changed",
+      "after_sha256": "3a153d8c5cbb2a61afc745f8e803461c090c1fcdf120dea24a9f98d5e1d4645b"
+    },
+    {
+      "batch": "ui-comment-review-batch13.json",
+      "path": "packages/ui/test/activity-elite.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "340ecbaf1407ac3f2d042e67cf1ec290283c407180bc2471e443b3100e58a20e"
+    },
+    {
+      "batch": "ui-comment-review-batch13.json",
+      "path": "packages/ui/test/verb-actions-one-click.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "4e560a1784bc42e9cc12efe50f813069c1b3104f6d74a88054078b8fafe4f964"
+    },
+    {
+      "batch": "ui-comment-review-batch13.json",
+      "path": "packages/ui/test/p5-3-topology-event-hub.test.tsx",
+      "status": "changed",
+      "after_sha256": "19a316645740417191303b817e8e8d2ea03b6dc6e809762eb69d6171d16a4af4"
+    },
+    {
+      "batch": "ui-comment-review-batch13.json",
+      "path": "packages/ui/test/spec-display.test.tsx",
+      "status": "changed",
+      "after_sha256": "d24747279c28360032d3a22ca5c16dbd176a33ab226c59fabb9971177d5904c1"
+    },
+    {
+      "batch": "ui-comment-review-batch13.json",
+      "path": "packages/ui/test/markdown-viewer-storytelling.test.tsx",
+      "status": "changed",
+      "after_sha256": "6ba58fc06f2bec0073d76ee9e819e44646b1b777821f8d2a8f64def932d6eb3e"
+    },
+    {
+      "batch": "ui-comment-review-batch14.json",
+      "path": "packages/ui/test/package-list.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "3396ed380302381fdf9a4b8282e1c68a811fb109995687178a578c49fea468ca"
+    },
+    {
+      "batch": "ui-comment-review-batch14.json",
+      "path": "packages/ui/test/review-intent-markdown.test.tsx",
+      "status": "changed",
+      "after_sha256": "c5bd4331555c364cf12ffa5b11b43b58699a2e890968d36f12afefc2903e86c1"
+    },
+    {
+      "batch": "ui-comment-review-batch14.json",
+      "path": "packages/ui/test/focused-terminal-reconnect.test.tsx",
+      "status": "changed",
+      "after_sha256": "8b3f1bc256340ebfaba0e7b869bf9829b551e0d5d0638e662eddf0c1e0231b9a"
+    },
+    {
+      "batch": "ui-comment-review-batch14.json",
+      "path": "packages/ui/test/fileviewer-resolvable-target.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "da4526b63c7f53948a7bdabf33988fc3d05591be21ca1b9b16f6ba40a4cc5296"
+    },
+    {
+      "batch": "ui-comment-review-batch14.json",
+      "path": "packages/ui/test/storytelling-mark-complete.test.tsx",
+      "status": "changed",
+      "after_sha256": "d149242d32f1030cb3cd7e2f96ccf685b024bf3ecac6e332ac03d90ff4569eed"
+    },
+    {
+      "batch": "ui-comment-review-batch14.json",
+      "path": "packages/ui/test/terminal-styling-polish.test.tsx",
+      "status": "changed",
+      "after_sha256": "3303369fe7614166929119d559489cbce579a6232ddfe84134b9e024ce551be9"
+    },
+    {
+      "batch": "ui-comment-review-batch14.json",
+      "path": "packages/ui/test/story-graph.test.tsx",
+      "status": "changed",
+      "after_sha256": "a934611ae655d9ade5e83556fc94523ad17b3d35e5d06f42a13a3004f7e93cbf"
+    },
+    {
+      "batch": "ui-comment-review-batch14.json",
+      "path": "packages/ui/test/tests-verification-tab.test.tsx",
+      "status": "changed",
+      "after_sha256": "70e5b4a6e8ddf5698460bed0e8896e87d1c37ddaf3591f8b0c0c880fa58a9b03"
+    },
+    {
+      "batch": "ui-comment-review-batch14.json",
+      "path": "packages/ui/test/workspace-portfolio.test.tsx",
+      "status": "changed",
+      "after_sha256": "eb201f89f8237513f26397b1b8d442be41e92cbabe55bb74d65e898893a3249b"
+    },
+    {
+      "batch": "ui-comment-review-batch14.json",
+      "path": "packages/ui/test/p5-mobile-polish.test.tsx",
+      "status": "changed",
+      "after_sha256": "173aa64ed55f4f791ba7443265642c5a12e2f15cf61c75f12dea73d647ffaf18"
+    },
+    {
+      "batch": "ui-comment-review-batch15.json",
+      "path": "packages/ui/test/review-approve-scope-path.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "c35e9e8a50eedb14cada8822ab86d6f43db696c7db35b4413c62c0845331ef94"
+    },
+    {
+      "batch": "ui-comment-review-batch15.json",
+      "path": "packages/ui/test/story-graph-model.test.ts",
+      "status": "changed",
+      "after_sha256": "922185f5681270e07b31d853279cb53ffefa8a190c3c943b521ddbc7e81c2a06"
+    },
+    {
+      "batch": "ui-comment-review-batch15.json",
+      "path": "packages/ui/test/verb-actions-optimistic-error.test.tsx",
+      "status": "changed",
+      "after_sha256": "880cd2b148a0c281a59a7b1acd2a8900d3ef1d0aff8c424616c1405b22f06c05"
+    },
+    {
+      "batch": "ui-comment-review-batch15.json",
+      "path": "packages/ui/test/topology-perf-table-large-n.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "4a64c1c75bdf2e91557de662b790ce2799a034af34aba268924a5052bf0c340a"
+    },
+    {
+      "batch": "ui-comment-review-batch15.json",
+      "path": "packages/ui/test/foryou-bare-approve-chat.test.tsx",
+      "status": "changed",
+      "after_sha256": "634486de149ab7f626bea78a7467a51201de3b25af84c22b6c2f8b5aada97494"
+    },
+    {
+      "batch": "ui-comment-review-batch15.json",
+      "path": "packages/ui/test/workflow-render-parity.test.tsx",
+      "status": "changed",
+      "after_sha256": "e0381881a1bb3aaa6e06e214588992f4cfe45556a0def5661a7a03b547b34511"
+    },
+    {
+      "batch": "ui-comment-review-batch15.json",
+      "path": "packages/ui/test/preview-pane.test.tsx",
+      "status": "changed",
+      "after_sha256": "c0e46cb75815c9ac166fc7ee1c15313351b619a5e3bc0b6cdc8bac3d18af2a07"
+    },
+    {
+      "batch": "ui-comment-review-batch15.json",
+      "path": "packages/ui/test/fleet-band.test.tsx",
+      "status": "changed",
+      "after_sha256": "c91b1788761a11e2bca53c13150789196ca5f25d94652d2b8ed9080ef91c8a66"
+    },
+    {
+      "batch": "ui-comment-review-batch15.json",
+      "path": "packages/ui/test/p5-subscription-toggle.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "18eb1be32ecc538363c5f007c3477377a6e5f045379d68a3495878aad7b113c5"
+    },
+    {
+      "batch": "ui-comment-review-batch15.json",
+      "path": "packages/ui/test/storytelling-cards.test.tsx",
+      "status": "changed",
+      "after_sha256": "1051fceabd52bb5e50e85046d6ebfde8dc18df591f38e9429f215fc12d0f84d6"
+    },
+    {
+      "batch": "ui-comment-review-batch16.json",
+      "path": "packages/ui/test/explorer-mobile-zindex-layering.test.tsx",
+      "status": "changed",
+      "after_sha256": "bed5812a7e4a5aa30ed80518d2a28414ba272366acde4315a9300eb2659f6d96"
+    },
+    {
+      "batch": "ui-comment-review-batch16.json",
+      "path": "packages/ui/test/slice-28-index-pages.test.tsx",
+      "status": "changed",
+      "after_sha256": "29802886dfc8e02963872d1bdb7a3de622905758129017b77c62893376d93002"
+    },
+    {
+      "batch": "ui-comment-review-batch16.json",
+      "path": "packages/ui/test/plugin-detail-page.test.tsx",
+      "status": "changed",
+      "after_sha256": "53d59f383bdbd40de41beecb3a79636d3b4fff75e3c3f87f77bd8e12fbe330d3"
+    },
+    {
+      "batch": "ui-comment-review-batch16.json",
+      "path": "packages/ui/test/topology-view-mode.test.tsx",
+      "status": "changed",
+      "after_sha256": "2ce1b59dc84ec43c47b918685a61587d74d68c4b03855af2335f6b63ee704273"
+    },
+    {
+      "batch": "ui-comment-review-batch16.json",
+      "path": "packages/ui/test/activity-visuals-pl019.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "e5bf88e4744accbf3af4044f43b00f9a54fa8e71198dc388ff195a397c1587bf"
+    },
+    {
+      "batch": "ui-comment-review-batch16.json",
+      "path": "packages/ui/test/specs-tree-view-sidebar.test.tsx",
+      "status": "changed",
+      "after_sha256": "6885e67f522798edb6c389f13bbf75012c8fbb0995422f895ce4af939a1cee24"
+    },
+    {
+      "batch": "ui-comment-review-batch16.json",
+      "path": "packages/ui/test/query-hooks.test.tsx",
+      "status": "changed",
+      "after_sha256": "1b29b13d69408d0acdb347b0de92e2bca9794131a97cec9c007c29e89fb5680c"
+    },
+    {
+      "batch": "ui-comment-review-batch16.json",
+      "path": "packages/ui/test/claude-compaction-policy-form.test.tsx",
+      "status": "changed",
+      "after_sha256": "8398051aa9caef734b989598f75c227a1294449104311d47703a04e5856e5b0e"
+    },
+    {
+      "batch": "ui-comment-review-batch16.json",
+      "path": "packages/ui/test/fleet-page.test.tsx",
+      "status": "changed",
+      "after_sha256": "63d37a9ec1bc085dacc95c513ac19f2513431a74eb3f6f722246107811a35180"
+    },
+    {
+      "batch": "ui-comment-review-batch16.json",
+      "path": "packages/ui/test/terminal-launcher.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "f299668eb88898348e04c234f407787aae024b8f4847c8ae4e85fa0ab4e58b1c"
+    },
+    {
+      "batch": "ui-comment-review-batch17.json",
+      "path": "packages/ui/test/p5-2-bounce-rig-expand-persistence.test.tsx",
+      "status": "changed",
+      "after_sha256": "3d2bcff046800e81e816a2b43db7cbe893ae0b48221c15d2085c43c09a69532e"
+    },
+    {
+      "batch": "ui-comment-review-batch17.json",
+      "path": "packages/ui/test/bootstrap-wizard.test.tsx",
+      "status": "changed",
+      "after_sha256": "158f616af4d48f97237cab1f124e0d5ec66969eb6d2b4ece60a5415c96b03891"
+    },
+    {
+      "batch": "ui-comment-review-batch17.json",
+      "path": "packages/ui/test/p5-slice-scope.test.tsx",
+      "status": "changed",
+      "after_sha256": "678d90a4b507612fac90eaeaf7095e0a2c300377c57772154a2777231233fbaf"
+    },
+    {
+      "batch": "ui-comment-review-batch17.json",
+      "path": "packages/ui/test/bundle-inspector.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "bd1aa6f30d501c1f82b449349b509eb67b36ec695d1cdc7ac082fd7f331816a3"
+    },
+    {
+      "batch": "ui-comment-review-batch17.json",
+      "path": "packages/ui/test/markdown-viewer.test.tsx",
+      "status": "changed",
+      "after_sha256": "2e9dc12b513f0278c57095846bd113973ac2bb9439dd008bf512929b0fb8c20e"
+    },
+    {
+      "batch": "ui-comment-review-batch17.json",
+      "path": "packages/ui/test/mission-status-reconcile.test.ts",
+      "status": "changed",
+      "after_sha256": "83b3f6f60aefb5db97295e70216064fedfadbd7a1b16e4c168acf9af2013823c"
+    },
+    {
+      "batch": "ui-comment-review-batch17.json",
+      "path": "packages/ui/test/launch-cmux-button.test.tsx",
+      "status": "changed",
+      "after_sha256": "d3cc9ff75b206e7d355c3682f4082fd4119bce3ebcaa8f04c09323cc3767fc07"
+    },
+    {
+      "batch": "ui-comment-review-batch17.json",
+      "path": "packages/ui/test/mission-status-surfaces.test.tsx",
+      "status": "changed",
+      "after_sha256": "1212c16754bc4ba866674af809e604478d1272c11613653818cf6fb9edd857c8"
+    },
+    {
+      "batch": "ui-comment-review-batch17.json",
+      "path": "packages/ui/test/package-install-flow.test.tsx",
+      "status": "changed",
+      "after_sha256": "5d2a530fd5dbea02c7389961e37fa2e8b55fbfe5f3c6687e3333e7bc6b8b4edc"
+    },
+    {
+      "batch": "ui-comment-review-batch17.json",
+      "path": "packages/ui/test/project-workspace-overview.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "7b4ab8b88faaecdc168d07022fd281865cbfa6ee9c5cd2246844c8c76c11c967"
+    },
+    {
+      "batch": "ui-comment-review-batch18.json",
+      "path": "packages/ui/test/p5-topology-terminal.test.tsx",
+      "status": "changed",
+      "after_sha256": "a21b87cbeaa3d2b1a8a29a9ba0b335eba6d10c70636bc1e57722c5a965e79463"
+    },
+    {
+      "batch": "ui-comment-review-batch18.json",
+      "path": "packages/ui/test/rig-status-launch-control.test.tsx",
+      "status": "changed",
+      "after_sha256": "c434722d2074faff4d354f50bbe93c4bacf2e0865a936feb5548e036cf73bdd2"
+    },
+    {
+      "batch": "ui-comment-review-batch18.json",
+      "path": "packages/ui/test/snapshot-panel.test.tsx",
+      "status": "changed",
+      "after_sha256": "8f26844b17e05bc2dcea8ddfb0accd0dca1375e33162cb0648ab72e82d9250d7"
+    },
+    {
+      "batch": "ui-comment-review-batch18.json",
+      "path": "packages/ui/test/p5-3-activity-ring-hot-potato.test.tsx",
+      "status": "changed",
+      "after_sha256": "c29f1789a1b802a4c72f042b1b435553cb57785dc1338e961324dc7f64ccd937"
+    },
+    {
+      "batch": "ui-comment-review-batch18.json",
+      "path": "packages/ui/test/flagship-review-polish.test.tsx",
+      "status": "changed",
+      "after_sha256": "30b7adcf598e39aad349a57dbe6c5642d94433e31436f9b8a89f6284900ae5c7"
+    },
+    {
+      "batch": "ui-comment-review-batch18.json",
+      "path": "packages/ui/test/p5-2-host-multi-rig-graph.test.tsx",
+      "status": "reviewed_no_change",
+      "after_sha256": "fb220a053515f67143194748fc57742feb509d54285aa0264ec8b9fa96490511"
+    },
+    {
+      "batch": "ui-comment-review-batch18.json",
+      "path": "packages/ui/test/storytelling-feed-adapter.test.ts",
+      "status": "reviewed_no_change",
+      "after_sha256": "ac1c8c465960b0c77e311bf6dd791c0ba8bafc3f6e3bf844aba9a6d3bb62796e"
+    },
+    {
+      "batch": "ui-comment-review-batch18.json",
+      "path": "packages/ui/test/discovery-overlay.test.tsx",
+      "status": "changed",
+      "after_sha256": "0f98ece7be79fe8fee2e81c6c9181745eedb25da7898834be6b40eafd94d78d0"
+    },
+    {
+      "batch": "ui-comment-review-batch18.json",
+      "path": "packages/ui/test/library-page.test.tsx",
+      "status": "changed",
+      "after_sha256": "4b1f28b6f091297dbdd0ef72f3473268cfbd8c795272d6b6caf59fbfed851aa4"
+    },
+    {
+      "batch": "ui-comment-review-batch18.json",
+      "path": "packages/ui/test/slice-tabs-v1.test.tsx",
+      "status": "changed",
+      "after_sha256": "fcf708561727d751a11088820ecbebc19f6107c086e1e297b348acd1a18b15a4"
+    },
+    {
+      "batch": "ui-comment-review-batch19.json",
+      "path": "packages/ui/test/proof-tab.test.tsx",
+      "status": "changed",
+      "after_sha256": "00aae8bb5bb69944b9406f135365645ef985a66389a83100907f763c2d0038ed"
+    },
+    {
+      "batch": "ui-comment-review-batch19.json",
+      "path": "packages/ui/test/p5-trigger-sites.test.tsx",
+      "status": "changed",
+      "after_sha256": "16c4894fd2b0f7b3690fe72da814637897a8dc99c680540a6076836718cb9ee9"
+    },
+    {
+      "batch": "ui-comment-review-batch19.json",
+      "path": "packages/ui/test/slice-28-detail-pages.test.tsx",
+      "status": "changed",
+      "after_sha256": "5cc3dfca34a858921afb87b6f38b66bd2a7967f25288bb07c0f8ce36867ba95a"
+    },
+    {
+      "batch": "ui-comment-review-batch19.json",
+      "path": "packages/ui/test/package-detail.test.tsx",
+      "status": "changed",
+      "after_sha256": "2d2835e647fdc638a166038771ccb814377c040bfa6b5c2eba9f01164da72f96"
+    },
+    {
+      "batch": "ui-comment-review-batch19.json",
+      "path": "packages/ui/test/p5-mission-discovery.test.tsx",
+      "status": "changed",
+      "after_sha256": "b0136b5b818b1b8080614030ab9c44ef3827d3d773ff6c0568ebf6af30e972d3"
+    },
+    {
+      "batch": "ui-comment-review-batch19.json",
+      "path": "packages/ui/test/rig-agents-page.test.tsx",
+      "status": "changed",
+      "after_sha256": "fa85fda72b1bd8053200c7b39c5d845d763d8869da44ee28f40a7541848b56f0"
+    },
+    {
+      "batch": "ui-comment-review-batch19.json",
+      "path": "packages/ui/test/activity-feed.test.tsx",
+      "status": "changed",
+      "after_sha256": "7840332d62b8b296881059fafe0c69df005100bade16dc99a7f8e2d4a80cf33b"
+    },
+    {
+      "batch": "ui-comment-review-batch19.json",
+      "path": "packages/ui/test/mission-progress-heatmap.test.tsx",
+      "status": "changed",
+      "after_sha256": "c48ff22d1ff545d4e1ee19fac7d87f62aaf38fc3a441771d982d5689707a3ecb"
+    },
+    {
+      "batch": "ui-comment-review-batch19.json",
+      "path": "packages/ui/test/library-review.test.tsx",
+      "status": "changed",
+      "after_sha256": "70a90cf14063d2ee7d1155b73f7db1480bac3a4842e232366f5e705f08cb7304"
+    },
+    {
+      "batch": "ui-comment-review-batch19.json",
+      "path": "packages/ui/test/drawer-primitives.test.tsx",
+      "status": "nochange",
+      "after_sha256": "ca2fc269c8a5477e9358f2700e2baebaef61acaa64dc161a339322e9631fb2c1"
+    },
+    {
+      "batch": "ui-comment-review-batch20.json",
+      "path": "packages/ui/test/import-flow.test.tsx",
+      "status": "nochange",
+      "after_sha256": "2db43098725f28bbfc57fcfd215f3f43f845567b4d8961989b8a75695982b613"
+    },
+    {
+      "batch": "ui-comment-review-batch20.json",
+      "path": "packages/ui/test/live-node-details.test.tsx",
+      "status": "nochange",
+      "after_sha256": "7a3bfeba09fb08cd4cb1103990b195dad91c3abbbdc46e32e1ddf3e1030c2188"
+    },
+    {
+      "batch": "ui-comment-review-batch20.json",
+      "path": "packages/ui/test/app-shell.test.tsx",
+      "status": "changed",
+      "after_sha256": "9c7cacc87d663ce4698b6fe4f0ea301655210e82f4372dc61a2bc18a2c500cfa"
+    },
+    {
+      "batch": "ui-comment-review-batch20.json",
+      "path": "packages/ui/test/artifacts-navigator.test.tsx",
+      "status": "changed",
+      "after_sha256": "3e5b19ee00eb405baf627f50284f534f314c41b5fd38f9b9a6a96d2e214d33ce"
+    },
+    {
+      "batch": "ui-comment-review-batch20.json",
+      "path": "packages/ui/test/mh2-host-level.test.tsx",
+      "status": "changed",
+      "after_sha256": "50cd48e74717ed5807ccb2c9f5c51312131eddbe4e08e6ed0314d55298115df0"
+    },
+    {
+      "batch": "ui-comment-review-batch20.json",
+      "path": "packages/ui/test/rig-graph.test.tsx",
+      "status": "changed",
+      "after_sha256": "db398093b46ff89e0a123696e762fb9bea9cf2eb96e11016d9429fc116f92f9d"
+    },
+    {
+      "batch": "pre-existing-validated",
+      "path": "packages/ui/test/attention-feed.test.ts",
+      "status": "validated_legacy",
+      "after_sha256": "2cb4c1af9b0781d3ad6b0b0a7b0ded48f644dc3480c6635df9dcb3b24bc4c1f9"
+    },
+    {
+      "batch": "pre-existing-validated",
+      "path": "packages/ui/test/scope-pages-story-summary.test.ts",
+      "status": "validated_legacy",
+      "after_sha256": "fd8c983005101aa5bc037076b2f04224977de2e719c5d0a0559059d80936e39d"
+    }
+  ]
+}

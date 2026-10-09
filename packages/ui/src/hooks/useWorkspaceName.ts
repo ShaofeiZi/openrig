@@ -1,20 +1,19 @@
-// V1 attempt-3 Phase 3 bounce-fix A5 — useWorkspaceName.
+// V1 第三次尝试阶段 3 回修 A5——useWorkspaceName。
 //
-// Reads the configured workspace root from ConfigStore (via useSettings)
-// and returns its basename for display. When unset (or settings endpoint
-// is unreachable on shipped daemon < v0.3.0), returns null so consumers
-// render an honest "No workspace connected" empty-state.
+// 通过 useSettings 从 ConfigStore 读取已配置的工作区根目录，并返回其 basename 用于显示。
+// 未设置时，或随附后台服务版本低于 v0.3.0、设置端点不可达时，返回 null，使消费者如实
+// 渲染“未连接工作区”空状态。
 
 import { useSettings } from "./useSettings.js";
 
 export interface WorkspaceNameResult {
-  /** Live basename of the configured workspace root, or null when unset/unreachable. */
+  /** 已配置工作区根目录的实时 basename；未设置或不可达时为 null。 */
   name: string | null;
-  /** The full configured root path; null when unset/unreachable. */
+  /** 已配置的完整根路径；未设置或不可达时为 null。 */
   root: string | null;
-  /** Settings endpoint reachable (daemon supports /api/config). */
+  /** 设置端点可达，即后台服务支持 /api/config。 */
   settingsAvailable: boolean;
-  /** True while initial settings request is in flight. */
+  /** 初始设置请求仍在进行时为 true。 */
   isLoading: boolean;
 }
 

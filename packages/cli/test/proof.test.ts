@@ -1,5 +1,5 @@
 // OPR.0.4.4.19 FR-8 + FR-11 — rig proof add: C1 header validation at drop
-// time, D2 attestation echo, contract + C8 advisories (advise-never-block).
+// time、D2 证明回显、contract + C8 提示（仅建议不阻断）。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
@@ -57,18 +57,22 @@ describe("parseProofContract (pure)", () => {
       "## Next section",
       "- [ ] NOT a contract item",
     ].join("\n");
-    // KI-5.3-2 item-grammar unification: the proof-add grammar now matches the
-    // review composer's parseLogicalCheckboxes — CHECKBOX rows only. A bare dash
-    // bullet is no longer a phantom item that shifts every byIndex after it.
+    // KI-5.3-2 条目语法统一：proof-add 语法现与 review composer 的
+    // parseLogicalCheckboxes 一致——仅 CHECKBOX 行。裸短横线项目符号
+    // 不再是会把其后每个 byIndex 移位的幻影条目。
     expect(parseProofContract(prd)).toEqual([
       "the live park->resolve walk with the transitions row shown",
       "approve run showing frontmatter + audit row together",
     ]);
   });
 
-  // KI-5.3-2 — the proof-add grammar must AGREE with the review composer's
-  // parseLogicalCheckboxes over the same body, or a byIndex evidence ref points
-  // at a different promise on each side (silent mispair, not a visible miscount).
+  it.each(["证明契约", "证据约定"])("识别中文证明章节标题 %s", (heading) => {
+    expect(parseProofContract(`## ${heading}\n- [ ] 中文交付项\n`)).toEqual(["中文交付项"]);
+  });
+
+  // KI-5.3-2——proof-add 语法必须在同一正文上与 review composer 的
+  // parseLogicalCheckboxes 一致，否则 byIndex 证据引用在两侧指向不同
+  // promise（静默错配，而非可见的计数错误）。
   it("CONTROL — plain authored checkboxes are one item each (agreement, not a vacuous divergence)", () => {
     expect(parseProofContract("## Proof contract\n- [ ] alpha\n- [x] beta\n")).toEqual(["alpha", "beta"]);
   });
@@ -141,7 +145,7 @@ describe("rig proof add (fs-level, temp workspace)", () => {
     expect(parsed.artifact_type).toBe("qa");
     expect(parsed.verdict).toBe("CLEAR");
     expect(content).toContain("evidence body");
-    expect(logs.join("\n")).toContain("Parsed C1 header");
+    expect(logs.join("\n")).toContain("已投放：");
     expect(process.exitCode).toBeUndefined();
   });
 
@@ -152,7 +156,7 @@ describe("rig proof add (fs-level, temp workspace)", () => {
       "--candidate-sha", "abc1234", "--money-evidence", "m", "--body", "b",
     ]);
     expect(process.exitCode).toBe(1);
-    expect(errs.join("\n")).toContain("closed set");
+    expect(errs.join("\n")).toContain("已批准闭集");
     expect(fs.existsSync(path.join(sliceDir, "proof"))).toBe(false);
   });
 
@@ -176,13 +180,13 @@ describe("rig proof add (fs-level, temp workspace)", () => {
     await run(baseArgs());
     expect(process.exitCode).toBeUndefined();
     expect(fs.existsSync(path.join(sliceDir, "proof", "qa-clear.md"))).toBe(true);
-    expect(errs.join("\n")).toContain("ADVISORY (D2");
+    expect(errs.join("\n")).toContain("建议（D2");
     expect(errs.join("\n")).toContain("item one");
   });
 
   it("zero noise: NO contract declared => no contract advisory", async () => {
     await run(baseArgs());
-    expect(errs.join("\n")).not.toContain("ADVISORY (D2");
+    expect(errs.join("\n")).not.toContain("建议（D2");
   });
 
   it("C8: ux-change slice + no video => drop succeeds with the screencast advisory; exit 0", async () => {
@@ -192,14 +196,14 @@ describe("rig proof add (fs-level, temp workspace)", () => {
     );
     await run(baseArgs());
     expect(process.exitCode).toBeUndefined();
-    expect(errs.join("\n")).toContain("ADVISORY (C8");
+    expect(errs.join("\n")).toContain("建议（C8");
     expect(errs.join("\n")).toContain("agent-browser-screencast");
   });
 
   it("C8 zero noise: no ux-change flag => no video advisory; existing video also silences it", async () => {
     await run(baseArgs());
-    expect(errs.join("\n")).not.toContain("ADVISORY (C8");
-    // Now flag the slice AND plant a video — advisory stays silent.
+    expect(errs.join("\n")).not.toContain("建议（C8");
+    // 现标记该 slice 并植入 video——提示保持静默。
     fs.writeFileSync(
       path.join(sliceDir, "README.md"),
       "---\nid: OPR.X.19\nux-change: true\n---\n# slice\n",
@@ -207,11 +211,11 @@ describe("rig proof add (fs-level, temp workspace)", () => {
     fs.writeFileSync(path.join(sliceDir, "proof", "walk.mp4"), "fake video bytes");
     errs.length = 0;
     await run(baseArgs(["--name", "qa-clear-2.md"]));
-    expect(errs.join("\n")).not.toContain("ADVISORY (C8");
+    expect(errs.join("\n")).not.toContain("建议（C8");
   });
 
-  // KI-5.3-2 — the item grammar the byIndex evidence ref resolves against must
-  // match the review composer's, over the SAME selected body.
+  // KI-5.3-2——byIndex 证据引用所解析的条目语法必须在同一选定正文上
+  // 与 review composer 的一致。
   async function jsonEcho(prd: string, evidences: string, name: string): Promise<{
     contractItemsDeclared: number; contractSource: string | null; contractItemsCovered: string[];
   }> {
@@ -224,8 +228,8 @@ describe("rig proof add (fs-level, temp workspace)", () => {
   it("CLASS 1 (mixed placeholder+authored): the placeholder is NOT a contract item and byIndex is not shifted", async () => {
     const prd = "# PRD\n## Proof contract\n- [ ] [scaffold placeholder]\n- [ ] real deliverable A\n- [ ] real deliverable B\n";
     const echo = await jsonEcho(prd, "1", "qa-c1.md");
-    // The scaffold placeholder is skipped per-item exactly as the composer does:
-    // TWO contract items, not three.
+    // 脚手架占位符按条目跳过，与 composer 完全一致：
+    // 两个 contract 条目，而非三个。
     expect(echo.contractItemsDeclared).toBe(2);
     expect(echo.contractSource).toBe("prd");
     // THE MISPAIR, by value not count: evidence "1" is the FIRST REAL promise
@@ -290,7 +294,7 @@ describe("rig proof add --name traversal rejection (rev1-r2 fixback)", () => {
     const before = fs.readFileSync(readmePath, "utf8");
     await runAdd("../README.md");
     expect(process.exitCode).toBe(1);
-    expect(errs.join("\n")).toContain("not a plain filename");
+    expect(errs.join("\n")).toContain("不是一个普通文件名");
     expect(fs.readFileSync(readmePath, "utf8")).toBe(before);
     // Nothing landed in proof/ either.
     const proofDir = path.join(sliceDir, "proof");

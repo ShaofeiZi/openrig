@@ -1,16 +1,14 @@
-// Fork Primitive + Starter Agent Images v0 (PL-016) — snapshot capturer.
+// 分叉原语 + Starter 智能体镜像 v0（PL-016）——快照捕获器。
 //
-// Captures a productive seat's resumable state into a new agent_image:
-// runtime-specific resume token + manifest + optional cwd-deltas. Used
-// by `rig agent-image create <source-session> --name <name>` and the
-// daemon HTTP route /api/agent-images/snapshot.
+// 将 productive seat 的可恢复 state 捕获到新的 agent_image：runtime-specific resume token +
+// manifest + 可选 cwd-delta。供 `zrig agent-image create <source-session> --name <name>` 与
+// daemon HTTP 路由 /api/agent-images/snapshot 使用。
 //
-// Resume-token discovery routes through resume-token-discovery.ts so
-// the same logic is shared with the /api/agent-images/fork route.
+// Resume-token discovery 经 resume-token-discovery.ts 路由，使其与 /api/agent-images/fork
+// 路由共享同一逻辑。
 //
-// Failure modes surface honest errors per
-// docs/as-built/architecture/adapters-and-runtimes.md § Resume
-// honesty (no fabricated tokens; no auto-fallback to fresh).
+// failure mode 按 docs/as-built/architecture/adapters-and-runtimes.md § Resume honesty
+// 呈现真实 error（不伪造 token，不自动回退到 fresh）。
 
 import type Database from "better-sqlite3";
 import type { SessionRegistry } from "../session-registry.js";
@@ -43,9 +41,9 @@ export interface SnapshotCapturerDeps {
   rigRepo: RigRepository;
   sessionRegistry: SessionRegistry;
   agentImageLibrary: AgentImageLibraryService;
-  /** Target install root — typically ~/.openrig/agent-images/. */
+  /** 目标安装根目录——通常为 ~/.openrig/agent-images/。 */
   targetRoot: string;
-  /** Test seam — defaults to () => new Date(). */
+  /** 测试 seam——默认为 () => new Date()。 */
   now?: () => Date;
 }
 
@@ -74,7 +72,7 @@ export class SnapshotCapturer {
     if (!nativeId) {
       throw new AgentImageError(
         "image_not_found",
-        `Could not discover a resume token for ${runtime} source session '${sourceSession}'. The session may not have a native conversation id yet — try again after the seat has produced output, or use rig context --refresh to re-sample.`,
+        `无法为 ${runtime} source session '${sourceSession}' 找到 resume token。该 session 可能尚无 native conversation id——请在 seat 产生输出后重试，或使用 zrig context --refresh 重新采样。`,
         { sourceSession, runtime },
       );
     }
@@ -86,11 +84,9 @@ export class SnapshotCapturer {
       sourceSeat: sourceSession,
       sourceSessionId: nativeId,
       sourceResumeToken: nativeId,
-      // PL-016 source-cwd behavior:
-      // capture source seat's resolved cwd so the Use-as-starter
-      // snippet can emit `cwd: <source_cwd>`. nodeCwd may be null when
-      // the source node has no recorded cwd (legacy fixture or seat
-      // pre-cwd-capture); manifest field is omitted in that case.
+      // PL-016 source-cwd 行为：捕获 source seat 的 resolved cwd，使“用作 starter”snippet
+      // 可以发出 `cwd: <source_cwd>`。source node 没有已记录 cwd（legacy fixture 或
+      // cwd-capture 前的 seat）时，nodeCwd 可为 null；此时省略 manifest field。
       ...(nodeCwd ? { sourceCwd: nodeCwd } : {}),
       createdAt: this.now().toISOString(),
       ...(opts.notes !== undefined ? { notes: opts.notes } : {}),

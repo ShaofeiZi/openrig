@@ -6,20 +6,20 @@ import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 
 const TEXT_LIMIT = 4000;
-const BASE64_RUN = 800; // strip contiguous base64 runs at least this long (screenshots, data URIs)
+const BASE64_RUN = 800; // 移除至少达到此长度的连续 base64 内容（截图、data URI）。
 
 function sha256(text) {
   return crypto.createHash("sha256").update(String(text ?? "")).digest("hex").slice(0, 16);
 }
 
-// R3: replace binary / base64 payloads (data: URIs, long base64 runs) with a compact marker,
-// so a single screenshot block does not blow the transcript into un-chunkable size.
+// R3：用紧凑标记替换二进制/base64 payload（data URI、长 base64 串），避免单个截图块
+// 把转录撑大到无法分块的程度。
 function stripBinary(text) {
   let s = String(text ?? "");
   s = s.replace(/data:([\w.+-]+\/[\w.+-]+)?;base64,[A-Za-z0-9+/=\s]{200,}/g,
-    (m, mime) => `[binary omitted: ~${m.length} bytes${mime ? `, ${mime}` : ""}]`);
+    (m, mime) => `[已省略二进制内容：约 ${m.length} 字节${mime ? `，${mime}` : ""}]`);
   s = s.replace(new RegExp(`[A-Za-z0-9+/]{${BASE64_RUN},}={0,2}`, "g"),
-    (m) => `[base64 omitted: ~${m.length} bytes]`);
+    (m) => `[已省略 base64 内容：约 ${m.length} 字节]`);
   return s;
 }
 const DEFAULT_OUT = "/tmp/claude-compaction-restore";
@@ -39,7 +39,7 @@ function parseArgs(argv) {
     else if (arg === "--cwd") args.cwd = argv[++i];
     else if (arg === "--json") args.json = true;
     else if (!arg.startsWith("-") && !args.jsonl) args.jsonl = arg;
-    else throw new Error(`unknown argument: ${arg}`);
+    else throw new Error(`未知参数：${arg}`);
   }
 
   return args;
@@ -83,7 +83,7 @@ function findLatestJsonl(cwd) {
         const stat = fs.statSync(file);
         candidates.push({ file, mtimeMs: stat.mtimeMs });
       } catch {
-        // Ignore raced/deleted transcript files.
+        // 忽略并发竞态中已删除的转录文件。
       }
     }
     if (candidates.length) break;
@@ -114,7 +114,7 @@ function stringifyContent(content) {
 function truncate(text, max) {
   const s = String(text ?? "");
   if (s.length <= max) return s;
-  return `${s.slice(0, max)}\n[...truncated ${s.length - max} chars...]`;
+  return `${s.slice(0, max)}\n[…已截断 ${s.length - max} 个字符…]`;
 }
 
 function walkStrings(value, acc = []) {
@@ -142,7 +142,7 @@ function normalizeFile(candidate, cwd) {
   try {
     if (fs.existsSync(normalized) && fs.statSync(normalized).isDirectory()) return null;
   } catch {
-    // Keep the candidate if stat races; the restore agent can decide.
+    // stat 发生竞态时保留候选项，由恢复智能体决定。
   }
   return normalized;
 }
@@ -254,8 +254,8 @@ function analyze(jsonlPath, cwd) {
   const records = readJsonLines(jsonlPath);
   const registry = createRegistry();
   const transcript = [];
-  const narrative = []; // R4: message-turns only (assistant/user text), no tool bodies
-  const readTargets = new Map(); // R1: tool_use_id -> file_path for Read calls
+  const narrative = []; // R4：仅消息轮次（助手/用户文本），不含工具正文。
+  const readTargets = new Map(); // R1：Read 调用的 tool_use_id → file_path。
   const cwdCounts = new Map();
   let sessionId = null;
 
@@ -310,10 +310,10 @@ function analyze(jsonlPath, cwd) {
         const resultText = stripBinary(stringifyContent(block.content));
         const target = block.tool_use_id && readTargets.get(block.tool_use_id);
         if (target) {
-          // R1: a Read result reproduces a whole file — emit a pointer, not the body.
-          // The live file is current; this transcript copy is a snapshot that may be stale.
+          // R1：Read 结果会复现整个文件，因此输出指针而非正文。实时文件才是当前版本；
+          // 转录中的副本只是可能已过期的快照。
           const lineCount = resultText.split("\n").length;
-          parts.push(`\n[tool_result: Read ${target} — ${lineCount} lines, sha256 ${sha256(resultText)} — READ THE LIVE FILE; this snapshot may be stale]`);
+          parts.push(`\n[tool_result：Read ${target}——${lineCount} 行，sha256 ${sha256(resultText)}——请读取实时文件；此快照可能已过期]`);
         } else {
           parts.push(`\n[tool_result]\n${truncate(resultText, TEXT_LIMIT)}`);
         }
@@ -350,15 +350,15 @@ function analyze(jsonlPath, cwd) {
 
 function markdownFileList(files) {
   const lines = [];
-  lines.push("# Touched Files");
+  lines.push("# 涉及的文件");
   lines.push("");
-  lines.push("Files are ranked for restore relevance. Markdown and written files are the first candidates to read in full.");
+  lines.push("文件按恢复相关度排序。应优先完整阅读 Markdown 文件与被写入的文件。");
   lines.push("");
 
   const sections = [
-    ["Highest-priority Markdown/state files", (f) => f.markdown && (f.kinds.written || f.kinds["shell-write"] || f.kinds["file-history"])],
-    ["Other written/tracked files", (f) => !f.markdown && (f.kinds.written || f.kinds["shell-write"] || f.kinds["file-history"])],
-    ["Read/discovered/mentioned files", (f) => !(f.kinds.written || f.kinds["shell-write"] || f.kinds["file-history"])],
+    ["最高优先级 Markdown/状态文件", (f) => f.markdown && (f.kinds.written || f.kinds["shell-write"] || f.kinds["file-history"])],
+    ["其他已写入/已跟踪文件", (f) => !f.markdown && (f.kinds.written || f.kinds["shell-write"] || f.kinds["file-history"])],
+    ["已读取/发现/提及的文件", (f) => !(f.kinds.written || f.kinds["shell-write"] || f.kinds["file-history"])],
   ];
 
   for (const [title, predicate] of sections) {
@@ -368,7 +368,7 @@ function markdownFileList(files) {
     lines.push("");
     for (const file of group) {
       const kinds = Object.entries(file.kinds).map(([kind, count]) => `${kind}:${count}`).join(", ");
-      lines.push(`- score ${file.score} — \`${file.path}\` — ${kinds}`);
+      lines.push(`- 评分 ${file.score}——\`${file.path}\`——${kinds}`);
     }
     lines.push("");
   }
@@ -378,54 +378,54 @@ function markdownFileList(files) {
 
 function restoreInstructions(summary, outputPaths) {
   const lines = [];
-  lines.push("# Claude Compaction Restore Instructions");
+  lines.push("# Claude 压缩恢复说明");
   lines.push("");
-  lines.push("You have just been compacted or are restoring a compacted Claude Code seat. Your mental model is compressed and unreliable.");
+  lines.push("你刚刚经历了压缩，或正在恢复一个已压缩的 Claude Code 席位。你当前的心智模型已被压缩，并不可靠。");
   lines.push("");
-  lines.push(`- JSONL transcript: \`${summary.jsonlPath}\``);
-  lines.push(`- Reconstructed transcript: \`${outputPaths.transcript}\` (~${summary.transcriptTokens ?? "?"} tokens — do NOT read front-to-back)`);
-  lines.push(`- Narrative companion (READ THIS FIRST): \`${outputPaths.narrative}\` (~${summary.narrativeTokens ?? "?"} tokens — message turns only, no tool bodies)`);
-  lines.push(`- Touched-file triage: \`${outputPaths.touchedFiles}\``);
-  lines.push(`- Working directory inferred: \`${summary.cwd}\``);
+  lines.push(`- JSONL 转录：\`${summary.jsonlPath}\``);
+  lines.push(`- 重建后的转录：\`${outputPaths.transcript}\`（约 ${summary.transcriptTokens ?? "?"} 个 token——不要从头读到尾）`);
+  lines.push(`- 叙事伴随文件（请先阅读）：\`${outputPaths.narrative}\`（约 ${summary.narrativeTokens ?? "?"} 个 token——仅消息轮次，不含工具正文）`);
+  lines.push(`- 涉及文件分诊：\`${outputPaths.touchedFiles}\``);
+  lines.push(`- 推断出的工作目录：\`${summary.cwd}\``);
   lines.push("");
-  lines.push("## Read budget (the restore must leave room for the work)");
+  lines.push("## 阅读预算（恢复必须为实际工作留出空间）");
   lines.push("");
-  lines.push(`- The full transcript is ~${summary.transcriptTokens ?? "?"} tokens. **Reading it front-to-back can consume the window the restore exists to rebuild.**`);
-  lines.push(`- Default order: read the **narrative companion first** (~${summary.narrativeTokens ?? "?"} tokens — message turns + decisions), tail-first (most recent first).`);
-  lines.push("- Drop to the full transcript only for a specific question the narrative can't answer. File bodies inside tool-results are pointers now — **read the live file, not the transcript snapshot.**");
-  lines.push("- Read to a budget with a stopping rule; report depth honestly (an honest PARTIAL beats a false completion). See the skill's *Required Read-Depth Audit*.");
+  lines.push(`- 完整转录约 ${summary.transcriptTokens ?? "?"} 个 token。**从头读到尾可能耗尽恢复本应重建的上下文窗口。**`);
+  lines.push(`- 默认顺序：先读**叙事伴随文件**（约 ${summary.narrativeTokens ?? "?"} 个 token，仅消息轮次与决策），从尾部开始，最新优先。`);
+  lines.push("- 只有遇到叙事无法回答的具体问题时，才深入完整转录。工具结果中的文件正文现已改为指针——**请读取实时文件，而不是转录快照。**");
+  lines.push("- 按预算阅读并设置停止规则；如实报告深度（诚实的部分完成优于虚假完成）。参见技能中的“必需阅读深度审计”。");
   lines.push("");
-  lines.push("## Required Sequence");
+  lines.push("## 必需步骤");
   lines.push("");
-  lines.push("1. Read this file and `touched-files.md`.");
-  lines.push("2. Ask yourself: which files do I recognize as important to the work and project state?");
-  lines.push("3. Mark those files mentally or in a short note.");
-  lines.push("4. Read every important Markdown/state/planning file in full.");
-  lines.push("5. Read project root docs in full when present: `CLAUDE.md`, `AGENTS.md`, `README.md`.");
-  lines.push("6. Read as-built docs and codemaps in full before product work, code review, or architecture decisions.");
-  lines.push("7. State exactly: `restored from packet at <path>; resumed at step <X>`.");
+  lines.push("1. 阅读本文件与 `touched-files.md`。");
+  lines.push("2. 自问：哪些文件是我记得与工作和项目状态密切相关的？");
+  lines.push("3. 在脑中或简短笔记中标记这些文件。");
+  lines.push("4. 完整阅读每个重要的 Markdown、状态和规划文件。");
+  lines.push("5. 若存在，请完整阅读项目根文档：`CLAUDE.md`、`AGENTS.md`、`README.md`。");
+  lines.push("6. 在开展产品工作、代码评审或架构决策前，完整阅读 as-built 文档和 codemap。");
+  lines.push("7. 准确声明：`restored from packet at <path>; resumed at step <X>`。");
   lines.push("");
-  lines.push("## Documentation Candidates");
+  lines.push("## 文档候选项");
   lines.push("");
   if (summary.docs.length) {
     for (const doc of summary.docs) lines.push(`- \`${doc}\``);
   } else {
-    lines.push("- No root/as-built/codemap candidates were found automatically. Search manually before resuming code/review work.");
+    lines.push("- 未自动发现根目录/as-built/codemap 候选项。恢复代码或评审工作前请手动搜索。");
   }
   lines.push("");
-  lines.push("## Top File Candidates");
+  lines.push("## 优先文件候选项");
   lines.push("");
   for (const file of summary.files.slice(0, 30)) {
-    lines.push(`- \`${file.path}\` — score ${file.score}`);
+    lines.push(`- \`${file.path}\`——评分 ${file.score}`);
   }
   lines.push("");
-  lines.push("Do not continue from fuzzy memory alone.");
+  lines.push("不要只凭模糊记忆继续。");
   return lines.join("\n");
 }
 
-// A3-R3 injectable clock (slice 51-01): the packet output-dir timestamped path
-// defaults to real wall-clock, but becomes deterministic when the shared hermetic
-// env-var OPENRIG_TEST_CLOCK_NOW is set (an ISO instant). Empty/absent = production.
+// A3-R3 可注入时钟（slice 51-01）：带时间戳的包输出目录路径默认使用真实墙上时钟；
+// 设置共享隔离环境变量 OPENRIG_TEST_CLOCK_NOW（ISO 时刻）后改为确定性时间。
+// 为空/缺失时使用生产实时。
 function nowIso() {
   const injected = process.env.OPENRIG_TEST_CLOCK_NOW;
   return typeof injected === "string" && injected.trim().length > 0 ? injected : new Date().toISOString();
@@ -445,8 +445,8 @@ function writeOutputs(summary, outRoot) {
     summary: path.join(base, "restore-summary.json"),
   };
 
-  fs.writeFileSync(outputPaths.transcript, summary.transcript || "(no message transcript reconstructed)\n");
-  fs.writeFileSync(outputPaths.narrative, summary.narrative || "(no narrative reconstructed)\n");
+  fs.writeFileSync(outputPaths.transcript, summary.transcript || "（未重建出消息转录）\n");
+  fs.writeFileSync(outputPaths.narrative, summary.narrative || "（未重建出叙事内容）\n");
   fs.writeFileSync(outputPaths.touchedFiles, markdownFileList(summary.files));
   fs.writeFileSync(outputPaths.instructions, restoreInstructions(summary, outputPaths));
   fs.writeFileSync(outputPaths.summary, JSON.stringify({ ...summary, transcript: undefined, narrative: undefined, outputPaths }, null, 2));
@@ -458,8 +458,8 @@ function main() {
   const args = parseArgs(process.argv.slice(2));
   const cwd = path.resolve(args.cwd);
   const jsonlPath = args.jsonl ? path.resolve(args.jsonl) : findLatestJsonl(cwd);
-  if (!jsonlPath) throw new Error("could not find a Claude JSONL transcript; pass one explicitly");
-  if (!fs.existsSync(jsonlPath)) throw new Error(`JSONL transcript not found: ${jsonlPath}`);
+  if (!jsonlPath) throw new Error("找不到 Claude JSONL 转录；请显式传入一个文件");
+  if (!fs.existsSync(jsonlPath)) throw new Error(`未找到 JSONL 转录：${jsonlPath}`);
 
   const summary = analyze(jsonlPath, cwd);
   const outputPaths = writeOutputs(summary, path.resolve(args.out));
@@ -479,17 +479,17 @@ function main() {
 
   if (args.json) console.log(JSON.stringify(result, null, 2));
   else {
-    console.log(`Restore packet: ${result.outputDir}`);
-    console.log(`Instructions: ${result.instructions}`);
-    console.log(`Touched files: ${result.touchedFiles}`);
-    console.log(`Narrative (read first): ${result.narrative} (~${result.narrativeTokens} tokens)`);
-    console.log(`Transcript (drill-down): ${result.transcript} (~${result.transcriptTokens} tokens)`);
+    console.log(`恢复包：${result.outputDir}`);
+    console.log(`说明：${result.instructions}`);
+    console.log(`涉及的文件：${result.touchedFiles}`);
+    console.log(`叙事内容（请先阅读）：${result.narrative}（约 ${result.narrativeTokens} 个 token）`);
+    console.log(`转录（深入查看）：${result.transcript}（约 ${result.transcriptTokens} 个 token）`);
   }
 }
 
 try {
   main();
 } catch (error) {
-  console.error(`claude-compaction-restore failed: ${error.message}`);
+  console.error(`claude-compaction-restore 失败：${error.message}`);
   process.exit(1);
 }

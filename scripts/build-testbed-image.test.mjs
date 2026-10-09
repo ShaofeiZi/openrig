@@ -4,11 +4,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-// 51-04 testbed image — the build verb (scripts/build-testbed-image.sh) is HOST-executed (it needs
-// docker; the locus ruling puts the container runtime host-side). Its real logic lives in the
-// tested node helpers (testbed-emit-manifest / build-inputs / manifest); this guard is the
-// VM-authorable proof that the shell wrapper honors the plan §1 + FENCES contract, so a later edit
-// that pushes the image, floats the build, or pulls openrig from the registry breaks here.
+// 51-04 testbed 镜像——构建命令（scripts/build-testbed-image.sh）在宿主机侧执行（它需要 docker；
+// locus 裁决把容器运行时放在宿主机侧）。它真正的逻辑在已被测试的 node 助手
+// （testbed-emit-manifest / build-inputs / manifest）里；这个守卫是“VM 可编写”的证明，
+// 证明 shell 包装器遵守计划 §1 + FENCES 契约，使日后某次编辑——推送镜像、让构建浮动、
+// 或从 registry 拉 openrig——都在这里破坏构建。
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(HERE, "build-testbed-image.sh");
@@ -54,9 +54,9 @@ test("runs docker build with the digest-pinned base + tarball build-args", () =>
 
 test("Q2 fix A: packs the ASSEMBLED @openrig/cli (has the `rig` bin), NEVER the private monorepo root", () => {
   const text = readScript();
-  // must assemble the publishable CLI first (bundles daemon/ui/tui + the bin) ...
+  // 必须先组装可发布的 CLI（打包 daemon/ui/tui + bin）……
   assert.match(text, /build-package\.sh/, "must run scripts/build-package.sh to assemble @openrig/cli");
-  // ... and pack packages/cli, not the repo root (root = openrig@0.5.0, no bin -> rig --version exit 127)
+  // ……且打包的是 packages/cli，不是仓库根（根 = openrig@0.5.0，没有 bin -> rig --version 退出 127）
   assert.match(text, /packages\/cli["'}\s]*&&\s*npm pack|cd\s+"?\$\{REPO_ROOT\}\/packages\/cli/, "npm pack must run with cwd packages/cli");
   assert.doesNotMatch(text, /cd\s+"?\$\{REPO_ROOT\}"?\s*&&\s*npm pack/, "must NOT pack the monorepo root");
 });
@@ -91,19 +91,19 @@ test("emits the manifest via the tested node orchestrator", () => {
 });
 
 test("Q2 fix (break #4): the image installs the better-sqlite3 native-build toolchain (builds fresh on target)", () => {
-  // The sealed Q2 packaging ruling builds better-sqlite3 FROM SOURCE on target (never a prebuilt/nested
-  // binary). Its install is `prebuild-install || node-gyp rebuild`; node-gyp needs python3+make+g++.
-  // Without them layer 3's `npm install -g` dies ('prebuild-install: not found' → no Python). This
-  // static fence is the VM-authorable half; the behavioral RED→GREEN docker build runs host-side.
+  // 已封印的 Q2 打包裁决要求在目标机上从源码构建 better-sqlite3（绝不用预编译/嵌套二进制）。
+  // 它的安装是 `prebuild-install || node-gyp rebuild`；node-gyp 需要 python3+make+g++。
+  // 缺了它们，第 3 层的 `npm install -g` 会挂（'prebuild-install: not found' → 没有 Python）。
+  // 这条静态栅栏是“VM 可编写”的那一半；行为上的 RED→GREEN docker 构建在宿主机侧跑。
   const df = readDockerfile();
   assert.match(df, /python3 make g\+\+/, "layer 1 must install python3 make g++ (node-gyp toolchain)");
 });
 
 test("Q2 rider (effect proof): the build verb LOADS the daemon inside the container, not just `rig --version`", () => {
-  // assert-the-EFFECT-not-the-command: a green build over a broken native install is the break-#4 CLASS.
-  // Only a CONTAINER load catches it (the host has the toolchain, the image must not need it). The verb
-  // must run the freshly-built image and START the daemon (opens the DB → better-sqlite3 must have
-  // bound), failing the build if it can't. `rig --version` alone never opens the DB.
+  // 断言“效果”而非“命令”：一个在破损原生安装上却变绿的构建，正是 break-#4 那一类。
+  // 只有容器内加载才能抓住它（宿主机有工具链，镜像则不该需要）。构建命令必须跑刚构建好的镜像、
+  // 并启动 daemon（打开 DB → better-sqlite3 必须已绑定），做不到就让构建失败。
+  // 单跑 `rig --version` 永远不会打开 DB。
   const text = readScript();
   assert.match(text, /docker run\b[\s\S]*\$\{IMAGE_TAG\}/, "must run the freshly-built image (effect proof)");
   assert.match(text, /rig daemon start --no-kernel/, "must LOAD the daemon (better-sqlite3 binds) via the operator-corrected start, not merely check rig exists");

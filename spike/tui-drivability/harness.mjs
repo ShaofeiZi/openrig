@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Interactive spike harness. Three input adapters (command bar / mouse /
-// keyboard) + an OPTIONAL control-socket adapter (--socket <path>) — all four
-// funnel into the ONE dispatch of ONE instance-scoped view-state.
+// 交互式 spike 运行壳。三个输入适配器（命令栏 / 鼠标 / 键盘）加一个可选的
+// control-socket 适配器（--socket <path>），四者最终都进入同一实例级视图状态的
+// 唯一 dispatch。
 //
 //   node harness.mjs [--instance tui-a] [--socket /path/ctl.sock]
 //
-// Control socket protocol (the "addressable-screen API" candidate): one command
-// per line — any command-bar command, plus "state" (JSON state query). Every
-// line gets a one-line JSON reply: {ok, screen, drill, error}.
+// Control socket 协议（“可寻址屏幕 API”候选方案）：每行一条命令，可以是任意命令栏
+// 命令，也可以是 "state"（JSON 状态查询）。每行都会得到一行 JSON 响应：
+// {ok, screen, drill, error}。
 import net from 'node:net'
 import fs from 'node:fs'
 import { createViewState, computeExplorerRows } from './state.mjs'
@@ -48,7 +48,7 @@ function submitCommand(text) {
   view.dispatch(parseCommand(text))
 }
 
-// --- keyboard + mouse adapter (stdin) ---
+// --- 键盘与鼠标适配器（stdin）---
 if (process.stdin.isTTY) process.stdin.setRawMode(true)
 process.stdin.on('data', (bytes) => {
   for (const ev of decodeInput(bytes)) {
@@ -76,7 +76,7 @@ process.stdin.on('data', (bytes) => {
   draw()
 })
 
-// --- control-socket adapter (the ambitious mechanism prototype) ---
+// --- control-socket 适配器（更完整的机制原型）---
 let server = null
 if (socketPath) {
   if (fs.existsSync(socketPath)) fs.unlinkSync(socketPath)

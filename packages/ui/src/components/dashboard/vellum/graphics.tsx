@@ -1,5 +1,5 @@
-// Per-destination wireframe graphics. Small technical line drawings,
-// one per card. Each ~60×60 viewBox, sharp 1px stroke, fill-none.
+// 各目的地的线框图形。小型技术线稿，每张卡片一个。约 60×60 viewBox，
+// 锐利 1px 描边，无填充。
 
 export function StratigraphicGraphic() {
   return (
@@ -46,9 +46,7 @@ export function PulseGraphic() {
   );
 }
 
-// Gyroscope-style globe: outer circle + crossed ellipses (equator +
-// meridian) + crosshair dashed lines extending across the full canvas +
-// filled center dot.
+// 陀螺仪式地球：外圆 + 交叉椭圆（赤道 + 子午线）+ 横贯整幅画布的虚线十字线 + 实心中心点。
 export function SphereGraphic() {
   return (
     <svg className="w-full h-full text-on-surface" viewBox="0 0 60 60" fill="none" stroke="currentColor" strokeWidth="1">
@@ -81,7 +79,7 @@ export function GearGraphic() {
       <circle cx="30" cy="30" r="20" />
       <circle cx="30" cy="30" r="12" />
       <circle cx="30" cy="30" r="3" fill="currentColor" />
-      {/* 8 gear teeth */}
+      {/* 8 个齿 */}
       <line x1="30" y1="6" x2="30" y2="11" strokeWidth="1.5" />
       <line x1="30" y1="49" x2="30" y2="54" strokeWidth="1.5" />
       <line x1="6" y1="30" x2="11" y2="30" strokeWidth="1.5" />

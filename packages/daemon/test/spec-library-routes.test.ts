@@ -24,7 +24,7 @@ pods:
 edges: []
 `;
 
-describe("spec library routes", () => {
+describe("spec library 路由", () => {
   let tmpDir: string;
   let lib: SpecLibraryService;
 
@@ -54,14 +54,14 @@ describe("spec library routes", () => {
     return app;
   }
 
-  it("keeps source provenance and serves canonical source identity for file-root mapping", async () => {
+  it("保留 source provenance，并为文件根目录映射提供 canonical source identity", async () => {
     const res = await createApp().request("/api/specs/library");
     const entries = await res.json() as Array<{ sourcePath: string; resolvedSourcePath: string }>;
     expect(entries[0]!.sourcePath).toBe(join(tmpDir, "rig.yaml"));
     expect(entries[0]!.resolvedSourcePath).toBe(realpathSync(join(tmpDir, "rig.yaml")));
   });
 
-  it("GET /api/specs/library returns library entries", async () => {
+  it("GET /api/specs/library 返回 library entry", async () => {
     const app = createApp();
     const res = await app.request("/api/specs/library");
     expect(res.status).toBe(200);
@@ -71,7 +71,7 @@ describe("spec library routes", () => {
     expect(body[0]!.name).toBe("lib-rig");
   });
 
-  it("GET /api/specs/library/:id returns entry + YAML content", async () => {
+  it("GET /api/specs/library/:id 返回 entry 和 YAML 内容", async () => {
     const app = createApp();
     const entries = lib.list();
     const id = entries[0]!.id;
@@ -82,7 +82,7 @@ describe("spec library routes", () => {
     expect(body.yaml).toContain("lib-rig");
   });
 
-  it("GET /api/specs/library/:id/review returns review with library provenance", async () => {
+  it("GET /api/specs/library/:id/review 返回带 library provenance 的 review", async () => {
     const app = createApp();
     const entries = lib.list();
     const id = entries[0]!.id;
@@ -95,9 +95,9 @@ describe("spec library routes", () => {
     expect(body.name).toBe("lib-rig");
   });
 
-  it("POST /api/specs/library/sync rescans and returns updated list", async () => {
+  it("POST /api/specs/library/sync 重新扫描并返回更新后的列表", async () => {
     const app = createApp();
-    // Write a new file
+    // 写入新文件。
     writeFileSync(join(tmpDir, "new-rig.yaml"), VALID_RIG_YAML.replace("lib-rig", "new-rig"));
     const res = await app.request("/api/specs/library/sync", { method: "POST" });
     expect(res.status).toBe(200);
@@ -105,7 +105,7 @@ describe("spec library routes", () => {
     expect(body.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("DELETE /api/specs/library/:id removes a user-file entry", async () => {
+  it("DELETE /api/specs/library/:id 删除 user-file entry", async () => {
     const app = createApp();
     const id = lib.list()[0]!.id;
 
@@ -121,7 +121,7 @@ describe("spec library routes", () => {
     expect(entries).toHaveLength(0);
   });
 
-  it("POST /api/specs/library/:id/rename renames a user-file entry and updates YAML name", async () => {
+  it("POST /api/specs/library/:id/rename 重命名 user-file entry 并更新 YAML name", async () => {
     const app = createApp();
     const id = lib.list()[0]!.id;
 
@@ -145,7 +145,7 @@ describe("spec library routes", () => {
     expect(yaml).toContain("name: renamed-rig");
   });
 
-  it("GET /api/specs/library/:id/review returns composePreview for service-backed rigs", async () => {
+  it("GET /api/specs/library/:id/review 为 service-backed rig 返回 composePreview", async () => {
     const svcDir = join(tmpDir, "rigs", "launch", "svc-rig");
     mkdirSync(svcDir, { recursive: true });
     writeFileSync(join(svcDir, "rig.yaml"), `

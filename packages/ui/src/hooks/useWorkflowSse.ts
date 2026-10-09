@@ -1,46 +1,43 @@
-// OPR.0.4.6.WF4 (C3) — the PRIMARY workflow liveness feed (arch Q5-P1).
+// OPR.0.4.6.WF4（C3）——主要工作流活性 feed（架构 Q5-P1）。
 //
-// Workflow queries invalidate off `/api/workflow/sse` (the daemon streams the
-// 7 workflow.* event kinds with seq ids; EventSource resumes via Last-Event-ID
-// on reconnect). Refetch is SSE-invalidation-driven with a debounce FLOOR — no
-// fixed-rate tight polling (the FS-1 enablement constraint honored at birth).
+// 工作流查询由 `/api/workflow/sse` 触发失效（后台服务流式发送 7 种带 seq id 的
+// workflow.* 事件；EventSource 重连时通过 Last-Event-ID 续传）。重新获取由 SSE 失效驱动，
+// 并设有防抖下限；不做固定频率的紧密轮询（从设计之初就满足 FS-1 启用约束）。
 //
-// Q5-P1 NAMED NEGATIVE (binding): workflow.* events persist rig_id=NULL
-// (event-bus stores NULL; /api/events?rigId=X filters them OUT). So a
-// rig-SCOPED subscription silently drops the ENTIRE workflow spine. This feed
-// is therefore UNSCOPED BY CONTRACT — WORKFLOW_SSE_URL carries NO `?rigId=`,
-// ever (asserted in useWorkflowSse.test.ts + the source grep-negative).
+// Q5-P1 具名否定约束：workflow.* 事件持久化时 rig_id=NULL（event-bus 存储 NULL，
+// /api/events?rigId=X 会将其过滤掉），因此工作组范围订阅会静默丢失整条工作流主干。
+// 所以本 feed 按契约不限定工作组范围；WORKFLOW_SSE_URL 永远不含 `?rigId=`
+//（由 useWorkflowSse.test.ts 与源码否定检索共同断言）。
 //
-// Q5-P2: exception/gate ITEM liveness (the FR-3 attention rows) rides QUEUE
-// events + the review band's existing refetch — NOT this feed (workflow.*
-// events carry no item state). This hook invalidates only the ["workflow"]
-// query family (instances / show / trace / specs).
+// Q5-P2：异常/门禁条目活性（FR-3 待关注行）依赖队列事件和评审条带现有的重新获取，
+// 不依赖本 feed（workflow.* 事件不携带条目状态）。此钩子只使 ["workflow"] 查询族
+//（instances/show/trace/specs）失效。
 
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-/** The workflow SSE endpoint — UNSCOPED by contract (Q5-P1): never `?rigId=`. */
+/** 工作流 SSE 端点——按契约不限定工作组范围（Q5-P1），永远不带 `?rigId=`。 */
 export const WORKFLOW_SSE_URL = "/api/workflow/sse";
 
-/** Debounce floor for invalidation flushes (matches the global hub's 150ms). */
+/** 失效刷新的防抖下限，与全局中心的 150 毫秒一致。 */
 const INVALIDATE_FLOOR_MS = 150;
 
-// Refcounted singleton so N mounted consumers share ONE connection (the
-// shipped topology-events hub pattern), rather than opening a stream per hook.
+// 使用引用计数单例，使 N 个已挂载消费者共享一个连接（沿用已交付 topology-events 中心模式），
+// 而不是每个钩子各开一个流。
 let eventSource: EventSource | null = null;
 let refCount = 0;
 const listeners = new Set<() => void>();
 
 function ensureConnected(): void {
   if (eventSource || typeof EventSource === "undefined") return;
-  // NO `?rigId=` — the Q5-P1 rig-unscoped contract (see file header).
+  // 不带 `?rigId=`——Q5-P1 的不限定工作组范围契约（见文件头）。
   const es = new EventSource(WORKFLOW_SSE_URL);
   eventSource = es;
   es.addEventListener("message", (event) => {
     const data = (event as MessageEvent).data;
     if (typeof data !== "string") return;
-    // The stream is workflow-filtered server-side; a well-formed event means
-    // some instance/trail changed → invalidate. Skip heartbeats / non-JSON.
+    // 服务端已按工作流过滤此流；格式正确的事件意味着某个实例/轨迹发生变化，因此使查询失效。
+    // 跳过心跳和非 JSON 内容。
     try {
       JSON.parse(data);
     } catch {
@@ -58,9 +55,8 @@ function releaseIfIdle(): void {
   }
 }
 
-/** Mount once (or a few times) at the workflow surfaces: subscribes to the
- *  primary workflow SSE feed and invalidates the ["workflow"] query family on
- *  every workflow.* event, debounced to the floor. */
+/** 在工作流表面挂载一次（或少量几次）：订阅主要工作流 SSE feed，并在每个 workflow.*
+ *  事件到达时使 ["workflow"] 查询族失效，同时按下限防抖。 */
 export function useWorkflowSse(): void {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);

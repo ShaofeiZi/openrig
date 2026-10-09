@@ -7,28 +7,27 @@ import {
 } from "../src/adapters/stub-script.js";
 import { EMIT_BEHAVIORS } from "./helpers/scenario-schema.js";
 
-// Slice 51-01 items 6-8 — the PURE stub behavior-script model (the deterministic
-// driver the pane-hosted runner executes: pane outputs + hook emissions + stepwise
-// timing; PRD §4.2). This module is side-effect-free so it unit-tests hermetically
-// and the runner/adapter can import it without dragging daemon deps into the pane.
+// Slice 51-01 第 6–8 项——纯 stub 行为脚本模型（pane 托管 runner 执行的确定性驱动器：pane 输出、
+// hook 发射和分步计时；PRD §4.2）。此模块无副作用，因此可进行密闭单元测试，runner/adapter
+// 也能导入它而不把 daemon 依赖带入 pane。
 //
-// TWIN-PARITY: the stub behavior vocabulary is a SHARED CONTRACT with 51-02's scenario
-// `emit` verb (scenario-schema.ts EMIT_BEHAVIORS). Production (51-01/src) owns the
-// canonical repertoire; a byte-parity guard test below fails loudly if the two copies
-// ever drift (touch one twin half => the cross-package parity check runs in-increment).
+// TWIN-PARITY：stub 行为词汇与 51-02 的 scenario `emit` 动词共享契约
+//（scenario-schema.ts EMIT_BEHAVIORS）。生产代码（51-01/src）拥有 canonical 集合；如果两个
+// 副本发生漂移，下方逐字节 parity 守卫测试会明确失败（修改任一镜像半边都会在增量中运行跨包
+// parity 检查）。
 
-describe("stub-script behavior vocabulary (twin-parity)", () => {
-  it("STUB_BEHAVIORS is byte-identical to 51-02's EMIT_BEHAVIORS (shared contract, no drift)", () => {
+describe("stub-script 行为词汇（twin-parity）", () => {
+  it("STUB_BEHAVIORS 与 51-02 的 EMIT_BEHAVIORS 逐字节一致（共享契约，无漂移）", () => {
     expect([...STUB_BEHAVIORS]).toEqual([...EMIT_BEHAVIORS]);
   });
 
-  it("carries exactly the locked four-behavior repertoire", () => {
+  it("准确包含锁定的四种行为集合", () => {
     expect([...STUB_BEHAVIORS]).toEqual(["compaction", "slow_output", "mid_turn_death", "restore"]);
   });
 });
 
 describe("parseStubScript", () => {
-  it("parses a valid script of say + emit steps", () => {
+  it("解析包含 say + emit 步骤的有效脚本", () => {
     const script = parseStubScript(JSON.stringify({
       steps: [
         { kind: "say", text: "hello from the stub" },
@@ -40,53 +39,52 @@ describe("parseStubScript", () => {
     expect(script.steps[1]).toEqual({ kind: "emit", behavior: "compaction" });
   });
 
-  it("accepts every behavior in the locked repertoire as an emit step", () => {
+  it("接受锁定集合中的每种行为作为 emit 步骤", () => {
     for (const behavior of STUB_BEHAVIORS) {
       const script = parseStubScript(JSON.stringify({ steps: [{ kind: "emit", behavior }] }));
       expect(script.steps[0]).toEqual({ kind: "emit", behavior });
     }
   });
 
-  it("rejects malformed JSON", () => {
+  it("拒绝格式错误的 JSON", () => {
     expect(() => parseStubScript("{not json")).toThrow(StubScriptError);
   });
 
-  it("rejects a non-object / missing steps array", () => {
+  it("拒绝非对象或缺少 steps 数组的输入", () => {
     expect(() => parseStubScript(JSON.stringify({}))).toThrow(StubScriptError);
     expect(() => parseStubScript(JSON.stringify({ steps: "nope" }))).toThrow(StubScriptError);
     expect(() => parseStubScript(JSON.stringify([]))).toThrow(StubScriptError);
   });
 
-  it("rejects an unknown step kind", () => {
+  it("拒绝未知 step kind", () => {
     expect(() => parseStubScript(JSON.stringify({ steps: [{ kind: "dance" }] }))).toThrow(StubScriptError);
   });
 
-  it("rejects a say step with no text", () => {
+  it("拒绝没有 text 的 say 步骤", () => {
     expect(() => parseStubScript(JSON.stringify({ steps: [{ kind: "say" }] }))).toThrow(StubScriptError);
   });
 
-  it("rejects an unknown emit behavior, naming the repertoire", () => {
+  it("拒绝未知 emit 行为，并列出允许的集合", () => {
     let err: unknown;
     try {
       parseStubScript(JSON.stringify({ steps: [{ kind: "emit", behavior: "explode" }] }));
     } catch (e) { err = e; }
     expect(err).toBeInstanceOf(StubScriptError);
-    // The message names the locked repertoire (mirrors 51-02's UNKNOWN_EMIT_BEHAVIOR).
+    // 消息列出锁定集合（与 51-02 的 UNKNOWN_EMIT_BEHAVIOR 对应）。
     expect(String((err as Error).message)).toContain("compaction");
   });
 
-  it("rejects usage_limit as real-runtime-only (never a silent stub no-op)", () => {
-    // usage_limit is a KNOWN real-runtime-only behavior 51-02 fails in a stub topology;
-    // the stub's own script model must refuse it loudly, not accept-and-drop.
+  it("拒绝仅真实 runtime 支持的 usage_limit（绝不静默成为 stub 空操作）", () => {
+    // usage_limit 是已知仅真实 runtime 支持的行为，51-02 会在 stub topology 中令其失败；
+    // stub 自身脚本模型必须明确拒绝，而不是接受后丢弃。
     expect(() => parseStubScript(JSON.stringify({ steps: [{ kind: "emit", behavior: "usage_limit" }] })))
       .toThrow(StubScriptError);
   });
 });
 
 describe("DEFAULT_STUB_SCRIPT", () => {
-  it("is a valid built-in default (prompt+echo+scripted-reply) for standalone use", () => {
-    // Round-trips through the parser (structurally valid) and contains at least one
-    // pane-output step so a standalone stub seat produces observable output.
+  it("是可独立使用的有效内置默认值（prompt+echo+scripted-reply）", () => {
+    // 通过解析器往返（结构有效），并至少包含一个 pane 输出步骤，使独立 stub 席位产生可观察输出。
     const reparsed = parseStubScript(JSON.stringify(DEFAULT_STUB_SCRIPT));
     expect(reparsed.steps.length).toBeGreaterThan(0);
     expect(reparsed.steps.some((s) => s.kind === "say")).toBe(true);

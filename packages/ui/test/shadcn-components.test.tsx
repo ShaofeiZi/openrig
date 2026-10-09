@@ -6,7 +6,7 @@ import "../src/globals.css";
 afterEach(() => { cleanup(); });
 
 describe("shadcn components", () => {
-  // Test 1: All 11 components render without error
+  // 测试 1：全部 11 个组件均可无错误渲染。
   it("all 11 shadcn components render without error", async () => {
     const { Button } = await import("../src/components/ui/button.js");
     const { Card, CardHeader, CardContent, CardFooter } = await import("../src/components/ui/card.js");
@@ -20,7 +20,7 @@ describe("shadcn components", () => {
     const { Tabs, TabsList, TabsTrigger, TabsContent } = await import("../src/components/ui/tabs.js");
     const { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } = await import("../src/components/ui/tooltip.js");
 
-    // Render all 11 components — none should throw
+    // 渲染全部 11 个组件，均不得抛错。
     const { container } = render(
       <TooltipProvider>
         <div>
@@ -48,7 +48,7 @@ describe("shadcn components", () => {
     expect(container.children.length).toBeGreaterThan(0);
   });
 
-  // Test 2: Button tactical variant has uppercase text + bracket decoration
+  // 测试 2：Button 战术变体带大写文字与括号装饰。
   it("Button tactical variant renders brackets and uppercase", async () => {
     const { Button } = await import("../src/components/ui/button.js");
 
@@ -56,13 +56,13 @@ describe("shadcn components", () => {
 
     const btn = screen.getByTestId("tac");
     expect(btn.textContent).toContain("SNAPSHOT");
-    // Should have uppercase + tracking + border classes (tech button style)
+    // 应包含 uppercase、tracking 与 border 类，形成技术按钮样式。
     expect(btn.className).toContain("uppercase");
     expect(btn.className).toContain("text-[10px]");
     expect(btn.className).toContain("border");
   });
 
-  // Test 3: Button default variant has correct classes (vellum theme)
+  // 测试 3：Button 默认变体使用正确的羊皮纸主题类。
   it("Button default variant has bg-stone-900 text-white", async () => {
     const { Button } = await import("../src/components/ui/button.js");
 
@@ -73,7 +73,7 @@ describe("shadcn components", () => {
     expect(btn.className).toContain("text-background");
   });
 
-  // Test 4: Input and textarea use framed field styling
+  // 测试 4：Input 与 textarea 使用带边框的字段样式。
   it("Input and Textarea use full bordered field styling", async () => {
     const { Input } = await import("../src/components/ui/input.js");
     const { Textarea } = await import("../src/components/ui/textarea.js");
@@ -93,7 +93,7 @@ describe("shadcn components", () => {
     expect(ta.className).not.toContain("border-b");
   });
 
-  // Test 5: Card uses white bg with hard-shadow (vellum theme)
+  // 测试 5：Card 使用白色背景与硬边阴影（羊皮纸主题）。
   it("Card uses bg-white border border-stone-900 hard-shadow", async () => {
     const { Card } = await import("../src/components/ui/card.js");
 
@@ -105,18 +105,18 @@ describe("shadcn components", () => {
     expect(card.className).toContain("hard-shadow");
   });
 
-  // Test 6: Dialog overlay uses backdrop-blur for glassmorphism
+  // 测试 6：Dialog 叠层使用 backdrop-blur 营造玻璃拟态。
   it("Dialog overlay has backdrop-blur class", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
 
-    // Read dialog source — easier than rendering since Dialog requires Portal
+    // 直接读取 Dialog 源码；由于 Dialog 依赖 Portal，这比渲染更简单。
     const src = readFileSync(resolve(__dirname, "../src/components/ui/dialog.tsx"), "utf-8");
     expect(src).toContain("backdrop-blur");
     expect(src).toContain("bg-black/20");
   });
 
-  // Test 7: Separator uses ghost-border
+  // 测试 7：Separator 使用幽灵边框。
   it("Separator uses bg-ghost-border", async () => {
     const { Separator } = await import("../src/components/ui/separator.js");
 

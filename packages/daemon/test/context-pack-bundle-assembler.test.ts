@@ -1,5 +1,4 @@
-// Rig Context / Composable Context Injection v0 (PL-014) — bundle
-// assembler tests.
+// Rig Context / Composable Context Injection v0（PL-014）——bundle assembler 测试。
 
 import { describe, it, expect } from "vitest";
 import { assembleBundle } from "../src/domain/context-packs/bundle-assembler.js";
@@ -24,7 +23,7 @@ function makeEntry(opts: Partial<ContextPackEntry> & { files: ContextPackEntry["
 }
 
 describe("assembleBundle", () => {
-  it("frames the bundle with name + version + per-file headers", () => {
+  it("使用 name + version + 每文件 header 构造 bundle 框架", () => {
     const entry = makeEntry({
       name: "alpha",
       version: "1",
@@ -42,16 +41,16 @@ describe("assembleBundle", () => {
       packEntry: entry,
       readFile: (p) => reads[p]!,
     });
-    expect(bundle.text).toContain("# OpenRig Context Pack: alpha v1");
+    expect(bundle.text).toContain("# zrig 上下文包：alpha v1");
     expect(bundle.text).toContain("Alpha pack purpose");
-    expect(bundle.text).toContain("## File: prd.md (role: prd) — PRD summary");
-    expect(bundle.text).toContain("## File: notes.md (role: notes)");
+    expect(bundle.text).toContain("## 文件：prd.md（角色：prd）——PRD summary");
+    expect(bundle.text).toContain("## 文件：notes.md（角色：notes）");
     expect(bundle.text).toContain("## PRD body");
     expect(bundle.text).toContain("Note 1");
     expect(bundle.bytes).toBe(Buffer.byteLength(bundle.text, "utf-8"));
   });
 
-  it("skips files marked missing (absolutePath null) and reports them", () => {
+  it("跳过标记为缺失的文件（absolutePath 为 null）并报告它们", () => {
     const entry = makeEntry({
       files: [
         { path: "present.md", role: "r", summary: null, absolutePath: "/abs/present.md", bytes: 5, estimatedTokens: 2 },
@@ -66,7 +65,7 @@ describe("assembleBundle", () => {
     expect(bundle.text).not.toContain("absent.md");
   });
 
-  it("estimates token count from byte count of the assembled text", () => {
+  it("根据组合文本的 byte 数估算 token 数", () => {
     const entry = makeEntry({
       files: [
         { path: "a.md", role: "r", summary: null, absolutePath: "/abs/a.md", bytes: 100, estimatedTokens: 25 },
@@ -76,11 +75,11 @@ describe("assembleBundle", () => {
       packEntry: entry,
       readFile: () => "x".repeat(100),
     });
-    // bundle text ≈ headers + 100 chars ; estimateTokens = ceil(bytes / 4)
+    // bundle text ≈ header + 100 个字符；estimateTokens = ceil(bytes / 4)
     expect(bundle.estimatedTokens).toBeGreaterThanOrEqual(25);
   });
 
-  it("preserves operator-supplied purpose verbatim (trimmed)", () => {
+  it("逐字保留用户提供的 purpose（裁剪首尾空白）", () => {
     const entry = makeEntry({
       purpose: "  Multi-line purpose\nthat spans  ",
       files: [],
@@ -89,11 +88,11 @@ describe("assembleBundle", () => {
     expect(bundle.text).toContain("Multi-line purpose\nthat spans");
   });
 
-  it("handles a pack with no files (empty bundle, no crash)", () => {
+  it("处理不含文件的 pack（空 bundle、不崩溃）", () => {
     const entry = makeEntry({ files: [] });
     const bundle = assembleBundle({ packEntry: entry, readFile: () => "" });
     expect(bundle.files).toEqual([]);
     expect(bundle.missingFiles).toEqual([]);
-    expect(bundle.text).toContain("# OpenRig Context Pack: test v1");
+    expect(bundle.text).toContain("# zrig 上下文包：test v1");
   });
 });

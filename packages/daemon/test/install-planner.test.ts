@@ -49,8 +49,8 @@ function resolvePackage(manifestYaml: string) {
 }
 
 describe("InstallPlanner", () => {
-  // Test 1: Clean repo -> all safe_projection
-  it("clean repo -> all entries classified safe_projection", () => {
+  // 测试 1：干净 repo → 全部 safe_projection
+  it("clean repo -> 所有分类为 safe_projection 的条目", () => {
     const resolved = resolvePackage(BASIC_MANIFEST);
     const plannerFs = mockFs(BASIC_SOURCE_FILES);
     const planner = new InstallPlanner(plannerFs);
@@ -64,8 +64,8 @@ describe("InstallPlanner", () => {
     }
   });
 
-  // Test 2: Existing skill -> conflict
-  it("existing skill with same name -> conflict detected", () => {
+  // 测试 2：已有 skill → conflict
+  it("现有同名技能 -> 检测到冲突", () => {
     const resolved = resolvePackage(BASIC_MANIFEST);
     const plannerFs = mockFs({
       ...BASIC_SOURCE_FILES,
@@ -77,11 +77,11 @@ describe("InstallPlanner", () => {
     expect(plan.conflicts).toHaveLength(1);
     expect(plan.conflicts[0]!.exportName).toBe("foo/SKILL.md");
     expect(plan.conflicts[0]!.conflict).toBeDefined();
-    expect(plan.conflicts[0]!.conflict!.reason).toContain("already exists");
+    expect(plan.conflicts[0]!.conflict!.reason).toContain("已存在");
   });
 
-  // Test 3: Existing AGENTS.md -> managed_merge
-  it("existing AGENTS.md -> guidance classified managed_merge", () => {
+  // 测试 3：已有 AGENTS.md → managed_merge
+  it("现有 AGENTS.md -> 指南分类为 Managed_merge", () => {
     const resolved = resolvePackage(BASIC_MANIFEST);
     const plannerFs = mockFs({
       ...BASIC_SOURCE_FILES,
@@ -95,8 +95,8 @@ describe("InstallPlanner", () => {
     expect(guidanceEntry!.classification).toBe("managed_merge");
   });
 
-  // Test 4: No existing AGENTS.md -> safe_projection
-  it("no existing AGENTS.md -> guidance classified safe_projection", () => {
+  // 测试 4：无已有 AGENTS.md → safe_projection
+  it("没有现有的 AGENTS.md -> 指导分类 safe_projection", () => {
     const resolved = resolvePackage(BASIC_MANIFEST);
     const plannerFs = mockFs(BASIC_SOURCE_FILES);
     const planner = new InstallPlanner(plannerFs);
@@ -107,8 +107,8 @@ describe("InstallPlanner", () => {
     expect(guidanceEntry!.classification).toBe("safe_projection");
   });
 
-  // Test 5: Hook -> deferred
-  it("hook export -> classified deferred", () => {
+  // 测试 5：Hook → deferred
+  it("hook导出 -> 分类延迟", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -136,8 +136,8 @@ exports:
     expect(hookEntry!.deferReason).toContain("Phase 5");
   });
 
-  // Test 6: MCP -> deferred
-  it("MCP export -> classified deferred", () => {
+  // 测试 6：MCP → deferred
+  it("MCP 导出 -> 分类延期", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -164,13 +164,13 @@ exports:
     expect(mcpEntry!.deferred).toBe(true);
   });
 
-  // Test 7: Target paths correct per runtime
-  it("plan includes correct target paths per runtime", () => {
+  // 测试 7：按 runtime 的目标路径正确
+  it("计划包括每个运行时的正确目标路径", () => {
     const resolved = resolvePackage(BASIC_MANIFEST);
     const plannerFs = mockFs(BASIC_SOURCE_FILES);
     const planner = new InstallPlanner(plannerFs);
 
-    // Claude Code — guidance is agents_md which defers on claude-code, so only check skill
+    // Claude Code——guidance 是 agents_md，在 claude-code 上 deferred，故只校验 skill
     const ccPlan = planner.plan(resolved, "/repo", "claude-code");
     const ccSkill = ccPlan.entries.find((e) => e.exportType === "skill");
     expect(ccSkill!.targetPath).toContain(".claude/skills/foo");
@@ -182,7 +182,7 @@ exports:
   });
 
   // Test 8: Plan separates actionable vs deferred vs conflicts
-  it("plan separates actionable vs deferred vs conflicts", () => {
+  it("计划区分可操作、延迟和冲突", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -214,7 +214,7 @@ exports:
   });
 
   // Test 9: Multiple exports planned correctly
-  it("multiple exports planned correctly", () => {
+  it("正确规划多个导出项", () => {
     const resolved = resolvePackage(BASIC_MANIFEST);
     const plannerFs = mockFs(BASIC_SOURCE_FILES);
     const planner = new InstallPlanner(plannerFs);
@@ -229,7 +229,7 @@ exports:
   });
 
   // Test 10: Role-filtered plan
-  it("role-filtered exports produce correct plan subset", () => {
+  it("角色过滤导出生成正确的计划子集", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -260,7 +260,7 @@ roles:
   });
 
   // Test 11: Agent name derived from source basename
-  it("agent without explicit name uses derived basename", () => {
+  it("没有显式名称的智能体使用派生基本名称", () => {
     const resolved = resolvePackage(BASIC_MANIFEST);
     const plannerFs = mockFs(BASIC_SOURCE_FILES);
     const planner = new InstallPlanner(plannerFs);
@@ -274,7 +274,7 @@ roles:
   });
 
   // Test 18: Agent targets are .yaml files (not directories)
-  it("agent targets are .yaml files, not directories", () => {
+  it("智能体目标是 .yaml 文件，而不是目录", () => {
     const resolved = resolvePackage(BASIC_MANIFEST);
     const plannerFs = mockFs(BASIC_SOURCE_FILES);
     const planner = new InstallPlanner(plannerFs);
@@ -289,7 +289,7 @@ roles:
   });
 
   // Test 19: sourcePath set on file-backed entries, undefined on requirements
-  it("sourcePath set on skills/guidance/agents, undefined on requirements", () => {
+  it("根据技能/指导/智能体设置的 sourcePath，根据要求未定义", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -335,7 +335,7 @@ requirements:
   });
 
   // Test 12: generic_rules_overlay -> deferred
-  it("generic_rules_overlay guidance -> deferred", () => {
+  it("generic_rules_overlay 指导 -> 推迟", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -359,7 +359,7 @@ exports:
   });
 
   // Test 13: replace merge strategy -> deferred
-  it("replace merge strategy guidance -> deferred", () => {
+  it("替换合并策略指导 -> 推迟", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -383,7 +383,7 @@ exports:
   });
 
   // Test 14: agents_md on claude-code -> deferred
-  it("agents_md guidance on claude-code -> deferred", () => {
+  it("Agents_md 关于 claude-code 的指导 -> 延迟", () => {
     const resolved = resolvePackage(BASIC_MANIFEST);
     const plannerFs = mockFs(BASIC_SOURCE_FILES);
     const planner = new InstallPlanner(plannerFs);
@@ -391,11 +391,11 @@ exports:
 
     const entry = plan.deferred.find((e) => e.exportType === "guidance" && e.exportName === "review-guide");
     expect(entry).toBeDefined();
-    expect(entry!.deferReason).toContain("agents_md guidance not applicable to claude-code");
+    expect(entry!.deferReason).toContain("agents_md 指导文件不适用于 claude-code");
   });
 
   // Test 15: claude_md on codex -> deferred
-  it("claude_md guidance on codex -> deferred", () => {
+  it("claude_md 关于Codex的指导 -> 推迟", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -415,11 +415,11 @@ exports:
 
     const entry = plan.deferred.find((e) => e.exportType === "guidance");
     expect(entry).toBeDefined();
-    expect(entry!.deferReason).toContain("claude_md guidance not applicable to codex");
+    expect(entry!.deferReason).toContain("claude_md 指导文件不适用于 codex");
   });
 
   // Test 16: Requirements planned as deferred external_install
-  it("requirements planned as deferred external_install", () => {
+  it("计划为延迟的 external_install 的需求", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -448,11 +448,11 @@ requirements:
     expect(reqEntries).toHaveLength(2);
     expect(reqEntries.some((e) => e.exportName === "agent-browser" && e.classification === "external_install")).toBe(true);
     expect(reqEntries.some((e) => e.exportName === "ripgrep" && e.classification === "external_install")).toBe(true);
-    expect(reqEntries[0]!.deferReason).toContain("Phase 5");
+    expect(reqEntries[0]!.deferReason).toContain("阶段 5");
   });
 
   // Test 17: packageId is undefined (set by caller on persistence)
-  it("plan.packageId is undefined before persistence", () => {
+  it("持久化前plan.packageId未定义", () => {
     const resolved = resolvePackage(BASIC_MANIFEST);
     const plannerFs = mockFs(BASIC_SOURCE_FILES);
     const planner = new InstallPlanner(plannerFs);
@@ -464,7 +464,7 @@ requirements:
   // --- New tests for R2-H1, R2-H2, F2.1 ---
 
   // Test 20: Multi-file skill projection
-  it("multi-file skill projection creates one entry per file", () => {
+  it("多文件技能投影为每个文件创建一个条目", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -500,7 +500,7 @@ exports:
   });
 
   // Test 21: Incompatible runtime -> throws
-  it("incompatible runtime throws error", () => {
+  it("不兼容的运行时抛出错误", () => {
     const manifest = `
 schema_version: 1
 name: codex-only
@@ -517,12 +517,12 @@ exports:
     const planner = new InstallPlanner(mockFs({}));
 
     expect(() => planner.plan(resolved, "/repo", "claude-code")).toThrow(
-      "Package 'codex-only' does not support runtime 'claude-code'. Supported: codex",
+      "package 'codex-only' 不支持运行时 'claude-code'。支持：codex",
     );
   });
 
   // Test 22: Unsupported scope -> deferred
-  it("skill with unsupported scope is deferred", () => {
+  it("工作范围不受支持的技能被标记为 deferred", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -543,12 +543,12 @@ exports:
     const entry = plan.deferred.find((e) => e.exportType === "skill");
     expect(entry).toBeDefined();
     expect(entry!.deferred).toBe(true);
-    expect(entry!.deferReason).toContain("does not support project_shared scope");
+    expect(entry!.deferReason).toContain("不支持 project_shared 范围");
     expect(entry!.exportName).toBe("foo");
   });
 
   // Test 23: Missing source file -> throws
-  it("missing source file throws error", () => {
+  it("缺少源文件会引发错误", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -566,12 +566,12 @@ exports:
     const planner = new InstallPlanner(mockFs({}));
 
     expect(() => planner.plan(resolved, "/repo", "claude-code")).toThrow(
-      "Source file not found: /pkg/skills/foo/SKILL.md",
+      "未找到来源文件：/pkg/skills/foo/SKILL.md",
     );
   });
 
   // Test 24: Missing guidance source file -> throws
-  it("missing guidance source file throws error", () => {
+  it("缺少指导源文件会引发错误", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -589,12 +589,12 @@ exports:
     const planner = new InstallPlanner(mockFs({}));
 
     expect(() => planner.plan(resolved, "/repo", "codex")).toThrow(
-      "Source file not found: /pkg/guidance/AGENTS.md",
+      "未找到来源文件：/pkg/guidance/AGENTS.md",
     );
   });
 
   // Test 25: Missing agent source file -> throws
-  it("missing agent source file throws error", () => {
+  it("智能体源文件缺失时抛出错误", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -610,12 +610,12 @@ exports:
     const planner = new InstallPlanner(mockFs({}));
 
     expect(() => planner.plan(resolved, "/repo", "codex")).toThrow(
-      "Source file not found: /pkg/agents/reviewer.yaml",
+      "未找到来源文件：/pkg/agents/reviewer.yaml",
     );
   });
 
   // Test 26: Guidance with unsupported scope -> deferred
-  it("guidance with unsupported scope is deferred", () => {
+  it("工作范围不受支持的指导被标记为 deferred", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -637,11 +637,11 @@ exports:
     const entry = plan.deferred.find((e) => e.exportType === "guidance");
     expect(entry).toBeDefined();
     expect(entry!.deferred).toBe(true);
-    expect(entry!.deferReason).toContain("does not support project_shared scope");
+    expect(entry!.deferReason).toContain("不支持 project_shared 范围");
   });
 
   // Test 27: Agent with unsupported scope -> deferred
-  it("agent with unsupported scope is deferred", () => {
+  it("工作范围不受支持的智能体被标记为 deferred", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -661,6 +661,6 @@ exports:
     const entry = plan.deferred.find((e) => e.exportType === "agent");
     expect(entry).toBeDefined();
     expect(entry!.deferred).toBe(true);
-    expect(entry!.deferReason).toContain("does not support project_shared scope");
+    expect(entry!.deferReason).toContain("不支持 project_shared 范围");
   });
 });

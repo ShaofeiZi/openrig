@@ -1,38 +1,25 @@
-// OPR.0.4.6.MH1 FR-5/FR-6 — THE narrow named host add/pair route family
-// (arch B1 ruling, pin P1: host add + the pair handshake ONLY — no
-// generic registry-write route exists, remove/edit stay out of scope;
-// the daemon reader module stays read-only-forever).
+// OPR.0.4.6.MH1 FR-5/FR-6——窄命名 host add/pair 路由族
+// （arch B1 裁定，pin P1：仅 host add + pair 握手——不存在通用 registry 写路由，
+// remove/edit 不在范围内；后台服务 reader 模块永久只读）。
 //
-// Surface map:
-//   POST /api/hosts/pair-request      TARGET side, OPEN (pre-token
-//                                     bootstrap — a pairing client has no
-//                                     bearer yet by definition). Mints a
-//                                     pairing code + the ONE human
-//                                     approval moment (arch Ruling 2: a
-//                                     human-routed queue item — the
-//                                     shipped human-gate machinery IS the
-//                                     approval surface).
-//   GET  /api/hosts/pair-request/:id  TARGET side, OPEN. Polls the
-//                                     approval item; hands the bearer
-//                                     over ONCE on approval (single-shot,
-//                                     then the pairing dies).
-//   POST /api/hosts/add               LOCAL side, WRITE (bearer-gated
-//                                     like every other daemon write).
-//                                     The dashboard's manual-add seam —
-//                                     delegates to the parity-pinned
-//                                     writer twin (P3); never accepts
-//                                     secret VALUES (P2).
-//   POST /api/hosts/pair              LOCAL side, WRITE. The browser's
-//                                     pair-client seam (B1: the UI's
-//                                     write seam is its local daemon).
-//   GET  /api/hosts/pair/:id          LOCAL side, WRITE-family. Stateless
-//                                     pull-through poll of the target; on
-//                                     approval persists token file +
-//                                     registry entry via the writer twin.
+// 表面映射：
+//   POST /api/hosts/pair-request      TARGET 侧，OPEN（pre-token
+//                                     引导——按定义 pairing 客户端尚无 bearer）。
+//                                     生成 pairing code + 唯一一次人工批准时刻
+//                                     （arch Ruling 2：人工路由的队列项——已交付的
+//                                     human-gate 机制本身就是批准表面）。
+//   GET  /api/hosts/pair-request/:id  TARGET 侧，OPEN。轮询批准项；
+//                                     批准时一次性交出 bearer（单次，随后 pairing 失效）。
+//   POST /api/hosts/add               LOCAL 侧，WRITE（像其他后台服务写一样 bearer 门控）。
+//                                     控制台的手动 add 接缝——委托给 parity 锁定的
+//                                     writer 孪生（P3）；绝不接受 secret VALUE（P2）。
+//   POST /api/hosts/pair              LOCAL 侧，WRITE。浏览器的 pair-client 接缝
+//                                     （B1：UI 的写接缝就是它自己的本地后台服务）。
+//   GET  /api/hosts/pair/:id          LOCAL 侧，WRITE 族。对目标的无状态透传轮询；
+//                                     批准时经 writer 孪生持久化 token 文件 + registry 条目。
 //
-// Deny/timeout persists NOTHING: pairing state is an in-memory map (a
-// daemon restart kills pending pairs), the token file is deleted if the
-// registry write fails, and the approval item simply goes stale.
+// 拒绝/超时不持久化任何东西：pairing 状态是内存 map（后台服务重启即杀掉 pending pair），
+// registry 写失败时 token 文件被删除，批准项直接过期。
 
 import { Hono } from "hono";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -68,8 +55,8 @@ interface ClientPair {
   createdAt: number;
 }
 
-// P2 — hosts.yaml carries bearer POINTERS only; any secret-value-shaped
-// field on the add body is rejected loudly BEFORE any write.
+// P2——hosts.yaml 只携带 bearer 指针；add body 上任何 secret 值形状的字段
+// 在任何写入之前被响亮拒绝。
 const SECRET_SHAPED_FIELDS = ["bearer_value", "bearer_token", "token", "secret", "password"];
 
 function deriveHostId(url: URL): string {
@@ -83,8 +70,8 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
   const issued = new Map<string, IssuedPair>();
   const clientPairs = new Map<string, ClientPair>();
 
-  // Writes are gated exactly like mission-control writes: enforced when a
-  // bearer is configured, pass-through on loopback/tailnet-trust daemons.
+  // 写的门控与 mission-control 写完全一致：配置了 bearer 时强制，
+  // 在 loopback/tailnet-trust 后台服务上放行。
   const requireAuth = authBearerTokenMiddleware({ expectedToken: bearerToken });
   router.use("/add", requireAuth);
   router.use("/pair", requireAuth);
@@ -95,10 +82,9 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
   }
 
   // ---------------------------------------------------------------------
-  // Pointers-only READ for the dashboard host-config component (FR-5).
-  // Not a write surface (P1's cap is the write family); rows mirror the
-  // CLI's `rig host ls --json` additive shape: entry fields (bearer
-  // POINTERS by construction) + `selected` + a bounded coarse `status`.
+  // 供控制台 host-config 组件使用的纯指针读（FR-5）。
+  // 不是写表面（P1 的上限是写族）；行镜像 CLI `zrig host ls --json` 的附加形状：
+  // 条目字段（按构造为 bearer 指针）+ `selected` + 有界粗粒度 `status`。
   // ---------------------------------------------------------------------
 
   function probeHost(host: HostEntry, timeoutMs = 1500): Promise<"reachable" | "unreachable" | "unknown"> {
@@ -145,17 +131,16 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
   });
 
   // ---------------------------------------------------------------------
-  // TARGET side: issuance.
+  // 目标侧：签发。
   // ---------------------------------------------------------------------
 
   router.post("/pair-request", async (c) => {
     if (!bearerToken) {
-      // A tokenless daemon has nothing to issue. Loud + structured; the
-      // fix is named (no silent success, no token minting machinery —
-      // the one-static-bearer model is the shipped auth surface).
+      // 无 token 的后台服务无可发放之物。响亮 + 结构化；指明修复方式
+      // （不静默成功，不发放 token 的机制——单静态 bearer 模型就是已交付的鉴权表面）。
       return c.json({
         error: "pair_target_no_bearer",
-        message: "this daemon runs without OPENRIG_AUTH_BEARER_TOKEN; pairing has no credential to issue. Set OPENRIG_AUTH_BEARER_TOKEN on the target daemon and retry.",
+        message: "本后台服务未运行 OPENRIG_AUTH_BEARER_TOKEN；pairing 没有可发放的凭证。请在目标后台服务上设置 OPENRIG_AUTH_BEARER_TOKEN 后重试。",
       }, 409);
     }
     const body = (await c.req.json<{ requester?: string; human?: string }>().catch(() => ({}))) as { requester?: string; human?: string };
@@ -164,9 +149,9 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
     const humans = body.human ? registry.entities.filter((human) => human.address === body.human) : registry.entities;
     if (humans.length !== 1) return c.json({
       error: "pair_human_required", addresses: registry.entities.map((human) => human.address),
-      message: "Pair approval needs one registered human. Inspect rig gateway human list --json; select --human <entityId>@external when several exist. No approval row was created.",
+      message: "pair 批准需要一名已登记的人工。查看 zrig gateway human list --json；存在多名时用 --human <entityId>@external 选择。未创建任何批准行。",
     }, 409);
-    const requester = (body.requester ?? "").trim() || "unknown requester";
+    const requester = (body.requester ?? "").trim() || "未知请求方";
     const pairId = randomUUID();
     const code = String(randomInt(100000, 1000000));
 
@@ -176,15 +161,15 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
         sourceSession: PAIR_SOURCE_SESSION,
         destinationSession: humans[0]!.address,
         tier: "human-gate",
-        summary: `Host pairing request ${code} from ${requester}`,
+        summary: `来自 ${requester} 的主机配对请求 ${code}`,
         evidenceRef: `pair-request:${pairId}`,
         body: [
-          `A remote operator (${requester}) is asking to pair with this host.`,
-          `Pairing code: ${code} — confirm it matches the code shown on the requesting side.`,
-          `APPROVE: rig queue update <this-qitem-id> --state done --closure-reason no-follow-on`,
-          `DENY:    rig queue update <this-qitem-id> --state denied`,
-          `Approval hands this daemon's bearer token to the requester (full API access).`,
-          `This request expires ${Math.round(PAIR_TTL_MS / 60000)} minutes after creation; expiry persists nothing.`,
+          `远程操作员（${requester}）正在请求与本主机配对。`,
+          `配对码：${code}——请确认与请求方显示的码一致。`,
+          `批准：zrig queue update <this-qitem-id> --state done --closure-reason no-follow-on`,
+          `拒绝：zrig queue update <this-qitem-id> --state denied`,
+          `批准会把本后台服务的 bearer token 交给请求方（完整 API 访问权）。`,
+          `本请求在创建 ${Math.round(PAIR_TTL_MS / 60000)} 分钟后过期；过期不持久化任何内容。`,
         ].join("\n"),
       });
       qitemId = item.qitemId;
@@ -200,7 +185,7 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
   router.get("/pair-request/:pairId", (c) => {
     const pairId = c.req.param("pairId");
     const rec = issued.get(pairId);
-    if (!rec) return c.json({ error: "pair_unknown", message: "unknown or already-consumed pairing request" }, 404);
+    if (!rec) return c.json({ error: "pair_unknown", message: "配对请求未知或已被消费" }, 404);
 
     if (Date.now() - rec.createdAt > PAIR_TTL_MS) {
       issued.delete(pairId);
@@ -209,7 +194,7 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
     const item = getRepo(c).getById(rec.qitemId);
     const state = item?.state ?? "pending";
     if (state === "done") {
-      // Single-shot handover: the first approved read consumes the pairing.
+      // 单次交出：第一次批准读取即消耗该 pairing。
       issued.delete(pairId);
       return c.json({ status: "approved", token: bearerToken });
     }
@@ -221,19 +206,19 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
   });
 
   // ---------------------------------------------------------------------
-  // LOCAL side: the dashboard's add + pair-client seams.
+  // LOCAL 侧：控制台的 add + pair-client 接缝。
   // ---------------------------------------------------------------------
 
   router.post("/add", async (c) => {
     const body = (await c.req.json<Record<string, unknown>>().catch(() => null));
     if (!body || typeof body !== "object") {
-      return c.json({ error: "invalid_host_entry", message: "body must be a host entry object" }, 400);
+      return c.json({ error: "invalid_host_entry", message: "body 必须是 host 条目对象" }, 400);
     }
     const secretField = SECRET_SHAPED_FIELDS.find((f) => f in body);
     if (secretField) {
       return c.json({
         error: "no_secret_values",
-        message: `field '${secretField}' looks like a secret VALUE — hosts.yaml carries bearer POINTERS only (bearer_env / bearer_file). Nothing was written.`,
+        message: `字段 '${secretField}' 看起来是 secret VALUE——hosts.yaml 只携带 bearer 指针（bearer_env / bearer_file）。未写入任何内容。`,
       }, 400);
     }
     const res = addHostEntry(body);
@@ -246,21 +231,19 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
   router.post("/pair", async (c) => {
     const body = (await c.req.json<{ url?: string; id?: string; requester?: string; human?: string }>().catch(() => ({}))) as { url?: string; id?: string; requester?: string; human?: string };
     const rawUrl = (body.url ?? "").trim();
-    if (!rawUrl) return c.json({ error: "pair_url_required", message: "body.url is required (the target daemon's address)" }, 400);
+    if (!rawUrl) return c.json({ error: "pair_url_required", message: "body.url 为必填项（目标后台服务的地址）" }, 400);
     let target: URL;
     try {
       target = new URL(/^https?:\/\//.test(rawUrl) ? rawUrl : `http://${rawUrl}`);
     } catch {
-      return c.json({ error: "pair_url_invalid", message: `'${rawUrl}' is not a usable address` }, 400);
+      return c.json({ error: "pair_url_invalid", message: `'${rawUrl}' 不是可用地址` }, 400);
     }
     const targetBase = target.origin;
 
-    // B1 fixback (guard code-review 2026-07-07): PREFLIGHT before the
-    // target is contacted. The candidate entry runs the SAME validation
-    // contract the add will use (duplicate/reserved ids, invalid existing
-    // registry fail here — before any approval item is minted on the
-    // target), and a pre-existing token file is pre-existing CREDENTIAL
-    // STATE: rejected, never overwritten, never deleted by this pairing.
+    // B1 fixback（guard code-review 2026-07-07）：在联系目标之前做 PREFLIGHT。
+    // 候选条目跑 add 将使用的同一校验契约（重复/保留 id、既有 registry 非法
+    // 都在此失败——赶在目标上生成任何批准项之前），而已存在的 token 文件是既有
+    // 凭证状态：拒绝，绝不被本 pairing 覆盖或删除。
     const hostId = (body.id ?? "").trim() || deriveHostId(target);
     const tokenPath = join(getOpenRigHome(), "secrets", `host-${hostId}.token`);
     {
@@ -283,7 +266,7 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
       if (existsSync(tokenPath)) {
         return c.json({
           error: "pair_token_path_exists",
-          message: `a credential file already exists at ${tokenPath} — pre-existing credential state is never overwritten. Pair with a different id, or remove the file if it is stale.`,
+          message: `${tokenPath} 已存在凭证文件——既有凭证状态绝不被覆盖。请用不同 id 配对，或若该文件已过期则删除它。`,
         }, 409);
       }
     }
@@ -300,12 +283,12 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
       status = res.status;
       remote = (await res.json().catch(() => ({}))) as typeof remote;
     } catch (err) {
-      return c.json({ error: "pair_target_unreachable", message: `could not reach ${targetBase}: ${(err as Error).message}` }, 502);
+      return c.json({ error: "pair_target_unreachable", message: `无法访问 ${targetBase}：${(err as Error).message}` }, 502);
     }
     if (status !== 200 || !remote.pairId || !remote.code) {
       return c.json({
         error: remote.error ?? "pair_request_failed",
-        message: remote.message ?? `target responded HTTP ${status}`,
+        message: remote.message ?? `目标响应 HTTP ${status}`,
       }, 502);
     }
 
@@ -322,7 +305,7 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
 
   router.get("/pair/:pairId", async (c) => {
     const rec = clientPairs.get(c.req.param("pairId"));
-    if (!rec) return c.json({ error: "pair_unknown", message: "unknown or already-completed pairing" }, 404);
+    if (!rec) return c.json({ error: "pair_unknown", message: "配对未知或已完成" }, 404);
     if (Date.now() - rec.createdAt > PAIR_TTL_MS) {
       clientPairs.delete(c.req.param("pairId"));
       return c.json({ status: "expired" });
@@ -335,7 +318,7 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
       });
       remote = (await res.json().catch(() => ({}))) as typeof remote;
     } catch (err) {
-      return c.json({ error: "pair_target_unreachable", message: `could not reach ${rec.url}: ${(err as Error).message}` }, 502);
+      return c.json({ error: "pair_target_unreachable", message: `无法访问 ${rec.url}：${(err as Error).message}` }, 502);
     }
 
     if (remote.status === "pending" || remote.status === undefined) {
@@ -346,13 +329,10 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
       return c.json({ status: remote.status === "expired" ? "expired" : "denied" });
     }
 
-    // Approved: persist the token via EXCLUSIVE CREATE (open flag "wx",
-    // 0600 — rev1-r2 B3: check-then-rename had a window where a
-    // concurrent same-id pair could clobber the winner's file and then
-    // delete it on its own add failure; "wx" is atomic at the
-    // filesystem, so creation SUCCESS is the proof of ownership the
-    // cleanup relies on), then the registry entry through the ONE write
-    // contract. addHostEntry re-validates authoritatively.
+    // 已批准：以排他创建（open flag "wx"，0600——rev1-r2 B3：check-then-rename
+    // 曾有一个窗口，并发的同 id pair 可能覆盖胜者文件并在自己 add 失败时删掉它；
+    // "wx" 在文件系统层原子，因此创建成功就是清理所依赖的所有权证明）持久化 token，
+    // 然后经唯一写契约写 registry 条目。addHostEntry 权威性地重新校验。
     const secretsDir = join(getOpenRigHome(), "secrets");
     const tokenPath = join(secretsDir, `host-${rec.hostId}.token`);
     try {
@@ -363,7 +343,7 @@ export function hostsRoutes(opts?: { bearerToken?: string | null; humanRegistry?
         clientPairs.delete(c.req.param("pairId"));
         return c.json({
           error: "pair_token_path_exists",
-          message: `a credential file appeared at ${tokenPath} during pairing — refusing to overwrite it; nothing was persisted by this pairing.`,
+          message: `配对期间 ${tokenPath} 出现凭证文件——拒绝覆盖；本 pairing 未持久化任何内容。`,
         }, 409);
       }
       return c.json({ error: "pair_token_write_failed", message: (err as Error).message }, 500);

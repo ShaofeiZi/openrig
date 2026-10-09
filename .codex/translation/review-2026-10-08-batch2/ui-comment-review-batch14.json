@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T01:23:13",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch14",
+ "files": 10,
+ "changed": 8,
+ "reviewed_no_change": 2,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/package-list.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "3396ed380302381fdf9a4b8282e1c68a811fb109995687178a578c49fea468ca",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、SliceReviewTab.tsx:290-304/MissionReviewTab.tsx:306/74 行号表、OPR.0.4.0.1/0.4.0.39/0.4.1.24、FR-1/2/4/5、terminal-geometry.ts、LIVE_TERMINAL_COLS、#6023、ScaleToFitTerminal、hasProofPacket/status===done、a1/a2/a3、universal-shell.md L143/144、HostMultiRigGraph、AppShell.tsx slot id、MISSION_BRIEF.md 保留"
+  },
+  {
+   "path": "packages/ui/test/review-intent-markdown.test.tsx",
+   "status": "changed",
+   "after_sha256": "c5bd4331555c364cf12ffa5b11b43b58699a2e890968d36f12afefc2903e86c1",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、SliceReviewTab.tsx:290-304/MissionReviewTab.tsx:306/74 行号表、OPR.0.4.0.1/0.4.0.39/0.4.1.24、FR-1/2/4/5、terminal-geometry.ts、LIVE_TERMINAL_COLS、#6023、ScaleToFitTerminal、hasProofPacket/status===done、a1/a2/a3、universal-shell.md L143/144、HostMultiRigGraph、AppShell.tsx slot id、MISSION_BRIEF.md 保留"
+  },
+  {
+   "path": "packages/ui/test/focused-terminal-reconnect.test.tsx",
+   "status": "changed",
+   "after_sha256": "8b3f1bc256340ebfaba0e7b869bf9829b551e0d5d0638e662eddf0c1e0231b9a",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、SliceReviewTab.tsx:290-304/MissionReviewTab.tsx:306/74 行号表、OPR.0.4.0.1/0.4.0.39/0.4.1.24、FR-1/2/4/5、terminal-geometry.ts、LIVE_TERMINAL_COLS、#6023、ScaleToFitTerminal、hasProofPacket/status===done、a1/a2/a3、universal-shell.md L143/144、HostMultiRigGraph、AppShell.tsx slot id、MISSION_BRIEF.md 保留"
+  },
+  {
+   "path": "packages/ui/test/fileviewer-resolvable-target.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "da4526b63c7f53948a7bdabf33988fc3d05591be21ca1b9b16f6ba40a4cc5296",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、SliceReviewTab.tsx:290-304/MissionReviewTab.tsx:306/74 行号表、OPR.0.4.0.1/0.4.0.39/0.4.1.24、FR-1/2/4/5、terminal-geometry.ts、LIVE_TERMINAL_COLS、#6023、ScaleToFitTerminal、hasProofPacket/status===done、a1/a2/a3、universal-shell.md L143/144、HostMultiRigGraph、AppShell.tsx slot id、MISSION_BRIEF.md 保留"
+  },
+  {
+   "path": "packages/ui/test/storytelling-mark-complete.test.tsx",
+   "status": "changed",
+   "after_sha256": "d149242d32f1030cb3cd7e2f96ccf685b024bf3ecac6e332ac03d90ff4569eed",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、SliceReviewTab.tsx:290-304/MissionReviewTab.tsx:306/74 行号表、OPR.0.4.0.1/0.4.0.39/0.4.1.24、FR-1/2/4/5、terminal-geometry.ts、LIVE_TERMINAL_COLS、#6023、ScaleToFitTerminal、hasProofPacket/status===done、a1/a2/a3、universal-shell.md L143/144、HostMultiRigGraph、AppShell.tsx slot id、MISSION_BRIEF.md 保留"
+  },
+  {
+   "path": "packages/ui/test/terminal-styling-polish.test.tsx",
+   "status": "changed",
+   "after_sha256": "3303369fe7614166929119d559489cbce579a6232ddfe84134b9e024ce551be9",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、SliceReviewTab.tsx:290-304/MissionReviewTab.tsx:306/74 行号表、OPR.0.4.0.1/0.4.0.39/0.4.1.24、FR-1/2/4/5、terminal-geometry.ts、LIVE_TERMINAL_COLS、#6023、ScaleToFitTerminal、hasProofPacket/status===done、a1/a2/a3、universal-shell.md L143/144、HostMultiRigGraph、AppShell.tsx slot id、MISSION_BRIEF.md 保留"
+  },
+  {
+   "path": "packages/ui/test/story-graph.test.tsx",
+   "status": "changed",
+   "after_sha256": "a934611ae655d9ade5e83556fc94523ad17b3d35e5d06f42a13a3004f7e93cbf",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、SliceReviewTab.tsx:290-304/MissionReviewTab.tsx:306/74 行号表、OPR.0.4.0.1/0.4.0.39/0.4.1.24、FR-1/2/4/5、terminal-geometry.ts、LIVE_TERMINAL_COLS、#6023、ScaleToFitTerminal、hasProofPacket/status===done、a1/a2/a3、universal-shell.md L143/144、HostMultiRigGraph、AppShell.tsx slot id、MISSION_BRIEF.md 保留"
+  },
+  {
+   "path": "packages/ui/test/tests-verification-tab.test.tsx",
+   "status": "changed",
+   "after_sha256": "70e5b4a6e8ddf5698460bed0e8896e87d1c37ddaf3591f8b0c0c880fa58a9b03",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、SliceReviewTab.tsx:290-304/MissionReviewTab.tsx:306/74 行号表、OPR.0.4.0.1/0.4.0.39/0.4.1.24、FR-1/2/4/5、terminal-geometry.ts、LIVE_TERMINAL_COLS、#6023、ScaleToFitTerminal、hasProofPacket/status===done、a1/a2/a3、universal-shell.md L143/144、HostMultiRigGraph、AppShell.tsx slot id、MISSION_BRIEF.md 保留"
+  },
+  {
+   "path": "packages/ui/test/workspace-portfolio.test.tsx",
+   "status": "changed",
+   "after_sha256": "eb201f89f8237513f26397b1b8d442be41e92cbabe55bb74d65e898893a3249b",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、SliceReviewTab.tsx:290-304/MissionReviewTab.tsx:306/74 行号表、OPR.0.4.0.1/0.4.0.39/0.4.1.24、FR-1/2/4/5、terminal-geometry.ts、LIVE_TERMINAL_COLS、#6023、ScaleToFitTerminal、hasProofPacket/status===done、a1/a2/a3、universal-shell.md L143/144、HostMultiRigGraph、AppShell.tsx slot id、MISSION_BRIEF.md 保留"
+  },
+  {
+   "path": "packages/ui/test/p5-mobile-polish.test.tsx",
+   "status": "changed",
+   "after_sha256": "173aa64ed55f4f791ba7443265642c5a12e2f15cf61c75f12dea73d647ffaf18",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、SliceReviewTab.tsx:290-304/MissionReviewTab.tsx:306/74 行号表、OPR.0.4.0.1/0.4.0.39/0.4.1.24、FR-1/2/4/5、terminal-geometry.ts、LIVE_TERMINAL_COLS、#6023、ScaleToFitTerminal、hasProofPacket/status===done、a1/a2/a3、universal-shell.md L143/144、HostMultiRigGraph、AppShell.tsx slot id、MISSION_BRIEF.md 保留"
+  }
+ ]
+}

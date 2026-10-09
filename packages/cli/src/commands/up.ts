@@ -12,8 +12,8 @@ import { formatThreePart, type ThreePartRejection } from "./workflow-errors.js";
 
 const LONG_RUNNING_UP_TIMEOUT_MS = 120_000;
 
-/** OPR.0.3.4.2 — default interactive [y/N] prompt for the awaiting-decision
- *  ASK (TTY only; tests inject promptYesNo instead). Default answer: No. */
+/** OPR.0.3.4.2——awaiting-decision ASK 的默认交互式 [y/N] 提示（仅 TTY；
+ *  测试注入 promptYesNo）。默认回答：No。 */
 async function defaultPromptYesNo(question: string): Promise<boolean> {
   const readline = await import("node:readline");
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -25,22 +25,21 @@ async function defaultPromptYesNo(question: string): Promise<boolean> {
   });
 }
 
-// OPR.0.3.2.22 Bug 3 helper — mirrors cwd-resolution.isPathInsideRoot in
-// the daemon so the CLI can decide whether a path-form sourceRef lives
-// inside the daemon install root without importing the daemon package.
+// OPR.0.3.2.22 Bug 3 helper——镜像后台服务里的 cwd-resolution.isPathInsideRoot，
+// 让 CLI 不用导入 daemon 包就能判断 path 形式的 sourceRef 是否位于
+// 后台服务安装根目录内。
 function isPathInsideRoot(candidate: string, root: string): boolean {
   const relative = nodePath.relative(nodePath.resolve(root), nodePath.resolve(candidate));
   return relative === "" || (!relative.startsWith("..") && !nodePath.isAbsolute(relative));
 }
 
-// OPR.0.4.4.11 (arch return R11-2) — pre-dispatch detection of a topology
-// source for the --host rejection. Mirrors the daemon's FR-1 detection
-// contract without importing the daemon package: `.rigtopology` extension,
-// or a readable path-form YAML document with a top-level `rigs:` LIST.
+// OPR.0.4.4.11（arch return R11-2）——对 topology source 做 --host 拒绝的
+// 预分发检测。镜像后台服务的 FR-1 检测契约，但不导入 daemon 包：
+// `.rigtopology` 扩展名，或顶层 `rigs:` 为 LIST 的可读 path 形式 YAML 文档。
 export function sourceLooksLikeTopology(source: string): boolean {
   if (/\.rigtopology$/i.test(source)) return true;
-  // Name-form sources (no slash, no known extension) keep rig-name
-  // semantics — never sniffed (same precedence as the daemon router).
+  // 名称形式 source（无斜杠、无已知扩展名）保持 rig-name 语义——不嗅探
+  //（与后台服务路由同优先级）。
   if (!source.includes("/") && !source.match(/\.(ya?ml)$/i)) return false;
   try {
     const p = nodePath.resolve(source);
@@ -49,57 +48,55 @@ export function sourceLooksLikeTopology(source: string): boolean {
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return false;
     return Array.isArray((parsed as Record<string, unknown>)["rigs"]);
   } catch {
-    return false; // unreadable/unparseable — existing flows own the error
+    return false; // 不可读/不可解析——已有流程负责报错
   }
 }
 
 export const HOST_TOPOLOGY_REJECTION =
-  "rig up --host cannot take a topology source: per-entry 'host:' in the manifest is the ONLY placement mechanism for topologies (two placement mechanisms must not coexist). Put 'host: <id>' on the entries you want placed remotely and run 'rig up <topology>' without --host.";
+  "zrig up --host 不能接受 topology source：manifest 中按条目写 'host:' 是 topology 唯一的放置机制（两种放置机制不能共存）。把 'host: <id>' 写到你想远程放置的条目上，然后不带 --host 跑 'zrig up <topology>'。";
 
 export function upCommand(
   depsOverride?: StatusDeps & {
     lifecycleDeps?: LifecycleDeps;
     preflightExec?: (cmd: string) => Promise<string>;
-    /** OPR.0.3.4.2 — injectable [y/N] prompt for the awaiting-decision ASK
-     *  (tests drive it; default = readline on stdin, offered on TTY only). */
+    /** OPR.0.3.4.2——awaiting-decision ASK 的可注入 [y/N] 提示
+     * （测试驱动；默认 = stdin 上的 readline，仅 TTY 时提供）。 */
     promptYesNo?: (question: string) => Promise<boolean>;
   },
 ): Command {
   const cmd = new Command("up")
-    .description("Launch a rig or managed app from a spec, library entry, or bundle")
+    .description("从 spec、库条目或 bundle 启动一个工作组或受管 app")
     .addHelpText("after", `
-Examples:
-  rig up secrets-manager
-  rig up ./rig.yaml
-  rig up ./demo.rigbundle --target ~/work
+示例：
+  zrig up secrets-manager
+  zrig up ./rig.yaml
+  zrig up ./demo.rigbundle --target ~/work
 `);
   const getDepsF = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   cmd
-    .argument("<source>", "Path to a .yaml rig spec or .rigbundle, or a library name such as secrets-manager")
-    .option("--plan", "Plan mode — preview without executing")
-    .option("--yes", "Auto-approve trusted actions")
-    .option("--cwd <path>", "Override launch working directory for all members for this run only")
-    .option("--target <root>", "Target root directory for package installation (.rigbundle only; does not change agent cwd)")
-    .option("--existing", "Treat <source> as an existing rig name; bypass library-spec name resolution")
-    .option("--fresh <seats...>", "Deliberately fresh-prime the named seats (logical ids) instead of resuming their original sessions (operation B; reported as fresh-primed)")
-    .option("--json", "JSON output for agents")
-    .option("--host <id>", "Run on a remote host declared in ~/.openrig/hosts.yaml")
+    .argument("<source>", "指向 .yaml rig spec 或 .rigbundle 的路径，或库名（如 secrets-manager）")
+    .option("--plan", "计划模式——预览但不执行")
+    .option("--yes", "自动批准受信任动作")
+    .option("--cwd <path>", "本次运行为所有成员覆盖启动工作目录")
+    .option("--target <root>", "包安装的目标根目录（仅 .rigbundle；不改变 agent cwd）")
+    .option("--existing", "把 <source> 当作已有工作组名；绕过库 spec 名称解析")
+    .option("--fresh <seats...>", "刻意重新 priming 指定席位（逻辑 id），而不是恢复它们原来的会话（操作 B；报告为 fresh-primed）")
+    .option("--json", "供智能体使用的 JSON 输出")
+    .option("--host <id>", "在 ~/.openrig/hosts.yaml 中声明的远程主机上运行")
     .action(async (source: string, opts: { plan?: boolean; yes?: boolean; cwd?: string; target?: string; existing?: boolean; fresh?: string[]; json?: boolean; host?: string }) => {
-      // OPR.0.4.6.MH1 FR-2: selected-host routing — explicit --host wins;
-      // else the persisted selection feeds the SHIPPED --host path; no
-      // selection = today exactly. Topology
-      // sources are EXEMPT: per-entry host: is the only topology placement
-      // (shipped R11-2); implicit selection must not turn a flagless
-      // topology up into the rejected --host form.
+      // OPR.0.4.6.MH1 FR-2：选定主机路由——显式 --host 优先；
+      // 否则把已保存的选择喂给已交付的 --host 路径；没有选择则与今日一致。
+      // topology source 豁免：按条目 host: 是 topology 唯一放置方式
+      //（已交付 R11-2）；隐式选择不能把无标志的 topology up 变成被拒绝的
+      // --host 形式。
       if (!sourceLooksLikeTopology(source)) opts.host = resolveEffectiveHost(opts.host);
       const deps = getDepsF();
 
       if (opts.host) {
-        // OPR.0.4.4.11 R11-2: --host + topology source is REJECTED before
-        // any dispatch — per-entry 'host:' is the only topology placement
-        // mechanism. The daemon route carries the same rejection on its
-        // public write path (double-sided enforcement, arch ruling 4).
+        // OPR.0.4.4.11 R11-2：--host + topology source 在任何分发之前被拒绝——
+        // 按条目 'host:' 是 topology 唯一放置机制。后台服务路由在其公开写路径
+        // 上带同样的拒绝（双侧强制，arch 裁定 4）。
         if (sourceLooksLikeTopology(source)) {
           if (opts.json) {
             console.log(JSON.stringify({ ok: false, error: HOST_TOPOLOGY_REJECTION, code: "host_flag_topology" }));
@@ -126,23 +123,22 @@ Examples:
         } else if (result.ok) {
           console.log(JSON.stringify(result.data, null, 2));
         } else {
-          console.error(`Error on host ${opts.host}: ${result.error}`);
+          console.error(`主机 ${opts.host} 上出错：${result.error}`);
           process.exitCode = 1;
         }
         return;
       }
 
-      // Run preflight before auto-start
+      // 自动启动前跑 preflight
       let status = await getDaemonStatus(deps.lifecycleDeps);
       if (status.state !== "running") {
         let resolvedConfig: RiggedConfig | null = null;
-        // bug-fix slice auth-bearer-tailscale-trust: track whether
-        // daemon.host was operator-explicit (env or config file) vs
-        // default-fallback. The daemon's multi-bind path (loopback +
-        // tailscale auto-detect) only runs when OPENRIG_HOST is NOT
-        // exported to the child, so we omit it on the default path.
-        // Hoisted to function scope so the startDaemon block below can
-        // read it after the preflight try-catch.
+        // bug-fix slice auth-bearer-tailscale-trust：追踪 daemon.host 是
+        // 操作人员显式给的（env 或配置文件）还是默认兜底。后台服务的多绑定
+        // 路径（loopback + tailscale 自动检测）只在 OPENRIG_HOST 未 export 给
+        // 子进程时才跑，所以默认路径上我们省略它。
+        // 提升到函数作用域，让下面的 startDaemon 块在 preflight try-catch
+        // 之后能读到它。
         let hostForDaemon: string | undefined;
         try {
           const { ConfigStore } = await import("../config-store.js");
@@ -152,10 +148,10 @@ Examples:
           const configStore = new ConfigStore();
           resolvedConfig = configStore.resolve();
           const hostResolution = configStore.resolveWithSource("daemon.host");
-          // S20 (r2 repair): the SHARED dedicated-intent seam — an env-sourced
-          // daemon.host (ENV_MAP ← OPENRIG_HOST, the injected routing channel) never
-          // creates bind intent through auto-start; flag-less auto-start honors only a
-          // FILE-sourced daemon.host or OPENRIG_BIND_HOST.
+          // S20（r2 修复）：共用的专用 intent 接缝——env 来源的
+          // daemon.host（ENV_MAP ← OPENRIG_HOST，注入路由通道）绝不通过
+          // 自动启动创建绑定 intent；无标志自动启动只认文件来源的
+          // daemon.host 或 OPENRIG_BIND_HOST。
           hostForDaemon = resolveBindIntent({
             flagHost: undefined,
             envBindHost: process.env["OPENRIG_BIND_HOST"],
@@ -173,15 +169,15 @@ Examples:
           const preflightResult = await preflight.run();
           if (!preflightResult.ready) {
             for (const check of preflightResult.checks.filter((c) => !c.ok)) {
-              console.error(`✗ ${check.name}: ${check.error}`);
-              if (check.reason) console.error(`  Why: ${check.reason}`);
-              if (check.fix) console.error(`  Fix: ${check.fix}`);
+              console.error(`✗ ${check.name}：${check.error}`);
+              if (check.reason) console.error(`  原因：${check.reason}`);
+              if (check.fix) console.error(`  修复：${check.fix}`);
             }
             process.exitCode = 1;
             return;
           }
         } catch (preErr) {
-          console.error(`Preflight error: ${preErr instanceof Error ? preErr.message : String(preErr)}`);
+          console.error(`Preflight 错误：${preErr instanceof Error ? preErr.message : String(preErr)}`);
           process.exitCode = 1;
           return;
         }
@@ -212,19 +208,18 @@ Examples:
 
       const client = deps.clientFactory(getDaemonUrl(status));
 
-      // Detect rig name vs file path: names don't contain / and don't end in
-      // .yaml/.yml/.rigbundle/.rigtopology. OPR.0.4.4.11 (guard G-1): the
-      // topology extension resolves as a PATH (same as yaml/rigbundle) so a
-      // bare `factory.rigtopology` reaches the daemon's topology routing
-      // instead of library/existing-rig name resolution. Extensionless
-      // no-slash sources keep rig_name precedence byte-for-byte.
+      // 区分工作组名 vs 文件路径：名字不含 / 也不以
+      // .yaml/.yml/.rigbundle/.rigtopology 结尾。OPR.0.4.4.11（guard G-1）：
+      // topology 扩展名按 PATH 解析（与 yaml/rigbundle 一样），让裸
+      // `factory.rigtopology` 到达后台服务的 topology 路由，而不是库/已有
+      // 工作组名解析。无扩展名无斜杠 source 保持 rig_name 优先级逐字节一致。
       const isRigName = !source.includes("/") && !source.match(/\.(ya?ml|rigbundle|rigtopology)$/i);
       let sourceRef = isRigName ? source : nodePath.resolve(source);
 
-      // If it looks like a name, check for library spec match
+      // 如果看起来像名字，检查库 spec 匹配
       let defaultLibraryCwdOverride: string | undefined;
-      // Cache rig summaries so we can both detect ambiguity AND derive lifecycleState
-      // for "Recovering ..." vs "Turning on ..." wording (post-L2).
+      // 缓存 rig 摘要，这样我们既能检测歧义，又能为
+      // "Recovering ..." vs "Turning on ..." 措辞推导 lifecycleState（post-L2）。
       let rigSummariesCache: Array<{ id: string; name: string; lifecycleState?: string }> | null = null;
       const fetchRigSummaries = async () => {
         if (rigSummariesCache !== null) return rigSummariesCache;
@@ -236,11 +231,10 @@ Examples:
         }
         return rigSummariesCache;
       };
-      // OPR.0.3.3.19 (AC-7): archived rigs are excluded from default `rig up`
-      // name resolution. If <source> matches ONLY an archived rig (no active
-      // rig of that name), refuse with an honest error pointing at
-      // `rig unarchive` - never silently restore an archived rig, never
-      // silently fall through. Applies to both default and --existing paths.
+      // OPR.0.3.3.19（AC-7）：已归档工作组从默认 `rig up` 名称解析中排除。
+      // 如果 <source> 只匹配一个已归档工作组（没有同名的活动工作组），
+      // 用指向 `rig unarchive` 的诚实错误拒绝——绝不静默恢复已归档工作组，
+      // 绝不静默落空。同时适用于默认路径和 --existing 路径。
       if (isRigName) {
         const activeSummaries = await fetchRigSummaries();
         const activeMatch = activeSummaries.some((r) => r.name === source);
@@ -251,11 +245,10 @@ Examples:
             );
             const archivedMatches = (archRes.data ?? []).filter((r) => r.name === source);
             if (archivedMatches.length > 0) {
-              // `rig unarchive` resolves by rig ID, not name (it posts to
-              // /api/rigs/<rigId>/unarchive), so the remediation MUST name the
-              // id - telling the operator `rig unarchive <name>` would 404. If
-              // the name is ambiguous across multiple archived rigs, surface the
-              // id list rather than guessing a single target.
+              // `rig unarchive` 按 rig ID 解析，不按名字（它 POST 到
+              // /api/rigs/<rigId>/unarchive），所以修复必须点名 id——告诉操作人员
+              // `rig unarchive <name>` 会 404。如果该名在多个已归档工作组间有歧义，
+              // 列出 id 而不是猜单个目标。
               const ids = archivedMatches.map((r) => r.id);
               if (opts.json) {
                 console.log(JSON.stringify({
@@ -263,24 +256,24 @@ Examples:
                   rig: source,
                   archivedRigIds: ids,
                   action: ids.length === 1
-                    ? `rig unarchive ${ids[0]}`
-                    : `rig unarchive <rigId> (archived rigs named '${source}': ${ids.join(", ")})`,
+                    ? `zrig unarchive ${ids[0]}`
+                    : `zrig unarchive <rigId> (archived rigs named '${source}': ${ids.join(", ")})`,
                 }));
               } else if (ids.length === 1) {
-                console.error(`Rig "${source}" is archived, so it is hidden from 'rig up' name resolution.`);
-                console.error(`  Bring it back first: rig unarchive ${ids[0]}`);
-                console.error(`  Then power it on:    rig up ${source}`);
+                console.error(`工作组 "${source}" 已归档，因此从 'zrig up' 名称解析中隐藏。`);
+                console.error(`  先恢复它：zrig unarchive ${ids[0]}`);
+                console.error(`  然后启动：zrig up ${source}`);
               } else {
-                console.error(`${ids.length} archived rigs are named "${source}"; they are hidden from 'rig up' name resolution.`);
-                console.error(`  Unarchive the one you want by id (then 'rig up'):`);
-                for (const id of ids) console.error(`    rig unarchive ${id}`);
+                console.error(`有 ${ids.length} 个已归档工作组叫 "${source}"；它们从 'zrig up' 名称解析中隐藏。`);
+                console.error(`  按 id 取消归档你想要的那个（然后 'zrig up'）：`);
+                for (const id of ids) console.error(`    zrig unarchive ${id}`);
               }
               process.exitCode = 1;
               return;
             }
           } catch {
-            // Archived-summary probe failed (e.g. older daemon) - fall through
-            // to normal resolution; there are no archive semantics to enforce.
+            // 已归档摘要探测失败（例如更老的后台服务）——落到正常解析；
+            // 没有归档语义要强制。
           }
         }
       }
@@ -288,15 +281,15 @@ Examples:
         try {
           const { resolveLibrarySpec } = await import("./specs.js");
           const entry = await resolveLibrarySpec(client, source, { kind: "rig" });
-          // Library match found — check for existing-rig collision
-          // Use /api/rigs/summary which mirrors findRigsByName (includes stopped rigs)
+          // 找到库匹配——检查已有工作组冲突
+          // 用 /api/rigs/summary，它镜像 findRigsByName（含已停止工作组）
           const rigSummaries = await fetchRigSummaries();
           const rigMatches = rigSummaries.filter((r) => r.name === source);
           if (rigMatches.length > 0) {
-            console.error(`'${source}' is ambiguous — it matches both an existing rig restore target and a library spec.`);
-            console.error(`  To launch the library spec: rig up ${entry.sourcePath}`);
-            console.error(`  The rig-name match refers to a stopped rig / snapshot-backed restore path.`);
-            console.error(`  To recover the existing rig instead of importing a starter: rig up ${source} --existing`);
+            console.error(`'${source}' 有歧义——它同时匹配一个已有工作组恢复目标和一个库 spec。`);
+            console.error(`  要启动库 spec：zrig up ${entry.sourcePath}`);
+            console.error(`  工作组名匹配指向一个已停止工作组 / 快照支持的恢复路径。`);
+            console.error(`  要恢复已有工作组而不是导入 starter：zrig up ${source} --existing`);
             process.exitCode = 1;
             return;
           }
@@ -305,93 +298,86 @@ Examples:
             defaultLibraryCwdOverride = process.cwd();
           }
         } catch (resolveErr) {
-          // Ambiguity within library — surface it
+          // 库内歧义——暴露它
           if ((resolveErr as Error).message?.includes("ambiguous")) {
             console.error((resolveErr as Error).message);
             process.exitCode = 1;
             return;
           }
-          // Not found or other error — proceed with existing rig-name behavior
+          // 未找到或其他错误——按已有工作组名行为继续
         }
 
-        // Wording divergence (post-L2): if sourceRef stayed as the rig name we are
-        // routing through the existing-rig restore path. Print "Recovering ..." or
-        // "Turning on ..." per the rig's derived lifecycleState. Help text honesty:
-        // "Recover" describes what `rig up` does; it does not promise success before
-        // tester L4 VM proof completes.
+        // 措辞分叉（post-L2）：如果 sourceRef 仍是工作组名，我们走已有工作组
+        // 恢复路径。按工作组推导出的 lifecycleState 打印 "正在恢复 ..." 或
+        // "正在启动 ..."。Help 文本诚实："Recover" 描述 `rig up` 做什么；
+        // 不承诺在 tester L4 VM 证明完成之前成功。
         if (sourceRef === source && !opts.json) {
           const summaries = await fetchRigSummaries();
           const match = summaries.find((r) => r.name === source);
           if (match?.lifecycleState === "recoverable") {
-            console.log(`Recovering rig "${source}" from latest snapshot or current DB state...`);
+            console.log(`正在从最新快照或当前 DB 状态恢复工作组 "${source}"...`);
           } else if (match?.lifecycleState === "stopped") {
-            console.log(`Turning on rig "${source}"...`);
+            console.log(`正在启动工作组 "${source}"...`);
           }
         }
       } else if (isRigName && opts.existing && !opts.json) {
         const summaries = await fetchRigSummaries();
         const match = summaries.find((r) => r.name === source);
         if (match?.lifecycleState === "recoverable") {
-          console.log(`Recovering rig "${source}" from latest snapshot or current DB state...`);
+          console.log(`正在从最新快照或当前 DB 状态恢复工作组 "${source}"...`);
         } else {
-          console.log(`Turning on existing rig "${source}"...`);
+          console.log(`正在启动已有工作组 "${source}"...`);
         }
       }
 
       const isRigBundle = !isRigName && /\.rigbundle$/i.test(sourceRef);
       const targetRoot = opts.target ?? (isRigBundle ? process.cwd() : undefined);
 
-      // OPR.0.3.2.22 Bug 3 — extend the bare `rig up <builtin>` default-cwd
-      // treatment to path-form. Builtin starter specs declare member-level
-      // cwd: "." which resolves to the spec directory (inside the daemon's
-      // install root). Without --cwd that trips getOpenRigInstallCwdError
-      // at preflight. Bare-name form is already rescued at the
-      // resolveLibrarySpec branch above (entry.sourceType === "builtin");
-      // path-form `rig up <install-internal-spec>` is the remaining gap.
+      // OPR.0.3.2.22 Bug 3——把裸 `rig up <builtin>` 的默认 cwd 处理
+      // 扩展到 path 形式。内置 starter spec 声明成员级 cwd: "."，
+      // 解析为 spec 目录（在后台服务安装根目录内）。没有 --cwd 时会在
+      // preflight 触发 getOpenRigInstallCwdError。裸名形式已在上面
+      // resolveLibrarySpec 分支获救（entry.sourceType === "builtin"）；
+      // path 形式 `rig up <install-internal-spec>` 是剩余缺口。
       //
-      // Detection: source is path-form (not isRigName, not isRigBundle),
-      // no --cwd was given, no defaultLibraryCwdOverride was set by the
-      // bare-name branch above, AND the resolved path lives inside the
-      // daemon's install root (fetched via /api/info). When all hold,
-      // default cwdOverride to process.cwd() so the operator's project
-      // dir is used as launch cwd, and print a one-line notice. If
-      // /api/info is unavailable, fall through silently — the daemon
-      // preflight will still surface the install-cwd error.
+      // 检测：source 是 path 形式（不是 isRigName、不是 isRigBundle），
+      // 没给 --cwd，上面裸名分支没设置 defaultLibraryCwdOverride，
+      // 且解析出的路径位于后台服务安装根目录内（通过 /api/info 取）。
+      // 全部成立时，默认 cwdOverride 为 process.cwd()，让操作人员项目
+      // 目录作为启动 cwd，并打印一行提示。如果 /api/info 不可用，静默
+      // 落空——后台服务 preflight 仍会暴露 install-cwd 错误。
       //
-      // Structural redesign of how builtin starter specs declare cwd is
-      // out of scope (deferred to 0.3.3 per the slice triage).
+      // 内置 starter spec 如何声明 cwd 的结构性重设计不在范围内
+      //（按 slice triage 推迟到 0.3.3）。
       if (!opts.cwd && !isRigName && !isRigBundle && defaultLibraryCwdOverride === undefined) {
         try {
-          // Short timeout: a healthy daemon answers /api/info in <100ms; if
-          // it doesn't, fall through to the daemon's own preflight error
-          // rather than adding a multi-second stall to every rig up.
+          // 短超时：健康后台服务 <100ms 应答 /api/info；不应答时落到后台服务
+          // 自己的 preflight 错误，而不是给每次 rig up 加几秒停滞。
           const infoRes = await client.get<{ installRoot?: string }>("/api/info", { timeoutMs: 2000 });
           const installRoot = infoRes.data?.installRoot;
           if (installRoot && isPathInsideRoot(sourceRef, installRoot)) {
             defaultLibraryCwdOverride = process.cwd();
             if (!opts.json) {
-              console.log("Defaulting cwd to current directory because the spec lives inside the OpenRig install.");
+              console.log("因为 spec 位于 zrig 安装目录内，cwd 默认取当前目录。");
             }
           }
         } catch {
-          // /api/info unavailable — fall through. The daemon preflight
-          // returns getOpenRigInstallCwdError if this is in fact the
-          // install-internal case; the operator gets the same hint they
-          // would have gotten pre-Bug-3.
+          // /api/info 不可用——落空。如果确实是 install-internal 情况，
+          // 后台服务 preflight 返回 getOpenRigInstallCwdError；操作人员拿到
+          // 与 Bug-3 之前相同的提示。
         }
       }
 
-      // OPR.0.3.4.4 — honest async: a client timeout / connection loss in
-      // APPLY mode does NOT mean the operation failed; the daemon may still
-      // be processing. Report in-progress/unknown with a verify command,
-      // never a bare connection failure (the false-failure that caused the
-      // outage's wrong next move). No operation id is surfaced client-side
-      // on timeout today, so the honest message is the MVP floor.
+      // OPR.0.3.4.4——诚实的异步：APPLY 模式下客户端超时 / 连接丢失
+      // 不代表操作失败；后台服务可能仍在处理。用 verify 命令报告
+      // in-progress/unknown，绝不报裸连接失败（那是导致事故后错误下一步
+      // 的假失败）。今天超时时客户端侧不暴露 operation id，所以诚实消息
+      // 是 MVP 底线。
       const printHonestTimeout = (err: DaemonConnectionError): void => {
-        console.error(`The CLI timed out waiting for the daemon, but the operation may STILL BE IN PROGRESS.`);
-        console.error(`This does not mean the operation failed; the daemon may still be processing it.`);
-        console.error(`Verify the actual state with: rig ps`);
-        console.error(`(underlying: ${err.message})`);
+        console.error(`CLI 等待后台服务超时，但操作可能仍在进行中。`);
+        console.error(`这不代表操作失败；后台服务可能仍在处理。`);
+        console.error(`用以下命令核验实际状态：zrig ps`);
+        console.error(`（底层：${err.message}）`);
         process.exitCode = 1;
       };
 
@@ -403,7 +389,7 @@ Examples:
           autoApprove: opts.yes ?? false,
           cwdOverride: opts.cwd ? nodePath.resolve(opts.cwd) : defaultLibraryCwdOverride,
           targetRoot,
-          // OPR.0.3.4.2 — operation B opt-in seats (deliberate fresh-prime).
+          // OPR.0.3.4.2——操作 B opt-in 席位（刻意 fresh-prime）。
           freshLogicalIds: opts.fresh,
         }, opts.plan ? undefined : { timeoutMs: LONG_RUNNING_UP_TIMEOUT_MS });
       } catch (err) {
@@ -422,16 +408,15 @@ Examples:
         return;
       }
 
-      // OPR.0.4.4.11 — topology aggregate rendering (full success OR honest
-      // partial; the daemon returns the same closed {rigRef, host, status,
-      // error?} entries either way, skipped entries explicitly present).
+      // OPR.0.4.4.11——topology 聚合渲染（完全成功或诚实部分；后台服务两种情况
+      // 都返回同样的闭合 {rigRef, host, status, error?} 条目，跳过的条目显式在场）。
       const topoEntries = res.data["entries"] as Array<{ rigRef: string; host: string; status: string; error?: string }> | undefined;
       if (typeof res.data["topology"] === "string" && Array.isArray(topoEntries)) {
         const topoOk = res.data["ok"] === true;
         console.log(
           topoOk
-            ? `Topology up: all ${topoEntries.length} rigs launched.`
-            : "Topology up FAILED — honest partial state (started rigs stay up; no rollback):",
+            ? `Topology up：全部 ${topoEntries.length} 个工作组已启动。`
+            : "Topology up 失败——诚实部分状态（已启动工作组保持运行；不回滚）：",
         );
         for (const e of topoEntries) {
           const tag = e.status === "ok" ? " ok " : e.status === "failed" ? "FAIL" : "skip";
@@ -452,31 +437,30 @@ Examples:
             console.error(`  ${node.logicalId}${node.sessionName ? ` (${node.sessionName})` : ""}: ${node.reason}`);
           }
         } else if (code === "cycle_error") {
-          console.error("Cycle detected in rig topology. Check edge definitions for circular dependencies.");
+          console.error("工作组拓扑中检测到环。请检查 edge 定义是否有循环依赖。");
         } else if (code === "validation_failed") {
           const errors = (res.data["errors"] as string[]) ?? [];
-          console.error(`Rig spec validation failed:\n${errors.map((e) => `  ${e}`).join("\n")}\nFix: update your rig spec and retry.`);
+          console.error(`工作组 spec 校验失败：\n${errors.map((e) => `  ${e}`).join("\n")}\n修复：更新你的 rig spec 后重试。`);
         } else if (code === "preflight_failed") {
           const errors = (res.data["errors"] as string[]) ?? [];
-          console.error(`Preflight check failed:\n${errors.map((e) => `  ${e}`).join("\n")}\nFix: resolve the issues above and retry.`);
+          console.error(`Preflight 检查失败：\n${errors.map((e) => `  ${e}`).join("\n")}\n修复：解决上面的问题后重试。`);
         } else if (code === "pre_restore_validation_failed") {
           printRestoreNotAttempted(res.data as RestoreNotAttemptedData);
         } else if (code === "invalid_topology_manifest") {
           const errors = (res.data["errors"] as string[]) ?? [];
-          console.error(`Topology manifest invalid:\n${errors.map((e) => `  ${e}`).join("\n")}\nFix: the manifest key set is CLOSED — rigs[]{source, host?} plus optional concurrency.`);
+          console.error(`Topology manifest 非法：\n${errors.map((e) => `  ${e}`).join("\n")}\n修复：manifest 键集是闭合的——rigs[]{source, host?} 加可选 concurrency。`);
         } else if (code === "rig_name_running") {
-          // S5b final-fix F1 (OPR.0.5.4.11): the guard's teaching refusal is
-          // self-describing (running rig identity, what was checked,
-          // nothing-created, alternatives) — render it verbatim, never the
-          // generic unknown-error/validate-your-spec fallback.
-          const teaching = String(res.data["error"] ?? ((res.data["errors"] as string[]) ?? [])[0] ?? "A rig with this name is already running.");
+          // S5b 最终修复 F1（OPR.0.5.4.11）：guard 的教学性拒绝是自描述的
+          //（正在运行的工作组身份、检查了什么、未创建任何东西、替代方案）——
+          // 原样渲染，绝不走通用的未知错误/validate-your-spec 兜底。
+          const teaching = String(res.data["error"] ?? ((res.data["errors"] as string[]) ?? [])[0] ?? "同名工作组已在运行。");
           console.error(teaching);
         } else {
-          const errorText = String(res.data["error"] ?? "unknown error");
-          console.error(`Up failed: ${errorText} (HTTP ${res.status}). Check daemon logs or validate your spec with: rig spec validate <path>`);
+          const errorText = String(res.data["error"] ?? "未知错误");
+          console.error(`启动失败：${errorText}（HTTP ${res.status}）。检查后台服务日志，或用以下命令校验 spec：rig spec validate <path>`);
           if (/agent_ref resolution failed|No agent\.yaml found/i.test(errorText)) {
-            console.error("Hint: local: agent_ref paths resolve relative to the rig spec directory, not your shell cwd.");
-            console.error("      Keep the agents/ tree beside the rig YAML, or switch those refs to path:/absolute/path.");
+            console.error("提示：local: agent_ref 路径相对于 rig spec 目录解析，不是你的 shell cwd。");
+            console.error("      把 agents/ 树放在 rig YAML 旁边，或把这些引用改成 path:/absolute/path。");
           }
         }
         const stages = (res.data["stages"] as Array<{ stage: string; status: string }>) ?? [];
@@ -487,78 +471,76 @@ Examples:
         return;
       }
 
-      // Success output
+      // 成功输出
       const resStatus = res.data["status"] as string;
 
-      // OPR.0.3.4.4 — read-only restore plan preview (`--plan` on the
-      // existing-rig path). Renders intended per-seat actions; nothing ran.
+      // OPR.0.3.4.4——只读恢复计划预览（--plan 走已有工作组路径）。
+      // 渲染每席位预期动作；什么都没跑。
       if (resStatus === "plan" && res.data["mode"] === "restore") {
         const planRigName = res.data["rigName"] as string | undefined;
         const planSnapshot = res.data["snapshot"] as { id: string; kind: string; createdAt: string } | null;
-        console.log(`Plan: restore rig "${planRigName ?? source}" (read-only preview)`);
+        console.log(`计划：恢复工作组 "${planRigName ?? source}"（只读预览）`);
         if (planSnapshot) {
-          console.log(`Snapshot: ${planSnapshot.id} (kind=${planSnapshot.kind}, captured ${planSnapshot.createdAt})`);
+          console.log(`快照：${planSnapshot.id}（kind=${planSnapshot.kind}，捕获于 ${planSnapshot.createdAt}）`);
         } else if (res.data["wouldCaptureCurrentState"] === true) {
-          console.log(`Snapshot: none usable — apply would first capture current DB state as an auto-rehydrate snapshot.`);
+          console.log(`快照：无可使用者——apply 会先把当前 DB 状态捕获为自动重水合快照。`);
         }
         const planNodes = (res.data["nodes"] as Array<{ logicalId: string; intendedAction: string; reason?: string; tokenState?: string; provenance?: string | null; lastVerified?: string | null; freshRequired?: boolean; runtimePrompt?: string }>) ?? [];
         for (const n of planNodes) {
-          console.log(`  ${n.logicalId}: ${n.intendedAction}${n.reason ? ` — ${n.reason}` : ""}`);
-          // OPR.0.4.3.20 FR-6 — per-seat token truth: present/missing/stale/unverified
-          // + provenance + freshness + expected runtime prompt + explicit --fresh.
+          console.log(`  ${n.logicalId}：${n.intendedAction}${n.reason ? ` — ${n.reason}` : ""}`);
+          // OPR.0.4.3.20 FR-6——每席位 token 真相：present/missing/stale/unverified
+          // + provenance + freshness + 预期运行时提示 + 显式 --fresh。
           if (n.tokenState) {
-            const reverify = (n.tokenState === "stale" || n.tokenState === "unverified") ? " — re-verify" : "";
-            const prov = n.provenance ? ` (${n.provenance})` : "";
-            const verified = n.lastVerified ? `, verified ${n.lastVerified}` : "";
-            const fresh = n.freshRequired ? "; --fresh required" : "";
-            const prompt = n.runtimePrompt ? `; ${n.runtimePrompt}` : "";
-            console.log(`      token: ${n.tokenState}${reverify}${prov}${verified}${fresh}${prompt}`);
+            const reverify = (n.tokenState === "stale" || n.tokenState === "unverified") ? " — 重新核验" : "";
+            const prov = n.provenance ? `（${n.provenance}）` : "";
+            const verified = n.lastVerified ? `，已核验 ${n.lastVerified}` : "";
+            const fresh = n.freshRequired ? "；需要 --fresh" : "";
+            const prompt = n.runtimePrompt ? `；${n.runtimePrompt}` : "";
+            console.log(`      token：${n.tokenState}${reverify}${prov}${verified}${fresh}${prompt}`);
           }
         }
-        console.log("No changes made.");
+        console.log("未做任何修改。");
         return;
       }
 
       if (resStatus === "restored") {
-        // Existing-rig power-on handoff
+        // 已有工作组启动交接
         const rigId = res.data["rigId"] as string;
         const rigName = res.data["rigName"] as string | undefined;
         const rigResult = res.data["rigResult"] as string | undefined;
         const snapshotKind = res.data["snapshotKind"] as string | undefined;
-        // L3b: when the daemon falls back to a non-auto-pre-down snapshot, surface
-        // the kind so operators see the manual fallback explicitly. The note is
-        // printed BEFORE the "Rig restored" line so it's visible in the typical
-        // top-of-output scan.
+        // L3b：当后台服务回退到非 auto-pre-down 快照时，把 kind 暴露出来，
+        // 让操作人员显式看到手动回退。这条注释在 "Rig restored" 行之前打印，
+        // 以便在典型的输出顶部扫视中可见。
         if (snapshotKind && snapshotKind !== "auto-pre-down") {
-          console.log(`Restoring from manual snapshot (kind=${snapshotKind}); no auto-pre-down snapshot available.`);
+          console.log(`正在从手动快照恢复（kind=${snapshotKind}）；没有可用的 auto-pre-down 快照。`);
         }
-        console.log(`Rig "${rigName ?? rigId}" restored (ID: ${rigId})`);
-        if (rigResult) console.log(`Result: ${rigResult}`);
+        console.log(`工作组 "${rigName ?? rigId}" 已恢复（ID：${rigId}）`);
+        if (rigResult) console.log(`结果：${rigResult}`);
         const nodes = (res.data["nodes"] as Array<{ logicalId: string; status: string; error?: string }>) ?? [];
         for (const n of nodes) {
-          // OPR.0.3.4.2 — the five-term vocabulary renders distinctly; the
-          // awaiting-decision reason is part of the line (not a dead end).
+          // OPR.0.3.4.2——五段词汇渲染有别；awaiting-decision 原因是行的一部分
+          //（不是死路）。
           if (n.status === "awaiting-decision" && n.error) {
-            console.log(`  ${n.logicalId}: awaiting-decision — ${n.error}`);
+            console.log(`  ${n.logicalId}：awaiting-decision — ${n.error}`);
           } else {
-            console.log(`  ${n.logicalId}: ${n.status}`);
+            console.log(`  ${n.logicalId}：${n.status}`);
           }
         }
         const warnings = (res.data["warnings"] as string[]) ?? [];
         for (const w of warnings) {
-          console.error(`  warning: ${w}`);
+          console.error(`  警告：${w}`);
         }
-        // Attach command from server response (uses real canonical session name)
+        // 来自服务器响应的 attach 命令（用真实 canonical 会话名）
         const attachCommand = res.data["attachCommand"] as string | undefined;
         if (attachCommand) {
-          console.log(`Attach: ${attachCommand}`);
+          console.log(`Attach：${attachCommand}`);
         }
 
-        // OPR.0.3.4.2 — the actionable ASK/offer for awaiting-decision seats.
-        // TTY: interactive [y/N] per seat; accepted seats re-run as a
-        // deliberate fresh-prime (operation B). Headless: the machine status
-        // stays awaiting-decision with the explicit --fresh hint. NEVER an
-        // auto-substitution.
+        // OPR.0.3.4.2——为 awaiting-decision 席位提供可执行 ASK/offer。
+        // TTY：每席位交互式 [y/N]；接受的席位作为刻意 fresh-prime 重跑
+        //（操作 B）。Headless：机器状态保持 awaiting-decision，带显式
+        // --fresh 提示。绝不自动替换。
         const awaiting = nodes.filter((n) => n.status === "awaiting-decision");
         if (awaiting.length > 0) {
           const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY) || Boolean(deps.promptYesNo);
@@ -566,8 +548,8 @@ Examples:
             const ask = deps.promptYesNo ?? defaultPromptYesNo;
             const accepted: string[] = [];
             for (const n of awaiting) {
-              const reason = n.error ?? "original session unresumable";
-              const yes = await ask(`Couldn't resume original session for ${n.logicalId} (reason: ${reason}). Start a fresh primed session instead? [y/N] `);
+              const reason = n.error ?? "原会话不可恢复";
+              const yes = await ask(`无法为 ${n.logicalId} 恢复原会话（原因：${reason}）。改为启动一个 fresh primed 会话？[y/N] `);
               if (yes) accepted.push(n.logicalId);
             }
             if (accepted.length > 0) {
@@ -590,14 +572,14 @@ Examples:
               }
               const freshNodes = (freshRes.data["nodes"] as Array<{ logicalId: string; status: string }>) ?? [];
               for (const n of freshNodes.filter((fn) => accepted.includes(fn.logicalId))) {
-                console.log(`  ${n.logicalId}: ${n.status}`);
+                console.log(`  ${n.logicalId}：${n.status}`);
               }
             } else {
-              console.log(`  No fresh sessions started. Re-run with --fresh <seat...> when you decide.`);
+              console.log(`  未启动任何 fresh 会话。决定后用 --fresh <seat...> 重跑。`);
             }
           } else {
             for (const n of awaiting) {
-              console.error(`  ${n.logicalId}: awaiting-decision — no session started. To deliberately fresh-prime: rig up --existing ${source} --fresh ${n.logicalId}`);
+              console.error(`  ${n.logicalId}：awaiting-decision——未启动会话。要刻意 fresh-prime：zrig up --existing ${source} --fresh ${n.logicalId}`);
             }
           }
         }
@@ -606,30 +588,30 @@ Examples:
           process.exitCode = 1;
         }
       } else {
-        // Fresh boot handoff
+        // 全新启动交接
         const stages = (res.data["stages"] as Array<{ stage: string; status: string }>) ?? [];
         for (const s of stages) {
-          console.log(`  ${s.stage}: ${s.status}`);
+          console.log(`  ${s.stage}：${s.status}`);
         }
 
         const rigId = res.data["rigId"] as string | undefined;
         if (rigId) {
-          console.log(`\nRig: ${rigId}`);
-          // Dashboard — use rig ui open (knows the real UI URL)
-          console.log(`Dashboard: rig ui open`);
+          console.log(`\n工作组：${rigId}`);
+          // 看板——用 rig ui open（它知道真实 UI URL）
+          console.log(`看板：zrig ui open`);
         }
-        console.log(`Status: ${resStatus}`);
+        console.log(`状态：${resStatus}`);
 
-        // Surface warnings (e.g. transcript attach failures)
+        // 暴露警告（例如 transcript attach 失败）
         const warnings = (res.data["warnings"] as string[]) ?? [];
         for (const w of warnings) {
-          console.error(`  warning: ${w}`);
+          console.error(`  警告：${w}`);
         }
 
-        // Attach command from server response
+        // 来自服务器响应的 attach 命令
         const attachCommand = res.data["attachCommand"] as string | undefined;
         if (attachCommand) {
-          console.log(`Attach: ${attachCommand}`);
+          console.log(`Attach：${attachCommand}`);
         }
 
         if (resStatus === "partial") process.exitCode = 1;
@@ -657,14 +639,14 @@ interface RestoreNotAttemptedData {
 }
 
 function printRestoreNotAttempted(data: RestoreNotAttemptedData): void {
-  console.error(`Restore blocked: ${data.error ?? "pre-restore validation failed"}`);
+  console.error(`恢复被阻塞：${data.error ?? "恢复前校验失败"}`);
   if (data.rigResult) {
-    console.error(`Result: ${data.rigResult}`);
+    console.error(`结果：${data.rigResult}`);
   }
   for (const blocker of data.blockers ?? []) {
     const scope = blocker.logicalId ?? blocker.nodeId ?? blocker.target ?? blocker.code;
-    console.error(`  ${scope}: ${blocker.message}`);
-    if (blocker.path) console.error(`    path: ${blocker.path}`);
-    console.error(`    remediation: ${blocker.remediation}`);
+    console.error(`  ${scope}：${blocker.message}`);
+    if (blocker.path) console.error(`    路径：${blocker.path}`);
+    console.error(`    修复：${blocker.remediation}`);
   }
 }

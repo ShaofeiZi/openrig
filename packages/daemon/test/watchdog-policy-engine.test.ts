@@ -24,7 +24,7 @@ import {
 import type { PersistedEvent } from "../src/domain/types.js";
 import type { PolicyEvaluation } from "../src/domain/policies/types.js";
 
-describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
+describe("WatchdogPolicyEngine（PL-004 阶段 C R1）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let jobsRepo: WatchdogJobsRepository;
@@ -65,7 +65,7 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
 
   afterEach(() => db.close());
 
-  it("evaluate(periodic-reminder) routes through delivery + records sent + emits evaluation_fired + sets actionable=true", async () => {
+  it("evaluate(periodic-reminder) 经交付路由、记录 sent、发出 evaluation_fired 并设置 actionable=true", async () => {
     const engine = makeEngine();
     const job = jobsRepo.register({
       policy: "periodic-reminder",
@@ -88,7 +88,7 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
     expect(after.lastActionableAt).not.toBeNull();
   });
 
-  it("evaluate(quiet skip — no_actionable_artifacts) does NOT record history nor emit event (POC parity)", async () => {
+  it("evaluate 静默跳过（no_actionable_artifacts）时不记录历史也不发出事件（与 POC 一致）", async () => {
     const engine = makeEngine({
       deliver: async () => {
         throw new Error("delivery should NOT be called for skip");
@@ -122,7 +122,7 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
     }
   });
 
-  it("delivery failure recorded as sent with delivery_status=failed (still meaningful)", async () => {
+  it("交付失败记录为 sent 且 delivery_status=failed（仍有意义）", async () => {
     const failingDeliver: DeliveryFn = async () => ({ status: "failed", error: "transport denied" });
     const engine = makeEngine({ deliver: failingDeliver });
     const job = jobsRepo.register({
@@ -139,7 +139,7 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
     expect(list[0]?.deliveryStatus).toBe("failed");
   });
 
-  it("S03: a fired watchdog reports the resume attempt to its attached parked row", async () => {
+  it("S03：已触发 watchdog 将恢复尝试报告到其关联停滞行", async () => {
     const attempts: Array<{ jobId: string; deliveryStatus: string }> = [];
     const engine = makeEngine({ onWakeAttempt: (attempt) => attempts.push(attempt) });
     const job = jobsRepo.register({
@@ -153,7 +153,7 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
     expect(attempts).toEqual([{ jobId: job.jobId, deliveryStatus: "ok" }]);
   });
 
-  it("unknown policy at evaluate-time marks job terminal + records + emits evaluation_terminal", async () => {
+  it("评估时策略未知会将任务标为终止、记录并发出 evaluation_terminal", async () => {
     const engine = makeEngine();
     const job = jobsRepo.register({
       policy: "periodic-reminder",
@@ -171,7 +171,7 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
     expect(captured.some((e) => e.type === "watchdog.evaluation_terminal")).toBe(true);
   });
 
-  it("policy registry resolves the three v1 policies (workflow-keepalive absent)", () => {
+  it("策略注册表解析三个 v1 策略（不含 workflow-keepalive）", () => {
     const engine = makeEngine();
     expect(engine.resolvePolicy("periodic-reminder")?.name).toBe("periodic-reminder");
     expect(engine.resolvePolicy("artifact-pool-ready")?.name).toBe("artifact-pool-ready");
@@ -179,7 +179,7 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
     expect(engine.resolvePolicy("workflow-keepalive")).toBeUndefined();
   });
 
-  it("default spec parser extracts top-level target + context + message", async () => {
+  it("默认规范解析器提取顶层 target、context 和 message", async () => {
     const engine = makeEngine();
     const job = jobsRepo.register({
       policy: "periodic-reminder",
@@ -195,11 +195,11 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
     ]);
   });
 
-  it("falls back to registered targetSession when spec lacks top-level target", async () => {
+  it("规范缺少顶层 target 时回退到已注册 targetSession", async () => {
     const engine = makeEngine();
     const job = jobsRepo.register({
       policy: "periodic-reminder",
-      // No top-level target. Engine should synthesize {session: targetSession}.
+      // 没有顶层 target。引擎应合成 {session: targetSession}。
       specYaml: "policy: periodic-reminder\nmessage: ping\ninterval_seconds: 60\n",
       targetSession: "fallback@rig",
       intervalSeconds: 60,
@@ -234,7 +234,7 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
     expect(parseWatchdogSpec(specYaml).message).toBe(expected);
   });
 
-  it("hands watchdog provenance to the delivery adapter without changing the authored payload", async () => {
+  it("将 watchdog 来源交给交付适配器，而不改变编写的 payload", async () => {
     let source: { jobId: string; policy: string } | undefined;
     const engine = makeEngine({
       deliver: async (request, deliverySource) => {
@@ -253,17 +253,17 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
 
     await engine.evaluate(job);
 
-    expect(source).toEqual({ jobId: job.jobId, policy: "periodic-reminder" });
+    expect(source).toMatchObject({ jobId: job.jobId, policy: "periodic-reminder", occurrenceId: expect.any(String) });
     expect(deliveryCalls).toEqual([{ targetSession: "alice@rig", message: "Inspect the queue" }]);
     expect(formatWatchdogDeliveryMessage(source!, deliveryCalls[0]!.message)).toBe(
-      `[OpenRig watchdog scheduler · policy: periodic-reminder · job: ${job.jobId}]\nInspect the queue`,
+      `[zrig watchdog 调度器 · 策略：periodic-reminder · 任务：${job.jobId}]\nInspect the queue`,
     );
     expect(log.listForJob(job.jobId)[0]?.deliveryMessage).toBe("Inspect the queue");
   });
 
-  // R1 fix (guard blocker 1): port the POC active-wake regression.
-  // POC source: tests/watchdog-active-wake-interval.test.sh
-  it("active-wake throttle: re-delivery suppressed during wake window; fires when window elapses", async () => {
+  // R1 修复（guard 阻断项 1）：移植 POC active-wake 回归。
+  // POC 来源：tests/watchdog-active-wake-interval.test.sh
+  it("active-wake 节流：唤醒窗口内抑制再次交付；窗口结束后触发", async () => {
     const tmp = join(tmpdir(), `wd-actwake-${Date.now()}-${Math.random()}`);
     mkdirSync(tmp, { recursive: true });
     try {
@@ -278,17 +278,17 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
         registeredBySession: "ops@kernel",
       });
 
-      // Tick 1: empty pool → quiet skip(no_actionable_artifacts), actionable=false.
+      // Tick 1：池为空 → 静默跳过（no_actionable_artifacts），actionable=false。
       let nowMs = 0;
       let engine = makeEngine({ now: () => new Date(nowMs) });
       let r = await engine.evaluate(jobsRepo.getByIdOrThrow(job.jobId));
       expect(r.outcome).toEqual({ action: "skip", reason: "no_actionable_artifacts" });
       expect(deliveryCalls.length).toBe(0);
 
-      // Make pool actionable.
+      // 使池变为可操作。
       writeFileSync(join(tmp, "ready.md"), "---\nstatus: ready\n---\n");
 
-      // Tick 2: newly actionable → fires (no throttle on transition).
+      // Tick 2：刚变为可操作 → 触发（转换时不节流）。
       nowMs = 30_000;
       engine = makeEngine({ now: () => new Date(nowMs) });
       r = await engine.evaluate(jobsRepo.getByIdOrThrow(job.jobId));
@@ -298,20 +298,19 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
       expect(afterFire.actionable).toBe(true);
       expect(afterFire.lastFireAt).toBe("1970-01-01T00:00:30.000Z");
 
-      // Tick 3 at +30s after fire (60s mark): pool still actionable but
-      // wake window (600s) not elapsed → quiet skip(active_wake_not_due).
+      // Tick 3 位于触发后 +30 秒（60 秒点）：池仍可操作，但唤醒窗口（600 秒）尚未结束
+      // → 静默跳过（active_wake_not_due）。
       nowMs = 60_000;
       engine = makeEngine({ now: () => new Date(nowMs) });
       r = await engine.evaluate(jobsRepo.getByIdOrThrow(job.jobId));
       expect(r.outcome).toEqual({ action: "skip", reason: "active_wake_not_due" });
       expect(deliveryCalls.length).toBe(1);
-      // last_fire_at preserved.
+      // 保留 last_fire_at。
       expect(jobsRepo.getByIdOrThrow(job.jobId).lastFireAt).toBe("1970-01-01T00:00:30.000Z");
-      // actionable still true.
+      // actionable 仍为 true。
       expect(jobsRepo.getByIdOrThrow(job.jobId).actionable).toBe(true);
 
-      // Tick 4 at 630_000ms (>= last_fire + 600_000ms): wake window
-      // elapsed → fires again.
+      // Tick 4 位于 630_000ms（>= last_fire + 600_000ms）：唤醒窗口已结束 → 再次触发。
       nowMs = 630_000;
       engine = makeEngine({ now: () => new Date(nowMs) });
       r = await engine.evaluate(jobsRepo.getByIdOrThrow(job.jobId));
@@ -320,7 +319,7 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
       const after2ndFire = jobsRepo.getByIdOrThrow(job.jobId);
       expect(after2ndFire.lastFireAt).toBe("1970-01-01T00:10:30.000Z");
 
-      // Tick 5: pool empties → quiet skip resets actionable.
+      // Tick 5：池变空 → 静默跳过并重置 actionable。
       rmSync(join(tmp, "ready.md"));
       nowMs = 660_000;
       engine = makeEngine({ now: () => new Date(nowMs) });
@@ -328,7 +327,7 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
       expect(r.outcome).toEqual({ action: "skip", reason: "no_actionable_artifacts" });
       expect(jobsRepo.getByIdOrThrow(job.jobId).actionable).toBe(false);
 
-      // Tick 6: pool actionable again → fires immediately (newly actionable).
+      // Tick 6：池再次可操作 → 立即触发（刚变为可操作）。
       writeFileSync(join(tmp, "ready.md"), "---\nstatus: ready\n---\n");
       nowMs = 690_000;
       engine = makeEngine({ now: () => new Date(nowMs) });
@@ -336,17 +335,17 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
       expect(r.outcome.action).toBe("send");
       expect(deliveryCalls.length).toBe(3);
 
-      // History reflects only the 3 meaningful events.
+      // 历史只反映三个有意义的事件。
       expect(log.countForJob(job.jobId)).toBe(3);
       const entries = log.listForJob(job.jobId);
-      // All sent (no quiet skip rows).
+      // 全部为 sent（没有静默跳过行）。
       for (const e of entries) expect(e.outcome).toBe("sent");
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
   });
 
-  it("active-wake throttle does NOT apply when active_wake_interval_seconds is null (every fire goes through)", async () => {
+  it("active_wake_interval_seconds 为 null 时不应用 active-wake 节流（每次触发都通过）", async () => {
     const tmp = join(tmpdir(), `wd-actwake-null-${Date.now()}-${Math.random()}`);
     mkdirSync(tmp, { recursive: true });
     writeFileSync(join(tmp, "ready.md"), "---\nstatus: ready\n---\n");
@@ -366,7 +365,7 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
       nowMs = 1000;
       engine = makeEngine({ now: () => new Date(nowMs) });
       await engine.evaluate(jobsRepo.getByIdOrThrow(job.jobId));
-      // Without wake throttle, every send fires.
+      // 没有唤醒节流时，每次发送都触发。
       expect(deliveryCalls.length).toBe(2);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
@@ -374,11 +373,11 @@ describe("WatchdogPolicyEngine (PL-004 Phase C R1)", () => {
   });
 });
 
-// ── GHOST-STAGE (i-c): fire-time TARGET-generation gate ──
-// A generation-bound wake (opt-in target_generation_uuid) must NOT fire at a target that has since
-// been handed over to a DIFFERENT live generation. Role-bound (NULL) jobs fire UNCHANGED; UNKNOWN live
-// generation fails OPEN (delivers — "unknown never skips", note-2 inversion); a MISMATCH skips LOUD.
-describe("WatchdogPolicyEngine — fire-time target-generation gate (i-c)", () => {
+// ── GHOST-STAGE（i-c）：触发时目标代门禁 ──
+// 绑定到代的唤醒（选择启用 target_generation_uuid）不得在目标已移交给不同存活代后触发。
+// 绑定角色（NULL）的任务保持原样触发；存活代未知时失败开放（交付——“未知绝不跳过”，
+// note-2 反转）；不匹配时明确跳过。
+describe("WatchdogPolicyEngine——触发时目标代门禁（i-c）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let jobsRepo: WatchdogJobsRepository;
@@ -416,19 +415,19 @@ describe("WatchdogPolicyEngine — fire-time target-generation gate (i-c)", () =
     targetGenerationUuid,
   });
 
-  it("ROLE-bound (NULL target gen) fires unchanged regardless of the live generation", async () => {
+  it("绑定角色（目标代为 NULL）时无论存活代如何都原样触发", async () => {
     liveGenBySession.set("alice@rig", "gen-anything");
     await makeEngine().evaluate(armReminder(null));
     expect(deliveryCalls).toEqual([{ targetSession: "alice@rig", message: "ping" }]);
   });
 
-  it("generation-bound + live generation MATCHES → delivers (still the intended target)", async () => {
+  it("绑定代且存活代匹配 → 交付（仍为预期目标）", async () => {
     liveGenBySession.set("alice@rig", "gen-A");
     await makeEngine().evaluate(armReminder("gen-A"));
     expect(deliveryCalls.length).toBe(1);
   });
 
-  it("generation-bound + live generation MISMATCH → SKIP-LOUD, no delivery, audit names both gens", async () => {
+  it("绑定代且存活代不匹配 → 明确跳过、不交付，审计指明两个代", async () => {
     liveGenBySession.set("alice@rig", "gen-B"); // target handed over since arm (armed for gen-A)
     const job = armReminder("gen-A");
     const result = await makeEngine().evaluate(job);
@@ -438,19 +437,19 @@ describe("WatchdogPolicyEngine — fire-time target-generation gate (i-c)", () =
     const hist = log.listForJob(job.jobId);
     expect(hist[0]?.outcome).toBe("skipped");
     expect(hist[0]?.skipReason).toBe("target_generation_mismatch");
-    // structured audit names BOTH generations (armed-for vs live).
+    // 结构化审计指明两个代（启用目标与存活代）。
     expect(hist[0]?.evaluationNotes).toMatchObject({ armedForGeneration: "gen-A", liveGeneration: "gen-B" });
   });
 
-  it("generation-bound + live generation UNKNOWN (null tenure) → DELIVERS (fail-open, unknown never skips)", async () => {
-    // no entry for alice@rig → resolveTargetGeneration returns null
+  it("绑定代且存活代未知（null tenure）→ 交付（失败开放，未知绝不跳过）", async () => {
+    // alice@rig 没有条目 → resolveTargetGeneration 返回 null。
     await makeEngine().evaluate(armReminder("gen-A"));
     expect(deliveryCalls.length).toBe(1);
   });
 });
 
-// ─── OPR.0.5.6.24 F-14 — the two ruled shared-engine effects, pinned ──────────
-describe("engine effects for the parked-owner consumer (OPR.0.5.6.24)", () => {
+// ─── OPR.0.5.6.24 F-14——固定已裁定的两个共享引擎效果 ──────────────────────
+describe("停滞所有者消费者的引擎效果（OPR.0.5.6.24）", () => {
   function makeHarness(opts: { deliver?: DeliveryFn; policyResult: () => Promise<PolicyEvaluation> }) {
     const db = createDb();
     migrate(db, [coreSchema, eventsSchema, watchdogJobsSchema, watchdogHistorySchema]);
@@ -480,7 +479,7 @@ describe("engine effects for the parked-owner consumer (OPR.0.5.6.24)", () => {
     return { db, engine, job, log, captured };
   }
 
-  it("quiet pin: a no-parked-owner skip writes ZERO history rows and emits no watchdog.* event", async () => {
+  it("静默固定项：因无停滞所有者而跳过时写入零条历史行，且不发出 watchdog.* 事件", async () => {
     const h = makeHarness({
       policyResult: async () => ({ action: "skip", reason: "no-parked-owner", notes: { rig: "test-rig" } }),
     });
@@ -490,7 +489,7 @@ describe("engine effects for the parked-owner consumer (OPR.0.5.6.24)", () => {
     h.db.close();
   });
 
-  it("delivery-reason pin: the delivery error string is persisted EXACTLY into the sent row's evaluationNotes.deliveryReason", async () => {
+  it("交付原因固定项：交付错误字符串精确持久化到 sent 行的 evaluationNotes.deliveryReason", async () => {
     const refusal = "Refused: 'dev-planner@test-rig' is at an interactive prompt (target_needs_input). No text was sent.";
     const h = makeHarness({
       deliver: async () => ({ status: "failed" as const, error: refusal }),
@@ -507,7 +506,7 @@ describe("engine effects for the parked-owner consumer (OPR.0.5.6.24)", () => {
     expect(entries[0]?.outcome).toBe("sent");
     expect(entries[0]?.deliveryStatus).toBe("failed");
     expect(entries[0]?.evaluationNotes?.["deliveryReason"]).toBe(refusal);
-    // The policy's own notes survive the merge untouched.
+    // 策略自身的 notes 在合并后保持不变。
     expect(entries[0]?.evaluationNotes?.["episodeKey"]).toBe("k#1");
     h.db.close();
   });

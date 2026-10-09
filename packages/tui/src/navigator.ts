@@ -1,18 +1,18 @@
-// Slice-17 mini-req 1 — the Direction-B file-tree navigator RE-SKIN.
+// Slice-17 mini-req 1——方向-B 文件树导航器重皮肤。
 //
-// A PURE presentation transform over the ONE row model: computeExplorerRows
-// stays the single source of rows/keys/actions (PIN-1 — the reducer's
-// 'activate' and the renderer's hit-map keep resolving against it); this
-// module only derives each row's DISPLAY label:
-//   · continuous branch guides │ ├─ └─ from the row's key depth,
-//   · icons: host ⊕ · rig ▦ (round-3 founder pick of record) · pod ≡ (dim
-//     name + genuine ▾/▸) · agent status glyph via rowStatusGlyph,
-//   · meta right-aligned (agent ctx% — honest `—` when null; pod agent count),
-//   · collapse glyphs ONLY where collapse genuinely exists today (pods and spec
-//     folders) — hosts/rigs/sections carried decorative ▾ that
-//     afforded nothing; it is dropped, not re-skinned (no false affordances).
-// "Hover" is the existing selection-focus highlight — RENDER-ONLY, no motion
-// protocol, no second write-path to selection (arch ruling 1).
+// 对单行模型的纯展示变换：computeExplorerRows
+// 保持行/键/动作的唯一来源（PIN-1——reducer 的
+// 'activate' 和渲染器的命中图继续对照它解析）；此
+// 模块仅派生每行的显示标签：
+//   · 从行的键深度连续分支引导线 │ ├─ └─，
+//   · 图标：主机 ⊕ · 工作组 ▦（round-3 创建者记录选择）· 席位置 ≡（置灰
+//     名称 + 真正的 ▾/▸）· 智能体状态字形通过 rowStatusGlyph，
+//   · 元数据右对齐（智能体 ctx% —— 为 null 时诚实 `—`；席位数），
+//   · 仅在折叠真正存在的地方折叠字形（席位和规格
+//     文件夹）——主机/工作组/分区携带装饰性 ▾ 但
+//     不提供任何功能；它被丢弃，而非重皮肤（无虚假可用性）。
+// "悬停"是现有选择焦点高亮——仅渲染，无动效
+// 协议，无选择的第二写入路径（arch 裁决 1）。
 import type { AgentRow, ExplorerRow, FleetSnapshot } from "./types.js";
 import type { MarkSeg } from "./topology/runtime-marks.js";
 import { rowStatusGlyph } from "./topology/glyphs.js";
@@ -31,7 +31,7 @@ function parseKey(key: string | undefined): KeyParts | null {
 
 function keyDepth(row: ExplorerRow): number {
   const parsed = parseKey(row.key);
-  if (!parsed) return -1; // keyless rows (filter, needs items) keep their label
+  if (!parsed) return -1; // 无键行（过滤器、needs 项）保持其标签
   switch (parsed.kind) {
     case "section":
       return 0;
@@ -46,10 +46,10 @@ function keyDepth(row: ExplorerRow): number {
     case "pod":
       return 3;
     case "spec":
-      // The row model's spec keys carry no parent relation (guard finding 2);
-      // the folder membership IS encoded in the shipped label indent — a
-      // foldered spec indents 6 spaces, a root spec 4 (state.ts) — so the
-      // child renders one level BELOW its folder, never as a sibling.
+      // 行模型的规格键不携带父关系（防护发现 2）；
+      // 文件夹成员身份确实编码在已发布标签缩进中——
+      // 有文件夹规格缩进 6 空格，根规格 4（state.ts）——因此
+      // 子级渲染在其文件夹下方一级，绝非兄弟。
       return /^ {6}/.test(row.label) ? 3 : 2;
     case "agent":
       return 4;
@@ -58,20 +58,20 @@ function keyDepth(row: ExplorerRow): number {
   }
 }
 
-/** the label with its legacy indent + list glyph stripped; pod/folder rows
- * keep their GENUINE ▾/▸ (they really collapse), hosts/rigs lose theirs */
+/** 剥离了遗留缩进 + 列表字形的标签；席位/文件夹行
+ *  保持其真正的 ▾/▸（它们真正折叠），主机/工作组失去它们 */
 function contentOf(row: ExplorerRow, parsed: KeyParts, snap: FleetSnapshot): string {
   const stripped = row.label.replace(/^\s+/, "");
   if (parsed.kind === "host") return `⊕ ${stripped.replace(/^[▾⌄] /, "")}`;
   if (parsed.kind === "rig") return `${rigPresence(parsed, snap) === null ? "?" : "▦"} ${stripped.replace(/^[▾⌄] /, "")}`;
-  if (parsed.kind === "pod") return stripped.replace(/^[▾▸] /, (m) => m.startsWith("▾") ? "⌄ " : "› ").replace(/ \(\d+\)$/, ""); // count moves to meta
+  if (parsed.kind === "pod") return stripped.replace(/^[▾▸] /, (m) => m.startsWith("▾") ? "⌄ " : "› ").replace(/ \(\d+\)$/, ""); // 计数移到元数据
   if (parsed.kind === "scopes-mission") return stripped.replace(/^[▾▸] /, (m) => m.startsWith("▾") ? "⌄ " : "› ");
   if (parsed.kind === "agent") {
-    // POD-RELATIVE display (guard-ruled; the nav-flow mockup's convention —
-    // "driver" under pod dev50): strip ONLY a confirmed `${pod}.` prefix so
-    // same-pod siblings stay visibly distinct at the fixed pane width; any
-    // non-prefixed served name displays unchanged (honest fallback). The FULL
-    // served identity always lives in the row key/action/selection/detail.
+    // 席位相对显示（防护裁决；导航流 mockup 的约定——
+    // "driver" 在席位 dev50 下）：仅剥离确认的 `${pod}.` 前缀，使
+    // 同席位兄弟在固定窗格宽度下保持可见区分；任何
+    // 无前缀的服务名称不变显示（诚实回退）。完整
+    // 服务身份始终存在于行键/动作/选择/详情中。
     const pod = parsed.parts[2];
     const name = parsed.parts.slice(3).join("/");
     const display = pod && name.startsWith(`${pod}.`) ? name.slice(pod.length + 1) : name;
@@ -81,11 +81,11 @@ function contentOf(row: ExplorerRow, parsed: KeyParts, snap: FleetSnapshot): str
 }
 
 export interface NavigatorMeta {
-  /** column (within the DISPLAY label) where this run begins */
+  /** 此运行开始的列（在显示标签内） */
   start: number;
-  /** token segments — a run's own colors (status role; formerly the mark's
-   * bg channel) survive the paint layer through this channel (guard finding 2;
-   * round-4: rows may carry SEVERAL runs — status badge + right meta) */
+  /** token 段——运行自己的颜色（状态角色；以前是标记的
+   *  bg 通道）通过此通道在绘制层中存活（防护发现 2；
+   *  round-4：行可能携带多个运行——状态徽章 + 右元数据） */
   segs: MarkSeg[];
 }
 
@@ -96,7 +96,7 @@ function agentOf(parsed: KeyParts, snap: FleetSnapshot): AgentRow | null {
     ?.pods.find((p) => p.name === pod)?.agents.find((a) => a.name === name.join("/")) ?? null;
 }
 
-/** Use structured identity/presence, never the possibly clipped status suffix. */
+/** 使用结构化身份/存在性，绝不可能被裁剪的状态后缀。 */
 function rigPresence(parsed: KeyParts, snap: FleetSnapshot): boolean | null {
   const host = snap.hosts.find(h => h.name === parsed.parts[0]);
   if (!host?.reachable) return null;
@@ -109,9 +109,9 @@ function metaOf(row: ExplorerRow, snap: FleetSnapshot): { text: string; segs: Ma
   if (parsed.kind === "agent") {
     const agent = agentOf(parsed, snap);
     if (!agent) return null;
-    // ROUND-3 LOCKED: runtime marks are OFF explorer rows (detail + topology
-    // only; stacked rows too busy) — the meta is bare ctx%, honest — when
-    // unknown; spelled runtime stays dead; name-first-untruncated holds.
+    // ROUND-3 LOCKED：运行时标记在资源管理器行上关闭（详情 + 拓扑
+    // 仅；堆叠行太繁忙）——元数据是裸 ctx%，未知时诚实；
+    // 拼写运行时保持死；名称优先不截断保持。
     const value = agent.context == null ? "—" : `${agent.context}%`;
     return { text: value, segs: [{ text: value, token: "dim" }] };
   }
@@ -124,8 +124,8 @@ function metaOf(row: ExplorerRow, snap: FleetSnapshot): { text: string; segs: Ma
 }
 
 /**
- * Display rows for the explorer pane — labels plus the seg-run channel
- * (same order/length as `rows`; each row carries 0..n paint runs).
+ * 资源管理器窗格的显示行——标签 + 段运行通道
+ * （与 `rows` 顺序/长度相同；每行携带 0..n 绘制运行）。
  */
 export function navigatorDisplay(
   rows: ExplorerRow[],
@@ -137,7 +137,7 @@ export function navigatorDisplay(
   return { labels, metas };
 }
 
-/** compat view (tests/callers that only need labels) */
+/** 兼容视图（仅需要标签的测试/调用方） */
 export function navigatorLabels(rows: ExplorerRow[], snap: FleetSnapshot, width: number): string[] {
   return navigatorDisplay(rows, snap, width).labels;
 }
@@ -156,14 +156,14 @@ function navigatorLabelsInner(rows: ExplorerRow[], snap: FleetSnapshot, width: n
     return true;
   });
 
-  // The continuation rail is the mockup's literal │ (guard finding 4, locked
-  // glyph). The pane border is ALSO │ but lives at a FIXED column (EXPL_W) —
-  // the paint layer and floors locate it by that boundary, never by scanning
-  // for the first │ (which a rail would shadow).
-  const railOpen: boolean[] = []; // per depth level: does a later sibling exist?
+  // 延续轨是 mockup 的字面 │（防护发现 4，锁定
+  // 字形）。窗格边框也是 │ 但位于固定列（EXPL_W）——
+  // 绘制层和地板通过该边界定位它，绝不通过扫描
+  // 第一个 │（轨会遮蔽它）。
+  const railOpen: boolean[] = []; // 每个深度级别：后面有兄弟吗？
   return rows.map((row, i) => {
     const depth = depths[i]!;
-    if (depth < 0) { metasOut.push(null); return row.label; } // keyless rows untouched
+    if (depth < 0) { metasOut.push(null); return row.label; } // 无键行不动
     if (depth === 0) {
       metasOut.push(null);
       return row.label;
@@ -175,9 +175,9 @@ function navigatorLabelsInner(rows: ExplorerRow[], snap: FleetSnapshot, width: n
     const content = contentOf(row, parsed, snap);
     const meta = metaOf(row, snap);
     const prefix = ` ${guides}${branch}`;
-    // S19 round-4 (guard finding 4): agent rows carry a STATUS BADGE run so
-    // the served-truth glyph paints its activity ROLE (color is for status —
-    // the one colored thing on the row; non-status icons stay monochrome)
+    // S19 round-4（防护发现 4）：智能体行携带状态徽章运行，使
+    // 服务真字形绘制其活动角色（颜色用于状态——
+    // 行上唯一的彩色东西；非状态图标保持单色）
     const runs: NavigatorMeta[] = [];
     if (parsed.kind === "rig") {
       const live = rigPresence(parsed, snap);
@@ -191,9 +191,9 @@ function navigatorLabelsInner(rows: ExplorerRow[], snap: FleetSnapshot, width: n
       }
     }
     if (!meta) { metasOut.push(runs.length ? runs : null); return `${prefix}${content}`; }
-    // S19 re-sealed width policy (guard NOT-CLEAR finding 1): the NAME renders
-    // FIRST and UNTRUNCATED — when the full name leaves no room, the META
-    // yields entirely (never an ellipsised identity).
+    // S19 重新封印宽度策略（防护 NOT-CLEAR 发现 1）：名称渲染
+    // 第一且不截断——当全名不留空间时，元数据
+    // 完全让步（绝不省略号化的身份）。
     const room = width - prefix.length - content.length - 1;
     if (room < meta.text.length) { metasOut.push(runs.length ? runs : null); return `${prefix}${content}`; }
     const gap = Math.max(width - prefix.length - content.length - meta.text.length, 1);

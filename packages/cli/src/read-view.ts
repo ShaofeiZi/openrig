@@ -1,4 +1,4 @@
-/** Read metadata describes the original JSON, never an estimated complete ledger. */
+/** 读视图描述的是原始 JSON，绝不是一份被估算补全的完整台账。 */
 export function omittedReadField(path: string, value: unknown) {
   return {
     path,

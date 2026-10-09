@@ -1,9 +1,8 @@
 import type Database from "better-sqlite3";
 
-/** Read an existing fresh-launch effect, fenced by the current generation.
- * Older builds could leave a detached predecessor unsuperseded. The owning
- * event still names the deliberate successor: timestamps and newest-row
- * guesses are unnecessary. No history or native identity is rewritten here.
+/** 读取已有的 fresh-launch 生效关系，并以当前 generation 为边界。
+ * 旧版本可能留下未被 supersede 的已分离前任。归属事件仍会明确记录预期继任者，因此无需根据
+ * 时间戳或最新记录猜测。这里不会改写任何历史记录或原生身份。
  */
 export function readFreshOccupantRelations(db: Database.Database, rigId: string): Record<string, string | null> {
   const generations = db.prepare(`
@@ -22,7 +21,7 @@ export function readFreshOccupantRelations(db: Database.Database, rigId: string)
       || event.newGeneration !== current.get(event.nodeId)) continue;
     const id = typeof event.sessionId === "string" && event.sessionId ? event.sessionId : null;
     if (Object.prototype.hasOwnProperty.call(relation, event.nodeId) && relation[event.nodeId] !== id) {
-      relation[event.nodeId] = null; // contradictory current effects remain unavailable
+      relation[event.nodeId] = null; // 当前生效关系互相矛盾时，结果仍视为不可用。
     } else relation[event.nodeId] = id;
   }
   return relation;

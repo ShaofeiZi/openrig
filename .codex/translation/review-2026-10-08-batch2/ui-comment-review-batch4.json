@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:44:17",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch4",
+ "files": 10,
+ "changed": 5,
+ "reviewed_no_change": 5,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/empty-state.test.tsx",
+   "status": "changed",
+   "after_sha256": "9413e18dc7d7c16840aaa40432dbe160798aa605e0d55aa9c113cabf8e2e20b8",
+   "natural_language_residual": 0,
+   "machine_classification": "PL-012/P5.1-3/OPR.0.4.1.11.2(FR-2/5/6)、shortId(podId,6)、outRoot、opr-0.4.1.11.2、7a578b32、--virtual-time-budget 保留"
+  },
+  {
+   "path": "packages/ui/test/use-completed-missions.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "5f62535a59a81ec1ee1190a7d5096c6bb19b48d586a99e5f78ee193c0c0496af",
+   "natural_language_residual": 0,
+   "machine_classification": "PL-012/P5.1-3/OPR.0.4.1.11.2(FR-2/5/6)、shortId(podId,6)、outRoot、opr-0.4.1.11.2、7a578b32、--virtual-time-budget 保留"
+  },
+  {
+   "path": "packages/ui/test/context-pack-id-roundtrip.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "74596b0b8bffa6d94f984783f558ea5b28e2b334029a9887eb548fa1504cb283",
+   "natural_language_residual": 0,
+   "machine_classification": "PL-012/P5.1-3/OPR.0.4.1.11.2(FR-2/5/6)、shortId(podId,6)、outRoot、opr-0.4.1.11.2、7a578b32、--virtual-time-budget 保留"
+  },
+  {
+   "path": "packages/ui/test/context-usage-ring.test.tsx",
+   "status": "changed",
+   "after_sha256": "3a0ad6677dafc6516d2e0e8c514ab41f76652965a2609766ec42ff7f6405d991",
+   "natural_language_residual": 0,
+   "machine_classification": "PL-012/P5.1-3/OPR.0.4.1.11.2(FR-2/5/6)、shortId(podId,6)、outRoot、opr-0.4.1.11.2、7a578b32、--virtual-time-budget 保留"
+  },
+  {
+   "path": "packages/ui/test/p5-1-pod-name-truncation.test.ts",
+   "status": "changed",
+   "after_sha256": "97449e4f55a8e906a6ec6833ba4ab7773066adbdd8274c3255f388fd43e0bc3f",
+   "natural_language_residual": 0,
+   "machine_classification": "PL-012/P5.1-3/OPR.0.4.1.11.2(FR-2/5/6)、shortId(podId,6)、outRoot、opr-0.4.1.11.2、7a578b32、--virtual-time-budget 保留"
+  },
+  {
+   "path": "packages/ui/test/p5-3-hybrid-layout.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "31aa3d6daa7c4c3cc15d47af247f6f57ff47a3de6cc56790ca501589791af275",
+   "natural_language_residual": 0,
+   "machine_classification": "PL-012/P5.1-3/OPR.0.4.1.11.2(FR-2/5/6)、shortId(podId,6)、outRoot、opr-0.4.1.11.2、7a578b32、--virtual-time-budget 保留"
+  },
+  {
+   "path": "packages/ui/test/use-files-read-error.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "8c4464fc2cefa68797414f8755c0c054dc77213378593a3733e37fc9cf392567",
+   "natural_language_residual": 0,
+   "machine_classification": "PL-012/P5.1-3/OPR.0.4.1.11.2(FR-2/5/6)、shortId(podId,6)、outRoot、opr-0.4.1.11.2、7a578b32、--virtual-time-budget 保留"
+  },
+  {
+   "path": "packages/ui/test/status-pip.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "4cc72dead9e6aeb6074606f9db03b38a1b29b56b72496ee28536f59587c42894",
+   "natural_language_residual": 0,
+   "machine_classification": "PL-012/P5.1-3/OPR.0.4.1.11.2(FR-2/5/6)、shortId(podId,6)、outRoot、opr-0.4.1.11.2、7a578b32、--virtual-time-budget 保留"
+  },
+  {
+   "path": "packages/ui/test/twin-capture-artifact-paths.test.ts",
+   "status": "changed",
+   "after_sha256": "3844d4e8903bb5dc6f666d4ebfbe588e9bb0bfd1ef735f17f46c0aa66cf1e1c4",
+   "natural_language_residual": 0,
+   "machine_classification": "PL-012/P5.1-3/OPR.0.4.1.11.2(FR-2/5/6)、shortId(podId,6)、outRoot、opr-0.4.1.11.2、7a578b32、--virtual-time-budget 保留"
+  },
+  {
+   "path": "packages/ui/test/twin-capture-headless-chrome.test.ts",
+   "status": "changed",
+   "after_sha256": "5c8c1ee35dfe78bb381a3a4c32ff315d32894e9b790aebd4ca6fa75a4117c804",
+   "natural_language_residual": 0,
+   "machine_classification": "PL-012/P5.1-3/OPR.0.4.1.11.2(FR-2/5/6)、shortId(podId,6)、outRoot、opr-0.4.1.11.2、7a578b32、--virtual-time-budget 保留"
+  }
+ ]
+}

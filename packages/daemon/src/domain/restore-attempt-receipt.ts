@@ -37,8 +37,8 @@ export type RestoreAttemptReceiptOutcome = RestoreAttemptReceipt | {
 
 interface EventRow { seq: number; rig_id: string | null; type: string; payload: string; created_at: string }
 
-/** Fold append-only restore events into the current attempt view. No row is
- * written and the original restore.completed payload is returned untouched. */
+/** 把仅追加的恢复事件折叠成当前尝试视图。不写入任何记录，并原样返回原始
+ * restore.completed 载荷。 */
 export function deriveRestoreAttemptReceipt(
   db: Database.Database,
   rigId: string,
@@ -47,9 +47,9 @@ export function deriveRestoreAttemptReceipt(
   const startedRow = db.prepare(
     "SELECT seq, rig_id, type, payload, created_at FROM events WHERE seq = ? AND type = 'restore.started'",
   ).get(attemptId) as EventRow | undefined;
-  if (!startedRow) return { ok: false, code: "attempt_not_found", message: `Restore attempt ${attemptId} not found` };
+  if (!startedRow) return { ok: false, code: "attempt_not_found", message: `未找到恢复尝试 ${attemptId}` };
   if (startedRow.rig_id !== rigId) {
-    return { ok: false, code: "attempt_wrong_rig", message: `Restore attempt ${attemptId} belongs to rig ${startedRow.rig_id}, not ${rigId}` };
+    return { ok: false, code: "attempt_wrong_rig", message: `恢复尝试 ${attemptId} 属于工作组 ${startedRow.rig_id}，而非 ${rigId}` };
   }
   const next = db.prepare(
     "SELECT seq FROM events WHERE rig_id = ? AND type = 'restore.started' AND seq > ? ORDER BY seq LIMIT 1",
@@ -60,7 +60,7 @@ export function deriveRestoreAttemptReceipt(
        ORDER BY seq LIMIT 1`,
   ).get(...(next ? [rigId, attemptId, next.seq] : [rigId, attemptId])) as EventRow | undefined;
   if (!completedRow) {
-    return { ok: false, code: "attempt_incomplete", message: `Restore attempt ${attemptId} has no terminal completion event` };
+    return { ok: false, code: "attempt_incomplete", message: `恢复尝试 ${attemptId} 没有终态完成事件` };
   }
 
   try {
@@ -87,7 +87,7 @@ export function deriveRestoreAttemptReceipt(
         nodeId: intended.nodeId,
         logicalId: intended.logicalId,
         status: "failed" as const,
-        error: "No restore outcome was recorded for this intended seat.",
+        error: "未记录此预期席位的恢复结果。",
       };
       return recovered.has(node.nodeId) ? { ...node, status: "operator_recovered" as const } : { ...node };
     });
@@ -108,6 +108,6 @@ export function deriveRestoreAttemptReceipt(
       currentIntendedSetVerdict: rollupRestoreRigResult(currentNodes),
     };
   } catch (error) {
-    return { ok: false, code: "attempt_corrupt", message: `Restore attempt ${attemptId} could not be decoded: ${(error as Error).message}` };
+    return { ok: false, code: "attempt_corrupt", message: `无法解码恢复尝试 ${attemptId}：${(error as Error).message}` };
   }
 }

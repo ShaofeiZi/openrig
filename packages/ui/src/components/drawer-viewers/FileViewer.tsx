@@ -1,6 +1,6 @@
-// V1 attempt-3 Phase 4 — FileViewer per content-drawer.md L88–L108.
+// V1 第 4 阶段尝试 3 —— FileViewer，按 content-drawer.md L88–L108。
 //
-// Renders markdown / text / YAML / JSON / image / binary file refs.
+// 渲染 markdown / text / YAML / JSON / 图片 / 二进制文件引用。
 
 import { useMemo } from "react";
 import { SectionHeader } from "../ui/section-header.js";
@@ -18,16 +18,16 @@ import { toolBrand } from "../../lib/tool-brand.js";
 export type FileKind = "markdown" | "text" | "yaml" | "json" | "image" | "binary";
 
 export interface FileViewerData {
-  /** Display path shown in the drawer. Also used as the relative read path when `root` is set. */
+  /** 抽屉中显示的路径。设置 `root` 时也用作相对读取路径。 */
   path: string;
   kind?: FileKind;
   content?: string;
   imageUrl?: string;
-  /** Existing /api/files allowlist root name. */
+  /** 现有 /api/files 白名单根目录名称。 */
   root?: string;
-  /** Optional explicit path under `root`; falls back to `path` when omitted. */
+  /** `root` 下的可选显式路径；缺省时回退到 `path`。 */
   readPath?: string;
-  /** Absolute file path; resolved against /api/files/roots before reading. */
+  /** 绝对文件路径；读取前对照 /api/files/roots 解析。 */
   absolutePath?: string | null;
 }
 
@@ -93,8 +93,8 @@ function useResolvedReadTarget(data: FileViewerData): {
   };
 }
 
-/** Parent directory of a slash-separated relative path; "" when the path has no
- *  directory segment (a root-level file). Pure string semantics — no Node path. */
+/** 斜杠分隔相对路径的父目录；路径无目录段时（根级文件）为 ""。
+ *  纯字符串语义——无 Node path。 */
 function parentDir(p: string): string {
   const i = p.lastIndexOf("/");
   return i >= 0 ? p.slice(0, i) : "";
@@ -116,20 +116,19 @@ function FileViewerBody({
   if (!content && !imageUrl && resolvedKind !== "binary") {
     return (
       <EmptyState
-        label="NO CONTENT"
-        description={`Loading ${path}...`}
+        label="无内容"
+        description={`正在加载 ${path}…`}
         variant="card"
         testId="file-viewer-empty"
       />
     );
   }
 
-  // Inline C1-body images in the drawer's Markdown are slice-RELATIVE — siblings of
-  // the file (e.g. proof/qa.md body `![](proof-image.png)`). Resolve them through the
-  // canonical /api/files/asset base derived from the file's PARENT directory (slash
-  // semantics on the resolved target.path; a root-level file anchors at ".") so they
-  // load in-app instead of falling through to broken SPA-route-relative URLs. No
-  // resolved target (inline-only callers) => no base (leave MarkdownViewer passthrough).
+  // 抽屉 Markdown 中的内联 C1-body 图片是切片相对的——文件的兄弟
+  //（例如 proof/qa.md 正文 `![](proof-image.png)`）。通过从文件父目录派生的
+  // 规范 /api/files/asset 基解析它们（解析后 target.path 上的斜杠语义；
+  // 根级文件锚定在 "."），使它们在应用内加载，而非落到破碎的 SPA 路由相对 URL。
+  // 无解析目标（仅内联调用者）=> 无基（保留 MarkdownViewer 透传）。
   const markdownAssetBase = target
     ? fileAssetUrl(target.root, parentDir(target.path) || ".")
     : undefined;
@@ -172,8 +171,8 @@ function FileViewerBody({
         {resolvedKind === "binary" ? (
           <div className="px-4 py-6">
             <EmptyState
-              label="BINARY"
-              description="Cannot preview; download instead."
+              label="二进制文件"
+              description="无法预览；请改为下载。"
               variant="card"
               testId="file-viewer-binary"
             />
@@ -199,8 +198,8 @@ function FileViewerWithFetch(data: FileViewerData) {
   if (!content && !imageUrl && hasFetchIntent && (rootsLoading || read.isLoading)) {
     return (
       <EmptyState
-        label="LOADING"
-        description={`Loading ${path}...`}
+        label="加载中"
+        description={`正在加载 ${path}…`}
         variant="card"
         testId="file-viewer-empty"
       />
@@ -210,8 +209,8 @@ function FileViewerWithFetch(data: FileViewerData) {
   if (!content && !imageUrl && hasFetchIntent && !target) {
     return (
       <EmptyState
-        label="FILE UNAVAILABLE"
-        description={`No configured file root contains ${path}.`}
+        label="文件不可用"
+        description={`无已配置文件根目录包含 ${path}。`}
         variant="card"
         testId="file-viewer-error"
       />
@@ -221,8 +220,8 @@ function FileViewerWithFetch(data: FileViewerData) {
   if (!content && !imageUrl && read.isError) {
     return (
       <EmptyState
-        label="FILE UNAVAILABLE"
-        description={(read.error as Error)?.message ?? `Could not load ${path}.`}
+        label="文件不可用"
+        description={(read.error as Error)?.message ?? `无法加载 ${path}。`}
         variant="card"
         testId="file-viewer-error"
       />
@@ -242,16 +241,15 @@ function FileViewerWithFetch(data: FileViewerData) {
 
 export function FileViewer(data: FileViewerData) {
   if (!data.root && !data.absolutePath) {
-    // OPR.0.4.4.20 retro-demo fixback: a caller that provides neither inline
-    // content NOR any readable target (root/readPath or absolutePath) can
-    // never load anything — say so honestly instead of the misleading
-    // eternal "Loading ..." the demo proof caught (backend reads were fine;
-    // the viewer was never given a target to ask for).
+    // OPR.0.4.4.20 回溯 demo 修复：既不提供内联内容也不提供任何可读目标
+    //（root/readPath 或 absolutePath）的调用者永远无法加载任何内容——
+    // 诚实说明，而非误导性的永久"加载中…"（demo proof 捕获的；后端读取正常；
+    // 查看器从未被给予可请求的目标）。
     if (!data.content && !data.imageUrl) {
       return (
         <EmptyState
-          label="NOT RESOLVABLE"
-          description={`No readable target for ${data.path}: the caller provided neither content nor a file root/absolute path.`}
+          label="无法解析"
+          description={`${data.path} 无可读目标：调用者既未提供内容，也未提供文件根目录/绝对路径。`}
           variant="card"
           testId="file-viewer-unresolvable"
         />

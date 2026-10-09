@@ -21,18 +21,16 @@ import { RigRepository } from "../src/domain/rig-repository.js";
 import { PodRepository } from "../src/domain/pod-repository.js";
 import { rigMemberExists } from "../src/domain/workflow-role-context.js";
 
-// OPR.0.4.6.FAC3 C2 — the FR-5 member-exists instantiate ADVISORY
-// (plan v1.1 §3 C2; PRD FR-5 ACs + BR-2). The engine bit (B) of the
-// slice: a declared preferred_target that parses canonical AND names a
-// REGISTERED rig but a member that does not exist yields ONE loud
-// aggregated advisory on the SHIPPED InstantiateResult.advisories list
-// — and instantiate always SUCCEEDS (advisory-never-deny; the queue
-// transport gate stays rig-exists-only).
+// OPR.0.4.6.FAC3 C2——FR-5 member-exists 实例化 ADVISORY
+//（plan v1.1 §3 C2；PRD FR-5 AC + BR-2）。本切片的引擎部分（B）：
+// 一个声明的 preferred_target，既解析为 canonical 又命名一个已注册 rig，
+// 但其 member 不存在，则在出厂的 InstantiateResult.advisories 列表上产出
+// 一条响亮的聚合 advisory——且实例化始终成功（advisory 绝不拒绝；队列
+// 传输闸门保持仅校验 rig-exists）。
 //
-// Sibling of workflow-bound-rig.test.ts (the degrade-producer suite —
-// untouched by FAC-3; its passing unmodified IS part of this slice's
-// zero-regression story) and workflow-role-resolution.test.ts (whose
-// seedSeat idiom this reuses).
+// 与 workflow-bound-rig.test.ts（degrade-producer 套件——不受 FAC-3 影响；
+// 其原样通过即本切片零回归故事的一部分）和 workflow-role-resolution.test.ts
+//（本文件复用其 seedSeat 惯用法）互为兄弟。
 
 const TYPO_SPEC = `workflow:
   id: fac3-typo-member
@@ -223,7 +221,7 @@ const COMPOSED_PRODUCERS_SPEC = `workflow:
         - done
 `;
 
-describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
+describe("FAC-3 C2：FR-5 成员存在实例化咨询", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -272,8 +270,8 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
 
   beforeEach(() => {
     db = createFullTestDb();
-    // 044/048 ride along defensively (the WF-3 fixture-migration lesson:
-    // gate parks need the summary/evidence_ref columns).
+    // 044/048 防御性随附（WF-3 fixture-migration 教训：
+    // gate park 需要 summary/evidence_ref 列）。
     migrate(db, [
       queueItemSummarySchema,
       queueItemEvidenceRefSchema,
@@ -307,9 +305,9 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  // ---------- the AC pair ----------
+  // ---------- AC 对 ----------
 
-  it("AC pair (typo): instantiate SUCCEEDS with exactly ONE advisory naming target + step/role + consequence", async () => {
+  it("AC 对（拼写错误）：使用一个咨询命名目标 + 步骤/角色 + 结果实例化 SUCCEEDS", async () => {
     const result = await runtime.instantiate({
       specPath: writeSpec("typo.yaml", TYPO_SPEC),
       rootObjective: "t",
@@ -324,14 +322,14 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     const advisory = result.advisories[0]!;
     expect(advisory).toContain('"dev-typo1@acme-build"');
     expect(advisory).toContain('"acme-build"');
-    expect(advisory).toContain('step "build"');
-    expect(advisory).toContain('role "builder"');
-    expect(advisory).toContain("will not be claimed");
-    expect(advisory).toContain("stuck exception");
-    expect(advisory).toContain("rig ps");
+    expect(advisory).toContain('步骤 "build"');
+    expect(advisory).toContain('角色 "builder"');
+    expect(advisory).toContain("不会被认领");
+    expect(advisory).toContain("卡住异常");
+    expect(advisory).toContain("zrig ps");
   });
 
-  it("AC pair (typo, BOUND): the sweep also runs on a bound instance", async () => {
+  it("AC 对（拼写错误，BOUND）：扫描也在绑定实例上运行", async () => {
     const result = await runtime.instantiate({
       specPath: writeSpec("typo-bound.yaml", TYPO_SPEC),
       rootObjective: "t",
@@ -343,7 +341,7 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     expect(result.advisories[0]).toContain('"dev-typo1@acme-build"');
   });
 
-  it("AC pair (valid member): silent success — advisories empty", async () => {
+  it("AC 对（有效成员）：无声的成功 — 咨询内容为空", async () => {
     const result = await runtime.instantiate({
       specPath: writeSpec("valid.yaml", VALID_SPEC),
       rootObjective: "t",
@@ -353,7 +351,7 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     expect(result.advisories).toEqual([]);
   });
 
-  it("existence ≠ liveness: a declared-but-never-launched member raises NO advisory", async () => {
+  it("存在≠活力：已宣布但从未启动的成员未提出任何建议", async () => {
     const result = await runtime.instantiate({
       specPath: writeSpec("cold.yaml", COLD_SPEC),
       rootObjective: "t",
@@ -362,7 +360,7 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     expect(result.advisories).toEqual([]);
   });
 
-  it("existence ≠ agent-kind: an explicitly named TERMINAL member raises NO advisory (recipe constraint-(ii) legitimacy)", async () => {
+  it("存在 ≠ 智能体类型：明确命名的 TERMINAL 成员不会提出任何建议（配方约束 -(ii) 合法性）", async () => {
     const result = await runtime.instantiate({
       specPath: writeSpec("terminal.yaml", TERMINAL_SPEC),
       rootObjective: "t",
@@ -371,9 +369,9 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     expect(result.advisories).toEqual([]);
   });
 
-  // ---------- the negatives (the skip order) ----------
+  // ---------- 负例（跳过顺序） ----------
 
-  it("negatives: raw/legacy, human-seat, and unregistered-rig targets raise NO advisory", async () => {
+  it("负面影响：原始/遗留、人类席位和未注册的工作组目标不会提出建议", async () => {
     const result = await runtime.instantiate({
       specPath: writeSpec("negatives.yaml", NEGATIVES_SPEC),
       rootObjective: "t",
@@ -382,11 +380,10 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     expect(result.advisories).toEqual([]);
   });
 
-  it("unregistered rig rejects at the TRANSPORT where a write occurs (no FR-5 double-advisory; the queue gate is untouched)", async () => {
-    // The FR-5 sweep skipped dev-x@ghost-rig above; the loud rejection
-    // for that class remains the shipped rig-exists transport gate at
-    // queue-write. Simulated with a validateRig that mirrors the real
-    // topologyValidateRig's rig-exists answer for this fixture.
+  it("未注册的设备在发生写入的传输处被拒绝（无 FR-5 双重建议；队列门未受影响）", async () => {
+    // FR-5 扫描在上面跳过了 dev-x@ghost-rig；对该类的响亮拒绝仍是
+    // 队列写入处出厂的 rig-exists 传输闸门。用一个 validateRig 模拟，
+    // 它镜像真实 topologyValidateRig 对本 fixture 的 rig-exists 回答。
     const transportRepo = new QueueRepository(db, bus, {
       validateRig: (session) => !session.endsWith("@ghost-rig"),
     });
@@ -404,9 +401,9 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     expect((thrown as QueueRepositoryError).code).toBe("unknown_destination_rig");
   });
 
-  // ---------- the handler-gate leg (locks the F-1 scope) ----------
+  // ---------- handler-gate 腿（锁定 F-1 范围） ----------
 
-  it("handler-gate leg: a gate's target role with a typo member yields the advisory naming the GATE's step + target role", async () => {
+  it("handler-gateleg：带有拼写错误成员的门的目标角色会产生命名门的步骤+目标角色的建议", async () => {
     const result = await runtime.instantiate({
       specPath: writeSpec("handler-gate.yaml", HANDLER_GATE_SPEC),
       rootObjective: "t",
@@ -415,13 +412,13 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     expect(result.advisories).toHaveLength(1);
     const advisory = result.advisories[0]!;
     expect(advisory).toContain('"dev-typo2@acme-build"');
-    expect(advisory).toContain('step "check"');
-    expect(advisory).toContain('role "gatekeeper"');
-    // The builder role's valid target stayed silent.
+    expect(advisory).toContain('步骤 "check"');
+    expect(advisory).toContain('角色 "gatekeeper"');
+    // builder 角色的有效目标保持静默（未误报）。
     expect(advisory).not.toContain("dev-builder1");
   });
 
-  it("dedupe: gate target role == actor role on one step probes ONCE (one declaring pair, not two)", async () => {
+  it("重复数据删除：一步探测一次的门目标角色 == 参与者角色（一个声明对，而不是两个）", async () => {
     const result = await runtime.instantiate({
       specPath: writeSpec("self-gate.yaml", SELF_GATE_SPEC),
       rootObjective: "t",
@@ -429,15 +426,15 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     });
     expect(result.advisories).toHaveLength(1);
     const advisory = result.advisories[0]!;
-    // Exactly one `step "audit" (role "gatekeeper")` clause — the
-    // actor_role probe and the gate-target probe collapsed.
-    const occurrences = advisory.split('step "audit" (role "gatekeeper")').length - 1;
+    // 恰好一条 `步骤 "audit"（角色 "gatekeeper"）` 子句——
+    // actor_role 探针与 gate-target 探针已合并。
+    const occurrences = advisory.split('步骤 "audit"（角色 "gatekeeper"）').length - 1;
     expect(occurrences).toBe(1);
   });
 
   // ---------- aggregation ----------
 
-  it("aggregation: the same typo target declared by two steps → ONE advisory naming BOTH", async () => {
+  it("聚合：通过两个步骤声明相同的拼写错误目标 → 一个建议命名两者", async () => {
     const result = await runtime.instantiate({
       specPath: writeSpec("aggregation.yaml", AGGREGATION_SPEC),
       rootObjective: "t",
@@ -445,13 +442,13 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     });
     expect(result.advisories).toHaveLength(1);
     const advisory = result.advisories[0]!;
-    expect(advisory).toContain('step "build-one"');
-    expect(advisory).toContain('step "build-two"');
+    expect(advisory).toContain('步骤 "build-one"');
+    expect(advisory).toContain('步骤 "build-two"');
   });
 
   // ---------- zero-regression + composition ----------
 
-  it("zero-regression: an advisory-free spec instantiates with advisories EMPTY and the normal result shape", async () => {
+  it("零回归：无咨询规范通过咨询 EMPTY 和正常结果形状进行实例化", async () => {
     const result = await runtime.instantiate({
       specPath: writeSpec("zero.yaml", VALID_SPEC),
       rootObjective: "t",
@@ -465,7 +462,7 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     // of the zero-regression story.)
   });
 
-  it("one list, two producers: the spec-default degrade advisory and the member advisory COMPOSE", async () => {
+  it("一个列表，两个生产者：规范默认降级咨询和成员咨询 COMPOSE", async () => {
     const result = await runtime.instantiate({
       specPath: writeSpec("composed.yaml", COMPOSED_PRODUCERS_SPEC),
       rootObjective: "t",
@@ -481,9 +478,9 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     expect(joined).toContain('"dev-typo1@acme-build"');
   });
 
-  // ---------- the probe unit surface ----------
+  // ---------- 探针单元表面 ----------
 
-  it("rigMemberExists: true for real/cold/terminal members; false for a typo member or an unknown rig", () => {
+  it("rigMemberExists：对于真实/冷/终端成员为 true；对于拼写错误的成员或未知的装备为 false", () => {
     expect(rigMemberExists(db, "acme-build", "dev-builder1@acme-build")).toBe(true);
     expect(rigMemberExists(db, "acme-build", "dev-cold1@acme-build")).toBe(true);
     expect(rigMemberExists(db, "acme-build", "ops-term1@acme-build")).toBe(true);
@@ -497,7 +494,7 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
 
   // ---------- advisory-never-throw (VM-caught, run-1) ----------
 
-  it("advisory-never-throw: a probe error on a partial-schema DB skips silently — instantiate NEVER fails", async () => {
+  it("Advisory-never-throw：部分模式数据库上的探测错误会默默地跳过 — 实例化永远不会失败", async () => {
     // The exact run-1 shape: a fixture DB with the workflow tables but
     // WITHOUT the inventory projection's tables (no `snapshots`) — the
     // untouched workflow-bound-rig suite's migration set. Pre-fix, the
@@ -528,9 +525,8 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
     const minimalBus = new EventBus(minimalDb);
     const minimalRepo = new QueueRepository(minimalDb, minimalBus, { validateRig: () => true });
     const minimalRuntime = new WorkflowRuntime({ db: minimalDb, eventBus: minimalBus, queueRepo: minimalRepo });
-    // The probe itself DOES throw on this schema (the precondition that
-    // makes this regression meaningful — if it ever stops throwing, the
-    // test still passes but the precondition assert documents the seam).
+    // 探针本身在该 schema 上确实抛错（这是使本回归有意义的前置条件——
+    // 若它停止抛错，测试仍过，但前置断言记录了接缝）。
     expect(() => rigMemberExists(minimalDb, "acme-build", "dev-typo1@acme-build")).toThrow();
     const result = await minimalRuntime.instantiate({
       specPath: writeSpec("never-throw.yaml", TYPO_SPEC),
@@ -546,7 +542,7 @@ describe("FAC-3 C2: FR-5 member-exists instantiate advisory", () => {
 
   // ---------- purity (the FAC-1 Q1 discipline carried) ----------
 
-  it("purity: rigMemberExists is sync SQL only — no async/await, no clock, no randomness, no tmux", () => {
+  it("纯度：rigMemberExists 仅是同步 SQL — 无异步/等待、无时钟、无随机性、无 tmux", () => {
     const source = readFileSync(
       new URL("../src/domain/workflow-role-context.ts", import.meta.url),
       "utf-8",

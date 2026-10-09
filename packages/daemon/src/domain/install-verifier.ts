@@ -52,11 +52,11 @@ export class InstallVerifier {
         passed: false,
         installId,
         entries: [],
-        statusCheck: { name: "install_exists", passed: false, expected: "exists", actual: "not found" },
+        statusCheck: { name: "install_exists", passed: false, expected: "存在", actual: "未找到" },
       };
     }
 
-    // Status check
+    // 状态检查。
     const statusCheck: Check = {
       name: "install_status",
       passed: install.status === "applied",
@@ -68,21 +68,21 @@ export class InstallVerifier {
       return { passed: false, installId, entries: [], statusCheck };
     }
 
-    // Get package name for guidance marker checks
+    // 获取 package name，供 guidance marker 检查使用。
     const pkg = this.packageRepo.getPackage(install.packageId);
     const packageName = pkg?.name ?? "unknown";
 
-    // Get applied journal entries (not rollback entries)
+    // 获取 apply journal entry，排除 rollback entry。
     const journal = this.installRepo.getJournalEntries(installId);
     const applyEntries = journal.filter((e) => e.action !== "rollback");
 
-    // Empty journal for applied install is a verification failure
+    // 状态为 applied 却没有 journal entry，应判定验证失败。
     if (applyEntries.length === 0) {
       return {
         passed: false,
         installId,
         entries: [],
-        statusCheck: { ...statusCheck, name: "journal_not_empty", passed: false, expected: "at least 1 applied entry", actual: "0 entries" },
+        statusCheck: { ...statusCheck, name: "journal_not_empty", passed: false, expected: "至少 1 条 applied entry", actual: "0 条 entry" },
       };
     }
 
@@ -92,27 +92,27 @@ export class InstallVerifier {
     for (const entry of applyEntries) {
       const checks: Check[] = [];
 
-      // Check 1: Target file exists
+      // 检查 1：目标文件存在。
       const exists = this.fs.exists(entry.targetPath);
       checks.push({
         name: "target_exists",
         passed: exists,
-        expected: "exists",
-        actual: exists ? "exists" : "missing",
+        expected: "存在",
+        actual: exists ? "存在" : "缺失",
       });
 
       if (exists) {
         if (!entry.afterHash) {
-          // Missing after_hash — integrity cannot be verified
+          // 缺少 after_hash，无法验证完整性。
           checks.push({
             name: "content_hash",
             passed: false,
-            expected: "hash recorded",
-            actual: "after_hash missing from journal",
+            expected: "已记录 hash",
+            actual: "journal 中缺少 after_hash",
           });
         }
 
-        // Check 2: Content hash matches (only if after_hash recorded)
+        // 检查 2：内容 hash 匹配；仅在记录了 after_hash 时执行。
         const content = this.fs.readFile(entry.targetPath);
         const currentHash = hashContent(content);
 
@@ -125,10 +125,8 @@ export class InstallVerifier {
           });
         }
 
-        // Check 3: Guidance managed block markers — recognize both
-        // the OpenRig form (current writes) and the legacy RIGGED form
-        // from prior installs so verification of pre-rename installs
-        // does not falsely report missing markers.
+        // 检查 3：guidance managed block marker。同时识别当前写入的 OpenRig 形式和旧安装
+        // 使用的 RIGGED 形式，避免验证品牌重命名前的安装时误报 marker 缺失。
         if (entry.exportType === "guidance") {
           const legacyStart = `<!-- BEGIN RIGGED MANAGED BLOCK: ${packageName} -->`;
           const legacyEnd = `<!-- END RIGGED MANAGED BLOCK: ${packageName} -->`;
@@ -137,28 +135,28 @@ export class InstallVerifier {
           checks.push({
             name: "managed_block_markers",
             passed: hasStart && hasEnd,
-            expected: "BEGIN + END markers present",
-            actual: hasStart && hasEnd ? "present" : `BEGIN: ${hasStart}, END: ${hasEnd}`,
+            expected: "BEGIN + END marker 均存在",
+            actual: hasStart && hasEnd ? "存在" : `BEGIN: ${hasStart}, END: ${hasEnd}`,
           });
         }
       }
 
-      // Check 4-5: Backup integrity
+      // 检查 4–5：备份完整性。
       if (entry.backupPath) {
         const backupExists = this.fs.exists(entry.backupPath);
         checks.push({
           name: "backup_exists",
           passed: backupExists,
-          expected: "exists",
-          actual: backupExists ? "exists" : "missing",
+          expected: "存在",
+          actual: backupExists ? "存在" : "缺失",
         });
 
         if (backupExists && !entry.beforeHash) {
           checks.push({
             name: "backup_hash",
             passed: false,
-            expected: "hash recorded",
-            actual: "before_hash missing from journal",
+            expected: "已记录 hash",
+            actual: "journal 中缺少 before_hash",
           });
         } else if (backupExists && entry.beforeHash) {
           const backupContent = this.fs.readFile(entry.backupPath);

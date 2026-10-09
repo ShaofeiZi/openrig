@@ -10,7 +10,7 @@ import { ContextUsageStore, FRESHNESS_THRESHOLD_MS } from "../src/domain/context
 import { ALL_MIGRATIONS } from "../src/db/all-migrations.js";
 
 
-describe("ContextUsageStore", () => {
+describe("ContextUsageStore 上下文用量存储", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let store: ContextUsageStore;
@@ -58,8 +58,8 @@ describe("ContextUsageStore", () => {
     },
   };
 
-  // T1: Valid sidecar normalizes into known ContextUsage
-  it("valid sidecar JSON normalizes into known ContextUsage", () => {
+  // T1：有效 sidecar normalize 为 known ContextUsage
+  it("有效 sidecar JSON normalize 为 known ContextUsage", () => {
     const usage = store.normalizeSample(VALID_SIDECAR);
     expect(usage.availability).toBe("known");
     expect(usage.reason).toBeNull();
@@ -76,7 +76,7 @@ describe("ContextUsageStore", () => {
     expect(usage.fresh).toBe(true);
   });
 
-  it("object-shaped current_usage is preserved as JSON text", () => {
+  it("object-shaped current_usage 保留为 JSON 文本", () => {
     const usage = store.normalizeSample(VALID_SIDECAR_WITH_OBJECT_USAGE);
     expect(usage.availability).toBe("known");
     expect(usage.currentUsage).toBe(
@@ -84,7 +84,7 @@ describe("ContextUsageStore", () => {
     );
   });
 
-  it("Codex token_count JSONL normalizes into known ContextUsage", () => {
+  it("Codex token_count JSONL normalize 为 known ContextUsage", () => {
     const codexHome = join(tmpdir(), `codex-context-${Date.now()}`);
     const codexDir = join(codexHome, ".codex");
     const rolloutPath = join(codexDir, "sessions", "rollout-thread-1.jsonl");
@@ -140,8 +140,8 @@ describe("ContextUsageStore", () => {
     rmSync(codexHome, { recursive: true, force: true });
   });
 
-  // T2: Missing sidecar -> unknown with reason
-  it("null raw produces unknown with missing_sidecar reason", () => {
+  // T2：sidecar 缺失 -> 带 reason 的 unknown
+  it("null raw 生成 reason 为 missing_sidecar 的 unknown", () => {
     const usage = store.normalizeSample(null);
     expect(usage.availability).toBe("unknown");
     expect(usage.reason).toBe("missing_sidecar");
@@ -149,15 +149,15 @@ describe("ContextUsageStore", () => {
     expect(usage.fresh).toBe(false);
   });
 
-  // T3: Invalid JSON (missing context_window) -> parse_error
-  it("raw without context_window produces unknown with parse_error", () => {
+  // T3：无效 JSON（缺少 context_window）-> parse_error
+  it("无 context_window 的 raw 生成 reason 为 parse_error 的 unknown", () => {
     const usage = store.normalizeSample({ session_id: "x" } as any);
     expect(usage.availability).toBe("unknown");
     expect(usage.reason).toBe("parse_error");
   });
 
-  // T4: Stale sample -> fresh=false but values retained
-  it("stale sample has fresh=false but retains persisted values", () => {
+  // T4：stale sample -> fresh=false，但保留值
+  it("stale sample 的 fresh=false，但保留持久化值", () => {
     const stale = {
       ...VALID_SIDECAR,
       sampled_at: new Date(Date.now() - FRESHNESS_THRESHOLD_MS - 60_000).toISOString(),
@@ -168,8 +168,8 @@ describe("ContextUsageStore", () => {
     expect(usage.usedPercentage).toBe(67); // values retained, not erased
   });
 
-  // T5: persist + getForNode round-trip
-  it("persist upserts, getForNode retrieves with freshness", () => {
+  // T5：persist + getForNode round-trip
+  it("persist 执行 upsert，getForNode 返回带 freshness 的结果", () => {
     const { node } = seedNode();
     const usage = store.normalizeSample(VALID_SIDECAR);
     store.persist(node.id, usage);
@@ -180,15 +180,15 @@ describe("ContextUsageStore", () => {
     expect(retrieved.sessionName).toBe("dev-impl@test-rig");
   });
 
-  // T6: getForNode on nonexistent node -> unknown
-  it("getForNode on nonexistent node returns unknown", () => {
+  // T6：对不存在 node 调用 getForNode -> unknown
+  it("对不存在 node 调用 getForNode 时返回 unknown", () => {
     const result = store.getForNode("nonexistent", "some-session");
     expect(result.availability).toBe("unknown");
     expect(result.reason).toBe("no_data");
   });
 
-  // T7: unknownUsage factory
-  it("unknownUsage produces correct shape", () => {
+  // T7：unknownUsage factory
+  it("unknownUsage 生成正确 shape", () => {
     const usage = store.unknownUsage("unsupported_runtime");
     expect(usage.availability).toBe("unknown");
     expect(usage.reason).toBe("unsupported_runtime");
@@ -197,37 +197,37 @@ describe("ContextUsageStore", () => {
     expect(usage.source).toBeNull();
   });
 
-  // OPR.0.5.9.5 Wave A: runtime telemetry belongs beneath state/, leaving
-  // $OPENRIG_HOME/context available for the addressable context library.
-  it("getSidecarPath returns path under state/context-usage/", () => {
+  // OPR.0.5.9.5 Wave A：runtime telemetry 位于 state/ 下，让 $OPENRIG_HOME/context 可供
+  // addressable context library 使用。
+  it("getSidecarPath 返回 state/context-usage/ 下的路径", () => {
     const path = store.getSidecarPath("dev-impl@test-rig");
     expect(path).toBe("/tmp/openrig-test/state/context-usage/dev-impl@test-rig.json");
   });
 
-  // T9: Freshness threshold is centralized
-  it("FRESHNESS_THRESHOLD_MS is exported and used consistently", () => {
+  // T9：freshness threshold 集中定义
+  it("FRESHNESS_THRESHOLD_MS 已导出且一致使用", () => {
     expect(typeof FRESHNESS_THRESHOLD_MS).toBe("number");
     expect(FRESHNESS_THRESHOLD_MS).toBe(600_000);
   });
 
-  // T10: context_usage row cascades on node delete
-  it("context_usage cascades on node delete", () => {
+  // T10：删除 node 时级联删除 context_usage row
+  it("删除 node 时级联删除 context_usage", () => {
     const { rig, node } = seedNode();
     store.persist(node.id, store.normalizeSample(VALID_SIDECAR));
 
-    // Verify row exists
+    // 验证 row 存在
     const before = db.prepare("SELECT COUNT(*) as c FROM context_usage WHERE node_id = ?").get(node.id) as { c: number };
     expect(before.c).toBe(1);
 
-    // Delete the node (cascade should remove context_usage)
+    // 删除 node（cascade 应移除 context_usage）
     db.prepare("DELETE FROM nodes WHERE id = ?").run(node.id);
 
     const after = db.prepare("SELECT COUNT(*) as c FROM context_usage WHERE node_id = ?").get(node.id) as { c: number };
     expect(after.c).toBe(0);
   });
 
-  // T11: getForNode session mismatch -> unknown
-  it("getForNode returns unknown when session_name mismatches", () => {
+  // T11：getForNode session 不匹配 -> unknown
+  it("session_name 不匹配时 getForNode 返回 unknown", () => {
     const { node } = seedNode();
     const usage = store.normalizeSample(VALID_SIDECAR);
     store.persist(node.id, usage);
@@ -237,8 +237,8 @@ describe("ContextUsageStore", () => {
     expect(result.reason).toBe("session_mismatch");
   });
 
-  // T12: getForNodes batch session mismatch
-  it("getForNodes returns unknown for mismatched sessions in batch", () => {
+  // T12：getForNodes 批量 session 不匹配
+  it("getForNodes 在 batch 中为不匹配 session 返回 unknown", () => {
     const { node } = seedNode();
     const usage = store.normalizeSample(VALID_SIDECAR);
     store.persist(node.id, usage);
@@ -251,8 +251,8 @@ describe("ContextUsageStore", () => {
     expect(results.get(node.id)?.reason).toBe("session_mismatch");
   });
 
-  // T12b: getForNodes with null currentSessionName -> not_managed
-  it("getForNodes returns unknown for null currentSessionName", () => {
+  // T12b：getForNodes 的 currentSessionName 为 null -> not_managed
+  it("currentSessionName 为 null 时 getForNodes 返回 unknown", () => {
     const { node } = seedNode();
     store.persist(node.id, store.normalizeSample(VALID_SIDECAR));
 
@@ -264,14 +264,14 @@ describe("ContextUsageStore", () => {
     expect(results.get(node.id)?.reason).toBe("not_managed");
   });
 
-  // T14: readSidecar missing file -> { ok: false, reason: 'missing_sidecar' }
-  it("readSidecar returns missing_sidecar for nonexistent file", () => {
+  // T14：readSidecar 文件缺失 -> { ok: false, reason: 'missing_sidecar' }
+  it("文件不存在时 readSidecar 返回 missing_sidecar", () => {
     const result = store.readSidecar("nonexistent-session");
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe("missing_sidecar");
   });
 
-  it("reads canonical context usage first and falls back to the legacy 0.5.8 sidecar only when canonical is absent", () => {
+  it("优先读取 canonical context usage，仅在其缺失时回退到 legacy 0.5.8 sidecar", () => {
     const home = join(tmpdir(), `context-bridge-${Date.now()}`);
     const sessionName = "dev-impl@test-rig";
     const canonical = join(home, "state", "context-usage", `${sessionName}.json`);
@@ -297,8 +297,8 @@ describe("ContextUsageStore", () => {
     rmSync(home, { recursive: true, force: true });
   });
 
-  // T15: readSidecar invalid JSON file -> { ok: false, reason: 'parse_error' }
-  it("readSidecar returns parse_error for invalid JSON sidecar file", () => {
+  // T15：readSidecar 无效 JSON 文件 -> { ok: false, reason: 'parse_error' }
+  it("sidecar JSON 文件无效时 readSidecar 返回 parse_error", () => {
     const tmpDir = join(tmpdir(), `context-test-${Date.now()}`);
     const contextDir = join(tmpDir, "state", "context-usage");
     mkdirSync(contextDir, { recursive: true });
@@ -312,14 +312,14 @@ describe("ContextUsageStore", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  // T16: readAndNormalize distinguishes missing vs parse_error through full path
-  it("readAndNormalize produces missing_sidecar for missing file", () => {
+  // T16：readAndNormalize 在完整路径中区分 missing 与 parse_error
+  it("文件缺失时 readAndNormalize 生成 missing_sidecar", () => {
     const usage = store.readAndNormalize("totally-missing");
     expect(usage.availability).toBe("unknown");
     expect(usage.reason).toBe("missing_sidecar");
   });
 
-  it("readAndNormalize produces parse_error for invalid JSON file", () => {
+  it("JSON 文件无效时 readAndNormalize 生成 parse_error", () => {
     const tmpDir = join(tmpdir(), `context-test-parse-${Date.now()}`);
     const contextDir = join(tmpDir, "state", "context-usage");
     mkdirSync(contextDir, { recursive: true });
@@ -333,8 +333,8 @@ describe("ContextUsageStore", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  // T13: getForNodes returns known for matching sessions
-  it("getForNodes returns known for matching sessions in batch", () => {
+  // T13：getForNodes 为匹配 session 返回 known
+  it("getForNodes 在 batch 中为匹配 session 返回 known", () => {
     const { node } = seedNode();
     const usage = store.normalizeSample(VALID_SIDECAR);
     store.persist(node.id, usage);
@@ -347,11 +347,10 @@ describe("ContextUsageStore", () => {
     expect(results.get(node.id)?.usedPercentage).toBe(67);
   });
 
-  // ── GHOST-STAGE (c-id): generation guard ──────────────────────────────────
-  // Under handover the successor RESUMES INTO THE SAME PANE and REUSES the name, so
-  // session_mismatch cannot catch the retiree's frozen reading. The generation guard rejects a
-  // reading sampled BEFORE the live occupant booted (atom-B tenure boot_at) — evaluate current-gen
-  // only; a pre-boot sample reports insufficient-data, never the frozen percentage.
+  // ── GHOST-STAGE（c-id）：generation guard ───────────────────────────────────
+  // handover 时 successor 在同一 pane 恢复并复用名称，因此 session_mismatch 无法捕获 retiree 的
+  // frozen reading。generation guard 拒绝 live occupant boot 前采样的 reading（atom-B tenure
+  // boot_at）——只评估 current-gen；pre-boot sample 报告 insufficient-data，绝不泄露 frozen percentage。
   describe("c-id generation guard", () => {
     let genStore: ContextUsageStore;
     let bootAtByNode: Map<string, string | null>;
@@ -364,8 +363,8 @@ describe("ContextUsageStore", () => {
       });
     });
 
-    // A reading carrying the frozen 88% from the RETIRED generation, name reused (so it survives
-    // session_mismatch). sampledAt lets each test place it relative to the successor's boot.
+    // reading 携带 retired generation 的 frozen 88%，且名称已复用（因此通过 session_mismatch）。
+    // sampledAt 让每个测试可将其放在 successor boot 的相对时刻。
     function persistFrozen(nodeId: string, sampledAtIso: string) {
       genStore.persist(nodeId, genStore.normalizeSample({
         ...VALID_SIDECAR,
@@ -375,9 +374,9 @@ describe("ContextUsageStore", () => {
       }));
     }
 
-    // MIXED-GEN WINDOW: successor booted AFTER the retiree's last sample; only the pre-boot reading
-    // exists → insufficient-data (stale_generation), and the frozen 88% must NOT leak through.
-    it("rejects a pre-boot reading and does not leak the frozen percentage (mixed-gen window)", () => {
+    // MIXED-GEN WINDOW：successor 在 retiree 最后 sample 后 boot；只有 pre-boot reading 存在 →
+    // insufficient-data（stale_generation），且 frozen 88% 绝不能泄露。
+    it("拒绝 pre-boot reading，且不泄露 frozen percentage（mixed-gen window）", () => {
       const { node } = seedNode();
       persistFrozen(node.id, "2026-08-07T08:00:00.000Z");
       bootAtByNode.set(node.id, "2026-08-07T08:05:00.000Z"); // successor booted 5m later
@@ -387,7 +386,7 @@ describe("ContextUsageStore", () => {
       expect(result.usedPercentage).toBeNull(); // the 88 is not evaluated across the boundary
     });
 
-    it("admits a reading sampled AT/AFTER the live occupant booted (current generation)", () => {
+    it("接受在 live occupant boot 时或之后采样的 reading（current generation）", () => {
       const { node } = seedNode();
       persistFrozen(node.id, "2026-08-07T08:10:00.000Z"); // sampled after boot
       bootAtByNode.set(node.id, "2026-08-07T08:05:00.000Z");
@@ -396,7 +395,7 @@ describe("ContextUsageStore", () => {
       expect(result.usedPercentage).toBe(88);
     });
 
-    it("admits a reading sampled exactly at boot (strict-before is the boundary)", () => {
+    it("接受恰好在 boot 时采样的 reading（边界为严格早于）", () => {
       const { node } = seedNode();
       persistFrozen(node.id, "2026-08-07T08:05:00.000Z");
       bootAtByNode.set(node.id, "2026-08-07T08:05:00.000Z");
@@ -404,9 +403,9 @@ describe("ContextUsageStore", () => {
       expect(result.availability).toBe("known");
     });
 
-    // NOTE-2: absent tenure = UNKNOWN, never treat unknown as stale. Gate goes inert; the reading
-    // still faces session_mismatch + freshness, but is not rejected as prior-gen.
-    it("leaves the gate inert when boot time is UNKNOWN (absent tenure)", () => {
+    // NOTE-2：tenure 缺失 = UNKNOWN，绝不将 unknown 视为 stale。gate 不生效；reading 仍经过
+    // session_mismatch + freshness，但不会作为 prior-gen 被拒绝。
+    it("boot time 为 UNKNOWN（tenure 缺失）时不启用 gate", () => {
       const { node } = seedNode();
       persistFrozen(node.id, "2026-08-07T08:00:00.000Z");
       bootAtByNode.set(node.id, null);
@@ -414,7 +413,7 @@ describe("ContextUsageStore", () => {
       expect(result.availability).toBe("known");
     });
 
-    it("applies the same guard in the batch path (getForNodes)", () => {
+    it("在 batch 路径（getForNodes）应用相同 guard", () => {
       const { node } = seedNode();
       persistFrozen(node.id, "2026-08-07T08:00:00.000Z");
       bootAtByNode.set(node.id, "2026-08-07T08:05:00.000Z");
@@ -422,7 +421,7 @@ describe("ContextUsageStore", () => {
       expect(results.get(node.id)?.reason).toBe("stale_generation");
     });
 
-    it("never gates when no resolver is wired (opt-in)", () => {
+    it("未接入 resolver 时绝不启用 gate（opt-in）", () => {
       const plain = new ContextUsageStore(db, { stateDir: "/tmp/openrig-test" });
       const { node } = seedNode();
       plain.persist(node.id, plain.normalizeSample({

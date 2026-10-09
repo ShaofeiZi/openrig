@@ -1,4 +1,4 @@
-// V1 Shell Redesign — Phase 1 — EmptyState primitive.
+// V1 Shell 重设计——Phase 1——EmptyState 原语。
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
@@ -55,19 +55,19 @@ describe("EmptyState (Phase 1 primitive)", () => {
       <EmptyState label="X" variant="card" testId="es-c" />,
     );
     const body = container.querySelector("[data-testid='es-c']") as HTMLElement;
-    // The VellumCard wrapper renders the body inside an inner flex container,
-    // so VellumCard root = body.parentElement.parentElement.
+    // VellumCard 包装把 body 渲染在内层 flex 容器内，
+    // 故 VellumCard root = body.parentElement.parentElement。
     const wrapper = body.parentElement?.parentElement as HTMLElement;
     expect(wrapper.className).toContain("bg-transparent");
     expect(wrapper.className).toContain("border-outline-variant");
-    // Flat elevation = no hard-shadow.
+    // 平 elevation = 无硬阴影。
     expect(wrapper.className).not.toContain("hard-shadow");
   });
 
   it("variant=minimal does NOT wrap in VellumCard", () => {
     const { container } = render(<EmptyState label="X" testId="es-m" />);
     const root = container.querySelector("[data-testid='es-m']") as HTMLElement;
-    // No vellum-card wrapper around the testid.
+    // testid 外无 vellum-card 包装。
     const parent = root.parentElement as HTMLElement;
     expect(parent.className ?? "").not.toContain("bg-transparent");
     expect(parent.className ?? "").not.toContain("border-stone-900");

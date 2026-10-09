@@ -1,6 +1,6 @@
 import type { Migration } from "../migrate.js";
 
-/** Qualifies a persisted transcript path with the occupant generation that supplied it. */
+/** 用提供该路径的 occupant 代限定持久化 transcript 路径。 */
 export const contextUsageWatchdogGenerationSchema: Migration = {
   name: "075_context_usage_watchdog_generation.sql",
   sql: `

@@ -1,10 +1,7 @@
-// OPR.0.4.4.15 (guard G15-P1 fold) — the ONE registered dynamic key class:
-// feed.subscriptions.<hostId>.enabled. These tests pin the fold's whole
-// contract: round-trip persistence, delimiter + reserved-segment guards
-// (warn-and-ignore on the read side, reject-loud on the write side),
-// unknown NON-matching keys keeping the existing 400/throw behavior
-// byte-for-byte, and CLI/daemon twin parity (the host-registry twin
-// discipline: shared fixtures through BOTH implementations).
+// OPR.0.4.4.15（guard G15-P1 收敛）——唯一登记的动态 key 类：
+// feed.subscriptions.<hostId>.enabled。这些测试固定完整契约：往返持久化、分隔符和保留段守卫
+//（读取侧警告并忽略，写入侧响亮拒绝）、不匹配的未知 key 逐字节保持现有 400/抛错行为，
+// 以及 CLI/后台服务双实现对等性（host-registry 双实现纪律：共享 fixture 经过两种实现）。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
@@ -34,7 +31,7 @@ function store(): SettingsStore {
 }
 
 describe("dynamic feed-host subscription keys — daemon store", () => {
-  it("set/resolve/list round-trip; reset removes the whole host node", () => {
+  it("set/resolve/list 可往返；reset 移除整个 host 节点", () => {
     const s = store();
     s.set("feed.subscriptions.vps-b.enabled", "true");
     s.set("feed.subscriptions.mac_mini2.enabled", "false");
@@ -46,26 +43,26 @@ describe("dynamic feed-host subscription keys — daemon store", () => {
     ]);
     s.reset("feed.subscriptions.vps-b.enabled");
     expect(s.listFeedHostSubscriptions()).toEqual([{ hostId: "mac_mini2", enabled: false }]);
-    // The file layout nests under feed.subscriptions.<hostId>.enabled.
+    // 文件布局嵌套在 feed.subscriptions.<hostId>.enabled 下。
     const fc = JSON.parse(readFileSync(configPath, "utf-8")) as Record<string, never>;
     expect(fc).toEqual({ feed: { subscriptions: { mac_mini2: { enabled: false } } } });
   });
 
-  it("write side rejects loudly: non-boolean values, reserved segments, dotted host ids, and every non-matching unknown key (existing behavior byte-preserved)", () => {
+  it("写入侧响亮拒绝非布尔值、保留段、带点 host id 及所有不匹配的未知 key（现有行为逐字节保留）", () => {
     const s = store();
-    expect(() => s.set("feed.subscriptions.vps-b.enabled", "yes")).toThrow(/expected "true" or "false"/);
-    // Reserved segments never parse as host ids → the flat-key/unknown path owns them.
-    expect(() => s.set("feed.subscriptions.approvals.enabled", "true")).toThrow(/Unknown config key/);
-    expect(() => s.set("feed.subscriptions.auditLog.enabled", "true")).toThrow(/Unknown config key/);
-    // Dotted host ids are inexpressible in dotted keys (delimiter case).
-    expect(() => s.set("feed.subscriptions.vps.b.enabled", "true")).toThrow(/Unknown config key/);
-    // Per-host key set is CLOSED to {enabled} in v1.
-    expect(() => s.set("feed.subscriptions.vps-b.altitude", "high")).toThrow(/Unknown config key/);
-    // The pre-existing unknown-key negative, untouched.
-    expect(() => s.set("totally.unknown.key", "x")).toThrow(/Unknown config key/);
+    expect(() => s.set("feed.subscriptions.vps-b.enabled", "yes")).toThrow(/应为 "true" 或 "false"/);
+    // 保留段绝不会解析为 host id，因此由扁平 key/未知路径处理。
+    expect(() => s.set("feed.subscriptions.approvals.enabled", "true")).toThrow(/未知配置键/);
+    expect(() => s.set("feed.subscriptions.auditLog.enabled", "true")).toThrow(/未知配置键/);
+    // 带点的 host id 无法用点分 key 表达（分隔符场景）。
+    expect(() => s.set("feed.subscriptions.vps.b.enabled", "true")).toThrow(/未知配置键/);
+    // v1 中每个 host 的 key 集合封闭为 {enabled}。
+    expect(() => s.set("feed.subscriptions.vps-b.altitude", "high")).toThrow(/未知配置键/);
+    // 既有未知 key 反例保持不变。
+    expect(() => s.set("totally.unknown.key", "x")).toThrow(/未知配置键/);
   });
 
-  it("read side warn-and-ignores malformed persisted nodes without dropping valid ones (the ratified guard)", () => {
+  it("读取侧警告并忽略畸形持久节点，同时保留合法节点（已批准守卫）", () => {
     writeFileSync(
       configPath,
       JSON.stringify({
@@ -105,7 +102,7 @@ describe("dynamic feed-host subscription keys — CLI/daemon twin parity", () =>
     { key: "workspace.root", hostId: null }, // unrelated key
   ];
 
-  it("both parsers agree fixture-for-fixture (a divergence = one twin drifted)", () => {
+  it("两个解析器对每个 fixture 结果一致（出现差异即说明一侧漂移）", () => {
     for (const f of PARSE_FIXTURES) {
       const d = daemonParse(f.key);
       const c = cliParse(f.key);

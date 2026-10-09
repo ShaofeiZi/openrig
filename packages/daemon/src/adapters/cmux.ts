@@ -39,20 +39,18 @@ export class CmuxAdapter {
   ) {}
 
   async connect(): Promise<void> {
-    // Clean up previous transport if any
+    // 清理已有 transport。
     if (this.transport) {
       try {
         this.transport.close();
       } catch {
-        // Ignore close errors
+        // 忽略关闭错误。
       }
       this.transport = null;
     }
 
-    // Track transient transport so we can clean it up if connect fails
-    // after the factory succeeds (e.g. capabilities hang or throw).
-    // Using an object wrapper because TS control flow doesn't track
-    // mutations inside async closures for simple let bindings.
+    // 跟踪瞬态 transport，以便 factory 成功后 connect 失败（如 capabilities 卡住或抛错）时清理。
+    // 使用对象包装，因为 TS 控制流不会跟踪异步闭包中对普通 let 绑定的修改。
     const holder: { transport: CmuxTransport | null } = { transport: null };
 
     try {
@@ -72,12 +70,12 @@ export class CmuxAdapter {
       this.transport = transport;
       this.status = { available: true, capabilities };
     } catch {
-      // Clean up transient transport if factory succeeded but we're failing
+      // factory 成功但后续失败时清理瞬态 transport。
       if (holder.transport) {
         try {
           holder.transport.close();
         } catch {
-          // Ignore close errors
+          // 忽略关闭错误。
         }
       }
       this.transport = null;
@@ -95,7 +93,7 @@ export class CmuxAdapter {
 
   async listWorkspaces(): Promise<CmuxResult<CmuxWorkspace[]>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       const result = (await this.transport.request("workspace.list")) as {
@@ -109,7 +107,7 @@ export class CmuxAdapter {
 
   async listSurfaces(workspaceId?: string): Promise<CmuxResult<CmuxSurface[]>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       const params = workspaceId != null ? { workspaceId } : undefined;
@@ -124,7 +122,7 @@ export class CmuxAdapter {
 
   async focusSurface(surfaceId: string, workspaceId?: string): Promise<CmuxResult<void>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       await this.transport.request("surface.focus", { surfaceId, workspaceId });
@@ -136,7 +134,7 @@ export class CmuxAdapter {
 
   async sendText(surfaceId: string, text: string, workspaceId?: string): Promise<CmuxResult<void>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       await this.transport.request("surface.sendText", { surfaceId, text, workspaceId });
@@ -148,13 +146,13 @@ export class CmuxAdapter {
 
   async currentWorkspace(): Promise<CmuxResult<string>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       const raw = (await this.transport.request("workspace.current")) as Record<string, unknown>;
       const handle = normalizeHandle("workspace", raw["workspace_id"] ?? raw["id"]);
       if (!handle) {
-        return { ok: false, code: "request_failed", message: "cmux current-workspace returned no workspace handle" };
+        return { ok: false, code: "request_failed", message: "cmux current-workspace 未返回 workspace handle" };
       }
       return { ok: true, data: handle };
     } catch (err) {
@@ -164,7 +162,7 @@ export class CmuxAdapter {
 
   async createTerminalSurface(workspaceId: string): Promise<CmuxResult<string>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       const raw = (await this.transport.request("surface.create", { workspaceId, type: "terminal" })) as Record<string, unknown>;
@@ -178,7 +176,7 @@ export class CmuxAdapter {
         .map((value) => normalizeHandle("surface", value))
         .find((value): value is string => Boolean(value));
       if (!handle) {
-        return { ok: false, code: "request_failed", message: "cmux new-surface returned no surface handle" };
+        return { ok: false, code: "request_failed", message: "cmux new-surface 未返回 surface handle" };
       }
       return { ok: true, data: handle };
     } catch (err) {
@@ -186,11 +184,9 @@ export class CmuxAdapter {
     }
   }
 
-  // Slice 24 layout primitives — see slice 24 pre-scaffold spike result.
-  // cmux RPC accepts these methods with snake_case params (verified via
-  // `cmux rpc workspace.close` probe). New methods adopt snake_case
-  // explicitly; existing camelCase callers (sendText, focus, etc.) are
-  // unchanged at this checkpoint.
+  // Slice 24 布局原语——见 slice 24 脚手架前探索结果。cmux RPC 接受这些带 snake_case 参数的
+  // 方法（经 `cmux rpc workspace.close` 探针验证）。新方法显式采用 snake_case；现有 camelCase
+  // 调用方（sendText、focus 等）在此检查点保持不变。
 
   async splitSurface(
     surfaceId: string,
@@ -198,7 +194,7 @@ export class CmuxAdapter {
     workspaceId?: string,
   ): Promise<CmuxResult<string>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       const params: Record<string, unknown> = {
@@ -217,7 +213,7 @@ export class CmuxAdapter {
         .map((value) => normalizeHandle("surface", value))
         .find((value): value is string => Boolean(value));
       if (!handle) {
-        return { ok: false, code: "request_failed", message: "cmux surface.split returned no surface handle" };
+        return { ok: false, code: "request_failed", message: "cmux surface.split 未返回 surface handle" };
       }
       return { ok: true, data: handle };
     } catch (err) {
@@ -226,14 +222,13 @@ export class CmuxAdapter {
   }
 
   /**
-   * `equalized` echoes cmux's own verdict: true = frames were rebalanced,
-   * false = cmux made no change (nothing to equalize, or the workspace was
-   * still settling). Callers MUST read it — a discarded false is exactly the
-   * silent 2:1:1 grid the VM diagnostic caught.
+   * `equalized` 回显 cmux 自身判定：true = frame 已重新均衡；false = cmux 未做更改
+   *（没有可均衡内容，或 workspace 仍在稳定）。调用方必须读取它——丢弃 false 正是 VM 诊断
+   * 捕获的静默 2:1:1 网格。
    */
   async equalizeSplits(workspaceId?: string): Promise<CmuxResult<{ equalized: boolean }>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       const params: Record<string, unknown> = {};
@@ -247,7 +242,7 @@ export class CmuxAdapter {
 
   async createWorkspace(name: string, cwd?: string): Promise<CmuxResult<string>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       const params: Record<string, unknown> = { title: name };
@@ -261,7 +256,7 @@ export class CmuxAdapter {
         .map((value) => normalizeHandle("workspace", value))
         .find((value): value is string => Boolean(value));
       if (!handle) {
-        return { ok: false, code: "request_failed", message: "cmux workspace.create returned no workspace handle" };
+        return { ok: false, code: "request_failed", message: "cmux workspace.create 未返回 workspace handle" };
       }
       return { ok: true, data: handle };
     } catch (err) {
@@ -271,7 +266,7 @@ export class CmuxAdapter {
 
   async closeWorkspace(workspaceId: string): Promise<CmuxResult<void>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       await this.transport.request("workspace.close", { workspace_id: workspaceId });
@@ -283,7 +278,7 @@ export class CmuxAdapter {
 
   async listPaneSurfaces(paneId: string, workspaceId?: string): Promise<CmuxResult<CmuxSurface[]>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       const params: Record<string, unknown> = { pane_id: paneId };
@@ -297,10 +292,10 @@ export class CmuxAdapter {
     }
   }
 
-  /** Query cmux for agent PIDs (sidebar metadata). Returns Map<pid, { runtime, pid }>. */
+  /** 向 cmux 查询智能体 PID（侧边栏元数据）。返回 Map<pid, { runtime, pid }>。 */
   async queryAgentPIDs(): Promise<CmuxResult<Map<number, { runtime: string; pid: number }>>> {
     if (!this.transport) {
-      return { ok: false, code: "unavailable", message: "cmux is not connected" };
+      return { ok: false, code: "unavailable", message: "cmux 未连接" };
     }
     try {
       const result = (await this.transport.request("workspace.agentPIDs")) as {
@@ -371,7 +366,7 @@ function normalizeHandle(kind: "workspace" | "surface", value: unknown): string 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
-      reject(new Error(`Connection timed out after ${ms}ms`));
+      reject(new Error(`连接在 ${ms}ms 后超时`));
     }, ms);
 
     promise.then(

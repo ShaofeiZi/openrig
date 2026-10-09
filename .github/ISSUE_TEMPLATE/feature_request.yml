@@ -1,32 +1,32 @@
-name: Feature request
-description: Something you want OpenRig to do that it does not
+name: 功能请求
+description: 你希望 OpenRig 具备但目前没有的能力
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        For open-ended ideas or "how should this work" questions, [Discussions › Ideas](https://github.com/mvschwarz/openrig/discussions/categories/ideas) is the better place. Use this form when you can name the outcome you want.
-        This request will be public; use examples without credentials, private prompts or personal details.
+        对于开放性想法或“这个功能应该怎么做”的讨论，[Discussions › Ideas](https://github.com/mvschwarz/openrig/discussions/categories/ideas) 是更合适的地方。当你能明确说出想要的结果时，再使用本表。
+        本请求将公开可见；请使用不含凭据、私有提示词或个人信息的示例。
   - type: textarea
     id: outcome
     attributes:
-      label: What are you trying to do, and what stops you today?
-      description: Describe the situation, not the solution. One real example beats a general case.
+      label: 你想达成什么？当前是什么阻碍了你？
+      description: 描述处境，而非解决方案。一个真实例子胜过泛泛而谈。
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: What would you like OpenRig to do?
-      description: A command, a setting, a behaviour. Rough is fine.
+      label: 你希望 OpenRig 做什么？
+      description: 一条命令、一个设置、一种行为都可以。粗略描述即可。
     validations:
       required: true
   - type: textarea
     id: workaround
     attributes:
-      label: How do you handle it now?
+      label: 你目前是怎么绕过的？
   - type: input
     id: version
     attributes:
-      label: OpenRig version
+      label: OpenRig 版本
       placeholder: 0.5.14

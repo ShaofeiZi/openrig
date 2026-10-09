@@ -1,16 +1,14 @@
-// `rig slack` — Slack connector configuration + subsystem admin.
+// `rig slack`——Slack 连接器配置 + 子系统管理。
 //
-// S10 (OPR.0.5.5.10) CUTOVER: the slice-11 relay runners (`rig slack outbound` sweep +
-// `rig slack inbound` Socket Mode loop) are RETIRED — the gateway runs as an in-daemon
-// subsystem (amended M1 §3) that owns Slack delivery and inbound directly. The retired verbs
-// refuse with teaching (never silently do nothing); the config surfaces (setup/status/verify)
-// stay, backed by the daemon-homed modules via the narrow @openrig/daemon/gateway-slack
-// surface (dep rail: lazy import at invocation). enable/disable are daemon admin calls now —
-// the daemon owns the queue and the durable seen-state, and the enable-time backlog-seeding
-// rule (slice-11 item 9) executes daemon-side before the wire goes live.
+// S10（OPR.0.5.5.10）切换：slice-11 的 relay 运行器（`rig slack outbound` 扫描 +
+// `rig slack inbound` Socket Mode 循环）已退役——网关作为后台服务内子系统
+//（修订后的 M1 §3）直接拥有 Slack 投递与入站。退役动词会带提示拒绝（绝不静默
+// 不做任何事）；配置接口（setup/status/verify）保留，通过窄接口
+// @openrig/daemon/gateway-slack 由后台服务主目录模块支持（dep rail：调用时惰性导入）。
+// enable/disable 现在是后台服务管理调用——后台服务拥有队列与持久化 seen-state，
+// enable 时的 backlog-seeding 规则（slice-11 item 9）在 wire 上线前于后台服务侧执行。
 //
-// Secrets posture unchanged: 0600 env file / SLACK_* env at call time, never in config,
-// never in the repo.
+// 密钥姿态不变：0600 env 文件 / 调用时的 SLACK_* 环境变量，绝不入配置，绝不入库。
 import { Command } from "commander";
 import { DaemonClient } from "../client.js";
 import { resolveSenderSession, SENDER_FALLBACK } from "../sender-identity.js";
@@ -29,8 +27,8 @@ import type {
   FetchImpl,
 } from "@openrig/daemon/gateway-slack";
 
-// S10: the incoming-webhook secret retired with the relay — outbound posts via the Web API
-// (bot token) on the in-daemon subsystem.
+  // S10：入站 webhook 密钥随 relay 一起退役——出站由后台服务内子系统经 Web API
+  //（bot token）发送。
 const SECRET_BOT = "SLACK_BOT_TOKEN";
 const SECRET_APP = "SLACK_APP_TOKEN";
 
@@ -51,19 +49,19 @@ export interface SlackDeps {
   home?: string;
   fetchImpl?: FetchImpl;
   log?: (msg: string) => void;
-  /** Injectable daemon-surface loader (tests). Default: lazy import of the narrow subpath. */
+  /** 可注入的后台服务接口加载器（测试用）。默认：惰性导入窄子路径。 */
   surface?: () => Promise<SlackSurface>;
   clientFactory?: () => Pick<DaemonClient, "post">;
 }
 
 const RETIRED_TEACHING =
-  "retired (S10 cutover): the gateway runs IN-DAEMON now — the subsystem polls the queue, posts to Slack, " +
-  "and consumes Socket Mode inbound itself; there is no relay runner to invoke. " +
-  "Check `rig slack status` for configuration, `curl /api/health-summary/gateway` for subsystem health, " +
-  "and `rig slack enable` to activate delivery.";
+  "已退役（S10 切换）：网关现在跑在后台服务内——该子系统自己轮询队列、发到 Slack、" +
+  "并消费 Socket Mode 入站；没有可调用的 relay 运行器。" +
+  "用 `rig slack status` 查看配置、`curl /api/health-summary/gateway` 查看子系统健康状态，" +
+  "用 `rig slack enable` 激活投递。";
 
 const MANIFEST_FIRST_STEP =
-  "`rig slack manifest --url` prints a link that creates your own Slack app from OpenRig's manifest (see `rig slack manifest --help`)";
+  "`zrig slack manifest --url` 会打印一个链接，按 zrig 的 manifest 创建你自己的 Slack app（见 `zrig slack manifest --help`）";
 
 function resolveSecrets(surface: SlackSurface, cfg: SlackConnectorConfig): { bot: string | null; app: string | null } {
   const envFile = cfg.secretsEnvFile ?? undefined;
@@ -78,21 +76,21 @@ export function slackCommand(deps: SlackDeps = {}): Command {
   const loadSurface = deps.surface ?? (async () => (await import("@openrig/daemon/gateway-slack")) as SlackSurface);
   const clientFactory = deps.clientFactory ?? (() => new DaemonClient());
 
-  const cmd = new Command("slack").description("Slack connector: configuration + in-daemon subsystem admin (S10)");
+  const cmd = new Command("slack").description("Slack 连接器：配置 + 后台服务内子系统管理（S10）");
 
   // ---- setup ----
   cmd
     .command("setup")
-    .description("Configure the connector (first-class config; secrets stay in the env file, never here)")
-    .option("--channel <id>", "Slack channel id the connector app must be a member of")
-    .option("--inbound-destination <session>", "where inbound human messages land (default operator-agent@kernel)")
-    .option("--minimum-level-that-posts <level>", "minimum OWNER level posted to Slack: RECORD|NOTICE|ALERT")
-    .option("--minimum-level-that-interrupts <level>", "minimum OWNER level that mentions/interrupts: RECORD|NOTICE|ALERT")
-    .option("--source-label <label>", "label shown in the posted message footer (where the queue lives)")
-    .option("--secrets-env-file <path>", "path to the 0600 env file with SLACK_BOT_TOKEN / SLACK_APP_TOKEN")
-    .option("--required-scopes <csv>", "comma-separated bot scopes to require at verify time")
-    .option("--reason <reason>", "Reason recorded with the configuration change", "configure human delivery")
-    .option("--actor <actor>", "Named operator when outside a managed seat")
+    .description("配置连接器（一等配置；密钥留在 env 文件，绝不写在这里）")
+    .option("--channel <id>", "连接器 app 必须加入的 Slack 频道 id")
+    .option("--inbound-destination <session>", "入站人类消息落到哪里（默认 operator-agent@kernel）")
+    .option("--minimum-level-that-posts <level>", "发到 Slack 的最低 OWNER 级别：RECORD|NOTICE|ALERT")
+    .option("--minimum-level-that-interrupts <level>", "触发 @ 提及/打断的最低 OWNER 级别：RECORD|NOTICE|ALERT")
+    .option("--source-label <label>", "发出消息页脚显示的标签（队列所在处）")
+    .option("--secrets-env-file <path>", "含 SLACK_BOT_TOKEN / SLACK_APP_TOKEN 的 0600 env 文件路径")
+    .option("--required-scopes <csv>", "verify 时要求的逗号分隔 bot scope")
+    .option("--reason <reason>", "配置变更时记录的原因", "配置人类投递")
+    .option("--actor <actor>", "不在受管席位内时的具名操作人员")
     .action(async (opts) => {
       const surface = await loadSurface();
       const cur = surface.loadConfig(deps.home);
@@ -113,15 +111,15 @@ export function slackCommand(deps: SlackDeps = {}): Command {
         run: async () => ({ value: surface.saveConfig(next, deps.home), after: { digest: channelStateDigest(next) },
           effect: channelStateDigest(cur) === channelStateDigest(next) ? "no-op" : "applied" }),
       }, deps.home);
-      log(`wrote ${result.value}; receipt ${result.receipt.id} (${result.receipt.effect})`);
-      log(`Next: if you have no Slack app yet, start with ${MANIFEST_FIRST_STEP}. Then put SLACK_BOT_TOKEN / SLACK_APP_TOKEN in ${next.secretsEnvFile ?? "<--secrets-env-file> (0600)"}, then \`rig slack verify\`, then \`rig slack enable\`.`);
+      log(`已写入 ${result.value}；回执 ${result.receipt.id}（${result.receipt.effect}）`);
+      log(`下一步：如果还没有 Slack app，从 ${MANIFEST_FIRST_STEP} 开始。然后把 SLACK_BOT_TOKEN / SLACK_APP_TOKEN 放进 ${next.secretsEnvFile ?? "<--secrets-env-file> (0600)"}，再 \`zrig slack verify\`，然后 \`zrig slack enable\`。`);
     });
 
-  // ---- status (honest unconfigured, no network) ----
+  // ---- status（如实报告未配置状态，不联网） ----
   cmd
     .command("status")
-    .description("Show the connector's configured + resolvable state (honest; no network)")
-    .option("--json", "JSON output")
+    .description("展示连接器已配置 + 可解析的状态（如实；不联网）")
+    .option("--json", "以 JSON 输出")
     .action(async (opts) => {
       const surface = await loadSurface();
       const cfg = surface.loadConfig(deps.home);
@@ -129,55 +127,55 @@ export function slackCommand(deps: SlackDeps = {}): Command {
       const readiness = surface.staticReadiness(cfg, s.bot !== null, s.app !== null);
       const permWarn = cfg.secretsEnvFile ? surface.checkEnvFilePermissions(cfg.secretsEnvFile) : null;
       const unconfigured = readiness.some((r) => !r.ok);
-      const next = unconfigured ? `First step: ${MANIFEST_FIRST_STEP}.` : null;
+      const next = unconfigured ? `第一步：${MANIFEST_FIRST_STEP}。` : null;
       if (opts.json) {
         log(JSON.stringify({ config: { ...cfg }, readiness, permWarning: permWarn, next }));
       } else {
-        log(`slack-connector (config: ${cfg.enabled ? "enabled" : "disabled"}; delivery runs IN-DAEMON — S10 subsystem)`);
-        for (const r of readiness) log(`  ${r.ok ? "✓" : "✗"} ${r.label}: ${r.detail}`);
+        log(`slack-connector（配置：${cfg.enabled ? "已启用" : "已禁用"}；投递在后台服务内运行——S10 子系统）`);
+        for (const r of readiness) log(`  ${r.ok ? "✓" : "✗"} ${r.label}：${r.detail}`);
         if (permWarn) log(`  ⚠ ${permWarn}`);
         if (next) log(`  ${next}`);
       }
     });
 
-  // ---- manifest (offline: no daemon, no tokens, no network) ----
+  // ---- manifest（离线：不连后台服务、不要 token、不联网） ----
   cmd
     .command("manifest")
-    .description("Print the Slack app manifest for creating your own OpenRig Slack app (offline)")
-    .option("--url", "print Slack's create-app link with the manifest prefilled (URL-encoded)")
-    .option("--json", "JSON output: the manifest plus its bot scopes and bot events")
+    .description("打印用于创建你自己的 zrig Slack app 的 Slack manifest（离线）")
+    .option("--url", "打印 Slack 的 create-app 链接，manifest 已预填（URL 编码）")
+    .option("--json", "以 JSON 输出：manifest 及其 bot scope 与 bot 事件")
     .addHelpText("after", [
       "",
-      "Creates nothing: open the --url link yourself in a browser signed in to your Slack workspace.",
-      "The app is private to that workspace (Socket Mode; OpenRig hosts nothing and publishes nothing).",
-      "--json lists every requested scope and why. `rig slack verify` checks only the baseline scopes,",
-      "so a READY there does not prove attachments or mentions have their grants.",
-      "Steps after creating the app: docs/reference/slack-app-setup.md",
-      "(installed: $OPENRIG_HOME/reference/slack-app-setup.md).",
+      "不会创建任何东西：在登录你 Slack 工作区的浏览器里自己打开 --url 链接。",
+      "该 app 仅对该工作区私有（Socket Mode；zrig 不托管任何东西，也不发布任何东西）。",
+      "--json 列出每个申请的 scope 及原因。`zrig slack verify` 只检查基线 scope，",
+      "因此那里 READY 并不能证明附件或 @ 提及已拿到授权。",
+      "创建 app 后的步骤：docs/reference/slack-app-setup.md",
+      "（已安装到 $OPENRIG_HOME/reference/slack-app-setup.md）。",
     ].join("\n"))
     .action(async (opts) => {
       const surface = await loadSurface();
       const bundle = surface.buildSlackAppManifest();
       if (opts.json) {
         const reasons: Record<string, string> = {};
-        for (const scope of surface.BASELINE_REQUIRED_SCOPES) reasons[scope] = "baseline: checked by `rig slack verify`";
-        for (const f of surface.FEATURE_SCOPES) reasons[f.scope] = `feature, not checked by verify: ${f.usedBy}`;
+        for (const scope of surface.BASELINE_REQUIRED_SCOPES) reasons[scope] = "基线：由 `zrig slack verify` 检查";
+        for (const f of surface.FEATURE_SCOPES) reasons[f.scope] = `功能，不由 verify 检查：${f.usedBy}`;
         log(JSON.stringify({
           manifest: bundle.manifest, url: bundle.url, scopes: bundle.scopes, events: bundle.events,
-          why: Object.fromEntries(bundle.scopes.map((scope) => [scope, reasons[scope] ?? "unexplained"])),
+          why: Object.fromEntries(bundle.scopes.map((scope) => [scope, reasons[scope] ?? "未说明"])),
         }));
       }
       else if (opts.url) log(bundle.url);
       else log(bundle.yaml.trimEnd());
     });
 
-  // ---- verify (live: GRANTED scopes from headers + channel membership) ----
+  // ---- verify（在线：从响应头拿到的已授权 scope + 频道成员关系） ----
   cmd
     .command("verify")
-    .description("Live-verify GRANTED Slack scopes (from response headers) + channel membership")
-    .option("--json", "JSON output")
-    .option("--reason <reason>", "Reason recorded with the verification", "verify human delivery")
-    .option("--actor <actor>", "Named operator when outside a managed seat")
+    .description("在线核验已授权的 Slack scope（来自响应头）+ 频道成员关系")
+    .option("--json", "以 JSON 输出")
+    .option("--reason <reason>", "核验时记录的原因", "核验人类投递")
+    .option("--actor <actor>", "不在受管席位内时的具名操作人员")
     .action(async (opts) => {
       const surface = await loadSurface();
       const cfg = surface.loadConfig(deps.home);
@@ -194,7 +192,7 @@ export function slackCommand(deps: SlackDeps = {}): Command {
         },
       }, deps.home);
       if (!s.bot) {
-        log("✗ bot token unresolved — set SLACK_BOT_TOKEN (env or secrets env file). Cannot verify.");
+        log("✗ 无法解析 bot token——请设置 SLACK_BOT_TOKEN（环境变量或 secrets env 文件）。无法核验。");
         process.exitCode = 1;
         return;
       }
@@ -204,54 +202,54 @@ export function slackCommand(deps: SlackDeps = {}): Command {
       if (opts.json) {
         log(JSON.stringify({ scope, member, ready, receipt: verification.receipt }));
       } else {
-        log(`granted scopes: ${scope.granted.join(", ") || "(none)"}`);
-        if (!scope.ok) log(`✗ MISSING scopes (configured != granted — reinstall the app): ${scope.missing.join(", ")}${scope.error ? ` [${scope.error}]` : ""}`);
-        else log("✓ all required scopes granted");
-        if (member) log(member.isMember ? `✓ channel member (${member.name ?? cfg.channel})` : `✗ NOT a member of channel ${cfg.channel} — invite the app`);
-        else log("… channel not configured — set --channel to verify membership");
-        log(ready ? "READY" : "NOT ready");
+        log(`已授权 scope：${scope.granted.join(", ") || "（无）"}`);
+        if (!scope.ok) log(`✗ 缺少 scope（配置 ≠ 已授权——请重装 app）：${scope.missing.join(", ")}${scope.error ? ` [${scope.error}]` : ""}`);
+        else log("✓ 所有必需 scope 已授权");
+        if (member) log(member.isMember ? `✓ 已是频道成员（${member.name ?? cfg.channel}）` : `✗ 不是频道 ${cfg.channel} 的成员——请邀请该 app`);
+        else log("… 未配置频道——请设置 --channel 以核验成员关系");
+        log(ready ? "就绪" : "未就绪");
       }
       if (!ready) process.exitCode = 1;
     });
 
-  // ---- enable / disable (daemon admin: seeding + subsystem restart happen daemon-side) ----
+  // ---- enable / disable（后台服务管理：seeding + 子系统重启在后台服务侧进行） ----
   cmd
     .command("enable")
-    .description("Enable the connector (daemon seeds the current backlog as history — no replay storm — then rewires)")
-    .option("--reason <reason>", "Reason recorded with the change", "enable human delivery")
-    .option("--actor <actor>", "Named operator when outside a managed seat")
+    .description("启用连接器（后台服务把当前 backlog 作为历史 seeding——不重放飞船——然后重新接线）")
+    .option("--reason <reason>", "变更时记录的原因", "启用人类投递")
+    .option("--actor <actor>", "不在受管席位内时的具名操作人员")
     .action(async (opts) => {
       try {
         const res = await clientFactory().post<{ ok: boolean; seeded: number; onlineStatus: string }>("/api/gateway/slack/enable", { reason: opts.reason, actor: resolveSenderSession() ?? opts.actor ?? SENDER_FALLBACK });
-        if (res.status !== 200 || res.data.ok !== true) throw new Error(`daemon refused enable (HTTP ${res.status}): ${JSON.stringify(res.data)}`);
+        if (res.status !== 200 || res.data.ok !== true) throw new Error(`后台服务拒绝 enable（HTTP ${res.status}）：${JSON.stringify(res.data)}`);
         log(res.data.onlineStatus);
       } catch (e) {
-        log(`✗ enable failed: ${(e as Error).message}`);
+        log(`✗ enable 失败：${(e as Error).message}`);
         process.exitCode = 1;
       }
     });
 
   cmd
     .command("disable")
-    .description("Disable the connector (the daemon rewires to an inert delivery path)")
-    .requiredOption("--reason <reason>", "Why human delivery is being shut down (recorded in the lifecycle receipt)")
-    .option("--actor <actor>", "Named operator when outside a managed seat")
+    .description("禁用连接器（后台服务重新接到惰性投递路径）")
+    .requiredOption("--reason <reason>", "为何关闭人类投递（记录在生命周期回执中）")
+    .option("--actor <actor>", "不在受管席位内时的具名操作人员")
     .action(async (opts) => {
       try {
         const res = await clientFactory().post<{ ok: boolean }>("/api/gateway/slack/disable", { reason: opts.reason, actor: resolveSenderSession() ?? opts.actor ?? SENDER_FALLBACK });
-        if (res.status !== 200 || res.data.ok !== true) throw new Error(`daemon refused disable (HTTP ${res.status}): ${JSON.stringify(res.data)}`);
-        log("slack connector disabled");
+        if (res.status !== 200 || res.data.ok !== true) throw new Error(`后台服务拒绝 disable（HTTP ${res.status}）：${JSON.stringify(res.data)}`);
+        log("slack 连接器已禁用");
       } catch (e) {
-        log(`✗ disable failed: ${(e as Error).message}`);
+        log(`✗ disable 失败：${(e as Error).message}`);
         process.exitCode = 1;
       }
     });
 
-  // ---- RETIRED relay runners (S10 cutover): refuse with teaching, never silently no-op ----
+  // ---- 已退役的 relay 运行器（S10 切换）：带提示拒绝，绝不静默 no-op ----
   cmd
     .command("outbound")
-    .description("[RETIRED — S10] the in-daemon subsystem owns outbound delivery")
-    .option("--json", "(ignored)")
+    .description("[已退役——S10] 后台服务内子系统拥有出站投递")
+    .option("--json", "（忽略）")
     .action(() => {
       log(RETIRED_TEACHING);
       process.exitCode = 1;
@@ -259,7 +257,7 @@ export function slackCommand(deps: SlackDeps = {}): Command {
 
   cmd
     .command("inbound")
-    .description("[RETIRED — S10] the in-daemon subsystem owns Socket Mode inbound")
+    .description("[已退役——S10] 后台服务内子系统拥有 Socket Mode 入站")
     .action(() => {
       log(RETIRED_TEACHING);
       process.exitCode = 1;

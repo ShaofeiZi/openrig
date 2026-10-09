@@ -6,9 +6,8 @@ export interface Migration {
 }
 
 /**
- * Run migrations against a database.
- * Tracks applied migrations in a schema_migrations table.
- * Skips already-applied migrations. Applies new ones in order.
+ * 对数据库运行迁移。
+ * 在 schema_migrations 表中跟踪已应用的迁移，跳过已应用项，并按顺序应用新迁移。
  */
 export function migrate(db: Database.Database, migrations: Migration[]): void {
   db.exec(`

@@ -29,8 +29,8 @@ export interface StreamEmitInput {
   hintDestination?: string | null;
   hintTags?: string[] | null;
   interrupt?: boolean;
-  /** P21 §4 era-stamp: the route passes `transport:v1` (sourceSession derived from the transport
-   *  header chokepoint). Written onto the stream row; absence = claimed-era. */
+  /** P21 §4 era-stamp：路由传入 `transport:v1`（sourceSession 从 transport header chokepoint
+   *  派生）。写入 stream row；缺失表示 claimed-era。 */
   identityProvenance?: string | null;
 }
 
@@ -62,14 +62,13 @@ interface StreamItemRow {
 }
 
 /**
- * L1 — Stream store. Append-only intake/audit root.
- * Items are immutable after emit (only `archived_at` may be set).
+ * L1——Stream store，只追加的 intake/audit 根。item 在 emit 后不可变，只能设置 `archived_at`。
  */
 export class StreamStore {
   readonly db: Database.Database;
   private readonly eventBus: EventBus;
-  /** P21 §4: detected once — a curated-migration test DB (or a pre-067 daemon) may lack the
-   *  era-stamp column, so the writer degrades (omits it) instead of throwing. */
+  /** P21 §4：只检测一次。curated-migration 测试 DB 或 067 之前的后台服务可能缺少 era-stamp
+   *  列，因此 writer 会降级为省略该列，而不是抛错。 */
   private readonly hasIdentityProvenanceColumn: boolean;
 
   constructor(db: Database.Database, eventBus: EventBus) {
@@ -81,7 +80,7 @@ export class StreamStore {
   }
 
   /**
-   * Idempotent emit: same `streamItemId` returns the existing row.
+   * 幂等 emit：相同 `streamItemId` 返回现有 row。
    */
   emit(input: StreamEmitInput): StreamItem {
     const tsEmitted = new Date().toISOString();
@@ -209,7 +208,7 @@ export class StreamStore {
   }
 
   /**
-   * Soft-archive — sets `archived_at`. Items remain in the table for audit.
+   * 软归档：设置 `archived_at`，item 仍保留在表中用于审计。
    */
   archive(streamItemId: string): boolean {
     const result = this.db

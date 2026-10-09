@@ -1,17 +1,14 @@
-// Living Notes Packet 2 — the AGENTS band (OPR.0.4.4.20 FR-4 SSOT + delta-A).
+// 活动笔记包 2 —— AGENTS 带（OPR.0.4.4.20 FR-4 SSOT + delta-A）。
 //
-// The SHARED AGENT-ROW ANATOMY both scopes render (this component is the one
-// renderer; slice-22's rig altitude consumes the same anatomy + the same
-// scope-parameterized contract): name · runtime badge · state glyph
-// (honest-unknown when telemetry is down — never guessed) · plain-language
-// "doing" line · holds count · last transition age · ▲ mark with inline
-// evidence · CHAT affordance (the terminal, BR-12) · read-only terminal
-// drill (the same ProgressiveTerminal, static until clicked live).
+// 两个范围渲染的共享智能体行结构（此组件是唯一渲染器；slice-22 的
+// 工作组高度消费相同结构 + 相同范围参数化契约）：名称 · 运行时徽章 ·
+// 状态字形（遥测中断时诚实未知——绝不猜测）· 通俗语言"正在做"行 ·
+// 持有计数 · 最后转换时间 · ▲ 标记带内联证据 · CHAT 控件（终端，BR-12）·
+// 只读终端钻取（相同 ProgressiveTerminal，静态直到点击转实时）。
 //
-// Drift-killers (verbatim contract): no capability forks between scopes;
-// one-count identity; the mission band never embeds slice pages (rows +
-// zoom only — the region is anchor-addressable, no standalone slice route);
-// no new nav vocabulary — this band is just "AGENTS".
+// 漂移消除者（逐字契约）：范围间无能力分叉；单一计数身份；
+// 任务带绝不嵌入切片页面（仅行 + 缩放——区域锚定可寻址，无独立切片路由）；
+// 无新导航词汇——此带就是"智能体"。
 
 import { useState } from "react";
 import { cn } from "../../lib/utils.js";
@@ -22,10 +19,10 @@ import { TranscriptDrillPanel } from "./TranscriptDrillPanel.js";
 import { buildChatPreamble } from "./chat.js";
 
 const GLYPH: Record<string, { char: string; cls: string; label: string }> = {
-  active: { char: "●", cls: "text-emerald-700", label: "active" },
-  parked: { char: "◐", cls: "text-amber-700", label: "parked" },
-  idle: { char: "○", cls: "text-on-surface-variant", label: "idle" },
-  unknown: { char: "◌", cls: "text-on-surface-variant", label: "unknown (telemetry down)" },
+  active: { char: "●", cls: "text-emerald-700", label: "进行中" },
+  parked: { char: "◐", cls: "text-amber-700", label: "已停放" },
+  idle: { char: "○", cls: "text-on-surface-variant", label: "空闲" },
+  unknown: { char: "◌", cls: "text-on-surface-variant", label: "未知（遥测中断）" },
 };
 
 function ageLabel(iso: string | null): string {
@@ -54,7 +51,7 @@ function AgentRowItem({
         <details className="min-w-0 flex-1">
           <summary
             data-testid={`agent-drill-${row.sessionName}`}
-            title="Drill into the transcript (read-only, on demand)"
+            title="钻取到转录（只读，按需）"
             className="flex min-w-0 cursor-pointer list-none items-center gap-2 text-left marker:hidden"
           >
             <span className={glyph.cls} title={glyph.label} aria-label={glyph.label}>
@@ -67,11 +64,11 @@ function AgentRowItem({
             <span className="min-w-0 flex-1 truncate text-[11px] text-on-surface-variant">
               {row.doing ?? "—"}
             </span>
-            <span className="font-mono text-[10px] text-on-surface-variant">holds {row.holdsCount}</span>
+            <span className="font-mono text-[10px] text-on-surface-variant">持有 {row.holdsCount}</span>
             <span className="font-mono text-[10px] text-on-surface-variant">{ageLabel(row.lastTransitionIso)}</span>
           </summary>
-          {/* FR-6: the transcript drill — SHIPPED read routes, fetched only
-              when opened (zero standing transcript cost). */}
+          {/* FR-6：转录钻取——已发布的只读路由，仅在打开时获取
+              （零常驻转录成本）。 */}
           <TranscriptDrillPanel sessionName={row.sessionName} deferUntilDetailsOpen />
         </details>
         <button
@@ -80,17 +77,17 @@ function AgentRowItem({
           onClick={() => setOpenChat((cur) => !cur)}
           className="border border-outline px-2 py-0.5 font-mono text-[10px] uppercase hover:bg-surface-variant"
         >
-          Chat
+          对话
         </button>
       </div>
       {row.exception ? (
         <p data-testid={`agent-exception-${row.sessionName}`} className="mt-1 font-mono text-[10px] text-amber-800">
-          ▲ {row.exception.evidence} · threshold: {row.exception.threshold}
+          ▲ {row.exception.evidence} · 阈值：{row.exception.threshold}
         </p>
       ) : null}
       {openChat ? (
         <div className="mt-2 border border-outline-variant" data-testid={`agent-chat-terminal-${row.sessionName}`}>
-          {/* BR-12: the SAME shipped terminal family, everywhere CHAT appears. */}
+          {/* BR-12：相同的已发布终端家族，CHAT 出现的每个位置。 */}
           <ProgressiveTerminal
             sessionName={row.sessionName}
             terminalKey={`review-agents:${bandScope}:${rowInstanceKey}`}
@@ -110,14 +107,12 @@ export function AgentsBandView({
 }: {
   band: AgentsBand;
   itemRef: string;
-  /** OPR.0.4.4.22 FR-1 — page-level arrangement (arch-ruled: extension in
-   *  THIS one home, never a forked copy): "agent" = the flat one-row-per-
-   *  agent render (existing behavior, default); "slice" = the same rows
-   *  grouped under each slice they hold work on — membership stays
-   *  work-on-scope, never rig co-residency (the data already guarantees it). */
+  /** OPR.0.4.4.22 FR-1 —— 页面级排列（架构规则：扩展在这一个主目录，
+   *  绝不分叉副本）："agent" = 每行一个智能体的平铺渲染（现有行为，默认）；
+   *  "slice" = 相同行按其持有工作的每个切片分组——成员关系保持工作范围，
+   *  绝不工作组共存（数据已保证）。 */
   grouping?: "agent" | "slice";
-  /** Mission altitude keeps ownership visible without letting a large queue
-   *  ledger dominate the page. Only the remainder is disclosed. */
+  /** 任务高度保持所有权可见，不让大队列分类账主导页面。仅披露余数。 */
   previewLimit?: number;
 }) {
   const visibleRows = previewLimit === undefined ? band.rows : band.rows.slice(0, previewLimit);
@@ -129,18 +124,18 @@ export function AgentsBandView({
       : "/agents";
   const groups: Array<{ label: string | null; rows: typeof band.rows }> =
     grouping === "slice" && visibleRows.length > 0
-      ? [...new Set(visibleRows.flatMap((r) => (r.slices.length > 0 ? r.slices : ["(no slice)"])))]
+      ? [...new Set(visibleRows.flatMap((r) => (r.slices.length > 0 ? r.slices : ["（无切片）"])))]
           .sort()
           .map((slice) => ({
             label: slice,
-            rows: visibleRows.filter((r) => (r.slices.length > 0 ? r.slices.includes(slice) : slice === "(no slice)")),
+            rows: visibleRows.filter((r) => (r.slices.length > 0 ? r.slices.includes(slice) : slice === "（无切片）")),
           }))
       : [{ label: null, rows: visibleRows }];
 
   return (
     <section id="agents" data-testid="agents-band" className={cn(VELLUM_CARD, "space-y-1 p-2")}>
-      <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">AGENTS</h3>
-      {/* FR-4: the one coordination-health line per scope. */}
+      <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">智能体</h3>
+      {/* FR-4：每个范围的一条协调健康线。 */}
       {band.coordinationHealth ? (
         <p data-testid="agents-health" className="font-mono text-[10px] text-on-surface-variant">
           {band.coordinationHealth}
@@ -168,7 +163,7 @@ export function AgentsBandView({
       {overflowRows.length > 0 ? (
         <details data-testid="agents-overflow" className="border border-outline-variant">
           <summary className="cursor-pointer px-2 py-1.5 font-mono text-[10px] text-on-surface-variant">
-            +{overflowRows.length} more queue-scoped agents
+            +{overflowRows.length} 个更多队列范围智能体
           </summary>
           <ul className="divide-y divide-outline-variant/50 border-t border-outline-variant">
             {overflowRows.map((row) => (
@@ -195,7 +190,7 @@ export function AgentsBandView({
             href={zoomHref}
             className="shrink-0 font-mono text-[10px] uppercase text-on-surface-variant underline-offset-2 hover:underline"
           >
-            all agents ↗
+            全部智能体 ↗
           </a>
         ) : null}
       </div>

@@ -13,9 +13,8 @@ export interface DaemonShutdownReceipt {
   failures: Array<{ phase: string; error: string }>;
 }
 
-/** One budget for the existing sequential cleanup, including its first await.
- * ponytail: this bounds asynchronous shutdown only; a synchronous event-loop
- * wedge still needs identity-checked operator recovery, not another supervisor. */
+/** 为现有串行清理设置统一预算，包括第一次 await。ponytail：这里只限制异步关闭；同步事件循环
+ * 卡死仍需要经过身份检查的操作员恢复，而不是另一个 supervisor。 */
 export function createDaemonShutdown(options: {
   phases: Array<[string, () => unknown]>;
   markClean: () => void;
@@ -37,7 +36,7 @@ export function createDaemonShutdown(options: {
     const exit = options.exit ?? ((code) => process.exit(code));
     const fail = (error: unknown) => {
       failures.push({ phase, error: String(error) });
-      log(`[shutdown] ${phase} failed: ${String(error)}`);
+      log(`[shutdown] ${phase} 失败：${String(error)}`);
     };
     const finish = (outcome: DaemonShutdownReceipt["outcome"]) => {
       if (finished) return;
@@ -54,18 +53,18 @@ export function createDaemonShutdown(options: {
         writeFileSync(temp, JSON.stringify(receipt) + "\n");
         renameSync(temp, options.receiptPath);
       } catch (error) {
-        log(`[shutdown] outcome receipt unavailable: ${String(error)}`);
+        log(`[shutdown] 无法写入结果回执：${String(error)}`);
         code = 1;
       }
-      log(`[shutdown] ${outcome}; phase=${receipt.phase}; budget=${timeoutMs}ms; exit=${code}`);
+      log(`[shutdown] ${outcome}；phase=${receipt.phase}；预算=${timeoutMs}ms；退出码=${code}`);
       exit(code);
     };
-    // Referenced deliberately: this must also enforce the bound with no servers.
+    // 有意保持引用：即使没有 server，也必须执行此时间上限。
     const timer = setTimeout(() => {
-      fail(`whole-shutdown budget exhausted (${timeoutMs}ms); pending effects are unverified`);
+      fail(`完整关闭预算已耗尽（${timeoutMs}ms）；待处理效果尚未验证`);
       finish("timed-out");
     }, timeoutMs);
-    log(`OpenRig daemon received ${signal}; shutting down (budget ${timeoutMs}ms)`);
+    log(`zrig 后台服务收到 ${signal}；正在关闭（预算 ${timeoutMs}ms）`);
     void (async () => {
       for (const [name, run] of options.phases) {
         if (finished) return;

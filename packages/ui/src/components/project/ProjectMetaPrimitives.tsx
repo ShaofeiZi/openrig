@@ -50,85 +50,85 @@ export const statusDotClass: Record<ProjectMetaTone, string> = {
 export function eventToken(kind: string): ProjectToken {
   const normalized = kind.toLowerCase();
   if (normalized.includes("mission_control.action_executed")) {
-    return { label: "Human decision", tone: "success", icon: ClipboardCheck };
+    return { label: "人工决策", tone: "success", icon: ClipboardCheck };
   }
   if (normalized.includes("closure_overdue") || normalized.includes("overdue")) {
-    return { label: "Overdue", tone: "danger", icon: CircleAlert };
+    return { label: "已逾期", tone: "danger", icon: CircleAlert };
   }
   if (normalized.includes("approval")) {
-    return { label: "Needs approval", tone: "warning", icon: ClipboardCheck };
+    return { label: "待审批", tone: "warning", icon: ClipboardCheck };
   }
   if (normalized.includes("human-gate") || normalized.includes("human")) {
-    return { label: "Human action", tone: "danger", icon: CircleAlert };
+    return { label: "人工操作", tone: "danger", icon: CircleAlert };
   }
   if (normalized.includes("inbox.denied")) {
-    return { label: "Inbox denied", tone: "danger", icon: Ban };
+    return { label: "收件箱已拒绝", tone: "danger", icon: Ban };
   }
   if (normalized.includes("inbox.absorbed")) {
-    return { label: "Inbox absorbed", tone: "success", icon: Inbox };
+    return { label: "收件箱已接收", tone: "success", icon: Inbox };
   }
   if (normalized.includes("shipped")) {
-    return { label: "Shipped", tone: "success", icon: PackageCheck };
+    return { label: "已交付", tone: "success", icon: PackageCheck };
   }
   if (normalized.includes("transition.done") || normalized.includes("transition.complete")) {
-    return { label: "Marked done", tone: "success", icon: CheckCircle2 };
+    return { label: "标记完成", tone: "success", icon: CheckCircle2 };
   }
   if (normalized.includes("transition.in-progress") || normalized.includes("transition.claim")) {
-    return { label: "In progress", tone: "info", icon: Clock };
+    return { label: "进行中", tone: "info", icon: Clock };
   }
   if (normalized.includes("transition.pending")) {
-    return { label: "Pending", tone: "warning", icon: Clock };
+    return { label: "待处理", tone: "warning", icon: Clock };
   }
   if (normalized.includes("transition")) {
-    return { label: "State change", tone: "neutral", icon: History };
+    return { label: "状态变更", tone: "neutral", icon: History };
   }
   if (normalized.includes("ship") || normalized.includes("done") || normalized.includes("complete")) {
-    return { label: "Completed", tone: "success", icon: CheckCircle2 };
+    return { label: "已完成", tone: "success", icon: CheckCircle2 };
   }
   if (normalized.includes("unclaim")) {
-    return { label: "Released", tone: "neutral", icon: RotateCcw };
+    return { label: "已释放", tone: "neutral", icon: RotateCcw };
   }
   if (normalized.includes("claim")) {
-    return { label: "Claimed", tone: "info", icon: UserCheck };
+    return { label: "已认领", tone: "info", icon: UserCheck };
   }
   if (normalized.includes("handoff") || normalized.includes("handed_off") || normalized.includes("routed")) {
-    return { label: "Handoff", tone: "info", icon: Send };
+    return { label: "移交", tone: "info", icon: Send };
   }
   if (normalized.includes("created")) {
-    return { label: "Created", tone: "info", icon: CirclePlus };
+    return { label: "已创建", tone: "info", icon: CirclePlus };
   }
   if (normalized.includes("queue.updated") || normalized.includes("queue.item.updated")) {
-    return { label: "Queue update", tone: "neutral", icon: History };
+    return { label: "队列更新", tone: "neutral", icon: History };
   }
   if (normalized.includes("progress")) {
-    return { label: "Progress", tone: "info", icon: History };
+    return { label: "进展", tone: "info", icon: History };
   }
   return { label: humanizeCodeLabel(kind), tone: "neutral", icon: MessageSquareText };
 }
 
 export function queueStateToken(state: string | undefined | null): ProjectToken {
   const normalized = state?.toLowerCase().trim() ?? "";
-  if (!normalized) return { label: "Unknown state", tone: "neutral", icon: MessageSquareText };
+  if (!normalized) return { label: "未知状态", tone: "neutral", icon: MessageSquareText };
   if (normalized.includes("closeout-pending-ratify")) {
-    return { label: "Awaiting approval", tone: "warning", icon: ClipboardCheck };
+    return { label: "等待审批", tone: "warning", icon: ClipboardCheck };
   }
   if (normalized.includes("human-gate") || normalized.includes("pending-approval")) {
-    return { label: "Needs human", tone: "danger", icon: CircleAlert };
+    return { label: "需人工", tone: "danger", icon: CircleAlert };
   }
   if (normalized.includes("blocked") || normalized.includes("failed") || normalized.includes("error") || normalized.includes("denied")) {
     return { label: humanizeCodeLabel(state ?? ""), tone: "danger", icon: CircleAlert };
   }
   if (normalized.includes("handed-off") || normalized.includes("routed")) {
-    return { label: "Routed", tone: "info", icon: Send };
+    return { label: "已路由", tone: "info", icon: Send };
   }
   if (normalized.includes("done") || normalized.includes("complete") || normalized.includes("closed") || normalized.includes("shipped")) {
-    return { label: "Done", tone: "success", icon: CheckCircle2 };
+    return { label: "完成", tone: "success", icon: CheckCircle2 };
   }
   if (normalized.includes("in-progress") || normalized.includes("running") || normalized.includes("claimed")) {
-    return { label: "In progress", tone: "info", icon: UserCheck };
+    return { label: "进行中", tone: "info", icon: UserCheck };
   }
   if (normalized.includes("pending") || normalized.includes("open") || normalized.includes("queued")) {
-    return { label: "Pending", tone: "warning", icon: Clock };
+    return { label: "待处理", tone: "warning", icon: Clock };
   }
   if (normalized.includes("canceled") || normalized.includes("cancelled") || normalized.includes("stopped")) {
     return { label: humanizeCodeLabel(state ?? ""), tone: "neutral", icon: Ban };
@@ -137,9 +137,9 @@ export function queueStateToken(state: string | undefined | null): ProjectToken 
 }
 
 export function scopeToken(scope: "workspace" | "mission" | "slice"): ProjectToken {
-  if (scope === "workspace") return { label: "Workspace", tone: "neutral", icon: Route };
-  if (scope === "mission") return { label: "Mission", tone: "info", icon: GitBranch };
-  return { label: "Slice", tone: "success", icon: MessageSquareText };
+  if (scope === "workspace") return { label: "工作区", tone: "neutral", icon: Route };
+  if (scope === "mission") return { label: "任务", tone: "info", icon: GitBranch };
+  return { label: "切片", tone: "success", icon: MessageSquareText };
 }
 
 export function stateTone(state: string | undefined): ProjectMetaTone {
@@ -157,6 +157,45 @@ export function sliceStatusTone(state: string | undefined): ProjectMetaTone {
   return stateTone(state);
 }
 
+/** 仅本地化已知的 slice 展示状态；未知扩展值原样保留，避免改写协议语义。 */
+export function sliceStatusLabel(state: string | undefined): string {
+  switch (state?.toLowerCase()) {
+    case "active": return "进行中";
+    case "done": return "已完成";
+    case "blocked": return "已阻塞";
+    case "draft": return "草稿";
+    default: return state ?? "未知";
+  }
+}
+
+const REVIEW_LEG_LABELS: Record<string, string> = {
+  attention: "待关注",
+  exception: "异常",
+  overdue: "已逾期",
+  stuck: "卡住",
+  awareness: "需留意",
+  anomaly: "异常",
+  "insufficient-proof": "证明不足",
+  "stale-after-change": "变更后已过期",
+  "workflow-failed": "工作流失败",
+  "park-on-human": "等待人工",
+  "human-routed": "已路由给人工",
+  "confirm-faithful": "待如实确认",
+};
+
+const REVIEW_PRIORITY_LABELS: Record<string, string> = {
+  urgent: "紧急",
+  routine: "常规",
+};
+
+export function reviewLegLabel(value: string): string {
+  return REVIEW_LEG_LABELS[value] ?? value;
+}
+
+export function reviewPriorityLabel(value: string | null): string | null {
+  return value ? REVIEW_PRIORITY_LABELS[value] ?? value : null;
+}
+
 export function humanizeCodeLabel(value: string): string {
   return value
     .replace(/[_./-]+/g, " ")
@@ -165,17 +204,17 @@ export function humanizeCodeLabel(value: string): string {
 }
 
 export function compactSessionLabel(session: string | undefined | null): string {
-  if (!session) return "unknown";
+  if (!session) return "未知";
   if (session === "human@host") return "human@host";
-  // OPR.0.4.6.MH1 FR-8: the shared parse contract (greedy first-@ rig —
-  // no silent truncation of anything after a second "@").
+  // OPR.0.4.6.MH1 FR-8：共享解析契约（贪婪取第一个 @ 后的 rig——
+  // 不对第二个 @ 之后的内容做静默截断）。
   const parsed = parseSessionName(session);
   if (parsed.kind !== "canonical") return session;
   return `${parsed.member}@${parsed.rig}`;
 }
 
 export function formatFriendlyDate(value: string | undefined | null): string {
-  if (!value) return "unknown";
+  if (!value) return "未知";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   const now = new Date();
@@ -186,8 +225,8 @@ export function formatFriendlyDate(value: string | undefined | null): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
-  if (sameDay) return `Today ${time}`;
-  if (date.toDateString() === yesterday.toDateString()) return `Yesterday ${time}`;
+  if (sameDay) return `今天 ${time}`;
+  if (date.toDateString() === yesterday.toDateString()) return `昨天 ${time}`;
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
@@ -239,7 +278,7 @@ export function QueueCountIcon({
   count: number;
   testId?: string;
 }) {
-  const label = `${count} qitem${count === 1 ? "" : "s"}`;
+  const label = `${count} 个队列项`;
   return (
     <span
       data-testid={testId}
@@ -327,9 +366,9 @@ export function FlowChips({
   if (!source && !destination) return null;
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-      <ActorChip session={source ?? "unknown source"} muted={muted} />
+      <ActorChip session={source ?? "未知来源"} muted={muted} />
       <ArrowRight className="h-3.5 w-3.5 text-on-surface-variant" strokeWidth={1.4} />
-      <ActorChip session={destination ?? "unresolved target"} muted={muted} />
+      <ActorChip session={destination ?? "未解析目标"} muted={muted} />
     </div>
   );
 }
@@ -371,7 +410,7 @@ export function ProofThumbnailGrid({
             {image}
             <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-1 border border-amber-400/45 bg-surface-lowest/80 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.10em] text-amber-950 backdrop-blur-sm">
               <ToolMark tool={rel} size="xs" decorative />
-              Proof image
+              校验图
             </span>
           </button>
         );
@@ -387,13 +426,19 @@ export function ProofPacketHeader({
   title: string;
   badge: string;
 }) {
+  const badgeLabel = ({
+    pass: "通过",
+    fail: "失败",
+    partial: "部分通过",
+    unknown: "未知",
+  } as Record<string, string>)[badge] ?? badge;
   return (
     <div className="flex items-center justify-between gap-2 font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">
       <span className="truncate inline-flex items-center gap-1">
         <ToolMark tool="proof" size="xs" />
         {title}
       </span>
-      <ProjectPill token={{ label: badge, tone: stateTone(badge) }} compact />
+      <ProjectPill token={{ label: badgeLabel, tone: stateTone(badge) }} compact />
     </div>
   );
 }

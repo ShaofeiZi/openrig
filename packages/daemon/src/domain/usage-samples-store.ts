@@ -1,14 +1,10 @@
-// 51-08 A1 — writer for the append-only per-seat usage series (migration 062).
+// 51-08 A1——按席位记录的仅追加使用量序列写入器（迁移 062）。
 //
-// ADVANCE-ONLY is the load-bearing property: a sample byte-identical to the
-// seat's latest row in the same lane (and window, for the provider lane) is
-// refused, so an idle seat adds zero rows and the series length measures actual
-// movement. History is never mutated — unlike context_usage (018), whose
-// destructive upsert stays the point-in-time lane; this store is its
-// over-time twin.
+// 只前进是承重属性：若样本与同一泳道中该席位的最新行逐字节相同（provider 泳道还要求
+// 窗口相同），则拒绝写入。因此空闲席位不会增加记录，序列长度反映真实变化。历史永不
+// 修改；context_usage（018）通过破坏性 upsert 保留时点状态，本存储则是其时间序列对应物。
 //
-// OPTION-A BAR: inputs carry seat/node identity only. No account identity
-// exists in the schema and none is accepted here.
+// OPTION-A 约束：输入只携带席位/节点身份。schema 中不存在账号身份，本接口也不接受。
 import type { Database } from "better-sqlite3";
 import type { ProviderSignal } from "./provider/provider-types.js";
 
@@ -50,7 +46,7 @@ export class UsageSamplesStore {
     this.db = db;
   }
 
-  /** Append the context-lane sample IFF it advanced past the seat's latest row. */
+  /** 仅当上下文泳道样本相对该席位最新行发生变化时才追加。 */
   appendContextSample(s: ContextSampleInput, capturedAt: string): boolean {
     const last = this.db
       .prepare(
@@ -89,7 +85,7 @@ export class UsageSamplesStore {
     return true;
   }
 
-  /** Append the provider-window sample IFF it advanced past the seat's latest row for that window. */
+  /** 仅当 provider 窗口样本相对该席位在该窗口的最新行发生变化时才追加。 */
   appendProviderWindowSample(s: ProviderWindowSampleInput, capturedAt: string): boolean {
     const last = this.db
       .prepare(
@@ -119,15 +115,14 @@ export class UsageSamplesStore {
   }
 }
 
-/** Map the read model's statusline signals to window-sample inputs. Only the two
- *  normalized subscription windows ride the series; rows without a seat identity
- *  or an asOf stamp are skipped (nothing is fabricated — the Option-A bar). */
+/** 将读取模型的状态栏信号映射为窗口样本输入。只有两个规范化订阅窗口进入序列；
+ * 缺少席位身份或 asOf 时间戳的行会被跳过（绝不伪造——遵守 Option-A 约束）。 */
 export function providerWindowSamplesFromSignals(signals: ProviderSignal[]): ProviderWindowSampleInput[] {
   const out: ProviderWindowSampleInput[] = [];
   for (const sig of signals) {
     if (!sig.seatSession || !sig.asOf) continue;
-    // SignalWindow admits provider-native strings; only the two normalized
-    // windows ride the series (an explicit re-literal narrows the open union).
+    // SignalWindow 接受 provider 原生字符串；只有两个规范化窗口进入序列
+    //（显式重新字面量化以收窄开放联合类型）。
     const window = sig.window === "five_hour" ? "five_hour" : sig.window === "weekly" ? "weekly" : null;
     if (!window) continue;
     out.push({

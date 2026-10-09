@@ -45,8 +45,8 @@ export interface InboxDropInput {
   tags?: string[];
   urgency?: string;
   auditPointer?: string;
-  /** P21 §4 era-stamp: the route passes `transport:v1` (senderSession derived from the transport
-   *  header chokepoint). Written onto the channel-of-record row; absence = claimed-era. */
+  /** P21 §4 纪元戳：路由传入 `transport:v1`（senderSession 来自传输 header 瓶颈点）。
+   * 写入记录通道行；缺失表示 claimed 纪元。 */
   identityProvenance?: string | null;
 }
 
@@ -65,22 +65,20 @@ function newInboxId(): string {
 }
 
 /**
- * Inbox mailbox handler. Drop-and-go path; the receiver chooses absorb (promote to queue_item) or
- * deny (record reason).
+ * Inbox 邮箱处理器。投递后即离开；接收方选择 absorb（提升为 queue_item）或 deny（记录原因）。
  *
- * P18 sender-provenance: `input.senderSession` is authoritative and MUST be a transport-derived
- * identity supplied by the caller route (the /inbox/drop route derives it from the X-OpenRig-Session
- * header, refusing when absent). This handler no longer carries a pluggable `authenticate` predicate
- * or an `authenticatedSender` parameter — the prior allow-all default + body-forwarded principal were
- * the fabricated-authority surface (P18); identity verification now lives at the ONE transport
- * chokepoint, not behind a re-introducible body-claim fallback here.
+ * P18 发送方溯源：`input.senderSession` 具有权威性，必须是调用方路由提供的传输派生身份
+ *（/inbox/drop 路由从 X-OpenRig-Session header 派生，缺失时拒绝）。本处理器不再携带可插拔的
+ * `authenticate` 谓词或 `authenticatedSender` 参数；此前“默认全部允许 + body 转发 principal”
+ * 构成了虚假授权表面（P18）。身份验证现在只存在于唯一传输瓶颈点，不再隐藏在此处可被重新引入的
+ * body claim 回退之后。
  */
 export class InboxHandler {
   readonly db: Database.Database;
   private readonly eventBus: EventBus;
   private readonly queueRepo: QueueRepository;
-  /** P21 §4: detected once — a curated-migration test DB (or a pre-067 daemon) may lack the
-   *  era-stamp column, so the writer degrades (omits it) instead of throwing. */
+  /** P21 §4：只检测一次。精选 migration 的测试 DB（或 067 之前的后台服务）可能缺少纪元戳列，
+   * 因此 writer 会降级为省略该列，而不是抛错。 */
   private readonly hasIdentityProvenanceColumn: boolean;
 
   constructor(
@@ -147,19 +145,18 @@ export class InboxHandler {
   }
 
   /**
-   * Receiver absorbs a pending inbox entry into their main queue.
-   * Idempotent on inbox_id: if already absorbed, returns the existing
-   * `absorbed_qitem_id` rather than creating a duplicate.
+   * 接收方把 pending inbox 条目吸收到其主队列。
+   * 按 inbox_id 幂等：若已吸收，则返回既有 `absorbed_qitem_id`，不创建重复项。
    */
   async absorb(inboxId: string, receiverSession: string, identityProvenance?: string | null): Promise<{ entry: InboxEntry; qitemId: string }> {
     const entry = this.getById(inboxId);
     if (!entry) {
-      throw new InboxHandlerError("inbox_not_found", `inbox ${inboxId} not found`);
+      throw new InboxHandlerError("inbox_not_found", `未找到 inbox ${inboxId}`);
     }
     if (entry.destinationSession !== receiverSession) {
       throw new InboxHandlerError(
         "absorb_destination_mismatch",
-        `inbox ${inboxId} is destined for ${entry.destinationSession}, not ${receiverSession}`
+        `inbox ${inboxId} 的目标是 ${entry.destinationSession}，不是 ${receiverSession}`
       );
     }
     if (entry.state === "absorbed") {
@@ -168,13 +165,12 @@ export class InboxHandler {
     if (entry.state === "denied") {
       throw new InboxHandlerError(
         "inbox_already_denied",
-        `inbox ${inboxId} was denied; cannot absorb`
+        `inbox ${inboxId} 已被拒绝，无法吸收`
       );
     }
 
-    // Inbox-absorb suppresses the default queue create-time nudge: the inbox
-    // surface already had its own delivery (the original drop), so a second
-    // nudge on absorb is duplicative. The destination knows it absorbed.
+    // Inbox absorb 会抑制队列创建时的默认 nudge：inbox 表面已经完成自身投递（原始 drop），
+    // absorb 时再次 nudge 会重复；目标方已经知道条目被吸收。
     const qitem = await this.queueRepo.create({
       sourceSession: entry.senderSession,
       destinationSession: entry.destinationSession,
@@ -182,7 +178,7 @@ export class InboxHandler {
       tags: entry.tags ?? undefined,
       priority: entry.urgency === "critical" ? "critical" : entry.urgency === "urgent" ? "urgent" : "routine",
       nudge: false,
-      identityProvenance: identityProvenance ?? null, // P21 §4 era-stamp: transport-derived receiver action
+      identityProvenance: identityProvenance ?? null, // P21 §4 纪元戳：传输派生的接收方动作。
     });
 
     const ts = new Date().toISOString();
@@ -214,18 +210,18 @@ export class InboxHandler {
   deny(inboxId: string, receiverSession: string, reason: string): InboxEntry {
     const entry = this.getById(inboxId);
     if (!entry) {
-      throw new InboxHandlerError("inbox_not_found", `inbox ${inboxId} not found`);
+      throw new InboxHandlerError("inbox_not_found", `未找到 inbox ${inboxId}`);
     }
     if (entry.destinationSession !== receiverSession) {
       throw new InboxHandlerError(
         "deny_destination_mismatch",
-        `inbox ${inboxId} is destined for ${entry.destinationSession}, not ${receiverSession}`
+        `inbox ${inboxId} 的目标是 ${entry.destinationSession}，不是 ${receiverSession}`
       );
     }
     if (entry.state !== "pending") {
       throw new InboxHandlerError(
         "inbox_not_pending",
-        `inbox ${inboxId} is in state ${entry.state}; only pending entries can be denied`
+        `inbox ${inboxId} 当前状态为 ${entry.state}；只有 pending 条目可以拒绝`
       );
     }
     const ts = new Date().toISOString();
@@ -287,7 +283,7 @@ export class InboxHandler {
 
   private getByIdOrThrow(inboxId: string): InboxEntry {
     const entry = this.getById(inboxId);
-    if (!entry) throw new InboxHandlerError("inbox_not_found", `inbox ${inboxId} not found after write`);
+    if (!entry) throw new InboxHandlerError("inbox_not_found", `写入后未找到 inbox ${inboxId}`);
     return entry;
   }
 

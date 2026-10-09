@@ -1,28 +1,27 @@
 import type { Binding, StartupFile } from "./types.js";
 import type { ProjectionPlan } from "./projection-planner.js";
 
-// -- Bridge type: NodeBinding extends Binding with cwd --
-// Interim repo type. The current repo only has Binding in types.ts.
-// The startup orchestrator (AS-T07) constructs NodeBinding from Binding + node.cwd.
+// -- 桥接类型：NodeBinding 在 Binding 上增加 cwd --
+// 仓库过渡类型。当前 types.ts 中只有 Binding；启动编排器（AS-T07）根据 Binding + node.cwd
+// 构造 NodeBinding。
 
 export interface NodeBinding extends Binding {
   cwd: string;
   model?: string;
   codexConfigProfile?: string;
-  /** OPR.0.4.8.3 Seam B: the seat's RESOLVED launch posture from its permission_policy
-   * attachment (member > rig precedence, resolved by the core resolver at materialize /
-   * restore). Absent = no policy attached → the env-driven floor/YOLO decision stands.
-   * Present = authoritative for this seat (overrides the env read in BOTH directions). */
+  /** OPR.0.4.8.3 接缝 B：从席位 permission_policy 附件解析出的启动姿态。优先级为
+   * member > rig，由核心解析器在物化/恢复时解析。缺失表示未附加策略，继续使用环境变量驱动的
+   * floor/YOLO 决策；存在则为该席位的权威值，会双向覆盖环境变量读取。 */
   launchPosture?: "floor" | "full_bypass";
-  /** Explicit Claude native mode; checked against the bound managed executable. */
+  /** 显式 Claude 原生模式；会对照绑定的托管可执行文件校验。 */
   permissionMode?: string;
-  /** Reserved successor generation; current tenure remains the input fence until commit. */
+  /** 预留的后继 generation；提交前，当前任期仍作为输入围栏。 */
   launchGeneration?: string;
-  /** #25: the rig's `managed_blocks.claude-code` file. Absent = CLAUDE.md. Only the Claude adapter reads it. */
+  /** #25：工作组的 `managed_blocks.claude-code` 文件；缺失时使用 CLAUDE.md。仅 Claude 适配器读取。 */
   claudeManagedBlockFile?: import("./managed-blocks.js").ClaudeManagedBlockFile;
 }
 
-// -- Resolved startup file with source-root provenance --
+// -- 带源根目录来源信息的已解析启动文件 --
 
 export interface ResolvedStartupFile {
   path: string;
@@ -31,11 +30,11 @@ export interface ResolvedStartupFile {
   deliveryHint: "auto" | "guidance_merge" | "skill_install" | "send_text";
   required: boolean;
   appliesOn: ("fresh_start" | "restore")[];
-  /** Optional discriminator; startup artifacts are files only. */
+  /** 可选判别字段；启动产物仅支持文件。 */
   kind?: "file";
 }
 
-// -- Adapter result types --
+// -- 适配器结果类型 --
 
 export interface InstalledResource {
   effectiveId: string;
@@ -66,10 +65,9 @@ export const ATTENTION_REQUIRED_READINESS_CODES = new Set([
   "update_gate",
   "login_required",
   "mcp_gate",
-  // Codex auth refusal (stored OAuth token can no longer be refreshed).
-  // Defensive: row 6's verifyResumeLaunch patch propagates attention_required
-  // through the launch path so the readiness fallback shouldn't see this code,
-  // but adding it here keeps the two paths semantically aligned.
+  // Codex 认证拒绝（已存 OAuth token 无法再刷新）。防御性处理：第 6 行的 verifyResumeLaunch
+  // 补丁会沿启动路径传播 attention_required，因此就绪回退通常看不到此 code；在此加入可让
+  // 两条路径保持语义一致。
   "codex_auth_refusal",
   "codex_client_incompatible",
 ]);
@@ -78,23 +76,21 @@ export function isAttentionRequiredReadinessCode(code: string | undefined): bool
   return !!code && ATTENTION_REQUIRED_READINESS_CODES.has(code);
 }
 
-// -- Harness launch result --
+// -- Harness 启动结果 --
 
 export type HarnessLaunchRecovery = "retry_fresh" | "attention_required";
 
 export type HarnessLaunchResult =
   | { ok: true; resumeToken?: string; resumeType?: string; appliedLaunch?: import("./permission-drift.js").AppliedLaunchObservation }
-  // `evidence` carries the last-N pane lines for `attention_required` outcomes
-  // so the failure can flow honest evidence through to RestoreNodeResult's
-  // attentionEvidence field. Omitted for non-attention recoveries.
+  // 对 `attention_required` 结果，`evidence` 携带窗格最后 N 行，使失败可以通过
+  // RestoreNodeResult.attentionEvidence 传递真实证据；非待关注恢复时省略。
   | { ok: false; error: string; recovery?: HarnessLaunchRecovery; evidence?: string };
 
-// -- Shared concrete-hint resolver --
+// -- 共享的具体提示解析器 --
 
 /**
- * Resolve 'auto' delivery hint to a concrete hint.
- * Single source of truth — used by both the startup partition and adapter delivery.
- * Rules match existing adapter logic byte-for-byte.
+ * 将 'auto' 交付提示解析为具体提示。它是启动分区和适配器交付共用的唯一事实源，
+ * 规则与既有适配器逻辑逐字节一致。
  */
 export function resolveConcreteHint(
   path: string,
@@ -105,17 +101,15 @@ export function resolveConcreteHint(
   return "send_text";
 }
 
-// -- Runtime adapter contract --
+// -- 运行时适配器契约 --
 
 /**
- * Member-level fork-source input translated by the startup orchestrator from
- * the rigspec member's `sessionSource` field. v1 narrow MVP: kind="native_id"
- * only; other shapes are rejected at schema validation today.
+ * 成员级 fork 源输入，由启动编排器从 rigspec 成员的 `sessionSource` 字段转换。v1 的精简
+ * MVP 仅支持 kind="native_id"；其他结构目前会在 schema 校验阶段被拒绝。
  *
- * Adapters that support fork (claude-code, codex) build their respective
- * fork command from this input and capture the NEW post-fork token, never
- * the parent. Adapters that don't support fork (terminal) refuse with a
- * clear runtime-mismatch error.
+ * 支持 fork 的适配器（claude-code、codex）根据此输入构造各自的 fork 命令，并捕获 fork 后
+ * 的新 token，绝不使用父 token。不支持 fork 的适配器（terminal）会以明确的运行时不匹配
+ * 错误拒绝。
  */
 export interface ForkSource {
   kind: "native_id" | "artifact_path" | "name" | "last";
@@ -123,38 +117,35 @@ export interface ForkSource {
 }
 
 /**
- * The five-method runtime adapter contract.
- * Adapters own projection, delivery, harness launch, reconciliation, and readiness.
- * Startup action execution is NOT part of this contract — that belongs
- * to the startup orchestrator after checkReady().
+ * 包含五个方法的运行时适配器契约。适配器负责投影、交付、harness 启动、对账和就绪检查。
+ * 启动动作执行不属于此契约，它由启动编排器在 checkReady() 后负责。
  */
 export interface RuntimeAdapter {
-  /** Claude's managed capability/launch seam, shared with seat selection. */
+  /** Claude 托管能力/启动接缝，与席位选择共享。 */
   readonly claudeManagedLaunch?: import("./claude-managed-launch.js").ClaudeManagedLaunch;
   readonly runtime: string;
 
-  /** List currently installed/projected resources for a node. */
+  /** 列出节点当前已安装/投影的资源。 */
   listInstalled(binding: NodeBinding): Promise<InstalledResource[]>;
 
-  /** Project resources from a projection plan to the runtime target locations. */
+  /** 按投影计划将资源投影到运行时目标位置。 */
   project(plan: ProjectionPlan, binding: NodeBinding): Promise<ProjectionResult>;
 
-  /** Deliver startup files to the runtime. */
+  /** 向运行时交付启动文件。 */
   deliverStartup(files: ResolvedStartupFile[], binding: NodeBinding): Promise<StartupDeliveryResult>;
 
   /**
-   * Launch the harness (claude/codex/terminal) inside the tmux session.
+   * 在 tmux 会话内启动 harness（claude/codex/terminal）。
    *
-   * `resumeToken` and `forkSource` are mutually exclusive. If both are
-   * provided, adapters MUST refuse with a clear error rather than guess.
-   * `forkSource` triggers a fork from the named source; the captured
-   * resumeToken in the result is the NEW post-fork token, never the parent.
+   * `resumeToken` 与 `forkSource` 互斥。两者同时提供时，适配器必须以明确错误拒绝，不能
+   * 猜测。`forkSource` 从指定来源触发 fork；结果中捕获的 resumeToken 是 fork 后的新 token，
+   * 绝不是父 token。
    */
   launchHarness(
     binding: NodeBinding,
     opts: { name: string; resumeToken?: string; forkSource?: ForkSource },
   ): Promise<HarnessLaunchResult>;
 
-  /** Check if the runtime harness is responsive and ready. */
+  /** 检查运行时 harness 是否响应且已就绪。 */
   checkReady(binding: NodeBinding): Promise<ReadinessResult>;
 }

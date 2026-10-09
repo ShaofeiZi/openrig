@@ -7,13 +7,12 @@ import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StubScript } from "../src/adapters/stub-script.js";
 
-// Slice 51-01 items 6-8 — R3: the FULL stub-level determinism pin. PRD §5 guarantees
-// "no wall-clock/RNG in the stub's OWN behavior": running the SAME script twice under
-// the SAME injected clock must produce a byte-identical observable — pane transcript,
-// activity-event sequence, and compaction asset stamps. The asset stamps alone are
-// already pinned (compaction-clock-injection); this pins the WHOLE-SCRIPT surface the
-// stub itself emits, guarding against any raw new Date()/Math.random() leaking into
-// the runner's behavior in a later increment.
+// Slice 51-01 items 6-8 —— R3:桩层完整确定性锚定。PRD §5 保证
+// “桩自身行为中不含挂钟/RNG”:在同一个注入时钟下运行同一份脚本两次,
+// 必须产出逐字节一致的可观测结果——窗格转录、活动事件序列、压缩素材时间戳。
+// 素材时间戳本身已被锚定(compaction-clock-injection);这里锚定桩自身
+// 发出的整份脚本表面,防止后续增量中任何裸 new Date()/Math.random()
+// 泄漏进运行器行为。
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNNER = resolve(HERE, "../src/adapters/stub-runner.ts");
@@ -37,12 +36,12 @@ async function waitFor(pred: () => boolean, timeoutMs = 15_000): Promise<void> {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     if (pred()) return;
-    if (Date.now() > deadline) throw new Error(`condition not met within ${timeoutMs}ms`);
+    if (Date.now() > deadline) throw new Error(`条件在 ${timeoutMs}ms 内未满足`);
     await new Promise((r) => setTimeout(r, 50));
   }
 }
 
-describe("stub-runner FULL determinism pin (PRD §5, R3)", () => {
+describe("stub-runner 完整确定性锚定(PRD §5、R3)", () => {
   const children: ChildProcess[] = [];
   const dirs: string[] = [];
   let server: Server | undefined;
@@ -81,7 +80,7 @@ describe("stub-runner FULL determinism pin (PRD §5, R3)", () => {
     await waitFor(() => sink.filter((c) => c.run === run).some((c) => c.body.hookEvent === "Stop"));
 
     const marker = JSON.parse(readFileSync(markerPath, "utf8"));
-    // Normalize the per-run temp path so the clock-derived content compares byte-equal.
+    // 归一化每次运行产生的临时路径,使由时钟派生的内容可按字节比较。
     const paneNorm = pane.split(dir).join("<DIR>");
     return {
       pane: paneNorm,
@@ -91,8 +90,8 @@ describe("stub-runner FULL determinism pin (PRD §5, R3)", () => {
     };
   }
 
-  it("produces a byte-identical pane transcript + activity sequence + asset stamps across a double-run", async () => {
-    // Runs are sequential; a single sink routes each POST to the currently-live run.
+  it("双次运行产出逐字节一致的窗格转录 + 活动事件序列 + 素材时间戳", async () => {
+    // 各次运行顺序执行;单个 sink 把每个 POST 路由到当前正在运行的那一次。
     const sink: { run: number; body: Record<string, unknown> }[] = [];
     const live = { run: 0 };
     server = createServer((req, res) => {
@@ -100,7 +99,7 @@ describe("stub-runner FULL determinism pin (PRD §5, R3)", () => {
       req.on("data", (c) => { raw += c; });
       req.on("end", () => {
         try { sink.push({ run: live.run, body: JSON.parse(raw) as Record<string, unknown> }); }
-        catch { /* ignore non-JSON */ }
+        catch { /* 忽略非 JSON 内容 */ }
         res.writeHead(200); res.end("{}");
       });
     });
@@ -112,13 +111,13 @@ describe("stub-runner FULL determinism pin (PRD §5, R3)", () => {
     live.run = 2;
     const r2 = await runOnce(port, sink, 2);
 
-    // (1) Pane transcript byte-identical (per-run temp path normalized).
+    // (1) 窗格转录逐字节一致(已归一化每次运行的临时路径)。
     expect(r1.pane).toBe(r2.pane);
     expect(r1.pane).toContain("[stub] scripted turn one");
-    // (2) Activity event sequence byte-identical (hookEvents, occurredAt=clock, identity).
+    // (2) 活动事件序列逐字节一致(hookEvents、occurredAt=时钟、身份)。
     expect(r1.events.length).toBeGreaterThanOrEqual(3);
     expect(JSON.stringify(r1.events)).toBe(JSON.stringify(r2.events));
-    // (3) Compaction asset stamps byte-identical + clock-honored.
+    // (3) 压缩素材时间戳逐字节一致且遵循时钟。
     expect(r1.markerCreatedAt).toBe(INJECTED_ISO);
     expect(r2.markerCreatedAt).toBe(INJECTED_ISO);
     expect(r1.outStamp).toBe(r2.outStamp);

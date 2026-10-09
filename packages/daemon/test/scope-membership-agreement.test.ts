@@ -1,11 +1,9 @@
-// Canonical scope-membership matcher (VM-003 + VM-004) — the AGREEMENT test
-// (the class-killer). One seeded queue_items fixture; the four historically
-// divergent matchers (matchQitems -> qitemIds, agentsForSlices -> the band,
-// hasActiveQitem -> phase signal, attentionForTag -> NeedsYou) must all AGREE
-// on membership for: clean tags · comma-embedded legacy tags · a mission-tagged
-// qitem on an unindexed slice · and the NEGATIVES (slice:X-suffix over-match,
-// sibling-name, body-mention-only). Over-match negatives AND under-match
-// positives both hold.
+// 标准范围成员关系匹配器（VM-003 + VM-004）——一致性测试（消除整类缺陷）。
+// 使用一个预置 queue_items 夹具；四个历史上存在分歧的匹配器（matchQitems -> qitemIds、
+// agentsForSlices -> 区域、hasActiveQitem -> 阶段信号、attentionForTag -> NeedsYou）
+// 必须对以下成员关系达成一致：干净标签、逗号内嵌旧版标签、未索引 slice 上带任务标签的
+// qitem，以及反例（slice:X 后缀过度匹配、同级名称、仅正文提及）。同时覆盖过度匹配
+// 反例与匹配不足正例。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
@@ -50,7 +48,7 @@ function insertQitem(
   );
 }
 
-describe("scope-membership agreement (VM-003 + VM-004 class-killer)", () => {
+describe("范围成员关系一致性（VM-003 + VM-004 整类缺陷消除器）", () => {
   let missionsRoot: string;
   let cleanup: string;
   let db: Database.Database;
@@ -59,7 +57,7 @@ describe("scope-membership agreement (VM-003 + VM-004 class-killer)", () => {
     cleanup = fs.mkdtempSync(path.join(os.tmpdir(), "scope-agreement-"));
     missionsRoot = path.join(cleanup, "missions");
     fs.mkdirSync(missionsRoot, { recursive: true });
-    // Mission "relx" with two indexed slices: target (under test) + sibling.
+    // 任务 "relx" 含已索引的 slice：受测 target、sibling 与 legacyonly。
     writeSlice(missionsRoot, path.join("relx", "slices"), "target");
     writeSlice(missionsRoot, path.join("relx", "slices"), "sibling");
     writeSlice(missionsRoot, path.join("relx", "slices"), "legacyonly");
@@ -73,20 +71,20 @@ describe("scope-membership agreement (VM-003 + VM-004 class-killer)", () => {
   });
 
   function seedFixture(): void {
-    // --- members of slice:target ---
-    insertQitem(db, { id: "qc", dest: "alice@rig", tags: ["mission:relx", "slice:target"] }); // clean
-    insertQitem(db, { id: "ql", dest: "bob@rig", tags: ["mission:relx,slice:target"] }); // comma-legacy (VM-003)
-    // --- NEGATIVES (must be excluded everywhere) ---
-    insertQitem(db, { id: "qsuf", dest: "carol@rig", tags: ["slice:target-extra"] }); // suffix over-match
-    insertQitem(db, { id: "qsib", dest: "dave@rig", tags: ["slice:sibling"] }); // sibling
-    insertQitem(db, { id: "qbody", dest: "erin@rig", tags: [], body: "work on target here" }); // body-mention only
-    // --- mission-direct (C3) ---
+    // --- slice:target 的成员 ---
+    insertQitem(db, { id: "qc", dest: "alice@rig", tags: ["mission:relx", "slice:target"] }); // 干净标签
+    insertQitem(db, { id: "ql", dest: "bob@rig", tags: ["mission:relx,slice:target"] }); // 逗号旧版格式（VM-003）
+    // --- 反例（必须处处排除）---
+    insertQitem(db, { id: "qsuf", dest: "carol@rig", tags: ["slice:target-extra"] }); // 后缀过度匹配
+    insertQitem(db, { id: "qsib", dest: "dave@rig", tags: ["slice:sibling"] }); // 同级
+    insertQitem(db, { id: "qbody", dest: "erin@rig", tags: [], body: "在此处理 target" }); // 仅正文提及
+    // --- 任务直接成员（C3）---
     insertQitem(db, { id: "qmis", dest: "frank@rig", tags: ["mission:relx"] });
-    // --- human-gate rows for attentionForTag agreement ---
+    // --- 用于验证 attentionForTag 一致性的 human-gate 行 ---
     insertQitem(db, { id: "qhg_member", dest: "grace@rig", tags: ["mission:relx,slice:target"], tier: "human-gate" });
     insertQitem(db, { id: "qhg_non", dest: "heidi@rig", tags: ["slice:target-extra"], tier: "human-gate" });
-    // --- legacy zero-typed corpus (substring tier must still run) ---
-    insertQitem(db, { id: "qleg", dest: "ivan@rig", tags: [], body: "legacyonly rollout notes" });
+    // --- 无类型旧版语料（子字符串层仍须运行）---
+    insertQitem(db, { id: "qleg", dest: "ivan@rig", tags: [], body: "legacyonly 发布记录" });
   }
 
   function makeIndexerAndGatherer() {
@@ -95,82 +93,82 @@ describe("scope-membership agreement (VM-003 + VM-004 class-killer)", () => {
     return { indexer, gatherer };
   }
 
-  it("matchQitems (qitemIds): typed-authoritative, comma-legacy IN, suffix/sibling/body OUT", () => {
+  it("matchQitems（qitemIds）：类型化来源权威，包含逗号旧版，排除后缀/同级/正文", () => {
     seedFixture();
     const { indexer } = makeIndexerAndGatherer();
     const ids = new Set(indexer.get("target")?.qitemIds ?? []);
-    expect(ids.has("qc")).toBe(true); // clean
-    expect(ids.has("ql")).toBe(true); // comma-legacy (VM-003)
-    expect(ids.has("qhg_member")).toBe(true); // comma-legacy member (human-gate)
-    expect(ids.has("qsuf")).toBe(false); // suffix over-match (VM-004)
-    expect(ids.has("qsib")).toBe(false); // sibling
-    expect(ids.has("qbody")).toBe(false); // body-mention (typed rows exist -> substring tier skipped)
-    expect(ids.has("qmis")).toBe(false); // mission-only, not a slice member
+    expect(ids.has("qc")).toBe(true); // 干净标签
+    expect(ids.has("ql")).toBe(true); // 逗号旧版格式（VM-003）
+    expect(ids.has("qhg_member")).toBe(true); // 逗号旧版成员（human-gate）
+    expect(ids.has("qsuf")).toBe(false); // 后缀过度匹配（VM-004）
+    expect(ids.has("qsib")).toBe(false); // 同级
+    expect(ids.has("qbody")).toBe(false); // 正文提及（存在类型化行 -> 跳过子字符串层）
+    expect(ids.has("qmis")).toBe(false); // 仅任务成员，不是 slice 成员
   });
 
-  it("agentsForSlices band (slice scope): comma-legacy seat IN, negatives + mission-only OUT", () => {
+  it("agentsForSlices 区域（slice 范围）：包含逗号旧版席位，排除反例与仅任务成员", () => {
     seedFixture();
     const { gatherer } = makeIndexerAndGatherer();
     const band = gatherer.composeAgents("slice:target");
     const sessions = new Set((band?.rows ?? []).map((r) => r.sessionName));
-    expect(sessions.has("alice@rig")).toBe(true); // clean
-    expect(sessions.has("bob@rig")).toBe(true); // comma-legacy (VM-003 fix)
-    expect(sessions.has("carol@rig")).toBe(false); // suffix
-    expect(sessions.has("dave@rig")).toBe(false); // sibling
-    expect(sessions.has("erin@rig")).toBe(false); // body-mention
-    expect(sessions.has("frank@rig")).toBe(false); // mission-only -> not in slice band
+    expect(sessions.has("alice@rig")).toBe(true); // 干净标签
+    expect(sessions.has("bob@rig")).toBe(true); // 逗号旧版格式（VM-003 修复）
+    expect(sessions.has("carol@rig")).toBe(false); // 后缀
+    expect(sessions.has("dave@rig")).toBe(false); // 同级
+    expect(sessions.has("erin@rig")).toBe(false); // 正文提及
+    expect(sessions.has("frank@rig")).toBe(false); // 仅任务成员 -> 不在 slice 区域
   });
 
-  it("hasActiveQitem AGREES with the band (phase/band coherence pin)", () => {
+  it("hasActiveQitem 与区域保持一致（阶段/区域一致性固定）", () => {
     seedFixture();
     const { indexer, gatherer } = makeIndexerAndGatherer();
     const rec = indexer.get("target")!;
     const active = (gatherer as unknown as { hasActiveQitem(n: string, s: unknown): boolean }).hasActiveQitem("target", rec);
     const band = gatherer.composeAgents("slice:target");
     expect(active).toBe(true);
-    // Coherence: active work present => band has >= 1 row (one-compose-two-answers, killed).
+    // 一致性：存在活跃工作 => 区域至少有一行（已消除“一次组合、两个答案”）。
     expect((band?.rows.length ?? 0)).toBeGreaterThanOrEqual(1);
   });
 
-  it("attentionForTag AGREES: comma-legacy member IN, suffix over-match OUT", () => {
+  it("attentionForTag 保持一致：包含逗号旧版成员，排除后缀过度匹配", () => {
     seedFixture();
     const { gatherer } = makeIndexerAndGatherer();
     const attn = (gatherer as unknown as { attentionForTag(t: string): Array<{ qitemId: string }> }).attentionForTag("slice:target");
     const ids = new Set(attn.map((a) => a.qitemId));
-    expect(ids.has("qhg_member")).toBe(true); // comma-legacy member (under-match fixed)
-    expect(ids.has("qhg_non")).toBe(false); // suffix over-match rejected by canonical confirm
+    expect(ids.has("qhg_member")).toBe(true); // 逗号旧版成员（已修复匹配不足）
+    expect(ids.has("qhg_non")).toBe(false); // 标准确认拒绝后缀过度匹配
   });
 
-  it("mission band (C3): mission-tag-direct seat appears even without an indexed slice tag", () => {
+  it("任务区域（C3）：即使没有已索引 slice 标签，任务标签直接席位也会出现", () => {
     seedFixture();
     const { gatherer } = makeIndexerAndGatherer();
     const band = gatherer.composeAgents("mission:relx");
     const sessions = new Set((band?.rows ?? []).map((r) => r.sessionName));
-    expect(sessions.has("frank@rig")).toBe(true); // mission:relx-tagged, no slice tag (C3 fix)
-    expect(sessions.has("alice@rig")).toBe(true); // slice member still present via union
+    expect(sessions.has("frank@rig")).toBe(true); // 带 mission:relx 标签，无 slice 标签（C3 修复）
+    expect(sessions.has("alice@rig")).toBe(true); // slice 成员仍通过并集出现
   });
 
-  it("mission attention excludes rows carrying a slice tag (d2 excludeTagPrefix, comma-legacy aware)", () => {
+  it("任务关注项排除携带 slice 标签的行（d2 excludeTagPrefix，识别逗号旧版格式）", () => {
     seedFixture();
     const { gatherer } = makeIndexerAndGatherer();
     const attn = (gatherer as unknown as { attentionForTag(t: string, ex?: string): Array<{ qitemId: string }> }).attentionForTag("mission:relx", "slice:");
     const ids = new Set(attn.map((a) => a.qitemId));
-    // qhg_member is a comma-legacy row that carries slice:target -> excluded from
-    // mission attention (d2: raw startsWith blind to comma-legacy; canonical set is not).
+    // qhg_member 是携带 slice:target 的逗号旧版行 -> 从任务关注项中排除
+    //（d2：原始 startsWith 无法识别逗号旧版格式；标准集合可以）。
     expect(ids.has("qhg_member")).toBe(false);
   });
 
-  it("tier gating: zero-typed corpus still matches via the preserved substring fallback", () => {
+  it("分层门禁：无类型语料仍通过保留的子字符串回退匹配", () => {
     seedFixture();
     const { indexer } = makeIndexerAndGatherer();
     const ids = new Set(indexer.get("legacyonly")?.qitemIds ?? []);
-    // No typed slice:legacyonly rows -> typedTagMatchCount 0 -> substring tier runs
-    // over [sliceName, railItem, missionId], matching the body mention.
+    // 没有类型化 slice:legacyonly 行 -> typedTagMatchCount 为 0 -> 子字符串层在
+    // [sliceName, railItem, missionId] 上运行，并匹配正文提及。
     expect(ids.has("qleg")).toBe(true);
   });
 });
 
-describe("scope-membership byte-identity carve (clean corpus, zero regression)", () => {
+describe("范围成员关系字节一致性例外（干净语料，零回归）", () => {
   let missionsRoot: string;
   let cleanup: string;
   let db: Database.Database;
@@ -189,12 +187,12 @@ describe("scope-membership byte-identity carve (clean corpus, zero regression)",
     fs.rmSync(cleanup, { recursive: true, force: true });
   });
 
-  it("a clean single-member slice band matches the pinned pre-change literal", () => {
+  it("干净的单成员 slice 区域匹配变更前固定的字面值", () => {
     insertQitem(db, { id: "qc", dest: "alice@rig", tags: ["mission:relx", "slice:target"] });
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, additionalSliceRoots: [], dogfoodEvidenceRoot: null, db });
     const gatherer = new ReviewGatherer({ db, indexer, gitRepoPath: null, now: () => NOW });
     const band = gatherer.composeAgents("slice:target");
-    // Pinned expectation (pre-change behavior for a well-formed corpus).
+    // 固定预期（结构良好语料在变更前的行为）。
     expect(band).toEqual({
       scope: "slice:target",
       rows: [
@@ -210,22 +208,22 @@ describe("scope-membership byte-identity carve (clean corpus, zero regression)",
           slices: ["target"],
         },
       ],
-      provenance: `computed from queue at ${NOW}`,
+      provenance: `根据队列计算于 ${NOW}`,
       coordinationHealth: null,
     });
   });
 
-  it("an empty clean band keeps the confident provenance string byte-identical (C4 no-change)", () => {
+  it("空的干净区域保持确定性来源字符串逐字节一致（C4 无变更）", () => {
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, additionalSliceRoots: [], dogfoodEvidenceRoot: null, db });
     const gatherer = new ReviewGatherer({ db, indexer, gitRepoPath: null, now: () => NOW });
     const band = gatherer.composeAgents("slice:target");
     expect(band?.rows).toEqual([]);
-    expect(band?.provenance).toBe(`no agents holding or recently holding work — computed from queue at ${NOW}`);
+    expect(band?.provenance).toBe(`没有正在或近期持有工作的智能体 · 根据队列计算于 ${NOW}`);
   });
 });
 
-// v1.4 fixback regressions — the two-tier doctrine made observable.
-describe("scope-membership B1/B2/P2 blocker regressions (fixback)", () => {
+// v1.4 回修回归——让双层原则变得可观察。
+describe("范围成员关系 B1/B2/P2 阻塞项回归（回修）", () => {
   let missionsRoot: string;
   let cleanup: string;
   let db: Database.Database;
@@ -252,28 +250,26 @@ describe("scope-membership B1/B2/P2 blocker regressions (fixback)", () => {
     return { indexer, gatherer };
   }
 
-  it("§3.9 B1: zero-typed body-only row shows in the DISPLAY tier but NOT the SIGNAL tier (phase/band agree)", () => {
-    // legacyonly has zero typed slice: rows; one ACTIVE body-mention-only qitem.
-    insertQitem(db, { id: "q-body-legacy", dest: "leg@rig", tags: [], body: "advance the legacyonly rollout" });
+  it("§3.9 B1：无类型且仅正文提及的行出现在展示层，但不出现在信号层（阶段/区域一致）", () => {
+    // legacyonly 没有类型化 slice: 行；有一个活跃且仅正文提及的 qitem。
+    insertQitem(db, { id: "q-body-legacy", dest: "leg@rig", tags: [], body: "推进 legacyonly 发布" });
     const { indexer, gatherer } = harness();
-    // DISPLAY tier (queue-tab qitemIds): the legacy substring fallback keeps it.
+    // 展示层（queue-tab qitemIds）：旧版子字符串回退会保留它。
     const rec = indexer.get("legacyonly")!;
     expect(new Set(rec.qitemIds).has("q-body-legacy")).toBe(true);
-    // SIGNAL tier: hasActiveQitem FALSE (leg 2 dropped) AND band empty -> AGREE.
-    // Pass the indexed record as an OPTIONAL second arg so this is a REAL
-    // behavioral differential on BOTH candidates (not a signature crash): the
-    // frozen 302036aa signature hasActiveQitem(name, slice) CONSUMES it — leg 2
-    // reads rec.qitemIds, which carries the display-tier body-only id, so it
-    // returns TRUE (the phase-BUILD-while-band-empty divergence); the fixed
-    // cab26bb0 hasActiveQitem(name) IGNORES the extra arg and returns FALSE.
+    // 信号层：hasActiveQitem 为 false（已删除分支 2），且区域为空 -> 一致。将索引记录
+    // 作为可选第二参数传入，使两个候选上的差异都是真实行为差异（而非签名崩溃）：
+    // 冻结的 302036aa 签名 hasActiveQitem(name, slice) 会使用它——分支 2 读取包含展示层
+    // 仅正文 ID 的 rec.qitemIds，因而返回 true（区域为空但阶段为 BUILD 的分歧）；修复后的
+    // cab26bb0 hasActiveQitem(name) 忽略额外参数并返回 false。
     const active = (gatherer as unknown as { hasActiveQitem(n: string, s?: unknown): boolean }).hasActiveQitem("legacyonly", rec);
     const band = gatherer.composeAgents("slice:legacyonly");
-    expect(active).toBe(false); // 302036aa returns TRUE (received); the B1 fix makes it false
+    expect(active).toBe(false); // 302036aa 返回 true（收到）；B1 修复使其为 false
     expect(band?.rows).toEqual([]);
   });
 
-  it("§3.10 B2 suffix-storm: >500 slice:target-extra decoys ahead of the true row — true member kept, fallback gated, phase TRUE", () => {
-    // Decoys FIRST (they'd fill a pre-confirmation LIMIT-500 window and hide the true row at 302036aa).
+  it("§3.10 B2 后缀风暴：真实行前有 >500 个 slice:target-extra 诱饵——保留真实成员、关闭回退、阶段为 true", () => {
+    // 先写入诱饵（在 302036aa 中，它们会填满确认前 LIMIT-500 窗口并隐藏真实行）。
     const seedDecoys = db.transaction((n: number) => {
       for (let i = 0; i < n; i++) {
         insertQitem(db, { id: `q-decoy-${String(i).padStart(3, "0")}`, dest: "decoy@rig", tags: ["slice:target-extra"] });
@@ -281,13 +277,13 @@ describe("scope-membership B1/B2/P2 blocker regressions (fixback)", () => {
     });
     seedDecoys(550);
     insertQitem(db, { id: "q-true-target", dest: "truebuilder@rig", tags: ["slice:target"] });
-    insertQitem(db, { id: "q-body-target", dest: "bodyer@rig", tags: [], body: "notes about target here" });
+    insertQitem(db, { id: "q-body-target", dest: "bodyer@rig", tags: [], body: "此处为 target 的记录" });
     const { indexer, gatherer } = harness();
     const ids = new Set(indexer.get("target")?.qitemIds ?? []);
-    expect(ids.has("q-true-target")).toBe(true); // retained despite the storm (no truncation before confirm)
-    expect(ids.has("q-body-target")).toBe(false); // typed confirmed >=1 -> substring fallback GATED off
-    expect(ids.has("q-decoy-000")).toBe(false); // suffix over-match rejected by canonical confirm
-    // SIGNAL tier immune to truncation: hasActiveQitem TRUE, band shows the true seat only.
+    expect(ids.has("q-true-target")).toBe(true); // 即使存在风暴仍保留（确认前不截断）
+    expect(ids.has("q-body-target")).toBe(false); // 已确认类型化项 >=1 -> 关闭子字符串回退
+    expect(ids.has("q-decoy-000")).toBe(false); // 标准确认拒绝后缀过度匹配
+    // 信号层不受截断影响：hasActiveQitem 为 true，区域仅显示真实席位。
     const active = (gatherer as unknown as { hasActiveQitem(n: string): boolean }).hasActiveQitem("target");
     expect(active).toBe(true);
     const sessions = new Set((gatherer.composeAgents("slice:target")?.rows ?? []).map((r) => r.sessionName));
@@ -296,14 +292,14 @@ describe("scope-membership B1/B2/P2 blocker regressions (fixback)", () => {
     expect(sessions.has("bodyer@rig")).toBe(false);
   });
 
-  it("§3.10a P2 tie-vector: two confirmable rows sharing one ts_created — deterministic id-DESC order across re-runs", () => {
+  it("§3.10a P2 并列向量：两个可确认行共享同一 ts_created——多次运行保持确定性 ID 降序", () => {
     insertQitem(db, { id: "qtie-a", dest: "a@rig", tags: ["slice:tie-slice"] });
-    insertQitem(db, { id: "qtie-b", dest: "b@rig", tags: ["slice:tie-slice"] }); // same ts_created (NOW)
+    insertQitem(db, { id: "qtie-b", dest: "b@rig", tags: ["slice:tie-slice"] }); // 相同 ts_created（NOW）
     const { indexer } = harness();
     const mq = indexer as unknown as { matchQitems(s: string, r: string | null, m: string | null): string[] };
     const first = mq.matchQitems("tie-slice", null, "relx");
     const second = mq.matchQitems("tie-slice", null, "relx");
-    expect(first).toEqual(second); // deterministic under equal timestamps
-    expect(first).toEqual(["qtie-b", "qtie-a"]); // qitem_id DESC tiebreak (P2)
+    expect(first).toEqual(second); // 时间戳相同时仍具确定性
+    expect(first).toEqual(["qtie-b", "qtie-a"]); // qitem_id 降序打破并列（P2）
   });
 });

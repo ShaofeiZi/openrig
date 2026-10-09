@@ -1,17 +1,15 @@
-// OPR.0.4.3.22 — the launch/recovery modal (plan-before-mutation).
+// OPR.0.4.3.22——启动/恢复弹窗（先规划再变更）。
 //
-// Contract (PRD + guard):
-//  - defaults to restore-original; on open, fetches the READ-ONLY per-seat PLAN
-//    (POST /launch-plan, mutated:false) BEFORE any mutation (AC-3);
-//  - one row PER SEAT with independent TOKEN + PLAN columns — a missing-token
-//    seat renders `awaiting-decision` (NOT a fresh launch) and BLOCKS the
-//    restore-original action, WHILE resumable seats independently stay
-//    `resume-original` (the LOCK — the resumable seats stay visible);
-//  - `fresh` is a deliberate, LABELED, all-seats operator choice
-//    (identity/context-changing) → maps to per-seat `freshLogicalIds`, never an
-//    implicit global flip;
-//  - vocabulary is the shipped restore vocabulary only (resume-original /
-//    awaiting-decision / fresh-primed) — NO best-effort (out of scope).
+// 约定（PRD + 守卫）：
+//  - 默认 restore-original；打开时先获取只读的逐席位规划
+//    （POST /launch-plan，mutated:false），在任何变更之前（AC-3）；
+//  - 每个席位一行，带独立的 TOKEN + PLAN 列——缺 token 的席位渲染为
+//    `awaiting-decision`（而非全新启动）并阻塞 restore-original 动作，
+//    而可恢复的席位独立保持 `resume-original`（锁定——可恢复席位保持可见）；
+//  - `fresh` 是一个明确、有标注、全体席位的操作者选择
+//    （改变身份/上下文）→ 映射为逐席位的 `freshLogicalIds`，绝不隐式全局翻转；
+//  - 用词仅限已发布的恢复词表（resume-original / awaiting-decision / fresh-primed）
+//    ——不做 best-effort（超出范围）。
 
 import { useEffect, useState } from "react";
 import { Ban, Check, RotateCcw } from "lucide-react";
@@ -39,8 +37,8 @@ const verdictPip: Record<SeatIntendedAction, StatusPipStatus> = {
   "awaiting-decision": "warning",
 };
 
-// Token state → tone. stale / unverified are DISTINCT from missing (FR-6): a
-// stale/unverified token is visible for re-verify, not silently collapsed to missing.
+// 令牌状态 → 色调。stale / unverified 与 missing 不同（FR-6）：
+// stale/unverified 的令牌可见以便重新校验，而非静默折叠为 missing。
 const tokenTone: Record<SeatTokenState, string> = {
   present: "text-success",
   missing: "text-tertiary font-bold",
@@ -86,7 +84,7 @@ function PolicyOption({
         {selected ? <Check className="h-3 w-3" /> : null}
         {label}
         {policy === "restore-original" ? (
-          <span className={cn("ml-auto text-[8px]", selected ? "text-white/70" : "text-secondary")}>default</span>
+          <span className={cn("ml-auto text-[8px]", selected ? "text-white/70" : "text-secondary")}>默认</span>
         ) : null}
       </div>
       <div
@@ -109,8 +107,8 @@ export function LaunchRecoveryModal({ rigId, rigName, open, onOpenChange }: Laun
   const planNodes: LaunchPlanNode[] = planMut.data?.nodes ?? [];
   const allSeatIds = planNodes.map((n) => n.logicalId);
 
-  // Plan-before-action: fetch the read-only plan when the modal opens. Reset to
-  // restore-original each open. `planMut.mutate` / `launchMut.reset` are stable.
+  // 先规划再动作：弹窗打开时获取只读规划。每次打开重置为 restore-original。
+  // `planMut.mutate` / `launchMut.reset` 是稳定的。
   useEffect(() => {
     if (!open) return;
     setPolicy("restore-original");
@@ -122,19 +120,19 @@ export function LaunchRecoveryModal({ rigId, rigName, open, onOpenChange }: Laun
   function selectPolicy(next: LaunchPolicy) {
     if (next === policy) return;
     setPolicy(next);
-    // Re-fetch the read-only forecast under the chosen policy: fresh forecasts
-    // fresh-primed for ALL seats (the explicit, labeled all-seats choice).
+    // 在所选策略下重新获取只读预测：fresh 会为所有席位预测 fresh-primed
+    // （明确、有标注的全体席位选择）。
     planMut.mutate(next === "fresh" ? planNodes.map((n) => n.logicalId) : undefined);
   }
 
-  // Under restore-original, ANY awaiting-decision seat blocks the whole action —
-  // restore-original NEVER silently fresh-primes (the honesty contract).
+  // 在 restore-original 下，任何 awaiting-decision 席位都会阻塞整个动作——
+  // restore-original 绝不静默全新启动（诚实约定）。
   const blockedSeats = planNodes.filter((n) => n.intendedAction === "awaiting-decision");
   const isBlocked = policy === "restore-original" && blockedSeats.length > 0;
   const canExecute = !isBlocked && planNodes.length > 0 && !planMut.isPending && !launchMut.isPending;
 
   function execute() {
-    // fresh = an explicit, labeled all-seats operator choice → per-seat freshLogicalIds.
+    // fresh = 明确、有标注的全体席位操作者选择 → 逐席位 freshLogicalIds。
     launchMut.mutate(policy === "fresh" ? allSeatIds : undefined, {
       onSuccess: () => onOpenChange(false),
     });
@@ -146,33 +144,33 @@ export function LaunchRecoveryModal({ rigId, rigName, open, onOpenChange }: Laun
         <DialogHeader>
           <DialogTitle className="font-headline uppercase tracking-tight flex items-center gap-2">
             <RotateCcw className="h-4 w-4" />
-            Restore {rigName}
+            恢复 {rigName}
           </DialogTitle>
           <DialogDescription className="font-mono text-[10px] text-secondary">
-            Plan before action — this is a READ-ONLY preview. No changes made yet.
+            先规划再执行——这是只读预览，尚未做任何更改。
           </DialogDescription>
         </DialogHeader>
 
-        {/* Policy picker — restore-original (default) + fresh only (no best-effort). */}
+        {/* 策略选择器——restore-original（默认）+ fresh（无 best-effort）。 */}
         <div className="flex gap-2" data-testid="launch-policy-picker">
           <PolicyOption
             policy="restore-original"
-            label="Restore original"
+            label="恢复原始"
             selected={policy === "restore-original"}
-            sub="Resume original sessions only. If a seat can't resume, fail loudly — never fresh-prime silently."
+            sub="仅恢复原始会话。若某席位无法恢复，则大声失败——绝不静默全新启动。"
             onSelect={() => selectPolicy("restore-original")}
           />
           <PolicyOption
             policy="fresh"
-            label="Fresh"
+            label="全新"
             selected={policy === "fresh"}
             warn
-            sub="⚠ Identity/context-changing — creates NEW sessions for ALL seats. Previous conversation context is NOT restored."
+            sub="⚠ 会改变身份/上下文——为所有席位创建新会话。之前的对话上下文不会被恢复。"
             onSelect={() => selectPolicy("fresh")}
           />
         </div>
 
-        {/* Blocked banner — the honesty contract, front and center. */}
+        {/* 阻塞横幅——诚实约定，置于正中。 */}
         {isBlocked ? (
           <div
             data-testid="launch-blocked-banner"
@@ -180,31 +178,31 @@ export function LaunchRecoveryModal({ rigId, rigName, open, onOpenChange }: Laun
           >
             <Ban className="h-3.5 w-3.5 text-tertiary shrink-0" />
             <div className="font-mono text-[9px] leading-relaxed text-tertiary">
-              <span className="font-bold uppercase">restore-original blocked</span> — {blockedSeats.length} seat(s)
-              need a decision. restore-original will NOT silently fresh-prime. Resolve each seat below, or switch to{" "}
-              <span className="underline">fresh</span> (identity-changing) for the whole rig.
+              <span className="font-bold uppercase">恢复原始已被阻塞</span>——有 {blockedSeats.length} 个席位
+              需要决策。恢复原始绝不会静默全新启动。请在下方逐个处理席位，或为整个工作组切换到{" "}
+              <span className="underline">全新</span>（会改变身份）。
             </div>
           </div>
         ) : null}
 
         {planMut.isPending ? (
           <p data-testid="launch-plan-loading" className="font-mono text-[10px] text-secondary py-4">
-            Fetching read-only plan…
+            正在获取只读规划…
           </p>
         ) : planMut.isError ? (
           <p data-testid="launch-plan-error" className="font-mono text-[10px] text-tertiary py-4">
-            Could not fetch plan: {(planMut.error as Error).message}
+            无法获取规划：{(planMut.error as Error).message}
           </p>
         ) : (
           <>
-            {/* Per-seat plan table — independent TOKEN + PLAN columns per seat. */}
+            {/* 逐席位规划表——每席位独立的 TOKEN + PLAN 列。 */}
             <Table data-testid="launch-plan-table">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="font-mono text-[9px]">Seat</TableHead>
-                  <TableHead className="font-mono text-[9px]">Token</TableHead>
-                  <TableHead className="font-mono text-[9px]">Plan</TableHead>
-                  <TableHead className="font-mono text-[9px]">Prompt / note</TableHead>
+                  <TableHead className="font-mono text-[9px]">席位</TableHead>
+                  <TableHead className="font-mono text-[9px]">令牌</TableHead>
+                  <TableHead className="font-mono text-[9px]">规划</TableHead>
+                  <TableHead className="font-mono text-[9px]">提示词 / 备注</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -235,7 +233,7 @@ export function LaunchRecoveryModal({ rigId, rigName, open, onOpenChange }: Laun
 
         <DialogFooter className="items-center gap-2">
           <p className="mr-auto font-mono text-[8px] text-stone-400 leading-snug">
-            src: composed from /api/rigs/:id/launch-plan (read-only forecast · mutated:false)
+            来源：由 /api/rigs/:id/launch-plan 组合（只读预测 · mutated:false）
           </p>
           <Button
             variant="secondary"
@@ -244,7 +242,7 @@ export function LaunchRecoveryModal({ rigId, rigName, open, onOpenChange }: Laun
             onClick={() => onOpenChange(false)}
             data-testid="launch-cancel"
           >
-            Cancel
+            取消
           </Button>
           <Button
             variant={policy === "fresh" ? "destructive" : "default"}
@@ -255,10 +253,10 @@ export function LaunchRecoveryModal({ rigId, rigName, open, onOpenChange }: Laun
             className="font-mono text-[10px] tracking-widest"
           >
             {isBlocked
-              ? "Resolve blockers to restore"
+              ? "请先解决阻塞项再恢复"
               : policy === "fresh"
-                ? "Fresh-prime all seats ▸"
-                : "Restore original ▸"}
+                ? "为所有席位全新启动 ▸"
+                : "恢复原始 ▸"}
           </Button>
         </DialogFooter>
       </DialogContent>

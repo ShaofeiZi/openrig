@@ -48,13 +48,13 @@ function makeEntry(overrides?: Partial<ProjectionEntry>): ProjectionEntry {
   };
 }
 
-// 51-07 A1 — a per-agent model declared in the spec must reach the claude launch command.
-// binding.model already arrives (resolver → instantiator :1728); this pins the ADAPTER emitting it
-// on all three launch builders. RED-first: the three --model tests fail on main (0 model refs in the
-// adapter); the byte-identical + posture pins are invariants that stay green through the change.
-describe("launchHarness — per-agent --model reaches the claude launch (51-07 A1)", () => {
+// 51-07 A1 —— spec 中声明的逐智能体模型必须进入 claude 启动命令。binding.model 已经从
+// resolver 传到 instantiator；这里固定适配器在三种启动构建器中都输出它。红灯优先：
+// 三个 --model 测试在 main 上失败（适配器没有模型引用）；字节一致性和姿态测试是变更
+// 前后都应保持为绿的不变量。
+describe("launchHarness——逐智能体 --model 进入 claude 启动命令（51-07 A1）", () => {
   const MODEL = "claude-haiku-4-5";
-  const POSTURE = claudePostureFlag(process.env, undefined); // the acceptEdits floor — the posture pin baseline
+  const POSTURE = claudePostureFlag(process.env, undefined); // acceptEdits 底线，即姿态固定基线
 
   const withModel = (model?: string): NodeBinding => ({ ...makeBinding(), model } as NodeBinding);
   const adapterWith = (tmux: TmuxAdapter) => new ClaudeCodeAdapter({ tmux, fsOps: mockFs(), sleep: async () => {} });
@@ -63,35 +63,35 @@ describe("launchHarness — per-agent --model reaches the claude launch (51-07 A
     return (calls[calls.length - 1]?.[1] as string) ?? "";
   };
 
-  it("FRESH launch emits --model when the binding declares one", async () => {
+  it("全新启动在绑定声明模型时输出 --model", async () => {
     const tmux = mockTmux();
     await adapterWith(tmux).launchHarness(withModel(MODEL), { name: "seat" });
     expect(lastCmd(tmux)).toContain(`--model '${MODEL}'`);
   });
 
-  it("RESUME launch emits --model", async () => {
+  it("恢复启动输出 --model", async () => {
     const tmux = mockTmux();
     await adapterWith(tmux).launchHarness(withModel(MODEL), { name: "seat", resumeToken: "tok-123" });
     expect(lastCmd(tmux)).toContain(`--model '${MODEL}'`);
   });
 
-  it("FORK launch emits --model", async () => {
+  it("分叉启动输出 --model", async () => {
     const tmux = mockTmux();
     await adapterWith(tmux).launchHarness(withModel(MODEL), { name: "seat", forkSource: { kind: "native_id", value: "parent-xyz" } });
     expect(lastCmd(tmux)).toContain(`--model '${MODEL}'`);
   });
 
-  // absent → deterministic bytes (no --model added). Baseline now carries the OPR.0.5.3.1
-  // classic-renderer prefix by default (see the scrollback-restore describe below).
-  it("absent model → the resume command is exact bytes (no --model, posture intact)", async () => {
+  // 模型缺失时产生确定性字节，不添加 --model。基线现在默认携带 OPR.0.5.3.1 经典渲染器
+  // 前缀，参见下方 scrollback-restore describe。
+  it("模型缺失时恢复命令字节完全一致，不添加 --model 且姿态不变", async () => {
     const tmux = mockTmux();
     await adapterWith(tmux).launchHarness(withModel(undefined), { name: "seat", resumeToken: "tok-123" });
     expect(lastCmd(tmux)).toBe(`CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1 claude ${POSTURE} --resume tok-123 --name seat`);
   });
 
-  // D1 pin — posture BYTE-UNCHANGED both directions: the ONLY delta with/without model is the
-  // additive ` --model '<x>'`; posture and every other token are byte-identical.
-  it("adds ONLY --model — posture and structure byte-unchanged (additive-only)", async () => {
+  // D1 固定项：两个方向上的姿态都保持字节不变；有无模型之间唯一差异是新增
+  // ` --model '<x>'`，姿态与其他所有 token 均字节一致。
+  it("只添加 --model，姿态与结构保持字节不变", async () => {
     const tmuxNo = mockTmux(); await adapterWith(tmuxNo).launchHarness(withModel(undefined), { name: "seat", resumeToken: "T" });
     const tmuxYes = mockTmux(); await adapterWith(tmuxYes).launchHarness(withModel(MODEL), { name: "seat", resumeToken: "T" });
     const noModel = lastCmd(tmuxNo), withMdl = lastCmd(tmuxYes);
@@ -101,11 +101,11 @@ describe("launchHarness — per-agent --model reaches the claude launch (51-07 A
   });
 });
 
-// OPR.0.5.3.1 slice 01 — Claude scrollback restore. Every managed launch path must prepend
-// CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1 by default (classic renderer -> native scrollback);
-// an explicit OPENRIG_CLAUDE_DISABLE_ALTERNATE_SCREEN=0 opts back into fullscreen (byte-identical
-// to pre-change). RED-first: the default-prefix pins fail on main (adapter emits no prefix).
-describe("launchHarness — classic-renderer env prefix (OPR.0.5.3.1 scrollback restore)", () => {
+// OPR.0.5.3.1 slice 01 —— Claude 回滚缓冲区恢复。每条受管启动路径默认必须添加
+// CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1 前缀（经典渲染器 → 原生回滚缓冲区）；显式设置
+// OPENRIG_CLAUDE_DISABLE_ALTERNATE_SCREEN=0 时恢复全屏模式，与变更前保持字节一致。
+// 红灯优先：默认前缀固定项在 main 上失败，因为适配器不输出前缀。
+describe("launchHarness——经典渲染器环境前缀（OPR.0.5.3.1 回滚缓冲区恢复）", () => {
   const POSTURE = claudePostureFlag(process.env, undefined);
   const adapterWith = (tmux: TmuxAdapter) => new ClaudeCodeAdapter({ tmux, fsOps: mockFs(), sleep: async () => {} });
   const lastCmd = (tmux: TmuxAdapter): string => {
@@ -118,25 +118,25 @@ describe("launchHarness — classic-renderer env prefix (OPR.0.5.3.1 scrollback 
     delete process.env.OPENRIG_CLAUDE_DISABLE_ALTERNATE_SCREEN;
   });
 
-  it("FRESH launch prepends the classic-renderer prefix by default", async () => {
+  it("全新启动默认添加经典渲染器前缀", async () => {
     const tmux = mockTmux();
     await adapterWith(tmux).launchHarness(makeBinding(), { name: "seat" });
     expect(lastCmd(tmux).startsWith(PREFIX + "claude ")).toBe(true);
   });
 
-  it("RESUME launch carries the prefix", async () => {
+  it("恢复启动携带该前缀", async () => {
     const tmux = mockTmux();
     await adapterWith(tmux).launchHarness(makeBinding(), { name: "seat", resumeToken: "tok-123" });
     expect(lastCmd(tmux)).toBe(`${PREFIX}claude ${POSTURE} --resume tok-123 --name seat`);
   });
 
-  it("FORK launch carries the prefix", async () => {
+  it("分叉启动携带该前缀", async () => {
     const tmux = mockTmux();
     await adapterWith(tmux).launchHarness(makeBinding(), { name: "seat", forkSource: { kind: "native_id", value: "parent-xyz" } });
     expect(lastCmd(tmux).startsWith(PREFIX + "claude ")).toBe(true);
   });
 
-  it("override OPENRIG_CLAUDE_DISABLE_ALTERNATE_SCREEN=0 omits the prefix (byte-identical to pre-change)", async () => {
+  it("覆盖 OPENRIG_CLAUDE_DISABLE_ALTERNATE_SCREEN=0 时省略前缀并与变更前字节一致", async () => {
     process.env.OPENRIG_CLAUDE_DISABLE_ALTERNATE_SCREEN = "0";
     const tmux = mockTmux();
     await adapterWith(tmux).launchHarness(makeBinding(), { name: "seat", resumeToken: "tok-123" });
@@ -144,9 +144,9 @@ describe("launchHarness — classic-renderer env prefix (OPR.0.5.3.1 scrollback 
   });
 });
 
-describe("Claude Code runtime adapter", () => {
-  // T1: implements all four methods
-  it("implements all four methods", () => {
+describe("Claude Code 运行时适配器", () => {
+  // T1：实现全部四个方法。
+  it("实现全部四个方法", () => {
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: mockFs() });
     expect(typeof adapter.listInstalled).toBe("function");
     expect(typeof adapter.project).toBe("function");
@@ -155,7 +155,7 @@ describe("Claude Code runtime adapter", () => {
     expect(adapter.runtime).toBe("claude-code");
   });
 
-  it("checkReady returns false when the pane has fallen back to a shell prompt", async () => {
+  it("窗格回退到 shell 提示符时 checkReady 返回 false", async () => {
     const tmux = mockTmux();
     (tmux.getPaneCommand as ReturnType<typeof vi.fn>).mockResolvedValue("zsh");
     (tmux.capturePaneContent as ReturnType<typeof vi.fn>).mockResolvedValue("user@example.test rigged %");
@@ -165,12 +165,12 @@ describe("Claude Code runtime adapter", () => {
 
     expect(result).toEqual({
       ready: false,
-      reason: "The probe pane returned to a shell instead of staying inside the runtime.",
+      reason: "探测窗格已返回 shell，没有停留在运行时内部。",
       code: "returned_to_shell",
     });
   });
 
-  it("checkReady returns false when Claude is blocked on the workspace trust prompt", async () => {
+  it("Claude 阻塞在工作区信任提示时 checkReady 返回 false", async () => {
     const tmux = mockTmux();
     (tmux.getPaneCommand as ReturnType<typeof vi.fn>).mockResolvedValue("claude");
     (tmux.capturePaneContent as ReturnType<typeof vi.fn>).mockResolvedValue(
@@ -189,13 +189,13 @@ describe("Claude Code runtime adapter", () => {
 
     expect(result).toEqual({
       ready: false,
-      reason: "Claude is waiting for workspace trust approval before the session can become interactive.",
+      reason: "Claude 正等待工作区信任批准，批准后会话才能交互。",
       code: "trust_gate",
     });
   });
 
-  // T3: auto guidance merge for .md file
-  it("auto chooses guidance_merge for .md startup file", async () => {
+  // T3：自动为 .md 启动文件选择 guidance_merge。
+  it("自动为 .md 启动文件选择 guidance_merge", async () => {
     const fs = mockFs({ "/rig/startup/guide.md": "# Guide content" });
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: fs });
     const file: ResolvedStartupFile = {
@@ -208,7 +208,7 @@ describe("Claude Code runtime adapter", () => {
     expect(store["/project/CLAUDE.md"]).toContain("Guide content");
   });
 
-  it("replaces legacy using-openrig managed block when delivering openrig-start guidance", async () => {
+  it("交付 openrig-start 指引时替换旧式 using-openrig 受管区块", async () => {
     const fs = mockFs({
       "/rig/openrig-start.md": "# OpenRig Start\n\nNew guidance",
       "/project/CLAUDE.md": [
@@ -237,8 +237,8 @@ describe("Claude Code runtime adapter", () => {
     expect(content).toContain("New guidance");
   });
 
-  // T4: auto skill install for SKILL.md
-  it("auto chooses skill_install for SKILL.md content", async () => {
+  // T4：自动为 SKILL.md 内容选择 skill_install。
+  it("自动为 SKILL.md 内容选择 skill_install", async () => {
     const fs = mockFs({ "/rig/skills/deep/SKILL.md": "# SKILL Deep PR Review" });
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: fs });
     const file: ResolvedStartupFile = {
@@ -249,8 +249,8 @@ describe("Claude Code runtime adapter", () => {
     expect(result.delivered).toBe(1);
   });
 
-  // T5: auto send-text for generic content
-  it("auto falls back to send_text for generic file", async () => {
+  // T5：普通内容自动回退到 send_text。
+  it("普通文件自动回退到 send_text", async () => {
     const tmux = mockTmux();
     const fs = mockFs({ "/rig/startup/init.sh": "echo hello" });
     const adapter = new ClaudeCodeAdapter({ tmux, fsOps: fs, sleep: async () => {} });
@@ -263,11 +263,10 @@ describe("Claude Code runtime adapter", () => {
     expect(tmux.sendKeys).toHaveBeenCalledWith("r01-impl", ["C-m"]);
   });
 
-  // OPR.0.3.3.16 - a >100KB send_text startup pack must still travel through the
-  // sendText -> sleep -> sendKeys(["C-m"]) sequence unchanged. The large-payload
-  // buffer mechanics live in TmuxAdapter; the adapter's job is to hand the full
-  // content to sendText and fire the single trailing submit.
-  it("delivers a large (>100KB) send_text startup file via sendText then submits with C-m", async () => {
+  // OPR.0.3.3.16：大于 100KB 的 send_text 启动包仍必须原样经过
+  // sendText → sleep → sendKeys(["C-m"]) 序列。大载荷缓冲机制位于 TmuxAdapter；
+  // 适配器负责把完整内容交给 sendText，并只在末尾提交一次。
+  it("通过 sendText 交付大于 100KB 的 send_text 启动文件，随后用 C-m 提交", async () => {
     const tmux = mockTmux();
     const big = "L".repeat(120 * 1024);
     const fs = mockFs({ "/rig/startup/big-pack.md": big });
@@ -281,14 +280,14 @@ describe("Claude Code runtime adapter", () => {
 
     expect(result.delivered).toBe(1);
     expect(result.failed).toEqual([]);
-    // The full payload is handed to sendText (TmuxAdapter routes it to the buffer path).
+    // 完整载荷交给 sendText，TmuxAdapter 会将其路由到缓冲路径。
     expect(tmux.sendText).toHaveBeenCalledWith("r01-impl", big);
-    // Single trailing submit preserved.
+    // 保持末尾只提交一次。
     expect(tmux.sendKeys).toHaveBeenCalledWith("r01-impl", ["C-m"]);
   });
 
-  // T6: duplicate delivery is idempotent
-  it("duplicate projection is idempotent via hash check", async () => {
+  // T6：重复交付保持幂等。
+  it("通过哈希检查确保重复投影幂等", async () => {
     const fs = mockFs({
       "/agents/base/skills/test/SKILL.md": "skill content",
       "/project/.claude/skills/test-skill/SKILL.md": "skill content", // same content
@@ -300,12 +299,12 @@ describe("Claude Code runtime adapter", () => {
       startup: { files: [], actions: [] }, conflicts: [], noOps: [], diagnostics: [],
     };
     const result = await adapter.project(plan, makeBinding());
-    // Same hash — should be projected (copy is idempotent but still counted)
+    // 哈希相同：应视为已投影；复制本身幂等，但仍计数。
     expect(result.failed).toHaveLength(0);
   });
 
-  // T9: projection handles directory-shaped skill resources
-  it("projects skill directory to .claude/skills/{id}/", async () => {
+  // T9：投影可处理目录形态的 Skill 资源。
+  it("将 Skill 目录投影到 .claude/skills/{id}/", async () => {
     const fs = mockFs({
       "/agents/base/skills/test/SKILL.md": "skill content",
       "/agents/base/skills/test/helper.ts": "export default {}",
@@ -322,8 +321,8 @@ describe("Claude Code runtime adapter", () => {
     expect(store["/project/.claude/skills/test-skill/helper.ts"]).toBe("export default {}");
   });
 
-  // T9b: file-shaped subagent projects correctly
-  it("projects file-shaped subagent to .claude/agents/", async () => {
+  // T9b：正确投影文件形态的子智能体。
+  it("将文件形态的子智能体投影到 .claude/agents/", async () => {
     const fs = mockFs({ "/agents/base/subagents/reviewer.yaml": "name: reviewer" });
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: fs });
     const plan: ProjectionPlan = {
@@ -336,7 +335,7 @@ describe("Claude Code runtime adapter", () => {
     expect(store["/project/.claude/agents/reviewer.yaml"]).toBe("name: reviewer");
   });
 
-  it("applies claude_settings_fragment runtime resources to project-local Claude settings", async () => {
+  it("将 claude_settings_fragment 运行时资源应用到项目本地 Claude 设置", async () => {
     const fs = mockFs({
       "/agents/base/runtime/claude-settings.json": JSON.stringify({
         permissions: {
@@ -381,7 +380,7 @@ describe("Claude Code runtime adapter", () => {
     expect(store["/project/.claude/extensions/claude-settings/claude-settings.json"]).toBeUndefined();
   });
 
-  it("applies claude_mcp_fragment runtime resources to project-local MCP config", async () => {
+  it("将 claude_mcp_fragment 运行时资源应用到项目本地 MCP 配置", async () => {
     const fs = mockFs({
       "/agents/base/runtime/claude-mcp.json": JSON.stringify({
         mcpServers: {
@@ -417,7 +416,7 @@ describe("Claude Code runtime adapter", () => {
     expect(mcp.mcpServers.context7.url).toBe("https://mcp.context7.com/mcp");
   });
 
-  it("fails projection honestly for malformed Claude runtime settings fragments", async () => {
+  it("Claude 运行时设置片段格式错误时如实报告投影失败", async () => {
     const fs = mockFs({ "/agents/base/runtime/claude-settings.json": "[]" });
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: fs });
     const plan: ProjectionPlan = {
@@ -437,11 +436,11 @@ describe("Claude Code runtime adapter", () => {
     expect(result.projected).toEqual([]);
     expect(result.failed).toHaveLength(1);
     expect(result.failed[0]!.effectiveId).toBe("claude-settings");
-    expect(result.failed[0]!.error).toContain("must be a JSON object");
+    expect(result.failed[0]!.error).toContain("必须是 JSON 对象");
   });
 
-  // NS-T04: launchHarness tests
-  it("launchHarness sends correct fresh launch command", async () => {
+  // NS-T04：launchHarness 测试。
+  it("launchHarness 发送正确的全新启动命令", async () => {
     const tmux = mockTmux();
     const adapter = new ClaudeCodeAdapter({
       tmux,
@@ -463,7 +462,7 @@ describe("Claude Code runtime adapter", () => {
     }
   });
 
-  it("launchHarness sends correct resume command with token", async () => {
+  it("launchHarness 发送带令牌的正确恢复命令", async () => {
     const tmux = mockTmux();
     const adapter = new ClaudeCodeAdapter({ tmux, fsOps: mockFs() });
 
@@ -477,7 +476,7 @@ describe("Claude Code runtime adapter", () => {
     );
   });
 
-  it("launchHarness returns retry_fresh when Claude reports no conversation found for the requested resume token", async () => {
+  it("Claude 报告找不到恢复令牌对应会话时 launchHarness 返回 retry_fresh", async () => {
     const tmux = mockTmux();
     (tmux.getPaneCommand as ReturnType<typeof vi.fn>).mockResolvedValue("zsh");
     (tmux.capturePaneContent as ReturnType<typeof vi.fn>).mockResolvedValue(
@@ -489,12 +488,12 @@ describe("Claude Code runtime adapter", () => {
 
     expect(result).toEqual({
       ok: false,
-      error: "Claude resume failed: no conversation found for the requested session",
+      error: "Claude resume 失败：找不到所请求 session 的会话",
       recovery: "retry_fresh",
     });
   });
 
-  it("launchHarness auto-accepts Claude workspace trust prompt only when explicitly configured", async () => {
+  it("仅在显式配置时由 launchHarness 自动接受 Claude 工作区信任提示", async () => {
     const tmux = mockTmux();
     (tmux.getPaneCommand as ReturnType<typeof vi.fn>).mockResolvedValue("claude");
     (tmux.capturePaneContent as ReturnType<typeof vi.fn>)
@@ -527,7 +526,7 @@ describe("Claude Code runtime adapter", () => {
     expect(tmux.sendKeys).toHaveBeenNthCalledWith(2, "r01-impl", ["Enter"]);
   });
 
-  it("launchHarness treats a live Claude TUI as success even when tmux reports a version-string foreground command", async () => {
+  it("即使 tmux 报告版本字符串前台命令，launchHarness 也将实时 Claude TUI 视为成功", async () => {
     const tmux = mockTmux();
     (tmux.getPaneCommand as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce("zsh")
@@ -557,11 +556,11 @@ describe("Claude Code runtime adapter", () => {
     });
   });
 
-  it("launchHarness captures resume token from session file", async () => {
+  it("launchHarness 从会话文件捕获恢复令牌", async () => {
     const tmux = mockTmux();
     const sessionData = JSON.stringify({ pid: 12345, sessionId: "abc-session-id", name: "dev-impl@test-rig" });
     const fs = mockFs({});
-    // Add readdir + homedir capabilities
+    // 添加 readdir 与 homedir 能力。
     const fsWithDir = {
       ...fs,
       readdir: (dir: string) => dir.includes("sessions") ? ["12345.json"] : [],
@@ -583,7 +582,7 @@ describe("Claude Code runtime adapter", () => {
     }
   });
 
-  it("launchHarness returns error when no tmux session bound", async () => {
+  it("没有绑定 tmux 会话时 launchHarness 返回错误", async () => {
     const tmux = mockTmux();
     const adapter = new ClaudeCodeAdapter({ tmux, fsOps: mockFs() });
     const binding = { ...makeBinding(), tmuxSession: null };
@@ -591,18 +590,17 @@ describe("Claude Code runtime adapter", () => {
     const result = await adapter.launchHarness(binding, { name: "test" });
 
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("No tmux session");
+    if (!result.ok) expect(result.error).toContain("未绑定 tmux session");
   });
 
-  // --- Regenerator bug repair: rig-role managed-block skip ---
+  // --- Regenerator 缺陷修复：跳过 rig-role 受管区块 ---
   //
-  // The rig-role managed-block injector pairs target-file × spec independently
-  // of seat identity, causing CLAUDE.md to receive the wrong seat's body on
-  // multi-seat pods. Per architect SHAPE 1: skip mergeManagedBlock when the
-  // block id is `rig-role`. Per-seat delivery travels via startup.files
-  // send_text path instead. Skip must be logged (never silent).
+  // rig-role 受管区块注入器不考虑席位身份，独立配对 target-file × spec，导致多席位 pod
+  // 的 CLAUDE.md 收到错误席位的正文。按照架构 SHAPE 1：区块 ID 为 `rig-role` 时跳过
+  // mergeManagedBlock；逐席位交付改走 startup.files 的 send_text 路径。跳过必须记录，
+  // 绝不能静默。
 
-  it("projectEntry skips rig-role guidance managed block; CLAUDE.md is not written", async () => {
+  it("projectEntry 跳过 rig-role 指引受管区块，不写入 CLAUDE.md", async () => {
     const fs = mockFs({ "/agents/impl/guidance/role.md": "# You are `impl`\nTDD discipline." });
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: fs });
@@ -619,17 +617,17 @@ describe("Claude Code runtime adapter", () => {
 
     const store = (fs as unknown as { _store: Record<string, string> })._store;
     expect(store["/project/CLAUDE.md"]).toBeUndefined();
-    // ProjectionResult contract: rig-role must appear in `skipped`, NOT `projected` —
-    // otherwise the adapter reports work it did not do (violates honest-detection).
+    // ProjectionResult 契约：rig-role 必须出现在 `skipped` 而不是 `projected` 中，否则
+    // 适配器会报告并未完成的工作，违反如实检测原则。
     expect(result.skipped).toContain("rig-role");
     expect(result.projected).not.toContain("rig-role");
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining("skip: effectiveId is rig-role")
+      expect.stringContaining("跳过：effectiveId 为 rig-role")
     );
     logSpy.mockRestore();
   });
 
-  it("projectEntry reports non-rig-role guidance in `projected`, not `skipped` (regression on contract)", async () => {
+  it("projectEntry 将非 rig-role 指引记入 `projected` 而非 `skipped`（契约回归）", async () => {
     const fs = mockFs({ "/agents/base/guidance/using-openrig.md": "# Using OpenRig\nhub guidance" });
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: fs });
     const plan: ProjectionPlan = {
@@ -647,7 +645,7 @@ describe("Claude Code runtime adapter", () => {
     expect(result.skipped).not.toContain("using-openrig.md");
   });
 
-  it("projectEntry still merges non-rig-role guidance blocks (regression)", async () => {
+  it("projectEntry 仍合并非 rig-role 指引区块（回归）", async () => {
     const fs = mockFs({ "/agents/base/guidance/using-openrig.md": "# Using OpenRig\nhub guidance" });
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: fs });
     const plan: ProjectionPlan = {
@@ -666,7 +664,7 @@ describe("Claude Code runtime adapter", () => {
     expect(store["/project/CLAUDE.md"]).toContain("hub guidance");
   });
 
-  it("deliverStartup skips rig-role guidance_merge; delivered is NOT incremented (honest metrics)", async () => {
+  it("deliverStartup 跳过 rig-role guidance_merge，且 delivered 不增加（如实指标）", async () => {
     const fs = mockFs({ "/rig/rig-role": "# You are `impl`\nrole body" });
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: fs });
@@ -677,31 +675,27 @@ describe("Claude Code runtime adapter", () => {
 
     const result = await adapter.deliverStartup([file], makeBinding());
 
-    // StartupDeliveryResult contract: skip does NOT count as delivered —
-    // otherwise delivered drifts from actual writes (violates honest-detection).
+    // StartupDeliveryResult 契约：跳过不计为已交付，否则 delivered 会偏离实际写入，
+    // 违反如实检测原则。
     expect(result.delivered).toBe(0);
     expect(result.failed).toEqual([]);
     const store = (fs as unknown as { _store: Record<string, string> })._store;
     expect(store["/project/CLAUDE.md"]).toBeUndefined();
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining("skip: effectiveId is rig-role")
+      expect.stringContaining("跳过：effectiveId 为 rig-role")
     );
     logSpy.mockRestore();
   });
 
-  // OPR.0.4.8.2 agnostic rip-out: the whole "Permission-config-at-spawn: Bash convenience
-  // baseline provisioning" section (7 provisionRigPermissions tests) is REMOVED — the writer
-  // (assessment C2) is deleted. Replacement coverage: agnostic-rip-out.test.ts asserts (a) a
-  // fresh startup authors no ~/.claude/settings.json for permissions; (b) a pre-existing
-  // provenance-marked settings file is left byte-identical (no retro-scrub).
+  // OPR.0.4.8.2 去特定运行时化清理：整个“启动时权限配置：Bash 便利基线配置”区段
+  //（7 个 provisionRigPermissions 测试）已移除，写入器（评估 C2）也已删除。替代覆盖位于
+  // agnostic-rip-out.test.ts：全新启动不会为权限创建 ~/.claude/settings.json；已有且带
+  // 溯源标记的设置文件保持字节不变，不做追溯清理。
 
-  // Pre-rip 'provisions project-local Claude hooks without clobbering
-  // existing local settings or persisting the hook token' test removed in
-  // plugin-primitive Phase 3a slice 3.1 — activity-hook auto-injection
-  // ripped (provisionActivityHooks gone). Replacement coverage:
-  // activity-hook-rip-proof.test.ts asserts (a) no .openrig/activity-hook-relay.cjs
-  // file written; (b) no OpenRig-injected hook entries in settings.local.json;
-  // (c) pre-existing user-authored hooks PRESERVED untouched; (d) source
-  // grep confirms provisionActivityHooks/upsertCommandHook/etc. removed
-  // from adapter source.
+  // 清理前的“配置项目本地 Claude hook 且不覆盖已有本地设置或持久化 hook token”测试已在
+  // plugin-primitive Phase 3a slice 3.1 中移除；活动 hook 自动注入已删除，
+  // provisionActivityHooks 不再存在。替代覆盖位于 activity-hook-rip-proof.test.ts：
+  // 不写入 .openrig/activity-hook-relay.cjs；settings.local.json 中没有 OpenRig 注入的 hook；
+  // 已有用户自定义 hook 原样保留；源码搜索确认适配器已移除
+  // provisionActivityHooks/upsertCommandHook 等实现。
 });

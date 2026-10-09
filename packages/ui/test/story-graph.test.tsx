@@ -47,10 +47,10 @@ describe("StoryGraph", () => {
     const rootRow = getByTestId("story-row-root");
     const childRow = getByTestId("story-row-child");
     expect(within(rootRow).getByText("Mission kickoff (origin)")).toBeTruthy();
-    // real qitem state, never an invented "merged" data state
-    expect(within(childRow).getByText("In progress")).toBeTruthy();
-    // date cell shows the calendar date (month + day) + time, never a
-    // time-only / relative "Today"/"Yesterday" label (tz-robust shape check)
+    // 真实 qitem 状态，绝不虚构 "merged" 数据状态
+    expect(within(childRow).getByText("进行中")).toBeTruthy();
+    // date cell 显示日历日期（月 + 日）+ 时间，绝不显示
+    // 仅时间 / 相对 "Today"/"Yesterday" 标签（tz 鲁棒形状检查）
     expect(rootRow.textContent).toMatch(/[A-Za-z]{3}\s+\d{1,2}/);
     expect(rootRow.textContent).toMatch(/\d{1,2}:\d{2}/);
     expect(rootRow.textContent).not.toMatch(/today|yesterday/i);
@@ -71,22 +71,22 @@ describe("StoryGraph", () => {
     ]);
     const { getByTestId, queryByTestId } = render(<StoryGraph forest={forest} />);
 
-    // human-origin row carries the lane styling
+    // human-origin 行带 lane 样式
     const humanRow = getByTestId("story-row-human").closest(".sg-trow");
     expect(humanRow?.className).toContain("sg-human");
 
-    // collapsed: no detail panel yet
+    // 折叠：尚无 detail 面板
     expect(queryByTestId("story-detail-human")).toBeNull();
 
-    // expand -> full-width bands (lineage "◆ this") + the Tier-3 drawer link
+    // 展开 -> 全宽 band（lineage "◆ this"）+ Tier-3 drawer 链接
     fireEvent.click(getByTestId("story-row-human"));
     const detail = getByTestId("story-detail-human");
-    expect(within(detail).getByText("◆ this")).toBeTruthy();
+    expect(within(detail).getByText("◆ 本节点")).toBeTruthy();
     expect(getByTestId("story-open-human")).toBeTruthy();
     expect(within(detail).getByText("human-origin")).toBeTruthy();
   });
 
-  // Guard B3 — Tier-2 artifacts must be OPEN affordances where viewable, not inert text.
+  // 守卫 B3——Tier-2 artifacts 在可看时必须是 OPEN 可点击项，而非 inert 文本。
   it("renders a viewable (absolute-path) artifact as an open affordance; relative refs stay inert", () => {
     const forest = buildStoryForest([
       qitem({
@@ -97,14 +97,14 @@ describe("StoryGraph", () => {
     ]);
     const { getByTestId, queryByTestId } = render(<StoryGraph forest={forest} />);
     fireEvent.click(getByTestId("story-row-art"));
-    // absolute path -> clickable FileLink open trigger
+    // 绝对路径 -> 可点 FileLink 打开触发
     expect(getByTestId("story-artifact-/Users/x/proof.png")).toBeTruthy();
-    // repo-relative path -> inert (no open trigger)
+    // repo 相对路径 -> inert（无打开触发）
     expect(queryByTestId("story-artifact-packages/ui/rel.ts")).toBeNull();
   });
 
-  // Guard B2 (round 2) — through the DRAWER PATH: "Open full queue item" must carry
-  // the full detail (chain + the omitted non-row fields claimedAt/targetRepo + fullDetail).
+  // 守卫 B2（round 2）——经 DRAWER 路径："Open full queue item" 必须带
+  // 完整 detail（chain + 省略的非行字段 claimedAt/targetRepo + fullDetail）。
   it("Open full queue item carries the full detail into the drawer selection", () => {
     const setSelection = vi.fn();
     const forest = buildStoryForest([
@@ -133,7 +133,7 @@ describe("StoryGraph", () => {
   });
 });
 
-// Guard B2 — Tier-3 drawer must render the FULL queue-item detail: all fields + full chain.
+// 守卫 B2——Tier-3 drawer 必须渲染完整 queue-item detail：所有字段 + 完整 chain。
 describe("Story Tier-3 drawer (QueueItemViewer full detail)", () => {
   it("renders all fields + the full chain, with labeled empty-states for nulls", () => {
     const { getByTestId } = render(
@@ -162,15 +162,15 @@ describe("Story Tier-3 drawer (QueueItemViewer full detail)", () => {
     const chain = getByTestId("qitem-chain");
     expect(chain.textContent).toContain("qitem-W");
     expect(chain.textContent).toContain("qitem-Y");
-    // a null field is shown LABELED-EMPTY ("—"), not hidden, in the full-item view
+    // null 字段在 full-item 视图中显示为 LABELED-EMPTY（"—"），而非隐藏
     expect(getByTestId("qitem-claimed").textContent).toBe("—");
   });
 });
 
-// QA layout blocker (round) — the Tier-2 expanded detail must be a FULL-WIDTH band,
-// not auto-placed into a grid column. jsdom can't measure layout, so this is a
-// source/CSS guard (guard-accepted): the row must be a block container (the topline
-// owns the 5-column grid), never a multi-column grid that auto-places the detail.
+// QA 布局阻塞（round）——Tier-2 展开 detail 必须是全宽 band，
+// 而非自动放入网格列。jsdom 无法测量布局，故这是 source/CSS 守卫
+//（guard 接受）：行必须是块容器（topline 拥有 5 列网格），绝不是把
+// detail 自动放入的多列网格。
 describe("StoryGraph expanded-detail layout contract (CSS guard)", () => {
   const css = storyGraphCss;
   it(".sg-trow is a block container, not a multi-column grid", () => {

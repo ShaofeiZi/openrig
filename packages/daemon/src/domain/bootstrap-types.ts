@@ -1,7 +1,7 @@
-/** Bootstrap run status lifecycle */
+/** Bootstrap 运行状态的生命周期。 */
 export type BootstrapStatus = "planned" | "running" | "completed" | "failed" | "partial";
 
-/** Bootstrap action kinds */
+/** Bootstrap 操作类型。 */
 export type ActionKind =
   | "runtime_check"
   | "requirement_check"
@@ -10,13 +10,13 @@ export type ActionKind =
   | "rig_import"
   | "launch";
 
-/** Bootstrap action status lifecycle */
+/** Bootstrap 操作状态的生命周期。 */
 export type ActionStatus = "planned" | "approved" | "skipped" | "running" | "completed" | "failed";
 
-/** Runtime verification status */
+/** 运行时验证状态。 */
 export type RuntimeStatus = "verified" | "not_found" | "degraded" | "error";
 
-/** A bootstrap run — one execution of `rig bootstrap <spec>` */
+/** 一次 Bootstrap 运行，即执行一次 `zrig bootstrap <spec>`。 */
 export interface BootstrapRun {
   id: string;
   sourceKind: string;
@@ -27,7 +27,7 @@ export interface BootstrapRun {
   appliedAt: string | null;
 }
 
-/** A single action within a bootstrap run */
+/** Bootstrap 运行中的单个操作。 */
 export interface BootstrapAction {
   id: string;
   bootstrapId: string;
@@ -42,7 +42,7 @@ export interface BootstrapAction {
   createdAt: string;
 }
 
-/** A runtime verification record */
+/** 一条运行时验证记录。 */
 export interface RuntimeVerification {
   id: string;
   runtime: string;

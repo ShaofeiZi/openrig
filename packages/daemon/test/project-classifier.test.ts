@@ -8,6 +8,7 @@ import { streamItemsSchema } from "../src/db/migrations/023_stream_items.js";
 import { classifierLeasesSchema } from "../src/db/migrations/029_classifier_leases.js";
 import { projectClassificationsSchema } from "../src/db/migrations/028_project_classifications.js";
 import { classificationFieldsAndAttemptsSchema } from "../src/db/migrations/086_classification_fields_and_attempts.js";
+import { classificationIdentityProvenanceSchema } from "../src/db/migrations/089_classification_identity_provenance.js";
 import { StreamStore } from "../src/domain/stream-store.js";
 import { EventBus } from "../src/domain/event-bus.js";
 import { ClassifierLeaseManager } from "../src/domain/classifier-lease-manager.js";
@@ -18,7 +19,7 @@ import {
 import { ClassifierLeaseError } from "../src/domain/classifier-lease-manager.js";
 import type { PersistedEvent } from "../src/domain/types.js";
 
-describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
+describe("ProjectClassifier（PL-004 Phase B；L2 classifier 写路径）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let leaseMgr: ClassifierLeaseManager;
@@ -26,10 +27,9 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
   let streamStore: StreamStore;
   let captured: PersistedEvent[];
 
-  // R1 fix (BLOCKER 1): tests now migrate streamItemsSchema (Phase A
-  // migration 023) and seed real stream_items rows so the L1→L2 FK +
-  // existence check in project-classifier can be exercised end-to-end.
-  // Helper that emits a stream item via Phase A's StreamStore.
+  // R1 修复（BLOCKER 1）：测试现在迁移 streamItemsSchema（Phase A migration 023），并填种
+  // 真实 stream_items row，使 project-classifier 的 L1→L2 FK + existence check 可端到端执行。
+  // 通过 Phase A StreamStore 发出 stream item 的 helper。
   function seedStreamItem(streamItemId: string): void {
     streamStore.emit({
       streamItemId,
@@ -40,7 +40,7 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
 
   beforeEach(() => {
     db = createDb();
-    migrate(db, [coreSchema, eventsSchema, streamItemsSchema, classifierLeasesSchema, projectClassificationsSchema, classificationFieldsAndAttemptsSchema]);
+    migrate(db, [coreSchema, eventsSchema, streamItemsSchema, classifierLeasesSchema, projectClassificationsSchema, classificationFieldsAndAttemptsSchema, classificationIdentityProvenanceSchema]);
     bus = new EventBus(db);
     leaseMgr = new ClassifierLeaseManager(db, bus);
     classifier = new ProjectClassifier(db, bus, leaseMgr);
@@ -51,7 +51,7 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
 
   afterEach(() => db.close());
 
-  it("classify with valid lease creates project_classifications row + emits project.classified", () => {
+  it("使用有效 lease 分类时创建 project_classifications row 并发出 project.classified", () => {
     leaseMgr.acquire("alice@rig");
     seedStreamItem("stream-1");
     const proj = classifier.classify({
@@ -68,7 +68,7 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
     expect(captured.some((e) => e.type === "project.classified")).toBe(true);
   });
 
-  it("classify without active lease throws no_active_lease", () => {
+  it("没有 active lease 时 classify 抛出 no_active_lease", () => {
     seedStreamItem("stream-1");
     expect(() => classifier.classify({
       streamItemId: "stream-1",
@@ -77,7 +77,7 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
     })).toThrow(ClassifierLeaseError);
   });
 
-  it("classify by non-holder throws lease_held", () => {
+  it("非 holder 执行 classify 时抛出 lease_held", () => {
     leaseMgr.acquire("alice@rig");
     seedStreamItem("stream-1");
     expect(() => classifier.classify({
@@ -87,9 +87,9 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
     })).toThrow(/lease_held|alice@rig/);
   });
 
-  it("R1 BLOCKER 1: classify of nonexistent stream_item_id throws unknown_stream_item (no FK violation surfaced)", () => {
+  it("R1 BLOCKER 1：分类不存在的 stream_item_id 时抛出 unknown_stream_item，不暴露 FK violation", () => {
     leaseMgr.acquire("alice@rig");
-    // No seed: stream_items has no row for "nonexistent-stream".
+    // 不填种：stream_items 中没有 "nonexistent-stream" row。
     try {
       classifier.classify({
         streamItemId: "nonexistent-stream",
@@ -103,15 +103,14 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
       expect((err as ProjectClassifierError).code).toBe("unknown_stream_item");
       expect((err as ProjectClassifierError).meta?.streamItemId).toBe("nonexistent-stream");
     }
-    // Defense-in-depth: confirm no row was inserted (existence check fired
-    // before INSERT, so FK constraint never had to defend).
+    // 纵深防御：确认没有插入 row；existence check 在 INSERT 前触发，因此无需 FK constraint 兜底。
     const projectionAttempts = classifier.list();
     expect(projectionAttempts).toHaveLength(0);
   });
 
-  it("R1 BLOCKER 1: FK constraint is the safety net if existence check is bypassed", () => {
-    // Direct INSERT bypassing project-classifier should be blocked by the
-    // SQLite FK constraint (PRAGMA foreign_keys = ON in connection.ts).
+  it("R1 BLOCKER 1：existence check 被绕过时，FK constraint 作为安全网", () => {
+    // 绕过 project-classifier 的直接 INSERT 应被 SQLite FK constraint 阻止；connection.ts
+    // 中 PRAGMA foreign_keys = ON。
     expect(() => {
       db.prepare(
         `INSERT INTO project_classifications (
@@ -121,7 +120,7 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
     }).toThrow(/FOREIGN KEY constraint failed/);
   });
 
-  it("classify is idempotent on stream_item_id (re-projection → idempotency_violation 409)", () => {
+  it("classify 对 stream_item_id 幂等，重复 projection 返回 idempotency_violation 409", () => {
     leaseMgr.acquire("alice@rig");
     seedStreamItem("stream-1");
     classifier.classify({
@@ -148,7 +147,7 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
     }
   });
 
-  it("first classification's classifier_session is preserved on re-projection attempts", () => {
+  it("重复 projection 尝试保留首次 classification 的 classifier_session", () => {
     leaseMgr.acquire("alice@rig");
     seedStreamItem("stream-1");
     const first = classifier.classify({
@@ -157,7 +156,7 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
       leaseId: leaseMgr.getActiveLease()?.leaseId ?? "none",
       classificationType: "idea",
     });
-    // Reclaim + new lease + same session can also re-attempt — still rejected.
+    // Reclaim + 新 lease + 同一 session 也可以再次尝试，但仍被拒绝。
     leaseMgr.reclaim("operator@rig");
     leaseMgr.acquire("bob@rig");
     try {
@@ -178,7 +177,7 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
     expect(lookup?.classificationType).toBe("idea");
   });
 
-  it("classify accepts all 6 classification fields + action; null when unset", () => {
+  it("classify 接受全部 6 个 classification 字段 + action；未设置时为 null", () => {
     leaseMgr.acquire("alice@rig");
     seedStreamItem("stream-full");
     seedStreamItem("stream-minimal");
@@ -208,7 +207,7 @@ describe("ProjectClassifier (PL-004 Phase B; L2 classifier write path)", () => {
     expect(minimal.action).toBeNull();
   });
 
-  it("list filters by classifierSession + classificationDestination", () => {
+  it("list 按 classifierSession + classificationDestination 过滤", () => {
     leaseMgr.acquire("alice@rig");
     seedStreamItem("s1");
     seedStreamItem("s2");

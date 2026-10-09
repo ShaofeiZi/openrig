@@ -1,23 +1,23 @@
-// ACTIVITY D1+D2 — fold the window_activity MOTION signal into the ACTIVITY ladder. RED-first.
+// ACTIVITY D1+D2——把 window_activity MOTION 信号折进 ACTIVITY 阶梯。RED-first。
 //
-// TWO CAUSES, ONE CODE PATH (attachAgentActivity, node-inventory.ts):
-//   D1 (Codex → unknown) = COVERAGE. A Codex seat has no hook, so the positive-hook early return
-//     never fires, and the cached STRUCTURAL verdict comes from a Claude-shaped matcher over a fixed
-//     8-line tail window. Codex's tall footer pushes `◦ Working (… esc to interrupt)` above that
-//     window → no match → unknown. A generating seat reports nothing.
-//   D2 (Claude → idle) = PRECEDENCE. A positive `idle` hook early-returns as authoritative, so live
-//     motion is NEVER consulted. A Claude seat that Stopped then RESUMED still carries the stale idle
-//     hook as latest → reports idle WHILE GENERATING. A perfect motion source alone does not fix this.
+// 两个成因，同一条代码路径（attachAgentActivity，node-inventory.ts）：
+//   D1（Codex → unknown）= 覆盖。Codex 席位没有 hook，正 hook 的提前返回
+//     永不触发，缓存的 STRUCTURAL 判定来自一个 Claude 形态 matcher 在固定
+//     8 行尾窗口上的匹配。Codex 高大的 footer 把 `◦ Working (… esc to interrupt)`
+//     顶到该窗口之上 → 无匹配 → unknown。正在生成的席位上报为空。
+//   D2（Claude → idle）= 优先级。正 `idle` hook 提前返回为权威，故实时
+//     motion 永不被参考。一个 Stopped 后又 RESUMED 的 Claude 席位仍带陈旧的 idle
+//     hook 作为 latest → 正在生成却报 idle。单靠完美 motion 源修不好这个。
 //
-// THE FIX = a runtime-agnostic MOTION source (tmux `#{window_activity}`, already computed per seat by
-// SeatActivityService and already surfaced as `terminalActive` in a SEPARATE column) folded into the
-// ACTIVITY ladder, ordered `needs_input(TEXT) > motion > idle`. Motion can only ever UPGRADE to
-// running; it never manufactures `idle`, so a hook-less MOTIONLESS seat still reads `unknown` and the
-// closed union does not rot.
+// 修复 = 运行时无关的 MOTION 源（tmux `#{window_activity}`，SeatActivityService
+// 已按席位算好、并作为独立列 `terminalActive` 露出）折进 ACTIVITY 阶梯，
+// 顺序为 `needs_input(TEXT) > motion > idle`。motion 只能把状态升级到
+// running；它从不伪造 `idle`，故无 hook 的 MOTIONLESS 席位仍读 `unknown`，
+// 闭合并集不腐烂。
 //
-// WHY MOTION AND NOT A BETTER MATCHER: a per-runtime TUI matcher is a treadmill — every provider
-// reskin re-breaks it. `window_activity` is a tmux fact about bytes on the pane, identical for Claude,
-// Codex, and anything else we ever seat.
+// 为什么用 motion 而不是更好的 matcher：按运行时写的 TUI matcher 是跑步机——每个
+// provider 换皮都会再破它。`window_activity` 是 tmux 关于窗格字节的事实，对
+// Claude、Codex 以及我们将来坐的任何席位都一致。
 //
 // LIVE MEASUREMENT BEHIND THIS DESIGN (daemon route, reverted runtime cb662b9d, 2026-08-11 04:52Z):
 // terminalActive was TRUE for exactly the two seats generating at that instant (dev-driver,
@@ -101,8 +101,8 @@ async function activityOf(deps: Record<string, unknown>, runtime = "claude-code"
   return out[0]!.agentActivity;
 }
 
-describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
-  it("A1 [D2 precedence] a positive IDLE hook + LIVE motion must NOT report idle — it reports running", async () => {
+describe("ACTIVITY D1+D2 —— 将活动信号折叠进证据层级", () => {
+  it("A1 [D2 优先级] 正 IDLE 挂钩 + LIVE 运动不得报告空闲 — 它报告正在运行", async () => {
     const counter = { captures: 0 };
     const activity = await activityOf({
       tmuxAdapter: mkTmux(counter),
@@ -118,7 +118,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(counter.captures).toBe(0); // cache read, never a per-request capture (healthz-wedge invariant)
   });
 
-  it("A2 [D1 coverage] a hook-less seat whose structural matcher MISSES + LIVE motion reports running", async () => {
+  it("A2 [D1 覆盖] 无 hook 席位在结构匹配器遗漏但有 LIVE 活动时报告 running", async () => {
     // The Codex shape: no hook at all, and the Claude-shaped structural matcher returns unknown
     // because the tall footer pushed the work line out of the 8-line tail window.
     const activity = await activityOf(
@@ -135,7 +135,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(activity.state).toBe("running");
   });
 
-  it("A3 [control] a hook-less MOTIONLESS seat still reports unknown — the fix must not relabel the default", async () => {
+  it("A3 [对照] 无 hook 且 MOTIONLESS 的席位仍报告 unknown，修复不得改写默认值", async () => {
     const activity = await activityOf({
       tmuxAdapter: mkTmux({ captures: 0 }),
       activityStore: store(null),
@@ -145,7 +145,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(activity.state).toBe("unknown");
   });
 
-  it("A3b [honest absence] no motion observation at all → unknown, never a quiet-seat verdict", async () => {
+  it("A3b [诚实缺席] 根本没有观察到任何运动→未知，从来没有一个安静的席位判决", async () => {
     const noObs = await activityOf({
       tmuxAdapter: mkTmux({ captures: 0 }),
       activityStore: store(null),
@@ -163,7 +163,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(noDep.state).toBe("unknown");
   });
 
-  it("A4 [order] needs_input TEXT outranks motion — a seat waiting at a prompt keeps redrawing", async () => {
+  it("A4 [order] need_input TEXT 优先于运动 — 等待提示的席位不断重新绘制", async () => {
     // Motion cannot tell "waiting at a prompt" from "working": any per-second redraw keeps the window
     // fresh. So a positive needs_input verdict — from the hook OR from the structural text read — must
     // survive live motion, or the fix converts "answer me" into "busy, leave it alone".
@@ -184,7 +184,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(fromStructural.state).toBe("needs_input");
   });
 
-  it("A5 [unchanged] a positive RUNNING hook keeps its authority with no motion observation", async () => {
+  it("A5 [不变] 积极的 RUNNING hook在没有运动观察的情况下保持其权威", async () => {
     const activity = await activityOf({
       tmuxAdapter: mkTmux({ captures: 0 }),
       activityStore: store(hook("running", "prompt_submit")),
@@ -195,7 +195,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(activity.evidenceSource).toBe("runtime_hook");
   });
 
-  it("A6 [no fabrication] a MOTIONLESS seat with a positive idle hook still reads idle", async () => {
+  it("A6 [不伪造] MOTIONLESS 席位在有明确 idle hook 时仍显示 idle", async () => {
     // The mirror of A1: motion only ever upgrades. Absent motion, the idle hook stands, so the fix
     // cannot be accused of laundering every idle seat into running.
     const activity = await activityOf({
@@ -207,7 +207,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(activity.state).toBe("idle");
   });
 
-  it("A7 [no fabrication] a stale/unknown hook + no motion is still delivered honestly, never idle", async () => {
+  it("A7[没有捏造]陈旧/未知的hook+没有动作仍然诚实地传递，从不闲着", async () => {
     const activity = await activityOf({
       tmuxAdapter: mkTmux({ captures: 0 }),
       activityStore: store(hook("unknown", "generation_unverifiable", { stale: true })),
@@ -235,7 +235,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
   // none varies observation AGE independently of it. These do.
   // ---------------------------------------------------------------------------------------------
 
-  it("A9 [stale cache] isActiveWithinWindow=true with an HOUR-OLD raw fact must NOT upgrade unknown", async () => {
+  it("A9 [陈旧缓存] isActiveWithinWindow=true 具有一小时前的原始事实，不得升级未知", async () => {
     const activity = await activityOf({
       tmuxAdapter: mkTmux({ captures: 0 }),
       activityStore: store(hook("unknown", "generation_unverifiable", { stale: true })),
@@ -246,7 +246,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(activity.reason).not.toBe("window_activity_motion");
   });
 
-  it("A10 [stale cache] the same stale true must NOT overturn a positive idle hook", async () => {
+  it("A10 [陈旧缓存] 相同的陈旧 true 不得推翻正空闲hook", async () => {
     const activity = await activityOf({
       tmuxAdapter: mkTmux({ captures: 0 }),
       activityStore: store(hook("idle", "stop_hook")),
@@ -256,7 +256,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(activity.state).toBe("idle");
   });
 
-  it("A11 [fail closed] a cached true whose raw fact cannot be AGED must not upgrade anything", async () => {
+  it("A11 [失败关闭] 其原始事实无法老化的缓存 true 不得升级任何内容", async () => {
     // If the observation carries no usable timestamp there is no way to tell live from long-dead, and
     // an un-ageable affirmative is exactly the input that must not become a liveness claim.
     for (const raw of [null, "not-a-timestamp"]) {
@@ -270,7 +270,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     }
   });
 
-  it("A12 [not over-corrected] a fresh raw fact still upgrades — the fix must not disable motion", async () => {
+  it("A12 [未过度修正] 一个新的原始事实仍在升级 - 修复不得禁用运动", async () => {
     // The mirror of A9. A correction that made every motion read stale would pass A9/A10/A11 and
     // silently restore the original defect, so freshness is pinned from BOTH sides.
     const activity = await activityOf({
@@ -283,7 +283,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(activity.reason).toBe("window_activity_motion");
   });
 
-  it("A13 [boundary] freshness is judged against the seat's OWN silence window, both sides of it", async () => {
+  it("A13 [边界] 新鲜度是根据席位两侧的静音窗来判断的", async () => {
     // Just INSIDE the 3s window.
     const inside = await activityOf({
       tmuxAdapter: mkTmux({ captures: 0 }),
@@ -303,7 +303,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(outside.state).toBe("unknown");
   });
 
-  it("A14 [clock skew] a raw fact slightly AHEAD of the request clock still reads as live", async () => {
+  it("A14 [时钟偏差] 稍微提前于请求时钟的原始事实仍然读取为实时", async () => {
     // pollSeat deliberately treats negative age as active (the daemon's clock can lag tmux briefly).
     // Read-time aging must keep that behavior rather than reading the future as stale.
     const activity = await activityOf({
@@ -315,7 +315,7 @@ describe("ACTIVITY D1+D2 — motion folded into the ladder", () => {
     expect(activity.state).toBe("running");
   });
 
-  it("A8 [the live fleet shape] an unverifiable-generation hook + LIVE motion reports running", async () => {
+  it("A8【直播舰队形态】无法验证的代钩+LIVE运动报告运行", async () => {
     // Measured live: all 14 seats carry state=unknown reason=generation_unverifiable, so on this fleet
     // the demoted hook — not a positive idle one — is what stands between a generating seat and a
     // truthful label. Motion must beat it, or the fix changes nothing on the machine it ships to.

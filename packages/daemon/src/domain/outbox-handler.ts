@@ -1,40 +1,32 @@
 import type Database from "better-sqlite3";
 
 /**
- * The EXECUTABLE wake-intent namespace. A durable wake intent is written by the
- * daemon (QueueRepository.stageWakeIntent) with an id under this prefix, and the
- * startup drain EXECUTES every pending row under it as a real wake.
+ * 可执行的 wake-intent 命名空间。后台服务（QueueRepository.stageWakeIntent）使用此前缀下的 id
+ * 写入持久唤醒意图，启动时的 drain 会把此前缀下的每个 pending 行作为真实唤醒执行。
  *
- * NOT a route reservation: the public `/outbox/record` audit route no longer
- * refuses caller-supplied ids under this prefix (the W4-era MF5 guard was unbuilt —
- * founder ruling, over-engineering audit: its justification required an adversary
- * inside this trust domain, where the only caller is the daemon's own localhost
- * client). A caller CAN now record an id under this prefix and the drain will
- * select it. Single source of truth for the drain query only.
+ * 这不是路由保留：公开的 `/outbox/record` 审计路由不再拒绝调用方提供的此前缀 id
+ *（W4 时期的 MF5 守卫已取消；创始人裁定其理由需要在该信任域内存在攻击者，
+ * 但唯一调用方是后台服务自己的 localhost 客户端，属于过度设计）。调用方现在可以记录
+ * 此前缀下的 id，drain 会选中它。这里只作为 drain 查询的单一事实来源。
  */
 export const WAKE_INTENT_PREFIX = "wake-intent-";
 
-// W1 (transactional closure): `indeterminate` is the ambiguous-delivery outcome —
-// a send that landed on the wire but whose render could not be CONFIRMED (transport
-// res.ok && !verified). It is never silently promoted to `delivered` (unconfirmed)
-// nor demoted to `failed` (it may have landed); the CAS transitions gate on 'pending',
-// so an indeterminate row is TERMINAL-BY-CAS (reconciliation is an out-of-scope
-// follow-on, not a W1 transition).
-// `sending` (MF3) is a transient CLAIM state: a drainer atomically moves a wake
-// intent pending→sending BEFORE the external send, so an overlapping drainer finds
-// nothing to claim and cannot double-send. A crash mid-send leaves the row visibly
-// `sending`; the recovery boundary (`reconcileAbandonedSending`, run once at
-// startup) reconciles it to `indeterminate` — the send is never blindly re-driven.
+// W1（事务闭合）：`indeterminate` 表示含糊的投递结果——发送已上网，但无法确认渲染
+//（transport res.ok && !verified）。它绝不静默提升为 `delivered`（尚未确认），
+// 也不降级为 `failed`（消息可能已送达）；CAS 转换以 'pending' 为门槛，因此
+// indeterminate 行在 CAS 语义下是终态（对账是范围外的后续工作，不是 W1 转换）。
+// `sending`（MF3）是暂态 CLAIM：drainer 在外部发送前以原子方式把唤醒意图从
+// pending→sending，使并发 drainer 找不到可认领行，避免重复发送。发送中崩溃会留下可见的
+// `sending` 行；恢复边界（启动时运行一次的 `reconcileAbandonedSending`）
+// 把它对账为 `indeterminate`，绝不盲目重发。
 export const OUTBOX_DELIVERY_STATES = ["pending", "sending", "delivered", "failed", "indeterminate", "retained", "retired"] as const;
 export type OutboxDeliveryState = (typeof OUTBOX_DELIVERY_STATES)[number];
 
 /**
- * Validate a raw `delivery_state` cell against the closed union before it is typed
- * as an {@link OutboxDeliveryState}. Replaces the prior unchecked `as` cast: a cast
- * never fails, so a stray DB value (corruption, a newer daemon's state read by an
- * older one) would silently masquerade as a typed value and make every downstream
- * narrowing unsound. We control every writer, so an unknown value is a real defect —
- * fail loud rather than fabricate a type.
+ * 在把原始 `delivery_state` 单元格键入为 {@link OutboxDeliveryState} 前，先按闭合联合校验。
+ * 这取代此前未经检查的 `as` 强转：类型断言永不失败，因此游离的数据库值（数据损坏，
+ * 或旧后台服务读取了新后台服务写入的状态）会静默伪装成类型成员，使所有下游收窄失效。
+ * 所有写入方都受我们控制，因此未知值是真实缺陷；应明确失败，不能伪造类型。
  */
 export function parseDeliveryState(raw: string): OutboxDeliveryState {
   if ((OUTBOX_DELIVERY_STATES as readonly string[]).includes(raw)) {
@@ -88,8 +80,8 @@ export interface OutboxRecordInput {
   tags?: string[];
   urgency?: string;
   auditPointer?: string;
-  /** P21 §4 era-stamp: the route passes `transport:v1` (senderSession derived from the transport
-   *  header chokepoint). Written onto the outbox row; absence = claimed-era. */
+  /** P21 §4 era-stamp：路由传入 `transport:v1`（senderSession 从 transport header 检查点派生）。
+   * 写入 outbox 行；缺失表示 claimed-era。 */
   identityProvenance?: string | null;
 }
 
@@ -108,16 +100,16 @@ function newOutboxId(): string {
 }
 
 /**
- * Sender-side outbox. Symmetric to InboxHandler. Records what a sender
- * dispatched independent of receiver behavior. Idempotent on outbox_id.
+ * 发送方 outbox，与 InboxHandler 对称。独立于接收方行为记录发送方已派发的内容，
+ * 按 outbox_id 幂等。
  *
- * No event-bus events emitted in Phase A — outbox is pure audit. If a future
- * phase wants delivery-tracking events, add them through this surface.
+ * 阶段 A 不发出 event-bus 事件，outbox 仅用于审计。若后续阶段需要投递跟踪事件，
+ * 应通过此表面添加。
  */
 export class OutboxHandler {
   readonly db: Database.Database;
-  /** P21 §4: detected once — a curated-migration test DB (or a pre-067 daemon) may lack the
-   *  era-stamp column, so the writer degrades (omits it) instead of throwing. */
+  /** P21 §4：只检测一次。精选迁移测试数据库（或 067 之前的后台服务）可能没有 era-stamp 列，
+   * 因此写入方选择降级（省略该列）而非抛错。 */
   private readonly hasIdentityProvenanceColumn: boolean;
 
   constructor(db: Database.Database) {
@@ -176,8 +168,8 @@ export class OutboxHandler {
     return this.getByIdOrThrow(id);
   }
 
-  /** Retention shares the existing outbox ID. Committed wakes preserve each member,
-   * even if guard activation happened after staging and quota is now exhausted. */
+  /** 保留流程复用现有 outbox ID。即使 guard 在暂存后才激活且配额现已耗尽，
+   * 已提交的唤醒仍保留每个成员。 */
   retain(input: OutboxRecordInput & { outboxId: string }, binding: NonNullable<OutboxEntry["guardBinding"]>, precommitted = false): OutboxEntry {
     return this.db.transaction(() => {
       const existing = this.getById(input.outboxId);
@@ -203,8 +195,7 @@ export class OutboxHandler {
   }
 
   assertRetentionCapacity(nodeId: string, body: string): void {
-    // Provisional bounded defaults. Historical/retired rows and already committed
-    // overflow are deliberately not evicted to make these active quotas fit.
+    // 临时的有界默认值。不会为了满足活跃配额而驱逐历史/已退役行或已提交的溢出项。
     const usage = this.db.prepare(`SELECT count(*) AS count, coalesce(sum(length(CAST(body AS BLOB))),0) AS bytes
       FROM outbox_entries WHERE delivery_state='retained' AND json_extract(guard_binding,'$.nodeId')=?`)
       .get(nodeId) as { count: number; bytes: number };
@@ -270,12 +261,10 @@ export class OutboxHandler {
   }
 
   /**
-   * W1 (transactional closure): record an AMBIGUOUS delivery outcome — the send
-   * landed but its render could not be confirmed (transport res.ok && !verified).
-   * Same compare-and-set shape as markFailed/markDelivered (guards on 'pending'),
-   * so it is idempotent and NEVER clobbers a row that already resolved. An
-   * indeterminate row is terminal-by-CAS: it is never silently promoted to
-   * delivered nor demoted to failed by the drain.
+   * W1（事务闭合）：记录含糊的投递结果——发送已经到达，但无法确认渲染
+   *（transport res.ok && !verified）。它与 markFailed/markDelivered 使用相同的比较交换结构
+   *（以 'pending' 为守卫），因此具备幂等性，绝不覆盖已经解决的行。indeterminate 行在 CAS
+   * 语义下是终态：drain 既不会静默把它提升为 delivered，也不会降级为 failed。
    */
   markIndeterminate(outboxId: string): OutboxEntry {
     const result = this.db
@@ -294,10 +283,9 @@ export class OutboxHandler {
   }
 
   /**
-   * MF3: atomically CLAIM a pending wake intent for delivery (pending→sending)
-   * BEFORE the external send. Returns true iff this caller won the claim. An
-   * overlapping drainer's claim finds the row no longer `pending` and returns
-   * false, so exactly one caller performs the external send.
+   * MF3：在外部发送前，以原子方式认领 pending 唤醒意图（pending→sending）。
+   * 当且仅当当前调用方赢得认领时返回 true。并发 drainer 再认领时会发现行已不再是
+   * `pending` 并返回 false，因此只有一个调用方执行外部发送。
    */
   claimForDelivery(outboxId: string): boolean {
     const result = this.db
@@ -310,10 +298,9 @@ export class OutboxHandler {
   }
 
   /**
-   * MF3: finalize a CLAIMED wake intent (sending→delivered|indeterminate|failed)
-   * after its external send resolved. CAS-guarded on `sending` so it only ever
-   * finalizes a row this drainer claimed. `delivered_at` is stamped only for a
-   * confirmed delivery.
+   * MF3：外部发送得到结果后，完成已认领唤醒意图
+   *（sending→delivered|indeterminate|failed）。CAS 以 `sending` 为守卫，
+   * 因而只会完成当前 drainer 已认领的行；仅确认投递时才盖印 `delivered_at`。
    */
   finalizeDelivery(outboxId: string, state: "delivered" | "indeterminate" | "failed" | "retained"): OutboxEntry {
     const deliveredAt = state === "delivered" ? new Date().toISOString() : null;
@@ -346,19 +333,17 @@ export class OutboxHandler {
   }
 
   /**
-   * W1 (transactional closure): list still-`pending` rows whose outbox_id begins
-   * with `idPrefix`, oldest first. The drain uses this to recover intents a crash
-   * left committed-but-undelivered. `idPrefix` is a trusted compile-time constant
-   * (e.g. "wake-intent-") with no LIKE wildcards. Oldest-first + bounded `limit`
-   * so a caller can page and terminate on a served short batch (never a silent cap).
+   * W1（事务闭合）：按从旧到新的顺序列出 outbox_id 以 `idPrefix` 开头、
+   * 且仍为 `pending` 的行。drain 用它恢复崩溃后已提交但未投递的意图。
+   * `idPrefix` 是可信的编译期常量（如 "wake-intent-"），不含 LIKE 通配符。
+   * 从旧到新并配合有界 `limit`，使调用方可分页，并在返回不足一批时结束，绝不静默截断。
    */
   listPending(idPrefix: string, limit = 200): OutboxEntry[] {
-    // EXACT-CASE prefix match. SQLite `LIKE` is case-insensitive by default, so a
-    // `LIKE 'wake-intent-%'` selector would also execute `WAKE-INTENT-…` variants.
-    // `substr(...) = ?` uses the binary collation (case-sensitive), so exactly one
-    // spelling is executable. With the route-side prefix refusal unbuilt, this
-    // narrowness is the ONLY thing keeping a recorded case variant out of the
-    // executable drain — widen it and variants become executable.
+    // 前缀严格区分大小写。SQLite 的 `LIKE` 默认不区分大小写，因此
+    // `LIKE 'wake-intent-%'` 也会执行 `WAKE-INTENT-…` 变体。
+    // `substr(...) = ?` 使用区分大小写的二进制排序规则，因此只有一种拼写可执行。
+    // 路由侧前缀拒绝已取消，这种窄匹配是阻止已记录大小写变体进入可执行 drain 的唯一措施；
+    // 一旦放宽，变体也会变为可执行。
     const rows = this.db
       .prepare(
         `SELECT * FROM outbox_entries
@@ -370,13 +355,11 @@ export class OutboxHandler {
   }
 
   /**
-   * BLOCKING 1 (guard re-seal): at a process/recovery boundary, atomically
-   * reconcile ABANDONED claims — rows a crashed process left in the transient
-   * `sending` state — to `indeterminate` WITHOUT re-sending. A `sending` row is
-   * ambiguous (the external send may or may not have landed after the claim), so
-   * it records `indeterminate`, never a forever-transient claim and never a blind
-   * re-send. EXACT-CASE prefix, matching the executable selector. Returns the
-   * count reconciled.
+   * BLOCKING 1（guard 重新封存）：在进程/恢复边界，以原子方式把废弃认领——崩溃进程
+   * 留在暂态 `sending` 的行——对账为 `indeterminate`，且不重新发送。
+   * `sending` 行具有歧义（外部发送可能在认领后送达，也可能没有），因此记录为
+   * `indeterminate`，既不让认领永远停留在暂态，也不盲目重发。前缀严格区分大小写，
+   * 与可执行选择器一致。返回已对账数量。
    */
   reconcileAbandonedSending(idPrefix: string): number {
     const result = this.db

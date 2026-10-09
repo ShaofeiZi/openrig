@@ -53,11 +53,9 @@ function Section({
   def: SectionDef;
   expanded: boolean;
   onToggle: () => void;
-  // Slice 28 — dual-action sections. When `navigateTo` is provided,
-  // the section header is split: chevron-button toggles expand-only;
-  // label Link navigates to the index page AND expands the tree.
-  // Used by SKILLS + PLUGINS sections; other sections render the
-  // single-button full-row toggle (legacy behavior).
+  // Slice 28——双动作区块。提供 `navigateTo` 时，区块头拆分：
+  // 箭头按钮只切换展开；标签 Link 导航到索引页并展开树。
+  // 用于 SKILLS + PLUGINS 区块；其他区块渲染单按钮整行切换（旧行为）。
   navigateTo?: "/specs/skills" | "/specs/plugins";
   onNavigate?: () => void;
 }) {
@@ -70,7 +68,7 @@ function Section({
             type="button"
             onClick={onToggle}
             data-testid={`specs-section-toggle-${def.id}`}
-            aria-label={`${expanded ? "Collapse" : "Expand"} ${def.label}`}
+            aria-label={`${expanded ? "折叠" : "展开"} ${def.label}`}
             className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-on-surface-variant hover:text-on-surface"
           >
             <Chevron className="h-3 w-3" />
@@ -155,7 +153,7 @@ function Section({
             ))
           ) : (
             <li className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic">
-              {def.loading ? "Loading..." : `No ${def.label.toLowerCase()} yet.`}
+              {def.loading ? "正在加载…" : `尚无${def.label}。`}
             </li>
           )}
         </ul>
@@ -195,12 +193,12 @@ export function SpecsTreeView() {
     const agentSpecs = library.filter((entry) => entry.kind === "agent").map(specEntry);
     const applications = library.filter((entry) => entry.kind === "rig" && entry.hasServices).map(specEntry);
     return [
-      { id: "rig-specs", label: "Rig Specs", entries: rigSpecs, loading: specsLoading },
-      { id: "workspace-specs", label: "Workspace Specs", entries: [] },
-      { id: "workflow-specs", label: "Workflow Specs", entries: workflowSpecs, loading: specsLoading },
+      { id: "rig-specs", label: "工作组规格", entries: rigSpecs, loading: specsLoading },
+      { id: "workspace-specs", label: "工作区规格", entries: [] },
+      { id: "workflow-specs", label: "工作流规格", entries: workflowSpecs, loading: specsLoading },
       {
         id: "context-packs",
-        label: "Context Packs",
+        label: "上下文包",
         entries: contextPacks.map((entry) => ({
           id: entry.id,
           name: entry.name,
@@ -209,10 +207,10 @@ export function SpecsTreeView() {
         })),
         loading: contextPacksLoading,
       },
-      { id: "agent-specs", label: "Agent Specs", entries: agentSpecs, loading: specsLoading },
+      { id: "agent-specs", label: "智能体规格", entries: agentSpecs, loading: specsLoading },
       {
         id: "agent-images",
-        label: "Agent Images",
+        label: "智能体镜像",
         entries: agentImages.map((entry) => ({
           id: entry.id,
           name: entry.name,
@@ -222,12 +220,11 @@ export function SpecsTreeView() {
         })),
         loading: agentImagesLoading,
       },
-      { id: "applications", label: "Applications", entries: applications, loading: specsLoading },
-      // Slice 28 — Plugins above Skills per founder direction (Skills
-      // list will be larger; Plugins user-priority).
+      { id: "applications", label: "应用", entries: applications, loading: specsLoading },
+      // Slice 28——按创始人指示，插件排在技能之上（技能列表会更大；插件是用户优先）。
       {
         id: "plugins",
-        label: "Plugins",
+        label: "插件",
         entries: plugins.map((plugin) => ({
           id: plugin.id,
           name: plugin.name,
@@ -238,7 +235,7 @@ export function SpecsTreeView() {
       },
       {
         id: "skills",
-        label: "Skills",
+        label: "技能",
         entries: skills.map((skill) => ({
           id: skill.id,
           name: skill.name,
@@ -268,19 +265,17 @@ export function SpecsTreeView() {
           data-testid="specs-tree-overview-link"
           className="block font-mono text-[11px] uppercase tracking-wide text-on-surface px-2 py-1 hover:bg-surface-low"
         >
-          {"> "}Library
+          {"> "}库
         </Link>
       </div>
 
-      {/* Slice 28 — top-level Skills + Plugins duplicates removed.
-          The grouped tree below carries those entries with dual-action
-          (label navigates to index page + expands the subtree). */}
+      {/* Slice 28——顶层技能 + 插件重复项已移除。
+          下方分组树以双动作承载这些条目（标签导航到索引页 + 展开子树）。 */}
       <ul>
         {sections.map((def) => {
           if (def.id !== "skills") {
-            // Slice 28 dual-action: plugins section label navigates
-            // to /specs/plugins AND expands the tree. Other sections
-            // (rig-specs, agent-specs, etc.) keep legacy toggle-only.
+            // Slice 28 双动作：plugins 区块标签导航到 /specs/plugins 并展开树。
+            // 其他区块（rig-specs、agent-specs 等）保持旧的仅切换。
             const navigateTo = def.id === "plugins" ? "/specs/plugins" : undefined;
             return (
               <Section
@@ -298,14 +293,14 @@ export function SpecsTreeView() {
           const Chevron = skillsExpanded ? ChevronDown : ChevronRight;
           return (
             <li key={def.id} data-testid="specs-section-skills">
-              {/* Slice 28 dual-action header: chevron toggles expand;
-                  label Link navigates to /specs/skills AND expands. */}
+              {/* Slice 28 双动作头部：箭头切换展开；
+                  标签 Link 导航到 /specs/skills 并展开。 */}
               <div className="w-full flex items-center gap-1 px-2 py-1 hover:bg-surface-low text-left">
                 <button
                   type="button"
                   onClick={() => toggle("skills")}
                   data-testid="specs-section-toggle-skills"
-                  aria-label={`${skillsExpanded ? "Collapse" : "Expand"} Skills`}
+                  aria-label={`${skillsExpanded ? "折叠" : "展开"} 技能`}
                   className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-on-surface-variant hover:text-on-surface"
                 >
                   <Chevron className="h-3 w-3" />
@@ -316,7 +311,7 @@ export function SpecsTreeView() {
                   onClick={() => setExpanded((prev) => ({ ...prev, skills: true }))}
                   className="font-mono text-[11px] uppercase tracking-wide text-on-surface flex-1 hover:underline"
                 >
-                  Skills
+                  技能
                 </Link>
                 <span className="font-mono text-[10px] text-on-surface-variant">
                   {skillsLoading ? "..." : skills.length}
@@ -339,19 +334,16 @@ export function SpecsTreeView() {
   );
 }
 
-// Slice 29 HG-3 — skills section restructure.
+// Slice 29 HG-3——技能区块重构。
 //
-// Category-folder grouping: parse the skill id's path segment (after
-// "openrig-managed:" or "workspace:<root>:") for a category prefix like
-// "core/" / "pm/" / "pods/" / "process/". Skills with a category render
-// under that folder; flat skills (e.g. workspace skills with no nested
-// path) render under a synthetic "uncategorized" group.
+// 分类文件夹分组：解析技能 id 的路径段（在 "openrig-managed:" 或
+// "workspace:<root>:" 之后），取类似 "core/" / "pm/" / "pods/" / "process/" 的类别前缀。
+// 带类别的技能渲染在该文件夹下；扁平技能（例如无嵌套路径的 workspace 技能）
+// 渲染在合成的“未分类”组下。
 //
-// Skill rows are SINGLE-ROW (NOT folder-expandable into files). The
-// docs-browser on the skill detail page surfaces files; the sidebar
-// stays at one level of nesting (categories → skills). This is the
-// intentional asymmetry with plugin tree rows: plugins legitimately
-// contain N skills and stay expandable; canonical skills don't.
+// 技能行是单行（不可展开成文件）。技能详情页的 docs-browser 展示文件；侧边栏保持
+// 一层嵌套（类别 → 技能）。这是与插件树行有意的不对称：插件合理地包含 N 个技能且
+// 保持可展开；规范技能不这样。
 
 interface SkillsTreeProps {
   skills: Array<{ id: string; name: string; source: string; files: Array<{ name: string; path: string }> }>;
@@ -362,17 +354,17 @@ interface SkillsTreeProps {
 }
 
 function extractCategory(skillId: string): string {
-  // id shapes:
-  //   openrig-managed:claude-compact-in-place       → "(top-level)"
+  // id 形态：
+  //   openrig-managed:claude-compact-in-place       → "(顶层)"
   //   openrig-managed:core/openrig-user             → "core"
   //   openrig-managed:pm/requirements-writer        → "pm"
-  //   workspace:<root>:operator-skill               → "workspace"
+  //   workspace:<root>:operator-skill              → "workspace"
   const afterSource = skillId.replace(/^[^:]+:/, "");
   if (afterSource.startsWith("workspace:") || skillId.startsWith("workspace:")) {
     return "workspace";
   }
   const slash = afterSource.indexOf("/");
-  if (slash === -1) return "(uncategorized)";
+  if (slash === -1) return "未分类";
   return afterSource.slice(0, slash);
 }
 
@@ -380,14 +372,14 @@ function SkillsTree({ skills, loading, activeSkillId, expandedCategories, onTogg
   if (loading && skills.length === 0) {
     return (
       <ul className="ml-5 border-l border-outline-variant">
-        <li className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic">Loading...</li>
+        <li className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic">正在加载…</li>
       </ul>
     );
   }
   if (skills.length === 0) {
     return (
       <ul className="ml-5 border-l border-outline-variant">
-        <li className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic">No skills yet.</li>
+        <li className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic">尚无技能。</li>
       </ul>
     );
   }
@@ -427,7 +419,7 @@ function SkillsTree({ skills, loading, activeSkillId, expandedCategories, onTogg
                       data-testid={`specs-leaf-${skill.id}`}
                       className="flex min-w-0 items-center gap-1.5 truncate font-mono text-xs text-on-surface hover:bg-surface-low hover:text-on-surface"
                     >
-                      <ToolMark tool="skill" size="xs" title={`${skill.name} skill`} decorative />
+                      <ToolMark tool="skill" size="xs" title={`${skill.name} 技能`} decorative />
                       <span className="truncate">{skill.name}</span>
                     </Link>
                   </li>

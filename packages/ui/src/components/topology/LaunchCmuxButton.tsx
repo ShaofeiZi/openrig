@@ -1,13 +1,11 @@
-// Slice 24 — LaunchCmuxButton.
+// Slice 24 —— LaunchCmuxButton。
 //
-// Rig-scope "Launch in CMUX" button. Click → POST /api/rigs/:rigId/cmux/launch
-// via launchRigCmux. Renders inline status (loading / success / error)
-// directly adjacent to the button rather than via a separate toast
-// primitive — keeps the rig-scope tab-bar self-contained.
+// 工作组范围的“在 CMUX 中启动”按钮。点击 → 经 launchRigCmux POST /api/rigs/:rigId/cmux/launch。
+// 在按钮紧邻处内联渲染状态（加载 / 成功 / 错误），而非用单独的 toast 组件——
+// 使工作组范围的标签栏自包含。
 //
-// Per README §Mobile + §Button placement: mounted in the rig-scope tab
-// bar (Option C placement, persistent across all rig-scope view-mode
-// tabs); hidden below the lg breakpoint via Tailwind responsive classes.
+// 按 README §Mobile + §Button 位置：挂载在工作组范围标签栏（Option C 位置，
+// 跨所有工作组范围 view-mode 标签页常驻）；通过 Tailwind 响应式类在 lg 断点以下隐藏。
 
 import { useEffect, useRef } from "react";
 import { launchRigCmux } from "../../hooks/launchRigCmux.js";
@@ -21,10 +19,9 @@ const SUCCESS_TOAST_TIMEOUT_MS = 6000;
 const ERROR_TOAST_TIMEOUT_MS = 8000;
 
 export function LaunchCmuxButton({ rigId }: LaunchCmuxButtonProps) {
-  // Keep this launcher's transient state out of React rendering. The
-  // topology table view can renderer-spin when this sibling button
-  // schedules React state during click handling; the cmux launch is an
-  // external side effect, so a tiny uncontrolled status island is safer.
+  // 把这个启动器的瞬态状态留在 React 渲染之外。拓扑表格视图在这个兄弟按钮于
+  // 点击处理期间调度 React state 时可能 render-spin；cmux 启动是外部副作用，
+  // 因此一个极小的无控状态岛更安全。
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const openMissingRef = useRef<HTMLButtonElement | null>(null);
   const statusRef = useRef<HTMLSpanElement | null>(null);
@@ -45,7 +42,7 @@ export function LaunchCmuxButton({ rigId }: LaunchCmuxButtonProps) {
     if (!button) return;
     button.disabled = pending;
     button.setAttribute("aria-busy", pending ? "true" : "false");
-    button.textContent = pending ? "Launching..." : "Launch in CMUX";
+    button.textContent = pending ? "正在启动…" : "在 CMUX 中启动";
   };
 
   const clearStatus = () => {
@@ -91,7 +88,7 @@ export function LaunchCmuxButton({ rigId }: LaunchCmuxButtonProps) {
           const missingNames = missingSeats.map((m) => `${m.logicalId} (${m.reason})`).join(", ");
           showStatus(
             "error",
-            `Opened ${agentCount} of ${agentCount + missingSeats.length} seats. Missing: ${missingNames}`,
+            `已打开 ${agentCount}/${agentCount + missingSeats.length} 个席位。缺失：${missingNames}`,
           );
           lastMissingRef.current = missingSeats.map((m) => m.logicalId);
           if (openMissingRef.current) {
@@ -101,8 +98,8 @@ export function LaunchCmuxButton({ rigId }: LaunchCmuxButtonProps) {
           showStatus(
             "success",
             workspaceCount === 1
-              ? `Launched cmux workspace "${names}" with ${agentCount} agent${agentCount === 1 ? "" : "s"}.`
-              : `Launched ${workspaceCount} cmux workspaces (${names}) with ${agentCount} agents total.`,
+              ? `已启动 cmux 工作区“${names}”，含 ${agentCount} 个智能体。`
+              : `已启动 ${workspaceCount} 个 cmux 工作区（${names}），共 ${agentCount} 个智能体。`,
           );
         }
       })
@@ -127,7 +124,7 @@ export function LaunchCmuxButton({ rigId }: LaunchCmuxButtonProps) {
         onClick={handleClick}
         className="border border-on-surface bg-surface-lowest px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface hover:bg-surface-low disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-outline"
       >
-        Launch in CMUX
+        在 CMUX 中启动
       </button>
       <button
         ref={openMissingRef}
@@ -151,9 +148,9 @@ export function LaunchCmuxButton({ rigId }: LaunchCmuxButtonProps) {
             const opened = results.filter((r) => r.status === "fulfilled" && (r as PromiseFulfilledResult<{ ok: boolean }>).value.ok).length;
             const failed = ids.length - opened;
             if (failed > 0) {
-              showStatus("error", `Opened ${opened} of ${ids.length} missing seats; ${failed} still unavailable.`);
+              showStatus("error", `已打开 ${opened}/${ids.length} 个缺失席位；${failed} 个仍不可用。`);
             } else {
-              showStatus("success", `Opened ${opened} missing seat${opened === 1 ? "" : "s"}.`);
+              showStatus("success", `已打开 ${opened} 个缺失席位。`);
               if (openMissingRef.current) openMissingRef.current.hidden = true;
             }
             if (openMissingRef.current) openMissingRef.current.disabled = false;
@@ -161,7 +158,7 @@ export function LaunchCmuxButton({ rigId }: LaunchCmuxButtonProps) {
         }}
         className="border border-on-surface bg-surface-lowest px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-on-surface hover:bg-surface-low disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-outline"
       >
-        Open missing seats
+        打开缺失席位
       </button>
       <span
         ref={statusRef}

@@ -8,10 +8,10 @@ import {
   type RunRecord,
 } from "./helpers/scenario-run-record.js";
 
-// Slice 51-02 — the append-only run-record ledger (results-ledger shape): one row
-// per scenario so runs are comparable over time (proof item 3 pairs a FAIL with
-// an appended run-record row). Append-only: earlier rows are never rewritten.
-describe("scenario run-record ledger", () => {
+// 切片 51-02——仅追加的 run-record ledger（results-ledger 结构）：每个场景一行，
+// 使多次运行可随时间比较（证明项 3 将一次 FAIL 与追加的 run-record 行配对）。
+// 仅追加：绝不重写先前行。
+describe("场景 run-record ledger", () => {
   const dirs: string[] = [];
   afterEach(() => {
     for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
@@ -29,7 +29,7 @@ describe("scenario run-record ledger", () => {
     ...extra,
   });
 
-  it("appends a row and reads it back", () => {
+  it("追加一行并将其读回", () => {
     const p = ledger();
     appendRunRecord(p, rec("clean-lifecycle", "PASS"));
     const rows = readRunRecords(p);
@@ -38,22 +38,22 @@ describe("scenario run-record ledger", () => {
     expect(rows[0].verdict).toBe("PASS");
   });
 
-  it("is append-only: multiple rows preserved in order, earlier bytes untouched", () => {
+  it("仅追加：多行按顺序保留，先前字节不变", () => {
     const p = ledger();
     appendRunRecord(p, rec("a", "PASS"));
     const afterFirst = readFileSync(p, "utf8");
-    appendRunRecord(p, rec("b", "FAIL", { failedStep: 2, diff: "expected X observed Y" }));
+    appendRunRecord(p, rec("b", "FAIL", { failedStep: 2, diff: "预期 X，观察到 Y" }));
     const afterSecond = readFileSync(p, "utf8");
-    // the second write only APPENDED (first line's bytes are a prefix of the file)
+    // 第二次写入仅追加（第一行字节是文件前缀）
     expect(afterSecond.startsWith(afterFirst)).toBe(true);
     const rows = readRunRecords(p);
     expect(rows.map((r) => r.scenario)).toEqual(["a", "b"]);
     expect(rows[1].verdict).toBe("FAIL");
     expect(rows[1].failedStep).toBe(2);
-    expect(rows[1].diff).toContain("observed");
+    expect(rows[1].diff).toContain("观察到");
   });
 
-  it("each line is standalone valid JSON (JSONL)", () => {
+  it("每一行都是独立有效的 JSON（JSONL）", () => {
     const p = ledger();
     appendRunRecord(p, rec("a", "PASS"));
     appendRunRecord(p, rec("b", "FAIL"));
@@ -62,7 +62,7 @@ describe("scenario run-record ledger", () => {
     for (const line of lines) expect(() => JSON.parse(line)).not.toThrow();
   });
 
-  it("reading a missing ledger yields an empty list (no throw)", () => {
+  it("读取缺失的 ledger 时返回空列表（不抛错）", () => {
     const p = ledger();
     expect(existsSync(p)).toBe(false);
     expect(readRunRecords(p)).toEqual([]);

@@ -1,8 +1,8 @@
-// V1 attempt-3 Phase 4 — QueueItemViewer per content-drawer.md L46–L82.
+// V1 attempt-3 Phase 4 —— 依 content-drawer.md L46–L82 的 QueueItemViewer。
 //
-// Renders qitem header (id + close + open-in-center) + metadata (source/
-// dest/state/tags/created) + body preview (~30 lines + show-full-body)
-// + Related (clickable refs).
+// 渲染 qitem 头部（id + 关闭 + 居中打开）+ 元数据（source/
+// dest/state/tags/created）+ 正文预览（约 30 行 + 显示全文）
+// + Related（可点击引用）。
 
 import { useState } from "react";
 import { SectionHeader } from "../ui/section-header.js";
@@ -19,8 +19,8 @@ export interface QueueItemViewerData {
   createdAt?: string;
   body?: string;
   related?: Array<{ kind: "file" | "commit" | "slice" | "seat"; label: string; href?: string }>;
-  // OPR.0.4.1.19 — Tier-3 drawer = the full queue-item detail: all fields + the
-  // full chain. Optional + render-when-present so existing callsites are unaffected.
+  // OPR.0.4.1.19 —— Tier-3 抽屉 = 完整 queue-item 详情：全部字段 + 完整链。
+  // 可选 + 存在即渲染，使既有调用方不受影响。
   updatedAt?: string | null;
   priority?: string | null;
   tier?: string | null;
@@ -38,8 +38,8 @@ export interface QueueItemViewerData {
   resolution?: string | null;
   targetRepo?: string | null;
   chain?: string[] | null;
-  /** Tier-3 full source-of-truth view: render EVERY field labeled, nulls shown as
-   *  "—" (not hidden). Default false keeps other callsites compact. */
+  /** Tier-3 完整事实来源视图：每个字段都带标签渲染，null 显示为
+   *  “—”（不隐藏）。默认 false 使其他调用方保持紧凑。 */
   fullDetail?: boolean;
 }
 
@@ -80,8 +80,8 @@ export function QueueItemViewer({
   if (!qitemId) {
     return (
       <EmptyState
-        label="NO QITEM"
-        description="No queue item selected."
+        label="无队列项"
+        description="未选择队列项。"
         variant="card"
         testId="queue-item-viewer-empty"
       />
@@ -91,32 +91,32 @@ export function QueueItemViewer({
   return (
     <div data-testid="queue-item-viewer" className="flex flex-col h-full">
       <header className="px-4 py-3 border-b border-outline-variant">
-        <SectionHeader tone="muted">Queue item</SectionHeader>
+        <SectionHeader tone="muted">队列项</SectionHeader>
         <h3 className="mt-1 font-mono text-xs text-on-surface break-all">{qitemId}</h3>
       </header>
       <div className="px-4 py-3 border-b border-outline-variant space-y-2 font-mono text-xs">
         {source || destination ? (
-          <MetaRow label="Route">
+          <MetaRow label="路由">
             <FlowChips source={source} destination={destination} muted />
           </MetaRow>
         ) : null}
         {source ? (
-          <MetaRow label="Source">
+          <MetaRow label="来源">
             <ActorChip session={source} muted />
           </MetaRow>
         ) : null}
         {destination ? (
-          <MetaRow label="Dest">
+          <MetaRow label="目标">
             <ActorChip session={destination} muted />
           </MetaRow>
         ) : null}
         {state ? (
-          <MetaRow label="State">
+          <MetaRow label="状态">
             <QueueStateBadge state={state} testId="qitem-state" />
           </MetaRow>
         ) : null}
         {tags && tags.length > 0 ? (
-          <MetaRow label="Tags">
+          <MetaRow label="标签">
             <span className="flex min-w-0 flex-wrap justify-end gap-1">
               {tags.map((tag) => (
                 <TagPill key={tag} tag={tag} />
@@ -125,38 +125,38 @@ export function QueueItemViewer({
           </MetaRow>
         ) : null}
         {createdAt ? (
-          <MetaRow label="Created">
+          <MetaRow label="创建于">
             <DateChip value={createdAt} />
           </MetaRow>
         ) : null}
         {updatedAt ? (
-          <MetaRow label="Updated">
+          <MetaRow label="更新于">
             <DateChip value={updatedAt} />
           </MetaRow>
         ) : null}
-        {/* OPR.0.4.1.19 Tier-3 (fullDetail): every field labeled; nulls show as "—". */}
-        <FieldRow label="Priority" value={priority} show={fullDetail} testId="qitem-priority" />
-        <FieldRow label="Tier" value={tier} show={fullDetail} />
+        {/* OPR.0.4.1.19 Tier-3（fullDetail）：每个字段都带标签；null 显示为“—”。 */}
+        <FieldRow label="优先级" value={priority} show={fullDetail} testId="qitem-priority" />
+        <FieldRow label="层级" value={tier} show={fullDetail} />
         {closureReason || fullDetail ? (
-          <MetaRow label="Closure">
+          <MetaRow label="关闭">
             <span data-testid="qitem-closure" className={closureReason ? "break-all text-on-surface" : "text-on-surface-variant"}>
               {closureReason ? `${closureReason}${closureTarget ? ` → ${closureTarget}` : ""}` : "—"}
             </span>
           </MetaRow>
         ) : null}
-        <FieldRow label="From qitem" value={handedOffFrom} show={fullDetail} mono />
-        <FieldRow label="To" value={handedOffTo} show={fullDetail} mono />
-        <FieldRow label="Blocked on" value={blockedOn} show={fullDetail} mono />
-        <FieldRow label="Claimed" value={claimedAt} show={fullDetail} testId="qitem-claimed" />
-        <FieldRow label="Expires" value={expiresAt} show={fullDetail} />
-        <FieldRow label="Closure due" value={closureRequiredAt} show={fullDetail} />
-        <FieldRow label="Last nudge" value={lastNudgeAttempt} show={fullDetail} />
-        <FieldRow label="Nudge result" value={lastNudgeResult} show={fullDetail} />
-        <FieldRow label="Heartbeat" value={lastHeartbeat} show={fullDetail} />
-        <FieldRow label="Resolution" value={resolution} show={fullDetail} />
-        <FieldRow label="Target repo" value={targetRepo} show={fullDetail} testId="qitem-targetrepo" mono />
+        <FieldRow label="来自项" value={handedOffFrom} show={fullDetail} mono />
+        <FieldRow label="发往" value={handedOffTo} show={fullDetail} mono />
+        <FieldRow label="阻塞于" value={blockedOn} show={fullDetail} mono />
+        <FieldRow label="认领于" value={claimedAt} show={fullDetail} testId="qitem-claimed" />
+        <FieldRow label="过期" value={expiresAt} show={fullDetail} />
+        <FieldRow label="关闭期限" value={closureRequiredAt} show={fullDetail} />
+        <FieldRow label="最近提醒" value={lastNudgeAttempt} show={fullDetail} />
+        <FieldRow label="提醒结果" value={lastNudgeResult} show={fullDetail} />
+        <FieldRow label="心跳" value={lastHeartbeat} show={fullDetail} />
+        <FieldRow label="结论" value={resolution} show={fullDetail} />
+        <FieldRow label="目标仓库" value={targetRepo} show={fullDetail} testId="qitem-targetrepo" mono />
         {(chain && chain.length > 0) || fullDetail ? (
-          <MetaRow label="Chain">
+          <MetaRow label="链">
             {chain && chain.length > 0 ? (
               <span data-testid="qitem-chain" className="flex min-w-0 flex-col items-end gap-0.5 text-right">
                 {chain.map((id, i) => (
@@ -172,13 +172,13 @@ export function QueueItemViewer({
         ) : null}
       </div>
       <div className="px-4 py-3 border-b border-outline-variant flex-1 min-h-0 overflow-y-auto">
-        <SectionHeader tone="muted">Body</SectionHeader>
+        <SectionHeader tone="muted">正文</SectionHeader>
         {body ? (
           <pre data-testid="qitem-body" className="mt-2 whitespace-pre-wrap font-mono text-xs text-on-surface">
             {visibleLines.join("\n")}
           </pre>
         ) : (
-          <p className="mt-2 font-mono text-xs text-on-surface-variant italic">No body.</p>
+          <p className="mt-2 font-mono text-xs text-on-surface-variant italic">无正文。</p>
         )}
         {body && bodyLines.length > PREVIEW_LINES ? (
           <button
@@ -187,13 +187,13 @@ export function QueueItemViewer({
             data-testid="qitem-body-toggle"
             className="mt-2 font-mono text-[10px] uppercase tracking-wide text-on-surface hover:text-on-surface underline"
           >
-            {showFull ? "Show less" : `Show full body (${bodyLines.length} lines)`}
+            {showFull ? "收起" : `展开全文（${bodyLines.length} 行）`}
           </button>
         ) : null}
       </div>
       {related && related.length > 0 ? (
         <div className="px-4 py-3">
-          <SectionHeader tone="muted">Related</SectionHeader>
+          <SectionHeader tone="muted">相关</SectionHeader>
           <ul className="mt-2 space-y-1 font-mono text-xs">
             {related.map((r, i) => (
               <li key={`${r.kind}-${i}`} className="flex items-baseline gap-2">
@@ -231,9 +231,8 @@ function MetaRow({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-// OPR.0.4.1.19 — a single scalar field. Renders when the value is present OR when
-// `show` (Tier-3 fullDetail) forces the full-item view; a null value shows as "—"
-// so the drawer is a faithful complete view rather than silently hiding fields.
+// OPR.0.4.1.19 —— 单个标量字段。值存在时渲染，或 `show`（Tier-3 fullDetail）强制完整项视图时渲染；
+// null 值显示为“—”，使抽屉是忠实完整的视图，而非静默隐藏字段。
 function FieldRow({
   label,
   value,

@@ -7,14 +7,14 @@ function mockFs(structure: Record<string, string[] | true>): { fsExists: (p: str
     fsReaddir: (p: string) => {
       const val = structure[p];
       if (Array.isArray(val)) return val;
-      throw new Error(`not a directory: ${p}`);
+      throw new Error(`不是目录：${p}`);
     },
   };
 }
 
-describe("SessionEnricher", () => {
-  // T1: .claude/skills/ -> lists skill directory names
-  it("lists skill names from .claude/skills/", () => {
+describe("SessionEnricher 会话增强器", () => {
+  // T1：.claude/skills/ -> 列出技能目录名
+  it("从 .claude/skills/ 列出技能名称", () => {
     const enricher = new SessionEnricher(mockFs({
       "/projects": true,
       "/projects/.claude/skills": ["helper", "reviewer"],
@@ -27,8 +27,8 @@ describe("SessionEnricher", () => {
     expect(result.skills).toContain("reviewer");
   });
 
-  // T2: .agents/skills/ -> lists skill directory names
-  it("lists skill names from .agents/skills/", () => {
+  // T2：.agents/skills/ -> 列出技能目录名
+  it("从 .agents/skills/ 列出技能名称", () => {
     const enricher = new SessionEnricher(mockFs({
       "/projects": true,
       "/projects/.agents/skills": ["codex-tool"],
@@ -40,8 +40,8 @@ describe("SessionEnricher", () => {
     expect(result.skills).toContain("codex-tool");
   });
 
-  // T3: CLAUDE.md -> hasClaudeMd=true
-  it("detects CLAUDE.md presence", () => {
+  // T3：CLAUDE.md -> hasClaudeMd=true
+  it("检测 CLAUDE.md 是否存在", () => {
     const enricher = new SessionEnricher(mockFs({
       "/projects": true,
       "/projects/CLAUDE.md": true,
@@ -53,8 +53,8 @@ describe("SessionEnricher", () => {
     expect(result.hasAgentsMd).toBe(false);
   });
 
-  // T4: no agent config -> all empty/false
-  it("returns empty result when no agent config exists", () => {
+  // T4：无智能体配置 -> 全为空/false
+  it("不存在智能体配置时返回空结果", () => {
     const enricher = new SessionEnricher(mockFs({
       "/projects": true,
     }));
@@ -67,8 +67,8 @@ describe("SessionEnricher", () => {
     expect(result.hasPackageYaml).toBe(false);
   });
 
-  // T5: null cwd -> graceful empty result
-  it("null cwd returns empty result", () => {
+  // T5：cwd 为 null -> 平稳返回空结果
+  it("cwd 为 null 时返回空结果", () => {
     const enricher = new SessionEnricher(mockFs({}));
 
     const result = enricher.enrich(null);
@@ -77,8 +77,8 @@ describe("SessionEnricher", () => {
     expect(result.hasClaudeMd).toBe(false);
   });
 
-  // T6: asset-rich fixture -> all fields including merged skills, AGENTS.md, package.yaml
-  it("asset-rich cwd returns all fields correctly", () => {
+  // T6：资源丰富夹具 -> 返回所有字段，包括合并后的技能、AGENTS.md、package.yaml
+  it("资源丰富的 cwd 正确返回所有字段", () => {
     const enricher = new SessionEnricher(mockFs({
       "/projects": true,
       "/projects/.claude/skills": ["skill-a", "skill-b"],
@@ -106,8 +106,8 @@ describe("SessionEnricher", () => {
     });
   });
 
-  // T7: nonexistent cwd path -> empty result
-  it("nonexistent cwd returns empty result", () => {
+  // T7：cwd 路径不存在 -> 空结果
+  it("cwd 不存在时返回空结果", () => {
     const enricher = new SessionEnricher(mockFs({}));
 
     const result = enricher.enrich("/nonexistent/path");
@@ -116,8 +116,8 @@ describe("SessionEnricher", () => {
     expect(result.hasClaudeMd).toBe(false);
   });
 
-  // T8: fsReaddir throws -> graceful empty skills
-  it("fsReaddir error returns empty skills without propagating", () => {
+  // T8：fsReaddir 抛错 -> 平稳返回空技能列表
+  it("fsReaddir 错误时返回空技能列表且不向外抛出", () => {
     const enricher = new SessionEnricher({
       fsExists: (p) => p === "/projects" || p === "/projects/.claude/skills",
       fsReaddir: vi.fn(() => { throw new Error("EACCES: permission denied"); }),

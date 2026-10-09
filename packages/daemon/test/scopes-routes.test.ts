@@ -1,4 +1,4 @@
-// SCOPES VIEW routes — wired through a Hono app with a fixture slices root.
+// 工作范围视图路由——通过带 fixture 切片根目录的 Hono 应用接线。
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
 import * as fs from "node:fs";
@@ -54,8 +54,8 @@ function appWith(root: string): Hono {
   return app;
 }
 
-describe("scopes routes", () => {
-  it("overview + detail + narrative serve store-direct", async () => {
+describe("工作范围路由", () => {
+  it("overview、detail 与 narrative 直接由存储提供", async () => {
     const root = scaffold();
     const app = appWith(root);
     const overview = await (await app.request("/api/scopes")).json() as { missions: Array<{ mission: string; slices: Array<{ proof: { paired: number; total: number } }> }> };

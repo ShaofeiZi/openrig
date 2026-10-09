@@ -1,8 +1,7 @@
-// 0.3.1 slice 06 — production-wire tests for the forward-fix on
-// guard-3 findings: (1) TimelineTab renders timeline.md content when
-// the prop is supplied; (2) ForYouFeed mounts the storytelling
-// preview section when sliceRows has data; (3) ProgressCard renders
-// a progress bar on the collapsed view per IMPL-PRD §6.
+// 0.3.1 slice 06——guard-3 发现前瞻修复的生产接线测试：
+// (1) TimelineTab 在 prop 提供时渲染 timeline.md 内容；
+// (2) ForYouFeed 在 sliceRows 有数据时挂载 storytelling
+// 预览段；(3) ProgressCard 按 IMPL-PRD §6 在折叠视图渲染进度条。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
@@ -28,9 +27,8 @@ Body content.
       />
     );
     expect(container.querySelector("[data-testid='story-timeline-markdown']")).toBeTruthy();
-    // The MarkdownViewer inside wraps the body in a KindFrame for the
-    // known kind, so the wire actually composes the storytelling
-    // primitives in the live tab.
+    // 内部 MarkdownViewer 把 body 包进已知 kind 的 KindFrame，
+    // 故接线在 live tab 中真正组合 storytelling 原语。
     expect(container.querySelector("[data-testid='kind-frame-incident-timeline']")).toBeTruthy();
   });
 

@@ -1,15 +1,12 @@
-// Bundle create REFUSES to export a spec that disagrees with the rig it names.
+// Bundle create 拒绝导出与其具名 rig 不一致的 spec。
 //
-// Build B already DETECTS spec-vs-live drift and returns a `warning` on the 201 (see
-// bundle-export-drift-warning.test.ts, which pins the detection wiring). Detection was not enough:
-// a .rigbundle is a disaster-recovery artifact, and a warning attached to a success is discovered
-// at the one moment it is least affordable. These tests pin the ENFORCEMENT — refuse by default,
-// proceed only when the operator says they mean it, and make the artifact carry its own caveat when
-// they do.
+// Build B 已检测 spec-vs-live drift，并在 201 上返回 `warning`（见锁定检测接线的
+// bundle-export-drift-warning.test.ts）。仅检测还不够：.rigbundle 是灾难恢复 artifact，附在成功
+// 结果上的 warning 往往会在最承担不起代价时才被发现。这些测试锁定强制行为：默认拒绝；仅当操作员
+// 明确表示有意如此时继续；继续时让 artifact 自身携带警告。
 //
-// Four cases, and the three that must stay SILENT matter as much as the one that must be loud: the
-// cheapest way to pass a refusal test is to refuse everything, which would pass the first assertion
-// here and break every legitimate authoring export.
+// 四种情形中，三种必须保持静默的情形与一种必须显著失败的情形同样重要：通过拒绝测试最省事的方式
+// 是拒绝所有操作，这虽能通过第一个断言，却会破坏每个合法的编写导出。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
@@ -23,7 +20,7 @@ import { createTestApp } from "./helpers/test-app.js";
 
 const RIG_NAME = "drift-export-rig";
 
-describe("bundle create — refuses a spec that disagrees with the live rig", () => {
+describe("bundle create——拒绝与 live rig 不一致的 spec", () => {
   let db: Database.Database;
   let app: ReturnType<typeof createTestApp>["app"];
   let tmpDir: string;
@@ -40,7 +37,7 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  /** A rig running in the DB with the given fully-qualified seat ids. */
+  /** 数据库中运行的 rig，包含给定全限定 seat id。 */
   function seedLiveRig(name: string, logicalIds: string[]): void {
     const rigId = `rig-${name}`;
     db.prepare("INSERT INTO rigs (id, name, created_at, updated_at) VALUES (?,?,datetime('now'),datetime('now'))").run(rigId, name);
@@ -49,7 +46,7 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     }
   }
 
-  /** A pod-aware spec on disk declaring exactly the pods/members given, plus the agent it references. */
+  /** 磁盘上的 pod-aware spec，精确声明给定 pod/member 及其引用的 agent。 */
   function writeSpec(name: string, pods: Array<{ id: string; members: string[] }>): string {
     const agentsDir = path.join(tmpDir, "agents", "impl");
     fs.mkdirSync(agentsDir, { recursive: true });
@@ -99,10 +96,9 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     });
   }
 
-  // THE RED: this is the shipped defect. The spec declares one pod/one seat; the rig is running two
-  // pods and three seats. Today that exports 201 with a warning nobody is required to read, and the
-  // resulting DR artifact rebuilds the smaller rig.
-  it("refuses with 409 and names BOTH topologies when the spec is smaller than the live rig", async () => {
+  // RED：这是已发布缺陷。spec 声明一个 pod/一个 seat；rig 正运行两个 pod/三个 seat。当前行为会
+  // 以 201 导出，并附带无人必须阅读的 warning；生成的 DR artifact 会重建较小 rig。
+  it("spec 小于 live rig 时以 409 拒绝，并点名两套拓扑", async () => {
     seedLiveRig(RIG_NAME, ["dev.impl", "dev.qa", "orch.lead"]);
     const specPath = writeSpec(RIG_NAME, [{ id: "dev", members: ["impl"] }]);
 
@@ -110,18 +106,18 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
 
     expect(res.status).toBe(409);
     const body = await res.json() as { error: string };
-    // The diff must be specific enough to act on — a generic "topology differs" is the caution a
-    // reader learns to skip. Both counts, and the seats that would be dropped, appear by name.
+    // diff 必须具体到可执行；笼统的“topology 不同”很容易被读者忽略。两侧数量以及会丢弃的 seat
+    // 都应具名出现。
     expect(body.error).toContain("1 pods/1 seats");
     expect(body.error).toContain("2/3");
     expect(body.error).toContain("dev.qa");
     expect(body.error).toContain("orch.lead");
-    // Refusal means refusal: no artifact on disk.
+    // 拒绝就是真拒绝：磁盘上没有 artifact。
     expect(fs.existsSync(path.join(tmpDir, "stale.rigbundle"))).toBe(false);
   });
 
-  // The escape hatch, and the price of using it: the artifact carries its own caveat.
-  it("proceeds with allowDrift and stamps the divergence into bundle provenance", async () => {
+  // escape hatch 及其代价：artifact 携带自身 caveat。
+  it("使用 allowDrift 时继续，并将分歧写入 bundle provenance", async () => {
     seedLiveRig(RIG_NAME, ["dev.impl", "dev.qa", "orch.lead"]);
     const specPath = writeSpec(RIG_NAME, [{ id: "dev", members: ["impl"] }]);
 
@@ -131,8 +127,8 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     const body = await res.json() as { warning?: string };
     expect(body.warning).toContain("2/3");
 
-    // Provenance is where the caveat has to live — the warning in an HTTP response dies with the
-    // terminal that printed it; whoever installs this bundle six weeks from now reads the manifest.
+    // caveat 必须存在于 provenance：HTTP 响应中的 warning 随输出它的终端消失；六周后安装此
+    // bundle 的人会读取 manifest。
     const inspectRes = await app.request("/api/bundles/inspect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -143,9 +139,8 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     expect(inspected.manifest?.provenance?.notes ?? "").toContain("2/3");
   });
 
-  // PRESERVE 1 — authoring a spec for a rig that is not running is legitimate and must stay silent.
-  // This is the case a refuse-everything implementation breaks.
-  it("stays silent when the named rig is not running", async () => {
+  // PRESERVE 1——为未运行的 rig 编写 spec 是合法操作，必须保持静默。拒绝一切的实现会破坏此情形。
+  it("具名 rig 未运行时保持静默", async () => {
     const specPath = writeSpec("not-a-running-rig", [{ id: "dev", members: ["impl"] }]);
 
     const res = await create(specPath, "authoring");
@@ -156,8 +151,8 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     expect(fs.existsSync(path.join(tmpDir, "authoring.rigbundle"))).toBe(true);
   });
 
-  // PRESERVE 2 — spec and live agree: no refusal, no warning, no new ceremony on a correct path.
-  it("stays silent when the spec matches the live rig exactly", async () => {
+  // PRESERVE 2——spec 与 live 一致：正确路径上不拒绝、不警告、不增加新 ceremony。
+  it("spec 与 live rig 完全匹配时保持静默", async () => {
     seedLiveRig(RIG_NAME, ["dev.impl", "orch.lead"]);
     const specPath = writeSpec(RIG_NAME, [
       { id: "dev", members: ["impl"] },
@@ -172,10 +167,9 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     expect(fs.existsSync(path.join(tmpDir, "conforming.rigbundle"))).toBe(true);
   });
 
-  // LEGACY (v1) specs export through this same endpoint and produce the same confidently-wrong
-  // artifact. They need the same guard, not a second detector: a v1 rig is a topology with no pod
-  // level, and a node's `logical_id` IS the spec's `node.id`, so the only thing the format changes
-  // is how ids are read.
+  // 旧版（v1）spec 通过同一 endpoint 导出，并产生同样确信但错误的 artifact。它们需要相同 guard，
+  // 而非第二个 detector：v1 rig 是没有 pod 层级的 topology，node 的 `logical_id` 就是 spec 的
+  // `node.id`，所以格式只改变 id 读取方式。
   function writeLegacySpec(name: string, nodeIds: string[]): string {
     const lines = ["schema_version: 1", `name: ${name}`, 'version: "1.0"', "nodes:"];
     for (const id of nodeIds) lines.push(`  - id: ${id}`, "    runtime: claude-code");
@@ -185,7 +179,7 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     return specPath;
   }
 
-  it("refuses a LEGACY spec that is smaller than the live rig, naming the dropped seats", async () => {
+  it("拒绝小于 live rig 的旧版 spec，并点名被丢弃 seat", async () => {
     seedLiveRig(RIG_NAME, ["dev", "qa", "lead"]);
     const specPath = writeLegacySpec(RIG_NAME, ["dev"]);
 
@@ -198,11 +192,10 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     expect(fs.existsSync(path.join(tmpDir, "legacy-stale.rigbundle"))).toBe(false);
   });
 
-  // The flat reader is the load-bearing half of legacy support. Read a flat rig through the
-  // pod-aware reader and every id parses as malformed, the live rig reads as EMPTY, and the guard
-  // reports "nothing is running" — a false absence, on the one path that exists to notice what
-  // would be dropped. This case fails loudly if that reader is ever swapped back.
-  it("stays silent when a LEGACY spec matches the live rig exactly", async () => {
+  // flat reader 是旧版支持的承重部分。通过 pod-aware reader 读取 flat rig 会把每个 id 解析为
+  // malformed、将 live rig 读为空，并让 guard 报告“没有任何内容运行”；这是一个虚假缺席，且发生在
+  // 唯一能发现将丢弃内容的路径上。若该 reader 被换回，本用例会显著失败。
+  it("旧版 spec 与 live rig 完全匹配时保持静默", async () => {
     seedLiveRig(RIG_NAME, ["dev", "qa"]);
     const specPath = writeLegacySpec(RIG_NAME, ["dev", "qa"]);
 
@@ -214,12 +207,11 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     expect(fs.existsSync(path.join(tmpDir, "legacy-conforming.rigbundle"))).toBe(true);
   });
 
-  // DIRECTION IS NOT THE TEST — DISAGREEMENT IS. An earlier revision let this case through, reasoning
-  // that a spec declaring MORE than is live is a bundle whose job is to bring the rest up. That read
-  // the `nodes` rows as "currently-running sessions"; they are the rig's PERSISTED topology. A
-  // restore that raises seats the spec never declared yields a different rig just as surely as one
-  // that drops them, so it refuses too, and --allow-drift is the way through.
-  it("refuses when the spec declares MORE than the rig's persisted topology", async () => {
+  // 测试的是不一致，而非方向。早期修订会放行此情形，理由是声明比 live 更多内容的 spec bundle
+  // 本就用于启动其余内容。该理解把 `nodes` 行视为“当前运行的 session”；但它们是 rig 的持久拓扑。
+  // restore 若启动 spec 从未声明的 seat，与丢弃 seat 同样会生成不同 rig，因此也要拒绝，并以
+  // --allow-drift 作为通道。
+  it("spec 声明内容多于 rig 持久拓扑时拒绝", async () => {
     seedLiveRig(RIG_NAME, ["dev.impl"]);
     const specPath = writeSpec(RIG_NAME, [
       { id: "dev", members: ["impl"] },
@@ -234,7 +226,7 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     expect(fs.existsSync(path.join(tmpDir, "extra.rigbundle"))).toBe(false);
   });
 
-  it("still exports the over-declaring spec when the operator passes allowDrift", async () => {
+  it("操作员传入 allowDrift 时仍导出声明过多的 spec", async () => {
     seedLiveRig(RIG_NAME, ["dev.impl"]);
     const specPath = writeSpec(RIG_NAME, [
       { id: "dev", members: ["impl"] },
@@ -247,10 +239,9 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
     expect(fs.existsSync(path.join(tmpDir, "extra-allowed.rigbundle"))).toBe(true);
   });
 
-  // A MALFORMED SPEC IS A BROKEN FILE, NOT A DRIFTED RIG. Both fixtures below are ALSO in drift, so
-  // an implementation that assesses before validating answers 409 and sends the operator off to
-  // reconcile a topology when the real answer is "this spec does not parse".
-  it("returns the schema 400 — not a drift 409 — for a malformed pod-aware spec", async () => {
+  // 畸形 SPEC 是损坏文件，不是 drifted rig。下方两个 fixture 同时也存在 drift，因此若实现先评估再
+  // 校验，会返回 409 并让操作员去协调 topology，而真实答案是“此 spec 无法解析”。
+  it("畸形 pod-aware spec 返回 schema 400，而非 drift 409", async () => {
     seedLiveRig(RIG_NAME, ["dev.impl", "dev.qa", "orch.lead"]);
     const specPath = path.join(tmpDir, "malformed-pod.yaml");
     fs.writeFileSync(specPath, [
@@ -260,7 +251,7 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
       "  - id: dev",
       "    label: Dev",
       "    members:",
-      "      - id: impl",           // no agent_ref, no runtime, no profile
+      "      - id: impl",           // 无 agent_ref、runtime 或 profile。
       "    edges: []",
       "edges: []",
     ].join("\n"));
@@ -269,10 +260,10 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
 
     expect(res.status).toBe(400);
     const body = await res.json() as { error: string };
-    expect(body.error).toContain("Invalid pod-aware rig spec");
+    expect(body.error).toContain("非法 pod-aware 工作组 spec");
   });
 
-  it("returns the schema 400 — not a drift 409 — for a malformed legacy spec", async () => {
+  it("畸形旧版 spec 返回 schema 400，而非 drift 409", async () => {
     seedLiveRig(RIG_NAME, ["dev", "qa", "lead"]);
     const specPath = path.join(tmpDir, "malformed-legacy.yaml");
     fs.writeFileSync(specPath, [
@@ -280,7 +271,7 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
       `name: ${RIG_NAME}`,
       'version: "1.0"',
       "nodes:",
-      "  - id: dev",                // no runtime
+      "  - id: dev",                // 无 runtime。
       "edges: []",
     ].join("\n"));
 
@@ -288,13 +279,12 @@ describe("bundle create — refuses a spec that disagrees with the live rig", ()
 
     expect(res.status).toBe(400);
     const body = await res.json() as { error: string };
-    expect(body.error).toContain("Invalid rig spec");
+    expect(body.error).toContain("非法工作组 spec");
   });
 
-  // FAIL CLOSED. If the comparison itself cannot be performed, the one answer that must never be
-  // produced is "no drift, exported". A guard that reports clean because its own query threw is
-  // worse than no guard: it is a green nobody can trust, on a recovery artifact.
-  it("fails closed when the topology query itself fails — never a silent clean export", async () => {
+  // FAIL-CLOSED。若无法执行比较，绝不能给出“无 drift，已导出”。guard 因自身查询抛错而报告 clean，
+  // 比没有 guard 更糟：这是 recovery artifact 上无人可信的绿灯。
+  it("topology 查询本身失败时 fail-closed——绝不静默执行 clean export", async () => {
     seedLiveRig(RIG_NAME, ["dev.impl", "dev.qa"]);
     const specPath = writeSpec(RIG_NAME, [{ id: "dev", members: ["impl"] }]);
     db.prepare("DROP TABLE nodes").run();

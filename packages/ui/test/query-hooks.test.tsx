@@ -30,7 +30,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
 
-// Test harness for useRigSummary
+// useRigSummary 测试 harness
 function SummaryHarness() {
   const { data, isPending, error } = useRigSummary();
   if (isPending) return <div data-testid="state">pending</div>;
@@ -38,7 +38,7 @@ function SummaryHarness() {
   return <div data-testid="state">data: {data?.length}</div>;
 }
 
-// OPR.0.3.3.19 - harness for useArchivedRigs (archived-only section feed).
+// OPR.0.3.3.19——useArchivedRigs harness（仅归档 section feed）。
 function ArchivedHarness({ enabled }: { enabled?: boolean }) {
   const { data, isPending, error } = useArchivedRigs({ enabled });
   if (error) return <div data-testid="state">error: {error.message}</div>;
@@ -46,7 +46,7 @@ function ArchivedHarness({ enabled }: { enabled?: boolean }) {
   return <div data-testid="state">archived: {data?.length}</div>;
 }
 
-// Test harness for useRigGraph
+// useRigGraph 测试 harness
 function GraphHarness({ rigId }: { rigId: string }) {
   const { data, isPending, error } = useRigGraph(rigId);
   if (isPending) return <div data-testid="state">pending</div>;
@@ -54,7 +54,7 @@ function GraphHarness({ rigId }: { rigId: string }) {
   return <div data-testid="state">nodes: {data?.nodes.length}</div>;
 }
 
-// Test harness for useSnapshots
+// useSnapshots 测试 harness
 function SnapshotsHarness({ rigId }: { rigId: string }) {
   const { data, isPending, error } = useSnapshots(rigId);
   if (isPending) return <div data-testid="state">pending</div>;
@@ -62,7 +62,7 @@ function SnapshotsHarness({ rigId }: { rigId: string }) {
   return <div data-testid="state">snaps: {data?.length}</div>;
 }
 
-// Mutation test harnesses
+// Mutation 测试 harness
 function CreateSnapshotHarness({ rigId }: { rigId: string }) {
   const mutation = useCreateSnapshot(rigId);
   return (
@@ -94,14 +94,14 @@ function ImportHarness() {
 }
 
 describe("TanStack Query hooks", () => {
-  // Test 1: QueryClientProvider wraps app — component can useQuery
+  // 测试 1：QueryClientProvider 包裹 app——组件可 useQuery
   it("component can use useQuery within QueryClientProvider", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => [] });
     render(<Wrapper><SummaryHarness /></Wrapper>);
     await waitFor(() => expect(screen.getByTestId("state").textContent).toBe("data: 0"));
   });
 
-  // Test 2: useRigSummary returns summary data
+  // 测试 2：useRigSummary 返回 summary 数据
   it("useRigSummary returns summary data with loading/success", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
@@ -109,14 +109,14 @@ describe("TanStack Query hooks", () => {
     });
     render(<Wrapper><SummaryHarness /></Wrapper>);
 
-    // Initially pending
+    // 初始 pending
     expect(screen.getByTestId("state").textContent).toBe("pending");
 
     // Then data
     await waitFor(() => expect(screen.getByTestId("state").textContent).toBe("data: 1"));
   });
 
-  // OPR.0.3.3.19: useArchivedRigs hits the archived-only endpoint.
+  // OPR.0.3.3.19：useArchivedRigs 命中仅归档端点。
   it("useArchivedRigs fetches /api/rigs/summary?archived=only", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
@@ -127,17 +127,17 @@ describe("TanStack Query hooks", () => {
     expect(mockFetch).toHaveBeenCalledWith("/api/rigs/summary?archived=only");
   });
 
-  // OPR.0.3.3.19: lazy fan-out - disabled query never fetches (collapsed
-  // Archive section costs nothing).
+  // OPR.0.3.3.19：惰性 fan-out——禁用 query 永不拉取（折叠
+  // Archive section 零成本）。
   it("useArchivedRigs does not fetch when disabled", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => [] });
     render(<Wrapper><ArchivedHarness enabled={false} /></Wrapper>);
-    // Give react-query a tick; the query must stay idle (no fetch).
+    // 给 react-query 一个 tick；query 必须保持 idle（无拉取）。
     await waitFor(() => expect(screen.getByTestId("state")).toBeTruthy());
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  // Test 3: useRigGraph returns graph data
+  // 测试 3：useRigGraph 返回 graph 数据
   it("useRigGraph returns graph data for specific rigId", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
@@ -149,7 +149,7 @@ describe("TanStack Query hooks", () => {
     expect(mockFetch).toHaveBeenCalledWith("/api/rigs/r1/graph");
   });
 
-  // Test 4: useSnapshots returns snapshot list
+  // 测试 4：useSnapshots 返回 snapshot 列表
   it("useSnapshots returns snapshot list for rigId", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
@@ -161,9 +161,9 @@ describe("TanStack Query hooks", () => {
     expect(mockFetch).toHaveBeenCalledWith("/api/rigs/r1/snapshots");
   });
 
-  // Test 5: SSE event triggers graph invalidation — covered in rig-events.test.tsx
+  // 测试 5：SSE 事件触发 graph 失效——在 rig-events.test.tsx 覆盖
 
-  // Test 6: useCreateSnapshot mutation invalidates snapshot list
+  // 测试 6：useCreateSnapshot mutation 失效 snapshot 列表
   it("useCreateSnapshot invalidates snapshot query on success", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ id: "snap-new" }) });
     const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
@@ -175,7 +175,7 @@ describe("TanStack Query hooks", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["rig", "r1", "snapshots"] });
   });
 
-  // Test 7: useRestoreSnapshot mutation invalidates rig data
+  // 测试 7：useRestoreSnapshot mutation 失效 rig 数据
   it("useRestoreSnapshot invalidates rig query on success", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ nodes: [] }) });
     const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
@@ -187,7 +187,7 @@ describe("TanStack Query hooks", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["rig", "r1"] });
   });
 
-  // Test 8: Error state propagates from failed query
+  // 测试 8：错误状态从失败 query 传播
   it("error state propagates from failed query", async () => {
     mockFetch.mockResolvedValue({ ok: false, status: 500 });
     render(<Wrapper><SummaryHarness /></Wrapper>);
@@ -195,7 +195,7 @@ describe("TanStack Query hooks", () => {
     await waitFor(() => expect(screen.getByTestId("state").textContent).toContain("error"));
   });
 
-  // Test 9: useCreateSnapshot invalidates BOTH snapshots AND summary
+  // 测试 9：useCreateSnapshot 同时失效 snapshots 和 summary
   it("useCreateSnapshot invalidates both snapshots and summary queries", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ id: "snap-new" }) });
     const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
@@ -210,7 +210,7 @@ describe("TanStack Query hooks", () => {
     expect(calls).toContain(JSON.stringify({ queryKey: ["rigs", "summary"] }));
   });
 
-  // Test 10: useImportRig invalidates summary query after successful instantiate
+  // 测试 10：useImportRig 在成功 instantiate 后失效 summary query
   it("useImportRig invalidates summary query on success", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
@@ -225,10 +225,10 @@ describe("TanStack Query hooks", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["rigs", "summary"] });
   });
 
-  // slice-04 qitem-20260721000001-ps-stall-driver — U2 (regression pin; genuine RED
-  // at the test-only gate, green now): both the ps and default-summary queryFns
-  // forward the TanStack AbortSignal to fetch, and cancelQueries aborts it. Pre-fix,
-  // both queryFns called fetch(url) with no signal.
+  // slice-04 qitem-20260721000001-ps-stall-driver——U2（回归锁；test-only
+  // 门禁曾真 RED，现绿）：ps 和 default-summary queryFn 都把 TanStack
+  // AbortSignal 转发给 fetch，cancelQueries 将其中止。修复前，两个 queryFn
+  // 都调 fetch(url) 无 signal。
   function PsSummaryHarness() {
     usePsEntries();
     useRigSummary();
@@ -249,7 +249,7 @@ describe("TanStack Query hooks", () => {
     const psSignal = (psCall?.[1] as { signal?: AbortSignal } | undefined)?.signal;
     const sumSignal = (sumCall?.[1] as { signal?: AbortSignal } | undefined)?.signal;
 
-    // Genuine RED at the test-only gate; regression now. Pre-fix, fetch was called with no options/signal.
+    // test-only 门禁曾真 RED；现为回归。修复前，fetch 调用无 options/signal。
     expect(psSignal).toBeInstanceOf(AbortSignal);
     expect(sumSignal).toBeInstanceOf(AbortSignal);
 

@@ -1,9 +1,7 @@
-// Operator Surface Reconciliation v0 — steering hook + types.
+// Operator Surface Reconciliation v0——引导钩子与类型。
 //
-// Wraps GET /api/steering. Surfaces the daemon's
-// "steering_workspace_not_configured" 503 path as a structured
-// `unavailable` sentinel so the UI can render a setup hint instead
-// of crashing on an undefined payload.
+// 封装 GET /api/steering。把后台服务的 "steering_workspace_not_configured" 503 路径
+// 表达为结构化 `unavailable` 哨兵，使 UI 能显示设置提示，而不是因 payload 未定义而崩溃。
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -76,7 +74,7 @@ export function useSteering() {
   });
 }
 
-// --- health summary ---
+// --- 健康状态摘要 ---
 
 export interface NodeHealthSummary {
   total: number;
@@ -122,7 +120,7 @@ export function useContextHealth() {
   });
 }
 
-// --- spec review hook (item 3) ---
+// --- 规范评审钩子（第 3 项）---
 
 export interface SpecReviewError {
   field?: string;
@@ -134,7 +132,7 @@ export interface SpecReviewResponse {
   ok?: boolean;
   errors?: SpecReviewError[];
   warnings?: SpecReviewError[];
-  /** Daemon may include extra metadata (sourceState, ...) — pass-through. */
+  /** 后台服务可能包含额外元数据（sourceState 等）；原样透传。 */
   [k: string]: unknown;
 }
 
@@ -144,9 +142,8 @@ async function fetchSpecReview(kind: "rig" | "agent", yaml: string): Promise<Spe
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ yaml }),
   });
-  // Daemon returns 200 with errors[] for both valid + invalid specs
-  // (per spec-review.ts contract — the SpecReviewError throw path
-  // surfaces as 400). Treat both as "got a review back".
+  // 对有效和无效规范，后台服务都会返回 200 与 errors[]（按 spec-review.ts 契约，
+  // SpecReviewError 抛出路径才表现为 400）。两者都视为“已获得评审结果”。
   if (res.status === 400) {
     return (await res.json()) as SpecReviewResponse;
   }

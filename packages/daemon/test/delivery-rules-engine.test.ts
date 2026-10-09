@@ -1,13 +1,10 @@
-// OPR.0.5.6.1 — the §5 delivery rules engine (locked spec + A1 single-human
-// narrowing + A2 AM-F1..F5; F-7 OFF-IS-RESPECTED locked at dispatch, no founder
-// reversal received; F-8 RULED enum/dials consumed, never re-minted).
+// OPR.0.5.6.1——第 5 节交付规则引擎（锁定 spec + A1 单人收窄 + A2 AM-F1..F5；
+// F-7“尊重 OFF”在派发时锁定，未收到发起人反转；F-8 裁决的 enum/档位只消费，绝不重造）。
 //
-// RED-first with final test bytes at pristine base 0d6e65743: the engine module
-// does not exist, prefs.deliveryClass/away are stored-but-inert, the mention
-// decision is two dial-reads 230 lines apart (queue-access.ts:39 +
-// slack-subsystem.ts:184), the operator rung records "cited, not built" and
-// exhausts in the same breath, and no digest/deferral machinery exists.
-// Every section below fails at base for exactly those reasons.
+// 在干净基线 0d6e65743 上以最终测试字节红灯优先：引擎模块不存在，
+// prefs.deliveryClass/away 虽存储却不生效，mention 裁决由相隔 230 行的两次档位读取决定
+//（queue-access.ts:39 + slack-subsystem.ts:184），操作人员层级记录“已引用但未构建”后立即耗尽，
+// 且没有摘要/延后机制。下方每个区段都恰因这些原因在基线失败。
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -28,8 +25,7 @@ import { WatchdogJobsRepository, PHASE_D_POLICIES } from "../src/domain/watchdog
 import { DispatchBuffer } from "../src/domain/gateway/dispatch-buffer.js";
 import { runWakeLadderTick } from "../src/domain/queue-wake-ladder.js";
 
-// The engine is imported dynamically so each section carries its own RED
-// receipt ("engine module absent") instead of one collection-time failure.
+// 动态导入引擎，使每个区段各自携带红灯回执（“引擎模块缺失”），而非采集阶段一次性失败。
 type EngineModule = typeof import("../src/domain/gateway/delivery-rules-engine.js");
 async function engine(): Promise<EngineModule | null> {
   try {
@@ -55,9 +51,8 @@ async function digestFlushModule(): Promise<Record<string, unknown> | null> {
 
 const SRC_ROOT = join(__dirname, "..", "src");
 
-/** Instrument fix (visible, W2 findings 5-7): the structural pins grep CODE,
- *  not documentation — the module docs legitimately NAME the banned literals
- *  ("post-failed does not exist", "no setInterval anywhere here"). */
+/** 工具修正（可见，W2 发现 5-7）：结构固定检查搜索代码而非文档；模块文档可以合理地
+ *  点名被禁字面量（“post-failed 不存在”“此处没有 setInterval”）。 */
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
@@ -91,11 +86,10 @@ function ensureFinalColumns(db: Database.Database): void {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §1 THE CLASS MATRIX (AM-F2: completeness is arithmetic; every cell cites its
-// ruling). 4 prefs × 4 availabilities × 2 modes = 32 cells. The single-human
-// terminal column rides the away/off escalation cells (A1: next-person cells
-// never existed as separate cells; termination is a property of those cells).
-// Quiet cells never mention (mention === (outcome === "interrupt") only).
+// §1 类别矩阵（AM-F2：完整性由算术保证，每个单元格引用其裁决）。
+// 4 种 prefs × 4 种 availability × 2 种 mode = 32 个单元格。单人终止列依附于 away/off
+// 升级单元格（A1：next-person 从未作为独立单元格存在；终止是这些单元格的属性）。
+// 静默单元格绝不 mention（仅 outcome === "interrupt" 时 mention）。
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Cell = {
@@ -111,8 +105,8 @@ type Cell = {
 
 const A = "available", F = "focus", W = "away", O = "off";
 const MATRIX: Cell[] = [
-  // pref A — interrupt-always (§5 register: "delivered immediately, every time");
-  // off is the one modulation F-7/F-8 allow (off suppresses interruption, never delivery).
+  // 偏好 A——始终 interrupt（第 5 节登记：“每次立即交付”）；
+  // off 是 F-7/F-8 唯一允许的调节（off 抑制打断，但绝不抑制交付）。
   { pref: "A", availability: A, mode: "normal", outcome: "interrupt", cite: "register A interrupt-always" },
   { pref: "A", availability: F, mode: "normal", outcome: "interrupt", cite: "register A overrides focus (always means always)" },
   { pref: "A", availability: W, mode: "normal", outcome: "interrupt", cite: "register A overrides away (always means always)" },
@@ -121,7 +115,7 @@ const MATRIX: Cell[] = [
   { pref: "A", availability: F, mode: "escalation", outcome: "interrupt", cite: "design §3: focus escalation = post + mention" },
   { pref: "A", availability: W, mode: "escalation", outcome: "interrupt", termination: true, cite: "register A immediate even away; single-human termination recorded (A1.1)" },
   { pref: "A", availability: O, mode: "escalation", outcome: "notify", termination: true, cite: "F-7 VERBATIM: off is respected, escalation never overrides; termination row + escalations view stay loud" },
-  // pref B — notify; escalation lifts to interrupt; away+B = the M1 §5 preset (30-minute deferral).
+  // 偏好 B——notify；升级后为 interrupt；away+B 是 M1 第 5 节预设（延后 30 分钟）。
   { pref: "B", availability: A, mode: "normal", outcome: "notify", cite: "register B threaded post, no mention" },
   { pref: "B", availability: F, mode: "normal", outcome: "notify", cite: "register B" },
   { pref: "B", availability: W, mode: "normal", outcome: "notify", cite: "design §3: away normal = post, no mention" },
@@ -130,7 +124,7 @@ const MATRIX: Cell[] = [
   { pref: "B", availability: F, mode: "escalation", outcome: "interrupt", cite: "design §3: focus escalation = post + mention" },
   { pref: "B", availability: W, mode: "escalation", outcome: "interrupt", deferMinutes: 30, termination: true, cite: "M1 §5 AWAY preset + AM-F3: exactly one interrupt at T+30 to the SAME human; termination recorded (A1.1)" },
   { pref: "B", availability: O, mode: "escalation", outcome: "notify", termination: true, cite: "F-7 VERBATIM cell" },
-  // pref C — 4h digest; escalation lifts out of digest entirely.
+  // 偏好 C——4 小时摘要；升级后完全脱离摘要。
   { pref: "C", availability: A, mode: "normal", outcome: "digest", digestWindow: "4h", cite: "register C worker-parked 4h digest" },
   { pref: "C", availability: F, mode: "normal", outcome: "digest", digestWindow: "4h", cite: "register C" },
   { pref: "C", availability: W, mode: "normal", outcome: "digest", digestWindow: "4h", cite: "register C" },
@@ -139,7 +133,7 @@ const MATRIX: Cell[] = [
   { pref: "C", availability: F, mode: "escalation", outcome: "interrupt", cite: "escalation never digests" },
   { pref: "C", availability: W, mode: "escalation", outcome: "interrupt", deferMinutes: 30, termination: true, cite: "away escalation defers per the preset (uniform non-A rule, documented)" },
   { pref: "C", availability: O, mode: "escalation", outcome: "notify", termination: true, cite: "F-7 VERBATIM cell" },
-  // pref D — daily digest; same escalation lift.
+  // 偏好 D——每日摘要；采用相同的升级方式。
   { pref: "D", availability: A, mode: "normal", outcome: "digest", digestWindow: "daily", cite: "register D daily batch" },
   { pref: "D", availability: F, mode: "normal", outcome: "digest", digestWindow: "daily", cite: "register D" },
   { pref: "D", availability: W, mode: "normal", outcome: "digest", digestWindow: "daily", cite: "register D" },
@@ -150,29 +144,28 @@ const MATRIX: Cell[] = [
   { pref: "D", availability: O, mode: "escalation", outcome: "notify", termination: true, cite: "F-7 VERBATIM cell" },
 ];
 
-describe("OPR.0.5.6.1 §1 — the full class matrix, one receipt per cell (AM-F2)", () => {
-  it("ARITHMETIC PIN: the matrix enumerates exactly 4 prefs × 4 availabilities × 2 modes = 32 cells", () => {
+describe("OPR.0.5.6.1 §1——完整类别矩阵，每个单元格一条回执（AM-F2）", () => {
+  it("算术固定：矩阵恰好枚举 4 种偏好 × 4 种可用性 × 2 种模式 = 32 个单元格", () => {
     expect(MATRIX.length).toBe(4 * 4 * 2);
     const keys = new Set(MATRIX.map((c) => `${c.pref}|${c.availability}|${c.mode}`));
     expect(keys.size).toBe(32);
   });
 
   for (const cell of MATRIX) {
-    it(`CELL ${cell.pref}×${cell.availability}×${cell.mode} → ${cell.outcome}${cell.deferMinutes ? ` deferred ${cell.deferMinutes}m` : ""}${cell.termination ? " +termination" : ""} [${cell.cite}]`, async () => {
+    it(`单元格 ${cell.pref}×${cell.availability}×${cell.mode} → ${cell.outcome}${cell.deferMinutes ? ` 延后 ${cell.deferMinutes} 分钟` : ""}${cell.termination ? " +终止" : ""} [${cell.cite}]`, async () => {
       const mod = await engine();
       expect(mod, "the delivery rules engine module must exist (RED at base: absent)").not.toBeNull();
       const decision = mod!.decideDelivery({
-        // Fixture correction (visible, W2 finding 1-3): LEVEL IS NOT A MATRIX
-        // AXIS — the ruled matrix is pref x availability x mode. Cells run at
-        // ALERT (the human-required traffic the engine actually routes); the
-        // dial-demotion semantic has its own dedicated test below at NOTICE.
+        // Fixture 修正（可见，W2 发现 1-3）：LEVEL 不是矩阵轴；已裁决矩阵为
+        // pref × availability × mode。单元格以 ALERT 运行（引擎实际路由的需人工流量）；
+        // 档位降级语义在下方以 NOTICE 单独测试。
         level: "ALERT",
         escalation: cell.mode === "escalation",
         human: { entityId: "human-founder", deliveryClass: cell.pref, availability: cell.availability },
         dials: { minimumLevelThatPosts: "NOTICE", minimumLevelThatInterrupts: "ALERT" },
       });
       expect(decision.outcome).toBe(cell.outcome);
-      // quiet cells never mention — any mention from a notify/digest/log cell is the red
+      // 静默单元格绝不 mention；notify/digest/log 单元格出现任何 mention 都是红灯。
       expect(decision.mention).toBe(cell.outcome === "interrupt");
       if (cell.digestWindow) expect(decision.digestWindow).toBe(cell.digestWindow);
       if (cell.deferMinutes) expect(decision.deferMinutes).toBe(cell.deferMinutes);
@@ -189,7 +182,7 @@ describe("OPR.0.5.6.1 §1 — the full class matrix, one receipt per cell (AM-F2
     });
   }
 
-  it("LOG: a RECORD-level message (below the posts dial) decides log — durable only, never posted", async () => {
+  it("LOG：记录级消息（低于 posts 档位）裁决为 log——仅持久化，绝不发送", async () => {
     const mod = await engine();
     expect(mod).not.toBeNull();
     const decision = mod!.decideDelivery({
@@ -202,7 +195,7 @@ describe("OPR.0.5.6.1 §1 — the full class matrix, one receipt per cell (AM-F2
     expect(decision.mention).toBe(false);
   });
 
-  it("DIAL DEMOTION: an interrupt-class decision below the interrupts dial demotes to notify (the S14 semantic preserved through the engine)", async () => {
+  it("档位降级：低于 interrupts 档位的 interrupt 类裁决降为 notify（通过引擎保留 S14 语义）", async () => {
     const mod = await engine();
     expect(mod).not.toBeNull();
     const decision = mod!.decideDelivery({
@@ -216,10 +209,10 @@ describe("OPR.0.5.6.1 §1 — the full class matrix, one receipt per cell (AM-F2
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §2 AVAILABILITY IN THE REGISTRY — net-new enum key, legacy away inference
+// §2 注册表中的 AVAILABILITY——全新 enum key，兼容旧版 away 推导。
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("OPR.0.5.6.1 §2 — availability is a validated prefs key; legacy away infers; conflict is loud", () => {
+describe("OPR.0.5.6.1 §2——availability 是受校验的 prefs key；可推导旧版 away；冲突响亮失败", () => {
   function fragment(prefs: Record<string, unknown>) {
     return {
       entityId: "human-founder",
@@ -231,19 +224,19 @@ describe("OPR.0.5.6.1 §2 — availability is a validated prefs key; legacy away
     };
   }
 
-  it("accepts availability available|focus|away|off (RED at base: closed key set rejects the key)", () => {
+  it("接受 availability 的 available|focus|away|off（基线红灯：封闭 key 集拒绝该 key）", () => {
     for (const availability of ["available", "focus", "away", "off"]) {
       const r = validateHumanFragment(fragment({ deliveryClass: "B", availability }));
       expect(r.ok, `availability=${availability}: ${r.ok ? "" : (r as { error: string }).error}`).toBe(true);
     }
   });
 
-  it("rejects an unknown availability value loudly", () => {
+  it("响亮拒绝未知 availability 值", () => {
     const r = validateHumanFragment(fragment({ deliveryClass: "B", availability: "busy" }));
     expect(r.ok).toBe(false);
   });
 
-  it("legacy away:true reads as availability=away when availability is absent (whole-field-absent inference only)", async () => {
+  it("availability 缺失时将旧版 away:true 读为 availability=away（仅整字段缺失时推导）", async () => {
     const mod = await engine();
     expect(mod).not.toBeNull();
     expect(mod!.resolveAvailability({ deliveryClass: "B", away: true })).toBe("away");
@@ -251,7 +244,7 @@ describe("OPR.0.5.6.1 §2 — availability is a validated prefs key; legacy away
     expect(mod!.resolveAvailability({ deliveryClass: "B", availability: "focus" })).toBe("focus");
   });
 
-  it("availability + conflicting legacy away is refused at validation (two spellings of one truth)", () => {
+  it("availability 与旧版 away 冲突时在校验阶段拒绝（同一事实的两种写法）", () => {
     const r = validateHumanFragment(fragment({ deliveryClass: "B", availability: "available", away: true }));
     expect(r.ok).toBe(false);
     const agreeing = validateHumanFragment(fragment({ deliveryClass: "B", availability: "away", away: true }));
@@ -260,10 +253,10 @@ describe("OPR.0.5.6.1 §2 — availability is a validated prefs key; legacy away
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §3 GATEWAY CONSULTS THE ENGINE (AM-F5) — behavior-level, wire harness
+// §3 GATEWAY 查询引擎（AM-F5）——行为级线上 harness。
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("OPR.0.5.6.1 §3 — the gateway consults the engine before dispatch", () => {
+describe("OPR.0.5.6.1 §3——gateway 在派发前查询引擎", () => {
   let db: Database.Database;
   let bus: EventBus;
   let repo: QueueRepository;
@@ -274,8 +267,7 @@ describe("OPR.0.5.6.1 §3 — the gateway consults the engine before dispatch", 
     migrate(db, ALL_MIGRATIONS);
     ensureFinalColumns(db);
     bus = new EventBus(db);
-    // Classify the park at write time against the same private human identity
-    // used by the gateway reader. Delivery preferences are selected per test.
+    // 写入时针对 gateway reader 使用的同一私有人类身份分类 park。交付偏好由各测试选择。
     repo = new QueueRepository(db, bus, {
       validateRig: () => true,
       loadHumanRegistry: () => registryWith({}),
@@ -327,9 +319,9 @@ describe("OPR.0.5.6.1 §3 — the gateway consults the engine before dispatch", 
     });
   }
 
-  it("F-7 CELL, END TO END: an off human's ALERT park POSTS (delivery never suppressed) with NO mention, and the termination is recorded on the row (RED at base: ALERT mentions)", async () => {
-    // Fixture correction (visible, W2 finding 4): the termination is the
-    // ESCALATION record (A1.1/F-7) — the park carries the escalation tag.
+  it("F-7 单元格端到端：off 状态人员的 ALERT 停驻仍发送（交付绝不抑制）但不 mention，并在记录上保存终止信息（基线红灯：ALERT 会 mention）", async () => {
+    // Fixture 修正（可见，W2 发现 4）：终止信息位于升级记录（A1.1/F-7），
+    // park 携带升级 tag。
     const row = await parkOnFounder(["escalation"]);
     const registry = registryWith({ deliveryClass: "B", availability: "off" });
     const ports = makeQueuePorts(repo, { loadHumanRegistry: () => registry } as never);
@@ -354,7 +346,7 @@ describe("OPR.0.5.6.1 §3 — the gateway consults the engine before dispatch", 
     }
   });
 
-  it("QUIET CELL ABSENCE: a focus human's normal NOTICE post carries no mention while an available A-class ALERT still mentions (floor)", async () => {
+  it("静默单元格缺省：focus 状态人员的普通 NOTICE 不 mention，而 available 状态的 A 类 ALERT 仍 mention（下限）", async () => {
     const row = await parkOnFounder();
     const registry = registryWith({ deliveryClass: "B", availability: "focus" });
     const ports = makeQueuePorts(repo, { loadHumanRegistry: () => registry } as never);
@@ -374,7 +366,7 @@ describe("OPR.0.5.6.1 §3 — the gateway consults the engine before dispatch", 
     }
   });
 
-  it("DIGEST CONTAINMENT: a C-class human's rows are NEVER dispatched individually (RED at base: each row posts on its own)", async () => {
+  it("摘要边界：C 类人员的记录绝不单独派发（基线红灯：每条记录各自发送）", async () => {
     await parkOnFounder();
     const registry = registryWith({ deliveryClass: "C", availability: "available" });
     const ports = makeQueuePorts(repo, { loadHumanRegistry: () => registry } as never);
@@ -394,10 +386,10 @@ describe("OPR.0.5.6.1 §3 — the gateway consults the engine before dispatch", 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §4 DIGEST — lossless, exactly-once, restart-durable window (AM-F1 tooth)
+// §4 摘要——无损、恰好一次、跨重启持久的窗口（AM-F1 约束）。
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, redrive until success)", () => {
+describe("OPR.0.5.6.1 §4——C/D 摘要刷新（v3：传输事实优先，重新驱动直至成功）", () => {
   let db: Database.Database;
   let repo: QueueRepository;
   let home: string;
@@ -462,9 +454,8 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
         if (opts?.failFetch) {
           return new Response(JSON.stringify({ ok: false, error: "fatal_error" }), { status: 500, headers: { "content-type": "application/json" } });
         }
-        // Instrument fix (visible, W9 HOLD): count only REAL chat.postMessage
-        // posts — the replay path's reconcile-by-marker channel SEARCH also
-        // rides this fetch and must never inflate the post count.
+        // 工具修正（可见，W9 HOLD）：只统计真实 chat.postMessage 发送；重放路径按标记对账的
+        // channel SEARCH 也经过此 fetch，绝不能虚增发送数。
         if (String(url).includes("chat.postMessage")) {
           posts.push(JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>);
           return new Response(JSON.stringify({ ok: true, ts: `1724.9${posts.length}` }), { status: 200, headers: { "content-type": "application/json" } });
@@ -486,7 +477,7 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
     });
   }
 
-  it("LOSSLESS + EXACTLY-ONCE (v3): N recorded digest decisions flush as independent complete posts through the REAL wire; receipts land only AFTER transport truth; a second flush dispatches nothing new (RED at base: no flush machinery exists)", async () => {
+  it("无损且恰好一次（v3）：N 个已记录摘要裁决经真实线路刷新为独立完整消息；回执只在传输事实之后落地；第二次刷新不派发新内容（基线红灯：无刷新机制）", async () => {
     const mod = await digestFlushModule();
     expect(mod, "policies/delivery-digest-flush must exist (RED at base: absent)").not.toBeNull();
     const rows = await nParks(3);
@@ -509,7 +500,7 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
       const body = JSON.stringify(posts);
       for (const row of rows) expect(body).toContain(row.body);
       expect(body, "the digest is notify-class: no mention").not.toContain("<@UFOUNDER>");
-      // receipts landed AFTER the post (transport truth), digest-tokened, per member
+      // 回执在发送（传输事实）之后落地，逐成员携带摘要 token。
       for (const { qid, key } of keys) {
         const receipts = repo.listTransitions(qid).filter((t) => t.transitionNote?.startsWith("slack-owner-notification-posted "));
         expect(receipts.length, `receipt on ${qid}`).toBe(1);
@@ -525,7 +516,7 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
     }
   });
 
-  it("MESSAGE-TIME DECISION (R1 B-4): a prefs change between containment and flush neither drops nor reclassifies the recorded member", async () => {
+  it("消息时刻裁决（R1 B-4）：边界收纳与刷新之间偏好变化时，不丢弃也不重新分类已记录成员", async () => {
     const mod = await digestFlushModule();
     expect(mod).not.toBeNull();
     const rows = await nParks(2);
@@ -534,7 +525,7 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
     for (const alert of await ports.listHumanAlerts({ minimumLevel: "NOTICE" })) {
       recordDigestDecision(alert.qitemId, alert.notificationKey ?? alert.qitemId, "4h");
     }
-    // the human flips to A AFTER containment recorded the digest decisions
+    // 边界收纳记录摘要裁决后，人员才切换到 A。
     const posts: Array<Record<string, unknown>> = [];
     const wire = digestWire(posts);
     try {
@@ -557,7 +548,7 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
     }
   });
 
-  it("TRANSPORT-FAILURE REDRIVE (R1/R2 required discriminator): a failed post leaves members FLUSHABLE with zero false receipts; reconstruction replays the SAME durable decision to one eventual post and correctly keyed receipts (RED at candidate: pre-post receipts suppress recovery)", async () => {
+  it("传输失败重驱（R1/R2 必需判别）：发送失败后成员仍可刷新且无虚假回执；重建会重放同一持久裁决，最终只发送一次并生成 key 正确的回执（候选红灯：发送前回执会抑制恢复）", async () => {
     const mod = await digestFlushModule();
     expect(mod).not.toBeNull();
     await nParks(2);
@@ -585,8 +576,8 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
     } finally {
       failing.stop();
     }
-    // reconstruction: a fresh wire over the SAME home replays the retained
-    // durable decision — one eventual post, receipts after transport truth
+    // 重建：在同一 home 上建立新线路，重放保留的持久裁决；最终发送一次，
+    // 回执在传输事实之后产生。
     const healthy = digestWire(posts);
     try {
       healthy.startServices?.();
@@ -597,7 +588,7 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
         expect(receipts.length, `receipt on ${qid} after redrive`).toBe(1);
         expect(receipts[0]!.transitionNote).toContain(`notification_key=${key}`);
       }
-      // and the flush now finds nothing — exactly once end to end
+      // 此时刷新找不到任何内容——端到端恰好一次。
       const after = await flushViaWire(mod!, healthy);
       expect(after.members).toBe(0);
       await new Promise((resolve) => setTimeout(resolve, 30));
@@ -607,10 +598,10 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
     }
   });
 
-  it("MEMBERSHIP EXCLUSIVITY (R1 HOLD c7818ceb required discriminator): with A+B pending receiptless, adding C mints a NON-OVERLAPPING digest — pending decisions never share a member, and after healing every member posts exactly once (RED at candidate: the set-hash mints an overlapping A/B/C decision)", async () => {
+  it("成员互斥（R1 HOLD c7818ceb 必需判别）：A+B 待处理且无回执时，加入 C 会生成不重叠摘要；待处理裁决绝不共享成员，恢复后每个成员恰好发送一次（候选红灯：集合哈希生成重叠 A/B/C 裁决）", async () => {
     const mod = await digestFlushModule();
     expect(mod).not.toBeNull();
-    // A + B recorded, transport DOWN: their digest decision goes pending, zero receipts
+    // A+B 已记录且传输不可用：其摘要裁决进入 pending，回执为零。
     const firstRows = await nParks(2);
     const registry = registryWith({ deliveryClass: "C", availability: "available" });
     const ports = makeQueuePorts(repo, { loadHumanRegistry: () => registry } as never);
@@ -625,7 +616,7 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
       const first = await flushViaWire(mod!, failing);
       expect(first.members).toBe(2);
       await new Promise((resolve) => setTimeout(resolve, 40));
-      // C arrives while A+B are pending receiptless
+      // A+B 待处理且无回执时，C 到达。
       const [cRowCreated] = await nParks(1);
       trackedC = cRowCreated!;
       for (const alert of await ports.listHumanAlerts({ minimumLevel: "NOTICE" })) {
@@ -635,7 +626,7 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
       }
       const second = await flushViaWire(mod!, failing);
       await new Promise((resolve) => setTimeout(resolve, 40));
-      // pending decisions must be member-exclusive: no key in more than one
+      // 待处理裁决必须保证成员互斥：任何 key 都不能出现在多个裁决中。
       const pending = new DispatchBuffer(home).pending().filter((d) => d.decisionId.startsWith("digest:"));
       const seen = new Map<string, number>();
       for (const d of pending) {
@@ -653,16 +644,15 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
     } finally {
       failing.stop();
     }
-    // transport heals: reconstruction replays BOTH exclusive decisions —
-    // one human-visible post per member episode, each receipted exactly once
+    // 传输恢复：重建会重放两个互斥裁决；每个成员事件产生一条人类可见消息，
+    // 且各自恰好一条回执。
     const healthy = digestWire(posts);
     try {
       healthy.startServices?.();
       await new Promise((resolve) => setTimeout(resolve, 80));
-      // R1 e22e804f correction: EVERY tracked member — A, B, AND C — must
-      // appear in exactly ONE posted digest and carry exactly ONE receipt.
-      // (The prior firstRows-only count with a <=1 receipt bound could not
-      // refuse a zero-C outcome — the exact proof gap the HOLD named.)
+      // R1 e22e804f 修正：每个被跟踪成员 A、B、C 都必须恰好出现在一条已发送摘要中，
+      // 且恰好携带一条回执。（先前只统计 firstRows 且回执上限为 <=1，无法拒绝 C 为零的结果，
+      // 这正是 HOLD 点名的证明缺口。）
       const tracked = [...firstRows, trackedC];
       const memberAppearances = new Map<string, number>();
       for (const post of posts) {
@@ -681,17 +671,17 @@ describe("OPR.0.5.6.1 §4 — the C/D digest flush (v3: transport truth first, r
     }
   });
 
-  it("REGISTERED SUBSTRATE: the digest flush and the away deferral are PHASE_D policies — no third timer engine (AM-F1 anti-sprawl)", async () => {
+  it("已登记底座：摘要刷新和 away 延后都是 PHASE_D 策略，不引入第三套计时引擎（AM-F1 防扩散）", async () => {
     expect(PHASE_D_POLICIES).toContain("delivery-digest-flush");
     expect(PHASE_D_POLICIES).toContain("delivery-deferral");
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §5 AWAY DEFERRAL — restart-durable one-shot at T+30 (AM-F1/AM-F3 teeth)
+// §5 AWAY 延后——在 T+30 单次触发且跨重启持久（AM-F1/AM-F3 约束）。
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("OPR.0.5.6.1 §5 — the 30-minute away deferral on the watchdog substrate", () => {
+describe("OPR.0.5.6.1 §5——watchdog 底座上的 30 分钟 away 延后", () => {
   let db: Database.Database;
   let repo: QueueRepository;
   let jobs: WatchdogJobsRepository;
@@ -705,7 +695,7 @@ describe("OPR.0.5.6.1 §5 — the 30-minute away deferral on the watchdog substr
   });
   afterEach(() => db.close());
 
-  it("DEFERRAL ARMS DURABLY AND FIRES EXACTLY ONCE AT T+30, surviving a daemon restart mid-window (v3: dispatch at T+30, terminal only on the observed receipt — never zero, never two)", async () => {
+  it("延后持久武装并在 T+30 恰好触发一次，能跨越窗口中途的后台服务重启（v3：T+30 派发，仅观测到回执后终态——绝不少于或多于一次）", async () => {
     const mod = await deferralPolicyModule();
     expect(mod, "policies/delivery-deferral must exist (RED at base: absent)").not.toBeNull();
     const row = await repo.create({
@@ -720,7 +710,7 @@ describe("OPR.0.5.6.1 §5 — the 30-minute away deferral on the watchdog substr
     const jobRow = db.prepare("SELECT policy, state FROM watchdog_jobs WHERE job_id = ?").get(armed.jobId) as { policy: string; state: string };
     expect(jobRow).toMatchObject({ policy: "delivery-deferral", state: "active" });
 
-    // "restart": a NEW repository instance over the same DB sees the same job
+    // “重启”：同一数据库上的新 repository 实例看到同一个 job。
     const jobsAfterRestart = new WatchdogJobsRepository(db);
     const fire = (mod as { fireDeliveryDeferralIfDue: (deps: unknown) => Promise<{ fired: boolean }> }).fireDeliveryDeferralIfDue;
     const interrupts: string[] = [];
@@ -730,19 +720,19 @@ describe("OPR.0.5.6.1 §5 — the 30-minute away deferral on the watchdog substr
       jobId: armed.jobId,
       deliverInterrupt: async (qitemId: string, key: string) => {
         interrupts.push(qitemId);
-        // the delivery seam's act: the receipt lands after transport truth
+        // 交付接缝行为：回执在传输事实之后落地。
         repo.update({ qitemId, actorSession: "daemon@kernel",
           transitionNote: `slack-owner-notification-posted notification_key=${key} level=ALERT kind=human-required message_ts=1 thread_ts=1` });
         return { ok: true as const };
       },
     };
-    // before T+30: not due
+    // T+30 前：尚未到期。
     expect((await fire({ ...deps, now: new Date(Date.now() + 10 * 60_000) })).fired).toBe(false);
     expect(interrupts.length).toBe(0);
-    // at T+30: dispatches exactly once (job stays active pending the receipt observation)
+    // T+30 时：恰好派发一次（job 保持 active，等待观测回执）。
     expect((await fire({ ...deps, now: new Date(Date.now() + 31 * 60_000) })).fired).toBe(false);
     expect(interrupts).toEqual([row.qitemId]);
-    // the next evaluation observes the receipt: fired + terminal, no re-delivery
+    // 下一次评估观测到回执：已触发并进入终态，不再交付。
     expect((await fire({ ...deps, now: new Date(Date.now() + 32 * 60_000) })).fired).toBe(true);
     expect(interrupts.length).toBe(1);
     expect((await fire({ ...deps, now: new Date(Date.now() + 62 * 60_000) })).fired).toBe(false);
@@ -753,10 +743,10 @@ describe("OPR.0.5.6.1 §5 — the 30-minute away deferral on the watchdog substr
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §6 OPERATOR RUNG DELIVERS (A1.2 + AM-F3) — the S01 pointer retires
+// §6 操作人员层级执行交付（A1.2 + AM-F3）——S01 指针退役。
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("OPR.0.5.6.1 §6 — the operator rung dispatches through the engine", () => {
+describe("OPR.0.5.6.1 §6——操作人员层级通过引擎派发", () => {
   let db: Database.Database;
   let repo: QueueRepository;
 
@@ -771,8 +761,8 @@ describe("OPR.0.5.6.1 §6 — the operator rung dispatches through the engine", 
   async function batonAtOperatorRung(): Promise<QueueItem> {
     const src = await repo.create({ sourceSession: "sender@r", destinationSession: "relay@r", body: "obligation" });
     const { created } = await repo.handoff({ qitemId: src.qitemId, fromSession: "relay@r", toSession: "worker@r", nudge: false });
-    // failed wake, aged past the retry cap so the ladder escalates; orchestrator
-    // resolves to the destination itself -> self-skip -> operator rung this tick.
+    // wake 失败且老化超过重试上限，因此 ladder 升级；orchestrator 解析为目标自身，
+    // 随后自跳过，并在本次 tick 进入操作人员层级。
     const ts = new Date(Date.now() - 10 * 60_000).toISOString();
     db.prepare("UPDATE queue_items SET last_nudge_attempt = ?, last_nudge_result = ? WHERE qitem_id = ?")
       .run(ts, "failed:tmux session not found", created.qitemId);
@@ -803,7 +793,7 @@ describe("OPR.0.5.6.1 §6 — the operator rung dispatches through the engine", 
     } as never);
   }
 
-  it("DISPATCHED-TO-ENGINE: the rung records the engine decision and, on a resolved outcome, exhausts (RED at base: WakeLadderDeps has no deliveryEngine and the marker says cited-not-built)", async () => {
+  it("已派发到引擎：层级记录引擎裁决，并在结果解决后耗尽（基线红灯：WakeLadderDeps 没有 deliveryEngine，标记仍写着已引用但未构建）", async () => {
     const baton = await batonAtOperatorRung();
     const calls: Array<{ qitemId: string }> = [];
     await tickWithEngine({ decision: "interrupt", resolved: true }, calls);
@@ -816,19 +806,19 @@ describe("OPR.0.5.6.1 §6 — the operator rung dispatches through the engine", 
     expect(markersOf(baton.qitemId, "ladder-exhausted:").length).toBe(1);
   });
 
-  it("NO SILENT ADVANCE (AM-F3): a DEFERRED outcome leaves the ladder unexhausted through the deferral; resolution exhausts it; the engine is dispatched exactly once across the episode", async () => {
+  it("不静默推进（AM-F3）：DEFERRED 结果使 ladder 在延后期间保持未耗尽，解决后才耗尽；整个事件只向引擎派发一次", async () => {
     const baton = await batonAtOperatorRung();
     const calls: Array<{ qitemId: string }> = [];
     await tickWithEngine({ decision: "interrupt", resolved: false }, calls);
     expect(calls.length).toBe(1);
     expect(markersOf(baton.qitemId, "ladder-exhausted:").length, "no advance past the operator rung while the engine's outcome is pending").toBe(0);
 
-    // second tick during the deferral: no re-dispatch (exactly-once), still unexhausted
+    // 延后期间第二次 tick：不重新派发（恰好一次），仍未耗尽。
     await tickWithEngine({ decision: "interrupt", resolved: false }, calls);
     expect(calls.length, "one dispatch per episode, never immediate-plus-deferred").toBe(1);
     expect(markersOf(baton.qitemId, "ladder-exhausted:").length).toBe(0);
 
-    // the deferral fires: the delivery leg stamps the S14 receipt on the row
+    // 延后触发：交付 leg 在记录上盖 S14 回执。
     repo.update({
       qitemId: baton.qitemId,
       actorSession: "daemon@system",
@@ -839,7 +829,7 @@ describe("OPR.0.5.6.1 §6 — the operator rung dispatches through the engine", 
     expect(calls.length).toBe(1);
   });
 
-  it("THE POINTER RETIRES: queue-wake-ladder.ts no longer carries the cited-not-built text (RED at base: two copies live)", () => {
+  it("指针退役：queue-wake-ladder.ts 不再包含“已引用但未构建”文案（基线红灯：存在两份）", () => {
     const source = readFileSync(join(SRC_ROOT, "domain", "queue-wake-ladder.ts"), "utf8");
     expect(source).not.toContain("cited, not built");
     expect(source).not.toContain("cited not built");
@@ -847,25 +837,25 @@ describe("OPR.0.5.6.1 §6 — the operator rung dispatches through the engine", 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §7 STRUCTURAL PINS — vocabulary, fabricated-state absence, anti-sprawl
+// §7 结构固定——统一词汇、不伪造状态、防扩散。
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("OPR.0.5.6.1 §7 — one vocabulary, no seen, no third timer engine", () => {
-  it("ONE OUTCOME TUPLE at one definition site; the engine consumes S14 stamps and mints no transport literals (AM-F4)", async () => {
+describe("OPR.0.5.6.1 §7——统一词汇、没有 seen、没有第三套计时引擎", () => {
+  it("结果元组只在一处定义；引擎消费 S14 戳记，不创造传输字面量（AM-F4）", async () => {
     const mod = await engine();
     expect(mod).not.toBeNull();
     expect(mod!.DELIVERY_OUTCOMES).toEqual(["interrupt", "notify", "digest", "log"]);
     const raw = readFileSync(join(SRC_ROOT, "domain", "gateway", "delivery-rules-engine.ts"), "utf8");
     const source = stripComments(raw);
-    // consumes, never mints: the S14 receipt literals may be REFERENCED via the
-    // transition-log helpers but never re-spelled as template writes here
+    // 只消费，绝不创造：可以通过 transition-log 辅助函数引用 S14 回执字面量，
+    // 但绝不能在此重新拼写为模板写入。
     expect(source).not.toMatch(/slack-owner-notification-posted\s/);
     expect(source).not.toMatch(/["'`]post-failed["'`]/);
-    // the delivery-state table is documented at the seam (AM-F4's one definition site)
-    expect(raw).toContain("delivery-state");
+    // 交付状态表记录在接缝处（AM-F4 的唯一定义位置）。
+    expect(raw).toContain("投递状态表");
   });
 
-  it("NO FABRICATED STATE: no engine artifact can represent `seen` (schema + writes receipt)", async () => {
+  it("不伪造状态：任何引擎产物都不能表示 `seen`（schema 和写入回执）", async () => {
     for (const rel of [
       ["domain", "gateway", "delivery-rules-engine.ts"],
       ["domain", "policies", "delivery-deferral.ts"],
@@ -876,7 +866,7 @@ describe("OPR.0.5.6.1 §7 — one vocabulary, no seen, no third timer engine", (
     }
   });
 
-  it("ANTI-SPRAWL (AM-F1): the three new modules introduce no timer entry point — no setInterval/setTimeout; timing rides watchdog_jobs only", async () => {
+  it("防扩散（AM-F1）：三个新模块不引入计时入口——没有 setInterval/setTimeout，仅依托 watchdog_jobs", async () => {
     for (const rel of [
       ["domain", "gateway", "delivery-rules-engine.ts"],
       ["domain", "policies", "delivery-deferral.ts"],
@@ -889,8 +879,8 @@ describe("OPR.0.5.6.1 §7 — one vocabulary, no seen, no third timer engine", (
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §8 PRODUCTION COMPOSITION (R2 BLOCKING repair, artifact 57abf60f...): the
-// live paths must be REACHABLE — an injected-port green does not buy them.
+// §8 生产组合（R2 阻断修复，产物 57abf60f...）：实时路径必须可达；
+// 仅注入端口后测试转绿并不能证明这一点。
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function operatorEngineModule(): Promise<Record<string, unknown> | null> {
@@ -901,7 +891,7 @@ async function operatorEngineModule(): Promise<Record<string, unknown> | null> {
   }
 }
 
-describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3)", () => {
+describe("OPR.0.5.6.1 §8——生产组合已生效（R2 B-1/B-2/B-3）", () => {
   let db: Database.Database;
   let repo: QueueRepository;
   let home: string;
@@ -938,7 +928,7 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
     });
   }
 
-  it("B-1: the deferred-fire payload dispatches the ADVERTISED op through the REAL dispatcher and reaches the delivery seam (RED at candidate: startup hardcodes outbound_post, which the capability refuses)", async () => {
+  it("B-1：延后触发 payload 通过真实 dispatcher 派发已公布操作并到达交付接缝（候选红灯：startup 硬编码 capability 会拒绝的 outbound_post）", async () => {
     const mod = await operatorEngineModule();
     expect(mod, "operator-delivery-engine module must exist").not.toBeNull();
     const posts: Array<Record<string, unknown>> = [];
@@ -957,7 +947,7 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
       expect(res).toMatchObject({ ok: true });
       await new Promise((resolve) => setTimeout(resolve, 30));
       expect(posts.length, "the fire must reach the delivery seam, not die at capability refusal").toBe(1);
-      // R1 B-3: the receipt carries the EPISODE key, never the bare qitemId fallback
+      // R1 B-3：回执携带事件 key，绝不回退到裸 qitemId。
       const receipts = repo.listTransitions(row.qitemId).filter((t) => t.transitionNote?.startsWith("slack-owner-notification-posted "));
       expect(receipts.length).toBe(1);
       expect(receipts[0]!.transitionNote).toContain(`notification_key=${row.qitemId}:test-episode`);
@@ -966,7 +956,7 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
     }
   });
 
-  it("B-3 ladder binding: a keyed dispatched-to-engine episode resolves ONLY on its own key — a stale receipt with another key never closes the rung (RED at candidate: any historical note resolves)", async () => {
+  it("B-3 ladder 绑定：带 key 的 dispatched-to-engine 事件只能由自身 key 解决；其他 key 的陈旧回执绝不关闭层级（候选红灯：任意历史备注都会解决）", async () => {
     const src = await repo.create({ sourceSession: "sender@r", destinationSession: "relay@r", body: "obligation" });
     const { created } = await repo.handoff({ qitemId: src.qitemId, fromSession: "relay@r", toSession: "worker@r", nudge: false });
     db.prepare("UPDATE queue_items SET last_nudge_attempt = ?, last_nudge_result = ? WHERE qitem_id = ?")
@@ -983,14 +973,14 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
       },
     };
     await runWakeLadderTick(tickDeps as never);
-    // a receipt under a DIFFERENT episode key must NOT resolve
+    // 属于其他事件 key 的回执不得解决当前事件。
     repo.update({ qitemId: created.qitemId, actorSession: "daemon@kernel",
       transitionNote: `slack-owner-notification-posted notification_key=${created.qitemId}:older-episode level=ALERT kind=human-required message_ts=1 thread_ts=1` });
     await runWakeLadderTick(tickDeps as never);
     const exhaustedEarly = (db.prepare("SELECT transition_note FROM queue_transitions WHERE qitem_id = ?").all(created.qitemId) as Array<{ transition_note: string | null }>)
       .map((r) => r.transition_note ?? "").filter((n) => n.startsWith("ladder-exhausted:"));
     expect(exhaustedEarly.length, "a stale-episode receipt never closes the rung").toBe(0);
-    // the DISPATCHED episode's receipt resolves
+    // 已派发事件的回执会解决该事件。
     repo.update({ qitemId: created.qitemId, actorSession: "daemon@kernel",
       transitionNote: `slack-owner-notification-posted notification_key=${KEY} level=ALERT kind=human-required message_ts=2 thread_ts=2` });
     await runWakeLadderTick(tickDeps as never);
@@ -999,10 +989,10 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
     expect(exhausted.length).toBe(1);
   });
 
-  it("B-3 ladder binding PRE-MARKER (R2 003f4786 required discriminator): an OLDER keyed receipt already on the row before a new dispatch marker never closes the new rung — the key derives BEFORE any resolution note is evaluated", async () => {
+  it("B-3 ladder 绑定前置标记（R2 003f4786 必需判别）：新派发标记写入前已在记录上的旧 key 回执绝不关闭新层级；必须先推导 key，再评估任何解决备注", async () => {
     const src = await repo.create({ sourceSession: "sender@r", destinationSession: "relay@r", body: "obligation" });
     const { created } = await repo.handoff({ qitemId: src.qitemId, fromSession: "relay@r", toSession: "worker@r", nudge: false });
-    // the OLD episode's receipt lands FIRST (before any ladder activity)
+    // 旧事件的回执最先落地（早于任何 ladder 活动）。
     repo.update({ qitemId: created.qitemId, actorSession: "daemon@kernel",
       transitionNote: `slack-owner-notification-posted notification_key=${created.qitemId}:older-episode level=ALERT kind=human-required message_ts=1 thread_ts=1` });
     db.prepare("UPDATE queue_items SET last_nudge_attempt = ?, last_nudge_result = ? WHERE qitem_id = ?")
@@ -1029,18 +1019,18 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
     expect(after.length).toBe(1);
   });
 
-  it("B-1 structural: startup.ts carries no unadvertised outbound_post literal (RED at candidate: it does)", () => {
+  it("B-1 结构：startup.ts 不含未公布的 outbound_post 字面量（候选红灯：当前含有）", () => {
     const source = readFileSync(join(SRC_ROOT, "startup.ts"), "utf8");
     expect(source).not.toContain('"outbound_post"');
   });
 
-  it("B-2 structural: the production index composition supplies deliveryEngine to the real tick (RED at candidate: only the test double exists)", () => {
+  it("B-2 结构：生产 index 组合向真实 tick 提供 deliveryEngine（候选红灯：只有测试替身）", () => {
     const source = readFileSync(join(SRC_ROOT, "index.ts"), "utf8");
     expect(source).toContain("deliveryEngine");
     expect(source).toContain("makeOperatorDeliveryEngine");
   });
 
-  it("B-2 behavioral: the REAL tick with the PRODUCTION port drives an operator-rung escalation to dispatched-to-engine, the post lands, and the receipt resolves the ladder (RED at candidate: no production port exists)", async () => {
+  it("B-2 行为：带生产端口的真实 tick 将操作人员层级升级到 dispatched-to-engine，消息落地且回执解决 ladder（候选红灯：无生产端口）", async () => {
     const mod = await operatorEngineModule();
     expect(mod).not.toBeNull();
     const posts: Array<Record<string, unknown>> = [];
@@ -1068,7 +1058,7 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
       expect(notes.join("\n")).toContain("dispatched-to-engine");
       await new Promise((resolve) => setTimeout(resolve, 40));
       expect(posts.length, "the escalation post reaches the delivery seam through the real wire").toBe(1);
-      // the S14 receipt now on the row resolves the episode on the next tick
+      // 记录上的 S14 回执会在下一次 tick 解决事件。
       await runWakeLadderTick(tickDeps as never);
       const exhausted = (db.prepare("SELECT transition_note FROM queue_transitions WHERE qitem_id = ?").all(created.qitemId) as Array<{ transition_note: string | null }>)
         .map((r) => r.transition_note ?? "").filter((n) => n.startsWith("ladder-exhausted:"));
@@ -1078,7 +1068,7 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
     }
   });
 
-  it("B-3 v3 REDRIVE POSTURE (R1 26eee9b85 + R2 003f4786: exactly-once, never zero): at delivery time the job is ACTIVE with a distinct pending dispatching marker — terminal comes only from the observed receipt", async () => {
+  it("B-3 v3 重驱姿态（R1 26eee9b85 + R2 003f4786：恰好一次，绝不为零）：交付时 job 为 ACTIVE，并带独立待处理派发标记；终态只来自观测到的回执", async () => {
     const mod = await deferralPolicyModule();
     expect(mod).not.toBeNull();
     const jobs = new WatchdogJobsRepository(db);
@@ -1095,13 +1085,13 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
       },
       now: new Date(Date.now() + 31 * 60_000),
     });
-    // the job stays ACTIVE through delivery (redrive-until-receipt), fired only on receipt
+    // job 在交付期间保持 ACTIVE（重驱直到回执），只在收到回执后标记 fired。
     expect(statesAtDelivery).toEqual(["active"]);
     expect(first.fired).toBe(false);
     const notes = repo.listTransitions(row.qitemId).map((t) => t.transitionNote ?? "");
     expect(notes.some((n) => n.startsWith("delivery-deferral-dispatching")), "the pending state is distinct from fired/terminal").toBe(true);
     expect(notes.some((n) => n.startsWith("delivery-deferral-fired"))).toBe(false);
-    // the receipt lands (the delivery seam's act) -> the next evaluation completes the episode
+    // 回执落地（交付接缝行为）后，下一次评估完成该事件。
     repo.update({ qitemId: row.qitemId, actorSession: "daemon@kernel",
       transitionNote: `slack-owner-notification-posted notification_key=${row.qitemId}:ep1 level=ALERT kind=human-required message_ts=1 thread_ts=1` });
     const second = await fire({
@@ -1114,7 +1104,7 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
     expect(repo.listTransitions(row.qitemId).some((t) => t.transitionNote?.startsWith("delivery-deferral-fired"))).toBe(true);
   });
 
-  it("B-3 v3 NEVER ZERO (R2 required discriminator): a death mid-delivery leaves the job ACTIVE; reconstructed repositories REDRIVE to exactly one delivery, one receipt, then terminal", async () => {
+  it("B-3 v3 绝不为零（R2 必需判别）：交付中途死亡后 job 保持 ACTIVE；重建 repository 后重驱为恰好一次交付、一次回执，再进入终态", async () => {
     const mod = await deferralPolicyModule();
     expect(mod).not.toBeNull();
     const jobs = new WatchdogJobsRepository(db);
@@ -1122,14 +1112,14 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
     const arm = (mod as { armDeliveryDeferral: (deps: unknown) => { jobId: string } }).armDeliveryDeferral;
     const armed = arm({ jobsRepo: jobs, queueRepo: repo, qitemId: row.qitemId, entityId: "human-founder", minutes: 30, notificationKey: `${row.qitemId}:ep1` });
     const fire = (mod as { fireDeliveryDeferralIfDue: (deps: unknown) => Promise<{ fired: boolean }> }).fireDeliveryDeferralIfDue;
-    // death mid-call: the adapter throws before any enqueue
+    // 调用中途死亡：adapter 在任何入队前抛错。
     await fire({
       jobsRepo: jobs, queueRepo: repo, jobId: armed.jobId,
       deliverInterrupt: async () => { throw new Error("process death"); },
       now: new Date(Date.now() + 31 * 60_000),
     });
     expect((db.prepare("SELECT state FROM watchdog_jobs WHERE job_id = ?").get(armed.jobId) as { state: string }).state, "no lost fire: the job survives the crash ACTIVE").toBe("active");
-    // reconstruction: fresh repositories over the same DB — the redrive delivers exactly once
+    // 重建：同一数据库上的新 repository；重驱恰好交付一次。
     const jobs2 = new WatchdogJobsRepository(db);
     let deliveries = 0;
     await fire({
@@ -1152,7 +1142,7 @@ describe("OPR.0.5.6.1 §8 — the production composition is live (R2 B-1/B-2/B-3
     expect((db.prepare("SELECT state FROM watchdog_jobs WHERE job_id = ?").get(armed.jobId) as { state: string }).state).toBe("terminal");
   });
 
-  it("B-3 delivery-seam guard: a deferral-fire payload for an already-receipted episode posts NOTHING (replay/second-decision belt — RED at candidate: it posts)", async () => {
+  it("B-3 交付接缝守卫：已有回执事件的 deferral-fire payload 不发送任何内容（重放/二次裁决保护——候选红灯：仍会发送）", async () => {
     const mod = await operatorEngineModule();
     expect(mod).not.toBeNull();
     const posts: Array<Record<string, unknown>> = [];

@@ -1,15 +1,11 @@
-// OPR.0.4.6.WF1 FR-8 (G6) + FR-9 (G8).
+// OPR.0.4.6.WF1 FR-8（G6）+ FR-9（G8）。
 //
-// FR-8: `continue` label-vs-wire honesty — after the relabel, the CLI
-// description, the route comment, and the behavior all AGREE on
-// read-only inspector semantics, and `project` remains the sole
-// advance write path (BR-2). The test exercises BOTH: the described
-// behavior (source text carries no advance language) and the actual
-// behavior (two continue calls mutate nothing).
+// FR-8：`continue` 标签与实际接线必须诚实一致。重新命名后，CLI 描述、route 注释和行为
+// 都明确表示只读检视语义，`project` 仍是唯一的推进写入路径（BR-2）。测试同时覆盖描述行为
+//（源码文本不包含推进措辞）和实际行为（两次 continue 调用不产生任何变更）。
 //
-// FR-9: every declared-but-unenforced spec key produces the fail-open
-// `declared_not_enforced_v1` advisory (warning; ok stays true) —
-// zero keys in the silent third state.
+// FR-9：每个已声明但尚未执行的 spec key 都产生 fail-open 的
+// `declared_not_enforced_v1` advisory（warning，ok 保持 true），不存在静默的第三种状态。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -54,7 +50,7 @@ const SPEC = `workflow:
         - done
 `;
 
-describe("FR-8: continue is an honest read-only inspector — label AND wire agree", () => {
+describe("FR-8：continue 是诚实的只读检视器，标签与实际接线一致", () => {
   let db: Database.Database;
   let runtime: WorkflowRuntime;
   let tmp: string;
@@ -87,7 +83,7 @@ describe("FR-8: continue is an honest read-only inspector — label AND wire agr
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("wire: two continue calls return identical state and mutate NOTHING (version, trail, frontier, queue all untouched)", async () => {
+  it("接线：两次 continue 返回相同状态且不改变任何内容（version、trail、frontier、queue 均不变）", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "honesty walk",
@@ -113,29 +109,29 @@ describe("FR-8: continue is an honest read-only inspector — label AND wire agr
     ).toBe(qitemCountBefore);
   });
 
-  it("label: the CLI command description + route comment carry inspector language and NO mechanical-advance claim", () => {
+  it("标签：CLI 命令描述与 route 注释表达检视语义，不声称机械推进", () => {
     const cliSource = readFileSync(
       join(__dirname, "..", "..", "cli", "src", "commands", "workflow.ts"),
       "utf-8",
     );
-    // The old lie is gone...
+    // 旧的误导性描述已移除……
     expect(cliSource).not.toContain("Mechanically advance an instance");
     expect(cliSource).not.toContain("Advanced instance ${instanceId}");
-    // ...and the honest label + the project() pointer are present.
+    // ……且保留诚实的标签与 project() 指引。
     expect(cliSource).toContain(
-      "Inspect an instance's current frontier + step trail (read-only",
+      "检视实例当前前沿 + 步骤轨迹（只读",
     );
-    expect(cliSource).toContain("rig workflow project");
+    expect(cliSource).toContain("zrig workflow project");
 
     const routeSource = readFileSync(
       join(__dirname, "..", "src", "routes", "workflow.ts"),
       "utf-8",
     );
-    expect(routeSource).toContain("continue  inspect (idempotent)");
+    expect(routeSource).toContain("continue  inspect（幂等）");
   });
 });
 
-describe("FR-9: every inert key produces the fail-open declared_not_enforced_v1 advisory — zero silent dead config", () => {
+describe("FR-9：每个未生效 key 都产生 fail-open 的 declared_not_enforced_v1 提示，不静默忽略配置", () => {
   function advisoriesFor(yaml: string) {
     const spec = parseWorkflowSpec(yaml, "test://fr9.yaml");
     const result = new WorkflowValidator().validate(spec);
@@ -145,7 +141,7 @@ describe("FR-9: every inert key produces the fail-open declared_not_enforced_v1 
     };
   }
 
-  it("a spec using EVERY v2 key gets one advisory per key class, all warnings, ok stays true (fail-open)", () => {
+  it("使用全部 v2 key 的规范按 key 类别各获一条提示，均为 warning，ok 保持 true", () => {
     const yaml = `workflow:
   id: fr9-all
   version: 1
@@ -171,7 +167,7 @@ describe("FR-9: every inert key produces the fail-open declared_not_enforced_v1 
     spawn_budget: 2
 `;
     const { result, advisories } = advisoriesFor(yaml);
-    expect(result.ok).toBe(true); // fail-open: warnings never block
+    expect(result.ok).toBe(true); // fail-open：warning 永不阻塞。
     const advisedKeys = advisories.map((a) => a.message.split('"')[1]);
     expect(advisedKeys).toContain("invariants.continuation_required");
     expect(advisedKeys).toContain("invariants.preserve_lineage");
@@ -179,16 +175,16 @@ describe("FR-9: every inert key produces the fail-open declared_not_enforced_v1 
     expect(advisedKeys).toContain("closure.{success,degraded,failed}");
     expect(advisedKeys).toContain("loop_guards.spawn_budget");
     expect(advisedKeys).toContain("skill_refs");
-    // OPR.0.4.6.WF2: gates[] and next_hop.mode "prefer" graduated from
-    // advisories to PARSE-REMOVALS (spec_gates_removed /
-    // spec_prefer_mode_removed) — covered in workflow-wf2-spec-language.test.ts.
+    // OPR.0.4.6.WF2：gates[] 与 next_hop.mode "prefer" 已从 advisory 升级为解析时
+    // 移除（spec_gates_removed / spec_prefer_mode_removed），由
+    // workflow-wf2-spec-language.test.ts 覆盖。
     for (const a of advisories) expect(a.severity).toBe("warning");
-    // spawn_budget's advisory names the WF-2/WF-6 acceptance pointer.
+    // spawn_budget 的 advisory 点明 WF-2/WF-6 验收指引。
     const spawn = advisories.find((a) => a.message.includes("spawn_budget"))!;
     expect(spawn.message).toContain("parallel-frontier");
   });
 
-  it("a spec using only CONSUMED keys (max_hops, preferred_targets, allowed_exits) gets ZERO advisories", () => {
+  it("只使用已消费 key（max_hops、preferred_targets、allowed_exits）的规范不产生提示", () => {
     const yaml = `workflow:
   id: fr9-clean
   version: 1

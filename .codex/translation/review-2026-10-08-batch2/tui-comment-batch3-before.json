@@ -1,0 +1,42 @@
+{
+"packages/tui/test/agent-detail-runtime-name.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/agent-detail-runtime-unknown.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/command-context-composition.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-dispatch.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-start-daemon.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/demo-gate.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/graph-command.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/reading-regressions.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/refresh.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/scroll-commands.test.ts": [
+"tui",
+"passed"
+]
+}

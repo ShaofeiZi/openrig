@@ -30,8 +30,8 @@ function mockFs(files: Record<string, string>): FsOps {
 }
 
 describe("PackageResolver", () => {
-  // Test 1: Resolve absolute path -> finds package.yaml, parses + normalizes, correct source identity
-  it("resolve absolute path -> manifest + source identity", () => {
+  // Test 1：解析绝对路径 → 找到 package.yaml，解析并规范化，返回正确的 sourceRef/sourceKind
+  it("解析绝对路径 → 清单 + 源标识", () => {
     const fs = mockFs({
       "/packages/my-pkg/package.yaml": VALID_MANIFEST,
     });
@@ -46,26 +46,26 @@ describe("PackageResolver", () => {
     expect(result.manifest.exports.skills).toHaveLength(1);
   });
 
-  // Test 2: Resolve missing package.yaml -> error
-  it("resolve path without package.yaml -> error", () => {
+  // Test 2：解析缺失 package.yaml → 错误
+  it("解析无 package.yaml 的路径 → 错误", () => {
     const fs = mockFs({});
     const resolver = new PackageResolver(fs);
 
-    expect(() => resolver.resolve("/packages/empty")).toThrow(/No package\.yaml found/);
+    expect(() => resolver.resolve("/packages/empty")).toThrow(/未找到 package\.yaml/);
   });
 
-  // Test 3: Resolve invalid manifest -> validation error
-  it("resolve path with invalid manifest -> validation error", () => {
+  // Test 3：解析非法清单 → 校验错误
+  it("解析带非法清单的路径 → 校验错误", () => {
     const fs = mockFs({
       "/packages/bad/package.yaml": INVALID_MANIFEST,
     });
     const resolver = new PackageResolver(fs);
 
-    expect(() => resolver.resolve("/packages/bad")).toThrow(/Invalid manifest/);
+    expect(() => resolver.resolve("/packages/bad")).toThrow(/manifest 无效/);
   });
 
-  // Test 4: Hash is deterministic
-  it("manifest hash is deterministic (same content -> same SHA-256)", () => {
+  // Test 4：哈希确定性（同一清单 → 同一哈希）
+  it("清单哈希确定性（同内容 → 同一 SHA-256）", () => {
     const fs = mockFs({
       "/pkg1/package.yaml": VALID_MANIFEST,
       "/pkg2/package.yaml": VALID_MANIFEST,
@@ -79,8 +79,8 @@ describe("PackageResolver", () => {
     expect(r1.manifestHash).toMatch(/^[a-f0-9]{64}$/); // SHA-256
   });
 
-  // Test 9: Resolve relative path against cwd -> correct absolute sourceRef
-  it("resolve relative path against cwd -> absolute sourceRef", () => {
+  // Test 9：相对路径按 cwd 解析 → 返回正确的绝对 sourceRef
+  it("相对 cwd 解析相对路径 → 绝对 sourceRef", () => {
     const fs = mockFs({
       "/home/user/code/my-pkg/package.yaml": VALID_MANIFEST,
     });

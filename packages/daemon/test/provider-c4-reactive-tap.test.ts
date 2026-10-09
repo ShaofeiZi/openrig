@@ -81,8 +81,8 @@ function fixture(options: FixtureOptions = {}): Fixture {
     resolveOccupantGeneration: () => "gen-uuid-node-1",
     isRegisteredOccupantGeneration: (_nodeId, generation) => generation === "gen-uuid-node-1",
   });
-  // Intentionally inject the real shipped detector. A separate source pin below proves production
-  // startup also supplies this singleton, preventing the C3-style "test-only injection" false green.
+  // 刻意注入真实正式 detector。下方独立 source pin 证明生产 startup 也提供该 singleton，
+  // 防止 C3 风格“仅测试注入”的 false green。
   const serviceDeps = {
     db,
     listRigs: () => [{ id: "rig-1" }],
@@ -177,8 +177,8 @@ function tapOutcome(
   }) as unknown as ExpectedTapResult;
 }
 
-describe("W2a tap — provenance disposition routing", () => {
-  it("resolved + fresh preserves the decision-grade signal with no trigger/discard", () => {
+describe("W2a tap——provenance disposition 路由", () => {
+  it("resolved + fresh 保留 decision-grade signal，不 trigger/discard", () => {
     const result = tapOutcome(activity({ generationProvenance: "resolved" }));
     expect(result.signals).toEqual([{
       provider: "codex",
@@ -216,7 +216,7 @@ describe("W2a tap — provenance disposition routing", () => {
     expect(result.discards).toEqual([]);
   });
 
-  it("refuses a generation mismatch at the tap even if a hostile reader marks it non-stale", () => {
+  it("即使恶意 reader 标记为非 stale，tap 也拒绝 generation mismatch", () => {
     const result = tapOutcome(activity({
       state: "unknown",
       reason: "generation_mismatch",
@@ -255,7 +255,7 @@ describe("W2a tap — provenance disposition routing", () => {
     }]);
   });
 
-  it("keeps resolved clock-stale activity ordinary: no output, not malformed", () => {
+  it("保持 resolved clock-stale activity 为普通状态：无输出，而非 malformed", () => {
     const result = tapOutcome(activity({
       state: "unknown",
       reason: "stale_runtime_hook",
@@ -274,8 +274,8 @@ describe("W2a tap — provenance disposition routing", () => {
   });
 });
 
-describe("Slice-04 C4 — production reactive activity tap", () => {
-  it.each(acceptedTokens)("maps exact structured event class %s through real getReadModel", async (token, automationUse) => {
+describe("Slice-04 C4——生产 reactive activity tap", () => {
+  it.each(acceptedTokens)("通过真实 getReadModel 映射精确的结构化 event class %s", async (token, automationUse) => {
     const fx = fixture();
     recordToken(fx, token);
 
@@ -292,11 +292,10 @@ describe("Slice-04 C4 — production reactive activity tap", () => {
     expect(model.signals[0]?.usedPercent).toBeUndefined();
   });
 
-  it("binds classification to the event class only — a rawSubtype/reason token is not a producer", async () => {
+  it("classification 只绑定 event class；rawSubtype/reason token 不是 producer", async () => {
     const fx = fixture();
-    // The interruption token sits only in the (relay tool_name) rawSubtype and the derived
-    // reason, while the event class is a generic lifecycle event. Neither rawSubtype nor
-    // reason is a structured producer, so no actionable row is emitted.
+    // interruption token 只位于 relay tool_name rawSubtype 和派生 reason 中，而 event class 是
+    // 通用 lifecycle event。rawSubtype 与 reason 都不是结构化 producer，因此不发 actionable row。
     emitActivity(fx, activity({ rawEvent: "PermissionRequest", rawSubtype: "rate_limit", reason: "rate_limit" }));
     expect((await fx.service.getReadModel()).signals).toEqual([]);
   });
@@ -313,18 +312,18 @@ describe("Slice-04 C4 — production reactive activity tap", () => {
     expect((await fx.service.getReadModel()).signals).toEqual([]);
   });
 
-  it("emits no reactive row when there is no activity event", async () => {
+  it("没有 activity event 时不发 reactive row", async () => {
     const fx = fixture();
     expect((await fx.service.getReadModel()).signals).toEqual([]);
   });
 
-  it("drops activity older than the detector freshness window", async () => {
+  it("丢弃早于 detector freshness window 的 activity", async () => {
     const fx = fixture();
     recordToken(fx, "rate_limit", "rawEvent", "2026-08-04T11:54:59.999Z");
     expect((await fx.service.getReadModel()).signals).toEqual([]);
   });
 
-  it("drops activity exactly at staleAfter, matching BR-2's inclusive now >= staleAfter rule", async () => {
+  it("恰好在 staleAfter 时丢弃 activity，符合 BR-2 的 now >= staleAfter 包含式规则", async () => {
     const fx = fixture({ now: STALE_AFTER });
     recordToken(fx, "rate_limit");
     expect((await fx.service.getReadModel()).signals).toEqual([]);
@@ -351,7 +350,7 @@ describe("Slice-04 C4 — production reactive activity tap", () => {
     expect(signals.filter((signal) => signal.sourceClass === "provider_event")).toEqual([]);
   });
 
-  it("does not relabel a generic PermissionRequest/needs_input block as provider exhaustion", async () => {
+  it("不把通用 PermissionRequest/needs_input block 重新标记为 provider exhaustion", async () => {
     const fx = fixture();
     const result = fx.store.recordHookEvent({
       runtime: "codex",
@@ -365,7 +364,7 @@ describe("Slice-04 C4 — production reactive activity tap", () => {
     expect((await fx.service.getReadModel()).signals).toEqual([]);
   });
 
-  it("production startup injects the already-created AgentActivityStore singleton", () => {
+  it("生产 startup 注入已创建的 AgentActivityStore singleton", () => {
     const startup = fs.readFileSync(path.join(import.meta.dirname, "../src/startup.ts"), "utf8");
     const start = startup.indexOf("providerService: new ProviderServiceImpl({");
     const end = startup.indexOf("restoreOrchestrator,", start);
@@ -374,7 +373,7 @@ describe("Slice-04 C4 — production reactive activity tap", () => {
     expect(startup.slice(start, end)).toMatch(/\bagentActivityStore\s*,/);
   });
 
-  it("reactive tap import closure contains no pane capture or session-transport dependency", () => {
+  it("reactive tap import closure 不含 pane capture 或 session-transport dependency", () => {
     const entry = path.join(import.meta.dirname, "../src/domain/provider/reactive-tap.ts");
     expect(fs.existsSync(entry), "production reactive tap module must exist").toBe(true);
     if (!fs.existsSync(entry)) return;
@@ -395,15 +394,15 @@ describe("Slice-04 C4 — production reactive activity tap", () => {
   });
 });
 
-// Slice-04 C4 CORRECTION (baton ce3e52a0) — PUBLIC-ALTITUDE eligibility gate +
-// structured-producer binding. These drive the real authenticated public hook
-// path (POST /api/activity/hooks → store → ProviderServiceImpl.getReadModel),
-// reproducing review50-r2's three failed probes as pins (verdict 82268f5d):
-//   HIGH-1a: a claude-code activity must never emit a Codex row (event.runtime).
-//   HIGH-1b: a registry ref absent from auth-profiles must not fabricate a row.
-//   HIGH-2 : a managed PermissionRequest tool-name `rate_limit` subtype is a
-//            permission block, not an interruption producer (bind to event class).
-describe("Slice-04 C4 correction — public-altitude eligibility gate + producer binding", () => {
+// Slice-04 C4 修正（baton ce3e52a0）——PUBLIC-ALTITUDE eligibility gate + 结构化 producer
+// binding。通过真实 authenticated public hook 路径（POST /api/activity/hooks → store →
+// ProviderServiceImpl.getReadModel）驱动，并把 review50-r2 的三个失败 probe 固定为测试
+//（verdict 82268f5d）：
+//   HIGH-1a：claude-code activity 绝不能发出 Codex row（event.runtime）。
+//   HIGH-1b：auth-profiles 中不存在的 registry ref 不得伪造 row。
+//   HIGH-2：托管 PermissionRequest 的 tool-name `rate_limit` subtype 是 permission block，
+//           不是 interruption producer；必须绑定 event class。
+describe("Slice-04 C4 修正——public-altitude eligibility gate + producer binding", () => {
   const TOKEN = "review-token";
 
   interface PublicFixtureOptions {
@@ -411,10 +410,10 @@ describe("Slice-04 C4 correction — public-altitude eligibility gate + producer
     registryRuntime?: string;
     seatRuntime?: string;
     now?: string;
-    // W2a-1 — mint a realistic occupant tenure for the seat (default true). A real registered seat has
-    // one (minted at the register verbs), so the activity resolves RESOLVED provenance and stays fresh,
-    // letting the eligibility discriminators (runtime / profile / event-class) actually run. mintTenure:
-    // false leaves the seat tenure-less ⇒ UNRESOLVED provenance, for the deliberate interim-drop guard.
+    // W2a-1——为席位生成真实 occupant tenure（默认 true）。真实注册席位在 register verb 时生成
+    // tenure，因此 activity 解析为 RESOLVED provenance 并保持 fresh，让 eligibility discriminator
+    //（runtime / profile / event-class）真正运行。mintTenure:false 让席位无 tenure → UNRESOLVED
+    // provenance，用于刻意的 interim-drop guard。
     mintTenure?: boolean;
   }
 
@@ -441,8 +440,8 @@ describe("Slice-04 C4 correction — public-altitude eligibility gate + producer
     db.prepare("INSERT INTO sessions (id, node_id, session_name, status, startup_status) VALUES (?, ?, ?, ?, ?)").run("session-1", "node-1", SESSION, "running", "ready");
     db.prepare("INSERT INTO bindings (id, node_id, tmux_session) VALUES (?, ?, ?)").run("binding-1", "node-1", SESSION);
     if (options.mintTenure !== false) {
-      // A real registered seat mints an occupant tenure at the register verbs — reproduce it so the
-      // read resolves RESOLVED provenance (fresh), not the tenure-less UNRESOLVED path.
+      // 真实注册席位会在 register verb 时生成 occupant tenure；这里复现它，使读取解析为
+      // RESOLVED provenance（fresh），而不是无 tenure 的 UNRESOLVED 路径。
       db.prepare(
         "INSERT INTO occupant_tenures (id, node_id, generation_ordinal, generation_uuid, kind, native_session_id_at_boot) VALUES (?, ?, ?, ?, ?, ?)",
       ).run("tenure-node-1", "node-1", 1, "gen-uuid-node-1", "initial", null);
@@ -474,9 +473,9 @@ describe("Slice-04 C4 correction — public-altitude eligibility gate + producer
         hookEvent: input.hookEvent ?? "Notification",
         subtype: input.subtype,
         occurredAt: input.occurredAt ?? EVENT_AT,
-        // W2a-1 — the emitting occupant's generation, carried source-bound (simulate the WIRED producer).
-        // Defaults to the fixture's minted tenure generation so the read RESOLVES (carried == live) and
-        // the eligibility discriminators actually run; pass null to exercise explicit per-path absence.
+        // W2a-1——发出事件的 occupant generation，以 source-bound 方式携带，模拟已接线 producer。
+        // 默认使用 fixture 生成的 tenure generation，使读取 RESOLVE（carried == live）并真正运行
+        // eligibility discriminator；传 null 覆盖显式逐路径 absence。
         generation: input.generation === undefined ? "gen-uuid-node-1" : input.generation,
       }),
     });
@@ -486,7 +485,7 @@ describe("Slice-04 C4 correction — public-altitude eligibility gate + producer
     return model.signals.filter((signal) => signal.sourceClass === "provider_event");
   }
 
-  it("positive: an honest Codex rate_limit event through the public hook path yields one actionable row", async () => {
+  it("正向：真实 Codex rate_limit event 经 public hook 路径产生一条 actionable row", async () => {
     const fx = publicFixture();
     expect((await postHook(fx.app, { runtime: "codex", hookEvent: "rate_limit" })).status).toBe(200);
     expect(reactiveRows(await fx.service.getReadModel())).toEqual([{
@@ -500,10 +499,10 @@ describe("Slice-04 C4 correction — public-altitude eligibility gate + producer
     }]);
   });
 
-  // W2a tap follow-on — explicit per-path absence. The unresolved observation remains non-actionable
-  // but now reaches the typed verification-required seam, visibly blocked because no provider probe
-  // producer exists. The warning sink is observability only; it never returns a verification result.
-  it("W2a tap: no carried generation ⇒ zero ProviderSignal + one visible blocked verification trigger", async () => {
+  // W2a tap 后续——显式逐路径 absence。unresolved observation 仍不可执行，但现在到达类型化
+  // verification-required seam，并因不存在 provider probe producer 而可见阻塞。warning sink 只供
+  // 可观测性使用，绝不返回 verification result。
+  it("W2a tap：未携带 generation → 零 ProviderSignal + 一次可见 blocked verification trigger", async () => {
     const fx = publicFixture(); // seat HAS a tenure; this hook explicitly carries no generation
     expect((await postHook(fx.app, { runtime: "codex", hookEvent: "rate_limit", generation: null })).status).toBe(200);
     expect(reactiveRows(await fx.service.getReadModel())).toEqual([]);
@@ -512,25 +511,25 @@ describe("Slice-04 C4 correction — public-altitude eligibility gate + producer
     ]);
   });
 
-  it("HIGH-1a: a claude-code activity attached to a Codex seat must NOT emit a Codex row", async () => {
+  it("HIGH-1a：附加到 Codex 席位的 claude-code activity 不得发出 Codex row", async () => {
     const fx = publicFixture();
     expect((await postHook(fx.app, { runtime: "claude-code", hookEvent: "rate_limit" })).status).toBe(200);
     expect(reactiveRows(await fx.service.getReadModel())).toEqual([]);
   });
 
-  it("HIGH-1b: a registry ref with no matching auth profile must NOT fabricate a reactive row", async () => {
+  it("HIGH-1b：没有匹配 auth profile 的 registry ref 不得伪造 reactive row", async () => {
     const fx = publicFixture({ profileExists: false });
     expect((await postHook(fx.app, { runtime: "codex", hookEvent: "rate_limit" })).status).toBe(200);
     expect(reactiveRows(await fx.service.getReadModel())).toEqual([]);
   });
 
-  it("HIGH-2: a managed PermissionRequest with a rate_limit tool-name subtype must NOT become exhaustion", async () => {
+  it("HIGH-2：带 rate_limit tool-name subtype 的托管 PermissionRequest 不得变成 exhaustion", async () => {
     const fx = publicFixture();
     expect((await postHook(fx.app, { runtime: "codex", hookEvent: "PermissionRequest", subtype: "rate_limit" })).status).toBe(200);
     expect(reactiveRows(await fx.service.getReadModel())).toEqual([]);
   });
 
-  it("the shipped managed Codex hook set contains no structured interruption producer", () => {
+  it("正式托管 Codex hook set 不含结构化 interruption producer", () => {
     const config = fs.readFileSync(
       path.join(import.meta.dirname, "../assets/plugins/openrig-core/hooks/codex.json"),
       "utf8",

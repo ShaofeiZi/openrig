@@ -35,9 +35,8 @@ describe("FeedCard dismiss surfaces", () => {
     expect(screen.getByTestId("feed-card-dismiss")).toBeTruthy();
   });
 
-  // OPR.0.3.2.20 — onDismiss now receives the full card (not just the
-  // seq) so the parent can route to the right dismissal-set
-  // (event-seq vs card-id for queue-derived synthetic cards).
+  // OPR.0.3.2.20——onDismiss 现在接收完整卡片而不只是 seq，使父级能路由到正确的
+  // 忽略集合：事件卡使用 event-seq，队列派生的合成卡片使用 card-id。
   it("clicking dismiss button calls onDismiss with the full card (includes source.seq)", () => {
     const onDismiss = vi.fn();
     render(<FeedCard card={makeCard({ source: { seq: 42, type: "queue.enqueued", payload: {} } as unknown as FeedCardModel["source"] })} onDismiss={onDismiss} />);
@@ -71,10 +70,9 @@ describe("FeedCard dismiss surfaces", () => {
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
-  // BLOCKING-CONCERN repair from velocity-guard 15f8252: bubbled Backspace/
-  // Delete from nested interactive descendants (dismiss button itself,
-  // VerbActions, QueueItemTrigger, proof thumbnails) must NOT soft-dismiss
-  // the card. Only article-focused keypress qualifies.
+  // 修复 velocity-guard 15f8252 的阻断问题：嵌套交互子项（忽略按钮本身、VerbActions、
+  // QueueItemTrigger、证明缩略图）冒泡出的 Backspace/Delete 不得软忽略卡片；只有焦点在
+  // article 本身时的按键才生效。
   it("Backspace from nested button does NOT bubble up to dismiss the card", () => {
     const onDismiss = vi.fn();
     render(<FeedCard card={makeCard()} onDismiss={onDismiss} />);

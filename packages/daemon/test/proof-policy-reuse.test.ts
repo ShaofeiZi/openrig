@@ -40,8 +40,8 @@ function fixture() {
   return { root, missions, mission, projectFile, missionFile, dirs, write, get };
 }
 
-describe("request-local proof-policy reuse", () => {
-  it("reads and parses each shared parent once per I/O provider in the actual scopes GET", async () => {
+describe("请求内 proof-policy 复用", () => {
+  it("实际 scopes GET 中，每个 I/O provider 对每个共享父级只读取并解析一次", async () => {
     const f = fixture();
     const expected = f.dirs.map(d => readSliceReadiness(d));
     const mission = readMissionReadiness(f.mission);
@@ -56,7 +56,7 @@ describe("request-local proof-policy reuse", () => {
     expect.soft(parse.mock.calls.filter(([text]) => text === "proofPolicy:\n  judges:\n    - judge@trial\n")).toHaveLength(2);
   });
 
-  it("re-reads project/mission/slice changes, overrides, absence, invalid YAML and invalid policy on the next GET", async () => {
+  it("下一次 GET 会重新读取 project/mission/slice 变更、覆盖、缺失、无效 YAML 和无效 policy", async () => {
     const f = fixture(), sliceFile = path.join(f.dirs[0]!, "slice.yaml");
     const project = fs.readFileSync(f.projectFile, "utf8"), mission = fs.readFileSync(f.missionFile, "utf8"), slice = fs.readFileSync(sliceFile, "utf8");
     const check = async () => {
@@ -83,7 +83,7 @@ describe("request-local proof-policy reuse", () => {
     f.write(f.projectFile, project); expect((await check()).policy.judges).toEqual(["judge@trial"]);
   });
 
-  it("preserves scopes' null-on-read-failure versus proofFs' thrown error and recovers on the next GET", async () => {
+  it("保留 scopes 读取失败返回 null 与 proofFs 抛错的差异，并在下一次 GET 恢复", async () => {
     const f = fixture(), before = await f.get();
     const original = fs.readFileSync, read = vi.spyOn(fs, "readFileSync");
     read.mockImplementation(((file: fs.PathOrFileDescriptor, ...args: any[]) => {
@@ -97,7 +97,7 @@ describe("request-local proof-policy reuse", () => {
     expect(await f.get()).toEqual(before);
   });
 
-  it("keeps same-shaped projects and distinct I/O providers separate, with private policy objects", () => {
+  it("分离同形 project 与不同 I/O provider，并使用各自私有的 policy 对象", () => {
     const a = fixture(), b = fixture(), readPolicy = createProofPolicyRead();
     b.write(b.projectFile, { proofPolicy: { judges: ["other-project"] } });
     const first = readSliceReadiness(a.dirs[0]!, proofFs, readPolicy);
@@ -113,7 +113,7 @@ describe("request-local proof-policy reuse", () => {
     expect(readSliceReadiness(a.dirs[0]!, missing, readPolicy).state).toBe("legacy");
   });
 
-  it("retains the nearest project boundary, and only observes absence for the current read", () => {
+  it("保留最近的 project 边界，且仅在当前读取中观察缺失", () => {
     const f = fixture(), dir = f.dirs[0]!, file = path.join(dir, "slice.yaml");
     const readPolicy = createProofPolicyRead();
     expect(readSliceReadiness(dir, proofFs, readPolicy).policy!.source).toBe(f.projectFile);
@@ -124,19 +124,19 @@ describe("request-local proof-policy reuse", () => {
     expect(readSliceReadiness(dir, proofFs, createProofPolicyRead()).state).toBe("legacy");
   });
 
-  it("never carries reused policy through judgment preconditions, evidence checks, post-write read or replay", () => {
+  it("绝不让复用 policy 穿过 judgment 前置条件、evidence 检查、写后读取或 replay", () => {
     const f = fixture(), dir = f.dirs[0]!, readPolicy = createProofPolicyRead();
     const original = readSliceReadiness(dir, proofFs, readPolicy);
     const evidence = path.join(dir, "proof/evidence.md"); f.write(evidence, "actual observation");
     const input: JudgeInput = { scope: "trial/slices/slice-0", item: original.items[0]!.id, verdict: "accept", reason: "observed", evidence: ["proof/evidence.md"], expectedRevision: original.items[0]!.revision, expectedPrevious: null };
     const judge = (i = input, actor = "judge@trial") => recordJudgment(f.missions, i, actor, "test");
     f.write(f.projectFile, { proofPolicy: { judges: ["new"] } });
-    expect(() => judge()).toThrow("not a judge");
-    expect(() => judge(input, "new")).toThrow("Item or correction changed");
+    expect(() => judge()).toThrow("不是");
+    expect(() => judge(input, "new")).toThrow("条目或修正已变更");
     const fresh = readSliceReadiness(dir), prepared = [evidenceAt(f.root, dir, "proof/evidence.md")];
     f.write(evidence, "changed observation");
     const next = { ...input, expectedRevision: fresh.items[0]!.revision };
-    expect(() => judge({ ...next, expectedEvidence: prepared }, "new")).toThrow("Evidence changed since preparation");
+    expect(() => judge({ ...next, expectedEvidence: prepared }, "new")).toThrow("证据自准备后已变更");
     expect(fs.existsSync(path.join(dir, "proof/judgments"))).toBe(false);
     const accepted = judge(next, "new");
     expect(accepted.readiness.state).toBe("ready");

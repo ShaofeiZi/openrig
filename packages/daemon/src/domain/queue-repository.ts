@@ -39,22 +39,21 @@ export const QUEUE_STATES = [
 ] as const;
 export type QueueState = (typeof QUEUE_STATES)[number];
 
-/** OPR.0.4.6.FS-1 (W2 P1): the queue's terminal state set, named ONCE. The
- *  archiver (queue-retention.ts) AND the inline closure guards below all consume
- *  THIS predicate, so a future terminal-state addition can never silently
- *  diverge the archiver from the queue (arch D3-REFINEMENT P1; widen-never-sibling).
- *  `['done','handed-off']` is the full terminal set — workflow step closures exit
- *  `handoff -> state=handed-off`, the highest-volume terminal class. The `satisfies`
- *  clause is the compile guard: removing a state from QUEUE_STATES fails here. */
+/** OPR.0.4.6.FS-1（W2 P1）：queue terminal 状态集合，仅命名一次。archiver
+ *（queue-retention.ts）与下方行内 closure guard 都使用此 predicate，因此未来新增 terminal 状态时，
+ * archiver 与 queue 绝不会静默分歧（arch D3-REFINEMENT P1；只扩宽，不另建同级项）。
+ * `['done','handed-off']` 是完整 terminal 集合——workflow step closure 从
+ * `handoff -> state=handed-off` 退出，这是数量最多的 terminal 类别。`satisfies` 子句是编译守卫：
+ * 从 QUEUE_STATES 删除状态会在此失败。 */
 export const TERMINAL_QUEUE_STATES = ["done", "handed-off"] as const satisfies readonly QueueState[];
 export function isTerminalState(state: string): boolean {
   return (TERMINAL_QUEUE_STATES as readonly string[]).includes(state);
 }
 
-/** 0.5.1-53 — the ACTIVE (still-progressing) states. A blocker is "live" iff active; any other
- *  state (done/handed-off/canceled/denied/failed) means the block will never lift. This is DISTINCT
- *  from the archiver's TERMINAL_QUEUE_STATES (done/handed-off) — a narrower concept — so it is named
- *  separately and derived from QUEUE_STATES (the `satisfies` guard fails if a state is removed). */
+/** 0.5.1-53——active（仍在推进）状态。blocker 当且仅当 active 时才“存活”；其他状态
+ *（done/handed-off/canceled/denied/failed）表示阻塞永远不会解除。该概念与 archiver 的
+ * TERMINAL_QUEUE_STATES（done/handed-off）不同且更窄，因此单独命名并从 QUEUE_STATES 派生
+ *（若删除状态，`satisfies` 守卫会失败）。 */
 export const ACTIVE_QUEUE_STATES = ["pending", "in-progress", "blocked"] as const satisfies readonly QueueState[];
 export function isBlockerLive(state: string): boolean {
   return (ACTIVE_QUEUE_STATES as readonly string[]).includes(state);
@@ -63,14 +62,14 @@ export function isBlockerLive(state: string): boolean {
 const AUTO_UNPARK_WAKE_TAG = "queue:auto-unpark:blocker";
 const AUTO_UNPARK_BLOCKER_TAG_PREFIX = "queue:auto-unpark:blocker-ref:";
 
-/** 0.5.1-53 Atom 1a — typed non-qitem gate blocker prefixes. A park may be gated on a fold / auth /
- *  external condition that is NOT a qitem and NOT a human seat; these prefixes make such a gate a
- *  first-class, compact-visible, downstream-classifiable blocker (the ruling detail rides a transition). */
+/** 0.5.1-53 Atom 1a——类型化非 qitem gate blocker 前缀。park 可能受 fold/auth/external 条件
+ * 门控，这类条件既不是 qitem 也不是 human seat；这些前缀使 gate 成为一等、compact 可见且下游
+ * 可分类的 blocker（裁定详情随 transition 传递）。 */
 export const TYPED_GATE_BLOCKER_PREFIXES = ["fold:", "auth:", "external:"] as const;
 export function typedGateBlockerPrefix(value: string): string | null {
   return TYPED_GATE_BLOCKER_PREFIXES.find((p) => value.startsWith(p)) ?? null;
 }
-/** A well-formed typed gate blocker: a recognized prefix AND a non-empty gate body. */
+/** 格式正确的类型化 gate blocker：已识别前缀并且 gate body 非空。 */
 export function isTypedGateBlocker(value: unknown): boolean {
   if (typeof value !== "string") return false;
   const p = typedGateBlockerPrefix(value);
@@ -78,31 +77,29 @@ export function isTypedGateBlocker(value: unknown): boolean {
 }
 
 /**
- * 0.5.1-54 DR-1 (classifier fold, PM ruling qitem-20260811163927-74493d76) — classify a create-path
- * nudge FAILURE so the surfaced count becomes ACTIONABLE (constraint iii). Two classes:
- *   - "permanent-topology": the destination is not resolvable on THIS daemon (the nudge can never
- *     succeed here — a local-registry lookup reporting "not found" for a seat that lives on another
- *     daemon). Retrying is a guaranteed-permanent failure repeated on a schedule → NOT retryable;
- *     these belong to the ADDRESSING family, not to retry machinery. (The live corpus: 9/10 strands.)
- *   - "transient": a live, resolvable seat that refused THIS attempt (busy at an interactive prompt) or
- *     the attempt timed out — the only class a future bounded re-attempt (DR-2, held n=1) would touch.
- *   - "unknown": a failure whose text matches NEITHER known pattern. NOT silently defaulted to transient
- *     (ship-block ruling qitem-20260811170941-5eadb968): defaulting would assert "a live seat refused
- *     this attempt" for a string that only means "did not match the permanent pattern" — two different
- *     claims. An unknown must read as unknown (the same rule the ACTIVITY hookless=unknown ruling names);
- *     a default that collapses unknown into a known class is the exact sin, mirrored.
- * Returns null when `lastNudgeResult` is not a recorded failure (`failed:%`).
+ * 0.5.1-54 DR-1（classifier fold，PM 裁定 qitem-20260811163927-74493d76）——分类 create-path
+ * nudge 失败，使展示的计数可执行（约束 iii）。三个类别：
+ *   - "permanent-topology"：destination 在当前后台服务上无法解析（nudge 在此绝不可能成功——本地
+ *     registry 查询对位于另一后台服务的 seat 报 "not found"）。定时重试只会重复永久失败，因此
+ *     不可重试；这属于 ADDRESSING 家族，而非重试机制。（线上语料：9/10 strands。）
+ *   - "transient"：可解析的 live seat 拒绝本次尝试（正忙于交互提示），或本次尝试超时——未来有界
+ *     重试（DR-2，暂定 n=1）唯一会处理的类别。
+ *   - "unknown"：失败文本不匹配任何已知模式。不静默默认为 transient（ship-block 裁定
+ *     qitem-20260811170941-5eadb968）；默认行为会把“未匹配永久模式”误称为“live seat 拒绝本次
+ *     尝试”，这是两种不同主张。unknown 必须显示为 unknown（与 ACTIVITY hookless=unknown 裁定
+ *     相同）；将未知折叠到已知类别正是应避免的问题。
+ * 当 `lastNudgeResult` 不是已记录失败（`failed:%`）时返回 null。
  *
- * Each class is a POSITIVE match — there is no default class. DR-2 (retry) stays HELD at n=1; this is
- * READ-side labeling only, making the strand's nature legible (addressing-fix vs retry vs triage-the-unknown).
+ * 每个类别都必须正向匹配，不存在默认类别。DR-2（重试）继续保持 n=1；此处只做 READ 侧标记，
+ * 使 strand 性质清晰可见（addressing-fix、retry 或 triage-the-unknown）。
  */
 export function classifyNudgeFailure(lastNudgeResult: string | null | undefined): "permanent-topology" | "transient" | "unknown" | null {
   if (typeof lastNudgeResult !== "string" || !lastNudgeResult.startsWith("failed:")) return null;
-  // permanent-topology: local-registry "not found" — the destination is not resolvable on THIS daemon.
+  // permanent-topology：本地 registry "not found"——destination 在当前后台服务上无法解析。
   if (/\bnot found\b/i.test(lastNudgeResult)) return "permanent-topology";
-  // transient: a live seat refused this attempt (busy at a prompt) or the attempt timed out.
+  // transient：live seat 拒绝本次尝试（正忙于 prompt），或本次尝试超时。
   if (/interactive prompt|\btimed?\s?out\b/i.test(lastNudgeResult)) return "transient";
-  // unknown: matched neither — do NOT collapse into transient. Honest label > convenient default.
+  // unknown：两者都不匹配；不得折叠为 transient。如实标记优先于方便的默认值。
   return "unknown";
 }
 
@@ -118,20 +115,18 @@ export interface QueueItem {
   state: QueueState;
   priority: QueuePriority;
   tier: string | null;
-  /** OPR.0.5.6.14 — the delivery LEDGER verdict for gateway-routed rows
-   *  (posted / transport-failed / never-posted), derived from the row's own
-   *  transitions. Pane-bound rows carry null — the field never lies about a
-   *  class it does not govern. Populated on getById and findUndelivered. */
+  /** OPR.0.5.6.14——gateway-routed 行的 delivery LEDGER verdict
+   *（posted / transport-failed / never-posted），从该行自身 transition 派生。pane-bound 行为 null，
+   * 此字段绝不对不归其管理的类别撒谎。在 getById 和 findUndelivered 时填充。 */
   deliveryOutcome?: "posted" | "transport-failed" | "never-posted" | null;
-  /** The undelivered surface's class for ledger-derived entries (the route
-   *  prefers this over the nudge-literal regex when present). */
+  /** ledger 派生 entry 在 undelivered surface 上的类别（存在时，route 优先于 nudge literal regex）。 */
   deliveryFailureClass?: string;
-  /** Exact gateway receipt/error evidence for an undelivered ledger verdict. */
+  /** undelivered ledger verdict 的精确 gateway receipt/error evidence。 */
   deliveryFailureDetail?: string;
   tags: string[] | null;
   blockedOn: string | null;
-  /** S04 — the DERIVED pickup receipt (unclaimed/working/stalled-after-claim/parked). Never
-   *  stored: computed at projection time from claimed_at + the transition log + heartbeat. */
+  /** S04——派生 pickup receipt（unclaimed/working/stalled-after-claim/parked）。绝不存储：投影时从
+   * claimed_at + transition log + heartbeat 计算。 */
   pickup?: PickupReceipt;
   waiting?: WaitingView;
   handedOffTo: string | null;
@@ -139,18 +134,16 @@ export interface QueueItem {
   expiresAt: string | null;
   chainOfRecord: string[] | null;
   body: string;
-  /** Explicit human delivery intent; null/omitted preserves legacy decisions. */
+  /** 显式人工投递 intent；null/省略时保留旧版 decision。 */
   humanIntent?: "decision" | "update" | null;
-  /** One authored supplemental thread reply; the body remains a complete brief. */
+  /** 一条编写的补充 thread 回复；body 仍是完整 brief。 */
   humanDetail?: string | null;
-  /** Short human-readable subject; null for callers that omit it. */
+  /** 简短的人类可读 subject；调用方省略时为 null。 */
   summary: string | null;
-  /** OPR.0.4.4.19 FR-5 — pointer to the durable artifact a human judges
-   *  (convention C3). NULL for all non-human-routed items (BR-1); required
-   *  at the domain write path only when the §5 predicate is true. */
+  /** OPR.0.4.4.19 FR-5——指向供人工判断的持久 artifact 的 pointer（约定 C3）。所有非 human-routed
+   * item 均为 null（BR-1）；仅当 §5 predicate 为 true 时，domain 写入路径才要求该值。 */
   evidenceRef: string | null;
-  /** Present only on compact list rows so omitted content cannot be mistaken
-   *  for an author-supplied empty value. Full reads never carry this marker. */
+  /** 只出现在 compact list 行，避免把省略内容误认为作者提供的空值。完整读取绝不携带此 marker。 */
   fieldsElided?: Array<"body" | "summary" | "evidenceRef" | "humanDetail" | "waiting">;
   closureReason: ClosureReason | null;
   closureTarget: string | null;
@@ -160,10 +153,9 @@ export interface QueueItem {
   lastNudgeResult: string | null;
   lastHeartbeat: string | null;
   resolution: string | null;
-  /** PL-007 Workspace Primitive — typed repo scope for the qitem. Validated
-   *  by the route layer against the source rig's RigSpec.workspace.repos[].
-   *  Null when the task is unambiguously the rig's default_repo or
-   *  ambiguity is absent. Stored as a dedicated TEXT column (migration 038). */
+  /** PL-007 Workspace Primitive——qitem 的类型化 repo scope。route 层依据 source rig 的
+   * RigSpec.workspace.repos[] 校验。任务明确属于 rig default_repo 或不存在歧义时为 null。
+   * 存储在专用 TEXT 列中（migration 038）。 */
   targetRepo: string | null;
 }
 
@@ -199,21 +191,19 @@ interface QueueItemRow {
 }
 
 /**
- * Async transport contract — exists in this domain module so QueueRepository
- * can do durable+waking handoffs (Phase A contract: queue create / handoff /
- * handoff-and-complete are nudging by default unless caller opts out).
+ * 异步 transport 契约——位于此 domain 模块，使 QueueRepository 可执行持久且会 wake 的 handoff
+ *（阶段 A 契约：除非调用方退出，否则 queue create / handoff / handoff-and-complete 默认 nudge）。
  *
- * The wired-in implementation is `SessionTransport` (packages/daemon/src/
- * domain/session-transport.ts), but the repository depends only on this
- * minimal shape so test code can supply a stub.
+ * 接线实现是 `SessionTransport`（packages/daemon/src/domain/session-transport.ts），但 repository
+ * 只依赖此最小结构，使测试代码可提供 stub。
  */
 export interface QueueNudgeTransport {
   deliveryTarget?(session: string): import("./seat-delivery-guard.js").GuardTarget | null;
   retentionTarget?(session: string): import("./seat-delivery-guard.js").GuardTarget | null;
   send(
     sessionName: string,
-    // (h): stampISO threads the nudge's compose time so the transport's delivered-latency calc can
-    // measure the wait for a handoff nudge too (the real impl is SessionTransport, which accepts it).
+    // (h)：stampISO 传递 nudge 的组合时间，使 transport 的 delivered-latency 计算也能测量 handoff
+    // nudge 等待时间（真实实现 SessionTransport 接受该字段）。
     text: string,
     opts?: { verify?: boolean; stampISO?: string; actorSession?: string; committedOutboxIds?: string[]; deliveryId?: string; auditPointer?: string }
   ): Promise<{ ok: boolean; verified?: boolean; error?: string; reason?: string; outcome?: string }>;
@@ -229,32 +219,30 @@ export interface QueueCreateInput {
   tags?: string[];
   expiresAt?: string;
   chainOfRecord?: string[];
-  /** 0.5.1-53 Atom 2b — supersession back-link. When this qitem is the SUCCESSOR of a
-   *  cancel-and-replace (the original recorded state=canceled + closure_reason=superseded +
-   *  closure_target=<this>), handedOffFrom records the original so the successor is traversable
-   *  back to what it replaced — the same lineage primitive handoff-and-complete already sets,
-   *  now reachable from the raw create path so a supersession is not an unlinked orphan pair. */
+  /** 0.5.1-53 Atom 2b——supersession back-link。当此 qitem 是 cancel-and-replace 的 successor
+   *（原项记录 state=canceled + closure_reason=superseded + closure_target=<this>）时，
+   * handedOffFrom 记录原项，使 successor 可追溯到被替换项。这与 handoff-and-complete 已设置的
+   * lineage primitive 相同，现在 raw create 路径也可使用，避免 supersession 成为无链接的孤立对。 */
   handedOffFrom?: string | null;
-  /** PL-007 — typed repo scope for this qitem. Route validates against
-   *  source rig's workspace.repos[]; unknown names rejected upstream. */
+  /** PL-007——此 qitem 的类型化 repo scope。Route 依据 source rig 的 workspace.repos[] 校验；
+   * 上游拒绝未知名称。 */
   targetRepo?: string | null;
-  /** Explicit human delivery intent; omission preserves legacy decisions. */
+  /** 显式人工投递 intent；省略时保留旧版 decision。 */
   humanIntent?: "decision" | "update" | null;
-  /** Explicit supplemental thread content, never an automatic split of the primary body. */
+  /** 显式补充 thread 内容，绝不是主 body 的自动拆分。 */
   humanDetail?: string | null;
   summary?: string | null;
-  /** OPR.0.4.4.19 FR-5 — optional durable-artifact pointer. Persisted when
-   *  present; required at the domain layer only for human-routed items. */
+  /** OPR.0.4.4.19 FR-5——可选持久 artifact pointer。存在时持久化；仅 human-routed item 在
+   * domain 层要求该值。 */
   evidenceRef?: string | null;
   /**
-   * R1 fix (PL-004 Phase A revision): Phase A is durable + waking by default.
-   * When true (or omitted), the repository nudges the destination after the
-   * create transaction commits and persists last_nudge_attempt + last_nudge_result.
-   * Operators opt out with `nudge: false` for cold-queue cases.
+   * R1 修复（PL-004 阶段 A 修订）：阶段 A 默认持久且会 wake。为 true（或省略）时，repository
+   * 在 create transaction 提交后 nudge destination，并持久化 last_nudge_attempt +
+   * last_nudge_result。操作员可在 cold-queue 场景用 `nudge: false` 退出。
    */
   nudge?: boolean;
-  /** P21 §4 era-stamp: the route passes `transport:v1` (sourceSession derived from the transport
-   *  header chokepoint). Threaded onto the 'created' transition; absence = claimed-era. */
+  /** P21 §4 era-stamp：route 传入 `transport:v1`（sourceSession 从 transport header chokepoint
+   * 派生）。串接到 'created' transition；缺席 = claimed-era。 */
   identityProvenance?: string | null;
 }
 
@@ -262,59 +250,51 @@ export interface QueueUpdateInput {
   qitemId: string;
   actorSession: string;
   state?: QueueState;
-  /** Explicit acknowledgment for a deliberate terminal → active repair. */
+  /** 对有意 terminal → active 修复的显式确认。 */
   reopen?: boolean;
   /**
-   * OPR.0.4.6.WF3 FR-6 — set ONLY by the workflow domain's own write
-   * paths (projector close, route close): they hold the frontier
-   * invariant, so the close-path guard exempts them. Not a security
-   * boundary — a correctness foot-gun guard (pm ruling: prevention).
+   * OPR.0.4.6.WF3 FR-6——仅由 workflow domain 自身写入路径设置（projector close、route close）：
+   * 它们维持 frontier 不变量，因此 close-path guard 豁免这些路径。它不是安全边界，而是防止误用的
+   * 正确性守卫（PM 裁定：预防）。
    */
   viaWorkflowVerb?: boolean;
   transitionNote?: string;
   closureReason?: string;
   closureTarget?: string;
   /**
-   * PL-004 Phase D extension: when set, persists the queue_items.handed_off_to
-   * column. Used by workflow-projector for state=handed-off transitions so
-   * the canonical "next owner" pointer is recoverable from queue state alone.
-   * Optional to preserve backward compatibility with existing update() callers.
+   * PL-004 阶段 D 扩展：设置时持久化 queue_items.handed_off_to 列。workflow-projector 在
+   * state=handed-off transition 中使用，使 canonical“下一 owner”pointer 仅凭 queue state 即可恢复。
+   * 为保持与现有 update() 调用方的向后兼容，此字段可选。
    */
   handedOffTo?: string;
   /**
-   * PL-004 Phase D extension: when set, persists the queue_items.blocked_on
-   * column. Used by workflow-projector for state=blocked transitions so the
-   * blocker reference (qitem id, gate name) is recoverable from queue state.
+   * PL-004 阶段 D 扩展：设置时持久化 queue_items.blocked_on 列。workflow-projector 在
+   * state=blocked transition 中使用，使 blocker 引用（qitem id、gate 名）可从 queue state 恢复。
    */
   blockedOn?: string;
-  /** OPR.0.5.5.03 — park continuation. Exactly one explicit wake form may
-   *  accompany a blocked transition; a live qitem blocker is inferred. */
+  /** OPR.0.5.5.03——park continuation。一个 blocked transition 只能携带一种显式 wake 形式；
+   * live qitem blocker 会被推断。 */
   wakeWatchdogId?: string;
   wakeAfterSeconds?: number;
-  /** Internal opt-in to repeating, event-first park reminders. Evidence is
-   * compared structurally; an acknowledgment note is never progress. */
+  /** 内部选择启用重复、event-first 的 park reminder。按结构比较 evidence；确认 note 从不算 progress。 */
   wakeMaxSeconds?: number;
   wakeProgressEvidence?: Record<string, unknown>;
-  /** Internal caller-supplied text for an atomic timer. Public queue routes do
-   *  not expose this; workflow projection uses it to re-present the exact
-   *  occurrence-bound continuation action instead of a generic reminder. */
+  /** 内部调用方为原子 timer 提供的文本。公共 queue route 不公开它；workflow projection 用它重新
+   * 展示与确切 occurrence 绑定的 continuation action，而非通用 reminder。 */
   wakeMessage?: string;
   /**
-   * OPR.0.4.4.19 FR-6 — park-time inputs. summary + evidence_ref are
-   * updatable AT THE PARK MOMENT (state=blocked with a human-seat blocker),
-   * not create-only: `rig queue block --summary --evidence-ref` persists
-   * them onto the EXISTING item so the attention query + Packet 2 read
-   * them. OPR.0.5.1 slice-51-06 D2: supplying them on a NON-park transition
-   * is REJECTED (QueueRepositoryError "summary_evidence_not_persistable")
-   * before any mutation — not silently ignored — so a caller never believes
-   * unpersistable metadata was saved.
+   * OPR.0.4.4.19 FR-6——park 时输入。summary + evidence_ref 可在 park 时刻更新
+   *（state=blocked 且 blocker 为 human-seat），而非仅创建时：`zrig queue block --summary
+   * --evidence-ref` 会将其持久化到现有 item，使 attention query + Packet 2 可读取。OPR.0.5.1
+   * slice-51-06 D2：在非 park transition 上提供它们会在任何修改前被拒绝（QueueRepositoryError
+   * "summary_evidence_not_persistable"），而非静默忽略，避免调用方误以为不可持久化 metadata 已保存。
    */
   summary?: string | null;
   evidenceRef?: string | null;
-  /** P21 §4 era-stamp: the route passes `transport:v1` (actorSession derived from the transport
-   *  header chokepoint). Threaded onto the transition; absence = claimed-era. */
+  /** P21 §4 era-stamp：route 传入 `transport:v1`（actorSession 从 transport header chokepoint
+   * 派生）。串接到 transition；缺席 = claimed-era。 */
   identityProvenance?: string | null;
-  /** System-owned ceremony kind. Never exposed as a free-form route field. */
+  /** 系统所有的 ceremony kind。绝不作为自由格式 route 字段公开。 */
   ownerNotificationKind?: "human-decision-resolved";
 }
 
@@ -327,47 +307,43 @@ export interface QueueHandoffInput {
   priority?: QueuePriority;
   tier?: string;
   tags?: string[];
-  /** Default true; nudge the destination after the close+create transaction. */
+  /** 默认为 true；在 close+create transaction 后 nudge destination。 */
   nudge?: boolean;
-  /** PL-007 — typed repo scope for the new qitem. When omitted, the new
-   *  qitem inherits the source's targetRepo. */
+  /** PL-007——新 qitem 的类型化 repo scope。省略时新 qitem 继承 source 的 targetRepo。 */
   targetRepo?: string | null;
-  /** OPR.0.4.1.18 — optional ~1–2 sentence summary for the NEW qitem. NOT
-   *  inherited from the source (a handoff authors its own summary); omitted
-   *  → NULL → Story degrade. */
+  /** OPR.0.4.1.18——新 qitem 可选的约 1–2 句 summary。不从 source 继承（handoff 编写自己的
+   * summary）；省略 → null → Story 降级。 */
   summary?: string | null;
-  /** OPR.0.4.4.19 FR-5 — optional durable-artifact pointer for the NEW qitem.
-   *  NOT inherited from the source (same authorship semantics as summary). */
+  /** OPR.0.4.4.19 FR-5——新 qitem 的可选持久 artifact pointer。不从 source 继承（与 summary
+   * 采用相同 authorship 语义）。 */
   evidenceRef?: string | null;
-  /** P21 §4 era-stamp: the route passes `transport:v1` (fromSession derived from the transport
-   *  header chokepoint). Threaded onto both the source-close and new-item transitions. */
+  /** P21 §4 era-stamp：route 传入 `transport:v1`（fromSession 从 transport header chokepoint
+   * 派生）。串接到 source-close 与 new-item 两个 transition。 */
   identityProvenance?: string | null;
 }
 
 /**
- * Like {@link QueueHandoffInput} but the source qitem is closed as `done`
- * (terminal) instead of `handed-off` (intermediate). Use when the source seat
- * is fully complete with the work and the new qitem is the canonical
- * follow-on. Closure_reason is recorded as `handed_off_to` and the new qitem
- * is created in the same atomic transaction.
+ * 与 {@link QueueHandoffInput} 类似，但 source qitem 关闭为 `done`（terminal）而非 `handed-off`
+ *（中间状态）。用于 source seat 已完全完成工作且新 qitem 是 canonical 后续项的情况。
+ * Closure_reason 记录为 `handed_off_to`，新 qitem 在同一原子事务中创建。
  */
 export interface QueueHandoffAndCompleteInput extends QueueHandoffInput {}
 
 export interface QueueClaimInput {
   qitemId: string;
   destinationSession: string;
-  /** P21 §4 era-stamp: the route passes `transport:v1` (destinationSession derived from the
-   *  transport header chokepoint). Threaded onto the claim transition; absence = claimed-era. */
+  /** P21 §4 era-stamp：route 传入 `transport:v1`（destinationSession 从 transport header
+   * chokepoint 派生）。串接到 claim transition；缺席 = claimed-era。 */
   identityProvenance?: string | null;
 }
 
 export interface QueueListOptions {
-  /** Exact tag selection before the result bound (used by diagnostic occurrences). */
+  /** 在结果边界前精确选择 tag（用于 diagnostic occurrence）。 */
   tag?: string;
   destinationSession?: string;
   sourceSession?: string;
   state?: QueueState | QueueState[];
-  /** PL-007 — filter qitems by target_repo. Exact match. */
+  /** PL-007——按 target_repo 过滤 qitem，精确匹配。 */
   targetRepo?: string;
   limit?: number;
   asSession?: string;
@@ -386,12 +362,10 @@ export class QueueRepositoryError extends Error {
   }
 }
 
-/** OPR.0.4.6.WF5 (guard-named fix shape): exported so the workflow
- *  domain can PREALLOCATE a gate packet's id — the class-(c) exception
- *  identity tags need occurrence:<gatePacketId> ON the packet at create
- *  (one item, tagged in its own create — never a second item, never a
- *  post-create tag rewrite). The queue still mints ids for every caller
- *  that does not preallocate. */
+/** OPR.0.4.6.WF5（guard 命名的修复结构）：导出此函数，使 workflow domain 可预分配 gate packet
+ * id——类别 (c) exception identity tag 要求在创建时就把 occurrence:<gatePacketId> 放在 packet 上
+ *（一个 item，在自身 create 中打 tag；绝不创建第二个 item，也绝不在创建后重写 tag）。queue 仍为
+ * 所有未预分配的调用方生成 id。 */
 export function newQitemId(): string {
   const ts = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
   const hex = Math.floor(Math.random() * 0xffffffff)
@@ -401,10 +375,9 @@ export function newQitemId(): string {
 }
 
 /**
- * OPR.0.4.6.MH3 Q-a: is this the SQLite PRIMARY KEY conflict on
- * queue_items.qitem_id? better-sqlite3 sets `.code` on its SqliteError; the
- * message check is a defensive twin so a driver-name change never silently
- * turns an idempotent absorb into a 500.
+ * OPR.0.4.6.MH3 Q-a：这是否为 queue_items.qitem_id 上的 SQLite PRIMARY KEY 冲突？
+ * better-sqlite3 会在 SqliteError 上设置 `.code`；消息检查是防御性镜像，避免 driver 名称变化将
+ * 幂等吸收静默变成 500。
  */
 export function isQitemPrimaryKeyConflict(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
@@ -414,25 +387,19 @@ export function isQitemPrimaryKeyConflict(err: unknown): boolean {
 }
 
 /**
- * OPR.0.4.6.MH3 D-1 (FR-4/FR-5): the deterministic cross-host SUCCESSOR id.
+ * OPR.0.4.6.MH3 D-1（FR-4/FR-5）：确定性跨 host SUCCESSOR id。
  *
- * A cross-host handoff exposes no caller `--id`, so the successor's dedup
- * identity must come from the operation itself: the id is a PURE, STATELESS
- * function of (source qitemId, destination session, destination host). Same
- * arguments → same id on every re-drive, across daemon restarts, with zero
- * local state — so the origin-side PRIMARY KEY absorb (Q-a) converges every
- * interrupted-close re-drive. Source→successor is 1:1 by construction (a
- * closed source is terminal; nothing re-opens it). The `qitem-xh-` namespace
- * makes collision with organic `qitem-<ts>-<hex>` ids structurally impossible
- * (plan R-2). The compound key is JSON-encoded — no hand-rolled separators.
+ * 跨 host handoff 不公开调用方 `--id`，因此 successor 去重 identity 必须来自操作本身：id 是
+ *（source qitemId、destination session、destination host）的纯无状态函数。参数相同则每次重新驱动
+ * 都得到相同 id，跨后台服务重启且无需本地状态，因此来源侧 PRIMARY KEY 吸收（Q-a）可收敛每次
+ * 被中断 close 的重新驱动。Source→successor 按构造为 1:1（已关闭 source 是 terminal，不会重开）。
+ * `qitem-xh-` 命名空间从结构上排除与自然 `qitem-<ts>-<hex>` id 冲突（plan R-2）。复合 key
+ * 使用 JSON 编码，不手写分隔符。
  *
- * n1 residual (arch-named, inherent to the ratified at-least-once/no-2PC
- * fence — NOT a dedup bug): a re-drive naming a DIFFERENT destination before
- * the source close lands is a NEW handoff decision and derives a DIFFERENT
- * id, so it cannot absorb the earlier successor — that earlier successor can
- * remain live on the target host. The chain_of_record + cross-host provenance
- * tags keep such an orphan visible/traceable; the source-close conflict check
- * surfaces the disagreement rather than overwriting it.
+ * n1 残留（架构命名，是已批准至少一次/无 2PC 边界的固有结果，不是去重 bug）：source close 落地前，
+ * 指向不同 destination 的重新驱动属于新的 handoff 决策，会派生不同 id，因此无法吸收先前 successor；
+ * 先前 successor 可能继续存活在目标 host。chain_of_record + 跨 host provenance tag 让此类孤儿
+ * 保持可见/可追踪；source-close 冲突检查会展示分歧，而非覆盖。
  */
 export function deriveCrossHostSuccessorId(
   sourceQitemId: string,
@@ -446,9 +413,8 @@ export function deriveCrossHostSuccessorId(
   return `qitem-xh-${digest}`;
 }
 
-/** PL-007 — defensive column probe. Older test fixtures bypass the
- *  canonical migration list, so target_repo may be absent. Mirrors
- *  the `hasNodeColumn` pattern in rig-repository.ts. */
+/** PL-007——防御性 column probe。旧测试 fixture 绕过 canonical migration 列表，因此可能缺少
+ * target_repo。与 rig-repository.ts 中的 `hasNodeColumn` 模式一致。 */
 function detectQueueColumn(db: Database.Database, columnName: string): boolean {
   try {
     return db.prepare("PRAGMA table_info(queue_items)").all()
@@ -467,28 +433,24 @@ function detectTable(db: Database.Database, tableName: string): boolean {
 }
 
 /**
- * L3 — Queue repository. Owns CRUD over `queue_items` plus the wired-in
- * append-only transition log and hot-potato strict-rejection contract.
+ * L3——Queue repository。拥有 `queue_items` CRUD、已接线的仅追加 transition log，以及
+ * hot-potato 严格拒绝契约。
  *
- * Pattern mirrors `chat-repository.ts` (single class, atomic transactions,
- * persist-event-then-notify). Cross-rig validation hook is `validateRig` —
- * Phase A wires no-op; Phase B can plug in the rig registry to reject
- * phantom-rig destinations. POC compatibility: `qitem_id` shape preserved.
+ * 模式与 `chat-repository.ts` 对应（单一 class、原子 transaction、先持久化事件再通知）。跨 rig
+ * 校验 hook 是 `validateRig`——阶段 A 接线为 no-op；阶段 B 可接入 rig registry 拒绝 phantom-rig
+ * destination。兼容 POC：保留 `qitem_id` 结构。
  */
-// Reduced column set for compact list rows (body/summary/evidence_ref omitted →
-// rowToItem backfills them empty). Shared by `list` and `findOverdue` (Slice 15)
-// so the compact projection cannot drift between the two.
+// compact list 行的精简列集合（省略 body/summary/evidence_ref → rowToItem 回填为空）。由 `list` 与
+// `findOverdue`（Slice 15）共享，使两者的 compact 投影不会漂移。
 const COMPACT_QUEUE_COLUMNS =
   "qitem_id, ts_created, ts_updated, source_session, destination_session, state, priority, tier, tags, blocked_on, handed_off_to, handed_off_from, expires_at, closure_reason, closure_target, closure_required_at, claimed_at, last_nudge_attempt, last_nudge_result, last_heartbeat, resolution, target_repo";
 
 /**
- * Stamp-at-FORWARD only (founder root invariant 2026-08-27, superseding 51-09 incr 4
- * stamp-at-write): a LOCAL write never calls this — local rows store the bare
- * member@rig. The cross-host forwarding routes (routes/queue.ts) call it so the
- * forwarding daemon stamps ITS OWN id as the origin before the remote create; the
- * remote's not-bare guard then stores the received triple verbatim (origin never
- * forged). FAIL-OPEN: no reconciled self-id, or a value that is not a bare
- * member@rig (already a triple / malformed), passes through unchanged.
+ * 仅在 FORWARD 时盖章（founder 根不变量 2026-08-27，取代 51-09 增量 4 的写入时盖章）：本地写入
+ * 从不调用此函数，本地行存储裸 member@rig。跨 host 转发 route（routes/queue.ts）调用它，使转发
+ * 后台服务在远程 create 前以自身 id 盖章为 origin；远端的非裸值守卫随后原样存储收到的三元组
+ *（绝不伪造 origin）。FAIL-OPEN：无已协调 self-id，或值不是裸 member@rig（已经是三元组/畸形）时，
+ * 原样通过。
  */
 export function stampSelfHostSuffix(session: string): string;
 export function stampSelfHostSuffix(session: undefined): undefined;
@@ -497,21 +459,18 @@ export function stampSelfHostSuffix(session: string | undefined): string | undef
   if (session === undefined) return undefined;
   const selfId = getSelfHostId();
   if (!selfId) return session;
-  if (session.split("@").length !== 2) return session; // not a bare member@rig — untouched
+  if (session.split("@").length !== 2) return session; // 不是裸 member@rig——保持不变。
   return `${session}@${selfId}`;
 }
 
 /**
- * 51-09 increment 4b — additive TEACHING for the unknown_destination_rig refusal
- * (arch ruling c9964404, mechanism ii). 3-part destinations ALREADY refuse (BR-1:
- * member@rig@host greedy-folds to rig "rig@host", misses, rejects) — the code is
- * UNCHANGED (C1). When the rejected destination's greedy-parsed rig token CONTAINS
- * '@', return ADDITIVE structured fields (FR-7 precedent) teaching the out-of-band
- * path: the split echo + a hint naming `--host`. C4: a SELF-suffixed destination
- * names the self case and is NEVER auto-stripped/routed home (self-strip is option
- * (i), routed to arch). Returns undefined for 2-part / non-canonical tokens (the
- * refusal is byte-unchanged there). One helper, all four refusal sites (C2). Reads
- * the FR-8 parse contract; the parse family stays byte-identical (C3).
+ * 51-09 增量 4b——为 unknown_destination_rig 拒绝增加教学信息（架构裁定 c9964404，机制 ii）。
+ * 三段 destination 已经会拒绝（BR-1：member@rig@host 贪婪折叠为 rig "rig@host"，未命中后
+ * 拒绝），代码保持不变（C1）。当被拒绝 destination 的贪婪解析 rig token 包含 '@' 时，返回增量
+ * 结构化字段（FR-7 先例），说明带外路径：分段回显 + 点名 `--host` 的 hint。C4：带 self 后缀的
+ * destination 会点明 self 情形，绝不自动剥离/路由回本机（self-strip 是送交架构的方案 (i)）。
+ * 对两段/非 canonical token 返回 undefined（其拒绝字节保持不变）。一个 helper 覆盖全部四个拒绝
+ * 位置（C2）。读取 FR-8 解析契约；parse 家族保持字节一致（C3）。
  */
 export function destinationRigTeaching(session: string): Record<string, unknown> | undefined {
   const parsed = parseSessionName(session);
@@ -526,18 +485,17 @@ export function destinationRigTeaching(session: string): Record<string, unknown>
     destinationSplit: { member: parsed.member, rig, host },
     selfHost,
     hint: selfHost
-      ? `the host suffix '@${host}' is THIS host — the host never rides in the session string; resend the destination as ${bare}`
-      : `host does not ride in the session string; use --host ${host} with destination ${bare}`,
+      ? `host 后缀 '@${host}' 就是当前 host——host 绝不放入 session 字符串；请将 destination 改为 ${bare} 后重新发送`
+      : `host 不放入 session 字符串；请对 destination ${bare} 使用 --host ${host}`,
   };
 }
 
 /**
- * M1 A4b — entity-level teaching for an UNREGISTERED <local>@external destination (the
- * ENTITY half of proof-2; the DOMAIN half is the closed-set fall-through to
- * unknown_destination_rig, A1/A2). A row addressed to a valid @external domain whose
- * entity is not in the registry refuses LOUDLY with the structured teaching from the
- * gateway resolver (how to register + "not an agent seat"). Loads the registry only for
- * the (rare) @external refusal path. Undefined for non-@external / registered / scheme.
+ * M1 A4b——针对未注册 <local>@external destination 的 entity 级教学信息（proof-2 的 ENTITY
+ * 部分；DOMAIN 部分是封闭集合回退到 unknown_destination_rig，A1/A2）。若行指向有效 @external
+ * domain 但 entity 未在 registry 中，会使用 gateway resolver 的结构化教学信息（如何注册 +
+ * “不是 agent seat”）显著拒绝。只在少见的 @external 拒绝路径加载 registry。对非 @external、
+ * 已注册或 scheme 返回 undefined。
  */
 export function externalAdmissionTeaching(
   session: string,
@@ -552,20 +510,20 @@ export function externalAdmissionTeaching(
       externalDomain: parsed.domain,
       registryLoadError: true,
       registryError: reg.error,
-      ...(/projection/i.test(reg.error) ? { registryProjectionError: true } : {}),
+      ...(/projection|投影/i.test(reg.error) ? { registryProjectionError: true } : {}),
       hint:
-        `human registry admission is unavailable because the registry/projection failed to load: ${reg.error}. ` +
-        "Repair the existing registry projection from its fragments; do not re-add the human or downgrade the destination to an agent seat.",
+        `human registry admission 不可用，因为 registry/projection 加载失败：${reg.error}。` +
+        "请从 fragment 修复现有 registry projection；不要重新添加 human，也不要将 destination 降级为 agent seat。",
     };
   }
   const entities = reg.entities.map((e) => ({ entityId: e.entityId, address: e.address }));
   const res = resolveExternal(parsed.local, entities);
-  if (res.kind !== "unregistered") return undefined; // registered/scheme were admitted upstream
+  if (res.kind !== "unregistered") return undefined; // registered/scheme 已在上游准入。
   return { externalDomain: parsed.domain, unregisteredEntity: parsed.local, hint: res.error };
 }
 
-/** The refusal teaching for ANY rejected destination: the @external entity teaching
- *  (A4b) OR the host-suffix teaching (4b). One helper, all four refusal sites. */
+/** 任何被拒绝 destination 的教学信息：@external entity 教学（A4b）或 host-suffix 教学（4b）。
+ * 一个 helper 覆盖全部四个拒绝位置。 */
 export function destinationRefusalTeaching(
   session: string,
   loadRegistry: () => LoadResult = loadHumanRegistry,
@@ -582,21 +540,20 @@ function destinationValidationError(
   if (teaching?.registryLoadError === true) {
     return new QueueRepositoryError(
       "human_registry_unavailable",
-      `${field} ${session} cannot be admitted because the human registry failed to load: ${String(teaching.registryError)}`,
+      `${field} ${session} 无法准入，因为 human registry 加载失败：${String(teaching.registryError)}`,
       teaching,
     );
   }
   return new QueueRepositoryError(
     "unknown_destination_rig",
-    `${field} ${session} references an unknown rig`,
+    `${field} ${session} 引用了未知 rig`,
     teaching,
   );
 }
 
 /**
- * MF6: does a transport error/reason string denote a TIMEOUT (ambiguous — the
- * send may have landed) rather than a definite failure? Used to classify a wake
- * delivery as `indeterminate` vs `failed`.
+ * MF6：transport error/reason 字符串是否表示超时（有歧义，send 可能已落地），而非确定失败？
+ * 用于将 wake delivery 分类为 `indeterminate` 或 `failed`。
  */
 function isWakeTimeoutSignal(s: string | undefined): boolean {
   return !!s && /timeout|timed\s*out|etimedout/i.test(s);
@@ -608,30 +565,24 @@ export class QueueRepository {
   private readonly eventBus: EventBus;
   private readonly validateRig: (sessionRef: string) => boolean;
   private transport: QueueNudgeTransport | undefined;
-  /** W1 (transactional closure): the durable wake-intent store. A terminal act
-   *  (handoff / handoff-and-complete) stages an outbox intent row INSIDE its
-   *  db.transaction so close + transition + intent commit as one act or none;
-   *  the delivery drains from that committed intent afterward. Wired post-
-   *  construction by startup (dep-graph ordering, like transport).
+  /** W1（transactional closure）：持久 wake-intent store。terminal 操作（handoff /
+   * handoff-and-complete）在自身 db.transaction 内暂存 outbox intent 行，使 close + transition +
+   * intent 要么作为一个操作提交，要么全不提交；随后从已提交 intent 排空投递。由 startup 在构造后
+   * 接线（依赖图顺序，与 transport 相同）。
    *
-   *  ABSENT = the test/bootstrap path, and what that means differs by caller —
-   *  it is NOT a blanket best-effort fallback:
-   *   • a nudge-intended TERMINAL close+successor act FAILS CLOSED (MF2):
-   *     {@link assertTerminalClosureHasIntent} throws `wake_intent_store_unavailable`
-   *     rather than produce an executed-but-unwoken item (pass `nudge:false` for a
-   *     wake-less close);
-   *   • {@link deliverWakeForSuccessor} — and only it — falls back to the pre-W1
-   *     best-effort {@link maybeNudge} when no store is attached (P34 made that
-   *     fallback real code rather than a promise in a comment). */
+   * 缺席 = test/bootstrap 路径，具体含义因调用方而异，并非一概 best-effort fallback：
+   *   • 旨在 nudge 的 terminal close+successor 操作采用 fail-closed（MF2）：
+   *     {@link assertTerminalClosureHasIntent} 抛出 `wake_intent_store_unavailable`，而不是生成已执行
+   *     但未 wake 的 item（无需 wake 的 close 请传 `nudge:false`）；
+   *   • 只有 {@link deliverWakeForSuccessor} 在未附加 store 时回退到 W1 前的 best-effort
+   *     {@link maybeNudge}（P34 将该 fallback 从注释承诺变成了真实代码）。 */
   private outbox: OutboxHandler | undefined;
   private resolveOccupantGeneration?: (sessionName: string) => string | null;
   private readonly wakeRepo: QueueWakeRepository;
   private watchdogJobsRepo: WatchdogJobsRepository | undefined;
-  /** PL-007 Workspace Primitive — true when migration 038 has applied the
-   *  queue_items.target_repo column. Older test fixtures that bypass the
-   *  canonical migration list don't have the column; INSERTs degrade to
-   *  the pre-PL-007 statement and target_repo input is silently dropped.
-   *  Production daemons always have the column (migration is in startup.ts). */
+  /** PL-007 Workspace Primitive——migration 038 已应用 queue_items.target_repo 列时为 true。绕过
+   * canonical migration 列表的旧测试 fixture 没有该列；INSERT 会降级为 PL-007 前的 statement，
+   * target_repo 输入会被静默丢弃。生产后台服务始终有此列（migration 位于 startup.ts）。 */
   private readonly hasTargetRepoColumn: boolean;
   private readonly hasSummaryColumn: boolean;
   private readonly hasHumanIntentColumn: boolean;
@@ -641,8 +592,8 @@ export class QueueRepository {
   private readonly hasQueueTransitionsTable: boolean;
   private readonly hasOwnerNotificationColumns: boolean;
   private readonly loadHumanRegistryFn: () => LoadResult;
-  /** OPR.0.4.6.WF3 FR-6 — injected by startup (never imported): the
-   *  workflow domain's is-live-frontier-packet predicate. */
+  /** OPR.0.4.6.WF3 FR-6——由 startup 注入（绝不 import）：workflow domain 的
+   * is-live-frontier-packet 谓词。 */
   private readonly workflowFrontierPredicate:
     | ((qitemId: string) => { instanceId: string; workflowName: string } | null)
     | undefined;
@@ -653,29 +604,23 @@ export class QueueRepository {
     opts?: {
       validateRig?: (sessionRef: string) => boolean;
       /**
-       * R1 fix (PL-004 Phase A revision): durable+waking-by-default transport
-       * for create / handoff / handoff-and-complete. When provided, the
-       * repository nudges the destination after the corresponding transaction
-       * commits and records last_nudge_attempt + last_nudge_result via
-       * recordNudgeAttempt(). When absent, no nudge is issued (caller is in
-       * a test or daemon-bootstrap path where transport is not yet wired).
+       * R1 修复（PL-004 阶段 A 修订）：create / handoff / handoff-and-complete 使用默认持久且会
+       * wake 的 transport。提供时，repository 在对应 transaction 提交后 nudge destination，并通过
+       * recordNudgeAttempt() 记录 last_nudge_attempt + last_nudge_result。缺席时不发 nudge
+       *（调用方位于 transport 尚未接线的测试或 daemon-bootstrap 路径）。
        */
       transport?: QueueNudgeTransport;
       /**
-       * OPR.0.4.6.WF3 FR-6 — the frontier close-path guard's INJECTED
-       * predicate (the validateRig injection precedent: the queue is
-       * the lower primitive and NEVER imports the workflow domain;
-       * startup wires the workflow domain's exported predicate in).
-       * Absent (tests, bootstrap, pre-workflow schemas) = zero new
-       * behavior.
+       * OPR.0.4.6.WF3 FR-6——frontier close-path guard 的注入 predicate（沿用 validateRig 注入
+       * 先例：queue 是较低层 primitive，绝不 import workflow domain；startup 接入 workflow domain
+       * 导出的 predicate）。缺席（测试、bootstrap、workflow 前 schema）= 无新增行为。
        */
       workflowFrontierPredicate?: (qitemId: string) => { instanceId: string; workflowName: string } | null;
       /**
-       * GHOST-STAGE (h): resolve the SOURCE seat's atom-B occupant generation-uuid so a handoff
-       * nudge carries the composing generation on its Sent: line (the injected-predicate precedent —
-       * the queue is the lower primitive and never imports the session domain; startup wires
-       * SessionRegistry.currentOccupantGenerationForSession in). Absent ⇒ UNKNOWN ⇒ the gen suffix
-       * is omitted (never forged).
+       * GHOST-STAGE (h)：解析 SOURCE seat 的 atom-B occupant generation-uuid，使 handoff nudge
+       * 在 Sent: 行携带进行组合的 generation（沿用注入 predicate 先例；queue 是较低层 primitive，
+       * 从不 import session domain；startup 接入 SessionRegistry.currentOccupantGenerationForSession）。
+       * 缺席 ⇒ UNKNOWN ⇒ 省略 gen 后缀（绝不伪造）。
        */
       resolveOccupantGeneration?: (sessionName: string) => string | null;
       loadHumanRegistry?: () => LoadResult;
@@ -700,35 +645,29 @@ export class QueueRepository {
       : new Set<string>();
     this.hasOwnerNotificationColumns = transitionColumns.has("owner_notification_kind")
       && transitionColumns.has("owner_notification_level");
-    // GHOST-STAGE (e/Class-B): generation stamps (migration 063). Defensive detect so a pre-063
-    // harness degrades (writers skip the columns; the release predicate never matches unstamped rows).
+    // GHOST-STAGE（e/Class-B）：generation stamp（migration 063）。防御性检测使 063 前 harness
+    // 降级（writer 跳过这些列；release predicate 永不匹配无 stamp 行）。
     this.hasMintingGenColumn = detectQueueColumn(db, "minting_generation_uuid");
     this.hasClaimedGenColumn = detectQueueColumn(db, "claimed_by_generation_uuid");
 
-    // OPR.0.3.2.20 — register the EXACT human-seat regex predicate as
-    // a SQLite function so the attention query can apply the strict
-    // check BEFORE LIMIT. LIKE / GLOB patterns are supersets that
-    // would let malformed rows (e.g., 'human-@kernel' — empty name
-    // segment) occupy the LIMIT window and hide valid attention items
-    // behind them (guard re-verify-3 qitem-20260518193005 BLOCKER 1).
-    // better-sqlite3 db.function is idempotent; safe to call once at
-    // construction.
-    // OPR.0.4.4.19: single-source regex — the SQL function delegates to the
-    // session-name's canonical predicate (legacy and external) so SQL-side and TS-side
-    // checks cannot drift.
+    // OPR.0.3.2.20——将精确 human-seat regex predicate 注册为 SQLite function，使 attention query
+    // 可在 LIMIT 前应用严格检查。LIKE/GLOB pattern 是超集，会让畸形行（例如 'human-@kernel'，名称
+    // segment 为空）占用 LIMIT 窗口，并隐藏其后的有效 attention item（guard re-verify-3
+    // qitem-20260518193005 BLOCKER 1）。better-sqlite3 db.function 幂等，可在构造时安全调用一次。
+    // OPR.0.4.4.19：单一 source regex——SQL function 委托 session-name 的 canonical predicate
+    //（legacy 与 external），使 SQL 侧与 TS 侧检查无法漂移。
     db.function("is_human_seat_session", { deterministic: true }, (value: unknown) =>
       typeof value === "string" && isHumanSeatSessionRef(value) ? 1 : 0
     );
   }
 
-  /** Startup attaches the generation-aware shared repository. Isolated domain
-   *  fixtures fall back to a repository on this same SQLite connection. */
+  /** Startup 附加识别 generation 的共享 repository。隔离 domain fixture 回退到同一 SQLite
+   * connection 上的 repository。 */
   attachWatchdogJobsRepository(repo: WatchdogJobsRepository): void {
     this.watchdogJobsRepo = repo;
   }
 
-  /** Startup wires this after queue/watchdog composition. Tests may also call
-   * it after reconstruction; it only reconciles queue-owned repeating timers. */
+  /** Startup 在 queue/watchdog 组合后接线。测试也可在重建后调用；它只协调 queue 所有的重复 timer。 */
   reconcileWaitReminders(changedQitem?: string, proofChanged = false): void {
     refreshQueueWaits(this.db, this.watchdogJobsRepo ?? new WatchdogJobsRepository(this.db), changedQitem, proofChanged);
   }
@@ -745,37 +684,33 @@ export class QueueRepository {
   }
 
   /**
-   * Attach the wake-path transport AFTER construction. Used by daemon
-   * startup, where SessionTransport is constructed later in the dep graph
-   * than QueueRepository (because SessionTransport needs agentActivityStore
-   * which itself needs eventBus). Calling this is safe at any time; create /
-   * handoff / handoff-and-complete will start nudging on the next call.
+   * 构造后附加 wake-path transport。用于后台服务启动；SessionTransport 在依赖图中晚于
+   * QueueRepository 构造，因为 SessionTransport 需要 agentActivityStore，后者又需要 eventBus。
+   * 任何时候调用都安全；create / handoff / handoff-and-complete 会从下一次调用开始 nudge。
    */
   attachTransport(transport: QueueNudgeTransport): void {
     this.transport = transport;
   }
 
   /**
-   * W1 (transactional closure): attach the durable wake-intent store AFTER
-   * construction (same dep-graph reason as {@link attachTransport}). Once
-   * attached, handoff / handoff-and-complete stage an outbox intent row inside
-   * their terminal transaction, so the close and its wake intent are one commit.
+   * W1（transactional closure）：构造后附加持久 wake-intent store（依赖图原因与
+   * {@link attachTransport} 相同）。附加后，handoff / handoff-and-complete 会在 terminal transaction
+   * 内暂存 outbox intent 行，使 close 与 wake intent 在一次提交中完成。
    */
   attachOutbox(outbox: OutboxHandler): void {
-    // MF2: the wake intent must commit INSIDE the terminal transaction, which is
-    // only true when the outbox writes on the SAME connection. An outbox backed by
-    // a different DB would let the intent survive a rolled-back close (or vice
-    // versa) — "neither one act nor none". Reject a split-DB outbox at wire time.
+    // MF2：wake intent 必须在 terminal transaction 内提交，只有 outbox 写入同一 connection 时才成立。
+    // 由不同数据库支撑的 outbox 会让 intent 在 close 回滚后存活（反之亦然），破坏“一个操作或全无”。
+    // 在接线时拒绝 split-DB outbox。
     if (outbox.db !== this.db) {
       throw new QueueRepositoryError(
         "outbox_db_mismatch",
-        "attachOutbox requires an OutboxHandler bound to the SAME database connection as the queue repository — a split DB breaks the atomic close+intent seam",
+        "attachOutbox 要求 OutboxHandler 与 queue repository 绑定到同一数据库 connection——拆分数据库会破坏原子 close+intent 接缝",
       );
     }
     this.outbox = outbox;
   }
 
-  /** The one transition-write classifier. It consumes structured state/action facts only. */
+  /** 唯一的 transition-write classifier，只消费结构化 state/action 事实。 */
   private classifyOwnerNotification(input: {
     action: "create" | "update";
     destinationSession: string;
@@ -807,22 +742,17 @@ export class QueueRepository {
   }
 
   /**
-   * W1 (transactional closure) — the PUBLIC composable primitive (stage half).
-   * Stage the durable WAKE INTENT for a successor qitem from INSIDE a terminal
-   * act's `db.transaction` (the queue's own connection), so the intent commits
-   * atomically with the close + transition. Public + composable so any
-   * close+successor writer — handoff / handoff-and-complete today, Mission Control
-   * / Workflow via the P34 follow-on — can call it within its own transaction (the
-   * `createWithinTransaction` precedent), making that wiring pure EXTENSION, not
-   * rework. Pair with {@link assertTerminalClosureHasIntent}, run as the LAST
-   * statement of the same transaction.
+   * W1（transactional closure）——公共可组合 primitive（stage 半边）。从 terminal 操作自己的
+   * `db.transaction`（queue 自身 connection）内为 successor qitem 暂存持久 WAKE INTENT，使 intent
+   * 与 close + transition 原子提交。它公开且可组合，因此任何 close+successor writer——当前的
+   * handoff / handoff-and-complete，以及通过 P34 后续接线的 Mission Control / Workflow——都可在
+   * 自身事务内调用（沿用 `createWithinTransaction` 先例），使接线只是扩展而非返工。与
+   * {@link assertTerminalClosureHasIntent} 配对，后者作为同一事务最后一条语句运行。
    *
-   * The pane nudge itself is a post-commit side effect (reversed-never — a pane
-   * write inside the txn would make the transaction lie); what is durable is this
-   * intent row, which the delivery drains afterward. Freezes the emitting envelope
-   * (MF4); idempotent by a deterministic outbox id keyed on the successor.
-   * `nudge:false` intends no wake ⇒ no intent. A missing outbox is enforced by the
-   * guard (fail-closed, MF2), not silently skipped here.
+   * pane nudge 本身是提交后副作用（绝不反转；事务内写 pane 会让 transaction 撒谎）；持久的是 intent
+   * 行，投递随后将其排空。冻结发送 envelope（MF4）；以 successor 为 key 的确定性 outbox id 保证
+   * 幂等。`nudge:false` 表示不 wake ⇒ 无 intent。缺少 outbox 由 guard 以 fail-closed（MF2）强制，
+   * 不在此处静默跳过。
    */
   stageWakeIntent(
     successorQitemId: string,
@@ -831,9 +761,8 @@ export class QueueRepository {
     identityProvenance: string | null,
     nudge: boolean | undefined,
   ): void {
-    // No wake intended (nudge:false) ⇒ no durable intent to make durable. The
-    // W1-c guard is nudge-aware for the same reason: absence of an intent is a
-    // defect only when a wake WAS intended.
+    // 不打算 wake（nudge:false）⇒ 无需持久化 intent。W1-c guard 同样识别 nudge：只有本应 wake 时
+    // 缺少 intent 才是缺陷。
     if (nudge === false) return;
     this.recordWakeIntent({
       outboxId: `${WAKE_INTENT_PREFIX}${successorQitemId}`,
@@ -841,7 +770,7 @@ export class QueueRepository {
       fromSession,
       toSession,
       identityProvenance,
-      bareBody: `Queue handoff: ${successorQitemId} - check your queue.`,
+      bareBody: `Queue handoff：${successorQitemId} - 请检查你的 queue。`,
       tags: this.getById(successorQitemId)?.handedOffFrom
         ? [`queue:return:${this.getByIdOrThrow(successorQitemId).handedOffFrom}`] : undefined,
     });
@@ -857,8 +786,7 @@ export class QueueRepository {
     tags?: string[];
   }): string | null {
     if (!this.outbox) return null;
-    // MF4: freeze the emitting envelope at stage time. Delivery and crash
-    // recovery replay these exact bytes without re-resolving the occupant.
+    // MF4：在 stage 时冻结发送 envelope。投递和崩溃恢复会重放这些精确字节，不重新解析 occupant。
     const stampISO = new Date().toISOString();
     const genUuid = this.resolveOccupantGeneration?.(input.fromSession) ?? undefined;
     const frozenEnvelope = wrapPaneEnvelope(
@@ -896,7 +824,7 @@ export class QueueRepository {
       fromSession: input.fromSession,
       toSession: input.destinationSession,
       identityProvenance: input.identityProvenance,
-      bareBody: `Blocker ${input.blockerQitemId} resolved; parked qitem ${input.qitemId} is pending. Resume the recorded continuation and update the row.`,
+      bareBody: `Blocker ${input.blockerQitemId} 已解决；parked qitem ${input.qitemId} 已进入 pending。请恢复已记录的 continuation 并更新该行。`,
       tags: [AUTO_UNPARK_WAKE_TAG, `${AUTO_UNPARK_BLOCKER_TAG_PREFIX}${input.blockerQitemId}`, `queue:return:${input.blockerQitemId}`],
     });
   }
@@ -904,81 +832,73 @@ export class QueueRepository {
   private deliverWakeIntentAfterCommit(outboxId: string): void {
     queueMicrotask(() => {
       void this.deliverWakeIntent(outboxId).catch((err) => {
-        console.error(`Auto-unpark wake delivery failed for ${outboxId}:`, err);
+        console.error(`${outboxId} 的自动 unpark wake 投递失败：`, err);
       });
     });
   }
 
   /**
-   * W1-c (transactional closure): the runtime SEAM GUARD. Called as the LAST
-   * statement inside a terminal act's db.transaction, it makes an
-   * executed-but-unwoken close UNWRITABLE: if this transaction wrote a terminal
-   * close AND a wake was intended, a durable wake intent for the successor MUST
-   * exist in the same transaction. If it does not, throw — the whole act rolls
-   * back at the seam, not at review.
+   * W1-c（transactional closure）：runtime 接缝守卫。作为 terminal 操作 db.transaction 内的最后
+   * 一条语句调用，使“已执行但未 wake”的 close 不可写：若该事务写入 terminal close 且本应 wake，
+   * 则 successor 的持久 wake intent 必须存在于同一事务中；否则抛错，整个操作在接缝处回滚，而不是
+   * 等到 review。
    *
-   * Nudge-aware: nudge:false intends no wake, so no intent is required. MF2:
-   * fail-closed when a wake IS intended but no intent store is attached (the
-   * guarantee is then impossible). PUBLIC composable primitive (guard half): any
-   * close+successor writer runs this as the LAST statement of its own transaction
-   * — handoff / handoff-and-complete today, Mission Control / Workflow via P34.
+   * 识别 Nudge：nudge:false 表示不 wake，因此无需 intent。MF2：本应 wake 但未附加 intent store 时
+   * fail-closed（此时无法保证）。公共可组合 primitive（guard 半边）：任何 close+successor writer
+   * 都将其作为自身事务的最后一条语句运行——当前为 handoff / handoff-and-complete，未来由 P34
+   * 接入 Mission Control / Workflow。
    */
   assertTerminalClosureHasIntent(
     sourceQitemId: string,
     successorQitemId: string,
     nudge: boolean | undefined,
   ): void {
-    if (nudge === false) return; // no wake intended ⇒ no intent required
-    // MF2: fail CLOSED. A nudge-intended terminal act with no intent store cannot
-    // make its wake durable, so the guarantee is impossible — refuse the close
-    // rather than silently produce an executed-but-unwoken item (the exact class
-    // W1 makes unwritable). Production always attaches an outbox at startup.
+    if (nudge === false) return; // 不打算 wake ⇒ 无需 intent。
+    // MF2：fail-closed。旨在 nudge 的 terminal 操作若没有 intent store，就无法持久化 wake，因而
+    // 无法提供保证；拒绝 close，而不是静默产生已执行但未 wake 的 item（W1 使其不可写的确切类别）。
+    // 生产环境始终在启动时附加 outbox。
     if (!this.outbox) {
       throw new QueueRepositoryError(
         "wake_intent_store_unavailable",
-        "a nudge-intended terminal act requires an attached wake-intent store to make its wake durable — none attached (pass nudge:false for a wake-less close, or attach an outbox)",
+        "旨在 nudge 的 terminal 操作需要附加 wake-intent store 才能持久化 wake——当前未附加（无需 wake 的 close 请传 nudge:false，或附加 outbox）",
       );
     }
-    // Reads the txn-visible (uncommitted) state on this connection.
+    // 在此 connection 上读取事务可见但尚未提交的状态。
     const src = this.getById(sourceQitemId);
-    if (!src || !isTerminalState(src.state)) return; // not a terminal close
+    if (!src || !isTerminalState(src.state)) return; // 不是 terminal close。
     const intent = this.outbox.getById(`${WAKE_INTENT_PREFIX}${successorQitemId}`);
     if (!intent) {
       throw new QueueRepositoryError(
         "terminal_close_without_wake_intent",
-        `terminal closure of ${sourceQitemId} committed without staging its wake intent for ${successorQitemId} — one act or none is violated`,
+        `${sourceQitemId} 的 terminal closure 在未暂存 ${successorQitemId} wake intent 的情况下提交——违反“一个操作或全无”`,
       );
     }
   }
 
   /**
-   * W1-b: deliver ONE committed wake intent. MF3: CLAIM (pending→sending) before
-   * the external send, then finalize (sending→outcome) after — so overlapping
-   * drains send the wake exactly ONCE (the effect, not just the state), and a
-   * second drain of an already-claimed/resolved intent skips. Returns what
-   * happened for the drain's tally.
+   * W1-b：投递一个已提交 wake intent。MF3：外部发送前先 CLAIM（pending→sending），之后再 finalize
+   *（sending→outcome），使重叠 drain 恰好发送一次 wake（保证副作用而不只是状态），第二次 drain
+   * 会跳过已 claim/resolved intent。返回实际结果供 drain 计数。
    *
    *   verified          → delivered
-   *   ok, unverified    → indeterminate   (ambiguous; never silently delivered/failed)
-   *   timeout (MF6)     → indeterminate   (may have landed — not a hard failure)
-   *   other not-ok/throw→ failed          (visible terminal state)
+   *   ok, unverified    → indeterminate   （有歧义；绝不静默视为 delivered/failed）
+   *   timeout (MF6)     → indeterminate   （可能已落地，不是确定失败）
+   *   other not-ok/throw→ failed          （可见 terminal 状态）
    */
   private async deliverWakeIntent(
     outboxId: string,
   ): Promise<"delivered" | "indeterminate" | "failed" | "skipped" | "retained"> {
     if (!this.outbox) return "skipped";
-    if (!this.transport) return "skipped"; // no transport → stays pending for a later drain
+    if (!this.transport) return "skipped"; // 无 transport → 保持 pending，等待后续 drain。
     const alreadyHeld = this.outbox.getById(outboxId);
     if (alreadyHeld?.deliveryState === "retained" || alreadyHeld?.deliveryState === "retired") {
       if (alreadyHeld.auditPointer) this.recordNudgeAttempt(alreadyHeld.auditPointer, "retained:typing_guard");
       return "retained";
     }
-    // MF3: CLAIM (pending→sending) BEFORE the external send so overlapping drains
-    // cannot both send. A losing claim — the row is no longer `pending` (already
-    // resolved, in-flight under another drainer, or claimed) — simply skips: no
-    // send, no tally. This makes the external effect once, not merely the state.
-    // Claim the exact return's arrival + dependent resumes atomically. Each
-    // original frozen intent and audit pointer survives; only transport coalesces.
+    // MF3：外部发送前先 CLAIM（pending→sending），使重叠 drain 无法同时发送。claim 失败表示该行已不再
+    // `pending`（已经 resolved、由其他 drainer 处理，或已 claim），直接跳过，不发送也不计数。这样保证
+    // 外部副作用恰好一次，而不只是状态一次。原子 claim 精确 return 的到达和 dependent resume。每个
+    // 原始冻结 intent 与 audit pointer 都保留，只有 transport 合并。
     let superseded = false;
     const actionable = (entry: import("./outbox-handler.js").OutboxEntry): boolean => {
       const row = entry.auditPointer ? this.db.prepare("SELECT state FROM queue_items WHERE qitem_id = ?").get(entry.auditPointer) as { state: string } | undefined : undefined;
@@ -994,9 +914,8 @@ export class QueueRepository {
         current = expected === latest?.transition_id;
       }
       if (!current) {
-        // Existing failed state means the requested old delivery was refused;
-        // the explicit tag distinguishes supersession from a transport attempt.
-        // Do not stamp last_nudge_result or delivered_at: neither happened.
+        // 现有 failed 状态表示所请求旧投递已被拒绝；显式 tag 将 supersession 与 transport 尝试区分。
+        // 不写 last_nudge_result 或 delivered_at，因为两者均未发生。
         const changed = this.db.prepare("UPDATE outbox_entries SET delivery_state = 'failed', tags = ? WHERE outbox_id = ? AND delivery_state = 'pending'")
           .run(JSON.stringify([...(entry.tags ?? []), "queue:wake-superseded"]), entry.outboxId);
         superseded ||= changed.changes > 0;
@@ -1021,16 +940,14 @@ export class QueueRepository {
     })();
     const intent = group[0];
     if (!intent) return superseded ? "failed" : "skipped";
-    // Only deliver a wake for a qitem that actually exists. A wake intent whose
-    // target qitem is missing — a caller-recorded id under this prefix (the route
-    // no longer refuses those), or a successor already swept — is finalized
-    // `failed`, never sent as a real wake.
+    // 只为实际存在的 qitem 投递 wake。若 wake intent 的 target qitem 缺失——调用方在此前缀下记录的 id
+    //（route 已不再拒绝），或 successor 已被 sweep——则 finalize 为 `failed`，绝不实际发送 wake。
     if (!intent.auditPointer || !this.getById(intent.auditPointer)) {
       this.outbox.finalizeDelivery(outboxId, "failed");
       return "failed";
     }
     const qitemId = intent.auditPointer ?? outboxId;
-    // MF4: send the FROZEN envelope stored on the intent verbatim (no re-resolution).
+    // MF4：逐字发送 intent 中存储的冻结 envelope（不重新解析）。
     const outcome = await this.performWakeSend(
       qitemId, intent.destinationSession, intent.senderSession, undefined, group.map(entry => entry.body).join("\n"), group.map(entry => entry.outboxId),
     );
@@ -1080,28 +997,20 @@ export class QueueRepository {
   }
 
   /**
-   * W1-b: the post-commit delivery for a successor's wake, and the ONE shared
-   * staged-intent delivery path. When the durable intent store is present
-   * (production), deliver the just-committed intent — which CLAIMS and FINALIZES
-   * the row, so a later recovery sweep cannot send it a second time. When it is
-   * absent (test/bootstrap), fall back to the pre-W1 best-effort nudge so behavior
-   * is unchanged where there is no intent to make durable. Called AFTER the
-   * terminal transaction commits (reversed-never: a pane write must not join the
-   * db transaction).
+   * W1-b：successor wake 的提交后投递，也是唯一共享 staged-intent 投递路径。持久 intent store
+   * 存在（生产环境）时，投递刚提交的 intent，并 CLAIM 与 FINALIZE 该行，使后续 recovery sweep
+   * 无法再次发送。缺席（test/bootstrap）时，回退到 W1 前的 best-effort nudge，使无 intent 可持久化
+   * 的路径保持原行为。在 terminal transaction 提交后调用（绝不反转：pane 写入不得加入数据库事务）。
    *
-   * PUBLIC as of P34: every terminal-closing writer that stages an intent must
-   * deliver through THIS path rather than {@link maybeNudge}. `maybeNudge` sends
-   * WITHOUT claiming or finalizing, so a staged intent would remain `pending` and
-   * the startup recovery sweep would deliver the same wake AGAIN. One staged
-   * intent, one delivery, one finalized row.
+   * 自 P34 起公开：每个暂存 intent 的 terminal-closing writer 都必须通过此路径投递，而不是
+   * {@link maybeNudge}。`maybeNudge` 发送时不 claim 或 finalize，因此 staged intent 会保持
+   * `pending`，启动 recovery sweep 会再次投递同一 wake。一个 staged intent、一次投递、一条
+   * finalized 行。
    *
-   * P34 correction: the no-outbox fallback above was documented here but never
-   * implemented — `deliverWakeIntent` simply returns "skipped" with no outbox
-   * attached, so the nudge vanished SILENTLY (a skip is not an error, so nothing
-   * surfaced it). The pre-W1 callers reached this path only after the MF2 guard
-   * had already proven an outbox was attached, which is why it never showed. P34
-   * routes writers here whose harnesses attach no outbox, so the fallback is now
-   * real code rather than a promise in a comment.
+   * P34 修正：上方无 outbox fallback 只写在文档中，从未实现；未附加 outbox 时
+   * `deliverWakeIntent` 只返回 "skipped"，nudge 因而静默消失（skip 不是错误，无法暴露）。W1 前的
+   * 调用方只有在 MF2 guard 已证明附加 outbox 后才到达此路径，所以问题未显现。P34 将未附加 outbox
+   * 的 harness writer 路由到此，因此 fallback 现已成为真实代码，而非注释承诺。
    */
   async deliverWakeForSuccessor(
     successorQitemId: string,
@@ -1110,9 +1019,8 @@ export class QueueRepository {
     sourceSession?: string,
   ): Promise<void> {
     if (nudge === false) return;
-    // No durable intent store ⇒ there is no intent to claim/finalize. Fall back to
-    // the pre-W1 best-effort nudge so the wake still happens (the documented
-    // contract), rather than silently skipping it.
+    // 无持久 intent store ⇒ 无 intent 可 claim/finalize。回退到 W1 前的 best-effort nudge，使 wake
+    // 仍会发生（文档契约），而非静默跳过。
     if (!this.outbox) {
       await this.maybeNudge(successorQitemId, destinationSession, nudge, sourceSession);
       return;
@@ -1121,29 +1029,20 @@ export class QueueRepository {
   }
 
   /**
-   * W1-b: the startup-recovery sweep. Delivers wake intents a crash left
-   * committed-but-undelivered (the terminal txn committed, the process died
-   * before the post-commit deliver). Pages in bounded batches and TERMINATES on
-   * a served short batch or on a no-progress round (a flapping transport marks
-   * rows failed = visible, so it still progresses) — never a silent cap, never a
-   * spin.
+   * W1-b：启动 recovery sweep。投递因崩溃而处于已提交但未投递状态的 wake intent（terminal txn
+   * 已提交，进程在提交后投递前退出）。以有界 batch 分页，在返回短 batch 或无进展轮次时终止
+   *（抖动 transport 会将行标为 failed，因此仍算有进展）；绝不静默截断，也不空转。
    *
-   * MF6 (honest retry policy): the sweep retries ONLY `pending` rows — i.e. wake
-   * intents a crash left committed-but-undelivered. Terminal `failed` and
-   * `indeterminate` rows are NOT re-driven: a failed row would risk resurrecting
-   * a dead wake and an indeterminate one may already have landed (double-send).
-   * Both are left in a VISIBLE terminal state for out-of-band reconciliation. No
-   * periodic timer (out of scope, ruled); a bounded retry of failed rows is the
-   * NAMED residue, not a silent guarantee.
+   * MF6（如实重试策略）：sweep 只重试 `pending` 行，即崩溃留下的已提交但未投递 wake intent。
+   * 不重新驱动 terminal `failed` 和 `indeterminate` 行：failed 行可能复活已死亡 wake；
+   * indeterminate 行可能已经落地（导致重复发送）。两者都保留为可见 terminal 状态，供带外协调。
+   * 不设周期 timer（已裁定超出范围）；failed 行的有界重试是具名残留，而非静默保证。
    */
   /**
-   * BLOCKING 1 (guard re-seal): the recovery-boundary reconciliation, called ONCE
-   * at startup (NOT inside the drain, which can be invoked concurrently). Moves any
-   * abandoned `sending` wake intents — a prior crashed process's claims — to
-   * `indeterminate`, WITHOUT re-sending: a claim left `sending` is ambiguous (the
-   * send may or may not have landed). Kept SEPARATE from drainPendingWakeIntents so
-   * an overlapping drain can never reconcile another drain's in-flight claim.
-   * Returns the count reconciled.
+   * BLOCKING 1（guard 重新封闭）：recovery 边界协调，在启动时调用一次（不在可并发调用的 drain
+   * 内）。将任何遗留 `sending` wake intent——此前崩溃进程的 claim——移到 `indeterminate`，不重新发送：
+   * 留在 `sending` 的 claim 有歧义（send 可能已落地，也可能没有）。与 drainPendingWakeIntents 分离，
+   * 使重叠 drain 绝不会协调其他 drain 的 in-flight claim。返回已协调数量。
    */
   reconcileAbandonedWakeIntents(): number {
     if (!this.outbox) return 0;
@@ -1165,35 +1064,27 @@ export class QueueRepository {
         else if (outcome === "failed") { tally.failed++; progressed++; }
         else if (outcome === "retained") { tally.retained++; progressed++; }
       }
-      // Nothing left pending changed state this round (e.g. transport gone
-      // mid-sweep) — stop rather than spin; the next daemon start retries.
+      // 本轮剩余 pending 项均未改变状态（例如 transport 在 sweep 途中消失）；停止而非空转，下次后台
+      // 服务启动时重试。
       if (progressed === 0) break;
-      if (pending.length < BATCH) break; // served short batch ⇒ drained
+      if (pending.length < BATCH) break; // 返回短 batch ⇒ 已排空。
     }
     return tally;
   }
 
   /**
-   * Issue a default nudge to the destination after a create / handoff /
-   * handoff-and-complete commit. Records the result via recordNudgeAttempt.
-   * Errors are caught and surfaced as nudge_result strings — they do not
-   * unwind the underlying queue mutation.
+   * 在 create / handoff / handoff-and-complete 提交后向 destination 发出默认 nudge。通过
+   * recordNudgeAttempt 记录结果。捕获错误并作为 nudge_result 字符串展示，不展开底层 queue 修改。
    *
-   * Phase D extension point (orch-ratified): public so workflow-projector
-   * can invoke after its outer transaction commits, completing the
-   * createWithinTransaction()'s deferred post-commit side effects.
+   * 阶段 D 扩展点（orch 已批准）：公开此方法，使 workflow-projector 可在外层 transaction 提交后
+   * 调用，完成 createWithinTransaction() 推迟的提交后副作用。
    *
-   * V0.3.1 slice 23 queue-handoff-envelope: the nudge body
-   * is now wrapped with the same From/To/---/body/---/↩ Reply envelope
-   * that `rig send` uses. `sourceSession` is the seat that triggered
-   * the create/handoff so the recipient pane shows where the nudge
-   * came from + a reply hint. A queue nudge is the ONE non-refusable
-   * sender — it has no seat to send an error back to — so when
-   * `sourceSession` is undefined `wrapPaneEnvelope` applies its own
-   * `<unknown sender>` fallback internally (`pane-envelope.ts`). After
-   * A1 that is the SOLE definition of the marker in the tree (the CLI
-   * copies were deleted, refused at the seat boundary instead); this
-   * site holds no copy of its own.
+   * V0.3.1 slice 23 queue-handoff-envelope：nudge body 现在使用与 `rig send` 相同的
+   * From/To/---/body/---/↩ Reply envelope 包装。`sourceSession` 是触发 create/handoff 的 seat，
+   * 因此接收 pane 可显示 nudge 来源和回复提示。queue nudge 是唯一不可拒绝的 sender——没有 seat
+   * 可供回传错误——所以 `sourceSession` 为 undefined 时，`wrapPaneEnvelope` 会在内部应用自己的
+   * `<unknown sender>` fallback（`pane-envelope.ts`）。A1 后，这是树中 marker 的唯一实现（CLI
+   * 副本已删除，改在 seat 边界拒绝）；此处没有自己的副本。
    */
   async maybeNudge(
     qitemId: string,
@@ -1209,17 +1100,13 @@ export class QueueRepository {
   }
 
   /**
-   * W1 (transactional closure): the shared wake-send CORE. Builds the pane
-   * envelope, sends with verify, and CLASSIFIES the transport result into the W1
-   * delivery vocabulary (verified | indeterminate | failed). It touches NO
-   * persistence — callers decide what to record: {@link maybeNudge} records the
-   * nudge attempt; {@link deliverWakeIntent} additionally CAS-marks the durable
-   * intent row. Only ever called when `this.transport` is set (callers guard).
+   * W1（transactional closure）：共享 wake-send 核心。构建 pane envelope、带 verify 发送，并将
+   * transport 结果分类到 W1 delivery 词汇（verified | indeterminate | failed）。它不触碰持久化；
+   * 调用方决定记录内容：{@link maybeNudge} 记录 nudge 尝试；{@link deliverWakeIntent} 还会 CAS 标记
+   * 持久 intent 行。仅在已设置 `this.transport` 时调用（由调用方守卫）。
    *
-   * The `indeterminate` classification is the ambiguous face: `res.ok && !res.verified`
-   * — the delivery LANDED on the wire but its render could not be confirmed
-   * (the "delivered-ack-pending" nudge literal). It is never promoted to
-   * delivered nor demoted to failed.
+   * `indeterminate` 分类表示有歧义：`res.ok && !res.verified`——投递已进入 wire，但无法确认 render
+   *（`delivered-ack-pending` nudge literal）。绝不提升为 delivered，也不降级为 failed。
    */
   private async performWakeSend(
     qitemId: string,
@@ -1229,22 +1116,16 @@ export class QueueRepository {
     prebuiltText?: string,
     committedOutboxIds?: string[],
   ): Promise<{ classified: "verified" | "indeterminate" | "failed" | "retained"; nudgeResult: string }> {
-    // DEFECT FIX qitem-20260827065907-b9ae334c (S1-class, 3 live specimens): a virtual
-    // @external destination has NO pane — the queue row ITSELF is the gateway
-    // subsystem's input (the Slack connector polls human-destined rows and its own
-    // ledger is the delivery record). Falling through to tmux here recorded
-    // "failed: … tmux reports no session" while the founder verifiably received the
-    // message, and that failed: literal poisoned the undelivered surface.
-    // OPR.0.5.6.14 — the inline @external branch became THE ONE RESOLVER SEAM
-    // (gateway/destination-resolver.ts): pane-bound keeps terminal transport;
-    // gateway-routable (@external AND registry-resolved aliases like the
-    // paneless human-*@kernel virtual identities — the live 4-row specimen
-    // class) is GATEWAY-OWNED (tmux never consulted; the connector's row-poll
-    // is the dispatch and its ledger the delivery record); neither is an
-    // honest structured teaching refusal (tmux is not consulted for an
-    // address it can never hold). Classified indeterminate for gateway
-    // (landed with the owning subsystem; render unconfirmable here) — never
-    // verified, never failed.
+    // 缺陷修复 qitem-20260827065907-b9ae334c（S1 类，3 个线上样本）：虚拟 @external destination
+    // 没有 pane，queue 行本身就是 gateway 子系统输入（Slack connector 轮询 human-destined 行，
+    // 自身 ledger 即投递记录）。此处回落到 tmux 会记录“failed: … tmux reports no session”，即使
+    // founder 已明确收到消息，该 failed: literal 仍会污染 undelivered surface。
+    // OPR.0.5.6.14——行内 @external 分支成为唯一 RESOLVER 接缝
+    //（gateway/destination-resolver.ts）：pane-bound 保持 terminal transport；gateway-routable
+    //（@external，以及 registry 解析的别名，如无 pane 的 human-*@kernel 虚拟 identity——线上 4 行
+    // 样本类别）归 GATEWAY 所有（从不查询 tmux；connector 行轮询即 dispatch，自身 ledger 即投递
+    // 记录）；二者都不是如实的结构化教学拒绝（tmux 不应查询它永远无法持有的地址）。gateway
+    // 分类为 indeterminate（已落到所属子系统，但此处无法确认 render），绝非 verified 或 failed。
     const destClass = classifyDestination(destinationSession, {
       entities: (() => {
         const loaded = this.loadHumanRegistryFn();
@@ -1254,12 +1135,12 @@ export class QueueRepository {
     });
     if (destClass.class === "gateway-routable") {
       const resolvedNote = destClass.via === "registry-alias" && destClass.resolvedHuman
-        ? ` — the human registry resolves it to registered human '${destClass.resolvedHuman}'`
+        ? `——human registry 将其解析为已注册 human '${destClass.resolvedHuman}'`
         : "";
       return {
         classified: "indeterminate",
         nudgeResult:
-          `gateway-owned: '${destinationSession}' is a virtual ${destClass.via === "registry-alias" ? "paneless human" : "@external"} destination${resolvedNote} — delivery rides the gateway subsystem (Slack connector), whose own ledger is the delivery record; tmux was not consulted (it can never hold this address class)`,
+          `gateway-owned: '${destinationSession}' 是虚拟 ${destClass.via === "registry-alias" ? "无 pane human" : "@external"} destination${resolvedNote}——投递由 gateway 子系统（Slack connector）负责，其自身 ledger 即投递记录；未查询 tmux（它永远无法持有此类地址）`,
       };
     }
     if (destClass.class === "unroutable") {
@@ -1268,19 +1149,17 @@ export class QueueRepository {
     const stampISO = new Date().toISOString();
     let text: string;
     if (prebuiltText !== undefined) {
-      // MF4: a durable wake intent carries its FROZEN envelope (generation resolved
-      // at STAGE time). Deliver it verbatim — never rebuild — so a crash-recovery
-      // after a tenure swap replays the emitting generation, not the current one.
+      // MF4：持久 wake intent 携带冻结的 envelope（generation 在 STAGE 时解析）。逐字投递，绝不
+      // 重建，使 tenure 交换后的崩溃恢复重放发送时 generation，而非当前 generation。
       text = prebuiltText;
     } else {
-      // OPR.0.4.4.19 FR-7: bodyOverride lets the resolve verb carry the
-      // decision text to the parked owner; default stays the handoff nudge.
-      const bareBody = bodyOverride ?? `Queue handoff: ${qitemId} - check your queue.`;
-      // GHOST-STAGE (h): the single HG-5 baseline change deferred from g — the handoff nudge now carries
-      // a Sent: stamp (so it renders byte-parically with a rig send) plus the SOURCE seat's occupant
-      // generation (g's already-wired render, resolved here; absent=UNKNOWN=omit, never forged). The
-      // stampISO also feeds the transport's delivered-latency flag so a nudge that waited on a busy /
-      // mid-handover successor shows ' · delivered +Ns' for free.
+      // OPR.0.4.4.19 FR-7：bodyOverride 让 resolve 动词把 decision 文本传给 parked owner；默认仍为
+      // 交接提醒。
+      const bareBody = bodyOverride ?? `Queue handoff：${qitemId} - 请检查你的 queue。`;
+      // GHOST-STAGE (h)：从 g 推迟的唯一 HG-5 基线变更——handoff nudge 现在携带 Sent: stamp
+      //（与 rig send 按字节一致渲染），以及 SOURCE seat 的 occupant generation（g 已接线的 render，
+      // 在此解析；缺席=UNKNOWN=省略，绝不伪造）。stampISO 也传给 transport 的 delivered-latency flag，
+      // 使等待 busy / mid-handover successor 的 nudge 自动显示 ' · delivered +Ns'。
       const genUuid = sourceSession
         ? (this.resolveOccupantGeneration?.(sourceSession) ?? undefined)
         : undefined;
@@ -1289,28 +1168,24 @@ export class QueueRepository {
     const deliveryId = `guard-nudge-${qitemId}-${createHash("sha256").update(JSON.stringify([sourceSession, destinationSession, bodyOverride ?? null])).digest("hex")}`;
     const held = !committedOutboxIds ? this.outbox?.getById(deliveryId) : null;
     if (held?.deliveryState === "retained" || held?.deliveryState === "retired") {
-      // Same logical nudge reuses its original frozen envelope, not a new timestamp.
+      // 相同逻辑 nudge 复用原冻结 envelope，而非新时间戳。
       text = held.body;
     }
     try {
       const res = await this.transport!.send(destinationSession, text, { verify: true, stampISO, actorSession: sourceSession, committedOutboxIds, deliveryId: committedOutboxIds ? undefined : deliveryId, auditPointer: qitemId });
-      // OPR.0.3.2.21.FR-4(c) — wording rename: the prior literal
-      // "sent-unverified" read as a failure even in the common case
-      // (delivery confirmed but the synchronous ack window expired,
-      // which is normal for codex seats mid-task). The new literal
-      // "delivered-ack-pending" reads as healthy. The old "verified"
-      // case is unchanged for backward-compat with any tooling that
-      // already consumed the positive literal.
+      // OPR.0.3.2.21.FR-4(c)——措辞重命名：旧 literal `sent-unverified` 即使在常见情况下也看似失败
+      //（已确认投递，但同步 ack 窗口过期；这对任务中的 codex seat 很正常）。新 literal
+      // `delivered-ack-pending` 表示健康。旧 `verified` 情形不变，以向后兼容已消费该正向 literal
+      // 的工具。
       if (res.outcome === "retained") return { classified: "retained", nudgeResult: "retained:typing_guard" };
       if (res.ok) {
         return res.verified
           ? { classified: "verified", nudgeResult: "verified" }
           : { classified: "indeterminate", nudgeResult: "delivered-ack-pending" };
       }
-      // MF6: a TIMEOUT is ambiguous — the send may have landed but the ack window
-      // expired — so it records `indeterminate` (never silently delivered, never a
-      // hard `failed`). A definite non-timeout failure (unreachable, unknown
-      // session) stays `failed`.
+      // MF6：超时有歧义——send 可能已经落地，只是 ack 窗口过期——因此记录 `indeterminate`
+      //（绝不静默标为 delivered，也不标为确定 `failed`）。明确的非超时失败（不可达、未知 session）
+      // 保持 `failed`。
       const detail = res.error ?? res.reason ?? "unknown";
       if (isWakeTimeoutSignal(res.reason) || isWakeTimeoutSignal(res.error)) {
         return { classified: "indeterminate", nudgeResult: `indeterminate:${detail}` };
@@ -1318,7 +1193,7 @@ export class QueueRepository {
       return { classified: "failed", nudgeResult: `failed:${detail}` };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      // A thrown timeout is equally ambiguous (see above).
+      // 抛出的超时同样有歧义（见上方）。
       if (isWakeTimeoutSignal(msg)) {
         return { classified: "indeterminate", nudgeResult: `indeterminate:${msg}` };
       }
@@ -1327,11 +1202,10 @@ export class QueueRepository {
   }
 
   async create(input: QueueCreateInput): Promise<QueueItem> {
-    // FOUNDER ROOT INVARIANT (2026-08-27, supersedes 51-09 incr 4 / ruling cb19867f Q2):
-    // a LOCAL write stores the bare transport identity — no self-host suffix inside one
-    // instance. Host identity is added only at the cross-host forwarding boundary
-    // (routes/queue.ts stamp-at-FORWARD), and a genuine origin triple arriving from a
-    // forward is stored verbatim (never re-stamped, never stripped).
+    // FOUNDER 根不变量（2026-08-27，取代 51-09 增量 4 / 裁定 cb19867f Q2）：本地写入存储裸
+    // transport identity，同一 instance 内不加 self-host 后缀。host identity 只在跨 host 转发边界
+    // 添加（routes/queue.ts 的 forward 时盖章）；从 forward 到达的真实 origin 三元组逐字存储
+    //（不重新盖章，也不剥离）。
     if (!this.validateRig(input.destinationSession)) {
       throw destinationValidationError("destination_session", input.destinationSession, this.loadHumanRegistryFn);
     }
@@ -1342,14 +1216,11 @@ export class QueueRepository {
     try {
       ({ qitemId: id, persistedEvent } = txn());
     } catch (err) {
-      // OPR.0.4.6.MH3 Q-a (FR-5): at-least-once cross-host forwards retry with
-      // the SAME minted qitemId, so a PK conflict on an EXISTING row is an
-      // idempotent RE-DELIVERY when the identity fields match — return the
-      // stored row (no second insert, no second event/nudge). A conflict whose
-      // identity fields DIFFER (same id, different destination/source) is a
-      // caller id-reuse bug — a structured error, never a silent overwrite.
-      // Local (non-forwarded) creates that pass an explicit --id keep the same
-      // safety for free.
+      // OPR.0.4.6.MH3 Q-a（FR-5）：至少一次的跨 host forward 使用同一已生成 qitemId 重试，因此
+      // 现有行上的 PK 冲突在 identity 字段匹配时属于幂等重新投递——返回已存储行（不二次插入，也不
+      // 产生第二个 event/nudge）。identity 字段不同的冲突（相同 id，不同 destination/source）是调用方
+      // id 复用 bug——返回结构化错误，绝不静默覆盖。本地（非 forward）create 传显式 --id 时也自然
+      // 获得同等安全性。
       if (input.qitemId && isQitemPrimaryKeyConflict(err)) {
         const existing = this.getById(input.qitemId);
         if (existing) {
@@ -1361,7 +1232,7 @@ export class QueueRepository {
           }
           throw new QueueRepositoryError(
             "qitem_id_reuse",
-            `qitem ${input.qitemId} already exists with a different destination/source — id reuse is a caller bug, not an idempotent retry`,
+            `qitem ${input.qitemId} 已存在，但 destination/source 不同——id 复用是调用方 bug，不是幂等重试`,
             {
               qitemId: input.qitemId,
               existingDestination: existing.destinationSession,
@@ -1378,27 +1249,21 @@ export class QueueRepository {
   }
 
   /**
-   * PL-004 Phase D extension point (orch-ratified per slice IMPL §
-   * Driver Handoff Contract). Creates a queue item using the SAME
-   * caller-managed db.transaction for transactional-scribe semantics
-   * (workflow-projector folds step closure + next-qitem creation into
-   * one atomic unit). Returns the persisted event AND qitem id so the
-   * caller can defer notifySubscribers/maybeNudge until AFTER its
-   * outer transaction commits.
+   * PL-004 阶段 D 扩展点（orch 按 slice IMPL § Driver Handoff Contract 批准）。使用调用方管理的
+   * 同一 db.transaction 创建 queue item，以获得 transactional-scribe 语义（workflow-projector
+   * 将 step closure + next-qitem create 合并为一个原子单元）。返回已持久化 event 和 qitem id，使
+   * 调用方可将 notifySubscribers/maybeNudge 推迟到外层 transaction 提交后。
    *
-   * Caller MUST:
-   *   1. Invoke this from inside a `db.transaction(() => {...})` block.
-   *   2. After the outer txn commits, call:
+   * 调用方必须：
+   *   1. 从 `db.transaction(() => {...})` block 内调用。
+   *   2. 外层 transaction 提交后调用：
    *        - eventBus.notifySubscribers(persistedEvent)
    *        - this.maybeNudge(qitemId, destinationSession, input.nudge)
-   *   3. NOT call this from outside a transaction (will produce a
-   *      half-state if the caller errors before committing).
+   *   3. 不得在 transaction 外调用（调用方提交前出错会产生半状态）。
    *
-   * The split exists ONLY because notifySubscribers + maybeNudge are
-   * post-commit side effects (subscribers should not see events for
-   * data that may roll back; nudges should not fire for handoffs that
-   * may roll back). For independent create()s that don't need to
-   * compose with an outer transaction, use create() instead.
+   * 这项拆分只因 notifySubscribers + maybeNudge 是提交后副作用而存在（订阅者不应看到可能回滚
+   * 数据的 event；也不应为可能回滚的 handoff 触发 nudge）。无需与外层 transaction 组合的独立
+   * create() 应改用 create()。
    */
   createWithinTransaction(input: QueueCreateInput): {
     qitemId: string;
@@ -1419,18 +1284,15 @@ export class QueueRepository {
   }
 
   /**
-   * Internal: insert + transition + emit event. Caller is responsible
-   * for transaction wrapping (the public create() wraps; the public
-   * createWithinTransaction() does not — caller's outer transaction
-   * provides the atomic boundary).
+   * 内部：insert + transition + emit event。调用方负责包裹 transaction（公共 create() 会包裹；公共
+   * createWithinTransaction() 不会——调用方外层 transaction 提供原子边界）。
    */
   private createInTransactionalContext(input: QueueCreateInput): {
     qitemId: string;
     persistedEvent: PersistedEvent;
   } {
-    // OPR.0.4.4.19 FR-4/FR-5 — human-routed items require summary +
-    // evidence_ref at the domain write path (the validateClosure pattern).
-    // The validator is a no-op for non-human-routed items (BR-1).
+    // OPR.0.4.4.19 FR-4/FR-5——human-routed item 在 domain 写入路径要求 summary + evidence_ref
+    //（validateClosure 模式）。validator 对非 human-routed item 为 no-op（BR-1）。
     const humanRoute = validateHumanRoute({
       tier: input.tier ?? null,
       destinationSession: input.destinationSession,
@@ -1443,16 +1305,16 @@ export class QueueRepository {
       });
     }
     if (input.humanIntent != null && input.humanIntent !== "decision" && input.humanIntent !== "update") {
-      throw new QueueRepositoryError("invalid_human_notification", "humanIntent must be decision or update; omission retains legacy decision behavior.");
+      throw new QueueRepositoryError("invalid_human_notification", "humanIntent 必须是 decision 或 update；省略时保留旧版 decision 行为。");
     }
     if (input.humanDetail != null && (typeof input.humanDetail !== "string" || !input.humanDetail.trim())) {
-      throw new QueueRepositoryError("invalid_human_notification", "humanDetail must be nonempty supplemental text or omitted.");
+      throw new QueueRepositoryError("invalid_human_notification", "humanDetail 必须是非空补充文本，或省略。");
     }
     if (input.humanIntent != null || input.humanDetail != null) {
       if (!isHumanSeatSessionRef(input.destinationSession)) {
-        throw new QueueRepositoryError("invalid_human_notification", "humanIntent/humanDetail require a human destination; agent continuation belongs in its own qitem.");
+        throw new QueueRepositoryError("invalid_human_notification", "humanIntent/humanDetail 要求 human destination；agent continuation 应放在自己的 qitem 中。");
       }
-      if (!this.hasHumanIntentColumn) throw new QueueRepositoryError("invalid_human_notification", "Human notification fields require the current queue schema; they were not saved.");
+      if (!this.hasHumanIntentColumn) throw new QueueRepositoryError("invalid_human_notification", "人工通知字段要求当前 queue schema；这些字段未保存。");
     }
     const id = input.qitemId ?? newQitemId();
     const ts = new Date().toISOString();
@@ -1462,7 +1324,7 @@ export class QueueRepository {
     const chain = input.chainOfRecord ? JSON.stringify(input.chainOfRecord) : null;
     const expiresAt = input.expiresAt ?? null;
     const targetRepo = input.targetRepo ?? null;
-    // 0.5.1-53 Atom 2b — supersession back-link (successor -> the row it replaced). Absent for a normal create.
+    // 0.5.1-53 Atom 2b——supersession back-link（successor → 被替换行）。普通 create 时缺席。
     const handedOffFrom = input.handedOffFrom ?? null;
 
     if (this.hasTargetRepoColumn) {
@@ -1519,22 +1381,21 @@ export class QueueRepository {
   }
 
   /**
-   * Transactional handoff: close the source qitem (state=done,
-   * closure_reason=handed_off_to) and create a new qitem owned by `toSession`,
-   * with `handed_off_from` recording the chain. One atomic transaction.
+   * 事务式 handoff：关闭 source qitem（state=done、closure_reason=handed_off_to），并创建由
+   * `toSession` 拥有的新 qitem，以 `handed_off_from` 记录链路。一个原子事务。
    */
   async handoff(input: QueueHandoffInput): Promise<{ closed: QueueItem; created: QueueItem }> {
     const source = this.getById(input.qitemId);
     if (!source) {
       throw new QueueRepositoryError(
         "qitem_not_found",
-        `qitem ${input.qitemId} not found`
+        `找不到 qitem ${input.qitemId}`
       );
     }
     if (isTerminalState(source.state)) {
       throw new QueueRepositoryError(
         "qitem_already_terminal",
-        `qitem ${input.qitemId} is already in terminal state ${source.state}`
+        `qitem ${input.qitemId} 已处于 terminal 状态 ${source.state}`
       );
     }
     if (!this.validateRig(input.toSession)) {
@@ -1550,9 +1411,8 @@ export class QueueRepository {
     const chain = JSON.stringify([...(source.chainOfRecord ?? []), source.qitemId]);
     const targetRepo = input.targetRepo === undefined ? source.targetRepo : input.targetRepo;
 
-    // OPR.0.4.4.19 FR-4/FR-5 — the handoff authors a NEW qitem; when that
-    // new item is human-routed it requires its OWN summary + evidence_ref
-    // (neither is inherited from the source — 044 semantics preserved).
+    // OPR.0.4.4.19 FR-4/FR-5——handoff 编写一个新 qitem；新 item 为 human-routed 时要求自身的
+    // summary + evidence_ref（两者都不从 source 继承——保留 044 语义）。
     const humanRoute = validateHumanRoute({
       tier,
       destinationSession: input.toSession,
@@ -1587,12 +1447,11 @@ export class QueueRepository {
         transitionNote: input.transitionNote ?? `handed off to ${input.toSession}`,
         closureReason: "handed_off_to",
         closureTarget: input.toSession,
-        identityProvenance: input.identityProvenance ?? null, // P21 §4 era-stamp
+        identityProvenance: input.identityProvenance ?? null, // P21 §4 era-stamp。
       });
 
-      // OPR.0.5.8.1 S1b — THE ROUTE THE FOUNDING SPECIMEN TOOK. Row b7a70333 went
-      // handed-off at 10:02:03Z and its timer still fired at 10:18:07Z, because
-      // handoff() is its own transaction and never passes through update().
+      // OPR.0.5.8.1 S1b——创始样本经过的实际路线。行 b7a70333 于 10:02:03Z 进入 handed-off，
+      // 其 timer 仍在 10:18:07Z 触发，因为 handoff() 使用自身事务，绝不经过 update()。
       this.retireParkGeneratedTimer(source.qitemId, "park_ended:handed-off");
 
       if (this.hasTargetRepoColumn) {
@@ -1629,14 +1488,13 @@ export class QueueRepository {
         state: "pending",
         actorSession: input.fromSession,
         transitionNote: `handoff from ${source.qitemId}`,
-        identityProvenance: input.identityProvenance ?? null, // P21 §4 era-stamp
+        identityProvenance: input.identityProvenance ?? null, // P21 §4 era-stamp。
         ownerNotificationKind: successorNotification?.kind,
         ownerNotificationLevel: successorNotification?.level,
       });
 
-      // W1-a: the durable wake intent joins the SAME transaction as the close +
-      // successor create. If this (or anything above) throws, the whole act rolls
-      // back — one act or none.
+      // W1-a：持久 wake intent 加入 close + successor create 的同一事务。此处或上方任一步骤抛错，
+      // 整个操作回滚——一个操作或全无。
       this.stageWakeIntent(newId, input.fromSession, input.toSession, input.identityProvenance ?? null, input.nudge);
 
       const handoffEvent = this.eventBus.persistWithinTransaction({
@@ -1649,8 +1507,8 @@ export class QueueRepository {
       });
       events.push({ name: "queue.handed_off", payload: handoffEvent });
 
-      // OPR.0.5.6.26 — a handed-off blocker actuates its attached rows through the one
-      // propagation site, with the update path's exact effect set.
+      // OPR.0.5.6.26——handed-off blocker 通过唯一 propagation 位置驱动其附属行，使用与 update
+      // 路径完全相同的 effect set。
       for (const dependentEvent of this.propagateBlockerCompletion({
         qitemId: source.qitemId,
         terminalState: "handed-off",
@@ -1672,9 +1530,8 @@ export class QueueRepository {
       });
       events.push({ name: "queue.created", payload: createdEvent });
 
-      // W1-c: the seam guard — the LAST statement in the terminal txn. A close
-      // that intended a wake cannot commit without its durable intent; a throw
-      // here rolls the whole act back at the seam.
+      // W1-c：接缝守卫——terminal transaction 的最后一条语句。本应 wake 的 close 若无持久 intent
+      // 就无法提交；此处抛错会在接缝回滚整个操作。
       this.assertTerminalClosureHasIntent(source.qitemId, newId, input.nudge);
     });
 
@@ -1683,8 +1540,8 @@ export class QueueRepository {
       this.eventBus.notifySubscribers(e.payload as import("./types.js").PersistedEvent);
     }
 
-    // W1-b: deliver the just-committed wake intent (marking it), or the pre-W1
-    // best-effort nudge when no intent store is attached. Post-commit only.
+    // W1-b：投递刚提交的 wake intent（并标记），或在未附加 intent store 时使用 W1 前的
+    // best-effort nudge。仅在提交后执行。
     await this.deliverWakeForSuccessor(newId, input.toSession, input.nudge, input.fromSession);
 
     return {
@@ -1694,24 +1551,22 @@ export class QueueRepository {
   }
 
   /**
-   * Variant of {@link handoff} that closes the source qitem as `done`
-   * (terminal closure) instead of `handed-off` (intermediate). Same atomic
-   * close+create, same chain_of_record semantics, same default-nudge behavior.
-   * Use when the source seat is fully complete with the work — no follow-up
-   * tracking needed against the source qitem.
+   * {@link handoff} 的变体：将 source qitem 关闭为 `done`（terminal closure），而不是
+   * `handed-off`（中间状态）。保持相同的原子 close+create、chain_of_record 语义和默认 nudge 行为。
+   * 用于 source seat 已完全完成工作，不再需要针对 source qitem 追踪后续项的情况。
    */
   async handoffAndComplete(input: QueueHandoffAndCompleteInput): Promise<{ closed: QueueItem; created: QueueItem }> {
     const source = this.getById(input.qitemId);
     if (!source) {
       throw new QueueRepositoryError(
         "qitem_not_found",
-        `qitem ${input.qitemId} not found`
+        `找不到 qitem ${input.qitemId}`
       );
     }
     if (isTerminalState(source.state)) {
       throw new QueueRepositoryError(
         "qitem_already_terminal",
-        `qitem ${input.qitemId} is already in terminal state ${source.state}`
+        `qitem ${input.qitemId} 已处于 terminal 状态 ${source.state}`
       );
     }
     if (!this.validateRig(input.toSession)) {
@@ -1727,7 +1582,7 @@ export class QueueRepository {
     const chain = JSON.stringify([...(source.chainOfRecord ?? []), source.qitemId]);
     const targetRepo = input.targetRepo === undefined ? source.targetRepo : input.targetRepo;
 
-    // OPR.0.4.4.19 FR-4/FR-5 — same new-item enforcement as handoff().
+    // OPR.0.4.4.19 FR-4/FR-5——与 handoff() 相同的新 item 强制规则。
     const humanRoute = validateHumanRoute({
       tier,
       destinationSession: input.toSession,
@@ -1762,11 +1617,10 @@ export class QueueRepository {
         transitionNote: input.transitionNote ?? `handoff-and-complete to ${input.toSession}`,
         closureReason: "handed_off_to",
         closureTarget: input.toSession,
-        identityProvenance: input.identityProvenance ?? null, // P21 §4 era-stamp
+        identityProvenance: input.identityProvenance ?? null, // P21 §4 era-stamp。
       });
 
-      // OPR.0.5.8.1 S1b — same structural bypass as handoff(): own transaction,
-      // never routes through update().
+      // OPR.0.5.8.1 S1b——与 handoff() 相同的结构性旁路：使用自身事务，绝不经过 update()。
       this.retireParkGeneratedTimer(source.qitemId, "park_ended:done");
 
       if (this.hasTargetRepoColumn) {
@@ -1807,8 +1661,8 @@ export class QueueRepository {
         ownerNotificationLevel: successorNotification?.level,
       });
 
-      // W1-a: the durable wake intent joins the SAME transaction as the close +
-      // successor create — one act or none (symmetric with handoff()).
+      // W1-a：持久 wake intent 加入 close + successor create 的同一事务——一个操作或全无
+      //（与 handoff() 对称）。
       this.stageWakeIntent(newId, input.fromSession, input.toSession, input.identityProvenance ?? null, input.nudge);
 
       const handoffEvent = this.eventBus.persistWithinTransaction({
@@ -1821,8 +1675,8 @@ export class QueueRepository {
       });
       events.push({ name: "queue.handed_off", payload: handoffEvent });
 
-      // OPR.0.5.6.26 — a done-via-handoff-and-complete blocker actuates its attached rows through the one
-      // propagation site, with the update path's exact effect set (the confirmed R-2 prediction).
+      // OPR.0.5.6.26——经 handoff-and-complete 进入 done 的 blocker 通过唯一 propagation 位置
+      // 驱动其附属行，使用与 update 路径完全相同的 effect set（已确认的 R-2 预测）。
       for (const dependentEvent of this.propagateBlockerCompletion({
         qitemId: source.qitemId,
         terminalState: "done",
@@ -1844,9 +1698,8 @@ export class QueueRepository {
       });
       events.push({ name: "queue.created", payload: createdEvent });
 
-      // W1-c: the seam guard — the LAST statement in the terminal txn. A close
-      // that intended a wake cannot commit without its durable intent; a throw
-      // here rolls the whole act back at the seam.
+      // W1-c：接缝守卫——terminal transaction 的最后一条语句。本应 wake 的 close 若无持久 intent
+      // 就无法提交；此处抛错会在接缝回滚整个操作。
       this.assertTerminalClosureHasIntent(source.qitemId, newId, input.nudge);
     });
 
@@ -1855,8 +1708,8 @@ export class QueueRepository {
       this.eventBus.notifySubscribers(e.payload as import("./types.js").PersistedEvent);
     }
 
-    // W1-b: deliver the just-committed wake intent (marking it), or the pre-W1
-    // best-effort nudge when no intent store is attached. Post-commit only.
+    // W1-b：投递刚提交的 wake intent（并标记），或在未附加 intent store 时使用 W1 前的
+    // best-effort nudge。仅在提交后执行。
     await this.deliverWakeForSuccessor(newId, input.toSession, input.nudge, input.fromSession);
 
     return {
@@ -1866,37 +1719,30 @@ export class QueueRepository {
   }
 
   /**
-   * OPR.0.4.6.MH3 FR-4 (C2, arch Q-c): the LOCAL half of a cross-host
-   * handoff — close the source row AFTER the successor-create was forwarded
-   * to (and accepted by) the target host. The two sides live in two DBs, so
-   * this is deliberately NOT the atomic close+create of {@link handoff}: the
-   * boundary is bridged by message-passing (successor-create FIRST on the
-   * origin host, this source-close SECOND — never the reverse, so a crash
-   * between the two leaves a live duplicate the idempotent re-drive
-   * converges, never a dropped potato).
+   * OPR.0.4.6.MH3 FR-4（C2，arch Q-c）：跨 host handoff 的本地半边——successor-create 已转发到
+   * 目标 host 并被接受后，才关闭 source 行。两侧位于两个数据库中，因此刻意不采用 {@link handoff}
+   * 的原子 close+create；通过消息传递跨越边界（先在 origin host 执行 successor-create，再执行此
+   * source-close，绝不反转。因此两者之间崩溃会留下 live 副本，可由幂等重新驱动收敛，而不会丢失
+   * 烫手山芋）。
    *
-   * Re-drive semantics (FR-4/FR-5, the interrupted-close case):
-   *   - source already terminal WITH a MATCHING closureTarget → idempotent
-   *     absorb: return the stored row unchanged (`absorbed: true`) — no
-   *     second close, no second event.
-   *   - source already terminal with a MISMATCHED closureTarget → structured
-   *     `cross_host_close_conflict` (someone else closed it meanwhile —
-   *     surface, never overwrite).
-   *   - otherwise → close exactly like the local handoff's close leg:
-   *     `closure_reason=handed_off_to`; `closure_target` carries the
-   *     host-qualified successor key `<qitem-id>@<host>` (custody metadata,
-   *     never a local lookup key); `handed_off_to`
-   *     stays the two-part `member@rig` (BR-1 — session-string carriers
-   *     never gain `@host`).
+   * 重新驱动语义（FR-4/FR-5，被中断 close 情形）：
+   *   - source 已 terminal 且 closureTarget 匹配 → 幂等吸收：原样返回已存储行（`absorbed: true`），
+   *     不二次 close，也不产生第二个 event。
+   *   - source 已 terminal 但 closureTarget 不匹配 → 结构化 `cross_host_close_conflict`
+   *     （其间被其他方关闭；展示冲突，绝不覆盖）。
+   *   - 否则 → 与本地 handoff close 分支完全相同：`closure_reason=handed_off_to`；
+   *     `closure_target` 携带带 host 限定的 successor key `<qitem-id>@<host>`（custody metadata，
+   *     绝非本地 lookup key）；`handed_off_to` 保持两段 `member@rig`（BR-1——session-string carrier
+   *     永不增加 `@host`）。
    */
   closeCrossHostHandoffSource(input: {
     qitemId: string;
     fromSession: string;
-    /** Two-part `member@rig` destination — the session-string carrier (BR-1). */
+    /** 两段 `member@rig` destination——session-string carrier（BR-1）。 */
     toSession: string;
-    /** Host-qualified successor `<qitem-id>@<host>` closure target. */
+    /** 带 host 限定的 successor `<qitem-id>@<host>` closure target。 */
     closureTarget: string;
-    /** `handed-off` for /handoff; `done` for /handoff-and-complete. */
+    /** /handoff 使用 `handed-off`；/handoff-and-complete 使用 `done`。 */
     terminalState: "handed-off" | "done";
     transitionNote?: string;
   }): { item: QueueItem; absorbed: boolean } {
@@ -1904,7 +1750,7 @@ export class QueueRepository {
     if (!source) {
       throw new QueueRepositoryError(
         "qitem_not_found",
-        `qitem ${input.qitemId} not found`
+        `找不到 qitem ${input.qitemId}`
       );
     }
     if (isTerminalState(source.state)) {
@@ -1913,7 +1759,7 @@ export class QueueRepository {
       }
       throw new QueueRepositoryError(
         "cross_host_close_conflict",
-        `qitem ${input.qitemId} is already closed toward ${source.closureTarget ?? "<no closure_target>"} — this re-drive names ${input.closureTarget}; surfacing the conflict, never overwriting`,
+        `qitem ${input.qitemId} 已向 ${source.closureTarget ?? "<无 closure_target>"} 关闭——本次重新驱动指定 ${input.closureTarget}；展示冲突，绝不覆盖`,
         {
           qitemId: input.qitemId,
           existingClosureTarget: source.closureTarget,
@@ -1942,32 +1788,30 @@ export class QueueRepository {
         qitemId: input.qitemId,
         state: input.terminalState,
         actorSession: input.fromSession,
-        // BR-1: the minted note carries the TWO-PART toSession only — the
-        // host-qualified successor key is allowed in closure_target and nowhere
-        // else, and transition_note is a durable carrier.
+        // BR-1：生成的 note 只携带两段 toSession；带 host 限定的 successor key 只允许出现在
+        // closure_target，transition_note 是持久 carrier。
         transitionNote: input.transitionNote ?? `cross-host handoff to ${input.toSession}`,
         closureReason: "handed_off_to",
         closureTarget: input.closureTarget,
       });
 
-      // OPR.0.5.8.1 S1b — third member of the handoff family, same bypass.
+      // OPR.0.5.8.1 S1b——handoff 家族第三个成员，使用相同旁路。
       this.retireParkGeneratedTimer(input.qitemId, `park_ended:${input.terminalState}`);
 
       const handoffEvent = this.eventBus.persistWithinTransaction({
         type: "queue.handed_off",
         qitemId: input.qitemId,
         fromSession: input.fromSession,
-        // The event body is a session-string carrier — two-part only (BR-1).
+        // event body 是 session-string carrier——仅允许两段（BR-1）。
         toSession: input.toSession,
         closureReason: "handed_off_to",
         summary: source.summary ?? null,
       });
       events.push(handoffEvent);
 
-      // OPR.0.5.6.26 (R2 B-1) — the cross-host terminal close is the third
-      // handoff-family caller of the one propagation site: attached rows actuate
-      // with the update path's exact effect set, at this close's actual terminal
-      // state. Absorbed redrives return above this transaction and never re-run it.
+      // OPR.0.5.6.26（R2 B-1）——跨 host terminal close 是唯一 propagation 位置的第三个 handoff
+      // 家族调用方：附属行在此次 close 的实际 terminal 状态下，使用与 update 路径完全相同的 effect
+      // set 驱动。被吸收的重新驱动会在此事务上方返回，绝不重跑。
       for (const dependentEvent of this.propagateBlockerCompletion({
         qitemId: input.qitemId,
         terminalState: input.terminalState,
@@ -1988,12 +1832,11 @@ export class QueueRepository {
   }
 
   /**
-   * `whoami` — return the seat's queue position from the daemon's perspective.
-   * Counts active qitems (pending + in-progress + blocked) destined for the
-   * caller, lists the most recent active qitems, and reports counts for the
-   * caller's outgoing source role too. Read-only; no mutations.
+   * `whoami`——从后台服务视角返回 seat 的 queue 位置。统计指向调用方的 active qitem
+   *（pending + in-progress + blocked），列出最近 active qitem，并报告调用方作为 outgoing source
+   * 的计数。只读，不修改。
    *
-   * Per PL-004 Phase A § Routes: GET /api/queue/whoami.
+   * 依据 PL-004 阶段 A § Routes：GET /api/queue/whoami。
    */
   whoami(session: string, opts?: { recentLimit?: number }): {
     session: string;
@@ -2034,13 +1877,12 @@ export class QueueRepository {
   }
 
   /**
-   * Every in-progress row destined for `session`, UNBOUNDED and single-state.
+   * 所有指向 `session` 的 in-progress 行，无上限且只含单一状态。
    *
-   * `whoami`'s `recent` is a display projection: it is capped (default 25, max 200) and
-   * mixes pending/in-progress/blocked. Anything that must reason about how many batons a
-   * seat truly holds — in particular a refusal that fires on ambiguity — cannot read it,
-   * because a second in-progress row sitting past the cap is invisible and the refusal
-   * silently degrades into a confident answer. This is that authoritative input.
+   * `whoami` 的 `recent` 是展示投影：有上限（默认 25，最大 200），且混合
+   * pending/in-progress/blocked。任何必须判断 seat 实际持有多少 baton 的逻辑——尤其是因歧义而触发
+   * 的拒绝——都不能读取它，因为超过上限的第二个 in-progress 行不可见，拒绝会静默退化成确定答案。
+   * 这才是权威输入。
    */
   listInProgressForDestination(session: string): QueueItem[] {
     const rows = this.db
@@ -2052,35 +1894,35 @@ export class QueueRepository {
   }
 
   /**
-   * Mark a qitem `in-progress` (claim). Computes closure_required_at from tier.
+   * 将 qitem 标为 `in-progress`（claim），并根据 tier 计算 closure_required_at。
    */
   claim(input: QueueClaimInput): QueueItem {
     const qitem = this.getById(input.qitemId);
     if (!qitem) {
       throw new QueueRepositoryError(
         "qitem_not_found",
-        `qitem ${input.qitemId} not found`
+        `找不到 qitem ${input.qitemId}`
       );
     }
     if (qitem.destinationSession !== input.destinationSession) {
       throw new QueueRepositoryError(
         "claim_destination_mismatch",
-        `qitem ${input.qitemId} destination is ${qitem.destinationSession}, not ${input.destinationSession}`
+        `qitem ${input.qitemId} 的 destination 是 ${qitem.destinationSession}，而不是 ${input.destinationSession}`
       );
     }
     if (qitem.state !== "pending" && qitem.state !== "blocked") {
       throw new QueueRepositoryError(
         "qitem_not_claimable",
-        `qitem ${input.qitemId} is in state ${qitem.state}; only pending/blocked are claimable`
+        `qitem ${input.qitemId} 处于 ${qitem.state} 状态；只有 pending/blocked 可 claim`
       );
     }
 
     const ts = new Date().toISOString();
     const closureRequiredAt = computeClosureRequiredAt(ts, qitem.tier);
 
-    // GHOST-STAGE (e/Class-B): stamp the CLAIMANT's occupant generation. THIS is the ghost
-    // discriminator — under a handover the successor reuses the seat name, so a name-scoped release
-    // would neutralize the successor's own claims; the retiring generation's claims are released by gen.
+    // GHOST-STAGE（e/Class-B）：盖上 CLAIMANT 的 occupant generation。这是 ghost 判别器——handover
+    // 中 successor 复用 seat 名，因此按名称范围释放会中和 successor 自己的 claim；retiring generation
+    // 的 claim 按 gen 释放。
     const claimedByGeneration = this.hasClaimedGenColumn
       ? (this.resolveOccupantGeneration?.(input.destinationSession) ?? null)
       : null;
@@ -2110,15 +1952,12 @@ export class QueueRepository {
         state: "in-progress",
         actorSession: input.destinationSession,
         transitionNote: "claimed",
-        identityProvenance: input.identityProvenance ?? null, // P21 §4 era-stamp
+        identityProvenance: input.identityProvenance ?? null, // P21 §4 era-stamp。
       });
 
-      // OPR.0.5.8.1 S1b — CLAIM-RESUME. A blocked row is claimable ("only
-      // pending/blocked are claimable"), so claiming is a real exit from a park
-      // and it writes state directly rather than through update(). This is the
-      // very transition the story contract named, and my first repair pinned it
-      // through `update()` — a different spelling of the same outcome, which is
-      // why it looked covered.
+      // OPR.0.5.8.1 S1b——CLAIM-RESUME。blocked 行可 claim（“只有 pending/blocked 可 claim”），
+      // 因此 claiming 是真正离开 park，并直接写 state，而非经过 update()。这正是 story 契约点名的
+      // transition；首次修复通过 `update()` 钉扎了相同结果的另一种写法，所以看起来像已覆盖。
       this.retireParkGeneratedTimer(input.qitemId, "park_ended:claimed");
 
       return this.eventBus.persistWithinTransaction({
@@ -2139,19 +1978,19 @@ export class QueueRepository {
   unclaim(qitemId: string, destinationSession: string, reason: string, identityProvenance?: string | null): QueueItem {
     const qitem = this.getById(qitemId);
     if (!qitem) {
-      throw new QueueRepositoryError("qitem_not_found", `qitem ${qitemId} not found`);
+      throw new QueueRepositoryError("qitem_not_found", `找不到 qitem ${qitemId}`);
     }
     if (qitem.state !== "in-progress") {
       throw new QueueRepositoryError(
         "qitem_not_in_progress",
-        `qitem ${qitemId} is in state ${qitem.state}; only in-progress can be unclaimed`
+        `qitem ${qitemId} 处于 ${qitem.state} 状态；只有 in-progress 可 unclaim`
       );
     }
     const ts = new Date().toISOString();
 
     const txn = this.db.transaction(() => {
-      // (e/Class-B): returning to pending releases the claim, so clear the claimant-generation stamp
-      // (the item is now unclaimed; a fresh claimant will re-stamp its own generation).
+      // (e/Class-B)：返回 pending 会释放 claim，因此清除 claimant-generation stamp（item 现在未被
+      // claim；新的 claimant 会重新盖上自己的 generation）。
       const clearGen = this.hasClaimedGenColumn ? ", claimed_by_generation_uuid = NULL" : "";
       this.db
         .prepare(
@@ -2169,7 +2008,7 @@ export class QueueRepository {
         state: "pending",
         actorSession: destinationSession,
         transitionNote: `unclaimed: ${reason}`,
-        identityProvenance: identityProvenance ?? null, // P21 §4 era-stamp
+        identityProvenance: identityProvenance ?? null, // P21 §4 era-stamp。
       });
 
       return this.eventBus.persistWithinTransaction({
@@ -2187,17 +2026,13 @@ export class QueueRepository {
   }
 
   /**
-   * General state mutator. Routes through hot-potato strict-rejection on
-   * `done` transitions. All transitions append to the log.
+   * 通用状态修改器。`done` transition 经过 hot-potato 严格拒绝。所有 transition 都追加到日志。
    *
-   * Phase B R2: emits queue.updated event atomically with the UPDATE +
-   * transition log append, so the view-event-bridge can wake SSE consumers
-   * on /api/views/:name/sse for normal state transitions (pending → blocked,
-   * in-progress → done, closure, escalation). Phase A write semantics are
-   * UNCHANGED — only an additional event emission inside the existing
-   * transaction. This is an explicit narrow event-only extension to a
-   * Phase A write surface so update-path mutations are visible to the
-   * view bridge.
+   * 阶段 B R2：将 queue.updated event 与 UPDATE + transition log append 原子发出，使
+   * view-event-bridge 可在 /api/views/:name/sse 上为普通状态 transition（pending → blocked、
+   * in-progress → done、closure、escalation）唤醒 SSE consumer。阶段 A 写入语义不变，只是在现有
+   * transaction 中新增 event 发出。这是对阶段 A 写入 surface 的显式窄幅 event-only 扩展，使 update
+   * 路径修改对 view bridge 可见。
    */
   update(input: QueueUpdateInput): QueueItem {
     const txn = this.db.transaction(() => this.updateInTransactionalContext(input));
@@ -2207,24 +2042,19 @@ export class QueueRepository {
   }
 
   /**
-   * PL-004 Phase D extension point (orch-ratified per slice IMPL Driver
-   * Handoff Contract / Guard R1 repair). Same closure validation +
-   * UPDATE + transition log + queue.updated event as update(), but
-   * runs inside the caller's outer db.transaction so it composes with
-   * workflow-projector's transactional-scribe contract.
+   * PL-004 阶段 D 扩展点（orch 按 slice IMPL Driver Handoff Contract / Guard R1 修复批准）。
+   * 与 update() 使用相同的 closure 校验 + UPDATE + transition log + queue.updated event，但在
+   * 调用方外层 db.transaction 内运行，以便与 workflow-projector 的 transactional-scribe 契约组合。
    *
-   * Caller MUST:
-   *   1. Invoke from inside a `db.transaction(() => {...})` block.
-   *   2. After the outer txn commits, call:
+   * 调用方必须：
+   *   1. 从 `db.transaction(() => {...})` block 内调用。
+   *   2. 外层 transaction 提交后调用：
    *        eventBus.notifySubscribers(persistedEvent)
-   *   3. NOT call this from outside a transaction (will produce a
-   *      half-state if the caller errors before committing).
+   *   3. 不得在 transaction 外调用（调用方提交前出错会产生半状态）。
    *
-   * Closure validation runs at call time (before the UPDATE) so a
-   * Phase A invariant violation (e.g., state=done without closure_reason)
-   * throws before the workflow projector's outer transaction can commit
-   * any partial state. The Phase A hot-potato strict-rejection rule
-   * therefore applies to workflow projection unchanged.
+   * Closure 校验在调用时（UPDATE 前）运行，因此阶段 A 不变量违规（例如 state=done 但无
+   * closure_reason）会在 workflow projector 外层 transaction 可提交任何部分状态前抛错。阶段 A
+   * hot-potato 严格拒绝规则由此原样应用到 workflow projection。
    */
   updateWithinTransaction(input: QueueUpdateInput): {
     qitemId: string;
@@ -2236,10 +2066,8 @@ export class QueueRepository {
   }
 
   /**
-   * Internal: closure validation + UPDATE + transition log + emit
-   * queue.updated event. Caller is responsible for transaction wrapping
-   * (the public update() wraps; the public updateWithinTransaction()
-   * composes inside the caller's outer transaction).
+   * 内部：closure 校验 + UPDATE + transition log + 发出 queue.updated event。调用方负责包裹
+   * transaction（公共 update() 会包裹；公共 updateWithinTransaction() 在调用方外层事务内组合）。
    */
   private updateInTransactionalContext(input: QueueUpdateInput): {
     persistedEvent: PersistedEvent;
@@ -2249,7 +2077,7 @@ export class QueueRepository {
     if (!qitem) {
       throw new QueueRepositoryError(
         "qitem_not_found",
-        `qitem ${input.qitemId} not found`
+        `找不到 qitem ${input.qitemId}`
       );
     }
     const hasNote = typeof input.transitionNote === "string" && input.transitionNote.trim().length > 0;
@@ -2262,7 +2090,7 @@ export class QueueRepository {
       if (input.state === undefined && !hasNote) {
         throw new QueueRepositoryError(
           "state_or_note_required",
-          "queue update requires --state or a non-empty --note; nothing was written",
+          "queue update 要求 --state 或非空 --note；未写入任何内容",
         );
       }
       const disallowed = input.reopen === true
@@ -2280,7 +2108,7 @@ export class QueueRepository {
       if (disallowed) {
         throw new QueueRepositoryError(
           "note_append_fields_not_admitted",
-          "a state-preserving note append accepts only --note (and an optional same --state); state-write fields were supplied, so nothing was written",
+          "保持状态的 note append 只接受 --note（以及可选的相同 --state）；提供了状态写入字段，因此未写入任何内容",
         );
       }
 
@@ -2306,40 +2134,40 @@ export class QueueRepository {
     if (!isQueueState(input.state)) {
       throw new QueueRepositoryError(
         "invalid_state",
-        `state=${input.state} not valid; valid: ${QUEUE_STATES.join(", ")}`
+        `state=${input.state} 无效；有效值：${QUEUE_STATES.join(", ")}`
       );
     }
     if ((input.wakeWatchdogId != null || input.wakeAfterSeconds != null) && input.state !== "blocked") {
       throw new QueueRepositoryError(
         "wake_not_admitted",
-        "a park wake persists only with state=blocked; park the row or drop the wake option",
+        "park wake 只能随 state=blocked 持久化；请 park 该行或移除 wake 选项",
       );
     }
     if (input.wakeWatchdogId != null && input.wakeAfterSeconds != null) {
       throw new QueueRepositoryError(
         "wake_ambiguous",
-        "choose one explicit park wake: an existing watchdog id or an atomic timer",
+        "请选择一种显式 park wake：现有 watchdog id 或原子 timer",
       );
     }
     if (input.wakeAfterSeconds != null && (!Number.isInteger(input.wakeAfterSeconds) || input.wakeAfterSeconds <= 0)) {
       throw new QueueRepositoryError(
         "wake_after_invalid",
-        `wakeAfterSeconds must be a positive integer (got ${input.wakeAfterSeconds})`,
+        `wakeAfterSeconds 必须是正整数（收到 ${input.wakeAfterSeconds}）`,
       );
     }
     if (input.wakeMessage != null && input.wakeAfterSeconds == null) {
       throw new QueueRepositoryError(
         "wake_message_not_admitted",
-        "wakeMessage is internal timer content and requires wakeAfterSeconds",
+        "wakeMessage 是内部 timer 内容，要求同时提供 wakeAfterSeconds",
       );
     }
     if (input.wakeMaxSeconds != null && (input.wakeAfterSeconds == null || !Number.isInteger(input.wakeMaxSeconds) || input.wakeMaxSeconds < input.wakeAfterSeconds)) {
-      throw new QueueRepositoryError("wake_max_invalid", "wakeMaxSeconds requires an initial delay and must be an integer at least as large");
+      throw new QueueRepositoryError("wake_max_invalid", "wakeMaxSeconds 要求初始 delay，且必须是大于等于该值的整数");
     }
     if (input.wakeMessage != null && input.wakeMessage.trim().length === 0) {
       throw new QueueRepositoryError(
         "wake_message_invalid",
-        "wakeMessage must be non-empty when supplied",
+        "提供 wakeMessage 时不得为空",
       );
     }
 
@@ -2347,28 +2175,28 @@ export class QueueRepository {
     if (isReopen && !input.reopen) {
       throw new QueueRepositoryError(
         "terminal_reopen_requires_ack",
-        `qitem ${input.qitemId} is currently '${qitem.state}'; state='${input.state}' would reopen a terminal row. Re-run deliberately with --reopen --note <reason>.`,
+        `qitem ${input.qitemId} 当前处于 '${qitem.state}'；state='${input.state}' 会重新打开 terminal 行。请有意使用 --reopen --note <reason> 重新运行。`,
         { currentState: qitem.state, requestedState: input.state },
       );
     }
     if (isReopen && !isBlockerLive(input.state)) {
       throw new QueueRepositoryError(
         "terminal_reopen_target_invalid",
-        `qitem ${input.qitemId} is currently '${qitem.state}'; --reopen requires an active target state (pending, in-progress, or blocked), not '${input.state}'.`,
+        `qitem ${input.qitemId} 当前处于 '${qitem.state}'；--reopen 要求 active target 状态（pending、in-progress 或 blocked），而不是 '${input.state}'。`,
         { currentState: qitem.state, requestedState: input.state },
       );
     }
     if (isReopen && !hasNote) {
       throw new QueueRepositoryError(
         "reopen_note_required",
-        `qitem ${input.qitemId} is currently '${qitem.state}'; deliberate reopen requires --note <reason> so the repair is auditable.`,
+        `qitem ${input.qitemId} 当前处于 '${qitem.state}'；有意 reopen 要求 --note <reason>，使修复可审计。`,
         { currentState: qitem.state, requestedState: input.state },
       );
     }
     if (input.reopen && !isReopen) {
       throw new QueueRepositoryError(
         "reopen_not_applicable",
-        `--reopen applies only when moving a terminal row to an active state; qitem ${input.qitemId} is currently '${qitem.state}'.`,
+        `--reopen 仅适用于将 terminal 行移到 active 状态；qitem ${input.qitemId} 当前处于 '${qitem.state}'。`,
         { currentState: qitem.state, requestedState: input.state },
       );
     }
@@ -2384,49 +2212,42 @@ export class QueueRepository {
       });
     }
 
-    // OPR.0.4.6.WF3 FR-6 — the frontier close-path guard (pm ruling:
-    // PREVENTION over detection). A TERMINAL closure (done/handed-off)
-    // of a LIVE workflow-frontier packet from a NON-workflow verb
-    // would strand the instance: the frontier would reference a
-    // closed packet and the workflow's own bookkeeping (trail,
-    // rebind, events) would never happen. Reject LOUD with
-    // what/why/fix naming the workflow verbs. The workflow domain's
-    // own writers pass viaWorkflowVerb (they hold the invariant);
-    // non-workflow qitems return null from the predicate — closure
-    // behavior byte-identical (the zero-friction negative).
+    // OPR.0.4.6.WF3 FR-6——frontier close-path guard（PM 裁定：预防优先于检测）。从非 workflow
+    // 动词对 live workflow-frontier packet 执行 terminal closure（done/handed-off）会使 instance
+    // 搁浅：frontier 将引用已关闭 packet，且 workflow 自身 bookkeeping（trail、rebind、event）不会
+    // 发生。以点明 what/why/fix 和 workflow 动词的方式显著拒绝。workflow domain 自身 writer 传入
+    // viaWorkflowVerb（它们维持不变量）；非 workflow qitem 从 predicate 返回 null，closure 行为按字节
+    // 不变（零摩擦负例）。
     const isTerminalClosure = isTerminalState(input.state);
     if (isTerminalClosure && !input.viaWorkflowVerb && this.workflowFrontierPredicate) {
       const binding = this.workflowFrontierPredicate(input.qitemId);
       if (binding) {
         throw new QueueRepositoryError(
           "workflow_frontier_packet",
-          `qitem ${input.qitemId} is the LIVE frontier packet of workflow instance ${binding.instanceId} (${binding.workflowName}). Closing it out-of-band would strand the workflow. Use the workflow verbs instead: rig workflow project (advance) | rig workflow route (re-target the owner).`,
+          `qitem ${input.qitemId} 是 workflow instance ${binding.instanceId}（${binding.workflowName}）的 live frontier packet。带外关闭会使 workflow 搁浅。请改用 workflow 动词：zrig workflow project（推进）| zrig workflow route（重新指定 owner）。`,
           { instanceId: binding.instanceId, workflowName: binding.workflowName, qitemId: input.qitemId },
         );
       }
     }
 
-    // OPR.0.4.4.19 FR-6 — leg-1 park (state=blocked on a HUMAN-seat blocker):
-    // enforce summary + evidence_ref at the park moment, evaluated on the
-    // EFFECTIVE values (provided on this call, else already on the item) so
-    // an item that carried them from create parks without re-entry. The
-    // enforcement is here at the write path — the `rig queue block` verb and
-    // raw `update --state blocked` hit the same validator (no verb-only
-    // enforcement). Blocking on another qitem requires nothing new (BR-1).
+    // OPR.0.4.4.19 FR-6——第 1 分支 park（state=blocked，blocker 为 human-seat）：在 park 时刻
+    // 强制要求 summary + evidence_ref，并针对有效值评估（本次调用提供，否则使用 item 已有值），使
+    // create 时已携带这些值的 item 无需重新输入即可 park。强制逻辑位于写入路径；`zrig queue block`
+    // 动词和原始 `update --state blocked` 使用同一 validator（无仅动词强制）。阻塞于另一 qitem
+    // 不增加要求（BR-1）。
     const effectiveBlockedOn = input.blockedOn ?? qitem.blockedOn;
     if (input.state === "blocked" && effectiveBlockedOn && this.getById(effectiveBlockedOn)?.humanIntent === "update") {
-      throw new QueueRepositoryError("invalid_human_notification", "An informational update is not an approval dependency. Create a separate decision request if a human decision is needed.");
+      throw new QueueRepositoryError("invalid_human_notification", "信息性 update 不是审批依赖。若需要人工决策，请创建独立的 decision request。");
     }
     if (qitem.humanIntent === "update" && input.state === "blocked" && isHumanSeatSessionRef(effectiveBlockedOn ?? "")) {
-      throw new QueueRepositoryError("invalid_human_notification", "An informational delivery cannot become a human approval park; author a separate decision request.");
+      throw new QueueRepositoryError("invalid_human_notification", "信息性投递不能转为人工审批 park；请编写独立的 decision request。");
     }
     const isHumanPark = input.state === "blocked" && isHumanSeatSession(effectiveBlockedOn);
 
-    // OPR.0.5.1 slice-51-06 D2 — summary/evidence_ref are persist-able ONLY at a human-seat park
-    // (see the FR-6 note below). Silently ignoring them on any other transition is a data-loss trap
-    // (the operator believes the metadata was saved). HARD-REJECT before ANY UPDATE/log/event so the
-    // caller learns immediately and nothing is half-applied. null/undefined = absent (allowed);
-    // empty string = present (a deliberate value → rejected on a non-park transition).
+    // OPR.0.5.1 slice-51-06 D2——summary/evidence_ref 只能在 human-seat park 时持久化（见下方
+    // FR-6 note）。在其他 transition 上静默忽略会造成数据丢失陷阱（操作员误以为 metadata 已保存）。
+    // 在任何 UPDATE/log/event 前强制拒绝，使调用方立即得知且不留下半应用。null/undefined = 缺席
+    //（允许）；空字符串 = 存在（有意值，在非 park transition 上拒绝）。
     if (!isHumanPark) {
       const invalidFields: Array<"summary" | "evidenceRef"> = [];
       if (input.summary != null) invalidFields.push("summary");
@@ -2435,73 +2256,72 @@ export class QueueRepository {
         const flags = invalidFields.map((f) => (f === "summary" ? "--summary" : "--evidence-ref")).join(" / ");
         throw new QueueRepositoryError(
           "summary_evidence_not_persistable",
-          `${invalidFields.join(" + ")} persist only on a human-seat park (state=blocked on a human seat); the '${input.state}' transition cannot store them. Remove ${flags}, or park the item (rig queue block --on <human-seat> --summary … --evidence-ref …).`,
+          `${invalidFields.join(" + ")} 只能在 human-seat park（state=blocked 且 blocker 为 human seat）时持久化；'${input.state}' transition 无法存储它们。请移除 ${flags}，或 park item（zrig queue block --on <human-seat> --summary … --evidence-ref …）。`,
           { invalidFields },
         );
       }
     }
 
-    // SWEEP-a (shape f2576102) — closure/blocked-field COHERENCE, beside the reference
-    // reject above: an incoherent field must never silently persist (worse than a drop —
-    // the COALESCE below would write it). Admits-map, derived from LIVE schema use:
-    //   closure_reason/closure_target → state "done", OR the PARK-RECORD form
-    //     (state "blocked" with closureReason "blocked_on" — the workflow gate/park
-    //     writers' established shape, workflow-runtime.ts:587/1013);
-    //   blocked_on → state "blocked" only.
+    // SWEEP-a（结构 f2576102）——closure/blocked 字段一致性，与上方 reference 拒绝并列：不一致字段
+    // 绝不能静默持久化（比丢失更糟，下方 COALESCE 会写入它）。从 live schema 用法派生准入映射：
+    //   closure_reason/closure_target → state "done"，或 PARK-RECORD 形式
+    //     （state "blocked" 且 closureReason "blocked_on"——workflow gate/park writer 的既有结构，
+    //     workflow-runtime.ts:587/1013）；
+    //   blocked_on → 仅 state "blocked"。
     const isParkRecord = input.state === "blocked" && input.closureReason === "blocked_on";
-    // Third live form (found by the neighborhood suites): the transactional handoff
-    // closes its source as state "handed-off" with closureReason "handed_off_to".
+    // 第三种 live 形式（由邻近测试发现）：事务式 handoff 将 source 关闭为 state "handed-off"，
+    // closureReason 为 "handed_off_to"。
     const isHandoffClose = input.state === "handed-off" && input.closureReason === "handed_off_to";
-    // 0.5.1-53 Atom 2a — FOURTH admitted form: the supersession-cancel. A row corrected by
-    // cancel-and-replace records state=canceled + closureReason=superseded + closureTarget=<successor>,
-    // so superseded is distinguishable from abandoned (a plain cancel keeps closureReason=null).
+    // 0.5.1-53 Atom 2a——第四种允许形式：supersession-cancel。由 cancel-and-replace 修正的行记录
+    // state=canceled + closureReason=superseded + closureTarget=<successor>，使 superseded 可与
+    // abandoned 区分（普通 cancel 保持 closureReason=null）。
     const isSupersedeCancel = input.state === "canceled" && input.closureReason === "superseded";
     if (input.state !== "done" && !isParkRecord && !isHandoffClose && !isSupersedeCancel && (input.closureReason != null || input.closureTarget != null)) {
       throw new QueueRepositoryError(
         "closure_fields_not_admitted",
-        `closure_reason/closure_target persist only on state=done, the blocked park-record form, the handoff close, or the superseded cancel; the '${input.state}' transition cannot store them. Close the item (--state done --closure-reason …) or drop the flags.`,
+        `closure_reason/closure_target 只能持久化到 state=done、blocked park-record、handoff close 或 superseded cancel；'${input.state}' transition 无法存储它们。请关闭 item（--state done --closure-reason …）或移除这些 flag。`,
         {},
       );
     }
-    // A supersession must name WHAT replaced this row — fail LOUD before any write (never a silent
-    // no-op leaving a stale row, the dead-signal class), symmetric with handed_off_to's target rule.
+    // supersession 必须点名替换该行的对象——任何写入前显著失败（绝不静默 no-op 并留下 stale 行，
+    // 即 dead-signal 类别），与 handed_off_to 的 target 规则对称。
     if (isSupersedeCancel && !input.closureTarget) {
       throw new QueueRepositoryError(
         "missing_closure_target",
-        `closure_reason=superseded requires closure_target (the successor qitem that replaced this row).`,
+        `closure_reason=superseded 要求 closure_target（替换该行的 successor qitem）。`,
         {},
       );
     }
     if (input.blockedOn != null && input.state !== "blocked") {
       throw new QueueRepositoryError(
         "blocked_on_not_admitted",
-        `blocked_on persists only on state=blocked; the '${input.state}' transition cannot store it. Park the item (rig queue block --on …) or drop --blocked-on.`,
+        `blocked_on 只能持久化到 state=blocked；'${input.state}' transition 无法存储它。请 park item（zrig queue block --on …）或移除 --blocked-on。`,
         {},
       );
     }
 
-    // 0.5.1-53 Atom 1b(ii) + 1a — blocker validation at the park moment. Non-human blocker kinds:
-    //   qitem-ref ("qitem-…")        → must EXIST and be LIVE (1b-ii); a ghost or dead blocker never lifts.
-    //   typed gate (fold:/auth:/…)   → first-class (1a), but a bare prefix with no gate body is malformed
-    //                                   (a typo must not masquerade as a gate).
-    //   anything else (legacy gate-name) → left as-is; out of this slice.
-    // Human-seat parks (isHumanPark) enforce their own FR-6 contract above.
+    // 0.5.1-53 Atom 1b(ii) + 1a——park 时校验 blocker。非 human blocker 类别：
+    //   qitem-ref（"qitem-…"）      → 必须存在且 live（1b-ii）；ghost 或 dead blocker 永不解除。
+    //   typed gate（fold:/auth:/…） → 一等对象（1a），但只有前缀、无 gate body 时为畸形
+    //                                  （拼写错误不得伪装成 gate）。
+    //   其他（旧版 gate-name）      → 保持原样；超出本 slice 范围。
+    // Human-seat park（isHumanPark）执行上方自身 FR-6 契约。
     if (input.state === "blocked" && !isHumanPark && typeof effectiveBlockedOn === "string") {
       if (effectiveBlockedOn.startsWith("qitem-")) {
         const blocker = this.getById(effectiveBlockedOn);
         if (!blocker) {
           throw new QueueRepositoryError(
             "blocker_not_found",
-            `blocked_on names a qitem that does not exist: ${effectiveBlockedOn}. A park must name a real, live blocker — a nonexistent blocker can never complete, so the row could never unpark.`,
-            // F1 (error-honesty): the rejected value is named rejectedBlocker — an error payload
-            // never carries the success-shaped blockedOn field (the field-filtered-misread class).
+            `blocked_on 指向不存在的 qitem：${effectiveBlockedOn}。park 必须指向真实、live 的 blocker；不存在的 blocker 永远无法完成，因此该行永远无法 unpark。`,
+            // F1（错误诚实性）：被拒绝值命名为 rejectedBlocker；错误 payload 绝不携带成功结构的
+            // blockedOn 字段（字段过滤误读类别）。
             { rejectedBlocker: effectiveBlockedOn },
           );
         }
         if (!isBlockerLive(blocker.state)) {
           throw new QueueRepositoryError(
             "blocker_not_live",
-            `blocked_on names a resolved qitem: ${effectiveBlockedOn} is '${blocker.state}'. A park must name a LIVE blocker — parking on a completed/closed row is a dead-blocker park that never self-clears.`,
+            `blocked_on 指向已 resolved qitem：${effectiveBlockedOn} 为 '${blocker.state}'。park 必须指向 live blocker；park 在已完成/关闭行上会形成永不自清除的 dead-blocker park。`,
             { rejectedBlocker: effectiveBlockedOn, blockerState: blocker.state },
           );
         }
@@ -2510,7 +2330,7 @@ export class QueueRepository {
         if (typedPrefix && !isTypedGateBlocker(effectiveBlockedOn)) {
           throw new QueueRepositoryError(
             "blocker_malformed",
-            `blocked_on '${effectiveBlockedOn}' is a bare '${typedPrefix}' prefix with no gate body. A typed gate blocker must name its gate (e.g. fold:one-home+attestation).`,
+            `blocked_on '${effectiveBlockedOn}' 是不含 gate body 的裸 '${typedPrefix}' 前缀。类型化 gate blocker 必须点名 gate（例如 fold:one-home+attestation）。`,
             { rejectedBlocker: effectiveBlockedOn },
           );
         }
@@ -2541,21 +2361,21 @@ export class QueueRepository {
       if (!job || job.state !== "active") {
         throw new QueueRepositoryError(
           "wake_watchdog_not_live",
-          `watchdog ${input.wakeWatchdogId} is not an active job; attach a live watchdog or arm an atomic timer`,
+          `watchdog ${input.wakeWatchdogId} 不是 active job；请附加 live watchdog 或 arm 原子 timer`,
           { wakeWatchdogId: input.wakeWatchdogId },
         );
       }
       if (job.targetSession !== qitem.destinationSession) {
         throw new QueueRepositoryError(
           "wake_watchdog_target_mismatch",
-          `watchdog ${job.jobId} targets ${job.targetSession}, not parked owner ${qitem.destinationSession}`,
+          `watchdog ${job.jobId} 指向 ${job.targetSession}，而不是 parked owner ${qitem.destinationSession}`,
           { wakeWatchdogId: job.jobId, targetSession: job.targetSession, destinationSession: qitem.destinationSession },
         );
       }
       parkWake = { kind: "watchdog", ref: job.jobId };
     } else if (input.wakeAfterSeconds != null && input.wakeMaxSeconds != null) {
       if (effectiveBlockedOn === input.qitemId) {
-        throw new QueueRepositoryError("wake_self_blocker", "a repeating wait must name an upstream blocker, not its own packet");
+        throw new QueueRepositoryError("wake_self_blocker", "重复 wait 必须指向上游 blocker，而不是自身 packet");
       }
       const oldWake = this.wakeRepo.getStatus(input.qitemId);
       const job = armQueueWait(this.db, jobsRepo, {
@@ -2563,7 +2383,7 @@ export class QueueRepository {
         qitemId: input.qitemId, blocker: effectiveBlockedOn,
         evidence: input.wakeProgressEvidence,
         initialSeconds: input.wakeAfterSeconds, maxSeconds: input.wakeMaxSeconds,
-        message: input.wakeMessage ?? `Resume parked qitem ${input.qitemId} and inspect current evidence.`,
+        message: input.wakeMessage ?? `请恢复 parked qitem ${input.qitemId} 并检查当前 evidence。`,
         owner: qitem.destinationSession, actor: input.actorSession,
       });
       parkWake = { kind: "timer", ref: job.jobId };
@@ -2574,26 +2394,22 @@ export class QueueRepository {
           "policy: periodic-reminder",
           "target:",
           `  session: ${JSON.stringify(qitem.destinationSession)}`,
-          `message: ${JSON.stringify(input.wakeMessage ?? `Wake timer fired for parked qitem ${qitem.qitemId}. Resume the recorded continuation and update the row.`)}`,
+          `message: ${JSON.stringify(input.wakeMessage ?? `Parked qitem ${qitem.qitemId} 的 wake timer 已触发。请恢复已记录的 continuation 并更新该行。`)}`,
           "",
         ].join("\n"),
         targetSession: qitem.destinationSession,
         intervalSeconds: input.wakeAfterSeconds,
         registeredBySession: input.actorSession,
       });
-      // OPR.0.5.8.1 S1 — start the interval at registration for EVERY explicit
-      // `--wake-after` timer, not only provider-limit ones.
+      // OPR.0.5.8.1 S1——每个显式 `--wake-after` timer 都在注册时开始计时，而不只是
+      // 提供方限制计时器。
       //
-      // `isDue` treats a job with no `last_evaluation_at` as due immediately, so
-      // an unseeded timer fires on the scheduler's very first pass regardless of
-      // its interval: measured at 0.69s for a requested 20m and 0.77s for a
-      // requested 2h. The duration was never lost — `interval_seconds` held 1200
-      // and 7200 correctly — it simply was not the thing being measured against.
+      // `isDue` 会把没有 `last_evaluation_at` 的 job 视为立即到期，因此未初始化 timer 无论 interval
+      // 多长，都会在 scheduler 首轮触发：请求 20m 时实测 0.69s，请求 2h 时实测 0.77s。duration
+      // 从未丢失——`interval_seconds` 正确保存了 1200 和 7200——只是没有以它为比较基准。
       //
-      // S16 introduced this seeding for provider-limit parks only and recorded
-      // the narrow scope as deliberate. Widening it is the whole repair: the
-      // mechanism is unchanged and already proven by the provider-limit path, so
-      // this adds no scheduler and no per-wake bookkeeping.
+      // S16 只为 provider-limit park 引入此初始化，并明确记录窄范围是有意设计。将其扩宽就是完整修复：
+      // 机制不变，且已由 provider-limit 路径证明，因此不新增 scheduler 或逐 wake bookkeeping。
       jobsRepo.recordEvaluation(job.jobId, job.registeredAt, false);
       parkWake = { kind: "timer", ref: job.jobId };
     } else if (input.state === "blocked" && effectiveBlockedOn?.startsWith("qitem-")) {
@@ -2603,11 +2419,10 @@ export class QueueRepository {
     const ts = new Date().toISOString();
     const fromState = qitem.state;
 
-    // 0.5.1-53 Atom 1b(i) — clear-on-exit. blocked_on is set EXPLICITLY, not COALESCE'd:
-    // a row keeps its blocker ONLY while `state=blocked` (effectiveBlockedOn = the new
-    // blocker, else the one it already carried), and any exit from blocked CLEARS it to
-    // NULL. The prior `COALESCE(?, blocked_on)` preserved the blocker on every non-blocked
-    // transition, leaving dead blockers that nothing audits (the root-cause strand).
+    // 0.5.1-53 Atom 1b(i)——退出时清除。显式设置 blocked_on，而非 COALESCE：行只在
+    // `state=blocked` 时保留 blocker（effectiveBlockedOn = 新 blocker，否则为已有 blocker），任何离开
+    // blocked 的 transition 都将其清为 null。旧 `COALESCE(?, blocked_on)` 会在每个非 blocked
+    // transition 中保留 blocker，留下无人审计的 dead blocker（根因 strand）。
     const nextBlockedOn = input.state === "blocked" ? effectiveBlockedOn : null;
     const notification = this.classifyOwnerNotification({
       action: "update",
@@ -2640,9 +2455,8 @@ export class QueueRepository {
         input.qitemId
       );
 
-    // FR-6: park-time summary/evidence_ref are PERSISTED onto the existing
-    // item (not merely validated-then-dropped) — visible to the attention
-    // query and to Packet 2. Only the park path writes them.
+    // FR-6：park 时的 summary/evidence_ref 会持久化到现有 item（不只是校验后丢弃），对 attention
+    // query 和 Packet 2 可见。只有 park 路径写入。
     if (isHumanPark) {
       this.persistSummary(input.qitemId, input.summary ?? null);
       this.persistEvidenceRef(input.qitemId, input.evidenceRef ?? null);
@@ -2652,29 +2466,24 @@ export class QueueRepository {
       qitemId: input.qitemId,
       state: input.state,
       actorSession: input.actorSession,
-      transitionNote: isReopen ? `reopen acknowledged: ${input.transitionNote}` : input.transitionNote,
+      transitionNote: isReopen ? `已确认 reopen：${input.transitionNote}` : input.transitionNote,
       closureReason: validation.closureReason ?? undefined,
       closureTarget: validation.closureTarget ?? undefined,
-      identityProvenance: input.identityProvenance ?? null, // P21 §4 era-stamp
+      identityProvenance: input.identityProvenance ?? null, // P21 §4 era-stamp。
       ownerNotificationKind: notification?.kind,
       ownerNotificationLevel: notification?.level,
     });
     if (parkWake) {
-      // OPR.0.5.8.1 S1b addendum — A NEW PARK EPISODE SUPERSEDES THE OLD.
-      // Re-parking (blocked -> blocked with a fresh --wake-after) used to arm a
-      // second job while the first stayed active, leaving two live timers on one
-      // row: the third repeat-fire route, alongside the never-stopped fire and
-      // the row-outliving timer.
+      // OPR.0.5.8.1 S1b 补充——新 PARK EPISODE 取代旧 episode。重新 park（blocked -> blocked，
+      // 带新 --wake-after）曾在首个 job 仍 active 时 arm 第二个 job，使一行上留下两个 live timer：
+      // 除永不停止 fire 与超出行寿命 timer 外的第三条重复 fire 路径。
       //
-      // Read BEFORE recording the new armed row: getStatus returns the most
-      // recent armed wake, so after the record below it would return the one we
-      // are arming now rather than the one being superseded.
+      // 在记录新 armed 行之前读取：getStatus 返回最近的 armed wake；若在下方记录后读取，会返回当前
+      // 正在 arm 的项，而不是被取代项。
       //
-      // Deliberately not gated on the previous state. The live+timer test is the
-      // real safety, and leaving it ungated also cleans up a stale park-generated
-      // timer left by any path that did not unpark cleanly. It cannot over-reach:
-      // a job already terminal fails `live`, and an operator's attached watchdog
-      // fails the kind test.
+      // 有意不以先前状态门控。live+timer 测试才是真正安全条件；不加门控还能清理任何未干净 unpark
+      // 路径留下的 stale park-generated timer。它不会越界：已 terminal job 无法通过 `live`，操作员
+      // 附加的 watchdog 无法通过 kind 测试。
       if (this.wakeRepo.getStatus(input.qitemId)?.ref !== parkWake.ref) {
         this.retireParkGeneratedTimer(input.qitemId, "park_superseded");
       }
@@ -2687,30 +2496,25 @@ export class QueueRepository {
         deliveryStatus: null,
       });
     } else if (fromState === "blocked" && input.state !== "blocked") {
-      // OPR.0.5.8.1 S1b — a park-generated timer is bound to the PARK EPISODE.
-      // Leaving `blocked` ends it, so a wake can never arrive telling a seat to
-      // resume a row that is no longer parked. Specimen: job
-      // 01M1E6F3QG41N76Y1CDX48P766 fired at 10:18:07Z for a row that went
-      // handed-off at 10:02:03Z — sixteen minutes terminal, and the wake still
-      // said "resume the recorded continuation".
+      // OPR.0.5.8.1 S1b——park-generated timer 绑定到 PARK EPISODE。离开 `blocked` 即结束它，
+      // 避免 wake 通知 seat 恢复已不再 parked 的行。样本：job 01M1E6F3QG41N76Y1CDX48P766
+      // 于 10:18:07Z 为一条 10:02:03Z 已 handed-off 的行触发；该行 terminal 已 16 分钟，wake
+      // 仍写着“恢复已记录的 continuation”。
       //
-      // Stopping AT THE TRANSITION rather than checking row state at fire time,
-      // because the fire path delivers before it consults the queue at all:
-      // `recordWatchdogWakeAttempt` runs after delivery and merely returns early
-      // when the row is gone, so a check there would audit a wake that had
-      // already been sent.
+      // 在 TRANSITION 时停止，而不是 fire 时检查行状态，因为 fire 路径在查询 queue 前就已投递：
+      // `recordWatchdogWakeAttempt` 在投递后运行，行消失时只会提前返回，因此在那检查只能审计一条
+      // 已发送的 wake。
       //
-      // ONLY kind === "timer" is stopped. Those jobs are generated by this park
-      // and owned by it. A watchdog the operator attached with --wake-watchdog
-      // (kind "watchdog") is theirs, may target other rows, and must survive.
+      // 只停止 kind === "timer"。这些 job 由此 park 生成并拥有。操作员通过 --wake-watchdog 附加的
+      // watchdog（kind "watchdog"）归操作员所有，可能指向其他行，必须保留。
       this.retireParkGeneratedTimer(input.qitemId, `park_ended:${input.state}`);
     }
 
-    // 0.5.1-53 Atom 1b(iii) — propagate-completion. blocked_on PROMISES "A waits until B completes";
-    // that promise never fired on this runtime (rows sat blocked on done/canceled blockers for days).
-    // When THIS qitem reaches a terminal state, auto-unpark every row parked on it (blocked_on = this,
-    // state='blocked') to pending, clear its (now-resolved) blocker, log the transition, and emit an
-    // event so watchers/sweeps see the unblock without a fetch.
+    // 0.5.1-53 Atom 1b(iii)——propagate-completion。blocked_on 承诺“A 等待 B 完成”；该承诺在此
+    // runtime 从未触发（行会阻塞于已 done/canceled 的 blocker 数天）。当当前 qitem 到达 terminal
+    // 状态时，将所有 park 在其上的行（blocked_on = this、state='blocked'）自动 unpark 为 pending，
+    // 清除现已 resolved 的 blocker，记录 transition 并发出 event，使 watcher/sweep 无需 fetch 即可
+    // 看到 unblock。
     const dependentEvents: PersistedEvent[] = !isBlockerLive(input.state)
       ? this.propagateBlockerCompletion({
           qitemId: input.qitemId,
@@ -2729,36 +2533,30 @@ export class QueueRepository {
       closureReason: validation.closureReason ?? null,
       closureTarget: validation.closureTarget ?? null,
       actorSession: input.actorSession,
-      // FR-1 × FR-6: the event carries the summary as of THIS mutation
-      // (park-time summary included) so surfaces refresh without a fetch.
+      // FR-1 × FR-6：event 携带本次修改时的 summary（包含 park 时 summary），使 surface 无需 fetch
+      // 即可刷新。
       summary: effectiveSummary ?? null,
     });
     return { persistedEvent, persistedEvents: [...dependentEvents, persistedEvent] };
   }
 
-  /** OPR.0.5.6.26 — THE ONE PROPAGATION SITE. blocked_on promises "A waits until B
-   *  completes"; every terminal closure of a blocker actuates the attached rows'
-   *  auto-unpark through THIS helper — the update path and the handoff family both
-   *  call it inside their own transactions. The class this unifies away was
-   *  per-code-path: the handoff verbs wrote terminal states via direct SQL and the
-   *  promise never fired for them. Never a second copy of this logic. */
+  /** OPR.0.5.6.26——唯一 PROPAGATION 位置。blocked_on 承诺“A 等待 B 完成”；blocker 的每次
+   * terminal closure 都通过此 helper 驱动附属行自动 unpark——update 路径与 handoff 家族都在各自
+   * 事务内调用。它消除的是按代码路径分裂的类别：handoff 动词通过直接 SQL 写 terminal 状态，导致
+   * 承诺从未为它们触发。此逻辑绝不出现第二份副本。 */
   /**
-   * OPR.0.5.8.1 S1b — retire the timer a park generated for this row.
+   * OPR.0.5.8.1 S1b——终止 park 为此行生成的 timer。
    *
-   * THE SINGLE PLACE THIS DECISION IS MADE. `queue_items.state` is written by
-   * SIX methods, not one, and the first version of this repair only hooked the
-   * generic `updateInTransactionalContext`. Every other writer silently kept the
-   * timer alive — including `handoff()`, which is the exact route that produced
-   * the motivating specimen (review50-r2 found that one; enumerating the rest
-   * found `claim()` and `propagateBlockerCompletion()` too, and `claim()` is the
-   * "claim-resume" the story contract named explicitly).
+   * 这是作出该决定的唯一位置。`queue_items.state` 由六个方法写入，而非一个；首版修复只挂接通用
+   * `updateInTransactionalContext`。其他 writer 都静默保留 timer，包括正好产生动机样本的
+   * `handoff()`（review50-r2 找到该路径；枚举其余路径又找到 `claim()` 与
+   * `propagateBlockerCompletion()`，而 `claim()` 正是 story 契约明确点名的“claim-resume”）。
    *
-   * Callers must invoke this inside their own state-transition transaction, so a
-   * row can never be observed out of its park with a live park timer.
+   * 调用方必须在自己的状态 transition transaction 内调用，使人永远无法观察到已离开 park、但仍有
+   * live park timer 的行。
    *
-   * Only park-GENERATED timers are retired. A watchdog the operator attached with
-   * `--wake-watchdog` is theirs, may target other rows, and always survives.
-   * Non-live jobs are left alone, so calling this twice is harmless.
+   * 只终止 park 生成的 timer。操作员通过 `--wake-watchdog` 附加的 watchdog 归其所有，可能指向其他
+   * 行，始终保留。非 live job 保持不变，因此重复调用无害。
    */
   private retireParkGeneratedTimer(qitemId: string, reason: string): void {
     const armed = this.wakeRepo.getStatus(qitemId);
@@ -2784,13 +2582,13 @@ export class QueueRepository {
       ).all(input.qitemId, closed?.handedOffTo ?? "") as Array<{ qitem_id: string }> : [];
       const successor = successors.length === 1 ? this.getById(successors[0]!.qitem_id) : null;
       if (successor && isBlockerLive(successor.state) && successor.destinationSession !== r.destination_session) {
-        // Onward custody is a changed blocker. Returning to the waiting owner
-        // below is the result arrival that actually resumes its continuation.
+        // 后续 custody 是已变化的 blocker。下方返回给等待 owner 才是实际恢复其 continuation 的
+        // 结果到达。
         const oldWake = this.wakeRepo.getStatus(r.qitem_id);
         this.db.prepare("UPDATE queue_items SET blocked_on = ?, ts_updated = ? WHERE qitem_id = ?")
           .run(successor.qitemId, input.ts, r.qitem_id);
         const rebound = this.transitionLog.append({ qitemId: r.qitem_id, state: "blocked", actorSession: input.actorSession,
-          transitionNote: `blocker custody moved from ${input.qitemId} to ${successor.qitemId}`,
+          transitionNote: `blocker custody 从 ${input.qitemId} 移到 ${successor.qitemId}`,
           identityProvenance: input.identityProvenance });
         const jobs = this.watchdogJobsRepo ?? new WatchdogJobsRepository(this.db);
         const retainedTimer = oldWake?.kind === "timer" && retargetQueueWait(this.db, jobs, oldWake.ref, successor.qitemId);
@@ -2811,13 +2609,12 @@ export class QueueRepository {
         qitemId: r.qitem_id,
         state: "pending",
         actorSession: input.actorSession,
-        transitionNote: `auto-unparked: blocker ${input.qitemId} reached terminal state '${input.terminalState}'`,
+        transitionNote: `auto-unparked：blocker ${input.qitemId} 到达 terminal 状态 '${input.terminalState}'`,
       });
 
-      // OPR.0.5.8.1 S1b — AUTO-UNPARK. A row parked with `--on X --wake-after 20m`
-      // carries BOTH a blocker and a timer; when X completes this unparks the row
-      // directly, so without this the blocker did its job and the timer still fired
-      // afterwards at a row that was no longer parked.
+      // OPR.0.5.8.1 S1b——自动 UNPARK。以 `--on X --wake-after 20m` park 的行同时携带 blocker
+      // 和 timer；X 完成时会直接 unpark 该行，因此若无此逻辑，blocker 已完成职责后，timer 仍会对已不再
+      // parked 的行触发。
       this.retireParkGeneratedTimer(r.qitem_id, "park_ended:auto-unparked");
       const wakeIntentId = this.stageAutoUnparkWakeIntent({
         qitemId: r.qitem_id,
@@ -2848,21 +2645,17 @@ export class QueueRepository {
     return this.wakeRepo.getStatus(qitemId);
   }
 
-  /** Refuse a legacy park-generated timer only when every row bound to it is
-   *  terminal. Current exits retire these timers transactionally; this is the
-   *  delivery-seam backstop for residue persisted by an older daemon. A timer
-   *  still bound to any actionable row, and every operator-attached watchdog,
-   *  remains deliverable. */
+  /** 仅当绑定到旧版 park-generated timer 的每一行都已 terminal 时才拒绝它。当前退出会在事务内
+   * 终止这些 timer；这里是旧后台服务所持久化残留的 delivery-seam backstop。仍绑定任何 actionable
+   * 行的 timer，以及操作员附加的每个 watchdog，都保持可投递。 */
   resolveWatchdogPreDeliveryTerminalReason(jobId: string): string | null {
     const targets = this.wakeRepo.findQitemsByGeneratedTimer(jobId);
     if (targets.length === 0 || targets.some(({ state }) => !isTerminalState(state))) return null;
-    // Ownership, not just staleness. This backstop may retire a job only when
-    // the job is SOLELY a park-generated timer. `--wake-watchdog` can attach an
-    // operator row to the very job another row's `--wake-after` produced, and
-    // that is a supported path — so a shared job carries a second, watchdog-kind
-    // binding this reason has no authority over. The timer's rows being terminal
-    // says nothing about the attachment; claiming the job anyway terminals it
-    // before transport and the attachment can never wake.
+    // 依据 ownership，而不只是 staleness。只有 job 单纯是 park-generated timer 时，此 backstop
+    // 才可终止它。`--wake-watchdog` 可将操作员行附加到另一行的 `--wake-after` 所生成的同一 job，
+    // 这是受支持路径；因此共享 job 会有第二个 watchdog-kind binding，本 reason 无权处理。timer 行
+    // 已 terminal 并不能说明 attachment 状态；若仍 claim 该 job，会在 transport 前将其 terminal，
+    // attachment 将永远无法 wake。
     if (this.wakeRepo.findQitemsByAttachedWatchdog(jobId).length > 0) return null;
     return "park_timer_target_terminal";
   }
@@ -2874,16 +2667,14 @@ export class QueueRepository {
     });
   }
 
-  /** Read-only scope-aware RECENT projection. Normalization and its hard cap
-   * live with the append-only transition log; the repository owns the public
-   * queue-domain door. */
+  /** 只读且识别 scope 的 RECENT 投影。规范化及硬上限位于仅追加 transition log；repository 拥有
+   * 公共 queue-domain 入口。 */
   listRecentTransitions(scope: RecentQueueTransitionScope | string, limit = 20): ReturnType<QueueTransitionLog["listRecent"]> {
     return this.transitionLog.listRecent(typeof scope === "string" ? { kind: "rig", rig: scope } : scope, limit);
   }
 
-  /** Called by the watchdog engine after the delivery attempt is durably
-   *  audited. The queue transition records that attempt independently of
-   *  whether the HELD row's owner consumed it. */
+  /** 投递尝试被持久审计后由 watchdog engine 调用。queue transition 独立记录该尝试，不论 HELD 行的
+   * owner 是否消费。 */
   recordWatchdogWakeAttempt(jobId: string, deliveryStatus: string): void {
     const targets = this.wakeRepo.findBlockedQitemsByWatchdog(jobId);
     if (targets.length === 0) return;
@@ -2893,8 +2684,8 @@ export class QueueRepository {
         state: "blocked",
         actorSession: "watchdog@system",
         transitionNote: deliveryStatus === "retained"
-          ? `park wake retained: watchdog ${jobId}; not delivered; blocked work unchanged`
-          : `park wake fired: watchdog ${jobId}; delivery=${deliveryStatus}; awaiting owner consumption`,
+          ? `park wake 已保留：watchdog ${jobId}；未投递；blocked work 不变`
+          : `park wake 已触发：watchdog ${jobId}；delivery=${deliveryStatus}；等待 owner 消费`,
       });
       this.wakeRepo.record({
         transitionId: transition.transitionId,
@@ -2918,14 +2709,12 @@ export class QueueRepository {
     const usageLimitBlockers = targets.filter(({ qitemId }) =>
       this.getById(qitemId)?.tags?.includes(USAGE_LIMIT_BLOCKER_TAG),
     );
-    // OPR.0.5.8.1 S1b — a park-generated timer is ONE-SHOT. `periodic-reminder`
-    // repeats every intervalSeconds forever, so an unstopped park timer wakes its
-    // owner again at +2 intervals, +3, indefinitely.
+    // OPR.0.5.8.1 S1b——park-generated timer 是一次性的。`periodic-reminder` 会永远按
+    // intervalSeconds 重复，因此未停止的 park timer 会在 +2、+3 个 interval 时继续无限唤醒 owner。
     //
-    // The provider-limit path below already ends its job after firing; that
-    // behaviour is UNCHANGED by this repair and pinned as unchanged. This widens
-    // the same act to ordinary park timers, without their blocker resolution —
-    // resolving the blocker is a provider-limit outcome, not a timer one.
+    // 下方 provider-limit 路径已在触发后结束 job；本修复不改变该行为，并将其锁定为不变。这里将相同
+    // 操作扩宽到普通 park timer，但不解析其 blocker；解析 blocker 是 provider-limit outcome，
+    // 而非 timer outcome。
     const parkGeneratedTimer = targets.some(({ kind }) => kind === "timer");
     const events = this.db.transaction(() => {
       const firedEvents = targets.map(recordFired);
@@ -2950,7 +2739,7 @@ export class QueueRepository {
           actorSession: "watchdog@system",
           state: "done",
           closureReason: "no-follow-on",
-          transitionNote: `provider-limit timer ${jobId} reached its expiry; resolving the shared blocker once`,
+          transitionNote: `provider-limit timer ${jobId} 已到期；一次性解析共享 blocker`,
         }).persistedEvents,
       );
       return [...firedEvents, ...resolutionEvents];
@@ -2964,8 +2753,8 @@ export class QueueRepository {
       .get(qitemId) as QueueItemRow | undefined;
     if (!row) return null;
     const item = this.rowToItem(row);
-    // OPR.0.5.6.14 — the row FACE answers "did it reach them" in one read for
-    // gateway-routed rows; null for pane-bound (absence-governed, no key lies).
+    // OPR.0.5.6.14——对 gateway-routed 行，行 FACE 在一次读取中回答“是否已到达”；pane-bound
+    // 返回 null（由缺席决定，不用 key 撒谎）。
     const ledger = this.deliveryOutcomeFor(item.qitemId);
     return {
       ...item,
@@ -3045,36 +2834,26 @@ export class QueueRepository {
   }
 
   /**
-   * OPR.0.3.2.20 — durable attention-class query.
+   * OPR.0.3.2.20——持久 attention-class 查询。
    *
-   * Returns OPEN attention-class qitems (the source of truth for the
-   * For You Action-required + Approval lenses) by pushing the
-   * attention predicate INTO the SQL WHERE clause so the LIMIT
-   * applies AFTER attention filtering. This makes the result
-   * window-INDEPENDENT by construction: an old human-gate item
-   * cannot be evicted past LIMIT by routine open qitems even when
-   * there are >>LIMIT of them. (Guard verdict qitem-20260518190827
-   * BLOCKER 1 — the prior fetch-then-filter approach in the route
-   * could still hide attention items behind ATTENTION_FETCH_BOUND
-   * newer routine open qitems.)
+   * 返回 open attention-class qitem（“为你推荐”的待操作 + 审批 lens 的事实来源），方法是将
+   * attention predicate 下推到 SQL WHERE 子句，使 LIMIT 在 attention 过滤后应用。这按构造令结果
+   * 与窗口无关：即使 routine open qitem 数量远大于 LIMIT，旧 human-gate item 也不会被挤到 LIMIT
+   * 之外。（Guard verdict qitem-20260518190827 BLOCKER 1——route 中先 fetch 后 filter 的旧方式仍可能
+   * 把 attention item 隐藏在 ATTENTION_FETCH_BOUND 个更新的 routine open qitem 后。）
    *
-   * Attention predicate in SQL (mirror of mission-control read
-   * layer + the route-level `isAttentionItem`):
-   *   tier = 'human-gate'                              (approval)
-   *   OR destination_session matches human-seat regex  (action-required)
+   * SQL 中的 attention predicate（mission-control 读取层 + route 级 `isAttentionItem` 的镜像）：
+   *   tier = 'human-gate'                              （审批）
+   *   OR destination_session matches human-seat regex  （待操作）
    *
-   * SQLite has no native regex; LIKE patterns are used as a
-   * SUPER-SET (every regex match also matches one of the LIKE
-   * patterns). Callers can refine in JS with isAttentionItem if
-   * they need strict regex semantics — but for the LIMIT-pushdown
-   * guarantee, the SQL superset is what matters: NO attention item
-   * is filtered out by the SQL stage.
+   * SQLite 没有原生 regex；使用 LIKE pattern 作为超集（每个 regex 匹配也会匹配某个 LIKE pattern）。
+   * 若调用方需要严格 regex 语义，可在 JS 中用 isAttentionItem 细化；但对 LIMIT 下推保证而言，
+   * SQL 超集才是关键：SQL 阶段不会过滤掉任何 attention item。
    *
-   * Default open state set: pending|in-progress|blocked. Caller may
-   * override via `state`.
+   * 默认 open 状态集合：pending|in-progress|blocked。调用方可通过 `state` 覆盖。
    */
-  /** Delivered informational records remain queryable after closure. Receipt filtering
-   * happens before LIMIT; no prose/tier classifier and no second event store. */
+  /** 已投递信息记录在 closure 后仍可查询。receipt 过滤发生在 LIMIT 前；没有 prose/tier classifier，
+   * 也没有第二个 event store。 */
   listDeliveredHumanUpdates(opts: { limit?: number } = {}): Array<QueueItem & { deliveredAt: string; deliveryReceipt: string }> {
     if (!this.hasHumanIntentColumn) return [];
     const limit = Number.isFinite(opts.limit) ? Math.max(1, Math.min(101, Math.floor(opts.limit!))) : 20;
@@ -3102,23 +2881,17 @@ export class QueueRepository {
       ? Array.isArray(opts.state) ? opts.state : [opts.state]
       : ["pending" as QueueState, "in-progress" as QueueState, "blocked" as QueueState];
 
-    // Compose the WHERE clause: state-set + attention predicate +
-    // optional scope filters (mirrors list() composition so
-    // `attention=1` query params remain composable with
-    // destinationSession/sourceSession/targetRepo — guard re-verify
-    // qitem-20260518192210 BLOCKER 1).
+    // 组合 WHERE 子句：state 集合 + attention predicate + 可选 scope filter（与 list() 组合方式一致，
+    // 使 `attention=1` query 参数仍可与 destinationSession/sourceSession/targetRepo 组合——guard
+    // 重新验证 qitem-20260518192210 BLOCKER 1）。
     const statePlaceholders = states.map(() => "?").join(", ");
-    // The attention predicate is EXACT in SQL (guard re-verify-3
-    // qitem-20260518193005 BLOCKER 1): is_human_seat_session evaluates
-    // the strict regex registered in the QueueRepository constructor.
-    // Malformed rows that would have slipped through a LIKE superset
-    // (e.g., 'human-@kernel' — empty name segment) are rejected at
-    // the SQL stage, BEFORE LIMIT, so they cannot saturate the LIMIT
-    // window and hide valid attention items.
-    // OPR.0.4.4.19 FR-6 — the attention predicate gains the leg-1 park
-    // clause: a qitem parked as state=blocked on a HUMAN-seat blocker is a
-    // decision the human owes. Blocking on another qitem (today's shipped
-    // usage) does NOT match — is_human_seat_session rejects qitem ids.
+    // attention predicate 在 SQL 中精确匹配（guard re-verify-3 qitem-20260518193005 BLOCKER 1）：
+    // is_human_seat_session 计算 QueueRepository constructor 注册的严格 regex。可能从 LIKE 超集漏过的
+    // 畸形行（例如 'human-@kernel'，名称 segment 为空）会在 SQL 阶段、LIMIT 前被拒绝，因此无法占满
+    // LIMIT 窗口并隐藏有效 attention item。
+    // OPR.0.4.4.19 FR-6——attention predicate 增加第 1 分支 park 子句：state=blocked 且 blocker 为
+    // human-seat 的 qitem 是 human 应作出的决定。阻塞于另一 qitem（当前已发布用法）不匹配，因为
+    // is_human_seat_session 拒绝 qitem id。
     const conditions: string[] = [
       `state IN (${statePlaceholders})`,
       `(
@@ -3153,13 +2926,12 @@ export class QueueRepository {
   }
 
   /**
-   * Find qitems whose `closure_required_at` is past now. Used by watchdog;
-   * does NOT itself emit events — callers decide whether to nudge or escalate.
+   * 查找 `closure_required_at` 已过期的 qitem。供 watchdog 使用；自身不发 event，由调用方决定 nudge
+   * 或 escalate。
    *
-   * Slice 15 (finding 2): optionally rig-scoped, limited, and compact — mirroring
-   * `list` — so `rig queue overdue` is bounded and body-free by default instead of
-   * dumping every rig's full qitem bodies to a single caller. No args = the prior
-   * behavior (all overdue, full rows) for the watchdog.
+   * Slice 15（发现 2）：可选 rig scope、limit 和 compact，与 `list` 对应，使 `zrig queue overdue`
+   * 默认有界且不含 body，而不是把每个 rig 的完整 qitem body 倾倒给单一调用方。无参数时保留
+   * watchdog 的旧行为（所有 overdue、完整行）。
    */
   findOverdue(opts?: { now?: string; rig?: string; limit?: number; compact?: boolean }): QueueItem[] {
     const cutoff = opts?.now ?? new Date().toISOString();
@@ -3181,18 +2953,14 @@ export class QueueRepository {
   }
 
   /**
-   * Surface two evidence-backed undelivered classes: the original pending
-   * create-path nudge failures, and active human-notification episodes whose
-   * gateway ledger says transport-failed or receiptless past the post window.
-   * A generic null nudge is still excluded; only a structured OWNER episode
-   * makes that absence meaningful. READ only — no retry or unwind.
+   * 展示两类有 evidence 支撑的 undelivered：原始 pending create-path nudge 失败，以及 gateway
+   * ledger 标为 transport-failed 或超过 post 窗口仍无 receipt 的 active human-notification episode。
+   * 通用 null nudge 仍排除；只有结构化 OWNER episode 才让该缺席有意义。只读，不 retry 或 unwind。
    */
   findUndelivered(opts?: { rig?: string; limit?: number; compact?: boolean }): QueueItem[] {
-    // OPR.0.5.6.14 — delivery truth belongs to the CURRENT human-notification
-    // episode, not to the row's whole history. Pull every active row that can
-    // carry a current episode or a legacy nudge/receipt, then derive/filter in
-    // JS. LIMIT is applied after that filtering so historical POSTED episodes
-    // cannot consume the window and hide a later failure.
+    // OPR.0.5.6.14——delivery 事实属于当前 human-notification episode，而非整行历史。取出可携带
+    // 当前 episode 或旧版 nudge/receipt 的每个 active 行，再在 JS 中派生/过滤。LIMIT 在过滤后应用，
+    // 避免历史 POSTED episode 占用窗口并隐藏后续失败。
     const ownerEpisodeCandidate = this.hasOwnerNotificationColumns
       ? `EXISTS (SELECT 1 FROM queue_transitions owner_episode
                    WHERE owner_episode.qitem_id = queue_items.qitem_id
@@ -3222,7 +2990,7 @@ export class QueueRepository {
     for (const r of rows) {
       const item = this.rowToItem(r, !opts?.compact);
       const ledger = this.deliveryOutcomeFor(item.qitemId);
-      if (ledger?.outcome === "posted") continue; // the receipt wins, always
+      if (ledger?.outcome === "posted") continue; // receipt 始终优先。
       if (ledger?.outcome === "transport-failed") {
         out.push({
           ...item,
@@ -3238,9 +3006,8 @@ export class QueueRepository {
           deliveryFailureDetail: ledger.detail,
         });
       } else {
-        // No ledger verdict: only the legacy pending failed/unroutable class is
-        // undelivered. An active non-human row can still have an old OWNER
-        // transition; that historical episode is not a current obligation.
+        // 无 ledger verdict：只有旧版 pending failed/unroutable 类别属于 undelivered。active 非 human
+        // 行仍可能有旧 OWNER transition；该历史 episode 不是当前义务。
         const lastNudge = item.lastNudgeResult ?? "";
         if (item.state === "pending" && (lastNudge.startsWith("failed:") || lastNudge.startsWith("unroutable:"))) {
           out.push(item);
@@ -3251,11 +3018,10 @@ export class QueueRepository {
     return out;
   }
 
-  /** OPR.0.5.6.14 — terminal transport is a CAPABILITY, not topology presence.
-   *  An exact session or composed canonical seat is pane-bound only when its
-   *  node carries an explicit tmux binding. external_cli is paneless and must
-   *  continue to the human-registry/gateway leg. FAIL-OPEN only where the DB
-   *  cannot carry classification evidence (empty/partial bootstrap schemas). */
+  /** OPR.0.5.6.14——terminal transport 是能力，而非 topology presence。精确 session 或组合的
+   * canonical seat 仅在其 node 携带显式 tmux binding 时才是 pane-bound。external_cli 无 pane，
+   * 必须继续走 human-registry/gateway 分支。只有数据库无法携带分类 evidence（空/部分 bootstrap
+   * schema）时才 fail-open。 */
   private hasTerminalTransport(dest: string): boolean {
     try {
       const anyTopology = this.db.prepare("SELECT 1 FROM sessions LIMIT 1").get()
@@ -3268,7 +3034,7 @@ export class QueueRepository {
             AND b.tmux_session IS NOT NULL LIMIT 1`,
       ).get(dest)) return true;
       const at = dest.lastIndexOf("@");
-      if (at <= 0) return true; // non-canonical shapes stay on the legacy path
+      if (at <= 0) return true; // 非 canonical 结构保持在旧路径。
       const seat = dest.slice(0, at);
       const rig = dest.slice(at + 1);
       const composed = this.db.prepare(
@@ -3281,12 +3047,12 @@ export class QueueRepository {
       ).get(rig, seat);
       return !!composed;
     } catch {
-      return true; // schema-partial fixture DB: never discriminate without evidence
+      return true; // schema 不完整的 fixture 数据库：无 evidence 时绝不判别。
     }
   }
 
-  /** Null means legacy/no OWNER history; inactive means OWNER history exists
-   *  but the row no longer projects a current human-notification episode. */
+  /** null 表示旧版/无 OWNER 历史；inactive 表示 OWNER 历史存在，但该行已不再投影当前
+   * 人工通知阶段。 */
   private currentDeliveryEpisode(item: QueueItem): { notificationKey: string; startedAt: string } | "inactive" | null {
     const transition = this.transitionLog.latestOwnerNotificationForQitem(item.qitemId);
     if (!transition) return null;
@@ -3302,20 +3068,18 @@ export class QueueRepository {
       : "inactive";
   }
 
-  /** OPR.0.5.6.14 — derive the current episode's delivery ledger. Receipt
-   *  transitions are same-row but keyed by qitemId:OWNER-transitionId; an old
-   *  posted receipt cannot mask a later human park. Legacy pre-OWNER or literal
-   *  external rows retain their row-scoped fallback. */
+  /** OPR.0.5.6.14——派生当前 episode 的 delivery ledger。receipt transition 与 item 同行，但以
+   * qitemId:OWNER-transitionId 定键；旧 posted receipt 无法遮蔽后续 human park。旧版 OWNER 前或
+   * 字面 external 行保留行范围 fallback。 */
   deliveryOutcomeFor(qitemId: string): { outcome: "posted" | "transport-failed" | "never-posted"; detail: string } | null {
-    // Some repository-only fixtures intentionally model the pre-transition
-    // schema. Delivery projection is additive there: absence means no verdict,
-    // never a list failure.
+    // 某些仅 repository fixture 有意模拟 transition 前 schema。此时 delivery projection 是增量的：
+    // 缺席表示无 verdict，绝不导致 list 失败。
     if (!this.hasQueueTransitionsTable) return null;
     const row = this.db.prepare("SELECT * FROM queue_items WHERE qitem_id = ?")
       .get(qitemId) as QueueItemRow | undefined;
     if (!row) return null;
-    // The delivery episode uses row fields, not the waiting/backstop view.
-    // Keep this read fresh without repeating the caller's recovery-tag scan.
+    // delivery episode 使用行字段，而非 waiting/backstop view。保持本次读取新鲜，同时不重复调用方的
+    // recovery-tag 扫描。
     const item = this.rowToItem(row, false);
     const episodeState = this.currentDeliveryEpisode(item);
     if (episodeState === "inactive") return null;
@@ -3338,15 +3102,15 @@ export class QueueRepository {
     if (gatewayRouted) {
       const ageMs = Date.now() - new Date(startedAt.includes("T") ? startedAt : startedAt + "Z").getTime();
       if (ageMs > QueueRepository.NEVER_POSTED_WINDOW_MS) {
-        const key = episode ? ` for notification_key=${episode.notificationKey}` : "";
-        return { outcome: "never-posted", detail: `gateway-routed row with no delivery receipt${key} past the post window` };
+        const key = episode ? `，notification_key=${episode.notificationKey}` : "";
+        return { outcome: "never-posted", detail: `gateway-routed 行超过 post 窗口仍无 delivery receipt${key}` };
       }
     }
     return null;
   }
 
-  /** The grace window before a receiptless gateway-routed row honestly reads
-   *  never-posted (the connector sweep cadence bounds normal posting latency). */
+  /** 无 receipt 的 gateway-routed 行如实显示 never-posted 前的宽限窗口（connector sweep cadence
+   * 限定正常 posting 延迟）。 */
   static readonly NEVER_POSTED_WINDOW_MS = 120_000;
 
   recordNudgeAttempt(qitemId: string, result: string): void {
@@ -3361,13 +3125,13 @@ export class QueueRepository {
   }
 
   /**
-   * Pod-fallback: redirect qitem to a fallback destination (e.g., when a seat
-   * is unreachable). Emits qitem.fallback_routed; preserves chain_of_record.
+   * Pod fallback：将 qitem 重定向到 fallback destination（例如 seat 不可达时）。发出
+   * qitem.fallback_routed；保留 chain_of_record。
    */
   routeToFallback(qitemId: string, fallbackDestination: string, reason: string): QueueItem {
     const qitem = this.getById(qitemId);
     if (!qitem) {
-      throw new QueueRepositoryError("qitem_not_found", `qitem ${qitemId} not found`);
+      throw new QueueRepositoryError("qitem_not_found", `找不到 qitem ${qitemId}`);
     }
     const ts = new Date().toISOString();
     const originalDestination = qitem.destinationSession;
@@ -3409,33 +3173,31 @@ export class QueueRepository {
   private getByIdOrThrow(qitemId: string): QueueItem {
     const item = this.getById(qitemId);
     if (!item) {
-      throw new QueueRepositoryError("qitem_not_found", `qitem ${qitemId} not found after write`);
+      throw new QueueRepositoryError("qitem_not_found", `写入后找不到 qitem ${qitemId}`);
     }
     return item;
   }
 
-  /** OPR.0.4.1.18 — persist the optional human-readable summary additively.
-   *  Guarded by detectQueueColumn so fixtures on a pre-044 schema (no summary
-   *  column) are unaffected; only writes when a value is present (NULL is the
-   *  default and degrades in the Story consumer). Runs inside the caller's
-   *  transaction (create / handoff / handoff-and-complete). */
+  /** OPR.0.4.1.18——增量持久化可选的人类可读 summary。由 detectQueueColumn 守卫，使使用 044
+   * 前 schema（无 summary 列）的 fixture 不受影响；只在值存在时写入（null 为默认值，并在 Story
+   * consumer 中降级）。在调用方 transaction（create / handoff / handoff-and-complete）内运行。 */
   private persistSummary(qitemId: string, summary: string | null): void {
     if (this.hasSummaryColumn && summary !== null) {
       this.db.prepare("UPDATE queue_items SET summary = ? WHERE qitem_id = ?").run(summary, qitemId);
     }
   }
 
-  /** OPR.0.4.4.19 FR-5 — persist the optional evidence_ref additively, same
-   *  contract as persistSummary (pre-048 fixtures degrade; NULL default). */
+  /** OPR.0.4.4.19 FR-5——增量持久化可选 evidence_ref，与 persistSummary 契约相同
+   *（048 前 fixture 降级；默认为 null）。 */
   private persistEvidenceRef(qitemId: string, evidenceRef: string | null): void {
     if (this.hasEvidenceRefColumn && evidenceRef !== null) {
       this.db.prepare("UPDATE queue_items SET evidence_ref = ? WHERE qitem_id = ?").run(evidenceRef, qitemId);
     }
   }
 
-  /** GHOST-STAGE (e/Class-B) — persist the MINTING occupant-generation additively (same degrade
-   *  contract as persistSummary; NULL when unresolved/pre-063). Forensic provenance of the creator;
-   *  the RELEASE discriminator is claimed_by_generation_uuid (stamped at claim), not this. */
+  /** GHOST-STAGE（e/Class-B）——增量持久化 MINTING occupant-generation（与 persistSummary
+   * 使用相同降级契约；无法解析/063 前为 null）。这是 creator 的取证 provenance；RELEASE 判别器
+   * 是 claimed_by_generation_uuid（claim 时盖章），而非此字段。 */
   private persistMintingGeneration(qitemId: string, sourceSession: string): void {
     if (!this.hasMintingGenColumn) return;
     const gen = this.resolveOccupantGeneration?.(sourceSession) ?? null;
@@ -3444,12 +3206,12 @@ export class QueueRepository {
   }
 
   /**
-   * GHOST-STAGE (e/Class-B) — at a seat swap, RELEASE (never hard-drop) every in-progress item CLAIMED
-   * by the RETIRING generation back to pending: the role work is durable and the successor re-claims it;
-   * only the retiree's stale claim is the ghost. Gen-scoped via claimed_by_generation_uuid (NOT the seat
-   * name — the successor shares it, so a name-scoped release would steal the successor's own claims). A
-   * NULL/empty generation never matches (UNKNOWN != retired). Clears the claim stamp + claimed_at and
-   * appends an audit transition per item. Returns the count released. Pre-063 dbs no-op.
+   * GHOST-STAGE（e/Class-B）——seat 交换时，将由 retiring generation claim 的每个 in-progress item
+   * 释放（绝不硬删除）回 pending：role work 是持久的，successor 会重新 claim；ghost 只有 retiree 的
+   * stale claim。通过 claimed_by_generation_uuid 按 gen 限定（而非 seat 名；successor 共享该名称，
+   * 按名称释放会夺走 successor 自己的 claim）。null/空 generation 永不匹配（UNKNOWN != retired）。
+   * 清除 claim stamp + claimed_at，并为每个 item 追加 audit transition。返回释放数量。063 前数据库
+   * 为 no-op。
    */
   releaseClaimsByGeneration(retiringGeneration: string): number {
     if (!this.hasClaimedGenColumn || !retiringGeneration) return 0;
@@ -3472,7 +3234,7 @@ export class QueueRepository {
           qitemId: qitem_id,
           state: "pending",
           actorSession: "system",
-          transitionNote: "released: claimant generation retired (seat handover)",
+          transitionNote: "已释放：claimant generation 已退役（seat handover）",
         });
       }
     });
@@ -3491,11 +3253,11 @@ export class QueueRepository {
       && this.wakeRepo.findQitemsByGeneratedTimer(input.jobId).every(row => row.state !== "blocked")) return null;
     const binding = this.wakeRepo.findBlockedQitemsByWatchdog(input.jobId).find(row => row.kind === "timer");
     const result = evaluateQueueWait(this.watchdogJobsRepo ?? new WatchdogJobsRepository(this.db), input.jobId, binding ? this.waitingView(binding.qitemId) : null);
-    // Only an already-admitted send reads prose: healthy silence, receipts and
-    // failed-delivery retries remain owned by the existing wait evaluator.
+    // 只有已准入 send 才读取 prose：healthy 静默、receipt 和 failed-delivery retry 继续由现有 wait
+    // evaluator 所有。
     if (result?.action === "send" && binding && this.workflowGuidance) {
       try { result.message += "\n" + this.workflowGuidance(binding.qitemId).join("\n"); }
-      catch (error) { result.message += "\nWorkflow method: UNKNOWN: current guidance unavailable: " + String(error); }
+      catch (error) { result.message += "\nWorkflow 方法：UNKNOWN：当前 guidance 不可用：" + String(error); }
     }
     return result;
   }
@@ -3509,7 +3271,7 @@ export class QueueRepository {
     if (view && ["pending", "in-progress"].includes(view.state)) {
       const recovery = readWakeLadderBackstop(this.db, qitemId);
       if (recovery) {
-        view.laterBackstop = { ...view.nextBackstop, note: "Conditional safety net; current delivery/recovery ownership is evaluated first." };
+        view.laterBackstop = { ...view.nextBackstop, note: "条件式安全网；先评估当前 delivery/recovery ownership。" };
         view.nextBackstop = recovery;
       }
     }
@@ -3517,8 +3279,8 @@ export class QueueRepository {
   }
 
   private rowToItem(row: QueueItemRow, includeWaiting = true): QueueItem {
-    // S04 — derive the pickup receipt at the ONE shared projection point (list/show/overdue
-    // all flow through here), so the park-vs-strand question is answered by the row face.
+    // S04——在唯一共享投影点派生 pickup receipt（list/show/overdue 都经过此处），使行本身即可回答
+    // park-vs-strand 问题。
     const meaningful = lastMeaningfulTransition(this.db, row.qitem_id);
     const waiting = includeWaiting ? this.waitingView(row.qitem_id) : null;
     const activity = this.ownerActivity(row.destination_session);
@@ -3529,7 +3291,7 @@ export class QueueRepository {
       needsInput: activity?.needsInput.count,
       claimedAt: row.claimed_at,
       lastHeartbeat: row.last_heartbeat,
-      postClaimMotionCount: 0, // this reader supplies the current meaningful timestamp
+      postClaimMotionCount: 0, // 此 reader 提供当前 meaningful timestamp。
     });
     return {
       pickup,
@@ -3549,11 +3311,10 @@ export class QueueRepository {
       expiresAt: row.expires_at,
       chainOfRecord: row.chain_of_record ? (JSON.parse(row.chain_of_record) as string[]) : null,
       body: row.body ?? "",
-      // OPR.0.4.1.18: summary present only when migration 044 has applied;
-      // legacy/minimal fixtures supply rows where summary is undefined → null.
+      // OPR.0.4.1.18：summary 仅在 migration 044 已应用时存在；旧版/最小 fixture 提供 summary
+      // 为 undefined 的行 → null。
       summary: row.summary ?? null,
-      // OPR.0.4.4.19 FR-5: evidence_ref present only when migration 048 has
-      // applied; legacy fixtures degrade to null.
+      // OPR.0.4.4.19 FR-5：evidence_ref 仅在 migration 048 已应用时存在；旧 fixture 降级为 null。
       evidenceRef: row.evidence_ref ?? null,
       humanIntent: row.human_intent ?? null,
       humanDetail: row.human_detail ?? null,
@@ -3565,8 +3326,8 @@ export class QueueRepository {
       lastNudgeResult: row.last_nudge_result,
       lastHeartbeat: row.last_heartbeat,
       resolution: row.resolution,
-      // PL-007: target_repo present only when migration 038 has applied;
-      // older test fixtures supply legacy rows where target_repo is undefined.
+      // PL-007：target_repo 仅在 migration 038 已应用时存在；旧测试 fixture 提供 target_repo 为
+      // undefined 的旧版行。
       targetRepo: row.target_repo ?? null,
     };
   }

@@ -1,10 +1,10 @@
 #!/bin/sh
 
-# The only optional surface is rig itself. Skip before using any external command so the
-# missing-command case is honest even under an empty PATH.
+# 唯一可选的外部能力是 rig 本身。在调用任何外部命令前就跳过，使空 PATH 下缺少命令的情形
+# 也能得到真实结果。
 if ! command -v rig >/dev/null 2>&1; then
-  printf '%s\n' '[skip] rig-command-surface — rig is unavailable; command claims were not evaluated'
-  printf '%s\n' '0 passed · 0 failed · 1 skipped'
+  printf '%s\n' '[skip] rig-command-surface——rig 不可用；未评估命令相关声明'
+  printf '%s\n' '0 通过 · 0 失败 · 1 跳过'
   exit 0
 fi
 
@@ -29,20 +29,20 @@ fail() {
 }
 
 if grep -Eq '^taxonomy:[[:space:]]*world[[:space:]]*$' "$root/manifest.yaml"; then
-  pass pack-taxonomy 'the pack declares taxonomy world'
+  pass pack-taxonomy '包已声明 taxonomy world'
 else
-  fail pack-taxonomy 'manifest taxonomy is not world'
+  fail pack-taxonomy 'manifest taxonomy 不是 world'
 fi
 
 declared_ok=1
-for file in boundaries.md build-your-world.md claims.yaml start-here.md verify-world.sh; do
+for file in boundaries.md boundaries.zh-CN.md build-your-world.md build-your-world.zh-CN.md claims.yaml start-here.md start-here.zh-CN.md verify-world.sh; do
   [ -f "$root/$file" ] || declared_ok=0
   grep -Fq "path: $file" "$root/manifest.yaml" || declared_ok=0
 done
 if [ "$declared_ok" -eq 1 ]; then
-  pass declared-files 'every shipped file exists and is declared'
+  pass declared-files '每个发布文件都存在且已声明'
 else
-  fail declared-files 'a shipped file is missing or undeclared'
+  fail declared-files '有发布文件缺失或未声明'
 fi
 
 manifest_comments_ok=1
@@ -50,9 +50,9 @@ for manifest in "$root/manifest.yaml" "$example/manifest.yaml"; do
   grep -Eq '(^|[[:space:]])#[[:space:]]' "$manifest" && manifest_comments_ok=0
 done
 if [ "$manifest_comments_ok" -eq 1 ]; then
-  pass manifest-authored-comments 'both shipped manifests contain no uncensused authored prose comments'
+  pass manifest-authored-comments '两份发布 manifest 均不含未纳入清单的人工正文注释'
 else
-  fail manifest-authored-comments 'a shipped manifest contains an uncensused authored prose comment'
+  fail manifest-authored-comments '某份发布 manifest 含未纳入清单的人工正文注释'
 fi
 
 regions_ok=1
@@ -63,9 +63,9 @@ grep -Fq 'The eight regions are metadata on atoms, not a required folder tree.' 
 grep -Fq 'Tag existing authored files with identity, ontology, terrain, actors, laws, history, state, and' "$root/build-your-world.md" || regions_ok=0
 grep -Fq 'affordances. One coherent file may cover several regions; do not fork the same idea into eight' "$root/build-your-world.md" || regions_ok=0
 if [ "$regions_ok" -eq 1 ]; then
-  pass atom-regions 'atom metadata covers all eight regions'
+  pass atom-regions 'atom 元数据覆盖全部八个 region'
 else
-  fail atom-regions 'one or more world regions are absent from atom metadata'
+  fail atom-regions 'atom 元数据缺少一个或多个 world region'
 fi
 
 coverage_map_ok=1
@@ -78,9 +78,9 @@ for dimension in product topology context skill 'queue/custody' 'source/worktree
   ' "$root/build-your-world.md" || coverage_map_ok=0
 done
 if [ "$coverage_map_ok" -eq 1 ]; then
-  pass coverage-map-contract 'all ten dimensions carry one exact address and one task-language trigger'
+  pass coverage-map-contract '十个维度均包含一个精确地址和一个任务语言触发条件'
 else
-  fail coverage-map-contract 'the ten-dimension address/trigger map is incomplete or malformed'
+  fail coverage-map-contract '十维地址/触发条件图不完整或格式错误'
 fi
 
 prose=$(cat "$root/start-here.md" "$root/build-your-world.md" "$root/boundaries.md" "$example/your-world.md")
@@ -124,8 +124,11 @@ world-example-regions
 world-example-checks'
 expected_manifest_claim_ids='public-manifest-purpose
 public-manifest-summary-start-here
+public-manifest-summary-start-here.zh-CN
 public-manifest-summary-build-your-world
+public-manifest-summary-build-your-world.zh-CN
 public-manifest-summary-boundaries
+public-manifest-summary-boundaries.zh-CN
 public-manifest-summary-claims
 public-manifest-summary-verify-world
 public-manifest-probe-enter-the-world-prompt
@@ -136,6 +139,7 @@ public-manifest-probe-know-the-edges-prompt
 public-manifest-probe-know-the-edges-expect
 example-manifest-purpose
 example-manifest-summary-your-world
+example-manifest-summary-your-world.zh-CN
 example-manifest-probe-your-world-prompt
 example-manifest-probe-your-world-expect'
 expected_claim_ids=$(printf '%s\n%s\n' "$expected_markdown_claim_ids" "$expected_manifest_claim_ids")
@@ -169,9 +173,9 @@ done <<EOF
 $statements
 EOF
 if [ "$claims_ok" -eq 1 ]; then
-  pass claim-coverage 'the pinned authored-claim inventory is marked, stated, and dispositioned once'
+  pass claim-coverage '固定的人工声明清单均已且仅已标记、陈述和处置一次'
 else
-  fail claim-coverage 'the pinned claim inventory, markers, statements, checks, or dispositions drifted'
+  fail claim-coverage '固定声明清单、标记、陈述、检查或处置发生漂移'
 fi
 
 has_manifest_block_line() {
@@ -197,9 +201,9 @@ has_manifest_block_line "$root/manifest.yaml" '  - id: author-a-world' '      ex
 has_manifest_block_line "$root/manifest.yaml" '  - id: know-the-edges' '      prompt: "Which gaps can this public world answer, and which still require local sources or human judgment?"' || public_manifest_ok=0
 has_manifest_block_line "$root/manifest.yaml" '  - id: know-the-edges' '      expect: "The agent distinguishes public structure from rig-local facts, current state, mission context, and irreversible judgment."' || public_manifest_ok=0
 if [ "$public_manifest_ok" -eq 1 ]; then
-  pass public-manifest-authored-claims 'the public purpose, file summaries, and probe semantics match the frozen authored census'
+  pass public-manifest-authored-claims '公开 purpose、文件摘要和 probe 语义与冻结的人工清单一致'
 else
-  fail public-manifest-authored-claims 'a public manifest purpose, file summary, or probe semantic drifted'
+  fail public-manifest-authored-claims '公开 manifest 的 purpose、文件摘要或 probe 语义发生漂移'
 fi
 
 example_manifest_ok=1
@@ -208,15 +212,15 @@ has_manifest_block_line "$example/manifest.yaml" '  - path: your-world.md' '    
 has_manifest_block_line "$example/manifest.yaml" '  - id: your-world' '      prompt: "Describe the operating world for a book-writing project."' || example_manifest_ok=0
 has_manifest_block_line "$example/manifest.yaml" '  - id: your-world' '      expect: "The agent fills one coherent world file and derives volatile state instead of creating a folder per region."' || example_manifest_ok=0
 if [ "$example_manifest_ok" -eq 1 ]; then
-  pass example-manifest-authored-claims 'the example purpose, file summary, and probe semantics match the frozen authored census'
+  pass example-manifest-authored-claims '示例 purpose、文件摘要和 probe 语义与冻结的人工清单一致'
 else
-  fail example-manifest-authored-claims 'an example manifest purpose, file summary, or probe semantic drifted'
+  fail example-manifest-authored-claims '示例 manifest 的 purpose、文件摘要或 probe 语义发生漂移'
 fi
 
 if grep -Fq 'Supply the authored relationships no inventory can discover, point at commands for facts that change, and do not memorize a roster, path, count, status, or command list when the live system can answer.' "$root/start-here.md"; then
-  pass author-derive-rule 'authored relationships stay written while volatile facts point to live commands'
+  pass author-derive-rule '人工关系保持书面记录，可变事实指向实时命令'
 else
-  fail author-derive-rule 'the author-versus-derive rule drifted'
+  fail author-derive-rule '人工编写与派生规则发生漂移'
 fi
 
 trust_ok=1
@@ -227,9 +231,9 @@ grep -Fq '| What am I doing now? | The current mission and owned work |' "$root/
 grep -Fq '| How do I perform a repeatable task? | The applicable skill or command help |' "$root/start-here.md" || trust_ok=0
 grep -Fq '| Why does a local exception exist? | Local lore and its cited evidence |' "$root/start-here.md" || trust_ok=0
 if [ "$trust_ok" -eq 1 ]; then
-  pass trust-source-table 'every authored trust relation and the disagreement rule remain present'
+  pass trust-source-table '所有人工信任关系和分歧规则均仍存在'
 else
-  fail trust-source-table 'an authored trust relation or the disagreement rule drifted'
+  fail trust-source-table '某项人工信任关系或分歧规则发生漂移'
 fi
 
 boundary_coverage_ok=1
@@ -240,9 +244,9 @@ grep -Fq -- '- the author-versus-derive rule;' "$root/boundaries.md" || boundary
 grep -Fq -- '- a small convention for authoring and checking a world;' "$root/boundaries.md" || boundary_coverage_ok=0
 grep -Fq -- '- the live commands needed to discover identity, topology, packs, and command help.' "$root/boundaries.md" || boundary_coverage_ok=0
 if [ "$boundary_coverage_ok" -eq 1 ]; then
-  pass boundary-coverage 'the complete public coverage boundary remains present'
+  pass boundary-coverage '完整的公开覆盖边界仍然存在'
 else
-  fail boundary-coverage 'the public coverage boundary drifted'
+  fail boundary-coverage '公开覆盖边界发生漂移'
 fi
 
 boundary_exclusions_ok=1
@@ -253,9 +257,9 @@ grep -Fq -- '- local lore earned by a seat or team;' "$root/boundaries.md" || bo
 grep -Fq -- '- harness-specific repository instructions;' "$root/boundaries.md" || boundary_exclusions_ok=0
 grep -Fq -- '- irreversible product or operator judgment.' "$root/boundaries.md" || boundary_exclusions_ok=0
 if [ "$boundary_exclusions_ok" -eq 1 ]; then
-  pass boundary-exclusions 'the complete public exclusion boundary remains present'
+  pass boundary-exclusions '完整的公开排除边界仍然存在'
 else
-  fail boundary-exclusions 'the public exclusion boundary drifted'
+  fail boundary-exclusions '公开排除边界发生漂移'
 fi
 
 authoring_ok=1
@@ -266,9 +270,9 @@ grep -Fq '  boundaries.md' "$root/build-your-world.md" || authoring_ok=0
 grep -Fq 'The manifest names the files. The prose states durable purpose, relationships, and what to trust. Add atoms when the same bytes need situation, runtime, order, or region metadata. Add a claim ledger and verifier when authored statements can drift into consequential lies. Do not add ceremony that has no reader yet.' "$root/build-your-world.md" || authoring_ok=0
 grep -Fq 'The full public pack demonstrates the optional claim-checking climb.' "$root/build-your-world.md" || authoring_ok=0
 if [ "$authoring_ok" -eq 1 ]; then
-  pass authoring-convention 'the minimal file, atom, claim, verifier, and optional-climb convention remains present'
+  pass authoring-convention '最小文件、atom、声明、验证器与可选升级约定仍然存在'
 else
-  fail authoring-convention 'the public authoring convention drifted'
+  fail authoring-convention '公开创作约定发生漂移'
 fi
 
 if rig --help >/dev/null 2>&1 &&
@@ -278,9 +282,9 @@ if rig --help >/dev/null 2>&1 &&
    rig context profile --help >/dev/null 2>&1 &&
    rig context add --help >/dev/null 2>&1 &&
    rig context rm --help >/dev/null 2>&1; then
-  pass rig-command-surface 'every taught rig command exists on the live CLI'
+  pass rig-command-surface '所有已讲授的 rig 命令都存在于实时 CLI 中'
 else
-  fail rig-command-surface 'a taught rig command is absent from the live CLI'
+  fail rig-command-surface '某个已讲授的 rig 命令不存在于实时 CLI 中'
 fi
 
 public_get_output=$(rig context get world-public 2>/dev/null)
@@ -291,9 +295,9 @@ printf '%s\n' "$public_get_output" | grep -Fq '# Enter the world' || public_get_
 printf '%s\n' "$public_get_output" | grep -Fq '# Build your world' || public_get_ok=0
 printf '%s\n' "$public_get_output" | grep -Fq '# Boundaries' || public_get_ok=0
 if [ "$public_get_ok" -eq 1 ]; then
-  pass retrieve-public-pack 'context get returned the assembled public world content'
+  pass retrieve-public-pack 'context get 返回了组装后的公开 world 内容'
 else
-  fail retrieve-public-pack 'context get did not return the assembled public world content'
+  fail retrieve-public-pack 'context get 未返回组装后的公开 world 内容'
 fi
 
 profile_output=$(rig context profile world-public --situation fresh --json 2>/dev/null)
@@ -306,9 +310,9 @@ for atom in enter-the-world author-a-world know-the-edges; do
   printf '%s\n' "$profile_output" | grep -Eq "\"atomId\"[[:space:]]*:[[:space:]]*\"$atom\"" || profile_ok=0
 done
 if [ "$profile_ok" -eq 1 ]; then
-  pass compose-fresh-profile 'context profile returned the fresh atom graph with a derived token total'
+  pass compose-fresh-profile 'context profile 返回了 fresh atom 图及派生 token 总数'
 else
-  fail compose-fresh-profile 'context profile did not return the fresh atom graph and derived token total'
+  fail compose-fresh-profile 'context profile 未返回 fresh atom 图和派生 token 总数'
 fi
 
 example_get_output=$(rig context get world-example 2>/dev/null)
@@ -319,9 +323,9 @@ printf '%s\n' "$example_get_output" | grep -Fq '# Your world' || example_get_ok=
 printf '%s\n' "$example_get_output" | grep -Fq '## Exercise: Book world' || example_get_ok=0
 printf '%s\n' "$example_get_output" | grep -Fq '## Checks' || example_get_ok=0
 if [ "$example_get_ok" -eq 1 ]; then
-  pass retrieve-world-example 'context get returned the worked book-world template'
+  pass retrieve-world-example 'context get 返回了已完成示例的 book-world 模板'
 else
-  fail retrieve-world-example 'context get did not return the worked book-world template'
+  fail retrieve-world-example 'context get 未返回已完成示例的 book-world 模板'
 fi
 
 pack_output=$(rig context show world-public --json 2>/dev/null)
@@ -334,15 +338,15 @@ printf '%s\n' "$pack_output" | grep -Eq '"relativePath"[[:space:]]*:[[:space:]]*
 printf '%s\n' "$pack_output" | grep -Eq '"sourceType"[[:space:]]*:[[:space:]]*"builtin"' || pack_path_ok=0
 [ "$pack_source_root" = "$root" ] || pack_path_ok=0
 if [ "$pack_path_ok" -eq 1 ]; then
-  pass derive-pack-path 'context show resolves this builtin at its usable source path'
+  pass derive-pack-path 'context show 将此内置包解析到可用的源路径'
 else
-  fail derive-pack-path 'context show did not resolve world-public to this builtin directory'
+  fail derive-pack-path 'context show 未将 world-public 解析到此内置目录'
 fi
 
 if [ "$pack_path_ok" -eq 1 ] && [ -f "$pack_source_root/verify-world.sh" ]; then
-  pass run-public-verifier 'this verifier is running from the directory returned by context show'
+  pass run-public-verifier '此验证器正从 context show 返回的目录运行'
 else
-  fail run-public-verifier 'the directory returned by context show does not contain this verifier'
+  fail run-public-verifier 'context show 返回的目录不包含此验证器'
 fi
 
 list_output=$(rig context list --json 2>/dev/null)
@@ -363,9 +367,9 @@ if printf '%s\n' "$list_output" | grep -Eq '"relativePath"[[:space:]]*:[[:space:
   printf '%s\n' "$private_output" | grep -Eq '"sourceType"[[:space:]]*:[[:space:]]*"(user_file|workspace)"' || namespace_ok=0
 fi
 if [ "$namespace_ok" -eq 1 ]; then
-  pass private-ref-boundary 'the builtin is listed at world-public while a local world namespace remains local'
+  pass private-ref-boundary '内置包列在 world-public，本地 world 命名空间仍保持本地'
 else
-  fail private-ref-boundary 'the world-public or local-world namespace projection is false'
+  fail private-ref-boundary 'world-public 或本地 world 命名空间投影不真实'
 fi
 
 configured_context_root=$(rig config get context.root 2>/dev/null)
@@ -426,9 +430,9 @@ else
   fi
 fi
 if [ "$example_install_ok" -eq 1 ]; then
-  pass world-example-install 'context add installs the example, list exposes its ref, and cleanup removes it'
+  pass world-example-install 'context add 安装示例，list 展示其 ref，清理过程将其移除'
 else
-  fail world-example-install 'the typed context store or taught add/list effect is false'
+  fail world-example-install '类型化 context 存储或讲授的 add/list 效果不真实'
 fi
 
 expected_session=${OPENRIG_SESSION_NAME:-${RIGGED_SESSION_NAME:-}}
@@ -443,9 +447,9 @@ if [ -n "$expected_session" ]; then
   printf '%s\n' "$identity_output" | grep -Fq "\"sessionName\":\"$expected_session\"" || identity_ok=0
 fi
 if [ "$identity_ok" -eq 1 ]; then
-  pass derive-identity 'rig whoami returned a complete managed-seat identity'
+  pass derive-identity 'rig whoami 返回了完整的托管席位身份'
 else
-  fail derive-identity 'rig whoami did not return a complete managed-seat identity'
+  fail derive-identity 'rig whoami 未返回完整的托管席位身份'
 fi
 
 topology_output=$(rig ps --nodes --json 2>/dev/null)
@@ -456,18 +460,18 @@ topology_ok=1
 printf '%s\n' "$topology_output" | grep -Eq "\"canonicalSessionName\"[[:space:]]*:[[:space:]]*\"$expected_session\"" || topology_ok=0
 printf '%s\n' "$topology_output" | grep -Eq '"rigName"[[:space:]]*:[[:space:]]*"[^\"]+"' || topology_ok=0
 if [ "$topology_ok" -eq 1 ]; then
-  pass derive-topology 'rig ps node detail returned this seat under its canonical session identity'
+  pass derive-topology 'rig ps 节点详情在 canonical session 身份下返回了当前席位'
 else
-  fail derive-topology 'rig ps node detail did not include this seat under its canonical session identity'
+  fail derive-topology 'rig ps 节点详情未在 canonical session 身份下包含当前席位'
 fi
 
 if grep -Fq 'rig whoami --json' "$root/start-here.md" &&
    grep -Fq 'rig ps --nodes --json' "$root/start-here.md" &&
    grep -Fq 'rig context list' "$root/start-here.md" &&
    grep -Fq 'rig --help' "$root/start-here.md"; then
-  pass taught-commands 'volatile facts point at their deriving commands'
+  pass taught-commands '可变事实均指向其派生命令'
 else
-  fail taught-commands 'one or more deriving commands are not taught'
+  fail taught-commands '一个或多个派生命令未被讲授'
 fi
 
 if grep -Fq 'WORLD + LORE + SKILLS + MISSION' "$root/build-your-world.md" &&
@@ -475,17 +479,17 @@ if grep -Fq 'WORLD + LORE + SKILLS + MISSION' "$root/build-your-world.md" &&
    grep -Fq -- '- LORE: what a position learned by living there.' "$root/build-your-world.md" &&
    grep -Fq -- '- SKILLS: repeatable procedural capability.' "$root/build-your-world.md" &&
    grep -Fq -- '- MISSION: the current work and why it matters.' "$root/build-your-world.md"; then
-  pass taxonomy-layout 'the authoring convention separates the four context kinds'
+  pass taxonomy-layout '创作约定区分了四种 context 类型'
 else
-  fail taxonomy-layout 'the four-kind separation is absent'
+  fail taxonomy-layout '缺少四类型分离'
 fi
 
 if [ "$profile_ok" -eq 1 ] && [ -n "$profile_tokens" ] && [ "$profile_tokens" -gt 0 ] &&
    grep -Fq "Use the composed profile's reported token total to decide what a future consumer should request; do not cut sentences until" "$root/build-your-world.md" &&
    grep -Fq 'their meaning breaks.' "$root/build-your-world.md"; then
-  pass derived-reading-cost "the live composer reported a positive reading cost ($profile_tokens tokens)"
+  pass derived-reading-cost "实时组合器报告了正值阅读成本（$profile_tokens 个 token）"
 else
-  fail derived-reading-cost 'the live composer did not report a positive reading cost'
+  fail derived-reading-cost '实时组合器未报告正值阅读成本'
 fi
 
 profile_help=$(rig context profile --help 2>/dev/null)
@@ -494,18 +498,18 @@ if [ "$profile_help_status" -eq 0 ] &&
    ! printf '%s\n' "$profile_help" | grep -Eq -- '--region([[:space:]=]|$)' &&
    grep -Fq 'If a real consumer needs region-subset composition, route that' "$root/build-your-world.md" &&
    grep -Fq 'capability as separate profile-composer work.' "$root/build-your-world.md"; then
-  pass no-region-selector 'the live profile surface has no region selector'
+  pass no-region-selector '实时 profile 接口没有 region 选择器'
 else
-  fail no-region-selector 'the stated no-selector boundary disagrees with the live profile surface'
+  fail no-region-selector '声明的无选择器边界与实时 profile 接口不一致'
 fi
 
 if grep -Fq 'If a repository uses AGENTS.md, keep repo instructions there; a world complements those instructions.' "$root/start-here.md" &&
    grep -Fq 'Repository instructions explain how to work in that tree. A world explains the larger operating' "$root/start-here.md" &&
    grep -Fq 'reality: the entities, relationships, rules, history, state sources, and affordances surrounding it.' "$root/start-here.md" &&
    grep -Fq 'Neither replaces the other.' "$root/start-here.md"; then
-  pass agents-md-complement 'the world complements repository instructions'
+  pass agents-md-complement 'world 与仓库说明互为补充'
 else
-  fail agents-md-complement 'the repository-instruction boundary is absent'
+  fail agents-md-complement '缺少仓库说明边界'
 fi
 
 example_regions_ok=1
@@ -529,10 +533,10 @@ if [ "$example_regions_ok" -eq 1 ] &&
    grep -Fq 'Point to commands or sources that derive what is true right now.' "$example/your-world.md" &&
    grep -Fq 'List what the agent can do and the trigger for reaching each capability.' "$example/your-world.md" &&
    grep -Fq 'For every checkable authored claim, add a named check that can fail; flag taste or genuinely unverifiable claims instead of dressing judgment up as a test; and derive paths, counts, inventories, and live state from commands rather than copying current answers into this file.' "$example/your-world.md"; then
-  pass world-example-consistency 'the worked exercise uses the same atom convention'
+  pass world-example-consistency '完成示例的练习使用相同 atom 约定'
 else
-  fail world-example-consistency 'the worked exercise is absent or ungraduated'
+  fail world-example-consistency '完成示例的练习缺失或未分级'
 fi
 
-printf '%s passed · %s failed · %s skipped\n' "$passed" "$failed" "$skipped"
+printf '%s 通过 · %s 失败 · %s 跳过\n' "$passed" "$failed" "$skipped"
 [ "$failed" -eq 0 ]

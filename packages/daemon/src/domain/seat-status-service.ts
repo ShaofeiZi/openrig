@@ -5,7 +5,7 @@ import type { NodeInventoryEntry } from "./types.js";
 import { NativePermissionStore, type StoredNativePermissionSelection } from "./native-permission-store.js";
 import { AppliedLaunchObservationStore, type StoredAppliedLaunchObservation } from "./applied-launch-observation-store.js";
 
-const SEAT_LOOKUP_GUIDANCE = "List seats with: rig ps --nodes";
+const SEAT_LOOKUP_GUIDANCE = "使用 zrig ps --nodes 列出席位";
 
 export interface SeatStatus {
   seat_ref: string;
@@ -52,18 +52,18 @@ export class SeatStatusService {
   getStatus(seatRef: string): SeatStatusResult {
     const ref = seatRef.trim();
     if (!ref) {
-      return { ok: false, code: "seat_ref_required", message: "seat reference is required", guidance: SEAT_LOOKUP_GUIDANCE };
+      return { ok: false, code: "seat_ref_required", message: "必须提供席位引用", guidance: SEAT_LOOKUP_GUIDANCE };
     }
 
     const matches = this.findMatches(ref);
     if (matches.length === 0) {
-      return { ok: false, code: "seat_not_found", message: `Seat "${ref}" not found`, guidance: SEAT_LOOKUP_GUIDANCE };
+      return { ok: false, code: "seat_not_found", message: `未找到席位 "${ref}"`, guidance: SEAT_LOOKUP_GUIDANCE };
     }
     if (matches.length > 1) {
       return {
         ok: false,
         code: "seat_ambiguous",
-        message: `Seat "${ref}" matched multiple nodes`,
+        message: `席位 "${ref}" 匹配到多个节点`,
         guidance: SEAT_LOOKUP_GUIDANCE,
         matches: matches.map(({ entry }) => ({
           rig_name: entry.rigName,
@@ -77,7 +77,7 @@ export class SeatStatusService {
   }
 
   private findMatches(ref: string): SeatMatch[] {
-    // OPR.0.4.6.MH1 FR-8: the shared parse contract (greedy first-@ rig).
+    // OPR.0.4.6.MH1 FR-8：共享解析契约（从第一个 @ 起贪婪解析 rig）。
     const parsed = parseSessionName(ref);
     if (parsed.kind === "canonical") {
       const localRef = parsed.member;

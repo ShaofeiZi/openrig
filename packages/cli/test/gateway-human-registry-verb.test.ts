@@ -3,12 +3,12 @@ import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createProgram } from "../src/index.js";
-// The registry module is home-state owned by the daemon; the verb (and this test) reach
-// it via the narrow @openrig/daemon/gateway-human-registry subpath (the C3/crash-cart rail).
+// registry 模块由 daemon 拥有 home-state；该动词（及本测试）经窄
+// @openrig/daemon/gateway-human-registry 子路径触达（C3/crash-cart 轨道）。
 import { humansDir, loadHumanRegistry } from "@openrig/daemon/gateway-human-registry";
 
-// M1 A3 pt2 / A4b relocate — `rig gateway human add` verb integration. The verb lazy-imports
-// the relocated daemon surface; these tests drive the real command end-to-end.
+// M1 A3 pt2 / A4b 重定位——`rig gateway human add` 动词集成。该动词懒加载
+// 重定位后的 daemon 表面；这些测试端到端驱动真实命令。
 describe("rig gateway human add verb (post-relocate)", () => {
   let home: string;
   let prevHome: string | undefined;

@@ -1,0 +1,838 @@
+{
+  "owner": "entry",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "target_path": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 60,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 人可见字段/标签/说明中文化；保留 key/id/url/命令占位符，rig--version 标注 zrig 品牌 | batch2 config-template全文审读:用户可见字段均中文,机器枚举保留;非测试类无需复验",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": ".github/ISSUE_TEMPLATE/config.yml",
+      "target_path": ".github/ISSUE_TEMPLATE/config.yml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 14,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | contact_links 展示名/说明中文化，url 保留 | batch2 config-template全文审读:用户可见字段均中文,机器枚举保留;非测试类无需复验",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": ".github/ISSUE_TEMPLATE/feature_request.yml",
+      "target_path": ".github/ISSUE_TEMPLATE/feature_request.yml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 32,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 标签/说明/markdown 中文化，key/id/url 保留 | batch2 config-template全文审读:用户可见字段均中文,机器枚举保留;非测试类无需复验",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": ".github/workflows/portability-report.yml",
+      "target_path": ".github/workflows/portability-report.yml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 33,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 注释与步骤展示名中文化；on/permissions/uses/run 命令逐字保留 | batch2 config-template全文审读:用户可见字段均中文,机器枚举保留;非测试类无需复验",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "package.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 根私有工作区清单，无人类展示 NL；脚本字段须逐字保留，不翻译"
+    },
+    {
+      "source_path": "packages/cli/package.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "done",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 为发布兼容新增 bin 别名 zrig/openrig -> dist/bin-wrapper.js，保留 rig/openrig-tui；未翻译/重命名任何已发布字段 | batch2: description英文缺口作者已修简中;待测试验证(当前保持self_reported) | b2-110: description简中;bin三入口metadata检查通过;JSON全文审读机器name/bin不动",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/scripts/check-abi.mjs",
+      "target_path": "packages/cli/scripts/check-abi.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 177,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；用户错误文案字符串保留英文(被 cli-core 测试按子串断言锁定)，行为/退出码不变 | check-abi:注释审读+语法/运行过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/src/bin-wrapper.ts",
+      "target_path": "packages/cli/src/bin-wrapper.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 108,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；新增 OPENRIG_INVOKED_AS 调用名透传(不改变协议/子命令)；逻辑行为不变",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/build-info.ts",
+      "target_path": "packages/cli/src/build-info.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 21,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化，接口不变",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterD:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/src/schemas/restore-summary.schema.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | JSON Schema 机器契约，字段/枚举保留原文"
+    },
+    {
+      "source_path": "packages/cli/src/version.ts",
+      "target_path": "packages/cli/src/version.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 23,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | JSDoc 中文化，版本格式逻辑不变",
+      "validation_state": "validated",
+      "note": " | batch2 cli clusterE:整文件人类注释/串审读已中文,机器token保留;未改源全套覆盖无一对一测试→validated"
+    },
+    {
+      "source_path": "packages/cli/tsconfig.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | TS 编译配置，机器字段"
+    },
+    {
+      "source_path": "packages/cli/vitest.config.ts",
+      "target_path": "packages/cli/vitest.config.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 22,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释块中文化，测试配置不变 | cli vitest.config:nochange scan evidence→validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/.claude-plugin/plugin.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 插件清单，机器字段/标识保留"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/.codex-plugin/plugin.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 插件清单，机器字段/标识保留"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/hooks/claude.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | hook 绑定清单，路径/事件标识须逐字保留"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/hooks/codex.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | hook 绑定清单，路径/事件标识须逐字保留"
+    },
+    {
+      "source_path": "packages/daemon/package.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 发布清单，字段逐字保留"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/runtime/claude-activity-hooks.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 运行时 hook 绑定机器配置"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/runtime/claude-mcp.fragment.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | MCP 片段机器配置"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/runtime/claude-settings.fragment.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 设置片段机器配置"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/health-projection/release-0.5.9.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 录制事故回放夹具，reason 为历史记录数据而非产品展示文案；翻译会破坏回放等价/断言"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/scenarios/scripts/alpha.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 脚本台词夹具(喂给智能体的用户脚本文本)，非产品 UI 文案，不强行翻译"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/scenarios/scripts/beta.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 脚本台词夹具(喂给智能体的用户脚本文本)，非产品 UI 文案，不强行翻译"
+    },
+    {
+      "source_path": "packages/daemon/tsconfig.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | TS 编译配置"
+    },
+    {
+      "source_path": "packages/tui/package.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 发布清单，字段逐字保留"
+    },
+    {
+      "source_path": "packages/tui/spike/real-graph-v-openrig-build.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 实验采样机器数据"
+    },
+    {
+      "source_path": "packages/tui/tsconfig.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | TS 编译配置"
+    },
+    {
+      "source_path": "packages/ui/components.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 组件库配置机器字段"
+    },
+    {
+      "source_path": "packages/ui/package.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 发布清单，字段逐字保留"
+    },
+    {
+      "source_path": "packages/ui/tsconfig.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | TS 编译配置"
+    },
+    {
+      "source_path": "packages/ui/tsconfig.twin.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | TS 编译配置"
+    },
+    {
+      "source_path": "scripts/bootstrap-product-factory-vps.sh",
+      "target_path": "scripts/bootstrap-product-factory-vps.sh",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 111,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与操作者提示中文化；参数/命令/路径/ssh 配置逐字保留 | b2-208 scripts-batch1:注释审读residual0;5nochange scan evidence→validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/build-package.sh",
+      "target_path": "scripts/build-package.sh",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 169,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与构建进度提示中文化；命令/变量/路径/内嵌 node -e 错误串逐字保留 | b2-208 scripts-batch1:注释审读residual0;5nochange scan evidence→validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/build-testbed-cli-pack.test.mjs",
+      "target_path": "scripts/build-testbed-cli-pack.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 136,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；测试标题/断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/build-testbed-image.sh",
+      "target_path": "scripts/build-testbed-image.sh",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 105,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与 echo 提示中文化；docker/node -e 命令逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/build-testbed-image.test.mjs",
+      "target_path": "scripts/build-testbed-image.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 111,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；测试标题/断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/check-cli-daemon-freshness.test.mjs",
+      "target_path": "scripts/check-cli-daemon-freshness.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 161,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 头部机制注释中文化；测试标题/断言串逐字保留 | b2-208 scripts-batch1:注释审读residual0;7changed tests/语法过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "scripts/check-docs-guard.mjs",
+      "target_path": "scripts/check-docs-guard.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 63,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 白名单说明 JSDoc 中文化；guard 提示串被测试断言，逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/check-docs-guard.test.mjs",
+      "target_path": "scripts/check-docs-guard.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 88,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 主要注释中文化；测试标题/断言串逐字保留 | b2-208 scripts-batch1:注释审读residual0;7changed tests/语法过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "scripts/check-engines.test.mjs",
+      "target_path": "scripts/check-engines.test.mjs",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 35,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 纯测试断言文件，无注释；describe/it/expect 断言串须保留英文以锁定行为"
+    },
+    {
+      "source_path": "scripts/check-internal-leak-guard.mjs",
+      "target_path": "scripts/check-internal-leak-guard.mjs",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 242,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 纯编排脚本无注释；输出串 buildInternalLeakMessage 委托 internal-leak-scanner.mjs（已译），且被同名测试断言，保留英文"
+    },
+    {
+      "source_path": "scripts/check-internal-leak-guard.test.mjs",
+      "target_path": "scripts/check-internal-leak-guard.test.mjs",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 304,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 纯测试断言文件，无注释；describe/it/expect 断言串须保留英文以锁定行为"
+    },
+    {
+      "source_path": "scripts/check-packing-policies.test.mjs",
+      "target_path": "scripts/check-packing-policies.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 47,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；测试标题/断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/check-packing.test.mjs",
+      "target_path": "scripts/check-packing.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 160,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 主要契约注释中文化；测试标题/断言串逐字保留 | b2-208 scripts-batch1:注释审读residual0;7changed tests/语法过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "scripts/check-substance-gate.mjs",
+      "target_path": "scripts/check-substance-gate.mjs",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 466,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 纯逻辑脚本无注释；FIX/裁决判定串被 check-substance-gate.test.mjs 断言，保留英文；规则与扫描器复用已译模块"
+    },
+    {
+      "source_path": "scripts/check-substance-gate.test.mjs",
+      "target_path": "scripts/check-substance-gate.test.mjs",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 447,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 纯测试断言文件，无注释；describe/it/expect 断言串须保留英文以锁定行为"
+    },
+    {
+      "source_path": "scripts/cli-license.test.mjs",
+      "target_path": "scripts/cli-license.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 33,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；describe/it/expect 断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/gate-lane-candidate-binding.test.mjs",
+      "target_path": "scripts/gate-lane-candidate-binding.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 211,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；describe/it/expect 断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/gate-lane-consume.mjs",
+      "target_path": "scripts/gate-lane-consume.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 54,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | JSDoc 中文化；错误文案被测试断言，逐字保留 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误文案中文化，保留协议/env/路径/命令标识 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/gate-lane-consume.test.mjs",
+      "target_path": "scripts/gate-lane-consume.test.mjs",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 93,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 纯测试断言文件，无注释；describe/it/expect 断言串须保留英文以锁定行为"
+    },
+    {
+      "source_path": "scripts/gate-lane-exclusions.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 闸门排除清单机器数据"
+    },
+    {
+      "source_path": "scripts/gate-lane-hermeticity.mjs",
+      "target_path": "scripts/gate-lane-hermeticity.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 88,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | JSDoc 中文化；fail/log 串被测试断言，逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/gate-lane-hermeticity.test.mjs",
+      "target_path": "scripts/gate-lane-hermeticity.test.mjs",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 191,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 纯测试断言文件，无注释；describe/it/expect 断言串须保留英文以锁定行为"
+    },
+    {
+      "source_path": "scripts/gate-lane-ledger.mjs",
+      "target_path": "scripts/gate-lane-ledger.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 104,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 四轨道机制注释/JSDoc 中文化；render 输出串被测试断言，逐字保留 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误/render 文案中文化，保留协议/env/路径/命令标识 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/gate-lane-ledger.test.mjs",
+      "target_path": "scripts/gate-lane-ledger.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 98,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；测试标题/断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/gate-lane-lock.mjs",
+      "target_path": "scripts/gate-lane-lock.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 67,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 架构注释与 P1-P5 约束中文化；reason 协议值逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/gate-lane-lock.test.mjs",
+      "target_path": "scripts/gate-lane-lock.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 95,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；describe/it/expect 断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/gate-lane-run.mjs",
+      "target_path": "scripts/gate-lane-run.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 134,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 机制注释/JSDoc 中文化；renderRefusal/advisory 输出串被测试断言，逐字保留 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误/render 文案中文化，保留协议/env/路径/命令标识 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/gate-lane-run.test.mjs",
+      "target_path": "scripts/gate-lane-run.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 151,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 头部与主要机制注释中文化；测试标题/断言串逐字保留 | b2-208 scripts-batch1:注释审读residual0;7changed tests/语法过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "scripts/gate-lane.mjs",
+      "target_path": "scripts/gate-lane.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 171,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 入口注释与内联说明中文化；console/裁决串逐字保留 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误/render 文案中文化，保留协议/env/路径/命令标识 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/generate-context-packs.mjs",
+      "target_path": "scripts/generate-context-packs.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 417,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部/全部注释中文化；输出 YAML 头与错误串保留英文 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误/render 文案中文化，保留协议/env/路径/命令标识 | b2-208 scripts-batch1:注释审读residual0;5nochange scan evidence→validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/generate-context-packs.test.mjs",
+      "target_path": "scripts/generate-context-packs.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 521,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 头部与主要区块注释中文化；测试标题/断言串逐字保留 | b2-208 scripts-batch1:注释审读residual0;7changed tests/语法过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "scripts/internal-leak-scanner.mjs",
+      "target_path": "scripts/internal-leak-scanner.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 74,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 无注释；remedy/提示串被 internal-leak-scanner.test.mjs 断言，逐字保留 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误/render 文案中文化，保留协议/env/路径/命令标识 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/internal-leak-scanner.test.mjs",
+      "target_path": "scripts/internal-leak-scanner.test.mjs",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 121,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 纯测试断言文件，无注释；describe/it/expect 断言串须保留英文以锁定行为"
+    },
+    {
+      "source_path": "scripts/internal-tokens.generated.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 生成文件，禁止手改"
+    },
+    {
+      "source_path": "scripts/mirror-skills.mjs",
+      "target_path": "scripts/mirror-skills.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 759,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部与全部机制注释中文化；ship 消息/rsync 输出串被测试断言，逐字保留 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误/render 文案中文化，保留协议/env/路径/命令标识 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/mirror-skills.test.mjs",
+      "target_path": "scripts/mirror-skills.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 1226,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 主要注释中文化；测试标题/断言串逐字保留 | b2-208 scripts-batch1:注释审读residual0;7changed tests/语法过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "scripts/portability-report.mjs",
+      "target_path": "scripts/portability-report.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 173,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部说明与注释中文化；CHECKS why/report 输出串被测试断言，逐字保留 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 报告/prose/why 文案中文化，保留 category/pattern/路径/命令 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/portability-report.test.mjs",
+      "target_path": "scripts/portability-report.test.mjs",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 98,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 纯测试断言文件，无注释；describe/it/expect 断言串须保留英文以锁定行为"
+    },
+    {
+      "source_path": "scripts/product-public-skills.generated.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 生成文件，禁止手改"
+    },
+    {
+      "source_path": "scripts/regen-edge-digests.mjs",
+      "target_path": "scripts/regen-edge-digests.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 35,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部注释中文化；输出串/路径逐字保留 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误文案中文化，保留协议/env/路径/命令标识 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/rewrite-daemon-imports.mjs",
+      "target_path": "scripts/rewrite-daemon-imports.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 147,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部与内联注释中文化；错误/console 串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/rewrite-daemon-imports.test.mjs",
+      "target_path": "scripts/rewrite-daemon-imports.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 241,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；describe/it/expect 断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/skill-edge-digests.generated.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 生成文件，禁止手改"
+    },
+    {
+      "source_path": "scripts/skill-edge-layout.generated.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | 生成文件，禁止手改"
+    },
+    {
+      "source_path": "scripts/smoke-fresh-install.sh",
+      "target_path": "scripts/smoke-fresh-install.sh",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 78,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与冒烟提示中文化；node -e 探测串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/sync-scope-lineage.mjs",
+      "target_path": "scripts/sync-scope-lineage.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 63,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部注释中文化；HEADER 模板与漂移提示串被生成物/测试依赖，保留原文 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误文案中文化，保留协议/env/路径/命令标识 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/sync-scope-lineage.test.mjs",
+      "target_path": "scripts/sync-scope-lineage.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 77,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；describe/it/expect 断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/test-tui-package.mjs",
+      "target_path": "scripts/test-tui-package.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 74,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 纯测试脚本无注释；断言串逐字保留 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误文案中文化，保留协议/env/路径/命令标识 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/testbed-build-inputs.mjs",
+      "target_path": "scripts/testbed-build-inputs.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 173,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部/全部 JSDoc/内联注释中文化；TestbedBuildInputsError 错误串被测试断言，逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/testbed-build-inputs.test.mjs",
+      "target_path": "scripts/testbed-build-inputs.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 225,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；测试标题/断言串逐字保留 | b2-208 scripts-batch1:注释审读residual0;5nochange scan evidence→validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/testbed-dockerfile.test.mjs",
+      "target_path": "scripts/testbed-dockerfile.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 99,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；测试标题/断言串逐字保留 | b2-208 scripts-batch1:注释审读residual0;7changed tests/语法过→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "scripts/testbed-emit-manifest.mjs",
+      "target_path": "scripts/testbed-emit-manifest.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 95,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部注释与 JSDoc 中文化；usage/错误串逐字保留 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误文案中文化，保留协议/env/路径/命令标识 | b2-208 scripts-batch1:注释审读residual0;5nochange scan evidence→validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/testbed-emit-manifest.test.mjs",
+      "target_path": "scripts/testbed-emit-manifest.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 162,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；describe/it/expect 断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/testbed-manifest.mjs",
+      "target_path": "scripts/testbed-manifest.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 70,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部注释与 JSDoc 中文化；错误串/schema 标识逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/testbed-manifest.test.mjs",
+      "target_path": "scripts/testbed-manifest.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 64,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；测试标题/断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/testbed-stub-assets.test.mjs",
+      "target_path": "scripts/testbed-stub-assets.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 66,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；测试标题/断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/typecheck-order.test.mjs",
+      "target_path": "scripts/typecheck-order.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 26,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 注释中文化；describe/it/expect 断言串逐字保留 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/verify-packaged-builtins.mjs",
+      "target_path": "scripts/verify-packaged-builtins.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 113,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部与内联注释中文化；策略哈希/FAIL-ok-PASS 串逐字保留 | 注释已译；运行时 console/错误/render 文案仍为英文，需译中文并同步更新拥有测试的人类展示断言 | 运行时 console/错误文案中文化，保留协议/env/路径/命令标识 | scripts union54:整文件注释审读residual0;scan evidence锁validated",
+      "reason_class": "needs_review",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/vm-bootstrap/two-daemon-start.sh",
+      "target_path": "scripts/vm-bootstrap/two-daemon-start.sh",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 102,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释与操作者指引中文化；rig 调用/路径逐字保留 | vm-bootstrap:nochange scan evidence→validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "tsconfig.base.json",
+      "target_path": "",
+      "category": "manifest",
+      "status": "skipped",
+      "lines": 0,
+      "notes": "JSON manifest/data: fields preserved verbatim; no translation of keys/values; package manifest: do not rename/translate published fields; entry owner reviews only | TS 基础编译配置"
+    },
+    {
+      "source_path": "vitest.config.ts",
+      "target_path": "vitest.config.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 16,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释块中文化，projects 配置不变 | root vitest.config:nochange scan evidence→validated",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "scripts/zrig-entry.test.mjs",
+      "target_path": "scripts/zrig-entry.test.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 101,
+      "notes": "漏登补登 2026-10-08(零点3062->3064); 入口测试,注释/人类可见文本中文化,保留断言语义 | t06:5用例通过+全文中文审读;本轮验收记录(入口根测试,无改产品)",
+      "validation_state": "validated"
+    }
+  ]
+}

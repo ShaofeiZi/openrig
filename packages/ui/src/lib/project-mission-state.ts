@@ -20,24 +20,34 @@ export type ProjectMissionGroup = {
   id: string;
   label: string;
   status: MissionStatus;
-  /** VM-005: the rendered word — authored missions render the author's raw
-   *  word verbatim; derived missions render the enum word. Consumers that
-   *  build groups via reconcileMissionStatus set this from `label`. */
+  /** VM-005：实际渲染的文字——作者撰写的任务按作者原文逐字渲染；派生任务渲染枚举词。
+   *  通过 reconcileMissionStatus 建组的消费方会从 `label` 写入此值。 */
   statusLabel?: string;
-  /** VM-005: whether `status` came from authored frontmatter or the derived
-   *  roll-up — projectMissionBucket's FR-4 shipped-family test reads it. */
+  /** VM-005：`status` 来自作者撰写的 frontmatter 还是派生汇总——
+   *  projectMissionBucket 的 FR-4 shipped-family 测试会读取它。 */
   statusSource?: MissionStatusSource;
   slices: ProjectSliceRow[];
 };
 
 export const PROJECT_CURRENT_ACTIVITY_WINDOW_MS = 36 * 60 * 60 * 1000;
 
+/** proof readiness 机器枚举的展示映射；未知扩展值原样保留。 */
+export function proofReadinessLabel(state: string): string {
+  switch (state) {
+    case "ready": return "已就绪";
+    case "not-ready": return "未就绪";
+    case "unknown": return "未知";
+    case "legacy": return "旧版";
+    default: return state;
+  }
+}
+
 export function projectSliceFromListEntry(slice: SliceListEntry): ProjectSliceRow {
   return {
     name: slice.name,
     displayName: slice.displayName,
     readiness: slice.readiness,
-    status: slice.readiness?.configured ? `proof ${slice.readiness.state}` : slice.status,
+    status: slice.readiness?.configured ? `校验 ${proofReadinessLabel(slice.readiness.state)}` : slice.status,
     rawStatus: slice.rawStatus,
     qitemCount: slice.qitemCount,
     hasProofPacket: slice.hasProofPacket,
@@ -67,30 +77,36 @@ export function isCurrentProjectSlice(slice: ProjectSliceRow, now = Date.now()):
   return false;
 }
 
-// VM-005 (release-0.4.7) — the ONE reconciled mission-status home.
-// Mission status was answered four independent ways (authored README
-// frontmatter · this file's roll-up · the bucket test · a PROGRESS.md live
-// override) with no precedence rule, and the roll-up labeled its taxonomy
-// hole UNKNOWN — a status that DECAYED by wall clock. reconcileMissionStatus
-// is the single answer every chip surface consumes: authored-when-present is
-// authoritative (and never consults slices or the clock — no-decay by
-// construction); the derived ladder serves only missions with no authored
-// status, and every path names a KNOWN state.
+// VM-005（release-0.4.7）——统一的任务状态收口处。
+// 此前任务状态有四种互不相干的回答方式（作者撰写的 README frontmatter · 本文件的汇总 ·
+// bucket 测试 · PROGRESS.md 的实时覆盖），且没有优先级规则；汇总还把它的分类空缺标记为
+// UNKNOWN——一个会随墙上时钟衰减的状态。reconcileMissionStatus 是所有 chip 界面共同
+// 消费的唯一答案：作者撰写存在时以其为准（且绝不参考 slices 或时钟——结构上杜绝衰减）；
+// 派生阶梯只服务于没有作者状态的任务，且每条路径都给出一个已知状态。
 
 export type MissionStatusSource = "authored" | "derived";
 
 export interface ReconciledMissionStatus {
   state: MissionStatus;
-  /** The rendered word. Authored-present → the author's raw word VERBATIM
-   *  (chip tone via AUTHORED_WORD_TONES); derived → the enum word. */
+  /** 实际渲染的文字。有作者撰写 → 逐字采用作者原文（chip 色调见 AUTHORED_WORD_TONES）；
+   *  派生 → 枚举词。 */
   label: string;
   source: MissionStatusSource;
 }
 
-/** PIN Q3-P1 (arch, VM-005): the authored word→tone normalizer is ONE
- *  exported CLOSED constant — adding a word is one map entry, never new
- *  logic. Unrecognized words get a neutral tone ("idle", the tone-carrier
- *  only) and the authored word still wins and renders verbatim. */
+const DERIVED_MISSION_STATUS_LABEL: Record<MissionStatus, string> = {
+  active: "进行中",
+  paused: "已暂停",
+  shipped: "已发布",
+  blocked: "已阻塞",
+  idle: "空闲",
+  empty: "空",
+  draft: "草稿",
+};
+
+/** PIN Q3-P1（架构，VM-005）：作者词→色调的归一器是唯一导出的封闭常量——
+ *  新增一个词只需加一条映射，绝不新增逻辑。未识别的词给中性色调（"idle"，仅作色调载体），
+ *  且作者原文仍优先并逐字渲染。 */
 export const AUTHORED_WORD_TONES: Record<string, MissionStatus> = {
   complete: "shipped",
   completed: "shipped",
@@ -116,9 +132,8 @@ function normalizeAuthored(authored: string): { state: MissionStatus; label: str
   return { state, label: word };
 }
 
-/** The reconciled mission status. `now` is injected (never read internally)
- *  so the derived recency window is testable and the authored path is
- *  clock-free by construction. */
+/** 收口后的任务状态。`now` 由外部注入（内部绝不自行读取），
+ *  使派生的“近期”窗口可测，且作者路径在结构上与时钟无关。 */
 export function reconcileMissionStatus(
   authored: string | null,
   slices: ProjectSliceRow[],
@@ -127,28 +142,27 @@ export function reconcileMissionStatus(
 ): ReconciledMissionStatus {
   if (readiness && slices.some(s => s.readiness?.configured)) {
     const declared = readiness.historicalStatus ?? authored;
-    return { state: declared ? normalizeAuthored(declared).state : "active", label: `${declared ? `declared ${declared} · ` : ""}proof ${readiness.state}`, source: declared ? "authored" : "derived" };
+    return { state: declared ? normalizeAuthored(declared).state : "active", label: `${declared ? `声明 ${declared} · ` : ""}校验 ${proofReadinessLabel(readiness.state)}`, source: declared ? "authored" : "derived" };
   }
   if (authored !== null && authored.trim().length > 0) {
     const { state, label } = normalizeAuthored(authored);
     return { state, label, source: "authored" };
   }
   const state = deriveMissionStatusFromSlices(slices, now);
-  return { state, label: state, source: "derived" };
+  return { state, label: DERIVED_MISSION_STATUS_LABEL[state], source: "derived" };
 }
 
-/** The derived ladder (fallback-only; pm's ratified vocabulary
- *  empty · blocked · draft · active · shipped · idle — no path returns
- *  the retired UNKNOWN word: every input here is fully known). Internal;
- *  chip consumers go through reconcileMissionStatus. */
+/** 派生阶梯（仅作兜底；pm 认可的词汇：empty · blocked · draft · active · shipped · idle
+ *  ——没有任何路径返回已废弃的 UNKNOWN 词：这里的每个输入都是完全已知的）。内部使用；
+ *  chip 消费方一律走 reconcileMissionStatus。 */
 function deriveMissionStatusFromSlices(slices: ProjectSliceRow[], now: number): MissionStatus {
   if (slices.length === 0) return "empty";
   if (slices.some((s) => s.status === "blocked" && isCurrentProjectSlice(s, now))) {
     return "blocked";
   }
-  // Q2 (VM-005): a mission that is nothing but drafts is honestly "draft",
-  // not "active" — fresh scaffolds have recent mtimes and would otherwise
-  // read as current. Lands after blocked, before any-current.
+  // Q2（VM-005）：一个全是草稿的任务诚实地应标为 "draft"，而非 "active"——
+  // 新建脚手架 mtime 很新，否则会被读成“进行中”。顺序排在 blocked 之后、
+  // “有当前 slice”判断之前。
   if (slices.every((s) => s.status === "draft")) return "draft";
   if (slices.some((s) => isCurrentProjectSlice(s, now))) return "active";
   if (slices.every((s) => s.status === "done")) return "shipped";
@@ -159,13 +173,13 @@ export function projectMissionBucket(
   mission: ProjectMissionGroup,
   now = Date.now(),
 ): ProjectMissionBucket {
-  // VM-005 FR-4: an AUTHORED shipped-family status buckets archive regardless
-  // of slice recency (normalizeAuthored maps complete/completed/done/shipped
-  // → "shipped", so source+state is exactly the shipped-family test).
+  // VM-005 FR-4：作者撰写的 shipped 家族状态一律归入 archive，不看 slice 的近期性
+  // （normalizeAuthored 把 complete/completed/done/shipped → "shipped"，
+  // 所以 source+state 恰好就是 shipped-family 的判定）。
   if (mission.statusSource === "authored" && mission.status === "shipped") return "archive";
-  // `now` is threaded through to isCurrentProjectSlice (not left to its Date.now() default) so
-  // recency bucketing is DETERMINISTIC under an injected clock — a fixed-timestamp fixture must not
-  // rot to a different bucket as wall-clock advances past the 36h activity window.
+  // `now` 一路透传给 isCurrentProjectSlice（不使用它 Date.now() 的默认值），
+  // 使“近期”分组在注入时钟下是确定性的——固定时间戳的夹具不应随墙上时钟越过 36 小时
+  // 活动窗口而变质到另一个分组。
   if (mission.slices.some((s) => isCurrentProjectSlice(s, now))) return "current";
   if (mission.slices.length === 0 && mission.status !== "shipped") return "current";
   return "archive";
@@ -208,17 +222,31 @@ export function partitionProjectMissions<T extends ProjectMissionGroup>(
 export function projectSliceMeta(slice: ProjectSliceRow): string {
   const parts: string[] = [];
   if (slice.qitemCount > 0) {
-    parts.push(`${slice.qitemCount} qitem${slice.qitemCount === 1 ? "" : "s"}`);
+    parts.push(`${slice.qitemCount} 个队列项`);
   }
+  const visibleStatus = ({
+    active: "进行中",
+    done: "已完成",
+    blocked: "已阻塞",
+    draft: "草稿",
+  } as Record<string, string>)[slice.status] ?? slice.status;
+  const visibleRawStatus = ({
+    active: "进行中",
+    building: "构建中",
+    done: "已完成",
+    merged: "已合并",
+    review: "评审中",
+    scoped: "已框定",
+  } as Record<string, string>)[slice.rawStatus ?? ""] ?? slice.rawStatus;
   const staticStatus =
     (slice.status === "active" || slice.status === "draft") && !isCurrentProjectSlice(slice)
-      ? `stale ${slice.status}`
-      : slice.status;
+      ? `已停滞 · ${visibleStatus}`
+      : visibleStatus;
   if (slice.rawStatus && slice.rawStatus !== slice.status) {
-    parts.push(`${staticStatus} from ${slice.rawStatus}`);
+    parts.push(`${staticStatus}（来自 ${visibleRawStatus}）`);
   } else {
     parts.push(staticStatus);
   }
-  if (slice.hasProofPacket) parts.push("proof");
+  if (slice.hasProofPacket) parts.push("校验包");
   return parts.join(" · ");
 }

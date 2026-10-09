@@ -422,16 +422,16 @@ skills: []
       ]);
     });
     expect(planHuman.logs).toEqual([
-      `project beta: ${betaRoot}`,
-      `system  default [default] test-default@0.5.9 ${join(contextRoot, "system", "system-world.yaml")}`,
-      "context system onboarding-width",
-      "context system world-public (claude=guided, codex=codex-coverage)",
-      "skills  system=system-skill",
-      "skills  topology=(none)",
-      "skills  project=(none)",
+      `项目 beta：${betaRoot}`,
+      `系统  default [default] test-default@0.5.9 ${join(contextRoot, "system", "system-world.yaml")}`,
+      "上下文  系统=onboarding-width",
+      "上下文  系统=world-public (claude=guided, codex=codex-coverage)",
+      "技能  系统=system-skill",
+      "技能  拓扑=（无）",
+      "技能  项目=（无）",
       `project project:SPEC.md [manifest] ${join(betaRoot, "SPEC.md")}`,
       `mission mission:SPEC.md [manifest] ${join(betaRoot, "missions", "beta-scaffold", "SPEC.md")}`,
-      `mission mission:PROGRESS.md [default] (absent: ${join(betaRoot, "missions", "beta-scaffold", "PROGRESS.md")})`,
+      `mission mission:PROGRESS.md [default] （缺失：${join(betaRoot, "missions", "beta-scaffold", "PROGRESS.md")}）`,
     ]);
 
     const human = await captureLogs(async () => {
@@ -443,7 +443,7 @@ skills: []
     expect(human.logs.filter((line) => line.startsWith("=== "))).toEqual([
       "=== project project:SPEC.md ===",
       "=== mission mission:SPEC.md ===",
-      `=== mission:PROGRESS.md (absent: ${join(betaRoot, "missions", "beta-scaffold", "PROGRESS.md")}) ===`,
+      `=== mission:PROGRESS.md（缺失：${join(betaRoot, "missions", "beta-scaffold", "PROGRESS.md")}）===`,
     ]);
   });
 

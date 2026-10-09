@@ -1,15 +1,12 @@
-// V0.3.1 slice 21 onboarding-conveyor.
+// V0.3.1 slice 21 onboarding-conveyor。
 //
-// /lab/card-previews — visual gallery of all for-you card kind
-// variants with sample data. Doubles as a designer reference + a
-// regression surface (the live feed and this gallery render the
-// same card components, so visual divergence is immediately visible).
+// /lab/card-previews——所有为你推荐卡片类别变体的可视化画廊，带示例数据。
+// 同时充当设计师参考 + 回归界面（实时 feed 与本画廊渲染同一批卡片组件，
+// 故视觉偏差立即可见）。
 //
-// 2026-05-15 — removed the outer VellumCard gallery wrappers per
-// founder feedback. Each card already has its own ambient shadow +
-// corner brackets from the new vellum-coherent design, so wrapping
-// each one in another VellumCard was a card-on-card visual. Section
-// labels now sit ABOVE each card as plain marginalia headings.
+// 2026-05-15——按创始人反馈移除外层 VellumCard 画廊包裹。每张卡片
+// 已有自己的环境阴影 + 新 vellum 协调设计的角括号，再把每张卡片包进另一个
+// VellumCard 就是“卡上卡”的视觉。区块标签现在以朴素的旁注标题坐在每张卡片上方。
 
 import {
   ApprovalCard,
@@ -28,57 +25,57 @@ export function CardPreviewsLab() {
           /lab/card-previews
         </h1>
         <p className="font-mono text-[11px] text-on-surface">
-          Visual gallery of for-you card kind variants. Each section renders the
-          same card component the live feed uses, with sample data.
+          为你推荐卡片类别变体的可视化画廊。每个区块渲染实时 feed 所用的
+          同一卡片组件，并带示例数据。
         </p>
       </header>
 
       <SectionLabel
-        title="Shipped"
-        description="A slice merged + summary view. Used when a slice closes successfully and the feed surfaces it to operators downstream."
+        title="已交付"
+        description="切片合并与汇总视图。在切片成功关闭、动态向下游操作者展示时使用。"
       />
       <ShippedCard
         source={{
           sliceId: "first-conveyor-run",
-          title: "First Conveyor Run — shipped",
-          oneLiner: "Slice merged at b71cddf. 4 commits + 1 proof packet.",
+          title: "首次传送带运行——已交付",
+          oneLiner: "切片在 b71cddf 合并。4 个提交与 1 个校验包。",
           sections: [
-            { number: 1, heading: "Lint parses + validates entries", summary: "12 tests pass; UTF-8 edge cases handled." },
-            { number: 2, heading: "Reviewer accepted with one concern", summary: "Combining-character edge addressed mid-flight." },
-            { number: 3, heading: "Proof packet captured", summary: "CLI output screenshot + diff render." },
+            { number: 1, heading: "Lint 解析并校验条目", summary: "12 个测试通过；处理 UTF-8 边界情况。" },
+            { number: 2, heading: "评审通过，仅一处关切", summary: "组合字符边界在中途处理。" },
+            { number: 3, heading: "已采集校验包", summary: "CLI 输出截图与差异渲染。" },
           ],
         }}
       />
 
       <SectionLabel
-        title="Incident / Action Required"
-        description="A timeline-shaped surface for an in-flight or recent incident. Use status='warning' or 'danger' to surface attention; 'info' for informational; 'muted' for resolved."
+        title="事件 / 待处理动作"
+        description="进行中或近期事件的时间线界面。用 status='warning' 或 'danger' 展示待关注；'info' 表示信息性；'muted' 表示已解决。"
       />
       <IncidentCard
         source={{
           sliceId: "auth-bearer-tailscale-trust",
-          title: "Auth bearer tailscale trust — concerning",
-          oneLiner: "Reviewer flagged loopback-only default at fix-1; remediated at fix-2.",
+          title: "Auth bearer tailscale 信任——需关注",
+          oneLiner: "评审在 fix-1 标记 loopback-only 默认；在 fix-2 已修复。",
           status: "warning",
           recentEntries: [
-            { time: "13:42", title: "Reviewer BLOCKING-CONCERN raised", status: "danger" },
-            { time: "14:01", title: "Driver forward-fix scoped", status: "info" },
-            { time: "14:38", title: "Forward-fix landed; gates green", status: "success" },
+            { time: "13:42", title: "评审提出阻塞性关切", status: "danger" },
+            { time: "14:01", title: "驱动方前向修复已划定范围", status: "info" },
+            { time: "14:38", title: "前向修复已落地；门禁全绿", status: "success" },
           ],
         }}
       />
 
       <SectionLabel
-        title="Progress"
-        description="A mission-level progress card with percent + active-slice context. Used during a mission lifecycle to keep operators informed without requiring them to open the mission page."
+        title="进展"
+        description="任务级进度卡，带百分比和活动切片上下文。在任务生命周期中使用，使操作者无需打开任务页即可了解情况。"
       />
       <ProgressCard
         source={{
           missionId: "release-0.3.1",
-          title: "Release 0.3.1 — in flight",
-          oneLiner: "Wave 3a + 3b dispatches; multiple slices in review.",
+          title: "版本 0.3.1——进行中",
+          oneLiner: "第 3a 与 3b 波次已派发；多个切片正在评审。",
           percent: 62,
-          nextStep: "design-reviewer audit on slice 21 narrative voice",
+          nextStep: "design-reviewer 对切片 21 叙述语调的审计",
           activeSlice: {
             id: "slice-21-onboarding-conveyor",
             label: "slice-21-onboarding-conveyor",
@@ -88,15 +85,15 @@ export function CardPreviewsLab() {
       />
 
       <SectionLabel
-        title="Approval / Action Required"
-        description="An operator-decision-needed surface. Renders the qitem context + the two action paths (Approve / Deny) the operator picks between."
+        title="审批 / 待处理动作"
+        description="需要操作手决策的界面。渲染 qitem 上下文 + 两条动作路径（批准 / 拒绝），供操作手选择。"
       />
       <ApprovalCard
         source={{
           qitemId: "qitem-20260511201234-abcdef01",
-          title: "Auth bearer tailscale trust — approve merge?",
-          oneLiner: "All gates green; merge requires operator sign-off.",
-          bodyPreview: "Triple-guard CLEAR. velocity-qa VM walk PASS. Ready for merge to main.",
+          title: "Auth bearer tailscale 信任——是否批准合并？",
+          oneLiner: "所有门禁全绿；合并需操作手签批。",
+          bodyPreview: "三重防护 CLEAR。velocity-qa VM 走查通过。可合并到 main。",
           drillInHref: "/project/slice/auth-bearer-tailscale-trust",
           onApprove: () => {},
           onDeny: () => {},
@@ -104,29 +101,29 @@ export function CardPreviewsLab() {
       />
 
       <SectionLabel
-        title="Concept / Observation"
-        description="A discovery / lab / scratch-pad surface. Used for not-yet-actionable observations, draft ideas, or comparison previews."
+        title="概念 / 观察"
+        description="发现 / 实验室 / 草稿本界面。用于尚不可行动的观察、草稿想法或对比预览。"
       />
       <ConceptCard
         source={{
           sliceId: "concept-storytelling-primitives",
-          title: "Storytelling primitives — concept",
-          oneLiner: "Could replace one-off card components with kind-frame primitives.",
+          title: "叙事原语——概念",
+          oneLiner: "可用类别框架原语取代一次性卡片组件。",
           comparePreview: [
-            { label: "Card kinds", valueOld: "5 components", valueNew: "1 kind-frame + 5 sources" },
-            { label: "Visual variance", valueOld: "drift over time", valueNew: "centralized accent tokens" },
-            { label: "Maintenance", valueOld: "edit each component", valueNew: "edit kind-frame once" },
+            { label: "卡片类别", valueOld: "5 个组件", valueNew: "1 个类别框架 + 5 个来源" },
+            { label: "视觉差异", valueOld: "随时间漂移", valueNew: "集中的强调色 token" },
+            { label: "维护", valueOld: "逐个改组件", valueNew: "只改一次类别框架" },
           ],
         }}
       />
 
       <SectionLabel
-        title="Empty state"
-        description="What the for-you feed shows when no events qualify. Reusable across surfaces; the EmptyState primitive is the canonical pattern."
+        title="空态"
+        description="无事件符合条件时，为你推荐 feed 的展示。跨界面可复用；EmptyState 原语是规范模式。"
       />
       <EmptyState
-        label="ALL CAUGHT UP"
-        description="No new events. Spin up a rig or declare a slice to populate this feed."
+        label="全部处理完毕"
+        description="无新事件。启动一个工作组或声明一个切片来填充此动态。"
         variant="card"
         testId="card-previews-empty-state"
       />

@@ -1,20 +1,18 @@
-// Fork Primitive + Starter Agent Images v0 (PL-016) — daemon HTTP
-// routes.
+// Fork 原语 + Starter Agent Images v0（PL-016）——后台服务 HTTP 路由。
 //
-// Endpoints:
-//   GET    /api/agent-images/library                — list all images (resume token redacted)
-//   POST   /api/agent-images/library/sync           — re-walk discovery roots
-//   GET    /api/agent-images/library/:id            — image manifest + stats (resume token redacted)
-//   GET    /api/agent-images/library/:id/preview    — manifest + sized supplementary file metadata
-//   POST   /api/agent-images/library/:id/pin        — pin from prune
-//   POST   /api/agent-images/library/:id/unpin      — unpin
-//   DELETE /api/agent-images/library/:id            — delete (subject to evidence guard unless force=true)
-//   POST   /api/agent-images/snapshot               — capture a new image from a source seat
-//   POST   /api/agent-images/prune                  — prune evictable images (dry-run by default)
+// 端点：
+//   GET    /api/agent-images/library                — 列出全部镜像（resume token 已脱敏）
+//   POST   /api/agent-images/library/sync           — 重新遍历发现根
+//   GET    /api/agent-images/library/:id            — 镜像 manifest + 统计（resume token 已脱敏）
+//   GET    /api/agent-images/library/:id/preview    — manifest + 带大小的补充文件元数据
+//   POST   /api/agent-images/library/:id/pin        — pin 以防 prune
+//   POST   /api/agent-images/library/:id/unpin      — 取消 pin
+//   DELETE /api/agent-images/library/:id            — 删除（除非 force=true，否则受 evidence guard 约束）
+//   POST   /api/agent-images/snapshot               — 从源席位捕获新镜像
+//   POST   /api/agent-images/prune                  — 清理可驱逐镜像（默认 dry-run）
 //
-// Resume tokens are NEVER returned over the wire — they're redacted at
-// route boundary. Only the rigspec-instantiator (in-process) consumes
-// the token directly.
+// Resume token 绝不在 wire 上返回——在路由边界脱敏。
+// 只有 rigspec-instantiator（进程内）直接消费 token。
 
 import { Hono } from "hono";
 import { rmSync } from "node:fs";
@@ -49,30 +47,29 @@ interface ForkBody {
   sourceSession?: string;
   rigId?: string;
   pod?: string;
-  /** New member id for the forked successor. */
+  /** fork 继任者的新 member id。 */
   member?: string;
   rigRoot?: string;
-  /** When true, capture + PIN a durable image and launch via mode:agent_image. */
+  /** 为 true 时，捕获 + PIN 一个持久镜像，并通过 mode:agent_image launch。 */
   keepImage?: boolean;
   imageName?: string;
   imageVersion?: string;
   edges?: Array<{ from: string; to: string; kind: string }>;
 }
 
-/** The forked successor mirrors the source seat's launch shape. Native resume
- *  id is resolved separately (discoverResumeToken) and kept daemon-local — it is
- *  deliberately NOT part of this shape so it can never leak into a response. */
+/** fork 继任者镜像源席位的 launch 形状。native resume id 单独解析
+ * （discoverResumeToken）并保持后台服务本地——刻意不放入此形状，使其绝不会泄漏到响应中。 */
 interface ForkSourceShape {
   runtime: string | null;
   agentRef: string | null;
   profile: string | null;
   cwd: string | null;
   codexConfigProfile: string | null;
-  /** OPR.0.4.8.3 Seam B: the source seat's raw permission_policy ref — a forked/imaged
-   *  successor preserves the source's policy attachment (preflight surface 2). */
+  /** OPR.0.4.8.3 Seam B：源席位的原始 permission_policy 引用——fork/镜像化的继任者
+   *  保留源的策略挂载（preflight 表面 2）。 */
   permissionPolicy: string | null;
-  /** OPR.0.5.6.23 member (b): node-carried optionals a fork must not erase —
-   *  the model pin especially (the 0.4.6.PI1 relaunch-on-default class). */
+  /** OPR.0.5.6.23 member (b)：fork 不得擦除的 node 携带 optionals——
+   *  尤其是 model pin（0.4.6.PI1 relaunch-on-default 类）。 */
   model: string | null;
   role: string | null;
   restorePolicy: string | null;
@@ -80,8 +77,8 @@ interface ForkSourceShape {
 }
 
 function resolveForkSourceNode(db: Database.Database, sourceSession: string): ForkSourceShape | null {
-  // SELECT n.* so an older DB missing codex_config_profile simply yields
-  // undefined for that key rather than throwing.
+  // SELECT n.*，使缺少 codex_config_profile 的旧 DB 对该 key 直接返回 undefined，
+  // 而不是抛错。
   const row = db
     .prepare(
       `SELECT n.* FROM sessions s JOIN nodes n ON n.id = s.node_id
@@ -108,8 +105,8 @@ function redactResumeToken<T extends Pick<AgentImageEntry, "sourceResumeToken">>
 }
 
 export interface AgentImageRoutesDeps {
-  /** Spec-library roots scanned by the evidence guard. v0 includes
-   *  the canonical user spec directory + workspace specs root. */
+  /** evidence guard 扫描的 spec-library 根。v0 包含
+   *  规范用户 spec 目录 + 工作区 specs 根。 */
   specRoots: () => readonly string[];
 }
 
@@ -136,7 +133,7 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
     if (!body.sourceSession || !body.name) {
       return c.json({
         error: "missing_required_fields",
-        hint: "POST body must include { sourceSession, name }",
+        hint: "POST body 必须包含 { sourceSession, name }",
       }, 400);
     }
     try {
@@ -148,8 +145,7 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
         estimatedTokens: body.estimatedTokens,
         lineage: body.lineage,
       });
-      // Redact resume token in the response — operator just needs the
-      // image id and on-disk path.
+      // 在响应中脱敏 resume token——operator 只需要镜像 id 和磁盘路径。
       return c.json({
         imageId: result.imageId,
         imagePath: result.imagePath,
@@ -167,20 +163,19 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
     }
   });
 
-  // OPR.0.4.3.05 seat-forking closeout — the narrow daemon fork composer.
+  // OPR.0.4.3.05 seat-forking 收尾——窄后台服务 fork composer。
   //
-  // `rig fork <source-session>` posts here. This is the ONLY net-new surface
-  // in the slice: it composes the ALREADY-SHIPPED primitives (resume-token
-  // discovery + add_member converge, or snapshot + pin + add_member) into one
-  // operator verb. It exists server-side because the native resume id is
-  // redacted at every wire boundary by design — the default one-shot fork MUST
-  // resolve the token in-process so the id NEVER leaves the daemon.
+  // `zrig fork <source-session>` 发到这里。这是 slice 中唯一净新增表面：
+  // 它把已交付原语（resume-token 发现 + add_member converge，或 snapshot + pin +
+  // add_member）组合成一个 operator 动词。它之所以在服务端存在，是因为 native resume id
+  // 按设计在每个 wire 边界脱敏——默认一次性 fork 必须在进程内解析 token，
+  // 使 id 绝不离开后台服务。
   //
   //   default            → discoverResumeToken → add_member(mode: fork,
-  //                        native_id) → launch. NO image. Native id stays
-  //                        daemon-local (never serialized into the response).
-  //   { keepImage: true } → snapshot capture → PIN (evidence-guard protection)
-  //                        → add_member(mode: agent_image) → launch.
+  //                        native_id) → launch。无镜像。native id 保持
+  //                        后台服务本地（绝不序列化进响应）。
+  //   { keepImage: true } → snapshot 捕获 → PIN（evidence-guard 保护）
+  //                        → add_member(mode: agent_image) → launch。
   router.post("/fork", async (c) => {
     const db = c.get("db" as never) as Database.Database | undefined;
     const podInstantiator = c.get("podInstantiator" as never) as PodRigInstantiator | undefined;
@@ -194,19 +189,19 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
     if (!sourceSession || !rigId || !pod || !member) {
       return c.json({
         error: "missing_required_fields",
-        hint: "POST body must include { sourceSession, rigId, pod, member }",
+        hint: "POST body 必须包含 { sourceSession, rigId, pod, member }",
       }, 400);
     }
     const rigRoot = typeof body.rigRoot === "string" ? body.rigRoot : ".";
 
-    // Resolve the source seat's launch shape so the successor mirrors it
-    // (agent_ref / profile / cwd / codex profile). The native resume id is
-    // NOT read here — it is resolved separately below and kept daemon-local.
+    // 解析源席位的 launch 形状，使继任者镜像它
+    // （agent_ref / profile / cwd / codex profile）。原生续接 ID
+    // 在此不读——它在下面单独解析并保持后台服务本地。
     const source = resolveForkSourceNode(db, sourceSession);
     if (!source) {
       return c.json({
         error: "session_not_found",
-        message: `Source session '${sourceSession}' not found. Run 'rig ps --nodes' to see what's running.`,
+        message: `未找到源会话 '${sourceSession}'。运行 'zrig ps --nodes' 查看正在运行的内容。`,
       }, 404);
     }
 
@@ -214,10 +209,9 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
     let keptImage: { id: string; name: string; version: string; pinned: true } | undefined;
 
     if (body.keepImage) {
-      // --keep-image: durable image → PIN-ON-KEEP (the evidence guard protects
-      // pinned images from prune/delete) → agent_image launch. Native id is
-      // captured into the manifest (redacted at every route boundary) and is
-      // consumed only in-process by the instantiator — it never leaves here.
+      // --keep-image：持久镜像 → PIN-ON-KEEP（evidence guard 保护 pinned 镜像
+      // 免于 prune/delete）→ agent_image launch。native id 被捕获进 manifest
+      // （在每个路由边界脱敏），只在进程内被 instantiator 消费——绝不离开此处。
       const capturer = c.get("snapshotCapturer" as never) as SnapshotCapturer | undefined;
       const lib = c.get("agentImageLibrary" as never) as AgentImageLibraryService | undefined;
       if (!capturer || !lib) return c.json({ error: "snapshot_capturer_unavailable" }, 503);
@@ -225,8 +219,8 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
       const version = (body.imageVersion && body.imageVersion.trim()) || "1";
       try {
         const cap = capturer.capture({ sourceSession, name: imageName, version });
-        // PIN-ON-KEEP: protection is the evidence guard's PINNED reason, an
-        // explicit + shipped mechanism that survives prune/delete.
+        // PIN-ON-KEEP：保护即 evidence guard 的 PINNED reason，
+        // 一个显式 + 已交付的机制，能在 prune/delete 中存活。
         lib.pin(cap.imageId);
         keptImage = { id: cap.imageId, name: imageName, version, pinned: true };
       } catch (err) {
@@ -241,8 +235,8 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
       }
       sessionSource = { mode: "agent_image", ref: { kind: "image_name", value: imageName, version } };
     } else {
-      // Default one-shot: resolve the native resume id server-side. Honest
-      // rejection on terminal / no-token — NEVER fabricate (resume-honesty).
+      // 默认一次性：在服务端解析 native resume id。在 terminal / 无 token 时诚实拒绝——
+      // 绝不伪造（resume-honesty）。
       const discovery = discoverResumeToken(db, sourceSession);
       if (!discovery.ok) {
         const status = discovery.failure.code === "session_not_found" ? 404 : 400;
@@ -252,12 +246,11 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
       if (!nativeId) {
         return c.json({
           error: "resume_token_unavailable",
-          message: `Could not discover a resume token for ${discovery.result.runtime} source session '${sourceSession}'. The seat may not have a native conversation id yet — try again after it has produced output. No token was fabricated and no fresh seat was cold-started.`,
+          message: `无法为 ${discovery.result.runtime} 源会话 '${sourceSession}' 发现 resume token。该席位可能还没有 native conversation id——在它产出输出后重试。未伪造 token，也未冷启动新席位。`,
         }, 409);
       }
-      // The native id is used ONLY to build the in-process member fragment
-      // below. It is deliberately NOT echoed in the response (kept daemon-local,
-      // consistent with the route redaction boundary).
+      // native id 仅用于在下面构建进程内 member fragment。
+      // 刻意不在响应中回显（保持后台服务本地，与路由脱敏边界一致）。
       sessionSource = { mode: "fork", ref: { kind: "native_id", value: nativeId } };
     }
 
@@ -269,7 +262,7 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
       ...(source.cwd ? { cwd: source.cwd } : {}),
       ...(source.codexConfigProfile ? { codex_config_profile: source.codexConfigProfile } : {}),
       ...(source.permissionPolicy ? { permission_policy: source.permissionPolicy } : {}),
-      // OPR.0.5.6.23 member (b): every node-carried optional rides the fork.
+      // OPR.0.5.6.23 member (b)：每个 node 携带的 optional 都随 fork 携带。
       ...(source.model ? { model: source.model } : {}),
       ...(source.role ? { role: source.role } : {}),
       ...(source.restorePolicy ? { restore_policy: source.restorePolicy } : {}),
@@ -284,19 +277,19 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
       rigRoot,
     );
     if (converged.kind !== "add_member" || !converged.supported) {
-      return c.json({ error: "fork_failed", message: "Unexpected converge result for fork add_member" }, 500);
+      return c.json({ error: "fork_failed", message: "fork add_member 的 converge 结果出乎意料" }, 500);
     }
     const outcome = converged.outcome;
-    // The outcome never carries the native id (add_member persists no
-    // session_source; RigRepository.addNode stores no agent-image reference).
+    // outcome 绝不携带 native id（add_member 不持久化 session_source；
+    // RigRepository.addNode 不存储 agent-image 引用）。
     if (!outcome.ok) {
       const status =
         outcome.code === "rig_not_found" || outcome.code === "pod_not_found" ? 404
         : outcome.code === "member_conflict" ? 409
         : outcome.code === "edge_unresolved" || outcome.code === "validation_failed" || outcome.code === "preflight_failed" ? 400
         : 500;
-      // A kept image is already pinned/protected even if launch failed — report
-      // it honestly so the operator knows it was retained.
+      // 即使 launch 失败，keep 的镜像也已 pinned/protected——诚实报告，
+      // 使 operator 知道它已被保留。
       return c.json({ ...outcome, ...(keptImage ? { image: keptImage } : {}) }, status);
     }
     return c.json({ ...outcome, ...(keptImage ? { image: keptImage } : {}) }, 201);
@@ -322,9 +315,8 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
         evictable: evictable.map((p) => ({ imageId: p.imageId, imageName: p.imageName, imageVersion: p.imageVersion })),
       });
     }
-    // Real prune: delete evictable images. Force overrides the guard
-    // — protected images get deleted too. CATASTROPHIC bounce risk on
-    // force; surface it visibly in the response.
+    // 真正 prune：删除可驱逐镜像。Force 覆盖 guard——受保护镜像也会被删。
+    // force 有灾难性 bounce 风险；在响应中显眼呈现。
     const targets = force ? protections : evictable;
     const deleted: string[] = [];
     const errors: Array<{ imageId: string; error: string }> = [];
@@ -354,7 +346,7 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
     const id = decodeURIComponent(c.req.param("id"));
     if (id === "sync" || id === "snapshot" || id === "prune") return c.notFound();
     const entry = lib.get(id);
-    if (!entry) return c.json({ error: `Agent image '${id}' not found in library` }, 404);
+    if (!entry) return c.json({ error: `镜像库中未找到镜像 '${id}'` }, 404);
     return c.json(redactResumeToken(entry));
   });
 
@@ -363,7 +355,7 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
     if (!lib) return c.json({ error: "agent_image_library_unavailable" }, 503);
     const id = decodeURIComponent(c.req.param("id"));
     const entry = lib.get(id);
-    if (!entry) return c.json({ error: `Agent image '${id}' not found in library` }, 404);
+    if (!entry) return c.json({ error: `镜像库中未找到镜像 '${id}'` }, 404);
     return c.json({
       id,
       name: entry.name,
@@ -417,8 +409,8 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
     const id = decodeURIComponent(c.req.param("id"));
     const force = ((c.req.query("force") as string | undefined) ?? "") === "true";
     const entry = lib.get(id);
-    if (!entry) return c.json({ error: `Agent image '${id}' not found in library` }, 404);
-    // Evidence guard for non-force deletes.
+    if (!entry) return c.json({ error: `镜像库中未找到镜像 '${id}'` }, 404);
+    // 非 force 删除时的 evidence guard。
     if (!force) {
       const protections = evaluateProtection({
         images: lib.list(),
@@ -428,7 +420,7 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
       if (status && status.protected) {
         return c.json({
           error: "image_referenced",
-          message: `Agent image '${id}' is protected: ${status.reasons.join(", ")}. Use force=true to override.`,
+          message: `镜像 '${id}' 受保护：${status.reasons.join(", ")}。使用 force=true 覆盖。`,
           reasons: status.reasons,
           references: status.references,
         }, 409);
@@ -446,20 +438,15 @@ export function agentImagesRoutes(deps: AgentImageRoutesDeps): Hono {
   return router;
 }
 
-/** PRD § Item 5: review-pane "Use as starter" surface. We synthesize
- *  the agent.yaml snippet here so the UI can render it directly with
- *  no client-side templating.
+/** PRD § Item 5：review-pane "Use as starter" 表面。我们在此合成
+ *  agent.yaml 片段，使 UI 可直接渲染、无需客户端模板。
  *
- *  PL-016 source-cwd behavior: when the
- *  manifest carries source_cwd, the snippet emits `cwd: <source_cwd>`
- *  ahead of the session_source block. The fork
- *  starts in the SAME directory the parent session was created in,
- *  Claude's project-dir-scoped session storage works because the jsonl
- *  file lives there. The daemon relies on provider cwd resolution and
- *  does NOT override cwd at fork dispatch. If the operator manually
- *  changes cwd, fork fails honestly with "no
- *  conversation found". Manifests without source_cwd (pre-Finding-2)
- *  render without the cwd line for back-compat. */
+ *  PL-016 source-cwd 行为：当 manifest 携带 source_cwd 时，片段在
+ *  session_source 块之前输出 `cwd: <source_cwd>`。fork 在父会话创建时的同一目录启动，
+ *  Claude 按 project-dir 范围的 session 存储之所以工作，是因为 jsonl 文件就在那里。
+ *  后台服务依赖 provider 的 cwd 解析，不在 fork dispatch 时覆盖 cwd。
+ *  若 operator 手动改了 cwd，fork 会诚实失败并报 "no conversation found"。
+ *  无 source_cwd 的 manifest（Finding-2 之前）为向后兼容渲染时不带 cwd 行。 */
 function buildStarterSnippet(entry: AgentImageEntry): string {
   const lines: string[] = [];
   if (entry.sourceCwd) {

@@ -1,8 +1,6 @@
-// Slice 24 Checkpoint A — failing tests for CmuxAdapter RPC method
-// extensions that power the layout flow (splitSurface, createWorkspace,
-// closeWorkspace, listPaneSurfaces). Spike confirmed cmux RPC exposes
-// these primitives; tests pin the adapter's contract before
-// implementation lands.
+// 分片 24 检查点 A——为驱动布局流程的 CmuxAdapter RPC 方法扩展
+//（splitSurface、createWorkspace、closeWorkspace、listPaneSurfaces）编写失败测试。
+// 探索验证了 cmux RPC 提供这些原语；测试在实现落地前固定适配器契约。
 
 import { describe, it, expect, vi } from "vitest";
 import { CmuxAdapter } from "../src/adapters/cmux.js";
@@ -27,9 +25,9 @@ async function connectAdapter(responses: Record<string, unknown>): Promise<CmuxA
   return adapter;
 }
 
-describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () => {
+describe("CmuxAdapter——布局方法扩展（分片 24 检查点 A）", () => {
   describe("splitSurface", () => {
-    it("returns new surface handle on success", async () => {
+    it("成功时返回新 surface handle", async () => {
       const adapter = await connectAdapter({
         "surface.split": { created_surface_ref: "surface:42" },
       });
@@ -38,7 +36,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
       if (result.ok) expect(result.data).toBe("surface:42");
     });
 
-    it("passes snake_case params to RPC (surface_id, direction, workspace_id)", async () => {
+    it("向 RPC 传递 snake_case 参数（surface_id、direction、workspace_id）", async () => {
       const calls: Array<{ method: string; params?: unknown }> = [];
       const adapter = adapterWithTransport({
         request: async (method, params) => {
@@ -60,7 +58,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
       expect(params["workspace_id"]).toBe("workspace:1");
     });
 
-    it("returns unavailable error when transport not connected", async () => {
+    it("传输未连接时返回 unavailable 错误", async () => {
       const adapter = new CmuxAdapter(
         async () => { throw new Error("nope"); },
         { timeoutMs: 100 },
@@ -70,7 +68,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
       if (!result.ok) expect(result.code).toBe("unavailable");
     });
 
-    it("returns request_failed when RPC throws", async () => {
+    it("RPC 抛错时返回 request_failed", async () => {
       const adapter = adapterWithTransport({
         request: async (method: string) => {
           if (method === "capabilities") return { capabilities: ["surface.split"] };
@@ -89,7 +87,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
       }
     });
 
-    it("returns request_failed when RPC returns no surface handle", async () => {
+    it("RPC 未返回 surface handle 时返回 request_failed", async () => {
       const adapter = await connectAdapter({ "surface.split": {} });
       const result = await adapter.splitSurface("surface:10", "right");
       expect(result.ok).toBe(false);
@@ -98,7 +96,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
   });
 
   describe("createWorkspace", () => {
-    it("returns new workspace handle on success", async () => {
+    it("成功时返回新 workspace handle", async () => {
       const adapter = await connectAdapter({
         "workspace.create": { workspace_ref: "workspace:6" },
       });
@@ -107,7 +105,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
       if (result.ok) expect(result.data).toBe("workspace:6");
     });
 
-    it("passes visible workspace title + optional cwd as snake_case params", async () => {
+    it("以 snake_case 参数传递可见 workspace 标题和可选 cwd", async () => {
       const calls: Array<{ method: string; params?: unknown }> = [];
       const adapter = adapterWithTransport({
         request: async (method, params) => {
@@ -128,7 +126,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
       expect(params["cwd"]).toBe("/path/to/cwd");
     });
 
-    it("omits cwd param when not provided", async () => {
+    it("未提供 cwd 时省略该参数", async () => {
       const calls: Array<{ method: string; params?: unknown }> = [];
       const adapter = adapterWithTransport({
         request: async (method, params) => {
@@ -149,7 +147,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
       expect("cwd" in params).toBe(false);
     });
 
-    it("returns request_failed when transport throws", async () => {
+    it("传输层抛错时返回 request_failed", async () => {
       const adapter = adapterWithTransport({
         request: async (method: string) => {
           if (method === "capabilities") return { capabilities: [] };
@@ -170,13 +168,13 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
   });
 
   describe("closeWorkspace", () => {
-    it("returns ok on successful workspace.close", async () => {
+    it("workspace.close 成功时返回 ok", async () => {
       const adapter = await connectAdapter({ "workspace.close": { workspace_id: "..." } });
       const result = await adapter.closeWorkspace("workspace:6");
       expect(result.ok).toBe(true);
     });
 
-    it("passes workspace_id as snake_case param", async () => {
+    it("以 snake_case 参数传递 workspace_id", async () => {
       const calls: Array<{ method: string; params?: unknown }> = [];
       const adapter = adapterWithTransport({
         request: async (method, params) => {
@@ -195,7 +193,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
       expect(params["workspace_id"]).toBe("workspace:6");
     });
 
-    it("returns request_failed when transport throws", async () => {
+    it("传输层抛错时返回 request_failed", async () => {
       const adapter = adapterWithTransport({
         request: async (method: string) => {
           if (method === "capabilities") return { capabilities: [] };
@@ -212,7 +210,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
   });
 
   describe("equalizeSplits", () => {
-    it("passes workspace_id as snake_case param and parses cmux's equalized verdict", async () => {
+    it("以 snake_case 参数传递 workspace_id，并解析 cmux 的 equalized 结果", async () => {
       const calls: Array<{ method: string; params?: unknown }> = [];
       const adapter = adapterWithTransport({
         request: async (method, params) => {
@@ -233,7 +231,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
       expect((eqCall!.params as Record<string, unknown>)["workspace_id"]).toBe("workspace:6");
     });
 
-    it("reports equalized:false when cmux says no change was made (or omits the field)", async () => {
+    it("cmux 表示未作更改（或省略字段）时报告 equalized:false", async () => {
       const adapter = adapterWithTransport({
         request: async (method: string) => {
           if (method === "capabilities") return { capabilities: [] };
@@ -262,7 +260,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
       if (absent.ok) expect(absent.data.equalized).toBe(false);
     });
 
-    it("returns request_failed when transport throws; unavailable when not connected", async () => {
+    it("传输层抛错时返回 request_failed；未连接时返回 unavailable", async () => {
       const throwing = adapterWithTransport({
         request: async (method: string) => {
           if (method === "capabilities") return { capabilities: [] };
@@ -285,7 +283,7 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
   });
 
   describe("listPaneSurfaces", () => {
-    it("returns surfaces array from pane.surfaces", async () => {
+    it("从 pane.surfaces 返回 surfaces 数组", async () => {
       const adapter = await connectAdapter({
         "pane.surfaces": {
           surfaces: [
@@ -302,14 +300,14 @@ describe("CmuxAdapter — layout method extensions (slice 24 Checkpoint A)", () 
       }
     });
 
-    it("returns empty array when surfaces field missing", async () => {
+    it("缺少 surfaces 字段时返回空数组", async () => {
       const adapter = await connectAdapter({ "pane.surfaces": {} });
       const result = await adapter.listPaneSurfaces("pane:3");
       expect(result.ok).toBe(true);
       if (result.ok) expect(result.data).toHaveLength(0);
     });
 
-    it("passes pane_id + optional workspace_id as snake_case", async () => {
+    it("以 snake_case 传递 pane_id 和可选 workspace_id", async () => {
       const calls: Array<{ method: string; params?: unknown }> = [];
       const adapter = adapterWithTransport({
         request: async (method, params) => {

@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-// TODO: AS-T12 — migrate to pod-aware bundle assembler
+// TODO：AS-T12——迁移到感知工作组的包组装器
 import { LegacyBundleAssembler as BundleAssembler, type AssemblerFsOps } from "../src/domain/bundle-assembler.js";
-// TODO: AS-T12 — migrate to pod-aware bundle types
+// TODO：AS-T12——迁移到感知工作组的包类型
 import { parseLegacyBundleManifest as parseBundleManifest, validateLegacyBundleManifest as validateBundleManifest, normalizeLegacyBundleManifest as normalizeBundleManifest, type BundleProvenance, type BundleCompatibility } from "../src/domain/bundle-types.js";
 
 const VALID_SPEC = `
@@ -27,7 +27,7 @@ function realFsOps(): AssemblerFsOps {
   };
 }
 
-describe("BundleAssembler", () => {
+describe("BundleAssembler 包组装器", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -55,8 +55,8 @@ describe("BundleAssembler", () => {
     return dir;
   }
 
-  // T1: Assembles staging dir with correct layout
-  it("assembles staging dir with rig.yaml + packages/ + bundle.yaml", () => {
+  // T1：按正确布局组装暂存目录
+  it("组装包含 rig.yaml、packages/ 和 bundle.yaml 的暂存目录", () => {
     const specPath = writeSpec();
     const pkgDir = writePkg("review-kit", { "package.yaml": "name: review-kit", "skills/deep/SKILL.md": "# Deep" });
     const outputDir = path.join(tmpDir, "staging");
@@ -73,8 +73,8 @@ describe("BundleAssembler", () => {
     expect(fs.existsSync(path.join(outputDir, "packages/review-kit/skills/deep/SKILL.md"))).toBe(true);
   });
 
-  // T2: Rig spec copied to root
-  it("rig spec content copied to outputDir/rig.yaml", () => {
+  // T2：装备规范复制到根目录
+  it("将装备规范内容复制到 outputDir/rig.yaml", () => {
     const specPath = writeSpec();
     const pkgDir = writePkg("pkg", { "package.yaml": "name: pkg" });
     const outputDir = path.join(tmpDir, "staging");
@@ -88,8 +88,8 @@ describe("BundleAssembler", () => {
     expect(fs.readFileSync(path.join(outputDir, "rig.yaml"), "utf-8")).toBe(VALID_SPEC);
   });
 
-  // T3: Package vendored as full directory
-  it("package vendored as full directory with all files", () => {
+  // T3：将包连同完整目录纳入
+  it("将包作为包含所有文件的完整目录纳入", () => {
     const specPath = writeSpec();
     const pkgDir = writePkg("tools", { "package.yaml": "pkg", "skills/a/SKILL.md": "A", "hooks/pre.sh": "echo hi" });
     const outputDir = path.join(tmpDir, "staging");
@@ -104,8 +104,8 @@ describe("BundleAssembler", () => {
     expect(fs.readFileSync(path.join(outputDir, "packages/tools/hooks/pre.sh"), "utf-8")).toBe("echo hi");
   });
 
-  // T4: bundle.yaml has correct package index
-  it("bundle.yaml has correct package index", () => {
+  // T4：bundle.yaml 包含正确的包索引
+  it("bundle.yaml 包含正确的包索引", () => {
     const specPath = writeSpec();
     const pkgDir = writePkg("kit", { "package.yaml": "name: kit" });
     const outputDir = path.join(tmpDir, "staging");
@@ -121,8 +121,8 @@ describe("BundleAssembler", () => {
     expect(manifest.packages[0]!.path).toBe("packages/kit");
   });
 
-  // T5: Original source refs preserved
-  it("original source refs preserved in manifest", () => {
+  // T5：保留原始源引用
+  it("清单中保留原始源引用", () => {
     const specPath = writeSpec();
     const pkgDir = writePkg("pkg", { "package.yaml": "name: pkg" });
     const outputDir = path.join(tmpDir, "staging");
@@ -136,8 +136,8 @@ describe("BundleAssembler", () => {
     expect(manifest.packages[0]!.originalSource).toBe("github:acme/pkg@v2");
   });
 
-  // T6: Missing package directory -> throws
-  it("missing package directory throws", () => {
+  // T6：缺少包目录 -> 抛错
+  it("缺少包目录时抛错", () => {
     const specPath = writeSpec();
     const outputDir = path.join(tmpDir, "staging");
     const assembler = new BundleAssembler({ fsOps: realFsOps() });
@@ -145,22 +145,22 @@ describe("BundleAssembler", () => {
     expect(() => assembler.assemble({
       specPath, outputDir, bundleName: "b", bundleVersion: "1.0",
       packages: [{ name: "ghost", version: "1.0", sourcePath: "/nonexistent/path", originalSource: "", manifestHash: "h" }],
-    })).toThrow(/not found/);
+    })).toThrow(/未找到/);
   });
 
-  // T7: Missing rig spec -> throws
-  it("missing rig spec throws", () => {
+  // T7：缺少装备规范 -> 抛错
+  it("缺少装备规范时抛错", () => {
     const outputDir = path.join(tmpDir, "staging");
     const assembler = new BundleAssembler({ fsOps: realFsOps() });
 
     expect(() => assembler.assemble({
       specPath: "/nonexistent/rig.yaml", outputDir, bundleName: "b", bundleVersion: "1.0",
       packages: [{ name: "pkg", version: "1.0", sourcePath: tmpDir, originalSource: "", manifestHash: "h" }],
-    })).toThrow(/not found/);
+    })).toThrow(/未找到/);
   });
 
-  // T7b: Invalid rig spec content -> throws with validation errors
-  it("invalid rig spec content throws with validation errors", () => {
+  // T7b：装备规范内容无效 -> 抛出校验错误
+  it("装备规范内容无效时抛出校验错误", () => {
     const badSpec = "schema_version: 1\n# missing name, version, nodes";
     const specPath = path.join(tmpDir, "bad.yaml");
     fs.writeFileSync(specPath, badSpec);
@@ -171,11 +171,11 @@ describe("BundleAssembler", () => {
     expect(() => assembler.assemble({
       specPath, outputDir, bundleName: "b", bundleVersion: "1.0",
       packages: [{ name: "pkg", version: "1.0", sourcePath: pkgDir, originalSource: "", manifestHash: "h" }],
-    })).toThrow(/Invalid rig spec/);
+    })).toThrow(/工作组规格无效/);
   });
 
-  // T8: Multiple packages assembled
-  it("multiple packages assembled in correct structure", () => {
+  // T8：组装多个包
+  it("按正确结构组装多个包", () => {
     const specPath = writeSpec();
     const pkg1 = writePkg("alpha", { "package.yaml": "name: alpha" });
     const pkg2 = writePkg("beta", { "package.yaml": "name: beta", "skills/b/SKILL.md": "B" });
@@ -195,8 +195,8 @@ describe("BundleAssembler", () => {
     expect(fs.existsSync(path.join(outputDir, "packages/beta/skills/b/SKILL.md"))).toBe(true);
   });
 
-  // T9: Duplicate package names with different hash -> rejected
-  it("duplicate package name with different manifestHash rejected", () => {
+  // T9：包名重复但哈希不同 -> 拒绝
+  it("拒绝 manifestHash 不同的同名包", () => {
     const specPath = writeSpec();
     const pkg1 = writePkg("dup", { "package.yaml": "v1" });
     const pkg2 = writePkg("dup2", { "package.yaml": "v2" });
@@ -209,11 +209,11 @@ describe("BundleAssembler", () => {
         { name: "dup", version: "1.0", sourcePath: pkg1, originalSource: "", manifestHash: "hash-a" },
         { name: "dup", version: "2.0", sourcePath: pkg2, originalSource: "", manifestHash: "hash-b" },
       ],
-    })).toThrow(/Duplicate package name.*hash mismatch/);
+    })).toThrow(/package 名称.*重复.*hash 不匹配/);
   });
 
-  // T10: Identical packages deduplicated
-  it("identical packages (same name + hash) deduplicated to one", () => {
+  // T10：相同包去重
+  it("相同包（同名且同哈希）去重为一个", () => {
     const specPath = writeSpec();
     const pkgDir = writePkg("shared", { "package.yaml": "name: shared" });
     const outputDir = path.join(tmpDir, "staging");
@@ -229,11 +229,11 @@ describe("BundleAssembler", () => {
 
     expect(manifest.packages).toHaveLength(1);
     expect(manifest.packages[0]!.name).toBe("shared");
-    // Both original sources preserved in memory
+    // 在内存中保留两个原始来源
     expect(manifest.packages[0]!.originalSources).toEqual(["local:./a", "local:./b"]);
     expect(manifest.packages[0]!.originalSource).toBe("local:./a");
 
-    // Round-trip: verify on-disk bundle.yaml preserves both sources
+    // 往返验证：确认磁盘上的 bundle.yaml 保留两个来源
     const diskYaml = fs.readFileSync(path.join(outputDir, "bundle.yaml"), "utf-8");
     const parsed = parseBundleManifest(diskYaml);
     const validation = validateBundleManifest(parsed, { requireIntegrity: false });
@@ -242,8 +242,8 @@ describe("BundleAssembler", () => {
     expect(normalized.packages[0]!.originalSources).toEqual(["local:./a", "local:./b"]);
   });
 
-  // Item 1 — provenance capture (slice-05 Checkpoint 2 part 2)
-  it("captures full provenance from opts into manifest", () => {
+  // 第 1 项——来源信息捕获（slice-05 检查点 2 第 2 部分）
+  it("将 opts 中的完整来源信息捕获到清单中", () => {
     const specPath = writeSpec();
     const pkgDir = writePkg("pkg", { "package.yaml": "name: pkg" });
     const outputDir = path.join(tmpDir, "staging");
@@ -270,10 +270,10 @@ describe("BundleAssembler", () => {
     expect(manifest.provenance?.daemonVersion).toBe("0.3.2");
     expect(manifest.provenance?.cliVersion).toBe("0.3.2");
     expect(manifest.provenance?.notes).toBe("checkpoint-2-part-2 fixture");
-    // createdAt mirrors root when opts.provenance.createdAt unset
+    // opts.provenance.createdAt 未设置时，createdAt 与根值一致
     expect(manifest.provenance?.createdAt).toBe(manifest.createdAt);
 
-    // Round-trip via the on-disk bundle.yaml
+    // 通过磁盘上的 bundle.yaml 往返验证
     const diskYaml = fs.readFileSync(path.join(outputDir, "bundle.yaml"), "utf-8");
     const parsed = parseBundleManifest(diskYaml);
     const validation = validateBundleManifest(parsed, { requireIntegrity: false });
@@ -283,7 +283,7 @@ describe("BundleAssembler", () => {
     expect(normalized.provenance?.notes).toBe("checkpoint-2-part-2 fixture");
   });
 
-  it("respects opts.provenance.createdAt when caller pre-sets it (test determinism)", () => {
+  it("调用方预设 opts.provenance.createdAt 时予以遵循（测试确定性）", () => {
     const specPath = writeSpec();
     const pkgDir = writePkg("pkg", { "package.yaml": "name: pkg" });
     const outputDir = path.join(tmpDir, "staging");
@@ -297,11 +297,11 @@ describe("BundleAssembler", () => {
     });
 
     expect(manifest.provenance?.createdAt).toBe(fixedCreatedAt);
-    // root createdAt is independent (real-time stamp)
+    // 根级 createdAt 独立生成（实时时间戳）
     expect(manifest.createdAt).not.toBe(fixedCreatedAt);
   });
 
-  it("omits provenance when opts.provenance not provided (backward compat)", () => {
+  it("未提供 opts.provenance 时省略来源信息（向后兼容）", () => {
     const specPath = writeSpec();
     const pkgDir = writePkg("pkg", { "package.yaml": "name: pkg" });
     const outputDir = path.join(tmpDir, "staging");
@@ -313,13 +313,13 @@ describe("BundleAssembler", () => {
     });
 
     expect(manifest.provenance).toBeUndefined();
-    // on-disk yaml must not contain provenance section
+    // 磁盘上的 YAML 不得包含 provenance 章节
     const diskYaml = fs.readFileSync(path.join(outputDir, "bundle.yaml"), "utf-8");
     expect(diskYaml).not.toContain("provenance:");
   });
 
-  // Item 2 — compatibility capture (slice-05 Checkpoint 3.2)
-  it("captures full compatibility from opts into manifest", () => {
+  // 第 2 项——兼容性捕获（slice-05 检查点 3.2）
+  it("将 opts 中的完整兼容性信息捕获到清单中", () => {
     const specPath = writeSpec();
     const pkgDir = writePkg("pkg", { "package.yaml": "name: pkg" });
     const outputDir = path.join(tmpDir, "staging");
@@ -341,7 +341,7 @@ describe("BundleAssembler", () => {
     expect(manifest.compatibility?.minCliVersion).toBe("0.3.2");
     expect(manifest.compatibility?.schemaVersion).toBe(1);
 
-    // Round-trip via the on-disk bundle.yaml
+    // 通过磁盘上的 bundle.yaml 往返验证
     const diskYaml = fs.readFileSync(path.join(outputDir, "bundle.yaml"), "utf-8");
     const parsed = parseBundleManifest(diskYaml);
     const validation = validateBundleManifest(parsed, { requireIntegrity: false });
@@ -351,7 +351,7 @@ describe("BundleAssembler", () => {
     expect(normalized.compatibility?.minCliVersion).toBe("0.3.2");
   });
 
-  it("omits compatibility when opts.compatibility not provided (backward compat)", () => {
+  it("未提供 opts.compatibility 时省略兼容性信息（向后兼容）", () => {
     const specPath = writeSpec();
     const pkgDir = writePkg("pkg", { "package.yaml": "name: pkg" });
     const outputDir = path.join(tmpDir, "staging");

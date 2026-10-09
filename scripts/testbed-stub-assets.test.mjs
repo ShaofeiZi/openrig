@@ -5,21 +5,18 @@ import { dirname, resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { deriveStubAssetsHash } from "./testbed-build-inputs.mjs";
 
-// 51-04 stub-asset increment — the L0.2 census check as a durable pin. The build verb
-// (scripts/build-testbed-image.sh) stages EXACTLY the paths named in
-// docker/testbed/stub-assets.list and feeds that same list to the manifest census
-// (census-scope-match-code-path). An EMPTY census is an L0.2 FAIL — deriveStubAssetsHash
-// loud-fails and the build verb refuses. This suite pins that the shipped list names the
-// concrete zero-token stub trio (a runtime:stub rig.yaml + its agent fixture + culture.md)
-// and that the receipt is well-formed, so the list can never silently drift back to empty
-// or reference a missing file.
+// 51-04 stub 资产增量——把 L0.2 清点检查做成一条持久约束。构建命令
+// （scripts/build-testbed-image.sh）恰好按 docker/testbed/stub-assets.list 里列的路径暂存，
+// 并把同一份清单喂给 manifest 清点（census-scope-match-code-path）。空清点是 L0.2 失败——
+// deriveStubAssetsHash 响亮失败，构建命令拒绝执行。本测试套件钉死：发货清单点名的是那个具体的
+// 零 token stub 三件套（一个 runtime:stub rig.yaml + 它的 agent 夹具 + culture.md），且收据形态正确，
+// 使清单永远不能默默漂回为空、或引用一个不存在的文件。
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const LIST = join(REPO_ROOT, "docker/testbed/stub-assets.list");
 
-// The SAME comment-tolerant parse the build verb feeds the census (strip #.* , trim, drop
-// blanks — build-testbed-image.sh's node -e / while-read), so the test's census == the
-// build's census exactly.
+// 与构建命令喂给清点的完全相同的、容忍注释的解析（剥掉 #.*、trim、去掉空行——
+// build-testbed-image.sh 的 node -e / while-read），使测试的清点 == 构建的清点，逐字节一致。
 function parseCensus(path) {
   return readFileSync(path, "utf8")
     .split("\n")
@@ -27,7 +24,7 @@ function parseCensus(path) {
     .filter(Boolean);
 }
 
-// The concrete stub trio (sorted — deriveStubAssetsHash sorts its receipt by POSIX path).
+// 具体的 stub 三件套（已排序——deriveStubAssetsHash 按 POSIX 路径排序收据）。
 const EXPECTED = [
   "docker/testbed/stub-assets/agents/worker/agent.yaml",
   "docker/testbed/stub-assets/culture.md",

@@ -18,13 +18,12 @@ describe("FocusedTerminal lifecycle", () => {
       path.resolve(import.meta.dirname, "../src/components/terminal/FocusedTerminal.tsx"),
       "utf-8",
     );
-    // The broker owns fixed canonical geometry; the client must NOT send a
-    // resize (it would shrink the shared pane for every other viewer).
+    // broker 拥有固定的规范几何尺寸；客户端不得发送 resize，否则会缩小所有其他查看者
+    // 共用的窗格。
     expect(src).not.toMatch(/type:\s*["']resize["']/);
-    // OPR.0.4.0.38 forward-fix: the client now PINS to the broker canonical
-    // geometry (cols=100 rows=40) and scrolls/pans its container - FitAddon was
-    // removed entirely (no container-fit resize-fight), which is the stronger
-    // form of fixed-geometry mirroring.
+    // OPR.0.4.0.38 前向修复：客户端现在固定为 broker 的规范几何尺寸
+    //（cols=100、rows=40），并在容器中滚动/平移；FitAddon 已完全移除，不再因适配容器而
+    // 争抢 resize。这是更强的固定几何镜像形式。
     expect(src).not.toContain("FitAddon");
     expect(src).toContain("cols: LIVE_TERMINAL_COLS");
   });
@@ -51,9 +50,8 @@ describe("FocusedTerminal lifecycle", () => {
     expect(src).toContain("[disconnected - reconnecting...]");
     expect(src).toContain("mountedRef.current");
     expect(src).toMatch(/setTimeout\(\s*\(\)\s*=>\s*\{/);
-    // The reconnect schedules connectForGeneration(gen). (The prior
-    // toContain("connect()") was a false-positive match on resizeObs.disconnect()
-    // - now removed with FitAddon - so it is corrected to the real reconnect call.)
+    // 重连会调度 connectForGeneration(gen)。先前的 toContain("connect()") 会误匹配
+    // resizeObs.disconnect()；该调用已随 FitAddon 移除，因此改为检查真实重连调用。
     expect(src).toContain("connectForGeneration(gen)");
   });
 

@@ -81,6 +81,6 @@ describe("rig skill loadout", () => {
     const cmd = skillCommand();
     await cmd.parseAsync(["node", "rig", "loadout", "--runtime", "terminal", "--cwd", project]);
     expect(process.exitCode).toBe(1);
-    expect(errors).toEqual(["invalid_runtime: --runtime must be claude-code or codex"]);
+    expect(errors).toEqual(["invalid_runtime：--runtime 必须为 claude-code 或 codex"]);
   });
 });

@@ -33,12 +33,12 @@ function mockAdapter(fsCheck?: AgentResolverFsOps): RuntimeAdapter {
     listInstalled: vi.fn(async () => []),
     project: vi.fn(async () => ({ projected: ["skill-a"], skipped: [], failed: [] })),
     deliverStartup: vi.fn(async (files: ResolvedStartupFile[]) => {
-      // Validate paths if fsCheck provided
+      // 若提供 fsCheck，则校验路径
       const failed: Array<{ path: string; error: string }> = [];
       if (fsCheck) {
         for (const f of files) {
           if (!fsCheck.exists(f.absolutePath)) {
-            failed.push({ path: f.path, error: `File not found at absolutePath: ${f.absolutePath}` });
+            failed.push({ path: f.path, error: `absolutePath 处未找到文件：${f.absolutePath}` });
           }
         }
       }
@@ -51,20 +51,20 @@ function mockAdapter(fsCheck?: AgentResolverFsOps): RuntimeAdapter {
 
 function mockFs(files: Record<string, string>): AgentResolverFsOps {
   return {
-    readFile: (p: string) => { if (p in files) return files[p]!; throw new Error(`Not found: ${p}`); },
+    readFile: (p: string) => { if (p in files) return files[p]!; throw new Error(`未找到：${p}`); },
     exists: (p: string) => p in files,
   };
 }
 
-describe("AgentSpec startup integration", () => {
-  // T12: rig.yaml + agent.yaml resolves, projects, starts, and reaches startup_status: ready
-  it.each([undefined, "authenticated", "none"] as const)("full startup lifecycle with proof selection %s: resolve -> project -> start -> ready", async (selection) => {
+describe("AgentSpec 启动集成", () => {
+  // T12：解析 rig.yaml 与 agent.yaml，完成投影和启动，并到达 startup_status: ready
+  it.each([undefined, "authenticated", "none"] as const)("带证明选项 %s 的完整启动生命周期：解析 -> 投影 -> 启动 -> 就绪", async (selection) => {
     const db = createFullTestDb();
     const rigRepo = new RigRepository(db);
     const sessionRegistry = new SessionRegistry(db);
     const eventBus = new EventBus(db);
     const tmux = mockTmux();
-    // 1. Set up rig spec + agent spec on mock filesystem
+    // 1. 在模拟文件系统中设置装备规范与智能体规范
     const rigRoot = "/project/rigs/my-rig";
     const rigSpecYaml = RigSpecCodec.serialize({
       version: "0.2", name: "integration-rig",
@@ -95,17 +95,17 @@ describe("AgentSpec startup integration", () => {
     });
     const adapter = mockAdapter(fs);
 
-    // 2. Parse rig spec
+    // 2. 解析装备规范
     const rawRig = RigSpecCodec.parse(rigSpecYaml);
     const rigSpec = RigSpecSchema.normalize(rawRig as Record<string, unknown>);
     const member = rigSpec.pods[0]!.members[0]!;
 
-    // 3. Resolve agent ref
+    // 3. 解析智能体引用
     const resolveResult = resolveAgentRef(member.agentRef, rigRoot, fs);
     expect(resolveResult.ok).toBe(true);
     if (!resolveResult.ok) return;
 
-    // 4. Resolve node config (profile + precedence)
+    // 4. 解析节点配置（配置档与优先级）
     const configResult = resolveNodeConfig({
       baseSpec: resolveResult.resolved,
       importedSpecs: resolveResult.imports,
@@ -118,7 +118,7 @@ describe("AgentSpec startup integration", () => {
     expect(configResult.ok).toBe(true);
     if (!configResult.ok) return;
 
-    // 5. Plan projection
+    // 5. 规划投影
     const planResult = planProjection({
       config: configResult.config,
       collisions: resolveResult.collisions,
@@ -127,13 +127,13 @@ describe("AgentSpec startup integration", () => {
     expect(planResult.ok).toBe(true);
     if (!planResult.ok) return;
 
-    // 6. Create rig + node + session (simulating NodeLauncher)
+    // 6. 创建装备、节点与会话（模拟 NodeLauncher）
     const rig = rigRepo.createRig("integration-rig");
     const node = rigRepo.addNode(rig.id, "impl", { runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "r01-impl");
     sessionRegistry.updateStatus(session.id, "running");
 
-    // 7. Build startup input
+    // 7. 构建启动输入
     const binding: NodeBinding = {
       id: "b1", nodeId: node.id, tmuxSession: "r01-impl",
       tmuxWindow: null, tmuxPane: null,
@@ -141,11 +141,11 @@ describe("AgentSpec startup integration", () => {
       updatedAt: "", cwd: ".",
     };
 
-    // Build resolved startup files with correct owner roots per source
-    // Agent base startup files resolve under agent root, member overlay files under rig root
+    // 按来源使用正确的所有者根目录构建解析后的启动文件
+    // 智能体基础启动文件在智能体根目录下解析，成员覆盖文件在装备根目录下解析
     const agentRoot = resolveResult.resolved.sourcePath;
     const resolvedFiles: ResolvedStartupFile[] = configResult.config.startup.files.map((f) => {
-      // Determine owner root: agent startup paths resolve under agent, rig/pod/member under rig
+      // 确定所有者根目录：智能体启动路径在智能体下解析，装备/工作组/成员路径在装备下解析
       const isAgentFile = f.path.startsWith("startup/");
       const ownerRoot = isAgentFile ? agentRoot : rigRoot;
       return {
@@ -158,7 +158,7 @@ describe("AgentSpec startup integration", () => {
       };
     });
 
-    // 8. Run startup orchestrator
+    // 8. 运行启动编排器
     const orchestrator = new StartupOrchestrator({ db, sessionRegistry, eventBus, tmuxAdapter: tmux });
     const startupResult = await orchestrator.startNode({
       rigId: rig.id,
@@ -172,7 +172,7 @@ describe("AgentSpec startup integration", () => {
       isRestore: false,
     });
 
-    // 9. Verify: startup_status = ready
+    // 9. 验证：startup_status = ready
     expect(startupResult.ok).toBe(true);
     expect(startupResult.startupStatus).toBe("ready");
 
@@ -180,7 +180,7 @@ describe("AgentSpec startup integration", () => {
     expect(sessionRow.startup_status).toBe("ready");
     expect(sessionRow.startup_completed_at).not.toBeNull();
 
-    // Verify events
+    // 验证事件
     const events = db.prepare("SELECT type FROM events ORDER BY seq").all() as { type: string }[];
     const types = events.map((e) => e.type);
     expect(types).toContain("node.startup_pending");
@@ -197,7 +197,7 @@ describe("AgentSpec startup integration", () => {
     db.close();
   });
 
-  it("builtin-style shared import projects openrig-user under the shipped unqualified skill id", () => {
+  it("内建风格的共享导入以发行版无限定技能 ID 投影 openrig-user", () => {
     const rigRoot = "/project/rigs/my-rig";
     const rigSpecYaml = RigSpecCodec.serialize({
       version: "0.2", name: "integration-rig",

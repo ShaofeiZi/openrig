@@ -1,9 +1,8 @@
-// OPR.0.4.3.22 — kernel status (GET /api/kernel/status).
+// OPR.0.4.3.22 —— 内核状态（GET /api/kernel/status）。
 //
-// Kernel health comes from the kernel-boot tracker surface, NEVER inferred from
-// the daemon /healthz check (guard 4). Returns the tracker envelope on 200, or a
-// 503 `kernel_boot_tracker_unavailable` shape when the tracker is unwired — the
-// UI renders that as `unknown`, never green.
+// 内核健康来自内核启动追踪界面，绝不从后台服务 /healthz 检查推断（guard 4）。
+// 200 时返回追踪器信封；追踪器未接入时返回 503 的 `kernel_boot_tracker_unavailable`
+// 形态——界面据此渲染为 `unknown`，绝不显示为绿色（健康）。
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -31,7 +30,7 @@ export interface KernelStatus {
   detail: string | null;
 }
 
-/** 503 shape — the tracker is not wired into this daemon. */
+/** 503 形态——该后台服务未接入追踪器。 */
 export interface KernelStatusUnavailable {
   error: "kernel_boot_tracker_unavailable";
   message: string;
@@ -45,7 +44,7 @@ export function isKernelUnavailable(r: KernelStatusResult | undefined): r is Ker
 
 async function fetchKernelStatus(): Promise<KernelStatusResult> {
   const res = await fetch("/api/kernel/status");
-  // 503 returns a valid JSON envelope (tracker unavailable) — consume it, don't throw.
+  // 503 返回合法的 JSON 信封（追踪器不可用）——正常消费，不抛错。
   if (res.status === 503) return res.json();
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();

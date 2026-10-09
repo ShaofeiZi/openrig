@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 describe("openrig-compat", () => {
-  it("getOpenRigHome prefers OPENRIG_HOME when set", async () => {
+  it("已设置 OPENRIG_HOME 时 getOpenRigHome 优先使用它", async () => {
     process.env.OPENRIG_HOME = "/tmp/custom-openrig-home";
     delete process.env.RIGGED_HOME;
 
@@ -25,7 +25,7 @@ describe("openrig-compat", () => {
     expect(mod.getDefaultOpenRigPath("daemon.json")).toBe("/tmp/custom-openrig-home/daemon.json");
   });
 
-  it("getOpenRigHome falls back to RIGGED_HOME with warning", async () => {
+  it("getOpenRigHome 回退到 RIGGED_HOME 并发出警告", async () => {
     delete process.env.OPENRIG_HOME;
     process.env.RIGGED_HOME = "/tmp/legacy-rigged-home";
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -34,7 +34,7 @@ describe("openrig-compat", () => {
 
     expect(mod.getOpenRigHome()).toBe("/tmp/legacy-rigged-home");
     expect(warnSpy).toHaveBeenCalledWith(
-      "Warning: RIGGED_HOME is deprecated; use OPENRIG_HOME instead.",
+      "警告：RIGGED_HOME 已弃用；请改用 OPENRIG_HOME。",
     );
   });
 });

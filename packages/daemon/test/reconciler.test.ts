@@ -77,7 +77,7 @@ describe("Reconciler", () => {
     return { rig, nodes };
   }
 
-  it("session still alive: tmux confirms, status stays unchanged", async () => {
+  it("session 仍存活：tmux 确认，状态保持不变", async () => {
     const { rig } = seedRigWithSessions([
       { logicalId: "dev1-impl", sessionName: "r01-dev1-impl", status: "running" },
     ]);
@@ -92,7 +92,7 @@ describe("Reconciler", () => {
     expect(sessions[0]!.status).toBe("running");
   });
 
-  it("session gone: status updated to detached + event emitted", async () => {
+  it("session 消失：状态更新为 detached 并发出 event", async () => {
     const { rig } = seedRigWithSessions([
       { logicalId: "dev1-impl", sessionName: "r01-dev1-impl", status: "running" },
     ]);
@@ -108,18 +108,18 @@ describe("Reconciler", () => {
     const sessions = sessionRegistry.getSessionsForRig(rig.id);
     expect(sessions[0]!.status).toBe("detached");
 
-    // Event persisted
+    // Event 已持久化。
     const events = db
       .prepare("SELECT * FROM events WHERE type = 'session.detached'")
       .all();
     expect(events).toHaveLength(1);
 
-    // Subscriber notified
+    // Subscriber 已收到通知。
     expect(notifications).toHaveLength(1);
     expect(notifications[0]!.type).toBe("session.detached");
   });
 
-  it("no sessions in DB: no changes, no events", async () => {
+  it("DB 中没有 session：无变更、无 event", async () => {
     const rig = rigRepo.createRig("r01");
     const reconciler = createReconciler(mockTmuxAdapter({}));
     const result = await reconciler.reconcile(rig.id);
@@ -132,7 +132,7 @@ describe("Reconciler", () => {
     expect(events).toHaveLength(0);
   });
 
-  it("already-detached sessions skipped (not re-checked)", async () => {
+  it("跳过已 detached 的 session（不重复检查）", async () => {
     const { rig } = seedRigWithSessions([
       { logicalId: "dev1-impl", sessionName: "r01-dev1-impl", status: "detached" },
     ]);
@@ -140,12 +140,12 @@ describe("Reconciler", () => {
     const reconciler = createReconciler(mockTmuxAdapter({}));
     const result = await reconciler.reconcile(rig.id);
 
-    // Not checked — already detached
+    // 已 detached，因此未检查。
     expect(result.checked).toBe(0);
     expect(result.detached).toBe(0);
   });
 
-  it("already-exited sessions skipped (not re-checked)", async () => {
+  it("跳过已 exited 的 session（不重复检查）", async () => {
     const { rig } = seedRigWithSessions([
       { logicalId: "dev1-impl", sessionName: "r01-dev1-impl", status: "exited" },
     ]);
@@ -157,7 +157,7 @@ describe("Reconciler", () => {
     expect(result.detached).toBe(0);
   });
 
-  it("superseded occupant history stays terminal when its old pane is absent", async () => {
+  it("旧 pane 缺失时，被取代的 occupant 历史保持 terminal", async () => {
     const { rig } = seedRigWithSessions([
       { logicalId: "dev1-impl", sessionName: "r01-dev1-impl", status: "superseded" },
     ]);
@@ -171,7 +171,7 @@ describe("Reconciler", () => {
     expect(db.prepare("SELECT * FROM events WHERE type = 'session.detached'").all()).toHaveLength(0);
   });
 
-  it("multiple nodes: 3 sessions, 2 alive, 1 gone -> only gone one detached", async () => {
+  it("多个节点：3 个 session 中 2 个存活、1 个消失时只分离后者", async () => {
     const { rig } = seedRigWithSessions([
       { logicalId: "dev1-impl", sessionName: "r01-dev1-impl", status: "running" },
       { logicalId: "dev1-qa", sessionName: "r01-dev1-qa", status: "running" },
@@ -197,7 +197,7 @@ describe("Reconciler", () => {
     expect(impl!.status).toBe("running");
   });
 
-  it("idempotent: reconcile twice with same state -> no duplicate events", async () => {
+  it("幂等：相同状态下协调两次不产生重复 event", async () => {
     const { rig } = seedRigWithSessions([
       { logicalId: "dev1-impl", sessionName: "r01-dev1-impl", status: "running" },
     ]);
@@ -207,18 +207,18 @@ describe("Reconciler", () => {
     await reconciler.reconcile(rig.id);
     const result2 = await reconciler.reconcile(rig.id);
 
-    // Second run: session is already detached, so skipped
+    // 第二次运行时 session 已 detached，因此跳过。
     expect(result2.checked).toBe(0);
     expect(result2.detached).toBe(0);
 
-    // Only 1 event total
+    // 总共只有 1 个 event。
     const events = db
       .prepare("SELECT * FROM events WHERE type = 'session.detached'")
       .all();
     expect(events).toHaveLength(1);
   });
 
-  it("constructor throws on mismatched db handles", () => {
+  it("DB handle 不匹配时 constructor 抛错", () => {
     const otherDb = createDb();
     migrate(otherDb, [coreSchema, bindingsSessionsSchema, eventsSchema]);
     const otherRegistry = new SessionRegistry(otherDb);
@@ -231,17 +231,17 @@ describe("Reconciler", () => {
           eventBus,
           tmuxAdapter: mockTmuxAdapter({}),
         })
-    ).toThrow(/same db handle/);
+    ).toThrow(/同一个数据库句柄/);
 
     otherDb.close();
   });
 
-  it("markDetached + event persistence is atomic (sabotage events -> no partial state)", async () => {
+  it("markDetached + event 持久化具原子性（破坏 events 后无部分状态）", async () => {
     const { rig } = seedRigWithSessions([
       { logicalId: "dev1-impl", sessionName: "r01-dev1-impl", status: "running" },
     ]);
 
-    // Sabotage events table so persistWithinTransaction fails after markDetached
+    // 破坏 events 表，使 persistWithinTransaction 在 markDetached 后失败。
     db.exec("DROP TABLE events");
     db.exec(
       "CREATE TABLE events (seq INTEGER PRIMARY KEY AUTOINCREMENT, rig_id TEXT, node_id TEXT, type TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), CONSTRAINT force_fail CHECK(length(type) < 1))"
@@ -250,15 +250,15 @@ describe("Reconciler", () => {
     const reconciler = createReconciler(mockTmuxAdapter({ "r01-dev1-impl": false }));
     const result = await reconciler.reconcile(rig.id);
 
-    // Should have errored on this session
+    // 此 session 应报告错误。
     expect(result.errors).toHaveLength(1);
 
-    // Session status NOT changed to detached (transaction rolled back)
+    // Session 状态未改为 detached（事务已回滚）。
     const sessions = sessionRegistry.getSessionsForRig(rig.id);
     expect(sessions[0]!.status).toBe("running");
   });
 
-  it("unexpected tmux error: session not marked detached, error in result", async () => {
+  it("意外 tmux 错误：session 不标为 detached，结果包含错误", async () => {
     const { rig } = seedRigWithSessions([
       { logicalId: "dev1-impl", sessionName: "r01-dev1-impl", status: "running" },
     ]);
@@ -273,16 +273,15 @@ describe("Reconciler", () => {
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0]!.error).toContain("unexpected tmux failure");
 
-    // Session NOT marked detached
+    // Session 未标为 detached。
     const sessions = sessionRegistry.getSessionsForRig(rig.id);
     expect(sessions[0]!.status).toBe("running");
   });
 
-  // L1 cold-start tmux truth repair: post-reboot socket-absence is classified
-  // transport_unavailable by probeSession; the Reconciler ELECTS to treat that
-  // state as detachable at its own call site (OPR.0.5.4.2 mini-req 2), so DB
-  // state still matches tmux reality after a reboot.
-  it("socket-absent at adapter layer (probe not-present): session detached + event emitted", async () => {
+  // L1 冷启动 tmux 事实修复：重启后 socket 缺失由 probeSession 分类为 transport_unavailable；
+  // Reconciler 在自身调用点选择把该状态视为可分离（OPR.0.5.4.2 mini-req 2），使 DB 状态在重启后
+  // 仍与 tmux 现实一致。
+  it("adapter 层 socket 缺失（probe 不存在）时分离 session 并发出 event", async () => {
     const { rig } = seedRigWithSessions([
       { logicalId: "dev1-impl", sessionName: "r01-dev1-impl", status: "running" },
     ]);
@@ -302,7 +301,7 @@ describe("Reconciler", () => {
     expect(events).toHaveLength(1);
   });
 
-  it("permission error at adapter layer (hasSession rethrows): session NOT detached, error recorded", async () => {
+  it("adapter 层 permission 错误（hasSession 重抛）时不分离 session，并记录错误", async () => {
     const { rig } = seedRigWithSessions([
       { logicalId: "dev1-impl", sessionName: "r01-dev1-impl", status: "running" },
     ]);

@@ -1,17 +1,15 @@
-// Test suite for plugin-primitive Phase 3a slice 3.1 — projection planner
-// plugin path semantics. Per velocity-guard cadence boundary (b)
-// 2026-05-10: tests for ~, absolute, relative path resolution before
-// any further impl on this surface.
+// plugin-primitive Phase 3a slice 3.1 测试套件——projection planner plugin path 语义。
+// 按 velocity-guard cadence boundary（b）2026-05-10：在此 surface 上进一步实现前，
+// 测试 ~、absolute 与 relative path 解析。
 //
-// Plugin source.path can take three shapes (per DESIGN.md §5.2 example):
-//   1. absolute system path  e.g.  /Users/op/.openrig/plugins/openrig-core
-//   2. tilde-home-prefixed   e.g.  ~/.openrig/plugins/openrig-core
-//   3. relative to spec dir  e.g.  ./plugins/openrig-core
+// Plugin source.path 可采用三种 shape（参见 DESIGN.md §5.2 示例）：
+//   1. absolute system path，例如 /Users/op/.openrig/plugins/openrig-core
+//   2. tilde-home-prefixed，例如 ~/.openrig/plugins/openrig-core
+//   3. relative to spec dir，例如 ./plugins/openrig-core
 //
-// Each must resolve to a single concrete absolute entry.absolutePath the
-// adapter can use to copy the plugin tree. Tilde expansion is required
-// because vendored plugins live at ~/.openrig/plugins/<id>/ by convention
-// and operators write that literal path in their agent.yaml resources.
+// 每种形式都必须解析为单一、具体的 absolute entry.absolutePath，供 adapter 复制 plugin tree。
+// tilde expansion 是必需的，因为按约定 vendored plugin 位于 ~/.openrig/plugins/<id>/，
+// 用户会在 agent.yaml resource 中写入该字面路径。
 
 import { describe, it, expect } from "vitest";
 import * as os from "node:os";
@@ -54,12 +52,12 @@ function mockFs(): ProjectionFsOps {
   };
 }
 
-describe("Projection planner — plugin path semantics", () => {
+describe("Projection planner——plugin path 语义", () => {
   // ============================================================
-  // Absolute paths — preserved exactly
+  // absolute path——精确保留
   // ============================================================
 
-  it("absolute plugin source.path yields entry.absolutePath = same absolute path", () => {
+  it("absolute plugin source.path 产生相同绝对路径的 entry.absolutePath", () => {
     const config = makeConfig([makePluginQR("openrig-core", "/Users/op/.openrig/plugins/openrig-core")]);
     const input: ProjectionInput = { config, collisions: [], fsOps: mockFs() };
     const result = planProjection(input);
@@ -72,23 +70,23 @@ describe("Projection planner — plugin path semantics", () => {
     }
   });
 
-  it("absolute path is NOT re-resolved against spec sourcePath", () => {
+  it("absolute path 不会相对 spec sourcePath 再次解析", () => {
     const config = makeConfig([makePluginQR("p", "/abs/plugin", "/some/other/spec/dir")]);
     const result = planProjection({ config, collisions: [], fsOps: mockFs() });
     expect(result.ok).toBe(true);
     if (result.ok) {
       const entry = result.plan.entries[0]!;
       expect(entry.absolutePath).toBe("/abs/plugin");
-      // Specifically should NOT be /some/other/spec/dir/abs/plugin
+      // 明确不应为 /some/other/spec/dir/abs/plugin
       expect(entry.absolutePath).not.toMatch(/^\/some\/other\/spec\/dir/);
     }
   });
 
   // ============================================================
-  // Tilde-home-prefixed paths — expanded to $HOME
+  // tilde-home-prefixed path——展开到 $HOME
   // ============================================================
 
-  it("tilde-prefixed plugin source.path expands to $HOME absolute path", () => {
+  it("带 tilde prefix 的 plugin source.path 展开为 $HOME 绝对路径", () => {
     const config = makeConfig([makePluginQR("openrig-core", "~/.openrig/plugins/openrig-core")]);
     const result = planProjection({ config, collisions: [], fsOps: mockFs() });
     expect(result.ok).toBe(true);
@@ -100,7 +98,7 @@ describe("Projection planner — plugin path semantics", () => {
     }
   });
 
-  it("bare tilde plugin source.path expands to $HOME exactly", () => {
+  it("裸 tilde plugin source.path 精确展开到 $HOME", () => {
     const config = makeConfig([makePluginQR("home-plugin", "~")]);
     const result = planProjection({ config, collisions: [], fsOps: mockFs() });
     expect(result.ok).toBe(true);
@@ -109,24 +107,24 @@ describe("Projection planner — plugin path semantics", () => {
     }
   });
 
-  it("tilde-with-username (~user/...) is preserved as-is (NOT expanded — operator path)", () => {
-    // Per Node's nodePath behavior: only ~/ (with slash) expands; ~user/ doesn't.
-    // We follow the same convention to avoid surprising operators with implicit lookups.
+  it("带用户名的 tilde（~user/...）原样保留（不展开——用户路径）", () => {
+    // 按 Node nodePath 行为：只有 ~/（带 slash）会展开，~user/ 不会。遵循同一约定，
+    // 避免隐式 lookup 给用户造成意外。
     const config = makeConfig([makePluginQR("p", "~bob/plugins/p")]);
     const result = planProjection({ config, collisions: [], fsOps: mockFs() });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // ~bob is treated as a relative path component → joined with sourcePath
+      // ~bob 视为 relative path component → 与 sourcePath 拼接
       const entry = result.plan.entries[0]!;
       expect(entry.absolutePath).toContain("~bob");
     }
   });
 
   // ============================================================
-  // Relative paths — resolved against spec sourcePath
+  // relative path——相对 spec sourcePath 解析
   // ============================================================
 
-  it("relative plugin source.path resolves against qr.sourcePath", () => {
+  it("relative plugin source.path 相对 qr.sourcePath 解析", () => {
     const config = makeConfig([makePluginQR("local-plugin", "plugins/local-plugin", "/specs/my-agent")]);
     const result = planProjection({ config, collisions: [], fsOps: mockFs() });
     expect(result.ok).toBe(true);
@@ -135,7 +133,7 @@ describe("Projection planner — plugin path semantics", () => {
     }
   });
 
-  it("./-prefixed relative plugin source.path resolves correctly", () => {
+  it("以 ./ 开头的 relative plugin source.path 可正确解析", () => {
     const config = makeConfig([makePluginQR("local", "./plugins/local", "/specs/my-agent")]);
     const result = planProjection({ config, collisions: [], fsOps: mockFs() });
     expect(result.ok).toBe(true);
@@ -145,11 +143,11 @@ describe("Projection planner — plugin path semantics", () => {
   });
 
   // ============================================================
-  // Drift discriminator — distinct values per layer (per banked
-  // feedback_poc_regression_must_discriminate)
+  // drift discriminator——每层使用不同值（遵循已沉淀的
+  // feedback_poc_regression_must_discriminate）
   // ============================================================
 
-  it("three plugins with three different path shapes produce distinct absolutePaths (drift discriminator)", () => {
+  it("三个不同 path shape 的 plugin 产生不同 absolutePath（drift discriminator）", () => {
     const config = makeConfig([
       makePluginQR("abs-plugin", "/abs/plugins/abs-plugin", "/specs/agent-X"),
       makePluginQR("home-plugin", "~/.openrig/plugins/home-plugin", "/specs/agent-X"),
@@ -162,16 +160,16 @@ describe("Projection planner — plugin path semantics", () => {
       expect(byId.get("abs-plugin")).toBe("/abs/plugins/abs-plugin");
       expect(byId.get("home-plugin")).toBe(nodePath.join(os.homedir(), ".openrig/plugins/home-plugin"));
       expect(byId.get("rel-plugin")).toBe("/specs/agent-X/plugins/rel-plugin");
-      // All three distinct
+      // 三者互不相同
       expect(new Set(Array.from(byId.values())).size).toBe(3);
     }
   });
 
   // ============================================================
-  // Plugin entry shape preserved through planner
+  // planner 保留 plugin entry shape
   // ============================================================
 
-  it("plugin entry preserves category 'plugin' and effectiveId through planner", () => {
+  it("plugin entry 经过 planner 后保留 category 'plugin' 与 effectiveId", () => {
     const config = makeConfig([makePluginQR("openrig-core", "/p/openrig-core")]);
     const result = planProjection({ config, collisions: [], fsOps: mockFs() });
     expect(result.ok).toBe(true);
@@ -183,7 +181,7 @@ describe("Projection planner — plugin path semantics", () => {
     }
   });
 
-  it("entries are deterministically sorted: plugin (p) sorts before skill (s)", () => {
+  it("entry 确定性排序：plugin（p）排在 skill（s）前", () => {
     const config: ResolvedNodeConfig = {
       ...makeConfig([makePluginQR("z-plugin", "/p/z")]),
       selectedResources: {
@@ -200,7 +198,7 @@ describe("Projection planner — plugin path semantics", () => {
     const result = planProjection({ config, collisions: [], fsOps: mockFs() });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // p < s alphabetically; plugin entry comes first
+      // 按字母顺序 p < s；plugin entry 在前
       expect(result.plan.entries[0]!.category).toBe("plugin");
       expect(result.plan.entries[1]!.category).toBe("skill");
     }

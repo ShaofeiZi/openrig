@@ -1,0 +1,23 @@
+{
+  "owner": "docs-changelog",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": "CHANGELOG.md",
+      "target_path": "CHANGELOG.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 2868,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 完整中文伴随版已生成并人工复核；源/备份 SHA-256 一致；结构、链接、行内代码、代码围栏与命令骨架全部对齐；用户命令已改为 zrig，裸 rig 命令与翻译占位残留均为 0；verifier 格式通过，中文比例 0.472，11 个省略号均为原文保留的命令/结构参数；git diff --check 通过。 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    }
+  ]
+}

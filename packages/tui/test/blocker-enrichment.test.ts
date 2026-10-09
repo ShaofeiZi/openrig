@@ -5,8 +5,8 @@ import { createLiveRefresh } from "../src/live.js";
 import { createViewState, emptySnapshot } from "../src/state.js";
 import { isHumanSeatSession } from "../src/pulse/pulse-model.js";
 
-// The four observed external gates, including an external ref that embeds a
-// qitem ID, plus the existing human/legacy forms. None names a local qitem.
+// 四种观察到的外部门，含一个嵌入 qitem ID 的外部引用，
+// 外加既有 human/legacy 形式。无一命名本地 qitem。
 const gates = [
   "external:founder-pane-demo-idea",
   "external:qitem-20260830095010-42864340",
@@ -19,7 +19,7 @@ const refs = [...gates, "qitem-present", "qitem-missing"];
 const blocked = refs.map((blockedOn, i) => ({ qitemId: `qitem-waiter-${i}`, blockedOn,
   state: "blocked", destinationSession: "worker@rig", handedOffTo: null,
   tier: null, tags: null, summary: "Waiting", claimedAt: null, tsUpdated: "2026-09-11T00:00:00Z" }));
-// Blocker enrichment belongs to the explicitly selected Pulse work view.
+// Blocker enrichment 属于显式选中的 Pulse 工作视图。
 const state = { ...createViewState({ instanceId: "fixture" }).get(), viewTab: "pulse" as const };
 type Failure = 403 | 404 | 503 | "timeout";
 function fail(mode: Failure): Response {
@@ -54,8 +54,8 @@ function fixture(humanRefs: string[] = [], collide = false) {
     recover: () => { failure = undefined; }, tick: () => { now += 1000; } };
 }
 
-describe("optional blocker enrichment through the production page composition", () => {
-  it.each([false, true])("canonical human precedence prevents local lookup and false owner (collision=%s)", async collide => {
+describe("通过生产页组合做可选 blocker 富化", () => {
+  it.each([false, true])("规范 human 优先级阻止本地查找与虚假 owner（collision=%s）", async collide => {
     const humanRefs = [
       "qitem-founder@external", "qitem-slack:UCONTROL@external",
       "qitem-name.part_suffix@external", "qitem-@external",
@@ -75,7 +75,7 @@ describe("optional blocker enrichment through the production page composition", 
     } finally { f.live.close(); }
   });
 
-  it("loads valid gates and missing local owners without false page failure or fabricated owners", async () => {
+  it("加载有效 gate 与缺失的本地 owner，不产生虚假页失败或编造 owner", async () => {
     const f = fixture();
     try {
       await f.live.refresh();

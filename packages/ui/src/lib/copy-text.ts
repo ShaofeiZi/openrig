@@ -5,7 +5,7 @@ export async function copyText(text: string): Promise<boolean> {
       return true;
     }
   } catch {
-    // Fall back to a best-effort DOM copy path below.
+    // 回退到下面这条尽力而为的 DOM 复制路径。
   }
 
   if (!globalThis.document) {

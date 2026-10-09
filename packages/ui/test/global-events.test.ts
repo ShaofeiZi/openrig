@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
 import { useGlobalEvents } from "../src/hooks/useGlobalEvents.js";
 
-// Mock EventSource
+// 模拟 EventSource。
 let mockEventSource: { addEventListener: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> };
 let messageHandlers: Array<(event: { data: string }) => void> = [];
 
@@ -36,7 +36,7 @@ describe("useGlobalEvents", () => {
 
   it("subscribes to /api/events on mount", () => {
     renderHook(() => useGlobalEvents(), { wrapper: createWrapper() });
-    // EventSource constructor was called
+    // 已调用 EventSource 构造函数。
     expect(mockEventSource.addEventListener).toHaveBeenCalledWith("message", expect.any(Function));
   });
 
@@ -49,14 +49,14 @@ describe("useGlobalEvents", () => {
 
     renderHook(() => useGlobalEvents(), { wrapper });
 
-    // Simulate a startup event
+    // 模拟启动事件。
     act(() => {
       for (const handler of messageHandlers) {
         handler({ data: JSON.stringify({ type: "node.startup_ready", rigId: "rig-1", nodeId: "n1" }) });
       }
     });
 
-    // Wait for debounce
+    // 等待防抖。
     await new Promise((r) => setTimeout(r, 200));
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["rig", "rig-1", "nodes"] });
@@ -105,9 +105,8 @@ describe("useGlobalEvents", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["rig", "rig-2", "nodes"] });
   });
 
-  // OPR.0.3.3.19 (AC-7): archive/unarchive events must refetch BOTH the default
-  // summary AND the archived-only summary (separate key) + ps, so a CLI /
-  // other-browser archive updates a mounted UI reactively.
+  // OPR.0.3.3.19（AC-7）：归档/取消归档事件必须同时重新获取默认摘要、仅归档摘要
+  //（独立键）与 ps，使 CLI 或其他浏览器中的归档操作能响应式更新已挂载 UI。
   it("invalidates rigs summary, archived summary, ps, and rig nodes on rig.archived", async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");

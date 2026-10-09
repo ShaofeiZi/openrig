@@ -3,33 +3,32 @@ import type { Migration } from "../../src/db/migrate.js";
 import { ALL_MIGRATIONS } from "../../src/db/all-migrations.js";
 
 /**
- * P24 — a curated test-fixture migration list is an EXPLICIT, DECLARED subset of ALL_MIGRATIONS.
+ * P24——精心选择的 test-fixture migration list 是 ALL_MIGRATIONS 的显式、已声明 subset。
  *
- * Kills the silent-omission tax: a migration added to ALL_MIGRATIONS but forgotten in a curated fixture
- * list used to fail confusingly (a missing column/table surfacing deep in an unrelated test — the desk
- * paid this at the 064/066/067 folds). This asserts every shipped migration is EITHER in the curated
- * list OR in a named exclusions map WITH a re-evaluable reason. The curated lists' deliberate
- * minimalism stays a design choice — it just has to be DECLARED, never accidental. Assert, don't derive
- * (deriving would auto-include every future migration and quietly destroy that minimalism).
+ * 消除静默遗漏成本：过去加入 ALL_MIGRATIONS 却忘记加入精简 fixture list 的 migration，会以令人
+ * 困惑的方式失败（缺少 column/table，却在无关测试深处呈现——desk 在 064/066/067 fold 遇到过）。
+ * 此 helper 断言每个已发布 migration 要么位于精简列表中，要么位于具名 exclusions map 中且附带
+ * 可重新评估的原因。精简列表的有意最小化仍是设计选择——但必须明确声明，绝不能偶然。应断言，
+ * 不应派生（派生会自动加入未来每个 migration，并静默破坏这种最小化）。
  */
 export function assertExplicitSubsetOfAllMigrations(opts: {
-  /** Human name of the curated list, used in the training error message. */
+  /** 精简列表的人类可读名称，用于教学错误消息。 */
   listName: string;
   curatedList: readonly Migration[];
-  /** migration `name` → a RE-EVALUABLE reason it is deliberately omitted (a future reader can re-check
-   *  it). "migrationsForFullTestDb is schema-minimal for the core edge; <table> is unused here" beats
-   *  "not needed" — a reason that cannot be re-checked becomes the next stale claim. */
+  /** migration `name` → 有意省略它的可重新评估原因（未来 reader 可复查）。
+   * "migrationsForFullTestDb 对 core edge 保持 schema-minimal；这里未使用 <table>" 优于
+   * "not needed"——无法复查的原因会成为下一项陈旧声明。 */
   exclusions: Record<string, string>;
-  /** The shipped list to check against. Defaults to the real ALL_MIGRATIONS; injectable so the guard's
-   *  own negative-control test can simulate a newly-added migration. */
+  /** 用于对照检查的随附列表。默认为真实 ALL_MIGRATIONS；可注入，使 guard 自身的负向控制测试
+   *  能模拟新添加的 migration。 */
   allMigrations?: readonly Migration[];
 }): void {
   const listed = new Set(opts.curatedList.map((m) => m.name));
   const excluded = new Set(Object.keys(opts.exclusions));
   const allNames = (opts.allMigrations ?? ALL_MIGRATIONS).map((m) => m.name);
 
-  // (1) THE CORE — every shipped migration is listed or declared-excluded. The message carries the FIX,
-  // not just the fault: it will fire on someone who has never seen this guard, so it must teach.
+  // (1) 核心——每个随附 migration 都已列出或声明排除。message 不只说明 fault，还提供 FIX：它可能
+  // 在从未见过此 guard 的人手中触发，因此必须具备教学性。
   const undeclared = allNames.filter((n) => !listed.has(n) && !excluded.has(n));
   expect(
     undeclared,
@@ -45,8 +44,8 @@ export function assertExplicitSubsetOfAllMigrations(opts: {
         `"${opts.listName} is deliberately schema-minimal for <edge>; <table> is unused here").`,
   ).toEqual([]);
 
-  // (2) No STALE exclusion — an exclusion naming a migration not (any longer) in ALL_MIGRATIONS is
-  // itself a stale claim; remove it.
+  // (2) 无陈旧 exclusion——若 exclusion 点名已不再属于 ALL_MIGRATIONS 的 migration，它本身就是
+  // 陈旧声明，应删除。
   const stale = [...excluded].filter((n) => !allNames.includes(n));
   expect(
     stale,
@@ -56,8 +55,8 @@ export function assertExplicitSubsetOfAllMigrations(opts: {
         `them): ${stale.join(", ")}`,
   ).toEqual([]);
 
-  // (3) No REDUNDANT exclusion — a migration both listed AND excluded is contradictory; the exclusion
-  // is dead. Keep the list authoritative.
+  // (3) 无冗余 exclusion——migration 同时 listed 与 excluded 是矛盾的；该 exclusion 已失效。
+  // 保持列表权威。
   const redundant = [...excluded].filter((n) => listed.has(n));
   expect(
     redundant,

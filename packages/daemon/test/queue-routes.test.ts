@@ -38,7 +38,7 @@ function buildApp(opts: {
   return app;
 }
 
-describe("queue routes", () => {
+describe("queue 路由", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -58,7 +58,7 @@ describe("queue routes", () => {
       inboxEntriesSchema,
       outboxEntriesSchema,
       queueTargetRepoSchema, // OPR.0.3.2.20: required for attention=1&targetRepo=X composition tests
-      i3IdentityProvenanceSchema, // P21 §4 era-stamp column on the queue-spine stores (last: needs all 4 tables)
+      i3IdentityProvenanceSchema, // queue-spine store 上的 P21 §4 era-stamp column（最后执行：需要全部 4 个 table）
     ]);
     createWakeContractTable(db);
     bus = new EventBus(db);
@@ -86,7 +86,7 @@ describe("queue routes", () => {
     `);
   }
 
-  it("S03: update route passes wakeAfterSeconds through and atomically records the timer", async () => {
+  it("S03：update 路由透传 wakeAfterSeconds 并以原子方式记录 timer", async () => {
     const row = await queueRepo.create({ sourceSession: "a@r", destinationSession: "b@r", body: "x", nudge: false });
     const res = await app.request(`/api/queue/${row.qitemId}/update`, {
       method: "POST",
@@ -112,8 +112,8 @@ describe("queue routes", () => {
     expect(job).toMatchObject({ target_session: "b@r", interval_seconds: 45, state: "active" });
   });
 
-  // 0.5.1-54 DR-1 — the create-path failed-nudge surface (the NAMED, human/agent-visible read path).
-  it("DR-1: GET /undelivered surfaces the failed-nudge pending strand, V1-only", async () => {
+  // 0.5.1-54 DR-1——create-path failed-nudge surface（具名且人类/agent 可见的读取路径）。
+  it("DR-1：GET /undelivered 呈现 failed-nudge pending strand，且仅限 V1", async () => {
     const failed = await queueRepo.create({ sourceSession: "a@rig", destinationSession: "b@rig", body: "x" });
     queueRepo.recordNudgeAttempt(failed.qitemId, "failed:Session 'b@rig' not found");
     const delivered = await queueRepo.create({ sourceSession: "a@rig", destinationSession: "b@rig", body: "y" });
@@ -124,36 +124,36 @@ describe("queue routes", () => {
     const ids = items.map((i) => i.qitemId);
     expect(ids, "the failed-nudge strand is surfaced").toContain(failed.qitemId);
     expect(ids, "V1-only: a delivered row is not surfaced").not.toContain(delivered.qitemId);
-    // classifier fold: the not-found strand is labeled permanent-topology (unresolvable on this daemon).
+    // classifier fold：not-found strand 标记为 permanent-topology（无法在此 daemon 解析）。
     const strand = items.find((i) => i.qitemId === failed.qitemId)!;
     expect(strand.deliveryFailureClass, "the not-found strand is labeled permanent-topology").toBe("permanent-topology");
   });
 
-  // ── P18 sender-provenance: /inbox/drop derives the sender from the authenticated transport
-  // header (X-OpenRig-Session), never a request-body claim; refuses-unattributable LOUD when absent. ──
+  // ── P18 sender-provenance：/inbox/drop 从已认证 transport header（X-OpenRig-Session）派生
+  // sender，绝不采用 request-body 声明；缺失时明确拒绝无法归因的请求。──
   describe("P18 sender-provenance", () => {
-    it("records the TRANSPORT-DERIVED sender (header), IGNORING a forged body senderSession/authenticatedSender", async () => {
+    it("记录由 transport 派生的 sender（header），忽略伪造的 body senderSession/authenticatedSender", async () => {
       const res = await app.request("/api/queue/inbox/drop", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@rig" },
         body: JSON.stringify({
           destinationSession: "bob@rig", body: "hi",
-          senderSession: "mallory@rig", authenticatedSender: "mallory@rig", // forged body claims — must be ignored
+          senderSession: "mallory@rig", authenticatedSender: "mallory@rig", // 伪造的 body 声明——必须忽略
         }),
       });
       expect(res.status).toBe(201);
       const entry = await res.json() as { senderSession: string };
-      expect(entry.senderSession).toBe("alice@rig"); // the header wins; the forged body claim never lands
+      expect(entry.senderSession).toBe("alice@rig"); // header 优先；伪造的 body 声明不会写入
     });
 
-    it("header absent (no body sender read) → 400 actor_required (P18 sweep: parameter completeness, not the retired 401 refusal)", async () => {
+    it("缺少 header（不读取 body sender）→ 400 actor_required（P18 sweep：参数完整性，而非已废弃的 401 拒绝）", async () => {
       const res = await app.request("/api/queue/inbox/drop", {
         method: "POST",
         headers: { "Content-Type": "application/json" }, // NO X-OpenRig-Session
         body: JSON.stringify({ destinationSession: "bob@rig", body: "hi", senderSession: "mallory@rig" }),
       });
-      // inbox/drop never reads a body sender (forgeable), so with no header there is no actor to LABEL →
-      // 400 actor_required (the queue.ts:215 class), NOT the retired 401 refusal-of-an-uncertifiable-sender.
+      // inbox/drop 从不读取可伪造的 body sender，因此没有 header 就没有可标记的 actor →
+      // 400 actor_required（queue.ts:215 类），而非已废弃的无法认证 sender 的 401 拒绝。
       expect(res.status).toBe(400);
       const err = await res.json() as { error: string; message: string };
       expect(err.error).toBe("actor_required");
@@ -161,7 +161,7 @@ describe("queue routes", () => {
     });
   });
 
-  it("inbox drop — era-stamps inbox_entries transport:v1 (P21 §4 derived-era boundary)", async () => {
+  it("inbox drop——为 inbox_entries 标记 transport:v1 era（P21 §4 derived-era boundary）", async () => {
     const res = await app.request("/api/queue/inbox/drop", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "sender@rig" },
@@ -169,15 +169,15 @@ describe("queue routes", () => {
     });
     expect(res.status).toBe(201);
     const { inboxId } = (await res.json()) as { inboxId: string };
-    // The dropped entry's sender is transport-derived → the channel-of-record row is stamped transport:v1.
+    // dropped entry 的 sender 由 transport 派生 → channel-of-record row 标记为 transport:v1。
     const row = db
       .prepare("SELECT identity_provenance FROM inbox_entries WHERE inbox_id = ?")
       .get(inboxId) as { identity_provenance: string | null } | undefined;
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  // P21 I3 — inbox absorb/deny (receiverSession) + outbox record (senderSession) were the LIVE
-  // allow-all body-supplied identity sites (specimen-5 family). I3 derives them from the header.
+  // P21 I3——inbox absorb/deny（receiverSession）+ outbox record（senderSession）曾是实时运行的
+  // allow-all body-supplied identity site（specimen-5 family）。I3 改为从 header 派生。
   async function dropEntry(dest: string, sender: string): Promise<string> {
     const res = await app.request("/api/queue/inbox/drop", {
       method: "POST",
@@ -187,7 +187,7 @@ describe("queue routes", () => {
     return ((await res.json()) as { inboxId: string }).inboxId;
   }
 
-  it("outbox record — still accepts a normal (non-reserved) outboxId", async () => {
+  it("outbox record——仍接受普通（非保留）outboxId", async () => {
     const res = await app.request("/api/queue/outbox/record", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "sender@rig" },
@@ -196,7 +196,7 @@ describe("queue routes", () => {
     expect(res.status).toBe(201);
   });
 
-  it("inbox absorb — header absent + body receiverSession → delivers under the claimed actor, transition claimed:v1 (deliver-and-label)", async () => {
+  it("inbox absorb——缺少 header + body receiverSession → 以声明 actor 交付，transition 为 claimed:v1", async () => {
     const inboxId = await dropEntry("dest@rig", "sender@rig");
     const res = await app.request(`/api/queue/inbox/${inboxId}/absorb`, {
       method: "POST",
@@ -211,12 +211,12 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("claimed:v1");
   });
 
-  it("inbox absorb — header present + differing body receiverSession → wire supersedes (delivers under dest@rig, transport:v1); 409 retired", async () => {
+  it("inbox absorb——header 存在且 body receiverSession 不同 → wire 优先（以 dest@rig、transport:v1 交付）；409 已废弃", async () => {
     const inboxId = await dropEntry("dest@rig", "sender@rig");
     const res = await app.request(`/api/queue/inbox/${inboxId}/absorb`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "dest@rig" },
-      body: JSON.stringify({ receiverSession: "mallory@rig" }), // superseded by the wire identity
+      body: JSON.stringify({ receiverSession: "mallory@rig" }), // 被 wire identity 覆盖
     });
     expect(res.status).toBe(200);
     const { qitemId } = (await res.json()) as { qitemId: string };
@@ -226,7 +226,7 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it("inbox absorb — derives receiver from the header + era-stamps the absorbed qitem transport:v1", async () => {
+  it("inbox absorb——从 header 派生 receiver，并为吸收的 qitem 标记 transport:v1 era", async () => {
     const inboxId = await dropEntry("dest@rig", "sender@rig");
     const res = await app.request(`/api/queue/inbox/${inboxId}/absorb`, {
       method: "POST",
@@ -235,14 +235,14 @@ describe("queue routes", () => {
     });
     expect(res.status).toBe(200);
     const { qitemId } = (await res.json()) as { qitemId: string };
-    // The absorb is a transport-derived receiver action → the created qitem's transition is transport:v1.
+    // absorb 是 transport 派生的 receiver action → 所创建 qitem 的 transition 为 transport:v1。
     const row = db
       .prepare("SELECT identity_provenance FROM queue_transitions WHERE qitem_id = ? ORDER BY rowid ASC LIMIT 1")
       .get(qitemId) as { identity_provenance: string | null } | undefined;
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it("inbox deny — header absent + body receiverSession → delivers under the claimed actor (200); 401 retired", async () => {
+  it("inbox deny——缺少 header + body receiverSession → 以声明 actor 交付（200）；401 已废弃", async () => {
     const inboxId = await dropEntry("dest@rig", "sender@rig");
     const res = await app.request(`/api/queue/inbox/${inboxId}/deny`, {
       method: "POST",
@@ -252,17 +252,17 @@ describe("queue routes", () => {
     expect(res.status).toBe(200);
   });
 
-  it("inbox deny — header present + differing body receiverSession → wire supersedes, delivers (200); 409 retired", async () => {
+  it("inbox deny——header 存在且 body receiverSession 不同 → wire 优先并交付（200）；409 已废弃", async () => {
     const inboxId = await dropEntry("dest@rig", "sender@rig");
     const res = await app.request(`/api/queue/inbox/${inboxId}/deny`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "dest@rig" },
-      body: JSON.stringify({ receiverSession: "mallory@rig", reason: "nope" }), // superseded by the wire identity
+      body: JSON.stringify({ receiverSession: "mallory@rig", reason: "nope" }), // 被 wire identity 覆盖
     });
     expect(res.status).toBe(200);
   });
 
-  it("inbox deny — derives receiver from the header (200)", async () => {
+  it("inbox deny——从 header 派生 receiver（200）", async () => {
     const inboxId = await dropEntry("dest@rig", "sender@rig");
     const res = await app.request(`/api/queue/inbox/${inboxId}/deny`, {
       method: "POST",
@@ -272,7 +272,7 @@ describe("queue routes", () => {
     expect(res.status).toBe(200);
   });
 
-  it("outbox record — header absent + body senderSession → delivers under the claimed actor, outbox_entries claimed:v1", async () => {
+  it("outbox record——缺少 header + body senderSession → 以声明 actor 交付，outbox_entries 为 claimed:v1", async () => {
     const res = await app.request("/api/queue/outbox/record", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -286,7 +286,7 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("claimed:v1");
   });
 
-  it("outbox record — header present + differing body senderSession → wire supersedes (transport:v1); 409 retired", async () => {
+  it("outbox record——header 存在且 body senderSession 不同 → wire 优先（transport:v1）；409 已废弃", async () => {
     const res = await app.request("/api/queue/outbox/record", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "me@rig" },
@@ -300,7 +300,7 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it("outbox record — derives sender from the header + era-stamps outbox_entries transport:v1", async () => {
+  it("outbox record——从 header 派生 sender，并为 outbox_entries 标记 transport:v1 era", async () => {
     const res = await app.request("/api/queue/outbox/record", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "me@rig" },
@@ -314,7 +314,7 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it("POST /api/queue/create creates a qitem", async () => {
+  it("POST /api/queue/create 创建 qitem", async () => {
     const res = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@rig" },
@@ -331,9 +331,9 @@ describe("queue routes", () => {
     expect(data.priority).toBe("urgent");
   });
 
-  // P21 I3 — create's sender is the transport header (X-OpenRig-Session), NEVER a body claim.
-  // Adopt-drop window: a body sourceSession is tolerated ONLY when it EQUALS the transport identity.
-  it("create — header absent + body sourceSession → delivers under the claimed actor, transition claimed:v1", async () => {
+  // P21 I3——create 的 sender 来自 transport header（X-OpenRig-Session），绝不采用 body 声明。
+  // adopt-drop 窗口：仅当 body sourceSession 与 transport identity 相等时才容许它。
+  it("create——缺少 header + body sourceSession → 以声明 actor 交付，transition 为 claimed:v1", async () => {
     const res = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -347,7 +347,7 @@ describe("queue routes", () => {
     expect(t?.identity_provenance).toBe("claimed:v1");
   });
 
-  it("create — header present + differing body sourceSession → wire supersedes (source alice@rig, transport:v1); 409 retired", async () => {
+  it("create——header 存在且 body sourceSession 不同 → wire 优先（source alice@rig、transport:v1）；409 已废弃", async () => {
     const res = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@rig" },
@@ -365,7 +365,7 @@ describe("queue routes", () => {
     expect(t?.identity_provenance).toBe("transport:v1");
   });
 
-  it("create — derives source_session from the transport header, never the body (equal claim tolerated)", async () => {
+  it("create——从 transport header 派生 source_session，绝不读取 body（允许相同声明）", async () => {
     const res = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@rig" },
@@ -379,7 +379,7 @@ describe("queue routes", () => {
     expect(row?.source_session).toBe("alice@rig");
   });
 
-  it("create — era-stamps the created transition transport:v1 (P21 §4 derived-era boundary)", async () => {
+  it("create——为创建的 transition 标记 transport:v1 era（P21 §4 derived-era boundary）", async () => {
     const res = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@rig" },
@@ -387,14 +387,14 @@ describe("queue routes", () => {
     });
     expect(res.status).toBe(201);
     const { qitemId } = (await res.json()) as { qitemId: string };
-    // The 'created' transition's actor is transport-derived → stamped transport:v1 (absence = claimed-era).
+    // 'created' transition 的 actor 由 transport 派生 → 标记为 transport:v1（缺失 = claimed-era）。
     const row = db
       .prepare("SELECT identity_provenance FROM queue_transitions WHERE qitem_id = ? ORDER BY rowid ASC LIMIT 1")
       .get(qitemId) as { identity_provenance: string | null } | undefined;
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  // P21 I3 — update's actor is the transport header (X-OpenRig-Session), NEVER a body claim.
+  // P21 I3——update 的 actor 来自 transport header（X-OpenRig-Session），绝不采用 body 声明。
   async function createForUpdate(session: string): Promise<string> {
     const create = await app.request("/api/queue/create", {
       method: "POST",
@@ -404,7 +404,7 @@ describe("queue routes", () => {
     return ((await create.json()) as { qitemId: string }).qitemId;
   }
 
-  it("update — header absent + body actorSession → delivers under the claimed actor, transition claimed:v1", async () => {
+  it("update——缺少 header + body actorSession → 以声明 actor 交付，transition 为 claimed:v1", async () => {
     const qitemId = await createForUpdate("a@r");
     const res = await app.request(`/api/queue/${qitemId}/update`, {
       method: "POST",
@@ -419,12 +419,12 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("claimed:v1");
   });
 
-  it("update — header present + differing body actorSession → wire supersedes (actor worker@r, transport:v1); 409 retired", async () => {
+  it("update——header 存在且 body actorSession 不同 → wire 优先（actor worker@r、transport:v1）；409 已废弃", async () => {
     const qitemId = await createForUpdate("a@r");
     const res = await app.request(`/api/queue/${qitemId}/update`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "worker@r" },
-      body: JSON.stringify({ actorSession: "mallory@r", state: "in-progress" }), // superseded by the wire identity
+      body: JSON.stringify({ actorSession: "mallory@r", state: "in-progress" }), // 被 wire identity 覆盖
     });
     expect(res.status).toBe(200);
     const row = db
@@ -434,7 +434,7 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it("update — derives the transition actor from the transport header, never the body", async () => {
+  it("update——从 transport header 派生 transition actor，绝不读取 body", async () => {
     const qitemId = await createForUpdate("a@r");
     const res = await app.request(`/api/queue/${qitemId}/update`, {
       method: "POST",
@@ -446,11 +446,11 @@ describe("queue routes", () => {
       .prepare("SELECT actor_session, identity_provenance FROM queue_transitions WHERE qitem_id = ? ORDER BY rowid DESC LIMIT 1")
       .get(qitemId) as { actor_session: string; identity_provenance: string | null } | undefined;
     expect(row?.actor_session).toBe("worker@r");
-    // P21 §4 era-stamp: a transport-derived actor is stamped transport:v1 (absence = claimed-era).
+    // P21 §4 era-stamp：transport 派生的 actor 标记为 transport:v1（缺失 = claimed-era）。
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  // P21 I3 — handoff / handoff-and-complete derive fromSession from the transport header, never body.
+  // P21 I3——handoff / handoff-and-complete 从 transport header 派生 fromSession，不读取 body。
   async function createForHandoff(dest: string): Promise<string> {
     const create = await app.request("/api/queue/create", {
       method: "POST",
@@ -461,7 +461,7 @@ describe("queue routes", () => {
   }
 
   for (const verb of ["handoff", "handoff-and-complete"] as const) {
-    it(`${verb} — header absent + body fromSession → delivers under the claimed actor, close transition claimed:v1`, async () => {
+    it(`${verb}——缺少 header + body fromSession → 以声明 actor 交付，close transition 为 claimed:v1`, async () => {
       const qitemId = await createForHandoff("b@r");
       const res = await app.request(`/api/queue/${qitemId}/${verb}`, {
         method: "POST",
@@ -475,12 +475,12 @@ describe("queue routes", () => {
       expect(closed?.identity_provenance).toBe("claimed:v1");
     });
 
-    it(`${verb} — header present + differing body fromSession → wire supersedes (delivers, transport:v1); 409 retired`, async () => {
+    it(`${verb}——header 存在且 body fromSession 不同 → wire 优先（交付、transport:v1）；409 已废弃`, async () => {
       const qitemId = await createForHandoff("b@r");
       const res = await app.request(`/api/queue/${qitemId}/${verb}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "b@r" },
-        body: JSON.stringify({ fromSession: "mallory@r", toSession: "c@r" }), // superseded by the wire identity
+        body: JSON.stringify({ fromSession: "mallory@r", toSession: "c@r" }), // 被 wire identity 覆盖
       });
       expect(res.status).toBe(201);
       const closed = db
@@ -489,7 +489,7 @@ describe("queue routes", () => {
       expect(closed?.identity_provenance).toBe("transport:v1");
     });
 
-    it(`${verb} — derives fromSession from the header + era-stamps the close transition transport:v1`, async () => {
+    it(`${verb}——从 header 派生 fromSession，并为 close transition 标记 transport:v1 era`, async () => {
       const qitemId = await createForHandoff("b@r");
       const res = await app.request(`/api/queue/${qitemId}/${verb}`, {
         method: "POST",
@@ -497,7 +497,7 @@ describe("queue routes", () => {
         body: JSON.stringify({ fromSession: "b@r", toSession: "c@r" }),
       });
       expect(res.status).toBe(201);
-      // The source-close transition (handed-off/done) actor is transport-derived → transport:v1.
+      // source-close transition（handed-off/done）的 actor 由 transport 派生 → transport:v1。
       const closed = db
         .prepare("SELECT identity_provenance FROM queue_transitions WHERE qitem_id = ? ORDER BY rowid DESC LIMIT 1")
         .get(qitemId) as { identity_provenance: string | null } | undefined;
@@ -505,8 +505,8 @@ describe("queue routes", () => {
     });
   }
 
-  // P21 I3 — claim/unclaim derive the claimant (destinationSession) from the transport header.
-  // The repo still enforces you can only (un)claim an item assigned to your identity.
+  // P21 I3——claim/unclaim 从 transport header 派生 claimant（destinationSession）。
+  // repo 仍强制只能（取消）认领分配给自身 identity 的 item。
   async function createAndClaim(dest: string): Promise<string> {
     const qitemId = await createForHandoff(dest);
     await app.request(`/api/queue/${qitemId}/claim`, {
@@ -517,7 +517,7 @@ describe("queue routes", () => {
     return qitemId;
   }
 
-  it("claim — header absent + body destinationSession → delivers under the claimed actor, transition claimed:v1", async () => {
+  it("claim——缺少 header + body destinationSession → 以声明 actor 交付，transition 为 claimed:v1", async () => {
     const qitemId = await createForHandoff("b@r");
     const res = await app.request(`/api/queue/${qitemId}/claim`, {
       method: "POST",
@@ -532,12 +532,12 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("claimed:v1");
   });
 
-  it("claim — header present + differing body destinationSession → wire supersedes (claimant b@r, transport:v1); 409 retired", async () => {
+  it("claim——header 存在且 body destinationSession 不同 → wire 优先（claimant b@r、transport:v1）；409 已废弃", async () => {
     const qitemId = await createForHandoff("b@r");
     const res = await app.request(`/api/queue/${qitemId}/claim`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "b@r" },
-      body: JSON.stringify({ destinationSession: "mallory@r" }), // superseded by the wire identity
+      body: JSON.stringify({ destinationSession: "mallory@r" }), // 被 wire identity 覆盖
     });
     expect(res.status).toBe(200);
     const row = db
@@ -547,7 +547,7 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it("claim — derives the claimant from the header + era-stamps the transition transport:v1", async () => {
+  it("claim——从 header 派生 claimant，并为 transition 标记 transport:v1 era", async () => {
     const qitemId = await createForHandoff("b@r");
     const res = await app.request(`/api/queue/${qitemId}/claim`, {
       method: "POST",
@@ -562,7 +562,7 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it("unclaim — header absent + body destinationSession → delivers under the claimed actor, transition claimed:v1", async () => {
+  it("unclaim——缺少 header + body destinationSession → 以声明 actor 交付，transition 为 claimed:v1", async () => {
     const qitemId = await createAndClaim("b@r");
     const res = await app.request(`/api/queue/${qitemId}/unclaim`, {
       method: "POST",
@@ -577,12 +577,12 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("claimed:v1");
   });
 
-  it("unclaim — header present + differing body destinationSession → wire supersedes (b@r, transport:v1); 409 retired", async () => {
+  it("unclaim——header 存在且 body destinationSession 不同 → wire 优先（b@r、transport:v1）；409 已废弃", async () => {
     const qitemId = await createAndClaim("b@r");
     const res = await app.request(`/api/queue/${qitemId}/unclaim`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "b@r" },
-      body: JSON.stringify({ destinationSession: "mallory@r" }), // superseded by the wire identity
+      body: JSON.stringify({ destinationSession: "mallory@r" }), // 被 wire identity 覆盖
     });
     expect(res.status).toBe(200);
     const row = db
@@ -592,7 +592,7 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it("unclaim — derives the claimant from the header + era-stamps the transition transport:v1", async () => {
+  it("unclaim——从 header 派生 claimant，并为 transition 标记 transport:v1 era", async () => {
     const qitemId = await createAndClaim("b@r");
     const res = await app.request(`/api/queue/${qitemId}/unclaim`, {
       method: "POST",
@@ -607,7 +607,7 @@ describe("queue routes", () => {
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it("POST /api/queue/:id/update with state=done WITHOUT closure_reason returns 400 with validReasons", async () => {
+  it("POST /api/queue/:id/update 在 state=done 且缺少 closure_reason 时返回 400 与 validReasons", async () => {
     const create = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -626,7 +626,7 @@ describe("queue routes", () => {
     expect(data.validReasons).toEqual(CLOSURE_REASONS);
   });
 
-  it("POST /api/queue/:id/update accepts each valid closure reason", async () => {
+  it("POST /api/queue/:id/update 接受每个有效 closure reason", async () => {
     for (const reason of CLOSURE_REASONS) {
       const create = await app.request("/api/queue/create", {
         method: "POST",
@@ -653,7 +653,7 @@ describe("queue routes", () => {
     }
   });
 
-  it("POST /api/queue/:id/handoff returns closed + created in one transaction", async () => {
+  it("POST /api/queue/:id/handoff 在一个 transaction 中返回 closed + created", async () => {
     const create = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -663,7 +663,7 @@ describe("queue routes", () => {
 
     const handoff = await app.request(`/api/queue/${item.qitemId}/handoff`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-OpenRig-Session": "b@r" }, // P21 I3: handoff actor from the transport header
+      headers: { "Content-Type": "application/json", "X-OpenRig-Session": "b@r" }, // P21 I3：handoff actor 来自 transport header
       body: JSON.stringify({ fromSession: "b@r", toSession: "c@r", transitionNote: "specialty" }),
     });
     expect(handoff.status).toBe(201);
@@ -679,7 +679,7 @@ describe("queue routes", () => {
     expect(data.created.handedOffFrom).toBe(item.qitemId);
   });
 
-  it("GET /api/queue/:id returns the qitem; transitions endpoint returns the log", async () => {
+  it("GET /api/queue/:id 返回 qitem；transitions endpoint 返回日志", async () => {
     const create = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -697,7 +697,7 @@ describe("queue routes", () => {
     expect(tlist[0]!.state).toBe("pending");
   });
 
-  it("inbox drop / absorb / deny round-trip", async () => {
+  it("inbox drop / absorb / deny 往返", async () => {
     const drop = await app.request("/api/queue/inbox/drop", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" }, // P18: transport-derived sender
@@ -711,14 +711,14 @@ describe("queue routes", () => {
 
     const absorb = await app.request(`/api/queue/inbox/${entry.inboxId}/absorb`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-OpenRig-Session": "b@r" }, // P21 I3: receiver from the transport header
+      headers: { "Content-Type": "application/json", "X-OpenRig-Session": "b@r" }, // P21 I3：receiver 来自 transport header
       body: JSON.stringify({ receiverSession: "b@r" }),
     });
     expect(absorb.status).toBe(200);
     const absorbed = (await absorb.json()) as { qitemId: string };
     expect(absorbed.qitemId).toMatch(/^qitem-/);
 
-    // Second drop + deny path
+    // 第二条 drop + deny 路径
     const drop2 = await app.request("/api/queue/inbox/drop", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" }, // P18: transport-derived sender
@@ -727,16 +727,16 @@ describe("queue routes", () => {
     const entry2 = (await drop2.json()) as { inboxId: string };
     const deny = await app.request(`/api/queue/inbox/${entry2.inboxId}/deny`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-OpenRig-Session": "b@r" }, // P21 I3: receiver from the transport header
+      headers: { "Content-Type": "application/json", "X-OpenRig-Session": "b@r" }, // P21 I3：receiver 来自 transport header
       body: JSON.stringify({ receiverSession: "b@r", reason: "off-topic" }),
     });
     expect(deny.status).toBe(200);
   });
 
-  it("outbox record + list round-trip", async () => {
+  it("outbox record + list 往返", async () => {
     const record = await app.request("/api/queue/outbox/record", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" }, // P21 I3: outbox sender from the transport header
+      headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" }, // P21 I3：outbox sender 来自 transport header
       body: JSON.stringify({ senderSession: "a@r", destinationSession: "b@r", body: "fyi" }),
     });
     expect(record.status).toBe(201);
@@ -748,7 +748,7 @@ describe("queue routes", () => {
     expect(data[0]!.body).toBe("fyi");
   });
 
-  it("GET /api/queue/list filters by destination + state", async () => {
+  it("GET /api/queue/list 按 destination + state 过滤", async () => {
     await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -764,16 +764,13 @@ describe("queue routes", () => {
     expect(data).toHaveLength(1);
   });
 
-  // OPR.0.3.2.20 — `?attention=1` filter for the For You priority
-  // windowing slice. Returns OPEN attention-class qitems (the durable
-  // source of truth) so the UI Action-required + Approval lenses don't
-  // depend on the lossy ephemeral event FIFO. HG-4 verified against
-  // the mission-control read layer's canonical attention semantics:
-  //   - approval class: tier === "human-gate"
-  //   - action-required class: destinationSession is human-*@kernel|host
-  //   - open state: pending | in-progress | blocked
-  describe("OPR.0.3.2.20 GET /api/queue/list?attention=1 — open attention-class items", () => {
-    it("tier-only agent rows do not create a human approval obligation", async () => {
+  // OPR.0.3.2.20——For You 优先级窗口 slice 的 `?attention=1` filter。返回 OPEN
+  // attention-class qitem（durable source of truth），使 UI 的 Action-required + Approval
+  // 视图不依赖有损的临时 event FIFO。HG-4 已对照 mission-control read layer 的 canonical
+  // attention 语义验证：approval class 为 tier === "human-gate"；action-required class 为
+  // destinationSession 是 human-*@kernel|host；open state 为 pending | in-progress | blocked。
+  describe("OPR.0.3.2.20 GET /api/queue/list?attention=1——open attention-class item", () => {
+    it("仅含 tier 的 agent row 不会产生 human approval obligation", async () => {
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -792,7 +789,7 @@ describe("queue routes", () => {
       expect(data).toHaveLength(0);
     });
 
-    it("HG-4 positive (action-required class): destination=human-foo@kernel open qitem is returned", async () => {
+    it("HG-4 正向（action-required 类）：返回 destination=human-foo@kernel 的 open qitem", async () => {
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -810,7 +807,7 @@ describe("queue routes", () => {
       expect(data[0]!.destinationSession).toBe("human-bob@kernel");
     });
 
-    it("HG-4 positive: destination=human@host (bare human prefix) open qitem is returned", async () => {
+    it("HG-4 正向：返回 destination=human@host（裸 human prefix）的 open qitem", async () => {
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -827,7 +824,7 @@ describe("queue routes", () => {
       expect(data).toHaveLength(1);
     });
 
-    it("HG-4 negative: routine pending qitem (non-attention tier + non-human destination) is NOT returned", async () => {
+    it("HG-4 负向：不返回普通 pending qitem（非 attention tier + 非 human destination）", async () => {
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -842,7 +839,7 @@ describe("queue routes", () => {
       expect(data).toHaveLength(0);
     });
 
-    it("HG-4 negative: closed attention qitem (state=done) is NOT returned", async () => {
+    it("HG-4 负向：不返回已关闭的 attention qitem（state=done）", async () => {
       const create = await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -869,8 +866,8 @@ describe("queue routes", () => {
       expect(data).toHaveLength(0);
     });
 
-    it("HG-5/HG-7 sane bound: ?attention=1&limit=N caps the result", async () => {
-      // Seed 5 attention-class qitems
+    it("HG-5/HG-7 合理边界：?attention=1&limit=N 限制结果数量", async () => {
+      // 预置 5 个 attention-class qitem
       for (let i = 0; i < 5; i++) {
         await app.request("/api/queue/create", {
           method: "POST",
@@ -887,8 +884,8 @@ describe("queue routes", () => {
       expect(data.length).toBeLessThanOrEqual(3);
     });
 
-    it("HG-2 (the headline): attention-class items survive >100 unrelated routine qitems being created (queue is durable source)", async () => {
-      // Seed ONE attention-class item first
+    it("HG-2（核心）：创建 100 多个无关普通 qitem 后仍能找到 attention-class item（queue 是 durable source）", async () => {
+      // 先预置一个 attention-class item
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -901,10 +898,8 @@ describe("queue routes", () => {
           evidenceRef: "proof/test-evidence.md",
         }),
       });
-      // Then create >100 routine qitems (no attention markers); these
-      // would saturate any FIFO window in the UI but the queue is the
-      // durable source — the attention filter must still surface the
-      // human-gate item.
+      // 随后创建 100 多个普通 qitem（无 attention marker）；这些会填满 UI 中任何 FIFO 窗口，
+      // 但 queue 是 durable source——attention filter 仍须呈现 human-gate item。
       for (let i = 0; i < 110; i++) {
         await app.request("/api/queue/create", {
           method: "POST",
@@ -918,20 +913,17 @@ describe("queue routes", () => {
       }
       const res = await app.request("/api/queue/list?attention=1");
       const data = (await res.json()) as Array<{ tier: string | null }>;
-      // Attention item still present despite 110 routine qitems written
-      // after it.
+      // 即使之后写入 110 个普通 qitem，attention item 仍存在。
       expect(data.length).toBeGreaterThanOrEqual(1);
       expect(data.some((q) => q.tier === "human-gate")).toBe(true);
     });
 
-    // Guard re-verify-2 (qitem-20260518192210) BLOCKER-1: the prior
-    // forward-fix dropped destinationSession/sourceSession/targetRepo
-    // composition. The fix routes those params through listAttention
-    // into the SQL WHERE so scoped attention queries return only the
-    // matching attention items.
+    // Guard re-verify-2（qitem-20260518192210）BLOCKER-1：此前的 forward-fix 丢失了
+    // destinationSession/sourceSession/targetRepo composition。本修复通过 listAttention
+    // 将这些参数传入 SQL WHERE，使有 scope 的 attention query 只返回匹配项。
 
-    it("BLOCKER re-verify-2: attention=1 + destinationSession=X returns only X-scoped attention items", async () => {
-      // Seed 2 attention items at different destinations.
+    it("BLOCKER re-verify-2：attention=1 + destinationSession=X 仅返回 X scope 的 attention item", async () => {
+      // 在不同 destination 预置 2 个 attention item。
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "advisor@r1" },
@@ -955,8 +947,7 @@ describe("queue routes", () => {
           evidenceRef: "proof/test-evidence.md",
         }),
       });
-      // Also create a non-attention routine qitem destined to alice;
-      // it must not appear.
+      // 还创建一个 destination 为 alice 的非 attention 普通 qitem；它不得出现。
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "advisor@r1" },
@@ -976,11 +967,11 @@ describe("queue routes", () => {
       for (const item of data) {
         expect(item.destinationSession).toBe("human-alice@kernel");
       }
-      // None of them should be for bob.
+      // 其中任何一项都不应属于 bob。
       expect(data.some((q) => q.destinationSession === "human-bob@kernel")).toBe(false);
     });
 
-    it("BLOCKER re-verify-2: attention=1 + sourceSession=X returns only X-sourced attention items", async () => {
+    it("BLOCKER re-verify-2：attention=1 + sourceSession=X 仅返回 source 为 X 的 attention item", async () => {
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "advisor-a@r" },
@@ -1011,7 +1002,7 @@ describe("queue routes", () => {
       }
     });
 
-    it("BLOCKER re-verify-2: attention=1 unscoped still returns the global attention set (composition is OPT-IN, not required)", async () => {
+    it("BLOCKER re-verify-2：未设 scope 的 attention=1 仍返回全局 attention set（composition 为可选）", async () => {
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -1039,25 +1030,19 @@ describe("queue routes", () => {
       expect(data.length).toBeGreaterThanOrEqual(2);
     });
 
-    // Guard re-verify BLOCKER 1 (qitem-20260518190827): the prior
-    // fetch-then-filter approach (ATTENTION_FETCH_BOUND=1000 then
-    // JS filter) would have hidden an attention item behind 1001+
-    // newer routine open qitems. The fix pushes the attention
-    // predicate INTO SQL so the LIMIT applies AFTER attention
-    // filtering. This test scales the routine churn well past the
-    // old ATTENTION_FETCH_BOUND to prove window-independence by
-    // construction.
-    // Guard re-verify-3 (qitem-20260518193005) BLOCKER 1: SQL LIKE
-    // was a superset of the regex. Malformed rows like
-    // `destination_session='human-@kernel'` (empty name segment)
-    // match LIKE `human-%@kernel` but FAIL the strict regex. >LIMIT
-    // such rows could fill the SQL window pre-JS-filter and hide
-    // valid attention items behind them.
+    // Guard re-verify BLOCKER 1（qitem-20260518190827）：此前的先 fetch 后 filter 方案
+    //（ATTENTION_FETCH_BOUND=1000，再用 JS filter）会把一个 attention item 隐藏在 1001 个以上
+    // 更新的普通 open qitem 后。本修复将 attention predicate 下推到 SQL，使 LIMIT 在 attention
+    // filtering 后应用。此测试让普通项 churn 远超旧 ATTENTION_FETCH_BOUND，从构造上证明它不依赖窗口。
+    // Guard re-verify-3（qitem-20260518193005）BLOCKER 1：SQL LIKE 是 regex 的超集。
+    // `destination_session='human-@kernel'`（name segment 为空）等格式错误 row 会匹配
+    // LIKE `human-%@kernel`，但无法通过严格 regex。超过 LIMIT 的此类 row 可在 JS filter 前
+    // 填满 SQL 窗口，并隐藏其后的有效 attention item。
     //
-    // Fix: SQLite function `is_human_seat_session` evaluates the
-    // exact regex in SQL — malformed rows are rejected BEFORE LIMIT.
-    it("BLOCKER re-verify-3: malformed superset rows ('human-@kernel') do NOT evict valid attention items", async () => {
-      // Seed 1 valid attention item.
+    // 修复：SQLite function `is_human_seat_session` 在 SQL 中计算精确 regex——格式错误的 row
+    // 会在 LIMIT 前被拒绝。
+    it("BLOCKER re-verify-3：格式错误的 superset row（'human-@kernel'）不会挤掉有效 attention item", async () => {
+      // 预置 1 个有效 attention item。
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "advisor@r" },
@@ -1069,10 +1054,9 @@ describe("queue routes", () => {
           body: "valid attention",
         }),
       });
-      // Seed 1100 malformed rows that match LIKE 'human-%@kernel' or
-      // similar but FAIL the strict regex (empty name segment;
-      // forbidden chars). Mix forms to ensure no single LIKE branch
-      // is the leak.
+      // 预置 1100 个匹配 LIKE 'human-%@kernel' 或类似 pattern、但无法通过严格 regex 的
+      // 格式错误 row（name segment 为空、含禁用字符）。混合多种形式，确保没有单一 LIKE
+      // 分支成为泄漏点。
       for (let i = 0; i < 1100; i++) {
         const variant = i % 4;
         const dest = variant === 0
@@ -1094,12 +1078,11 @@ describe("queue routes", () => {
       }
       const res = await app.request("/api/queue/list?attention=1&limit=100");
       const data = (await res.json()) as Array<{ destinationSession: string; body: string }>;
-      // Valid item must surface — it is the ONLY row matching the
-      // strict regex. Malformed rows must NOT appear.
+      // 有效 item 必须呈现——它是唯一匹配严格 regex 的 row。格式错误的 row 不得出现。
       const valid = data.find((q) => q.destinationSession === "human-alice@kernel");
       expect(valid).toBeDefined();
       expect(valid!.body).toBe("valid attention");
-      // No malformed rows in the result set.
+      // 结果集中没有格式错误的 row。
       for (const q of data) {
         expect(q.destinationSession).not.toBe("human-@kernel");
         expect(q.destinationSession).not.toContain(" ");
@@ -1108,13 +1091,11 @@ describe("queue routes", () => {
       }
     });
 
-    // Guard re-verify-3 (qitem-20260518193005) BLOCKER 2: targetRepo
-    // composition was implemented in the previous forward-fix but
-    // never pinned by a test. This discriminator proves
-    // attention=1&targetRepo=X scopes the result + composes with the
-    // attention predicate at the SQL stage (LIMIT applies AFTER).
-    it("BLOCKER re-verify-3: attention=1 + targetRepo=X scopes attention to repo X", async () => {
-      // Seed attention items in different repos.
+    // Guard re-verify-3（qitem-20260518193005）BLOCKER 2：targetRepo composition 已在此前
+    // forward-fix 中实现，但从未由测试固定。此 discriminator 证明 attention=1&targetRepo=X
+    // 会限定结果 scope，并在 SQL 阶段与 attention predicate 组合（LIMIT 随后应用）。
+    it("BLOCKER re-verify-3：attention=1 + targetRepo=X 将 attention 限定到 repo X", async () => {
+      // 在不同 repo 中预置 attention item。
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -1147,8 +1128,8 @@ describe("queue routes", () => {
       }
     });
 
-    it("BLOCKER re-verify-3: targetRepo composition preserves the >1100-routine-open durability guarantee", async () => {
-      // Seed 1 attention item with targetRepo=repo-X.
+    it("BLOCKER re-verify-3：targetRepo composition 保持超过 1100 个 routine-open 时的持久性保证", async () => {
+      // 预置 1 个 targetRepo=repo-X 的 attention item。
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" },
@@ -1161,9 +1142,8 @@ describe("queue routes", () => {
           targetRepo: "repo-X",
         }),
       });
-      // 1100 newer routine open qitems in OTHER repos that would
-      // otherwise dominate the window if the targetRepo predicate
-      // were applied post-LIMIT.
+      // 在其他 repo 中预置 1100 个更新的普通 open qitem；若 targetRepo predicate 在 LIMIT 后
+      // 才应用，它们会占满窗口。
       for (let i = 0; i < 1100; i++) {
         await app.request("/api/queue/create", {
           method: "POST",
@@ -1183,7 +1163,7 @@ describe("queue routes", () => {
       expect(data[0]!.body).toBe("repo-X attention");
     });
 
-    it("BLOCKER-1: attention item surfaces even when >1100 newer routine OPEN qitems exist (SQL predicate pushdown)", async () => {
+    it("BLOCKER-1：即使有超过 1100 个更新的普通 OPEN qitem，attention item 仍会呈现（SQL predicate pushdown）", async () => {
       await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "old@r" },
@@ -1196,10 +1176,8 @@ describe("queue routes", () => {
           evidenceRef: "proof/test-evidence.md",
         }),
       });
-      // 1100 routine OPEN qitems land AFTER the attention item. They
-      // each get a newer ts_created than the attention item; a
-      // fetch-then-filter with LIMIT 1000 would never return the
-      // attention item.
+      // 1100 个普通 OPEN qitem 在 attention item 之后写入，其 ts_created 均更新；
+      // LIMIT 1000 的先 fetch 后 filter 方案永远不会返回该 attention item。
       for (let i = 0; i < 1100; i++) {
         await app.request("/api/queue/create", {
           method: "POST",
@@ -1220,9 +1198,9 @@ describe("queue routes", () => {
     });
   });
 
-  // ---- PL-004 Phase A revision (R1) route tests ----
+  // ---- PL-004 Phase A revision（R1）路由测试 ----
 
-  describe("R1 cross-rig validation rejection", () => {
+  describe("R1 cross-rig 校验拒绝", () => {
     let strictDb: Database.Database;
     let strictBus: EventBus;
     let strictRepo: QueueRepository;
@@ -1233,7 +1211,7 @@ describe("queue routes", () => {
       migrate(strictDb, [
         coreSchema,
         eventsSchema,
-        streamItemsSchema, // 067's stream_items ALTER needs its base table present
+        streamItemsSchema, // 067 的 stream_items ALTER 需要基础 table 已存在
         queueItemsSchema,
         queueTransitionsSchema,
         inboxEntriesSchema,
@@ -1242,7 +1220,7 @@ describe("queue routes", () => {
       ]);
       strictBus = new EventBus(strictDb);
       strictRepo = new QueueRepository(strictDb, strictBus, {
-        // Topology-backed validator stub: only `@known-rig` is recognized.
+        // topology-backed validator stub：仅识别 `@known-rig`。
         validateRig: (s) => /^[^@]+@known-rig$/.test(s),
       });
       const strictInbox = new InboxHandler(strictDb, strictBus, strictRepo);
@@ -1258,7 +1236,7 @@ describe("queue routes", () => {
 
     afterEach(() => strictDb.close());
 
-    it("POST /api/queue/create rejects unknown rig with 400 + structured error", async () => {
+    it("POST /api/queue/create 以 400 + structured error 拒绝未知工作组", async () => {
       const res = await strictApp.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@known-rig" },
@@ -1274,7 +1252,7 @@ describe("queue routes", () => {
       expect(body.message).toMatch(/phantom-rig/);
     });
 
-    it("POST /api/queue/create accepts known rig with 201", async () => {
+    it("POST /api/queue/create 以 201 接受已知工作组", async () => {
       const res = await strictApp.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@known-rig" },
@@ -1287,7 +1265,7 @@ describe("queue routes", () => {
       expect(res.status).toBe(201);
     });
 
-    it("POST /api/queue/:id/handoff rejects unknown destination rig", async () => {
+    it("POST /api/queue/:id/handoff 拒绝未知目标工作组", async () => {
       const created = await strictApp.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@known-rig" },
@@ -1300,7 +1278,7 @@ describe("queue routes", () => {
       const item = (await created.json()) as { qitemId: string };
       const res = await strictApp.request(`/api/queue/${item.qitemId}/handoff`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-OpenRig-Session": "bob@known-rig" }, // P21 I3: handoff actor from the transport header
+        headers: { "Content-Type": "application/json", "X-OpenRig-Session": "bob@known-rig" }, // P21 I3：handoff actor 来自 transport header
         body: JSON.stringify({
           fromSession: "bob@known-rig",
           toSession: "carol@phantom-rig",
@@ -1311,7 +1289,7 @@ describe("queue routes", () => {
       expect(body.error).toBe("unknown_destination_rig");
     });
 
-    it("POST /api/queue/:id/handoff-and-complete rejects unknown destination rig", async () => {
+    it("POST /api/queue/:id/handoff-and-complete 拒绝未知目标工作组", async () => {
       const created = await strictApp.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@known-rig" },
@@ -1324,7 +1302,7 @@ describe("queue routes", () => {
       const item = (await created.json()) as { qitemId: string };
       const res = await strictApp.request(`/api/queue/${item.qitemId}/handoff-and-complete`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-OpenRig-Session": "bob@known-rig" }, // P21 I3: handoff actor from the transport header
+        headers: { "Content-Type": "application/json", "X-OpenRig-Session": "bob@known-rig" }, // P21 I3：handoff actor 来自 transport header
         body: JSON.stringify({
           fromSession: "bob@known-rig",
           toSession: "carol@phantom-rig",
@@ -1336,8 +1314,8 @@ describe("queue routes", () => {
     });
   });
 
-  describe("R1 handoff-and-complete route", () => {
-    it("POST /api/queue/:id/handoff-and-complete closes source as done + creates new", async () => {
+  describe("R1 handoff-and-complete 路由", () => {
+    it("POST /api/queue/:id/handoff-and-complete 将 source 关闭为 done 并创建新项", async () => {
       const created = await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@r" },
@@ -1346,7 +1324,7 @@ describe("queue routes", () => {
       const item = (await created.json()) as { qitemId: string };
       const res = await app.request(`/api/queue/${item.qitemId}/handoff-and-complete`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-OpenRig-Session": "bob@r" }, // P21 I3: handoff actor from the transport header
+        headers: { "Content-Type": "application/json", "X-OpenRig-Session": "bob@r" }, // P21 I3：handoff actor 来自 transport header
         body: JSON.stringify({
           fromSession: "bob@r",
           toSession: "carol@r",
@@ -1366,7 +1344,7 @@ describe("queue routes", () => {
       expect(result.created.body).toBe("carol's piece");
     });
 
-    it("POST /api/queue/:id/handoff-and-complete returns 400 on missing toSession (fromSession is header-derived; missing-sender is the 401 path)", async () => {
+    it("POST /api/queue/:id/handoff-and-complete 缺少 toSession 时返回 400（fromSession 从 header 派生；缺失 sender 才走 401）", async () => {
       const res = await app.request("/api/queue/some-id/handoff-and-complete", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "bob@r" },
@@ -1378,9 +1356,9 @@ describe("queue routes", () => {
     });
   });
 
-  describe("R1 whoami route", () => {
-    it("GET /api/queue/whoami returns counts + recent for the session", async () => {
-      // Seed: 2 pending + 1 in-progress for bob; 1 unrelated for carol.
+  describe("R1 whoami 路由", () => {
+    it("GET /api/queue/whoami 返回 session 的 counts + recent", async () => {
+      // 预置：bob 有 2 个 pending + 1 个 in-progress；carol 有 1 个无关项。
       const a = await app.request("/api/queue/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-OpenRig-Session": "alice@r" },
@@ -1399,7 +1377,7 @@ describe("queue routes", () => {
       });
       await app.request(`/api/queue/${itemA.qitemId}/claim`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-OpenRig-Session": "bob@r" }, // P21 I3: claimant from the transport header
+        headers: { "Content-Type": "application/json", "X-OpenRig-Session": "bob@r" }, // P21 I3：claimant 来自 transport header
         body: JSON.stringify({ destinationSession: "bob@r" }),
       });
 
@@ -1417,21 +1395,19 @@ describe("queue routes", () => {
       expect(body.asSource.total).toBe(0);
     });
 
-    it("GET /api/queue/whoami returns 400 without session query param", async () => {
+    it("GET /api/queue/whoami 缺少 session query param 时返回 400", async () => {
       const res = await app.request("/api/queue/whoami");
       expect(res.status).toBe(400);
     });
   });
 
-  describe("R1 SSE route — live GET reaches the SSE handler (not shadowed by /:qitemId)", () => {
-    // Live GET tests per QA finding: HEAD comparison was inadequate because
-    // dynamic route shadowing (/:qitemId catching `sse` and `watch` as ids)
-    // returns 404 with `qitem_not_found` instead of the SSE handler.
-    // Real GET that asserts content-type: text/event-stream proves the
-    // SSE handler is reached. We cancel the response body to release the
-    // long-lived stream.
+  describe("R1 SSE 路由——live GET 会抵达 SSE handler（不被 /:qitemId 遮蔽）", () => {
+    // 根据 QA finding 执行 live GET 测试：HEAD comparison 不充分，因为 dynamic route shadowing
+    //（/:qitemId 将 `sse` 与 `watch` 捕获为 id）会返回带 `qitem_not_found` 的 404，而非进入 SSE
+    // handler。真实 GET 断言 content-type: text/event-stream，可证明已抵达 SSE handler。
+    // 随后取消 response body，以释放长连接 stream。
 
-    it("GET /api/queue/sse returns 200 + content-type: text/event-stream (handler reached)", async () => {
+    it("GET /api/queue/sse 返回 200 + content-type: text/event-stream（已抵达 handler）", async () => {
       const res = await app.request("/api/queue/sse");
       try {
         expect(res.status).toBe(200);
@@ -1441,7 +1417,7 @@ describe("queue routes", () => {
       }
     });
 
-    it("GET /api/queue/watch returns 200 + content-type: text/event-stream (handler reached)", async () => {
+    it("GET /api/queue/watch 返回 200 + content-type: text/event-stream（已抵达 handler）", async () => {
       const res = await app.request("/api/queue/watch");
       try {
         expect(res.status).toBe(200);
@@ -1451,11 +1427,11 @@ describe("queue routes", () => {
       }
     });
 
-    it("GET /api/queue/sse does NOT return qitem_not_found (route-order regression guard)", async () => {
+    it("GET /api/queue/sse 不返回 qitem_not_found（route-order 回归 guard）", async () => {
       const res = await app.request("/api/queue/sse");
       try {
-        // If /:qitemId catches `sse` as an id, it returns 404 JSON with
-        // {"error":"qitem_not_found"}. This must never happen.
+        // 若 /:qitemId 将 `sse` 捕获为 id，会返回带 {"error":"qitem_not_found"} 的 404 JSON。
+        // 绝不能发生这种情况。
         expect(res.status).not.toBe(404);
         const ct = res.headers.get("content-type") ?? "";
         expect(ct).not.toContain("application/json");

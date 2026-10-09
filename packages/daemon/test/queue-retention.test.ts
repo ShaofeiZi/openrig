@@ -9,10 +9,9 @@ import {
   type RetentionOptions,
 } from "../src/domain/queue-retention.js";
 
-// OPR.0.4.6.FS-1 W2 — queue-retention unit tests. HAND-BUILT minimal schema:
-// only the columns the retention functions touch, NO FKs — an isolated unit test
-// of the retention LOGIC. Table/column names mirror migrations 024/025/054/034/032.
-// The full-schema byte-identity + real-incident-data behavior is the W3 VM proof.
+// OPR.0.4.6.FS-1 W2——queue-retention 单元测试。手工构建最小 schema：只包含保留函数
+// 会访问的列，不设外键，以隔离测试保留逻辑。表名和列名对应迁移 024/025/054/034/032。
+// 完整 schema 的字节一致性和真实事件数据行为由 W3 VM 证明。
 function makeDb(): Database.Database {
   const db = new Database(":memory:");
   db.exec(`
@@ -37,8 +36,8 @@ function makeDb(): Database.Database {
       history_id TEXT PRIMARY KEY, job_id TEXT NOT NULL, evaluated_at TEXT NOT NULL
     );
   `);
-  // 51-08 A2: the sweep now drains a usage_samples pass — the fixture installs
-  // the REAL migration (the module contract is "runs post-migration").
+  // 51-08 A2：扫描现在会排空 usage_samples 处理；fixture 安装真实迁移
+  //（模块契约是“迁移后运行”）。
   db.exec(usageSamplesSchema.sql);
   return db;
 }
@@ -60,7 +59,7 @@ const RECENT = "2026-07-07T00:00:00.000Z"; // < 30d before NOW (fresh)
 const opts = (over: Partial<RetentionOptions> = {}): RetentionOptions => ({ nowIso: NOW, ...over });
 
 describe("queue-retention — archiveAgedTerminalTransitions", () => {
-  it("archives a terminal qitem whose LAST transition is older than the window (move, not delete)", () => {
+  it("归档最后一次转换早于窗口的终态 qitem（移动而非删除）", () => {
     const db = makeDb();
     seedQitem(db, "q-done-old", "done", [OLD, OLD]);
     const r = archiveAgedTerminalTransitions(db, opts());
@@ -68,7 +67,7 @@ describe("queue-retention — archiveAgedTerminalTransitions", () => {
     expect(r.archivedRows).toBe(2);
     expect(count(db, "SELECT COUNT(*) c FROM queue_transitions WHERE qitem_id=?", "q-done-old")).toBe(0);
     expect(count(db, "SELECT COUNT(*) c FROM queue_transitions_archive WHERE qitem_id=?", "q-done-old")).toBe(2);
-    // provenance: archived_at stamped with nowIso; original ts preserved (moved, not rewritten).
+    // 出处：archived_at 写入 nowIso，原始时间戳保留（移动而非重写）。
     const row = db
       .prepare("SELECT archived_at, ts FROM queue_transitions_archive WHERE qitem_id=? LIMIT 1")
       .get("q-done-old") as { archived_at: string; ts: string };
@@ -76,45 +75,45 @@ describe("queue-retention — archiveAgedTerminalTransitions", () => {
     expect(row.ts).toBe(OLD);
   });
 
-  it("does NOT archive a terminal qitem whose last transition is WITHIN the window", () => {
+  it("不归档最后一次转换仍在窗口内的终态 qitem", () => {
     const db = makeDb();
     seedQitem(db, "q-done-recent", "done", [OLD, RECENT]); // MAX(ts)=RECENT → not aged
     expect(archiveAgedTerminalTransitions(db, opts()).archivedQitems).toBe(0);
     expect(count(db, "SELECT COUNT(*) c FROM queue_transitions WHERE qitem_id=?", "q-done-recent")).toBe(2);
   });
 
-  it("ACTIVE-FRONTIER INVARIANT: never archives a NON-terminal qitem, at any age", () => {
+  it("活动 frontier 不变量：无论多旧都绝不归档非终态 qitem", () => {
     const db = makeDb();
     seedQitem(db, "q-inprogress-old", "in-progress", [OLD, OLD]);
     expect(archiveAgedTerminalTransitions(db, opts()).archivedQitems).toBe(0);
     expect(count(db, "SELECT COUNT(*) c FROM queue_transitions WHERE qitem_id=?", "q-inprogress-old")).toBe(2);
   });
 
-  it("archives `handed-off` too (the FULL terminal set, arch D3-REFINEMENT — not done-only)", () => {
+  it("也归档 handed-off（完整终态集合，架构 D3 细化——不只 done）", () => {
     const db = makeDb();
     seedQitem(db, "q-handed", "handed-off", [OLD]);
     expect(archiveAgedTerminalTransitions(db, opts()).archivedQitems).toBe(1);
     expect([...DEFAULT_TERMINAL_STATES]).toEqual(["done", "handed-off"]);
   });
 
-  // P2 — THE NAMED VACUOUS-TODAY FRONTIER-LIVENESS TEST (arch P2 pin).
-  it("P2 frontier-liveness (vacuous today): a terminal+aged qitem referenced by a LIVE workflow frontier is NOT archived; once the instance is terminal it archives", () => {
+  // P2——具名的当前空真 frontier 存活性测试（架构 P2 固定）。
+  it("P2 frontier 存活性（当前为空真）：活动工作流 frontier 引用的终态旧 qitem 不归档；实例终态后再归档", () => {
     const db = makeDb();
     seedQitem(db, "q-frontier", "done", [OLD]);
-    // A LIVE (active) workflow instance references q-frontier in its frontier.
+    // 活动工作流实例在其 frontier 中引用 q-frontier。
     db.prepare(
       "INSERT INTO workflow_instances (instance_id, workflow_name, status, current_frontier_json) VALUES (?, ?, ?, ?)",
     ).run("wi-1", "wf", "active", JSON.stringify(["q-frontier"]));
-    // Guarded: the NOT EXISTS excludes it while the instance is live.
+    // 已守卫：实例存活时，NOT EXISTS 会排除它。
     expect(archiveAgedTerminalTransitions(db, opts()).archivedQitems).toBe(0);
     expect(count(db, "SELECT COUNT(*) c FROM queue_transitions WHERE qitem_id=?", "q-frontier")).toBe(1);
-    // Flip the instance terminal (completed) + empty frontier → no longer live → archives.
+    // 将实例切为终态 completed 且 frontier 为空，即不再存活，随后归档。
     db.prepare("UPDATE workflow_instances SET status='completed', current_frontier_json='[]' WHERE instance_id=?").run("wi-1");
     expect(archiveAgedTerminalTransitions(db, opts()).archivedQitems).toBe(1);
     expect(count(db, "SELECT COUNT(*) c FROM queue_transitions WHERE qitem_id=?", "q-frontier")).toBe(0);
   });
 
-  it("bounded batch: honors batchSize (returns only up to batchSize qitems per call)", () => {
+  it("有界批次：遵守 batchSize（每次最多返回 batchSize 个 qitem）", () => {
     const db = makeDb();
     for (let i = 0; i < 5; i++) seedQitem(db, `q${i}`, "done", [OLD]);
     const r = archiveAgedTerminalTransitions(db, opts({ batchSize: 2 }));
@@ -127,7 +126,7 @@ describe("queue-retention — pruneWatchdogHistory", () => {
   const insHist = (db: Database.Database) =>
     db.prepare("INSERT INTO watchdog_history (history_id, job_id, evaluated_at) VALUES (?, ?, ?)");
 
-  it("deletes rows older than the window that are BEYOND keep-K per job, keeps the recent-K", () => {
+  it("删除早于窗口且超出每个 job 保留 K 条限制的记录，并保留最近 K 条", () => {
     const db = makeDb();
     const ins = insHist(db);
     ins.run("a1", "jobA", "2026-01-01T00:00:00.000Z");
@@ -139,7 +138,7 @@ describe("queue-retention — pruneWatchdogHistory", () => {
     expect(remaining).toEqual(["a2", "a3"]);
   });
 
-  it("keeps a recent-K row even when it is older than the window (keep-per-job wins)", () => {
+  it("即使早于窗口也保留最近 K 条记录（每 job 保留策略优先）", () => {
     const db = makeDb();
     insHist(db).run("b1", "jobB", "2026-01-01T00:00:00.000Z");
     expect(pruneWatchdogHistory(db, opts({ watchdogKeepPerJob: 50 })).deletedRows).toBe(0);
@@ -147,7 +146,7 @@ describe("queue-retention — pruneWatchdogHistory", () => {
 });
 
 describe("queue-retention — runQueueRetentionSweep", () => {
-  it("drains both passes in bounded batches and reports a summary", async () => {
+  it("以有界批次排空两轮处理并报告摘要", async () => {
     const db = makeDb();
     seedQitem(db, "q1", "done", [OLD]);
     seedQitem(db, "q2", "handed-off", [OLD]);
@@ -159,11 +158,10 @@ describe("queue-retention — runQueueRetentionSweep", () => {
   });
 });
 
-// ── 51-08 A2 (plan-lock rev-1, PM decision 2: 14d rollover-then-delete, tunable) ──
-// usage_samples is TELEMETRY (the watchdog_history contract — plain bounded
-// DELETE, no audit archive). A seat idle past the window loses its rows and the
-// query surfaces render honest-unknown — never a fabricated last value.
-// RED-first: written before pruneUsageSamples existed.
+// ——51-08 A2（计划锁定 rev-1，产品决策 2：14 天滚动后删除，可调）——
+// usage_samples 是遥测数据（遵循 watchdog_history 契约：普通有界 DELETE，无审计归档）。
+// 席位空闲超过窗口后会丢弃记录，查询表面如实显示 unknown，绝不伪造最后一个值。
+// 红灯优先：在 pruneUsageSamples 存在前编写。
 import { pruneUsageSamples, RETENTION_DEFAULTS } from "../src/domain/queue-retention.js";
 
 function makeUsageDb(): Database.Database {
@@ -182,11 +180,11 @@ describe("51-08 A2 — pruneUsageSamples", () => {
   const count = (db: Database.Database) =>
     (db.prepare("SELECT COUNT(*) AS n FROM usage_samples").get() as { n: number }).n;
 
-  it("default is the PM-ruled 14 days", () => {
+  it("默认值为产品裁决的 14 天", () => {
     expect(RETENTION_DEFAULTS.usageSamplesRetentionDays).toBe(14);
   });
 
-  it("BOUNDARY TWINS (absolute): just-outside deleted, exact-cutoff and just-inside survive", () => {
+  it("绝对边界双例：刚超出边界的记录删除，恰好在截止点和刚进入边界的记录保留", () => {
     const db = makeUsageDb();
     seedSample(db, "a@r", "2026-08-06T23:59:59.999Z"); // just outside → deleted
     seedSample(db, "b@r", "2026-08-07T00:00:00.000Z"); // exact cutoff → survives (< semantics)
@@ -198,14 +196,14 @@ describe("51-08 A2 — pruneUsageSamples", () => {
     expect(seats).toEqual(["b@r", "c@r"]);
   });
 
-  it("retention window is tunable: usageSamplesRetentionDays overrides the default", () => {
+  it("保留窗口可调：usageSamplesRetentionDays 覆盖默认值", () => {
     const db = makeUsageDb();
     seedSample(db, "a@r", "2026-08-19T00:00:00.000Z"); // 2d old
     expect(pruneUsageSamples(db, { nowIso: NOW, usageSamplesRetentionDays: 1 }).deletedRows).toBe(1);
     expect(count(db)).toBe(0);
   });
 
-  it("bounded batches: a batch returns at most batchSize deletions; the loop terminates on the served empty batch", () => {
+  it("有界批次：每批最多返回 batchSize 个删除项；处理到空批次时终止循环", () => {
     const db = makeUsageDb();
     for (let i = 0; i < 7; i += 1) seedSample(db, `s${i}@r`, "2026-01-01T00:00:00.000Z");
     expect(pruneUsageSamples(db, { nowIso: NOW, batchSize: 3 }).deletedRows).toBe(3);
@@ -214,7 +212,7 @@ describe("51-08 A2 — pruneUsageSamples", () => {
     expect(pruneUsageSamples(db, { nowIso: NOW, batchSize: 3 }).deletedRows).toBe(0);
   });
 
-  it("the sweep entry point drains the usage pass beside the queue passes", async () => {
+  it("扫描入口在队列处理之外同时排空 usage 处理", async () => {
     const db = makeUsageDb();
     for (let i = 0; i < 5; i += 1) seedSample(db, `s${i}@r`, "2026-01-01T00:00:00.000Z");
     seedSample(db, "fresh@r", "2026-08-20T00:00:00.000Z");

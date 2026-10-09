@@ -1,8 +1,8 @@
-// OPR.0.4.1.11.1 (FR-3 + For-You) — EventSource stub. The static twin does not hold a live
-// SSE connection, but the For-You feed + topology activity are SSE-DRIVEN (useActivityFeed /
-// useGlobalEvents subscribe to /api/events), not cache-seed. So this stub: (a) for any other
-// stream, is an inert no-op; (b) for /api/events, EMITS a fixed set of seeded activity events
-// once, so the feed renders cards 1:1. Installed before any SSE-touching module imports.
+// OPR.0.4.1.11.1（FR-3 + For-You）——EventSource 桩。静态 twin 不持有实时 SSE 连接，
+// 但 For-You  feed 与拓扑活动是 SSE 驱动的（useActivityFeed / useGlobalEvents 订阅
+// /api/events），而非缓存种子。因此本桩：(a) 对任何其他流，是惰性空操作；(b) 对
+// /api/events，一次性发出固定的一组种子活动事件，使 feed 按 1:1 渲染卡片。
+// 在任何触碰 SSE 的模块导入前安装。
 
 import { feedEvents } from "./fixtures.js";
 
@@ -27,8 +27,8 @@ class TwinEventSource {
 
   constructor(url: string | URL) {
     this.url = String(url);
-    // Async (setTimeout 0) so the subscriber's addEventListener calls — which run
-    // synchronously right after `new EventSource(...)` — are registered before we emit.
+    // 异步（setTimeout 0），使订阅者的 addEventListener 调用——它们在
+    // `new EventSource(...)` 后同步立即执行——在我们发出事件之前先注册。
     if (this.url.includes("/api/events")) {
       setTimeout(() => this.emitSeeded(), 0);
     }

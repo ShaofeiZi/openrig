@@ -10,7 +10,7 @@ import { WorkflowHeader, WorkflowSection, WorkflowStepIndicator } from "./Workfl
 
 type Step = "enter" | "planning" | "planned" | "applying" | "done" | "error";
 
-const STEP_LABELS = ["ENTER", "PLAN", "REVIEW", "APPLY"] as const;
+const STEP_LABELS = ["输入", "规划", "审阅", "执行"] as const;
 const STEPS = STEP_LABELS.map((label, index) => ({ num: index + 1, label }));
 
 function currentStepNumber(step: Step): number {
@@ -47,7 +47,7 @@ export function BootstrapWizard() {
     try {
       const result = await planMutation.mutateAsync({ sourceRef: sourceRef.trim() });
       setPlanResult(result);
-      // Auto-select all action keys
+      // 自动选中全部操作键
       setSelectedKeys(new Set(result.actionKeys ?? []));
       setStep("planned");
     } catch (err) {
@@ -83,12 +83,12 @@ export function BootstrapWizard() {
     applyMutation.reset();
   };
 
-  // Extract requirements from plan result
+  // 从规划结果提取需求
   const reqStage = planResult?.stages.find((s) => s.stage === "probe_requirements");
   const reqDetail = reqStage?.detail as { results?: RequirementResult[] } | undefined;
   const requirements = reqDetail?.results ?? [];
 
-  // Extract install plan from plan result
+  // 从规划结果提取安装计划
   const planStage = planResult?.stages.find((s) => s.stage === "build_install_plan");
   const planDetail = planStage?.detail as {
     actions?: Array<{ key: string; requirementName: string; classification: string; commandPreview: string | null }>;
@@ -102,30 +102,30 @@ export function BootstrapWizard() {
     <WorkspacePage>
       <div data-testid="bootstrap-wizard" className="space-y-8">
       <WorkflowHeader
-        eyebrow="Bootstrap"
-        title="Bootstrap"
-        description="Plan environment requirements, approve install actions, then import the rig into a running topology."
+        eyebrow="引导"
+        title="引导"
+        description="规划环境需求，批准安装操作，然后将工作组导入运行中的拓扑。"
       />
       <WorkflowStepIndicator data-testid="step-indicator" steps={STEPS} currentStep={currentStepNumber(step)} />
 
-      {/* Step 1: Enter */}
+      {/* 步骤 1：输入 */}
       {step === "enter" && (
         <WorkflowSection
-          title="Source"
-          description="Provide a rig spec or bundle path. Bootstrap will inspect requirements before it imports anything."
+          title="来源"
+          description="提供工作组规格或包路径。引导会在导入前检查需求。"
         >
         <div data-testid="step-enter">
-          <label className="text-label-md uppercase block mb-spacing-2">SPEC OR BUNDLE PATH</label>
+          <label className="text-label-md uppercase block mb-spacing-2">规格或包路径</label>
           <Input
             data-testid="spec-input"
             type="text"
             value={sourceRef}
             onChange={(e) => setSourceRef(e.target.value)}
-            placeholder="/path/to/rig.yaml or /path/to/bundle.rigbundle"
+            placeholder="/path/to/rig.yaml 或 /path/to/bundle.rigbundle"
             className="font-mono text-body-md"
           />
           <p className="text-label-sm text-foreground-muted mt-spacing-1">
-            Accepts .yaml rig specs or .rigbundle archives.{" "}
+            支持 .yaml 工作组规格或 .rigbundle 归档。{" "}
             <span
               role="link"
               tabIndex={0}
@@ -134,34 +134,34 @@ export function BootstrapWizard() {
               onClick={() => navigate({ to: "/bundles/inspect" })}
               onKeyDown={(e) => { if (e.key === "Enter") navigate({ to: "/bundles/inspect" }); }}
             >
-              Inspect a bundle first →
+              先检查包 →
             </span>
           </p>
           <div className="mt-spacing-4">
             <Button variant="tactical" onClick={handlePlan} disabled={!sourceRef.trim()} data-testid="plan-btn">
-              PLAN
+              规划
             </Button>
           </div>
         </div>
         </WorkflowSection>
       )}
 
-      {/* Step 2: Planning */}
+      {/* 步骤 2：规划中 */}
       {step === "planning" && (
         <div data-testid="step-planning" className="text-body-md text-foreground-muted">
-          Planning...
+          正在规划…
         </div>
       )}
 
-      {/* Step 3: Planned / Review */}
+      {/* 步骤 3：已规划 / 审阅 */}
       {step === "planned" && planResult && (
         <WorkflowSection
-          title="Plan Review"
-          description="Review requirement probe results and approve the install actions that bootstrap should execute."
+          title="计划审阅"
+          description="审阅需求探测结果，并批准引导应执行的安装操作。"
         >
         <div data-testid="step-planned">
-          {/* Stages */}
-          <h3 className="text-headline-md uppercase mb-spacing-3">STAGES</h3>
+          {/* 阶段 */}
+          <h3 className="text-headline-md uppercase mb-spacing-3">阶段</h3>
           <div className="space-y-spacing-1 mb-spacing-6" data-testid="stage-list">
             {planResult.stages.map((s) => (
               <div key={s.stage} className="flex items-center gap-spacing-3 text-label-sm font-mono" data-testid="stage-row">
@@ -173,20 +173,20 @@ export function BootstrapWizard() {
             ))}
           </div>
 
-          {/* Requirements */}
+          {/* 需求 */}
           {requirements.length > 0 && (
             <>
-              <h3 className="text-headline-md uppercase mb-spacing-3">REQUIREMENTS</h3>
+              <h3 className="text-headline-md uppercase mb-spacing-3">需求</h3>
               <div className="mb-spacing-6">
                 <RequirementsPanel results={requirements} />
               </div>
             </>
           )}
 
-          {/* Actions */}
+          {/* 操作 */}
           {actions.length > 0 && (
             <>
-              <h3 className="text-headline-md uppercase mb-spacing-3">ACTIONS</h3>
+              <h3 className="text-headline-md uppercase mb-spacing-3">操作</h3>
               <div className="space-y-spacing-1 mb-spacing-4">
                 {actions.map((a) => (
                   <label key={a.key} className="flex items-center gap-spacing-3 text-label-sm font-mono cursor-pointer">
@@ -208,19 +208,19 @@ export function BootstrapWizard() {
               </div>
               <label className="flex items-center gap-spacing-2 text-label-sm mb-spacing-4">
                 <input type="checkbox" checked={autoApprove} onChange={(e) => setAutoApprove(e.target.checked)} />
-                Auto-approve all trusted actions
+                自动批准全部受信任操作
               </label>
             </>
           )}
 
-          {/* Blocked warning */}
+          {/* 阻断警告 */}
           {isPlanBlocked && (
             <div className="text-warning text-label-sm mb-spacing-4" data-testid="blocked-warning">
-              Manual requirements must be resolved before bootstrap can proceed.
+              必须先解决手动需求，引导才能继续。
             </div>
           )}
 
-          {/* Warnings */}
+          {/* 警告 */}
           {planResult.warnings.length > 0 && (
             <div className="mb-spacing-4">
               {planResult.warnings.map((w, i) => (
@@ -233,23 +233,23 @@ export function BootstrapWizard() {
             variant="tactical"
             onClick={handleApply}
             disabled={isPlanBlocked || noneSelected}
-            title={isPlanBlocked ? "Manual requirements must be resolved" : noneSelected ? "Select actions to approve" : undefined}
+            title={isPlanBlocked ? "必须先解决手动需求" : noneSelected ? "选择要批准的操作" : undefined}
             data-testid="apply-btn"
           >
-            APPLY
+            执行
           </Button>
         </div>
         </WorkflowSection>
       )}
 
-      {/* Step 4: Applying — show stage checklist from plan */}
+      {/* 步骤 4：执行中 —— 显示计划中的阶段清单 */}
       {step === "applying" && planResult && (
         <WorkflowSection
-          title="Applying"
-          description="Bootstrap is executing the approved actions and importing the rig."
+          title="执行中"
+          description="引导正在执行已批准的操作并导入工作组。"
         >
         <div data-testid="step-applying">
-          <h3 className="text-headline-md uppercase mb-spacing-3">APPLYING</h3>
+          <h3 className="text-headline-md uppercase mb-spacing-3">执行中</h3>
           <div className="space-y-spacing-1 mb-spacing-4" data-testid="applying-checklist">
             {planResult.stages.map((s) => (
               <div key={s.stage} className="flex items-center gap-spacing-3 text-label-sm font-mono">
@@ -270,25 +270,25 @@ export function BootstrapWizard() {
               <span>import_rig</span>
             </div>
           </div>
-          <p className="text-body-sm text-foreground-muted">Bootstrapping...</p>
+          <p className="text-body-sm text-foreground-muted">正在引导…</p>
         </div>
         </WorkflowSection>
       )}
 
-      {/* Step 5: Done */}
+      {/* 步骤 5：完成 */}
       {step === "done" && planResult && (
         <WorkflowSection
-          title="Result"
-          description="Bootstrap finished and returned the managed rig identity."
+          title="结果"
+          description="引导完成并返回受管工作组身份。"
         >
         <div data-testid="step-done">
           <h3 className="text-headline-md uppercase mb-spacing-3">
-            {planResult.status === "completed" ? "BOOTSTRAP COMPLETE" : "BOOTSTRAP PARTIAL"}
+            {planResult.status === "completed" ? "引导完成" : "引导部分完成"}
           </h3>
           <div className="text-label-sm font-mono space-y-spacing-1 mb-spacing-4">
-            <div>Status: <span className={planResult.status === "completed" ? "text-success" : "text-warning"}>{planResult.status.toUpperCase()}</span></div>
+            <div>状态：<span className={planResult.status === "completed" ? "text-success" : "text-warning"}>{planResult.status.toUpperCase()}</span></div>
             {(planResult as { rigId?: string }).rigId && (
-              <div data-testid="result-rig-id">Rig: {(planResult as { rigId?: string }).rigId}</div>
+              <div data-testid="result-rig-id">工作组：{(planResult as { rigId?: string }).rigId}</div>
             )}
           </div>
           {(planResult as { rigId?: string }).rigId && (
@@ -297,23 +297,23 @@ export function BootstrapWizard() {
               data-testid="view-rig-btn"
               onClick={() => navigate({ to: "/rigs/$rigId", params: { rigId: (planResult as unknown as { rigId: string }).rigId } })}
             >
-              VIEW RIG
+              查看工作组
             </Button>
           )}
         </div>
         </WorkflowSection>
       )}
 
-      {/* Error */}
+      {/* 错误 */}
       {step === "error" && (
         <WorkflowSection
-          title="Bootstrap Error"
-          description="Bootstrap could not complete. Fix the issue and retry the plan."
+          title="引导错误"
+          description="引导无法完成。修复问题后重试计划。"
         >
         <div data-testid="step-error">
           <p className="text-destructive text-body-md mb-spacing-4">{errorMessage}</p>
           <Button variant="tactical" onClick={handleReset} data-testid="try-again-btn">
-            TRY AGAIN
+            重试
           </Button>
         </div>
         </WorkflowSection>

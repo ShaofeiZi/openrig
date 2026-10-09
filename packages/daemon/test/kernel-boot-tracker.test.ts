@@ -1,10 +1,8 @@
-// V0.3.1 slice 05 kernel-rig-as-default — forward-fix #3 architectural.
+// V0.3.1 分片 05 kernel-rig-as-default——前向修复 #3（架构）。
 //
-// KernelBootTracker unit tests. Tracker is the observable state surface
-// for the background kernel-boot; getStatus() projects from the tracker's
-// own state machine + the sessions table for agents[]. The bootstrap
-// promise is fire-and-forget; tests synthesize promises directly so the
-// orchestration aspects (probe / variant pick) are out of scope here.
+// KernelBootTracker 单元测试。追踪器是后台 kernel 启动的可观察状态接口；getStatus() 从追踪器
+// 自身状态机与 sessions 表投影 agents[]。bootstrap Promise 触发后即不等待；测试直接构造
+// Promise，因此编排部分（探测 / 变体选择）不在此处范围内。
 
 import { describe, expect, it, vi } from "vitest";
 import { KernelBootTracker } from "../src/domain/kernel-boot-tracker.js";
@@ -42,8 +40,8 @@ async function flush(): Promise<void> {
   await new Promise<void>((r) => setImmediate(r));
 }
 
-describe("KernelBootTracker — initial state", () => {
-  it("defaults to skipped with empty agents until set otherwise", () => {
+describe("KernelBootTracker——初始状态", () => {
+  it("设置其他状态前，默认为 skipped 且 agents 为空", () => {
     const tracker = new KernelBootTracker({
       eventBus: makeEventBus().bus,
       sessionRegistry: makeSessionRegistry({}),
@@ -57,7 +55,7 @@ describe("KernelBootTracker — initial state", () => {
     tracker.stop();
   });
 
-  it("setSkipped records the reason in detail", () => {
+  it("setSkipped 将原因记录到 detail", () => {
     const tracker = new KernelBootTracker({
       eventBus: makeEventBus().bus,
       sessionRegistry: makeSessionRegistry({}),
@@ -69,7 +67,7 @@ describe("KernelBootTracker — initial state", () => {
     expect(status.detail).toBe("OPENRIG_NO_KERNEL=1");
   });
 
-  it("setAuthBlocked / setSpecMissing transition to the matching state with detail", () => {
+  it("setAuthBlocked / setSpecMissing 转换到对应状态并记录 detail", () => {
     const tracker = new KernelBootTracker({
       eventBus: makeEventBus().bus,
       sessionRegistry: makeSessionRegistry({}),
@@ -85,8 +83,8 @@ describe("KernelBootTracker — initial state", () => {
   });
 });
 
-describe("KernelBootTracker — agent readiness aggregation", () => {
-  it("getStatus aggregates ready when every kernel agent reaches startup_status=ready", async () => {
+describe("KernelBootTracker——agent 就绪状态聚合", () => {
+  it("每个 kernel agent 都达到 startup_status=ready 时，getStatus 聚合为 ready", async () => {
     const rigId = "rig-kernel-1";
     const tracker = new KernelBootTracker({
       eventBus: makeEventBus().bus,
@@ -111,7 +109,7 @@ describe("KernelBootTracker — agent readiness aggregation", () => {
     tracker.stop();
   });
 
-  it("getStatus aggregates partial_ready when some agents are ready and others are pending", async () => {
+  it("部分 agent 就绪、其他仍 pending 时，getStatus 聚合为 partial_ready", async () => {
     const rigId = "rig-kernel-2";
     const tracker = new KernelBootTracker({
       eventBus: makeEventBus().bus,
@@ -132,7 +130,7 @@ describe("KernelBootTracker — agent readiness aggregation", () => {
     tracker.stop();
   });
 
-  it("getStatus stays booting while ALL agents are pending after bootstrap completes", async () => {
+  it("bootstrap 完成后所有 agent 均 pending 时，getStatus 保持 booting", async () => {
     const rigId = "rig-kernel-3";
     const tracker = new KernelBootTracker({
       eventBus: makeEventBus().bus,
@@ -152,7 +150,7 @@ describe("KernelBootTracker — agent readiness aggregation", () => {
     tracker.stop();
   });
 
-  it("propagates startup_status from sessions table into agents[]", async () => {
+  it("将 sessions 表的 startup_status 传入 agents[]", async () => {
     const rigId = "rig-kernel-4";
     const tracker = new KernelBootTracker({
       eventBus: makeEventBus().bus,
@@ -177,8 +175,8 @@ describe("KernelBootTracker — agent readiness aggregation", () => {
   });
 });
 
-describe("KernelBootTracker — bootstrap result transitions", () => {
-  it("onBootstrapComplete with errors transitions to bootstrap_failed", async () => {
+describe("KernelBootTracker——bootstrap 结果转换", () => {
+  it("onBootstrapComplete 收到错误时转换为 bootstrap_failed", async () => {
     const tracker = new KernelBootTracker({
       eventBus: makeEventBus().bus,
       sessionRegistry: makeSessionRegistry({}),
@@ -195,7 +193,7 @@ describe("KernelBootTracker — bootstrap result transitions", () => {
     tracker.stop();
   });
 
-  it("onBootstrapError (promise rejection) transitions to bootstrap_failed with thrown message", async () => {
+  it("onBootstrapError（Promise 拒绝）携带抛出消息转换为 bootstrap_failed", async () => {
     const tracker = new KernelBootTracker({
       eventBus: makeEventBus().bus,
       sessionRegistry: makeSessionRegistry({}),
@@ -211,8 +209,8 @@ describe("KernelBootTracker — bootstrap result transitions", () => {
   });
 });
 
-describe("KernelBootTracker — degraded timer telemetry", () => {
-  it("emits kernel.agent.degraded exactly once when boot stays unready past the timer", async () => {
+describe("KernelBootTracker——降级计时器遥测", () => {
+  it("启动超过计时器仍未就绪时仅发出一次 kernel.agent.degraded", async () => {
     const { bus, emitted } = makeEventBus();
     const tracker = new KernelBootTracker({
       eventBus: bus,
@@ -220,7 +218,7 @@ describe("KernelBootTracker — degraded timer telemetry", () => {
       rigRepo: makeRigRepo([]),
       degradedTimeoutMs: 10,
     });
-    // Promise that never resolves keeps tracker in booting state past the timer
+    // 永不解决的 Promise 使追踪器在计时器到期后仍处于 booting。
     const blocked = new Promise<never>(() => {});
     tracker.startBooting("rig.yaml", blocked as never);
     expect(tracker.getStatus().kernelState).toBe("booting");
@@ -230,13 +228,13 @@ describe("KernelBootTracker — degraded timer telemetry", () => {
     expect(degraded).toHaveLength(1);
     expect(tracker.getStatus().kernelState).toBe("degraded");
 
-    // Subsequent reads should not re-emit even if checkDegraded ran again
+    // 即使 checkDegraded 再次运行，后续读取也不应重复发出。
     await new Promise((r) => setTimeout(r, 30));
     expect(emitted.filter((e) => e.type === "kernel.agent.degraded")).toHaveLength(1);
     tracker.stop();
   });
 
-  it("does NOT emit degraded when at least one agent is ready before the timer fires", async () => {
+  it("计时器触发前至少一个 agent 就绪时不发出 degraded", async () => {
     const { bus, emitted } = makeEventBus();
     const rigId = "rig-kernel-fast";
     const tracker = new KernelBootTracker({
@@ -258,7 +256,7 @@ describe("KernelBootTracker — degraded timer telemetry", () => {
     tracker.stop();
   });
 
-  it("stop() cancels the degraded timer (idempotent)", async () => {
+  it("stop() 取消降级计时器（幂等）", async () => {
     const { bus, emitted } = makeEventBus();
     const tracker = new KernelBootTracker({
       eventBus: bus,
@@ -269,14 +267,14 @@ describe("KernelBootTracker — degraded timer telemetry", () => {
     const blocked = new Promise<never>(() => {});
     tracker.startBooting("rig.yaml", blocked as never);
     tracker.stop();
-    tracker.stop(); // idempotent
+    tracker.stop(); // 幂等
     await new Promise((r) => setTimeout(r, 30));
     expect(emitted.filter((e) => e.type === "kernel.agent.degraded")).toHaveLength(0);
   });
 });
 
-describe("KernelBootTracker — sessionRegistry error handling", () => {
-  it("getStatus returns empty agents[] when sessionRegistry throws (no 500)", () => {
+describe("KernelBootTracker——sessionRegistry 错误处理", () => {
+  it("sessionRegistry 抛错时 getStatus 返回空 agents[]（不会返回 500）", () => {
     const throwingRegistry: SessionRegistry = {
       getSessionsForRig: vi.fn(() => {
         throw new Error("DB connection lost");

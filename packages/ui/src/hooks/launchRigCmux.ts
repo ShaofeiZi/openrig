@@ -1,12 +1,11 @@
-// Slice 24 — launchRigCmux.
+// Slice 24 —— launchRigCmux。
 //
-// Promise helper that POSTs to /api/rigs/:rigId/cmux/launch (the new
-// daemon endpoint shipped in slice 24 Checkpoint C). Returns the
-// workspaces array from the daemon's response on success; throws an
-// Error carrying the daemon's honest 3-part message on 4xx/5xx.
+// Promise 辅助函数，POST 到 /api/rigs/:rigId/cmux/launch
+// （slice 24 检查点 C 交付的新后台服务端点）。成功时返回后台服务响应中的
+// workspaces 数组；4xx/5xx 时抛出携带后台服务诚实三段式消息的 Error。
 //
-// Distinct from useCmuxLaunch.ts which targets a single node's
-// open-or-focus endpoint POST /api/rigs/:rigId/nodes/:logicalId/open-cmux.
+// 区别于 useCmuxLaunch.ts——后者针对单个节点的
+// open-or-focus 端点 POST /api/rigs/:rigId/nodes/:logicalId/open-cmux。
 
 export interface RigCmuxLaunchInput {
   rigId: string;
@@ -44,7 +43,7 @@ export async function launchRigCmux({ rigId }: RigCmuxLaunchInput): Promise<RigC
     try {
       body = (await res.json()) as RigCmuxLaunchErrorBody;
     } catch {
-      // fall through
+      // 继续向下（用兜底消息）
     }
     const message = body?.message ?? body?.error ?? `HTTP ${res.status}`;
     throw new Error(message);

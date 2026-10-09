@@ -26,28 +26,27 @@ export interface ClaudeAdapterFsOps {
   mkdirp(path: string): void;
   copyFile(src: string, dest: string): void;
   listFiles?(dirPath: string): string[];
-  /** Source file permission bits (for mode-preserving projection). Optional: mode preservation is a no-op if absent. */
+  /** 源文件权限位（用于保留 mode 的投影）。可选；缺失时不保留 mode。 */
   statMode?(path: string): number;
-  /** Apply permission bits to a file (for mode-preserving projection). Optional: no-op if absent. */
+  /** 将权限位应用到文件（用于保留 mode 的投影）。可选；缺失时为空操作。 */
   chmod?(path: string, mode: number): void;
-  /** List files in a directory (for session token capture). */
+  /** 列出目录中的文件（用于捕获 session token）。 */
   readdir?(dirPath: string): string[];
-  /** User home directory (for session file lookup). */
+  /** 用户主目录（用于查找 session 文件）。 */
   homedir?: string;
 }
 
 const SHELL_COMMANDS = new Set(["bash", "fish", "nu", "sh", "tmux", "zsh"]);
 
-// Real Claude Code binary needs 1-3s to write the new fork session-name
-// file under ~/.claude/sessions/. Poll instead of single-shot lookup.
-// 12 × 500ms = 6s ceiling — comfortably above the observed cold-start
-// fork-file write window without making a bad-token error feel slow.
+// 真实 Claude Code 二进制需要 1–3 秒才能在 ~/.claude/sessions/ 下写入新的 fork session-name
+// 文件，因此使用轮询而非单次查询。12 × 500ms = 6 秒上限，明显高于观测到的冷启动 fork 文件
+// 写入窗口，同时不会让错误 token 的反馈显得迟缓。
 const FORK_POLL_ATTEMPTS = 12;
 const FORK_POLL_DELAY_MS = 500;
 
 /**
- * Claude Code runtime adapter. Projects resources to .claude/ targets
- * and delivers startup files via guidance merge, skill install, or tmux send-text.
+ * Claude Code runtime adapter。将资源投影到 .claude/ 目标，并通过 guidance 合并、skill 安装
+ * 或 tmux send-text 投递启动文件。
  */
 export class ClaudeCodeAdapter implements RuntimeAdapter {
   readonly runtime = "claude-code";
@@ -61,8 +60,8 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
   readonly claudeManagedLaunch?: ClaudeManagedLaunch;
   private activityRelayPath: string | null;
   private claudeHooksManifestPath: string | null;
-  /** P20 — called after a projected file is written to a target, so the manifest
-   *  records what we last wrote (→ operator-vs-stale discrimination). No-op by default. */
+  /** P20——投影文件写入目标后调用，使 manifest 记录最近写入内容
+   *（用于区分操作员修改与陈旧投影）。默认为空操作。 */
   private recordProjection: (targetPath: string, content: string) => void;
 
   constructor(deps: {
@@ -74,13 +73,13 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     collectorAssetPath?: string;
     autoDriveProviderPrompts?: boolean;
     claudeManagedLaunch?: ClaudeManagedLaunch;
-    /** DI source of the activity-relay.cjs asset (parity with the Codex adapter). */
+    /** activity-relay.cjs 资产的依赖注入来源（与 Codex adapter 一致）。 */
     activityRelayPath?: string;
-    /** DI source of the canonical claude.json hooks manifest — the event vocabulary
-     *  is derived (filtered to relay events) from it, not a parallel constant. */
+    /** canonical claude.json hooks manifest 的依赖注入来源；事件词汇从中派生
+     *（筛选 relay 事件），而不是另设平行常量。 */
     claudeHooksManifestPath?: string;
-    /** P20 — record-at-apply hook (startup wires it to the projection manifest store).
-     *  Absent → no-op (the manifest stays empty → discrimination safe-degrades to P17). */
+    /** P20——应用时记录钩子（startup 将其连接到投影 manifest 存储）。缺失时为空操作
+     *（manifest 保持为空，判别能力安全降级到 P17）。 */
     recordProjection?: (targetPath: string, content: string) => void;
   }) {
     this.tmux = deps.tmux;
@@ -130,10 +129,9 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
       }
     }
 
-    // Activity-hook reconciliation is driven from this ALWAYS-RUN seam (not a
-    // per-entry projection): a profile that REMOVES the resource emits no entry,
-    // so the strip/disable branch must fire off the plan's ABSENCE — not off an
-    // entry — for durable disable to be production-reachable. Exactly one call.
+    // Activity hook 协调由这个始终运行的接缝驱动，而不是逐条目投影：移除资源的 profile 不会
+    // 产生条目，因此 strip/disable 分支必须由计划中的缺失触发，而非由条目触发，才能让持久禁用
+    // 在生产中可达。只调用一次。
     const activityEntries = plan.entries.filter(
       (e) => e.category === "runtime_resource" && e.resourceType === "claude_activity_hooks",
     );
@@ -141,12 +139,11 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     try {
       activityOutcome = this.reconcileClaudeActivityHooks(binding.cwd, activityEntries.length > 0);
     } catch (err) {
-      console.error(`[openrig] claude activity-hook reconcile warning: ${(err as Error).message}`);
+      console.error(`[zrig] Claude activity hook 协调警告：${(err as Error).message}`);
       activityOutcome = { changed: false, delivered: false, sourceMissing: false, manifestUnavailable: false, settingsUnparseable: false };
     }
-    // Never claim a resource as PROJECTED when delivery could not happen (missing
-    // relay source or a fail-closed malformed settings file): demote to skipped so
-    // no false projected claim + no dangling hooks are reported as success.
+    // 无法投递时（relay 源缺失，或 settings 文件格式错误并关闭失败）绝不能声称资源已投影；
+    // 降级为 skipped，避免把虚假的投影声明和悬空 hook 报告为成功。
     if (activityEntries.length > 0 && !activityOutcome.delivered) {
       for (const e of activityEntries) {
         const idx = projected.indexOf(e.effectiveId);
@@ -160,13 +157,13 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
 
   async deliverStartup(files: ResolvedStartupFile[], binding: NodeBinding): Promise<StartupDeliveryResult> {
     try { this.ensureManagedBootstrap(binding); } catch (err) {
-      console.error(`[openrig] claude bootstrap warning: ${(err as Error).message}`);
+      console.error(`[zrig] Claude bootstrap 警告：${(err as Error).message}`);
     }
 
-    // Best-effort: provision context collector for managed Claude sessions
+    // 尽力为托管 Claude session 配置 context collector。
     try { this.ensureContextCollector(binding); } catch (err) {
-      // Log but don't fail — collector provisioning is best-effort
-      console.error(`[openrig] context collector provisioning warning: ${(err as Error).message}`);
+      // 记录但不失败——collector 配置是尽力而为。
+      console.error(`[zrig] context collector 配置警告：${(err as Error).message}`);
     }
 
     let delivered = 0;
@@ -181,7 +178,7 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
           case "guidance_merge": {
             const targetPath = nodePath.join(binding.cwd, binding.claudeManagedBlockFile ?? DEFAULT_CLAUDE_MANAGED_BLOCK_FILE);
             const merged = this.mergeGuidance(targetPath, file.path, content);
-            if (!merged) continue; // rig-role skip: do not count as delivered
+            if (!merged) continue; // 跳过 rig-role：不计为已投递。
             break;
           }
           case "skill_install": {
@@ -189,8 +186,8 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
             this.fs.mkdirp(targetDir);
             const skillTarget = nodePath.join(targetDir, nodePath.basename(file.path));
             this.fs.writeFile(skillTarget, content);
-            // P20 — record what we just wrote so the next projection can tell a
-            // stale re-projection (safe overwrite) from an operator edit (protect).
+            // P20——记录刚写入的内容，使下一次投影能区分陈旧重投影（可安全覆盖）与操作员编辑
+            //（需要保护）。
             this.recordProjection(skillTarget, content);
             break;
           }
@@ -223,16 +220,16 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     binding = { ...binding };
     opts = { ...opts, ...(opts.forkSource ? { forkSource: { ...opts.forkSource } } : {}) };
     if (!binding.tmuxSession) {
-      return { ok: false, error: "No tmux session bound — cannot launch Claude Code harness" };
+      return { ok: false, error: "未绑定 tmux session——无法启动 Claude Code harness" };
     }
 
     if (opts.resumeToken && opts.forkSource) {
-      return { ok: false, error: "resumeToken and forkSource are mutually exclusive — pick one" };
+      return { ok: false, error: "resumeToken 与 forkSource 互斥——请选择一个" };
     }
 
-    // OPR.0.4.8.2: the acceptEdits floor by default; YOLO (opt-in) swaps in the full-bypass flag.
-    // The SAME decision (claudePostureFlag) is used on the restore path (claude-resume.ts).
-    // OPR.0.4.8.3 Seam B: a per-seat resolved policy posture (binding.launchPosture) overrides env.
+    // OPR.0.4.8.2：默认使用 acceptEdits floor；选择启用 YOLO 后改为 full-bypass 标志。
+    // restore 路径（claude-resume.ts）使用同一个 claudePostureFlag 决策。
+    // OPR.0.4.8.3 接缝 B：逐席位解析的策略姿态（binding.launchPosture）覆盖环境变量。
     let managed: Awaited<ReturnType<ClaudeManagedLaunch["prepare"]>> | undefined;
     if (binding.permissionMode !== undefined) {
       try {
@@ -243,32 +240,31 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     }
     const permissionMode = claudePostureFlag(process.env, binding.launchPosture, binding.permissionMode);
     const appliedLaunch = observeClaudePermission(permissionMode);
-    // OPR.0.5.3.1: classic-renderer env prefix (default on) → native scrollback for every
-    // managed launch path (fresh/resume/fork). "" when overridden off → byte-identical command.
+    // OPR.0.5.3.1：classic-renderer 环境前缀（默认开启）使所有托管启动路径
+    //（fresh/resume/fork）获得原生 scrollback。覆盖为关闭时返回 ""，命令逐字节不变。
     const rendererPrefix = claudeClassicRendererEnvPrefix(process.env);
 
-    // 51-07: a per-agent model declared in the spec (member.model ?? profile ?? defaults, resolved
-    // onto binding.model at instantiate) is emitted as `--model <x>` on the launch command. Absent →
-    // empty string → the command is byte-identical (regression pin). ADDITIVE ONLY: this sits beside
-    // the permissionMode/posture flag but never alters it (the D1 model-only fence). Mirrors codex's
-    // modelArg (codex-runtime-adapter.ts). NOTE: the restore path (claude-resume.ts) + the native
-    // resume-cmd builder are the named A2 restore-parity follow-on, not this atom.
+    // 51-07：spec 声明的逐智能体 model（member.model ?? profile ?? defaults，在实例化时解析到
+    // binding.model）以 `--model <x>` 写入启动命令。缺失 → 空字符串 → 命令逐字节不变
+    //（回归 pin）。仅做增量添加：它位于 permissionMode/posture 标志旁，但绝不修改后者
+    //（D1 仅 model 边界）。镜像 Codex 的 modelArg（codex-runtime-adapter.ts）。注意：restore
+    // 路径（claude-resume.ts）与原生 resume-cmd 构建器是具名 A2 restore-parity 后续项，
+    // 不属于此 atom。
     const model = binding.model?.trim();
     const modelArg = model ? ` --model ${shellQuote(model)}` : "";
 
-    // Fork branch: build `claude --resume <parent> --fork-session --name <seat>`
-    // and capture the NEW post-fork session id. The parent token is NEVER
-    // persisted onto the new seat record (identity-honesty bedrock).
+    // Fork 分支：构建 `claude --resume <parent> --fork-session --name <seat>` 并捕获 fork 后
+    // 的新 session id。父 token 绝不持久化到新席位记录（身份诚实基石）。
     if (opts.forkSource) {
       if (opts.forkSource.kind !== "native_id") {
         return {
           ok: false,
-          error: `claude-code fork: ref.kind="${opts.forkSource.kind}" is not supported in v1; use ref.kind="native_id" with the prior conversation's session id`,
+          error: `claude-code fork：v1 不支持 ref.kind="${opts.forkSource.kind}"；请使用 ref.kind="native_id" 并提供先前会话的 session id`,
         };
       }
       const parentId = opts.forkSource.value?.trim();
       if (!parentId) {
-        return { ok: false, error: "claude-code fork: forkSource.value is required (parent native_id)" };
+        return { ok: false, error: "claude-code fork：必须提供 forkSource.value（父 native_id）" };
       }
       const cmd = managed ? managed.command(["--permission-mode", binding.permissionMode!, ...(model ? ["--model", model] : []),
         "--resume", parentId, "--fork-session", "--name", opts.name])
@@ -276,22 +272,20 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
       const textResult = managed ? await this.tmux.sendShellCommand(binding.tmuxSession, cmd, managed.assertCurrent)
         : await this.tmux.sendText(binding.tmuxSession, cmd);
       if (!textResult.ok) {
-        return { ok: false, error: `Failed to send launch command: ${textResult.message}` };
+        return { ok: false, error: `发送启动命令失败：${textResult.message}` };
       }
       const enterResult = managed ? { ok: true as const } : await this.tmux.sendKeys(binding.tmuxSession, ["Enter"]);
       if (!enterResult.ok) {
-        return { ok: false, error: `Failed to send Enter: ${enterResult.message}` };
+        return { ok: false, error: `发送 Enter 失败：${enterResult.message}` };
       }
-      // claude needs 1-3s to write the new fork session-name file under
-      // ~/.claude/sessions/. The original implementation captured the
-      // token IMMEDIATELY after Enter, which always returned undefined
-      // against a real binary. Poll on the
-      // verifyResumeLaunch cadence (12 × 500ms = 6s ceiling).
+      // claude 需要 1–3 秒才能在 ~/.claude/sessions/ 下写入新的 fork session-name 文件。
+      // 原实现按下 Enter 后立即捕获 token，对真实二进制总是返回 undefined。改用
+      // verifyResumeLaunch 的节奏轮询（12 × 500ms = 6 秒上限）。
       const newToken = await this.pollForResumeToken(opts.name, FORK_POLL_ATTEMPTS, FORK_POLL_DELAY_MS, managed?.configDir);
       if (!newToken) {
         return {
           ok: false,
-          error: `claude-code fork: could not capture new post-fork session id from claude session storage after ${FORK_POLL_ATTEMPTS} polls (${(FORK_POLL_ATTEMPTS * FORK_POLL_DELAY_MS) / 1000}s ceiling)`,
+          error: `claude-code fork：轮询 ${FORK_POLL_ATTEMPTS} 次后仍无法从 Claude session 存储捕获 fork 后的新 session id（上限 ${(FORK_POLL_ATTEMPTS * FORK_POLL_DELAY_MS) / 1000}s）`,
         };
       }
       return { ok: true, resumeToken: newToken, resumeType: "claude_id", appliedLaunch };
@@ -306,12 +300,12 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     const textResult = managed ? await this.tmux.sendShellCommand(binding.tmuxSession, cmd, managed.assertCurrent)
       : await this.tmux.sendText(binding.tmuxSession, cmd);
     if (!textResult.ok) {
-      return { ok: false, error: `Failed to send launch command: ${textResult.message}` };
+      return { ok: false, error: `发送启动命令失败：${textResult.message}` };
     }
-    // Send Enter to execute
+    // 发送 Enter 执行。
     const enterResult = managed ? { ok: true as const } : await this.tmux.sendKeys(binding.tmuxSession, ["Enter"]);
     if (!enterResult.ok) {
-      return { ok: false, error: `Failed to send Enter: ${enterResult.message}` };
+      return { ok: false, error: `发送 Enter 失败：${enterResult.message}` };
     }
 
     if (opts.resumeToken) {
@@ -320,19 +314,18 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
       return { ok: true, resumeToken: opts.resumeToken, resumeType: "claude_id", appliedLaunch };
     }
 
-    // Belt-and-suspenders: prefer an immediately discoverable persisted session,
-    // but fall back to the UUID we assigned explicitly at launch time.
+    // 双重保障：优先使用立即可发现的持久 session，否则回退到启动时显式分配的 UUID。
     const token = this.captureResumeToken(opts.name, managed?.configDir);
     return { ok: true, resumeToken: token ?? generatedSessionId ?? undefined, resumeType: "claude_id", appliedLaunch };
   }
 
   async checkReady(binding: NodeBinding): Promise<ReadinessResult> {
     if (!binding.tmuxSession) {
-      return { ready: false, reason: "No tmux session bound" };
+      return { ready: false, reason: "未绑定 tmux session" };
     }
     const alive = await this.tmux.hasSession(binding.tmuxSession);
     if (!alive) {
-      return { ready: false, reason: "tmux session not responsive" };
+      return { ready: false, reason: "tmux session 无响应" };
     }
 
     const paneCommand = await this.tmux.getPaneCommand(binding.tmuxSession);
@@ -347,17 +340,17 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     return { ready: false, reason: probe.detail, code: probe.code };
   }
 
-  /** Best-effort public seam for tmux-bound Claude sessions adopted outside the launch path. */
+  /** 为在启动路径之外接管的 tmux 绑定 Claude session 提供尽力而为的公开接缝。 */
   ensureContextCollector(binding: { cwd?: string | null; tmuxSession?: string | null }): void {
     this.provisionContextCollector(binding);
   }
 
-  /** Best-effort public seam for user-scope Claude bootstrap used by managed sessions. */
+  /** 为托管 session 使用的用户范围 Claude bootstrap 提供尽力而为的公开接缝。 */
   ensureManagedBootstrap(binding: { cwd?: string | null; tmuxSession?: string | null }): void {
     this.provisionManagedBootstrap(binding);
   }
 
-  // -- Private helpers --
+  // -- 私有辅助函数 --
 
   private async verifyResumeLaunch(tmuxSession: string): Promise<HarnessLaunchResult> {
     const attempts = 16;
@@ -374,7 +367,7 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
       if (probe.code === "no_conversation_found") {
         return {
           ok: false,
-          error: "Claude resume failed: no conversation found for the requested session",
+          error: "Claude resume 失败：找不到所请求 session 的会话",
           recovery: "retry_fresh",
         };
       }
@@ -383,9 +376,8 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
         return { ok: true };
       }
 
-      // OPR.0.3.4.5: Claude resume-selection prompt -> attention_required,
-      // never timed-out. The menu is alive and recoverable; auto-selecting
-      // is governance BLOCKING. Surface evidence and exit immediately.
+      // OPR.0.3.4.5：Claude resume 选择提示 → attention_required，而非 timed-out。菜单仍存活
+      // 且可恢复；自动选择会阻塞治理。展示证据并立即退出。
       if (probe.status === "attention_required") {
         return {
           ok: false,
@@ -398,7 +390,7 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
       if (this.autoDriveProviderPrompts && probe.code === "trust_gate") {
         const enterResult = await this.tmux.sendKeys(tmuxSession, ["Enter"]);
         if (!enterResult.ok) {
-          return { ok: false, error: `Claude trust prompt auto-drive failed: ${enterResult.message}` };
+          return { ok: false, error: `自动处理 Claude trust 提示失败：${enterResult.message}` };
         }
         await this.sleep(200);
         continue;
@@ -433,12 +425,12 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     if (finalCommand && SHELL_COMMANDS.has(finalCommand)) {
       return {
         ok: false,
-        error: "Claude resume failed: pane returned to shell instead of entering Claude",
+        error: "Claude resume 失败：pane 返回 shell，而未进入 Claude",
         recovery: "retry_fresh",
       };
     }
 
-    return { ok: false, error: "Claude resume failed: timed out waiting for Claude to become active" };
+    return { ok: false, error: "Claude resume 失败：等待 Claude 进入活跃状态超时" };
   }
 
   private projectEntry(entry: ProjectionEntry, cwd: string, managedBlockFile: ClaudeManagedBlockFile): boolean {
@@ -452,10 +444,10 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
       return this.mergeGuidance(targetPath, entry.effectiveId, content);
     }
 
-    // HG-1.3 plugin runtime applicability filter (per DESIGN.md §5.1):
-    // explicit pluginType="codex" → skip Claude projection;
-    // pluginType="auto" (or unset) + no .claude-plugin/ manifest dir → skip;
-    // explicit pluginType="claude" → project regardless of manifest presence.
+    // HG-1.3 插件 runtime 适用性筛选（依据 DESIGN.md §5.1）：
+    // 显式 pluginType="codex" → 跳过 Claude 投影；
+    // pluginType="auto"（或未设置）且没有 .claude-plugin/ manifest 目录 → 跳过；
+    // 显式 pluginType="claude" → 无论 manifest 是否存在都投影。
     if (entry.category === "plugin" && !this.pluginAppliesToClaude(entry)) {
       return false;
     }
@@ -467,13 +459,12 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     const isDir = this.fs.listFiles ? this.fs.listFiles(entry.absolutePath).length > 0 : false;
 
     if (isDir && this.fs.listFiles) {
-      // Directory-shaped: recursive copy
+      // 目录形态：递归复制。
       for (const file of this.fs.listFiles(entry.absolutePath)) {
         const src = nodePath.join(entry.absolutePath, file);
         const dest = nodePath.join(targetDir, file);
         const content = this.fs.readFile(src);
-        // Reconcile mode even when the content write is skipped: a byte-identical dest
-        // projected earlier may still carry the wrong (default) mode.
+        // 即使跳过内容写入也要协调 mode：先前投影的逐字节相同目标仍可能带有错误的默认 mode。
         if (this.fs.exists(dest) && hashContent(content) === hashContent(this.fs.readFile(dest))) {
           this.preserveMode(src, dest);
           continue;
@@ -483,7 +474,7 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
         this.preserveMode(src, dest);
       }
     } else {
-      // File-shaped: single file copy (subagents, hooks as YAML files)
+      // 文件形态：复制单个文件（subagent、作为 YAML 文件的 hook）。
       const content = this.fs.readFile(entry.absolutePath);
       const destFile = nodePath.join(targetDir, nodePath.basename(entry.absolutePath));
       if (this.fs.exists(destFile) && hashContent(content) === hashContent(this.fs.readFile(destFile))) {
@@ -497,11 +488,10 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
   }
 
   /**
-   * Reapply the source file's permission bits to the projected dest. Plain
-   * readFile+writeFile (writeFileSync) creates the dest with the process default
-   * mode, dropping executable bits on nested plugin helpers (e.g. the
-   * claude-compaction-restore/scripts/*.mjs 0755 hooks). No-op when the fs adapter
-   * does not expose mode primitives (keeps existing mock-fs callers unaffected).
+   * 将源文件权限位重新应用到投影目标。普通 readFile+writeFile（writeFileSync）使用进程默认
+   * mode 创建目标，会丢失嵌套插件辅助程序的可执行位（例如
+   * claude-compaction-restore/scripts/*.mjs 的 0755 hook）。fs adapter 未公开 mode 原语时
+   * 为空操作，使现有 mock-fs 调用方不受影响。
    */
   private preserveMode(src: string, dest: string): void {
     if (!this.fs.statMode || !this.fs.chmod) return;
@@ -513,14 +503,14 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     const explicit = entry.pluginType ?? "auto";
     if (explicit === "claude") return true;
     if (explicit === "codex") return false;
-    // auto: detect via .claude-plugin/plugin.json presence in the source tree
+    // auto：根据源树中是否存在 .claude-plugin/plugin.json 检测。
     return this.fs.exists(nodePath.join(entry.absolutePath, ".claude-plugin", "plugin.json"));
   }
 
   private resolveTargetDir(entry: ProjectionEntry, cwd: string): string | null {
     switch (entry.category) {
       case "skill": return nodePath.join(cwd, ".claude", "skills", entry.effectiveId);
-      case "guidance": return null; // handled via merge
+      case "guidance": return null; // 通过 merge 处理。
       case "subagent": return nodePath.join(cwd, ".claude", "agents");
       case "plugin": return nodePath.join(cwd, ".claude", "plugins", entry.effectiveId);
       case "runtime_resource": return nodePath.join(cwd, ".claude", "extensions", entry.effectiveId);
@@ -537,9 +527,8 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
         this.mergeJsonFragment(entry.absolutePath, nodePath.join(cwd, ".mcp.json"));
         return true;
       case "claude_activity_hooks":
-        // Handled (no generic .claude/extensions copy): the relay asset is
-        // delivered + the settings hooks reconciled by reconcileClaudeActivityHooks
-        // off the always-run project() seam, not by per-entry projection.
+        // 已处理（不做通用 .claude/extensions 复制）：relay 资产投递与 settings hook 协调由
+        // 始终运行的 project() 接缝通过 reconcileClaudeActivityHooks 完成，而非逐条目投影。
         return true;
       default:
         return false;
@@ -555,22 +544,17 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
   }
 
   /**
-   * Merge a managed block into the target guidance file. Returns `true` when
-   * the merge happened, `false` when intentionally skipped (currently only the
-   * `rig-role` case — see comment). Callers propagate the skip signal so
-   * ProjectionResult and StartupDeliveryResult report honest counts instead
-   * of claiming a merge that never landed.
+   * 将托管块合并到目标 guidance 文件。完成合并时返回 `true`，有意跳过时返回 `false`
+   *（目前只有 `rig-role` 情况，见注释）。调用方传播跳过信号，使 ProjectionResult 与
+   * StartupDeliveryResult 报告真实计数，而不是声称完成了并未落地的合并。
    */
   private mergeGuidance(targetPath: string, blockId: string, content: string): boolean {
-    // The `rig-role` managed block is authored per seat but delivered through a
-    // projection path that pairs (target-file × spec) without seat correlation,
-    // so multiple pod-mates' role bodies collide into one CLAUDE.md. The fix
-    // is to route per-seat content through the `send_text` startup path
-    // instead, which preserves seat identity. Here we refuse the merge loudly
-    // so the collision can't land silently. See ADR-0006.
+    // `rig-role` 托管块按席位编写，但通过不关联席位的（目标文件 × spec）投影路径投递，因此多个
+    // pod 同伴的角色正文会冲突到同一个 CLAUDE.md。修复方式是改由保留席位身份的 `send_text`
+    // 启动路径路由逐席位内容。这里明确拒绝合并，避免冲突静默落地。参见 ADR-0006。
     if (blockId === "rig-role") {
       console.log(
-        `[openrig] skip: effectiveId is rig-role, per-seat delivery via send_text path required (target=${targetPath})`
+        `[zrig] 跳过：effectiveId 为 rig-role，需要通过 send_text 路径逐席位投递（目标=${targetPath}）`
       );
       return false;
     }
@@ -581,16 +565,13 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
   }
 
   /**
-   * Best-effort token capture from ~/.claude/sessions/*.json.
-   * Finds the session file whose name matches the expected session name.
-   * Returns the sessionId if found, undefined otherwise.
+   * 尽力从 ~/.claude/sessions/*.json 捕获 token。查找名称与预期 session 名匹配的 session
+   * 文件；找到时返回 sessionId，否则返回 undefined。
    */
   /**
-   * PL-016 hardening v0+1 — poll captureResumeToken on the
-   * verifyResumeLaunch cadence. Returns the token as soon as the
-   * session file appears, or undefined after attempts × delayMs ceiling.
-   * Used by the fork branch where the new session-name file appears
-   * 1-3s after the Enter key is sent (cold-start fork-file write).
+   * PL-016 加固 v0+1——按 verifyResumeLaunch 节奏轮询 captureResumeToken。session 文件一出现
+   * 就返回 token；超过 attempts × delayMs 上限后返回 undefined。用于 fork 分支：新
+   * session-name 文件会在发送 Enter 后 1–3 秒出现（冷启动 fork 文件写入）。
    */
   private async pollForResumeToken(
     expectedName: string,
@@ -623,9 +604,9 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
           if (data.name === expectedName && data.sessionId) {
             return data.sessionId;
           }
-        } catch { /* skip malformed files */ }
+        } catch { /* 跳过格式错误的文件。 */ }
       }
-    } catch { /* best-effort */ }
+    } catch { /* 尽力而为。 */ }
     return undefined;
   }
 
@@ -634,17 +615,16 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
   }
 
   private provisionManagedBootstrap(binding: { cwd?: string | null; tmuxSession?: string | null }): void {
-    // OPR.0.4.8.2 agnostic rip-out: provisionRigPermissions (C2) removed — OpenRig no longer
-    // authors any config-file permission policy. Trust/onboarding (C3/C4) are neutral plumbing, kept.
+    // OPR.0.4.8.2 无关性拆除：已移除 provisionRigPermissions（C2）；OpenRig 不再编写任何
+    // 配置文件权限策略。Trust/onboarding（C3/C4）是中性管道，予以保留。
     this.provisionWorkspaceTrust(binding.cwd ?? null);
     this.provisionOnboardingState();
   }
 
-  // OPR.0.4.8.2 agnostic rip-out: the CONVENIENCE_BASELINE (global `Bash(rig:*)` allow) and its
-  // provisionRigPermissions writer (assessment row C2 — wrote into ~/.claude/settings.json with an
-  // `_openrig_provenance` marker) are DELETED. OpenRig no longer authors any config-file permission
-  // policy; the harness-native permission surface is the control surface. Existing provenance-marked
-  // user files are NOT retro-scrubbed — the new code simply never touches settings.json.
+  // OPR.0.4.8.2 无关性拆除：CONVENIENCE_BASELINE（全局允许 `Bash(rig:*)`）及其
+  // provisionRigPermissions 写入器（评估第 C2 行——带 `_openrig_provenance` 标记写入
+  // ~/.claude/settings.json）已删除。OpenRig 不再编写配置文件权限策略；harness 原生权限界面
+  // 才是控制界面。不会追溯清理现有带来源标记的用户文件；新代码只是永远不触碰 settings.json。
 
   private provisionWorkspaceTrust(cwd: string | null): void {
     if (!cwd) return;
@@ -680,7 +660,7 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     try {
       keys.add(fs.realpathSync.native(cwd));
     } catch {
-      // Best-effort only — non-existent test paths can still use the resolved input.
+      // 仅尽力而为——不存在的测试路径仍可使用已解析输入。
     }
     return Array.from(keys);
   }
@@ -702,7 +682,7 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
       return parsed as Record<string, unknown>;
     }
-    throw new Error(`${path} must be a JSON object`);
+    throw new Error(`${path} 必须是 JSON 对象`);
   }
 
   private readJsonObjectField(source: Record<string, unknown>, key: string): Record<string, unknown> {
@@ -712,12 +692,12 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
       : {};
   }
 
-  // OPR.0.4.8.2 rip-out: readStringArray removed — its only caller was provisionRigPermissions (C2).
+  // OPR.0.4.8.2 拆除：已移除 readStringArray；其唯一调用方是 provisionRigPermissions（C2）。
 
   /**
-   * Best-effort: provision the OpenRig context collector for managed Claude sessions.
-   * Writes a collector script and merges status line config into .claude/settings.local.json.
-   * Idempotent: safe to call multiple times (merge preserves existing settings).
+   * 尽力为托管 Claude session 配置 OpenRig context collector。写入 collector 脚本，并将
+   * status line 配置合并到 .claude/settings.local.json。操作幂等，可安全多次调用
+   *（合并会保留现有设置）。
    */
   private provisionContextCollector(binding: { cwd?: string | null; tmuxSession?: string | null }): void {
     if (!this.stateDir || !this.collectorAssetPath || !binding.cwd) return;
@@ -726,12 +706,12 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     this.fs.mkdirp(contextDir);
     this.fs.mkdirp(providerUsageDir);
 
-    // 1. Copy collector script to project
+    // 1. 将 collector 脚本复制到项目。
     const collectorDest = nodePath.join(binding.cwd, ".openrig", "context-collector.cjs");
     this.fs.mkdirp(nodePath.dirname(collectorDest));
     this.fs.copyFile(this.collectorAssetPath, collectorDest);
 
-    // 2. Merge status line config into .claude/settings.local.json
+    // 2. 将 status line 配置合并到 .claude/settings.local.json。
     const settingsPath = nodePath.join(binding.cwd, ".claude", "settings.local.json");
     this.fs.mkdirp(nodePath.dirname(settingsPath));
 
@@ -748,32 +728,28 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
   }
 
   /**
-   * Reconcile the OpenRig-managed activity-relay hooks in `.claude/settings.local.json`
-   * to the desired `enabled` state, driven ONCE from the always-run `project()` seam.
+   * 将 `.claude/settings.local.json` 中由 OpenRig 管理的 activity-relay hook 协调到所需的
+   * `enabled` 状态；由始终运行的 `project()` 接缝驱动一次。
    *
-   * ENABLE (only when the relay SOURCE is readable): deliver `activity-relay.cjs` →
-   * `<cwd>/.openrig/hooks/scripts/` (mode preserved, 0755 from the source asset) and upsert
-   * the owned command for each relay event DERIVED from the canonical claude.json manifest
-   * (compaction hooks excluded). If the source is missing, deliver NOTHING (no dangling
-   * commands) and report `sourceMissing` so the caller can surface a warning + not claim
-   * projection. DISABLE: strip owned entries and prune emptied containers.
+   * 启用（仅在 relay 源可读时）：将 `activity-relay.cjs` 投递到
+   * `<cwd>/.openrig/hooks/scripts/`（保留 mode，源资产为 0755），并为从 canonical claude.json
+   * manifest 派生的每个 relay 事件 upsert 所有命令（排除 compaction hook）。源缺失时不投递任何
+   * 内容（无悬空命令），并报告 `sourceMissing`，使调用方展示警告且不声称已投影。禁用时删除
+   * 所有条目，并清理空容器。
    *
-   * Ownership is the EXACT `node <quoted relay path>` command shape, so a stale/changed
-   * absolute prefix is replaced (never duplicated) while a user command that merely CONTAINS
-   * the path is preserved. Fail-closed: a settings file we cannot parse is left byte-for-byte
-   * untouched. Not `mergeJsonFragment` (additive union-by-key can't strip on disable).
+   * 所有权由准确的 `node <quoted relay path>` 命令形态决定，因此陈旧/变化的绝对前缀会被替换
+   *（绝不重复），而仅仅包含该路径的用户命令会保留。关闭失败：无法解析的 settings 文件保持
+   * 逐字节不变。不使用 `mergeJsonFragment`，因为按 key 增量合并无法在禁用时删除。
    */
   private reconcileClaudeActivityHooks(cwd: string, enabled: boolean): ActivityHookOutcome {
     const relayDest = nodePath.join(cwd, ".openrig", "hooks", "scripts", "activity-relay.cjs");
     const ownedCmd = `node ${shellQuote(relayDest)}`;
     const settingsPath = nodePath.join(cwd, ".claude", "settings.local.json");
 
-    // PREVALIDATE BEFORE ANY MUTATION using the SHARED delivery validation (same gate
-    // preflight uses — one parser, no drift). Enable is deliverable ONLY when BOTH the relay
-    // source AND a nonempty canonical event set resolve. If enable is requested but not
-    // deliverable (missing relay, or a missing/malformed/zero-relay-event manifest), do
-    // NOTHING — no strip, no copy, no write — so existing managed hooks + settings bytes
-    // are preserved and the resource is NOT claimed delivered/projected (⇒ warn + skip).
+    // 任何变更前都使用共享投递验证预检（与 preflight 使用同一门禁与解析器，无漂移）。只有 relay
+    // 源与非空 canonical 事件集都能解析时，启用才可投递。请求启用但不可投递时（relay 缺失，
+    // 或 manifest 缺失/格式错误/无 relay 事件）不做任何操作：不删除、不复制、不写入，从而保留
+    // 现有托管 hook 和 settings 字节，也不声称资源已投递/投影（即警告 + 跳过）。
     const delivery = validateClaudeActivityHookDelivery(this.fs, this.activityRelayPath, this.claudeHooksManifestPath);
     const derivedEvents = delivery.events;
     const deliverable = enabled && delivery.deliverable;
@@ -787,7 +763,7 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
     }
 
     const settingsExisted = this.fs.exists(settingsPath);
-    // Fail closed: never clobber a settings file we cannot parse — preserve its bytes.
+    // 关闭失败：绝不覆盖无法解析的 settings 文件，保持其字节不变。
     let settings: Record<string, unknown>;
     if (settingsExisted) {
       try { settings = this.readJsonObjectStrict(settingsPath); }
@@ -798,8 +774,8 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
 
     const hooks = this.readJsonObjectField(settings, "hooks");
 
-    // 1. Strip OpenRig-owned relay entries (EXACT node-command shape) from all events;
-    //    prune emptied groups + events. User-authored hooks are untouched.
+    // 1. 从所有事件中删除 OpenRig 所有的 relay 条目（准确 node 命令结构）；清理空 group 与事件。
+    //    用户编写的 hook 保持不变。
     let changed = false;
     for (const event of Object.keys(hooks)) {
       const groups = Array.isArray(hooks[event]) ? (hooks[event] as unknown[]) : null;
@@ -810,15 +786,15 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
         const groupHooks = group["hooks"] as unknown[];
         const keptHooks = groupHooks.filter((h) => !isOwnedRelayCommand(hookCommand(h)));
         if (keptHooks.length !== groupHooks.length) changed = true;
-        if (keptHooks.length === 0) continue; // prune emptied group
+        if (keptHooks.length === 0) continue; // 清理空 group。
         keptGroups.push({ ...group, hooks: keptHooks });
       }
-      if (keptGroups.length === 0) delete hooks[event]; // prune emptied event
+      if (keptGroups.length === 0) delete hooks[event]; // 清理空事件。
       else hooks[event] = keptGroups;
     }
 
-    // 2. Deliverable enable: copy the relay asset + upsert the owned entry for each
-    //    PREVALIDATED relay event (derived from the canonical manifest above).
+    // 2. 可投递的启用：复制 relay 资产，并为每个已预验证的 relay 事件（从上述 canonical
+    //    manifest 派生）upsert 所有条目。
     if (deliverable) {
       this.fs.mkdirp(nodePath.dirname(relayDest));
       this.fs.copyFile(this.activityRelayPath!, relayDest);
@@ -833,7 +809,7 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
       }
     }
 
-    // 3. Persist only when something changed (never touch an unchanged / never-managed file).
+    // 3. 仅在发生变化时持久化（绝不触碰未变化/从未托管的文件）。
     if (!changed) return { changed: false, delivered: deliverable, sourceMissing: false, manifestUnavailable: false, settingsUnparseable: false };
     if (Object.keys(hooks).length > 0) settings["hooks"] = hooks;
     else delete settings["hooks"];
@@ -845,22 +821,22 @@ export class ClaudeCodeAdapter implements RuntimeAdapter {
 }
 
 interface ActivityHookOutcome {
-  /** A write happened (owned entries added or stripped). */
+  /** 已发生写入（添加或删除所有条目）。 */
   changed: boolean;
-  /** Enable succeeded — relay + hooks were actually delivered (stays PROJECTED). */
+  /** 启用成功——relay + hook 已实际投递（保持 PROJECTED）。 */
   delivered: boolean;
-  /** Enable requested but the relay source was absent — nothing delivered (⇒ warn + skip). */
+  /** 请求启用但 relay 源缺失——未投递任何内容（即警告 + 跳过）。 */
   sourceMissing: boolean;
-  /** Enable requested, relay present, but the canonical manifest was missing/malformed/
-   *  yielded zero relay events — nothing delivered, existing managed hooks preserved (⇒ warn + skip). */
+  /** 请求启用且 relay 存在，但 canonical manifest 缺失、格式错误或没有 relay 事件——不投递任何
+   * 内容，保留现有托管 hook（即警告 + 跳过）。 */
   manifestUnavailable: boolean;
-  /** Fail-closed: an unparseable settings file was preserved untouched. */
+  /** 关闭失败：无法解析的 settings 文件已原样保留。 */
   settingsUnparseable: boolean;
 }
 
-// OpenRig-owned relay path suffix. Ownership is the EXACT `node <arg>` command whose single
-// argument ends with this path — a changed prefix still matches (replace, not duplicate); a
-// user command that merely contains the path (echo, or node with extra args) does NOT.
+// OpenRig 所有的 relay 路径后缀。所有权由准确的 `node <arg>` 命令判断，其唯一参数以此路径
+// 结尾；前缀变化仍匹配（替换而不重复），仅包含该路径的用户命令（echo 或带额外参数的 node）
+// 不匹配。
 const OWNED_RELAY_SUFFIX = "/.openrig/hooks/scripts/activity-relay.cjs";
 
 function hookCommand(hook: unknown): string | undefined {
@@ -874,19 +850,18 @@ function isOwnedRelayCommand(cmd: string | undefined): boolean {
   const arg = m[1]!;
   const decoded = unquoteSingleShellToken(arg);
   if (decoded === null) return false;
-  // Canonical ONE-TOKEN round-trip: the argument must be EXACTLY one shellQuote token — re-encoding
-  // the decoded path must reproduce the argument VERBATIM. This is the ownership test's core: the
-  // command is `node ${shellQuote(relayDest)}`, so any owned entry re-encodes to itself (including
-  // an apostrophe cwd O'Brien via the '"'"' escape). It REJECTS a user command whose multiple quoted
-  // args merely concatenate to text ending in the relay suffix (e.g. `node 'x' '<relay>'`), which
-  // must never be recognised as owned and deleted.
+  // Canonical 单 token 往返：参数必须恰好是一个 shellQuote token；重新编码已解码路径必须逐字节
+  // 还原参数。这是所有权测试的核心：命令是 `node ${shellQuote(relayDest)}`，因此所有条目都会
+  // 重编码为自身，包括通过 '"'"' 转义含撇号的 cwd O'Brien。它会拒绝这样的用户命令：多个
+  // 带引号参数只是拼接后以 relay 后缀结尾（如 `node 'x' '<relay>'`）；绝不能把它识别为所有项
+  // 并删除。
   if (shellQuote(decoded) !== arg) return false;
   return decoded.endsWith(OWNED_RELAY_SUFFIX);
 }
 
-/** Decode ONE POSIX single-quoted shell token as produced by shellQuote (outer `'…'` with an
- *  embedded `'` escaped as `'"'"'`). Returns null when the token is not single-quote wrapped. The
- *  caller re-encodes to confirm the token is canonical/single — this decode alone does not. */
+/** 解码 shellQuote 生成的一个 POSIX 单引号 shell token（外层 `'…'`，内部 `'` 转义为
+ * `'"'"'`）。token 未用单引号包裹时返回 null。调用方会重新编码以确认 token 是 canonical
+ * 单 token；仅解码不足以确认。 */
 function unquoteSingleShellToken(token: string): string | null {
   if (token.length < 2 || !token.startsWith("'") || !token.endsWith("'")) return null;
   return token.slice(1, -1).split(`'"'"'`).join("'");
@@ -939,14 +914,13 @@ function stableJsonKey(value: unknown): string {
   return JSON.stringify(sorted);
 }
 
-// ── OPR.0.5.5.19 A5 — the Claude self-report rung (r3): sessions/<pid>.json ──
-// Claude Code's OWN status registry (since v2.1.139): one JSON file per live process
-// under <configDir>/sessions/, carrying {name: <canonical tmux session name>, status:
-// busy|idle|shell|waiting, statusUpdatedAt, ...}. Self-reported truth, SELF-DATED
-// (statusUpdatedAt) — the research doc's top rung, resolved here by the `name` field
-// (OpenRig's canonical session name; no pane-pid plumbing needed on this path).
-// UNDOCUMENTED INTERNAL: any read/parse/shape failure returns null — the ladder falls
-// to the next rung, NEVER errors (SPEC mini-req 2a).
+// ── OPR.0.5.5.19 A5——Claude self-report 阶梯（r3）：sessions/<pid>.json ────────
+// Claude Code 自身状态 registry（自 v2.1.139 起）：<configDir>/sessions/ 下每个实时进程一个
+// JSON 文件，携带 {name: <canonical tmux session name>, status: busy|idle|shell|waiting,
+// statusUpdatedAt, ...}。这是自报、自带时间的事实（statusUpdatedAt），也是研究文档的最高阶梯；
+// 此处按 `name` 字段（OpenRig canonical session 名称）解析，本路径无需 pane-pid 管道。
+// 未公开内部实现：任何读取/解析/结构失败都返回 null，使阶梯降到下一层，绝不报错
+//（SPEC mini-req 2a）。
 
 export interface ClaudeSelfReportRead {
   listFiles(dir: string): string[];
@@ -958,11 +932,10 @@ const defaultSelfReportRead: ClaudeSelfReportRead = {
   readFile: (p) => fs.readFileSync(p, "utf8"),
 };
 
-/** Read the freshest self-report for `sessionName` as ladder evidence, or null.
- *  Mapping: busy→working; idle→idle-at-prompt; shell→idle-at-prompt (turn over, a
- *  background shell lives — the omnigent-proven mapping); waiting→needs-input (a dialog
- *  owns input; Claude's internal `waiting` ≠ omnigent's — the collision both codebases
- *  warn about, kept OUT of the activity enum). */
+/** 读取 `sessionName` 最新的 self-report 作为阶梯证据；没有则返回 null。映射：
+ * busy→working；idle→idle-at-prompt；shell→idle-at-prompt（轮次结束，后台 shell 存活——
+ * 经 omnigent 验证的映射）；waiting→needs-input（对话框占有输入；Claude 内部的 `waiting`
+ * 不等于 omnigent 的同名状态，这是两个代码库都警示的冲突，因此不放入 activity 枚举）。 */
 export function readClaudeSelfReportEvidence(input: {
   sessionsDir: string;
   sessionName: string;
@@ -978,7 +951,7 @@ export function readClaudeSelfReportEvidence(input: {
       try {
         record = JSON.parse(read.readFile(nodePath.join(input.sessionsDir, file))) as typeof record;
       } catch {
-        continue; // one malformed file never breaks the rung
+        continue; // 单个格式错误文件绝不会破坏整个阶梯。
       }
       if (record.name !== input.sessionName) continue;
       if (typeof record.status !== "string" || typeof record.statusUpdatedAt !== "number") continue;
@@ -992,7 +965,7 @@ export function readClaudeSelfReportEvidence(input: {
       sessionName: input.sessionName,
       rung: "self-report" as const,
       sourceId: "claude:pid-json",
-      seq: best.statusUpdatedAt, // self-dated monotonic
+      seq: best.statusUpdatedAt, // 自带时间且单调。
       observedAt: new Date(best.statusUpdatedAt).toISOString(),
     };
     switch (best.status) {
@@ -1002,11 +975,11 @@ export function readClaudeSelfReportEvidence(input: {
       case "shell":
         return { ...base, activity: "idle-at-prompt" };
       case "waiting":
-        return { ...base, needsInput: { count: 1, reason: "dialog owns input" } };
+        return { ...base, needsInput: { count: 1, reason: "对话框正在等待输入" } };
       default:
-        return null; // unknown vocabulary — undocumented internal, never guess
+        return null; // 未知词汇——未公开内部实现，绝不猜测。
     }
   } catch {
-    return null; // unreadable dir ⇒ fall down the ladder
+    return null; // 目录不可读 ⇒ 降到下一阶梯。
   }
 }

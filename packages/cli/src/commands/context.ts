@@ -1,14 +1,13 @@
-// Rig Context / Composable Context Injection — the `rig context` CLI verb
-// family (Atom-7 renamed the retired `context-pack` grammar to `rig context`;
-// the pack STORE contract — kind/id/API/on-disk dir — is unchanged).
+// Rig Context / 可组合上下文注入——`rig context` CLI 动词族
+//（Atom-7 把已废弃的 `context-pack` 语法重命名为 `rig context`；
+// pack 存储契约——kind/id/API/磁盘目录——不变）。
 //
-// Delivery-free subcommands parallel to `rig specs`:
+// 与 `rig specs` 平行、不投递的子命令：
 //   list / show / preview / compose / add / rm / sync
 //
-// Each delegates to /api/context-packs/library/* against the daemon.
-// The `add` verb installs a pack from a directory at
-// $OPENRIG_HOME/context/<name>/ — host-symlink-free contract,
-// matches `rig specs add` shape (regular files only; no symlinks).
+// 每个子命令都经后台服务委派到 /api/context-packs/library/*。
+// `add` 动词从 $OPENRIG_HOME/context/<name>/ 处的目录安装一个 pack——
+// 无 host 软链契约，与 `rig specs add` 形态一致（仅普通文件；无软链）。
 
 import { Command } from "commander";
 import {
@@ -49,7 +48,7 @@ interface ContextPackEntryWire {
   name: string;
   version: string;
   purpose: string | null;
-  /** OPR.0.5.6.10 — pack-level classification from the daemon's ATOM_TAXONOMIES enum. */
+  /** OPR.0.5.6.10——来自后台服务 ATOM_TAXONOMIES 枚举的 pack 级分类。 */
   taxonomy: string;
   sourceType: "builtin" | "user_file" | "workspace";
   sourcePath: string;
@@ -75,16 +74,16 @@ function printWorkInstallSelectors(result: WorkInstallPlan, topologySkills: stri
   const world = result.systemWorld;
   const identity = world.id ? ` ${world.id}@${world.version}` : "";
   const path = world.manifestPath ? ` ${world.manifestPath}` : "";
-  console.log(`system  ${world.state} [${world.source}]${identity}${path}`);
+  console.log(`系统  ${world.state} [${world.source}]${identity}${path}`);
   for (const selection of world.context) {
     const profiles = selection.profiles
       ? ` (${Object.entries(selection.profiles).map(([runtime, profile]) => `${runtime}=${profile}`).join(", ")})`
       : "";
-    console.log(`context system ${selection.ref}${profiles}`);
+    console.log(`上下文  系统=${selection.ref}${profiles}`);
   }
-  console.log(`skills  system=${selectedIds(world.skills, "(none)")}`);
-  console.log(`skills  topology=${selectedIds(topologySkills, "(none)")}`);
-  console.log(`skills  project=${selectedIds(result.skills, "(none)")}`);
+  console.log(`技能  系统=${selectedIds(world.skills, "（无）")}`);
+  console.log(`技能  拓扑=${selectedIds(topologySkills, "（无）")}`);
+  console.log(`技能  项目=${selectedIds(result.skills, "（无）")}`);
 }
 
 interface PreviewWire {
@@ -102,13 +101,13 @@ const SAFE_REF_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
 function assertSafeTopologySegment(kind: "rig" | "seat", value: string): void {
   if (value === "." || value === ".." || !SAFE_REF_SEGMENT.test(value)) {
-    throw new Error(`unsafe ${kind} segment '${value}' — topology addresses require one bounded path segment`);
+    throw new Error(`不安全的 ${kind} 段 '${value}'——拓扑地址要求一个有界的路径段`);
   }
 }
 
 function assertLocalGitClient(client: DaemonClient): void {
   if (!["127.0.0.1", "localhost", "[::1]"].includes(new URL(client.baseUrl).hostname)) {
-    throw new Error("Run Git source selection/inspection/update on the daemon host through its loopback URL; these commands use local Git and filesystem paths.");
+    throw new Error("Git 源的选择/查看/更新请在后台服务主机上经其 loopback URL 运行；这些命令使用本地 Git 与文件系统路径。");
   }
 }
 
@@ -121,20 +120,19 @@ async function fetchTextOrThrow(url: string, what: string): Promise<{ text: stri
   try {
     res = await fetch(url);
   } catch (err) {
-    throw new Error(`Could not reach ${what} at ${url}: ${(err as Error).message}`);
+    throw new Error(`无法连到 ${what}（${url}）：${(err as Error).message}`);
   }
-  if (!res.ok) throw new Error(`Could not fetch ${what} at ${url}: HTTP ${res.status} ${res.statusText}`.trim());
-  // res.url is the FINAL url after any redirects — declared files must resolve
-  // relative to it, not the caller's original spelling (r2 MEDIUM-1).
+  if (!res.ok) throw new Error(`无法获取 ${what}（${url}）：HTTP ${res.status} ${res.statusText}`.trim());
+  // res.url 是任何重定向之后的最终 url——声明的文件必须相对它解析，
+  // 而不是调用方最初写的拼写（r2 MEDIUM-1）。
   return { text: await res.text(), finalUrl: res.url || url };
 }
 
-// OPR.0.5.3.7 R4 — install a context pack from a URL. <url> points at the pack's
-// manifest.yaml (a trailing '/' is treated as '<url>manifest.yaml'); every
-// files[].path is fetched relative to that manifest. ATOMIC BY CONSTRUCTION:
-// everything stages into a temp SIBLING of the target and is published by one
-// renameSync, so a malformed manifest, an unreachable URL, or a missing declared
-// file leaves NO partial pack behind. Deliberately dumb: no registry, no cache.
+// OPR.0.5.3.7 R4——从 URL 安装一个 context pack。<url> 指向 pack 的
+// manifest.yaml（结尾 '/' 视为 '<url>manifest.yaml'）；每个 files[].path
+// 都相对该 manifest 抓取。构造即原子：一切先暂存到目标的临时兄弟目录，
+// 再由一次 renameSync 发布，所以畸形 manifest、不可达 URL 或缺失的声明文件
+// 都不会留下半成品 pack。刻意简单：无注册表、无缓存。
 async function installPackFromUrl(
   url: string,
   overrideName: string | undefined,
@@ -144,7 +142,7 @@ async function installPackFromUrl(
   mkdirSync(targetRoot, { recursive: true });
   const staging = mkdtempSync(join(targetRoot, ".tmp-add-"));
   try {
-    // Fetch + validate the manifest before touching the target namespace.
+    // 在触碰目标命名空间之前先抓取并校验 manifest。
     const { text: manifestText, finalUrl: finalManifestUrl } = await fetchTextOrThrow(manifestUrl, "manifest");
     writeFileSync(join(staging, "manifest.yaml"), manifestText);
     validateContextPackManifestForInstall(join(staging, "manifest.yaml"));
@@ -154,34 +152,32 @@ async function installPackFromUrl(
     assertDestinationNamespaceContained(targetRoot, installName);
     const targetDir = join(targetRoot, installName);
     if (existsSync(targetDir)) {
-      throw new Error(`A context pack named '${installName}' already exists at ${targetDir}. Remove it first or use --name to install under a different name.`);
+      throw new Error(`名为 '${installName}' 的 context pack 已存在于 ${targetDir}。先移除它，或用 --name 装到别的名字下。`);
     }
-    // Fetch every declared file relative to the manifest's FINAL url (after
-    // redirects), via the platform URL resolver — never the caller's original
-    // spelling (r2 MEDIUM-1: a redirected manifest must not resolve files against
-    // the stale request base).
+    // 相对 manifest 的最终 url（重定向之后）抓取每个声明文件，
+    // 经平台 URL 解析器——绝不用调用方最初的拼写
+    // （r2 MEDIUM-1：被重定向的 manifest 不得对着过期的请求 base 解析文件）。
     //
-    // BOUNDARY (r2 HIGH-1): new URL() also honors an ABSOLUTE f.path, and the
-    // manifest validator accepts a URL-shaped value as a filesystem-relative
-    // path. Require every resolved file URL to stay under the manifest's own
-    // directory (same origin + path prefix) so a stranger-supplied manifest can
-    // never make add fetch cross-origin or climb out of its pack. The trailing
-    // slash on the base defeats prefix-sibling ('/pack' vs '/pack-evil') tricks.
+    // 边界（r2 HIGH-1）：new URL() 也会认绝对 f.path，且 manifest 校验器会把
+    // URL 形状的值当文件系统相对路径接受。要求每个解析出的文件 URL 都待在
+    // manifest 自己的目录下（同源 + 路径前缀），让陌生人提供的 manifest 永远
+    // 无法让 add 跨源抓取或爬出它的 pack。base 末尾的斜杠用于防前缀兄弟
+    // （'/pack' 对 '/pack-evil'）把戏。
     const manifestDirUrl = new URL("./", finalManifestUrl).href;
     for (const f of manifest.files) {
       const fileUrl = new URL(f.path, finalManifestUrl).href;
       if (!fileUrl.startsWith(manifestDirUrl)) {
         throw new Error(
-          `manifest file '${f.path}' resolves to ${fileUrl}, outside the pack directory ${manifestDirUrl}. ` +
-            `Declared files must be relative to the manifest (no absolute URLs, no escaping the pack).`,
+          `manifest 文件 '${f.path}' 解析到 ${fileUrl}，在 pack 目录 ${manifestDirUrl} 之外。` +
+            `声明的文件必须相对 manifest（不要绝对 URL，不要爬出 pack）。`,
         );
       }
-      const { text: fileText } = await fetchTextOrThrow(fileUrl, `file '${f.path}'`);
+      const { text: fileText } = await fetchTextOrThrow(fileUrl, `文件 '${f.path}'`);
       const dest = join(staging, f.path);
       mkdirSync(dirname(dest), { recursive: true });
       writeFileSync(dest, fileText);
     }
-    // Re-validate the on-disk staged pack, then publish atomically.
+    // 重新校验磁盘上的暂存 pack，然后原子发布。
     validateContextPackManifestForInstall(join(staging, "manifest.yaml"));
     assertTreeHasNoSymlinks(staging);
     renameSync(staging, targetDir);
@@ -195,8 +191,8 @@ async function installPackFromUrl(
 async function resolvePack(client: DaemonClient, nameOrRef: string): Promise<ContextPackEntryWire> {
   if (nameOrRef.startsWith("context-pack:")) {
     throw new Error(
-      "Context pack colon-id addressing ('context-pack:<name>:<version>') was removed. " +
-        "Address a pack by its path-like ref instead (for example 'packs/compaction-restore').",
+      "context pack 冒号 id 寻址（'context-pack:<name>:<version>'）已移除。" +
+        "请改用它的路径式 ref 寻址（例如 'packs/compaction-restore'）。",
     );
   }
   if (nameOrRef.includes("/")) {
@@ -204,41 +200,41 @@ async function resolvePack(client: DaemonClient, nameOrRef: string): Promise<Con
       `/api/context-packs/library/by-ref?ref=${encodeURIComponent(nameOrRef)}`,
     );
     if (res.status === 200) return res.data;
-    if (res.status === 404) throw new Error(`Context pack '${nameOrRef}' not found in library. Run 'rig context list' to see what's available.`);
-    if (res.status === 400) throw new Error(res.data?.message ?? `Unsafe context pack ref '${nameOrRef}'.`);
-    throw new Error(`Daemon returned HTTP ${res.status} for /api/context-packs/library/by-ref`);
+    if (res.status === 404) throw new Error(`context pack '${nameOrRef}' 在库中未找到。运行 'zrig context list' 查看可用项。`);
+    if (res.status === 400) throw new Error(res.data?.message ?? `不安全的 context pack ref '${nameOrRef}'。`);
+    throw new Error(`后台服务对 /api/context-packs/library/by-ref 返回 HTTP ${res.status}`);
   }
   const res = await client.get<ContextPackEntryWire[]>("/api/context-packs/library");
-  if (res.status !== 200) throw new Error(`Daemon returned HTTP ${res.status} for /api/context-packs/library`);
+  if (res.status !== 200) throw new Error(`后台服务对 /api/context-packs/library 返回 HTTP ${res.status}`);
   const entries = res.data ?? [];
   const exactRef = entries.find((entry) => entry.relativePath === nameOrRef);
   if (exactRef) return exactRef;
   const matches = entries.filter((e) => e.name === nameOrRef);
   if (matches.length === 0) {
-    throw new Error(`Context pack '${nameOrRef}' not found in library. Run 'rig context list' to see what's available.`);
+    throw new Error(`context pack '${nameOrRef}' 在库中未找到。运行 'zrig context list' 查看可用项。`);
   }
   if (matches.length > 1) {
     const refs = matches.map((entry) => entry.relativePath).join(", ");
-    throw new Error(`Context pack name '${nameOrRef}' is ambiguous across refs: ${refs}. Address it by path-like ref.`);
+    throw new Error(`context pack 名 '${nameOrRef}' 在多个 ref 间歧义：${refs}。请用路径式 ref 寻址。`);
   }
   return matches[0]!;
 }
 
 export function contextCommand(depsOverride?: StatusDeps): Command {
   const cmd = new Command("context")
-    .description("Browse, preview, compose, and manage operator-authored context packs")
+    .description("浏览、预览、组合并管理操作者编写的 context pack")
     .addHelpText("after", `
-Examples:
-  rig context list
-  rig context show pl-005-phase-a-priming
-  rig context preview pl-005-phase-a-priming
-  rig context add ./my-pack
-  rig context rm packs/compaction-restore
-  rig context sync
-  rig context profile world-public --situation fresh --runtime claude-code
-  rig context work-install --runtime claude-code
-  rig context trace --rig product-team --seat orch1-lead --name LEARNED.md
-  rig context trace --rig product-team --pod delivery --seat dev1-qa --name LEARNED.md
+示例：
+  zrig context list
+  zrig context show pl-005-phase-a-priming
+  zrig context preview pl-005-phase-a-priming
+  zrig context add ./my-pack
+  zrig context rm packs/compaction-restore
+  zrig context sync
+  zrig context profile world-public --situation fresh --runtime claude-code
+  zrig context work-install --runtime claude-code
+  zrig context trace --rig product-team --seat orch1-lead --name LEARNED.md
+  zrig context trace --rig product-team --pod delivery --seat dev1-qa --name LEARNED.md
 `);
 
   const getDeps = (): StatusDeps => depsOverride ?? {
@@ -247,19 +243,19 @@ Examples:
   };
 
   cmd.command("work-install")
-    .description("Resolve System World plus project work context and the managed skill loadout")
-    .option("--project <id>", "Exact project id from workspace.yaml")
-    .option("--mission <id>", "Exact mission id under the selected project")
-    .option("--slice <id>", "Exact slice id under the selected mission")
-    .option("--deliver", "Include the exact content of each extant planned file")
-    .option("--runtime <runtime>", "Inspect skills for claude-code (alias: claude) or codex", contextRuntimeArg)
-    .option("--cwd <path>", "Agent working directory that receives skill projections (default: current directory)")
-    .option("--topology <ids>", "Comma-separated topology/profile skill identities")
-    .option("--apply-skills", "Reconcile selected skills into the runtime harness directory")
-    .option("--json", "JSON output")
+    .description("解析 System World 加上项目工作上下文与受管 skill 装载")
+    .option("--project <id>", "workspace.yaml 中精确的项目 id")
+    .option("--mission <id>", "所选项目下精确的 mission id")
+    .option("--slice <id>", "所选 mission 下精确的 slice id")
+    .option("--deliver", "附带每个已存在计划文件的确切内容")
+    .option("--runtime <runtime>", "查看 claude-code（别名：claude）或 codex 的 skills", contextRuntimeArg)
+    .option("--cwd <path>", "接收 skill 投影的智能体工作目录（默认：当前目录）")
+    .option("--topology <ids>", "逗号分隔的 topology/profile skill 标识")
+    .option("--apply-skills", "把所选 skills 对账进运行时 harness 目录")
+    .option("--json", "JSON 输出")
     .action((opts: { project?: string; mission?: string; slice?: string; deliver?: boolean; runtime?: string; cwd?: string; topology?: string; applySkills?: boolean; json?: boolean }) => {
       if (opts.applySkills && opts.runtime === undefined) {
-        console.error("invalid_runtime: --apply-skills requires --runtime claude-code (alias: claude) or codex");
+        console.error("invalid_runtime: --apply-skills 需要 --runtime claude-code（别名：claude）或 codex");
         process.exitCode = 1;
         return;
       }
@@ -326,7 +322,7 @@ Examples:
       if (opts.deliver) {
         for (const planned of result.pieces) {
           if (!planned.exists) {
-            console.log(`=== ${planned.address} (absent: ${planned.path}) ===`);
+            console.log(`=== ${planned.address}（缺失：${planned.path}）===`);
             continue;
           }
           console.log(`=== ${planned.altitude} ${planned.address} ===`);
@@ -337,49 +333,49 @@ Examples:
           for (const receipt of skillProjection.receipts) {
             console.log(`${receipt.status.padEnd(7)} ${receipt.id} [${receipt.selectedBy.join("+")}] ${receipt.target}`);
           }
-          for (const id of skillProjection.removed) console.log(`removed ${id}`);
-          if (skillProjection.freshLaunchRequired) console.log("skills  fresh seat process required to observe changed ambient skills");
-          if (!opts.applySkills) console.log("skills  read-only; add --apply-skills to reconcile");
+          for (const id of skillProjection.removed) console.log(`移除 ${id}`);
+          if (skillProjection.freshLaunchRequired) console.log("skills  需要新的席位进程才能观察到已变更的环境 skills");
+          if (!opts.applySkills) console.log("skills  只读；加 --apply-skills 才会对账");
         }
-        for (const warning of result.warnings) console.error(`Warning: ${warning}`);
+        for (const warning of result.warnings) console.error(`警告：${warning}`);
         return;
       }
-      console.log(`project ${result.position.projectId ?? "(unmanifested)"}: ${result.position.projectRoot}`);
+      console.log(`项目 ${result.position.projectId ?? "（未在清单中）"}：${result.position.projectRoot}`);
       printWorkInstallSelectors(result, (opts.topology ?? "").split(",").map((id) => id.trim()).filter(Boolean));
       for (const planned of result.pieces) {
-        console.log(`${planned.altitude.padEnd(7)} ${planned.address} [${planned.source}] ${planned.exists ? planned.path : `(absent: ${planned.path})`}`);
+        console.log(`${planned.altitude.padEnd(7)} ${planned.address} [${planned.source}] ${planned.exists ? planned.path : `（缺失：${planned.path}）`}`);
       }
       if (skillProjection) {
         for (const receipt of skillProjection.receipts) {
           console.log(`${receipt.status.padEnd(7)} ${receipt.id} [${receipt.selectedBy.join("+")}] ${receipt.target}`);
         }
-        for (const id of skillProjection.removed) console.log(`removed ${id}`);
-        if (skillProjection.freshLaunchRequired) console.log("skills  fresh seat process required to observe changed ambient skills");
-        if (!opts.applySkills) console.log("skills  read-only; add --apply-skills to reconcile");
+        for (const id of skillProjection.removed) console.log(`移除 ${id}`);
+        if (skillProjection.freshLaunchRequired) console.log("skills  需要新的席位进程才能观察到已变更的环境 skills");
+        if (!opts.applySkills) console.log("skills  只读；加 --apply-skills 才会对账");
       }
-      for (const warning of result.warnings) console.error(`Warning: ${warning}`);
+      for (const warning of result.warnings) console.error(`警告：${warning}`);
     });
 
   async function getClient(): Promise<DaemonClient> {
     const deps = getDeps();
     const status = await getDaemonStatus(deps.lifecycleDeps);
     if (status.state !== "running" || status.healthy === false) {
-      // B8-1b: epistemic-matched language via the one helper (down ≠ busy).
+      // B8-1b：经同一 helper 使用与认知匹配的措辞（宕机 ≠ 忙）。
       const gm = statusGuardMessage(status); throw new Error(`${gm.fact} ${gm.action}`);
     }
     return deps.clientFactory(getDaemonUrl(status));
   }
 
-  // OPR.0.5.3.6 — the productized chain-file trace. Daemon-independent by
-  // design: the walk is a config read + filesystem reads, so it works on a
-  // box whose daemon is down (orientation is exactly when that happens).
+  // OPR.0.5.3.6——产品化的链文件 trace。设计上不依赖后台服务：
+  // 遍历是一次配置读 + 若干文件系统读，所以在后台服务宕机的机器上也能用
+  // （orientation 恰恰发生在那时）。
   cmd.command("trace")
-    .description("Walk the topology tree for one chain filename (instance -> rig -> optional pod -> optional seat), keyed off topology.root")
-    .requiredOption("--rig <rig>", "Rig name (the rigs/<rig> altitude)")
-    .option("--pod <pod>", "Pod id (the pods/<pod> altitude); omit when no pod context is selected")
-    .option("--seat <seat>", "Seat id (the seats/<seat> altitude); omit for a rig-level trace")
-    .requiredOption("--name <file>", "Chain filename, identical at every altitude (e.g. LEARNED.md, CULTURE.md)")
-    .option("--json", "JSON output for agents")
+    .description("为一个链文件名遍历拓扑树（instance -> rig -> 可选 pod -> 可选 seat），以 topology.root 为锚")
+    .requiredOption("--rig <rig>", "Rig 名（rigs/<rig> 这一层）")
+    .option("--pod <pod>", "Pod id（pods/<pod> 这一层）；未选 pod 上下文时省略")
+    .option("--seat <seat>", "Seat id（seats/<seat> 这一层）；rig 级 trace 时省略")
+    .requiredOption("--name <file>", "链文件名，每一层都同名（如 LEARNED.md、CULTURE.md）")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: { rig: string; pod?: string; seat?: string; name: string; json?: boolean }) => {
       const { ConfigStore } = await import("../config-store.js");
       const { traceTopologyChain } = await import("../lib/topology-trace.js");
@@ -395,13 +391,13 @@ Examples:
           seat: opts.seat ?? null,
         });
       } catch (err) {
-        // r2-B3: traversal-shaped input is a clean refusal, never a stack trace.
+        // r2-B3：遍历形状的输入是一次干净的拒绝，绝不抛栈。
         console.error(err instanceof Error ? err.message : String(err));
         process.exitCode = 1;
         return;
       }
-      // Advisories go to stderr on BOTH output modes — a legacy read must
-      // never pass silently, and stdout stays clean for piping.
+      // 提示在两种输出模式下都走 stderr——遗留读取绝不能静默通过，
+      // 而 stdout 保持干净以便管道。
       for (const level of result.levels) {
         if (level.advisory) console.error(`ADVISORY ${level.advisory}`);
       }
@@ -409,27 +405,27 @@ Examples:
         console.log(JSON.stringify({ topologyRootSource: resolved.source, ...result }, null, 2));
         return;
       }
-      console.log(`chain "${result.name}" under topology.root=${result.topologyRoot} (source: ${resolved.source})`);
+      console.log(`拓扑链 "${result.name}"，位于 topology.root=${result.topologyRoot}（来源：${resolved.source}）`);
       for (const level of result.levels) {
         if (level.source === "absent") {
-          console.log(`\n== ${level.altitude} — absent (${level.path})`);
+          console.log(`\n== ${level.altitude}——缺失（${level.path}）`);
           continue;
         }
-        const origin = level.source === "legacy" ? ` [LEGACY: ${level.resolvedPath}]` : "";
-        console.log(`\n== ${level.altitude} — ${level.path}${origin}`);
+        const origin = level.source === "legacy" ? ` [遗留：${level.resolvedPath}]` : "";
+        console.log(`\n== ${level.altitude}——${level.path}${origin}`);
         console.log(level.content?.trimEnd() ?? "");
       }
     });
 
   cmd.command("compose")
-    .description("Compose ordered files into a durable context-pack ref (never delivers)")
-    .requiredOption("--out <ref>", "Path-like durable output ref")
-    .requiredOption("--from <files...>", "Ordered source files")
+    .description("把有序文件组合成一个持久 context-pack ref（绝不投递）")
+    .requiredOption("--out <ref>", "路径式持久输出 ref")
+    .requiredOption("--from <files...>", "有序的源文件")
     .action(async (opts: { out: string; from: string[] }) => {
       const deps = getDeps();
       const status = await getDaemonStatus(deps.lifecycleDeps);
       if (status.state !== "running" || status.healthy === false) {
-        console.error("Daemon is not running. Start it with: rig daemon start");
+        console.error("后台服务未运行。用它启动：zrig daemon start");
         process.exitCode = 1;
         return;
       }
@@ -447,11 +443,11 @@ Examples:
           sources: opts.from.map((path) => ({ path: resolve(path), label: path })),
         });
         if (res.status !== 201) {
-          throw new Error(res.data.message ?? res.data.error ?? `Daemon returned HTTP ${res.status}`);
+          throw new Error(res.data.message ?? res.data.error ?? `后台服务返回 HTTP ${res.status}`);
         }
         console.log(
-          `Composed ${res.data.files?.length ?? opts.from.length} file(s) -> ${res.data.ref} ` +
-          `(${res.data.bytes ?? 0} bytes, ~${res.data.estimatedTokens ?? 0} tokens).`,
+          `已组合 ${res.data.files?.length ?? opts.from.length} 个文件 -> ${res.data.ref} ` +
+          `（${res.data.bytes ?? 0} 字节，约 ${res.data.estimatedTokens ?? 0} tokens）。`,
         );
       } catch (err) {
         console.error((err as Error).message);
@@ -460,8 +456,8 @@ Examples:
     });
 
   cmd.command("list")
-    .description("List all context packs in the library")
-    .option("--json", "JSON output")
+    .description("列出库中所有 context pack")
+    .option("--json", "JSON 输出")
     .action(async (opts: { json?: boolean }) => {
       try {
         const client = await getClient();
@@ -472,11 +468,11 @@ Examples:
           return;
         }
         if (entries.length === 0) {
-          console.log("No context packs in library. Author one under `rig config get context.root`, then run: rig context sync");
+          console.log("库中没有 context pack。在 `zrig config get context.root` 下编写一个，然后运行：zrig context sync");
           return;
         }
         for (const e of entries) {
-          console.log(`${e.relativePath.padEnd(36)} ${e.name.padEnd(24)} v${String(e.version).padEnd(6)} ${(e.taxonomy ?? "—").padEnd(8)} ${String(e.files.length).padStart(2)} files  ~${String(e.derivedEstimatedTokens).padStart(6)} tokens  ${e.sourceType}  ${e.sourcePath}`);
+          console.log(`${e.relativePath.padEnd(36)} ${e.name.padEnd(24)} v${String(e.version).padEnd(6)} ${(e.taxonomy ?? "—").padEnd(8)} ${String(e.files.length).padStart(2)} 文件  约${String(e.derivedEstimatedTokens).padStart(6)} tokens  ${e.sourceType}  ${e.sourcePath}`);
         }
       } catch (err) {
         console.error((err as Error).message);
@@ -485,9 +481,9 @@ Examples:
     });
 
   cmd.command("show")
-    .argument("<name-or-ref>", "Context pack name or path-like ref")
-    .description("Show pack manifest + per-file metadata")
-    .option("--json", "JSON output")
+    .argument("<name-or-ref>", "context pack 名或路径式 ref")
+    .description("展示 pack manifest 与逐文件元数据")
+    .option("--json", "JSON 输出")
     .action(async (nameOrId: string, opts: { json?: boolean }) => {
       try {
         const client = await getClient();
@@ -496,21 +492,21 @@ Examples:
           console.log(JSON.stringify(entry, null, 2));
           return;
         }
-        console.log(`Ref:         ${entry.relativePath}`);
-        console.log(`Name:        ${entry.name}`);
-        console.log(`Version:     ${entry.version}`);
-        console.log(`Source:      ${entry.sourceType} (${entry.sourcePath})`);
-        console.log(`Files:       ${entry.files.length}`);
-        console.log(`Tokens (~):  ${entry.derivedEstimatedTokens}${entry.manifestEstimatedTokens !== null ? ` (manifest: ${entry.manifestEstimatedTokens})` : ""}`);
+        console.log(`Ref:        ${entry.relativePath}`);
+        console.log(`名称：      ${entry.name}`);
+        console.log(`版本：      ${entry.version}`);
+        console.log(`来源：      ${entry.sourceType}（${entry.sourcePath}）`);
+        console.log(`文件数：    ${entry.files.length}`);
+        console.log(`Tokens(~):  ${entry.derivedEstimatedTokens}${entry.manifestEstimatedTokens !== null ? `（manifest：${entry.manifestEstimatedTokens}）` : ""}`);
         if (entry.purpose) {
           console.log("");
-          console.log("Purpose:");
+          console.log("用途：");
           console.log(`  ${entry.purpose.replaceAll("\n", "\n  ")}`);
         }
         console.log("");
         for (const f of entry.files) {
-          const sizeStr = f.bytes === null ? "(missing)" : `${f.bytes}B`;
-          const tokenStr = f.estimatedTokens === null ? "—" : `~${f.estimatedTokens} tokens`;
+          const sizeStr = f.bytes === null ? "（缺失）" : `${f.bytes}B`;
+          const tokenStr = f.estimatedTokens === null ? "—" : `约${f.estimatedTokens} tokens`;
           console.log(`  ${f.path.padEnd(40)} role=${f.role.padEnd(20)} ${sizeStr.padEnd(12)} ${tokenStr}`);
           if (f.summary) console.log(`    ${f.summary}`);
         }
@@ -521,27 +517,27 @@ Examples:
     });
 
   cmd.command("preview")
-    .argument("<name-or-ref>", "Context pack name or path-like ref")
-    .description("Show the assembled bundle without delivering it")
-    .option("--json", "JSON output")
+    .argument("<name-or-ref>", "context pack 名或路径式 ref")
+    .description("展示组装好的 bundle，但不投递")
+    .option("--json", "JSON 输出")
     .action(async (nameOrRef: string, opts: { json?: boolean }) => {
       try {
         const client = await getClient();
         const entry = await resolvePack(client, nameOrRef);
         const res = await client.get<PreviewWire>(`/api/context-packs/library/by-ref/preview?ref=${encodeURIComponent(entry.relativePath)}`);
-        if (res.status !== 200) throw new Error(`Daemon returned HTTP ${res.status}`);
+        if (res.status !== 200) throw new Error(`后台服务返回 HTTP ${res.status}`);
         const preview = res.data;
         if (opts.json) {
           console.log(JSON.stringify(preview, null, 2));
           return;
         }
         if (preview.missingFiles.length > 0) {
-          console.error(`Warning: ${preview.missingFiles.length} file(s) referenced by manifest are missing on disk:`);
-          for (const m of preview.missingFiles) console.error(`  - ${m.path} (role: ${m.role})`);
+          console.error(`警告：manifest 引用的 ${preview.missingFiles.length} 个文件在磁盘上缺失：`);
+          for (const m of preview.missingFiles) console.error(`  - ${m.path}（role：${m.role}）`);
           console.error("");
         }
-        console.log(`# Preview: ${preview.name} v${preview.version}`);
-        console.log(`# Bundle: ${preview.bundleBytes} bytes (~${preview.estimatedTokens} tokens), ${preview.files.length} files`);
+        console.log(`# 预览：${preview.name} v${preview.version}`);
+        console.log(`# Bundle：${preview.bundleBytes} 字节（约 ${preview.estimatedTokens} tokens），${preview.files.length} 个文件`);
         console.log("# ---");
         console.log(preview.bundleText);
       } catch (err) {
@@ -550,29 +546,28 @@ Examples:
       }
     });
 
-  // OPR.0.5.3.7 R1 — the PULL verb: an agent-facing serving verb over the EXISTING assembler
-  // path (the same by-ref/preview machinery `preview` uses — never a parallel assembler).
-  // `preview` is the operator's pre-send check; `get` is what a seat runs on demand to LOAD a
-  // library entry. Output is the assembled bundle itself (so the agent consumes exactly those
-  // bytes), warnings to stderr; `--json` for programmatic use. Naming ruled: `rig context get`
-  // (one library, one verb — NOT `rig skills get`; "skills" is an org category in the library).
+  // OPR.0.5.3.7 R1——PULL 动词：一个面向智能体的服务动词，跑在既有的汇编器
+  // 路径上（与 `preview` 用同一套 by-ref/preview 机制——绝不另起一个汇编器）。
+  // `preview` 是操作者发送前的检查；`get` 是席位按需运行以加载一个
+  // 库条目。输出就是组装好的 bundle 本身（让智能体恰好消费这些字节），
+  // 警告走 stderr；`--json` 供程序化使用。命名裁定：`rig context get`
+  // （一个库、一个动词——不是 `rig skills get`；"skills" 是库里的一个组织类别）。
   cmd.command("get")
-    .argument("<name-or-ref>", "Context library entry name, path-like ref, or address (<pack-ref>/<file>#H2-slug/H3-slug)")
-    .description("Serve the assembled bundle for an agent to load on demand (the pull verb)")
-    .option("--json", "JSON output")
+    .argument("<name-or-ref>", "context 库条目名、路径式 ref，或地址（<pack-ref>/<file>#H2-slug/H3-slug）")
+    .description("把组装好的 bundle 交给智能体按需加载（pull 动词）")
+    .option("--json", "JSON 输出")
     .action(async (nameOrRef: string, opts: { json?: boolean }) => {
       try {
         const client = await getClient();
-        // OPR.0.5.3.5 Atom 4c: fragment addresses route directly to the
-        // daemon's resolver. A bare slash-containing value may be either a
-        // pack ref or a whole-file address, so exact-pack lookup wins and only
-        // its 404 falls through to the same resolver.
+        // OPR.0.5.3.5 Atom 4c：带 fragment 的地址直接路由到后台服务的解析器。
+        // 一个裸的含斜杠值可能是 pack ref 也可能是整文件地址，所以先精确 pack 查找，
+        // 只有它 404 才落到同一个解析器。
         if (nameOrRef.includes("#")) {
           const res = await client.get<{ text?: string; message?: string; error?: string }>(
             `/api/context-packs/library/resolve-address?address=${encodeURIComponent(nameOrRef)}`,
           );
           if (res.status !== 200) {
-            throw new Error(res.data?.message ?? res.data?.error ?? `Daemon returned HTTP ${res.status} for resolve-address`);
+            throw new Error(res.data?.message ?? res.data?.error ?? `后台服务对 resolve-address 返回 HTTP ${res.status}`);
           }
           if (opts.json) console.log(JSON.stringify(res.data, null, 2));
           else console.log(res.data.text);
@@ -588,29 +583,29 @@ Examples:
               `/api/context-packs/library/resolve-address?address=${encodeURIComponent(nameOrRef)}`,
             );
             if (res.status !== 200) {
-              throw new Error(res.data?.message ?? res.data?.error ?? `Daemon returned HTTP ${res.status} for resolve-address`);
+              throw new Error(res.data?.message ?? res.data?.error ?? `后台服务对 resolve-address 返回 HTTP ${res.status}`);
             }
             if (opts.json) console.log(JSON.stringify(res.data, null, 2));
             else process.stdout.write(res.data.text ?? "");
             return;
           }
-          if (exact.status === 400) throw new Error(exact.data?.message ?? `Unsafe context pack ref '${nameOrRef}'.`);
-          if (exact.status !== 200) throw new Error(`Daemon returned HTTP ${exact.status} for /api/context-packs/library/by-ref`);
+          if (exact.status === 400) throw new Error(exact.data?.message ?? `不安全的 context pack ref '${nameOrRef}'。`);
+          if (exact.status !== 200) throw new Error(`后台服务对 /api/context-packs/library/by-ref 返回 HTTP ${exact.status}`);
           entry = exact.data;
         } else {
           entry = await resolvePack(client, nameOrRef);
         }
         const res = await client.get<PreviewWire>(`/api/context-packs/library/by-ref/preview?ref=${encodeURIComponent(entry.relativePath)}`);
-        if (res.status !== 200) throw new Error(`Daemon returned HTTP ${res.status}`);
+        if (res.status !== 200) throw new Error(`后台服务返回 HTTP ${res.status}`);
         const bundle = res.data;
         if (opts.json) {
           console.log(JSON.stringify(bundle, null, 2));
           return;
         }
-        // Warnings go to stderr so stdout is exactly the served bundle bytes.
+        // 警告走 stderr，让 stdout 恰好是被服务的 bundle 字节。
         if (bundle.missingFiles.length > 0) {
-          console.error(`Warning: ${bundle.missingFiles.length} file(s) referenced by manifest are missing on disk.`);
-          for (const m of bundle.missingFiles) console.error(`  - ${m.path} (role: ${m.role})`);
+          console.error(`警告：manifest 引用的 ${bundle.missingFiles.length} 个文件在磁盘上缺失。`);
+          for (const m of bundle.missingFiles) console.error(`  - ${m.path}（role：${m.role}）`);
         }
         console.log(bundle.bundleText);
       } catch (err) {
@@ -619,47 +614,44 @@ Examples:
       }
     });
 
-  // OPR.0.5.3.5 Atom 4d — situation-composed delivery (the profile verb).
-  // Serving only: pieces to stdout with their source labels (Q2-Amendment 1),
-  // budget report + provenance warnings to stderr. Delivery-free like every
-  // library verb — nothing here sends to a seat. Naming rig/seat (or mission)
-  // is the caller's explicit grant of read access to that directory subtree.
+  // OPR.0.5.3.5 Atom 4d——情境组合投递（profile 动词）。
+  // 仅服务：片段连同其来源标签送到 stdout（Q2 修正案 1），
+  // 预算报告 + 出处警告送 stderr。和每个库动词一样不投递——这里没有任何东西
+  // 发到席位。命名 rig/seat（或 mission）是调用方对该目录子树读取权的显式授予。
   cmd.command("profile")
-    .argument("<name-or-ref>", "Context pack name or path-like ref (its manifest must declare atoms)")
+    .argument("<name-or-ref>", "context pack 名或路径式 ref（其 manifest 必须声明 atoms）")
     .requiredOption("--situation <situation>", "fresh | handover | post-compaction")
-    // r1 4d obs 2: default from the seat's own environment — a codex seat that
-    // forgets the flag must not silently get a claude profile (mini-req 3 is
-    // the rule that the runtimes compose DIFFERENT profiles). Flag beats env;
-    // an unrecognized env value falls back to claude rather than erroring a
-    // surface the env owner may not control.
-    .option("--runtime <runtime>", "claude-code (alias: claude) or codex (default: $OPENRIG_RUNTIME, else claude-code)", contextRuntimeArg)
-    .option("--profile <profile>", "Named install profile declared by the pack (selection + ordered phases)")
-    .option("--budget <tokens>", "Situation token budget — overage is REPORTED, never truncated")
-    .option("--rig <rig>", "With --seat: grant read access to that seat's tree (seat: atoms)")
-    .option("--seat <seat>", "With --rig: the seat whose tree seat: atoms may read")
-    .option("--mission <mission>", "Grant read access to that mission's tree (mission: atoms)")
-    .option("--slice <slice>", "With --mission: compose the legacy default project/mission/slice SPEC walk")
-    .option("--json", "JSON output (the full composed profile)")
+    // r1 4d obs 2：默认取自席位自身的环境——一个忘了带 flag 的 codex 席位
+    // 绝不能静默拿到 claude profile（mini-req 3 是"各运行时组合出不同
+    // profile"的规则）。flag 优先于 env；认不出的 env 值回退到 claude，
+    // 而不是在 env 拥有者可能无法控制的表面上报错。
+    .option("--runtime <runtime>", "claude-code（别名：claude）或 codex（默认：$OPENRIG_RUNTIME，否则 claude-code）", contextRuntimeArg)
+    .option("--profile <profile>", "pack 声明的命名安装 profile（选择 + 有序阶段）")
+    .option("--budget <tokens>", "情境 token 预算——超出只报告，绝不截断")
+    .option("--rig <rig>", "配合 --seat：授予对该席位树的读取权（seat: atoms）")
+    .option("--seat <seat>", "配合 --rig：其树可供 seat: atoms 读取的那个席位")
+    .option("--mission <mission>", "授予对该 mission 树的读取权（mission: atoms）")
+    .option("--slice <slice>", "配合 --mission：组合遗留的默认 project/mission/slice SPEC 遍历")
+    .option("--json", "JSON 输出（完整组合出的 profile）")
     .action(async (nameOrRef: string, opts: { situation: string; runtime?: string; profile?: string; budget?: string; rig?: string; seat?: string; mission?: string; slice?: string; json?: boolean }) => {
       try {
         const client = await getClient();
         const entry = await resolvePack(client, nameOrRef);
-        // r1 F2: the product's runtime vocabulary is "claude-code" / "codex"
-        // (the adapters' values, live on real seats) — map it EXPLICITLY. A
-        // genuinely unknown value falls back to claude WITH A VOICE: a future
-        // third runtime must not silently get a claude profile (the exact
-        // mini-req 3 hazard this default exists to close).
+        // r1 F2：产品的运行时词表是 "claude-code" / "codex"
+        //（适配器的取值，跑在真实席位上）——显式映射。一个真正未知的值
+        // 会带着声音回退到 claude：未来的第三个运行时绝不能静默拿到
+        // claude profile（这正是本默认要堵的 mini-req 3 隐患）。
         const envRuntime = process.env["OPENRIG_RUNTIME"];
         let runtime = opts.runtime;
         if (runtime === undefined) {
           if (envRuntime === "codex") runtime = "codex";
           else if (envRuntime === "claude-code" || envRuntime === "claude") runtime = "claude";
           else {
-            if (envRuntime) console.error(`Warning: unrecognized OPENRIG_RUNTIME '${envRuntime}' — composing the claude profile; pass --runtime to override.`);
+            if (envRuntime) console.error(`警告：无法识别的 OPENRIG_RUNTIME '${envRuntime}'——按 claude profile 组合；传 --runtime 覆盖。`);
             runtime = "claude";
           }
         }
-        // Keep the composer/manifest key and returned metadata compatible.
+        // 保持 composer/manifest key 与返回元数据兼容。
         if (runtime === "claude-code") runtime = "claude";
         const params = new URLSearchParams({ ref: entry.relativePath, situation: opts.situation, runtime });
         if (opts.profile !== undefined) params.set("profile", opts.profile);
@@ -679,7 +671,7 @@ Examples:
           error?: string;
         }>(`/api/context-packs/library/by-ref/profile?${params.toString()}`);
         if (res.status !== 200) {
-          throw new Error(res.data?.message ?? res.data?.error ?? `Daemon returned HTTP ${res.status} for by-ref/profile`);
+          throw new Error(res.data?.message ?? res.data?.error ?? `后台服务对 by-ref/profile 返回 HTTP ${res.status}`);
         }
         const profile = res.data;
         if (opts.json) {
@@ -690,25 +682,23 @@ Examples:
           console.error(`PROFILE ${profile.profileId}`);
           for (const phase of profile.phases ?? []) {
             const sources = phase.sources ? ` [${phase.sources.join(", ")}]` : "";
-            console.error(`PHASE ${phase.id} (${phase.kind}${sources}, ~${phase.estimatedTokens} tokens)`);
+            console.error(`PHASE ${phase.id}（${phase.kind}${sources}，约 ${phase.estimatedTokens} tokens）`);
           }
         }
-        // Warnings and the budget report ride stderr so stdout is exactly the
-        // composed walk an agent consumes.
+        // 警告与预算报告走 stderr，让 stdout 恰好是智能体消费的组合遍历。
         for (const w of profile.provenanceWarnings ?? []) console.error(`PROVENANCE ${w}`);
         if (profile.budget) {
           console.error(
-            `BUDGET: over by ~${profile.budget.overageTokens} tokens (limit ${profile.budget.limitTokens}); ` +
-            `drop candidates in order: ${profile.budget.dropCandidates.map((d) => `${d.atomId} (${d.priority}, ~${d.estimatedTokens})`).join(", ")}`,
+            `预算：超出约 ${profile.budget.overageTokens} tokens（上限 ${profile.budget.limitTokens}）；` +
+            `按顺序的可丢弃候选：${profile.budget.dropCandidates.map((d) => `${d.atomId}（${d.priority}，约 ${d.estimatedTokens}）`).join(", ")}`,
           );
         }
         for (const p of profile.pieces ?? []) {
-          // r1 4d obs 1: the escape marker rides the FRAMING header, so an
-          // agent that discards stderr still learns a piece's bytes came from
-          // outside its root — self-describing payload, zero composed bytes
-          // touched.
+          // r1 4d obs 1：转义标记骑在框架头上，所以一个丢弃了 stderr 的
+          // 智能体仍能知道某个片段的字节来自它根之外——自描述负载，
+          // 一个组合字节都不动。
           const escaped = (p as { provenance?: { escapesRoot?: boolean } }).provenance?.escapesRoot ? " !ESCAPED-ROOT" : "";
-          console.log(`=== ${p.atomId} [${p.sourceKind}${escaped}] ${p.address} (~${p.estimatedTokens} tokens)`);
+          console.log(`=== ${p.atomId} [${p.sourceKind}${escaped}] ${p.address}（约 ${p.estimatedTokens} tokens）`);
           console.log(p.text);
           console.log("");
         }
@@ -718,17 +708,15 @@ Examples:
       }
     });
 
-  // OPR.0.5.3.5 mini-req 7 — the outgoing occupant's boundary write (the Q2
-  // requirement the store alone does not satisfy). Daemon-independent like
-  // trace: the seat dir resolves from topology.root CONFIG; the write flows
-  // through the ONE store (supersession + addressability gate); advisory
-  // contract findings ride stderr while the write still lands — the boundary
-  // is never blocked on prose shape.
+  // OPR.0.5.3.5 mini-req 7——离席者的边界写入（Q2 要求，单靠存储满足不了）。
+  // 和 trace 一样不依赖后台服务：席位目录从 topology.root 配置解析；写入流经
+  // 唯一的存储（取代 + 可寻址闸门）；契约发现走 stderr，而写入仍落地——
+  // 边界绝不因文字形状而被阻塞。
   cmd.command("recap-write")
-    .description("Write this seat's authored RECAP (decisions-with-rationale) at the handover boundary; supersedes the previous recap into the seat's chain")
-    .requiredOption("--rig <rig>", "Rig name (the rigs/<rig> altitude)")
-    .requiredOption("--seat <seat>", "Seat id (the seats/<seat> altitude)")
-    .requiredOption("--file <path>", "Markdown file containing the recap content")
+    .description("在交接边界写入本席位编写的 RECAP（带理由的决策）；把前一份 recap 取代进席位的链")
+    .requiredOption("--rig <rig>", "Rig 名（rigs/<rig> 这一层）")
+    .requiredOption("--seat <seat>", "Seat id（seats/<seat> 这一层）")
+    .requiredOption("--file <path>", "包含 recap 内容的 Markdown 文件")
     .action(async (opts: { rig: string; seat: string; file: string }) => {
       try {
         const { writeSeatRecap, validateRecapContract, listRecapChain } = await import("@openrig/daemon/seat-recap-store");
@@ -739,19 +727,19 @@ Examples:
         assertSafeTopologySegment("seat", opts.seat);
         const rigDir = join(topologyRoot, "rigs", opts.rig);
         if (!existsSync(rigDir)) {
-          throw new Error(`rig directory ${rigDir} does not exist — check --rig against the topology tree (topology.root=${topologyRoot}).`);
+          throw new Error(`rig 目录 ${rigDir} 不存在——请对照拓扑树核对 --rig（topology.root=${topologyRoot}）。`);
         }
         const seatDir = join(topologyRoot, "rigs", opts.rig, "seats", opts.seat);
         assertDestinationNamespaceContained(join(topologyRoot, "rigs"), `${opts.rig}/seats/${opts.seat}/RECAP.md`);
         mkdirSync(seatDir, { recursive: true });
         for (const f of validateRecapContract(content)) {
           console.error(f.kind === "no-decisions-section"
-            ? "ADVISORY no-decisions-section: the authoring contract asks for decisions WITH rationale — conclusions alone are the lossy handoff shape."
-            : `ADVISORY nonstandard-unverified-marker (line ${f.line}): use the canonical 'UNVERIFIED:' form so uncertain facts stay findable.`);
+            ? "ADVISORY no-decisions-section：编写契约要求带理由的决策——只有结论是有损交接形态。"
+            : `ADVISORY nonstandard-unverified-marker（第 ${f.line} 行）：请用规范的 'UNVERIFIED:' 形式，让不确定的事实可被找到。`);
         }
         writeSeatRecap({ seatDir, content });
         const chain = listRecapChain(seatDir);
-        console.log(`Recap written: ${join(seatDir, "RECAP.md")}${chain.length > 0 ? ` (${chain.length} superseded predecessor${chain.length === 1 ? "" : "s"} retained)` : ""}`);
+        console.log(`Recap 已写入：${join(seatDir, "RECAP.md")}${chain.length > 0 ? `（已保留 ${chain.length} 个被取代的前序）` : ""}`);
       } catch (err) {
         console.error((err as Error).message);
         process.exitCode = 1;
@@ -759,24 +747,24 @@ Examples:
     });
 
   cmd.command("sync")
-    .description("Re-walk discovery roots and refresh the library index")
-    .option("--json", "JSON output")
+    .description("重新遍历发现根并刷新库索引")
+    .option("--json", "JSON 输出")
     .action(async (opts: { json?: boolean }) => {
       try {
         const client = await getClient();
         const res = await client.post<{ count: number; errors: Array<{ source: string; error: string }>; entries: ContextPackEntryWire[] }>(
           "/api/context-packs/library/sync",
         );
-        if (res.status !== 200) throw new Error(`Daemon returned HTTP ${res.status}`);
+        if (res.status !== 200) throw new Error(`后台服务返回 HTTP ${res.status}`);
         const data = res.data;
         if (opts.json) {
           console.log(JSON.stringify(data, null, 2));
           return;
         }
-        console.log(`Indexed ${data.count} context pack(s).`);
+        console.log(`已索引 ${data.count} 个 context pack。`);
         if (data.errors.length > 0) {
-          console.log(`Encountered ${data.errors.length} parse error(s):`);
-          for (const e of data.errors) console.log(`  - ${e.source}: ${e.error}`);
+          console.log(`遇到 ${data.errors.length} 个解析错误：`);
+          for (const e of data.errors) console.log(`  - ${e.source}：${e.error}`);
         }
       } catch (err) {
         console.error((err as Error).message);
@@ -785,37 +773,37 @@ Examples:
     });
 
   cmd.command("add")
-    .argument("<source>", "Pack directory/manifest URL, or Git repository path/URL with --git")
-    .description("Install a pack; --git discovers a pack in a Git repository and retains its update relationship")
-    .option("--name <name>", "Override the install name (defaults to the manifest name / source basename)")
-    .option("--git", "Clone a Git repository path/URL with existing Git credentials; select a pack snapshot")
-    .option("--checkout", "With --git, select an existing checkout instead of cloning; updates may merge in it")
-    .option("--pack <path>", "With --git, select a repository-relative pack; default discovers manifest.yaml or .openrig/context-packs")
-    .option("--json", "JSON output")
+    .argument("<source>", "pack 目录/manifest URL，或带 --git 的 Git 仓库路径/URL")
+    .description("安装一个 pack；--git 在 Git 仓库中发现 pack 并保留其更新关系")
+    .option("--name <name>", "覆盖安装名（默认：manifest 名 / 源 basename）")
+    .option("--git", "用已有 Git 凭证克隆一个 Git 仓库路径/URL；选择一个 pack 快照")
+    .option("--checkout", "配合 --git，选择一个已有的 checkout 而非克隆；更新可在其中合并")
+    .option("--pack <path>", "配合 --git，选一个仓库相对的 pack；默认发现 manifest.yaml 或 .openrig/context-packs")
+    .option("--json", "JSON 输出")
     .action(async (source: string, opts: { name?: string; json?: boolean; git?: boolean; checkout?: boolean; pack?: string }) => {
       try {
-        // OPR.0.5.9.5 Wave B — config-resolved context library,
-        // never a hardcoded ~/.openrig literal; the daemon resolves the same key.
+        // OPR.0.5.9.5 Wave B——配置解析的 context 库，
+        // 绝非常量写死的 ~/.openrig；后台服务解析同一个 key。
         const targetRoot = new ConfigStore().resolve().context.root;
         let targetDir: string;
         let gitSelection: ReturnType<typeof addGitContext>["selected"] | undefined;
-        if ((opts.pack || opts.checkout) && !opts.git) throw new Error("--pack and --checkout require --git.");
+        if ((opts.pack || opts.checkout) && !opts.git) throw new Error("--pack 与 --checkout 需要 --git。");
         if (opts.git) {
           const gitClient = await getClient();
           assertLocalGitClient(gitClient);
           ({ installedAt: targetDir, selected: gitSelection } = addGitContext(source, opts, targetRoot));
         } else if (isHttpUrl(source)) {
-          // R4 — URL install: fetch → validate → atomic stage+rename (no partial pack).
+          // R4——URL 安装：抓取 → 校验 → 原子暂存+改名（无半成品 pack）。
           ({ targetDir } = await installPackFromUrl(source, opts.name, targetRoot));
         } else {
-          // Local directory install.
-          if (!existsSync(source)) throw new Error(`Source directory not found: ${source}`);
+          // 本地目录安装。
+          if (!existsSync(source)) throw new Error(`未找到源目录：${source}`);
           const stat = lstatSync(source);
-          if (stat.isSymbolicLink()) throw new Error(`Source must not be a symlink: ${source}`);
-          if (!stat.isDirectory()) throw new Error(`Source must be a directory containing manifest.yaml: ${source}`);
+          if (stat.isSymbolicLink()) throw new Error(`源不能是软链：${source}`);
+          if (!stat.isDirectory()) throw new Error(`源必须是含 manifest.yaml 的目录：${source}`);
           const manifestPath = join(source, "manifest.yaml");
           if (!existsSync(manifestPath)) {
-            throw new Error(`Source directory must contain manifest.yaml: ${source}`);
+            throw new Error(`源目录必须包含 manifest.yaml：${source}`);
           }
           validateContextPackManifestForInstall(manifestPath);
           const installName = opts.name ?? (() => {
@@ -840,31 +828,31 @@ Examples:
             if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
           }
           if (targetExists) {
-            throw new Error(`A context pack named '${installName}' already exists at ${targetDir}. Remove it first or use --name to install under a different name.`);
+            throw new Error(`名为 '${installName}' 的 context pack 已存在于 ${targetDir}。先移除它，或用 --name 装到别的名字下。`);
           }
           cpSync(source, targetDir, { recursive: true });
         }
-        // Sync the daemon library so the new pack appears immediately.
+        // 同步后台服务库，让新 pack 立刻可见。
         const client = await getClient();
         const syncRes = await client.post<{ count: number; errors?: Array<{ source: string; error: string }>; entries: ContextPackEntryWire[] }>("/api/context-packs/library/sync");
         if (syncRes.status !== 200) {
-          // Install succeeded; sync failed → still surface install path.
+          // 安装成功；同步失败 → 仍展示安装路径。
           if (opts.json) console.log(JSON.stringify({ installedAt: targetDir, syncError: `HTTP ${syncRes.status}` }, null, 2));
-          else console.log(`Installed at ${targetDir}; daemon sync failed (HTTP ${syncRes.status}). Run 'rig context sync' manually.`);
+          else console.log(`已安装到 ${targetDir}；后台服务同步失败（HTTP ${syncRes.status}）。手动运行 'zrig context sync'。`);
           return;
         }
         const syncError = syncRes.data.errors?.find((e) => e.source === targetDir);
         if (syncError) {
-          throw new Error(`Installed at ${targetDir}, but daemon rejected the pack during sync: ${syncError.error}`);
+          throw new Error(`已安装到 ${targetDir}，但后台服务在同步时拒绝了该 pack：${syncError.error}`);
         }
         if (gitSelection && !syncRes.data.entries.some((entry) => resolve(entry.sourcePath) === resolve(targetDir))) {
-          throw new Error(`Git selection retained at ${targetDir}, but this daemon does not serve it. Check context.root and workspace ref precedence before using it.`);
+          throw new Error(`Git 选择已保留在 ${targetDir}，但这个后台服务不服务它。使用前请检查 context.root 与 workspace ref 的优先级。`);
         }
         if (opts.json) {
           console.log(JSON.stringify({ installedAt: targetDir, count: syncRes.data.count, ...(gitSelection ? { gitSource: gitSelection } : {}) }, null, 2));
         } else {
-          console.log(`Installed at ${targetDir}. Library now has ${syncRes.data.count} context pack(s).`);
-          if (gitSelection) console.log(`Git ${gitSelection.revision} from ${gitSelection.checkout}; inspect/update with rig context source.`);
+          console.log(`已安装到 ${targetDir}。库现有 ${syncRes.data.count} 个 context pack。`);
+          if (gitSelection) console.log(`Git ${gitSelection.revision}，来自 ${gitSelection.checkout}；用 rig context source 查看/更新。`);
         }
       } catch (err) {
         console.error((err as Error).message);
@@ -873,31 +861,31 @@ Examples:
     });
 
   const source = cmd.command("source")
-    .description("Inspect Git checkout vs served context, or explicitly fetch/merge and select an update")
-    .addHelpText("after", "\nStart: rig context add <repository-path-or-URL> --git [--pack path]\nEdit/commit in the reported checkout with ordinary Git. Updates never push or reset.\nConflicts retain the old selection; resolve/commit or abort in the checkout before retrying.\nSelection does not prove agent consumption; use context get and check the actual consumer.\n");
+    .description("查看 Git checkout 与被服务 context 的差异，或显式抓取/合并并选择一次更新")
+    .addHelpText("after", "\n开始：zrig context add <仓库路径或URL> --git [--pack path]\n在报告的 checkout 里用普通 Git 编辑/提交。更新绝不 push 或 reset。\n冲突会保留旧选择；重试前在 checkout 里解决/提交或中止。\n选择不证明智能体已消费；用 context get 并检查真实消费者。\n");
   for (const operation of ["inspect", "update"] as const) {
     source.command(operation)
-      .argument("<ref>", "Selected Git-backed context pack ref")
+      .argument("<ref>", "所选的 Git 后端 context pack ref")
       .description(operation === "inspect"
-        ? "Read local revision, edits, conflicts and selection; no fetch or consumption claim"
-        : "Explicitly fetch/merge the upstream, then select the clean pack; refuse local selection edits")
-      .option("--json", "JSON output")
+        ? "读取本地 revision、改动、冲突与选择；不 fetch、不主张已消费"
+        : "显式 fetch/合并上游，然后选择干净的 pack；拒绝本地改动选择")
+      .option("--json", "JSON 输出")
       .action(async (ref: string, opts: { json?: boolean }) => {
         try {
           const client = await getClient();
           assertLocalGitClient(client);
           const entry = await resolvePack(client, ref);
           const localRoot = new ConfigStore().resolve().context.root;
-          if (resolve(entry.sourcePath) !== resolve(localRoot, entry.relativePath)) throw new Error("This pack is not in the locally configured context library. Run Git source commands on its owning instance.");
-          if (entry.sourceType === "builtin") throw new Error("Builtin context is not a writable Git selection.");
+          if (resolve(entry.sourcePath) !== resolve(localRoot, entry.relativePath)) throw new Error("这个 pack 不在本地配置的 context 库里。请在它所属的 instance 上运行 Git 源命令。");
+          if (entry.sourceType === "builtin") throw new Error("内置 context 不是可写的 Git 选择。");
           const result = operation === "inspect" ? inspectGitContext(entry.sourcePath) : updateGitContext(entry.sourcePath);
           if (operation === "update") {
             const sync = await client.post<{ errors?: Array<{ source: string; error: string }>; entries: ContextPackEntryWire[] }>("/api/context-packs/library/sync");
-            if (sync.status !== 200) throw new Error(`Selection updated, but library sync failed (HTTP ${sync.status}); run rig context sync.`);
-            if (!sync.data.entries.some((candidate) => resolve(candidate.sourcePath) === resolve(entry.sourcePath))) throw new Error(`Selection retained, but the daemon cannot serve it: ${sync.data.errors?.map((error) => error.error).join("; ") || "check context root and ref precedence"}`);
+            if (sync.status !== 200) throw new Error(`选择已更新，但库同步失败（HTTP ${sync.status}）；运行 zrig context sync。`);
+            if (!sync.data.entries.some((candidate) => resolve(candidate.sourcePath) === resolve(entry.sourcePath))) throw new Error(`选择已保留，但后台服务无法服务它：${sync.data.errors?.map((error) => error.error).join("; ") || "检查 context root 与 ref 优先级"}`);
           }
-          // Structured output keeps checkout/selected bytes/consumption distinct
-          // in both terminal and machine use, without a second status renderer.
+          // 结构化输出在终端与机器使用中都把 checkout/所选字节/消费区分开，
+          // 无需第二个状态渲染器。
           console.log(JSON.stringify(result, null, 2));
         } catch (err) {
           const message = (err as Error).message;
@@ -908,9 +896,9 @@ Examples:
   }
 
   cmd.command("rm")
-    .argument("<ref>", "Path-like ref of the context pack to remove (e.g. packs/compaction-restore)")
-    .description("Remove a context pack from the library by its path-like ref")
-    .option("--json", "JSON output")
+    .argument("<ref>", "要移除的 context pack 的路径式 ref（例如 packs/compaction-restore）")
+    .description("按路径式 ref 从库中移除一个 context pack")
+    .option("--json", "JSON 输出")
     .action(async (ref: string, opts: { json?: boolean }) => {
       try {
         const client = await getClient();
@@ -923,13 +911,13 @@ Examples:
           message?: string;
         }>(`/api/context-packs/library/by-ref?ref=${encodeURIComponent(ref)}`);
         if (res.status !== 200) {
-          throw new Error(res.data?.message ?? res.data?.error ?? `Daemon returned HTTP ${res.status}`);
+          throw new Error(res.data?.message ?? res.data?.error ?? `后台服务返回 HTTP ${res.status}`);
         }
         if (opts.json) {
           console.log(JSON.stringify(res.data, null, 2));
           return;
         }
-        console.log(`Removed context pack '${res.data.ref}'.${typeof res.data.count === "number" ? ` Library now has ${res.data.count} context pack(s).` : ""}`);
+        console.log(`已移除 context pack '${res.data.ref}'。${typeof res.data.count === "number" ? ` 库现有 ${res.data.count} 个 context pack。` : ""}`);
       } catch (err) {
         console.error((err as Error).message);
         process.exitCode = 1;

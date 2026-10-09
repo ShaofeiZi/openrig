@@ -1,16 +1,16 @@
-/** Runtime hint from fingerprinting */
+/** 根据指纹识别得到的 runtime 提示。 */
 export type RuntimeHint = "claude-code" | "codex" | "pi" | "terminal" | "unknown";
 
-/** Confidence level of the runtime detection */
+/** runtime 检测结果的置信级别。 */
 export type Confidence = "highest" | "high" | "medium" | "low";
 
-/** Discovery session lifecycle status */
+/** 发现态 session 的生命周期状态。 */
 export type DiscoveryStatus = "active" | "vanished" | "claimed";
 
-/** Origin of a managed session */
+/** 受管 session 的来源。 */
 export type SessionOrigin = "launched" | "claimed";
 
-/** A discovered (unmanaged) tmux session */
+/** 已发现但尚未纳管的 tmux session。 */
 export interface DiscoveredSession {
   id: string;
   tmuxSession: string;

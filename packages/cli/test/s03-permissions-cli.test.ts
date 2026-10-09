@@ -37,7 +37,7 @@ describe("S03 policy permissions compatibility", () => {
     expect(permissions.commands.map(c => c.name())).toEqual(["list", "show", "current", "apply"]);
     expect(policy.commands.some(c => c.name() === "work")).toBe(false);
     const select = seatCommand().commands.find(c => c.name() === "set-permissions")!;
-    expect(select.description()).toContain("future managed launches");
+    expect(select.description()).toContain("未来托管启动");
     expect(select.options.map(o => o.long)).toEqual(["--mode", "--reason", "--json"]);
   });
   it("seat command posts one explicit selection and preserves refusal JSON/exit", async () => {

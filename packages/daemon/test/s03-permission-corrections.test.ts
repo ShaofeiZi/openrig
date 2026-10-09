@@ -12,7 +12,7 @@ import { whoamiRoutes } from "../src/routes/whoami.js";
 import type { TmuxAdapter } from "../src/adapters/tmux.js";
 import type { NodeBinding } from "../src/domain/runtime-adapter.js";
 
-// No provider process runs: the red control supplies the daemon's different vocabulary.
+// 不启动任何提供商进程：红灯对照提供后台服务使用的不同词汇。
 vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
 afterEach(() => { vi.clearAllMocks(); vi.unstubAllEnvs(); });
 const fsOps = { readFile: () => { throw Error("forbidden read"); }, writeFile: () => { throw Error("forbidden write"); },
@@ -26,13 +26,13 @@ function transport() {
 function daemonHelp() {
   vi.stubEnv("PATH", "/daemon/new-cli/bin");
   vi.mocked(execFile).mockImplementation(((command: string, args: string[], options: any, done: any) => {
-    // A target context would see different options, including with relative PATH entries.
+    // 目标上下文会看到不同选项，其中包含相对 PATH 条目。
     const seat = options.cwd === binding.cwd && options.env?.PATH === "./bin:/seat/bin";
     done(null, `--permission-mode <mode> (choices: "acceptEdits"${seat ? "" : ', "auto"'})`);
   }) as any);
 }
-describe("S03 F1 unresolved seat support refuses before effects", () => {
-  it.each(["fresh", "resume", "fork", "legacy"])("does not use daemon cwd/PATH as seat support on %s", async path => {
+describe("S03 F1 无法解析席位支持时在副作用前拒绝", () => {
+  it.each(["fresh", "resume", "fork", "legacy"])("在 %s 路径中不把后台服务 cwd/PATH 当作席位能力", async path => {
     daemonHelp(); const t = transport();
     const result = path === "legacy"
       ? await new ClaudeResumeAdapter(t.tmux).resume("seat", "claude_id", "original", binding.cwd, "floor", null, "auto")
@@ -40,10 +40,10 @@ describe("S03 F1 unresolved seat support refuses before effects", () => {
         ...(path === "resume" ? { resumeToken: "original" } : {}),
         ...(path === "fork" ? { forkSource: { kind: "native_id" as const, value: "original" } } : {}) });
     expect(result).toMatchObject({ ok: false });
-    expect(JSON.stringify(result)).toContain("launch context");
+    expect(JSON.stringify(result)).toContain("启动上下文");
     expect(t.sendText).not.toHaveBeenCalled(); expect(execFile).not.toHaveBeenCalled();
   });
-  it("refuses the production selection without writing desired state or audit", async () => {
+  it("拒绝生产选择时不写入期望状态或审计", async () => {
     daemonHelp(); const prepare = vi.fn(() => { throw Error("unexpected DB access"); }); const db = { prepare };
     const service = new SeatLifecycleService({ db, rigRepo: { db }, sessionRegistry: { db }, eventBus: { db }, tmuxAdapter: {} } as any);
     vi.spyOn(service as any, "resolveSeat").mockReturnValue({ nodeId: "node", entry: { runtime: "claude-code" } });
@@ -52,7 +52,7 @@ describe("S03 F1 unresolved seat support refuses before effects", () => {
       .toMatchObject({ ok: false, code: "permission_selection_refused" });
     expect(prepare).not.toHaveBeenCalled(); expect(execFile).not.toHaveBeenCalled();
   });
-  it.each([undefined, "floor", "full_bypass"] as const)("retains the ordinary/legacy launch path for %s", async launchPosture => {
+  it.each([undefined, "floor", "full_bypass"] as const)("为 %s 保留普通/旧版启动路径", async launchPosture => {
     const t = transport();
     await new ClaudeCodeAdapter({ tmux: t.tmux, fsOps }).launchHarness({ ...binding, permissionMode: undefined, launchPosture }, { name: "seat" });
     expect(t.sendText).toHaveBeenCalledOnce();
@@ -66,8 +66,8 @@ describe("S03 F1 unresolved seat support refuses before effects", () => {
 const modes = ["acceptEdits", "auto", "bypassPermissions"];
 const diagnosticFs = { readFile: () => JSON.stringify({ permissions: { defaultMode: "acceptEdits", deny: ["example"] } }),
   cwdReadable: () => true, commandAvailable: () => true, claudePermissionModes: () => modes };
-describe("S03 F2 argument/config evidence is not native enforcement", () => {
-  it.each(["codex", "claude-code"])("retains older unmarked %s observations without upgrading their evidence", runtime => {
+describe("S03 F2 参数/配置证据不等同于原生强制执行", () => {
+  it.each(["codex", "claude-code"])("保留未标记的旧版 %s 观察，不提升其证据等级", runtime => {
     const applied = runtime === "codex" ? observeCodexSandbox("-s workspace-write") : observeClaudePermission("--dangerously-skip-permissions");
     delete applied.reason; const before = JSON.stringify(applied);
     const result = diagnoseRuntimePosture({ runtime, cwd: binding.cwd, applied, fs: diagnosticFs });
@@ -75,7 +75,7 @@ describe("S03 F2 argument/config evidence is not native enforcement", () => {
     expect(JSON.stringify(applied)).toBe(before);
   });
   it.each([["codex", "floor"], ["codex", "full_bypass"], ["claude-code", "floor"], ["claude-code", "full_bypass"],
-    ["claude-code", "acceptEdits"], ["claude-code", "auto"], ["claude-code", "bypassPermissions"]])("keeps %s/%s unknown", (runtime, mode) => {
+    ["claude-code", "acceptEdits"], ["claude-code", "auto"], ["claude-code", "bypassPermissions"]])("保持 %s/%s 为未知", (runtime, mode) => {
     const selected = permissionBindingOverride(validateNativePermissionSelection(runtime!, mode!, modes));
     const applied = runtime === "codex" ? observeCodexSandbox(codexPostureArg("", {}, selected.launchPosture))
       : observeClaudePermission(claudePostureFlag({}, selected.launchPosture, selected.permissionMode));
@@ -85,7 +85,7 @@ describe("S03 F2 argument/config evidence is not native enforcement", () => {
     expect(renderPermissionDriftSummary(result)).not.toContain("ALIGNED");
     if (runtime === "claude-code") expect(result).toMatchObject({ configuration: { observed: { defaultMode: "acceptEdits", deny: ["example"] } } });
   });
-  it("whoami passes through current-generation argument and separate settings observations", async () => {
+  it("whoami 传递当前代数参数，并保留独立的设置观察", async () => {
     const applied = observeClaudePermission("--permission-mode acceptEdits");
     const stored = { generation_uuid: "current", runtime: applied.runtime, axis: applied.axis, observation_state: applied.state,
       value: applied.value, reason: applied.reason, approval_policy: null, observed_at: "retained" };

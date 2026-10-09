@@ -3,7 +3,7 @@ name: policy-seat-stub
 culture_file: culture.md
 pods:
   - id: guarded
-    label: Guarded
+    label: 受保护
     members:
       - {id: lead, agent_ref: "local:agents/lead", profile: default, runtime: stub, cwd: .}
     edges: []

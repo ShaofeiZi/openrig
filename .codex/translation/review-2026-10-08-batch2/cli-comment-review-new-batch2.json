@@ -1,0 +1,52 @@
+{
+  "batch": "cli-comment-review-new-batch2",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/preflight.test.ts",
+      "before_sha256_16": "6acc48365e5c4ff4",
+      "after_sha256_16": "afb80caf68e89e0a",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/proof.test.ts",
+      "before_sha256_16": "fe328fed7a6594a5",
+      "after_sha256_16": "caed2ad582c955ad",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/ps-current-rig.test.ts",
+      "before_sha256_16": "645918cb8dabb274",
+      "after_sha256_16": "93e5819738b70754",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/queue-cross-host-cli.test.ts",
+      "before_sha256_16": "9da13b5e3779caf8",
+      "after_sha256_16": "1bda8da2e218d2c5",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/scope-convention-scaffold.test.ts",
+      "before_sha256_16": "d013b448c552a8de",
+      "after_sha256_16": "d4ffeca27e5e5e74",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

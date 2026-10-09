@@ -1,11 +1,9 @@
-// Living Notes Packet 2 — the input gatherer (OPR.0.4.4.20).
+// Living Notes Packet 2 —— 输入收集器（OPR.0.4.4.20）。
 //
-// The impure shell around the pure composer: reads slice docs + proof
-// artifacts from disk, attention/agent rows from SQLite, approval stamps
-// from frontmatter (cross-checked against the Packet-1 audit-target
-// contract), and git facts from the workspace's default repo. Every source
-// that cannot be read degrades honestly (nulls / "unknown") — the composer
-// renders the named degrade, never invented content.
+// 纯组合器外围的非纯外壳：从磁盘读取切片文档与证明制品，从 SQLite 读取关注事项和
+// 智能体行，从 frontmatter 读取审批印章（并与 Packet-1 audit-target 契约交叉核对），
+// 以及从工作区默认仓库读取 git 事实。无法读取的来源都会如实降级为 null/"unknown"；
+// 组合器渲染明确命名的降级状态，绝不编造内容。
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -44,13 +42,12 @@ import { resolveNodeFileVia } from "../scope/node-file.js";
 export interface ReviewGathererDeps {
   db: Database.Database;
   indexer: SliceIndexer;
-  /** Repo path for git lineage facts (the workspace default repo); null = degrade to unknown. */
+  /** 获取 git 谱系事实的仓库路径（工作区默认仓库）；null 表示降级为 unknown。 */
   gitRepoPath?: string | null;
-  /** OPR.0.4.4.22 — hook-activity reads for the agent state glyph (FR-2).
-   *  Optional: absent → every glyph degrades to honest `unknown` (never
-   *  guessed). Synchronous SQLite reads; no polling, no agent contact. */
+  /** OPR.0.4.4.22 —— 为智能体状态标记读取 hook 活动（FR-2）。可选；缺失时每个标记
+   *  都如实降级为 `unknown`，绝不猜测。只同步读取 SQLite，不轮询也不联系智能体。 */
   activityStore?: AgentActivityStore | null;
-  /** Injected clock so composition stays reproducible in tests. */
+  /** 注入时钟，使组合结果在测试中可复现。 */
   now?: () => string;
 }
 
@@ -70,13 +67,12 @@ interface QitemRow {
 
 const ACTIVE_STATES = ["pending", "in-progress", "claimed", "blocked", "handed-off"];
 
-/** OPR.0.4.6.WF4 Q6 — the ● (agent-leg) workflow-identity stamp, derived from
- *  the item's OWN STRUCTURED TAGS (`workflow:<name>` / `instance:<id>` /
- *  `step:<id>` — the WF-5-ratified queryable identity), NEVER from summary /
- *  identity / evidenceRef prose. Returns the pointer only when BOTH required
- *  keys are present; a non-workflow row (no `instance:`/`workflow:` tag) →
- *  `undefined`, so its AttentionInput stays byte-identical (omit-when-absent).
- *  Pointer-only: the three identity keys, never status/deadline/class. */
+/** OPR.0.4.6.WF4 Q6 —— ●（智能体环节）工作流身份印章，从条目自身的结构化标签
+ *  `workflow:<name>` / `instance:<id>` / `step:<id>` 派生；这是 WF-5 批准的可查询身份，
+ *  绝不从 summary/identity/evidenceRef 自然语言中推断。仅当两个必需键都存在时返回
+ *  指针；非工作流行（没有 `instance:`/`workflow:` 标签）返回 `undefined`，使其
+ *  AttentionInput 通过缺失时省略保持字节一致。指针只含三个身份键，不含
+ *  status/deadline/class。 */
 export function workflowRefFromTags(tagsJson: string | null): WorkflowRowRef | undefined {
   if (!tagsJson) return undefined;
   let tags: string[];
@@ -117,7 +113,7 @@ export class ReviewGatherer {
     return inputs ? composeSliceReview(inputs) : null;
   }
 
-  /** Composition plus the on-disk context the freeze renderer needs (FR-6). */
+  /** 组合结果以及 freeze 渲染器所需的磁盘上下文（FR-6）。 */
   composeSliceWithContext(name: string): { composed: ComposedSliceReview; sliceDir: string; mediaRefs: string[] } | null {
     const slice = this.indexer.get(name);
     const inputs = this.gatherSlice(name);
@@ -126,10 +122,9 @@ export class ReviewGatherer {
   }
 
   composeMission(mission: string): ComposedMissionReview | null {
-    // qitem-ccf87c0d corrective — one mission compose is ONE composite
-    // operation: the cold list() plus gatherSlice()->indexer.get() per
-    // mission slice share ONE membership batch (pre-scope each uncached get
-    // built its own 2-scan batch: 2+2N membership scans — 82 at 40 slices).
+    // qitem-ccf87c0d 纠偏：一次任务目标组合是一个复合操作。冷启动 list() 与每个任务
+    // 目标切片的 gatherSlice()->indexer.get() 共享同一成员关系批次；修复前，每次未缓存
+    // get 都建立自己的双扫描批次，导致 2+2N 次成员扫描，40 个切片时为 82 次。
     return this.indexer.withMembershipBatch(() => this.composeMissionInBatch(mission));
   }
 
@@ -137,9 +132,8 @@ export class ReviewGatherer {
     const slices = this.indexer.list().filter((s) => s.missionId === mission);
     if (slices.length === 0 && !this.missionDirExists(mission)) return null;
     const nowIso = this.now();
-    // The ledger's recorded-verdict green rides beside each composed review
-    // (FR-7): the gatherer holds the artifacts, so it derives the mission-
-    // altitude completion fact the slice contract no longer carries (§11).
+    // 台账中基于已记录判定的 green 与每个组合评审一起传递（FR-7）：收集器持有制品，
+    // 因而由它派生切片契约已不再携带的任务目标层级完成事实（§11）。
     const composed = slices
       .map((s): MissionSliceEntry | null => {
         const inputs = this.gatherSlice(s.name);
@@ -162,11 +156,10 @@ export class ReviewGatherer {
   }
 
   /**
-   * OPR.0.4.4.22 — the composed rig-agents read root (FR-1..FR-4): NEEDS
-   * YOU + AGENTS (health line) + SETTLED at rig scope. Pure projection over
-   * queue + hook-activity; nothing contacts an agent. The roster is
-   * active-holders UNION recently-holding (transitions-on-scope-TODAY — the
-   * plan-review-ruled display window, named in provenance).
+   * OPR.0.4.4.22 —— 组合后的工作组智能体读取根（FR-1..FR-4）：工作组 scope 下的
+   * 需要你处理 + 智能体（健康状态行）+ 已完成。它是队列与 hook 活动的纯投影，不联系
+   * 任何智能体。名单由当前持有者与近期持有者取并集；“当天发生 scope 转换”是 plan-review
+   * 裁定的展示窗口，并会在溯源信息中注明。
    */
   composeRig(): ComposedRigAgents {
     const nowIso = this.now();
@@ -188,7 +181,7 @@ export class ReviewGatherer {
     });
   }
 
-  /** The scope-parameterized agents projection — ONE contract, all consumers. */
+  /** 按 scope 参数化的智能体投影；所有消费者共用一份契约。 */
   composeAgents(scope: AgentsScope): AgentsBand | null {
     const nowIso = this.now();
     if (scope === "rig") {
@@ -202,10 +195,9 @@ export class ReviewGatherer {
     const mission = scope.slice("mission:".length);
     const slices = this.indexer.list().filter((s) => s.missionId === mission);
     if (slices.length === 0 && !this.missionDirExists(mission)) return null;
-    // C3 (pm ruling i): mission-tag-DIRECT membership — `mission:X`-tagged
-    // active work counts even when its slice tag isn't indexed, so a
-    // dir-exists/zero-indexed mission no longer composes a confident-empty
-    // band from an always-empty name list.
+    // C3（PM 裁定 i）：直接按任务目标标签判断成员关系。即使切片标签未建立索引，带
+    // `mission:X` 标签的活动工作也会计入；这样，目录存在但索引切片为零的任务目标不会
+    // 再根据始终为空的名称列表组合出看似确定的空白区域。
     return composeAgentsBand(
       this.agentsForSlices(slices.map((s) => s.name), { missionName: mission }),
       scope,
@@ -258,10 +250,9 @@ export class ReviewGatherer {
     };
   }
 
-  /** §3.1's ONLY genuinely new datum: the pinned plan set, a frontmatter READ
-   *  (`locked-artifacts:` list on the slice README — the scope-fs pattern,
-   *  zero new file kinds, zero new write machinery). Malformed entries are
-   *  skipped, never invented. */
+  /** §3.1 唯一真正新增的数据：固定的计划集合。它来自 frontmatter 读取，即切片 README
+   *  中的 `locked-artifacts:` 列表，沿用 scope-fs 模式，不增加文件类型或写入机制。
+   *  格式错误的条目会被跳过，绝不编造。 */
   private parseLockedArtifacts(fm: Record<string, unknown>): LockedArtifact[] {
     const raw = fm["locked-artifacts"];
     if (!Array.isArray(raw)) return [];
@@ -289,7 +280,7 @@ export class ReviewGatherer {
   }
 
   private missionDirExists(mission: string): boolean {
-    // The indexer knows slices; a slice-less mission still composes (empty board).
+    // 索引器只知道切片；没有切片的任务目标仍可组合为空面板。
     return this.indexer.list().some((s) => s.missionId === mission);
   }
 
@@ -299,7 +290,7 @@ export class ReviewGatherer {
       const missionDir = path.dirname(path.dirname(anySlice.slicePath));
       const readme = resolveNodeFileVia(missionDir, (p) => this.readFile(p))?.content ?? null;
       const fm = this.parseFrontmatter(readme);
-      // FR-8: the brief's "What & why" projects VERBATIM as the intent opener.
+      // FR-8：brief 的 "What & why" 按原样投影为意图开篇。
       const brief = this.readFile(path.join(missionDir, "MISSION_BRIEF.md"));
       return {
         id: typeof fm["id"] === "string" ? (fm["id"] as string) : null,
@@ -311,7 +302,7 @@ export class ReviewGatherer {
     return { id: null, title: mission, intent: null, missionDir: null };
   }
 
-  /** FR-8 freeze-moment brief write target: {absolute path, current content}. */
+  /** FR-8 freeze 时刻的 brief 写入目标：绝对路径与当前内容。 */
   missionBriefTarget(mission: string): { briefPath: string; content: string } | null {
     const meta = this.readMissionMeta(mission);
     if (!meta.missionDir) return null;
@@ -331,10 +322,10 @@ export class ReviewGatherer {
     }
   }
 
-  // VM-006 (A1): readProofArtifacts moved VERBATIM to ./proof-io.ts — the one
-  // home shared with the slice-detail projector; gather delegates to it.
+  // VM-006（A1）：readProofArtifacts 已原样迁移到 ./proof-io.ts，作为与切片详情投影器
+  // 共用的唯一归属位置；gather 委托给它。
 
-  /** Markdown image/video refs across the composed sources (FR-5 defect scan). */
+  /** 从所有组合来源收集 Markdown 图片/视频引用，用于 FR-5 缺陷扫描。 */
   private collectMediaRefs(sources: Array<string | null>): string[] {
     return sources.flatMap((s) => extractMediaRefs(s));
   }
@@ -357,15 +348,12 @@ export class ReviewGatherer {
     }
   }
 
-  /** Human-routed attention rows carrying the given tag (the §5 predicate is
-   *  Packet 1's; until it lands, human-tier/human-dest/park-on-human rows are
-   *  selected with the same shape). */
-  /** OPR.0.4.6.WF5 FR-3 — recorded workflow-instance views for the ▲
-   *  band: failed + in-flight instances, the WF-1 evaluator verdict
-   *  (consumed, never recomputed — the module import IS the single
-   *  home), the open exception item by TAG QUERY (never summary
-   *  parsing), and the non-open-frontier anomaly check. Read-only;
-   *  absent tables (pre-workflow DBs) return []. */
+  /** 携带指定标签且路由给人类的关注行。§5 谓词来自 Packet 1；在它落地前，以相同结构
+   *  选择 human-tier/human-dest/park-on-human 行。 */
+  /** OPR.0.4.6.WF5 FR-3 —— ▲ 区的已记录工作流实例视图：失败与处理中实例、WF-1
+   *  求值器判定（只消费而不重新计算，导入模块就是唯一归属位置）、通过标签查询获得的
+   *  开放异常项（绝不解析摘要），以及非开放 frontier 异常检查。全程只读；表不存在时
+   *  （工作流功能加入前的数据库）返回空数组。 */
   private gatherWorkflowExceptions(nowIso: string): WorkflowExceptionInput[] {
     try {
       const instances = this.db
@@ -442,7 +430,7 @@ export class ReviewGatherer {
           currentStepId: row.current_step_id,
           deadlineState: verdict.state,
           deadlineEvidence: verdict.evidence
-            ? `step ${verdict.evidence.stepId ?? "?"} packet ${verdict.evidence.packetId} held by ${verdict.evidence.ownerSession} — ${verdict.evidence.overdueBySeconds}s past the ${verdict.evidence.anchor} anchor`
+            ? `步骤 ${verdict.evidence.stepId ?? "?"} 的 packet ${verdict.evidence.packetId} 由 ${verdict.evidence.ownerSession} 持有——已超过 ${verdict.evidence.anchor} 锚点 ${verdict.evidence.overdueBySeconds} 秒`
             : null,
           frontierRefsNonOpenPacket,
           openItem: item
@@ -459,9 +447,8 @@ export class ReviewGatherer {
       }
       return out;
     } catch (err) {
-      // Pre-workflow DBs (no tables) compose byte-identically to
-      // pre-WF-5; anything else fails LOUD (the WF-3 narrowed-catch
-      // lesson — a broad catch here would silently blind the band).
+      // 工作流功能加入前且没有相关表的数据库应与 WF-5 前的结果保持字节一致；其他错误
+      // 必须醒目失败。此处遵循 WF-3 收窄 catch 的经验，宽泛捕获会让该区域静默失明。
       if (err instanceof Error && /no such table/i.test(err.message)) return [];
       throw err;
     }
@@ -469,12 +456,10 @@ export class ReviewGatherer {
 
   private attentionForTag(tag: string, excludeTagPrefix?: string): AttentionInput[] {
     if (!this.tableExists("queue_items")) return [];
-    // Canonical membership: parse the queried tag once; the SQL LIKE is an
-    // unquoted PREFILTER (now catches comma-legacy rows), and parseScopeTags
-    // is the authoritative row-level confirm (rejects the prefilter's
-    // substring/suffix over-matches). attentionForTag's real defect was the
-    // comma-legacy UNDER-match — the old JSON-quoted `%"slice:X"%` never
-    // appears inside a comma-joined element.
+    // 规范成员关系：查询标签只解析一次。SQL LIKE 是不带引号的预过滤器，现在可捕获旧式
+    // 逗号分隔行；parseScopeTags 是权威的逐行确认，会拒绝预过滤器产生的子串/后缀误匹配。
+    // attentionForTag 的真实缺陷是漏匹配旧式逗号格式：旧 JSON 引号模式 `%"slice:X"%`
+    // 永远不会出现在逗号拼接元素中。
     const tagIsSlice = tag.startsWith("slice:");
     const tagIsMission = tag.startsWith("mission:");
     const tagName = tagIsSlice
@@ -498,13 +483,12 @@ export class ReviewGatherer {
       .all(...ACTIVE_STATES, `%${tag}%`) as Array<QitemRow & { evidence_ref?: string | null }>;
     return rows
       .filter((r) => {
-        // Row-level canonical confirm (authoritative over the prefilter).
+        // 逐行规范确认，其权威性高于预过滤器。
         const scopes = parseScopeTags(r.tags);
         if (tagIsSlice && !scopes.slices.has(tagName!)) return false;
         if (tagIsMission && !scopes.missions.has(tagName!)) return false;
-        // d2: excludeTagPrefix aligned to the canonical set (its documented
-        // intent — "rows that carry a slice tag") so comma-legacy rows are
-        // excluded like clean ones; unknown prefixes keep raw semantics.
+        // d2：让 excludeTagPrefix 与规范集合对齐（其文档意图是“携带切片标签的行”），
+        // 使旧式逗号行与规范行一样被排除；未知前缀保持原始语义。
         if (excludeTagPrefix === "slice:") return scopes.slices.size === 0;
         if (excludeTagPrefix) {
           try {
@@ -517,8 +501,8 @@ export class ReviewGatherer {
         return true;
       })
       .map((r) => {
-        // OPR.0.4.6.WF4 Q6 — stamp the ● workflow pointer from the item's own
-        // tags; OMITTED for non-workflow rows (byte-identity-by-omission).
+        // OPR.0.4.6.WF4 Q6 —— 从条目自身标签写入 ● 工作流指针；非工作流行省略该字段，
+        // 通过省略保证字节一致性。
         const workflow = workflowRefFromTags(r.tags);
         return {
           qitemId: r.qitem_id,
@@ -537,9 +521,8 @@ export class ReviewGatherer {
       });
   }
 
-  /** Sessions holding active work on the named slices (null = rig-wide).
-   *  Region membership derives from work-on-scope, never rig co-residency.
-   *  Runtime/idle telemetry is honest-unknown at v1 (queue-derived only). */
+  /** 持有指定切片活动工作的会话；null 表示整个工作组。区域成员关系来自 scope 上的工作，
+   *  绝不根据同属一个工作组推断。v1 中运行时/空闲遥测只来自队列，无法证实时如实为 unknown。 */
   private agentsForSlices(
     sliceNames: string[] | null,
     opts: { missionName?: string | null } = {},
@@ -560,11 +543,9 @@ export class ReviewGatherer {
       if (isHumanSeatSession(r.destination_session)) continue;
       const scopes = parseScopeTags(r.tags);
       const rowSlices = [...scopes.slices];
-      // Membership (canonical): a row belongs when it carries one of the
-      // named slices OR — for the mission band (C3, pm ruling i) — the
-      // mission tag directly, so `mission:X`-tagged work counts even when
-      // its slice tag isn't indexed. missionName is null for rig/slice
-      // flows (byte-identical to pre-fix).
+      // 规范成员关系：行带有任一指定切片时属于该区域；对任务目标区（C3，PM 裁定 i），
+      // 直接带任务目标标签也算成员，因此即使切片标签未建立索引，`mission:X` 工作仍会
+      // 计入。工作组/切片流程中的 missionName 为 null，与修复前保持字节一致。
       if (
         sliceNames !== null &&
         !rowSlices.some((s) => sliceNames.includes(s)) &&
@@ -584,11 +565,11 @@ export class ReviewGatherer {
           .filter((r) => !!r.blocked_on)
           .reduce<QitemRow | null>((acc, r) => (!acc || r.ts_updated > acc.ts_updated ? r : acc), null);
         return {
-          agentName: sessionMemberLabel(session), // OPR.0.4.6.MH1 FR-8: shared contract
+          agentName: sessionMemberLabel(session), // OPR.0.4.6.MH1 FR-8：共享契约
           sessionName: session,
           runtime: "unknown" as const,
           parkedOn: parked?.blocked_on ?? null,
-          idle: null, // honest-unknown: queue rows alone cannot prove liveness
+          idle: null, // 如实为 unknown：仅凭队列行无法证明存活性
           idleSinceIso: null,
           doing: parked?.summary ?? latest.summary,
           holdsCount: e.rows.length,
@@ -598,18 +579,16 @@ export class ReviewGatherer {
       });
   }
 
-  // --- OPR.0.4.4.22 rig-scope helpers (all synchronous SQLite reads) ---
+  // --- OPR.0.4.4.22 工作组 scope 辅助逻辑（全部为同步 SQLite 读取）---
 
-  /** FR-1 roster: agents HOLDING active work on any slice-tagged item, UNION
-   *  agents RECENTLY holding (their slice-tagged items transitioned today —
-   *  the ruled display window). Membership derives from work-on-scope,
-   *  never rig co-residency. */
+  /** FR-1 名单：当前持有任意带切片标签活动工作的智能体，与近期持有者取并集；后者的
+   *  带切片标签条目在当天发生过转换，这是已裁定的展示窗口。成员关系来自 scope 上的工作，
+   *  绝不根据同属一个工作组推断。 */
   private rigRoster(todayStartIso: string): AgentInput[] {
     const holders = this.agentsForSlices(null);
     if (!this.tableExists("queue_items")) return holders;
     const summaryCol = this.columnExists("queue_items", "summary") ? "summary" : "NULL AS summary";
-    // Recently-holding: destination of a slice-tagged qitem whose latest
-    // update landed today but is no longer in an active state.
+    // 近期持有者：带切片标签、最新更新发生在当天、但已不处于活动状态的 qitem 目标。
     const rows = this.db
       .prepare(
         `SELECT qitem_id, ts_created, ts_updated, destination_session, state, priority, tier, tags, ${summaryCol},
@@ -641,15 +620,14 @@ export class ReviewGatherer {
     const recentInputs: AgentInput[] = [...recent.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([session, e]) => ({
-        agentName: sessionMemberLabel(session), // OPR.0.4.6.MH1 FR-8: shared contract
+        agentName: sessionMemberLabel(session), // OPR.0.4.6.MH1 FR-8：共享契约
         sessionName: session,
         runtime: "unknown" as const,
         parkedOn: null,
         idle: null,
         idleSinceIso: null,
-        // FR-1: an agent with no tracked ACTIVE item renders the truth —
-        // itself a coordination signal; nothing is invented.
-        doing: "no tracked work item",
+        // FR-1：没有已跟踪活动条目的智能体应如实显示，这本身就是协调信号，绝不编造。
+        doing: "没有已跟踪的工作项",
         holdsCount: 0,
         lastTransitionIso: e.latest.ts_updated,
         slices: [...e.slices].sort(),
@@ -657,9 +635,8 @@ export class ReviewGatherer {
     return [...holders, ...recentInputs].sort((a, b) => a.sessionName.localeCompare(b.sessionName));
   }
 
-  /** FR-2 telemetry enrichment: runtime from the sessions/nodes tables, the
-   *  active/idle light from recorded hook activity (AgentActivityStore).
-   *  Anything unprovable stays honest-unknown — never guessed. */
+  /** FR-2 遥测补充：运行时来自 sessions/nodes 表，active/idle 指示来自已记录的 hook
+   *  活动（AgentActivityStore）。无法证实的信息如实保持 unknown，绝不猜测。 */
   private withTelemetry(agents: AgentInput[], nowIso: string): AgentInput[] {
     const runtimes = this.sessionRuntimes();
     return agents.map((a) => {
@@ -676,9 +653,9 @@ export class ReviewGatherer {
             idle = true;
             idleSinceIso = activity.eventAt ?? activity.sampledAt ?? null;
           }
-          // needs_input / unknown / null → stays honest-unknown.
+          // needs_input / unknown / null 均如实保持 unknown。
         } catch {
-          // Telemetry read failure = unknown, never a guess.
+          // 遥测读取失败即为 unknown，绝不猜测。
         }
       }
       const normalizedRuntime =
@@ -700,12 +677,12 @@ export class ReviewGatherer {
         .all() as Array<{ session_name: string; runtime: string | null }>;
       for (const r of rows) if (r.runtime) out.set(r.session_name, r.runtime);
     } catch {
-      /* degrade to unknown runtimes */
+      /* 降级为 unknown 运行时 */
     }
     return out;
   }
 
-  /** Rig-scope NEEDS YOU: ALL human-routed active items (no tag filter). */
+  /** 工作组 scope 的需要你处理：所有路由给人类的活动条目，不过滤标签。 */
   private attentionAll(): AttentionInput[] {
     if (!this.tableExists("queue_items")) return [];
     const hasEvidenceRef = this.columnExists("queue_items", "evidence_ref");
@@ -722,8 +699,8 @@ export class ReviewGatherer {
       )
       .all(...ACTIVE_STATES) as Array<QitemRow & { evidence_ref?: string | null }>;
     return rows.map((r) => {
-      // OPR.0.4.6.WF4 Q6 — stamp the ● workflow pointer from the item's own
-      // tags; OMITTED for non-workflow rows (byte-identity-by-omission).
+      // OPR.0.4.6.WF4 Q6 —— 从条目自身标签写入 ● 工作流指针；非工作流行省略该字段，
+      // 通过省略保证字节一致性。
       const workflow = workflowRefFromTags(r.tags);
       return {
         qitemId: r.qitem_id,
@@ -742,9 +719,8 @@ export class ReviewGatherer {
     });
   }
 
-  /** FR-4: today's closed handoffs from the transitions log — the SETTLED
-   *  band and the health line's handoff count come from the SAME query
-   *  (two renders, one computation). */
+  /** FR-4：从转换日志读取当天关闭的交接。已完成区与健康状态行中的交接计数来自同一
+   *  查询，即两处渲染、一次计算。 */
   private settledToday(todayStartIso: string): { settled: SettledRow[]; handoffsToday: number } {
     if (!this.tableExists("queue_transitions")) return { settled: [], handoffsToday: 0 };
     const summaryJoin = this.tableExists("queue_items") && this.columnExists("queue_items", "summary")
@@ -774,8 +750,8 @@ export class ReviewGatherer {
     }
   }
 
-  /** FR-3/FR-4: in-progress slice work past closure_required_at, rig-wide.
-   *  Feeds both the derived NEEDS YOU exception and the health count. */
+  /** FR-3/FR-4：整个工作组内已超过 closure_required_at 的处理中切片工作，同时供派生的
+   *  需要你处理异常和健康状态计数使用。 */
   private overdueWork(nowIso: string): AttentionInput[] {
     if (!this.tableExists("queue_items")) return [];
     try {
@@ -792,8 +768,8 @@ export class ReviewGatherer {
         )
         .all(nowIso) as QitemRow[];
       return rows.map((r) => {
-        // OPR.0.4.6.WF4 Q6 — stamp the ● workflow pointer from the item's own
-        // tags; OMITTED for non-workflow rows (byte-identity-by-omission).
+        // OPR.0.4.6.WF4 Q6 —— 从条目自身标签写入 ● 工作流指针；非工作流行省略该字段，
+        // 通过省略保证字节一致性。
         const workflow = workflowRefFromTags(r.tags);
         return {
           qitemId: r.qitem_id,
@@ -817,26 +793,20 @@ export class ReviewGatherer {
 
   private hasActiveQitem(name: string): boolean {
     if (!this.tableExists("queue_items")) return false;
-    // TWO-TIER DOCTRINE: this is a SIGNAL-tier answer (phase / band /
-    // attention) — it answers from canonical membership ONLY. The DISPLAY
-    // tier (the queue-tab's qitemIds) may carry the gated legacy substring
-    // fallback; never promote a display-tier match into a signal. (P3)
+    // 双层原则：这是信号层答案（phase / band / attention），只依据规范成员关系。展示层
+    //（队列标签页的 qitemIds）可以使用受门控的旧式子串回退，但绝不能把展示层匹配提升
+    // 为信号（P3）。
     //
-    // B1 fix: the qitemIds (leg 2) membership check is DROPPED. It inherited
-    // matchQitems' sanctioned legacy substring/body fallback, so in a
-    // zero-typed corpus a body-mention-only row promoted activeQitemPresent
-    // to true (phase BUILD) while the strict band was empty — the exact
-    // one-compose-two-answers divergence this slice kills. Equivalence: any
-    // canonically-confirmable row necessarily contains the literal
-    // `slice:<name>` substring (P1 construction), so leg 1's UNTRUNCATED
-    // prefilter finds every canonical member; leg 2 could only ever ADD
-    // non-canonical (display-tier) ids — precisely the class that must not
-    // reach the phase signal.
+    // B1 修复：移除 qitemIds（第 2 环节）的成员关系检查。它继承了 matchQitems 获准使用的
+    // 旧式子串/正文回退，导致在没有类型信息的语料中，仅正文提及的行也会把
+    // activeQitemPresent 提升为 true（phase BUILD），而严格区域却为空；这正是本切片要消除的
+    // “一次组合、两个答案”偏差。等价性依据：任何可由规范规则确认的行一定包含字面子串
+    // `slice:<name>`（P1 构造），因此第 1 环节不截断的预过滤能找到所有规范成员；第 2 环节
+    // 只能增加非规范的展示层 ID，而这类 ID 恰恰不能进入阶段信号。
     //
-    // Leg 1 streams: iterate() + break on the FIRST canonical confirm. NO SQL
-    // LIMIT — a pre-confirmation LIMIT would recreate B2 here (a suffix-storm
-    // could hide the true member and flip the phase signal); streaming + break
-    // gives the same bounded cost with no truncation hole.
+    // 第 1 环节采用流式处理：iterate() 并在首次规范确认时 break。不使用 SQL LIMIT，
+    // 因为确认前截断会在此重现 B2：大量后缀匹配可能遮住真实成员并翻转阶段信号。
+    // 流式处理加 break 在成本同样有界的同时不会留下截断漏洞。
     const stmt = this.db.prepare(
       `SELECT tags FROM queue_items WHERE state IN (${ACTIVE_STATES.map(() => "?").join(",")}) AND tags LIKE ?`,
     );
@@ -846,11 +816,9 @@ export class ReviewGatherer {
     return false;
   }
 
-  /** §4 — the two staged-approval stamps (arch F-A: the SHIPPED verb's
-   *  frontmatter fields), each cross-checked against the pinned
-   *  scope-approval audit shape (`approval_scope` inside audit_notes_json).
-   *  A stamp with no matching row -> auditVerified false (UNVERIFIED stamp,
-   *  rendered loudly — never a block). */
+  /** §4 —— 两个分阶段审批印章（架构 F-A：已发布动词对应的 frontmatter 字段），每个都
+   *  与固定的 scope 审批审计结构交叉核对，即 audit_notes_json 内的 `approval_scope`。
+   *  印章没有匹配行时 auditVerified 为 false，并醒目渲染为 UNVERIFIED，但绝不阻塞。 */
   private gatherApproval(slice: SliceRecord, fm: Record<string, unknown>): ApprovalFacts {
     const str = (k: string): string | null => {
       const v = fm[k];
@@ -874,7 +842,7 @@ export class ReviewGatherer {
             )
             .get(
               `%"approval_scope":"${approvalScope}"%`,
-              // A null slice id must never match an empty scope_id row.
+              // null 切片 ID 绝不能匹配空 scope_id 行。
               sliceId ? `%"scope_id":"${sliceId}"%` : `%"scope_id":"${slice.name}"%`,
               `%${slice.name}%`,
             ) !== undefined
@@ -920,7 +888,7 @@ export class ReviewGatherer {
     let mergeIsAncestorOfTip: boolean | null = null;
     if (mergeSha) {
       const out = this.git(["merge-base", "--is-ancestor", mergeSha, "HEAD"]);
-      // exec throws (returns null) on non-ancestor exit 1; success returns "".
+      // 非祖先关系退出码为 1 时 exec 抛出异常并返回 null；成功时返回空字符串。
       mergeIsAncestorOfTip = out !== null;
     }
     let candidateBehindTip: number | null = null;

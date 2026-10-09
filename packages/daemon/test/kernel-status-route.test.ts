@@ -1,8 +1,7 @@
-// V0.3.1 slice 05 kernel-rig-as-default — forward-fix #3 architectural.
+// V0.3.1 slice 05 kernel-rig-as-default——架构级 forward-fix #3。
 //
-// GET /api/kernel/status route tests. Verifies the route surfaces the
-// tracker's state via a stable JSON envelope and 503s cleanly when no
-// tracker is wired.
+// GET /api/kernel/status 路由测试。验证该路由通过稳定的 JSON envelope
+// 暴露 tracker 状态，并在未接入 tracker 时明确返回 503。
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
@@ -38,16 +37,16 @@ function makeTracker(opts: {
 }
 
 describe("GET /api/kernel/status", () => {
-  it("returns 503 with a clear error when no tracker is wired", async () => {
+  it("未接入 tracker 时返回 503 和明确错误", async () => {
     const app = mountWithTracker(undefined);
     const res = await app.request("/api/kernel/status");
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.error).toBe("kernel_boot_tracker_unavailable");
-    expect(body.message).toContain("Kernel-boot tracker not wired");
+    expect(body.message).toContain("内核启动 tracker 未接入");
   });
 
-  it("returns 200 with skipped envelope for a fresh tracker", async () => {
+  it("对于全新的 tracker 返回 200 和 skipped envelope", async () => {
     const app = mountWithTracker(makeTracker());
     const res = await app.request("/api/kernel/status");
     expect(res.status).toBe(200);
@@ -59,7 +58,7 @@ describe("GET /api/kernel/status", () => {
     expect(body.detail).toBeNull();
   });
 
-  it("returns 200 with auth_blocked envelope when tracker is auth-blocked", async () => {
+  it("tracker 被 auth 阻塞时返回 200 和 auth_blocked envelope", async () => {
     const tracker = makeTracker();
     tracker.setAuthBlocked("Error: ...\nReason: ...\nFix: ...");
     const app = mountWithTracker(tracker);
@@ -69,7 +68,7 @@ describe("GET /api/kernel/status", () => {
     expect(body.detail).toContain("Error:");
   });
 
-  it("projects agents[] with snake_case keys from tracker getStatus()", async () => {
+  it("从 tracker getStatus() 投影带 snake_case key 的 agents[]", async () => {
     const rigId = "rig-kernel-route-1";
     const tracker = makeTracker({
       rigs: [{ id: rigId, name: "kernel" }],

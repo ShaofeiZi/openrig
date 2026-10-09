@@ -26,9 +26,8 @@ export function makeContextUsageThresholdPolicy(
         };
       }
       if (job.lastFiredGeneration === job.occupantGeneration) {
-        // Keep one post-fire receipt observation in history, then make the
-        // stable once-per-generation no-op quiet so a long-lived job does not
-        // append a row on every scheduler interval.
+        // 在历史中保留一次触发后的回执观测，随后让每 generation 仅一次的稳定空操作保持静默，
+        // 避免长期运行的 job 在每个调度周期都追加记录。
         return {
           action: "skip",
           reason: job.lastEvaluationAt === job.lastFireAt
@@ -89,12 +88,12 @@ export function makeContextUsageThresholdPolicy(
       }
 
       const reason =
-        `${observedBytes} transcript bytes crossed the ${job.thresholdBytes}-byte threshold ` +
-        `for occupant ${job.occupantGeneration}.`;
+        `占用者 ${job.occupantGeneration} 的转录达到 ${observedBytes} 字节，` +
+        `超过 ${job.thresholdBytes} 字节阈值。`;
       return {
         action: "send",
         target: job.target,
-        message: job.message ?? `Context usage threshold crossed for ${job.target.session}. ${reason}`,
+        message: job.message ?? `${job.target.session} 的上下文用量已超过阈值。${reason}`,
         notes: {
           reason,
           observedBytes,

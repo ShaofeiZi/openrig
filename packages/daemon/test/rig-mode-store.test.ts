@@ -1,14 +1,13 @@
-// Slice 09 — store: persistence + scope-hierarchy resolution.
+// Slice 09——存储：持久化与 scope 层级解析。
 //
-// HG-3 / HG-4 / HG-5 anchored here:
-//   HG-3 — 4 scopes coexist; more-specific-wins resolution (both directions).
-//   HG-4 — set is operator-only at the store layer (set_by = 'operator' hardcoded; agent code path doesn't exist).
-//   HG-5 — persists across "restart" (close + reopen the db in-memory backing).
+// 此处锁定 HG-3 / HG-4 / HG-5：
+//   HG-3——4 种 scope 共存，解析时更具体者优先（双向验证）。
+//   HG-4——store 层只允许 operator 设置（硬编码 set_by = 'operator'，不存在 agent 路径）。
+//   HG-5——跨“重启”持久化（关闭并重新打开数据库的内存 backing）。
 //
-// BLOCKING-1 fix from guard verdict qitem-20260518043346: `mode` is
-// a binding-level field, NOT inside the 10-field record. Every
-// setBinding call passes mode as the third arg; record holds the
-// frozen 10 Component-3 settings.
+// guard 裁定 qitem-20260518043346 的 BLOCKING-1 修复：`mode` 是 binding 级字段，不在
+// 10 字段 record 内。每次 setBinding 调用都把 mode 作为第三个参数传入；record 保存冻结的
+// 10 项 Component-3 设置。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -38,7 +37,7 @@ function makeRecord(
   };
 }
 
-describe("RigModeStore — slice 09 persistence + resolution", () => {
+describe("RigModeStore——slice 09 持久化与解析", () => {
   let db: Database.Database;
   let store: RigModeStore;
 
@@ -51,18 +50,18 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     db.close();
   });
 
-  it("HG-4: setBinding accepts a valid record and reads it back; mode is binding-level", () => {
+  it("HG-4：setBinding 接受并读回有效 record，mode 位于 binding 层", () => {
     const res = store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
     expect(res.ok).toBe(true);
     const got = store.getBinding("global_host", null);
     expect(got?.mode).toBe("sleep");
     expect(got?.setBy).toBe("operator");
-    // The record itself does NOT carry `mode` — that's the BLOCKING-1
-    // discriminator from guard verdict qitem-20260518043346.
+    // record 自身不携带 `mode`，这是 guard 裁定 qitem-20260518043346 中 BLOCKING-1
+    // 的判别条件。
     expect((got?.record as unknown as Record<string, unknown>)["mode"]).toBeUndefined();
   });
 
-  it("HG-2 + validator: setBinding rejects a record with an unknown field", () => {
+  it("HG-2 + validator：setBinding 拒绝含未知字段的 record", () => {
     const res = store.setBinding(
       "global_host",
       null,
@@ -72,7 +71,7 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     expect(res.ok).toBe(false);
   });
 
-  it("HG-2 + validator: setBinding rejects a record that smuggles `mode` inside the record (unknown field)", () => {
+  it("HG-2 + validator：setBinding 拒绝在 record 内夹带 `mode`（未知字段）", () => {
     const res = store.setBinding(
       "global_host",
       null,
@@ -81,11 +80,11 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     );
     expect(res.ok).toBe(false);
     if (!res.ok) {
-      expect(res.errors.some((e) => e.includes(`Unknown field "mode"`))).toBe(true);
+      expect(res.errors.some((e) => e.includes(`未知字段 "mode"`))).toBe(true);
     }
   });
 
-  it("HG-1: setBinding rejects an invalid mode name (validateModeName)", () => {
+  it("HG-1：setBinding 拒绝无效 mode 名（validateModeName）", () => {
     const res = store.setBinding("global_host", null, "Sleep", makeRecord({ scope: "global_host" }));
     expect(res.ok).toBe(false);
     if (!res.ok) {
@@ -93,7 +92,7 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     }
   });
 
-  it("HG-SAFE: setBinding rejects a record whose permission_prompt_posture is auto_accept (runtime defense)", () => {
+  it("HG-SAFE：setBinding 拒绝 permission_prompt_posture 为 auto_accept 的 record（runtime 防御）", () => {
     const candidate = {
       ...makeRecord({ scope: "global_host" }),
       permission_prompt_posture: "auto_accept",
@@ -105,7 +104,7 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     }
   });
 
-  it("HG-4 invariant: global_host scope requires null qualifier", () => {
+  it("HG-4 不变量：global_host scope 要求 qualifier 为 null", () => {
     const res = store.setBinding(
       "global_host",
       "rig-1" as unknown as null,
@@ -115,7 +114,7 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     expect(res.ok).toBe(false);
   });
 
-  it("HG-4 invariant: non-global scope requires a non-empty qualifier", () => {
+  it("HG-4 不变量：非全局 scope 要求非空 qualifier", () => {
     for (const scope of ["rig", "workstream", "qitem"] as const) {
       const empty = store.setBinding(scope, "", "desk", makeRecord({ scope }));
       expect(empty.ok).toBe(false);
@@ -124,7 +123,7 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     }
   });
 
-  it("rejects a record whose scope field disagrees with the binding scope (no silent mismatch)", () => {
+  it("拒绝 scope 字段与 binding scope 不一致的 record（不静默容忍）", () => {
     const res = store.setBinding(
       "rig",
       "rig-a",
@@ -133,11 +132,11 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     );
     expect(res.ok).toBe(false);
     if (!res.ok) {
-      expect(res.errors.some((e) => e.includes("scope mismatch"))).toBe(true);
+      expect(res.errors.some((e) => e.includes("scope 不匹配"))).toBe(true);
     }
   });
 
-  it("setBinding upserts: re-set the same (scope, qualifier) replaces the binding (mode + record)", () => {
+  it("setBinding 执行 upsert：重设相同 (scope, qualifier) 会替换 binding（mode + record）", () => {
     store.setBinding("rig", "rig-a", "focus", makeRecord({ scope: "rig", evidence_citation: "v1" }));
     store.setBinding("rig", "rig-a", "debug", makeRecord({ scope: "rig", evidence_citation: "v2" }));
     const got = store.getBinding("rig", "rig-a");
@@ -146,7 +145,7 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     expect(store.listBindings().filter((b) => b.id === "rig:rig-a").length).toBe(1);
   });
 
-  it("listBindings returns all rows", () => {
+  it("listBindings 返回全部记录", () => {
     store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
     store.setBinding("rig", "rig-a", "focus", makeRecord({ scope: "rig" }));
     store.setBinding("qitem", "q-1", "debug", makeRecord({ scope: "qitem" }));
@@ -157,15 +156,15 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     ]);
   });
 
-  it("deleteBinding removes and reports whether a row existed", () => {
+  it("deleteBinding 删除记录并报告该记录是否存在", () => {
     store.setBinding("rig", "rig-a", "focus", makeRecord({ scope: "rig" }));
     expect(store.deleteBinding("rig", "rig-a")).toBe(true);
     expect(store.deleteBinding("rig", "rig-a")).toBe(false);
     expect(store.getBinding("rig", "rig-a")).toBeNull();
   });
 
-  // HG-3 — DIRECTION A: more-specific-wins (qitem overrides global_host).
-  it("HG-3 DIRECTION A: qitem-scoped debug overrides global_host-scoped sleep for that qitem", () => {
+  // HG-3——方向 A：更具体者优先（qitem 覆盖 global_host）。
+  it("HG-3 方向 A：qitem scope 的 debug 对该 qitem 覆盖 global_host scope 的 sleep", () => {
     store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
     store.setBinding("qitem", "q-1", "debug", makeRecord({ scope: "qitem" }));
 
@@ -178,9 +177,9 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     expect(resolvedForOther?.resolvedScope).toBe("global_host");
   });
 
-  // HG-3 — DIRECTION B: the inverse — workstream-scoped focus wins over
-  // rig-scoped desk, and rig-scoped desk wins over global_host-scoped sleep.
-  it("HG-3 DIRECTION B: scope precedence qitem > workstream > rig > global_host (both ways)", () => {
+  // HG-3——方向 B：反向验证；workstream scope 的 focus 优先于 rig scope 的 desk，
+  // 而 rig scope 的 desk 优先于 global_host scope 的 sleep。
+  it("HG-3 方向 B：scope 优先级为 qitem > workstream > rig > global_host（双向）", () => {
     store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
     store.setBinding("rig", "rig-a", "desk", makeRecord({ scope: "rig" }));
     store.setBinding("workstream", "ws-1", "focus", makeRecord({ scope: "workstream" }));
@@ -201,16 +200,15 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     expect(r4?.binding.mode).toBe("sleep");
   });
 
-  it("resolveEffective returns null when no binding matches (convention §Q6 unknown_posture)", () => {
+  it("没有匹配 binding 时 resolveEffective 返回 null（约定 §Q6 unknown_posture）", () => {
     expect(store.resolveEffective({ qitemId: "q-1" })).toBeNull();
     store.setBinding("rig", "rig-a", "desk", makeRecord({ scope: "rig" }));
     expect(store.resolveEffective({ rigId: "rig-other" })).toBeNull();
   });
 
-  // HG-5 — survives "restart" (typed primitive in the shared db handle,
-  // same store pattern as workspace primitive). Test simulates daemon
-  // restart by closing and re-opening the same backing.
-  it("HG-5: rows persist across store-instance lifecycle on the same db handle", () => {
+  // HG-5——跨“重启”保留（共享数据库句柄中的类型化原语，与 workspace 原语使用相同 store
+  // 模式）。测试通过关闭并重新打开相同 backing 来模拟 daemon 重启。
+  it("HG-5：记录跨同一数据库句柄上的 store 实例生命周期持久存在", () => {
     store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
     store.setBinding("qitem", "q-1", "debug", makeRecord({ scope: "qitem" }));
 
@@ -220,10 +218,9 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     expect(fresh.getBinding("qitem", "q-1")?.mode).toBe("debug");
   });
 
-  // HG-4 — set_by is always 'operator' at the store layer. The schema
-  // CHECK constraint also enforces this. There is no agent-set code
-  // path; the store API simply doesn't expose one.
-  it("HG-4: set_by is always 'operator' on every row", () => {
+  // HG-4——store 层的 set_by 始终为 'operator'，schema CHECK 约束也会强制执行。不存在
+  // agent 设置路径；store API 根本没有暴露该能力。
+  it("HG-4：每条记录的 set_by 始终为 'operator'", () => {
     store.setBinding("rig", "rig-a", "focus", makeRecord({ scope: "rig" }));
     const row = db.prepare(`
       SELECT set_by FROM operator_context_mode_bindings WHERE id = ?
@@ -231,11 +228,10 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     expect(row.set_by).toBe("operator");
   });
 
-  // HG-4 + BLOCKING-1: `mode` is persisted in its own column (not in
-  // record_json) so the binding's identity is a typed-by-schema TEXT
-  // column with a CHECK constraint, NOT a JSON field that could go
-  // stale or smuggle additional fields.
-  it("HG-4 (BLOCKING-1): mode is persisted in its own column with a CHECK constraint", () => {
+  // HG-4 + BLOCKING-1：`mode` 持久化在独立列中（不在 record_json 内），因此 binding
+  // identity 是由 schema 定型并带 CHECK 约束的 TEXT 列，而不是可能过期或夹带额外字段的
+  // JSON 字段。
+  it("HG-4（BLOCKING-1）：mode 持久化在带 CHECK 约束的独立列中", () => {
     store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
     const row = db.prepare(`
       SELECT mode, record_json FROM operator_context_mode_bindings WHERE id = ?
@@ -246,10 +242,9 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     expect(Object.keys(parsed).length).toBe(10);
   });
 
-  // HG-SAFE — defense audit: setBinding writes to ONE table. The store
-  // does not expose any method that touches permission allowlists,
-  // runtime config, or auth surfaces. This test pins the surface area.
-  it("HG-SAFE: RigModeStore exposes ONLY binding-related methods (no permission/auth/runtime-config surface)", () => {
+  // HG-SAFE——防御性审计：setBinding 只写一个表。store 不暴露任何会触及 permission
+  // allowlist、runtime config 或 auth 表面的方法；本测试锁定其表面积。
+  it("HG-SAFE：RigModeStore 只暴露 binding 相关方法（无 permission/auth/runtime-config 表面）", () => {
     const expected = new Set([
       "setBinding",
       "getBinding",
@@ -268,10 +263,9 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     }
   });
 
-  // Per-scope grep negative: no permission-related identifier in the
-  // source. This anchors the gate-zero "NO permission/runtime-config
-  // write anywhere" rule at the store source level.
-  it("HG-SAFE: rig-mode-store source contains no permission / auth / tmux / lifecycle identifiers", async () => {
+  // 逐 scope 的 grep 反例：源码中不存在权限相关标识符，从 store 源码层锁定 gate-zero 的
+  // “任何位置都不得写 permission/runtime-config”规则。
+  it("HG-SAFE：rig-mode-store 源码不含 permission / auth / tmux / lifecycle 标识符", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const url = await import("node:url");
@@ -294,17 +288,15 @@ describe("RigModeStore — slice 09 persistence + resolution", () => {
     }
   });
 
-  // Spot-check qualifier-bearing scopes accept distinct bindings per
-  // qualifier without bleed.
-  it("scope+qualifier keys are independent — different rigs/qitems hold distinct rows", () => {
+  // 抽查带 qualifier 的 scope 能按 qualifier 保存独立 binding，且互不串扰。
+  it("scope+qualifier key 相互独立，不同工作组/qitem 保存不同记录", () => {
     store.setBinding("rig", "rig-a", "desk", makeRecord({ scope: "rig" }));
     store.setBinding("rig", "rig-b", "focus", makeRecord({ scope: "rig" }));
     expect(store.getBinding("rig", "rig-a")?.mode).toBe("desk");
     expect(store.getBinding("rig", "rig-b")?.mode).toBe("focus");
   });
 
-  // Plus a void usage to make the compiler keep the imported type
-  // surface alive.
+  // 额外用一次 void，让编译器保留导入的类型表面。
   void (null as unknown as OperatorContextScope);
   void (null as unknown as OperatorContextMode);
 });

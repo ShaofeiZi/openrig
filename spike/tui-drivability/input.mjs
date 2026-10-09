@@ -1,7 +1,7 @@
-// Keyboard + mouse byte decoding. Mouse uses xterm SGR (1006) reporting:
-// ESC [ < b ; x ; y M/m  — the standard tmux/iTerm/Terminal.app mouse encoding.
-// decodeInput returns typed events; mouse events are resolved against the
-// renderer's hit-map by the caller, then dispatched through the SAME dispatch.
+// 键盘与鼠标字节解码。鼠标使用 xterm SGR（1006）报告格式：
+// ESC [ < b ; x ; y M/m——这是 tmux/iTerm/Terminal.app 的标准鼠标编码。
+// decodeInput 返回带类型的事件；调用方根据 renderer 的 hit-map 解析鼠标事件，
+// 再通过同一个 dispatch 派发。
 
 const SGR_MOUSE = /\x1b\[<(\d+);(\d+);(\d+)([Mm])/g
 
@@ -10,17 +10,17 @@ export function decodeInput(bytes) {
   const events = []
   let rest = text
 
-  // Extract SGR mouse sequences first.
+  // 先提取 SGR 鼠标序列。
   rest = rest.replace(SGR_MOUSE, (_, b, x, y, kind) => {
     const button = Number(b)
     if (kind === 'M' && (button & 3) !== 3 && button < 32) {
-      // press of button 0/1/2 (32+ are motion/wheel events — ignored in the spike)
+      // 按下 0/1/2 号按钮（32+ 是移动/滚轮事件，此 spike 忽略）。
       events.push({ type: 'mouse', button: button & 3, x: Number(x), y: Number(y) })
     }
     return ''
   })
 
-  // Keyboard: a tiny decode table — arrows, enter, backspace, escape, printable.
+  // 键盘：一张精简解码表——方向键、Enter、Backspace、Escape 和可打印字符。
   let i = 0
   while (i < rest.length) {
     const ch = rest[i]
@@ -56,8 +56,8 @@ export function decodeInput(bytes) {
   return events
 }
 
-// Test/automation helper: fabricate the SGR bytes a terminal would emit for a
-// left-button press at (x, y) — 1-based terminal coordinates.
+// 测试/自动化辅助函数：构造终端在 (x, y) 按下鼠标左键时发出的 SGR 字节；
+// 终端坐标从 1 开始。
 export function sgrClick(x, y) {
   return `\x1b[<0;${x};${y}M\x1b[<0;${x};${y}m`
 }

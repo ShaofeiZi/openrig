@@ -1,8 +1,7 @@
 import type { Migration } from "../migrate.js";
 
-// W3 permission-drift visibility: an APPLIED launch observation is a separate,
-// generation-keyed fact. The occupant-tenure ledger stays append-only and is
-// never repurposed as mutable observation storage.
+// W3 permission-drift 可见性：已应用的启动观察是以代为键的独立事实。occupant-tenure 台账
+// 保持只追加，绝不改作可变观察存储。
 export const appliedLaunchObservationsSchema: Migration = {
   name: "069_applied_launch_observations.sql",
   sql: `

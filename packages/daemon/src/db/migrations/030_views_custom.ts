@@ -1,16 +1,14 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * Custom views (PL-004 Phase B; L5 View — custom-view registration table).
+ * 自定义视图（PL-004 阶段 B；L5 View——自定义视图注册表）。
  *
- * Per PRD § L5: built-in views (`recently-active`, `founder`, `pod-load`,
- * `escalations`, `held`, `activity`) are HARDCODED in view-projector.ts.
- * Operator-defined custom views are stored in this table and registered at
- * daemon startup from `~/.openrig/views.yaml` (or via API at runtime).
+ * 根据 PRD § L5：内置视图（`recently-active`、`founder`、`pod-load`、`escalations`、
+ * `held`、`activity`）硬编码在 view-projector.ts 中。操作员定义的自定义视图存于此表，
+ * 后台服务启动时从 `~/.openrig/views.yaml` 注册（或在运行时通过 API 注册）。
  *
- * Built-in views are NOT inserted into this table — view-projector.ts
- * exposes them by name without DB lookup. Custom views are looked up here
- * when the operator queries `rig view show <custom-name>`.
+ * 内置视图不会插入此表——view-projector.ts 无需查询数据库即可按名称公开它们。操作员查询
+ * `rig view show <custom-name>` 时，在此处查找自定义视图。
  */
 export const viewsCustomSchema: Migration = {
   name: "030_views_custom.sql",

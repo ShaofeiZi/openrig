@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
 import { createFullTestDb, createTestApp } from "./helpers/test-app.js";
 
-describe("POST /api/rigs/:rigId/expand", () => {
+describe("POST /api/rigs/:rigId/expand 装备扩展路由", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
 
@@ -28,9 +28,9 @@ describe("POST /api/rigs/:rigId/expand", () => {
     };
   }
 
-  // Seam B (R2 terminal at 4ac243c3): present-INVALID permission_policy must reach the
-  // ONE canonical validator — the normalizer may not erase presence into absence/floor.
-  it("SEAM-B RED: expansion member permission_policy: null -> structured 400, ZERO persistence, NO launch (rig carries builtin:yolo)", async () => {
+  // 接缝 B（R2 终点 4ac243c3）：存在但无效的 permission_policy 必须到达唯一标准校验器——
+  // 规范化器不得将“存在”抹为“缺省/floor”。
+  it("接缝 B 红灯：扩展成员 permission_policy:null -> 结构化 400、零持久化、不启动（装备携带 builtin:yolo）", async () => {
     const rig = seedRig("null-policy-rig");
     setup.rigRepo.setRigPermissionPolicy(rig.id, "builtin:yolo");
     setup.rigRepo.setRigPolicyProvenance(rig.id, { origin: "builtin", resolvedTarget: "policies/builtin/yolo.policy.md", declaringDir: null, launchPosture: "full_bypass" });
@@ -44,11 +44,11 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(JSON.stringify(body)).toMatch(/permission_policy/);
-    // zero persistence: no member node, no session, no edges for the rejected pod
+    // 零持久化：被拒绝的工作组不产生成员节点、会话或边
     expect(db.prepare("SELECT COUNT(*) AS c FROM nodes WHERE logical_id LIKE 'dev2.%'").get()).toMatchObject({ c: 0 });
   });
 
-  it("SEAM-B RED: another present-invalid shape (number) is also a structured 400, never coerced/erased", async () => {
+  it("接缝 B 红灯：另一种存在但无效的形态（数字）也返回结构化 400，绝不强制转换或抹除", async () => {
     const rig = seedRig("num-policy-rig");
     const res = await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
@@ -61,7 +61,7 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(db.prepare("SELECT COUNT(*) AS c FROM nodes WHERE logical_id LIKE 'dev3.%'").get()).toMatchObject({ c: 0 });
   });
 
-  it("SEAM-B control: a VALID string permission_policy and TRUE absence both keep working through expansion", async () => {
+  it("接缝 B 对照：有效字符串 permission_policy 与真正缺省在扩展中均保持可用", async () => {
     const rig = seedRig("valid-policy-rig");
     const ok = await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
@@ -73,8 +73,8 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(ok.status).toBe(201);
   });
 
-  // T1: Valid expansion -> 201
-  it("returns 201 with ok result for valid expansion", async () => {
+  // T1：有效扩展 -> 201
+  it("有效扩展返回 201 与成功结果", async () => {
     const rig = seedRig();
     const res = await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
@@ -91,8 +91,8 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(body.nodes[0].logicalId).toBe("infra.server");
   });
 
-  // T2: Nonexistent rig -> 404
-  it("returns 404 for nonexistent rig", async () => {
+  // T2：装备不存在 -> 404
+  it("装备不存在时返回 404", async () => {
     const res = await setup.app.request("/api/rigs/nonexistent/expand", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -101,8 +101,8 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(res.status).toBe(404);
   });
 
-  // T3: Duplicate namespace -> 409
-  it("returns 409 for duplicate pod namespace", async () => {
+  // T3：命名空间重复 -> 409
+  it("工作组命名空间重复时返回 409", async () => {
     const rig = seedRig();
     await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
@@ -118,8 +118,8 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(res.status).toBe(409);
   });
 
-  // T4: Launch failure -> 207
-  it("returns 207 for expansion with launch failure", async () => {
+  // T4：启动失败 -> 207
+  it("扩展中启动失败时返回 207", async () => {
     const rig = seedRig();
     const tmux = setup.tmuxAdapter as unknown as Record<string, ReturnType<typeof vi.fn>>;
     tmux.createSession.mockResolvedValueOnce({ ok: false, code: "unknown", message: "tmux not available" });
@@ -136,8 +136,8 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(["partial", "failed"]).toContain(body.status);
   });
 
-  // T5: Exactly one rig.expanded event
-  it("emits exactly one rig.expanded event", async () => {
+  // T5：恰好一个 rig.expanded 事件
+  it("恰好发出一个 rig.expanded 事件", async () => {
     const rig = seedRig();
     await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
@@ -149,8 +149,8 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(events).toHaveLength(1);
   });
 
-  // T6: Missing body -> 400
-  it("returns 400 for missing pod in body", async () => {
+  // T6：请求体缺失 -> 400
+  it("请求体中缺少 pod 时返回 400", async () => {
     const rig = seedRig();
     const res = await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
@@ -160,8 +160,8 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(res.status).toBe(400);
   });
 
-  // T7a: rig.expanded in events table
-  it("rig.expanded event contains correct payload", async () => {
+  // T7a：事件表中的 rig.expanded
+  it("rig.expanded 事件包含正确载荷", async () => {
     const rig = seedRig();
     await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
@@ -177,8 +177,8 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(payload.status).toBe("ok");
   });
 
-  // T7b: Detail events (pod.created, node.added) also emitted
-  it("detail events (pod.created, node.added) emitted during expansion", async () => {
+  // T7b：同时发出详细事件（pod.created、node.added）
+  it("扩展期间发出详细事件（pod.created、node.added）", async () => {
     const rig = seedRig();
     await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
@@ -192,17 +192,17 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(nodeEvents.length).toBeGreaterThanOrEqual(1);
   });
 
-  // T8: Cross-pod edges -> 201
-  it("expansion with cross-pod edges returns 201", async () => {
+  // T8：跨工作组边 -> 201
+  it("包含跨工作组边的扩展返回 201", async () => {
     const rig = seedRig();
-    // First pod
+    // 第一个工作组
     await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pod: terminalPod("orch", "lead") }),
     });
 
-    // Second pod with cross-pod edge
+    // 带跨工作组边的第二个工作组
     const res = await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -217,7 +217,7 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(body.ok).toBe(true);
   });
 
-  it("expansion with edge from new pod to existing node launches only the new node", async () => {
+  it("扩展包含从新工作组到现有节点的边时，仅启动新节点", async () => {
     const rig = seedRig();
     await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
@@ -242,7 +242,7 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(body.nodes[0].logicalId).toBe("ops.monitor");
   });
 
-  it("accepts spec-style snake_case member fields in pod fragments", async () => {
+  it("工作组片段接受规范风格的 snake_case 成员字段", async () => {
     const rig = seedRig();
     const res = await setup.app.request(`/api/rigs/${rig.id}/expand`, {
       method: "POST",
@@ -277,13 +277,11 @@ describe("POST /api/rigs/:rigId/expand", () => {
     expect(stored?.restore_policy).toBe("checkpoint_only");
   });
 
-  // OPR.0.5.6.3 repair (wave-1 R2 HOLD): the route normalizer recognized only
-  // fork/rebuild and silently dropped the entire agent_image session source
-  // BEFORE the service mapper could preserve ref.version — the landed S03
-  // service test exercised RigExpansionService directly and bypassed this
-  // ingress. These pins ride the REAL HTTP route and observe the
-  // service/materialized-spec boundary (the materializeStructured argument).
-  it("agent_image session_source with a version pin survives the real expand ingress to the materialized spec", async () => {
+  // OPR.0.5.6.3 修复（第 1 波 R2 暂停）：路由规范化器只识别 fork/rebuild，在服务映射器
+  // 保留 ref.version 之前就静默丢弃整个 agent_image 会话源——已落地的 S03 服务测试直接
+  // 调用 RigExpansionService，绕过了此入口。这些固定断言走真实 HTTP 路由，并观察
+  // 服务/物化规范边界（materializeStructured 参数）。
+  it("带版本固定的 agent_image session_source 经真实扩展入口后仍保留在物化规范中", async () => {
     const rig = seedRig("image-pin-rig");
     const materializeSpy = vi.spyOn(setup.podInstantiator, "materializeStructured");
     await setup.app.request(`/api/rigs/${rig.id}/expand`, {
@@ -318,7 +316,7 @@ describe("POST /api/rigs/:rigId/expand", () => {
     materializeSpy.mockRestore();
   });
 
-  it("unversioned agent_image session_source survives the ingress with NO version key invented", async () => {
+  it("无版本 agent_image session_source 经入口后仍保留，且不凭空添加 version 键", async () => {
     const rig = seedRig("image-unpinned-rig");
     const materializeSpy = vi.spyOn(setup.podInstantiator, "materializeStructured");
     await setup.app.request(`/api/rigs/${rig.id}/expand`, {
@@ -353,7 +351,7 @@ describe("POST /api/rigs/:rigId/expand", () => {
     materializeSpy.mockRestore();
   });
 
-  it("valid numeric version coerces to string per schema parity", async () => {
+  it("有效数字版本按 schema 一致性转换为字符串", async () => {
     const rig = seedRig("image-numeric-rig");
     const materializeSpy = vi.spyOn(setup.podInstantiator, "materializeStructured");
     await setup.app.request(`/api/rigs/${rig.id}/expand`, {
@@ -370,21 +368,18 @@ describe("POST /api/rigs/:rigId/expand", () => {
         },
       }),
     });
-    // numeric version COERCES to string — schema parity (rigspec-schema.ts
-    // validates string|number and normalizes with String(versionRaw);
-    // orch-lead ruling 2026-08-28 12:06Z: string-only omission would
-    // recreate the silent-default defect for YAML `version: 3`)
+    // 数字版本转换为字符串——保持 schema 一致（rigspec-schema.ts 校验 string|number，
+    // 并以 String(versionRaw) 规范化；编排负责人 2026-08-28 12:06Z 裁定：若只接受
+    // 字符串，会在 YAML `version: 3` 上重新引入静默默认缺陷）
     const spec = materializeSpy.mock.calls[0]![0] as { pods: Array<{ members: Array<Record<string, unknown>> }> };
     expect(spec.pods[0]!.members[0]!["session_source"]).toEqual({ mode: "agent_image", ref: { kind: "image_name", value: "ok", version: "3" } });
     materializeSpy.mockRestore();
   });
 
-  // S03 repair amendment (R2 governing HOLD): present-INVALID agent_image
-  // shapes must reach the ONE canonical validator and fail structured —
-  // never be erased into session_source-absence, which silently widens an
-  // invalid request into an unpinned/no-source expansion (the SEAM-B
-  // presence-preservation law applied to session_source).
-  it("present-invalid agent_image shapes reach the canonical validator: structured 400, zero persistence, never erased into absence", async () => {
+  // S03 修复补充（R2 管控暂停）：存在但无效的 agent_image 形态必须到达唯一标准校验器，
+  // 并以结构化形式失败——绝不能被抹为 session_source 缺省，后者会把无效请求静默放宽为
+  // 未固定/无来源扩展（将接缝 B 的存在性保留规则应用于 session_source）。
+  it("存在但无效的 agent_image 形态到达标准校验器：结构化 400、零持久化，绝不抹为缺省", async () => {
     const rig = seedRig("image-invalid-rig");
     const post = (sessionSource: unknown, podId: string) =>
       setup.app.request(`/api/rigs/${rig.id}/expand`, {
@@ -420,11 +415,10 @@ describe("POST /api/rigs/:rigId/expand", () => {
     }
   });
 
-  // S03 final presence amendment: the invariant is KEY PRESENCE, not a list of
-  // malformed shapes. ANY present session_source value — a mode-only object, a
-  // null/non-object ref, a primitive, or null itself — must reach the canonical
-  // validator and fail structured; only a truly absent key stays absent.
-  it("presence invariant: mode-only, ref:null, primitive, and null session_source all reach the canonical validator (400 naming session_source, zero persistence)", async () => {
+  // S03 最终存在性补充：不变量是键是否存在，而不是列举错误形态。任何存在的
+  // session_source 值——仅 mode 的对象、null/非对象 ref、原始值或 null 本身——都必须
+  // 到达标准校验器并以结构化形式失败；只有真正不存在的键才保持缺省。
+  it("存在性不变量：仅 mode、ref:null、原始值和 null 的 session_source 均到达标准校验器（400 指明 session_source，零持久化）", async () => {
     const rig = seedRig("presence-invariant-rig");
     const post = (sessionSource: unknown, podId: string) =>
       setup.app.request(`/api/rigs/${rig.id}/expand`, {

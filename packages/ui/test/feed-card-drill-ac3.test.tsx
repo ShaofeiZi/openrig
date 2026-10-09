@@ -1,5 +1,4 @@
-// AC-3: FocusedTerminal unavailable state surfaces honestly when
-// the live terminal cannot connect (xterm import fails).
+// AC-3：实时终端无法连接（xterm 导入失败）时，FocusedTerminal 如实显示不可用状态。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, waitFor, fireEvent } from "@testing-library/react";
@@ -43,7 +42,7 @@ function withQueryClient(ui: React.ReactNode) {
 }
 
 describe("AC-3: FocusedTerminal unavailable in drill", () => {
-  it("xterm init failure surfaces Terminal unavailable, no /preview fetch, no captured copy", async () => {
+  it("xterm init failure surfaces terminal-unavailable message, no /preview fetch, no captured copy", async () => {
     const { FeedCardTerminalDrill } = await import("../src/components/for-you/FeedCardTerminalDrill.js");
 
     const { getByTestId } = withQueryClient(
@@ -55,7 +54,7 @@ describe("AC-3: FocusedTerminal unavailable in drill", () => {
 
     await waitFor(() => {
       const terminalEl = getByTestId("focused-terminal-dev-impl@my-rig");
-      expect(terminalEl.textContent).toContain("Terminal unavailable");
+      expect(terminalEl.textContent).toContain("终端不可用");
     }, { timeout: 3000 });
 
     const previewCalls = mockFetch.mock.calls

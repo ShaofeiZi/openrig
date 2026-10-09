@@ -1,4 +1,4 @@
-// PL-016 — daemon HTTP route tests.
+// PL-016——守护进程 HTTP 路由测试。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
@@ -18,7 +18,7 @@ function writeImage(root: string, name: string, manifest: string, files: Record<
   }
 }
 
-describe("agent-images routes (PL-016)", () => {
+describe("智能体镜像路由（PL-016）", () => {
   let tmp: string;
   let libRoot: string;
   let specRoot: string;
@@ -51,7 +51,7 @@ describe("agent-images routes (PL-016)", () => {
     return app;
   }
 
-  it("GET /library redacts source-resume-token", async () => {
+  it("GET /library 会脱敏源恢复令牌", async () => {
     writeImage(libRoot, "smoke", `
 name: smoke
 version: 1
@@ -71,7 +71,7 @@ files: []
     expect(JSON.stringify(body)).not.toContain("REAL-TOKEN-MUST-NOT-LEAK");
   });
 
-  it("GET /library/:id/preview returns starterSnippet", async () => {
+  it("GET /library/:id/preview 返回 starterSnippet", async () => {
     writeImage(libRoot, "snippet", `
 name: snippet
 version: 1
@@ -90,7 +90,7 @@ files: []
     expect(body.starterSnippet).toContain('value: "snippet"');
   });
 
-  it("POST /snapshot delegates to SnapshotCapturer + redacts token in response", async () => {
+  it("POST /snapshot 委托给 SnapshotCapturer，并脱敏响应中的令牌", async () => {
     capturer.capture.mockReturnValue({
       imageId: "agent-image:fresh:1",
       imagePath: "/path/to/fresh",
@@ -115,7 +115,7 @@ files: []
     }));
   });
 
-  it("POST /snapshot 400s without required fields", async () => {
+  it("POST /snapshot 缺少必填字段时返回 400", async () => {
     const app = buildApp();
     const res = await app.request("/api/agent-images/snapshot", {
       method: "POST",
@@ -125,7 +125,7 @@ files: []
     expect(res.status).toBe(400);
   });
 
-  it("POST /library/:id/pin + /unpin round-trips", async () => {
+  it("POST /library/:id/pin 与 /unpin 可往返操作", async () => {
     writeImage(libRoot, "pinned", `
 name: pinned
 version: 1
@@ -146,8 +146,8 @@ files: []
     expect(existsSync(join(libRoot, "pinned", ".pinned"))).toBe(false);
   });
 
-  it("DELETE /library/:id refuses without force when image is referenced", async () => {
-    // Create image
+  it("DELETE /library/:id 在镜像被引用且未指定 force 时拒绝删除", async () => {
+    // 创建镜像
     writeImage(libRoot, "referenced", `
 name: referenced
 version: 1
@@ -157,7 +157,7 @@ source_session_id: s
 source_resume_token: t
 files: []
 `);
-    // Add a spec referencing it
+    // 添加引用该镜像的规范
     mkdirSync(join(specRoot, "agents", "x"), { recursive: true });
     writeFileSync(join(specRoot, "agents", "x", "agent.yaml"), `
 name: ref
@@ -176,11 +176,11 @@ session_source:
     const body = await res.json() as { error: string; reasons: string[] };
     expect(body.error).toBe("image_referenced");
     expect(body.reasons).toContain("referenced_by_agent_spec");
-    // Image must still exist on disk after the rejected delete
+    // 删除被拒绝后，镜像必须仍存在于磁盘上
     expect(existsSync(join(libRoot, "referenced", "manifest.yaml"))).toBe(true);
   });
 
-  it("DELETE /library/:id?force=true overrides the guard", async () => {
+  it("DELETE /library/:id?force=true 可覆盖护栏", async () => {
     writeImage(libRoot, "force-target", `
 name: force-target
 version: 1
@@ -211,7 +211,7 @@ session_source:
     expect(existsSync(join(libRoot, "force-target", "manifest.yaml"))).toBe(false);
   });
 
-  it("POST /prune --dry-run reports protected vs evictable", async () => {
+  it("POST /prune --dry-run 报告受保护与可淘汰镜像", async () => {
     writeImage(libRoot, "evictable", `
 name: evictable
 version: 1
@@ -258,7 +258,7 @@ session_source:
     expect(body.evictable.map((e) => e.imageName).sort()).toEqual(["evictable"]);
   });
 
-  it("POST /prune (no dry-run) deletes evictable + leaves protected", async () => {
+  it("POST /prune（非 dry-run）删除可淘汰镜像并保留受保护镜像", async () => {
     writeImage(libRoot, "delete-me", `
 name: delete-me
 version: 1
@@ -306,7 +306,7 @@ pods:
     expect(existsSync(join(libRoot, "keep-me", "manifest.yaml"))).toBe(true);
   });
 
-  it("503 when library service is missing", async () => {
+  it("缺少镜像库服务时返回 503", async () => {
     const app = new Hono();
     app.route("/api/agent-images", agentImagesRoutes({ specRoots: () => [] }));
     const res = await app.request("/api/agent-images/library");

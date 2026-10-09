@@ -1,8 +1,7 @@
-// S5 (OPR.0.5.4.5) — seat-lifecycle verb surface: set-model / stop / clean.
-// RED-first pins for the three KI-5.3-9 gaps. The gap-3 defect (a dead managed
-// seat is permanently `already_bound`) is demonstrated inside the P5 pin against
-// the real NodeLauncher, so the committed RED models the runtime relation, not a
-// fixture of the author's imagination.
+// S5（OPR.0.5.4.5）——席位生命周期动词接口：set-model / stop / clean。针对三个
+// KI-5.3-9 缺口的先红后绿固定项。缺口 3 缺陷（已终止的托管席位永久为
+// `already_bound`）在 P5 固定项中针对真实 NodeLauncher 演示，因此已提交的 RED 模拟
+// 运行时关系，而非作者想象的 fixture。
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createFullTestDb } from "./helpers/test-app.js";
@@ -35,11 +34,9 @@ function fakeTmux(): FakeTmux {
       if (failing.has(name)) throw new Error("tmux probe failed (injected)");
       return alive.get(name) ?? false;
     },
-    // Classified probe (OPR.0.5.4.2): this fake models POSITIVE evidence only —
-    // present/absent from the liveness map, and an UNEXPECTED throw for the
-    // injected-failure set (the service must fail closed on it). The
-    // transport_unavailable class is deliberately NOT expressible here; blip
-    // behavior is pinned against the REAL adapter below (fix r1, row 9baac99f).
+    // 分类探针（OPR.0.5.4.2）：此 fake 只模拟确证——在存活映射中存在/缺失，以及注入失败
+    // 集合中的意外抛出（服务必须失败关闭）。此处有意无法表示 transport_unavailable 类；
+    // 抖动行为在下方针对真实适配器固定（修复 r1，第 9baac99f 行）。
     probeSession: async (name: string): Promise<{ state: "present" } | { state: "absent" }> => {
       if (failing.has(name)) throw new Error("tmux probe failed (injected)");
       return (alive.get(name) ?? false) ? { state: "present" } : { state: "absent" };
@@ -59,7 +56,7 @@ function fakeTmux(): FakeTmux {
   };
 }
 
-/** Byte-level lineage snapshot: everything the clean/set-model verbs must never touch. */
+/** 字节级血缘快照：clean/set-model 动词绝不能触碰的全部内容。 */
 function lineageSnapshot(db: Database.Database, nodeId: string) {
   return {
     sessionRows: db.prepare(
@@ -104,7 +101,7 @@ describe("SeatLifecycleService", () => {
     db.close();
   });
 
-  /** One live managed seat: node + running session + binding + live tmux. */
+  /** 一个存活托管席位：节点 + 运行中会话 + 绑定 + 存活 tmux。 */
   function seatFixture(rigName: string, logicalId: string, opts?: { model?: string; origin?: "claimed" }) {
     const existing = rigRepo.findRigsByName(rigName)[0] ?? rigRepo.createRig(rigName);
     const sessionName = `${logicalId.replace(".", "-")}@${rigName}`;
@@ -123,9 +120,9 @@ describe("SeatLifecycleService", () => {
     return { rig: existing, node, session, sessionName };
   }
 
-  // ---- P1 / P2 — set-model ----
+  // ---- P1 / P2——set-model ----
 
-  it("P1: set-model persists nodes.model and emits one audited node.model_changed event", async () => {
+  it("P1：set-model 持久化 nodes.model，并发出一个已审计 node.model_changed 事件", async () => {
     const { rig, node, sessionName } = seatFixture("s5-rig", "dev.impl", { model: "fable" });
 
     const result = await service.setModel({
@@ -157,7 +154,7 @@ describe("SeatLifecycleService", () => {
     });
   });
 
-  it("P1: set-model with the already-persisted value is changed:false and emits nothing", async () => {
+  it("P1：set-model 使用已持久化值时 changed:false，且不发出事件", async () => {
     const { sessionName } = seatFixture("s5-rig", "dev.impl", { model: "claude-fable-5" });
 
     const result = await service.setModel({ seatRef: sessionName, model: "claude-fable-5", reason: "no-op check" });
@@ -168,7 +165,7 @@ describe("SeatLifecycleService", () => {
     expect(eventsOfType(db, "node.model_changed")).toHaveLength(0);
   });
 
-  it("P2: set-model leaves session lineage byte-identical (sessions + occupant_tenures + resume token)", async () => {
+  it("P2：set-model 保持会话血缘字节完全一致（sessions + occupant_tenures + resume token）", async () => {
     const { node, sessionName } = seatFixture("s5-rig", "dev.impl", { model: "fable" });
     const before = lineageSnapshot(db, node.id);
 
@@ -178,11 +175,11 @@ describe("SeatLifecycleService", () => {
     const after = lineageSnapshot(db, node.id);
     expect(after.sessionRows).toEqual(before.sessionRows);
     expect(after.tenureCount).toBe(before.tenureCount);
-    // The ONLY node-row change is the model column.
+    // 节点行唯一的变更是 model 列。
     expect(after.nodeRow).toEqual({ ...(before.nodeRow as Record<string, unknown>), model: "claude-fable-5" });
   });
 
-  it("set-model refusals are loud and mutation-free", async () => {
+  it("set-model 明确拒绝且不产生变更", async () => {
     const { rig, node, sessionName } = seatFixture("s5-rig", "dev.impl", { model: "fable" });
 
     const missingModel = await service.setModel({ seatRef: sessionName, model: "   ", reason: "x" });
@@ -200,7 +197,7 @@ describe("SeatLifecycleService", () => {
     if (notFound.ok) throw new Error("expected refusal");
     expect(notFound.code).toBe("seat_not_found");
 
-    // Same logical id in two rigs, bare ref → ambiguous, with the matches listed.
+    // 两个工作组中存在相同 logical id，裸引用 → 有歧义，并列出匹配项。
     seatFixture("s5-rig-b", "dev.impl", { model: "fable" });
     const ambiguous = await service.setModel({ seatRef: "dev.impl", model: "claude-fable-5", reason: "x" });
     expect(ambiguous.ok).toBe(false);
@@ -208,15 +205,15 @@ describe("SeatLifecycleService", () => {
     expect(ambiguous.code).toBe("seat_ambiguous");
     expect(ambiguous.matches?.length).toBe(2);
 
-    // No mutation happened anywhere along the refusals.
+    // 拒绝过程中任何位置都未发生变更。
     const persisted = rigRepo.getRig(rig.id)!.nodes.find((n) => n.id === node.id)!;
     expect(persisted.model).toBe("fable");
     expect(eventsOfType(db, "node.model_changed")).toHaveLength(0);
   });
 
-  // ---- P3 / P4 — stop ----
+  // ---- P3 / P4——stop ----
 
-  it("P3: stop kills exactly the target seat; the sibling's session, binding and tmux survive", async () => {
+  it("P3：stop 只终止目标席位；同级席位的会话、绑定和 tmux 保留", async () => {
     const a = seatFixture("s5-rig", "dev.impla");
     const b = seatFixture("s5-rig", "dev.implb");
 
@@ -239,7 +236,7 @@ describe("SeatLifecycleService", () => {
     expect(events[0]).toMatchObject({ nodeId: a.node.id, sessionName: a.sessionName, reason: "single-seat stop test", operator: "op@rig" });
   });
 
-  it("P4: stop refuses a dead seat (session_not_live → guidance names clean), no mutation", async () => {
+  it("P4：stop 拒绝已终止席位（session_not_live → 指导中指明 clean），且不产生变更", async () => {
     const a = seatFixture("s5-rig", "dev.impl");
     tmux.setAlive(a.sessionName, false);
 
@@ -253,7 +250,7 @@ describe("SeatLifecycleService", () => {
     expect(sessionRegistry.getBindingForNode(a.node.id)).not.toBeNull();
   });
 
-  it("P4: stop refuses a claimed (adopted) session, an indeterminate probe, and a no-session node", async () => {
+  it("P4：stop 拒绝已认领（接管）会话、不确定探测和无会话节点", async () => {
     const claimed = seatFixture("s5-rig", "dev.adopted", { origin: "claimed" });
     const claimedResult = await service.stopSeat({ seatRef: claimed.sessionName, reason: "x" });
     expect(claimedResult.ok).toBe(false);
@@ -276,18 +273,18 @@ describe("SeatLifecycleService", () => {
     expect(bare.code).toBe("no_session");
   });
 
-  // ---- P5 / P6 — clean ----
+  // ---- P5 / P6——clean ----
 
-  it("P5: clean returns a dead seat to launchable WITHOUT deleting owner state (the already_bound defect, pinned)", async () => {
+  it("P5：clean 在不删除所有者状态的前提下使已终止席位恢复可启动（固定 already_bound 缺陷）", async () => {
     const a = seatFixture("s5-rig", "dev.impl");
-    // The seat dies outside any supported verb (clean exit): tmux gone, DB stale.
+    // 席位在所有受支持动词之外终止（正常退出）：tmux 消失，数据库过期。
     tmux.setAlive(a.sessionName, false);
 
     const launcher = new NodeLauncher({
       db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmux.adapter,
     });
 
-    // The gap-3 defect at base: the binding survives death, so launch refuses forever.
+    // 基线中的缺口 3 缺陷：绑定在终止后仍存在，因此 launch 永久拒绝。
     const blocked = await launcher.launchNode(a.rig.id, "dev.impl");
     expect(blocked.ok).toBe(false);
     if (blocked.ok) throw new Error("expected already_bound");
@@ -300,24 +297,24 @@ describe("SeatLifecycleService", () => {
     expect(cleaned.actions.bindingCleared).toBe(true);
     expect(cleaned.actions.sessionsExited).toEqual([a.sessionName]);
 
-    // Owner state preserved: node row, session history (incl. resume token), tenure ledger.
+    // 保留所有者状态：节点行、会话历史（包括 resume token）、tenure 台账。
     const after = lineageSnapshot(db, a.node.id);
     expect(after.nodeRow).toEqual(before.nodeRow);
     expect(after.tenureCount).toBe(before.tenureCount);
     expect(after.sessionRows.length).toBe(before.sessionRows.length);
     expect((after.sessionRows[0] as { resume_token: string | null }).resume_token).toBe("resume-uuid-1234");
 
-    // Binding cleared; session terminal; audit event persisted.
+    // 绑定已清除；会话已终止；审计事件已持久化。
     expect(sessionRegistry.getBindingForNode(a.node.id)).toBeNull();
     expect((db.prepare("SELECT status FROM sessions WHERE id = ?").get(a.session.id) as { status: string }).status).toBe("exited");
     expect(eventsOfType(db, "session.cleaned")).toHaveLength(1);
 
-    // The post-condition that defines the verb: launch no longer refuses already_bound.
+    // 定义该动词的后置条件：launch 不再以 already_bound 拒绝。
     const relaunch = await launcher.launchNode(a.rig.id, "dev.impl");
     expect(relaunch.code === "already_bound").toBe(false);
   });
 
-  it("P5: clean of a reconciler-detached seat clears only the stale binding", async () => {
+  it("P5：clean 处理被协调器分离的席位时只清除过期绑定", async () => {
     const a = seatFixture("s5-rig", "dev.impl");
     tmux.setAlive(a.sessionName, false);
     sessionRegistry.markDetached(a.session.id); // what the reconciler records on death
@@ -330,7 +327,7 @@ describe("SeatLifecycleService", () => {
     expect(sessionRegistry.getBindingForNode(a.node.id)).toBeNull();
   });
 
-  it("P6: clean refuses a LIVE seat (session_live → guidance names stop), an indeterminate probe, and a clean seat (nothing_to_clean names both checks)", async () => {
+  it("P6：clean 拒绝存活席位（session_live → 指导中指明 stop）、不确定探测和干净席位（nothing_to_clean 指明两项检查）", async () => {
     const live = seatFixture("s5-rig", "dev.live");
     const liveResult = await service.cleanSeat({ seatRef: live.sessionName, reason: "x" });
     expect(liveResult.ok).toBe(false);
@@ -358,14 +355,13 @@ describe("SeatLifecycleService", () => {
     expect(nothing.message).toMatch(/session/i);
   });
 
-  // ---- Wave-2 fix round 1 (r1 BLOCKING, row 9baac99f) — transport blip vs the REAL adapter ----
+  // ---- 第 2 波修复第 1 轮（r1 阻断，第 9baac99f 行）——传输抖动与真实适配器 ----
   //
-  // The r1 evidence (inverted here as the RED): the real TmuxAdapter under a
-  // no-server blip classifies probeSession() = transport_unavailable, while its
-  // COLLAPSED hasSession() view returns false. Verbs that consume the collapsed
-  // view read the blip as absence — the KI-5.3-8 fabricated-absence class, in
-  // the destructive direction: clean would clear a LIVE seat's state.
-  describe("transport blip (real TmuxAdapter, injected no-server exec)", () => {
+  // r1 证据（在此反转为 RED）：真实 TmuxAdapter 遇到无服务端抖动时，将 probeSession()
+  // 分类为 transport_unavailable，而其折叠后的 hasSession() 视图返回 false。消费折叠视图的
+  // 动词会把抖动视为缺失——这是 KI-5.3-8 伪造缺失类型，且方向具有破坏性：clean 会清除
+  // 存活席位的状态。
+  describe("传输抖动（真实 TmuxAdapter，注入无服务端 exec）", () => {
     function blipWorld() {
       const realTmux = new TmuxAdapter(async () => {
         throw new Error("no server running on /private/tmp/tmux-501/default");
@@ -375,13 +371,13 @@ describe("SeatLifecycleService", () => {
       return { realTmux, svc, seat };
     }
 
-    it("the adapter itself distinguishes the blip (control: probe says transport_unavailable)", async () => {
+    it("适配器自身可区分抖动（对照：探针报告 transport_unavailable）", async () => {
       const { realTmux, seat } = blipWorld();
       const probe = await realTmux.probeSession(seat.sessionName);
       expect(probe.state).toBe("transport_unavailable");
     });
 
-    it("clean under a blip REFUSES indeterminate and leaves the live seat's state byte-identical", async () => {
+    it("抖动期间 clean 以 indeterminate 拒绝，并保持存活席位状态字节完全一致", async () => {
       const { svc, seat } = blipWorld();
       const before = lineageSnapshot(db, seat.node.id);
 
@@ -390,62 +386,60 @@ describe("SeatLifecycleService", () => {
       expect(res.ok).toBe(false);
       if (res.ok) throw new Error("DEFECT: cleanSeat proceeded under a transport blip against a live seat");
       expect(res.code).toBe("tmux_probe_failed");
-      expect(res.message).toMatch(/not determined|indeterminate/i);
+      expect(res.message).toContain("未能确定");
 
-      // Nothing was destroyed: binding intact, session still running, no event.
+      // 没有内容被破坏：绑定完整、会话仍在运行、没有事件。
       expect(sessionRegistry.getBindingForNode(seat.node.id)).not.toBeNull();
       expect((db.prepare("SELECT status FROM sessions WHERE id = ?").get(seat.session.id) as { status: string }).status).toBe("running");
       expect(eventsOfType(db, "session.cleaned")).toHaveLength(0);
       expect(lineageSnapshot(db, seat.node.id)).toEqual(before);
     });
 
-    it("F3 pin (r2 row 30045f39): older-LIVE / newer-dead sessions — clean must refuse, not terminalize the live older session", async () => {
-      // Canonical-name churn can leave one node with several non-terminal session
-      // rows under DIFFERENT names (staged/legacy renames). clean mutates ALL
-      // non-terminal rows, so its safety probe must cover every row it will
-      // touch — probing only the newest fabricates safety for the others.
+    it("F3 固定项（r2 第 30045f39 行）：较旧存活 / 较新终止会话——clean 必须拒绝，不能终止较旧存活会话", async () => {
+      // 规范名称变化可能让一个节点留下多个不同名称的非终止会话行（分阶段/旧版重命名）。
+      // clean 会修改全部非终止行，因此安全探针必须覆盖将触碰的每一行——只探测最新行会
+      // 为其他行伪造安全性。
       const tmuxLocal = fakeTmux();
       const svcLocal = new SeatLifecycleService({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmuxLocal.adapter });
-      // The fixture session is the OLDER row and stays LIVE in tmux.
-      // (seatFixture marks liveness on the OUTER fake; mirror it on this test's own.)
+      // fixture 会话是较旧行，且在 tmux 中保持存活。
+      //（seatFixture 在外层 fake 上标记存活；在本测试自己的 fake 上同步标记。）
       const seat = seatFixture("s5-rig", "dev.impl");
       tmuxLocal.setAlive(seat.sessionName, true);
-      // A NEWER session row under a successor name, dead in tmux.
+      // 使用后继名称的较新会话行，在 tmux 中已终止。
       const newerName = "dev-impl-v2@s5-rig";
       const newer = sessionRegistry.registerSession(seat.node.id, newerName);
       sessionRegistry.updateStatus(newer.id, "running");
       tmuxLocal.setAlive(newerName, false);
-      // Ordering guard from the DB itself: the dead row IS the newest.
+      // 来自数据库本身的排序防护：已终止行确实最新。
       const newest = db.prepare("SELECT id FROM sessions WHERE node_id = ? ORDER BY id DESC LIMIT 1").get(seat.node.id) as { id: string };
       expect(newest.id).toBe(newer.id);
 
-      // Addressed by the CURRENT canonical name (the newest session's) — the
-      // realistic operator ref; the older live session hides behind it.
+      // 通过当前规范名称（最新会话的名称）寻址——这是现实的操作者引用；较旧存活会话
+      // 隐藏在其后。
       const res = await svcLocal.cleanSeat({ seatRef: newerName, reason: "F3 pin" });
 
       expect(res.ok).toBe(false);
       if (res.ok) throw new Error(`DEFECT (F3): clean proceeded and terminalized sessions ${JSON.stringify(res.actions)} while "${seat.sessionName}" is LIVE`);
       expect(res.code).toBe("session_live");
       expect(res.message).toContain(seat.sessionName);
-      // The live older session row is untouched.
+      // 较旧的存活会话行保持不变。
       expect((db.prepare("SELECT status FROM sessions WHERE id = ?").get(seat.session.id) as { status: string }).status).toBe("running");
       expect(sessionRegistry.getBindingForNode(seat.node.id)).not.toBeNull();
     });
 
-    it("stop under a blip REFUSES indeterminate — and does NOT route the operator to clean", async () => {
+    it("抖动期间 stop 以 indeterminate 拒绝——且不把操作者引导到 clean", async () => {
       const { svc, seat } = blipWorld();
 
       const res = await svc.stopSeat({ seatRef: seat.sessionName, reason: "blip pin" });
 
       expect(res.ok).toBe(false);
       if (res.ok) throw new Error("DEFECT: stopSeat acted under a transport blip");
-      // The blip must be the INDETERMINATE refusal, never the positive-absence one.
+      // 抖动必须产生 INDETERMINATE 拒绝，绝不能产生确证缺失拒绝。
       expect(res.code).toBe("tmux_probe_failed");
-      // The unsafe routing r1 flagged: under a blip the refusal must not point
-      // at the destructive verb.
+      // r1 标出的不安全路由：抖动期间拒绝不得指向破坏性动词。
       expect(res.guidance ?? "").not.toContain("clean");
       expect(res.message ?? "").not.toContain("rig seat clean");
-      // Session untouched.
+      // 会话保持不变。
       expect((db.prepare("SELECT status FROM sessions WHERE id = ?").get(seat.session.id) as { status: string }).status).toBe("running");
     });
   });

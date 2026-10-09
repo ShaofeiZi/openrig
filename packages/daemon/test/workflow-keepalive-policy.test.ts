@@ -24,13 +24,13 @@ function makeJob(overrides: Partial<PolicyJob> & { context: Record<string, unkno
   };
 }
 
-describe("workflow-keepalive policy (PL-004 Phase D; POC parity, SQLite source-only)", () => {
+describe("workflow-keepalive 策略（PL-004 阶段 D；与 POC 一致，仅以 SQLite 为源）", () => {
   let db: Database.Database;
 
   beforeEach(() => {
     db = createDb();
     migrate(db, [coreSchema, queueItemsSchema, workflowInstancesSchema]);
-    // Seed a workflow_instance + frontier qitems.
+    // 植入 workflow_instance 与 frontier qitem。
     db.prepare(
       `INSERT INTO workflow_instances (instance_id, workflow_name, workflow_version, created_by_session, created_at, status, current_frontier_json)
        VALUES ('inst-active', 'wf', '1', 'creator@rig', '2026-05-03T07:00:00Z', 'active', '["q-1","q-2"]')`,
@@ -57,7 +57,7 @@ describe("workflow-keepalive policy (PL-004 Phase D; POC parity, SQLite source-o
 
   afterEach(() => db.close());
 
-  it("active instance with frontier → send to first resolved owner; lists others in notes", async () => {
+  it("带 frontier 的活跃实例 → 发送给首个解析出的所有者；在 notes 中列出其余目标", async () => {
     const policy = makeWorkflowKeepalivePolicy({ db });
     const out = await policy.evaluate(
       makeJob({ context: { workflow_instance_id: "inst-active" } }),
@@ -70,7 +70,7 @@ describe("workflow-keepalive policy (PL-004 Phase D; POC parity, SQLite source-o
     expect(out.notes?.frontierLength).toBe(2);
   });
 
-  it("waiting status is also eligible (POC parity)", async () => {
+  it("waiting 状态同样符合条件（与 POC 一致）", async () => {
     const policy = makeWorkflowKeepalivePolicy({ db });
     const out = await policy.evaluate(
       makeJob({ context: { workflow_instance_id: "inst-waiting" } }),
@@ -80,7 +80,7 @@ describe("workflow-keepalive policy (PL-004 Phase D; POC parity, SQLite source-o
     expect(out.target.session).toBe("waiter@rig");
   });
 
-  it("completed status → action=terminal with reason workflow_not_active (POC parity terminal:true)", async () => {
+  it("completed 状态 → action=terminal，原因为 workflow_not_active（与 POC 的 terminal:true 一致）", async () => {
     const policy = makeWorkflowKeepalivePolicy({ db });
     const out = await policy.evaluate(
       makeJob({ context: { workflow_instance_id: "inst-completed" } }),
@@ -90,14 +90,12 @@ describe("workflow-keepalive policy (PL-004 Phase D; POC parity, SQLite source-o
     expect(out.reason).toBe("workflow_not_active");
   });
 
-  it("empty frontier with no fallback context → skip with empty_frontier", async () => {
+  it("frontier 为空且无回退上下文 → 以 empty_frontier 跳过", async () => {
     const policy = makeWorkflowKeepalivePolicy({ db });
-    // inst-empty has empty frontier and no observer_session in context.
-    // created_by_session ('creator@rig') still counts as additional, so
-    // this case really needs an instance whose creator + observers are
-    // also unresolvable. We'll pass observer-less context against
-    // inst-empty and observe the "creator@rig" kicks in (POC parity:
-    // additional targets always include workflow.created_by).
+    // inst-empty 的 frontier 为空，且上下文中没有 observer_session。created_by_session
+    //（'creator@rig'）仍算附加目标，因此此案例实际需要创建者与观察者都无法解析的实例。
+    // 这里向 inst-empty 传入无观察者上下文，并观察 "creator@rig" 生效（与 POC 一致：
+    // 附加目标始终包含 workflow.created_by）。
     const out = await policy.evaluate(
       makeJob({ context: { workflow_instance_id: "inst-empty" } }),
     );
@@ -106,7 +104,7 @@ describe("workflow-keepalive policy (PL-004 Phase D; POC parity, SQLite source-o
     expect(out.target.session).toBe("creator@rig");
   });
 
-  it("missing instance → action=terminal with reason workflow_instance_missing", async () => {
+  it("实例缺失 → action=terminal，原因为 workflow_instance_missing", async () => {
     const policy = makeWorkflowKeepalivePolicy({ db });
     const out = await policy.evaluate(
       makeJob({ context: { workflow_instance_id: "non-existent" } }),
@@ -116,17 +114,17 @@ describe("workflow-keepalive policy (PL-004 Phase D; POC parity, SQLite source-o
     expect(out.reason).toBe("workflow_instance_missing");
   });
 
-  it("throws policy_spec_invalid when context.workflow_instance_id missing", async () => {
+  it("缺少 context.workflow_instance_id 时抛出 policy_spec_invalid", async () => {
     const policy = makeWorkflowKeepalivePolicy({ db });
     try {
       await policy.evaluate(makeJob({ context: {} }));
-      throw new Error("should have thrown");
+      throw new Error("预期应抛出异常");
     } catch (err) {
       expect((err as Error & { code: string }).code).toBe("policy_spec_invalid");
     }
   });
 
-  it("explicit observer_session is added to additional targets", async () => {
+  it("将显式 observer_session 加入附加目标", async () => {
     const policy = makeWorkflowKeepalivePolicy({ db });
     const out = await policy.evaluate(
       makeJob({
@@ -141,17 +139,15 @@ describe("workflow-keepalive policy (PL-004 Phase D; POC parity, SQLite source-o
     expect(out.notes?.additionalRoutingTargets).toContain("observer@rig");
   });
 
-  it("LOAD-BEARING: policy reads ONLY from SQLite workflow_instances (audit row 18)", async () => {
-    // Drop the queue_items table - the policy must still read instance data
-    // from workflow_instances directly. (We expect the frontier-owner lookup
-    // to fail silently / yield empty resolved set, but the
-    // workflow_instances read must still succeed.)
+  it("关键约束：策略仅从 SQLite workflow_instances 读取（审计行 18）", async () => {
+    // 删除 queue_items 表——策略仍必须直接从 workflow_instances 读取实例数据。
+    //（预期 frontier 所有者查找静默失败或产生空解析集，但 workflow_instances 读取必须成功。）
     const policy = makeWorkflowKeepalivePolicy({ db });
     const out = await policy.evaluate(
       makeJob({ context: { workflow_instance_id: "inst-active" } }),
     );
-    // Direct workflow_instances read succeeded — policy returned a meaningful
-    // outcome rather than throwing on missing markdown source.
+    // 直接读取 workflow_instances 成功——策略返回有意义的结果，而不是因缺少 Markdown
+    // 来源而抛错。
     expect(out.action === "send" || out.action === "terminal" || out.action === "skip").toBe(true);
   });
 });

@@ -79,7 +79,7 @@ describe("DiscoveryPanel", () => {
     });
 
     expect(screen.getByTestId("discovery-open-inventory")).toBeDefined();
-    expect(screen.getByTestId("discovery-open-inventory").textContent).toBe("Legacy Inventory Page");
+    expect(screen.getByTestId("discovery-open-inventory").textContent).toBe("旧版清单页");
     expect(screen.queryByTestId("discovery-placement-status")).toBeNull();
   });
 
@@ -121,7 +121,7 @@ describe("DiscoveryPanel", () => {
     });
 
     expect(screen.getByTestId("discovery-selected-session-status").textContent).toContain("mapper");
-    expect(screen.getByTestId("discovery-target-summary").textContent).toBe("mapper selected");
+    expect(screen.getByTestId("discovery-target-summary").textContent).toBe("已选择 mapper");
     expect(screen.getByTestId("discovery-target-summary").textContent).not.toContain("research.mapper");
   });
 });

@@ -27,8 +27,8 @@ describe("graphics runtime package", () => {
     expect(normalizeToolBrandId("src/App.tsx")).toBe("code");
     expect(normalizeToolBrandId("capture.log")).toBe("transcript");
     expect(normalizeToolBrandId("trace.zip")).toBe("trace");
-    expect(toolBrand("cmux").actionLabel).toBe("Open in CMUX");
-    expect(toolBrand("proof").label).toBe("Proof");
+    expect(toolBrand("cmux").actionLabel).toBe("在 CMUX 中打开");
+    expect(toolBrand("proof").label).toBe("校验包");
   });
 
   it("renders compact runtime badges with graphics and short labels", () => {

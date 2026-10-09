@@ -41,9 +41,8 @@ function captureLogs(fn: () => Promise<void>): Promise<{ logs: string[]; exitCod
   });
 }
 
-// Channel-separated capture: proves WHICH stream a line went to. captureLogs
-// merges stdout+stderr, so it cannot show that the --json envelope lands on
-// stdout while the human prose lands on stderr (and neither leaks to the other).
+// 按通道分离捕获：证明一行落在哪个流。captureLogs 合并了 stdout+stderr，故无法显示
+// --json 信封落在 stdout、而人类文案落在 stderr（且两者互不串流）。
 function captureChannels(
   fn: () => Promise<void>,
 ): Promise<{ stdout: string[]; stderr: string[]; exitCode: number | undefined }> {
@@ -78,13 +77,13 @@ function runningDeps(port: number, clientFactory?: StatusDeps["clientFactory"]):
   };
 }
 
-describe("Send CLI", () => {
+describe("发送 CLI", () => {
   let server: http.Server;
   let port: number;
   let lastSendBody: Record<string, unknown> | null = null;
   let lastBroadcastBody: Record<string, unknown> | null = null;
-  // S3 (OPR.0.5.4.6): every /send body in order, so the no-double-delivery
-  // proof can count plain-text sends vs submit-path requests.
+  // S3（OPR.0.5.4.6）：按顺序记录每个 /send 请求体，使 no-double-delivery
+  // 证明能统计纯文本发送数与 submit 路径请求数之比。
   let sendBodies: Array<Record<string, unknown>> = [];
 
   beforeAll(async () => {
@@ -109,9 +108,9 @@ describe("Send CLI", () => {
           }
           const results = sessions.map((s) => ({ ok: true, sessionName: s }));
           res.writeHead(200, { "Content-Type": "application/json" });
-          // S2 (OPR.0.5.4.3): an unattributed fan-out's response carries the
-          // sign-it notice; the stub returns it when triggered so renderer
-          // tests can assert it is SURFACED, not dropped.
+          // S2（OPR.0.5.4.3）：无归属扇出的响应携带 sign-it 提示；桩在触发时返回它，
+          // 以便渲染测试断言它被浮出（SURFACED）而非丢弃。
+          // 测试可断言它被浮出（SURFACED），而非丢弃。
           const warning = parsed.text === "warn-notice"
             ? "Delivered without sender identity: your recipient has no way of knowing who sent this. Follow up and sign it."
             : undefined;
@@ -119,19 +118,17 @@ describe("Send CLI", () => {
           return;
         }
         if (req.method === "POST" && url === "/api/transport/capture") {
-          // S3 (OPR.0.5.4.6) fixtures: the pane EFFECT is the only truth about
-          // consumption. staged-session leaves the sent text AT the prompt;
-          // consumed-session shows it left the input box.
+          // S3（OPR.0.5.4.6）夹具：pane 效果是关于"是否消费"的唯一真相。
+          // staged-session 把已发送文本留在提示处；consumed-session 显示它已离开输入框。
           const parsed = JSON.parse(body);
           const panes: Record<string, string> = {
             "staged-session": "❯ hello there\n  ⏵⏵ accept edits on (shift+tab to cycle)",
             "consumed-session": "· processing: hello there\n❯ \n  ⏵⏵ accept edits on (shift+tab to cycle)",
-            // r2 F3 negative: a STALE pasted-text placeholder in SCROLLBACK with a
-            // blank current prompt — history, never staged evidence.
+            // r2 F3 负例：SCROLLBACK 中一个 STALE 的粘贴文本占位符，且
+            // 当前提示为空——这是历史，绝不是 staged 证据。
             "stale-scroll-session": "[Pasted text #3 +12 lines]\nolder scrollback output\n❯ \n  ⏵⏵ accept edits on (shift+tab to cycle)",
-            // round-2 F2 negative: a placeholder IN the current input region that
-            // does NOT match this send's identity (+100 lines vs a 1-line payload)
-            // — someone else's staged content; unverifiable, never this send.
+            // round-2 F2 负例：位于当前输入区、但与本次发送身份不匹配的占位符
+            //（+100 行对 1 行负载）——是别人 staged 的内容；不可验证，绝不属本次发送。
             "unrelated-paste-session": "❯ [Pasted text #7 +100 lines]\n  ⏵⏵ accept edits on (shift+tab to cycle)",
           };
           res.writeHead(200, { "Content-Type": "application/json" });
@@ -144,8 +141,8 @@ describe("Send CLI", () => {
           sendBodies.push(parsed);
           if (parsed.session === "staged-session" || parsed.session === "consumed-session" || parsed.session === "stale-scroll-session" || parsed.session === "unrelated-paste-session") {
             // S3 RED fixture: the TRANSPORT believes it delivered (its verify
-            // is measured-unreliable in exactly this direction) — the staged
-            // truth is visible only by pane effect.
+            // 被测得在该方向不可靠）——staged 真相只能通过 pane 效果看见。
+            // 真相只能经 pane 效应可见。
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ ok: true, sessionName: parsed.session, verified: true, outcome: "delivered" }));
             return;
@@ -166,7 +163,7 @@ describe("Send CLI", () => {
             res.writeHead(409, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ ok: false, sessionName: "busy-session", reason: "mid_work", error: "Target pane appears mid-task. Use force: true to send anyway." }));
           } else if (parsed.session === "unknown-advisory") {
-            // OPR.0.4.3.28 — unknown telemetry now PROCEEDS with a non-blocking advisory (warning).
+            // OPR.0.4.3.28——未知遥测现在带非阻塞 advisory（warning）继续进行。
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ ok: true, sessionName: "unknown-advisory", warning: "producer-link: daemon-ingest link DOWN — activity could not be determined (no_activity_signal); sent anyway (telemetry is advisory)." }));
           } else {
@@ -195,20 +192,20 @@ describe("Send CLI", () => {
     lastSendBody = null;
     lastBroadcastBody = null;
     sendBodies = [];
-    // P18: establish a RESOLVED seat for every test so dispatch renders the real sender; the
-    // deliver-and-label test overrides it to empty to exercise the `<unknown sender>` fall-open.
-    // (Hermetic-gate default is env-UNSET, so without this env-less delivery would render the unknown
-    // marker.) Nested describes that stub their own envs re-run after this; the block afterEach restores.
+    // P18：为每个测试建立一个 RESOLVED 席位，使 dispatch 渲染真实发送者；
+    // deliver-and-label 测试把它覆盖为空，以演练 `<unknown sender>` 的 fall-open。
+    //（Hermetic-gate 默认 env 未设，故无此 env 时投递会渲染 unknown 标记。）
+    // 各自 stub env 的嵌套 describe 在此之后重跑；块级 afterEach 恢复。
     vi.stubEnv("OPENRIG_SESSION_NAME", "sender@my-rig");
     vi.stubEnv("RIGGED_SESSION_NAME", "");
   });
   afterEach(() => { vi.unstubAllEnvs(); });
 
-  it("send prints success output", async () => {
+  it("send 打印成功输出", async () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello world"]);
     });
-    expect(logs.join("\n")).toContain("Sent to dev-impl@my-rig");
+    expect(logs.join("\n")).toContain("已发送给 dev-impl@my-rig");
   });
 
   it.each(["", "  \t\n"])("refuses an empty or whitespace-only direct message before transport", async (message) => {
@@ -218,12 +215,12 @@ describe("Send CLI", () => {
     const output = logs.join("\n");
     expect(exitCode).toBe(1);
     expect(lastSendBody).toBeNull();
-    expect(output).toMatch(/empty or whitespace-only/i);
+    expect(output).toMatch(/消息为空或仅空白/);
     expect(output).toMatch(/backtick|\$\(\)/i);
     expect(output).toMatch(/--body-file|stdin/i);
   });
 
-  it("refuses an empty resolved context before send transport", async () => {
+  it("在发送传输前拒绝空的已解析上下文", async () => {
     const posts: unknown[] = [];
     const client = {
       get: async () => ({ status: 200, data: { ref: "packs/empty", text: " \n\t", bytes: 3, missingFiles: [] } }),
@@ -236,16 +233,16 @@ describe("Send CLI", () => {
     });
     expect(exitCode).toBe(1);
     expect(posts).toEqual([]);
-    expect(logs.join("\n")).toMatch(/empty or whitespace-only/i);
+    expect(logs.join("\n")).toMatch(/消息为空或仅空白/);
   });
 
-  // P18 DELIVER-AND-LABEL (deletion atom): an env-less send — no --from (deprecated + ignored) AND no
-  // resolvable OPENRIG_SESSION_NAME/RIGGED_SESSION_NAME — now DELIVERS, carrying an HONEST `<unknown sender>`
-  // label rather than refusing. The reset's north star: deleting a refusal must not manufacture a laundering
-  // path, so an unattributable send is DISPATCHED with a truthful marker and a NULL actorSession — never a
-  // forged actor. This REVERSES A1's seat-boundary refusal; the daemon half already delivers-and-labels the
-  // header-absent write (no downstream 401), so the marker reaches the pane instead of being refused.
-  it("P18: an env-less send DELIVERS with an honest `<unknown sender>` label — dispatched, actorSession null", async () => {
+  // P18 投递并打标（删除原子）：无 env 的 send——无 --from（已弃用+忽略）且无
+  // 可解析的 OPENRIG_SESSION_NAME/RIGGED_SESSION_NAME——如今投递，携带诚实的 `<unknown sender>`
+  // 标签而非拒绝。本次 reset 的北极星：删除一个拒绝不得制造洗白路径，
+  // 故无归属的发送以诚实标记和 NULL actorSession 被派发——绝不伪造 actor。
+  // 这反转了 A1 的席位边界拒绝；daemon 半边已对 header 缺失写入 deliver-and-label（无下游 401），
+  // 故标记到达 pane 而非被拒绝。
+  it("P18：无环境的发送带诚实的 `<unknown sender>` 标签完成投递——已派发，actorSession 为 null", async () => {
     vi.stubEnv("OPENRIG_SESSION_NAME", ""); // override the block seat-stub → unresolvable
     vi.stubEnv("RIGGED_SESSION_NAME", "");
     const { exitCode } = await captureLogs(async () => {
@@ -253,12 +250,12 @@ describe("Send CLI", () => {
     });
     expect(exitCode).toBeFalsy(); // DELIVERED, not refused
     expect(lastSendBody).not.toBeNull(); // dispatch reached the wire
-    // Honest label on the rendered envelope; NO forged actor identity on the record.
+    // 渲染出的信封上的诚实标签；记录中无伪造 actor 身份。
     expect((lastSendBody as Record<string, unknown>).text).toContain("From: <unknown sender>");
     expect((lastSendBody as Record<string, unknown>).actorSession).toBeNull();
   });
 
-  it("P18: a resolvable seat SENDS with its attributed identity — actorSession derived from the seat env, never forged", async () => {
+  it("P18：可解析席位以其归属身份发送——actorSession 派生自席位环境，绝不伪造", async () => {
     vi.stubEnv("OPENRIG_SESSION_NAME", "driver@my-rig");
     vi.stubEnv("RIGGED_SESSION_NAME", "");
     const { exitCode } = await captureLogs(async () => {
@@ -269,20 +266,19 @@ describe("Send CLI", () => {
     expect((lastSendBody as Record<string, unknown>)["actorSession"]).toBe("driver@my-rig");
   });
 
-  // P18 CANONICITY GUARD (rework of the A1 negative control). Two intents, split so the one that still
-  // holds cannot ride on the one that no longer does:
-  //   SURVIVES — NO SCATTERED FALLBACKS: the `<unknown sender>` literal is DEFINED only at its legitimate
-  //     twin sites; a THIRD definition ANYWHERE in src is exactly the drift a lockstep comment cannot catch.
-  //   DIES — "exactly ONCE because A1 deleted the CLI fallbacks": P18 (deletion atom) REVERSES A1. An
-  //     env-less send now DELIVERS carrying the honest `<unknown sender>` marker (the daemon half delivers-
-  //     and-labels the header-absent write), so the CLI RE-GAINS a SINGLE origin — sender-identity.ts,
-  //     IMPORTED by send.ts + broadcast.ts (never re-declared). The literal now lives at EXACTLY TWO
-  //     byte-identical twin sites: the CLI envelope origin and the daemon's pane-envelope.ts.
-  // Asserted as EXACT SET MEMBERSHIP with BOTH twins NAMED — NOT a count/upper bound. A 3rd file fails BY
-  // NAME (the offender is printed), and a MISSING twin fails too. cwd-INDEPENDENT: repoRoot is derived from
-  // THIS file's own location (walk up to the packages root), never process.cwd() — so the guard is correct
-  // whether vitest runs from packages/cli or the repo root.
-  it("P18 canonicity: '<unknown sender>' is DEFINED at EXACTLY the two named twin sites — a third fails BY NAME", () => {
+  // P18 一致性护栏（重做 A1 负对照）。两个意图拆开，使仍成立的那个不能搭在已不成立的那个之上：
+  //   存活——无散落回退：`<unknown sender>` 字面量只在其合法的
+  //     两个孪生点定义；src 中任何第三处定义正是 lockstep 注释抓不到的漂移。
+  //   消亡——"因 A1 删除了 CLI 回退而恰好一次"：P18（删除原子）反转 A1。
+  //     无 env 的发送现在带诚实 `<unknown sender>` 标记投递（daemon 半边对 header 缺失写入
+  //     deliver-and-label），故 CLI 重新获得唯一来源——sender-identity.ts，
+  //     被 send.ts + broadcast.ts import（绝不重新声明）。该字面量如今恰在两个逐字节相同的
+  //     孪生点：CLI 信封来源与 daemon 的 pane-envelope.ts。
+  // 以精确集合成员断言，两个孪生都点名——不是计数/上界。第三个文件按名失败（打印违规者），
+  // 缺一个孪生也失败。cwd 无关：repoRoot 由本文件自身位置推导
+  //（向上走到 packages 根），绝不取 process.cwd()——故无论 vitest 从 packages/cli
+  // 还是仓库根运行，护栏都正确。
+  it("P18 一致性：'<unknown sender>' 恰在两个命名孪生点定义——第三个按名失败", () => {
     const findRepoRoot = (start: string): string => {
       let dir = start;
       for (let i = 0; i < 25; i++) {
@@ -300,7 +296,7 @@ describe("Send CLI", () => {
     const packagesDir = path.join(repoRoot, "packages");
     const LITERAL = '"<unknown sender>"'; // the double-quoted string-literal token (a definition, not prose)
 
-    // The two legitimate twin definition sites, NAMED (byte-identical envelope twins):
+    // 两个合法的孪生定义点，点名（逐字节相同的信封孪生）：
     const EXPECTED_TWINS = [
       "packages/cli/src/sender-identity.ts",       // the SOLE CLI origin — send.ts + broadcast.ts IMPORT it
       "packages/daemon/src/lib/pane-envelope.ts",  // the daemon origin — wrapPaneEnvelope + non-refusable nudge
@@ -329,27 +325,27 @@ describe("Send CLI", () => {
       const lines = fs.readFileSync(file, "utf8").split("\n");
       lines.forEach((line, i) => {
         const trimmed = line.trim();
-        // Skip comment lines (line comments, JSDoc/block-comment bodies) — prose mentions don't count.
+        // 跳过注释行（行注释、JSDoc/块注释体）——散文提及不计。
         if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) return;
         if (line.includes(LITERAL)) hits.push(`${rel}:${i + 1}`);
       });
     }
 
-    // (1) EXACT SET of files that DEFINE the literal — a 3rd file (or a missing twin) fails BY NAME.
+    // (1) 定义该字面量文件的精确集合——第三个文件（或缺一个孪生）按名失败。
     const filesWithDef = [...new Set(hits.map((h) => h.slice(0, h.lastIndexOf(":"))))].sort();
     expect(
       filesWithDef,
       `expected '<unknown sender>' DEFINED at EXACTLY: ${EXPECTED_TWINS.join(", ")} — found definitions: ${hits.join(", ") || "(none)"}`,
     ).toEqual(EXPECTED_TWINS);
 
-    // (2) exactly ONE definition PER TWIN (not two literals hiding in one named file).
+    // (2) 每个孪生恰好一处定义（而非一个命名文件里藏两个字面量）。
     for (const twin of EXPECTED_TWINS) {
       const perTwin = hits.filter((h) => h.startsWith(`${twin}:`));
       expect(perTwin.length, `expected exactly ONE definition in ${twin}, found ${perTwin.length}: ${perTwin.join(", ")}`).toBe(1);
     }
   });
 
-  it("send with 409 mid-work prints error and exits non-zero", async () => {
+  it("send 中途 409 打印错误并不零退出码退出", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "busy-session", "hello"]);
     });
@@ -357,20 +353,19 @@ describe("Send CLI", () => {
     expect(exitCode).toBe(1);
   });
 
-  // OPR.0.4.3.28 correction — an unknown-telemetry send PROCEEDS and PRINTS the advisory on
-  // human output (not only in --json).
-  it("prints the Advisory on an unknown-proceed send (human output)", async () => {
+  // OPR.0.4.3.28 修正——未知遥测的发送继续进行，并在人类输出上打印 advisory（不只在 --json 里）。
+  it("在未知即继续的发送上打印 Advisory（人类输出）", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "unknown-advisory", "hello"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("Sent to unknown-advisory");
-    expect(output).toContain("Advisory:");
+    expect(output).toContain("已发送给 unknown-advisory");
+    expect(output).toContain("建议：");
     expect(output).toContain("daemon-ingest link DOWN");
     expect(exitCode).toBeUndefined();
   });
 
-  it("carries the advisory as `warning` in --json output", async () => {
+  it("在 --json 输出中以 `warning` 携带该 advisory", async () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "unknown-advisory", "hello", "--json"]);
     });
@@ -379,43 +374,43 @@ describe("Send CLI", () => {
   });
 
   // OPR.99.0.6.3 — honest delivery-outcome vocabulary; legacy Verified: line preserved.
-  it("verify confirmed prints Delivery: delivered AND the legacy Verified: yes", async () => {
+  it("verify confirmed 打印 Delivery: delivered 及遗留 Verified: yes", async () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "verified-session", "hello", "--verify"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("Sent to verified-session");
-    expect(output).toContain("Verified: yes");
-    expect(output).toContain("Delivery: delivered");
+    expect(output).toContain("已发送给 verified-session");
+    expect(output).toContain("验证：是");
+    expect(output).toContain("投递：delivered");
   });
 
-  it("verify redraw-race prints Delivery: rendered-unconfirmed (landed, with capture guidance) AND legacy Verified: no", async () => {
+  it("verify redraw-race 打印 Delivery: rendered-unconfirmed（已落地，附采集引导）及遗留 Verified: no", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "racy-session", "hello", "--verify"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("Sent to racy-session");
-    expect(output).toContain("Verified: no");
-    expect(output).toContain("Delivery: rendered-unconfirmed");
-    expect(output).toContain("landed");
+    expect(output).toContain("已发送给 racy-session");
+    expect(output).toContain("验证：否");
+    expect(output).toContain("投递：rendered-unconfirmed");
+    expect(output).toContain("已落地");
     expect(output).toContain("rig capture racy-session");
-    // The middle is NOT dressed as failure: exit stays clean.
+    // 中间态不被包装成失败：退出保持干净。
     expect(exitCode).toBeUndefined();
   });
 
-  it("verify genuine transport failure stays an error path, distinct from the middle (discriminator)", async () => {
+  it("verify 真实传输失败保持错误路径，与中间态可区分（判别符）", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dead-session", "hello", "--verify"]);
     });
     const output = logs.join("\n");
     // HTTP 502 -> error branch; no success lines, exit non-zero.
-    expect(output).not.toContain("Sent to dead-session");
-    expect(output).not.toContain("Delivery: rendered-unconfirmed");
+    expect(output).not.toContain("已发送给 dead-session");
+    expect(output).not.toContain("投递：rendered-unconfirmed");
     expect(output).toContain("not submitted");
     expect(exitCode).toBe(2);
   });
 
-  it("verify --json passes the additive outcome field through", async () => {
+  it("verify --json 透传附加的 outcome 字段", async () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "racy-session", "hello", "--verify", "--json"]);
     });
@@ -424,7 +419,7 @@ describe("Send CLI", () => {
     expect(parsed.outcome).toBe("rendered-unconfirmed");
   });
 
-  it("send --json prints raw JSON", async () => {
+  it("send --json 打印原始 JSON", async () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello", "--json"]);
     });
@@ -433,7 +428,7 @@ describe("Send CLI", () => {
     expect(parsed.sessionName).toBe("dev-impl@my-rig");
   });
 
-  it("send --wait-for-idle posts waitForIdleMs and extends request timeout", async () => {
+  it("send --wait-for-idle 提交 waitForIdleMs 并延长请求超时", async () => {
     const postFn = vi.fn(async () => ({
       status: 200,
       data: { ok: true, sessionName: "dev-impl@my-rig" },
@@ -456,10 +451,10 @@ describe("Send CLI", () => {
     const sentText = postFn.mock.calls[0]?.[1] as { text: string } | undefined;
     expect(sentText?.text).toContain("To: dev-impl@my-rig");
     expect(sentText?.text).toContain("---\nhello\n---");
-    expect(sentText?.text).toContain('↩ Reply: rig send');
+    expect(sentText?.text).toContain('↩ 回复：zrig send');
   });
 
-  it("send without wait-for-idle uses default client timeout path", async () => {
+  it("不带 wait-for-idle 的 send 走默认客户端超时路径", async () => {
     const postFn = vi.fn(async () => ({
       status: 200,
       data: { ok: true, sessionName: "dev-impl@my-rig" },
@@ -471,8 +466,8 @@ describe("Send CLI", () => {
     expect(postFn.mock.calls[0]?.[2]).toBeUndefined();
   });
 
-  // Slice-03 Atom 6b — --context delivery flag.
-  it("send --context resolves a ref to its whole content and sends it (single-seat local)", async () => {
+  // Slice-03 Atom 6b——--context 投递标志。
+  it("send --context 将 ref 解析为其完整内容并发送（单席位本地）", async () => {
     const posts: Array<{ path: string; body: Record<string, unknown> }> = [];
     const gets: string[] = [];
     const client = {
@@ -489,7 +484,7 @@ describe("Send CLI", () => {
     expect(posts[0]!.body["text"]).toBe("BRIEF-CONTENT"); // --raw → no From/To envelope
   });
 
-  it("send --context ABORTS (no send) when the pack has a missing/unreadable member", async () => {
+  it("当 pack 缺失/不可读成员时 send --context 中止（不发送）", async () => {
     const posts: unknown[] = [];
     const client = {
       get: async () => ({ status: 200, data: { ref: "packs/broken", text: "X", bytes: 1, missingFiles: [{ path: "gone.md" }] } }),
@@ -503,26 +498,26 @@ describe("Send CLI", () => {
     expect(stderr.join("\n")).toMatch(/gone\.md/);
   });
 
-  it("send rejects invalid wait-for-idle values before contacting daemon", async () => {
+  it("send 在联系 daemon 前拒绝非法 wait-for-idle 值", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello", "--wait-for-idle", "0"]);
     });
-    expect(logs.join("\n")).toContain("positive number");
+    expect(logs.join("\n")).toContain("正数秒数");
     expect(exitCode).toBe(1);
     expect(lastSendBody).toBeNull();
   });
 
-  it("send rejects wait-for-idle with force before contacting daemon", async () => {
+  it("send 在联系 daemon 前拒绝带 force 的 wait-for-idle", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello", "--wait-for-idle", "30", "--force"]);
     });
-    expect(logs.join("\n")).toContain("cannot be combined");
+    expect(logs.join("\n")).toContain("不能与");
     expect(exitCode).toBe(1);
     expect(lastSendBody).toBeNull();
   });
 
-  // OPR.0.4.1.10 — --raw sends exact text with NO messaging envelope (still guarded server-side).
-  it("send --raw posts the exact text without the From/To envelope", async () => {
+  // OPR.0.4.1.10——--raw 发送精确文本，不带消息信封（服务端仍有护栏）。
+  it("send --raw 提交精确文本，不带 From/To 信封", async () => {
     await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dev-impl@my-rig", "/compact", "--raw"]);
     });
@@ -531,7 +526,7 @@ describe("Send CLI", () => {
     expect(String(lastSendBody?.text)).not.toContain("↩ Reply");
   });
 
-  it("default send (no --raw) wraps the From/To messaging envelope", async () => {
+  it("默认 send（无 --raw）包裹 From/To 消息信封", async () => {
     await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello"]);
     });
@@ -539,11 +534,11 @@ describe("Send CLI", () => {
     expect(String(lastSendBody?.text)).toContain("---\nhello\n---");
   });
 
-  // P21 I4 (specimen-5 security fix, REVERSES ba41fea2): --from is DEPRECATED + IGNORED. The rendered
-  // From: and the actorSession DERIVE from the transport identity ($OPENRIG_SESSION_NAME, stamped as
-  // X-OpenRig-Session), NEVER a caller-supplied --from string (the forgeable "From: pm-lead" surface the
-  // live incident acted upon). A forged --from must not appear anywhere in the outbound envelope.
-  it("send --from <origin> is IGNORED — From:/actor derive from the ambient transport identity, not --from", async () => {
+  // P21 I4（specimen-5 安全修复，反转 ba41fea2）：--from 已弃用+忽略。渲染的
+  // From: 与 actorSession 派生自传输身份（$OPENRIG_SESSION_NAME，盖成 X-OpenRig-Session），
+  // 绝不取调用方给的 --from 字符串（线上事故所针对的可伪造 "From: pm-lead" 面）。
+  // 伪造的 --from 不得出现在外发信封任何位置。
+  it("send --from <origin> 被忽略——From:/actor 派生自环境传输身份，而非 --from", async () => {
     vi.stubEnv("OPENRIG_SESSION_NAME", "seat@my-rig");
     vi.stubEnv("RIGGED_SESSION_NAME", "");
     try {
@@ -558,7 +553,7 @@ describe("Send CLI", () => {
     }
   });
 
-  it("send --dangerously-interact --reason posts the override fields with raw (exact) text", async () => {
+  it("send --dangerously-interact --reason 以 raw（精确）文本提交覆盖字段", async () => {
     await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dev-impl@my-rig", "1", "--dangerously-interact", "--reason", "unblock stuck prompt"]);
     });
@@ -568,26 +563,26 @@ describe("Send CLI", () => {
     expect("actorSession" in (lastSendBody ?? {})).toBe(true);
   });
 
-  it("send --dangerously-interact without --reason is rejected before contacting the daemon", async () => {
+  it("send --dangerously-interact 不带 --reason 在联系 daemon 前被拒绝", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dev-impl@my-rig", "1", "--dangerously-interact"]);
     });
-    expect(logs.join("\n")).toContain("requires --reason");
+    expect(logs.join("\n")).toContain("需要 --reason");
     expect(exitCode).toBe(1);
     expect(lastSendBody).toBeNull();
   });
 
-  it("send --dangerously-interact + --wait-for-idle is rejected before contacting the daemon", async () => {
+  it("send --dangerously-interact + --wait-for-idle 在联系 daemon 前被拒绝", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dev-impl@my-rig", "1", "--dangerously-interact", "--reason", "x", "--wait-for-idle", "30"]);
     });
-    expect(logs.join("\n")).toContain("cannot be combined with --wait-for-idle");
+    expect(logs.join("\n")).toContain("不能与 --wait-for-idle 组合");
     expect(exitCode).toBe(1);
     expect(lastSendBody).toBeNull();
   });
 
-  // OPR.0.4.1.10 — cross-host argv must forward the new flags so the remote rig applies the same guard.
-  it("send --host forwards --raw/--dangerously-interact/--reason in the reconstructed remote argv", async () => {
+  // OPR.0.4.1.10——跨主机 argv 必须转发新标志，使远端 rig 应用同样的护栏。
+  it("send --host 在重建的远端 argv 中转发 --raw/--dangerously-interact/--reason", async () => {
     let captured: readonly string[] | null = null;
     const deps: SendDeps = {
       ...runningDeps(port),
@@ -606,11 +601,10 @@ describe("Send CLI", () => {
     expect(argv[ri + 1]).toBe("why now");
   });
 
-  // Slice-03 Atom 6b QA fix — the agent@rig@host SUGAR host folds in AFTER the
-  // early --context guard, so --context must be re-rejected after the fold: it
-  // must NEVER reach the cross-host argv (which would ship literal null with no
-  // message, or silently drop the context with one). Both forms pinned.
-  it("send --context rejects the agent@rig@host sugar cross-host form (NO message) — never reaches remote argv", async () => {
+  // Slice-03 Atom 6b QA 修复——agent@rig@host SUGAR 主机是在早期 --context 护栏
+  // 之后才折叠进来的，故 --context 必须在折叠后被再次拒绝：它绝不能到达跨主机 argv
+  //（否则会带着字面 null 且无消息发出，或带消息时静默丢弃 context）。两种形态都钉住。
+  it("send --context 拒绝 agent@rig@host sugar 跨主机形态（无 message）——绝不进入远端 argv", async () => {
     let captured: readonly string[] | null = null;
     const deps: SendDeps = {
       ...runningDeps(port),
@@ -625,7 +619,7 @@ describe("Send CLI", () => {
     expect(stderr.join("\n")).toMatch(/--host|agent@rig@host/);
   });
 
-  it("send --context rejects the sugar cross-host form (WITH message) — context not silently dropped", async () => {
+  it("send --context 拒绝 sugar 跨主机形态（带 message）——context 不被静默丢弃", async () => {
     let captured: readonly string[] | null = null;
     const deps: SendDeps = {
       ...runningDeps(port),
@@ -640,7 +634,7 @@ describe("Send CLI", () => {
   });
 
   // OPR.0.4.3.30 — `rig send` fan-out targeting (--to / --pod / --rig).
-  it("send --to a,b fans out to /broadcast with a sessions list and prints per-recipient summary", async () => {
+  it("send --to a,b 以 sessions 列表扇出到 /broadcast 并打印逐接收者摘要", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "--to", "dev-impl@my-rig,dev-qa@my-rig", "hello team"]);
     });
@@ -648,117 +642,114 @@ describe("Send CLI", () => {
     expect(lastBroadcastBody?.sessions).toEqual(["dev-impl@my-rig", "dev-qa@my-rig"]);
     expect(lastBroadcastBody?.text).toBe("hello team"); // bare — daemon wraps per recipient
     const output = logs.join("\n");
-    expect(output).toContain("dev-impl@my-rig: sent");
-    expect(output).toContain("dev-qa@my-rig: sent");
-    expect(output).toContain("2/2 delivered");
+    expect(output).toContain("dev-impl@my-rig：已发送");
+    expect(output).toContain("dev-qa@my-rig：已发送");
+    expect(output).toContain("2/2 已投递");
     expect(exitCode).toBeUndefined();
   });
 
-  it("send fan-out refuses whitespace-only content before broadcast transport", async () => {
+  it("send 扇出在广播传输前拒绝纯空白内容", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "--to", "dev-impl@my-rig", " \t"]);
     });
     expect(exitCode).toBe(1);
     expect(lastBroadcastBody).toBeNull();
-    expect(logs.join("\n")).toMatch(/empty or whitespace-only/i);
+    expect(logs.join("\n")).toMatch(/消息为空或仅空白/);
   });
 
-  it("send --to accepts repetition (--to a --to b) and sets the daemon-side envelopeSender", async () => {
+  it("send --to 接受重复（--to a --to b）并设置 daemon 侧 envelopeSender", async () => {
     await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "--to", "dev-impl@my-rig", "--to", "dev-qa@my-rig", "hi"]);
     });
     expect(lastBroadcastBody?.sessions).toEqual(["dev-impl@my-rig", "dev-qa@my-rig"]);
-    // Non-raw fan-out: the daemon wraps per recipient, so the CLI passes a sender + BARE text.
+    // 非 raw 扇出：daemon 逐接收者包裹，故 CLI 传一个 sender + 裸文本。
     expect(typeof lastBroadcastBody?.envelopeSender).toBe("string");
     expect(String(lastBroadcastBody?.text)).not.toContain("To:");
   });
 
-  it("send --pod posts a pod target to /broadcast", async () => {
+  it("send --pod 提交 pod 目标到 /broadcast", async () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "--pod", "dev", "pod message"]);
     });
     expect(lastBroadcastBody?.pod).toBe("dev");
     expect(lastBroadcastBody?.text).toBe("pod message");
-    expect(logs.join("\n")).toContain("2/2 delivered");
+    expect(logs.join("\n")).toContain("2/2 已投递");
   });
 
-  it("send --rig posts a rig target to /broadcast", async () => {
+  it("send --rig 提交 rig 目标到 /broadcast", async () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "--rig", "my-rig", "rig message"]);
     });
     expect(lastBroadcastBody?.rig).toBe("my-rig");
-    expect(logs.join("\n")).toContain("2/2 delivered");
+    expect(logs.join("\n")).toContain("2/2 已投递");
   });
 
-  it("fan-out with one recipient failing prints which failed, the summary, and exits nonzero", async () => {
+  it("扇出中一个接收者失败时打印失败项、摘要并以非零退出", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "--to", "seat-a@my-rig,seat-b@my-rig", "partial"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("seat-a@my-rig: sent");
-    expect(output).toContain("seat-b@my-rig: FAILED — target needs input");
-    expect(output).toContain("1/2 delivered");
+    expect(output).toContain("seat-a@my-rig：已发送");
+    expect(output).toContain("seat-b@my-rig：失败——");
+    expect(output).toContain("1/2 已投递");
     expect(exitCode).toBe(1);
   });
 
-  // ── S3 (OPR.0.5.4.6) — delivery honesty: "sent" must mean CONSUMED, never
-  // merely typed. RED-first proof assets at proof-item altitude (the lock may
-  // refine wording; the OUTCOMES asserted here are the locked contract):
-  // staged-vs-consumed is discriminated by PANE EFFECT (the walk pattern
-  // generalized), the staged report names its evidence, and the remedy is the
-  // single submit path — never a blind re-send.
-  describe("S3 — delivery honesty (OPR.0.5.4.6): staged-vs-consumed by pane effect", () => {
-    it("PROOF-1: a send whose text sits AT the prompt is reported STAGED — by pane effect, not the transport's verified:true", async () => {
+  // ── S3（OPR.0.5.4.6）——投递诚实性："sent" 必须意味着已消费（CONSUMED），
+  // 绝不只是敲了字。RED-first 证明资产位于 proof-item 高度（锁可优化措辞；此处断言的
+  // 结果是已锁契约）：staged 与 consumed 按 pane 效果（walk 模式推广）区分，
+  // staged 报告点名其证据，补救是单一 submit 路径——绝不盲目重发。
+  describe("S3 — 投递诚实性（OPR.0.5.4.6）：按 pane 效果区分 staged 与 consumed", () => {
+    it("PROOF-1：文本停在提示处的发送按 pane 效果报告为 STAGED——而非传输层的 verified:true", async () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "send", "staged-session", "hello there", "--verify"]);
       });
       const output = logs.join("\n");
-      // RED at current bytes: the transport's false "delivered" is echoed as
-      // "Verified: yes" and no staged report exists.
+      // 当前字节下的 RED：传输层假报的 "delivered" 被回显为
+      // 传输层假报的 "delivered" 被回显为 "Verified: yes"，且无 staged 报告。
       expect(output).toMatch(/staged/i);
-      expect(output).toMatch(/not (yet )?consumed|not submitted|still at the prompt/i);
+      expect(output).toMatch(/未消费|staged，未消费/);
     });
 
-    it("PROOF-2: a genuinely consumed send verifies positively and is NEVER reported staged", async () => {
+    it("PROOF-2：真正被消费的发送正向 verify，绝不报告为 staged", async () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "send", "consumed-session", "hello there", "--verify"]);
       });
       const output = logs.join("\n");
       expect(output).not.toMatch(/staged/i);
-      expect(output).toContain("Verified: yes");
+      expect(output).toContain("验证：是");
     });
 
-    it("PROOF-3: the staged remedy is the single submit path — exactly one plain-text send, no blind re-send suggested or performed", async () => {
+    it("PROOF-3：staged 的补救是单一 submit 路径——恰好一次纯文本发送，不建议也不执行盲目重发", async () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "send", "staged-session", "hello there", "--verify"]);
       });
       const output = logs.join("\n");
-      // exactly ONE plain-text delivery of these bytes ever hits the wire
-      // (the non-raw send envelopes the payload, so match by containment; the
-      // submit-path request carries NO text at all)
+      // 这些字节恰好一次纯文本投递触网
+      //（非 raw 发送会包裹负载，故按包含匹配；submit 路径请求完全不带文本）
       const plainSends = sendBodies.filter((b) => !b["submitOnly"] && String(b["text"] ?? "").includes("hello there"));
       expect(plainSends).toHaveLength(1);
       const submits = sendBodies.filter((b) => b["submitOnly"]);
       expect(submits.length).toBeLessThanOrEqual(1); // one guarded Enter, never more
       for (const s of submits) expect(s["text"] ?? "").toBeFalsy(); // the submit path types nothing
-      // the report points at the submit path, never a re-send
+      // 报告指向 submit 路径，绝非重发
       expect(output).toMatch(/submit|Enter/i);
       expect(output).not.toMatch(/re-?send|send again/i);
     });
 
-    // ── Wave-1 fix round 1 (r2 BLOCKING row 91b29490) ──
-    it("F3: a stale pasted-text placeholder in SCROLLBACK is NOT staged evidence — no staged report, no guarded submit fired", async () => {
+    // ── Wave-1 修复第 1 轮（r2 BLOCKING row 91b29490） ──
+    it("F3：SCROLLBACK 中陈旧粘贴占位符不是 staged 证据——无 staged 报告、不触发受保护 submit", async () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "send", "stale-scroll-session", "hello there", "--verify"]);
       });
       const output = logs.join("\n");
       expect(output).not.toMatch(/staged/i);
-      // and the submit path must never fire on history
+      // 且 submit 路径绝不在历史上触发
       expect(sendBodies.filter((b) => b["submitOnly"])).toHaveLength(0);
-      expect(output).toContain("Verified: yes"); // the transport verdict stands
+      expect(output).toContain("验证：是"); // the transport verdict stands
     });
 
-    it("F2: --json with --verify carries the effect classification in the envelope (staged case)", async () => {
+    it("F2：--json 带 --verify 在信封中携带效果分类（staged 情形）", async () => {
       const { logs, exitCode } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "send", "staged-session", "hello there", "--verify", "--json"]);
       });
@@ -769,13 +760,12 @@ describe("Send CLI", () => {
       expect(exitCode).toBe(1); // staged-not-cleared is not a silent success in JSON either
     });
 
-    it("F2: fan-out with --verify reports per-recipient effect — staged named, consumed never claimed staged", async () => {
+    it("F2：带 --verify 的扇出按接收者报告效果——staged 被点名，consumed 绝不被报为 staged", async () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "send", "--to", "staged-session,consumed-session", "hello there", "--verify"]);
       });
-      // Strip the seat NAMES before matching, so "staged-session: sent" can
-      // never satisfy the staged-effect assertion by its name alone (the
-      // pre-fix strawman this test's first RED run caught).
+      // 匹配前剥掉席位名，使 "staged-session: sent" 不能仅凭名字
+      // 满足 staged 效果断言（本测试首个 RED 跑抓到的修复前稻草人）。
       const scrub = (l: string) => l.replace(/staged-session|consumed-session/g, "SEAT");
       const lines = logs.join("\n").split("\n");
       const stagedEffectLines = lines.filter((l) => l.includes("staged-session") && /staged/i.test(scrub(l)));
@@ -784,23 +774,23 @@ describe("Send CLI", () => {
       expect(consumedEffectClaims).toHaveLength(0);
     });
 
-    // ── Wave-1 fix round 2 (r2 BLOCKING row b5ad5131; desk refinement: ONE
-    // verdict per recipient, identity BEFORE placeholder attribution) ──
-    it("R2-F1 human: a staged-unresolved recipient gets NO sent line and is NOT counted delivered — one verdict only", async () => {
+    // ── Wave-1 修复第 2 轮（r2 BLOCKING row b5ad5131；桌面细化：逐接收者一条
+    // verdict，身份先于占位符归属）──
+    it("R2-F1 人类：staged-unresolved 接收者无 sent 行且不计入 delivered——仅一条 verdict", async () => {
       const { logs, exitCode } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "send", "--to", "staged-session,consumed-session", "hello there", "--verify"]);
       });
       const lines = logs.join("\n").split("\n");
-      // the false lines must be ABSENT (desk-binding): no unqualified sent, no delivered count including it
+      // 假报行必须缺席（桌面绑定）：无未限定的 sent，无含它的 delivered 计数
       expect(lines.some((l) => /^staged-session: sent\b/.test(l))).toBe(false);
-      expect(lines.join("\n")).toContain("1/2 delivered");
-      expect(lines.join("\n")).not.toContain("2/2 delivered");
-      // and exactly one verdict line for the staged recipient
-      expect(lines.filter((l) => l.startsWith("staged-session:"))).toHaveLength(1);
+      expect(lines.join("\n")).toContain("1/2 已投递");
+      expect(lines.join("\n")).not.toContain("2/2 已投递");
+      // 且 staged 接收者恰好一条 verdict 行
+      expect(lines.filter((l) => l.startsWith("staged-session："))).toHaveLength(1);
       expect(exitCode).toBe(1);
     });
 
-    it("R2-F1 json: the same recipient can never be simultaneously delivered and staged-not-consumed in the envelope", async () => {
+    it("R2-F1 json：同一接收者在信封中绝不可能同时 delivered 与 staged-not-consumed", async () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "send", "--to", "staged-session,consumed-session", "hello there", "--verify", "--json"]);
       });
@@ -808,17 +798,17 @@ describe("Send CLI", () => {
       const results = (envelope["results"] as Array<Record<string, unknown>>) ?? [];
       const stagedRow = results.find((r) => r["sessionName"] === "staged-session");
       expect(stagedRow).toBeDefined();
-      // ONE verdict: the staged-unresolved row is not a delivery claim
+      // 唯一判定：staged-unresolved 行不是投递主张
       expect(stagedRow!["ok"]).toBe(false);
       expect(stagedRow!["outcome"]).toBe("staged-not-consumed");
       expect(stagedRow!["verified"]).not.toBe(true);
-      // Round-3 (r2 row 00fb3a68): the AGGREGATE is derived from the classified
-      // encoded outcomes — a staged-unresolved recipient is never counted sent.
+      // Round-3（r2 row 00fb3a68）：聚合由已分类的编码结果派生——
+      // staged-unresolved 接收者绝不计入 sent。
       expect(envelope["sent"]).toBe(1); // RED at 57b69e405: raw transport sent:2
       expect(envelope["failed"]).toBe(1);
     });
 
-    it("R2-F1 json single-send: a staged-unresolved envelope carries no delivered claim beside the staged effect", async () => {
+    it("R2-F1 json 单发：staged-unresolved 信封在 staged 效果旁不带 delivered 声明", async () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "send", "staged-session", "hello there", "--verify", "--json"]);
       });
@@ -828,7 +818,7 @@ describe("Send CLI", () => {
       expect(envelope["outcome"]).toBe("staged-not-consumed");
     });
 
-    it("R2-F2: an unrelated size-mismatched placeholder is UNVERIFIABLE — never staged-as-this-send, never a guarded submit", async () => {
+    it("R2-F2：无关、大小不匹配的占位符 UNVERIFIABLE——绝不当作本发送 staged，也绝不触发受保护 submit", async () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd().parseAsync(["node", "rig", "send", "unrelated-paste-session", "hello there", "--verify"]);
       });
@@ -836,24 +826,24 @@ describe("Send CLI", () => {
       expect(output).not.toMatch(/staged, not consumed/i); // no staged-as-this-send claim
       expect(sendBodies.filter((b) => b["submitOnly"])).toHaveLength(0); // the submit path never fires on foreign content
       expect(output).toMatch(/unverifiable|not .{0,20}this send|does not match this send/i);
-      expect(output).toContain("Verified: yes"); // the transport verdict stands, honestly qualified
+      expect(output).toContain("验证：是"); // the transport verdict stands, honestly qualified
     });
   });
 
-  // S2 (OPR.0.5.4.3): the fan-out renderer must SURFACE an additive warning —
-  // an env-less operator sees the notice, never "sent" lines alone.
-  it("fan-out renderer surfaces the unknown-sender notice from the response warning", async () => {
+  // S2（OPR.0.5.4.3）：扇出渲染器必须浮出附加 warning——
+  // 无 env 的操作者看到提示，绝不只有 "sent" 行。
+  it("扇出渲染器从响应 warning 浮出 unknown-sender 提示", async () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "--to", "dev-impl@my-rig,dev-qa@my-rig", "warn-notice"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("dev-impl@my-rig: sent");
-    expect(output).toContain("Advisory:");
+    expect(output).toContain("dev-impl@my-rig：已发送");
+    expect(output).toContain("建议：");
     expect(output).toMatch(/no way of knowing who sent/i);
     expect(output).toMatch(/sign/i);
   });
 
-  it("fan-out --raw sends bare exact text with NO envelopeSender (no per-recipient wrap)", async () => {
+  it("扇出 --raw 发送裸精确文本，无 envelopeSender（无逐接收者包裹）", async () => {
     await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "--to", "dev-impl@my-rig,dev-qa@my-rig", "/compact", "--raw"]);
     });
@@ -861,7 +851,7 @@ describe("Send CLI", () => {
     expect("envelopeSender" in (lastBroadcastBody ?? {})).toBe(false);
   });
 
-  it("fan-out --dangerously-interact --reason plumbs the danger fields (bare text, no envelope)", async () => {
+  it("扇出 --dangerously-interact --reason 贯通 danger 字段（裸文本，无信封）", async () => {
     await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "--to", "dev-impl@my-rig,dev-qa@my-rig", "1", "--dangerously-interact", "--reason", "drive stuck prompts"]);
     });
@@ -871,35 +861,35 @@ describe("Send CLI", () => {
     expect("envelopeSender" in (lastBroadcastBody ?? {})).toBe(false);
   });
 
-  it("rejects combining a bare seat with a fan-out flag", async () => {
+  it("拒绝把裸席位与扇出标志组合", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello", "--pod", "dev"]);
     });
-    expect(logs.join("\n")).toContain("cannot be combined with --to/--pod/--rig");
+    expect(logs.join("\n")).toContain("不能与 --to/--pod/--rig 组合");
     expect(exitCode).toBe(1);
     expect(lastBroadcastBody).toBeNull();
     expect(lastSendBody).toBeNull();
   });
 
-  it("rejects more than one fan-out mode at once", async () => {
+  it("拒绝同时使用多个扇出模式", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "--pod", "dev", "--rig", "my-rig", "hello"]);
     });
-    expect(logs.join("\n")).toContain("exactly ONE target");
+    expect(logs.join("\n")).toContain("恰好选一个目标");
     expect(exitCode).toBe(1);
     expect(lastBroadcastBody).toBeNull();
   });
 
-  it("rejects --wait-for-idle with a multi/pod/rig target", async () => {
+  it("拒绝 --wait-for-idle 与 multi/pod/rig 目标组合", async () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "--rig", "my-rig", "hello", "--wait-for-idle", "30"]);
     });
-    expect(logs.join("\n")).toContain("not supported with a multi/pod/rig target");
+    expect(logs.join("\n")).toContain("不支持多/pod/rig 目标");
     expect(exitCode).toBe(1);
     expect(lastBroadcastBody).toBeNull();
   });
 
-  it("single-seat send is UNCHANGED — still posts to /send, byte-identical envelope, no /broadcast", async () => {
+  it("单席位 send 保持不变——仍 POST 到 /send，信封逐字节一致，无 /broadcast", async () => {
     await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello"]);
     });
@@ -908,7 +898,7 @@ describe("Send CLI", () => {
     expect(String(lastSendBody?.text)).toContain("To: dev-impl@my-rig");
   });
 
-  it("send --help includes rediscovery examples + the new guard flags", () => {
+  it("send --help 包含重发现示例与新增护栏标志", () => {
     const cmd = sendCommand(runningDeps(port));
     const helpText = cmd.helpInformation();
     expect(helpText).toContain("--verify");
@@ -916,45 +906,42 @@ describe("Send CLI", () => {
     expect(helpText).toContain("--wait-for-idle");
     expect(helpText).toContain("--raw");
     expect(helpText).toContain("--dangerously-interact");
-    expect(helpText).toContain("pane only");
+    expect(helpText).toContain("仅面板");
     expect(helpText).toContain("dev-impl@my-rig");
   });
 
-  // OPR.0.4.3.28 B1 code-review fix — the help text must reflect the corrected
-  // proceed-with-advisory behavior, NOT the obsolete fail-closed-on-unknown contract
-  // (which would keep steering operators toward the deprecated --dangerously-interact bridge).
-  // The narrative contract lives in addHelpText("after"), which helpInformation() omits —
-  // capture the FULL `--help` render via configureOutput + exitOverride.
-  it("send --help documents proceed-with-advisory on unknown telemetry, not fail-closed", () => {
+  // OPR.0.4.3.28 B1 code-review 修复——帮助文本必须反映已修正的
+  // proceed-with-advisory 行为，而非过时的 unknown 即 fail-closed 契约
+  //（后者会继续把操作者引向已弃用的 --dangerously-interact 桥）。
+  // 叙事契约在 addHelpText("after") 里，helpInformation() 会略过它——
+  // 故经 configureOutput + exitOverride 捕获完整 `--help` 渲染。
+  it("send --help 把未知遥测文档为 proceed-with-advisory，而非 fail-closed", () => {
     const cmd = sendCommand(runningDeps(port));
     let helpText = "";
     cmd.configureOutput({ writeOut: (s) => { helpText += s; }, writeErr: (s) => { helpText += s; } });
     cmd.exitOverride();
     try { cmd.parse(["node", "send", "--help"]); } catch { /* exitOverride throws on --help */ }
     expect(helpText.toLowerCase()).not.toContain("fails closed");
-    expect(helpText).toContain("advisory");
-    expect(helpText).toMatch(/PROCEEDS with an\s+advisory/); // \s+ tolerates the help line-wrap
-    // The positive-picker refusal contract is still documented.
-    expect(helpText.toLowerCase()).toContain("refused");
+    expect(helpText).toContain("建议");
+    expect(helpText).toMatch(/建议发送/); // \s+ tolerates the help line-wrap
+    // 正向选择器拒绝契约仍有文档记录。
+    expect(helpText.toLowerCase()).toContain("拒绝");
   });
 
   // -------------------------------------------------------------------------
-  // qitem-c113bd41 — local-send honesty: the ACTUAL transport is
-  // authoritative. Preflight (getDaemonStatus) may inform target fallback but
-  // never refuses a send by itself: a busy/wedged daemon (probe timeout or
-  // running/unhealthy) must still receive the POST/broadcast; a REAL down
-  // fails honestly from the actual connection error, naming the target —
-  // never the bare preflight restart line. Guard matrix: single + fan-out;
-  // stopped + running/unhealthy; OPENRIG_URL/RIGGED_URL custom ports +
-  // precedence; honest failure; cross-host untouched (pinned in the
-  // cross-host suites).
+  // qitem-c113bd41——本地 send 诚实性：实际传输才是权威。preflight（getDaemonStatus）
+  // 可提示目标回退，但绝不自行拒绝发送：繁忙/楔住的 daemon（probe 超时或
+  // running/unhealthy）仍须收到 POST/broadcast；真实宕机则从实际连接错误如实失败，
+  // 点名目标——绝不出现裸 preflight 重启行。护栏矩阵：单席位 + 扇出；
+  // stopped + running/unhealthy；OPENRIG_URL/RIGGED_URL 自定义端口 + 优先级；
+  // 诚实失败；跨主机不动（在跨主机套件中钉住）。
   // -------------------------------------------------------------------------
 
-  describe("qitem-c113bd41 — transport-authoritative local send (RED vs preflight refusal)", () => {
+  describe("qitem-c113bd41——传输权威的本地 send（相对 preflight 拒绝为 RED）", () => {
     afterEach(() => { vi.unstubAllEnvs(); });
 
-    /** lifecycleDeps whose PROBE always fails (instant, injected sleep) and
-     *  which carries NO daemon state — the env-URL/stopped shape. */
+    /** lifecycleDeps，其 PROBE 恒失败（瞬时，注入 sleep）且不带任何 daemon 状态——
+     *  env-URL/stopped 形态。 */
     function probeFailNoStateDeps(clientFactory: StatusDeps["clientFactory"]): StatusDeps {
       return {
         lifecycleDeps: {
@@ -968,10 +955,8 @@ describe("Send CLI", () => {
       };
     }
 
-    /** ff13bcdf finding 2 — stub every daemon host/port alias empty so the
-     *  configured-target discriminators read the config FILE, not whatever
-     *  the surrounding managed seat happens to export. Paired with the
-     *  block's afterEach(vi.unstubAllEnvs) for restore. */
+    /** ff13bcdf finding 2——把每个 daemon host/port 别名 stub 为空，使配置目标判别符
+     *  读配置文件，而非周围托管席位碰巧导出的值。配合块级 afterEach(vi.unstubAllEnvs) 恢复。 */
     function scrubDaemonHostPortAliases(): void {
       vi.stubEnv("OPENRIG_HOST", "");
       vi.stubEnv("OPENRIG_PORT", "");
@@ -979,8 +964,8 @@ describe("Send CLI", () => {
       vi.stubEnv("RIGGED_PORT", "");
     }
 
-    /** ff13bcdf finding 1 — deps whose lifecycle probe is COUNTABLE. The
-     *  probe throws so any accidental call is also visibly useless work.  */
+    /** ff13bcdf finding 1——deps，其 lifecycle probe 可计数。probe 抛错，
+     *  使任何误调也显式是无用功。  */
     function probeCountingDeps(clientFactory: StatusDeps["clientFactory"]): {
       deps: StatusDeps; probeCalls: () => number; probeUrls: () => string[];
     } {
@@ -997,8 +982,8 @@ describe("Send CLI", () => {
           clientFactory,
         },
         probeCalls: () => fetchSpy.mock.calls.length,
-        // 51-09 incr-3 (R8 supersession): the URLs let R8 discriminate the ONE allowed
-        // fetch as the self-id /healthz GET by path, not merely by count.
+        // 51-09 incr-3（R8 取代）：URL 使 R8 能按路径（而非仅按计数）把唯一允许的
+        // fetch 判别为自标识 /healthz GET。
         probeUrls: () => fetchSpy.mock.calls.map((c) => String(c[0])),
       };
     }
@@ -1011,7 +996,7 @@ describe("Send CLI", () => {
       };
     }
 
-    it("R1 RED: single-seat + OPENRIG_URL custom port + probe-stopped -> actual POST lands, exact env target passed to clientFactory", async () => {
+    it("R1 RED：单席位 + OPENRIG_URL 自定义端口 + probe-stopped -> 实际 POST 落地，精确 env 目标传给 clientFactory", async () => {
       vi.stubEnv("OPENRIG_URL", `http://127.0.0.1:${port}`);
       vi.stubEnv("RIGGED_URL", "");
       lastSendBody = null;
@@ -1019,12 +1004,12 @@ describe("Send CLI", () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd(probeFailNoStateDeps(rc.factory)).parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello"]);
       });
-      expect(logs.join("\n")).toContain("Sent to dev-impl@my-rig");
+      expect(logs.join("\n")).toContain("已发送给 dev-impl@my-rig");
       expect(rc.seen()).toBe(`http://127.0.0.1:${port}`);
       expect(String(lastSendBody?.text)).toContain("To: dev-impl@my-rig");
     });
 
-    it("R2 RED: fan-out --to + OPENRIG_URL + probe-stopped -> actual /broadcast lands with per-recipient results", async () => {
+    it("R2 RED：扇出 --to + OPENRIG_URL + probe-stopped -> 实际 /broadcast 落地并带逐接收者结果", async () => {
       vi.stubEnv("OPENRIG_URL", `http://127.0.0.1:${port}`);
       vi.stubEnv("RIGGED_URL", "");
       lastBroadcastBody = null;
@@ -1037,18 +1022,18 @@ describe("Send CLI", () => {
       expect(rc.seen()).toBe(`http://127.0.0.1:${port}`);
     });
 
-    it("R3 RED: legacy RIGGED_URL custom port honored when OPENRIG_URL unset (probe-stopped)", async () => {
+    it("R3 RED：OPENRIG_URL 未设时沿用旧 RIGGED_URL 自定义端口（probe-stopped）", async () => {
       vi.stubEnv("OPENRIG_URL", "");
       vi.stubEnv("RIGGED_URL", `http://127.0.0.1:${port}`);
       const rc = recordingRealClient();
       const { logs } = await captureLogs(async () => {
         await makeCmd(probeFailNoStateDeps(rc.factory)).parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello"]);
       });
-      expect(logs.join("\n")).toContain("Sent to dev-impl@my-rig");
+      expect(logs.join("\n")).toContain("已发送给 dev-impl@my-rig");
       expect(rc.seen()).toBe(`http://127.0.0.1:${port}`);
     });
 
-    it("R4 RED: precedence — OPENRIG_URL wins over RIGGED_URL on the transport-authoritative path", async () => {
+    it("R4 RED：优先级——传输权威路径上 OPENRIG_URL 胜 RIGGED_URL", async () => {
       vi.stubEnv("OPENRIG_URL", `http://127.0.0.1:${port}`);
       vi.stubEnv("RIGGED_URL", "http://127.0.0.1:59999");
       const rc = recordingRealClient();
@@ -1056,10 +1041,10 @@ describe("Send CLI", () => {
         await makeCmd(probeFailNoStateDeps(rc.factory)).parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello"]);
       });
       expect(rc.seen()).toBe(`http://127.0.0.1:${port}`);
-      expect(logs.join("\n")).toContain("Sent to dev-impl@my-rig");
+      expect(logs.join("\n")).toContain("已发送给 dev-impl@my-rig");
     });
 
-    it("R5 RED: RUNNING-but-UNHEALTHY (event-loop-starved healthz body) must still send (single-seat + fan-out)", async () => {
+    it("R5 RED：RUNNING 但 UNHEALTHY（event-loop-starved 的 healthz 体）仍须发送（单席位 + 扇出）", async () => {
       vi.stubEnv("OPENRIG_URL", `http://127.0.0.1:${port}`);
       vi.stubEnv("RIGGED_URL", "");
       const unhealthyProbeDeps = (clientFactory: StatusDeps["clientFactory"]): StatusDeps => ({
@@ -1077,7 +1062,7 @@ describe("Send CLI", () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd(unhealthyProbeDeps(rc.factory)).parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello"]);
       });
-      expect(logs.join("\n")).toContain("Sent to dev-impl@my-rig");
+      expect(logs.join("\n")).toContain("已发送给 dev-impl@my-rig");
       const rc2 = recordingRealClient();
       lastBroadcastBody = null;
       await captureLogs(async () => {
@@ -1088,7 +1073,7 @@ describe("Send CLI", () => {
 
     const rcHolder = { seenUrl: null as string | null, factory: ((baseUrl: string) => { rcHolder.seenUrl = baseUrl; return new DaemonClient(baseUrl); }) as StatusDeps["clientFactory"], seen: () => rcHolder.seenUrl };
 
-    it("R6 RED: NO env + live-pid state file (custom port) + healthz probe failing -> POST attempted against the state-derived target", async () => {
+    it("R6 RED：无 env + live-pid 状态文件（自定义端口）+ healthz probe 失败 -> 对状态派生目标发起 POST", async () => {
       vi.stubEnv("OPENRIG_URL", "");
       vi.stubEnv("RIGGED_URL", "");
       const deps: StatusDeps = {
@@ -1107,21 +1092,20 @@ describe("Send CLI", () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd(deps).parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello"]);
       });
-      expect(logs.join("\n")).toContain("Sent to dev-impl@my-rig");
+      expect(logs.join("\n")).toContain("已发送给 dev-impl@my-rig");
       expect(rcHolder.seen()).toBe(`http://127.0.0.1:${port}`);
     });
 
-    it("R6b RED: NO env + NO daemon state + probe-stopped -> POST attempted against the configured DEFAULT target (injected client succeeds)", async () => {
+    it("R6b RED：无 env + 无 daemon 状态 + probe-stopped -> 对配置默认目标发起 POST（注入 client 成功）", async () => {
       vi.stubEnv("OPENRIG_URL", "");
       vi.stubEnv("RIGGED_URL", "");
-      // ff13bcdf finding 2 — ConfigStore maps these aliases to
-      // daemon.host/daemon.port with env winning over file (config-store.ts
-      // :343,349). A managed seat carries ambient OPENRIG_PORT, so without
-      // this scrub the test measures the AMBIENT ENVIRONMENT, not the
-      // contract. Restored by the block's afterEach(vi.unstubAllEnvs).
+      // ff13bcdf finding 2——ConfigStore 把这些别名映射到
+      // daemon.host/daemon.port，env 胜 file（config-store.ts :343,349）。托管席位携带环境
+      // OPENRIG_PORT，故不做此 scrub，本测试测的就是环境，而非……
+      // 契约。由该块的 afterEach(vi.unstubAllEnvs) 恢复。
       scrubDaemonHostPortAliases();
-      // Config isolation without touching disk: a nonexistent home means no
-      // daemon config, so the configured target resolves to the default.
+      // 不触盘的配置隔离：不存在的 home 意味着无 daemon 配置，
+      // 故配置目标解析为默认。
       vi.stubEnv("OPENRIG_HOME", "/nonexistent/send-r6b-home");
       let seenUrl: string | null = null;
       const postFn = vi.fn(async () => ({ status: 200, data: { ok: true, sessionName: "dev-impl@my-rig" } }));
@@ -1129,18 +1113,17 @@ describe("Send CLI", () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd(probeFailNoStateDeps(stubFactory)).parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello"]);
       });
-      expect(logs.join("\n")).toContain("Sent to dev-impl@my-rig");
+      expect(logs.join("\n")).toContain("已发送给 dev-impl@my-rig");
       expect(seenUrl).toBe("http://127.0.0.1:7433");
       expect(postFn).toHaveBeenCalledTimes(1);
     });
 
-    it("R6c RED: NO env + NO state + probe-stopped + ConfigStore CUSTOM daemon host/port -> POST attempted against the CONFIGURED-FILE target exactly (no hardcoded default)", async () => {
+    it("R6c RED：无 env + 无状态 + probe-stopped + ConfigStore 自定义 daemon host/port -> 对配置文件精确目标发起 POST（无硬编码默认）", async () => {
       vi.stubEnv("OPENRIG_URL", "");
       vi.stubEnv("RIGGED_URL", "");
-      // ff13bcdf finding 2 — without this scrub an ambient OPENRIG_PORT
-      // (e.g. 7433 in a managed seat) overrides the config FILE's 7599 via
-      // ConfigStore env-over-file precedence, and this test silently asserts
-      // 127.0.0.9:7433 — the exact leak R2 observed.
+      // ff13bcdf finding 2——不做此 scrub，环境 OPENRIG_PORT
+      //（如托管席位里的 7433）会经 ConfigStore env 盖过 file 的优先级覆盖配置文件的 7599，
+      // 本测试就会静默断言 127.0.0.9:7433——正是 R2 观察到的泄漏。
       scrubDaemonHostPortAliases();
       const home = fs.mkdtempSync(path.join(os.tmpdir(), "send-r6c-home-"));
       try {
@@ -1152,18 +1135,18 @@ describe("Send CLI", () => {
         const { logs } = await captureLogs(async () => {
           await makeCmd(probeFailNoStateDeps(stubFactory)).parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello"]);
         });
-        expect(logs.join("\n")).toContain("Sent to dev-impl@my-rig");
-        // The configured file target, byte-exact — a literal-default fallback
-        // (http://127.0.0.1:7433) is a contract violation here.
+        expect(logs.join("\n")).toContain("已发送给 dev-impl@my-rig");
+        // 配置文件目标，逐字节精确——字面默认回退
+        //（http://127.0.0.1:7433）在此是违约。
         expect(seenUrl).toBe("http://127.0.0.9:7599");
         expect(postFn).toHaveBeenCalledTimes(1);
       } finally {
-        // Exception-safe: a failing assertion must not leave temp state.
+        // 异常安全：失败的断言不得留下临时状态。
         fs.rmSync(home, { recursive: true, force: true });
       }
     });
 
-    it("R7 RED: REAL down fails honestly — actual connection error names the target; the bare preflight restart line never appears", async () => {
+    it("R7 RED：真实宕机如实失败——实际连接错误点名目标；绝不出现裸 preflight 重启行", async () => {
       vi.stubEnv("OPENRIG_URL", "http://127.0.0.1:1");
       vi.stubEnv("RIGGED_URL", "");
       const rc = recordingRealClient();
@@ -1172,69 +1155,56 @@ describe("Send CLI", () => {
       });
       const out = logs.join("\n");
       expect(exitCode).toBe(1);
-      // The ACTUAL transport failure must be surfaced — the DaemonClient's
-      // own connection-error prefix, naming the configured target — not a
-      // preflight-derived guess. (Also covers 1b45cf21's explicit/custom
-      // target-preservation pin: the resolved target survives verbatim into
-      // the fact line rather than being flattened into a generic message.)
-      expect(out).toContain("Cannot connect to the OpenRig daemon at http://127.0.0.1:1:");
+      // 必须浮出实际传输失败——DaemonClient 自己的连接错误前缀，点名配置目标——
+      // 而非 preflight 猜的。（也覆盖 1b45cf21 的显式/自定义目标保留钉：解析出的目标
+      // 逐字进入 fact 行，而非被摊平成通用消息。）
+      expect(out).toContain("无法连接到位于 http://127.0.0.1:1 的 zrig 后台服务");
       expect(out).not.toContain("Daemon not running. Start it with: rig daemon start");
-      // 1b45cf21 — a real transport failure must also carry the repo's
-      // fact/consequence/action remediation. The fact line above is the
-      // actual cause; these are the consequence and the action.
-      expect(out).toContain("The message was not sent.");
-      expect(out).toContain("Inspect the configured target with 'rig status'; a failed health probe does not prove the daemon is stopped.");
-      expect(out).toContain("If the target is wrong, check OPENRIG_URL / RIGGED_URL or daemon.host + daemon.port.");
-      expect(out).toContain("If the daemon is confirmed stopped, run 'rig daemon start'.");
-      // ABSENCE PIN: remediation must never assert daemon STATE derived from
-      // the failed send or an advisory probe. A connection failure proves the
-      // target was unreachable — not why.
+      // 1b45cf21——真实传输失败还须携带仓库的 fact/consequence/action 补救。
+      // 上面 fact 行是实际原因；这两条是 consequence 与 action。
+      expect(out).toContain("消息未发送。");
+      expect(out).toContain("用 'zrig status' 检查配置的目标；健康探测失败不证明后台服务已停。");
+      expect(out).toContain("如果目标错了，查 OPENRIG_URL / RIGGED_URL 或 daemon.host + daemon.port。");
+      expect(out).toContain("如果确认后台服务已停，跑 'zrig daemon start'.");
+      // 缺席钉：补救绝不得断言由失败发送或 advisory 探测推出的 daemon 状态。
+      // 连接失败只证明目标不可达——不证明为何。
       expect(out).not.toContain("Daemon not running");
       expect(out).not.toContain("unhealthy");
     });
 
-    // HISTORY (ff13bcdf finding 3): this test entered the suite as a GREEN
-    // characterization — the fan-out catch already behaved correctly, R7 just
-    // never asserted it, so it pinned existing behavior with no manufactured
-    // failure.
-    // NOW (1b45cf21): it is a deliberate RED. This lane requires fan-out to
-    // carry the same fact/consequence/action remediation as single-seat, which
-    // does not exist yet, so the remediation assertions below fail by design
-    // until the helper lands. Retitled accordingly — a test labelled
-    // "characterization" while it is an intentional RED is exactly the kind of
-    // stale label this slice keeps finding elsewhere.
-    it("R7b RED: fan-out REAL down fails honestly too — target-specific connection error, exit 1, no restart line, and the same remediation as single-seat", async () => {
+    // 历史（ff13bcdf finding 3）：本测试以 GREEN 表征进入套件——扇出 catch 本就行为正确，
+    // R7 只是从未断言它，故它钉住既有行为而无编造失败。
+    // 现在（1b45cf21）：它是刻意的 RED。本泳道要求扇出携带与单席位相同的
+    // fact/consequence/action 补救，而该补救尚不存在，故下列补救断言按设计失败，直到 helper 落地。
+    // 据此改标题——一个被标为"表征"实则刻意 RED 的测试，正是本切片在别处反复发现的陈旧标签。
+    it("R7b RED：扇出真实宕机也如实失败——目标特定连接错误、退出 1、无重启行，且补救与单席位一致", async () => {
       vi.stubEnv("OPENRIG_URL", "http://127.0.0.1:1");
       vi.stubEnv("RIGGED_URL", "");
       const rc = recordingRealClient();
       const { logs, exitCode } = await captureLogs(async () => {
-        // NOTE: with --to the FIRST positional IS the message (a bare seat
-        // name alongside --to is rejected) — getting this wrong yields a
-        // false RED rather than exercising the fan-out catch.
+        // 注意：带 --to 时第一个位置参数就是消息（--to 旁的裸席位名会被拒）——
+        // 搞错会产生假 RED，而非真正演练扇出 catch。
         await makeCmd(probeFailNoStateDeps(rc.factory)).parseAsync(["node", "rig", "send", "--to", "dev-impl@my-rig", "hello"]);
       });
       const out = logs.join("\n");
       expect(exitCode).toBe(1);
-      expect(out).toContain("Cannot connect to the OpenRig daemon at http://127.0.0.1:1:");
+      expect(out).toContain("无法连接到位于 http://127.0.0.1:1 的 zrig 后台服务");
       expect(out).not.toContain("Daemon not running. Start it with: rig daemon start");
-      // 1b45cf21 — SYMMETRY PIN. Fan-out must carry byte-identical
-      // remediation to single-seat; divergence between the two paths is the
-      // regression this asserts against.
-      expect(out).toContain("The message was not sent.");
-      expect(out).toContain("Inspect the configured target with 'rig status'; a failed health probe does not prove the daemon is stopped.");
-      expect(out).toContain("If the target is wrong, check OPENRIG_URL / RIGGED_URL or daemon.host + daemon.port.");
-      expect(out).toContain("If the daemon is confirmed stopped, run 'rig daemon start'.");
+      // 1b45cf21——对称钉。扇出必须携带与单席位逐字节相同的补救；
+      // 两路径之间的分歧正是本断言防范的回归。
+      expect(out).toContain("消息未发送。");
+      expect(out).toContain("用 'zrig status' 检查配置的目标；健康探测失败不证明后台服务已停。");
+      expect(out).toContain("如果目标错了，查 OPENRIG_URL / RIGGED_URL 或 daemon.host + daemon.port。");
+      expect(out).toContain("如果确认后台服务已停，跑 'zrig daemon start'.");
       expect(out).not.toContain("Daemon not running");
       expect(out).not.toContain("unhealthy");
     });
 
-    // send-json-error-envelope-gap follow-up: on the --json path a real
-    // transport failure must hand the agent a PARSEABLE record, not empty
-    // stdout + human prose on stderr. Mirrors printDaemonNotRunning's
-    // {error:{fact,consequence,action}} envelope. Channel-separated so the
-    // discriminator is unambiguous: stdout carries exactly one JSON record and
-    // stderr is empty (and the human path is the mirror image).
-    it("R7c RED: single-seat --json transport failure emits exactly one parseable stdout JSON envelope, empty stderr, exit 1", async () => {
+    // send-json-error-envelope-gap 后续：在 --json 路径上，真实传输失败须交给 agent
+    // 一条可解析记录，而非空 stdout + stderr 上的人类散文。镜像 printDaemonNotRunning 的
+    // {error:{fact,consequence,action}} 信封。按通道分离使判别无歧义：stdout 恰好一条 JSON 记录、
+    // stderr 为空（人类路径是镜像）。
+    it("R7c RED：单席位 --json 传输失败恰好输出一条可解析 stdout JSON 信封，stderr 为空，退出 1", async () => {
       vi.stubEnv("OPENRIG_URL", "http://127.0.0.1:1");
       vi.stubEnv("RIGGED_URL", "");
       const rc = recordingRealClient();
@@ -1242,41 +1212,41 @@ describe("Send CLI", () => {
         await makeCmd(probeFailNoStateDeps(rc.factory)).parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello", "--json"]);
       });
       expect(exitCode).toBe(1);
-      // exactly one stdout record, parseable, exact structured envelope shape
-      // (no top-level ok, no discrete target field — just error:{f,c,a}).
+      // 恰好一条 stdout 记录、可解析、结构信封形状精确
+      //（无顶层 ok、无独立 target 字段——只有 error:{f,c,a}）。
       expect(stdout).toHaveLength(1);
       expect(JSON.parse(stdout[0])).toEqual({
         error: {
-          fact: expect.stringContaining("Cannot connect to the OpenRig daemon at http://127.0.0.1:1:"),
-          consequence: "The message was not sent.",
-          action: expect.stringContaining("Inspect the configured target with 'rig status'; a failed health probe does not prove the daemon is stopped."),
+          fact: expect.stringContaining("无法连接到位于 http://127.0.0.1:1 的 zrig 后台服务"),
+          consequence: "消息未发送。",
+          action: expect.stringContaining("用 'zrig status' 检查配置的目标；健康探测失败不证明后台服务已停。"),
         },
       });
-      // the --json path must NOT leak human prose onto stderr
+      // --json 路径不得把人类散文泄漏到 stderr
       expect(stderr).toEqual([]);
     });
 
-    it("R7d RED: fan-out --json transport failure emits exactly one parseable stdout JSON envelope, empty stderr, exit 1", async () => {
+    it("R7d RED：扇出 --json 传输失败恰好输出一条可解析 stdout JSON 信封，stderr 为空，退出 1", async () => {
       vi.stubEnv("OPENRIG_URL", "http://127.0.0.1:1");
       vi.stubEnv("RIGGED_URL", "");
       const rc = recordingRealClient();
       const { stdout, stderr, exitCode } = await captureChannels(async () => {
-        // with --to the FIRST positional IS the message (bare seat + --to is rejected)
+        // 用 --to 时，第一个位置参数即消息（裸 seat + --to 被拒绝）
         await makeCmd(probeFailNoStateDeps(rc.factory)).parseAsync(["node", "rig", "send", "--to", "dev-impl@my-rig", "hello", "--json"]);
       });
       expect(exitCode).toBe(1);
       expect(stdout).toHaveLength(1);
       expect(JSON.parse(stdout[0])).toEqual({
         error: {
-          fact: expect.stringContaining("Cannot connect to the OpenRig daemon at http://127.0.0.1:1:"),
-          consequence: "The message was not sent.",
-          action: expect.stringContaining("Inspect the configured target with 'rig status'; a failed health probe does not prove the daemon is stopped."),
+          fact: expect.stringContaining("无法连接到位于 http://127.0.0.1:1 的 zrig 后台服务"),
+          consequence: "消息未发送。",
+          action: expect.stringContaining("用 'zrig status' 检查配置的目标；健康探测失败不证明后台服务已停。"),
         },
       });
       expect(stderr).toEqual([]);
     });
 
-    it("R7e: single-seat HUMAN transport failure keeps stdout empty (mirror of R7c) — the 3 remediation lines are stderr-only, exit 1", async () => {
+    it("R7e：单席位人类输出传输失败保持 stdout 为空（R7c 的镜像）——3 行补救仅在 stderr，退出 1", async () => {
       vi.stubEnv("OPENRIG_URL", "http://127.0.0.1:1");
       vi.stubEnv("RIGGED_URL", "");
       const rc = recordingRealClient();
@@ -1286,12 +1256,12 @@ describe("Send CLI", () => {
       expect(exitCode).toBe(1);
       expect(stdout).toEqual([]); // human path must never write to stdout
       const err = stderr.join("\n");
-      expect(err).toContain("Cannot connect to the OpenRig daemon at http://127.0.0.1:1:");
-      expect(err).toContain("The message was not sent.");
-      expect(err).toContain("Inspect the configured target with 'rig status'; a failed health probe does not prove the daemon is stopped.");
+      expect(err).toContain("无法连接到位于 http://127.0.0.1:1 的 zrig 后台服务");
+      expect(err).toContain("消息未发送。");
+      expect(err).toContain("用 'zrig status' 检查配置的目标；健康探测失败不证明后台服务已停。");
     });
 
-    it("R7f: fan-out HUMAN transport failure keeps stdout empty (mirror of R7d) — stderr-only remediation, exit 1", async () => {
+    it("R7f：扇出人类输出传输失败保持 stdout 为空（R7d 的镜像）——补救仅在 stderr，退出 1", async () => {
       vi.stubEnv("OPENRIG_URL", "http://127.0.0.1:1");
       vi.stubEnv("RIGGED_URL", "");
       const rc = recordingRealClient();
@@ -1301,19 +1271,16 @@ describe("Send CLI", () => {
       expect(exitCode).toBe(1);
       expect(stdout).toEqual([]);
       const err = stderr.join("\n");
-      expect(err).toContain("Cannot connect to the OpenRig daemon at http://127.0.0.1:1:");
-      expect(err).toContain("The message was not sent.");
+      expect(err).toContain("无法连接到位于 http://127.0.0.1:1 的 zrig 后台服务");
+      expect(err).toContain("消息未发送。");
     });
 
-    // ff13bcdf finding 1 — the load-bearing latency discriminator. An
-    // explicit URL alias ALREADY determines the target, so the advisory
-    // probe is pure cost on the incident path (818ms failing / ~2.05s
-    // timeout-shaped). A latency claim without a call-count assertion is
-    // unfalsifiable, so these assert the probe count directly.
-    // RED on this parent: getDaemonStatus takes the openrigUrl branch and
-    // burns STATUS_PROBE_MAX_ATTEMPTS (5) fetches before the resolver reads
-    // the same alias. The POST assertions pass today; ONLY the count fails.
-    it("R8: explicit OPENRIG_URL (single-seat) -> exact target POSTed + EXACTLY ONE self-id /healthz GET, no status-probe burn", async () => {
+    // ff13bcdf finding 1——承重的延迟判别符。显式 URL 别名本就决定目标，故 advisory
+    // probe 在事故路径上纯属成本（818ms 失败 / ~2.05s 超时成形）。无调用计数断言的延迟主张
+    // 不可证伪，故这里直接断言 probe 计数。
+    // 在本父测试上为 RED：getDaemonStatus 走 openrigUrl 分支，在 resolver 读取同一别名前
+    // 先烧掉 STATUS_PROBE_MAX_ATTEMPTS(5) 次 fetch。POST 断言今日通过；只有计数失败。
+    it("R8：显式 OPENRIG_URL（单席位）-> 精确目标被 POST + 恰好一次自标识 /healthz GET，无状态探测消耗", async () => {
       vi.stubEnv("OPENRIG_URL", `http://127.0.0.1:${port}`);
       vi.stubEnv("RIGGED_URL", "");
       lastSendBody = null;
@@ -1322,22 +1289,20 @@ describe("Send CLI", () => {
       const { logs } = await captureLogs(async () => {
         await makeCmd(deps).parseAsync(["node", "rig", "send", "dev-impl@my-rig", "hello"]);
       });
-      expect(logs.join("\n")).toContain("Sent to dev-impl@my-rig");
+      expect(logs.join("\n")).toContain("已发送给 dev-impl@my-rig");
       expect(rc.seen()).toBe(`http://127.0.0.1:${port}`);
       expect(lastSendBody).not.toBeNull();
-      // SUPERSEDED 2026-08-06 (merge-desk sanction + the arch/planner 1-GET trade-off ruling,
-      // 51-09 incr-3): ff13bcdf's zero-probe guarantee targeted the EXPENSIVE 5-attempt
-      // STATUS-PROBE BURN, not a single bounded self-id read. A single-seat send now renders
-      // the From: origin triple CLI-side, which needs the daemon self-id via ONE best-effort
-      // loopback /healthz GET (rider-b one-source; C1 fail-open; CEILING = 1, NO retry —
-      // fetchSelfHostId is a single fetchDaemonProbe that fails open to undefined). This pin
-      // discriminates MECHANICALLY, so it STILL catches the burn it was born for AND catches a
-      // SECOND self-id GET or a retry sneaking in:
+      // 已废弃 2026-08-06（merge-desk 批准 + arch/planner 1-GET 权衡裁定，
+      // 51-09 incr-3）：ff13bcdf 的零 probe 保证针对的是昂贵的 5 次 STATUS-PROBE 消耗，
+      // 而非单次有界的自标识读取。单席位 send 如今在 CLI 侧渲染 From: 来源三元组，需经一次尽力而为的
+      // loopback /healthz GET（rider-b 单一来源；C1 失败开放；CEILING=1、无重试——
+      // fetchSelfHostId 是单次 fetchDaemonProbe，失败开放为 undefined）。本钉机械判别：
+      // 它既仍抓它诞生时防范的 probe 消耗，又抓混入的第二次自标识 GET 或重试：
       expect(probeCalls()).toBe(1); // ceiling: exactly ONE attempt — never the 5-attempt burn, never a retry
       expect(String(probeUrls()[0] ?? "")).toContain("/healthz"); // the one allowed call IS the self-id GET (path, not just count)
     });
 
-    it("R8b RED: explicit OPENRIG_URL (fan-out) -> exact target broadcast and ZERO lifecycle probe calls", async () => {
+    it("R8b RED：显式 OPENRIG_URL（扇出）-> 精确目标广播且零次 lifecycle probe 调用", async () => {
       vi.stubEnv("OPENRIG_URL", `http://127.0.0.1:${port}`);
       vi.stubEnv("RIGGED_URL", "");
       lastBroadcastBody = null;
@@ -1353,26 +1318,21 @@ describe("Send CLI", () => {
   });
 
   // -------------------------------------------------------------------------
-  // ba41fea2 — fan-out provenance. `--from` is a GLOBAL option and reaches the
-  // action's opts, but runFanOutSend's local params type omits it, so the
-  // fan-out path resolves AMBIENT identity and writes that into both
-  // actorSession (audit attribution) and envelopeSender (what each recipient
-  // sees). An explicit operator instruction is silently dropped — the sibling
-  // paths (single-seat, cross-host ssh, cross-host http) all honor it.
+  // ba41fea2——扇出来源。`--from` 是全局选项，到达 action 的 opts，但 runFanOutSend 的本地
+  // 参数类型不含它，故扇出路径解析环境身份并写入两者：actorSession（审计归属）与
+  // envelopeSender（各接收者所见）。显式操作者指令被静默丢弃——而兄弟路径
+  //（单席位、跨主机 ssh、跨主机 http）都尊重它。
   //
-  // NOTE ON CLEANUP: these tests deliberately sit OUTSIDE the
-  // qitem-c113bd41 describe block above, so its afterEach(vi.unstubAllEnvs)
-  // does NOT cover them. Each test restores its own env in a local
-  // try/finally — an un-restored vi.stubEnv would leak into every later test
-  // in this file (the same ambient-env class ff13bcdf finding 2 fixed).
+  // 清理说明：这些测试刻意放在上面 qitem-c113bd41 describe 块之外，故其
+  // afterEach(vi.unstubAllEnvs) 不覆盖它们。每个测试在本地 try/finally 恢复自己的 env——
+  // 未恢复的 vi.stubEnv 会泄漏到本文件后续每个测试（即 ff13bcdf finding 2 修复的环境 env 同类问题）。
   // -------------------------------------------------------------------------
-  describe("P21 I4 — fan-out IGNORES --from; identity derives from the transport (reverses ba41fea2)", () => {
-    it("--from is IGNORED in fan-out — BOTH envelopeSender and actorSession name the ambient transport identity, never the forged --from origin", async () => {
+  describe("P21 I4——扇出忽略 --from；身份派生自传输（反转 ba41fea2）", () => {
+    it("--from 在扇出中被忽略——envelopeSender 与 actorSession 都命名环境传输身份，绝不伪造 --from 来源", async () => {
       vi.stubEnv("OPENRIG_URL", `http://127.0.0.1:${port}`);
       vi.stubEnv("RIGGED_URL", "");
-      // Ambient identity is STUBBED, never inherited from the surrounding
-      // managed seat — otherwise the discriminator would silently compare
-      // against whatever the runner happens to export.
+      // 环境身份是 stub 的，绝不继承自周围托管席位——否则判别符会静默
+      // 对照运行器碰巧导出的值。
       vi.stubEnv("OPENRIG_SESSION_NAME", "ambient-relay@my-rig");
       vi.stubEnv("RIGGED_SESSION_NAME", "");
       try {
@@ -1384,9 +1344,9 @@ describe("Send CLI", () => {
           ]);
         });
         expect(lastBroadcastBody).not.toBeNull();
-        // P21 I4: --from ("origin@my-rig") is the forgeable surface — it is IGNORED. Both attribution
-        // fields resolve to the ambient transport identity; the daemon then re-derives them from the
-        // X-OpenRig-Session header regardless, so a forged --from can never name the From:.
+        // P21 I4：--from（"origin@my-rig"）是可伪造面——它被忽略。两个归属
+        // 字段都解析为环境传输身份；daemon 随后一律从 X-OpenRig-Session 头重新派生，
+        // 故伪造的 --from 绝不可能点名 From:。
         expect(lastBroadcastBody?.actorSession).toBe("ambient-relay@my-rig");
         expect(lastBroadcastBody?.envelopeSender).toBe("ambient-relay@my-rig");
       } finally {
@@ -1394,7 +1354,7 @@ describe("Send CLI", () => {
       }
     });
 
-    it("F2 GREEN-characterization: with NO --from, fan-out still falls back to ambient identity (the flag is additive, not a behavior change)", async () => {
+    it("F2 GREEN 表征：无 --from 时扇出仍回退到环境身份（该标志是附加的，不改变行为）", async () => {
       vi.stubEnv("OPENRIG_URL", `http://127.0.0.1:${port}`);
       vi.stubEnv("RIGGED_URL", "");
       vi.stubEnv("OPENRIG_SESSION_NAME", "ambient-relay@my-rig");

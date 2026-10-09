@@ -59,7 +59,7 @@ function stoppedPsEntries() {
 }
 
 describe("SnapshotPanel", () => {
-  // Test 1: Snapshot list with mono IDs
+  // 测试 1：带 mono ID 的 Snapshot 列表
   it("renders snapshot list with monospaced IDs", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (typeof url === "string" && url.includes("/snapshots")) {
@@ -78,7 +78,7 @@ describe("SnapshotPanel", () => {
     });
   });
 
-  // Test 2: Create triggers mutation + refresh
+  // 测试 2：Create 触发 mutation + 刷新
   it("create button triggers mutation", async () => {
     let callCount = 0;
     mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
@@ -97,9 +97,9 @@ describe("SnapshotPanel", () => {
     });
 
     render(<QueryWrapper><SnapshotPanel rigId="r1" /></QueryWrapper>);
-    await waitFor(() => expect(screen.getByText(/CREATE/)).toBeDefined());
+    await waitFor(() => expect(screen.getByText(/创建/)).toBeDefined());
 
-    const createBtn = screen.getAllByText(/CREATE/).find((el) => el.closest("button"));
+    const createBtn = screen.getAllByText(/创建/).find((el) => el.closest("button"));
     fireEvent.click(createBtn!);
 
     await waitFor(() => {
@@ -109,13 +109,13 @@ describe("SnapshotPanel", () => {
       expect(postCall).toBeDefined();
     });
 
-    // Prove list refreshed with new snapshot
+    // 证明列表已随新 snapshot 刷新
     await waitFor(() => {
       expect(screen.getByText(/snap-new/)).toBeDefined();
     });
   });
 
-  // Test 3: Restore opens Dialog
+  // 测试 3：Restore 打开 Dialog
   it("restore opens confirmation Dialog", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (typeof url === "string" && url.includes("/snapshots")) {
@@ -131,16 +131,16 @@ describe("SnapshotPanel", () => {
 
     fireEvent.click(screen.getByTestId("restore-btn-snap-1"));
 
-    // Dialog should appear with correct role + confirm/cancel
+    // Dialog 应以正确 role + confirm/cancel 出现
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeDefined();
-      expect(screen.getByText(/restore snapshot/i)).toBeDefined();
+      expect(screen.getByText(/恢复快照/)).toBeDefined();
       expect(screen.getByTestId("confirm-restore-snap-1")).toBeDefined();
       expect(screen.getByTestId("cancel-restore-snap-1")).toBeDefined();
     });
   });
 
-  // Test 4: Confirm triggers restore + per-node result
+  // 测试 4：Confirm 触发 restore + per-node 结果
   it("confirm triggers restore and shows per-node result", async () => {
     mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
       if (typeof url === "string" && url.includes("/restore/") && opts?.method === "POST") {
@@ -173,7 +173,7 @@ describe("SnapshotPanel", () => {
     });
   });
 
-  // Test 5: Per-node status uses restore-specific color class
+  // 测试 5：Per-node 状态使用 restore 专用颜色 class
   it("per-node status uses correct restore color class", async () => {
     mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
       if (url === "/api/ps") {
@@ -244,7 +244,7 @@ describe("SnapshotPanel", () => {
     });
   });
 
-  // Test 6: Fetch error uses Alert
+  // 测试 6：Fetch 错误用 Alert
   it("fetch error shows Alert", async () => {
     mockFetch.mockImplementation(() => Promise.resolve({ ok: false, status: 500, json: async () => ({}) }));
 
@@ -254,14 +254,14 @@ describe("SnapshotPanel", () => {
     });
   });
 
-  // Test 7: Empty state
+  // 测试 7：空状态
   it("empty state shows 'No snapshots' in muted text", async () => {
     mockFetch.mockImplementation(() => Promise.resolve(mockSnapshotList([])));
     render(<QueryWrapper><SnapshotPanel rigId="r1" /></QueryWrapper>);
-    await waitFor(() => expect(screen.getByText(/no snapshots/i)).toBeDefined());
+    await waitFor(() => expect(screen.getByText(/暂无快照/)).toBeDefined());
   });
 
-  // Test 8: Cancel -> no POST
+  // 测试 8：Cancel -> 无 POST
   it("cancel confirmation does not call POST", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (typeof url === "string" && url.includes("/snapshots")) {
@@ -285,7 +285,7 @@ describe("SnapshotPanel", () => {
     expect(restoreCalls).toHaveLength(0);
   });
 
-  // Test 9: Restore loading indicator
+  // 测试 9：Restore loading 指示器
   it("shows loading indicator during restore", async () => {
     let resolveRestore: ((v: unknown) => void) | null = null;
     mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
@@ -313,7 +313,7 @@ describe("SnapshotPanel", () => {
     await waitFor(() => expect(screen.queryByTestId("restore-loading")).toBeNull());
   });
 
-  // Test 10: Restore error Alert
+  // 测试 10：Restore 错误 Alert
   it("restore error shows Alert", async () => {
     mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
       if (typeof url === "string" && url.includes("/restore/") && opts?.method === "POST") {
@@ -338,7 +338,7 @@ describe("SnapshotPanel", () => {
     });
   });
 
-  // Test 11: App integration — graph detail includes SnapshotPanel
+  // 测试 11：App 集成——graph detail 含 SnapshotPanel
   it("rig detail route renders SnapshotPanel alongside graph", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (typeof url === "string" && url.includes("/graph")) {
@@ -376,7 +376,7 @@ describe("SnapshotPanel", () => {
     });
   });
 
-  // Test 12: Loading skeleton with pulse
+  // 测试 12：带 pulse 的 loading skeleton
   it("loading state shows pulse skeleton", async () => {
     mockFetch.mockReturnValue(new Promise(() => {}));
     render(<QueryWrapper><SnapshotPanel rigId="r1" /></QueryWrapper>);

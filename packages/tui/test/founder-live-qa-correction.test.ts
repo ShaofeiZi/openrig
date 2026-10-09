@@ -9,6 +9,7 @@ import { parseCommand } from "../src/grammar.js";
 import { createStyle, stripAnsi } from "../src/theme.js";
 import { stylizeLines } from "../src/stylize.js";
 import { explorerWidth } from "../src/visual-layout.js";
+import { dropW, strWidth } from "../src/text-width.js";
 import type { Action, FleetSnapshot } from "../src/types.js";
 
 type SemanticLine = { text: string; action?: Action; segs?: Array<{ text: string; token?: string }> };
@@ -94,19 +95,24 @@ function hitAt(screen: ReturnType<typeof renderScreen>, x: number, y: number) {
   return screen.hitMap.find((hit) => hit.y === y && x >= hit.x1 && x <= hit.x2);
 }
 
-describe("founder live-QA correction — mission dashboard", () => {
-  it("puts identity/state first, keeps the wave dominant, and paints semantic facts", () => {
+/** 按真实窗格分隔符提取内容，避免把显示列宽当作 UTF-16 字符下标。 */
+function contentText(screen: ReturnType<typeof renderScreen>): string {
+  return screen.lines.map((line) => dropW(line, screen.explorerWidth + 1)).join("\n");
+}
+
+describe("founder live-QA 修正——mission 仪表盘", () => {
+  it("把 identity/state 放首位，保持 wave 主导，并绘出语义事实", () => {
     const snap = missionSnapshot();
     for (const cols of [160, 120, 84]) {
       const width = cols - explorerWidth(cols) - 2;
       const lines = executionContentLines(snap.execution, snap.scopes, [], null, width) as SemanticLine[];
       const body = lines.map((line) => line.text).join("\n");
-      const mission = lines.findIndex((line) => line.text.includes("release-0.5.9") && /OUTCOMES (OPEN|COMPLETE)/.test(line.text));
-      const now = lines.findIndex((line) => /\bNOW\b/.test(line.text));
-      const next = lines.findIndex((line) => /\bNEXT\b/.test(line.text));
-      const progress = lines.findIndex((line) => /\bPROGRESS\b/.test(line.text));
-      const attention = lines.findIndex((line) => line.text.includes("NEEDS HUMAN"));
-      const wave = lines.findIndex((line) => line.text.includes("WAVE production-system"));
+      const mission = lines.findIndex((line) => line.text.includes("release-0.5.9") && /结果(开放|完成)/.test(line.text));
+      const now = lines.findIndex((line) => line.text.includes("现在"));
+      const next = lines.findIndex((line) => line.text.includes("下一个"));
+      const progress = lines.findIndex((line) => line.text.includes("进度"));
+      const attention = lines.findIndex((line) => line.text.includes("需要人类"));
+      const wave = lines.findIndex((line) => line.text.includes("波次 production-system"));
       expect(mission, `${cols}: identity/state`).toBe(0);
       expect(now, `${cols}: NOW follows identity`).toBeGreaterThan(mission);
       expect(next, `${cols}: NEXT follows NOW`).toBeGreaterThan(now);
@@ -116,13 +122,13 @@ describe("founder live-QA correction — mission dashboard", () => {
       expect(wave, `${cols}: wave begins promptly`).toBeLessThan(cols === 84 ? 14 : 10);
       expect(body).not.toContain("declared in slice files");
       expect(body).not.toContain("live now:");
-      if (cols === 84) expect(body).toContain("provenance · evidence gap");
+      if (cols === 84) expect(body).toContain("来源 · 证据缺口");
       expectTokens(lines, ["accentBright", "bright", "ok", "warn", "dim", "chrome"]);
-      expect(lines.every((line) => line.text.length <= width), `${cols}: no content overflow`).toBe(true);
+      expect(lines.every((line) => strWidth(line.text) <= width), `${cols}: no content overflow`).toBe(true);
     }
   });
 
-  it("includes every slice at every target geometry and reaches later work by scrolling", () => {
+  it("在每个目标尺寸纳入每个 slice，并可滚动到达后续内容", () => {
     const snap = missionSnapshot();
     for (const { cols, rows } of [{ cols: 160, rows: 42 }, { cols: 120, rows: 34 }, { cols: 84, rows: 28 }]) {
       const width = cols - explorerWidth(cols) - 2;
@@ -149,8 +155,8 @@ describe("founder live-QA correction — mission dashboard", () => {
   });
 });
 
-describe("founder live-QA correction — truthful explorer disclosures", () => {
-  it("gives the disclosure cell precedence while the row label keeps its drill action", () => {
+describe("founder live-QA 修正——诚实的 explorer 披露", () => {
+  it("把披露单元格放优先，同时行 label 保留其 drill 动作", () => {
       const snap = missionSnapshot();
       for (const pulse of [false, true]) {
         const view = createViewState({ instanceId: `disclosure-${pulse}`, getSnapshot: () => snap });
@@ -178,11 +184,11 @@ describe("founder live-QA correction — truthful explorer disclosures", () => {
     }
   });
 
-  it("renders disclosure glyphs only on rows with a real toggle", () => {
+  it("只在带真实 toggle 的行渲染披露字形", () => {
     const snap = missionSnapshot();
     const view = createViewState({ instanceId: "truthful", getSnapshot: () => snap });
     const screen = renderScreen(view.get(), snap, { cols: 120, rows: 34 });
-    const topology = screen.lines.find((line) => line.slice(0, screen.explorerWidth).includes("TOPOLOGY"))!;
+    const topology = screen.lines.find((line) => line.slice(0, screen.explorerWidth).includes("拓扑"))!;
     expect(topology.slice(0, screen.explorerWidth)).not.toMatch(/[⌄›]/);
     for (const row of screen.explorerRows) {
       const text = screen.lines[row.y - 1]!.slice(0, screen.explorerWidth);
@@ -190,7 +196,7 @@ describe("founder live-QA correction — truthful explorer disclosures", () => {
     }
   });
 
-  it("keeps a pod label as the right-panel drill while its glyph only expands the pod", () => {
+  it("把 pod label 保留为右面板 drill，其字形只展开该 pod", () => {
     const snap = demoSnapshot();
     const view = createViewState({ instanceId: "pod-disclosure", getSnapshot: () => snap });
     const screen = renderScreen(view.get(), snap, { cols: 120, rows: 34 });
@@ -261,54 +267,54 @@ function openAgent(snap: FleetSnapshot) {
   return view;
 }
 
-describe("founder live-QA correction — operational agent zoom", () => {
-  it("shows detailed context, activity, exact current/next rows, queue depth, and the owning needs-you action", () => {
+describe("founder live-QA 修正——运营 agent zoom", () => {
+  it("显示详细上下文、活动、确切 current/next 行、队列深度与所属 needs-you 动作", () => {
     for (const cols of [160, 120, 84]) {
       const snap = agentZoomSnapshot();
       const screen = renderScreen(openAgent(snap).get(), snap, { cols, rows: 160 });
-      const body = screen.lines.map((line) => line.slice(screen.explorerWidth + 1)).join("\n");
+      const body = contentText(screen);
       const compact = body.replace(/\s+/g, " ");
-      expect(body).toContain("CONTEXT · 69%");
-      expect(compact).toContain("176,458 input");
-      expect(compact).toContain("930 output");
-      expect(compact).toContain("258,400 window");
-      expect(body).toContain("CURRENT ACTIVITY");
-      expect(compact).toContain("needs-input");
+      expect(body).toContain("上下文 · 69%");
+      expect(compact).toContain("176,458 输入");
+      expect(compact).toContain("930 输出");
+      expect(compact).toContain("258,400 窗口");
+      expect(body).toContain("当前活动");
+      expect(compact).toContain("需要你");
       expect(compact.toLowerCase()).toContain("founder must choose the exact terminal action");
-      expect(body).toContain("CURRENT WORK · 2");
+      expect(body).toContain("当前工作 · 2");
       expect(compact).toContain("qitem-current-agent-zoom-abcdef");
       expect(compact).toContain("qitem-blocked-agent-zoom-fedcba");
-      expect(compact).toContain("blocked on qitem-upstream-runtime-slot");
-      expect(body).toContain("── QUEUE ");
-      expect(compact).toContain("depth: 3 assigned");
-      expect(compact).toContain("1 pending");
-      if (cols === 160) expect(compact).toContain("1 in progress · 1 blocked");
-      expect(body).toContain("UP NEXT · 1");
+      expect(compact).toContain("被 qitem-upstream-runtime-slot 阻塞");
+      expect(body).toContain("── 队列 ");
+      expect(compact).toContain("深度: 3 已分配");
+      expect(compact).toContain("1 待处理");
+      if (cols === 160) expect(compact).toContain("1 进行中 · 1 已阻塞");
+      expect(body).toContain("下一个 · 1");
       expect(compact).toContain("qitem-next-agent-zoom-123456");
-      expect(body).toContain("NEEDS YOU · 1");
-      expect(compact).toContain("unblocks qitem-current-agent-zoom-abcdef");
-      expect(body).toContain("RECENTLY FINISHED · bounded window");
+      expect(body).toContain("需要你 · 1");
+      expect(compact).toContain("解除 qitem-current-agent-zoom-abcdef 阻塞");
+      expect(body).toContain("刚完成 · 有界窗口");
       expect(compact).toContain("qitem-recent-agent-zoom-654321");
-      screen.lines.forEach((line) => expect(stripAnsi(line).length).toBeLessThanOrEqual(cols));
+      screen.lines.forEach((line) => expect(strWidth(stripAnsi(line))).toBeLessThanOrEqual(cols));
     }
   });
 
-  it("keeps operational agent zoom out of the human Attention feed", () => {
+  it("把运营 agent zoom 排除在人工 Attention feed 之外", () => {
     const snap = agentZoomSnapshot();
     const view = createViewState({ instanceId: "needs-agent-zoom", getSnapshot: () => snap });
     view.dispatch({ type: "jump", section: "needs" });
     let screen = renderScreen(view.get(), snap, { cols: 120, rows: 50 });
     const target = screen.contentTargets.find((item) => item.action.type === "drill" && item.action.resource === "agent");
     expect(target).toBeUndefined();
-    expect(screen.lines.join("\n")).toContain("Unavailable: Feed");
+    expect(screen.lines.join("\n")).toContain("不可用: 待关注");
     view.dispatch({ type: "drill", resource: "agent", name: "dev50.guard" });
     screen = renderScreen(view.get(), snap, { cols: 120, rows: 80 });
-    expect(screen.lines.join("\n")).toContain("CONTEXT · 69%");
+    expect(screen.lines.join("\n")).toContain("上下文 · 69%");
     expect(view.get().drill.at(-1)).toEqual({ kind: "agent", name: "dev50.guard" });
   });
 });
 
-describe("founder live-QA correction — rig-wide RECENT rail", () => {
+describe("founder live-QA 修正——全 rig RECENT 轨", () => {
   function recentSnapshot(): FleetSnapshot {
     const snap = agentZoomSnapshot();
     snap.scopes = missionSnapshot().scopes;
@@ -320,18 +326,18 @@ describe("founder live-QA correction — rig-wide RECENT rail", () => {
     return snap;
   }
 
-  it("renders a bounded chronological rail below the factory at every supported width", () => {
+  it("在每个支持宽度下于 factory 下方渲染有界时间轨", () => {
     const snap = recentSnapshot();
     for (const cols of [160, 120, 84]) {
       const view = createViewState({ instanceId: "recent", getSnapshot: () => snap });
       view.dispatch({ type: "drill", resource: "rig", name: "openrig-build", target: { host: "vm-host" } });
       const screen = renderScreen(view.get(), snap, { cols, rows: 80 });
       const body = screen.lines.join("\n");
-      expect(body).toContain("RECENT");
-      expect(body).toContain("Recorded queue changes");
+      expect(body).toContain("近期");
+      expect(body).toContain("已记录队列变更");
       expect(body.indexOf("15:02")).toBeLessThan(body.indexOf("15:03"));
       expect(body).toContain("OPR.0.5.9.11");
-      const content = screen.lines.map((line) => line.slice(screen.explorerWidth + 2)).join(" ").replace(/\s+/g, " ");
+      const content = contentText(screen).replace(/\s+/g, " " );
       expect(content).toContain("Recompose the production terminal dashboard without clipping its meaning");
       expect(body).not.toContain("next event");
       const event = screen.contentTargets.find((item) => item.action.type === "recent-open");
@@ -342,16 +348,16 @@ describe("founder live-QA correction — rig-wide RECENT rail", () => {
     }
   });
 
-  it("states the honest empty window without inventing an event", () => {
+  it("陈述诚实空窗，不伪造事件", () => {
     const snap = recentSnapshot();
     snap.recentTransitions = [];
     const view = createViewState({ instanceId: "recent-empty", getSnapshot: () => snap });
       view.dispatch({ type: "drill", resource: "rig", name: "openrig-build", target: { host: "vm-host" } });
     const body = renderScreen(view.get(), snap, { cols: 160, rows: 80 }).lines.join("\n");
-    expect(body).toContain("No recorded transitions in the current window.");
+    expect(body).toContain("当前窗口中无已记录变更。");
   });
 
-  it("shortens canonical Claude model labels in the table only", () => {
+  it("只在表格内缩短规范 Claude 模型标签", () => {
     const snap = recentSnapshot();
     const driver = snap.hosts[0]!.rigs[0]!.pods[0]!.agents[0]!;
     driver.model = "claude-fable-5.1";
@@ -401,37 +407,38 @@ function longSlice(): SliceScopeSnap {
   };
 }
 
-describe("founder live-QA correction — slice information architecture", () => {
-  it("uses semantic regions and responsive proof rows instead of delimiter prose", () => {
+describe("founder live-QA 修正——slice 信息架构", () => {
+  it("用语义区域与响应式 proof 行，而非分隔符散文", () => {
     for (const cols of [160, 120, 84]) {
       const width = cols - explorerWidth(cols) - 2;
       const lines = scopesContentLines(longSlice(), "release-0.5.9", { collapseReqs: false, narrative: false, width }) as SemanticLine[];
       const body = lines.map((line) => line.text).join("\n");
-      const intent = lines.findIndex((line) => line.text.includes("── INTENT "));
-      const requirements = lines.findIndex((line) => line.text.includes("── REQUIREMENTS "));
-      const proof = lines.findIndex((line) => line.text.includes("── PROOF ·"));
+      const intent = lines.findIndex((line) => line.text.includes("── 意图 "));
+      const requirements = lines.findIndex((line) => line.text.includes("── 需求 "));
+      const proof = lines.findIndex((line) => line.text.includes("── 证明 ·"));
       expect(intent).toBeGreaterThan(0);
       expect(requirements).toBeGreaterThan(intent);
       expect(proof).toBeGreaterThan(requirements);
-      expect(lines.every((line) => line.text.length <= width), `${cols}: no overflow`).toBe(true);
+      expect(lines.every((line) => strWidth(line.text) <= width), `${cols}: no overflow`).toBe(true);
       expectTokens(lines, ["accentBright", "bright", "ok", "warn", "dim", "chrome"]);
       expect(body).not.toContain("C1 drop ·");
       expect(body).not.toMatch(/── .* ── .* ──/);
       if (cols > 84) {
-        expect(body).toMatch(/STATE\s+#\s+REQUIREMENT\s+EVIDENCE/);
+        expect(body).toMatch(/状态\s+#\s+需求\s+证据/);
       } else {
-        expect(body).toContain("REQ 1 · PAIRED");
-        expect(body).toContain("EVIDENCE");
+        expect(body).toContain("需求 1 · 已配对");
+        expect(body).toContain("证据");
       }
       expect(body).toContain("mission-84x28.ansi");
+      const evidenceWidth = Math.max(20, Math.floor(width * 0.28));
       const evidenceText = width >= 70
-        ? lines.map((line) => line.text.slice(width - Math.max(20, Math.floor(width * 0.28))).trim()).join("")
+        ? lines.map((line) => dropW(line.text, width - evidenceWidth - 2).trim()).join("")
         : body.replace(/\s+/g, "");
       expect(evidenceText).toContain("focused-independent-review-receipt-with-a-long-name.md");
     }
   });
 
-  it("renders and scrolls the real slice page at 160x42, 120x34, and 84x28 with ANSI geometry intact", () => {
+  it("在 160x42、120x34、84x28 下渲染并滚动真实 slice 页，ANSI 几何完整", () => {
     for (const { cols, rows } of [{ cols: 160, rows: 42 }, { cols: 120, rows: 34 }, { cols: 84, rows: 28 }]) {
       const snap = missionSnapshot();
       const scope = { ...longSlice(), id: "OPR.0.5.9.1", dirName: "01-slice-1", displayName: "Slice 01 — canonical detail" };
@@ -441,10 +448,10 @@ describe("founder live-QA correction — slice information architecture", () => 
       let screen = renderScreen(view.get(), snap, { cols, rows });
       const seen = [screen.lines.join("\n")];
       expect(screen.lines.join("\n")).toContain("01-slice-1");
-      expect(screen.lines.join("\n")).toMatch(/STATE\s+building/);
-      expect(screen.lines.join("\n")).toMatch(/PROOF\s+2\/3/);
-      expect(screen.lines.join("\n")).toContain("OWNERSHIP");
-      expect(screen.lines.join("\n")).toContain("EVIDENCE · declared spec");
+      expect(screen.lines.join("\n")).toMatch(/状态\s+构建中/);
+      expect(screen.lines.join("\n")).toMatch(/证明\s+2\/3/);
+      expect(screen.lines.join("\n")).toContain("归属");
+      expect(screen.lines.join("\n")).toContain("证据 · 已声明规范");
       const styled = stylizeLines(screen, createStyle("truecolor"));
       styled.forEach((line, i) => expect(stripAnsi(line), `${cols}: strip line ${i}`).toBe(screen.lines[i]));
       expect(stylizeLines(screen, createStyle("none"))).toEqual(screen.lines);
@@ -458,16 +465,16 @@ describe("founder live-QA correction — slice information architecture", () => 
         }
       }
       const reachable = seen.join("\n");
-      expect(reachable, `${cols}: operational ownership reachable`).toContain("OWNERSHIP");
-      expect(reachable, `${cols}: authored intent reachable`).toContain("── INTENT ");
-      expect(reachable, `${cols}: authored proof reachable`).toContain("── PROOF ·");
-      expect(reachable, `${cols}: provenance reachable`).toContain("SOURCES");
+      expect(reachable, `${cols}: operational ownership reachable`).toContain("归属");
+      expect(reachable, `${cols}: authored intent reachable`).toContain("── 意图 ");
+      expect(reachable, `${cols}: authored proof reachable`).toContain("── 证明 ·");
+      expect(reachable, `${cols}: provenance reachable`).toContain("来源");
       expect(reachable, `${cols}: evidence start reachable`).toContain("focused-independent");
       expect(reachable, `${cols}: evidence end reachable`).toContain("ame.md");
     }
   });
 
-  it("uses one canonical complete slice destination from mission graph and Explorer", () => {
+  it("从 mission graph 与 Explorer 用同一个规范完整 slice 目的地", () => {
     const snap = missionSnapshot();
     const scope = { ...longSlice(), id: "OPR.0.5.9.1", dirName: "01-slice-1", displayName: "Slice 01 — canonical detail" };
     snap.scopes![0]!.slices[0] = scope;
@@ -496,34 +503,34 @@ describe("founder live-QA correction — slice information architecture", () => 
       const fromExplorer = openMission(snap);
       fromExplorer.dispatch({ type: "scopes-open", mission: "release-0.5.9", slice: scope.dirName });
       const explorerScreen = renderScreen(fromExplorer.get(), snap, { cols, rows: 220 });
-      const graphContent = graphScreen.lines.map((line) => line.slice(graphScreen.explorerWidth + 1)).join("\n");
-      const explorerContent = explorerScreen.lines.map((line) => line.slice(explorerScreen.explorerWidth + 1)).join("\n");
+      const graphContent = contentText(graphScreen);
+      const explorerContent = contentText(explorerScreen);
       const compact = graphContent.replace(/\s+/g, " ");
 
       expect(explorerContent).toBe(graphContent);
-      expect(graphContent).toContain("TOUCHED");
+      expect(graphContent).toContain("已触及");
       expect(compact).toContain("review-r2@v-openrig-build");
       if (cols > 84) expect(compact).toContain("dev-qa@v-openrig-build");
-      else expect(compact).toContain("2 served actors · latest 1 shown");
-      expect(graphContent).toContain("RULING");
+      else expect(compact).toContain("2 个已服务执行者 · 显示最新 1 个");
+      expect(graphContent).toContain("裁决");
       expect(compact).toContain("Founder selected the canonical");
       expect(compact).toContain("terminal-native slice composition.");
-      expect(graphContent).toContain("OWNERSHIP");
-      expect(graphContent).toContain("EVIDENCE");
-      expect(graphContent).toContain("NEEDS YOU");
-      expect(graphContent).toContain("TYPED ROWS");
-      expect(graphContent).toContain("DEPENDENCIES");
-      expect(graphContent).toContain("── INTENT ");
-      expect(graphContent).toContain("── REQUIREMENTS ");
-      expect(graphContent).toContain("── PROOF ·");
-      expect(graphContent).toContain("SOURCES");
-      expect(graphContent.match(/── INTENT /g)).toHaveLength(1);
+      expect(graphContent).toContain("归属");
+      expect(graphContent).toContain("证据");
+      expect(graphContent).toContain("需要你");
+      expect(graphContent).toContain("类型化行");
+      expect(graphContent).toContain("依赖");
+      expect(graphContent).toContain("── 意图 ");
+      expect(graphContent).toContain("── 需求 ");
+      expect(graphContent).toContain("── 证明 ·");
+      expect(graphContent).toContain("来源");
+      expect(graphContent.match(/── 意图 /g)).toHaveLength(1);
     }
   });
 });
 
-describe("founder live-QA correction — small filter lifecycle", () => {
-  it("applies, replaces, cancels an edit without changing the applied value, then clears on bare Escape", () => {
+describe("founder live-QA 修正——小型 filter 生命周期", () => {
+  it("应用、替换、取消一次编辑而不改已应用值，随后裸 Escape 清空", () => {
     const snap = demoSnapshot();
     const view = createViewState({ instanceId: "filter-life", getSnapshot: () => snap });
     view.dispatch(parseCommand("/dev50"));
@@ -542,7 +549,7 @@ describe("founder live-QA correction — small filter lifecycle", () => {
     expect(resolveEscapeAction(escape, view.get(), false), "unfiltered Escape keeps its prior meaning").toBeNull();
   });
 
-  it("clears an applied filter before navigating back and tells the operator how to replace or clear it", () => {
+  it("返回前清空已应用 filter，并告知操作者如何替换或清除", () => {
     const snap = demoSnapshot();
     const view = createViewState({ instanceId: "filter-priority", getSnapshot: () => snap });
     view.dispatch({ type: "scopes-mission-open", mission: "release-0.5.2" });
@@ -557,7 +564,7 @@ describe("founder live-QA correction — small filter lifecycle", () => {
     view.dispatch({ type: "drill", resource: "rig", name: "openrig-build" });
     view.dispatch({ type: "filter", text: "dev50" });
     const topology = renderScreen(view.get(), snap, { cols: 120, rows: 34 });
-    expect(topology.lines.join("\n")).toContain("/ filter agents: dev50 · / replace · esc clear");
+    expect(topology.lines.join("\n")).toContain("/ 过滤智能体: dev50 · / 替换 · Esc 清除");
     const agentLine = topology.lines.findIndex((line) => line.includes("driver"));
     const agentX = topology.lines[agentLine]!.indexOf("driver") + 1;
     expect(hitAt(topology, agentX, agentLine + 1)?.action).toEqual(expect.objectContaining({ type: "drill", resource: "agent" }));
@@ -565,6 +572,6 @@ describe("founder live-QA correction — small filter lifecycle", () => {
     view.dispatch({ type: "jump", section: "specs" });
     view.dispatch({ type: "filter", text: "review" });
     const specs = renderScreen(view.get(), snap, { cols: 120, rows: 34 });
-    expect(specs.lines.join("\n")).toContain("/ filter specs: review · / replace · esc clear");
+    expect(specs.lines.join("\n")).toContain("/ 过滤规范: review · / 替换 · Esc 清除");
   });
 });

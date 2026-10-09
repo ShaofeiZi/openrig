@@ -1,5 +1,5 @@
-// Standalone entry shares the bare-rig front door. Shared entry attaches a client
-// to the kernel's existing terminal without launching a second TUI.
+// 独立入口与裸 rig 前门共用同一条路径。共享入口把客户端挂到内核已有的终端上，
+// 不另起第二个 TUI。
 import { Command } from "commander";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -7,8 +7,8 @@ import { existsSync } from "node:fs";
 import { openMissionControl, USAGE_LINES, type FrontDoorIo } from "../front-door.js";
 import { sharedTuiTarget, attachSharedTui } from "../shared-tui.js";
 
-/** The registry-entry shape `rig tui commands` serializes (REGISTRY I2, ruling 64f1dbdf).
- *  Structural mirror of the TUI's CommandEntry data fields (functions are not serialized). */
+/** `rig tui commands` 序列化输出的注册表条目结构（REGISTRY I2，裁定 64f1dbdf）。
+ *  是 TUI CommandEntry 数据字段的结构性镜像（函数不序列化）。 */
 export interface TuiCommandEntry {
   name: string;
   aliases: string[];
@@ -18,9 +18,9 @@ export interface TuiCommandEntry {
   sample: string;
 }
 
-/** Default loader — resolves the TUI's BUILT registry module (the resolveTuiPath
- *  monorepo-first/bundled-fallback pattern) and dynamically imports it. No TUI process,
- *  no new package-dependency edge: dist is the source of truth, same as the launcher. */
+/** 默认加载器——解析 TUI 构建产物中的注册表模块（resolveTuiPath 遵循 monorepo
+ *  优先/打包兜底模式），再动态 import。不启动 TUI 进程，也不新增包依赖边：
+ *  以 dist 为准，与启动器一致。 */
 async function loadRegistryFromDist(baseDir: string): Promise<TuiCommandEntry[]> {
   const cliBaseDir = path.basename(baseDir) === "commands" ? path.resolve(baseDir, "..") : baseDir;
   const candidates = [
@@ -28,9 +28,9 @@ async function loadRegistryFromDist(baseDir: string): Promise<TuiCommandEntry[]>
     path.join(path.resolve(cliBaseDir, "../tui"), "dist/commands/registry.js"),
   ];
   const found = candidates.find((c) => existsSync(c));
-  if (!found) throw new Error("TUI command registry not installed (no tui/dist/commands/registry.js next to this CLI)");
+  if (!found) throw new Error("TUI 命令注册表未安装（本 CLI 旁边缺少 tui/dist/commands/registry.js）");
   const mod = (await import(pathToFileURL(found).href)) as { COMMAND_REGISTRY: TuiCommandEntry[] };
-  // Serialize the DATA contract only — never hand-maintained (PM pin 2).
+  // 只序列化数据契约——绝不手工维护（PM pin 2）。
   return mod.COMMAND_REGISTRY.map(({ name, aliases, args, description, context, sample }) => ({
     name, aliases, args, description, context, sample,
   }));
@@ -42,14 +42,14 @@ export function tuiCommand(io: FrontDoorIo & {
   attachShared?: (target: string) => Promise<number>;
 } = {}): Command {
   const cmd = new Command("tui")
-    .description("open mission control (standalone by default; --shared joins the kernel terminal)")
-    .option("--shared", "join the kernel's existing shared terminal; detach with Ctrl-b d")
-    .addHelpText("after", "\nThe shared terminal keeps its view when you detach. On an older kernel, or after quitting the TUI, run rig tui in that terminal once. No agent or terminal is started by --shared.\nHerdr/cmux users can also open the kernel through rig terminal open kernel --provider herdr|cmux.");
+    .description("打开任务控制台（默认独立打开；--shared 加入内核终端）")
+    .option("--shared", "加入内核已有的共享终端；用 Ctrl-b d 脱离")
+    .addHelpText("after", "\n共享终端在你脱离后会保留视图。若内核版本较旧，或退出过 TUI，在该终端里运行一次 zrig tui 即可。--shared 不会启动任何智能体或终端。\nHerdr/cmux 用户也可通过 zrig terminal open kernel --provider herdr|cmux 打开内核。");
 
   cmd
     .command("commands")
-    .description("list every TUI command (serialized from the ONE command registry; --json for agents)")
-    .option("--json", "JSON output for agents")
+    .description("列出全部 TUI 命令（来自唯一命令注册表的序列化结果；--json 供智能体使用）")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: { json?: boolean }) => {
       const load = io.loadRegistry ?? (() => loadRegistryFromDist(import.meta.dirname));
       const entries = await load();
@@ -57,12 +57,12 @@ export function tuiCommand(io: FrontDoorIo & {
         console.log(JSON.stringify(entries));
         return;
       }
-      // Human table: name/aliases/args/description/context — the context column renders
-      // on EVERY row (PM pin 3: honest availability composing with the C3 detector states).
+      // 人类可读表格：name/aliases/args/description/context——context 列在每一行都渲染
+      // （PM pin 3：如实展示可用性，并与 C3 检测状态组合）。
       const w1 = Math.max(...entries.map((e) => (e.name + " " + e.args).trim().length), 7);
       const w2 = Math.max(...entries.map((e) => e.aliases.join(",").length), 7);
       const w3 = Math.max(...entries.map((e) => e.context.length), 7);
-      console.log(`${"COMMAND".padEnd(w1)}  ${"ALIASES".padEnd(w2)}  ${"CONTEXT".padEnd(w3)}  DESCRIPTION`);
+      console.log(`${"命令".padEnd(w1)}  ${"别名".padEnd(w2)}  ${"上下文".padEnd(w3)}  描述`);
       for (const e of entries) {
         const cmdCol = (e.name + " " + e.args).trim();
         console.log(`${cmdCol.padEnd(w1)}  ${e.aliases.join(",").padEnd(w2)}  ${e.context.padEnd(w3)}  ${e.description}`);
@@ -73,13 +73,13 @@ export function tuiCommand(io: FrontDoorIo & {
     .action(async (opts: { shared?: boolean }) => {
       const stdoutIsTTY = io.stdoutIsTTY ?? process.stdout.isTTY === true;
       if (!stdoutIsTTY || (opts.shared && !(io.stdinIsTTY ?? process.stdin.isTTY === true))) {
-        // Same TTY-awareness on stdout as the bare-`rig` front door — degrade, never
-        // launch the interactive TUI into a redirected/piped stdout.
+        // 与裸 rig 前门同样的 TTY 感知：降级处理，绝不把交互式 TUI
+        // 启动到被重定向/管道化的 stdout。
         const err = io.err ?? ((l: string) => process.stderr.write(l + "\n"));
         const exit = io.exit ?? ((c: number) => process.exit(c));
         for (const line of USAGE_LINES) err(line);
         err("");
-        err("mission control needs an interactive terminal (shared entry requires TTY input and output)");
+        err("任务控制台需要交互式终端（共享入口需要 TTY 输入输出）");
         exit(1);
         return;
       }
@@ -88,9 +88,9 @@ export function tuiCommand(io: FrontDoorIo & {
         const exit = io.exit ?? ((code: number) => process.exit(code));
         try {
           const target = await (io.sharedTarget ?? sharedTuiTarget)();
-          err("Joining the kernel terminal. Ctrl-b d detaches and preserves the view; if a shell is shown, run rig tui once.");
+          err("正在加入内核终端。Ctrl-b d 脱离并保留视图；若看到的是 shell，请运行一次 zrig tui。");
           const code = await (io.attachShared ?? attachSharedTui)(target);
-          if (code !== 0) err("Could not attach the kernel terminal. Inspect rig ps --nodes --rig kernel and rig status; standalone: rig tui.");
+          if (code !== 0) err("无法挂载内核终端。请检查 zrig ps --nodes --rig kernel 与 zrig status；独立模式：zrig tui。");
           exit(code);
         } catch (error) {
           err(error instanceof Error ? error.message : String(error));

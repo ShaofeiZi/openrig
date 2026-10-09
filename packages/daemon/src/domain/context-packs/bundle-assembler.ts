@@ -1,47 +1,42 @@
-// Rig Context / Composable Context Injection v0 (PL-014) — bundle
-// assembler.
+// 工作组上下文 / 可组合上下文注入 v0（PL-014）——包组装器。
 //
-// Concatenates a context_pack's included files into a single coherent
-// paste-ready string. Each file gets a `## File: <path> (role: <role>)`
-// header so the destination seat can recognize the bundle structure.
-// The full bundle leads with a one-line manifest summary so the
-// destination has at-a-glance context.
+// 将 context_pack 包含的文件拼接为一段连贯、可直接粘贴的字符串。每个文件都有
+// `## 文件：<path>（角色：<role>）` header，使目标 seat 能识别 bundle 结构。完整 bundle
+// 以单行 manifest summary 开头，便于目标快速掌握 context。
 //
-// One coherent paste, NOT N separate sends — matches PRD § Item 5: "the
-// seat receives the pack as a single coherent priming injection."
+// 一次连贯粘贴，而非 N 次独立发送——符合 PRD 第 5 项：“seat 以一次连贯的预加载注入接收 pack。”
 
 import { readFileSync } from "node:fs";
 import { ContextPackError, type ContextPackEntry } from "./context-pack-types.js";
 import { estimateTokensFromBytes } from "./token-estimate.js";
 
 export interface AssembledBundle {
-  /** Concatenated bundle string ready for SessionTransport.send. */
+  /** 已拼接、可供 SessionTransport.send 使用的 bundle string。 */
   text: string;
-  /** Total length in bytes of the assembled string (UTF-8 encoded). */
+  /** 组合后字符串的总 byte 长度（UTF-8 编码）。 */
   bytes: number;
-  /** Daemon-derived estimate (chars / 4 rounded). */
+  /** daemon 派生的估算值（chars / 4 并取整）。 */
   estimatedTokens: number;
-  /** Per-file metadata threaded through assembly for the dry-run preview. */
+  /** 贯穿 assembly、供 dry-run preview 使用的逐文件 metadata。 */
   files: Array<{ path: string; role: string; bytes: number; estimatedTokens: number }>;
-  /** Files that were referenced in the manifest but missing on disk;
-   *  surfaced as a warning in the preview rather than a hard fail so
-   *  operator can repair. */
+  /** manifest 中引用但磁盘上缺失的文件；在 preview 中呈现 warning 而非 hard fail，
+   *  方便用户修复。 */
   missingFiles: Array<{ path: string; role: string }>;
 }
 
 export interface AssembleOpts {
   packEntry: ContextPackEntry;
-  /** Defaults to readFileSync; injected for tests. */
+  /** 默认为 readFileSync；测试时可注入。 */
   readFile?: (absPath: string) => string;
 }
 
-/** Atom 3's deliberately dumb composition separator. Source bytes are
- * otherwise untouched: no trim, framing headers, or forced final newline. */
+/** Atom 3 刻意保持简单的 composition separator。除此之外不修改 source byte：
+ * 不 trim、不添加 framing header，也不强制最终换行。 */
 export const PLAIN_COMPOSE_SEPARATOR = "\n\n";
 
 export interface PlainFileInput {
   path: string;
-  /** null records an honestly missing member. */
+  /** null 如实记录缺失 member。 */
   content: string | null;
 }
 
@@ -54,10 +49,9 @@ export interface PlainFileAssembly {
 }
 
 /**
- * Atom 3 compose core: concatenate present file contents in declared order.
- * The durable store retains each source as its own member; this projection is
- * the exact content future delivery verbs can resolve without coupling the
- * context noun to SessionTransport.
+ * Atom 3 compose core：按声明顺序拼接存在的文件内容。durable store 将每个 source 保留为
+ * 独立 member；此 projection 是未来 delivery 操作可解析的精确内容，无需将 context 名词
+ * 与 SessionTransport 耦合。
  */
 export function assemblePlainFiles(opts: { files: PlainFileInput[] }): PlainFileAssembly {
   const present = opts.files.filter(
@@ -83,34 +77,33 @@ export function assemblePlainFiles(opts: { files: PlainFileInput[] }): PlainFile
   };
 }
 
-const PACK_HEADER_PREFIX = "# OpenRig Context Pack:";
-const FILE_HEADER_PREFIX = "## File:";
+const PACK_HEADER_PREFIX = "# zrig 上下文包：";
+const FILE_HEADER_PREFIX = "## 文件：";
 
 /**
- * Assembles a context pack into a single paste-ready string.
+ * 将 context pack 组合为一段可直接粘贴的字符串。
  *
  * Frame:
- *   # OpenRig Context Pack: <name> v<version>
- *   <purpose, if any>
+ *   # zrig 上下文包：<name> v<version>
+ *   <purpose（如有）>
  *
- *   ## File: <path> (role: <role>)
- *   <file contents>
+ *   ## 文件：<path>（角色：<role>）
+ *   <文件内容>
  *
- *   ## File: <path> (role: <role>)
- *   <file contents>
+ *   ## 文件：<path>（角色：<role>）
+ *   <文件内容>
  *
  *   ...
  *
- * Each file is separated by a blank line so adjacent contents don't
- * accidentally merge into a contiguous markdown block. Missing files
- * are skipped (operator sees them in `missingFiles` for repair).
+ * 每个文件以空行分隔，防止相邻内容意外合并为连续 markdown block。缺失文件会被跳过
+ *（用户可在 `missingFiles` 中看到并修复）。
  */
 export function assembleBundle(opts: AssembleOpts): AssembledBundle {
   const { packEntry } = opts;
   const reader = opts.readFile ?? ((p: string) => readFileSync(p, "utf-8"));
 
   const sections: string[] = [];
-  sections.push(`${PACK_HEADER_PREFIX} ${packEntry.name} v${packEntry.version}`);
+  sections.push(`${PACK_HEADER_PREFIX}${packEntry.name} v${packEntry.version}`);
   if (packEntry.purpose) {
     sections.push(packEntry.purpose.trim());
   }
@@ -129,13 +122,13 @@ export function assembleBundle(opts: AssembleOpts): AssembledBundle {
     } catch (err) {
       throw new ContextPackError(
         "file_read_failed",
-        `failed to read pack file ${f.absolutePath}: ${(err as Error).message}`,
+        `读取 pack 文件 ${f.absolutePath} 失败：${(err as Error).message}`,
         { packId: packEntry.id, path: f.path },
       );
     }
     const headerLine = f.summary
-      ? `${FILE_HEADER_PREFIX} ${f.path} (role: ${f.role}) — ${f.summary}`
-      : `${FILE_HEADER_PREFIX} ${f.path} (role: ${f.role})`;
+      ? `${FILE_HEADER_PREFIX}${f.path}（角色：${f.role}）——${f.summary}`
+      : `${FILE_HEADER_PREFIX}${f.path}（角色：${f.role}）`;
     sections.push(headerLine);
     sections.push(content.trimEnd());
     const bytes = Buffer.byteLength(content, "utf-8");

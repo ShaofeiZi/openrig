@@ -14,68 +14,61 @@ export interface PsEntry {
   rigId: string;
   name: string;
   /**
-   * Alias of `name`. Always populated and always equal to `name`.
+   * `name` 的别名；始终存在且始终等于 `name`。
    *
-   * Background: per-node `NodeInventoryEntry` exposes the rig's name as
-   * `rigName` while rig-summary `PsEntry` historically used `name`. Agent
-   * code that projects `.rigName` from rig-summary JSON saw silent
-   * `null`/`undefined`. This alias closes that inconsistency without
-   * breaking existing consumers reading `.name`.
+   * 背景：逐节点 `NodeInventoryEntry` 以 `rigName` 暴露工作组名称，而工作组摘要
+   * `PsEntry` 历史上使用 `name`。从工作组摘要 JSON 投影 `.rigName` 的智能体代码
+   * 会静默得到 `null`/`undefined`。此别名消除不一致，同时不破坏读取 `.name` 的现有消费方。
    */
   rigName: string;
   nodeCount: number;
   runningCount: number;
   /**
-   * Slice 15 — count of nodes whose `terminal-active` primitive
-   * reports `isActiveWithinWindow === true`. PARALLEL to `runningCount`
-   * (which stays `process-alive` semantics). Sourced exclusively from
-   * the SeatActivityService; never from queue/assignment state.
+   * Slice 15——`terminal-active` 原语报告 `isActiveWithinWindow === true` 的节点数。
+   * 它与 `runningCount` 并列，后者保持 `process-alive` 语义。数据只来自
+   * SeatActivityService，绝不来自队列/分派状态。
    */
   activeCount: number;
   /**
-   * Slice 15 — count of nodes whose `has-work-to-do` primitive reports
-   * `hasAssignedWork === true`. Derived from active queue items
-   * with `destination_session` matching either of the node's canonical
-   * coordinates. Independent from `activeCount` (non-inference contract).
+   * Slice 15——`has-work-to-do` 原语报告 `hasAssignedWork === true` 的节点数。
+   * 由活跃队列项派生，其 `destination_session` 必须匹配节点任一规范坐标。
+   * 与 `activeCount` 相互独立（禁止推断契约）。
    */
   hasWorkCount: number;
   status: "running" | "partial" | "stopped";
-  /** Always populated. Folded from per-node `lifecycleState` (post-L2);
-   * empty rigs derive `stopped`. Never undefined or null. */
+  /** 始终存在。由逐节点 `lifecycleState`（L2 之后）折叠；空工作组派生为 `stopped`，
+   * 绝不是 undefined 或 null。 */
   lifecycleState: RigLifecycleState;
   uptime: string | null;
   latestSnapshot: string | null;
-  /** OPR.0.3.3.19 - ISO timestamp when the rig was archived, or null if active. */
+  /** OPR.0.3.3.19——工作组归档时的 ISO 时间戳；活跃时为 null。 */
   archivedAt: string | null;
-  /** OPR.0.3.3.19 - convenience flag; true iff `archivedAt !== null`. */
+  /** OPR.0.3.3.19——便捷标志；当且仅当 `archivedAt !== null` 时为 true。 */
   isArchived: boolean;
-  /** OPR.0.3.4.9 — periodic snapshot floor: whether the scheduler is active. */
+  /** OPR.0.3.4.9——周期快照下限：调度器是否活跃。 */
   periodicSnapshotActive: boolean;
-  /** OPR.0.3.4.9 — periodic snapshot interval in seconds (0 if inactive). */
+  /** OPR.0.3.4.9——周期快照间隔（秒）；未启用时为 0。 */
   periodicSnapshotIntervalSeconds: number;
-  /** OPR.0.3.4.9 — count of auto-periodic snapshots for this rig. */
+  /** OPR.0.3.4.9——此工作组的 auto-periodic 快照数量。 */
   autoPeriodicSnapshotCount: number;
   /**
-   * OPR.0.4.4.21 — count of seats needing attention (additive field; the
-   * consolidated default's ATTENTION flag and the host rollup's "K need
-   * attention" both read it). A seat counts ONCE when ANY signal in
-   * `seatNeedsAttention` fires. Folded inside the same per-rig inventory
-   * pass as `lifecycleState` — no extra probes.
+   * OPR.0.4.4.21——需要关注的席位数（追加字段；聚合默认视图的 ATTENTION 标志与主机汇总的
+   * “K 个需要关注”都读取它）。`seatNeedsAttention` 中任一信号触发时，该席位只计一次。
+   * 与 `lifecycleState` 在同一次逐工作组清单遍历中折叠，无额外探测。
    */
   attentionCount: number;
 }
 
 /**
- * OPR.0.4.4.21 — THE rig-rollup attention predicate (one predicate, one
- * count; mirrors + extends the CLI's per-node `needsAttention`). A seat
- * needs attention iff ANY of:
- *   - lifecycle `attention_required`
- *   - startup `attention_required`/`failed` — counted DIRECTLY from
- *     startupStatus; `latestError` may legitimately be null here
- *   - a live runtime hook reporting `needs_input` (stale hooks arrive as
- *     `unknown` from the store and contribute nothing — never guessed)
- *   - a held seat (`heldReason` present)
- *   - a recorded startup error (`latestError` present)
+ * OPR.0.4.4.21——唯一的工作组汇总关注谓词（一个谓词、一个计数；镜像并扩展 CLI 的逐节点
+ * `needsAttention`）。满足以下任一条件时席位需要关注：
+ *   - lifecycle 为 `attention_required`
+ *   - startup 为 `attention_required`/`failed`；直接按 startupStatus 计数，
+ *     此处 `latestError` 可以合法地为 null
+ *   - 活跃运行时 hook 报告 `needs_input`（陈旧 hook 从 store 返回 `unknown`，
+ *     不贡献计数，绝不猜测）
+ *   - 席位被暂挂（存在 `heldReason`）
+ *   - 已记录启动错误（存在 `latestError`）
  */
 export function seatNeedsAttention(entry: NodeInventoryEntry, activity: AgentActivity | null): boolean {
   return entry.lifecycleState === "attention_required"
@@ -87,20 +80,20 @@ export function seatNeedsAttention(entry: NodeInventoryEntry, activity: AgentAct
 }
 
 /**
- * Folds per-node lifecycle states into a rig-level lifecycle state.
+ * 把逐节点生命周期状态折叠为工作组级生命周期状态。
  *
- *   attention_required > running > recoverable > stopped, with `degraded` for mixes.
+ *   attention_required > running > recoverable > stopped；混合状态使用 `degraded`。
  *
- * Rules (post-L2):
- *   - any node attention_required          → attention_required (priority over below).
- *   - all nodes running                    → running.
- *   - all nodes non-running, any recoverable → recoverable.
- *   - all nodes non-running, none recoverable → stopped.
- *   - mixed running + non-running          → degraded.
- *   - empty rig (no nodes)                 → stopped.
+ * 规则（L2 之后）：
+ *   - 任一节点 attention_required            → attention_required（优先于以下规则）。
+ *   - 所有节点 running                       → running。
+ *   - 所有节点均未运行，且任一可恢复           → recoverable。
+ *   - 所有节点均未运行，且无可恢复项           → stopped。
+ *   - running 与未运行混合                    → degraded。
+ *   - 空工作组（无节点）                      → stopped。
  *
- * `recoverable` at rig level depends on per-node recoverability, which already accounts
- * for whether the rig's latest usable snapshot has a resume token for that node.
+ * 工作组级 `recoverable` 取决于逐节点可恢复性；后者已经考虑工作组最新可用快照中
+ * 是否包含该节点的 resume token。
  */
 export function deriveRigLifecycleState(nodeStates: NodeLifecycleState[]): RigLifecycleState {
   if (nodeStates.length === 0) return "stopped";
@@ -118,22 +111,18 @@ export function deriveRigLifecycleState(nodeStates: NodeLifecycleState[]): RigLi
 }
 
 /**
- * Slice-05 item-5 (D5) — the SINGLE effective-running predicate for the ps
- * running rollup. `sessions.status='running'` alone is verdict-blind: a seat
- * whose tmux session was torn down out-of-band keeps `status='running'` in the
- * DB, so the raw SQL count fabricates a dead seat as running. The
- * SeatIdentityReconciler (and, since Slice-05, the live SessionTransport on a
- * `session_missing` send/capture) records an APPLICABLE `session_missing`
- * verdict for exactly that case; node-inventory already surfaces it here,
- * applicability-gated (a stale verdict is null → fail-open).
+ * Slice-05 item-5（D5）——ps 运行汇总唯一的有效运行谓词。仅看
+ * `sessions.status='running'` 无法感知判定：tmux 会话在带外被拆除后，席位在数据库中仍保持
+ * `status='running'`，原始 SQL 计数便会把已停止席位伪造成运行中。SeatIdentityReconciler
+ *（以及 Slice-05 起，live SessionTransport 在 `session_missing` 发送/捕获时）会为此场景记录
+ * 适用的 `session_missing` 判定；node-inventory 已在此暴露，并受适用性门控
+ *（陈旧判定为 null，即失败开放）。
  *
- * ONLY `reason === "session_missing"` — a genuinely-gone tmux session — is
- * excluded. `pane_pid_gone` / `mismatch` / `tmux_unavailable` and an absent or
- * inapplicable (null) verdict all stay running: an ambiguous or non-fatal
- * identity signal must never fabricate `stopped` (it down-ranks lifecycle to
- * attention, a separate axis). runningCount, status, and activeCount all flow
- * through this one predicate so the three never contradict each other. This
- * reads the verdict; it NEVER mutates `sessions.status`.
+ * 只排除 `reason === "session_missing"`，即 tmux 会话确实消失。`pane_pid_gone`、
+ * `mismatch`、`tmux_unavailable` 以及缺失或不适用（null）的判定都保持运行中：
+ * 含糊或非致命的身份信号绝不能伪造 `stopped`（它只在独立轴上把 lifecycle 降为 attention）。
+ * runningCount、status 与 activeCount 都经过此唯一谓词，三者不会互相矛盾。
+ * 本函数只读取判定，绝不修改 `sessions.status`。
  */
 export function isEffectivelyRunning(node: NodeInventoryEntry): boolean {
   if (node.sessionStatus !== "running") return false;
@@ -142,15 +131,14 @@ export function isEffectivelyRunning(node: NodeInventoryEntry): boolean {
 }
 
 /**
- * Projects rig/run summary for `rig ps`.
- * Aggregates across all rigs: node counts, running counts, status, uptime, snapshot age.
+ * 为 `zrig ps` 投影工作组/运行摘要。
+ * 汇总所有工作组的节点数、运行数、状态、运行时间与快照年龄。
  */
 export class PsProjectionService {
   readonly db: Database.Database;
   private readonly seatActivity: SeatActivityService | null;
-  /** OPR.0.4.4.21 — synchronous hook-activity lookup for the attention
-   *  predicate's `needs_input` signal. Optional: absent → the signal
-   *  contributes false (honest degrade), never a guess. */
+  /** OPR.0.4.4.21——为关注谓词的 `needs_input` 信号同步查询 hook 活动。
+   * 可选；缺失时该信号贡献 false（如实降级），绝不猜测。 */
   private readonly agentActivity: AgentActivityStore | null;
   private periodicSnapshotActive = false;
   private periodicSnapshotIntervalSeconds = 0;
@@ -167,8 +155,8 @@ export class PsProjectionService {
   }
 
   getEntries(filter?: RigArchiveFilter): PsEntry[] {
-    // OPR.0.3.3.19 - default excludes archived rigs at the projection layer
-    // (NOT client-side). Explicit includeArchived/archivedOnly opt in.
+    // OPR.0.3.3.19——默认在投影层排除已归档工作组，而非由客户端排除。
+    // 通过 includeArchived/archivedOnly 显式选择包含。
     const cond = archiveWhereClause("r.archived_at", filter);
     const where = cond ? `WHERE ${cond}` : "";
     const rows = this.db.prepare(`
@@ -203,34 +191,27 @@ export class PsProjectionService {
 
     const now = Date.now();
 
-    // FS-1 W1.2 (rig-level N+1 collapse): the assigned-work map is host-global and
-    // bounded by distinct destination sessions (seat count), so read it ONCE here
-    // instead of one countNodesWithPendingWork query per rig. Per-rig hasWorkCount
-    // is then a pure JS derivation over the already-fetched inventory below.
+    // FS-1 W1.2（消除工作组级 N+1）：已分派工作映射在主机范围全局共享，并受不同目标会话数
+    //（席位数）限制，因此这里只读取一次，而不是每个工作组执行一次 countNodesWithPendingWork。
+    // 每个工作组的 hasWorkCount 随后基于下方已获取的清单，以纯 JS 派生。
     const assignedByDest = readAssignedWorkBySession(this.db);
-    // FS-1 W1.2: node inventory for ALL rigs built in ONE batched pass (was one
-    // getNodeInventory query-set PER RIG — the rig-level N+1); indexed per rig below.
+    // FS-1 W1.2：所有工作组的节点清单在一次批处理中构建（此前每个工作组都有一组
+    // getNodeInventory 查询，形成工作组级 N+1），随后按工作组索引。
     const inventoryByRig = getNodeInventoryForAllRigs(this.db);
 
     return rows.map((r) => {
-      // Derive rig-level lifecycleState by folding per-node states. FS-1 W1.2:
-      // inventory for ALL rigs was built in ONE batched pass above (previously one
-      // getNodeInventory query-set per rig — the rig-level N+1); index it here.
+      // 折叠逐节点状态，派生工作组级 lifecycleState。FS-1 W1.2：上方已一次批量构建
+      // 所有工作组的清单（此前每个工作组各执行一组 getNodeInventory 查询，形成 N+1），
+      // 此处直接按工作组索引。
       const inventory = inventoryByRig.get(r.rig_id) ?? [];
 
-      // Slice-05 item-5 (D5) — running honesty. The raw SQL `running_count` is
-      // the running BASE: it selects each node's latest session by
-      // `created_at DESC, id DESC` (the "newest session counts" contract). We
-      // must NOT re-derive that base from `inventory` — node-inventory picks the
-      // latest session by `id DESC` alone, a DIFFERENT ordering that diverges
-      // whenever session ids are not monotonic with created_at (pre-existing
-      // latent inconsistency, orthogonal to D5). Instead, subtract ONLY the
-      // status-running seats that are not EFFECTIVELY running — i.e. those
-      // carrying an applicable `session_missing` verdict — so a torn-down tmux
-      // session is never fabricated as running. The subtraction routes through
-      // the SAME isEffectivelyRunning predicate the activeCount gate uses below,
-      // so the two counts never disagree on liveness. NEVER mutates
-      // `sessions.status`.
+      // Slice-05 item-5（D5）——如实计算运行状态。原始 SQL 的 `running_count` 是运行基数：
+      // 它按 `created_at DESC, id DESC` 选择每个节点的最新会话（“最新会话计数”契约）。
+      // 不能从 `inventory` 重新派生该基数，因为 node-inventory 仅按 `id DESC` 选择最新会话；
+      // 两种排序不同，当会话 id 与 created_at 不单调时会分歧（既有潜在不一致，与 D5 正交）。
+      // 因此只减去 status 为 running 但实际未运行的席位，即携带适用 `session_missing` 判定的席位，
+      // 避免把已拆除的 tmux 会话伪造成运行中。减法经过下方 activeCount 门控使用的同一
+      // isEffectivelyRunning 谓词，使两个计数不会在存活性上分歧；绝不修改 `sessions.status`。
       const sessionMissingRunning = inventory.filter(
         (n) => n.sessionStatus === "running" && !isEffectivelyRunning(n),
       ).length;
@@ -244,10 +225,9 @@ export class PsProjectionService {
 
       const lifecycleState = deriveRigLifecycleState(inventory.map((e) => e.lifecycleState));
 
-      // Slice 15 — `terminal-active` count. Subset of running tmux-bound
-      // seats whose latest SeatActivity observation says
-      // `isActiveWithinWindow === true`. Sourced ONLY from the activity
-      // service; never derived from queue state.
+      // Slice 15——`terminal-active` 计数。它是运行中、绑定 tmux 的席位子集，
+      // 其最新 SeatActivity 观测必须满足 `isActiveWithinWindow === true`。
+      // 只从 activity service 获取，绝不从队列状态派生。
       let activeCount = 0;
       if (this.seatActivity) {
         for (const node of inventory) {
@@ -258,21 +238,18 @@ export class PsProjectionService {
         }
       }
 
-      // Slice 15 — `has-work-to-do` count. Subset of nodes with at
-      // least one pending, in-progress, or blocked qitem whose destination
-      // matches either canonical coordinate for the node. Sourced ONLY from the queue
-      // projection; never from tmux output.
-      // Slice 17: this is the SAME dual-key resolver and active-state map used by
-      // per-node inventory. The former single-key/pending-only divergence is gone.
+      // Slice 15——`has-work-to-do` 计数。节点至少有一个 pending、in-progress 或 blocked qitem，
+      // 且目标匹配该节点任一规范坐标时计入。只从队列投影获取，绝不从 tmux 输出派生。
+      // Slice 17：这里使用与逐节点清单相同的双 key 解析器和活跃状态映射，
+      // 已消除原先仅单 key/仅 pending 的分歧。
       let hasWorkCount = 0;
       for (const node of inventory) {
         if (countAssignedWorkForEntry(node, assignedByDest).assignedWorkCount > 0) hasWorkCount++;
       }
 
-      // OPR.0.4.4.21 — attention fold, same inventory pass. Hook activity
-      // is a synchronous events lookup by session name (NodeInventoryEntry
-      // carries canonicalSessionName, not nodeId); `now` makes staleness
-      // honest (stale hooks come back `unknown` and contribute nothing).
+      // OPR.0.4.4.21——在同一次清单遍历中折叠关注状态。hook 活动按会话名称同步查询事件
+      //（NodeInventoryEntry 携带 canonicalSessionName，而非 nodeId）；`now` 确保陈旧性如实，
+      // 陈旧 hook 返回 `unknown`，不贡献计数。
       let attentionCount = 0;
       const nowDate = new Date(now);
       for (const node of inventory) {
@@ -306,8 +283,8 @@ export class PsProjectionService {
 }
 
 /**
- * Compatibility helper: count pending-only qitems for one canonical session.
- * The wider assigned-work projection uses countAssignedWorkForSession below.
+ * 兼容辅助函数：统计一个规范会话仅 pending 的 qitem。
+ * 更宽的已分派工作投影使用下方 countAssignedWorkForSession。
  */
 export function countPendingWorkForSession(db: Database.Database, canonicalSessionName: string): number {
   return countAssignedWorkForSession(db, canonicalSessionName).pendingWorkCount;
@@ -332,13 +309,13 @@ function formatDuration(ms: number): string {
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
   const remainMinutes = minutes % 60;
-  if (hours < 24) return `${hours}h ${remainMinutes}m`;
+  if (hours < 24) return `${hours}小时 ${remainMinutes}分钟`;
   const days = Math.floor(hours / 24);
   const remainHours = hours % 24;
-  return `${days}d ${remainHours}h`;
+  return `${days}天 ${remainHours}小时`;
 }
 
 function formatAge(ms: number): string {
   const dur = formatDuration(ms);
-  return `${dur} ago`;
+  return `${dur}前`;
 }

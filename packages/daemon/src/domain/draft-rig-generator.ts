@@ -21,7 +21,7 @@ function mapRuntime(hint: RuntimeHint): string {
     case "claude-code": return "claude-code";
     case "codex": return "codex";
     case "terminal": return "terminal";
-    default: return "claude-code"; // unreachable — unknowns excluded before this
+    default: return "claude-code"; // 不可达——unknown 已在此前排除
   }
 }
 
@@ -33,21 +33,21 @@ export interface DraftResult {
 export function generateDraftRig(sessions: DiscoveredSession[]): DraftResult {
   const warnings: string[] = [];
 
-  // Exclude unknown runtime sessions
+  // 排除 runtime 未知的 session
   const usable = sessions.filter((s) => {
     if (s.runtimeHint === "unknown") {
-      warnings.push(`Excluded session '${s.tmuxSession}': runtime could not be determined. Investigate manually.`);
+      warnings.push(`已排除 session '${s.tmuxSession}'：无法确定 runtime，请手动调查。`);
       return false;
     }
     return true;
   });
 
   if (usable.length === 0) {
-    const yaml = warnings.map((w) => `# WARNING: ${w}`).join("\n") + "\n# No sessions with known runtime found.\n";
+    const yaml = warnings.map((w) => `# 警告：${w}`).join("\n") + "\n# 未找到 runtime 已知的 session。\n";
     return { yaml, warnings };
   }
 
-  // Group by CWD
+  // 按 CWD 分组
   const cwdGroups = new Map<string, DiscoveredSession[]>();
   for (const s of usable) {
     const key = s.cwd ?? "__no-cwd__";
@@ -55,7 +55,7 @@ export function generateDraftRig(sessions: DiscoveredSession[]): DraftResult {
     cwdGroups.get(key)!.push(s);
   }
 
-  // Build pods
+  // 构建 pod
   const podIds = new Set<string>();
   const pods: RigSpecPod[] = [];
 
@@ -95,7 +95,7 @@ export function generateDraftRig(sessions: DiscoveredSession[]): DraftResult {
   };
 
   const yamlBody = RigSpecCodec.serialize(rigSpec);
-  const commentPreamble = warnings.map((w) => `# WARNING: ${w}`).join("\n");
+  const commentPreamble = warnings.map((w) => `# 警告：${w}`).join("\n");
   const yaml = commentPreamble ? `${commentPreamble}\n${yamlBody}` : yamlBody;
 
   return { yaml, warnings };

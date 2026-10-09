@@ -42,27 +42,27 @@ interface ExpandResult {
 }
 
 export function growCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("grow").description("Add one or more seats to a running rig");
+  const cmd = new Command("grow").description("向运行中的工作组添加一个或多个席位");
   const getDeps = () => depsOverride ?? {
     lifecycleDeps: realDeps(),
     clientFactory: (url: string) => new DaemonClient(url),
   };
 
   cmd
-    .argument("<rig-id>", "Target rig ID")
-    .argument("<members...>", "Names for the new seats")
-    .option("--pod <pod>", "Target pod; inferred when the rig has one pod")
-    .option("--new-pod <pod>", "Create a new pod for the seats")
-    .option("--runtime <runtime>", "Agent runtime", "claude-code")
-    .option("--cwd <path>", "Working directory for the seat", process.cwd())
-    .option("--json", "JSON output for agents")
+    .argument("<rig-id>", "目标工作组 ID")
+    .argument("<members...>", "新席位的名称")
+    .option("--pod <pod>", "目标 Pod；当工作组只有一个 Pod 时可省略推断")
+    .option("--new-pod <pod>", "为这些席位新建一个 Pod")
+    .option("--runtime <runtime>", "智能体运行时", "claude-code")
+    .option("--cwd <path>", "席位的工作目录", process.cwd())
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (
       rigId: string,
       members: string[],
       opts: { pod?: string; newPod?: string; runtime: string; cwd: string; json?: boolean },
     ) => {
       if (opts.pod && opts.newPod) {
-        console.error("Choose either --pod or --new-pod, not both.");
+        console.error("请选择 --pod 或 --new-pod，二者不可同时使用。");
         process.exitCode = 1;
         return;
       }
@@ -74,7 +74,7 @@ export function growCommand(depsOverride?: StatusDeps): Command {
 
       const rigRes = await client.get<RigNode[]>(`/api/rigs/${encodeURIComponent(rigId)}/nodes`);
       if (rigRes.status >= 400) {
-        console.error(`Rig ${rigId} was not found.`);
+        console.error(`未找到工作组 ${rigId}。`);
         process.exitCode = 1;
         return;
       }
@@ -85,7 +85,7 @@ export function growCommand(depsOverride?: StatusDeps): Command {
           .filter((namespace): namespace is string => typeof namespace === "string"),
       )];
       if (opts.newPod && pods.includes(opts.newPod)) {
-        console.error(`Pod ${opts.newPod} already exists. Use --pod ${opts.newPod} to grow it.`);
+        console.error(`Pod ${opts.newPod} 已存在。请用 --pod ${opts.newPod} 在其中扩容。`);
         process.exitCode = 1;
         return;
       }
@@ -96,10 +96,10 @@ export function growCommand(depsOverride?: StatusDeps): Command {
             ? pods[0]
             : undefined);
       if (!pod) {
-        const available = pods.join(", ") || "none";
+        const available = pods.join(", ") || "无";
         console.error(opts.pod
-          ? `Pod ${opts.pod} was not found. Available pods: ${available}.`
-          : `Choose a pod with --pod. Available pods: ${available}.`);
+          ? `未找到 Pod ${opts.pod}。可用 Pod：${available}。`
+          : `请用 --pod 指定一个 Pod。可用 Pod：${available}。`);
         process.exitCode = 1;
         return;
       }
@@ -151,7 +151,7 @@ export function growCommand(depsOverride?: StatusDeps): Command {
         for (const member of memberSpecs) {
           const logicalId = `${pod}.${member.id}`;
           if (!returned.has(logicalId)) {
-            nodes.push({ logicalId, status: "failed", error: detail ?? "No node outcome returned." });
+            nodes.push({ logicalId, status: "failed", error: detail ?? "未返回节点结果。" });
           }
         }
       } else {
@@ -162,11 +162,11 @@ export function growCommand(depsOverride?: StatusDeps): Command {
             { member, rigRoot: cwd },
             { timeoutMs: 120_000 },
           );
-          const responseDetail = res.data.errors?.join("; ")
+          const responseDetail = res.data.errors?.join("；")
             ?? res.data.message
             ?? res.data.error
             ?? res.data.result?.node.error
-            ?? `Grow failed (HTTP ${res.status})`;
+            ?? `扩容失败（HTTP ${res.status}）`;
           const node = res.data.result?.node ?? {
             logicalId: `${pod}.${member.id}`,
             status: "failed" as const,
@@ -196,31 +196,31 @@ export function growCommand(depsOverride?: StatusDeps): Command {
           retryTargets,
         }, null, 2));
       } else if (ok) {
-        console.log(`Grew rig ${rigName ?? rigId}`);
+        console.log(`已扩容工作组 ${rigName ?? rigId}`);
         if (nodes.length === 1) {
           const node = nodes[0]!;
-          console.log(`  Seat: ${node.logicalId}${node.sessionName ? ` (${node.sessionName})` : ""}`);
+          console.log(`  席位：${node.logicalId}${node.sessionName ? `（${node.sessionName}）` : ""}`);
         } else {
-          console.log("  Seats:");
+          console.log("  席位：");
           for (const node of nodes) {
-            console.log(`    ${node.logicalId}${node.sessionName ? ` (${node.sessionName})` : ""}`);
+            console.log(`    ${node.logicalId}${node.sessionName ? `（${node.sessionName}）` : ""}`);
           }
         }
       } else {
-        console.error(`Grow did not fully succeed for ${rigName ?? rigId}`);
+        console.error(`工作组 ${rigName ?? rigId} 未完全扩容成功`);
         for (const node of nodes) {
-          const icon = node.status === "launched" ? "OK" : node.status === "attention_required" ? "ATTENTION" : "FAIL";
-          const session = node.sessionName ? ` (${node.sessionName})` : "";
+          const icon = node.status === "launched" ? "OK" : node.status === "attention_required" ? "待关注" : "FAIL";
+          const session = node.sessionName ? `（${node.sessionName}）` : "";
           const error = node.error ? ` - ${node.error}` : "";
-          console.error(`  [${icon}] ${node.logicalId}: ${node.status}${session}${error}`);
+          console.error(`  [${icon}] ${node.logicalId}：${node.status}${session}${error}`);
         }
         if (detail && !nodes.some((node) => node.error && detail.includes(node.error))) {
           console.error(`  ${detail}`);
         }
-        for (const warning of warnings) console.error(`  Warning: ${warning}`);
+        for (const warning of warnings) console.error(`  警告：${warning}`);
         if (retryTargets.length > 0) {
-          console.error("  Failed nodes can be relaunched individually. Recover by:");
-          for (const target of retryTargets) console.error(`    rig launch ${rigId} ${target}`);
+          console.error("  失败的节点可逐个重新启动。恢复步骤：");
+          for (const target of retryTargets) console.error(`    zrig launch ${rigId} ${target}`);
         }
       }
 

@@ -1,0 +1,12 @@
+docs-packages-c        total=  64 pending=   0 in_progress=  0 done=  64 failed=  0 skipped=  0
+manifest_non_done=0
+git_diff_check_exit=0
+verifier_format_total=64 passed=64 failed=0
+structure_checked=64 findings=0
+bare_rig_command_hits=0
+english_paragraph_heuristic_hits=0
+new_targets=64
+url_check_findings=0
+content_sanity_findings=0
+policy_machine_fields_checked=18
+policy_machine_field_findings=0

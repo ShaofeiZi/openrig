@@ -46,13 +46,13 @@ test("consumer refuses loudly when no verdict exists", () => {
   const { root, verdictPath } = makeRepo();
   const result = runConsumer(root, verdictPath);
   assert.notEqual(result.status, 0);
-  assert.match(`${result.stdout}\n${result.stderr}`, /verdict.*(missing|does not exist)/i);
+  assert.match(`${result.stdout}\n${result.stderr}`, /裁决缺失/);
 });
 
 test("consumer refuses and retains a verdict with no candidateSha", () => {
   const { root, verdictPath } = makeRepo();
   put(verdictPath, { gate: "pass", smoke: false });
-  assertRefused(runConsumer(root, verdictPath), verdictPath, /candidateSha.*required|missing.*candidateSha/i);
+  assertRefused(runConsumer(root, verdictPath), verdictPath, /candidateSha 为必填/);
 });
 
 test("consumer derives current HEAD and refuses a stale candidateSha", () => {
@@ -61,7 +61,7 @@ test("consumer derives current HEAD and refuses a stale candidateSha", () => {
   write(join(root, "tracked.txt"), "two\n");
   git(root, "add", "tracked.txt");
   git(root, "commit", "-qm", "move head");
-  assertRefused(runConsumer(root, verdictPath), verdictPath, /candidateSha.*(mismatch|does not match)|current HEAD/i);
+  assertRefused(runConsumer(root, verdictPath), verdictPath, /candidateSha 与当前 HEAD 不匹配/);
 });
 
 test("consumer refuses and retains a matching-SHA failed verdict", () => {

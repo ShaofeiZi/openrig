@@ -17,8 +17,8 @@ interface ServiceOrchestratorDeps {
 }
 
 /**
- * Leaf service called by existing orchestrators (bootstrap, teardown, restore).
- * Does NOT independently manage boot/teardown timing — callers decide when.
+ * 由现有编排器（bootstrap、teardown、restore）调用的叶服务。
+ * 不独立管理启动/拆除时机，由调用方决定何时执行。
  */
 export class ServiceOrchestrator {
   private rigRepo: RigRepository;
@@ -30,24 +30,24 @@ export class ServiceOrchestrator {
   }
 
   /**
-   * Boot services for a rig. Called by bootstrap orchestrator as a stage before agent launch.
-   * 1. Load persisted services record
-   * 2. Run docker compose up
-   * 3. Evaluate wait targets
-   * 4. Persist receipt
+   * 为工作组启动服务，由 bootstrap 编排器在智能体启动前作为一个阶段调用。
+   * 1. 加载持久化服务记录
+   * 2. 运行 docker compose up
+   * 3. 评估等待目标
+   * 4. 持久化回执
    */
   async boot(rigId: string, opts?: { waitTimeoutMs?: number; waitPollIntervalMs?: number }): Promise<ServiceBootResult> {
     const record = this.rigRepo.getServicesRecord(rigId);
     if (!record) {
-      return { ok: false, code: "no_services", error: "No services record found for this rig" };
+      return { ok: false, code: "no_services", error: "未找到此工作组的服务记录" };
     }
 
     const spec = this.parseSpec(record);
     if (!spec) {
-      return { ok: false, code: "invalid_spec", error: "Could not parse persisted services spec" };
+      return { ok: false, code: "invalid_spec", error: "无法解析已持久化的服务规格" };
     }
 
-    // 1. Launch compose services
+    // 1. 启动 compose 服务
     const upResult = await this.composeAdapter.up({
       composeFile: record.composeFile,
       projectName: record.projectName,
@@ -58,7 +58,7 @@ export class ServiceOrchestrator {
       return { ok: false, code: upResult.code, error: upResult.message };
     }
 
-    // 2. Evaluate wait targets with polling
+    // 2. 通过轮询评估等待目标
     const waitTargets = spec.waitFor ?? [];
     if (waitTargets.length > 0) {
       const timeoutMs = opts?.waitTimeoutMs ?? 60_000;
@@ -66,7 +66,7 @@ export class ServiceOrchestrator {
       const start = Date.now();
 
       while (true) {
-        // Get current compose status for condition:healthy targets
+        // 获取 condition:healthy 目标的当前 compose 状态
         const statusResult = await this.composeAdapter.status({
           composeFile: record.composeFile,
           projectName: record.projectName,
@@ -79,7 +79,7 @@ export class ServiceOrchestrator {
             return {
               ok: false,
               code: "compose_status_failed",
-              error: statusResult.error ?? "Failed to read docker compose status",
+              error: statusResult.error ?? "读取 docker compose 状态失败",
             };
           }
 
@@ -95,7 +95,7 @@ export class ServiceOrchestrator {
 
         const health = deriveEnvHealth(waitResults);
         if (health === "healthy") {
-          // All targets healthy — capture receipt and return
+          // 所有目标健康：捕获回执并返回
           const receipt = this.buildReceipt(record, statusResult.services, waitResults);
           this.rigRepo.updateServicesReceipt(rigId, JSON.stringify(receipt));
           return { ok: true, receipt, health: "healthy" };
@@ -103,19 +103,19 @@ export class ServiceOrchestrator {
 
         const elapsed = Date.now() - start;
         if (elapsed + pollMs > timeoutMs) {
-          // Timeout — persist partial receipt honestly
+          // 超时：如实持久化部分回执
           const receipt = this.buildReceipt(record, statusResult.services, waitResults);
           this.rigRepo.updateServicesReceipt(rigId, JSON.stringify(receipt));
           const failedTargets = waitResults.filter((r) => r.status !== "healthy");
           const failedNames = failedTargets.map((r) => r.detail ?? JSON.stringify(r.target)).join("; ");
-          return { ok: false, code: "wait_timeout", error: `Service wait targets not healthy after ${Math.round(timeoutMs / 1000)}s: ${failedNames}`, receipt };
+          return { ok: false, code: "wait_timeout", error: `等待 ${Math.round(timeoutMs / 1000)} 秒后服务目标仍不健康：${failedNames}`, receipt };
         }
 
         await new Promise((r) => setTimeout(r, pollMs));
       }
     }
 
-    // No wait targets — just capture receipt
+    // 没有等待目标：只捕获回执
     const statusResult = await this.composeAdapter.status({
       composeFile: record.composeFile,
       projectName: record.projectName,
@@ -125,7 +125,7 @@ export class ServiceOrchestrator {
       return {
         ok: false,
         code: "compose_status_failed",
-        error: statusResult.error ?? "Failed to read docker compose status",
+        error: statusResult.error ?? "读取 docker compose 状态失败",
       };
     }
     const receipt = this.buildReceipt(record, statusResult.services, []);
@@ -134,13 +134,13 @@ export class ServiceOrchestrator {
   }
 
   /**
-   * Tear down services for a rig. Called by teardown orchestrator during rig down.
-   * Honors down_policy from the persisted spec.
+   * 为工作组拆除服务，由 teardown 编排器在工作组 down 期间调用。
+   * 遵循持久化 spec 中的 down_policy。
    */
   async teardown(rigId: string, opts?: { policyOverride?: "down" | "down_and_volumes" | "leave_running" }): Promise<ServiceTeardownResult> {
     const record = this.rigRepo.getServicesRecord(rigId);
     if (!record) {
-      return { ok: true }; // No services — nothing to tear down
+      return { ok: true }; // 没有服务，无需拆除
     }
 
     const spec = this.parseSpec(record);
@@ -157,13 +157,13 @@ export class ServiceOrchestrator {
       return { ok: false, code: result.code, error: result.message };
     }
 
-    // Update receipt to reflect teardown
+    // 更新回执以反映拆除结果
     this.rigRepo.updateServicesReceipt(rigId, null);
     return { ok: true };
   }
 
   /**
-   * Capture a fresh receipt from current compose state. Called by snapshot capture.
+   * 从当前 compose 状态捕获新回执，由快照捕获流程调用。
    */
   async captureReceipt(rigId: string): Promise<EnvReceipt | null> {
     const record = this.rigRepo.getServicesRecord(rigId);
@@ -176,7 +176,7 @@ export class ServiceOrchestrator {
       profiles: spec?.profiles,
     });
     if (!statusResult.ok) {
-      throw new Error(statusResult.error ?? "Failed to read docker compose status");
+      throw new Error(statusResult.error ?? "读取 docker compose 状态失败");
     }
 
     const waitTargets = spec?.waitFor ?? [];
@@ -189,7 +189,7 @@ export class ServiceOrchestrator {
     return receipt;
   }
 
-  // -- Private helpers --
+  // -- 私有辅助函数 --
 
   private parseSpec(record: RigServicesRecord): RigServicesSpec | null {
     try {

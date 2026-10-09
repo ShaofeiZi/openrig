@@ -9,7 +9,7 @@ import {
 import type { HostEntry } from "../src/host-registry.js";
 
 // ---------------------------------------------------------------------------
-// Mock spawn helpers
+// 模拟 spawn 的辅助函数
 // ---------------------------------------------------------------------------
 
 interface MockChild extends EventEmitter {
@@ -51,7 +51,7 @@ const HOST: HostEntry = { id: "vm-test", transport: "ssh", target: "vm-test.loca
 const HOST_WITH_USER: HostEntry = { id: "vm-test", transport: "ssh", target: "vm-test.local", user: "ops" };
 
 // ---------------------------------------------------------------------------
-// shellQuote unit
+// shellQuote 单元
 // ---------------------------------------------------------------------------
 
 describe("shellQuote", () => {
@@ -67,7 +67,7 @@ describe("shellQuote", () => {
 });
 
 // ---------------------------------------------------------------------------
-// classifyResult — unit table
+// classifyResult —— 单元表
 // ---------------------------------------------------------------------------
 
 describe("classifyResult", () => {
@@ -94,10 +94,10 @@ describe("classifyResult", () => {
     expect(r.failedStep).toBe("permission-gate");
     if (r.failedStep === "permission-gate") {
       expect(r.sshStderr).toBe(stderr);
-      expect(r.hint).toContain("registered host/user");
-      expect(r.hint).toContain("authentication");
-      expect(r.hint).toContain("host-key");
-      expect(r.hint).toContain("keep host verification enabled");
+      expect(r.hint).toContain("已登记的主机/用户");
+      expect(r.hint).toContain("认证");
+      expect(r.hint).toContain("主机密钥");
+      expect(r.hint).toContain("主机校验开启");
       expect(r.hint).not.toContain("openrig-work/");
     }
   });
@@ -144,7 +144,7 @@ describe("classifyResult", () => {
 });
 
 // ---------------------------------------------------------------------------
-// runCrossHostCommand — integration with mocked spawn
+// runCrossHostCommand —— 与模拟 spawn 的集成
 // ---------------------------------------------------------------------------
 
 describe("runCrossHostCommand", () => {
@@ -153,8 +153,8 @@ describe("runCrossHostCommand", () => {
     const spawn = mockSpawnFor({ exitCode: 0, stdout: "ok\n", capture });
     await runCrossHostCommand(HOST, ["rig", "send", "dev-impl@rig", "hello world", "--verify"], { spawn });
     expect(capture.command).toBe("ssh");
-    // D13 supersession: the remote command now runs under `sh -lc` (login-shell PATH
-    // resolution) — the quoted argv rides inside one further quoting layer.
+    // D13 取代：远程命令现运行于 `sh -lc`（登录 shell PATH 解析）下——
+    // 带引号的 argv 再套一层引号。
     expect(capture.args).toEqual([
       "-o", "ConnectTimeout=10",
       "vm-test.local",
@@ -162,10 +162,10 @@ describe("runCrossHostCommand", () => {
     ]);
   });
 
-  // A2 — P23: the SSH relay re-runs `rig` in a NON-login shell that resolves ITS OWN seat identity,
+  // A2 — P23：SSH 中继在非登录 shell 中重跑 `rig`，由该 shell 解析其自身 seat 身份，
   // degrading the origin. Prefix OPENRIG_SESSION_NAME=<origin triple> INSIDE the sh -lc line so the
   // remote's DaemonClient stamps the ORIGIN identity (matching A4's HTTP header). Byte-exact via the
-  // real shellQuote (the design's "byte-asserted, quoting included"): the env assignment precedes the
+  // 真实 shellQuote（设计上的「字节级断言，含引号」）：env 赋值先于
   // argv, and --from STAYS on the argv (additive per the P23-D1 expiry — a pre-I4 remote reads origin
   // from --from, so an early removal would silently degrade attribution in the mixed-version window).
   it("A2 — prefixes OPENRIG_SESSION_NAME=<origin triple> into the sh -lc line; --from stays additive", async () => {
@@ -175,10 +175,10 @@ describe("runCrossHostCommand", () => {
     const argv = ["rig", "send", "dev-impl@rig", "hi", "--from", triple];
     await runCrossHostCommand(HOST, argv, { spawn, originTriple: triple });
     const line = String(capture.args?.[capture.args.length - 1] ?? "");
-    // byte-exact composition, via the same shellQuote the impl uses:
+    // 经实现所用的同一 shellQuote 做字节级精确拼接：
     const expectedInner = `OPENRIG_SESSION_NAME=${shellQuote(triple)} ${argv.map(shellQuote).join(" ")}`;
     expect(line).toBe(`sh -lc ${shellQuote(expectedInner)}`);
-    // and the additive-state guarantees, resilient to quoting:
+    // 以及对抗引号的追加态保证：
     expect(line).toContain("OPENRIG_SESSION_NAME=");
     expect(line).toContain("--from"); // STAYS (P23-D1) — a premature removal fails here
     expect(line.indexOf("OPENRIG_SESSION_NAME=")).toBeLessThan(line.indexOf("send")); // env precedes the command
@@ -224,8 +224,8 @@ describe("runCrossHostCommand", () => {
     const result = await runCrossHostCommand(HOST, ["rig", "send", "dev-impl@rig", "hi", "--verify"], { spawn });
     expect(result.ok).toBe(true); // ssh layer succeeded
     if (result.ok) {
-      // remote verify result is in stdout, not synthesized into ok=false.
-      // Callers (send command) are responsible for surfacing 'Verified: no' to the user.
+      // 远程校验结果在 stdout，不会被合成为 ok=false。
+      // 调用方（send 命令）负责把 'Verified: no' 呈现给用户。
       expect(result.stdout).toContain("Verified: no");
     }
   });
@@ -271,7 +271,7 @@ describe("runCrossHostCommand", () => {
     );
     expect(result.ok).toBe(false);
     if (!result.ok && result.failedStep === "ssh-unreachable") {
-      expect(result.sshStderr).toContain("not ssh");
+      expect(result.sshStderr).toContain("不是 ssh");
     }
   });
 
@@ -302,8 +302,8 @@ describe("runCrossHostCommand", () => {
 
 // ─── D13 (INTAKE 5674431c): remote rig resolution over ssh ─────────────────────
 // Bare quoted argv over ssh runs in a NON-LOGIN shell (no operator PATH) → exit 127.
-// Fix: the remote command runs under `sh -lc` (the operator's own login PATH), and a
-// 127/command-not-found classifies LOUD as its own step with a teaching hint.
+// 修复：远程命令运行于 `sh -lc`（操作者自身登录 PATH）下，且
+// 127/command-not-found 以自带教学提示的独立步骤归类为 LOUD。
 import { runCrossHostCommand as d13Run, classifyResult as d13Classify } from "../src/cross-host-executor.js";
 import { EventEmitter } from "node:events";
 

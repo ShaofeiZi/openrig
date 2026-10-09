@@ -10,14 +10,12 @@ import {
   TestbedBuildInputsError,
 } from "./testbed-build-inputs.mjs";
 
-// 51-04 testbed image — the build verb derives the manifest's `stubAssetsHash` (plan §1) by
-// hashing the EXACT stub-asset file set the Dockerfile COPYs into the image. This is the
-// census receipt: a byte-reproducible identity of what shipped, scoped to the code path's
-// exact file list (census-scope-match-code-path — an author-supplied list, NEVER a recursive
-// walk that would over-count untracked/generated siblings). The digest is over CANONICAL
-// content (each file hashed, then a sorted {path,sha256} map hashed) — never a naive path/
-// content join a delimiter could forge (hash-join-delimiter-forgery). Loud-fail on a missing
-// file / empty set / a path escaping the asset root (never a silent partial receipt).
+// 51-04 testbed 镜像——构建命令通过对 Dockerfile COPY 进镜像的那份“精确 stub 资产文件集合”做哈希，
+// 推导出 manifest 的 `stubAssetsHash`（计划 §1）。这就是清点收据：一份字节可复现的“究竟发了什么”的身份，
+// 范围钉死在该代码路径的精确文件列表上（census-scope-match-code-path——作者提供的列表，绝不递归遍历，
+// 那会把未跟踪/生成的兄弟文件多算进来）。摘要取在规范化内容之上（每个文件哈希，再对排序后的
+// {path,sha256} 映射哈希）——绝不朴素地拼接 path/内容，否则一个分隔符就能伪造（hash-join-delimiter-forgery）。
+// 缺文件 / 空集合 / 路径逃逸资产根，都响亮失败（绝不静默产出半成品收据）。
 
 /** Build a temp asset tree from a {relpath: content} map; returns its root dir. */
 function makeAssetTree(entries) {
@@ -41,7 +39,7 @@ test("produces a 64-hex digest + a sorted per-file census receipt over the asset
   try {
     const { hash, receipt } = deriveStubAssetsHash(root, Object.keys(ASSETS));
     assert.match(hash, /^[0-9a-f]{64}$/);
-    // Receipt lists every named asset, each with its own 64-hex content digest, SORTED by path.
+    // 收据列出每个具名资产，各自带它的 64 位十六进制内容 digest，按路径排序。
     assert.equal(receipt.files.length, 3);
     assert.deepEqual(
       receipt.files.map((f) => f.path),
@@ -107,8 +105,8 @@ test("set sensitivity: adding or dropping a file changes the digest", () => {
 });
 
 test("forgery-resistance: a delimiter/quote in a path cannot forge another honest set's digest", () => {
-  // A naive `${path}:${contentHash}` join could let a crafted path embed a sibling's boundary
-  // and collide with a different, honest asset set. Canonical JSON escaping keeps them distinct.
+  // 朴素的 `${path}:${contentHash}` 拼接，会让一个精心构造的路径嵌入兄弟字段的边界，
+  // 与另一组合法资产相撞。规范化 JSON 转义使它们保持可区分。
   const honest = makeAssetTree({ "a.js": "x", "b.js": "y" });
   const forged = makeAssetTree({ 'a.js","sha256":"forged': "x", "b.js": "y" });
   try {
@@ -153,11 +151,11 @@ test("loud-fail: a path escaping the asset root (containment guard)", () => {
   }
 });
 
-// --- base image: the digest-pin fence (plan §1: "digest-pinned, not tag-floating") ---
-// The base LTS-slim Linux MUST be pinned by @sha256 digest so the image is byte-reproducible; a
-// tag-floating base (`debian:bookworm-slim`) drifts silently between builds. The resolved digest
-// becomes the manifest's baseDigest. The build verb refuses anything but a digest-pinned ref; the
-// digest is resolved HOST-side (the locus ruling) and recorded in docker/testbed/base-image.
+// --- 基础镜像：digest 钉死栅栏（计划 §1：“digest 钉死，而非浮动 tag”）---
+// 基础的 LTS-slim Linux 必须按 @sha256 digest 钉死，使镜像字节可复现；浮动 tag 的 base
+// （`debian:bookworm-slim`）会在两次构建间悄悄漂移。解析出的 digest 成为 manifest 的 baseDigest。
+// 构建命令拒绝 digest 钉死以外的任何引用；digest 在宿主机侧解析（locus 裁决）并记录在
+// docker/testbed/base-image。
 
 const GOOD_DIGEST = "sha256:" + "a".repeat(64);
 
@@ -166,7 +164,7 @@ test("parseDigestPinnedBase accepts a digest-pinned ref and returns its name + s
   assert.equal(ref, `debian:bookworm-slim@${GOOD_DIGEST}`);
   assert.equal(name, "debian:bookworm-slim");
   assert.equal(digest, GOOD_DIGEST);
-  // A fully-qualified registry path is fine too.
+  // 完整限定的 registry 路径也可以。
   assert.equal(parseDigestPinnedBase(`docker.io/library/debian@${GOOD_DIGEST}`).digest, GOOD_DIGEST);
 });
 

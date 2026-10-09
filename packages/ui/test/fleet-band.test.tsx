@@ -1,7 +1,6 @@
-// OPR.0.4.6.MH5 C5 — the FLEET band (placement option B) twin-state smokes
-// + the FS-1 FETCH-GATE pin: a single-host operator's page issues ZERO new
-// fleet reads (not just zero new pixels — the leg-7 zero-regression class,
-// enforced at the request layer).
+// OPR.0.4.6.MH5 C5——FLEET band（placement option B）双态冒烟
+// + FS-1 FETCH-GATE 锁：单 host operator 的页面发出零新
+// fleet 读（不仅零新像素——leg-7 零回归类，在请求层强制执行）。
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, cleanup, waitFor } from "@testing-library/react";
@@ -90,7 +89,7 @@ function stubFetch(hosts: HostsResponse | "hosts-500", fleet: ComposedFleet | nu
     urls.push(url);
     if (url.includes("/api/hosts")) {
       if (hosts === "hosts-500") {
-        // The shipped route's unreadable-registry shape (routes/hosts.ts).
+        // 发布路由的不可读 registry 形状（routes/hosts.ts）。
         return Promise.resolve(new Response(JSON.stringify({ error: "invalid_registry", message: "failed to parse host registry YAML" }), { status: 500 }));
       }
       return Promise.resolve(new Response(JSON.stringify(hosts), { status: 200 }));
@@ -117,7 +116,7 @@ describe("FleetBand — the FS-1 fetch gate + no-fleet behavior (rev1 note #3, e
   it("NO registered remote host: renders NOTHING and the fleet read is NEVER fetched", async () => {
     const urls = stubFetch(HOSTS_EMPTY, fleetFixture());
     const { container } = renderBand();
-    // Let the hosts query settle, then hold: no band, no fleet request.
+    // 让 hosts query 落定，然后保持：无 band、无 fleet 请求。
     await waitFor(() => expect(urls.some((u) => u.includes("/api/hosts"))).toBe(true));
     expect(container.querySelector('[data-testid="fleet-band"]')).toBeNull();
     expect(urls.some((u) => u.includes("/api/review/fleet"))).toBe(false);
@@ -138,7 +137,7 @@ describe("FleetBand — rollup + worst line (the LOCKED band twin's anatomy)", (
     await waitFor(() => expect(getByTestId("fleet-band")).toBeTruthy());
     expect(getByTestId("fleet-band-rollup").textContent).toContain("● 1");
     expect(getByTestId("fleet-band-rollup").textContent).toContain("▲ 1");
-    expect(getByTestId("fleet-band-rollup").textContent).toContain("2 hosts");
+    expect(getByTestId("fleet-band-rollup").textContent).toContain("2 台主机");
     const worst = getByTestId("fleet-band-worst");
     expect(worst.textContent).toContain("packer2 idle 47m with work"); // the ▲ wins over the ●
     expect(worst.textContent).toContain("vps-a");
@@ -155,7 +154,7 @@ describe("FleetBand — rollup + worst line (the LOCKED band twin's anatomy)", (
     );
     const { getByTestId } = renderBand();
     await waitFor(() => expect(getByTestId("fleet-band")).toBeTruthy());
-    expect(getByTestId("fleet-band").textContent).toContain("quiet");
+    expect(getByTestId("fleet-band").textContent).toContain("安静");
   });
 
   it("unreachable members surface in the band rollup (ambient honesty)", async () => {
@@ -167,7 +166,7 @@ describe("FleetBand — rollup + worst line (the LOCKED band twin's anatomy)", (
     );
     const { getByTestId } = renderBand();
     await waitFor(() => expect(getByTestId("fleet-band")).toBeTruthy());
-    expect(getByTestId("fleet-band-rollup").textContent).toContain("1 unreachable");
+    expect(getByTestId("fleet-band-rollup").textContent).toContain("1 台不可达");
   });
 });
 
@@ -176,8 +175,8 @@ describe("FleetBand — guard B1 regression: an unreadable registry is NEVER hid
     const urls = stubFetch(
       "hosts-500",
       fleetFixture({
-        // What the daemon composer actually returns in this state: an
-        // existing-but-unreadable registry → local-only + registryError.
+        // daemon composer 在此状态实际返回：存在但不可读的
+        // registry -> local-only + registryError。
         registryError: "failed to parse host registry YAML at ~/.openrig/hosts.yaml",
         hosts: [{ hostId: "local", kind: "local", status: { hostId: "local", status: "ok" }, needsYouCount: 0, exceptionsByKind: [], seatCount: 1, rigCount: 1, topLine: "quiet" }],
         needsYou: { items: [], provenance: "0 items" },
@@ -185,11 +184,11 @@ describe("FleetBand — guard B1 regression: an unreadable registry is NEVER hid
       }),
     );
     const { getByTestId } = renderBand();
-    // The fetch-gate must OPEN on hosts failure (the daemon composer is the
-    // SSOT), and the honest ambient line must render.
+    // fetch-gate 必须在 hosts 失败时 OPEN（daemon composer 是 SSOT），
+    // 且诚实环境行必须渲染。
     await waitFor(() => expect(getByTestId("fleet-band")).toBeTruthy());
     expect(urls.some((u) => u.includes("/api/review/fleet"))).toBe(true);
-    expect(getByTestId("fleet-band").textContent).toContain("host registry unreadable — local-only glance");
+    expect(getByTestId("fleet-band").textContent).toContain("主机注册表不可读——仅展示本机概览");
   });
 
   it("a KNOWN-empty registry (hosts 200 with zero rows) stays fetch-gated — the FS-1 discipline is preserved", async () => {

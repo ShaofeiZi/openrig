@@ -36,8 +36,8 @@ export function formatTokenTotalTitle(
   const total = sumTokenCounts(input, output);
   if (total === null) return null;
 
-  const lines = [`Tokens: ${total.toLocaleString("en-US")}`];
-  if (input !== null) lines.push(`Input: ${input.toLocaleString("en-US")}`);
-  if (output !== null) lines.push(`Output: ${output.toLocaleString("en-US")}`);
+  const lines = [`令牌数：${total.toLocaleString("en-US")}`];
+  if (input !== null) lines.push(`输入：${input.toLocaleString("en-US")}`);
+  if (output !== null) lines.push(`输出：${output.toLocaleString("en-US")}`);
   return lines.join("\n");
 }

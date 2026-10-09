@@ -1,39 +1,34 @@
-// OPR.0.4.0.1 — global live-terminal cap registry.
+// OPR.0.4.0.1 —— 全局实时终端上限注册表。
 //
-// PM-locked architecture (concurrence qitem-20260621004748-63ec48b1):
-//   - the cap is GLOBAL: total simultaneously-live terminals across graph +
-//     table + topology surfaces must be <= MAX_LIVE_TERMINALS;
-//   - opening a live terminal past the cap EVICTS THE OLDEST live one, which
-//     REVERTS TO STATIC (its revert callback closes the WS + renders the static
-//     preview — no WS leak). It is reverted, not removed.
+// PM 锁定架构（并发 qitem-20260621004748-63ec48b1）：
+//   - 上限是全局的：图 + 表格 + 拓扑表面同时实时的终端总数必须 <= MAX_LIVE_TERMINALS；
+//   - 超过上限打开实时终端会驱逐最旧的实时终端，该终端回退到静态模式
+//    （其回退回调关闭 WS + 渲染静态预览——无 WS 泄漏）。它是被回退，不是被移除。
 //
-// This is the framework-free core (a pure class). The React context
-// (LiveTerminalProvider) wraps a single instance and is mounted above all three
-// surfaces so the cap is truly global. Kept pure so the cap/eviction logic is
-// unit-testable without rendering xterm/WebSocket.
+// 这是无框架核心（纯类）。React 上下文（LiveTerminalProvider）包装单一实例，
+// 挂载在三个表面之上，使上限真正全局。保持纯函数，使上限/驱逐逻辑
+// 无需渲染 xterm/WebSocket 即可单元测试。
 
-/** OPR.0.4.0.1 — the single named default cap (PM decision: 2; revisit -> 3 on
- *  perf data). This is the ONE place the default lives; the config key
- *  `ui.terminal.max_live_terminals` (daemon-backed) overrides it at runtime, so
- *  the 2 -> 3 change is a one-place / one-config edit, not a code rewrite. */
+/** OPR.0.4.0.1 —— 唯一命名的默认上限（PM 决定：2；根据性能数据可调整为 3）。
+ *  这是默认值的唯一位置；配置键 `ui.terminal.max_live_terminals`（后台服务支持）
+ *  在运行时覆盖它，因此 2 → 3 的变更只需改一处默认值/一个配置，不需重写代码。 */
 export const MAX_LIVE_TERMINALS = 2;
 
 export class LiveTerminalRegistry {
-  /** Live keys in insertion order — index 0 is the OLDEST (evicted first). */
+  /** 按插入顺序排列的实时键——索引 0 是最旧的（最先被驱逐）。 */
   private order: string[] = [];
-  /** key -> its revert-to-static callback (run on eviction). */
+  /** key -> 其回退到静态的回调（驱逐时运行）。 */
   private reverts = new Map<string, () => void>();
   private readonly cap: number;
 
   constructor(cap: number) {
-    // A bad/zero cap must never mean "no terminal can ever be live"; floor at 1.
+    // 错误/零上限绝不能意味着"永远不能有终端实时"；下限为 1。
     this.cap = Math.max(1, Math.floor(cap));
   }
 
-  /** Mark `key` live. If it is already live, refresh its recency (it becomes
-   *  the newest, so it is evicted last). Otherwise evict the oldest live
-   *  terminal(s) until there is room, then admit `key`. Evicted terminals have
-   *  their `revertToStatic` callback invoked. */
+  /** 标记 `key` 为实时。如果已实时，刷新其最近度（它变为最新，因此最后被驱逐）。
+   *  否则驱逐最旧的实时终端直到有空间，然后接纳 `key`。被驱逐的终端会调用
+   *  其 `revertToStatic` 回调。 */
   requestLive(key: string, revertToStatic: () => void): void {
     if (this.reverts.has(key)) {
       this.touch(key);
@@ -51,9 +46,8 @@ export class LiveTerminalRegistry {
     this.reverts.set(key, revertToStatic);
   }
 
-  /** Free `key`'s slot WITHOUT evicting (e.g. on unmount or a manual revert).
-   *  Does not run the revert callback — the caller is already going static.
-   *  Idempotent. */
+  /** 释放 `key` 的槽位，不驱逐（例如卸载或手动回退时）。
+   *  不运行回退回调——调用者已转为静态。幂等。 */
   release(key: string): void {
     if (!this.reverts.has(key)) return;
     this.reverts.delete(key);

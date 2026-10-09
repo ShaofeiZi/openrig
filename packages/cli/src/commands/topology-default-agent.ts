@@ -8,7 +8,7 @@ interface AgentLibraryEntry {
   sourcePath: string;
 }
 
-/** Resolve the shipped general-purpose agent already installed with the daemon. */
+/** 解析随后台服务一同发布、已安装的通用智能体。 */
 export async function resolveDefaultAgentRef(client: DaemonClient): Promise<string> {
   const res = await client.get<AgentLibraryEntry[]>("/api/specs/library?kind=agent");
   const entry = res.data?.find(
@@ -18,7 +18,7 @@ export async function resolveDefaultAgentRef(client: DaemonClient): Promise<stri
       && candidate.sourceType === "builtin",
   );
   if (!entry) {
-    throw new Error("The shipped default agent is unavailable. Reinstall OpenRig and retry.");
+    throw new Error("随附的默认智能体不可用。请重新安装 zrig 后重试。");
   }
   return `path:${dirname(entry.sourcePath)}`;
 }

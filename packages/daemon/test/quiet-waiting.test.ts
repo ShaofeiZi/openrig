@@ -18,7 +18,7 @@ import { queueRecoveryOwnsWake, runWakeLadderTick } from "../src/domain/queue-wa
 import { makeParkedOwnerConsumerPolicy } from "../src/domain/policies/parked-owner-consumer.js";
 import { recoveryTag } from "../src/domain/queue-recovery.js";
 
-describe("quiet waits and bounded recovery on existing domain seams", () => {
+describe("现有 domain seam 上的静默等待与有界恢复", () => {
   let db: Database.Database, bus: EventBus, queue: QueueRepository, jobs: WatchdogJobsRepository;
   let scheduler: WatchdogScheduler, stop: () => void;
   let sends: Array<{ target: string; message: string; cause: string }>;
@@ -59,7 +59,7 @@ describe("quiet waits and bounded recovery on existing domain seams", () => {
   }
   const sweep = () => runStuckSweep({ db, queueRepo: queue, now: new Date(), unclaimedAgeMinutes: 60, resolveOrchestrator: () => "orch@rig", isRegisteredHost: () => false });
 
-  it("keeps working-owner waits quiet, wakes once for change, and repairs a missed event on the next tick", async () => {
+  it("working owner 等待时保持静默，变化时唤醒一次，并在下一 tick 修复遗漏事件", async () => {
     const { blocker, waiter, job } = await waiting();
     const original = queue.getByIdOrThrow(waiter).body;
     for (const seconds of [300, 600, 1200]) { advance(seconds); await scheduler.runTickNow(); await sweep(); }
@@ -80,7 +80,7 @@ describe("quiet waits and bounded recovery on existing domain seams", () => {
     advance(2400); await scheduler.runTickNow(); expect(sends).toHaveLength(2);
   });
 
-  it("a failed notice escalates once within pickup grace plus sweep, remains unknown, and does not reset on reminders", async () => {
+  it("失败通知在 pickup 宽限加 sweep 期间只升级一次，保持 unknown，且不会因 reminder 重置", async () => {
     vi.stubEnv("OPENRIG_QUEUE_STUCK_SWEEP_INTERVAL_SECONDS", "77");
     const { blocker, waiter } = await waiting(); owner = "unknown"; worker = "unknown"; failed = true;
     advance(300); await scheduler.runTickNow(); expect(sends).toHaveLength(1);
@@ -94,21 +94,21 @@ describe("quiet waits and bounded recovery on existing domain seams", () => {
     advance(2400); await scheduler.runTickNow(); await sweep();
     expect(sends).toHaveLength(count);
     expect(queue.listTransitions(notices[0]!.qitemId)).toHaveLength(transitions);
-    // A real response, not an observer refresh, clears the diagnostic.
+    // 真实响应会清除诊断，observer refresh 则不会。
     advance(1); await queue.update({ qitemId: waiter, actorSession: "owner@rig", transitionNote: `Inspected ${blocker}; continuing the recorded wait` });
     await sweep(); expect(queue.getByIdOrThrow(notices[0]!.qitemId).state).toBe("done");
   });
 
-  it("does not treat one old progress note or delivery machinery as permanent pickup", async () => {
+  it("不把一条旧进度注释或 delivery 机制视为永久 pickup", async () => {
     const { blocker } = await waiting();
     advance(1); await queue.update({ qitemId: blocker, actorSession: "worker@rig", transitionNote: "Initial progress" });
     worker = "idle-at-prompt"; advance(181);
     await queue.update({ qitemId: blocker, actorSession: "wake-ladder@system", transitionNote: "wake-attempt: 1/3" });
     expect(queue.getByIdOrThrow(blocker).pickup?.state).toBe("stalled-after-claim");
-    expect(queue.getByIdOrThrow(blocker).pickup?.evidence).toContain("queue age does not prove idle");
+    expect(queue.getByIdOrThrow(blocker).pickup?.evidence).toContain("queue age 不能证明 idle");
   });
 
-  it("onward handoff follows exact custody; a returned result coalesces arrival and resume with both receipts", async () => {
+  it("后续 handoff 遵循精确 custody；返回结果合并 arrival 与 resume，并保留两份 receipt", async () => {
     const { blocker, waiter, job } = await waiting();
     const onward = await queue.handoff({ qitemId: blocker, fromSession: "worker@rig", toSession: "other@rig", body: "Continue producing result", nudge: true });
     await new Promise<void>(r => setImmediate(r));
@@ -129,7 +129,7 @@ describe("quiet waits and bounded recovery on existing domain seams", () => {
     expect(sends).toHaveLength(before + 1);
   });
 
-  it("an unnamed timed wait stays armed and unknown instead of silently terminating", async () => {
+  it("未命名的定时等待保持 armed 和 unknown，而不是静默终止", async () => {
     owner = "unknown";
     const waiter = await queue.create({ sourceSession: "owner@rig", destinationSession: "owner@rig", body: "Wait for the authored backstop", nudge: false });
     await queue.update({ qitemId: waiter.qitemId, actorSession: "owner@rig", state: "blocked", wakeAfterSeconds: 300, wakeMaxSeconds: 2400 });
@@ -140,7 +140,7 @@ describe("quiet waits and bounded recovery on existing domain seams", () => {
     advance(600); await scheduler.runTickNow(); expect(sends).toHaveLength(1);
   });
 
-  it("a failed handoff has one retry owner while an independent parked obligation still wakes", async () => {
+  it("失败的 handoff 只有一个 retry owner，同时独立的 parked 义务仍会唤醒", async () => {
     const source = await queue.create({ sourceSession: "owner@rig", destinationSession: "owner@rig", body: "Next work", nudge: false });
     const handoff = await queue.handoff({ qitemId: source.qitemId, fromSession: "owner@rig", toSession: "worker@rig", body: "Assigned work", nudge: false });
     queue.recordNudgeAttempt(handoff.created.qitemId, "failed: synthetic unavailable");
@@ -160,13 +160,13 @@ describe("quiet waits and bounded recovery on existing domain seams", () => {
     expect(attempts).toEqual([handoff.created.qitemId]);
   });
 
-  it("different approvals with identical bytes remain two obligations and two deliveries", async () => {
+  it("字节完全相同的不同 approval 仍是两个义务和两次 delivery", async () => {
     for (let i = 0; i < 2; i++) await queue.create({ sourceSession: "owner@rig", destinationSession: "worker@rig", body: "Approved", nudge: true });
     expect(queue.list({ destinationSession: "worker@rig", limit: 100 })).toHaveLength(2);
     expect(sends).toHaveLength(2);
   });
 
-  it("restart drains only current pending intents and retains superseded history without claiming delivery", async () => {
+  it("重启只清除当前 pending intent，并保留已取代的历史且不声称已 delivery", async () => {
     const offline = new QueueRepository(db, bus, { validateRig: () => true });
     offline.attachOutbox(new OutboxHandler(db));
     const source = await offline.create({ sourceSession: "owner@rig", destinationSession: "worker@rig", body: "Old assignment", nudge: false });
@@ -184,7 +184,7 @@ describe("quiet waits and bounded recovery on existing domain seams", () => {
     expect(queue.getByIdOrThrow(returned.created.qitemId).lastNudgeAttempt).toBeNull();
   });
 
-  it("consumes S01 attention revisions through the canonical reader, including a missed proof event", async () => {
+  it("通过规范 reader 消费 S01 attention revision，包括遗漏的 proof 事件", async () => {
     const root = mkdtempSync(join(tmpdir(), "s04-proof-"));
     try {
       const scope = join(root, "missions/trial/slices/one"); mkdirSync(scope, { recursive: true });

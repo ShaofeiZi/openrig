@@ -50,7 +50,7 @@ const SAMPLE_SPEC = `workflow:
       - done
 `;
 
-describe("WorkflowSpecCache (PL-004 Phase D)", () => {
+describe("WorkflowSpecCache（PL-004 阶段 D）", () => {
   let db: Database.Database;
   let tmp: string;
   let cache: WorkflowSpecCache;
@@ -66,7 +66,7 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("readThrough creates a cache row from a YAML spec file", () => {
+  it("readThrough 从 YAML spec 文件创建 cache 行", () => {
     const path = join(tmp, "spec.yaml");
     writeFileSync(path, SAMPLE_SPEC);
     const row = cache.readThrough(path);
@@ -78,7 +78,7 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     expect(row.sourceHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("readThrough returns the same spec_id when content unchanged (hash hit)", () => {
+  it("内容未变时 readThrough 返回相同 spec_id（hash 命中）", () => {
     const path = join(tmp, "spec.yaml");
     writeFileSync(path, SAMPLE_SPEC);
     const first = cache.readThrough(path);
@@ -87,19 +87,19 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     expect(second.cachedAt).toBe(first.cachedAt);
   });
 
-  it("readThrough re-caches in place when content changes (hash miss; same spec_id; cached_at moves)", () => {
+  it("内容变化时 readThrough 就地重新缓存（hash 未命中；spec_id 相同；cached_at 前进）", () => {
     const path = join(tmp, "spec.yaml");
     writeFileSync(path, SAMPLE_SPEC);
     const first = cache.readThrough(path);
     writeFileSync(path, SAMPLE_SPEC + "\n# trailing comment\n");
     const second = cache.readThrough(path);
-    // Same name+version → same spec_id (UPDATE in place).
+    // 相同 name+version → 相同 spec_id（就地 UPDATE）。
     expect(second.specId).toBe(first.specId);
-    // But the row was updated.
+    // 但该行已更新。
     expect(second.sourceHash).not.toBe(first.sourceHash);
   });
 
-  it("readThrough throws spec_file_missing when path doesn't exist", () => {
+  it("路径不存在时 readThrough 抛出 spec_file_missing", () => {
     try {
       cache.readThrough(join(tmp, "nonexistent.yaml"));
       throw new Error("should have thrown");
@@ -109,10 +109,9 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     }
   });
 
-  // OPR.0.3.3.04.1 (AC-3): resolve a discovered built-in BY NAME to its stored,
-  // already-resolved sourcePath - the seam that lets `workflow instantiate
-  // <name>` work without a hidden file path.
-  it("resolveSourcePathByName returns the cached spec's stored sourcePath; null for an unknown name", () => {
+  // OPR.0.3.3.04.1（AC-3）：按名称将发现的 built-in 解析为其已存储、已解析的 sourcePath——
+  // 这条接缝使 `workflow instantiate <name>` 无需隐藏文件路径即可工作。
+  it("resolveSourcePathByName 返回已缓存 spec 的 sourcePath；未知名称返回 null", () => {
     const path = join(tmp, "spec.yaml");
     writeFileSync(path, SAMPLE_SPEC); // caches `test-three-step` with source_path=path
     cache.readThrough(path);
@@ -120,11 +119,10 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     expect(cache.resolveSourcePathByName("no-such-spec")).toBeNull();
   });
 
-  it("resolveSourcePathByName excludes empty-version rows (slice-11 diagnostic shape)", () => {
-    // Slice-11 diagnostic rows are keyed by file basename with an EMPTY version.
-    // Inserted directly here (base workflow_specs schema, no status column) so
-    // the test proves the `version != ''` guard without needing the slice-11
-    // diagnostic migration. Name-resolution must NOT return such a row's path.
+  it("resolveSourcePathByName 排除 version 为空的行（slice-11 诊断结构）", () => {
+    // Slice-11 诊断行按文件 basename 定键，version 为空。这里直接插入（基础 workflow_specs schema，
+    // 无 status 列），使测试无需 slice-11 诊断 migration 即可证明 `version != ''` 守卫。按名称解析
+    // 不得返回此类行的路径。
     db.prepare(
       `INSERT INTO workflow_specs
          (spec_id, name, version, purpose, target_rig, roles_json, steps_json,
@@ -134,7 +132,7 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     expect(cache.resolveSourcePathByName("broken.yaml")).toBeNull();
   });
 
-  it("parseWorkflowSpec throws spec_yaml_invalid on broken YAML", () => {
+  it("YAML 损坏时 parseWorkflowSpec 抛出 spec_yaml_invalid", () => {
     try {
       parseWorkflowSpec("workflow:\n  id: x\n  bad: : :", "/x");
       throw new Error("should have thrown");
@@ -144,7 +142,7 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     }
   });
 
-  it("parseWorkflowSpec throws spec_field_missing when workflow.id absent", () => {
+  it("workflow.id 缺席时 parseWorkflowSpec 抛出 spec_field_missing", () => {
     try {
       parseWorkflowSpec("workflow:\n  version: 1\n  steps:\n    - id: a\n      actor_role: r\n  roles:\n    r: {}\n", "/x");
       throw new Error("should have thrown");
@@ -154,7 +152,7 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     }
   });
 
-  it("parseWorkflowSpec throws spec_field_missing when steps[] empty", () => {
+  it("steps[] 为空时 parseWorkflowSpec 抛出 spec_field_missing", () => {
     try {
       parseWorkflowSpec("workflow:\n  id: x\n  version: 1\n  steps: []\n  roles:\n    r: {}\n", "/x");
       throw new Error("should have thrown");
@@ -164,7 +162,7 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     }
   });
 
-  it("parseWorkflowSpec throws spec_field_missing when roles missing", () => {
+  it("roles 缺失时 parseWorkflowSpec 抛出 spec_field_missing", () => {
     try {
       parseWorkflowSpec("workflow:\n  id: x\n  version: 1\n  steps:\n    - id: a\n      actor_role: r\n", "/x");
       throw new Error("should have thrown");
@@ -174,7 +172,7 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     }
   });
 
-  it("getByNameVersion returns null for unknown spec; returns row for cached spec", () => {
+  it("getByNameVersion 对未知 spec 返回 null，对已缓存 spec 返回行", () => {
     expect(cache.getByNameVersion("none", "1")).toBeNull();
     const path = join(tmp, "spec.yaml");
     writeFileSync(path, SAMPLE_SPEC);
@@ -183,12 +181,10 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     expect(found?.specId).toBe(cached.specId);
   });
 
-  // OPR.0.3.2.22 Bug 4 — startup prune removes legacy cache rows whose
-  // source_path lives in noise directories that walkYamlFiles' new
-  // SKIP_DIRS guard now refuses to scan. Without this prune, stale
-  // rows from before SKIP_DIRS shipped would survive forever and keep
-  // showing up in `rig specs show` / `rig specs preview` candidates.
-  it("pruneNoiseDirRows removes cache rows from .worktrees/node_modules paths and preserves canonical-path rows", () => {
+  // OPR.0.3.2.22 Bug 4——startup prune 删除 source_path 位于噪声目录的旧 cache 行；
+  // walkYamlFiles 新增的 SKIP_DIRS 守卫已拒绝扫描这些目录。若无此 prune，SKIP_DIRS 发布前的 stale
+  // 行会永久保留，并持续出现在 `rig specs show` / `rig specs preview` 候选项中。
+  it("pruneNoiseDirRows 删除 .worktrees/node_modules 路径中的 cache 行，并保留 canonical-path 行", () => {
     const fixtures: Array<{ path: string; specName: string; noise: boolean }> = [
       { path: join(tmp, "workflows", "canon.yaml"), specName: "canonical-spec", noise: false },
       { path: join(tmp, ".worktrees", "feature-branch", "workflows", "stale.yaml"), specName: "stale-worktree-spec", noise: true },
@@ -212,7 +208,7 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     expect(remaining[0]!.sourcePath).toBe(fixtures[0]!.path);
   });
 
-  it("pruneNoiseDirRows returns 0 when there are no noise rows", () => {
+  it("没有噪声行时 pruneNoiseDirRows 返回 0", () => {
     const canonicalPath = join(tmp, "workflows", "canon.yaml");
     const { mkdirSync } = require("node:fs") as typeof import("node:fs");
     mkdirSync(join(canonicalPath, ".."), { recursive: true });
@@ -223,14 +219,11 @@ describe("WorkflowSpecCache (PL-004 Phase D)", () => {
     expect(cache.listAll()).toHaveLength(1);
   });
 
-  // OPR.0.3.2.22 Bug 4 follow-up (guard BLOCKING on 79d06f8d) —
-  // shipped built-in workflow specs live at
-  // `<pkg>/dist/builtins/workflow-specs/` in production
-  // npm-published daemons. The unscoped prune from the prior commit
-  // matched `%/dist/%` and would have nuked every built-in on every
-  // boot. The installRoot guard preserves rows whose source_path
-  // starts with the install root.
-  it("pruneNoiseDirRows with installRoot preserves built-in rows under <installRoot>/dist while removing user noise", () => {
+  // OPR.0.3.2.22 Bug 4 后续（guard 在 79d06f8d 上 BLOCKING）——生产环境中，已发布 built-in
+  // workflow spec 位于 npm 发布后台服务的 `<pkg>/dist/builtins/workflow-specs/`。前一提交的
+  // 无范围 prune 会匹配 `%/dist/%`，并在每次启动时删掉所有 built-in。installRoot 守卫保留
+  // source_path 以 install root 开头的行。
+  it("带 installRoot 的 pruneNoiseDirRows 保留 <installRoot>/dist 下的 built-in 行，同时删除用户噪声", () => {
     const installRoot = join(tmp, "install", "@openrig", "daemon");
     const builtinPath = join(installRoot, "dist", "builtins", "workflow-specs", "shipped.yaml");
     const userNoisePath = join(tmp, "user-workspace", "some-project", "dist", "stale.yaml");

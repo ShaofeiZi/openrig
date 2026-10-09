@@ -6,24 +6,19 @@ import { getNodeInventory } from "../src/domain/node-inventory.js";
 import { RigSpecCodec } from "../src/domain/rigspec-codec.js";
 import type { RigSpec } from "../src/domain/types.js";
 
-// OPR.0.4.6.FAC1 commit 1 — the role dimension exists end-to-end
-// (AC-4 substrate; BR-4; P2-1 sibling-layer sweep).
+// OPR.0.4.6.FAC1 commit 1——role 维度端到端存在
+//（AC-4 substrate；BR-4；P2-1 sibling-layer sweep）。
 //
-// ONE schema change covers all THREE node-creation paths (initial pod
-// materialize · rig expand · add_member) because they all route through
-// PodRigSpecSchema → createMemberNode → rigRepo.addNode (which already
-// writes nodes.role). These tests pin each path separately so a future
-// per-path field map (the buildExpansionSpecObject class of remap —
-// caught during this build) cannot silently drop the field again.
+// 一次 schema 变更覆盖全部三条节点创建路径（initial pod materialize、rig expand、add_member），
+// 因为它们都经过 PodRigSpecSchema → createMemberNode → rigRepo.addNode，后者已写入
+// nodes.role。这些测试分别固定每条路径，避免未来逐路径 field map（本次 build 捕获的
+// buildExpansionSpecObject 类 remap）再次静默丢字段。
 //
-// Rules pinned here (planner1 §2 C1 / planner2 §3.8):
-//   - role is OPT-IN per seat: a role-less member is legal everywhere
-//     and projects role=null (never role-resolved; explicit targeting
-//     only).
-//   - a PROVIDED role is never silently dropped: it validates, lands in
-//     nodes.role, and projects into the inventory entry on every path.
-//   - role is rejected on terminal members (a terminal node is not an
-//     agent seat).
+// 此处固定的规则（planner1 §2 C1 / planner2 §3.8）：
+//   - role 按席位 opt-in：没有 role 的 member 在所有位置都合法，并投影为 role=null；绝不
+//     进行 role resolution，只能显式指定目标。
+//   - 已提供 role 绝不静默丢弃：每条路径都会校验它、写入 nodes.role，并投影到 inventory entry。
+//   - terminal member 拒绝 role，因为 terminal node 不是智能体席位。
 
 const RIG_ROOT = "/project/rigs/role-rig";
 
@@ -51,8 +46,8 @@ function rawSpec(members: Record<string, unknown>[], name = "role-rig"): Record<
   };
 }
 
-describe("FAC-1 C1: member role — schema validation + normalization", () => {
-  it("accepts an optional role and normalizes it onto the pod member", () => {
+describe("FAC-1 C1：member role——schema 校验 + 规范化", () => {
+  it("接受可选 role 并将其规范化到 pod member", () => {
     const spec = rawSpec([rawMember("impl", { role: "driver" })]);
     const validation = RigSpecSchema.validate(spec);
     expect(validation.valid).toBe(true);
@@ -60,37 +55,37 @@ describe("FAC-1 C1: member role — schema validation + normalization", () => {
     expect(normalized.pods[0]!.members[0]!.role).toBe("driver");
   });
 
-  it("a member WITHOUT role stays fully legal and normalizes role=undefined (opt-in per seat)", () => {
+  it("没有 role 的 member 仍完全合法，并规范化为 role=undefined（逐席位 opt-in）", () => {
     const spec = rawSpec([rawMember("impl")]);
     const validation = RigSpecSchema.validate(spec);
     expect(validation.valid).toBe(true);
     expect(RigSpecSchema.normalize(spec).pods[0]!.members[0]!.role).toBeUndefined();
   });
 
-  it("rejects an empty-string role (a provided role must validate, never be dropped)", () => {
+  it("拒绝空字符串 role；已提供 role 必须校验，不能丢弃", () => {
     const validation = RigSpecSchema.validate(rawSpec([rawMember("impl", { role: "  " })]));
     expect(validation.valid).toBe(false);
-    expect(validation.errors.join("\n")).toMatch(/role: must be a non-empty string/);
+    expect(validation.errors.join("\n")).toMatch(/role：必须是非空字符串/);
   });
 
-  it("rejects a role outside the neighbor-field charset", () => {
+  it("拒绝超出相邻字段字符集的 role", () => {
     const validation = RigSpecSchema.validate(rawSpec([rawMember("impl", { role: "qa reviewer!" })]));
     expect(validation.valid).toBe(false);
-    expect(validation.errors.join("\n")).toMatch(/role: must contain only/);
+    expect(validation.errors.join("\n")).toMatch(/role：只能包含/);
   });
 
-  it("rejects role on a terminal member (a terminal node is not an agent seat)", () => {
+  it("拒绝 terminal member 上的 role，因为 terminal node 不是智能体席位", () => {
     const validation = RigSpecSchema.validate(
       rawSpec([
         { id: "server", runtime: "terminal", agent_ref: "builtin:terminal", profile: "none", cwd: "/tmp", role: "driver" },
       ]),
     );
     expect(validation.valid).toBe(false);
-    expect(validation.errors.join("\n")).toMatch(/role: not valid on terminal members/);
+    expect(validation.errors.join("\n")).toMatch(/role：对 terminal member 无效/);
   });
 });
 
-describe("FAC-1 C1: role plumb across ALL THREE node-creation paths (P2-1)", () => {
+describe("FAC-1 C1：role 贯穿全部三条节点创建路径（P2-1）", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
 
@@ -117,7 +112,7 @@ describe("FAC-1 C1: role plumb across ALL THREE node-creation paths (P2-1)", () 
     return row!.role;
   }
 
-  it("PATH 1 — initial pod materialize: spec role → nodes.role → inventory entry (and role-less → null)", async () => {
+  it("PATH 1——initial pod materialize：spec role → nodes.role → inventory entry，无 role → null", async () => {
     const spec = rawSpec([
       rawMember("impl", { role: "driver" }),
       rawMember("helper"), // role-less pod-mate stays legal
@@ -136,7 +131,7 @@ describe("FAC-1 C1: role plumb across ALL THREE node-creation paths (P2-1)", () 
     expect(helper?.role).toBeNull();
   });
 
-  it("PATH 2 — rig expand (structured fragment): role rides buildExpansionSpecObject → nodes.role", async () => {
+  it("PATH 2——rig expand（结构化 fragment）：role 经 buildExpansionSpecObject 到达 nodes.role", async () => {
     const rig = setup.rigRepo.createRig("role-rig");
     const expanded = await setup.rigExpansionService.expand({
       rigId: rig.id,
@@ -156,7 +151,7 @@ describe("FAC-1 C1: role plumb across ALL THREE node-creation paths (P2-1)", () 
     expect(entry?.role).toBe("qa");
   });
 
-  it("PATH 3 — add_member: fragment role → nodes.role; a role-LESS add into a role-carrying pod is legal (opt-in)", async () => {
+  it("PATH 3——add_member：fragment role → nodes.role；向带 role 的 pod 添加无 role member 仍合法", async () => {
     const spec = rawSpec([rawMember("impl", { role: "driver" })]);
     const outcome = await setup.podInstantiator.materializeStructured(spec, RIG_ROOT);
     expect(outcome.ok).toBe(true);
@@ -186,7 +181,7 @@ describe("FAC-1 C1: role plumb across ALL THREE node-creation paths (P2-1)", () 
     expect(entries.find((e) => e.logicalId === "dev.floater")?.role).toBeNull();
   });
 
-  it("round-trip fidelity: a normalized spec with role serializes back to YAML carrying role", () => {
+  it("往返保真：带 role 的规范化 spec 序列化回 YAML 后仍携带 role", () => {
     const spec = rawSpec([rawMember("impl", { role: "driver" })]);
     expect(RigSpecSchema.validate(spec).valid).toBe(true);
     const normalized = RigSpecSchema.normalize(spec) as unknown as RigSpec;
@@ -194,14 +189,11 @@ describe("FAC-1 C1: role plumb across ALL THREE node-creation paths (P2-1)", () 
     expect(yaml).toMatch(/role: driver/);
   });
 
-  it("PATH 4 — bootstrap instantiate-from-YAML (the `rig up <spec>` path): role → nodes.role (VM-caught regression; this path does NOT go through createMemberNode)", async () => {
-    // The pod-aware PodRigInstantiator.instantiate(yaml, rigRoot) creates
-    // agent nodes via its OWN inline addNode — a distinct site from the
-    // createMemberNode used by materialize/expand/add_member. The
-    // original C1 sweep tested those three but not THIS one, so
-    // role=NULL shipped on every `rig up`-created rig until the VM proof
-    // caught bound_rig_role_uncovered on a fully-running rig. This test
-    // pins the fourth path.
+  it("PATH 4——bootstrap instantiate-from-YAML（`zrig up <spec>` 路径）：role → nodes.role；此路径不经过 createMemberNode", async () => {
+    // Pod-aware PodRigInstantiator.instantiate(yaml, rigRoot) 通过自身内联 addNode 创建 agent node，
+    // 与 materialize/expand/add_member 使用的 createMemberNode 是不同站点。原 C1 sweep 测了前三条
+    // 路径却漏掉这一条，因此每个由 `zrig up` 创建的工作组都以 role=NULL 交付，直到 VM proof 在
+    // 完整运行的工作组上捕获 bound_rig_role_uncovered。本测试固定第四条路径。
     const spec = rawSpec([
       rawMember("planner1", { role: "planner" }),
       rawMember("helper"), // role-less pod-mate stays null on THIS path too

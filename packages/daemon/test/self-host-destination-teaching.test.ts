@@ -1,12 +1,10 @@
-// 51-09 increment 4b — destination-host TEACHING refusal (arch ruling c9964404,
-// mechanism ii). 3-part destinations ALREADY refuse loudly (BR-1); 4b adds
-// ADDITIVE structured teaching to that existing refusal — it does NOT change the
-// code, add a gate, or strip in-band.
+// 51-09 increment 4b——destination-host TEACHING 拒绝（架构裁定 c9964404，机制 ii）。
+// 三段式 destination 已会明确拒绝（BR-1）；4b 为现有拒绝增量添加结构化指引——
+// 它不改变错误码、不添加门禁，也不剥离带内内容。
 //
-// WIRING PIN (ruling): the proof exercises the PRODUCTION topologyValidateRig
-// predicate (startup.ts:324-334), NOT the admit-everything default
-// (queue-repository.ts:417). `topologyValidateRig` below is startup.ts:324-334
-// VERBATIM, over a real RigRepository — reference-first, no layer-green theater.
+// WIRING PIN（裁定）：该证明覆盖生产环境的 topologyValidateRig 谓词（startup.ts:324-334），
+// 而不是接受一切的默认实现（queue-repository.ts:417）。下方 `topologyValidateRig` 原样取自
+// startup.ts:324-334，并基于真实 RigRepository——以引用为先，不做层级 green 表演。
 import { describe, it, expect, afterEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createDb } from "../src/db/connection.js";
@@ -29,7 +27,7 @@ function setup(): { repo: QueueRepository; db: Database.Database } {
   const bus = new EventBus(db);
   const rigRepo = new RigRepository(db);
   rigRepo.createRig("known-rig");
-  // startup.ts:324-334 topologyValidateRig, verbatim, over the real rigRepo:
+  // startup.ts:324-334 的 topologyValidateRig，基于真实 rigRepo 原样复现：
   const topologyValidateRig = (sessionRef: string): boolean => {
     if (isHumanSeatSessionRef(sessionRef)) return true;
     const parsed = parseSessionName(sessionRef);
@@ -43,47 +41,47 @@ function setup(): { repo: QueueRepository; db: Database.Database } {
 async function refusalFrom(fn: () => Promise<unknown>): Promise<QueueRepositoryError> {
   try {
     await fn();
-    throw new Error("expected an unknown_destination_rig refusal, but the call succeeded");
+    throw new Error("预期 unknown_destination_rig 拒绝，但调用成功");
   } catch (e) {
     if (e instanceof QueueRepositoryError) return e;
     throw e;
   }
 }
 
-describe("51-09 incr 4b — destination-host teaching refusal (injected topologyValidateRig)", () => {
+describe("51-09 incr 4b——destination-host 指引性拒绝（注入 topologyValidateRig）", () => {
   let db: Database.Database | undefined;
   afterEach(() => { db?.close(); db = undefined; setSelfHostId(null); });
 
-  it("RED1: a 3-part destination refuses with unknown_destination_rig (code UNCHANGED) + ADDITIVE teaching (split echo + --host hint)", async () => {
+  it("RED1：三段式 destination 以 unknown_destination_rig 拒绝（错误码不变）+ 增量指引（拆分回显 + --host 提示）", async () => {
     const s = setup(); db = s.db;
     const err = await refusalFrom(() => s.repo.create({ sourceSession: "orch@known-rig", destinationSession: "orch@unknown@vps-b", body: "hi", priority: "routine" }));
-    expect(err.code).toBe("unknown_destination_rig"); // C1: same code
+    expect(err.code).toBe("unknown_destination_rig"); // C1：错误码相同
     expect(err.meta).toBeTruthy();
     expect(err.meta!["destinationSplit"]).toEqual({ member: "orch", rig: "unknown", host: "vps-b" });
     expect(String(err.meta!["hint"])).toContain("--host vps-b");
-    expect(String(err.meta!["hint"])).toContain("orch@unknown"); // resend bare
+    expect(String(err.meta!["hint"])).toContain("orch@unknown"); // 不带 host 重新发送
     expect(err.meta!["selfHost"]).toBe(false);
   });
 
-  it("RED2 (C4): a SELF-suffixed destination gets the SAME refusal with the SELF case named — NO auto-strip / route-home", async () => {
+  it("RED2（C4）：带 SELF 后缀的 destination 得到相同拒绝并指明 SELF 场景——不自动剥离/路由回本机", async () => {
     const s = setup(); db = s.db;
     setSelfHostId("host-self");
     const err = await refusalFrom(() => s.repo.create({ sourceSession: "orch@known-rig", destinationSession: "orch@known-rig@host-self", body: "hi", priority: "routine" }));
-    expect(err.code).toBe("unknown_destination_rig"); // refused, NOT routed home
+    expect(err.code).toBe("unknown_destination_rig"); // 已拒绝，未路由回本机
     expect(err.meta!["selfHost"]).toBe(true);
-    expect(String(err.meta!["hint"])).toMatch(/THIS host/i);
-    expect(String(err.meta!["hint"])).toContain("orch@known-rig"); // resend bare
+    expect(String(err.meta!["hint"])).toContain("就是当前 host");
+    expect(String(err.meta!["hint"])).toContain("orch@known-rig"); // 不带 host 重新发送
     expect(err.meta!["destinationSplit"]).toEqual({ member: "orch", rig: "known-rig", host: "host-self" });
   });
 
-  it("RED3 (C1 additive): a plain 2-part unknown rig refuses UNCHANGED — no teaching fields", async () => {
+  it("RED3（C1 增量）：普通两段式未知 rig 的拒绝保持不变——无指引字段", async () => {
     const s = setup(); db = s.db;
     const err = await refusalFrom(() => s.repo.create({ sourceSession: "orch@known-rig", destinationSession: "orch@nonexistent", body: "hi", priority: "routine" }));
     expect(err.code).toBe("unknown_destination_rig");
-    expect(err.meta).toBeUndefined(); // additive teaching ONLY for '@'-containing rig tokens
+    expect(err.meta).toBeUndefined(); // 增量指引仅适用于包含 '@' 的 rig token
   });
 
-  it("RED4 (C2 one helper): a cross-host HANDOFF verb emits the SAME teaching (all four refusal sites via one helper)", async () => {
+  it("RED4（C2 单一 helper）：跨 host HANDOFF 动词生成相同指引（四处拒绝点共用一个 helper）", async () => {
     const s = setup(); db = s.db;
     const src = await s.repo.create({ sourceSession: "orch@known-rig", destinationSession: "seat@known-rig", body: "hi", priority: "routine" });
     const errHandoff = await refusalFrom(() => s.repo.handoff({ qitemId: src.qitemId, fromSession: "orch@known-rig", toSession: "seat@unknown@vps-b" }));
@@ -94,11 +92,10 @@ describe("51-09 incr 4b — destination-host teaching refusal (injected topology
     expect(String(errHac.meta?.["hint"])).toContain("--host vps-b");
   });
 
-  it("RED5 (C5 honest scope): a 2-part SAME-NAME destination still validates + mints — NOT killed at this gate (closes only via --host / incr-3)", async () => {
+  it("RED5（C5 如实范围）：两段式同名 destination 仍能校验并创建——不在此门禁拦截（仅由 --host / incr-3 闭环）", async () => {
     const s = setup(); db = s.db;
-    // The D10 silent-mint class (member@rig whose name exists locally but the sender
-    // meant a same-named rig elsewhere) is NOT closed by this teaching gate — only by
-    // the out-of-band --host envelope + sender-side stripping. Honest-scope control:
+    // D10 silent-mint 类别（member@rig 的名称存在于本地，但发送方意图指向其他位置的同名 rig）
+    // 不由此指引门禁闭环——只能通过带外 --host envelope + 发送方剥离闭环。如实范围对照：
     const item = await s.repo.create({ sourceSession: "orch@known-rig", destinationSession: "seat@known-rig", body: "hi", priority: "routine" });
     expect(item.qitemId).toBeTruthy();
   });

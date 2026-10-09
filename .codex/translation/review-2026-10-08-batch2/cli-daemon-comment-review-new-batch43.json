@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch43",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/daemon/test/scenario-schema-delta.test.ts",
+      "before_sha256_16": "6ca4bd78e0651df3",
+      "after_sha256_16": "c86f61ee8e4a4c12",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/session-registry.test.ts",
+      "before_sha256_16": "ebbb5c33fffc4887",
+      "after_sha256_16": "56994099bd4615cf",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/skill-library-routes.test.ts",
+      "before_sha256_16": "067f32b7b961eca0",
+      "after_sha256_16": "eed042af0ae4e4b6",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/startup.test.ts",
+      "before_sha256_16": "abab09ddd322471a",
+      "after_sha256_16": "abab09ddd322471a",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/terminal-session-broker.test.ts",
+      "before_sha256_16": "b76fae76637e3366",
+      "after_sha256_16": "9fa0089beaef3925",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

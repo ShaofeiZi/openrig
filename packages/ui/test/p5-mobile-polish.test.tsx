@@ -1,15 +1,15 @@
-// V1 attempt-3 Phase 5 P5-9 — Mobile responsive polish.
+// V1 attempt-3 Phase 5 P5-9——移动端响应式打磨。
 //
-// Coverage:
-//   - MobileBottomNav renders 3 slots at <lg viewport (For You / Project /
-//     Topology). Talk slots are V2-deferred per universal-shell.md L144;
-//     negative-assertion that "talk" / advisor / operator do NOT appear
-//     in the mobile bottom nav.
-//   - Topology graph view-mode degrades to table at <lg viewport per
-//     universal-shell.md L143; tab nav still shows graph as the user's
-//     selected mode (so resize-to-wide reactivates the graph).
-//   - useShellViewport hook reflects window.innerWidth changes.
-//   - Bottom nav is hidden at >= lg viewport (lg:hidden class).
+// 覆盖：
+//   - MobileBottomNav 在 <lg viewport 渲染 3 slot（For You / Project /
+//     Topology）。Talk slot 按 universal-shell.md L144 V2 延后；
+//     负面断言 "talk" / advisor / operator 不出现在
+//     mobile 底部导航。
+//   - Topology graph view-mode 按 universal-shell.md L143 在 <lg viewport
+//     降级为 table；tab nav 仍显示 graph 为用户选中模式
+//    （故 resize-to-wide 重新激活 graph）。
+//   - useShellViewport hook 反映 window.innerWidth 变化。
+//   - 底部导航在 >= lg viewport 隐藏（lg:hidden class）。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, waitFor, fireEvent } from "@testing-library/react";
@@ -118,8 +118,8 @@ describe("MobileBottomNav P5-9 — universal-shell.md L135 + L144", () => {
     expect(container.querySelector("[data-testid='mobile-nav-advisor']")).toBeNull();
     expect(container.querySelector("[data-testid='mobile-nav-operator']")).toBeNull();
     expect(container.querySelector("[data-testid='mobile-nav-talk']")).toBeNull();
-    // Source-assertion: AppShell.tsx mobile-bottom-nav block must not
-    // mention "advisor" or "operator" or "talk" in slot ids.
+    // 源断言：AppShell.tsx mobile-bottom-nav 块在 slot id 中不得
+    // 提及 "advisor" 或 "operator" 或 "talk"。
     const src = readFileSync(
       path.resolve(__dirname, "../src/components/AppShell.tsx"),
       "utf8",
@@ -146,26 +146,24 @@ describe("MobileBottomNav P5-9 — universal-shell.md L135 + L144", () => {
 describe("Topology graph degradation P5-9 (universal-shell.md L143)", () => {
   it("at <lg viewport, /topology graph view-mode renders the table view + degraded hint", async () => {
     const { container, findByTestId } = await renderAt("/topology", 375);
-    // The table view-mode is what actually mounts (graph degraded).
+    // table view-mode 才是实际挂载的（graph 已降级）。
     expect(await findByTestId("topology-mobile-graph-degraded")).toBeTruthy();
-    // graph placeholder is NOT rendered at mobile.
-    // V1 polish slice Phase 5.2: host graph placeholder REPLACED with
-    // HostMultiRigGraph; the placeholder testid no longer exists at any
-    // viewport, so this negative assertion remains structurally correct
-    // (mobile path renders table view, not the multi-rig canvas).
+    // graph placeholder 在 mobile 不渲染。
+    // V1 polish slice Phase 5.2：host graph placeholder 已替换为
+    // HostMultiRigGraph；placeholder testid 在任何 viewport 都不再存在，
+    // 故此负面断言结构上仍正确（mobile 路径渲染 table view，
+    // 而非 multi-rig canvas）。
     expect(container.querySelector("[data-testid='topology-host-graph-placeholder']")).toBeNull();
     expect(container.querySelector("[data-testid='host-multi-rig-graph']")).toBeNull();
   });
 
   it("at >= lg viewport, /topology graph view-mode renders the graph (no degradation hint)", async () => {
     const { findByTestId, container } = await renderAt("/topology", 1440);
-    // Default tab is graph; placeholder visible.
-    // V1 polish slice Phase 5.2: HostMultiRigGraph replaces the prior
-    // placeholder card at host scope graph view-mode. At >= lg viewport
-    // either the canvas mounts (with rigs) or the empty-state mounts
-    // (mock returns []). Either is acceptable proof that the desktop
-    // path is NOT degraded to the table; <lg path would have rendered
-    // the table degradation hint.
+    // 默认 tab 为 graph；placeholder 可见。
+    // V1 polish slice Phase 5.2：HostMultiRigGraph 在 host scope graph view-mode
+    // 替换先前 placeholder 卡。在 >= lg viewport，要么 canvas 挂载（带 rigs），
+    // 要么 empty-state 挂载（mock 返回 []）。二者均可证明 desktop 路径
+    // 未降级为 table；<lg 路径本会渲染 table 降级提示。
     const desktopMount = await waitFor(() =>
       container.querySelector("[data-testid='host-multi-rig-graph']") ??
       container.querySelector("[data-testid='host-multi-rig-graph-empty']"),

@@ -1,0 +1,102 @@
+{
+"packages/daemon/src/domain/rigspec-schema.ts": [
+"daemon-core-k",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/seat-handover-service.ts": [
+"daemon-core-k",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/seat-identity-reconciler.ts": [
+"daemon-core-k",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/requirements-probe.ts": [
+"daemon-core-g",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/restore-check-service.ts": [
+"daemon-core-g",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/seat-attention-reconciler.ts": [
+"daemon-core-g",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/queue-wake-ladder.ts": [
+"daemon-core-f",
+"validated",
+"done"
+],
+"packages/daemon/src/domain/queue-wake-repository.ts": [
+"daemon-core-j",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/reconciler.ts": [
+"daemon-core-j",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/runtime-adapter.ts": [
+"daemon-core-j",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/rehydrate-eligibility.ts": [
+"daemon-core-i",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/rig-repository.ts": [
+"daemon-core-i",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/seat-activity-service.ts": [
+"daemon-core-i",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/rebuild-priming-chain.ts": [
+"daemon-core-e",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/rigspec-codec.ts": [
+"daemon-core-d",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/restore-attempt-receipt.ts": [
+"daemon-core-h",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/restore-orchestrator.ts": [
+"daemon-core-c",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/rigspec-preflight.ts": [
+"daemon-core-c",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/role-resolver.ts": [
+"daemon-core-c",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/seat-delivery-guard.ts": [
+"daemon-core-c",
+"self_reported",
+"done"
+]
+}

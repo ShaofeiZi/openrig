@@ -365,7 +365,7 @@ describe("rig whoami --all-hosts fan-out", () => {
     const { stderr, exitCode } = await captureLogs(async () => {
       await prog.parseAsync(["node", "rig", "whoami", "--hosts", "typo", "--json"]);
     });
-    expect(stderr.some((s) => s.includes("unknown host ids"))).toBe(true);
+    expect(stderr.some((s) => s.includes("未知主机 id"))).toBe(true);
     expect(exitCode).toBe(1);
   });
 });
@@ -415,7 +415,7 @@ describe("rig launch --host HTTP", () => {
     });
     const launchCalls = client._calls.filter((c) => c.path.includes("/launch"));
     expect(launchCalls).toHaveLength(0);
-    expect(output.stderr.join("\n")).toContain("single-seat launch never changes non-targets");
+    expect(output.stderr.join("\n")).toContain("单席位启动不会改变非目标");
     expect(output.exitCode).toBe(1);
   });
 

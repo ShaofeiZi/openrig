@@ -7,8 +7,8 @@ import { AgentActivityStore } from "../src/domain/agent-activity-store.js";
 import type { EventBus } from "../src/domain/event-bus.js";
 import { activityRoutes } from "../src/routes/activity.js";
 
-// Real runner -> in-process HTTP route -> real store/read gate. Only persistence
-// scaffolding, the tenure lookup and runner effects are injected; no daemon or Pi.
+// 真实 runner → 进程内 HTTP 路由 → 真实存储/读取门禁。仅注入持久化脚手架、tenure
+// 查找和 runner 副作用；不启动后台服务或 Pi。
 const SESSION = "worker@pi-test";
 const NODE = "pi-node";
 const GENERATION = "pi-current";
@@ -65,8 +65,8 @@ function fixture(generation: string | null = GENERATION) {
   };
 }
 
-describe("Pi occupant-bound activity (#29)", () => {
-  it("carries the launch identity on every hook, ignoring identity claims in Pi events", async () => {
+describe("Pi 绑定占用者的活动（#29）", () => {
+  it("每个 hook 都携带启动身份，并忽略 Pi 事件中的身份声明", async () => {
     const f = fixture();
     f.core.handlePiLine(JSON.stringify({ type: "response", id: "pi-runner-get-state",
       data: { sessionId: "native-id", sessionFile: "/fixture/session.jsonl", generation: "spoofed" } }));
@@ -83,7 +83,7 @@ describe("Pi occupant-bound activity (#29)", () => {
     expect(f.store.getLatestForNode({ nodeId: "other-node" })).toBeNull();
   });
 
-  it("projects current running and idle activity through the actual HTTP/store seam", async () => {
+  it("通过真实 HTTP/存储接缝投射当前运行中与空闲活动", async () => {
     const f = fixture();
     for (const [type, state] of [["agent_start", "running"], ["agent_end", "idle"]]) {
       f.core.handlePiLine(JSON.stringify({ type }));
@@ -104,7 +104,7 @@ describe("Pi occupant-bound activity (#29)", () => {
     expect(f.read()).toMatchObject({ state: "unknown", stale: true, reason });
   });
 
-  it("does not restamp an old runner after renewal or invent a missing live tenure", async () => {
+  it("续期后不重新标记旧 runner，也不虚构缺失的存活 tenure", async () => {
     const f = fixture();
     f.core.handlePiLine(JSON.stringify({ type: "agent_start" }));
     await f.flush();
@@ -119,7 +119,7 @@ describe("Pi occupant-bound activity (#29)", () => {
     expect(response.status).toBe(404);
   });
 
-  it("preserves the accepted child identity allowlist without forwarding hook credentials", () => {
+  it("保留已接受的子身份允许列表，但不转发 hook 凭证", () => {
     const env = buildPiChildEnv({ OPENRIG_SESSION_NAME: SESSION, OPENRIG_NODE_ID: NODE,
       OPENRIG_OCCUPANT_GENERATION: GENERATION, OPENRIG_ACTIVITY_HOOK_TOKEN: "fixture-only",
       OPENRIG_TERMINAL_BEARER_TOKEN: "fixture-only", OPENRIG_UNREVIEWED_SETTING: "exclude",

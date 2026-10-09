@@ -1,6 +1,6 @@
-// OPR.0.4.1.27 Unit 3 — LevelControl (Option-B named-level segmented control).
-// Presentation over the existing 5 toggles: derives the current level via
-// deriveLevel(state) and calls setLevel(level) on pick. action_required floored.
+// OPR.0.4.1.27 Unit 3——LevelControl（Option-B 命名级分段控件）。
+// 在既有 5 个 toggle 之上的呈现：经 deriveLevel(state) 派生当前 level，
+// 选择时调用 setLevel(level)。action_required 向下取整。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup, waitFor } from "@testing-library/react";
@@ -26,7 +26,7 @@ function withQC(ui: React.ReactNode) {
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
 
-// Highlights state (default): approvals/shipped/progress ON, audit OFF, action_required ON.
+// Highlights 状态（默认）：approvals/shipped/progress ON，audit OFF，action_required ON。
 function mockHighlights(posted: Record<string, string>) {
   mockFetch.mockImplementation(async (url: unknown, init?: RequestInit) => {
     if (typeof url !== "string") return new Response("{}", { status: 200 });
@@ -60,7 +60,7 @@ describe("LevelControl (OPR.0.4.1.27 Unit 3)", () => {
     expect(await findByTestId("level-control-option-all-activity")).toBeTruthy();
     expect(await findByTestId("level-control-option-highlights")).toBeTruthy();
     expect(await findByTestId("level-control-option-needs-you")).toBeTruthy();
-    expect(getByText(/action items always on/i)).toBeTruthy();
+    expect(getByText(/你需关注的/)).toBeTruthy();
   });
 
   it("marks the derived current level active (highlights default)", async () => {
@@ -77,7 +77,7 @@ describe("LevelControl (OPR.0.4.1.27 Unit 3)", () => {
     mockHighlights({});
     const { findByTestId } = withQC(<LevelControl />);
     const readout = await findByTestId("level-control-readout");
-    await waitFor(() => expect(readout.textContent ?? "").toMatch(/highlights/i));
+    await waitFor(() => expect(readout.textContent ?? "").toMatch(/精选/));
   });
 
   it("clicking a level calls setLevel → POSTs the changed keys (needs-you turns 3 off)", async () => {

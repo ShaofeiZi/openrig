@@ -111,7 +111,7 @@ export interface BoundedHealthEvidence {
   };
 }
 
-/** Passive traffic is a question for an agent, not a ratio or a diagnosis. */
+/** 被动流量应交由智能体判断，不能仅凭比率直接诊断。 */
 export interface CeremonyProgressAssessment {
   basis: string;
   conclusion: "established" | "false-positive" | "indeterminate";
@@ -304,7 +304,7 @@ export function deriveHealthSourceFreshness(input: {
 }): HealthSourceFreshness {
   const evaluatedMs = timestampMs("evaluatedAt", input.evaluatedAt);
   if (!Number.isFinite(input.maxAgeSeconds) || input.maxAgeSeconds < 0) {
-    throw new Error("maxAgeSeconds must be a finite non-negative number");
+    throw new Error("maxAgeSeconds 必须是有限的非负数");
   }
   if (input.contradictory) {
     return {
@@ -346,7 +346,7 @@ export function deriveHealthSourceFreshness(input: {
   };
 }
 
-/** Apply one bounded read window without reordering or mutating source records. */
+/** 应用一个有界读取窗口，不重排也不修改源记录。 */
 export function boundHealthEvidence(
   evidence: readonly HealthEvidenceReference[],
   query: HealthQueryBounds,
@@ -354,10 +354,10 @@ export function boundHealthEvidence(
 ): BoundedHealthEvidence {
   const startedMs = timestampMs("query.startedAt", query.startedAt);
   const endedMs = timestampMs("query.endedAt", query.endedAt);
-  if (startedMs > endedMs) throw new Error("query.startedAt must not be after query.endedAt");
-  if (!Number.isInteger(query.limit) || query.limit < 1) throw new Error("query.limit must be a positive integer");
+  if (startedMs > endedMs) throw new Error("query.startedAt 不得晚于 query.endedAt");
+  if (!Number.isInteger(query.limit) || query.limit < 1) throw new Error("query.limit 必须是正整数");
   if (!Number.isFinite(query.retentionSeconds) || query.retentionSeconds < 1) {
-    throw new Error("query.retentionSeconds must be a positive number");
+    throw new Error("query.retentionSeconds 必须是正数");
   }
 
   const selected: HealthEvidenceReference[] = [];
@@ -396,8 +396,8 @@ export function boundHealthEvidence(
   };
 }
 
-/** Build one projection-neutral record. Detector policy supplies the draft; this function
- * enforces identity, bounds, freshness, and honest indeterminate semantics only. */
+/** 构建一条与投影无关的记录。检测器策略提供草稿；本函数只强制身份、边界、
+ * 新鲜度与如实的不确定语义。 */
 export function projectHealthRecord(draft: HealthRecordDraft): HealthRecord {
   const detector = requiredText("detector", draft.detector);
   requiredText("summary", draft.summary);
@@ -407,7 +407,7 @@ export function projectHealthRecord(draft: HealthRecordDraft): HealthRecord {
   if (draft.startedAt !== null) timestampMs("startedAt", draft.startedAt);
   if (draft.lastObservedAt !== null) timestampMs("lastObservedAt", draft.lastObservedAt);
   if (draft.startedAt && draft.lastObservedAt && Date.parse(draft.startedAt) > Date.parse(draft.lastObservedAt)) {
-    throw new Error("startedAt must not be after lastObservedAt");
+    throw new Error("startedAt 不得晚于 lastObservedAt");
   }
 
   const indeterminateReason = projectionIndeterminateReason(draft);
@@ -445,7 +445,7 @@ export function healthEpisodeId(detector: string, scope: HealthScope, episodeSta
   return `health-${digest}`;
 }
 
-/** Canonical bytes for daemon, CLI, TUI, fixtures, and content-addressed tests. */
+/** 供后台服务、CLI、TUI、fixture 与内容寻址测试使用的规范字节。 */
 export function canonicalHealthJson(records: readonly HealthRecord[]): string {
   return stableJson([...records].sort((a, b) => {
     const idOrder = a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
@@ -457,18 +457,18 @@ export function canonicalHealthJson(records: readonly HealthRecord[]): string {
 }
 
 function projectionIndeterminateReason(draft: HealthRecordDraft): string | null {
-  if (draft.status === "indeterminate") return "detector reported indeterminate evidence";
-  if (draft.source.freshness.state !== "fresh") return `source freshness is ${draft.source.freshness.state}`;
-  if (draft.source.omitted.sourceMismatch > 0) return "source evidence did not match the requested adapter";
-  if (draft.source.omitted.missingTimestamp > 0) return "source evidence is missing an observation timestamp";
-  if (draft.source.omitted.truncated > 0) return "source query reached its result limit";
-  if (draft.source.omitted.retentionClipped) return "source retention does not cover the observation window";
-  if (draft.source.evidence.length === 0) return "no source evidence falls inside the observation window";
-  if (draft.startedAt === null || draft.lastObservedAt === null) return "the qualifying interval is incomplete";
+  if (draft.status === "indeterminate") return "检测器报告了不确定证据";
+  if (draft.source.freshness.state !== "fresh") return `来源新鲜度为 ${draft.source.freshness.state}`;
+  if (draft.source.omitted.sourceMismatch > 0) return "来源证据与请求的适配器不匹配";
+  if (draft.source.omitted.missingTimestamp > 0) return "来源证据缺少观测时间戳";
+  if (draft.source.omitted.truncated > 0) return "来源查询已达到结果上限";
+  if (draft.source.omitted.retentionClipped) return "来源保留期未覆盖观测窗口";
+  if (draft.source.evidence.length === 0) return "观测窗口内没有来源证据";
+  if (draft.startedAt === null || draft.lastObservedAt === null) return "符合条件的区间不完整";
   const queryStartedMs = Date.parse(draft.source.query.startedAt);
   const queryEndedMs = Date.parse(draft.source.query.endedAt);
   if (Date.parse(draft.startedAt) < queryStartedMs || Date.parse(draft.lastObservedAt) > queryEndedMs) {
-    return "the qualifying interval falls outside the observation window";
+    return "符合条件的区间超出观测窗口";
   }
   return null;
 }
@@ -503,18 +503,18 @@ function cloneEvidence(evidence: HealthEvidenceReference): HealthEvidenceReferen
 }
 
 function checkedSourceOrder(value: number): number {
-  if (!Number.isInteger(value) || value < 0) throw new Error("sourceOrder must be a non-negative integer");
+  if (!Number.isInteger(value) || value < 0) throw new Error("sourceOrder 必须是非负整数");
   return value;
 }
 
 function requiredText(label: string, value: string): string {
-  if (value.trim() === "") throw new Error(`${label} must be a non-empty string`);
+  if (value.trim() === "") throw new Error(`${label} 必须是非空字符串`);
   return value;
 }
 
 function timestampMs(label: string, value: string): number {
   const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) throw new Error(`${label} must be an ISO timestamp`);
+  if (!Number.isFinite(parsed)) throw new Error(`${label} 必须是 ISO 时间戳`);
   return parsed;
 }
 

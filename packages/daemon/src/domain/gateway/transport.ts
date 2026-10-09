@@ -1,23 +1,21 @@
-// ── RETIRED IN PLACE (S10, OPR.0.5.5.10) ────────────────────────────────────────────────
-// The process-split gateway shape retired under the amended M1 §3 (desk head-amendment,
-// founder R2): the gateway runs as an IN-DAEMON SUBSYSTEM (gateway-subsystem.ts) — no spawned
-// gateway process, no gateway↔connector socket wire. This module keeps compiling and its
-// tests keep passing as a historical component, but it MUST NOT gain a production caller:
-// the second-deployable ABSENCE proof pins that (any spawned gateway process or open
-// connector wire is the red). Kept in place rather than deleted per the spec-level ruling
-// (delete-or-mark is builder discretion).
+// ── 原地退役（S10，OPR.0.5.5.10）────────────────────────────────────────────────────────
+// 根据修订后的 M1 §3（desk head amendment、founder R2），进程拆分式 gateway 已退役：gateway
+// 作为后台服务内子系统运行（gateway-subsystem.ts），不再生成 gateway 进程，也没有
+// gateway↔connector socket 接线。本模块作为历史组件仍需可编译、测试仍需通过，但绝不能新增
+// production caller；第二可部署体缺席证明锁定了这一点（任何生成的 gateway 进程或打开的
+// connector 接线都表示失败）。按照 spec 层裁定保留而不删除，删除或标记由构建者自行决定。
 // ─────────────────────────────────────────────────────────────────────────────────────────
-// M1 A4a — the gateway-side UNIX-SOCKET transport: the gateway OUT-dials the local socket
-// the connector listens on, exchanges newline-framed JSON (protocol.ts codec), and wires
-// the stream to a GatewayDispatcher (contract a305310d). No inbound network listener — a
-// unix-domain socket is local filesystem-perm IPC, not network attack surface.
+// M1 A4a——gateway 侧 UNIX-SOCKET transport：gateway 主动拨号 connector 监听的本地 socket，
+// 交换以换行分帧的 JSON（protocol.ts codec），并将数据流接入 GatewayDispatcher
+//（契约 a305310d）。不存在入站网络监听；unix-domain socket 是受本地文件系统权限控制的 IPC，
+// 不是网络攻击面。
 //
-// Framing: newline-delimited JSON frames (encodeGatewayMessage appends "\n"). Incoming
-// bytes are buffered and split on "\n"; each complete frame is decoded (unknown kind /
-// partial = LOUD refuse, surfaced via onProtocolError, never silently dropped).
+// 分帧：使用换行分隔 JSON frame（encodeGatewayMessage 会追加 `\n`）。入站字节先进入缓冲区，
+// 再按 `\n` 切分；每个完整 frame 都会解码。未知 kind 或不完整 frame 会显著拒绝并通过
+// onProtocolError 呈现，绝不静默丢弃。
 //
-// NOTE (sun_path ~104-byte cap): the caller MUST pass a socketPath in a SHORT runtime dir,
-// never a deep scratchpad path.
+// 注意（sun_path 约 104 字节上限）：调用方必须传入位于短 runtime 目录中的 socketPath，
+// 绝不能使用层级很深的 scratchpad 路径。
 
 import { createConnection, type Socket } from "node:net";
 import type { DispatchBuffer } from "./dispatch-buffer.js";
@@ -32,20 +30,19 @@ export interface GatewayConnection {
 export interface ConnectOpts {
   socketPath: string;
   buffer: DispatchBuffer;
-  /** LOUD surface for a refused/malformed frame (never a silent drop). */
+  /** 显著呈现被拒绝或格式错误的 frame，绝不静默丢弃。 */
   onProtocolError?: (error: string) => void;
-  /** Socket-level error (connector down / dropped). A handler is ALWAYS attached so an
-   *  ECONNREFUSED/EPIPE never crashes the daemon — the durable buffer already guarantees
-   *  no-loss and the spawn wrapper drives reconnect; this is only the observability surface. */
+  /** Socket 层错误（connector 停机或断线）。始终附加 handler，确保 ECONNREFUSED/EPIPE 不会
+   *  使后台服务崩溃；持久 buffer 已保证不丢失，spawn wrapper 负责重连，此处只提供可观测界面。 */
   onError?: (error: Error) => void;
-  /** The socket closed (connector went away). The spawn wrapper uses this to re-dial. */
+  /** socket 已关闭（connector 离开）；spawn wrapper 用它重新拨号。 */
   onClose?: () => void;
   newDecisionId?: () => string;
 }
 
-/** Out-dial the connector socket + wire it to a GatewayDispatcher. On the CapabilityDescriptor
- *  handshake the dispatcher becomes ready and replays any un-Acked decisions (reconnect no-loss);
- *  Ack frames drain the buffer. Returns the dispatcher so the daemon can dispatch decisions. */
+/** 主动拨号 connector socket 并接入 GatewayDispatcher。CapabilityDescriptor 握手后，dispatcher
+ *  进入 ready 状态并重放所有未 Ack 的 decision，从而保证重连不丢失；Ack frame 会排出 buffer。
+ *  返回 dispatcher，供后台服务分发 decision。 */
 export function connectGateway(opts: ConnectOpts): GatewayConnection {
   const socket: Socket = createConnection(opts.socketPath);
   const dispatcher = new GatewayDispatcher({
@@ -56,7 +53,7 @@ export function connectGateway(opts: ConnectOpts): GatewayConnection {
 
   let acc = "";
   socket.setEncoding("utf8");
-  // Always-attached error handler: a down/dropped connector must not throw uncaught.
+  // 始终附加错误 handler：connector 停机或断线时不得抛出未捕获异常。
   socket.on("error", (err: Error) => opts.onError?.(err));
   socket.on("close", () => opts.onClose?.());
   socket.on("data", (chunk: string) => {
@@ -71,30 +68,29 @@ export function connectGateway(opts: ConnectOpts): GatewayConnection {
       const msg = decoded.message;
       if (msg.kind === "capability") {
         dispatcher.onCapability(msg);
-        dispatcher.replayPending(); // reconnect no-loss: re-send un-Acked decisions
+        dispatcher.replayPending(); // 重连不丢失：重新发送未 Ack 的 decision。
       } else if (msg.kind === "ack") {
         if (msg.ok) {
-          dispatcher.onAck(msg.decisionId); // delivered -> drain the durable row
+          dispatcher.onAck(msg.decisionId); // 已投递：排出持久行。
         } else {
-          // ok:false = the connector RECEIVED the decision but delivery FAILED and it did NOT
-          // record it (its contract: the gateway retains + replays). We must NOT drain here — a
-          // drain would silently DROP the notification (invariant-2 no-loss). Leave the row pending
-          // so replayPending re-sends it on the next (re)connect; the connector's decisionId dedup
-          // makes the eventual re-delivery a no-double-post. Surface the failure for observability.
+          // ok:false 表示 connector 已收到 decision，但投递失败且未记录它；按契约，gateway 应保留并
+          // 重放。此处绝不能排出，否则会静默丢失通知，违反 invariant-2 no-loss。保持该行 pending，
+          // 使 replayPending 在下次连接或重连时重新发送；connector 对 decisionId 去重，确保最终重投递
+          // 不会重复发帖。同时呈现失败以便观测。
           opts.onError?.(new Error(
-            `connector reported delivery failure for decision ${msg.decisionId} (${msg.failed.class}${msg.failed.detail ? ": " + msg.failed.detail : ""}) — retained for replay`,
+            `connector 报告 decision ${msg.decisionId} 投递失败（${msg.failed.class}${msg.failed.detail ? "：" + msg.failed.detail : ""}）——已保留待重放`,
           ));
         }
       }
-      // outbound_decision is gateway->connector only; receiving one is a protocol error
+      // outbound_decision 只能从 gateway 发往 connector；收到该类型属于协议错误。
       else if (msg.kind === "outbound_decision") {
-        opts.onProtocolError?.(`unexpected outbound_decision frame from the connector (decisionId ${msg.decisionId})`);
+        opts.onProtocolError?.(`从 connector 收到非预期的 outbound_decision frame（decisionId ${msg.decisionId}）`);
       }
     }
   });
 
   return {
     dispatcher,
-    close: () => { try { socket.end(); socket.destroy(); } catch { /* best-effort */ } },
+    close: () => { try { socket.end(); socket.destroy(); } catch { /* 尽力关闭。 */ } },
   };
 }

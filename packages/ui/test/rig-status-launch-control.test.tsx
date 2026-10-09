@@ -27,8 +27,9 @@ function jsonResponse(body: unknown, status = 200) {
   return Promise.resolve({ ok: status < 400, status, json: async () => body });
 }
 
-// A mixed restore-original plan: 2 resumable + 1 missing-token (awaiting-decision)
-// + 1 stale-token resumable — so the LOCK + honesty + stale-vs-missing are all provable.
+// 混合 restore-original plan：2 resumable + 1 missing-token
+//（awaiting-decision）+ 1 stale-token resumable——故 LOCK + honesty +
+// stale-vs-missing 均可证明。
 const MIXED_PLAN = {
   status: "plan",
   mode: "restore",
@@ -68,11 +69,11 @@ describe("RigStatusCard — consumes the backend verdict in the render (19/21 le
     const card = screen.getByTestId("rig-status-card-rig1");
     expect(card.getAttribute("data-status")).toBe("blocked");
     const badge = screen.getByTestId("rig-status-badge-rig1");
-    expect(badge.textContent).toContain("blocked");
-    // The verdict tone is the tertiary (error) tone, NOT the success/green tone.
+    expect(badge.textContent).toContain("已阻塞");
+    // verdict 色调是 tertiary（error）色调，绝非 success/green 色调。
     expect(badge.className).toContain("text-tertiary");
     expect(badge.className).not.toContain("text-success");
-    // The composed provenance is visible.
+    // 组合 provenance 可见。
     expect(screen.getByTestId("rig-status-src-rig1").textContent).toContain("restore-check: blocked");
   });
 
@@ -91,14 +92,14 @@ describe("RigStatusCard — consumes the backend verdict in the render (19/21 le
     );
     const primary = screen.getByTestId("rig-primary-action-rig1") as HTMLButtonElement;
     expect(primary.disabled).toBe(true);
-    expect(primary.textContent).toContain("RUNNING");
+    expect(primary.textContent).toContain("运行中");
   });
 });
 
-// OPR.0.4.7.1 — the topology control is a COMPACT badge + button that opens
-// the launch/recovery modal; the giant inline card (obscured by the explorer
-// overlay at /topology/rig/*) is gone from this surface. RigStatusCard itself
-// is unchanged (dashboard kernel card still uses it — covered above).
+// OPR.0.4.7.1——topology 控件是一个 COMPACT badge + 按钮，打开
+// launch/recovery modal；巨大 inline card（在 /topology/rig/* 被 explorer
+// overlay 遮挡）从此表面消失。RigStatusCard 本身不变（dashboard kernel card
+// 仍用它——上文已覆盖）。
 describe("RigStatusControl — compact modal-launch button (no inline card)", () => {
   beforeEach(() => mockFetch.mockReset());
   afterEach(cleanup);
@@ -130,7 +131,7 @@ describe("RigStatusControl — compact modal-launch button (no inline card)", ()
     renderWithClient(<RigStatusControl rigId="r9" rigName="demo" />);
 
     await waitFor(() => expect(screen.getByTestId("rig-primary-action-r9")).toBeTruthy());
-    // The compact contract: the giant card is GONE from this surface.
+    // compact 契约：巨大 card 从此表面消失。
     expect(screen.queryByTestId("rig-status-card-r9")).toBeNull();
     const control = screen.getByTestId("rig-status-control-r9");
     expect(control.getAttribute("data-status")).toBe("partial");
@@ -177,27 +178,27 @@ describe("LaunchRecoveryModal — plan-before-mutation + the LOCK + honesty", ()
 
     await waitFor(() => expect(screen.getByTestId("launch-plan-table")).toBeTruthy());
 
-    // Plan-before-action: the fetch hit the read-only launch-plan route.
+    // 先 plan 后 action：fetch 命中只读 launch-plan 路由。
     expect(mockFetch.mock.calls.some((c) => String(c[0]).includes("/launch-plan"))).toBe(true);
 
-    // The LOCK: resumable seats stay resume-original (not repainted to fresh).
+    // LOCK：resumable seats 保持 resume-original（不重绘为 fresh）。
     expect(screen.getByTestId("plan-verdict-orch.advisor").textContent).toContain("resume-original");
     expect(screen.getByTestId("plan-verdict-dev2.driver").textContent).toContain("resume-original");
-    // The missing-token seat is awaiting-decision (NOT fresh).
+    // missing-token seat 是 awaiting-decision（非 fresh）。
     expect(screen.getByTestId("plan-verdict-dev1.guard").textContent).toContain("awaiting-decision");
     expect(screen.getByTestId("plan-verdict-dev1.guard").textContent).not.toContain("fresh");
 
-    // stale token is DISTINCT from missing (FR-6).
+    // stale token 与 missing 有别（FR-6）。
     expect(screen.getByTestId("plan-token-dev2.driver").textContent).toContain("stale");
     expect(screen.getByTestId("plan-token-dev1.guard").textContent).toContain("missing");
 
-    // restore-original is BLOCKED (honesty contract) — the primary is disabled.
+    // restore-original 被阻塞（honesty 契约）——primary 禁用。
     expect(screen.getByTestId("launch-blocked-banner")).toBeTruthy();
     const execute = screen.getByTestId("launch-execute") as HTMLButtonElement;
     expect(execute.disabled).toBe(true);
-    expect(execute.textContent).toContain("Resolve blockers to restore");
+    expect(execute.textContent).toContain("请先解决阻塞项再恢复");
 
-    // No restore mutation was issued while previewing (read-only).
+    // preview 期间未发 restore mutation（只读）。
     expect(mockFetch.mock.calls.some((c) => String(c[0]).endsWith("/up"))).toBe(false);
   });
 
@@ -215,16 +216,16 @@ describe("LaunchRecoveryModal — plan-before-mutation + the LOCK + honesty", ()
     renderWithClient(<LaunchRecoveryModal rigId="rig1" rigName="openrig-delivery" open onOpenChange={() => {}} />);
     await waitFor(() => expect(screen.getByTestId("launch-plan-table")).toBeTruthy());
 
-    // Switch to the fresh policy (explicit, labeled identity-changing choice).
+    // 切到 fresh policy（显式、带标签的 identity 变更选择）。
     fireEvent.click(screen.getByTestId("launch-policy-fresh"));
 
     await waitFor(() => {
       const execute = screen.getByTestId("launch-execute") as HTMLButtonElement;
       expect(execute.disabled).toBe(false);
-      expect(execute.textContent).toContain("Fresh-prime all seats");
+      expect(execute.textContent).toContain("为所有席位全新启动");
     });
 
-    // Execute → posts to /up with per-seat freshLogicalIds (never a global flip).
+    // Execute -> 以 per-seat freshLogicalIds POST 到 /up（绝非全局翻转）。
     fireEvent.click(screen.getByTestId("launch-execute"));
     await waitFor(() => {
       const upCall = mockFetch.mock.calls.find((c) => String(c[0]).endsWith("/up"));
@@ -263,9 +264,9 @@ describe("KernelStatusCard — kernel-status not /healthz; consumes the kernel v
       const card = screen.getByTestId("kernel-status-card");
       expect(card.getAttribute("data-status")).toBe("blocked");
     });
-    // The verdict is rendered (non-green) and the source cites kernel_state (not /healthz).
+    // verdict 已渲染（非 green），source 引用 kernel_state（非 /healthz）。
     expect(screen.getByTestId("rig-status-src-rig_kernel").textContent).toContain("kernel-status.kernel_state=auth_blocked");
-    // NEVER inferred from daemon /healthz.
+    // 绝不从 daemon /healthz 推断。
     expect(mockFetch.mock.calls.some((c) => String(c[0]).includes("/healthz"))).toBe(false);
   });
 
@@ -300,7 +301,7 @@ describe("mutations — no useStartRig regression; useLaunchRig carries policy",
     expect(upCall).toBeTruthy();
     const init = (upCall![1] ?? {}) as RequestInit;
     expect(init.method).toBe("POST");
-    // The regression guard: useStartRig sends NO body.
+    // 回归守卫：useStartRig 不发 body。
     expect(init.body).toBeUndefined();
   });
 

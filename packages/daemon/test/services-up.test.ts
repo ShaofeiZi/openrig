@@ -30,7 +30,7 @@ const COMPOSE_PS_HEALTHY = JSON.stringify({
   Health: "healthy",
 });
 
-describe("Bootstrap service gate (T03)", () => {
+describe("Bootstrap service gate（T03）", () => {
   let db: Database.Database;
   let tmpDir: string;
 
@@ -50,7 +50,7 @@ describe("Bootstrap service gate (T03)", () => {
     return specPath;
   }
 
-  it("services-free spec launches through existing path with no service overhead", async () => {
+  it("无 services 的 spec 沿现有路径启动，且无 service 开销", async () => {
     const specPath = writeSpec(`
 version: "0.2"
 name: no-services-rig
@@ -73,11 +73,11 @@ pods:
     });
 
     expect(result.status).toBe("completed");
-    // No service_boot stage should appear
+    // 不应出现 service_boot stage。
     expect(result.stages.some((s) => s.stage === "service_boot")).toBe(false);
   });
 
-  it("services-enabled spec boots services before agent launch", async () => {
+  it("启用 services 的 spec 会在 agent 启动前启动 service", async () => {
     const composePath = path.join(tmpDir, "docker-compose.yml");
     fs.writeFileSync(composePath, "version: '3'\nservices:\n  vault:\n    image: vault:1.15\n");
 
@@ -101,7 +101,7 @@ pods:
     edges: []
 `);
 
-    // Wire a ServiceOrchestrator with mock exec
+    // 接入使用 mock exec 的 ServiceOrchestrator。
     const composeAdapter = new ComposeServicesAdapter(mockExec({
       "up -d": "",
       "ps --format json": COMPOSE_PS_HEALTHY,
@@ -111,7 +111,7 @@ pods:
     const serviceOrch = new ServiceOrchestrator({ rigRepo, composeAdapter });
 
     const setup = createTestApp(db);
-    // Inject service deps into bootstrap orchestrator via reflection
+    // 通过 reflection 将 service 依赖注入 bootstrap orchestrator。
     (setup.bootstrapOrchestrator as any).deps.serviceOrchestrator = serviceOrch;
     (setup.bootstrapOrchestrator as any).deps.rigRepo = rigRepo;
 
@@ -121,13 +121,13 @@ pods:
     });
 
     expect(result.status).toBe("completed");
-    // Service boot stage should appear and succeed
+    // service boot stage 应出现并成功。
     const serviceStage = result.stages.find((s) => s.stage === "service_boot");
     expect(serviceStage).toBeDefined();
     expect(serviceStage!.status).toBe("ok");
   });
 
-  it("service boot failure blocks agent launch with honest error", async () => {
+  it("service 启动失败会以如实错误阻止 agent 启动", async () => {
     const composePath = path.join(tmpDir, "docker-compose.yml");
     fs.writeFileSync(composePath, "version: '3'\nservices:\n  vault:\n    image: vault:1.15\n");
 
@@ -151,21 +151,21 @@ pods:
     edges: []
 `);
 
-    // Wire a ServiceOrchestrator that always fails boot
+    // 接入始终启动失败的 ServiceOrchestrator。
     const composeAdapter = new ComposeServicesAdapter(mockExec());
     const rigRepo = new RigRepository(db);
     const serviceOrch = new ServiceOrchestrator({ rigRepo, composeAdapter });
-    // Mock boot() to return immediate failure
+    // mock boot() 立即返回失败。
     vi.spyOn(serviceOrch, "boot").mockResolvedValue({
       ok: false,
       code: "wait_timeout",
-      error: "Service wait targets not healthy after 30s: HTTP probe failed: http://localhost:8200/v1/sys/health",
+      error: "等待 30 秒后服务目标仍不健康：HTTP 探针失败：http://localhost:8200/v1/sys/health",
       receipt: {
         kind: "compose",
         composeFile: "docker-compose.yml",
         projectName: "failing-services-rig",
         services: [{ name: "vault", status: "running", health: "starting" }],
-        waitFor: [{ target: { url: "http://localhost:8200/v1/sys/health" }, status: "unhealthy", detail: "HTTP probe failed" }],
+        waitFor: [{ target: { url: "http://localhost:8200/v1/sys/health" }, status: "unhealthy", detail: "HTTP 探针失败" }],
         capturedAt: new Date().toISOString(),
       },
     });
@@ -180,30 +180,25 @@ pods:
     });
 
     expect(result.status).toBe("failed");
-    // Error should mention the blocking target
-    expect(result.errors.some((e) => e.includes("Service boot failed"))).toBe(true);
-    // Service boot stage should show failed
+    // 错误应提到阻塞目标。
+    expect(result.errors.some((e) => e.includes("服务引导失败"))).toBe(true);
+    // service boot stage 应显示 failed。
     const serviceStage = result.stages.find((s) => s.stage === "service_boot");
     expect(serviceStage).toBeDefined();
-    // OPR.0.3.2.22 Bug 2: pre-fix, a service_boot_failed left an orphan rig
-    // record (no sessions, but the rig existed) that produced the
-    // "ambiguous library-spec vs restore-target" UX trap on the next retry.
-    // Post-fix, the prelaunch-hook failure rolls back the rig record, so
-    // the spec name stays free for a clean retry — and the "no agent
-    // sessions launched" guarantee follows transitively from "no rig".
+    // OPR.0.3.2.22 Bug 2：修复前，service_boot_failed 会留下 orphan rig record（没有 session，
+    // 但 rig 存在），导致下次重试陷入“library spec 与 restore target 有歧义”的 UX 陷阱。修复后，
+    // prelaunch-hook 失败会回滚 rig record，因此 spec name 可供干净重试——且“未启动 agent session”
+    // 的保证可由“无 rig”传递得出。
     const orphans = rigRepo.findRigsByName("failing-services-rig");
-    expect(orphans, `expected no orphan rig records after service_boot_failed, found ${JSON.stringify(orphans)}`).toHaveLength(0);
+    expect(orphans, `service_boot_failed 后不应有 orphan rig record，实际为 ${JSON.stringify(orphans)}`).toHaveLength(0);
     expect(serviceStage!.status).toBe("failed");
   });
 
-  // OPR.0.3.2.22 Bug 2 follow-up (guard BLOCKING on a29c7883) — when
-  // boot returns ok:false after compose may have started (e.g.
-  // wait_timeout), the prelaunch-hook MUST call teardown best-effort
-  // before the rig record is deleted. Otherwise compose resources
-  // orphan: rig_services cascade-removes with the rig, taking the
-  // normal teardown handle with it. Discriminator: assert teardown
-  // was called on boot failure AND the rig record is still removed.
-  it("service boot failure tears down compose before rig record is deleted (no compose orphan)", async () => {
+  // OPR.0.3.2.22 Bug 2 后续项（a29c7883 上的 guard BLOCKING）——compose 可能已启动后 boot 返回
+  // ok:false（例如 wait_timeout）时，prelaunch-hook 必须在删除 rig record 前尽力调用 teardown。
+  // 否则 compose resource 会成为 orphan：rig_services 随 rig 级联删除，并带走正常 teardown handle。
+  // 判别条件：断言 boot 失败时调用了 teardown，且 rig record 仍被删除。
+  it("service 启动失败时，在删除 rig record 前 teardown compose（无 compose orphan）", async () => {
     const composePath = path.join(tmpDir, "docker-compose.yml");
     fs.writeFileSync(composePath, "version: '3'\nservices:\n  vault:\n    image: vault:1.15\n");
 
@@ -234,13 +229,13 @@ pods:
     vi.spyOn(serviceOrch, "boot").mockResolvedValue({
       ok: false,
       code: "wait_timeout",
-      error: "Service wait targets not healthy after 30s: HTTP probe failed: http://localhost:8200/v1/sys/health",
+      error: "等待 30 秒后服务目标仍不健康：HTTP 探针失败：http://localhost:8200/v1/sys/health",
       receipt: {
         kind: "compose",
         composeFile: "docker-compose.yml",
         projectName: "teardown-on-boot-failure-rig",
         services: [{ name: "vault", status: "running", health: "starting" }],
-        waitFor: [{ target: { url: "http://localhost:8200/v1/sys/health" }, status: "unhealthy", detail: "HTTP probe failed" }],
+        waitFor: [{ target: { url: "http://localhost:8200/v1/sys/health" }, status: "unhealthy", detail: "HTTP 探针失败" }],
         capturedAt: new Date().toISOString(),
       },
     });
@@ -256,15 +251,15 @@ pods:
     });
 
     expect(result.status).toBe("failed");
-    // Discriminator: teardown MUST be called when boot fails — that is
-    // the bug guard caught (compose orphan downstream of rig deletion).
-    expect(teardownSpy, "expected serviceOrch.teardown to be called best-effort on boot failure").toHaveBeenCalledTimes(1);
-    // And the rig record is still rolled back (Bug 2 original contract).
+    // 判别条件：boot 失败时必须调用 teardown——这正是 bug guard 捕获的问题（删除 rig 后遗留
+    // compose orphan）。
+    expect(teardownSpy, "boot 失败时应尽力调用 serviceOrch.teardown").toHaveBeenCalledTimes(1);
+    // rig record 仍会回滚（Bug 2 原始契约）。
     const orphans = rigRepo.findRigsByName("teardown-on-boot-failure-rig");
     expect(orphans).toHaveLength(0);
   });
 
-  it("plan mode does not boot services", async () => {
+  it("plan 模式不启动 service", async () => {
     const composePath = path.join(tmpDir, "docker-compose.yml");
     fs.writeFileSync(composePath, "version: '3'\nservices:\n  vault:\n    image: vault:1.15\n");
 
@@ -300,9 +295,9 @@ pods:
       mode: "plan",
     });
 
-    // Plan mode should not call docker compose at all
+    // plan 模式完全不应调用 docker compose。
     expect(exec).not.toHaveBeenCalled();
-    // No service_boot stage in plan mode
+    // plan 模式中没有 service_boot stage。
     expect(result.stages.some((s) => s.stage === "service_boot")).toBe(false);
   });
 });

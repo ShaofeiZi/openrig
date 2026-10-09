@@ -1,21 +1,19 @@
-// Slice-21 FR-5 — workspace doctor readiness checks for `rig workspace doctor`.
+// Slice-21 FR-5——`zrig workspace doctor` 的工作区诊断就绪检查。
 //
-// 7 checks (this file ships pure check helpers; daemon route + CLI
-// subcommand wiring land in follow-on commits):
-//   1. Workspace root reachable (env > file > default precedence)
-//   2. Missions folder present
-//   3. File allowlist sane (named-pair ConfigStore key, NOT a file)
-//   4. Daemon points at this workspace
-//   5. Daemon reload needed
-//   6. Optional slice docs (warn-only)
-//   7. NOTES.md presence (with readable legacy MISSION_NOTES.md fallback)
+// 7 项检查（此文件提供纯检查辅助函数；守护进程路由与 CLI 子命令接线在后续提交中落地）：
+//   1. 工作区根目录可访问（优先级：环境变量 > 文件 > 默认值）
+//   2. missions 文件夹存在
+//   3. 文件允许列表有效（ConfigStore 中的具名键值对，不是文件）
+//   4. 守护进程指向此工作区
+//   5. 守护进程是否需要重载
+//   6. 可选的 slice 文档（仅警告）
+//   7. NOTES.md 是否存在（可回退到可读的旧版 MISSION_NOTES.md）
 //
-// Per-check return shape is `{check, status: "ok"|"warn"|"fail",
-// message, fixHint?, evidence?}` per FR-5 IMPL-PRD §76-78. The shape
-// diverges intentionally from the install-health `rig doctor`'s
-// DoctorCheck shape (pass|warn|fail|skipped, reason/fix) — different
-// concerns warrant different schemas (workspace-readiness vs install-
-// health); the divergence is orch-marshal-accepted per cont.43-followup.
+// 按照 FR-5 IMPL-PRD §76-78，每项检查返回 `{check, status:
+// "ok"|"warn"|"fail", message, fixHint?, evidence?}`。此结构有意区别于
+// 安装健康检查 `zrig doctor` 的 DoctorCheck 结构
+//（pass|warn|fail|skipped、reason/fix）——不同关注点应采用不同模式（工作区就绪度
+// 与安装健康度）；依据 cont.43-followup，此差异已获 orch-marshal 接受。
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -40,11 +38,11 @@ export interface CheckWorkspaceRootInput {
 }
 
 const ENV_FIX_HINT =
-  "unset OPENRIG_WORKSPACE_ROOT or set it to an existing directory; run `rig config init-workspace` to scaffold a fresh one";
+  "取消设置 OPENRIG_WORKSPACE_ROOT，或将其设为现有目录；运行 `zrig config init-workspace` 创建新的工作区框架";
 const FILE_FIX_HINT =
-  "update workspace.root in config.json to an existing directory; run `rig config init-workspace` to scaffold a fresh one";
+  "将 config.json 中的 workspace.root 更新为现有目录；运行 `zrig config init-workspace` 创建新的工作区框架";
 const DEFAULT_FIX_HINT =
-  "run `rig config init-workspace` to scaffold the default workspace at the configured root";
+  "运行 `zrig config init-workspace`，在配置的根目录创建默认工作区框架";
 
 function fixHintForSource(source: WorkspaceRootSource): string {
   switch (source) {
@@ -58,11 +56,10 @@ function fixHintForSource(source: WorkspaceRootSource): string {
 }
 
 /**
- * Check #1 — workspace root reachable.
+ * 检查 #1——工作区根目录可访问。
  *
- * Verifies the resolved workspace root exists as a directory. The
- * `source` (env / file / default) is propagated into the fix-hint so
- * the operator gets the right remediation channel.
+ * 验证解析后的工作区根目录存在且为目录。将 `source`（env / file / default）
+ * 传入修复提示，使操作员获得正确的修复途径。
  */
 export function checkWorkspaceRootReachable(opts: CheckWorkspaceRootInput): DoctorCheck {
   const { workspaceRoot, source } = opts;
@@ -75,8 +72,8 @@ export function checkWorkspaceRootReachable(opts: CheckWorkspaceRootInput): Doct
       check: "workspace_root_reachable",
       status: "fail",
       message: code === "ENOENT"
-        ? `workspace root '${workspaceRoot}' does not exist (resolved from ${source})`
-        : `workspace root '${workspaceRoot}' is not reachable: ${(err as Error).message}`,
+        ? `工作区根目录 '${workspaceRoot}' 不存在（解析来源：${source}）`
+        : `工作区根目录 '${workspaceRoot}' 无法访问：${(err as Error).message}`,
       fixHint: fixHintForSource(source),
       evidence: { workspaceRoot, source, errorCode: code ?? "unknown" },
     };
@@ -85,7 +82,7 @@ export function checkWorkspaceRootReachable(opts: CheckWorkspaceRootInput): Doct
     return {
       check: "workspace_root_reachable",
       status: "fail",
-      message: `workspace root '${workspaceRoot}' exists but is not a directory (resolved from ${source})`,
+      message: `工作区根目录 '${workspaceRoot}' 存在但不是目录（解析来源：${source}）`,
       fixHint: fixHintForSource(source),
       evidence: { workspaceRoot, source, kind: "not_a_directory" },
     };
@@ -93,28 +90,26 @@ export function checkWorkspaceRootReachable(opts: CheckWorkspaceRootInput): Doct
   return {
     check: "workspace_root_reachable",
     status: "ok",
-    message: `workspace root '${workspaceRoot}' is a reachable directory`,
+    message: `工作区根目录 '${workspaceRoot}' 是可访问目录`,
     evidence: { workspaceRoot, source },
   };
 }
 
 export interface CheckMissionsFolderInput {
   workspaceRoot: string;
-  /** Resolved `workspace.slicesRoot` per ConfigStore (defaults to
-   *  `<workspaceRoot>/missions`). Operators who customized
-   *  `workspace.slices_root` (env or config) point this elsewhere; the
-   *  check honors the override so a deliberate custom layout doesn't
-   *  spuriously fail. */
+  /** 通过 ConfigStore 解析的 `workspace.slicesRoot`（默认为
+   *  `<workspaceRoot>/missions`）。通过环境变量或配置自定义
+   *  `workspace.slices_root` 的操作员可将其指向其他位置；检查会尊重覆盖值，
+   *  避免有意采用的自定义布局被误报为失败。 */
   slicesRoot: string;
 }
 
 /**
- * Check #2 — missions folder present.
+ * 检查 #2——missions 文件夹存在。
  *
- * Verifies the resolved missions folder (per ConfigStore `workspace.
- * slicesRoot` — defaults to `<workspaceRoot>/missions`) exists as a
- * directory. Fail on absence or wrong-shape; this is the load-bearing
- * folder for Project UI projection.
+ * 验证解析后的 missions 文件夹（依据 ConfigStore 的 `workspace.slicesRoot`，
+ * 默认为 `<workspaceRoot>/missions`）存在且为目录。缺失或形态错误均判定失败；
+ * 这是 Project UI 投影所依赖的关键文件夹。
  */
 export function checkMissionsFolder(opts: CheckMissionsFolderInput): DoctorCheck {
   const { workspaceRoot, slicesRoot } = opts;
@@ -127,12 +122,12 @@ export function checkMissionsFolder(opts: CheckMissionsFolderInput): DoctorCheck
       check: "missions_folder_present",
       status: "fail",
       message: code === "ENOENT"
-        ? `missions folder '${slicesRoot}' does not exist`
-        : `missions folder '${slicesRoot}' is not reachable: ${(err as Error).message}`,
+        ? `missions 文件夹 '${slicesRoot}' 不存在`
+        : `missions 文件夹 '${slicesRoot}' 无法访问：${(err as Error).message}`,
       fixHint:
         slicesRoot === path.join(workspaceRoot, "missions")
-          ? "run `rig config init-workspace` to scaffold the default missions/ folder"
-          : "create the configured missions folder or unset workspace.slices_root to use the default `<workspaceRoot>/missions/`",
+          ? "运行 `zrig config init-workspace` 创建默认 missions/ 文件夹框架"
+          : "创建已配置的 missions 文件夹，或取消设置 workspace.slices_root 以使用默认的 `<workspaceRoot>/missions/`",
       evidence: { slicesRoot, workspaceRoot, errorCode: code ?? "unknown" },
     };
   }
@@ -140,68 +135,60 @@ export function checkMissionsFolder(opts: CheckMissionsFolderInput): DoctorCheck
     return {
       check: "missions_folder_present",
       status: "fail",
-      message: `missions folder '${slicesRoot}' exists but is not a directory`,
+      message: `missions 文件夹 '${slicesRoot}' 存在但不是目录`,
       fixHint:
-        "remove or rename the conflicting file and run `rig config init-workspace` to scaffold the missions folder",
+        "删除或重命名冲突文件，然后运行 `zrig config init-workspace` 创建 missions 文件夹框架",
       evidence: { slicesRoot, workspaceRoot, kind: "not_a_directory" },
     };
   }
   return {
     check: "missions_folder_present",
     status: "ok",
-    message: `missions folder '${slicesRoot}' is present`,
+    message: `missions 文件夹 '${slicesRoot}' 已存在`,
     evidence: { slicesRoot, workspaceRoot },
   };
 }
 
 /**
- * Canonical-decoded allowlist entry as the shipped file API sees it
- * (post `decodeAllowlist`): absolute path, realpath-canonicalized
- * when reachable. Relative paths are silently dropped by the canonical
- * decoder before they reach this shape — see check #3 for the
- * usable-vs-raw entry-count semantics.
+ * 发行版文件 API 所看到的、经标准解码的允许列表项（执行 `decodeAllowlist` 后）：
+ * 绝对路径；可访问时经 realpath 标准化。相对路径在形成此结构前就会被标准解码器
+ * 静默丢弃——可用项与原始项计数的语义参见检查 #3。
  */
 export interface AllowlistEntry {
   name: string;
-  /** Canonical absolute path (post-decodeAllowlist + realpathSync
-   *  fallback). Equivalent to the file API's `AllowlistRoot.canonicalPath`. */
+  /** 标准绝对路径（经过 decodeAllowlist 与 realpathSync 回退）。等同于文件 API 的
+   *  `AllowlistRoot.canonicalPath`。 */
   path: string;
 }
 
 export interface CheckFileAllowlistInput {
   workspaceRoot: string;
-  /** Raw `files.allowlist` value resolved via ConfigStore
-   *  (comma-separated `name:/abs/path` pairs, or empty string). */
+  /** 通过 ConfigStore 解析的原始 `files.allowlist` 值（逗号分隔的
+   *  `name:/abs/path` 键值对，或空字符串）。 */
   allowlistValue: string;
   allowlistSource: WorkspaceRootSource;
-  /** Pre-decoded entries; if omitted the check decodes allowlistValue
-   *  via the canonical `decodeAllowlist` from
-   *  domain/files/path-safety.ts so the doctor reports exactly what
-   *  the shipped file API at /api/files/* accepts. Pre-decoded
-   *  entries MUST be in canonical form (absolute path); raw
-   *  named-pair strings from SettingsStore should go through
-   *  allowlistValue + the in-function decode, not parsedEntries. */
+  /** 预解码的条目；若省略，检查会使用 domain/files/path-safety.ts 中的标准
+   *  `decodeAllowlist` 解码 allowlistValue，使诊断结果与发行版 /api/files/* 文件 API
+   *  实际接受的内容完全一致。预解码条目必须采用标准形式（绝对路径）；来自
+   *  SettingsStore 的原始具名键值对字符串应通过 allowlistValue 和函数内解码处理，
+   *  不应传给 parsedEntries。 */
   parsedEntries?: AllowlistEntry[];
 }
 
 /**
- * Check #3 — file allowlist sane.
+ * 检查 #3——文件允许列表有效。
  *
- * IMPL-PRD §43 references `<workspace-root>/.openrig/file-allowlist`
- * as a file — the shipped surface (ConfigStore `files.allowlist` key,
- * env OPENRIG_FILES_ALLOWLIST, default `workspace:${workspaceRoot}`)
- * is a CONFIGSTORE STRING KEY holding comma-separated `name:/abs/path`
- * pairs. There is no per-workspace file. Check #3 verifies the
- * resolved value decodes to at least one USABLE entry (canonical,
- * absolute) covering the workspaceRoot — the same usable-root
- * semantics the shipped file API at /api/files/* enforces via
- * `decodeAllowlist` in domain/files/path-safety.ts:60-80 (silently
- * drops non-absolute paths at line 71).
+ * IMPL-PRD §43 将 `<workspace-root>/.openrig/file-allowlist` 描述为文件——但发行表层
+ *（ConfigStore 的 `files.allowlist` 键、环境变量 OPENRIG_FILES_ALLOWLIST，默认值
+ * `workspace:${workspaceRoot}`）实际是 CONFIGSTORE 字符串键，其中保存逗号分隔的
+ * `name:/abs/path` 键值对；并不存在逐工作区文件。检查 #3 验证解析后的值至少能解码为
+ * 一个覆盖 workspaceRoot 的可用条目（标准、绝对路径）——这与发行版 /api/files/*
+ * 文件 API 通过 domain/files/path-safety.ts:60-80 中 `decodeAllowlist` 强制执行的
+ * 可用根目录语义相同（第 71 行静默丢弃非绝对路径）。
  *
- * Decoding via the canonical decoder (not a local re-implementation)
- * guarantees the doctor's verdict matches the actual file-API
- * behavior — `workspace:.` or `workspace:relative-root` evaluates
- * to zero usable entries here, mirroring the file API's silent skip.
+ * 使用标准解码器而非本地重复实现，可保证诊断结论与文件 API 的实际行为一致——
+ * `workspace:.` 或 `workspace:relative-root` 在此会得到零个可用条目，与文件 API
+ * 的静默跳过行为相符。
  */
 export function checkFileAllowlist(opts: CheckFileAllowlistInput): DoctorCheck {
   const { workspaceRoot, allowlistValue, allowlistSource } = opts;
@@ -211,9 +198,9 @@ export function checkFileAllowlist(opts: CheckFileAllowlistInput): DoctorCheck {
     return {
       check: "file_allowlist_sane",
       status: "fail",
-      message: `files.allowlist resolved to no usable entries (raw='${allowlistValue}', source=${allowlistSource}); non-absolute or malformed pairs are silently dropped to match the shipped file API`,
+      message: `files.allowlist 未解析出可用条目（原始值='${allowlistValue}'，来源=${allowlistSource}）；为匹配发行版文件 API，非绝对路径或格式错误的键值对会被静默丢弃`,
       fixHint:
-        "set OPENRIG_FILES_ALLOWLIST or run `rig config set files.allowlist workspace:<absoluteWorkspaceRoot>` so the file surface has a readable root (absolute paths only)",
+        "设置 OPENRIG_FILES_ALLOWLIST，或运行 `zrig config set files.allowlist workspace:<absoluteWorkspaceRoot>`，为文件表层提供可读根目录（仅限绝对路径）",
       evidence: { allowlistValue, allowlistSource, entryCount: 0 },
     };
   }
@@ -222,9 +209,9 @@ export function checkFileAllowlist(opts: CheckFileAllowlistInput): DoctorCheck {
     return {
       check: "file_allowlist_sane",
       status: "warn",
-      message: `files.allowlist has ${entries.length} usable entr${entries.length === 1 ? "y" : "ies"} but none cover workspace root '${workspaceRoot}'`,
+      message: `files.allowlist 有 ${entries.length} 个可用条目，但没有任何条目覆盖工作区根目录 '${workspaceRoot}'`,
       fixHint:
-        "add a `workspace:<absoluteWorkspaceRoot>` entry to files.allowlist (or set OPENRIG_FILES_ALLOWLIST) so workspace files are read-allowed",
+        "向 files.allowlist 添加 `workspace:<absoluteWorkspaceRoot>` 条目（或设置 OPENRIG_FILES_ALLOWLIST），以允许读取工作区文件",
       evidence: {
         allowlistValue,
         allowlistSource,
@@ -237,17 +224,16 @@ export function checkFileAllowlist(opts: CheckFileAllowlistInput): DoctorCheck {
   return {
     check: "file_allowlist_sane",
     status: "ok",
-    message: `files.allowlist has ${entries.length} usable entr${entries.length === 1 ? "y" : "ies"} covering workspace root`,
+    message: `files.allowlist 有 ${entries.length} 个可用条目覆盖工作区根目录`,
     evidence: { allowlistValue, allowlistSource, entryCount: entries.length, entries },
   };
 }
 
 function allowlistPathCoversRoot(allowlistPath: string, workspaceRoot: string): boolean {
-  // Canonical entry paths from decodeAllowlist are already absolute
-  // + realpath-resolved. workspaceRoot we resolve + try-to-realpath
-  // here so callers can pass an un-canonical workspace path and
-  // coverage still matches when the entry was realpath'd through a
-  // symlink (e.g. macOS `/var/folders/...` → `/private/var/...`).
+  // decodeAllowlist 产生的标准条目路径已经是绝对路径并经过 realpath 解析。这里对
+  // workspaceRoot 进行 resolve 并尝试 realpath，使调用方即便传入非标准工作区路径，
+  // 当条目通过符号链接解析了 realpath 时仍能正确匹配覆盖关系（例如 macOS 的
+  // `/var/folders/...` → `/private/var/...`）。
   const normEntry = allowlistPath;
   let normRoot: string;
   try {
@@ -261,21 +247,19 @@ function allowlistPathCoversRoot(allowlistPath: string, workspaceRoot: string): 
 }
 
 export interface CheckDaemonWorkspaceInput {
-  /** workspace.root the daemon process resolves (server-side). */
+  /** 守护进程解析的 workspace.root（服务端）。 */
   daemonResolvedRoot: string;
-  /** workspace.root the doctor caller expects (CLI-side resolved,
-   *  passed in the request body or matched against the --workspace
-   *  flag). */
+  /** 诊断调用方预期的 workspace.root（在 CLI 侧解析，通过请求体传入，或与
+   *  --workspace 标志匹配）。 */
   expectedRoot: string;
 }
 
 /**
- * Check #4 — daemon points at this workspace.
+ * 检查 #4——守护进程指向此工作区。
  *
- * Reports divergence between the workspace.root the daemon resolved at
- * start-time vs the workspace.root the doctor caller expects. The
- * common cause is the daemon being started in a shell with a different
- * OPENRIG_WORKSPACE_ROOT than the operator's current shell.
+ * 报告守护进程启动时解析的 workspace.root 与诊断调用方预期值之间的差异。
+ * 常见原因是启动守护进程的 shell 使用了与操作员当前 shell 不同的
+ * OPENRIG_WORKSPACE_ROOT。
  */
 export function checkDaemonWorkspace(opts: CheckDaemonWorkspaceInput): DoctorCheck {
   const { daemonResolvedRoot, expectedRoot } = opts;
@@ -285,40 +269,36 @@ export function checkDaemonWorkspace(opts: CheckDaemonWorkspaceInput): DoctorChe
     return {
       check: "daemon_points_at_this_workspace",
       status: "ok",
-      message: `daemon and caller agree on workspace root '${normDaemon}'`,
+      message: `守护进程与调用方对工作区根目录 '${normDaemon}' 的认定一致`,
       evidence: { daemonResolvedRoot: normDaemon, expectedRoot: normExpected },
     };
   }
   return {
     check: "daemon_points_at_this_workspace",
     status: "fail",
-    message: `daemon resolved workspace root '${normDaemon}' but caller expected '${normExpected}'`,
+    message: `守护进程解析的工作区根目录为 '${normDaemon}'，但调用方预期 '${normExpected}'`,
     fixHint:
-      "restart the daemon (`rig daemon restart`) in a shell where OPENRIG_WORKSPACE_ROOT matches the expected workspace, or unset OPENRIG_WORKSPACE_ROOT to fall through to config + default",
+      "在 OPENRIG_WORKSPACE_ROOT 与预期工作区一致的 shell 中重启守护进程（`zrig daemon restart`），或取消设置 OPENRIG_WORKSPACE_ROOT，以回退到配置值和默认值",
     evidence: { daemonResolvedRoot: normDaemon, expectedRoot: normExpected },
   };
 }
 
 export interface CheckDaemonReloadInput {
-  /** Path to the ConfigStore config file on disk. */
+  /** 磁盘上 ConfigStore 配置文件的路径。 */
   configFilePath: string;
-  /** Daemon process start time as a Date. Callers typically capture
-   *  this once at daemon-startup (e.g.
-   *  `new Date(Date.now() - process.uptime() * 1000)` at the doctor
-   *  route handler) and pass it through. Compared to config-file
-   *  mtime; mtime > startTime → stale daemon. */
+  /** 以 Date 表示的守护进程启动时间。调用方通常在守护进程启动时捕获一次
+   *  （例如在诊断路由处理器中使用
+   *  `new Date(Date.now() - process.uptime() * 1000)`），随后透传。将其与配置文件
+   *  mtime 比较；mtime > startTime 表示守护进程配置已过期。 */
   daemonStartTime: Date;
 }
 
 /**
- * Check #5 — daemon reload needed.
+ * 检查 #5——守护进程是否需要重载。
  *
- * Compares config-file mtime to the daemon's start-time. A newer
- * mtime means the operator edited config (via CLI / UI) after the
- * daemon started, and the daemon hasn't picked the change up yet.
- * Missing config file is not a fail — fresh installs without an
- * operator-written config use defaults entirely and never need a
- * reload.
+ * 比较配置文件 mtime 与守护进程启动时间。mtime 更新表示操作员在守护进程启动后
+ * 通过 CLI/UI 编辑了配置，而守护进程尚未加载更改。缺少配置文件不算失败——没有
+ * 操作员配置的新安装完全使用默认值，无需重载。
  */
 export function checkDaemonReload(opts: CheckDaemonReloadInput): DoctorCheck {
   const { configFilePath, daemonStartTime } = opts;
@@ -331,15 +311,15 @@ export function checkDaemonReload(opts: CheckDaemonReloadInput): DoctorCheck {
       return {
         check: "daemon_reload_needed",
         status: "ok",
-        message: `no config file at '${configFilePath}'; daemon is running on defaults only`,
+        message: `'${configFilePath}' 处没有配置文件；守护进程仅使用默认值运行`,
         evidence: { configFilePath, configFileExists: false },
       };
     }
     return {
       check: "daemon_reload_needed",
       status: "warn",
-      message: `cannot stat config file '${configFilePath}': ${(err as Error).message}`,
-      fixHint: "verify file permissions on the config file path so the daemon can detect freshness",
+      message: `无法读取配置文件 '${configFilePath}' 的状态：${(err as Error).message}`,
+      fixHint: "检查配置文件路径的文件权限，以便守护进程检测其更新时间",
       evidence: { configFilePath, errorCode: code ?? "unknown" },
     };
   }
@@ -349,8 +329,8 @@ export function checkDaemonReload(opts: CheckDaemonReloadInput): DoctorCheck {
     return {
       check: "daemon_reload_needed",
       status: "warn",
-      message: `config file mtime ${stat.mtime.toISOString()} is newer than daemon start ${daemonStartTime.toISOString()}`,
-      fixHint: "run `rig daemon restart` to pick up the latest config",
+      message: `配置文件修改时间 ${stat.mtime.toISOString()} 晚于守护进程启动时间 ${daemonStartTime.toISOString()}`,
+      fixHint: "运行 `zrig daemon restart` 以加载最新配置",
       evidence: {
         configFilePath,
         configMtime: stat.mtime.toISOString(),
@@ -362,7 +342,7 @@ export function checkDaemonReload(opts: CheckDaemonReloadInput): DoctorCheck {
   return {
     check: "daemon_reload_needed",
     status: "ok",
-    message: `config file mtime ${stat.mtime.toISOString()} is older than daemon start ${daemonStartTime.toISOString()}`,
+    message: `配置文件修改时间 ${stat.mtime.toISOString()} 早于守护进程启动时间 ${daemonStartTime.toISOString()}`,
     evidence: {
       configFilePath,
       configMtime: stat.mtime.toISOString(),
@@ -372,9 +352,9 @@ export function checkDaemonReload(opts: CheckDaemonReloadInput): DoctorCheck {
 }
 
 export interface CheckSliceDocsInput {
-  /** Resolved missions folder root. The check walks each
-   *  `<missionsRoot>/<mission>/slices/<slice>/` and verifies it has
-   *  SPEC.md or a readable legacy node file. */
+  /** 解析后的 missions 文件夹根目录。检查会遍历每个
+   *  `<missionsRoot>/<mission>/slices/<slice>/`，验证其中包含 SPEC.md 或可读的
+   *  旧版节点文件。 */
   missionsRoot: string;
 }
 
@@ -387,13 +367,11 @@ interface BareSlice {
 }
 
 /**
- * Check #6 — optional slice docs.
+ * 检查 #6——可选的 slice 文档。
  *
- * Walks each mission's slices subdirectory and reports slices that
- * have neither SPEC.md nor a readable legacy node file.
- * Warn-only (empty slices are sometimes intentional staging per
- * IMPL-PRD §57-59). The walk is bounded to one mission + one slice
- * level; we don't recurse into slice subdirs.
+ * 遍历每个任务的 slices 子目录，报告既没有 SPEC.md、也没有可读旧版节点文件的
+ * slice。仅警告（依据 IMPL-PRD §57-59，空 slice 有时是有意的暂存）。遍历范围
+ * 仅限一层任务加一层 slice，不递归进入 slice 子目录。
  */
 export function checkOptionalSliceDocs(opts: CheckSliceDocsInput): DoctorCheck {
   const { missionsRoot } = opts;
@@ -408,8 +386,8 @@ export function checkOptionalSliceDocs(opts: CheckSliceDocsInput): DoctorCheck {
       check: "optional_slice_docs",
       status: "warn",
       message: code === "ENOENT"
-        ? `missions root '${missionsRoot}' does not exist; no slice docs to check`
-        : `cannot read missions root '${missionsRoot}': ${(err as Error).message}`,
+        ? `missions 根目录 '${missionsRoot}' 不存在；没有可检查的 slice 文档`
+        : `无法读取 missions 根目录 '${missionsRoot}'：${(err as Error).message}`,
       evidence: { missionsRoot, errorCode: code ?? "unknown" },
     };
   }
@@ -423,7 +401,7 @@ export function checkOptionalSliceDocs(opts: CheckSliceDocsInput): DoctorCheck {
         .filter((d) => d.isDirectory())
         .map((d) => d.name);
     } catch {
-      continue; // no slices subdir is fine — mission may not be slice-organized
+      continue; // 没有 slices 子目录也没关系——任务可能并非按 slice 组织
     }
     for (const slice of slices) {
       const slicePath = path.join(slicesDir, slice);
@@ -438,23 +416,27 @@ export function checkOptionalSliceDocs(opts: CheckSliceDocsInput): DoctorCheck {
     return {
       check: "optional_slice_docs",
       status: "ok",
-      message: `every slice under '${missionsRoot}' has SPEC.md or a readable legacy node file`,
+      message: `'${missionsRoot}' 下的每个 slice 都有 SPEC.md 或可读的旧版节点文件`,
       evidence: { missionsRoot, bareSlices: [] },
     };
   }
   return {
     check: "optional_slice_docs",
     status: "warn",
-    message: `${bareSlices.length} slice${bareSlices.length === 1 ? " has" : "s have"} no SPEC.md or readable legacy node file`,
+    message: `有 ${bareSlices.length} 个 slice 没有 SPEC.md 或可读的旧版节点文件`,
     fixHint:
-      "author SPEC.md in each bare slice directory; legacy README.md, IMPLEMENTATION-PRD.md, and IMPL-PRD.md remain readable; warn-only because empty slices are sometimes intentional staging",
+      "在每个空白 slice 目录中编写 SPEC.md；旧版 README.md、IMPLEMENTATION-PRD.md 和 IMPL-PRD.md 仍可读取；由于空 slice 有时是有意的暂存，此项仅警告",
     evidence: { missionsRoot, bareSlices },
   };
 }
 
-// The SDLC convention sections a slice SPEC (or legacy node file) must carry.
-// SSOT: docs/reference/sdlc-conventions.md.
-const SDLC_CONVENTION_SECTIONS = ["## Intent", "## Mini-requirements", "## Proof contract"] as const;
+// slice SPEC（或旧版节点文件）必须包含的 SDLC 约定章节。
+// 唯一真相来源：docs/reference/sdlc-conventions.md。
+const SDLC_CONVENTION_SECTIONS = [
+  { canonical: "## Intent", aliases: ["Intent", "意图"] },
+  { canonical: "## Mini-requirements", aliases: ["Mini-requirements", "最小需求", "小型需求"] },
+  { canonical: "## Proof contract", aliases: ["Proof contract", "证明契约", "证据约定"] },
+] as const;
 
 interface SliceMissingSections {
   mission: string;
@@ -464,14 +446,12 @@ interface SliceMissingSections {
 }
 
 /**
- * Check #8 — SDLC convention sections (OPR.0.4.4.23).
+ * 检查 #8——SDLC 约定章节（OPR.0.4.4.23）。
  *
- * Walks each mission's slices and reports work-node files missing any of the
- * convention sections (`## Intent` / `## Mini-requirements` /
- * `## Proof contract`). Warn-only (advisory /
- * fail-open — the deep per-slice audit is `rig scope audit`; this row is
- * the workspace-level pointer). Slices with no work-node file are check #6's
- * concern, not double-reported here.
+ * 遍历每个任务的 slice，报告缺少任一约定章节（`## Intent` /
+ * `## Mini-requirements` / `## Proof contract`）的工作节点文件。仅警告
+ *（建议性、失败开放——逐 slice 深度审计使用 `zrig scope audit`；此行只是工作区级
+ * 指引）。没有工作节点文件的 slice 属于检查 #6 的范围，此处不重复报告。
  */
 export function checkSdlcConventionSections(opts: CheckSliceDocsInput): DoctorCheck {
   const { missionsRoot } = opts;
@@ -486,8 +466,8 @@ export function checkSdlcConventionSections(opts: CheckSliceDocsInput): DoctorCh
       check: "sdlc_convention_sections",
       status: "warn",
       message: code === "ENOENT"
-        ? `missions root '${missionsRoot}' does not exist; no slice sections to check`
-        : `cannot read missions root '${missionsRoot}': ${(err as Error).message}`,
+        ? `missions 根目录 '${missionsRoot}' 不存在；没有可检查的 slice 章节`
+        : `无法读取 missions 根目录 '${missionsRoot}'：${(err as Error).message}`,
       evidence: { missionsRoot, errorCode: code ?? "unknown" },
     };
   }
@@ -502,7 +482,7 @@ export function checkSdlcConventionSections(opts: CheckSliceDocsInput): DoctorCh
         .filter((d) => d.isDirectory())
         .map((d) => d.name);
     } catch {
-      continue; // no slices subdir is fine — mission may not be slice-organized
+      continue; // 没有 slices 子目录也没关系——任务可能并非按 slice 组织
     }
     for (const slice of slices) {
       const slicePath = path.join(slicesDir, slice);
@@ -511,12 +491,12 @@ export function checkSdlcConventionSections(opts: CheckSliceDocsInput): DoctorCh
       try {
         readme = fs.readFileSync(readmePath ?? path.join(slicePath, "SPEC.md"), "utf-8");
       } catch {
-        continue; // no work-node file = check #6's finding, not a section finding
+        continue; // 没有工作节点文件属于检查 #6 的发现，不属于章节缺失
       }
       slicesChecked++;
       const missing = SDLC_CONVENTION_SECTIONS.filter(
-        (section) => !new RegExp(`^${section.replace("## ", "##\\s+")}\\s*$`, "m").test(readme),
-      );
+        (section) => !new RegExp(`^##\\s+(?:${section.aliases.join("|")})\\s*$`, "mi").test(readme),
+      ).map((section) => section.canonical);
       if (missing.length > 0) {
         offenders.push({ mission, slice, path: slicePath, missing: [...missing] });
       }
@@ -527,16 +507,16 @@ export function checkSdlcConventionSections(opts: CheckSliceDocsInput): DoctorCh
     return {
       check: "sdlc_convention_sections",
       status: "ok",
-      message: `every slice work-node file under '${missionsRoot}' carries the SDLC convention sections (${slicesChecked} checked)`,
+      message: `'${missionsRoot}' 下的每个 slice 工作节点文件都包含 SDLC 约定章节（已检查 ${slicesChecked} 个）`,
       evidence: { missionsRoot, slicesChecked, offenders: [] },
     };
   }
   return {
     check: "sdlc_convention_sections",
     status: "warn",
-    message: `${offenders.length} slice work-node file${offenders.length === 1 ? " is" : "s are"} missing SDLC convention sections (Intent / Mini-requirements / Proof contract)`,
+    message: `有 ${offenders.length} 个 slice 工作节点文件缺少 SDLC 约定章节（Intent / Mini-requirements / Proof contract）`,
     fixHint:
-      "add the missing sections per docs/reference/sdlc-conventions.md (installed: $OPENRIG_HOME/reference/sdlc-conventions.md) (rig scope slice create scaffolds them); run rig scope audit <mission> for per-slice findings — advisory only, nothing is blocked",
+      "按照 docs/reference/sdlc-conventions.md（安装位置：$OPENRIG_HOME/reference/sdlc-conventions.md）补充缺失章节（`zrig scope slice create` 会生成其框架）；运行 `zrig scope audit <mission>` 查看逐 slice 发现——此项仅供参考，不会阻塞任何操作",
     evidence: { missionsRoot, slicesChecked, offenders },
   };
 }
@@ -551,10 +531,10 @@ interface MissionWithoutNotes {
 }
 
 /**
- * Check #7 — mission NOTES presence.
+ * 检查 #7——任务 NOTES 是否存在。
  *
- * Verifies each mission directory has current `NOTES.md` or readable legacy
- * `MISSION_NOTES.md`. Warn-only because legacy missions can predate both.
+ * 验证每个任务目录都有当前的 `NOTES.md` 或可读的旧版 `MISSION_NOTES.md`。
+ * 由于旧任务可能早于两者，此项仅警告。
  */
 export function checkMissionNotesPresence(opts: CheckMissionNotesInput): DoctorCheck {
   const { missionsRoot } = opts;
@@ -569,8 +549,8 @@ export function checkMissionNotesPresence(opts: CheckMissionNotesInput): DoctorC
       check: "mission_notes_presence",
       status: "warn",
       message: code === "ENOENT"
-        ? `missions root '${missionsRoot}' does not exist; no mission notes to check`
-        : `cannot read missions root '${missionsRoot}': ${(err as Error).message}`,
+        ? `missions 根目录 '${missionsRoot}' 不存在；没有可检查的任务备注`
+        : `无法读取 missions 根目录 '${missionsRoot}'：${(err as Error).message}`,
       evidence: { missionsRoot, errorCode: code ?? "unknown" },
     };
   }
@@ -587,58 +567,52 @@ export function checkMissionNotesPresence(opts: CheckMissionNotesInput): DoctorC
     return {
       check: "mission_notes_presence",
       status: "ok",
-      message: `every mission under '${missionsRoot}' has NOTES.md or readable legacy MISSION_NOTES.md`,
+      message: `'${missionsRoot}' 下的每个任务都有 NOTES.md 或可读的旧版 MISSION_NOTES.md`,
       evidence: { missionsRoot, missing: [] },
     };
   }
   return {
     check: "mission_notes_presence",
     status: "warn",
-    message: `${missing.length} mission${missing.length === 1 ? " has" : "s have"} no NOTES.md or readable legacy MISSION_NOTES.md`,
+    message: `有 ${missing.length} 个任务没有 NOTES.md 或可读的旧版 MISSION_NOTES.md`,
     fixHint:
-      "run `rig scope mission repair <id>` for an existing mission, or `rig scope mission create <id>` for a new one",
+      "对现有任务运行 `zrig scope mission repair <id>`，或对新任务运行 `zrig scope mission create <id>`",
     evidence: { missionsRoot, missing },
   };
 }
 
 export interface RunDoctorInput {
-  /** Workspace root under check (caller's --workspace override or
-   *  daemon-resolved default). */
+  /** 待检查的工作区根目录（调用方的 --workspace 覆盖值或守护进程解析的默认值）。 */
   workspaceRoot: string;
   workspaceRootSource: WorkspaceRootSource;
-  /** Resolved missions folder per ConfigStore workspace.slices_root,
-   *  or `<workspaceRoot>/missions` when caller overrode --workspace. */
+  /** 按 ConfigStore workspace.slices_root 解析的 missions 文件夹；调用方覆盖
+   *  --workspace 时则为 `<workspaceRoot>/missions`。 */
   slicesRoot: string;
-  /** Raw files.allowlist value from SettingsStore (will be decoded
-   *  via canonical decodeAllowlist). */
+  /** 来自 SettingsStore 的原始 files.allowlist 值（将通过标准 decodeAllowlist 解码）。 */
   allowlistValue: string;
   allowlistSource: WorkspaceRootSource;
-  /** Daemon-resolved workspace.root (for check #4 comparison against
-   *  the workspace under check). */
+  /** 守护进程解析的 workspace.root（供检查 #4 与待检查工作区比较）。 */
   daemonResolvedWorkspaceRoot: string;
-  /** Daemon's ConfigStore configPath on disk (for check #5 staleness
-   *  comparison). */
+  /** 磁盘上守护进程的 ConfigStore configPath（用于检查 #5 的过期比较）。 */
   configFilePath: string;
-  /** Daemon process start time (for check #5). */
+  /** 守护进程启动时间（用于检查 #5）。 */
   daemonStartTime: Date;
 }
 
 export interface DoctorReport {
-  /** Workspace under check (echoes input.workspaceRoot for clarity). */
+  /** 待检查的工作区（回显 input.workspaceRoot 以便识别）。 */
   workspaceRoot: string;
   checks: DoctorCheck[];
   summary: { ok: number; warn: number; fail: number };
-  /** ISO timestamp of when the daemon ran the report. */
+  /** 守护进程运行报告时的 ISO 时间戳。 */
   daemonResolvedAt: string;
 }
 
 /**
- * Orchestrator — runs all 7 checks in fixed order and returns a
- * structured DoctorReport with aggregate counts. Pure function;
- * filesystem effects are bounded to the individual check helpers
- * (statSync / readdirSync / existsSync). Used by the daemon route
- * POST /api/workspace/doctor (FR-5c) and by the CLI's --json
- * formatter (FR-5d).
+ * 编排器——按固定顺序运行全部 7 项检查，并返回带汇总计数的结构化 DoctorReport。
+ * 这是纯函数；文件系统影响仅限各检查辅助函数（statSync / readdirSync / existsSync）。
+ * 由守护进程路由 POST /api/workspace/doctor（FR-5c）和 CLI 的 --json 格式化器
+ *（FR-5d）使用。
  */
 export function runWorkspaceDoctor(input: RunDoctorInput): DoctorReport {
   const checks: DoctorCheck[] = [
@@ -669,7 +643,7 @@ export function runWorkspaceDoctor(input: RunDoctorInput): DoctorReport {
     checkMissionNotesPresence({
       missionsRoot: input.slicesRoot,
     }),
-    // OPR.0.4.4.23 — check #8: SDLC convention sections (advisory warn).
+    // OPR.0.4.4.23——检查 #8：SDLC 约定章节（建议性警告）。
     checkSdlcConventionSections({
       missionsRoot: input.slicesRoot,
     }),

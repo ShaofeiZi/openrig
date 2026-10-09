@@ -1,17 +1,12 @@
-// V0.3.1 slice 05 kernel-rig-as-default — shipped kernel rig variants
-// MUST pass rig spec validate so BootstrapOrchestrator accepts them
-// at runtime. Forward-fix on Phase 05d Finding 1: the kernel-boot
-// unit tests passed because they mocked the orchestrator; this test
-// runs the real validator pipeline against the shipped specs so the
-// next regression can't ship unnoticed.
+// V0.3.1 slice 05 kernel-rig-as-default——已发布 kernel rig 变体必须通过 rig spec validate，
+// BootstrapOrchestrator 才会在 runtime 接纳它们。Phase 05d Finding 1 的前向修复：kernel-boot
+// 单元测试因 mock orchestrator 而通过；本测试用真实 validator pipeline 验证已发布 spec，使下次
+// 回归无法悄然发布。
 //
-// Forward-fix on Phase 05d velocity-qa VM verdict (missing-skills):
-// rig spec validate alone is not enough — kernel agents declare
-// profile.uses.skills that must resolve against the imported shared
-// resource pool. The VM exercise caught 6 skills referenced but not
-// registered in shared/agent.yaml. This test adds the resource-pool
-// containment gate so the next missing-skill regression fails CI
-// instead of failing daemon-start at boot.
+// Phase 05d velocity-qa VM 裁定（missing-skills）的前向修复：仅 rig spec validate 不够；kernel agent
+// 声明的 profile.uses.skills 必须可在导入的共享 resource pool 中解析。VM 演练发现 6 个被引用但未在
+// shared/agent.yaml 注册的 skill。本测试增加 resource-pool containment gate，使下一次缺 skill 回归
+// 在 CI 失败，而不是在 daemon-start 时失败。
 
 import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
@@ -34,14 +29,13 @@ const KERNEL_AGENT_PATHS = [
   join(KERNEL_AGENTS_DIR, "queue", "worker", "agent.yaml"),
 ];
 
-describe("kernel rig variants — rig spec validate", () => {
+describe("kernel rig 变体——rig spec validate", () => {
   for (const variant of SHIPPED_VARIANTS) {
-    it(`${variant} passes RigSpec validation (HG-2 + HG-20 runtime gate)`, () => {
+    it(`${variant} 通过 RigSpec 验证（HG-2 + HG-20 runtime gate）`, () => {
       const yaml = readFileSync(join(KERNEL_DIR, variant), "utf-8");
       const result = validateRigSpecFromYaml(yaml);
       if (!result.valid) {
-        // Surface every validation error so debugging a regression
-        // doesn't require re-running the validator by hand.
+        // 显示每个验证错误，使调试回归时无需手工重新运行 validator。
         throw new Error(
           `RigSpec validation failed for ${variant}:\n  - ${result.errors.join("\n  - ")}`,
         );
@@ -51,11 +45,10 @@ describe("kernel rig variants — rig spec validate", () => {
     });
   }
 
-  it("all 3 variants share the same topology shape (pods + member ids)", () => {
+  it("三个变体共享相同 topology 结构（pod + member id）", () => {
     const shapes = SHIPPED_VARIANTS.map((variant) => {
       const yaml = readFileSync(join(KERNEL_DIR, variant), "utf-8");
-      // Light parse via the shared codec; structural equality on pods
-      // + member ids ensures variants differ only on runtime declarations.
+      // 通过共享 codec 轻量解析；pod + member id 的结构相等可确保变体只在 runtime 声明上不同。
       const result = validateRigSpecFromYaml(yaml);
       return { variant, valid: result.valid, errors: result.errors };
     });
@@ -63,13 +56,11 @@ describe("kernel rig variants — rig spec validate", () => {
   });
 });
 
-// Resource-pool containment gate. Each kernel agent (advisor.lead,
-// operator.agent, queue.worker) declares profile.uses.skills against
-// the imported shared resource pool. If any referenced id is missing
-// from shared/agent.yaml's resources.skills, the daemon refuses to
-// bootstrap with "Profile uses skills: <id> not found in resource
-// pool" — which is the failure mode velocity-qa caught on VM.
-describe("kernel agents — profile.uses references resolve against shared pool", () => {
+// Resource-pool containment gate。每个 kernel agent（advisor.lead、operator.agent、queue.worker）
+// 针对导入的共享 resource pool 声明 profile.uses.skills。若任一引用 id 未出现在 shared/agent.yaml
+// 的 resources.skills 中，后台服务会以“Profile 使用的 skills：<id> 未在资源池中找到”拒绝
+// bootstrap；这正是 velocity-qa 在 VM 上捕获的失败模式。
+describe("kernel agent——profile.uses 引用可在共享 pool 中解析", () => {
   const SHARED_AGENT_YAML = join(
     __dirname, "..", "specs", "agents", "shared", "agent.yaml",
   );
@@ -93,10 +84,9 @@ describe("kernel agents — profile.uses references resolve against shared pool"
     return out;
   }
 
-  // Skills declared in shared/agent.yaml must also exist on disk under
-  // skills/<path>/SKILL.md. The on-disk-existence check is what catches
-  // a YAML entry whose path was misspelled or whose dir was forgotten.
-  it("shared/agent.yaml skills all resolve to packaged SKILL.md files on disk", () => {
+  // shared/agent.yaml 中声明的 skill 也必须存在于磁盘 skills/<path>/SKILL.md。磁盘存在性检查会捕获
+  // path 拼错或目录遗漏的 YAML 条目。
+  it("shared/agent.yaml 中所有 skill 都解析到磁盘上的 packaged SKILL.md 文件", () => {
     const sharedDir = dirname(SHARED_AGENT_YAML);
     const doc = parseYaml(readFileSync(SHARED_AGENT_YAML, "utf-8")) as {
       resources?: { skills?: { id: string; path: string }[] };
@@ -138,14 +128,14 @@ describe("kernel agents — profile.uses references resolve against shared pool"
   }
 });
 
-describe("kernel agents — nested AgentSpec validation", () => {
+describe("kernel agent——嵌套 AgentSpec 验证", () => {
   for (const agentPath of KERNEL_AGENT_PATHS) {
     const label = agentPath
       .replace(KERNEL_AGENTS_DIR + "/", "")
       .replace("/agent.yaml", "")
       .replace("/", ".");
 
-    it(`${label}: agent.yaml passes AgentSpec validation`, () => {
+    it(`${label}：agent.yaml 通过 AgentSpec 验证`, () => {
       const yaml = readFileSync(agentPath, "utf-8");
       const raw = parseAgentSpec(yaml);
       const result = validateAgentSpec(raw);

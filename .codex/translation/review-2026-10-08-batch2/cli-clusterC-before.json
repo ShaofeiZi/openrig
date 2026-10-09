@@ -1,0 +1,122 @@
+{
+"packages/cli/src/commands/restore-check.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/rig.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/seat.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/shrink.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/skill.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/start.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/stream.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/terminal.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/topology-default-agent.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/transcript.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/ui.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/view.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/walk.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/watchdog.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/restore-packet.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/restore.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/rig-mode.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/scope.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/send.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/setup.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/slack.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/snapshot.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/specs.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/startup-proof.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/status.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/tui.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/unarchive.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/unclaim.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/up.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/usage.ts": [
+"cli-a",
+"self_reported"
+]
+}

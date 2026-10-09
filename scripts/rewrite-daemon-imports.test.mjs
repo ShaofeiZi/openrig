@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { rewriteDaemonImports } from "./rewrite-daemon-imports.mjs";
 
-// A miniature staged CLI package: daemon exports map, staged daemon/dist and compiled CLI/TUI JS.
+// 一个微型的已暂存 CLI 包：daemon exports 映射、已暂存的 daemon/dist、以及编译后的 CLI/TUI JS。
 function fixture(files) {
   const root = mkdtempSync(join(tmpdir(), "rewrite-daemon-imports-"));
   const daemonPackageJsonPath = join(root, "daemon-src", "package.json");
@@ -184,8 +184,8 @@ test("fails on a non-literal module argument naming the package, and on unparsea
   }
 });
 
-// Direct execution (`node scripts/rewrite-daemon-imports.mjs`, as build-package.sh runs it) from
-// miniature repositories whose paths need percent-encoding or pass through a symlink.
+// 从路径需要百分号转义、或经过软链的微型仓库里，直接执行
+// （`node scripts/rewrite-daemon-imports.mjs`，正如 build-package.sh 所做）。
 const SCRIPT = fileURLToPath(new URL("./rewrite-daemon-imports.mjs", import.meta.url));
 const REPO_NODE_MODULES = fileURLToPath(new URL("../node_modules", import.meta.url));
 

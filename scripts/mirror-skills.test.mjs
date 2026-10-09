@@ -70,26 +70,23 @@ test("buildStaleMessage names the npm script and lists the pending changes", () 
     "*deleting removed/SKILL.md",
   ]);
 
-  assert.match(message, /Skills mirror is stale/);
+  assert.match(message, /skills 镜像.*已过期/);
   assert.match(message, /npm run mirror-skills/);
   assert.match(message, /core\/openrig-user\/SKILL\.md/);
   assert.match(message, /removed\/SKILL\.md/);
 });
 
 test("EXCLUDES bars curation-cycle bookkeeping and runtime artifacts from public surface", () => {
-  // These exclusions are load-bearing — see SOP rule "feedback.md is
-  // curation-cycle bookkeeping; runtime mirrors are for agent-loaded
-  // skill content" (Cycle 2 retro). evals/ is per-skill eval-pilot
-  // infrastructure (cases.yaml + harnesses + outcomes); it can leak
-  // nested .agents/skills/ test fixtures that confuse skill inventory
-  // tooling (Cycle 9 fixup retro 2026-05-09).
+  // 这些排除项是承重的——见 SOP 规则“feedback.md 是策划周期的簿记；运行时镜像面向 agent 加载的
+  // skill 内容”（Cycle 2 retro）。evals/ 是每个 skill 的 eval-pilot 基础设施
+  // （cases.yaml + harnesses + outcomes）；它可能漏出嵌套的 .agents/skills/ 测试夹具，
+  // 干扰 skill 清单工具（Cycle 9 fixup retro 2026-05-09）。
   assert.ok(EXCLUDES.includes("feedback.md"));
   assert.ok(EXCLUDES.includes("evals/"));
 });
 
 test("source SKILL.md inventory is non-empty (sanity check)", () => {
-  // If this fails, either the source path moved or the package layout
-  // changed; fix the SOURCE_DIR constant in mirror-skills.mjs.
+  // 若这条失败，要么是源码路径挪了，要么是包布局变了；去改 mirror-skills.mjs 里的 SOURCE_DIR 常量。
   assert.ok(existsSync(SOURCE_DIR), `expected ${SOURCE_DIR} to exist`);
   const skills = walkSkillFiles(SOURCE_DIR);
   assert.ok(
@@ -99,14 +96,11 @@ test("source SKILL.md inventory is non-empty (sanity check)", () => {
 });
 
 test("mirror is in sync with source (drift-detect via --check)", () => {
-  // The load-bearing assertion: skills/_canonical/ must not drift from
-  // packages/daemon/specs/agents/shared/skills/. Failing this means
-  // someone edited the source without running `npm run mirror-skills`.
-  // Fix: run the script and re-commit.
+  // 承重断言：skills/_canonical/ 绝不能与 packages/daemon/specs/agents/shared/skills/ 漂移。
+  // 这条失败意味着有人改了源码却没跑 `npm run mirror-skills`。修法：跑该脚本并重新提交。
   if (!existsSync(TARGET_DIR)) {
-    // First-time bootstrap: target doesn't exist yet. The check would
-    // report every source file as a pending change. Skip in that case
-    // and let the operator run the initial mirror.
+    // 首次引导：目标还不存在。这时检查会把每个源文件都报成待变更。这种情况下跳过，
+    // 让操作者去跑首次 mirror。
     return;
   }
   const { stale, changes } = checkMode(execFileSync);
@@ -121,10 +115,8 @@ test("mirror is in sync with source (drift-detect via --check)", () => {
 
 test("excluded patterns are absent in the mirror target", () => {
   if (!existsSync(TARGET_DIR)) return;
-  // Walk the target and assert nothing matches feedback.md / evals/ /
-  // .DS_Store / *.local.md. The rsync exclusions should keep these
-  // absent; this catches the case where the script was bypassed and
-  // someone hand-copied content into _canonical/.
+  // 遍历目标，断言没有任何东西匹配 feedback.md / evals/ / .DS_Store / *.local.md。
+  // rsync 的排除项本应让这些缺席；这里抓的是“绕过了脚本、有人手把内容拷进 _canonical/”的情况。
   const offenders = [];
   walk(TARGET_DIR, (path) => {
     const base = path.split("/").pop();
@@ -391,8 +383,8 @@ test("stagePublicSkills aborts an unmatched internal fence with file and line", 
       }),
       (error) => {
         assert.match(error.message, /public-skill\/SKILL\.md/);
-        assert.match(error.message, /line 3/i);
-        assert.match(error.message, /unbalanced|unmatched/i);
+        assert.match(error.message, /第 3 行/);
+        assert.match(error.message, /未闭合/);
         return true;
       },
     );
@@ -468,8 +460,8 @@ test("stagePublicSkills rejects an unmatched fence in non-SKILL Markdown with fi
       }),
       (error) => {
         assert.match(error.message, /alpha\/references\/guide\.mdx/);
-        assert.match(error.message, /line 3/i);
-        assert.match(error.message, /unbalanced|unmatched/i);
+        assert.match(error.message, /第 3 行/);
+        assert.match(error.message, /未闭合/);
         return true;
       },
     );
@@ -589,8 +581,8 @@ test("shipSetFromMembership consumes exactly the six shipping categories", async
       ship_after_fix: ["after", "duplicate"],
       ship_misses_add: ["miss"],
       sanitize_borderlines_ship: ["sanitize"],
-      // P6(A) leg-2 fix: restored_role_pm_selected is now a CONSUMED ship category. Before the fix
-      // this member fell out of the ship set silently (the 0.4.8/864cea6b stranding); it must ship.
+      // P6(A) leg-2 修复：restored_role_pm_selected 现在是一个被消费的 ship 类别。修复之前
+      // 这个成员会默默掉出 ship 集合（0.4.8/864cea6b 那次搁浅）；它必须发货。
       restored_role_pm_selected: ["restored"],
     },
     vendored_ship_with_provenance: ["vendored"],
@@ -765,9 +757,9 @@ test("checkGeneratedEdges — external-canon-pending allowlist: named-missing to
       },
       skills: {
         alpha: { edges: ["spec", "canonical", "plugin"], category: "core" },
-        // external-canon-pending: in the layout ship set, NOT on disk → tolerated.
+        // external-canon-pending：在 layout ship set 中、不在磁盘上 → 容忍。
         "oversight-team": { edges: ["spec"], category: "pods" },
-        // a DIFFERENT layout-demanded skill missing from disk → must stay LOUD (never blessed).
+        // 一个不同的 layout 要求但磁盘缺失的 skill → 必须保持 LOUD（绝不赐福）。
         "real-skill-gone": { edges: ["spec"], category: "core" },
       },
     };
@@ -781,9 +773,9 @@ test("checkGeneratedEdges — external-canon-pending allowlist: named-missing to
       },
     };
 
-    // The mechanism is pinned via an injected set: the PRODUCTION default is now EMPTY
-    // (oversight-team and retiring-and-inheriting-a-seat landed 2026-08-24; exemptions
-    // self-destructed), so under the default EVERY layout-demanded missing skill is loud.
+    // 该机制通过注入集钉住：生产默认现在为空
+    // （oversight-team 和 retiring-and-inheriting-a-seat 于 2026-08-24 落地；
+    // 豁免已自毁），因此在默认下，每个 layout 要求但缺失的 skill 都是 loud。
     const defaultRes = await mirror.checkGeneratedEdges({ repoRoot: root, layout, digests });
     assert.ok(
       defaultRes.changes.some((c) => c.path === "oversight-team" && c.reason === "layout-missing"),
@@ -806,7 +798,7 @@ test("checkGeneratedEdges — external-canon-pending allowlist: named-missing to
       "no stale flag while the allowlisted skill is genuinely absent from disk",
     );
 
-    // Self-destruct: when the allowlisted skill REAPPEARS on disk, its exemption is flagged stale.
+    // 自毁：当白名单 skill 在磁盘上重新出现时，其豁免被标记为 stale。
     write(join(root, specPath, "pods", "oversight-team", "SKILL.md"), "# Oversight\n");
     const res2 = await mirror.checkGeneratedEdges({ repoRoot: root, layout, digests, externalCanonPending: pending });
     assert.ok(
@@ -890,7 +882,9 @@ test("authoring regeneration stages canon and projects exact manifest layouts to
     const canonRoot = join(root, "canon");
     const repoRoot = join(root, "repo");
     write(join(canonRoot, "alpha", "SKILL.md"), "# Alpha\n");
+    write(join(canonRoot, "alpha", "SKILL.zh-CN.md"), "# Alpha 中文版\n");
     write(join(canonRoot, "alpha", "references", "guide.md"), "# Guide\n");
+    write(join(canonRoot, "alpha", "references", "guide.zh-CN.md"), "# 指南\n");
     write(join(canonRoot, "alpha", "feedback.md"), "private cycle\n");
     write(join(canonRoot, "alpha", "evals", "case.md"), "private eval\n");
 
@@ -919,9 +913,15 @@ test("authoring regeneration stages canon and projects exact manifest layouts to
       "spec/core/alpha/SKILL.md",
       "canonical/core/alpha/SKILL.md",
       "plugin/alpha/SKILL.md",
+      "spec/core/alpha/SKILL.zh-CN.md",
+      "canonical/core/alpha/SKILL.zh-CN.md",
+      "plugin/alpha/SKILL.zh-CN.md",
       "spec/core/alpha/references/guide.md",
       "canonical/core/alpha/references/guide.md",
       "plugin/alpha/references/guide.md",
+      "spec/core/alpha/references/guide.zh-CN.md",
+      "canonical/core/alpha/references/guide.zh-CN.md",
+      "plugin/alpha/references/guide.zh-CN.md",
     ]) {
       assert.equal(readFileSync(join(repoRoot, path), "utf8").startsWith("#"), true);
     }
@@ -951,7 +951,7 @@ test("authoring regeneration stages canon and projects exact manifest layouts to
           },
         },
       }),
-      /missing.*ship|ship.*missing|missing.*membership/i,
+      /canon 中缺少待发货 skill：missing/,
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -1110,8 +1110,8 @@ test("mirror main --check uses layout/digests and never activates the provisiona
 });
 
 test("permission-drift detection is itemization-width portable: rsync 3.x and openrsync forms both detect, non-permission forms never do", () => {
-  // rsync 3.x emits an 11-char itemization field, openrsync a 9-char one; the
-  // parser keys on `.f` + `p` at index 5 and must be indifferent to the width.
+  // rsync 3.x 发出 11 字符的 itemization 字段，openrsync 是 9 字符；解析器按索引 5 处的 `.f` + `p` 定位，
+  // 必须对宽度无动于衷。
   const drive = (lines) =>
     checkModeAbsolute("/source", "/target", () => lines.join("\n") + "\n");
 
@@ -1149,7 +1149,7 @@ test("checkModeAbsolute retains its one-source/one-target checksum contract", ()
   assert.equal(calls[0].args.at(-1), "/target/");
 });
 
-// --- helpers (test-only) ---
+// --- 辅助函数（仅供测试） ---
 
 function fixtureRules() {
   return {

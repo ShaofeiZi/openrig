@@ -12,7 +12,7 @@ export interface RigDeps extends StatusDeps {
 }
 
 export function rigCommand(depsOverride?: RigDeps): Command {
-  const cmd = new Command("spec").description("Manage rig specs");
+  const cmd = new Command("spec").description("管理工作组规范");
   const getDeps = (): RigDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
     clientFactory: (url: string) => new DaemonClient(url),
@@ -21,9 +21,9 @@ export function rigCommand(depsOverride?: RigDeps): Command {
 
   cmd
     .command("show <rig-id>")
-    .description("Print the spec that recreates a running rig")
-    .option("--json", "JSON output")
-    .option("--as-template", "Strip instance-specific source state and use a replacement name")
+    .description("打印可重建一个运行中工作组的规范")
+    .option("--json", "JSON 输出")
+    .option("--as-template", "剥离实例相关的来源状态，并用占位名替换")
     .action(async (rigId: string, opts: { json?: boolean; asTemplate?: boolean }) => {
       const deps = getDeps();
       const status = await getDaemonStatus(deps.lifecycleDeps);
@@ -33,7 +33,7 @@ export function rigCommand(depsOverride?: RigDeps): Command {
       if (opts.json && !opts.asTemplate) {
         const res = await client.get<Record<string, unknown>>(`/api/rigs/${encodeURIComponent(rigId)}/spec.json`);
         if (res.status >= 400) {
-          console.error(`Rig ${rigId} was not found.`);
+          console.error(`未找到工作组 ${rigId}。`);
           process.exitCode = 1;
           return;
         }
@@ -43,7 +43,7 @@ export function rigCommand(depsOverride?: RigDeps): Command {
 
       const res = await client.getText(`/api/rigs/${encodeURIComponent(rigId)}/spec`);
       if (res.status >= 400) {
-        console.error(`Rig ${rigId} was not found.`);
+        console.error(`未找到工作组 ${rigId}。`);
         process.exitCode = 1;
         return;
       }
@@ -71,15 +71,15 @@ export function rigCommand(depsOverride?: RigDeps): Command {
 
   cmd
     .command("audit <path>")
-    .description("Advisory audit of rig-spec culture and startup context")
-    .option("--json", "JSON output")
+    .description("对工作组规范的文化约定与启动上下文做建议性审计")
+    .option("--json", "JSON 输出")
     .action((filePath: string, opts: { json?: boolean }) => {
       const deps = getDeps();
       let source: string;
       try {
         source = deps.readFile(filePath);
       } catch {
-        console.error(`Cannot read file: ${filePath}`);
+        console.error(`无法读取文件：${filePath}`);
         process.exitCode = 1;
         return;
       }
@@ -88,13 +88,13 @@ export function rigCommand(depsOverride?: RigDeps): Command {
       try {
         parsed = parseYaml(source);
       } catch (error) {
-        console.error(`Cannot audit ${filePath}: invalid YAML (${(error as Error).message})`);
+        console.error(`无法审计 ${filePath}：YAML 无效（${(error as Error).message}）`);
         process.exitCode = 1;
         return;
       }
 
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        console.error(`Cannot audit ${filePath}: rig spec must be a YAML object`);
+        console.error(`无法审计 ${filePath}：工作组规范必须是一个 YAML 对象`);
         process.exitCode = 1;
         return;
       }
@@ -105,14 +105,13 @@ export function rigCommand(depsOverride?: RigDeps): Command {
       if (cultureFile === "") {
         findings.push({
           kind: "missing_culture",
-          message: "No culture_file is declared.",
-          typicalFix: "Author CULTURE.md and add culture_file: CULTURE.md. See the openrig-architect skill's authoring workflow.",
+          message: "未声明 culture_file。",
+          typicalFix: "编写 CULTURE.md 并添加 culture_file: CULTURE.md。参见 openrig-architect 技能的编写流程。",
         });
       } else {
-        // Slice 16 (item 2): a seat rename in rig.yaml must not leave STALE seat ids
-        // in the culture that materializes into each seat's AGENTS.md/CLAUDE.md
-        // (misdirects seat-to-seat addressing). Flag any `pod.member` reference in
-        // the culture whose pod exists but whose full seat id is not a current seat.
+        // Slice 16（第 2 项）：rig.yaml 中席位改名后，不得在文化约定里留下过时的席位 id，
+        // 该 id 会物化到每个席位的 AGENTS.md/CLAUDE.md（误导席位间寻址）。
+        // 标记文化中任何 `pod.member` 引用：其 pod 存在，但完整席位 id 不是当前席位。
         const knownPods = new Set<string>();
         const knownSeats = new Set<string>();
         const pods = Array.isArray(spec["pods"]) ? (spec["pods"] as Array<Record<string, unknown>>) : [];
@@ -132,12 +131,12 @@ export function rigCommand(depsOverride?: RigDeps): Command {
         if (cultureText === null) {
           findings.push({
             kind: "culture_unreadable",
-            message: `culture_file '${cultureFile}' is declared but could not be read at ${culturePath}.`,
-            typicalFix: "Ensure the culture file exists beside the rig spec.",
+            message: `已声明 culture_file '${cultureFile}'，但在 ${culturePath} 无法读取。`,
+            typicalFix: "确保文化文件与工作组规范放在一起。",
           });
         } else if (knownPods.size > 0) {
-          // Only backtick-wrapped `pod.member` tokens whose pod is a known pod —
-          // avoids false positives on file paths (docs/x.md), versions, etc.
+          // 只匹配反引号包裹、且 pod 为已知 pod 的 `pod.member` 记号——
+          // 避免在文件路径（docs/x.md）、版本号等上面误报。
           const stale = new Set<string>();
           const re = /`([a-z0-9_-]+)\.([a-z0-9_-]+)`/gi;
           let match: RegExpExecArray | null;
@@ -149,8 +148,8 @@ export function rigCommand(depsOverride?: RigDeps): Command {
           for (const seat of [...stale].sort()) {
             findings.push({
               kind: "stale_culture_seat_id",
-              message: `culture references seat id '${seat}', which is not a current seat in rig.yaml (renamed or removed).`,
-              typicalFix: "Update the culture block to the current seat id (a rename in rig.yaml must be mirrored in CULTURE.md).",
+              message: `文化约定引用了席位 id '${seat}'，但它不是 rig.yaml 中的当前席位（已改名或移除）。`,
+              typicalFix: "把文化块更新为当前席位 id（rig.yaml 中的改名必须同步到 CULTURE.md）。",
             });
           }
         }
@@ -163,8 +162,8 @@ export function rigCommand(depsOverride?: RigDeps): Command {
       if (!Array.isArray(startupFiles) || startupFiles.length === 0) {
         findings.push({
           kind: "missing_startup_context",
-          message: "No startup.files context is declared.",
-          typicalFix: "Add startup.files for the environment context agents need at boot. See the openrig-architect skill's authoring workflow.",
+          message: "未声明 startup.files 上下文。",
+          typicalFix: "为智能体在启动时所需的环境上下文添加 startup.files。参见 openrig-architect 技能的编写流程。",
         });
       }
 
@@ -174,21 +173,21 @@ export function rigCommand(depsOverride?: RigDeps): Command {
         return;
       }
       if (result.clean) {
-        console.log(`Spec audit clean: ${filePath}`);
+        console.log(`规范审计通过：${filePath}`);
         return;
       }
-      console.log(`Spec audit: ${findings.length} advisory findings for ${filePath}`);
+      console.log(`规范审计：${filePath} 有 ${findings.length} 条建议性发现`);
       for (const finding of findings) {
-        console.log(`  - ${finding.message}\n    Typical fix: ${finding.typicalFix}`);
+        console.log(`  - ${finding.message}\n    典型修复：${finding.typicalFix}`);
       }
-      console.log("Advisory only: these findings do not block validation or launch.");
+      console.log("仅为建议：这些发现不会阻塞校验或启动。");
     });
 
-  // rig spec validate <path>
+  // zrig spec validate <path>
   cmd
     .command("validate <path>")
-    .description("Validate a rig spec (pure schema validation)")
-    .option("--json", "JSON output")
+    .description("校验一个工作组规范（纯 schema 校验）")
+    .option("--json", "JSON 输出")
     .action(async (filePath: string, opts: { json?: boolean }) => {
       const deps = getDeps();
 
@@ -196,7 +195,7 @@ export function rigCommand(depsOverride?: RigDeps): Command {
       try {
         yaml = deps.readFile(filePath);
       } catch {
-        console.error(`Cannot read file: ${filePath}`);
+        console.error(`无法读取文件：${filePath}`);
         process.exitCode = 1;
         return;
       }
@@ -217,37 +216,37 @@ export function rigCommand(depsOverride?: RigDeps): Command {
       if (res.status >= 400) {
         const data = res.data;
         if (data.errors && data.errors.length > 0) {
-          console.error(`Rig spec invalid:\n${data.errors.map((e) => `  ${e}`).join("\n")}\nFix: update ${filePath} and re-validate.`);
+          console.error(`工作组规范无效：\n${data.errors.map((e) => `  ${e}`).join("\n")}\n修复：更新 ${filePath} 后重新校验。`);
         } else {
-          console.error(`Validation failed (HTTP ${res.status}). Check rig spec YAML syntax.`);
+          console.error(`校验失败（HTTP ${res.status}）。请检查工作组规范的 YAML 语法。`);
         }
         process.exitCode = 1;
         return;
       }
 
       const data = res.data;
-      // OPR.0.5.3.3 — advisories are printed regardless of validity (fail-open; never an error).
+      // OPR.0.5.3.3 —— 无论是否有效都打印建议（fail-open；绝不当作错误）。
       if (data.advisories && data.advisories.length > 0) {
-        for (const a of data.advisories) console.error(`⚠ spec advisory: ${a}`);
+        for (const a of data.advisories) console.error(`⚠ 规范建议：${a}`);
       }
       if (data.valid) {
         const nameMatch = yaml.match(/^name:\s*(.+)$/m);
-        const name = nameMatch?.[1]?.replace(/^["']|["']$/g, "").trim() ?? "unknown";
-        console.log(`Rig spec valid: ${name}`);
+        const name = nameMatch?.[1]?.replace(/^["']|["']$/g, "").trim() ?? "未知";
+        console.log(`工作组规范有效：${name}`);
       } else {
         if (data.errors && data.errors.length > 0) {
-          console.error(`Rig spec invalid:\n${data.errors.map((e) => `  ${e}`).join("\n")}\nFix: update ${filePath} and re-validate.`);
+          console.error(`工作组规范无效：\n${data.errors.map((e) => `  ${e}`).join("\n")}\n修复：更新 ${filePath} 后重新校验。`);
         }
         process.exitCode = 1;
       }
     });
 
-  // rig spec preflight <path>
+  // zrig spec preflight <path>
   cmd
     .command("preflight <path>")
-    .description("Run preflight diagnostics on a rig spec")
-    .option("--rig-root <root>", "Root directory for pod-aware resolution")
-    .option("--json", "JSON output")
+    .description("对一个工作组规范运行预检诊断")
+    .option("--rig-root <root>", "供 Pod 感知解析的根目录")
+    .option("--json", "JSON 输出")
     .action(async (filePath: string, opts: { rigRoot?: string; json?: boolean }) => {
       const deps = getDeps();
 
@@ -255,7 +254,7 @@ export function rigCommand(depsOverride?: RigDeps): Command {
       try {
         yaml = deps.readFile(filePath);
       } catch {
-        console.error(`Cannot read file: ${filePath}`);
+        console.error(`无法读取文件：${filePath}`);
         process.exitCode = 1;
         return;
       }
@@ -280,24 +279,24 @@ export function rigCommand(depsOverride?: RigDeps): Command {
       }
 
       if (res.status >= 400) {
-        console.error(`Preflight failed (HTTP ${res.status}). Check your spec and rig-root path.`);
+        console.error(`预检失败（HTTP ${res.status}）。请检查你的规范与 rig-root 路径。`);
         process.exitCode = 1;
         return;
       }
 
       const data = res.data;
       if (data.errors && data.errors.length > 0) {
-        console.log("Preflight errors:");
+        console.log("预检错误：");
         for (const e of data.errors) console.log(`  - ${e}`);
       }
       if (data.warnings && data.warnings.length > 0) {
-        console.log("Preflight warnings:");
+        console.log("预检警告：");
         for (const w of data.warnings) console.log(`  - ${w}`);
       }
       if (data.ready) {
-        console.log("Preflight ready");
+        console.log("预检就绪");
       } else {
-        console.log("Preflight not ready");
+        console.log("预检未就绪");
         process.exitCode = 1;
       }
     });

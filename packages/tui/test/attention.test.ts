@@ -6,6 +6,7 @@ import { attentionLines } from "../src/attention/attention-model.js";
 import { parseCommand } from "../src/grammar.js";
 import type { AttentionRead } from "@openrig/daemon/attention";
 import type { FleetSnapshot } from "../src/types.js";
+import { strWidth } from "../src/text-width.js";
 
 it.each([140, 80])("keeps readable summaries, passive exact source navigation and Back at width %i", async width => {
   const requests: string[] = [];
@@ -14,6 +15,8 @@ it.each([140, 80])("keeps readable summaries, passive exact source navigation an
   let unavailable = false;
   const client = new DaemonClient({ baseUrl: "http://fixture", fetchImpl: (async (url, init) => {
     const u = new URL(String(url)); requests.push(`${init?.method ?? "GET"} ${u.pathname}${u.search}`);
+    if (u.pathname === "/healthz") return Response.json({ selfHostId: "fixture" });
+    if (u.pathname === "/api/rigs/summary") return Response.json([]);
     if (u.pathname === "/api/attention") {
       if (unavailable) throw new Error("source offline");
       return Response.json({ ...data, detail: u.searchParams.get("item") ? { item, lines: ["Full original request", "History: still pending"], files: [{ label: "Evidence", path: "/books/alpha/proof.md#decision" }] } : null });
@@ -28,15 +31,15 @@ it.each([140, 80])("keeps readable summaries, passive exact source navigation an
   const refresh = async () => { snap = await hydrateSnapshot(client, undefined, null, null, null, view.get()); };
   view.dispatch(parseCommand("attention")); await refresh();
   const lines = attentionLines(view.get(), snap, width - 33), text = lines.map(l => l.text).join("\n");
-  expect(text).toContain("Human requests"); expect(text).toContain("Updates");
+  expect(text).toContain("人类请求"); expect(text).toContain("更新");
   expect(text.replace(/\s+/g, " ")).toContain(item.summary);
-  expect(lines.every(l => l.text.length <= width - 33)).toBe(true);
+  expect(lines.every(l => strWidth(l.text) <= width - 33)).toBe(true);
   view.dispatch(lines.find(l => l.action?.type === "attention-open")!.action!); await refresh();
   expect(view.get().attentionOpen).toBe(item.id);
   expect(attentionLines(view.get(), snap, width).map(l => l.text).join("\n")).toContain("Full original request");
   const retained = { ...snap, attentionRead: { ...snap.attentionRead!, items: [] } };
   const resolved = attentionLines(view.get(), retained, width).map(l => l.text).join("\n");
-  expect(resolved).toContain("Source record"); expect(resolved).not.toContain("Human requests");
+  expect(resolved).toContain("来源记录"); expect(resolved).not.toContain("人类请求");
   const caller = view.get();
   view.dispatch({ type: "attention-source", path: "/books/alpha/proof.md#decision" });
   expect(view.get().file).toEqual({ root: "alpha", path: "proof.md", anchor: "decision" });
@@ -52,7 +55,7 @@ it.each([140, 80])("keeps readable summaries, passive exact source navigation an
   expect(view.get().attentionOpen).toBeNull(); expect(view.get().file).toBeNull();
   unavailable = true; await refresh();
   const failed = attentionLines(view.get(), snap, width).map(l => l.text).join("\n");
-  expect(failed).toContain("Unavailable"); expect(failed).not.toContain("No current items");
+  expect(failed).toContain("不可用"); expect(failed).not.toContain("无当前项");
   expect(requests.every(r => r.startsWith("GET "))).toBe(true);
   expect(requests.filter(r => r.includes("/api/files/read")).every(r => r === "GET /api/files/read?root=alpha&path=proof.md")).toBe(true);
 });

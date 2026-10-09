@@ -2,46 +2,39 @@ import type { WatchdogJob, WatchdogJobsRepository } from "./watchdog-jobs-reposi
 import type { WatchdogPolicyEngine } from "./watchdog-policy-engine.js";
 
 /**
- * Watchdog scheduler (PL-004 Phase C; daemon-native supervision tree
- * member). Joins createDaemon's lifecycle: started by startup.ts after
- * the policy engine is ready, stopped during graceful shutdown.
+ * Watchdog 调度器（PL-004 Phase C；后台服务原生监管树成员）。接入 createDaemon 生命周期：
+ * policy engine 就绪后由 startup.ts 启动，在优雅关机期间停止。
  *
- * Loop semantics:
- *   - Wakes every `tickIntervalMs` (default 1000) and queries the
- *     repository for active jobs whose `interval_seconds` has elapsed
- *     since `last_evaluation_at` (or who have never been evaluated).
- *   - For each due job, calls policyEngine.evaluate(job). The engine
- *     records meaningful outcomes; pure not-due polls are filtered
- *     here and never reach history.
- *   - SQLite is the canonical schedule state — restart recovery is
- *     automatic: on startup, `listActive()` returns the same set
- *     and `last_evaluation_at` determines next-due.
+ * 循环语义：
+ *   - 每隔 `tickIntervalMs`（默认 1000）唤醒，查询活跃作业中自 `last_evaluation_at` 起已超过
+ *     `interval_seconds` 的项，以及从未评估过的项。
+ *   - 对每个到期作业调用 policyEngine.evaluate(job)。engine 记录有意义的结果；纯粹未到期的
+ *     轮询在此过滤，绝不进入历史。
+ *   - SQLite 是规范调度状态；重启恢复自动完成：启动时 `listActive()` 返回同一集合，
+ *     `last_evaluation_at` 决定下一次到期时间。
  *
- * Concurrency:
- *   - One in-flight tick at a time. If a tick takes longer than
- *     tickIntervalMs (long policy.evaluate or slow delivery), the
- *     next tick is delayed; we don't queue overlapping ticks.
- *   - Within a tick, jobs are evaluated sequentially. This bounds
- *     resource use and matches the POC's single-loop behavior.
+ * 并发语义：
+ *   - 同时只有一个在途 tick。若 tick 耗时超过 tickIntervalMs（policy.evaluate 较慢或投递较慢），
+ *     下一 tick 会延后，不排队重叠 tick。
+ *   - 一个 tick 内串行评估作业，以限制资源使用，并与 POC 的单循环行为一致。
  *
- * Shutdown:
- *   - stop() sets shuttingDown=true, clears the timer, and awaits the
- *     in-flight tick (if any). Idempotent.
+ * 关机语义：
+ *   - stop() 设置 shuttingDown=true、清除定时器并等待在途 tick（若有）。该操作幂等。
  */
 
 export interface WatchdogSchedulerDeps {
   jobsRepo: WatchdogJobsRepository;
   policyEngine: WatchdogPolicyEngine;
-  /** Tick wake-up cadence. Default 1000 ms. */
+  /** Tick 唤醒节奏，默认 1000 ms。 */
   tickIntervalMs?: number;
-  /** Override clock for tests. */
+  /** 测试可覆盖时钟。 */
   now?: () => Date;
-  /** Override timer scheduler for tests. */
+  /** 测试可覆盖定时器调度器。 */
   setTimer?: (cb: () => void, ms: number) => NodeJS.Timeout;
   clearTimer?: (handle: NodeJS.Timeout) => void;
-  /** Reconcile durable domain state before taking the due-job snapshot. */
+  /** 在取得到期作业快照前协调持久领域状态。 */
   beforeTick?: () => void;
-  /** Notification on tick errors (for telemetry; defaults to console.error). */
+  /** tick 错误通知，用于遥测；默认为 console.error。 */
   onTickError?: (err: unknown) => void;
 }
 
@@ -68,7 +61,7 @@ export class WatchdogScheduler {
     this.now = deps.now ?? (() => new Date());
     this.setTimer = deps.setTimer ?? ((cb, ms) => setTimeout(cb, ms));
     this.clearTimer = deps.clearTimer ?? ((handle) => clearTimeout(handle));
-    this.onTickError = deps.onTickError ?? ((err) => console.error("[watchdog] tick error", err));
+    this.onTickError = deps.onTickError ?? ((err) => console.error("[watchdog] tick 错误", err));
   }
 
   start(): void {
@@ -89,7 +82,7 @@ export class WatchdogScheduler {
       try {
         await this.inflight;
       } catch {
-        // Errors already logged via onTickError; suppress during shutdown.
+        // 错误已通过 onTickError 记录；关机期间不再抛出。
       }
     }
     this.started = false;
@@ -100,9 +93,8 @@ export class WatchdogScheduler {
   }
 
   /**
-   * Run one tick synchronously (await result). Exposed for tests so
-   * they can drive ticks without timers. Production path calls this
-   * via the timer loop.
+   * 同步运行一个 tick 并等待结果。公开给测试，使其无需定时器即可驱动 tick；
+   * 生产路径通过定时器循环调用。
    */
   async runTickNow(): Promise<void> {
     if (this.inflight) {
@@ -145,11 +137,10 @@ export class WatchdogScheduler {
 }
 
 /**
- * R1 fix: scan cadence is governed by `scan_interval_seconds` when
- * supplied, falling back to `interval_seconds`. Mirrors POC engine
- * (lib/engine.mjs:38-46) where `last_scan_at` and `scan_interval_seconds`
- * gate the policy invocation. Wake-cadence (`active_wake_interval_seconds`)
- * is enforced one layer up by the policy engine, NOT here.
+ * R1 修复：提供 `scan_interval_seconds` 时由它控制扫描节奏，否则回退到 `interval_seconds`。
+ * 这与 POC engine（lib/engine.mjs:38-46）一致，其中 `last_scan_at` 和
+ * `scan_interval_seconds` 为策略调用设门禁。唤醒节奏（`active_wake_interval_seconds`）
+ * 由上一层 policy engine 强制，不在此处理。
  */
 export function isDue(job: WatchdogJob, nowMs: number): boolean {
   if (!job.lastEvaluationAt) return true;

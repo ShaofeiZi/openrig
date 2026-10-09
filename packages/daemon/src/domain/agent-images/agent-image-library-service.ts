@@ -1,17 +1,14 @@
-// Fork Primitive + Starter Agent Images v0 (PL-016) — library service.
+// 分叉原语 + Starter 智能体镜像 v0（PL-016）——资料库服务。
 //
-// Walks discovery roots, parses each image's manifest.yaml + stats.json,
-// and emits AgentImageEntry records for daemon HTTP routes + UI library
-// + CLI verb family. Mirrors ContextPackLibraryService (PL-014) in
-// shape; differences:
-//   - sourceResumeToken passes through to consumers (the instantiator
-//     consumes it; the operator-facing surfaces redact it)
-//   - stats.json is a separate file (mutable; updated atomically on
-//     fork-count increment)
-//   - .pinned sentinel file pins an image from prune
+// 遍历 discovery root，解析每个 image 的 manifest.yaml + stats.json，并为后台服务 HTTP route、
+// UI library 和 CLI 动词族生成 AgentImageEntry 记录。结构与 ContextPackLibraryService（PL-014）
+// 对应，但有以下差异：
+//   - sourceResumeToken 会传给 consumer（instantiator 使用它；面向操作员的 surface 会将其遮蔽）
+//   - stats.json 是单独的可变文件，在 fork-count 增加时原子更新
+//   - .pinned sentinel 文件可防止 image 被 prune
 //
-// Storage filesystem-canonical at ~/.openrig/agent-images/<name>/ +
-// workspace-local .openrig/agent-images/<name>/. NO new SQLite tables.
+// 存储以文件系统为 canonical：~/.openrig/agent-images/<name>/ 加 workspace 本地
+// .openrig/agent-images/<name>/。不新增 SQLite 表。
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync, unlinkSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -26,7 +23,7 @@ import {
 } from "./agent-image-types.js";
 
 export interface AgentImageLibraryRoot {
-  /** Absolute path to a directory whose immediate children are image dirs. */
+  /** 直接子项为 image 目录的绝对路径。 */
   path: string;
   sourceType: AgentImageSourceType;
 }
@@ -35,7 +32,7 @@ export interface AgentImageLibraryOpts {
   roots: AgentImageLibraryRoot[];
 }
 
-/** Stable id format: agent-image:<name>:<version> (parallel to context-pack:). */
+/** 稳定 id 格式：agent-image:<name>:<version>（与 context-pack: 并行）。 */
 export function agentImageId(name: string, version: string): string {
   return `agent-image:${name}:${version}`;
 }
@@ -93,8 +90,7 @@ export class AgentImageLibraryService {
         if (!existsSync(manifestPath)) continue;
         try {
           const entry = this.readImageEntry(imageDir, manifestPath, root);
-          // Last-wins on collision (workspace > user_file > builtin in
-          // discovery order configured at startup).
+          // 冲突时后者优先（按启动时配置的发现顺序：workspace > user_file > builtin）。
           next.set(entry.id, entry);
         } catch (err) {
           errors.push({
@@ -123,28 +119,19 @@ export class AgentImageLibraryService {
   }
 
   /**
-   * Atomically update stats.json — bump lastUsedAt always; increment
-   * forkCount only when `incrementForkCount: true` (default true to
-   * preserve back-compat with the first-shipped signature). Used by
-   * the instantiator in two phases:
-   *   1. Pre-launch (incrementForkCount: false): records the operator's
-   *      INTENT to consume the image. lastUsedAt updates so the library
-   *      view shows recent activity even when the launch ultimately
-   *      fails — operators see "this image was tried" without conflating
-   *      attempts with successful forks.
-   *   2. Post-launch on success (incrementForkCount: true): increments
-   *      forkCount only when startupResult.ok===true. Prior
-   *      behavior incremented on intent regardless of outcome, which
-   *      polluted forkCount with failed-launch noise.
+   * 原子更新 stats.json——总是更新 lastUsedAt；仅在 `incrementForkCount: true` 时增加 forkCount
+   *（默认为 true，以兼容首个已发布签名）。instantiator 分两阶段使用：
+   *   1. 启动前（incrementForkCount: false）：记录操作员消费 image 的意图。更新 lastUsedAt，
+   *      使 library view 即使在启动最终失败时也显示近期活动；操作员可看到“已尝试此 image”，
+   *      而不会把尝试与成功 fork 混为一谈。
+   *   2. 成功启动后（incrementForkCount: true）：仅在 startupResult.ok===true 时增加 forkCount。
+   *      旧行为不论结果都会在产生意图时增加，从而用启动失败噪声污染 forkCount。
    *
-   * Best-effort: a stat-write failure surfaces as an AgentImageError but
-   * does NOT abort the consumer (the image consumption path itself does
-   * not depend on stats; the operator just loses fork-count visibility
-   * on this consumption).
+   * Best-effort：统计写入失败会显示为 AgentImageError，但不会中止 consumer（image 消费路径本身
+   * 不依赖 stats；操作员只会失去本次消费的 fork-count 可见性）。
    *
-   * Back-compat: legacy `recordConsumption(id, () => new Date())` form
-   * still works — a positional function argument is treated as the
-   * `now` clock with `incrementForkCount: true`.
+   * 向后兼容：旧版 `recordConsumption(id, () => new Date())` 形式仍有效；位置函数参数视为 `now`
+   * 时钟，并使用 `incrementForkCount: true`。
    */
   recordConsumption(
     id: string,
@@ -152,7 +139,7 @@ export class AgentImageLibraryService {
   ): void {
     const entry = this.entries.get(id);
     if (!entry) {
-      throw new AgentImageError("image_not_found", `agent image '${id}' not found in library`);
+      throw new AgentImageError("image_not_found", `library 中找不到 agent image '${id}'`);
     }
     const opts = typeof optsOrNow === "function"
       ? { incrementForkCount: true, now: optsOrNow }
@@ -166,7 +153,7 @@ export class AgentImageLibraryService {
         current = { ...current, ...parsed };
       }
     } catch {
-      // Malformed stats.json — fall through with the in-memory copy.
+      // stats.json 畸形——继续使用内存副本。
     }
     const next: AgentImageStats = {
       forkCount: (current.forkCount ?? 0) + (opts.incrementForkCount ? 1 : 0),
@@ -179,33 +166,32 @@ export class AgentImageLibraryService {
     } catch (err) {
       throw new AgentImageError(
         "stats_write_failed",
-        `failed to update stats.json for ${id}: ${(err as Error).message}`,
+        `更新 ${id} 的 stats.json 失败：${(err as Error).message}`,
         { id, statsPath },
       );
     }
-    // Mirror the new stats into the in-memory entry so subsequent reads
-    // see the bumped fork-count without re-walking the filesystem.
+    // 将新 stats 镜像到内存 entry，使后续读取无需重新遍历文件系统即可看到增加后的 fork-count。
     entry.stats = next;
   }
 
-  /** Pin an image — creates a `.pinned` sentinel file inside the image directory. */
+  /** 固定 image——在 image 目录内创建 `.pinned` sentinel 文件。 */
   pin(id: string): void {
     const entry = this.entries.get(id);
-    if (!entry) throw new AgentImageError("image_not_found", `agent image '${id}' not found`);
+    if (!entry) throw new AgentImageError("image_not_found", `找不到 agent image '${id}'`);
     const sentinelPath = join(entry.sourcePath, PINNED_SENTINEL);
     writeFileSync(sentinelPath, new Date().toISOString() + "\n", "utf-8");
     entry.pinned = true;
   }
 
-  /** Unpin — removes the `.pinned` sentinel. */
+  /** 取消固定——删除 `.pinned` sentinel。 */
   unpin(id: string): void {
     const entry = this.entries.get(id);
-    if (!entry) throw new AgentImageError("image_not_found", `agent image '${id}' not found`);
+    if (!entry) throw new AgentImageError("image_not_found", `找不到 agent image '${id}'`);
     const sentinelPath = join(entry.sourcePath, PINNED_SENTINEL);
     try {
       unlinkSync(sentinelPath);
     } catch {
-      // Already absent — no-op.
+      // 已缺失——no-op。
     }
     entry.pinned = false;
   }
@@ -224,7 +210,7 @@ export class AgentImageLibraryService {
       const st = statSync(manifestPath);
       mostRecentMtime = st.mtimeMs;
       totalBytes += st.size;
-    } catch { /* unreadable — fall through */ }
+    } catch { /* 不可读——继续处理。 */ }
 
     const files: AgentImageEntryFile[] = manifest.files.map((mf) => {
       const abs = join(imageDir, mf.path);
@@ -250,7 +236,7 @@ export class AgentImageLibraryService {
     });
     const derivedEstimatedTokens = files.reduce((acc, f) => acc + (f.estimatedTokens ?? 0), 0);
 
-    // Read stats.json if present; default to empty stats.
+    // 若存在则读取 stats.json，否则使用空 stats。
     const statsPath = join(imageDir, STATS_FILENAME);
     let stats: AgentImageStats = { ...DEFAULT_STATS };
     if (existsSync(statsPath)) {
@@ -266,8 +252,7 @@ export class AgentImageLibraryService {
         const statStat = statSync(statsPath).mtimeMs;
         if (statStat > mostRecentMtime) mostRecentMtime = statStat;
       } catch {
-        // Malformed stats — surface zero values; the daemon refresh
-        // overwrites on next consumption.
+        // stats 畸形——显示零值；后台服务会在下次消费时刷新覆盖。
       }
     }
     if (stats.estimatedSizeBytes === 0) stats.estimatedSizeBytes = totalBytes;
@@ -284,8 +269,7 @@ export class AgentImageLibraryService {
       sourceSeat: manifest.sourceSeat,
       sourceSessionId: manifest.sourceSessionId,
       sourceResumeToken: manifest.sourceResumeToken,
-      // Surface sourceCwd verbatim from the manifest.
-      // null when the manifest predates source_cwd support (back-compat).
+      // 原样显示 manifest 中的 sourceCwd。早于 source_cwd 支持的 manifest 返回 null（向后兼容）。
       sourceCwd: manifest.sourceCwd ?? null,
       notes: manifest.notes ?? null,
       createdAt: manifest.createdAt,
@@ -302,7 +286,7 @@ export class AgentImageLibraryService {
     };
   }
 
-  /** Write a fresh manifest + empty stats.json + cwd-deltas (if any) to a new image directory. */
+  /** 向新 image 目录写入新 manifest、空 stats.json 和 cwd-deltas（若有）。 */
   install(
     targetRootPath: string,
     manifest: AgentImageManifest,
@@ -312,13 +296,12 @@ export class AgentImageLibraryService {
     if (existsSync(targetDir)) {
       throw new AgentImageError(
         "image_referenced",
-        `agent image directory already exists at ${targetDir}; choose a different name or remove the existing dir`,
+        `${targetDir} 已存在 agent image 目录；请选择其他名称或移除现有目录`,
         { name: manifest.name, targetDir },
       );
     }
     mkdirSync(targetDir, { recursive: true });
-    // Emit manifest as YAML — write camelCase keys mapped to snake_case
-    // for forward-compat with operator hand-edits.
+    // 以 YAML 输出 manifest——将 camelCase key 映射为 snake_case，以便向前兼容操作员手工编辑。
     const yamlLines = [
       `name: ${manifest.name}`,
       `version: ${manifest.version}`,
@@ -328,9 +311,8 @@ export class AgentImageLibraryService {
       `source_resume_token: ${quoteIfNeeded(manifest.sourceResumeToken)}`,
       `created_at: ${quoteIfNeeded(manifest.createdAt)}`,
     ];
-    // Persist sourceCwd to manifest YAML so the
-    // Use-as-starter snippet can emit `cwd: <source_cwd>` from the
-    // library entry. Omitted when capture-time cwd was unknown.
+    // 将 sourceCwd 持久化到 manifest YAML，使 Use-as-starter 片段可从 library entry 输出
+    // `cwd: <source_cwd>`。捕获时 cwd 未知则省略。
     if (manifest.sourceCwd) {
       yamlLines.push(`source_cwd: ${quoteIfNeeded(manifest.sourceCwd)}`);
     }
@@ -350,7 +332,7 @@ export class AgentImageLibraryService {
       if (f.summary) yamlLines.push(`    summary: ${quoteIfNeeded(f.summary)}`);
     }
     writeFileSync(join(targetDir, "manifest.yaml"), yamlLines.join("\n") + "\n", "utf-8");
-    // Empty stats — fork count starts at 0; lineage from manifest.
+    // 空 stats——fork count 从 0 开始；lineage 来自 manifest。
     const stats: AgentImageStats = {
       forkCount: 0,
       lastUsedAt: null,
@@ -362,7 +344,7 @@ export class AgentImageLibraryService {
       if (relPath.includes("..") || relPath.startsWith("/")) {
         throw new AgentImageError(
           "manifest_invalid",
-          `install file path '${relPath}' must be relative inside the image (no '..', no leading '/')`,
+          `安装文件路径 '${relPath}' 必须是 image 内的相对路径（不能含 '..'，不能以 '/' 开头）`,
         );
       }
       const abs = join(targetDir, relPath);

@@ -19,7 +19,7 @@ function QueryWrapper({ children }: { children: React.ReactNode }) {
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
 
-// Mock fetch globally
+// 全局 mock fetch
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
 
@@ -156,7 +156,7 @@ describe("RigGraph", () => {
       expect(groupNode).not.toBeNull();
     });
 
-    const label = screen.getByText("alpha pod");
+    const label = screen.getByText("alpha 容器组");
     expect(label).toBeDefined();
     expect(label.className).toContain("font-bold");
     expect(label.className).toContain("inline-flex");
@@ -219,10 +219,10 @@ describe("RigGraph", () => {
     });
   });
 
-  // V1 attempt-3 Phase 4 P4-5 — RigDetailPanel + 'rig' kind retired
-  // from DrawerSelection. Pod-group click is now a no-op at the graph
-  // level (pods open via Explorer tree's /topology/pod/$rigId/$podName
-  // link). Test renamed + assertion flipped to verify NO setSelection.
+  // V1 attempt-3 Phase 4 P4-5——RigDetailPanel + 'rig' kind 从 DrawerSelection
+  // 退役。Pod-group 点击现在在图层级是 no-op（pods 经 Explorer 树的
+  // /topology/pod/$rigId/$podName 链接打开）。测试重命名 + 断言翻转以验证
+  // 无 setSelection。
   it("clicking a pod group is a no-op at the graph level (RigDetailPanel retired)", async () => {
     mockFetch.mockResolvedValueOnce(mockGraphResponse([
       {
@@ -284,7 +284,7 @@ describe("RigGraph", () => {
 
     fireEvent.click(container.querySelector(".react-flow__node-podGroup")!);
 
-    // 'rig' kind retired in Phase 4 — pod-group click does NOT setSelection.
+    // 'rig' kind 在 Phase 4 退役——pod-group 点击不 setSelection。
     expect(setSelection).not.toHaveBeenCalled();
   });
 
@@ -346,10 +346,9 @@ describe("RigGraph", () => {
     });
   });
 
-  // OPR.0.4.6.MH2 rev1-r2 re-verdict B1: placement targets feed the LOCAL
-  // discovery bind/adopt mutation — under a REMOTE selection a rendered node
-  // must never become a target and the placement banner must not advertise.
-  // (The test above is the local-positive control for this exact flow.)
+  // OPR.0.4.6.MH2 rev1-r2 re-verdict B1：placement target 喂 LOCAL discovery
+  // bind/adopt mutation——REMOTE selection 下渲染节点绝不可成为 target，placement
+  // banner 不得广告。（上方测试即此精确流程的 local-positive 对照。）
   it("remote-selected: placement-mode click sets NO target and the placement banner is absent (rev1-r2 B1)", async () => {
     mockFetch.mockResolvedValueOnce(mockGraphResponse([
       {
@@ -406,7 +405,7 @@ describe("RigGraph", () => {
       expect(container.querySelector(".react-flow__node-rigNode")).not.toBeNull();
     });
 
-    // the banner never advertises placement on remote data
+    // banner 在 remote 数据上绝不广告 placement
     expect(container.querySelector("[data-testid='graph-placement-banner']")).toBeNull();
 
     fireEvent.click(container.querySelector(".react-flow__node-rigNode")!);
@@ -505,7 +504,7 @@ describe("RigGraph", () => {
     const { container } = render(<QueryWrapper><RigGraph showDiscovered={false} rigId="rig-1" /></QueryWrapper>);
 
     await waitFor(() => {
-      // React Flow renders nodes with data-testid="rf__node-{id}"
+      // React Flow 以 data-testid="rf__node-{id}" 渲染节点
       const rfNodes = container.querySelectorAll("[data-testid^='rf__node-']");
       expect(rfNodes.length).toBe(2);
     });
@@ -517,22 +516,22 @@ describe("RigGraph", () => {
     const { container } = render(<QueryWrapper><RigGraph showDiscovered={false} rigId="rig-1" /></QueryWrapper>);
 
     await waitFor(() => {
-      // React Flow renders nodes successfully (proves graph data was accepted)
+      // React Flow 成功渲染节点（证明 graph 数据被接受）
       const rfNodes = container.querySelectorAll("[data-testid^='rf__node-']");
       expect(rfNodes.length).toBe(2);
-      // Edge container exists (RF accepted the edge data)
-      // Note: jsdom lacks layout so RF cannot compute edge paths,
-      // but the container proves edges were passed to the component
+      // Edge 容器存在（RF 接受 edge 数据）
+      // 注：jsdom 缺 layout，故 RF 无法计算 edge 路径，但容器证明 edges
+      // 已传给组件
       const edgeContainer = container.querySelector(".react-flow__edges");
       expect(edgeContainer).not.toBeNull();
-      // Verify the fetch included edges in the response
+      // 验证 fetch 在 response 中含 edges
       const fetchCall = mockFetch.mock.calls[0];
       expect(fetchCall).toBeDefined();
     });
   });
 
   it("loading state rendered when fetching", () => {
-    // Never resolves — stays in loading
+    // 永不 resolve——保持 loading
     mockFetch.mockReturnValueOnce(new Promise(() => {}));
 
     render(<QueryWrapper><RigGraph showDiscovered={false} rigId="rig-1" /></QueryWrapper>);
@@ -555,14 +554,14 @@ describe("RigGraph", () => {
     render(<QueryWrapper><RigGraph showDiscovered={false} rigId="rig-1" /></QueryWrapper>);
 
     await waitFor(() => {
-      expect(screen.getByText(/error/i)).toBeDefined();
+      expect(screen.getByText(/错误/i)).toBeDefined();
     });
   });
 
   it("rigId=null shows 'No rig selected' placeholder, no fetch", () => {
     render(<QueryWrapper><RigGraph showDiscovered={false} rigId={null} /></QueryWrapper>);
 
-    expect(screen.getByText(/no rig selected/i)).toBeDefined();
+    expect(screen.getByText(/未选择工作组/i)).toBeDefined();
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -596,10 +595,10 @@ describe("RigGraph", () => {
     const { container } = render(<QueryWrapper><RigGraph showDiscovered={false} rigId="rig-1" /></QueryWrapper>);
 
     await waitFor(() => {
-      // React Flow uses our custom node type — nodes have class react-flow__node-rigNode
+      // React Flow 用我们的自定义节点类型——节点有 class react-flow__node-rigNode
       const customNodes = container.querySelectorAll(".react-flow__node-rigNode");
       expect(customNodes.length).toBe(2);
-      // RigNode renders runtime branding in the compact card grammar.
+      // RigNode 在紧凑 card 语法中渲染 runtime branding。
       expect(screen.getByRole("img", { name: "Claude" })).toBeDefined();
     });
   });
@@ -625,9 +624,9 @@ describe("RigNode", () => {
     expect(screen.getByText("impl")).toBeDefined();
     expect(screen.getByRole("img", { name: "Claude" })).toBeDefined();
     expect(screen.queryByText("WORKER")).toBeNull();
-    // PL-019: dot now reflects agentActivity (was startupStatus); no
-    // agentActivity attached → "unknown" state, desaturated stone.
-    expect(screen.getByTestId("activity-dot-dev.impl").getAttribute("aria-label")).toBe("activity: unknown");
+    // PL-019：dot 现反映 agentActivity（原为 startupStatus）；无
+    // agentActivity 附加 -> "unknown" 状态，去饱和 stone。
+    expect(screen.getByTestId("activity-dot-dev.impl").getAttribute("aria-label")).toBe("活动：未知");
   });
 
   it("shows a compact stopped indicator when binding is null and status is null", () => {
@@ -646,20 +645,19 @@ describe("RigNode", () => {
       </ReactFlowProvider>
     );
 
-    // PL-019: no agentActivity attached → unknown.
-    expect(screen.getByTestId("activity-dot-worker").getAttribute("aria-label")).toBe("activity: unknown");
+    // PL-019：无 agentActivity 附加 -> unknown。
+    expect(screen.getByTestId("activity-dot-worker").getAttribute("aria-label")).toBe("活动：未知");
   });
 
   it("PL-019: activity dot color is driven by agentActivity.state (not startupStatus)", () => {
-    // The four states + the no-activity fallback cover the entire palette
-    // contract. Per orch design guidance: running uses warm green/teal,
-    // needs_input is the static eye-catcher (amber), idle is calm cool
-    // (slate-400), unknown is desaturated (stone-300).
+    // 四态 + 无 activity fallback 覆盖整个 palette 契约。按 orch 设计指引：
+    // running 用暖绿/teal，needs_input 是静态吸睛色（amber），idle 是冷静
+    //（slate-400），unknown 去饱和（stone-300）。
     const cases = [
-      { state: "running" as const, expectedLabel: "activity: running", expectedClass: "bg-emerald-500" },
-      { state: "needs_input" as const, expectedLabel: "activity: needs input", expectedClass: "bg-amber-500" },
-      { state: "idle" as const, expectedLabel: "activity: idle", expectedClass: "bg-slate-400" },
-      { state: "unknown" as const, expectedLabel: "activity: unknown", expectedClass: "bg-stone-300" },
+      { state: "running" as const, expectedLabel: "活动：运行中", expectedClass: "bg-emerald-500" },
+      { state: "needs_input" as const, expectedLabel: "活动：待输入", expectedClass: "bg-amber-500" },
+      { state: "idle" as const, expectedLabel: "活动：空闲", expectedClass: "bg-slate-400" },
+      { state: "unknown" as const, expectedLabel: "活动：未知", expectedClass: "bg-stone-300" },
     ];
 
     for (const { state, expectedLabel, expectedClass } of cases) {
@@ -742,7 +740,7 @@ describe("RigNode", () => {
         }} />
       </ReactFlowProvider>
     );
-    expect(screen.getByTestId("activity-staleness-stale-node").textContent).toBe("stale");
+    expect(screen.getByTestId("activity-staleness-stale-node").textContent).toBe("已停滞");
   });
 
   it("PL-019: when running with currentQitems, the hover hint includes 'On: <short tail> — <excerpt>'", () => {
@@ -763,9 +761,8 @@ describe("RigNode", () => {
         }} />
       </ReactFlowProvider>
     );
-    // Hover hint sits in the rig-node title attribute (composite tooltip);
-    // also rendered as a separate hidden block. We assert the ULID tail
-    // appears at least once within the rendered DOM.
+    // Hover 提示位于 rig-node title 属性（复合 tooltip）；也作为独立隐藏块渲染。
+    // 我们断言 ULID tail 至少在渲染 DOM 中出现一次。
     expect(document.body.innerHTML).toContain("tail9999");
     expect(document.body.innerHTML).toContain("Phase B audit");
   });
@@ -816,7 +813,7 @@ describe("RigNode", () => {
       </ReactFlowProvider>
     );
 
-    expect(screen.getByTestId("placement-chip-dev.impl").textContent).toBe("avail");
+    expect(screen.getByTestId("placement-chip-dev.impl").textContent).toBe("可用");
   });
 
   it("toolbar keeps terminal and cmux actions when no resumeToken", () => {
@@ -842,7 +839,7 @@ describe("RigNode", () => {
     expect(screen.getByTestId("rig-node-dev.impl-terminal-open")).toBeDefined();
     expect(screen.queryByTestId("toolbar-copy-resume")).toBeNull();
     expect(screen.queryByTestId("toolbar-copy-attach")).toBeNull();
-    // CMUX button should still be present for unbound nodes (open-or-focus)
+    // CMUX 按钮对未绑定节点仍应存在（open-or-focus）
     expect(screen.getByTestId("toolbar-cmux-open")).toBeDefined();
   });
 
@@ -879,7 +876,7 @@ describe("RigNode", () => {
       expect(openCall![1]).toEqual(expect.objectContaining({ method: "POST" }));
     });
 
-    // Must NOT have called /focus
+    // 不得调用 /focus
     const focusCall = mockFetch.mock.calls.find(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("/focus")
     );
@@ -918,9 +915,9 @@ describe("RigNode", () => {
       expect(openCall![0]).toBe("/api/rigs/rig-1/nodes/dev.impl/open-cmux");
     });
 
-    // Flash feedback
+    // 闪烁反馈
     await waitFor(() => {
-      expect(screen.getByTestId("toolbar-cmux-open").textContent).toBe("opened");
+      expect(screen.getByTestId("toolbar-cmux-open").textContent).toBe("已打开");
     });
   });
 
@@ -937,7 +934,7 @@ describe("RigNode", () => {
   });
 });
 
-// UIF-T05: Edge style helper tests
+// UIF-T05：Edge 样式 helper 测试
 describe("Edge styles", () => {
   it("delegates_to: solid, secondary blue", async () => {
     const { getEdgeStyle } = await import("../src/lib/edge-styles.js");
@@ -977,7 +974,7 @@ describe("Edge styles", () => {
   });
 });
 
-// UIF-T05: Graph entrance animation
+// UIF-T05：Graph 入场动画
 describe("Graph entrance animation", () => {
   it("initial navigation sets data-animated='true'", async () => {
     mockFetch.mockResolvedValue(mockGraphResponse(sampleNodes(), sampleEdges()));
@@ -998,13 +995,13 @@ describe("Graph entrance animation", () => {
 
     const { rerender } = render(<QueryWrapper><RigGraph showDiscovered={false} rigId="rig-1" /></QueryWrapper>);
 
-    // Wait for first render with data
+    // 等首次带数据渲染
     await waitFor(() => expect(screen.getByTestId("graph-view")).toBeDefined());
 
-    // Force a rerender (simulating data refresh)
+    // 强制重渲染（模拟数据刷新）
     rerender(<QueryWrapper><RigGraph showDiscovered={false} rigId="rig-1" /></QueryWrapper>);
 
-    // After the useEffect has set animatedRigRef, shouldAnimate should be false
+    // useEffect 设置 animatedRigRef 后，shouldAnimate 应为 false
     await waitFor(() => {
       const view = screen.getByTestId("graph-view");
       expect(view.dataset.animated).toBe("false");
@@ -1017,7 +1014,7 @@ describe("Graph entrance animation", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("empty-topology")).toBeDefined();
-      expect(screen.getByText("EMPTY TOPOLOGY")).toBeDefined();
+      expect(screen.getByText("空拓扑")).toBeDefined();
     });
   });
 
@@ -1037,18 +1034,18 @@ describe("RigGraph SSE integration", () => {
 
     render(<QueryWrapper><RigGraph showDiscovered={false} rigId="rig-1" /></QueryWrapper>);
 
-    // Wait for initial fetch
+    // 等初始 fetch
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
-    // Fire shared topology event message.
+    // 触发共享 topology 事件消息。
     act(() => {
       const es = instances.find((i) => i.url === "/api/events")!;
       es.simulateMessage('{"type":"node.added","rigId":"rig-1"}');
     });
 
-    // Wait for debounced refetch
+    // 等 debounced refetch
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(mockFetch.mock.calls[1]![0]).toBe("/api/rigs/rig-1/graph");
@@ -1056,7 +1053,7 @@ describe("RigGraph SSE integration", () => {
   });
 
   it("useRigGraph refetch triggered by SSE produces fresh data", async () => {
-    // First fetch: 1 node. Second fetch: 2 nodes.
+    // 首次 fetch：1 节点。第二次 fetch：2 节点。
     mockFetch
       .mockResolvedValueOnce(mockGraphResponse(
         [sampleNodes()[0]!],
@@ -1066,19 +1063,19 @@ describe("RigGraph SSE integration", () => {
 
     const { container } = render(<QueryWrapper><RigGraph showDiscovered={false} rigId="rig-1" /></QueryWrapper>);
 
-    // Wait for initial render with 1 node
+    // 等 1 节点初始渲染
     await waitFor(() => {
       const nodes = container.querySelectorAll("[data-testid^='rf__node-']");
       expect(nodes.length).toBe(1);
     });
 
-    // Fire shared topology event message to trigger refetch.
+    // 触发共享 topology 事件消息以触发 refetch。
     act(() => {
       const es = instances.find((i) => i.url === "/api/events")!;
       es.simulateMessage('{"type":"node.added","rigId":"rig-1"}');
     });
 
-    // Wait for re-render with 2 nodes
+    // 等 2 节点重渲染
     await waitFor(() => {
       const nodes = container.querySelectorAll("[data-testid^='rf__node-']");
       expect(nodes.length).toBe(2);
@@ -1097,7 +1094,7 @@ describe("RigGraph SSE integration", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Live updates disconnected from daemon/i)).toBeDefined();
+      expect(screen.getByText(/实时更新已与后台服务断开/i)).toBeDefined();
     });
   });
 
@@ -1109,27 +1106,27 @@ describe("RigGraph SSE integration", () => {
     await waitFor(() => expect(instances.length).toBeGreaterThan(0));
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
-    // Error
+    // 错误
     act(() => {
       instances.find((i) => i.url === "/api/events")!.simulateError();
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Live updates disconnected from daemon/i)).toBeDefined();
+      expect(screen.getByText(/实时更新已与后台服务断开/i)).toBeDefined();
     });
 
     mockFetch.mockClear();
     mockFetch.mockResolvedValue(mockGraphResponse(sampleNodes(), sampleEdges()));
 
-    // Reconnect (open event)
+    // 重连（open 事件）
     act(() => {
       instances.find((i) => i.url === "/api/events")!.simulateOpen();
     });
 
     await waitFor(() => {
-      // Indicator cleared
+      // 指示器清除
       expect(screen.queryByText(/reconnecting/i)).toBeNull();
-      // Refetch triggered
+      // Refetch 触发
       expect(mockFetch).toHaveBeenCalled();
     });
   });
@@ -1147,7 +1144,7 @@ describe("RigGraph click-through to focus", () => {
       expect(container.querySelector("[data-testid='rf__node-n1']")).not.toBeNull();
     });
 
-    // Click the node with cmux binding (orchestrator, n1)
+    // 点击带 cmux binding 的节点（orchestrator, n1）
     const node = container.querySelector("[data-testid='rf__node-n1']")!;
     await act(async () => {
       node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -1180,7 +1177,7 @@ describe("RigGraph click-through to focus", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/focused/i)).toBeDefined();
+      expect(screen.getByText(/已聚焦/i)).toBeDefined();
     });
   });
 
@@ -1195,24 +1192,24 @@ describe("RigGraph click-through to focus", () => {
 
     mockFetch.mockClear();
 
-    // Click unbound node (worker, n2, binding=null)
+    // 点击未绑定节点（worker, n2, binding=null）
     const node = container.querySelector("[data-testid='rf__node-n2']")!;
     await act(async () => {
       node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/not bound/i)).toBeDefined();
+      expect(screen.getByText(/未绑定/i)).toBeDefined();
     });
 
-    // No focus API call made
+    // 未发生 focus API 调用
     const focusCalls = mockFetch.mock.calls.filter(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("/focus")
     );
     expect(focusCalls).toHaveLength(0);
   });
 
-  it("focus API returns cmux unavailable -> 'cmux not connected' shown", async () => {
+  it("聚焦 API 返回 cmux 不可用时显示‘cmux 未连接’", async () => {
     mockFetch
       .mockResolvedValueOnce(mockGraphResponse(sampleNodes(), sampleEdges()))
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: false, code: "unavailable" }) });
@@ -1229,7 +1226,7 @@ describe("RigGraph click-through to focus", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/cmux not connected/i)).toBeDefined();
+      expect(screen.getByText(/cmux 未连接/i)).toBeDefined();
     });
   });
 
@@ -1250,7 +1247,7 @@ describe("RigGraph click-through to focus", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/focus failed/i)).toBeDefined();
+      expect(screen.getByText(/聚焦失败/i)).toBeDefined();
     });
   });
 
@@ -1290,17 +1287,17 @@ describe("RigGraph click-through to focus", () => {
 
     mockFetch.mockClear();
 
-    // Click reviewer node (has binding but cmuxSurface=null)
+    // 点击 reviewer 节点（有 binding 但 cmuxSurface=null）
     const node = container.querySelector("[data-testid='rf__node-n3']")!;
     await act(async () => {
       node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/not bound/i)).toBeDefined();
+      expect(screen.getByText(/未绑定/i)).toBeDefined();
     });
 
-    // No focus API call
+    // 无 focus API 调用
     const focusCalls = mockFetch.mock.calls.filter(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("/focus")
     );
@@ -1308,7 +1305,7 @@ describe("RigGraph click-through to focus", () => {
   });
 
   it("sequential clicks: newer message not cleared by older timer", async () => {
-    // First click: success. Second click: unavailable.
+    // 第一次点击：成功。第二次点击：不可用。
     mockFetch
       .mockResolvedValueOnce(mockGraphResponse(sampleNodes(), sampleEdges()))
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
@@ -1322,27 +1319,27 @@ describe("RigGraph click-through to focus", () => {
 
     const node = container.querySelector("[data-testid='rf__node-n1']")!;
 
-    // First click -> "Focused"
+    // 首次点击 -> "Focused"
     await act(async () => {
       node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await waitFor(() => {
-      expect(screen.getByText(/focused/i)).toBeDefined();
+      expect(screen.getByText(/已聚焦/i)).toBeDefined();
     });
 
-    // Second click immediately -> "cmux not connected"
-    // This should cancel the first timer
+    // 紧接着第二次点击 → “cmux 未连接”。
+    // 这应取消第一个 timer
     await act(async () => {
       node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await waitFor(() => {
-      expect(screen.getByText(/cmux not connected/i)).toBeDefined();
+      expect(screen.getByText(/cmux 未连接/i)).toBeDefined();
     });
 
-    // The newer message should be visible (old timer was cancelled)
-    expect(screen.getByText(/cmux not connected/i)).toBeDefined();
-    // The old "Focused" message should be gone (replaced)
-    expect(screen.queryByText(/focused/i)).toBeNull();
+    // 更新的消息应可见（旧 timer 已取消）
+    expect(screen.getByText(/cmux 未连接/i)).toBeDefined();
+    // 旧 "Focused" 消息应消失（被替换）
+    expect(screen.queryByText(/已聚焦/i)).toBeNull();
   });
 
   // === PUX-T05: Package badge tests ===
@@ -1371,13 +1368,13 @@ describe("RigGraph click-through to focus", () => {
     await waitFor(() => {
       const badge = screen.getByTestId("package-badge");
       expect(badge).toBeDefined();
-      expect(badge.textContent).toContain("PKG 2");
+      expect(badge.textContent).toContain("包 2");
       expect(badge.getAttribute("title")).toBe("acme-standards, test-tools");
     });
   });
 
   it("node without packageRefs has no badge", async () => {
-    // sampleNodes() have no packageRefs
+    // sampleNodes() 无 packageRefs
     mockFetch.mockResolvedValue(mockGraphResponse(sampleNodes(), sampleEdges()));
     render(<QueryWrapper><RigGraph showDiscovered={false} rigId="rig-badge-2" /></QueryWrapper>);
 
@@ -1413,17 +1410,17 @@ describe("RigGraph click-through to focus", () => {
       expect(screen.getByTestId("package-badge")).toBeDefined();
     });
 
-    // Reset fetch mock to track focus calls
+    // 重置 fetch mock 以追踪 focus 调用
     mockFetch.mockClear();
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ focused: true }) });
 
-    // Click the badge
+    // 点击 badge
     const badge = screen.getByTestId("package-badge");
     await act(async () => {
       badge.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    // No focus POST should have been made (stopPropagation prevents node click)
+    // 不应发生 focus POST（stopPropagation 阻止节点点击）
     const focusCalls = mockFetch.mock.calls.filter(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("/focus")
     );
@@ -1433,7 +1430,7 @@ describe("RigGraph click-through to focus", () => {
 
 describe("RigGraph discovery integration", () => {
   it("discovered sessions appear as dashed nodes when showDiscovered=true", async () => {
-    // Mock both graph and discovery endpoints
+    // 同时 mock graph 与 discovery endpoint
     mockFetch.mockImplementation(async (url: string) => {
       if (typeof url === "string" && url.includes("/api/discovery")) {
         return {
@@ -1443,7 +1440,7 @@ describe("RigGraph discovery integration", () => {
           ],
         };
       }
-      // Graph endpoint
+      // Graph endpoint（图端点）
       return {
         ok: true,
         json: async () => ({ nodes: sampleNodes(), edges: sampleEdges() }),
@@ -1460,25 +1457,24 @@ describe("RigGraph discovery integration", () => {
       expect(screen.getByTestId("graph-view")).toBeTruthy();
     });
 
-    // Wait for discovered node to appear
+    // 等 discovered 节点出现
     await waitFor(() => {
       expect(screen.getByTestId("discovered-graph-node")).toBeTruthy();
     });
 
-    // Discovered node should have dashed border
+    // discovered 节点应有虚线边框
     const discoveredNode = screen.getByTestId("discovered-graph-node");
     expect(discoveredNode.className).toContain("border-dashed");
   });
 });
 
-// NS-T12: graph selection — clicking a graph node navigates to the
-// canonical agent-detail center page (LiveNodeDetails).
+// NS-T12：graph selection——点击 graph 节点导航到规范 agent-detail 中心页
+//（LiveNodeDetails）。
 //
-// V1 polish slice Phase 5.1 P5.1-2 + DRIFT P5.1-D2: graph node click
-// migrated from setSelection({type:'seat-detail'}) drawer-open to
-// useNavigate(/topology/seat/$rigId/$logicalId). Parity with Explorer
-// tree click + topology table row click. The test asserts useNavigate
-// was invoked with the canonical seat URL.
+// V1 polish slice Phase 5.1 P5.1-2 + DRIFT P5.1-D2：graph 节点点击从
+// setSelection({type:'seat-detail'}) drawer-open 迁移到
+// useNavigate(/topology/seat/$rigId/$logicalId)。与 Explorer 树点击 + topology
+// 表行点击对齐。测试断言 useNavigate 以规范 seat URL 调用。
 
 const navigateSpy = vi.fn();
 vi.mock("@tanstack/react-router", async (importActual) => {
@@ -1507,7 +1503,7 @@ describe("RigGraph node selection (P5.1-2 navigate)", () => {
       expect(container.querySelector("[data-testid='rf__node-n1']")).not.toBeNull();
     });
 
-    // Click the orchestrator node (n1)
+    // 点击 orchestrator 节点（n1）
     const node = container.querySelector("[data-testid='rf__node-n1']")!;
     await act(async () => {
       node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -1522,9 +1518,8 @@ describe("RigGraph node selection (P5.1-2 navigate)", () => {
       );
     });
 
-    // OPR.0.4.6.MH2 rev1-r2 B1 local CONTROL: on the local host the bound
-    // node's click ALSO fires the focus POST (consumed by the second mock)
-    // and the hover toolbar affordances are mounted.
+    // OPR.0.4.6.MH2 rev1-r2 B1 local 对照：local host 上绑定节点的点击也触发
+    // focus POST（由第二个 mock 消费），且 hover toolbar affordance 已挂载。
     await waitFor(() => {
       expect(
         mockFetch.mock.calls.some(
@@ -1536,21 +1531,21 @@ describe("RigGraph node selection (P5.1-2 navigate)", () => {
     expect(container.querySelector("[data-testid='node-toolbar']")).not.toBeNull();
   });
 
-  // OPR.0.4.6.MH2 rev1-r2 B1: under a REMOTE selection the node click keeps
-  // the read drill-in (navigate) but the bare-local focus POST never fires and
-  // the RigNode hover toolbar (cmux-open + terminal preview) never mounts.
+  // OPR.0.4.6.MH2 rev1-r2 B1：REMOTE selection 下节点点击保留 read drill-in
+  //（navigate），但 bare-local focus POST 永不触发，RigNode hover toolbar
+  //（cmux-open + terminal preview）永不挂载。
   it("remote-selected: click node navigates but fires ZERO POSTs; node toolbar absent (rev1-r2 B1)", async () => {
     navigateSpy.mockClear();
 
     mockFetch.mockResolvedValueOnce(mockGraphResponse(sampleNodes(), sampleEdges()));
 
-    // gcTime kept finite-large (NOT the shared 0) so the primed entry survives
-    // until the disabled observers subscribe.
+    // gcTime 保持有限大（非共享 0），使 primed 条目存活直到 disabled observer
+    // 订阅。
     const qc = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 5 * 60_000 } },
     });
-    // The gate primitive is the useSelectedHostId CACHE OBSERVER — prime the
-    // ["hosts"] entry directly (no /api/hosts fetch rides the sequenced mock).
+    // gate 原语是 useSelectedHostId CACHE OBSERVER——直接 prime ["hosts"] 条目
+    //（无 /api/hosts fetch 走 sequenced mock）。
     qc.setQueryData(["hosts"], {
       ownName: "Linkpix Proof Host",
       selected: "vps-a",
@@ -1567,16 +1562,16 @@ describe("RigGraph node selection (P5.1-2 navigate)", () => {
       expect(container.querySelector("[data-testid='rf__node-n1']")).not.toBeNull();
     });
 
-    // RigNode gate: no local action toolbar on remote graph nodes.
+    // RigNode gate：remote graph 节点上无 local action toolbar。
     expect(container.querySelector("[data-testid='node-toolbar']")).toBeNull();
 
-    // Click the bound orchestrator node (n1 — would focus-POST when local).
+    // 点击绑定 orchestrator 节点（n1——local 时会 focus-POST）。
     const node = container.querySelector("[data-testid='rf__node-n1']")!;
     await act(async () => {
       node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    // The read drill-in stands…
+    // read drill-in 保留……
     await waitFor(() => {
       expect(navigateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1586,7 +1581,7 @@ describe("RigGraph node selection (P5.1-2 navigate)", () => {
       );
     });
 
-    // …but NO POST of any kind fired (the focus leg is gated).
+    // ……但任何 POST 都未触发（focus 支路被 gate）。
     const postCalls = mockFetch.mock.calls.filter(
       ([, init]) => (init as RequestInit | undefined)?.method === "POST",
     );
@@ -1594,7 +1589,7 @@ describe("RigGraph node selection (P5.1-2 navigate)", () => {
   });
 });
 
-// Task 7: RigNode spec hint rendering
+// Task 7：RigNode spec hint 渲染
 describe("RigNode spec hint", () => {
   afterEach(() => cleanup());
 
@@ -1661,10 +1656,10 @@ describe("RigNode spec hint", () => {
     );
 
     const node = screen.getByTestId("rig-node");
-    expect(node.getAttribute("title")).toContain("Session: dev-impl@test-rig");
-    expect(node.getAttribute("title")).toContain("Spec: impl-agent");
-    expect(node.getAttribute("title")).toContain("Profile: default");
-    expect(node.getAttribute("title")).toContain("Edges: 2");
+    expect(node.getAttribute("title")).toContain("会话：dev-impl@test-rig");
+    expect(node.getAttribute("title")).toContain("规格：impl-agent");
+    expect(node.getAttribute("title")).toContain("配置档：default");
+    expect(node.getAttribute("title")).toContain("边：2");
   });
 
   // --- Context usage prominence tests ---
@@ -1688,7 +1683,7 @@ describe("RigNode spec hint", () => {
     expect(badge.className).not.toContain("opacity-50");
     const tokenTotal = screen.getByTestId("token-total");
     expect(tokenTotal.textContent).toContain("134k");
-    expect(tokenTotal.getAttribute("title")).toContain("Tokens: 134,000");
+    expect(tokenTotal.getAttribute("title")).toContain("令牌数：134,000");
   });
 
   it("renders stale context with reduced opacity", () => {

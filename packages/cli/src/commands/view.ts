@@ -5,12 +5,12 @@ import { realDeps } from "./daemon.js";
 import type { StatusDeps } from "./status.js";
 
 /**
- * `rig view` — coordination primitive L5 (view) commands (PL-004 Phase B).
+ * `zrig view` —— 协作原语 L5（视图）命令（PL-004 B 阶段）。
  *
- * Backed by `/api/views`. 7 built-in views (recently-active, founder,
- * pod-load, escalations, held, activity, pickup) + custom view registration.
- * `escalations` carries both escalation-closed rows and the S01 wake-ladder's
- * open aggregated escalations (the operator rung's delivery floor).
+ * 后端为 `/api/views`。内置 7 个视图（recently-active、founder、pod-load、
+ * escalations、held、activity、pickup）+ 自定义视图注册。
+ * `escalations` 同时携带 escalation 已关闭的行与 S01 唤醒梯中
+ * 仍开启的聚合升级（操作者层级的交付底线）。
  */
 
 export interface ViewDeps extends StatusDeps {}
@@ -36,7 +36,7 @@ function printResult(json: boolean, body: unknown, status: number): void {
 
 export function viewCommand(depsOverride?: ViewDeps): Command {
   const cmd = new Command("view").description(
-    "Coordination L5 — daemon-backed views over coordination state",
+    "协作 L5 —— 由后台服务支撑的协作状态视图",
   );
   const getDeps = (): ViewDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
@@ -45,8 +45,8 @@ export function viewCommand(depsOverride?: ViewDeps): Command {
 
   cmd
     .command("list")
-    .description("List built-in + custom views")
-    .option("--json", "JSON output for agents")
+    .description("列出内置 + 自定义视图")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: { json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -58,12 +58,12 @@ export function viewCommand(depsOverride?: ViewDeps): Command {
   cmd
     .command("show <viewName>")
     .description(
-      "Run a view (built-in or custom). Built-in views: recently-active, founder, pod-load, escalations, held, activity, pickup",
+      "运行一个视图（内置或自定义）。内置视图：recently-active、founder、pod-load、escalations、held、activity、pickup",
     )
-    .option("--rig <rig>", "Filter by rig name (matches destination_session OR source_session @<rig>)")
-    .option("--limit <n>", "Result row limit", "100")
-    .option("--mission <id>", "Mission scope for the execution view (defaults to the newest release-* mission)")
-    .option("--json", "JSON output for agents")
+    .option("--rig <rig>", "按工作组名过滤（匹配 destination_session 或 source_session @<rig>）")
+    .option("--limit <n>", "结果行数上限", "100")
+    .option("--mission <id>", "执行视图的任务目标范围（默认取最新的 release-* 任务目标）")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (viewName: string, opts: { rig?: string; limit: string; mission?: string; json?: boolean }) => {
       const deps = getDeps();
       const params = new URLSearchParams();
@@ -80,11 +80,11 @@ export function viewCommand(depsOverride?: ViewDeps): Command {
 
   cmd
     .command("register")
-    .description("Register or update a custom view")
-    .requiredOption("--name <name>", "Custom view name (must NOT collide with built-in names)")
-    .requiredOption("--definition <sql>", "SQL definition (operator-supplied; not validated for taxonomy)")
-    .requiredOption("--session <session>", "Registering operator session")
-    .option("--json", "JSON output for agents")
+    .description("注册或更新一个自定义视图")
+    .requiredOption("--name <name>", "自定义视图名（不得与内置名冲突）")
+    .requiredOption("--definition <sql>", "SQL 定义（由操作者提供；不做分类法校验）")
+    .requiredOption("--session <session>", "注册该视图的操作者会话")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: { name: string; definition: string; session: string; json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {

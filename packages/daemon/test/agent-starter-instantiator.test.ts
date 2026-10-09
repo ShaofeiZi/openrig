@@ -1,19 +1,15 @@
-// Tier 1 proof for the Agent Starter v1 vertical M2 — instantiator
-// integration. M1 shipped the schema + resolver scaffolding; M2 wires
-// the resolver into `launchExistingAgentMember`, prepending the resolved
-// starter artifacts as a STARTER layer ahead of the per-agent /
-// per-pod startup files.
+// Agent Starter v1 垂直切片 M2 的一级证明——实例化器集成。M1 已交付 schema 和
+// 解析器脚手架；M2 将解析器接入 `launchExistingAgentMember`，把解析后的 starter
+// 产物作为 STARTER 层，放到每智能体/每 pod 启动文件之前。
 //
-// Key invariants:
-// - Resolver invoked when `member.starterRef` is set.
-// - STARTER layer prepended in `resolvedStartupFiles` (not a separate
-//   orchestrator branch).
-// - Resolver THROW (any cause: missing entry, malformed YAML, failed
-//   credential scan) aborts the launch BEFORE `startNode` runs — no
-//   adapter `deliverStartup` is called and no STARTER layer lands
-//   downstream. Load-bearing credential-safety contract.
-// - Composition with `session_source.mode: "rebuild"` works
-//   independently (both apply on fresh_start; per slice schema).
+// 关键不变量：
+// - 设置 `member.starterRef` 时调用解析器。
+// - STARTER 层前置于 `resolvedStartupFiles`（而非另设编排器分支）。
+// - 解析器抛出异常（无论原因是条目缺失、YAML 格式错误还是凭证扫描失败）时，
+//   在 `startNode` 运行前中止启动——不会调用适配器的 `deliverStartup`，也不会有
+//   STARTER 层进入下游。这是关键的凭证安全契约。
+// - 与 `session_source.mode: "rebuild"` 的组合独立生效（根据切片 schema，
+//   二者都应用于 fresh_start）。
 
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
@@ -127,8 +123,8 @@ api_key: example-not-real
 `;
 
 function setupWithStarter(opts: {
-  starterContent?: string | null;        // null → registry directory empty
-  starterFilename?: string;              // default: fixture-starter.yaml
+  starterContent?: string | null;        // null → 注册表目录为空
+  starterFilename?: string;              // 默认值：fixture-starter.yaml
 }) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "starter-instantiator-"));
   const registryRoot = path.join(tmpDir, "registry");
@@ -139,8 +135,7 @@ function setupWithStarter(opts: {
     fs.writeFileSync(path.join(registryRoot, filename), opts.starterContent);
   }
 
-  // Tell the resolver to use this fixture directory via the documented
-  // env-var lookup branch.
+  // 通过文档约定的环境变量查找分支，让解析器使用此 fixture 目录。
   process.env.OPENRIG_AGENT_STARTER_ROOT = registryRoot;
 
   const db = createFullTestDb();
@@ -172,22 +167,21 @@ function setupWithStarter(opts: {
   return { db, rigRepo, sessionRegistry, eventBus, inst, adapter, codexAdapter, tmux, registryRoot, cleanup };
 }
 
-describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
-  it("invokes resolver and prepends STARTER layer when member.starterRef is set", async () => {
+describe("Agent Starter v1 垂直切片——实例化器集成（M2）", () => {
+  it("设置 member.starterRef 时调用解析器并前置 STARTER 层", async () => {
     const ctx = setupWithStarter({ starterContent: CLEAN_STARTER });
     try {
       const yaml = RigSpecCodec.serialize(specWithStarterRef());
       const result = await ctx.inst.instantiate(yaml, RIG_ROOT);
       expect(result.ok).toBe(true);
 
-      // adapter.deliverStartup should have been called; the first arg is the
-      // ResolvedStartupFile[] that includes the STARTER layer at the front.
+      // 应已调用 adapter.deliverStartup；第一个参数是首部包含 STARTER 层的
+      // ResolvedStartupFile[]。
       const deliverStartupSpy = ctx.adapter.deliverStartup as ReturnType<typeof vi.fn>;
       expect(deliverStartupSpy).toHaveBeenCalled();
       const filesArg = deliverStartupSpy.mock.calls[0]![0] as ResolvedStartupFile[];
 
-      // STARTER layer prepended: the first ResolvedStartupFile must come from
-      // the registryRoot we set up.
+      // STARTER 层已前置：第一个 ResolvedStartupFile 必须来自这里设置的 registryRoot。
       expect(filesArg.length).toBeGreaterThan(0);
       expect(filesArg[0]!.ownerRoot).toBe(ctx.registryRoot);
       expect(filesArg[0]!.path).toBe("fixture-starter.yaml");
@@ -197,29 +191,26 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
     }
   });
 
-  it("aborts launch when resolver throws — adapter.deliverStartup NOT called", async () => {
-    // Malicious starter (api_key field) → resolver throws
-    // AgentStarterCredentialScanFailedError → instantiator returns failed
-    // before adapter.deliverStartup runs. Load-bearing credential-safety
-    // contract.
+  it("解析器抛出异常时中止启动——不调用 adapter.deliverStartup", async () => {
+    // 恶意 starter（含 api_key 字段）→ 解析器抛出 AgentStarterCredentialScanFailedError
+    // → 实例化器在 adapter.deliverStartup 运行前返回失败。这是关键的凭证安全契约。
     const ctx = setupWithStarter({ starterContent: MALICIOUS_STARTER });
     try {
       const yaml = RigSpecCodec.serialize(specWithStarterRef());
       const result = await ctx.inst.instantiate(yaml, RIG_ROOT);
 
-      // Some node failed (the impl member) — instantiator may still report
-      // ok=true with a failed node entry, depending on partial-failure
-      // policy. The load-bearing assertion is: deliverStartup was NEVER
-      // called for this node, AND the node's status is "failed".
+      // 某个节点（impl 成员）失败——根据部分失败策略，实例化器仍可能报告 ok=true，
+      // 但包含失败的节点条目。关键断言是：该节点从未调用 deliverStartup，且节点
+      // 状态为 "failed"。
       const deliverStartupSpy = ctx.adapter.deliverStartup as ReturnType<typeof vi.fn>;
       expect(deliverStartupSpy).not.toHaveBeenCalled();
 
       if (result.ok) {
         const node = result.result.nodes.find((n) => n.logicalId === "dev.impl");
         expect(node?.status).toBe("failed");
-        expect(node?.error).toContain("Agent Starter resolver failed");
+        expect(node?.error).toContain("Agent Starter resolver 失败");
       } else {
-        // result.ok=false is also acceptable closure
+        // result.ok=false 也属于可接受的闭环结果。
         expect(result.ok).toBe(false);
       }
     } finally {
@@ -227,8 +218,8 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
     }
   });
 
-  it("aborts launch when starter registry entry is missing (resolver throws)", async () => {
-    // No registry file → resolver throws "no registry entry found".
+  it("starter 注册表条目缺失时中止启动（解析器抛出异常）", async () => {
+    // 没有注册表文件 → 解析器抛出“找不到注册表条目”。
     const ctx = setupWithStarter({ starterContent: null });
     try {
       const yaml = RigSpecCodec.serialize(specWithStarterRef());
@@ -240,17 +231,17 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
       if (result.ok) {
         const node = result.result.nodes.find((n) => n.logicalId === "dev.impl");
         expect(node?.status).toBe("failed");
-        expect(node?.error).toContain("Agent Starter resolver failed");
+        expect(node?.error).toContain("Agent Starter resolver 失败");
       }
     } finally {
       ctx.cleanup();
     }
   });
 
-  it("does NOT invoke resolver when member.starterRef is absent (no STARTER layer)", async () => {
+  it("缺少 member.starterRef 时不调用解析器（无 STARTER 层）", async () => {
     const ctx = setupWithStarter({ starterContent: CLEAN_STARTER });
     try {
-      // Spec without starterRef on the member.
+      // 此规范的成员没有 starterRef。
       const spec: RigSpec = {
         version: "0.2",
         name: "no-starter-rig",
@@ -276,7 +267,7 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
       expect(deliverStartupSpy).toHaveBeenCalled();
       const filesArg = deliverStartupSpy.mock.calls[0]![0] as ResolvedStartupFile[];
 
-      // No file from the registryRoot should appear in the chain.
+      // 链中不应出现来自 registryRoot 的文件。
       const fromRegistry = filesArg.find((f) => f.ownerRoot === ctx.registryRoot);
       expect(fromRegistry).toBeUndefined();
     } finally {
@@ -284,15 +275,13 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
     }
   });
 
-  // M2 R2 — Patch row M2-R2-4 — continuityOutcome stays at the
-  // fresh-launch default when starter is the only continuity source.
-  // Per startup-orchestrator.ts:114, continuityOutcome is derived from
-  // `input.resumeToken` / `input.forkSource` / `input.rebuildArtifacts`
-  // (initialized as "fresh" when none are present). A starter-only
-  // member must not set any of these, so continuityOutcome stays at
-  // "fresh" — proving STARTER is purely an additive guidance layer and
-  // does NOT masquerade as a continuity surface.
-  it("M2-R2-4: continuityOutcome stays 'fresh' when starter is the only continuity source", async () => {
+  // M2 R2——补丁行 M2-R2-4——starter 是唯一连续性来源时，continuityOutcome
+  // 保持全新启动的默认值。根据 startup-orchestrator.ts:114，continuityOutcome
+  // 由 `input.resumeToken` / `input.forkSource` / `input.rebuildArtifacts` 推导
+  //（均不存在时初始化为 "fresh"）。仅含 starter 的成员不得设置其中任何一项，
+  // 因而 continuityOutcome 保持 "fresh"——这证明 STARTER 只是附加指导层，
+  // 不会伪装成连续性接口。
+  it("M2-R2-4：starter 是唯一连续性来源时 continuityOutcome 保持 'fresh'", async () => {
     const ctx = setupWithStarter({ starterContent: CLEAN_STARTER });
     const startNodeSpy = vi.spyOn(
       ctx.inst["deps"].startupOrchestrator!,
@@ -303,10 +292,8 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
       const result = await ctx.inst.instantiate(yaml, RIG_ROOT);
       expect(result.ok).toBe(true);
 
-      // Assert the startup-orchestrator was called with no continuity
-      // surfaces — these are exactly the inputs that would change
-      // continuityOutcome away from "fresh" per the orchestrator's
-      // initial-value branch.
+      // 断言调用 startup-orchestrator 时没有任何连续性接口——根据编排器的初值分支，
+      // 正是这些输入会让 continuityOutcome 偏离 "fresh"。
       expect(startNodeSpy).toHaveBeenCalled();
       const startNodeInput = startNodeSpy.mock.calls[0]![0];
       expect(startNodeInput.resumeToken).toBeUndefined();
@@ -314,9 +301,8 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
       const rebuildArr = startNodeInput.rebuildArtifacts ?? [];
       expect(rebuildArr.length).toBe(0);
 
-      // Belt-and-suspenders: assert the resolved promise carries
-      // continuityOutcome === "fresh" (the orchestrator surfaces it on
-      // success).
+      // 双重保险：断言已解析的 Promise 携带 continuityOutcome === "fresh"
+      //（编排器在成功时公开此值）。
       const startNodeResult = await startNodeSpy.mock.results[0]!.value as
         | { ok: true; continuityOutcome: string }
         | { ok: false };
@@ -329,14 +315,12 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
     }
   });
 
-  // M2 R2 — Patch row M2-R2-4 — STARTER layer carries through SQLite
-  // roundtrip via `node_startup_context.resolved_files_json`. The
-  // startup-orchestrator persists the consumed `input.resolvedStartupFiles`
-  // verbatim at startup-orchestrator.ts:293-301; on restore replay the
-  // STARTER layer must come back intact (its absence here would imply
-  // the layer was held only in transient memory and would silently
-  // vanish across daemon restart).
-  it("M2-R2-4: STARTER layer survives node_startup_context.resolved_files_json roundtrip", async () => {
+  // M2 R2——补丁行 M2-R2-4——STARTER 层通过
+  // `node_startup_context.resolved_files_json` 完成 SQLite 往返。startup-orchestrator
+  // 在 startup-orchestrator.ts:293-301 原样持久化消费的 `input.resolvedStartupFiles`；
+  // 恢复重放时 STARTER 层必须完整返回（若此处缺失，说明该层只保存在临时内存中，
+  // 会在后台服务重启时静默消失）。
+  it("M2-R2-4：STARTER 层经 node_startup_context.resolved_files_json 往返后仍保留", async () => {
     const ctx = setupWithStarter({ starterContent: CLEAN_STARTER });
     try {
       const yaml = RigSpecCodec.serialize(specWithStarterRef());
@@ -346,9 +330,8 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
 
       const node = result.result.nodes.find((n) => n.logicalId === "dev.impl");
       expect(node).toBeDefined();
-      // The instantiator's NodeOutcome carries logicalId only; resolve the
-      // DB nodeId via the rig record (logicalId is the qualifiedId stored
-      // on the node row).
+      // 实例化器的 NodeOutcome 仅携带 logicalId；通过工作组记录解析数据库 nodeId
+      //（logicalId 是节点行中存储的 qualifiedId）。
       const rig = ctx.rigRepo.getRig(result.result.rigId);
       expect(rig).not.toBeNull();
       const dbNode = rig!.nodes.find((n) => n.logicalId === "dev.impl");
@@ -368,9 +351,9 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
       }>;
       expect(Array.isArray(persisted)).toBe(true);
       expect(persisted.length).toBeGreaterThan(0);
-      // STARTER layer must be at index 0 (resolver result, ownerRoot =
-      // registryRoot, appliesOn = ["fresh_start"], deliveryHint =
-      // "guidance_merge"). Survival across the JSON roundtrip is the proof.
+      // STARTER 层必须位于索引 0（解析器结果中 ownerRoot = registryRoot、
+      // appliesOn = ["fresh_start"]、deliveryHint = "guidance_merge"）。
+      // 经 JSON 往返后仍然存在即为证明。
       expect(persisted[0]!.ownerRoot).toBe(ctx.registryRoot);
       expect(persisted[0]!.path).toBe("fixture-starter.yaml");
       expect(persisted[0]!.appliesOn).toEqual(["fresh_start"]);
@@ -380,8 +363,8 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
     }
   });
 
-  it("composition: starterRef + sessionSource.mode='rebuild' both fire on fresh_start", async () => {
-    // Create a real artifact file that the rebuild resolver can find.
+  it("组合：starterRef 与 sessionSource.mode='rebuild' 均在 fresh_start 时生效", async () => {
+    // 创建 rebuild 解析器能够找到的真实产物文件。
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "starter-rebuild-"));
     const rebuildArtifactPath = path.join(tmpDir, "rebuild-artifact.md");
     fs.writeFileSync(rebuildArtifactPath, "rebuild context fixture");
@@ -414,15 +397,13 @@ describe("Agent Starter v1 vertical — instantiator integration (M2)", () => {
       const result = await ctx.inst.instantiate(yaml, RIG_ROOT);
       expect(result.ok).toBe(true);
 
-      // Adapter.deliverStartup receives the STARTER layer prepended.
-      // The rebuild artifacts are passed via a separate `rebuildArtifacts`
-      // kwarg to startNode (not via resolvedStartupFiles), so they don't
-      // appear in deliverStartup's files arg — but the launch should
-      // still succeed.
+      // Adapter.deliverStartup 收到前置的 STARTER 层。rebuild 产物通过独立的
+      // `rebuildArtifacts` 关键字参数传给 startNode（不经过 resolvedStartupFiles），
+      // 因而不会出现在 deliverStartup 的 files 参数中——但启动仍应成功。
       const deliverStartupSpy = ctx.adapter.deliverStartup as ReturnType<typeof vi.fn>;
       expect(deliverStartupSpy).toHaveBeenCalled();
       const filesArg = deliverStartupSpy.mock.calls[0]![0] as ResolvedStartupFile[];
-      // STARTER layer is at the front
+      // STARTER 层位于最前面。
       expect(filesArg[0]!.ownerRoot).toBe(ctx.registryRoot);
     } finally {
       ctx.cleanup();

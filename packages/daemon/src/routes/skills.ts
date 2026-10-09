@@ -1,21 +1,19 @@
-// Slice 28 Checkpoint C-3 — Skill library HTTP routes.
+// Slice 28 Checkpoint C-3——Skill 库 HTTP 路由。
 //
-// SC-29 EXCEPTION #11 cumulative (verbatim declaration at
-// packages/daemon/src/routes/plugins.ts header; this file adds the skill
-// surface symmetric with the plugin endpoints landed in C-1):
+// SC-29 EXCEPTION #11 累积（逐字声明见 packages/daemon/src/routes/plugins.ts
+// 头部；本文件新增与 C-1 落地的 plugin 端点对称的 skill 表面）：
 //
-// Slice 28 SKILL-side scope (additive read-only endpoints):
+// Slice 28 SKILL 侧范围（叠加只读端点）：
 //   GET /api/skills/library                          → LibrarySkillPublic[]
-//   GET /api/skills/:id/files/list?path=<rel>        → file listing
-//   GET /api/skills/:id/files/read?path=<rel>        → file content
+//   GET /api/skills/:id/files/list?path=<rel>        → 文件列表
+//   GET /api/skills/:id/files/read?path=<rel>        → 文件内容
 //
-// Why this exists: see velocity-qa BLOCKING verdict for slice 28 C-final
-// (qitem-20260513045711-39ccfdf3) — on the founder-walk VM the daemon's
-// allowlist doesn't include the openrig source tree, so the prior
-// useLibrarySkills 3-path probe over /api/files/list couldn't reach
-// `packages/daemon/specs/agents/shared/skills`. Daemon-owned discovery
-// resolves shared-skills via the daemon install path (symmetric with how
-// /api/plugins/:id/files/* resolve via pluginDiscoveryService).
+// 为何存在：见 slice 28 C-final 的 velocity-qa BLOCKING 结论
+// （qitem-20260513045711-39ccfdf3）——在 founder-walk VM 上，后台服务的
+// 白名单不含 openrig 源码树，因此先前基于 /api/files/list 的 useLibrarySkills
+// 三路径探针够不到 `packages/daemon/specs/agents/shared/skills`。
+// 后台服务自有发现通过后台服务安装路径解析 shared-skills（与
+// /api/plugins/:id/files/* 通过 pluginDiscoveryService 解析对称）。
 
 import { Hono } from "hono";
 import * as fs from "node:fs";
@@ -37,9 +35,9 @@ function getService(c: { get: ContextGetter }): SkillLibraryDiscoveryService | u
 }
 
 function skillRootAllowlist(absolutePath: string): AllowlistRoot[] {
-  // Synthetic single-root allowlist scoped to the skill's folder.
-  // Same pattern as pluginRootAllowlist (plugins.ts) — reuses the
-  // existing path-safety helpers via a one-element allowlist.
+  // 限定在该 skill 文件夹内的合成单 root 白名单。
+  // 与 pluginRootAllowlist（plugins.ts）同模式——通过单元素白名单复用既有的
+  // path-safety 辅助。
   let canonical: string;
   try {
     canonical = fs.realpathSync(absolutePath);
@@ -65,16 +63,16 @@ function pathSafetyErrorResponse(
 export function skillsRoutes(): Hono {
   const router = new Hono();
 
-  // GET /library — consolidated skill list (workspace + openrig-managed).
+  // GET /library——合并的 skill 列表（workspace + openrig 托管）。
   router.get("/library", (c) => {
     const service = getService(c);
     if (!service) return c.json({ error: "skill_library_unavailable" }, 503);
     return c.json(service.listLibrarySkillsPublic());
   });
 
-  // GET /:id/files/list — list a directory inside the skill folder.
-  // Mounted BEFORE any bare /:id route (defensive — there's no current
-  // bare /:id endpoint, but the order discipline matches plugins.ts).
+  // GET /:id/files/list——列出 skill 文件夹内的一个目录。
+  // 挂载在任何裸 /:id 路由之前（防御性——当前没有裸 /:id 端点，
+  // 但顺序纪律与 plugins.ts 一致）。
   router.get("/:id/files/list", (c) => {
     const service = getService(c);
     if (!service) return c.json({ error: "skill_library_unavailable" }, 503);
@@ -93,7 +91,7 @@ export function skillsRoutes(): Hono {
           .map((entry) => {
             const fullPath = path.join(resolved, entry.name);
             let stat: fs.Stats | null = null;
-            try { stat = fs.statSync(fullPath); } catch { /* skip stat-failed */ }
+            try { stat = fs.statSync(fullPath); } catch { /* 跳过 stat 失败 */ }
             return {
               name: entry.name,
               type: entry.isDirectory() ? "dir" as const : entry.isFile() ? "file" as const : "other" as const,
@@ -112,7 +110,7 @@ export function skillsRoutes(): Hono {
     }
   });
 
-  // GET /:id/files/read — read a file inside the skill folder.
+  // GET /:id/files/read——读取 skill 文件夹内的一个文件。
   router.get("/:id/files/read", (c) => {
     const service = getService(c);
     if (!service) return c.json({ error: "skill_library_unavailable" }, 503);
@@ -185,7 +183,7 @@ export function skillsRoutes(): Hono {
         mirrorDriftError = driftResult.reason;
       }
     } catch (err) {
-      mirrorDriftError = `Mirror drift check unavailable: ${err instanceof Error ? err.message : String(err)}`;
+      mirrorDriftError = `镜像漂移检查不可用：${err instanceof Error ? err.message : String(err)}`;
     }
 
     const auditResult = auditSkills(allSkills, { mirrorDrift });

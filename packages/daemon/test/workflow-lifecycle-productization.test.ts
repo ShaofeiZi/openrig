@@ -129,7 +129,7 @@ const GUARDED_CYCLE_SPEC = `workflow:
       allowed_exits: [done, failed]
 `;
 
-describe("S06 lifecycle productization", () => {
+describe("S06 生命周期产品化", () => {
   let db: Database.Database;
   let runtime: WorkflowRuntime;
   let queueRepo: QueueRepository;
@@ -187,7 +187,7 @@ describe("S06 lifecycle productization", () => {
     ]));
   }
 
-  it("keyed instantiate absorbs exact replay and rejects changed bytes without mutation", async () => {
+  it("带 key 的 instantiate 吸收精确 replay，并无变更地拒绝不同字节", async () => {
     const specPath = spec(PARALLEL_SPEC);
     const first = await runtime.instantiate({
       specPath,
@@ -228,7 +228,7 @@ describe("S06 lifecycle productization", () => {
     expect(mutationCounts()).toEqual(before);
   });
 
-  it("absorbs a concurrent double-instantiate and a daemon-restart replay", async () => {
+  it("吸收并发双重 instantiate 与 daemon 重启 replay", async () => {
     const specPath = spec(PARALLEL_SPEC);
     const input = {
       specPath,
@@ -253,7 +253,7 @@ describe("S06 lifecycle productization", () => {
     expect(mutationCounts()).toEqual(before);
   });
 
-  it("fans out, requires packet-addressed route, and preserves the sibling byte-for-byte", async () => {
+  it("扇出时要求按 packet 定址的 route，并逐字节保留同级分支", async () => {
     const created = await runtime.instantiate({
       specPath: spec(PARALLEL_SPEC),
       rootObjective: "parallel",
@@ -290,7 +290,7 @@ describe("S06 lifecycle productization", () => {
       .toEqual(rightRowBefore);
   });
 
-  it("records an unmapped failure locally, resumes the exact occurrence, and advances fan-in once", async () => {
+  it("在本地记录未映射失败、恢复确切 occurrence，并只推进 fan-in 一次", async () => {
     const created = await runtime.instantiate({
       specPath: spec(PARALLEL_SPEC),
       rootObjective: "recover",
@@ -332,7 +332,7 @@ describe("S06 lifecycle productization", () => {
       .toEqual({ n: 1 });
   });
 
-  it("keeps mapped failure-edge behavior while preserving an independent sibling", async () => {
+  it("保留已映射 failure-edge 行为，同时维持独立同级分支", async () => {
     const created = await runtime.instantiate({
       specPath: spec(MAPPED_FAILURE_SPEC),
       rootObjective: "mapped repair",
@@ -359,7 +359,7 @@ describe("S06 lifecycle productization", () => {
     expect(db.prepare(`SELECT * FROM queue_items WHERE qitem_id = ?`).get(right.packetId)).toEqual(rightRowBefore);
   });
 
-  it("enforces max_hops per packet drive and resumes only the failed branch with a fresh window", async () => {
+  it("按 packet 驱动执行 max_hops，并用新窗口只恢复失败分支", async () => {
     const created = await runtime.instantiate({
       specPath: spec(GUARDED_CYCLE_SPEC, "guarded-cycle.yaml"),
       rootObjective: "bounded cycle",
@@ -435,7 +435,7 @@ describe("S06 lifecycle productization", () => {
     expect(db.prepare(`SELECT * FROM queue_items WHERE qitem_id = ?`).get(right.packetId)).toEqual(rightRowBefore);
   });
 
-  it("derives aggregate active, waiting, failed, and completed states from all packets and failures", async () => {
+  it("根据全部 packet 与失败派生聚合的 active、waiting、failed 和 completed 状态", async () => {
     const waiting = await runtime.instantiate({
       specPath: spec(WAITING_SPEC, "waiting.yaml"),
       rootObjective: "aggregate waiting",
@@ -475,7 +475,7 @@ describe("S06 lifecycle productization", () => {
     expect(runtime.inspect(completed.instance.instanceId).instance.status).toBe("completed");
   });
 
-  it("refuses an ambiguous resume with candidates and zero mutation", async () => {
+  it("以候选列表和零变更拒绝有歧义的 resume", async () => {
     const created = await runtime.instantiate({
       specPath: spec(PARALLEL_SPEC),
       rootObjective: "two failures",
@@ -495,7 +495,7 @@ describe("S06 lifecycle productization", () => {
     expect(mutationCounts()).toEqual(before);
   });
 
-  it("requires the dedicated acceptance payload and aborts every live packet transactionally", async () => {
+  it("要求专用 acceptance payload，并以事务方式中止每个 live packet", async () => {
     const accepted = await runtime.instantiate({
       specPath: spec(ACCEPTANCE_SPEC),
       rootObjective: "accept",
@@ -553,7 +553,7 @@ describe("S06 lifecycle productization", () => {
     for (const id of aborted.closedPacketIds) expect(queueRepo.getById(id)?.state).toBe("canceled");
   });
 
-  it("keeps an aborted occurrence as history without advertising an impossible resume", async () => {
+  it("把已中止 occurrence 保留为历史，且不提示无法执行的 resume", async () => {
     const created = await runtime.instantiate({
       specPath: spec(PARALLEL_SPEC, "abort-occurrence.yaml"),
       rootObjective: "abort after branch failure",
@@ -605,7 +605,7 @@ describe("S06 lifecycle productization", () => {
       occurrence_id: left.packetId,
       targeted_action: null,
     }]);
-    expect(JSON.stringify(projected)).not.toContain("rig workflow resume");
+    expect(JSON.stringify(projected)).not.toContain("zrig workflow resume");
     await expect(runtime.resume({
       instanceId: created.instance.instanceId,
       occurrenceId: left.packetId,
@@ -613,7 +613,7 @@ describe("S06 lifecycle productization", () => {
     })).rejects.toMatchObject({ code: "instance_not_resumable" });
   });
 
-  it("arms and retires liveness independently for every frontier packet", async () => {
+  it("为每个 frontier packet 独立启用和停用 liveness", async () => {
     const created = await runtime.instantiate({ specPath: spec(PARALLEL_SPEC), rootObjective: "liveness", createdBySession: "orch@rig" });
     expect(watchdogRepo.listActive()).toHaveLength(1);
     expect(watchdogRepo.listActive()[0]!.specYaml).toContain(`workflow_packet_id: ${created.entryQitemId}`);
@@ -663,7 +663,7 @@ describe("S06 lifecycle productization", () => {
     expect(watchdogRepo.listActive()).toHaveLength(0);
   });
 
-  it("serializes concurrent sibling completion into one fan-in packet with no live queue orphan", async () => {
+  it("把同级分支的并发完成串行化为一个 fan-in packet，且不留下 live queue 孤儿", async () => {
     const created = await runtime.instantiate({ specPath: spec(PARALLEL_SPEC), rootObjective: "concurrent fan-in", createdBySession: "orch@rig" });
     await runtime.project({ instanceId: created.instance.instanceId, currentPacketId: created.entryQitemId, exit: "done", actorSession: "root@rig" });
     const siblings = runtime.inspect(created.instance.instanceId).frontier;

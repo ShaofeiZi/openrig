@@ -1,9 +1,8 @@
-// S10 CUTOVER — the slice-11 locked receipts, carried through the relay→subsystem cutover
-// (ported from the retired cli/test/slack-orchestration.test.ts; the semantics under test are
-// the LOCKED durability contract and must hold unchanged on the successor path), PLUS the
-// dual-path ABSENCE receipts: every delivery class is carried by the SUBSYSTEM path (driver →
-// in-process wire → chat.postMessage delivery) and by nothing else — the relay modules are
-// deleted (compile-time absence) and the fetch capture proves no webhook is ever dialed.
+// S10 切换——slice-11 锁定回执，经 relay→subsystem 切换继续承载（移植自已退役的
+// cli/test/slack-orchestration.test.ts；受测语义是已锁定的持久性契约，在继任路径上必须
+// 保持不变），另加双路径缺失回执：每种交付类别都只由 subsystem 路径承载
+//（驱动 → 进程内线路 → chat.postMessage 交付）——relay 模块已删除（编译期缺失），
+// fetch 捕获证明绝不拨用 webhook。
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -55,7 +54,7 @@ function fakePort(items: QueueItem[]): OutboundQueuePort & { listCalls: number }
   return port;
 }
 
-/** Capture every outbound HTTP call: url + parsed JSON body. 2xx by default. */
+/** 捕获每个出站 HTTP 调用：URL 与解析后的 JSON 正文。默认返回 2xx。 */
 function capturingFetch(status = 200): { fetchImpl: FetchImpl; calls: { url: string; body: Record<string, unknown> }[] } {
   const calls: { url: string; body: Record<string, unknown> }[] = [];
   return {
@@ -70,7 +69,7 @@ function capturingFetch(status = 200): { fetchImpl: FetchImpl; calls: { url: str
   };
 }
 
-/** Compose the REAL subsystem outbound path over a temp home: driver → wire → delivery. */
+/** 在临时主目录上组合真实 subsystem 出站路径：驱动 → 线路 → 交付。 */
 function composeOutbound(home: string, port: OutboundQueuePort, fetchImpl: FetchImpl, fsx = memFs()) {
   const outboundSeen = new SeenStore("/s/outbound-seen.jsonl", fsx, clock);
   const delivered = new SeenStore("/s/delivered.jsonl", fsx, clock);
@@ -98,26 +97,26 @@ function composeOutbound(home: string, port: OutboundQueuePort, fetchImpl: Fetch
   return { driver, wire, outboundSeen, delivered };
 }
 
-describe("S10 cutover — outbound classes ride the SUBSYSTEM path (slice-11 items 1,2,3 preserved)", () => {
+describe("S10 切换——出站类别走 subsystem 路径（保留 slice-11 第 1、2、3 项）", () => {
   let home: string;
   beforeEach(() => { home = mkdtempSync(join(tmpdir(), "s10-cut-")); });
   afterEach(() => { rmSync(home, { recursive: true, force: true }); });
 
-  it("outbound TEXT: fresh alert → chat.postMessage (NEVER a webhook); seen marked AFTER the 2xx", async () => {
+  it("出站文本：新警报 → chat.postMessage（绝非 webhook）；收到 2xx 后才标记 seen", async () => {
     const { fetchImpl, calls } = capturingFetch(200);
     const { driver, outboundSeen } = composeOutbound(home, fakePort([ALERT]), fetchImpl);
     const sweep = await driver.sweepOnce();
     await flush();
     expect(sweep.dispatched).toEqual(["qitem-a1"]);
     expect(outboundSeen.load().has("qitem-a1")).toBe(true); // marked after success
-    // Dual-path absence, transport level: the ONLY HTTP call is the Web API post — no webhook.
+    // 双路径缺失，传输层：唯一 HTTP 调用是 Web API post——无 webhook。
     expect(calls).toHaveLength(1);
     expect(calls[0]!.url).toBe("https://slack.com/api/chat.postMessage");
     expect(calls.some((c) => c.url.includes("hooks.slack.com"))).toBe(false);
     expect(calls[0]!.body.channel).toBe("C-TEST");
   });
 
-  it("item 2 idempotent: a second sweep posts nothing", async () => {
+  it("第 2 项幂等：第二次扫描不发布任何内容", async () => {
     const { fetchImpl, calls } = capturingFetch(200);
     const { driver } = composeOutbound(home, fakePort([ALERT]), fetchImpl);
     await driver.sweepOnce();
@@ -128,20 +127,20 @@ describe("S10 cutover — outbound classes ride the SUBSYSTEM path (slice-11 ite
     expect(calls).toHaveLength(1); // one post total
   });
 
-  it("item 3 fail-visible: a failed post is retained (durable buffer), NOT seen; recovery replays exactly it", async () => {
+  it("第 3 项失败可见：发布失败项保留在持久缓冲区且不标记 seen；恢复时精确重放", async () => {
     const bad = capturingFetch(500);
     const { driver, outboundSeen } = composeOutbound(home, fakePort([ALERT]), bad.fetchImpl);
     await driver.sweepOnce();
     await flush();
     expect(outboundSeen.load().has("qitem-a1")).toBe(false); // not dropped, not lied about
     expect(bad.calls).toHaveLength(1);
-    // A later sweep does NOT double-dispatch (in-flight guard): the durable buffer owns the retry.
+    // 后续扫描不会重复派发（进行中护栏）：重试由持久缓冲区负责。
     const s2 = await driver.sweepOnce();
     await flush();
     expect(s2.dispatched).toEqual([]);
     expect(bad.calls).toHaveLength(1);
-    // Recovery = the next activation replays the retained decision through delivery (no-loss).
-    // Replay is a network action, so it rides startServices() — the post-bind half.
+    // 恢复 = 下一次激活通过交付重放保留的决策（不丢失）。重放属于网络操作，因此走
+    // startServices()——绑定后的半程。
     const good = capturingFetch(200);
     const fsx2 = memFs();
     const next = composeOutbound(home, fakePort([]), good.fetchImpl, fsx2);
@@ -151,7 +150,7 @@ describe("S10 cutover — outbound classes ride the SUBSYSTEM path (slice-11 ite
     expect(good.calls[0]!.url).toBe("https://slack.com/api/chat.postMessage");
   });
 
-  it("outbound IMAGE: an https evidenceRef rides as a Block Kit image on the SAME single path (A5b)", async () => {
+  it("出站图片：https evidenceRef 在同一单一路径上作为 Block Kit 图片传输（A5b）", async () => {
     const IMG = "https://example.invalid/PROGRAM-BOARD-row.png";
     const { fetchImpl, calls } = capturingFetch(200);
     const { driver } = composeOutbound(home, fakePort([{ ...ALERT, qitemId: "qitem-img", evidenceRef: IMG }]), fetchImpl);
@@ -163,7 +162,7 @@ describe("S10 cutover — outbound classes ride the SUBSYSTEM path (slice-11 ite
     expect(images[0]!.image_url).toBe(IMG);
   });
 
-  it("A5b NEGATIVE CONTROL: a non-https evidenceRef emits NO image block (hygiene rail intact)", async () => {
+  it("A5b 反向对照：非 https evidenceRef 不产生图片块（卫生护栏保持有效）", async () => {
     const { fetchImpl, calls } = capturingFetch(200);
     const { driver } = composeOutbound(home, fakePort([{ ...ALERT, qitemId: "qitem-local", evidenceRef: "/tmp/local-only.png" }]), fetchImpl);
     await driver.sweepOnce();
@@ -172,7 +171,7 @@ describe("S10 cutover — outbound classes ride the SUBSYSTEM path (slice-11 ite
     expect(blocks.filter((b) => b.type === "image")).toHaveLength(0);
   });
 
-  it("item 9: enable seeds the backlog as history — the next sweep posts NOTHING (no replay storm)", async () => {
+  it("第 9 项：启用时将积压植入为历史——下次扫描不发布任何内容（无重放风暴）", async () => {
     const fsx = memFs();
     const seen = new SeenStore("/s/outbound-seen.jsonl", fsx, clock);
     const seed = await seedBacklogAsHistory({ queue: fakePort([ALERT]), seen, filter: { minimumLevel: "NOTICE" } });
@@ -185,7 +184,7 @@ describe("S10 cutover — outbound classes ride the SUBSYSTEM path (slice-11 ite
     expect(calls).toHaveLength(0);
   });
 
-  it("B5: seeding covers the COMPLETE backlog (150 > the old CLI default 100)", async () => {
+  it("B5：植入覆盖完整积压（150 > 旧 CLI 默认值 100）", async () => {
     const many = Array.from({ length: 150 }, (_, i) => ({
       qitemId: `q-${i}`, destinationSession: "human-founder@kernel", tags: ["founder-alert"], state: "pending", summary: `s${i}`,
     }));
@@ -196,20 +195,20 @@ describe("S10 cutover — outbound classes ride the SUBSYSTEM path (slice-11 ite
   });
 });
 
-describe("Slice-11 INBOUND shouldIngest — loop-safety + T1076 non-text ignore (unchanged)", () => {
+describe("Slice-11 入站 shouldIngest——循环安全与 T1076 非文本忽略（不变）", () => {
   const base: SlackEvent = { type: "message", user: "U1", text: "hello", ts: "1.1" };
-  it("ingests a genuine human message", () => expect(shouldIngest(base)).toBe(true));
-  it("ingests app_mention", () => expect(shouldIngest({ ...base, type: "app_mention" })).toBe(true));
-  it("rejects bot posts (loop guard)", () => expect(shouldIngest({ ...base, bot_id: "B1" })).toBe(false));
-  it("rejects subtypes (edits/joins; file_share is admitted with files since OPR.0.5.6.2)", () => expect(shouldIngest({ ...base, subtype: "message_changed" })).toBe(false));
-  it("OPR.0.5.6.2 (T1076 replaced): file-bearing messages are ADMITTED — files are work, not noise", () => expect(shouldIngest({ ...base, files: [{ id: "F1" }] })).toBe(true));
-  it("rejects empty/absent text and userless", () => {
+  it("摄取真实人类消息", () => expect(shouldIngest(base)).toBe(true));
+  it("摄取 app_mention", () => expect(shouldIngest({ ...base, type: "app_mention" })).toBe(true));
+  it("拒绝机器人发布（循环护栏）", () => expect(shouldIngest({ ...base, bot_id: "B1" })).toBe(false));
+  it("拒绝子类型（编辑/加入；自 OPR.0.5.6.2 起，带文件的 file_share 获准）", () => expect(shouldIngest({ ...base, subtype: "message_changed" })).toBe(false));
+  it("OPR.0.5.6.2（替代 T1076）：准入带文件的消息——文件是工作，不是噪声", () => expect(shouldIngest({ ...base, files: [{ id: "F1" }] })).toBe(true));
+  it("拒绝空白/缺失文本及无用户消息", () => {
     expect(shouldIngest({ ...base, text: "   " })).toBe(false);
     expect(shouldIngest({ ...base, user: undefined })).toBe(false);
   });
 });
 
-describe("Slice-11 INBOUND routing — never-drop, on the in-process queue port (items 4,8)", () => {
+describe("Slice-11 入站路由——进程内队列端口上绝不丢失（第 4、8 项）", () => {
   const mk = (createBehavior: () => string | Error) => {
     let n = 0;
     const queue = {
@@ -228,7 +227,7 @@ describe("Slice-11 INBOUND routing — never-drop, on the in-process queue port 
   };
   const ev: SlackEvent = { type: "message", user: "U1", text: "hi team", ts: "100.1", channel: "C1" };
 
-  it("item 4: human message → durable qitem, seen after", async () => {
+  it("第 4 项：人类消息 → 持久 qitem，随后标记 seen", async () => {
     const h = mk(() => "qitem-in-1");
     const r = await h.router.route(ev);
     expect(r.landed).toBe(true);
@@ -236,20 +235,20 @@ describe("Slice-11 INBOUND routing — never-drop, on the in-process queue port 
     expect(h.seen.load().has("100.1")).toBe(true);
   });
 
-  it("item 8: dedup by ts — same event twice creates ONE qitem", async () => {
+  it("第 8 项：按 ts 去重——同一事件两次仅创建一个 qitem", async () => {
     const h = mk(() => "qitem-in-1");
     await h.router.route(ev);
     await h.router.route(ev);
     expect(h.createCount()).toBe(1);
   });
 
-  it("item 8: in-flight guard — concurrent same-ts dispatch creates ONE", async () => {
+  it("第 8 项：进行中护栏——并发同 ts 派发仅创建一个", async () => {
     const h = mk(() => "qitem-in-1");
     await Promise.all([h.router.route(ev), h.router.route(ev)]);
     expect(h.createCount()).toBe(1);
   });
 
-  it("item 8: create FAILURE → dead-lettered before return, NOT seen, survives, then recovers", async () => {
+  it("第 8 项：创建失败 → 返回前进入死信、不标记 seen、可持久保留并随后恢复", async () => {
     let fail = true;
     const h = mk(() => (fail ? new Error("daemon busy") : "qitem-in-9"));
     const r = await h.router.route(ev);
@@ -266,7 +265,7 @@ describe("Slice-11 INBOUND routing — never-drop, on the in-process queue port 
     expect(h.dead.readAll()).toHaveLength(0);
   });
 
-  it("item 8: zero-drop across MANY failures", async () => {
+  it("第 8 项：多次失败仍零丢失", async () => {
     const h = mk(() => new Error("still down"));
     await h.router.route(ev);
     for (let round = 0; round < 4; round++) await h.router.retryDeadLetters();
@@ -276,7 +275,7 @@ describe("Slice-11 INBOUND routing — never-drop, on the in-process queue port 
   });
 });
 
-describe("Slice-11 INBOUND handleEnvelope — fast-ack (item 8, unchanged)", () => {
+describe("Slice-11 入站 handleEnvelope——快速确认（第 8 项，不变）", () => {
   const mkRouter = () => {
     const fs = memFs();
     return new InboundRouter({
@@ -288,13 +287,13 @@ describe("Slice-11 INBOUND handleEnvelope — fast-ack (item 8, unchanged)", () 
     });
   };
 
-  it("acks EVERY envelope with an id — even a non-ingestible one", async () => {
+  it("确认每个带 ID 的信封——即使它不可摄取", async () => {
     let acked = 0;
     await handleEnvelope({ envelope_id: "e1", type: "events_api", payload: { event: { type: "message", bot_id: "B", ts: "1" } } }, () => acked++, mkRouter());
     expect(acked).toBe(1);
   });
 
-  it("acks then routes a human message", async () => {
+  it("先确认，再路由人类消息", async () => {
     let acked = 0;
     await handleEnvelope(
       { envelope_id: "e2", type: "events_api", payload: { event: { type: "message", user: "U1", text: "hi", ts: "2.2", channel: "C1" } } },
@@ -304,14 +303,14 @@ describe("Slice-11 INBOUND handleEnvelope — fast-ack (item 8, unchanged)", () 
     expect(acked).toBe(1);
   });
 
-  it("acks a disconnect envelope and does not route", async () => {
+  it("确认断开连接信封且不路由", async () => {
     let acked = 0;
     await handleEnvelope({ envelope_id: "e3", type: "disconnect", reason: "refresh" }, () => acked++, mkRouter());
     expect(acked).toBe(1);
   });
 });
 
-describe("P28 — ignore-path telemetry discriminates the rejection branch (unchanged)", () => {
+describe("P28——忽略路径遥测区分拒绝分支（不变）", () => {
   const mkRouterStub = () =>
     new InboundRouter({
       queue: { createQitem: async () => "qitem-p28" },
@@ -327,26 +326,26 @@ describe("P28 — ignore-path telemetry discriminates the rejection branch (unch
     return lines.join("\n");
   }
 
-  it("names the CHANNEL and the bot_id branch", async () => {
+  it("指明频道和 bot_id 分支", async () => {
     const out = await logFor({ type: "message", bot_id: "B1", user: "U1", text: "x", channel: "C090L0VFB0U" });
     expect(out).toContain("channel=C090L0VFB0U");
     expect(out).toContain("reason=bot_id");
   });
 
-  it("names the missing-user branch DISTINCTLY (not conflated with bot_id)", async () => {
+  it("明确区分用户缺失分支（不与 bot_id 混淆）", async () => {
     const out = await logFor({ type: "message", text: "x", channel: "D0BLHF6VC86" });
     expect(out).toContain("channel=D0BLHF6VC86");
     expect(out).toContain("reason=no-user");
     expect(out).not.toContain("reason=bot_id");
   });
 
-  it("names the empty-text branch DISTINCTLY", async () => {
+  it("明确区分空文本分支", async () => {
     const out = await logFor({ type: "message", user: "U1", text: "   ", channel: "C3" });
     expect(out).toContain("reason=empty-text");
     expect(out).not.toContain("reason=no-user");
   });
 
-  it("PRIVACY RAIL: never leaks the user id or the message text", async () => {
+  it("隐私护栏：绝不泄漏用户 ID 或消息文本", async () => {
     const out = await logFor({ type: "message", user: "U09DAG5D14M", text: "secret body text", channel: "C4" });
     expect(out).not.toContain("U09DAG5D14M");
     expect(out).not.toContain("secret body text");

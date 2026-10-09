@@ -3,17 +3,17 @@ import type Database from "better-sqlite3";
 import { createFullTestDb } from "./helpers/test-app.js";
 import { DaemonLifecycleStore } from "../src/domain/daemon-lifecycle-store.js";
 
-describe("DaemonLifecycleStore — P7 atom 1 (mig-061 lifecycle record)", () => {
+describe("DaemonLifecycleStore——P7 atom 1（mig-061 lifecycle record）", () => {
   let db: Database.Database;
   beforeEach(() => {
     db = createFullTestDb();
   });
 
-  it("get() is null before any boot", () => {
+  it("首次 boot 前 get() 为 null", () => {
     expect(new DaemonLifecycleStore(db).get()).toBeNull();
   });
 
-  it("recordBoot writes epoch + started_at; heartbeat + stopped are null", () => {
+  it("recordBoot 写入 epoch + started_at；heartbeat + stopped 为 null", () => {
     const s = new DaemonLifecycleStore(db);
     s.recordBoot("epoch-1", "2026-08-07T00:00:00.000Z");
     const r = s.get()!;
@@ -23,21 +23,21 @@ describe("DaemonLifecycleStore — P7 atom 1 (mig-061 lifecycle record)", () => 
     expect(r.stoppedAt).toBeNull();
   });
 
-  it("a NEW boot mints a new epoch, advances started_at, and CLEARS the prior run's stopped_at + heartbeat", () => {
+  it("新的 boot 生成新 epoch、推进 started_at，并清除上次运行的 stopped_at + heartbeat", () => {
     const s = new DaemonLifecycleStore(db);
     s.recordBoot("epoch-1", "2026-08-07T00:00:00.000Z");
     s.recordHeartbeat("2026-08-07T00:05:00.000Z");
     s.recordStop("epoch-1", "2026-08-07T00:10:00.000Z");
 
-    s.recordBoot("epoch-2", "2026-08-07T01:00:00.000Z"); // new boot
+    s.recordBoot("epoch-2", "2026-08-07T01:00:00.000Z"); // 新 boot
     const r = s.get()!;
     expect(r.bootEpoch).toBe("epoch-2");
     expect(r.startedAt).toBe("2026-08-07T01:00:00.000Z");
-    expect(r.stoppedAt).toBeNull(); // not the prior run's stop
+    expect(r.stoppedAt).toBeNull(); // 不是上次运行的 stop
     expect(r.lastHeartbeatAt).toBeNull();
   });
 
-  it("recordHeartbeat advances last_heartbeat_at while running", () => {
+  it("运行期间 recordHeartbeat 推进 last_heartbeat_at", () => {
     const s = new DaemonLifecycleStore(db);
     s.recordBoot("e", "2026-08-07T00:00:00.000Z");
     s.recordHeartbeat("2026-08-07T00:01:00.000Z");
@@ -46,23 +46,23 @@ describe("DaemonLifecycleStore — P7 atom 1 (mig-061 lifecycle record)", () => 
     expect(s.get()!.lastHeartbeatAt).toBe("2026-08-07T00:02:00.000Z");
   });
 
-  it("recordHeartbeat GUARDS not-stopped — a stray tick after stop must NOT advance last-seen (write-order pin)", () => {
+  it("recordHeartbeat 保护 not-stopped——stop 后的 stray tick 不得推进 last-seen（写入顺序 pin）", () => {
     const s = new DaemonLifecycleStore(db);
     s.recordBoot("e", "2026-08-07T00:00:00.000Z");
     s.recordHeartbeat("2026-08-07T00:05:00.000Z");
     s.recordStop("e", "2026-08-07T00:10:00.000Z");
-    s.recordHeartbeat("2026-08-07T00:11:00.000Z"); // stray tick AFTER stop
+    s.recordHeartbeat("2026-08-07T00:11:00.000Z"); // stop 后的 stray tick
     const r = s.get()!;
     expect(r.stoppedAt).toBe("2026-08-07T00:10:00.000Z");
-    expect(r.lastHeartbeatAt).toBe("2026-08-07T00:05:00.000Z"); // NOT advanced past stop
+    expect(r.lastHeartbeatAt).toBe("2026-08-07T00:05:00.000Z"); // 未推进到 stop 之后
   });
 
-  it("recordStop is terminal per epoch — a second stop (or a wrong epoch) does not move stopped_at", () => {
+  it("recordStop 对每个 epoch 都是 terminal——第二次 stop（或错误 epoch）不会移动 stopped_at", () => {
     const s = new DaemonLifecycleStore(db);
     s.recordBoot("e1", "2026-08-07T00:00:00.000Z");
     s.recordStop("e1", "2026-08-07T00:10:00.000Z");
-    s.recordStop("e1", "2026-08-07T00:20:00.000Z"); // second stop — ignored (terminal)
-    s.recordStop("e-other", "2026-08-07T00:30:00.000Z"); // wrong epoch — ignored
+    s.recordStop("e1", "2026-08-07T00:20:00.000Z"); // 第二次 stop——忽略（terminal）
+    s.recordStop("e-other", "2026-08-07T00:30:00.000Z"); // 错误 epoch——忽略
     expect(s.get()!.stoppedAt).toBe("2026-08-07T00:10:00.000Z");
   });
 });

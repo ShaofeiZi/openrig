@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { execSync } from "node:child_process";
 
-// Import globals.css — same import as main.tsx
+// 导入 globals.css，与 main.tsx 的导入方式一致。
 import "../src/globals.css";
 
 const mockFetch = vi.fn(() =>
@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe("Tailwind Foundation", () => {
-  // Test 1: Design tokens present on :root
+  // 测试 1：:root 上存在设计 token。
   it("design tokens are present on :root via globals.css", () => {
     render(<div>probe</div>);
 
@@ -31,7 +31,7 @@ describe("Tailwind Foundation", () => {
     expect(styles.getPropertyValue("--tertiary").trim()).toContain("1 63% 42%");
   });
 
-  // Test 2: ALL borderRadius tokens zeroed in config
+  // 测试 2：配置中的全部 borderRadius token 均归零。
   it("ALL borderRadius tokens are 0px", () => {
     const config = readFileSync(resolve(__dirname, "../tailwind.config.ts"), "utf-8");
 
@@ -49,19 +49,19 @@ describe("Tailwind Foundation", () => {
     }
   });
 
-  // Test 3: cn() utility
+  // 测试 3：cn() 工具函数。
   it("cn() merges classes with Tailwind dedup", async () => {
     const { cn } = await import("../src/lib/utils.js");
     expect(cn("p-4", "p-8")).toBe("p-8");
   });
 
-  // Test 4: Production build emits current scanned background utility contract.
+  // 测试 4：生产构建输出当前扫描到的背景工具类契约。
   it("production build emits .bg-background utility rule", { timeout: 60000 }, () => {
     const uiRoot = resolve(__dirname, "..");
     try {
       execSync("npm run build", { cwd: uiRoot, stdio: "pipe", timeout: 30000 });
     } catch {
-      // skip if build fails in test env
+      // 测试环境构建失败时跳过。
       return;
     }
 
@@ -76,22 +76,21 @@ describe("Tailwind Foundation", () => {
       return;
     }
 
-    // bg-background should generate: background-color: hsl(var(--background))
+    // bg-background 应生成 background-color: hsl(var(--background))。
     expect(cssContent).toMatch(/\.bg-background\b/);
     expect(cssContent).toContain("hsl(var(--background))");
 
-    // The card token still ships in globals.css even though bg-card is not used
-    // by any current source file and is therefore correctly purged from utilities.
+    // 即使当前源码未使用 bg-card、因而正确从工具类中清除，card token 仍随 globals.css 交付。
     expect(cssContent).toMatch(/--card:\s*var\(--surface-container-lowest\)/);
   });
 
-  // Test 5: main.tsx imports globals.css (source code verification)
+  // 测试 5：main.tsx 导入 globals.css（源码验证）。
   it("main.tsx imports globals.css in its source", () => {
     const mainSrc = readFileSync(resolve(__dirname, "../src/main.tsx"), "utf-8");
     expect(mainSrc).toContain('./globals.css"');
   });
 
-  // Test 6: globals.css is injected into document
+  // 测试 6：globals.css 已注入文档。
   it("globals.css stylesheet is present in document", () => {
     const styleSheets = document.querySelectorAll("style");
     const cssText = Array.from(styleSheets).map((s) => s.textContent).join("");

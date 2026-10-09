@@ -1,7 +1,7 @@
 import type { Migration } from "../migrate.js";
 
-/** Keep inventory folds on their event types instead of scanning activity history.
- * Fleet and rig restore reads need different leading keys to retain their order. */
+/** 让 inventory fold 使用对应事件类型，而不是扫描活动历史。Fleet 和 rig restore 读取需要
+ * 不同的前导键以保持各自顺序。 */
 export const inventoryEventIndexesSchema: Migration = {
   name: "084_inventory_event_indexes.sql",
   sql: `

@@ -7,7 +7,7 @@ import type { Session, Binding } from "./types.js";
 import { validateSessionName } from "./session-name.js";
 import { formatWatchdogRegistrationError } from "./watchdog-auto-registration.js";
 
-// GHOST-STAGE atom-B (P12 3548d8eb) — the occupant-generation tenure.
+// GHOST-STAGE atom-B（P12 3548d8eb）——占用者代次任期。
 export type OccupantKind = "initial" | "handover" | "adopt" | "fresh";
 export interface OccupantTenure {
   id: string;
@@ -38,15 +38,12 @@ interface BindingFields {
   cmuxSurface?: string;
 }
 
-/** Resume-token provenance precedence (OPR.0.4.0.22; adoption rung added by
- *  OPR.0.4.3.20 FR-3). Higher rank wins; a lower-rank write never overwrites a
- *  higher-rank persisted token.
- *  operator/attested (deliberate set) > hook (runtime self-report) >
- *  adoption (captured at the reconcile/adopt/bind boundary) > scrape (pane).
- *  adoption sits BELOW hook deliberately: a live runtime hook self-report is
- *  fresher than an adoption-time snapshot, so hook must be able to refresh an
- *  adoption token (FR-3 §2.4 — do not freeze the token at adoption time and
- *  reintroduce the staleness the survive slice exists to kill). */
+/** Resume-token provenance 优先级（OPR.0.4.0.22；adoption rung 由 OPR.0.4.3.20 FR-3
+ *  增加）。高 rank 胜出；低 rank 写入绝不覆盖高 rank persisted token。
+ *  operator/attested（有意设置）> hook（运行时自报）> adoption
+ *  （在 reconcile/adopt/bind boundary capture）> scrape（pane）。adoption 有意低于 hook：live
+ *  runtime hook self-report 比 adoption-time snapshot 更新，因此 hook 必须能 refresh adoption token
+ *  （FR-3 §2.4——不要在 adoption 时冻结 token，以免重新引入 survive slice 要消除的 staleness）。 */
 export const RESUME_PROVENANCE_RANK: Record<string, number> = {
   scrape: 0,
   adoption: 1,
@@ -54,8 +51,8 @@ export const RESUME_PROVENANCE_RANK: Record<string, number> = {
   operator: 3,
 };
 
-/** OPR.0.4.3.20 FR-4 — the latest live session per node, shape needed by the
- *  resume-metadata refresher (structurally compatible with ResumeRefreshSession). */
+/** OPR.0.4.3.20 FR-4——每个 node 最新的 live session；resume-metadata refresher 所需 shape
+ *  （结构兼容 ResumeRefreshSession）。 */
 export interface LatestLiveSession {
   nodeId: string;
   sessionId: string;
@@ -94,7 +91,7 @@ export class SessionRegistry {
   ): Session {
     if (!validateSessionName(sessionName)) {
       throw new Error(
-        `Invalid session name "${sessionName}": must match legacy r{NN}-{suffix} or canonical {pod}-{member}@{rig} format with allowed characters (a-z, A-Z, 0-9, -, _, ., @)`
+        `无效 session name "${sessionName}"：必须匹配 legacy r{NN}-{suffix} 或 canonical {pod}-{member}@{rig} 格式，允许字符为 a-z、A-Z、0-9、-、_、.、@`
       );
     }
 
@@ -104,14 +101,14 @@ export class SessionRegistry {
         "INSERT INTO sessions (id, node_id, session_name) VALUES (?, ?, ?)"
       )
       .run(id, nodeId, sessionName);
-    this.mintOccupantTenureBestEffort(nodeId, kind, reservedGeneration); // atom-B: mint this occupant generation
+    this.mintOccupantTenureBestEffort(nodeId, kind, reservedGeneration); // atom-B：生成此 occupant generation
     this.observeWatchdogRegistration(nodeId, sessionName, kind);
     return this.rowToSession(
       this.db.prepare("SELECT * FROM sessions WHERE id = ?").get(id) as SessionRow
     );
   }
 
-  /** Register a claimed session — skips naming validation, sets origin='claimed', startup_status='ready'. */
+  /** 注册 claimed session——跳过命名 validation，设置 origin='claimed'、startup_status='ready'。 */
   registerClaimedSession(
     nodeId: string,
     sessionName: string,
@@ -124,7 +121,7 @@ export class SessionRegistry {
         "INSERT INTO sessions (id, node_id, session_name, status, origin, startup_status) VALUES (?, ?, ?, 'running', 'claimed', 'ready')"
       )
       .run(id, nodeId, sessionName);
-    this.mintOccupantTenureBestEffort(nodeId, kind, reservedGeneration); // atom-B: mint this occupant generation
+    this.mintOccupantTenureBestEffort(nodeId, kind, reservedGeneration); // atom-B：生成此 occupant generation
     this.observeWatchdogRegistration(nodeId, sessionName, kind);
 
     return this.rowToSession(
@@ -133,19 +130,17 @@ export class SessionRegistry {
   }
 
   /**
-   * atom-B — mint (or CONTINUE) the occupant-generation tenure for a node. RELAUNCH is a CONTINUATION:
-   * if the same native session id is already recorded for this node, return the existing tenure WITHOUT
-   * minting a new generation. A new occupant (initial/handover/adopt, or a new/unknown native session)
-   * mints the next generation_ordinal with a fresh generation_uuid. Append-only — the ledger is never
-   * mutated. (Relaunch also naturally continues by NOT re-calling the register verbs; the native-session
-   * dedup here is the safety net for a re-register.)
+   * atom-B——为 node 生成（或继续）occupant-generation tenure。RELAUNCH 是 CONTINUATION：若同一
+   * native session id 已为此 node 记录，则返回现有 tenure，不生成新 generation。新 occupant
+   *（initial/handover/adopt，或新的/未知 native session）用 fresh generation_uuid 生成下一个
+   * generation_ordinal。append-only——ledger 永不修改。（Relaunch 也会因不再次调用 register verb
+   * 而自然继续；这里的 native-session dedup 是 re-register 的安全网。）
    */
-  /** atom-B — mint the occupant tenure at a register verb, but FAIL-ISOLATED: a session registration
-   *  (a core operation) must NOT die because the additive occupant-generation ledger write failed
-   *  (e.g. a db that has not run migration 060). On failure we LOG loudly (once per process — a
-   *  missing ledger table in production is a visible defect) and let the register succeed;
-   *  generation-scoped consumers degrade to loud-pending, never a silent-wrong. Direct callers that
-   *  REQUIRE the tenure use `mintOccupantTenure` (which throws). */
+  /** atom-B——在 register verb 时生成 occupant tenure，但实行 FAIL-ISOLATED：session registration
+   *  （核心操作）不得因增量 occupant-generation ledger 写入失败而终止（如 DB 尚未运行 migration
+   *  060）。失败时显著记录 log（每个 process 一次——production 中缺失 ledger table 是可见 defect），
+   *  并让 register 成功；generation-scoped consumer 降级为显著 pending，绝不静默出错。需要 tenure
+   *  的直接 caller 使用会抛错的 `mintOccupantTenure`。 */
   private mintOccupantTenureBestEffort(
     nodeId: string,
     kind: OccupantKind,
@@ -156,12 +151,12 @@ export class SessionRegistry {
     } catch (e) {
       if (!SessionRegistry.tenureMintWarned) {
         SessionRegistry.tenureMintWarned = true;
-        // Attributable (node_id + kind/verb) so a failed mint is traceable from logs (orch note 1);
-        // once-per-process to avoid spamming a stale-migration db, but the FIRST failure pins the node.
+        // 可归因（node_id + kind/verb），使 mint failure 可从 log 追踪（orch note 1）；每个 process
+        // 只记录一次，避免刷屏 stale-migration DB，但首次失败会固定 node。
         console.warn(
-          `[session-registry] occupant-tenure mint FAILED for node_id="${nodeId}" (kind=${kind}): ${(e as Error).message} — ` +
-            `registration proceeds, but generation-scoped ghost-stage protection is UNAVAILABLE for this node. ` +
-            `Ensure migration 060_occupant_tenures ran. (Further mint failures suppressed this process.)`,
+          `[session-registry] node_id="${nodeId}"（kind=${kind}）的 occupant-tenure 生成失败：${(e as Error).message}——` +
+            `registration 继续，但此 node 无法使用 generation-scoped ghost-stage protection。` +
+            `请确保已运行 migration 060_occupant_tenures。（此 process 将抑制后续 mint failure。）`,
         );
       }
     }
@@ -182,8 +177,8 @@ export class SessionRegistry {
       observer.assertCoverage(nodeId, sessionName);
     } catch (error) {
       console.warn(
-        `[session-registry] watchdog coverage FAILED for node_id="${nodeId}" ` +
-        `session="${sessionName}": ${formatWatchdogRegistrationError(error)}`,
+        `[session-registry] node_id="${nodeId}" 的 watchdog coverage 失败 ` +
+        `session="${sessionName}"：${formatWatchdogRegistrationError(error)}`,
       );
     }
   }
@@ -195,17 +190,17 @@ export class SessionRegistry {
       if (!SessionRegistry.watchdogEnsureWarned) {
         SessionRegistry.watchdogEnsureWarned = true;
         console.warn(
-          `[session-registry] watchdog auto-registration FAILED for node_id="${nodeId}" ` +
+          `[session-registry] node_id="${nodeId}" 的 watchdog auto-registration 失败 ` +
           `session="${sessionName}": ${formatWatchdogRegistrationError(error)} ` +
-          `(further ensure failures suppressed this process)`,
+          `（此 process 将抑制后续 ensure failure）`,
         );
       }
     }
   }
   private static watchdogEnsureWarned = false;
 
-  /** Reserve the generation that a managed process will carry before it starts. The capability probe
-   * is read-only: a failed/missing ledger yields null and launch continues without fabricating state. */
+  /** 在 managed process 启动前预留其将携带的 generation。capability probe 为只读：ledger 失败或
+   *  缺失时返回 null，launch 继续且不伪造 state。 */
   reserveOccupantGeneration(): string | null {
     try {
       this.db.prepare("SELECT 1 FROM occupant_tenures LIMIT 1").get();
@@ -215,8 +210,8 @@ export class SessionRegistry {
     }
   }
 
-  /** True only when this exact generation is registered for this exact node. Throws on ledger faults so
-   * callers can preserve the distinct generation_resolver_error verdict. */
+  /** 仅当此精确 generation 已为此精确 node 注册时为 true。ledger fault 时抛错，使 caller 可保留
+   *  独立 generation_resolver_error verdict。 */
   isOccupantGenerationRegistered(nodeId: string, generationUuid: string): boolean {
     return Boolean(this.db.prepare(
       "SELECT 1 FROM occupant_tenures WHERE node_id = ? AND generation_uuid = ? LIMIT 1",
@@ -235,7 +230,7 @@ export class SessionRegistry {
           "SELECT * FROM occupant_tenures WHERE node_id = ? AND native_session_id_at_boot = ? ORDER BY generation_ordinal DESC LIMIT 1"
         )
         .get(nodeId, nativeSessionIdAtBoot) as OccupantTenureRow | undefined;
-      if (existing) return this.rowToTenure(existing); // continuation — no new generation
+      if (existing) return this.rowToTenure(existing); // continuation——不生成新 generation
     }
     const nextOrdinal =
       (((this.db
@@ -253,8 +248,8 @@ export class SessionRegistry {
     );
   }
 
-  /** The LIVE (latest) occupant generation for a node, or null. Consumers compare an entry's minting
-   *  generation_uuid to this to gate stale-generation state (the ghost-stage defect). */
+  /** node 的 live（最新）occupant generation，或 null。consumer 将 entry 的 minting
+   *  generation_uuid 与其比较，以 gate stale-generation state（ghost-stage defect）。 */
   currentOccupantTenure(nodeId: string): OccupantTenure | null {
     const row = this.db
       .prepare("SELECT * FROM occupant_tenures WHERE node_id = ? ORDER BY generation_ordinal DESC LIMIT 1")
@@ -262,10 +257,10 @@ export class SessionRegistry {
     return row ? this.rowToTenure(row) : null;
   }
 
-  /** ghost-stage (b): the LIVE occupant generation_uuid for the node currently backing a session
-   *  NAME, or null when UNKNOWN (no session row / no node / no tenure — consumers treat null as
-   *  UNKNOWN, never as a match against a stale generation). This is the resolver the compaction
-   *  enforcer's gen-scoped stage gate consumes. Never throws (a bad lookup returns null). */
+  /** ghost-stage（b）：当前支撑 session name 的 node 所对应 live occupant generation_uuid；UNKNOWN
+   *  时为 null（无 session row / 无 node / 无 tenure——consumer 将 null 视为 UNKNOWN，绝不匹配
+   *  stale generation）。这是 compaction enforcer 的 gen-scoped stage gate 所用 resolver。永不抛错
+   *  （错误 lookup 返回 null）。 */
   currentOccupantGenerationForSession(sessionName: string): string | null {
     try {
       const row = this.db
@@ -274,7 +269,7 @@ export class SessionRegistry {
       if (!row) return null;
       return this.currentOccupantTenure(row.node_id)?.generationUuid ?? null;
     } catch {
-      return null; // UNKNOWN on any lookup failure (e.g. a db without the tenure ledger)
+      return null; // 任意 lookup failure 时为 UNKNOWN（例如 DB 没有 tenure ledger）
     }
   }
 
@@ -308,21 +303,18 @@ export class SessionRegistry {
     }
   }
 
-  // OPR.0.4.0.22 — resume-token provenance precedence. A deliberate
-  // operator/attested set is authoritative and OUTRANKS the runtime hook, the
-  // adoption-boundary capture, and the pane scrape (hook > adoption > scrape).
-  // A lower-rank write must never clobber a higher-rank persisted token.
+  // OPR.0.4.0.22——resume-token provenance 优先级。有意的 operator/attested set 具有权威性，
+  // 优先于 runtime hook、adoption-boundary capture 与 pane scrape（hook > adoption > scrape）。
+  // 低 rank 写入绝不能覆盖高 rank persisted token。
   //
-  // OPR.0.4.3.20 FR-3 — validity-before-rank guard: an empty/whitespace token
-  // is a SKIP, never a write. "Flakiness = missing = no-write, not a bad
-  // write." This runs BEFORE the rank comparison so NO caller (a flaky hook,
-  // adoption capture, or scrape) can ever replace a valid stored token with an
-  // empty one, even from a higher-provenance source.
+  // OPR.0.4.3.20 FR-3——validity-before-rank guard：空或全 whitespace token 表示 SKIP，绝不写入。
+  // “Flakiness = missing = no-write，而不是 bad write。”此检查在 rank comparison 前运行，因此没有
+  // caller（flaky hook、adoption capture 或 scrape）能用空值替换有效 stored token，即使来源
+  // provenance 更高。
   //
-  // Returns whether a write actually happened: `true` on UPDATE, `false` on an
-  // empty-token skip or a lower-rank no-op. Callers that only set-and-forget can
-  // ignore it; the adoption-capture path uses it so its audit event never
-  // falsely claims a captured write when the provenance guard refused it.
+  // 返回是否真正写入：UPDATE 时为 `true`，空 token skip 或低 rank no-op 时为 `false`。只做
+  // set-and-forget 的 caller 可忽略；adoption-capture 路径会使用它，避免 provenance guard 拒绝后
+  // audit event 仍错误声称已完成 capture write。
   updateResumeToken(sessionId: string, type: string, token: string, provenance?: "hook" | "scrape" | "operator" | "adoption"): boolean {
     if (typeof token !== "string" || token.trim().length === 0) return false;
     if (provenance) {
@@ -333,15 +325,14 @@ export class SessionRegistry {
       if (existingProv) {
         const existingRank = RESUME_PROVENANCE_RANK[existingProv] ?? -1;
         const newRank = RESUME_PROVENANCE_RANK[provenance] ?? -1;
-        if (newRank < existingRank) return false; // lower-rank cannot overwrite higher-rank
+        if (newRank < existingRank) return false; // 低 rank 不能覆盖高 rank
       }
     }
     const prov = provenance ?? null;
-    // OPR.0.4.3.20 FR-6 — stamp-on-verify (+ equal-value-refresh): a token
-    // (re-)derived from live state IS a verification, so refresh the freshness
-    // marker + mark the last probe `resumable` on EVERY successful write, even
-    // when the token value is unchanged (a re-verified-but-unchanged token must
-    // not look untouched). The plan reads these to compute present/stale.
+    // OPR.0.4.3.20 FR-6——stamp-on-verify（+ equal-value-refresh）：从 live state（重新）派生
+    // token 本身就是 verification，因此每次成功写入都 refresh freshness marker，并将最后 probe
+    // 标为 `resumable`，即使 token value 未改变（重新验证但未变化的 token 不得看似 untouched）。
+    // plan 读取这些字段以计算 present/stale。
     this.db
       .prepare(
         "UPDATE sessions SET resume_type = ?, resume_token = ?, resume_provenance = COALESCE(?, resume_provenance), " +
@@ -351,12 +342,11 @@ export class SessionRegistry {
     return true;
   }
 
-  /** Preserve a resume target that was attempted but not verified.
+  /** 保留已尝试但未验证的 resume target。
    *
-   * Attention outcomes include live chooser prompts, runner exits, and
-   * readiness timeouts, so reaching one cannot certify the token as resumable.
-   * Only fill an empty session row: a concurrent hook/operator write is
-   * stronger evidence and must win. */
+   * Attention outcome 包括 live chooser prompt、runner exit 与 readiness timeout，因此到达其中任一
+   * 都不能证明 token 可 resume。只填充空 session row：并发 hook/operator write 是更强 evidence，
+   * 必须胜出。 */
   recordResumeAttempt(sessionId: string, type: string, token: string): boolean {
     const normalizedType = type.trim();
     const normalizedToken = token.trim();
@@ -372,13 +362,11 @@ export class SessionRegistry {
     return result.changes > 0;
   }
 
-  /** OPR.0.4.3.20 FR-6 — record a live resume-probe outcome WITHOUT clearing the
-   *  token. On `resumable` it stamps the freshness marker (equal-value-refresh);
-   *  on `not_resumable` / `inconclusive` it marks the PRESENT token stale so the
-   *  restore plan surfaces it as `stale/unverified — re-verify` (never a silent
-   *  null). This replaces the old clear-on-not-resumable behavior (§2.1b) — the
-   *  token stays put; FR-7's blank/fresh rollback catches an actually-unresumable
-   *  token at restore time. */
+  /** OPR.0.4.3.20 FR-6——记录 live resume-probe outcome，但不清除 token。`resumable` 时盖
+   *  freshness marker（equal-value-refresh）；`not_resumable` / `inconclusive` 时将现有 token 标为
+   *  stale，使 restore plan 将其呈现为 `stale/unverified — re-verify`（绝不静默变成 null）。这替代
+   *  旧 clear-on-not-resumable 行为（§2.1b）——token 保持原位；FR-7 blank/fresh rollback 在 restore
+   *  时捕获真正无法 resume 的 token。 */
   markResumeProbeResult(sessionId: string, status: "resumable" | "not_resumable" | "inconclusive"): void {
     if (status === "resumable") {
       this.db
@@ -391,9 +379,8 @@ export class SessionRegistry {
       .run(status, sessionId);
   }
 
-  /** OPR.0.4.0.22 — resolve a canonical session name to the context needed to
-   *  set its resume token: the latest session row + its node's runtime + the
-   *  current resume provenance. Returns null when no session matches. */
+  /** OPR.0.4.0.22——将 canonical session name 解析为设置 resume token 所需 context：最新 session
+   *  row + 其 node runtime + 当前 resume provenance。无匹配 session 时返回 null。 */
   findResumeContextByName(sessionName: string): {
     sessionId: string;
     nodeId: string;
@@ -425,10 +412,9 @@ export class SessionRegistry {
   }
 
   clearResumeToken(sessionId: string): void {
-    // OPR.0.4.3.20 FR-6 — also null the verification-freshness columns so a
-    // cleared slot carries no orphan freshness. NOTE: after §2.1b the refresher
-    // validate path marks-stale instead of clearing, so this has no in-tree
-    // caller on the live path; kept for explicit-clear callers/tests.
+    // OPR.0.4.3.20 FR-6——同时将 verification-freshness 列设为 null，使已清空 slot 不携带 orphan
+    // freshness。注意：§2.1b 后 refresher validate 路径会 mark-stale 而非清除，因此 live 路径中没有
+    // in-tree caller；为 explicit-clear caller/test 保留。
     this.db
       .prepare("UPDATE sessions SET resume_type = NULL, resume_token = NULL, resume_provenance = NULL, resume_last_verified = NULL, resume_last_probe_status = NULL WHERE id = ?")
       .run(sessionId);
@@ -459,10 +445,9 @@ export class SessionRegistry {
     return rows.map((r) => this.rowToSession(r));
   }
 
-  /** OPR.0.4.3.20 FR-4 — the latest session PER NODE, filtered to live statuses
-   *  (running / idle / unknown), with the fields the resume-metadata refresher
-   *  needs. Lifted from rig-teardown so both the teardown pre-down path and the
-   *  FR-4 periodic/manual snapshot refresh call ONE query (no duplication). */
+  /** OPR.0.4.3.20 FR-4——每个 node 最新的 session，筛选为 live status（running / idle /
+   *  unknown），并带 resume-metadata refresher 所需字段。从 rig-teardown 提升，使 teardown
+   *  pre-down 路径与 FR-4 periodic/manual snapshot refresh 调用同一 query（无重复）。 */
   getLatestLiveSessions(rigId: string): LatestLiveSession[] {
     const rows = this.db.prepare(`
       SELECT n.id as node_id, s.id as session_id, s.session_name, s.status, n.runtime, n.cwd, s.resume_type, s.resume_token
@@ -494,14 +479,14 @@ export class SessionRegistry {
   }
 
   updateBinding(nodeId: string, fields: BindingFields): Binding {
-    // Atomic upsert: entire read-modify-write is inside a transaction
+    // atomic upsert：整个 read-modify-write 位于同一 transaction 内
     const upsert = this.db.transaction(() => {
       const existing = this.db
         .prepare("SELECT * FROM bindings WHERE node_id = ?")
         .get(nodeId) as BindingRow | undefined;
 
       if (existing) {
-        // Partial update: only overwrite fields that are provided
+        // partial update：只覆盖已提供字段
         this.db
           .prepare(
             `UPDATE bindings SET
@@ -553,7 +538,7 @@ export class SessionRegistry {
     );
   }
 
-  // -- Row-to-domain mappers --
+  // -- 数据库行到领域对象的映射器 --
 
   private rowToSession(row: SessionRow): Session {
     return {
@@ -563,9 +548,8 @@ export class SessionRegistry {
       status: row.status,
       resumeType: row.resume_type ?? null,
       resumeToken: row.resume_token ?? null,
-      // OPR.0.4.3.20 FR-6 — carry provenance + verification freshness so a
-      // snapshot's serialized sessions (and getSessionsForRig) surface token
-      // state in the restore plan. Nullable/degrading for pre-45 rows.
+      // OPR.0.4.3.20 FR-6——携带 provenance + verification freshness，使 snapshot 的 serialized
+      // session（及 getSessionsForRig）在 restore plan 中呈现 token state。pre-45 row 可为 null/降级。
       resumeProvenance: row.resume_provenance ?? null,
       resumeLastVerified: row.resume_last_verified ?? null,
       resumeLastProbeStatus: row.resume_last_probe_status ?? null,
@@ -594,7 +578,7 @@ export class SessionRegistry {
   }
 }
 
-// -- Raw DB row types (snake_case) --
+// -- 原始 DB row 类型（snake_case）--
 
 interface SessionRow {
   id: string;
@@ -609,7 +593,7 @@ interface SessionRow {
   origin: string;
   startup_status: string | null;
   startup_completed_at: string | null;
-  // OPR.0.4.3.20 FR-3/FR-6 — resume ledger provenance + verification freshness.
+  // OPR.0.4.3.20 FR-3/FR-6——续接台账来源和验证新鲜度。
   resume_provenance?: string | null;
   resume_last_verified?: string | null;
   resume_last_probe_status?: string | null;

@@ -1,6 +1,6 @@
 name: product-designer
 version: "1.0"
-description: Product designer — shapes UX, interaction flows, and design-system coherence
+description: 产品设计智能体——塑造用户体验、交互流程与设计系统一致性
 
 defaults:
   runtime: claude-code
@@ -30,10 +30,9 @@ startup:
   actions:
     - type: send_text
       value: >-
-        Resolve the assigned outcome and its selected procedure. Use frontend-design
-        when shaping an interface and verification-before-completion when validating
-        a result. Load relevant skills when their task arises; this startup action
-        adds no blanket preload or review gate.
+        完成已分配的目标及选定流程。设计界面时使用 frontend-design，验证结果时使用
+        verification-before-completion。任务需要时再加载相关技能；此启动操作不增加
+        全量预加载或评审门禁。
       phase: after_ready
       applies_on: [fresh_start, restore]
       idempotent: true

@@ -37,7 +37,7 @@ describe("BundleInstallFlow", () => {
     });
   });
 
-  // T10-AS-T14: Shows "Pod-aware" label when resolve_spec detail.source === "pod_bundle"
+  // T10-AS-T14：resolve_spec detail.source === "pod_bundle" 时显示 "Pod-aware" 标签
   it("shows Pod-aware label when stage detail source is pod_bundle", async () => {
     // Plan mock
     fetchMock.mockResolvedValueOnce({
@@ -61,7 +61,7 @@ describe("BundleInstallFlow", () => {
     act(() => { fireEvent.click(screen.getByTestId("plan-btn")); });
     await waitFor(() => expect(screen.getByTestId("step-planned")).toBeTruthy());
 
-    // Apply mock with pod_bundle source
+    // 应用带 pod_bundle 源的 mock
     fetchMock.mockResolvedValueOnce({
       ok: true, status: 201,
       json: async () => ({
@@ -80,10 +80,10 @@ describe("BundleInstallFlow", () => {
     await waitFor(() => expect(screen.getByTestId("step-done")).toBeTruthy());
 
     const label = screen.getByTestId("bundle-type-label");
-    expect(label.textContent).toContain("Pod-aware bundle");
+    expect(label.textContent).toContain("支持 Pod 的安装包");
   });
 
-  // Shows "Legacy bundle" label when no pod_bundle source
+  // 无 pod_bundle 源时显示 "Legacy bundle" 标签
   it("shows Legacy label when no pod_bundle source", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -121,6 +121,6 @@ describe("BundleInstallFlow", () => {
     await waitFor(() => expect(screen.getByTestId("step-done")).toBeTruthy());
 
     const label = screen.getByTestId("bundle-type-label");
-    expect(label.textContent).toContain("Legacy bundle");
+    expect(label.textContent).toContain("旧版安装包");
   });
 });

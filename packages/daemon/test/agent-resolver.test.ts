@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveAgentRef, type AgentResolverFsOps } from "../src/domain/agent-resolver.js";
 
-/** Helper: create a minimal valid agent.yaml */
+/** helper：创建最小有效 agent.yaml。 */
 function validAgentYaml(overrides?: { name?: string; version?: string; imports?: string; resources?: string }): string {
   const name = overrides?.name ?? "test-agent";
   const version = overrides?.version ?? "1.0.0";
@@ -14,7 +14,7 @@ function validAgentYamlWithSkill(name: string, skillId: string): string {
   return `name: ${name}\nversion: "1.0.0"\nresources:\n  skills:\n    - id: ${skillId}\n      path: skills/${skillId}\nprofiles: {}`;
 }
 
-/** Mock filesystem */
+/** mock filesystem。 */
 function mockFs(files: Record<string, string>): AgentResolverFsOps {
   return {
     readFile: (path: string) => {
@@ -28,8 +28,8 @@ function mockFs(files: Record<string, string>): AgentResolverFsOps {
 const RIG_ROOT = "/project/rigs/my-rig";
 
 describe("AgentSpec source resolver + import resolver", () => {
-  // T1: local: ref resolves relative to rig root
-  it("local: ref resolves relative to rig root", () => {
+  // T1：local: ref 相对于 rig root 解析
+  it("local: ref 相对于工作组 root 解析", () => {
     const fs = mockFs({
       "/project/rigs/my-rig/agents/impl/agent.yaml": validAgentYaml(),
     });
@@ -41,8 +41,8 @@ describe("AgentSpec source resolver + import resolver", () => {
     }
   });
 
-  // T2: path: ref resolves as absolute path
-  it("path: ref resolves as absolute path", () => {
+  // T2：path: ref 解析为绝对路径
+  it("path: ref 解析为绝对路径", () => {
     const fs = mockFs({
       "/abs/agents/impl/agent.yaml": validAgentYaml({ name: "abs-agent" }),
     });
@@ -54,8 +54,8 @@ describe("AgentSpec source resolver + import resolver", () => {
     }
   });
 
-  // T3: missing agent.yaml fails with code not_found
-  it("missing agent.yaml fails with not_found", () => {
+  // T3：缺失 agent.yaml 以 code not_found 失败
+  it("缺失 agent.yaml 时以 not_found 失败", () => {
     const fs = mockFs({});
     const result = resolveAgentRef("local:agents/missing", RIG_ROOT, fs);
     expect(result.ok).toBe(false);
@@ -65,8 +65,8 @@ describe("AgentSpec source resolver + import resolver", () => {
     }
   });
 
-  // T4: invalid AgentSpec fails with validation_failed
-  it("invalid AgentSpec fails with validation errors", () => {
+  // T4：无效 AgentSpec 以 validation_failed 失败
+  it("无效 AgentSpec 以 validation error 失败", () => {
     const fs = mockFs({
       "/project/rigs/my-rig/agents/bad/agent.yaml": "summary: no name or version",
     });
@@ -78,8 +78,8 @@ describe("AgentSpec source resolver + import resolver", () => {
     }
   });
 
-  // T5: exact version match passes
-  it("exact version match passes", () => {
+  // T5：精确 version 匹配通过
+  it("精确 version 匹配时通过", () => {
     const fs = mockFs({
       "/project/rigs/my-rig/agents/impl/agent.yaml": validAgentYaml({
         imports: 'imports:\n  - ref: local:../lib\n    version: "1.0.0"',
@@ -94,8 +94,8 @@ describe("AgentSpec source resolver + import resolver", () => {
     }
   });
 
-  // T6: exact version mismatch fails
-  it("exact version mismatch fails", () => {
+  // T6：精确 version 不匹配时失败
+  it("精确 version 不匹配时失败", () => {
     const fs = mockFs({
       "/project/rigs/my-rig/agents/impl/agent.yaml": validAgentYaml({
         imports: 'imports:\n  - ref: local:../lib\n    version: "2.0.0"',
@@ -111,20 +111,20 @@ describe("AgentSpec source resolver + import resolver", () => {
     }
   });
 
-  // T7: remote import source fails clearly
-  it("remote import source fails at resolve time", () => {
-    // Remote sources are rejected by AS-T01 validation, but also by resolver
+  // T7：remote import source 明确失败
+  it("remote import source 在 resolve 时失败", () => {
+    // Remote source 会被 AS-T01 validation 拒绝，resolver 也会拒绝
     const fs = mockFs({
       "/project/rigs/my-rig/agents/impl/agent.yaml":
         'name: impl\nversion: "1.0.0"\nimports:\n  - ref: "github:foo/bar"\nprofiles: {}',
     });
     const result = resolveAgentRef("local:agents/impl", RIG_ROOT, fs);
-    // The validator rejects github: at parse time, so this should fail at validation
+    // validator 在 parse 时拒绝 github:，因此这里应在 validation 阶段失败
     expect(result.ok).toBe(false);
   });
 
-  // T8: base/import collision produces diagnostic
-  it("base/import collision produces diagnostic", () => {
+  // T8：base/import collision 生成 diagnostic
+  it("base/import collision 生成 diagnostic", () => {
     const fs = mockFs({
       "/project/rigs/my-rig/agents/impl/agent.yaml": validAgentYaml({
         name: "impl",
@@ -143,8 +143,8 @@ describe("AgentSpec source resolver + import resolver", () => {
     }
   });
 
-  // T9: imported resource addressable by qualified id
-  it("collision diagnostic includes qualified id", () => {
+  // T9：imported resource 可通过 qualified id 寻址
+  it("collision diagnostic 包含 qualified id", () => {
     const fs = mockFs({
       "/project/rigs/my-rig/agents/impl/agent.yaml": validAgentYaml({
         name: "impl",
@@ -163,8 +163,8 @@ describe("AgentSpec source resolver + import resolver", () => {
     }
   });
 
-  // T10: self-import rejected
-  it("self-import (cycle) is rejected", () => {
+  // T10：拒绝 self-import
+  it("拒绝 self-import（cycle）", () => {
     const fs = mockFs({
       "/project/rigs/my-rig/agents/impl/agent.yaml": validAgentYaml({
         name: "impl",
@@ -178,8 +178,8 @@ describe("AgentSpec source resolver + import resolver", () => {
     }
   });
 
-  // T11: resolved spec hash is deterministic
-  it("resolved spec hash is deterministic", () => {
+  // T11：resolved spec hash 具有确定性
+  it("resolved spec hash 具有确定性", () => {
     const yaml = validAgentYaml({ name: "stable" });
     const fs = mockFs({
       "/project/rigs/my-rig/agents/stable/agent.yaml": yaml,
@@ -194,8 +194,8 @@ describe("AgentSpec source resolver + import resolver", () => {
     }
   });
 
-  // T12: imported spec with non-empty imports -> rejected
-  it("imported spec with nested imports is rejected", () => {
+  // T12：带非空 imports 的 imported spec -> 拒绝
+  it("拒绝带 nested import 的 imported spec", () => {
     const fs = mockFs({
       "/project/rigs/my-rig/agents/impl/agent.yaml": validAgentYaml({
         name: "impl",
@@ -211,13 +211,13 @@ describe("AgentSpec source resolver + import resolver", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe("import_error");
-      expect(result.error).toContain("nested imports");
-      expect(result.error).toContain("not supported in v1");
+      expect(result.error).toContain("嵌套导入");
+      expect(result.error).toContain("v1 不支持");
     }
   });
 
-  // T13: import/import collision -> ResourceCollision with both sources
-  it("import/import collision produces diagnostic with both qualified ids", () => {
+  // T13：import/import collision -> 带两个 source 的 ResourceCollision
+  it("import/import collision 生成包含两个 qualified id 的 diagnostic", () => {
     const fs = mockFs({
       "/project/rigs/my-rig/agents/impl/agent.yaml": validAgentYaml({
         name: "impl",
@@ -236,8 +236,8 @@ describe("AgentSpec source resolver + import resolver", () => {
     }
   });
 
-  // T14: two imports resolving to same spec name -> rejected
-  it("two imports with same spec name are rejected", () => {
+  // T14：两个 import 解析为相同 spec name -> 拒绝
+  it("拒绝 spec name 相同的两个 import", () => {
     const fs = mockFs({
       "/project/rigs/my-rig/agents/impl/agent.yaml": validAgentYaml({
         name: "impl",
@@ -250,13 +250,13 @@ describe("AgentSpec source resolver + import resolver", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe("import_error");
-      expect(result.error).toContain("Duplicate import name");
+      expect(result.error).toContain("导入名称重复");
       expect(result.error).toContain("lib");
     }
   });
 
-  // T15: imported spec name containing colon -> rejected
-  it("imported spec name with colon is rejected", () => {
+  // T15：imported spec name 含 colon -> 拒绝
+  it("拒绝名称含 colon 的 imported spec", () => {
     const fs = mockFs({
       "/project/rigs/my-rig/agents/impl/agent.yaml": validAgentYaml({
         name: "impl",
@@ -268,8 +268,8 @@ describe("AgentSpec source resolver + import resolver", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe("import_error");
-      expect(result.error).toContain("colon");
-      expect(result.error).toContain("qualified ref syntax");
+      expect(result.error).toContain("冒号");
+      expect(result.error).toContain("限定引用语法");
     }
   });
 });

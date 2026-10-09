@@ -1,16 +1,14 @@
-// V0.3.1 slice 13.5 mission-progress-artifacts-heatmap.
+// V0.3.1 slice 13.5 mission-progress-artifacts-heatmap。
 //
-// MissionProgressHeatmap is a per-slice acceptance-cell heat-map
-// rendered ABOVE the existing Progress tab content. Tests cover:
+// MissionProgressHeatmap 是 per-slice acceptance-cell 热力图，渲染在既有
+// Progress tab 内容之上。测试覆盖：
 //
-//   T1 — component renders a grid shape with N slices × M acceptance
-//        cells per row (HG-1)
-//   T2 — cell colors map to slice state via stateTone (done cells
-//        carry the slice's status tone; not-done cells outline-only)
-//        (HG-2)
-//   T3 — legend renders the canonical state -> color mapping (HG-2)
-//   T4 — MissionScopePage Progress tab composes markdown + heat-map +
-//        per-slice rollup; Artifacts tab unchanged (no heat-map mount)
+//   T1——组件渲染网格形状，每行 N slices × M acceptance 单元（HG-1）
+//   T2——单元颜色经 stateTone 映射 slice 状态（done 单元带 slice status tone；
+//        not-done 单元仅 outline）（HG-2）
+//   T3——legend 渲染规范 state -> 颜色映射（HG-2）
+//   T4——MissionScopePage Progress tab 组合 markdown + 热力图 + per-slice rollup；
+//        Artifacts tab 不变（无热力图 mount）
 //        (HG-3 + HG-4)
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -150,7 +148,7 @@ describe("MissionProgressHeatmap (slice 13.5)", () => {
     expect(await findByTestId("mission-progress-heatmap-row-alpha")).toBeTruthy();
     expect(await findByTestId("mission-progress-heatmap-row-beta")).toBeTruthy();
 
-    // Each row's cells container holds the per-acceptance-item span.
+    // 每行 cells 容器持有 per-acceptance-item span。
     const alphaCells = queryAllByTestId(/^mission-progress-heatmap-cell-alpha-\d+$/);
     expect(alphaCells.length).toBe(3);
     const betaCells = queryAllByTestId(/^mission-progress-heatmap-cell-beta-\d+$/);
@@ -173,18 +171,18 @@ describe("MissionProgressHeatmap (slice 13.5)", () => {
     );
     const row = await findByTestId("mission-progress-heatmap-row-alpha");
     expect(row.getAttribute("data-status")).toBe("active");
-    // The shared sliceStatusTone() maps the canonical SliceStatus
-    // value "active" -> "info", so done cells on an active slice are
-    // visually distinct from done cells on a shipped done slice.
-    // This matches the legend.
+    // 共享 sliceStatusTone() 把规范 SliceStatus 值 "active" -> "info"，
+    // 故 active slice 上 done 单元与 shipped done slice 上 done 单元视觉有别。
+    // 这与 legend 一致。
     expect(row.getAttribute("data-tone")).toBe("info");
+    expect(row.textContent).toContain("进行中");
+    expect(row.textContent).not.toContain("active");
 
     const doneCell = await findByTestId("mission-progress-heatmap-cell-alpha-0");
     const notDoneCell = await findByTestId("mission-progress-heatmap-cell-alpha-1");
     expect(doneCell.getAttribute("data-done")).toBe("true");
     expect(notDoneCell.getAttribute("data-done")).toBe("false");
-    // Active slice done cells render in the info tone (sky); not-done
-    // cells stay outline-only.
+    // Active slice done 单元用 info tone（sky）渲染；not-done 单元仅 outline。
     expect(doneCell.className).toMatch(/bg-sky-200/);
     expect(notDoneCell.className).toMatch(/border-outline-variant/);
     expect(notDoneCell.className).not.toMatch(/bg-sky-200/);
@@ -233,20 +231,18 @@ describe("MissionProgressHeatmap (slice 13.5)", () => {
       <MissionProgressHeatmap rows={rows} detailsByName={detailsByName} />,
     );
     const legend = await findByTestId("mission-progress-heatmap-legend");
-    expect(legend.textContent).toContain("done (active)");
-    expect(legend.textContent).toContain("done (complete)");
-    expect(legend.textContent).toContain("done (warning)");
-    expect(legend.textContent).toContain("done (blocked)");
-    expect(legend.textContent).toContain("not done");
+    expect(legend.textContent).toContain("已完成（进行中）");
+    expect(legend.textContent).toContain("已完成（完成）");
+    expect(legend.textContent).toContain("已完成（警告）");
+    expect(legend.textContent).toContain("已完成（已阻塞）");
+    expect(legend.textContent).toContain("未完成");
   });
 
-  // Forward-fix-1 coverage gap closed: legend swatch className must
-  // match the className of an actual heat-map cell rendered for a
-  // slice of that status. The legend says "done (active)" labels the
-  // info-toned swatch; an active-status slice's done cell must use the
-  // same className. Previously, legend hard-coded cellToneClass.info
-  // but active-status rows fell through neutral->success (emerald) for
-  // their done cells, leaving the legend out of sync with reality.
+  // Forward-fix-1 覆盖缺口闭合：legend swatch className 必须匹配为该状态 slice
+  // 渲染的真实热力图单元 className。legend 说 "done (active)" 标注 info-toned
+  // swatch；active-status slice 的 done 单元必须用同一 className。此前 legend
+  // 硬编码 cellToneClass.info，但 active-status 行的 done 单元落到
+  // neutral->success（emerald），使 legend 与现实脱节。
   it("HG-2 (legend ↔ cell parity): legend swatch className equals the actual cell className for each canonical SliceStatus", async () => {
     const rows = [
       makeRow("activeSlice", "active"),
@@ -262,8 +258,8 @@ describe("MissionProgressHeatmap (slice 13.5)", () => {
       <MissionProgressHeatmap rows={rows} detailsByName={detailsByName} />,
     );
 
-    // active -> legend-active swatch should carry the SAME color
-    // classes (bg + border) the actual active-row done cell renders.
+    // active -> legend-active swatch 应携带与真实 active-row done 单元
+    // 相同的颜色类（bg + border）。
     const activeCell = await findByTestId("mission-progress-heatmap-cell-activeSlice-0");
     const activeLegend = await findByTestId("mission-progress-heatmap-legend-active");
     expect(activeLegend.className).toMatch(/bg-sky-200/);
@@ -279,10 +275,9 @@ describe("MissionProgressHeatmap (slice 13.5)", () => {
     expect(blockedLegend.className).toMatch(/bg-rose-300/);
     expect(blockedCell.className).toMatch(/bg-rose-300/);
 
-    // warning tone has no canonical SliceStatus mapping but the legend
-    // still publishes the swatch shape. Asserting the legend swatch
-    // for warning gives operators a forward-compatible reference for
-    // any future status string that resolves to the warning tone.
+    // warning tone 无规范 SliceStatus 映射，但 legend 仍发布 swatch 形状。
+    // 为 warning 断言 legend swatch，为运维人员提供前向兼容参考，覆盖未来任何
+    // 解析到 warning tone 的 status 字符串。
     const warningLegend = await findByTestId("mission-progress-heatmap-legend-warning");
     expect(warningLegend.className).toMatch(/bg-amber-300/);
   });
@@ -318,7 +313,7 @@ describe("MissionProgressHeatmap (slice 13.5)", () => {
 describe("MissionScopePage Progress tab composes heat-map (slice 13.5)", () => {
   function installMissionFetchMock() {
     mockFetch.mockImplementation(async (url: string) => {
-      // MH-2: the selection-known files gate needs the hosts payload (local).
+      // MH-2：selection-known files gate 需要 hosts payload（local）。
       if (url.includes("/api/hosts")) {
         return new Response(JSON.stringify({ ownName: "localhost", selected: "local", hosts: [] }), { status: 200 });
       }
@@ -383,10 +378,10 @@ describe("MissionScopePage Progress tab composes heat-map (slice 13.5)", () => {
           status: 200,
         });
       }
-      // The mission Progress panel reads useScopeAudit (GET /api/scope/audit);
-      // mock the real ScopeAuditResponse shape so MissionScopePage does not crash
-      // on scopeAudit.data.mission (an unmocked [] fallback was the pre-existing
-      // cause of the HG-3 / HG-3-DOM ErrorBoundary failures).
+      // mission Progress 面板读 useScopeAudit（GET /api/scope/audit）；
+      // mock 真实 ScopeAuditResponse 形状，使 MissionScopePage 不在
+      // scopeAudit.data.mission 上崩溃（未 mock 的 [] fallback 是 HG-3 /
+      // HG-3-DOM ErrorBoundary 失败的既有原因）。
       if (url.includes("/api/scope/audit")) {
         return new Response(
           JSON.stringify({
@@ -434,23 +429,23 @@ describe("MissionScopePage Progress tab composes heat-map (slice 13.5)", () => {
 
   it("HG-3 (slice 22): Mission Progress tab renders the heat-map and CUTS the per-slice rollup cards", async () => {
     const { findByTestId, queryByTestId } = renderMissionScope();
-    // OPR.0.4.1.17: the mission now LANDS on the Steering tab (not Overview);
-    // assert the landing mounts, then navigate to the target tab below.
+    // OPR.0.4.1.17：mission 现在落在 Steering tab（非 Overview）；
+    // 断言 landing mount，然后导航到下方目标 tab。
     expect(await findByTestId("steering-tab")).toBeTruthy();
 
-    // Switch to Progress tab.
+    // 切到 Progress tab。
     fireEvent.click(await findByTestId("project-tab-progress"));
 
-    // Heat-map (+ legend) is kept.
+    // 热力图（+ legend）保留。
     expect(await findByTestId("mission-progress-heatmap")).toBeTruthy();
-    // OPR.0.4.1.22: the per-slice rollup CARDS are cut — the heat-map IS the
-    // per-slice acceptance view now (founder round-8: remove cards, keep heatmap).
+    // OPR.0.4.1.22：per-slice rollup CARD 被砍——热力图现在就是
+    // per-slice acceptance 视图（founder round-8：去 card，保留 heatmap）。
     expect(queryByTestId("scope-progress-rollup")).toBeNull();
   });
 
-  // Heat-map must render BEFORE the PROGRESS.md markdown section so the
-  // visual gestalt is the first thing on the Progress tab. Asserting DOM
-  // order via Node.compareDocumentPosition protects against silent reordering.
+  // 热力图必须在 PROGRESS.md markdown 段之前渲染，使视觉 gestalt 是
+  // Progress tab 上第一眼所见。经 Node.compareDocumentPosition 断言 DOM
+  // 顺序，防止静默重排。
   it("HG-3 (DOM order): heat-map renders BEFORE the PROGRESS.md markdown section", async () => {
     const { findByTestId, queryByTestId } = renderMissionScope();
     expect(await findByTestId("steering-tab")).toBeTruthy();
@@ -459,23 +454,22 @@ describe("MissionScopePage Progress tab composes heat-map (slice 13.5)", () => {
     const heatmap = await findByTestId("mission-progress-heatmap");
     const panel = await findByTestId("mission-progress-panel");
 
-    // The markdown section only renders when missionProgress.content
-    // is non-empty; the integration mock returns "# Mission progress
-    // goes here" so it should mount. If it doesn't, this assertion
-    // skips (no order to compare).
+    // markdown 段仅在 missionProgress.content 非空时渲染；integration mock
+    // 返回 "# Mission progress goes here"，故应 mount。若未 mount，本断言跳过
+    //（无顺序可比）。
     const readme = panel.querySelector(
       "[data-testid='mission-progress-readme']",
     );
     if (readme) {
-      // DOCUMENT_POSITION_FOLLOWING (4) means readme comes AFTER
-      // heatmap in DOM order — i.e., heatmap renders first.
+      // DOCUMENT_POSITION_FOLLOWING (4) 表示 readme 在 DOM 顺序上位于 heatmap
+      // 之后——即 heatmap 先渲染。
       expect(heatmap.compareDocumentPosition(readme)).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
       );
     }
 
-    // OPR.0.4.1.22: the per-slice rollup cards are cut — the heat-map is the
-    // per-slice gestalt and remains the first thing on the Progress tab.
+    // OPR.0.4.1.22：per-slice rollup card 被砍——热力图即 per-slice gestalt，
+    // 仍为 Progress tab 第一眼所见。
     expect(queryByTestId("scope-progress-rollup")).toBeNull();
   });
 

@@ -56,7 +56,7 @@ async function setup() {
   return { home, db, rig, rigs, queue, send, modes, service, app, put, write };
 }
 
-it("defaults a resolved new rig to human-led; explicit public transitions retain source and do not grant authority", async () => {
+it("已解析新工作组默认 human-led；显式公共迁移保留来源且不授予权限", async () => {
   const t = await setup();
   const initial = await (await t.app.request("/api/rig-mode/effective?rig=demo")).json();
   expect(initial.operatingPosture).toMatchObject({ posture: "human-led", source: "product-default", binding: null, grantsAuthority: false, context: { rigId: t.rig.id } });
@@ -68,7 +68,7 @@ it("defaults a resolved new rig to human-led; explicit public transitions retain
   expect(t.send).not.toHaveBeenCalled();
 });
 
-it("joins project, mission, authored workstream and qitem; the most specific explicit choice wins without leaking across projects", async () => {
+it("关联 project、mission、作者声明 workstream 与 qitem；最具体显式选择胜出且不跨项目泄漏", async () => {
   const t = await setup();
   for (const [scope, qualifier] of [["project", "alpha"], ["mission", "beta/release"]] as const) expect((await t.put("delegated", scope, qualifier)).status).toBe(200);
   expect(t.service.resolve({ qitemId: "alpha" })).toMatchObject({ posture: "delegated", binding: { id: "project:alpha" }, context: { projectId: "alpha", missionId: "release", workstreamId: "alpha/release/work-1", phase: { value: "planning" } } });
@@ -82,17 +82,17 @@ it("joins project, mission, authored workstream and qitem; the most specific exp
   t.service.resolve({ qitemId: "alpha" }); expect(readFileSync(manifest)).toEqual(before);
 });
 
-it("uses exact workflow packet phase and normalizes rig aliases; workflow existence does not delegate", async () => {
+it("使用精确 workflow packet phase 并归一化工作组别名；workflow 存在不等于委派", async () => {
   const t = await setup();
   t.db.prepare("INSERT INTO workflow_instances(instance_id,workflow_name,workflow_version,created_by_session,created_at,bound_rig,lifecycle_binding_json) VALUES('workflow','fixture','1','owner@demo','2026-09-09',?,?)")
     .run("demo", JSON.stringify({ identity: { project: "alpha", mission: "release" } }));
   t.db.prepare("INSERT INTO workflow_frontier_bindings(instance_id,packet_id,step_id,created_at) VALUES('workflow','alpha','interactive-plan','2026-09-09')").run();
   expect(t.service.resolve({ rigId: t.rig.id, qitemId: "alpha" })).toMatchObject({ posture: "human-led", source: "product-default", context: { phase: { value: "interactive-plan", source: "workflow:workflow/frontier/alpha" } } });
   t.db.prepare("UPDATE workflow_instances SET lifecycle_binding_json = ?").run(JSON.stringify({ identity: { project: "beta", mission: "release" } }));
-  expect(t.service.resolve({ qitemId: "alpha" })).toMatchObject({ posture: "unknown", source: "unknown", reason: expect.stringContaining("conflicting projectId") });
+  expect(t.service.resolve({ qitemId: "alpha" })).toMatchObject({ posture: "unknown", source: "unknown", reason: expect.stringContaining("projectId 存在冲突") });
 });
 
-it("refuses missing, conflicting, ambiguous, unreadable and corrupt sources instead of using the default", async () => {
+it("拒绝缺失、冲突、歧义、不可读和损坏来源，而不使用默认值", async () => {
   const t = await setup();
   for (const ctx of [{}, { rigId: "missing" }, { rigId: " " }, { missionId: "release" }, { projectId: "missing" }, { projectId: "alpha", missionId: "missing" }, { qitemId: "unlinked" }, { qitemId: "missing" }, { qitemId: "alpha", projectId: "beta" }]) {
     expect(t.service.resolve(ctx)).toMatchObject({ posture: "unknown", source: "unknown", binding: null });
@@ -108,7 +108,7 @@ it("refuses missing, conflicting, ambiguous, unreadable and corrupt sources inst
   expect(t.service.resolve({ rigId: "demo" })).toMatchObject({ posture: "unknown", source: "unknown" });
 });
 
-it("preserves legacy binding bytes through migration and never infers delegation from an ergonomic mode", async () => {
+it("迁移时保留旧版 binding 字节，且绝不从易用模式推断委派", async () => {
   const db = createDb(); cleanup.push(() => db.close()); migrate(db, ALL_MIGRATIONS.slice(0, -1));
   const store = new RigModeStore(db); store.setBinding("global_host", null, "focus", record("focus", "global_host"));
   const before = db.prepare("SELECT * FROM operator_context_mode_bindings").all();
@@ -118,7 +118,7 @@ it("preserves legacy binding bytes through migration and never infers delegation
   expect(result).toMatchObject({ posture: "human-led", source: "product-default" });
 });
 
-it("keeps legacy ergonomic bindings addressed by rig name readable alongside canonical posture", async () => {
+it("保持以工作组名称寻址的旧版易用 binding 可与规范姿态一同读取", async () => {
   const t = await setup(); t.modes.setBinding("rig", "demo", "focus", record("focus", "rig"));
   const result = await (await t.app.request("/api/rig-mode/effective?rig=demo")).json();
   expect(result.effective.binding.mode).toBe("focus");
@@ -145,17 +145,17 @@ async function diagnosisSetup() {
   return { ...t, observations, policy, projection, diagnosis, tick: () => { now = "2026-09-09T22:02:00Z"; } };
 }
 
-it("does not select one project's authority for a mixed finding even when both postures match", async () => {
+it("即使两种姿态相同，也不为混合 finding 选择某一个项目的权限", async () => {
   const t = await diagnosisSetup();
   const records = t.projection.records();
   const alpha = records.find(r => r.evidence.some(e => e.type === "queue-transition" && e.qitemId === "alpha"))!;
   const beta = records.find(r => r.evidence.some(e => e.type === "queue-transition" && e.qitemId === "beta"))!;
   const mixed = t.service.forHealth({ ...alpha, evidence: [...alpha.evidence, ...beta.evidence] });
-  expect(mixed).toMatchObject({ posture: "unknown", context: null, reason: expect.stringContaining("different work contexts") });
+  expect(mixed).toMatchObject({ posture: "unknown", context: null, reason: expect.stringContaining("不同工作上下文") });
   expect(mixed.members?.map(m => m.posture)).toEqual(["human-led", "human-led"]);
 });
 
-it("presents only unrelated delegated planning, keeps human-led and unknown findings inspectable, then quiets an existing occurrence without canceling it", async () => {
+it("只呈现无关的已委派规划，保持 human-led 与 unknown finding 可检查，再静默既有 occurrence 而不取消", async () => {
   const t = await diagnosisSetup();
   await t.put("delegated", "mission", "beta/release");
   const list = await (await t.app.request("/api/health")).json(); expect(list.records).toHaveLength(3);
@@ -177,14 +177,14 @@ it("presents only unrelated delegated planning, keeps human-led and unknown find
   expect(t.diagnosis.list()[0]!.finding.operatingPosture?.posture).toBe("unknown");
 });
 
-it("does not treat a finding spanning different postures as one delegated scope", async () => {
+it("不把跨不同姿态的 finding 视为一个已委派工作范围", async () => {
   const t = await diagnosisSetup(); await t.put("delegated", "project", "beta");
   const records = t.projection.records().filter(r => r.operatingPosture?.posture !== "unknown");
   const combined = { ...records[0]!, evidence: records.flatMap(r => r.evidence) };
   expect(t.service.forHealth(combined).posture).toBe("unknown");
 });
 
-it("discovers simultaneous catalog projects through the automatic source and supplies the selected authority", async () => {
+it("通过自动来源发现并发 catalog 项目，并提供所选权限", async () => {
   const t = await diagnosisSetup(), now = "2026-09-09T22:00:00.000Z";
   await t.put("delegated", "project", "beta");
   t.db.prepare("UPDATE queue_transitions SET ts = ?").run(now);
@@ -203,7 +203,7 @@ it("discovers simultaneous catalog projects through the automatic source and sup
   expect(occurrence.authority).toContainEqual(expect.objectContaining({ level: "mission", state: "available", path: realpathSync(join(t.home, "beta/missions/release/mission.yaml")) }));
 });
 
-it("keeps ordinary context/continuity health and queue reminders effective under human-led posture", async () => {
+it("在 human-led 姿态下保持普通 context/continuity 健康检查和队列提醒有效", async () => {
   const t = await diagnosisSetup(), now = "2026-09-09T22:00:00.000Z";
   const source = t.observations[0]!.source;
   t.observations.push({ kind: "context-pressure", scope: { type: "seat", rigId: t.rig.id, seatId: "seat" }, episodeStartedAt: now, lastObservedAt: now,
@@ -212,12 +212,12 @@ it("keeps ordinary context/continuity health and queue reminders effective under
   const operational = t.projection.records().find(r => r.category === "context")!;
   expect(operational).toMatchObject({ status: "active", severity: "critical", operatingPosture: { posture: "human-led" } });
   expect((await t.diagnosis.evaluate("system:health", true)).actions).toContainEqual(expect.objectContaining({ action: "create", findingId: operational.id }));
-  // Same queue delivery port used by workflow reminders remains independent of diagnosis eligibility.
+  // workflow 提醒使用的同一队列投递端口仍独立于诊断资格。
   await t.queue.maybeNudge("alpha", "owner@demo", true, "workflow");
   expect(t.send).toHaveBeenCalledTimes(2);
 });
 
-it("rechecks posture after notification readiness I/O and refuses an intervening human-led transition", async () => {
+it("通知就绪 I/O 后重新检查姿态，并拒绝期间发生的 human-led 迁移", async () => {
   const t = await diagnosisSetup(); await t.put("delegated", "project", "beta");
   const p = t.policy.read().policy;
   t.policy.apply({ ...p, human: { address: "operator@external", conditions: ["established pathology"] } }, "operator");

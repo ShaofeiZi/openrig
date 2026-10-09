@@ -1,21 +1,18 @@
 /**
- * Slice 51-02 (L2 test-system) — the scenario FORMAT + VALIDATOR.
+ * Slice 51-02（L2 测试系统）——场景格式与校验器。
  *
- * The verbatim-binding arch shape (ARCH-SHAPE-scenario-format-and-runner, sha256
- * fc30a736): a scenario is `{scenario, topology, env?, steps[]}`; each step is a
- * single-key object whose key is an action verb or the one assertion verb
- * `expect`. The validator is pure (operates on an already-parsed object) and
- * rejects LOUDLY with a DISTINCTLY NAMED error — never a silent no-op — so the
- * author sees exactly what is wrong.
+ * 逐字绑定的架构形状（ARCH-SHAPE-scenario-format-and-runner，sha256 fc30a736）：
+ * 场景为 `{scenario, topology, env?, steps[]}`；每个步骤都是单 key 对象，key 是动作动词
+ * 或唯一的断言动词 `expect`。校验器是纯函数（处理已解析对象），会用明确命名的错误
+ * 响亮拒绝，绝不静默空操作，使作者准确看到问题。
  *
- * The three proof-item-1 rejections: unknown expect surface, unknown emit
- * behavior, and emit `usage_limit` in a stub topology (a KNOWN real-runtime-only
- * behavior — a stub cannot honestly feed the provider-usage lane, so it FAILS
- * loud rather than pretending). Plus structural fidelity and the wall-clock guard
- * (`within` is a relative poll bound, never an assertion input).
+ * proof-item-1 的三种拒绝：未知 expect 表面、未知 emit 行为，以及在 stub 拓扑中 emit
+ * `usage_limit`（这是已知仅限真实 runtime 的行为；stub 无法如实向 provider-usage 通道供数，
+ * 因此应响亮失败而非假装成功）。此外还校验结构保真和墙上时钟守卫
+ *（`within` 是相对轮询边界，绝不是断言输入）。
  */
 
-/** Action verbs (arch shape). `daemon` is the A1 amendment; distinct from seat `restart`. */
+/** 动作动词（架构形状）。`daemon` 来自 A1 修订，与席位 `restart` 不同。 */
 export const ACTION_VERBS = [
   "up",
   "down",
@@ -29,7 +26,7 @@ export const ACTION_VERBS = [
   "daemon",
 ] as const;
 
-/** The shipped-observable surface set — the ONLY surfaces `expect` may name. */
+/** 已交付且可观察的表面集合——`expect` 只能指定这些表面。 */
 export const EXPECT_SURFACES = [
   "ps",
   "queue",
@@ -42,24 +39,23 @@ export const EXPECT_SURFACES = [
 ] as const;
 
 /**
- * RESERVED surfaces — named by the arch shape but NOT currently backed by a
- * shipped read verb, so the format must not promise what the product cannot
- * answer. `proof` moved here by PM lock amendment (ruling row
- * qitem-20260811092250-a80735bc): `rig proof` ships only `add`; the surface
- * re-enters EXPECT_SURFACES by un-reserving when a read verb ships.
+ * 保留表面——架构形状中已命名，但当前没有已交付的读取动词支撑，因此格式不能承诺产品
+ * 无法回答的内容。根据产品锁定修订（裁决记录 qitem-20260811092250-a80735bc），
+ * `proof` 移到这里：`zrig proof` 只交付了 `add`；读取动词交付后，解除保留即可重新加入
+ * EXPECT_SURFACES。
  */
 export const RESERVED_SURFACES = ["proof"] as const;
 
-/** The stub's locked four-behavior emit repertoire (shared vocab with 51-01). */
+/** stub 锁定的四种 emit 行为集合（与 51-01 共享词汇）。 */
 export const EMIT_BEHAVIORS = ["compaction", "slow_output", "mid_turn_death", "restore"] as const;
 
-/** Known-but-real-runtime-only emit behaviors: valid ONLY in a real topology. */
+/** 已知但仅限真实 runtime 的 emit 行为：只在真实拓扑中合法。 */
 export const REAL_RUNTIME_ONLY_EMIT_BEHAVIORS = ["usage_limit"] as const;
 
-/** The three `expect` match modes (exactly one per assertion). */
+/** 三种 `expect` 匹配模式（每条断言恰好一种）。 */
 export const EXPECT_MATCH_MODES = ["match", "contains", "equals"] as const;
 
-/** The daemon-lifecycle verb ops (A1). */
+/** 后台服务生命周期动词操作（A1）。 */
 export const DAEMON_OPS = ["sigterm", "restart"] as const;
 
 export type ActionVerb = (typeof ACTION_VERBS)[number];
@@ -98,7 +94,7 @@ export type ValidationErrorCode =
 export interface ValidationError {
   code: ValidationErrorCode;
   message: string;
-  /** JSON-ish path to the offending node, e.g. `steps[2].expect.surface`. */
+  /** 指向问题节点的类 JSON 路径，例如 `steps[2].expect.surface`。 */
   path: string;
 }
 
@@ -115,9 +111,8 @@ export type ValidationResult =
 
 export interface ValidateScenarioOptions {
   /**
-   * The topology's runtime kind. 51-02 v1 scenarios are stub topologies (the
-   * whole test system stands up runtime:stub seats), so this defaults to "stub".
-   * `usage_limit` emit is permitted ONLY when this is "real".
+   * 拓扑的 runtime 种类。51-02 v1 场景是 stub 拓扑（整个测试系统启动 runtime:stub 席位），
+   * 因此默认值为 "stub"。只有此值为 "real" 时才允许 emit `usage_limit`。
    */
   topologyKind?: "stub" | "real";
 }
@@ -126,12 +121,12 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-/** A relative poll duration: bare ms integer, or an integer with ms/s/m/h. */
+/** 相对轮询时长：裸毫秒整数，或带 ms/s/m/h 的整数。 */
 const DURATION_RE = /^\d+(ms|s|m|h)?$/;
 
 /**
- * Validate a parsed scenario object against the arch shape. Collects ALL errors
- * (loud, complete) rather than stopping at the first. Pure — no I/O.
+ * 按架构形状校验已解析的场景对象。收集全部错误（响亮且完整），而非遇到第一个就停止。
+ * 纯函数，不执行 I/O。
  */
 export function validateScenario(
   doc: unknown,
@@ -143,23 +138,23 @@ export function validateScenario(
     errors.push({ code, message, path });
 
   if (!isPlainObject(doc)) {
-    return { ok: false, errors: [{ code: "SCENARIO_NOT_OBJECT", message: "scenario must be a YAML mapping/object", path: "" }] };
+    return { ok: false, errors: [{ code: "SCENARIO_NOT_OBJECT", message: "scenario 必须是 YAML 映射或对象", path: "" }] };
   }
 
   if (typeof doc.scenario !== "string" || doc.scenario.length === 0) {
-    push("SCENARIO_NAME_MISSING", "scenario: a non-empty name is required (it names the defect class pinned)", "scenario");
+    push("SCENARIO_NAME_MISSING", "scenario：必须提供非空名称（它命名被固定的缺陷类别）", "scenario");
   }
   if (typeof doc.topology !== "string" || doc.topology.length === 0) {
-    push("TOPOLOGY_MISSING", "topology: a non-empty rig-spec path is required", "topology");
+    push("TOPOLOGY_MISSING", "topology：必须提供非空 rig-spec 路径", "topology");
   }
   if (doc.env !== undefined && !isPlainObject(doc.env)) {
-    push("ENV_NOT_OBJECT", "env: must be a mapping of preconditions when present", "env");
+    push("ENV_NOT_OBJECT", "env：存在时必须是前置条件映射", "env");
   }
 
   if (isPlainObject(doc.env)) validateEnvBlock(doc.env, push);
 
   if (!Array.isArray(doc.steps)) {
-    push("STEPS_MISSING", "steps: a non-empty ordered list of step objects is required", "steps");
+    push("STEPS_MISSING", "steps：必须是步骤对象组成的非空有序列表", "steps");
   } else {
     doc.steps.forEach((step, i) => validateStep(step, i, topologyKind, push));
     validateEnvStepCrossRequirements(
@@ -181,9 +176,9 @@ export function validateScenario(
   };
 }
 
-/** Shape-check the delta env fields (D1 stub_scripts, D7 tui). Pure shape only —
- *  the stub_scripts KEY CONTRACT (each key resolves to exactly one runtime:stub
- *  member) needs the parsed topology and is enforced at the pipeline boundary. */
+/** 检查增量 env 字段的形状（D1 stub_scripts、D7 tui）。此处只检查形状；
+ *  stub_scripts 的 key 契约（每个 key 恰好解析到一个 runtime:stub 成员）需要已解析拓扑，
+ *  因此在管线边界强制执行。 */
 function validateEnvBlock(
   env: Record<string, unknown>,
   push: (code: ValidationErrorCode, message: string, path: string) => void,
@@ -193,7 +188,7 @@ function validateEnvBlock(
     if (!isPlainObject(scripts)) {
       push(
         "STUB_SCRIPTS_NOT_A_MAP",
-        "env.stub_scripts: must be a mapping of <seat member> → <script path relative to the scenario file>",
+        "env.stub_scripts：必须是 <席位成员> → <相对于场景文件的脚本路径> 映射",
         "env.stub_scripts",
       );
     } else {
@@ -201,7 +196,7 @@ function validateEnvBlock(
         if (typeof p !== "string" || p.length === 0) {
           push(
             "STUB_SCRIPT_PATH_INVALID",
-            `env.stub_scripts.${seat}: a non-empty script path string is required`,
+            `env.stub_scripts.${seat}：必须提供非空脚本路径字符串`,
             `env.stub_scripts.${seat}`,
           );
         }
@@ -209,16 +204,14 @@ function validateEnvBlock(
     }
   }
   if (env.tui !== undefined && typeof env.tui !== "boolean") {
-    push("ENV_TUI_NOT_BOOLEAN", "env.tui: must be a boolean (true opts the scenario into TUI provisioning)", "env.tui");
+    push("ENV_TUI_NOT_BOOLEAN", "env.tui：必须是布尔值（true 表示场景选择启用 TUI 配置）", "env.tui");
   }
 }
 
-/** Teaching cross-requirements between declared env and the surfaces steps read:
- *  a scope expect needs env.scope_mission (the shipped `rig scope audit` read has
- *  --mission as a requiredOption); a tui_socket expect needs env.tui:true (the
- *  control socket exists only inside a provisioned TUI — without the opt-in the
- *  read would race a socket that never listens). Load-time teaching beats a
- *  runtime surprise. */
+/** 声明的 env 与步骤读取表面之间的教学性交叉要求：scope expect 需要
+ *  env.scope_mission（已交付的 `zrig scope audit` 读取将 --mission 设为必填选项）；
+ *  tui_socket expect 需要 env.tui:true（控制 socket 只存在于已配置的 TUI 中；未选择启用时，
+ *  读取会与一个永不监听的 socket 竞争）。加载时教学优于运行时惊讶。 */
 function validateEnvStepCrossRequirements(
   env: Record<string, unknown> | undefined,
   steps: unknown[],
@@ -236,7 +229,7 @@ function validateEnvStepCrossRequirements(
     if (typeof mission !== "string" || mission.length === 0) {
       push(
         "SCOPE_MISSION_MISSING",
-        "env.scope_mission: required (non-empty string) when any step expects the scope surface — the shipped read is `rig scope audit --mission <name> --json` and --mission is a requiredOption",
+        "任一步骤期望 scope 表面时，env.scope_mission 为必填非空字符串——已交付读取命令是 `zrig scope audit --mission <name> --json`，其中 --mission 为必填选项",
         "env.scope_mission",
       );
     }
@@ -244,7 +237,7 @@ function validateEnvStepCrossRequirements(
   if (surfacesRead.has("tui_socket") && env?.tui !== true) {
     push(
       "TUI_NOT_DECLARED",
-      "env.tui: true is required when any step expects the tui_socket surface — the control socket exists only inside the TUI the pipeline provisions on opt-in",
+      "任一步骤期望 tui_socket 表面时必须设置 env.tui: true——控制 socket 只存在于管线按选择启用而配置的 TUI 内",
       "env.tui",
     );
   }
@@ -258,14 +251,14 @@ function validateStep(
 ): void {
   const base = `steps[${i}]`;
   if (!isPlainObject(step)) {
-    push("STEP_NOT_OBJECT", `${base}: each step must be a single-key mapping`, base);
+    push("STEP_NOT_OBJECT", `${base}：每个步骤必须是单 key 映射`, base);
     return;
   }
   const keys = Object.keys(step);
   if (keys.length !== 1) {
     push(
       "STEP_NOT_SINGLE_KEY",
-      `${base}: a step must have exactly one verb key, found [${keys.join(", ")}]`,
+      `${base}：步骤必须恰好有一个动词 key，实际为 [${keys.join(", ")}]`,
       base,
     );
     return;
@@ -276,7 +269,7 @@ function validateStep(
   if (verb !== "expect" && !isAction) {
     push(
       "UNKNOWN_STEP_VERB",
-      `${base}: unknown step verb "${verb}" — allowed: ${[...ACTION_VERBS, "expect"].join(", ")}`,
+      `${base}：未知步骤动词 "${verb}"——允许：${[...ACTION_VERBS, "expect"].join(", ")}`,
       `${base}.${verb}`,
     );
     return;
@@ -285,8 +278,8 @@ function validateStep(
   if (verb === "expect") validateExpect(value, `${base}.expect`, push);
   else if (verb === "emit") validateEmit(value, `${base}.emit`, topologyKind, push);
   else if (verb === "daemon") validateDaemon(value, `${base}.daemon`, push);
-  // Other action verbs (up/down/send/restart/restore/mutate/policy/seed_regression)
-  // carry free-form payloads the runner interprets; no schema gate at v1.
+  // 其他动作动词（up/down/send/restart/restore/mutate/policy/seed_regression）携带由 runner
+  // 解释的自由形状 payload；v1 不设 schema 门。
 }
 
 function validateExpect(
@@ -295,58 +288,53 @@ function validateExpect(
   push: (code: ValidationErrorCode, message: string, p: string) => void,
 ): void {
   if (!isPlainObject(value)) {
-    push("EXPECT_NOT_OBJECT", `${path}: must be a mapping {surface, within?, seat?, match|contains|equals}`, path);
+    push("EXPECT_NOT_OBJECT", `${path}：必须是映射 {surface, within?, seat?, match|contains|equals}`, path);
     return;
   }
   const surface = value.surface;
   if (typeof surface === "string" && (RESERVED_SURFACES as readonly string[]).includes(surface)) {
     push(
       "RESERVED_EXPECT_SURFACE",
-      `${path}.surface: "${surface}" is reserved, not readable — no shipped read verb exists for it ` +
-        `(\`rig proof\` ships only \`add\`), so the format must not promise what the product cannot answer. ` +
-        `Reserved until a read verb ships (PM ruling qitem-20260811092250-a80735bc); it re-enters the ` +
-        `readable set by un-reserving then.`,
+      `${path}.surface："${surface}" 已保留且不可读——没有已交付的读取动词` +
+        `（\`zrig proof\` 只交付 \`add\`），因此格式不能承诺产品无法回答的内容。` +
+        `在读取动词交付前保持保留（产品裁决 qitem-20260811092250-a80735bc）；届时解除保留即可重新加入可读集合。`,
       `${path}.surface`,
     );
   } else if (typeof surface !== "string" || !(EXPECT_SURFACES as readonly string[]).includes(surface)) {
     push(
       "UNKNOWN_EXPECT_SURFACE",
-      `${path}.surface: unknown surface ${JSON.stringify(surface)} — the shipped-observable set is: ${EXPECT_SURFACES.join(", ")}`,
+      `${path}.surface：未知表面 ${JSON.stringify(surface)}——已交付可观察集合为：${EXPECT_SURFACES.join(", ")}`,
       `${path}.surface`,
     );
   }
   const modes = EXPECT_MATCH_MODES.filter((m) => value[m] !== undefined);
   if (modes.length === 0) {
-    push("EXPECT_MATCH_MODE_MISSING", `${path}: exactly one of match | contains | equals is required`, path);
+    push("EXPECT_MATCH_MODE_MISSING", `${path}：match | contains | equals 必须且只能提供一个`, path);
   } else if (modes.length > 1) {
-    push("EXPECT_MATCH_MODE_AMBIGUOUS", `${path}: only one of match | contains | equals is allowed, found [${modes.join(", ")}]`, path);
+    push("EXPECT_MATCH_MODE_AMBIGUOUS", `${path}：match | contains | equals 只允许一个，实际为 [${modes.join(", ")}]`, path);
   }
-  // 51-03: the declarative `equals` mapping (surface -> projection). Validated
-  // here so an authoring error is a load-time teaching failure, not a scenario
-  // that runs and compares nothing.
+  // 51-03：声明式 `equals` 映射（surface → projection）。在此校验，使编写错误成为加载时
+  // 的教学失败，而不是一个运行后什么也不比较的场景。
   if (value.equals !== undefined && !isPlainObject(value.equals)) {
-    // Guard finding: the legacy list form still parsed, so a scenario could name
-    // surfaces without declaring HOW they compare — which is what left the
-    // comparison to an injected placeholder. A-N1 makes the declarative mapping
-    // the only scenario-facing form; refuse anything else at load and teach it.
+    // 守卫发现：旧版列表形式仍能解析，因此场景可只命名表面，却不声明如何比较，
+    // 导致比较被交给注入的占位符。A-N1 将声明式映射设为唯一面向场景的形式；
+    // 其他形式均在加载时拒绝并给出教学信息。
     push(
       "EQUALS_NOT_DECLARATIVE",
-      `${path}.equals: must be the DECLARATIVE mapping of surface -> projection, e.g. ` +
-        `{ ps: { pluck: name }, queue: { pluck: destinationSession, rig: true } }. ` +
-        `A bare list of surfaces names what to compare without declaring HOW, so the comparison cannot be honest.`,
+      `${path}.equals：必须是 surface → projection 的声明式映射，例如 ` +
+        `{ ps: { pluck: name }, queue: { pluck: destinationSession, rig: true } }。` +
+        `裸表面列表只说明比较什么，却不声明如何比较，因此无法进行诚实比较。`,
       `${path}.equals`,
     );
   }
   if (isPlainObject(value.equals)) {
-    // A comparison needs at least TWO sides. One surface (or none) is vacuous by
-    // construction — it passes whatever the data is.
+    // 比较至少需要两侧。只有一个表面（或没有表面）在构造上为空真，无论数据如何都会通过。
     const declaredSurfaces = Object.keys(value.equals);
     if (declaredSurfaces.length < 2) {
       push(
         "EQUALS_TOO_FEW_SURFACES",
-        `${path}.equals: needs at least TWO surfaces to compare, found ${declaredSurfaces.length}` +
-          `${declaredSurfaces.length ? ` (${declaredSurfaces.join(", ")})` : ""} — a one-sided equality passes ` +
-          `regardless of the data and proves nothing.`,
+        `${path}.equals：至少需要两个表面进行比较，实际为 ${declaredSurfaces.length}` +
+          `${declaredSurfaces.length ? `（${declaredSurfaces.join(", ")}）` : ""}——单侧等式无论数据如何都会通过，无法证明任何内容。`,
         `${path}.equals`,
       );
     }
@@ -354,30 +342,29 @@ function validateExpect(
       if (!(EXPECT_SURFACES as readonly string[]).includes(surf)) {
         push(
           "EQUALS_SURFACE_UNKNOWN",
-          `${path}.equals.${surf}: not a readable surface — the shipped-observable set is: ${EXPECT_SURFACES.join(", ")}`,
+          `${path}.equals.${surf}：不是可读表面——已交付可观察集合为：${EXPECT_SURFACES.join(", ")}`,
           `${path}.equals.${surf}`,
         );
         continue;
       }
       if (!isPlainObject(spec)) {
-        push("EQUALS_PROJECTION_INVALID", `${path}.equals.${surf}: must be a projection mapping, e.g. { pluck: name }`, `${path}.equals.${surf}`);
+        push("EQUALS_PROJECTION_INVALID", `${path}.equals.${surf}：必须是 projection 映射，例如 { pluck: name }`, `${path}.equals.${surf}`);
         continue;
       }
       for (const key of Object.keys(spec)) {
         if (!["pluck", "rig", "path"].includes(key)) {
-          push("EQUALS_PROJECTION_INVALID", `${path}.equals.${surf}.${key}: unknown projection key — allowed: pluck, rig, path`, `${path}.equals.${surf}.${key}`);
+          push("EQUALS_PROJECTION_INVALID", `${path}.equals.${surf}.${key}：未知 projection key——允许：pluck、rig、path`, `${path}.equals.${surf}.${key}`);
         }
       }
       if (spec.pluck !== undefined && typeof spec.pluck !== "string") {
-        push("EQUALS_PROJECTION_INVALID", `${path}.equals.${surf}.pluck: must be a field name string`, `${path}.equals.${surf}.pluck`);
+        push("EQUALS_PROJECTION_INVALID", `${path}.equals.${surf}.pluck：必须是字段名字符串`, `${path}.equals.${surf}.pluck`);
       }
       if (spec.path !== undefined && typeof spec.path !== "string") {
-        // was accepted at load and then threw `path.split is not a function` at
-        // runtime — a TypeError must never be the first signal.
-        push("EQUALS_PROJECTION_INVALID", `${path}.equals.${surf}.path: must be a dot-path string`, `${path}.equals.${surf}.path`);
+        // 过去加载时会接受，运行时才抛出 `path.split is not a function`；TypeError 绝不能成为首个信号。
+        push("EQUALS_PROJECTION_INVALID", `${path}.equals.${surf}.path：必须是点分路径字符串`, `${path}.equals.${surf}.path`);
       }
       if (spec.rig !== undefined && typeof spec.rig !== "boolean") {
-        push("EQUALS_PROJECTION_INVALID", `${path}.equals.${surf}.rig: must be a boolean`, `${path}.equals.${surf}.rig`);
+        push("EQUALS_PROJECTION_INVALID", `${path}.equals.${surf}.rig：必须是布尔值`, `${path}.equals.${surf}.rig`);
       }
     }
   }
@@ -386,7 +373,7 @@ function validateExpect(
     if (typeof value.within !== "string" || !DURATION_RE.test(value.within)) {
       push(
         "WITHIN_NOT_A_DURATION",
-        `${path}.within: must be a relative poll duration (e.g. "5s", "500ms") — a wall-clock/absolute value is never an assertion input`,
+        `${path}.within：必须是相对轮询时长（如 "5s"、"500ms"）——墙上时钟或绝对值绝不是断言输入`,
         `${path}.within`,
       );
     }
@@ -400,7 +387,7 @@ function validateEmit(
   push: (code: ValidationErrorCode, message: string, p: string) => void,
 ): void {
   if (!isPlainObject(value)) {
-    push("EMIT_NOT_OBJECT", `${path}: must be a mapping {seat, behavior, ...}`, path);
+    push("EMIT_NOT_OBJECT", `${path}：必须是映射 {seat, behavior, ...}`, path);
     return;
   }
   const behavior = value.behavior;
@@ -412,15 +399,15 @@ function validateEmit(
     if (topologyKind === "stub") {
       push(
         "USAGE_LIMIT_IN_STUB_TOPOLOGY",
-        `${path}.behavior: "${behavior}" is real-runtime-only (the provider-usage lane is provider-identity-gated; a stub cannot honestly feed it) — it FAILS in a stub topology, never a silent no-op`,
+        `${path}.behavior："${behavior}" 仅限真实 runtime（provider-usage 通道受 provider 身份门控，stub 无法如实供数）——它在 stub 拓扑中会失败，绝不静默空操作`,
         `${path}.behavior`,
       );
     }
-    return; // permitted in a real topology
+    return; // 真实拓扑中允许。
   }
   push(
     "UNKNOWN_EMIT_BEHAVIOR",
-    `${path}.behavior: unknown behavior ${JSON.stringify(behavior)} — the stub repertoire is: ${EMIT_BEHAVIORS.join(", ")}`,
+    `${path}.behavior：未知行为 ${JSON.stringify(behavior)}——stub 行为集合为：${EMIT_BEHAVIORS.join(", ")}`,
     `${path}.behavior`,
   );
 }
@@ -434,7 +421,7 @@ function validateDaemon(
   if (typeof op !== "string" || !(DAEMON_OPS as readonly string[]).includes(op)) {
     push(
       "UNKNOWN_DAEMON_OP",
-      `${path}.op: unknown daemon op ${JSON.stringify(op)} — allowed: ${DAEMON_OPS.join(", ")} (the scenario-local daemon's lifecycle; distinct from the seat-level restart verb)`,
+      `${path}.op：未知后台服务操作 ${JSON.stringify(op)}——允许：${DAEMON_OPS.join(", ")}（场景局部后台服务的生命周期，与席位级 restart 动词不同）`,
       `${path}.op`,
     );
   }

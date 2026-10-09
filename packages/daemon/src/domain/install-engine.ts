@@ -56,10 +56,10 @@ export class InstallEngine {
 
     try {
       for (const entry of policyResult.approved) {
-        // Ensure target directory
+        // 确保 target 目录存在。
         this.fs.mkdirp(path.dirname(entry.targetPath));
 
-        // Backup existing file if it exists
+        // 若现有文件存在则备份。
         let backupPath: string | undefined;
         let beforeHash: string | undefined;
         if (this.fs.exists(entry.targetPath)) {
@@ -70,11 +70,11 @@ export class InstallEngine {
           beforeHash = hashContent(this.fs.readFile(entry.targetPath));
         }
 
-        // Apply — guidance always uses managed-block merge (even for new files)
+        // 应用——guidance 始终使用 managed-block merge（新文件也如此）。
         if (entry.exportType === "guidance") {
           this.applyGuidanceMerge(entry, plan.packageName);
         } else if (entry.sourcePath) {
-          // Copy source to target (skills, agents)
+          // 将 source 复制到 target（skills、agents）。
           this.fs.copyFile(entry.sourcePath, entry.targetPath);
         }
 
@@ -96,21 +96,21 @@ export class InstallEngine {
           });
           applied.push(journal);
         } catch (journalErr) {
-          // Undo this entry's file mutation since it won't be in the rollback list
+          // 撤销此 entry 的文件变更，因为它不会进入 rollback 列表。
           try {
             if (backupPath && this.fs.exists(backupPath)) {
               this.fs.copyFile(backupPath, entry.targetPath);
             } else if (this.fs.exists(entry.targetPath)) {
               this.fs.deleteFile(entry.targetPath);
             }
-          } catch { /* best-effort undo */ }
+          } catch { /* best-effort 撤销。 */ }
           throw journalErr;
         }
       }
 
       this.installRepo.updateInstallStatus(install.id, "applied");
     } catch (err) {
-      // Compensating rollback on failure
+      // 失败时执行补偿性 rollback。
       this.rollbackEntries(install.id, applied);
       this.installRepo.updateInstallStatus(install.id, "failed");
       throw err;
@@ -139,21 +139,21 @@ export class InstallEngine {
     const restored: string[] = [];
     const deleted: string[] = [];
 
-    // Reverse order for rollback
+    // 按相反顺序 rollback。
     for (const entry of [...entries].reverse()) {
       try {
         if (entry.backupPath && this.fs.exists(entry.backupPath)) {
-          // Restore from backup
+          // 从备份恢复。
           this.fs.mkdirp(path.dirname(entry.targetPath));
           this.fs.copyFile(entry.backupPath, entry.targetPath);
           restored.push(entry.targetPath);
         } else if (this.fs.exists(entry.targetPath)) {
-          // No backup = new file, delete it
+          // 无备份 = 新文件，删除它。
           this.fs.deleteFile(entry.targetPath);
           deleted.push(entry.targetPath);
         }
 
-        // Journal the rollback action
+        // 记录 rollback action。
         this.installRepo.createJournalEntry({
           installId,
           action: "rollback",
@@ -163,7 +163,7 @@ export class InstallEngine {
           status: "rolled_back",
         });
       } catch {
-        // Best-effort rollback — continue with remaining entries
+        // Best-effort rollback——继续处理剩余 entry。
       }
     }
 
@@ -182,10 +182,8 @@ export class InstallEngine {
       const endMarker = BLOCK_END(packageName);
       const legacyStart = `<!-- BEGIN RIGGED MANAGED BLOCK: ${packageName} -->`;
       const legacyEnd = `<!-- END RIGGED MANAGED BLOCK: ${packageName} -->`;
-      // Prefer the OpenRig form; fall back to legacy markers from
-      // prior installs so re-applying a guidance package over a
-      // pre-rename file replaces the old block instead of appending a
-      // duplicate.
+      // 优先使用 OpenRig 形式；回退识别此前安装留下的旧 marker，使 guidance package 重新应用到
+      // 重命名前的文件时替换旧 block，而不是追加重复项。
       let startIdx = existing.indexOf(startMarker);
       let endIdx = existing.indexOf(endMarker);
       let matchedEndLength = endMarker.length;
@@ -200,15 +198,15 @@ export class InstallEngine {
       }
 
       if (startIdx !== -1 && endIdx !== -1) {
-        // Update existing block (rewrites legacy markers to OpenRig form).
+        // 更新现有 block（将旧 marker 重写为 OpenRig 形式）。
         const updated = existing.slice(0, startIdx) + block + existing.slice(endIdx + matchedEndLength);
         this.fs.writeFile(entry.targetPath, updated);
       } else {
-        // Insert new block at end
+        // 在末尾插入新 block。
         this.fs.writeFile(entry.targetPath, existing + "\n\n" + block + "\n");
       }
     } else {
-      // New file
+      // 新文件。
       this.fs.writeFile(entry.targetPath, block + "\n");
     }
   }

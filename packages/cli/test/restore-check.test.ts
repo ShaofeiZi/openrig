@@ -146,13 +146,13 @@ describe("rig restore-check", () => {
     await cmd.parseAsync(["node", "rig", "--full"]);
 
     const output = logs.join("\n");
-    expect(output).toContain("RESTORE CHECK");
+    expect(output).toContain("恢复检查 —");
     expect(output).toContain("RESTORABLE WITH CAVEATS");
-    expect(output).toContain("READINESS:");
-    expect(output).toContain("Per-rig summary");
+    expect(output).toContain("就绪度：");
+    expect(output).toContain("逐工作组摘要：");
     expect(output).toContain("test-rig");
-    expect(output).toContain("Host bootstrap/autostart");
-    expect(output).toContain("RECOVERY:");
+    expect(output).toContain("主机引导/自启动");
+    expect(output).toContain("恢复：");
     expect(output).toContain("daemon.reachable");
   });
 
@@ -191,7 +191,7 @@ describe("rig restore-check", () => {
     await cmd.parseAsync(["node", "rig"]);
 
     const output = logs.join("\n");
-    expect(output).toContain("RECOVERY: ACTIONABLE");
+    expect(output).toContain("恢复：ACTIONABLE");
     expect(output).toContain("rig up --existing test-rig");
     expect(output).toContain("1 rig can be recovered");
   });
@@ -216,8 +216,8 @@ describe("rig restore-check", () => {
     await cmd.parseAsync(["node", "rig", "--full"]);
 
     const output = logs.join("\n");
-    expect(output).toContain("READINESS: ready (all_observable_checks_green_host_infra_declared_not_verified)");
-    expect(output).toContain("Host bootstrap/autostart: declared");
+    expect(output).toContain("就绪度：ready（all_observable_checks_green_host_infra_declared_not_verified）");
+    expect(output).toContain("主机引导/自启动：declared");
     expect(output).toContain("declared, not verified");
     expect(output).toContain("mechanism=launchd");
   });
@@ -275,9 +275,9 @@ describe("rig restore-check", () => {
     const output = logs.join("\n");
     expect(output).toContain("RESTORABLE WITH CAVEATS");
     expect(output).toContain(missingPath);
-    expect(output).toContain("Repair steps: 1");
-    expect(output).toContain("0 blocking");
-    expect(output).toContain("1 caveats");
+    expect(output).toContain("修复步骤：1");
+    expect(output).toContain("0 阻断");
+    expect(output).toContain("1 注意事项");
   });
 
   it("exit 0 for restorable verdict", async () => {
@@ -332,9 +332,9 @@ describe("rig restore-check", () => {
     await cmd.parseAsync(["node", "rig", "--full"]);
 
     const output = logs.join("\n");
-    expect(output).toContain("Repair steps: 2");
-    expect(output).toContain("1 blocking");
-    expect(output).toContain("1 caveats");
+    expect(output).toContain("修复步骤：2");
+    expect(output).toContain("1 阻断");
+    expect(output).toContain("1 注意事项");
   });
 
   it("--rig passes through to daemon route query", async () => {
@@ -383,16 +383,16 @@ describe("rig restore-check", () => {
       blocked: [
         expect.objectContaining({
           scope: "host",
-          reason: expect.stringContaining("Daemon is not running"),
+          reason: expect.stringContaining("后台服务未运行"),
         }),
       ],
     }));
-    // Daemon-down local result includes repairPacket with blocking step
+    // daemon 宕机时本地结果含带阻塞步骤的 repairPacket
     expect(json.repairPacket).not.toBeNull();
     expect(json.repairPacket[0].blocking).toBe(true);
     expect(json.repairPacket[0].command).toContain("rig daemon start");
     expect(process.exitCode).toBe(1);
-    // Should NOT have called the daemon
+    // 不应已调用 daemon
     expect(requestedPaths).toHaveLength(0);
   });
 
@@ -426,7 +426,7 @@ describe("rig restore-check", () => {
     }));
   });
 
-  // --- H62 absence proofs ---
+  // --- H62 缺席证明 ---
 
   it("JSON output has no fullyBack or assertion fields", async () => {
     const { deps } = makeDeps({});
@@ -447,8 +447,8 @@ describe("rig restore-check", () => {
 
     const output = logs.join("\n");
     expect(output).not.toContain("FULLY BACK");
-    expect(output).toContain("READINESS:");
-    expect(output).toContain("CONTINUITY:");
+    expect(output).toContain("就绪度：");
+    expect(output).toContain("连续性：");
   });
 
   it("daemon-down CLI fallback emits readiness + continuity with no legacy fields", async () => {
@@ -512,7 +512,7 @@ describe("OPR.0.4.0.29 — --ready is compact + ready detail (not a no-op, not t
 describe("OPR.0.4.3.12 — fixture-home isolation guard", () => {
   let logs: string[];
   let fixtureHome: string;
-  // Snapshot of the OpenRig target env vars the ambient session may set.
+  // 环境 session 可能设置的 OpenRig 目标 env vars 的快照。
   const ENV_KEYS = ["OPENRIG_HOME", "OPENRIG_PORT", "OPENRIG_URL", "OPENRIG_HOST", "OPENRIG_DB", "RIGGED_PORT", "RIGGED_URL"];
   const saved: Record<string, string | undefined> = {};
 
@@ -522,7 +522,7 @@ describe("OPR.0.4.3.12 — fixture-home isolation guard", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     process.exitCode = undefined;
     // Isolate the target env: clear ambient OPENRIG_PORT/URL/etc so the
-    // fixture's config.json is the resolved daemon target, then point HOME
+    // fixture 的 config.json 是已解析的 daemon 目标，再指向 HOME
     // at a fresh fixture dir.
     for (const k of ENV_KEYS) {
       saved[k] = process.env[k];
@@ -617,7 +617,7 @@ describe("OPR.0.4.0.29 FR-8 — class breakdown render", () => {
     const { deps } = makeDeps({ result: { classCounts: { ready: 3, ready_with_caveats: 1, not_ready: 2, attention_required: 0, unknown: 0 } } });
     await restoreCheckCommand(deps).parseAsync(["node", "rig"]);
     const output = logs.join("\n");
-    expect(output).toContain("CLASSES:");
+    expect(output).toContain("类别：");
     expect(output).toContain("3 ready");
     expect(output).toContain("2 not_ready");
   });

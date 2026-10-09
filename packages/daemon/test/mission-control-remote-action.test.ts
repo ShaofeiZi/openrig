@@ -1,11 +1,9 @@
-// OPR.0.4.4.15 FR-4 — remote action forwarding on POST /api/mission-control/action.
+// OPR.0.4.4.15 FR-4——POST /api/mission-control/action 上的远端 action 转发。
 //
-// The load-bearing pins: hostId absent/local = the existing path
-// byte-for-byte (write contract invoked); remote = server-side forward with
-// the origin's structured response passed through VERBATIM (success AND
-// failure — the fake-success negative); NOTHING written to the local write
-// contract on the forwarded path (arch ruling 4 addition riding R15-3:
-// origin's audit row is THE record); only the one verb allowlist gates.
+// 关键固定点：hostId 缺失/local 时逐字节走现有路径并调用 write contract；remote 时由服务端
+// 转发，逐字传递 origin 的结构化响应，包括成功与失败，防止 fake-success；转发路径绝不写本地
+// write contract（架构裁定 4，随 R15-3 增补：origin audit row 是唯一记录）；只由单一 verb
+// allowlist gate。
 
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
@@ -43,9 +41,9 @@ function makeApp(opts: { fetchImpl?: typeof fetch } = {}) {
 const BASE_BODY = { verb: "resolve", qitemId: "qitem-1", actorSession: "human@host" };
 
 function post(app: Hono, body: Record<string, unknown>) {
-  // P21: the caller's transport identity is the X-OpenRig-Session header (stamped by DaemonClient from
-  // the seat env). Mirror it from the body's actorSession so these fixtures present a legit caller
-  // (header == claim ⇒ tolerated); the forward then RE-STAMPS it and drops the body claim.
+  // P21：调用方 transport identity 是 X-OpenRig-Session header，由 DaemonClient 从席位 env
+  // 盖章。这里从 body.actorSession 镜像，使 fixture 呈现合法调用方（header == claim，可接受）；
+  // 转发随后重新盖章并丢弃 body claim。
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (typeof body.actorSession === "string") headers["X-OpenRig-Session"] = body.actorSession;
   return app.request("/api/mission-control/action", {
@@ -55,11 +53,11 @@ function post(app: Hono, body: Record<string, unknown>) {
   });
 }
 
-// Bearer env for the forward legs.
+// 转发分支使用的 Bearer env。
 process.env["B"] = "remote-token";
 
-describe("POST /action — FR-4 remote forwarding", () => {
-  it("hostId ABSENT: the existing local write path runs byte-for-byte", async () => {
+describe("POST /action——FR-4 远端转发", () => {
+  it("hostId 缺失：逐字节运行现有本地写路径", async () => {
     const { app, localActs } = makeApp();
     const res = await post(app, BASE_BODY);
     expect(res.status).toBe(200);
@@ -67,14 +65,14 @@ describe("POST /action — FR-4 remote forwarding", () => {
     expect(localActs).toHaveLength(1);
   });
 
-  it("hostId 'local': same local path (the contract's literal is not a remote)", async () => {
+  it("hostId 为 'local'：使用同一本地路径，该契约 literal 不表示远端", async () => {
     const { app, localActs } = makeApp();
     const res = await post(app, { ...BASE_BODY, hostId: "local" });
     expect(res.status).toBe(200);
     expect(localActs).toHaveLength(1);
   });
 
-  it("remote hostId: forwards the SAME body (minus hostId) with the bearer; origin's SUCCESS response passes through verbatim; LOCAL write contract untouched", async () => {
+  it("远端 hostId：携带 bearer 转发除 hostId 外完全相同的 body；逐字传递 origin 成功响应，不触碰本地 write contract", async () => {
     const capture: { url?: string; init?: RequestInit } = {};
     const { app, localActs } = makeApp({
       fetchImpl: (async (url: string | URL | Request, init?: RequestInit) => {
@@ -92,12 +90,12 @@ describe("POST /action — FR-4 remote forwarding", () => {
     expect(capture.url).toBe("http://vps-b:7433/api/mission-control/action");
     const fwdHeaders = capture.init?.headers as Record<string, string>;
     expect(fwdHeaders["Authorization"]).toBe("Bearer remote-token");
-    // P21 I2 cross-host RE-STAMP: the forward carries THIS daemon's derived actor + a relay marker,
-    // and DROPS the inbound body actorSession claim — the origin derives the re-stamped actor.
+    // P21 I2 跨主机重新盖章：转发携带本后台服务派生的 actor + relay marker，并丢弃 inbound
+    // body actorSession claim；origin 从重新盖章内容派生 actor。
     expect(fwdHeaders["X-OpenRig-Session"]).toBe("human@host"); // re-stamped from the derived actor
     expect(fwdHeaders["X-OpenRig-Relay"]).toBeTruthy(); // relay provenance marked
-    // P21 review-actions deferral: the forward CARRIES the resolved provenance so the origin never
-    // launders it. A CLI-derived (header-present) actor is carried as transport:v1 (origin ⇒ relay:v1).
+    // P21 review-actions 延后：转发携带已解析 provenance，使 origin 无法洗白。CLI 派生、存在
+    // header 的 actor 以 transport:v1 传递，origin 再转为 relay:v1。
     expect(fwdHeaders["X-OpenRig-Provenance"]).toBe("transport:v1");
     const forwarded = JSON.parse(String(capture.init?.body)) as Record<string, unknown>;
     expect(forwarded).toEqual({ verb: "resolve", qitemId: "qitem-1", annotation: "from the merged feed" }); // hostId AND actorSession stripped
@@ -105,7 +103,7 @@ describe("POST /action — FR-4 remote forwarding", () => {
     expect(localActs).toEqual([]); // arch pin: local mission_control_actions CLEAN after forward
   });
 
-  it("P21 forward PRESERVES claimed-era: a HEADERLESS (browser UI) action forwarded carries the claimed actor + X-OpenRig-Provenance=claimed:v1 — never upgraded to transport:v1", async () => {
+  it("P21 转发保留 claimed-era：转发无 header 的浏览器 UI action 时携带 claimed actor + X-OpenRig-Provenance=claimed:v1，绝不升级为 transport:v1", async () => {
     const capture: { init?: RequestInit } = {};
     const { app, localActs } = makeApp({
       fetchImpl: (async (_url: string | URL | Request, init?: RequestInit) => {
@@ -115,7 +113,7 @@ describe("POST /action — FR-4 remote forwarding", () => {
         });
       }) as typeof fetch,
     });
-    // Browser UI: NO X-OpenRig-Session header (bearer only), a body actorSession, targeting a REMOTE item.
+    // 浏览器 UI：没有 X-OpenRig-Session header，只有 bearer；body 带 actorSession，目标为远端 item。
     const res = await app.request("/api/mission-control/action", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -129,7 +127,7 @@ describe("POST /action — FR-4 remote forwarding", () => {
     expect(localActs).toEqual([]);
   });
 
-  it("origin REFUSAL passes through as structured failure — no fake success, local contract untouched", async () => {
+  it("origin REFUSAL 作为结构化失败透传，不伪造成功，也不触碰本地 contract", async () => {
     const { app, localActs } = makeApp({
       fetchImpl: (async () =>
         new Response(JSON.stringify({ error: "qitem qitem-1 not found on this host" }), { status: 404, headers: { "Content-Type": "application/json" } })) as typeof fetch,
@@ -142,7 +140,7 @@ describe("POST /action — FR-4 remote forwarding", () => {
     expect(localActs).toEqual([]);
   });
 
-  it("origin unreachable at action time: structured per-host error (never optimistic), never hangs (deadline through body)", async () => {
+  it("action 时 origin 不可达：返回结构化逐主机错误，绝不乐观，也不会因 body deadline 卡住", async () => {
     const { app, localActs } = makeApp({
       fetchImpl: (async () => {
         throw new Error("ECONNREFUSED");
@@ -154,7 +152,7 @@ describe("POST /action — FR-4 remote forwarding", () => {
     expect(localActs).toEqual([]);
   });
 
-  it("SSH-declared and unknown hosts fail structurally BEFORE any wire attempt", async () => {
+  it("SSH 声明和未知主机在任何 wire 尝试前结构化失败", async () => {
     let wireTouched = false;
     const { app } = makeApp({
       fetchImpl: (async () => {
@@ -170,7 +168,7 @@ describe("POST /action — FR-4 remote forwarding", () => {
     expect(wireTouched).toBe(false);
   });
 
-  it("the verb allowlist gates BEFORE any forward (one allowlist, no duplicated validation)", async () => {
+  it("verb allowlist 在任何转发前 gate，只使用一份 allowlist，不重复校验", async () => {
     let wireTouched = false;
     const { app } = makeApp({
       fetchImpl: (async () => {

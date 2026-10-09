@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch29",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/cli/test/tui-command.test.ts",
+      "before_sha256_16": "92540cf80d0df537",
+      "after_sha256_16": "9c1bb096546c89c3",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/workflow-render.test.ts",
+      "before_sha256_16": "b8989e07ad5c145c",
+      "after_sha256_16": "1a510998a7a2e0fc",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/bundle-routes.test.ts",
+      "before_sha256_16": "cb6a44099bbcf84a",
+      "after_sha256_16": "112abbe4f68a13f8",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/plugins-routes.test.ts",
+      "before_sha256_16": "f1a28072d2d80936",
+      "after_sha256_16": "e1483c07a8dc8321",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/queue-blocker-refusal-shape.test.ts",
+      "before_sha256_16": "f1528c6b006793cd",
+      "after_sha256_16": "f2aebab295e750c5",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

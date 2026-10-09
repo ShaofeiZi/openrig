@@ -1,7 +1,7 @@
-// OPR.0.4.4.11 — R11-2 CLI leg: `rig up --host <id> <topology>` is rejected
-// pre-dispatch; per-entry `host:` is the ONLY topology placement mechanism.
-// (The daemon route carries the same rejection on its public write path —
-// the double-sided ruling; that leg is pinned in the daemon's route tests.)
+// OPR.0.4.4.11——R11-2 CLI 腿：`rig up --host <id> <topology>` 在
+// pre-dispatch 被拒；逐 entry `host:` 是唯一拓扑放置机制。
+//（daemon 路由在其公共 write 路径携带同一拒绝——
+// 双侧裁定；该腿 pin 于 daemon 路由测试。）
 
 import { describe, it, expect } from "vitest";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
@@ -34,7 +34,7 @@ describe("sourceLooksLikeTopology (the R11-2 pre-dispatch detector)", () => {
   });
 
   it("the rejection message names per-entry host: as the only placement mechanism", () => {
-    expect(HOST_TOPOLOGY_REJECTION).toContain("per-entry 'host:'");
-    expect(HOST_TOPOLOGY_REJECTION).toContain("ONLY placement mechanism");
+    expect(HOST_TOPOLOGY_REJECTION).toContain("按条目写 'host:'");
+    expect(HOST_TOPOLOGY_REJECTION).toContain('唯一');
   });
 });

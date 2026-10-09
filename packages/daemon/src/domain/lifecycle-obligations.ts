@@ -15,8 +15,8 @@ export function requiredLifecycleSteps(binding: Record<string, unknown> | null):
     ? graph.requiredSteps.filter((id): id is string => typeof id === "string") : [];
 }
 
-/** One projection for workflow show and the execution view. Queue terminal state
- * never stands in for an agent's successful workflow closure and receipt. */
+/** 为 workflow show 和执行视图提供统一投影。队列终态绝不能代替智能体成功关闭
+ * 工作流并生成回执的事实。 */
 export function lifecycleObligations(
   db: Database.Database, instanceId: string, binding: Record<string, unknown> | null,
   steps: Pick<WorkflowStepSpec, "id">[], frontier: string[],
@@ -35,7 +35,7 @@ export function lifecycleObligations(
   return [...new Set([...steps.map((step) => step.id), ...required])].map((stepId) => {
     const trail = trails.filter((item) => item.step_id === stepId).at(-1);
     let evidenceRef: unknown;
-    try { evidenceRef = JSON.parse(trail?.closure_evidence_json ?? "{}")?.evidence_ref; } catch { /* missing, never accepted */ }
+    try { evidenceRef = JSON.parse(trail?.closure_evidence_json ?? "{}")?.evidence_ref; } catch { /* 缺失时绝不视为已接受。 */ }
     const closed = trail?.closure_reason === "done" || trail?.closure_reason === "handoff";
     const receipt = closed && typeof evidenceRef === "string" && evidenceRef.trim()
       ? { evidenceRef, actorSession: trail.actor_session, closedAt: trail.closed_at } : null;

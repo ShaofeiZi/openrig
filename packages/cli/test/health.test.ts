@@ -183,7 +183,7 @@ describe("rig health — daemon-backed read-only projection", () => {
     expect(output).toContain(RECORD.id);
     expect(output).toContain("critical");
     expect(output).toContain("indeterminate");
-    expect(output).toContain("high confidence");
+    expect(output).toContain("high 置信度");
     expect(output).toContain("seat:node-a");
     expect(output).toContain("stale");
     expect(output).toContain("source_stale");
@@ -195,8 +195,8 @@ describe("rig health — daemon-backed read-only projection", () => {
     empty = false;
     const output = logs.join("\n");
     expect(exitCode).toBeUndefined();
-    expect(output).toContain("No health findings match this bounded query");
-    expect(output).toContain("not a healthy assertion");
+    expect(output).toContain("没有健康发现匹配这个有界查询");
+    expect(output).toContain("这不等于健康断言");
     expect(output).toContain("rig health --instance");
   });
 
@@ -236,7 +236,7 @@ describe("rig health — daemon-backed read-only projection", () => {
     expect(JSON.parse(ambiguous.logs.join("\n"))).toMatchObject({
       schema: "openrig.health-error/v0alpha1",
       error: "health_identity_ambiguous",
-      nextInspection: "rig ps --nodes -A",
+      nextInspection: "zrig ps --nodes -A",
     });
   });
 

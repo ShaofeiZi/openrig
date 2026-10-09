@@ -1,0 +1,1740 @@
+{
+  "batch": "review-2026-10-08-batch2",
+  "sampled_at": "2026-10-08T21:32",
+  "constraints": "nice -n10; isolated HOME/OPENRIG_HOME; --maxWorkers=1 --minWorkers=1 --no-file-parallelism; serial; no daemon/paid seats",
+  "denominator": {
+    "daemon": 734,
+    "cli": 195,
+    "ui": 198,
+    "tui": 86,
+    "scripts": 29,
+    "total": 1242
+  },
+  "history_final_verification_distinct_files": 21,
+  "new_distinct_files_covered": 945,
+  "progress": "本轮新增（日志去重口径）待重算；在途失败 1（restore-packet schema drift）",
+  "batches": [
+    {
+      "id": "b2-01",
+      "scope": "scripts 守卫",
+      "files": 11,
+      "pass": 92,
+      "fail": 0,
+      "log": "verification-logs/b2-01-scripts-guards.log"
+    },
+    {
+      "id": "b2-02",
+      "scope": "cli 入口/JSON 边界",
+      "files": 13,
+      "pass": 199,
+      "fail": 0,
+      "log": "verification-logs/b2-02-cli-boundary.log"
+    },
+    {
+      "id": "b2-03",
+      "scope": "daemon schema/spec/scope",
+      "files": 33,
+      "pass": 334,
+      "fail": 0,
+      "log": "verification-logs/b2-03-daemon-schema-spec-scope.log"
+    },
+    {
+      "id": "b2-04",
+      "scope": "daemon crash/mission/restore",
+      "files": 31,
+      "pass": 535,
+      "fail": 2,
+      "log": "verification-logs/b2-04-daemon-crash-mission-restore.log"
+    },
+    {
+      "id": "b2-05/09/13",
+      "scope": "tui text-width（修复后终验 11 全过）+ render-regressions(13)",
+      "files": 2,
+      "pass": 24,
+      "fail": 0,
+      "log": "verification-logs/b2-13-tui-textwidth-fixed.log"
+    },
+    {
+      "id": "b2-06",
+      "scope": "daemon activity/bundle",
+      "files": 30,
+      "pass": 366,
+      "fail": 0,
+      "log": "verification-logs/b2-06-daemon-activity-bundle.log"
+    },
+    {
+      "id": "b2-07",
+      "scope": "daemon gateway/slack",
+      "files": 32,
+      "pass": 262,
+      "fail": 0,
+      "log": "verification-logs/b2-07-daemon-gateway-slack.log"
+    },
+    {
+      "id": "b2-08",
+      "scope": "cli send.test.ts 冻结复跑（历史文件，不计新覆盖）",
+      "files": 0,
+      "pass": 73,
+      "fail": 0,
+      "log": "verification-logs/b2-08-cli-send-rerun.log"
+    },
+    {
+      "id": "b2-10",
+      "scope": "daemon agent/rig/rigspec",
+      "files": 51,
+      "pass": 704,
+      "fail": 4,
+      "log": "verification-logs/b2-10-daemon-agent-rig.log"
+    },
+    {
+      "id": "b2-12",
+      "scope": "tui 未触碰其他测试",
+      "files": 30,
+      "pass": 251,
+      "fail": 0,
+      "log": "verification-logs/b2-12-tui-safe.log"
+    },
+    {
+      "id": "b2-14",
+      "scope": "ui 未触碰组件批",
+      "files": 30,
+      "pass": 318,
+      "fail": 0,
+      "log": "verification-logs/b2-14-ui-safe.log"
+    },
+    {
+      "id": "b2-15",
+      "scope": "cli 未触碰命令批",
+      "files": 30,
+      "pass": 334,
+      "fail": 0,
+      "log": "verification-logs/b2-15-cli-safe.log"
+    },
+    {
+      "id": "b2-16a/b",
+      "scope": "daemon seat(21,2跳过真实席位)+provider(16)",
+      "files": 37,
+      "pass": 419,
+      "fail": 0,
+      "logs": [
+        "verification-logs/b2-16a-daemon-seat.log",
+        "verification-logs/b2-16b-daemon-provider.log"
+      ],
+      "note": "中断根因=会话消息打断foreground shell，无孤儿进程；已拆块复跑"
+    },
+    {
+      "id": "b2-17",
+      "scope": "ui twin 冻结 fixture 双构建 + 旧 intent.html 保留",
+      "files": 0,
+      "pass": 0,
+      "fail": 0,
+      "log": "verification-logs/b2-17-ui-twin-builds.log",
+      "evidence": "twin-evidence/{packages-error,inspect-error}.html + intent.html.preserved-before-builds"
+    },
+    {
+      "id": "b2-18",
+      "scope": "ui transcript-drill-panel 新增 + package-list/bundle-inspector 回归",
+      "files": 1,
+      "pass": 23,
+      "fail": 0,
+      "log": "verification-logs/b2-18-ui-transcript-regress.log"
+    },
+    {
+      "id": "b2-19",
+      "scope": "daemon 3 失败文件修复复跑",
+      "files": 3,
+      "pass": 71,
+      "fail": 0,
+      "log": "verification-logs/b2-19-daemon-fixed3.log"
+    },
+    {
+      "id": "b2-20",
+      "scope": "daemon scenario+session",
+      "files": 30,
+      "pass": 503,
+      "fail": 0,
+      "log": "verification-logs/b2-20-daemon-scenario-session.log"
+    },
+    {
+      "id": "b2-21",
+      "scope": "daemon eval+stub",
+      "files": 26,
+      "pass": 125,
+      "fail": 0,
+      "log": "verification-logs/b2-21-daemon-eval-stub.log"
+    },
+    {
+      "id": "b2-22",
+      "scope": "daemon codex+claude+self（1 跳过）",
+      "files": 29,
+      "pass": 530,
+      "fail": 0,
+      "log": "verification-logs/b2-22-daemon-codex-claude-self.log"
+    },
+    {
+      "id": "b2-23",
+      "scope": "cli queue.test.ts 标题翻译冻结复跑（历史文件，不计新）",
+      "files": 0,
+      "pass": 100,
+      "fail": 0,
+      "log": "verification-logs/b2-23-cli-queue-rerun.log"
+    },
+    {
+      "id": "b2-24",
+      "scope": "daemon context",
+      "files": 17,
+      "pass": 250,
+      "fail": 0,
+      "log": "verification-logs/b2-24-daemon-context.log"
+    },
+    {
+      "id": "b2-25",
+      "scope": "tui 标题批1（16 文件；actions/config-model 属历史 301 复跑）",
+      "files": 14,
+      "pass": 98,
+      "fail": 0,
+      "log": "verification-logs/b2-25-tui-titlebatch1.log",
+      "note": "运行时 sha256 已存日志"
+    },
+    {
+      "id": "b2-26",
+      "scope": "daemon workflow chunk A",
+      "files": 21,
+      "pass": 196,
+      "fail": 0,
+      "log": "verification-logs/b2-26-daemon-workflowA.log"
+    },
+    {
+      "id": "b2-27",
+      "scope": "daemon workflow chunk B",
+      "files": 20,
+      "pass": 251,
+      "fail": 0,
+      "log": "verification-logs/b2-27-daemon-workflowB.log"
+    },
+    {
+      "id": "b2-28",
+      "scope": "cli chunk2",
+      "files": 30,
+      "pass": 448,
+      "fail": 3,
+      "log": "verification-logs/b2-28-cli-chunk2.log"
+    },
+    {
+      "id": "b2-29",
+      "scope": "tui 标题批2（4 新文件，运行时 sha256 已存日志）",
+      "files": 4,
+      "pass": 37,
+      "fail": 0,
+      "log": "verification-logs/b2-29-tui-titlebatch2.log"
+    },
+    {
+      "id": "b2-30",
+      "scope": "ui chunk2",
+      "files": 30,
+      "pass": 220,
+      "fail": 0,
+      "log": "verification-logs/b2-30-ui-chunk2.log"
+    },
+    {
+      "id": "b2-31",
+      "scope": "cli chunk3",
+      "files": 30,
+      "pass": 333,
+      "fail": 1,
+      "log": "verification-logs/b2-31-cli-chunk3.log"
+    },
+    {
+      "id": "b2-32",
+      "scope": "cli chunk4",
+      "files": 30,
+      "pass": 551,
+      "fail": 2,
+      "log": "verification-logs/b2-32-cli-chunk4.log"
+    },
+    {
+      "id": "b2-33",
+      "scope": "tui 标题批3（5 新文件；entry-loading 与 b2-29 hash 相同跳过）",
+      "files": 5,
+      "pass": 34,
+      "fail": 0,
+      "log": "verification-logs/b2-33-tui-titlebatch3.log"
+    },
+    {
+      "id": "b2-34",
+      "scope": "ui chunk3",
+      "files": 30,
+      "pass": 310,
+      "fail": 0,
+      "log": "verification-logs/b2-34-ui-chunk3.log"
+    },
+    {
+      "id": "b2-35",
+      "scope": "cli 3 修复定向复验",
+      "files": 0,
+      "pass": 68,
+      "fail": 4,
+      "log": "verification-logs/b2-35-cli-fixed3.log"
+    },
+    {
+      "id": "b2-36",
+      "scope": "tui founder-live-qa-correction 标题批4",
+      "files": 1,
+      "pass": 15,
+      "fail": 0,
+      "log": "verification-logs/b2-36-tui-founder.log"
+    },
+    {
+      "id": "b2-37",
+      "scope": "ui attention-feed 冻结复跑（b2-14 已覆盖，不计新）",
+      "files": 0,
+      "pass": 17,
+      "fail": 0,
+      "log": "verification-logs/b2-37-ui-attention-rerun.log"
+    },
+    {
+      "id": "b2-38",
+      "scope": "cli chunk5",
+      "files": 30,
+      "pass": 551,
+      "fail": 0,
+      "log": "verification-logs/b2-38-cli-chunk5.log"
+    },
+    {
+      "id": "b2-39",
+      "scope": "ui attention-feed 复跑 + scopepages-progress-remote-gate 新测（20 过）",
+      "files": 1,
+      "pass": 20,
+      "fail": 0,
+      "log": "verification-logs/b2-39-ui-2frozen.log"
+    },
+    {
+      "id": "b2-40",
+      "scope": "tui 标题批5（grammar+crash-cart-from-emit）",
+      "files": 2,
+      "pass": 19,
+      "fail": 0,
+      "log": "verification-logs/b2-40-tui-titlebatch5.log"
+    },
+    {
+      "id": "b2-41",
+      "scope": "ui chunk4",
+      "files": 30,
+      "pass": 273,
+      "fail": 0,
+      "log": "verification-logs/b2-41-ui-chunk4.log"
+    },
+    {
+      "id": "b2-43",
+      "scope": "cli 二修复验 3 文件（cross-host-commands 为新覆盖 +1）",
+      "files": 1,
+      "pass": 104,
+      "fail": 0,
+      "log": "verification-logs/b2-43-cli-r2.log"
+    },
+    {
+      "id": "b2-42-note",
+      "scope": "ui chunk5 被打断(rc=143)，未计覆盖，待复跑",
+      "files": 0,
+      "pass": 0,
+      "fail": 0,
+      "note": "partial"
+    },
+    {
+      "id": "b2-44",
+      "scope": "tui 标题批6（crash-cart-restore-render+crash-cart-view）",
+      "files": 2,
+      "pass": 19,
+      "fail": 0,
+      "log": "verification-logs/b2-44-tui-titlebatch6.log"
+    },
+    {
+      "id": "b2-45",
+      "scope": "ui chunk5（b2-42 中断后复跑）",
+      "files": 30,
+      "pass": 267,
+      "fail": 0,
+      "log": "verification-logs/b2-45-ui-chunk5.log"
+    },
+    {
+      "id": "b2-46",
+      "scope": "ui chunk6",
+      "files": 30,
+      "pass": 187,
+      "fail": 0,
+      "log": "verification-logs/b2-46-ui-chunk6.log"
+    },
+    {
+      "id": "b2-48",
+      "scope": "tui crash-cart-in-shell 标题批7",
+      "files": 1,
+      "pass": 17,
+      "fail": 0,
+      "log": "verification-logs/b2-48-tui-crashinshell.log"
+    },
+    {
+      "id": "b2-47-note",
+      "scope": "cli chunk6 被打断(rc=143)，未计覆盖，待复跑",
+      "files": 0,
+      "pass": 0,
+      "fail": 0,
+      "note": "partial"
+    },
+    {
+      "id": "b2-49",
+      "scope": "cli chunk6 复跑（21 文件，1 skip）",
+      "files": 21,
+      "pass": 253,
+      "fail": 0,
+      "log": "verification-logs/b2-49-cli-chunk6.log"
+    },
+    {
+      "id": "b2-50",
+      "scope": "ui chunk7（尾部 14 文件）",
+      "files": 14,
+      "pass": 75,
+      "fail": 0,
+      "log": "verification-logs/b2-50-ui-chunk7.log"
+    },
+    {
+      "id": "b2-51",
+      "scope": "daemon 尾部切片 A",
+      "files": 30,
+      "pass": 300,
+      "fail": 0,
+      "log": "verification-logs/b2-51-daemon-tailA.log"
+    },
+    {
+      "id": "b2-52",
+      "scope": "tui execution-view 标题批8 复跑（t08 已覆盖，不计新）",
+      "files": 0,
+      "pass": 27,
+      "fail": 0,
+      "log": "verification-logs/b2-52-tui-executionview.log"
+    },
+    {
+      "id": "b2-53",
+      "scope": "daemon 尾部切片 B",
+      "files": 30,
+      "pass": 505,
+      "fail": 2,
+      "log": "verification-logs/b2-53-daemon-tailB.log"
+    },
+    {
+      "id": "b2-54",
+      "scope": "tui 标题批9（3 过；instance-mission-control 语法错误整文件失败）",
+      "files": 3,
+      "pass": 25,
+      "fail": 1,
+      "log": "verification-logs/b2-54-tui-titlebatch9.log"
+    },
+    {
+      "id": "b2-55",
+      "scope": "daemon 尾部切片 C",
+      "files": 30,
+      "pass": 428,
+      "fail": 1,
+      "log": "verification-logs/b2-55-daemon-tailC.log"
+    },
+    {
+      "id": "b2-57",
+      "scope": "daemon topology-launcher 冻结复跑（16 过，闭环）",
+      "files": 0,
+      "pass": 16,
+      "fail": 0,
+      "log": "verification-logs/b2-57-daemon-topology-rerun.log"
+    },
+    {
+      "id": "b2-56-note",
+      "scope": "daemon 尾部切片 D 被打断(rc=143)，未计覆盖，待复跑",
+      "files": 0,
+      "pass": 0,
+      "fail": 0,
+      "note": "partial"
+    },
+    {
+      "id": "b2-58",
+      "scope": "daemon walk-consumption-primitives 冻结复跑（40 过，闭环）",
+      "files": 0,
+      "pass": 40,
+      "fail": 0,
+      "log": "verification-logs/b2-58-daemon-walk-rerun.log"
+    },
+    {
+      "id": "b2-60",
+      "scope": "tui instance-mission-control 语法修复复跑（10 过，闭环）",
+      "files": 0,
+      "pass": 10,
+      "fail": 0,
+      "log": "verification-logs/b2-60-tui-instancemission-rerun.log"
+    },
+    {
+      "id": "b2-59-note",
+      "scope": "daemon 尾部切片 D 复跑再被打断(rc=143)，未计覆盖",
+      "files": 0,
+      "pass": 0,
+      "fail": 0,
+      "note": "partial"
+    },
+    {
+      "id": "b2-61",
+      "scope": "daemon 尾部切片 D（b2-56/59 打断后复跑）",
+      "files": 30,
+      "pass": 317,
+      "fail": 0,
+      "log": "verification-logs/b2-61-daemon-tailD2.log"
+    },
+    {
+      "id": "b2-62",
+      "scope": "tui hydrate 标题批10 复跑（t07 历史文件，不计新）",
+      "files": 0,
+      "pass": 36,
+      "fail": 0,
+      "log": "verification-logs/b2-62-tui-hydrate.log"
+    },
+    {
+      "id": "b2-63",
+      "scope": "daemon 尾部切片 E（12 文件，daemon 非 blocked 文件扫完）",
+      "files": 12,
+      "pass": 179,
+      "fail": 0,
+      "log": "verification-logs/b2-63-daemon-tailE.log"
+    },
+    {
+      "id": "b2-64",
+      "scope": "big4 定向复验",
+      "files": 3,
+      "pass": 237,
+      "fail": 1,
+      "log": "verification-logs/b2-64-big4.log"
+    },
+    {
+      "id": "b2-66",
+      "scope": "daemon safeA（30 文件）",
+      "files": 30,
+      "pass": 320,
+      "fail": 1,
+      "log": "verification-logs/b2-66-daemon-safeA.log"
+    },
+    {
+      "id": "b2-67",
+      "scope": "daemon safeB（28 文件）",
+      "files": 28,
+      "pass": 378,
+      "fail": 0,
+      "log": "verification-logs/b2-67-daemon-safeB.log"
+    },
+    {
+      "id": "b2-68",
+      "scope": "daemon safeC（30 文件）",
+      "files": 30,
+      "pass": 270,
+      "fail": 2,
+      "log": "verification-logs/b2-68-daemon-safeC.log"
+    },
+    {
+      "id": "b2-69",
+      "scope": "daemon safeD（30 文件）",
+      "files": 30,
+      "pass": 365,
+      "fail": 2,
+      "log": "verification-logs/b2-69-daemon-safeD.log"
+    },
+    {
+      "id": "b2-70",
+      "scope": "cli restore-packet schema drift 修复复跑（104 过，闭环）",
+      "files": 0,
+      "pass": 104,
+      "fail": 0,
+      "log": "verification-logs/b2-70-cli-restore-rerun.log"
+    },
+    {
+      "id": "b2-71",
+      "scope": "daemon safeE（27 文件）",
+      "files": 27,
+      "pass": 383,
+      "fail": 0,
+      "log": "verification-logs/b2-71-daemon-safeE.log"
+    },
+    {
+      "id": "b2-73",
+      "scope": "tui 标题批12（live-quiet-refresh+motion）",
+      "files": 2,
+      "pass": 28,
+      "fail": 0,
+      "log": "verification-logs/b2-73-tui-titlebatch12.log"
+    },
+    {
+      "id": "b2-72-note",
+      "scope": "daemon safeF 被打断(rc=143)，未计覆盖，待复跑",
+      "files": 0,
+      "pass": 0,
+      "fail": 0,
+      "note": "partial"
+    },
+    {
+      "id": "b2-74",
+      "scope": "daemon safeF2（28 文件）",
+      "files": 28,
+      "pass": 430,
+      "fail": 0,
+      "log": "verification-logs/b2-74-daemon-safeF2.log"
+    },
+    {
+      "id": "b2-75",
+      "scope": "daemon safeG（25 文件，2 skip）",
+      "files": 25,
+      "pass": 442,
+      "fail": 0,
+      "log": "verification-logs/b2-75-daemon-safeG.log"
+    },
+    {
+      "id": "b2-77",
+      "scope": "tui 标题批13（4 文件：navigation-continuity/organizer/parity/one-click-gate）",
+      "files": 4,
+      "pass": 18,
+      "fail": 0,
+      "log": "verification-logs/b2-77-tui-titlebatch13.log"
+    },
+    {
+      "id": "b2-76-note",
+      "scope": "daemon safeH 被打断(rc=143)，未计覆盖，待复跑",
+      "files": 0,
+      "pass": 0,
+      "fail": 0,
+      "note": "partial"
+    },
+    {
+      "id": "b2-78",
+      "scope": "daemon safeH2（27 文件）",
+      "files": 27,
+      "pass": 325,
+      "fail": 1,
+      "log": "verification-logs/b2-78-daemon-safeH2.log"
+    },
+    {
+      "id": "b2-79",
+      "scope": "daemon safeI（25 文件）",
+      "files": 25,
+      "pass": 500,
+      "fail": 1,
+      "log": "verification-logs/b2-79-daemon-safeI.log"
+    },
+    {
+      "id": "b2-80",
+      "scope": "daemon safeJ（log 实际 21 文件）",
+      "files": 21,
+      "pass": 283,
+      "fail": 0,
+      "log": "verification-logs/b2-80-daemon-safeJ.log"
+    },
+    {
+      "id": "b2-81",
+      "scope": "safeK（跨 ws 首跑，仅 2 文件解析为 daemon）",
+      "files": 2,
+      "pass": 54,
+      "fail": 0,
+      "log": "verification-logs/b2-81-daemon-safeK.log"
+    },
+    {
+      "id": "b2-82",
+      "scope": "tui safeA（30 文件）",
+      "files": 30,
+      "pass": 239,
+      "fail": 1,
+      "log": "verification-logs/b2-82-tui-safeA.log"
+    },
+    {
+      "id": "b2-83",
+      "scope": "cli safeA（30 文件）",
+      "files": 30,
+      "pass": 344,
+      "fail": 0,
+      "log": "verification-logs/b2-83-cli-safeA.log"
+    },
+    {
+      "id": "b2-84",
+      "scope": "daemon queue-stuck-sweep 冻结复跑（32 过，闭环）",
+      "files": 0,
+      "pass": 32,
+      "fail": 0,
+      "log": "verification-logs/b2-84-daemon-queuesweep-rerun.log"
+    },
+    {
+      "id": "b2-85",
+      "scope": "cli tail7 + ui tail10",
+      "files": 17,
+      "pass": 99,
+      "fail": 0,
+      "log": "verification-logs/b2-85-cli-ui-tail.log"
+    },
+    {
+      "id": "b2-86",
+      "scope": "daemon tail safe（28 文件）",
+      "files": 28,
+      "pass": 442,
+      "fail": 8,
+      "log": "verification-logs/b2-86-daemon-tail-safe.log"
+    },
+    {
+      "id": "b2-87",
+      "scope": "tui 标题批15（4 文件：parity-content/polish-focus/presentation-guidance/production-composed-system）",
+      "files": 4,
+      "pass": 39,
+      "fail": 0,
+      "log": "verification-logs/b2-87-tui-titlebatch15.log"
+    },
+    {
+      "id": "b2-88",
+      "scope": "daemon 5 展示断言冻结复跑（5 文件 114 过，全部闭环）",
+      "files": 0,
+      "pass": 114,
+      "fail": 0,
+      "log": "verification-logs/b2-88-daemon-5display-rerun.log"
+    },
+    {
+      "id": "b2-89",
+      "scope": "tui 标题批16（3 文件：refresh/reading-journey/reading-regressions）",
+      "files": 3,
+      "pass": 15,
+      "fail": 0,
+      "log": "verification-logs/b2-89-tui-titlebatch16.log"
+    },
+    {
+      "id": "b2-90",
+      "scope": "daemon server+service-orchestrator 冻结复跑（2 文件 40 过，全部闭环）",
+      "files": 0,
+      "pass": 40,
+      "fail": 0,
+      "log": "verification-logs/b2-90-daemon-server-service-rerun.log"
+    },
+    {
+      "id": "b2-91",
+      "scope": "tui 3 safe（topology-view/wheel-scroll/workflow-journey）",
+      "files": 3,
+      "pass": 40,
+      "fail": 0,
+      "log": "verification-logs/b2-91-tui-3safe.log"
+    },
+    {
+      "id": "b2-92",
+      "scope": "scripts tail 29 文件 node --test",
+      "files": 29,
+      "pass": 225,
+      "fail": 0,
+      "skipped": 1,
+      "log": "verification-logs/b2-92-scripts-tail.log"
+    },
+    {
+      "id": "b2-93",
+      "scope": "tui pulse-view 标题批17（1 文件 20 过）",
+      "files": 1,
+      "pass": 20,
+      "fail": 0,
+      "log": "verification-logs/b2-93-tui-pulse-view.log"
+    },
+    {
+      "id": "b2-94",
+      "scope": "4 safe/frozen（tui navigator-reskin+mission-outcomes, ui storytelling-feed-adapter+topology-view-mode）",
+      "files": 4,
+      "pass": 67,
+      "fail": 0,
+      "log": "verification-logs/b2-94-4safe.log"
+    },
+    {
+      "id": "b2-95",
+      "scope": "tui socket.test.ts 短 HOME 复跑（/Users/bytedance/openrig/.zv/o，run 路径 34 字节，7 过，产品逻辑通过；.zv 已清理）",
+      "files": 0,
+      "pass": 7,
+      "fail": 0,
+      "log": "verification-logs/b2-95-socket-shorthome.log"
+    },
+    {
+      "id": "b2-96",
+      "scope": "daemon 注释批1（4 vitest 文件 99 过；hermetic-env 为 test helper，非独立测试）",
+      "files": 4,
+      "pass": 99,
+      "fail": 0,
+      "log": "verification-logs/b2-96-daemon-note5.log"
+    },
+    {
+      "id": "b2-97",
+      "scope": "big4 复跑（bundle-routes 61 + restore-packet/daemon-lifecycle/queue 277，共 338 过）",
+      "files": 0,
+      "pass": 338,
+      "fail": 0,
+      "log": "verification-logs/b2-97-big4-rerun.log"
+    },
+    {
+      "id": "b2-98",
+      "scope": "3 skip 文件 verbose 复跑（claude-code-adapter-fork-poll/up/topology-view-mode）",
+      "files": 3,
+      "pass": 58,
+      "fail": 0,
+      "log": "verification-logs/b2-98-skip-verbose.log"
+    },
+    {
+      "id": "b2-99",
+      "scope": "tui pulse-live 标题批18（1 文件 25 过）",
+      "files": 1,
+      "pass": 25,
+      "fail": 0,
+      "log": "verification-logs/b2-99-tui-pulse-live.log"
+    },
+    {
+      "id": "b2-100",
+      "scope": "tui 标题批19（2 文件：refresh-activity/rig-presence）",
+      "files": 2,
+      "pass": 21,
+      "fail": 0,
+      "log": "verification-logs/b2-100-tui-titlebatch19.log"
+    },
+    {
+      "id": "b2-101",
+      "scope": "tui 标题批20（2 文件：round4/refresh-trailing）",
+      "files": 2,
+      "pass": 15,
+      "fail": 0,
+      "log": "verification-logs/b2-101-tui-titlebatch20.log"
+    },
+    {
+      "id": "b2-102",
+      "scope": "注释批2（daemon 2 + cli 3）",
+      "files": 5,
+      "pass": 180,
+      "fail": 0,
+      "skipped": 1,
+      "log": "verification-logs/b2-102-note-batch2.log"
+    },
+    {
+      "id": "b2-103",
+      "scope": "注释批3（daemon 1 + cli 4）",
+      "files": 5,
+      "pass": 131,
+      "fail": 0,
+      "log": "verification-logs/b2-103-note-batch3.log"
+    },
+    {
+      "id": "b2-104",
+      "scope": "tui 标题批21（3 文件）",
+      "files": 3,
+      "pass": 0,
+      "fail": 0,
+      "log": "verification-logs/b2-104-tui-titlebatch21.log"
+    },
+    {
+      "id": "b2-105",
+      "scope": "ui bundle-inspector+package-list 复跑（2 文件 21 过）",
+      "files": 2,
+      "pass": 21,
+      "fail": 0,
+      "log": "verification-logs/b2-105-ui-bundle-package-rerun.log"
+    },
+    {
+      "id": "b2-107",
+      "scope": "注释批4（cli 4 test，hermetic-env.setup 为 helper）",
+      "files": 4,
+      "pass": 114,
+      "fail": 0,
+      "log": "verification-logs/b2-107-note-batch4.log"
+    },
+    {
+      "id": "b2-108",
+      "scope": "tui 标题批22（scroll×3 12 + socket 短HOME 7，共 19 过）",
+      "files": 4,
+      "pass": 19,
+      "fail": 0,
+      "log": "verification-logs/b2-108-tui-titlebatch22.log"
+    },
+    {
+      "id": "b2-109",
+      "scope": "ui live-node-details 冻结复跑（1 文件 29 过）",
+      "files": 1,
+      "pass": 29,
+      "fail": 0,
+      "log": "verification-logs/b2-109-ui-live-node.log"
+    },
+    {
+      "id": "b2-110",
+      "scope": "tui 标题批23（3 文件 10 过）+ package metadata bin 三入口同指",
+      "files": 3,
+      "pass": 10,
+      "fail": 0,
+      "log": "verification-logs/b2-110-tui-titlebatch23.log"
+    },
+    {
+      "id": "b2-112",
+      "scope": "8 not_executed（daemon5+cli1+tui2 = 74过）+ tui 新冻 render-regressions/startup-availability（19过）",
+      "files": 10,
+      "pass": 93,
+      "fail": 0,
+      "log": "verification-logs/b2-112-not-executed-8.log"
+    },
+    {
+      "id": "b2-113",
+      "scope": "activity-taxonomy 受变 5 文件 65 过",
+      "files": 5,
+      "pass": 65,
+      "fail": 0,
+      "log": "verification-logs/b2-113-activity-taxonomy.log"
+    },
+    {
+      "id": "b2-114",
+      "scope": "tui 标题批24（terminal-resize/workflow-journey/wheel-scroll 过；terminal-journey 语法/加载失败待作者）",
+      "files": 4,
+      "pass": 3,
+      "fail": 1,
+      "log": "verification-logs/b2-114-tui-titlebatch24.log"
+    },
+    {
+      "id": "b2-115",
+      "scope": "ps-scope-metadata 冻结复跑（5 过闭环）",
+      "files": 1,
+      "pass": 5,
+      "fail": 0,
+      "log": "verification-logs/b2-115-ps-scope-rerun.log"
+    },
+    {
+      "id": "b2-116",
+      "scope": "terminal-journey 语法修复复跑（6 过闭环，latest_fail=0）",
+      "files": 1,
+      "pass": 6,
+      "fail": 0,
+      "log": "verification-logs/b2-116-terminal-journey-rerun.log"
+    },
+    {
+      "id": "b2-117",
+      "scope": "ui import-flow + storytelling-feed-adapter 复跑（2 文件 49 过）",
+      "files": 2,
+      "pass": 49,
+      "fail": 0,
+      "log": "verification-logs/b2-117-ui-import-storytelling.log"
+    },
+    {
+      "id": "b2-118",
+      "scope": "tui stylize 标题批（12 过）",
+      "files": 1,
+      "pass": 12,
+      "fail": 0,
+      "log": "verification-logs/b2-118-tui-stylize.log"
+    },
+    {
+      "id": "b2-119",
+      "scope": "tui state 标题批（14 过）",
+      "files": 1,
+      "pass": 14,
+      "fail": 0,
+      "log": "verification-logs/b2-119-tui-state.log"
+    },
+    {
+      "id": "b2-120",
+      "scope": "tui startup 标题批（12过）+ daemon bootstrap-orchestrator 受变复跑（32过，package-install-service DB→数据库句柄）",
+      "files": 2,
+      "pass": 44,
+      "fail": 0,
+      "log": "verification-logs/b2-120-tui-startup-bootstrap.log"
+    },
+    {
+      "id": "b2-121",
+      "scope": "tui slack-print-link 标题批（17 过）",
+      "files": 1,
+      "pass": 17,
+      "fail": 0,
+      "log": "verification-logs/b2-121-tui-slack-print-link.log"
+    },
+    {
+      "id": "b2-122",
+      "scope": "daemon seat-lifecycle-service 受变（db handle→数据库句柄，14 过）",
+      "files": 1,
+      "pass": 14,
+      "fail": 0,
+      "log": "verification-logs/b2-122-seat-lifecycle-service.log"
+    },
+    {
+      "id": "b2-123",
+      "scope": "cluster9 rig-lifecycle-route 过（36过）+ rigspec-exporter 1 fail（:249 正则期望/共享同一个数据库 handle/，实得中文『共享同一个数据库句柄』）",
+      "files": 2,
+      "pass": 36,
+      "fail": 1,
+      "log": "verification-logs/b2-123-cluster9.log"
+    },
+    {
+      "id": "b2-124",
+      "scope": "rigspec-instantiator 1 fail（:260 正则/共享同一个 db handle/，实得中文『共享同一个数据库句柄』），28过",
+      "files": 1,
+      "pass": 28,
+      "fail": 1,
+      "log": "verification-logs/b2-124-rigspec-instantiator.log"
+    },
+    {
+      "id": "b2-125",
+      "scope": "rigspec-exporter 冻结复跑（22 过闭环）",
+      "files": 1,
+      "pass": 22,
+      "fail": 0,
+      "log": "verification-logs/b2-125-rigspec-exporter-rerun.log"
+    },
+    {
+      "id": "b2-126",
+      "scope": "rigspec-instantiator 冻结复跑（29 过闭环）",
+      "files": 1,
+      "pass": 29,
+      "fail": 0,
+      "log": "verification-logs/b2-126-rigspec-instantiator-rerun.log"
+    },
+    {
+      "id": "b2-127",
+      "scope": "self-attach + permission-policy-lifecycle 受变（2 文件 25 过）",
+      "files": 2,
+      "pass": 25,
+      "fail": 0,
+      "log": "verification-logs/b2-127-self-attach.log"
+    },
+    {
+      "id": "b2-128",
+      "scope": "DB-handle 全量复跑 daemon 7 文件（139过）+ tui topology-view 标题批（35过，最后标题文件）",
+      "files": 8,
+      "pass": 174,
+      "fail": 0,
+      "log": "verification-logs/b2-128-db-handle-full-rerun.log"
+    },
+    {
+      "id": "b2-129",
+      "scope": "tui 注释批1 wheel-scroll+workflow-journey 复跑（5 过）",
+      "files": 2,
+      "pass": 5,
+      "fail": 0,
+      "log": "verification-logs/b2-129-tui-note-batch1.log"
+    },
+    {
+      "id": "b2-130",
+      "scope": "tui 注释批2 arrow-autoscroll/parity/parity-content/polish-focus（4 文件 24 过）",
+      "files": 4,
+      "pass": 24,
+      "fail": 0,
+      "log": "verification-logs/b2-130-tui-note-batch2.log"
+    },
+    {
+      "id": "b2-131",
+      "scope": "tui motion 注释批复跑（19 过）",
+      "files": 1,
+      "pass": 19,
+      "fail": 0,
+      "log": "verification-logs/b2-131-tui-motion-note.log"
+    },
+    {
+      "id": "b2-132",
+      "scope": "tui pulse-live 注释批复跑（25 过）",
+      "files": 1,
+      "pass": 25,
+      "fail": 0,
+      "log": "verification-logs/b2-132-tui-pulse-live-note.log"
+    },
+    {
+      "id": "b2-133",
+      "scope": "tui pulse-view 注释批复跑（20 过）；批2其余6文件hash匹配已测（b2-130/131/132）",
+      "files": 1,
+      "pass": 20,
+      "fail": 0,
+      "log": "verification-logs/b2-133-tui-pulse-view-note.log"
+    },
+    {
+      "id": "b2-134",
+      "scope": "tui 注释批3（8 受变文件 21 过）",
+      "files": 8,
+      "pass": 21,
+      "fail": 0,
+      "log": "verification-logs/b2-134-tui-note-batch3.log"
+    },
+    {
+      "id": "b2-135",
+      "scope": "tui 注释批4（7 受变文件 37 过）",
+      "files": 7,
+      "pass": 37,
+      "fail": 0,
+      "log": "verification-logs/b2-135-tui-note-batch4.log"
+    },
+    {
+      "id": "b2-136",
+      "scope": "tui 注释批5（7 文件 38 过 + socket 短HOME 7 过）",
+      "files": 8,
+      "pass": 45,
+      "fail": 0,
+      "log": "verification-logs/b2-136-tui-note-batch5.log"
+    },
+    {
+      "id": "b2-137",
+      "scope": "tui 注释批6（9 受变文件 98 过）",
+      "files": 9,
+      "pass": 98,
+      "fail": 0,
+      "log": "verification-logs/b2-137-tui-note-batch6.log"
+    },
+    {
+      "id": "b2-138",
+      "scope": "tui 注释批7（5 受变文件 78 过）",
+      "files": 5,
+      "pass": 78,
+      "fail": 0,
+      "log": "verification-logs/b2-138-tui-note-batch7.log"
+    },
+    {
+      "id": "b2-139",
+      "scope": "daemon openrig-core-plugin 补漏复跑（46 过）",
+      "files": 1,
+      "pass": 46,
+      "fail": 0,
+      "log": "verification-logs/b2-139-openrig-core-plugin.log"
+    },
+    {
+      "id": "b2-140",
+      "scope": "tui 注释批8（7 受变文件 66 过）",
+      "files": 7,
+      "pass": 66,
+      "fail": 0,
+      "log": "verification-logs/b2-140-tui-note-batch8.log"
+    },
+    {
+      "id": "b2-141",
+      "scope": "cli 注释批1（5 文件 122 过）",
+      "files": 5,
+      "pass": 122,
+      "fail": 0,
+      "log": "verification-logs/b2-141-cli-note-batch1.log"
+    },
+    {
+      "id": "b2-142",
+      "scope": "cli 注释批2（5 文件 92 过）",
+      "files": 5,
+      "pass": 92,
+      "fail": 0,
+      "log": "verification-logs/b2-142-cli-note-batch2.log"
+    },
+    {
+      "id": "b2-143",
+      "scope": "cli 注释批3（4 受变文件 25 过）",
+      "files": 4,
+      "pass": 25,
+      "fail": 0,
+      "log": "verification-logs/b2-143-cli-note-batch3.log"
+    },
+    {
+      "id": "b2-144",
+      "scope": "cli 注释批4（2 受变文件 11 过）",
+      "files": 2,
+      "pass": 11,
+      "fail": 0,
+      "log": "verification-logs/b2-144-cli-note-batch4.log"
+    },
+    {
+      "id": "b2-145",
+      "scope": "注释批5（daemon 2 文件 38 过 + cli 3 文件 96 过 1 skip）",
+      "files": 5,
+      "pass": 134,
+      "fail": 0,
+      "log": "verification-logs/b2-145-comment-batch5.log"
+    },
+    {
+      "id": "b2-146",
+      "scope": "tui 注释批9（4 受变文件 62 过）",
+      "files": 4,
+      "pass": 62,
+      "fail": 0,
+      "log": "verification-logs/b2-146-tui-note-batch9.log"
+    },
+    {
+      "id": "b2-147",
+      "scope": "daemon 注释批6（3 受变文件 66 过）",
+      "files": 3,
+      "pass": 66,
+      "fail": 0,
+      "log": "verification-logs/b2-147-daemon-note-batch6.log"
+    },
+    {
+      "id": "b2-148",
+      "scope": "daemon 注释批7 openrig-upgrade-skill（48 过）",
+      "files": 1,
+      "pass": 48,
+      "fail": 0,
+      "log": "verification-logs/b2-148-daemon-note-batch7.log"
+    },
+    {
+      "id": "b2-149",
+      "scope": "cli 注释批8（5 文件 187 过）",
+      "files": 5,
+      "pass": 187,
+      "fail": 0,
+      "log": "verification-logs/b2-149-cli-note-batch8.log"
+    },
+    {
+      "id": "b2-150",
+      "scope": "cli 注释批9（3 受变文件 55 过）",
+      "files": 3,
+      "pass": 55,
+      "fail": 0,
+      "log": "verification-logs/b2-150-cli-note-batch9.log"
+    },
+    {
+      "id": "b2-151",
+      "scope": "ui 注释批1（2 受变文件 4 过）",
+      "files": 2,
+      "pass": 4,
+      "fail": 0,
+      "log": "verification-logs/b2-151-ui-note-batch1.log"
+    },
+    {
+      "id": "b2-152",
+      "scope": "注释批11（cli 3 文件 65 过 + daemon 1 文件 8 过）",
+      "files": 4,
+      "pass": 73,
+      "fail": 0,
+      "log": "verification-logs/b2-152-note-batch11.log"
+    },
+    {
+      "id": "b2-153",
+      "scope": "ui 注释批2（5 受变文件 29 过）",
+      "files": 5,
+      "pass": 29,
+      "fail": 0,
+      "log": "verification-logs/b2-153-ui-note-batch2.log"
+    },
+    {
+      "id": "b2-154",
+      "scope": "注释批12（daemon 3 文件 67 过 5 todo + cli 2 文件 57 过）",
+      "files": 5,
+      "pass": 124,
+      "fail": 0,
+      "log": "verification-logs/b2-154-note-batch12.log"
+    },
+    {
+      "id": "b2-155",
+      "scope": "注释批13（daemon 1 文件 11 过 + cli 4 文件 56 过）",
+      "files": 5,
+      "pass": 67,
+      "fail": 0,
+      "log": "verification-logs/b2-155-note-batch13.log"
+    },
+    {
+      "id": "b2-156",
+      "scope": "ui 注释批3（7 受变文件 24 过）",
+      "files": 7,
+      "pass": 24,
+      "fail": 0,
+      "log": "verification-logs/b2-156-ui-note-batch3.log"
+    },
+    {
+      "id": "b2-157",
+      "scope": "注释批14（cli 4 文件 94 过 + daemon 1 文件 3 过）",
+      "files": 5,
+      "pass": 97,
+      "fail": 0,
+      "log": "verification-logs/b2-157-note-batch14.log"
+    },
+    {
+      "id": "b2-158",
+      "scope": "cli 注释批15（5 受变文件 35 过）",
+      "files": 5,
+      "pass": 35,
+      "fail": 0,
+      "log": "verification-logs/b2-158-cli-note-batch15.log"
+    },
+    {
+      "id": "b2-159",
+      "scope": "ui 注释批4（5 受变文件 43 过）",
+      "files": 5,
+      "pass": 43,
+      "fail": 0,
+      "log": "verification-logs/b2-159-ui-note-batch4.log"
+    },
+    {
+      "id": "b2-160c",
+      "scope": "cli 注释批16（5 文件 104 过，bg 重跑）",
+      "files": 5,
+      "pass": 104,
+      "fail": 0,
+      "log": "verification-logs/b2-160c-cli-note-batch16.log"
+    },
+    {
+      "id": "b2-161",
+      "scope": "注释批17（cli 4 文件 31 过 + daemon 1 文件 1 过）",
+      "files": 5,
+      "pass": 32,
+      "fail": 0,
+      "log": "verification-logs/b2-161-note-batch17.log"
+    },
+    {
+      "id": "b2-162",
+      "scope": "注释批18 + UI批6（daemon 2 文件 10 过 + cli 3 文件 83 过 + ui 5 文件 19 过）",
+      "files": 10,
+      "pass": 112,
+      "fail": 0,
+      "log": "verification-logs/b2-162-note-batch18-ui6.log"
+    },
+    {
+      "id": "b2-163",
+      "scope": "注释批19（cli 3 文件 51 过 + daemon 2 文件 22 过）",
+      "files": 5,
+      "pass": 73,
+      "fail": 0,
+      "log": "verification-logs/b2-163-note-batch19.log"
+    },
+    {
+      "id": "b2-165",
+      "scope": "catchup 串行：batch16 cli 5(104过) + UI批5 4(22过) + batch17 cli4/daemon1(31+1过) + batch18 daemon2/cli3(10+83过) + batch20 daemon1/cli3(20+55过)",
+      "files": 24,
+      "pass": 314,
+      "fail": 0,
+      "log": "verification-logs/b2-165-seq-catchup.log"
+    },
+    {
+      "id": "b2-166",
+      "scope": "UI batch5 补跑 topology-edge-activity-pl019（8 过）",
+      "files": 1,
+      "pass": 8,
+      "fail": 0,
+      "log": "verification-logs/b2-166-topology-edge-pl019.log"
+    },
+    {
+      "id": "b2-167",
+      "scope": "batch22 cli 5(65过) + UI批7 8(37过)",
+      "files": 13,
+      "pass": 102,
+      "fail": 0,
+      "log": "verification-logs/b2-167-batch22-ui7.log"
+    },
+    {
+      "id": "b2-168",
+      "scope": "注释批23（cli 4 文件 28 过 + daemon 1 文件 20 过）",
+      "files": 5,
+      "pass": 48,
+      "fail": 0,
+      "log": "verification-logs/b2-168-note-batch23.log"
+    },
+    {
+      "id": "b2-169",
+      "scope": "cli 注释批24（5 文件 37 过）",
+      "files": 5,
+      "pass": 37,
+      "fail": 0,
+      "log": "verification-logs/b2-169-note-batch24.log"
+    },
+    {
+      "id": "b2-170",
+      "scope": "注释批21（daemon 2 文件 125 过 + cli 3 文件 30 过）",
+      "files": 5,
+      "pass": 155,
+      "fail": 0,
+      "log": "verification-logs/b2-170-note-batch21.log"
+    },
+    {
+      "id": "b2-171",
+      "scope": "ui 注释批8（8 文件 51 过）",
+      "files": 8,
+      "pass": 51,
+      "fail": 0,
+      "log": "verification-logs/b2-171-ui-note-batch8.log"
+    },
+    {
+      "id": "b2-172",
+      "scope": "注释批25（cli 3 文件 16 过 + daemon 2 文件 11 过）",
+      "files": 5,
+      "pass": 27,
+      "fail": 0,
+      "log": "verification-logs/b2-172-note-batch25.log"
+    },
+    {
+      "id": "b2-173",
+      "scope": "注释批26（daemon 4 文件 20 过 + cli 1 文件 6 过）",
+      "files": 5,
+      "pass": 26,
+      "fail": 0,
+      "log": "verification-logs/b2-173-note-batch26.log"
+    },
+    {
+      "id": "b2-174",
+      "scope": "ui 注释批9（5 文件 29 过）",
+      "files": 5,
+      "pass": 29,
+      "fail": 0,
+      "log": "verification-logs/b2-174-ui-note-batch9.log"
+    },
+    {
+      "id": "b2-175",
+      "scope": "cli 注释批27（5 文件 27 过）",
+      "files": 5,
+      "pass": 27,
+      "fail": 0,
+      "log": "verification-logs/b2-175-note-batch27.log"
+    },
+    {
+      "id": "b2-176",
+      "scope": "cli 注释批28（5 文件 136 过）",
+      "files": 5,
+      "pass": 136,
+      "fail": 0,
+      "log": "verification-logs/b2-176-note-batch28.log"
+    },
+    {
+      "id": "b2-177",
+      "scope": "UI6+UI9 复跑（UI6 5文件19过 + UI9 5文件29过）",
+      "files": 10,
+      "pass": 48,
+      "fail": 0,
+      "log": "verification-logs/b2-177-ui6-ui9-rerun.log"
+    },
+    {
+      "id": "b2-178",
+      "scope": "注释批29（cli 2 文件 19 过 + daemon 3 文件 77 过）",
+      "files": 5,
+      "pass": 96,
+      "fail": 0,
+      "log": "verification-logs/b2-178-note-batch29.log"
+    },
+    {
+      "id": "b2-179",
+      "scope": "ui 注释批10（7 文件 36 过）",
+      "files": 7,
+      "pass": 36,
+      "fail": 0,
+      "log": "verification-logs/b2-179-ui-note-batch10.log"
+    },
+    {
+      "id": "b2-180",
+      "scope": "注释批30（daemon 3 文件 40 过 + cli 2 文件 21 过）",
+      "files": 5,
+      "pass": 61,
+      "fail": 0,
+      "log": "verification-logs/b2-180-note-batch30.log"
+    },
+    {
+      "id": "b2-181",
+      "scope": "cli 注释批31（5 文件 38 过）",
+      "files": 5,
+      "pass": 38,
+      "fail": 0,
+      "log": "verification-logs/b2-181-note-batch31.log"
+    },
+    {
+      "id": "b2-182",
+      "scope": "ui 注释批11（4 文件 35 过）",
+      "files": 4,
+      "pass": 35,
+      "fail": 0,
+      "log": "verification-logs/b2-182-ui-note-batch11.log"
+    },
+    {
+      "id": "b2-183",
+      "scope": "cli 注释批32（5 文件 37 过）",
+      "files": 5,
+      "pass": 37,
+      "fail": 0,
+      "log": "verification-logs/b2-183-note-batch32.log"
+    },
+    {
+      "id": "b2-184",
+      "scope": "注释批33（cli 1 文件 5 过 + daemon 3 文件 25 过；seat-lifecycle nochange 不测）",
+      "files": 4,
+      "pass": 30,
+      "fail": 0,
+      "log": "verification-logs/b2-184-note-batch33.log"
+    },
+    {
+      "id": "b2-185",
+      "scope": "注释批34（daemon 1 文件 4 过 + cli 4 文件 24 过）",
+      "files": 5,
+      "pass": 28,
+      "fail": 0,
+      "log": "verification-logs/b2-185-note-batch34.log"
+    },
+    {
+      "id": "b2-186",
+      "scope": "cli 注释批35（5 文件 53 过）",
+      "files": 5,
+      "pass": 53,
+      "fail": 0,
+      "log": "verification-logs/b2-186-note-batch35.log"
+    },
+    {
+      "id": "b2-187",
+      "scope": "ui 注释批12（5 文件 25 过）",
+      "files": 5,
+      "pass": 25,
+      "fail": 0,
+      "log": "verification-logs/b2-187-ui-note-batch12.log"
+    },
+    {
+      "id": "b2-188",
+      "scope": "cli 注释批36（5 文件 50 过）",
+      "files": 5,
+      "pass": 50,
+      "fail": 0,
+      "log": "verification-logs/b2-188-note-batch36.log"
+    },
+    {
+      "id": "b2-189",
+      "scope": "注释批37（daemon 2 文件 17 过 + cli 3 文件 19 过）",
+      "files": 5,
+      "pass": 36,
+      "fail": 0,
+      "log": "verification-logs/b2-189-note-batch37.log"
+    },
+    {
+      "id": "b2-190",
+      "scope": "cli 注释批38（5 文件 33 过）",
+      "files": 5,
+      "pass": 33,
+      "fail": 0,
+      "log": "verification-logs/b2-190-note-batch38.log"
+    },
+    {
+      "id": "b2-191",
+      "scope": "注释批39（cli 1 文件 2 过 + daemon 4 文件 83 过）",
+      "files": 5,
+      "pass": 85,
+      "fail": 0,
+      "log": "verification-logs/b2-191-note-batch39.log"
+    },
+    {
+      "id": "b2-192",
+      "scope": "ui 注释批13（7 文件 56 过）",
+      "files": 7,
+      "pass": 56,
+      "fail": 0,
+      "log": "verification-logs/b2-192-ui-note-batch13.log"
+    },
+    {
+      "id": "b2-193",
+      "scope": "cli 注释批40（5 文件 41 过）",
+      "files": 5,
+      "pass": 41,
+      "fail": 0,
+      "log": "verification-logs/b2-193-note-batch40.log"
+    },
+    {
+      "id": "b2-194",
+      "scope": "注释批41（cli 2 文件 13 过 + daemon 2 文件 28 过；agent-image nochange 不测）",
+      "files": 4,
+      "pass": 41,
+      "fail": 0,
+      "log": "verification-logs/b2-194-note-batch41.log"
+    },
+    {
+      "id": "b2-195",
+      "scope": "daemon 注释批42（3 文件 46 过；2 nochange 不测）",
+      "files": 3,
+      "pass": 46,
+      "fail": 0,
+      "log": "verification-logs/b2-195-note-batch42.log"
+    },
+    {
+      "id": "b2-196",
+      "scope": "daemon 注释批43（4 文件 119 过；startup nochange 不测）",
+      "files": 4,
+      "pass": 119,
+      "fail": 0,
+      "log": "verification-logs/b2-196-note-batch43.log"
+    },
+    {
+      "id": "b2-197",
+      "scope": "daemon 注释批44（4 文件 87 过）——CLI/daemon comment validation 闭合",
+      "files": 4,
+      "pass": 87,
+      "fail": 0,
+      "log": "verification-logs/b2-197-note-batch44.log"
+    },
+    {
+      "id": "b2-198",
+      "scope": "ui 注释批14（8 文件 63 过）",
+      "files": 8,
+      "pass": 63,
+      "fail": 0,
+      "log": "verification-logs/b2-198-ui-note-batch14.log"
+    },
+    {
+      "id": "b2-199",
+      "scope": "ui 注释批15（7 文件 66 过）",
+      "files": 7,
+      "pass": 66,
+      "fail": 0,
+      "log": "verification-logs/b2-199-ui-note-batch15.log"
+    },
+    {
+      "id": "b2-200",
+      "scope": "ui 注释批16（8 文件 102 过 1 skip）",
+      "files": 8,
+      "pass": 102,
+      "skip": 1,
+      "fail": 0,
+      "log": "verification-logs/b2-200-ui-note-batch16.log"
+    },
+    {
+      "id": "b2-201",
+      "scope": "ui 注释批17（8 文件 105 过）",
+      "files": 8,
+      "pass": 105,
+      "fail": 0,
+      "log": "verification-logs/b2-201-ui-note-batch17.log"
+    },
+    {
+      "id": "b2-202",
+      "scope": "ui 注释批18（8 文件 101 过）",
+      "files": 8,
+      "pass": 101,
+      "fail": 0,
+      "log": "verification-logs/b2-202-ui-note-batch18.log"
+    },
+    {
+      "id": "b2-203",
+      "scope": "ui 注释批19（9 文件 131 过）",
+      "files": 9,
+      "pass": 131,
+      "fail": 0,
+      "log": "verification-logs/b2-203-ui-note-batch19.log"
+    },
+    {
+      "id": "b2-204",
+      "scope": "ui 注释批20 final（4 文件 145 过；2 nochange 不测）——UI comment validation 闭合",
+      "files": 4,
+      "pass": 145,
+      "fail": 0,
+      "log": "verification-logs/b2-204-ui-note-batch20.log"
+    },
+    {
+      "id": "b2-final",
+      "scope": "最终验收：build rc=0 + 四包tsc rc=0 + entry-probe 9/9 OK（rig/zrig/openrig version=0.6.0、help 首行中文用法、unknown JSON commander.unknownCommand 中文消息）",
+      "files": 0,
+      "pass": 0,
+      "fail": 0,
+      "log": "verification-logs/final-build-20261009-025227.log"
+    },
+    {
+      "id": "b2-205",
+      "scope": "daemon helpers batch45（3 helper 注释变：hermetic-env/scenario-daemon/scenario-runner；tsc daemon rc=0 + 3 hermetic 代表测试 16 过）",
+      "files": 3,
+      "pass": 16,
+      "fail": 0,
+      "log": "verification-logs/b2-205-daemon-helpers-batch45.log"
+    },
+    {
+      "id": "b2-206",
+      "scope": "extras batch46（review-fixtures.ts 注释变；tsc daemon rc=0 + 3 消费者测试 56 过）",
+      "files": 1,
+      "pass": 56,
+      "fail": 0,
+      "log": "verification-logs/b2-206-extras-batch46.log"
+    },
+    {
+      "id": "b2-207",
+      "scope": "scripts 注释批1（7 test.mjs 英文注释中文化；node --check 全过；6 文件全过，check-cli-daemon-freshness 1 fail 为既有 vendored-vs-source 字节漂移非注释引入）",
+      "files": 7,
+      "pass": 76,
+      "fail": 1,
+      "log": "verification-logs/b2-207-scripts-comment-batch1.log"
+    },
+    {
+      "id": "b2-208",
+      "scope": "scripts freshness vendored 刷新（bash scripts/build-package.sh rc=0，freshness 3 过 0 失败）",
+      "files": 1,
+      "pass": 3,
+      "fail": 0,
+      "log": "verification-logs/b2-208-refresh-vendored.log"
+    },
+    {
+      "id": "b2-209",
+      "scope": "最后4 entry paths 审（check-abi.mjs/vitest.config.ts x2/two-daemon-start.sh；全已中文，node --check/bash -n/vitest import 全过，check-abi 运行 rc=0）",
+      "files": 4,
+      "pass": 4,
+      "fail": 0,
+      "log": "verification-logs/b2-209-final4.log"
+    },
+    {
+      "id": "b2-210",
+      "scope": "UI bundle-inspector+package-list 复跑 2 过 21 case",
+      "files": 2,
+      "pass": 21,
+      "fail": 0,
+      "log": "verification-logs/b2-210-ui2-retest.log"
+    },
+    {
+      "id": "b2-211",
+      "scope": "最终 build+4tsc+entry-probe 9/9（build rc=0, tsc daemon/cli/ui/tui 全 rc=0, entry-probe 9/9 OK version=0.6.0）",
+      "files": 0,
+      "pass": 9,
+      "fail": 0,
+      "log": "verification-logs/b2-211-final-rebuild.log"
+    },
+    {
+      "id": "b2-212",
+      "scope": "scripts 7 文件复跑+coverage 重建（7 文件全过：3+5+7+10+16+28+8=77；coverage 1236 pass +7 skip +0 fail +0 needs_rerun +0 not_executed = 1243）",
+      "files": 7,
+      "pass": 77,
+      "fail": 0,
+      "log": "verification-logs/b2-212-scripts7-rerun.log"
+    }
+  ],
+  "pending_failures_routed_to_authors": [
+    {
+      "file": "packages/cli/test/ps-scope-metadata.test.ts",
+      "cases": 2,
+      "reason": "hint 已中文化『仅显示 N 个工作组中的 1 个；zrig ps 可列出全部，使用 --rig NAME 或 -A 查看其他工作组』，测试仍期望英文『rig ps lists all』/『1 of 2 rigs shown』"
+    },
+    {
+      "file": "packages/daemon/test/rigspec-exporter.test.ts",
+      "cases": 1,
+      "reason": ":249 正则 /共享同一个数据库 handle/ 需同步为 /共享同一个数据库句柄/，错误串已中文『RigSpecExporter：rigRepo 与 sessionRegistry 必须共享同一个数据库句柄』"
+    },
+    {
+      "file": "packages/daemon/test/rigspec-instantiator.test.ts",
+      "cases": 1,
+      "reason": ":260 正则 /共享同一个 db handle/ 需同步为 /共享同一个数据库句柄/，错误串已中文『RigInstantiator：rigRepo 必须共享同一个数据库句柄』"
+    }
+  ],
+  "resolved_this_round": [
+    {
+      "file": "packages/tui/test/text-width.test.ts",
+      "was": "5 ReferenceError: dropW/columnIndex 未导入",
+      "now": "11/11 pass（补 import 后，断言未动）",
+      "hash_sha256": "1c34ac0c6d41be7eb2f443dddf1a6a5b66600cf40ef9f760f3202cca99c44b7b"
+    },
+    {
+      "file": "packages/daemon/test/restore-plan-preview.test.ts",
+      "now": "11/11 pass（正则→中文断言）"
+    },
+    {
+      "file": "packages/daemon/test/rigspec-routes.test.ts",
+      "now": "30/30 pass（db handle 中文断言保组件名）"
+    },
+    {
+      "file": "packages/daemon/test/rigspec-preflight.test.ts",
+      "now": "30/30 pass（profile 未找到断言）"
+    }
+  ],
+  "waited_items": [
+    "b2-16 seat+provider 全量复跑",
+    "CLI 者 bundle-routes/restore-packet/daemon-lifecycle/queue 冻结后补跑",
+    "本轮未执行真实 GUI 视觉核查（twin HTML 已落盘供 UI 者目视）"
+  ],
+  "cumulative_distinct_files_covered": 966,
+  "blocked_external": [
+    {
+      "file": "packages/daemon/test/seat-handover-model-fidelity-e2e.test.ts",
+      "reason": "依赖真实 Claude/Codex 付费席位，e2e 无法隔离，1 test skipped"
+    },
+    {
+      "file": "packages/daemon/test/seat-lifecycle-set-model-resume-e2e.test.ts",
+      "reason": "依赖真实 Claude/Codex 付费席位，e2e 无法隔离，1 test skipped"
+    }
+  ],
+  "skipped_or_todo": [
+    {
+      "batch": "b2-51",
+      "count": 5,
+      "reason": "daemon tailA 切片中 vitest 报告 5 todo（未实现占位用例），basic reporter 未逐行列名，不计通过"
+    },
+    {
+      "batch": "b2-49",
+      "count": 1,
+      "reason": "CLI chunk6 1 skip"
+    }
+  ]
+}

@@ -1,12 +1,12 @@
-// Phase 3a slice 3.3 — UI client for the plugin discovery API.
+// 阶段 3a slice 3.3——插件发现 API 的 UI 客户端。
 //
-// Wraps GET /api/plugins, GET /api/plugins/:id, GET /api/plugins/:id/used-by
-// in @tanstack/react-query hooks for consumption by Library Explorer
-// (plugins category) + PluginDetailPage + AgentSpec plugin sections.
+// 将 GET /api/plugins、GET /api/plugins/:id、GET /api/plugins/:id/used-by
+// 包装成 @tanstack/react-query 钩子，供资源库浏览器（插件类别）、PluginDetailPage 和
+// AgentSpec 插件分区使用。
 //
-// Types mirror the daemon's PluginEntry / PluginDetail / AgentReference
-// shapes from packages/daemon/src/domain/plugin-discovery-service.ts.
-// Kept in lockstep at v0; if the daemon shapes evolve, update both sides.
+// 类型镜像 packages/daemon/src/domain/plugin-discovery-service.ts 中后台服务的
+// PluginEntry / PluginDetail / AgentReference 结构。v0 两端保持同步；后台服务结构演进时，
+// 必须同时更新两端。
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -23,8 +23,8 @@ export interface PluginEntry {
   runtimes: PluginRuntime[];
   path: string;
   lastSeenAt: string | null;
-  /** Slice 28 — subdirectory count under <plugin>/skills/. Populated by
-   *  daemon detectPlugin via readdir of skills/ (SC-29 EXCEPTION #11). */
+  /** Slice 28——<plugin>/skills/ 下的子目录数。由后台服务 detectPlugin 通过读取 skills/
+   *  目录填充（SC-29 EXCEPTION #11）。 */
   skillCount: number;
 }
 
@@ -49,7 +49,7 @@ export interface PluginHookSummary {
   events: string[];
 }
 
-// Slice 3.3 fix-A — MCP server summary mirrors daemon shape.
+// Slice 3.3 修复 A——MCP server 摘要镜像后台服务结构。
 export interface PluginMcpServerSummary {
   runtime: PluginRuntime;
   name: string;
@@ -63,7 +63,7 @@ export interface PluginDetail {
   codexManifest: PluginManifestSummary | null;
   skills: PluginSkillSummary[];
   hooks: PluginHookSummary[];
-  /** Slice 3.3 fix-A — MCP servers declared in manifest(s). */
+  /** Slice 3.3 修复 A——manifest 中声明的 MCP servers。 */
   mcpServers: PluginMcpServerSummary[];
 }
 

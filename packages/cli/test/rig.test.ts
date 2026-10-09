@@ -55,7 +55,7 @@ function runningLifecycleDeps(port: number): LifecycleDeps {
   });
 }
 
-// Track received headers for assertion
+// 跟踪收到的 header，供断言
 let capturedHeaders: Record<string, string | undefined> = {};
 
 function createMockDaemon() {
@@ -77,7 +77,7 @@ function createMockDaemon() {
           res.writeHead(400, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ valid: false, errors: ["missing schema_version", "name is required"] }));
         } else if (body.includes("ALIASPIN")) {
-          // OPR.0.5.3.3: valid + a fail-open alias-pin advisory naming the canonical id.
+          // OPR.0.5.3.3：valid + 一个具名 canonical id 的 fail-open alias-pin 提示。
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ valid: true, errors: [], advisories: ['pods.dev.members.driver: model pin "fable" is an alias form — pin the canonical id "claude-fable-5" (5.3 requires exact/canonical pins).'] }));
         } else {
@@ -156,16 +156,16 @@ describe("rig spec", () => {
     expect(exitCode).toBe(1);
   });
 
-  // OPR.0.5.3.3 item 2: alias-pin advisories print (fail-open — spec still valid, exit not 1).
+  // OPR.0.5.3.3 第 2 项：alias-pin 提示打印（fail-open——spec 仍 valid，退出非 1）。
   it("rig spec validate prints alias-pin advisories naming the canonical id, fail-open", async () => {
     const deps = rigDeps("ALIASPIN");
     const program = new Command();
     program.addCommand(rigCommand(deps));
     const { logs, exitCode } = await captureLogs(() => program.parseAsync(["node", "rig", "spec", "validate", "rig.yaml"]));
     const output = logs.join("\n");
-    expect(output).toContain("spec advisory"); // advisory surfaced
+    expect(output).toContain("规范建议"); // advisory surfaced
     expect(output).toContain("claude-fable-5"); // names the canonical id
-    expect(output).toContain("Rig spec valid"); // fail-open: still valid
+    expect(output).toContain("工作组规范有效"); // fail-open: still valid
     expect(exitCode).not.toBe(1);
   });
 
@@ -184,7 +184,7 @@ describe("rig spec", () => {
 
   it("rig spec audit: flags a stale culture seat id after a rename", async () => {
     const rigYaml = "schema_version: 1\nname: t\nculture_file: CULTURE.md\npods:\n  - id: dev1\n    members:\n      - id: builder\n      - id: qa\n";
-    // culture still names the OLD id `dev1.impl` (renamed to dev1.builder)
+    // culture 仍命名旧 id `dev1.impl`（已改名 dev1.builder）
     const culture = "The dev pod: `dev1.builder` builds, dispatch to `dev1.impl` for legacy, `dev1.qa` gates.";
     const deps = rigDepsMap({ "rig.yaml": rigYaml, "CULTURE.md": culture });
     const program = new Command();
@@ -214,7 +214,7 @@ describe("rig spec", () => {
     program.addCommand(rigCommand(deps));
     const { logs, exitCode } = await captureLogs(() => program.parseAsync(["node", "rig", "spec", "preflight", "/tmp/rig.yaml"]));
     const output = logs.join("\n");
-    expect(output).toContain("Preflight ready");
+    expect(output).toContain("预检就绪");
     expect(output).toContain("cmux unavailable");
     expect(exitCode).toBeUndefined();
   });
@@ -227,7 +227,7 @@ describe("rig spec", () => {
     const { logs, exitCode } = await captureLogs(() => program.parseAsync(["node", "rig", "spec", "preflight", "/tmp/rig.yaml"]));
     const output = logs.join("\n");
     expect(output).toContain("node name collision");
-    expect(output).toContain("not ready");
+    expect(output).toContain("预检未就绪");
     expect(exitCode).toBe(1);
   });
 
@@ -239,7 +239,7 @@ describe("rig spec", () => {
     const { logs, exitCode } = await captureLogs(() => program.parseAsync(["node", "rig", "spec", "preflight", "/tmp/rig.yaml"]));
     const output = logs.join("\n");
     expect(output).toContain("ambiguous node collision");
-    expect(output).toContain("not ready");
+    expect(output).toContain("预检未就绪");
     expect(exitCode).toBe(1);
   });
 
@@ -260,7 +260,7 @@ describe("rig spec", () => {
       program.parseAsync(["node", "rig", "spec", "audit", "rig.yaml"]),
     );
     const output = logs.join("\n");
-    expect(output).toContain("2 advisory findings");
+    expect(output).toContain("2 条建议性发现");
     expect(output).toContain("culture_file");
     expect(output).toContain("startup.files");
     expect(output).toContain("openrig-architect");

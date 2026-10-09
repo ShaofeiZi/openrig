@@ -3,9 +3,9 @@ import { cleanup, render, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 
-// OPR.0.4.3.21 forward-fix — the System panel's daemon status is derived from
-// isSuccess AND the event-loop verdict: a process-present daemon whose
-// eventLoop.healthy===false must render UNHEALTHY-with-evidence, NOT connected.
+// OPR.0.4.3.21 前瞻修复——System 面板的 daemon 状态派生自
+// isSuccess AND event-loop 判定：进程在场但
+// eventLoop.healthy===false 的 daemon 必须渲染 UNHEALTHY-with-evidence，非 connected。
 
 function mockHealth(body: unknown): void {
   const fetchImpl = vi.fn(async (url: string | URL) => {
@@ -47,14 +47,14 @@ describe("SystemPanel daemon health verdict", () => {
     );
 
     await waitFor(() => {
-      expect(getByTestId("system-daemon-status").textContent).toContain("process present, unhealthy");
+      expect(getByTestId("system-daemon-status").textContent).toContain("进程在运行，健康状态异常");
     });
     const status = getByTestId("system-daemon-status");
-    expect(status.textContent).not.toContain("connected");
+    expect(status.textContent).not.toContain("已连接");
     expect(status.className).toContain("text-amber-600");
 
     const evidence = getByTestId("system-daemon-evidence");
-    expect(evidence.textContent).toContain("event loop starved");
+    expect(evidence.textContent).toContain("事件循环饥饿");
     expect(evidence.textContent).toContain("1500ms");
   });
 
@@ -69,7 +69,7 @@ describe("SystemPanel daemon health verdict", () => {
     );
 
     await waitFor(() => {
-      expect(getByTestId("system-daemon-status").textContent).toContain("connected");
+      expect(getByTestId("system-daemon-status").textContent).toContain("已连接");
     });
     expect(getByTestId("system-daemon-status").className).toContain("text-green-600");
     expect(queryByTestId("system-daemon-evidence")).toBeNull();
@@ -83,7 +83,7 @@ describe("SystemPanel daemon health verdict", () => {
     );
 
     await waitFor(() => {
-      expect(getByTestId("system-daemon-status").textContent).toContain("connected");
+      expect(getByTestId("system-daemon-status").textContent).toContain("已连接");
     });
     expect(queryByTestId("system-daemon-evidence")).toBeNull();
   });

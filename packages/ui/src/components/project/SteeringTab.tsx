@@ -1,8 +1,8 @@
-// OPR.0.4.1.17 — Mission Steering tab (the mission LANDING). Two stacked READ-ONLY
-// projections, top-to-bottom: Panel 1 = the live STEERING.md directive (what agents are told
-// to do right now, traceable to its source) via GET /api/steering; Panel 2 = the human-facing
-// brief (MISSION_BRIEF.md, projected to the slice-16 pinned schema). It reads, never writes;
-// it introduces no new write path and no new STEERING source contract.
+// OPR.0.4.1.17 —— 任务 Steering 标签页（任务落地页）。两个堆叠的只读投影，
+// 自上而下：面板 1 = 实时 STEERING.md 指令（智能体当前被告知做什么，
+// 可追溯到来源），通过 GET /api/steering；面板 2 = 面向人类的简报
+//（MISSION_BRIEF.md，投影到 slice-16 固定 schema）。它只读不写；
+// 不引入新写入路径，不引入新 STEERING 源契约。
 
 import type { ReactNode } from "react";
 import {
@@ -23,7 +23,7 @@ function isUnavailable(
   return Boolean(data && "unavailable" in data);
 }
 
-// --- Panel 1: STEERING.md projection (GET /api/steering) ------------------------------
+// --- 面板 1：STEERING.md 投影 (GET /api/steering) ------------------------------
 function SteeringPanel() {
   const { data, isLoading, error } = useSteering();
 
@@ -31,27 +31,27 @@ function SteeringPanel() {
   if (isLoading) {
     body = (
       <div data-testid="steering-panel-loading" className="font-mono text-[11px] text-on-surface-variant">
-        Loading…
+        加载中…
       </div>
     );
   } else if (error) {
     body = (
       <EmptyState
-        label="STEERING UNAVAILABLE"
-        description={(error as Error)?.message ?? "Could not load /api/steering."}
+        label="STEERING 不可用"
+        description={(error as Error)?.message ?? "无法加载 /api/steering。"}
         variant="card"
         testId="steering-panel-error"
       />
     );
   } else if (isUnavailable(data)) {
-    // The daemon's steering_workspace_not_configured 503 surfaces as this sentinel.
+    // 后台服务的 steering_workspace_not_configured 503 以此哨兵呈现。
     body = (
       <div data-testid="steering-panel-unavailable">
         <EmptyState
-          label="NO STEERING CONFIGURED"
+          label="未配置 STEERING"
           description={
             data.hint ??
-            "Set workspace.steering_path to a STEERING.md so the live directive projects here."
+            "将 workspace.steering_path 设置为 STEERING.md，实时指令将投影到此。"
           }
           variant="card"
           testId="steering-panel-unavailable-state"
@@ -65,17 +65,17 @@ function SteeringPanel() {
         <div data-testid="steering-panel-content" className="mt-1">
           <MarkdownViewer content={ps.content} hideFrontmatter hideRawToggle />
         </div>
-        {/* Off-intent → traceable-to-source: the live directive + where it lives. */}
+        {/* 离意图 → 可追溯到来源：实时指令 + 其位置。 */}
         <div data-testid="steering-panel-source" className="mt-2 font-mono text-[10px] text-on-surface-variant">
-          source: {ps.absolutePath} · updated {new Date(ps.mtime).toLocaleString()}
+          来源：{ps.absolutePath} · 更新于 {new Date(ps.mtime).toLocaleString()}
         </div>
       </>
     );
   } else {
     body = (
       <EmptyState
-        label="NO STEERING.md YET"
-        description="No STEERING.md content at the configured workspace.steering_path. The live directive projects here once it exists."
+        label="尚无 STEERING.md"
+        description="配置的 workspace.steering_path 处无 STEERING.md 内容。实时指令一旦存在即投影到此。"
         variant="card"
         testId="steering-panel-empty"
       />
@@ -84,15 +84,15 @@ function SteeringPanel() {
 
   return (
     <section data-testid="steering-panel" className="border border-outline-variant bg-surface-lowest/30 p-4">
-      <SectionHeader>Steering · STEERING.md</SectionHeader>
+      <SectionHeader>引导 · STEERING.md</SectionHeader>
       {body}
     </section>
   );
 }
 
-// --- Panel 2: MISSION_BRIEF.md projection (slice-16 pinned contract) -------------------
-// Byte-exact canonical headers + order. The scaffold, the populate SOP, and this projector
-// all copy THESE strings — never re-derived (a mismatch = the brief silently never renders).
+// --- 面板 2：MISSION_BRIEF.md 投影（slice-16 固定契约）-------------------
+// 字节精确的规范标题 + 顺序。脚手架、填充 SOP 和此投影器都复制这些字符串——
+// 绝不重新推导（不匹配 = 简报静默不渲染）。
 const BRIEF_SECTIONS = ["What & why", "Building", "Progress", "Proven", "Needs you", "Pointers"];
 
 interface ParsedBrief {
@@ -101,8 +101,8 @@ interface ParsedBrief {
   sections: { header: string; body: string }[];
 }
 
-/** Split MISSION_BRIEF.md into the leading `#` title (+ optional italic TL;DR) and the `##`
- *  sections in DOCUMENT ORDER. Unknown sections are preserved (never dropped). */
+/** 将 MISSION_BRIEF.md 拆分为前导 `#` 标题（+ 可选斜体 TL;DR）和文档顺序的
+ *  `##` 节。未知节保留（绝不丢弃）。 */
 function parseBrief(markdown: string): ParsedBrief {
   let title: string | null = null;
   let tldr: string | null = null;
@@ -141,8 +141,7 @@ function BriefSectionBlock({ header, body }: { header: string; body: string | un
           <MarkdownViewer content={body} hideFrontmatter hideRawToggle />
         </div>
       ) : (
-        // Missing OR empty canonical section → muted dash (degrade-to-dash; shows the
-        // expected shape + tells the populator what to fill).
+        // 缺失或空的规范节 → 静音短横线（降级为短横线；显示预期形状 + 告诉填充者填什么）。
         <div data-testid={`brief-section-${header}-dash`} className="mt-1 font-mono text-[12px] text-on-surface-variant">
           —
         </div>
@@ -153,9 +152,9 @@ function BriefSectionBlock({ header, body }: { header: string; body: string | un
 
 function BriefPanel({ missionId }: { missionId: string | null }) {
   const mission = useMission(missionId ?? "");
-  // OPR.0.4.6.MH2 guard-B1 — useMission is selected-host retargeted, so
-  // under a remote selection missionPath is a REMOTE path: it must never
-  // resolve against LOCAL allowlist roots (zero /api/files/* + honest copy).
+  // OPR.0.4.6.MH2 guard-B1 —— useMission 是选定主机重定向的，
+  // 因此在远端选择下 missionPath 是远端路径：它绝不能对照本地白名单根目录
+  // 解析（零 /api/files/* + 诚实复制）。
   const { known: selectionKnown, isLocal } = useHostSelection();
   const filesAllowed = useLocalFilesAllowed();
   const missionPath =
@@ -164,13 +163,13 @@ function BriefPanel({ missionId }: { missionId: string | null }) {
 
   let body: ReactNode;
   if (selectionKnown && !isLocal) {
-    // Known-REMOTE only — an unknown selection renders the loading branch
-    // below (fetches stay gated either way; no misleading gated flash).
+    // 已知远端仅此——未知选择渲染下方的加载分支
+    //（获取始终门控；无误导性门控闪烁）。
     body = (
       <div data-testid="brief-panel-remote-gated">
         <EmptyState
-          label="LOCAL FILES NOT SHOWN"
-          description="The mission brief lives on the selected host's filesystem, which the remote read view does not browse. Select the local host to read local briefs."
+          label="不显示本地文件"
+          description="任务简报位于所选主机的文件系统上，远端只读视图不浏览该系统。选择本地主机以读取本地简报。"
           variant="card"
           testId="brief-panel-remote-gated-state"
         />
@@ -179,29 +178,28 @@ function BriefPanel({ missionId }: { missionId: string | null }) {
   } else if (!selectionKnown || mission.isLoading || brief.isLoading) {
     body = (
       <div data-testid="brief-panel-loading" className="font-mono text-[11px] text-on-surface-variant">
-        Loading…
+        加载中…
       </div>
     );
   } else if (brief.state === "read_error") {
-    // R1 (release-0.4.7): a read failure is NOT a missing brief.
+    // R1（release-0.4.7）：读取失败不是简报缺失。
     body = (
       <div data-testid="brief-panel-read-error">
         <EmptyState
-          label="BRIEF READ FAILED"
-          description="The daemon could not read MISSION_BRIEF.md — this is a read failure, not a missing brief. Check daemon logs and file permissions."
+          label="简报读取失败"
+          description="后台服务无法读取 MISSION_BRIEF.md——这是读取失败，不是简报缺失。检查后台服务日志和文件权限。"
           variant="card"
           testId="brief-panel-read-error-state"
         />
       </div>
     );
   } else if (brief.state === "unresolved") {
-    // R1: the mission path is outside the allowlisted file roots (config), not
-    // a missing brief.
+    // R1：任务路径在白名单文件根目录（配置）之外，不是简报缺失。
     body = (
       <div data-testid="brief-panel-unresolved">
         <EmptyState
-          label="BRIEF OUTSIDE FILE ROOTS"
-          description="The mission path is not under any allowlisted file root, so MISSION_BRIEF.md cannot be read. Check OPENRIG_FILES_ALLOWLIST / the daemon's file-roots settings."
+          label="简报在文件根目录之外"
+          description="任务路径不在任何白名单文件根目录下，因此无法读取 MISSION_BRIEF.md。检查 OPENRIG_FILES_ALLOWLIST / 后台服务的文件根目录设置。"
           variant="card"
           testId="brief-panel-unresolved-state"
         />
@@ -211,8 +209,8 @@ function BriefPanel({ missionId }: { missionId: string | null }) {
     body = (
       <div data-testid="brief-panel-empty">
         <EmptyState
-          label="NO BRIEF YET"
-          description="No MISSION_BRIEF.md at the mission root. The human-facing brief (what we're building · how far · what's proven · what needs you) projects here once the mission is briefed."
+          label="尚无简报"
+          description="任务根目录下无 MISSION_BRIEF.md。面向人类的简报（我们在构建什么 · 进展如何 · 已验证什么 · 需要你做什么）在任务简报后投影到此。"
           variant="card"
           testId="brief-panel-empty-state"
         />
@@ -229,11 +227,11 @@ function BriefPanel({ missionId }: { missionId: string | null }) {
           <div className="font-mono text-[13px] uppercase tracking-[0.08em] text-on-surface">{parsed.title}</div>
         )}
         {parsed.tldr && <p className="mt-0.5 text-[12px] italic text-on-surface-variant">{parsed.tldr}</p>}
-        {/* Canonical sections, in contract order, by EXACT header match. */}
+        {/* 规范节，按契约顺序，按精确标题匹配。 */}
         {BRIEF_SECTIONS.map((header) => (
           <BriefSectionBlock key={header} header={header} body={bodyByHeader.get(header)} />
         ))}
-        {/* Unknown/extra sections render AFTER the known ones, in document order — never dropped. */}
+        {/* 未知/额外节在已知节后渲染，按文档顺序——绝不丢弃。 */}
         {extras.map((s, i) => (
           <BriefSectionBlock key={`extra-${i}-${s.header}`} header={s.header} body={s.body} />
         ))}
@@ -243,7 +241,7 @@ function BriefPanel({ missionId }: { missionId: string | null }) {
 
   return (
     <section data-testid="brief-panel" className="border border-outline-variant bg-surface-lowest/20 p-4">
-      <SectionHeader>Brief · human-facing</SectionHeader>
+      <SectionHeader>简报 · 面向人类</SectionHeader>
       {body}
     </section>
   );

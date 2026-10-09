@@ -19,10 +19,10 @@ describe("UI maintenance notice", () => {
     render(<UiMaintenanceNotice />);
 
     expect(screen.getByTestId("ui-maintenance-notice").textContent).toContain(
-      "The OpenRig UI is experimental and in maintenance mode.",
+      "目前处于维护模式",
     );
     expect(screen.getByTestId("ui-maintenance-notice").textContent).toContain(
-      "The CLI is the primary supported interface.",
+      "CLI）才是官方主推的使用界面",
     );
   });
 
@@ -31,7 +31,7 @@ describe("UI maintenance notice", () => {
     const notice = screen.getByTestId("ui-maintenance-notice");
 
     expect(notice.className).toContain("fixed");
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss maintenance notice" }));
+    fireEvent.click(screen.getByRole("button", { name: "关闭维护提示" }));
 
     expect(screen.queryByTestId("ui-maintenance-notice")).toBeNull();
     expect(localStorage.getItem(UI_MAINTENANCE_NOTICE_STORAGE_KEY)).toBe("1");

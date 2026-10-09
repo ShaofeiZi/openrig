@@ -1,13 +1,13 @@
-// User Settings v0 — daemon HTTP route tests.
+// User Settings v0——后台服务 HTTP 路由测试。
 //
-// Pins the load-bearing behaviors of /api/config:
-//   - GET /api/config returns all settings keys with source + default
-//   - GET /api/config/:key returns one key
-//   - POST /api/config/:key sets the value, persists to disk
-//   - DELETE /api/config/:key reverts one key to default
-//   - POST /api/config/init-workspace creates a repo-ready project workspace
-//   - 503 when settingsStore is unavailable
-//   - 400 on unknown keys / missing body
+// 固定 /api/config 的承重行为：
+//   - GET /api/config 返回所有设置 key 及其 source + default
+//   - GET /api/config/:key 返回一个 key
+//   - POST /api/config/:key 设置值并持久化到磁盘
+//   - DELETE /api/config/:key 将一个 key 恢复为默认值
+//   - POST /api/config/init-workspace 创建可直接用于仓库的 project workspace
+//   - settingsStore 不可用时返回 503
+//   - key 未知或缺少 body 时返回 400
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -44,7 +44,7 @@ function clearEnv(): () => void {
   };
 }
 
-describe("config routes (User Settings v0)", () => {
+describe("config 路由（User Settings v0）", () => {
   let tmpDir: string;
   let configPath: string;
   let store: SettingsStore;
@@ -71,29 +71,29 @@ describe("config routes (User Settings v0)", () => {
     return app;
   }
 
-  it("GET /api/config returns all settings keys with source + default", async () => {
+  it("GET /api/config 返回所有设置 key 及其 source + default", async () => {
     const app = buildApp();
     const res = await app.request("/api/config");
     expect(res.status).toBe(200);
     const body = await res.json() as { settings: Record<string, { value: unknown; source: string }> };
-    // 18 v0 keys + 2 Phase 4 (advisor/operator) + 5 Phase 5 (feed.subscriptions.*)
-    // + 2 V1 pre-release Item 1 (transcripts.lines / transcripts.poll_interval_seconds)
-    // + 1 plugin-primitive Phase 3a slice 3.5 (runtime.codex.hooks_enabled)
-    // + 1 V0.3.1 slice 05 (workspace.operator_seat_name)
-    // + 7 slice 27 (policies.claude_compaction.*)
-    // + 3 OPR.0.3.4.9 (snapshots.periodic.*)
-    // + 1 OPR.0.4.0.1 (ui.terminal.max_live_terminals)
-    // + 2 OPR.0.4.6.MH1 (host.selected / host.name)
-    // + 1 OPR.0.4.6.WF5 (workflow.exception_routing)
-    // + 1 OPR.0.4.6.02 (terminal.status_bar — the ratified sole v1 terminal key)
-    // + 5 OPR.0.4.6.FS-1 W2 (retention.enabled / transitions_days / watchdog_days /
-    //   watchdog_keep_per_job / batch_size — the CLI-settable queue-retention knobs;
+    // 18 个 v0 key + Phase 4 的 2 个（advisor/operator）+ Phase 5 的 5 个（feed.subscriptions.*）
+    // + V1 预发布第 1 项的 2 个（transcripts.lines / transcripts.poll_interval_seconds）
+    // + plugin-primitive Phase 3a slice 3.5 的 1 个（runtime.codex.hooks_enabled）
+    // + V0.3.1 slice 05 的 1 个（workspace.operator_seat_name）
+    // + slice 27 的 7 个（policies.claude_compaction.*）
+    // + OPR.0.3.4.9 的 3 个（snapshots.periodic.*）
+    // + OPR.0.4.0.1 的 1 个（ui.terminal.max_live_terminals）
+    // + OPR.0.4.6.MH1 的 2 个（host.selected / host.name）
+    // + OPR.0.4.6.WF5 的 1 个（workflow.exception_routing）
+    // + OPR.0.4.6.02 的 1 个（terminal.status_bar——已批准的唯一 v1 terminal key）
+    // + OPR.0.4.6.FS-1 W2 的 5 个（retention.enabled / transitions_days / watchdog_days /
+    //   watchdog_keep_per_job / batch_size——CLI 可设置的 queue-retention 旋钮；
     //   + retention.usage_samples_days, 51-08 A2)
     // + 2 OPR.0.5.1 W2c (policies.idle_gate_qitem.scan_interval_seconds /
     //   active_wake_interval_seconds)
     // + 2 B6 founder ruling (policies.idle_gate_qitem.auto_register /
-    //   opt_in_sessions — the not-default-on gate)
-    // + 1 OPR.0.5.3.6 D1 (topology.root — the topology tree root)
+    //   opt_in_sessions——非默认开启的 gate）
+    // + OPR.0.5.3.6 D1 的 1 个（topology.root——topology tree root）
     // + 1 OPR.0.5.9.5 Wave B (context.root)
     // + 1 S15 (onboarding.default_pack.enabled)
     // + 1 S04 (queue.pickup_stall_threshold_minutes)
@@ -103,8 +103,8 @@ describe("config routes (User Settings v0)", () => {
     //   wake_unconfirmed_window_minutes / wake_swap_grace_seconds)
     // + 1 OPR.0.5.9.4 (skills.root)
     // + 1 OPR.0.5.9.5 (context.system_world)
-    // + 2 OPR.0.5.10.7 context-pressure policy thresholds → 68 total.
-    // + 1 S07 local-time preference.
+    // + OPR.0.5.10.7 的 2 个 context-pressure policy 阈值，共 68 个。
+    // + S07 的 1 个本地时间偏好。
     expect(Object.keys(body.settings).length).toBe(69);
     expect(body.settings["ui.timezone"]).toMatchObject({ value: "America/Los_Angeles", source: "default" });
     expect(body.settings["daemon.port"]?.source).toBe("default");
@@ -134,7 +134,7 @@ describe("config routes (User Settings v0)", () => {
     expect(body.settings["workspace.dogfood_evidence_root"]).toBeUndefined();
   });
 
-  it("GET /api/config/:key returns the resolved value", async () => {
+  it("GET /api/config/:key 返回解析后的值", async () => {
     store.set("workspace.root", "/custom/ws");
     const app = buildApp();
     const res = await app.request("/api/config/workspace.root");
@@ -144,7 +144,7 @@ describe("config routes (User Settings v0)", () => {
     expect(body.source).toBe("file");
   });
 
-  it("GET /api/config rebases persisted legacy workspace defaults", async () => {
+  it("GET /api/config 重新基准化持久化的 legacy workspace 默认值", async () => {
     store.set("workspace.root", "/custom/ws");
     store.set("workspace.slices_root", "/custom/ws/slices");
     store.set("workspace.steering_path", "/custom/ws/steering/STEERING.md");
@@ -162,7 +162,7 @@ describe("config routes (User Settings v0)", () => {
     });
   });
 
-  it("GET /api/config/:key 400s on unknown key", async () => {
+  it("GET /api/config/:key 对未知 key 返回 400", async () => {
     const app = buildApp();
     const res = await app.request("/api/config/workspace.bogus");
     expect(res.status).toBe(400);
@@ -171,7 +171,7 @@ describe("config routes (User Settings v0)", () => {
   });
 
   it.each(["GET", "POST", "DELETE"] as const)(
-    "%s /api/config/context.packs_root refuses the removed key with its replacement",
+    "%s /api/config/context.packs_root 拒绝已移除的 key 并给出替代项",
     async (method) => {
       const app = buildApp();
       const res = await app.request("/api/config/context.packs_root", {
@@ -184,14 +184,14 @@ describe("config routes (User Settings v0)", () => {
     },
   );
 
-  it("GET /api/config refuses a persisted context.packsRoot before projecting settings", async () => {
+  it("GET /api/config 在投影设置前拒绝已持久化的 context.packsRoot", async () => {
     writeFileSync(configPath, JSON.stringify({ context: { packsRoot: "/legacy" } }));
     const res = await buildApp().request("/api/config");
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ error: expect.stringContaining("context.root") });
   });
 
-  it("GET /api/config/context.root preserves removed environment-setting guidance", async () => {
+  it("GET /api/config/context.root 保留已移除环境设置的迁移指南", async () => {
     process.env.OPENRIG_CONTEXT_PACKS_ROOT = "/legacy";
 
     const res = await buildApp().request("/api/config/context.root");
@@ -202,7 +202,7 @@ describe("config routes (User Settings v0)", () => {
     });
   });
 
-  it("GET /api/config/context.root preserves removed persisted-setting guidance", async () => {
+  it("GET /api/config/context.root 保留已移除持久化设置的迁移指南", async () => {
     writeFileSync(configPath, JSON.stringify({ context: { packsRoot: "/legacy" } }));
 
     const res = await buildApp().request("/api/config/context.root");
@@ -211,7 +211,7 @@ describe("config routes (User Settings v0)", () => {
     expect(await res.json()).toMatchObject({ error: expect.stringContaining("context.root") });
   });
 
-  it("POST /api/config/:key sets the value and persists to disk", async () => {
+  it("POST /api/config/:key 设置值并持久化到磁盘", async () => {
     const app = buildApp();
     const res = await app.request("/api/config/workspace.slices_root", {
       method: "POST",
@@ -222,11 +222,11 @@ describe("config routes (User Settings v0)", () => {
     const body = await res.json() as { ok: boolean; resolved: { value: string } };
     expect(body.ok).toBe(true);
     expect(body.resolved.value).toBe("/custom/slices");
-    // Disk persisted
+    // 已持久化到磁盘。
     expect(JSON.parse(readFileSync(configPath, "utf-8")).workspace.slicesRoot).toBe("/custom/slices");
   });
 
-  it("POST /api/config/:key 400s without value field", async () => {
+  it("缺少 value 字段时 POST /api/config/:key 返回 400", async () => {
     const app = buildApp();
     const res = await app.request("/api/config/workspace.root", {
       method: "POST",
@@ -236,15 +236,13 @@ describe("config routes (User Settings v0)", () => {
     expect(res.status).toBe(400);
   });
 
-  // Slice 27 BLOCKING-FIX — /api/config POST must reject invalid
-  // threshold_percent input. The route catches the error thrown by
-  // SettingsStore.set and maps it to 400; the integration test asserts
-  // the contract end-to-end so a future drift gets caught at CI.
-  describe("POST /api/config/policies.claude_compaction.threshold_percent strict validation", () => {
+  // Slice 27 BLOCKING-FIX——/api/config POST 必须拒绝无效 threshold_percent 输入。路由捕获
+  // SettingsStore.set 抛出的错误并映射为 400；集成测试端到端断言该契约，使未来漂移在 CI 中暴露。
+  describe("POST /api/config/policies.claude_compaction.threshold_percent 严格验证", () => {
     const rejectCases = ["0", "101", "-1", "80abc", "80.5", "", " ", "NaN", "Infinity"];
 
     for (const raw of rejectCases) {
-      it(`returns 400 for ${JSON.stringify(raw)}`, async () => {
+      it(`对 ${JSON.stringify(raw)} 返回 400`, async () => {
         const app = buildApp();
         const res = await app.request("/api/config/policies.claude_compaction.threshold_percent", {
           method: "POST",
@@ -253,11 +251,11 @@ describe("config routes (User Settings v0)", () => {
         });
         expect(res.status).toBe(400);
         const body = await res.json() as { error?: string };
-        expect(body.error).toMatch(/integer|number|in \[1, 100\]/);
+        expect(body.error).toMatch(/整数|数字|\[1, 100\] 范围/);
       });
     }
 
-    it("accepts valid integer in range and persists to disk", async () => {
+    it("接受范围内的有效整数并持久化到磁盘", async () => {
       const app = buildApp();
       const res = await app.request("/api/config/policies.claude_compaction.threshold_percent", {
         method: "POST",
@@ -269,7 +267,7 @@ describe("config routes (User Settings v0)", () => {
     });
   });
 
-  it("DELETE /api/config/:key resets to default", async () => {
+  it("DELETE /api/config/:key 重置为默认值", async () => {
     store.set("workspace.slices_root", "/x");
     const app = buildApp();
     const res = await app.request("/api/config/workspace.slices_root", { method: "DELETE" });
@@ -278,7 +276,7 @@ describe("config routes (User Settings v0)", () => {
     expect(body.resolved.source).toBe("default");
   });
 
-  it("POST /api/config/init-workspace creates the canonical six-item workspace", async () => {
+  it("POST /api/config/init-workspace 创建 canonical 六项 workspace", async () => {
     const root = join(tmpDir, "workspace");
     const app = buildApp();
     const res = await app.request("/api/config/init-workspace", {
@@ -299,7 +297,7 @@ describe("config routes (User Settings v0)", () => {
     }
   });
 
-  it("POST /api/config/init-workspace --dry-run does not write", async () => {
+  it("POST /api/config/init-workspace --dry-run 不写入", async () => {
     const root = join(tmpDir, "ws-dry");
     const app = buildApp();
     const res = await app.request("/api/config/init-workspace", {
@@ -311,7 +309,7 @@ describe("config routes (User Settings v0)", () => {
     expect(existsSync(root)).toBe(false);
   });
 
-  it("POST /api/config/init-workspace preserves existing files even with force", async () => {
+  it("即使使用 force，POST /api/config/init-workspace 仍保留现有文件", async () => {
     const root = join(tmpDir, "ws-existing");
     mkdirSync(root, { recursive: true });
     writeFileSync(join(root, "SPEC.md"), "operator-owned", "utf-8");
@@ -325,14 +323,14 @@ describe("config routes (User Settings v0)", () => {
     expect(readFileSync(join(root, "SPEC.md"), "utf-8")).toBe("operator-owned");
   });
 
-  it("503 when settingsStore is missing from context", async () => {
+  it("context 缺少 settingsStore 时返回 503", async () => {
     const app = new Hono();
     app.route("/api/config", configRoutes());
     const res = await app.request("/api/config");
     expect(res.status).toBe(503);
   });
 
-  it("project-only initialization does not consult mission-note overrides", async () => {
+  it("仅 project 的初始化不查询 mission-note override", async () => {
     const root = join(tmpDir, "project-only-workspace");
     expect(existsSync(root)).toBe(false);
     const original = process.env.OPENRIG_MISSION_NOTES_TEMPLATE_PATH;

@@ -11,7 +11,7 @@ import { SeatIdentityStore } from "../src/domain/seat-identity-store.js";
 import { resolveIdentityVerifiedClaudeRecord, type ProcessRow } from "../src/domain/model-divergence/current-generation-record.js";
 import { readClaudeEffectiveModel } from "../src/domain/model-divergence/effective-model-readers.js";
 
-describe("S13 effective-model identity — repository-shaped causal specimen", () => {
+describe("S13 effective-model 身份——仓库形态的因果样本", () => {
   let db: Database.Database | null = null;
   let dir: string | null = null;
 
@@ -22,7 +22,7 @@ describe("S13 effective-model identity — repository-shaped causal specimen", (
     dir = null;
   });
 
-  it("keeps the renamed predecessor discoverable while selecting the verified canonical occupant", async () => {
+  it("选择已验证规范 occupant 的同时，保持重命名后的前任可发现", async () => {
     const canonicalSession = "orch-advisor@v-openrig-build";
     const reserveSession = "orch-advisor-memory-20260830T2007Z@v-openrig-build";
     const canonicalId = "f16594c5-179a-4be7-bf5e-fd759b2b87a3";

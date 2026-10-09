@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch37",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/daemon/test/provider-codex-auth-reader.test.ts",
+      "before_sha256_16": "69cd3a8551d1928e",
+      "after_sha256_16": "a4a4f070c39590bb",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/view-event-bridge.test.ts",
+      "before_sha256_16": "9f5847afa0bb33ac",
+      "after_sha256_16": "7641f7ff67088d6c",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/codex-auth-command.test.ts",
+      "before_sha256_16": "f3b5a0be1751b782",
+      "after_sha256_16": "b0e561f19b0e9442",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/codex-auth-saveswitch.test.ts",
+      "before_sha256_16": "ec8a97fb7d389b25",
+      "after_sha256_16": "3b4309e518244550",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/daemon-lifecycle-event-loop.test.ts",
+      "before_sha256_16": "308d0e39552e27c8",
+      "after_sha256_16": "19abe90ba0e627d1",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

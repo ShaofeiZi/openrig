@@ -1,13 +1,10 @@
-// OPR.0.5.6.2 — inbound images/files: the deferred half of images-both-ways.
-// The T1076 seam cleanly IGNORES file-bearing events (ingestDecision rejects
-// subtype file_share, then files[]), so a human dropping an image into a mapped
-// thread today produces NO row at all. These pins commit the contract: the
-// reply row lands carrying our downloaded workspace-local copy by LOCAL path
-// (never a Slack URL — ToS: Slack owns nothing), download failure is honest and
-// named (never a silent drop of message or file), multiple files stay
-// individually attributable, unmapped threads ride slice 10's unrouted-signal
-// path with the file included, and loop safety (bot posts, edit subtypes) is
-// unchanged. RED at base: the row-landing pins fail at the admission layer.
+// OPR.0.5.6.2 —— 入站图片/文件：双向图片功能中此前推迟的一半。T1076 接缝会干净地
+// 忽略带文件事件（ingestDecision 先拒绝 subtype file_share，再拒绝 files[]），因此人类
+// 当前向已映射线程投递图片不会产生任何行。这些测试固定如下契约：回复行携带下载到
+// 工作区的本地副本及其本地路径（绝不是 Slack URL；按 ToS，Slack 不拥有该副本）；
+// 下载失败会如实具名报告，绝不静默丢弃消息或文件；多个文件仍可逐一归因；未映射线程
+// 沿用 slice 10 的 unrouted-signal 路径并包含文件；循环安全（机器人消息、编辑 subtype）
+// 保持不变。基础版本为红：行落地测试会在准入层失败。
 import { describe, it, expect } from "vitest";
 import { createHash } from "node:crypto";
 import { InboundRouter, ingestDecision, handleEnvelope, type SlackEvent } from "../src/domain/gateway/slack/inbound.js";
@@ -35,7 +32,7 @@ function memFs() {
 }
 const clock = () => new Date("2026-08-30T01:40:00Z");
 
-/** Stubbed Slack transport: url -> bytes (or an induced failure). */
+/** Slack 传输桩：URL → 字节，或注入失败。 */
 function stubFetch(routes: Record<string, Uint8Array | { status: number } | { html: true }>) {
   const seenAuth: string[] = [];
   const fetchImpl = async (url: string, init?: RequestInit): Promise<Response> => {
@@ -88,9 +85,8 @@ function harness(opts?: {
   return { router, rows, media, logs, seenAuth };
 }
 
-/** The OUTERMOST real entry: Socket envelope -> fast-ack -> ingestDecision ->
- *  route. Row pins ride THIS path so an admission regression can never hide
- *  behind a direct route() call. */
+/** 最外层真实入口：Socket 信封 → 快速确认 → ingestDecision → route。行测试必须经过
+ *  这条路径，使准入回归无法隐藏在直接调用 route() 的测试之后。 */
 async function deliver(h: ReturnType<typeof harness>, ev: SlackEvent): Promise<void> {
   await handleEnvelope({ envelope_id: "env-1", type: "events_api", payload: { event: ev } }, () => {}, h.router);
 }
@@ -110,43 +106,43 @@ const fileEvent = (over?: Partial<SlackEvent>): SlackEvent => ({
   ...over,
 });
 
-describe("inbound files: admission (the T1076 seam replaced)", () => {
-  it("a file_share message with files is ADMITTED (the motivating class)", () => {
+describe("入站文件：准入（取代 T1076 接缝）", () => {
+  it("准入带 files 的 file_share 消息（目标场景）", () => {
     expect(ingestDecision(fileEvent()).ingest).toBe(true);
   });
-  it("a file-only message with empty text is admitted (a pure drop has no caption)", () => {
+  it("准入文本为空的纯文件消息（纯文件投递没有说明文字）", () => {
     expect(ingestDecision(fileEvent({ text: "" })).ingest).toBe(true);
   });
-  it("loop safety unchanged: a BOT file post is still rejected", () => {
+  it("循环安全保持不变：仍拒绝机器人发送的文件消息", () => {
     const d = ingestDecision(fileEvent({ bot_id: "B9" }));
     expect(d.ingest).toBe(false);
     if (!d.ingest) expect(d.reason).toBe("bot_id");
   });
-  it("non-file subtypes are still rejected (message_changed)", () => {
+  it("仍拒绝非文件 subtype（message_changed）", () => {
     const d = ingestDecision({ type: "message", subtype: "message_changed", user: "U1", text: "edit", ts: "1.1", channel: "C1" });
     expect(d.ingest).toBe(false);
     if (!d.ingest) expect(d.reason).toBe("subtype");
   });
 });
 
-describe("inbound files: the row carries our local copy, never Slack's URL", () => {
-  it("single image into a MAPPED thread: row lands with a local path whose bytes hash-match the original", async () => {
+describe("入站文件：行中携带本地副本，绝不携带 Slack URL", () => {
+  it("向已映射线程发送单张图片：行携带本地路径，文件字节哈希与原文件一致", async () => {
     const h = harness({
       routes: { [F_IMG.url_private]: PNG_BYTES },
       mapped: { "400.0": "dev50-driver@v-openrig-build" },
     });
     await deliver(h, fileEvent());
-    expect(h.rows, "the reply row must land (RED: admission ignores file events today)").toHaveLength(1);
+    expect(h.rows, "回复行必须落地（红灯基线：当前准入逻辑忽略文件事件）").toHaveLength(1);
     const body = h.rows[0]!.body;
     const stored = [...h.media.keys()];
-    expect(stored, "exactly one media file stored").toHaveLength(1);
-    expect(stored[0]!.startsWith(MEDIA_DIR + "/"), "stored INSIDE the media dir").toBe(true);
-    expect(body, "the row references the local path").toContain(stored[0]!);
-    expect(sha(h.media.get(stored[0]!)!), "bytes hash-match the original").toBe(sha(PNG_BYTES));
-    expect(h.seenAuth.some((a) => a === "Bearer xoxb-test-token"), "download authenticated with the bot token").toBe(true);
+    expect(stored, "只存储一个媒体文件").toHaveLength(1);
+    expect(stored[0]!.startsWith(MEDIA_DIR + "/"), "文件存储在媒体目录内").toBe(true);
+    expect(body, "行引用本地路径").toContain(stored[0]!);
+    expect(sha(h.media.get(stored[0]!)!), "字节哈希与原文件一致").toBe(sha(PNG_BYTES));
+    expect(h.seenAuth.some((a) => a === "Bearer xoxb-test-token"), "下载使用机器人令牌完成认证").toBe(true);
   });
 
-  it("multiple files stay individually attributable; image+text preserves the text", async () => {
+  it("多个文件仍可逐一归因，图片加文本时保留文本", async () => {
     const h = harness({
       routes: { [F_IMG.url_private]: PNG_BYTES, [F_PDF.url_private]: PDF_BYTES },
       mapped: { "400.0": "dev50-driver@v-openrig-build" },
@@ -161,14 +157,14 @@ describe("inbound files: the row carries our local copy, never Slack's URL", () 
     expect(sha(h.media.get(stored.find((p) => p.includes("notes"))!)!)).toBe(sha(PDF_BYTES));
   });
 
-  it("non-image files ride the same mechanics", async () => {
+  it("非图片文件沿用相同机制", async () => {
     const h = harness({ routes: { [F_PDF.url_private]: PDF_BYTES }, mapped: { "400.0": "x@y" } });
     await deliver(h, fileEvent({ files: [F_PDF] }));
     expect(h.rows).toHaveLength(1);
     expect([...h.media.keys()]).toHaveLength(1);
   });
 
-  it("ABSENCE: no produced row ever references a Slack URL in any form", async () => {
+  it("反向保证：生成的行绝不以任何形式引用 Slack URL", async () => {
     const h = harness({
       routes: { [F_IMG.url_private]: PNG_BYTES, [F_PDF.url_private]: PDF_BYTES },
       mapped: { "400.0": "x@y" },
@@ -176,78 +172,78 @@ describe("inbound files: the row carries our local copy, never Slack's URL", () 
     await deliver(h, fileEvent({ text: "one", files: [F_IMG], ts: "500.1" }));
     await deliver(h, fileEvent({ text: "two", files: [F_IMG, F_PDF], ts: "500.2" }));
     await deliver(h, fileEvent({ text: "three", files: [F_PDF], ts: "500.3" }));
-    expect(h.rows.length, "the sweep is only meaningful over landed rows").toBeGreaterThanOrEqual(3);
+    expect(h.rows.length, "只有对已落地的行执行遍历才有意义").toBeGreaterThanOrEqual(3);
     for (const row of h.rows) {
       const joined = `${row.summary}\n${row.body}`;
-      // presence half: every file-bearing row carries at least one local copy
-      expect([...h.media.keys()].some((p) => joined.includes(p)), "each row carries a local media path").toBe(true);
+      // 正向保证：每个带文件的行至少携带一个本地副本。
+      expect([...h.media.keys()].some((p) => joined.includes(p)), "每行都携带本地媒体路径").toBe(true);
       expect(joined).not.toMatch(/url_private/);
       expect(joined).not.toMatch(/files\.slack\.com|slack\.com\/files|hooks\.slack\.com/);
-      expect(joined, "the bot token never reaches a row").not.toContain("xoxb-test-token");
+      expect(joined, "机器人令牌绝不会进入行").not.toContain("xoxb-test-token");
     }
   });
 });
 
-describe("inbound files: failure honesty (never a silent drop)", () => {
-  it("an induced download failure lands the row with the text AND a named per-file failure; the healthy sibling still stores", async () => {
+describe("入站文件：如实呈现失败（绝不静默丢弃）", () => {
+  it("注入下载失败时，行仍携带文本及逐文件具名失败，正常的同批文件仍会存储", async () => {
     const h = harness({
       routes: { [F_IMG.url_private]: { status: 403 }, [F_PDF.url_private]: PDF_BYTES },
       mapped: { "400.0": "x@y" },
     });
     await deliver(h, fileEvent({ text: "the message must survive", files: [F_IMG, F_PDF] }));
-    expect(h.rows, "the message NEVER vanishes because a transfer failed").toHaveLength(1);
+    expect(h.rows, "消息绝不会因为传输失败而消失").toHaveLength(1);
     const body = h.rows[0]!.body;
     expect(body).toContain("the message must survive");
-    expect(body, "the failure is NAMED, per file").toMatch(/file transfer failed/i);
+    expect(body, "每个文件的失败都有明确名称").toContain("文件传输失败");
     expect(body).toContain("whiteboard sketch.png");
-    expect([...h.media.keys()], "the healthy file still stored (individually attributable)").toHaveLength(1);
+    expect([...h.media.keys()], "正常文件仍会存储并可单独归因").toHaveLength(1);
     expect(body).toContain([...h.media.keys()][0]!);
     expect(body).not.toMatch(/url_private|files\.slack\.com/);
   });
 
-  it("R1 F1: a lookalike domain is REJECTED before any request — the token never travels to evilslack.com", async () => {
+  it("R1 F1：在发起请求前拒绝仿冒域名，令牌绝不会发送到 evilslack.com", async () => {
     const EVIL = "https://evilslack.com/files-pri/T1-FX/steal.png";
     const h = harness({ routes: { [EVIL]: PNG_BYTES }, mapped: { "400.0": "x@y" } });
     await deliver(h, fileEvent({ files: [{ id: "FX", name: "steal.png", mimetype: "image/png", url_private: EVIL }] }));
-    expect(h.rows, "the message still lands").toHaveLength(1);
-    expect(h.rows[0]!.body).toMatch(/file transfer failed/i);
-    expect(h.rows[0]!.body).toContain("non-Slack");
-    expect(h.seenAuth, "NO request left the boundary — the Bearer token never traveled").toHaveLength(0);
+    expect(h.rows, "消息仍会落地").toHaveLength(1);
+    expect(h.rows[0]!.body).toContain("文件传输失败");
+    expect(h.rows[0]!.body).toContain("并非 Slack URL");
+    expect(h.seenAuth, "没有请求离开边界，Bearer 令牌从未外发").toHaveLength(0);
     expect([...h.media.keys()]).toHaveLength(0);
   });
 
-  it("R1 F2: a THROWING file port never costs the ACKed message — the row lands with every file a named failure", async () => {
+  it("R1 F2：文件端口抛出异常也不会丢失已确认消息，行会落地并逐文件记录具名失败", async () => {
     const h = harness({ mapped: { "400.0": "x@y" } });
     (h.router as unknown as { deps: { files: { transfer: () => Promise<never> } } }).deps.files = {
       transfer: async () => { throw new Error("ENOSPC: no space left on device"); },
     };
     await deliver(h, fileEvent({ text: "must survive a crashing port", files: [F_IMG, F_PDF] }));
-    expect(h.rows, "the row lands despite the port crash").toHaveLength(1);
+    expect(h.rows, "即使端口崩溃，行仍会落地").toHaveLength(1);
     const body = h.rows[0]!.body;
     expect(body).toContain("must survive a crashing port");
-    expect(body).toMatch(/file transfer crashed/i);
+    expect(body).toContain("文件传输崩溃");
     expect(body).toContain("whiteboard sketch.png");
     expect(body).toContain("notes.pdf");
     expect(body).toContain("ENOSPC");
   });
 
-  it("an auth failure disguised as HTML is detected and named, not stored as garbage", async () => {
+  it("识别伪装成 HTML 的认证失败并具名报告，不把垃圾内容存为文件", async () => {
     const h = harness({ routes: { [F_IMG.url_private]: { html: true } }, mapped: { "400.0": "x@y" } });
     await deliver(h, fileEvent());
     expect(h.rows).toHaveLength(1);
-    expect(h.rows[0]!.body).toMatch(/file transfer failed/i);
-    expect([...h.media.keys()], "an HTML login page is never stored as the file").toHaveLength(0);
+    expect(h.rows[0]!.body).toContain("文件传输失败");
+    expect([...h.media.keys()], "绝不把 HTML 登录页存为目标文件").toHaveLength(0);
   });
 });
 
-describe("inbound files: unmapped threads reuse the slice-10 unrouted-signal path, file included", () => {
-  it("a file event on an UNMAPPED thread routes to the unrouted destination with the unrouted-signal tag and still carries the attachment", async () => {
+describe("入站文件：未映射线程复用 slice-10 的 unrouted-signal 路径并包含文件", () => {
+  it("未映射线程中的文件事件路由到未路由目标，携带 unrouted-signal 标签和附件", async () => {
     const h = harness({ routes: { [F_IMG.url_private]: PNG_BYTES }, mapped: {} });
     await deliver(h, fileEvent({ thread_ts: "999.9" }));
     expect(h.rows).toHaveLength(1);
     const row = h.rows[0]!;
     expect(row.destination).toBe("orch-lead@v-openrig-build");
-    expect(row.tags ?? [], "slice 10's unrouted-signal tag, no file special-case").toContain("unrouted-signal");
+    expect(row.tags ?? [], "沿用 slice 10 的 unrouted-signal 标签，不为文件设置特例").toContain("unrouted-signal");
     expect([...h.media.keys()]).toHaveLength(1);
     expect(row.body).toContain([...h.media.keys()][0]!);
   });

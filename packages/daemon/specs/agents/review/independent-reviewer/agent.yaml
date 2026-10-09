@@ -1,6 +1,6 @@
 name: independent-reviewer
 version: "1.0"
-description: Independent code reviewer — analyzes code and writes findings
+description: 独立代码评审智能体——分析代码并撰写发现项
 
 defaults:
   runtime: claude-code

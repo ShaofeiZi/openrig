@@ -1,30 +1,29 @@
-// Crash-cart C3 — daemon-state detection (planner+PM ruling; the honest-degraded false-negative rail).
+// 故障诊断 C3——后台服务状态检测（planner + PM 裁定；如实降级的防误报护栏）。
 //
-// THREE states — the cockpit + the C2 direct read fire ONLY on DOWN, and DOWN requires POSITIVE
-// evidence. A probe blip must NEVER fabricate a crash narrative or offer RESTORE EVERYTHING:
-//   UP         — /healthz answered (openrig is serving).
-//   DOWN       — (no daemon.json OR pid dead) AND /healthz connection-REFUSED. REFUSED is the ONLY
-//                strong down signal; a timeout NEVER promotes to DOWN (at any retry count).
-//   UNVERIFIED — everything else: timeout, a wedged daemon (pid alive but refused/unresponsive), or a
-//                non-openrig process on the port. Renders its own minimal screen, never the cockpit.
+// 三态模型：驾驶舱与 C2 直接读取仅在 DOWN 时触发，且 DOWN 必须有肯定证据。
+// 短暂探测异常绝不能捏造崩溃叙事或提供“恢复全部”：
+//   UP         — /healthz 已响应（openrig 正在提供服务）。
+//   DOWN       —（无 daemon.json 或 pid 已终止）且 /healthz 连接被拒绝。REFUSED 是唯一强下线信号；
+//                无论重试多少次，超时都绝不会提升为 DOWN。
+//   UNVERIFIED — 其他所有情况：超时、后台服务卡死（pid 存活但拒绝或不响应），或端口被非 openrig
+//                进程占用。此状态渲染自己的最小界面，绝不进入驾驶舱。
 //
-// All probes + the clock are injected so the verdict is deterministically testable.
+// 所有探针和时钟均可注入，使判定可确定性测试。
 
 export type DaemonState = "up" | "down" | "unverified";
 
-/** The /healthz probe outcome — distinguishes a REFUSED connection (strong down) from a TIMEOUT
- *  (unverified) from a foreign occupant (unverified). */
+/** /healthz 探测结果：区分连接被拒绝（强下线信号）、超时（未验证）与外部进程占用（未验证）。 */
 export type HealthzProbeResult = "answered" | "refused" | "timeout" | "not-openrig";
 
-/** Verbatim evidence rendered on the UNVERIFIED screen (never a crash story — the honest "we cannot
- *  confirm the daemon is down" record). Assembled by the caller from the pid check + last probe. */
+/** 在 UNVERIFIED 界面逐字渲染的证据；它绝不是崩溃叙事，而是如实记录“无法确认后台服务已停止”。
+ * 调用方根据 pid 检查和最后一次探测组装。 */
 export interface DaemonUnverifiedEvidence {
   pidState: string;
   probeResult: string;
   failedSignal: string;
 }
 
-/** Minimal daemon.json shape the classifier needs. */
+/** 分类器所需的最小 daemon.json 结构。 */
 export interface DaemonStateFile {
   pid: number;
   port: number;
@@ -53,8 +52,8 @@ function healthzUrl(deps: ClassifyDaemonDeps, state: DaemonStateFile | undefined
 }
 
 /**
- * SINGLE-SHOT classification (the per-probe primitive; the bounded retry is resolveDaemonState).
- * DOWN only on positive evidence (pid dead/absent AND refused); UP on answered; else UNVERIFIED.
+ * 单次分类（每次探测的基础操作；有界重试由 resolveDaemonState 完成）。
+ * 只有肯定证据（pid 已终止/缺失且连接被拒绝）才判为 DOWN；已响应判为 UP；其余为 UNVERIFIED。
  */
 export async function classifyDaemonState(deps: ClassifyDaemonDeps): Promise<DaemonState> {
   const state = deps.readDaemonJson(deps.openrigHome);
@@ -62,32 +61,31 @@ export async function classifyDaemonState(deps: ClassifyDaemonDeps): Promise<Dae
   const probe = await deps.probeHealthz(healthzUrl(deps, state));
   if (probe === "answered") return "up";
   if (probe === "refused" && pidDeadOrAbsent) return "down";
-  // timeout · wedged (pid alive but refused/unresponsive) · foreign occupant → never a crash verdict.
+  // 超时、卡死（pid 存活但拒绝/不响应）或外部进程占用，都绝不能得出崩溃结论。
   return "unverified";
 }
 
 export interface ResolveDaemonDeps extends ClassifyDaemonDeps {
-  /** Injected delay between probes (deterministic in tests). */
+  /** 探测间可注入的延迟（便于确定性测试）。 */
   sleep: (ms: number) => Promise<void>;
-  /** Max probes (small/bounded, sub-2s feel — default 3). */
+  /** 最大探测次数（少量且有界，体验上不超过 2 秒；默认 3 次）。 */
   maxProbes?: number;
-  /** Delay between probes in ms (default 400 → ~2 gaps under 2s at 3 probes). */
+  /** 探测间延迟，单位毫秒（默认 400；探测 3 次时约两个间隔，总计小于 2 秒）。 */
   retryDelayMs?: number;
 }
 
 /**
- * Bounded-retry resolution. UP (answered) and DOWN (refused + pid-dead) are DECISIVE — returned on the
- * first probe that yields them, no retry. UNVERIFIED (timeout/wedged/foreign) triggers a bounded retry;
- * if it never resolves to UP or DOWN within maxProbes, the verdict is UNVERIFIED. A timeout NEVER
- * promotes to DOWN at any retry count (the false-negative rail).
+ * 有界重试判定。UP（已响应）和 DOWN（拒绝连接且 pid 已终止）是决定性结果，首次探测得到后立即返回，
+ * 不再重试。UNVERIFIED（超时、卡死或外部进程占用）触发有界重试；若在 maxProbes 内始终无法判定
+ * UP 或 DOWN，最终结果仍为 UNVERIFIED。无论重试多少次，超时都绝不会提升为 DOWN。
  */
 export async function resolveDaemonState(deps: ResolveDaemonDeps): Promise<DaemonState> {
   const max = Math.max(1, deps.maxProbes ?? 3);
   const delay = deps.retryDelayMs ?? 400;
   for (let i = 0; i < max; i += 1) {
     const s = await classifyDaemonState(deps);
-    if (s === "up" || s === "down") return s; // decisive
-    if (i < max - 1) await deps.sleep(delay); // unverified → retry
+    if (s === "up" || s === "down") return s; // 决定性结果
+    if (i < max - 1) await deps.sleep(delay); // 未验证则重试
   }
   return "unverified";
 }

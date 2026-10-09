@@ -15,7 +15,7 @@ const MOCK_PACKAGE: PackageInfo = {
   createdAt: "2026-03-25 10:00:00",
 };
 
-// API returns newest-first (deterministic ordering by created_at DESC, rowid DESC)
+// API 返回 newest-first（按 created_at DESC、rowid DESC 确定性排序）
 const MOCK_INSTALLS: InstallSummary[] = [
   {
     id: "inst-2",
@@ -121,7 +121,7 @@ function renderDetail() {
 }
 
 describe("PackageDetail", () => {
-  // Test 1: Renders package header
+  // 测试 1：渲染 package header
   it("renders package header", async () => {
     mockFetch({ pkg: MOCK_PACKAGE, installs: MOCK_INSTALLS });
     renderDetail();
@@ -130,12 +130,12 @@ describe("PackageDetail", () => {
       expect(screen.getByTestId("package-header")).toBeTruthy();
     });
 
-    expect(screen.getByText("acme-standards (Legacy)")).toBeTruthy();
+    expect(screen.getByText("acme-standards（旧版）")).toBeTruthy();
     expect(screen.getByText("v2.0.0")).toBeTruthy();
     expect(screen.getByTestId("package-source").textContent).toBe("/packages/acme");
   });
 
-  // Test 2: Install history in reverse chronological order
+  // 测试 2：install 历史按逆时间顺序
   it("install history in reverse chronological order", async () => {
     mockFetch({ pkg: MOCK_PACKAGE, installs: MOCK_INSTALLS });
     renderDetail();
@@ -146,12 +146,12 @@ describe("PackageDetail", () => {
     });
 
     const rows = screen.getAllByTestId("install-row");
-    // inst-2 (2026-03-25 12:00:00) should appear before inst-1 (2026-03-25 10:00:00)
+    // inst-2（2026-03-25 12:00:00）应出现在 inst-1（2026-03-25 10:00:00）之前
     expect(rows[0]!.textContent).toContain("/repo-b");
     expect(rows[1]!.textContent).toContain("/repo-a");
   });
 
-  // Test 3: Status badges have correct colors
+  // 测试 3：status badge 颜色正确
   it("status badges have correct colors", async () => {
     const threeInstalls: InstallSummary[] = [
       { ...MOCK_INSTALLS[0]!, status: "applied", createdAt: "2026-03-25 13:00:00" },
@@ -172,7 +172,7 @@ describe("PackageDetail", () => {
     expect(badges[2]!.className).toContain("bg-destructive");
   });
 
-  // Test 4: Expand install shows journal entries
+  // 测试 4：展开 install 显示 journal 条目
   it("expand install shows journal entries", async () => {
     mockFetch({ pkg: MOCK_PACKAGE, installs: MOCK_INSTALLS, journal: MOCK_JOURNAL });
     renderDetail();
@@ -181,7 +181,7 @@ describe("PackageDetail", () => {
       expect(screen.getAllByTestId("install-row")).toHaveLength(2);
     });
 
-    // Click expand on the second row (inst-1, which has appliedCount: 3)
+    // 点第二行（inst-1，appliedCount: 3）的展开
     const expandBtns = screen.getAllByTestId("expand-btn");
     act(() => { fireEvent.click(expandBtns[1]!); });
 
@@ -193,9 +193,9 @@ describe("PackageDetail", () => {
     expect(entries).toHaveLength(2);
   });
 
-  // Test 5: Rollback button opens confirmation dialog
+  // 测试 5：Rollback 按钮打开确认 dialog
   it("rollback button opens confirmation dialog", async () => {
-    // inst-1 is "applied" — will appear second (older)
+    // inst-1 是 "applied"——将出现在第二（较旧）
     mockFetch({ pkg: MOCK_PACKAGE, installs: MOCK_INSTALLS });
     renderDetail();
 
@@ -203,7 +203,7 @@ describe("PackageDetail", () => {
       expect(screen.getAllByTestId("install-row")).toHaveLength(2);
     });
 
-    // The "applied" install is the second row (inst-1, older date)
+    // "applied" install 是第二行（inst-1，较旧日期）
     const rollbackBtns = screen.getAllByTestId("rollback-btn");
     expect(rollbackBtns.length).toBeGreaterThan(0);
 
@@ -214,7 +214,7 @@ describe("PackageDetail", () => {
     });
   });
 
-  // Test 6: Rollback success updates status
+  // 测试 6：Rollback 成功更新状态
   it("rollback success updates status", async () => {
     const appliedOnly: InstallSummary[] = [
       { ...MOCK_INSTALLS[0]!, status: "applied" },
@@ -226,26 +226,25 @@ describe("PackageDetail", () => {
       expect(screen.getAllByTestId("install-row")).toHaveLength(1);
     });
 
-    // Click rollback
+    // 点 rollback
     act(() => { fireEvent.click(screen.getByTestId("rollback-btn")); });
 
     await waitFor(() => {
       expect(screen.getByTestId("rollback-dialog")).toBeTruthy();
     });
 
-    // Confirm rollback
+    // 确认 rollback
     act(() => { fireEvent.click(screen.getByTestId("rollback-confirm")); });
 
-    // After mutation, the fetch mock is called again for installs (invalidation)
-    // The mock will return the same data since it's a static mock,
-    // but the mutation itself should have completed successfully
+    // mutation 后，fetch mock 再次被 install 调用（invalidation）
+    // mock 将返回相同数据（静态 mock），但 mutation 本身应已成功完成
     await waitFor(() => {
-      // Dialog should close
+      // Dialog 应关闭
       expect(screen.queryByTestId("rollback-dialog")).toBeNull();
     });
   });
 
-  // Test 7: Empty install history
+  // 测试 7：空 install 历史
   it("empty install history", async () => {
     mockFetch({ pkg: MOCK_PACKAGE, installs: [] });
     renderDetail();
@@ -254,10 +253,10 @@ describe("PackageDetail", () => {
       expect(screen.getByTestId("empty-installs")).toBeTruthy();
     });
 
-    expect(screen.getByTestId("empty-installs").textContent).toContain("No installs yet");
+    expect(screen.getByTestId("empty-installs").textContent).toContain("暂无安装记录");
   });
 
-  // Test 8: Install row shows appliedCount and deferred placeholder
+  // 测试 8：install 行显示 appliedCount 和 deferred 占位
   it("install row shows appliedCount and deferred placeholder (deferredCount not yet persisted)", async () => {
     const installWithCounts: InstallSummary[] = [
       {
@@ -275,13 +274,13 @@ describe("PackageDetail", () => {
 
     const appliedCount = screen.getByTestId("applied-count");
     expect(appliedCount.textContent).toContain("3");
-    expect(appliedCount.textContent).toContain("applied");
+    expect(appliedCount.textContent).toContain("已应用");
 
     const deferredPlaceholder = screen.getByTestId("deferred-placeholder");
-    expect(deferredPlaceholder.textContent).toContain("deferred");
+    expect(deferredPlaceholder.textContent).toContain("已延迟");
   });
 
-  // Test 9: Failed install history fetch shows error, not empty state (R2-M5)
+  // 测试 9：install 历史 fetch 失败显示错误，非空状态（R2-M5）
   it("failed install history fetch shows error state, not false empty state", async () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (typeof url === "string" && url.includes("/installs")) {
@@ -298,11 +297,11 @@ describe("PackageDetail", () => {
       expect(screen.getByTestId("installs-error")).toBeTruthy();
     });
 
-    expect(screen.getByTestId("installs-error").textContent).toContain("Failed to load install history");
+    expect(screen.getByTestId("installs-error").textContent).toContain("加载安装历史失败");
     expect(screen.queryByTestId("empty-installs")).toBeNull();
   });
 
-  // Test 10: Failed journal fetch shows error, not empty state (R2-M5)
+  // 测试 10：journal fetch 失败显示错误，非空状态（R2-M5）
   it("failed journal fetch shows error state, not false empty state", async () => {
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (typeof url === "string" && url.includes("/journal")) {
@@ -322,7 +321,7 @@ describe("PackageDetail", () => {
       expect(screen.getAllByTestId("install-row")).toHaveLength(2);
     });
 
-    // Expand the second row (inst-1, applied) to trigger journal fetch
+    // 展开第二行（inst-1，applied）以触发 journal fetch
     const expandBtns = screen.getAllByTestId("expand-btn");
     act(() => { fireEvent.click(expandBtns[1]!); });
 
@@ -330,10 +329,10 @@ describe("PackageDetail", () => {
       expect(screen.getByTestId("journal-error")).toBeTruthy();
     });
 
-    expect(screen.getByTestId("journal-error").textContent).toContain("Failed to load journal");
+    expect(screen.getByTestId("journal-error").textContent).toContain("加载日志条目失败");
   });
 
-  // Test 11: Rollback failure shows error in dialog (R2-M6)
+  // 测试 11：Rollback 失败在 dialog 内显示错误（R2-M6）
   it("rollback failure shows error in dialog, dialog stays open", async () => {
     const appliedOnly: InstallSummary[] = [
       { ...MOCK_INSTALLS[0]!, status: "applied" },
@@ -345,31 +344,31 @@ describe("PackageDetail", () => {
       expect(screen.getAllByTestId("install-row")).toHaveLength(1);
     });
 
-    // Open rollback dialog
+    // 打开 rollback dialog
     act(() => { fireEvent.click(screen.getByTestId("rollback-btn")); });
     await waitFor(() => {
       expect(screen.getByTestId("rollback-dialog")).toBeTruthy();
     });
 
-    // Confirm rollback (will fail with 500)
+    // 确认 rollback（将以 500 失败）
     act(() => { fireEvent.click(screen.getByTestId("rollback-confirm")); });
 
-    // Dialog should stay open and show error
+    // Dialog 应保持打开并显示错误
     await waitFor(() => {
       expect(screen.getByTestId("rollback-error")).toBeTruthy();
     });
 
-    expect(screen.getByTestId("rollback-error").textContent).toContain("Rollback failed");
-    // Dialog is still open
+    expect(screen.getByTestId("rollback-error").textContent).toContain("回滚失败");
+    // Dialog 仍打开
     expect(screen.getByTestId("rollback-dialog")).toBeTruthy();
   });
 
-  // Test 12: Rollback confirm button disabled during pending (R2-M6)
+  // 测试 12：pending 期间 Rollback confirm 按钮禁用（R2-M6）
   it("rollback confirm button disabled during pending state", async () => {
     const appliedOnly: InstallSummary[] = [
       { ...MOCK_INSTALLS[0]!, status: "applied" },
     ];
-    // Return a never-resolving promise so the mutation stays pending
+    // 返回永不 resolve 的 promise，使 mutation 保持 pending
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (init?.method === "POST" && typeof url === "string" && url.includes("/rollback")) {
         return new Promise(() => {}); // Never resolves
@@ -388,23 +387,23 @@ describe("PackageDetail", () => {
       expect(screen.getAllByTestId("install-row")).toHaveLength(1);
     });
 
-    // Open rollback dialog
+    // 打开 rollback dialog
     act(() => { fireEvent.click(screen.getByTestId("rollback-btn")); });
     await waitFor(() => {
       expect(screen.getByTestId("rollback-dialog")).toBeTruthy();
     });
 
-    // Confirm — enters pending state
+    // 确认——进入 pending 状态
     act(() => { fireEvent.click(screen.getByTestId("rollback-confirm")); });
 
     await waitFor(() => {
       const btn = screen.getByTestId("rollback-confirm");
       expect(btn.hasAttribute("disabled")).toBe(true);
-      expect(btn.textContent).toContain("ROLLING BACK");
+      expect(btn.textContent).toContain("正在回滚");
     });
   });
 
-  // Test 13: Dialog non-dismissible during pending rollback (R2-M6 regression)
+  // 测试 13：pending rollback 期间 dialog 不可关闭（R2-M6 回归）
   it("dialog cannot be dismissed via Escape or overlay during pending rollback", async () => {
     const appliedOnly: InstallSummary[] = [
       { ...MOCK_INSTALLS[0]!, status: "applied" },
@@ -427,27 +426,27 @@ describe("PackageDetail", () => {
       expect(screen.getAllByTestId("install-row")).toHaveLength(1);
     });
 
-    // Open dialog and confirm rollback to enter pending state
+    // 打开 dialog 并确认 rollback 进入 pending 状态
     act(() => { fireEvent.click(screen.getByTestId("rollback-btn")); });
     await waitFor(() => {
       expect(screen.getByTestId("rollback-dialog")).toBeTruthy();
     });
     act(() => { fireEvent.click(screen.getByTestId("rollback-confirm")); });
 
-    // Wait for pending state
+    // 等 pending 状态
     await waitFor(() => {
       expect(screen.getByTestId("rollback-confirm").hasAttribute("disabled")).toBe(true);
     });
 
-    // Try Escape — dialog should remain open
+    // 试 Escape——dialog 应保持打开
     act(() => { fireEvent.keyDown(screen.getByTestId("rollback-dialog"), { key: "Escape" }); });
     expect(screen.getByTestId("rollback-dialog")).toBeTruthy();
 
-    // Cancel button should be disabled during pending
+    // pending 期间 Cancel 按钮应禁用
     expect(screen.getByTestId("rollback-cancel").hasAttribute("disabled")).toBe(true);
   });
 
-  // Test 14: Close-after-error clears stale error on reopen (R2-M6 regression)
+  // 测试 14：错误后关闭，重开时清除陈旧错误（R2-M6 回归）
   it("cancel after rollback error clears error on dialog reopen", async () => {
     const appliedOnly: InstallSummary[] = [
       { ...MOCK_INSTALLS[0]!, status: "applied" },
@@ -459,25 +458,25 @@ describe("PackageDetail", () => {
       expect(screen.getAllByTestId("install-row")).toHaveLength(1);
     });
 
-    // Open dialog and trigger failed rollback
+    // 打开 dialog 并触发失败 rollback
     act(() => { fireEvent.click(screen.getByTestId("rollback-btn")); });
     await waitFor(() => {
       expect(screen.getByTestId("rollback-dialog")).toBeTruthy();
     });
     act(() => { fireEvent.click(screen.getByTestId("rollback-confirm")); });
 
-    // Wait for error
+    // 等错误
     await waitFor(() => {
       expect(screen.getByTestId("rollback-error")).toBeTruthy();
     });
 
-    // Cancel to close
+    // Cancel 关闭
     act(() => { fireEvent.click(screen.getByTestId("rollback-cancel")); });
     await waitFor(() => {
       expect(screen.queryByTestId("rollback-dialog")).toBeNull();
     });
 
-    // Reopen dialog — error should be cleared
+    // 重开 dialog——错误应被清除
     act(() => { fireEvent.click(screen.getByTestId("rollback-btn")); });
     await waitFor(() => {
       expect(screen.getByTestId("rollback-dialog")).toBeTruthy();
@@ -486,12 +485,12 @@ describe("PackageDetail", () => {
     expect(screen.queryByTestId("rollback-error")).toBeNull();
   });
 
-  // Test 15: Rollback mutation invalidates journal cache (R2-M4)
+  // 测试 15：Rollback mutation 失效 journal 缓存（R2-M4）
   it("rollback mutation invalidates journal queries on success", async () => {
     const appliedOnly: InstallSummary[] = [
       { ...MOCK_INSTALLS[0]!, status: "applied" },
     ];
-    // Track fetch calls to detect journal refetch
+    // 跟踪 fetch 调用以检测 journal refetch
     let journalFetchCount = 0;
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (init?.method === "POST" && typeof url === "string" && url.includes("/rollback")) {
@@ -515,7 +514,7 @@ describe("PackageDetail", () => {
       expect(screen.getAllByTestId("install-row")).toHaveLength(1);
     });
 
-    // Expand to trigger initial journal fetch
+    // 展开以触发初始 journal fetch
     act(() => { fireEvent.click(screen.getByTestId("expand-btn")); });
     await waitFor(() => {
       expect(screen.getByTestId("journal-entries")).toBeTruthy();
@@ -529,7 +528,7 @@ describe("PackageDetail", () => {
     });
     act(() => { fireEvent.click(screen.getByTestId("rollback-confirm")); });
 
-    // Wait for mutation to complete and invalidation to trigger refetch
+    // 等 mutation 完成且 invalidation 触发 refetch
     await waitFor(() => {
       expect(journalFetchCount).toBeGreaterThan(countBeforeRollback);
     });

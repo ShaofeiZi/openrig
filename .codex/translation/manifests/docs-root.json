@@ -1,0 +1,319 @@
+{
+  "owner": "docs-root",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "target_path": ".github/PULL_REQUEST_TEMPLATE.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 17,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；HTML注释/复选框结构保留；无命令示例 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": ".github/SUPPORT.md",
+      "target_path": ".github/SUPPORT.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 16,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；rig --version 顶层示例改为 zrig --version；链接保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "CODE_OF_CONDUCT.md",
+      "target_path": "CODE_OF_CONDUCT.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 75,
+      "notes": "seed already approved (verifier rubric check-file-format passed); companion copied, done | seed companion; verifier check-file-format passed=true | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "CONTRIBUTING.md",
+      "target_path": "CONTRIBUTING.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 89,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；rig --version→zrig --version；npm/git命令保留；内部链接保留指向原文（伴随版待生成） | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "README.md",
+      "target_path": "README.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 362,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；安装段改为本地源码构建(./zrig)，不引导npm安装未发布zrig；顶层rig命令→zrig；@openrig/cli保留为上游包；跨文档链接指向英文.md(同种子约定) | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "SECURITY.md",
+      "target_path": "SECURITY.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 47,
+      "notes": "seed already approved (verifier rubric check-file-format passed); companion copied, done | seed companion; verifier check-file-format passed=true | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/DESIGN.md",
+      "target_path": "docs/DESIGN.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 346,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；CSS令牌/Tailwind类/组件名/路径/路由保留；无命令示例 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/agent-spec.md",
+      "target_path": "docs/reference/agent-spec.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 457,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；YAML schema/表格/枚举/TOML片段/示例布局完整保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/agent-startup-guide.md",
+      "target_path": "docs/reference/agent-startup-guide.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 367,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；send/whoami/ps/env/agent/spec命令→zrig；分层模型/支持矩阵/YAML保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/agent-state-taxonomy.md",
+      "target_path": "docs/reference/agent-state-taxonomy.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 101,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；npm命令保留；legacy迁移脚本顶层rig→zrig；状态taxonomy的rig ps/view→zrig | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/chain-file-convention.md",
+      "target_path": "docs/reference/chain-file-convention.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 120,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；顶层rig命令→zrig；目录树/YAML/枚举/路径保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/developing.md",
+      "target_path": "docs/reference/developing.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 39,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；npm命令保留；legacy迁移脚本顶层rig→zrig；状态taxonomy的rig ps/view→zrig | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/edge-types.md",
+      "target_path": "docs/reference/edge-types.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 126,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；顶层rig命令→zrig；目录树/YAML/枚举/路径保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/getting-started.md",
+      "target_path": "docs/reference/getting-started.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 454,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；全部rig→zrig命令；席位地址/--rig值/链接锚点保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/health-diagnosis.md",
+      "target_path": "docs/reference/health-diagnosis.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 408,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；health/queue/config命令→zrig；JSON schema/边界/阈值保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/instance-layout.md",
+      "target_path": "docs/reference/instance-layout.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 106,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；顶层rig命令→zrig；目录树/YAML/枚举/路径保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/knowledge-maturity.md",
+      "target_path": "docs/reference/knowledge-maturity.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 123,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；顶层rig命令→zrig；目录树/YAML/枚举/路径保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/legacy-topology-migration.md",
+      "target_path": "docs/reference/legacy-topology-migration.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 52,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；npm命令保留；legacy迁移脚本顶层rig→zrig；状态taxonomy的rig ps/view→zrig | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/lore-routing.md",
+      "target_path": "docs/reference/lore-routing.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 173,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；无命令示例；YAML/frontmatter/地址语法保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/mission-install.md",
+      "target_path": "docs/reference/mission-install.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 224,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；context profile/walk命令→zrig；frontmatter/YAML保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/planning-dial.md",
+      "target_path": "docs/reference/planning-dial.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 53,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；npm命令保留；legacy迁移脚本顶层rig→zrig；状态taxonomy的rig ps/view→zrig | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/product-journey-sdlc.md",
+      "target_path": "docs/reference/product-journey-sdlc.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 343,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；whoami/config/context命令→zrig；YAML组件ID/边保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/product-management-pass.md",
+      "target_path": "docs/reference/product-management-pass.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 139,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；无命令示例；YAML/frontmatter/地址语法保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/project-workspace.md",
+      "target_path": "docs/reference/project-workspace.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 159,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；rig config/context命令→zrig；YAML/目录树/frontmatter保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/refocus-channel.md",
+      "target_path": "docs/reference/refocus-channel.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 90,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；顶层rig→zrig；env变量/API路径/scope枚举保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/release-boundary.md",
+      "target_path": "docs/reference/release-boundary.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 120,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；顶层rig→zrig；env变量/API路径/scope枚举保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/rig-bundle.md",
+      "target_path": "docs/reference/rig-bundle.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 367,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；rig bundle/up命令→zrig；YAML schema/表格/安全规则保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/rig-spec.md",
+      "target_path": "docs/reference/rig-spec.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 580,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；up/down/spec/seat/env命令→zrig；YAML schema/表格/枚举/示例完整保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/scoped-operating-posture.md",
+      "target_path": "docs/reference/scoped-operating-posture.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 95,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；顶层rig→zrig；env变量/API路径/scope枚举保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/sdlc-conventions.md",
+      "target_path": "docs/reference/sdlc-conventions.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 368,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；scope/proof/view/queue命令→zrig；C1头枚举/闭集/YAML保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/slack-app-setup.md",
+      "target_path": "docs/reference/slack-app-setup.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 90,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；顶层rig→zrig；env变量/API路径/scope枚举保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/stream-classifier-worker.md",
+      "target_path": "docs/reference/stream-classifier-worker.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 244,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；rig project/stream命令→zrig；JSON/YAML/env/数值边界保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/wave-sdlc.md",
+      "target_path": "docs/reference/wave-sdlc.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 102,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；rig config/context命令→zrig；YAML/目录树/frontmatter保留 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/reference/worktree-builds.md",
+      "target_path": "docs/reference/worktree-builds.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 39,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 全文翻译；npm命令保留；legacy迁移脚本顶层rig→zrig；状态taxonomy的rig ps/view→zrig | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "validation_state": "passed"
+    }
+  ]
+}

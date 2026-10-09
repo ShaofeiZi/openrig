@@ -1,21 +1,22 @@
-// SPIKE — the MAINLINE style (founder-preferred, Hatchet reference):
-// boxed nodes + straight box-drawing connector lines + arrowheads.
-// Info lives INSIDE the node (name line + runtime · ctx% · pod meta line),
-// status lives ON the node (border color + glyph), edge KIND is line COLOR
-// (delegates=teal accent · collaborates=green ok · escalates=amber warn) —
-// NO text labels on the graph (founder refinement). TIER-1 glyphs only.
+// SPIKE——主线样式（创建者首选，Hatchet 参考）：
+// 盒装节点 + 直盒绘连接线 + 箭头。
+// 信息在节点内（名称行 + 运行时 · ctx% · 席位元数据行），
+// 状态在节点上（边框颜色 + 字形），边类型是线颜色
+// （delegates=青 accent · collaborates=绿 ok · escalates=琥珀 warn）——
+// 图上无文本标签（创建者细化）。仅 TIER-1 字形。
 import { GraphCanvas } from "../canvas.js";
 import { edgeToken } from "../glyphs.js";
 import { markText, runtimeMarkSegs } from "../runtime-marks.js";
 import type { GraphContainer, GraphLayout, PlacedNode } from "../layout.js";
 import type { Action, ResourceTarget } from "../../types.js";
+import { strWidth } from "../../text-width.js";
 
 export interface StyleContext {
-  /** host/rig names for drill actions (the SAME Action vocabulary every
-   * adapter dispatches — PIN-1) */
+  /** 钻取动作的主机/工作组名称（每个
+   * 适配器派发的相同动作词汇——PIN-1） */
   host: string;
   rig: string;
-  /** logicalId of the selected node (accent border, like Hatchet) */
+  /** 所选节点的 logicalId（强调边框，如 Hatchet） */
   selected?: string | null;
 }
 
@@ -34,17 +35,20 @@ export function drawNodeBox(canvas: GraphCanvas, p: PlacedNode, ctx: StyleContex
   canvas.box(p.x, p.y, p.w, p.h, borderToken);
   canvas.text(p.x + 2, p.y + 1, p.glyph.glyph, p.glyph.token, true);
   canvas.text(p.x + 4, p.y + 1, p.title, "bright", selected);
-  if (p.glyph.overlay) canvas.text(p.x + 4 + p.title.length + 2, p.y + 1, p.glyph.overlay, "warn", true);
-  // S19 MR2: runtime renders as the web-family MARK + adjacent ctx%
+  if (p.glyph.overlay) canvas.text(p.x + 4 + strWidth(p.title) + 2, p.y + 1, p.glyph.overlay, "warn", true);
+  // S19 MR2：运行时渲染为 Web 族标记 + 相邻 ctx%
   let mx = p.x + 2;
   for (const seg of runtimeMarkSegs(p.node.data.runtime)) {
     canvas.text(mx, p.y + 2, seg.text, seg.token, seg.bold, );
-    if (seg.bg) for (let i = 0; i < seg.text.length; i++) canvas.set(mx + i, p.y + 2, seg.text[i]!, seg.token, seg.bold, seg.bg);
-    mx += seg.text.length;
+    if (seg.bg) {
+      let col = mx;
+      for (const ch of seg.text) { canvas.set(col, p.y + 2, ch, seg.token, seg.bold, seg.bg); col += strWidth(ch); }
+    }
+    mx += strWidth(seg.text);
   }
   const ctxText = ` ${p.node.data.contextUsedPercentage == null ? "—" : `${Math.round(p.node.data.contextUsedPercentage)}%`}`;
   canvas.text(mx, p.y + 2, ctxText, "dim");
-  // the WHOLE box is the hit surface — every row emits the same drill action
+  // 整个框是命中面——每行发出相同钻取动作
   const action = drillAction(p, ctx);
   for (let row = 0; row < p.h; row++) canvas.zone(p.y + row, p.x, p.x + p.w, action);
 }
@@ -56,8 +60,8 @@ interface Arrow {
   token: ReturnType<typeof edgeToken>;
 }
 
-/** straight orthogonal connector; the arrowhead is returned so the caller can
- * draw it LAST (it must survive the node boxes painting over line ends) */
+/** 直正交连接器；箭头返回，使调用方能
+ * 最后绘制它（它必须在节点框覆盖线端后存活） */
 type Rect = { x: number; y: number; w: number; h: number };
 
 export function drawEdge(canvas: GraphCanvas, from: PlacedNode, to: PlacedNode, kind: string, lane = 0, obstacles: Rect[] = []): Arrow {
@@ -65,7 +69,7 @@ export function drawEdge(canvas: GraphCanvas, from: PlacedNode, to: PlacedNode, 
   const sy = from.y + 1;
   const ty = to.y + 1;
   if (to.x > from.x + from.w) {
-    // rightward: out of source right edge, one corridor turn, into target left edge
+    // 向右：从源右边缘出，一个走廊转弯，进入目标左边缘
     const sx = from.x + from.w;
     const corridor = to.x - 3 - lane * 2;
     canvas.hline(sx, corridor, sy, "─", token);
@@ -78,10 +82,10 @@ export function drawEdge(canvas: GraphCanvas, from: PlacedNode, to: PlacedNode, 
     return { x: to.x - 1, y: ty, ch: "▸", token };
   }
   if (to.x + to.w < from.x) {
-    // leftward back-edge (escalation): route UNDER the boxes so it never
-    // crowds the delegation row — down, left along a low corridor, up into
-    // the target's bottom edge (the mockup's curve, box-drawn). The vertical
-    // legs pick columns that no OTHER box occupies (obstacle-aware).
+    // 向左回边（升级）：在框下布线，使它绝不
+    // 拥挤委托行——沿低走廊向下、向左、向上进入
+    // 目标底边缘（mockup 的曲线，盒绘）。垂直
+    // 腿选择无其他框占用的列（感知障碍）。
     const belowY = Math.max(...[from, to, ...obstacles].map((p) => p.y + p.h)) + 1 + lane;
     const freeColumn = (box: Rect, fromRight: boolean): number => {
       const candidates: number[] = [];
@@ -103,7 +107,7 @@ export function drawEdge(canvas: GraphCanvas, from: PlacedNode, to: PlacedNode, 
     canvas.vline(enterX, to.y + to.h + 1, belowY - 1, "│", token);
     return { x: enterX, y: to.y + to.h, ch: "▴", token };
   }
-  // same column: vertical connector
+  // 同列：垂直连接器
   const x = from.x + Math.min(4, from.w - 2);
   if (to.y > from.y) {
     canvas.vline(x, from.y + from.h, to.y - 2, "│", token);
@@ -113,23 +117,23 @@ export function drawEdge(canvas: GraphCanvas, from: PlacedNode, to: PlacedNode, 
   return { x, y: to.y + to.h, ch: "▴", token };
 }
 
-/** R2 HIGH-1: the LOCKED containment hierarchy drawn as real container boxes
- * — the rig (double border, name tab) wraps pod containers (light border,
- * ▾-name tab, header hit zone → drill pod) which wrap their agent boxes.
- * Containers are BACKGROUNDS (unprotected fills): edges may route across
- * their interiors; agent boxes stay opaque+protected on top. */
+/** R2 HIGH-1：锁定的包含层级绘为真实容器框
+ *——工作组（双线边框，名称标签页）包裹席位容器（单线边框，
+ * ▾名称标签页，标题命中区 → 钻取席位），后者包裹其智能体框。
+ * 容器是背景（未保护填充）：边可路由穿过
+ * 其内部；智能体框在顶部保持不透明+保护。 */
 export function drawContainers(canvas: GraphCanvas, layout: GraphLayout, ctx: StyleContext): void {
   for (const c of layout.containers) {
     if (c.kind === "rig") {
       canvas.box(c.x, c.y, c.w, c.h, "accent", true, false);
-      const tab = ` ▦ RIG ${c.name || ctx.rig} `; // round-3 rig glyph
+      const tab = ` ▦ 工作组 ${c.name || ctx.rig} `; // round-3 工作组字形
       canvas.text(c.x + 2, c.y, tab, "accent", true);
-      canvas.zone(c.y, c.x + 2, c.x + 2 + tab.length, { type: "drill", resource: "rig", name: c.name || ctx.rig, target: { host: ctx.host } });
+      canvas.zone(c.y, c.x + 2, c.x + 2 + strWidth(tab), { type: "drill", resource: "rig", name: c.name || ctx.rig, target: { host: ctx.host } });
     } else {
       canvas.box(c.x, c.y, c.w, c.h, "chrome", false, false);
-      const tab = ` ≡ ${c.name} `; // round-3 pod glyph
+      const tab = ` ≡ ${c.name} `; // round-3 席位字形
       canvas.text(c.x + 1, c.y, tab, "accent", true);
-      canvas.zone(c.y, c.x + 1, c.x + 1 + tab.length, { type: "drill", resource: "pod", name: c.name, target: { host: ctx.host, rig: ctx.rig } });
+      canvas.zone(c.y, c.x + 1, c.x + 1 + strWidth(tab), { type: "drill", resource: "pod", name: c.name, target: { host: ctx.host, rig: ctx.rig } });
     }
   }
 }
@@ -137,13 +141,13 @@ export function drawContainers(canvas: GraphCanvas, layout: GraphLayout, ctx: St
 export function renderHatchet(layout: GraphLayout, ctx: StyleContext, width: number): GraphCanvas {
   const canvas = new GraphCanvas(width);
   drawContainers(canvas, layout, ctx);
-  // then edges, agent boxes (borders clean up line ends), arrowheads LAST
+  // 然后边、智能体框（边框清理线端）、箭头最后
   const lanes = new Map<string, number>();
   const arrows: Arrow[] = [];
   for (const edge of layout.edges) {
     const from = layout.byId.get(edge.source);
     const to = layout.byId.get(edge.target);
-    if (!from || !to) continue; // honest: an edge to an unknown node is not drawn as guesswork
+    if (!from || !to) continue; // 诚实：到未知节点的边不绘为猜测
     const laneKey = `${to.x}:${to.x + to.w < from.x ? "back" : "fwd"}`;
     const lane = lanes.get(laneKey) ?? 0;
     lanes.set(laneKey, lane + 1);
@@ -155,10 +159,10 @@ export function renderHatchet(layout: GraphLayout, ctx: StyleContext, width: num
   return canvas;
 }
 
-/** MR8 width-clip honesty: the view never quietly loses right-side nodes —
- * an INDICATOR only (founder-scoped: no scroll, no rework, no cap) */
+/** MR8 宽度裁剪诚实：视图绝不静默丢失右侧节点——
+ * 仅指示器（创建者范围：无滚动，无返工，无上限） */
 export function drawClipIndicator(canvas: GraphCanvas, layout: GraphLayout, width: number): void {
   if (!layout.clipped) return;
-  const label = " content clipped ▸ ";
-  canvas.text(Math.max(width - label.length, 0), 0, label, "warn", true);
+  const label = " 内容已裁剪 ▸ ";
+  canvas.text(Math.max(width - strWidth(label), 0), 0, label, "warn", true);
 }

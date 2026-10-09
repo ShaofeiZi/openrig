@@ -1,6 +1,6 @@
-// PL-007 Workspace Primitive v0 — workspace HTTP routes.
+// PL-007 Workspace Primitive v0——工作区 HTTP 路由。
 //
-// Read-only endpoints:
+// 只读端点：
 //
 //   POST /api/workspace/validate
 //     body: { root: string; workspaceKind?: WorkspaceKind;
@@ -9,14 +9,14 @@
 //     response: FrontmatterValidationReport
 //
 //   POST /api/workspace/doctor  (slice-21 FR-5)
-//     body (all optional): { workspaceRoot?: string;
+//     body（全部可选）：{ workspaceRoot?: string;
 //                            filesAllowlistOverride?: string }
-//     response: DoctorReport (8-check workspace-readiness report)
+//     response: DoctorReport（8 项检查的工作区就绪度报告）
 //
-// No filesystem mutation. Operator picks the root + kind per invocation.
+// 不做任何文件系统变更。操作员每次调用自行选择 root + kind。
 //
-// Whoami / node-inventory surface workspace data through their existing
-// routes; no separate /api/workspace/whoami.
+// Whoami / node-inventory 通过既有路由暴露工作区数据；
+// 不另设 /api/workspace/whoami。
 
 import { Hono } from "hono";
 import * as path from "node:path";
@@ -44,14 +44,14 @@ export function workspaceRoutes(): Hono {
     }>().catch(() => ({} as never));
 
     if (!body.root || typeof body.root !== "string") {
-      return c.json({ error: "root_required", message: "root is required" }, 400);
+      return c.json({ error: "root_required", message: "root 为必填项" }, 400);
     }
     let kind: WorkspaceKind | undefined;
     if (body.workspaceKind !== undefined) {
       if (!(WORKSPACE_KINDS as readonly string[]).includes(body.workspaceKind)) {
         return c.json({
           error: "invalid_workspace_kind",
-          message: `workspaceKind must be one of: ${[...WORKSPACE_KINDS].join(", ")}`,
+          message: `workspaceKind 必须为以下之一：${[...WORKSPACE_KINDS].join(", ")}`,
         }, 400);
       }
       kind = body.workspaceKind as WorkspaceKind;
@@ -68,20 +68,18 @@ export function workspaceRoutes(): Hono {
       const report = validateWorkspaceFrontmatter(opts);
       return c.json(report);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "internal error";
+      const message = err instanceof Error ? err.message : "内部错误";
       return c.json({ error: "validate_failed", message }, 500);
     }
   });
 
-  // Slice-21 FR-5 — workspace doctor.
+  // Slice-21 FR-5——工作区 doctor。
   //
-  // Resolves all inputs from the daemon's SettingsStore (matching
-  // /api/config), runs the 8-check orchestrator, and returns the
-  // DoctorReport. Caller can override the workspace under check via
-  // body.workspaceRoot — useful for `rig workspace doctor --workspace
-  // <path>` to probe an alternate workspace without restarting the
-  // daemon. When overridden, the daemon-side workspace.root is still
-  // resolved for check #4 (daemon-points-at-this-workspace).
+  // 从后台服务 SettingsStore（与 /api/config 一致）解析全部输入，
+  // 运行 8 项检查编排器，返回 DoctorReport。调用方可通过
+  // body.workspaceRoot 覆盖被检查的工作区——便于 `zrig workspace doctor
+  // --workspace <path>` 探测另一个工作区而无需重启后台服务。覆盖时，
+  // check #4（后台服务指向本工作区）仍解析后台服务侧的 workspace.root。
   app.post("/doctor", async (c) => {
     const store = c.get("settingsStore" as never) as SettingsStore | undefined;
     if (!store) return c.json({ error: "settings_unavailable" }, 503);
@@ -99,31 +97,27 @@ export function workspaceRoutes(): Hono {
         typeof body.workspaceRoot === "string" && body.workspaceRoot.length > 0
           ? body.workspaceRoot
           : (daemonResolved.value as string);
-      // Caller-supplied workspaceRoot is treated as an explicit
-      // operator choice for fix-hint purposes (akin to env). When
-      // not supplied, source is the daemon's actual resolution
-      // channel (env / file / default).
+      // 调用方提供的 workspaceRoot 在 fix-hint 上被视为操作员的显式选择
+      // （类似 env）。未提供时，来源是后台服务实际的解析通道
+      // （env / file / default）。
       const workspaceRootSource: WorkspaceRootSource =
         typeof body.workspaceRoot === "string" && body.workspaceRoot.length > 0
           ? "env"
           : (daemonResolved.source as WorkspaceRootSource);
 
-      // When caller overrode workspace, slicesRoot defaults to
-      // `<workspaceRoot>/missions` (the same derivation ConfigStore
-      // would apply for an unset workspace.slices_root). When not
-      // overridden, honor the daemon's resolved slicesRoot.
+      // 调用方覆盖工作区时，slicesRoot 默认取 `<workspaceRoot>/missions`
+      // （与 ConfigStore 对未设置的 workspace.slices_root 的推导一致）。
+      // 未覆盖时，采用后台服务解析出的 slicesRoot。
       const slicesRoot =
         typeof body.workspaceRoot === "string" && body.workspaceRoot.length > 0
           ? path.join(body.workspaceRoot, "missions")
           : (store.resolveOne("workspace.slices_root").value as string);
 
-      // FR-5e A2 — files.allowlist CLI-side env overlay. When the
-      // CLI sets OPENRIG_FILES_ALLOWLIST in its own shell, the
-      // daemon's SettingsStore can't observe that env (different
-      // process); the CLI forwards the raw value as
-      // body.filesAllowlistOverride and we honor it here with
-      // source="env" so check #3's fix-hint targets the right
-      // remediation channel.
+      // FR-5e A2——files.allowlist CLI 侧 env 覆盖。当 CLI 在自己的 shell 里
+      // 设置 OPENRIG_FILES_ALLOWLIST 时，后台服务 SettingsStore 观察不到
+      // 该 env（不同进程）；CLI 把原始值作为 body.filesAllowlistOverride
+      // 转发，我们在此以 source="env" 采纳，使 check #3 的 fix-hint
+      // 指向正确的修复通道。
       const allowlistResolved = store.resolveOne("files.allowlist");
       const usingAllowlistOverride =
         typeof body.filesAllowlistOverride === "string"
@@ -135,11 +129,9 @@ export function workspaceRoutes(): Hono {
         ? "env"
         : (allowlistResolved.source as WorkspaceRootSource);
 
-      // Daemon start time captured from process.uptime() at request
-      // time. Per banked discipline (cited in workspace-doctor.ts:
-      // CheckDaemonReloadInput.daemonStartTime JSDoc), this is a
-      // pragmatic approximation — sufficient for "did config change
-      // since startup" but does not account for explicit clock skew.
+      // 后台服务启动时间在请求时从 process.uptime() 捕获。按已入库的约定
+      // （见 workspace-doctor.ts：CheckDaemonReloadInput.daemonStartTime JSDoc），
+      // 这是务实的近似——足以回答「启动后配置是否变过」，但不考虑显式时钟漂移。
       const daemonStartTime = new Date(Date.now() - process.uptime() * 1000);
 
       const report = runWorkspaceDoctor({
@@ -154,7 +146,7 @@ export function workspaceRoutes(): Hono {
       });
       return c.json(report);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "internal error";
+      const message = err instanceof Error ? err.message : "内部错误";
       return c.json({ error: "doctor_failed", message }, 500);
     }
   });

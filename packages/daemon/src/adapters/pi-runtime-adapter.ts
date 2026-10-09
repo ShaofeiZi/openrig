@@ -1,13 +1,11 @@
-// OPR.0.4.6.PI1 — the Pi runtime adapter (RPC-first, runner-in-a-pane).
+// OPR.0.4.6.PI1——Pi runtime adapter（RPC 优先，runner 位于 pane 中）。
 //
-// The adapter launches the OpenRig-owned pi-runner inside the seat's normal
-// tmux pane; the runner hosts `pi --mode rpc` (headless JSONL — Pi's
-// first-class integration surface). send/capture stay tmux-native and are NOT
-// adapter methods (the runner forwards pane stdin to RPC prompt/steer and
-// mirrors a legible transcript to pane stdout); activity + session identity
-// come from Pi's typed RPC events + get_state via the runner's sidecar and
-// bus emission — never pane scraping (BR-1). TUI-native Pi is a SEPARATE
-// future contract, never a hidden mode here (BR-2).
+// adapter 在席位常规 tmux pane 内启动 OpenRig 所有的 pi-runner；runner 承载
+// `pi --mode rpc`（无头 JSONL——Pi 的一等集成界面）。send/capture 保持 tmux 原生，不是
+// adapter 方法（runner 将 pane stdin 转发给 RPC prompt/steer，并把易读 transcript 镜像到
+// pane stdout）；activity + session 身份来自 Pi 的类型化 RPC 事件与 get_state，经 runner
+// sidecar 和 bus 发出，绝不抓取 pane（BR-1）。TUI 原生 Pi 是独立的未来契约，绝不是此处
+// 隐藏模式（BR-2）。
 
 import nodePath from "node:path";
 import { randomUUID } from "node:crypto";
@@ -42,18 +40,16 @@ export interface PiAdapterFsOps {
 export interface PiRuntimeAdapterDeps {
   tmux: TmuxAdapter;
   fsOps: PiAdapterFsOps;
-  /** Root under which every Pi seat gets its isolated state dir (FR-7).
-   *  Typically <OPENRIG_HOME>/state/pi. */
+  /** 每个 Pi 席位创建隔离状态目录所用的根（FR-7），通常为 <OPENRIG_HOME>/state/pi。 */
   stateRoot: string;
-  /** Absolute path to the compiled pi-runner entry in the daemon dist. */
+  /** daemon dist 中已编译 pi-runner 入口的绝对路径。 */
   runnerEntryPath: string;
-  /** Trust posture for managed launches (BR-5 — always explicit; ambient
-   *  `ask` silently skips in RPC mode). Default: "no-approve" (the
-   *  conservative floor; seat-level guidance/skills live in the seat's
-   *  managed agent dir, which needs no project trust). */
+  /** 托管启动的 trust 姿态（BR-5——始终显式；环境中的 `ask` 在 RPC 模式下会静默跳过）。
+   * 默认 `no-approve`（保守 floor；席位级 guidance/skills 位于席位托管 agent 目录，
+   * 不需要项目 trust）。 */
   trustPosture?: "approve" | "no-approve";
   sleep?: (ms: number) => Promise<void>;
-  /** Launch-attempt id minting (tests inject; defaults to randomUUID). */
+  /** 启动尝试 id 铸造（测试注入；默认为 randomUUID）。 */
   newLaunchId?: () => string;
 }
 
@@ -77,8 +73,8 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
     this.newLaunchId = deps.newLaunchId ?? (() => randomUUID());
   }
 
-  /** The pi-runner sidecar reader shape resume-token-capture consumes
-   *  (deriveResumeToken's piRunnerStateStore dep). */
+  /** resume-token-capture 消费的 pi-runner sidecar 读取器结构
+   *（deriveResumeToken 的 piRunnerStateStore 依赖）。 */
   readSessionFile(sessionName: string): { ok: true; sessionFile: string } | { ok: false; reason: string } {
     const state = this.readRunnerState(sessionName);
     if (state === null) {
@@ -140,16 +136,15 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
 
         switch (hint) {
           case "guidance_merge": {
-            // ADDITIVE context-file merge (Omnigent best-practice: never
-            // replace Pi's default system prompt). Pi reads AGENTS.md from
-            // the managed cwd as a project context file.
+            // 增量合并 context 文件（Omnigent 最佳实践：绝不替换 Pi 的默认 system prompt）。
+            // Pi 从托管 cwd 读取 AGENTS.md 作为项目 context 文件。
             const targetPath = nodePath.join(binding.cwd, "AGENTS.md");
             const merged = this.mergeGuidance(targetPath, file.path, content);
-            if (!merged) continue; // rig-role skip: do not count as delivered
+            if (!merged) continue; // 跳过 rig-role：不计为已投递。
             break;
           }
           case "skill_install": {
-            if (!binding.tmuxSession) throw new Error("No tmux session bound — cannot resolve the Pi seat state dir");
+            if (!binding.tmuxSession) throw new Error("未绑定 tmux session——无法解析 Pi 席位状态目录");
             const { agentDir } = piSeatPaths(this.stateRoot, binding.tmuxSession);
             const targetDir = nodePath.join(agentDir, "skills", nodePath.basename(nodePath.dirname(file.absolutePath)));
             this.fs.mkdirp(targetDir);
@@ -158,7 +153,7 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
           }
           case "send_text": {
             if (binding.tmuxSession) {
-              // The runner reads pane stdin and forwards as RPC prompt (FR-3).
+              // runner 读取 pane stdin，并作为 RPC prompt 转发（FR-3）。
               const textResult = await this.tmux.sendText(binding.tmuxSession, content);
               if (!textResult.ok) throw new Error(textResult.message);
               await this.sleep(200);
@@ -184,10 +179,10 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
     opts: { name: string; resumeToken?: string; forkSource?: ForkSource },
   ): Promise<HarnessLaunchResult> {
     if (!binding.tmuxSession) {
-      return { ok: false, error: "No tmux session bound — cannot launch the Pi harness" };
+      return { ok: false, error: "未绑定 tmux session——无法启动 Pi harness" };
     }
     if (opts.resumeToken && opts.forkSource) {
-      return { ok: false, error: "resumeToken and forkSource are mutually exclusive — pick one" };
+      return { ok: false, error: "resumeToken 与 forkSource 互斥——请选择一个" };
     }
 
     let forkRef: string | undefined;
@@ -195,25 +190,25 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
       if (opts.forkSource.kind !== "native_id") {
         return {
           ok: false,
-          error: `pi fork: ref.kind="${opts.forkSource.kind}" is not supported in v1; use ref.kind="native_id" with the parent session file path or session id`,
+          error: `pi fork：v1 不支持 ref.kind="${opts.forkSource.kind}"；请使用 ref.kind="native_id" 并提供父 session 文件路径或 session id`,
         };
       }
       forkRef = opts.forkSource.value?.trim();
       if (!forkRef) {
-        return { ok: false, error: "pi fork: forkSource.value is required (parent session file path or session id)" };
+        return { ok: false, error: "pi fork：必须提供 forkSource.value（父 session 文件路径或 session id）" };
       }
     }
 
     if (opts.resumeToken) {
-      // Validity floor before we type anything into the pane.
+      // 向 pane 输入任何内容之前的有效性底线。
       const validation = validateResumeToken("pi", opts.resumeToken);
       if (!validation.ok) {
-        return { ok: false, error: `pi resume: ${validation.error}` };
+        return { ok: false, error: `Pi 续接：${validation.error}` };
       }
       if (!this.fs.exists(opts.resumeToken)) {
-        // Session file gone — the honest outcome is the caller's stop-and-ask
-        // (awaiting-decision), never a silent fresh start (BR-6).
-        return { ok: false, error: "pi resume: the persisted session file no longer exists", recovery: "retry_fresh" };
+        // Session 文件已消失——如实结果是调用方停止并询问（awaiting-decision），绝不静默
+        // 全新启动（BR-6）。
+        return { ok: false, error: "pi resume：持久化 session 文件已不存在", recovery: "retry_fresh" };
       }
     }
 
@@ -222,11 +217,9 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
     this.fs.mkdirp(paths.agentDir);
     this.fs.mkdirp(paths.sessionsDir);
 
-    // Launch-attempt scoping (guard fold): overwrite any stale sidecar from a
-    // prior runner instance with a pending record BEFORE the command is typed,
-    // and only trust sidecar states stamped with THIS attempt's launchId.
-    // The prior record is read FIRST so the durable catch-up cursor
-    // (lastEntryId, FR-5) survives the reset.
+    // 启动尝试范围（守卫 fold）：输入命令前用 pending 记录覆盖上一 runner 实例的所有陈旧
+    // sidecar，且只信任带当前尝试 launchId 的 sidecar 状态。先读取旧记录，使持久追赶游标
+    //（lastEntryId，FR-5）跨重置保留。
     const launchId = this.newLaunchId();
     const prior = this.readRunnerState(sessionName);
     this.fs.writeFile(
@@ -242,8 +235,8 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
       stateRoot: this.stateRoot,
       cwd: binding.cwd,
       model: binding.model,
-      // OPR.0.4.8.2: Pi RESOURCE TRUST (not a permission policy). YOLO forces `approve` on every
-      // seat; otherwise the configured posture. Same decision used on the restore path (pi-resume).
+      // OPR.0.4.8.2：Pi RESOURCE TRUST（不是 permission policy）。YOLO 强制每个席位使用
+      // `approve`；否则使用已配置姿态。restore 路径（pi-resume）使用相同决策。
       trust,
       sessionFile: opts.resumeToken,
       forkRef,
@@ -252,30 +245,29 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
 
     const textResult = await this.tmux.sendText(sessionName, cmd);
     if (!textResult.ok) {
-      return { ok: false, error: `Failed to send launch command: ${textResult.message}` };
+      return { ok: false, error: `发送启动命令失败：${textResult.message}` };
     }
     const enterResult = await this.tmux.sendKeys(sessionName, ["Enter"]);
     if (!enterResult.ok) {
-      return { ok: false, error: `Failed to send Enter: ${enterResult.message}` };
+      return { ok: false, error: `发送 Enter 失败：${enterResult.message}` };
     }
 
-    // The runner writes the sidecar after its first successful get_state;
-    // that sidecar (not pane content) is the token source of truth (FR-5).
+    // runner 在首次成功 get_state 后写入 sidecar；该 sidecar（不是 pane 内容）是 token 事实源
+    //（FR-5）。
     const state = await this.waitForRunnerReady(sessionName, launchId);
     if (!state.ok) return state.failure;
 
     const sessionFile = state.value.sessionFile;
     if (!sessionFile) {
-      return { ok: false, error: "pi launch: the runner became ready but reported no session file" };
+      return { ok: false, error: "pi launch：runner 已就绪，但未报告 session 文件" };
     }
     if (forkRef && sessionFile === forkRef) {
-      // The adapter contract requires the NEW post-fork token, never the
-      // parent's (runtime-adapter.ts fork rule).
-      return { ok: false, error: "pi fork: the runner reported the parent session file instead of the post-fork child" };
+      // adapter 契约要求 fork 后的新 token，绝不能是父 token（runtime-adapter.ts fork 规则）。
+      return { ok: false, error: "pi fork：runner 报告了父 session 文件，而不是 fork 后的子文件" };
     }
     const validation = validateResumeToken("pi", sessionFile);
     if (!validation.ok) {
-      return { ok: false, error: `pi launch: the runner reported a malformed session file (${validation.error})` };
+      return { ok: false, error: `pi launch：runner 报告了格式错误的 session 文件（${validation.error}）` };
     }
 
     return { ok: true, resumeToken: validation.token, resumeType: "pi_session_file", appliedLaunch };
@@ -283,48 +275,46 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
 
   async checkReady(binding: NodeBinding): Promise<ReadinessResult> {
     if (!binding.tmuxSession) {
-      return { ready: false, reason: "No tmux session bound" };
+      return { ready: false, reason: "未绑定 tmux session" };
     }
     const alive = await this.tmux.hasSession(binding.tmuxSession);
     if (!alive) {
-      return { ready: false, reason: "tmux session not responsive" };
+      return { ready: false, reason: "tmux session 无响应" };
     }
-    // Guard fold (stale artifacts): a sidecar or scrollback marker can outlive
-    // the runner process, so a ready signal counts ONLY while the pane's
-    // foreground process is not back at a shell (a dead runner leaves the
-    // pane at the shell; READY scrollback and a stale ready sidecar do not
-    // make a stopped seat ready).
+    // 守卫 fold（陈旧产物）：sidecar 或 scrollback 标记可能比 runner 进程存活更久，因此只有
+    // pane 前台进程尚未回到 shell 时，ready 信号才有效（runner 结束后 pane 停在 shell；
+    // READY scrollback 和陈旧 ready sidecar 不会让已停止席位变为就绪）。
     const paneCommand = (await this.tmux.getPaneCommand(binding.tmuxSession)) ?? "";
     const atShell = SHELL_COMMANDS.has(paneCommand);
     const state = this.readRunnerState(binding.tmuxSession);
     if (state?.exited) {
-      return { ready: false, reason: `pi-runner exited (code ${state.exited.code ?? "unknown"})`, code: "runner_exited" };
+      return { ready: false, reason: `pi-runner 已退出（退出码 ${state.exited.code ?? "未知"}）`, code: "runner_exited" };
     }
     if (state?.ready) {
       if (atShell) {
-        return { ready: false, reason: "pi-runner sidecar says ready but the pane is back at a shell (runner process gone)", code: "runner_exited" };
+        return { ready: false, reason: "pi-runner sidecar 显示已就绪，但 pane 已返回 shell（runner 进程已消失）", code: "runner_exited" };
       }
       return { ready: true };
     }
-    // Runner-authored pane marker as the secondary signal (FR-2) — still the
-    // runner's own output, never Pi TUI heuristics; same foreground guard.
+    // runner 生成的 pane 标记作为次级信号（FR-2）；它仍是 runner 自身输出，绝不是 Pi TUI
+    // 启发式判断，并采用相同前台守卫。
     const paneContent = (await this.tmux.capturePaneContent(binding.tmuxSession, 40)) ?? "";
     if (paneContent.includes(PI_RUNNER_ERROR_MARKER)) {
-      return { ready: false, reason: "pi-runner reported an error in the pane", code: "runner_error" };
+      return { ready: false, reason: "pi-runner 在 pane 中报告错误", code: "runner_error" };
     }
     if (paneContent.includes(PI_RUNNER_EXIT_MARKER)) {
-      return { ready: false, reason: "pi-runner exited", code: "runner_exited" };
+      return { ready: false, reason: "pi-runner 已退出", code: "runner_exited" };
     }
     if (paneContent.includes(PI_RUNNER_READY_MARKER)) {
       if (atShell) {
-        return { ready: false, reason: "READY marker is stale scrollback; the pane is back at a shell", code: "runner_exited" };
+        return { ready: false, reason: "READY 标记是陈旧 scrollback；pane 已返回 shell", code: "runner_exited" };
       }
       return { ready: true };
     }
-    return { ready: false, reason: "pi-runner has not reported ready yet", code: "awaiting_runtime" };
+    return { ready: false, reason: "pi-runner 尚未报告 ready", code: "awaiting_runtime" };
   }
 
-  // ── internals ──────────────────────────────────────────────────────────────
+  // ── 内部实现 ──────────────────────────────────────────────────────────────
 
   private readRunnerState(sessionName: string): PiRunnerState | null {
     const { runnerStatePath } = piSeatPaths(this.stateRoot, sessionName);
@@ -341,14 +331,12 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
     launchId: string,
   ): Promise<{ ok: true; value: PiRunnerState } | { ok: false; failure: HarnessLaunchResult }> {
     const pollMs = 250;
-    const attempts = 60; // ~15s: runner boot + pi spawn + first get_state
+    const attempts = 60; // 约 15 秒：runner 启动 + pi spawn + 首次 get_state。
     for (let attempt = 0; attempt < attempts; attempt++) {
       const state = this.readRunnerState(sessionName);
-      // Launch-attempt scoping: only THIS attempt's sidecar states count.
-      // Stale ready/exited records from prior instances are ignored, and
-      // stale pane markers in scrollback are never consulted here — the
-      // launch-scoped sidecar is authoritative (the runner writes a pending
-      // record immediately at startup and exited on death).
+      // 启动尝试范围：只认可当前尝试的 sidecar 状态。忽略旧实例的陈旧 ready/exited 记录，
+      // 也绝不读取 scrollback 中的陈旧 pane 标记；启动范围 sidecar 才是权威
+      //（runner 启动时立即写入 pending 记录，退出时写入 exited）。
       if (state?.launchId === launchId) {
         if (state.exited) {
           const paneContent = (await this.tmux.capturePaneContent(sessionName, 40)) ?? "";
@@ -356,7 +344,7 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
             ok: false,
             failure: {
               ok: false,
-              error: `pi launch failed: the runner exited (code ${state.exited.code ?? "unknown"})`,
+              error: `pi launch 失败：runner 已退出（退出码 ${state.exited.code ?? "未知"}）`,
               recovery: "attention_required",
               evidence: paneContent.split("\n").slice(-12).join("\n"),
             },
@@ -370,7 +358,7 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
       ok: false,
       failure: {
         ok: false,
-        error: "pi launch: timed out waiting for the runner to report ready",
+        error: "pi launch：等待 runner 报告 ready 超时",
         recovery: "attention_required",
       },
     };
@@ -404,18 +392,16 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
       return true;
     }
 
-    // Plugins / subagents / runtime resources have no Pi projection target at
-    // MVP (PRD §7 out-of-scope) — an honest skip, never a misdelivery.
+    // MVP 中插件/子智能体/runtime 资源没有 Pi 投影目标（PRD §7 范围外）；应如实跳过，绝不误投递。
     return false;
   }
 
   private mergeGuidance(targetPath: string, blockId: string, content: string): boolean {
-    // Mirrors the Claude/Codex adapters: per-seat `rig-role` content collides
-    // across pod-mates when merged into a shared cwd file; it is delivered via
-    // send_text instead. See ADR-0006.
+    // 镜像 Claude/Codex adapter：逐席位 `rig-role` 内容合并到共享 cwd 文件时会在 pod 同伴间
+    // 冲突，因此改由 send_text 投递。参见 ADR-0006。
     if (blockId === "rig-role") {
       console.log(
-        `[openrig] skip: effectiveId is rig-role, per-seat delivery via send_text path required (target=${targetPath})`
+        `[openrig] 跳过：effectiveId 为 rig-role，需要通过 send_text 路径逐席位投递（目标=${targetPath}）`
       );
       return false;
     }

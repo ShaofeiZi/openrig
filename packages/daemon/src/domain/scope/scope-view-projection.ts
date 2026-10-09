@@ -1,10 +1,9 @@
-// SCOPES VIEW (sealed plan d64d2f5c) — the STORE-DIRECT projection behind the scopes TUI.
+// SCOPES VIEW（封存计划 d64d2f5c）——scopes TUI 背后的 STORE-DIRECT projection。
 //
-// THE DATA-PATH RULE (binding): slice cards / proof counts / progress bars derive from
-// the SCOPE STORE — README frontmatter LOCKS + the C1 proof drops in proof/ — NEVER from
-// PROGRESS.md (the drift machine). PROGRESS.md is a narrative artifact displayed under
-// `n`; it is not read here at all. The render never asserts a proven-green the store
-// does not enforce: `paired` means exactly "≥1 C1 drop cites this contract item".
+// DATA-PATH 规则（binding）：slice card / proof count / progress bar 来自 SCOPE STORE，
+// 即 README frontmatter LOCK 与 proof/ 中的 C1 proof drop，绝不来自容易漂移的 PROGRESS.md。
+// PROGRESS.md 是显示在 `n` 下的叙事 artifact，此处完全不读取。render 绝不声称 store 未强制的
+// proven-green；`paired` 的唯一含义是“至少一份 C1 drop 引用了此 contract item”。
 import * as path from "node:path";
 import { readSliceReadiness, readProofContract, type ScopeReadiness, type ProofPolicyRead } from "../proof/judgments.js";
 import { createHash } from "node:crypto";
@@ -23,7 +22,7 @@ export interface C1Drop {
   artifactType: string | null;
   verdict: string | null;
   candidateSha: string | null;
-  /** Contract-item refs the drop covers: 1-based indices (as strings) or item text. */
+  /** 此 drop 覆盖的 contract-item ref：从 1 开始的字符串 index，或 item 文本。 */
   evidences: string[];
   media: string[];
 }
@@ -31,9 +30,9 @@ export interface C1Drop {
 export interface ProofContractItem {
   id: string;
   source: { file: string; line: number };
-  index: number; // 1-based
+  index: number; // 从 1 开始。
   text: string;
-  /** True iff ≥1 C1 drop cites this item — the ONLY meaning of a ✓ (honest render). */
+  /** 当且仅当至少一份 C1 drop 引用此 item 时为 true；这是 ✓ 的唯一含义，确保诚实渲染。 */
   paired: boolean;
   drops: Array<{ file: string; artifactType: string | null; verdict: string | null; media: string[] }>;
 }
@@ -58,7 +57,7 @@ export interface SliceScopeDetail extends SliceScopeSummary {
   intent: string;
   miniRequirements: string[];
   proofContract: ProofContractItem[];
-  /** Path to PROGRESS.md for the `n` narrative DISPLAY (never a data source). */
+  /** `n` 叙事展示所用 PROGRESS.md 路径；绝不是数据源。 */
   progressPath: string | null;
   specShaShort: string | null;
   prdExists: boolean;
@@ -80,7 +79,7 @@ function fmValue(fm: string, key: string): string | null {
   return m ? m[1]!.trim().replace(/^["']|["']$/g, "") : null;
 }
 
-/** Parse a YAML block list under `key:` — the C1 `evidences:` / `media:` shape. */
+/** 解析 `key:` 下的 YAML block list，即 C1 的 `evidences:` / `media:` 结构。 */
 function fmList(fm: string, key: string): string[] {
   const lines = fm.split("\n");
   const out: string[] = [];
@@ -96,9 +95,15 @@ function fmList(fm: string, key: string): string[] {
   return out;
 }
 
-/** Extract a `## <Heading>` section's body (up to the next `## ` or EOF). */
+const SECTION_HEADING_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  Intent: ["Intent", "意图"],
+  "Mini-requirements": ["Mini-requirements", "最小需求", "小型需求"],
+};
+
+/** 提取中英文 H2 section 的 body，范围到下一个 H2 或 EOF。 */
 function sectionBody(content: string, heading: string): string {
-  const re = new RegExp(`^## ${heading}\\s*$`, "m");
+  const aliases = SECTION_HEADING_ALIASES[heading] ?? [heading];
+  const re = new RegExp(`^##\\s+(?:${aliases.join("|")})\\s*$`, "mi");
   const m = re.exec(content);
   if (!m) return "";
   const start = m.index + m[0].length;
@@ -107,7 +112,7 @@ function sectionBody(content: string, heading: string): string {
   return (next ? rest.slice(0, next.index) : rest).trim();
 }
 
-/** Numbered mini-requirement lines (top-level `N.` items; continuation lines folded in). */
+/** 带编号的 mini-requirement 行：顶层 `N.` item，并折叠后续 continuation 行。 */
 function miniRequirements(content: string): string[] {
   const body = sectionBody(content, "Mini-requirements");
   const items: string[] = [];
@@ -149,8 +154,8 @@ function readLocks(fm: string): ScopeLocks {
   };
 }
 
-/** Join drops → contract items: a drop's evidence ref matches an item by its 1-based
- *  index (the shipped `--evidences "4,5"` convention) or by exact item text. */
+/** 将 drop 连接到 contract item：drop 的 evidence ref 可通过从 1 开始的 index
+ *  （已交付 `--evidences "4,5"` 约定）或精确 item 文本匹配。 */
 function pairContract(items: ReturnType<typeof readProofContract>, drops: C1Drop[]): ProofContractItem[] {
   return items.map((item) => {
     const { index, text } = item;
@@ -166,10 +171,9 @@ function pairContract(items: ReturnType<typeof readProofContract>, drops: C1Drop
 }
 
 function specShaFromLockedArtifacts(fs: ScopeFsDeps, sliceDir: string, fm: string): string | null {
-  // locked-artifacts is a nested YAML block list; take the `path:` of the first
-  // `kind: spec` entry (the plan-lock convention), falling back to the first path of
-  // any kind, else the PRD. Entries are delimited by their `- ` item starts so a
-  // non-spec kind listed first cannot steal the hash (39a1c477 review nit).
+  // locked-artifacts 是嵌套 YAML block list。按 plan-lock 约定，优先取首个 `kind: spec` entry
+  // 的 `path:`；否则回退到任意 kind 的首个 path，再没有则使用 PRD。entry 以 `- ` item 起点分隔，
+  // 避免排在前面的非 spec kind 抢走 hash（39a1c477 review nit）。
   let candidate: string | null = null;
   let firstPath: string | null = null;
   let entryPath: string | null = null;
@@ -234,12 +238,10 @@ export function projectSliceScope(fs: ScopeFsDeps, sliceDir: string, readPolicy?
     miniRequirements: miniRequirements(content),
     proofContract: contract,
     progressPath: fs.exists(progressPath) ? progressPath : null,
-    // LOOK delta D1 (answered at source): the store carries no sha, but it carries the
-    // locked artifact PATH — the hash is computed from the CURRENT bytes at projection
-    // time (store-DERIVED, live; never a transcribed value). First spec-kind artifact.
+    // LOOK delta D1（在源头回答）：store 不保存 sha，但保存 locked artifact PATH；hash 在 projection
+    // 时根据 CURRENT 字节计算（store-DERIVED、实时，绝非转录值）。优先使用首个 spec-kind artifact。
     specShaShort: specShaFromLockedArtifacts(fs, sliceDir, fm),
-    // Compatibility field name retained for the TUI payload. Current SPEC
-    // and readable legacy PRD locks both satisfy the old availability bit.
+    // 为 TUI payload 保留兼容字段名。当前 SPEC 与可读的旧版 PRD lock 都满足旧 availability bit。
     prdExists:
       fs.exists(path.join(sliceDir, "SPEC.md")) ||
       fs.exists(path.join(sliceDir, "IMPLEMENTATION-PRD.md")) ||

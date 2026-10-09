@@ -1,16 +1,12 @@
-// OPR.0.4.6.WF1 FR-7 (G7): parse strictness + graph validation.
+// OPR.0.4.6.WF1 FR-7（G7）：解析严格性 + 图校验。
 //
-//   - unknown keys at EVERY level fail loud at parse (what/why/fix)
-//     against the exported closed keysets (WF-2 extends them);
-//   - next_hop.suggested_roles naming an undeclared role or a role no
-//     step satisfies fails loud;
-//   - unreachable steps fail loud (the deterministic single-successor
-//     walk from the entry, run over the projector's OWN exported
-//     resolveNextStep — never a parallel re-implementation);
-//   - a cycle WITHOUT max_hops fails naming the fix; WITH max_hops it
-//     validates (FR-6 sanctions it);
-//   - the no-false-rejection negative: BOTH shipped builtin starter
-//     specs still parse AND validate clean.
+//   - 每一层的未知 key 都会在解析时针对导出的封闭 keyset 显著失败，并说明 what/why/fix
+//     （WF-2 会扩展这些 keyset）；
+//   - next_hop.suggested_roles 指向未声明 role，或没有 step 满足的 role 时显著失败；
+//   - 不可达 step 显著失败（从 entry 开始做确定性单后继遍历，直接使用 projector 自己导出的
+//     resolveNextStep——绝不并行重新实现）；
+//   - 不带 max_hops 的 cycle 失败并说明修复方法；带 max_hops 时通过校验（FR-6 允许）；
+//   - 无误拒绝负向控制：随附的两个内置 starter spec 仍能干净解析并通过校验。
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -54,7 +50,7 @@ function validateYaml(yaml: string) {
   return new WorkflowValidator().validate(spec);
 }
 
-describe("FR-7 parse strictness: unknown keys fail loud at every level", () => {
+describe("FR-7 解析严格性：每一层的未知 key 都显著失败", () => {
   const CASES: Array<{ label: string; yaml: string; key: string; path: string }> = [
     {
       label: "top-level",
@@ -64,8 +60,7 @@ describe("FR-7 parse strictness: unknown keys fail loud at every level", () => {
     },
     {
       label: "step-level",
-      // OPR.0.4.6.WF2: `harness` became a LEGAL step key — the unknown-key
-      // example is now a misspelling of it.
+      // OPR.0.4.6.WF2：`harness` 已成为合法 step key——未知 key 示例现在使用其拼写错误。
       yaml: BASE.replace("      actor_role: worker", "      actor_role: worker\n      harnesss: codex"),
       key: "harnesss",
       path: "workflow.steps[0]",
@@ -97,7 +92,7 @@ describe("FR-7 parse strictness: unknown keys fail loud at every level", () => {
   ];
 
   for (const c of CASES) {
-    it(`${c.label}: unknown key "${c.key}" rejected naming key, path, and the allowed set`, () => {
+    it(`${c.label}：拒绝未知 key "${c.key}"，并点名 key、path 与允许集合`, () => {
       let thrown: unknown;
       try {
         parseWorkflowSpec(c.yaml, "test://strictness.yaml");
@@ -109,24 +104,23 @@ describe("FR-7 parse strictness: unknown keys fail loud at every level", () => {
       expect(e.code).toBe("spec_unknown_key");
       expect(e.message).toContain(`"${c.key}"`);
       expect(e.message).toContain(c.path);
-      expect(e.message).toContain("Allowed keys");
+      expect(e.message).toContain("允许的键");
     });
   }
 
-  it("the closed keysets are exported named constants (the WF-2 extension seam)", () => {
+  it("封闭 keyset 以具名常量导出（WF-2 扩展接缝）", () => {
     expect(WORKFLOW_TOP_LEVEL_KEYS).toContain("loop_guards");
     expect(WORKFLOW_STEP_KEYS).toContain("next_hop");
-    // WF-2 extends these arrays; a frozen-in-place literal elsewhere
-    // would break that contract.
+    // WF-2 会扩展这些数组；在其他位置冻结字面量会破坏该契约。
   });
 
-  it("a fully known-key spec parses clean", () => {
+  it("只含已知 key 的 spec 可干净解析", () => {
     expect(() => parseWorkflowSpec(BASE, "test://ok.yaml")).not.toThrow();
   });
 });
 
-describe("FR-7 graph validation over the REAL resolution semantics", () => {
-  it("suggested role not declared → error; declared but no step carries it → error", () => {
+describe("基于真实解析语义的 FR-7 图校验", () => {
+  it("suggested role 未声明 → 错误；已声明但无 step 承载 → 错误", () => {
     const undeclared = validateYaml(
       BASE.replace("          - next", "          - phantom-role"),
     );
@@ -145,9 +139,9 @@ describe("FR-7 graph validation over the REAL resolution semantics", () => {
     expect(noStep.issues.some((i) => i.code === "next_hop_role_has_no_step")).toBe(true);
   });
 
-  it("an unreachable step fails loud naming the walk", () => {
-    // `work` routes to `follow` via suggested_roles; `orphan` sits
-    // after a forbid terminal — the walk never reaches it.
+  it("不可达 step 显著失败，并点名遍历路径", () => {
+    // `work` 通过 suggested_roles 路由到 `follow`；`orphan` 位于 forbid 终点之后——遍历永远
+    // 无法到达它。
     const yaml = `workflow:
   id: unreachable
   version: 1
@@ -182,13 +176,13 @@ describe("FR-7 graph validation over the REAL resolution semantics", () => {
     const issue = result.issues.find((i) => i.code === "step_unreachable")!;
     expect(issue).toBeDefined();
     expect(issue.message).toContain('"orphan"');
-    // OPR.0.4.6.WF2: reachability is a graph walk (structural ∪ branch
-    // edges); the message names the entry step instead of a linear walk.
+    // OPR.0.4.6.WF2：可达性是图遍历（structural ∪ branch edge）；message 点名 entry step，
+    // 而非线性遍历。
     expect(issue.message).toContain('"work"');
     expect(issue.message).toContain("branch edge");
   });
 
-  it("a cycle WITHOUT max_hops fails naming the cycle and the fix; WITH max_hops it validates (the FR-6 sanction)", () => {
+  it("不带 max_hops 的 cycle 失败并点名 cycle 与修复方法；带 max_hops 时通过（FR-6 许可）", () => {
     const cyclic = `workflow:
   id: cyclic
   version: 1
@@ -229,7 +223,7 @@ describe("FR-7 graph validation over the REAL resolution semantics", () => {
     expect(guarded.ok).toBe(true);
   });
 
-  it("declaration-order fallback edges count for reachability (a linear spec with no next_hop at all validates)", () => {
+  it("声明顺序 fallback edge 计入可达性（完全没有 next_hop 的线性 spec 通过校验）", () => {
     const plain = `workflow:
   id: plain-linear
   version: 1
@@ -250,7 +244,7 @@ describe("FR-7 graph validation over the REAL resolution semantics", () => {
   });
 });
 
-describe("FR-7 no-false-rejection negative: every shipped builtin starter spec still parses AND validates", () => {
+describe("FR-7 无误拒绝负向控制：每个随附的内置 starter spec 仍可解析并通过校验", () => {
   const BUILTIN_DIR = join(
     __dirname,
     "..",
@@ -259,7 +253,7 @@ describe("FR-7 no-false-rejection negative: every shipped builtin starter spec s
     "workflow-specs",
   );
   for (const name of ["basic-loop.yaml", "conveyor.yaml"]) {
-    it(`${name} parses + validates clean under the new strictness`, () => {
+    it(`${name} 在新严格性规则下可干净解析并通过校验`, () => {
       const raw = readFileSync(join(BUILTIN_DIR, name), "utf-8");
       const spec = parseWorkflowSpec(raw, `builtin://${name}`);
       const result = new WorkflowValidator().validate(spec);
@@ -269,9 +263,9 @@ describe("FR-7 no-false-rejection negative: every shipped builtin starter spec s
   }
 });
 
-// ── OPR.0.4.6.WF1 guard blockers 2 + 3 regressions ───────────────────
+// ── OPR.0.4.6.WF1 guard 阻塞项 2 + 3 回归 ───────────────────
 
-describe("guard blocker 2: loop_guards SHAPE validation — an unenforceable guard can never sanction a cycle", () => {
+describe("guard 阻塞项 2：loop_guards 形状校验——无法执行的 guard 绝不能许可 cycle", () => {
   const CYCLIC_WITH = (maxHopsYaml: string) => `workflow:
   id: shape-cycle
   version: 1
@@ -298,7 +292,7 @@ describe("guard blocker 2: loop_guards SHAPE validation — an unenforceable gua
 `;
 
   for (const bad of ['nope', '"3"', "3.5", "0", "-2"]) {
-    it(`max_hops: ${bad} rejects loud at parse (spec_field_invalid) — never a NaN guard sanctioning an unbounded loop`, () => {
+    it(`max_hops: ${bad} 在解析时显著拒绝（spec_field_invalid）——绝不让 NaN guard 许可无限 loop`, () => {
       let thrown: unknown;
       try {
         parseWorkflowSpec(CYCLIC_WITH(bad), "test://shape.yaml");
@@ -312,14 +306,14 @@ describe("guard blocker 2: loop_guards SHAPE validation — an unenforceable gua
     });
   }
 
-  it("max_hops: null is treated as ABSENT at parse — the cycle rule then fails validation (no null loophole)", () => {
+  it("解析时将 max_hops: null 视为缺失——随后 cycle 规则校验失败（无 null 漏洞）", () => {
     const spec = parseWorkflowSpec(CYCLIC_WITH("null"), "test://null.yaml");
     const result = new WorkflowValidator().validate(spec);
     expect(result.ok).toBe(false);
     expect(result.issues.some((i) => i.code === "cycle_without_max_hops")).toBe(true);
   });
 
-  it("spawn_budget shape: negative/non-integer rejects; 0 stays legal (the shipped builtins use 0)", () => {
+  it("spawn_budget 形状：拒绝负数/非整数；0 仍合法（随附内置项使用 0）", () => {
     expect(() =>
       parseWorkflowSpec(CYCLIC_WITH("3").replace("max_hops: 3", "max_hops: 3\n    spawn_budget: -1"), "t://x"),
     ).toThrow(/spawn_budget/);
@@ -328,7 +322,7 @@ describe("guard blocker 2: loop_guards SHAPE validation — an unenforceable gua
     ).not.toThrow();
   });
 
-  it("document-root strictness: a stray sibling of `workflow:` at the YAML root rejects loud", () => {
+  it("document root 严格性：YAML 根部 `workflow:` 旁的游离 sibling 会被显著拒绝", () => {
     const yaml = BASE + "extra_root_key: true\n";
     let thrown: unknown;
     try {
@@ -341,8 +335,8 @@ describe("guard blocker 2: loop_guards SHAPE validation — an unenforceable gua
     expect((thrown as WorkflowSpecError).message).toContain("(document root)");
   });
 
-  it("validator second layer: a cached-blob spec with a string max_hops does NOT sanction a cycle (pre-fix spec_json defense)", () => {
-    // Bypass the parser deliberately — this is the stale-cached-blob shape.
+  it("validator 第二层：max_hops 为字符串的 cached-blob spec 不会许可 cycle（修复前 spec_json 防护）", () => {
+    // 有意绕过 parser——这是陈旧 cached blob 的形态。
     const spec = parseWorkflowSpec(CYCLIC_WITH("5"), "test://ok.yaml");
     (spec.loop_guards as Record<string, unknown>).max_hops = "5";
     const result = new WorkflowValidator().validate(spec);
@@ -351,8 +345,8 @@ describe("guard blocker 2: loop_guards SHAPE validation — an unenforceable gua
   });
 });
 
-describe("guard blocker 3: steps[0] is THE entry authority — a disagreeing entry.role rejects loud", () => {
-  it("entry.role != steps[0].actor_role → entry_role_mismatch error naming the fix", () => {
+describe("guard 阻塞项 3：steps[0] 是 entry 权威——不一致的 entry.role 会被显著拒绝", () => {
+  it("entry.role != steps[0].actor_role → entry_role_mismatch 错误，并点名修复方法", () => {
     const yaml = BASE.replace("    role: worker", "    role: next");
     const result = validateYaml(yaml);
     expect(result.ok).toBe(false);
@@ -362,7 +356,7 @@ describe("guard blocker 3: steps[0] is THE entry authority — a disagreeing ent
     expect(issue.message).toContain('"next"');
   });
 
-  it("entry.role matching steps[0].actor_role validates clean (both shipped builtins keep passing — pinned above)", () => {
+  it("entry.role 与 steps[0].actor_role 匹配时干净通过（上述随附内置项继续通过）", () => {
     expect(validateYaml(BASE).ok).toBe(true);
   });
 });

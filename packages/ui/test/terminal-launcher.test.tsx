@@ -1,17 +1,15 @@
-// OPR.0.4.6.2 (FR-5) — TerminalLauncher. The view-library builder + layout math
-// are unit-tested purely (the load-bearing logic); the interactive open-flow +
-// pixel fidelity are covered by VM proof leg 9 (built-UI screenshots vs the 5
-// locked frames + a real launch), so this file does not fight the Radix dialog
-// in jsdom.
+// OPR.0.4.6.2（FR-5）——TerminalLauncher。视图库构建器和布局计算作为承重逻辑，
+// 由纯单元测试覆盖；交互式打开流程与像素保真度由 VM 证明环节 9 覆盖
+//（构建后 UI 截图对比 5 个锁定帧，再加一次真实启动），因此本文件不在 jsdom 中
+// 强行操纵 Radix 对话框。
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { NodeInventoryEntry } from "../src/hooks/useNodeInventory.js";
 
-// ── Mocks for the closed-dialog render test (the pure-fn tests need none). ──
-// Node data is inlined INSIDE the factory: vitest hoists vi.mock above the file
-// body, so a factory must not reference an outer const.
+// ── 对话框关闭状态渲染测试使用的 mock（纯函数测试无需 mock）。──
+// 节点数据内联在工厂内部：Vitest 会把 vi.mock 提升到文件正文之前，因此工厂不能引用外部 const。
 vi.mock("../src/hooks/useHosts.js", () => ({ useSelectedHostId: () => "local" }));
 vi.mock("../src/hooks/useNodeInventory.js", () => ({
   useNodeInventory: () => ({
@@ -68,8 +66,8 @@ describe("buildLauncherViews — the view library", () => {
       savedViews: [],
     });
     expect(views[0]).toMatchObject({ id: "rig:rig-1", kind: "rig", label: "acme" });
-    expect(views[0]!.crossRig).toBeUndefined(); // a rig view is interactive
-    expect(views[0]!.seats).toHaveLength(1); // infra excluded
+    expect(views[0]!.crossRig).toBeUndefined(); // 工作组视图可交互。
+    expect(views[0]!.seats).toHaveLength(1); // 排除基础设施节点。
   });
 
   it.each([null, ""])(
@@ -115,7 +113,7 @@ describe("buildLauncherViews — the view library", () => {
       savedViews: [],
     });
 
-    expect(views[0]!.label).toBe("Rig name unavailable");
+    expect(views[0]!.label).toBe("工作组名不可用");
   });
 
   it("groups agents into pod views by podNamespace and names absent seats", () => {
@@ -132,8 +130,8 @@ describe("buildLauncherViews — the view library", () => {
     const dev = views.find((v) => v.id === "pod:rig-1/dev");
     expect(dev).toBeTruthy();
     expect(dev!.seats).toHaveLength(2);
-    expect(dev!.seats!.filter((s) => s.live)).toHaveLength(1); // d2 has no session → absent
-    expect(dev!.seats!.find((s) => !s.live)!.reason).toBe("not launched");
+    expect(dev!.seats!.filter((s) => s.live)).toHaveLength(1); // d2 没有会话，因此缺席。
+    expect(dev!.seats!.find((s) => !s.live)!.reason).toBe("未启动");
     expect(views.some((v) => v.id === "pod:rig-1/orch")).toBe(true);
   });
 
@@ -177,7 +175,7 @@ describe("describeOpenResult — Guard G2: a 200 body is authoritative, not auto
   it("200 provider-failure (ok:false, opened:[], code herdr_unavailable) → NOT success", () => {
     const d = describeOpenResult(base({ ok: false, opened: [], code: "herdr_unavailable", error: "no binary" }));
     expect(d.ok).toBe(false);
-    expect(d.headline).toContain("No tiles opened");
+    expect(d.headline).toContain("未打开任何磁贴");
     expect(d.headline).toContain("herdr_unavailable");
     expect(d.headline).toContain("no binary");
   });
@@ -201,7 +199,7 @@ describe("describeOpenResult — Guard G2: a 200 body is authoritative, not auto
       base({ ok: true, opened: ["x@r"], absent: [{ seat: "y@r", host: null, reason: "not alive" }] }),
     );
     expect(d.ok).toBe(true);
-    expect(d.headline).toBe("Opened 1 in herdr");
+    expect(d.headline).toBe("在 herdr 中打开了 1 个");
     expect(d.disclosure).toContain("y@r: not alive");
   });
 });
@@ -215,7 +213,7 @@ describe("TerminalLauncher — mounts with its live hooks (collapsed)", () => {
       </QueryClientProvider>,
     );
     const btn = screen.getByTestId("terminal-launcher-button");
-    expect(btn.textContent).toContain("Open in terminal");
+    expect(btn.textContent).toContain("在终端中打开");
   });
 
   it("uses one resolved canonical label in the deep-linked header and rig row without exposing the UUID", () => {
@@ -235,7 +233,7 @@ describe("TerminalLauncher — mounts with its live hooks (collapsed)", () => {
 
     const dialog = screen.getByTestId("terminal-launcher-dialog");
     const rigRow = screen.getByTestId(`launcher-view-rig:${rigId}`);
-    expect(dialog.textContent).toContain("v-openrig-build · topology");
+    expect(dialog.textContent).toContain("v-openrig-build · 拓扑");
     expect(rigRow.textContent).toContain("v-openrig-build");
     expect(dialog.textContent).not.toContain(rigId);
   });

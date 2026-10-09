@@ -1,14 +1,13 @@
 /**
- * Slice 51-02 (L2 test-system) — the runner's judgment-free `expect` core.
+ * Slice 51-02（L2 test-system）——runner 无判断的 `expect` 核心。
  *
- * The runner is a DUMB executor: for an `expect` step it polls the named shipped
- * surface until a structural match / substring / cross-surface equality holds, or
- * the `within` bound elapses — at which point it emits an expected-vs-last-observed
- * DIFF and FAILS the scenario (proof item 3, failure honesty). Zero heuristics,
- * zero "does it look right" judgment (that is L3, via agents, never the runner).
+ * runner 是无判断执行器：对 `expect` step，轮询具名已发布 surface，直到结构匹配、子串匹配或跨
+ * surface 相等成立，或 `within` 边界耗尽；届时输出 expected-vs-last-observed DIFF 并使 scenario
+ * 失败（证明项 3，失败真实性）。不使用启发式，也不判断“看起来是否正确”（那属于 L3，经 agent
+ * 完成，绝不由 runner 处理）。
  *
- * `within` is the ONLY time dependence and it is a poll BOUND, never an assertion
- * input. The clock + sleep are injected so the loop is deterministic under test.
+ * `within` 是唯一时间依赖，且是 poll 边界，绝不是断言输入。clock + sleep 可注入，使循环在测试中
+ * 确定。
  */
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -16,11 +15,11 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 }
 
 /**
- * The `match` mode: is `expected` a deep structural SUBSET of `actual`?
- * - objects: every expected key exists in actual and subset-matches;
- * - arrays: every expected element subset-matches SOME actual element (contains
- *   semantics — a bare-array surface like `queue` "has an item shaped like X");
- * - primitives: strict equality.
+ * `match` 模式：`expected` 是否为 `actual` 的深层结构子集？
+ * - 对象：每个 expected key 都存在于 actual 且满足子集匹配；
+ * - 数组：每个 expected 元素都与某个 actual 元素满足子集匹配（contains 语义，即 `queue` 之类
+ *   裸数组 surface“含有结构类似 X 的 item”）；
+ * - 原始值：严格相等。
  */
 export function structuralSubsetMatch(actual: unknown, expected: unknown): boolean {
   if (Array.isArray(expected)) {
@@ -37,15 +36,13 @@ export function structuralSubsetMatch(actual: unknown, expected: unknown): boole
 }
 
 /**
- * The `contains` mode: substring match over a TEXT surface (pane/transcript).
+ * `contains` 模式：在文本 surface（pane/transcript）上做子串匹配。
  *
- * Both shipped text reads return an OBJECT carrying the text in `content` —
- * `rig capture --json` => {ok, sessionName, content, lines} and
- * `rig transcript --json` => {session, lines, content, ingestHealth} — so a
- * string-only matcher could never match the two surfaces this mode exists for.
- * Accept a bare string (unit/e2e symmetry) or that named field, and NOTHING
- * else: a blind stringify would happily match a needle inside `sessionName` or
- * a JSON key and report a false green.
+ * 两种已发布文本读取都返回在 `content` 中携带文本的对象：`rig capture --json` 返回
+ * {ok, sessionName, content, lines}，`rig transcript --json` 返回
+ * {session, lines, content, ingestHealth}；所以纯字符串 matcher 无法匹配此模式所服务的两个 surface。
+ * 只接受裸字符串（unit/e2e 对称）或该具名字段，其他一律不接受；盲目 stringify 会错误匹配
+ * `sessionName` 或 JSON key 中的 needle，并报告假绿。
  */
 export function containsMatch(actual: unknown, needle: string): boolean {
   if (typeof actual === "string") return actual.includes(needle);
@@ -55,7 +52,7 @@ export function containsMatch(actual: unknown, needle: string): boolean {
   return false;
 }
 
-/** Render a readable expected-vs-observed DIFF for a failed assertion. */
+/** 为失败断言渲染可读的 expected-vs-observed DIFF。 */
 export function formatDiff(expected: unknown, lastObserved: unknown): string {
   const j = (v: unknown) => {
     try {
@@ -64,23 +61,23 @@ export function formatDiff(expected: unknown, lastObserved: unknown): string {
       return String(v);
     }
   };
-  return `assertion unmet within bound\n  expected: ${j(expected)}\n  observed (last): ${j(lastObserved)}`;
+  return `断言未在时限内满足\n  预期：${j(expected)}\n  最后观察值：${j(lastObserved)}`;
 }
 
 export interface PollUntilMatchOptions {
-  /** Read the shipped surface once (async — a real CLI/socket read). */
+  /** 读取一次已发布 surface（异步，真实 CLI/socket 读取）。 */
   observe: () => Promise<unknown>;
-  /** Does the observed value satisfy the assertion? */
+  /** 观察值是否满足断言？ */
   predicate: (observed: unknown) => boolean;
-  /** The expected value, carried ONLY to render the DIFF on timeout. */
+  /** 预期值，只用于在超时时渲染 DIFF。 */
   expected?: unknown;
-  /** Poll bound in ms (the `within` duration, resolved to ms by the runner). */
+  /** poll 边界，单位 ms（由 runner 把 `within` 时长解析为 ms）。 */
   withinMs: number;
-  /** Interval between polls in ms. */
+  /** poll 间隔，单位 ms。 */
   pollIntervalMs: number;
-  /** Injected monotonic clock (ms). */
+  /** 注入的单调时钟（ms）。 */
   now: () => number;
-  /** Injected sleep. */
+  /** 注入的 sleep。 */
   sleep: (ms: number) => Promise<void>;
 }
 
@@ -89,9 +86,8 @@ export type PollResult =
   | { ok: false; lastObserved: unknown; diff: string };
 
 /**
- * Poll `observe` until `predicate` holds or `withinMs` elapses. Polls at least
- * once (so a zero bound still yields an honest last-observed). On timeout returns
- * the last observed value and a DIFF. Deterministic under the injected clock/sleep.
+ * 轮询 `observe`，直到 `predicate` 成立或 `withinMs` 耗尽。至少轮询一次，使零边界仍能产生真实的
+ * last-observed。超时时返回最后观察值和 DIFF。在注入的 clock/sleep 下具有确定性。
  */
 export async function pollUntilMatch(opts: PollUntilMatchOptions): Promise<PollResult> {
   const { observe, predicate, expected, withinMs, pollIntervalMs, now, sleep } = opts;

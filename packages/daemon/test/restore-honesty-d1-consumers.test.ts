@@ -1,14 +1,11 @@
-// OPR.0.5.7.1 — D1 CONSUMER ALIGNMENT (R2 HOLD repair; territory ruling on
-// qitem-20260829091346-bfdaaca8). Execution resolves the active occupant from
-// SnapshotData.activeSessionIdByNode; these tests pin the SAME occupant truth
-// onto the three reporting consumers that still select historical rows
-// independently: restore-plan preview (max-ULID reduce), snapshot usability
-// (any-historical-token), and lifecycle recoverability (first-row find).
+// OPR.0.5.7.1——D1 消费者对齐（R2 HOLD 修复；针对 qitem-20260829091346-bfdaaca8
+// 的范围裁定）。执行逻辑从 SnapshotData.activeSessionIdByNode 解析活跃 occupant；这些测试
+// 将同一 occupant 事实固定到仍会独立选择历史行的三个报告消费者：恢复计划预览
+//（最大 ULID reduce）、快照可用性（任意历史 token）和生命周期可恢复性（首行 find）。
 //
-// Ruled broken-relation vocabulary: intendedAction "awaiting-decision",
-// freshRequired false (--fresh cannot override A1 ambiguity), a reason naming
-// the relation failure, token truth derived from NO resolved occupant — never
-// from a historical row.
+// 裁定的关系损坏词汇：intendedAction 为 "awaiting-decision"、freshRequired 为 false
+//（--fresh 无法覆盖 A1 歧义）、原因明确指出关系失败；token 事实源自“没有解析出的 occupant”，
+// 绝不来自历史行。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -24,8 +21,7 @@ import { deriveNodeLifecycleState } from "../src/domain/node-inventory.js";
 import type { Snapshot, SnapshotData, Session } from "../src/domain/types.js";
 import { createFullTestDb } from "./helpers/test-app.js";
 
-// ULIDs where lexical order is the trap: OLD sorts before NEW, so the retired
-// "latest = max id" selection picks NEW.
+// 字典序会造成陷阱的 ULID：OLD 排在 NEW 之前，因此已退役的“latest = max id”选择会选中 NEW。
 const ULID_OLD = "01ARZ3NDEKTSV4RRFFQ69G5AAA";
 const ULID_NEW = "01ARZ3NDEKTSV4RRFFQ69G5ZZZ";
 const ULID_GONE = "01ARZ3NDEKTSV4RRFFQ69G5XXX";
@@ -81,7 +77,7 @@ function snapshotData(rigId: string, nodeId: string, rows: FixtureRow[], relatio
   return data;
 }
 
-describe("OPR.0.5.7.1 — D1 consumer alignment (preview / usability / lifecycle)", () => {
+describe("OPR.0.5.7.1——D1 消费者对齐（预览 / 可用性 / 生命周期）", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -121,18 +117,18 @@ describe("OPR.0.5.7.1 — D1 consumer alignment (preview / usability / lifecycle
     return node!;
   }
 
-  // ------------------------------------------------------------ preview ---
+  // ------------------------------------------------------------ 预览 ---
 
-  it("R-A: the explicit relation selects the older ACTIVE row over a newer superseded tokenless row — action AND token state (incident order: newer row first)", () => {
+  it("R-A：显式关系选择较旧的 ACTIVE 行，而非较新、已替代且无 token 的行——操作与 token 状态（事故顺序：新行在前）", () => {
     const { rigId, nodeId, rigW } = seedRig();
     const data = snapshotData(rigId, nodeId, [
-      { id: ULID_NEW, status: "superseded", token: null },      // newer, first in array
-      { id: ULID_OLD, status: "running", token: "tok-active" }, // the occupant
+      { id: ULID_NEW, status: "superseded", token: null },      // 更新，位于数组首项
+      { id: ULID_OLD, status: "running", token: "tok-active" }, // occupant
     ], { mode: "explicit-id", id: ULID_OLD }, rigW as never);
     const node = previewNode(rigW, makeSnapshot(rigId, data));
-    // base: max-ULID reduce picks the newer tokenless row → awaiting-decision + missing
+    // 基线：最大 ULID reduce 选中较新且无 token 的行 → awaiting-decision + missing
     expect(node.intendedAction).toBe("resume-original");
-    expect(node.tokenState).toBe("unverified"); // the OCCUPANT's token truth, never the historical row's
+    expect(node.tokenState).toBe("unverified"); // occupant 的 token 事实，绝不取自历史行
     expect(node.freshRequired).toBe(false);
   });
 
@@ -140,29 +136,28 @@ describe("OPR.0.5.7.1 — D1 consumer alignment (preview / usability / lifecycle
     ["explicit-null", { mode: "explicit-null" } as RelationMode],
     ["missing-node-key", { mode: "missing-node-key" } as RelationMode],
     ["dangling-id", { mode: "dangling-id", id: ULID_GONE } as RelationMode],
-  ])("R-B (%s): a broken authoritative relation renders awaiting-decision, freshRequired=false, reason names the relation — and --fresh cannot override it", (_label, relation) => {
+  ])("R-B（%s）：损坏的权威关系渲染 awaiting-decision、freshRequired=false，原因点明关系问题——且 --fresh 无法覆盖", (_label, relation) => {
     const { rigId, nodeId, rigW } = seedRig();
     const data = snapshotData(rigId, nodeId, [
       { id: ULID_OLD, status: "running", token: "tok-live" },
     ], relation, rigW as never);
     for (const fresh of [undefined, ["seat"]]) {
       const node = previewNode(rigW, makeSnapshot(rigId, data), fresh);
-      // base: without --fresh the reduce resumes the historical row; with
-      // --fresh it short-circuits to fresh-primed. Both are the defect.
+      // 基线：无 --fresh 时 reduce 恢复历史行；有 --fresh 时短路到 fresh-primed。两者都是缺陷。
       expect(node.intendedAction).toBe("awaiting-decision");
       expect(node.freshRequired).toBe(false);
-      expect(node.reason ?? "").toMatch(/relation|occupant/i);
-      // token truth derives from NO resolved occupant — never the historical row
+      expect(node.reason ?? "").toMatch(/关系|占用者/i);
+      // token 事实源自“没有解析出的 occupant”——绝不取自历史行
       expect(node.tokenState).toBe("missing");
     }
   });
 
-  // ---------------------------------------------------------- lifecycle ---
+  // ---------------------------------------------------------- 生命周期 ---
 
-  it("R-C: lifecycle recoverability follows the explicitly related ACTIVE row even when it is not first in the session array", () => {
+  it("R-C：即使显式关联的 ACTIVE 行不是会话数组首项，生命周期可恢复性也跟随该行", () => {
     const { rigId, nodeId, rigW } = seedRig();
     const data = snapshotData(rigId, nodeId, [
-      { id: ULID_NEW, status: "superseded", token: null }, // first row, no token
+      { id: ULID_NEW, status: "superseded", token: null }, // 首行，无 token
       { id: ULID_OLD, status: "running", token: "tok-active" },
     ], { mode: "explicit-id", id: ULID_OLD }, rigW as never);
     const state = deriveNodeLifecycleState({
@@ -171,20 +166,20 @@ describe("OPR.0.5.7.1 — D1 consumer alignment (preview / usability / lifecycle
       nodeId,
       usableSnapshot: makeSnapshot(rigId, data),
     });
-    // base: first-row .find sees no token → detached
+    // 基线：首行 .find 看不到 token → detached
     expect(state).toBe("recoverable");
   });
 
-  // ---------------------------------------------------------- usability ---
+  // ---------------------------------------------------------- 可用性 ---
 
-  it("R-D: present-null with a historical token is NOT usable and NOT recoverable", () => {
+  it("R-D：present-null 即使有历史 token 也不可用且不可恢复", () => {
     const { rigId, nodeId, rigW } = seedRig();
     const data = snapshotData(rigId, nodeId, [
       { id: ULID_OLD, status: "exited", token: "tok-historical" },
     ], { mode: "explicit-null" }, rigW as never);
     db.prepare("INSERT INTO snapshots (id, rig_id, kind, status, data, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))")
       .run("snap-null-1", rigId, "manual", "ok", JSON.stringify(data));
-    // base: any-historical-token predicate reads this snapshot as usable
+    // 基线：any-historical-token 谓词会把此快照视为可用
     expect(findLatestUsableSnapshot(db, rigId)).toBeNull();
     const state = deriveNodeLifecycleState({
       sessionStatus: "exited",
@@ -195,23 +190,22 @@ describe("OPR.0.5.7.1 — D1 consumer alignment (preview / usability / lifecycle
     expect(state).not.toBe("recoverable");
   });
 
-  // --------------------------------------------- live no-snapshot parity ---
+  // --------------------------------------------- 实时无快照一致性 ---
 
-  it("R-E1: live preview (no snapshot) selects the exactly-one-RUNNING row as the occupant, not the newest row", () => {
+  it("R-E1：实时预览（无快照）选择唯一 RUNNING 行作为 occupant，而非最新行", () => {
     const { rigW, nodeId } = seedRig();
     const s1 = sessionRegistry.registerSession(nodeId, "r77-seat");
     sessionRegistry.updateStatus(s1.id, "running");
     db.prepare("UPDATE sessions SET resume_type = 'claude_name', resume_token = 'tok-active' WHERE id = ?").run(s1.id);
-    const s2 = sessionRegistry.registerSession(nodeId, "r77-seat-v2"); // newer ULID, status unknown, no token
+    const s2 = sessionRegistry.registerSession(nodeId, "r77-seat-v2"); // 更新的 ULID，状态未知，无 token
     expect(s2.id > s1.id).toBe(true);
     const node = previewNode(rigW, null);
-    // base: the live SELECT carries no status; the reduce picks the newer
-    // tokenless row → fresh-primed/missing
+    // 基线：实时 SELECT 不携带状态；reduce 选中较新且无 token 的行 → fresh-primed/missing
     expect(node.intendedAction).toBe("resume-original");
     expect(node.tokenState).toBe("unverified");
   });
 
-  it("R-E2: live preview with SEVERAL running rows is explicit-null ambiguity — awaiting-decision, freshRequired=false (capture parity)", () => {
+  it("R-E2：实时预览存在多个 running 行时属于 explicit-null 歧义——awaiting-decision、freshRequired=false（捕获一致）", () => {
     const { rigW, nodeId } = seedRig();
     const s1 = sessionRegistry.registerSession(nodeId, "r77-seat");
     const s2 = sessionRegistry.registerSession(nodeId, "r77-seat-v2");
@@ -224,23 +218,23 @@ describe("OPR.0.5.7.1 — D1 consumer alignment (preview / usability / lifecycle
     expect(node.tokenState).toBe("missing");
   });
 
-  it("R-E2b: live preview with ZERO running rows is explicit-null ambiguity — a historical token is never borrowed, and --fresh cannot override", () => {
+  it("R-E2b：实时预览没有 running 行时属于 explicit-null 歧义——绝不借用历史 token，且 --fresh 无法覆盖", () => {
     const { rigW, nodeId } = seedRig();
     const s1 = sessionRegistry.registerSession(nodeId, "r77-seat");
     const s2 = sessionRegistry.registerSession(nodeId, "r77-seat-v2");
-    // none running; the older historical row carries a token so the assertion
-    // below proves token truth is NOT borrowed from a non-occupant row.
+    // 没有运行中的行；较旧历史行携带 token，因此下方断言可证明 token 事实没有从
+    // 非 occupant 行借用。
     db.prepare("UPDATE sessions SET resume_type = 'claude_name', resume_token = 'tok-historical' WHERE id = ?").run(s1.id);
     for (const fresh of [undefined, ["seat"]]) {
       const node = previewNode(rigW, null, fresh);
       expect(node.intendedAction).toBe("awaiting-decision");
       expect(node.freshRequired).toBe(false);
       expect(node.tokenState).toBe("missing");
-      expect(node.reason ?? "").toMatch(/relation|occupant/i);
+      expect(node.reason ?? "").toMatch(/关系|占用者/i);
     }
   });
 
-  it("R-E3 parity floor: preview over the CAPTURED snapshot and preview over the same live state agree per node", () => {
+  it("R-E3 一致性下限：基于已捕获快照的预览与基于相同实时状态的预览逐节点一致", () => {
     const { rigId, rigW, nodeId } = seedRig();
     const s1 = sessionRegistry.registerSession(nodeId, "r77-seat");
     sessionRegistry.updateStatus(s1.id, "running");
@@ -253,9 +247,9 @@ describe("OPR.0.5.7.1 — D1 consumer alignment (preview / usability / lifecycle
     expect(live.freshRequired).toBe(fromSnapshot.freshRequired);
   });
 
-  // -------------------------------------------------------- legacy floor ---
+  // -------------------------------------------------------- 旧版下限 ---
 
-  it("R-F1 floor: whole-field-absent legacy snapshot with a SINGLE row previews from that row (legacy inference intact)", () => {
+  it("R-F1 下限：整个字段缺失且仅有一行的旧版快照从该行生成预览（旧版推断保持完整）", () => {
     const { rigId, nodeId, rigW } = seedRig();
     const data = snapshotData(rigId, nodeId, [
       { id: ULID_OLD, status: "running", token: "tok-active" },
@@ -265,9 +259,9 @@ describe("OPR.0.5.7.1 — D1 consumer alignment (preview / usability / lifecycle
     expect(node.tokenState).toBe("unverified");
   });
 
-  it("R-F2 alignment: whole-field-absent legacy snapshot with several rows previews from the UNIQUELY-RUNNING row, never the newest ULID", () => {
-    // Honest RED note: at base this leg fails — the preview reduce is the very
-    // divergence under repair. It is titled alignment, not floor.
+  it("R-F2 对齐：整个字段缺失且有多行的旧版快照从唯一 RUNNING 行生成预览，绝不选择最新 ULID", () => {
+    // 如实的 RED 说明：在基线版本中此支路失败——预览 reduce 正是待修复的分歧。
+    // 标题使用 alignment，而非 floor。
     const { rigId, nodeId, rigW } = seedRig();
     const data = snapshotData(rigId, nodeId, [
       { id: ULID_NEW, status: "superseded", token: null },

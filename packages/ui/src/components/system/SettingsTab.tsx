@@ -1,12 +1,11 @@
-// User Settings v0 — System drawer Settings tab.
+// 用户设置 v0 —— 系统抽屉设置标签页。
 //
-// Three sections at v0: Workspace, Files, Progress. Each setting shows
-// the resolved value + source (env / file / default) + default.
-// Operators set per-key via inline form; Init Workspace button + Reset
-// button per setting.
+// v0 三个部分：工作区、文件、进度。每个设置显示解析后的值 + 来源
+//（env / file / default）+ 默认值。操作者通过内联表单按键设置；
+// 初始化工作区按钮 + 每个设置的重置按钮。
 //
-// Keep this read+write surface small. The CLI (`rig config get/set/reset`)
-// is the canonical agent-edit path.
+// 保持这个读写表面小。CLI（`zrig config get/set/reset`）是规范的
+// 智能体编辑路径。
 
 import { useState, type ReactNode } from "react";
 import {
@@ -61,7 +60,7 @@ function SettingsRow({ label, settingKey, resolved, testIdPrefix }: SettingsRowP
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[10px] text-on-surface truncate">{label}</span>
         <span className="font-mono text-[8px] uppercase tracking-[0.10em] text-on-surface-variant shrink-0">
-          source: {resolved.source}
+          来源：{resolved.source}
         </span>
       </div>
       {editing ? (
@@ -79,27 +78,27 @@ function SettingsRow({ label, settingKey, resolved, testIdPrefix }: SettingsRowP
               disabled={setMutation.isPending}
               className="font-mono text-[8px] uppercase border border-outline-variant px-2 py-0.5 hover:bg-surface-high disabled:opacity-50"
             >
-              Save
+              保存
             </button>
             <button
               onClick={() => { setEditing(false); setDraft(String(resolved.value ?? "")); setError(null); }}
               className="font-mono text-[8px] uppercase text-on-surface-variant hover:text-on-surface"
             >
-              Cancel
+              取消
             </button>
           </div>
         </div>
       ) : (
         <div className="space-y-0.5">
           <div className="font-mono text-[10px] text-on-surface break-all">{String(resolved.value ?? "")}</div>
-          <div className="font-mono text-[8px] text-on-surface-variant break-all">default: {String(resolved.defaultValue ?? "")}</div>
+          <div className="font-mono text-[8px] text-on-surface-variant break-all">默认：{String(resolved.defaultValue ?? "")}</div>
           <div className="flex gap-1 pt-1">
             <button
               data-testid={`${testIdPrefix}-${settingKey}-edit`}
               onClick={() => { setEditing(true); setError(null); }}
               className="font-mono text-[8px] uppercase border border-outline-variant px-1 py-0.5 hover:bg-surface-high"
             >
-              Edit
+              编辑
             </button>
             {isOverridden && (
               <button
@@ -108,7 +107,7 @@ function SettingsRow({ label, settingKey, resolved, testIdPrefix }: SettingsRowP
                 disabled={resetMutation.isPending}
                 className="font-mono text-[8px] uppercase border border-outline-variant px-1 py-0.5 hover:bg-surface-high disabled:opacity-50"
               >
-                Reset
+                重置
               </button>
             )}
           </div>
@@ -139,21 +138,21 @@ export function SettingsTab() {
     setInitResult(null);
     try {
       const r = await initWorkspace.mutateAsync({});
-      setInitResult(`Initialized at ${r.root} — created ${r.subdirs.filter((s) => s.created).length} subdir(s).`);
+      setInitResult(`已初始化于 ${r.root} — 创建了 ${r.subdirs.filter((s) => s.created).length} 个子目录。`);
     } catch (err) {
       setInitError((err as Error).message);
     }
   };
 
   if (isLoading) {
-    return <div data-testid="settings-loading" className="px-4 py-3 font-mono text-[10px] text-on-surface-variant">Loading settings…</div>;
+    return <div data-testid="settings-loading" className="px-4 py-3 font-mono text-[10px] text-on-surface-variant">正在加载设置…</div>;
   }
   if (error || !data) {
-    // V1 attempt-3 Phase 3 bounce-fix A2 — soften the failure mode.
-    // The shipped daemon (npm package) at v0.2.0 doesn't expose /api/config
-    // yet; the route lands at v0.3.0. Render an honest empty-state pointing
-    // at the CLI (canonical edit path per useSettings.ts header note),
-    // not a raw "HTTP 404" red error.
+    // V1 第 3 阶段尝试 3 回弹修复 A2 —— 柔化失败模式。
+    // 已发布的后台服务（npm 包）v0.2.0 尚未暴露 /api/config；
+    // 路由在 v0.3.0 落地。渲染诚实的空态指向 CLI
+    //（按 useSettings.ts 头部注释的规范编辑路径），而非原始
+    // "HTTP 404" 红色错误。
     const errMsg = (error as Error)?.message ?? "";
     const looksLikeMissingEndpoint = errMsg.includes("404");
     return (
@@ -164,22 +163,21 @@ export function SettingsTab() {
         {looksLikeMissingEndpoint ? (
           <>
             <div className="text-on-surface font-bold uppercase tracking-wide text-[10px] mb-2">
-              Settings UI requires daemon ≥ v0.3.0
+              设置界面需要后台服务 ≥ v0.3.0
             </div>
             <p className="mb-2">
-              The shipped daemon doesn't expose the settings HTTP route yet.
-              Until that lands, configure via the CLI:
+              已发布的后台服务尚未暴露设置 HTTP 路由。在此之前，通过 CLI 配置：
             </p>
             <pre className="font-mono text-[10px] bg-background border border-outline-variant px-2 py-1 inline-block">
-              rig config get / set / reset
+              zrig config get / set / reset
             </pre>
           </>
         ) : (
           <>
             <div className="text-on-surface font-bold uppercase tracking-wide text-[10px] mb-2">
-              Settings unavailable
+              设置不可用
             </div>
-            <p>{errMsg || "Daemon is unreachable."}</p>
+            <p>{errMsg || "后台服务不可达。"}</p>
           </>
         )}
       </div>
@@ -190,42 +188,42 @@ export function SettingsTab() {
 
   return (
     <div data-testid="settings-tab" className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-      <Section title="Workspace">
-        <SettingsRow label="Workspace root" settingKey="workspace.root" resolved={s["workspace.root"]} testIdPrefix="setting" />
-        <SettingsRow label="Mission/slice root" settingKey="workspace.slices_root" resolved={s["workspace.slices_root"]} testIdPrefix="setting" />
-        <SettingsRow label="Steering path" settingKey="workspace.steering_path" resolved={s["workspace.steering_path"]} testIdPrefix="setting" />
-        <SettingsRow label="Specs root" settingKey="workspace.specs_root" resolved={s["workspace.specs_root"]} testIdPrefix="setting" />
-        <SettingsRow label="Projects root" settingKey="workspace.projects_root" resolved={s["workspace.projects_root"]} testIdPrefix="setting" />
-        <SettingsRow label="Project catalog" settingKey="workspace.catalog_path" resolved={s["workspace.catalog_path"]} testIdPrefix="setting" />
+      <Section title="工作区">
+        <SettingsRow label="工作区根目录" settingKey="workspace.root" resolved={s["workspace.root"]} testIdPrefix="setting" />
+        <SettingsRow label="任务/切片根目录" settingKey="workspace.slices_root" resolved={s["workspace.slices_root"]} testIdPrefix="setting" />
+        <SettingsRow label="引导文件路径" settingKey="workspace.steering_path" resolved={s["workspace.steering_path"]} testIdPrefix="setting" />
+        <SettingsRow label="规格根目录" settingKey="workspace.specs_root" resolved={s["workspace.specs_root"]} testIdPrefix="setting" />
+        <SettingsRow label="项目根目录" settingKey="workspace.projects_root" resolved={s["workspace.projects_root"]} testIdPrefix="setting" />
+        <SettingsRow label="项目目录" settingKey="workspace.catalog_path" resolved={s["workspace.catalog_path"]} testIdPrefix="setting" />
         <button
           data-testid="settings-init-workspace"
           onClick={() => void onInitWorkspace()}
           disabled={initWorkspace.isPending}
           className="mt-2 font-mono text-[9px] uppercase border border-outline px-2 py-1 hover:bg-surface-high disabled:opacity-50"
         >
-          {initWorkspace.isPending ? "Initializing…" : "Init Workspace"}
+          {initWorkspace.isPending ? "正在初始化…" : "初始化工作区"}
         </button>
         {initResult && <div data-testid="settings-init-result" className="font-mono text-[9px] text-on-surface-variant">{initResult}</div>}
         {initError && <div data-testid="settings-init-error" className="font-mono text-[9px] text-red-600">{initError}</div>}
       </Section>
 
-      <Section title="Files (browser allowlist)">
-        <SettingsRow label="Allowlist (name:/abs/path,...)" settingKey="files.allowlist" resolved={s["files.allowlist"]} testIdPrefix="setting" />
+      <Section title="文件（浏览器白名单）">
+        <SettingsRow label="白名单 (name:/abs/path,...)" settingKey="files.allowlist" resolved={s["files.allowlist"]} testIdPrefix="setting" />
       </Section>
 
-      <Section title="Progress">
-        <SettingsRow label="Scan roots (name:/abs/path,...)" settingKey="progress.scan_roots" resolved={s["progress.scan_roots"]} testIdPrefix="setting" />
+      <Section title="进度">
+        <SettingsRow label="扫描根目录 (name:/abs/path,...)" settingKey="progress.scan_roots" resolved={s["progress.scan_roots"]} testIdPrefix="setting" />
       </Section>
 
-      <Section title="Daemon (legacy)">
-        <SettingsRow label="Port" settingKey="daemon.port" resolved={s["daemon.port"]} testIdPrefix="setting" />
-        <SettingsRow label="Host" settingKey="daemon.host" resolved={s["daemon.host"]} testIdPrefix="setting" />
+      <Section title="后台服务（旧版）">
+        <SettingsRow label="端口" settingKey="daemon.port" resolved={s["daemon.port"]} testIdPrefix="setting" />
+        <SettingsRow label="主机" settingKey="daemon.host" resolved={s["daemon.host"]} testIdPrefix="setting" />
       </Section>
 
-      <Section title="Database / Transcripts (legacy)">
-        <SettingsRow label="DB path" settingKey="db.path" resolved={s["db.path"]} testIdPrefix="setting" />
-        <SettingsRow label="Transcripts enabled" settingKey="transcripts.enabled" resolved={s["transcripts.enabled"]} testIdPrefix="setting" />
-        <SettingsRow label="Transcripts path" settingKey="transcripts.path" resolved={s["transcripts.path"]} testIdPrefix="setting" />
+      <Section title="数据库 / 转录（旧版）">
+        <SettingsRow label="数据库路径" settingKey="db.path" resolved={s["db.path"]} testIdPrefix="setting" />
+        <SettingsRow label="启用转录" settingKey="transcripts.enabled" resolved={s["transcripts.enabled"]} testIdPrefix="setting" />
+        <SettingsRow label="转录路径" settingKey="transcripts.path" resolved={s["transcripts.path"]} testIdPrefix="setting" />
       </Section>
     </div>
   );

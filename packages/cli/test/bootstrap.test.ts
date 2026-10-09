@@ -117,7 +117,7 @@ describe("Bootstrap CLI", () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "bootstrap", "/tmp/rig.yaml", "--plan"]);
     });
-    expect(logs.some((l) => l.includes("BOOTSTRAP PLAN"))).toBe(true);
+    expect(logs.some((l) => l.includes("引导启动计划"))).toBe(true);
     expect(logs.some((l) => l.includes("resolve_spec"))).toBe(true);
   });
 
@@ -126,8 +126,8 @@ describe("Bootstrap CLI", () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "bootstrap", "/tmp/rig.yaml", "--yes"]);
     });
-    expect(logs.some((l) => l.includes("Rig: rig-1"))).toBe(true);
-    expect(logs.some((l) => l.includes("completed"))).toBe(true);
+    expect(logs.some((l) => l.includes("工作组：rig-1"))).toBe(true);
+    expect(logs.some((l) => l.includes("状态：completed"))).toBe(true);
   });
 
   // T3: bootstrap --yes sends autoApprove=true
@@ -157,9 +157,9 @@ describe("Bootstrap CLI", () => {
     expect(parsed.runId).toBe("run-1");
   });
 
-  // T6: exit 2 for failure (500)
+  // T6：失败退出 2（500）
   it("exit code 2 for server failure", async () => {
-    // Create a server that always returns 500 for apply
+    // 创建一个对 apply 总返回 500 的 server
     const failServer = http.createServer((_, res) => {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "failed", stages: [], errors: ["internal error"], warnings: [] }));
@@ -179,7 +179,7 @@ describe("Bootstrap CLI", () => {
     failServer.close();
   });
 
-  // T7: daemon not running -> error + exit 1
+  // T7：daemon 未运行 → 报错 + 退出 1
   it("daemon not running returns exit code 1", async () => {
     const stoppedDeps: StatusDeps = {
       lifecycleDeps: mockLifecycleDeps({
@@ -195,7 +195,7 @@ describe("Bootstrap CLI", () => {
       await prog.parseAsync(["node", "rig", "bootstrap", "/tmp/rig.yaml", "--plan"]);
     });
     expect(exitCode).toBe(1);
-    expect(logs.some((l) => l.includes("Daemon not running"))).toBe(true);
+    expect(logs.some((l) => l.includes("后台服务未运行"))).toBe(true);
   });
 
   // T8: no flags sends autoApprove=false
@@ -290,7 +290,7 @@ describe("Bootstrap CLI", () => {
     });
 
     expect(exitCode).toBe(2);
-    expect(logs.some((l) => l.includes("BOOTSTRAP PLAN"))).toBe(false);
+    expect(logs.some((l) => l.includes("引导启动计划"))).toBe(false);
     expect(logs.some((l) => l.includes("bad runtime"))).toBe(true);
     invalidPlanServer.close();
   });
@@ -363,7 +363,7 @@ describe("Bootstrap CLI", () => {
 
     libServer.close();
 
-    // The resolved sourceRef must be the library file path, not the raw name
+    // 解析的 sourceRef 必须是库文件路径，而非原始名
     expect(capturedSourceRef).toBe("/specs/my-lib-rig.yaml");
   });
 });

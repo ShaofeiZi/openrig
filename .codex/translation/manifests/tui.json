@@ -1,0 +1,1523 @@
+{
+  "owner": "tui",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": "packages/tui/scripts/capture-crash-cart.mjs",
+      "target_path": "packages/tui/scripts/capture-crash-cart.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 56,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译捕获工具注释和日志 | tui scripts2 nochange:scan evidence注释审读residual0→validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/attention/attention-model.ts",
+      "target_path": "packages/tui/src/attention/attention-model.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 83,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译 Feed 注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/attention/source-continuity.ts",
+      "target_path": "packages/tui/src/attention/source-continuity.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 33,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/commands/completion.ts",
+      "target_path": "packages/tui/src/commands/completion.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 31,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译补全注释与提示字符串 | tui-src batch1:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/commands/help.ts",
+      "target_path": "packages/tui/src/commands/help.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 43,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译帮助界面注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/commands/palette.ts",
+      "target_path": "packages/tui/src/commands/palette.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 62,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译面板模型注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/commands/registry.ts",
+      "target_path": "packages/tui/src/commands/registry.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 330,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注册表注释、描述、错误消息 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/config/config-model.ts",
+      "target_path": "packages/tui/src/config/config-model.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 227,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译配置模型全部标签与字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/connections/connections-model.ts",
+      "target_path": "packages/tui/src/connections/connections-model.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 125,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译连接模型全部可见字符串",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/contract.ts",
+      "target_path": "packages/tui/src/crash-cart/contract.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 13,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译契约注释 | tui-src batch1:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/crash-cart-model.ts",
+      "target_path": "packages/tui/src/crash-cart/crash-cart-model.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 111,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译模型注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/from-emit.ts",
+      "target_path": "packages/tui/src/crash-cart/from-emit.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 63,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/keys.ts",
+      "target_path": "packages/tui/src/crash-cart/keys.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 41,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/ledger-explorer.ts",
+      "target_path": "packages/tui/src/crash-cart/ledger-explorer.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 33,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释与可见字符串 | tui-src batch1:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/one-click-gate.ts",
+      "target_path": "packages/tui/src/crash-cart/one-click-gate.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 47,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/render-crash-cart.ts",
+      "target_path": "packages/tui/src/crash-cart/render-crash-cart.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 277,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译座舱渲染器全部可见字符串与注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/restore-input.ts",
+      "target_path": "packages/tui/src/crash-cart/restore-input.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 59,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/restore-lifecycle.ts",
+      "target_path": "packages/tui/src/crash-cart/restore-lifecycle.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 155,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译生命周期注释与字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/restore-scroll.ts",
+      "target_path": "packages/tui/src/crash-cart/restore-scroll.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 28,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/start-daemon.ts",
+      "target_path": "packages/tui/src/crash-cart/start-daemon.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 11,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译错误消息与注释 | tui-src batch1:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/crash-cart/triage.ts",
+      "target_path": "packages/tui/src/crash-cart/triage.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 88,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译诊断列表注释与渲染字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/daemon-client.ts",
+      "target_path": "packages/tui/src/daemon-client.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 346,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译后台服务客户端注释与错误消息 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/demo-data.ts",
+      "target_path": "packages/tui/src/demo-data.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 216,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译演示夹具可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/detail.ts",
+      "target_path": "packages/tui/src/detail.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 114,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释与可见字符串",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/src/execution/execution-model.ts",
+      "target_path": "packages/tui/src/execution/execution-model.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 833,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译执行模型全部可见字符串",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/src/execution/workflow-model.ts",
+      "target_path": "packages/tui/src/execution/workflow-model.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 205,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译工作流模型可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/grammar.ts",
+      "target_path": "packages/tui/src/grammar.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 40,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译命令语法注释与错误消息 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/health/health-model.ts",
+      "target_path": "packages/tui/src/health/health-model.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 310,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译健康模型全部可见字符串",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/src/hydrate.ts",
+      "target_path": "packages/tui/src/hydrate.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 768,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译水合器注释和可见字符串 | TUI批1局部修复:config分支3纯展示readError标签中文化(CONFIG→配置读取/control plane→后台控制面/Slack observation→Slack连接观察);机器路由execution:/nodes/rigs-summary:/specs-library不变;视觉未验,待render残留与宽度断言,不升done | batch3:fixture修合法configBrowser结构,toHaveLength1保留;待统一验证,不提前写成功 | batch2:运行表面全文审读+相关测试全绿;唯一缺真实Terminal目视,视觉单独gate;validation保持needs_review(visual_blocked) | visual_blocked resolved 2026-10-09: batch2/tui-terminal-visual/REPORT.md verifier12/12,22截图真Terminal目视长引号/换行/SGR通过;临时注入已精确撤销,typecheck过;既有hydrate36/textwidth11测试全绿→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/src/index.ts",
+      "target_path": "packages/tui/src/index.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 11,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 仅 re-export，无可见文本 | tui-src batch1:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/input.ts",
+      "target_path": "packages/tui/src/input.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 218,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译输入解码器注释与错误消息 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/live-events.ts",
+      "target_path": "packages/tui/src/live-events.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 99,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译SSE订阅注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/live.ts",
+      "target_path": "packages/tui/src/live.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 193,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译实时刷新注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/local-reading.ts",
+      "target_path": "packages/tui/src/local-reading.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 96,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/main.ts",
+      "target_path": "packages/tui/src/main.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 699,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 主入口注释和可见消息翻译 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/motion.ts",
+      "target_path": "packages/tui/src/motion.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 43,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译动效注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/navigator.ts",
+      "target_path": "packages/tui/src/navigator.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 204,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译导航器注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/page-read.ts",
+      "target_path": "packages/tui/src/page-read.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 74,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/print-for-copy.ts",
+      "target_path": "packages/tui/src/print-for-copy.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 98,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/pulse/pulse-model.ts",
+      "target_path": "packages/tui/src/pulse/pulse-model.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 395,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译PULSE模型可见字符串和注释",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/src/pulse/render-pulse.ts",
+      "target_path": "packages/tui/src/pulse/render-pulse.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 181,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译PULSE渲染器可见字符串",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/src/reading.ts",
+      "target_path": "packages/tui/src/reading.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 92,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/refresh.ts",
+      "target_path": "packages/tui/src/refresh.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 28,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释 | tui-src batch1:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/render.ts",
+      "target_path": "packages/tui/src/render.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 1792,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 渲染器注释和可见字符串翻译",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/src/scopes/scopes-model.ts",
+      "target_path": "packages/tui/src/scopes/scopes-model.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 375,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译范围模型全部可见字符串",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/src/sections.ts",
+      "target_path": "packages/tui/src/sections.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 32,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译分区注册表注释 | tui-src batch1:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/socket-server.ts",
+      "target_path": "packages/tui/src/socket-server.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 142,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译控制套接字注释与错误消息 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/startup.ts",
+      "target_path": "packages/tui/src/startup.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 285,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译启动控制器全部可见字符串与注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/state.ts",
+      "target_path": "packages/tui/src/state.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 700,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 资源管理器行标签和错误消息翻译 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/stylize.ts",
+      "target_path": "packages/tui/src/stylize.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 238,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译样式注释并更新链接正则为中文",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/src/terminals/terminal-model.ts",
+      "target_path": "packages/tui/src/terminals/terminal-model.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 135,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译终端模型全部可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/theme.ts",
+      "target_path": "packages/tui/src/theme.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 113,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译主题注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/time.ts",
+      "target_path": "packages/tui/src/time.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 33,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译时间显示字符串与注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/topology/canvas.ts",
+      "target_path": "packages/tui/src/topology/canvas.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 152,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译画布注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/topology/fixture.ts",
+      "target_path": "packages/tui/src/topology/fixture.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 81,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译拓扑夹具注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/topology/glyphs.ts",
+      "target_path": "packages/tui/src/topology/glyphs.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 75,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译状态字形注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/topology/graph-types.ts",
+      "target_path": "packages/tui/src/topology/graph-types.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 45,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译图类型注释 | tui-src batch1:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/topology/layout.ts",
+      "target_path": "packages/tui/src/topology/layout.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 166,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译布局注释与(无席位)字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/topology/render-graph.ts",
+      "target_path": "packages/tui/src/topology/render-graph.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 31,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译图渲染注册表注释 | tui-src batch1:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/topology/runtime-marks.ts",
+      "target_path": "packages/tui/src/topology/runtime-marks.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 208,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译运行时标记注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/topology/styles/braille.ts",
+      "target_path": "packages/tui/src/topology/styles/braille.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 85,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译盲文样式注释与页脚 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/topology/styles/hatchet.ts",
+      "target_path": "packages/tui/src/topology/styles/hatchet.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 164,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译hatchet样式注释与可见字符串 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/types.ts",
+      "target_path": "packages/tui/src/types.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 630,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译类型定义注释 | tui-src union64:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/visual-layout.ts",
+      "target_path": "packages/tui/src/visual-layout.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 8,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 翻译注释 | tui-src batch1:整文件注释/JSDoc审读residual0,reviewed_no_change;scan evidence锁validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/test/actions.test.ts",
+      "target_path": "packages/tui/test/actions.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 108,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文展示断言与终端列宽行为已校准；重点集 68/68 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch6:整文件注释/标题/失败消息审读residual0,机器token保留;9changed98测试过+1nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/agent-detail-runtime-name.test.ts",
+      "target_path": "packages/tui/test/agent-detail-runtime-name.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 35,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;8changed21测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/agent-detail-runtime-unknown.test.ts",
+      "target_path": "packages/tui/test/agent-detail-runtime-unknown.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 37,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;8changed21测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/arrow-autoscroll.test.ts",
+      "target_path": "packages/tui/test/arrow-autoscroll.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 50,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;测试过→passed"
+    },
+    {
+      "source_path": "packages/tui/test/attention.test.ts",
+      "target_path": "packages/tui/test/attention.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 58,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 内部枚举保持英文，中文展示与测试已校准；批次 19/19 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/blocker-enrichment.test.ts",
+      "target_path": "packages/tui/test/blocker-enrichment.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 170,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch6:整文件注释/标题/失败消息审读residual0,机器token保留;9changed98测试过+1nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/command-context-composition.test.ts",
+      "target_path": "packages/tui/test/command-context-composition.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 30,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;8changed21测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/command-palette.test.ts",
+      "target_path": "packages/tui/test/command-palette.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 74,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;7changed37测试过+3nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/command-registry-parity.test.ts",
+      "target_path": "packages/tui/test/command-registry-parity.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 52,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 内部枚举保持英文，中文展示与测试已校准；批次 19/19 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;7changed37测试过+3nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/config-journey.test.ts",
+      "target_path": "packages/tui/test/config-journey.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 169,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 内部枚举保持英文，中文展示与测试已校准；批次 19/19 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch6:整文件注释/标题/失败消息审读residual0,机器token保留;9changed98测试过+1nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/config-model.test.ts",
+      "target_path": "packages/tui/test/config-model.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 49,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 内部枚举保持英文，中文展示与测试已校准；批次 19/19 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;7changed37测试过+3nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/connections-journey.test.ts",
+      "target_path": "packages/tui/test/connections-journey.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 217,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 21 failures - assertions need update | 24/24 passing | test assertions need alignment | 同步所有用户可见 nextAction 为 zrig，并完成测试标题中文化；Node 24 隔离全量 TUI 85 files / 754 tests 通过",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/crash-cart-dispatch.test.ts",
+      "target_path": "packages/tui/test/crash-cart-dispatch.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 35,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;8changed21测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/crash-cart-from-emit.test.ts",
+      "target_path": "packages/tui/test/crash-cart-from-emit.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 60,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;7changed37测试过+3nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/crash-cart-in-shell.test.ts",
+      "target_path": "packages/tui/test/crash-cart-in-shell.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 237,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 机器状态枚举保持英文；中文故障诊断宽度、确认与断言已校准；批次 73/73 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch6:整文件注释/标题/失败消息审读residual0,机器token保留;9changed98测试过+1nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/crash-cart-keys.test.ts",
+      "target_path": "packages/tui/test/crash-cart-keys.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 71,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 机器状态枚举保持英文；中文故障诊断宽度、确认与断言已校准；批次 73/73 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch5:整文件注释/标题/失败消息审读residual0,机器token保留;8changed45测试过+2nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/crash-cart-restore-input.test.ts",
+      "target_path": "packages/tui/test/crash-cart-restore-input.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 115,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 机器状态枚举保持英文；中文故障诊断宽度、确认与断言已校准；批次 73/73 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch6:整文件注释/标题/失败消息审读residual0,机器token保留;9changed98测试过+1nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/crash-cart-restore-lifecycle.test.ts",
+      "target_path": "packages/tui/test/crash-cart-restore-lifecycle.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 181,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 机器状态枚举保持英文；中文故障诊断宽度、确认与断言已校准；批次 73/73 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch6:整文件注释/标题/失败消息审读residual0,机器token保留;9changed98测试过+1nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/crash-cart-restore-render.test.ts",
+      "target_path": "packages/tui/test/crash-cart-restore-render.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 138,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 机器状态枚举保持英文；中文故障诊断宽度、确认与断言已校准；批次 73/73 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch6:整文件注释/标题/失败消息审读residual0,机器token保留;9changed98测试过+1nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/crash-cart-start-daemon.test.ts",
+      "target_path": "packages/tui/test/crash-cart-start-daemon.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 22,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;8changed21测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/crash-cart-states.test.ts",
+      "target_path": "packages/tui/test/crash-cart-states.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 73,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 机器状态枚举保持英文；中文故障诊断宽度、确认与断言已校准；批次 73/73 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch5:整文件注释/标题/失败消息审读residual0,机器token保留;8changed45测试过+2nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/crash-cart-triage.test.ts",
+      "target_path": "packages/tui/test/crash-cart-triage.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 52,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 机器状态枚举保持英文；中文故障诊断宽度、确认与断言已校准；批次 73/73 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;7changed37测试过+3nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/crash-cart-view.test.ts",
+      "target_path": "packages/tui/test/crash-cart-view.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 118,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 8 failures | test assertions need alignment | 机器状态枚举保持英文；中文故障诊断宽度、确认与断言已校准；批次 73/73 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch6:整文件注释/标题/失败消息审读residual0,机器token保留;9changed98测试过+1nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/daemon-client.test.ts",
+      "target_path": "packages/tui/test/daemon-client.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 148,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | fixed colon style + assertion updated, pending verification | 加载/启动/socket 展示断言已校准，内部枚举保持英文；批次 79/79 通过 | 加载、启动、socket 中文展示已校准，内部状态枚举保持英文；批次 79/79 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch6:整文件注释/标题/失败消息审读residual0,机器token保留;9changed98测试过+1nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/demo-gate.test.ts",
+      "target_path": "packages/tui/test/demo-gate.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 27,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;8changed21测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/entry-loading.test.ts",
+      "target_path": "packages/tui/test/entry-loading.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 127,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 加载/启动/socket 展示断言已校准，内部枚举保持英文；批次 79/79 通过 | 加载、启动、socket 中文展示已校准，内部状态枚举保持英文；批次 79/79 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch6:整文件注释/标题/失败消息审读residual0,机器token保留;9changed98测试过+1nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/everyday-usability.test.ts",
+      "target_path": "packages/tui/test/everyday-usability.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 154,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | Final remaining TUI batch passed: 7 files, 100/100 tests | Full TUI suite passed: 85 files, 753/753 tests",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch7:整文件注释/标题/失败消息审读residual0,机器token保留;5changed78测试过+5nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/execution-view.test.ts",
+      "target_path": "packages/tui/test/execution-view.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 586,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 16 failures | test assertions need alignment | fixed machine data keys + untranslated UI, pending verification | 中文展示断言与终端列宽行为已校准；重点集 68/68 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch7:整文件注释/标题/失败消息审读residual0,机器token保留;5changed78测试过+5nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/explorer-absence.test.ts",
+      "target_path": "packages/tui/test/explorer-absence.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 101,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch7:整文件注释/标题/失败消息审读residual0,机器token保留;5changed78测试过+5nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/feed-source-continuity.test.ts",
+      "target_path": "packages/tui/test/feed-source-continuity.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 121,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 8 failures | Prior feed/pulse batch: file passed; reconfirmed adjacent feed model in 49/49 batch",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch7:整文件注释/标题/失败消息审读residual0,机器token保留;5changed78测试过+5nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/feed-system.test.ts",
+      "target_path": "packages/tui/test/feed-system.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 75,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 49/49 pulse-feed batch passed; visible system/feed labels aligned",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch7:整文件注释/标题/失败消息审读residual0,机器token保留;5changed78测试过+5nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/founder-live-qa-correction.test.ts",
+      "target_path": "packages/tui/test/founder-live-qa-correction.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 570,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 8 failures | test assertions need alignment | 54/54 founder-health-presence batch passed; display-column extraction and Chinese labels aligned | 54/54 targeted batch passed after display-width and visible-label fixes",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch7:整文件注释/标题/失败消息审读residual0,机器token保留;5changed78测试过+5nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/grammar.test.ts",
+      "target_path": "packages/tui/test/grammar.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 66,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文导航断言与 ANSI 显示列样式已校准；批次 64/64 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;测试过→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/graph-command.test.ts",
+      "target_path": "packages/tui/test/graph-command.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 34,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;8changed21测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/health-view.test.ts",
+      "target_path": "packages/tui/test/health-view.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 235,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 11 failures | test assertions need alignment | updated English assertions to Chinese headers/errors, pending verification | 54/54 batch passed; Chinese severity labels and display-width checks aligned | 54/54 targeted batch passed; health geometry verified by display width",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch7:整文件注释/标题/失败消息审读residual0,机器token保留;5changed78测试过+5nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/hydrate.test.ts",
+      "target_path": "packages/tui/test/hydrate.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 648,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 8 failures | test assertions need alignment | fixed read labels, pending verification | 中文展示断言与终端列宽行为已校准；重点集 68/68 通过 | TUI批1:新增1例config分支503回归断言(读屏中文/无旧英文/仅1条不可用);未删改原断言;待最终实测,不升done",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch7:整文件注释/标题/失败消息审读residual0,机器token保留;5changed78测试过+5nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/input-stream.test.ts",
+      "target_path": "packages/tui/test/input-stream.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 51,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch5:整文件注释/标题/失败消息审读residual0,机器token保留;8changed45测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/instance-mission-control.test.ts",
+      "target_path": "packages/tui/test/instance-mission-control.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 319,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文内容、显示列与展示断言已校准；批次 51/51 通过 | 中文内容展示、协议边界与显示列已校准；批次 51/51 通过 | 中文内容、显示列与长文本性能已校准；快批 51/51、阅读 11/11 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch7:整文件注释/标题/失败消息审读residual0,机器token保留;5changed78测试过+5nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/ledger-explorer.test.ts",
+      "target_path": "packages/tui/test/ledger-explorer.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 28,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch7:整文件注释/标题/失败消息审读residual0,机器token保留;5changed78测试过+5nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/live-events.test.ts",
+      "target_path": "packages/tui/test/live-events.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 156,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 加载/启动/socket 展示断言已校准，内部枚举保持英文；批次 79/79 通过 | 加载、启动、socket 中文展示已校准，内部状态枚举保持英文；批次 79/79 通过 | b2-tui-comment-batch8:整文件注释/标题/失败消息审读residual0,机器token保留;7changed66测试过+3nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/live-quiet-refresh.test.ts",
+      "target_path": "packages/tui/test/live-quiet-refresh.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 182,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | b2-tui-comment-batch8:整文件注释/标题/失败消息审读residual0,机器token保留;7changed66测试过+3nochange历史→passed",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured"
+    },
+    {
+      "source_path": "packages/tui/test/live.test.ts",
+      "target_path": "packages/tui/test/live.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 187,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 加载/启动/socket 展示断言已校准，内部枚举保持英文；批次 79/79 通过 | 加载、启动、socket 中文展示已校准，内部状态枚举保持英文；批次 79/79 通过 | b2-tui-comment-batch8:整文件注释/标题/失败消息审读residual0,机器token保留;7changed66测试过+3nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/mission-outcomes.test.ts",
+      "target_path": "packages/tui/test/mission-outcomes.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 91,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文内容、显示列与展示断言已校准；批次 51/51 通过 | 中文内容展示、协议边界与显示列已校准；批次 51/51 通过 | 中文内容、显示列与长文本性能已校准；快批 51/51、阅读 11/11 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/motion.test.ts",
+      "target_path": "packages/tui/test/motion.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 271,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 9 failures | test assertions need alignment | 加载/启动/socket 展示断言已校准，内部枚举保持英文；批次 79/79 通过 | 加载、启动、socket 中文展示已校准，内部状态枚举保持英文；批次 79/79 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;测试过→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/navigation-continuity.test.ts",
+      "target_path": "packages/tui/test/navigation-continuity.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 89,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文导航断言与 ANSI 显示列样式已校准；批次 64/64 通过 | b2-tui-comment-batch8:整文件注释/标题/失败消息审读residual0,机器token保留;7changed66测试过+3nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/navigator-reskin.test.ts",
+      "target_path": "packages/tui/test/navigator-reskin.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 311,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文导航断言与 ANSI 显示列样式已校准；批次 64/64 通过 | b2-tui-comment-batch8:整文件注释/标题/失败消息审读residual0,机器token保留;7changed66测试过+3nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/one-click-gate.test.ts",
+      "target_path": "packages/tui/test/one-click-gate.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 48,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | Final remaining TUI batch passed: 7 files, 100/100 tests | Full TUI suite passed: 85 files, 753/753 tests",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;7changed37测试过+3nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/organizer.test.ts",
+      "target_path": "packages/tui/test/organizer.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 43,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 中文导航断言与 ANSI 显示列样式已校准；批次 64/64 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;7changed37测试过+3nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/parity-content.test.ts",
+      "target_path": "packages/tui/test/parity-content.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 215,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 57/57 batch passed; content clicks now asserted by display-column coordinates | Final remaining TUI batch passed: 7 files, 100/100 tests | Full TUI suite passed: 85 files, 753/753 tests",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;测试过→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/parity.test.ts",
+      "target_path": "packages/tui/test/parity.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 84,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文导航断言与 ANSI 显示列样式已校准；批次 64/64 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;测试过→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/polish-focus.test.ts",
+      "target_path": "packages/tui/test/polish-focus.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 93,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文导航断言与 ANSI 显示列样式已校准；批次 64/64 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;测试过→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/presentation-guidance.test.ts",
+      "target_path": "packages/tui/test/presentation-guidance.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 110,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文内容、显示列与展示断言已校准；批次 51/51 通过 | 中文内容展示、协议边界与显示列已校准；批次 51/51 通过 | 中文内容、显示列与长文本性能已校准；快批 51/51、阅读 11/11 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;测试过→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/production-composed-system.test.ts",
+      "target_path": "packages/tui/test/production-composed-system.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 122,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | Final remaining TUI batch passed: 7 files, 100/100 tests | Full TUI suite passed: 85 files, 753/753 tests",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;测试过→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/project-navigation.test.ts",
+      "target_path": "packages/tui/test/project-navigation.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 90,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文内容、显示列与展示断言已校准；批次 51/51 通过 | 中文内容展示、协议边界与显示列已校准；批次 51/51 通过 | 中文内容、显示列与长文本性能已校准；快批 51/51、阅读 11/11 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/pulse-live.test.ts",
+      "target_path": "packages/tui/test/pulse-live.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 466,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 15 failures | test assertions need alignment | 49/49 pulse-feed batch passed; Chinese exception labels and age text aligned",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;测试过→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/pulse-view.test.ts",
+      "target_path": "packages/tui/test/pulse-view.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 397,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 49/49 pulse-feed batch passed; display-width lane geometry asserted",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;测试过→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/reading-journey.test.ts",
+      "target_path": "packages/tui/test/reading-journey.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 150,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 修复 1MiB 长行显示宽度换行 O(n²) 回归；11/11 通过 | 中文内容、显示列与长文本性能已校准；快批 51/51、阅读 11/11 通过 | b2-tui-comment-batch8:整文件注释/标题/失败消息审读residual0,机器token保留;7changed66测试过+3nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/reading-regressions.test.ts",
+      "target_path": "packages/tui/test/reading-regressions.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 19,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;8changed21测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/refresh-activity.test.ts",
+      "target_path": "packages/tui/test/refresh-activity.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 121,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | b2-tui-comment-batch8:整文件注释/标题/失败消息审读residual0,机器token保留;7changed66测试过+3nochange历史→passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/refresh-trailing.test.ts",
+      "target_path": "packages/tui/test/refresh-trailing.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 84,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;7changed37测试过+3nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/refresh.test.ts",
+      "target_path": "packages/tui/test/refresh.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 47,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;8changed21测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/render-regressions.test.ts",
+      "target_path": "packages/tui/test/render-regressions.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 295,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | 8 failures | test assertions need alignment | Final remaining TUI batch passed: 7 files, 100/100 tests | Full TUI suite passed: 85 files, 753/753 tests | b2-tui-comment-batch8:整文件注释/标题/失败消息审读residual0,机器token保留;7changed66测试过+3nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/rig-presence.test.ts",
+      "target_path": "packages/tui/test/rig-presence.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 78,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 54/54 batch passed; pane content extracted by display columns | 54/54 targeted batch passed; content pane extraction uses display columns",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch5:整文件注释/标题/失败消息审读residual0,机器token保留;8changed45测试过+2nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/round4.test.ts",
+      "target_path": "packages/tui/test/round4.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 136,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | b2-tui-comment-batch8:整文件注释/标题/失败消息审读residual0,机器token保留;7changed66测试过+3nochange历史→passed",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured"
+    },
+    {
+      "source_path": "packages/tui/test/runtime-marks.test.ts",
+      "target_path": "packages/tui/test/runtime-marks.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 52,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;7changed37测试过+3nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/s04-corrected-entry.test.ts",
+      "target_path": "packages/tui/test/s04-corrected-entry.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 34,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured"
+    },
+    {
+      "source_path": "packages/tui/test/s08-rig-terminal-link.test.ts",
+      "target_path": "packages/tui/test/s08-rig-terminal-link.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 77,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文内容、显示列与展示断言已校准；批次 51/51 通过 | 中文内容展示、协议边界与显示列已校准；批次 51/51 通过 | 中文内容、显示列与长文本性能已校准；快批 51/51、阅读 11/11 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch5:整文件注释/标题/失败消息审读residual0,机器token保留;8changed45测试过+2nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/scopes-view.test.ts",
+      "target_path": "packages/tui/test/scopes-view.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 105,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文内容、显示列与展示断言已校准；批次 51/51 通过 | 中文内容展示、协议边界与显示列已校准；批次 51/51 通过 | 中文内容、显示列与长文本性能已校准；快批 51/51、阅读 11/11 通过 | b2-tui-comment-batch8:整文件注释/标题/失败消息审读residual0,机器token保留;7changed66测试过+3nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/scroll-commands.test.ts",
+      "target_path": "packages/tui/test/scroll-commands.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 39,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;8changed21测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/scroll-focus.test.ts",
+      "target_path": "packages/tui/test/scroll-focus.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 117,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文导航断言与 ANSI 显示列样式已校准；批次 64/64 通过 | b2-tui-comment-batch9:整文件注释/标题/失败消息审读residual0,机器token保留;4changed62测试过+2nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/scroll-per-view-proof.test.ts",
+      "target_path": "packages/tui/test/scroll-per-view-proof.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 43,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch5:整文件注释/标题/失败消息审读residual0,机器token保留;8changed45测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/slack-manifest-connections.test.ts",
+      "target_path": "packages/tui/test/slack-manifest-connections.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 133,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 22/22 Slack batch passed; protocol nextAction remains rig, visible UI maps to zrig | 同步 Slack 清单下一步展示断言为 zrig，并完成测试标题与注释中文化；Node 24 隔离全量 TUI 85 files / 754 tests 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/slack-print-link.test.ts",
+      "target_path": "packages/tui/test/slack-print-link.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 243,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 22/22 Slack batch passed; Chinese notice assertions aligned | b2-tui-comment-batch9:整文件注释/标题/失败消息审读residual0,机器token保留;4changed62测试过+2nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/socket-commands-query.test.ts",
+      "target_path": "packages/tui/test/socket-commands-query.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 42,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch5:整文件注释/标题/失败消息审读residual0,机器token保留;8changed45测试过+2nochange历史→passed"
+    },
+    {
+      "source_path": "packages/tui/test/socket.test.ts",
+      "target_path": "packages/tui/test/socket.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 100,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 加载/启动/socket 展示断言已校准，内部枚举保持英文；批次 79/79 通过 | 加载、启动、socket 中文展示已校准，内部状态枚举保持英文；批次 79/79 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch5:整文件注释/标题/失败消息审读residual0,机器token保留;8changed45测试过+2nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/startup-availability.test.ts",
+      "target_path": "packages/tui/test/startup-availability.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 66,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 加载/启动/socket 展示断言已校准，内部枚举保持英文；批次 79/79 通过 | 加载、启动、socket 中文展示已校准，内部状态枚举保持英文；批次 79/79 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch5:整文件注释/标题/失败消息审读residual0,机器token保留;8changed45测试过+2nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/startup-connection.test.ts",
+      "target_path": "packages/tui/test/startup-connection.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 47,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 加载/启动/socket 展示断言已校准，内部枚举保持英文；批次 79/79 通过 | 加载、启动、socket 中文展示已校准，内部状态枚举保持英文；批次 79/79 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;7changed37测试过+3nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/startup.test.ts",
+      "target_path": "packages/tui/test/startup.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 159,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | b2-tui-comment-batch9:整文件注释/标题/失败消息审读residual0,机器token保留;4changed62测试过+2nochange历史→passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/state.test.ts",
+      "target_path": "packages/tui/test/state.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 134,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文导航断言与 ANSI 显示列样式已校准；批次 64/64 通过 | b2-tui-comment-batch9:整文件注释/标题/失败消息审读residual0,机器token保留;4changed62测试过+2nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/stylize.test.ts",
+      "target_path": "packages/tui/test/stylize.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 115,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 57/57 batch passed; Chinese status/link/hint styling added | Final remaining TUI batch passed: 7 files, 100/100 tests | Full TUI suite passed: 85 files, 753/753 tests",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch5:整文件注释/标题/失败消息审读residual0,机器token保留;8changed45测试过+2nochange历史→passed",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/terminal-journey.test.ts",
+      "target_path": "packages/tui/test/terminal-journey.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 124,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文内容、显示列与展示断言已校准；批次 51/51 通过 | 中文内容展示、协议边界与显示列已校准；批次 51/51 通过 | 中文内容、显示列与长文本性能已校准；快批 51/51、阅读 11/11 通过 | b2-tui-comment-batch9:整文件注释/标题/失败消息审读residual0,机器token保留;4changed62测试过+2nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/terminal-resize.test.ts",
+      "target_path": "packages/tui/test/terminal-resize.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 13,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured"
+    },
+    {
+      "source_path": "packages/tui/test/topology-view.test.ts",
+      "target_path": "packages/tui/test/topology-view.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 659,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 57/57 topology-stylize-parity batch passed; Chinese runtime/detail assertions aligned | Final remaining TUI batch passed: 7 files, 100/100 tests | Full TUI suite passed: 85 files, 753/753 tests | b2-tui-comment-batch9:整文件注释/标题/失败消息审读residual0,机器token保留;4changed62测试过+2nochange历史→passed",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题翻译+测试过captured",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/wheel-scroll.test.ts",
+      "target_path": "packages/tui/test/wheel-scroll.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 44,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题证据captured;wheel/workflow后变stale-current(注释批改)"
+    },
+    {
+      "source_path": "packages/tui/test/workflow-journey.test.ts",
+      "target_path": "packages/tui/test/workflow-journey.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 132,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 测试断言已更新为中文展示 | test assertions need alignment | 中文展示断言已对齐；同时修复 workflow-model.ts actionLines 列宽按 strWidth 计算（中文双宽），新增收据/生命周期状态展示映射，测试 2/2 通过",
+      "note": "test failures - assertion alignment needed | b2-tui-title-manifest:标题证据captured;wheel/workflow后变stale-current(注释批改)",
+      "reason_class": "needs_review",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/vitest.config.ts",
+      "target_path": "packages/tui/vitest.config.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 7,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 无可见文本 | tui scripts2 nochange:scan evidence注释审读residual0→validated(无需test)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/tui/src/text-width.ts",
+      "target_path": "packages/tui/src/text-width.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 91,
+      "notes": "漏登补登 2026-10-08(零点3062->3064); CJK显示宽度/截断复核:按显示宽度非string length,截断不切断中文/ANSI | batch3:clipW按SGR整体token不拆ANSI;新增text-width.test.ts;dropW/columnIndex类ANSI点未处理+真实视觉未验,如实剩余;待统一验证,不升done | 状态回退pending:batch3 clipW SGR处理已记,补丁未冻结,待统一验证不升done | 终验:clipW SGR处理+5用例绿;其余SGR/Unicode未验,维持needs_review | batch2:运行表面全文审读+相关测试全绿;唯一缺真实Terminal目视,视觉单独gate;validation保持needs_review(visual_blocked) | visual_blocked resolved 2026-10-09: batch2/tui-terminal-visual/REPORT.md verifier12/12,22截图真Terminal目视长引号/换行/SGR通过;临时注入已精确撤销,typecheck过;既有hydrate36/textwidth11测试全绿→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/tui/test/text-width.test.ts",
+      "target_path": "packages/tui/test/text-width.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 0,
+      "notes": "漏登补登 2026-10-08(TUI batch3新增测试);CJK显示宽度/SGR token用例;待最终统一验证,不升done | 终验:新增CJK双宽+SGR剥离+clipW,5用例全过,全文中文;登记验证",
+      "validation_state": "passed",
+      "note": " | b2-tui-title-manifest:标题翻译+测试过captured | b2-tui-comment-batch1:整文件注释/标题/失败消息审读residual0,机器token保留;wheel/workflow b2-129 5过,其余历史test→passed"
+    }
+  ]
+}

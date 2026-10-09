@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:46:20",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch5",
+ "files": 10,
+ "changed": 5,
+ "reviewed_no_change": 5,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/use-mission-progress-status.test.tsx",
+   "status": "changed",
+   "after_sha256": "641fe2bb2026fd7f7f9f724a9ef4caf2b46276e17c32e308e398fa137da197b2",
+   "natural_language_residual": 0,
+   "machine_classification": "R1/OPR.0.4.3.06/0.4.4.15、PL-019、G15-CF6-1、hostId、mission-control/action、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/rig-node-orientation.test.tsx",
+   "status": "changed",
+   "after_sha256": "add4f4992e5afe9836cc198eb6cebcf57edf930a5175d31b21f2117479ffbae4",
+   "natural_language_residual": 0,
+   "machine_classification": "R1/OPR.0.4.3.06/0.4.4.15、PL-019、G15-CF6-1、hostId、mission-control/action、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/focused-terminal-lifecycle.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "dd9c11997b1cace7d6900655e08a60e5e59e8b41c4ef00fd65be4bc604622cef",
+   "natural_language_residual": 0,
+   "machine_classification": "R1/OPR.0.4.3.06/0.4.4.15、PL-019、G15-CF6-1、hostId、mission-control/action、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/verb-actions-remote-host.test.tsx",
+   "status": "changed",
+   "after_sha256": "9697e512f92c4e59183d7db9d514fc4dbca037a9b5d470084acc9c46be994584",
+   "natural_language_residual": 0,
+   "machine_classification": "R1/OPR.0.4.3.06/0.4.4.15、PL-019、G15-CF6-1、hostId、mission-control/action、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/topology-edge-activity-pl019.test.ts",
+   "status": "changed",
+   "after_sha256": "e68111c2edaa49c462e23bfaa8fa9ebc39e983ac913376c5c7a2ae5528ff3e2f",
+   "natural_language_residual": 0,
+   "machine_classification": "R1/OPR.0.4.3.06/0.4.4.15、PL-019、G15-CF6-1、hostId、mission-control/action、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/workflow-sse.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "6e6052457edd18e8289cb628ecd0ce054a8479c9e7b92fc4bf25beb6afec1a49",
+   "natural_language_residual": 0,
+   "machine_classification": "R1/OPR.0.4.3.06/0.4.4.15、PL-019、G15-CF6-1、hostId、mission-control/action、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/polish-8-demo-readiness.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "7740ad28885add3693b5737f56dea1e948dd85c6205b762d3a90ea0d78c708e5",
+   "natural_language_residual": 0,
+   "machine_classification": "R1/OPR.0.4.3.06/0.4.4.15、PL-019、G15-CF6-1、hostId、mission-control/action、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/topology-archive-section.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "f099a3e3440209d6fc418b15727f7a79e3bc7f5c25c129a342c0b74a59951e6c",
+   "natural_language_residual": 0,
+   "machine_classification": "R1/OPR.0.4.3.06/0.4.4.15、PL-019、G15-CF6-1、hostId、mission-control/action、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/markdown-viewer-raw-toggle.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "44aa3a8f946bfa4269bed3b6680756bd6a9672ba980415dcf89bbbed99a126a0",
+   "natural_language_residual": 0,
+   "machine_classification": "R1/OPR.0.4.3.06/0.4.4.15、PL-019、G15-CF6-1、hostId、mission-control/action、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/vellum-sheet.test.tsx",
+   "status": "changed",
+   "after_sha256": "145855512f6b5670ccefefeec70df04b0602ec39a83bb2834ba35835572692c6",
+   "natural_language_residual": 0,
+   "machine_classification": "R1/OPR.0.4.3.06/0.4.4.15、PL-019、G15-CF6-1、hostId、mission-control/action、@vitest-environment jsdom 保留"
+  }
+ ]
+}

@@ -11,20 +11,20 @@ interface UnarchiveResult {
 }
 
 /**
- * `rig unarchive <rigId>` - OPR.0.3.3.19. Reverse of `rig archive`: clears the
- * `archived_at` flag so the rig returns to the default explorer + `rig ps` view.
- * Always non-destructive (the row and snapshots were retained while archived);
- * no `--force` and no running-rig guard - unarchiving only makes a rig visible.
+ * `zrig unarchive <rigId>` - OPR.0.3.3.19。`rig archive` 的逆操作：清除
+ * `archived_at` 标记，使工作组回到默认浏览器与 `rig ps` 视图。
+ * 始终是非破坏性的（归档期间该行与快照均被保留）；没有 `--force`，也不阻止
+ * 运行中的工作组——反归档只是让工作组重新可见。
  */
 export function unarchiveCommand(depsOverride?: StatusDeps): Command {
   const cmd = new Command("unarchive").description(
-    "Unarchive a rig (reverse of 'rig archive'): returns it to the default view. Always safe.",
+    "反归档一个工作组（'rig archive' 的逆操作）：使其回到默认视图。始终安全。",
   );
   const getDepsF = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   cmd
-    .argument("<rigId>", "Rig identifier to unarchive")
-    .option("--json", "JSON output for agents")
+    .argument("<rigId>", "要反归档的工作组标识")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (rigId: string, opts: { json?: boolean }) => {
       const deps = getDepsF();
       const status = await getDaemonStatus(deps.lifecycleDeps);
@@ -42,21 +42,21 @@ export function unarchiveCommand(depsOverride?: StatusDeps): Command {
       }
 
       if (res.status === 404) {
-        console.error(`Rig not found: ${rigId}. List archived rigs with: rig ps --include-archived`);
+        console.error(`未找到工作组：${rigId}。列出已归档工作组：zrig ps --include-archived`);
         process.exitCode = 1;
         return;
       }
       if (res.status >= 400) {
-        console.error(`Unarchive failed (HTTP ${res.status}).`);
+        console.error(`反归档失败（HTTP ${res.status}）。`);
         process.exitCode = 2;
         return;
       }
 
       const r = res.data as UnarchiveResult;
       if (r.unarchived) {
-        console.log(`Rig ${rigId} unarchived. It is back in the default view.`);
+        console.log(`工作组 ${rigId} 已反归档，回到默认视图。`);
       } else {
-        console.log(`Rig ${rigId} was not archived.`);
+        console.log(`工作组 ${rigId} 此前未归档。`);
       }
     });
 

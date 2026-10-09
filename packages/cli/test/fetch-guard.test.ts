@@ -1,18 +1,17 @@
-// P37 — request-layer hermeticity guard at globalThis.fetch. The permit rule is a
-// SHAPE, not a registry: loopback (127.0.0.1 / ::1 / localhost) on an EPHEMERAL high
-// port — exactly what server.listen(0) produces — is PERMITTED with zero registration;
-// everything else is REFUSED (fail-closed default). allowFetchTarget stays as the
-// escape hatch for a fixture that needs a fixed low port.
+// P37——globalThis.fetch 上的请求层封闭守卫。许可规则是一个
+// 形状（shape），而非注册表：临时高位端口上的回环
+//（127.0.0.1 / ::1 / localhost）——正是 server.listen(0) 产出的——
+// 零注册即许可；其余一切拒绝（失败关闭默认）。allowFetchTarget 作为
+// 需要固定低位端口的 fixture 的逃生舱保留。
 //
-// THREE known-negatives (dev50-planner pins + the machine-boundary arm) — a guard
-// proven only refusing is indistinguishable from a blanket denier broken in the safe
-// direction: REFUSES the canonical daemon; PERMITS a loopback-ephemeral fixture;
-// REFUSES a non-loopback target.
+// 三个已知负例（dev50-planner pin + 机器边界臂）——一个只证明会拒绝的守卫，
+// 与一个在安全方向坏掉的全拒器无法区分：拒绝 canonical daemon；
+// 许可回环临时 fixture；拒绝非回环目标。
 import { describe, it, expect, afterEach } from "vitest";
 import http from "node:http";
 import { allowFetchTarget, resetFetchAllowlist } from "./fetch-guard.js";
 
-// The guard is installed by the shared setup (hermetic-env.setup.ts) for every file.
+// guard 由共享 setup（hermetic-env.setup.ts）为每个文件安装。
 describe("fetch guard — allowlist by shape, fail-closed, three-sided", () => {
   afterEach(() => resetFetchAllowlist());
 

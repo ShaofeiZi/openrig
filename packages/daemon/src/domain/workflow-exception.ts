@@ -1,32 +1,24 @@
-// OPR.0.4.6.WF5 FR-1: the closed exception taxonomy.
+// OPR.0.4.6.WF5 FR-1：封闭的 exception taxonomy。
 //
-// An EXCEPTION is one of exactly three classes, each a PURE PREDICATE over
-// recorded state (BR-1: never ambient probing, never judgment in the engine —
-// agent judgment lives in RESOLVING, not detecting). Extending this taxonomy
-// is a convention change, not driver discretion.
+// EXCEPTION 只能属于以下三个 class 之一，每个 class 都是 recorded state 上的纯谓词。BR-1：
+// 不做环境探测，engine 中不做判断；智能体判断只存在于 RESOLVING，而不是 detecting。扩展此
+// taxonomy 属于约定变更，不由 driver 自行决定。
 //
-//   (a) unmapped_failed — an unhandled failed occurrence (a serial failed
-//       instance or one failed dependency branch). A MAPPED
-//       `failed` exit routes to its WF-2 remediation branch inside the same
-//       transaction (instance stays active) and is NOT an exception; only an
-//       unrouted failed close — including the engine-authored max_hops
-//       conversion — is an exception. Independent live branches need not
-//       stop for that occurrence to require an owner.
-//   (b) stuck_overdue — a frontier packet past its deadline AS CLASSIFIED BY
-//       WF-1 FR-2's evaluator (workflow-deadline.ts, the single threshold
-//       home). This module consumes the verdict verbatim and never
-//       recomputes an anchor or threshold.
-//   (c) human_gate_trip — a WF-2 gate with a HUMAN target reached. The
-//       WF-2-compiled park IS the attention item (FR-2 mints no second one);
-//       this class exists so the item carries the exception identity.
+//   (a) unmapped_failed——未处理的 failed occurrence，包括串行 failed instance 或一个失败的
+//       dependency branch。已映射的 `failed` exit 在同一事务中路由到 WF-2 remediation branch
+//      （instance 保持 active），不属于 exception；只有未路由的 failed close 才是 exception，
+//       包括 engine 编写的 max_hops 转换。即使其他独立 branch 仍存活，该 occurrence 仍需 owner。
+//   (b) stuck_overdue——由 WF-1 FR-2 evaluator（workflow-deadline.ts，唯一 threshold 归属点）
+//       判定超过 deadline 的 frontier packet。本模块逐字消费 verdict，不重新计算 anchor/threshold。
+//   (c) human_gate_trip——到达 HUMAN target 的 WF-2 gate。WF-2 编译出的 park 本身就是
+//       attention item，FR-2 不再生成第二项；此 class 让 item 携带 exception identity。
 //
-// THE HANDLER-ROLE SPLIT (spec-guard blocker 2, ratified): a handler-role
-// gate-trip is NOT an exception — it is a deterministic agent handoff by
-// design. The escalation leg is the backstop BEHIND the handler: if the
-// handler's own step fails or goes stuck, classes (a)/(b) fire on it.
+// HANDLER-ROLE 分界（spec-guard blocker 2，已批准）：handler-role gate-trip 不是 exception，
+// 而是按设计确定的智能体 handoff。escalation 分支是 handler 后方的兜底：handler 自身 step
+// 失败或卡住时，class (a)/(b) 会在该 step 上触发。
 //
-// v1.3: CLASSIFICATION ≠ ROUTING. The maturity dial (workflow-exception-
-// router.ts) maps class → target; nothing here knows about destinations.
+// v1.3：CLASSIFICATION ≠ ROUTING。maturity dial（workflow-exception-router.ts）负责把
+// class 映射到 target；本模块完全不知道 destination。
 
 import type { WorkflowDeadlineVerdict, WorkflowStepDeadlineEvidence } from "./workflow-deadline.js";
 import type { WorkflowInstance } from "./workflow-types.js";
@@ -39,69 +31,63 @@ export const WORKFLOW_EXCEPTION_CLASSES = [
 export type WorkflowExceptionClass = (typeof WORKFLOW_EXCEPTION_CLASSES)[number];
 
 /**
- * THE OCCURRENCE DEFINITION (the single home — every dedup and
- * new-occurrence rule reads from this sentence): one occurrence is one
- * (instance, step, class) failure EPISODE, keyed by the recorded qitem id
- * of the packet that embodies the episode — re-detections of the same
- * unresolved episode share the key and dedupe into ONE item; resolve+resume
- * closes the occurrence, and any later episode of the same step carries a
- * NEW packet id and is therefore a NEW occurrence, never absorbed by the
- * resolved past.
+ * OCCURRENCE 定义（唯一归属点；所有 dedup 与 new-occurrence 规则都以此为准）：一个
+ * occurrence 是一次 (instance, step, class) failure EPISODE，以体现该 episode 的 packet 所记录
+ * qitem id 为 key。同一未解决 episode 被重复检测时共享 key，并去重为一个 item；
+ * resolve+resume 会关闭 occurrence，同一 step 之后的新 episode 携带新 packet id，因此是新的
+ * occurrence，绝不会被已解决的历史吸收。
  *
- * The key is a RECORDED FACT (arch cell-2 ruling: identity = structured
- * tags; a column stays delivery's option — not taken):
- *   (a) the frontier packet whose failed close felled the instance
- *   (b) the overdue packet named by the deadline evaluator's evidence
- *   (c) the compiled gate packet parked on the human
+ * key 是 recorded fact（架构 cell-2 裁定：identity = structured tags；额外列保留为 delivery
+ * 可选方案，本次不采用）：
+ *   (a) failed close 导致 instance 失败的 frontier packet
+ *   (b) deadline evaluator evidence 点名的 overdue packet
+ *   (c) park 到人类的已编译 gate packet
  */
 export interface WorkflowExceptionIdentity {
   workflowName: string;
   instanceId: string;
-  /** Nullable only for class (a) on a pre-R2 row with no trail context. */
+  /** 只有 R2 之前、缺少 trail context 的 class (a) row 才可为 null。 */
   stepId: string | null;
   exceptionClass: WorkflowExceptionClass;
-  /** The recorded packet id of this episode — see the occurrence JSDoc. */
+  /** 该 episode 记录的 packet id；参见 occurrence JSDoc。 */
   occurrenceKey: string;
 }
 
 export interface WorkflowException {
   identity: WorkflowExceptionIdentity;
-  /** Plain-language, evidence-bearing reason (rides the item's summary). */
+  /** 携带证据的自然语言原因，随 item summary 传递。 */
   reason: string;
-  /** Class-(b) carries the evaluator's evidence verbatim; (a)/(c) null. */
+  /** class (b) 逐字携带 evaluator evidence；(a)/(c) 为 null。 */
   deadlineEvidence: WorkflowStepDeadlineEvidence | null;
 }
 
-/** The minimal recorded-state view class (a) classifies over. Callers pass
- *  the failed close's recorded facts (trail row / lastContinuationDecision);
- *  this module never queries. */
+/** class (a) 分类所需的最小 recorded-state view。调用方传入 failed close 的 recorded fact
+ *（trail row / lastContinuationDecision）；本模块绝不查询。 */
 export interface FailedInstanceView {
   instance: Pick<
     WorkflowInstance,
     "instanceId" | "workflowName" | "status" | "currentStepId" | "lastContinuationDecision"
   >;
-  /** The step that closed failed (trail.step_id of the failing close). */
+  /** 以 failed 关闭的 step（失败 close 的 trail.step_id）。 */
   failedStepId: string | null;
-  /** The packet whose failed close felled the instance (trail.prior_qitem_id). */
+  /** failed close 导致 instance 失败的 packet（trail.prior_qitem_id）。 */
   failedPacketId: string;
-  /** The recorded failure note if any (resultNote / event reason). */
+  /** 已记录的 failure note（如有），来自 resultNote / event reason。 */
   failureReason: string | null;
 }
 
 /**
- * Class (a): unmapped_failed. Pure: same view → same classification,
- * replayed N times. A non-failed instance NEVER classifies (the mapped-
- * failed negative: branch-routed failures keep status=active and are
- * deterministic remediation, not exceptions).
+ * class (a)：unmapped_failed。纯函数保证相同 view 重放 N 次仍得到相同分类。非 failed instance
+ * 绝不分类；这是 mapped-failed 的负向保证：已路由到 branch 的 failure 保持 status=active，属于
+ * 确定性 remediation，而不是 exception。
  */
 export function classifyFailedInstance(view: FailedInstanceView): WorkflowException | null {
   if (view.instance.status !== "failed") return null;
   return classifyFailureOccurrence(view);
 }
 
-/** Class (a) from a recorded unhandled failed close. Dependency callers have
- * already classified the exit/route; another branch may keep the instance active.
- * Mapped remediation exits must never call this occurrence constructor. */
+/** 从记录的未处理 failed close 构建 class (a)。dependency 调用方已经分类 exit/route；另一个
+ * branch 可能让 instance 保持 active。已映射 remediation 的 exit 绝不能调用此 occurrence 构造器。 */
 export function classifyFailureOccurrence(view: Omit<FailedInstanceView, "instance"> & {
   instance: Pick<WorkflowInstance, "instanceId" | "workflowName">;
 }): WorkflowException {
@@ -114,16 +100,15 @@ export function classifyFailureOccurrence(view: Omit<FailedInstanceView, "instan
       occurrenceKey: view.failedPacketId,
     },
     reason: view.failureReason
-      ? `workflow step failed with no remediation branch: ${view.failureReason}`
-      : "workflow step failed with no remediation branch",
+      ? `工作流步骤失败且没有补救分支：${view.failureReason}`
+      : "工作流步骤失败且没有补救分支",
     deadlineEvidence: null,
   };
 }
 
 /**
- * Class (b): stuck_overdue. CONSUMES the WF-1 evaluator's verdict verbatim
- * (rail: the single threshold home classifies; this function only lifts a
- * non-healthy verdict into the exception shape). Healthy → null.
+ * class (b)：stuck_overdue。逐字消费 WF-1 evaluator verdict；唯一 threshold 归属点负责分类，
+ * 本函数只把非 healthy verdict 提升为 exception 结构。healthy → null。
  */
 export function classifyDeadlineVerdict(
   workflowName: string,
@@ -140,31 +125,29 @@ export function classifyDeadlineVerdict(
       occurrenceKey: e.packetId,
     },
     reason:
-      `workflow step ${e.stepId ?? "(unbound)"} is ${verdict.state} — packet ${e.packetId} ` +
-      `held by ${e.ownerSession}, ${e.overdueBySeconds}s past its ${e.anchor} anchor`,
+      `工作流步骤 ${e.stepId ?? "(未绑定)"} 处于 ${verdict.state}——packet ${e.packetId} ` +
+      `由 ${e.ownerSession} 持有，已超过 ${e.anchor} anchor ${e.overdueBySeconds}s`,
     deadlineEvidence: e,
   };
 }
 
-/** The recorded facts of a gate reach — the compiled kind is WF-2's
- *  recorded output, not a re-derivation. */
+/** 到达 gate 时的 recorded fact；compiled kind 是 WF-2 的 recorded output，不重新派生。 */
 export interface GateTripView {
   workflowName: string;
   instanceId: string;
   gatedStepId: string;
-  /** GateCompileResult.kind — "human" | "handler-role". */
+  /** GateCompileResult.kind——"human" | "handler-role"。 */
   gateKind: "human" | "handler-role";
-  /** The compiled gate packet's qitem id. */
+  /** 已编译 gate packet 的 qitem id。 */
   gatePacketId: string;
-  /** The human seat the packet parks on (null for handler-role). */
+  /** packet 所 park 的人类席位；handler-role 时为 null。 */
   parkOn: string | null;
 }
 
 /**
- * Class (c): human_gate_trip — HUMAN-target gates only. THE HANDLER-ROLE
- * NEGATIVE lives here: a handler-role gate returns null (a deterministic
- * handoff, not an exception; the (a)/(b) backstop covers the handler's own
- * step). Class (c) is intrinsically human-only at the dial.
+ * class (c)：human_gate_trip，只处理 HUMAN target gate。HANDLER-ROLE 负向规则位于此处：
+ * handler-role gate 返回 null，因为它是确定性 handoff 而非 exception；(a)/(b) 兜底覆盖 handler
+ * 自身 step。class (c) 在 dial 上天然只面向人类。
  */
 export function classifyGateTrip(view: GateTripView): WorkflowException | null {
   if (view.gateKind !== "human") return null;
@@ -176,17 +159,16 @@ export function classifyGateTrip(view: GateTripView): WorkflowException | null {
       exceptionClass: "human_gate_trip",
       occurrenceKey: view.gatePacketId,
     },
-    reason: `human decision required at gated step ${view.gatedStepId}` +
-      (view.parkOn ? ` (parked on ${view.parkOn})` : ""),
+    reason: `受 gate 控制的步骤 ${view.gatedStepId} 需要人类决策` +
+      (view.parkOn ? `（已停放在 ${view.parkOn}）` : ""),
     deadlineEvidence: null,
   };
 }
 
-/** Tag prefixes: `workflow:`/`instance:` extend the SHIPPED stamp
- *  (workflow-runtime.ts / workflow-projector.ts already emit them);
- *  `step:`/`exception:`/`occurrence:` are WF-5's additions (arch cell 2).
- *  FR-2 dedup and FR-3 cross-channel one-count JOIN on these BY QUERY —
- *  never by summary parsing. */
+/** tag prefix：`workflow:`/`instance:` 扩展正式 stamp，workflow-runtime.ts 与
+ * workflow-projector.ts 已经发出它们；`step:`/`exception:`/`occurrence:` 是 WF-5 新增项
+ *（架构 cell 2）。FR-2 dedup 与 FR-3 跨 channel one-count 通过查询这些 tag 进行 JOIN，
+ * 绝不解析 summary。 */
 export function workflowExceptionTags(identity: WorkflowExceptionIdentity): string[] {
   const tags = [
     "workflow-exception",
@@ -199,7 +181,7 @@ export function workflowExceptionTags(identity: WorkflowExceptionIdentity): stri
   return tags;
 }
 
-/** The query key for within-occurrence dedup: one item per this tuple. */
+/** occurrence 内 dedup 的查询 key：每个 tuple 对应一个 item。 */
 export function occurrenceDedupKey(identity: WorkflowExceptionIdentity): string {
   return `${identity.instanceId}|${identity.stepId ?? ""}|${identity.exceptionClass}|${identity.occurrenceKey}`;
 }

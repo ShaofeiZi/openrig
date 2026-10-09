@@ -6,9 +6,10 @@ import { stylizeLines } from "../src/stylize.js";
 import { createStyle, stripAnsi } from "../src/theme.js";
 import { DaemonClient } from "../src/daemon-client.js";
 import { hydrateSnapshot } from "../src/hydrate.js";
+import { dropW } from "../src/text-width.js";
 
 const style = createStyle("truecolor");
-describe("rig presence survives clipping, selection and lifecycle text", () => {
+describe("rig 存活经得住裁剪、选择与生命周期文本", () => {
   for (const [cols, rows] of [[80, 24], [140, 42]]) {
     for (const name of ["short", "long-rig-name-with-a-clipped-status-suffix"]) {
       for (const selected of [false, true]) for (const focused of [false, true]) {
@@ -33,7 +34,7 @@ describe("rig presence survives clipping, selection and lifecycle text", () => {
     }
   }
 
-  it("unreachable host overrides stale positive presence with unknown, not stopped", () => {
+  it("不可达主机用 unknown 覆盖陈旧正向存活，而非 stopped", () => {
     const snap = demoSnapshot(); snap.hosts[0]!.reachable = false;
     const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
     const screen = renderScreen(view.get(), snap, { cols: 140, rows: 42 });
@@ -48,17 +49,17 @@ describe("rig presence survives clipping, selection and lifecycle text", () => {
     snap.hosts[0]!.rigs.push({ name: "stopped-rig", pods: [], hasLiveAgents: false, lifecycleState: "stopped" });
     const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
     const screen = renderScreen(view.get(), snap, { cols, rows });
-    const body = screen.lines.map(line => line.slice(screen.explorerWidth + 2)).join("\n");
-    expect(body).toContain("TOPOLOGY · vm-host");
-    expect(body).toContain("Choose a rig");
-    expect(body).toContain("2 rigs");
+    const body = screen.lines.map(line => dropW(line, screen.explorerWidth + 1)).join("\n");
+    expect(body).toContain("拓扑 · vm-host");
+    expect(body).toContain("选择一个工作组");
+    expect(body).toContain("2 个工作组");
     expect(body).not.toContain("openrig-build");
     expect(body).not.toContain("stopped-rig");
     expect(view.get().drill).toEqual([]);
     expect(screen.explorerRows.some(row => row.key === "rig:vm-host/stopped-rig")).toBe(true);
   });
 
-  it("passes summary presence through without new per-rig reads on the topology landing", async () => {
+  it("在 topology 落地页透传摘要存活，不做新的逐 rig 读取", async () => {
     const seen: string[] = [];
     const client = new DaemonClient({ baseUrl: "http://fixture", fetchImpl: (async (url: string) => {
       const path = new URL(url).pathname; seen.push(path);

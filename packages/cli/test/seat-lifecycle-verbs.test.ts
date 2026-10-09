@@ -1,6 +1,6 @@
-// S5 (OPR.0.5.4.7) — CLI surface for rig seat set-model / stop / clean: required
+// S5（OPR.0.5.4.7）——rig seat set-model / stop / clean 的 CLI 表面：必填
 // options, route paths + bodies posted, human output, refusal printing, --json
-// pass-through with non-zero exit.
+// 透传并以非零退出。
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { Command } from "commander";
 import { seatCommand } from "../src/commands/seat.js";
@@ -128,8 +128,8 @@ describe("rig seat stop", () => {
     });
     expect(calls[0]!.path).toBe("/api/seat/stop/dev-impl%40seat-rig");
     expect(calls[0]!.body).toEqual({ reason: "wave boundary", operator: undefined });
-    expect(logs.join("\n")).toContain("Stopped dev-impl@seat-rig");
-    expect(logs.join("\n")).toContain("siblings untouched");
+    expect(logs.join("\n")).toContain("已停止 dev-impl@seat-rig");
+    expect(logs.join("\n")).toContain("兄弟节点不受影响");
   });
 
   it("--json passes the refusal through verbatim and exits 1", async () => {
@@ -155,8 +155,8 @@ describe("rig seat clean", () => {
       await makeCommand(deps).parseAsync(["node", "rig", "seat", "clean", "dev-impl@seat-rig", "--reason", "clean exit observed"]);
     });
     expect(calls[0]!.path).toBe("/api/seat/clean/dev-impl%40seat-rig");
-    expect(logs.join("\n")).toContain("Sessions marked exited: dev-impl@seat-rig");
-    expect(logs.join("\n")).toContain("binding cleared: yes");
-    expect(logs.join("\n")).toContain("launchable again");
+    expect(logs.join("\n")).toContain("标记为已退出的会话");
+    expect(logs.join("\n")).toContain("绑定已清除：是");
+    expect(logs.join("\n")).toContain("可再次启动");
   });
 });

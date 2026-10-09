@@ -61,43 +61,43 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function assertOnlyKeys(value: Record<string, unknown>, allowed: string[], label: string): void {
   const unknown = Object.keys(value).find((key) => !allowed.includes(key));
-  if (unknown) throw new Error(`${label}: unknown key '${unknown}'`);
+  if (unknown) throw new Error(`${label}：未知字段 '${unknown}'`);
 }
 
 function boundedId(value: unknown, label: string): string {
   if (typeof value !== "string" || !ID.test(value)) {
-    throw new Error(`${label} must be a bounded identity`);
+    throw new Error(`${label} 必须是长度受限的标识`);
   }
   return value;
 }
 
-export function parseSystemWorldManifest(text: string, sourcePath = "System World manifest"): SystemWorldManifest {
+export function parseSystemWorldManifest(text: string, sourcePath = "System World 清单"): SystemWorldManifest {
   let raw: unknown;
   try {
     raw = parseYaml(text);
   } catch (error) {
-    throw new Error(`${sourcePath} is not valid YAML: ${(error as Error).message}`);
+    throw new Error(`${sourcePath} 不是有效的 YAML：${(error as Error).message}`);
   }
-  if (!isRecord(raw)) throw new Error(`${sourcePath} must contain a YAML object`);
+  if (!isRecord(raw)) throw new Error(`${sourcePath} 必须包含一个 YAML 对象`);
   assertOnlyKeys(raw, ["schema", "id", "version", "context", "skills"], sourcePath);
   if (raw["schema"] !== SYSTEM_WORLD_SCHEMA) {
-    throw new Error(`${sourcePath} must declare schema: ${SYSTEM_WORLD_SCHEMA}`);
+    throw new Error(`${sourcePath} 必须声明 schema：${SYSTEM_WORLD_SCHEMA}`);
   }
   const id = boundedId(raw["id"], `${sourcePath} id`);
   const version = boundedId(raw["version"], `${sourcePath} version`);
   if (!Array.isArray(raw["context"]) || raw["context"].length === 0) {
-    throw new Error(`${sourcePath} context must be a non-empty ordered list`);
+    throw new Error(`${sourcePath} 的 context 必须是非空有序列表`);
   }
   const context = raw["context"].map((entry, index): SystemWorldContextSelection => {
-    if (!isRecord(entry)) throw new Error(`${sourcePath} context[${index}] must be an object`);
+    if (!isRecord(entry)) throw new Error(`${sourcePath} context[${index}] 必须是对象`);
     assertOnlyKeys(entry, ["ref", "profiles"], `${sourcePath} context[${index}]`);
     const ref = entry["ref"];
     if (typeof ref !== "string" || !REF.test(ref) || ref.split("/").includes("..")) {
-      throw new Error(`${sourcePath} context[${index}].ref must be a safe context-pack ref`);
+      throw new Error(`${sourcePath} context[${index}].ref 必须是安全的 context-pack 引用`);
     }
     const profiles = entry["profiles"];
     if (profiles === undefined) return { ref };
-    if (!isRecord(profiles)) throw new Error(`${sourcePath} context[${index}].profiles must be an object`);
+    if (!isRecord(profiles)) throw new Error(`${sourcePath} context[${index}].profiles 必须是对象`);
     assertOnlyKeys(profiles, ["claude", "codex"], `${sourcePath} context[${index}].profiles`);
     const parsed: { claude?: string; codex?: string } = {};
     if (profiles["claude"] !== undefined) parsed.claude = boundedId(profiles["claude"], `${sourcePath} context[${index}].profiles.claude`);
@@ -106,9 +106,9 @@ export function parseSystemWorldManifest(text: string, sourcePath = "System Worl
   });
   const skills = raw["skills"];
   if (!Array.isArray(skills) || !skills.every((skill) => typeof skill === "string" && ID.test(skill))) {
-    throw new Error(`${sourcePath} skills must be a list of bounded skill identities`);
+    throw new Error(`${sourcePath} 的 skills 必须是长度受限的 skill 标识列表`);
   }
-  if (new Set(skills).size !== skills.length) throw new Error(`${sourcePath} skills must not contain duplicates`);
+  if (new Set(skills).size !== skills.length) throw new Error(`${sourcePath} 的 skills 不能包含重复项`);
   return { schema: SYSTEM_WORLD_SCHEMA, id, version, context, skills };
 }
 
@@ -132,7 +132,7 @@ export function resolveSystemWorld(input: {
       source: input.source,
       selection,
       manifestPath,
-      error: { code: "system_world_missing", message: `System World ${state} manifest does not exist: ${manifestPath}` },
+      error: { code: "system_world_missing", message: `System World ${state} 清单不存在：${manifestPath}` },
     };
   }
   try {

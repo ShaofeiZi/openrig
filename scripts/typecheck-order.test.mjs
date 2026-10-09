@@ -4,10 +4,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-// P9 — repo build-order encoding. The cli tsc resolves `@openrig/daemon/crash-cart` via the daemon's
-// BUILT dist .d.ts (packaging ruling A + the paths mapping). So the typecheck-all path must build the
-// daemon dist BEFORE it runs the cli tsc — else a clean checkout fails cli tsc with TS2307. This guard
-// pins that ordering in the repo (self-carrying, not only desk-side).
+// P9——仓库构建顺序的编码。cli 的 tsc 通过 daemon 已构建的 dist .d.ts 解析
+// `@openrig/daemon/crash-cart`（打包裁决 A + paths 映射）。因此 typecheck-all 这条路径必须先构建
+// daemon dist，再跑 cli tsc——否则全新检出会在 cli tsc 处以 TS2307 失败。这个守卫把该顺序钉在仓库里
+// （自携带，而不只在桌面侧）。
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));

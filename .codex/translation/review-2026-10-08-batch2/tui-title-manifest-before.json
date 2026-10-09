@@ -1,0 +1,346 @@
+{
+"packages/tui/test/actions.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/agent-detail-runtime-name.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/agent-detail-runtime-unknown.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/arrow-autoscroll.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/attention.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/blocker-enrichment.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/command-context-composition.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/command-palette.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/command-registry-parity.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/config-journey.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/config-model.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/connections-journey.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-dispatch.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-from-emit.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-in-shell.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-keys.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-restore-input.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-restore-lifecycle.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-restore-render.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-start-daemon.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-states.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-triage.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-view.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/daemon-client.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/demo-gate.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/entry-loading.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/everyday-usability.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/execution-view.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/explorer-absence.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/feed-source-continuity.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/feed-system.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/founder-live-qa-correction.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/grammar.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/graph-command.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/health-view.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/hydrate.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/input-stream.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/instance-mission-control.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/ledger-explorer.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/live-events.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/live-quiet-refresh.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/live.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/mission-outcomes.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/motion.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/navigation-continuity.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/navigator-reskin.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/one-click-gate.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/organizer.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/parity-content.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/parity.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/polish-focus.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/presentation-guidance.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/production-composed-system.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/project-navigation.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/pulse-live.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/pulse-view.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/reading-journey.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/reading-regressions.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/refresh-activity.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/refresh-trailing.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/refresh.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/render-regressions.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/rig-presence.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/round4.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/runtime-marks.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/s04-corrected-entry.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/s08-rig-terminal-link.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/scopes-view.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/scroll-commands.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/scroll-focus.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/scroll-per-view-proof.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/slack-manifest-connections.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/slack-print-link.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/socket-commands-query.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/socket.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/startup-availability.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/startup-connection.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/startup.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/state.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/stylize.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/terminal-journey.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/terminal-resize.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/topology-view.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/wheel-scroll.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/workflow-journey.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/text-width.test.ts": [
+"tui",
+"validated"
+]
+}

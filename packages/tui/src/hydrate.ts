@@ -1,19 +1,19 @@
 import { composeHumanUpdates, type DeliveredHumanUpdates } from "./attention/attention-model.js";
 import { readTerminals } from "./terminals/terminal-model.js";
 import { fileTargetForPath } from "./reading.js";
-// Snapshot hydrator: maps the §4.A daemon reads (via DaemonClient, the one
-// HTTP module) into FleetSnapshot for the renderer. Mapping discipline
-// (PIN 2/PIN 3, planner Phase-2 reminders):
-//   - STATUS and Needs-You content are carried VERBATIM from the served
-//     projections — no synthesis, no staleness "improvement", no client-side
-//     thresholds. The idle-with-work threshold reaches us already serialized
-//     inside the served evidence/threshold strings, so this module needs no
-//     threshold constant at all (nothing is recomputed — the honest form of
-//     "don't re-hardcode IDLE_WITH_WORK_THRESHOLD_MIN").
-//   - The two `stuck` legs (idle-with-work vs too-long-in-state) stay distinct
-//     by construction: identity/summary/evidence/threshold render verbatim.
-//   - host/rig-down composes BESIDE the items (hostsDown), never into them.
-//   - A failed read leaves its portion honest-empty and records a NAMED error.
+// 快照水合器：将 §4.A 后台服务读取（通过 DaemonClient，唯一 HTTP
+// 模块）映射为渲染器的 FleetSnapshot。映射纪律
+// （PIN 2/PIN 3，规划器 Phase-2 提醒）：
+//   - 状态和需要你内容逐字来自已服务
+//     投影——无合成，无过时"改进"，无客户端
+//     阈值。带工作空闲阈值已序列化到达
+//     在已服务证据/阈值字符串内，因此此模块完全不需要
+//     阈值常量（无重算——
+//     "不要重新硬编码 IDLE_WITH_WORK_THRESHOLD_MIN" 的诚实形式）。
+//   - 两个 `卡住` 腿（带工作空闲 vs 状态过久）保持独立
+//     由构造：身份/摘要/证据/阈值逐字渲染。
+//   - 主机/工作组降级在条目旁组合（hostsDown），绝不进入它们。
+//   - 失败读取使其部分诚实空并记录命名错误。
 import { emptySnapshot } from "./state.js";
 import type { ConfigRead } from "./config/config-model.js";
 import type { ConnectionsRead, ControlPlaneRead, SlackManifestRead } from "./connections/connections-model.js";
@@ -22,8 +22,8 @@ import { parse as parseYaml } from "yaml";
 import type { AgentRow, FleetSnapshot, HealthRecord, HostNode, NeedsItem, PodNode, QueueRead, RecentTransitionSnap, SeatActivitySummary, SliceDetailSnap, SpecEntry, ViewState } from "./types.js";
 import { isHumanSeatSession } from "./pulse/pulse-model.js";
 
-// Narrow read-shapes: just the served fields this module consumes (names match
-// the daemon's serialized output — see the Phase-2 endpoint-shape survey).
+// 窄读取形状：仅此模块消费的已服务字段（名称匹配
+// 后台服务序列化输出——见 Phase-2 端点形状调查）。
 interface RigSummaryRead {
   id: string;
   name: string;
@@ -57,8 +57,8 @@ interface NodeInventoryRead {
   sessionStatus?: string | null;
   startupStatus?: string | null;
   terminalActive?: boolean | null;
-  /** arch 3a947fb1: raw window_activity ISO (owner idle-age is derived at the
-   * renderer). Absent/null when the seat has no observation. */
+  /** arch 3a947fb1：原始 window_activity ISO（拥有者空闲年龄在
+   * 渲染器派生）。席位无观测时缺失/null。 */
   lastActivityAt?: string | null;
   agentActivity?: {
     state?: string;
@@ -66,7 +66,7 @@ interface NodeInventoryRead {
     evidenceSource?: string | null;
     eventAt?: string | null;
   } | null;
-  /** S19 — the served taxonomy state; display comes from the daemon's one bridge. */
+  /** S19——已服务分类状态；显示来自后台服务的唯一桥。 */
   activityState?: {
     activity?: string | null;
     display?: string;
@@ -104,7 +104,7 @@ interface SpecLibraryRead {
   sourceType?: "builtin" | "user_file";
   relativePath?: string;
   updatedAt?: string;
-  /** workflow entries only (served on the list read) */
+  /** 仅工作流条目（在列表读取上服务） */
   rolesCount?: number;
   stepsCount?: number;
   status?: string;
@@ -169,8 +169,8 @@ interface StreamItemRead {
   body: string;
   streamSortKey: string;
 }
-// The served queue-item fields the PULSE joins consume (camelCase QueueItem,
-// queue-repository.ts). Both reads return this shape; the TUI maps + presents.
+// PULSE 联接消费的已服务队列条目字段（camelCase QueueItem，
+// queue-repository.ts）。两个读取返回此形状；TUI 映射 + 呈现。
 interface QueueItemRead {
   sourceSession?: string | null;
   qitemId: string;
@@ -217,13 +217,13 @@ function toAgentRow(node: NodeInventoryRead): AgentRow {
   return {
     nodeId: node.nodeId,
     name: node.logicalId,
-    runtime: node.runtime ?? "unknown",
+    runtime: node.runtime ?? "未知",
     model: node.model ?? null,
     spec: node.resolvedSpecName ?? "",
     profile: node.profile ?? null,
     specVersion: node.resolvedSpecVersion ?? null,
     specHash: node.resolvedSpecHash ?? null,
-    // honest-unknown: no value in the projection → null → renders "—"
+    // 诚实未知：投影中无值 → null → 渲染 "—"
     context: known && ctx.usedPercentage != null ? Math.round(ctx.usedPercentage) : null,
     tokens: known ? fmtTokens(ctx.totalInputTokens, ctx.totalOutputTokens) : null,
     contextWindowSize: known ? ctx.contextWindowSize : null,
@@ -244,14 +244,14 @@ function toAgentRow(node: NodeInventoryRead): AgentRow {
       signalSource: node.agentActivity?.evidenceSource ?? null,
       eventAt: node.agentActivity?.eventAt ?? null,
     },
-    // Mirror the maintained web projection: lifecycle truth drives actions,
-    // while session/terminal activity drives the visible status label.
+    // 镜像维护的 web 投影：生命周期真相驱动动作，
+    // 而会话/终端活动驱动可见状态标签。
     status: node.startupStatus === "failed"
       ? "failed"
       : node.lifecycleState === "attention_required" || identityDownranked || node.startupStatus === "attention_required"
         ? "attention_required"
-        // S19: the SERVED taxonomy display decides first (the daemon's one bridge);
-        // the inline mixing below survives only as the pre-taxonomy fallback.
+        // S19：已服务分类显示优先决策（后台服务唯一桥）；
+        // 下方内联混合仅作为分类前回退存活。
         : node.activityState?.display === "needs-input"
           ? "needs_input"
           : node.agentActivity?.state === "needs_input"
@@ -271,8 +271,8 @@ function toAgentRow(node: NodeInventoryRead): AgentRow {
     session: node.canonicalSessionName,
     attach: node.tmuxAttachCommand ?? null,
     cwd: node.cwd ?? null,
-    // S19 round-5: served terminalActive VERBATIM — the pane-output substrate
-    // (tmux window_activity within the silence window); null = no signal
+    // S19 round-5：已服务 terminalActive 逐字——窗格输出基底
+    // （静默窗口内的 tmux window_activity）；null = 无信号
     paneActive: node.terminalActive ?? null,
   };
 }
@@ -281,7 +281,7 @@ function groupPods(nodes: NodeInventoryRead[]): PodNode[] {
   const pods = new Map<string, AgentRow[]>();
   for (const node of nodes) {
     if (node.nodeKind !== "agent") continue;
-    const pod = node.podNamespace ?? "(no pod)";
+    const pod = node.podNamespace ?? "(无席位)";
     const list = pods.get(pod) ?? [];
     list.push(toAgentRow(node));
     pods.set(pod, list);
@@ -290,8 +290,8 @@ function groupPods(nodes: NodeInventoryRead[]): PodNode[] {
 }
 
 function toNeedsItem(item: NeedsYouItemRead): NeedsItem {
-  // verbatim carry: served kind + summary/evidence; the target is the
-  // session/where the daemon already names (identity prefix for derived rows)
+  // 逐字携带：已服务 kind + 摘要/证据；目标是
+  // 后台服务已命名的会话/where（派生行的身份前缀）
   const target = item.source === "derived" ? (item.identity.split("|")[0] ?? item.where) : (item.destinationSession ?? item.where);
   const detail = item.derived ? `${item.summary} — ${item.derived.evidence}` : item.summary;
   return {
@@ -343,9 +343,9 @@ function agentSpecTruth(raw?: string): { runtime?: string; skills: string[] } {
   }
 }
 
-/** Cross-cycle memo for spec-detail reviews, keyed by `${id}@${updatedAt}` —
- * avoids re-reading every spec every refresh; the key rolls when the library
- * entry's updatedAt changes. Owned by the caller (instance-scoped, no module state). */
+/** 规范详情评审的跨周期备忘录，以 `${id}@${updatedAt}` 为键——
+ *  避免每次刷新重读每个规范；键在库
+ *  条目的 updatedAt 变更时滚动。由调用者拥有（实例范围，无模块状态）。 */
 export type SpecReviewCache = Map<string, SpecLibraryReviewRead>;
 export type HydrateViewContext = Pick<ViewState, "project" | "section" | "viewTab" | "drill" | "file" | "externalUrl" | "terminalView" | "attentionOpen">;
 
@@ -369,7 +369,7 @@ export async function hydrateSnapshot(
 
   if (viewContext?.file) {
     const target = viewContext.file;
-    const [result, roots] = await Promise.all([client.readFile(target), safe<Awaited<ReturnType<DaemonClient["fileRoots"]>>>("file-roots", () => client.fileRoots())]);
+    const [result, roots] = await Promise.all([client.readFile(target), safe<Awaited<ReturnType<DaemonClient["fileRoots"]>>>("文件根", () => client.fileRoots())]);
     if (!("error" in result) && !result.resolvedPath) {
       const canonical = fileTargetForPath(result.absolutePath, roots?.roots ?? []);
       if (canonical?.root === target.root) result.resolvedPath = canonical.path;
@@ -380,9 +380,9 @@ export async function hydrateSnapshot(
 
   if (viewContext?.section === "needs") {
     const [attention, updates, roots] = await Promise.all([
-      safe<NonNullable<FleetSnapshot["attentionRead"]>>("Feed", () => client.humanAttention(viewContext.attentionOpen)),
-      safe<DeliveredHumanUpdates>("delivered updates", () => client.humanUpdates()),
-      safe<Awaited<ReturnType<DaemonClient["fileRoots"]>>>("file-roots", () => client.fileRoots()),
+      safe<NonNullable<FleetSnapshot["attentionRead"]>>("attention", () => client.humanAttention(viewContext.attentionOpen)),
+      safe<DeliveredHumanUpdates>("已送达更新", () => client.humanUpdates()),
+      safe<Awaited<ReturnType<DaemonClient["fileRoots"]>>>("文件根", () => client.fileRoots()),
     ]);
     const attentionRead = composeHumanUpdates(attention, updates, viewContext.attentionOpen);
     return { ...emptySnapshot(), attentionRead, fileRoots: roots?.roots ?? [], readErrors, hydratedAt: new Date().toISOString() };
@@ -393,12 +393,12 @@ export async function hydrateSnapshot(
     return { ...emptySnapshot(), ...(health ? { health: { ...health, availability: "loaded" as const } } : {}), readErrors, hydratedAt: new Date().toISOString() };
   }
 
-  // Project reads never fall back to the daemon's default workspace or fleet queue.
+  // 项目读取绝不回退到后台服务的默认工作区或队列。
   if (viewContext?.section === "scopes") {
     const projects = await safe<NonNullable<FleetSnapshot["projects"]>>("projects", () => client.projects());
     const selected = viewContext.project;
     const project = selected && projects?.projects.find(p => p.id === selected.id && p.root === selected.root);
-    if (selected && (!project || project.error)) readErrors.push(`project ${selected.id}: ${project?.error ?? "selection changed or unavailable; choose the project again"}`);
+    if (selected && (!project || project.error)) readErrors.push(`project ${selected.id}: ${project?.error ?? "选择已变更或不可用；请重新选择项目"}`);
     const readable = !!project && !project.error;
     const scopes = readable ? await safe<{ missions: FleetSnapshot["scopes"]; sources?: Record<string, string>; readErrors?: string[] }>("scopes", () => client.scopesDetailed(selected)) : null;
     const mission = scopes?.missions?.find(m => m.mission === executionMission);
@@ -406,7 +406,7 @@ export async function hydrateSnapshot(
     const [execution, detail, roots] = await Promise.all([
       readable && executionMission && !mission?.error ? safe<{ rows: NonNullable<FleetSnapshot["execution"]>[] }>("execution", () => client.execution(executionMission, selected)) : null,
       readable && executionMission && sliceDetailName && !mission?.error && !slice?.error ? safe<SliceDetailSnap>("slice-detail", () => client.sliceDetail(sliceDetailName, executionMission, selected)) : null,
-      safe<Awaited<ReturnType<DaemonClient["fileRoots"]>>>("file-roots", () => client.fileRoots()),
+      safe<Awaited<ReturnType<DaemonClient["fileRoots"]>>>("文件根", () => client.fileRoots()),
     ]);
     readErrors.push(...(scopes?.readErrors ?? []));
     return { ...emptySnapshot(), projects, projectRead: selected, projectSources: scopes?.sources, scopes: scopes?.missions ?? [], execution: execution?.rows[0] ?? null, executionMission, sliceDetail: detail, sliceDetailName, fileRoots: roots?.roots ?? [], readErrors, hydratedAt: new Date().toISOString() };
@@ -417,28 +417,28 @@ export async function hydrateSnapshot(
     return { ...emptySnapshot(), terminals, hydratedAt: new Date().toISOString(), readErrors: terminals.error ? [terminals.error] : [] };
   }
 
-  // CONFIG never invokes fleet aggregation, host probes, queue enrichment or provider checks.
-  // Failures replace earlier values with an explicit unavailable state.
+  // CONFIG 绝不调用组聚合、主机探测、队列丰富或提供者检查。
+  // 失败以显式不可用状态替换先前值。
   if (viewContext?.section === "config") {
     let configError: string | undefined;
     const passive = async <T>(label: string, read: () => Promise<unknown>): Promise<T | null> => {
-      try { return await read() as T; } catch { readErrors.push(`${label}: unavailable`); return null; }
+      try { return await read() as T; } catch { readErrors.push(`${label}: 不可用`); return null; }
     };
     const [config, controlPlane, connections] = await Promise.all([
-      passive<ConfigRead>("CONFIG", () => client.configBrowser().catch(error => {
-        configError = error instanceof Error ? error.message : "Read failed; cause not identified.";
+      passive<ConfigRead>("配置读取", () => client.configBrowser().catch(error => {
+        configError = error instanceof Error ? error.message : "读取失败；原因未识别。";
         throw error;
       })),
-      passive<ControlPlaneRead>("control plane", () => client.health()),
-      passive<ConnectionsRead>("Slack observation", () => client.connections()),
+      passive<ControlPlaneRead>("后台控制面", () => client.health()),
+      passive<ConnectionsRead>("Slack 连接观察", () => client.connections()),
     ]);
-    let daemonTarget = "unreported";
+    let daemonTarget = "未报告";
     try { daemonTarget = new URL(client.baseUrl).origin; } catch { /* no raw invalid target */ }
     return { ...emptySnapshot(), config, configError, controlPlane, connections, daemonTarget, hydratedAt: new Date().toISOString(), readErrors };
   }
 
   const readingOnly = viewContext?.section === "specs";
-  const fileRoots = readingOnly ? await safe<Awaited<ReturnType<DaemonClient["fileRoots"]>>>("file-roots", () => client.fileRoots()) : null;
+  const fileRoots = readingOnly ? await safe<Awaited<ReturnType<DaemonClient["fileRoots"]>>>("文件根", () => client.fileRoots()) : null;
   const topologyLeaf = viewContext?.section === "topology" ? viewContext.drill.at(-1) : undefined;
   const wantsConnections = viewContext?.section === "connections";
   const wantsSpecs = !viewContext || viewContext.section === "specs" || topologyLeaf?.kind === "agent";
@@ -456,11 +456,11 @@ export async function hydrateSnapshot(
     (wantsSpecs || wantsConnections) ? safe<SpecLibraryRead[]>("specs-library", () => client.specsLibrary()) : Promise.resolve(null),
     !broadReads ? Promise.resolve(null) : safe<ReviewFleetRead>("review-fleet", () => client.reviewFleet()),
     !broadReads ? Promise.resolve(null) : safe<StreamItemRead[]>("stream-tail", () => client.streamLatest()),
-    // PULSE ▲ NEEDS YOU + ⧗ BLOCKED + ◌ PARKED — the shipped queue reads (increments 2/2b)
+    // PULSE ▲ 需要你 + ⧗ 阻塞 + ◌ 停驻——已交付队列读取（增量 2/2b）
     !broadReads ? Promise.resolve(null) : safe<QueueItemRead[]>("queue-attention", () => client.queueAttention()),
     !broadReads ? Promise.resolve(null) : safe<QueueItemRead[]>("queue-blocked", () => client.queueBlocked()),
     !broadReads ? Promise.resolve(null) : safe<QueueItemRead[]>("queue-in-progress", () => client.queueInProgress()),
-    // PULSE UP NEXT + JUST FINISHED lane reads (increment 3) — same shipped /list route
+    // PULSE 下一个 + 刚完成泳道读取（增量 3）——相同已交付 /list 路由
     !broadReads ? Promise.resolve(null) : safe<QueueItemRead[]>("queue-pending", () => client.queuePending()),
     !broadReads ? Promise.resolve(null) : safe<QueueItemRead[]>("queue-recently-finished", () => client.queueRecentlyFinished()),
     !broadReads ? Promise.resolve(null) : safe<{ missions: unknown[]; sourceObservation?: { state: string } }>("scopes", () => client.scopesDetailed() as Promise<{ missions: unknown[] }>),
@@ -471,13 +471,13 @@ export async function hydrateSnapshot(
     wantsConnections ? safe<ConnectionsRead>("connections", () => client.connections()) : Promise.resolve(null),
   ]);
 
-  // Optional: an older daemon has no manifest route; the page then points at the CLI instead.
+  // 可选：旧后台服务无清单路由；页面则指向 CLI。
   const slackManifest = wantsConnections
     ? await (client.slackManifest() as Promise<SlackManifestRead>).then((m) => (typeof m?.url === "string" && typeof m?.yaml === "string" ? m : null), () => null)
     : null;
 
   const agentSpecNames = new Set((library ?? []).filter((entry) => entry.kind === "agent").map((entry) => entry.name));
-  if (scopesRead?.sourceObservation?.state === "unavailable") readErrors.push("scopes: proof source updates unavailable; current HTTP basis only");
+  if (scopesRead?.sourceObservation?.state === "unavailable") readErrors.push("scopes: 证明源更新不可用；仅当前 HTTP 基础");
   if (review?.registryError) readErrors.push(`review-fleet registry: ${review.registryError}`);
   const recentTransitionsRig = currentRigName ?? (!viewContext ? summaries?.[0]?.name : null) ?? null;
   const recentTransitionsScope = topologyLeaf?.kind === "host"
@@ -490,15 +490,15 @@ export async function hydrateSnapshot(
       )
     : null;
 
-  // BLOCKED ON AGENTS label==referent (r1 finding): blockedOn is a qitem POINTER
-  // for agent-blocks, so the blocking AGENT is that qitem's OWNER. Resolve each
-  // via the shipped single-qitem daemon read (client.queueItem) — a BOUNDED
-  // per-row lookup. Canonical human references take precedence even when their
-  // local part starts with qitem-; typed and legacy gates are not local IDs.
-  // A miss (gate name / closed blocker) degrades QUIETLY to the raw blockedOn at
-  // render (honest) — this is enrichment, NOT a load-bearing read, so it must not
-  // pollute readErrors / the "reads failed" status line (the blocked LIST read,
-  // which IS load-bearing, already goes through safe()).
+  // 被智能体阻塞标签==所指（r1 发现）：blockedOn 是智能体阻塞的 qitem 指针，
+  // 因此阻塞智能体是该 qitem 的拥有者。通过已交付
+  // 单 qitem 后台服务读取（client.queueItem）解析每个——有界
+  // 逐行查找。规范人类引用优先，即使其
+  // 本地部分以 qitem- 开头；类型化和遗留门不是本地 id。
+  // 未命中（门名 / 已关闭阻塞者）在渲染时安静降级为原始 blockedOn
+  // （诚实）——这是丰富，绝非承重读取，因此它绝不能
+  // 污染 readErrors / "读取失败" 状态行（阻塞列表读取
+  // 本身是承重的，已通过 safe()）。
   const blockedResolved: QueueRead[] = await Promise.all(
     (blocked ?? []).map(async (item) => {
       const read = toQueueRead(item);
@@ -510,16 +510,16 @@ export async function hydrateSnapshot(
     }),
   );
 
-  // Topology: the local host expands to the daemon's rigs; remote hosts come
-  // from the aggregate with reachability only (per-rig start; the all-rigs
-  // level is deliberately under-designed — founder capture).
+  // 拓扑：本地主机扩展为后台服务的工作组；远程主机
+  // 来自仅带可达性的聚合（每工作组启动；全部工作组
+  // 级别故意设计不足——创建者捕获）。
   const rigs = [];
   const rigsDown: FleetSnapshot["hostsDown"] = [];
   const rigSpecRefs = new Map<string, string[]>(); // rig-spec name → agentRefs
   const rigConsumers = new Map<string, NonNullable<SpecEntry["consumers"]>>();
-  // PULSE ◌ PARKED WITH BATON — the ps/activity side of the join, accumulated
-  // across rigs from the SAME nodes read that feeds topology (no extra fetch):
-  // one entry per agent seat WITH a canonical session (infra seats have none).
+  // PULSE ◌ 停驻待接力——联接的 ps/活动侧，从馈送拓扑的
+  // 同一节点读取跨工作组累积（无额外获取）：
+  // 每个带规范会话的智能体席位一条（基础设施席位无）。
   const seatActivity: SeatActivitySummary[] = [];
   for (const rig of summaries ?? []) {
     const readInventory = wantsConnections ? connectionsRead?.configuration?.inboundDestination?.split("@")[1] === rig.name
@@ -529,17 +529,17 @@ export async function hydrateSnapshot(
       if (node.nodeKind !== "agent" || !node.canonicalSessionName) continue;
       seatActivity.push({
         session: node.canonicalSessionName,
-        // COMPACT lane form (r1 ruling): node.logicalId served verbatim — the
-        // same value TABLE renders as the agent name — NOT reconstructed from
-        // the session string (a hyphen split would be lossy).
+        // 紧凑泳道形式（r1 裁决）：node.logicalId 逐字服务——
+        // 表渲染为智能体名称的相同值——不从
+        // 会话字符串重建（连字符分割会有损）。
         logicalId: node.logicalId,
         terminalActive: node.terminalActive ?? null,
         lastActivityAt: node.lastActivityAt ?? null,
       });
     }
-    // slice-17: the topology graph view consumes the DECLARED §4.A graph read
-    // (nodes + edges + overlay in one fetch); a failed read leaves the view
-    // honest-empty with a NAMED error, never fabricated boxes.
+    // slice-17：拓扑图视图消费声明式 §4.A 图读取
+    // （一次获取中的节点 + 边 + 覆盖）；失败读取使视图
+    // 诚实空并带命名错误，绝不伪造框。
     const graph = wantsGraph && (topologyLeaf?.kind === "host" || recentTransitionsRig === rig.name)
       ? await safe<import("./topology/graph-types.js").RigGraph>(`graph(${rig.name})`, () => client.rigGraph(rig.id))
       : null;
@@ -555,10 +555,10 @@ export async function hydrateSnapshot(
     };
     rigs.push(rigRow);
     if (broadReads && rig.lifecycleState && rig.lifecycleState !== "running") {
-      // rig-down leg (§4.A): summary lifecycleState verbatim, enriched by the
-      // rig-status projection where it answers — composed BESIDE the items.
+      // 工作组降级腿（§4.A）：摘要 lifecycleState 逐字，由
+      // 工作组状态投影在应答处丰富——在条目旁组合。
       const st = await safe<RigStatusRead>(`rig-status(${rig.name})`, () => client.rigStatus(rig.id));
-      const seatDetail = st && st.seatsTotal != null ? `${st.seatsRunning ?? 0}/${st.seatsTotal} seats running` : undefined;
+      const seatDetail = st && st.seatsTotal != null ? `${st.seatsRunning ?? 0}/${st.seatsTotal} 个席位运行中` : undefined;
       rigsDown.push({
         hostId: `rig:${rig.name}`,
         status: st?.status ? `${rig.lifecycleState} (${st.status})` : rig.lifecycleState,
@@ -591,12 +591,12 @@ export async function hydrateSnapshot(
     .filter((h) => h.hostId !== "local")
     .map((h) => ({ id: h.hostId, name: h.hostId, reachable: h.status === "ok", rigs: [] }));
 
-  // Specs: RIG + AGENT land well by consuming the existing structured review
-  // for BOTH kinds. WORKFLOW remains basics. Reviews are memoized by updatedAt.
+  // 规范：工作组 + 智能体通过消费现有结构化评审落地良好，
+  // 两种类型均如此。工作流保持基础。评审按 updatedAt 备忘录化。
   async function specReview(entry: SpecLibraryRead): Promise<SpecLibraryReviewRead | null> {
     const key = `${entry.id}@${entry.updatedAt ?? ""}`;
     const cached = reviewCache?.get(key);
-    // Re-read the selected source: an on-disk edit need not update the library row.
+    // 重读所选源：磁盘上的编辑不需更新库行。
     if (cached && viewContext?.drill.at(-1)?.name !== entry.name) return cached;
     const review = await safe<SpecLibraryReviewRead>(`spec-review(${entry.name})`, () => client.specLibraryReview(entry.id));
     if (review && reviewCache) reviewCache.set(key, review);
@@ -638,7 +638,7 @@ export async function hydrateSnapshot(
         consumers: readingOnly ? undefined : entry.kind === "rig" ? rigConsumers.get(entry.name) ?? [] : entry.kind === "agent" ? localHost.rigs.flatMap((rig) => rig.pods.flatMap((pod) => pod.agents.filter((agent) => agent.spec === entry.name).map((agent) => ({ rig: rig.name, host: localHost.name, agent: agent.name, runtime: agent.runtime, model: agent.model, status: agent.status })))) : undefined,
       };
       const detail = reviewed.get(entry.id);
-      const sourceUnavailable = readErrors.find((error) => error.startsWith(`spec-review(${entry.name}):`)) ?? "source review unavailable";
+      const sourceUnavailable = readErrors.find((error) => error.startsWith(`spec-review(${entry.name}):`)) ?? "源评审不可用";
       if (entry.kind === "rig") {
         if (detail?.kind !== "rig") return { ...base, kind: "rig", sourceUnavailable, agentRefs: allRigRefs.get(entry.name) ?? [] };
         const pods = detail.format === "pod_aware"
@@ -701,7 +701,7 @@ export async function hydrateSnapshot(
     }),
   );
 
-  // Needs-You: composeNeedsYou verbatim; host-down BESIDE.
+  // 需要你：composeNeedsYou 逐字；主机降级在旁。
   const items = review?.needsYou?.items ?? [];
   const needs = items.map(toNeedsItem);
   const hostsDown = [
@@ -716,7 +716,7 @@ export async function hydrateSnapshot(
     connections: connectionsRead,
     controlPlane: instanceHealth,
     slackManifest,
-    daemonTarget: (() => { try { const u = new URL(client.baseUrl); return `${u.protocol}//${u.host}${u.pathname}`; } catch { return "unreported"; } })(),
+    daemonTarget: (() => { try { const u = new URL(client.baseUrl); return `${u.protocol}//${u.host}${u.pathname}`; } catch { return "未报告"; } })(),
     health: healthProjection
       ? {
           availability: "loaded",
@@ -761,7 +761,7 @@ export async function hydrateSnapshot(
 function authoredDescription(raw?: string): string | undefined {
   try {
     const doc = parseYaml(raw ?? "") as { summary?: unknown; description?: unknown; metadata?: { description?: unknown } } | null;
-    // RigSpec summary takes precedence over legacy authored descriptions.
+    // RigSpec summary 优先于遗留撰写描述。
     return [doc?.summary, doc?.description, doc?.metadata?.description]
       .find((value): value is string => typeof value === "string" && value.trim().length > 0);
   } catch { return undefined; }

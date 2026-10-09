@@ -15,7 +15,7 @@ import { EventBus } from "../src/domain/event-bus.js";
 import { QueueRepository, type QueueState } from "../src/domain/queue-repository.js";
 import { queueRoutes } from "../src/routes/queue.js";
 
-describe("S8a — a note is not a state write", () => {
+describe("S8a——note 不是 state 写入", () => {
   let db: Database.Database;
   let repo: QueueRepository;
   let app: Hono;
@@ -70,7 +70,7 @@ describe("S8a — a note is not a state write", () => {
   it.each([
     "same-state specimen note",
     "testimony specimen note",
-  ])("appends '%s' on a handed-off row without changing one byte of the row", async (note) => {
+  ])("在 handed-off row 上追加 '%s'，且不改变该 row 的任何字节", async (note) => {
     const qitemId = await createTerminal("handed-off");
     const before = db.prepare("SELECT * FROM queue_items WHERE qitem_id = ?").get(qitemId);
 
@@ -89,7 +89,7 @@ describe("S8a — a note is not a state write", () => {
   });
 
   it.each(["done", "canceled", "handed-off"] as const)(
-    "refuses an accidental %s -> pending reopen and leaves the row unchanged",
+    "拒绝意外的 %s -> pending reopen，并保持 row 不变",
     async (terminalState) => {
       const qitemId = await createTerminal(terminalState);
       const before = db.prepare("SELECT * FROM queue_items WHERE qitem_id = ?").get(qitemId);
@@ -108,7 +108,7 @@ describe("S8a — a note is not a state write", () => {
     },
   );
 
-  it("reopens explicitly exactly once and records the acknowledgment, actor, and note", async () => {
+  it("显式 reopen 恰好一次，并记录 acknowledgment、actor 与 note", async () => {
     const qitemId = await createTerminal("handed-off");
     const transitionCount = repo.transitionLog.listForQitem(qitemId).length;
 
@@ -125,18 +125,18 @@ describe("S8a — a note is not a state write", () => {
     expect(transitions.at(-1)).toMatchObject({
       state: "pending",
       actorSession: "auditor@rig",
-      transitionNote: "reopen acknowledged: repair the mistaken handoff",
+      transitionNote: "已确认 reopen：repair the mistaken handoff",
       identityProvenance: "transport:v1",
     });
   });
 
-  it("errors when a note cannot be written instead of reporting silent success", async () => {
+  it("note 无法写入时报告错误，而非静默报告成功", async () => {
     const response = await update("qitem-missing", { transitionNote: "must persist" });
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toMatchObject({ error: "qitem_not_found" });
   });
 
-  it("same-state reassertion on a terminal row is an append, not a row write", async () => {
+  it("在 terminal row 上重申相同状态属于 append，而非 row 写入", async () => {
     const qitemId = await createTerminal("canceled");
     db.prepare("UPDATE queue_items SET ts_updated = ? WHERE qitem_id = ?").run("2000-01-01T00:00:00.000Z", qitemId);
     const before = db.prepare("SELECT * FROM queue_items WHERE qitem_id = ?").get(qitemId);

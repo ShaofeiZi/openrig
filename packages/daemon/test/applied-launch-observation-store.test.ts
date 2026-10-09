@@ -22,7 +22,7 @@ describe("AppliedLaunchObservationStore", () => {
 
   afterEach(() => db.close());
 
-  it("records against an explicitly captured generation without mutating the append-only tenure row", () => {
+  it("针对显式捕获的 generation 记录，且不修改仅追加的 tenure 行", () => {
     registry.registerSession("node-1", "dev-impl@r1");
     const tenure = registry.currentOccupantTenure("node-1")!;
     expect(store.recordGeneration(tenure.generationUuid, observeClaudePermission("--permission-mode acceptEdits"))).toBe(true);
@@ -36,7 +36,7 @@ describe("AppliedLaunchObservationStore", () => {
     expect(registry.currentOccupantTenure("node-1")).toEqual(tenure);
   });
 
-  it("never inherits a predecessor observation after a new occupant generation is minted", () => {
+  it("生成新的 occupant generation 后绝不继承前任观察", () => {
     registry.registerSession("node-1", "dev-impl@r1");
     const first = registry.currentOccupantTenure("node-1")!;
     expect(store.recordGeneration(first.generationUuid, observeClaudePermission("--permission-mode acceptEdits"))).toBe(true);
@@ -47,7 +47,7 @@ describe("AppliedLaunchObservationStore", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM applied_launch_observations").get()).toEqual({ n: 1 });
   });
 
-  it("never rebinds a delayed launch write onto a successor generation", () => {
+  it("绝不将延迟的 launch 写入重新绑定到后继 generation", () => {
     registry.registerSession("node-1", "dev-impl@r1");
     const launchedGeneration = registry.currentOccupantTenure("node-1")!.generationUuid;
     registry.mintOccupantTenure("node-1", "handover");
@@ -61,7 +61,7 @@ describe("AppliedLaunchObservationStore", () => {
     expect(launchedGeneration).not.toBe(successorGeneration);
   });
 
-  it("irreversibly invalidates only the physically replaced generation", () => {
+  it("只不可逆地使物理上已替换的 generation 失效", () => {
     registry.registerSession("node-1", "dev-impl@r1");
     const generation = registry.currentOccupantTenure("node-1")!.generationUuid;
     store.recordGeneration(generation, observeClaudePermission("--permission-mode acceptEdits"));
@@ -72,12 +72,12 @@ describe("AppliedLaunchObservationStore", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM applied_launch_observations WHERE generation_uuid = ?").get(generation)).toEqual({ n: 0 });
   });
 
-  it("keeps adopted/discovered/unlaunched occupants unknown until a successful launch records an effect", () => {
+  it("在成功 launch 记录效果前，将 adopted/discovered/unlaunched occupant 保持为 unknown", () => {
     registry.registerClaimedSession("node-1", "dev-impl@r1", "adopt");
     expect(store.readCurrent("node-1")).toBeNull();
   });
 
-  it("degrades missing migration/read/write failures to unknown without throwing", () => {
+  it("migration 缺失或读写失败时降级为 unknown，且不抛出异常", () => {
     const bare = new Database(":memory:");
     try {
       const missing = new AppliedLaunchObservationStore(bare);

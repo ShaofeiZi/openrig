@@ -186,21 +186,21 @@ function candidateSortScore(candidate: CandidateEntry): number {
 function notificationPacket(node: NodeEntry, status: "candidate_with_caveats" | "blocked", reasons: string[], missingEvidence: string[]): NotificationPacket {
   const recipient = node.canonicalSessionName;
   const subject = status === "candidate_with_caveats"
-    ? `Compact-plan marshal check for ${node.logicalId}`
-    : `Compact-plan evidence needed for ${node.logicalId}`;
+    ? `compact-plan 集结检查：${node.logicalId}`
+    : `compact-plan 证据缺失：${node.logicalId}`;
   const session = recipient ?? node.logicalId;
   const text = status === "candidate_with_caveats"
     ? [
-      `Read-only compact-plan flagged ${session} for one-seat-at-a-time Claude continuity triage.`,
-      `Reasons: ${reasons.join(", ")}.`,
-      `Before any compaction: verify checkpoint/restore evidence, get explicit operator authorization, compact only this seat, and audit restore after compact-in-place.`,
-      `No automatic compaction has been run.`,
+      `只读 compact-plan 已把 ${session} 标记为逐席位 Claude 连续性集结分诊候选。`,
+      `原因：${reasons.join(", ")}。`,
+      `在任何压缩之前：核对 checkpoint/restore 证据、取得操作人员显式授权、只压缩这一个席位，并在原地压缩后审计恢复。`,
+      `未执行任何自动压缩。`,
     ].join(" ")
     : [
-      `Read-only compact-plan cannot safely plan ${session} yet.`,
-      `Blockers: ${reasons.join(", ")}.`,
-      `Missing evidence: ${missingEvidence.join(", ") || "none"}.`,
-      `Resolve these before requesting one-seat-at-a-time compaction authorization.`,
+      `只读 compact-plan 暂时无法安全地为 ${session} 做规划。`,
+      `阻塞项：${reasons.join(", ")}。`,
+      `缺失证据：${missingEvidence.join(", ") || "无"}。`,
+      `在申请逐席位压缩授权之前先解决这些问题。`,
     ].join(" ");
   return { recipient, subject, text };
 }
@@ -250,7 +250,7 @@ function analyzeNode(node: NodeEntry, thresholds: CompactPlanThresholds): Candid
       precompactRequirements: PRECOMPACT_REQUIREMENTS,
       seatPolicy: SEAT_POLICY,
       notificationPacket: notificationPacket(node, "blocked", blockedReasons, blockedMissingEvidence),
-      nextAction: "Resolve blocked seat state and collect fresh context before adding this seat to marshal triage.",
+      nextAction: "先解决被阻塞的席位状态并采集新鲜上下文，再把该席位加入集结分诊。",
     };
   }
 
@@ -292,7 +292,7 @@ function analyzeNode(node: NodeEntry, thresholds: CompactPlanThresholds): Candid
     precompactRequirements: PRECOMPACT_REQUIREMENTS,
     seatPolicy: SEAT_POLICY,
     notificationPacket: notificationPacket(node, "candidate_with_caveats", reasons, missingEvidence),
-    nextAction: "Verify checkpoint/restore evidence, get explicit authorization, compact one Claude seat, then audit restore using claude-compact-in-place.",
+    nextAction: "核对 checkpoint/restore 证据、取得显式授权、压缩一个 Claude 席位，再用 claude-compact-in-place 审计恢复。",
   };
 }
 
@@ -343,62 +343,62 @@ function buildPlan(nodes: NodeEntry[], thresholds = defaultThresholds()): Compac
 }
 
 function printHuman(plan: CompactPlanResult): void {
-  console.log("READ-ONLY PLAN - does not compact");
-  console.log("Policy: read_only_plan; one-seat-at-a-time marshal triage; autoCompactAllowed=false; explicit authorization required.");
-  console.log(`Thresholds: ${plan.policy.thresholdTokens} estimated tokens; ${plan.policy.thresholdPercent}% when context window size is missing.`);
-  console.log(`Summary: ${plan.summary.candidateCount} candidates | ${plan.summary.blockedCount} blocked | ${plan.summary.skippedCount} skipped`);
+  console.log("只读规划——不做任何压缩");
+  console.log("策略：read_only_plan；逐席位集结分诊；autoCompactAllowed=false；需要显式授权。");
+  console.log(`阈值：${plan.policy.thresholdTokens} 估算 token；上下文窗口大小缺失时按 ${plan.policy.thresholdPercent}%。`);
+  console.log(`汇总：${plan.summary.candidateCount} 个候选 | ${plan.summary.blockedCount} 个被阻塞 | ${plan.summary.skippedCount} 个跳过`);
   console.log();
 
   if (plan.recommendedOrder.length > 0) {
-    console.log("One-seat-at-a-time recommended marshal triage order:");
+    console.log("建议的逐席位集结分诊顺序：");
     for (const [index, session] of plan.recommendedOrder.entries()) {
       console.log(`  ${index + 1}. ${session}`);
     }
   } else {
-    console.log("One-seat-at-a-time recommended marshal triage order: none");
+    console.log("建议的逐席位集结分诊顺序：无");
   }
 
   if (plan.candidates.length > 0) {
     console.log();
-    console.log("Candidates with caveats:");
+    console.log("带注意事项的候选：");
     for (const candidate of plan.candidates) {
-      const estimate = candidate.estimatedUsedTokens == null ? "unknown tokens" : `${candidate.estimatedUsedTokens} estimated tokens`;
-      console.log(`  - ${candidate.session}: ${estimate}; threshold=${candidate.thresholdReason}; reasons=${candidate.reasons.join(", ")}; missing=${candidate.missingEvidence.join(", ")}`);
-      console.log(`    Notify: ${candidate.notificationPacket.text}`);
+      const estimate = candidate.estimatedUsedTokens == null ? "未知 token" : `估算 ${candidate.estimatedUsedTokens} token`;
+      console.log(`  - ${candidate.session}：${estimate}；触发阈值=${candidate.thresholdReason}；原因=${candidate.reasons.join(", ")}；缺失=${candidate.missingEvidence.join(", ")}`);
+      console.log(`    通知：${candidate.notificationPacket.text}`);
     }
   }
 
   if (plan.blocked.length > 0) {
     console.log();
-    console.log("Blocked / not safely plannable:");
+    console.log("被阻塞 / 无法安全规划：");
     for (const blocked of plan.blocked) {
-      console.log(`  - ${blocked.session ?? blocked.logicalId}: reasons=${blocked.reasons.join(", ")}; missing=${blocked.missingEvidence.join(", ") || "none"}`);
-      console.log(`    Notify: ${blocked.notificationPacket.text}`);
+      console.log(`  - ${blocked.session ?? blocked.logicalId}：原因=${blocked.reasons.join(", ")}；缺失=${blocked.missingEvidence.join(", ") || "无"}`);
+      console.log(`    通知：${blocked.notificationPacket.text}`);
     }
   }
 
   console.log();
-  console.log("Next action: verify checkpoint/restore evidence, get explicit authorization, compact one Claude seat only, then audit restore with claude-compact-in-place.");
+  console.log("下一步：核对 checkpoint/restore 证据、取得显式授权、只压缩一个 Claude 席位，再用 claude-compact-in-place 审计恢复。");
 }
 
 export function compactPlanCommand(depsOverride?: CompactPlanDeps): Command {
   const cmd = new Command("compact-plan")
-    .description("Plan Claude compact-in-place candidates without compacting anything")
+    .description("在不做任何压缩的前提下规划 Claude 原地压缩候选")
     .addHelpText("after", `
-Examples:
-  rig compact-plan                    Show a read-only Claude compaction triage plan
-  rig compact-plan --rig openrig-pm   Plan one rig only
-  rig compact-plan --refresh          Re-sample context before planning
-  rig compact-plan --json             JSON output for agents`);
+示例：
+  zrig compact-plan                    展示只读的 Claude 压缩分诊规划
+  zrig compact-plan --rig openrig-pm   只规划一个工作组
+  zrig compact-plan --refresh          规划前重新采样上下文
+  zrig compact-plan --json             供智能体使用的 JSON 输出`);
 
   const getDepsF = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   cmd
-    .option("--json", "JSON output for agents")
-    .option("--rig <name>", "Plan one rig only")
-    .option("--refresh", "Re-sample context usage before planning")
-    .option("--threshold-tokens <n>", "Estimated used-token threshold for Claude compact-plan candidates")
-    .option("--threshold-percent <0-100>", "Used-percent threshold when context window size is missing")
+    .option("--json", "供智能体使用的 JSON 输出")
+    .option("--rig <name>", "只规划一个工作组")
+    .option("--refresh", "规划前重新采样上下文用量")
+    .option("--threshold-tokens <n>", "Claude compact-plan 候选的已用 token 估算阈值")
+    .option("--threshold-percent <0-100>", "上下文窗口大小缺失时的已用百分比阈值")
     .action(async (opts: { json?: boolean; rig?: string; refresh?: boolean; thresholdTokens?: string; thresholdPercent?: string }) => {
       const deps = getDepsF();
       const thresholds = parseThresholdOptions(opts);
@@ -410,8 +410,8 @@ Examples:
 
       const status = await getDaemonStatus(deps.lifecycleDeps);
       if (status.state !== "running" || status.healthy === false) {
-        console.error("Daemon is not running. Start it with: rig daemon start");
-        console.error("Cannot build compact-plan without current read-only rig inventory.");
+        console.error("后台服务未运行。启动：zrig daemon start");
+        console.error("没有当前的只读工作组清单就无法构建 compact-plan。");
         process.exitCode = 1;
         return;
       }
@@ -424,7 +424,7 @@ Examples:
         const targetRigs = opts.rig ? rigs.filter((rig) => rig.name === opts.rig) : rigs;
 
         if (opts.rig && targetRigs.length === 0) {
-          console.error(`Rig "${opts.rig}" not found. List rigs with: rig ps`);
+          console.error(`未找到工作组 "${opts.rig}"。列出工作组：zrig ps`);
           process.exitCode = 1;
           return;
         }
@@ -434,16 +434,16 @@ Examples:
           try {
             const refreshResult = await client.get(`/api/rigs/${firstRig.rigId}/nodes?refresh=true`);
             if (refreshResult.status >= 400) {
-              console.error("Compact-plan refresh failed. Data may be stale.");
-              console.error(`Detail: ${JSON.stringify(refreshResult.data)}`);
-              console.error("Fix: retry without --refresh to see stale data, or check daemon logs.");
+              console.error("compact-plan 刷新失败。数据可能已过期。");
+              console.error(`详情：${JSON.stringify(refreshResult.data)}`);
+              console.error("修复：不带 --refresh 重试以查看过期数据，或查看后台服务日志。");
               process.exitCode = 2;
               return;
             }
           } catch (refreshErr) {
-            console.error("Compact-plan refresh failed. Data may be stale.");
-            console.error(`Detail: ${refreshErr instanceof Error ? refreshErr.message : String(refreshErr)}`);
-            console.error("Fix: retry without --refresh to see stale data, or check daemon logs.");
+            console.error("compact-plan 刷新失败。数据可能已过期。");
+            console.error(`详情：${refreshErr instanceof Error ? refreshErr.message : String(refreshErr)}`);
+            console.error("修复：不带 --refresh 重试以查看过期数据，或查看后台服务日志。");
             process.exitCode = 2;
             return;
           }
@@ -464,8 +464,8 @@ Examples:
           printHuman(plan);
         }
       } catch (err) {
-        console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
-        console.error("Fix: check daemon status with: rig daemon status");
+        console.error(`错误：${err instanceof Error ? err.message : String(err)}`);
+        console.error("修复：用 zrig daemon status 检查后台服务状态。");
         process.exitCode = 2;
       }
     });
@@ -479,7 +479,7 @@ function parseThresholdOptions(opts: { thresholdTokens?: string; thresholdPercen
   if (opts.thresholdTokens != null) {
     const value = Number(opts.thresholdTokens);
     if (!Number.isInteger(value) || value <= 0) {
-      return { ok: false, error: "--threshold-tokens must be a positive integer" };
+      return { ok: false, error: "--threshold-tokens 必须是正整数" };
     }
     thresholds.thresholdTokens = value;
   }
@@ -487,7 +487,7 @@ function parseThresholdOptions(opts: { thresholdTokens?: string; thresholdPercen
   if (opts.thresholdPercent != null) {
     const value = Number(opts.thresholdPercent);
     if (!Number.isFinite(value) || value < 0 || value > 100) {
-      return { ok: false, error: "--threshold-percent must be a number from 0 to 100" };
+      return { ok: false, error: "--threshold-percent 必须是 0 到 100 之间的数字" };
     }
     thresholds.thresholdPercent = value;
   }

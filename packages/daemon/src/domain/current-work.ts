@@ -1,42 +1,33 @@
 /**
- * OPR.0.5.8.14 — derive the seat's current work node from the queue rows it holds.
+ * OPR.0.5.8.14——根据席位持有的队列行推导其当前工作节点。
  *
- * The only consumer today is `queue whoami`, which refocus reads so a returning agent
- * gets the intent of the mission and slice it actually owns. The derivation is
- * deliberately refusal-first: it answers ONLY when the seat's typed rows point at exactly
- * one work node. Anything else returns null with a named basis, because a guessed work
- * node is worse than an honest gap — it silently re-points a whole refocus at the wrong
- * outcome.
+ * 目前唯一消费者是 `queue whoami`，它会重新聚焦读取，使返回的智能体获得自己实际负责的
+ * 任务目标与 slice 意图。推导过程有意坚持“拒绝优先”：只有席位的类型化行恰好指向一个
+ * 工作节点时才给出答案。其他情况都返回 null 并附具名依据，因为猜测工作节点比诚实暴露
+ * 缺口更糟——它会把整个重新聚焦静默指向错误结果。
  *
- * Two properties are load-bearing and neither is obvious from the tag alone:
+ * 两项性质是承重约束，且都无法仅从标签本身看出：
  *
- * 1. The canonical queue tags are `mission:<directory>` + `slice:<dot-id>`, e.g.
- *    `mission:release-0.5.8` + `slice:OPR.0.5.8.14`. All new handoffs use that pair.
- *    Some historical rows tag the mission by its SPEC frontmatter id instead, so the
- *    mission join also accepts that legacy form purely for compatibility — refusing an
- *    existing row would be the guess-refusal firing on good data. The legacy form is
- *    never the convention to reach for and is labelled as compat wherever it surfaces.
- *    (orch-lead ruling relayed 2026-09-01 09:43Z.)
+ * 1. 规范队列标签是 `mission:<directory>` + `slice:<dot-id>`，例如
+ *    `mission:release-0.5.8` + `slice:OPR.0.5.8.14`。所有新移交都使用这一对。
+ *    部分历史行改用 SPEC frontmatter ID 标记任务目标，因此任务目标关联也仅为兼容而接受
+ *    这种旧形式；拒绝既有行会让“拒绝猜测”错误作用于有效数据。旧形式绝不是应继续采用的
+ *    约定，任何展示位置都会标注为兼容形式。（orch-lead 裁定转达于 2026-09-01 09:43Z。）
  *
- * 2. There are two ambiguity checks and they run in a deliberate order.
+ * 2. 存在两层歧义检查，并按有意设计的顺序执行。
  *
- *    WITHIN a row, a malformed baton is rejected up front, before any resolution: a row
- *    carrying two different mission values (or two different slice values) is not a
- *    well-formed baton at all, and rejecting malformed input is this module's job. Those
- *    rows never reach resolution.
+ *    在单行内部，格式错误的接力棒会在任何解析前先被拒绝：一行携带两个不同 mission 值
+ *    （或两个不同 slice 值）根本不是结构良好的接力棒，而拒绝畸形输入正是本模块职责。
+ *    这些行绝不会进入解析阶段。
  *
- *    ACROSS rows, resolution runs BEFORE counting and is failure-first. If every typed
- *    row resolves, ambiguity is judged on the resolved NODES rather than the raw tag
- *    strings, so two rows naming one slice through different forms collapse to one piece
- *    of work instead of reading as a conflict. But if any typed row fails to resolve, the
- *    answer is a refusal — an unresolved baton is unknown, not irrelevant, and letting the
- *    rows that happened to resolve carry the answer is precisely the guess this module
- *    exists to prevent. A basis-string disclosure does not discharge it: consumers read
- *    workNodePath, not the prose beside it.
+ *    跨行时先解析再计数，并以失败优先。若每个类型化行都解析成功，就按解析后的节点而非
+ *    原始标签字符串判断歧义，因此用不同形式命名同一 slice 的两行会折叠为一项工作，
+ *    而不是被误判为冲突。但任何类型化行解析失败时都必须拒绝回答——未解析接力棒代表未知，
+ *    而非无关；让碰巧解析成功的行决定答案，正是本模块要阻止的猜测。仅在依据字符串中披露
+ *    失败也不够，因为消费者读取 workNodePath，而不是旁边的说明文字。
  *
- *    Note the resolve-then-compare machinery below COULD tell you that two spellings name
- *    one directory. The within-row check does not use it, and that is a choice about what
- *    a valid baton is, not a limitation.
+ *    注意，下方“先解析再比较”机制本可判断两种写法指向同一目录。单行检查有意不用它；
+ *    这是对有效接力棒定义的选择，而不是能力限制。
  */
 
 import fs from "node:fs";
@@ -49,20 +40,19 @@ const SLICE_TAG = "slice:";
 type MatchForm = "directory name" | "frontmatter id";
 
 /**
- * How a match is described to a reader. The canonical tag pair is
- * `mission:<directory>` + `slice:<dot-id>`; anything else resolved here is compatibility
- * for rows already on the board, and says so, so nobody reads a basis string as a
- * convention to copy.
+ * 如何向读者描述匹配方式。规范标签对是 `mission:<directory>` + `slice:<dot-id>`；
+ * 此处解析的其他形式都只是对已有队列行的兼容，并会明确标注，避免有人把依据字符串误当成
+ * 应复制的新约定。
  */
 function describeMatch(level: "mission" | "slice", form: MatchForm): string {
   if (level === "mission") {
     return form === "directory name"
-      ? "canonical directory-name tag"
-      : "legacy id-form tag (compat)";
+      ? "规范目录名标签"
+      : "旧版 ID 形式标签（兼容）";
   }
   return form === "frontmatter id"
-    ? "canonical id tag"
-    : "directory-name tag (compat)";
+    ? "规范 ID 标签"
+    : "目录名标签（兼容）";
 }
 
 export interface CurrentWork {
@@ -74,34 +64,31 @@ export interface CurrentWork {
 
 export interface CurrentWorkDerivation {
   currentWork: CurrentWork | null;
-  /** Always present. Names why the answer is what it is, including every refusal. */
+  /** 始终存在，说明答案的依据，包括每一种拒绝原因。 */
   currentWorkBasis: string;
 }
 
 interface TaggedRow {
   state?: string | null;
   tags?: string[] | null;
-  /** Optional, but the production call site passes full queue items so it is populated
-   *  there. A refusal that names the offending ROW is one command from actionable; one
-   *  that names only the values leaves the reader to go find which row meant it. */
+  /** 可选；生产调用点传入完整队列项，因此会填充。拒绝消息若指出出错行，操作员只需一条命令
+   *  即可行动；若只列出值，还得自行查找这些值来自哪一行。 */
   qitemId?: string | null;
 }
 
-/** How a row is referred to in a refusal. Falls back cleanly when no id was supplied. */
+/** 拒绝消息中如何引用队列行；未提供 ID 时使用清晰回退。 */
 function rowLabel(qitemId?: string | null): string {
-  return qitemId ? `row ${qitemId}` : "a row";
+  return qitemId ? `行 ${qitemId}` : "某一行";
 }
 
 /**
- * Only in-progress rows are considered — a ruled decision, not an oversight. But the
- * refusal has to say so: a seat whose one typed baton is BLOCKED holds real work, and
- * "you have no typed work" would be true about the query while false about the world.
- * "You hold nothing" and "your work is parked" call for different next actions, so the
- * string names the scope rather than implying an empty desk.
+ * 只考虑 in-progress 行——这是明确裁定，不是疏漏。但拒绝消息必须说明这一点：
+ * 若席位唯一的类型化接力棒处于 BLOCKED，它仍持有真实工作；“没有类型化工作”虽符合查询，
+ * 却不符合现实。“你未持有任何工作”与“你的工作已停放”需要不同后续动作，因此文案要说明
+ * 查询范围，而不能暗示席位空闲。
  */
 const NO_TYPED_IN_PROGRESS =
-  "no typed in-progress work (only in-progress rows are considered; a typed row that is " +
-  "pending or blocked is not current work)";
+  "没有类型化的 in-progress 工作（只考虑 in-progress 行；处于 pending 或 blocked 的类型化行不算当前工作）";
 
 interface Match {
   dir: string;
@@ -109,13 +96,11 @@ interface Match {
 }
 
 /**
- * Every DISTINCT non-empty value carried under `prefix` on one row.
+ * 单行中 `prefix` 下携带的每个不同非空值。
  *
- * The tags column is persisted verbatim and nothing upstream enforces one value per
- * prefix, so array position carries no meaning. Taking the first match would make the
- * answer depend on insertion order — reversing the array would select a different slice.
- * Returning the set instead lets the caller refuse a genuinely conflicting row. Exact
- * duplicate strings collapse, because they are one value written twice.
+ * tags 列逐字持久化，上游没有强制每个前缀只能有一个值，因此数组位置没有语义。
+ * 取首个匹配会让答案依赖插入顺序；反转数组就会选中不同 slice。改为返回集合后，调用方可
+ * 拒绝真正冲突的行。完全重复的字符串会折叠，因为它们只是同一值被写了两次。
  */
 function tagValues(tags: string[], prefix: string): string[] {
   const values = tags
@@ -126,9 +111,8 @@ function tagValues(tags: string[], prefix: string): string[] {
 }
 
 /**
- * Directories directly under `root` addressed by `wanted` — either because the directory
- * is named that, or because its SPEC.md frontmatter `id` is that. A directory can only
- * match once, so a name hit short-circuits its own frontmatter read.
+ * `root` 直属目录中由 `wanted` 寻址的目录——目录名本身匹配，或其 SPEC.md frontmatter
+ * `id` 匹配。一个目录只能匹配一次，因此目录名命中后会短路该目录的 frontmatter 读取。
  */
 export function resolveWorkNodeDirs(root: string, wanted: string): Match[] {
   let entries: string[];
@@ -161,7 +145,7 @@ interface Candidate {
   basis: string;
 }
 
-/** Resolve one typed row to a work node, or to the reason it could not be resolved. */
+/** 将一个类型化行解析为工作节点，或返回无法解析的原因。 */
 function resolveRow(
   missionsRoot: string,
   mission: string,
@@ -171,7 +155,7 @@ function resolveRow(
   if (missionMatches.length !== 1) {
     return {
       ok: false,
-      reason: `mission ${mission} resolves to ${missionMatches.length} directories`,
+      reason: `任务目标 ${mission} 解析到 ${missionMatches.length} 个目录`,
     };
   }
   const missionMatch = missionMatches[0]!;
@@ -179,7 +163,7 @@ function resolveRow(
   const slicesRoot = path.join(missionsRoot, missionMatch.dir, "slices");
   const sliceMatches = resolveWorkNodeDirs(slicesRoot, slice);
   if (sliceMatches.length !== 1) {
-    return { ok: false, reason: `slice ${slice} resolves to ${sliceMatches.length} directories` };
+    return { ok: false, reason: `slice ${slice} 解析到 ${sliceMatches.length} 个目录` };
   }
   const sliceMatch = sliceMatches[0]!;
 
@@ -190,8 +174,8 @@ function resolveRow(
       slice,
       workNodePath: path.join(slicesRoot, sliceMatch.dir),
       basis:
-        `one typed in-progress work node; mission via ${describeMatch("mission", missionMatch.form)}, ` +
-        `slice via ${describeMatch("slice", sliceMatch.form)}`,
+        `唯一类型化 in-progress 工作节点；任务目标通过${describeMatch("mission", missionMatch.form)}匹配，` +
+        `slice 通过${describeMatch("slice", sliceMatch.form)}匹配`,
     },
   };
 }
@@ -205,7 +189,7 @@ export function deriveCurrentWork(
     currentWorkBasis,
   });
 
-  if (!missionsRoot) return refuse("no missions root configured");
+  if (!missionsRoot) return refuse("未配置任务目标根目录");
 
   const typed: { mission: string; slice: string; qitemId?: string | null }[] = [];
   const conflicts: string[] = [];
@@ -214,39 +198,34 @@ export function deriveCurrentWork(
     const tags = r.tags ?? [];
     const missions = tagValues(tags, MISSION_TAG);
     const slices = tagValues(tags, SLICE_TAG);
-    // A row missing either prefix is not a typed baton at all, so it is not this
-    // derivation's business and never contributes a conflict.
+    // 缺少任一前缀的行根本不是类型化接力棒，因此不属于本推导职责，也不会贡献冲突。
     if (missions.length === 0 || slices.length === 0) continue;
-    // Values are sorted for the message too, not just deduped: an order-dependent
-    // explanation of an order-independence refusal would still be leaking array position.
+    // 消息中的值不仅去重，还会排序：若顺序无关的拒绝使用顺序相关说明，仍会泄漏数组位置。
     if (missions.length > 1) {
       conflicts.push(
-        `${rowLabel(r.qitemId)} carries ${missions.length} distinct mission tags (${[...missions].sort().join(", ")})`,
+        `${rowLabel(r.qitemId)} 携带 ${missions.length} 个不同 mission 标签（${[...missions].sort().join(", ")}）`,
       );
       continue;
     }
     if (slices.length > 1) {
       conflicts.push(
-        `${rowLabel(r.qitemId)} carries ${slices.length} distinct slice tags (${[...slices].sort().join(", ")})`,
+        `${rowLabel(r.qitemId)} 携带 ${slices.length} 个不同 slice 标签（${[...slices].sort().join(", ")}）`,
       );
       continue;
     }
     typed.push({ mission: missions[0]!, slice: slices[0]!, qitemId: r.qitemId });
   }
 
-  // Conflicts outrank a usable sibling for the same reason an unresolved row does: the
-  // seat's typed work is not unambiguous, and that is the whole precondition for answering.
-  // This refuses even when the two values would resolve to one directory. Not because the
-  // module could not check — resolveRow and the byPath dedupe below do exactly that across
-  // rows — but because a single row naming its mission twice, differently, is MALFORMED,
-  // and refusing malformed input is this module's job. Resolving it would be repairing a
-  // caller's bad row on its behalf and calling the repair an answer.
+  // 冲突优先于可用兄弟行，原因与未解析行相同：席位的类型化工作不明确，而明确性是回答的
+  // 完整前提。即使两个值最终解析到同一目录也会拒绝。不是模块无法检查——resolveRow 与下方
+  // byPath 去重会跨行完成这件事——而是单行以不同方式两次命名其任务目标属于畸形输入，
+  // 拒绝畸形输入正是本模块职责。若替它解析，就等于代调用方修复错误行并把修复结果当答案。
   if (conflicts.length > 0) {
-    return refuse(`conflicting typed tags: ${[...new Set(conflicts)].sort().join("; ")}`);
+    return refuse(`类型化标签冲突：${[...new Set(conflicts)].sort().join("; ")}`);
   }
   if (typed.length === 0) return refuse(NO_TYPED_IN_PROGRESS);
 
-  // Resolve first, then count: different tag forms for one node must collapse to one node.
+  // 先解析再计数：同一节点的不同标签形式必须折叠为一个节点。
   const byPath = new Map<string, Candidate>();
   const failures: string[] = [];
   for (const { mission, slice, qitemId } of typed) {
@@ -261,20 +240,18 @@ export function deriveCurrentWork(
     }
   }
 
-  // A typed row that did not resolve is UNKNOWN, never irrelevant. Answering from the rows
-  // that happened to resolve would treat "I could not tell what this is" as "this does not
-  // count" — the exact guess this derivation exists to refuse. Disclosing it in the basis
-  // is not sufficient, because the consumer reads workNodePath and not the prose beside it.
-  // So any resolution failure refuses outright, and the cross-form dedupe below is reached
-  // only when EVERY typed row resolved.
+  // 未解析的类型化行代表未知，绝不是无关。若根据碰巧解析成功的行回答，就等于把
+  // “无法判断它是什么”当成“它不计数”——这正是本推导要拒绝的猜测。只在依据中披露仍不够，
+  // 因为消费者读取 workNodePath，而不读取旁边说明。因此任一解析失败都直接拒绝；
+  // 只有每个类型化行都解析成功时，才会到达下方跨形式去重。
   if (failures.length > 0) {
-    return refuse(`typed work did not resolve: ${failures.join("; ")}`);
+    return refuse(`类型化工作未能解析：${failures.join("; ")}`);
   }
   if (byPath.size > 1) {
-    return refuse(`${byPath.size} distinct typed work nodes — refusing to guess`);
+    return refuse(`存在 ${byPath.size} 个不同的类型化工作节点——拒绝猜测`);
   }
 
   const only = [...byPath.values()][0];
-  if (!only) return refuse("no typed in-progress work resolved to a work node");
+  if (!only) return refuse("没有类型化 in-progress 工作解析到工作节点");
   return { currentWork: only, currentWorkBasis: only.basis };
 }

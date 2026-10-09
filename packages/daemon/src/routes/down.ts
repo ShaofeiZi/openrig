@@ -13,12 +13,12 @@ function getDeps(c: { get: (key: string) => unknown }) {
 }
 
 /**
- * POST /api/down — tear down a rig.
- * @param rigId - required rig identifier
- * @param delete - optional, remove rig record after stop
- * @param force - optional, kill sessions immediately
- * @param snapshot - optional, snapshot before teardown
- * @returns TeardownResult
+ * POST /api/down —— 拆除一个工作组。
+ * @param rigId - 必填的工作组标识符
+ * @param delete - 可选，停止后删除工作组记录
+ * @param force - 可选，立即杀死会话
+ * @param snapshot - 可选，拆除前打快照
+ * @returns 拆除结果 TeardownResult
  */
 downRoutes.post("/", async (c) => {
   const { teardownOrchestrator } = getDeps(c);
@@ -29,7 +29,7 @@ downRoutes.post("/", async (c) => {
   const snapshot = body["snapshot"] === true;
 
   if (!rigId) {
-    return c.json({ error: "rigId is required" }, 400);
+    return c.json({ error: "rigId 为必填项" }, 400);
   }
 
   try {
@@ -39,7 +39,7 @@ downRoutes.post("/", async (c) => {
       snapshot,
     });
 
-    // Determine HTTP status
+    // 确定 HTTP 状态码
     if (deleteRig && !result.deleted) {
       if (result.deleteBlocked) {
         return c.json(result, 409);
@@ -47,7 +47,7 @@ downRoutes.post("/", async (c) => {
       return c.json(result, 500);
     }
 
-    // Include rig name + uniqueness in response for post-command handoff
+    // 在响应中带上工作组名 + 唯一性，供命令后交接使用
     const rigRepo = c.get("rigRepo" as never) as RigRepository;
     const rig = rigRepo.getRig(rigId);
     const rigName = rig?.rig.name ?? null;

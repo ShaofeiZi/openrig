@@ -132,7 +132,7 @@ describe("SeatLifecycleService.launchFresh", () => {
 
   afterEach(() => db.close());
 
-  it.each(["launch", "readiness"])("continues a fresh occupant gated at %s exactly once without another launch", async (gate) => {
+  it.each(["launch", "readiness"])("继续新的占用者在 %s 门禁一次，无需再次启动", async (gate) => {
     const seat = seedSeat();
     if (gate === "launch") harnessResult = { ok: false, recovery: "attention_required", error: "native gate" };
     else adapter.checkReady = async () => ({ ready: false, code: "hook_trust_gate", reason: "native gate" });
@@ -152,7 +152,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     expect(delivery).not.toHaveBeenCalled();
   });
 
-  it("supersedes detached history so a later reboot identifies the deliberate successor", async () => {
+  it("取代独立的历史，因此稍后重新启动可以确定有意的继任者", async () => {
     const seat = seedSeat();
     alive.delete(seat.sessionName);
     livePanes.delete(seat.sessionName);
@@ -167,19 +167,19 @@ describe("SeatLifecycleService.launchFresh", () => {
     expect(deriveRehydrateSessionIdByNode(history, [seat.node.id])[seat.node.id]).toBe(result.sessionId);
   });
 
-  it("recovers an older fresh effect from its current generation without rewriting history", async () => {
+  it("在不重写历史的情况下恢复当前一代的旧的新鲜效果", async () => {
     const seat = seedSeat();
     const result = await service.launchFresh({ seatRef: seat.sessionName, fresh: true, stop: true, reason: "explicit successor" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Reproduce the old build's unsuperseded detached predecessor after reboot.
+    // 复现旧 build 在 reboot 后未被取代的 detached predecessor。
     sessionRegistry.markDetached(seat.session!.id);
     sessionRegistry.markDetached(result.sessionId);
     const history = sessionRegistry.getSessionsForRig(seat.rig.id);
     const recorded = readFreshOccupantRelations(db, seat.rig.id);
     expect(deriveRehydrateSessionIdByNode(history, [seat.node.id], recorded)[seat.node.id]).toBe(result.sessionId);
     expect(sessionRegistry.getSessionsForRig(seat.rig.id)).toEqual(history);
-    // A later occupant generation invalidates the old effect; no newest-row fallback.
+    // 更晚 occupant generation 使旧 effect 失效；无最新行回退。
     sessionRegistry.mintOccupantTenure(seat.node.id, "handover");
     expect(readFreshOccupantRelations(db, seat.rig.id)).toEqual({});
     expect(deriveRehydrateSessionIdByNode(history, [seat.node.id], readFreshOccupantRelations(db, seat.rig.id))[seat.node.id]).toBeNull();
@@ -218,7 +218,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     return { rig, node, session, sessionName };
   }
 
-  it("requires explicit fresh and a valid persisted startup context before mutation", async () => {
+  it("在突变之前需要显式的新鲜且有效的持久启动上下文", async () => {
     const seat = seedSeat({ clean: true, withContext: false });
     const notExplicit = await service.launchFresh({ seatRef: "dev.impl", fresh: false, reason: "x" });
     expect(notExplicit).toMatchObject({ ok: false, code: "fresh_required" });
@@ -234,7 +234,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     expect(db.prepare("SELECT COUNT(*) AS c FROM sessions WHERE node_id = ?").get(seat.node.id)).toEqual({ c: 0 });
   });
 
-  it.each(["authenticated", "none", "unknown"])("fresh launch consumes persisted proof selection %s", async (value) => {
+  it.each(["authenticated", "none", "unknown"])("新的发布消耗持久的证明选择 %s", async (value) => {
     const seat = seedSeat({ clean: true });
     const actions = normalizeStartupBlock({ actions: [{ type: "startup_proof", value, idempotent: true }] }).actions;
     db.prepare("UPDATE node_startup_context SET startup_actions_json=? WHERE node_id=?").run(JSON.stringify(actions), seat.node.id);
@@ -249,7 +249,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     }
   });
 
-  it("refuses a live managed seat without stop and refuses an adopted seat even with stop", async () => {
+  it("不停地拒绝实时管理的席位，即使有停止也拒绝采用的席位", async () => {
     const live = seedSeat();
     expect(await service.launchFresh({ seatRef: live.sessionName, fresh: true, reason: "x" }))
       .toMatchObject({ ok: false, code: "session_live" });
@@ -270,7 +270,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     expect(alive.has(adoptedName)).toBe(true);
   });
 
-  it("refuses an unmanaged canonical collision even when the database seat is clean", async () => {
+  it("即使数据库位置干净，也拒绝非托管规范冲突", async () => {
     const seat = seedSeat({ clean: true });
     alive.add(seat.sessionName);
     const result = await service.launchFresh({ seatRef: "dev.impl", fresh: true, stop: true, reason: "x" });
@@ -279,7 +279,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     expect(alive.has(seat.sessionName)).toBe(true);
   });
 
-  it("does not mistake a historical canonical row for ownership of a current unmanaged collision", async () => {
+  it("不会将历史规范行误认为是当前不受管理的冲突的所有权", async () => {
     const seat = seedSeat();
     alive.delete(seat.sessionName);
     const newer = sessionRegistry.registerSession(seat.node.id, "r00-current-other");
@@ -294,7 +294,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     expect(alive.has(seat.sessionName)).toBe(true);
   });
 
-  it("refuses to stop a canonical session whose live pane does not match the managed binding", async () => {
+  it("拒绝停止其活动窗格与托管绑定不匹配的规范会话", async () => {
     const seat = seedSeat();
     livePanes.set(seat.sessionName, "%unmanaged");
 
@@ -310,7 +310,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     expect(alive.has(seat.sessionName)).toBe(true);
   });
 
-  it("refuses when canonical-session existence is indeterminate because tmux transport is unavailable", async () => {
+  it("当规范会话存在不确定时拒绝，因为 tmux 传输不可用", async () => {
     const seat = seedSeat({ clean: true });
     vi.mocked(tmux.probeSession).mockResolvedValue({ state: "transport_unavailable", cause: "tmux socket unavailable" });
 
@@ -321,7 +321,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     expect(tmux.createSession).not.toHaveBeenCalled();
   });
 
-  it("stops exactly the managed pod-aware occupant, launches fresh, and preserves sibling/work state", async () => {
+  it("准确停止受管理的 pod 感知占用者，启动新的，并保留兄弟/工作状态", async () => {
     const seat = seedSeat();
     const retiringGeneration = sessionRegistry.currentOccupantTenure(seat.node.id)!.generationUuid;
     const sibling = rigRepo.addNode(seat.rig.id, "dev.qa", { runtime: "claude-code", cwd: "/project" });
@@ -379,7 +379,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     });
   });
 
-  it("launches a Codex seat through the same fresh-only path without a resume carrier", async () => {
+  it("通过相同的仅新鲜路径推出 Codex 席位，无需简历载体", async () => {
     const seat = seedSeat({ clean: true, runtime: "codex", model: "gpt-5.6-codex" });
     harnessResult = { ok: true, resumeToken: "codex-fresh-uuid", resumeType: "codex_thread_id" };
     paneCommand = "codex";
@@ -392,7 +392,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     expect(JSON.parse(event.payload)).toMatchObject({ nativeSessionId: "codex-fresh-uuid" });
   });
 
-  it("supersedes historically ambiguous dead rows without selecting a continuity source", async () => {
+  it("在不选择连续性源的情况下取代历史上不明确的死行", async () => {
     const seat = seedSeat();
     alive.delete(seat.sessionName);
     const second = sessionRegistry.registerSession(seat.node.id, "r00-stale-other");
@@ -405,7 +405,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     expect(launchOpts).toEqual({ name: seat.sessionName, resumeToken: undefined });
   });
 
-  it("keeps an auth-attention occupant and projects attention instead of false healthy", async () => {
+  it("保持真实注意力的占用者并投射注意力而不是虚假健康", async () => {
     const seat = seedSeat({ clean: true });
     harnessResult = { ok: false, error: "login required", recovery: "attention_required", evidence: "login" };
     const result = await service.launchFresh({ seatRef: "dev.impl", fresh: true, reason: "auth discriminator" });
@@ -419,7 +419,7 @@ describe("SeatLifecycleService.launchFresh", () => {
     });
   });
 
-  it("compensates a hard startup failure to zero live session and binding while retaining audit tenure", async () => {
+  it("补偿硬启动失败以将实时会话和绑定归零，同时保留审核期限", async () => {
     const seat = seedSeat({ clean: true });
     harnessResult = { ok: false, error: "binary missing" };
     const result = await service.launchFresh({ seatRef: "dev.impl", fresh: true, reason: "hard failure proof" });

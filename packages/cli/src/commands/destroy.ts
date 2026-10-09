@@ -37,7 +37,7 @@ function resolveRuntimeConfig(configStore: Pick<ConfigStore, "resolve">): Resolv
   const effectiveDefaultTranscriptsPath = join(stateRoot, "transcripts");
   const overrideUrl = readOpenRigEnv("OPENRIG_URL", "RIGGED_URL")?.trim();
   if (overrideUrl) {
-    warnings.push(`Ignoring ${overrideUrl} from OPENRIG_URL/RIGGED_URL because rig destroy only operates on local state.`);
+    warnings.push(`已忽略来自 OPENRIG_URL/RIGGED_URL 的 ${overrideUrl}：rig destroy 只操作本地状态。`);
   }
 
   try {
@@ -53,7 +53,7 @@ function resolveRuntimeConfig(configStore: Pick<ConfigStore, "resolve">): Resolv
       warnings,
     };
   } catch (err) {
-    warnings.push(`Failed to read config; using compatibility defaults instead: ${err instanceof Error ? err.message : String(err)}`);
+    warnings.push(`读取配置失败；改用兼容默认值：${err instanceof Error ? err.message : String(err)}`);
     return {
       runtimeConfig: {
         stateRoot,
@@ -89,7 +89,7 @@ function realDestroyDeps(): DestroyDeps {
           return {
             kind: "other_http",
             healthy: false,
-            detail: "Response body was not valid OpenRig health JSON.",
+            detail: "响应体不是有效的 zrig 健康 JSON。",
           };
         }
 
@@ -100,7 +100,7 @@ function realDestroyDeps(): DestroyDeps {
         return {
           kind: "other_http",
           healthy: false,
-          detail: "Response body did not match the OpenRig health contract.",
+          detail: "响应体不符合 zrig 健康契约。",
         };
       } catch {
         return { kind: "unreachable" };
@@ -128,64 +128,64 @@ function printPlan(
   managedTmuxSessions: string[],
   warnings: string[]
 ): void {
-  console.log("DESTROY PLAN");
-  console.log(`  scope: ${scope}`);
-  console.log(`  state root: ${runtimeConfig.stateRoot}`);
-  console.log(`  daemon: http://${runtimeConfig.daemonHost}:${runtimeConfig.daemonPort}`);
-  console.log(`  backup: ${backup ? "enabled" : "disabled"}`);
-  console.log(`  tmux cleanup: ${scope === "all" ? `enabled (${managedTmuxSessions.length} managed session${managedTmuxSessions.length === 1 ? "" : "s"})` : "disabled"}`);
+  console.log("销毁计划");
+  console.log(`  范围：${scope}`);
+  console.log(`  状态根目录：${runtimeConfig.stateRoot}`);
+  console.log(`  后台服务：http://${runtimeConfig.daemonHost}:${runtimeConfig.daemonPort}`);
+  console.log(`  备份：${backup ? "已启用" : "已禁用"}`);
+  console.log(`  tmux 清理：${scope === "all" ? `已启用（${managedTmuxSessions.length} 个受管会话）` : "已禁用"}`);
   for (const warning of warnings) {
-    console.log(`  warning: ${warning}`);
+    console.log(`  警告：${warning}`);
   }
   console.log("");
 }
 
 function printResult(result: Awaited<ReturnType<typeof executeDestroy>>): void {
-  console.log("DESTROY RESULT");
-  console.log(`  daemon: ${result.daemonStopped ? "stopped" : "still responding"}`);
-  console.log(`  port: ${result.portCleared ? "cleared" : "still occupied"}`);
+  console.log("销毁结果");
+  console.log(`  后台服务：${result.daemonStopped ? "已停止" : "仍在响应"}`);
+  console.log(`  端口：${result.portCleared ? "已释放" : "仍被占用"}`);
   if (result.scope === "all") {
-    console.log(`  tmux sessions removed: ${result.tmuxKilled}`);
+    console.log(`  已移除的 tmux 会话：${result.tmuxKilled}`);
     if (result.tmuxMissing > 0) {
-      console.log(`  tmux sessions missing/already gone: ${result.tmuxMissing}`);
+      console.log(`  缺失/已不存在的 tmux 会话：${result.tmuxMissing}`);
     }
   }
   if (result.backupPaths.length > 0) {
     for (const backupPath of result.backupPaths) {
-      console.log(`  backup: ${backupPath}`);
+      console.log(`  备份：${backupPath}`);
     }
   } else if (result.backup) {
-    console.log("  backup: nothing to move");
+    console.log("  备份：无内容可移动");
   }
-  console.log(result.stateRecreated ? `  fresh state root: ${result.stateRoot}` : "  fresh state root: not created (state left untouched)");
+  console.log(result.stateRecreated ? `  新状态根目录：${result.stateRoot}` : "  新状态根目录：未创建（状态未改动）");
   for (const warning of result.warnings) {
-    console.log(`  warning: ${warning}`);
+    console.log(`  警告：${warning}`);
   }
 }
 
 export function destroyCommand(depsOverride?: DestroyCommandDeps): Command {
-  const cmd = new Command("destroy").description("Destroy OpenRig local state for recovery");
+  const cmd = new Command("destroy").description("销毁 zrig 本地状态以进行恢复");
 
   cmd
-    .option("--state", "Destroy OpenRig state and recreate an empty state root")
-    .option("--all", "Destroy OpenRig state and remove managed tmux sessions")
-    .option("--backup", "Move state aside instead of deleting it")
-    .option("--yes", "Confirm the destructive operation")
-    .option("--confirm <token>", `Exact confirmation token: ${DESTROY_CONFIRM_TOKEN}`)
+    .option("--state", "销毁 zrig 状态并重建空的状态根目录")
+    .option("--all", "销毁 zrig 状态并移除受管 tmux 会话")
+    .option("--backup", "把状态移走而不是删除")
+    .option("--yes", "确认执行该破坏性操作")
+    .option("--confirm <token>", `精确确认令牌：${DESTROY_CONFIRM_TOKEN}`)
     .action(async (opts: { state?: boolean; all?: boolean; backup?: boolean; yes?: boolean; confirm?: string }) => {
       const selectedScopes = [opts.state ? "state" : null, opts.all ? "all" : null].filter(Boolean) as DestroyScope[];
       if (selectedScopes.length !== 1) {
-        console.error("Specify exactly one destroy scope: --state or --all");
+        console.error("只能指定一个销毁范围：--state 或 --all");
         process.exitCode = 1;
         return;
       }
       if (!opts.yes) {
-        console.error("Destroy requires --yes");
+        console.error("销毁操作需要 --yes");
         process.exitCode = 1;
         return;
       }
       if (opts.confirm !== DESTROY_CONFIRM_TOKEN) {
-        console.error(`Destroy requires: --confirm ${DESTROY_CONFIRM_TOKEN}`);
+        console.error(`销毁操作需要：--confirm ${DESTROY_CONFIRM_TOKEN}`);
         process.exitCode = 1;
         return;
       }

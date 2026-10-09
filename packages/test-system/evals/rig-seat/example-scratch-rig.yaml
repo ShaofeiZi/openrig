@@ -1,7 +1,7 @@
-# Example scratch rig for run-evals --provider rig --seat-spec (Test-A blocker 3).
-# A one-seat claude-code rig; the eval spawns it, drives the cases, and tears it
-# down. NOTE (drive-side): on the shared daemon this seat sees the live rig graph
-# and behaves as a full agent — verified-blank Test-A needs it ISOLATED.
+# run-evals --provider rig --seat-spec 使用的示例临时工作组（Test-A 阻塞项 3）。
+# 这是一个单席位 claude-code 工作组；评估会创建它、驱动用例，然后关闭它。
+# 注意（驱动端）：在共享后台服务上，此席位会看到实时工作组图并表现为完整智能体——
+# verified-blank Test-A 要求将其隔离。
 version: "0.2"
 name: eval-scratch
 pods:

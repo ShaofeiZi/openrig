@@ -1,7 +1,6 @@
-// OPR.0.4.6.WF4 (C4) — the attention-first ordering that governs every instance
-// altitude (the /workflows groups, the A-lite band, the group sort): exceptions
-// outrank the healthy, live outranks the finished — the NEEDS-YOU-first reading
-// order. Pure logic; the rendered surfaces are proven visually in the VM lease.
+// OPR.0.4.6.WF4（C4）——支配每个实例层级（/workflows 分组、A-lite 条带、分组排序）的
+// 待关注优先顺序：异常排在健康项之前，实时项排在已结束项之前，即 NEEDS-YOU 优先阅读。
+// 此处测试纯逻辑；渲染表面由 VM 租约中的视觉证明覆盖。
 
 import { describe, it, expect } from "vitest";
 import { instanceAttentionRank, selectSpecInstances } from "../src/components/workflow/WorkflowInstancesBand.js";
@@ -55,9 +54,8 @@ describe("WF-4 C4: instanceAttentionRank", () => {
 });
 
 describe("WF-4 guard blocker 2: spec-band version discrimination", () => {
-  // The Library spec page is "runs of THIS spec"; two cached specs can share a
-  // workflowName across versions, so a name-only filter would show the wrong
-  // version's runs. selectSpecInstances must discriminate by name AND version.
+  // 资源库规范页表达“此规范的运行”；两个缓存规范可能跨版本共用 workflowName，因此仅按名称
+  // 筛选会显示错误版本的运行。selectSpecInstances 必须同时区分名称和版本。
   const v1 = inst({ instanceId: "01V1", workflowName: "acme", workflowVersion: "1" });
   const v2 = inst({ instanceId: "01V2", workflowName: "acme", workflowVersion: "2" });
 

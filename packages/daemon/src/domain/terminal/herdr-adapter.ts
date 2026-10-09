@@ -1,59 +1,44 @@
-// OPR.0.4.6.02 C2+FB4 — the herdr TerminalProvider (the proof-gated primary
-// provider). Arm's-length AGPL: it drives the installed herdr's local control
-// SOCKET through the injected `HerdrTransport` (see herdr-transport.ts) and
-// never links herdr.
+// OPR.0.4.6.02 C2+FB4——herdr TerminalProvider（受 proof 门禁保护的主 provider）。
+// 与 AGPL 保持独立：通过注入的 `HerdrTransport`（见 herdr-transport.ts）驱动已安装 herdr 的
+// 本地控制 SOCKET，绝不链接 herdr。
 //
-// FB4 (the VM-RED correction): herdr 0.7.1 has NO `layout` CLI command — the
-// prior CLI shape (`herdr layout apply …`) could never tile (proven RED in the
-// VM at e373f741). herdr's real layout mechanism is the socket `layout.apply`,
-// validated verbatim in research/herdr-socket-captures/herdr-phase3-*.json:
+// FB4（VM-RED 修正）：herdr 0.7.1 没有 `layout` CLI 命令；旧 CLI 形状
+//（`herdr layout apply …`）无法完成平铺，已在 VM e373f741 证明为 RED。herdr 的真实布局机制是
+// socket `layout.apply`，并由 research/herdr-socket-captures/herdr-phase3-*.json 逐字验证：
 //   request  {id, method:"layout.apply",
 //             params:{workspace_id, tab_label, focus, root}}
 //   root     = {type:"split", direction:"right"|"down", ratio, first, second}
 //              | {type:"pane", label, command:[argv…]}
 //   response {id, result:{type:"layout_apply", layout:{workspace_id, tab_id,…}}}
 //
-// Behavior contract (unchanged from the guard-cleared shape):
-//  - ONE atomic `layout.apply` per grid page — the whole page's panes land in
-//    a single request so a page is never half-tiled.
-//  - FRESH tab/workspace on every relaunch (BR-5, not-replace-idempotent):
-//    each open creates its own workspace (`workspace.create`) and the tab
-//    label embeds a per-launch token — and `layout.apply` itself is
-//    empirically non-idempotent (the four-reapply capture shows a re-apply
-//    minting tab t3, never replacing t2), so a re-open can never clobber a
-//    previous view.
-//  - Pane labels ride the layout.apply pane nodes' `label` field (AC-7
-//    `<agent> · <slice>`) — the captures show the label echoed per pane, so
-//    no separate `pane rename` pass is needed (there is no `pane rename` CLI
-//    to shell anyway).
-//  - The composer's `paneCommand` is a SHELL string (`tmux attach -r -t 's'`,
-//    `ssh 'dest' tmux attach …`); the pane node's `command` is an ARGV array —
-//    so it is carried as `["sh", "-c", paneCommand]`, preserving the composed
-//    quoting byte-for-byte without the adapter re-parsing shell.
-//  - Liveness/availability = the socket `ping` (is the multiplexer's OWN
-//    control socket answering — NOT a daemon server ping; HERDR-FINDINGS #3's
-//    intent, carried to the socket transport). No "layout command" probe: the
-//    CLI help surface is irrelevant to the socket API.
-//  - EQUAL auto-grid cells (OPR.0.4.7.1). The layout tree matches the UI
-//    TerminalLauncher suggestLayout shape exactly — cols=ceil(sqrt(N)),
-//    rows=ceil(N/cols): N=2 → 2×1, N=5 → 3×2, N=7 → 3×3 (cols×rows) — built
-//    as equal right-strips per row combined by equal down-strips, using
-//    first-vs-rest ratios (1/N, then 1/(N-1), …; VM pane.layout-verified).
-//    The prior alternating-0.5 BSP is retired: it rendered N=7 as 4×2 with
-//    one double-width cell. Incomplete rectangles are padded with inert
-//    blank panes (cmux's blank-surface precedent); blanks are never
-//    reported as opened seats.
+// 行为契约（与通过 guard 的形状保持一致）：
+//  - 每个网格页只发一个原子 `layout.apply`；整页 pane 在同一请求中落地，绝不会只平铺半页。
+//  - 每次重新打开都创建全新 tab/工作区（BR-5，非替换式幂等）：每次 open 创建自己的工作区
+//    (`workspace.create`)，tab label 嵌入逐 launch token。实测 `layout.apply` 本身不幂等
+//    （四次重应用 capture 显示重应用会创建 tab t3，绝不替换 t2），因此重新打开不会覆盖旧视图。
+//  - Pane 标签写入 layout.apply pane node 的 `label` 字段（AC-7 `<agent> · <slice>`）。
+//    capture 显示每个 pane 都会回显 label，因此无需单独执行 `pane rename`；也不存在可调用的
+//    `pane rename` 命令行。
+//  - composer 的 `paneCommand` 是 shell 字符串（`tmux attach -r -t 's'`、
+//    `ssh 'dest' tmux attach …`），pane node 的 `command` 是 argv 数组，因此以
+//    `["sh", "-c", paneCommand]` 携带，在 adapter 不重新解析 shell 的情况下逐字保留 quoting。
+//  - 存活/可用性由 socket `ping` 决定，即 multiplexer 自身控制 socket 是否响应，而不是后台服务
+//    server ping；这延续 HERDR-FINDINGS #3 的意图。没有“layout command”探针，CLI 帮助表面与
+//    socket API 无关。
+//  - 自动网格单元格等大（OPR.0.4.7.1）。布局树与 UI TerminalLauncher 的 suggestLayout 形状完全
+//    一致：cols=ceil(sqrt(N))，rows=ceil(N/cols)；N=2 → 2×1、N=5 → 3×2、N=7 → 3×3
+//    （cols×rows）。每行由等大的 right strip 构成，再由等大的 down strip 组合，并使用
+//    first-vs-rest 比例（1/N、1/(N-1)…；VM pane.layout 已验证）。旧版交替 0.5 BSP 已退役；
+//    它会把 N=7 渲染为 4×2，并产生一个双宽单元格。不完整矩形使用惰性空白 pane 填充
+//    （沿用 cmux 空白表面先例），空白 pane 绝不报告为已打开席位。
 //
-// The `workspace.create` response envelope is VM-confirmed (OPR.0.4.7.1):
+// `workspace.create` 响应 envelope 已由 VM 确认（OPR.0.4.7.1）：
 // `result.workspace.workspace_id` + `result.tab.tab_id` + `result.root_pane`.
-// Extraction stays null-safe/defensive for older builds (extractWorkspaceId).
-// OPR.0.6.0.8: issue #26 is the live evidence the earlier ruling waited for — users
-// landed on the create's blank default tab. After layout the adapter focuses the
-// first populated tab it knows (tab.focus) and then closes the starting tab (tab.close)
-// only when it is known blank: every page applied and reported a tab id, and none is
-// the starting tab. Otherwise the starting tab is kept and the result says so. Both methods are in
-// herdr 0.7.1's socket API (`herdr tab focus|close <tab_id>`); a refusal of either
-// is reported as a note, never as a failed seat.
+// 对旧版构建，提取过程保持 null-safe 且防御性（extractWorkspaceId）。OPR.0.6.0.8：issue #26
+// 是早先裁决等待的线上证据——用户会落在 create 创建的空默认 tab。布局后 adapter 会聚焦它知道的
+// 第一个非空 tab（tab.focus），并且仅在确定起始 tab 为空时将其关闭（tab.close）：每页均已应用并
+// 报告 tab id，且没有一个是起始 tab。否则保留起始 tab，并在结果中说明。两个方法都属于 herdr
+// 0.7.1 socket API（`herdr tab focus|close <tab_id>`）；任一被拒都只报告 note，绝不标记席位失败。
 
 import type {
   AbsentSeat,
@@ -72,17 +57,17 @@ import type {
 } from "./herdr-transport.js";
 import { autoGridCols } from "../cmux-layout-service.js";
 
-/** Sentinel host for herdr-surface degrades (a pane herdr itself failed to render). */
+/** herdr 表面降级使用的主机哨兵，即 herdr 自身未能渲染 pane。 */
 const HERDR_SURFACE_HOST = "herdr";
 
-/** A herdr layout-tree pane leaf — `command` is an ARGV array (capture-verified). */
+/** herdr 布局树的 pane 叶节点；`command` 为 argv 数组，已经 capture 验证。 */
 export interface HerdrPaneNode {
   type: "pane";
   label: string;
   command: string[];
 }
 
-/** A herdr layout-tree binary split (capture-verified shape). */
+/** herdr 布局树的二叉 split；形状已经 capture 验证。 */
 export interface HerdrSplitNode {
   type: "split";
   direction: "right" | "down";
@@ -94,10 +79,9 @@ export interface HerdrSplitNode {
 export type HerdrLayoutNode = HerdrPaneNode | HerdrSplitNode;
 
 /**
- * Combine N nodes into an equal N-way strip along one direction. PURE.
- * Equal N-way BSP is first-vs-rest at ratio 1/N, recursively 1/(N-1) —
- * NOT midpoint 0.5 (the VM-reproduced defect: alternating 0.5 splits gave
- * N=7 a 4×2 layout with one double-width cell instead of the promised 3×3).
+ * 沿一个方向把 N 个节点组合为等大的 N 路条带；纯函数。等大 N 路 BSP 采用 first-vs-rest，
+ * 比例依次为 1/N、1/(N-1)，而非中点 0.5。VM 已复现旧缺陷：交替 0.5 split 会把 N=7
+ * 渲染为带一个双宽单元格的 4×2，而不是承诺的 3×3。
  */
 export function equalStrip(nodes: HerdrLayoutNode[], direction: "right" | "down"): HerdrLayoutNode {
   if (nodes.length === 1) return nodes[0]!;
@@ -110,21 +94,19 @@ export function equalStrip(nodes: HerdrLayoutNode[], direction: "right" | "down"
   };
 }
 
-/** An inert blank pane — pads an incomplete grid rectangle (cmux's blank-surface precedent). */
+/** 惰性空白 pane；用于填充不完整网格矩形，沿用 cmux 空白表面先例。 */
 function blankPane(): HerdrPaneNode {
   return { type: "pane", label: "", command: ["sh"] };
 }
 
 /**
- * Build the EQUAL auto-grid layout tree for one page of panes. PURE. The grid
- * shape matches the UI TerminalLauncher `suggestLayout` exactly —
+ * 为一页 pane 构建等大 auto-grid 布局树；纯函数。网格形状与 UI TerminalLauncher 的
+ * `suggestLayout` 完全一致：
  * cols = ceil(sqrt(N)), rows = ceil(N/cols): N=2 → 2×1, N=5 → 3×2, N=7 → 3×3
- * (cols×rows). An incomplete rectangle is padded with inert blank panes so
- * every cell is the same size; blanks are layout filler only — they are never
- * reported as opened seats. Each real leaf runs the composer's shell
- * `paneCommand` via `["sh","-c",…]` so the composed quoting (read-only `-r`,
- * ssh-wrap) is preserved untouched. Rows are built as equal `right` strips,
- * then combined with equal `down` strips.
+ *（cols×rows）。不完整矩形用惰性空白 pane 填充，使每个单元格等大；空白只用于布局，绝不报告为
+ * 已打开席位。每个真实叶节点通过 `["sh","-c",…]` 运行 composer 的 shell `paneCommand`，
+ * 原样保留组合后的 quoting（只读 `-r`、ssh 包装）。先把各行构建为等大的 `right` 条带，
+ * 再用等大的 `down` 条带组合。
  */
 export function buildGridRoot(panes: ComposedPane[]): { root: HerdrLayoutNode; blanks: number; columns: number; rows: number } {
   const cols = autoGridCols(panes.length);
@@ -143,27 +125,26 @@ export function buildGridRoot(panes: ComposedPane[]): { root: HerdrLayoutNode; b
   return { root: equalStrip(rowStrips, "down"), blanks, columns: cols, rows };
 }
 
-/** The per-page socket request plan — pure, so it is asserted directly in tests. */
+/** 逐页 socket 请求计划；纯函数，因此测试会直接断言。 */
 export interface HerdrPagePlan {
-  /** Fresh tab label for this page (embeds the launch token → fresh-on-relaunch). */
+  /** 本页的新 tab label；嵌入 launch token，保证重新启动时新建。 */
   tabLabel: string;
-  /** The whole page's layout tree — ONE atomic layout.apply request body. */
+  /** 整页布局树；作为一个原子 layout.apply 请求 body。 */
   root: HerdrLayoutNode;
-  /** Inert blank leaves padding the grid rectangle (never reported as opened). */
+  /** 填充网格矩形的惰性空白叶节点；绝不报告为已打开。 */
   blanks: number;
 }
 
 export interface HerdrLayoutPlan {
-  /** The label for the fresh per-open workspace (same token discipline as tabs). */
+  /** 每次 open 创建的新工作区标签；使用与 tab 相同的 token 规则。 */
   workspaceLabel: string;
   pages: HerdrPagePlan[];
 }
 
 /**
- * Build the herdr socket plan for a composed view. PURE — no I/O. Each page
- * gets a fresh tab labeled `${tabPrefix}:${view.id}#${launchToken}/<pageIndex>`;
- * two calls with different `launchToken`s produce DIFFERENT labels, which is
- * exactly the fresh-tab-on-relaunch (not-replace) invariant.
+ * 为组合视图构建 herdr socket 计划；纯函数，无 I/O。每页获得一个标签为
+ * `${tabPrefix}:${view.id}#${launchToken}/<pageIndex>` 的新 tab；不同 `launchToken` 的两次调用
+ * 产生不同标签，这正是重新启动时创建新 tab 而非替换的不变量。
  */
 export function planHerdrLayout(
   view: ComposedView,
@@ -171,8 +152,8 @@ export function planHerdrLayout(
   tabPrefix: string = "openrig",
 ): HerdrLayoutPlan {
   const base = `${tabPrefix}:${view.id}#${launchToken}`;
-  // The workspace is named for people: the rig name for a rig view, else the view id.
-  // Tab labels keep the launch token, so every open is still a fresh, distinct space.
+  // 工作区名称面向人类：工作组视图使用工作组名，其他视图使用 view id。Tab label 保留 launch token，
+  // 因而每次 open 仍是全新且独立的空间。
   const workspaceLabel = view.id.startsWith("rig:") ? view.id.slice("rig:".length) : view.id;
   const pages: HerdrPagePlan[] = view.pages.map((page, pageIndex) => {
     const grid = buildGridRoot(page);
@@ -186,13 +167,11 @@ export function planHerdrLayout(
 }
 
 /**
- * Extract the created workspace's id from a `workspace.create` result body.
- * The live envelope is VM-confirmed (OPR.0.4.7.1): `result.workspace.
- * workspace_id` + `result.tab.tab_id` + `result.root_pane` — covered by the
- * nested-`workspace` home below. The other defensive homes are retained
- * (top-level `workspace_id`, nested `layout`, bare `id`) for older builds.
- * Returns null when nothing string-shaped is found (the caller degrades
- * honestly rather than guessing).
+ * 从 `workspace.create` 结果 body 提取已创建工作区 id。线上 envelope 已由 VM 确认
+ *（OPR.0.4.7.1）：`result.workspace.workspace_id` + `result.tab.tab_id` +
+ * `result.root_pane`，由下方嵌套 `workspace` 分支覆盖。为旧版构建保留其他防御性位置
+ *（顶层 `workspace_id`、嵌套 `layout`、裸 `id`）。找不到字符串形状时返回 null，
+ * 调用方会诚实降级而非猜测。
  */
 export function extractWorkspaceId(result: HerdrResult): string | null {
   const direct = result["workspace_id"];
@@ -213,19 +192,18 @@ export function extractWorkspaceId(result: HerdrResult): string | null {
 export interface HerdrAdapterDeps {
   transportFactory: HerdrTransportFactory;
   /**
-   * Mint a fresh launch token per `openView` so a relaunch creates a new tab
-   * (BR-5). Injectable for deterministic tests. Default: a per-instance
-   * monotonic counter (unique within a daemon lifetime).
+   * 每次 `openView` 生成新的 launch token，使重新启动创建新 tab（BR-5）。确定性测试可注入；
+   * 默认使用逐实例单调计数器，在后台服务生命周期内唯一。
    */
   newLaunchToken?: () => string;
-  /** Tab-name prefix (default `openrig`). */
+  /** Tab 名称前缀，默认为 `openrig`。 */
   tabPrefix?: string;
 }
 
-/** Herdr lays out 4×4 per tab (OPR.0.6.0.8); cmux keeps the composer default. */
+/** Herdr 每个 tab 按 4×4 布局（OPR.0.6.0.8）；cmux 保留 composer 默认值。 */
 export const HERDR_PANES_PER_PAGE = 16;
 
-/** A `tab_id` from a herdr result body (`result.tab.tab_id`, `result.layout.tab_id`, or top-level). */
+/** 从 herdr 结果 body 读取 `tab_id`：`result.tab.tab_id`、`result.layout.tab_id` 或顶层字段。 */
 export function extractTabId(result: HerdrResult | null | undefined): string | null {
   if (!result) return null;
   if (typeof result["tab_id"] === "string" && result["tab_id"]) return result["tab_id"] as string;
@@ -239,7 +217,7 @@ export function extractTabId(result: HerdrResult | null | undefined): string | n
   return null;
 }
 
-/** Workspace labels from a `workspace.list` result body; [] when the shape is unknown. */
+/** 从 `workspace.list` 结果 body 读取工作区标签；形状未知时返回 []。 */
 export function extractWorkspaceLabels(result: HerdrResult | null | undefined): string[] {
   const list = result?.["workspaces"];
   if (!Array.isArray(list)) return [];
@@ -269,24 +247,23 @@ export class HerdrAdapter implements TerminalProvider {
         provider: this.name,
         available: probe.alive,
         ...(probe.version ? { version: probe.version } : {}),
-        // The socket answering ping IS the capability surface: layout.apply is
-        // the protocol's layout verb (there is no per-command discovery on
-        // 0.7.1 — `api schema` is absent; HERDR-FINDINGS §3).
+        // socket 响应 ping 本身就是能力表面：layout.apply 是协议的布局动词；0.7.1 没有逐命令发现，
+        // `api schema` 也不存在（HERDR-FINDINGS §3）。
         capabilities: { socket: probe.alive, "layout.apply": probe.alive },
       };
     } catch {
-      // An unreachable socket (herdr not running) = honestly unavailable.
+      // socket 不可达（herdr 未运行）时，如实报告不可用。
       return { provider: this.name, available: false, capabilities: {} };
     }
   }
 
   async liveness(): Promise<ProviderLiveness> {
-    // Liveness is the multiplexer's OWN control socket answering ping.
+    // 存活性指 multiplexer 自身控制 socket 响应 ping。
     try {
       const probe = await this.transport.probe();
       return probe.alive
         ? { alive: true }
-        : { alive: false, detail: "herdr control socket is not answering ping" };
+        : { alive: false, detail: "herdr 控制 socket 未响应 ping" };
     } catch (err) {
       return { alive: false, detail: err instanceof Error ? err.message : String(err) };
     }
@@ -297,8 +274,8 @@ export class HerdrAdapter implements TerminalProvider {
     const degraded: DegradedSeat[] = [...view.degraded];
     const opened: string[] = [];
 
-    // Gate on the socket being alive — the honest "herdr isn't running" refuse.
-    // (No CLI-help "layout command" probe: the socket API is the layout surface.)
+    // 以 socket 存活为门禁，如实拒绝“herdr 未运行”的情况。无需探测 CLI help 中的
+    // “layout command”，因为 socket API 才是布局表面。
     const probe = await this.transport.probe();
     if (!probe.alive) {
       return {
@@ -308,7 +285,7 @@ export class HerdrAdapter implements TerminalProvider {
         absent,
         degraded,
         pages: 0,
-        error: "herdr control socket is not answering ping; is herdr running?",
+        error: "herdr 控制 socket 未响应 ping；herdr 是否正在运行？",
         code: "herdr_unavailable",
       };
     }
@@ -316,7 +293,7 @@ export class HerdrAdapter implements TerminalProvider {
     const launchToken = this.newLaunchToken();
     const plan = planHerdrLayout(view, launchToken, this.tabPrefix);
 
-    // Nothing to tile (an all-absent/degraded view) → no workspace side effect.
+    // 没有内容可平铺（视图全部 absent/degraded）时，不产生工作区副作用。
     if (plan.pages.length === 0) {
       return {
         provider: this.name,
@@ -328,10 +305,9 @@ export class HerdrAdapter implements TerminalProvider {
       };
     }
 
-    // A fresh workspace per open (BR-5 fresh-on-relaunch, strongest form).
-    // The labeled create is tried first. If herdr refuses it and a workspace with
-    // that label already exists, retry once with a numbered suffix and say so;
-    // otherwise fall back ONCE to a bare create before degrading.
+    // 每次 open 都创建全新工作区（BR-5 fresh-on-relaunch 的最强形式）。先尝试带 label 创建；
+    // 若 herdr 拒绝且同 label 工作区已存在，则附加数字后缀重试一次并明确说明；否则在降级前
+    // 只回退一次裸 create。
     const notes: string[] = [];
     let workspaceId: string | null = null;
     let defaultTabId: string | null = null;
@@ -356,7 +332,7 @@ export class HerdrAdapter implements TerminalProvider {
           defaultTabId = extractTabId(created);
           if (workspaceId != null) {
             createErr = null;
-            notes.push(`A workspace named "${plan.workspaceLabel}" already exists, so this one is "${suffixed}".`);
+            notes.push(`名为“${plan.workspaceLabel}”的工作区已存在，因此新工作区命名为“${suffixed}”。`);
           }
         } catch (err) {
           createErr = createErr ?? err;
@@ -368,20 +344,20 @@ export class HerdrAdapter implements TerminalProvider {
         const created = await this.transport.request("workspace.create", { focus: false });
         workspaceId = extractWorkspaceId(created);
         defaultTabId = extractTabId(created);
-        if (workspaceId != null) notes.push(`herdr refused the workspace name "${plan.workspaceLabel}"; the workspace is unnamed.`);
+        if (workspaceId != null) notes.push(`herdr 拒绝了工作区名称“${plan.workspaceLabel}”；该工作区未命名。`);
         createErr = null;
       } catch (err) {
         createErr = createErr ?? err;
       }
     }
     if (workspaceId == null) {
-      // No workspace → nothing can tile. Degrade every pane honestly.
-      const reason = `herdr workspace.create failed: ${
+      // 没有工作区就无法平铺；如实降级每个 pane。
+      const reason = `herdr workspace.create 失败：${
         createErr instanceof Error
           ? createErr.message
           : createErr != null
             ? String(createErr)
-            : "no workspace id in the response"
+            : "响应中没有 workspace id"
       }`;
       for (const page of view.pages) {
         for (const pane of page) {
@@ -402,14 +378,14 @@ export class HerdrAdapter implements TerminalProvider {
 
     const appliedTabIds: string[] = [];
     let firstPopulatedTabId: string | null = null;
-    // The starting tab is known blank only if every page applied AND reported its tab id:
-    // an id-less reply or a failed (possibly still effective) apply may have used it.
+    // 只有每页都应用成功并报告 tab id 时，才能确定起始 tab 为空；无 id 响应或失败但可能已生效的
+    // apply 都可能使用了它。
     let everyPageKnown = true;
     for (let pageIndex = 0; pageIndex < plan.pages.length; pageIndex++) {
       const pagePlan = plan.pages[pageIndex]!;
       const pagePanes = view.pages[pageIndex]!;
       try {
-        // ONE atomic layout.apply for the whole page (capture-verified shape).
+        // 整页只发一个原子 layout.apply；形状已由 capture 验证。
         const applied = await this.transport.request("layout.apply", {
           workspace_id: workspaceId,
           tab_label: pagePlan.tabLabel,
@@ -421,32 +397,32 @@ export class HerdrAdapter implements TerminalProvider {
         for (const pane of pagePanes) opened.push(pane.seat);
       } catch (err) {
         everyPageKnown = false;
-        // The whole page failed to apply — degrade its seats honestly.
+        // 整页应用失败：如实降级该页席位。
         for (const pane of pagePanes) {
           degraded.push({
             seat: pane.seat,
             host: HERDR_SURFACE_HOST,
-            reason: `herdr layout.apply failed: ${err instanceof Error ? err.message : String(err)}`,
+            reason: `herdr layout.apply 失败：${err instanceof Error ? err.message : String(err)}`,
           });
         }
       }
     }
 
-    // Land on a known populated tab, then remove the create's starting tab (#26) only when it is
-    // known to be blank. When that is uncertain the tab is kept: closing it could remove seats.
+    // 先落到已知非空 tab，再仅在确认 create 的起始 tab 为空时将其移除（#26）。无法确定时保留，
+    // 因为关闭它可能移除席位。
     if (opened.length > 0) {
       if (firstPopulatedTabId) {
         try { await this.transport.request("tab.focus", { tab_id: firstPopulatedTabId }); }
-        catch (err) { notes.push(`herdr did not focus the first tab: ${err instanceof Error ? err.message : String(err)}`); }
+        catch (err) { notes.push(`herdr 未聚焦第一个 tab：${err instanceof Error ? err.message : String(err)}`); }
       } else {
-        notes.push("herdr returned no tab id for any page, so no tab was focused explicitly.");
+        notes.push("herdr 未为任何页面返回 tab id，因此未显式聚焦 tab。");
       }
       if (defaultTabId) {
         if (!everyPageKnown) {
-          notes.push("The starting tab was kept because it could not be confirmed empty.");
+          notes.push("无法确认起始 tab 为空，因此予以保留。");
         } else if (!appliedTabIds.includes(defaultTabId)) {
           try { await this.transport.request("tab.close", { tab_id: defaultTabId }); }
-          catch (err) { notes.push(`herdr kept the blank starting tab: ${err instanceof Error ? err.message : String(err)}`); }
+          catch (err) { notes.push(`herdr 保留了空白起始 tab：${err instanceof Error ? err.message : String(err)}`); }
         }
       }
     }

@@ -1,16 +1,16 @@
-// OPR.0.4.3.06 forward-fix — the topology node must CONSUME + render the
-// startup-proof orientation verdict, not carry it silently in node data while
-// defaulting green. Keystone: a `rejected`/`missing` orientation renders its
-// own non-verified label; a bare-ACK-derived `rejected` NEVER renders as
-// verified/proven; `verified` renders verified; `n-a` (resumed/non-agent) is
-// hidden (mirrors the RESTORE badge).
+// OPR.0.4.3.06 前瞻修复——topology 节点必须消费 + 渲染
+// startup-proof orientation 判定，而非静默藏于节点数据并
+// 默认绿。Keystone：`rejected`/`missing` orientation 渲染其
+// 自有未验证标签；裸 ACK 派生的 `rejected` 绝不渲染为
+// verified/proven；`verified` 渲染 verified；`n-a`（resumed/non-agent）
+// 隐藏（镜像 RESTORE 徽章）。
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { ReactFlowProvider } from "@xyflow/react";
 
-// Heavy leaves are only mounted when the terminal popover opens; stub them so a
-// plain node render never reaches xterm/WebSocket.
+// 重叶子仅在 terminal popover 打开时挂载；stub 它们，使
+// 纯节点渲染永不触达 xterm/WebSocket。
 vi.mock("../src/components/terminal/FocusedTerminal.js", () => ({
   FocusedTerminal: ({ sessionName }: { sessionName: string }) => <div data-testid={`live-${sessionName}`} />,
 }));
@@ -37,8 +37,8 @@ function renderNode(oriented: string | undefined) {
           runtime: "claude-code",
           model: null,
           status: "running",
-          // `ready` = delivered/interactive — the exact green-default state the
-          // 19/21 gap hides an unverified orientation behind.
+          // `ready` = delivered/interactive——正是 19/21 缺口
+          // 把未验证 orientation 藏在后面的绿默认态。
           startupStatus: "ready" as const,
           canonicalSessionName: "dev-impl@test-rig",
           binding: { tmuxSession: "dev-impl@test-rig", cmuxSurface: "s1" },
@@ -54,7 +54,7 @@ describe("RigNode startup-proof orientation badge (OPR.0.4.3.06)", () => {
     renderNode("rejected");
     const badge = screen.getByTestId("orientation-badge");
     expect(badge.textContent).toContain("rejected");
-    // Keystone: a rejected (incl. bare-ACK) proof must NEVER read as verified.
+    // Keystone：rejected（含裸 ACK）proof 绝不读作 verified。
     expect(badge.textContent).not.toMatch(/verified|proven|oriented(?!:)/i);
   });
 

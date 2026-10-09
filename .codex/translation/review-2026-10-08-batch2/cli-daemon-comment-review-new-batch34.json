@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch34",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/daemon/test/slack-images.test.ts",
+      "before_sha256_16": "d2209be3f1f06cf1",
+      "after_sha256_16": "d4ed316861ccb358",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/ask-wake.test.ts",
+      "before_sha256_16": "7e0236d8025e46c2",
+      "after_sha256_16": "0e2a746d2f7f6a86",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/fork.test.ts",
+      "before_sha256_16": "a0099caef431290d",
+      "after_sha256_16": "aef730ec4bb1baf8",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/host-registry-write.test.ts",
+      "before_sha256_16": "ace04edbb10d89de",
+      "after_sha256_16": "9034bd27e9caa013",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/parked-verb.test.ts",
+      "before_sha256_16": "11d7cc77ea5bdf8b",
+      "after_sha256_16": "41d53bcbad80f361",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

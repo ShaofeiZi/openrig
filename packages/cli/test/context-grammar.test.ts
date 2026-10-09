@@ -1,13 +1,12 @@
-// ATOM-7 (slice-03 rig-context) — STRIP + RENAME grammar pins.
+// ATOM-7（slice-03 rig-context）——STRIP + RENAME 语法 pin。
 //
-// Founder-locked SPEC §5 / §7:
-//   - the context-window USAGE VIEWER is KILLED ENTIRELY (remove the command);
-//   - bare `rig context` = the library (list/help), full stop;
-//   - the `rig context-pack` grammar is RETIRED ENTIRELY — ONE grammar, no
-//     deprecated alias, no merged-noun ghost.
+// 创始人锁定的 SPEC §5 / §7：
+//   - context-window 用量查看器被完全移除（删命令）；
+//   - 裸 `rig context` = 库（list/help），句号；
+//   - `rig context-pack` 语法被完全退役——一种语法，无弃用别名、无合并名词幽灵。
 //
-// These pins drive the REAL assembled top-level program (createProgram) so
-// "help clean / no orphan machinery reachable" is proven at the wiring, not
+// 这些 pin 驱动真实装配的顶层程序（createProgram），使
+// “help 干净 / 无孤儿机制可达”在接线层被证明，而非
 // just at a leaf function.
 
 import { describe, it, expect } from "vitest";

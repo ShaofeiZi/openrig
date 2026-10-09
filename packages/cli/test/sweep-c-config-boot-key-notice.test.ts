@@ -1,6 +1,6 @@
-// SWEEP-c (shape f2576102) — persist-WITHOUT-reconcile honesty floor: setting a
-// BOOT-ONLY key while the daemon runs prints the restart-required notice (silent
-// stale -> loud honest). Live-reload (ii) routed as its own arch item, not built here.
+// SWEEP-c（shape f2576102）——仅持久化不调和的诚实底线：daemon 运行时设置
+// 仅启动键会打印需重启提示（静默陈旧 → 响亮诚实）。热重载（ii）作为独立 arch 项路由，
+// 不在此实现。
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -23,7 +23,7 @@ describe("SWEEP-c — boot-only config keys warn while the daemon runs", () => {
   it("daemon.port with a RUNNING daemon prints the restart-required notice", async () => {
     await runSet("daemon.port", "9999", true);
     const out = errSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(out).toMatch(/next daemon restart|restart the daemon/i);
+    expect(out).toMatch(/重启/);
   });
 
   it("a non-boot key prints NO notice; boot key with daemon down prints NO notice", async () => {

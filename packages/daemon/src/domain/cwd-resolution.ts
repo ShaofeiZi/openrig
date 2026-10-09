@@ -36,5 +36,5 @@ export function getOpenRigInstallCwdError(
   if (!isPathInsideRoot(resolvedCwd, installRoot)) {
     return null;
   }
-  return `Resolved cwd '${resolvedCwd}' is inside the OpenRig installation '${installRoot}', which is not a valid project workspace. Pass --cwd <path> to launch into your project directory.`;
+  return `解析得到的 cwd '${resolvedCwd}' 位于 zrig 安装目录 '${installRoot}' 内，这不是有效的项目工作区。请传入 --cwd <path>，从你的项目目录启动。`;
 }

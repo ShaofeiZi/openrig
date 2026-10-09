@@ -142,7 +142,7 @@ function staleConductorObservations(): HealthDetectorObservation[] {
       kind: "coordination-lineage",
       lineageId: subject.lineage,
       coordinationTransitions: subject.transitionIds.length,
-      productStateChanges: null, // The recorded full-day fixture has no product-outcome census.
+      productStateChanges: null, // 已记录的全天 fixture 没有 product-outcome census。
       boundedAuthority: false,
       reviewReturns: 0,
       candidateChanges: 1,
@@ -183,8 +183,8 @@ function simpleSource(
   };
 }
 
-describe("deterministic health detectors", () => {
-  it("preserves supported conductor signals without inventing a ceremony denominator", () => {
+describe("确定性 health detector", () => {
+  it("保留有依据的 conductor 信号，且不虚构 ceremony 分母", () => {
     const records = evaluateHealthDetectors(staleConductorObservations());
     expect(records.map((record) => record.detector)).toEqual([
       "governance.stale-directive",
@@ -197,10 +197,10 @@ describe("deterministic health detectors", () => {
     expect(records.every((record) => record.window.startedAt === corpus.cases.staleConductor.window.startedAt)).toBe(true);
     expect(records.every((record) => record.evidence.length > 0)).toBe(true);
     expect(records.find((record) => record.detector === "process.ceremony-amplification")?.explanation)
-      .toContain("product-outcome census unavailable, so no ratio is computed");
+      .toContain("产品结果统计不可用，因此不计算比例");
   });
 
-  it("does not mistake signed quiescence breadth for ceremony amplification", () => {
+  it("不会把已签署 quiescence 的广度误判为 ceremony amplification", () => {
     const subject = corpus.cases.signedQuiescence;
     const endedAt = "2026-09-04T05:20:58Z";
     const receipt = adaptLifecycleReceiptEvidence({
@@ -224,7 +224,7 @@ describe("deterministic health detectors", () => {
     expect(records).toEqual([]);
   });
 
-  it("requires unchanged candidates and no new risk class before calling a review carousel", () => {
+  it("只有 candidate 不变且没有新 risk class 时才判为 review carousel", () => {
     const scope = { type: "slice", projectId: "openrig", missionId: "release-0.5.10", sliceId: "S04" } as const;
     const evidence = queueEvidence({ sourceOrder: 0, transitionId: 1, observedAt: "2026-09-03T10:30:00Z" });
     const base = simpleSource(scope, evidence);
@@ -246,7 +246,7 @@ describe("deterministic health detectors", () => {
     expect(evaluateHealthDetectors([{ ...observation, reviewReturns: 1 }])).toEqual([]);
   });
 
-  it("subtracts useful rescue wakes and requires an already-recorded next action", () => {
+  it("减去有用的 rescue wake，并要求已记录 next action", () => {
     const scope = { type: "mission", projectId: "openrig", missionId: "release-0.5.10" } as const;
     const evidence = adaptWatchdogHistoryEvidence({
       historyId: "history-a",
@@ -269,7 +269,7 @@ describe("deterministic health detectors", () => {
     expect(evaluateHealthDetectors([{ ...base, existingNextAction: false }])).toEqual([]);
   });
 
-  it("requires a structured phase or rigor conflict for stale directives", () => {
+  it("stale directive 必须存在结构化 phase 或 rigor 冲突", () => {
     const scope = { type: "mission", projectId: "openrig", missionId: "release-0.5.10" } as const;
     const evidence = adaptWatchdogHistoryEvidence({
       historyId: "history-a",
@@ -294,7 +294,7 @@ describe("deterministic health detectors", () => {
     expect(evaluateHealthDetectors([{ ...base, conflictSourceAddress: null }])).toEqual([]);
   });
 
-  it("emits scope-admission drift only when an active mission declares an available rule", () => {
+  it("仅当 active mission 声明可用规则时才发出 scope-admission drift", () => {
     const subject = corpus.cases.scopeAdmissionCandidate;
     const work = adaptWorkGraphEvidence({
       sourceOrder: 0,
@@ -322,7 +322,7 @@ describe("deterministic health detectors", () => {
     expect(evaluateHealthDetectors([{ ...base, missionActive: false }])).toEqual([]);
   });
 
-  it("reports fresh pressure, a natural clear, and stale pressure honestly", () => {
+  it("如实报告 fresh pressure、自然 clear 与 stale pressure", () => {
     const scope = { type: "seat", rigId: "rig-a", seatId: "seat-a" } as const;
     const freshPressure = adaptContextUsageEvidence("seat-a", {
       availability: "known", reason: null, source: "codex_token_count_jsonl",
@@ -413,7 +413,7 @@ describe("deterministic health detectors", () => {
       .toMatchObject({ detector: "context.pressure", status: "indeterminate" });
   });
 
-  it("keeps the replay's ordinary productive, rescue, stale, and unavailable controls non-active", () => {
+  it("使 replay 中普通 productive、rescue、stale 与 unavailable 对照项保持非 active", () => {
     const controls = new Map(corpus.cases.ordinaryControls.map((item) => [item.id, item]));
     const mission = { type: "mission", projectId: "openrig", missionId: "ordinary-controls" } as const;
     const seat = { type: "seat", rigId: "rig-a", seatId: "seat-a" } as const;
@@ -518,7 +518,7 @@ describe("deterministic health detectors", () => {
     }])).toEqual([]);
   });
 
-  it("deduplicates one continuing episode and returns deterministic bytes across input order", () => {
+  it("去重同一个持续 episode，并在不同输入顺序下返回确定性字节", () => {
     const observations = staleConductorObservations();
     const refreshed = {
       ...observations[0]!,
@@ -532,8 +532,8 @@ describe("deterministic health detectors", () => {
   });
 });
 
-describe("daemon health projection route", () => {
-  it("exposes bounded list/detail reads from live context telemetry and no write verb", async () => {
+describe("daemon health projection 路由", () => {
+  it("从 live context telemetry 暴露有界 list/detail 读取，且没有写入 verb", async () => {
     const db = createFullTestDb();
     try {
       db.exec(usageSamplesSchema.sql);
@@ -673,7 +673,7 @@ describe("daemon health projection route", () => {
     }
   });
 
-  it("evaluates its source once per list or detail request", () => {
+  it("每次 list 或 detail 请求只评估一次 source", () => {
     let reads = 0;
     const service = new HealthProjectionService({
       read: () => {

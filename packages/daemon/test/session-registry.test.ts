@@ -27,7 +27,7 @@ function seedRig(db: Database.Database) {
   ).run("node-2", "rig-1", "dev1-qa", "qa", "codex");
 }
 
-describe("SessionRegistry", () => {
+describe("SessionRegistry 会话注册表", () => {
   let db: Database.Database;
   let registry: SessionRegistry;
 
@@ -41,7 +41,7 @@ describe("SessionRegistry", () => {
     db.close();
   });
 
-  it("registerSession persists and returns typed Session", () => {
+  it("registerSession 持久化并返回 typed Session", () => {
     const session = registry.registerSession("node-1", "r01-dev1-impl");
     expect(session.id).toBeDefined();
     expect(typeof session.id).toBe("string");
@@ -51,19 +51,19 @@ describe("SessionRegistry", () => {
     expect(session.createdAt).toBeDefined();
   });
 
-  it("registerSession with invalid nodeId throws", () => {
+  it("registerSession 使用无效 nodeId 时抛错", () => {
     expect(() =>
       registry.registerSession("nonexistent", "r01-dev1-impl")
     ).toThrow();
   });
 
-  it("registerSession accepts r01-orchestrator (valid under relaxed pattern)", () => {
+  it("registerSession 接受 r01-orchestrator（relaxed pattern 下有效）", () => {
     expect(() =>
       registry.registerSession("node-1", "r01-orchestrator")
     ).not.toThrow();
   });
 
-  it("registerSession rejects invalid session name (no rNN- prefix)", () => {
+  it("registerSession 拒绝无效 session name（无 rNN- prefix）", () => {
     expect(() =>
       registry.registerSession("node-1", "random-session-name")
     ).toThrow(/session name/i);
@@ -72,19 +72,19 @@ describe("SessionRegistry", () => {
       registry.registerSession("node-1", "my-tmux-session")
     ).toThrow(/session name/i);
 
-    // Missing rNN- prefix
+    // 缺少 rNN- prefix
     expect(() =>
       registry.registerSession("node-1", "orchestrator")
     ).toThrow(/session name/i);
 
-    // Valid names should not throw
+    // 有效名称不应抛错
     expect(() =>
       registry.registerSession("node-2", "r01-dev1-impl")
     ).not.toThrow();
   });
 
-  // NS-T04: updateResumeToken
-  it("updateResumeToken persists type and token", () => {
+  // NS-T04：updateResumeToken
+  it("updateResumeToken 持久化 type 与 token", () => {
     const session = registry.registerSession("node-1", "r01-dev1-impl");
     registry.updateResumeToken(session.id, "claude_id", "abc-123-def");
 
@@ -94,7 +94,7 @@ describe("SessionRegistry", () => {
     expect(updated!.resumeToken).toBe("abc-123-def");
   });
 
-  it("recordResumeAttempt preserves unverified lineage without certifying it", () => {
+  it("recordResumeAttempt 保留 unverified lineage，但不认证它", () => {
     const session = registry.registerSession("node-1", "r01-dev1-impl");
 
     expect(registry.recordResumeAttempt(session.id, " claude_id ", " attempted-token ")).toBe(true);
@@ -107,7 +107,7 @@ describe("SessionRegistry", () => {
     expect(updated.resumeLastProbeStatus).toBeNull();
   });
 
-  it("recordResumeAttempt does not overwrite stronger live evidence", () => {
+  it("recordResumeAttempt 不覆盖更强的 live evidence", () => {
     const session = registry.registerSession("node-1", "r01-dev1-impl");
     registry.updateResumeToken(session.id, "codex_id", "hook-token", "hook");
 
@@ -120,7 +120,7 @@ describe("SessionRegistry", () => {
     expect(updated.resumeLastProbeStatus).toBe("resumable");
   });
 
-  // OPR.0.4.0.22 — operator/attested provenance OUTRANKS hook + scrape.
+  // OPR.0.4.0.22——operator/attested provenance 优先于 hook + scrape。
   function provenanceOf(sessionId: string): string | null {
     const row = db.prepare("SELECT resume_provenance FROM sessions WHERE id = ?").get(sessionId) as { resume_provenance: string | null } | undefined;
     return row?.resume_provenance ?? null;
@@ -130,7 +130,7 @@ describe("SessionRegistry", () => {
     return row?.resume_token ?? null;
   }
 
-  it("operator provenance overwrites an existing hook token", () => {
+  it("operator provenance 覆盖现有 hook token", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "claude_id", "hook-tok", "hook");
     registry.updateResumeToken(s.id, "claude_id", "operator-tok", "operator");
@@ -138,7 +138,7 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("operator");
   });
 
-  it("operator provenance overwrites an existing scrape token", () => {
+  it("operator provenance 覆盖现有 scrape token", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "claude_id", "scrape-tok", "scrape");
     registry.updateResumeToken(s.id, "claude_id", "operator-tok", "operator");
@@ -146,7 +146,7 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("operator");
   });
 
-  it("a hook write does NOT clobber an existing operator token (operator outranks hook)", () => {
+  it("hook write 不覆盖现有 operator token（operator 优先于 hook）", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "claude_id", "operator-tok", "operator");
     registry.updateResumeToken(s.id, "claude_id", "hook-tok", "hook");
@@ -154,7 +154,7 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("operator");
   });
 
-  it("a scrape write does NOT clobber an existing operator token", () => {
+  it("scrape write 不覆盖现有 operator token", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "claude_id", "operator-tok", "operator");
     registry.updateResumeToken(s.id, "claude_id", "scrape-tok", "scrape");
@@ -162,7 +162,7 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("operator");
   });
 
-  it("preserves the existing rule: scrape does NOT clobber hook", () => {
+  it("保留现有规则：scrape 不覆盖 hook", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "claude_id", "hook-tok", "hook");
     registry.updateResumeToken(s.id, "claude_id", "scrape-tok", "scrape");
@@ -170,7 +170,7 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("hook");
   });
 
-  // OPR.0.4.3.20 FR-6 — verification freshness stamping + mark-stale-not-clear.
+  // OPR.0.4.3.20 FR-6——verification 新鲜度打戳 + 标记过期而非清除。
   function verifiedOf(sessionId: string): string | null {
     const row = db.prepare("SELECT resume_last_verified FROM sessions WHERE id = ?").get(sessionId) as { resume_last_verified: string | null } | undefined;
     return row?.resume_last_verified ?? null;
@@ -180,7 +180,7 @@ describe("SessionRegistry", () => {
     return row?.resume_last_probe_status ?? null;
   }
 
-  it("FR-6: updateResumeToken stamps last_verified + probe_status=resumable on write", () => {
+  it("FR-6：updateResumeToken 写入时标记 last_verified + probe_status=resumable", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     expect(verifiedOf(s.id)).toBeNull();
     registry.updateResumeToken(s.id, "claude_id", "tok-1", "adoption");
@@ -188,18 +188,18 @@ describe("SessionRegistry", () => {
     expect(probeStatusOf(s.id)).toBe("resumable");
   });
 
-  it("FR-6: equal-value refresh re-verifies a token previously marked stale", () => {
+  it("FR-6：equal-value refresh 重新验证此前标为 stale 的 token", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "claude_id", "tok-1", "hook");
     registry.markResumeProbeResult(s.id, "not_resumable");
     expect(probeStatusOf(s.id)).toBe("not_resumable");
-    // Same token value, same rank — the write still runs and re-verifies freshness.
+    // 相同 token value、相同 rank——写入仍执行并重新验证 freshness。
     registry.updateResumeToken(s.id, "claude_id", "tok-1", "hook");
     expect(tokenOf(s.id)).toBe("tok-1");
     expect(probeStatusOf(s.id)).toBe("resumable");
   });
 
-  it("FR-6: markResumeProbeResult(not_resumable) marks stale WITHOUT clearing the token", () => {
+  it("FR-6：markResumeProbeResult(not_resumable) 标记 stale，但不清除 token", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "claude_id", "tok-1", "adoption");
     registry.markResumeProbeResult(s.id, "not_resumable");
@@ -208,7 +208,7 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("adoption");  // provenance preserved
   });
 
-  it("FR-6: markResumeProbeResult(inconclusive) marks stale; a later resumable stamps verified", () => {
+  it("FR-6：markResumeProbeResult(inconclusive) 标记 stale；后续 resumable 标记 verified", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "claude_id", "tok-1", "hook");
     registry.markResumeProbeResult(s.id, "inconclusive");
@@ -219,7 +219,7 @@ describe("SessionRegistry", () => {
     expect(tokenOf(s.id)).toBe("tok-1");
   });
 
-  it("FR-6: clearResumeToken nulls the freshness columns too", () => {
+  it("FR-6：clearResumeToken 同时将 freshness column 置 null", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "claude_id", "tok-1", "adoption");
     registry.clearResumeToken(s.id);
@@ -228,8 +228,8 @@ describe("SessionRegistry", () => {
     expect(probeStatusOf(s.id)).toBeNull();
   });
 
-  // OPR.0.4.3.20 FR-3 — the `adoption` rung: scrape < adoption < hook < operator.
-  it("adoption overwrites an existing scrape token (adoption outranks scrape)", () => {
+  // OPR.0.4.3.20 FR-3——`adoption` rung：scrape < adoption < hook < operator。
+  it("adoption 覆盖现有 scrape token（adoption 优先于 scrape）", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "codex_id", "scrape-tok", "scrape");
     registry.updateResumeToken(s.id, "codex_id", "adoption-tok", "adoption");
@@ -237,7 +237,7 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("adoption");
   });
 
-  it("a hook self-report REFRESHES an adoption token (hook outranks adoption — freshest live token wins)", () => {
+  it("hook self-report 刷新 adoption token（hook 优先于 adoption——最新 live token 胜出）", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "codex_id", "adoption-tok", "adoption");
     registry.updateResumeToken(s.id, "codex_id", "hook-tok", "hook");
@@ -245,7 +245,7 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("hook");
   });
 
-  it("an adoption write does NOT clobber an existing hook token", () => {
+  it("adoption write 不覆盖现有 hook token", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "codex_id", "hook-tok", "hook");
     registry.updateResumeToken(s.id, "codex_id", "adoption-tok", "adoption");
@@ -253,7 +253,7 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("hook");
   });
 
-  it("an adoption write does NOT clobber an existing operator token", () => {
+  it("adoption write 不覆盖现有 operator token", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "claude_id", "operator-tok", "operator");
     registry.updateResumeToken(s.id, "claude_id", "adoption-tok", "adoption");
@@ -261,7 +261,7 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("operator");
   });
 
-  it("adoption refreshes an equal-rank adoption token (equal rank overwrites — idempotent re-capture)", () => {
+  it("adoption 刷新同 rank 的 adoption token（同 rank 覆盖——幂等 re-capture）", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "codex_id", "adoption-tok-1", "adoption");
     registry.updateResumeToken(s.id, "codex_id", "adoption-tok-2", "adoption");
@@ -269,10 +269,9 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("adoption");
   });
 
-  // OPR.0.4.3.20 FR-3 — validity-before-rank guard: an empty/whitespace token
-  // is a SKIP, never a write, and can never clobber a valid stored token even
-  // from a higher-provenance source ("flakiness = missing = no-write").
-  it("an empty token is a no-op write (leaves an existing valid token untouched, even from a higher provenance)", () => {
+  // OPR.0.4.3.20 FR-3——validity-before-rank guard：空或全 whitespace token 表示 SKIP，绝不写入；
+  // 即使来自更高 provenance，也不能覆盖有效 stored token（“flakiness = missing = no-write”）。
+  it("空 token 是 no-op write（即使来自更高 provenance，也让现有有效 token 保持不变）", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "codex_id", "adoption-tok", "adoption");
     registry.updateResumeToken(s.id, "codex_id", "", "operator"); // higher provenance, but empty
@@ -280,24 +279,23 @@ describe("SessionRegistry", () => {
     expect(provenanceOf(s.id)).toBe("adoption");
   });
 
-  it("a whitespace-only token is a no-op write", () => {
+  it("全 whitespace token 是 no-op write", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "codex_id", "hook-tok", "hook");
     registry.updateResumeToken(s.id, "codex_id", "   ", "hook");
     expect(tokenOf(s.id)).toBe("hook-tok");
   });
 
-  it("an empty token never populates a fresh (null) session", () => {
+  it("空 token 绝不填充 fresh（null）session", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     registry.updateResumeToken(s.id, "codex_id", "", "adoption");
     expect(tokenOf(s.id)).toBeNull();
     expect(provenanceOf(s.id)).toBeNull();
   });
 
-  // OPR.0.4.3.20 FR-3 — updateResumeToken reports whether it actually wrote, so
-  // the adoption-capture audit event never falsely claims a captured write when
-  // the provenance guard refused it.
-  it("updateResumeToken returns true on a real write, false on a rank-blocked no-op", () => {
+  // OPR.0.4.3.20 FR-3——updateResumeToken 报告是否实际写入，使 provenance guard 拒绝后，
+  // adoption-capture audit event 不会错误声称已 capture write。
+  it("updateResumeToken 在真实写入时返回 true，在 rank-blocked no-op 时返回 false", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     expect(registry.updateResumeToken(s.id, "codex_id", "adoption-tok", "adoption")).toBe(true);
     expect(registry.updateResumeToken(s.id, "codex_id", "hook-tok", "hook")).toBe(true); // hook > adoption
@@ -305,14 +303,14 @@ describe("SessionRegistry", () => {
     expect(tokenOf(s.id)).toBe("hook-tok");
   });
 
-  it("updateResumeToken returns false on an empty/whitespace-token no-op", () => {
+  it("updateResumeToken 对空/全 whitespace token no-op 返回 false", () => {
     const s = registry.registerSession("node-1", "dev-impl@test-rig");
     expect(registry.updateResumeToken(s.id, "codex_id", "", "adoption")).toBe(false);
     registry.updateResumeToken(s.id, "codex_id", "hook-tok", "hook");
     expect(registry.updateResumeToken(s.id, "codex_id", "   ", "hook")).toBe(false);
   });
 
-  it("clearResumeToken clears stored resume metadata", () => {
+  it("clearResumeToken 清除已存储 resume metadata", () => {
     const session = registry.registerSession("node-1", "r01-dev1-impl");
     registry.updateResumeToken(session.id, "claude_id", "abc-123-def");
 
@@ -324,13 +322,13 @@ describe("SessionRegistry", () => {
     expect(updated!.resumeToken).toBeNull();
   });
 
-  it("registerSession accepts canonical session name with @", () => {
+  it("registerSession 接受带 @ 的 canonical session name", () => {
     const session = registry.registerSession("node-1", "dev-impl@auth-feats");
     expect(session.sessionName).toBe("dev-impl@auth-feats");
     expect(session.nodeId).toBe("node-1");
   });
 
-  it("updateStatus changes status", () => {
+  it("updateStatus 修改 status", () => {
     const session = registry.registerSession("node-1", "r01-dev1-impl");
     registry.updateStatus(session.id, "running");
 
@@ -340,7 +338,7 @@ describe("SessionRegistry", () => {
     expect(rows.status).toBe("running");
   });
 
-  it("markDetached sets status to detached", () => {
+  it("markDetached 将 status 设为 detached", () => {
     const session = registry.registerSession("node-1", "r01-dev1-impl");
     registry.updateStatus(session.id, "running");
     registry.markDetached(session.id);
@@ -351,7 +349,7 @@ describe("SessionRegistry", () => {
     expect(row.status).toBe("detached");
   });
 
-  it("getSessionsForRig returns all sessions across nodes in rig", () => {
+  it("getSessionsForRig 返回工作组所有 node 的全部 session", () => {
     registry.registerSession("node-1", "r01-dev1-impl");
     registry.registerSession("node-2", "r01-dev1-qa");
 
@@ -362,12 +360,12 @@ describe("SessionRegistry", () => {
     expect(names).toContain("r01-dev1-qa");
   });
 
-  it("getBindingForNode returns null when unbound", () => {
+  it("未绑定时 getBindingForNode 返回 null", () => {
     const binding = registry.getBindingForNode("node-1");
     expect(binding).toBeNull();
   });
 
-  it("updateBinding inserts new binding, returns typed Binding", () => {
+  it("updateBinding 插入新 binding，并返回 typed Binding", () => {
     const binding = registry.updateBinding("node-1", {
       tmuxSession: "r01-dev1-impl",
     });
@@ -377,15 +375,15 @@ describe("SessionRegistry", () => {
     expect(binding.cmuxSurface).toBeNull();
   });
 
-  it("updateBinding partial update preserves existing fields", () => {
-    // First: set tmux fields
+  it("updateBinding partial update 保留现有字段", () => {
+    // 首次：设置 tmux 字段
     registry.updateBinding("node-1", {
       tmuxSession: "r01-dev1-impl",
       tmuxWindow: "0",
       tmuxPane: "%1",
     });
 
-    // Second: set cmux fields only — tmux fields must survive
+    // 第二次：只设置 cmux 字段——tmux 字段必须保留
     const updated = registry.updateBinding("node-1", {
       cmuxWorkspace: "review",
       cmuxSurface: "surface-42",
@@ -398,7 +396,7 @@ describe("SessionRegistry", () => {
     expect(updated.cmuxSurface).toBe("surface-42");
   });
 
-  it("updateBinding keeps exactly one row per node after multiple upserts", () => {
+  it("多次 upsert 后 updateBinding 为每个 node 恰好保留一行", () => {
     registry.updateBinding("node-1", { tmuxSession: "r01-dev1-impl" });
     registry.updateBinding("node-1", { cmuxSurface: "surface-42" });
     registry.updateBinding("node-1", { tmuxPane: "%3" });
@@ -409,16 +407,16 @@ describe("SessionRegistry", () => {
     expect(rows).toHaveLength(1);
   });
 
-  // -- P2-T02b: Resume metadata mapping --
+  // -- P2-T02b：Resume metadata mapping --
 
-  it("registerSession returns session with default resume metadata", () => {
+  it("registerSession 返回带默认 resume metadata 的 session", () => {
     const session = registry.registerSession("node-1", "r01-dev1-impl");
     expect(session.resumeType).toBeNull();
     expect(session.resumeToken).toBeNull();
     expect(session.restorePolicy).toBe("resume_if_possible");
   });
 
-  it("getSessionsForRig returns populated resume metadata after update", () => {
+  it("update 后 getSessionsForRig 返回已填充的 resume metadata", () => {
     const session = registry.registerSession("node-1", "r01-dev1-impl");
     db.prepare(
       "UPDATE sessions SET resume_type = ?, resume_token = ?, restore_policy = ? WHERE id = ?"
@@ -431,9 +429,9 @@ describe("SessionRegistry", () => {
     expect(sessions[0]!.restorePolicy).toBe("checkpoint_only");
   });
 
-  // -- P2-T07: Stale-state repair methods --
+  // -- P2-T07：Stale-state repair method --
 
-  it("clearBinding removes binding row for node", () => {
+  it("clearBinding 移除 node 的 binding row", () => {
     registry.updateBinding("node-1", { tmuxSession: "r01-dev1-impl" });
     expect(registry.getBindingForNode("node-1")).not.toBeNull();
 
@@ -441,7 +439,7 @@ describe("SessionRegistry", () => {
     expect(registry.getBindingForNode("node-1")).toBeNull();
   });
 
-  it("markSuperseded sets session status to 'superseded'", () => {
+  it("markSuperseded 将 session status 设为 'superseded'", () => {
     const session = registry.registerSession("node-1", "r01-dev1-impl");
     registry.updateStatus(session.id, "running");
 
@@ -452,10 +450,10 @@ describe("SessionRegistry", () => {
   });
 });
 
-// GHOST-STAGE atom-B (P12 3548d8eb) — the occupant-generation TENURE ledger. A sessions row is a
-// REGISTRATION; the tenure is minted per OCCUPANT GENERATION at the register verbs, callers declare
-// kind, and a RELAUNCH (same native session) is a CONTINUATION (no new generation).
-describe("SessionRegistry — atom-B occupant tenures", () => {
+// GHOST-STAGE atom-B（P12 3548d8eb）——occupant-generation TENURE ledger。sessions row 是
+// REGISTRATION；register verb 按 OCCUPANT GENERATION 生成 tenure，caller 声明 kind，而 RELAUNCH
+//（同一 native session）是 CONTINUATION（无新 generation）。
+describe("SessionRegistry——atom-B occupant tenure", () => {
   let db: Database.Database;
   let registry: SessionRegistry;
   beforeEach(() => {
@@ -465,7 +463,7 @@ describe("SessionRegistry — atom-B occupant tenures", () => {
   });
   afterEach(() => { db.close(); });
 
-  it("registerSession mints an INITIAL generation-1 tenure; currentOccupantTenure returns it", () => {
+  it("registerSession 生成 INITIAL generation-1 tenure；currentOccupantTenure 返回它", () => {
     registry.registerSession("node-1", "r01-dev1-impl");
     const t = registry.currentOccupantTenure("node-1");
     expect(t).not.toBeNull();
@@ -474,7 +472,7 @@ describe("SessionRegistry — atom-B occupant tenures", () => {
     expect(t!.generationUuid).toMatch(/^[0-9a-f-]{36}$/i);
   });
 
-  it("registerClaimedSession declares kind; successive registers on a node increment the generation ordinal", () => {
+  it("registerClaimedSession 声明 kind；同一 node 连续 register 会递增 generation ordinal", () => {
     registry.registerSession("node-1", "r01-dev1-impl"); // gen 1, initial
     registry.registerClaimedSession("node-1", "r01-dev1-impl", "handover"); // gen 2, handover
     const t = registry.currentOccupantTenure("node-1");
@@ -484,7 +482,7 @@ describe("SessionRegistry — atom-B occupant tenures", () => {
     expect(new Set(rows.map((r) => r.generation_uuid)).size).toBe(2); // unique per generation
   });
 
-  it("RELAUNCH is a CONTINUATION: the same native session id re-mints nothing (same generation)", () => {
+  it("RELAUNCH 是 CONTINUATION：相同 native session id 不重新生成任何内容（同一 generation）", () => {
     const first = registry.mintOccupantTenure("node-1", "initial", "native-abc");
     const relaunch = registry.mintOccupantTenure("node-1", "initial", "native-abc"); // same native = relaunch
     expect(relaunch.generationUuid).toBe(first.generationUuid); // continuation, not a new generation
@@ -492,14 +490,14 @@ describe("SessionRegistry — atom-B occupant tenures", () => {
     expect((db.prepare("SELECT COUNT(*) AS c FROM occupant_tenures WHERE node_id = ?").get("node-1") as { c: number }).c).toBe(1);
   });
 
-  it("a NEW native session id mints the NEXT generation", () => {
+  it("新的 native session id 生成下一 generation", () => {
     const g1 = registry.mintOccupantTenure("node-1", "initial", "native-abc");
     const g2 = registry.mintOccupantTenure("node-1", "handover", "native-xyz"); // different native = new occupant
     expect(g2.generationOrdinal).toBe(g1.generationOrdinal + 1);
     expect(g2.generationUuid).not.toBe(g1.generationUuid);
   });
 
-  it("ordinals are per-node; a node with no tenure returns null", () => {
+  it("ordinal 按 node 计算；无 tenure 的 node 返回 null", () => {
     registry.mintOccupantTenure("node-1", "initial");
     registry.mintOccupantTenure("node-1", "handover");
     registry.mintOccupantTenure("node-2", "initial");
@@ -510,10 +508,9 @@ describe("SessionRegistry — atom-B occupant tenures", () => {
   });
 });
 
-// OPR.0.5.1 51-06 W2c — both live-seat mint verbs share one watchdog seam.
-// The normal launch hook is intentionally observed while the just-inserted
-// session is still `unknown`; NodeLauncher promotes it to running afterwards.
-describe("SessionRegistry — W2c live-seat watchdog mint seam", () => {
+// OPR.0.5.1 51-06 W2c——两个 live-seat mint verb 共享一个 watchdog seam。特意在刚插入的
+// session 仍为 `unknown` 时观察正常 launch hook；NodeLauncher 随后将其提升为 running。
+describe("SessionRegistry——W2c live-seat watchdog mint seam", () => {
   let db: Database.Database;
   beforeEach(() => {
     db = createFullTestDb();
@@ -542,7 +539,7 @@ describe("SessionRegistry — W2c live-seat watchdog mint seam", () => {
     ).get(nodeId, sessionName) as { status: string } | undefined)?.status;
   }
 
-  it("registerSession calls ensure then coverage at status=unknown", () => {
+  it("registerSession 在 status=unknown 时先调用 ensure，再调用 coverage", () => {
     const seen: string[] = [];
     const registry = withObserver({
       ensure: (nodeId, sessionName) => seen.push(`ensure:${statusAtHook(nodeId, sessionName)}`),
@@ -553,7 +550,7 @@ describe("SessionRegistry — W2c live-seat watchdog mint seam", () => {
     expect(seen).toEqual(["ensure:unknown", "coverage:unknown"]);
   });
 
-  it("registerClaimedSession calls the same ensure/coverage seam at status=running", () => {
+  it("registerClaimedSession 在 status=running 时调用同一 ensure/coverage seam", () => {
     const seen: string[] = [];
     const registry = withObserver({
       ensure: (nodeId, sessionName) => seen.push(`ensure:${statusAtHook(nodeId, sessionName)}`),
@@ -564,7 +561,7 @@ describe("SessionRegistry — W2c live-seat watchdog mint seam", () => {
     expect(seen).toEqual(["ensure:running", "coverage:running"]);
   });
 
-  it("watchdog failures never roll back the session; ensure warns once and coverage stays loud", () => {
+  it("watchdog failure 绝不回滚 session；ensure 只 warning 一次，coverage 持续显著报告", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const ensure = vi.fn(() => { throw new Error("injected ensure failure"); });
     const assertCoverage = vi.fn(() => { throw new Error("missing auto-registration"); });

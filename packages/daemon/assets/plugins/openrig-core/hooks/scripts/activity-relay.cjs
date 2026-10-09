@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 "use strict";
 
-// OpenRig activity-relay hook script.
-// Reads a hook event payload from stdin, normalizes it, and POSTs to the
-// OpenRig daemon's /api/activity/hooks endpoint for real-time UI seat-status.
-// Best-effort only: 1.5s timeout, errors swallowed, never blocks the agent loop.
+// OpenRig activity-relay 钩子脚本。
+// 从 stdin 读取钩子事件 payload，规范化后 POST 到 OpenRig 后台服务的 /api/activity/hooks
+// 端点，用于实时 UI 席位状态。仅尽力而为：1.5 秒超时，吞掉错误，绝不阻塞智能体循环。
 //
-// Required environment (injected by the OpenRig daemon when launching the agent):
-//   OPENRIG_SESSION_NAME or RIGGED_SESSION_NAME  - tmux session id
-//   OPENRIG_NODE_ID      or RIGGED_NODE_ID       - node id in the rig topology
-//   OPENRIG_RUNTIME      or RIGGED_RUNTIME       - "claude-code" | "codex" | etc.
-//   OPENRIG_URL          or RIGGED_URL           - daemon base URL
-//   OPENRIG_ACTIVITY_HOOK_TOKEN or RIGGED_ACTIVITY_HOOK_TOKEN - bearer auth
+// 必需环境变量（OpenRig 后台服务启动智能体时注入）：
+//   OPENRIG_SESSION_NAME 或 RIGGED_SESSION_NAME  - tmux 会话 id
+//   OPENRIG_NODE_ID      或 RIGGED_NODE_ID       - 工作组拓扑中的节点 id
+//   OPENRIG_RUNTIME      或 RIGGED_RUNTIME       - "claude-code" | "codex" 等
+//   OPENRIG_URL          或 RIGGED_URL           - 后台服务基础 URL
+//   OPENRIG_ACTIVITY_HOOK_TOKEN 或 RIGGED_ACTIVITY_HOOK_TOKEN - bearer 鉴权
 
 async function readStdin() {
   return new Promise((resolve) => {
@@ -77,17 +76,15 @@ function buildOpenRigPayload(providerPayload, env = process.env, now = () => new
   };
 }
 
-// OPR.0.4.3.28 B1+B3 — resolve the ingest base URL + token without depending on
-// the operator seeding OPENRIG_URL/OPENRIG_ACTIVITY_HOOK_TOKEN into the shell:
-//   1. env OPENRIG_URL / token (unchanged fast path).
-//   2. B1: synthesize the base URL from OPENRIG_HOST + OPENRIG_PORT (both present
-//      in a launched seat's env) when the URL is absent.
-//   3. B3: file-discovery — read {baseUrl, token} from
-//      OPENRIG_HOME/activity-endpoint.json (default ~/.openrig) for reconcile /
-//      restored seats whose frozen process env lacks the activity vars. The
-//      daemon writes this file at startup. Identity (session/node/runtime) still
-//      comes from env, which previously-launched-then-reconciled seats inherit
-//      from the tmux session env.
+// OPR.0.4.3.28 B1+B3——解析摄取基础 URL 与 token，而不依赖操作员预先把
+// OPENRIG_URL/OPENRIG_ACTIVITY_HOOK_TOKEN 写入 shell：
+//   1. 环境变量 OPENRIG_URL/token（不变的快速路径）。
+//   2. B1：URL 缺失时，根据 OPENRIG_HOST + OPENRIG_PORT 合成基础 URL；两者都存在于
+//      已启动席位的环境中。
+//   3. B3：文件发现——对于冻结进程环境中缺少活动变量的协调/恢复席位，从
+//      OPENRIG_HOME/activity-endpoint.json（默认 ~/.openrig）读取 {baseUrl, token}。
+//      后台服务启动时写入此文件。身份（session/node/runtime）仍来自环境变量，而先前启动后
+//      再协调的席位会从 tmux 会话环境继承这些变量。
 function resolveEndpoint(env = process.env) {
   let baseUrl = firstString(env.OPENRIG_URL, env.RIGGED_URL);
   let token = firstString(env.OPENRIG_ACTIVITY_HOOK_TOKEN, env.RIGGED_ACTIVITY_HOOK_TOKEN);
@@ -110,7 +107,7 @@ function resolveEndpoint(env = process.env) {
       if (!baseUrl && typeof parsed.baseUrl === "string" && parsed.baseUrl.length > 0) baseUrl = parsed.baseUrl;
       if (!token && typeof parsed.token === "string" && parsed.token.length > 0) token = parsed.token;
     } catch {
-      // absent/malformed — the caller no-ops safely below.
+      // 缺失或格式错误——调用方会在下方安全地执行空操作。
     }
   }
 
@@ -134,7 +131,7 @@ async function postHookPayload(payload, env = process.env) {
       signal: controller.signal,
     });
   } catch {
-    // Provider hooks must not block the agent loop if OpenRig is unavailable.
+    // OpenRig 不可用时，provider 钩子不得阻塞智能体循环。
   } finally {
     clearTimeout(timeout);
   }

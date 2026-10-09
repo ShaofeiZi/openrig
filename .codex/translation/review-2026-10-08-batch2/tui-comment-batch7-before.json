@@ -1,0 +1,42 @@
+{
+"packages/tui/test/everyday-usability.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/execution-view.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/explorer-absence.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/feed-source-continuity.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/feed-system.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/founder-live-qa-correction.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/health-view.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/hydrate.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/instance-mission-control.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/ledger-explorer.test.ts": [
+"tui",
+"passed"
+]
+}

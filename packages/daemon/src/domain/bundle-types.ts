@@ -1,29 +1,28 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
-// -- Shared types --
+// ——共享类型——
 
 /**
- * Provenance block — attribution metadata for a bundle artifact. All fields
- * optional for backward compat; bundles without provenance install unchanged.
- * Captured by the bundle-assembler at create time; surfaced in inspect output
- * and audit-trail records. Not cryptographically signed at this stage.
+ * 出处块——bundle 产物的归属元数据。所有字段均可选以保持向后兼容；
+ * 没有 provenance 的 bundle 仍按原样安装。由 bundle-assembler 在创建时捕获，
+ * 显示在 inspect 输出和审计轨迹记录中。此阶段不做密码学签名。
  */
 export interface BundleProvenance {
-  /** ISO timestamp; mirrors root createdAt at create time. */
+  /** ISO 时间戳；创建时与根 createdAt 一致。 */
   createdAt?: string;
-  /** os.hostname() of the host that ran rig bundle create. */
+  /** 执行 `zrig bundle create` 的主机 os.hostname()。 */
   sourceHost?: string;
-  /** Canonical session name of the creator (e.g. velocity-driver@openrig-velocity). */
+  /** 创建者的规范会话名，例如 velocity-driver@openrig-velocity。 */
   authorSession?: string;
-  /** ULID of the source rig, if creating from a live rig. */
+  /** 从实时工作组创建时的源工作组 ULID。 */
   sourceRigId?: string;
-  /** Name of the source rig, if creating from a live rig. */
+  /** 从实时工作组创建时的源工作组名称。 */
   sourceRigName?: string;
-  /** Daemon version at create time (e.g. 0.3.2). */
+  /** 创建时的后台服务版本，例如 0.3.2。 */
   daemonVersion?: string;
-  /** CLI version at create time (e.g. 0.3.2). */
+  /** 创建时的 CLI 版本，例如 0.3.2。 */
   cliVersion?: string;
-  /** Operator-authored notes from the --notes flag on rig bundle create. */
+  /** 操作人员通过 `zrig bundle create --notes` 编写的备注。 */
   notes?: string;
 }
 
@@ -38,22 +37,22 @@ const PROVENANCE_STRING_FIELDS = [
   "notes",
 ] as const;
 
-/** Validate optional provenance block. Appends to errors if present-but-malformed. */
+/** 校验可选 provenance 块；若存在但畸形，则追加到 errors。 */
 function validateProvenanceBlock(raw: unknown, errors: string[]): void {
   if (raw === undefined) return;
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    errors.push("provenance must be an object");
+    errors.push("provenance 必须是对象");
     return;
   }
   const p = raw as Record<string, unknown>;
   for (const field of PROVENANCE_STRING_FIELDS) {
     if (field in p && typeof p[field] !== "string") {
-      errors.push(`provenance.${field} must be a string`);
+      errors.push(`provenance.${field} 必须是字符串`);
     }
   }
 }
 
-/** Serialize a typed BundleProvenance to the snake_case YAML record shape. */
+/** 将类型化 BundleProvenance 序列化为 snake_case YAML 记录形状。 */
 function provenanceToYamlRecord(p: BundleProvenance): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   if (p.createdAt !== undefined) out["created_at"] = p.createdAt;
@@ -68,67 +67,64 @@ function provenanceToYamlRecord(p: BundleProvenance): Record<string, unknown> {
 }
 
 /**
- * Cross-primitive bundling — Item 6 / slice-05 Checkpoint 7.1.
+ * 跨原语打包——第 6 项 / slice-05 Checkpoint 7.1。
  *
- * Manifest may optionally declare typed sibling primitives the bundle should
- * route to their respective libraries on install. v0 ships the `skills` kind
- * (Checkpoint 7.1). Plugins + workflow_specs + context_packs + agent_images
- * land additively in subsequent checkpoints as their libraries are reachable.
+ * Manifest 可选择声明带类型的同级原语，bundle 安装时应将它们路由到各自的库。
+ * v0 交付 `skills` 种类（Checkpoint 7.1）；随着对应库可达，plugins、workflow_specs、
+ * context_packs 和 agent_images 在后续 checkpoint 中增量落地。
  *
- * PRD §Item 6: bundles list these alongside the existing rig + agents +
- * packages fields (no `contents:` re-grouping — that would be a schema
- * reorg violating the no-bump constraint). Each kind is an optional top-
- * level field; missing kinds keep backward compat.
+ * PRD 第 6 项：bundle 将它们与现有 rig、agents、packages 字段并列；不以 `contents:`
+ * 重新分组，因为那会重组 schema，违反不升版约束。每种内容都是可选顶层字段；
+ * 缺失种类保持向后兼容。
  */
 
 /**
- * Plugin reference — Item 6 / slice-05 Checkpoint 7.3b. Bundle manifest may
- * declare plugin references the bundle includes (in HYBRID mode the bundle
- * REFERENCES the existing 0.3.1 plugin rather than forking its content; per
- * orch-ratified decision doc).
+ * 插件引用——第 6 项 / slice-05 Checkpoint 7.3b。bundle manifest 可声明其包含的
+ * plugin 引用；按 orch 批准的决策文档，HYBRID 模式下 bundle 引用现有 0.3.1 plugin，
+ * 而不是分叉其内容。
  */
 export interface BundlePluginReference {
-  /** Plugin id (matches the plugin primitive's id surface). */
+  /** plugin id，与 plugin 原语的 id 表面一致。 */
   id: string;
-  /** Where to resolve the plugin from. v0 supports local-path source. */
+  /** plugin 的解析来源。v0 支持本地路径来源。 */
   source: { kind: "local"; path: string };
 }
 
-/** Validate optional plugins[] block. Appends to errors if present-but-malformed. */
+/** 校验可选 plugins[] 块；若存在但畸形，则追加到 errors。 */
 function validatePluginsBlock(raw: unknown, errors: string[]): void {
   if (raw === undefined) return;
   if (!Array.isArray(raw)) {
-    errors.push("plugins must be an array");
+    errors.push("plugins 必须是数组");
     return;
   }
   for (let i = 0; i < raw.length; i++) {
     const entry = raw[i];
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-      errors.push(`plugins[${i}] must be an object`);
+      errors.push(`plugins[${i}] 必须是对象`);
       continue;
     }
     const p = entry as Record<string, unknown>;
     if (typeof p["id"] !== "string" || !p["id"]) {
-      errors.push(`plugins[${i}].id is required`);
+      errors.push(`plugins[${i}].id 为必填项`);
     }
     const source = p["source"];
     if (!source || typeof source !== "object" || Array.isArray(source)) {
-      errors.push(`plugins[${i}].source must be an object`);
+      errors.push(`plugins[${i}].source 必须是对象`);
       continue;
     }
     const s = source as Record<string, unknown>;
     if (s["kind"] !== "local") {
-      errors.push(`plugins[${i}].source.kind must be 'local' (other kinds reserved for future)`);
+      errors.push(`plugins[${i}].source.kind 必须为 'local'（其他种类留待以后）`);
     }
     if (typeof s["path"] !== "string" || !s["path"]) {
-      errors.push(`plugins[${i}].source.path is required`);
+      errors.push(`plugins[${i}].source.path 为必填项`);
     } else if (!isRelativeSafePath(s["path"] as string)) {
-      errors.push(`plugins[${i}].source.path is not safe: '${s["path"]}'`);
+      errors.push(`plugins[${i}].source.path 不安全：'${s["path"]}'`);
     }
   }
 }
 
-/** Normalize raw plugins[] block (defensive copy). */
+/** 归一化原始 plugins[] 块（防御性复制）。 */
 function normalizePluginsBlock(raw: unknown): BundlePluginReference[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const result: BundlePluginReference[] = [];
@@ -145,26 +141,26 @@ function normalizePluginsBlock(raw: unknown): BundlePluginReference[] | undefine
   return result.length > 0 ? result : undefined;
 }
 
-/** Validate optional skills[] block. Appends to errors if present-but-malformed. */
+/** 校验可选 skills[] 块；若存在但畸形，则追加到 errors。 */
 function validateSkillsBlock(raw: unknown, errors: string[]): void {
   if (raw === undefined) return;
   if (!Array.isArray(raw)) {
-    errors.push("skills must be an array");
+    errors.push("skills 必须是数组");
     return;
   }
   for (let i = 0; i < raw.length; i++) {
     const entry = raw[i];
     if (typeof entry !== "string") {
-      errors.push(`skills[${i}] must be a string`);
+      errors.push(`skills[${i}] 必须是字符串`);
       continue;
     }
     if (!isRelativeSafePath(entry)) {
-      errors.push(`skills[${i}] path is not safe: '${entry}'`);
+      errors.push(`skills[${i}] 路径不安全：'${entry}'`);
     }
   }
 }
 
-/** Normalize raw skills[] block (defensive copy + string filter). */
+/** 归一化原始 skills[] 块（防御性复制 + 字符串过滤）。 */
 function normalizeSkillsBlock(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const result: string[] = [];
@@ -174,28 +170,28 @@ function normalizeSkillsBlock(raw: unknown): string[] | undefined {
   return result.length > 0 ? result : undefined;
 }
 
-/** Validate optional workflow_specs[] block. Appends to errors if present-but-malformed.
- * Item 6 / slice-05 Checkpoint 7.3e. Same shape as skills[]: array of relative-safe paths
- * to workflow spec YAML files inside the bundle. */
+/** 校验可选 workflow_specs[] 块；若存在但畸形，则追加到 errors。
+ * 第 6 项 / slice-05 Checkpoint 7.3e。形状与 skills[] 相同：bundle 内 workflow spec
+ * YAML 文件的相对安全路径数组。 */
 function validateWorkflowSpecsBlock(raw: unknown, errors: string[]): void {
   if (raw === undefined) return;
   if (!Array.isArray(raw)) {
-    errors.push("workflow_specs must be an array");
+    errors.push("workflow_specs 必须是数组");
     return;
   }
   for (let i = 0; i < raw.length; i++) {
     const entry = raw[i];
     if (typeof entry !== "string") {
-      errors.push(`workflow_specs[${i}] must be a string`);
+      errors.push(`workflow_specs[${i}] 必须是字符串`);
       continue;
     }
     if (!isRelativeSafePath(entry)) {
-      errors.push(`workflow_specs[${i}] path is not safe: '${entry}'`);
+      errors.push(`workflow_specs[${i}] 路径不安全：'${entry}'`);
     }
   }
 }
 
-/** Normalize raw workflow_specs[] block (defensive copy + string filter). */
+/** 归一化原始 workflow_specs[] 块（防御性复制 + 字符串过滤）。 */
 function normalizeWorkflowSpecsBlock(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const result: string[] = [];
@@ -205,29 +201,28 @@ function normalizeWorkflowSpecsBlock(raw: unknown): string[] | undefined {
   return result.length > 0 ? result : undefined;
 }
 
-/** Validate optional context_packs[] block. Item 6 / slice-05 Checkpoint 7.3f.
- * Each entry is a relative-safe path to a context-pack's manifest.yaml inside
- * the bundle (per PRD §Item 6). The router copies the parent directory of
- * each manifest path to the operator context-packs library on install. */
+/** 校验可选 context_packs[] 块。第 6 项 / slice-05 Checkpoint 7.3f。
+ * 每项都是 bundle 内 context pack 的 manifest.yaml 相对安全路径（按 PRD 第 6 项）。
+ * 安装时 router 将每个 manifest 路径的父目录复制到操作人员 context-packs 库。 */
 function validateContextPacksBlock(raw: unknown, errors: string[]): void {
   if (raw === undefined) return;
   if (!Array.isArray(raw)) {
-    errors.push("context_packs must be an array");
+    errors.push("context_packs 必须是数组");
     return;
   }
   for (let i = 0; i < raw.length; i++) {
     const entry = raw[i];
     if (typeof entry !== "string") {
-      errors.push(`context_packs[${i}] must be a string`);
+      errors.push(`context_packs[${i}] 必须是字符串`);
       continue;
     }
     if (!isRelativeSafePath(entry)) {
-      errors.push(`context_packs[${i}] path is not safe: '${entry}'`);
+      errors.push(`context_packs[${i}] 路径不安全：'${entry}'`);
     }
   }
 }
 
-/** Normalize raw context_packs[] block (defensive copy + string filter). */
+/** 归一化原始 context_packs[] 块（防御性复制 + 字符串过滤）。 */
 function normalizeContextPacksBlock(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const result: string[] = [];
@@ -237,32 +232,30 @@ function normalizeContextPacksBlock(raw: unknown): string[] | undefined {
   return result.length > 0 ? result : undefined;
 }
 
-/** Validate optional agent_images[] block. Item 6 / slice-05 Checkpoint 7.3g.
- * Each entry is a relative-safe path to an agent-image DIRECTORY inside the
- * bundle (per PRD §Item 6 line 197: agent_images: [path/to/agent-image-name/,
- * ...]). The router copies the declared directory itself to the operator
- * agent-images library on install. The consumer
- * (agent-image-library-service.ts:77-95) requires manifest.yaml to exist
- * inside each routed image dir; the router enforces that at copy time. */
+/** 校验可选 agent_images[] 块。第 6 项 / slice-05 Checkpoint 7.3g。
+ * 每项都是 bundle 内 agent-image 目录的相对安全路径（PRD 第 6 项第 197 行：
+ * agent_images: [path/to/agent-image-name/, ...]）。安装时 router 将声明的目录本身
+ * 复制到操作人员 agent-images 库。消费者 agent-image-library-service.ts:77-95 要求
+ * 每个路由后的镜像目录内存在 manifest.yaml；router 在复制时强制该约束。 */
 function validateAgentImagesBlock(raw: unknown, errors: string[]): void {
   if (raw === undefined) return;
   if (!Array.isArray(raw)) {
-    errors.push("agent_images must be an array");
+    errors.push("agent_images 必须是数组");
     return;
   }
   for (let i = 0; i < raw.length; i++) {
     const entry = raw[i];
     if (typeof entry !== "string") {
-      errors.push(`agent_images[${i}] must be a string`);
+      errors.push(`agent_images[${i}] 必须是字符串`);
       continue;
     }
     if (!isRelativeSafePath(entry)) {
-      errors.push(`agent_images[${i}] path is not safe: '${entry}'`);
+      errors.push(`agent_images[${i}] 路径不安全：'${entry}'`);
     }
   }
 }
 
-/** Normalize raw agent_images[] block (defensive copy + string filter). */
+/** 归一化原始 agent_images[] 块（防御性复制 + 字符串过滤）。 */
 function normalizeAgentImagesBlock(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const result: string[] = [];
@@ -273,41 +266,39 @@ function normalizeAgentImagesBlock(raw: unknown): string[] | undefined {
 }
 
 /**
- * Compatibility block — operator-declared install-time requirements for a
- * bundle artifact. All fields optional; missing block keeps backward compat
- * (bundles install unchanged). Install-time version check (Item 2 Checkpoint
- * 3.3) consults this block before bootstrap delegation; --skip-version-check
- * is the operator-explicit override.
+ * 兼容性块——操作人员为 bundle 产物声明的安装时要求。所有字段可选；缺失该块时
+ * 保持向后兼容，bundle 安装行为不变。安装时版本检查（第 2 项 Checkpoint 3.3）
+ * 在委托 bootstrap 前查询此块；--skip-version-check 是操作人员显式覆盖。
  */
 export interface BundleCompatibility {
-  /** Minimum daemon version required to install this bundle (semver string). */
+  /** 安装此 bundle 所需的最低后台服务版本（semver 字符串）。 */
   minDaemonVersion?: string;
-  /** Minimum CLI version required to install this bundle (semver string). */
+  /** 安装此 bundle 所需的最低 CLI 版本（semver 字符串）。 */
   minCliVersion?: string;
-  /** Schema version reaffirmed; mirrors root schemaVersion when set. */
+  /** 再次确认的 schema 版本；设置时镜像根 schemaVersion。 */
   schemaVersion?: number;
 }
 
-/** Validate optional compatibility block. Appends to errors if present-but-malformed. */
+/** 校验可选 compatibility 块；若存在但畸形，则追加到 errors。 */
 function validateCompatibilityBlock(raw: unknown, errors: string[]): void {
   if (raw === undefined) return;
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    errors.push("compatibility must be an object");
+    errors.push("compatibility 必须是对象");
     return;
   }
   const c = raw as Record<string, unknown>;
   if ("min_daemon_version" in c && typeof c["min_daemon_version"] !== "string") {
-    errors.push("compatibility.min_daemon_version must be a string");
+    errors.push("compatibility.min_daemon_version 必须是字符串");
   }
   if ("min_cli_version" in c && typeof c["min_cli_version"] !== "string") {
-    errors.push("compatibility.min_cli_version must be a string");
+    errors.push("compatibility.min_cli_version 必须是字符串");
   }
   if ("schema_version" in c && typeof c["schema_version"] !== "number") {
-    errors.push("compatibility.schema_version must be a number");
+    errors.push("compatibility.schema_version 必须是数字");
   }
 }
 
-/** Serialize a typed BundleCompatibility to the snake_case YAML record shape. */
+/** 将类型化 BundleCompatibility 序列化为 snake_case YAML 记录形状。 */
 function compatibilityToYamlRecord(c: BundleCompatibility): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   if (c.minDaemonVersion !== undefined) out["min_daemon_version"] = c.minDaemonVersion;
@@ -317,10 +308,9 @@ function compatibilityToYamlRecord(c: BundleCompatibility): Record<string, unkno
 }
 
 /**
- * Normalize raw snake_case compatibility to typed camelCase BundleCompatibility.
- * Returns undefined when absent or empty. Exported alongside the provenance
- * normalizer so the v2 inspect-route projection can produce a single
- * camelCase shape for both manifest schemas.
+ * 将原始 snake_case compatibility 归一化为类型化 camelCase BundleCompatibility。
+ * 缺失或为空时返回 undefined。与 provenance 归一化器一同导出，使 v2 inspect-route
+ * 投影能为两种 manifest schema 生成同一个 camelCase 形状。
  */
 export function normalizeCompatibilityBlock(raw: unknown): BundleCompatibility | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
@@ -333,11 +323,10 @@ export function normalizeCompatibilityBlock(raw: unknown): BundleCompatibility |
 }
 
 /**
- * Normalize raw snake_case provenance (as parsed from YAML or received from
- * a request body) to typed camelCase BundleProvenance. Returns undefined when
- * absent or empty. Exported so both the v1 normalizer pipeline and the v2
- * inspect-route projection produce identical camelCase shapes — the
- * /api/bundles/inspect contract is one shape regardless of schema version.
+ * 将从 YAML 解析或请求体接收的原始 snake_case provenance 归一化为类型化
+ * camelCase BundleProvenance。缺失或为空时返回 undefined。导出此函数，使 v1
+ * 归一化管线与 v2 inspect-route 投影生成相同 camelCase 形状——无论 schema 版本如何，
+ * /api/bundles/inspect 都只有一种契约形状。
  */
 export function normalizeProvenanceBlock(raw: unknown): BundleProvenance | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
@@ -354,7 +343,7 @@ export function normalizeProvenanceBlock(raw: unknown): BundleProvenance | undef
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
-// -- Pod-aware bundle types (AgentSpec reboot) --
+// ——Pod 感知 bundle 类型（AgentSpec 重启）——
 
 export interface PodBundleAgentImportEntry {
   name: string;
@@ -384,39 +373,39 @@ export interface PodBundleManifest {
   integrity?: BundleIntegrity;
   provenance?: BundleProvenance;
   compatibility?: BundleCompatibility;
-  /** Item 6 cross-primitive bundling: skill paths to route to the operator skills library on install. */
+  /** 第 6 项跨原语打包：安装时路由到操作人员 skills 库的 skill 路径。 */
   skills?: string[];
-  /** Item 6 cross-primitive bundling: plugin references to install via the plugin primitive (HYBRID-mode bundles reference existing plugins rather than forking content). */
+  /** 第 6 项跨原语打包：经 plugin 原语安装的 plugin 引用；HYBRID 模式引用现有 plugin 而不分叉内容。 */
   plugins?: BundlePluginReference[];
-  /** Item 6 cross-primitive bundling: workflow spec YAML paths to route to the operator workflow-specs library on install (Checkpoint 7.3e). */
+  /** 第 6 项跨原语打包：安装时路由到操作人员 workflow-specs 库的 workflow spec YAML 路径（Checkpoint 7.3e）。 */
   workflowSpecs?: string[];
-  /** Item 6 cross-primitive bundling: paths to context-pack manifest.yaml files; router copies the parent dir to the operator context-packs library on install (Checkpoint 7.3f). */
+  /** 第 6 项跨原语打包：context-pack manifest.yaml 路径；安装时 router 将父目录复制到操作人员 context-packs 库（Checkpoint 7.3f）。 */
   contextPacks?: string[];
-  /** Item 6 cross-primitive bundling: paths to agent-image DIRECTORIES (per PRD §Item 6 line 197); router copies the declared directory to the operator agent-images library on install. Consumer requires manifest.yaml inside each image dir. (Checkpoint 7.3g) */
+  /** 第 6 项跨原语打包：agent-image 目录路径；安装时 router 将目录复制到操作人员 agent-images 库，且每个镜像目录内必须有 manifest.yaml（Checkpoint 7.3g）。 */
   agentImages?: string[];
 }
 
 export function validatePodBundleManifest(raw: unknown): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
-  if (!raw || typeof raw !== "object") return { valid: false, errors: ["manifest must be an object"] };
+  if (!raw || typeof raw !== "object") return { valid: false, errors: ["manifest 必须是对象"] };
   const m = raw as Record<string, unknown>;
 
-  if (m["schema_version"] !== 2) errors.push("schema_version must be 2");
-  if (typeof m["name"] !== "string" || !m["name"]) errors.push("name is required");
-  if (typeof m["version"] !== "string" || !m["version"]) errors.push("version is required");
-  if (typeof m["created_at"] !== "string" || !m["created_at"]) errors.push("created_at is required");
-  if (typeof m["rig_spec"] !== "string" || !m["rig_spec"]) errors.push("rig_spec path is required");
-  else if (!isRelativeSafePath(m["rig_spec"] as string)) errors.push(`rig_spec path is not safe: '${m["rig_spec"]}'`);
+  if (m["schema_version"] !== 2) errors.push("schema_version 必须为 2");
+  if (typeof m["name"] !== "string" || !m["name"]) errors.push("name 为必填项");
+  if (typeof m["version"] !== "string" || !m["version"]) errors.push("version 为必填项");
+  if (typeof m["created_at"] !== "string" || !m["created_at"]) errors.push("created_at 为必填项");
+  if (typeof m["rig_spec"] !== "string" || !m["rig_spec"]) errors.push("rig_spec 路径为必填项");
+  else if (!isRelativeSafePath(m["rig_spec"] as string)) errors.push(`rig_spec 路径不安全：'${m["rig_spec"]}'`);
 
   if (!Array.isArray(m["agents"])) {
-    errors.push("agents must be an array");
+    errors.push("agents 必须是数组");
   } else {
     for (let i = 0; i < m["agents"].length; i++) {
       const a = m["agents"][i] as Record<string, unknown>;
-      if (typeof a["name"] !== "string" || !a["name"]) errors.push(`agents[${i}].name is required`);
-      if (typeof a["path"] !== "string" || !a["path"]) errors.push(`agents[${i}].path is required`);
-      else if (!isRelativeSafePath(a["path"] as string)) errors.push(`agents[${i}].path is not safe`);
-      if (typeof a["hash"] !== "string" || !a["hash"]) errors.push(`agents[${i}].hash is required`);
+      if (typeof a["name"] !== "string" || !a["name"]) errors.push(`agents[${i}].name 为必填项`);
+      if (typeof a["path"] !== "string" || !a["path"]) errors.push(`agents[${i}].path 为必填项`);
+      else if (!isRelativeSafePath(a["path"] as string)) errors.push(`agents[${i}].path 不安全`);
+      if (typeof a["hash"] !== "string" || !a["hash"]) errors.push(`agents[${i}].hash 为必填项`);
     }
   }
 
@@ -469,26 +458,26 @@ export function parsePodBundleManifest(yaml: string): unknown {
   return parseYaml(yaml);
 }
 
-// -- Legacy bundle types (pre-reboot) --
-// TODO: Remove when AS-T12 migrates all consumers
+// ——旧版 bundle 类型（重启前）——
+// TODO：待 AS-T12 迁移全部消费者后移除。
 
-/** A package entry in the legacy bundle manifest */
+/** 旧版 bundle manifest 中的 package 条目。 */
 export interface LegacyBundlePackageEntry {
   name: string;
   version: string;
   path: string;
   originalSource: string;
-  /** All original source refs when deduped from multiple inputs */
+  /** 从多个输入去重时的全部原始来源 ref。 */
   originalSources?: string[];
 }
 
-/** Integrity section with per-file checksums */
+/** 带逐文件校验和的 integrity 区段。 */
 export interface BundleIntegrity {
   algorithm: "sha256";
   files: Record<string, string>;
 }
 
-/** The bundle.yaml manifest */
+/** bundle.yaml 清单。 */
 export interface LegacyBundleManifest {
   schemaVersion: number;
   name: string;
@@ -499,27 +488,26 @@ export interface LegacyBundleManifest {
   integrity?: BundleIntegrity;
   provenance?: BundleProvenance;
   compatibility?: BundleCompatibility;
-  /** Item 6 cross-primitive bundling: skill paths to route to the operator skills library on install. */
+  /** 第 6 项跨原语打包：安装时路由到操作人员 skills 库的 skill 路径。 */
   skills?: string[];
-  /** Item 6 cross-primitive bundling: plugin references to install via the plugin primitive (HYBRID-mode bundles reference existing plugins rather than forking content). */
+  /** 第 6 项跨原语打包：经 plugin 原语安装的 plugin 引用；HYBRID 模式引用现有 plugin 而不分叉内容。 */
   plugins?: BundlePluginReference[];
-  /** Item 6 cross-primitive bundling: workflow spec YAML paths to route to the operator workflow-specs library on install (Checkpoint 7.3e). */
+  /** 第 6 项跨原语打包：安装时路由到操作人员 workflow-specs 库的 workflow spec YAML 路径（Checkpoint 7.3e）。 */
   workflowSpecs?: string[];
-  /** Item 6 cross-primitive bundling: paths to context-pack manifest.yaml files; router copies the parent dir to the operator context-packs library on install (Checkpoint 7.3f). */
+  /** 第 6 项跨原语打包：context-pack manifest.yaml 路径；安装时 router 将父目录复制到操作人员 context-packs 库（Checkpoint 7.3f）。 */
   contextPacks?: string[];
-  /** Item 6 cross-primitive bundling: paths to agent-image DIRECTORIES (per PRD §Item 6 line 197); router copies the declared directory to the operator agent-images library on install. Consumer requires manifest.yaml inside each image dir. (Checkpoint 7.3g) */
+  /** 第 6 项跨原语打包：agent-image 目录路径；安装时 router 将目录复制到操作人员 agent-images 库，且每个镜像目录内必须有 manifest.yaml（Checkpoint 7.3g）。 */
   agentImages?: string[];
 }
 
-/** Validation options */
+/** 校验选项。 */
 interface ValidateOptions {
   requireIntegrity?: boolean;
 }
 
 /**
- * Check if a path is a safe archive-relative path.
- * Rejects: absolute paths, ../ traversal, backslashes, dot segments (./, bare .),
- * empty segments (//), empty string.
+ * 检查路径是否为安全的归档相对路径。拒绝绝对路径、../ 遍历、反斜杠、
+ * 点路径段（./ 或裸 .）、空路径段（//）及空字符串。
  */
 export function isRelativeSafePath(p: string): boolean {
   if (!p || p.length === 0) return false;
@@ -532,7 +520,7 @@ export function isRelativeSafePath(p: string): boolean {
   return true;
 }
 
-/** Validate a raw parsed bundle manifest */
+/** 校验原始解析后的 bundle manifest。 */
 export function validateLegacyBundleManifest(
   raw: unknown,
   opts?: ValidateOptions,
@@ -541,59 +529,59 @@ export function validateLegacyBundleManifest(
   const requireIntegrity = opts?.requireIntegrity ?? true;
 
   if (!raw || typeof raw !== "object") {
-    return { valid: false, errors: ["manifest must be an object"] };
+    return { valid: false, errors: ["manifest 必须是对象"] };
   }
 
   const m = raw as Record<string, unknown>;
 
-  if (m["schema_version"] !== 1) errors.push("schema_version must be 1");
-  if (typeof m["name"] !== "string" || !m["name"]) errors.push("name is required");
-  if (typeof m["version"] !== "string" || !m["version"]) errors.push("version is required");
-  if (typeof m["created_at"] !== "string" || !m["created_at"]) errors.push("created_at is required");
+  if (m["schema_version"] !== 1) errors.push("schema_version 必须为 1");
+  if (typeof m["name"] !== "string" || !m["name"]) errors.push("name 为必填项");
+  if (typeof m["version"] !== "string" || !m["version"]) errors.push("version 为必填项");
+  if (typeof m["created_at"] !== "string" || !m["created_at"]) errors.push("created_at 为必填项");
 
-  // rig_spec path
+  // rig_spec 路径。
   if (typeof m["rig_spec"] !== "string" || !m["rig_spec"]) {
-    errors.push("rig_spec path is required");
+    errors.push("rig_spec 路径为必填项");
   } else if (!isRelativeSafePath(m["rig_spec"] as string)) {
-    errors.push(`rig_spec path is not a safe relative path: '${m["rig_spec"]}'`);
+    errors.push(`rig_spec 路径不是安全的相对路径：'${m["rig_spec"]}'`);
   }
 
-  // packages
+  // package 列表。
   if (!Array.isArray(m["packages"]) || m["packages"].length === 0) {
-    errors.push("packages must be a non-empty array");
+    errors.push("packages 必须是非空数组");
   } else {
     for (let i = 0; i < m["packages"].length; i++) {
       const pkg = m["packages"][i] as Record<string, unknown>;
-      if (typeof pkg["name"] !== "string" || !pkg["name"]) errors.push(`packages[${i}].name is required`);
-      if (typeof pkg["version"] !== "string" || !pkg["version"]) errors.push(`packages[${i}].version is required`);
+      if (typeof pkg["name"] !== "string" || !pkg["name"]) errors.push(`packages[${i}].name 为必填项`);
+      if (typeof pkg["version"] !== "string" || !pkg["version"]) errors.push(`packages[${i}].version 为必填项`);
       if (typeof pkg["path"] !== "string" || !pkg["path"]) {
-        errors.push(`packages[${i}].path is required`);
+        errors.push(`packages[${i}].path 为必填项`);
       } else if (!isRelativeSafePath(pkg["path"] as string)) {
-        errors.push(`packages[${i}].path is not a safe relative path: '${pkg["path"]}'`);
+        errors.push(`packages[${i}].path 不是安全的相对路径：'${pkg["path"]}'`);
       }
-      if (typeof pkg["original_source"] !== "string" || !pkg["original_source"]) errors.push(`packages[${i}].original_source is required`);
+      if (typeof pkg["original_source"] !== "string" || !pkg["original_source"]) errors.push(`packages[${i}].original_source 为必填项`);
     }
   }
 
-  // integrity (optional unless requireIntegrity)
-  // Integrity validation — always validate structure when present, require when flag set
+  // integrity：除非 requireIntegrity，否则可选。
+  // integrity 校验：存在时始终校验结构；设置标志时要求必须存在。
   const hasIntegrity = m["integrity"] && typeof m["integrity"] === "object";
   if (requireIntegrity && !hasIntegrity) {
-    errors.push("integrity section is required");
+    errors.push("integrity 区段为必填项");
   }
   if (hasIntegrity) {
     const integrity = m["integrity"] as Record<string, unknown>;
-    if (integrity["algorithm"] !== "sha256") errors.push("integrity.algorithm must be 'sha256'");
+    if (integrity["algorithm"] !== "sha256") errors.push("integrity.algorithm 必须为 'sha256'");
     if (!integrity["files"] || typeof integrity["files"] !== "object" || Object.keys(integrity["files"] as object).length === 0) {
-      errors.push("integrity.files must be a non-empty object");
+      errors.push("integrity.files 必须是非空对象");
     } else {
       const files = integrity["files"] as Record<string, unknown>;
       for (const [key, value] of Object.entries(files)) {
         if (!isRelativeSafePath(key)) {
-          errors.push(`integrity.files key is not a safe relative path: '${key}'`);
+          errors.push(`integrity.files 键不是安全的相对路径：'${key}'`);
         }
         if (typeof value !== "string" || !/^[a-f0-9]{64}$/.test(value)) {
-          errors.push(`integrity.files['${key}'] must be a 64-char hex SHA-256 hash`);
+          errors.push(`integrity.files['${key}'] 必须是 64 字符十六进制 SHA-256 哈希`);
         }
       }
     }
@@ -610,12 +598,12 @@ export function validateLegacyBundleManifest(
   return { valid: errors.length === 0, errors };
 }
 
-/** Parse bundle.yaml YAML string to unknown */
+/** 将 bundle.yaml 的 YAML 字符串解析为 unknown。 */
 export function parseLegacyBundleManifest(yaml: string): unknown {
   return parseYaml(yaml);
 }
 
-/** Normalize raw parsed manifest to typed LegacyBundleManifest */
+/** 将原始解析后的 manifest 归一化为类型化 LegacyBundleManifest。 */
 export function normalizeLegacyBundleManifest(raw: unknown): LegacyBundleManifest {
   const m = raw as Record<string, unknown>;
   const pkgs = (m["packages"] as Array<Record<string, unknown>>).map((p) => {
@@ -672,7 +660,7 @@ export function normalizeLegacyBundleManifest(raw: unknown): LegacyBundleManifes
   return result;
 }
 
-/** Serialize a LegacyBundleManifest to YAML */
+/** 将 LegacyBundleManifest 序列化为 YAML。 */
 export function serializeLegacyBundleManifest(manifest: LegacyBundleManifest): string {
   const doc: Record<string, unknown> = {
     schema_version: manifest.schemaVersion,

@@ -1,32 +1,28 @@
-# Defect class: GAP-7 HOME divergence (the daemon HOME != the seat HOME).
-# Marathon origin: when a seat launched under a pre-existing tmux server with a
-#   different HOME, the orchestrator's preseed (startup files/trust) silently did not
-#   reach the seat — and nothing surfaced. Silent divergence is the defect.
+# 缺陷类别：GAP-7 HOME 分歧（后台服务 HOME != 席位 HOME）。
+# Marathon 来源：席位在 HOME 不同的既有 tmux server 下启动时，编排者的预置内容
+#   （启动文件/信任）没有到达席位，而且没有任何提示。静默分歧就是缺陷。
 #
-# ERA-SPLIT RULING (PM via orch, 2026-08-06): the former "preseed reaches OR failure
-# visible" disjunction was TWO ERAS sharing one assert — the OR existed only because
-# home-divergence VARIED before GAP-7. GAP-7 folded tonight (`d0668d5f`, in main:
-# "fix(cli): preserve Codex home for daemon"), so at the FIXED tip the outcome is
-# DETERMINISTIC. The GREEN/RED pair structure separates the two eras without any_of
-# (the validator's refusal of any_of was correct and stands):
-#   - GREEN leg (fixed tip): preseed REACHES the seat — one deterministic outcome.
-#   - seed_regression leg: the seeded GAP-7-class fault makes preseed fail, and the
-#     failure MUST be VISIBLE on stream (never silent) — that is what the seeded run pins.
+# 时代拆分裁定（PM 经 orch，2026-08-06）：原“预置到达或失败可见”的析取条件，
+# 实际是两个时代共用一条断言——OR 只因 GAP-7 修复前 home-divergence 结果不稳定而存在。
+# GAP-7 今晚已折叠（`d0668d5f`，位于 main："fix(cli): preserve Codex home for daemon"），
+# 因此在已修复 tip 上结果是确定的。GREEN/RED 配对结构无需 any_of 即可分开两个时代
+#（validator 拒绝 any_of 是正确的，继续保持）：
+#   - GREEN 段（已修复 tip）：预置内容到达席位——唯一确定结果。
+#   - seed_regression 段：种下 GAP-7 类故障使预置失败，且失败必须在 stream 上可见
+#     （绝不能静默）——种子运行用于锁定此行为。
 #
-# SEED (class: gap7-home-divergence): the seed plants the GAP-7-class HOME split. The
-#   GREEN `expect pane trust-reached` then goes RED (preseed did not reach), and the
-#   failure surfaces on `stream` — the runner diff names the class. If the seeded run
-#   produced a SILENT failure (neither reach nor visible), THAT is the defect the pair
-#   catches. (If the SUT is ever found non-determinate at the fixed tip, the any_of
-#   amendment question returns WITH that evidence — not before.)
-# Deps: R-14 (env.pre_existing_tmux hermetic fixture). R-10 runner.
+# SEED（class: gap7-home-divergence）：种子植入 GAP-7 类 HOME 分裂。随后 GREEN
+#   `expect pane trust-reached` 转红（预置未到达），失败会呈现在 `stream` 上——runner diff
+#   会标明该类别。如果种子运行产生静默失败（既未到达，也不可见），这才是该配对要捕获的缺陷。
+#   （若发现 SUT 在已修复 tip 上仍不确定，应带着证据重新提出 any_of 修订，而不是提前提出。）
+# 依赖：R-14（env.pre_existing_tmux hermetic 夹具）、R-10 runner。
 scenario: home-divergence-preseed-visible
 topology: ./solo-stub.yaml
 env:
   pre_existing_tmux: true
 steps:
   - up: {}
-  # GREEN leg — deterministic at the GAP-7-fixed tip: preseed reaches the seat.
+  # GREEN 段——在 GAP-7 已修复 tip 上结果确定：预置内容到达席位。
   - expect:
       surface: pane
       seat: work-worker@solo-stub

@@ -1,7 +1,7 @@
-// The NARROW `@openrig/daemon/crash-cart` public surface (packaging ruling A, rail 1): ONLY the
-// crash-cart read / emit / detect — never a blanket daemon export (accidental-public-API guard).
-// Consumed by the `rig crash-cart --json` verb (lazy-imported at invocation, dep rail 2). The C2 read
-// (loadCrashCartDiscovery) is re-exported VERBATIM (coupling rail 2 — a single impl, not a parallel one).
+// 窄化的 `@openrig/daemon/crash-cart` 公开 surface（打包裁定 A，护栏 1）：只公开 crash-cart
+// 的 read/emit/detect，绝不整体导出后台服务（防止意外公开 API）。由 `rig crash-cart --json`
+// 动词消费（调用时延迟导入，依赖护栏 2）。C2 读取（loadCrashCartDiscovery）原样 re-export
+//（耦合护栏 2——单一实现，不设并行实现）。
 export * from "./domain/crash-cart-discovery.js";
 export * from "./domain/crash-cart-detect.js";
 export * from "./domain/crash-cart-probes.js";

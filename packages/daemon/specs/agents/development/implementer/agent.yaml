@@ -1,6 +1,6 @@
 name: implementer
 version: "1.0"
-description: Implementation agent — writes code following TDD discipline
+description: 实现智能体——遵循 TDD 规范编写代码
 
 defaults:
   runtime: claude-code

@@ -9,22 +9,22 @@ import {
   telemetrySidecarFilename,
 } from "../src/domain/telemetry-state-paths.js";
 
-describe("OpenRig-owned telemetry paths", () => {
-  it("owns both telemetry roots beneath state", () => {
+describe("OpenRig 所有的 telemetry path", () => {
+  it("拥有 state 下的两个 telemetry root", () => {
     expect(contextUsageDirectory("/openrig-home")).toBe("/openrig-home/state/context-usage");
     expect(providerUsageDirectory("/openrig-home")).toBe("/openrig-home/state/provider-usage");
   });
 
-  it("names the 0.5.8 compatibility roots without changing canonical ownership", () => {
+  it("命名 0.5.8 compatibility root，但不改变 canonical ownership", () => {
     expect(legacyContextUsageDirectory("/openrig-home")).toBe("/openrig-home/context");
     expect(legacyProviderUsageDirectory("/openrig-home")).toBe("/openrig-home/provider-usage");
   });
 
-  it("owns the sidecar filename rule used by readers", () => {
+  it("拥有 reader 使用的 sidecar filename 规则", () => {
     expect(telemetrySidecarFilename("dev/impl @ test")).toBe("dev_impl_@_test.json");
   });
 
-  it("keeps the projected CJS collector filename rule in parity", () => {
+  it("保持 projected CJS collector filename 规则一致", () => {
     const collector = fs.readFileSync(
       path.join(import.meta.dirname, "../assets/claude-statusline-context.cjs"),
       "utf8",

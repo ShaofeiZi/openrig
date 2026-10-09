@@ -3,13 +3,11 @@ import { ClaudeCodeAdapter, type ClaudeAdapterFsOps } from "../src/adapters/clau
 import type { NodeBinding, ResolvedStartupFile } from "../src/domain/runtime-adapter.js";
 import type { TmuxAdapter } from "../src/adapters/tmux.js";
 
-// P20 atom 3b — RECORD-AT-APPLY. The discrimination (conflict-detector) and the
-// enable path (rigspec-instantiator wiring pin) are inert unless the projector
-// actually records what it wrote. This pins the WRITE side: when the adapter
-// installs a skill file, it must feed the manifest the exact target + content it
-// wrote, so a later projection can classify stale_overwrite vs operator_conflict.
-// A drop of the recordProjection call reverts every target to P17-fallback-forever
-// (lookup null → hash_conflict), a silent dead invalidator — so this fails RED there.
+// P20 atom 3b——应用时记录。除非 projector 实际记录其写入内容，否则 discrimination
+//（conflict-detector）与 enable path（rigspec-instantiator wiring pin）都不起作用。这里固定 WRITE
+// 侧：adapter 安装 skill file 时，必须将所写的精确 target + content 提交给 manifest，使后续
+// projection 能区分 stale_overwrite 与 operator_conflict。若漏掉 recordProjection 调用，每个 target
+// 都会回退到 P17 永久 fallback（lookup null → hash_conflict），形成静默失效器——因此这里会变 RED。
 
 function mockTmux(): TmuxAdapter {
   return {
@@ -70,8 +68,8 @@ function skillFile(): ResolvedStartupFile {
   };
 }
 
-describe("P20 record-at-apply — the adapter records the manifest on skill_install", () => {
-  it("records the exact target path + content it wrote", async () => {
+describe("P20 record-at-apply——adapter 在 skill_install 时记录 manifest", () => {
+  it("记录其写入的精确 target path + content", async () => {
     const CONTENT = "# my-skill\nprojected body v1\n";
     const recorded: Array<{ target: string; content: string }> = [];
     const adapter = new ClaudeCodeAdapter({
@@ -83,14 +81,14 @@ describe("P20 record-at-apply — the adapter records the manifest on skill_inst
     await adapter.deliverStartup([skillFile()], makeBinding("/project"));
 
     expect(recorded).toHaveLength(1);
-    // target == the actual write path (cwd/.claude/skills/<skill-dir>/SKILL.md),
-    // which is exactly what a later projection will classify.
+    // target == 实际写入路径（cwd/.claude/skills/<skill-dir>/SKILL.md），也正是后续
+    // projection 将分类的路径。
     expect(recorded[0]!.target).toBe("/project/.claude/skills/my-skill/SKILL.md");
-    // content == the bytes written (so hashContent(recorded) == the target's future hash).
+    // content == 写入的 byte（因此 hashContent(recorded) == target 未来的 hash）。
     expect(recorded[0]!.content).toBe(CONTENT);
   });
 
-  it("does not record when there is no skill to install (send_text is not a projection)", async () => {
+  it("没有 skill 可安装时不记录（send_text 不是 projection）", async () => {
     const recorded: Array<{ target: string; content: string }> = [];
     const adapter = new ClaudeCodeAdapter({
       tmux: mockTmux(),

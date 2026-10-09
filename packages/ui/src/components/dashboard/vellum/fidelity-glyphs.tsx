@@ -1,23 +1,18 @@
-// OPR.0.4.1.14 — fidelity launcher glyphs for the refreshed Dashboard route.
+// OPR.0.4.1.14 —— 刷新后 Dashboard 路由的保真启动图标。
 //
-// Geometry is byte-faithful to the founder-LOCKED twin
-// (digital-twin/opr-0.4.1.14/dashboard-fidelity.intent.html). These are the
-// founder-ratified ICON ROUND set: the EXISTING-CODE dashboard glyphs
-// (topology six-node / project river / for-you target / library globe) plus
-// the two the icon-round re-cut — a magnifier RE-CENTERED in a perfect square
-// (search) and a ship's HELM (settings, ink-only, distinct from for-you's
-// amber target). The newly-drawn creative glyphs are deliberately NOT used
-// here; per sequencing (a) the final glyphs swap in later on the icon
-// re-confirm.
+// 几何与创始人锁定的 twin 逐字节一致
+// （digital-twin/opr-0.4.1.14/dashboard-fidelity.intent.html）。这些是创始人批准的
+// 图标轮次集：既有代码里的仪表盘图标（拓扑六节点 / 项目河流 / for-you 靶心 / Library 地球），
+// 加上图标轮次重切的两个——在完美正方形里重新居中的放大镜（搜索）和船舵（设置，仅墨色，
+// 区别于 for-you 的琥珀色靶心）。新绘制的创意图标刻意不在此使用；按排期 (a)，
+// 最终图标会在图标再确认时换入。
 //
-// Stroke width + linecaps + hover-amber colour are driven by the scoped CSS
-// (.df-glyph svg / .df-cap i svg in dashboard-fidelity.css), so these stay
-// context-agnostic: the same component renders at 84px in a card and at 9px
-// in a caption, picking up the right weight from its container. Everything
-// inherits `currentColor`, so the card's hover rule (color -> amber) tints the
-// whole glyph; the for-you centre dot carries `df-amf` to stay amber at rest.
+// 线宽 + 线帽 + 悬停琥珀色由作用域 CSS 驱动（dashboard-fidelity.css 里的
+// .df-glyph svg / .df-cap i svg），因此这些组件与上下文无关：同一组件在卡片里以 84px、
+// 在说明文字里以 9px 渲染，从容器取到正确的粗细。一切继承 `currentColor`，所以卡片的
+// 悬停规则（color → 琥珀）会给整个图标着色；for-you 中心点带 `df-amf`，静止时保持琥珀。
 
-// ── 01 TOPOLOGY — six-node tree (existing TreeGraphic geometry) ───────────────
+// ── 01 拓扑——六节点树（既有 TreeGraphic 几何） ───────────────
 export function TopologyGlyph() {
   return (
     <svg viewBox="0 0 60 60" fill="none" stroke="currentColor" aria-hidden="true">
@@ -37,8 +32,7 @@ export function TopologyGlyph() {
   );
 }
 
-// ── 02 PROJECT — stratigraphic "river" (existing geometry, [01] label dropped
-//    per the icon-round note so it does not clash with the card's own index) ──
+// ── 02 项目——地层“河流”（既有几何；按图标轮次说明去掉 [01] 标记，以免与卡片自身序号冲突） ──
 export function ProjectGlyph() {
   return (
     <svg viewBox="0 0 60 60" fill="none" stroke="currentColor" aria-hidden="true">
@@ -51,8 +45,7 @@ export function ProjectGlyph() {
   );
 }
 
-// ── 03 FOR YOU — radar target (existing PulseGraphic geometry; single amber
-//    centre dot stays amber at rest via df-amf) ────────────────────────────────
+// ── 03 为你——雷达靶心（既有 PulseGraphic 几何；单一琥珀中心点经 df-amf 静止时保持琥珀） ──
 export function ForYouGlyph() {
   return (
     <svg viewBox="0 0 60 60" fill="none" stroke="currentColor" aria-hidden="true">
@@ -66,7 +59,7 @@ export function ForYouGlyph() {
   );
 }
 
-// ── 04 LIBRARY — gyroscope globe (existing SphereGraphic geometry) ────────────
+// ── 04 Library——陀螺仪地球（既有 SphereGraphic 几何） ────────────
 export function LibraryGlyph() {
   return (
     <svg viewBox="0 0 60 60" fill="none" stroke="currentColor" aria-hidden="true">
@@ -80,8 +73,7 @@ export function LibraryGlyph() {
   );
 }
 
-// ── 05 SEARCH & AUDIT — magnifier RE-CENTERED in a perfect square with four
-//    corner focus-brackets (icon-round fix for the off-centre/forced-square) ──
+// ── 05 搜索与审计——放大镜在完美正方形中重新居中，四角带对焦括号（图标轮次修复偏心/强制正方形） ──
 export function SearchGlyph() {
   return (
     <svg viewBox="0 0 60 60" fill="none" stroke="currentColor" aria-hidden="true">
@@ -97,9 +89,8 @@ export function SearchGlyph() {
   );
 }
 
-// ── 06 SETTINGS — ship's HELM / navigation wheel: outer ring + hub + 8 spokes
-//    with handle stubs. Ink-only and distinct in BOTH shape and colour from
-//    for-you's amber target (icon-round fix for "too similar + both orange") ──
+// ── 06 设置——船舵 / 导航轮：外圈 + 轮毂 + 8 根带柄辐条。仅墨色，在形状与颜色上都区别于
+//    for-you 的琥珀靶心（图标轮次修复“过于相似且都是橙色”） ──
 export function SettingsGlyph() {
   return (
     <svg viewBox="0 0 60 60" fill="none" stroke="currentColor" aria-hidden="true">
@@ -118,7 +109,7 @@ export function SettingsGlyph() {
   );
 }
 
-// ── Field Environment globe — 72-unit gyroscope readout glyph ────────────────
+// ── 现场环境地球——72 单位陀螺仪读数图标 ────────────────
 export function FieldGlobeGlyph() {
   return (
     <svg viewBox="0 0 72 72" fill="none" stroke="currentColor" aria-hidden="true">
@@ -134,7 +125,7 @@ export function FieldGlobeGlyph() {
   );
 }
 
-// ── Caption mini-glyphs (9px) — paired one per card per the twin ─────────────
+// ── 说明文字小图标（9px）——按 twin 每张卡片配一个 ─────────────
 export type CaptionGlyphKind = "cross" | "square" | "circle";
 
 export function CaptionGlyph({ kind }: { kind: CaptionGlyphKind }) {

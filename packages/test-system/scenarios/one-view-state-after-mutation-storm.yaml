@@ -1,34 +1,31 @@
-# Defect class: the one-view-state invariant (PIN-1) as a standing machine-checked
-#   assertion — tui_socket == ps == queue must express the SAME truth.
-# Marathon origin: the TUI socket state, `rig ps`, and `rig queue` drifted out of sync
-#   after a burst of activity, so three surfaces told three stories of one system.
-# SEED (class: view-state-divergence): the seeded regression makes one surface
-#   (tui_socket) lag/omit after the storm. The `equals` cross-surface leg MUST catch it
-#   — the diff shows the normalized surfaces disagreeing.
+# 缺陷类别：将单一视图状态不变量（PIN-1）作为持续机器检查断言——
+#   tui_socket == ps == queue 必须表达同一事实。
+# Marathon 来源：一阵活动后，TUI socket 状态、`rig ps` 与 `rig queue` 不再同步，
+#   导致三个界面讲述同一系统的三种不同状态。
+# SEED（class: view-state-divergence）：种子回归使一个界面（tui_socket）在风暴后延迟/遗漏。
+#   `equals` 跨界面步骤必须发现它——diff 会显示标准化后的界面结果不一致。
 #
-# REAL 51-02 FORM (adapted, see FORMAT-CONFORMANCE-NOTES.md): the locked schema requires
-# a nominal `surface` on every expect, so `surface: ps` is the anchor and `equals` is a
-# LIST of the compared surfaces (NOT an object). The declarative normalizer's final
-# shape (which fields of each surface map onto the shared comparison form) rides 51-03
-# shaping; the runner takes an injected normalizer (R-13).
-# Deps: R-13 (equals normalizer). Storm = an explicit bounded sequence (no loop verb).
+# 真实 51-02 形式（已适配，见 FORMAT-CONFORMANCE-NOTES.md）：锁定 schema 要求每个 expect
+# 都有名义 `surface`，因此 `surface: ps` 是锚点，`equals` 是待比较界面的列表（不是对象）。
+# 声明式标准化器的最终形态（各界面的哪些字段映射到共享比较格式）随 51-03 塑形确定；
+# runner 接收注入的标准化器（R-13）。
+# 依赖：R-13（equals 标准化器）。风暴 = 显式有界序列（没有 loop 动词）。
 scenario: one-view-state-after-mutation-storm
 topology: ./mutation-pod-stub.yaml
 env:
-  # D7 (51-02 delta): tui_socket expects require the TUI opt-in — the pipeline
-  # provisions the shipped TUI (isolated tmux server + scaffold socket) only when
-  # declared, so the surface read never races a socket that never listens.
+  # D7（51-02 delta）：tui_socket expect 要求显式启用 TUI——只有声明后，pipeline 才会
+  # 配置已发布 TUI（隔离 tmux server + scaffold socket），避免界面读取与永不监听的 socket 竞争。
   tui: true
 steps:
   - up: {}
-  # Bounded mutation storm: interleave sends and structural edits.
-  - send: {to: swarm-a@mutation-pod-stub, text: "task 1"}
-  - send: {to: swarm-b@mutation-pod-stub, text: "task 2"}
+  # 有界变更风暴：交错执行发送与结构编辑。
+  - send: {to: swarm-a@mutation-pod-stub, text: "任务 1"}
+  - send: {to: swarm-b@mutation-pod-stub, text: "任务 2"}
   - mutate: {op: add_member, pod: swarm, member: d, runtime: stub}
-  - send: {to: swarm-c@mutation-pod-stub, text: "task 3"}
+  - send: {to: swarm-c@mutation-pod-stub, text: "任务 3"}
   - mutate: {op: rename_member, pod: swarm, from: d, to: e}
-  - send: {to: swarm-e@mutation-pod-stub, text: "task 4"}
-  # After the storm the three surfaces MUST agree (normalized cross-surface equality).
+  - send: {to: swarm-e@mutation-pod-stub, text: "任务 4"}
+  # 风暴结束后，三个界面必须一致（标准化的跨界面相等性）。
   - expect:
       surface: ps
       within: 30s

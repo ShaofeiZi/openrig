@@ -1,7 +1,6 @@
-// release-0.3.2 slice 01 BC repair — HG-6 discriminators for the
-// workflow project --exit enum. Without runtime validation, the
-// TypeScript-only enum allowed `--exit banana` to flow through to
-// the daemon transactional-scribe surface.
+// release-0.3.2 slice 01 BC 修复——workflow project --exit 枚举的 HG-6 判别式。
+// 无运行时校验时，仅 TypeScript 的枚举允许 `--exit banana` 一路流到
+// daemon transactional-scribe 表面。
 
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -81,8 +80,8 @@ describe("rig workflow project --exit — CLI-side discriminator (BLOCK 2)", () 
     const joined = out.logs.join("\n");
     const parsed = JSON.parse(joined);
     expect(parsed.ok).toBe(false);
-    expect(parsed.error.fact).toMatch(/--exit must be one of handoff \| waiting \| done \| failed.*banana/);
-    expect(parsed.error.consequence).toMatch(/did not run/);
+    expect(parsed.error.fact).toMatch(/--exit 必须是 handoff \| waiting \| done \| failed.*banana/);
+    expect(parsed.error.consequence).toMatch(/未运行/);
     expect(parsed.error.action).toMatch(/--exit handoff/);
   });
 
@@ -106,9 +105,9 @@ describe("rig workflow project --exit — CLI-side discriminator (BLOCK 2)", () 
     expect(exitCode).toBe(1);
     expect(post).not.toHaveBeenCalled();
     const joined = err.logs.join("");
-    expect(joined).toMatch(/Error:.*--exit must be one of/);
+    expect(joined).toMatch(/错误：.*--exit 必须是/);
     expect(joined).toMatch(/banana/);
-    expect(joined).toMatch(/did not run/);
+    expect(joined).toMatch(/未运行/);
   });
 
   it("rejects each garbage variant ('', 'HANDOFF', 'shipped') without calling the daemon", async () => {
@@ -135,7 +134,7 @@ describe("rig workflow project --exit — CLI-side discriminator (BLOCK 2)", () 
     }
   });
 
-  // Positive-path validation (e.g. --exit handoff forwards correctly)
+  // 正向路径校验（如 --exit handoff 正确转发）
   // is covered by isProjectExitKind pure-helper above; the live action
   // path is gated by getDaemonStatus and tested at the integration
   // tier, mirroring the slice-01 workflow-ux test pattern.

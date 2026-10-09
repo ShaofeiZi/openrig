@@ -1,23 +1,17 @@
-// Workflows in Spec Library + Activation Lens v0 — workflow scanner.
+// Spec Library + Activation Lens v0 中的工作流——workflow scanner。
 //
-// SpecLibraryService knows how to classify rig + agent YAML files. This
-// scanner adds workflow_specs as a third library kind by reading
-// directly from the workflow_specs SQLite cache (PL-004 Phase D) +
-// re-parsing each cached row to extract the per-step routing for the
-// review payload's topology graph.
+// SpecLibraryService 已能分类 rig + agent YAML 文件。本 scanner 直接读取 workflow_specs
+// SQLite cache（PL-004 Phase D），并重新解析每个缓存 row，提取 review payload topology graph
+// 所需的逐 step 路由，从而把 workflow_specs 增加为第三种 library kind。
 //
-// The cache is the single source of truth for which workflow_specs the
-// daemon has seen — both built-in starters (seeded at startup by
-// loadStarterWorkflowSpecs) and
-// operator-authored specs at workspace paths that the workspace-
-// surface reconciliation contract has read through. Reading from the
-// cache (rather than re-walking directories) means: no new env config,
-// no duplicate parse logic, and the scanner stays consistent with
-// `rig workflow specs` (same rows, same source-of-truth).
+// cache 是后台服务已见 workflow_specs 的唯一真源，其中既包括 startup 时由
+// loadStarterWorkflowSpecs 填种的 built-in starter，也包括 workspace-surface reconciliation
+// 契约从工作区路径读取的 operator-authored spec。读取 cache 而不是重新遍历目录意味着：不新增
+// env 配置、不复制 parse 逻辑，并让 scanner 与 `zrig workflow specs` 保持一致（相同 row、
+// 相同真源）。
 //
-// Built-in detection: a row's `source_path` is "built in" iff it falls
-// under the daemon's workflowBuiltinSpecsDir (the same `path.sep`
-// boundary check used by /api/workflow/specs).
+// Built-in 检测：当且仅当 row 的 `source_path` 位于后台服务 workflowBuiltinSpecsDir 下时，
+// 才视为 built-in；使用与 /api/workflow/specs 相同的 `path.sep` 边界检查。
 
 import * as path from "node:path";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -32,28 +26,26 @@ export interface SpecLibraryWorkflowEntry {
   kind: "workflow";
   name: string;
   version: string;
-  /** "builtin" when source_path is under workflowBuiltinSpecsDir; else "user_file". */
+  /** source_path 位于 workflowBuiltinSpecsDir 下时为 "builtin"，否则为 "user_file"。 */
   sourceType: "builtin" | "user_file";
   sourcePath: string;
   relativePath: string;
   updatedAt: string;
   summary?: string;
-  /** True iff sourcePath is under the daemon's bundled built-in dir. */
+  /** 当且仅当 sourcePath 位于后台服务随附 built-in 目录下时为 true。 */
   isBuiltIn: boolean;
-  /** Cheap counts surfaced in the row summary line. */
+  /** 在 row summary 行呈现的低开销计数。 */
   rolesCount: number;
   stepsCount: number;
   terminalTurnRule: string;
   targetRig: string | null;
   /**
-   * Slice 11 (workflow-spec-folder-discovery) — diagnostic state.
-   * "valid" rows have parsed payload and are operable.
-   * "error" rows came from a malformed YAML in the workflows folder
-   * scan; Library UI renders them with error styling and surfaces
-   * the errorMessage so the operator can fix the file in place.
+   * Slice 11（workflow-spec-folder-discovery）——诊断状态。"valid" row 已解析 payload，
+   * 可以操作；"error" row 来自 workflows 文件夹扫描发现的 malformed YAML。Library UI
+   * 用错误样式渲染，并显示 errorMessage，让操作员可原地修复文件。
    */
   status: "valid" | "error";
-  /** Populated only when status === "error" — concrete parse/validate diagnostic. */
+  /** 仅在 status === "error" 时填充，包含具体 parse/validate 诊断。 */
   errorMessage: string | null;
 }
 
@@ -69,18 +61,15 @@ export interface SpecLibraryWorkflowReview {
   isBuiltIn: boolean;
   sourcePath: string;
   cachedAt: string;
-  /** Topology graph projection: nodes from `roles`, edges derived from
-   *  each step's next_hop.suggested_roles → next-step ids. Same shape
-   *  Slice Story View v1 uses for its Topology tab — consumers reuse
-   *  the same UI primitives for rendering.
+  /** Topology graph projection：node 来自 `roles`，edge 由每个 step 的
+   *  next_hop.suggested_roles → 下一 step id 派生。结构与 Slice Story View v1 的 Topology
+   *  tab 相同，consumer 复用同一组 UI primitive 渲染。
    *
-   *  OPR.0.4.6.WF4 Q1 (arch-ruled): the projection ADDS branch edges
-   *  from `next_hop.on` (routingType 'branch' + the triggering exit),
-   *  corrects the false-terminal defect (a step with on-targets is not
-   *  terminal), and projects optional harness/host/gate node fields —
-   *  all byte-identity-by-omission: a suggested-roles-only spec with no
-   *  on/harness/host/gate projects EXACTLY as before (no 'branch' edge,
-   *  no branchOn key, no optional node key). */
+   *  OPR.0.4.6.WF4 Q1（架构裁定）：projection 从 `next_hop.on` 增加 branch edge
+   *  （routingType 'branch' + 触发 exit），修正 false-terminal 缺陷（带 on-target 的 step 不是
+   *  terminal），并投影可选 harness/host/gate node 字段。所有新增都通过省略保持字节身份：
+   *  只有 suggested_roles、没有 on/harness/host/gate 的 spec 与之前投影完全相同，不含
+   *  'branch' edge、branchOn key 或可选 node key。 */
   topology: {
     nodes: Array<{
       stepId: string;
@@ -89,7 +78,7 @@ export interface SpecLibraryWorkflowReview {
       preferredTarget: string | null;
       isEntry: boolean;
       isTerminal: boolean;
-      /** OPR.0.4.6.WF4 Q1-P1 — OMITTED when the step declares none. */
+      /** OPR.0.4.6.WF4 Q1-P1——step 未声明时省略。 */
       harness?: WorkflowAgentHarness;
       host?: string;
       gate?: WorkflowGateSpec;
@@ -97,27 +86,27 @@ export interface SpecLibraryWorkflowReview {
     edges: Array<{
       fromStepId: string;
       toStepId: string;
-      /** OPR.0.4.6.WF4 Q1-P2 — closed-vocabulary extension of 'direct'. */
+      /** OPR.0.4.6.WF4 Q1-P2——'direct' 的封闭词表扩展。 */
       routingType: "direct" | "branch";
-      /** The triggering exit; present on 'branch' edges ONLY. */
+      /** 触发 exit；只存在于 'branch' edge。 */
       branchOn?: WorkflowExitKind;
     }>;
   };
-  /** Per-step list rendered below the graph. */
+  /** 渲染在 graph 下方的逐 step 列表。 */
   steps: Array<{
     stepId: string;
     role: string;
     objective: string | null;
     allowedExits: string[];
-    /** Resolved destinations from next_hop.suggested_roles → step ids. */
+    /** 从 next_hop.suggested_roles → step id 解析出的 destination。 */
     allowedNextSteps: Array<{ stepId: string; role: string }>;
   }>;
 }
 
 export interface ScanWorkflowSpecsOpts {
   db: Database.Database;
-  /** Absolute path to the daemon's bundled builtin starter dir;
-   *  null/undefined → no isBuiltIn detection (all rows render as user_file). */
+  /** 后台服务随附 builtin starter 目录的绝对路径；null/undefined 表示不检测 isBuiltIn，
+   *  所有 row 都渲染为 user_file。 */
   workflowBuiltinSpecsDir: string | null;
 }
 
@@ -133,9 +122,8 @@ interface SpecRow {
   source_path: string;
   source_hash: string;
   cached_at: string;
-  // Slice 11 — diagnostic columns from migration 040. May be missing
-  // when the test harness applies only the 033 schema; treat absence
-  // as status='valid', error_message=null to preserve back-compat.
+  // Slice 11——migration 040 增加的诊断列。测试 harness 只应用 033 schema 时可能缺失；为保持
+  // 向后兼容，把缺失视为 status='valid'、error_message=null。
   status?: string;
   error_message?: string | null;
 }
@@ -147,9 +135,8 @@ export function scanWorkflowSpecs(opts: ScanWorkflowSpecsOpts): SpecLibraryWorkf
       `SELECT * FROM workflow_specs ORDER BY name, version`,
     ).all() as SpecRow[];
   } catch {
-    // workflow_specs table absent (test harness without the migration):
-    // empty library. Same graceful degradation as Slice Story View
-    // v0's slice indexer.
+    // workflow_specs 表不存在（测试 harness 未应用 migration）时返回空 library，与 Slice Story
+    // View v0 slice indexer 使用相同的优雅降级。
     return [];
   }
 
@@ -160,14 +147,12 @@ export function scanWorkflowSpecs(opts: ScanWorkflowSpecsOpts): SpecLibraryWorkf
       ? isUnderDir(row.source_path, opts.workflowBuiltinSpecsDir)
       : false;
 
-    // Slice 11 — diagnostic rows render without parsed payload. Use the
-    // file basename as the row label (already stored in name by
-    // writeDiagnostic) and zero counts; errorMessage carries the reason.
+    // Slice 11——diagnostic row 不带解析后的 payload。使用文件 basename 作为 row label
+    //（writeDiagnostic 已存入 name），计数为零，errorMessage 携带原因。
     if (status === "error") {
       out.push({
-        // Diagnostic rows don't have stable name+version (version is
-        // empty when YAML couldn't be parsed); the library id falls
-        // back to source_path so the UI can route uniquely.
+        // Diagnostic row 没有稳定的 name+version（YAML 无法解析时 version 为空）；library id
+        // 回退到 source_path，使 UI 可以唯一寻址。
         id: `workflow:error:${row.source_path}`,
         kind: "workflow",
         name: row.name,
@@ -194,14 +179,13 @@ export function scanWorkflowSpecs(opts: ScanWorkflowSpecsOpts): SpecLibraryWorkf
       roles = JSON.parse(row.roles_json) as WorkflowSpec["roles"];
       steps = JSON.parse(row.steps_json) as WorkflowSpec["steps"];
     } catch {
-      // Malformed JSON in cache — skip with no entry; the daemon's
-      // /api/workflow/specs surface will surface the row anyway.
+      // cache 中 JSON 格式错误时跳过，不生成 entry；后台服务 /api/workflow/specs surface
+      // 仍会呈现该 row。
       continue;
     }
     out.push({
-      // Stable id derived from name+version so the SpecLibrary's review
-      // endpoint can resolve workflow entries the same way it resolves
-      // rig/agent entries by id.
+      // 从 name+version 派生稳定 id，使 SpecLibrary review endpoint 能像按 id 解析 rig/agent
+      // entry 一样解析 workflow entry。
       id: workflowLibraryId(row.name, row.version),
       kind: "workflow",
       name: row.name,
@@ -247,7 +231,7 @@ export function getWorkflowReview(opts: ScanWorkflowSpecsOpts & { name: string; 
     ? isUnderDir(row.source_path, opts.workflowBuiltinSpecsDir)
     : false;
 
-  // Project the topology — same shape as Slice Story View v1 uses.
+  // 投影 topology，使用与 Slice Story View v1 相同的结构。
   const stepByRole = new Map<string, typeof steps[0]>();
   for (const step of steps ?? []) {
     if (!stepByRole.has(step.actor_role)) stepByRole.set(step.actor_role, step);
@@ -259,8 +243,8 @@ export function getWorkflowReview(opts: ScanWorkflowSpecsOpts & { name: string; 
   const stepIds = new Set((steps ?? []).map((s) => s.id));
   const topologyNodes = (steps ?? []).map((step) => {
     const roleSpec = (roles as Record<string, { preferred_targets?: string[] }>)[step.actor_role] ?? {};
-    // OPR.0.4.6.WF4 Q1-P3: a step with next_hop.on targets is NOT terminal
-    // (the false-terminal defect for branch-only steps like build/verify).
+    // OPR.0.4.6.WF4 Q1-P3：带 next_hop.on target 的 step 不是 terminal；这修正了
+    // build/verify 等纯 branch step 的 false-terminal 缺陷。
     const hasOnTargets = Object.keys(step.next_hop?.on ?? {}).length > 0;
     return {
       stepId: step.id,
@@ -269,8 +253,8 @@ export function getWorkflowReview(opts: ScanWorkflowSpecsOpts & { name: string; 
       preferredTarget: roleSpec.preferred_targets?.[0] ?? null,
       isEntry: step.id === entryStepId,
       isTerminal: !(step.next_hop?.suggested_roles?.length) && !hasOnTargets,
-      // OPR.0.4.6.WF4 Q1-P1: optional node fields, OMITTED when absent
-      // (byte-identity-by-omission — a step with none adds no key).
+      // OPR.0.4.6.WF4 Q1-P1：可选 node 字段，缺失时省略。通过省略保持字节身份：未声明
+      // 这些字段的 step 不增加任何 key。
       ...(step.harness ? { harness: step.harness } : {}),
       ...(step.host ? { host: step.host } : {}),
       ...(step.gate ? { gate: step.gate } : {}),
@@ -284,9 +268,9 @@ export function getWorkflowReview(opts: ScanWorkflowSpecsOpts & { name: string; 
       if (!target) continue;
       topologyEdges.push({ fromStepId: step.id, toStepId: target.id, routingType: "direct" });
     }
-    // OPR.0.4.6.WF4 Q1-P2: branch edges from next_hop.on (exit → successor
-    // STEP ID). Absent `on` pushes nothing ⇒ suggested-roles-only specs
-    // project a byte-identical edge array. The exit label rides `branchOn`.
+    // OPR.0.4.6.WF4 Q1-P2：从 next_hop.on 生成 branch edge（exit → successor STEP ID）。
+    // 缺少 `on` 时不 push，因此只含 suggested_roles 的 spec 会投影出逐字节相同的 edge array。
+    // exit label 通过 `branchOn` 传递。
     for (const [exit, targetStepId] of Object.entries(step.next_hop?.on ?? {})) {
       if (!targetStepId || !stepIds.has(targetStepId)) continue;
       topologyEdges.push({
@@ -335,7 +319,7 @@ export function workflowLibraryId(name: string, version: string): string {
 export function parseWorkflowLibraryId(id: string): { name: string; version: string } | null {
   if (!id.startsWith("workflow:")) return null;
   const rest = id.slice("workflow:".length);
-  // version may be numeric or an arbitrary string; split on the LAST `:`.
+  // version 可以是数字或任意字符串；按最后一个 `:` 分割。
   const lastColon = rest.lastIndexOf(":");
   if (lastColon === -1) return null;
   return { name: rest.slice(0, lastColon), version: rest.slice(lastColon + 1) };
@@ -350,52 +334,45 @@ function isUnderDir(childPath: string, parentDir: string): boolean {
 }
 
 // =================================================================
-// Slice 11 (release-0.3.1 workflow-spec-folder-discovery)
+// Slice 11（release-0.3.1 workflow-spec-folder-discovery）
 // =================================================================
 //
-// scanWorkflowSpecFolder — filesystem walk that turns workspace.specs_root/
-// workflows/ into an installable user primitive. The Library route calls
-// this opportunistically on each list request (OQ-3 decision); valid YAML
-// gets cached via WorkflowSpecCache.readThrough (existing path), invalid
-// YAML gets cached via writeDiagnostic (slice 11 path), and files that
-// disappear since the last scan get removed via removeBySourcePath
-// (OQ-4 decision; deletion + audit log).
+// scanWorkflowSpecFolder——遍历文件系统，把 workspace.specs_root/workflows/ 转换成可安装的
+// user primitive。Library 路由在每次 list 请求时择机调用（OQ-3 裁定）；有效 YAML 经现有
+// WorkflowSpecCache.readThrough 路径缓存，无效 YAML 经 slice 11 writeDiagnostic 路径缓存；
+// 上次扫描后消失的文件通过 removeBySourcePath 移除（OQ-4 裁定：删除 + audit log）。
 //
-// OQ-3 mtime check: a file is skipped when its mtime is <= the cache row's
-// cached_at (no parse work needed). Otherwise it's re-parsed via the cache
-// (which itself hashes the content and returns the prior row when the
-// hash matches — second layer of skip for content-stable files whose
-// mtime nonetheless advanced, e.g., touch).
+// OQ-3 mtime 检查：mtime <= cache row.cached_at 时跳过文件，无需 parse。否则经 cache 重新
+// parse；cache 自身会计算内容 hash，匹配时返回旧 row，作为内容不变但 mtime 前进（例如 touch）
+// 时的第二层跳过。
 
 export interface ScanWorkflowSpecFolderOpts {
-  /** SQLite handle (used for direct lookups). */
+  /** SQLite handle，用于直接查询。 */
   db: Database.Database;
-  /** Cache handle for readThrough / writeDiagnostic / removeBySourcePath. */
+  /** readThrough / writeDiagnostic / removeBySourcePath 使用的 cache handle。 */
   cache: WorkflowSpecCache;
-  /** Absolute path to the workspace's workflows folder
-   *  (typically `<workspace.specs_root>/workflows`). Missing folder
-   *  → empty scan summary; not an error. */
+  /** 工作区 workflows 文件夹的绝对路径，通常为 `<workspace.specs_root>/workflows`。
+   *  文件夹缺失时返回空扫描摘要，不算错误。 */
   folder: string;
-  /** Daemon's bundled builtin starter dir; used to skip removal logic
-   *  for built-in rows (the scanner only owns the folder it walks). */
+  /** 后台服务随附的 builtin starter 目录；用于跳过 built-in row 的移除逻辑，因为 scanner
+   *  只拥有自己遍历的文件夹。 */
   builtinDir: string | null;
-  /** Optional EventBus — when wired, the scanner emits a
-   *  workflow_spec.removed audit event for each cache row removed because
-   *  its source file disappeared (OQ-4 acceptance: deletion + audit log).
-   *  Omitted in unit tests that don't care about emission. */
+  /** 可选 EventBus。接线后，每个因 source file 消失而移除的 cache row 都会发出
+   *  workflow_spec.removed audit event（OQ-4 acceptance：删除 + audit log）。不关心 emission
+   *  的单元测试可省略。 */
   eventBus?: EventBus;
 }
 
 export interface ScanWorkflowSpecFolderResult {
-  /** Total YAML/YML files found in folder. */
+  /** 文件夹中发现的 YAML/YML 文件总数。 */
   scanned: number;
-  /** Files parsed + cached successfully on this scan. */
+  /** 本次扫描成功 parse 并缓存的文件数。 */
   valid: number;
-  /** Files that failed parse/validate; recorded as diagnostic rows. */
+  /** parse/validate 失败并记录为 diagnostic row 的文件数。 */
   errors: number;
-  /** Cache rows removed because their source_path no longer exists. */
+  /** 因 source_path 不再存在而移除的 cache row 数。 */
   removed: number;
-  /** Files skipped via mtime check (unchanged since last scan). */
+  /** 通过 mtime 检查发现自上次扫描后未变化，从而跳过的文件数。 */
   skipped: number;
 }
 
@@ -437,15 +414,12 @@ export function scanWorkflowSpecFolder(
     seenPaths.add(filePath);
     result.scanned += 1;
 
-    // mtime check (OQ-3): if the cache has a row at this source_path
-    // whose cached_at is at or after the file's mtime, the file is
-    // unchanged since last scan — skip the re-parse work entirely.
+    // mtime 检查（OQ-3）：若 cache 中该 source_path row 的 cached_at 不早于文件 mtime，
+    // 说明文件自上次扫描后未变化，完全跳过重新 parse。
     //
-    // Compare at second-resolution because some filesystems (HFS+, FAT)
-    // round mtime down to whole seconds while cached_at carries ms
-    // precision; without this floor a freshly-written file whose mtime
-    // is `T - 999ms` would always look "newer" than its cached_at at
-    // exactly `T` and never skip.
+    // 按秒精度比较，因为 HFS+、FAT 等文件系统会把 mtime 向下舍入到整秒，而 cached_at 保留
+    // 毫秒精度。若不取 floor，mtime 为 `T - 999ms` 的新写文件会始终看起来比恰好位于 `T` 的
+    // cached_at 更新，从而永远无法跳过。
     const cachedAt = opts.db
       .prepare(`SELECT cached_at FROM workflow_specs WHERE source_path = ?`)
       .get(filePath) as { cached_at: string } | undefined;
@@ -459,23 +433,20 @@ export function scanWorkflowSpecFolder(
       }
     }
 
-    // Parse + validate via cache. If readThrough throws (parse or
-    // validation error), record a diagnostic row keyed by source_path
-    // so the Library UI can render the error inline.
+    // 通过 cache parse + validate。readThrough 因 parse/validation error 抛错时，记录以
+    // source_path 为 key 的 diagnostic row，使 Library UI 可内联渲染错误。
     try {
       opts.cache.readThrough(filePath);
       result.valid += 1;
     } catch (err) {
-      // Diagnostic: hash the raw content best-effort so we can detect
-      // edits that fix the error (mtime alone is fine; this is for
-      // bookkeeping). Use the empty string when content is unreadable.
+      // 诊断：尽力计算原始内容 hash，以检测修复错误的编辑；仅靠 mtime 已足够，这里用于记账。
+      // 内容不可读时使用空字符串。
       const message = err instanceof Error ? err.message : String(err);
       let sourceHash = "";
       try {
         sourceHash = createHash("sha256").update(readFileSync(filePath, "utf-8")).digest("hex");
       } catch {
-        // unreadable / disappeared between stat and read; treat as
-        // empty hash so the next scan re-evaluates
+        // 在 stat 与 read 之间变得不可读或消失时使用空 hash，让下次扫描重新评估。
         sourceHash = "";
       }
       opts.cache.writeDiagnostic({
@@ -487,10 +458,9 @@ export function scanWorkflowSpecFolder(
     }
   }
 
-  // OQ-4 deletion: cache rows whose source_path lives under the scanned
-  // folder AND whose file is no longer present on disk get removed. We
-  // scope the removal by source_path prefix to avoid touching built-in
-  // rows or rows the scanner doesn't own (e.g., other workflows folders).
+  // OQ-4 删除：source_path 位于扫描文件夹下且磁盘文件已不存在的 cache row 会被移除。通过
+  // source_path prefix 限定删除范围，避免触碰 built-in row 或 scanner 不拥有的 row，例如其他
+  // workflows 文件夹。
   const folderPrefix = opts.folder.endsWith(path.sep) ? opts.folder : `${opts.folder}${path.sep}`;
   const cachedUnderFolder = opts.db
     .prepare(
@@ -507,10 +477,8 @@ export function scanWorkflowSpecFolder(
     const removed = opts.cache.removeBySourcePath(row.source_path);
     if (removed > 0) {
       result.removed += removed;
-      // OQ-4 audit-log: record the disappearance so operators can trace
-      // which spec was reaped when. Emission failures must not abort the
-      // scan — the cache row is already gone and the next scan would be
-      // a no-op for this path.
+      // OQ-4 audit log：记录文件消失，使操作员能追踪何时回收了哪个 spec。emission 失败不能
+      // 中止扫描，因为 cache row 已被删除，下次扫描对该路径也只会 no-op。
       if (opts.eventBus) {
         try {
           opts.eventBus.emit({
@@ -521,7 +489,7 @@ export function scanWorkflowSpecFolder(
             specVersion: row.version ?? null,
             reason: "file_disappeared",
           });
-        } catch { /* best-effort audit emission */ }
+        } catch { /* 尽力发出 audit event。 */ }
       }
     }
   }

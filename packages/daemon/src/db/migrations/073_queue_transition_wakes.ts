@@ -1,8 +1,7 @@
 import type { Migration } from "../migrate.js";
 
-// OPR.0.5.5.03 — wake evidence belongs to the append-only park transition,
-// not to the mutable queue row. The side table keeps queue_transitions itself
-// immutable and survives the active→archive lifecycle without rewriting history.
+// OPR.0.5.5.03——wake 证据属于只追加的 park transition，而不是可变队列行。旁表使
+// queue_transitions 本身保持不可变，并在 active→archive 生命周期中保留且不重写历史。
 export const queueTransitionWakesSchema: Migration = {
   name: "073_queue_transition_wakes.sql",
   sql: `

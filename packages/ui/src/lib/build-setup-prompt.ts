@@ -6,21 +6,21 @@ export interface SetupPromptInput {
 
 export function buildSetupPrompt(input: SetupPromptInput): string {
   const lines: string[] = [
-    `Install and launch the "${input.name}" managed app using OpenRig.`,
+    `使用 zrig 安装并启动托管应用 "${input.name}"。`,
     "",
   ];
 
   if (input.summary) {
-    lines.push(`About: ${input.summary}`, "");
+    lines.push(`关于：${input.summary}`, "");
   }
 
   lines.push(
-    `Source: ${input.sourcePath}`,
+    `来源：${input.sourcePath}`,
     "",
-    "Steps:",
-    `1. Run: rig up ${input.name}`,
-    `2. Monitor: rig ps --nodes --rig ${input.name}`,
-    "3. Check env: rig env status <rig-name>",
+    "步骤：",
+    `1. 运行：zrig up ${input.name}`,
+    `2. 监控：zrig ps --nodes --rig ${input.name}`,
+    `3. 检查环境：zrig env status <rig-name>`,
   );
 
   return lines.join("\n");

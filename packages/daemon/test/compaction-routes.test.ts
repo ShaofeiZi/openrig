@@ -1,11 +1,9 @@
-// OPR.0.4.3.14 — manual compaction trigger route (POST /api/compaction/trigger).
+// OPR.0.4.3.14——手动压缩触发路由（POST /api/compaction/trigger）。
 //
-// Proves: the route resolves the target + reads the EXISTING context-usage
-// projection BEFORE calling the enforcer (the prep prompt carries the sourced
-// usage %); non-Claude → 422 runtime_filter; unknown usage → 409 no_usage_data
-// (route passes null, never invents a value); ambiguous → 409; missing field →
-// 400; enforcer-unwired → 503. Reuses the shipped SessionTransport + the SAME
-// ClaudeCompactionEnforcer (no second path).
+// 证明：路由在调用 enforcer 前解析目标并读取既有 context-usage 投影，准备 prompt 携带来源使用率；
+// 非 Claude → 422 runtime_filter；使用率未知 → 409 no_usage_data（路由传 null，绝不虚构）；
+// 歧义 → 409；字段缺失 → 400；enforcer 未接线 → 503。复用已交付 SessionTransport 与同一个
+// ClaudeCompactionEnforcer，不建立第二条路径。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -81,7 +79,7 @@ interface AppParts {
   sentTexts: string[];
 }
 
-describe("compaction routes — POST /api/compaction/trigger", () => {
+describe("压缩路由——POST /api/compaction/trigger", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -138,7 +136,7 @@ describe("compaction routes — POST /api/compaction/trigger", () => {
     return { app, sentTexts };
   }
 
-  it("sources the KNOWN context-usage % before triggering: prep prompt carries it, /compact follows", async () => {
+  it("触发前读取已知 context-usage 百分比：准备 prompt 携带该值，随后发送 /compact", async () => {
     const { claudeNodeId } = seed();
     usageStore.persist(claudeNodeId, knownUsage("dev-impl@my-rig", 42));
     const { app, sentTexts } = buildApp();
@@ -151,14 +149,14 @@ describe("compaction routes — POST /api/compaction/trigger", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({ ok: true, session: "dev-impl@my-rig", stage: "compact-sent" });
-    // Phase 1 prep carries the sourced usage % (proves usage read before trigger).
-    expect(sentTexts[0]).toContain("Current context usage is 42%");
-    // Phase 2 /compact followed.
+    // 第 1 阶段准备携带来源使用率，证明触发前已读取 usage。
+    expect(sentTexts[0]).toContain("当前上下文使用率为 42%");
+    // 随后执行第 2 阶段 /compact。
     expect(sentTexts[1]).toContain("/compact");
     expect(sentTexts).toHaveLength(2);
   });
 
-  it("non-Claude seat → 422 runtime_filter (rejected, not silent no-op)", async () => {
+  it("非 Claude 席位 → 422 runtime_filter（明确拒绝而非静默 no-op）", async () => {
     seed();
     const { app, sentTexts } = buildApp();
     const res = await app.request("/api/compaction/trigger", {
@@ -171,7 +169,7 @@ describe("compaction routes — POST /api/compaction/trigger", () => {
     expect(sentTexts).toHaveLength(0);
   });
 
-  it("unknown usage (no sample persisted) → 409 no_usage_data (never triggers blind)", async () => {
+  it("使用率未知（无持久样本）→ 409 no_usage_data（绝不盲目触发）", async () => {
     seed();
     const { app, sentTexts } = buildApp();
     const res = await app.request("/api/compaction/trigger", {
@@ -184,7 +182,7 @@ describe("compaction routes — POST /api/compaction/trigger", () => {
     expect(sentTexts).toHaveLength(0);
   });
 
-  it("ambiguous session across rigs → 409", async () => {
+  it("会话跨工作组有歧义 → 409", async () => {
     const rigA = rigRepo.createRig("rig-a");
     const nA = rigRepo.addNode(rigA.id, "dev.impl", { role: "worker", runtime: "claude-code" });
     sessionRegistry.registerSession(nA.id, "dev-impl@shared");
@@ -199,10 +197,10 @@ describe("compaction routes — POST /api/compaction/trigger", () => {
       body: JSON.stringify({ session: "dev-impl@shared" }),
     });
     expect(res.status).toBe(409);
-    expect((await res.json()).error).toContain("ambiguous");
+    expect((await res.json()).error).toContain("有歧义");
   });
 
-  it("missing session field → 400", async () => {
+  it("缺少 session 字段 → 400", async () => {
     seed();
     const { app } = buildApp();
     const res = await app.request("/api/compaction/trigger", {
@@ -213,7 +211,7 @@ describe("compaction routes — POST /api/compaction/trigger", () => {
     expect(res.status).toBe(400);
   });
 
-  it("enforcer not wired → 503 compaction_unavailable", async () => {
+  it("enforcer 未接线 → 503 compaction_unavailable", async () => {
     seed();
     const { app } = buildApp({ wireEnforcer: false });
     const res = await app.request("/api/compaction/trigger", {

@@ -1,6 +1,6 @@
 import type { AttentionItem, AttentionRead } from "@openrig/daemon/attention";
 
-/** The aggregate's declared dependencies, not a classification of queue intent. */
+/** 聚合的声明依赖，而非队列意图的分类。 */
 function dependsOn(item: AttentionItem, source: string): boolean {
   if (source === "queue") return item.id.startsWith("queue:");
   if (source === "health") return item.id.startsWith("health:");
@@ -14,8 +14,8 @@ function dependsOn(item: AttentionItem, source: string): boolean {
   return item.id.startsWith(`proof:${item.project.id}:${mission}/${slice ? `slices/${slice}:` : ""}`);
 }
 
-/** Merge only unavailable dependencies. A successful empty or bounded partial
- * window is a new answer and must remove old items. The caller owns page scope. */
+/** 仅合并不可用的依赖。成功的空窗口或有界部分窗口是新的应答，
+ *  必须移除旧项。调用方负责分页范围。 */
 export function retainAttentionSources(read: AttentionRead, prior?: AttentionRead) {
   const failed = read.sources.filter(s => s.state === "unavailable");
   const affected = (item: AttentionItem) => failed.some(s => dependsOn(item, s.source));

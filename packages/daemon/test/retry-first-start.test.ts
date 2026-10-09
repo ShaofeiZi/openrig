@@ -45,7 +45,7 @@ async function failedAdd() {
   expect(firstSession.resumeToken).toBeNull();
   setup.snapshotCapture.captureSnapshot(rig.id, "manual");
   const lifecycle = new SeatLifecycleService({ ...setup, db, tmuxAdapter: tmux });
-  // Models the separately authorized normal shell exit; no real process exists.
+  // 模拟另行授权的正常 shell 退出；不存在真实进程。
   tmux.probeSession = vi.fn(async () => ({ state: "absent" as const }));
   const clean = await lifecycle.cleanSeat({ seatRef: "dev-pi@first-start", reason: "Projection failed before native launch; shell has exited" });
   expect(clean.ok).toBe(true);
@@ -57,8 +57,8 @@ async function failedAdd() {
   return { ...setup, db, rig, node, adapter, tmux, files, firstSession, failure, request };
 }
 
-describe("explicit first-start retry after projection failure", () => {
-  it("reprojects and delivers required startup on the same node without touching its sibling or history", async () => {
+describe("投影失败后的显式首次启动重试", () => {
+  it("在同一节点重新投影并交付必需启动内容，且不触碰其同级节点或历史", async () => {
     const f = await failedAdd();
     const before = f.rigRepo.getRig(f.rig.id)!;
     const sibling = before.nodes.find(n => n.logicalId === "dev.sibling")!;
@@ -86,12 +86,12 @@ describe("explicit first-start retry after projection failure", () => {
     ]));
     expect(f.sessionRegistry.getSessionsForRig(f.rig.id).filter(s => s.nodeId === f.node.id).every(s => s.resumeToken === null)).toBe(true);
     expect(f.tmux.killSession).not.toHaveBeenCalled();
-    // Ready occupants can never be reclassified as a failed first start.
+    // 已就绪的 occupant 绝不能重新归类为首次启动失败。
     expect((await f.request()).status).toBe(409);
     expect(f.adapter.launchHarness).toHaveBeenCalledTimes(1);
   });
 
-  it.each(["present", "unknown"])("refuses %s liveness without effects", async state => {
+  it.each(["present", "unknown"])("无副作用地拒绝 %s liveness", async state => {
     const f = await failedAdd();
     vi.mocked(f.tmux.probeSession).mockResolvedValue(state === "present" ? { state: "present" } : { state: "transport_unavailable", cause: "transport failure" });
     const changes = f.db.prepare("SELECT total_changes() AS n").get();
@@ -101,7 +101,7 @@ describe("explicit first-start retry after projection failure", () => {
     expect(f.adapter.project).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses a seat change during asynchronous liveness checks", async () => {
+  it("异步 liveness 检查期间 seat 发生变化时拒绝重试", async () => {
     const f = await failedAdd();
     vi.mocked(f.tmux.probeSession).mockImplementation(async () => {
       f.db.prepare("UPDATE nodes SET model = 'other/model' WHERE id = ?").run(f.node.id);
@@ -109,12 +109,12 @@ describe("explicit first-start retry after projection failure", () => {
     });
     const res = await f.request();
     expect(res.status).toBe(409);
-    expect(await res.json()).toMatchObject({ message: "Seat changed during recovery checks; inspect it before retrying." });
+    expect(await res.json()).toMatchObject({ message: "恢复检查期间 seat 已发生变化；请先检查再重试。" });
     expect(f.adapter.launchHarness).not.toHaveBeenCalled();
     expect(f.adapter.project).toHaveBeenCalledTimes(1);
   });
 
-  it.each(["resume", "native", "late-failure", "changed-spec", "changed-member", "overrides"])("refuses %s without projection or launch", async control => {
+  it.each(["resume", "native", "late-failure", "changed-spec", "changed-member", "overrides"])("不执行投影或启动即拒绝 %s", async control => {
     const f = await failedAdd();
     if (control === "resume") f.sessionRegistry.updateResumeToken(f.firstSession.id, "pi", "native-id");
     if (control === "native") f.db.prepare("UPDATE occupant_tenures SET native_session_id_at_boot = 'native-id' WHERE node_id = ?").run(f.node.id);

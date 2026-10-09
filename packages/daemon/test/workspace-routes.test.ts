@@ -1,11 +1,10 @@
-// PL-007 Workspace Primitive v0 — workspace HTTP route tests.
+// PL-007 工作区原语 v0 — 工作区 HTTP 路由测试。
 //
-// Pins:
-//   - POST /api/workspace/validate returns the structured gap report
-//   - 400 on missing root
-//   - 400 on invalid workspace kind
-//   - kind-agnostic invocation (no workspaceKind) returns 0 gaps when no
-//     contract enforced
+// 固定行为:
+//   - POST /api/workspace/validate 返回结构化缺口报告
+//   - 缺少 root 时返回 400
+//   - workspace kind 非法时返回 400
+//   - 不区分 kind 的调用(无 workspaceKind)在未强制约定时返回 0 个缺口
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -29,8 +28,8 @@ afterEach(() => {
   try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ }
 });
 
-describe("workspace HTTP routes (PL-007)", () => {
-  it("POST /validate returns structured gap report on knowledge canon", async () => {
+describe("工作区 HTTP 路由 (PL-007)", () => {
+  it("POST /validate 在 knowledge 规范上返回结构化缺口报告", async () => {
     fs.writeFileSync(path.join(dir, "a.md"), "---\ndoc: a\nstatus: active\ncreated: 2026-05-04\nowner: x\n---\n", "utf-8");
     fs.writeFileSync(path.join(dir, "missing.md"), "---\ndoc: m\nstatus: active\ncreated: 2026-05-04\n---\n", "utf-8");
     const res = await app.request("/api/workspace/validate", {
@@ -45,7 +44,7 @@ describe("workspace HTTP routes (PL-007)", () => {
     expect(body.gaps[0]?.field).toBe("owner");
   });
 
-  it("POST /validate rejects missing root with 400", async () => {
+  it("POST /validate 缺少 root 时以 400 拒绝", async () => {
     const res = await app.request("/api/workspace/validate", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -54,7 +53,7 @@ describe("workspace HTTP routes (PL-007)", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /validate rejects unknown workspace kind", async () => {
+  it("POST /validate 拒绝未知的 workspace kind", async () => {
     const res = await app.request("/api/workspace/validate", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -63,7 +62,7 @@ describe("workspace HTTP routes (PL-007)", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /validate without workspaceKind runs structural-only check", async () => {
+  it("POST /validate 在无 workspaceKind 时只做结构检查", async () => {
     fs.writeFileSync(path.join(dir, "a.md"), "---\ndoc: a\n---\n", "utf-8");
     const res = await app.request("/api/workspace/validate", {
       method: "POST",
@@ -77,37 +76,34 @@ describe("workspace HTTP routes (PL-007)", () => {
   });
 });
 
-// Slice-21 FR-5 — POST /api/workspace/doctor route tests.
+// Slice-21 FR-5 — POST /api/workspace/doctor 路由测试。
 //
-// Wires a stub SettingsStore via Hono middleware (matching production
-// pattern at server.ts:430 where `c.set("settingsStore", ...)`).
-// SettingsStore is constructed with a temp config-file path so the
-// suite doesn't touch ~/.openrig.
-describe("workspace doctor HTTP route (slice-21 FR-5)", () => {
+// 通过 Hono 中间件接入桩 SettingsStore(与 server.ts:430 处
+// `c.set("settingsStore", ...)` 的生产写法一致)。
+// SettingsStore 使用临时配置文件路径构造,避免测试套件触碰 ~/.openrig。
+describe("工作区 doctor HTTP 路由 (slice-21 FR-5)", () => {
   let doctorDir: string;
   let doctorApp: Hono;
   let configPath: string;
 
   beforeEach(async () => {
     doctorDir = fs.mkdtempSync(path.join(os.tmpdir(), "fr5-route-"));
-    // Build a healthy workspace shape under doctorDir.
+    // 在 doctorDir 下构造一个健康的工作区结构。
     fs.mkdirSync(path.join(doctorDir, "missions", "getting-started"), { recursive: true });
     fs.writeFileSync(path.join(doctorDir, "missions", "getting-started", "MISSION_NOTES.md"), "");
     fs.mkdirSync(path.join(doctorDir, "missions", "getting-started", "slices", "s1"), { recursive: true });
     fs.writeFileSync(path.join(doctorDir, "missions", "getting-started", "slices", "s1", "README.md"), CONVENTION_BODY);
 
-    // Stub SettingsStore-shaped object — we only need the surface the
-    // doctor route uses: resolveOne + configPath. SettingsStore's
-    // public surface is large; the stub mirrors the resolveOne return
-    // shape (value/source/defaultValue).
+    // 桩对象,形状与 SettingsStore 一致 —— 只需 doctor 路由用到的表面:
+    // resolveOne + configPath。SettingsStore 的公开表面很大,桩只对齐
+    // resolveOne 的返回形状(value/source/defaultValue)。
     configPath = path.join(doctorDir, ".test-config.json");
     fs.writeFileSync(configPath, "{}");
-    // Config-file mtime is forced to epoch (1970-01-01) so the route's
-    // process.uptime()-derived daemon start is GUARANTEED newer than
-    // the config mtime regardless of Vitest worker uptime. A relative
-    // offset like Date.now() - 60_000 flips check #5 to warn when the
-    // worker has been alive longer than the offset (banked guard
-    // BLOCKER on FR-5c qitem-20260602042720-e27ec982).
+    // 配置文件 mtime 强制设为 epoch(1970-01-01),这样无论 Vitest worker
+    // 运行多久,路由由 process.uptime() 推导的后台服务启动时间都必定
+    // 晚于配置 mtime。若改用 Date.now() - 60_000 这类相对偏移,当 worker
+    // 存活时间超过该偏移时,检查 #5 会翻为 warn(已归档的守卫 BLOCKER,
+    // 见 FR-5c qitem-20260602042720-e27ec982)。
     const epochMtime = new Date(0);
     fs.utimesSync(configPath, epochMtime, epochMtime);
 
@@ -139,7 +135,7 @@ describe("workspace doctor HTTP route (slice-21 FR-5)", () => {
     try { fs.rmSync(doctorDir, { recursive: true, force: true }); } catch { /* ignore */ }
   });
 
-  it("POST /doctor returns 200 with an 8-check DoctorReport on a healthy workspace", async () => {
+  it("POST /doctor 在健康工作区上返回 200 与 8 项检查的 DoctorReport", async () => {
     const res = await doctorApp.request("/api/workspace/doctor", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -160,10 +156,9 @@ describe("workspace doctor HTTP route (slice-21 FR-5)", () => {
     expect(body.daemonResolvedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  // Discriminator-flip: caller-supplied workspaceRoot must be honored.
-  // Without the body.workspaceRoot branch the route would always check
-  // the daemon-resolved workspace.
-  it("POST /doctor honors body.workspaceRoot for the workspace under check", async () => {
+  // 判别翻转:必须采用调用方提供的 workspaceRoot。
+  // 若没有 body.workspaceRoot 分支,路由将始终检查后台服务解析出的工作区。
+  it("POST /doctor 采用 body.workspaceRoot 作为受检工作区", async () => {
     const altRoot = fs.mkdtempSync(path.join(os.tmpdir(), "fr5-route-alt-"));
     try {
       const res = await doctorApp.request("/api/workspace/doctor", {
@@ -178,8 +173,8 @@ describe("workspace doctor HTTP route (slice-21 FR-5)", () => {
         summary: { ok: number; warn: number; fail: number };
       };
       expect(body.workspaceRoot).toBe(altRoot);
-      // Check #4 (daemon_points_at_this_workspace) must FAIL because
-      // daemon's resolved root differs from the caller-supplied one.
+      // 检查 #4(daemon_points_at_this_workspace)必须 FAIL,因为后台服务
+      // 解析出的 root 与调用方提供的不同。
       const daemonCheck = body.checks.find((c) => c.check === "daemon_points_at_this_workspace");
       expect(daemonCheck?.status).toBe("fail");
     } finally {
@@ -187,9 +182,9 @@ describe("workspace doctor HTTP route (slice-21 FR-5)", () => {
     }
   });
 
-  // Discriminator-flip: 503 when SettingsStore is missing. Without
-  // the `if (!store) return 503` guard the route would crash.
-  it("POST /doctor returns 503 when settingsStore is unavailable", async () => {
+  // 判别翻转:SettingsStore 缺失时返回 503。若没有
+  // `if (!store) return 503` 守卫,路由会崩溃。
+  it("POST /doctor 在 settingsStore 不可用时返回 503", async () => {
     const bareApp = new Hono();
     bareApp.route("/api/workspace", workspaceRoutes());
     const res = await bareApp.request("/api/workspace/doctor", {
@@ -202,10 +197,9 @@ describe("workspace doctor HTTP route (slice-21 FR-5)", () => {
     expect(body.error).toBe("settings_unavailable");
   });
 
-  // Discriminator-flip: empty body must be tolerated. Without the
-  // .catch(() => ({})) guard the JSON parse would throw and 500
-  // would land instead of the report.
-  it("POST /doctor tolerates empty body (no Content-Type, no JSON)", async () => {
+  // 判别翻转:必须容忍空 body。若没有 .catch(() => ({})) 守卫,
+  // JSON 解析会抛错,返回 500 而不是报告。
+  it("POST /doctor 容忍空 body(无 Content-Type、无 JSON)", async () => {
     const res = await doctorApp.request("/api/workspace/doctor", {
       method: "POST",
     });
@@ -214,18 +208,15 @@ describe("workspace doctor HTTP route (slice-21 FR-5)", () => {
     expect(body.workspaceRoot).toBe(doctorDir);
   });
 
-  // GUARD/QA BLOCKING-A2 discriminator: when the CLI forwards an
-  // OPENRIG_FILES_ALLOWLIST overlay via body.filesAllowlistOverride,
-  // the daemon route MUST use that value for check #3 instead of the
-  // daemon's own SettingsStore-resolved files.allowlist. Without the
-  // override branch the operator's env-var would silently no-op.
-  it("POST /doctor honors body.filesAllowlistOverride for check #3", async () => {
-    // workspace:. is a relative path; per FR-5b BLOCKER-1 the
-    // canonical decoder drops it and check #3 fails with zero usable
-    // entries. The daemon SettingsStore stub returns a HEALTHY
-    // allowlist (workspace:${doctorDir}); without the override
-    // branch the doctor would happily report ok. With the override
-    // it correctly fails.
+  // GUARD/QA BLOCKING-A2 判别:当 CLI 通过 body.filesAllowlistOverride
+  // 转发 OPENRIG_FILES_ALLOWLIST 覆盖值时,后台服务路由的检查 #3 必须
+  // 使用该值,而不是自身 SettingsStore 解析出的 files.allowlist。若没有
+  // 覆盖分支,运维者的环境变量会静默失效。
+  it("POST /doctor 检查 #3 采用 body.filesAllowlistOverride", async () => {
+    // workspace:. 是相对路径;按 FR-5b BLOCKER-1,规范解码器会丢弃它,
+    // 检查 #3 因零个可用条目而失败。后台服务 SettingsStore 桩返回的是
+    // 健康 allowlist(workspace:${doctorDir});若没有覆盖分支,doctor 会
+    // 高高兴兴地报 ok。加上覆盖后则正确失败。
     const res = await doctorApp.request("/api/workspace/doctor", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -238,16 +229,15 @@ describe("workspace doctor HTTP route (slice-21 FR-5)", () => {
     };
     const allowlistCheck = body.checks.find((c) => c.check === "file_allowlist_sane");
     expect(allowlistCheck?.status).toBe("fail");
-    // Evidence must report source="env" so the operator knows the
-    // override was applied (not the daemon's own resolution).
+    // evidence 必须上报 source="env",让运维者知道覆盖已生效
+    // (而非后台服务自身解析的结果)。
     expect(allowlistCheck?.evidence?.allowlistSource).toBe("env");
     expect(body.summary.fail).toBeGreaterThanOrEqual(1);
   });
 
-  // Discriminator-flip: empty-string filesAllowlistOverride must NOT
-  // suppress the daemon's own SettingsStore allowlist. Without the
-  // length > 0 guard, an empty override would falsify the check.
-  it("ignores empty-string filesAllowlistOverride (uses daemon's SettingsStore)", async () => {
+  // 判别翻转:空字符串的 filesAllowlistOverride 不得抑制后台服务自身的
+  // SettingsStore allowlist。若没有 length > 0 守卫,空覆盖会伪造检查结果。
+  it("忽略空字符串 filesAllowlistOverride(改用后台服务的 SettingsStore)", async () => {
     const res = await doctorApp.request("/api/workspace/doctor", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -259,23 +249,20 @@ describe("workspace doctor HTTP route (slice-21 FR-5)", () => {
     };
     const allowlistCheck = body.checks.find((c) => c.check === "file_allowlist_sane");
     expect(allowlistCheck?.status).toBe("ok");
-    // The stub returns source="default" for files.allowlist; verify
-    // we routed through SettingsStore, not the empty override.
+    // 桩对 files.allowlist 返回 source="default";验证走的是
+    // SettingsStore,而非空覆盖。
     expect(allowlistCheck?.evidence?.allowlistSource).toBe("default");
   });
 
-  // GUARD BLOCKER-1 (qitem-20260602042720-e27ec982) determinism
-  // discriminator: even under a long process.uptime() (simulating a
-  // long-running Vitest worker), the healthy fixture must still
-  // return summary {ok:8, warn:0, fail:0}. A regression where the
-  // route-test config mtime was set relative to Date.now() instead
-  // of an absolute-old epoch would flip check #5 to warn under any
-  // worker uptime greater than the relative offset.
-  it("POST /doctor stays healthy under simulated long worker uptime", async () => {
+  // GUARD BLOCKER-1 (qitem-20260602042720-e27ec982) 确定性判别:
+  // 即使在很长的 process.uptime() 下(模拟长时间运行的 Vitest worker),
+  // 健康 fixture 仍必须返回 summary {ok:8, warn:0, fail:0}。若出现
+  // 回归——路由测试的配置 mtime 改为相对 Date.now() 而非绝对旧 epoch——
+  // 那么任何 worker 存活时间超过该相对偏移时,检查 #5 都会翻为 warn。
+  it("POST /doctor 在模拟的长时间 worker 运行下保持健康", async () => {
     const origUptime = process.uptime;
-    // Force daemon start to a far past time (≈10 years ago at the
-    // current Date.now()); the epoch-1970 config mtime must still be
-    // older.
+    // 把后台服务启动时间强制拉到很远的过去(相对当前 Date.now() 约 10 年前);
+    // epoch-1970 的配置 mtime 仍必须更旧。
     Object.defineProperty(process, "uptime", {
       value: () => 60 * 60 * 24 * 365 * 10,
       writable: true,

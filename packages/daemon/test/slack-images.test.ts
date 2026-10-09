@@ -1,7 +1,7 @@
-// S10 — outbound images via the EXTERNAL-UPLOAD flow (files.upload is sunset and dead).
-// Hermetic, fixture-backed: the three legs (getUploadURLExternal → byte POST → complete with
-// thread_ts) are captured at the fetch boundary. The live phone render is the named external
-// door; these receipts prove the mechanical path.
+// S10——出站图片经 EXTERNAL-UPLOAD 流（files.upload 已日落且废弃）。
+// 封闭、fixture 后台：三段（getUploadURLExternal → byte POST → complete 带
+// thread_ts）在 fetch 边界捕获。live 手机渲染是命名外部
+// 门；这些 receipt 证明机械路径。
 import { describe, it, expect } from "vitest";
 import { subsystemSlackDeliver } from "../src/domain/gateway/slack/slack-delivery.js";
 import { SeenStore, type StateFsOps } from "../src/domain/gateway/slack/state-store.js";
@@ -65,8 +65,8 @@ const decision = (evidenceRef: string): OutboundDecision => ({
   payload: { qitemId: "q-img", summary: "screenshot", body: "b", destinationSession: "mike@external", sourceSession: "dev-driver@v-openrig-build", evidenceRef },
 });
 
-describe("S10 outbound images — external-upload flow (founder screenshot class)", () => {
-  it("a LOCAL image evidenceRef rides all THREE legs into the thread: get-url → octet-stream bytes → complete(channel, thread_ts)", async () => {
+describe("S10 出站图片——外部上传流程（创始人截图类别）", () => {
+  it("本地图片 evidenceRef 经三段流程进入线程：获取 URL → octet-stream 字节 → complete(channel, thread_ts)", async () => {
     const { fetchImpl, calls } = slackFetch();
     const out = await makeDeliver(fetchImpl)(decision("/tmp/founder-shot.png"));
     expect(out.ok).toBe(true);
@@ -86,7 +86,7 @@ describe("S10 outbound images — external-upload flow (founder screenshot class
     expect(urls.some((u) => u.endsWith("/files.upload"))).toBe(false);
   });
 
-  it("an https evidenceRef does NOT trigger the upload flow (it rides as a Block Kit image)", async () => {
+  it("HTTPS evidenceRef 不触发上传流程（作为 Block Kit 图片发送）", async () => {
     const { fetchImpl, calls } = slackFetch();
     await makeDeliver(fetchImpl)(decision("https://example.invalid/board.png"));
     expect(calls.map((c) => c.url)).toEqual(["https://slack.com/api/chat.postMessage"]);
@@ -94,19 +94,19 @@ describe("S10 outbound images — external-upload flow (founder screenshot class
     expect(blocks.filter((b) => b.type === "image")[0]!.image_url).toBe("https://example.invalid/board.png");
   });
 
-  it("a non-uploadable local ref (reader returns null) is a clean skip — text only", async () => {
+  it("不可上传的本地引用（读取器返回 null）会干净跳过，仅发送文本", async () => {
     const { fetchImpl, calls } = slackFetch();
     await makeDeliver(fetchImpl)(decision("/tmp/not-an-image.txt"));
     expect(calls.map((c) => c.url)).toEqual(["https://slack.com/api/chat.postMessage"]);
   });
 
-  it("upload FAILURE is fail-VISIBLE but does NOT fail the delivery (no duplicate text post on replay)", async () => {
+  it("上传失败清晰可见但不使交付失败（重放时不重复发送文本）", async () => {
     for (const leg of ["get-url", "put", "complete"] as const) {
       const logs: string[] = [];
       const { fetchImpl } = slackFetch(leg);
       const out = await makeDeliver(fetchImpl, logs)(decision("/tmp/founder-shot.png"));
       expect(out.ok).toBe(true); // the text delivered; failing the decision would repost it
-      expect(logs.join("\n")).toMatch(/ATTACHMENT .* FAILED .*text delivered; attachment missing/);
+      expect(logs.join("\n")).toMatch(/附件.*失败.*文本已送达；附件缺失/);
     }
   });
 });

@@ -26,7 +26,7 @@ const VALID_STATUS_LINE = JSON.stringify({
 
 describe("Claude Status Line Collector Script", () => {
   let tmpDir: string;
-  // Resolve relative to this test file, not process.cwd()
+  // 相对本测试文件解析，而非 process.cwd()
   const collectorPath = join(import.meta.dirname, "../assets/claude-statusline-context.cjs");
 
   beforeEach(() => {
@@ -38,7 +38,7 @@ describe("Claude Status Line Collector Script", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  // T1: Parses valid status line and writes sidecar
+  // T1：解析合法 status 行并写 sidecar
   it("parses valid Claude status line JSON and writes sidecar file", () => {
     const outputPath = join(tmpDir, "context", "test.json");
     execSync(`echo '${VALID_STATUS_LINE}' | node ${collectorPath} ${outputPath}`, { encoding: "utf-8" });
@@ -66,7 +66,7 @@ describe("Claude Status Line Collector Script", () => {
     expect(content.occupant_generation).toBe("generation-current");
   });
 
-  // T2: Atomic write (no .tmp left behind on success)
+  // T2：原子写（成功后不留 .tmp）
   it("writes atomically — no .tmp file left behind", () => {
     const outputPath = join(tmpDir, "context", "atomic.json");
     execSync(`echo '${VALID_STATUS_LINE}' | node ${collectorPath} ${outputPath}`, { encoding: "utf-8" });
@@ -75,7 +75,7 @@ describe("Claude Status Line Collector Script", () => {
     expect(existsSync(outputPath + ".tmp")).toBe(false);
   });
 
-  // T3: Malformed stdin — graceful exit, no output
+  // T3：畸形 stdin——优雅退出，无输出
   it("handles malformed stdin gracefully — no output file created", () => {
     const outputPath = join(tmpDir, "context", "bad.json");
     const result = spawnSync("node", [collectorPath, outputPath], {
@@ -123,7 +123,7 @@ describe("Claude Status Line Collector Script", () => {
     expect(cache.accountRef).toBeUndefined();
   });
 
-  // T3b: No output path arg — silent exit
+  // T3b：无 output path 参数——静默退出
   it("silently exits with no output path argument", () => {
     // Should not throw
     execSync(`echo '${VALID_STATUS_LINE}' | node ${collectorPath}`, { encoding: "utf-8" });
@@ -137,7 +137,7 @@ describe("Claude Status Line Collector Script", () => {
     });
 
     expect(result.status).toBe(0);
-    expect(result.stderr).toContain("could not resolve output path");
+    expect(result.stderr).toContain("无法从 Claude 状态栏 payload 解析输出路径");
   });
 });
 

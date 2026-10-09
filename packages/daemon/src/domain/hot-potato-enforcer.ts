@@ -1,18 +1,17 @@
 /**
- * Hot-potato strict-rejection contract (PL-004 Phase A).
+ * Hot-potato 严格拒绝契约（PL-004 Phase A）。
  *
- * Load-bearing API contract: any code path that transitions a queue_item to
- * `done` MUST pass a valid `closure_reason` from the 6-value enum below. This
- * is enforced at this layer (NOT at the route, NOT at the CLI) so every
- * surface that reaches the queue inherits the same guarantee.
+ * 关键 API 契约：任何把 queue_item 转换为 `done` 的代码路径，都必须传入下方枚举中的合法
+ * `closure_reason`。该约束在此层执行，而不是在路由或 CLI 层执行，因此所有访问队列的界面
+ * 都会继承同一保证。
  *
- * The 6 valid closure reasons:
- *   - handed_off_to  : work continues with a different seat (closure_target = new owner)
- *   - blocked_on     : work is parked pending another qitem (closure_target = blocker qitem_id)
- *   - denied         : receiver rejected the work (closure_target = reason text)
- *   - canceled       : sender or receiver withdrew (closure_target = note)
- *   - no-follow-on   : terminal completion, nothing else needed
- *   - escalation     : kicked up to higher tier (closure_target = escalation target)
+ * 合法 closure reason：
+ *   - handed_off_to  ：工作由另一席位继续（closure_target = 新 owner）
+ *   - blocked_on     ：工作暂停，等待另一 qitem（closure_target = blocker qitem_id）
+ *   - denied         ：接收方拒绝工作（closure_target = 原因文本）
+ *   - canceled       ：发送方或接收方撤回（closure_target = 备注）
+ *   - no-follow-on   ：终态完成，无需后续处理
+ *   - escalation     ：升级到更高层级（closure_target = 升级目标）
  */
 
 export const CLOSURE_REASONS = [
@@ -22,8 +21,8 @@ export const CLOSURE_REASONS = [
   "canceled",
   "no-follow-on",
   "escalation",
-  // 0.5.1-53 Atom 2a — a row corrected by cancel-and-replace records SUPERSEDED (with the successor
-  // as closure_target) so it is distinguishable from an abandoned cancel (closure_reason=null).
+  // 0.5.1-53 Atom 2a——通过 cancel-and-replace 修正的行记录 SUPERSEDED，并以 successor 作为
+  // closure_target，从而区别于废弃的 cancel（closure_reason=null）。
   "superseded",
 ] as const;
 
@@ -51,10 +50,10 @@ export interface ClosureValidationErr {
 export type ClosureValidation = ClosureValidationOk | ClosureValidationErr;
 
 /**
- * Validate a state transition's closure obligation.
- * - If state !== "done": no closure_reason required; pass through any provided values.
- * - If state === "done": closure_reason REQUIRED, must be in CLOSURE_REASONS.
- *   handed_off_to / blocked_on / escalation also require closure_target.
+ * 校验状态转换的 closure 义务。
+ * - state !== `done`：不要求 closure_reason，透传已提供的值。
+ * - state === `done`：closure_reason 必填且必须属于 CLOSURE_REASONS。
+ *   handed_off_to / blocked_on / escalation 还要求 closure_target。
  */
 export function validateClosure(req: ClosureRequest): ClosureValidation {
   if (req.state !== "done") {
@@ -69,7 +68,7 @@ export function validateClosure(req: ClosureRequest): ClosureValidation {
     return {
       ok: false,
       code: "missing_closure_reason",
-      message: `state=done requires closure_reason; valid values: ${CLOSURE_REASONS.join(", ")}`,
+      message: `state=done 要求 closure_reason；合法值：${CLOSURE_REASONS.join(", ")}`,
       validReasons: CLOSURE_REASONS,
     };
   }
@@ -78,7 +77,7 @@ export function validateClosure(req: ClosureRequest): ClosureValidation {
     return {
       ok: false,
       code: "invalid_closure_reason",
-      message: `closure_reason=${req.closureReason} is not valid; valid values: ${CLOSURE_REASONS.join(", ")}`,
+      message: `closure_reason=${req.closureReason} 无效；合法值：${CLOSURE_REASONS.join(", ")}`,
       validReasons: CLOSURE_REASONS,
     };
   }
@@ -91,7 +90,7 @@ export function validateClosure(req: ClosureRequest): ClosureValidation {
     return {
       ok: false,
       code: "missing_closure_target",
-      message: `closure_reason=${req.closureReason} requires closure_target`,
+      message: `closure_reason=${req.closureReason} 要求 closure_target`,
     };
   }
 
@@ -107,9 +106,8 @@ export function isClosureReason(value: unknown): value is ClosureReason {
 }
 
 /**
- * Compute closure_required_at given a claim time and a tier.
- * Tier policies are intentionally simple in Phase A; the structure exists so
- * Phase B/C can swap in operator-tunable SLAs without a contract change.
+ * 根据 claim 时间与 tier 计算 closure_required_at。Phase A 的 tier 策略有意保持简单；
+ * 预留此结构，使 Phase B/C 可在不修改契约的情况下替换为操作员可调的 SLA。
  */
 const TIER_SLA_SECONDS: Record<string, number> = {
   fast: 30 * 60,

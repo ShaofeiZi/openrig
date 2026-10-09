@@ -15,8 +15,8 @@ const excluded = (tags: string[] | null | undefined) => tags?.some((t) => t === 
 const one = (values: string[]) => { const unique = [...new Set(values)]; return unique.length === 1 ? unique[0] : undefined; };
 const tagged = (tags: string[], prefix: string) => tags.filter((t) => t.startsWith(prefix)).map((t) => t.slice(prefix.length));
 
-/** A read-only question generator. Proof files, closures and acceptance receipts
- * are material for the diagnosing agent, never an automatic outcome counter. */
+/** 只读的问题生成器。Proof 文件、闭合记录和接收回执是诊断智能体的材料，
+ * 绝不是自动结果计数器。 */
 export class PassiveCeremonySource implements HealthObservationSource {
   constructor(private readonly workspace: string, private readonly queue: QueueRepository, private readonly policy: HealthPolicyStore,
     private readonly now = () => new Date().toISOString(), private readonly checkpoints?: HealthCheckpointSource,
@@ -31,8 +31,8 @@ export class PassiveCeremonySource implements HealthObservationSource {
     const roots = new Map<string, Member>();
     const members = new Map<string, Set<string>>();
     const cached = new Map<string, Member | null>();
-    // Read only linkage metadata; the queue's full row projection derives pickup
-    // and notification state that this bounded source neither needs nor interprets.
+    // 只读取关联 metadata；队列完整行投影还会派生 pickup 与通知状态，
+    // 但这个有界来源既不需要也不解释它们。
     const lookup = this.queue.db.prepare("SELECT qitem_id AS qitemId, handed_off_from AS handedOffFrom, tags FROM queue_items WHERE qitem_id = ?");
     const get = (id: string): Member | null => {
       if (!cached.has(id)) {
@@ -57,14 +57,14 @@ export class PassiveCeremonySource implements HealthObservationSource {
       }
     }
     if (roots.size > 200) throw new Error("health_passive_family_limit");
-    // An explicit legacy source already owns this lineage; never route it twice.
+    // 显式旧版来源已经拥有该 lineage，绝不能重复路由。
     const explicit = new Set(this.checkpoints?.entries().map((x) => x.checkpoint.lineageQitemId) ?? []);
     const observations: HealthDetectorObservation[] = [];
     const contexts = new Map<string, PassiveCeremony["context"]>();
     for (const [lineageId, root] of roots) {
       if (!root || explicit.has(lineageId)) continue;
-      // Discovery already covered every touched qitem in this exact window.
-      // Its parent joins give the complete family without rescanning dormant work.
+      // Discovery 已覆盖这个精确窗口内所有被触及的 qitem；通过父级 join 即可得到完整家族，
+      // 无需重新扫描休眠工作。
       const ids = [...members.get(lineageId)!];
       if (ids.length > 1000) throw new Error("health_passive_family_member_limit");
       const transitions: ReturnType<QueueRepository["listTransitions"]> = [];
@@ -77,7 +77,7 @@ export class PassiveCeremonySource implements HealthObservationSource {
       const rows = [...new Set(transitions.map((t) => t.qitemId))].map((id) => get(id)!);
       const tags = rows.flatMap((r) => r.tags ?? []);
       let missionId = one(tagged(tags, "mission:"));
-      // Normal work linkage is explicit tags. Untagged work has no invented mission.
+      // 正常工作关联来自显式 tag；无 tag 工作不会被虚构出 mission。
       const resolved = this.posture?.reader.resolve({ qitemId: lineageId });
       const selected = resolved?.context;
       let workspace = this.workspace, missionRoot: string | undefined;
@@ -135,18 +135,18 @@ export class PassiveCeremonySource implements HealthObservationSource {
         const id = healthEpisodeId(detector, scope, episodeStartedAt, episodeKey);
         const receipt = this.assessment(id, workspace);
         const missingFacts: string[] = [];
-        if (resolved?.posture === "unknown") missingFacts.push("scope identity unresolved: " + resolved.reason);
-        if (Date.parse(episodeStartedAt) < Date.parse(start)) missingFacts.push("lineage begins before retained observation window; full interval unavailable");
-        if (new Set(slices).size > 1) missingFacts.push("handoff family crosses slice identities; product boundary unresolved");
-        if (receipt && receipt.result.basis !== basis) missingFacts.push("normal evidence changed since the attributed assessment; reassess the current basis");
-        if (receipt?.evidenceChanged) missingFacts.push("assessment evidence changed or became unavailable");
+        if (resolved?.posture === "unknown") missingFacts.push("作用域身份无法解析：" + resolved.reason);
+        if (Date.parse(episodeStartedAt) < Date.parse(start)) missingFacts.push("lineage 开始时间早于保留的观测窗口；无法获得完整区间");
+        if (new Set(slices).size > 1) missingFacts.push("handoff 系列跨越多个 slice 身份；产品边界尚未解析");
+        if (receipt && receipt.result.basis !== basis) missingFacts.push("正常证据在归属明确的评估后发生变化；请重新评估当前依据");
+        if (receipt?.evidenceChanged) missingFacts.push("评估证据已变化或变得不可用");
         const assessment = receipt ? { result: receipt.result, actor: receipt.actor, at: receipt.at, transitionId: receipt.transitionId, identityProvenance: receipt.identityProvenance } : undefined;
         const ceremony: PassiveCeremony = { origin: "passive", stage: "needs-diagnosis", lineageId, basis, transitionIds, context, workflowReceipts, ...(assessment ? { assessment } : {}), missingFacts };
         const latest = [...segment.map((t) => t.ts), ...workflowReceipts.map((r) => r.at)].sort().at(-1)!;
         observations.push({ kind: "coordination-lineage", scope, episodeKey, episodeStartedAt,
           lastObservedAt: latest, lineageId, coordinationTransitions: segment.length,
           productStateChanges: null, boundedAuthority: false, reviewReturns: 0, candidateChanges: 0, newRiskClasses: 0, ceremony,
-          sourceDescription: `Passively read ${rows.length} declared handoff members. Normal evidence paths and workflow closure receipts are starting points, not proof counts or acceptance judgments. This source performs no writes or agent calls.`,
+          sourceDescription: `被动读取了 ${rows.length} 个已声明 handoff 成员。正常 evidence 路径与 workflow closure receipt 是起点，不代表 proof 数量或验收判断。此来源不执行写入或智能体调用。`,
           source: boundHealthEvidence(segment.map(adaptQueueTransitionEvidence), { source: "mixed", startedAt: start > episodeStartedAt ? start : episodeStartedAt, endedAt: measuredEnd, limit: 10000, retentionSeconds: p.observationWindowSeconds },
             deriveHealthSourceFreshness({ evaluatedAt: now, newestSourceAt: latest, maxAgeSeconds: p.freshnessSeconds, available: true })) });
       }
@@ -166,7 +166,7 @@ export class PassiveCeremonySource implements HealthObservationSource {
           if (r?.kind !== "health-diagnosis" || r.action !== "disposition") continue;
           const c = r.finding?.ceremony;
           return r.episodeCleared && c?.lineageId === lineageId ? [{ transitionId: Math.max(...c.transitionIds), endedAt: r.finding!.window.endedAt }] : [];
-        } catch { /* Not a typed disposition. */ }
+        } catch { /* 不是类型化 disposition。 */ }
       }
       return [];
     }).sort((a, b) => a.transitionId - b.transitionId);
@@ -184,7 +184,7 @@ export class PassiveCeremonySource implements HealthObservationSource {
         if (r?.kind === "health-diagnosis" && r.action === "disposition" && r.disposition?.progress) {
           return { evidenceChanged: !r.progressEvidence?.length || r.progressEvidence.some((e) => readHealthArtifact(workspace, e.path).sha256 !== e.sha256), result: r.disposition.progress, actor: t.actorSession, at: t.ts, transitionId: t.transitionId, identityProvenance: t.identityProvenance };
         }
-      } catch { /* Ordinary queue prose is not an assessment. */ }
+      } catch { /* 普通 queue 文本不是 assessment。 */ }
     }
     return undefined;
   }

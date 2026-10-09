@@ -155,7 +155,7 @@ describe("Whoami CLI", () => {
   });
 
   it("TMUX_PANE resolves via tmux display-message to exact session name (no metadata set)", () => {
-    // Test the resolution function directly with a controlled tmux mock
+    // 用受控 tmux mock 直接测试解析函数
     process.env["TMUX_PANE"] = "%42";
     const mockTmuxExec = vi.fn((cmd: string) => {
       if (cmd.includes("show-option")) throw new Error("unknown option");
@@ -187,7 +187,7 @@ describe("Whoami CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "whoami"]);
     });
     expect(exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("Cannot determine identity");
+    expect(logs.join("\n")).toContain("无法确定身份");
   });
 
   it("daemon 404 → exit 1 with not-found guidance", async () => {
@@ -206,10 +206,10 @@ describe("Whoami CLI", () => {
     expect(logs.join("\n")).toContain("ambiguous");
   });
 
-  // Adopted-session parity: tmux metadata resolution
+  // 采纳 session 一致性：tmux metadata 解析
   it("TMUX_PANE with @rigged_node_id metadata resolves nodeId (takes precedence over display-message)", () => {
     process.env["TMUX_PANE"] = "%42";
-    // Mock: @rigged_node_id returns a value, display-message would return a DIFFERENT session name
+    // mock：@rigged_node_id 返回值，display-message 会返回不同的 session 名
     const mockTmuxExec = vi.fn((cmd: string) => {
       if (cmd.includes("show-option") && cmd.includes("@rigged_node_id")) return "node-claimed-123";
       if (cmd.includes("display-message")) return "fallback-session-name";
@@ -219,7 +219,7 @@ describe("Whoami CLI", () => {
     const result = resolveIdentitySource({}, mockTmuxExec);
 
     expect(result).toEqual({ nodeId: "node-claimed-123" });
-    // display-message should NOT have been called — metadata took precedence
+    // display-message 不应被调用——metadata 优先
     const displayCalls = mockTmuxExec.mock.calls.filter((c) => (c[0] as string).includes("display-message"));
     expect(displayCalls).toHaveLength(0);
   });
@@ -274,23 +274,23 @@ describe("Whoami CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "whoami"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("Rig:");
+    expect(output).toContain("工作组：");
     expect(output).toContain("my-rig");
-    expect(output).toContain("Pod:        dev / impl");
-    expect(output).toContain("Logical ID:");
-    expect(output).toContain("Transport:");
+    expect(output).toContain("Pod：       dev / impl");
+    expect(output).toContain("逻辑 ID：");
+    expect(output).toContain("传输：");
     expect(output).toContain("dev.impl");
-    expect(output).toContain("Pod:");
-    expect(output).toContain("Session:");
+    expect(output).toContain("Pod：");
+    expect(output).toContain("会话：");
     expect(output).toContain("dev-impl@my-rig");
-    expect(output).toContain("Peers:");
+    expect(output).toContain("Peers：");
     expect(output).toContain("dev.qa");
-    expect(output).toContain("Edges:");
+    expect(output).toContain("边：");
     expect(output).toContain("delegates_to");
-    expect(output).toContain("Transcript:");
+    expect(output).toContain("Transcript：");
   });
 
-  // OPR.99.0.6.1 — the clarified Peers header (the roster contract, in-band).
+  // OPR.99.0.6.1——澄清的 Peers header（roster 契约，带内）。
   it("human Peers header names the roster contract and points at edges + rig ps --nodes", async () => {
     process.env["OPENRIG_NODE_ID"] = "node-1";
     const { logs } = await captureLogs(async () => {
@@ -298,12 +298,12 @@ describe("Whoami CLI", () => {
     });
     const output = logs.join("\n");
     // Legacy grep target preserved verbatim.
-    expect(output).toContain("Peers:");
+    expect(output).toContain("Peers：");
     // The discriminator: a fresh reader cannot misread peers[] as the
     // edge-subset (pointed to edges below) or as host inventory (pointed to
     // rig ps --nodes for inventory incl. self).
-    expect(output).toContain("roster, excluding self");
-    expect(output).toContain("directional edges below");
+    expect(output).toContain("名册，不含自身");
+    expect(output).toContain("有向边");
     expect(output).toContain("rig ps --nodes");
     // Peers + edges still render normally under the clarified header.
     expect(output).toContain("dev.qa");
@@ -332,8 +332,8 @@ describe("Whoami CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "whoami", "--node-id", "node-2"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("Session:    —");
-    expect(output).not.toContain("Transcript:");
+    expect(output).toContain("会话：      —");
+    expect(output).not.toContain("Transcript：");
   });
 
   it("daemon down with OPENRIG_NODE_ID env returns partial JSON instead of hard-failing", async () => {
@@ -382,7 +382,7 @@ describe("Whoami CLI", () => {
     });
 
     const output = logs.join("\n");
-    expect(output).toContain("daemon unreachable — topology and peer info unavailable.");
+    expect(output).toContain("后台服务不可达——拓扑与 peer 信息不可用。");
     expect(output).toContain("dev-impl@my-rig");
     expect(exitCode).toBeUndefined();
   });
@@ -436,13 +436,13 @@ describe("Whoami CLI", () => {
     const compact = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "whoami", "--node-id", "node-1"]);
     });
-    expect(compact.logs.join("\n")).not.toContain("Context:");
+    expect(compact.logs.join("\n")).not.toContain("上下文：");
     expect(compact.logs.join("\n")).toContain("my-rig"); // identity still rendered
 
     const full = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "whoami", "--node-id", "node-1", "--full"]);
     });
-    expect(full.logs.join("\n")).toContain("Context:");
+    expect(full.logs.join("\n")).toContain("上下文：");
   });
 
   it("AC-6: --help teaches --full / --verbose", () => {

@@ -1,12 +1,11 @@
-// OPR.0.4.6.MH1 FR-5 — the dashboard host-config data layer.
+// OPR.0.4.6.MH1 FR-5 —— 仪表盘主机配置数据层。
 //
-// READS ride GET /api/hosts (pointers-only rows + selected marker +
-// coarse status — the daemon-side sibling of `rig host ls --json`).
-// WRITES ride the narrow named add/pair route family (arch P1) with the
-// mission-control bearer posture; the SWITCHER and RENAME deliberately
-// do NOT live here — they are plain settings writes (host.selected /
-// host.name via useSetSetting → POST /api/config/:key), the ONE write
-// path both surfaces converge on.
+// 读：走 GET /api/hosts（仅指针的行 + 选中标记 + 粗粒度状态——
+// 是 `rig host ls --json` 的后台服务侧兄弟接口）。
+// 写：走窄命名的 add/pair 路由族（arch P1），带 mission-control bearer 姿态；
+// 切换器与重命名刻意不放在这里——它们是普通设置写入
+// （host.selected / host.name，经 useSetSetting → POST /api/config/:key），
+// 是两个界面收敛到的同一条写路径。
 
 import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -48,19 +47,17 @@ export function useHosts() {
   });
 }
 
-// OPR.0.4.6.MH2 FR-1/FR-3 — the ONE selection source for the whole app.
-// The `["hosts"]` cache entry (polled by the always-mounted HostIndicator
-// + the explorer trees via useHosts) carries the same `host.selected`
-// config key the CLI writes, so indicator + data derive from a single
-// state source: every read hook keys on this value and the k9s
-// stale-header class (A-label-over-B-data) is structurally excluded.
+// OPR.0.4.6.MH2 FR-1/FR-3 —— 全应用唯一的选择状态源。
+// `["hosts"]` 缓存项（由常驻挂载的 HostIndicator + 经 useHosts 的 explorer 树轮询）
+// 携带与 CLI 写入相同的 `host.selected` 配置键，因此指示器与数据来自单一状态源：
+// 每个读 hook 都以该值为键，从结构上排除了 k9s 那种
+// 「标签是 A、数据是 B」的过期表头类问题。
 //
-// CACHE OBSERVER, deliberately no fetch of its own (enabled: false): this
-// hook rides inside all seven read hooks, and issuing a request per
-// consumer would add an /api/hosts call to every surface — breaking every
-// sequenced-fetch-mock harness and multiplying polls for zero information
-// (the active useHosts observers keep the entry warm on every real
-// screen). Absent cache ⇒ local — the safe/truthful initial render.
+// 缓存观察者，刻意不自己发请求（enabled: false）：本 hook 搭载在全部七个读 hook 内部，
+// 若每个消费者都发请求，会给每个界面都加一次 /api/hosts 调用——破坏所有
+// 顺序 fetch mock 测试，并徒增轮询却不带来任何信息
+//（活跃的 useHosts 观察者在每个真实屏幕上都让该缓存项保持温热）。
+// 无缓存 ⇒ 本地——这是安全/诚实的首屏渲染。
 export function useSelectedHostId(): string {
   const { data } = useQuery<HostsResponse>({
     queryKey: ["hosts"],
@@ -70,41 +67,32 @@ export function useSelectedHostId(): string {
   return data?.selected ?? LOCAL_HOST_ID;
 }
 
-/** OPR.0.4.6.MH2 guard-B1 — the shared host-selection state for LOCAL-
- *  filesystem-backed surfaces: `known` = the hosts payload landed;
- *  `isLocal` = the selection is the local host. Components render LOADING
- *  while !known (never the remote-gated copy — no misleading flash on a
- *  local cold start) and the gated copy only when known-remote.
+/** OPR.0.4.6.MH2 guard-B1——依赖本地文件系统界面共享的主机选择状态：`known` 表示
+ * 主机载荷已返回，`isLocal` 表示选中本地主机。!known 时组件渲染加载状态，绝不提前显示
+ * 远程门控文案，避免本地冷启动时误闪；只有明确知道是远程选择时才显示门控文案。
  *
- *  ACTIVE observer (unlike useSelectedHostId): the consumers are LEAF
- *  panels (BriefPanel, MissionGlance) that must be correct standalone —
- *  with no page-level useHosts in the tree a disabled observer would
- *  never learn the selection and load forever. In-app it dedupes with the
- *  page poller on the same ["hosts"] key; the high-fanout READ hooks keep
- *  the disabled-observer pattern (they always render under active pages). */
+ * 它是活跃观察者，与 useSelectedHostId 不同；使用方是 BriefPanel、MissionGlance 等叶子面板，
+ * 必须可独立正确工作。如果组件树中没有页面级 useHosts，禁用的观察者永远无法得知选择结果，
+ * 会一直加载。应用内它通过相同的 ["hosts"] 键与页面轮询器去重；高扇出的只读 hook 继续使用
+ * 禁用观察者模式，因为它们始终渲染在活跃页面下。 */
 export function useHostSelection(): { known: boolean; isLocal: boolean } {
   const { data } = useHosts();
   return { known: data !== undefined, isLocal: (data?.selected ?? LOCAL_HOST_ID) === LOCAL_HOST_ID };
 }
 
-/** OPR.0.4.6.MH2 guard-B1 — the ONE shared FETCH gate for LOCAL-filesystem
- *  reads (/api/files/* is local-only and excluded from the read-through).
- *  True ONLY when the selection is KNOWN AND local: gating on not-remote
- *  alone races on first render (local-presumed reads fired before a remote
- *  selection resolved). Every file-backed surface consumes THIS hook so no
- *  future call site re-derives the gate wrong. */
+/** OPR.0.4.6.MH2 guard-B1——本地文件系统读取唯一共享的获取守卫。/api/files/* 仅限本地，
+ * 不参与读取透传。只有选择结果已知且为本地时才返回 true；若仅按非远程门控，首次渲染会产生
+ * 竞态，在远程选择解析完成前发出假定本地的读取。所有文件界面都使用这个 hook，避免未来调用点
+ * 再次错误推导守卫。 */
 export function useLocalFilesAllowed(): boolean {
   const { known, isLocal } = useHostSelection();
   return known && isLocal;
 }
 
-/** OPR.0.4.6.MH2 rev1-r2 re-re-verdict B1 — discovery placement targets
- *  feed the LOCAL adopt mutation; a target created while local must not
- *  survive a host switch (stale ADOPT actionable under a remote label).
- *  The shell calls this with its clearPlacement so ANY selected-host
- *  change drops the stale target + discovered-session selection (belt;
- *  the panel additionally suppresses the target/adopt UI under a remote
- *  selection — braces). */
+/** OPR.0.4.6.MH2 rev1-r2 再次裁定 B1——发现放置目标会供给本地接纳变更；本地创建的目标
+ * 不得跨越主机切换继续存在，否则远程标签下会出现陈旧但可操作的接纳动作。外壳以自身的
+ * clearPlacement 调用此 hook，使任何选中主机变化都会清除陈旧目标和已发现会话选择，构成第一道
+ * 保险；远程选择下，面板还会抑制目标/接纳 UI，构成第二道保险。 */
 export function useClearPlacementOnHostSwitch(clear: () => void) {
   const hostId = useSelectedHostId();
   const prev = useRef(hostId);
@@ -116,10 +104,9 @@ export function useClearPlacementOnHostSwitch(clear: () => void) {
   }, [hostId, clear]);
 }
 
-/** Selection WRITE — the same one write path as the CLI (`rig host select`
- *  is a thin client of POST /api/config/host.selected). Invalidate the
- *  hosts query so indicator + all host-keyed reads retarget immediately
- *  instead of waiting out the 5s poll. */
+/** 选择写入：与 CLI 使用同一条写路径，`rig host select` 只是
+ * POST /api/config/host.selected 的薄客户端。使 hosts 查询失效，让指示器和所有按主机定键的读取
+ * 立即切换目标，无须等待 5 秒轮询。 */
 export function useSelectHost() {
   const qc = useQueryClient();
   return useMutation<unknown, Error, { hostId: string }>({
@@ -169,8 +156,7 @@ export interface PairPollResult {
   entry?: HostRow;
 }
 
-/** Poll the local daemon's pull-through pair leg while a pairing is live.
- *  Pass null to idle the hook (no request). */
+/** 配对有效期间，轮询本地后台服务的透传配对支路。传入 null 可让 hook 空闲，不发请求。 */
 export function usePairPoll(pairId: string | null) {
   const qc = useQueryClient();
   return useQuery<PairPollResult>({

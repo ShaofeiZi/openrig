@@ -11,7 +11,7 @@ import { resolveStartup } from "./startup-resolver.js";
 import { discoverSkillsForRuntime, type SkillRuntime } from "./skill-discovery.js";
 import { inspectSkillDirectory, resolveSkillLoadout, type SkillLoadout } from "./skill-catalog.js";
 
-// -- Types --
+// -- 类型 --
 
 export interface QualifiedResource {
   effectiveId: string;
@@ -33,9 +33,9 @@ export interface ResolvedNodeConfig {
   model: string | undefined;
   cwd: string;
   restorePolicy: string;
-  /** OPR.0.5.6.20 — resolved continuity mode (canonical vocabulary; most-specific-wins). */
+  /** OPR.0.5.6.20——已解析的连续性模式（规范词汇，最具体者优先）。 */
   compactionStrategy: string;
-  /** Resolved continuity mechanic; absent unless explicitly declared. */
+  /** 已解析的连续性机制；仅显式声明时存在。 */
   mechanic: string | undefined;
   lifecycle: LifecycleDefaults | undefined;
   selectedResources: ResolvedResources;
@@ -44,14 +44,11 @@ export interface ResolvedNodeConfig {
   resolvedSpecVersion: string;
   resolvedSpecHash: string;
   /**
-   * Per-seat activity-detection tuning. Forwarded verbatim from
-   * `profile.activity` after agent-manifest normalization. Currently
-   * inert: the live poller uses the global 3s default and does not
-   * read per-seat windows. Retained for a future per-seat decision.
+   * 逐席位的活动检测调优。agent manifest 归一化后，从 `profile.activity` 原样转发。
+   * 当前尚未生效：实时轮询器使用全局 3 秒默认值，不读取逐席位窗口。保留供未来逐席位决策使用。
    */
   activity?: { silenceWindowSeconds?: number };
-  /** The catalog-owned portion of the effective skill selection. Runtime
-   *  projection uses this for exact-byte ownership reconciliation. */
+  /** 有效技能选择中归 catalog 所有的部分。运行时投影用它做精确字节的所有权协调。 */
   skillLoadout?: SkillLoadout;
 }
 
@@ -66,18 +63,15 @@ export interface ResolutionContext {
   pod: RigSpecPod;
   rig: RigSpec;
   operatorStartup?: StartupBlock;
-  /** V0.3.0 daemon-skill-discovery (SC-29 #7): operator home directory
-   *  used to scan filesystem-discovered skills (~/.openrig/skills/,
-   *  ~/.claude/skills/, ~/.agents/skills/). Defaults to os.homedir()
-   *  in production; tests inject a fixture root. */
+  /** V0.3.0 daemon-skill-discovery（SC-29 #7）：操作者主目录，用于扫描文件系统中发现的技能
+   *（~/.openrig/skills/、~/.claude/skills/、~/.agents/skills/）。生产环境默认使用
+   * os.homedir()；测试注入 fixture 根目录。 */
   homedir?: string;
-  /** Config-resolved managed skill catalog root. */
+  /** 由配置解析出的受管技能 catalog 根目录。 */
   skillsRoot?: string;
-  /** System World-owned managed skill identities. When absent, the legacy
-   *  catalog.yaml selector remains the compatibility fallback. */
+  /** 归 System World 所有的受管技能身份。缺失时，旧版 catalog.yaml selector 仍作为兼容回退。 */
   systemSkills?: string[];
-  /** A selected System World that could not be resolved. This is a launch
-   *  refusal, never a silent fallback to the legacy catalog selector. */
+  /** 已选择但无法解析的 System World。这会拒绝启动，绝不静默回退到旧版 catalog selector。 */
   systemWorldError?: string;
 }
 
@@ -85,7 +79,7 @@ export type ResolutionResult =
   | { ok: true; config: ResolvedNodeConfig }
   | { ok: false; errors: string[] };
 
-// -- Constants --
+// -- 常量 --
 
 const RESOURCE_CATEGORIES = ["skills", "guidance", "subagents", "plugins", "runtimeResources"] as const;
 type ResourceCategory = typeof RESOURCE_CATEGORIES[number];
@@ -105,12 +99,12 @@ const RESTORE_POLICY_LEVEL: Record<string, number> = {
   checkpoint_only: 2,
 };
 
-// -- Public API --
+// -- 公共 API --
 
 /**
- * Resolve effective node configuration from agent spec, profile, and rig context.
- * @param ctx - resolution context with all inputs
- * @returns resolved config or errors
+ * 从 agent spec、profile 与工作组上下文解析有效节点配置。
+ * @param ctx - 包含全部输入的解析上下文
+ * @returns 已解析配置或错误
  */
 export function resolveNodeConfig(ctx: ResolutionContext): ResolutionResult {
   const errors: string[] = [];
@@ -118,20 +112,19 @@ export function resolveNodeConfig(ctx: ResolutionContext): ResolutionResult {
   const { baseSpec, importedSpecs, profileName, member, pod, rig } = ctx;
   const spec = baseSpec.spec;
 
-  // 1. Validate profile exists
+  // 1. 校验 profile 存在。
   const profile = spec.profiles[profileName];
   if (!profile) {
-    return { ok: false, errors: [`Profile "${profileName}" not found in spec "${spec.name}". Available: ${Object.keys(spec.profiles).join(", ") || "(none)"}` ] };
+    return { ok: false, errors: [`在 spec "${spec.name}" 中未找到 Profile "${profileName}"。可用：${Object.keys(spec.profiles).join(", ") || "（无）"}` ] };
   }
 
-  // 2. Build combined resource pool
+  // 2. 构建合并后的资源池。
   const pool = buildResourcePool(baseSpec, importedSpecs);
 
-  // V0.3.0 daemon-skill-discovery (SC-29 #7): runtime + cwd must be
-  // resolved BEFORE the pool is queried, so the filesystem skill scan
-  // targets the right runtime's path layout (claude-code → .claude/;
-  // codex → .agents/) at the right cwd. Order swapped from prior
-  // versions where runtime/cwd were computed AFTER the pool.
+  // V0.3.0 daemon-skill-discovery（SC-29 #7）：查询资源池前必须先解析 runtime + cwd，
+  // 这样文件系统技能扫描才会在正确 cwd 下命中对应运行时的路径布局
+  //（claude-code → .claude/；codex → .agents/）。旧版本在资源池之后计算 runtime/cwd，
+  // 此处已调整顺序。
   const runtime = member.runtime
     ?? profile.preferences?.runtime
     ?? spec.defaults?.runtime
@@ -147,14 +140,11 @@ export function resolveNodeConfig(ctx: ResolutionContext): ResolutionResult {
       ? (nodePath.isAbsolute(member.cwd) ? member.cwd : nodePath.resolve(ctx.specRoot, member.cwd))
       : member.cwd;
 
-  // 2b. Augment the pool with filesystem-discovered skills. Rig-local
-  // resources.skills (already in the pool from buildResourcePool) win
-  // over discovered same-id entries. Most-specific-wins precedence:
-  // rig-local agent.yaml > rig-bundled cwd > spec-install-dir >
-  // runtime-specific user library > shared ~/.openrig/skills/. The
-  // internal ordering among discovery roots lives in
-  // skill-discovery.listScanRoots; here we only enforce that
-  // rig-local declarations are not overwritten by discovery.
+  // 2b. 用文件系统发现的技能扩充资源池。工作组本地 resources.skills（已由 buildResourcePool
+  // 放入池中）优先于同 id 的发现项。最具体者优先顺序为：工作组本地 agent.yaml >
+  // 工作组随附 cwd > spec-install-dir > 运行时专属用户库 > 共享 ~/.openrig/skills/。
+  // 发现根的内部顺序定义在 skill-discovery.listScanRoots；此处只保证发现结果不会覆盖
+  // 工作组本地声明。
   let rejectedSkillsByBasename: Map<string, { path: string; reason: string }> = new Map();
   if (runtime === "claude-code" || runtime === "codex") {
     const discovery = discoverSkillsForRuntime({
@@ -173,38 +163,33 @@ export function resolveNodeConfig(ctx: ResolutionContext): ResolutionResult {
         resource: discovered,
       }]);
     }
-    // Index rejected skills by directory basename so a profile that
-    // references the same name as a structurally-broken SKILL.md gets
-    // the precise rejection reason instead of a bare "not found in
-    // resource pool" error.
+    // 按目录 basename 索引被拒绝技能，使 profile 引用与结构损坏 SKILL.md 同名的技能时，
+    // 能得到精确拒绝原因，而不是笼统的“资源池中未找到”错误。
     for (const r of discovery.rejected) {
       const base = nodePath.basename(r.path);
       if (!rejectedSkillsByBasename.has(base)) rejectedSkillsByBasename.set(base, r);
     }
   }
 
-  // 3. Resolve profile uses against the augmented pool
+  // 3. 在扩充后的资源池中解析 profile uses。
   const selectedResult = resolveProfileUses(profile, pool, spec.name, errors);
   if (errors.length > 0) {
-    // Augment "skills: \"<id>\" not found in resource pool" errors
-    // with the structural-rejection reason when the basename matches
-    // a discovered-but-rejected SKILL.md directory. Operators see
-    // exactly what to fix instead of a vague pool miss.
+    // 若 basename 命中“已发现但被拒绝”的 SKILL.md 目录，则为“skills: \"<id>\" 在资源池中
+    // 未找到”补充结构性拒绝原因，使操作者准确知道应修复什么，而不是只看到模糊的池缺失。
     const enhanced = errors.map((err) => {
-      const m = err.match(/^Profile uses skills: "([^"]+)" not found in resource pool$/);
+      const m = err.match(/^Profile 使用的 skills："([^"]+)" 未在资源池中找到$/);
       if (!m) return err;
       const ref = m[1]!;
       const rejection = rejectedSkillsByBasename.get(ref);
       if (!rejection) return err;
-      return `Profile uses skills: "${ref}" rejected — ${rejection.reason} (at ${rejection.path})`;
+      return `Profile 使用技能 "${ref}" 被拒绝——${rejection.reason}（位于 ${rejection.path}）`;
     });
     return { ok: false, errors: enhanced };
   }
 
-  // S04 — compose independently-selected managed skills around the existing
-  // topology selector (profile.uses.skills). System comes from catalog.yaml;
-  // project comes from project.yaml install.skills. Topology resources that
-  // are not catalog-managed retain the established AgentSpec/local behavior.
+  // S04——围绕既有拓扑 selector（profile.uses.skills）组合独立选择的受管技能。System 来源为
+  // catalog.yaml，project 来源为 project.yaml install.skills；不受 catalog 管理的拓扑资源
+  // 保留既有 AgentSpec/本地行为。
   const catalogRoot = ctx.skillsRoot ?? nodePath.join(ctx.homedir ?? osHomedir(), ".openrig", "skills");
   const catalogResult = resolveSkillLoadout({
     catalogRoot,
@@ -239,14 +224,14 @@ export function resolveNodeConfig(ctx: ResolutionContext): ResolutionResult {
           return {
             ok: false,
             errors: [
-              `skill_identity_conflict: topology selection '${managed.id}' resolves to different content at ${existingPath} than managed catalog ${managed.sourceDir}; remove the duplicate source or make the bytes identical`,
+              `skill_identity_conflict: 拓扑选择 '${managed.id}' 在 ${existingPath} 解析到与受管目录 ${managed.sourceDir} 不同的内容；请移除重复来源，或使字节完全一致`,
             ],
           };
         }
       } catch (err) {
         return {
           ok: false,
-          errors: [`skill_identity_conflict: cannot compare topology selection '${managed.id}' at ${existingPath}: ${(err as Error).message}`],
+          errors: [`skill_identity_conflict: 无法在 ${existingPath} 比较拓扑选择 '${managed.id}'：${(err as Error).message}`],
         };
       }
       selectedResult!.skills[index] = qualified;
@@ -255,13 +240,13 @@ export function resolveNodeConfig(ctx: ResolutionContext): ResolutionResult {
   }
   selectedResult!.skills.sort((a, b) => a.effectiveId < b.effectiveId ? -1 : a.effectiveId > b.effectiveId ? 1 : 0);
 
-  // 7. Resolve restorePolicy with narrowing
+  // 7. 按收窄规则解析 restorePolicy。
   const restorePolicyResult = resolveRestorePolicy(spec, profile, member);
   if (!restorePolicyResult.ok) {
     return { ok: false, errors: [restorePolicyResult.error] };
   }
 
-  // 7b. Resolve compactionStrategy (OPR.0.5.6.20 — override-wins, aliases normalized)
+  // 7b. 解析 compactionStrategy（OPR.0.5.6.20——覆盖优先，别名归一化）。
   const compactionResult = resolveCompactionStrategy(spec, profile, member);
   if (!compactionResult.ok) {
     return { ok: false, errors: [compactionResult.error] };
@@ -271,10 +256,10 @@ export function resolveNodeConfig(ctx: ResolutionContext): ResolutionResult {
     return { ok: false, errors: [mechanicResult.error] };
   }
 
-  // 8. Resolve lifecycle
+  // 8. 解析 lifecycle。
   const lifecycle = profile.lifecycle ?? spec.defaults?.lifecycle;
 
-  // 9. Resolve startup layering
+  // 9. 解析启动分层。
   const startup = resolveStartup({
     specStartup: spec.startup,
     profileStartup: profile.startup,
@@ -300,16 +285,15 @@ export function resolveNodeConfig(ctx: ResolutionContext): ResolutionResult {
       resolvedSpecName: spec.name,
       resolvedSpecVersion: spec.version,
       resolvedSpecHash: baseSpec.hash,
-      // Slice 15 — pass through the parsed activity block (or undefined
-      // when the profile didn't declare one). NodeLauncher applies the
-      // default 3s when this is missing.
+      // Slice 15——透传已解析 activity block；profile 未声明时为 undefined。
+      // 缺失时由 NodeLauncher 应用默认 3 秒值。
       activity: profile.activity,
       skillLoadout: catalogResult.loadout,
     },
   };
 }
 
-// -- Resource pool --
+// -- 资源池 --
 
 interface PoolEntry {
   effectiveId: string;
@@ -329,7 +313,7 @@ function buildResourcePool(base: ResolvedAgentSpec, imports: ResolvedAgentSpec[]
     runtimeResources: new Map(),
   };
 
-  // Base spec resources (unqualified id)
+  // 基础 spec 资源（非限定 id）。
   for (const cat of RESOURCE_CATEGORIES) {
     const resources = (base.spec.resources[cat] as Array<{ id: string }> | undefined) ?? [];
     for (const r of resources) {
@@ -339,33 +323,31 @@ function buildResourcePool(base: ResolvedAgentSpec, imports: ResolvedAgentSpec[]
     }
   }
 
-  // Imported spec resources (qualified id only)
-  // Per proposal: "base resources keep the unqualified local id" and
-  // "colliding imported resources remain addressable only by qualified id"
+  // 导入 spec 资源（仅限定 id）。按提案：基础资源保留非限定本地 id；
+  // 冲突的导入资源只能通过限定 id 寻址。
   for (const imp of imports) {
     for (const cat of RESOURCE_CATEGORIES) {
       const resources = (imp.spec.resources[cat] as Array<{ id: string }> | undefined) ?? [];
       for (const r of resources) {
         const qualifiedId = `${imp.spec.name}:${r.id}`;
-        // Index under qualified id only
+        // 只按限定 id 建索引。
         const qualEntries = pool[cat].get(qualifiedId) ?? [];
         qualEntries.push({ effectiveId: qualifiedId, sourceSpec: imp.spec.name, sourcePath: imp.sourcePath, resource: r as PoolEntry["resource"] });
         pool[cat].set(qualifiedId, qualEntries);
 
-        // If no base resource with this id exists, also index under unqualified id
-        // so a single import's resource can be referenced without qualification.
-        // If a base resource exists, the base owns the unqualified id (no collision).
-        // If multiple imports share the same unqualified id (no base), it's ambiguous.
+        // 若不存在同 id 的基础资源，也按非限定 id 建索引，使单个导入资源可不加限定符引用。
+        // 若基础资源存在，则非限定 id 归基础资源所有，不产生冲突；若多个导入共享同一非限定 id
+        // 且没有基础资源，则该引用有歧义。
         if (!pool[cat].has(r.id)) {
           pool[cat].set(r.id, [{ effectiveId: r.id, sourceSpec: imp.spec.name, sourcePath: imp.sourcePath, resource: r as PoolEntry["resource"] }]);
         } else {
           const existing = pool[cat].get(r.id)!;
-          // Only add for ambiguity if the existing entry is NOT from the base spec
+          // 仅当现有条目不来自基础 spec 时，才把它加入歧义集合。
           const hasBase = existing.some((e) => e.sourceSpec === base.spec.name);
           if (!hasBase) {
             existing.push({ effectiveId: qualifiedId, sourceSpec: imp.spec.name, sourcePath: imp.sourcePath, resource: r as PoolEntry["resource"] });
           }
-          // If base owns it, imported version is only reachable via qualified id — no unqualified indexing
+          // 若基础资源拥有该 id，导入版本只能通过限定 id 访问，不建立非限定索引。
         }
       }
     }
@@ -401,13 +383,13 @@ function resolveProfileUses(
     for (const ref of refs) {
       const entries = pool[cat].get(ref);
       if (!entries || entries.length === 0) {
-        errors.push(`Profile uses ${cat}: "${ref}" not found in resource pool`);
+        errors.push(`Profile 使用的 ${cat}："${ref}" 未在资源池中找到`);
         continue;
       }
       if (entries.length > 1) {
-        // Ambiguous unqualified reference
+        // 非限定引用有歧义。
         const sources = entries.map((e) => e.sourceSpec).join(", ");
-        errors.push(`Profile uses ${cat}: "${ref}" is ambiguous (declared in: ${sources}). Use a qualified id like "specname:${ref}"`);
+        errors.push(`Profile 使用的 ${cat}："${ref}" 存在歧义（声明于：${sources}）。请使用类似 "specname:${ref}" 的限定 ID`);
         continue;
       }
       result[cat].push({
@@ -422,12 +404,11 @@ function resolveProfileUses(
   return errors.length > 0 ? null : result;
 }
 
-// -- Restore policy narrowing --
+// -- 恢复策略收窄 --
 
-/** OPR.0.5.6.20 — most-specific-WINS (spec default < profile < member), the
- * restore-policy PATTERN without its narrowing lattice: the four continuity modes are
- * unordered, so each more-specific level simply overrides. Aliases normalize through
- * the manifest's one vocabulary site; an invalid value at any level errors naming it. */
+/** OPR.0.5.6.20——最具体者优先（spec default < profile < member）。这里沿用 restore-policy
+ * 模式但不采用其收窄格：四种 continuity mode 无序，因此更具体层级直接覆盖。别名通过 manifest
+ * 的唯一词汇点归一化；任一层级出现无效值时，错误会点名该值。 */
 function resolveCompactionStrategy(
   spec: AgentSpec,
   profile: ProfileSpec,
@@ -437,24 +418,24 @@ function resolveCompactionStrategy(
   const specValue = spec.defaults?.lifecycle?.compactionStrategy;
   if (specValue) {
     const canonical = canonicalCompactionStrategy(specValue);
-    if (canonical === null) return { ok: false, error: `Invalid compactionStrategy in spec defaults: "${specValue}"` };
+    if (canonical === null) return { ok: false, error: `spec defaults 中的 compactionStrategy 无效："${specValue}"` };
     current = canonical;
   }
   const profileValue = (profile.lifecycle as { compactionStrategy?: string } | undefined)?.compactionStrategy;
   if (profileValue) {
     const canonical = canonicalCompactionStrategy(profileValue);
-    if (canonical === null) return { ok: false, error: `Invalid compactionStrategy in profile: "${profileValue}"` };
+    if (canonical === null) return { ok: false, error: `profile 中的 compactionStrategy 无效："${profileValue}"` };
     current = canonical;
   }
   if (member.compactionStrategy) {
     const canonical = canonicalCompactionStrategy(member.compactionStrategy);
-    if (canonical === null) return { ok: false, error: `Invalid compactionStrategy in member: "${member.compactionStrategy}"` };
+    if (canonical === null) return { ok: false, error: `member 中的 compactionStrategy 无效："${member.compactionStrategy}"` };
     current = canonical;
   }
   return { ok: true, strategy: current };
 }
 
-/** S20 A8: mechanic follows the exact shipped strategy path: spec default < profile < member. */
+/** S20 A8：mechanic 严格遵循已交付的策略路径：spec default < profile < member。 */
 function resolveContinuityMechanic(
   spec: AgentSpec,
   profile: ProfileSpec,
@@ -462,14 +443,14 @@ function resolveContinuityMechanic(
 ): { ok: true; mechanic: string | undefined } | { ok: false; error: string } {
   let current: string | undefined;
   for (const [level, value] of [
-    ["spec defaults", spec.defaults?.lifecycle?.mechanic],
+    ["spec 默认值", spec.defaults?.lifecycle?.mechanic],
     ["profile", profile.lifecycle?.mechanic],
     ["member", member.mechanic],
   ] as const) {
     if (value === undefined) continue;
     const canonical = canonicalContinuityMechanic(value);
     if (canonical === null) {
-      return { ok: false, error: `Invalid mechanic in ${level}: "${String(value)}"` };
+      return { ok: false, error: `${level} 中的 mechanic 无效："${String(value)}"` };
     }
     current = canonical;
   }
@@ -484,27 +465,27 @@ function resolveRestorePolicy(
   let current: string = spec.defaults?.lifecycle?.restorePolicy ?? "resume_if_possible";
   let currentLevel = RESTORE_POLICY_LEVEL[current] ?? 0;
 
-  // Profile narrows
+  // Profile 收窄。
   if (profile.lifecycle?.restorePolicy) {
     const profileLevel = RESTORE_POLICY_LEVEL[profile.lifecycle.restorePolicy];
     if (profileLevel === undefined) {
-      return { ok: false, error: `Invalid restorePolicy in profile: "${profile.lifecycle.restorePolicy}"` };
+      return { ok: false, error: `profile 中的 restorePolicy 无效："${profile.lifecycle.restorePolicy}"` };
     }
     if (profileLevel < currentLevel) {
-      return { ok: false, error: `Profile restorePolicy "${profile.lifecycle.restorePolicy}" broadens "${current}" — only narrowing is allowed` };
+      return { ok: false, error: `Profile restorePolicy "${profile.lifecycle.restorePolicy}" 扩宽了 "${current}"——只允许收窄` };
     }
     current = profile.lifecycle.restorePolicy;
     currentLevel = profileLevel;
   }
 
-  // Member narrows
+  // Member 收窄。
   if (member.restorePolicy) {
     const memberLevel = RESTORE_POLICY_LEVEL[member.restorePolicy];
     if (memberLevel === undefined) {
-      return { ok: false, error: `Invalid restorePolicy on member: "${member.restorePolicy}"` };
+      return { ok: false, error: `member 上的 restorePolicy 无效："${member.restorePolicy}"` };
     }
     if (memberLevel < currentLevel) {
-      return { ok: false, error: `Member restorePolicy "${member.restorePolicy}" broadens "${current}" — only narrowing is allowed` };
+      return { ok: false, error: `Member restorePolicy "${member.restorePolicy}" 扩宽了 "${current}"——只允许收窄` };
     }
     current = member.restorePolicy;
   }

@@ -1,9 +1,8 @@
-// Operator Surface Reconciliation v0 — health summary tests.
+// 操作员表面对账 v0——health summary 测试。
 //
 // Pins the daemon-side aggregation helpers consumed by /api/health-summary/*.
-// Both `computeNodeHealthSummary` and `computeContextHealthSummary` are
-// pure functions over already-shipped tables; tests build a small
-// fixture DB and assert the rolled-up counts.
+// `computeNodeHealthSummary` 与 `computeContextHealthSummary` 二者均为
+// 已交付表上的纯函数；测试建一个小 fixture DB 并断言汇总计数。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -14,7 +13,7 @@ import {
   computeNodeHealthSummary,
 } from "../src/domain/steering/health-summary.js";
 
-describe("Operator Surface Reconciliation v0 — health summary", () => {
+describe("操作员表面对账 v0 —— 健康摘要", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
 
@@ -26,12 +25,12 @@ describe("Operator Surface Reconciliation v0 — health summary", () => {
   afterEach(() => db.close());
 
   describe("computeNodeHealthSummary", () => {
-    it("returns zeros when no rigs exist", () => {
+    it("不存在工作组时返回全零", () => {
       const out = computeNodeHealthSummary({ db, rigRepo });
       expect(out).toEqual({ total: 0, bySessionStatus: {}, byLifecycle: {}, attentionRequired: 0 });
     });
 
-    it("aggregates node sessionStatus across rigs", () => {
+    it("跨工作组聚合节点 sessionStatus", () => {
       const rigA = rigRepo.createRig("rig-a");
       const rigB = rigRepo.createRig("rig-b");
       rigRepo.addNode(rigA.id, "alpha", { role: "worker" });
@@ -39,7 +38,7 @@ describe("Operator Surface Reconciliation v0 — health summary", () => {
       rigRepo.addNode(rigB.id, "gamma", { role: "worker" });
       const out = computeNodeHealthSummary({ db, rigRepo });
       expect(out.total).toBe(3);
-      // Without sessions seeded, sessionStatus defaults to null/unknown.
+      // 未播种 session 时，sessionStatus 默认 null/unknown。
       expect(Object.values(out.bySessionStatus).reduce((a, b) => a + b, 0)).toBe(3);
     });
   });
@@ -55,7 +54,7 @@ describe("Operator Surface Reconciliation v0 — health summary", () => {
       ).run(node.id, usedPercentage, sampledAt, new Date().toISOString());
     }
 
-    it("returns zeros when no context usage rows exist", () => {
+    it("不存在上下文用量记录时返回全零", () => {
       const out = computeContextHealthSummary({ db });
       expect(out.total).toBe(0);
       expect(out.critical).toBe(0);
@@ -63,7 +62,7 @@ describe("Operator Surface Reconciliation v0 — health summary", () => {
       expect(out.stale).toBe(0);
     });
 
-    it("classifies usedPercentage into urgency buckets (critical ≥80, warning ≥60, low otherwise)", () => {
+    it("将 usedPercentage 分入紧急程度区间（critical ≥80、warning ≥60，其余为 low）", () => {
       insertContextUsage("crit", 92, new Date().toISOString());
       insertContextUsage("warn", 70, new Date().toISOString());
       insertContextUsage("ok-1", 25, new Date().toISOString());
@@ -77,7 +76,7 @@ describe("Operator Surface Reconciliation v0 — health summary", () => {
       expect(out.byUrgency["unknown"]).toBe(1);
     });
 
-    it("classifies samples older than 300s as stale", () => {
+    it("将早于 300 秒的样本分类为 stale", () => {
       insertContextUsage("fresh", 50, new Date().toISOString());
       insertContextUsage("stale", 50, new Date(Date.now() - 600_000).toISOString()); // 10 minutes ago
       insertContextUsage("none", 50, null);

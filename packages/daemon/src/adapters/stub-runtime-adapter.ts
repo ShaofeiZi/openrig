@@ -1,17 +1,14 @@
-// OPR.0.5.1.1 — the stub runtime adapter (A5 / ContextMonitor settlement).
+// OPR.0.5.1.1——stub runtime adapter（A5/ContextMonitor 收口）。
 //
-// Promotes the claude-stub seed to a first-class `runtime: stub`. Pi-shaped:
-// a node-script runner hosted in the seat's normal tmux pane (stub-runner.ts),
-// launched via tmux, its readiness read from a runner-authored sidecar — never
-// pane heuristics. The stub RUNS the runtime-agnostic lifecycle (real projection
-// + startup-file delivery to cwd); it does NOT fabricate outputs (A5 binding:
-// the stub TRIGGERS real seams, never FABRICATES).
+// 将 claude-stub seed 提升为一等 `runtime: stub`。采用 Pi 形态：node 脚本 runner 承载于席位
+// 常规 tmux pane（stub-runner.ts），通过 tmux 启动；其就绪状态从 runner 生成的 sidecar 读取，
+// 绝不使用 pane 启发式规则。stub 运行与 runtime 无关的真实生命周期（真实投影 + 向 cwd 投递
+// 启动文件），不捏造输出（A5 绑定：stub 触发真实接缝，绝不伪造）。
 //
-// Step-4 scope (A5 first-production-RED order item 4): the four RuntimeAdapter
-// verbs + the runner + registration, turning STEP2/STEP3/FACT2/FACT3 green (and
-// FACT4 restore + FACT5a-d readiness). The A5 ContextMonitor GAP-1/GAP-2 edits
-// (ctx% via ContextUsageStore) and the four seeded behaviors are later RED-first
-// increments (A5 items 5-8) — deliberately NOT here.
+// 第 4 步范围（A5 首个生产 RED 顺序第 4 项）：四个 RuntimeAdapter 动词 + runner + 注册，
+// 使 STEP2/STEP3/FACT2/FACT3 转绿（以及 FACT4 restore + FACT5a-d readiness）。A5
+// ContextMonitor GAP-1/GAP-2 改动（通过 ContextUsageStore 提供 ctx%）及四个 seed 行为属于后续
+// RED 优先增量（A5 第 5–8 项），有意不在此处实现。
 
 import nodePath from "node:path";
 import { randomUUID } from "node:crypto";
@@ -42,24 +39,21 @@ export interface StubAdapterFsOps {
 
 export interface StubRuntimeAdapterDeps {
   tmux: TmuxAdapter;
-  /** Real filesystem operations. Absent in minimal/hermetic test constructions —
-   *  the adapter then falls back to an in-memory launch record for readiness and
-   *  performs NO real filesystem writes (so a `cwd: "."` binding never pollutes
-   *  the daemon's own working directory). Production always wires this. */
+  /** 真实文件系统操作。在最小/隔离测试构造中缺失；此时 adapter 回退到内存启动记录判断
+   * readiness，且不执行真实文件系统写入（因此 `cwd: "."` 绑定绝不会污染后台服务自身工作
+   * 目录）。生产环境始终注入它。 */
   fsOps?: StubAdapterFsOps;
-  /** Runtime label. Defaults to "stub"; accepted as a dep so a test can name it. */
+  /** Runtime 标签，默认为 "stub"；作为依赖接收，以便测试为其命名。 */
   runtime?: string;
-  /** Absolute path to the compiled stub-runner entry in the daemon dist. When
-   *  present, launchHarness spawns the real runner (with a MANDATORY existence
-   *  fail-fast); when absent, launchHarness takes the hermetic in-memory path. */
+  /** daemon dist 中已编译 stub-runner 入口的绝对路径。存在时 launchHarness 启动真实 runner
+   *（必须执行存在性快速失败）；缺失时 launchHarness 采用隔离的内存路径。 */
   runnerEntryPath?: string;
   sleep?: (ms: number) => Promise<void>;
-  /** Launch-attempt id minting (tests inject; defaults to randomUUID). */
+  /** 启动尝试 id 铸造（测试注入；默认为 randomUUID）。 */
   newLaunchId?: () => string;
 }
 
-/** In-memory launch record: the readiness fallback for the hermetic path (no
- *  fsOps, no runner). Keyed by tmux session. */
+/** 内存启动记录：隔离路径（无 fsOps、无 runner）的 readiness 回退，以 tmux session 为键。 */
 interface StubLaunchRecord {
   ready: boolean;
   launchId: string;
@@ -85,8 +79,8 @@ export class StubRuntimeAdapter implements RuntimeAdapter {
   }
 
   async listInstalled(_binding: NodeBinding): Promise<InstalledResource[]> {
-    // A fresh stub seat tracks nothing until projection runs; nothing durable to
-    // enumerate at MVP (mirrors terminal/pi-with-no-skills). Honest empty.
+    // 全新 stub 席位在投影运行前不跟踪任何内容；MVP 没有可枚举的持久内容
+    //（镜像 terminal/无 skill 的 pi）。如实返回空列表。
     return [];
   }
 
@@ -117,14 +111,14 @@ export class StubRuntimeAdapter implements RuntimeAdapter {
 
     for (const file of files) {
       try {
-        if (!this.fsOps) throw new Error("no fsOps configured — cannot read startup file content");
+        if (!this.fsOps) throw new Error("未配置 fsOps——无法读取启动文件内容");
         const content = this.fsOps.readFile(file.absolutePath);
         const hint = file.deliveryHint === "auto" ? resolveConcreteHint(file.path, content) : file.deliveryHint;
 
         switch (hint) {
           case "guidance_merge": {
             const targetPath = nodePath.join(binding.cwd, "AGENTS.md");
-            if (!this.mergeGuidance(targetPath, file.path, content)) continue; // rig-role skip
+            if (!this.mergeGuidance(targetPath, file.path, content)) continue; // 跳过 rig-role。
             break;
           }
           case "skill_install": {
@@ -158,26 +152,25 @@ export class StubRuntimeAdapter implements RuntimeAdapter {
     opts: { name: string; resumeToken?: string; forkSource?: ForkSource },
   ): Promise<HarnessLaunchResult> {
     if (!binding.tmuxSession) {
-      return { ok: false, error: "No tmux session bound — cannot launch the stub harness" };
+      return { ok: false, error: "未绑定 tmux session——无法启动 stub harness" };
     }
     if (opts.resumeToken && opts.forkSource) {
-      return { ok: false, error: "resumeToken and forkSource are mutually exclusive — pick one" };
+      return { ok: false, error: "resumeToken 与 forkSource 互斥——请选择一个" };
     }
     if (opts.forkSource) {
-      // The stub runtime has no native fork primitive (the seeded behaviors do not
-      // include session fork); refuse clearly rather than guess (contract rule).
-      return { ok: false, error: "stub runtime has no native fork primitive; remove session_source for stub members" };
+      // stub runtime 没有原生 fork 原语（seed 行为不包含 session fork）；按契约明确拒绝，
+      // 而不是猜测。
+      return { ok: false, error: "stub runtime 没有原生 fork 原语；请移除 stub member 的 session_source" };
     }
 
     const sessionName = binding.tmuxSession;
     const launchId = this.newLaunchId();
 
     if (this.runnerEntryPath) {
-      // PRODUCTION path: spawn the real pane-hosted runner.
-      // MANDATORY runner-existence fail-fast (A5 HIGH-6): a missing packaged runner
-      // is a hard, immediate failure, never a silent hang.
+      // 生产路径：启动真实的 pane 承载 runner。必须执行 runner 存在性快速失败（A5 HIGH-6）：
+      // 发布包缺失 runner 是立即发生的硬失败，绝不能静默挂起。
       if (!this.fsOps || !this.fsOps.exists(this.runnerEntryPath)) {
-        return { ok: false, error: `stub-runner entry not found at ${this.runnerEntryPath} — the daemon package is incomplete` };
+        return { ok: false, error: `${this.runnerEntryPath} 中未找到 stub-runner 入口——后台服务包不完整` };
       }
       const posture: ResolvedLaunchPosture = yoloEnabled(process.env, binding.launchPosture) ? "full_bypass" : "floor";
       const cmd = buildStubRunnerCommand({
@@ -189,53 +182,50 @@ export class StubRuntimeAdapter implements RuntimeAdapter {
         resumeToken: opts.resumeToken,
       });
       const textResult = await this.tmux.sendText(sessionName, cmd);
-      if (!textResult.ok) return { ok: false, error: `Failed to send stub launch command: ${textResult.message}` };
+      if (!textResult.ok) return { ok: false, error: `发送 stub 启动命令失败：${textResult.message}` };
       const enterResult = await this.tmux.sendKeys(sessionName, ["Enter"]);
-      if (!enterResult.ok) return { ok: false, error: `Failed to send Enter: ${enterResult.message}` };
+      if (!enterResult.ok) return { ok: false, error: `发送 Enter 失败：${enterResult.message}` };
 
       const ready = await this.waitForRunnerReady(binding, launchId);
       if (!ready.ok) return ready.failure;
       return { ok: true, resumeToken: opts.resumeToken, resumeType: opts.resumeToken ? "stub_session" : undefined };
     }
 
-    // HERMETIC path (no runner configured): record the launch as the readiness
-    // source and return. No real filesystem write — a `cwd: "."` binding never
-    // pollutes the daemon's own working directory.
+    // 隔离路径（未配置 runner）：把启动记为 readiness 来源并返回。不写真实文件系统，因此
+    // `cwd: "."` 绑定绝不会污染后台服务自身工作目录。
     this.launchRecords.set(sessionName, { ready: true, launchId });
     return { ok: true, resumeToken: opts.resumeToken, resumeType: opts.resumeToken ? "stub_session" : undefined };
   }
 
   async checkReady(binding: NodeBinding): Promise<ReadinessResult> {
     const sessionName = binding.tmuxSession;
-    if (!sessionName) return { ready: false, reason: "No tmux session bound" };
+    if (!sessionName) return { ready: false, reason: "未绑定 tmux session" };
 
-    // Readiness EVIDENCE: the runner-authored sidecar when fsOps is wired
-    // (production + FACT5), else the in-memory launch record (hermetic FACT3/FACT4).
+    // Readiness 证据：注入 fsOps 时使用 runner 生成的 sidecar（生产 + FACT5），否则使用内存
+    // 启动记录（隔离 FACT3/FACT4）。
     const state: StubRunnerState | StubLaunchRecord | null = this.fsOps
       ? this.readReadinessSidecar(binding.cwd)
       : this.launchRecords.get(sessionName) ?? null;
 
-    if (!state) return { ready: false, reason: "stub seat has not reported readiness", code: "awaiting_runtime" };
+    if (!state) return { ready: false, reason: "stub 席位尚未报告 readiness", code: "awaiting_runtime" };
     if (state.exited) {
-      return { ready: false, reason: `stub-runner exited (code ${state.exited.code ?? "unknown"})`, code: "runner_exited" };
+      return { ready: false, reason: `stub-runner 已退出（退出码 ${state.exited.code ?? "未知"}）`, code: "runner_exited" };
     }
-    if (!state.ready) return { ready: false, reason: "stub-runner has not reported ready yet", code: "awaiting_runtime" };
+    if (!state.ready) return { ready: false, reason: "stub-runner 尚未报告 ready", code: "awaiting_runtime" };
 
-    // Liveness cross-checks — ONLY where the tmux surface supports them (production
-    // wires a full tmux; hermetic constructions pass a minimal/empty tmux, so the
-    // in-memory record above is authoritative and tmux is never touched). A ready
-    // sidecar/record does NOT prove current liveness on its own: a dead runner
-    // leaves the pane at a shell, and a stale sidecar can outlive it.
+    // Liveness 交叉检查——只在 tmux surface 支持时执行（生产环境注入完整 tmux；隔离构造传入
+    // 最小/空 tmux，因此上述内存记录为权威，绝不访问 tmux）。仅凭 ready sidecar/记录不能证明
+    // 当前活性：runner 终止后 pane 会停在 shell，陈旧 sidecar 可能继续存在。
     if (this.fsOps) {
       if (typeof this.tmux?.hasSession === "function") {
         if (!(await this.tmux.hasSession(sessionName))) {
-          return { ready: false, reason: "tmux session not responsive" };
+          return { ready: false, reason: "tmux session 无响应" };
         }
       }
       if (typeof this.tmux?.getPaneCommand === "function") {
         const paneCommand = (await this.tmux.getPaneCommand(sessionName)) ?? "";
         if (SHELL_COMMANDS.has(paneCommand)) {
-          return { ready: false, reason: "stub readiness is stale; the pane is back at a shell", code: "runner_exited" };
+          return { ready: false, reason: "stub readiness 已陈旧；pane 已返回 shell", code: "runner_exited" };
         }
       }
     }
@@ -243,7 +233,7 @@ export class StubRuntimeAdapter implements RuntimeAdapter {
     return { ready: true };
   }
 
-  // ── internals ──────────────────────────────────────────────────────────────
+  // ── 内部实现 ──────────────────────────────────────────────────────────────
 
   private readReadinessSidecar(cwd: string): StubRunnerState | null {
     if (!this.fsOps) return null;
@@ -261,17 +251,16 @@ export class StubRuntimeAdapter implements RuntimeAdapter {
     launchId: string,
   ): Promise<{ ok: true } | { ok: false; failure: HarnessLaunchResult }> {
     const pollMs = 250;
-    const attempts = 60; // ~15s: runner boot + first sidecar write
+    const attempts = 60; // 约 15 秒：runner 启动 + 首次 sidecar 写入。
     for (let attempt = 0; attempt < attempts; attempt++) {
       const state = this.readReadinessSidecar(binding.cwd);
-      // Launch-attempt scoping (Pi precedent): only THIS attempt's sidecar counts,
-      // so a durable artifact from a prior runner instance cannot false-green or
-      // false-fail this launch.
+      // 启动尝试范围（Pi 先例）：只认可当前尝试的 sidecar，因此旧 runner 实例的持久产物不会
+      // 让本次启动误绿或误失败。
       if (state && state.launchId === launchId) {
         if (state.exited) {
           return {
             ok: false,
-            failure: { ok: false, error: `stub launch failed: the runner exited (code ${state.exited.code ?? "unknown"})`, recovery: "attention_required" },
+            failure: { ok: false, error: `stub launch 失败：runner 已退出（退出码 ${state.exited.code ?? "未知"}）`, recovery: "attention_required" },
           };
         }
         if (state.ready) return { ok: true };
@@ -280,7 +269,7 @@ export class StubRuntimeAdapter implements RuntimeAdapter {
     }
     return {
       ok: false,
-      failure: { ok: false, error: "stub launch: timed out waiting for the runner to report ready", recovery: "attention_required" },
+      failure: { ok: false, error: "stub launch：等待 runner 报告 ready 超时", recovery: "attention_required" },
     };
   }
 
@@ -305,14 +294,14 @@ export class StubRuntimeAdapter implements RuntimeAdapter {
       }
       return true;
     }
-    // Plugins / subagents / runtime resources have no stub projection target at MVP.
+    // MVP 中插件/子智能体/runtime 资源没有 stub 投影目标。
     return false;
   }
 
   private mergeGuidance(targetPath: string, blockId: string, content: string): boolean {
     if (!this.fsOps) return false;
-    // Per-seat rig-role content collides across pod-mates when merged into a shared
-    // cwd file; it is delivered via send_text instead (mirrors the other adapters).
+    // 逐席位 rig-role 内容合并到共享 cwd 文件时会在 pod 同伴间冲突，因此改由 send_text 投递
+    //（镜像其他 adapter）。
     if (blockId === "rig-role") return false;
     mergeManagedBlock(this.fsOps, targetPath, blockId, content, {
       replaceBlockIds: blockId === "openrig-start.md" ? ["using-openrig.md"] : [],

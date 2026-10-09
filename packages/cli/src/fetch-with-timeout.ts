@@ -25,14 +25,14 @@ export async function fetchWithTimeout(
       clearTimeout(timeout);
       throw externalSignal.reason instanceof Error
         ? externalSignal.reason
-        : new Error(typeof externalSignal.reason === "string" ? externalSignal.reason : "The request was aborted.");
+        : new Error(typeof externalSignal.reason === "string" ? externalSignal.reason : "请求已被中止。");
     }
 
     externalSignal.addEventListener("abort", () => {
       controller.abort(
         externalSignal.reason instanceof Error
           ? externalSignal.reason
-          : new Error(typeof externalSignal.reason === "string" ? externalSignal.reason : "The request was aborted."),
+          : new Error(typeof externalSignal.reason === "string" ? externalSignal.reason : "请求已被中止。"),
       );
     }, { once: true });
   }

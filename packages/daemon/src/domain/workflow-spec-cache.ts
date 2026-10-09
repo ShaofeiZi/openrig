@@ -1,14 +1,12 @@
-// PL-004 Phase D: workflow spec cache (read-through from markdown/YAML
-// to SQLite workflow_specs).
+// PL-004 阶段 D：工作流规范缓存（从 Markdown/YAML 直读到 SQLite
+// workflow_specs）。
 //
-// Workflow specs are workspace-surface (markdown/YAML files on disk;
-// human-authored). Daemon reads them lazily and caches in
-// workflow_specs for fast lookup. Cache invalidation: source_hash on
-// the spec file content; on next read, if the hash differs, re-cache.
+// 工作流规范属于工作区表层（磁盘上的 Markdown/YAML 文件，由人工编写）。
+// 守护进程按需读取，并缓存在 workflow_specs 中以便快速查找。缓存失效依据
+// 规范文件内容的 source_hash；下次读取时若哈希不同，则重新缓存。
 //
-// Workspace-surface reconciliation contract (per PRD § Workspace-
-// surface reconciliation): valid operator edits to spec files win
-// at next read; the cache is never the source of truth.
+// 工作区表层协调约定（依据 PRD 的“工作区表层协调”一节）：操作员对规范文件的
+// 有效编辑在下次读取时优先；缓存永远不是真相来源。
 
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -31,16 +29,14 @@ interface SpecRow {
   source_hash: string;
   cached_at: string;
   /**
-   * OPR.0.4.6.WF1 (migration 050): the FULL parsed spec. NULL on
-   * legacy rows (pre-050 cache writes) — those degrade to the
-   * column-only reconstruction and self-heal on next readThrough.
+   * OPR.0.4.6.WF1（迁移 050）：完整的解析后规范。旧行（050 之前的缓存写入）
+   * 中为 NULL——这些行会降级为仅按列重建，并在下次 readThrough 时自愈。
    */
   spec_json?: string | null;
 }
 
-/** Defensive column probe (the detectQueueColumn house pattern) —
- *  older test fixtures bypass the canonical migration list, so
- *  spec_json (migration 050) may be absent. */
+/** 防御性列探测（沿用 detectQueueColumn 的项目惯例）——较旧的测试夹具会绕过
+ *  标准迁移列表，因此可能没有 spec_json（迁移 050）。 */
 function detectSpecColumn(db: Database.Database, columnName: string): boolean {
   try {
     return db
@@ -64,12 +60,10 @@ export class WorkflowSpecError extends Error {
 }
 
 /**
- * OPR.0.4.6.WF1 FR-7 — THE closed keysets, EXPORTED as named
- * constants: parseWorkflowSpec is the ONLY seam that sees raw keys
- * (the validator operates on the typed spec and can never see dropped
- * keys), so unknown-key rejection lands here — and WF-2's new fields
- * (next_hop.on / harness / host / gate) EXTEND these constants rather
- * than re-plumbing the parser.
+ * OPR.0.4.6.WF1 FR-7——封闭键集，以具名常量形式导出：parseWorkflowSpec
+ * 是唯一能看到原始键的边界（校验器处理的是类型化规范，永远看不到已丢弃的键），
+ * 因此未知键在此拒绝；WF-2 的新字段（next_hop.on / harness / host / gate）
+ * 通过扩展这些常量加入，而不必重新接通解析器。
  */
 export const WORKFLOW_TOP_LEVEL_KEYS = [
   "id",
@@ -82,7 +76,7 @@ export const WORKFLOW_TOP_LEVEL_KEYS = [
   "invariants",
   "closure",
   "loop_guards",
-  // OPR.0.4.6.WF5 FR-2: the maturity dial's spec-declared routing surface.
+  // OPR.0.4.6.WF5 FR-2：成熟度旋钮在规范中声明的路由表层。
   "exception_routing",
   "coordination_terminal_turn_rule",
   "context_refs",
@@ -95,10 +89,9 @@ export const WORKFLOW_STEP_KEYS = [
   "re_present_after_seconds",
   "re_present_max_seconds",
   "next_hop",
-  // OPR.0.4.6.WF2: `gates` is deliberately NOT in this list — it is
-  // REMOVED with a specific migration error (checked before the
-  // unknown-key sweep so authors get the what/why/fix, not a generic
-  // unknown-key rejection).
+  // OPR.0.4.6.WF2：`gates` 被有意排除在此列表外——它已移除，并配有专门的
+  // 迁移错误（在扫描未知键之前检查，让作者得到“是什么/为什么/如何修复”，
+  // 而不是笼统的未知键拒绝）。
   "harness",
   "host",
   "gate",
@@ -119,17 +112,16 @@ export const WORKFLOW_INVARIANTS_KEYS = [
 ] as const;
 export const WORKFLOW_CLOSURE_KEYS = ["success", "degraded", "failed"] as const;
 export const WORKFLOW_LOOP_GUARDS_KEYS = ["max_hops", "spawn_budget"] as const;
-/** OPR.0.4.6.WF5 FR-2: the dial grammar keyset (WF-2 strictness rail —
- *  unknown keys reject loud naming this set). */
+/** OPR.0.4.6.WF5 FR-2：旋钮语法键集（WF-2 严格性护栏——遇到未知键时
+ *  明确报错并列出此键集）。 */
 export const WORKFLOW_EXCEPTION_ROUTING_KEYS = [
   "default",
   "orchestrator_role",
   "classes",
 ] as const;
 
-/** FR-7: reject unknown keys loud (what/why/fix) instead of the
- *  pre-0.4.6 silent drop. Applied only to object-shaped nodes; shape
- *  errors on non-objects stay the concern of the existing checks. */
+/** FR-7：明确拒绝未知键（说明是什么/为什么/如何修复），不再像 0.4.6 之前那样
+ *  静默丢弃。仅应用于对象形态的节点；非对象的形态错误仍由现有检查负责。 */
 function rejectUnknownKeys(
   node: unknown,
   allowed: readonly string[],
@@ -141,7 +133,7 @@ function rejectUnknownKeys(
     if (!allowed.includes(key)) {
       throw new WorkflowSpecError(
         "spec_unknown_key",
-        `workflow spec at ${sourcePath}: unknown key "${key}" at ${path}. Allowed keys: [${allowed.join(", ")}]. Unknown keys were silently DROPPED before 0.4.6 (the spec looked accepted while the field did nothing); they now fail loud — remove the key or fix its spelling.`,
+        `${sourcePath} 处的工作流规范：${path} 中存在未知键 "${key}"。允许的键：[${allowed.join(", ")}]. 在 0.4.6 之前，未知键会被静默丢弃（规范看似已接受，但字段不起作用）；现在会明确失败——请移除该键或修正拼写。`,
         { sourcePath, path, key, allowed: [...allowed] },
       );
     }
@@ -149,8 +141,8 @@ function rejectUnknownKeys(
 }
 
 /**
- * Parse a workflow spec from raw YAML content. The POC fixture shape
- * wraps everything under a top-level `workflow:` key:
+ * 从原始 YAML 内容解析工作流规范。POC 夹具结构将所有内容包在顶层
+ * `workflow:` 键下：
  *
  *   workflow:
  *     id: ...
@@ -158,9 +150,8 @@ function rejectUnknownKeys(
  *     roles: { ... }
  *     steps: [ ... ]
  *
- * Returns the parsed spec or throws WorkflowSpecError on malformed
- * YAML / missing required fields. FR-7: unknown keys at every level
- * are rejected loud against the exported closed keysets above.
+ * 返回解析后的规范；若 YAML 格式错误或缺少必填字段，则抛出 WorkflowSpecError。
+ * FR-7：每一层的未知键都会依据上面导出的封闭键集被明确拒绝。
  */
 export function parseWorkflowSpec(rawYaml: string, sourcePath: string): WorkflowSpec {
   let parsed: unknown;
@@ -169,14 +160,14 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
   } catch (err) {
     throw new WorkflowSpecError(
       "spec_yaml_invalid",
-      `workflow spec at ${sourcePath} could not be parsed as YAML: ${err instanceof Error ? err.message : err}`,
+      `${sourcePath} 处的工作流规范无法解析为 YAML：${err instanceof Error ? err.message : err}`,
       { sourcePath },
     );
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new WorkflowSpecError(
       "spec_shape_invalid",
-      `workflow spec at ${sourcePath} must be a YAML mapping with a top-level 'workflow:' key`,
+      `${sourcePath} 处的工作流规范必须是带有顶层 'workflow:' 键的 YAML 映射`,
       { sourcePath },
     );
   }
@@ -185,62 +176,58 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
   if (!wf || typeof wf !== "object" || Array.isArray(wf)) {
     throw new WorkflowSpecError(
       "spec_shape_invalid",
-      `workflow spec at ${sourcePath} is missing the top-level 'workflow:' key`,
+      `${sourcePath} 处的工作流规范缺少顶层 'workflow:' 键`,
       { sourcePath },
     );
   }
   if (typeof wf.id !== "string" || wf.id.length === 0) {
     throw new WorkflowSpecError(
       "spec_field_missing",
-      `workflow spec at ${sourcePath} is missing required field workflow.id`,
+      `${sourcePath} 处的工作流规范缺少必填字段 workflow.id`,
       { sourcePath, field: "workflow.id" },
     );
   }
   if (wf.version === undefined || wf.version === null) {
     throw new WorkflowSpecError(
       "spec_field_missing",
-      `workflow spec at ${sourcePath} is missing required field workflow.version`,
+      `${sourcePath} 处的工作流规范缺少必填字段 workflow.version`,
       { sourcePath, field: "workflow.version" },
     );
   }
   if (!Array.isArray(wf.steps) || wf.steps.length === 0) {
     throw new WorkflowSpecError(
       "spec_field_missing",
-      `workflow spec at ${sourcePath} requires at least one step in workflow.steps[]`,
+      `${sourcePath} 处的工作流规范要求 workflow.steps[] 中至少包含一个步骤`,
       { sourcePath, field: "workflow.steps" },
     );
   }
   if (!wf.roles || typeof wf.roles !== "object" || Array.isArray(wf.roles)) {
     throw new WorkflowSpecError(
       "spec_field_missing",
-      `workflow spec at ${sourcePath} requires a workflow.roles mapping`,
+      `${sourcePath} 处的工作流规范要求提供 workflow.roles 映射`,
       { sourcePath, field: "workflow.roles" },
     );
   }
 
-  // FR-7: strict unknown-key rejection at every level — INCLUDING the
-  // document root (guard blocker 2 recipe): only `workflow:` may sit
-  // at the YAML root; a stray root sibling was silently ignored.
+  // FR-7：在每一层严格拒绝未知键——包括文档根节点（护栏阻塞项 2 的方案）：
+  // YAML 根节点只能有 `workflow:`；过去多余的同级根键会被静默忽略。
   rejectUnknownKeys(root, ["workflow"], "(document root)", sourcePath);
   rejectUnknownKeys(wf, WORKFLOW_TOP_LEVEL_KEYS, "workflow", sourcePath);
 
-  // FR-6/FR-7 (guard blocker 2): loop_guards SHAPE validation at the
-  // raw seam. A nonnumeric max_hops would sanction a cycle at
-  // validation while the runtime comparison coerces to NaN and never
-  // trips — reopening the unbounded-loop class. Reject loud here, the
-  // only place that sees the raw value.
+  // FR-6/FR-7（护栏阻塞项 2）：在原始数据边界校验 loop_guards 的形态。
+  // 非数字的 max_hops 会让循环通过校验，但运行时比较会被转换成 NaN，因而永远
+  // 不会触发——这会重新引入无限循环问题。此处是唯一能看到原始值的位置，必须明确拒绝。
   if (wf.loop_guards && typeof wf.loop_guards === "object" && !Array.isArray(wf.loop_guards)) {
     const lg = wf.loop_guards as Record<string, unknown>;
-    // Normalize YAML `key: null` to ABSENT — a null that survived into
-    // the typed spec would coerce to 0 in the projection comparison
-    // and trip every first handoff.
+    // 将 YAML 的 `key: null` 规范化为“缺省”——如果 null 进入类型化规范，
+    // 在投影比较中会被转换为 0，导致每次第一次交接都触发限制。
     if (lg.max_hops === null) delete lg.max_hops;
     if (lg.spawn_budget === null) delete lg.spawn_budget;
     if (lg.max_hops !== undefined) {
       if (typeof lg.max_hops !== "number" || !Number.isInteger(lg.max_hops) || lg.max_hops < 1) {
         throw new WorkflowSpecError(
           "spec_field_invalid",
-          `workflow spec at ${sourcePath}: workflow.loop_guards.max_hops must be an integer >= 1 (got ${JSON.stringify(lg.max_hops)}). A non-numeric or non-positive guard can never trip at projection, so it cannot sanction a cycle — fix the value or remove the key.`,
+          `${sourcePath} 处的工作流规范：workflow.loop_guards.max_hops 必须是 >= 1 的整数（收到 ${JSON.stringify(lg.max_hops)}）。非数字或非正数的护栏在投影时永远不会触发，因此无法约束循环——请修正该值或移除该键。`,
           { sourcePath, field: "workflow.loop_guards.max_hops", value: lg.max_hops },
         );
       }
@@ -249,22 +236,21 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
       if (typeof lg.spawn_budget !== "number" || !Number.isInteger(lg.spawn_budget) || lg.spawn_budget < 0) {
         throw new WorkflowSpecError(
           "spec_field_invalid",
-          `workflow spec at ${sourcePath}: workflow.loop_guards.spawn_budget must be an integer >= 0 (got ${JSON.stringify(lg.spawn_budget)}).`,
+          `${sourcePath} 处的工作流规范：workflow.loop_guards.spawn_budget 必须是 >= 0 的整数（收到 ${JSON.stringify(lg.spawn_budget)}）。`,
           { sourcePath, field: "workflow.loop_guards.spawn_budget", value: lg.spawn_budget },
         );
       }
     }
   }
-  // OPR.0.4.6.WF5 FR-2: the dial grammar at the raw seam. Positions are
-  // the closed value space; classes keys are the closed FR-1 class set
-  // MINUS human_gate_trip (intrinsically human-only — a config line
-  // claiming otherwise would silently lie, so it rejects loud).
+  // OPR.0.4.6.WF5 FR-2：在原始数据边界校验旋钮语法。position 是封闭值空间；
+  // classes 键来自 FR-1 的封闭类别集，但不包含 human_gate_trip（它本质上只属于
+  // 人工处理——声称并非如此的配置会造成静默误导，因此明确拒绝）。
   if (wf.exception_routing !== undefined) {
     const er = wf.exception_routing;
     if (!er || typeof er !== "object" || Array.isArray(er)) {
       throw new WorkflowSpecError(
         "spec_field_invalid",
-        `workflow spec at ${sourcePath}: workflow.exception_routing must be a mapping (got ${JSON.stringify(er)}). Declare default / orchestrator_role / classes, or remove the key for the host-default → orchestrator-first chain.`,
+        `${sourcePath} 处的工作流规范：workflow.exception_routing 必须是映射（收到 ${JSON.stringify(er)}）。请声明 default / orchestrator_role / classes；若要使用“主机默认 → 编排者优先”链路，则移除此键。`,
         { sourcePath, field: "workflow.exception_routing" },
       );
     }
@@ -274,14 +260,14 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
     if (erm.default !== undefined && !validPosition(erm.default)) {
       throw new WorkflowSpecError(
         "spec_field_invalid",
-        `workflow spec at ${sourcePath}: workflow.exception_routing.default must be "orchestrator" or "human_only" (got ${JSON.stringify(erm.default)}).`,
+        `${sourcePath} 处的工作流规范：workflow.exception_routing.default 必须是 "orchestrator" 或 "human_only"（收到 ${JSON.stringify(erm.default)}）。`,
         { sourcePath, field: "workflow.exception_routing.default", value: erm.default },
       );
     }
     if (erm.orchestrator_role !== undefined && (typeof erm.orchestrator_role !== "string" || erm.orchestrator_role.length === 0)) {
       throw new WorkflowSpecError(
         "spec_field_invalid",
-        `workflow spec at ${sourcePath}: workflow.exception_routing.orchestrator_role must be a non-empty declared role name (got ${JSON.stringify(erm.orchestrator_role)}). Role EXISTENCE is the validator's graph check.`,
+        `${sourcePath} 处的工作流规范：workflow.exception_routing.orchestrator_role 必须是已声明且非空的角色名（收到 ${JSON.stringify(erm.orchestrator_role)}）。角色是否存在由校验器进行图检查。`,
         { sourcePath, field: "workflow.exception_routing.orchestrator_role", value: erm.orchestrator_role },
       );
     }
@@ -290,7 +276,7 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
       if (!cls || typeof cls !== "object" || Array.isArray(cls)) {
         throw new WorkflowSpecError(
           "spec_field_invalid",
-          `workflow spec at ${sourcePath}: workflow.exception_routing.classes must be a mapping of exception class → position (got ${JSON.stringify(cls)}).`,
+          `${sourcePath} 处的工作流规范：workflow.exception_routing.classes 必须是“异常类别 → 处理位置”的映射（收到 ${JSON.stringify(cls)}）。`,
           { sourcePath, field: "workflow.exception_routing.classes" },
         );
       }
@@ -298,21 +284,21 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
         if (k === "human_gate_trip") {
           throw new WorkflowSpecError(
             "spec_field_invalid",
-            `workflow spec at ${sourcePath}: workflow.exception_routing.classes.human_gate_trip is not configurable — a human gate is intrinsically human-only (the human decision IS the exception); the dial cannot re-point it. Remove the line.`,
+            `${sourcePath} 处的工作流规范：workflow.exception_routing.classes.human_gate_trip 不可配置——人工门禁本质上只能由人工处理（人工决策本身就是异常）；旋钮不能改变其指向。请移除此行。`,
             { sourcePath, field: "workflow.exception_routing.classes.human_gate_trip" },
           );
         }
         if (k !== "unmapped_failed" && k !== "stuck_overdue") {
           throw new WorkflowSpecError(
             "spec_unknown_key",
-            `workflow spec at ${sourcePath}: workflow.exception_routing.classes.${k} is not a known exception class. Allowed: unmapped_failed, stuck_overdue.`,
+            `${sourcePath} 处的工作流规范：workflow.exception_routing.classes.${k} 不是已知异常类别。允许值：unmapped_failed、stuck_overdue。`,
             { sourcePath, field: `workflow.exception_routing.classes.${k}` },
           );
         }
         if (!validPosition(v)) {
           throw new WorkflowSpecError(
             "spec_field_invalid",
-            `workflow spec at ${sourcePath}: workflow.exception_routing.classes.${k} must be "orchestrator" or "human_only" (got ${JSON.stringify(v)}).`,
+            `${sourcePath} 处的工作流规范：workflow.exception_routing.classes.${k} 必须是 "orchestrator" 或 "human_only"（收到 ${JSON.stringify(v)}）。`,
             { sourcePath, field: `workflow.exception_routing.classes.${k}`, value: v },
           );
         }
@@ -340,7 +326,7 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
     rejectUnknownKeys(role, WORKFLOW_ROLE_KEYS, `workflow.roles.${roleName}`, sourcePath);
   }
   if (wf.context_refs !== undefined && (!Array.isArray(wf.context_refs) || wf.context_refs.some((ref) => typeof ref !== "string" || !ref.trim()))) {
-    throw new WorkflowSpecError("spec_field_invalid", `workflow spec at ${sourcePath}: context_refs must be non-empty string addresses.`);
+    throw new WorkflowSpecError("spec_field_invalid", `${sourcePath} 处的工作流规范：context_refs 必须是由非空字符串地址组成的列表。`);
   }
   (wf.steps as unknown[]).forEach((step, idx) => {
     if (step && typeof step === "object" && !Array.isArray(step)) {
@@ -351,7 +337,7 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
       ) {
         throw new WorkflowSpecError(
           "spec_field_invalid",
-          `workflow spec at ${sourcePath}: workflow.steps[${idx}].re_present_after_seconds must be a positive integer (got ${JSON.stringify(s.re_present_after_seconds)}). It is the one-shot delay before an intentionally waiting packet is shown to its owner again.`,
+          `${sourcePath} 处的工作流规范：workflow.steps[${idx}].re_present_after_seconds 必须是正整数（收到 ${JSON.stringify(s.re_present_after_seconds)}）。它表示有意等待的数据包再次呈现给其所有者之前的一次性延迟。`,
           { sourcePath, path: `workflow.steps[${idx}].re_present_after_seconds` },
         );
       }
@@ -360,30 +346,27 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
         s.re_present_after_seconds === undefined ||
         (s.re_present_max_seconds as number) < (s.re_present_after_seconds as number)
       )) {
-        throw new WorkflowSpecError("spec_field_invalid", `workflow spec at ${sourcePath}: re_present_max_seconds requires re_present_after_seconds and must be an integer at least as large as that initial delay.`);
+        throw new WorkflowSpecError("spec_field_invalid", `${sourcePath} 处的工作流规范：re_present_max_seconds 需要同时设置 re_present_after_seconds，且必须是不小于该初始延迟的整数。`);
       }
-      // OPR.0.4.6.WF2 FR-5: the legacy `gates: [...]` string list is
-      // REMOVED at parse — checked BEFORE the unknown-key sweep so the
-      // author gets the specific migration recipe, not a generic
-      // rejection. Safe for pinned in-flight instances by FR-6
-      // versioning honesty (they complete un-failed; re-validation of
-      // the FILE teaches the new shape).
+      // OPR.0.4.6.WF2 FR-5：旧版 `gates: [...]` 字符串列表已在解析阶段移除——
+      // 在扫描未知键之前检查，使作者获得具体迁移方案，而非笼统拒绝。依据 FR-6 的
+      // 如实版本控制，对已固定且正在运行的实例是安全的（它们可正常完成；重新校验
+      // 文件时会提示新结构）。
       if (s.gates !== undefined) {
         throw new WorkflowSpecError(
           "spec_gates_removed",
-          `workflow spec at ${sourcePath}: workflow.steps[${idx}].gates is removed in 0.4.6. The string list could not carry a target/summary/evidence without becoming a magic-string mini-grammar, and it was never enforced. Declare the structured step-level gate instead:\n  gate:\n    target: <human seat session or declared role name>\n    summary: <plain-language ask>          # required for a human target\n    evidence_ref: <durable artifact path>  # required for a human target`,
+          `${sourcePath} 处的工作流规范：workflow.steps[${idx}].gates 已在 0.4.6 中移除。字符串列表若要承载目标、摘要和证据，就只能演变成魔法字符串微语法，而且它从未被强制执行。请改为声明结构化的步骤级 gate：\n  gate:\n    target: <人工席位会话或已声明的角色名>\n    summary: <直白描述的请求>             # 人工目标必填\n    evidence_ref: <持久化制品路径>         # 人工目标必填`,
           { sourcePath, path: `workflow.steps[${idx}].gates` },
         );
       }
-      // OPR.0.4.6.WF2 FR-4: `next_hop.mode: prefer` is REMOVED — it
-      // never had distinct behavior (identical to omitting mode), the
-      // inert third state dies. Specific migration error before the
-      // shape checks below.
+      // OPR.0.4.6.WF2 FR-4：`next_hop.mode: prefer` 已移除——它从未有过独立行为
+      //（与省略 mode 完全相同），因此删除这个不起作用的第三状态。在下面的形态检查
+      // 之前给出专门的迁移错误。
       const nh = s.next_hop as Record<string, unknown> | undefined;
       if (nh && typeof nh === "object" && !Array.isArray(nh) && nh.mode === "prefer") {
         throw new WorkflowSpecError(
           "spec_prefer_mode_removed",
-          `workflow spec at ${sourcePath}: workflow.steps[${idx}].next_hop.mode "prefer" is removed in 0.4.6. It never had distinct behavior — routing treated it identically to omitting mode. Delete the mode line (same routing), or use "require" (route ONLY via suggested_roles; no declaration-order fallback) / "forbid" (terminal step).`,
+          `${sourcePath} 处的工作流规范：workflow.steps[${idx}].next_hop.mode 的 "prefer" 已在 0.4.6 中移除。它从未有过独立行为——路由对它的处理与省略 mode 完全相同。请删除 mode 行（路由不变），或使用 "require"（仅通过 suggested_roles 路由，不按声明顺序回退）/ "forbid"（终止步骤）。`,
           { sourcePath, path: `workflow.steps[${idx}].next_hop.mode` },
         );
       }
@@ -397,17 +380,16 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
         `workflow.steps[${idx}].next_hop`,
         sourcePath,
       );
-      // OPR.0.4.6.WF2 FR-1: branch-key shape at the raw seam — keys of
-      // next_hop.on are the closed exit enum ONLY (BR-1); values are
-      // non-empty step-id strings (target EXISTENCE is the validator's
-      // graph check).
+      // OPR.0.4.6.WF2 FR-1：在原始数据边界校验分支键形态——next_hop.on 的键
+      // 只能取封闭的退出枚举（BR-1）；值必须是非空步骤 ID 字符串（目标是否存在由
+      // 校验器进行图检查）。
       const nh = s.next_hop as Record<string, unknown> | undefined;
       const on = nh?.on;
       if (on !== undefined) {
         if (!on || typeof on !== "object" || Array.isArray(on)) {
           throw new WorkflowSpecError(
             "spec_field_invalid",
-            `workflow spec at ${sourcePath}: workflow.steps[${idx}].next_hop.on must be a mapping of recorded exit → step id (got ${JSON.stringify(on)}).`,
+            `${sourcePath} 处的工作流规范：workflow.steps[${idx}].next_hop.on 必须是“已记录退出 → 步骤 ID”的映射（收到 ${JSON.stringify(on)}）。`,
             { sourcePath, path: `workflow.steps[${idx}].next_hop.on` },
           );
         }
@@ -415,22 +397,21 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
           if (!(WORKFLOW_EXIT_KINDS as readonly string[]).includes(exitKey)) {
             throw new WorkflowSpecError(
               "spec_branch_key_invalid",
-              `workflow spec at ${sourcePath}: workflow.steps[${idx}].next_hop.on key "${exitKey}" is not a recorded exit. Branch keys are the closed exit enum ONLY: [${WORKFLOW_EXIT_KINDS.join(", ")}] — branching on anything else (free text, identity, evidence JSON) is deliberately unsupported (branch purity).`,
+              `${sourcePath} 处的工作流规范：workflow.steps[${idx}].next_hop.on 的键 "${exitKey}" 不是已记录退出。分支键只能取封闭退出枚举：[${WORKFLOW_EXIT_KINDS.join(", ")}]——有意不支持根据其他内容（自由文本、身份、证据 JSON）分支，以保证分支纯净性。`,
               { sourcePath, path: `workflow.steps[${idx}].next_hop.on.${exitKey}`, allowed: [...WORKFLOW_EXIT_KINDS] },
             );
           }
           if (typeof target !== "string" || target.length === 0) {
             throw new WorkflowSpecError(
               "spec_field_invalid",
-              `workflow spec at ${sourcePath}: workflow.steps[${idx}].next_hop.on.${exitKey} must be a step id string (got ${JSON.stringify(target)}).`,
+              `${sourcePath} 处的工作流规范：workflow.steps[${idx}].next_hop.on.${exitKey} 必须是步骤 ID 字符串（收到 ${JSON.stringify(target)}）。`,
               { sourcePath, path: `workflow.steps[${idx}].next_hop.on.${exitKey}` },
             );
           }
         }
       }
-      // OPR.0.4.6.WF2 FR-2: harness value space at the raw seam —
-      // agent harnesses only; `terminal` gets the specific teaching
-      // error (it is a real runtime value but not a pinnable one).
+      // OPR.0.4.6.WF2 FR-2：在原始数据边界校验 harness 值空间——只允许智能体
+      // harness；`terminal` 会得到专门的说明错误（它是真实运行时值，但不能固定）。
       if (s.harness !== undefined) {
         if (
           typeof s.harness !== "string" ||
@@ -438,29 +419,27 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
         ) {
           throw new WorkflowSpecError(
             "spec_harness_invalid",
-            `workflow spec at ${sourcePath}: workflow.steps[${idx}].harness must be one of the AGENT harnesses [${WORKFLOW_AGENT_HARNESSES.join(", ")}] (got ${JSON.stringify(s.harness)}).${s.harness === "terminal" ? " A terminal node is not an agent harness — a workflow step cannot be pinned to it." : ""} Pi Agent joins the value space in 0.4.7 when its adapter lands.`,
+            `${sourcePath} 处的工作流规范：workflow.steps[${idx}].harness 必须是智能体 harness [${WORKFLOW_AGENT_HARNESSES.join(", ")}] 之一（收到 ${JSON.stringify(s.harness)}）。${s.harness === "terminal" ? " terminal 节点不是智能体 harness——工作流步骤不能固定到它。" : ""} Pi Agent 将在其适配器落地的 0.4.7 版本加入此值空间。`,
             { sourcePath, path: `workflow.steps[${idx}].harness`, allowed: [...WORKFLOW_AGENT_HARNESSES] },
           );
         }
       }
-      // OPR.0.4.6.WF2 FR-3: host pin shape — non-empty string. Registry
-      // membership is the validator's check (it sees the registry);
-      // the parser only pins the shape.
+      // OPR.0.4.6.WF2 FR-3：主机固定值的形态必须是非空字符串。是否属于注册表由
+      // 能看到注册表的校验器检查；解析器只约束形态。
       if (s.host !== undefined && (typeof s.host !== "string" || s.host.length === 0)) {
         throw new WorkflowSpecError(
           "spec_field_invalid",
-          `workflow spec at ${sourcePath}: workflow.steps[${idx}].host must be "local" or a registered host id string (got ${JSON.stringify(s.host)}).`,
+          `${sourcePath} 处的工作流规范：workflow.steps[${idx}].host 必须是 "local" 或已注册的主机 ID 字符串（收到 ${JSON.stringify(s.host)}）。`,
           { sourcePath, path: `workflow.steps[${idx}].host` },
         );
       }
-      // OPR.0.4.6.WF2 FR-5: gate object shape — closed keyset, singular,
-      // target required. Target-kind resolution (human seat vs declared
-      // role) is the validator's semantic check.
+      // OPR.0.4.6.WF2 FR-5：gate 对象结构采用封闭键集且为单数形式，并要求 target。
+      // 目标类型解析（人工席位或已声明角色）属于校验器的语义检查。
       if (s.gate !== undefined) {
         if (!s.gate || typeof s.gate !== "object" || Array.isArray(s.gate)) {
           throw new WorkflowSpecError(
             "spec_field_invalid",
-            `workflow spec at ${sourcePath}: workflow.steps[${idx}].gate must be a mapping with a target (and summary/evidence_ref for human targets). The legacy gates: [...] string list is removed.`,
+            `${sourcePath} 处的工作流规范：workflow.steps[${idx}].gate 必须是包含 target 的映射（人工目标还需 summary/evidence_ref）。旧版 gates: [...] 字符串列表已移除。`,
             { sourcePath, path: `workflow.steps[${idx}].gate` },
           );
         }
@@ -469,7 +448,7 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
         if (typeof g.target !== "string" || g.target.length === 0) {
           throw new WorkflowSpecError(
             "spec_field_missing",
-            `workflow spec at ${sourcePath}: workflow.steps[${idx}].gate.target is required — a human seat session or a declared role name.`,
+            `${sourcePath} 处的工作流规范：workflow.steps[${idx}].gate.target 为必填项——应为人工席位会话或已声明的角色名。`,
             { sourcePath, field: `workflow.steps[${idx}].gate.target` },
           );
         }
@@ -477,7 +456,7 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
           if (g[optional] !== undefined && (typeof g[optional] !== "string" || (g[optional] as string).length === 0)) {
             throw new WorkflowSpecError(
               "spec_field_invalid",
-              `workflow spec at ${sourcePath}: workflow.steps[${idx}].gate.${optional} must be a non-empty string when present (got ${JSON.stringify(g[optional])}).`,
+              `${sourcePath} 处的工作流规范：workflow.steps[${idx}].gate.${optional} 如有提供，必须是非空字符串（收到 ${JSON.stringify(g[optional])}）。`,
               { sourcePath, path: `workflow.steps[${idx}].gate.${optional}` },
             );
           }
@@ -487,14 +466,14 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
         if (!Array.isArray(s.depends_on) || s.depends_on.some((value) => typeof value !== "string" || value.length === 0)) {
           throw new WorkflowSpecError(
             "spec_field_invalid",
-            `workflow spec at ${sourcePath}: workflow.steps[${idx}].depends_on must be a list of non-empty step ids.`,
+            `${sourcePath} 处的工作流规范：workflow.steps[${idx}].depends_on 必须是由非空步骤 ID 组成的列表。`,
             { sourcePath, path: `workflow.steps[${idx}].depends_on`, value: s.depends_on },
           );
         }
         if (new Set(s.depends_on).size !== s.depends_on.length) {
           throw new WorkflowSpecError(
             "spec_field_invalid",
-            `workflow spec at ${sourcePath}: workflow.steps[${idx}].depends_on contains a duplicate prerequisite.`,
+            `${sourcePath} 处的工作流规范：workflow.steps[${idx}].depends_on 包含重复的前置步骤。`,
             { sourcePath, path: `workflow.steps[${idx}].depends_on`, value: s.depends_on },
           );
         }
@@ -503,20 +482,20 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
         if (!s.acceptance || typeof s.acceptance !== "object" || Array.isArray(s.acceptance)) {
           throw new WorkflowSpecError(
             "spec_field_invalid",
-            `workflow spec at ${sourcePath}: workflow.steps[${idx}].acceptance must be a mapping with candidate, verdicts, and evidence_ref.`,
+            `${sourcePath} 处的工作流规范：workflow.steps[${idx}].acceptance 必须是包含 candidate、verdicts 和 evidence_ref 的映射。`,
             { sourcePath, path: `workflow.steps[${idx}].acceptance` },
           );
         }
         rejectUnknownKeys(s.acceptance, WORKFLOW_ACCEPTANCE_KEYS, `workflow.steps[${idx}].acceptance`, sourcePath);
         const acceptance = s.acceptance as Record<string, unknown>;
         if (typeof acceptance.candidate !== "string" || acceptance.candidate.length === 0) {
-          throw new WorkflowSpecError("spec_field_missing", `workflow spec at ${sourcePath}: workflow.steps[${idx}].acceptance.candidate is required.`, { sourcePath, field: `workflow.steps[${idx}].acceptance.candidate` });
+          throw new WorkflowSpecError("spec_field_missing", `${sourcePath} 处的工作流规范：workflow.steps[${idx}].acceptance.candidate 为必填项。`, { sourcePath, field: `workflow.steps[${idx}].acceptance.candidate` });
         }
         if (!Array.isArray(acceptance.verdicts) || acceptance.verdicts.length === 0 || acceptance.verdicts.some((value) => typeof value !== "string" || value.length === 0)) {
-          throw new WorkflowSpecError("spec_field_invalid", `workflow spec at ${sourcePath}: workflow.steps[${idx}].acceptance.verdicts must be a non-empty list of verdict strings.`, { sourcePath, field: `workflow.steps[${idx}].acceptance.verdicts` });
+          throw new WorkflowSpecError("spec_field_invalid", `${sourcePath} 处的工作流规范：workflow.steps[${idx}].acceptance.verdicts 必须是由非空裁决字符串组成的列表。`, { sourcePath, field: `workflow.steps[${idx}].acceptance.verdicts` });
         }
         if (typeof acceptance.evidence_ref !== "string" || acceptance.evidence_ref.length === 0) {
-          throw new WorkflowSpecError("spec_field_missing", `workflow spec at ${sourcePath}: workflow.steps[${idx}].acceptance.evidence_ref is required.`, { sourcePath, field: `workflow.steps[${idx}].acceptance.evidence_ref` });
+          throw new WorkflowSpecError("spec_field_missing", `${sourcePath} 处的工作流规范：workflow.steps[${idx}].acceptance.evidence_ref 为必填项。`, { sourcePath, field: `workflow.steps[${idx}].acceptance.evidence_ref` });
         }
       }
     }
@@ -534,9 +513,8 @@ export function parseWorkflowSpec(rawYaml: string, sourcePath: string): Workflow
     invariants: wf.invariants as WorkflowSpec["invariants"],
     closure: wf.closure as WorkflowSpec["closure"],
     loop_guards: wf.loop_guards as WorkflowSpec["loop_guards"],
-    // OPR.0.4.6.WF5 FR-2: validated above — and COPIED here (the exact
-    // WF-1 migration-050 lesson: a validated key dropped at assembly is
-    // silently inert; the VM caught this one at first execution).
+    // OPR.0.4.6.WF5 FR-2：已在上方校验，并在此复制（这正是 WF-1 迁移 050 的
+    // 教训：已校验的键若在组装时丢失，会静默失效；虚拟机在首次执行时发现了它）。
     exception_routing: wf.exception_routing as WorkflowSpec["exception_routing"],
     coordination_terminal_turn_rule:
       typeof wf.coordination_terminal_turn_rule === "string"
@@ -556,15 +534,14 @@ export class WorkflowSpecCache {
   }
 
   /**
-   * Read a workflow spec from disk through the cache. Returns the
-   * cached row (re-caching if source_hash differs OR if the spec was
-   * not previously cached).
+   * 通过缓存从磁盘读取工作流规范。返回缓存行；如果 source_hash 不同，或此前
+   * 未缓存该规范，则重新缓存。
    */
   readThrough(sourcePath: string): WorkflowSpecRow {
     if (!existsSync(sourcePath)) {
       throw new WorkflowSpecError(
         "spec_file_missing",
-        `workflow spec file not found at ${sourcePath}`,
+        `在 ${sourcePath} 未找到工作流规范文件`,
         { sourcePath },
       );
     }
@@ -577,13 +554,11 @@ export class WorkflowSpecCache {
       )
       .get(spec.id, spec.version) as SpecRow | undefined;
     if (existing && existing.source_hash === sourceHash) {
-      // readThrough is file-authoritative: return the freshly parsed
-      // file spec so validation sees non-column metadata such as
-      // workflow.entry and workflow.invariants.
-      // OPR.0.4.6.WF1: self-heal legacy rows — backfill spec_json so
-      // PROJECTION-time consumers (getByNameVersion) also see the full
-      // spec (loop_guards/invariants/closure/entry were dropped by the
-      // column-only reconstruction before migration 050).
+      // readThrough 以文件为准：返回刚解析的文件规范，使校验能看到 workflow.entry
+      // 和 workflow.invariants 等未存入独立列的元数据。
+      // OPR.0.4.6.WF1：让旧行自愈——回填 spec_json，使投影阶段的使用方
+      //（getByNameVersion）也能看到完整规范（迁移 050 前，仅按列重建会丢失
+      // loop_guards/invariants/closure/entry）。
       if (this.hasSpecJsonColumn && !existing.spec_json) {
         this.db
           .prepare(`UPDATE workflow_specs SET spec_json = ? WHERE spec_id = ?`)
@@ -598,7 +573,7 @@ export class WorkflowSpecCache {
     const stepsJson = JSON.stringify(spec.steps);
     const coordinationTerminalTurnRule = spec.coordination_terminal_turn_rule ?? "hot_potato";
     if (existing) {
-      // Update in place (same name+version, content changed).
+      // 原地更新（名称和版本相同，但内容已变化）。
       const specJsonSet = this.hasSpecJsonColumn ? ", spec_json = ?" : "";
       const updateParams: unknown[] = [
         purpose,
@@ -675,10 +650,9 @@ export class WorkflowSpecCache {
   }
 
   /**
-   * Cache a deterministic generated spec without manufacturing an authored
-   * workflow file.  Lifecycle compilation is read-only; this method is called
-   * only by the later instantiate boundary, where the runtime needs the normal
-   * spec-cache row for projection and restart recovery.
+   * 缓存确定性生成的规范，而不伪造人工编写的工作流文件。生命周期编译是只读的；
+   * 只有后续的实例化边界会调用此方法，届时运行时需要常规规范缓存行来进行投影和
+   * 重启恢复。
    */
   putGenerated(spec: WorkflowSpec, sourcePath: string, sourceHash: string): WorkflowSpecRow {
     const existing = this.db
@@ -694,7 +668,7 @@ export class WorkflowSpecCache {
       if (existing.source_hash !== sourceHash) {
         throw new WorkflowSpecError(
           "generated_spec_identity_collision",
-          `generated workflow ${spec.id}@${spec.version} already names different source bytes`,
+          `生成的工作流 ${spec.id}@${spec.version} 已指向不同的源字节`,
           { sourcePath, sourceHash, cachedSourcePath: existing.source_path, cachedSourceHash: existing.source_hash },
         );
       }
@@ -746,22 +720,18 @@ export class WorkflowSpecCache {
   }
 
   /**
-   * OPR.0.3.3.04.1: resolve a passed identifier to a cached spec's STORED
-   * (already-resolved) sourcePath by NAME / cache-key. Returns the source_path
-   * of the named valid spec (latest version when several exist), or null when no
-   * cached spec carries that name.
+   * OPR.0.3.3.04.1：按名称/缓存键将传入标识符解析为缓存规范中存储的
+   *（已解析）sourcePath。返回指定有效规范的 source_path（存在多个版本时取最新），
+   * 若缓存中没有该名称，则返回 null。
    *
-   * Used so `workflow instantiate <discovered-name>` works for a fresh operator
-   * without a hidden file path: the seeded built-ins are cached by name with the
-   * sourcePath the starter-spec-loader already resolved at seed time (e.g.
-   * `dist/builtins/workflow-specs/...` in a shipped install). Resolution returns
-   * that STORED path verbatim - it does NOT re-derive a path from source-tree
-   * assumptions, so it stays production-layout safe (cf. the slice-16
-   * source-tree-vs-dist lesson). The `version != ''` guard excludes slice-11
-   * diagnostic rows (keyed by file basename with an empty version); valid specs
-   * always carry a version (parseWorkflowSpec requires workflow.version). We
-   * filter on `version` rather than the slice-11 `status` column so resolution
-   * does not depend on a later migration being present.
+   * 这样，新操作员无需知道隐藏文件路径，也能使用 `workflow instantiate
+   * <discovered-name>`：预置内建规范按名称缓存，其 sourcePath 已由
+   * starter-spec-loader 在植入时解析（例如发行安装中的
+   * `dist/builtins/workflow-specs/...`）。解析会原样返回这个已存储路径，不会根据
+   * 源码树假设重新推导，因此在生产目录布局中仍然安全（参见 slice-16 的源码树与
+   * dist 差异教训）。`version != ''` 护栏会排除 slice-11 诊断行（以文件基本名作为键，
+   * 版本为空）；有效规范始终带版本（parseWorkflowSpec 要求 workflow.version）。
+   * 此处按 `version` 而不是 slice-11 的 `status` 列筛选，因此解析不依赖后续迁移。
    */
   resolveSourcePathByName(name: string): string | null {
     const row = this.db
@@ -775,10 +745,9 @@ export class WorkflowSpecCache {
   }
 
   /**
-   * Lists every cached spec, ordered by name then version. Used by the
-   * `GET /api/workflow/specs` endpoint. Cheap —
-   * the workflow_specs table is bounded by the number of operator-
-   * authored + built-in starter specs (single-host MVP).
+   * 列出所有缓存规范，先按名称、再按版本排序。供 `GET /api/workflow/specs` 端点
+   * 使用。开销很小——workflow_specs 表的规模受人工编写规范与内建起始规范的数量
+   * 限制（单主机 MVP）。
    */
   listAll(): WorkflowSpecRow[] {
     const rows = this.db
@@ -788,20 +757,15 @@ export class WorkflowSpecCache {
   }
 
   /**
-   * Slice 11 (workflow-spec-folder-discovery) — diagnostic row writer.
-   * Used by scanWorkflowSpecFolder when YAML parse / validation fails
-   * so the Library UI can render an error row at the same path the
-   * user dropped a malformed workflow YAML into. The row's name field
-   * falls back to the source file basename so the Library has a
-   * stable label even when the YAML couldn't be parsed.
+   * Slice 11（工作流规范文件夹发现）——诊断行写入器。当 YAML 解析或校验失败时，
+   * scanWorkflowSpecFolder 使用它，使 Library UI 能在用户放置错误工作流 YAML 的
+   * 同一路径显示错误行。该行的 name 字段回退为源文件基本名，因此即使 YAML 无法
+   * 解析，Library 也有稳定标签。
    *
-   * Single-row-per-source_path semantics: writeDiagnostic on a path
-   * that already has a row (valid or diagnostic) UPDATES the row's
-   * status to 'error', error_message, source_hash, cached_at, and
-   * resets the parsed payload fields to empty (the prior YAML is no
-   * longer trusted). Round-trip between 'valid' and 'error' is
-   * supported via the same path: a passing readThrough flips the
-   * row back to 'valid' with parsed payload restored.
+   * 每个 source_path 仅一行：对已有行（有效行或诊断行）的路径调用 writeDiagnostic，
+   * 会把该行的 status 更新为 'error'，更新 error_message、source_hash、cached_at，
+   * 并将解析后的载荷字段重置为空（不再信任先前 YAML）。同一路径支持在 'valid' 与
+   * 'error' 间往返：readThrough 成功后会将该行恢复为 'valid'，并还原解析后的载荷。
    */
   writeDiagnostic(opts: {
     sourcePath: string;
@@ -845,9 +809,8 @@ export class WorkflowSpecCache {
   }
 
   /**
-   * Slice 11 — remove cache row by source_path (used when scanner
-   * detects a workflow YAML was deleted from disk). Returns the
-   * number of rows removed (0 when no row exists for that path).
+   * Slice 11——按 source_path 删除缓存行（扫描器检测到磁盘上的工作流 YAML 已删除时
+   * 使用）。返回删除的行数（该路径不存在行时为 0）。
    */
   removeBySourcePath(sourcePath: string): number {
     const result = this.db
@@ -857,25 +820,17 @@ export class WorkflowSpecCache {
   }
 
   /**
-   * OPR.0.3.2.22 Bug 4 — prune cached rows whose source_path lives in
-   * noise directories that the post-Bug-4 walkYamlFiles SKIP_DIRS
-   * guard now refuses to scan. Without this prune, rows that were
-   * inserted before the SKIP_DIRS guard landed would survive forever
-   * (the scanner cleanup at spec-library-workflow-scanner.ts only
-   * fires for paths starting with the workspace `workflows/` folder
-   * prefix). Called once at startup. Returns the number of rows
-   * removed.
+   * OPR.0.3.2.22 Bug 4——清理 source_path 位于噪声目录中的缓存行；Bug 4 修复后的
+   * walkYamlFiles SKIP_DIRS 护栏已拒绝扫描这些目录。若不清理，在 SKIP_DIRS 护栏
+   * 落地前插入的行会永久残留（spec-library-workflow-scanner.ts 中的扫描器清理只会
+   * 作用于以工作区 `workflows/` 文件夹前缀开头的路径）。启动时调用一次。返回删除行数。
    *
-   * installRoot guard (Bug 4 follow-up): when supplied, rows whose
-   * source_path starts with the install root are PRESERVED even if
-   * they match a noise pattern. This is the load-bearing safety for
-   * shipped built-in workflow specs that live at
-   * `<pkg>/dist/builtins/workflow-specs/` in production npm-published
-   * daemons — without this guard the unscoped DELETE would nuke
-   * every shipped built-in on every boot. Pass
-   * `getOpenRigInstallRoot()` from cwd-resolution at the call site.
-   * When omitted, no install-root preservation is applied (test-only
-   * convenience for tests that operate fully outside any install).
+   * installRoot 护栏（Bug 4 后续修复）：若提供此参数，即便行匹配噪声模式，只要其
+   * source_path 以安装根目录开头，就会被保留。这是保护发行内建工作流规范的关键安全
+   * 机制；这些规范在发布到 npm 的生产守护进程中位于
+   * `<pkg>/dist/builtins/workflow-specs/`。没有此护栏，无范围限制的 DELETE 会在每次
+   * 启动时清空所有发行内建规范。调用点应从 cwd-resolution 传入
+   * `getOpenRigInstallRoot()`。省略时不保留安装根目录（仅便于完全在任何安装之外运行的测试）。
    */
   pruneNoiseDirRows(installRoot?: string): number {
     const guardClause = installRoot ? ` AND source_path NOT LIKE ? || '%'` : "";
@@ -903,7 +858,7 @@ export class WorkflowSpecCache {
     if (!row) {
       throw new WorkflowSpecError(
         "spec_not_found",
-        `workflow spec ${specId} not found in cache`,
+        `缓存中未找到工作流规范 ${specId}`,
         { specId },
       );
     }
@@ -913,7 +868,7 @@ export class WorkflowSpecCache {
 
 const warnedLegacyRehydrations = new Set<string>();
 
-/** Exported for the named honest-degrade test only. */
+/** 仅为具名的如实降级测试导出。 */
 export function resetLegacyRehydrationWarnings(): void {
   warnedLegacyRehydrations.clear();
 }
@@ -923,30 +878,25 @@ function warnLegacyRehydrationOnce(name: string, version: string): void {
   if (warnedLegacyRehydrations.has(key)) return;
   warnedLegacyRehydrations.add(key);
   console.warn(
-    `workflow spec ${key} rehydrated WITHOUT full fidelity (pre-050 cache row: loop_guards/invariants/closure/entry unavailable at projection). Re-validate the spec file (rig workflow validate <path>) to heal the cache row.`,
+    `工作流规范 ${key} 在无法完整还原的情况下完成重建（050 之前的缓存行：投影时无法取得 loop_guards/invariants/closure/entry）。请重新校验规范文件（zrig workflow validate <path>）以修复该缓存行。`,
   );
 }
 
 function rowToWorkflowSpec(row: SpecRow, parsedSpec?: WorkflowSpec): WorkflowSpecRow {
-  // OPR.0.4.6.WF1: prefer, in order — the freshly file-parsed spec
-  // (readThrough's file-authoritative override), then the STORED full
-  // spec (migration 050 spec_json — what makes loop_guards/invariants/
-  // closure/entry visible at PROJECTION time via getByNameVersion),
-  // then the legacy column-only reconstruction (pre-050 rows; those
-  // fields are honestly absent until the row self-heals on next
-  // readThrough).
+  // OPR.0.4.6.WF1：依次优先使用——刚从文件解析的规范（readThrough 以文件为准的
+  // 覆盖值），然后是存储的完整规范（迁移 050 的 spec_json，使 getByNameVersion
+  // 能在投影时看到 loop_guards/invariants/closure/entry），最后才是旧版仅按列重建
+  //（050 之前的行；这些字段确实缺失，直到下次 readThrough 让该行自愈）。
   const storedSpec: WorkflowSpec | undefined =
     !parsedSpec && row.spec_json
       ? (JSON.parse(row.spec_json) as WorkflowSpec)
       : undefined;
   const hydrated = parsedSpec ?? storedSpec;
   if (!hydrated) {
-    // The residual worst case (arch fold, mid-build contract): a
-    // legacy pre-050 row whose source file may be gone, resolved at
-    // projection time — the reconstruction below has NO
-    // loop_guards/invariants/closure/entry. The degrade must be
-    // VISIBLE, never a silent no-guards run. Once per spec per
-    // process (bounded noise; the condition holds until healed).
+    // 剩余的最坏情况（架构折叠、构建中期约定）：在投影时解析一个 050 之前的旧行，
+    // 其源文件可能已经消失——下面的重建不含 loop_guards/invariants/closure/entry。
+    // 降级必须可见，绝不能静默地在无护栏状态下运行。每个进程对每份规范仅提示一次
+    //（限制噪声；在修复前此条件会一直成立）。
     warnLegacyRehydrationOnce(row.name, row.version);
   }
   const spec: WorkflowSpec = hydrated

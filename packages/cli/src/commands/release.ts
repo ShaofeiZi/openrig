@@ -5,7 +5,7 @@ import { realDeps } from "./daemon.js";
 import type { StatusDeps } from "./status.js";
 
 export function releaseCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("release").description("Release claimed sessions from a rig without killing tmux sessions");
+  const cmd = new Command("release").description("释放工作组中已认领的会话，而不结束 tmux 会话");
   const getDeps = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   async function getClient(deps: StatusDeps): Promise<DaemonClient | null> {
@@ -15,13 +15,13 @@ export function releaseCommand(depsOverride?: StatusDeps): Command {
   }
 
   cmd
-    .argument("<rigId>", "Rig identifier")
-    .option("--delete", "Delete the rig record after a clean release")
-    .option("--json", "JSON output")
+    .argument("<rigId>", "工作组标识")
+    .option("--delete", "干净释放后删除工作组记录")
+    .option("--json", "JSON 输出")
     .addHelpText("after", `
-Notes:
-  - Use rig unclaim <sessionRef> to release a single claimed session.
-  - Release only covers claimed/adopted sessions; OpenRig-launched nodes still require rig down.`)
+说明：
+  - 用 zrig unclaim <sessionRef> 释放单个已认领会话。
+  - release 仅覆盖已认领/已采纳的会话；由 zrig 启动的节点仍需 zrig down。`)
     .action(async (rigId: string, opts: { delete?: boolean; json?: boolean }) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -44,9 +44,9 @@ Notes:
         const launched = Array.isArray(res.data["launchedLogicalIds"])
           ? (res.data["launchedLogicalIds"] as unknown[]).filter((value): value is string => typeof value === "string")
           : [];
-        console.error(res.data["error"] ?? `Release failed (HTTP ${res.status})`);
+        console.error(res.data["error"] ?? `释放失败（HTTP ${res.status}）`);
         if (launched.length > 0) {
-          console.error(`Launched nodes: ${launched.join(", ")}`);
+          console.error(`已启动的节点：${launched.join(", ")}`);
         }
         process.exitCode = 1;
         return;
@@ -57,15 +57,15 @@ Notes:
       const status = res.data["status"];
 
       if (status === "partial") {
-        console.error(`Partially released ${released.length} claimed session(s) from rig ${rigId}`);
+        console.error(`仅从工作组 ${rigId} 部分释放了 ${released.length} 个已认领会话`);
         for (const entry of failed) {
-          console.error(`  ${entry["logicalId"]}: ${entry["error"]}`);
+          console.error(`  ${entry["logicalId"]}：${entry["error"]}`);
         }
         process.exitCode = 1;
         return;
       }
 
-      console.log(`Released ${released.length} claimed session(s) from rig ${rigId}${opts.delete ? " and deleted the rig record" : ""}`);
+      console.log(`已从工作组 ${rigId} 释放 ${released.length} 个已认领会话${opts.delete ? "，并删除了工作组记录" : ""}`);
       for (const entry of released) {
         console.log(`  ${entry["logicalId"]} <- ${entry["sessionName"]}`);
       }

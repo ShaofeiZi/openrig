@@ -1,11 +1,10 @@
-name: Portability report
+name: 可移植性报告
 
-# Lists lines a pull request adds that contain values tied to one machine, network or account
-# (credentials, home paths, temporary paths, network addresses, email addresses). Findings never
-# fail the job; the author reads the report and decides what to change. An operational error (for
-# example a git failure) does fail it. The repository is public, so this summary lists file and
-# line only; authors see the matched text when they run the report locally or on push.
-# See scripts/portability-report.mjs.
+# 列出某个拉取请求新增的、与某台机器/网络/账号绑定的内容行
+# （凭据、home 路径、临时路径、网络地址、邮箱地址）。发现结果不会让任务失败；
+# 由作者阅读报告后自行决定改动。只有在出现运维类错误（例如 git 失败）时才会失败。
+# 本仓库为公开仓库，因此摘要只列出文件与行号；作者在本地或推送时运行报告可看到匹配文本。
+# 参见 scripts/portability-report.mjs。
 
 on:
   pull_request:
@@ -24,7 +23,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Report added lines with machine-specific values
+      - name: 报告新增行中与特定机器绑定的值
         run: >
           node scripts/portability-report.mjs
           --from ${{ github.event.pull_request.base.sha }}

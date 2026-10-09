@@ -1,24 +1,20 @@
-// V1 attempt-3 Phase 2 — AppShell chrome.
+// V1 第 2 阶段尝试 3 —— AppShell 外壳。
 //
-// Universal shell per universal-shell.md L13–L34 (LAYOUT CONTRACT):
-// rail (48px) + explore sidebar (280px) + center workspace (flex) +
-// content drawer (~720px when open / 0 closed).
+// 按 universal-shell.md L13–L34（布局契约）的通用外壳：
+// 导轨（48px）+ 探索侧栏（280px）+ 中心工作区（flex）+ 内容抽屉（打开时约 720px / 关闭时 0）。
 //
-// Phase 2 deletes Sidebar.tsx (the load-bearing structural fix attempts
-// 1+2 missed) and lays the canonical rail with 6 destination icons +
-// 2 chat icons (Advisor, Operator V1 placeholders per
-// agent-chat-surface.md L45–L52).
+// 第 2 阶段删除了 Sidebar.tsx（承重结构修复尝试 1+2 未解决的问题），
+// 铺设规范导轨，含 6 个目标图标 + 2 个聊天图标（Advisor、Operator V1 占位，
+// 见 agent-chat-surface.md L45–L52）。
 //
-// Phase 3 fills tree contents in Explorer; Phase 4 wires drawer viewers
-// + chat icon click behavior to the configured advisor/operator seats.
+// 第 3 阶段填充 Explorer 中的树内容；第 4 阶段将抽屉查看器 + 聊天图标点击行为
+// 连线到配置的 advisor/operator 席位。
 //
-// SC-1 satisfied: exactly 2 left chromes on desktop (rail + explore).
-// SC-2 satisfied: rail order Dashboard / Topology / For You / Project /
-// Library / Settings + Advisor + Operator (no discovery in rail).
-// SC-7 satisfied: Settings mounts in CENTER (rail icon → /settings route,
-// not a drawer toggle).
-// SC-8 satisfied: mobile rail collapses to top-bar menu; explore
-// becomes slide-over.
+// SC-1 满足：桌面端恰好 2 个左侧外壳（导轨 + 探索）。
+// SC-2 满足：导轨顺序 仪表盘 / 拓扑 / 为你推荐 / 项目 / 资料库 / 设置
+// + Advisor + Operator（导轨中无发现）。
+// SC-7 满足：设置挂载在中心区域（导轨图标 → /settings 路由，而非抽屉切换）。
+// SC-8 满足：移动端导轨折叠为顶栏菜单；探索变为滑出层。
 
 import {
   type CSSProperties,
@@ -60,7 +56,7 @@ import { parseSessionName } from "../lib/session-name.js";
 import { HostIndicator } from "./HostIndicator.js";
 
 // =====================================================================
-// Contexts (preserved per DRIFT P2-B + active consumers in Dashboard, RigGraph)
+// 上下文（按 DRIFT P2-B 保留 + Dashboard、RigGraph 中的活跃消费者）
 // =====================================================================
 
 interface DrawerSelectionContextValue {
@@ -97,42 +93,39 @@ export function useDiscoveryPlacement() {
   return useContext(DiscoveryPlacementContext);
 }
 
-// V1 polish slice Phase 5.1 P5.1-1 + DRIFT P5.1-D2: useNodeSelection
-// alias FULLY RETIRED. After 'seat-detail' kind retirement, the only
-// callsite (RigGraph node click) now uses useNavigate to route to the
-// /topology/seat/$rigId/$logicalId center page directly. Verified via
-// grep — no remaining production consumer of useNodeSelection or
-// NodeSelectionContext outside the legacy AppShell export.
+// V1 润色切片第 5.1 阶段 P5.1-1 + DRIFT P5.1-D2：useNodeSelection
+// 别名已完全退役。'seat-detail' 类型退役后，唯一调用点（RigGraph 节点点击）
+// 现在使用 useNavigate 直接路由到 /topology/seat/$rigId/$logicalId 中心页面。
+// 已通过 grep 验证——除旧版 AppShell 导出外，无剩余生产环境消费者使用
+// useNodeSelection 或 NodeSelectionContext。
 //
-// NodeSelectionContext alias retained as a no-op export for any test
-// file still importing the symbol (negative-assertion guard); functions
-// retired entirely.
+// NodeSelectionContext 别名保留为空操作导出，供仍导入该符号的测试文件使用
+//（反向断言守卫）；函数本身已完全退役。
 export const NodeSelectionContext = DrawerSelectionContext;
 
 // =====================================================================
-// Rail icon roster — universal-shell.md L37–L58 + agent-chat-surface.md V1 placeholder
+// 导轨图标名册 —— universal-shell.md L37–L58 + agent-chat-surface.md V1 占位
 // =====================================================================
 
 interface RailIconSpec {
   id: string;
   label: string;
   to: string;
-  // lucide-react icons accept SVG props (strokeWidth, color, size, etc).
+  // lucide-react 图标接受 SVG 属性（strokeWidth、color、size 等）。
   icon: ComponentType<{ className?: string; strokeWidth?: number | string }>;
-  /** Path prefix used for active-state matching. */
+  /** 用于激活状态匹配的路径前缀。 */
   activeWhen: (pathname: string) => boolean;
   testId: string;
   group: "destination" | "chat";
 }
 
-// V1 default seats per agent-chat-surface.md L51–L52. Phase 4 swaps in
-// ConfigStore-driven resolution (`agents.advisor_session` /
-// `agents.operator_session`); Phase 2 mounts the icons with /settings
-// links as functional placeholders.
+// V1 默认席位，见 agent-chat-surface.md L51–L52。第 4 阶段切换为
+// ConfigStore 驱动的解析（`agents.advisor_session` /
+// `agents.operator_session`）；第 2 阶段以 /settings 链接挂载图标作为功能占位。
 const RAIL_ICONS: RailIconSpec[] = [
   {
     id: "dashboard",
-    label: "Dashboard",
+    label: "仪表盘",
     to: "/",
     icon: LayoutDashboard,
     activeWhen: (p) => p === "/",
@@ -141,7 +134,7 @@ const RAIL_ICONS: RailIconSpec[] = [
   },
   {
     id: "topology",
-    label: "Topology",
+    label: "拓扑",
     to: "/topology",
     icon: Network,
     activeWhen: (p) => p.startsWith("/topology") || p.startsWith("/rigs/"),
@@ -150,7 +143,7 @@ const RAIL_ICONS: RailIconSpec[] = [
   },
   {
     id: "for-you",
-    label: "For You",
+    label: "为你推荐",
     to: "/for-you",
     icon: Sparkles,
     activeWhen: (p) => p.startsWith("/for-you"),
@@ -159,7 +152,7 @@ const RAIL_ICONS: RailIconSpec[] = [
   },
   {
     id: "project",
-    label: "Project",
+    label: "项目",
     to: "/project",
     icon: Folder,
     activeWhen: (p) => p.startsWith("/project"),
@@ -168,7 +161,7 @@ const RAIL_ICONS: RailIconSpec[] = [
   },
   {
     id: "specs",
-    label: "Library",
+    label: "资料库",
     to: "/specs",
     icon: FileText,
     activeWhen: (p) => p.startsWith("/specs") || p.startsWith("/plugins"),
@@ -177,7 +170,7 @@ const RAIL_ICONS: RailIconSpec[] = [
   },
   {
     id: "settings",
-    label: "Settings",
+    label: "设置",
     to: "/settings",
     icon: Cog,
     activeWhen: (p) => p.startsWith("/settings"),
@@ -186,7 +179,7 @@ const RAIL_ICONS: RailIconSpec[] = [
   },
   {
     id: "advisor",
-    label: "Advisor",
+    label: "顾问",
     to: "/settings#agents-advisor-session",
     icon: Brain,
     activeWhen: () => false,
@@ -195,7 +188,7 @@ const RAIL_ICONS: RailIconSpec[] = [
   },
   {
     id: "operator",
-    label: "Operator",
+    label: "操作员",
     to: "/settings#agents-operator-session",
     icon: Wrench,
     activeWhen: () => false,
@@ -204,7 +197,7 @@ const RAIL_ICONS: RailIconSpec[] = [
   },
 ];
 
-// V1 Phase 4 P4-4 helpers — config-driven Advisor / Operator click resolution.
+// V1 第 4 阶段 P4-4 辅助函数 —— 配置驱动的 Advisor / Operator 点击解析。
 
 function readSettingString(
   data: { settings?: Record<string, { value?: unknown }> } | undefined,
@@ -215,21 +208,20 @@ function readSettingString(
   return typeof v === "string" ? v : "";
 }
 
-/** Map a ConfigStore session-string ("logicalId@rigId") to a navigation
- *  target. When configured: `/topology/seat/$rigId/$logicalId`. When
- *  unset: `/settings#agents-{role}-session`. Per universal-shell.md L80
- *  (one-click navigation; not popup-then-CTA two-click). */
+/** 将 ConfigStore 会话字符串（"logicalId@rigId"）映射为导航目标。
+ *  已配置时：`/topology/seat/$rigId/$logicalId`。未配置时：
+ *  `/settings#agents-{role}-session`。按 universal-shell.md L80
+ *（一键导航；非弹窗再 CTA 两次点击）。 */
 function resolveChatTo(session: string, role: "advisor" | "operator"): string {
   if (!session) return `/settings#agents-${role}-session`;
-  // OPR.0.4.6.MH1 FR-8: the shared parse contract; non-canonical
-  // (malformed/legacy) falls back to /settings.
+  // OPR.0.4.6.MH1 FR-8：共享解析契约；非规范（格式错误/遗留）回退到 /settings。
   const parsed = parseSessionName(session);
   if (parsed.kind !== "canonical") return `/settings#agents-${role}-session`;
   return `/topology/seat/${encodeURIComponent(parsed.rig)}/${encodeURIComponent(parsed.member)}`;
 }
 
 // =====================================================================
-// Path → Explorer surface mapping
+// 路径 → Explorer 表面映射
 // =====================================================================
 
 function surfaceForPath(pathname: string): ExplorerSurface {
@@ -242,7 +234,7 @@ function surfaceForPath(pathname: string): ExplorerSurface {
 }
 
 // =====================================================================
-// Rail component
+// 导轨组件
 // =====================================================================
 
 function Rail({
@@ -255,12 +247,12 @@ function Rail({
   vertical: boolean;
 }) {
   const destinationIcons = RAIL_ICONS.filter((i) => i.group === "destination");
-  // V1 attempt-3 Phase 4 P4-4 — Advisor / Operator click handlers
-  // resolve `agents.advisor_session` / `agents.operator_session` from
-  // ConfigStore (via useSettings). When configured: navigate to seat
-  // detail. When unset: navigate to /settings#agents-{role}-session
-  // CTA. Defaults from universal-shell.md L83-L84 (advisor =
-  // advisor-lead@openrig-velocity; operator = empty/not configured).
+  // V1 第 4 阶段尝试 3 P4-4 —— Advisor / Operator 点击处理器
+  // 从 ConfigStore（通过 useSettings）解析 `agents.advisor_session` /
+  // `agents.operator_session`。已配置时：导航到席位详情。未配置时：
+  // 导航到 /settings#agents-{role}-session CTA。
+  // 默认值来自 universal-shell.md L83-L84
+  //（advisor = advisor-lead@openrig-velocity；operator = 空/未配置）。
   const { data: settingsData } = useSettings();
   const advisorSession = readSettingString(settingsData, "agents.advisor_session");
   const operatorSession = readSettingString(settingsData, "agents.operator_session");
@@ -287,10 +279,9 @@ function Rail({
         title={spec.label}
         onClick={onMobileClose}
         className={cn(
-          // Slice 20 mobile: tap-target meets iOS HIG minimum (44px)
-          // on mobile (default `h-11 w-11`) and restores the original
-          // 40px hitbox at `lg:` (desktop) where mouse precision is
-          // the input model, not thumbs.
+          // 切片 20 移动端：触控目标在移动端达到 iOS HIG 最小值（44px）
+          //（默认 `h-11 w-11`），在 `lg:`（桌面端）恢复原始 40px 命中区域，
+          // 因为桌面端的输入模型是鼠标精度而非拇指。
           "relative flex h-11 w-11 items-center justify-center transition-colors lg:h-10 lg:w-10",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-on-surface focus-visible:outline-offset-2",
           active
@@ -298,9 +289,8 @@ function Rail({
             : "text-on-surface hover:bg-surface-high/60 hover:text-on-surface",
         )}
       >
-        {/* Lighter icon line weight: stroke-width 1.25 (default lucide is 2)
-            for an architectural drafting feel that matches the 1px ghost
-            border doctrine. */}
+        {/* 更轻的图标线条：stroke-width 1.25（lucide 默认 2），
+            营造建筑制图感，与 1px 幽灵边框原则一致。 */}
         <Icon className="h-5 w-5" strokeWidth={1.25} />
         {active && (
           <span
@@ -315,13 +305,12 @@ function Rail({
   return (
     <nav
       data-testid="app-rail"
-      aria-label="Primary navigation"
+      aria-label="主导航"
       className={cn(
-        // V1 border weight doctrine (universal-shell.md L39–L48):
-        // 1px outline-variant ghost line for inter-region edges.
-        // Vellum surface: same translucent treatment as the topology-graph
-        // Explorer overlay, so the rail reads as a paper sheet layered over
-        // the canvas (sheets-of-vellum aesthetic per universal-shell.md L48).
+        // V1 边框粗细原则（universal-shell.md L39–L48）：
+        // 区域间边缘使用 1px outline-variant 幽灵线。
+        // 羊皮纸表面：与拓扑图 Explorer 遮罩相同的半透明处理，
+        // 使导轨读作叠在画布上的纸页（羊皮纸层叠美学，见 universal-shell.md L48）。
         "vellum border-outline-variant flex shrink-0",
         vertical
           ? "w-12 flex-col items-center border-r py-2 gap-1"
@@ -375,7 +364,7 @@ function AppShellInner({ children }: AppShellProps) {
   const surface = surfaceForPath(pathname);
   const { mode: explorerMode } = useTopologyOverlay();
 
-  const [explorerOpen, setExplorerOpen] = useState(false); // mobile slide-over state
+  const [explorerOpen, setExplorerOpen] = useState(false); // 移动端滑出层状态
   const [desktopExplorerOpen, setDesktopExplorerOpen] = useState(true);
   const [isWideLayout, setIsWideLayout] = useState(() => {
     if (typeof window === "undefined") return true;
@@ -407,7 +396,7 @@ function AppShellInner({ children }: AppShellProps) {
     setPlacementTargetState(null);
   }, []);
 
-  // Window resize → wide-layout flag.
+  // 窗口尺寸变化 → 宽布局标志。
   useEffect(() => {
     const handleResize = () => {
       setIsWideLayout(window.innerWidth >= WIDE_LAYOUT_BREAKPOINT);
@@ -417,20 +406,19 @@ function AppShellInner({ children }: AppShellProps) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Cross-route: clear discovery placement when discovery selection clears.
+  // 跨路由：当发现选择清除时清除放置目标。
   useEffect(() => {
     if (selectionState?.type !== "discovery") clearPlacement();
   }, [selectionState, clearPlacement]);
 
-  // OPR.0.4.6.MH2 rev1-r2 re-re-verdict B1: a placement target created while
-  // local must not survive a host switch — ANY selected-host change clears
-  // the target + discovered-session selection (the panel-side brace
-  // additionally suppresses the adopt UI under remote).
+  // OPR.0.4.6.MH2 rev1-r2 再裁定 B1：在本机状态下创建的放置目标不得在
+  // 切换主机后存活——任何选中主机变更都清除目标 + 发现会话选择
+  //（面板侧的大括号额外在远端下抑制采用 UI）。
   useClearPlacementOnHostSwitch(clearPlacement);
 
-  // SC-3a — drawer content does NOT persist across reload (it's contextual).
-  // Mobile-narrow viewports: close drawer + close explorer when route changes
-  // unless the route specifically handles the drawer (none in Phase 2).
+  // SC-3a —— 抽屉内容不在重新加载后持久化（它是上下文相关的）。
+  // 移动端窄视口：路由变化时关闭抽屉 + 关闭探索
+  // 除非路由专门处理抽屉（第 2 阶段无）。
   useEffect(() => {
     if (!isWideLayout) {
       setSelectionState(null);
@@ -438,35 +426,32 @@ function AppShellInner({ children }: AppShellProps) {
     }
   }, [isWideLayout, pathname]);
 
-  // Mount global SSE event listener.
+  // 挂载全局 SSE 事件监听器。
   const proofConnection = useGlobalEvents();
 
   const explorerVisible = surface !== "none";
-  // Slice 26.D OPT-D3 Topology mobile mount-suppression: rule lives
-  // in shouldSuppressExplorerMount() (Explorer.tsx). Pre-existing
-  // renderer-spin in Topology mobile render path pegs the browser
-  // when Explorer mounts at 375px; only mount-suppression sidesteps
-  // the peg trigger. Other 4 destinations mount normally regardless
-  // of viewport. 0.3.2 fixes Topology mobile render path; this
-  // suppression reverts at that time.
+  // 切片 26.D OPT-D3 拓扑移动端挂载抑制：规则在
+  // shouldSuppressExplorerMount()（Explorer.tsx）中。Topology 移动端渲染路径中
+  // 既有的渲染自旋在 Explorer 于 375px 挂载时会卡住浏览器；
+  // 只有挂载抑制能绕开这个卡点触发器。其他 4 个目标不管视口宽度都正常挂载。
+  // 0.3.2 修复 Topology 移动端渲染路径；届时此抑制将回退。
   const explorerMounted = explorerVisible && !shouldSuppressExplorerMount(surface, isWideLayout);
   const drawerOpen = Boolean(selectionState);
 
-  // V1 attempt-3 Phase 3 bounce-fix — Class B fixed-anchor + selective overlay.
-  // Topology graph mode signals overlay; only meaningful while on /topology
-  // (surface === "topology"). Other surfaces ALWAYS use opaque layout.
+  // V1 第 3 阶段尝试 3 回弹修复 —— B 类固定锚点 + 选择性遮罩。
+  // 拓扑图模式发出遮罩信号；仅在 /topology（surface === "topology"）时有效。
+  // 其他表面始终使用不透明布局。
   const isTopologyOverlay = explorerMode === "overlay" && surface === "topology";
 
-  // Anchor stays the same in BOTH modes — tab bar position never moves.
-  // Main padding-left differs:
-  //   - opaque: padding = anchor (content starts AFTER explorer)
-  //   - overlay: padding = 0 (content extends behind translucent explorer);
-  //              tab bar is sticky/positioned at left=anchor independently.
-  // 21rem = rail (3rem) + explorer (18rem).
-  // 21rem (rail 3 + explorer 18) when explorer fully open. When
-  // collapsed: 3rem (rail only) — the floating chevron toggle floats
-  // over the canvas and doesn't claim layout space. When no explorer
-  // for the destination: 3rem (rail only).
+  // 两种模式下锚点保持不变 —— 标签栏位置从不移动。
+  // 主 padding-left 不同：
+  //   - 不透明：padding = 锚点（内容从探索器之后开始）
+  //   - 遮罩：padding = 0（内容延伸到半透明探索器后方）；
+  //            标签栏独立 sticky/positioned 在 left=锚点 处。
+  // 21rem = 导轨（3rem）+ 探索器（18rem）。
+  // 探索器完全打开时为 21rem（导轨 3 + 探索器 18）。
+  // 折叠时：3rem（仅导轨）——浮动箭头开关浮在画布上，不占用布局空间。
+  // 目标无探索器时：3rem（仅导轨）。
   const explorerAnchorLeft = isWideLayout && explorerVisible && desktopExplorerOpen
     ? "21rem"
     : "3rem";
@@ -475,15 +460,13 @@ function AppShellInner({ children }: AppShellProps) {
       ? "0rem"
       : explorerAnchorLeft
     : "0rem";
-  // Class B fixed-anchor: header (eyebrow + title + view-mode tabs) ALWAYS
-  // sits at the explorer-anchor offset, even in overlay mode where the
-  // canvas extends behind the Explorer. This keeps the tab bar at a
-  // stable left position across view-mode switches.
+  // B 类固定锚点：头部（eyebrow + 标题 + 视图模式标签）始终
+  // 位于探索器锚点偏移处，即使在画布延伸到探索器后方的遮罩模式下也是如此。
+  // 这使标签栏在视图模式切换间保持稳定的左侧位置。
   const headerAnchorOffset = isWideLayout && isTopologyOverlay ? explorerAnchorLeft : "0rem";
-  // Coupled to VellumSheet wide preset (lg:w-[38rem]) — bounce-fix #3
-  // caught the gap that emerged when bounce-fix #2 calibrated the drawer
-  // 45rem → 38rem without updating this offset. Keep these two literals
-  // in sync; the regression test in app-shell.test.tsx asserts they match.
+  // 与 VellumSheet wide 预设（lg:w-[38rem]）耦合——回弹修复 #3 发现了
+  // 回弹修复 #2 将抽屉从 45rem 校准到 38rem 时未更新此偏移量所产生的间隙。
+  // 保持这两个字面量同步；app-shell.test.tsx 中的回归测试断言它们匹配。
   const workspaceRightOffset = isWideLayout && drawerOpen ? "38rem" : "0rem";
   const workspaceStyle = {
     "--workspace-left-offset": workspaceLeftOffset,
@@ -504,38 +487,31 @@ function AppShellInner({ children }: AppShellProps) {
           }}
         >
           <div className="h-screen flex flex-col">
-            {/* Top bar — universal across viewports per universal-shell.md
-                L40–L53. Single source of truth: same element renders at
-                all sizes. Hamburger button keeps its own lg:hidden so it
-                only appears at narrow viewports; brand mark + right-slot
-                stay visible everywhere. */}
+            {/* 顶栏 —— 按 universal-shell.md L40–L53 跨视口通用。
+                单一真相来源：同一元素在所有尺寸下渲染。
+                汉堡按钮保留自己的 lg:hidden，仅在窄视口出现；
+                品牌标记 + 右侧槽位在所有位置可见。 */}
             <header
               data-testid="app-topbar"
               className="h-14 flex items-center justify-between px-4 bg-background border-b border-outline-variant shrink-0 relative z-30"
             >
               <div className="flex items-center gap-3">
-                {/* Slice 26.E OPT-E Topology mobile toggle carve-out: at
-                    narrow viewports on /topology the menu toggle does
-                    not render. Clicking it flips explorerOpen state
-                    which re-renders AppShellInner's children; the
-                    Topology mobile render path (TopologyTableView +
-                    TopologyTreeView) has a pre-existing render-cost
-                    that pegs the browser on that cascade — independent
-                    of whether the Explorer drawer itself mounts (OPT-D3
-                    already suppresses that). Hiding the entry point
-                    prevents the state-flip trigger. Pre-existing
-                    renderer-spin scheduled for 0.3.2 dedicated render-
-                    path slice; 0.3.1 carve-out preserves Topology
-                    mobile usability (degraded table still loads +
-                    navigable; brand-home-link reachable in topbar).
-                    Reuses shouldSuppressExplorerMount predicate — same
-                    underlying carve-out scenario. */}
+                {/* 切片 26.E OPT-E 拓扑移动端切换 carved-out：在 /topology
+                    的窄视口上不渲染菜单切换按钮。点击它会翻转 explorerOpen
+                    状态从而重新渲染 AppShellInner 的子元素；拓扑移动端渲染路径
+                    （TopologyTableView + TopologyTreeView）在该级联中有既存的
+                    渲染成本，会在该路径上卡住浏览器——与 Explorer 抽屉本身是否挂载
+                    无关（OPT-D3 已抑制）。隐藏入口点防止状态翻转触发器。
+                    既存渲染自旋计划在 0.3.2 专用渲染路径切片中修复；
+                    0.3.1 carved-out 保留拓扑移动端可用性
+                   （降级表格仍可加载 + 导航；品牌首页链接在顶栏可达）。
+                    复用 shouldSuppressExplorerMount 谓词——相同底层 carved-out 场景。 */}
                 {!shouldSuppressExplorerMount(surface, isWideLayout) && (
                   <button
                     type="button"
                     data-testid="mobile-menu-toggle"
                     onClick={() => setExplorerOpen((open) => !open)}
-                    aria-label="Toggle navigation"
+                    aria-label="切换导航"
                     className="flex flex-col gap-[3px] p-2 lg:hidden"
                   >
                     <span className="block w-4 h-[1.5px] bg-inverse-surface" />
@@ -548,34 +524,31 @@ function AppShellInner({ children }: AppShellProps) {
                   data-testid="brand-home-link"
                   className="inline-flex items-center bg-inverse-surface px-3 py-1 font-mono text-sm font-bold uppercase tracking-[0.08em] text-background hover:bg-inverse-surface"
                 >
-                  OPENRIG
+                  zrig
                 </Link>
               </div>
-              {/* Right-slot — the V2 global affordance this slot was
-                  reserved for: the MH-2 which-host indicator (FR-3),
-                  truthful to the selected data source. Hidden on narrow
-                  viewports to preserve mobile space. */}
+              {/* 右侧槽位 —— V2 全局控件预留的槽位：MH-2 当前主机指示器
+                  （FR-3），忠于选中的数据源。窄视口隐藏以保留移动端空间。 */}
               <div
                 data-testid="topbar-right-slot"
                 className="hidden sm:flex items-center gap-3"
               >
                 <HostIndicator />
-                {/* OPR.0.4.3.29 — theme selector (placement founder-taste-gated). */}
+                {/* OPR.0.4.3.29 —— 主题选择器（位置由创始者口味决定）。 */}
                 <ThemeSelector />
               </div>
             </header>
 
-            {/* Main: rail + explore + center + drawer */}
+            {/* 主区域：导轨 + 探索 + 中心 + 抽屉 */}
             <div className="flex flex-1 min-h-0 relative">
-              {/* Rail — desktop only (lg:flex). Mobile rail surfaces inside the slide-over. */}
+              {/* 导轨 —— 仅桌面端（lg:flex）。移动端导轨在滑出层内出现。 */}
               <div className="hidden lg:flex">
                 <Rail pathname={pathname} vertical />
               </div>
 
-              {/* Mobile slide-over: rail (horizontal) + explore.
-                  Conditionally rendered ONLY at narrow viewports so the
-                  desktop DOM doesn't carry an offscreen <nav> that
-                  fails the SC-1 "exactly 2 left chromes" count check. */}
+              {/* 移动端滑出层：导轨（水平）+ 探索。
+                  仅在窄视口条件渲染，使桌面 DOM 不携带屏幕外 <nav>，
+                  以免破坏 SC-1"恰好 2 个左侧外壳"计数检查。 */}
               {!isWideLayout && (
                 <>
                   {explorerOpen && (
@@ -592,20 +565,18 @@ function AppShellInner({ children }: AppShellProps) {
                       explorerOpen ? "translate-x-0" : "-translate-x-full",
                     )}
                   >
-                    {/* Slice 20 mobile: mobile slide-over rail is
-                        vertical (one item per row) — thumb-friendly stack
-                        instead of the prior horizontal scroll. */}
+                    {/* 切片 20 移动端：移动端滑出层导轨为垂直方向
+                        （每行一项）——拇指友好的堆叠，取代之前的水平滚动。 */}
                     <Rail pathname={pathname} vertical onMobileClose={() => setExplorerOpen(false)} />
                   </div>
                 </>
               )}
 
-              {/* Explorer — desktop column or mobile slide-over.
-                  In overlay mode (topology graph): vellum-translucent + z-30
-                  so it floats over the canvas. In opaque mode: z-40
-                  per slice 26.B OPT-B (above rail-tray on mobile).
-                  Slice 26.D OPT-D3: Topology Explorer doesn't mount
-                  on mobile (suppressTopologyMobileExplorer above). */}
+              {/* 探索器 —— 桌面列或移动端滑出层。
+                  遮罩模式（拓扑图）：羊皮纸半透明 + z-30，浮在画布上。
+                  不透明模式：z-40，按切片 26.B OPT-B（在移动端导轨托盘之上）。
+                  切片 26.D OPT-D3：拓扑探索器在移动端不挂载
+                  （上方 suppressTopologyMobileExplorer）。 */}
               {explorerMounted && (
                 <Explorer
                   open={explorerOpen}
@@ -619,7 +590,7 @@ function AppShellInner({ children }: AppShellProps) {
                 />
               )}
 
-              {/* Center workspace */}
+              {/* 中心工作区 */}
               <main
                 data-testid="content-area"
                 data-explorer-mode={isTopologyOverlay ? "overlay" : "opaque"}
@@ -629,12 +600,11 @@ function AppShellInner({ children }: AppShellProps) {
                   paddingLeft: `var(--workspace-left-offset, 0px)`,
                 }}
               >
-                {!proofConnection.connected && <p role="status" className="px-4 py-1 text-sm">Live updates unavailable. Displayed readiness is the last confirmed basis; quiet refresh is active.</p>}
-                {/* Reset the workspace offset CSS vars to 0 inside main so that
-                    legacy children (e.g., LiveNodeDetails → WorkspacePage which
-                    also reads var(--workspace-left-offset) for its own padding)
-                    don't double-pad. The padding is already applied at <main>
-                    above; child surfaces should treat their own offset as 0. */}
+                {!proofConnection.connected && <p role="status" className="px-4 py-1 text-sm">实时更新不可用。显示的就绪状态为上次确认的依据；静默刷新已激活。</p>}
+                {/* 在 main 内将工作区偏移 CSS 变量重置为 0，使旧版子元素
+                    （如 LiveNodeDetails → WorkspacePage，其自身也读取
+                    var(--workspace-left-offset) 做 padding）不会双重 padding。
+                    padding 已在上方 <main> 应用；子表面应将自身偏移视为 0。 */}
                 <div
                   key={pathname}
                   className="relative z-10 route-enter flex-1 flex flex-col pb-14 lg:pb-0"
@@ -647,7 +617,7 @@ function AppShellInner({ children }: AppShellProps) {
                 </div>
               </main>
 
-              {/* Content drawer — default closed (selection===null returns null inside drawer). */}
+              {/* 内容抽屉 —— 默认关闭（selection===null 时抽屉内部返回 null）。 */}
               <SharedDetailDrawer
                 selection={selectionState}
                 onClose={() => setSelection(null)}
@@ -658,15 +628,14 @@ function AppShellInner({ children }: AppShellProps) {
                 onClearPlacement={clearPlacement}
               />
 
-              {/* Preview Terminal v0 (PL-018) — pinned-preview side rail.
-                  Self-hides when no pins; positioned right edge under the
-                  drawer when drawer mounted. */}
+              {/* 预览终端 v0（PL-018）—— 固定预览侧导轨。
+                  无固定项时自隐藏；抽屉挂载时定位在右边缘抽屉下方。 */}
               <PreviewStack />
 
-              {/* V1 attempt-3 Phase 5 P5-9 — Mobile bottom nav per
-                  universal-shell.md L135 + L144: For You / Project /
-                  Topology only (NOT Talk; Talk slots are V2 when web
-                  terminal ships). lg:hidden so desktop never sees it. */}
+              {/* V1 第 5 阶段 P5-9 —— 移动端底部导航，按
+                  universal-shell.md L135 + L144：仅 为你推荐 / 项目 /
+                  拓扑（不含 Talk；Talk 槽位在 Web 终端发布时为 V2）。
+                  lg:hidden 使桌面端永不显示。 */}
               <MobileBottomNav pathname={pathname} />
             </div>
           </div>
@@ -675,9 +644,9 @@ function AppShellInner({ children }: AppShellProps) {
   );
 }
 
-/** V1 mobile bottom nav per universal-shell.md L135 + L144 — 3 slots
- *  (For You / Project / Topology). Talk slots are V2 deferred (when web
- *  terminal ships). Rendered at lg:hidden so desktop never shows it. */
+/** V1 移动端底部导航，按 universal-shell.md L135 + L144 —— 3 个槽位
+ *  （为你推荐 / 项目 / 拓扑）。Talk 槽位延迟到 V2（Web 终端发布时）。
+ *  以 lg:hidden 渲染，桌面端永不显示。 */
 function MobileBottomNav({ pathname }: { pathname: string }) {
   const slots: Array<{
     id: "for-you" | "project" | "topology";
@@ -686,14 +655,14 @@ function MobileBottomNav({ pathname }: { pathname: string }) {
     activeWhen: (p: string) => boolean;
     icon: ComponentType<{ className?: string; strokeWidth?: number | string }>;
   }> = [
-    { id: "for-you", label: "For You", to: "/for-you", activeWhen: (p) => p.startsWith("/for-you"), icon: Sparkles },
-    { id: "project", label: "Project", to: "/project", activeWhen: (p) => p.startsWith("/project"), icon: Folder },
-    { id: "topology", label: "Topology", to: "/topology", activeWhen: (p) => p.startsWith("/topology") || p.startsWith("/rigs/"), icon: Network },
+    { id: "for-you", label: "为你推荐", to: "/for-you", activeWhen: (p) => p.startsWith("/for-you"), icon: Sparkles },
+    { id: "project", label: "项目", to: "/project", activeWhen: (p) => p.startsWith("/project"), icon: Folder },
+    { id: "topology", label: "拓扑", to: "/topology", activeWhen: (p) => p.startsWith("/topology") || p.startsWith("/rigs/"), icon: Network },
   ];
   return (
     <nav
       data-testid="mobile-bottom-nav"
-      aria-label="Mobile bottom navigation"
+      aria-label="移动端底部导航"
       className="fixed bottom-0 left-0 right-0 z-40 lg:hidden vellum border-t border-outline-variant flex"
     >
       {slots.map((slot) => {

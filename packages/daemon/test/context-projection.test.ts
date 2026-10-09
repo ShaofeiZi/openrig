@@ -4,7 +4,7 @@ import { createFullTestDb, createTestApp } from "./helpers/test-app.js";
 import { ContextUsageStore } from "../src/domain/context-usage-store.js";
 import { getNodeInventoryWithContext, getNodeDetailWithContext } from "../src/domain/node-inventory.js";
 
-describe("Context Usage Projection", () => {
+describe("上下文用量投影", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
   let store: ContextUsageStore;
@@ -26,7 +26,7 @@ describe("Context Usage Projection", () => {
     contextWindowSize: 200000,
     totalInputTokens: 120000,
     totalOutputTokens: 14000,
-    currentUsage: "67% used",
+    currentUsage: "已使用 67%",
     transcriptPath: "/tmp/test.log",
     sessionId: "sess-123",
     sessionName: "dev-impl@test-rig",
@@ -34,8 +34,8 @@ describe("Context Usage Projection", () => {
     fresh: true,
   };
 
-  // T1: NodeInventoryEntry includes contextUsage for Claude node with persisted data
-  it("getNodeInventoryWithContext includes known contextUsage", () => {
+  // T1：NodeInventoryEntry 为有持久化数据的 Claude 节点包含 contextUsage
+  it("getNodeInventoryWithContext 包含已知的 contextUsage", () => {
     const rig = setup.rigRepo.createRig("test-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     setup.sessionRegistry.registerSession(node.id, "dev-impl@test-rig");
@@ -49,8 +49,8 @@ describe("Context Usage Projection", () => {
     expect(entry?.contextUsage?.usedPercentage).toBe(67);
   });
 
-  // T2: NodeInventoryEntry includes unknown contextUsage for non-Claude node
-  it("getNodeInventoryWithContext returns unknown for non-Claude node", () => {
+  // T2：NodeInventoryEntry 为非 Claude 节点包含 unknown contextUsage
+  it("getNodeInventoryWithContext 对非 Claude 节点返回 unknown", () => {
     const rig = setup.rigRepo.createRig("test-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.qa", { runtime: "codex" });
     setup.sessionRegistry.registerSession(node.id, "dev-qa@test-rig");
@@ -61,8 +61,8 @@ describe("Context Usage Projection", () => {
     expect(entry?.contextUsage?.availability).toBe("unknown");
   });
 
-  // T3: NodeDetailEntry includes full contextUsage
-  it("getNodeDetailWithContext includes full contextUsage", () => {
+  // T3：NodeDetailEntry 包含完整 contextUsage
+  it("getNodeDetailWithContext 包含完整 contextUsage", () => {
     const rig = setup.rigRepo.createRig("test-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     setup.sessionRegistry.registerSession(node.id, "dev-impl@test-rig");
@@ -74,14 +74,14 @@ describe("Context Usage Projection", () => {
     expect(detail?.contextUsage?.contextWindowSize).toBe(200000);
   });
 
-  // T4: Graph projection overlay includes compact context data
-  it("graph overlay includes compact context data from inventory", async () => {
+  // T4：图投影覆盖层包含精简上下文数据
+  it("图覆盖层包含来自清单的精简上下文数据", async () => {
     const rig = setup.rigRepo.createRig("test-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     setup.sessionRegistry.registerSession(node.id, "dev-impl@test-rig");
     store.persist(node.id, KNOWN_USAGE);
 
-    // Test via HTTP route which uses context-aware inventory
+    // 通过使用上下文感知清单的 HTTP 路由进行测试
     const res = await setup.app.request(`/api/rigs/${rig.id}/graph`);
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -92,8 +92,8 @@ describe("Context Usage Projection", () => {
     expect(graphNode?.data?.contextTotalOutputTokens).toBe(14000);
   });
 
-  // T5: WhoamiResult includes contextUsage (via route)
-  it("whoami includes contextUsage for Claude node", async () => {
+  // T5：WhoamiResult 包含 contextUsage（通过路由）
+  it("whoami 为 Claude 节点包含 contextUsage", async () => {
     const rig = setup.rigRepo.createRig("test-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     setup.sessionRegistry.registerSession(node.id, "dev-impl@test-rig");
@@ -107,8 +107,8 @@ describe("Context Usage Projection", () => {
     expect(body.contextUsage.usedPercentage).toBe(67);
   });
 
-  // T6: Unsupported runtime returns unknown honestly
-  it("whoami returns unknown contextUsage for codex node", async () => {
+  // T6：对不支持的运行时如实返回 unknown
+  it("whoami 为 codex 节点返回 unknown contextUsage", async () => {
     const rig = setup.rigRepo.createRig("test-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.qa", { runtime: "codex" });
     setup.sessionRegistry.registerSession(node.id, "dev-qa@test-rig");
@@ -120,8 +120,8 @@ describe("Context Usage Projection", () => {
     expect(body.contextUsage.availability).toBe("unknown");
   });
 
-  // T7: Node detail route returns context data
-  it("node detail route includes contextUsage", async () => {
+  // T7：节点详情路由返回上下文数据
+  it("节点详情路由包含 contextUsage", async () => {
     const rig = setup.rigRepo.createRig("test-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     setup.sessionRegistry.registerSession(node.id, "dev-impl@test-rig");

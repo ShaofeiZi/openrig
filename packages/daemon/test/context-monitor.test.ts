@@ -13,7 +13,7 @@ import type { ReadinessResult } from "../src/domain/runtime-adapter.js";
 import { ALL_MIGRATIONS } from "../src/db/all-migrations.js";
 
 
-describe("ContextMonitor", () => {
+describe("ContextMonitor 上下文监控", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -52,7 +52,7 @@ describe("ContextMonitor", () => {
     const rig = rigRepo.createRig("test-rig");
     const node = rigRepo.addNode(rig.id, logicalId, { runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, sessionName);
-    // Mark as running so the monitor considers it eligible
+    // 标记为 running，使 monitor 将其视为 eligible
     db.prepare("UPDATE sessions SET status = 'running' WHERE id = ?").run(session.id);
     return { rig, node, sessionName };
   }
@@ -88,7 +88,7 @@ describe("ContextMonitor", () => {
     const rig = rigRepo.createRig("test-rig-stub");
     const node = rigRepo.addNode(rig.id, logicalId, { runtime: "stub" });
     const session = sessionRegistry.registerSession(node.id, sessionName);
-    // Mark as running so the monitor considers it eligible
+    // 标记为 running，使 monitor 将其视为 eligible
     db.prepare("UPDATE sessions SET status = 'running' WHERE id = ?").run(session.id);
     return { rig, node, sessionName };
   }
@@ -144,8 +144,8 @@ describe("ContextMonitor", () => {
     sampled_at: new Date().toISOString(),
   };
 
-  // T1: pollOnce discovers running Claude sessions and persists usage
-  it("pollOnce discovers running Claude sessions and persists context usage", async () => {
+  // T1：pollOnce 发现 running Claude session 并持久化用量
+  it("pollOnce 发现 running Claude session 并持久化 context usage", async () => {
     const { node, sessionName } = seedClaudeNode();
     writeSidecar(sessionName, VALID_SIDECAR);
 
@@ -160,8 +160,8 @@ describe("ContextMonitor", () => {
     });
   });
 
-  // T2: pollOnce discovers running Codex sessions and persists usage from token_count events
-  it("pollOnce discovers running Codex sessions and persists context usage", async () => {
+  // T2：pollOnce 发现 running Codex session，并从 token_count event 持久化用量
+  it("pollOnce 发现 running Codex session 并持久化 context usage", async () => {
     const { node: codexNode, sessionName, threadId } = seedCodexNode();
     writeCodexTokenCount(threadId);
 
@@ -176,7 +176,7 @@ describe("ContextMonitor", () => {
     expect(ensureContextCollectorSpy).not.toHaveBeenCalled();
   });
 
-  it("pollOnce backfills detached Codex sessions from resume tokens", async () => {
+  it("pollOnce 根据 resume token 回填 detached Codex session", async () => {
     const { node: codexNode, sessionName, threadId } = seedCodexNode("detached");
     writeCodexTokenCount(threadId);
 
@@ -188,8 +188,8 @@ describe("ContextMonitor", () => {
     expect(usage.usedPercentage).toBe(88);
   });
 
-  // STUB-A (51-01 GAP-1): running stub sessions with a context sidecar are polled and observed
-  it("pollOnce discovers running stub sessions and persists context usage", async () => {
+  // STUB-A（51-01 GAP-1）：轮询并观测带 context sidecar 的 running stub session
+  it("pollOnce 发现 running stub session 并持久化 context usage", async () => {
     const { node, sessionName } = seedStubNode();
     writeSidecar(sessionName, { ...VALID_SIDECAR, session_name: sessionName });
 
@@ -200,26 +200,25 @@ describe("ContextMonitor", () => {
     expect(usage.usedPercentage).toBe(67);
   });
 
-  // STUB-B (51-01 GAP-2): stub sessions consume their own sidecar but must NOT
-  // provision the Claude context collector (no settings.local.json / collector
-  // write into a stub seat's cwd) — mirrors the codex non-provisioning contract.
-  it("pollOnce does not provision the Claude context collector for stub sessions", async () => {
+  // STUB-B（51-01 GAP-2）：stub session 使用自己的 sidecar，但绝不能配置 Claude context collector
+  //（不向 stub seat cwd 写 settings.local.json / collector）——镜像 codex non-provisioning contract。
+  it("pollOnce 不为 stub session 配置 Claude context collector", async () => {
     const { node, sessionName } = seedStubNode("dev.stubb", "dev-stubb@test");
     writeSidecar(sessionName, { ...VALID_SIDECAR, session_name: sessionName });
 
     await monitor.pollOnce();
 
-    // The sidecar is still consumed (readAndNormalize is unconditional)...
+    // 仍会使用 sidecar（无条件执行 readAndNormalize）……
     const usage = store.getForNode(node.id, sessionName);
     expect(usage.availability).toBe("known");
-    // ...but no Claude-specific collector provisioning happens for a stub seat.
+    // ……但不为 stub seat 配置 Claude-specific collector。
     expect(ensureContextCollectorSpy).not.toHaveBeenCalled();
   });
 
-  // T3: pollOnce persists unknown for missing sidecar
-  it("pollOnce persists unknown for missing sidecar files", async () => {
+  // T3：sidecar 缺失时，pollOnce 持久化 unknown
+  it("sidecar 文件缺失时 pollOnce 持久化 unknown", async () => {
     const { node, sessionName } = seedClaudeNode();
-    // No sidecar file written
+    // 未写入 sidecar 文件
 
     await monitor.pollOnce();
 
@@ -228,8 +227,8 @@ describe("ContextMonitor", () => {
     expect(usage.reason).toBe("missing_sidecar");
   });
 
-  // T4: pollOnce handles malformed sidecar without crashing
-  it("pollOnce handles malformed sidecar without crashing", async () => {
+  // T4：pollOnce 处理 malformed sidecar 且不崩溃
+  it("pollOnce 处理 malformed sidecar 时不崩溃", async () => {
     const { node, sessionName } = seedClaudeNode();
     writeSidecar(sessionName, { bad: "data" });
 
@@ -240,50 +239,50 @@ describe("ContextMonitor", () => {
     expect(usage.reason).toBe("parse_error");
   });
 
-  // T5: pollOnce with zero eligible sessions does nothing
-  it("pollOnce with zero eligible sessions does nothing", async () => {
-    // No nodes seeded
+  // T5：零 eligible session 的 pollOnce 不执行任何操作
+  it("零 eligible session 时 pollOnce 不执行任何操作", async () => {
+    // 未 seed node
     await monitor.pollOnce(); // Should not throw
   });
 
-  // T6: start/stop manages interval lifecycle
-  it("start/stop manages interval lifecycle", () => {
+  // T6：start/stop 管理 interval lifecycle
+  it("start/stop 管理 interval lifecycle", () => {
     monitor.start(1000);
     monitor.start(1000); // Idempotent — no double interval
     monitor.stop();
     monitor.stop(); // Safe to call again
   });
 
-  // T7: One bad session doesn't prevent polling other sessions
-  it("one bad session does not prevent polling others", async () => {
+  // T7：单个异常 session 不会阻止轮询其他 session
+  it("单个异常 session 不会阻止轮询其他 session", async () => {
     const { node: node1, sessionName: s1 } = seedClaudeNode("dev.impl1", "impl1@test");
     const rig2 = rigRepo.createRig("rig2");
     const node2 = rigRepo.addNode(rig2.id, "dev.impl2", { runtime: "claude-code" });
     const s2 = sessionRegistry.registerSession(node2.id, "impl2@test");
     db.prepare("UPDATE sessions SET status = 'running' WHERE id = ?").run(s2.id);
 
-    // Write valid sidecar for node2 only; node1 has no sidecar
+    // 只为 node2 写入有效 sidecar；node1 无 sidecar
     writeSidecar("impl2@test", { ...VALID_SIDECAR, session_name: "impl2@test" });
 
     await monitor.pollOnce();
 
-    // node1 should have unknown, node2 should have known
+    // node1 应为 unknown，node2 应为 known
     expect(store.getForNode(node1.id, "impl1@test").availability).toBe("unknown");
     expect(store.getForNode(node2.id, "impl2@test").availability).toBe("known");
   });
 
-  // T8: Monitor uses existing node/session identity (not its own)
-  it("monitor does not create its own node/session identity", async () => {
+  // T8：Monitor 使用现有 node/session identity（不自行创建）
+  it("monitor 不创建自己的 node/session identity", async () => {
     seedClaudeNode();
     await monitor.pollOnce();
 
-    // No new nodes or sessions should have been created
+    // 不应创建新 node 或 session
     const rig = rigRepo.getRig(rigRepo.listRigs()[0]!.id);
     expect(rig!.nodes).toHaveLength(1); // Only the one we seeded
   });
 
-  // T9: Claimed/adopted Claude tmux sessions are polled
-  it("claimed tmux sessions are polled", async () => {
+  // T9：轮询已 claim/adopt 的 Claude tmux session
+  it("轮询已 claim 的 tmux session", async () => {
     const { node } = seedClaimedNode();
     writeSidecar("adopted-session", { ...VALID_SIDECAR, session_name: "adopted-session" });
 
@@ -294,7 +293,7 @@ describe("ContextMonitor", () => {
     expect(usage.usedPercentage).toBe(67);
   });
 
-  it("external_cli Claude sessions are not polled", async () => {
+  it("不轮询 external_cli Claude session", async () => {
     const { node } = seedExternalCliClaudeNode();
     writeSidecar("orch-lead@test", VALID_SIDECAR);
 
@@ -305,7 +304,7 @@ describe("ContextMonitor", () => {
     expect(usage.reason).toBe("no_data");
   });
 
-  it("pollOnce normalizes stale Claude startup failures back to ready when the runtime is live", async () => {
+  it("runtime 存活时，pollOnce 将 stale Claude startup failure normalize 回 ready", async () => {
     const { sessionName, session } = (() => {
       const rig = rigRepo.createRig("test-rig-5");
       const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code", cwd: "/project" });
@@ -327,7 +326,7 @@ describe("ContextMonitor", () => {
     }));
   });
 
-  it("pollOnce normalizes stale Claude startup failures to attention_required when the runtime is blocked on trust", async () => {
+  it("runtime 被 trust 阻塞时，pollOnce 将 stale Claude startup failure normalize 为 attention_required", async () => {
     const { sessionName, session } = (() => {
       const rig = rigRepo.createRig("test-rig-5b");
       const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code", cwd: "/project" });
@@ -348,7 +347,7 @@ describe("ContextMonitor", () => {
     expect(refreshed.startup_status).toBe("attention_required");
   });
 
-  it("pollOnce leaves stale Claude startup failures as failed when the runtime has really fallen back to shell", async () => {
+  it("runtime 确实回退到 shell 时，pollOnce 让 stale Claude startup failure 保持 failed", async () => {
     const { sessionName, session } = (() => {
       const rig = rigRepo.createRig("test-rig-5c");
       const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code", cwd: "/project" });
@@ -369,7 +368,7 @@ describe("ContextMonitor", () => {
     expect(refreshed.startup_status).toBe("failed");
   });
 
-  it("pollOnce normalizes stale Codex attention_required state after the trust prompt is cleared", async () => {
+  it("trust prompt 清除后，pollOnce normalize stale Codex attention_required state", async () => {
     const rig = rigRepo.createRig("test-rig-codex-trust");
     const node = rigRepo.addNode(rig.id, "dev.qa", { runtime: "codex", cwd: "/project" });
     const session = sessionRegistry.registerSession(node.id, "dev-qa-trust@test");
@@ -400,7 +399,7 @@ describe("ContextMonitor", () => {
     }));
   });
 
-  it("pollOnce does not overwrite pending Claude startup state", async () => {
+  it("pollOnce 不覆盖 pending Claude startup state", async () => {
     const { sessionName, session } = (() => {
       const rig = rigRepo.createRig("test-rig-6");
       const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code", cwd: "/project" });
@@ -418,7 +417,7 @@ describe("ContextMonitor", () => {
     expect(checkReadySpy).not.toHaveBeenCalled();
   });
 
-  it("coalesces overlapping pollOnce calls so one compaction stage is emitted once", async () => {
+  it("合并重叠 pollOnce 调用，使一个 compaction stage 只发出一次", async () => {
     const { sessionName } = seedClaudeNode("dev.compact", "dev-compact@test");
     writeSidecar(sessionName, { ...VALID_SIDECAR, session_name: sessionName });
 

@@ -1,10 +1,10 @@
-// Slice 16 typography + vellum density assertions for FeedCard.
+// Slice 16 FeedCard 排版 + vellum 密度断言。
 //
-// Updated 2026-05-14 for the FeedCard vellum-coherent refactor per
-// for-you-feedcard-redesign-spec-2026-05-14.md. The chrome moved from
-// VellumCard + bg-white/35 to the vellum recipe (bg-stone-100/45 +
-// backdrop-blur-[10px] + ambient 3-stop box-shadow + 4 CornerBrackets)
-// and prose body sizes bumped to 12px per the legibility north star.
+// 2026-05-14 按 for-you-feedcard-redesign-spec-2026-05-14.md
+// 为 FeedCard vellum 一致重构更新。chrome 从
+// VellumCard + bg-white/35 迁到 vellum 配方（bg-stone-100/45 +
+// backdrop-blur-[10px] + 环境 3 段 box-shadow + 4 CornerBrackets），
+// prose 正文字号按可读性北极星升到 12px。
 
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -21,13 +21,13 @@ async function readSource(packageRelPath: string): Promise<string> {
 describe("FeedCard typography + vellum-coherent chrome", () => {
   it("FeedCard outer chrome uses the vellum recipe (bg-stone-100/45 + backdrop-blur-[10px])", async () => {
     const source = await readSource("src/components/for-you/FeedCard.tsx");
-    // Card surface = vellum-coherent (matches CardShell in
-    // storytelling-cards.tsx so /for-you reads as one surface).
+    // 卡表面 = vellum 一致（匹配 storytelling-cards.tsx 的 CardShell，
+    // 使 /for-you 读作单一表面）。
     expect(source).toContain("bg-surface-low/45 backdrop-blur-[10px]");
-    // The old VellumCard + left-stripe chrome is gone.
+    // 旧 VellumCard + 左条 chrome 已消失。
     expect(source).not.toMatch(/VellumCard/);
     expect(source).not.toMatch(/border-l-4 border-l-/);
-    // Ambient 3-stop shadow defines the card edges through the vellum.
+    // 环境 3 段阴影透过 vellum 定义卡边缘。
     expect(source).toContain("CARD_SHADOW_STYLE");
     expect(source).toContain("0 2px 4px rgba(0, 0, 0, 0.14)");
   });
@@ -61,13 +61,13 @@ describe("FeedCard typography + vellum-coherent chrome", () => {
 
   it("FeedCard kind indicator uses mono+leading-dot (no colored pills)", async () => {
     const source = await readSource("src/components/for-you/FeedCard.tsx");
-    // KIND_DOT map maps each FeedCardKind to a design-token dot color.
+    // KIND_DOT map 把每个 FeedCardKind 映射到设计 token 点色。
     expect(source).toContain("KIND_DOT");
     expect(source).toContain('"action-required": "bg-tertiary"');
     expect(source).toContain('approval: "bg-warning"');
     expect(source).toContain('shipped: "bg-success"');
     expect(source).toContain('progress: "bg-secondary"');
-    // Old colored-pill chrome should be gone.
+    // 旧彩色 pill chrome 应消失。
     expect(source).not.toMatch(/bg-emerald-50/);
     expect(source).not.toMatch(/bg-rose-50/);
     expect(source).not.toMatch(/bg-amber-50/);

@@ -1,6 +1,6 @@
-// SCOPES VIEW — store-direct projection pins (plan d64d2f5c proof-contract legs 1/3/5):
-// counts derive from LOCKS + C1 DROPS only; PROGRESS.md is never read; paired means
-// exactly ≥1-drop-cites-item; the lock states come from the frontmatter stamps.
+// SCOPES VIEW——store-direct projection 固定项（计划 d64d2f5c proof-contract 分支 1/3/5）：
+// 计数只从 LOCK + C1 DROP 派生；绝不读取 PROGRESS.md；paired 精确表示至少一个 drop 引用 item；
+// lock 状态来自 frontmatter stamp。
 import { describe, it, expect } from "vitest";
 import { projectSliceScope, projectMissionScopes, type ScopeFsDeps } from "../src/domain/scope/scope-view-projection.js";
 
@@ -79,8 +79,8 @@ const baseFiles = {
 };
 const baseDirs = ["/root", "/root/slices", S, `${S}/proof`];
 
-describe("scope-view projection (store-direct)", () => {
-  it("N/M pairing derives from C1 drops ONLY: 2/3 paired; each paired item carries its drops", () => {
+describe("scope-view 投影（store-direct）", () => {
+  it("N/M pairing 只从 C1 drop 派生：2/3 paired；每个 paired item 携带自身 drop", () => {
     const d = projectSliceScope(fsFixture(baseFiles, baseDirs), S)!;
     expect(d.proof).toEqual({ paired: 2, total: 3 });
     expect(d.proofContract[0]!.paired).toBe(true);
@@ -90,7 +90,7 @@ describe("scope-view projection (store-direct)", () => {
     expect(d.proofContract[2]!.drops[0]!.artifactType).toBe("guard");
   });
 
-  it("PROGRESS.md is NEVER a data source: its lying checkbox moves nothing (the drift-class kill)", () => {
+  it("PROGRESS.md 绝不是数据源：其中失真的 checkbox 不改变任何内容（消除 drift 类）", () => {
     const withoutProgress = { ...baseFiles };
     delete (withoutProgress as Record<string, string>)[`${S}/PROGRESS.md`];
     const a = projectSliceScope(fsFixture(baseFiles, baseDirs), S)!;
@@ -100,7 +100,7 @@ describe("scope-view projection (store-direct)", () => {
     expect(b.progressPath).toBeNull();
   });
 
-  it("locks come from the frontmatter stamps: spec locked, delivery NOT — no proven-green invention", () => {
+  it("lock 来自 frontmatter stamp：spec 已锁定、delivery 未锁定，不虚构 proven-green", () => {
     const d = projectSliceScope(fsFixture(baseFiles, baseDirs), S)!;
     expect(d.locks.spec).toEqual({ by: "pm-openrig@openrig-pm", at: "2026-08-06T10:00:00.000Z" });
     expect(d.locks.delivery).toBeNull();
@@ -111,19 +111,19 @@ describe("scope-view projection (store-direct)", () => {
     expect(d.prdExists).toBe(true); // via locked-artifacts
   });
 
-  it("mission overview lists slice summaries store-direct", () => {
+  it("mission overview 直接从 store 列出 slice summary", () => {
     const m = projectMissionScopes(fsFixture(baseFiles, baseDirs), "/root", "");
-    // missionsRoot="/root", mission="" -> missionDir "/root"; use the real shape instead:
+    // missionsRoot="/root"、mission="" 时 missionDir 为 "/root"；改用真实结构：
     const m2 = projectMissionScopes(fsFixture(baseFiles, [...baseDirs]), "/root/..", "root");
     expect(m).not.toBeNull();
   });
 });
 
-// LOOK delta D1 — spec-sha computed from the LOCKED ARTIFACT'S BYTES at projection time
-// (the store carries the path, not a hash; computed = store-derived, never transcribed).
+// LOOK delta D1——spec-sha 在投影时从锁定产物的字节计算（store 保存 path 而非 hash；computed 来自
+// store，绝不抄录）。
 import { createHash } from "node:crypto";
-describe("D1 — spec-sha from locked artifact bytes", () => {
-  it("specShaShort = sha256[:8] of the locked artifact file; null when the file is absent", () => {
+describe("D1——从锁定产物字节计算 spec-sha", () => {
+  it("specShaShort 等于锁定产物文件的 sha256[:8]，文件缺失时为 null", () => {
     const prd = "# the PRD bytes";
     const files = { ...baseFiles, [`${S}/IMPLEMENTATION-PRD.md`]: prd };
     const d = projectSliceScope(fsFixture(files, baseDirs), S)!;
@@ -132,7 +132,7 @@ describe("D1 — spec-sha from locked artifact bytes", () => {
     expect(d2.specShaShort).toBeNull(); // absent file = honest null, never fabricated
   });
 
-  it("39a1c477 nit: a NON-spec kind listed FIRST does not steal the hash — the `kind: spec` entry wins", () => {
+  it("39a1c477：排在首位的非 spec kind 不会抢走 hash，`kind: spec` 条目胜出", () => {
     const readme = README.replace(
       `locked-artifacts:
   - name: Implementation PRD

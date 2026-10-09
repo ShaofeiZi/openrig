@@ -1,24 +1,22 @@
-// Slice Story View v0 — slice indexer focused tests.
+// Slice Story View v0——slice indexer 专项测试。
 //
-// Drives the indexer against a temp filesystem fixture (fully isolated
-// from the real substrate-side slices folder so the test stays
-// deterministic and parallel-safe). Covers:
+// 使用临时文件系统 fixture 驱动 indexer；与真实 substrate 侧 slices 文件夹完全隔离，使测试
+// 保持确定且可安全并行。覆盖：
 //
-//   - frontmatter parsing + display name fallback
-//   - status enum mapping (incl. heuristic fallbacks)
-//   - rail-item extraction from frontmatter
-//   - qitem matching strategies (slice-name/mission body + tags)
-//   - dogfood-evidence proof packet detection (with screenshots / videos / traces)
-//   - cache TTL invalidation
-//   - graceful degradation when slicesRoot is unset / queue_items missing
+//   - frontmatter 解析 + display name fallback
+//   - status enum mapping（包括 heuristic fallback）
+//   - 从 frontmatter 提取 rail-item
+//   - qitem 匹配策略（slice-name/mission body + tag）
+//   - dogfood-evidence proof packet 探测（含 screenshot / video / trace）
+//   - cache TTL 失效
+//   - slicesRoot 未设置 / queue_items 缺失时优雅降级
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-// qitem-18110994 R4 — the established hoisted node:fs importOriginal
-// passthrough (same shape as progress-review-done-coherence.test.ts): every
-// export stays the real implementation, only readFileSync is wrapped so the
-// R4 scoping pin can observe which Markdown files a standalone get() reads.
-// Behavior is unchanged; the wrapper only records calls.
+// qitem-18110994 R4——已建立的 hoisted node:fs importOriginal passthrough，与
+// progress-review-done-coherence.test.ts 结构相同：每个 export 保持真实实现，只包装
+// readFileSync，使 R4 scoping pin 能观察独立 get() 读取哪些 Markdown 文件。行为不变；
+// wrapper 只记录调用。
 vi.mock("node:fs", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:fs")>();
   return { ...actual, readFileSync: vi.fn(actual.readFileSync) };
@@ -91,48 +89,48 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
     fs.rmSync(cleanup, { recursive: true, force: true });
   });
 
-  describe("frontmatter parsing", () => {
-    it("parses simple key: value pairs between --- markers", () => {
+  describe("frontmatter 解析", () => {
+    it("解析 --- marker 之间的简单 key: value 对", () => {
       const fm = parseFrontmatter("---\nname: foo\nstatus: active\n---\nbody");
       expect(fm).toEqual({ name: "foo", status: "active" });
     });
 
-    it("strips wrapping single + double quotes from values", () => {
+    it("移除 value 外层的单引号和双引号", () => {
       const fm = parseFrontmatter(`---\nslice: 'pl-019-x'\ntitle: "Quoted"\n---\nbody`);
       expect(fm.slice).toBe("pl-019-x");
       expect(fm.title).toBe("Quoted");
     });
 
-    it("returns empty object when no frontmatter delimiter present", () => {
+    it("没有 frontmatter delimiter 时返回空 object", () => {
       expect(parseFrontmatter("# Just markdown")).toEqual({});
     });
 
-    it("returns empty object on unterminated frontmatter", () => {
+    it("frontmatter 未结束时返回空 object", () => {
       expect(parseFrontmatter("---\nslice: x\nno-end-marker")).toEqual({});
     });
   });
 
-  describe("isReady + graceful degradation", () => {
-    it("isReady() returns false when slicesRoot is empty string", () => {
+  describe("isReady + 优雅降级", () => {
+    it("slicesRoot 为空字符串时 isReady() 返回 false", () => {
       const indexer = new SliceIndexer({ slicesRoot: "", dogfoodEvidenceRoot: null, db });
       expect(indexer.isReady()).toBe(false);
       expect(indexer.list()).toEqual([]);
       expect(indexer.get("anything")).toBeNull();
     });
 
-    it("isReady() returns false when slicesRoot path doesn't exist", () => {
+    it("slicesRoot 路径不存在时 isReady() 返回 false", () => {
       const indexer = new SliceIndexer({ slicesRoot: "/nonexistent/path/foo", dogfoodEvidenceRoot: null, db });
       expect(indexer.isReady()).toBe(false);
     });
 
-    it("isReady() returns true when slicesRoot exists as a directory", () => {
+    it("slicesRoot 作为目录存在时 isReady() 返回 true", () => {
       const indexer = new SliceIndexer({ slicesRoot, dogfoodEvidenceRoot: null, db });
       expect(indexer.isReady()).toBe(true);
     });
   });
 
-  describe("listing + display name + status mapping", () => {
-    it("enumerates slice directories and skips dotfiles", () => {
+  describe("列表 + display name + status mapping", () => {
+    it("枚举 slice 目录并跳过 dotfile", () => {
       writeSlice(slicesRoot, "alpha-slice", { "README.md": "---\nstatus: active\n---\n# Alpha" });
       writeSlice(slicesRoot, "beta-slice", { "README.md": "---\nstatus: shipped\n---\n# Beta" });
       fs.mkdirSync(path.join(slicesRoot, ".hidden"));
@@ -141,7 +139,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(entries.map((e) => e.name).sort()).toEqual(["alpha-slice", "beta-slice"]);
     });
 
-    it("enumerates mission-aware workspace layout under missions/<mission>/slices/<slice>", () => {
+    it("枚举 missions/<mission>/slices/<slice> 下的 mission-aware workspace layout", () => {
       const missionsRoot = path.join(cleanup, "missions");
       writeSlice(path.join(missionsRoot, "idea-ledger", "slices"), "capture-product-ideas", {
         "README.md": "---\ntitle: Capture Product Ideas\nstatus: active\n---\n# Capture\n",
@@ -161,7 +159,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       );
     });
 
-    it("can index legacy flat slices and mission-aware slices from compatibility roots", () => {
+    it("可从兼容 root 索引 legacy flat slice 与 mission-aware slice", () => {
       const missionsRoot = path.join(cleanup, "missions");
       writeSlice(slicesRoot, "legacy-flat-slice", {
         "README.md": "---\nstatus: active\n---\n# Legacy\n",
@@ -184,7 +182,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       );
     });
 
-    it("derives displayName from frontmatter title, then first H1, then folder name", () => {
+    it("displayName 依次从 frontmatter title、首个 H1、文件夹名称派生", () => {
       writeSlice(slicesRoot, "from-title", { "README.md": "---\ntitle: Custom Title\n---\n# Heading" });
       writeSlice(slicesRoot, "from-h1", { "README.md": "---\nstatus: draft\n---\n# H1 Heading\nbody" });
       writeSlice(slicesRoot, "no-doc", {});
@@ -195,7 +193,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(byName.get("no-doc")).toBe("no-doc");
     });
 
-    it("maps frontmatter status to canonical buckets", () => {
+    it("把 frontmatter status 映射到 canonical bucket", () => {
       writeSlice(slicesRoot, "s1", { "README.md": "---\nstatus: active\n---\n" });
       writeSlice(slicesRoot, "s2", { "README.md": "---\nstatus: shipped\n---\n" });
       writeSlice(slicesRoot, "s3", { "README.md": "---\nstatus: parked-with-evidence\n---\n" });
@@ -210,7 +208,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(byName.get("s5")).toBe("draft");
     });
 
-    it("uses PROGRESS.md status as the current slice cursor over stale README dispatch status", () => {
+    it("使用 PROGRESS.md status 作为当前 slice cursor，优先于 stale README dispatch status", () => {
       writeSlice(slicesRoot, "mission-control-queue-observability-phase-a", {
         "README.md": "---\nslice: mission-control-queue-observability-phase-a\nstatus: ready-for-delivery-dispatch\nrail-item: PL-005\n---\n# Mission Control Phase A\n",
         "PROGRESS.md": "---\ndoc: mission-control-progress\nstatus: phase-a-closed-locally-promoted\nrail-item: PL-005\n---\n# Progress\n",
@@ -227,26 +225,25 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
     });
   });
 
-  describe("rail-item extraction", () => {
-    it("pulls rail-item from frontmatter scalar", () => {
+  describe("rail-item 提取", () => {
+    it("从 frontmatter scalar 提取 rail-item", () => {
       writeSlice(slicesRoot, "x", { "IMPLEMENTATION-PRD.md": "---\nrail-item: PL-019\n---\n" });
       const indexer = new SliceIndexer({ slicesRoot, dogfoodEvidenceRoot: null, db });
       expect(indexer.list()[0]!.railItem).toBe("PL-019");
     });
 
-    it("strips bracket array notation that YAML parser left as string", () => {
+    it("移除 YAML parser 遗留为字符串的 bracket array notation", () => {
       writeSlice(slicesRoot, "x", { "IMPLEMENTATION-PRD.md": "---\nrelated-rail-items: [PL-008]\n---\n" });
       const indexer = new SliceIndexer({ slicesRoot, dogfoodEvidenceRoot: null, db });
       expect(indexer.list()[0]!.railItem).toBe("PL-008");
     });
   });
 
-  // V0.3.1 slice 13 walk-item 7 — workflow_spec frontmatter parsing.
-  // The mission Topology tab (and slice Topology fallback) projects
-  // a spec graph from this declaration even when no live workflow
-  // instance is bound. Format: `workflow_spec: <name>@<version>`.
-  describe("workflow_spec frontmatter", () => {
-    it("parses workflow_spec: <name>@<version> from frontmatter onto SliceRecord + SliceListEntry", () => {
+  // V0.3.1 slice 13 walk-item 7——workflow_spec frontmatter 解析。即使没有绑定 live workflow
+  // instance，任务目标 Topology tab（以及 slice Topology fallback）仍从该声明投影 spec graph。
+  // 格式：`workflow_spec: <name>@<version>`。
+  describe("workflow_spec frontmatter 解析", () => {
+    it("从 frontmatter 解析 workflow_spec: <name>@<version> 到 SliceRecord + SliceListEntry", () => {
       writeSlice(slicesRoot, "topo-slice", {
         "README.md": "---\nstatus: active\nworkflow_spec: openrig-velocity@1.0\n---\n# Topo\n",
       });
@@ -257,7 +254,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(record.workflowSpec).toEqual({ name: "openrig-velocity", version: "1.0" });
     });
 
-    it("returns workflowSpec: null when the frontmatter field is absent", () => {
+    it("frontmatter 字段缺失时返回 workflowSpec: null", () => {
       writeSlice(slicesRoot, "no-topo-slice", {
         "README.md": "---\nstatus: active\n---\n# Plain\n",
       });
@@ -267,7 +264,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(indexer.get("no-topo-slice")!.workflowSpec).toBeNull();
     });
 
-    it("ignores malformed workflow_spec values that do not match <name>@<version>", () => {
+    it("忽略不匹配 <name>@<version> 的 malformed workflow_spec 值", () => {
       writeSlice(slicesRoot, "bad-topo-slice", {
         "README.md": "---\nstatus: active\nworkflow_spec: not-a-valid-spec-ref\n---\n",
       });
@@ -276,8 +273,8 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
     });
   });
 
-  describe("qitem matching", () => {
-    it("matches qitems by slice-name body substring", () => {
+  describe("qitem 匹配", () => {
+    it("按 slice-name body 子串匹配 qitem", () => {
       writeSlice(slicesRoot, "mission-control-phase-a", { "README.md": "---\nstatus: shipped\n---\n" });
       insertQitem(db, { qitemId: "q-match-1", body: "PL-005 Phase A mission-control-phase-a dispatch" });
       insertQitem(db, { qitemId: "q-match-2", body: "Re: mission-control-phase-a Q&A" });
@@ -287,7 +284,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(slice.qitemIds.sort()).toEqual(["q-match-1", "q-match-2"]);
     });
 
-    it("also matches qitems by rail-item body substring (union with slice-name matches)", () => {
+    it("也按 rail-item body 子串匹配 qitem，并与 slice-name match 求并集", () => {
       writeSlice(slicesRoot, "topology-activity-indicators-v0", {
         "IMPLEMENTATION-PRD.md": "---\nrail-item: PL-019\nstatus: active\n---\n",
       });
@@ -299,7 +296,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(slice.qitemIds.sort()).toEqual(["q-by-name", "q-by-rail"]);
     });
 
-    it("matches nested mission slices by mission id and tags", () => {
+    it("按任务目标 id 和 tag 匹配嵌套任务目标 slice", () => {
       const missionsRoot = path.join(cleanup, "missions");
       writeSlice(path.join(missionsRoot, "idea-ledger", "slices"), "triage-product-ideas", {
         "README.md": "---\nstatus: active\n---\n# Triage\n",
@@ -326,30 +323,21 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(slice.qitemIds.sort()).toEqual(["q-by-mission-body", "q-by-slice-tag"]);
     });
 
-    // V0.3.1 slice 17 founder-walk-workspace-state-correctness — walk item 3.
-    // The over-match bug: a qitem tagged ONLY mission:<missionId>
-    // (no `slice:` tag, no slice-name body mention) was returning
-    // under EVERY slice in that mission because matchQitems unioned
-    // the missionId substring term across all slices. Fix: when at
-    // least one qitem has the typed `slice:<sliceName>` tag, the
-    // missionId substring term is dropped from the union so
-    // mission-tagged-only qitems no longer pollute the slice's queue.
-    // Substring fallback is preserved for slices without typed-tag
-    // qitems (legacy corpus compatibility — HG-2).
-    it("when typed slice:<name> tag matches exist, typed tags are authoritative: mission-only AND body-substring-only qitems are NOT included (VM-004)", () => {
-      // Production shape: slices/missions root with a mission folder
-      // containing the slice. missionId resolves to the mission folder
-      // name; railItem defaults to missionId when frontmatter doesn't
-      // specify one.
+    // V0.3.1 slice 17 founder-walk-workspace-state-correctness——walk item 3。over-match bug：
+    // 只带 mission:<missionId> tag（无 `slice:` tag，body 也未提 slice name）的 qitem 会出现在
+    // 该任务目标的每个 slice 下，因为 matchQitems 对所有 slice 都并入 missionId 子串 term。
+    // 修复：至少一个 qitem 带 typed `slice:<sliceName>` tag 时，从并集中移除 missionId 子串 term，
+    // 让只有 mission tag 的 qitem 不再污染 slice queue。没有 typed-tag qitem 的 slice 保留子串
+    // fallback，以兼容 legacy corpus（HG-2）。
+    it("存在 typed slice:<name> tag match 时，以 typed tag 为权威，不包含仅 mission 或仅 body 子串 qitem（VM-004）", () => {
+      // 生产结构：slices/missions root 下的任务目标文件夹包含 slice。missionId 解析为任务目标
+      // 文件夹名称；frontmatter 未指定 railItem 时默认使用 missionId。
       //
-      // VM-004 (canonical scope-membership matcher): typed tags are
-      // AUTHORITATIVE. When ANY confirmed `slice:<name>` typed row exists,
-      // the substring fallback tier is gated OFF entirely — so neither the
-      // mission-only qitem NOR the body-substring-only qitem leaks into the
-      // slice queue. (Pre-VM-004 the substring tier always ran and kept the
-      // sliceName body-substring match; that leak is exactly what VM-004
-      // closes. Legacy zero-typed corpora keep the full substring fallback —
-      // see the sibling "preserves legacy substring fallback" test.)
+      // VM-004（canonical scope-membership matcher）：typed tag 是权威来源。存在任意确认的
+      // `slice:<name>` typed row 时，完全关闭 substring fallback 层，因此 mission-only qitem 和
+      // body-substring-only qitem 都不会泄漏到 slice queue。VM-004 之前 substring 层始终运行并
+      // 保留 sliceName body-substring match；VM-004 正是关闭该泄漏。legacy zero-typed corpus 继续
+      // 保留完整 substring fallback，见相邻“保留 legacy substring fallback”测试。
       const missionsRoot = path.join(cleanup, "missions");
       writeSlice(path.join(missionsRoot, "release-fake", "slices"), "fake-slice-17", {
         "README.md": "---\nstatus: active\nrail-item: WALK-17\n---\n# Fake 17\n",
@@ -376,7 +364,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(slice.qitemIds).not.toContain("q-by-slice-name-body");
     });
 
-    it("does not re-include mission-only qitems when railItem defaults to missionId", () => {
+    it("railItem 默认使用 missionId 时，不重新包含 mission-only qitem", () => {
       const missionsRoot = path.join(cleanup, "missions");
       writeSlice(path.join(missionsRoot, "release-fake-default-rail", "slices"), "fake-slice-default-rail", {
         "README.md": "---\nstatus: active\n---\n# Fake default rail\n",
@@ -399,11 +387,9 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(slice.qitemIds).not.toContain("q-default-rail-mission-tag-only");
     });
 
-    it("preserves legacy substring fallback (including mission body) when NO typed slice: tag exists", () => {
-      // When no qitem has the typed `slice:<name>` tag, the indexer
-      // falls back to the pre-fix three-term substring union so older
-      // dogfood corpora keep matching the way they did before this
-      // slice landed.
+    it("不存在 typed slice: tag 时保留 legacy substring fallback，包括 mission body", () => {
+      // 没有 qitem 带 typed `slice:<name>` tag 时，indexer 回退到修复前的三 term 子串并集，
+      // 让旧 dogfood corpus 保持本 slice 落地前的匹配方式。
       const missionsRoot = path.join(cleanup, "missions");
       writeSlice(path.join(missionsRoot, "legacy-mission", "slices"), "legacy-slice", {
         "README.md": "---\nstatus: active\nrail-item: LEGACY-RAIL\n---\n",
@@ -412,18 +398,15 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       insertQitem(db, { qitemId: "q-legacy-by-name", body: "legacy-slice work item", tags: [] });
       const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
       const slice = indexer.get("legacy-slice")!;
-      // Both match: mission body via missionId substring, name body via sliceName substring.
+      // 两者都匹配：mission body 通过 missionId 子串，name body 通过 sliceName 子串。
       expect(slice.qitemIds.sort()).toEqual(["q-legacy-by-mission", "q-legacy-by-name"]);
     });
 
-    // V0.3.1 slice 17 walk item 10 — forward-fix #1. The slice-detail
-    // Queue tab consumes `detail.qitemIds` unchanged from the backend,
-    // so the DESC-by-ts_created order has to be applied by the indexer
-    // itself (the Phase A frontend rollup sort only covers the
-    // workspace/mission rollup view). Three distinct ts_created values
-    // discriminate the ordering per banked
-    // feedback_poc_regression_must_discriminate.
-    it("matchQitems returns qitemIds sorted DESC by ts_created (slice tab consumes this order unchanged)", () => {
+    // V0.3.1 slice 17 walk item 10——forward-fix #1。slice-detail Queue tab 原样消费后端
+    // `detail.qitemIds`，因此 indexer 自身必须按 ts_created DESC 排序；Phase A 前端 rollup 排序
+    // 只覆盖 workspace/mission rollup view。按已记录 feedback_poc_regression_must_discriminate，
+    // 使用三个不同 ts_created 值判别顺序。
+    it("matchQitems 返回按 ts_created DESC 排序的 qitemId；slice tab 原样消费该顺序", () => {
       const missionsRoot = path.join(cleanup, "missions");
       writeSlice(path.join(missionsRoot, "fwx-mission", "slices"), "fwx-slice", {
         "README.md": "---\nstatus: active\nrail-item: FWX-RAIL\n---\n",
@@ -448,12 +431,12 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       });
       const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
       const slice = indexer.get("fwx-slice")!;
-      // Strict order: newest first, oldest last. NOT alphabetic by id.
+      // 严格顺序：最新在前、最旧在后，不按 id 字母序。
       expect(slice.qitemIds).toEqual(["q-newest", "q-middle", "q-oldest"]);
     });
 
-    it("returns empty qitem set when queue_items table is absent", () => {
-      // Re-create db without queue_items to simulate the test-harness gap.
+    it("queue_items 表不存在时返回空 qitem set", () => {
+      // 重建不含 queue_items 的 db，以模拟 test-harness 缺口。
       const bareDb = createDb();
       migrate(bareDb, [coreSchema]);
       writeSlice(slicesRoot, "x", { "README.md": "---\nrail-item: PL-005\n---\n" });
@@ -463,8 +446,8 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
     });
   });
 
-  describe("proof packet detection", () => {
-    it("matches dogfood-evidence dir whose name contains the slice name", () => {
+  describe("proof packet 探测", () => {
+    it("匹配名称包含 slice name 的 dogfood-evidence 目录", () => {
       writeSlice(slicesRoot, "mission-control-queue-observability-phase-a", { "README.md": "---\n---\n" });
       const proofDir = path.join(dogfoodRoot, "pl005-phase-a-mission-control-queue-observability-20260504");
       fs.mkdirSync(proofDir);
@@ -481,7 +464,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(slice.proofPacket!.traces).toEqual([]);
     });
 
-    it("strips trailing -v0 / -v1 suffix when matching proof packet directories", () => {
+    it("匹配 proof packet 目录时移除尾部 -v0 / -v1 suffix", () => {
       writeSlice(slicesRoot, "topology-activity-indicators-v0", { "README.md": "---\n---\n" });
       const proofDir = path.join(dogfoodRoot, "pl019-topology-activity-indicators-20260504");
       fs.mkdirSync(proofDir);
@@ -491,20 +474,20 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
         .toBe("pl019-topology-activity-indicators-20260504");
     });
 
-    it("picks the latest-mtime directory when multiple proof packets match", () => {
+    it("多个 proof packet 匹配时选择 mtime 最新目录", () => {
       writeSlice(slicesRoot, "x-slice", { "README.md": "---\n---\n" });
       const oldDir = path.join(dogfoodRoot, "x-slice-20260101");
       const newDir = path.join(dogfoodRoot, "x-slice-20260601");
       fs.mkdirSync(oldDir);
       fs.mkdirSync(newDir);
-      // Force mtime ordering.
+      // 强制 mtime 顺序。
       fs.utimesSync(oldDir, new Date("2026-01-01"), new Date("2026-01-01"));
       fs.utimesSync(newDir, new Date("2026-06-01"), new Date("2026-06-01"));
       const indexer = new SliceIndexer({ slicesRoot, dogfoodEvidenceRoot: dogfoodRoot, db });
       expect(indexer.get("x-slice")!.proofPacket?.dirName).toBe("x-slice-20260601");
     });
 
-    it("classifies .mp4/.webm files as videos", () => {
+    it("把 .mp4/.webm 文件分类为 video", () => {
       writeSlice(slicesRoot, "video-slice", { "README.md": "---\n---\n" });
       const proofDir = path.join(dogfoodRoot, "video-slice-20260504");
       fs.mkdirSync(proofDir);
@@ -518,33 +501,32 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       ]);
     });
 
-    it("returns null proofPacket when dogfoodRoot is unset", () => {
+    it("dogfoodRoot 未设置时返回 null proofPacket", () => {
       writeSlice(slicesRoot, "x", { "README.md": "---\n---\n" });
       const indexer = new SliceIndexer({ slicesRoot, dogfoodEvidenceRoot: null, db });
       expect(indexer.get("x")!.proofPacket).toBeNull();
     });
   });
 
-  describe("cache invalidation", () => {
-    it("invalidate() drops both list + detail caches", () => {
+  describe("cache 失效", () => {
+    it("invalidate() 同时丢弃 list + detail cache", () => {
       writeSlice(slicesRoot, "x", { "README.md": "---\n---\n# X" });
       const indexer = new SliceIndexer({ slicesRoot, dogfoodEvidenceRoot: null, db });
       const first = indexer.list();
       expect(first).toHaveLength(1);
       writeSlice(slicesRoot, "y", { "README.md": "---\n---\n# Y" });
-      // Cached — still 1.
+      // 来自 cache，仍为 1。
       expect(indexer.list()).toHaveLength(1);
       indexer.invalidate();
       expect(indexer.list()).toHaveLength(2);
     });
   });
 
-  // OPR.0.3.2.17 — SliceListEntry surfaces frontmatter `description`
-  // so the storytelling adapter can use it as ConceptCard.oneLiner
-  // for `rawStatus === "candidate"` slices. Mapping: description first,
-  // summary fallback, null when both absent.
-  describe("OPR.0.3.2.17 — frontmatter description exposed on SliceListEntry", () => {
-    it("description: <text> populates SliceListEntry.description", () => {
+  // OPR.0.3.2.17——SliceListEntry 呈现 frontmatter `description`，使 storytelling adapter
+  // 可把它用作 `rawStatus === "candidate"` slice 的 ConceptCard.oneLiner。映射顺序：优先
+  // description，回退到 summary，两者都缺失时为 null。
+  describe("OPR.0.3.2.17——在 SliceListEntry 呈现 frontmatter description", () => {
+    it("description: <text> 填充 SliceListEntry.description", () => {
       writeSlice(slicesRoot, "concept-restore", {
         "README.md": "---\nstatus: candidate\ndescription: First-class restore packet.\n---\n# Restore",
       });
@@ -555,7 +537,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(entries[0]!.rawStatus).toBe("candidate");
     });
 
-    it("summary: <text> is the fallback when description is absent", () => {
+    it("description 缺失时以 summary: <text> 作为 fallback", () => {
       writeSlice(slicesRoot, "concept-with-summary", {
         "README.md": "---\nstatus: candidate\nsummary: Falls back to summary.\n---\n# Slice",
       });
@@ -565,7 +547,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(entries[0]!.description).toBe("Falls back to summary.");
     });
 
-    it("description=null when both description and summary are absent", () => {
+    it("description 和 summary 都缺失时 description=null", () => {
       writeSlice(slicesRoot, "no-desc", {
         "README.md": "---\nstatus: candidate\n---\n# No desc",
       });
@@ -574,7 +556,7 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
       expect(entries[0]!.description).toBeNull();
     });
 
-    it("empty/whitespace-only description value is normalized to null (graceful-empty input)", () => {
+    it("空或只有空白的 description 值规范化为 null（graceful-empty input）", () => {
       writeSlice(slicesRoot, "empty-desc", {
         "README.md": "---\nstatus: candidate\ndescription: '   '\n---\n# Slice",
       });
@@ -586,18 +568,15 @@ describe("PL-slice-story-view-v0 SliceIndexer", () => {
 });
 
 // ---------------------------------------------------------------------------
-// qitem-ccf87c0d — Project mission-index LOAD CONTRACT (guard-amended RED).
-// Forensic root cause: matchQitems runs O(slices) full-table queue_items LIKE
-// scans per cold rebuild (tier-1 wildcard+ORDER BY always; up to 3 more
-// body-LIKE scans per zero-typed slice) — 353 slices at host scale = ~10s
-// cold, synchronously blocking the daemon event loop. The contract below
-// counts EXECUTIONS of queue_items LIKE statements (not prepare calls):
-// a cold rebuild must run a CONSTANT number of scan-shaped statements,
-// independent of slice count. Behavior pins ride alongside so the batch
-// rewrite cannot drift membership semantics.
+// qitem-ccf87c0d——Project mission-index LOAD CONTRACT（guard-amended RED）。取证根因：
+// matchQitems 每次 cold rebuild 执行 O(slices) 次 queue_items 全表 LIKE 扫描；tier-1 始终执行
+// wildcard+ORDER BY，每个 zero-typed slice 最多再做 3 次 body-LIKE。主机规模 353 个 slice 时
+// cold 耗时约 10 秒，同步阻塞后台服务 event loop。下方契约统计 queue_items LIKE statement 的
+// 执行次数，而非 prepare 调用：cold rebuild 必须执行常数次 scan-shaped statement，与 slice 数量
+// 无关。并列的行为 pin 确保 batch rewrite 不会漂移 membership 语义。
 // ---------------------------------------------------------------------------
 
-describe("qitem-ccf87c0d — mission-index load contract + membership pins", () => {
+describe("qitem-ccf87c0d——mission-index load contract + membership pin", () => {
   let db: Database.Database;
   let cleanup: string;
   let missionsRoot: string;
@@ -616,10 +595,8 @@ describe("qitem-ccf87c0d — mission-index load contract + membership pins", () 
     fs.rmSync(cleanup, { recursive: true, force: true });
   });
 
-  /** Count EXECUTIONS (.all/.iterate/.get calls) of statements that both
-   *  name queue_items and carry a LIKE — the scan-shaped statements. run()
-   *  passes through uncounted (INSERT seeding). Non-LIKE statements are
-   *  returned unwrapped. */
+  /** 统计同时引用 queue_items 且含 LIKE 的 statement 执行次数（.all/.iterate/.get 调用），即
+   *  scan-shaped statement。run() 不计数并直接透传（INSERT 填种）；非 LIKE statement 不包装。 */
   function instrumentLikeExecutions(target: Database.Database): () => number {
     let n = 0;
     const origPrepare = target.prepare.bind(target);
@@ -636,9 +613,9 @@ describe("qitem-ccf87c0d — mission-index load contract + membership pins", () 
     return () => n;
   }
 
-  /** Exact seed: 2 missions x 20 slices = 40 slices; the first 12 (30%) are
-   *  typed (one confirmed `slice:` row each); 60 qitems total (12 typed rows
-   *  + 48 zero-typed rows with 200-byte bodies). */
+  /** 精确填种：2 个任务目标 × 20 个 slice = 40 个 slice；前 12 个（30%）为 typed，每个各有
+   *  一条确认的 `slice:` row；共 60 个 qitem（12 个 typed row + 48 个带 200-byte body 的
+   *  zero-typed row）。 */
   function seedFixture(): { typedSlices: string[]; untypedSlices: string[] } {
     const typedSlices: string[] = [];
     const untypedSlices: string[] = [];
@@ -674,22 +651,21 @@ describe("qitem-ccf87c0d — mission-index load contract + membership pins", () 
     return { typedSlices, untypedSlices };
   }
 
-  it("LOAD CONTRACT (RED): one cold list() over 40 slices executes a CONSTANT number of queue_items LIKE statements (<= 4), independent of slice count", () => {
+  it("LOAD CONTRACT（RED）：对 40 个 slice 的一次 cold list() 执行常数个 queue_items LIKE statement（<= 4），与 slice 数量无关", () => {
     const { typedSlices } = seedFixture();
     const likeCount = instrumentLikeExecutions(db);
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
     const entries = indexer.list();
     expect(entries).toHaveLength(40);
-    // Membership sanity inside the same rebuild: a typed slice carries its row.
+    // 同次 rebuild 内检查 membership：typed slice 携带自身 row。
     const typed0 = entries.find((e) => e.name === typedSlices[0])!;
     expect(typed0.qitemCount).toBe(1);
-    // The contract: constant scan count. Pre-fix this executes
-    // 40 tier-1 LIKE iterations + 2 dedup'd fallback LIKEs for each of the
-    // 28 zero-typed slices (= 96 total). Post-fix: bounded constant.
+    // 契约：扫描次数为常数。修复前会执行 40 次 tier-1 LIKE iteration，再为 28 个 zero-typed
+    // slice 各执行 2 次已去重 fallback LIKE，共 96 次；修复后为有界常数。
     expect(likeCount()).toBeLessThanOrEqual(4);
   });
 
-  it("PIN: invalidate() picks up a fresh slice folder AND its typed membership (Explorer auto-show read-after-write)", () => {
+  it("PIN：invalidate() 获取新 slice 文件夹及其 typed membership（Explorer auto-show read-after-write）", () => {
     seedFixture();
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
     expect(indexer.list()).toHaveLength(40);
@@ -708,16 +684,15 @@ describe("qitem-ccf87c0d — mission-index load contract + membership pins", () 
     expect(indexer.get("ld-fresh-folder")!.qitemIds).toEqual(["q-fresh-typed"]);
   });
 
-  it("PIN: cold direct get() BEFORE any list() resolves correct typed membership", () => {
+  it("PIN：任何 list() 之前的 cold direct get() 能解析正确 typed membership", () => {
     const { typedSlices } = seedFixture();
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
-    // No list() call first — the detail path must build whatever index it
-    // needs lazily.
+    // 之前不调用 list()；detail 路径必须延迟构建所需 index。
     const record = indexer.get(typedSlices[3]!)!;
     expect(record.qitemIds).toEqual(["q-typed-03"]);
   });
 
-  it("PIN: TTL expiry refreshes membership WITHOUT an explicit invalidate", async () => {
+  it("PIN：TTL 到期后无需显式 invalidate 即刷新 membership", async () => {
     const { typedSlices } = seedFixture();
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db, cacheTtlMs: 40 });
     expect(indexer.get(typedSlices[0]!)!.qitemIds).toEqual(["q-typed-00"]);
@@ -731,12 +706,10 @@ describe("qitem-ccf87c0d — mission-index load contract + membership pins", () 
     expect(indexer.get(typedSlices[0]!)!.qitemIds).toEqual(["q-typed-00-later", "q-typed-00"]);
   });
 
-  it("PIN: overlapping zero-typed fallback terms credit ONE row to EVERY matching slice (no consuming-alternation loss)", () => {
-    // Flat root: railItem/missionId are null, so each slice's only fallback
-    // term is its name. The two names OVERLAP inside one body string —
-    // "alpha-beta-gamma" contains both "alpha-beta" and "beta-gamma" with a
-    // shared "beta" segment. A naive single consuming alternation would
-    // credit only the first.
+  it("PIN：重叠 zero-typed fallback term 把同一 row 计入每个匹配 slice，不发生 consuming-alternation 丢失", () => {
+    // flat root 下 railItem/missionId 为 null，因此每个 slice 唯一 fallback term 是自身名称。
+    // 两个名称在同一个 body 字符串中重叠："alpha-beta-gamma" 同时包含 "alpha-beta" 和
+    // "beta-gamma"，共享 "beta" segment。简单的单次 consuming alternation 只会计入首项。
     const flatRoot = path.join(cleanup, "flat-slices");
     writeSlice(flatRoot, "alpha-beta", { "README.md": "---\nstatus: active\n---\n" });
     writeSlice(flatRoot, "beta-gamma", { "README.md": "---\nstatus: active\n---\n" });
@@ -746,7 +719,7 @@ describe("qitem-ccf87c0d — mission-index load contract + membership pins", () 
     expect(indexer.get("beta-gamma")!.qitemIds).toEqual(["q-overlap"]);
   });
 
-  it("PIN: SQL-LIKE ASCII case-insensitivity is preserved in the fallback tier", () => {
+  it("PIN：fallback 层保留 SQL-LIKE ASCII 大小写不敏感语义", () => {
     const flatRoot = path.join(cleanup, "flat-ci");
     writeSlice(flatRoot, "case-probe", { "README.md": "---\nstatus: active\n---\n" });
     insertQitem(db, { qitemId: "q-upper", body: "Ref: CASE-PROBE follow-up", tags: [] });
@@ -754,11 +727,10 @@ describe("qitem-ccf87c0d — mission-index load contract + membership pins", () 
     expect(indexer.get("case-probe")!.qitemIds).toEqual(["q-upper"]);
   });
 
-  it("PIN: SQL-LIKE wildcard semantics preserved — an underscore in a slice name matches any single body character (current behavior, byte-for-byte)", () => {
-    // Fallback terms come from folder names / frontmatter, which CAN carry
-    // `_` (and in principle `%`). Today those bytes are LIKE wildcards:
-    // body LIKE '%under_score-slice%' matches "underXscore-slice". The
-    // batch rewrite must translate, not literalize, these bytes.
+  it("PIN：保留 SQL-LIKE wildcard 语义；slice name 中下划线匹配 body 任意单字符（当前逐字节行为）", () => {
+    // Fallback term 来自文件夹名称/frontmatter，可以包含 `_`，原则上也可包含 `%`。当前这些
+    // 字节是 LIKE wildcard：body LIKE '%under_score-slice%' 会匹配 "underXscore-slice"。
+    // batch rewrite 必须转换而非 literalize 这些字节。
     const flatRoot = path.join(cleanup, "flat-wildcard");
     writeSlice(flatRoot, "under_score-slice", { "README.md": "---\nstatus: active\n---\n" });
     insertQitem(db, { qitemId: "q-wild-x", body: "see underXscore-slice notes", tags: [] });
@@ -767,7 +739,7 @@ describe("qitem-ccf87c0d — mission-index load contract + membership pins", () 
     expect(indexer.get("under_score-slice")!.qitemIds.sort()).toEqual(["q-wild-lit", "q-wild-x"]);
   });
 
-  it("PIN: tags-column-missing degradation — fallback still matches by body (tier-1 failure is caught)", () => {
+  it("PIN：tags-column-missing 降级后 fallback 仍按 body 匹配，并捕获 tier-1 failure", () => {
     const bareDb = createDb();
     migrate(bareDb, [coreSchema]);
     bareDb.exec(`CREATE TABLE queue_items (
@@ -786,9 +758,9 @@ describe("qitem-ccf87c0d — mission-index load contract + membership pins", () 
   });
 });
 
-// qitem-ccf87c0d guard RED-verdict delta — two byte-equivalence blockers
-// pinned against the CURRENT engine before any batch matcher lands.
-describe("qitem-ccf87c0d — LIKE byte-equivalence + fallback-order pins (guard delta)", () => {
+// qitem-ccf87c0d guard RED-verdict delta——两个字节等价 blocker
+// 在任何 batch matcher 落地前针对当前 engine 固定。
+describe("qitem-ccf87c0d——LIKE 字节等价 + fallback 顺序 pin（guard delta）", () => {
   let db: Database.Database;
   let cleanup: string;
 
@@ -804,19 +776,19 @@ describe("qitem-ccf87c0d — LIKE byte-equivalence + fallback-order pins (guard 
     fs.rmSync(cleanup, { recursive: true, force: true });
   });
 
-  it("PIN: SQLite LIKE folds ASCII ONLY — non-ASCII case variants (æ vs Æ) do NOT match; ASCII letters still fold", () => {
+  it("PIN：SQLite LIKE 只折叠 ASCII；非 ASCII 大小写变体 æ/Æ 不匹配，ASCII 字母仍折叠", () => {
     const flatRoot = path.join(cleanup, "flat-ascii-fold");
     writeSlice(flatRoot, "graey-æ-slice", { "README.md": "---\nstatus: active\n---\n" });
-    // Æ (U+00C6) is the Unicode uppercase of æ (U+00E6): a JS /i regex would
-    // match it; SQLite LIKE must NOT (ASCII-only fold).
+    // Æ（U+00C6）是 æ（U+00E6）的 Unicode 大写；JS /i regex 会匹配，SQLite LIKE 因只折叠
+    // ASCII 而不得匹配。
     insertQitem(db, { qitemId: "q-unicode-upper", body: "ref GRAEY-Æ-SLICE here", tags: [] });
-    // Same æ byte, ASCII letters case-varied: LIKE matches.
+    // æ 字节相同、ASCII 字母大小写不同：LIKE 匹配。
     insertQitem(db, { qitemId: "q-ascii-fold", body: "ref GRAEY-æ-SLICE here", tags: [] });
     const indexer = new SliceIndexer({ slicesRoot: flatRoot, dogfoodEvidenceRoot: null, db });
     expect(indexer.get("graey-æ-slice")!.qitemIds).toEqual(["q-ascii-fold"]);
   });
 
-  it("PIN: LIKE wildcards match across NEWLINE — an underscore in a slice name matches '\\n' in the body (dotAll-equivalent behavior required)", () => {
+  it("PIN：LIKE wildcard 可跨 NEWLINE 匹配；slice name 中下划线匹配 body 的 '\\n'，要求等同 dotAll 行为", () => {
     const flatRoot = path.join(cleanup, "flat-nl-wild");
     writeSlice(flatRoot, "nl_probe", { "README.md": "---\nstatus: active\n---\n" });
     insertQitem(db, { qitemId: "q-newline-wild", body: "prefix nl\nprobe suffix", tags: [] });
@@ -824,13 +796,11 @@ describe("qitem-ccf87c0d — LIKE byte-equivalence + fallback-order pins (guard 
     expect(indexer.get("nl_probe")!.qitemIds).toEqual(["q-newline-wild"]);
   });
 
-  it("PIN: equal-ts fallback rows keep TERM-FIRST order ([sliceName, railItem]), not DB row order", () => {
-    // Row matching ONLY the railItem term is inserted FIRST in the DB; the
-    // row matching ONLY the sliceName term second; identical ts_created.
-    // Current engine: terms iterate [sliceName, railItem], ids enter the Set
-    // in term order, and the final ts-DESC sort is stable on equals — so the
-    // sliceName-matched row renders first. A row-first batch scan would
-    // emit DB order and flip them.
+  it("PIN：相同 ts 的 fallback row 保持 TERM-FIRST 顺序 [sliceName, railItem]，而非 DB row 顺序", () => {
+    // 只匹配 railItem term 的 row 先插入 DB；只匹配 sliceName term 的 row 后插入；两者
+    // ts_created 相同。当前 engine 按 [sliceName, railItem] 迭代 term，id 按 term 顺序进入 Set，
+    // 最终 ts-DESC 排序在相等值上稳定，所以 sliceName 匹配 row 先渲染。row-first batch scan
+    // 会按 DB 顺序发出并颠倒两者。
     const flatRoot = path.join(cleanup, "flat-term-order");
     writeSlice(flatRoot, "term-order-slice", {
       "README.md": "---\nstatus: active\nrail-item: TORD-RAIL\n---\n",
@@ -843,8 +813,8 @@ describe("qitem-ccf87c0d — LIKE byte-equivalence + fallback-order pins (guard 
   });
 });
 
-// qitem-ccf87c0d guard POST-EDIT blocker — code-point parity for LIKE '_'.
-describe("qitem-ccf87c0d — LIKE '_' Unicode code-point parity (guard blocker pin)", () => {
+// qitem-ccf87c0d guard POST-EDIT blocker——LIKE '_' 的 code-point parity。
+describe("qitem-ccf87c0d——LIKE '_' Unicode code-point parity（guard blocker pin）", () => {
   let db: Database.Database;
   let cleanup: string;
 
@@ -860,24 +830,23 @@ describe("qitem-ccf87c0d — LIKE '_' Unicode code-point parity (guard blocker p
     fs.rmSync(cleanup, { recursive: true, force: true });
   });
 
-  it("PIN: '_' matches ONE CHARACTER (code point) — an astral emoji (surrogate pair in UTF-16) satisfies a single '_', exactly like SQLite", () => {
-    // SQLite LIKE '%emoji_probe%' matches body 'emoji😀probe' — 😀 (U+1F600)
-    // is one character. A UTF-16 code-unit matcher ([\s\S]) consumes only
-    // half the surrogate pair and misses; the translation must be
-    // code-point-correct (dotAll + u).
+  it("PIN：'_' 匹配一个字符（code point）；astral emoji 在 UTF-16 中为 surrogate pair，但与 SQLite 一样满足单个 '_'", () => {
+    // SQLite LIKE '%emoji_probe%' 匹配 body 'emoji😀probe'；😀（U+1F600）是一个字符。
+    // UTF-16 code-unit matcher（[\s\S]）只消费 surrogate pair 的一半，因而漏匹配；转换必须按
+    // code point 正确处理（dotAll + u）。
     const flatRoot = path.join(cleanup, "flat-cp");
     writeSlice(flatRoot, "emoji_probe", { "README.md": "---\nstatus: active\n---\n" });
     insertQitem(db, { qitemId: "q-astral", body: "see emoji\u{1F600}probe notes", tags: [] });
-    // Two-code-unit ASCII sequence must still NOT match a single '_':
+    // 两个 code-unit 的 ASCII 序列仍不得匹配单个 '_'：
     insertQitem(db, { qitemId: "q-two-chars", body: "see emojiXYprobe notes", tags: [] });
     const indexer = new SliceIndexer({ slicesRoot: flatRoot, dogfoodEvidenceRoot: null, db });
     expect(indexer.get("emoji_probe")!.qitemIds).toEqual(["q-astral"]);
   });
 });
 
-// qitem-18f3300d — guard's two candidate-blocking regressions vs parent
-// 7b19b73e, RED against sealed candidate c8f85802 (test-only gate).
-describe("qitem-18f3300d — NUL parity + cross-operation membership freshness (RED vs candidate)", () => {
+// qitem-18f3300d——guard 相对 parent 7b19b73e 的两个 candidate-blocking regression；
+// 对 sealed candidate c8f85802 为 RED（仅测试 gate）。
+describe("qitem-18f3300d——NUL parity + 跨 operation membership freshness（RED vs candidate）", () => {
   let db: Database.Database;
   let cleanup: string;
 
@@ -893,12 +862,10 @@ describe("qitem-18f3300d — NUL parity + cross-operation membership freshness (
     fs.rmSync(cleanup, { recursive: true, force: true });
   });
 
-  it("RED: SQLite LIKE truncates the haystack at raw U+0000 — a fallback term occurring ONLY AFTER a NUL must be EXCLUDED (parent behavior); before-NUL control stays included", () => {
-    // Production-reachable: POST /api/queue/create JSON-decodes
-    // "before\u0000slice-after" to a JS string with a raw NUL and stores it
-    // in queue_items.body unrejected. Parent per-slice SQL (body LIKE
-    // '%<term>%') returns NO row when the term sits after the NUL; the
-    // candidate's JS regex scans through NUL and wrongly includes it.
+  it("RED：SQLite LIKE 在原始 U+0000 处截断 haystack；只出现在 NUL 后的 fallback term 必须排除，NUL 前对照仍包含", () => {
+    // 生产可达：POST /api/queue/create 把 "before\u0000slice-after" JSON decode 成含原始 NUL 的
+    // JS 字符串，并未经拒绝存入 queue_items.body。parent 逐 slice SQL（body LIKE '%<term>%'）
+    // 在 term 位于 NUL 后时不返回 row；candidate 的 JS regex 穿过 NUL 扫描并错误包含它。
     const flatRoot = path.join(cleanup, "flat-nul");
     writeSlice(flatRoot, "nul-term-slice", { "README.md": "---\nstatus: active\n---\n" });
     insertQitem(db, { qitemId: "q-after-nul", body: "prefix\u0000nul-term-slice suffix", tags: [] });
@@ -907,11 +874,10 @@ describe("qitem-18f3300d — NUL parity + cross-operation membership freshness (
     expect(indexer.get("nul-term-slice")!.qitemIds).toEqual(["q-before-nul"]);
   });
 
-  it("RED: NUL in the PATTERN side — rail-item 'RAIL\\u0000TAIL' binds %RAIL\\u0000TAIL%; SQLite truncates the PATTERN to %RAIL, LOSING the trailing wildcard: body ENDING in RAIL matches, RAIL mid-body does NOT", () => {
-    // Parent SQL binds the full pattern '%RAIL\u0000TAIL%'; SQLite truncates
-    // it at the NUL to '%RAIL' — now END-ANCHORED because the trailing '%'
-    // was lost. The railItem reaches the bound pattern through the minimal
-    // frontmatter parser with no NUL rejection (production-reachable).
+  it("RED：PATTERN 侧含 NUL；rail-item 'RAIL\\u0000TAIL' 绑定 %RAIL\\u0000TAIL%，SQLite 截断为 %RAIL 并丢失尾部 wildcard：body 以 RAIL 结尾时匹配，位于中间时不匹配", () => {
+    // Parent SQL 绑定完整 pattern '%RAIL\u0000TAIL%'；SQLite 在 NUL 处截断为 '%RAIL'，由于尾部
+    // '%' 丢失，现在变成 END-ANCHORED。railItem 经不拒绝 NUL 的最小 frontmatter parser 到达
+    // bound pattern，因此生产可达。
     const flatRoot = path.join(cleanup, "flat-nul-pattern");
     writeSlice(flatRoot, "plain-slice", {
       "README.md": "---\nstatus: active\nrail-item: RAIL\u0000TAIL\n---\n",
@@ -919,16 +885,15 @@ describe("qitem-18f3300d — NUL parity + cross-operation membership freshness (
     insertQitem(db, { qitemId: "q-parent-match", body: "ends with RAIL", tags: [] });
     insertQitem(db, { qitemId: "q-mid-rail", body: "RAIL in middle stuff", tags: [] });
     const indexer = new SliceIndexer({ slicesRoot: flatRoot, dogfoodEvidenceRoot: null, db });
-    // Parent: q-parent-match via truncated '%RAIL' (ends-with); q-mid-rail
-    // excluded (the lost trailing wildcard matters).
+    // Parent：q-parent-match 通过截断后的 '%RAIL'（ends-with）匹配；q-mid-rail 被排除，说明
+    // 丢失尾部 wildcard 会影响结果。
     expect(indexer.get("plain-slice")!.qitemIds).toEqual(["q-parent-match"]);
   });
 
-  it("RED: cross-operation freshness (TYPED) — a typed qitem written for ALREADY-KNOWN B is visible on B's FIRST uncached get(), no invalidate/TTL", () => {
-    // Parent ran per-slice SQL on every uncached get(), so a row written
-    // after get(A) was immediately visible to the first get(B). The
-    // candidate's generation-scoped index (B already in knownSlices) serves
-    // stale empty membership until invalidate/TTL.
+  it("RED：跨 operation freshness（TYPED）——为已知 B 写入 typed qitem 后，B 首次 uncached get() 即可见，无需 invalidate/TTL", () => {
+    // Parent 在每次 uncached get() 上运行逐 slice SQL，因此 get(A) 后写入的 row 在首次 get(B)
+    // 立即可见。candidate 的 generation-scoped index 因 B 已在 knownSlices 中，会在
+    // invalidate/TTL 前返回 stale empty membership。
     const flatRoot = path.join(cleanup, "flat-fresh-typed");
     writeSlice(flatRoot, "fresh-a", { "README.md": "---\nstatus: active\n---\n" });
     writeSlice(flatRoot, "fresh-b-typed", { "README.md": "---\nstatus: active\n---\n" });
@@ -938,10 +903,9 @@ describe("qitem-18f3300d — NUL parity + cross-operation membership freshness (
     expect(indexer.get("fresh-b-typed")!.qitemIds).toEqual(["q-b-typed"]);
   });
 
-  it("RED: cross-operation freshness (FALLBACK) — a body-mention qitem written for ALREADY-KNOWN C is visible on C's FIRST uncached get(), no invalidate/TTL", () => {
-    // Isolated from the typed vector (own indexer + fixture) so this
-    // assertion executes and fails independently on c8f85802 — a
-    // typed-triggered rebuild elsewhere must not mask the fallback tier.
+  it("RED：跨 operation freshness（FALLBACK）——为已知 C 写入 body-mention qitem 后，C 首次 uncached get() 即可见，无需 invalidate/TTL", () => {
+    // 与 typed vector 隔离，使用独立 indexer + fixture，使 assertion 可在 c8f85802 上独立
+    // 执行并失败；其他位置由 typed 触发的 rebuild 不得掩盖 fallback 层。
     const flatRoot = path.join(cleanup, "flat-fresh-fallback");
     writeSlice(flatRoot, "fresh-a2", { "README.md": "---\nstatus: active\n---\n" });
     writeSlice(flatRoot, "fresh-c-fallback", { "README.md": "---\nstatus: active\n---\n" });
@@ -952,11 +916,10 @@ describe("qitem-18f3300d — NUL parity + cross-operation membership freshness (
   });
 });
 
-// qitem-ccf87c0d amended gate — the explicit composite-operation scope API
-// (withMembershipBatch). RED pre-fix via missing export; pins define the
-// contract: outermost-fresh open, in-scope sharing, nested reuse,
-// exception-safe close, and unchanged standalone semantics.
-describe("qitem-ccf87c0d — withMembershipBatch scope API (RED: API missing)", () => {
+// qitem-ccf87c0d amended gate——显式 composite-operation scope API
+//（withMembershipBatch）。修复前因 export 缺失而 RED；pin 定义契约：最外层 fresh open、
+// scope 内共享、嵌套复用、exception-safe close，以及不变的 standalone 语义。
+describe("qitem-ccf87c0d——withMembershipBatch scope API（RED：API 缺失）", () => {
   let db: Database.Database;
   let cleanup: string;
 
@@ -975,13 +938,12 @@ describe("qitem-ccf87c0d — withMembershipBatch scope API (RED: API missing)", 
   type Scoped = SliceIndexer & { withMembershipBatch<T>(fn: () => T): T };
   function scoped(indexer: SliceIndexer): Scoped {
     const s = indexer as Scoped;
-    expect(typeof s.withMembershipBatch, "withMembershipBatch must be a public SliceIndexer method").toBe("function");
+    expect(typeof s.withMembershipBatch, "withMembershipBatch 必须是公开的 SliceIndexer method").toBe("function");
     return s;
   }
 
-  /** Same membership-scan counter as the route/Review contracts (all
-   *  queue_items scans; PK IN lookups + INSERTs excluded — no gather reads
-   *  exist at the indexer seam so total == membership here). */
+  /** 与 route/Review contract 相同的 membership-scan counter：统计全部 queue_items scan，排除
+   *  PK IN lookup + INSERT。indexer seam 没有 gather read，因此这里 total == membership。 */
   function instrumentScans(target: Database.Database): () => number {
     let n = 0;
     const origPrepare = target.prepare.bind(target);
@@ -1011,7 +973,7 @@ describe("qitem-ccf87c0d — withMembershipBatch scope API (RED: API missing)", 
     return root;
   }
 
-  it("in-scope list() + N gets share ONE batch: <= 4 total queue scans across the whole scope", () => {
+  it("scope 内 list() + N 次 get 共享一个 batch：整个 scope 总 queue scan <= 4", () => {
     const root = seedSlices(12);
     const indexer = new SliceIndexer({ slicesRoot: root, dogfoodEvidenceRoot: null, db });
     const s = scoped(indexer);
@@ -1023,7 +985,7 @@ describe("qitem-ccf87c0d — withMembershipBatch scope API (RED: API missing)", 
     expect(scans()).toBeLessThanOrEqual(4);
   });
 
-  it("REQUEST-BOUNDARY FRESHNESS: scope1 builds a batch via get(A); insert membership for already-known uncached B; scope2 get(B) sees it (scope-open is always fresh)", () => {
+  it("REQUEST-BOUNDARY FRESHNESS：scope1 经 get(A) 建 batch；为已知但未缓存 B 插入 membership；scope2 get(B) 可见，因为 scope-open 始终 fresh", () => {
     const root = seedSlices(2); // sc-00 (A) + sc-01 (B), both known from the start
     const indexer = new SliceIndexer({ slicesRoot: root, dogfoodEvidenceRoot: null, db });
     const s = scoped(indexer);
@@ -1032,13 +994,12 @@ describe("qitem-ccf87c0d — withMembershipBatch scope API (RED: API missing)", 
     });
     insertQitem(db, { qitemId: "q-scope-b", body: "no mention", tags: ["slice:sc-01-topic"] });
     s.withMembershipBatch(() => {
-      // B was already known to scope1's batch — a stale-generation reuse
-      // would serve []; the fresh scope2 open must see the new row.
+      // B 已为 scope1 batch 所知；复用 stale generation 会返回 []，新的 scope2 open 必须看到新 row。
       expect(indexer.get("sc-01-topic")!.qitemIds).toEqual(["q-scope-b"]);
     });
   });
 
-  it("NESTED scopes share the outermost batch and clear only at outermost exit", () => {
+  it("嵌套 scope 共享最外层 batch，且只在最外层退出时清除", () => {
     const root = seedSlices(4);
     const indexer = new SliceIndexer({ slicesRoot: root, dogfoodEvidenceRoot: null, db });
     const s = scoped(indexer);
@@ -1048,16 +1009,16 @@ describe("qitem-ccf87c0d — withMembershipBatch scope API (RED: API missing)", 
       s.withMembershipBatch(() => {
         indexer.get("sc-01-topic");
       });
-      // Inner exit must NOT have cleared the shared batch.
+      // 内层退出不得清除共享 batch。
       indexer.get("sc-02-topic");
     });
     expect(scans()).toBeLessThanOrEqual(4);
-    // After outermost exit the batch is gone: a later write is visible.
+    // 最外层退出后 batch 消失，后续写入可见。
     insertQitem(db, { qitemId: "q-after-scope", body: "no mention", tags: ["slice:sc-03-topic"] });
     expect(indexer.get("sc-03-topic")!.qitemIds).toEqual(["q-after-scope"]);
   });
 
-  it("EXCEPTION inside a scope still clears at exit (finally): the next operation is fresh", () => {
+  it("scope 内发生 EXCEPTION 仍会在 finally 退出时清除，使下一 operation 为 fresh", () => {
     const root = seedSlices(2);
     const indexer = new SliceIndexer({ slicesRoot: root, dogfoodEvidenceRoot: null, db });
     const s = scoped(indexer);
@@ -1071,25 +1032,20 @@ describe("qitem-ccf87c0d — withMembershipBatch scope API (RED: API missing)", 
 });
 
 // ---------------------------------------------------------------------------
-// qitem-render-driver #3 — mission-wide qitemCount leak on a MODERN mission.
+// qitem-render-driver #3——现代任务目标上的 mission-wide qitemCount 泄漏。
 //
-// Host evidence: /api/slices emits qitemCount=355 for placeholder slices 02/03
-// while siblings report 1/1/2. Root: for a ZERO-TYPED slice, matchQitems falls
-// back to a substring union over [sliceName, railItem, missionId], and
-// extractRailItem DEFAULTS railItem to missionId when no rail item is authored
-// — so a placeholder slice in a canonical multi-slice mission substring-matches
-// every mission-tagged qitem in the corpus.
+// 主机证据：/api/slices 为 placeholder slice 02/03 发出 qitemCount=355，而 sibling 报告
+// 1/1/2。根因：对 ZERO-TYPED slice，matchQitems 回退到 [sliceName, railItem, missionId] 的
+// 子串并集；未编写 rail item 时，extractRailItem 默认把 railItem 设为 missionId，导致 canonical
+// multi-slice mission 中的 placeholder slice 以子串方式匹配 corpus 中每个带 mission tag 的 qitem。
 //
-// The legacy doctrine is NOT deleted: on a mission whose corpus predates typed
-// membership, the mission-body fallback still applies (pinned by the existing
-// "preserves legacy substring fallback (including mission body)" test above).
-// The discriminator here is a MODERN mission — a sibling slice carries typed
-// `slice:` membership — where a mission-only row must NOT be credited to a
-// zero-typed target, while that target's own NAME and an EXPLICIT rail-item
-// still match.
+// 不删除 legacy 原则：corpus 早于 typed membership 的任务目标仍应用 mission-body fallback，
+// 由上方现有“保留 legacy substring fallback（包括 mission body）”测试固定。这里的 discriminator
+// 是现代任务目标，其中 sibling slice 携带 typed `slice:` membership；mission-only row 不得计入
+// zero-typed target，但 target 自身名称和显式 rail-item 仍匹配。
 // ---------------------------------------------------------------------------
 
-describe("qitem-render-driver #3 — modern mission: mission-only rows must not leak into a zero-typed slice", () => {
+describe("qitem-render-driver #3——现代任务目标：mission-only row 不得泄漏到 zero-typed slice", () => {
   let db: Database.Database;
   let cleanup: string;
   let missionsRoot: string;
@@ -1108,43 +1064,42 @@ describe("qitem-render-driver #3 — modern mission: mission-only rows must not 
     fs.rmSync(cleanup, { recursive: true, force: true });
   });
 
-  /** A canonical MODERN mission: a typed sibling proves the corpus has adopted
-   *  typed membership; the target slice authors no rail item (so railItem
-   *  defaults to missionId) and carries no typed rows. */
+  /** canonical 现代任务目标：typed sibling 证明 corpus 已采用 typed membership；target slice
+   *  未编写 rail item（因此 railItem 默认为 missionId），也不携带 typed row。 */
   function seedModernMission(): void {
     const slices = path.join(missionsRoot, "release-x", "slices");
     writeSlice(slices, "01-typed-sibling", { "README.md": "---\nstatus: active\n---\n# sibling\n" });
     writeSlice(slices, "02-placeholder", { "README.md": "---\nstatus: placeholder\n---\n# placeholder\n" });
-    // Typed membership exists in this mission (the modern signal).
+    // 此任务目标存在 typed membership（现代 signal）。
     insertQitem(db, { qitemId: "q-typed-sibling", body: "no name mention", tags: ["slice:01-typed-sibling"] });
-    // Mission-scope rows: tagged/mentioning the MISSION only — these are the
-    // 355-class rows that must not be credited to 02-placeholder.
+    // 任务目标范围 row：只带任务目标 tag 或只提到任务目标；这些 355 类 row 不得计入
+    // 02-placeholder。
     insertQitem(db, { qitemId: "q-mission-tag", body: "no slice mention", tags: ["mission:release-x"] });
     insertQitem(db, { qitemId: "q-mission-body", body: "advance the release-x mission", tags: [] });
   }
 
-  it("RED: a zero-typed slice in a modern mission does NOT absorb mission-only rows", () => {
+  it("RED：现代任务目标中的 zero-typed slice 不吸收 mission-only row", () => {
     seedModernMission();
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
     const target = indexer.get("02-placeholder")!;
     expect(target.qitemIds, "mission-only rows must not be credited to a zero-typed slice").toEqual([]);
   });
 
-  it("RED (route-observable): the /api/slices qitemCount for that slice is 0, not the mission aggregate", () => {
+  it("RED（路由可观测）：该 slice 的 /api/slices qitemCount 为 0，而非任务目标聚合值", () => {
     seedModernMission();
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
     const entry = indexer.list().find((e) => e.name === "02-placeholder")!;
     expect(entry.qitemCount, "the count the sidebar badge renders").toBe(0);
   });
 
-  it("GREEN pin: the target's OWN NAME in a body still matches (name-legacy match preserved)", () => {
+  it("GREEN pin：body 中 target 自身名称仍匹配，保留 name-legacy match", () => {
     seedModernMission();
     insertQitem(db, { qitemId: "q-by-target-name", body: "work on 02-placeholder today", tags: [] });
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
     expect(indexer.get("02-placeholder")!.qitemIds).toContain("q-by-target-name");
   });
 
-  it("GREEN pin: an EXPLICIT authored rail-item still matches (explicit-rail legacy match preserved)", () => {
+  it("GREEN pin：显式编写的 rail-item 仍匹配，保留 explicit-rail legacy match", () => {
     const slices = path.join(missionsRoot, "release-y", "slices");
     writeSlice(slices, "01-typed-sib", { "README.md": "---\nstatus: active\n---\n" });
     writeSlice(slices, "02-railed", { "README.md": "---\nstatus: active\nrail-item: PL-777\n---\n" });
@@ -1154,7 +1109,7 @@ describe("qitem-render-driver #3 — modern mission: mission-only rows must not 
     expect(indexer.get("02-railed")!.qitemIds).toContain("q-by-explicit-rail");
   });
 
-  it("GREEN pin: the typed sibling keeps its own typed membership unchanged", () => {
+  it("GREEN pin：typed sibling 保持自身 typed membership 不变", () => {
     seedModernMission();
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
     expect(indexer.get("01-typed-sibling")!.qitemIds).toEqual(["q-typed-sibling"]);
@@ -1162,24 +1117,19 @@ describe("qitem-render-driver #3 — modern mission: mission-only rows must not 
 });
 
 // ---------------------------------------------------------------------------
-// qitem-18110994 — SliceIndexer membership hardening (guard-locked acceptance).
+// qitem-18110994——SliceIndexer membership 加固（guard-locked acceptance）。
 //
-// R1/R2/R4 WERE genuine REDs at the test-only gate (they failed against the
-// pre-hardening indexer) and are now REGRESSION pins guarding the shipped
-// behavior; R3/R5 are GREEN characterization/differential pins throughout.
+// R1/R2/R4 曾在仅测试 gate 中是真实 RED（针对加固前 indexer 失败），现在作为回归 pin 保护正式
+// 行为；R3/R5 始终是 GREEN characterization/differential pin。
 //
-// Advisory roots at fccce9ac: fallback buckets are pre-seeded before the scan
-// and a broad catch lets a partially-filled map be published + cached (item 2);
-// the typed-scan catch records ANY failure as "tags column missing" (item 4);
-// neither 500 cap is boundary-pinned (item 3); and fallback-term derivation
-// reads frontmatter for EVERY known location even when a standalone detail op
-// serves one slice (item 1).
+// fccce9ac 的 advisory 根因：扫描前预填充 fallback bucket，宽泛 catch 让部分填充的 map 被发布
+// 并缓存（item 2）；typed-scan catch 把任何 failure 都记录为“tags column missing”（item 4）；
+// 两个 500 上限都没有边界 pin（item 3）；即使 standalone detail op 只服务一个 slice，
+// fallback-term 派生仍会读取每个已知位置的 frontmatter（item 1）。
 // ---------------------------------------------------------------------------
 
-/** Arms/disarms faults on prepared statements by SQL substring, and counts
- *  executions. The DB layer is the only realistic interruption source: the
- *  canonical `body` column is TEXT NOT NULL, so a row-time null throw is
- *  noncanonical. */
+/** 按 SQL 子串为 prepared statement 启用/关闭 fault，并统计执行次数。DB 层是唯一真实的中断源：
+ *  canonical `body` 列为 TEXT NOT NULL，因此 row-time null throw 不符合实际。 */
 function instrumentDb(target: Database.Database) {
   const state = {
     faultOn: null as string | null,
@@ -1226,14 +1176,13 @@ function instrumentDb(target: Database.Database) {
 }
 
 const TYPED_SCAN_SQL = "WHERE tags LIKE '%slice:%'";
-// Covers BOTH fallback shapes via their common prefix: the tags-bearing
-// `SELECT qitem_id, body, tags FROM queue_items` and the body-only
-// `SELECT qitem_id, body FROM queue_items` chosen when the typed scan is
-// (mis)classified as a missing tags column. Counting only the tags-bearing
-// form would falsely report 0 for exactly the misclassification under test.
+// 通过共同 prefix 覆盖两种 fallback 结构：带 tags 的
+// `SELECT qitem_id, body, tags FROM queue_items`，以及 typed scan 被误分类为缺少 tags 列时
+// 选择的纯 body `SELECT qitem_id, body FROM queue_items`。只统计带 tags 形式，会在恰好被测的
+// 误分类场景中错误报告 0。
 const FALLBACK_SCAN_SQL = "SELECT qitem_id, body";
 
-describe("qitem-18110994 — membership build integrity + scoping", () => {
+describe("qitem-18110994——membership build 完整性 + scoping", () => {
   let db: Database.Database;
   let cleanup: string;
   let missionsRoot: string;
@@ -1253,7 +1202,7 @@ describe("qitem-18110994 — membership build integrity + scoping", () => {
     vi.mocked(fs.readFileSync).mockClear();
   });
 
-  /** A LEGACY mission (no typed membership anywhere) so the fallback tier runs. */
+  /** legacy 任务目标；任何位置都没有 typed membership，因此会运行 fallback 层。 */
   function seedLegacy(): void {
     const slices = path.join(missionsRoot, "legacy-mission", "slices");
     writeSlice(slices, "01-target", { "README.md": "---\nstatus: active\n---\n# t\n" });
@@ -1262,29 +1211,28 @@ describe("qitem-18110994 — membership build integrity + scoping", () => {
     insertQitem(db, { qitemId: "q-c", body: "unrelated packet", tags: [] });
   }
 
-  it("R1 regression: an interrupted fallback scan refuses to answer — no partial membership, no detail cache; a later clean get returns the COMPLETE set", () => {
+  it("R1 回归：中断的 fallback scan 拒绝回答，不产生部分 membership 或 detail cache；后续 clean get 返回完整集合", () => {
     seedLegacy();
     const probe = instrumentDb(db);
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
 
-    // Fault mid-iteration: one row consumed, then throw.
+    // iteration 中途 fault：消费一条 row 后抛错。
     probe.state.faultOn = FALLBACK_SCAN_SQL;
     probe.state.faultAfterRows = 1;
     expect(
       () => indexer.get("01-target"),
-      "an interrupted fallback build must REFUSE to answer, not serve a subset",
+      "中断的 fallback build 必须拒绝回答，不能返回 subset",
     ).toThrow("injected scan fault");
 
-    // Disarm: the SAME indexer must rebuild and return the complete set —
-    // proving neither a partial membership index nor a detail cache entry was
-    // published by the failed attempt.
+    // 解除 fault：同一个 indexer 必须重建并返回完整集合，证明失败尝试既未发布部分 membership
+    // index，也未发布 detail cache entry。
     probe.state.faultOn = null;
     const record = indexer.get("01-target");
-    expect(record, "a clean retry must succeed on the same indexer").toBeTruthy();
-    expect(record!.qitemIds.sort(), "complete membership, never the partial subset").toEqual(["q-a", "q-b"]);
+    expect(record, "clean retry 必须在同一 indexer 上成功").toBeTruthy();
+    expect(record!.qitemIds.sort(), "必须是完整 membership，绝不能是部分 subset").toEqual(["q-a", "q-b"]);
   });
 
-  it("R2 regression: with tags PRESENT, a typed-scan fault throws, runs NO fallback scan, and the same indexer rebuilds cleanly on retry", () => {
+  it("R2 回归：tags 存在时 typed-scan fault 抛错，不运行 fallback scan；同一 indexer 重试后干净重建", () => {
     seedLegacy();
     const probe = instrumentDb(db);
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
@@ -1293,11 +1241,11 @@ describe("qitem-18110994 — membership build integrity + scoping", () => {
     probe.state.faultAfterRows = 0;
     expect(
       () => indexer.get("01-target"),
-      "a typed-scan failure with the tags column PRESENT must propagate, not be recorded as a missing tags column",
+      "tags 列存在时 typed-scan failure 必须传播，不能记录为 tags 列缺失",
     ).toThrow("injected scan fault");
     expect(
       probe.countFor(FALLBACK_SCAN_SQL),
-      "a refused build must not proceed to the fallback scan",
+      "被拒绝的 build 不得继续 fallback scan",
     ).toBe(0);
 
     probe.state.faultOn = null;
@@ -1306,12 +1254,11 @@ describe("qitem-18110994 — membership build integrity + scoping", () => {
     expect(record!.qitemIds.sort()).toEqual(["q-a", "q-b"]);
   });
 
-  it("R3 GREEN (typed cap): the 500th confirmed row is accepted, the 501st rejected, and false prefilter candidates ahead of them in scan order do not consume the cap", () => {
+  it("R3 GREEN（typed 上限）：接受第 500 个 confirmed row，拒绝第 501 个；扫描顺序中更早的 false prefilter candidate 不占上限", () => {
     const slices = path.join(missionsRoot, "cap-mission", "slices");
     writeSlice(slices, "01-capped", { "README.md": "---\nstatus: active\n---\n" });
-    // Typed scan order is ts_created DESC, qitem_id DESC. Put the FALSE
-    // prefilter candidates FIRST in that order (latest ts) so that if they
-    // consumed the confirmed cap the target would fall short of 500.
+    // Typed scan 顺序为 ts_created DESC、qitem_id DESC。把 false prefilter candidate 按该顺序
+    // 放在最前（最新 ts），这样若它们消耗 confirmed 上限，target 就达不到 500。
     for (let i = 0; i < 50; i++) {
       insertQitem(db, {
         qitemId: `q-other-${String(i).padStart(4, "0")}`,
@@ -1320,8 +1267,8 @@ describe("qitem-18110994 — membership build integrity + scoping", () => {
         tsCreated: "2026-07-21T00:00:00.000Z",
       });
     }
-    // 501 CONFIRMED rows sharing ONE ts, so scan order is fully determined by
-    // qitem_id DESC: q-typed-0500 first ... q-typed-0000 last.
+    // 501 个 CONFIRMED row 共享同一 ts，因此扫描顺序完全由 qitem_id DESC 决定：
+    // q-typed-0500 最先，q-typed-0000 最后。
     for (let i = 0; i <= 500; i++) {
       insertQitem(db, {
         qitemId: `q-typed-${String(i).padStart(4, "0")}`,
@@ -1333,20 +1280,19 @@ describe("qitem-18110994 — membership build integrity + scoping", () => {
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
     const ids = indexer.get("01-capped")!.qitemIds;
     expect(ids.length, "exactly the 500-confirmed cap").toBe(500);
-    // Exact boundary: q-typed-0001 is the 500th confirmed in scan order and is
-    // ACCEPTED; q-typed-0000 is the 501st and is REJECTED.
+    // 精确边界：q-typed-0001 是扫描顺序中第 500 个 confirmed row，应接受；
+    // q-typed-0000 是第 501 个，应拒绝。
     expect(ids, "the 500th confirmed row must be accepted").toContain("q-typed-0001");
     expect(ids, "the 501st confirmed row must be rejected").not.toContain("q-typed-0000");
     expect(ids.some((id) => id.startsWith("q-other-")), "no foreign-slice prefilter candidate may be credited").toBe(false);
   });
 
-  it("R3 GREEN (fallback cap): the 500th matching row is accepted, the 501st rejected, and sibling-term prefilter hits inserted BEFORE them do not consume the cap", () => {
+  it("R3 GREEN（fallback 上限）：接受第 500 个 matching row，拒绝第 501 个；先插入的 sibling-term prefilter hit 不占上限", () => {
     const slices = path.join(missionsRoot, "legacy-cap", "slices");
     writeSlice(slices, "01-alpha", { "README.md": "---\nstatus: active\n---\n" });
     writeSlice(slices, "02-beta", { "README.md": "---\nstatus: active\n---\n" });
-    // The fallback scan iterates in ROWID order, so the sibling-term rows must
-    // be inserted FIRST: if they consumed 01-alpha's per-term cap, the target
-    // would fall short of 500.
+    // fallback scan 按 ROWID 顺序迭代，因此 sibling-term row 必须先插入；若它们消耗
+    // 01-alpha 的逐 term 上限，target 就达不到 500。
     for (let i = 0; i < 50; i++) {
       insertQitem(db, { qitemId: `q-beta-${String(i).padStart(4, "0")}`, body: "touching 02-beta here", tags: [] });
     }
@@ -1356,14 +1302,14 @@ describe("qitem-18110994 — membership build integrity + scoping", () => {
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
     const ids = indexer.get("01-alpha")!.qitemIds;
     expect(ids.length, "exactly the 500 per-term cap").toBe(500);
-    // Exact boundary in rowid order: q-alpha-0499 is the 500th match (accepted);
-    // q-alpha-0500 is the 501st (rejected).
+    // rowid 顺序的精确边界：q-alpha-0499 是第 500 个 match（接受）；q-alpha-0500 是第 501 个
+    //（拒绝）。
     expect(ids, "the 500th matching row must be accepted").toContain("q-alpha-0499");
     expect(ids, "the 501st matching row must be rejected").not.toContain("q-alpha-0500");
     expect(ids.some((id) => id.startsWith("q-beta-")), "no sibling-term prefilter hit may be credited").toBe(false);
   });
 
-  it("R4 regression: a standalone get(X) reads NO Markdown under unrelated slice paths", () => {
+  it("R4 回归：standalone get(X) 不读取无关 slice 路径下的 Markdown", () => {
     const slices = path.join(missionsRoot, "wide-mission", "slices");
     for (let i = 0; i < 6; i++) {
       writeSlice(slices, `s-${i}-topic`, {
@@ -1375,7 +1321,7 @@ describe("qitem-18110994 — membership build integrity + scoping", () => {
     insertQitem(db, { qitemId: "q-only", body: "unrelated", tags: [] });
     const indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
 
-    // Clear AFTER fixture creation so only the served operation is observed.
+    // fixture 创建后再清空，使观测范围只有当前服务 operation。
     vi.mocked(fs.readFileSync).mockClear();
     indexer.get("s-0-topic");
 
@@ -1389,11 +1335,11 @@ describe("qitem-18110994 — membership build integrity + scoping", () => {
     ).toEqual([]);
   });
 
-  it("R5 GREEN: full-scope batch get and standalone narrowed get return BYTE-IDENTICAL qitemIds on a modern mission", () => {
+  it("R5 GREEN：现代任务目标上 full-scope batch get 与 standalone narrowed get 返回逐字节相同 qitemId", () => {
     const slices = path.join(missionsRoot, "modern-mission", "slices");
     writeSlice(slices, "01-typed-sib", { "README.md": "---\nstatus: active\n---\n" });
-    // Zero-typed target WITH an explicit authored rail: own-name + explicit rail
-    // must be retained; missionId and a mission-defaulted rail must be excluded.
+    // 带显式 authored rail 的 zero-typed target：必须保留 own-name + explicit rail，排除
+    // missionId 和由 mission 默认得到的 rail。
     writeSlice(slices, "02-target", { "README.md": "---\nstatus: active\nrail-item: PL-777\n---\n" });
     insertQitem(db, { qitemId: "q-typed", body: "x", tags: ["slice:01-typed-sib"] });
     insertQitem(db, { qitemId: "q-by-name", body: "work on 02-target", tags: [] });

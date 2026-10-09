@@ -1,13 +1,12 @@
 version: "0.2"
 name: research-team
 summary: >
-  Research topology with an orchestrator coordinating an analyst
-  and a synthesizer. The analyst does deep-dive investigation,
-  the synthesizer consolidates findings into actionable summaries.
+  研究拓扑，由编排智能体协调分析员与综合员。分析员开展深入调查，综合员把发现汇总为
+  可执行摘要。
 
 pods:
   - id: orch
-    label: Orchestration
+    label: 编排
     members:
       - id: lead
         agent_ref: "local:../../../agents/orchestration/orchestrator"
@@ -17,7 +16,7 @@ pods:
     edges: []
 
   - id: research
-    label: Research Pod
+    label: 研究 Pod
     members:
       - id: analyst
         agent_ref: "local:../../../agents/research/analyst"

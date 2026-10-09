@@ -53,12 +53,12 @@ describe("useDismissedSeqs", () => {
 
   it("auto-prunes entries with seq < min(currentSeqs) when currentSeqs change", () => {
     localStorage.setItem(DISMISSED_SEQS_STORAGE_KEY, JSON.stringify([1, 2, 100]));
-    // currentSeqs has min=50 — seqs 1 and 2 have aged out of the activity buffer
+    // currentSeqs 有 min=50——seqs 1 与 2 已超出 activity buffer 老化出去
     const { result } = renderHook(() => useDismissedSeqs([50, 75, 100]));
     expect(result.current.dismissedSeqs.has(1)).toBe(false);
     expect(result.current.dismissedSeqs.has(2)).toBe(false);
     expect(result.current.dismissedSeqs.has(100)).toBe(true);
-    // Pruned entries also removed from localStorage
+    // 修剪条目也从 localStorage 移除
     const stored = JSON.parse(localStorage.getItem(DISMISSED_SEQS_STORAGE_KEY) ?? "[]") as number[];
     expect(stored).not.toContain(1);
     expect(stored).not.toContain(2);

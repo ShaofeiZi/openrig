@@ -1,9 +1,8 @@
-// OPR.0.4.1.27 Unit 6 — sender-or-owner terminal resolver.
-// Human-action cards (action-required / approval) open the SENDER (sourceSession);
-// agent-owned cards (progress / shipped / observation) open the current HOLDER
-// (destinationSession), falling back to source when no destination resolves.
-// Grounded in the tasks-dev2 fidelity map (sourceSession/destinationSession are
-// the only terminal-addressable sessions; never handed_off_from).
+// OPR.0.4.1.27 单元 6——发送者或所有者终端解析器。人类操作卡片
+//（action-required/approval）打开发送者（sourceSession）；智能体拥有的卡片
+//（progress/shipped/observation）打开当前持有者（destinationSession），目标无法解析时
+// 回退到来源。依据 tasks-dev2 保真映射：sourceSession/destinationSession 是仅有的
+// 可寻址终端会话，绝不使用 handed_off_from。
 
 import { describe, it, expect } from "vitest";
 import { resolveCardTerminalSession } from "../src/components/for-you/FeedCard.js";

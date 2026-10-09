@@ -19,9 +19,9 @@ lifecycle:
         - release-boundary
       workflow:
         entry: { role: orchestrator }
-        # Entry/ordinary custody and exception selection are separate decisions.
-        # Replace the example target with a declared member (rig ps --nodes --json).
-        # Inspect with workflow compile/show; adopt later corrections with workflow revise.
+        # 入口/常规托管与异常选择是相互独立的决策。
+        # 请用已声明成员替换示例目标（zrig ps --nodes --json）。
+        # 使用 zrig workflow compile/show 检查；后续更正通过 zrig workflow revise 接纳。
         exception_routing: { orchestrator_role: orchestrator }
         roles:
           orchestrator: { preferred_targets: [orch@example] }
@@ -29,58 +29,55 @@ lifecycle:
           - id: mission-outcome
             actor_role: orchestrator
             depends_on: []
-            objective: Judge the mission's promised outcomes against retained evidence; name remaining gaps.
+            objective: 根据保留的证据判断任务目标承诺的结果，并指出剩余缺口。
             allowed_exits: [handoff, waiting, failed]
           - id: exact-release-candidate
             actor_role: orchestrator
             depends_on: [mission-outcome]
-            objective: Establish the exact candidate and tree to which subsequent receipts apply.
+            objective: 确定后续回执所对应的准确候选版本和源码树。
             allowed_exits: [handoff, waiting, failed]
           - id: capability-delta
             actor_role: orchestrator
             depends_on: [exact-release-candidate]
-            objective: Reconcile the shipped capability description with this candidate's actual behavior.
+            objective: 将已发布的能力说明与该候选版本的实际行为对齐。
             allowed_exits: [handoff, waiting, failed]
           - id: exact-cut-substance
             actor_role: orchestrator
             depends_on: [capability-delta]
-            objective: Obtain and judge independent substance admission for the exact release cut.
+            objective: 为准确的发布切点获取并评判独立的实质性准入结论。
             allowed_exits: [handoff, waiting, failed]
           - id: release-verification
             actor_role: orchestrator
             depends_on: [exact-cut-substance]
-            objective: Judge privacy, package shape, conventions and mirrors, builds, tests, and clean-tree evidence for the exact admitted release candidate.
+            objective: 对已准入的准确发布候选版本，评判其隐私、包结构、约定与镜像、构建、测试及干净工作树证据。
             allowed_exits: [handoff, waiting, failed]
           - id: git-canonicalization
             actor_role: orchestrator
             depends_on: [release-verification]
-            objective: Obtain the authorized canonical Git identity and reconcile it with the verified candidate.
+            objective: 获取获授权的 canonical Git 身份，并与已验证候选版本对齐。
             allowed_exits: [handoff, waiting, failed]
           - id: public-release
             actor_role: orchestrator
             depends_on: [git-canonicalization]
-            objective: Obtain publication authorization and the release owner's exact public artifact receipt.
+            objective: 获取发布授权及发布 owner 提供的准确公开产物回执。
             allowed_exits: [handoff, waiting, failed]
           - id: parent-adoption
             actor_role: orchestrator
             depends_on: [public-release]
-            objective: Obtain separately authorized parent adoption and judge its effect receipt.
+            objective: 获取单独授权的父项目接纳，并评判其效果回执。
             allowed_exits: [handoff, waiting, failed]
           - id: record-shipped
             actor_role: orchestrator
             depends_on: [parent-adoption]
-            objective: Record durable shipped truth after judging ceremony receipts; the post-release boundary follows.
+            objective: 评判发布流程回执后，记录持久的已发布事实；随后进入发布后边界。
             allowed_exits: [handoff, waiting, failed]
           - id: release-boundary
             actor_role: orchestrator
             depends_on: [record-shipped]
             objective: >-
-              After the release ceremony, author one attributed disposition record
-              covering seat renewal and re-prime, memory distillation, destination
-              queue sweep, substrate teardown or retention, board freeze and clean-box
-              baseline, capability-delta absorption and expiry, and packaged-product
-              discoverability. These are agent-judged guides, not seven daemon gates.
-              Inspect beyond this packet when useful. Record reasoned not-applicable
-              or deferred dispositions and wait on live dependencies. Finish after
-              this boundary when no successor is authored.
+              发布流程结束后，编写一份注明归属的处置记录，涵盖席位续期与重新初始化、
+              记忆提炼、目标队列清理、substrate 拆除或保留、看板冻结与 clean-box 基线、
+              capability-delta 吸收与过期，以及打包产品的可发现性。这些是由智能体判断的
+              指南，不是七个后台服务门禁。必要时检查本数据包之外的信息。记录理由充分的
+              不适用或延期处置，并等待实时依赖。若未定义后继步骤，则在此边界之后结束。
             allowed_exits: [done, waiting, failed]

@@ -10,7 +10,7 @@ import type { StreamStore } from "./stream-store.js";
 export const sourceHash = (value: string) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 export interface ClassifierOccupant { nodeId: string; rigId: string; session: string; generation: string }
 
-// Same real running-session/tenure sources as startup liveness. No daemon pseudo-session.
+// 与启动存活检查使用相同的真实运行会话/任期来源，不引入后台服务伪会话。
 export function classifierOccupant(db: Database.Database, session: string): ClassifierOccupant | null {
   const rows = db.prepare(`SELECT DISTINCT n.id AS nodeId, n.rig_id AS rigId, b.tmux_session AS session,
     o.generation_uuid AS generation FROM nodes n JOIN bindings b ON b.node_id=n.id
@@ -31,7 +31,7 @@ export function classificationSources(db: Database.Database, project: ProjectRea
     if (scopes.length >= 1000) throw Error("scope count exceeds 1000");
     const source = insideProject(project.root, workSource(project.root, dir, false));
     const size = fs.statSync(source).size;
-    if (size > 128 * 1024 || (sourceBytes += size) > 4 * 1024 * 1024) throw Error("scope source byte limit");
+    if (size > 128 * 1024 || (sourceBytes += size) > 4 * 1024 * 1024) throw Error("工作范围源文件超过字节上限");
     const text = readBounded(source, Math.min(128 * 1024, 4 * 1024 * 1024 - sourceBytes + size));
     const front = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
     const id: unknown = front ? parse(front[1]!)?.id : undefined;

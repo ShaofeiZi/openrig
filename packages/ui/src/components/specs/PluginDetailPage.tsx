@@ -39,9 +39,8 @@ function isMarkdownFile(name: string): boolean {
   return ext === ".md" || ext === ".mdx";
 }
 
-// Auto-selection priority for the root-level default file: README.md
-// at the plugin root if present. Falls back to any other markdown,
-// then nothing.
+// 根级默认文件的自动选择优先级：插件根目录的 README.md（如存在）。
+// 回退到任何其他 markdown，然后无。
 function pickDefaultRootFile(entries: FileEntry[]): string | null {
   const readme = entries.find((e) => e.type === "file" && /^readme\.(md|mdx)$/i.test(e.name));
   if (readme) return readme.name;
@@ -58,7 +57,7 @@ export function PluginDetailPage({ pluginId }: PluginDetailPageProps) {
   const [defaultPicked, setDefaultPicked] = useState(false);
   const list = usePluginFilesList(pluginId, currentPath);
 
-  // Auto-select README.md (or any markdown) at the plugin root on first load.
+  // 首次加载时自动选择插件根目录的 README.md（或任何 markdown）。
   useEffect(() => {
     if (defaultPicked) return;
     if (currentPath !== "") return;
@@ -72,8 +71,8 @@ export function PluginDetailPage({ pluginId }: PluginDetailPageProps) {
     return (
       <div className="h-full bg-paper-grid px-6 py-5 lg:pl-[var(--workspace-left-offset,0px)] lg:pr-[var(--workspace-right-offset,0px)]">
         <EmptyState
-          label="LOADING PLUGIN"
-          description="Loading plugin manifest from discovery service."
+          label="正在加载插件"
+          description="正在从发现服务加载插件清单。"
           variant="card"
           testId="plugin-detail-loading"
         />
@@ -85,8 +84,8 @@ export function PluginDetailPage({ pluginId }: PluginDetailPageProps) {
     return (
       <div className="h-full bg-paper-grid px-6 py-5 lg:pl-[var(--workspace-left-offset,0px)] lg:pr-[var(--workspace-right-offset,0px)]">
         <EmptyState
-          label="PLUGIN NOT FOUND"
-          description="The selected plugin is not visible through any configured discovery source."
+          label="未找到插件"
+          description="所选插件在任何已配置的发现源中都不可见。"
           variant="card"
           testId="plugin-detail-not-found"
         />
@@ -104,7 +103,7 @@ export function PluginDetailPage({ pluginId }: PluginDetailPageProps) {
       className="h-full overflow-hidden bg-paper-grid px-6 py-5 lg:pl-[var(--workspace-left-offset,0px)] lg:pr-[var(--workspace-right-offset,0px)]"
     >
       <header className="mb-4">
-        <SectionHeader tone="muted">Plugin</SectionHeader>
+        <SectionHeader tone="muted">插件</SectionHeader>
         <div className="mt-1 flex flex-wrap items-baseline gap-3">
           <h1 className="font-headline text-2xl font-bold tracking-tight text-on-surface">
             {entry.name}
@@ -129,13 +128,13 @@ export function PluginDetailPage({ pluginId }: PluginDetailPageProps) {
             data-testid="plugin-detail-skill-count"
             className="font-mono text-[10px] uppercase tracking-[0.12em] text-on-surface-variant"
           >
-            {skillCount} {skillCount === 1 ? "skill" : "skills"}
+            {skillCount} 个技能
           </span>
           <span
             data-testid="plugin-detail-used-by-count"
             className="font-mono text-[10px] uppercase tracking-[0.12em] text-on-surface-variant"
           >
-            used by {usedByCount} {usedByCount === 1 ? "agent" : "agents"}
+            被 {usedByCount} 个智能体使用
           </span>
         </div>
         {entry.description && (
@@ -159,15 +158,15 @@ export function PluginDetailPage({ pluginId }: PluginDetailPageProps) {
           />
           {list.isLoading ? (
             <div data-testid="plugin-detail-tree-loading" className="p-3 font-mono text-[10px] text-on-surface-variant">
-              Loading…
+              加载中…
             </div>
           ) : list.isError ? (
             <div data-testid="plugin-detail-tree-error" className="p-3 font-mono text-[10px] text-red-600">
-              {(list.error as Error)?.message ?? "Error loading directory."}
+              {(list.error as Error)?.message ?? "加载目录时出错。"}
             </div>
           ) : !list.data || list.data.entries.length === 0 ? (
             <div data-testid="plugin-detail-tree-empty" className="p-3 font-mono text-[10px] text-on-surface-variant">
-              Empty directory.
+              空目录。
             </div>
           ) : (
             <ul className="p-1">
@@ -217,7 +216,7 @@ export function PluginDetailPage({ pluginId }: PluginDetailPageProps) {
         <main data-testid="plugin-detail-viewer" className="flex-1 min-w-0 overflow-y-auto bg-surface-lowest">
           {!selectedFile ? (
             <div data-testid="plugin-detail-viewer-no-selection" className="p-4 font-mono text-[10px] text-on-surface-variant">
-              Select a file from the tree.
+              从树中选择一个文件。
             </div>
           ) : (
             <PluginFileContent pluginId={pluginId} path={selectedFile} />
@@ -267,14 +266,14 @@ function PluginFileContent({ pluginId, path }: { pluginId: string; path: string 
   if (read.isLoading) {
     return (
       <div data-testid="plugin-detail-viewer-loading" className="p-4 font-mono text-[10px] text-on-surface-variant">
-        Loading…
+        加载中…
       </div>
     );
   }
   if (read.isError) {
     return (
       <div data-testid="plugin-detail-viewer-error" className="p-4 font-mono text-[10px] text-red-600">
-        {(read.error as Error)?.message ?? "Error loading file."}
+        {(read.error as Error)?.message ?? "加载文件时出错。"}
       </div>
     );
   }
@@ -295,8 +294,8 @@ function PluginFileContent({ pluginId, path }: { pluginId: string; path: string 
             data-testid="plugin-detail-viewer-truncated"
             className="mb-3 mx-4 mt-4 border border-amber-400 bg-amber-50 px-3 py-2 font-mono text-[10px] text-amber-900"
           >
-            ⚠ Truncated at {Math.round((read.data.truncatedAtBytes ?? 0) / 1024)} KB — file is{" "}
-            {Math.round((read.data.totalBytes ?? read.data.size) / 1024)} KB total.
+            ⚠ 在 {Math.round((read.data.truncatedAtBytes ?? 0) / 1024)} KB 处截断——文件共{" "}
+            {Math.round((read.data.totalBytes ?? read.data.size) / 1024)} KB。
           </div>
         )}
         {ext === ".md" || ext === ".mdx" ? (

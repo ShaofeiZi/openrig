@@ -38,8 +38,8 @@ async function run(kind: "queue" | "health", args: string[], data: unknown, stat
 }
 afterEach(() => { vi.restoreAllMocks(); process.exitCode = undefined; });
 
-describe("deliberate full reads", () => {
-  it.each([false, true])("diagnosis default preserves decisions and names omitted evidence (large=%s)", async (large) => {
+describe("有意识的完整读取", () => {
+  it.each([false, true])("诊断默认值保留决策并列出省略证据（large=%s）", async (large) => {
     const original = diagnosis(large), before = JSON.stringify(original);
     const { logs } = await run("health", ["diagnosis", "show", "q-1", "--json"], original);
     const value = JSON.parse(logs.join("\n"));
@@ -58,14 +58,14 @@ describe("deliberate full reads", () => {
     expect(JSON.stringify(original)).toBe(before);
   });
 
-  it.each([["--full", "--json"], ["--full"]])("explicit diagnosis full is lossless: %s", async (...flags) => {
+  it.each([["--full", "--json"], ["--full"]])("显式完整诊断无损：%s", async (...flags) => {
     const original = diagnosis(true);
     const { logs } = await run("health", ["diagnosis", "show", "q-1", ...flags], original);
     expect(JSON.parse(logs.join("\n"))).toEqual(original);
     if (flags.includes("--json")) expect(logs).toEqual([JSON.stringify(original)]);
   });
 
-  it("diagnosis list keeps its array shape; each occurrence teaches its own expansion", async () => {
+  it("诊断列表保持数组形态；每次 occurrence 都说明自己的展开方式", async () => {
     const original = [diagnosis(true)];
     const { logs } = await run("health", ["diagnosis", "list", "--json"], original);
     expect(JSON.parse(logs[0]!)).toHaveLength(1);
@@ -74,7 +74,7 @@ describe("deliberate full reads", () => {
     expect(JSON.parse(full.logs[0]!)).toEqual(original);
   });
 
-  it("parent --json remains a summary unless the occurrence read explicitly selects --full", async () => {
+  it("除非 occurrence 读取显式选择 --full，否则父级 --json 保持摘要", async () => {
     const original = diagnosis(false);
     const summary = await run("health", ["--json", "diagnosis", "show", "q-1"], original);
     expect(JSON.parse(summary.logs[0]!).readView.complete).toBe(false);
@@ -82,15 +82,15 @@ describe("deliberate full reads", () => {
     expect(full.logs).toEqual([JSON.stringify(original)]);
   });
 
-  it("human diagnosis shows an exact expansion and its cost", async () => {
+  it("人类可读诊断显示精确展开方式及其成本", async () => {
     const { logs } = await run("health", ["diagnosis", "show", "q-1"], diagnosis(true));
     expect(logs.join("\n")).toContain("rig health diagnosis show 'q-1' --full --json");
-    expect(logs.join("\n")).toContain("JSON bytes");
+    expect(logs.join("\n")).toContain("JSON 字节");
     expect(logs.join("\n")).toContain("blocked");
     expect(logs.join("\n")).toContain("decision-1");
   });
 
-  it("keeps attributed correction and unobserved effect visible without expanding source bodies", async () => {
+  it("无需展开来源正文即可保持署名修正和未观察效果可见", async () => {
     const original = { ...diagnosis(true), guidance: "Current correction guidance", assessment: { actor: "owner@rig", at: "2026-09-10T00:00:00Z", transitionId: 42 }, behavioralEffect: "unobserved" };
     const correction = { applicability: "Emergency premise retired; publication still applies", causalJudgment: "Owner assessment of retained trace", action: { state: "taken", summary: "Retired reservation", evidenceRefs: ["action.md"] }, effect: { state: "unobserved", summary: "No natural opportunity", evidenceRefs: [] } };
     const data = { ...original, disposition: { ...original.disposition, correction } };
@@ -101,23 +101,23 @@ describe("deliberate full reads", () => {
     expect(json).not.toHaveProperty("guidance");
     expect(json.readView.omittedFields).toContainEqual(expect.objectContaining({ path: "guidance" }));
     const text = (await run("health", ["diagnosis", "show", "q-1"], data)).logs.join("\n");
-    expect(text).toContain("Action (taken): Retired reservation");
-    expect(text).toContain("Later behavioral effect (owner report): unobserved");
-    expect(text).toContain("Attributed assessment: owner@rig");
+    expect(text).toMatch(/判定|已退役|Retired/i);
+    expect(text).toMatch(/后续行为|Later behavioral|unobserved/);
+    expect(text).toMatch(/归属|Attributed|owner@rig/);
   });
 
-  it.each(["", "😀".repeat(900)])("queue retains existing body semantics and adds exact full discovery", async (body) => {
+  it.each(["", "😀".repeat(900)])("队列保留现有正文语义，并提供精确的完整读取方式", async (body) => {
     const original = { qitemId: "q-1", body, state: "blocked", blockedOn: "decision-1", summary: "Needs a decision" };
     const { logs } = await run("queue", ["show", "q-1", "--json"], original);
     const value = JSON.parse(logs[0]!);
     expect(value.bodyBytes).toBe(Buffer.byteLength(body));
     expect(value.blockedOn).toBe("decision-1");
-    expect(value.readView).toMatchObject({ complete: body.length === 0, fullJsonBytes: Buffer.byteLength(JSON.stringify(original)), fullCommand: "rig queue show 'q-1' --full --json" });
+    expect(value.readView).toMatchObject({ complete: body.length === 0, fullJsonBytes: Buffer.byteLength(JSON.stringify(original)), fullCommand: "zrig queue show 'q-1' --full --json" });
     const full = await run("queue", ["show", "q-1", "--full", "--json"], original);
     expect(full.logs).toEqual([JSON.stringify(original)]);
   });
 
-  it("empty lists and errors are never converted into partial successes", async () => {
+  it("空列表与错误绝不转换为部分成功", async () => {
     expect((await run("health", ["diagnosis", "list", "--json"], [])).logs).toEqual(["[]"]);
     const error = { error: "health_diagnosis_not_found", message: "Unknown occurrence" };
     const response = await run("health", ["diagnosis", "show", "absent", "--json"], error, 400);
@@ -126,14 +126,14 @@ describe("deliberate full reads", () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it("intentional disposition writes keep their full JSON response", async () => {
-    // The read defaults must not rewrite another operation's result shape.
+  it("有意的处置写入保留完整 JSON 响应", async () => {
+    // 默认读取不能改写另一操作的结果形态。
     const original = diagnosis(true);
     const { logs } = await run("health", ["diagnosis", "notify", "q-1", "--json"], original);
     expect(logs).toEqual([JSON.stringify(original)]);
   });
 
-  it("queue errors retain their original JSON and failing exit", async () => {
+  it("队列错误保留原始 JSON 和失败退出码", async () => {
     const response = await run("queue", ["show", "absent", "--json"], { error: "not_found" }, 404);
     expect(JSON.parse(response.logs[0]!)).toEqual({ error: "not_found" });
     expect(process.exitCode).toBe(1);

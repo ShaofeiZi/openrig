@@ -1,0 +1,93 @@
+{
+ "schema": "openrig.tui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:18:47",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "comment-review-batch7",
+ "files": 10,
+ "changed": 5,
+ "reviewed_no_change": 5,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/tui/test/everyday-usability.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "c00820911c6e9f1741f6e63fa9b26fb9a8cdfd051a3f0d9c3989caf8b73b8952",
+   "after_sha256": "bf11f6e2f25ba328f4eae14f07ed57e6fa21f6144d29a303ab809285c52d7658",
+   "natural_language_residual": 0,
+   "machine_classification": "5f3b5bd4/5348bb66/3c6c2be0、runtime 枚举、qitem/SESSION 指针、/list 路由保留；hydrate paren差1为快照既有"
+  },
+  {
+   "path": "packages/tui/test/execution-view.test.ts",
+   "status": "changed",
+   "before_sha256": "de8039d7a53b9bb2dd88e6653c8994c716044c1cb936ba25139d2ae0b1cf3919",
+   "after_sha256": "ed5f6709b3944617efaf40d51ade21d007fe6d3939fb28f5c2bcb5c1cc7b6749",
+   "natural_language_residual": 0,
+   "machine_classification": "5f3b5bd4/5348bb66/3c6c2be0、runtime 枚举、qitem/SESSION 指针、/list 路由保留；hydrate paren差1为快照既有"
+  },
+  {
+   "path": "packages/tui/test/explorer-absence.test.ts",
+   "status": "changed",
+   "before_sha256": "b77f97442b980ede2e6a26c7ff9c922ef566a7e7bd9f3bb397660e3a8251fbba",
+   "after_sha256": "0fd6eef8d4bf0f7f2b3cfe10ebf139af42aea9c667d21afa46d94d0d9f8ab441",
+   "natural_language_residual": 0,
+   "machine_classification": "5f3b5bd4/5348bb66/3c6c2be0、runtime 枚举、qitem/SESSION 指针、/list 路由保留；hydrate paren差1为快照既有"
+  },
+  {
+   "path": "packages/tui/test/feed-source-continuity.test.ts",
+   "status": "changed",
+   "before_sha256": "c76afccc3c4e925983ce1d378495e4d66f06f9dfac090377f04c4d912e5b94ce",
+   "after_sha256": "e9917f2f3ebcb19e28ef8da8307e29b2e03bd88f227f64c592a6f61b414fea3a",
+   "natural_language_residual": 0,
+   "machine_classification": "5f3b5bd4/5348bb66/3c6c2be0、runtime 枚举、qitem/SESSION 指针、/list 路由保留；hydrate paren差1为快照既有"
+  },
+  {
+   "path": "packages/tui/test/feed-system.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "f491583509de54fb73cd13bb5721b160bec7b792ee41de398db5c992b47fbaa6",
+   "after_sha256": "dc874cf106141edc948ffb34bb37508f3e85608d86bdcd294ce428fe87700452",
+   "natural_language_residual": 0,
+   "machine_classification": "5f3b5bd4/5348bb66/3c6c2be0、runtime 枚举、qitem/SESSION 指针、/list 路由保留；hydrate paren差1为快照既有"
+  },
+  {
+   "path": "packages/tui/test/founder-live-qa-correction.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "9e6e6ca01cbcbbe01ccc767fa11cc81ccba3143af22156f6c7c5f51f6e16c5cb",
+   "after_sha256": "f3d77ff16245e9aedab5a43fbbe70928dfee87f211f5a8965795e445c67db860",
+   "natural_language_residual": 0,
+   "machine_classification": "5f3b5bd4/5348bb66/3c6c2be0、runtime 枚举、qitem/SESSION 指针、/list 路由保留；hydrate paren差1为快照既有"
+  },
+  {
+   "path": "packages/tui/test/health-view.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "b4bb2a1c30929fe8f7e288b722b0594a28790f3ee4242461cbd48e08c54c9e82",
+   "after_sha256": "650b60dc56a532de34201126a254f27cb4a832072486767286907fecb458998f",
+   "natural_language_residual": 0,
+   "machine_classification": "5f3b5bd4/5348bb66/3c6c2be0、runtime 枚举、qitem/SESSION 指针、/list 路由保留；hydrate paren差1为快照既有"
+  },
+  {
+   "path": "packages/tui/test/hydrate.test.ts",
+   "status": "changed",
+   "before_sha256": "a768901b048702542cf5ecff613a07e42e451fd022e2a4359ce0230c88e9c7a5",
+   "after_sha256": "f96a8517decb5742193914e84122809005986e4eaec81e225836167d73600fe9",
+   "natural_language_residual": 0,
+   "machine_classification": "5f3b5bd4/5348bb66/3c6c2be0、runtime 枚举、qitem/SESSION 指针、/list 路由保留；hydrate paren差1为快照既有"
+  },
+  {
+   "path": "packages/tui/test/instance-mission-control.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "3c1d4a37332eaa9a51bb7df993f9a68b0cf15cd593d212c8a503837d0ab30d1a",
+   "after_sha256": "f2bd9ac5dddba234a5407462666c63bb63a7bf980414ecd098987f9531dd6b65",
+   "natural_language_residual": 0,
+   "machine_classification": "5f3b5bd4/5348bb66/3c6c2be0、runtime 枚举、qitem/SESSION 指针、/list 路由保留；hydrate paren差1为快照既有"
+  },
+  {
+   "path": "packages/tui/test/ledger-explorer.test.ts",
+   "status": "changed",
+   "before_sha256": "ac076c9f6baca8ffba98d5feaee4c5e5d49c1fc20e66a5e1dcc4a7b628605062",
+   "after_sha256": "a1ee46e6b4b4d52893923c8eb8f25670f78f3917f4bfe761b7f9fa0e16742dfd",
+   "natural_language_residual": 0,
+   "machine_classification": "5f3b5bd4/5348bb66/3c6c2be0、runtime 枚举、qitem/SESSION 指针、/list 路由保留；hydrate paren差1为快照既有"
+  }
+ ]
+}

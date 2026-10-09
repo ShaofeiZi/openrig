@@ -9,17 +9,15 @@ import type {
   RigServicesCheckpointHook,
 } from "./types.js";
 
-// OPR.0.5.6.23 — the presence-invariant serialization seam for the
-// sessionSource union: ONE enumeration of the union's optional ref fields
-// drives emission, and the compile-time completeness check below makes a new
-// optional field on any union arm a BUILD ERROR here rather than a silent
-// round-trip to undefined (the silent-erasure class this slice closes).
+// OPR.0.5.6.23——sessionSource 联合类型的“存在性不变量”序列化接缝：
+// 联合类型可选 ref 字段只枚举一次并据此输出；下方编译期完备性检查会让任一
+// 联合分支新增但未枚举的可选字段在此成为构建错误，而不是在往返后静默变成 undefined。
+// 本 slice 正是要消除这种静默擦除。
 type SessionSourceRefKeys<T> = T extends { ref: infer R } ? (R extends unknown ? keyof R : never) : never;
 type SessionSourceOptionalRefKey = Exclude<SessionSourceRefKeys<SessionSourceSpec>, "kind">;
 const SESSION_SOURCE_OPTIONAL_REF_FIELDS = ["value", "version"] as const satisfies readonly SessionSourceOptionalRefKey[];
 type UnenumeratedRefField = Exclude<SessionSourceOptionalRefKey, (typeof SESSION_SOURCE_OPTIONAL_REF_FIELDS)[number]>;
-// If a union arm gains an optional ref field that is not enumerated above,
-// this line fails to compile and NAMES the missing field in its type.
+// 若联合分支新增了上方未枚举的可选 ref 字段，此行会编译失败，并在类型中点名缺失字段。
 const _sessionSourceEnumerationComplete: UnenumeratedRefField extends never ? true : ["unserialized sessionSource ref field:", UnenumeratedRefField] = true;
 void _sessionSourceEnumerationComplete;
 
@@ -32,11 +30,9 @@ function serializeSessionSource(ss: SessionSourceSpec): Record<string, unknown> 
   return { mode: ss.mode, ref };
 }
 
-// OPR.0.5.6.23 (desk ruling, transition 45061 on the slice's whole-goal row):
-// the services family rides the same presence-invariant seam. The mapped
-// record below must name EVERY RigServicesSpec key — a new field on the type
-// fails compilation here naming the missing key, never a silent round-trip
-// to absence.
+// OPR.0.5.6.23（桌面裁决，slice 整体目标行上的 transition 45061）：
+// services 家族复用同一存在性不变量接缝。下方映射记录必须点名每个
+// RigServicesSpec 键；类型新增字段会在此编译失败并点名缺失键，绝不会静默往返为缺失。
 const SERVICES_FIELD_EMITTERS: {
   [K in keyof Required<RigServicesSpec>]: (v: NonNullable<RigServicesSpec[K]>) => [string, unknown];
 } = {
@@ -86,7 +82,7 @@ function serializeCheckpointHook(hook: RigServicesCheckpointHook): Record<string
 }
 
 /**
- * Pod-aware RigSpec codec. Canonical contract for the AgentSpec reboot.
+ * Pod 感知的 RigSpec 编解码器，是 AgentSpec 重启的权威契约。
  */
 export class RigSpecCodec {
   static parse(yamlString: string): unknown {
@@ -100,16 +96,14 @@ export class RigSpecCodec {
     };
     if (spec.summary) doc["summary"] = spec.summary;
     if (spec.cultureFile) doc["culture_file"] = spec.cultureFile;
-    // OPR.0.4.8.3 Seam B: rig-level permission_policy ref round-trips through serialization.
+    // OPR.0.4.8.3 接缝 B：工作组级 permission_policy 引用经序列化无损往返。
     if (spec.permissionPolicy) doc["permission_policy"] = spec.permissionPolicy;
     if (spec.managedBlocks) doc["managed_blocks"] = { ...spec.managedBlocks };
     if (spec.docs && spec.docs.length > 0) doc["docs"] = spec.docs.map((d) => ({ path: d.path }));
     if (spec.startup) doc["startup"] = serializeStartupBlock(spec.startup);
     if (spec.services) doc["services"] = serializeServices(spec.services);
-    // PL-007: optional rig-level workspace block. Repos round-trip with
-    // their normalized absolute path; the codec does not strip back to
-    // workspace-relative since it has no signal that the original author
-    // wrote a relative path.
+    // PL-007：可选的工作组级 workspace 块。repo 使用归一化绝对路径往返；
+    // 编解码器无法知道作者原先是否写了相对路径，因此不会还原为 workspace 相对路径。
     if (spec.workspace) {
       const ws: Record<string, unknown> = {
         workspace_root: spec.workspace.workspaceRoot,
@@ -157,20 +151,20 @@ export class RigSpecCodec {
         if (m.label) member["label"] = m.label;
         if (m.codexConfigProfile) member["codex_config_profile"] = m.codexConfigProfile;
         if (m.model) member["model"] = m.model;
-        // OPR.0.4.6.FAC1: role round-trips through spec serialization.
+        // OPR.0.4.6.FAC1：role 经规格序列化无损往返。
         if (m.role) member["role"] = m.role;
-        // OPR.0.4.8.3 Seam B: per-seat permission_policy ref round-trips through spec serialization.
+        // OPR.0.4.8.3 接缝 B：逐席位 permission_policy 引用经规格序列化无损往返。
         if (m.permissionPolicy) member["permission_policy"] = m.permissionPolicy;
         if (m.restorePolicy) member["restore_policy"] = m.restorePolicy;
         if (m.startup) member["startup"] = serializeStartupBlock(m.startup);
-        // OPR.0.5.6.20 field, OPR.0.5.6.23 fix: parse carries it (schema
-        // normalize), so serialize must too — same silent-erasure class.
+        // OPR.0.5.6.20 字段，OPR.0.5.6.23 修复：parse 会携带它（schema 归一化），
+        // serialize 也必须如此——仍是同一类静默擦除问题。
         if (m.compactionStrategy) member["compaction_strategy"] = m.compactionStrategy;
         if (m.sessionSource) {
           member["session_source"] = serializeSessionSource(m.sessionSource);
         }
-        // (rebuild ref.value is an array; the codec re-emits it as-is via the
-        //  same `ref.value` slot — the YAML serializer handles array emission.)
+        // rebuild 的 ref.value 是数组；编解码器通过同一 `ref.value` 槽位原样重发，
+        // 数组输出由 YAML 序列化器处理。
         if (m.starterRef) {
           member["starter_ref"] = { name: m.starterRef.name };
         }
@@ -214,8 +208,8 @@ function serializeStartupBlock(startup: import("./types.js").StartupBlock): Reco
 }
 
 /**
- * Legacy flat-node RigSpec codec (pre-reboot).
- * TODO: Remove when AS-T08b/AS-T12 migrate all consumers.
+ * 旧版扁平节点 RigSpec 编解码器（重启前）。
+ * TODO：待 AS-T08b/AS-T12 迁移所有消费者后移除。
  */
 export class LegacyRigSpecCodec {
   static parse(yamlString: string): unknown {

@@ -64,7 +64,7 @@ const APPLY_RESPONSE = {
 };
 
 describe("BootstrapWizard", () => {
-  // T1: enter step with input
+  // T1：带输入进入 step
   it("renders enter step with spec input", async () => {
     renderWizard();
     await waitFor(() => {
@@ -87,7 +87,7 @@ describe("BootstrapWizard", () => {
     });
   });
 
-  // T2: plan shows stages
+  // T2：plan 显示 stages
   it("plan shows stages with status", async () => {
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => PLAN_RESPONSE });
     renderWizard();
@@ -109,7 +109,7 @@ describe("BootstrapWizard", () => {
     expect(screen.getByTestId("step-3").getAttribute("data-step-state")).toBe("active");
   });
 
-  // T3: requirements panel shows all 4 statuses with correct colors
+  // T3：requirements 面板显示全部 4 种状态及正确颜色
   it("requirements panel renders installed/missing/unsupported/unknown with correct dot colors", () => {
     const results: RequirementResult[] = [
       { name: "git", kind: "cli_tool", status: "installed", version: null, detectedPath: "/usr/bin/git" },
@@ -127,13 +127,13 @@ describe("BootstrapWizard", () => {
     expect(dots[3]!.className).toContain("bg-warning");
 
     const statuses = screen.getAllByTestId("requirement-status");
-    expect(statuses[0]!.textContent).toContain("OK");
-    expect(statuses[1]!.textContent).toContain("MISSING");
-    expect(statuses[2]!.textContent).toContain("MANUAL");
-    expect(statuses[3]!.textContent).toContain("UNKNOWN");
+    expect(statuses[0]!.textContent).toContain("正常");
+    expect(statuses[1]!.textContent).toContain("缺失");
+    expect(statuses[2]!.textContent).toContain("需手动");
+    expect(statuses[3]!.textContent).toContain("未知");
   });
 
-  // T4: apply sends approvedActionKeys in POST body
+  // T4：apply 在 POST body 中发 approvedActionKeys
   it("apply sends approvedActionKeys matching selected actions", async () => {
     fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => PLAN_RESPONSE })
@@ -155,7 +155,7 @@ describe("BootstrapWizard", () => {
     expect(body.approvedActionKeys).toEqual(["external_install:cli_tool:rg"]);
   });
 
-  // T5: done state with rigId + link
+  // T5：done 状态带 rigId + 链接
   it("done state shows rigId and view rig button", async () => {
     fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => PLAN_RESPONSE })
@@ -175,7 +175,7 @@ describe("BootstrapWizard", () => {
     });
   });
 
-  // T6: error state + try again
+  // T6：错误状态 + 重试
   it("error state shows error and try again button", async () => {
     fetchMock.mockRejectedValueOnce(new Error("network error"));
 
@@ -231,7 +231,7 @@ describe("BootstrapWizard", () => {
     expect(screen.getByTestId("step-error").textContent).not.toContain("HTTP 400");
   });
 
-  // T8b: applying step shows stage checklist from plan
+  // T8b：applying step 显示 plan 的 stage 清单
   it("applying step renders stage checklist from plan", async () => {
     fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => PLAN_RESPONSE })
@@ -249,13 +249,13 @@ describe("BootstrapWizard", () => {
       expect(screen.getByTestId("applying-checklist")).toBeTruthy();
     });
 
-    // Should show stages from the plan + apply-only stages
+    // 应显示 plan 的 stages + 仅 apply 的 stages
     const checklist = screen.getByTestId("applying-checklist");
     expect(checklist.textContent).toContain("resolve_spec");
     expect(checklist.textContent).toContain("import_rig");
   });
 
-  // T9: apply button disabled when plan is blocked
+  // T9：plan blocked 时 apply 按钮禁用
   it("apply button disabled when plan has blocked status", async () => {
     const blockedPlan = {
       ...PLAN_RESPONSE,
@@ -281,7 +281,7 @@ describe("BootstrapWizard", () => {
     expect(screen.getByTestId("blocked-warning")).toBeTruthy();
   });
 
-  // T10: apply button disabled when actionable installs exist but none selected
+  // T10：存在可安装项但未选时 apply 按钮禁用
   it("apply button disabled when no actions selected", async () => {
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => PLAN_RESPONSE });
 
@@ -292,7 +292,7 @@ describe("BootstrapWizard", () => {
 
     await waitFor(() => expect(screen.getByTestId("apply-btn")).toBeTruthy());
 
-    // Uncheck the auto-selected action
+    // 取消自动选中的 action
     const checkboxes = screen.getAllByRole("checkbox");
     const actionCheckbox = checkboxes.find((cb) => !(cb as HTMLInputElement).disabled && (cb as HTMLInputElement).checked);
     if (actionCheckbox) {

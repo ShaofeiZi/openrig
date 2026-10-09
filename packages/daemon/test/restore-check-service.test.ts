@@ -6,9 +6,8 @@ import {
   RestoreCheckService,
   type RestoreCheckDeps,
   type NodeInventoryEntry,
-  // OPR.0.3.2.14 — these used to be copy-pasted in 7+ test files;
-  // exported from source now so any future scrub/refactor only
-  // touches one place. See restore-check-service.ts L204-224.
+  // OPR.0.3.2.14——这些内容过去被复制粘贴到 7 个以上测试文件中；现已从源码导出，
+  // 使未来的清理/重构只需修改一处。参见 restore-check-service.ts 第 204—224 行。
   CLAUDE_HOOKS_ROOT,
   CLAUDE_SESSION_START_COMPACT_COMMAND as REQUIRED_SESSION_START_COMPACT_COMMAND,
   CLAUDE_USER_PROMPT_SUBMIT_COMMAND as REQUIRED_USER_PROMPT_SUBMIT_COMMAND,
@@ -207,9 +206,9 @@ describe("RestoreCheckService", () => {
     testOpenRigHome = null;
   });
 
-  // --- Daemon false-green regression matrix ---
+  // --- 后台服务假绿回归矩阵 ---
 
-  it("daemon-down: exact 'Daemon not running' text produces red", () => {
+  it("后台服务停止：精确的 'Daemon not running' 文本产生 red", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => ({ healthy: false, evidence: "Daemon not running — start it with: rig daemon start" }),
     }));
@@ -218,7 +217,7 @@ describe("RestoreCheckService", () => {
     expect(daemon?.status).toBe("red");
   });
 
-  it("daemon-down: lowercase 'daemon not running' produces red", () => {
+  it("后台服务停止：小写 'daemon not running' 文本产生 red", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => ({ healthy: false, evidence: "daemon not running" }),
     }));
@@ -227,7 +226,7 @@ describe("RestoreCheckService", () => {
     expect(daemon?.status).toBe("red");
   });
 
-  it("daemon-down: empty output produces red", () => {
+  it("后台服务停止：空输出产生 red", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => ({ healthy: false, evidence: "" }),
     }));
@@ -236,7 +235,7 @@ describe("RestoreCheckService", () => {
     expect(daemon?.status).toBe("red");
   });
 
-  it("daemon-down: suspicious text containing 'running' non-anchored produces red", () => {
+  it("后台服务停止：包含非锚定 'running' 的可疑文本产生 red", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => ({ healthy: true, evidence: "Something is running but not the daemon" }),
     }));
@@ -245,7 +244,7 @@ describe("RestoreCheckService", () => {
     expect(daemon?.status).toBe("red");
   });
 
-  it("daemon-up: canonical anchored 'Daemon running' produces green", () => {
+  it("后台服务运行：规范且锚定的 'Daemon running' 产生 green", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => ({ healthy: true, evidence: "Daemon running on port 7433" }),
     }));
@@ -254,9 +253,9 @@ describe("RestoreCheckService", () => {
     expect(daemon?.status).toBe("green");
   });
 
-  // --- Probe error → unknown (not not_restorable) ---
+  // --- 探测错误 → unknown（而非 not_restorable）---
 
-  it("probeDaemonHealth throw produces verdict unknown (not not_restorable)", () => {
+  it("probeDaemonHealth 抛出异常时判定为 unknown（而非 not_restorable）", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => { throw new Error("socket unavailable"); },
     }));
@@ -264,10 +263,10 @@ describe("RestoreCheckService", () => {
     expect(result.verdict).toBe("unknown");
     const daemon = result.checks.find((c) => c.check === "daemon.reachable");
     expect(daemon?.status).toBe("red");
-    expect(daemon?.evidence).toContain("unable to determine");
+    expect(daemon?.evidence).toContain("无法确定状态");
   });
 
-  it("listRigs probe error produces verdict unknown (not not_restorable)", () => {
+  it("listRigs 探测错误产生 unknown 判定（而非 not_restorable）", () => {
     const service = new RestoreCheckService(mockDeps({
       listRigs: () => { throw new Error("database locked"); },
     }));
@@ -278,7 +277,7 @@ describe("RestoreCheckService", () => {
     expect(probe?.evidence).toContain("database locked");
   });
 
-  it("getNodeInventory probe error produces verdict unknown", () => {
+  it("getNodeInventory 探测错误产生 unknown 判定", () => {
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => { throw new Error("query timeout"); },
     }));
@@ -286,14 +285,14 @@ describe("RestoreCheckService", () => {
     expect(result.verdict).toBe("unknown");
   });
 
-  // --- Read-only invariant ---
+  // --- 只读不变量 ---
 
-  it("state-dir check does not create probe file or mutate directory mtime (read-only)", () => {
+  it("状态目录检查不创建探测文件，也不修改目录 mtime（只读）", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-readonly-"));
     const probePath = path.join(tmpDir, ".restore-check-probe");
     const previous = process.env["OPENRIG_HOME"];
 
-    // Pin mtime to a known past value so any mutation is detectable
+    // 将 mtime 固定为已知的过去值，以便检测任何变更。
     fs.utimesSync(tmpDir, new Date(946684800000), new Date(946684800000));
     const before = fs.statSync(tmpDir).mtimeMs;
 
@@ -302,11 +301,11 @@ describe("RestoreCheckService", () => {
       const service = new RestoreCheckService(mockDeps());
       const result = service.check({ noQueue: true, noHooks: true });
 
-      // No probe file created
+      // 未创建探测文件。
       expect(fs.existsSync(probePath)).toBe(false);
-      // Directory mtime unchanged — no filesystem mutation
+      // 目录 mtime 不变——未修改文件系统。
       expect(fs.statSync(tmpDir).mtimeMs).toBe(before);
-      // Check itself ran and produced a result
+      // 检查本身已运行并产生结果。
       const stateDir = result.checks.find((c) => c.check === "host.state-dir-writable");
       expect(stateDir).toBeDefined();
     } finally {
@@ -316,9 +315,9 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  // --- Host-infra declaration ---
+  // --- 主机基础设施声明 ---
 
-  it("missing host-infra declaration is a non-blocking caveat and prevents ready", () => {
+  it("缺少主机基础设施声明是非阻塞注意项，并阻止 ready", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-missing-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const previous = process.env["OPENRIG_HOME"];
@@ -356,7 +355,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("unknown rig preserves missing host-infra declaration state on not_restorable result", () => {
+  it("未知工作组在 not_restorable 结果中保留主机基础设施声明缺失状态", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-missing-rig-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const previous = process.env["OPENRIG_HOME"];
@@ -385,7 +384,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("unknown rig preserves declared host-infra state on not_restorable result", () => {
+  it("未知工作组在 not_restorable 结果中保留已声明的主机基础设施状态", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-declared-rig-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const previous = process.env["OPENRIG_HOME"];
@@ -415,7 +414,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("malformed host-infra declaration is yellow with exact path and parse error", () => {
+  it("格式错误的主机基础设施声明为 yellow，并包含精确路径和解析错误", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-malformed-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const previous = process.env["OPENRIG_HOME"];
@@ -446,7 +445,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("arbitrary JSON is not accepted as a declared host-infra contract", () => {
+  it("不把任意 JSON 接受为已声明的主机基础设施契约", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-invalid-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const previous = process.env["OPENRIG_HOME"];
@@ -474,7 +473,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("valid host-infra declaration is green declared-not-verified evidence", () => {
+  it("有效主机基础设施声明产生 green 的“已声明但未验证”证据", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-valid-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const previous = process.env["OPENRIG_HOME"];
@@ -490,11 +489,13 @@ describe("RestoreCheckService", () => {
 
       expect(check?.status).toBe("green");
       expect(check?.evidence).toContain(declarationPath);
-      expect(check?.evidence).toContain("declared, not verified");
+      expect(check?.evidence).toContain("已声明主机基础设施");
+      expect(check?.evidence).toContain("尚未验证");
       expect(check?.evidence).toContain("mechanism=launchd");
       expect(check?.evidence).toContain("requiredSupportingInfra=1");
       expect(result.hostInfra.status).toBe("declared");
-      expect(result.hostInfra.evidence).toContain("declared, not verified");
+      expect(result.hostInfra.evidence).toContain("已声明主机基础设施");
+      expect(result.hostInfra.evidence).toContain("尚未验证");
       expect(result.verdict).toBe("restorable");
       expect(result.readiness.status).toBe("ready");
       expect(result.readiness.reason).toBe("all_observable_checks_green_host_infra_declared_not_verified");
@@ -506,7 +507,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("schemaVersion 2 with all evidence paths present is green without autostart overclaim", () => {
+  it("schemaVersion 2 的全部证据路径存在时为 green，且不夸大自动启动能力", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-v2-present-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const daemonPath = path.join(tmpDir, "daemon", "launchd.plist");
@@ -525,11 +526,12 @@ describe("RestoreCheckService", () => {
       const check = result.checks.find((entry) => entry.check === "host.bootstrap-autostart.declaration");
 
       expect(check?.status).toBe("green");
-      expect(check?.evidence).toContain("declared, evidence paths present, not autostart verified");
+      expect(check?.evidence).toContain("evidence path 已存在");
+      expect(check?.evidence).toContain("尚未验证自动启动");
       expect(check?.evidence).toContain(daemonPath);
       expect(check?.evidence).toContain(supportPath);
       expect(result.hostInfra.status).toBe("declared");
-      expect(result.hostInfra.evidence).toContain("not autostart verified");
+      expect(result.hostInfra.evidence).toContain("尚未验证自动启动");
       expect(result.verdict).toBe("restorable");
       expect(result.readiness.status).toBe("ready");
       expect(result.repairPacket).toBeNull();
@@ -540,7 +542,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("schemaVersion 2 requires daemonBootstrap evidencePaths", () => {
+  it("schemaVersion 2 要求 daemonBootstrap evidencePaths", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-v2-no-daemon-evidence-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const supportPath = path.join(tmpDir, "supervisor-wake", "README.md");
@@ -572,7 +574,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("schemaVersion 2 missing daemon evidence path is yellow with exact path", () => {
+  it("schemaVersion 2 缺少后台服务证据路径时为 yellow，并包含精确路径", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-v2-missing-daemon-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const daemonPath = path.join(tmpDir, "daemon", "launchd.plist");
@@ -606,7 +608,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("schemaVersion 2 missing required supporting evidence path is yellow with exact path", () => {
+  it("schemaVersion 2 缺少必需的辅助证据路径时为 yellow，并包含精确路径", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-v2-missing-support-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const daemonPath = path.join(tmpDir, "daemon", "launchd.plist");
@@ -640,7 +642,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("schemaVersion 2 required supportingInfra without evidencePaths is insufficient evidence", () => {
+  it("schemaVersion 2 的必需 supportingInfra 没有 evidencePaths 时证据不足", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-v2-required-no-evidence-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const daemonPath = path.join(tmpDir, "daemon", "launchd.plist");
@@ -679,7 +681,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("schemaVersion 2 optional supportingInfra without evidencePaths does not create a caveat", () => {
+  it("schemaVersion 2 的可选 supportingInfra 没有 evidencePaths 时不产生注意项", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-v2-optional-no-evidence-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const daemonPath = path.join(tmpDir, "daemon", "launchd.plist");
@@ -703,7 +705,8 @@ describe("RestoreCheckService", () => {
       const check = result.checks.find((entry) => entry.check === "host.bootstrap-autostart.declaration");
 
       expect(check?.status).toBe("green");
-      expect(check?.evidence).toContain("declared, evidence paths present, not autostart verified");
+      expect(check?.evidence).toContain("evidence path 已存在");
+      expect(check?.evidence).toContain("尚未验证自动启动");
       expect(result.verdict).toBe("restorable");
       expect(result.readiness.status).toBe("ready");
     } finally {
@@ -713,7 +716,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("schemaVersion 2 rejects plain relative and traversal evidence paths", () => {
+  it("schemaVersion 2 拒绝普通相对路径和穿越型证据路径", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-v2-relative-reject-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const daemonPath = path.join(tmpDir, "daemon", "launchd.plist");
@@ -756,7 +759,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("schemaVersion 2 evidence path checks are read-only", () => {
+  it("schemaVersion 2 的证据路径检查为只读", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-v2-readonly-"));
     const daemonDir = path.join(tmpDir, "daemon");
     const supportDir = path.join(tmpDir, "supervisor-wake");
@@ -795,7 +798,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("host-infra read exception is caught inside service as unknown caveat", () => {
+  it("主机基础设施读取异常在服务内部捕获为 unknown 注意项", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-host-infra-read-error-"));
     const declarationPath = path.join(tmpDir, "host-infra.json");
     const previous = process.env["OPENRIG_HOME"];
@@ -826,55 +829,55 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  // --- Rig spec/root checks ---
+  // --- 工作组规范/根目录检查 ---
 
-  it("missing rig root produces spec-present red", () => {
+  it("工作组根目录缺失时 spec-present 为 red", () => {
     const service = new RestoreCheckService(mockDeps({
       exists: (p) => !p.includes("rigs/test-rig"),
     }));
     const result = service.check({});
     const spec = result.checks.find((c) => c.check === "rig.test-rig.spec-present");
     expect(spec?.status).toBe("red");
-    expect(spec?.evidence).toContain("Rig root missing");
+    expect(spec?.evidence).toContain("缺少工作组根目录");
   });
 
-  it("rig root exists but rig.yaml missing produces spec-present yellow", () => {
+  it("工作组根目录存在但缺少 rig.yaml 时 spec-present 为 yellow", () => {
     const service = new RestoreCheckService(mockDeps({
       exists: (p) => !p.endsWith("rig.yaml"),
     }));
     const result = service.check({});
     const spec = result.checks.find((c) => c.check === "rig.test-rig.spec-present");
     expect(spec?.status).toBe("yellow");
-    expect(spec?.evidence).toContain("rig.yaml missing");
+    expect(spec?.evidence).toContain("缺少 rig.yaml");
   });
 
-  it("rig root + rig.yaml present produces spec-present green", () => {
+  it("工作组根目录与 rig.yaml 均存在时 spec-present 为 green", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({});
     const spec = result.checks.find((c) => c.check === "rig.test-rig.spec-present");
     expect(spec?.status).toBe("green");
   });
 
-  // --- Rig-level checks ---
+  // --- 工作组级检查 ---
 
-  it("missing snapshot produces yellow (not red)", () => {
+  it("快照缺失时产生 yellow（而非 red）", () => {
     const service = new RestoreCheckService(mockDeps({ hasSnapshot: () => false }));
     const result = service.check({});
     const snap = result.checks.find((c) => c.check === "rig.test-rig.snapshot");
     expect(snap?.status).toBe("yellow");
   });
 
-  // --- Seat-level checks ---
+  // --- 席位级检查 ---
 
-  it("missing transcript for agent node produces yellow", () => {
+  it("智能体节点缺少转录时产生 yellow", () => {
     const service = new RestoreCheckService(mockDeps({ exists: (p) => !p.includes(".log") }));
     const result = service.check({});
     const transcript = result.checks.find((c) => c.check === "seat.dev-impl@test-rig.transcript");
     expect(transcript?.status).toBe("yellow");
-    expect(transcript?.evidence).toContain("missing");
+    expect(transcript?.evidence).toContain("缺少 transcript");
   });
 
-  it("terminal/infra node transcript check is exempt without creating a caveat", () => {
+  it("terminal/infra 节点免于转录检查，且不产生注意项", () => {
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => [{
         nodeId: "node-1",
@@ -890,34 +893,34 @@ describe("RestoreCheckService", () => {
     const result = service.check({});
     const transcript = result.checks.find((c) => c.check === "seat.infra-board@test-rig.transcript");
     expect(transcript?.status).toBe("green");
-    expect(transcript?.evidence).toContain("exempt");
+    expect(transcript?.evidence).toContain("无需检查 transcript");
   });
 
-  it("missing queue file produces yellow", () => {
+  it("队列文件缺失时产生 yellow", () => {
     const service = new RestoreCheckService(mockDeps({
       exists: (p) => !p.includes("queue.md"),
     }));
     const result = service.check({});
     const queue = result.checks.find((c) => c.check === "seat.dev-impl@test-rig.queue-file");
     expect(queue?.status).toBe("yellow");
-    expect(queue?.evidence).toContain("missing");
+      expect(queue?.evidence).toContain("缺少 queue 文件");
   });
 
-  it("--no-queue skips queue file checks", () => {
+  it("--no-queue 跳过队列文件检查", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({ noQueue: true });
     const queueChecks = result.checks.filter((c) => c.check.includes("queue-file"));
     expect(queueChecks).toHaveLength(0);
   });
 
-  it("--no-hooks skips hook checks", () => {
+  it("--no-hooks 跳过 hook 检查", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({ noHooks: true });
     const hookChecks = result.checks.filter((c) => c.check.includes("hooks"));
     expect(hookChecks).toHaveLength(0);
   });
 
-  it("Claude hook check is green when project-local settings contain both required hooks", () => {
+  it("项目本地设置包含两个必需 hook 时 Claude hook 检查为 green", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-home-"));
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-cwd-"));
     const settingsPath = path.join(cwd, ".claude", "settings.local.json");
@@ -935,7 +938,8 @@ describe("RestoreCheckService", () => {
 
       expect(hook?.status).toBe("green");
       expect(hook?.evidence).toContain(settingsPath);
-      expect(hook?.evidence).toContain("configuration present, not hook-execution verified");
+      expect(hook?.evidence).toContain("hook 配置已存在");
+      expect(hook?.evidence).toContain("尚未验证 hook 执行");
       expect(hook?.evidence).not.toContain("not yet implemented");
     } finally {
       if (previousHome === undefined) delete process.env["HOME"];
@@ -945,7 +949,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("Claude hook check is green from host-global settings when cwd is unavailable", () => {
+  it("cwd 不可用时，主机全局设置满足条件可使 Claude hook 检查为 green", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-global-home-"));
     const settingsPath = path.join(home, ".claude", "settings.json");
     const previousHome = process.env["HOME"];
@@ -962,7 +966,8 @@ describe("RestoreCheckService", () => {
 
       expect(hook?.status).toBe("green");
       expect(hook?.evidence).toContain(settingsPath);
-      expect(hook?.evidence).toContain("configuration present, not hook-execution verified");
+      expect(hook?.evidence).toContain("hook 配置已存在");
+      expect(hook?.evidence).toContain("尚未验证 hook 执行");
       expect(hook?.evidence).not.toContain("cwd unavailable");
     } finally {
       if (previousHome === undefined) delete process.env["HOME"];
@@ -971,7 +976,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("Claude hook check is green when required hooks are split across host-global and project-local settings", () => {
+  it("必需 hooks 分布在主机全局与项目本地设置中时 Claude hook 检查为 green", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-merged-home-"));
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-merged-cwd-"));
     const hostSettingsPath = path.join(home, ".claude", "settings.json");
@@ -992,7 +997,8 @@ describe("RestoreCheckService", () => {
       const hook = result.checks.find((c) => c.check === "seat.dev-impl@test-rig.hooks");
 
       expect(hook?.status).toBe("green");
-      expect(hook?.evidence).toContain("configuration present, not hook-execution verified");
+      expect(hook?.evidence).toContain("hook 配置已存在");
+      expect(hook?.evidence).toContain("尚未验证 hook 执行");
       expect(hook?.evidence).toContain(hostSettingsPath);
       expect(hook?.evidence).toContain(localSettingsPath);
     } finally {
@@ -1003,7 +1009,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("Claude hook check is yellow when only one required hook is configured", () => {
+  it("仅配置一个必需 hook 时 Claude hook 检查为 yellow", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-partial-home-"));
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-partial-cwd-"));
     const settingsPath = path.join(cwd, ".claude", "settings.json");
@@ -1037,7 +1043,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("malformed applicable Claude settings keep hook check yellow even when another scope has hooks", () => {
+  it("适用的 Claude 设置格式错误时，即使另一范围有 hooks，检查仍为 yellow", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-malformed-home-"));
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-malformed-cwd-"));
     const hostSettingsPath = path.join(home, ".claude", "settings.json");
@@ -1059,7 +1065,7 @@ describe("RestoreCheckService", () => {
 
       expect(hook?.status).toBe("yellow");
       expect(hook?.evidence).toContain(hostSettingsPath);
-      expect(hook?.evidence).toContain("configuration could not be trusted");
+      expect(hook?.evidence).toContain("不能信任 Claude hook 配置");
       expect(result.repairPacket?.find((step) => step.rationale.includes(hostSettingsPath))).toEqual(expect.objectContaining({
         safe: false,
         blocking: false,
@@ -1072,7 +1078,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("Codex and infrastructure hook checks are green not-applicable without hook repair steps", () => {
+  it("Codex 与基础设施 hook 检查为 green 的不适用状态，且没有 hook 修复步骤", () => {
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => [
         {
@@ -1101,13 +1107,13 @@ describe("RestoreCheckService", () => {
     expect(hookChecks).toHaveLength(2);
     for (const hook of hookChecks) {
       expect(hook.status).toBe("green");
-      expect(hook.evidence).toContain("not applicable");
+      expect(hook.evidence).toContain("不适用 Claude Code hook 检查");
       expect(hook.remediation).toBe("");
     }
     expect(result.repairPacket?.some((step) => step.rationale.includes("Claude Code hook")) ?? false).toBe(false);
   });
 
-  it("Claude hook check with missing cwd is yellow only when host-global settings do not satisfy hooks", () => {
+  it("cwd 缺失时，仅当主机全局设置不满足 hooks，Claude hook 检查才为 yellow", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-no-cwd-home-"));
     const previousHome = process.env["HOME"];
     process.env["HOME"] = home;
@@ -1122,7 +1128,7 @@ describe("RestoreCheckService", () => {
       const hook = result.checks.find((c) => c.check === "seat.dev-impl@test-rig.hooks");
 
       expect(hook?.status).toBe("yellow");
-      expect(hook?.evidence).toContain("project settings were not inspected because cwd is unavailable");
+      expect(hook?.evidence).toContain("cwd 不可用，因此未检查项目 settings");
       expect(hook?.evidence).toContain(path.join(home, ".claude", "settings.json"));
     } finally {
       if (previousHome === undefined) delete process.env["HOME"];
@@ -1131,7 +1137,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("Claude hook matching is event-local and exact", () => {
+  it("Claude hook 匹配按事件局部执行且精确", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-event-local-home-"));
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-event-local-cwd-"));
     const settingsPath = path.join(cwd, ".claude", "settings.json");
@@ -1164,7 +1170,7 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("Claude hook inspection reads only existing settings files", () => {
+  it("Claude hook 检查仅读取现有设置文件", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-readonly-home-"));
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-hooks-readonly-cwd-"));
     const settingsPath = path.join(cwd, ".claude", "settings.local.json");
@@ -1195,21 +1201,21 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  it("Claude hooks without configuration are yellow without the old placeholder", () => {
+  it("未配置 Claude hooks 时为 yellow，且不含旧占位符", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({});
     const hookChecks = result.checks.filter((c) => c.check.includes("hooks"));
     expect(hookChecks.length).toBeGreaterThan(0);
     for (const hook of hookChecks) {
       expect(hook.status).toBe("yellow");
-      expect(hook.evidence).toContain("Claude Code hook configuration missing");
+      expect(hook.evidence).toContain("Claude Code hook 配置缺少");
       expect(hook.evidence).not.toContain("not yet implemented");
     }
   });
 
-  // --- Verdict aggregation ---
+  // --- 判定聚合 ---
 
-  it("all green produces verdict restorable (with --no-hooks to avoid yellow placeholder)", () => {
+  it("全部为 green 时产生 restorable 判定（使用 --no-hooks 避免 yellow 占位）", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({ noHooks: true }) as any;
     expect(result.verdict).toBe("restorable");
@@ -1240,14 +1246,14 @@ describe("RestoreCheckService", () => {
     ]);
     expect(result.recovery).toEqual({
       status: "not_needed",
-      summary: expect.stringContaining("no recovery action needed"),
+      summary: expect.stringContaining("无需恢复 action"),
       actions: [],
       blocked: [],
       unknown: [],
     });
   });
 
-  it("any yellow (no red) produces verdict restorable_with_caveats", () => {
+  it("存在 yellow 且没有 red 时产生 restorable_with_caveats 判定", () => {
     const service = new RestoreCheckService(mockDeps({ hasSnapshot: () => false }));
     const result = service.check({}) as any;
     expect(result.verdict).toBe("restorable_with_caveats");
@@ -1258,14 +1264,14 @@ describe("RestoreCheckService", () => {
     expect(result.counts.red).toBe(0);
     expect(result.recovery).toEqual({
       status: "not_needed",
-      summary: expect.stringContaining("no recovery action needed"),
+      summary: expect.stringContaining("无需恢复 action"),
       actions: [],
       blocked: [],
       unknown: [],
     });
   });
 
-  it("any red produces verdict not_restorable", () => {
+  it("存在任意 red 时产生 not_restorable 判定", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => ({ healthy: false, evidence: "Daemon not running" }),
     }));
@@ -1276,7 +1282,7 @@ describe("RestoreCheckService", () => {
     expect(result.counts.red).toBeGreaterThan(0);
   });
 
-  it("probe error produces unknown readiness, not false green", () => {
+  it("探测错误产生 unknown 就绪状态，而非假 green", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => { throw new Error("socket unavailable"); },
     }));
@@ -1295,13 +1301,13 @@ describe("RestoreCheckService", () => {
       unknown: [
         expect.objectContaining({
           scope: "host",
-          reason: expect.stringContaining("unable to determine"),
+          reason: expect.stringContaining("无法确定状态"),
         }),
       ],
     }));
   });
 
-  it("stopped snapshot-backed rig produces actionable recovery command", () => {
+  it("已停止且有快照支持的工作组产生可执行恢复命令", () => {
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => [claudeNode({
         canonicalSessionName: "dev-impl@test-rig",
@@ -1318,14 +1324,14 @@ describe("RestoreCheckService", () => {
     expect(result.readiness.status).toBe("not_ready");
     expect(result.recovery).toEqual({
       status: "actionable",
-      summary: expect.stringContaining("1 rig can be recovered"),
+      summary: expect.stringContaining("1 个工作组可用"),
       actions: [
         expect.objectContaining({
           scope: "rig",
           rigId: "rig-1",
           rigName: "test-rig",
           action: "restore_from_latest_snapshot",
-          command: "rig up --existing test-rig",
+      command: "zrig up --existing test-rig",
           safe: false,
           blocking: true,
         }),
@@ -1335,7 +1341,7 @@ describe("RestoreCheckService", () => {
     });
   });
 
-  it("missing canonical session identity with latest snapshot is blocked, not actionable", () => {
+  it("有最新快照但缺少规范会话身份时被阻塞，不可执行恢复", () => {
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => [claudeNode({
         canonicalSessionName: null,
@@ -1352,21 +1358,21 @@ describe("RestoreCheckService", () => {
     expect(result.readiness.status).toBe("not_ready");
     expect(result.recovery).toEqual({
       status: "blocked",
-      summary: expect.stringContaining("1 rig blocked"),
+      summary: expect.stringContaining("1 个工作组被阻塞"),
       actions: [],
       blocked: [
         expect.objectContaining({
           scope: "rig",
           rigId: "rig-1",
           rigName: "test-rig",
-          reason: expect.stringContaining("Missing canonical session identity"),
+          reason: expect.stringContaining("缺少 canonical session identity"),
         }),
       ],
       unknown: [],
     });
   });
 
-  it("running/ready node with persisted startup context and existing required files is green", () => {
+  it("运行中/就绪节点有持久化启动上下文和所需文件时为 green", () => {
     const requiredPath = path.join(os.tmpdir(), "restore-check-startup-required-present.md");
     const service = new RestoreCheckService(mockDeps({
       getStartupContext: () => startupContextProbe({
@@ -1385,7 +1391,7 @@ describe("RestoreCheckService", () => {
     expect(result.repairPacket).toBeNull();
   });
 
-  it("non-ready snapshot-backed node with missing startup context is blocked, not actionable", () => {
+  it("非就绪且有快照支持的节点缺少启动上下文时被阻塞，不可执行恢复", () => {
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => [claudeNode({
         nodeId: "node-1" as never,
@@ -1395,7 +1401,7 @@ describe("RestoreCheckService", () => {
       })],
       getStartupContext: () => startupContextProbe({
         status: "missing",
-        evidence: "Persisted startup context missing for node node-1",
+        evidence: "节点 node-1 缺少持久化 startup context",
       }) as never,
       getLatestSnapshot: () => ({ id: "snap-123", kind: "auto-pre-down" }),
     }));
@@ -1406,24 +1412,24 @@ describe("RestoreCheckService", () => {
     expect(startup).toEqual(expect.objectContaining({
       status: "red",
     }));
-    expect(startup.evidence).toContain("Persisted startup context missing");
+    expect(startup.evidence).toContain("缺少持久化 startup context");
     expect(result.recovery).toEqual(expect.objectContaining({
       status: "blocked",
       actions: [],
       blocked: [
         expect.objectContaining({
           scope: "rig",
-          reason: expect.stringContaining("Persisted startup context missing"),
+          reason: expect.stringContaining("缺少持久化 startup context"),
         }),
       ],
     }));
   });
 
-  it("running/ready node with missing startup context is a yellow caveat, not a recovery block", () => {
+  it("运行中/就绪节点缺少启动上下文时是 yellow 注意项，而非恢复阻塞项", () => {
     const service = new RestoreCheckService(mockDeps({
       getStartupContext: () => startupContextProbe({
         status: "missing",
-        evidence: "Persisted startup context missing for node node-1",
+        evidence: "节点 node-1 缺少持久化 startup context",
       }) as never,
     }));
 
@@ -1433,17 +1439,17 @@ describe("RestoreCheckService", () => {
     expect(startup).toEqual(expect.objectContaining({
       status: "yellow",
     }));
-    expect(startup.evidence).toContain("Persisted startup context missing");
+    expect(startup.evidence).toContain("缺少持久化 startup context");
     expect(result.recovery).toEqual({
       status: "not_needed",
-      summary: expect.stringContaining("no recovery action needed"),
+      summary: expect.stringContaining("无需恢复 action"),
       actions: [],
       blocked: [],
       unknown: [],
     });
   });
 
-  it("non-ready node with missing required startup file is a red restore-input blocker", () => {
+  it("非就绪节点缺少必需启动文件时是 red 恢复输入阻塞项", () => {
     const requiredPath = path.join(os.tmpdir(), "restore-check-startup-required-missing.md");
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => [claudeNode({
@@ -1478,7 +1484,7 @@ describe("RestoreCheckService", () => {
     }));
   });
 
-  it("running/ready node with missing required startup file is a yellow caveat", () => {
+  it("运行中/就绪节点缺少必需启动文件时是 yellow 注意项", () => {
     const requiredPath = path.join(os.tmpdir(), "restore-check-startup-required-ready-missing.md");
     const service = new RestoreCheckService(mockDeps({
       getStartupContext: () => startupContextProbe({
@@ -1498,7 +1504,7 @@ describe("RestoreCheckService", () => {
     expect(result.recovery.status).toBe("not_needed");
   });
 
-  it("missing optional startup file is a yellow caveat", () => {
+  it("可选启动文件缺失时是 yellow 注意项", () => {
     const optionalPath = path.join(os.tmpdir(), "restore-check-startup-optional-missing.md");
     const service = new RestoreCheckService(mockDeps({
       getStartupContext: () => startupContextProbe({
@@ -1517,7 +1523,7 @@ describe("RestoreCheckService", () => {
     expect(startup.evidence).toContain(optionalPath);
   });
 
-  it("missing projection-entry source path is a yellow caveat, not a blocker", () => {
+  it("projection-entry 源路径缺失时是 yellow 注意项，而非阻塞项", () => {
     const projectionPath = path.join(os.tmpdir(), "restore-check-projection-source-missing.md");
     const service = new RestoreCheckService(mockDeps({
       getStartupContext: () => startupContextProbe({
@@ -1537,7 +1543,7 @@ describe("RestoreCheckService", () => {
     expect(result.recovery.status).toBe("not_needed");
   });
 
-  it("stopped rig without latest snapshot is actionable when durable current state is present", () => {
+  it("已停止工作组没有最新快照但存在持久当前状态时可执行恢复", () => {
     const service = new RestoreCheckService(mockDeps({
       hasSnapshot: () => false,
       getNodeInventory: () => [claudeNode({
@@ -1554,14 +1560,14 @@ describe("RestoreCheckService", () => {
     expect(result.readiness.status).toBe("not_ready");
     expect(result.recovery).toEqual({
       status: "actionable",
-      summary: expect.stringContaining("1 rig can be recovered"),
+      summary: expect.stringContaining("1 个工作组可用"),
       actions: [
         expect.objectContaining({
           scope: "rig",
           rigId: "rig-1",
           rigName: "test-rig",
-          command: "rig up --existing test-rig",
-          reason: expect.stringContaining("current DB state"),
+          command: "zrig up --existing test-rig",
+          reason: expect.stringContaining("持久化当前 DB 状态"),
         }),
       ],
       blocked: [],
@@ -1569,7 +1575,7 @@ describe("RestoreCheckService", () => {
     });
   });
 
-  it("stopped infrastructure node is represented in readiness and prevents ready", () => {
+  it("已停止的基础设施节点会体现在就绪状态中，并阻止 ready", () => {
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => [{
         rigId: "rig-1", rigName: "test-rig", logicalId: "infra.board",
@@ -1595,7 +1601,7 @@ describe("RestoreCheckService", () => {
     expect(result.repairPacket?.some((step: { blocking: boolean; safe: boolean }) => step.blocking && step.safe === false)).toBe(true);
   });
 
-  it("running infrastructure node counts ready while transcript-exempt", () => {
+  it("运行中的基础设施节点免于转录检查，同时计为 ready", () => {
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => [{
         nodeId: "node-1",
@@ -1622,7 +1628,7 @@ describe("RestoreCheckService", () => {
     expect(transcript.status).toBe("green");
   });
 
-  it("missing canonical session identity blocks ready", () => {
+  it("缺少规范会话身份时阻止 ready", () => {
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => [{
         rigId: "rig-1", rigName: "test-rig", logicalId: "dev.impl",
@@ -1642,9 +1648,9 @@ describe("RestoreCheckService", () => {
     ))).toBe(true);
   });
 
-  // --- Rig filter ---
+  // --- 工作组过滤器 ---
 
-  it("--rig filters to named rig only", () => {
+  it("--rig 仅筛选具名工作组", () => {
     const service = new RestoreCheckService(mockDeps({
       listRigs: () => [
         { rigId: "rig-1", name: "rig-a" },
@@ -1652,13 +1658,13 @@ describe("RestoreCheckService", () => {
       ],
     }));
     const result = service.check({ rig: "rig-a" });
-    // Only rig-specific + seat checks present — no rig-b contamination
+    // 仅包含工作组特定检查与席位检查——没有 rig-b 污染。
     const rigSpecificChecks = result.checks.filter((c) => c.check.startsWith("rig.") || c.check.startsWith("seat."));
     expect(rigSpecificChecks.length).toBeGreaterThan(0);
     expect(rigSpecificChecks.some((c) => c.check.includes("rig-b"))).toBe(false);
   });
 
-  it("--rig with unknown name produces red", () => {
+  it("--rig 使用未知名称时产生 red", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({ rig: "nonexistent" });
     expect(result.verdict).toBe("not_restorable");
@@ -1666,16 +1672,16 @@ describe("RestoreCheckService", () => {
     expect(notFound?.status).toBe("red");
   });
 
-  // --- JSON shape ---
+  // --- JSON 结构 ---
 
-  it("restorable result has repairPacket null", () => {
+  it("restorable 结果的 repairPacket 为 null", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({ noHooks: true });
     expect(result.verdict).toBe("restorable");
     expect(result.repairPacket).toBeNull();
   });
 
-  it("not_restorable result includes blocking repair steps with explicit severity", () => {
+  it("not_restorable 结果包含显式严重度的阻塞修复步骤", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => ({ healthy: false, evidence: "Daemon not running" }),
     }));
@@ -1686,7 +1692,7 @@ describe("RestoreCheckService", () => {
     expect(result.repairPacket).toEqual([
       expect.objectContaining({
         step: 1,
-        command: "Start the daemon with: rig daemon start",
+        command: "启动后台服务：zrig daemon start",
         rationale: "Daemon not running",
         blocking: true,
         safe: expect.any(Boolean),
@@ -1694,7 +1700,7 @@ describe("RestoreCheckService", () => {
     ]);
   });
 
-  it("restorable_with_caveats result includes non-blocking repair steps with prose actions", () => {
+  it("restorable_with_caveats 结果包含带自然语言操作的非阻塞修复步骤", () => {
     const service = new RestoreCheckService(mockDeps({
       exists: (p) => !p.includes(".log"),
     }));
@@ -1705,15 +1711,15 @@ describe("RestoreCheckService", () => {
     expect(result.repairPacket).toEqual([
       expect.objectContaining({
         step: 1,
-        command: "Transcript will be created on next session launch",
-        rationale: expect.stringContaining("Transcript missing"),
+        command: "下次启动会话时将创建 transcript",
+        rationale: expect.stringContaining("缺少 transcript"),
         blocking: false,
         safe: expect.any(Boolean),
       }),
     ]);
   });
 
-  it("repairPacket orders blockers before caveats and keeps 1-indexed steps", () => {
+  it("repairPacket 将阻塞项排在注意项之前，并保持步骤从 1 编号", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => ({ healthy: false, evidence: "Daemon not running" }),
       hasSnapshot: () => false,
@@ -1725,16 +1731,16 @@ describe("RestoreCheckService", () => {
     expect(packet).not.toBeNull();
     expect(packet?.map((entry) => entry.step)).toEqual([1, 2]);
     expect(packet?.[0]).toEqual(expect.objectContaining({
-      command: "Start the daemon with: rig daemon start",
+      command: "启动后台服务：zrig daemon start",
       blocking: true,
     }));
     expect(packet?.[1]).toEqual(expect.objectContaining({
-      command: "Create a snapshot with: rig snapshot <rigId>",
+      command: "创建快照：zrig snapshot <rigId>",
       blocking: false,
     }));
   });
 
-  it("unknown result includes restore-blocking probe repair steps without changing verdict", () => {
+  it("unknown 结果包含阻塞恢复的探测修复步骤，但不改变判定", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => { throw new Error("socket unavailable"); },
     }));
@@ -1745,15 +1751,15 @@ describe("RestoreCheckService", () => {
     expect(result.repairPacket).toEqual([
       expect.objectContaining({
         step: 1,
-        command: "Start the daemon with: rig daemon start",
-        rationale: expect.stringContaining("unable to determine state"),
+        command: "启动后台服务：zrig daemon start",
+        rationale: expect.stringContaining("无法确定状态"),
         blocking: true,
         safe: expect.any(Boolean),
       }),
     ]);
   });
 
-  it("every check has check/status/evidence/remediation fields", () => {
+  it("每项检查都含 check/status/evidence/remediation 字段", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({});
     for (const check of result.checks) {
@@ -1764,9 +1770,9 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  // --- Slice 2: repair packet ---
+  // --- 切片 2：修复包 ---
 
-  it("not_restorable verdict has repairPacket with blocking:true entries for red checks", () => {
+  it("not_restorable 判定的 repairPacket 为 red 检查提供 blocking:true 条目", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => ({ healthy: false, evidence: "Daemon not running" }),
     }));
@@ -1782,12 +1788,12 @@ describe("RestoreCheckService", () => {
     expect(typeof blocker!.command).toBe("string");
     expect(blocker!.command.length).toBeGreaterThan(0);
     expect(typeof blocker!.rationale).toBe("string");
-    // Daemon start is a mutating action → safe: false
+    // 启动后台服务会产生变更 → safe: false。
     expect(blocker!.safe).toBe(false);
     expect(blocker!.blocking).toBe(true);
   });
 
-  it("restorable_with_caveats has repairPacket with blocking:false entries for yellow checks", () => {
+  it("restorable_with_caveats 的 repairPacket 为 yellow 检查提供 blocking:false 条目", () => {
     const service = new RestoreCheckService(mockDeps({ hasSnapshot: () => false }));
     const result = service.check({ noQueue: true, noHooks: true });
 
@@ -1796,12 +1802,12 @@ describe("RestoreCheckService", () => {
 
     const caveat = result.repairPacket!.find((s) => !s.blocking);
     expect(caveat).toBeDefined();
-    // Snapshot creation is a mutating action → safe: false
+    // 创建快照会产生变更 → safe: false。
     expect(caveat!.safe).toBe(false);
     expect(caveat!.blocking).toBe(false);
   });
 
-  it("restorable verdict has repairPacket null (nothing to repair)", () => {
+  it("restorable 判定的 repairPacket 为 null（无需修复）", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({ noHooks: true });
 
@@ -1809,8 +1815,8 @@ describe("RestoreCheckService", () => {
     expect(result.repairPacket).toBeNull();
   });
 
-  it("repair packet orders blockers before caveats with 1-indexed steps", () => {
-    // Red daemon + yellow missing snapshot = blocker first, caveat second
+  it("修复包将阻塞项排在注意项之前，步骤从 1 编号", () => {
+    // red 后台服务 + yellow 快照缺失 = 阻塞项在前，注意项在后。
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => ({ healthy: false, evidence: "Daemon not running" }),
       hasSnapshot: () => false,
@@ -1820,19 +1826,19 @@ describe("RestoreCheckService", () => {
     expect(result.repairPacket).not.toBeNull();
     const steps = result.repairPacket!;
     expect(steps.length).toBeGreaterThanOrEqual(2);
-    // First entry should be a blocker (daemon red)
+    // 第一项应为阻塞项（后台服务 red）。
     expect(steps[0]!.blocking).toBe(true);
     expect(steps[0]!.step).toBe(1);
-    // Last entry should be a caveat (snapshot yellow)
+    // 最后一项应为注意项（快照 yellow）。
     const lastCaveat = steps.find((s) => !s.blocking);
     expect(lastCaveat).toBeDefined();
-    // Steps are sequential
+    // 步骤连续编号。
     for (let i = 0; i < steps.length; i++) {
       expect(steps[i]!.step).toBe(i + 1);
     }
   });
 
-  it("unknown verdict has repairPacket with blocking:true entries", () => {
+  it("unknown 判定的 repairPacket 包含 blocking:true 条目", () => {
     const service = new RestoreCheckService(mockDeps({
       listRigs: () => { throw new Error("database locked"); },
     }));
@@ -1844,21 +1850,21 @@ describe("RestoreCheckService", () => {
     expect(entry.blocking).toBe(true);
   });
 
-  it("repair entry command contains prose remediation, not shell command prefix", () => {
+  it("修复条目的 command 包含自然语言指导，而非 shell 命令前缀", () => {
     const service = new RestoreCheckService(mockDeps({ hasSnapshot: () => false }));
     const result = service.check({ noQueue: true, noHooks: true });
 
     expect(result.repairPacket).not.toBeNull();
-    const snapshotStep = result.repairPacket!.find((s) => s.rationale.includes("snapshot"));
+    const snapshotStep = result.repairPacket!.find((s) => s.rationale.includes("快照"));
     expect(snapshotStep).toBeDefined();
-    // Command is prose guidance, not prefixed with $ or auto-executable
+    // Command 是自然语言指导，不以 $ 开头，也不可自动执行。
     expect(snapshotStep!.command).not.toMatch(/^\$/);
     expect(snapshotStep!.command.length).toBeGreaterThan(0);
   });
 
-  it("omitted remediationSafe defaults to safe:false (conservative)", () => {
-    // getNodeInventory throw has remediation "Check daemon status" with no
-    // explicit remediationSafe — conservative default must produce safe:false
+  it("省略 remediationSafe 时默认 safe:false（保守）", () => {
+    // getNodeInventory 抛出异常时的 remediation 为“检查后台服务状态”，未显式提供
+    // remediationSafe——保守默认值必须产生 safe:false。
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => { throw new Error("query timeout"); },
     }));
@@ -1868,12 +1874,12 @@ describe("RestoreCheckService", () => {
     expect(result.repairPacket).not.toBeNull();
     const entry = result.repairPacket!.find((s) => s.rationale.includes("query timeout"));
     expect(entry).toBeDefined();
-    // Omitted remediationSafe → safe:false (conservative default)
+    // 省略 remediationSafe → safe:false（保守默认值）。
     expect(entry!.safe).toBe(false);
     expect(entry!.blocking).toBe(true);
   });
 
-  it("new readiness repair steps preserve blocking severity versus execution safety", () => {
+  it("新的就绪修复步骤区分并保留阻塞严重度与执行安全性", () => {
     const service = new RestoreCheckService(mockDeps({
       getNodeInventory: () => [{
         rigId: "rig-1", rigName: "test-rig", logicalId: "dev.impl",
@@ -1886,7 +1892,7 @@ describe("RestoreCheckService", () => {
     }));
 
     const result = service.check({ noHooks: true });
-    const readinessRepair = result.repairPacket?.find((step) => step.rationale.includes("not running/ready"));
+    const readinessRepair = result.repairPacket?.find((step) => step.rationale.includes("未处于 running/ready"));
 
     expect(readinessRepair).toEqual(expect.objectContaining({
       blocking: true,
@@ -1894,21 +1900,21 @@ describe("RestoreCheckService", () => {
     }));
   });
 
-  // --- H62 absence proofs ---
+  // --- H62 缺失证明 ---
 
-  it("result has no top-level fullyBack field", () => {
+  it("结果没有顶层 fullyBack 字段", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({ noHooks: true }) as Record<string, unknown>;
     expect("fullyBack" in result).toBe(false);
   });
 
-  it("result has no top-level assertion field", () => {
+  it("结果没有顶层 assertion 字段", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({ noHooks: true }) as Record<string, unknown>;
     expect("assertion" in result).toBe(false);
   });
 
-  it("per-rig status uses readiness vocabulary, not fully_back/not_fully_back", () => {
+  it("逐工作组状态使用就绪词汇，而非 fully_back/not_fully_back", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({ noHooks: true });
     for (const rig of result.rigs) {
@@ -1918,9 +1924,9 @@ describe("RestoreCheckService", () => {
     }
   });
 
-  // --- H62 continuity assertions ---
+  // --- H62 连续性断言 ---
 
-  it("continuity is always not_proven in v1 with populated unprovenCapabilities", () => {
+  it("v1 中 continuity 始终为 not_proven，且填充 unprovenCapabilities", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({ noHooks: true });
     expect(result.continuity.status).toBe("not_proven");
@@ -1931,14 +1937,14 @@ describe("RestoreCheckService", () => {
     expect(result.continuity.unprovenCapabilities).toContain("interrupted_work_functional_resume");
   });
 
-  it("all-green observable rig still has continuity not_proven", () => {
+  it("全部可观测检查均为 green 的工作组，continuity 仍为 not_proven", () => {
     const service = new RestoreCheckService(mockDeps());
     const result = service.check({ noHooks: true });
     expect(result.readiness.status).toBe("ready");
     expect(result.continuity.status).toBe("not_proven");
   });
 
-  it("unknown/probe-error result has continuity not_proven", () => {
+  it("unknown/探测错误结果的 continuity 为 not_proven", () => {
     const service = new RestoreCheckService(mockDeps({
       probeDaemonHealth: () => { throw new Error("socket unavailable"); },
     }));

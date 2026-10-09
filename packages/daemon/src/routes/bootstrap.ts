@@ -14,7 +14,7 @@ function getDeps(c: { get: (key: string) => unknown }) {
   };
 }
 
-/** Map failed plan result to HTTP status using structured stage codes */
+/** 用结构化 stage 码把失败的 plan 结果映射到 HTTP 状态码 */
 function planFailureStatus(result: { stages: Array<{ stage: string; status: string; detail: unknown }> }): 400 | 409 | 500 {
   const failedStage = result.stages.find((s) => s.status === "failed" || s.status === "blocked");
   if (!failedStage) return 500;
@@ -39,12 +39,12 @@ bootstrapRoutes.post("/plan", async (c) => {
   const cwdOverride = typeof body["cwdOverride"] === "string" ? body["cwdOverride"] : undefined;
 
   if (!sourceRef) {
-    return c.json({ error: "sourceRef is required" }, 400);
+    return c.json({ error: "sourceRef 为必填项" }, 400);
   }
 
-  // Concurrency lock — consistent state during plan
+  // 并发锁——plan 期间状态一致
   if (!bootstrapOrchestrator.tryAcquire(sourceRef)) {
-    return c.json({ error: "Bootstrap already in progress for this spec", code: "conflict" }, 409);
+    return c.json({ error: "该 spec 的 bootstrap 已在进行中", code: "conflict" }, 409);
   }
 
   try {
@@ -65,8 +65,8 @@ bootstrapRoutes.post("/plan", async (c) => {
       return c.json(result, 200);
     }
 
-    // Plan failed — emit failed event, return appropriate status
-    eventBus.emit({ type: "bootstrap.failed", runId: result.runId, sourceRef, error: result.errors[0] ?? "plan failed" });
+    // Plan 失败——发出 failed 事件，返回合适的状态码
+    eventBus.emit({ type: "bootstrap.failed", runId: result.runId, sourceRef, error: result.errors[0] ?? "plan 失败" });
     return c.json(result, planFailureStatus(result));
   } finally {
     bootstrapOrchestrator.release(sourceRef);
@@ -80,12 +80,12 @@ bootstrapRoutes.post("/apply", async (c) => {
   const sourceRef = typeof body["sourceRef"] === "string" ? body["sourceRef"] : "";
 
   if (!sourceRef) {
-    return c.json({ error: "sourceRef is required" }, 400);
+    return c.json({ error: "sourceRef 为必填项" }, 400);
   }
 
-  // Concurrency lock — acquire before creating run
+  // 并发锁——在创建 run 之前获取
   if (!bootstrapOrchestrator.tryAcquire(sourceRef)) {
-    return c.json({ error: "Bootstrap already in progress for this spec", code: "conflict" }, 409);
+    return c.json({ error: "该 spec 的 bootstrap 已在进行中", code: "conflict" }, 409);
   }
 
   const sourceKind = typeof body["sourceKind"] === "string" ? body["sourceKind"] : "rig_spec";
@@ -94,7 +94,7 @@ bootstrapRoutes.post("/apply", async (c) => {
   const approvedActionKeys = Array.isArray(body["approvedActionKeys"]) ? body["approvedActionKeys"] as string[] : undefined;
 
   try {
-    // Pre-create run + set running + emit started BEFORE orchestrator work
+    // 在编排器工作之前预创建 run + 置为 running + 发出 started
     const run = bootstrapRepo.createRun(sourceKind, sourceRef);
     bootstrapRepo.updateRunStatus(run.id, "running");
     eventBus.emit({ type: "bootstrap.started", runId: run.id, sourceRef });
@@ -111,14 +111,14 @@ bootstrapRoutes.post("/apply", async (c) => {
         runId: run.id,
       });
     } catch (err) {
-      // Exception boundary: update run to failed, emit failed event
+      // 异常边界：把 run 置为 failed，发出 failed 事件
       bootstrapRepo.updateRunStatus(run.id, "failed");
-      const errorMsg = (err as Error).message ?? "bootstrap failed";
+      const errorMsg = (err as Error).message ?? "bootstrap 失败";
       eventBus.emit({ type: "bootstrap.failed", runId: run.id, sourceRef, error: errorMsg });
       return c.json({ runId: run.id, status: "failed", error: errorMsg }, 500);
     }
 
-    // Emit outcome event
+    // 发出结果事件
     if (result.status === "completed") {
       eventBus.emit({ type: "bootstrap.completed", runId: result.runId, rigId: result.rigId!, sourceRef });
       return c.json(result, 201);
@@ -128,7 +128,7 @@ bootstrapRoutes.post("/apply", async (c) => {
       eventBus.emit({ type: "bootstrap.partial", runId: result.runId, sourceRef, rigId: result.rigId, completed: completedCount, failed: failedCount });
       return c.json(result, 200);
     } else {
-      const errorMsg = result.errors[0] ?? "bootstrap failed";
+      const errorMsg = result.errors[0] ?? "bootstrap 失败";
       eventBus.emit({ type: "bootstrap.failed", runId: result.runId, sourceRef, error: errorMsg });
       const hasBlocked = result.stages.some((s) => s.status === "blocked");
       const hasBadRequest = result.stages.some((s) => {
@@ -150,7 +150,7 @@ bootstrapRoutes.get("/:id", (c) => {
 
   const run = bootstrapRepo.getRun(id);
   if (!run) {
-    return c.json({ error: "Bootstrap run not found" }, 404);
+    return c.json({ error: "未找到 bootstrap run" }, 404);
   }
 
   const actions = bootstrapRepo.getRunActions(id);

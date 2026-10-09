@@ -1,7 +1,6 @@
-// OPR.0.4.6.MH1 FR-1/FR-2 — the persisted host selection: local read
-// resolution, the routing shim's precedence (flag > selection > local),
-// and the zero-regression negative (no selection ≡ pre-MH1 behavior by
-// construction).
+// OPR.0.4.6.MH1 FR-1/FR-2——持久化 host 选择：本地读
+// 解析、routing shim 优先级（flag > selection > local）、
+// 零回归负向（无选择 ≡ 构造上 pre-MH1 行为）。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -32,8 +31,7 @@ describe("host selection (OPR.0.4.6.MH1)", () => {
 
   it("defaults to 'local' with no config file (the zero-regression posture)", () => {
     expect(readSelectedHost()).toBe("local");
-    // FR-2: no selection → undefined → every command's --host branch is
-    // byte-identically untaken.
+    // FR-2：无选择 → undefined → 每个命令的 --host 分支逐字节未取。
     expect(resolveEffectiveHost(undefined)).toBeUndefined();
   });
 

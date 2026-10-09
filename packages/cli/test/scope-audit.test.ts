@@ -15,7 +15,7 @@ function makeInput(overrides: Partial<ScopeAuditInput>): ScopeAuditInput {
 }
 
 describe("scope-audit classifier", () => {
-  // RAIL STATUS
+  // RAIL 状态
   it("present when PROGRESS.md exists", () => {
     const result = classifyScopeItem(makeInput({ progressFileExists: true }));
     expect(result.railStatus).toBe("present");
@@ -33,7 +33,7 @@ describe("scope-audit classifier", () => {
     expect(result.findings.filter((f) => f.kind === "missing_progress")).toHaveLength(0);
   });
 
-  // 3-WAY DISCRIMINATOR (AC-3)
+  // 三路判别器（AC-3）
   it("registration ghost: id: line + YAML parse error -> ghost finding (HIGH for active)", () => {
     const result = classifyScopeItem(makeInput({
       readmeFrontmatterRaw: "id: OPR.0.4.0.16\nbad: yaml: {{broken",
@@ -67,13 +67,13 @@ describe("scope-audit classifier", () => {
       progressFileExists: true,
       level: "mission",
     }));
-    // mission dot-id validator may or may not accept "release-0.4.0"
-    // but there should be no ghost or missing-id finding
+    // mission dot-id 校验器可能接受 "release-0.4.0" 也可能不接受
+    // 但不应有 ghost 或 missing-id 发现
     expect(result.findings.filter((f) => f.kind === "registration_ghost" || f.kind === "missing_id")).toHaveLength(0);
     expect(result.railStatus).toBe("present");
   });
 
-  // SEVERITY
+  // 严重度
   it("missing progress is HIGH for active release, LOW for historical", () => {
     const active = classifyScopeItem(makeInput({ isActiveRelease: true }));
     const historical = classifyScopeItem(makeInput({ isActiveRelease: false }));
@@ -81,7 +81,7 @@ describe("scope-audit classifier", () => {
     expect(historical.findings[0]?.severity).toBe("low");
   });
 
-  // GHOST vs MISSING-ID DISTINCT
+  // GHOST 与 MISSING-ID 相互区分
   it("ghost and missing-id are distinct finding kinds", () => {
     const ghost = classifyScopeItem(makeInput({
       readmeFrontmatterRaw: "id: OPR.broken\nbad: {{yaml",

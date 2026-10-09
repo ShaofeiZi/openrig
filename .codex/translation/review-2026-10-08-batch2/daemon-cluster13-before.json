@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/gateway/protocol.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/capabilities.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/dispatcher.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/config.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/connections-projection.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/gateway/operator-delivery-engine.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/gateway/spawn-gateway.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/gateway/channel-operations.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/human-registry.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/external-admission.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/destination-resolver.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/transport.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/delivery-rules-engine.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/dispatch-buffer.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/manifest.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/inbound-admission.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/inbound.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/gateway-process.ts": [
+"daemon-api",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/gateway-subsystem.ts": [
+"daemon-api",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/human-readiness.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

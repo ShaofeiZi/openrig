@@ -2,50 +2,43 @@ import { parseJsonlExchanges, type JsonlExchange } from "./session-jsonl.js";
 import type { PredecessorRecapResolver, PredecessorRecapResolution } from "./seat-handover-service.js";
 
 /**
- * Production resolver for the seat-handover boot recap: resolve the DEPARTING seat's provider record
- * path — claude `transcript_path` (via the sidecar, keyed by session name) or codex `rollout_path`
- * (via the thread, keyed by the departing resume token) — and parse the last N exchanges into a
- * bounded from-record recap.
+ * 席位交接启动回顾的生产解析器：解析离任席位的 provider 记录路径——claude 的
+ * `transcript_path`（通过按会话名称索引的 sidecar）或 codex 的 `rollout_path`
+ *（通过按离任 resume token 索引的 thread）——并把最后 N 次交流解析为有界的记录回顾。
  *
- * The recap is the PERMANENT claude-runtime leg of scrollback-preserving handover, not an interim
- * measure: claude-code seats run in the tmux alternate screen, which keeps no scrollback buffer, so
- * a successor pane can never natively scroll into the predecessor conversation there. (Codex seats
- * get native scrollback via the in-pane respawn; the recap still renders as a convenience.)
+ * 该回顾是保留回滚内容的交接流程中永久的 claude-runtime 支线，而非临时措施：claude-code
+ * 席位运行在 tmux alternate screen 中，不保留回滚缓冲区，因此继任窗格无法原生滚动查看前任会话。
+ *（Codex 席位通过窗格内重新生成获得原生回滚内容，但仍会渲染回顾以方便阅读。）
  *
- * B16 — the claude leg is RACE-GUARDED and every null is NAMED. The sidecar is keyed by SESSION
- * NAME, and the cutover reuses the canonical name across generations, so a successor that has
- * already booted overwrites the very sidecar this resolver queries (the live defect: the resolver
- * read the successor's fresh sidecar and honestly returned nothing, silently). Two defenses:
- * the SERVICE now resolves BEFORE the successor launches, and this resolver verifies the sidecar's
- * session_id against the predecessor's recorded resume token when both are present — a mismatch is
- * an UNAVAILABLE verdict naming the collision, never a silent null and never someone else's recap.
- * Every no-recap outcome returns { unavailableReason } so the packet can say what happened
- * (honest-degraded means LABELED, not silent).
+ * B16——claude 支线带竞态守卫，且每个 null 都有明确名称。sidecar 按会话名称索引，而切换时会跨代
+ * 复用规范名称；因此已启动的继任者会覆盖解析器正要查询的 sidecar（线上缺陷表现为解析器读到
+ * 继任者的新 sidecar，然后如实但静默地返回空结果）。两层防护：SERVICE 现在会在继任者启动前解析；
+ * 当两者都存在时，本解析器还会用前任记录的 resume token 校验 sidecar 的 session_id。
+ * 不匹配会得到明确指出冲突的 UNAVAILABLE 判定，绝不静默返回 null，也绝不返回他人的回顾。
+ * 每种无回顾结果都返回 { unavailableReason }，使 packet 能说明原因；如实降级必须带标签，不能静默。
  *
- * Bounded on BOTH axes: at most `maxExchanges` exchanges, and each exchange's content is capped at
- * `maxCharsPerExchange` characters (a single pasted-file or long-form exchange must not flood the
- * successor pane); truncation is visible and points the reader at the full record. Pure + injected
- * deps so the runtime-branching + guard handling is unit-tested without a live daemon; startup
- * wires the real reads.
+ * 两个维度均有上限：最多 `maxExchanges` 次交流，每次内容最多 `maxCharsPerExchange` 个字符
+ *（单个粘贴文件或长篇交流不能淹没继任窗格）；截断明确可见，并引导读者查看完整记录。
+ * 纯函数加依赖注入，使运行时分支与守卫处理无需真实后台服务即可单元测试；startup 接入真实读取。
  */
 const DEFAULT_MAX_EXCHANGES = 6;
 const DEFAULT_MAX_CHARS_PER_EXCHANGE = 500;
-const TRUNCATION_MARKER = "… [truncated; full text in the predecessor record]";
+const TRUNCATION_MARKER = "… [已截断；完整文本见前任记录]";
 
 export interface PredecessorRecapResolverDeps {
-  /** Claude: the name-keyed sidecar carries `transcript_path` + `session_id`; both ride the read so
-   *  the caller can verify WHOSE record the name currently points at. */
+  /** Claude：按名称索引的 sidecar 携带 `transcript_path` 与 `session_id`；读取同时返回两者，
+   * 使调用方能核实该名称当前指向谁的记录。 */
   readClaudeRecord: (sessionName: string) => { transcriptPath: string | null; sessionId: string | null };
-  /** Codex: normalized usage carries `rollout_path`; resolve it from the thread id (resume token). */
+  /** Codex：归一化 usage 携带 `rollout_path`；根据 thread id（resume token）解析。 */
   readCodexTranscriptPath: (args: { threadId: string | null; sessionName: string }) => string | null;
-  /** Look up the departing session's resume token by node + session name (codex thread id; for a
-   *  claude row this is the predecessor's session uuid — the sidecar-ownership verifier). */
+  /** 按节点与会话名称查询离任会话的 resume token（Codex thread id；对 claude 行而言，
+   * 它是前任的 session uuid，用于校验 sidecar 所有权）。 */
   lookupResumeToken: (nodeId: string, sessionName: string) => string | null;
-  /** Injectable for tests; defaults to the real JSONL parser. */
+  /** 可在测试中注入；默认使用真实 JSONL 解析器。 */
   parseExchanges?: (path: string, n: number) => JsonlExchange[];
-  /** Bounded recap size (default 6). */
+  /** 有界回顾数量（默认 6）。 */
   maxExchanges?: number;
-  /** Per-exchange content cap in characters (default 500); over-cap content is visibly truncated. */
+  /** 每次交流的字符上限（默认 500）；超出内容会明确显示为已截断。 */
   maxCharsPerExchange?: number;
 }
 
@@ -62,20 +55,20 @@ export function makePredecessorRecapResolver(deps: PredecessorRecapResolverDeps)
     let path: string | null;
     if (runtime === "codex") {
       const threadId = deps.lookupResumeToken(nodeId, sessionName);
-      if (!threadId) return { unavailableReason: "no resume token recorded for the departing codex session" };
+      if (!threadId) return { unavailableReason: "未记录离任 Codex 会话的 resume token" };
       path = deps.readCodexTranscriptPath({ threadId, sessionName });
-      if (!path) return { unavailableReason: `no rollout record found for codex thread ${threadId}` };
+      if (!path) return { unavailableReason: `未找到 Codex thread ${threadId} 的 rollout 记录` };
     } else {
       const record = deps.readClaudeRecord(sessionName);
       if (!record.transcriptPath) {
-        return { unavailableReason: "the name-keyed context sidecar is missing or carries no transcript_path" };
+        return { unavailableReason: "按名称索引的 context sidecar 缺失，或未携带 transcript_path" };
       }
-      // Ownership guard: the sidecar must be the PREDECESSOR's, not a same-named successor's.
+      // 所有权守卫：sidecar 必须属于前任，不能属于同名继任者。
       const predecessorToken = deps.lookupResumeToken(nodeId, sessionName);
       if (predecessorToken && record.sessionId && record.sessionId !== predecessorToken) {
         return {
           unavailableReason:
-            `the name-keyed sidecar belongs to session ${record.sessionId.slice(0, 8)}…, not the departing session ` +
+            `按名称索引的 sidecar 属于会话 ${record.sessionId.slice(0, 8)}…，而不是离任会话 ` +
             `${predecessorToken.slice(0, 8)}… (canonical-name reuse race — the record path would be the wrong tenure's)`,
         };
       }
@@ -83,7 +76,7 @@ export function makePredecessorRecapResolver(deps: PredecessorRecapResolverDeps)
     }
     const recap = parse(path, max);
     if (recap.length === 0) {
-      return { unavailableReason: `the predecessor record at ${path} yielded no user/assistant exchanges (empty, unreadable, or too large to read)` };
+      return { unavailableReason: `位于 ${path} 的前任记录未产生用户/助手交流（内容为空、不可读或过大而无法读取）` };
     }
     return { recap: recap.map((ex) => boundExchange(ex, maxChars)), recordPath: path };
   };

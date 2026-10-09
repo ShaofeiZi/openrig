@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render topology and work context by ascending directory paths only."""
+"""仅通过沿目录路径向上遍历，渲染拓扑与工作上下文。"""
 
 import argparse
 import json
@@ -38,7 +38,7 @@ def under_root(path, root):
 def ascent(start, root):
     start = start.expanduser().resolve()
     if not under_root(start, root):
-        return None, f"start is outside configured root: {start}"
+        return None, f"起点位于已配置根目录之外：{start}"
     nodes = []
     current = start
     while True:
@@ -48,7 +48,7 @@ def ascent(start, root):
             break
         parent = current.parent
         if parent == current:
-            return None, f"could not reach configured root: {root}"
+            return None, f"无法到达已配置的根目录：{root}"
         current = parent
     return list(reversed(nodes)), None
 
@@ -70,28 +70,28 @@ def resolve_notes(node):
             check=False,
         )
     except subprocess.TimeoutExpired:
-        return None, "resolver command timed out"
+        return None, "解析命令超时"
     except OSError as error:
-        return None, f"resolver command could not start: {error}"
+        return None, f"无法启动解析命令：{error}"
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "").strip().splitlines()
         suffix = f": {detail[0]}" if detail else ""
-        return None, f"resolver command exited {result.returncode}{suffix}"
+        return None, f"解析命令退出，退出码 {result.returncode}{suffix}"
     try:
         payload = json.loads(result.stdout)
     except (json.JSONDecodeError, TypeError):
-        return None, "resolver command returned malformed JSON"
+        return None, "解析命令返回了格式错误的 JSON"
     if not isinstance(payload, dict) or payload.get("ok") is not True or "resolution" not in payload:
-        return None, "resolver command returned an invalid success shape"
+        return None, "解析命令返回了无效的成功响应结构"
     resolution = payload["resolution"]
     if resolution is None:
         return None, None
     if not isinstance(resolution, dict):
-        return None, "resolver command returned an invalid resolution shape"
+        return None, "解析命令返回了无效的 resolution 结构"
     resolved_path = resolution.get("path")
     resolved_name = resolution.get("name")
     if not isinstance(resolved_path, str) or not isinstance(resolved_name, str):
-        return None, "resolver command returned an invalid resolution shape"
+        return None, "解析命令返回了无效的 resolution 结构"
     return (Path(resolved_path), resolved_name), None
 
 
@@ -132,20 +132,20 @@ def light_learned(text):
     if len(body) <= 800:
         return body
     boundary = body.rfind("\n", 0, 800)
-    return body[:boundary if boundary > 0 else 800].rstrip() + "\n[… use --depth full for the rest]"
+    return body[:boundary if boundary > 0 else 800].rstrip() + "\n[…其余内容请使用 --depth full 查看]"
 
 
 def render_topology(start, root, depth):
-    output = ["## TOPOLOGY TRACE", f"root: {root}", f"start: {start}"]
+    output = ["## 拓扑追踪", f"根目录：{root}", f"起点：{start}"]
     nodes, error = ascent(start, root)
     if error:
-        return "\n".join(output + [f"TRACE GAP — {error}"])
+        return "\n".join(output + [f"追踪缺口——{error}"])
     for node in nodes:
         chain_file = node / "LEARNED.md"
         text = read(chain_file)
         label = node.relative_to(root) or Path(".")
         if text is None:
-            output.append(f"\n### {label}\nMISSING LINK — {chain_file}")
+            output.append(f"\n### {label}\n缺失链路——{chain_file}")
             continue
         body = text.strip() if depth == "full" else light_learned(text)
         output.append(f"\n### {label} · LEARNED.md\n{body}")
@@ -153,44 +153,44 @@ def render_topology(start, root, depth):
 
 
 def render_work(start, root, depth):
-    output = ["## WORK TRACE", f"root: {root}", f"start: {start}"]
+    output = ["## 工作追踪", f"根目录：{root}", f"起点：{start}"]
     nodes, error = ascent(start, root)
     if error:
-        return "\n".join(output + [f"TRACE GAP — {error}"])
+        return "\n".join(output + [f"追踪缺口——{error}"])
     for node in nodes:
         label = node.relative_to(root) or Path(".")
         spec = next((candidate for candidate in (node / "SPEC.md", node / "README.md") if candidate.is_file()), None)
         if spec is None:
-            output.append(f"\n### {label}\nMISSING LINK — no SPEC.md or README.md at {node}")
+            output.append(f"\n### {label}\n缺失链路——{node} 中没有 SPEC.md 或 README.md")
         else:
             text = read(spec) or ""
             if depth == "full":
                 body = text.strip()
             else:
                 value = intent(text)
-                body = f"intent: {value}" if value else "MISSING INTENT — no readable intent: field"
+                body = f"intent: {value}" if value else "缺失 INTENT——没有可读的 intent: 字段"
             output.append(f"\n### {label} · {spec.name}\n{body}")
 
         notes, resolution_error = resolve_notes(node)
         if resolution_error:
-            output.append(f"NOTES RESOLUTION GAP — {resolution_error} at {node}")
+            output.append(f"NOTES 解析缺口——{node}：{resolution_error}")
         elif notes:
             notes_path, notes_name = notes
             if depth == "full":
                 notes_text = read(notes_path)
                 if notes_text is None:
-                    output.append(f"NOTES RESOLUTION GAP — resolved {notes_name} became unreadable at {notes_path}")
+                    output.append(f"NOTES 解析缺口——已解析的 {notes_name} 在 {notes_path} 变得不可读")
                 else:
                     output.append(f"\nNOTES · {notes_name}\n{notes_text.strip()}")
             else:
                 try:
                     size = notes_path.stat().st_size
                 except OSError:
-                    output.append(f"NOTES RESOLUTION GAP — resolved {notes_name} became unreadable at {notes_path}")
+                    output.append(f"NOTES 解析缺口——已解析的 {notes_name} 在 {notes_path} 变得不可读")
                 else:
-                    output.append(f"NOTES · {notes_name} · {size} bytes · {notes_path}")
+                    output.append(f"NOTES · {notes_name} · {size} 字节 · {notes_path}")
         else:
-            output.append(f"NOTES GAP — no readable mission notes at {node}")
+            output.append(f"NOTES 缺口——{node} 中没有可读的 mission notes")
     return "\n".join(output)
 
 
@@ -241,20 +241,20 @@ def main():
     if args.trees in {"topology", "both"}:
         root = configured_root("topology.root", "OPENRIG_TOPOLOGY_ROOT")
         if root is None:
-            sections.append("## TOPOLOGY TRACE\nTRACE GAP — topology.root is unresolved")
+            sections.append("## 拓扑追踪\n追踪缺口——topology.root 尚未解析")
         else:
             start = Path(args.topology_start) if args.topology_start else derive_topology_start(root)
             sections.append(render_topology(start, root, args.depth) if start else
-                            "## TOPOLOGY TRACE\nTRACE GAP — current topology node is unresolved; set OPENRIG_REFOCUS_TOPOLOGY_NODE")
+                            "## 拓扑追踪\n追踪缺口——当前拓扑节点尚未解析；请设置 OPENRIG_REFOCUS_TOPOLOGY_NODE")
 
     if args.trees in {"work", "both"}:
         root = configured_root("workspace.root", "OPENRIG_WORKSPACE_ROOT")
         if root is None:
-            sections.append("## WORK TRACE\nTRACE GAP — workspace.root is unresolved")
+            sections.append("## 工作追踪\n追踪缺口——workspace.root 尚未解析")
         else:
             start = Path(args.work_start) if args.work_start else derive_work_start(root)
             sections.append(render_work(start, root, args.depth) if start else
-                            "## WORK TRACE\nTRACE GAP — current work node is unresolved; set OPENRIG_REFOCUS_WORK_NODE")
+                            "## 工作追踪\n追踪缺口——当前工作节点尚未解析；请设置 OPENRIG_REFOCUS_WORK_NODE")
 
     print("\n\n".join(sections))
     return 0

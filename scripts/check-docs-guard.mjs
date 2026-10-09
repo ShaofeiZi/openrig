@@ -1,24 +1,22 @@
 import { execFileSync } from "node:child_process";
 
 /**
- * Exact tracked docs paths allowed outside the three durable roots.
+ * 三个持久根目录之外、被 git 跟踪的 docs 路径白名单（精确路径）。
  *
- * `docs/DESIGN.md` is the canonical visual/brand/design-system spec, and its root placement is
- * RATIFIED doctrine, not drift: `docs/as-built/ui/library-specs-and-design-system.md` §4 states
- * "Q1 is ratified: DESIGN.md stays at root, byte-identical", explicitly rejecting
- * `docs/as-built/`. This guard simply never encoded that decision.
+ * `docs/DESIGN.md` 是 canonical 的视觉/品牌/设计系统规范，它放在仓库根是经批准的既定准则，
+ * 不是漂移：`docs/as-built/ui/library-specs-and-design-system.md` §4 写明
+ * “Q1 已批准：DESIGN.md 留在根目录，字节一致”，并明确拒绝放进 `docs/as-built/`。
+ * 本护栏此前只是没把这条决策编码进去而已。
  *
- * It also cannot be satisfied by relocating into any allowed root:
- *   docs/as-built/  — every file there carries `last-verified-against-source`; DESIGN.md is not
- *                     source-derived, and Q1 rules this destination out by name
- *   docs/reference/ — that directory SHIPS (scripts/build-package.sh stages it into the package
- *                     and the daemon materializes it to $OPENRIG_HOME/reference/), so moving
- *                     there would start distributing the brand spec to every operator
- *   docs/releases/  — not a release note
+ * 它也无法靠“挪进某个允许的根”来满足：
+ *   docs/as-built/  —— 那里每个文件都带 `last-verified-against-source`；DESIGN.md 并非源自源码，
+ *                     Q1 已点名排除这个落点
+ *   docs/reference/ —— 该目录会随包发布（scripts/build-package.sh 把它打进包，
+ *                     daemon 再物化到 $OPENRIG_HOME/reference/），挪过去等于把品牌规范分发给每个操作者
+ *   docs/releases/  —— 它不是发行说明
  *
- * So it is named here as an EXACT PATH rather than relocated or covered by a widened directory
- * allowance. Keep this exact-path: the policy this guard enforces is "loose plans and notes stay
- * untracked", and a directory hole would quietly readmit exactly that.
+ * 因此在这里作为“精确路径”点名允许，而不是挪走或放宽目录白名单。请保持这种精确路径写法：
+ * 本护栏强制的政策是“松散的计划与笔记保持未跟踪”，一旦开个目录口子，就会恰恰把这些东西悄悄放回来。
  */
 const ALLOWED_DOCS_FILES = new Set(["docs/DESIGN.md"]);
 

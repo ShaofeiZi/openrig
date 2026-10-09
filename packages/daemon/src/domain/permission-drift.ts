@@ -9,7 +9,7 @@ export interface AppliedLaunchObservation {
   state: AppliedLaunchState;
   value: string | null;
   reason?: string;
-  /** Emitted Codex approval argument; null/absent does not infer a native default. */
+  /** 已发出的 Codex approval 参数；null/缺失不能推断 native 默认值。 */
   approvalPolicy?: "never" | null;
 }
 
@@ -39,7 +39,7 @@ export interface PermissionDriftDiagnostic {
   cwdRead: { state: CwdReadState };
   commandPath: { state: CommandPathState };
   enforcement: RuntimeEnforcementDiagnostic;
-  /** File comparison only; neither a settings file nor an argument proves native enforcement. */
+  /** 只做文件比较；settings 文件和参数都不能证明 native enforcement。 */
   configuration?: {
     comparison: EnforcementState;
     expected: string | null;
@@ -54,7 +54,7 @@ export interface PermissionDriftFs {
   readFile(path: string): string;
   cwdReadable(path: string): boolean | null;
   commandAvailable(command: string): boolean | null;
-  /** Live harness-derived Claude permission-mode vocabulary. null = unresolved. */
+  /** 从 live harness 派生的 Claude permission-mode 词表；null 表示未解析。 */
   claudePermissionModes(): string[] | null;
 }
 
@@ -243,8 +243,8 @@ export function diagnoseRuntimePosture(input: {
   fs: PermissionDriftFs;
   now?: () => Date;
 }): PermissionDriftDiagnostic {
-  // This store records launch arguments, including older records without a reason.
-  // Preserve their bytes; generation matching does not prove native enforcement.
+  // 此 store 记录 launch 参数，包括缺少 reason 的旧记录。保留其原始字节；generation 匹配
+  // 不能证明 native enforcement。
   const applied = input.applied;
   const launchArguments = applied?.state === "observed" && applied.runtime === input.runtime
     && (input.runtime === "claude-code" || input.runtime === "codex");
@@ -273,15 +273,15 @@ export function diagnoseRuntimePosture(input: {
 
 export function renderPermissionDriftSummary(diagnostic: PermissionDriftDiagnostic): string {
   const axisLabel = diagnostic.enforcement.axis === "resource_trust"
-    ? "resource trust"
+    ? "资源信任"
     : diagnostic.enforcement.axis;
   const effective = typeof diagnostic.enforcement.effective === "object" && diagnostic.enforcement.effective !== null
     ? diagnostic.enforcement.effective.defaultMode
     : diagnostic.enforcement.effective;
   const pieces = [
-    `transport: ${diagnostic.transport.state}`,
-    `cwd/read: ${diagnostic.cwdRead.state}`,
-    `command/PATH: ${diagnostic.commandPath.state}`,
+    `传输：${diagnostic.transport.state}`,
+    `cwd/读取：${diagnostic.cwdRead.state}`,
+    `命令/PATH：${diagnostic.commandPath.state}`,
     `${axisLabel}: ${diagnostic.enforcement.state.toUpperCase()}`,
   ];
   if (diagnostic.enforcement.expected) pieces.push(`expected=${diagnostic.enforcement.expected}`);

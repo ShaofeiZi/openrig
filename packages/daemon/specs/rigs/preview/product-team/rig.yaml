@@ -2,13 +2,12 @@ version: "0.2"
 name: product-team
 culture_file: CULTURE.md
 summary: >
-  Advanced product-development starter: a human-operated product squad with
-  two orchestrators, implementation, QA, design, and two independent reviewers.
-  Use this when you want richer coordination than the conveyor training rig.
+  高级产品开发 starter：一个由人类操作的产品小队，包含两名编排智能体、实现、QA、设计
+  以及两名独立评审智能体。需要比流水线训练工作组更丰富的协同时使用。
 
 pods:
   - id: orch1
-    label: Orchestration
+    label: 编排
     members:
       - id: lead
         agent_ref: "local:../../../agents/orchestration/orchestrator"
@@ -23,7 +22,7 @@ pods:
     edges: []
 
   - id: dev1
-    label: Development
+    label: 开发
     members:
       - id: impl
         agent_ref: "local:../../../agents/development/implementer"
@@ -46,7 +45,7 @@ pods:
         to: qa
 
   - id: rev1
-    label: Review
+    label: 评审
     members:
       - id: r1
         agent_ref: "local:../../../agents/review/independent-reviewer"

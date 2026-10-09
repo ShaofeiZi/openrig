@@ -19,8 +19,8 @@ describe("postinstall ABI check", () => {
     expect(result.ok).toBe(false);
     expect(addonCalled).toBe(false);
     if (result.ok) return;
-    expect(result.message).toContain("requires Node.js 22 or 24");
-    expect(result.message).toContain("Node 20 is no longer supported");
+    expect(result.message).toContain("需要 Node.js 22 或 24");
+    expect(result.message).toContain("不再支持 Node 20");
     expect(result.message).toContain("v20.20.2");
     expect(result.message).toContain("nvm install 22");
   });
@@ -39,7 +39,7 @@ describe("postinstall ABI check", () => {
       loadNativeAddon: () => {},
     });
     expect(result.ok).toBe(false);
-    expect(result.message).toContain("odd-numbered");
+    expect(result.message).toContain("奇数版本");
     expect(result.message).toContain("v25.8.0");
     expect(result.message).toContain("nvm install 22");
   });
@@ -50,7 +50,7 @@ describe("postinstall ABI check", () => {
       loadNativeAddon: () => {},
     });
     expect(result.ok).toBe(false);
-    expect(result.message).toContain("odd-numbered");
+    expect(result.message).toContain("奇数版本");
   });
 
   it("fails on Node below 22 with version-too-low error", () => {
@@ -59,7 +59,7 @@ describe("postinstall ABI check", () => {
       loadNativeAddon: () => {},
     });
     expect(result.ok).toBe(false);
-    expect(result.message).toContain("requires Node.js 22 or 24");
+    expect(result.message).toContain("需要 Node.js 22 或 24");
     expect(result.message).toContain("nvm install 22");
   });
 
@@ -74,7 +74,7 @@ describe("postinstall ABI check", () => {
       },
     });
     expect(result.ok).toBe(false);
-    expect(result.message).toContain("native binary does not match");
+    expect(result.message).toContain("原生二进制与当前 Node 不匹配");
     expect(result.message).toContain("npm rebuild better-sqlite3");
     expect(result.message).toContain("NODE_MODULE_VERSION");
   });
@@ -89,10 +89,10 @@ describe("postinstall ABI check", () => {
       },
     });
     expect(result.ok).toBe(false);
-    // Should NOT say "native binary does not match" — that's ABI-specific
-    expect(result.message).not.toContain("native binary does not match");
-    // Should say generic addon-load-failure
-    expect(result.message).toContain("native addon failed to load");
+    // 不应出现“原生二进制不匹配”——那是 ABI 专属文案
+    expect(result.message).not.toContain("原生二进制与当前 Node 不匹配");
+    // 应给出通用的插件加载失败
+    expect(result.message).toContain("原生插件加载失败");
     expect(result.message).toContain("Cannot find module");
     expect(result.message).toContain("npm rebuild better-sqlite3");
   });
@@ -105,8 +105,8 @@ describe("postinstall ABI check", () => {
       },
     });
     expect(result.ok).toBe(false);
-    expect(result.message).not.toContain("native binary does not match");
-    expect(result.message).toContain("native addon failed to load");
+    expect(result.message).not.toContain("原生二进制与当前 Node 不匹配");
+    expect(result.message).toContain("原生插件加载失败");
     expect(result.message).toContain("EACCES");
   });
 
@@ -117,7 +117,7 @@ describe("postinstall ABI check", () => {
       loadNativeAddon: () => { addonCalled = true; },
     });
     expect(result.ok).toBe(false);
-    // Version check short-circuits before trying to load the addon
+    // 版本检查在尝试加载 addon 前短路
     expect(addonCalled).toBe(false);
   });
 
@@ -129,8 +129,8 @@ describe("postinstall ABI check", () => {
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.warning).toContain("Node 26 is untested");
-    expect(result.warning).toContain("Supported: Node.js 22 and 24");
+    expect(result.warning).toContain("未经 @openrig/cli 验证");
+    expect(result.warning).toContain("支持版本：Node.js 22 与 24");
   });
 
   it("does not warn on supported majors", () => {
@@ -150,7 +150,7 @@ describe("postinstall ABI check", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.message).toContain("could not open a database");
+    expect(result.message).toContain("无法打开数据库");
     expect(result.message).toContain("SIGSEGV");
     expect(result.message).toContain("npm rebuild better-sqlite3");
   });
@@ -172,14 +172,14 @@ describe("openInChildProcess", () => {
 
   it("reports a native crash signal instead of dying", () => {
     const out = openInChildProcess("/x/better-sqlite3", fake({ signal: "SIGSEGV" }));
-    expect(out).toEqual({ ok: false, detail: "database open was killed by SIGSEGV" });
+    expect(out).toEqual({ ok: false, detail: "打开数据库被 SIGSEGV 终止" });
   });
 
   it("reports a non-zero exit with the tail of stderr", () => {
     const out = openInChildProcess("/x/better-sqlite3", fake({ status: 1, stderr: "a\nb\nError: boom" }));
     expect(out.ok).toBe(false);
     if (out.ok) return;
-    expect(out.detail).toContain("exited 1");
+    expect(out.detail).toContain("退出码 1");
     expect(out.detail).toContain("Error: boom");
   });
 

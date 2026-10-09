@@ -17,12 +17,11 @@ vi.mock("../src/daemon-lifecycle.js", async () => {
 });
 
 /**
- * OPR.0.4.6.WF3 FR-1 — follow-engine pins (commit 1).
+ * OPR.0.4.6.WF3 FR-1——follow-engine pin（commit 1）。
  *
- * Everything here runs against injected IO + stubbed streams: no
- * daemon, no network, no timers (sleep is injected). The live legs
- * (real SSE, real daemon) are the VM proof walk's job, not this
- * file's.
+ * 此处一切都对注入 IO + stub 流运行：无 daemon、无网络、无计时器
+ * （sleep 是注入的）。活腿（真实 SSE、真实 daemon）是 VM 证明走查的活，
+ * 非本文件职责。
  */
 
 function sseStream(events: Array<Record<string, unknown>>): ReadableStream<Uint8Array> {
@@ -119,7 +118,7 @@ describe("workflow-follow (WF3 FR-1)", () => {
     });
     const code = await followInstance(h.client, "WF1", { json: false, io: h.io });
     expect(code).toBe(0);
-    expect(h.outLines.join("\n")).toContain("workflow completed");
+    expect(h.outLines.join("\n")).toContain("工作流已完成");
   });
 
   it("a failed workflow exits 3 with the failing step visible", async () => {
@@ -136,7 +135,7 @@ describe("workflow-follow (WF3 FR-1)", () => {
     expect(code).toBe(EXIT_WORKFLOW_FAILED);
     const text = h.outLines.join("\n");
     expect(text).toContain("✖ build");
-    expect(text).toContain("FAILED: boom");
+    expect(text).toContain("工作流失败：boom");
   });
 
   it("snapshot-first dedup: a step already in the snapshot trail renders exactly once (arch R2)", async () => {
@@ -207,8 +206,8 @@ describe("workflow-follow (WF3 FR-1)", () => {
     });
     expect(code).toBe(0);
     const err = h.errLines.join("\n");
-    expect(err).toContain("reconnecting");
-    expect(err).toContain("poll fallback");
+    expect(err).toContain("重连中");
+    expect(err).toContain("轮询兜底");
     // The poll rendered the new trail row exactly once, never silently frozen.
     expect(h.outLines.filter((l) => l.includes("build") && l.includes("done"))).toHaveLength(1);
   });
@@ -274,8 +273,8 @@ describe("run/watch verb honesty (BR-1)", () => {
     const cmd = workflowCommand();
     const run = cmd.commands.find((c) => c.name() === "run");
     const watch = cmd.commands.find((c) => c.name() === "watch");
-    expect(run?.description()).toContain("follow");
-    expect(watch?.description()).toContain("read-only");
+    expect(run?.description()).toContain("跟随");
+    expect(watch?.description()).toContain("只读");
     expect(run?.description()).not.toContain("advance");
     expect(watch?.description()).not.toContain("advance");
   });

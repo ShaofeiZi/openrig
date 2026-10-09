@@ -1,27 +1,25 @@
-// OPR.0.5.1.1 — the PURE stub behavior-script model (A5 items 6-8).
+// OPR.0.5.1.1——纯 stub 行为脚本模型（A5 第 6–8 项）。
 //
-// A per-seat script deterministically drives the pane-hosted stub-runner: pane
-// output lines, named hook/behavior emissions, and (later) stepwise timing (PRD §4.2).
-// This module is side-effect-free — parsing + validation + the built-in default only —
-// so it unit-tests hermetically and both the runner (pane process) and the adapter
-// (daemon) can import it without pulling daemon dependencies into the pane. The stub
-// carries NO assertion logic; a script only says WHAT the seat does, never asserts.
+// 逐席位脚本以确定方式驱动 pane 承载的 stub-runner：pane 输出行、具名 hook/行为触发，以及
+//（以后支持的）逐步计时（PRD §4.2）。此模块无副作用——只含解析、验证和内置默认值——因此可以
+// 隔离进行单元测试，runner（pane 进程）与 adapter（后台服务）也都能导入，而不会把后台服务依赖
+// 带入 pane。stub 不包含断言逻辑；脚本只描述席位做什么，绝不自行断言。
 //
-// TWIN-PARITY: STUB_BEHAVIORS is the canonical, production-owned behavior repertoire.
-// 51-02's scenario `emit` verb (scenario-schema.ts EMIT_BEHAVIORS) is a copy of the
-// SAME shared contract; test/stub-script.test.ts guards the two against byte-drift.
+// 孪生一致性：STUB_BEHAVIORS 是 canonical、由生产代码所有的行为集合。51-02 场景的 `emit`
+// 动词（scenario-schema.ts EMIT_BEHAVIORS）是同一共享契约的副本；test/stub-script.test.ts
+// 防止二者发生字节漂移。
 
-/** The locked four-behavior repertoire (arch A4 terminal descope). Shared, byte-for-byte,
- *  with 51-02's EMIT_BEHAVIORS. usage_limit is deliberately absent — real-runtime-only. */
+/** 锁定的四行为集合（架构 A4 终端缩减范围）。与 51-02 的 EMIT_BEHAVIORS 逐字节共享。
+ * usage_limit 有意缺失——仅真实 runtime 支持。 */
 export const STUB_BEHAVIORS = ["compaction", "slow_output", "mid_turn_death", "restore"] as const;
 export type StubBehavior = (typeof STUB_BEHAVIORS)[number];
 
-/** Known-but-real-runtime-only behaviors: a stub cannot honestly feed the provider-usage
- *  lane, so the script model REFUSES them loudly (never accept-and-drop). Mirrors 51-02's
- *  REAL_RUNTIME_ONLY_EMIT_BEHAVIORS so a stub script and a stub scenario agree. */
+/** 已知但仅限真实 runtime 的行为：stub 无法如实向 provider-usage lane 供数，因此脚本模型会
+ * 明确拒绝，绝不接受后丢弃。镜像 51-02 的 REAL_RUNTIME_ONLY_EMIT_BEHAVIORS，使 stub 脚本
+ * 与 stub 场景保持一致。 */
 export const REAL_RUNTIME_ONLY_BEHAVIORS = ["usage_limit"] as const;
 
-/** A single deterministic script step. */
+/** 单个确定性脚本步骤。 */
 export type StubStep =
   | { kind: "say"; text: string }
   | { kind: "emit"; behavior: StubBehavior };
@@ -30,7 +28,7 @@ export interface StubScript {
   steps: StubStep[];
 }
 
-/** Loud, typed rejection — a malformed/dishonest script must fail, never silently no-op. */
+/** 明确的类型化拒绝——格式错误或不诚实的脚本必须失败，绝不能静默空操作。 */
 export class StubScriptError extends Error {
   constructor(message: string) {
     super(message);
@@ -43,12 +41,12 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function parseStep(raw: unknown, path: string): StubStep {
-  if (!isPlainObject(raw)) throw new StubScriptError(`${path}: step must be an object`);
+  if (!isPlainObject(raw)) throw new StubScriptError(`${path}：步骤必须是对象`);
   const kind = raw.kind;
   if (kind === "say") {
     const text = raw.text;
     if (typeof text !== "string" || text.length === 0) {
-      throw new StubScriptError(`${path}.text: a say step requires a non-empty string`);
+      throw new StubScriptError(`${path}.text：say 步骤需要非空字符串`);
     }
     return { kind: "say", text };
   }
@@ -59,37 +57,37 @@ function parseStep(raw: unknown, path: string): StubStep {
     }
     if (typeof behavior === "string" && (REAL_RUNTIME_ONLY_BEHAVIORS as readonly string[]).includes(behavior)) {
       throw new StubScriptError(
-        `${path}.behavior: "${behavior}" is real-runtime-only (a stub cannot honestly feed the ` +
-        `provider-usage lane) — it is refused in a stub script, never a silent no-op`,
+        `${path}.behavior："${behavior}" 仅限真实 runtime（stub 无法如实向 ` +
+        `provider-usage lane 供数）——stub 脚本会拒绝它，绝不静默空操作`,
       );
     }
     throw new StubScriptError(
-      `${path}.behavior: unknown behavior ${JSON.stringify(behavior)} — the stub repertoire is: ${STUB_BEHAVIORS.join(", ")}`,
+      `${path}.behavior：未知行为 ${JSON.stringify(behavior)}——stub 支持的行为为：${STUB_BEHAVIORS.join(", ")}`,
     );
   }
-  throw new StubScriptError(`${path}.kind: unknown step kind ${JSON.stringify(kind)} — expected "say" or "emit"`);
+  throw new StubScriptError(`${path}.kind：未知步骤类型 ${JSON.stringify(kind)}——应为 "say" 或 "emit"`);
 }
 
-/** Parse + validate a stub script from its JSON string. Throws StubScriptError on any
- *  malformation so a bad script fails loudly at load, not with a silent partial run. */
+/** 从 JSON 字符串解析并验证 stub 脚本。任何格式错误都会抛出 StubScriptError，使错误脚本在
+ * 加载时明确失败，而不是静默地部分运行。 */
 export function parseStubScript(raw: string): StubScript {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new StubScriptError("stub script is not valid JSON");
+    throw new StubScriptError("stub 脚本不是有效 JSON");
   }
-  if (!isPlainObject(parsed)) throw new StubScriptError("stub script must be an object { steps: [...] }");
+  if (!isPlainObject(parsed)) throw new StubScriptError("stub 脚本必须是对象 { steps: [...] }");
   const steps = parsed.steps;
-  if (!Array.isArray(steps)) throw new StubScriptError("stub script requires a steps array");
+  if (!Array.isArray(steps)) throw new StubScriptError("stub 脚本需要 steps 数组");
   return { steps: steps.map((step, i) => parseStep(step, `steps[${i}]`)) };
 }
 
-/** The built-in default script for a standalone stub seat (no scenario-resolved script):
- *  prompt + echo + a scripted reply, so the seat produces observable pane output. */
+/** 独立 stub 席位的内置默认脚本（没有场景解析出的脚本）：prompt + echo + 脚本化回复，
+ * 使席位产生可观察的 pane 输出。 */
 export const DEFAULT_STUB_SCRIPT: StubScript = {
   steps: [
-    { kind: "say", text: "[stub] ready — awaiting prompt" },
-    { kind: "say", text: "[stub] scripted reply: acknowledged" },
+    { kind: "say", text: "[stub] 已就绪——等待提示" },
+    { kind: "say", text: "[stub] 脚本化回复：已确认" },
   ],
 };

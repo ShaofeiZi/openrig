@@ -1,0 +1,93 @@
+{
+ "schema": "openrig.tui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:12:11",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "comment-review-batch6",
+ "files": 10,
+ "changed": 9,
+ "reviewed_no_change": 1,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/tui/test/actions.test.ts",
+   "status": "changed",
+   "before_sha256": "972c26a44d89e0578821f8ee6feef93fbbbeb4756868619ad137cb1ad1bb0bd8",
+   "after_sha256": "51e07acab9c6c26901dc2cf3f4c11ae5a337827ec10e6ec71871bceb123e244e",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling(3c6c2be0/c015d9ed/3d3c90a0)、POST 路由、maxConsecutiveErrors、renderTriage 保留"
+  },
+  {
+   "path": "packages/tui/test/blocker-enrichment.test.ts",
+   "status": "changed",
+   "before_sha256": "9be8ebad792e0f456225287231fa317d04d23a48c86d0743fcd318e53e83570a",
+   "after_sha256": "11e4c1f425d62bab5f3460ac6802d1dd7e484c21669b5fe135cf97eab2e011b2",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling(3c6c2be0/c015d9ed/3d3c90a0)、POST 路由、maxConsecutiveErrors、renderTriage 保留"
+  },
+  {
+   "path": "packages/tui/test/config-journey.test.ts",
+   "status": "changed",
+   "before_sha256": "607c2099b436acc6c37273b401e6a4f3e9233f3ceb54ec7d66b110ebd360fe76",
+   "after_sha256": "520898d38381a7859617703420fc16dafb934e723a7f7f6ef97743ad299c0989",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling(3c6c2be0/c015d9ed/3d3c90a0)、POST 路由、maxConsecutiveErrors、renderTriage 保留"
+  },
+  {
+   "path": "packages/tui/test/crash-cart-in-shell.test.ts",
+   "status": "changed",
+   "before_sha256": "1185141ee37bf2a0f3a5e78cd92c5a37bf10c51b137da23edb046c5652cd53df",
+   "after_sha256": "83ead85ca063cdd5270dfd5a8d8692b2566db1c0a3da2c60d23da2413ddfbb0e",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling(3c6c2be0/c015d9ed/3d3c90a0)、POST 路由、maxConsecutiveErrors、renderTriage 保留"
+  },
+  {
+   "path": "packages/tui/test/crash-cart-restore-input.test.ts",
+   "status": "changed",
+   "before_sha256": "f766a919dfff851e9b179551cf1e807c222139be6f61ee54c0ddec65465041e1",
+   "after_sha256": "c30977235ab2e4a9b501d66b3fb603b667291476cdae80727194d9cbf10aad75",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling(3c6c2be0/c015d9ed/3d3c90a0)、POST 路由、maxConsecutiveErrors、renderTriage 保留"
+  },
+  {
+   "path": "packages/tui/test/crash-cart-restore-lifecycle.test.ts",
+   "status": "changed",
+   "before_sha256": "fe37a941210d4f86de74c3d2b3269a1ace275c3cf9083bfb2d51311dff7b1da0",
+   "after_sha256": "3f080f0d9e670525506c38e817c08f9de37b36ff21e0d13eeb9f76042f63439a",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling(3c6c2be0/c015d9ed/3d3c90a0)、POST 路由、maxConsecutiveErrors、renderTriage 保留"
+  },
+  {
+   "path": "packages/tui/test/crash-cart-restore-render.test.ts",
+   "status": "changed",
+   "before_sha256": "993bb69d5102355f48121d4f1b8cf54980694a7bf8356a5a5614629810ba3852",
+   "after_sha256": "d959e2d8cf5ea6e0fd23ac26ef2879bb58849a3843d36d963c9a65ec72302d0b",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling(3c6c2be0/c015d9ed/3d3c90a0)、POST 路由、maxConsecutiveErrors、renderTriage 保留"
+  },
+  {
+   "path": "packages/tui/test/crash-cart-view.test.ts",
+   "status": "changed",
+   "before_sha256": "0ce695d8871a6fcbfbd56caa338ccc269a50a2e2f72203713b27a04990098f3c",
+   "after_sha256": "f5bf1cc6a34f7abe82586ad7f54442d9f0c43e7ff846b4f032cd7b2ce4818ff5",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling(3c6c2be0/c015d9ed/3d3c90a0)、POST 路由、maxConsecutiveErrors、renderTriage 保留"
+  },
+  {
+   "path": "packages/tui/test/daemon-client.test.ts",
+   "status": "changed",
+   "before_sha256": "0bdc00193b73378d1458e7be4a397f16884507bc65b6963aa9261450bcac6538",
+   "after_sha256": "121673923b16a24361695ad751295893550b6e7187e874b2272581c728b890fa",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling(3c6c2be0/c015d9ed/3d3c90a0)、POST 路由、maxConsecutiveErrors、renderTriage 保留"
+  },
+  {
+   "path": "packages/tui/test/entry-loading.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "8a9b36be547feefffd32fa7e8f6e241fac040d63dbd2c706e185ecbd681797a0",
+   "after_sha256": "b3205da5d9787247f5165508f8a7d75d0e1b8bf4700bffc99b09eb211b2b081e",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling(3c6c2be0/c015d9ed/3d3c90a0)、POST 路由、maxConsecutiveErrors、renderTriage 保留"
+  }
+ ]
+}

@@ -1,26 +1,23 @@
-// OPR.0.5.5.19 A7 — THE PARKED QUERY, the flagship consumer (founder's one-command ask):
-// "are we parked?" at rig level, "is this seat parked?" at seat level. PARKED is a
-// DERIVED DIAGNOSIS (the taxonomy's rule — computed at read time, never stored):
-// (activity = idle-at-prompt OR needs-input pending) × (open obligations exist).
+// OPR.0.5.5.19 A7——PARKED 查询是旗舰 consumer（创始人的单命令问题）：工作组层级回答
+// “我们是否停滞？”，席位层级回答“此席位是否停滞？”。PARKED 是派生诊断
+//（taxonomy 规则：读取时计算，绝不存储）：
+//（活动 = 停在提示符处空闲，或等待输入未处理）×（存在开放义务）。
 //
-// THE JOIN LIVES HERE, not in SeatActivityService — the oracle's non-inference contract
-// holds; this module receives an obligation READER and never writes queue state.
+// JOIN 位于此处，而非 SeatActivityService，以维持 oracle 的非推断契约；本模块接收 obligation
+// READER，绝不写入队列状态。
 //
-// AM-3 (verdict 1229a4b7): parked inherits BOTH inputs' error terms, and the obligation
-// face has measured dishonesty modes (stale blockedOn surviving closure, bare-scope
-// false absences, limit truncation). So the query NAMES its obligation scope, guards the
-// limit with a returned-count-under-limit check, and returns CONFIDENCE FOR BOTH INPUTS
-// — a false NOT-PARKED from a missed obligation is the founder's undetected-park class
-// rebuilt one level up; this output makes that failure visible rather than possible.
+// AM-3（verdict 1229a4b7）：parked 继承两个输入的错误项，而 obligation 界面存在已测量的不诚实模式
+//（closure 后仍残留 stale blockedOn、裸 scope 造成错误缺失、limit 截断）。因此查询会具名说明
+// obligation scope，通过“返回数量小于 limit”检查守卫上限，并返回两个输入各自的 CONFIDENCE。
+// 因遗漏 obligation 而得到错误 NOT-PARKED，等于在更高层重建创始人所说的 undetected-park 类；
+// 此输出让这类失败变得可见，而不是任其发生。
 //
-// S19 A7 RED: unwired.
+// S19 A7 RED：尚未接线。
 
 import type { ArbitratedSeatState, NeedsInput } from "./activity-taxonomy.js";
 
-/** One open obligation row from the queue's obligation face. HELD rows (state=blocked —
- *  the deliberate queue-level hold with an owner and a resolution path) are the
- *  vocabulary's NOT-parked case and are surfaced separately, never counted as
- *  park-driving. */
+/** 队列 obligation 界面中的一条 open obligation。HELD 行（state=blocked，即带 owner 和解决路径的
+ *  有意队列级 hold）属于词表中的 NOT-parked 情形，会单独呈现，绝不计入触发 parked 的行。 */
 export interface ObligationRow {
   qitemId: string;
   state: "pending" | "in-progress" | "blocked";
@@ -45,25 +42,25 @@ export interface HeldObligation extends ObligationRow {
 }
 
 export interface ObligationRead {
-  /** The rows the reader returned (bounded by `limit`). */
+  /** reader 返回的行，受 `limit` 限制。 */
   rows: ObligationRow[];
-  /** The bound the reader applied — the guard input. */
+  /** reader 应用的上限，即 guard 输入。 */
   limit: number;
 }
 
 export interface ParkedQueryDeps {
   getSeatState: (seatNodeId: string) => ArbitratedSeatState | null;
-  /** The obligation face, scoped destination + open-state; the query never widens or
-   *  narrows this silently — the scope string in the result names exactly what ran. */
+  /** obligation 界面，限定为 destination + open-state；查询绝不静默放宽或收窄。
+   *  结果中的 scope 字符串会准确说明实际执行的范围。 */
   listOpenObligations: (destinationSession: string, limit: number) => ObligationRead;
-  /** Optional only for pre-073 fixtures. Missing is honestly wakeless. */
+  /** 仅对 073 前 fixture 可选；缺失时如实视为没有 wake。 */
   getParkWake?: (qitemId: string) => unknown;
 }
 
 export interface SeatParkedDiagnosis {
   seatNodeId: string;
   sessionName: string;
-  /** true / false, or "indeterminate" when an input cannot support the verdict. */
+  /** true / false；输入不足以支持 verdict 时为 `indeterminate`。 */
   parked: boolean | "indeterminate";
   reason: string;
   activity: {
@@ -73,12 +70,12 @@ export interface SeatParkedDiagnosis {
     confidence: "oracle" | "unknown";
   };
   obligations: {
-    /** The EXACT scope that ran — named, so a false absence is auditable. */
+    /** 实际执行的精确 scope；具名记录，便于审计错误缺失。 */
     scope: string;
     openCount: number;
     heldCount: number;
     unhealthyHeldCount: number;
-    /** false when returned == limit: the count may be truncated (never silently). */
+    /** returned == limit 时为 false，表示数量可能被截断；绝不静默。 */
     complete: boolean;
     limit: number;
     items: ObligationRow[];
@@ -95,7 +92,7 @@ export interface RigParkedDiagnosis {
 
 export const PARKED_OBLIGATION_LIMIT = 500;
 
-const HELD_REMEDY = "Remedy: attach a live watchdog id, arm an atomic timer, or name a live blocker qitem. The queue is a conveyor: work with a workspace home that is deferred/not-imminent belongs in its workspace mission/slice, not in HELD.";
+const HELD_REMEDY = "处理建议：附加有效的 watchdog ID、设置原子 timer，或指定有效的 blocker qitem。队列是传送带：已延期或并非即将执行、且有工作区归属的工作，应放入对应工作区的任务目标/切片，而不是留在 HELD。";
 
 function parseWake(value: unknown): ParkWakeDiagnosis | null {
   if (!value || typeof value !== "object") return null;
@@ -152,16 +149,15 @@ export function diagnoseSeatParked(
     obligations: complete ? "complete" : "truncation-possible",
   };
 
-  // The diagnosis: (idle-at-prompt OR needs-input pending) × open obligations.
-  // Activity-unknown can never support a verdict — INDETERMINATE, never a guessed
-  // NOT-PARKED (the founder's undetected-park class rebuilt one level up).
-  // Truncation only UNDERCOUNTS obligations, so a positive verdict stands under it.
+  // 诊断公式：(idle-at-prompt OR needs-input pending) × open obligations。activity-unknown
+  // 永远不足以支持 verdict，应返回 INDETERMINATE，绝不能猜测 NOT-PARKED（否则会在更高层重建
+  // 创始人所说的 undetected-park 类）。截断只会少算 obligation，因此正向 verdict 在截断时仍成立。
   if (!activityKnown) {
     return {
       seatNodeId: seat.seatNodeId,
       sessionName: seat.sessionName,
       parked: "indeterminate",
-      reason: `activity is unknown for ${seat.sessionName} — the oracle cannot support a parked verdict (obligation face read anyway: ${open.length} open, ${held.length} held)`,
+      reason: `${seat.sessionName} 的 activity 未知，oracle 无法支持 parked verdict（仍已读取 obligation 界面：${open.length} 个 open，${held.length} 个 held）`,
       activity,
       obligations,
       confidence,
@@ -173,13 +169,13 @@ export function diagnoseSeatParked(
   const unconsumed = unhealthyHeld.filter((row) => row.wake?.unconsumed);
   const reason = parked
     ? state.needsInput.count > 0
-      ? `needs-input (${state.needsInput.reason ?? "unanswered block"}) with ${open.length} open obligation(s) and ${unhealthyHeld.length} unhealthy HELD row(s) — ${unconsumed.length > 0 ? `${unconsumed.length} wake(s) fired but remain unconsumed. ` : ""}${HELD_REMEDY}`
-      : `idle-at-prompt with ${open.length} open obligation(s) and ${unhealthyHeld.length} unhealthy HELD row(s) — ${unconsumed.length > 0 ? `${unconsumed.length} wake(s) fired but remain unconsumed. ` : ""}${HELD_REMEDY}`
+      ? `needs-input（${state.needsInput.reason ?? "存在未响应阻塞"}），有 ${open.length} 个 open obligation 和 ${unhealthyHeld.length} 个不健康 HELD 行。${unconsumed.length > 0 ? `${unconsumed.length} 个 wake 已触发但仍未消费。` : ""}${HELD_REMEDY}`
+      : `idle-at-prompt，带有 ${open.length} 个 open obligation 和 ${unhealthyHeld.length} 个不健康 HELD 行。${unconsumed.length > 0 ? `${unconsumed.length} 个 wake 已触发但仍未消费。` : ""}${HELD_REMEDY}`
     : stopped
       ? held.length > 0
-        ? `stopped with ${held.length} HELD row(s), all healthy with a live wake — not parked`
-        : "stopped but the board is clean"
-      : `working — not parked`;
+        ? `已停止，但 ${held.length} 个 HELD 行都拥有有效 wake 且状态健康，因此并未 parked`
+        : "已停止，但任务板为空"
+      : `正在工作，并未 parked`;
 
   return {
     seatNodeId: seat.seatNodeId,
@@ -202,17 +198,17 @@ export function diagnoseRigParked(
   if (parkedSeats.length > 0) {
     return {
       parked: true,
-      reason: `${parkedSeats.length} seat(s) parked: ${parkedSeats.map((d) => d.sessionName).join(", ")}`,
+      reason: `${parkedSeats.length} 个席位已 parked：${parkedSeats.map((d) => d.sessionName).join(", ")}`,
       seats: diagnoses,
     };
   }
   if (indeterminate.length > 0) {
-    // An unreadable seat can hide a park — the rig verdict must not claim all-clear.
+    // 不可读取的席位可能隐藏 park，因此工作组 verdict 不得声称全部正常。
     return {
       parked: "indeterminate",
-      reason: `no seat is provably parked, but ${indeterminate.length} seat(s) are indeterminate (${indeterminate.map((d) => d.seatNodeId).join(", ")}) — not an all-clear`,
+      reason: `没有可证明已 parked 的席位，但 ${indeterminate.length} 个席位状态不确定（${indeterminate.map((d) => d.seatNodeId).join(", ")}），不能视为全部正常`,
       seats: diagnoses,
     };
   }
-  return { parked: false, reason: "no seat is parked", seats: diagnoses };
+  return { parked: false, reason: "没有席位处于 parked 状态", seats: diagnoses };
 }

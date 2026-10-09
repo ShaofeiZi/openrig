@@ -1,8 +1,7 @@
-// OPR.0.5.0.18 — the amend/re-stamp verb's CLI surface: local flag-misuse
-// refusals (fire before any daemon contact) + the `scope audit` amendment-
-// lineage surface (filesystem-local, reads the priors frontmatter the atomic
-// re-stamp writes). Driven end-to-end through the commander tree against a
-// tmp substrate fixture (the scope-progress harness idiom).
+// OPR.0.5.0.18——amend/re-stamp 动词的 CLI 表面：本地 flag 误用拒绝
+//（在任何 daemon 联系前触发）+ `scope audit` amendment-lineage 表面
+//（文件系统本地，读原子 re-stamp 写出的 priors frontmatter）。经 commander 树
+// 对 tmp substrate fixture 端到端驱动（scope-progress harness 惯用法）。
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs";
@@ -94,7 +93,7 @@ describe("rig scope slice approve — amend/re-stamp flag misuse (local, pre-dae
       root,
     );
     expect(res.exitCode).not.toBe(0);
-    expect(res.stderr + res.stdout).toMatch(/--re-approve without --reason/);
+    expect(res.stderr + res.stdout).toMatch(/--re-approve 没带 --reason/);
     expect(res.stderr + res.stdout).toMatch(/--reason "<why>"/);
   });
 
@@ -104,7 +103,7 @@ describe("rig scope slice approve — amend/re-stamp flag misuse (local, pre-dae
       root,
     );
     expect(res.exitCode).not.toBe(0);
-    expect(res.stderr + res.stdout).toMatch(/--reason was passed without --re-approve/);
+    expect(res.stderr + res.stdout).toMatch(/--reason 没有 --re-approve/);
   });
 });
 
@@ -144,8 +143,8 @@ describe("rig scope audit — amendment lineage surface (OPR.0.5.0.18 mini-req 4
 
   it("text output: a re-stamped slice shows current attestation + prior-count; a plain slice shows none", async () => {
     const res = await run(["audit", "--mission", "release-x"], path.join(root, "internal-docs"));
-    expect(res.stdout).toMatch(/AMENDMENT LINEAGE:/);
-    expect(res.stdout).toMatch(/01-amended \[spec\]: current planner@rig at 2026-08-04T21:00:00\.000Z — 2 prior attestation\(s\)/);
+    expect(res.stdout).toMatch(/审计|谱系/);
+    expect(res.stdout).toMatch(/01-amended \[spec\]：当前 planner@rig 于 2026-08-04T21:00:00\.000Z——审计日志中 2 条 prior attestation/);
     expect(res.stdout).not.toMatch(/02-plain \[spec\]/);
   });
 

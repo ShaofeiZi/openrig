@@ -11,8 +11,8 @@ function inside(parent, child) {
 }
 
 /**
- * Verify that this worktree owns the dependency root and every lock-derived
- * @openrig workspace link. The check reports only; it never repairs.
+ * 校验本工作区独占依赖根，以及由 lock 推导出的每个 @openrig 工作区链接。
+ * 本检查只报告，绝不自行修复。
  */
 export function checkDependencyRoot(repoRoot, { log = console.log } = {}) {
   const root = realpathSync(repoRoot);

@@ -1,19 +1,18 @@
-# Defect class: baton drop / stale-activity / mid-turn death.
-# Marathon origin: a restart (crash/resume) dropped the in-progress queue claim, so
-#   owned work looked unowned and a second seat re-picked it.
-# SEED (class: baton-drop): the seeded regression makes the restart path fail to
-#   rehydrate the claim record. The post-restart `expect queue` (baton-1 still
-#   in-progress AND destinationSession dev-qa@dev-pair-stub) MUST catch it — the diff
-#   shows expected in-progress/owned vs an observed pending/unowned item.
+# 缺陷类别：接力棒丢失 / 活动状态陈旧 / 轮次中途死亡。
+# Marathon 来源：restart（crash/resume）丢失进行中的队列认领，导致已有所有者的工作
+#   看起来无人负责，并被第二个席位重新领取。
+# SEED（class: baton-drop）：种子回归使 restart 路径无法重新填充认领记录。
+#   restart 后的 `expect queue`（baton-1 仍为 in-progress，且 destinationSession 为
+#   dev-qa@dev-pair-stub）必须发现它——diff 会展示预期 in-progress/owned 与观察到的
+#   pending/unowned 项目。
 #
-# REAL 51-02 FORM (adapted to the CLEARED runner, verdict 57d5aa7d — see
-# FORMAT-CONFORMANCE-NOTES.md): the baton is a fixture-level `env.queue` PRECONDITION
-# (there is NO queue action verb); the pipeline runs the shipped `rig queue
-# create`/`claim` before the steps. "restart" = `daemon:{op:restart}` (ratified; the
-# baton lives in daemon SQLite, so it must survive the daemon lifecycle) — NOT a seat
-# relaunch (no snapshot-free per-seat relaunch verb exists, F2). `expect queue` is a
-# LIST keyed on qitemId/state/destinationSession.
-# Deps: R-10 runner. No emit.
+# 真实 51-02 形式（已适配 CLEARED runner，verdict 57d5aa7d——见
+# FORMAT-CONFORMANCE-NOTES.md）：接力棒是夹具级 `env.queue` 前置条件（不存在 queue 操作动词）；
+# pipeline 会在步骤前运行已发布的 `rig queue create`/`claim`。"restart" =
+# `daemon:{op:restart}`（已批准；接力棒位于后台服务 SQLite 中，必须跨后台服务生命周期保留）——
+# **不是**席位重启（不存在无快照的逐席位重启动词，F2）。`expect queue` 是按
+# qitemId/state/destinationSession 设键的列表。
+# 依赖：R-10 runner。不使用 emit。
 scenario: queue-baton-survives-restart
 topology: ./dev-pair-stub.yaml
 env:
@@ -21,11 +20,11 @@ env:
     - id: baton-1
       source: harness@dev-pair-stub
       destination: dev-qa@dev-pair-stub
-      summary: "51-03 baton — survives a restart"
+      summary: "51-03 接力棒——重启后仍然保留"
       claim: true
 steps:
   - up: {}
-  # the baton is in-progress + owned before we touch the daemon
+  # 操作后台服务前，接力棒处于 in-progress 且有所有者。
   - expect:
       surface: queue
       within: 20s
@@ -34,7 +33,7 @@ steps:
           state: in-progress
           destinationSession: dev-qa@dev-pair-stub
   - daemon: { op: restart }
-  # the baton MUST survive the restart: same item, still in-progress, still owned
+  # 接力棒必须经受住 restart：仍是同一项目、仍为 in-progress、仍有所有者。
   - expect:
       surface: queue
       within: 20s
@@ -42,9 +41,9 @@ steps:
         - qitemId: baton-1
           state: in-progress
           destinationSession: dev-qa@dev-pair-stub
-  # DEFERRED (items-6-8, VISIBLY annotated, NOT dropped): the locked class also asserts
-  #   expect { surface: pane, seat: qa, contains: "restored" }. The stub-runner at the
-  #   current tip emits only READY/EXITED; the `restore` behavior that prints the
-  #   "restored" pane marker is A5 items 6-8. Lights up when they land.
+  # 已延后（第 6–8 项，明确标注，未删除）：锁定类别还会断言
+  #   expect { surface: pane, seat: qa, contains: "restored" }。当前 tip 的 stub-runner
+  #   只发出 READY/EXITED；输出 "restored" pane 标记的 `restore` 行为属于 A5 第 6–8 项。
+  #   这些项落地后启用。
   - seed_regression: {class: baton-drop}
   - down: {}

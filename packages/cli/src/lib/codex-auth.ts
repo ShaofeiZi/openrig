@@ -1,20 +1,20 @@
-// OPR.0.4.1.29 — rig auth secret-safe core (CLI-LOCAL / daemon-free).
+// OPR.0.4.1.29 —— rig auth 密钥安全核心（CLI 本地 / 不经过后台服务）。
 //
-// This module operates directly on the operator's Codex auth files under CODEX_HOME and is invoked
-// only from the `rig auth` CLI command — it NEVER touches the daemon, so a token can never enter the
-// daemon queue / SSE stream / SQLite / event log (never-queued/never-streamed is true BY CONSTRUCTION).
+// 本模块直接操作运维人员 CODEX_HOME 下的 Codex 认证文件，且只被 `rig auth` CLI 命令调用——
+// 它【绝不】触碰后台服务，因此 token 绝无可能进入后台服务队列 / SSE 流 / SQLite / 事件日志
+//（“不入队/不流式”是【构造上】成立的）。
 //
-// SECRET INVARIANTS (non-negotiable): no auth/refresh/access token value is ever returned in, or used
-// to build, any human-facing string. Functions return STRUCTURED, non-secret result objects
-// (presence / mode / parseability / login-state / names / counts); the auth FILE is snapshotted as a
-// file (mode-guarded byte copy), never read into a printed value. CODEX_HOME defaults to $HOME/.codex
-// and is env-overridable (tests point it at a fixture); no personal/operator path is baked in.
+// 密钥不变量（不可妥协）：任何 auth/refresh/access token 的值都【绝不】出现在、或被用于拼接任何
+// 面向人的字符串。函数返回结构化、非密钥的结果对象
+//（是否存在 / 模式 / 可否解析 / 登录态 / 名字 / 计数）；认证【文件】是按文件整体快照
+//（受模式保护的字节拷贝），绝不读入某个会被打印的值。CODEX_HOME 默认为 $HOME/.codex，
+// 可被环境变量覆盖（测试把它指向 fixture）；不内置任何个人/运维路径。
 import path from "node:path";
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 
-/** Strict profile-name whitelist: alnum-led, then [A-Za-z0-9._-], 1..64 chars. Excludes /, \, ~,
- *  leading dot, whitespace, control, and shell metacharacters. Fail closed. */
+/** 严格的 profile 名白名单：字母数字开头，其后为 [A-Za-z0-9._-]，1..64 字符。排除 /、\、~、
+ *  前导点、空白、控制符与 shell 元字符。fail closed。 */
 const PROFILE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
 export function validateProfileName(name: unknown): name is string {
@@ -22,17 +22,17 @@ export function validateProfileName(name: unknown): name is string {
 }
 
 export interface CodexAuthPaths {
-  /** Codex state dir — CODEX_HOME or $HOME/.codex. */
+  /** Codex 状态目录——CODEX_HOME 或 $HOME/.codex。 */
   codexHome: string;
-  /** Saved-profile dir (0700). */
+  /** 已保存 profile 的目录（0700）。 */
   profileDir: string;
-  /** Active auth file the Codex CLI reads (0600). */
+  /** Codex CLI 读取的当前认证文件（0600）。 */
   activeAuth: string;
-  /** Product-native seat->profile metadata registry (0600). */
+  /** 产品原生的席位到 profile 元数据注册表（0600）。 */
   registryPath: string;
 }
 
-/** Resolve the Codex paths from an env map (default process.env). CODEX_HOME wins; else $HOME/.codex. */
+/** 从环境变量映射（默认为 process.env）解析 Codex 路径；优先使用 CODEX_HOME，否则使用 $HOME/.codex。 */
 export function resolveCodexHome(env: NodeJS.ProcessEnv = process.env): CodexAuthPaths {
   const codexHome =
     typeof env.CODEX_HOME === "string" && env.CODEX_HOME.length > 0
@@ -46,7 +46,7 @@ export function resolveCodexHome(env: NodeJS.ProcessEnv = process.env): CodexAut
   };
 }
 
-// --- secret-safe fs helpers (no contents ever read into a returned/printed value) ---
+// --- 密钥安全的 fs 辅助函数（内容绝不读入任何返回/打印值） ---
 
 function lstatSafe(p: string): fs.Stats | null {
   try {
@@ -66,25 +66,25 @@ function isFile(p: string): boolean {
   return st !== null && st.isFile();
 }
 
-/** Octal permission string (e.g. "600") or null when the path is absent/unstatable. */
+/** 当且仅当该路径不存在/无法 stat 时返回八进制权限串（例如 "600"）。 */
 function fileModeOctal(p: string): string | null {
   const st = lstatSafe(p);
   if (st === null) return null;
   return (st.mode & 0o777).toString(8).padStart(3, "0");
 }
 
-/** A profile file is safe iff it exists, is a regular file (not a symlink — which could redirect us
- *  out of the profile dir), has link count 1 (a hardlink shares an inode that may live outside the
- *  profile dir), and lives directly in profileDir. */
+/** 仅当 profile 文件存在、是普通文件（不是可能把访问重定向到 profile 目录外的符号链接）、
+ * 链接数为 1（硬链接会共享可能位于 profile 目录外的 inode），且直接位于 profileDir 中时，
+ * 才视为安全。 */
 function isSafeProfileFile(p: string, profileDir: string): boolean {
   const st = lstatSafe(p);
   if (st === null || st.isSymbolicLink() || !st.isFile() || st.nlink !== 1) return false;
   return path.dirname(p) === profileDir;
 }
 
-/** True iff `dir` really resolves INSIDE realpath(codexHome). realpath follows every symlink in the
- *  chain, so a symlinked parent (e.g. an auth-profiles dir pointing outside) resolves out and is
- *  rejected — a lexical startsWith would be fooled. Returns false if either path can't be resolved. */
+/** 当且仅当 `dir` 的真实解析结果位于 realpath(codexHome) 内时返回 true。realpath 会追踪链上的
+ * 每个符号链接，因此指向外部的符号链接父目录（例如 auth-profiles）会解析到边界外并被拒绝；
+ * 仅做字面 startsWith 判断会受骗。任一路径无法解析时返回 false。 */
 function realDirContained(dir: string, codexHome: string): boolean {
   try {
     const root = fs.realpathSync(codexHome);
@@ -95,44 +95,41 @@ function realDirContained(dir: string, codexHome: string): boolean {
   }
 }
 
-/** A destination we are about to write SECRET bytes onto is safe to replace iff it is absent, or a
- *  regular file (not a symlink) with link count 1. A symlink redirects the write; a hardlink (nlink>1)
- *  shares an inode that may live outside CODEX_HOME — writing through either leaks secret bytes out. */
+/** 即将写入密钥字节的目标，仅在不存在，或为链接数为 1 的普通文件（非符号链接）时才可安全替换。
+ * 符号链接会重定向写入；硬链接（nlink>1）会共享可能位于 CODEX_HOME 外的 inode；
+ * 经由任一者写入都会把密钥字节泄漏到边界外。 */
 function destReplaceable(p: string): boolean {
   const st = lstatSafe(p);
   if (st === null) return true;
   return !st.isSymbolicLink() && st.isFile() && st.nlink === 1;
 }
 
-/** fd-first copy of `source` onto `dest` (OPR.0.4.3.23 secret-boundary B1 hardening). Closes the
- *  check-then-use gap that a path-based copy leaves open: an earlier lstat guard, then a copy that
- *  re-resolves the SOURCE PATH, can be redirected by an inode swap in the window (a crash, or a
- *  concurrent legitimate rig on the same auth home) — reading the wrong inode, a torn file, or briefly
- *  leaving a wider-than-0600 temp (CERT FIO45-C). Path-based pre-checks cannot close that race, so the
- *  authoritative check moves onto the OPENED fd:
- *   (1) SOURCE: openSync with O_NOFOLLOW (a final-component symlink swap fails closed), then fstat ON
- *       THE FD and validate the opened inode (regular file, nlink === 1 — a hardlink shares an inode
- *       that may live outside the boundary), and — when the caller passes its earlier lstat — confirm
- *       dev/ino still match (the inode was not swapped in the window). Read bytes FROM the fd; the
- *       source path is never re-resolved after the open.
- *   (2) DEST: openSync the temp with O_CREAT|O_EXCL (fresh inode; never a pre-existing hardlink/symlink)
- *       at 0600 AT creation (removes the create-then-chmod window), fchmod on the fd to pin 0600
- *       regardless of umask, write the source bytes, fsync, then renameSync as the SOLE atomic publish
- *       (a crash BEFORE the rename leaves the prior dest byte-intact — a strength we preserve).
- *  The temp stays co-located in dest's dir so the rename never crosses devices. The transient byte
- *  buffer is the only time secret bytes touch JS memory; it is never printed and is scrubbed in
- *  `finally`. Caller must still have verified dest's parent containment and that dest is replaceable
- *  (the lstat pre-checks stay as cheap fail-fast; this fd validation is the authoritative layer).
- *  Exported for the fd-first / crash-safety leak-hunt tests. */
+/** 以 fd 为先，将 `source` 复制到 `dest`（OPR.0.4.3.23 密钥边界 B1 加固）。
+ * 它封堵了基于路径复制留下的先检查后使用缺口：先由 lstat 守卫检查，再由复制操作重新解析
+ * 源路径时，窗口期内的 inode 置换（例如崩溃，或同一认证主目录上的另一合法工作组并发操作）
+ * 可能重定向读取，导致读取错误 inode、获得撕裂文件，或短暂留下权限宽于 0600 的临时文件
+ *（CERT FIO45-C）。基于路径的预检查无法消除此竞态，因此权威校验移到已打开的 fd 上：
+ *   (1) 源：使用 O_NOFOLLOW 调用 openSync（最终路径组件被换成符号链接时失败关闭），随后在
+ *       fd 上执行 fstat 并校验已打开的 inode（普通文件且 nlink === 1；硬链接会共享可能位于
+ *       边界外的 inode）。调用方传入此前的 lstat 时，还要确认 dev/ino 仍匹配，证明窗口期内
+ *       inode 未被置换。字节直接从 fd 读取；打开后绝不再次解析源路径。
+ *   (2) 目标：使用 O_CREAT|O_EXCL 调用 openSync 创建临时文件，确保获得全新 inode，绝非
+ *       既有硬链接或符号链接；创建时即设为 0600，消除先创建后 chmod 的窗口。随后在 fd 上
+ *       fchmod，将权限固定为 0600 而不受 umask 影响，再写入源字节、fsync，最后仅以
+ *       renameSync 原子发布（若在重命名前崩溃，原目标仍保持字节完整；该优势必须保留）。
+ * 临时文件与 dest 位于同一目录，确保重命名不跨设备。密钥字节只会在瞬时字节缓冲区中进入
+ * JS 内存；绝不打印，并在 `finally` 中擦除。调用方仍须确认 dest 的父目录位于边界内且 dest
+ * 可替换；lstat 预检查保留为低成本快速失败，fd 校验才是权威层。导出该函数供 fd 优先和
+ * 崩溃安全泄漏排查测试使用。 */
 export function copyOntoFresh(
   source: string,
   dest: string,
   expectSrc?: { dev: number; ino: number },
 ): boolean {
   const tmp = `${dest}.tmp-${process.pid}`;
-  // O_NOFOLLOW fails the open closed if a final-component symlink was swapped in. (O_CLOEXEC is omitted:
-  // it is undefined on macOS Node and absent from @types/node, and no child process is spawned during
-  // this fd's synchronous lifetime, so close-on-exec would be a no-op here.)
+  // 最终路径组件被换成符号链接时，O_NOFOLLOW 会让打开操作失败关闭。此处不使用
+  // O_CLOEXEC：它在 macOS Node 中未定义，@types/node 也没有该声明；且该 fd 的同步生命周期内
+  // 不会启动子进程，所以 close-on-exec 在这里不起作用。
   const NOFOLLOW = fs.constants.O_NOFOLLOW ?? 0;
   let srcFd = -1;
   let destFd = -1;
@@ -141,9 +138,9 @@ export function copyOntoFresh(
     try {
       fs.rmSync(tmp, { force: true }); // clear any stale temp so the O_EXCL create below succeeds
     } catch {
-      /* ignore */
+      /* 忽略 */
     }
-    // (1) fd-first source read: open, then validate ON THE FD — never re-resolve the source path.
+    // (1) fd 优先读取源：先打开，再在 fd 上校验；绝不重新解析源路径。
     srcFd = fs.openSync(source, fs.constants.O_RDONLY | NOFOLLOW);
     const st = fs.fstatSync(srcFd);
     if (!st.isFile() || st.nlink !== 1) return false; // authoritative: regular file, single link
@@ -157,7 +154,7 @@ export function copyOntoFresh(
       read += n;
     }
     if (read !== size) return false; // torn/truncated read (the source changed under us) → fail safe
-    // (2) fd-first dest temp: fresh inode (O_EXCL), 0600 AT creation, byte-copy, fsync, atomic rename.
+    // (2) fd 优先创建目标临时文件：全新 inode（O_EXCL）、创建即为 0600、复制字节、fsync、原子重命名。
     destFd = fs.openSync(tmp, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY | NOFOLLOW, 0o600);
     fs.fchmodSync(destFd, 0o600); // pin 0600 on the fd regardless of umask (no path chmod window)
     let written = 0;
@@ -176,21 +173,21 @@ export function copyOntoFresh(
       try {
         fs.closeSync(srcFd);
       } catch {
-        /* ignore */
+        /* 忽略 */
       }
     }
     if (destFd >= 0) {
       try {
         fs.closeSync(destFd);
       } catch {
-        /* ignore */
+        /* 忽略 */
       }
     }
     if (data) data.fill(0); // scrub the secret bytes out of the transient JS buffer
     try {
       fs.rmSync(tmp, { force: true }); // remove any orphan temp (no-op after a successful rename)
     } catch {
-      /* ignore */
+      /* 忽略 */
     }
   }
 }
@@ -203,8 +200,8 @@ function countProfiles(profileDir: string): number {
   }
 }
 
-/** True iff the string contains a control character (<=0x1f or 0x7f), incl. tab/newline/CR which would
- *  corrupt a TSV row. Printable chars (spaces, hyphens, '@', '/') are allowed. Regex-free on purpose. */
+/** 当且仅当字符串包含控制字符（<=0x1f 或 0x7f）时返回 true，其中包括会破坏 TSV 行的
+ * 制表符、换行符和 CR。允许空格、连字符、`@`、`/` 等可打印字符。这里有意不使用正则。 */
 function hasControlChar(v: string): boolean {
   for (let i = 0; i < v.length; i++) {
     const c = v.charCodeAt(i);
@@ -214,13 +211,13 @@ function hasControlChar(v: string): boolean {
 }
 
 export interface CodexAuthDeps {
-  /** Resolve the Codex login state using EXIT CODE ONLY — never the external command's stdout/stderr
-   *  (any future codex version could print a token there). Default: spawn `codex login status` with
-   *  stdio ignored and map the exit code. Injectable for hermetic tests. */
+  /** 只根据退出码解析 Codex 登录状态，绝不读取外部命令的 stdout/stderr，因为未来任何 Codex
+   * 版本都可能在其中打印令牌。默认启动 `codex login status`、忽略 stdio 并映射退出码。
+   * 可注入实现，以支持密闭测试。 */
   loginStatus?: (codexHome: string) => "logged_in" | "not_logged_in" | "unavailable";
 }
 
-/** Default login-state probe: exit code only, output never captured (stdio: ignore = no leak path). */
+/** 默认登录状态探测：只读取退出码，绝不捕获输出（stdio: ignore，不存在泄漏路径）。 */
 function defaultLoginStatus(codexHome: string): "logged_in" | "not_logged_in" | "unavailable" {
   const r = spawnSync("codex", ["login", "status"], {
     stdio: "ignore",
@@ -241,7 +238,7 @@ export interface AuthStatusResult {
   loginStatus: "logged_in" | "not_logged_in" | "unavailable";
 }
 
-/** Report auth-file presence/mode/safety + profile count + login-state. NEVER reads token contents. */
+/** 报告认证文件是否存在、权限模式、安全性、profile 数量和登录状态；绝不读取令牌内容。 */
 export function authStatus(paths: CodexAuthPaths, deps: CodexAuthDeps = {}): AuthStatusResult {
   const activeAuthPresent = isFile(paths.activeAuth);
   const activeAuthMode = activeAuthPresent ? fileModeOctal(paths.activeAuth) : null;
@@ -264,14 +261,14 @@ export type AuthValidateResult =
       reason: "invalid_profile" | "missing_profile" | "unsafe_path" | "unsafe_permissions" | "malformed_json" | "parse_check_unavailable";
     };
 
-/** Validate a saved profile: name whitelist -> safe regular file -> 0600 -> JSON parseable. The
- *  parse is in-memory and the result is discarded; on failure we return a FIXED reason and never the
- *  JSON.parse error (its message can include a snippet of the file = a secret). */
+/** 校验已保存 profile：名称白名单 → 安全的普通文件 → 0600 → JSON 可解析。解析仅在内存中
+ * 进行且结果会丢弃；失败时返回固定原因，绝不返回 JSON.parse 错误，因为其消息可能包含文件片段，
+ * 即泄漏密钥。 */
 export function authValidate(paths: CodexAuthPaths, name: string): AuthValidateResult {
   if (!validateProfileName(name)) return { ok: false, reason: "invalid_profile" };
   const target = path.join(paths.profileDir, `${name}.json`);
   if (lstatSafe(target) === null) return { ok: false, reason: "missing_profile" };
-  // Safe regular file (no symlink/hardlink) AND a profile dir that really resolves inside CODEX_HOME.
+  // 必须是安全的普通文件（无符号链接/硬链接），且 profile 目录真实解析在 CODEX_HOME 内。
   if (!isSafeProfileFile(target, paths.profileDir) || !realDirContained(paths.profileDir, paths.codexHome)) {
     return { ok: false, reason: "unsafe_path" };
   }
@@ -285,7 +282,7 @@ export function authValidate(paths: CodexAuthPaths, name: string): AuthValidateR
   try {
     JSON.parse(content);
   } catch {
-    // Intentionally ignore the error object — its message can echo file content (a secret).
+    // 有意忽略错误对象，因为其消息可能回显文件内容（密钥）。
     return { ok: false, reason: "malformed_json" };
   }
   return { ok: true, name, path: target, mode: "600" };
@@ -295,15 +292,15 @@ export type AuthSaveResult =
   | { ok: true; name: string; path: string; mode: string }
   | { ok: false; reason: "invalid_profile" | "not_configured" | "unsafe_path" | "io_error" };
 
-/** Snapshot the active auth file into a named profile (0600 file in the 0700 profile dir). Byte-copy
- *  via copyFileSync — contents never enter JS memory; result reports name/path/mode only. */
+/** 将当前认证文件快照为命名 profile（0700 profile 目录中的 0600 文件）。通过 copyFileSync
+ * 逐字节复制，内容不进入 JS 内存；结果只报告名称、路径和权限模式。 */
 export function authSave(paths: CodexAuthPaths, name: string): AuthSaveResult {
   if (!validateProfileName(name)) return { ok: false, reason: "invalid_profile" };
   const srcStat = lstatSafe(paths.activeAuth);
   if (srcStat === null || !srcStat.isFile()) return { ok: false, reason: "not_configured" };
   const target = path.join(paths.profileDir, `${name}.json`);
-  // Refuse a symlinked profile-dir BEFORE mkdir/chmod so we never follow it out of CODEX_HOME or
-  // mutate the outside target's mode.
+  // 在 mkdir/chmod 前拒绝符号链接 profile 目录，避免沿链接离开 CODEX_HOME，
+  // 也避免修改外部目标的权限模式。
   const pdStat = lstatSafe(paths.profileDir);
   if (pdStat !== null && pdStat.isSymbolicLink()) return { ok: false, reason: "unsafe_path" };
   try {
@@ -312,13 +309,12 @@ export function authSave(paths: CodexAuthPaths, name: string): AuthSaveResult {
   } catch {
     return { ok: false, reason: "io_error" };
   }
-  // Parent must REALLY resolve inside CODEX_HOME (defeats a symlinked auth-profiles parent), and the
-  // existing target must not be a symlink/hardlink/non-regular file (defeats writing secret bytes
-  // through an inode that lives outside CODEX_HOME).
+  // 父目录必须真实解析在 CODEX_HOME 内，以抵御符号链接 auth-profiles 父目录；现有目标也不得是
+  // 符号链接、硬链接或非普通文件，避免经由位于 CODEX_HOME 外的 inode 写入密钥字节。
   if (!realDirContained(paths.profileDir, paths.codexHome)) return { ok: false, reason: "unsafe_path" };
   if (!destReplaceable(target)) return { ok: false, reason: "unsafe_path" };
-  // Thread the earlier lstat so copyOntoFresh can confirm the opened fd is still the same inode
-  // (dev/ino) it was checked as — a swap of the active auth in the check-then-use window fails safe.
+  // 传入此前的 lstat，使 copyOntoFresh 可确认已打开 fd 仍是检查时的同一 inode（dev/ino）；
+  // 若当前认证文件在先检查后使用窗口中被置换，则安全失败。
   if (!copyOntoFresh(paths.activeAuth, target, { dev: srcStat.dev, ino: srcStat.ino })) return { ok: false, reason: "io_error" };
   return { ok: true, name, path: target, mode: "600" };
 }
@@ -327,17 +323,17 @@ export type AuthSwitchResult =
   | { ok: true; name: string; activePath: string; mode: string; note: string }
   | { ok: false; reason: "invalid_profile" | "missing_profile" | "unsafe_path" | "unsafe_permissions" | "io_error" };
 
-/** Activate a saved profile (copy it onto the active auth at 0600). Refuses to widen perms over an
- *  existing unsafe active file. Byte-copy; no content echoed. */
+/** 激活已保存 profile（以 0600 复制到当前认证文件）。若现有当前文件不安全，则拒绝放宽权限。
+ * 逐字节复制，不回显内容。 */
 export function authSwitch(paths: CodexAuthPaths, name: string): AuthSwitchResult {
   if (!validateProfileName(name)) return { ok: false, reason: "invalid_profile" };
   const source = path.join(paths.profileDir, `${name}.json`);
   const srcStat = lstatSafe(source);
   if (srcStat === null) return { ok: false, reason: "missing_profile" };
   if (!isSafeProfileFile(source, paths.profileDir)) return { ok: false, reason: "unsafe_path" };
-  // Destination guard: a symlink/non-regular OR hardlinked (nlink>1) active auth would let the copy
-  // write the selected profile's SECRET bytes THROUGH an inode living outside CODEX_HOME. Refuse it
-  // (isFile() is false for a symlink, so the old isFile-gated check silently missed both cases).
+  // 目标守卫：若当前认证文件是符号链接、非普通文件或硬链接（nlink>1），复制操作可能经由
+  // 位于 CODEX_HOME 外的 inode 写入所选 profile 的密钥字节，因此必须拒绝。符号链接的
+  // isFile() 为 false，旧的 isFile 门控检查会静默漏掉这两类情况。
   if (!destReplaceable(paths.activeAuth)) return { ok: false, reason: "unsafe_path" };
   if (isFile(paths.activeAuth)) {
     const m = fileModeOctal(paths.activeAuth);
@@ -349,20 +345,20 @@ export function authSwitch(paths: CodexAuthPaths, name: string): AuthSwitchResul
     return { ok: false, reason: "io_error" };
   }
   if (!realDirContained(paths.codexHome, paths.codexHome)) return { ok: false, reason: "unsafe_path" };
-  // dev/ino continuity: the opened profile fd must still be the inode we checked (swap in the window fails safe).
+  // dev/ino 连续性：已打开 profile fd 必须仍是检查时的 inode；窗口期内发生置换则安全失败。
   if (!copyOntoFresh(source, paths.activeAuth, { dev: srcStat.dev, ino: srcStat.ino })) return { ok: false, reason: "io_error" };
   return {
     ok: true,
     name,
     activePath: paths.activeAuth,
     mode: "600",
-    note: "live Codex sessions do not switch accounts in place; restart the affected seats to pick up the new profile.",
+    note: "运行中的 Codex 会话不会原地切换账号；请重启受影响的席位以加载新 profile。",
   };
 }
 
-/** List saved profile names (safe regular *.json files in the profile dir), sorted. No contents read.
- *  Refuses to list through a symlinked / out-of-tree profile dir (returns []), so a redirected parent
- *  never exposes file names from outside CODEX_HOME. */
+/** 列出已保存 profile 名称（profile 目录中的安全普通 *.json 文件）并排序，不读取内容。
+ * 拒绝经由符号链接或树外 profile 目录列举（返回 []），因此被重定向的父目录绝不会暴露
+ * CODEX_HOME 外的文件名。 */
 export function authList(paths: CodexAuthPaths): string[] {
   if (!realDirContained(paths.profileDir, paths.codexHome)) return [];
   try {
@@ -376,13 +372,13 @@ export function authList(paths: CodexAuthPaths): string[] {
   }
 }
 
-// --- Auth-B: seat -> profile METADATA registry (product-native; NO resume_token per orch D2) ---
+// --- Auth-B：席位 → profile 元数据注册表（产品原生；按 orch D2 不含 resume_token）---
 
-/** Stated in command output + docs: a seat label is metadata, never proof of a live account. */
+/** 在命令输出与文档中均已声明：席位标签只是元数据，绝不是“账号正在运行”的证明。 */
 export const SEAT_REGISTRY_DISCLAIMER =
-  "Seat labels are metadata only; they do NOT prove a running session is actually using that account/profile.";
+  "席位标签仅为元数据；它们【不能】证明某个运行中的会话确实在使用该账号/profile。";
 
-// 6 columns; NO resume_token (a print surface is the worst place to hold a secret-class token).
+// 共 6 列，不含 resume_token（输出界面最不适合保存密钥级令牌）。
 const SEAT_COLUMNS = ["seat", "rig", "runtime", "cwd", "auth_profile", "updated_ts"] as const;
 const SEAT_HEADER = SEAT_COLUMNS.join("\t");
 const SEAT_TAB_COUNT = SEAT_COLUMNS.length - 1;
@@ -409,7 +405,7 @@ function isSafeRegistryFile(p: string): boolean {
   return st !== null && !st.isSymbolicLink() && st.isFile();
 }
 
-/** Reject empty + any control character (covers tab/newline/CR, which would corrupt the TSV). */
+/** 拒绝空值和任何控制字符，包括会破坏 TSV 的制表符、换行符和 CR。 */
 function validRegistryField(v: string): boolean {
   return v.length > 0 && !hasControlChar(v);
 }
@@ -441,7 +437,7 @@ function rowMalformed(line: string): boolean {
 }
 
 function parseRow(line: string): SeatRow {
-  // Callers pre-filter via rowMalformed (guaranteed 6 fields); ?? "" satisfies strict indexing.
+  // 调用方先通过 rowMalformed 筛选，保证 6 个字段；`?? ""` 用于满足严格索引。
   const f = line.split("\t");
   return {
     seat: f[0] ?? "",
@@ -457,8 +453,8 @@ export type SeatSetResult =
   | { ok: true; seat: string; registryPath: string; mode: string; disclaimer: string }
   | { ok: false; reason: "invalid_seat" | "invalid_rig" | "invalid_runtime" | "invalid_cwd" | "invalid_profile" | "unsafe_path" | "io_error" };
 
-/** Atomic upsert of a seat metadata row (tmp + rename). Drops pre-existing malformed rows rather than
- *  re-emitting fabricated metadata. `now` is injectable for deterministic tests. */
+/** 原子更新或插入席位元数据行（临时文件 + 重命名）。丢弃既有畸形行，而不重新输出伪造元数据。
+ * `now` 可注入，以支持确定性测试。 */
 export function authSeatSet(
   paths: CodexAuthPaths,
   fields: SeatSetFields,
@@ -492,14 +488,14 @@ export function authSeatSet(
     try {
       fs.rmSync(tmp, { force: true });
     } catch {
-      /* ignore */
+      /* 忽略 */
     }
     return { ok: false, reason: "io_error" };
   }
   return { ok: true, seat: fields.seat, registryPath: paths.registryPath, mode: "600", disclaimer: SEAT_REGISTRY_DISCLAIMER };
 }
 
-/** List well-formed seat rows (malformed rows skipped). */
+/** 列出格式正确的席位行，跳过畸形行。 */
 export function authSeatsList(paths: CodexAuthPaths): SeatRow[] {
   return rawRegistryLines(paths.registryPath)
     .filter((l) => !rowMalformed(l))

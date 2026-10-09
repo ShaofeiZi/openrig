@@ -40,31 +40,31 @@ async function main(): Promise<void> {
   if (json) {
     console.log(JSON.stringify(summary, null, 2));
   } else {
-    console.log(`Demo health: ${rig}`);
+    console.log(`演示工作组健康状态：${rig}`);
     if (summary.rigId) {
       console.log(`- rigId: ${summary.rigId}`);
     }
     if (summary.status) {
       console.log(`- status: ${summary.status}`);
     }
-    console.log(`- exists: ${summary.exists ? "yes" : "no"}`);
-    console.log(`- nodes: ${summary.nodeCount}`);
-    console.log(`- ready: ${summary.startupReady.length}`);
+    console.log(`- 是否存在：${summary.exists ? "是" : "否"}`);
+    console.log(`- 节点数：${summary.nodeCount}`);
+    console.log(`- 已就绪：${summary.startupReady.length}`);
     if (summary.startupPending.length > 0) {
-      console.log("- pending/failed:");
+      console.log("- 待处理/失败：");
       for (const item of summary.startupPending) {
         console.log(
           `  ${item.logicalId}: startup=${item.startupStatus ?? "n/a"} restore=${item.restoreOutcome ?? "n/a"}`
         );
         if (item.latestError) {
-          console.log(`    error: ${item.latestError}`);
+          console.log(`    错误：${item.latestError}`);
         }
       }
     }
-    console.log("- resume metadata:");
+    console.log("- 恢复元数据：");
     for (const item of summary.resumeMetadata) {
       console.log(
-        `  ${item.logicalId} [${item.runtime}] type=${item.resumeType ?? "none"} token=${item.hasResumeToken ? "yes" : "no"}`
+        `  ${item.logicalId} [${item.runtime}] 类型=${item.resumeType ?? "none"} token=${item.hasResumeToken ? "有" : "无"}`
       );
     }
   }

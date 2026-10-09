@@ -1,0 +1,6 @@
+{
+"packages/cli/test/openrig-compat.test.ts": [
+"cli-core-a",
+"self_reported"
+]
+}

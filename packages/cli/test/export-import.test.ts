@@ -251,7 +251,7 @@ describe("rig export + import", () => {
     const program = new Command();
     program.addCommand(exportCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "export", "missing"]));
-    expect(logs.join("\n")).toMatch(/not found/i);
+    expect(logs.join("\n")).toMatch(/未找到/);
   });
 
   // Test 4: import validate prints result
@@ -260,7 +260,7 @@ describe("rig export + import", () => {
     const program = new Command();
     program.addCommand(importCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "import", "rig.yaml"]));
-    expect(logs.join("\n")).toMatch(/valid/i);
+    expect(logs.join("\n")).toMatch(/有效/);
   });
 
   // Test 5: import invalid YAML (400)
@@ -269,7 +269,7 @@ describe("rig export + import", () => {
     const program = new Command();
     program.addCommand(importCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "import", "rig.yaml"]));
-    expect(logs.join("\n")).toMatch(/bad yaml|invalid/i);
+    expect(logs.join("\n")).toMatch(/校验失败|YAML 语法/);
   });
 
   // Test 6: import --instantiate prints per-node status
@@ -282,7 +282,7 @@ describe("rig export + import", () => {
     expect(output).toContain("imported-rig");
     expect(output).toContain("orchestrator");
     expect(output).toContain("worker");
-    // Must include per-node status, not just names
+    // 必须含逐 node 状态，而非仅名字
     expect(output).toMatch(/orchestrator: launched/);
     expect(output).toMatch(/worker: launched/);
   });
@@ -337,7 +337,7 @@ describe("rig export + import", () => {
     ]));
     expect(capturedImportPath).toBe("/api/rigs/import/workspace");
     expect(capturedImportHeaders["x-target-rig-id"]).toBe("rig-123");
-    expect(logs.join("\n")).toContain("Workspace applied to rig rig-123");
+    expect(logs.join("\n")).toContain("工作区已应用到工作组 rig-123");
   });
 
   it("import --workspace-only requires --target-rig before HTTP", async () => {
@@ -361,6 +361,27 @@ describe("rig export + import", () => {
     expect(logs.join("\n")).toMatch(/conflict|failed/i);
   });
 
+  it("import --instantiate：通用 HTTP 失败时设置非零退出码", async () => {
+    const deps: ImportDeps = {
+      lifecycleDeps: runningLifecycleDeps(port),
+      clientFactory: () => ({
+        postText: vi.fn(async () => ({ status: 500, data: { error: "internal_error" } })),
+      } as unknown as DaemonClient),
+      readFile: vi.fn(() => "schema_version: 1\nname: test\n"),
+    };
+    const program = new Command();
+    program.addCommand(importCommand(deps));
+    const previous = process.exitCode;
+    process.exitCode = undefined;
+    try {
+      const logs = await captureLogs(() => program.parseAsync(["node", "rig", "import", "rig.yaml", "--instantiate"]));
+      expect(logs.join("\n")).toContain("导入失败（HTTP 500）");
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = previous;
+    }
+  });
+
   // Test 9: export daemon stopped -> no HTTP
   it("export: daemon stopped -> no HTTP", async () => {
     const clientFactory = vi.fn();
@@ -372,7 +393,7 @@ describe("rig export + import", () => {
     const program = new Command();
     program.addCommand(exportCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "export", "rig-1"]));
-    expect(logs.join("\n")).toMatch(/not running/i);
+    expect(logs.join("\n")).toMatch(/后台服务未运行/);
     expect(clientFactory).not.toHaveBeenCalled();
   });
 
@@ -400,12 +421,12 @@ describe("rig export + import", () => {
     // export mounted
     const p1 = createProgram({ exportDeps: exportD });
     const logs1 = await captureLogs(() => p1.parseAsync(["node", "rig", "export", "x"]));
-    expect(logs1.join("\n")).toMatch(/not running/i);
+    expect(logs1.join("\n")).toMatch(/后台服务未运行/);
 
     // import mounted
     const p2 = createProgram({ importDeps: importD });
     const logs2 = await captureLogs(() => p2.parseAsync(["node", "rig", "import", "x.yaml"]));
-    // Will hit "cannot read file" or "not running" — either proves it's mounted
+    // 会命中 "cannot read file" 或 "not running"——任一证明它已挂载
     expect(logs2.join("\n").length).toBeGreaterThan(0);
   });
 
@@ -420,7 +441,7 @@ describe("rig export + import", () => {
     const program = new Command();
     program.addCommand(exportCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "export", "rig-1"]));
-    expect(logs.join("\n")).toMatch(/did not respond|busy or stopped|unhealthy/i) // B8 supersession: epistemic guard language;
+    expect(logs.join("\n")).toMatch(/后台服务未响应|繁忙或已停止/) // B8 supersession: epistemic guard language;
     expect(clientFactory).not.toHaveBeenCalled();
   });
 
@@ -435,7 +456,7 @@ describe("rig export + import", () => {
     const program = new Command();
     program.addCommand(importCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "import", "rig.yaml"]));
-    expect(logs.join("\n")).toMatch(/not running/i);
+    expect(logs.join("\n")).toMatch(/后台服务未运行/);
     expect(clientFactory).not.toHaveBeenCalled();
   });
 
@@ -450,7 +471,7 @@ describe("rig export + import", () => {
     const program = new Command();
     program.addCommand(importCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "import", "missing.yaml"]));
-    expect(logs.join("\n")).toMatch(/cannot read/i);
+    expect(logs.join("\n")).toMatch(/无法读取文件/);
     expect(clientFactory).not.toHaveBeenCalled();
   });
 
@@ -472,7 +493,7 @@ describe("rig export + import", () => {
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "import", "rig.yaml", "--instantiate", "--rig-root", "/my/project"]));
     const output = logs.join("\n");
     expect(output).toContain("imported-rig");
-    // Verify X-Rig-Root header was sent
+    // 验证 X-Rig-Root header 已发送
     expect(capturedImportHeaders["x-rig-root"]).toMatch(/\/my\/project/);
   });
 
@@ -497,7 +518,7 @@ describe("rig export + import", () => {
     program.addCommand(importCommand(deps));
     const logs = await captureLogs(() => program.parseAsync(["node", "rig", "import", "rig.yaml", "--instantiate"]));
     const output = logs.join("\n");
-    expect(output).toContain("Attach:");
+    expect(output).toContain("挂载命令：");
     expect(output).toContain("tmux attach -t orch-lead@imported-rig");
   });
 

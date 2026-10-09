@@ -14,18 +14,16 @@ export interface VellumSheetProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const widthClass: Record<VellumSheetWidth, string> = {
-  // V1 calibration 2026-05-06 (universal-shell.md L36 + content-drawer.md L9):
-  // 38rem (~608px) = iPad-portrait reading width. Wide enough for markdown /
-  // spec docs, narrow enough to keep center workspace visible behind it.
-  // Original spec was 45rem; later calibrated to the current shell width.
+  // V1 校准 2026-05-06（universal-shell.md L36 + content-drawer.md L9）：
+  // 38rem（约 608px）= iPad 竖屏阅读宽度。对 markdown / spec 文档足够宽，
+  // 又足够窄，使后方中心工作区仍可见。原规格为 45rem；后校准为当前 shell 宽度。
   wide: "w-full lg:w-[38rem] lg:max-w-[80vw]",
   narrow: "w-full lg:w-[22rem] lg:max-w-[60vw]",
 };
 
 const edgeClass: Record<VellumSheetEdge, string> = {
-  // V1 border weight doctrine (universal-shell.md L39–L48):
-  // 1px outline-variant ghost line for inter-region edges. NO 2px stone-900
-  // (which reads as "boxed UI"; tactical-dossier wants paper-layered).
+  // V1 边框粗细准则（universal-shell.md L39–L48）：区域间边界用 1px outline-variant 细线。
+  // 不用 2px stone-900（那会显得像“装在盒子里的 UI”；战术档案要的是纸张分层感）。
   left: "border-r border-outline-variant",
   right: "border-l border-outline-variant",
 };
@@ -56,7 +54,7 @@ export function VellumSheet({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close sheet"
+          aria-label="关闭面板"
           className="absolute top-2 right-2 z-10 px-2 py-0.5 border border-on-surface bg-surface-lowest font-mono text-[10px] hover:bg-surface-low"
           data-testid={testId ? `${testId}-close` : undefined}
         >

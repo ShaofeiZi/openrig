@@ -12,9 +12,8 @@ export interface SearchResult {
   error?: string;
 }
 
-/** One keyword hit from a seat-scoped search, labeled with the generation
- *  (tenure) segment it fell in — the segments are delimited by the
- *  `--- SESSION BOUNDARY … ---` markers a seat's log accumulates across tenures. */
+/** 席位范围搜索的一条关键词命中，并标记它所属的 generation（任期）分段。各分段由席位
+ * 日志跨任期累积的 `--- SESSION BOUNDARY … ---` 标记分隔。 */
 export interface SeatHit {
   generation: number;
   text: string;
@@ -29,13 +28,13 @@ export type SeatDegradeReason =
 export interface SeatSearchResult {
   backend: "read" | "none";
   seat: string;
-  /** count of tenure segments = (boundary markers seen) + 1 */
+  /** 任期分段数 = 已见边界标记数 + 1。 */
   generations: number;
   hits: SeatHit[];
   insufficient: boolean;
-  /** honest-degraded signal — never a silent zero-hits that implies the seat never spoke */
+  /** 诚实降级信号——绝不以静默的零命中暗示席位从未发言。 */
   degraded?: { reason: SeatDegradeReason; message: string };
-  /** large-file advisory (pin 5) — surfaced, never a silent slow read */
+  /** 大文件提示（pin 5）——明确显示，绝不静默进行慢速读取。 */
   advisory?: string;
 }
 
@@ -49,7 +48,7 @@ interface HistoryQueryOpts {
   transcriptsRoot: string;
   exec: ExecDep;
   chatSearchFn?: (rigId: string, pattern: string) => ChatSearchResult[];
-  /** root of per-session provider JSONL (Claude): ~/.claude/projects. Injectable for tests. */
+  /** 按会话存放 provider JSONL 的根目录（Claude）：~/.claude/projects；测试可注入。 */
   claudeProjectsRoot?: string;
 }
 
@@ -86,7 +85,7 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** A JSONL event line can be huge; cap what we echo so a hit stays readable. */
+/** JSONL 事件行可能很大；限制回显长度以保持命中内容可读。 */
 function truncateExcerpt(line: string, max = 240): string {
   return line.length > max ? `${line.slice(0, max)}…` : line;
 }
@@ -97,7 +96,7 @@ export function extractKeywords(question: string): string[] {
   const result: string[] = [];
 
   for (const word of words) {
-    // Strip trailing punctuation for stop-word check, but keep original for escaping
+    // 检查停用词时移除尾部标点，但转义时仍以原词为基础。
     const stripped = word.replace(/[?.!,;:]+$/, "");
     if (stripped.length < 3) continue;
     if (STOP_WORDS.has(stripped.toLowerCase())) continue;
@@ -121,12 +120,12 @@ function stripAnsi(text: string): string {
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
 }
 
-/** Matches a session-boundary marker line (transcript-store.writeBoundaryMarker
- *  format): `--- SESSION BOUNDARY: <reason> at <ts> ---`. */
+/** 匹配会话边界标记行（transcript-store.writeBoundaryMarker 格式）：
+ * `--- SESSION BOUNDARY: <reason> at <ts> ---`。 */
 const SEAT_BOUNDARY_RE = /^--- SESSION BOUNDARY: .* at .* ---\s*$/;
 
-/** Above this size a seat search surfaces a large-file advisory (pin 5) rather
- *  than reading silently — the full read still runs; the caller is told. */
+/** 席位搜索超过此大小时显示大文件提示（pin 5），而不是静默读取；完整读取仍会执行，
+ * 但调用方会得到明确通知。 */
 const SEAT_LARGE_FILE_BYTES = 25 * 1024 * 1024; // 25 MB
 
 export class HistoryQuery {
@@ -142,9 +141,9 @@ export class HistoryQuery {
     this.claudeProjectsRoot = opts.claudeProjectsRoot ?? join(homedir(), ".claude", "projects");
   }
 
-  /** Locate a session's JSONL by token: `<projectsRoot>/<any-encoded-cwd>/<token>.jsonl`.
-   *  Token alone is enough (we scan the encoded-cwd dirs) — the founder's "I have
-   *  the token, go find something". Returns null when nothing matches. */
+  /** 根据 token 定位会话 JSONL：`<projectsRoot>/<any-encoded-cwd>/<token>.jsonl`。只需 token
+   * 即可，因为会扫描各 encoded-cwd 目录；对应创建者的“我有 token，去找到它”要求。无匹配
+   * 时返回 null。 */
   private locateSessionFile(token: string): string | null {
     const root = this.claudeProjectsRoot;
     if (!existsSync(root)) return null;
@@ -162,11 +161,10 @@ export class HistoryQuery {
   }
 
   /**
-   * L2 — search ONE session's JSONL by its token (read-only). Locates the file
-   * under ~/.claude/projects/<encoded-cwd>/<token>.jsonl and greps it (rg→grep
-   * fallback; streaming, so a large 100s-of-MB session file is safe). Honest:
-   * a token with no session file returns session_not_found teaching, never a
-   * silent empty; a large file surfaces an advisory (pin 5).
+   * L2——按 token 只读搜索单个会话的 JSONL。在
+   * ~/.claude/projects/<encoded-cwd>/<token>.jsonl 下定位文件，并以 rg→grep 回退顺序搜索；
+   * 流式处理使数百 MB 的会话文件也保持安全。保持诚实：没有对应会话文件的 token 返回
+   * session_not_found 指导，绝不静默返回空；大文件会显示提示（pin 5）。
    */
   async searchSession(sessionToken: string, question: string): Promise<SessionSearchResult> {
     const filePath = this.locateSessionFile(sessionToken);
@@ -179,7 +177,7 @@ export class HistoryQuery {
         insufficient: true,
         degraded: {
           reason: "session_not_found",
-          message: `No session JSONL found for token '${sessionToken}' under ${this.claudeProjectsRoot}. Check the token — or the session may have run under a different host/home.`,
+          message: `在 ${this.claudeProjectsRoot} 下未找到 token '${sessionToken}' 对应的会话 JSONL。请检查 token；该会话也可能运行在其他主机或 home 下。`,
         },
       };
     }
@@ -195,12 +193,12 @@ export class HistoryQuery {
         path: filePath,
         excerpts: [],
         insufficient: true,
-        degraded: { reason: "unreadable", message: `Session JSONL for '${sessionToken}' exists but could not be read.` },
+        degraded: { reason: "unreadable", message: `token '${sessionToken}' 对应的会话 JSONL 存在，但无法读取。` },
       };
     }
 
     const advisory = sizeBytes > SEAT_LARGE_FILE_BYTES
-      ? `Session JSONL is large (${(sizeBytes / 1024 / 1024).toFixed(1)} MB); the search streams via rg/grep — a broad query may take a moment.`
+      ? `会话 JSONL 较大（${(sizeBytes / 1024 / 1024).toFixed(1)} MB）；搜索会通过 rg/grep 流式执行，宽泛查询可能需要一些时间。`
       : undefined;
 
     const keywords = extractKeywords(question);
@@ -230,7 +228,7 @@ export class HistoryQuery {
       excerpts: [],
       insufficient: true,
       advisory,
-      degraded: { reason: "unreadable", message: "Search backends (rg, grep) both failed on the session JSONL." },
+      degraded: { reason: "unreadable", message: "搜索后端（rg、grep）均无法处理该会话 JSONL。" },
     };
   }
 
@@ -248,22 +246,22 @@ export class HistoryQuery {
 
     const pattern = keywords.join("|");
 
-    // Try rg first — use -e to avoid dash-led patterns being parsed as flags
+    // 优先尝试 rg；使用 -e 避免以连字符开头的模式被解析为选项。
     const rgResult = await this.exec("rg", ["-i", "--no-filename", "-e", pattern, rigDir]);
 
     if (rgResult.exitCode === 0 || rgResult.exitCode === 1) {
       const excerpts = this.parseExcerpts(rgResult.stdout);
-      // exit 0 = matches found, exit 1 = no matches → insufficient
+      // 退出码 0 = 找到匹配，1 = 无匹配 → 信息不足。
       return { backend: "rg", excerpts, insufficient: excerpts.length === 0 };
     }
 
-    // rg failed (exit code >= 2), fall back to grep
+    // rg 失败（退出码 >= 2），回退到 grep。
     const logFiles = this.getLogFiles(rigDir);
     if (logFiles.length === 0) {
       return { backend: "grep", excerpts: [], insufficient: true };
     }
 
-    // Use -e for grep too — prevents dash-led patterns from being parsed as flags
+    // grep 同样使用 -e，避免以连字符开头的模式被解析为选项。
     const grepResult = await this.exec("grep", ["-E", "-i", "-h", "-e", pattern, ...logFiles]);
 
     if (grepResult.exitCode === 0 || grepResult.exitCode === 1) {
@@ -271,18 +269,16 @@ export class HistoryQuery {
       return { backend: "grep", excerpts, insufficient: excerpts.length === 0 };
     }
 
-    // Both backends failed (exit code 2+) — honest error
-    return { backend: "none", excerpts: [], insufficient: true, error: "Search backends (rg, grep) both failed. Check that rg or grep is installed and the transcript directory is readable." };
+    // 两个后端都失败（退出码 2+）——如实报错。
+    return { backend: "none", excerpts: [], insufficient: true, error: "搜索后端（rg、grep）均失败。请确认已安装 rg 或 grep，且转录目录可读。" };
   }
 
   /**
-   * L1 — seat-scoped, cross-generation transcript search. Scopes to ONE seat's
-   * `<rig>/<sessionName>.log` (never the whole rig dir) and labels every hit with
-   * the generation (tenure) it fell in — the generations are the segments between
-   * `--- SESSION BOUNDARY … ---` markers the seat's log accumulates as agents come
-   * and go. Cross-generation is the point: a hit from before and after a boundary
-   * proves the search spans tenures. Honest-degraded (never a silent zero-hits):
-   * a missing / empty / boundary-only transcript says so.
+   * L1——席位范围、跨 generation 的转录搜索。范围只限一个席位的
+   * `<rig>/<sessionName>.log`，绝不搜索整个工作组目录；每条命中都标记所属 generation
+   *（任期）。generation 是智能体更替时席位日志中累积的 `--- SESSION BOUNDARY … ---`
+   * 标记之间的分段。跨 generation 正是此功能重点：同一关键词在边界前后均命中，可证明
+   * 搜索跨越任期。诚实降级，绝不静默返回零命中：转录缺失、为空或只有边界都会明确说明。
    */
   async searchSeat(rigName: string, seatSessionName: string, question: string): Promise<SeatSearchResult> {
     const base = { backend: "read" as const, seat: seatSessionName, generations: 0, hits: [] as SeatHit[] };
@@ -294,7 +290,7 @@ export class HistoryQuery {
         insufficient: true,
         degraded: {
           reason: "capture_missing",
-          message: `No transcript captured for seat '${seatSessionName}' in rig '${rigName}' — the seat may never have been managed on this host, or capture is disabled. This is not proof the seat never spoke.`,
+          message: `工作组 '${rigName}' 的席位 '${seatSessionName}' 没有捕获到转录——该席位可能从未在此主机上受管，或转录捕获已禁用。这不能证明该席位从未发言。`,
         },
       };
     }
@@ -309,7 +305,7 @@ export class HistoryQuery {
           insufficient: true,
           degraded: {
             reason: "capture_empty",
-            message: `Transcript for seat '${seatSessionName}' is empty (0 bytes) — no captured history yet, not proof the seat never spoke.`,
+            message: `席位 '${seatSessionName}' 的转录为空（0 字节）——尚无捕获历史，但不能证明该席位从未发言。`,
           },
         };
       }
@@ -320,13 +316,13 @@ export class HistoryQuery {
         insufficient: true,
         degraded: {
           reason: "capture_unreadable",
-          message: `Transcript for seat '${seatSessionName}' exists but could not be read (permissions or a transient FS error).`,
+          message: `席位 '${seatSessionName}' 的转录存在，但无法读取（可能是权限或瞬时文件系统错误）。`,
         },
       };
     }
 
     const advisory = sizeBytes > SEAT_LARGE_FILE_BYTES
-      ? `Transcript is large (${(sizeBytes / 1024 / 1024).toFixed(1)} MB); the full file was read — for a very large seat history prefer a more specific question.`
+      ? `转录较大（${(sizeBytes / 1024 / 1024).toFixed(1)} MB）；已读取完整文件。对于非常大的席位历史，建议提出更具体的问题。`
       : undefined;
 
     const keywords = extractKeywords(question);
@@ -345,7 +341,7 @@ export class HistoryQuery {
       sawConversation = true;
       if (pattern && pattern.test(line)) hits.push({ generation, text: line });
     }
-    const generations = generation; // boundaries + 1
+    const generations = generation; // 边界数 + 1。
 
     if (!sawConversation) {
       return {
@@ -355,7 +351,7 @@ export class HistoryQuery {
         advisory,
         degraded: {
           reason: "boundary_only",
-          message: `Seat '${seatSessionName}' transcript contains only session-boundary markers — no captured conversation. This host may be on boundary-only transcript capture; the record is degraded, not absent.`,
+          message: `席位 '${seatSessionName}' 的转录只包含会话边界标记，没有捕获到对话。此主机可能只捕获转录边界；记录处于降级状态，并非不存在。`,
         },
       };
     }

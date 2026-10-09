@@ -1,25 +1,21 @@
-// PluginVendorService — vendoring + auto-fetch for plugin trees.
+// PluginVendorService——plugin tree 的 vendoring + auto-fetch。
 //
-// Per plugin-primitive Phase 3a slice 3.2 (IMPL-PRD §2.5 + DESIGN.md §5.5).
+// 依据 plugin-primitive 第 3a 阶段 slice 3.2（IMPL-PRD §2.5 + DESIGN.md §5.5）。
 //
-// Responsibilities:
-//   1. ensureVendored(name): seed packages/daemon/assets/plugins/<name>/ into
-//      ~/.openrig/plugins/<name>/ when absent, or advance an older manifest
-//      version. Equal/newer installed bytes retain authority.
-//   2. attemptAutoFetch(name): try to fetch latest from
-//      github.com/mvschwarz/openrig-plugins. Tolerates 404, network errors,
-//      and timeouts silently per orch direction 2026-05-10 (vendored is
-//      always the fallback). Logs outcome for operator observability.
-//   3. ensureLatest(name): resolves local vendored/installed authority first,
-//      then attempts auto-fetch. A local copy remains if fetch fails.
+// 职责：
+//   1. ensureVendored(name)：目标缺失时，将 packages/daemon/assets/plugins/<name>/ 播种到
+//      ~/.openrig/plugins/<name>/；清单版本较旧时推进版本。版本相同或更新的已安装字节保有权威性。
+//   2. attemptAutoFetch(name)：尝试从 github.com/mvschwarz/openrig-plugins 获取最新版。
+//      按 2026-05-10 编排指示，对 404、网络错误和超时静默容忍，始终以随包版本兜底；
+//      同时记录结果供操作人员观测。
+//   3. ensureLatest(name)：先解析本地随包/已安装版本的权威性，再尝试自动获取；获取失败时
+//      保留本地副本。
 //
-// Design notes:
-//   - All fs ops + httpClient are injectable (testable without real
-//     filesystem or network).
-//   - 5s network timeout per IMPL-PRD §2.5.
-//   - The repo at github.com/mvschwarz/openrig-plugins is currently empty
-//     per founder authorization 2026-05-10 (LICENSE only); 404 is the
-//     expected normal-state response until a separate publish authorization.
+// 设计说明：
+//   - 所有 fs op + httpClient 均可注入（无需真实 filesystem 或 network 即可测试）。
+//   - 按 IMPL-PRD §2.5 使用 5 秒 network timeout。
+//   - 根据 founder 在 2026-05-10 的授权，github.com/mvschwarz/openrig-plugins 当前为空
+//     （只有 LICENSE）；在另行授权发布前，404 是预期的正常状态 response。
 
 import nodePath from "node:path";
 import { createHash } from "node:crypto";
@@ -31,17 +27,17 @@ export interface PluginVendorFs {
   mkdirp(path: string): void;
   listFiles(dir: string): string[];
   rmrf?(path: string): void;
-  /** Source file permission bits (for mode-preserving vendor staging). Optional: no-op if absent. */
+  /** source file permission bit（用于保留 mode 的 vendor staging）。可选：缺失时 no-op。 */
   statMode?(path: string): number;
-  /** Apply permission bits to a file (for mode-preserving vendor staging). Optional: no-op if absent. */
+  /** 将 permission bit 应用于文件（用于保留 mode 的 vendor staging）。可选：缺失时 no-op。 */
   chmod?(path: string, mode: number): void;
 }
 
 export interface HttpClientResponse {
   ok: boolean;
   status: number;
-  /** Body parsed by caller — not exercised in v0 since fetch failures are
-   *  the expected normal-state. Future tarball-extraction would consume this. */
+  /** 由 caller 解析的 body——v0 不使用，因为 fetch failure 是预期正常状态。未来 tarball extraction
+   *  会使用它。 */
   body?: unknown;
 }
 
@@ -63,7 +59,7 @@ const GLOBAL_VENDOR_VERSION = ".openrig-vendor-version";
 function parseNumericVersion(raw: string, source: string): number[] {
   const value = raw.trim();
   if (!/^\d+(?:\.\d+){2}$/.test(value)) {
-    throw new Error(`[plugin-vendor] invalid version '${value}' at ${source}; expected numeric x.y.z authority`);
+    throw new Error(`[plugin-vendor] ${source} 中的 version '${value}' 无效；应为数字 x.y.z authority`);
   }
   return value.split(".").map(Number);
 }
@@ -92,8 +88,8 @@ export class PluginVendorService {
     this.logger = deps.logger ?? (() => {});
   }
 
-  /** One plugin version across both harness manifests. Divergence is an
-   * authority error: choosing either copy would make the other runtime lie. */
+  /** 两个 harness manifest 共用一个 plugin version。分歧属于 authority error：选择任一副本都会让
+   *  另一 runtime 失真。 */
   private pluginVersion(pluginDir: string): string {
     const versions = PLUGIN_MANIFESTS
       .map((rel) => nodePath.join(pluginDir, rel))
@@ -103,36 +99,35 @@ export class PluginVendorService {
         try {
           parsed = JSON.parse(this.fs.readFile(path)) as { version?: unknown };
         } catch {
-          throw new Error(`[plugin-vendor] invalid plugin manifest at ${path}`);
+          throw new Error(`[plugin-vendor] ${path} 中的 plugin manifest 无效`);
         }
         if (typeof parsed.version !== "string") {
-          throw new Error(`[plugin-vendor] plugin manifest at ${path} has no string version`);
+          throw new Error(`[plugin-vendor] ${path} 中的 plugin manifest 没有 string version`);
         }
         parseNumericVersion(parsed.version, path);
         return parsed.version;
       });
     if (versions.length === 0) {
-      throw new Error(`[plugin-vendor] no plugin manifest found under ${pluginDir}`);
+      throw new Error(`[plugin-vendor] 在 ${pluginDir} 下未找到 plugin manifest`);
     }
     if (versions.some((version) => version !== versions[0])) {
-      throw new Error(`[plugin-vendor] plugin manifests disagree under ${pluginDir}: ${versions.join(", ")}`);
+      throw new Error(`[plugin-vendor] ${pluginDir} 下的 plugin manifest 不一致：${versions.join(", ")}`);
     }
     return versions[0]!;
   }
 
   /**
-   * Seed the vendored asset tree at <vendoredAssetsDir>/<pluginName>/ into the
-   * user plugin dir <userPluginsDir>/<pluginName> when absent, or advance it
-   * only when the bundled manifest version is strictly newer. Equal versions
-   * reconcile mode only on byte-identical files.
-   * No-op when the vendored asset doesn't exist (e.g. plugin not bundled).
+   * 当 user plugin dir <userPluginsDir>/<pluginName> 缺失时，将
+   * <vendoredAssetsDir>/<pluginName>/ 中的 vendored asset tree seed 进去；只有 bundled manifest
+   * version 严格更新时才推进。version 相等时，仅对逐字相同的文件 reconcile mode。vendored asset
+   * 不存在（例如 plugin 未 bundled）时 no-op。
    */
   async ensureVendored(pluginName: string): Promise<void> {
     const sourceDir = nodePath.join(this.vendoredAssetsDir, pluginName);
     const targetDir = nodePath.join(this.userPluginsDir, pluginName);
 
     if (!this.fs.exists(sourceDir)) {
-      this.logger(`[plugin-vendor] no vendored asset for "${pluginName}" at ${sourceDir}; skipping`);
+      this.logger(`[plugin-vendor] ${sourceDir} 中没有 "${pluginName}" 的 vendored asset；跳过`);
       return;
     }
 
@@ -140,19 +135,18 @@ export class PluginVendorService {
     if (this.fs.exists(targetDir)) {
       const hasTargetManifest = PLUGIN_MANIFESTS.some((rel) => this.fs.exists(nodePath.join(targetDir, rel)));
       if (!hasTargetManifest) {
-        this.logger(`[plugin-vendor] existing plugin '${pluginName}' has no version authority at ${targetDir}; leaving it unchanged`);
+        this.logger(`[plugin-vendor] ${targetDir} 中的现有 plugin '${pluginName}' 没有 version authority；保持不变`);
         return;
       }
       const targetVersion = this.pluginVersion(targetDir);
       const order = compareVersions(sourceVersion, targetVersion);
       if (order < 0) {
-        this.logger(`[plugin-vendor] bundled '${pluginName}' ${sourceVersion} is not newer than installed ${targetVersion}; leaving installed bytes unchanged`);
+        this.logger(`[plugin-vendor] bundled '${pluginName}' ${sourceVersion} 不比 installed ${targetVersion} 新；保持已安装内容不变`);
         return;
       }
       if (order === 0) {
-        // Equal versions make the installed bytes authoritative. Still repair
-        // mode on byte-identical paths: this is metadata reconciliation, not a
-        // rollback, and preserves the established executable-helper repair.
+        // version 相等时，installed byte 具有权威性。仍修复逐字相同 path 的 mode：这是 metadata
+        // reconciliation，不是 rollback，并保留既有 executable-helper 修复。
         for (const relPath of this.fs.listFiles(sourceDir)) {
           const srcPath = nodePath.join(sourceDir, relPath);
           const destPath = nodePath.join(targetDir, relPath);
@@ -163,7 +157,7 @@ export class PluginVendorService {
             this.preserveMode(srcPath, destPath);
           }
         }
-        this.logger(`[plugin-vendor] bundled '${pluginName}' ${sourceVersion} equals installed ${targetVersion}; leaving installed bytes unchanged`);
+        this.logger(`[plugin-vendor] bundled '${pluginName}' ${sourceVersion} 与 installed ${targetVersion} 相等；保持已安装内容不变`);
         return;
       }
     }
@@ -175,8 +169,8 @@ export class PluginVendorService {
       const srcPath = nodePath.join(sourceDir, relPath);
       const destPath = nodePath.join(targetDir, relPath);
       const content = this.fs.readFile(srcPath);
-      // Hash-skip: only write if content differs (idempotent re-runs). Reconcile mode even on
-      // skip — a byte-identical copy staged earlier may still carry the wrong (default) mode.
+      // hash-skip：仅在 content 不同时写入（幂等重跑）。即使 skip 也 reconcile mode——此前 staging
+      // 的逐字相同副本仍可能带错误的默认 mode。
       if (this.fs.exists(destPath) && hashContent(this.fs.readFile(destPath)) === hashContent(content)) {
         this.preserveMode(srcPath, destPath);
         continue;
@@ -188,13 +182,12 @@ export class PluginVendorService {
   }
 
   /**
-   * Reapply the source file's permission bits to the staged/projected dest. Plain
-   * readFile+writeFile (writeFileSync) creates the dest with the process default mode,
-   * dropping executable bits on nested plugin helpers (e.g. claude-compaction-restore/
-   * scripts/*.mjs, 0755). This vendor-staging hop (assets -> ~/.openrig/plugins) runs
-   * UPSTREAM of the adapter CWD projection, so an unfixed mode here strands 0644 in the
-   * staged copy that the adapters then faithfully preserve. No-op when the fs adapter does
-   * not expose mode primitives (keeps existing mock-fs callers unaffected).
+   * 将源文件的权限位重新应用到暂存/投影目标。普通 readFile+writeFile（writeFileSync）会按进程
+   * 默认权限创建目标，导致嵌套插件辅助程序的可执行位丢失，例如
+   * claude-compaction-restore/scripts/*.mjs 的 0755。该供应暂存步骤
+   *（assets → ~/.openrig/plugins）位于适配器 CWD 投影上游；若此处不修复权限，暂存副本会停留在
+   * 0644，之后适配器又会忠实保留这个错误权限。fs 适配器未公开权限原语时不执行任何操作，
+   * 保持现有 mock-fs 调用方不受影响。
    */
   private preserveMode(src: string, dest: string): void {
     if (!this.fs.statMode || !this.fs.chmod) return;
@@ -202,7 +195,7 @@ export class PluginVendorService {
     if ((this.fs.statMode(dest) & 0o777) !== srcMode) this.fs.chmod(dest, srcMode);
   }
 
-  /** Project one plugin skill into the harness-global skill roots. */
+  /** 将一个 plugin skill 投影到 harness-global skill root。 */
   ensureSkillGlobally(
     pluginName: string,
     skillName: string,
@@ -216,7 +209,7 @@ export class PluginVendorService {
     );
     if (!this.fs.exists(sourceDir)) {
       throw new Error(
-        `Required global seed '${skillName}' is missing from plugin '${pluginName}'`,
+        `plugin '${pluginName}' 中缺少必需的 global seed '${skillName}'`,
       );
     }
 
@@ -227,13 +220,13 @@ export class PluginVendorService {
       const versionMarker = nodePath.join(targetDir, GLOBAL_VENDOR_VERSION);
       if (this.fs.exists(targetDir)) {
         if (!this.fs.exists(versionMarker)) {
-          this.logger(`[plugin-vendor] global skill '${skillName}' at ${targetDir} is unversioned/external authority; leaving it unchanged`);
+          this.logger(`[plugin-vendor] ${targetDir} 中的 global skill '${skillName}' 属于 unversioned/external authority；保持不变`);
           continue;
         }
         const targetVersion = this.fs.readFile(versionMarker).trim();
         parseNumericVersion(targetVersion, versionMarker);
         if (compareVersions(sourceVersion, targetVersion) <= 0) {
-          this.logger(`[plugin-vendor] global skill '${skillName}' ${targetVersion} is equal/newer than bundled ${sourceVersion}; leaving it unchanged`);
+          this.logger(`[plugin-vendor] global skill '${skillName}' ${targetVersion} 等于或新于 bundled ${sourceVersion}；保持不变`);
           continue;
         }
       }
@@ -258,10 +251,8 @@ export class PluginVendorService {
   }
 
   /**
-   * Attempt to fetch the latest plugin tree from
-   * github.com/mvschwarz/openrig-plugins. Tolerates 404, network errors,
-   * and timeouts silently — vendored copy is ALWAYS the fallback.
-   * Logs outcome for operator observability.
+   * 尝试从 github.com/mvschwarz/openrig-plugins 获取最新 plugin tree。静默容忍 404、network error
+   * 与 timeout——vendored copy 始终作为 fallback。记录 outcome 供 operator 观测。
    */
   async attemptAutoFetch(pluginName: string): Promise<void> {
     const url = `${REPO_BASE}/releases/latest/download/${pluginName}.tar.gz`;
@@ -269,29 +260,27 @@ export class PluginVendorService {
       const response = await this.httpClient(url, { timeoutMs: DEFAULT_TIMEOUT_MS });
       if (!response.ok) {
         if (response.status === 404) {
-          this.logger(`[plugin-vendor] fetch ${pluginName} returned 404 (repo empty or release not published yet); falling back to vendored`);
+          this.logger(`[plugin-vendor] fetch ${pluginName} 返回 404（repo 为空或 release 尚未发布）；回退到 vendored 版本`);
         } else {
-          this.logger(`[plugin-vendor] fetch ${pluginName} returned status ${response.status}; falling back to vendored`);
+          this.logger(`[plugin-vendor] fetch ${pluginName} 返回状态 ${response.status}；回退到 vendored 版本`);
         }
         return;
       }
-      // v0: tarball extraction NOT implemented — when slice 3.6 lands marketplace-
-      // consumption, this is where fetch-then-extract logic lives. For now,
-      // success path just logs. EXPLICIT MODE DECISION: v0 writes no files here, so there is
-      // no mode to preserve; the future extract path MUST route its writes through
-      // preserveMode() (or a tar extractor that preserves mode) so fetched executable helpers
-      // keep 0755 — same invariant as ensureVendored/ensureSkillGlobally.
-      this.logger(`[plugin-vendor] fetch ${pluginName} succeeded (${response.status}); v0 vendored copy still authoritative`);
+      // v0：未实现 tarball extraction——slice 3.6 落地 marketplace consumption 后，
+      // fetch-then-extract logic 将位于此处。目前 success 路径只记录日志。显式 MODE 决策：v0 不在
+      // 此处写文件，因此没有 mode 需要保留；未来 extract 路径必须通过 preserveMode()（或能保留
+      // mode 的 tar extractor）写入，使 fetched executable helper 保持 0755——与
+      // ensureVendored/ensureSkillGlobally 使用同一 invariant。
+      this.logger(`[plugin-vendor] fetch ${pluginName} 成功（${response.status}）；v0 仍以 vendored 版本为准`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger(`[plugin-vendor] fetch ${pluginName} failed: ${msg}; falling back to vendored`);
+      this.logger(`[plugin-vendor] fetch ${pluginName} 失败：${msg}；回退到 vendored 版本`);
     }
   }
 
   /**
-   * Orchestrate vendored-first then fetch-attempt.
-   * Local vendored/installed authority resolves first so a usable local copy
-   * remains even if the fetch path fails for any reason.
+   * 编排 vendored-first，再尝试 fetch。先解析本地 vendored/installed authority，使 fetch 路径因
+   * 任意原因失败时仍保留可用本地副本。
    */
   async ensureLatest(pluginName: string): Promise<void> {
     await this.ensureVendored(pluginName);

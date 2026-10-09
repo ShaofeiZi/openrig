@@ -3,10 +3,10 @@ import { probeSessionActivity } from "../src/domain/session-transport.js";
 import type { TmuxAdapter } from "../src/adapters/tmux.js";
 import type { ObservationInput } from "../src/domain/capture-observer.js";
 
-// Leaf-only regression: no test-app, startup, DB, terminal or provider effects.
-describe("P2 probe capture uses its entry context", () => {
+// 仅叶节点回归：没有 test-app、startup、DB、terminal 或 provider 副作用。
+describe("P2 探针捕获使用入口上下文", () => {
   for (const mutation of ["target", "adapter", "all"] as const) {
-    it.each([true, false])(`${mutation} changes during hasSession (observer=%s)`, async (enabled) => {
+    it.each([true, false])(`hasSession 期间 ${mutation} 发生变化（observer=%s）`, async (enabled) => {
       const calls: unknown[][] = [];
       const observations: ObservationInput[] = [];
       const successor: ObservationInput[] = [];

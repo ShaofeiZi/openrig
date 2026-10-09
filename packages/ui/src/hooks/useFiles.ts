@@ -1,14 +1,13 @@
-// UI Enhancement Pack v0 — files browser + write hooks.
+// UI 增强包 v0 —— 文件浏览器 + 写入 hooks。
 //
-// Wraps:
+// 封装：
 //   - GET /api/files/roots → useFilesRoots
 //   - GET /api/files/list?root=&path= → useFilesList
 //   - GET /api/files/read?root=&path= → useFilesRead
-//   - POST /api/files/write → useFilesWrite (mutation)
+//   - POST /api/files/write → useFilesWrite（mutation）
 //
-// All read hooks surface daemon 503 / 4xx as structured errors via
-// the `unavailable` shape so the UI renders a setup hint when no
-// allowlist is configured.
+// 所有读取 hook 都把后台服务 503 / 4xx 以结构化错误（`unavailable` 形态）暴露，
+// 以便在未配置白名单时界面能渲染出设置提示。
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -43,10 +42,9 @@ export function useFilesRoots(opts?: { enabled?: boolean }) {
     queryKey: ["files", "roots"],
     queryFn: fetchRoots,
     staleTime: 60_000,
-    // OPR.0.4.6.MH2 FR-7/guard-B1 — /api/files/* is LOCAL-filesystem-only
-    // and deliberately excluded from the remote read-through; file-backed
-    // surfaces pass enabled:false under a remote host selection so the
-    // request never FIRES (a render-gate alone still issues the fetch).
+    // OPR.0.4.6.MH2 FR-7/guard-B1 —— /api/files/* 仅限本地文件系统，刻意排除在
+    // 远程透读之外；在选择了远程主机时，依赖文件的界面传 enabled:false，使请求根本不发出
+    // （仅靠渲染门控仍会发起 fetch）。
     enabled: opts?.enabled ?? true,
   });
 }
@@ -78,16 +76,13 @@ export function useFilesList(root: string | null, path: string | null) {
     queryFn: () => fetchList(root!, path ?? ""),
     enabled: !!root,
     staleTime: 15_000,
-    // V0.3.1 slice 17 walk-item 8 (Explorer auto-show): refetch on
-    // window focus so new files / folders created while the operator
-    // was off-tab appear without a manual refresh click.
+    // V0.3.1 slice 17 walk-item 8（Explorer 自动展示）：窗口聚焦时重新拉取，
+    // 使操作者切走标签页期间新建的文件/文件夹无需手动点刷新即可出现。
     //
-    // Forward-fix #2: 'always' instead of `true`. With staleTime:
-    // 15_000, plain `true` gates the refetch on staleness — short
-    // refocus within the 15-second window observed no refetch in the
-    // VM proof. 'always' refetches on every focus regardless of
-    // staleness. This is the load-bearing hook for the Explorer
-    // sidebar (driven via useMissionDiscovery + ProjectTreeView).
+    // 前向修复 #2：用 'always' 而非 `true`。staleTime 为 15_000 时，裸 `true` 会按
+    // 新鲜度门控重新拉取——VM 验证里观察到在 15 秒窗口内短时间重新聚焦并不会重拉。
+    // 'always' 则无视新鲜度在每次聚焦时都拉取。它是 Explorer 侧边栏的关键 hook
+    // （经由 useMissionDiscovery + ProjectTreeView 驱动）。
     refetchOnWindowFocus: "always",
   });
 }
@@ -102,34 +97,31 @@ export interface FilesReadResponse {
   mtime: string;
   contentHash: string;
   size: number;
-  /** Operator Surface Reconciliation v0 item 5: present when the
-   *  daemon truncated the returned content (file > 1 MB cap). */
+  /** 操作者界面对齐 v0 第 5 项：后台服务截断返回内容时存在此值（文件超过 1 MB 上限）。 */
   truncated?: boolean;
   truncatedAtBytes?: number | null;
   totalBytes?: number;
 }
 
 /**
- * R1 (release-0.4.7) — a typed, discriminated read failure.
+ * R1（release-0.4.7）——带类型、可判别（discriminated）的读取失败。
  *
- * The daemon already distinguishes the causes in the HTTP status
- * (`routes/files.ts`: `stat_failed → 404`, `root_unknown`/path errors → 400,
- * fallthrough → 500). Pre-R1, `fetchRead` collapsed all of them into an opaque
- * `new Error("HTTP <status>")`, so every consumer saw only `isError` and
- * rendered disk-absence copy for what might be an infra or config failure.
- * `FilesReadError` carries the distinction as `code` WITHOUT changing the
- * `message` text — consumers that render only `err.message` (FileViewer,
- * FilesWorkspace) stay byte-identical with zero edits (message-compat pin).
+ * 后台服务已在 HTTP 状态码上区分了原因（`routes/files.ts`：`stat_failed → 404`，
+ * `root_unknown`/路径错误 → 400，其余兜底 → 500）。R1 之前，`fetchRead` 把它们统统
+ * 压成一个不透明的 `new Error("HTTP <status>")`，导致每个消费方只看到 `isError`，
+ * 把可能是基础设施或配置失败的情况都渲染成“磁盘上文件不存在”的文案。
+ * `FilesReadError` 把这一区分作为 `code` 携带，而不改动 `message` 文本——
+ * 只渲染 `err.message` 的消费方（FileViewer、FilesWorkspace）零改动即可保持逐字节一致
+ * （message 兼容锁定）。
  */
 export class FilesReadError extends Error {
   readonly code: "absent" | "read_error" | "bad_path";
   readonly status: number;
   constructor(status: number) {
-    super(`HTTP ${status}`); // message BYTE-SAME as the pre-R1 `new Error("HTTP <status>")` (arch pin)
-    // DELIBERATE byte-compat (arch ruling P2): name stays "Error" so any
-    // `${err}` / err.name render is byte-identical to pre-split output. Do NOT
-    // "fix" this to "FilesReadError" in a cleanup pass — it would change every
-    // name-rendering site's output.
+    super(`HTTP ${status}`); // message 与 R1 之前的 `new Error("HTTP <status>")` 逐字节相同（架构锁定）
+    // 刻意保持字节兼容（架构裁定 P2）：name 保持为 "Error"，使任何 `${err}` / err.name
+    // 渲染与拆分前逐字节一致。不要在清理时把它“改好”成 "FilesReadError"——那会改变
+    // 每一处 name 渲染点的输出。
     this.name = "Error";
     this.status = status;
     this.code = status === 404 ? "absent" : status === 400 ? "bad_path" : "read_error";
@@ -147,11 +139,11 @@ export function useFilesRead(root: string | null, path: string | null) {
     queryKey: ["files", "read", root, path],
     queryFn: () => fetchRead(root!, path!),
     enabled: !!root && !!path,
-    staleTime: 0, // always re-read for edit-mode mtime/contentHash freshness
+    staleTime: 0, // 编辑模式下始终重读，以保证 mtime/contentHash 新鲜
   });
 }
 
-// --- write (item 4) ---
+// --- 写入（第 4 项） ---
 
 export interface FileWriteRequest {
   root: string;
@@ -192,7 +184,7 @@ async function postWrite(req: FileWriteRequest): Promise<FileWriteResult> {
       conflict: true,
       currentMtime: body.currentMtime,
       currentContentHash: body.currentContentHash,
-      message: body.message ?? "file changed externally",
+      message: body.message ?? "文件已被外部修改",
     };
   }
   if (!res.ok) {
@@ -207,14 +199,10 @@ export function useFilesWrite() {
   return useMutation({
     mutationFn: postWrite,
     onSuccess: (result, vars) => {
-      // Only invalidate when the write actually landed. On a 409
-      // conflict we MUST keep the read query stable so the editor's
-      // last-known mtime/contentHash + the operator's draft survive
-      // long enough for the conflict banner to render. Invalidating
-      // here would refetch the read, the editor's useEffect would
-      // fire on the new read, and both the draft and the conflict
-      // banner would get wiped silently — losing the operator's
-      // edits and the conflict signal.
+      // 仅在写入真正落地时才使缓存失效。遇到 409 冲突时必须保持读取查询稳定，
+      // 让编辑器最后已知的 mtime/contentHash 与操作者的草稿存活足够久，以便冲突横幅渲染出来。
+      // 若在此处失效，会重新拉取读取，编辑器的 useEffect 会基于新读取触发，草稿与冲突横幅
+      // 都会被静默清掉——丢失操作者的编辑内容与冲突信号。
       if ("conflict" in result) return;
       qc.invalidateQueries({ queryKey: ["files", "read", vars.root, vars.path] });
       qc.invalidateQueries({ queryKey: ["files", "list", vars.root] });

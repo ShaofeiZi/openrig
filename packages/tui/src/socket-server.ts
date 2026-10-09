@@ -1,15 +1,14 @@
-// Control-socket adapter — the "addressable-screen API" adopted by the Phase-0
-// spike verdict. One command per line; every line gets a one-line JSON reply.
+// 控制套接字适配器——Phase-0 spike 裁决采纳的"可寻址屏幕 API"。
+// 每行一个命令；每行获得一行 JSON 回复。
 //
-// STANDING ARCH CONSTRAINT (arch-lead post-spike-review; same class as the
-// BR-9 ACTIONS guard — the socket is a NAMED boundary-erosion point):
-//   1. Every socket command goes through the ONE resolver/mutation path
-//      (parseCommand → dispatch). No programmatic shortcut may mutate state
-//      outside it, ever.
-//   2. Socket verbs stay OBSERVE / NAVIGATE / DRIVE-STRUCTURE only. No
-//      ACT/PRODUCE verb lands here because the socket is an API. Any extension
-//      crossing either line routes to arch-lead BEFORE building.
-// The only non-grammar verb is "state" — a read-only state query (OBSERVE).
+// 常设架构约束（架构负责人 spike 后评审；与
+// BR-9 ACTIONS 守卫同类——套接字是命名边界侵蚀点）：
+//   1. 每个套接字命令通过唯一解析器/变更路径
+//      （parseCommand → dispatch）。绝无程序化快捷方式可在其外变更状态。
+//   2. 套接字动词仅保持 OBSERVE / NAVIGATE / DRIVE-STRUCTURE。无
+//      ACT/PRODUCE 动词到达此处，因为套接字是 API。任何
+//      跨越任一行的扩展在构建前路由到架构负责人。
+// 唯一非语法动词是 "state"——只读状态查询（OBSERVE）。
 import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
@@ -18,7 +17,7 @@ import { parseCommand } from "./grammar.js";
 import { serializeCommands } from "./commands/registry.js";
 import type { ViewState, ViewStateStore } from "./types.js";
 
-/** macOS sun_path caps unix-socket paths at ~104 bytes; guard with margin. */
+/** macOS sun_path 将 unix 套接字路径限制在 ~104 字节；留余量防护。 */
 export const MAX_SOCKET_PATH_BYTES = 100;
 
 export function describeState(state: ViewState) {
@@ -60,8 +59,8 @@ export function describeState(state: ViewState) {
   };
 }
 
-/** Default socket home follows the shipped OPENRIG_HOME convention
- * (openrig-compat: ~/.openrig), herdr-style env override on top. */
+/** 默认套接字主目录遵循已发布的 OPENRIG_HOME 约定
+ *（openrig 兼容：~/.openrig），上面叠加 herdr 风格环境覆盖。 */
 export function defaultSocketPath(instanceId: string): string {
   const override = process.env["OPENRIG_TUI_SOCKET"];
   if (override) return override;
@@ -78,7 +77,7 @@ export async function createControlSocket(options: {
   socketPath: string;
   view: ViewStateStore;
   onMutation?: () => void;
-  /** I5 — live command context supplier (from the C3 detector); default standard. */
+  /** I5——实时命令上下文供应者（来自 C3 检测器）；默认 standard。 */
   currentContext?: () => string;
 }): Promise<ControlSocket> {
   const { socketPath, view, onMutation } = options;
@@ -86,7 +85,7 @@ export async function createControlSocket(options: {
   const bytes = Buffer.byteLength(socketPath);
   if (bytes > MAX_SOCKET_PATH_BYTES) {
     throw new Error(
-      `socket path too long (${bytes} bytes; unix sun_path caps ~104): ${socketPath} — use a short runtime dir (default: $OPENRIG_HOME/run)`,
+      `套接字路径过长（${bytes} 字节；unix sun_path 上限 ~104）：${socketPath} — 使用短运行目录（默认：$OPENRIG_HOME/run）`,
     );
   }
   fs.mkdirSync(path.dirname(socketPath), { recursive: true });
@@ -101,9 +100,9 @@ export async function createControlSocket(options: {
         const line = buf.slice(0, nl).trim();
         buf = buf.slice(nl + 1);
         if (!line) continue;
-        // REGISTRY I4 — the second OBSERVE verb: the registry projection with LIVE
-        // per-session availability (one serializer, PM pin 2; context pin 3). Read-only —
-        // stays inside the arch constraint's OBSERVE class beside "state".
+        // REGISTRY I4——第二个 OBSERVE 动词：带实时
+        // 每会话可用性的注册表投影（一个序列化器，PM pin 2；上下文 pin 3）。只读——
+        // 留在架构约束的 OBSERVE 类中，与 "state" 并列。
         if (line === "commands") {
           conn.write(
             JSON.stringify({ ok: true, instanceId: view.instanceId, commands: serializeCommands(currentContext()) }) + "\n",
@@ -116,7 +115,7 @@ export async function createControlSocket(options: {
           );
           continue;
         }
-        // The one mutation path: grammar → dispatch. Nothing else.
+        // 唯一变更路径：语法 → dispatch。仅此而已。
         const next = view.dispatch(parseCommand(line, view.get().sections));
         conn.write(JSON.stringify(describeState(next)) + "\n");
         onMutation?.();

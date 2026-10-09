@@ -1,9 +1,9 @@
-// OPR.0.4.6.MH1 rev1-r1 B (fixback) — the `rig host select` COMMAND
-// itself: registry validation, the one daemon write, the structured
-// unknown-id error (persisting nothing), select-local, and the
-// daemon-down surface. The read helpers are covered in
-// host-selection.test.ts; these pin the verb's write+validation path
-// (FR-1 ACs) as regressions.
+// OPR.0.4.6.MH1 rev1-r1 B（fixback）——`rig host select` 命令
+// 本身：registry 校验、唯一一次 daemon 写入、结构化
+// unknown-id 错误（不持久化任何东西）、select-local 与
+// daemon 宕机表面。读 helper 在
+// host-selection.test.ts 覆盖；此处钉住该动词的 write+validation 路径
+//（FR-1 AC）作为回归。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import http from "node:http";
@@ -87,7 +87,7 @@ describe("rig host select (OPR.0.4.6.MH1 FR-1 command path)", () => {
     expect(writes[0]!.method).toBe("POST");
     expect(writes[0]!.url).toBe("/api/config/host.selected");
     expect(JSON.parse(writes[0]!.body)).toEqual({ value: "vps-a" });
-    expect(out.join("\n")).toContain("Selected host: vps-a");
+    expect(out.join("\n")).toContain("已选主机：vps-a");
   });
 
   it("select <unknown> is a structured error naming the registered ids — and persists NOTHING", async () => {
@@ -95,7 +95,7 @@ describe("rig host select (OPR.0.4.6.MH1 FR-1 command path)", () => {
     const { err, exitCode } = await capture(() => run(["select", "nope"]));
     expect(exitCode).toBe(1);
     const errStr = err.join("\n");
-    expect(errStr).toContain("cannot select 'nope'");
+    expect(errStr).toContain("无法选择 'nope'");
     expect(errStr).toContain("vps-a");
     expect(writes).toHaveLength(0);
   });
@@ -103,7 +103,7 @@ describe("rig host select (OPR.0.4.6.MH1 FR-1 command path)", () => {
   it("select with no registry at all fails loud and teaches the add path — no write", async () => {
     const { err, exitCode } = await capture(() => run(["select", "vps-a"]));
     expect(exitCode).toBe(1);
-    expect(err.join("\n")).toContain("no hosts registered");
+    expect(err.join("\n")).toContain("没有已登记主机");
     expect(writes).toHaveLength(0);
   });
 
@@ -112,7 +112,7 @@ describe("rig host select (OPR.0.4.6.MH1 FR-1 command path)", () => {
     expect(exitCode).toBeUndefined();
     expect(writes).toHaveLength(1);
     expect(JSON.parse(writes[0]!.body)).toEqual({ value: "local" });
-    expect(out.join("\n")).toContain("local (this host)");
+    expect(out.join("\n")).toContain("local（本机）");
   });
 
   it("daemon down surfaces the connection error (the PRD-named trade), exit 1", async () => {

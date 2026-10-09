@@ -1,6 +1,6 @@
-// B1 ROUND 2 — the restore lifecycle RENDER. HIGH-4 discriminator: the done view puts each need on its
-// OWN triage row (via the shipped renderTriage), so the exact need AND the not_attempted remediation are
-// present in full — r2's probe found both ABSENT when they were crammed into one width-clipped footer.
+// B1 ROUND 2——restore 生命周期 RENDER。HIGH-4 判别器：done 视图把每个 need 放它
+// 自己的 triage 行（经发布的 renderTriage），故精确 need 与 not_attempted remediation
+// 完整在场——r2 探针发现二者在挤入一个宽度裁剪 footer 时皆缺席。
 import { describe, it, expect } from "vitest";
 import { buildRestoreLifecycleVM, type RestoreFrame } from "../src/crash-cart/restore-lifecycle.js";
 import { renderRestoreLifecycleView } from "../src/crash-cart/render-crash-cart.js";
@@ -16,8 +16,8 @@ function frame(over: Partial<RestoreFrame>): RestoreFrame {
   };
 }
 
-describe("renderRestoreLifecycleView — done", () => {
-  it("HIGH-4: the exact attention need AND the not_attempted remediation each render on their own row (unclipped)", () => {
+describe("renderRestoreLifecycleView——done", () => {
+  it("HIGH-4：确切 attention need 与 not_attempted remediation 各自独立成行渲染（不截断）", () => {
     const vm = buildRestoreLifecycleVM(
       frame({
         phase: "done",
@@ -36,18 +36,18 @@ describe("renderRestoreLifecycleView — done", () => {
     );
     const lines = renderRestoreLifecycleView(vm);
     const body = lines.map((l) => l.text).join("\n");
-    expect(body).toContain("FLEET RESTORE: mixed");
-    expect(body).toContain("NEEDS ATTENTION (2)"); // one attention seat + one not_attempted rig
+    expect(body).toContain("舰队恢复：mixed");
+    expect(body).toContain("待关注 (2)"); // one attention seat + one not_attempted rig
     expect(body).toContain("dev.guard@kernel");
     expect(body).toContain("choose fresh-prime or skip"); // the exact need, in full
     expect(body).toContain("take a snapshot"); // the not_attempted remediation, in full
-    // and each need is on its OWN line (not one crammed footer)
+    // 且每个 need 在它自己的行（非挤一个 footer）
     const needLine = lines.find((l) => l.text.includes("choose fresh-prime or skip"))!;
     const remedLine = lines.find((l) => l.text.includes("take a snapshot"))!;
     expect(needLine).not.toBe(remedLine);
   });
 
-  it("all-clean done → the triage all-clean line, no NEEDS ATTENTION", () => {
+  it("all-clean done → triage 全干净行，无 NEEDS ATTENTION", () => {
     const vm = buildRestoreLifecycleVM(
       frame({
         verdict: "all_fully_restored",
@@ -55,13 +55,13 @@ describe("renderRestoreLifecycleView — done", () => {
       }),
     );
     const body = renderRestoreLifecycleView(vm).map((l) => l.text).join("\n");
-    expect(body).toContain("all seats restored clean");
-    expect(body).not.toContain("NEEDS ATTENTION");
+    expect(body).toContain("所有席位已干净恢复");
+    expect(body).not.toContain("待关注");
   });
 });
 
-describe("renderRestoreLifecycleView — detached (HIGH-1: honest, operable, never frozen)", () => {
-  it("names the attempt, says the restore CONTINUES on the daemon, and offers reattach + cancel", () => {
+describe("renderRestoreLifecycleView——detached (HIGH-1：诚实、可操作、绝不冻结)", () => {
+  it("命名 attempt，说明恢复在 daemon 上继续，并提供 reattach + cancel", () => {
     const vm = buildRestoreLifecycleVM(
       frame({
         phase: "detached",
@@ -78,16 +78,16 @@ describe("renderRestoreLifecycleView — detached (HIGH-1: honest, operable, nev
       }),
     );
     const body = renderRestoreLifecycleView(vm).map((l) => l.text).join("\n");
-    expect(body).toContain("STILL RUNNING ON THE DAEMON");
+    expect(body).toContain("仍在后台服务上运行");
     expect(body).toContain("fleet-1"); // the retained attempt id (from the frame default)
-    expect(body).toContain("CONTINUING on the daemon"); // r1's keeper: detached ≠ stopped
-    expect(body).toContain("r reattach");
-    expect(body).toContain("c cancel");
+    expect(body).toContain("在后台服务上继续"); // r1's keeper: detached ≠ stopped
+    expect(body).toContain("r 重新附着");
+    expect(body).toContain("c 取消");
     expect(body).not.toMatch(/RESTORING FLEET\b/); // not the running header
   });
 });
 
-describe("renderRestoreLifecycleView — done header glyph matches the verdict (BLOCKER 2)", () => {
+describe("renderRestoreLifecycleView——done 头字形匹配 verdict (BLOCKER 2)", () => {
   const header = (verdict: string) =>
     renderRestoreLifecycleView(
       buildRestoreLifecycleVM(
@@ -95,14 +95,14 @@ describe("renderRestoreLifecycleView — done header glyph matches the verdict (
       ),
     )[0]!.text;
 
-  it("all_failed does NOT wear the success ✓ — it shows ✗", () => {
+  it("all_failed 不戴成功 ✓——显示 ✗", () => {
     const h = header("all_failed");
-    expect(h).toContain("FLEET RESTORE: all_failed");
+    expect(h).toContain("舰队恢复：all_failed");
     expect(h).not.toContain("✓");
     expect(h).toContain("✗");
   });
 
-  it("none_attempted and mixed wear a warning, never ✓", () => {
+  it("none_attempted 与 mixed 戴警告，绝不 ✓", () => {
     for (const v of ["none_attempted", "mixed"]) {
       const h = header(v);
       expect(h, `${v} header`).not.toContain("✓");
@@ -110,13 +110,13 @@ describe("renderRestoreLifecycleView — done header glyph matches the verdict (
     }
   });
 
-  it("all_fully_restored still wears the success ✓", () => {
-    expect(header("all_fully_restored")).toContain("✓ FLEET RESTORE: all_fully_restored");
+  it("all_fully_restored 仍戴成功 ✓", () => {
+    expect(header("all_fully_restored")).toContain("✓ 舰队恢复：all_fully_restored");
   });
 });
 
-describe("renderRestoreLifecycleView — running (mid-run progress frame)", () => {
-  it("shows a per-rig progress list + the cancel affordance while running", () => {
+describe("renderRestoreLifecycleView——running（运行中进度帧）", () => {
+  it("运行中显示每 rig 进度列表 + cancel 可操作项", () => {
     const vm = buildRestoreLifecycleVM(
       frame({
         phase: "running",
@@ -130,9 +130,9 @@ describe("renderRestoreLifecycleView — running (mid-run progress frame)", () =
       }),
     );
     const body = renderRestoreLifecycleView(vm).map((l) => l.text).join("\n");
-    expect(body).toContain("RESTORING FLEET");
+    expect(body).toContain("正在恢复舰队");
     expect(body).toContain("kernel");
-    expect(body).toContain("c cancel");
-    expect(body).not.toContain("NEEDS ATTENTION"); // triage only on the done view
+    expect(body).toContain("c 取消");
+    expect(body).not.toContain("待关注"); // triage only on the done view
   });
 });

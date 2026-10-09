@@ -1,33 +1,25 @@
-# Scenario #10 — one-view-state consistency (the 5.1 crowning assertion).
+# 场景 #10——单一视图状态一致性（5.1 的最终断言）。
 #
-# INTENT: at a single point in time the shipped surfaces must AGREE about one
-# world. This is the automated form of the failure class that costs real time —
-# one surface confidently reporting a world another surface cannot see.
+# 意图：在同一时间点，各已发布入口必须对同一世界达成一致。这类故障会真实浪费时间：
+# 一个入口信心十足地报告另一个入口完全看不到的世界；本场景是其自动化验证形式。
 #
-# WHAT IS COMPARED, and why these two: `rig ps` and `rig queue` are both
-# daemon-truth surfaces, so the rigs ps reports and the rigs the queue's items are
-# destined for must be the SAME SET. A qitem addressed to a rig ps does not know
-# about — or a rig running with its queue work invisible — breaks this and fails
-# the scenario. The declarative mapping below is what makes the comparison
-# possible: the surfaces answer in different shapes (rig records vs qitems whose
-# destinationSession is <pod>-<member>@<rig>), so each DECLARES the field carrying
-# the shared truth. Per A-N1 the mapping is the only scenario-facing form; it
-# lowers to the runner-internal seam.
+# 比较内容及选择原因：`zrig ps` 和 `zrig queue` 都是后台服务事实入口，因此 ps 报告的
+# 工作组集合，必须与队列项目标所属的工作组集合完全相同。若 qitem 指向 ps 不知道的工作组，
+# 或运行中的工作组所含队列工作不可见，一致性即被破坏，场景必须失败。下面的声明式映射使比较
+# 成为可能：两个入口返回不同结构（工作组记录，与 destinationSession 形如
+# <pod>-<member>@<rig> 的 qitem），因此各自声明承载共同事实的字段。根据 A-N1，映射是唯一
+# 面向场景的形式，并会降低为 runner 内部 seam。
 #
-# WHAT tui_socket CONTRIBUTES, stated honestly: its own coherence, asserted
-# separately below — NOT membership in the equality. MEASURED at source: both of
-# the control socket's OBSERVE verbs return UI/registry state
-# (`state` -> {screen, drill, viewTab}; `commands` -> the command registry), so
-# the shipped socket carries NO daemon truth to compare. Folding it into the
-# equality could only pass by comparing something trivially equal, which would be
-# a false green. The gap is a TUI finding (the state query would need to expose
-# the rig/queue view it renders), not something this scenario can paper over.
+# 如实说明 tui_socket 的贡献：它自身的一致性由下方单独断言，不参与集合相等比较。源码实测
+# 表明，control socket 的两个 OBSERVE 动词都返回 UI/registry 状态
+#（`state` -> {screen, drill, viewTab}；`commands` -> 命令注册表），因此已发布 socket
+# 不携带可供比较的后台服务事实。把它并入相等比较，只会比较显然相同的内容并产生假绿。
+# 这是一个 TUI 问题（state 查询需要暴露它所渲染的 rig/queue 视图），不能由本场景掩盖。
 scenario: one-view-state-consistency
 topology: ./topo-stub-baton.yaml
 env:
   tui: true
-  # give the queue a real item so both surfaces have a rig to agree about; an
-  # all-empty comparison would pass without proving anything
+  # 给队列一个真实项目，使两个入口确实有工作组可供核对；全空比较会在什么都没证明时通过。
   queue:
     - id: view-1
       source: harness@scn-baton
@@ -36,13 +28,13 @@ env:
       claim: true
 steps:
   - up: {}
-  # the TUI is live and coherent at this instant (its own state, its own claim)
+  # 此刻 TUI 正在运行且自身状态一致（这是它自己的状态与断言）。
   - expect:
       surface: tui_socket
       within: 20s
       match:
         ok: true
-  # THE INVARIANT: ps and queue name the same rig set
+  # 不变量：ps 与 queue 给出相同的工作组集合。
   - expect:
       surface: ps
       within: 20s

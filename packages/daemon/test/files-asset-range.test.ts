@@ -1,9 +1,8 @@
-// OPR.0.4.4.20 FR-5 + FR-11 — /api/files/asset Range support + .html ?render=1.
+// OPR.0.4.4.20 FR-5 + FR-11——/api/files/asset 支持 Range 及 .html ?render=1。
 //
-// FR-5: iOS Safari requires byte-range support (206 + Accept-Ranges) for
-// media playback; the curl-probe AC is "a 100-byte range request returns
-// 100 bytes, not the whole file". Range lands on THIS route only.
-// FR-11: .html serves text/html ONLY under the explicit ?render=1 opt-in.
+// FR-5：iOS Safari 播放媒体需要字节范围支持（206 + Accept-Ranges）；curl 探针的
+// 验收条件是“请求 100 字节范围时返回 100 字节，而不是整个文件”。Range 仅在此路由落地。
+// FR-11：只有显式选择 ?render=1 时，.html 才以 text/html 提供。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -12,14 +11,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { filesRoutes } from "../src/routes/files.js";
 
-describe("GET /api/files/asset — Range + render opt-in", () => {
+describe("GET /api/files/asset——Range 与 render 选择加入", () => {
   let root: string;
   let app: Hono;
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), "asset-range-"));
     mkdirSync(join(root, "media"), { recursive: true });
-    // 1000 deterministic bytes standing in for a video file.
+    // 用 1000 个确定性字节代替视频文件。
     writeFileSync(join(root, "media", "clip.mp4"), Buffer.from(Array.from({ length: 1000 }, (_, i) => i % 251)));
     writeFileSync(join(root, "media", "mock.html"), "<h1>mock</h1>");
     const allowlist = [{ name: "ws", canonicalPath: realpathSync(root) }];
@@ -36,18 +35,18 @@ describe("GET /api/files/asset — Range + render opt-in", () => {
 
   const url = (p: string, extra = "") => `/api/files/asset?root=ws&path=${encodeURIComponent(p)}${extra}`;
 
-  it("serves 206 + Accept-Ranges + exactly the requested 100 bytes (the curl-probe AC)", async () => {
+  it("返回 206、Accept-Ranges 及恰好请求的 100 字节（curl 探针验收条件）", async () => {
     const res = await app.request(url("media/clip.mp4"), { headers: { Range: "bytes=0-99" } });
     expect(res.status).toBe(206);
     expect(res.headers.get("Accept-Ranges")).toBe("bytes");
     expect(res.headers.get("Content-Range")).toBe("bytes 0-99/1000");
     const body = new Uint8Array(await res.arrayBuffer());
-    expect(body.length).toBe(100); // 100 bytes, not the whole file
+    expect(body.length).toBe(100); // 100 字节，而不是整个文件
     expect(body[0]).toBe(0);
     expect(body[99]).toBe(99);
   });
 
-  it("serves interior and open-ended ranges with the correct byte slice", async () => {
+  it("以正确字节切片提供内部范围与开放结束范围", async () => {
     const mid = await app.request(url("media/clip.mp4"), { headers: { Range: "bytes=500-509" } });
     expect(mid.headers.get("Content-Range")).toBe("bytes 500-509/1000");
     const midBody = new Uint8Array(await mid.arrayBuffer());
@@ -63,7 +62,7 @@ describe("GET /api/files/asset — Range + render opt-in", () => {
     expect(suffix.headers.get("Content-Range")).toBe("bytes 950-999/1000");
   });
 
-  it("clamps an over-long end and rejects unsatisfiable ranges with 416", async () => {
+  it("截断过长的结束位置，并以 416 拒绝无法满足的范围", async () => {
     const clamped = await app.request(url("media/clip.mp4"), { headers: { Range: "bytes=900-5000" } });
     expect(clamped.status).toBe(206);
     expect(clamped.headers.get("Content-Range")).toBe("bytes 900-999/1000");
@@ -76,7 +75,7 @@ describe("GET /api/files/asset — Range + render opt-in", () => {
     expect(garbage.status).toBe(416);
   });
 
-  it("no-Range requests keep the 200 whole-file shape and now advertise Accept-Ranges", async () => {
+  it("无 Range 的请求保持 200 整文件响应，并声明 Accept-Ranges", async () => {
     const res = await app.request(url("media/clip.mp4"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Accept-Ranges")).toBe("bytes");
@@ -84,7 +83,7 @@ describe("GET /api/files/asset — Range + render opt-in", () => {
     expect(res.headers.get("Content-Type")).toBe("video/mp4");
   });
 
-  it(".html stays text/plain by default and renders text/html ONLY under ?render=1", async () => {
+  it(".html 默认保持 text/plain，仅在 ?render=1 时渲染为 text/html", async () => {
     const plain = await app.request(url("media/mock.html"));
     expect(plain.headers.get("Content-Type")).toContain("text/plain");
 
@@ -92,7 +91,7 @@ describe("GET /api/files/asset — Range + render opt-in", () => {
     expect(rendered.headers.get("Content-Type")).toContain("text/html");
     expect(await rendered.text()).toBe("<h1>mock</h1>");
 
-    // The opt-in is .html-scoped: render=1 on a non-html asset changes nothing.
+    // 选择加入仅限 .html：对非 HTML 资源指定 render=1 不产生变化。
     const video = await app.request(url("media/clip.mp4", "&render=1"));
     expect(video.headers.get("Content-Type")).toBe("video/mp4");
   });

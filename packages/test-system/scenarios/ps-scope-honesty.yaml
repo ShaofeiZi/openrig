@@ -1,38 +1,36 @@
-# Defect class: the across-rigs trap (`rig ps` scope honesty).
-# Marathon origin: `rig ps` silently mixed seats from other rigs into the current-rig
-#   view (or hid them), so operators mis-read who was running where.
-# SEED (class: across-rigs-leak): the seeded regression leaks rig-beta's seats into
-#   rig-alpha's DEFAULT (current-rig) ps view. The default-scope `expect ps` MUST catch
-#   it — beta is UP but must be ABSENT from alpha's default; the diff shows expected
-#   {only rig-alpha} vs an observed alpha+beta, naming the leak.
+# 缺陷类别：跨工作组陷阱（`rig ps` 工作范围诚实性）。
+# Marathon 来源：`rig ps` 静默将其他工作组的席位混入当前工作组视图（或隐藏它们），
+#   导致操作者误判谁在哪里运行。
+# SEED（class: across-rigs-leak）：种子回归将 rig-beta 席位泄漏进 rig-alpha 的默认
+#   （当前工作组）ps 视图。默认范围 `expect ps` 必须发现它——beta 已启动，
+#   但必须从 alpha 默认视图中缺席；diff 会展示预期仅有 rig-alpha 与观察到的 alpha+beta，
+#   并标明泄漏。
 #
-# V1 SHAPE (endorsed, dev-driver + orch 2026-08-06): assert the current-rig-DEFAULT leg
-# LIVE (honest, shipped: default `rig ps` is current-rig). The all-rigs / per-rig
-# confirmatory legs (`ps --nodes -A` / `ps --nodes --rig <name>`) are R-16 VISIBLY-
-# DEFERRED: the daemon may SILENTLY IGNORE the scope selector in its projection, so
-# asserting them now risks a FALSE GREEN (selector dropped). They light up when R-16
-# honors the selector end-to-end (pooled accept-and-drop instance #3, family trending to
-# a systematic accept-vs-honor sweep at conversion).
-# Deps: R-12 (multi-rig `up` — the second rig must actually come up for the leak-catch to
-#   be real, not a trivial-absent false green); R-16 (the deferred scoped legs).
+# V1 形态（dev-driver + orch 于 2026-08-06 批准）：实时断言当前工作组默认步骤
+#（诚实的已发布行为：默认 `rig ps` 仅显示当前工作组）。all-rigs / per-rig 确认步骤
+#（`ps --nodes -A` / `ps --nodes --rig <name>`）属于 R-16 明确延后内容：后台服务可能在投影中
+# 静默忽略工作范围选择器，现在断言会有假绿风险（选择器被丢弃）。R-16 端到端遵循选择器后启用
+#（pooled accept-and-drop 实例 #3，该缺陷族将在转换时转向系统性 accept-vs-honor 扫描）。
+# 依赖：R-12（多工作组 `up`——第二个工作组必须真实启动，泄漏捕获才有效，而非“本来就不存在”的假绿）；
+# R-16（已延后的范围步骤）。
 scenario: ps-scope-honesty
 topology: ./rig-alpha-stub.yaml
 steps:
   - up: {}
-  - up: {topology: ./rig-beta-stub.yaml}   # R-12: bring up the second rig (dep)
-  # DEFAULT ps = current rig only: rig-beta is UP but ABSENT from rig-alpha's default
-  # view. (Exact `rig ps --json` field shape verifies-at-source in the runtime pass.)
+  - up: {topology: ./rig-beta-stub.yaml}   # R-12：启动第二个工作组（依赖）
+  # 默认 ps = 仅当前工作组：rig-beta 已启动，但从 rig-alpha 默认视图中缺席。
+  #（`rig ps --json` 的精确字段形态在运行时验证阶段对照源码。）
   - expect:
       surface: ps
       within: 20s
-      # ps default = BARE ARRAY of per-rig PsEntry {name,status,runningCount,...};
-      # rig-alpha present, rig-beta absent (the leak-catch). Per-seat detail = --nodes.
+      # ps 默认值 = 逐工作组 PsEntry {name,status,runningCount,...} 的裸数组；
+      # rig-alpha 存在，rig-beta 缺席（泄漏捕获）。逐席位详情 = --nodes。
       match:
         - name: rig-alpha
           status: running
-  # DEFERRED (R-16, VISIBLY annotated, NOT dropped) — the confirmatory scoped legs:
-  #   `ps --nodes -A` shows alpha+beta (the honest cross-rig widening); `ps --nodes
-  #   --rig rig-beta` shows beta only. Held until the daemon honors the scope selector
-  #   in its projection (else the selector is silently dropped = false green).
+  # 已延后（R-16，明确标注，未删除）——用于确认工作范围的步骤：
+  #   `ps --nodes -A` 显示 alpha+beta（诚实的跨工作组扩展）；`ps --nodes --rig rig-beta`
+  #   只显示 beta。在后台服务投影真正遵循工作范围选择器前保持停用
+  #   （否则选择器被静默丢弃 = 假绿）。
   - seed_regression: {class: across-rigs-leak}
   - down: {}

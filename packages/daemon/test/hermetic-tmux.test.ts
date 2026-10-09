@@ -12,12 +12,11 @@ import {
   type HermeticScaffold,
 } from "./helpers/hermetic-env.js";
 
-// 51-02 delta D5 (advisor-ruled, guard precision pins) — TMUX ISOLATION.
+// 51-02 delta D5（advisor 裁定，guard precision pin）——TMUX 隔离。
 //
-// A scenario `up` stands up REAL tmux seats. TMUX_TMPDIR alone is not an
-// identity: once its directory disappears a later command can resolve elsewhere.
-// The helper therefore wraps every child invocation with one explicit private
-// socket and refuses an ambient attachment before creating anything.
+// scenario `up` 会启动真实 tmux seat。仅有 TMUX_TMPDIR 不是 identity：其目录消失后，后续 command
+// 可能解析到其他位置。因此 helper 用一个显式 private socket 包装每次 child invocation，并在创建任何
+// 内容前拒绝 ambient attachment。
 
 const scaffolds: HermeticScaffold[] = [];
 const dirs: string[] = [];
@@ -28,8 +27,8 @@ afterEach(() => {
 
 const cleanBase = () => ({ HOME: "/tmp/whatever", PATH: process.env.PATH, TERM: "xterm" });
 
-describe("D5 p1 — an ambient TMUX attachment refuses BEFORE any side effect", () => {
-  it("detects TMUX as its own named hazard category (not a daemon target, not a clock)", () => {
+describe("D5 p1——ambient TMUX attachment 在任何副作用前被拒绝", () => {
+  it("将 TMUX 检测为独立具名 hazard 类别（不是 daemon target，也不是 clock）", () => {
     expect(TMUX_ATTACHMENT_ENV_VARS as readonly string[]).toContain("TMUX");
     const h = detectAmbientTmuxHazard({ TMUX: "/private/tmp/tmux-501/default,12345,0" });
     expect(h).not.toBeNull();
@@ -39,11 +38,10 @@ describe("D5 p1 — an ambient TMUX attachment refuses BEFORE any side effect", 
     expect(detectAmbientTmuxHazard({ TMUX: "" })).toBeNull(); // exported-but-empty is absent
   });
 
-  it("refuses with a message naming the fleet hazard and creates NO scaffold dir", () => {
-    // Measure in a PRIVATE temp root: scaffolds are created under os.tmpdir(),
-    // which reads TMPDIR per call, so pointing it at our own dir makes the
-    // pre-effect assertion immune to whatever other suites are doing in the
-    // shared /tmp (counting shared dirs is a self-induced contention flake).
+  it("以点名 fleet hazard 的消息拒绝，且不创建 scaffold dir", () => {
+    // 在 private temp root 中测量：scaffold 创建于 os.tmpdir()，它每次调用都会读取 TMPDIR，因此将其
+    // 指向自有目录，可使 pre-effect 断言不受其他 suite 在共享 /tmp 中行为的影响（统计 shared dir
+    // 会造成自发 contention flake）。
     const priv = mkdtempSync(join(tmpdir(), "tmux-preeffect-"));
     dirs.push(priv);
     const savedTmp = process.env.TMPDIR;
@@ -58,7 +56,7 @@ describe("D5 p1 — an ambient TMUX attachment refuses BEFORE any side effect", 
           throw e;
         }
       }).toThrow(AmbientTmuxHazardError);
-      // pre-effect: the private root is still EMPTY — no scaffold was created
+      // pre-effect：private root 仍为空——未创建 scaffold
       expect(readdirSync(priv)).toEqual([]);
     } finally {
       if (savedTmp === undefined) delete process.env.TMPDIR;
@@ -69,15 +67,15 @@ describe("D5 p1 — an ambient TMUX attachment refuses BEFORE any side effect", 
   });
 });
 
-describe("D5 p2 — an inherited TMUX_TMPDIR is ABSENT from the child and REPLACED by the scaffold's own", () => {
-  it("proves both halves independently", () => {
+describe("D5 p2——inherited TMUX_TMPDIR 不出现在 child 中，并由 scaffold 自有值替换", () => {
+  it("独立证明两个部分", () => {
     const inherited = mkdtempSync(join(tmpdir(), "ambient-tmux-"));
     try {
       const s = prepareHermeticEnv({ baseEnv: { ...cleanBase(), TMUX_TMPDIR: inherited } });
       scaffolds.push(s);
-      // (a) the inherited value is gone
+      // (a) inherited value 已移除
       expect(s.env.TMUX_TMPDIR).not.toBe(inherited);
-      // (b) it is replaced by a scaffold-OWNED, existing directory
+      // (b) 由 scaffold 自有且已存在的 directory 替换
       expect(s.env.TMUX_TMPDIR).toBe(s.tmuxTmpDir);
       expect(s.tmuxTmpDir.startsWith(s.root)).toBe(true);
       expect(existsSync(s.tmuxTmpDir)).toBe(true);
@@ -86,24 +84,24 @@ describe("D5 p2 — an inherited TMUX_TMPDIR is ABSENT from the child and REPLAC
     }
   });
 
-  it("sets an owned TMUX_TMPDIR even when the base env carries none", () => {
+  it("即使 base env 不含 TMUX_TMPDIR，也会设置自有 TMUX_TMPDIR", () => {
     const s = prepareHermeticEnv({ baseEnv: cleanBase() });
     scaffolds.push(s);
     expect(s.env.TMUX_TMPDIR).toBe(s.tmuxTmpDir);
     expect(s.tmuxTmpDir.startsWith(s.root)).toBe(true);
     expect(existsSync(s.tmuxTmpDir)).toBe(true);
-    // cleanup removes the scaffold-owned server dir with everything else
+    // cleanup 连同其他内容一起移除 scaffold-owned server dir
     s.cleanup();
     expect(existsSync(s.tmuxTmpDir)).toBe(false);
   });
 
-  it("keeps the socket path SHORT enough for sun_path (~104 bytes)", () => {
+  it("保持 socket path 足够短，以适配 sun_path（约 104 byte）", () => {
     const s = prepareHermeticEnv({ baseEnv: cleanBase() });
     scaffolds.push(s);
     expect(Buffer.byteLength(s.tmuxSocketPath)).toBeLessThan(104);
   });
 
-  it("cleanup terminates repeated scaffold-owned tmux servers without touching an unrelated server", async () => {
+  it("cleanup 终止重复的 scaffold-owned tmux server，且不触碰无关 server", async () => {
     const { execFile } = await import("node:child_process");
     const { promisify } = await import("node:util");
     const run = promisify(execFile);
@@ -165,19 +163,15 @@ describe("D5 p2 — an inherited TMUX_TMPDIR is ABSENT from the child and REPLAC
   });
 });
 
-// Guard finding 4: the previous version snapshotted only top-level `tmux-*`
-// DIRECTORY NAMES after a run that ends in `down` — so it could not detect the
-// contamination it claimed to exclude (the scenario cleans up after itself, and
-// a name-set is unchanged by connecting to or mutating an existing server). A
-// falsification proved it toothless: with the TMUX_TMPDIR replacement DISABLED
-// it still passed.
+// Guard finding 4：上一版只在以 `down` 结束的 run 后 snapshot 顶层 `tmux-*` directory name——
+// 因此无法检测其声称要排除的 contamination（scenario 会自行 cleanup，而连接或修改现有 server
+// 不会改变 name set）。falsification 证明该检查无效：即使禁用 TMUX_TMPDIR replacement 仍会通过。
 //
-// This version observes WHILE SEATS ARE ALIVE and asserts BOTH directions:
-// the inherited sentinel server gains nothing, and the explicit scaffold socket
-// is where the seats actually are. The focused p2 cleanup proof separately
-// detects removal of the socket shim by observing the owned server PID survive.
-describe("D5 p3 (integration) — an INHERITED tmux server is replaced, proven while seats live", () => {
-  it("seats land on the scaffold-owned server; the inherited sentinel server gains nothing", async () => {
+// 此版本在 seat 存活时观测并双向断言：inherited sentinel server 没有新增内容，seat 实际位于显式
+// scaffold socket。聚焦的 p2 cleanup proof 通过观察 owned server PID 存活，单独检测 socket shim
+// 被移除的情况。
+describe("D5 p3（integration）——替换 inherited tmux server，并在 seat 存活时证明", () => {
+  it("seat 落在 scaffold-owned server；inherited sentinel server 没有新增内容", async () => {
     const { spawnScenarioDaemon, runRig } = await import("./helpers/scenario-daemon.js");
     const { fileURLToPath } = await import("node:url");
     const { dirname, resolve } = await import("node:path");
@@ -214,7 +208,7 @@ describe("D5 p3 (integration) — an INHERITED tmux server is replaced, proven w
     const before = await sessionsAt(sentinelSocketPath);
     expect(before).toBe("sentinel-only"); // the sentinel is real and reachable
 
-    // INHERIT the sentinel dir through the real helper.
+    // 通过真实 helper 继承 sentinel dir。
     const scaffold = prepareHermeticEnv({
       baseEnv: { HOME: process.env.HOME, PATH: process.env.PATH, TERM: "xterm", TMUX_TMPDIR: sentinelDir },
     });
@@ -222,12 +216,10 @@ describe("D5 p3 (integration) — an INHERITED tmux server is replaced, proven w
     expect(scaffold.env.TMUX_TMPDIR).toBe(scaffold.tmuxTmpDir);
     expect(scaffold.env.TMUX_TMPDIR).not.toBe(sentinelDir);
 
-    // Guard finding 2: the earlier version ran `up` on a topology whose seats
-    // declare `cwd: .`, with no staged cwd and no --cwd — so the daemon resolved
-    // seat cwd into the SOURCE TREE and the seats wrote AGENTS.md and
-    // .openrig/stub/** into packages/daemon. A pin that proves tmux isolation
-    // while corrupting the owner tree is not a hermeticity pin. Stage per-seat
-    // scaffold cwds with the slice's OWN staging helper instead.
+    // Guard finding 2：旧版对 seat 声明 `cwd: .` 的 topology 运行 `up`，但无 staged cwd、无 --cwd——
+    // daemon 因此把 seat cwd 解析到 source tree，seat 随后向 packages/daemon 写 AGENTS.md 与
+    // .openrig/stub/**。一边证明 tmux isolation、一边破坏 owner tree 的 pin 不是 hermeticity pin。
+    // 改用 slice 自身的 staging helper 准备 per-seat scaffold cwd。
     const staged = stageTopologyRoot(sourceTopology, join(scaffold.root, "topology"));
     const managedInSource = () => [
       join(pkgRoot, "AGENTS.md"),
@@ -240,15 +232,15 @@ describe("D5 p3 (integration) — an INHERITED tmux server is replaced, proven w
       const up = await runRig(["up", staged.topologyPath, "--json", "--yes"], daemon.readEnv, rigBin, 120_000);
       expect(up.code).toBe(0);
 
-      // WHILE THE SEATS ARE ALIVE (no `down` yet) — both directions:
+      // seat 存活时（尚未 `down`）——双向验证：
       const ownedNow = await sessionsAt(scaffold.tmuxSocketPath);
       const sentinelNow = await sessionsAt(sentinelSocketPath);
-      expect(ownedNow).toContain("scn-baton");   // the seats are HERE...
+      expect(ownedNow).toContain("scn-baton");   // seat 在这里……
       expect(sentinelNow).toBe(before);          // ...and the inherited server gained nothing
       expect(sentinelNow).not.toContain("scn-baton");
 
-      // EFFECT PIN (guard finding 2): the source/launch tree received no managed
-      // seat files — the seats' writes landed in the scaffold, where they belong.
+      // EFFECT PIN（guard finding 2）：source/launch tree 没有收到 managed seat 文件——seat 写入
+      // 落在其应属的 scaffold 中。
       expect(managedInSource()).toEqual([]);
       const seatCwd = staged.seatCwds["dev-worker"]!;
       expect(existsSync(join(seatCwd, ".openrig", "stub", "state.json"))).toBe(true);

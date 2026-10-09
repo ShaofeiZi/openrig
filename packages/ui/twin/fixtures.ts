@@ -1,16 +1,14 @@
-// TYPED dummy fixtures = the drift guard. Every fixture is typed against the
-// REAL exported @openrig/ui hook interface, so a real-interface change breaks
-// the twin build (compile-time drift detection). Data is a believable rig
-// family (multiple pods/seats, mixed agent states) so the twin reads like the
-// real product. Identifiers are fictional demo data, not live operator state.
+// 带类型的哑 fixture = 漂移守卫。每个 fixture 都按真实导出的 @openrig/ui hook 接口
+// 做类型标注，因此真实接口变化会使 twin 构建失败（编译期漂移检测）。数据是一组可信的
+// 工作组家族（多 pod/席位、混合智能体状态），使 twin 读起来像真实产品。标识符是虚构演示
+// 数据，非实时操作者状态。
 //
-// To author a feature-version for a slice: copy the relevant fixture, change
-// the ONE field the slice proposes, rebuild. The diff of THIS file IS the
-// essence of the proposed change.
+// 要为某个 slice 创作特性版本：复制相关 fixture，改动该 slice 提议的那一个字段，重新构建。
+// 本文件的 diff 即是所提改动的本质。
 
 import type { RigSummary } from "../src/hooks/useRigSummary.js";
 import type { PsEntry } from "../src/hooks/usePsEntries.js";
-import type { SpecLibraryEntry } from "../src/hooks/useSpecLibrary.js";
+import type { LibraryRigReview, SpecLibraryEntry } from "../src/hooks/useSpecLibrary.js";
 import type { NodeInventoryEntry } from "../src/hooks/useNodeInventory.js";
 import type { SteeringPayload } from "../src/hooks/useSteering.js";
 import type { NodeDetailData } from "../src/hooks/useNodeDetail.js";
@@ -30,12 +28,45 @@ export const psEntries: PsEntry[] = [
 ];
 
 export const specLibrary: SpecLibraryEntry[] = [
-  { id: "spec_build_rig", kind: "rig", name: "acme-build", version: "1.0.0", sourceType: "user_file", sourcePath: "/specs/rigs/build.yaml", relativePath: "rigs/build.yaml", updatedAt: "2025-08-31T18:00:00.000Z", summary: "Multi-seat build rig", hasServices: true },
-  { id: "spec_builder_agent", kind: "agent", name: "builder-agent", version: "1.0.0", sourceType: "builtin", sourcePath: "/specs/agents/builder.yaml", relativePath: "agents/builder.yaml", updatedAt: "2025-08-30T12:00:00.000Z", summary: "TDD build seat" },
-  { id: "spec_review_flow", kind: "workflow", name: "review-changes", version: "1.0.0", sourceType: "builtin", sourcePath: "/specs/workflows/review.yaml", relativePath: "workflows/review.yaml", updatedAt: "2025-08-29T09:30:00.000Z", summary: "Dimension review with verification", stepsCount: 3, status: "valid" },
+  { id: "spec_build_rig", kind: "rig", name: "acme-build", version: "1.0.0", sourceType: "user_file", sourcePath: "/specs/rigs/build.yaml", relativePath: "rigs/build.yaml", updatedAt: "2025-08-31T18:00:00.000Z", summary: "多席位构建工作组", hasServices: true },
+  { id: "spec_builder_agent", kind: "agent", name: "builder-agent", version: "1.0.0", sourceType: "builtin", sourcePath: "/specs/agents/builder.yaml", relativePath: "agents/builder.yaml", updatedAt: "2025-08-30T12:00:00.000Z", summary: "TDD 构建席位" },
+  { id: "spec_review_flow", kind: "workflow", name: "review-changes", version: "1.0.0", sourceType: "builtin", sourcePath: "/specs/workflows/review.yaml", relativePath: "workflows/review.yaml", updatedAt: "2025-08-29T09:30:00.000Z", summary: "带校验的维度评审", stepsCount: 3, status: "valid" },
 ];
 
-// Per-rig node inventory (seeded for when a twin surface navigates into a rig's topology).
+/** 托管应用详情，用于验证“复制安装提示词”这一真实交互链路。 */
+export const serviceRigReview: LibraryRigReview = {
+  sourceState: "library_item",
+  kind: "rig",
+  name: "acme-build",
+  version: "1.0.0",
+  summary: "带专用构建席位与健康检查的示例托管应用",
+  format: "pod_aware",
+  pods: [{
+    id: "builders",
+    label: "构建组",
+    members: [{ id: "specialist", agentRef: "local:agents/builder", runtime: "claude-code" }],
+    edges: [],
+  }],
+  edges: [],
+  graph: { nodes: [], edges: [] },
+  raw: "name: acme-build\nversion: 1.0.0\n",
+  libraryEntryId: "spec_build_rig",
+  sourcePath: "/specs/rigs/build.yaml",
+  services: {
+    kind: "compose",
+    composeFile: "acme-build.compose.yaml",
+    projectName: "zrig-acme-build",
+    downPolicy: "down",
+    waitFor: [{ url: "http://127.0.0.1:8080/health" }],
+    surfaces: {
+      urls: [{ name: "构建控制台", url: "http://127.0.0.1:8080" }],
+      commands: [{ name: "检查状态", command: "curl -fsS http://127.0.0.1:8080/health" }],
+    },
+    composePreview: { services: [{ name: "builder", image: "example/builder:1.0" }] },
+  },
+};
+
+// 每个工作组的节点清单（为 twin 界面导航进某工作组拓扑时预置）。
 const buildNodes: NodeInventoryEntry[] = [
   { rigId: "rig_alpha", rigName: "acme-build", logicalId: "lead.coordinator", podId: "pod_lead", podNamespace: "lead", canonicalSessionName: "coordinator@acme-build", nodeKind: "agent", runtime: "claude-code", sessionStatus: "running", startupStatus: "ready", restoreOutcome: "clean", tmuxAttachCommand: "tmux attach -t coordinator", resumeCommand: null, latestError: null, contextUsage: { usedPercentage: 58, remainingPercentage: 42, contextWindowSize: 1000000, availability: "ok", sampledAt: "2025-09-01T01:39:00.000Z", fresh: true }, agentActivity: { state: "running", reason: "tool_use", evidenceSource: "tmux", sampledAt: "2025-09-01T01:39:00.000Z" }, terminalActive: true, hasAssignedWork: true, pendingWorkCount: 2 },
   { rigId: "rig_alpha", rigName: "acme-build", logicalId: "builders.builder2", podId: "pod_builders", podNamespace: "builders", canonicalSessionName: "builder2@acme-build", nodeKind: "agent", runtime: "claude-code", sessionStatus: "running", startupStatus: "ready", restoreOutcome: "clean", tmuxAttachCommand: "tmux attach -t builder2", resumeCommand: null, latestError: null, contextUsage: { usedPercentage: 81, remainingPercentage: 19, contextWindowSize: 1000000, availability: "ok", sampledAt: "2025-09-01T01:39:00.000Z", fresh: true }, agentActivity: { state: "running", reason: "building", evidenceSource: "tmux", sampledAt: "2025-09-01T01:39:00.000Z" }, terminalActive: true, hasAssignedWork: true, pendingWorkCount: 1 },
@@ -48,12 +79,12 @@ export const nodeInventoryByRig: Record<string, NodeInventoryEntry[]> = {
   rig_gamma: [],
 };
 
-// --- Hard surface 1: TOPOLOGY GRAPH (xyflow) ------------------------------------------
-// The daemon /api/rigs/<id>/graph payload. useRigGraph types nodes/edges as unknown[], so
-// this is typed against a local interface mirroring exactly what RigGraph + applyTreeLayout
-// read: node {id, type, parentId, position, data}; edge {id, source, target, data.kind}.
-// Pod membership is by node.parentId (xyflow parent grouping), NOT edges; applyTreeLayout
-// assigns final positions (the {x:0,y:0} here is just the placeholder it overwrites).
+// --- 硬界面 1：拓扑图（xyflow） ------------------------------------------
+// 后台服务 /api/rigs/<id>/graph 负载。useRigGraph 把 nodes/edges 标注为 unknown[]，
+// 因此这里按本地接口标注，精确镜像 RigGraph + applyTreeLayout 读取的内容：
+// node {id, type, parentId, position, data}；edge {id, source, target, data.kind}。
+// pod 归属按 node.parentId（xyflow 父分组），而非边；applyTreeLayout 指派最终位置
+// （这里的 {x:0,y:0} 只是它会覆盖的占位）。
 export interface TwinGraphNode {
   id: string;
   type: "rigNode" | "podGroup";
@@ -94,9 +125,9 @@ export const rigGraphByRig: Record<string, TwinGraph> = {
   rig_gamma: { nodes: [], edges: [] },
 };
 
-// --- Hard surface 2: LIVE NODE DETAILS ------------------------------------------------
-// useNodeDetail key ["rig", rigId, "nodes", logicalId] -> the exported NodeDetailData
-// (strongly typed = drift guard). Keyed "<rigId>::<logicalId>".
+// --- 硬界面 2：实时节点详情 ------------------------------------------------
+// useNodeDetail 键 ["rig", rigId, "nodes", logicalId] -> 导出的 NodeDetailData
+// （强类型 = 漂移守卫）。键为 "<rigId>::<logicalId>"。
 export const nodeDetailByKey: Record<string, NodeDetailData> = {
   "rig_alpha::lead.coordinator": {
     rigId: "rig_alpha",
@@ -112,7 +143,7 @@ export const nodeDetailByKey: Record<string, NodeDetailData> = {
     restoreOutcome: "clean",
     tmuxAttachCommand: "tmux attach -t coordinator",
     resumeCommand: null,
-    recoveryGuidance: { summary: "Healthy — no recovery action needed.", commands: [], notes: ["Last snapshot 2025-09-01T01:40Z"] },
+    recoveryGuidance: { summary: "健康——无需恢复动作。", commands: [], notes: ["最近快照 2025-09-01T01:40Z"] },
     latestError: null,
     model: "claude-opus-4-8",
     agentRef: "agents/coordinator.yaml",
@@ -149,9 +180,8 @@ export const nodeDetailByKey: Record<string, NodeDetailData> = {
   },
 };
 
-// Embedded live-terminal preview. Keyed by sessionName ONLY (the polled `lines` count
-// varies by surface/settings — 100 on node-details — so the fetch stub matches by name and
-// echoes whatever line count was requested; the dummy content is the same regardless).
+// 内嵌实时终端预览。仅按 sessionName 建键（轮询的 `lines` 数随界面/设置变化——
+// 节点详情上是 100——因此 fetch 桩按名匹配并回显所请求的行数；哑内容始终相同）。
 export const sessionPreviewByName: Record<string, NodePreviewResponse> = {
   "coordinator@acme-build": {
     sessionName: "coordinator@acme-build",
@@ -171,36 +201,35 @@ export const sessionPreviewByName: Record<string, NodePreviewResponse> = {
   },
 };
 
-// --- Easy surface: WORKSPACE (/project) -----------------------------------------------
-// useSlices -> /api/slices -> SliceListResponse (exported = drift-guarded). Project missions
-// are derived from these slices (partitionProjectMissions), so this one fixture populates
-// both the slice list and the mission grouping.
+// --- 简易界面：工作区（/project） -----------------------------------------------
+// useSlices -> /api/slices -> SliceListResponse（导出 = 漂移守卫）。项目任务由这些 slice
+// 派生（partitionProjectMissions），因此这一个 fixture 同时填充 slice 列表与任务分组。
 export const sliceList: SliceListResponse = {
   filter: "all",
   totalCount: 4,
   slices: [
-    { name: "EX.1.0.0.01", missionId: "release-1.0.0", displayName: "Seat-scoped post-compaction restore (example)", railItem: "01", status: "done", rawStatus: "merged", qitemCount: 6, hasProofPacket: true, lastActivityAt: "2025-09-01T01:55:00.000Z" },
-    { name: "EX.1.0.0.02", missionId: "release-1.0.0", displayName: "UI digital-twin harness (example)", railItem: "02", status: "active", rawStatus: "building", qitemCount: 4, hasProofPacket: false, lastActivityAt: "2025-09-01T02:05:00.000Z" },
-    { name: "EX.1.0.0.03", missionId: "release-1.0.0", displayName: "Table-view crash fix (example)", railItem: "03", status: "done", rawStatus: "merged", qitemCount: 2, hasProofPacket: true, lastActivityAt: "2025-08-31T23:40:00.000Z" },
-    { name: "EX.1.0.0.04", missionId: "release-1.0.0", displayName: "Security posture consistency (example)", railItem: "04", status: "draft", rawStatus: "scoped", qitemCount: 0, hasProofPacket: false, lastActivityAt: null },
+    { name: "EX.1.0.0.01", missionId: "release-1.0.0", displayName: "席位级压缩后恢复（示例）", railItem: "01", status: "done", rawStatus: "merged", qitemCount: 6, hasProofPacket: true, lastActivityAt: "2025-09-01T01:55:00.000Z" },
+    { name: "EX.1.0.0.02", missionId: "release-1.0.0", displayName: "UI 数字孪生测试架（示例）", railItem: "02", status: "active", rawStatus: "building", qitemCount: 4, hasProofPacket: false, lastActivityAt: "2025-09-01T02:05:00.000Z" },
+    { name: "EX.1.0.0.03", missionId: "release-1.0.0", displayName: "表格视图崩溃修复（示例）", railItem: "03", status: "done", rawStatus: "merged", qitemCount: 2, hasProofPacket: true, lastActivityAt: "2025-08-31T23:40:00.000Z" },
+    { name: "EX.1.0.0.04", missionId: "release-1.0.0", displayName: "安全姿态一致性（示例）", railItem: "04", status: "draft", rawStatus: "scoped", qitemCount: 0, hasProofPacket: false, lastActivityAt: null },
   ],
 };
 
-// --- Easy surface: FOR-YOU (/for-you) — SSE activity events -> feed cards --------------
-// The feed is SSE-driven (useActivityFeed subscribes to /api/events), NOT cache-seed, so the
-// EventSource stub EMITS these. addEvent builds ActivityEvent{type,seq,payload:<whole obj>,
-// createdAt}; classifyEvent maps queue.* by `state` -> action-required / approval / shipped /
-// progress. Loosely typed (SSE payloads are dynamic; the classifier reads them defensively).
+// --- 简易界面：FOR-YOU（/for-you）——SSE 活动事件 -> feed 卡片 --------------
+// feed 由 SSE 驱动（useActivityFeed 订阅 /api/events），而非缓存种子，因此 EventSource
+// 桩发出这些事件。addEvent 构造 ActivityEvent{type,seq,payload:<整个对象>,createdAt}；
+// classifyEvent 按 `state` 把 queue.* 映射为 action-required / approval / shipped / progress。
+// 松散类型（SSE 负载是动态的；分类器防御性读取）。
 export interface TwinFeedEvent { type: string; seq: number; createdAt: string; [key: string]: unknown; }
 export const feedEvents: TwinFeedEvent[] = [
-  { type: "queue.updated", seq: 104, createdAt: "2025-09-01T02:05:00.000Z", summary: "Example item: hardest-first checkpoint delivered", sourceSession: "builder2@acme-build", destinationSession: "coordinator@acme-build", rigId: "rig_alpha", qitemId: "wf-demo-002", state: "in_progress", priority: "routine" },
-  { type: "queue.delivery.closed", seq: 103, createdAt: "2025-09-01T01:55:00.000Z", summary: "Example merge: seat-scoped post-compaction restore", sourceSession: "coordinator@acme-build", rigId: "rig_alpha", qitemId: "wf-demo-001", state: "closed", closureReason: "handed_off_to" },
-  { type: "queue.updated", seq: 102, createdAt: "2025-09-01T01:30:00.000Z", summary: "Ratify request: digital-twin ergonomics proof", sourceSession: "coord@acme-pm", rigId: "rig_alpha", qitemId: "wf-demo-ratify", state: "closeout-pending-ratify", priority: "routine" },
-  { type: "queue.updated", seq: 101, createdAt: "2025-09-01T01:10:00.000Z", summary: "Sign-off needed: example release brief", sourceSession: "coordinator@acme-build", rigId: "rig_alpha", qitemId: "wf-demo-signoff", state: "human-gate", priority: "urgent" },
+  { type: "queue.updated", seq: 104, createdAt: "2025-09-01T02:05:00.000Z", summary: "示例事项：最难优先检查点已交付", sourceSession: "builder2@acme-build", destinationSession: "coordinator@acme-build", rigId: "rig_alpha", qitemId: "wf-demo-002", state: "in_progress", priority: "routine" },
+  { type: "queue.delivery.closed", seq: 103, createdAt: "2025-09-01T01:55:00.000Z", summary: "示例合并：席位级压缩后恢复", sourceSession: "coordinator@acme-build", rigId: "rig_alpha", qitemId: "wf-demo-001", state: "closed", closureReason: "handed_off_to" },
+  { type: "queue.updated", seq: 102, createdAt: "2025-09-01T01:30:00.000Z", summary: "审批请求：数字孪生易用性证明", sourceSession: "coord@acme-pm", rigId: "rig_alpha", qitemId: "wf-demo-ratify", state: "closeout-pending-ratify", priority: "routine" },
+  { type: "queue.updated", seq: 101, createdAt: "2025-09-01T01:10:00.000Z", summary: "需要签核：示例发布简报", sourceSession: "coordinator@acme-build", rigId: "rig_alpha", qitemId: "wf-demo-signoff", state: "human-gate", priority: "urgent" },
 ];
 
-// --- Mission Steering tab surfaces -----------------------------------------------------
-// Panel 1: GET /api/steering -> SteeringPayload (typed = drift guard).
+// --- 任务 Steering 标签页界面 -----------------------------------------------------
+// 面板 1：GET /api/steering -> SteeringPayload（带类型 = 漂移守卫）。
 export const steeringPayload: SteeringPayload = {
   priorityStack: {
     content: [
@@ -212,7 +241,7 @@ export const steeringPayload: SteeringPayload = {
       "- Example directive A.",
       "- Example directive B — visual intent before build.",
       "- Example directive C — human-readable summary on every queue item.",
-      "- Steering is the mission landing — the source directive lives here.",
+      "- 引导页是任务目标的落地页——源指令保存在这里。",
     ].join("\n"),
     absolutePath: "/Users/x/code/workspace/STEERING.md",
     mtime: "2025-09-01T08:00:00.000Z",
@@ -223,13 +252,13 @@ export const steeringPayload: SteeringPayload = {
   unavailableSources: [],
 };
 
-// Panel 2: MISSION_BRIEF.md content (pinned schema — byte-exact headers + order).
+// 面板 2：MISSION_BRIEF.md 内容（固定 schema——字节精确的标题与顺序）。
 export const missionBriefMd = [
   "# release-1.0.0 — Brief (example)",
   "_An example workspace observability brief._",
   "",
   "## What & why",
-  "An example mission brief demonstrating the locked 7-section doctype.",
+  "用于演示已锁定七节文档类型的示例任务简报。",
   "",
   "## Building",
   "Example tabs and surfaces in flight.",
@@ -247,10 +276,10 @@ export const missionBriefMd = [
   "→ MISSION_NOTES.md · → PROGRESS.md · → the Proof tab.",
 ].join("\n");
 
-// --- Artifacts altitude file-navigator ---------------------------------------------
-// GET /api/files/list?root=&path= -> entries per folder (dirs-first, like the daemon).
-// Keyed by the relPath under TWIN_WORKSPACE_ROOT so the navigator's lazy per-folder
-// listing resolves through the twin fetch-stub. mtime/size come straight from here.
+// --- 产物高度 文件导航器 -------------------------------------------------------------
+// GET /api/files/list?root=&path= -> 每个文件夹的条目（目录优先，与后台服务一致）。
+// 按 TWIN_WORKSPACE_ROOT 下的 relPath 建键，使导航器的逐文件夹惰性列举经 twin fetch
+// 桩解析。mtime/size 直接来自这里。
 import type { FileEntry } from "../src/hooks/useFiles.js";
 export const artifactsTreeByPath: Record<string, FileEntry[]> = {
   "missions/release-1.0.0": [

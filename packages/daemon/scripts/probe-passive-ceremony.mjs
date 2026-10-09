@@ -1,6 +1,5 @@
-// Build daemon/CLI/TUI first. Inputs are a sealed normal-evidence export and
-// separately attributed agent responses. No checkpoint/census ingestion occurs.
-// Every write and transport double is confined to a disposable home/listener.
+// 请先构建后台服务、CLI 和 TUI。输入为密封的正常证据导出与单独归因的智能体响应。
+// 不执行检查点/普查摄取。所有写入和传输替身都限制在一次性 home/监听器内。
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -36,7 +35,7 @@ const responsesBytes = readFileSync(process.argv[3]); const responses = JSON.par
 assert.equal(replay.schema, 'openrig.passive-ceremony-replay/v1'); assert.ok(replay.cases.length);
 const output = process.argv[4] ?? mkdtempSync(join(tmpdir(), 'passive-ceremony-results-')); mkdirSync(output, { recursive: true });
 const hash = (x) => createHash('sha256').update(x).digest('hex');
-// SQLite WAL reader marks are transient shared memory; compare DB/WAL and all owned files.
+// SQLite WAL 读取器标记是瞬时共享内存；应比较 DB/WAL 和所有归属文件。
 const disk = (home) => readdirSync(home, { recursive: true, withFileTypes: true }).filter((e) => e.isFile() && e.name !== "openrig.sqlite-shm").map((e) => [join(e.parentPath, e.name), hash(readFileSync(join(e.parentPath, e.name)))]).sort(([a], [b]) => a.localeCompare(b));
 const report = { replaySha256: hash(bytes), responsesSha256: hash(responsesBytes), responseAuthor: responses.author, cases: [] };
 for (const test of replay.cases) {

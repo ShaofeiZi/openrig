@@ -1,9 +1,9 @@
 import type Database from "better-sqlite3";
 
-/** The durable session→node binding (the session-registry precedent: latest sessions row
- *  for the canonical name). Canonical session names (dash form, `review-r2@rig`) and node
- *  logical ids (dotted form, `review.r2`) are INDEPENDENT identities — the live fleet has
- *  zero cases where they match — so resolution NEVER string-converts between them. */
+/** 持久的 session→node 绑定，沿用 session-registry 的先例：取规范名称对应的最新 session
+ *  记录。规范 session 名（短横线形式，如 `review-r2@rig`）与节点 logical id（点分形式，
+ *  如 `review.r2`）是相互独立的身份；线上 fleet 中没有二者相同的情况，因此解析时绝不能
+ *  在它们之间做字符串转换。 */
 export function resolveSessionNodeId(db: Database.Database, session: string): string | null {
   const row = db
     .prepare("SELECT node_id FROM sessions WHERE session_name = ? ORDER BY id DESC LIMIT 1")
@@ -11,10 +11,9 @@ export function resolveSessionNodeId(db: Database.Database, session: string): st
   return row?.node_id ?? null;
 }
 
-/** Default orchestrator derivation: the destination's BOUND node → the source of its
- *  delegates_to edge → that parent node's CURRENT canonical session binding. A session
- *  outside the recorded topology, or a parent with no session binding, resolves to null
- *  (there is no orchestrator session to wake — never synthesize one). */
+/** 默认 orchestrator 推导链：目标的已绑定节点 → 其 delegates_to 边的 source → 该父节点
+ *  当前的规范 session 绑定。若 session 不在已记录拓扑中，或父节点没有 session 绑定，则
+ *  解析为 null；此时没有可唤醒的 orchestrator session，绝不能凭空合成。 */
 export function defaultResolveOrchestrator(db: Database.Database, session: string): string | null {
   const nodeId = resolveSessionNodeId(db, session);
   if (!nodeId) return null;

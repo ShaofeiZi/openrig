@@ -23,7 +23,7 @@ function setupDb(): Database.Database {
   return createFullTestDb();
 }
 
-describe("whoami routes", () => {
+describe("whoami 路由", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -58,7 +58,7 @@ describe("whoami routes", () => {
     return { rig, node, sess };
   }
 
-  it("GET /api/whoami?nodeId=... returns 200 with WhoamiResult", async () => {
+  it("GET /api/whoami?nodeId=... 返回 200 和 WhoamiResult", async () => {
     const { node } = seedRig();
     const app = createApp();
     const res = await app.request(`/api/whoami?nodeId=${node.id}`);
@@ -72,7 +72,7 @@ describe("whoami routes", () => {
     expect(body.commands).toBeDefined();
   });
 
-  it("GET /api/whoami?sessionName=... returns 200", async () => {
+  it("GET /api/whoami?sessionName=... 返回 200", async () => {
     seedRig();
     const app = createApp();
     const res = await app.request("/api/whoami?sessionName=dev-impl@my-rig");
@@ -83,7 +83,7 @@ describe("whoami routes", () => {
     expect(body.identity.logicalId).toBe("dev.impl");
   });
 
-  it("runs the permission observer only for the explicit current-seat diagnostic", async () => {
+  it("只为显式 current-seat 诊断运行 permission observer", async () => {
     const { node } = seedRig();
     const diagnose = vi.fn(() => ({
       transport: { state: "healthy" },
@@ -108,7 +108,7 @@ describe("whoami routes", () => {
     expect(diagnose).toHaveBeenCalledWith(node.id);
   });
 
-  it("GET /api/whoami with no params returns 400", async () => {
+  it("无参数 GET /api/whoami 返回 400", async () => {
     seedRig();
     const app = createApp();
     const res = await app.request("/api/whoami");
@@ -118,19 +118,19 @@ describe("whoami routes", () => {
     expect(body.error).toContain("nodeId");
   });
 
-  it("GET /api/whoami?sessionName=unknown returns 404 with guidance", async () => {
+  it("GET /api/whoami?sessionName=unknown 返回 404 和指引", async () => {
     seedRig();
     const app = createApp();
     const res = await app.request("/api/whoami?sessionName=nonexistent-session");
 
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toContain("not found");
-    expect(body.error).toContain("rig ps");
+    expect(body.error).toContain("找不到会话或节点");
+    expect(body.error).toContain("zrig ps");
   });
 
-  it("GET /api/whoami?sessionName=ambiguous returns 409", async () => {
-    // Two rigs with same session name
+  it("GET /api/whoami?sessionName=ambiguous 返回 409", async () => {
+    // 两个 rig 使用相同 session 名。
     const rig1 = rigRepo.createRig("rig-a");
     const node1 = rigRepo.addNode(rig1.id, "dev.impl", { role: "worker", runtime: "claude-code" });
     sessionRegistry.registerSession(node1.id, "dev-impl@shared");
@@ -144,6 +144,6 @@ describe("whoami routes", () => {
 
     expect(res.status).toBe(409);
     const body = await res.json();
-    expect(body.error).toContain("ambiguous");
+    expect(body.error).toContain("存在歧义");
   });
 });

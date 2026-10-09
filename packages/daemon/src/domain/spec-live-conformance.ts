@@ -1,26 +1,23 @@
 import type { RigSpec } from "./types.js";
 
 /**
- * Build B — spec-vs-live topology conformance.
+ * Build B——spec 与实时拓扑的一致性。
  *
- * A rig spec is consumed as AUTHORITATIVE by everything that recreates or describes a rig
- * (instantiation, `rig validate`, bundle export, pod-bundle vendoring) and is MAINTAINED by nothing
- * that mutates one. `rig expand` adds a pod to a running rig through the daemon; no code path writes
- * the rigRoot spec back. So drift is not an accident to be prevented here — with no writer it is
- * guaranteed — and this module does not try to prevent it.
+ * 任何重建或描述工作组的功能（实例化、`zrig validate`、bundle export、pod-bundle vendoring）
+ * 都把工作组 spec 当作权威来源，但修改工作组的路径没有一个会维护它。`zrig expand` 通过后台服务
+ * 向运行中的工作组添加 pod，却没有代码路径回写 rigRoot spec。因此 drift 并非此处要预防的偶发情况；
+ * 在没有 writer 时它必然发生，本模块不试图阻止。
  *
- * What it does is make the drift SAYABLE at the two moments it causes damage: a bundle export, which
- * copies the spec verbatim and would otherwise ship a smaller rig than the one running, in silence;
- * and an explicit conformance check, which is how a later spec write-back gets VERIFIED instead of
- * eyeballed.
+ * 本模块让 drift 在两个会造成损害的时刻可被明确表达：bundle export 会逐字复制 spec，否则会静默
+ * 发布一个小于实际运行拓扑的工作组；显式一致性检查则让后续 spec 回写真正得到验证，而不是靠目测。
  *
- * REPORTING ONLY. Nothing here mutates a spec or blocks an export.
+ * 仅报告。本模块不修改 spec，也不阻止 export。
  */
 
 export interface Topology {
-  /** Pod ids, e.g. `orch`. */
+  /** Pod id，例如 `orch`。 */
   pods: string[];
-  /** Fully-qualified seat ids, e.g. `orch.lead`. */
+  /** 完全限定的席位 id，例如 `orch.lead`。 */
   seats: string[];
 }
 
@@ -28,23 +25,22 @@ export interface ConformanceResult {
   conforms: boolean;
   spec: { pods: number; seats: number };
   live: { pods: number; seats: number };
-  /** Running but undeclared — what a bundle export would silently DROP. */
+  /** 正在运行但未声明；bundle export 会静默丢弃的内容。 */
   podsMissingFromSpec: string[];
   seatsMissingFromSpec: string[];
-  /** Declared but not running — what a re-instantiation would try to bring up. */
+  /** 已声明但未运行；重新实例化会尝试启动的内容。 */
   podsMissingFromLive: string[];
   seatsMissingFromLive: string[];
   /**
-   * A single actionable line naming the REAL delta, or null when the topologies agree.
+   * 一条点明真实差异的可操作说明；拓扑一致时为 null。
    *
-   * Null-on-conformance is the contract, not an implementation detail. A check that warns every
-   * time trains its reader to skim, and the one export that matters then reads like the ninety-six
-   * before it. Callers may print this whenever it is non-null and print nothing when it is not.
+   * 一致时返回 null 是契约，不是实现细节。每次都警告会让读者养成略读习惯，真正重要的那次 export
+   * 就会和前 96 次一样被忽略。调用方可在非 null 时打印，null 时不输出任何内容。
    */
   message: string | null;
 }
 
-/** Sorted, de-duplicated, blank-free — so ordering never manufactures a delta. */
+/** 排序、去重并移除空白，使顺序本身绝不会制造差异。 */
 function normalize(values: readonly string[]): string[] {
   return Array.from(new Set(values.filter((v) => typeof v === "string" && v.trim() !== ""))).sort();
 }
@@ -83,7 +79,7 @@ export function compareSpecToLive(spec: Topology, live: Topology): ConformanceRe
   };
   if (conforms) return result;
 
-  // Name the actual delta. A generic "topology may differ" is the caution a reader learns to skip.
+  // 点明真实差异；笼统的“拓扑可能不同”只会成为读者习惯跳过的提示。
   const parts = [
     `spec declares ${result.spec.pods} pods/${result.spec.seats} seats; live rig has ${result.live.pods}/${result.live.seats}`,
   ];
@@ -95,7 +91,7 @@ export function compareSpecToLive(spec: Topology, live: Topology): ConformanceRe
   return result;
 }
 
-/** Pods and seats as the SPEC declares them. */
+/** SPEC 声明的 pod 与席位。 */
 export function topologyFromRigSpec(spec: Pick<RigSpec, "pods">): Topology {
   const pods: string[] = [];
   const seats: string[] = [];
@@ -110,9 +106,8 @@ export function topologyFromRigSpec(spec: Pick<RigSpec, "pods">): Topology {
 }
 
 /**
- * Pods and seats as the DAEMON is actually running them, derived from node logical ids
- * (`<pod>.<member>`). Malformed or empty ids are skipped rather than guessed at — an id we cannot
- * parse is not evidence of a pod.
+ * 后台服务实际运行的 pod 与席位，由节点逻辑 id（`<pod>.<member>`）派生。格式错误或空 id
+ * 会被跳过而非猜测；无法解析的 id 不能作为 pod 存在的证据。
  */
 export function topologyFromLiveLogicalIds(logicalIds: readonly (string | null | undefined)[]): Topology {
   const pods: string[] = [];
@@ -130,11 +125,10 @@ export function topologyFromLiveLogicalIds(logicalIds: readonly (string | null |
 }
 
 /**
- * Seats as a LEGACY (v1) spec declares them — a flat `nodes:` list with no pods.
+ * 旧版（v1）spec 声明的席位：没有 pod 的扁平 `nodes:` 列表。
  *
- * A v1 spec exports through the same create endpoint and produces the same confidently-wrong
- * artifact, so it needs the same comparison. It does not need a second comparator: a legacy rig is
- * just a topology with no pod level, and `compareSpecToLive` already handles an empty pod list.
+ * v1 spec 通过同一 create 端点导出，也会生成同样自信却错误的 artifact，因此需要相同比较。
+ * 无需第二个 comparator：旧版工作组只是没有 pod 层级的拓扑，`compareSpecToLive` 已能处理空 pod 列表。
  */
 export function topologyFromLegacyRigSpec(spec: { nodes?: ReadonlyArray<{ id?: unknown }> }): Topology {
   const seats: string[] = [];
@@ -145,13 +139,11 @@ export function topologyFromLegacyRigSpec(spec: { nodes?: ReadonlyArray<{ id?: u
 }
 
 /**
- * Seats as the daemon is running them, read FLAT — the legacy counterpart to
- * `topologyFromLiveLogicalIds`.
+ * 后台服务实际运行的席位，以扁平方式读取；这是 `topologyFromLiveLogicalIds` 的旧版对应实现。
  *
- * For a legacy rig a node's `logical_id` IS the spec's `node.id`; there is no `<pod>.<member>` to
- * split. Reusing the pod-aware reader here would parse every flat id as malformed and report an
- * empty live rig, which reads as "nothing is running" — a false absence, and the most dangerous
- * possible answer for a guard whose whole job is noticing what would be dropped.
+ * 对旧版工作组，节点 `logical_id` 就是 spec 的 `node.id`，不存在可拆分的 `<pod>.<member>`。
+ * 若在此复用 pod-aware reader，会把每个扁平 id 都判成格式错误并报告空的实时工作组，等同于
+ * “没有任何内容运行”的虚假缺失；对职责正是发现将被丢弃内容的守卫而言，这是最危险的答案。
  */
 export function topologyFromLiveNodeIds(logicalIds: readonly (string | null | undefined)[]): Topology {
   const seats: string[] = [];
@@ -163,8 +155,8 @@ export function topologyFromLiveNodeIds(logicalIds: readonly (string | null | un
   return { pods: [], seats };
 }
 
-/** The one-line export banner. Null when there is nothing to say. */
+/** 单行 export 提示；没有需要说明的内容时为 null。 */
 export function bundleExportWarning(result: ConformanceResult): string | null {
   if (result.message === null) return null;
-  return `WARNING: this bundle describes the SPEC, not the live rig — ${result.message}. The bundle will instantiate ${result.spec.pods} pods/${result.spec.seats} seats.`;
+  return `警告：此包描述的是规格，而非实时工作组——${result.message}。该包将实例化 ${result.spec.pods} 个 Pod、${result.spec.seats} 个席位。`;
 }

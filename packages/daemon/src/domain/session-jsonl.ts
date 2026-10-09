@@ -1,15 +1,14 @@
-// Seat-handover boot recap — the shared provider-JSONL role/content reader. Reads a
-// KNOWN provider session-transcript path (claude sidecar `transcript_path` / codex `rollout_path`)
-// into the last-N {role, content} exchanges for the successor's boot recap. DEFENSIVE / honest-degraded
-// by contract: metadata lines, thinking/tool_use-only messages, and unparseable lines carry no user
-// text and are silently skipped; a missing/corrupt file yields [] and NEVER throws (a boot recap must
-// never crash the successor). Ownership: dev-planner ruled this the shared parser (their rig-ask L2
-// only greps raw lines); it may consume this later if L2 upgrades to structured excerpts.
+// 席位交接启动摘要——共享的 provider JSONL role/content 读取器。它读取已知的 provider
+// 会话 transcript 路径（claude sidecar 的 `transcript_path` / codex 的 `rollout_path`），
+// 提取最后 N 条 {role, content} 交互供继任者生成启动摘要。按契约防御性且诚实降级：metadata 行、
+// 只有 thinking/tool_use 的消息以及不可解析行都不含用户文本，会被静默跳过；文件缺失或损坏时
+// 返回 []，绝不抛错，因为启动摘要不能拖垮继任者。归属说明：dev-planner 已裁定这是共享 parser
+//（其 rig-ask L2 只 grep 原始行）；若 L2 将来升级为结构化摘要，可复用本模块。
 //
-// Grounded at source on the real claude-projects line shape:
-//   {type:"user"|"assistant", message:{role, content}} where content is a STRING or an array of
-//   {type:"text"|"thinking"|"tool_use", text?} blocks (only "text" carries user-visible content).
-// Codex rollout lines use {payload:{type:"message", role, content}} — handled by the same reader.
+// 以真实 claude-projects 行形状为依据：
+//   {type:"user"|"assistant", message:{role, content}}，其中 content 是字符串或以下 block 数组：
+//   {type:"text"|"thinking"|"tool_use", text?} block（只有 "text" 携带用户可见内容）。
+// Codex rollout 行使用 {payload:{type:"message", role, content}}，由同一读取器处理。
 import { existsSync, readFileSync } from "node:fs";
 
 export interface JsonlExchange {
@@ -17,8 +16,8 @@ export interface JsonlExchange {
   content: string;
 }
 
-/** Extract the user-visible text from a message `content` field (string, or an array of blocks —
- *  join only the `text` blocks; skip thinking/tool_use). Returns "" when there is no text. */
+/** 从消息 `content` 字段提取用户可见文本。字段可为字符串或 block 数组；只拼接 `text` block，
+ * 跳过 thinking/tool_use。没有文本时返回 ""。 */
 function extractText(content: unknown): string {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
@@ -30,18 +29,18 @@ function extractText(content: unknown): string {
   return "";
 }
 
-/** Interpret ONE parsed JSONL object as an exchange, or null if it carries no user-visible message
- *  (metadata, thinking/tool_use-only, unrecognized shape). */
+/** 把一个已解析 JSONL 对象解释为一次交互；若没有用户可见消息（metadata、只有
+ * thinking/tool_use 或形状无法识别）则返回 null。 */
 function toExchange(obj: unknown): JsonlExchange | null {
   if (!obj || typeof obj !== "object") return null;
   const o = obj as Record<string, unknown>;
-  // claude-projects: {type:"user"|"assistant", message:{role, content}}
+  // claude-projects：{type:"user"|"assistant", message:{role, content}}
   const msg = o.message as { role?: unknown; content?: unknown } | undefined;
   if (msg && typeof msg.role === "string") {
     const content = extractText(msg.content);
     return content.length > 0 ? { role: msg.role, content } : null;
   }
-  // codex rollout: {payload:{type:"message", role, content}}
+  // codex rollout：{payload:{type:"message", role, content}}
   const payload = o.payload as { type?: unknown; role?: unknown; content?: unknown } | undefined;
   if (payload && payload.type === "message" && typeof payload.role === "string") {
     const content = extractText(payload.content);
@@ -51,8 +50,8 @@ function toExchange(obj: unknown): JsonlExchange | null {
 }
 
 /**
- * Parse a provider session JSONL at `path` into the LAST `n` {role, content} exchanges (bounded recap).
- * Honest-degraded: missing/unreadable file → []; unparseable/metadata/text-less lines are skipped.
+ * 把 `path` 处的 provider 会话 JSONL 解析为最后 `n` 条 {role, content} 交互（有界摘要）。
+ * 诚实降级：文件缺失/不可读时返回 []；不可解析、metadata 或无文本的行会被跳过。
  */
 export function parseJsonlExchanges(path: string, n: number): JsonlExchange[] {
   if (!existsSync(path)) return [];
@@ -69,7 +68,7 @@ export function parseJsonlExchanges(path: string, n: number): JsonlExchange[] {
     try {
       obj = JSON.parse(line);
     } catch {
-      continue; // corrupt line — skip, never throw
+      continue; // 损坏行直接跳过，绝不抛错。
     }
     const ex = toExchange(obj);
     if (ex) exchanges.push(ex);

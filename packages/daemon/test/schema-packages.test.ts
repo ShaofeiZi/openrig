@@ -11,7 +11,7 @@ function setupDb(): Database.Database {
   return db;
 }
 
-describe("P4-T00: Package storage schema", () => {
+describe("P4-T00：软件包存储 schema", () => {
   let db: Database.Database;
 
   beforeEach(() => {
@@ -22,8 +22,8 @@ describe("P4-T00: Package storage schema", () => {
     db.close();
   });
 
-  // Test 1: packages table has all specified columns
-  it("packages table has all specified columns", () => {
+  // 测试 1：packages 表包含全部指定列
+  it("packages 表包含全部指定列", () => {
     const cols = db.pragma("table_info(packages)") as Array<{ name: string }>;
     const names = cols.map((c) => c.name);
     expect(names).toContain("id");
@@ -36,8 +36,8 @@ describe("P4-T00: Package storage schema", () => {
     expect(names).toContain("created_at");
   });
 
-  // Test 2: package_installs table has all columns
-  it("package_installs table has all columns including lifecycle timestamps", () => {
+  // 测试 2：package_installs 表包含全部列
+  it("package_installs 表包含生命周期时间戳在内的全部列", () => {
     const cols = db.pragma("table_info(package_installs)") as Array<{ name: string }>;
     const names = cols.map((c) => c.name);
     expect(names).toContain("id");
@@ -51,8 +51,8 @@ describe("P4-T00: Package storage schema", () => {
     expect(names).toContain("rolled_back_at");
   });
 
-  // Test 3: install_journal table has all columns
-  it("install_journal table has all columns including hashes", () => {
+  // 测试 3：install_journal 表包含全部列
+  it("install_journal 表包含哈希在内的全部列", () => {
     const cols = db.pragma("table_info(install_journal)") as Array<{ name: string }>;
     const names = cols.map((c) => c.name);
     expect(names).toContain("id");
@@ -68,8 +68,8 @@ describe("P4-T00: Package storage schema", () => {
     expect(names).toContain("created_at");
   });
 
-  // Test 4: Insert package → query by name+version
-  it("insert package and query by name+version", () => {
+  // 测试 4：插入软件包 → 按 name+version 查询
+  it("插入软件包并按 name+version 查询", () => {
     db.prepare(
       "INSERT INTO packages (id, name, version, source_kind, source_ref, manifest_hash) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("pkg-1", "test-pkg", "1.0.0", "local_path", "/tmp/pkg", "abc123");
@@ -82,8 +82,8 @@ describe("P4-T00: Package storage schema", () => {
     expect(row.version).toBe("1.0.0");
   });
 
-  // Test 5: Insert install → query by package_id
-  it("insert install and query by package_id", () => {
+  // 测试 5：插入安装记录 → 按 package_id 查询
+  it("插入安装记录并按 package_id 查询", () => {
     db.prepare(
       "INSERT INTO packages (id, name, version, source_kind, source_ref, manifest_hash) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("pkg-1", "test-pkg", "1.0.0", "local_path", "/tmp/pkg", "abc123");
@@ -100,8 +100,8 @@ describe("P4-T00: Package storage schema", () => {
     expect(rows[0]!.status).toBe("planned");
   });
 
-  // Test 6: Insert journal entry → query by install_id
-  it("insert journal entry and query by install_id", () => {
+  // 测试 6：插入 journal 条目 → 按 install_id 查询
+  it("插入 journal 条目并按 install_id 查询", () => {
     db.prepare(
       "INSERT INTO packages (id, name, version, source_kind, source_ref, manifest_hash) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("pkg-1", "test-pkg", "1.0.0", "local_path", "/tmp/pkg", "abc123");
@@ -121,8 +121,8 @@ describe("P4-T00: Package storage schema", () => {
     expect(rows[0]!.after_hash).toBe("def456");
   });
 
-  // Test 7: UNIQUE constraint on packages(name, version)
-  it("UNIQUE constraint on packages(name, version)", () => {
+  // 测试 7：packages(name, version) 的 UNIQUE 约束
+  it("packages(name, version) 的 UNIQUE 约束", () => {
     db.prepare(
       "INSERT INTO packages (id, name, version, source_kind, source_ref, manifest_hash) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("pkg-1", "test-pkg", "1.0.0", "local_path", "/tmp/pkg", "abc123");
@@ -134,8 +134,8 @@ describe("P4-T00: Package storage schema", () => {
     }).toThrow(/UNIQUE/);
   });
 
-  // Test 8: Package delete with existing installs → FK error, install row survives
-  it("package delete with existing installs throws FK error and install survives", () => {
+  // 测试 8：删除仍有安装记录的软件包 → 外键错误，安装行保留
+  it("删除仍有安装记录的软件包会抛出外键错误，且安装行保留", () => {
     db.prepare(
       "INSERT INTO packages (id, name, version, source_kind, source_ref, manifest_hash) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("pkg-1", "test-pkg", "1.0.0", "local_path", "/tmp/pkg", "abc123");
@@ -147,27 +147,27 @@ describe("P4-T00: Package storage schema", () => {
       db.prepare("DELETE FROM packages WHERE id = ?").run("pkg-1");
     }).toThrow(/FOREIGN KEY/);
 
-    // Install row must survive
+    // 安装行必须保留
     const install = db.prepare("SELECT * FROM package_installs WHERE id = ?").get("inst-1");
     expect(install).toBeDefined();
   });
 
-  // Test 9: idx_installs_package index exists
-  it("idx_installs_package index exists on package_installs", () => {
+  // 测试 9：idx_installs_package 索引存在
+  it("package_installs 上存在 idx_installs_package 索引", () => {
     const indexes = db.pragma("index_list(package_installs)") as Array<{ name: string }>;
     const names = indexes.map((i) => i.name);
     expect(names).toContain("idx_installs_package");
   });
 
-  // Test 10: idx_journal_install index exists
-  it("idx_journal_install index exists on install_journal", () => {
+  // 测试 10：idx_journal_install 索引存在
+  it("install_journal 上存在 idx_journal_install 索引", () => {
     const indexes = db.pragma("index_list(install_journal)") as Array<{ name: string }>;
     const names = indexes.map((i) => i.name);
     expect(names).toContain("idx_journal_install");
   });
 
-  // Test 11: FK — insert install with nonexistent package_id fails
-  it("insert install with nonexistent package_id throws FK error", () => {
+  // 测试 11：外键——插入引用不存在 package_id 的安装记录会失败
+  it("插入引用不存在 package_id 的安装记录会抛出外键错误", () => {
     expect(() => {
       db.prepare(
         "INSERT INTO package_installs (id, package_id, target_root, scope) VALUES (?, ?, ?, ?)"
@@ -175,8 +175,8 @@ describe("P4-T00: Package storage schema", () => {
     }).toThrow(/FOREIGN KEY/);
   });
 
-  // Test 12: FK — insert journal with nonexistent install_id fails
-  it("insert journal with nonexistent install_id throws FK error", () => {
+  // 测试 12：外键——插入引用不存在 install_id 的 journal 会失败
+  it("插入引用不存在 install_id 的 journal 会抛出外键错误", () => {
     expect(() => {
       db.prepare(
         "INSERT INTO install_journal (id, install_id, seq, action, export_type, classification, target_path) VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -184,9 +184,9 @@ describe("P4-T00: Package storage schema", () => {
     }).toThrow(/FOREIGN KEY/);
   });
 
-  // Test 13: Startup wiring — createDaemon applies 008/009
-  it("createDaemon creates packages + package_installs + install_journal tables", async () => {
-    // Close the test DB — we'll use createDaemon's own DB
+  // 测试 13：启动接线——createDaemon 应用 008/009
+  it("createDaemon 创建 packages、package_installs 和 install_journal 表", async () => {
+    // 关闭测试数据库——接下来使用 createDaemon 自己的数据库
     db.close();
 
     const { createDaemon } = await import("../src/startup.js");
@@ -206,15 +206,15 @@ describe("P4-T00: Package storage schema", () => {
     }
   });
 
-  // Test 14: install_journal has seq column after 010
-  it("install_journal has seq column", () => {
+  // 测试 14：应用 010 后 install_journal 包含 seq 列
+  it("install_journal 包含 seq 列", () => {
     const cols = db.pragma("table_info(install_journal)") as Array<{ name: string }>;
     const names = cols.map((c) => c.name);
     expect(names).toContain("seq");
   });
 
-  // Test 15: UNIQUE(install_id, seq) constraint on install_journal
-  it("UNIQUE(install_id, seq) constraint enforced", () => {
+  // 测试 15：install_journal 上的 UNIQUE(install_id, seq) 约束
+  it("强制执行 UNIQUE(install_id, seq) 约束", () => {
     db.prepare("INSERT INTO packages (id, name, version, source_kind, source_ref, manifest_hash) VALUES (?, ?, ?, ?, ?, ?)").run("p1", "pkg", "1.0.0", "local_path", "/p", "h");
     db.prepare("INSERT INTO package_installs (id, package_id, target_root, scope) VALUES (?, ?, ?, ?)").run("i1", "p1", "/repo", "project_shared");
     db.prepare("INSERT INTO install_journal (id, install_id, seq, action, export_type, classification, target_path) VALUES (?, ?, ?, ?, ?, ?, ?)").run("j1", "i1", 1, "copy", "skill", "safe_projection", "/t1");
@@ -224,8 +224,8 @@ describe("P4-T00: Package storage schema", () => {
     }).toThrow(/UNIQUE/);
   });
 
-  // Test 16: createDaemon applies 010 (seq column present via startup)
-  it("createDaemon applies 010 migration (seq column in install_journal)", async () => {
+  // 测试 16：createDaemon 应用 010（启动后 install_journal 中存在 seq 列）
+  it("createDaemon 应用 010 迁移（install_journal 中存在 seq 列）", async () => {
     db.close();
     const { createDaemon } = await import("../src/startup.js");
     const { db: daemonDb } = await createDaemon({ dbPath: ":memory:" });

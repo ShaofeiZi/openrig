@@ -1,0 +1,68 @@
+{
+  "batch": "scripts-comment-batch1",
+  "total": 12,
+  "changed": 7,
+  "nochange": 5,
+  "files": [
+    {
+      "change_scope": "changed",
+      "path": "scripts/check-cli-daemon-freshness.test.mjs",
+      "sha": "0404f971d56dabf7"
+    },
+    {
+      "change_scope": "changed",
+      "path": "scripts/check-docs-guard.test.mjs",
+      "sha": "eb1e2eeac83db151"
+    },
+    {
+      "change_scope": "changed",
+      "path": "scripts/check-packing.test.mjs",
+      "sha": "7befc77ede14bfa8"
+    },
+    {
+      "change_scope": "changed",
+      "path": "scripts/gate-lane-run.test.mjs",
+      "sha": "8f7db0e42b55b22f"
+    },
+    {
+      "change_scope": "changed",
+      "path": "scripts/generate-context-packs.test.mjs",
+      "sha": "3ed8d64ab09e038f"
+    },
+    {
+      "change_scope": "changed",
+      "path": "scripts/mirror-skills.test.mjs",
+      "sha": "25646af88ddc4ebb"
+    },
+    {
+      "change_scope": "changed",
+      "path": "scripts/testbed-dockerfile.test.mjs",
+      "sha": "1f30a0b5def2c1ce"
+    },
+    {
+      "change_scope": "nochange",
+      "path": "scripts/bootstrap-product-factory-vps.sh",
+      "sha": "179ad31909d705ac"
+    },
+    {
+      "change_scope": "nochange",
+      "path": "scripts/build-package.sh",
+      "sha": "956325bcfb0e39b3"
+    },
+    {
+      "change_scope": "nochange",
+      "path": "scripts/generate-context-packs.mjs",
+      "sha": "008b4135baddac9f"
+    },
+    {
+      "change_scope": "nochange",
+      "path": "scripts/testbed-build-inputs.test.mjs",
+      "sha": "520462cff13a6c1d"
+    },
+    {
+      "change_scope": "nochange",
+      "path": "scripts/testbed-emit-manifest.mjs",
+      "sha": "fd55aed8eaf0de3b"
+    }
+  ]
+}

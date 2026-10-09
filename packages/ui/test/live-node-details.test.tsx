@@ -13,8 +13,8 @@ import { createMockEventSourceClass, instances } from "./helpers/mock-event-sour
 const mockFetch = vi.fn();
 let OriginalEventSource: typeof EventSource | undefined;
 
-// V0.3.1 slice 25 — seat detail page now uses a 2-tab Overview +
-// Details layout. Tests target the new structure.
+// V0.3.1 slice 25 —— 席位详情页现已采用“概览 + 详情”双标签布局。
+// 本测试针对新结构。
 const NODE_DETAIL = {
   rigId: "rig-1", rigName: "test-rig", logicalId: "dev.impl", podId: "dev",
   canonicalSessionName: "dev-impl@test-rig", nodeKind: "agent", runtime: "claude-code",
@@ -70,7 +70,7 @@ const INFRA_DETAIL = {
   compactSpec: { name: null, version: null, profile: null, skillCount: 0, guidanceCount: 0 },
 };
 
-describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
+describe("LiveNodeDetails（slice 25 概览 + 详情）", () => {
   beforeEach(() => {
     OriginalEventSource = globalThis.EventSource;
     globalThis.EventSource = createMockEventSourceClass() as unknown as typeof EventSource;
@@ -94,7 +94,7 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
       if (typeof url === "string" && url.includes("/nodes/")) {
         return { ok: true, json: async () => detail };
       }
-      // Library calls return empty
+      // 库调用返回空
       if (typeof url === "string" && url.includes("/api/specs/library")) {
         return { ok: true, json: async () => [] };
       }
@@ -135,22 +135,21 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     return <div data-testid="activity-warmup" />;
   }
 
-  // HG-1 — default tab is Overview.
-  it("HG-1: default tab is Overview on landing", async () => {
+  // HG-1 —— 默认标签为概览。
+  it("HG-1：进入时默认标签为概览", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
 
     const overviewTab = await screen.findByTestId("live-tab-overview");
     expect(overviewTab.getAttribute("aria-selected")).toBe("true");
     expect(screen.getByTestId("live-overview-section")).toBeDefined();
-    // Details exists but is not active on first paint.
+    // 详情标签存在，但首次绘制时未激活。
     const detailsTab = screen.getByTestId("live-tab-details");
     expect(detailsTab.getAttribute("aria-selected")).toBe("false");
   });
 
-  // HG-7 — Terminal tab no longer exists; identity / agent-spec /
-  // startup / transcript tabs no longer exist as named tabs either.
-  it("HG-7: legacy 5-tab structure is gone — only overview + details remain", async () => {
+  // HG-7 —— 终端标签不再存在；身份/智能体规格/启动/会话记录标签也不再作为具名标签存在。
+  it("HG-7：旧 5 标签结构已移除——仅余概览 + 详情", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
     await screen.findByTestId("live-tab-overview");
@@ -164,14 +163,12 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     expect(screen.getByTestId("live-tab-details")).toBeDefined();
   });
 
-  // HG-2 (follow-on-2) — Overview stack order: notification banner
-  // (optional, real-alert-only) -> info table -> secondary (cwd +
-  // current-work) -> inline terminal -> recent events (at bottom).
-  // LiveNodeCurrentState is REMOVED. Order asserted via
-  // compareDocumentPosition between always-rendered elements.
-  it("HG-2: Overview tab DOM order is notification -> table -> secondary -> terminal -> recent events", async () => {
-    // Inject a startupStatus that surfaces the notification banner so
-    // the assertion covers the full 5-element order.
+  // HG-2（follow-on-2）——概览堆叠顺序：通知横幅（可选，仅真实告警）
+  // -> 信息表 -> 次区块（cwd + 当前工作）-> 内联终端 -> 最近事件（底部）。
+  // LiveNodeCurrentState 已移除。顺序通过始终渲染元素间的
+  // compareDocumentPosition 断言。
+  it("HG-2：概览标签 DOM 顺序为 通知 -> 表 -> 次区块 -> 终端 -> 最近事件", async () => {
+    // 注入一个能浮现通知横幅的 startupStatus，使断言覆盖完整 5 元素顺序。
     mockNodeDetail({
       ...NODE_DETAIL,
       startupStatus: "attention_required",
@@ -193,20 +190,18 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     expect(secondary.compareDocumentPosition(terminal)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(terminal.compareDocumentPosition(events)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 
-    // LiveNodeCurrentState no longer mounts inside Overview (follow-on-1
-    // invariant preserved).
+    // LiveNodeCurrentState 不再挂载在概览内（保留 follow-on-1 不变量）。
     expect(screen.queryByTestId("live-node-current-state")).toBeNull();
   });
 
-  // HG-1 (follow-on-2) — info table renders column-headers + single
-  // data row for 7 fields. The "OVERVIEW" section header row is
-  // removed; column headers are the first row.
-  it("HG-1: info table renders column-headers + single data row (7 fields); no OVERVIEW row", async () => {
+  // HG-1（follow-on-2）——信息表渲染列头 + 单行数据，共 7 字段。
+  // “OVERVIEW”分区头行已移除；列头即首行。
+  it("HG-1：信息表渲染列头 + 单行数据（7 字段）；无 OVERVIEW 行", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
     const table = await screen.findByTestId("seat-overview-table");
 
-    // 7 column headers
+    // 7 个列头
     const headerRow = screen.getByTestId("seat-overview-header-row");
     expect(headerRow).toBeDefined();
     expect(screen.getByTestId("seat-overview-header-runtime")).toBeDefined();
@@ -217,39 +212,38 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     expect(screen.getByTestId("seat-overview-header-context-percent")).toBeDefined();
     expect(screen.getByTestId("seat-overview-header-total-tokens")).toBeDefined();
 
-    // HG-6 (follow-on-2): header label is "tokens" not "total tokens".
-    expect(screen.getByTestId("seat-overview-header-total-tokens").textContent).toBe("tokens");
+    // HG-6（follow-on-2）：列头标签为“令牌数”而非“总令牌数”。
+    expect(screen.getByTestId("seat-overview-header-total-tokens").textContent).toBe("令牌数");
 
     const dataRow = screen.getByTestId("seat-overview-data-row");
     expect(dataRow.getAttribute("data-row-shape")).toBe("data");
 
-    // HG-3 (follow-on-2) section-header row removed — no element with
-    // "OVERVIEW" / "Overview" as its only content inside the table.
+    // HG-3（follow-on-2）分区头行已移除——表内没有以
+    // “OVERVIEW”/“Overview”为唯一内容的元素。
     const tableText = table.textContent ?? "";
-    // The activity COLUMN may show "active" but the legacy section
-    // header was the string "Overview" as standalone div text.
+    // 活动列可能显示“active”，但旧分区头是独立 div 文本“Overview”。
     expect(tableText.toLowerCase()).not.toContain("overview");
 
-    // HG-5 (follow-on-2) cwd + current-work moved OUT of the table.
-    // No full-width rows inside the column table anymore.
+    // HG-5（follow-on-2）cwd + 当前工作移出表。
+    // 列表格内不再有整行宽的行。
     expect(screen.queryByTestId("seat-overview-row-cwd")).toBeNull();
     expect(screen.queryByTestId("seat-overview-row-current-work")).toBeNull();
 
-    // Data-cell content reads from NodeDetailData fields.
+    // 数据格内容取自 NodeDetailData 字段。
     expect(screen.getByTestId("seat-overview-cell-model").textContent).toContain("opus");
     expect(screen.getByTestId("seat-overview-cell-profile").textContent).toContain("default");
     expect(screen.getByTestId("seat-overview-cell-spec").textContent).toContain("impl@1.0.0");
     expect(screen.getByTestId("seat-overview-cell-context-percent").textContent).toContain("42%");
   });
 
-  // HG-4 (follow-on-2) — vertical grid lines between column cells.
-  // Every column cell except the last carries `border-r border-outline-variant`.
-  it("HG-4: column cells have vertical grid lines (border-r between columns)", async () => {
+  // HG-4（follow-on-2）——列格之间的垂直网格线。
+  // 除最后一格外每个列格都带 `border-r border-outline-variant`。
+  it("HG-4：列格有垂直网格线（列间 border-r）", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
     await screen.findByTestId("seat-overview-table");
 
-    // Header cells (first 6 of 7 carry border-r; last does not).
+    // 列头（7 个中前 6 个带 border-r；最后一个不带）。
     const headers = [
       "runtime",
       "model",
@@ -263,10 +257,10 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
       expect(cell.className).toContain("border-r");
       expect(cell.className).toContain("border-outline-variant");
     }
-    // Last header (tokens) — no trailing border-r.
+    // 最后一个列头（令牌数）——无尾部 border-r。
     expect(screen.getByTestId("seat-overview-header-total-tokens").className).not.toContain("border-r");
 
-    // Data cells mirror.
+    // 数据格同理。
     for (const key of headers) {
       const cell = screen.getByTestId(`seat-overview-cell-${key}`);
       expect(cell.className).toContain("border-r");
@@ -275,44 +269,42 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     expect(screen.getByTestId("seat-overview-cell-total-tokens").className).not.toContain("border-r");
   });
 
-  // HG-5 (follow-on-2) — cwd + current-work moved into a separate
-  // primitive below the column table; not via colSpan inside the
-  // same table.
-  it("HG-5: cwd + current-work render in a separate primitive (seat-overview-secondary)", async () => {
+  // HG-5（follow-on-2）——cwd + 当前工作移入列表格下方的独立
+  // 原语；不是同一表内的 colSpan。
+  it("HG-5：cwd + 当前工作渲染在独立原语（seat-overview-secondary）中", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
 
     const secondary = await screen.findByTestId("seat-overview-secondary");
     expect(secondary).toBeDefined();
-    // Separate primitive — distinct from the column table.
+    // 独立原语——与列表格不同。
     const table = screen.getByTestId("seat-overview-table");
     expect(table.contains(secondary)).toBe(false);
     expect(secondary.contains(table)).toBe(false);
 
-    // Rows present inside the secondary primitive.
+    // 次区块内出现各行。
     expect(screen.getByTestId("seat-overview-secondary-row-cwd")).toBeDefined();
     expect(screen.getByTestId("seat-overview-secondary-row-current-work")).toBeDefined();
   });
 
-  // HG-3a — activity row wires to data.agentActivity via
-  // getActivityState (the SAME helper LiveNodeCurrentState uses; the
-  // SAME source the topology baseline reads). When agentActivity.state
-  // is "running", the cell shows label "active" matching topology
-  // graph/table naming.
-  it("HG-3a: activity row wires live and shows 'active' for state=running with shimmer", async () => {
+  // HG-3a —— 活动行经 getActivityState 接到 data.agentActivity
+  // （与 LiveNodeCurrentState 用同一 helper；与拓扑基线读取同一来源）。
+  // agentActivity.state 为 "running" 时，格子显示标签 "active"，
+  // 与拓扑图/表命名一致。
+  it("HG-3a：活动行实时接线，state=running 时显示“active”并带微光", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
     await screen.findByTestId("seat-overview-table");
 
     const cell = screen.getByTestId("seat-overview-cell-activity");
-    expect(cell.textContent?.trim()).toContain("active");
+    expect(cell.textContent?.trim()).toContain("活动中");
     const stateEl = screen.getByTestId("seat-overview-activity-state");
     expect(stateEl.getAttribute("data-activity-state")).toBe("active");
-    // HG-3c shimmer reuse: slice-14 shimmer class applied on active.
+    // HG-3c 微光复用：active 时套用 slice-14 的微光类。
     expect(stateEl.className).toContain("topology-table-active-shimmer");
   });
 
-  it("HG-3a: activity row shows 'idle' label and NO shimmer when agentActivity.state=idle", async () => {
+  it("HG-3a：agentActivity.state=idle 时活动行显示“idle”且无微光", async () => {
     mockNodeDetail({
       ...NODE_DETAIL,
       agentActivity: { ...NODE_DETAIL.agentActivity, state: "idle" },
@@ -327,7 +319,7 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     expect(stateEl.className).not.toContain("topology-table-active-shimmer");
   });
 
-  it("HG-3a: seat page reuses recent topology activity across graph/table -> seat navigation", async () => {
+  it("HG-3a：席位页在 图/表 -> 席位 导航间复用最近拓扑活动", async () => {
     const warmup = render(<TopologyActivityWarmup />);
     await waitFor(() => {
       expect(instances).toHaveLength(1);
@@ -352,15 +344,14 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     });
     renderDetails();
     const stateEl = await screen.findByTestId("seat-overview-activity-state");
-    expect(stateEl.textContent).toBe("active");
+    expect(stateEl.textContent).toBe("活动中");
     expect(stateEl.getAttribute("data-activity-state")).toBe("active");
     expect(stateEl.getAttribute("data-activity-source")).toBe("ring");
     expect(stateEl.className).toContain("topology-table-active-shimmer");
   });
 
-  // HG-3b (follow-on-2) — current-work wires live in the secondary
-  // primitive below the column table.
-  it("HG-3b: current-work cell wires live and surfaces the in-progress qitem", async () => {
+  // HG-3b（follow-on-2）——当前工作在行次区块实时接线。
+  it("HG-3b：当前工作格实时接线，浮现进行中的 qitem", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
     await screen.findByTestId("seat-overview-secondary");
@@ -369,7 +360,7 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     expect(cell.textContent).toContain("Implement PL-019 edge activity pulse");
   });
 
-  it("HG-3b: current-work cell renders em-dash when no in-progress qitem", async () => {
+  it("HG-3b：无进行中 qitem 时当前工作格显示破折号", async () => {
     mockNodeDetail({ ...NODE_DETAIL, currentQitems: [] });
     renderDetails();
     await screen.findByTestId("seat-overview-secondary");
@@ -377,62 +368,56 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     expect(cell.textContent).toContain("—");
   });
 
-  // HG-3d (follow-on-2) — cwd renders in the secondary primitive
-  // with truncate + title tooltip on the row.
-  it("HG-3d: cwd renders in the secondary primitive with truncate + tooltip", async () => {
+  // HG-3d（follow-on-2）——cwd 在次区块中渲染，行上带截断 + 悬停提示。
+  it("HG-3d：cwd 在次区块中渲染，带截断 + 提示", async () => {
     const longCwd = "/Users/example/very/long/workspace/path/that/should/truncate/at/the/end";
     mockNodeDetail({ ...NODE_DETAIL, cwd: longCwd });
     renderDetails();
     const row = await screen.findByTestId("seat-overview-secondary-row-cwd");
     expect(row.getAttribute("title")).toBe(longCwd);
     const cell = screen.getByTestId("seat-overview-secondary-cell-cwd");
-    // The cell carries the truncate class so the cwd doesn't overflow.
+    // 该格带 truncate 类，使 cwd 不溢出。
     expect(cell.className).toContain("truncate");
   });
 
-  // HG-4 (preserved) — model graceful absence: column cell shows
-  // em-dash, NOT "undefined". The header row remains; the model cell
-  // in the data row carries the placeholder.
-  it("HG-4: model cell renders em-dash gracefully when model field is absent", async () => {
+  // HG-4（保留）——模型优雅缺失：列表格显示破折号，而非 "undefined"。
+  // 列头行保留；数据行中的模型格承载占位。
+  it("HG-4：model 字段缺失时模型格优雅显示破折号", async () => {
     mockNodeDetail({ ...NODE_DETAIL, model: null });
     renderDetails();
     await screen.findByTestId("seat-overview-table");
 
-    // Header row still present for model.
+    // 模型列头仍在。
     expect(screen.getByTestId("seat-overview-header-model")).toBeDefined();
-    // Data cell carries placeholder, not literal "undefined".
+    // 数据格承载占位，而非字面 "undefined"。
     const modelCell = screen.getByTestId("seat-overview-cell-model");
     expect(modelCell).toBeDefined();
     expect(modelCell.textContent).not.toContain("undefined");
     expect(modelCell.textContent).toContain("—");
   });
 
-  // HG-5 — black-glass terminal renders inline in Overview (not in a
-  // separate tab). The terminal shell wrapper carries the black-glass
-  // chrome class. OPR.0.4.0.1 (round-two QA ruling): the inline terminal now
-  // uses the reusable progressive default-static -> click-inside-to-go-live
-  // ProgressiveTerminal under the global live-terminal cap, so on open it shows
-  // the STATIC preview -- NOT an immediate always-live FocusedTerminal/WebSocket.
-  it("HG-5: black-glass terminal renders inline in Overview (progressive default-static)", async () => {
+  // HG-5 —— 黑玻终端内联渲染在概览中（不在独立标签）。终端壳带黑玻
+  // chrome 类。OPR.0.4.0.1（二轮 QA 裁定）：内联终端现复用全局 live-terminal
+  // 限额下的渐进式 default-static -> 点入转活 ProgressiveTerminal，
+  // 故打开时显示静态预览——而非立即常驻的 FocusedTerminal/WebSocket。
+  it("HG-5：黑玻终端内联渲染在概览中（渐进 default-static）", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
     const terminalShell = await screen.findByTestId("live-terminal-shell");
     expect(terminalShell.className).toContain("bg-stone-950/65");
-    // Default-static: the ProgressiveTerminal static trigger is present...
+    // Default-static：ProgressiveTerminal 静态触发器出现……
     await screen.findByTestId("node-detail-terminal-static");
-    // ...and NO live xterm/WebSocket terminal is mounted on open.
+    // ……且打开时未挂载常驻 xterm/WebSocket 终端。
     expect(screen.queryByTestId(`focused-terminal-${NODE_DETAIL.canonicalSessionName}`)).toBeNull();
-    // The terminal sits inside the Overview section, NOT a separate
-    // tab body. The Overview section wraps it.
+    // 终端位于概览段落内，而非独立标签体。概览段落包裹它。
     const overview = screen.getByTestId("live-overview-section");
     expect(overview.contains(terminalShell)).toBe(true);
   });
 
-  // HG-6 (follow-on) — Details tab re-ordered. New top-to-bottom
-  // order: Startup → AgentSpec → Edges → Peers → (Context usage) →
-  // Transcript. Asserted via DOM order between always-rendered
-  // section testids.
-  it("HG-6: Details tab order is Startup -> Spec/Topology (AgentSpec + Edges + Peers) -> Transcript", async () => {
+  // HG-6（follow-on）——详情标签重排。新的自上而下顺序：
+  // 启动 → 智能体规格 → 边 → 对等 →（上下文用量）→ 会话记录。
+  // 通过始终渲染段落 testid 间的 DOM 顺序断言。
+  it("HG-6：详情标签顺序为 启动 -> 规格/拓扑（智能体规格 + 边 + 对等）-> 会话记录", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
     fireEvent.click(await screen.findByTestId("live-tab-details"));
@@ -451,14 +436,12 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     expect(edges.compareDocumentPosition(peers)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(peers.compareDocumentPosition(transcript)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 
-    // PreviewPane is intentionally absent from Startup (terminal lives
-    // in Overview; preserved invariant from the slice-25 baseline).
+    // PreviewPane 刻意不在启动段（终端在概览中；保留 slice-25 基线不变量）。
     expect(screen.queryByTestId("live-node-preview")).toBeNull();
   });
 
-  // HG-3 (follow-on) — Notification banner renders only when an
-  // active message exists; nothing renders otherwise.
-  it("HG-3: notification banner renders when latestError + attention_required is set", async () => {
+  // HG-3（follow-on）——仅当存在活动消息时才渲染通知横幅；否则不渲染。
+  it("HG-3：设置了 latestError + attention_required 时渲染通知横幅", async () => {
     mockNodeDetail({
       ...NODE_DETAIL,
       startupStatus: "attention_required",
@@ -472,12 +455,12 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     renderDetails();
     const banner = await screen.findByTestId("seat-notification-banner");
     expect(banner.getAttribute("data-startup-status")).toBe("attention_required");
-    expect(screen.getByTestId("seat-notification-headline").textContent).toContain("Attention required");
+    expect(screen.getByTestId("seat-notification-headline").textContent).toContain("需要关注");
     expect(screen.getByTestId("seat-notification-error").textContent).toContain("Synthetic test error");
     expect(screen.getByTestId("seat-notification-guidance").textContent).toContain("Synthetic guidance summary");
   });
 
-  it("HG-3: notification banner does NOT render when no active message", async () => {
+  it("HG-3：无活动消息时不渲染通知横幅", async () => {
     mockNodeDetail({
       ...NODE_DETAIL,
       startupStatus: "ready",
@@ -489,13 +472,11 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     expect(screen.queryByTestId("seat-notification-banner")).toBeNull();
   });
 
-  // HG-2 (follow-on-2 critical) — banner does NOT render when only
-  // generic recoveryGuidance is present (no failed / attention_required
-  // / latestError). recoveryGuidance is documentation of recovery
-  // steps, NOT an alert. The follow-on-1 banner triggered on guidance
-  // alone, producing false alerts on every normal seat; this test
-  // guards that regression class.
-  it("HG-2: notification banner does NOT render for normal seat with generic recoveryGuidance only", async () => {
+  // HG-2（follow-on-2 关键）——仅有通用 recoveryGuidance（无 failed /
+  // attention_required / latestError）时不渲染横幅。recoveryGuidance 是恢复
+  // 步骤文档，不是告警。follow-on-1 曾仅凭 guidance 触发横幅，导致每个正常席位
+  // 都误报；本测试守护这类回归。
+  it("HG-2：仅有通用 recoveryGuidance 的正常席位不渲染通知横幅", async () => {
     mockNodeDetail({
       ...NODE_DETAIL,
       startupStatus: "ready",
@@ -508,14 +489,14 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     });
     renderDetails();
     await screen.findByTestId("seat-overview-table");
-    // Banner must NOT mount — recoveryGuidance alone is not an alert.
+    // 横幅绝不能挂载——仅 recoveryGuidance 不是告警。
     expect(screen.queryByTestId("seat-notification-banner")).toBeNull();
   });
 
-  // HG-2 — banner DOES render for each alert-triggering condition:
-  // failed startupStatus, attention_required startupStatus, or
-  // latestError present (even when startupStatus is "ready").
-  it("HG-2: notification banner renders for startupStatus=failed", async () => {
+  // HG-2 —— 每种告警触发条件都渲染横幅：
+  // startupStatus=failed、startupStatus=attention_required，或
+  // latestError 存在（即使 startupStatus 为 "ready"）。
+  it("HG-2：startupStatus=failed 时渲染通知横幅", async () => {
     mockNodeDetail({
       ...NODE_DETAIL,
       startupStatus: "failed",
@@ -525,10 +506,10 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     renderDetails();
     const banner = await screen.findByTestId("seat-notification-banner");
     expect(banner.getAttribute("data-startup-status")).toBe("failed");
-    expect(screen.getByTestId("seat-notification-headline").textContent).toContain("Startup failed");
+    expect(screen.getByTestId("seat-notification-headline").textContent).toContain("启动失败");
   });
 
-  it("HG-2: notification banner renders for latestError alone (no startupStatus alert)", async () => {
+  it("HG-2：仅 latestError（无 startupStatus 告警）时渲染通知横幅", async () => {
     mockNodeDetail({
       ...NODE_DETAIL,
       startupStatus: "ready",
@@ -538,13 +519,12 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     renderDetails();
     const banner = await screen.findByTestId("seat-notification-banner");
     expect(banner.getAttribute("data-startup-status")).toBe("ready");
-    expect(screen.getByTestId("seat-notification-headline").textContent).toContain("Error");
+    expect(screen.getByTestId("seat-notification-headline").textContent).toContain("错误");
     expect(screen.getByTestId("seat-notification-error").textContent).toContain("Runtime error occurred");
   });
 
-  // Infrastructure nodes still have the same 2-tab structure; the
-  // agent-spec section just doesn't render inside Details.
-  it("infrastructure node renders Overview + Details (no agent-spec card inside Details)", async () => {
+  // 基础设施节点仍是同样的 2 标签结构；只是详情内不渲染智能体规格段。
+  it("基础设施节点渲染概览 + 详情（详情内无智能体规格卡）", async () => {
     mockNodeDetail(INFRA_DETAIL);
     renderDetails("infra.server");
     await screen.findByTestId("live-tab-overview");
@@ -556,13 +536,12 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     await waitFor(() => {
       expect(screen.getByTestId("live-details-section")).toBeDefined();
     });
-    // No live-agent-spec-section for infra nodes.
+    // 基础设施节点无 live-agent-spec-section。
     expect(screen.queryByTestId("live-agent-spec-section")).toBeNull();
   });
 
-  // Agent spec unavailable cases — switch to Details, then exercise the
-  // null + non-local agentRef shapes.
-  it("Details tab: agent spec section shows unavailable when agentRef is null", async () => {
+  // 智能体规格不可用场景——切到详情，再分别跑 null 与非本地 agentRef 两种形状。
+  it("详情标签：agentRef 为 null 时智能体规格段显示不可用", async () => {
     mockNodeDetail({ ...NODE_DETAIL, agentRef: null });
     renderDetails();
     fireEvent.click(await screen.findByTestId("live-tab-details"));
@@ -571,7 +550,7 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     });
   });
 
-  it("Details tab: agent spec section shows unavailable when agentRef is non-local form", async () => {
+  it("详情标签：agentRef 为非本地形式时智能体规格段显示不可用", async () => {
     mockNodeDetail({ ...NODE_DETAIL, agentRef: "remote:agents/impl" });
     renderDetails();
     fireEvent.click(await screen.findByTestId("live-tab-details"));
@@ -580,8 +559,8 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     });
   });
 
-  // Startup files surface inside Details > Startup section.
-  it("Details tab: Startup section shows startup files", async () => {
+  // 启动文件出现在 详情 > 启动 段内。
+  it("详情标签：启动段显示启动文件", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
     fireEvent.click(await screen.findByTestId("live-tab-details"));
@@ -592,7 +571,7 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     });
   });
 
-  it("Details tab: Startup file trigger threads file provenance for drawer loading", async () => {
+  it("详情标签：启动文件触发器串联文件来源，供抽屉加载", async () => {
     const setSelection = vi.fn();
     mockNodeDetail(NODE_DETAIL);
     renderDetailsWithDrawerSelection(setSelection as (sel: DrawerSelection) => void);
@@ -608,16 +587,16 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     });
   });
 
-  it("Details tab: Transcript section owns transcript content", async () => {
+  it("详情标签：会话记录段独占会话记录内容", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
     fireEvent.click(await screen.findByTestId("live-tab-details"));
     expect(await screen.findByTestId("detail-transcript")).toBeDefined();
   });
 
-  // Slice 3.3 fix-B preserved — Plugins section inside Details > Agent
-  // spec area. Renders empty state on builds without batch 1.
-  it("slice 3.3 fix-B preserved: Plugins section in Details tab agent-spec area", async () => {
+  // Slice 3.3 fix-B 保留——详情 > 智能体 规格区内的插件段。
+  // 无 batch 1 的构建上渲染空态。
+  it("slice 3.3 fix-B 保留：详情标签智能体规格区有插件段", async () => {
     mockFetch.mockImplementation(async (url: string) => {
       if (typeof url === "string" && url.includes("/nodes/")) {
         return { ok: true, json: async () => NODE_DETAIL };
@@ -644,30 +623,29 @@ describe("LiveNodeDetails (slice 25 Overview + Details)", () => {
     expect(screen.getByTestId("agent-plugins-empty")).toBeDefined();
   });
 
-  // PL-019 preserved (follow-on-2) — activity surfaces in the
-  // Overview info table (column cell); current-work surfaces in the
-  // secondary primitive below the table.
-  it("PL-019 preserved: Overview surfaces activity + current qitem", async () => {
+  // PL-019 保留（follow-on-2）——活动呈现在概览信息表（列格）；
+  // 当前工作呈现在表下方的次区块。
+  it("PL-019 保留：概览呈现活动 + 当前 qitem", async () => {
     mockNodeDetail(NODE_DETAIL);
     renderDetails();
     await screen.findByTestId("seat-overview-table");
 
-    // Activity column cell carries the active label (topology naming).
-    expect(screen.getByTestId("seat-overview-cell-activity").textContent?.trim()).toContain("active");
-    // Current-work in the secondary primitive carries qitem + excerpt.
+    // 活动列格带 active 标签（拓扑命名）。
+    expect(screen.getByTestId("seat-overview-cell-activity").textContent?.trim()).toContain("活动中");
+    // 次区块中的当前工作格带 qitem + 摘要。
     const cwCell = screen.getByTestId("seat-overview-secondary-cell-current-work");
     expect(cwCell.textContent).toContain("04001234-driver");
     expect(cwCell.textContent).toContain("Implement PL-019 edge activity pulse");
-    // LiveNodeCurrentState card removed (preserved invariant).
+    // LiveNodeCurrentState 卡片已移除（保留不变量）。
     expect(screen.queryByTestId("live-node-current-state")).toBeNull();
   });
 
-  // Resume action glyph remains independent of tab structure.
-  it("uses a resume action glyph instead of a runtime mark on the copy resume command", async () => {
+  // 恢复动作图标与标签结构无关。
+  it("复制恢复命令用恢复动作图标而非运行时标记", async () => {
     mockNodeDetail({ ...NODE_DETAIL, resumeCommand: "rig seat resume dev.impl" });
     renderDetails();
     const resumeButton = await screen.findByTestId("detail-copy-resume");
-    expect(resumeButton.textContent).toContain("Copy resume command");
+    expect(resumeButton.textContent).toContain("复制恢复命令");
     expect(resumeButton.textContent).not.toContain("Claude");
     expect(resumeButton.querySelector("svg")).toBeDefined();
   });

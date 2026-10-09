@@ -1,14 +1,13 @@
 /**
- * Slice 51-02 (L2 test-system) — the forced-local scenario daemon lifecycle.
+ * Slice 51-02（L2 test-system）——强制本地 scenario daemon 生命周期。
  *
- * The hermetic helper SPAWNS a real scenario-local daemon via the shipped `rig`
- * bin under the scrubbed scratch env, and the runner drives it with real
- * `rig … --json` subprocesses. This proves the env-discipline at a real process
- * boundary (a direct in-process method call would not be a transport proof) and
- * makes the assertions read exactly what a user/agent observes (product-is-truth).
+ * hermetic helper 在已清除 scratch 环境下通过随附 `rig` bin 生成真实
+ * scenario-local daemon，runner 用真实 `rig … --json` 子进程驱动它。
+ * 这在真实进程边界证明 env-discipline（直接进程内方法调用不是传输证明），
+ * 并使断言精确反映 user/agent 观察到的内容（product-is-truth）。
  *
- * The `rig` bin is a SINGLE injectable seam (`rigBin`) so 51-04 container-mode can
- * point it at the container's installed `rig` without touching this host-mode
+ * `rig` bin 是单一可注入接缝（`rigBin`），故 51-04 container-mode 可
+ * 指向容器内安装的 `rig` 而不触碰 host-mode
  * contract.
  */
 
@@ -23,52 +22,50 @@ export interface RigResult {
   code: number;
 }
 
-/** A running scenario-local daemon + how to read it + how to tear it down. */
+/** 正在运行的 scenario-local daemon，以及读取与 teardown 方法。 */
 export interface ScenarioDaemon {
-  /** The ephemeral port the daemon is listening on. */
+  /** daemon 监听的 ephemeral port。 */
   port: number;
   /** http://127.0.0.1:<port> */
   baseUrl: string;
   /**
    * Environment for shipped read/write subprocesses: the scaffold's scrubbed
-   * scratch env with OPENRIG_URL pointed at THIS daemon (the helper's own — not a
-   * foreign target).
+   * scratch 环境，OPENRIG_URL 指向本 daemon（helper 自有——非外部目标）。
    */
   readEnv: Record<string, string | undefined>;
   /**
-   * SIGTERM the scenario-local daemon (the `daemon: {op: sigterm}` verb) — kills
-   * it via the shipped `rig daemon stop`; the scaffold is KEPT so a restart can
-   * re-spawn through the same guarantees. Idempotent.
+   * 对 scenario-local daemon 发 SIGTERM（`daemon: {op: sigterm}` verb）——通过
+   * 随附 `rig daemon stop` 杀死；scaffold 保留以便重启可经同一保证重新生成。幂等。
    */
   sigterm: () => Promise<void>;
   /**
-   * Restart the scenario-local daemon (the `daemon: {op: restart}` verb) — ensures
-   * it is down, then RE-SPAWNS on the same port/db/scratch env, i.e. through the
-   * SAME forced-local/scratch/fail-closed guarantees (single owner, no second
-   * lifecycle path). Distinct from a seat-level restart, which never touches it.
+   * 重启 scenario-local daemon（`daemon: {op: restart}` verb）——确保其已停，
+   * 再在同一 port/db/scratch 环境重新生成，即经同一
+   * forced-local/scratch/fail-closed 保证（单一 owner，无第二
+   * 生命周期路径）。区别于 seat 级重启——后者绝不触碰它。
    */
   restart: () => Promise<void>;
-  /** Stop the daemon (via the shipped `rig daemon stop`) and remove the scaffold. */
+  /** 通过已交付的 `zrig daemon stop` 停止 daemon，并移除 scaffold。 */
   stop: () => Promise<void>;
   /**
-   * L6 STEP-0 — translate a HOST topology path to a path the daemon can read. Host-mode omits this
-   * (identity: the daemon reads the host path directly). CONTAINER-mode implements it by staging the
-   * topology's directory INTO the container and returning the in-container path, so `rig up` is never
-   * handed a host-absolute path a container daemon cannot resolve ("Source not found").
+   * L6 STEP-0——将 HOST topology 路径翻译为 daemon 可读路径。Host-mode 省略此步
+   * （身份：daemon 直接读 host 路径）。CONTAINER-mode 通过把 topology 目录暂存到容器内
+   * 并返回容器内路径来实现，故 `rig up` 绝不会被传入容器 daemon 无法解析的 host 绝对路径
+   * （"Source not found"）。
    */
   stageTopology?: (hostTopologyPath: string) => Promise<string>;
 }
 
 export interface SpawnScenarioDaemonOptions {
-  /** Path to the shipped `rig` bin (the single injectable invocation seam). */
+  /** 已交付 `zrig` bin 的路径（唯一可注入 invocation seam）。 */
   rigBin: string;
-  /** Override the port (default: an ephemeral free port). */
+  /** 覆盖 port（默认为 ephemeral free port）。 */
   port?: number;
-  /** Per-invocation timeout for `rig` subprocesses (ms). */
+  /** 每次 `zrig` subprocess invocation 的 timeout（毫秒）。 */
   timeoutMs?: number;
 }
 
-/** Reserve an ephemeral free port on 127.0.0.1 (closed immediately; best-effort). */
+/** 在 127.0.0.1 上保留 ephemeral free port（立即关闭；best-effort）。 */
 export function findFreePort(): Promise<number> {
   return new Promise((res, rej) => {
     const srv = net.createServer();
@@ -81,15 +78,15 @@ export function findFreePort(): Promise<number> {
   });
 }
 
-/** Invoke `node <rigBin> <args...>` with the given env. Never rejects — returns the exit code. */
+/** 使用给定 env 调用 `node <rigBin> <args...>`。永不 reject——返回 exit code。 */
 export function runRig(
   args: string[],
   env: Record<string, string | undefined>,
   rigBin: string,
   timeoutMs = 30_000,
 ): Promise<RigResult> {
-  // execFile replaces the environment wholesale — drop undefined values so a
-  // scrubbed (deleted) var never leaks back in as the literal string "undefined".
+  // execFile 会整体替换 environment——丢弃 undefined 值，使 scrubbed（已删除）变量绝不会以字面
+  // string "undefined" 泄漏回来。
   const cleanEnv: Record<string, string> = {};
   for (const [k, v] of Object.entries(env)) if (v !== undefined) cleanEnv[k] = v;
   return new Promise((resolve) => {
@@ -111,25 +108,23 @@ export function runRig(
 }
 
 /**
- * Spawn a real forced-local scenario daemon under the hermetic scaffold. The
- * shipped `rig daemon start` waits for its own /healthz before returning, so a
- * zero exit means the daemon is accepting requests. Throws (fail-closed) if the
- * scaffold env still carries a foreign daemon target, or if start fails.
+ * 在 hermetic scaffold 下生成真实强制本地 scenario daemon。随附
+ * `rig daemon start` 在返回前等待自身 /healthz，故退出 0 表示 daemon 正在接受请求。
+ * 若 scaffold 环境仍携带外部 daemon 目标或 start 失败则抛错（fail-closed）。
  */
 export async function spawnScenarioDaemon(
   scaffold: HermeticScaffold,
   opts: SpawnScenarioDaemonOptions,
 ): Promise<ScenarioDaemon> {
-  // Defense in depth: the scaffold env is already scrubbed, but never spawn
-  // against a foreign target.
+  // 纵深防御：scaffold env 已 scrubbed，但绝不面向 foreign target spawn。
   assertNoForeignDaemon(scaffold.env);
 
   const { rigBin, timeoutMs } = opts;
   const port = opts.port ?? (await findFreePort());
   const db = join(scaffold.stateDir, "scenario.db");
 
-  // The single start path — reused by initial spawn AND by restart, so a restart
-  // re-spawns through EXACTLY the same forced-local/scratch/fail-closed guarantees.
+  // 唯一 start 路径——由初始 spawn 与 restart 共用，因此 restart 通过完全相同的
+  // forced-local/scratch/fail-closed 保证重新 spawn。
   const startProc = async () => {
     const start = await runRig(
       ["daemon", "start", "--port", String(port), "--db", db, "--no-kernel"],
@@ -144,8 +139,8 @@ export async function spawnScenarioDaemon(
     }
   };
   const killProc = async () => {
-    // `rig daemon stop` reads daemon.json under the scratch OPENRIG_HOME and
-    // SIGTERMs the daemon. Best-effort (already-down is fine).
+    // `zrig daemon stop` 读取 scratch OPENRIG_HOME 下的 daemon.json，并向 daemon 发送 SIGTERM。
+    // best-effort（已停止也可接受）。
     await runRig(["daemon", "stop"], scaffold.env, rigBin, timeoutMs).catch(() => {});
   };
 

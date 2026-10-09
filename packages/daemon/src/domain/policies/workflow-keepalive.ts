@@ -1,28 +1,22 @@
-// PL-004 Phase D: workflow-keepalive policy (TypeScript port of POC
-// `lib/policies/workflow-keepalive.mjs`, adapted to read SQLite
-// workflow_instances directly per audit row 18).
+// PL-004 阶段 D：workflow-keepalive policy（POC `lib/policies/workflow-keepalive.mjs` 的
+// TypeScript 移植版，并按审计行 18 调整为直接读取 SQLite workflow_instances）。
 //
-// LOAD-BEARING: workflow-keepalive MUST read from the SQLite
-// workflow_instances table only. NO filesystem read of markdown
-// workflow runtime at the daemon policy layer. (Audit row 18.)
+// 关键约束：workflow-keepalive 必须只读取 SQLite workflow_instances 表。后台服务 policy 层不得
+// 从文件系统读取 Markdown workflow runtime。（审计行 18。）
 //
-// POC contract preserved (semantic; mechanism switched from markdown
-// frontmatter to SQLite columns):
-//   - Eligibility: status === "active" || status === "waiting".
-//     Else: action=terminal, reason="workflow_not_active". (POC sets
-//     terminal:true on the skip; Phase C engine has a separate
-//     terminal action for the same effect.)
-//   - Frontier empty + no fallback target: skip with reason "empty_frontier".
-//   - Resolve frontier qitem owners by querying queue_items table.
-//   - Combine resolved + explicit additional targets:
+// 保留 POC 契约（语义不变；机制从 Markdown frontmatter 切换为 SQLite 列）：
+//   - 资格：status === "active" || status === "waiting"。否则 action=terminal、
+//     reason="workflow_not_active"。（POC 在 skip 上设置 terminal:true；阶段 C engine 使用独立
+//     terminal action 达到相同效果。）
+//   - Frontier 为空且无 fallback target：以 reason="empty_frontier" 跳过。
+//   - 查询 queue_items 表解析 frontier qitem owner。
+//   - 合并已解析和显式的额外 target：
 //       - workflow.created_by_session
 //       - context.observer_sessions[]
 //       - context.observer_session
-//       - job.target.session (the registered target as fallback)
-//   - Send to the FIRST resolved target. v1 single-target only;
-//     additional resolved owners listed in the message for routing.
-//     POC's send_many is deferred (Phase C engine's PolicyEvaluation
-//     contract is single-target).
+//       - job.target.session（注册 target 作为 fallback）
+//   - 发送给第一个已解析 target。v1 仅支持单 target；其余已解析 owner 会列入消息用于路由。
+//     POC 的 send_many 推迟实现（阶段 C engine 的 PolicyEvaluation 契约是单 target）。
 
 import type Database from "better-sqlite3";
 import type { Policy, PolicyEvaluation, PolicyJob } from "./types.js";
@@ -32,19 +26,17 @@ import {
 } from "../workflow-deadline.js";
 
 interface WorkflowKeepaliveContext {
-  /** ULID of the workflow_instances row to keep alive. Required. */
+  /** 要保持活跃的 workflow_instances 行 ULID，必填。 */
   workflow_instance_id?: string;
-  /** Optional packet selector for parallel-frontier auto-armed jobs. */
+  /** parallel-frontier 自动 armed job 的可选 packet selector。 */
   workflow_packet_id?: string;
   observer_session?: string;
   observer_sessions?: string[];
   /**
-   * OPR.0.4.6.WF1 FR-3: set true on AUTO-ARMED jobs (see
-   * workflow-keepalive-arming.ts). A deadline-gated job is QUIET while
-   * the FR-2 evaluator reports healthy and sends only when a frontier
-   * packet is overdue — preserving FR-2's zero-noise-on-the-happy-path
-   * AC. Operator-registered jobs (flag absent) keep the shipped POC
-   * always-send parity unchanged.
+   * OPR.0.4.6.WF1 FR-3：在自动 armed job 上设为 true（见 workflow-keepalive-arming.ts）。
+   * FR-2 evaluator 报告 healthy 时，受 deadline 门控的 job 保持安静；只有 frontier packet 逾期
+   * 才发送，从而维持 FR-2 正常路径零噪声的 AC。操作员注册的 job（无此 flag）保持已发布 POC
+   * 始终发送的行为不变。
    */
   deadline_gated?: boolean;
 }
@@ -70,12 +62,10 @@ interface QueueOwnerRow {
 
 export interface WorkflowKeepaliveDeps {
   db: Database.Database;
-  /** OPR.0.4.6.WF5 FR-2 class (b): when supplied, a non-healthy deadline
-   *  verdict ENSURES the durable exception item at detection time as a
-   *  side effect of this evaluation. The PolicyEvaluation SHAPE is
-   *  untouched (send|skip|terminal stands — X5); the item is the
-   *  injected helper's concern, dedup by occurrence. Failures are
-   *  non-fatal to the evaluation. */
+  /** OPR.0.4.6.WF5 FR-2 类别 (b)：提供时，非 healthy deadline verdict 会在检测时确保存在持久
+   * exception item，作为本次 evaluation 的副作用。PolicyEvaluation 结构不变（仍为
+   * send|skip|terminal——X5）；item 由注入 helper 负责，按 occurrence 去重。失败不会让 evaluation
+   * 终止。 */
   ensureStuckExceptionItem?: import("../workflow-exception-escalation.js").EnsureStuckExceptionItem;
   reconcileStuckExceptions?: (instanceId: string) => number;
 }
@@ -90,7 +80,7 @@ export function makeWorkflowKeepalivePolicy(deps: WorkflowKeepaliveDeps): Policy
       const instanceId = context.workflow_instance_id;
       if (!instanceId) {
         throw Object.assign(
-          new Error("workflow-keepalive: context.workflow_instance_id is required"),
+          new Error("workflow-keepalive：context.workflow_instance_id 必填"),
           {
             code: "policy_spec_invalid",
             policy: "workflow-keepalive",
@@ -99,7 +89,7 @@ export function makeWorkflowKeepalivePolicy(deps: WorkflowKeepaliveDeps): Policy
         );
       }
 
-      // Audit-row-18 critical assertion: read from SQLite only.
+      // 审计行 18 的关键断言：只从 SQLite 读取。
       const instance = db
         .prepare(
           `SELECT instance_id, workflow_name, workflow_version, created_by_session,
@@ -143,7 +133,7 @@ export function makeWorkflowKeepalivePolicy(deps: WorkflowKeepaliveDeps): Policy
         }
       }
 
-      // Resolve frontier qitem owners (+ FR-2 anchor fields) from queue_items.
+      // 从 queue_items 解析 frontier qitem owner（以及 FR-2 anchor 字段）。
       const resolvedFrontierOwners: string[] = [];
       let frontierRows: QueueOwnerRow[] = [];
       if (frontier.length > 0) {
@@ -157,10 +147,9 @@ export function makeWorkflowKeepalivePolicy(deps: WorkflowKeepaliveDeps): Policy
         for (const r of frontierRows) resolvedFrontierOwners.push(r.destination_session);
       }
 
-      // OPR.0.4.6.WF1 FR-2+FR-3: evaluate the step deadline (derived,
-      // never stored). Deadline-gated (auto-armed) jobs stay quiet
-      // while healthy; ANY job's send message carries the stuck
-      // evidence + re-project steering when overdue.
+      // OPR.0.4.6.WF1 FR-2+FR-3：评估派生且从不存储的 step deadline。受 deadline 门控
+      //（自动 armed）的 job 在 healthy 时保持安静；逾期时，任何 job 的发送消息都会携带 stuck
+      // 证据 + 重新投影引导信息。
       const verdict: WorkflowDeadlineVerdict = evaluateStepDeadline(
         {
           instanceId: instance.instance_id,
@@ -179,12 +168,11 @@ export function makeWorkflowKeepalivePolicy(deps: WorkflowKeepaliveDeps): Policy
         new Date(),
       );
       if (context.deadline_gated === true && verdict.state === "healthy") {
-        // Quiet skip — not recorded in watchdog history (POC parity for
-        // quiet reasons); zero noise on the happy path.
+        // 静默跳过——不记录到 watchdog history（保持 POC 对 quiet reason 的行为）；正常路径零噪声。
         return { action: "skip", reason: "workflow_healthy_deadline_gated" };
       }
 
-      // Combine with explicit additional targets.
+      // 与显式额外 target 合并。
       const additionalTargets: string[] = [
         instance.created_by_session,
         ...((context.observer_sessions ?? []) as string[]),
@@ -195,27 +183,21 @@ export function makeWorkflowKeepalivePolicy(deps: WorkflowKeepaliveDeps): Policy
       const allSessions = Array.from(new Set([...resolvedFrontierOwners, ...additionalTargets]));
 
       if (allSessions.length === 0) {
-        // POC line 113-118: skip with empty_frontier when nothing resolves.
+        // POC 第 113-118 行：没有解析到任何内容时以 empty_frontier 跳过。
         return { action: "skip", reason: "empty_frontier" };
       }
 
-      // Deadline-gated (auto-armed) jobs past the deadline steer the
-      // nudge at the OVERDUE packet's owner with the stuck evidence —
-      // a restored or replacement agent reads the steering and
-      // re-projects; the stuck marker self-clears on recomposition
-      // (FR-2 AC). Operator-registered jobs (no flag) keep the shipped
-      // POC message + first-resolved-target parity EXACTLY, even when
-      // a packet is overdue — their contract predates the deadline
-      // model and is pinned by the shipped policy tests.
+      // 超过 deadline 的受门控（自动 armed）job 会携带 stuck evidence，将 nudge 引导给逾期 packet
+      // 的 owner；恢复或替换后的 agent 读取 steering 并重新投影，stuck marker 会在重新组合时自行清除
+      //（FR-2 AC）。操作员注册的 job（无 flag）即使 packet 逾期，也精确保留已发布 POC 消息 +
+      // 首个已解析 target 的行为；其契约早于 deadline 模型，并由已发布 policy 测试固定。
       const stuck =
         context.deadline_gated === true && verdict.state !== "healthy" && verdict.evidence
           ? verdict.evidence
           : null;
-      // OPR.0.4.6.WF5 FR-2 class (b): detection-time exception item —
-      // fires on ANY non-healthy verdict (gated or operator-registered
-      // jobs; the operator-job MESSAGE contract below stays pinned and
-      // untouched). Dedup by occurrence keeps this idempotent across
-      // every keepalive cadence tick.
+      // OPR.0.4.6.WF5 FR-2 类别 (b)：检测时 exception item——任何非 healthy verdict 都会触发
+      //（无论门控还是操作员注册 job；下方 operator-job 消息契约保持固定不变）。按 occurrence 去重，
+      // 使其跨每次 keepalive cadence tick 保持幂等。
       let exceptionItemError: string | undefined;
       if (deps.ensureStuckExceptionItem && verdict.state !== "healthy" && verdict.evidence) {
         try {
@@ -229,7 +211,7 @@ export function makeWorkflowKeepalivePolicy(deps: WorkflowKeepaliveDeps): Policy
             return { action: "skip", reason: "workflow_recovery_owns_notice", notes: { instanceId, recoveryQitemId: recovery.qitemId, outcome: recovery.outcome } };
           }
         } catch (error) {
-          // Preserve the owner nudge while reporting failed exception admission.
+          // 保留 owner nudge，同时报告 exception admission 失败。
           exceptionItemError = error instanceof Error ? error.message : String(error);
         }
       }
@@ -261,7 +243,7 @@ export function makeWorkflowKeepalivePolicy(deps: WorkflowKeepaliveDeps): Policy
         action: "send",
         ...(condition ? { conditionReceipt: condition } : {}),
         target: { session: primary },
-        message: exceptionItemError ? `${message}\nWorkflow exception item was not admitted: ${exceptionItemError}` : message,
+        message: exceptionItemError ? `${message}\nWorkflow exception item 未获准进入：${exceptionItemError}` : message,
         notes: {
           instanceId: instance.instance_id,
           workflowName: instance.workflow_name,
@@ -277,16 +259,14 @@ export function makeWorkflowKeepalivePolicy(deps: WorkflowKeepaliveDeps): Policy
 }
 
 const POC_KEEPALIVE_TRAILER =
-  "Continue the current step. If the run has ended, update the workflow state honestly and manufacture the next truthful packet now. " +
-  "If you think you need approval, first ask whether there is real product ambiguity or only approval theater. " +
-  "Keep communications bridged, name exact blockers, and self-scout deterministic bias: " +
-  "add only the minimum deterministic code required for reliable agent operation, then rely on agent judgment for routing, adaptation, and edge handling.";
+  "继续当前步骤。如果运行已结束，请如实更新 workflow 状态，并立即生成下一个真实 packet。" +
+  "如果你认为需要审批，先判断究竟存在真实的产品歧义，还是只有形式化审批。" +
+  "保持沟通连通，明确指出具体 blocker，并主动检查确定性偏见：" +
+  "只添加 agent 可靠运行所需的最少确定性代码，其余路由、适配和边缘处理依靠 agent 判断。";
 
 /**
- * OPR.0.4.6.WF1 FR-2: the overdue re-nudge. Written for a RESTORED or
- * REPLACEMENT agent with no conversational memory of the step: it names
- * the instance, the step, the packet, the anchor evidence, and the
- * exact re-project move.
+ * OPR.0.4.6.WF1 FR-2：逾期后的再次 nudge。面向对该 step 没有对话记忆的已恢复或替换 agent：
+ * 点明 instance、step、packet、anchor evidence 和精确的 re-project 动作。
  */
 function buildStuckNudgeMessage(input: {
   workflowName: string;
@@ -305,8 +285,8 @@ function buildStuckNudgeMessage(input: {
 }): string {
   const e = input.evidence;
   return [
-    `Workflow deadline: ${e.instanceId}, packet ${e.packetId}, owner ${e.ownerSession}; ${Math.floor(e.overdueBySeconds / 60)}m overdue (${e.anchor} at ${e.anchorAt}).`,
-    `Packet age does not establish idle. Inspect: rig workflow show ${e.instanceId}. Full packet: rig queue show ${e.packetId} --full.`,
+    `Workflow deadline：${e.instanceId}，packet ${e.packetId}，owner ${e.ownerSession}；逾期 ${Math.floor(e.overdueBySeconds / 60)} 分钟（${e.anchor} 于 ${e.anchorAt}）。`,
+    `Packet age 不能证明处于 idle。请检查：rig workflow show ${e.instanceId}。完整 packet：rig queue show ${e.packetId} --full。`,
   ].join("\n");
 }
 
@@ -318,11 +298,11 @@ function buildKeepaliveMessage(input: {
   allSessions: string[];
 }): string {
   const lines = [
-    `Workflow keepalive: ${input.workflowName}@${input.workflowVersion} / ${input.instanceId} is still live (status: ${input.status}).`,
+    `Workflow keepalive：${input.workflowName}@${input.workflowVersion} / ${input.instanceId} 仍在运行（状态：${input.status}）。`,
     POC_KEEPALIVE_TRAILER,
   ];
   if (input.allSessions.length > 1) {
-    lines.push("", `Other frontier owners + observers: ${input.allSessions.slice(1).join(", ")}`);
+    lines.push("", `其他 frontier owner + observer：${input.allSessions.slice(1).join(", ")}`);
   }
   return lines.join("\n");
 }

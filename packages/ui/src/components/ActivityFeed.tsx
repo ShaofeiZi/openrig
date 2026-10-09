@@ -28,11 +28,11 @@ export function LogFeedList({ events }: { events: ActivityEvent[] }) {
         data-testid="feed-disclosure"
         className="px-spacing-3 py-2 border-b border-outline-variant/20 font-mono text-[9px] uppercase tracking-[0.06em] text-on-surface-variant"
       >
-        Showing last {MAX_ACTIVITY_EVENTS} live events in this panel.
+        本面板仅显示最近 {MAX_ACTIVITY_EVENTS} 条实时事件。
       </div>
       {events.length === 0 ? (
         <div data-testid="feed-empty" className="px-spacing-3 py-spacing-4 font-mono text-[10px] text-on-surface-variant text-center">
-          No recent log entries
+          暂无最近日志条目
         </div>
       ) : (
         <>
@@ -79,7 +79,7 @@ export function LogFeedList({ events }: { events: ActivityEvent[] }) {
               data-testid="feed-end-of-history"
               className="px-spacing-3 py-2 font-mono text-[9px] uppercase tracking-[0.06em] text-on-surface-variant text-center"
             >
-              Older events are not loaded in this panel yet.
+              更早的事件尚未在本面板加载。
             </div>
           ) : null}
         </>
@@ -104,16 +104,16 @@ export function ActivityFeed({ events, open, onClose }: ActivityFeedProps) {
       )}
     >
       <div className="relative flex max-h-[50vh] flex-col">
-        {/* Header */}
+        {/* 头部 */}
         <div className="relative z-10 flex items-center justify-between px-spacing-3 py-spacing-2 border-b border-outline-variant/35 shrink-0">
           <span className="text-label-sm uppercase tracking-[0.06em] text-on-surface">
-            RECENT LOG
+            最近日志
           </span>
           <button
             data-testid="feed-close"
             onClick={onClose}
             className="text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-lowest/30 transition-colors duration-150 ease-tactical px-spacing-1"
-            aria-label="Close log"
+            aria-label="关闭日志"
           >
             &times;
           </button>

@@ -1,0 +1,269 @@
+{
+  "docs/DESIGN.md": {
+    "sha": "21d8785c26e6f638"
+  },
+  "docs/as-built/README.md": {
+    "sha": "7437b7c65153ba55"
+  },
+  "docs/as-built/architecture.md": {
+    "sha": "362c381bba3e295b"
+  },
+  "docs/as-built/architecture/adapters-and-runtimes.md": {
+    "sha": "d6b0c410ae055633"
+  },
+  "docs/as-built/architecture/agent-spec-and-startup.md": {
+    "sha": "44262339c47068aa"
+  },
+  "docs/as-built/architecture/architecture-rules-and-event-system.md": {
+    "sha": "381aaf9e246e5960"
+  },
+  "docs/as-built/architecture/content-surfaces.md": {
+    "sha": "74425c848ad2bdf6"
+  },
+  "docs/as-built/architecture/coordination-primitive.md": {
+    "sha": "16556875ff2f57f6"
+  },
+  "docs/as-built/architecture/daemon-core.md": {
+    "sha": "bedc6a83c0810a6b"
+  },
+  "docs/as-built/architecture/lifecycle-snapshot-restore.md": {
+    "sha": "1eb60dd1b1841521"
+  },
+  "docs/as-built/architecture/living-notes-review.md": {
+    "sha": "78169f4ff3779fe9"
+  },
+  "docs/as-built/architecture/mission-control.md": {
+    "sha": "6438928078563d47"
+  },
+  "docs/as-built/architecture/packaging-bootstrap-bundles.md": {
+    "sha": "43c85fbafa4762fa"
+  },
+  "docs/as-built/architecture/plugin-agent-image-context-pack.md": {
+    "sha": "aa9bd87a404dc4f9"
+  },
+  "docs/as-built/architecture/transport-and-transcripts.md": {
+    "sha": "e71483c30e5ad3ad"
+  },
+  "docs/as-built/architecture/workflow-runtime.md": {
+    "sha": "cc0ed37c47984516"
+  },
+  "docs/as-built/architecture/workspace-primitive.md": {
+    "sha": "f13f500ff26be39e"
+  },
+  "docs/as-built/cli-reference.md": {
+    "sha": "81e4d84eaf1802d2"
+  },
+  "docs/as-built/codemap.md": {
+    "sha": "ece06e1b22d4c83e"
+  },
+  "docs/as-built/frontmatter-schema.md": {
+    "sha": "23feb97928b58c44"
+  },
+  "docs/as-built/ui.md": {
+    "sha": "bee1f8cb797585c8"
+  },
+  "docs/as-built/ui/library-specs-and-design-system.md": {
+    "sha": "6ce2ea42d2a139ff"
+  },
+  "docs/as-built/ui/project-and-for-you.md": {
+    "sha": "95a95f05fe0d5472"
+  },
+  "docs/as-built/ui/shell-and-routing.md": {
+    "sha": "a7d14ad12d71a0dd"
+  },
+  "docs/as-built/ui/topology.md": {
+    "sha": "7f36f0bbd8ea8cb6"
+  },
+  "docs/openrig-zrig-handoff.md": {
+    "sha": "f2bbe99c66817d54"
+  },
+  "docs/reference/agent-spec.md": {
+    "sha": "d8ca80a33335662a"
+  },
+  "docs/reference/agent-startup-guide.md": {
+    "sha": "581f0dcb14a2152b"
+  },
+  "docs/reference/agent-state-taxonomy.md": {
+    "sha": "8a2cdcc43766649d"
+  },
+  "docs/reference/chain-file-convention.md": {
+    "sha": "f61de37f9c32539a"
+  },
+  "docs/reference/developing.md": {
+    "sha": "4945ea1a35c27949"
+  },
+  "docs/reference/edge-types.md": {
+    "sha": "6f740359af99cc4d"
+  },
+  "docs/reference/getting-started.md": {
+    "sha": "cd55d2243ef88eee"
+  },
+  "docs/reference/health-diagnosis.md": {
+    "sha": "6602be887330ec45"
+  },
+  "docs/reference/instance-layout.md": {
+    "sha": "047691d7defb14b7"
+  },
+  "docs/reference/knowledge-maturity.md": {
+    "sha": "0bf276d0cf31dfc8"
+  },
+  "docs/reference/legacy-topology-migration.md": {
+    "sha": "a8c7165cadfc1479"
+  },
+  "docs/reference/lore-routing.md": {
+    "sha": "18317f0e5da0d7c9"
+  },
+  "docs/reference/mission-install.md": {
+    "sha": "17fb945f729e47e0"
+  },
+  "docs/reference/planning-dial.md": {
+    "sha": "527b269d5d7e18da"
+  },
+  "docs/reference/product-journey-sdlc.md": {
+    "sha": "11e5e09c3cc785c1"
+  },
+  "docs/reference/product-management-pass.md": {
+    "sha": "c86e59c57a79a287"
+  },
+  "docs/reference/project-workspace.md": {
+    "sha": "41bbe5704602522a"
+  },
+  "docs/reference/refocus-channel.md": {
+    "sha": "d787be76d9af6eea"
+  },
+  "docs/reference/release-boundary.md": {
+    "sha": "95c2068d3c5c96ea"
+  },
+  "docs/reference/rig-bundle.md": {
+    "sha": "84d31a6bf2552713"
+  },
+  "docs/reference/rig-spec.md": {
+    "sha": "c4b5d3186e462cf5"
+  },
+  "docs/reference/scoped-operating-posture.md": {
+    "sha": "dfef0e3cdc5bfe3f"
+  },
+  "docs/reference/sdlc-conventions.md": {
+    "sha": "f66f279d7b8609a0"
+  },
+  "docs/reference/slack-app-setup.md": {
+    "sha": "a6851abc3795614d"
+  },
+  "docs/reference/stream-classifier-worker.md": {
+    "sha": "acbf3c34500ae85d"
+  },
+  "docs/reference/wave-sdlc.md": {
+    "sha": "e13688925e8a2975"
+  },
+  "docs/reference/worktree-builds.md": {
+    "sha": "1bf889b88865c67b"
+  },
+  "docs/releases/README.md": {
+    "sha": "741479b53f71f712"
+  },
+  "docs/releases/_template.md": {
+    "sha": "5ba193c6a34f078c"
+  },
+  "docs/releases/v0.1.12.md": {
+    "sha": "40d8a76bee5fec02"
+  },
+  "docs/releases/v0.2.0.md": {
+    "sha": "6d41de1afb99caa1"
+  },
+  "docs/releases/v0.3.0.md": {
+    "sha": "a8d9a6552da06758"
+  },
+  "docs/releases/v0.3.1.md": {
+    "sha": "fa1340ddf56473ed"
+  },
+  "docs/releases/v0.3.2.md": {
+    "sha": "7781eb18cf76b8b8"
+  },
+  "docs/releases/v0.3.3.md": {
+    "sha": "82d00f77b1f6d7b0"
+  },
+  "docs/releases/v0.3.4.md": {
+    "sha": "11cac5b16bef35dc"
+  },
+  "docs/releases/v0.4.0.md": {
+    "sha": "728ec2e91912faa7"
+  },
+  "docs/releases/v0.4.1.md": {
+    "sha": "5957a8c5c99064d3"
+  },
+  "docs/releases/v0.4.2.md": {
+    "sha": "a8c4a39abe28879a"
+  },
+  "docs/releases/v0.4.3.md": {
+    "sha": "69c6078dfa16e1d8"
+  },
+  "docs/releases/v0.4.4.md": {
+    "sha": "04782950edebcd88"
+  },
+  "docs/releases/v0.4.6.md": {
+    "sha": "10bb6f418b273c77"
+  },
+  "docs/releases/v0.4.7.md": {
+    "sha": "33b467431e384352"
+  },
+  "docs/releases/v0.4.8.md": {
+    "sha": "5b82ec8f7635b34e"
+  },
+  "docs/releases/v0.5.0.md": {
+    "sha": "dcdbf7f956f7db28"
+  },
+  "docs/releases/v0.5.1.md": {
+    "sha": "976a47c3d75f51f0"
+  },
+  "docs/releases/v0.5.10.md": {
+    "sha": "1b67a9ef0b00097f"
+  },
+  "docs/releases/v0.5.11.md": {
+    "sha": "fcfef54e33281327"
+  },
+  "docs/releases/v0.5.12.md": {
+    "sha": "2b40ba19943205ec"
+  },
+  "docs/releases/v0.5.13.md": {
+    "sha": "d016a08dac16acc9"
+  },
+  "docs/releases/v0.5.14.md": {
+    "sha": "84a058be6b1ce248"
+  },
+  "docs/releases/v0.5.15.md": {
+    "sha": "22024b5b295440b0"
+  },
+  "docs/releases/v0.5.16.md": {
+    "sha": "984dd1192087d874"
+  },
+  "docs/releases/v0.5.17.md": {
+    "sha": "f66b72d2e909f98d"
+  },
+  "docs/releases/v0.5.2.md": {
+    "sha": "ddd7f767802ebfcd"
+  },
+  "docs/releases/v0.5.3.md": {
+    "sha": "0754a9ca94eb1dc7"
+  },
+  "docs/releases/v0.5.4.md": {
+    "sha": "b91b62d1653f9138"
+  },
+  "docs/releases/v0.5.5.md": {
+    "sha": "b216a23f92b16792"
+  },
+  "docs/releases/v0.5.6.md": {
+    "sha": "bd2f25552b5d4a87"
+  },
+  "docs/releases/v0.5.7.md": {
+    "sha": "620e44834be181ed"
+  },
+  "docs/releases/v0.5.8.md": {
+    "sha": "5c1065306ce6903b"
+  },
+  "docs/releases/v0.5.9.md": {
+    "sha": "2168e777f0c73f6a"
+  },
+  "docs/releases/v0.6.0.md": {
+    "sha": "692780516493410b"
+  }
+}

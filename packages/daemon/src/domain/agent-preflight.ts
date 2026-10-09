@@ -2,12 +2,12 @@ import { resolveAgentRef, type AgentResolverFsOps } from "./agent-resolver.js";
 import type { PreflightResult } from "./types.js";
 
 /**
- * Agent-only preflight: resolves agent_ref and its imports.
- * Does NOT check runtime (that's member-authoritative in rig preflight).
- * @param agentRef - agent_ref string
- * @param rigRoot - rig root directory
- * @param fsOps - filesystem operations
- * @returns PreflightResult with errors/warnings
+ * 仅针对智能体的预检：解析 `agent_ref` 及其导入。
+ * 不检查运行时；该字段以工作组预检中的成员声明为准。
+ * @param agentRef `agent_ref` 字符串
+ * @param rigRoot 工作组根目录
+ * @param fsOps 文件系统操作
+ * @returns 包含错误与警告的 `PreflightResult`
  */
 export function agentPreflight(
   agentRef: string,
@@ -27,14 +27,14 @@ export function agentPreflight(
     return { ready: false, errors, warnings };
   }
 
-  // Import collisions as warnings (non-fatal)
+  // 导入冲突仅作为警告，不会导致预检失败。
   for (const col of result.collisions) {
     if (col.sources.length >= 2) {
       const hasBase = col.sources.some((s) => s.qualifiedId === col.resourceId);
       if (hasBase) {
-        warnings.push(`Base/import collision in ${col.category}: "${col.resourceId}" — base keeps unqualified id, import addressable as ${col.sources.find((s) => s.qualifiedId !== col.resourceId)?.qualifiedId}`);
+        warnings.push(`${col.category} 中存在基础资源/导入资源冲突："${col.resourceId}"。基础资源保留无限定 ID，导入资源可通过 ${col.sources.find((s) => s.qualifiedId !== col.resourceId)?.qualifiedId} 访问`);
       } else {
-        warnings.push(`Import/import collision in ${col.category}: "${col.resourceId}" — use qualified ids: ${col.sources.map((s) => s.qualifiedId).join(", ")}`);
+        warnings.push(`${col.category} 中存在导入资源之间的冲突："${col.resourceId}"。请使用限定 ID：${col.sources.map((s) => s.qualifiedId).join(", ")}`);
       }
     }
   }

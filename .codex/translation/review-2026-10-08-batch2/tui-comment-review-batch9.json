@@ -1,0 +1,61 @@
+{
+ "schema": "openrig.tui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:31:58",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "comment-review-batch9",
+ "files": 6,
+ "changed": 4,
+ "reviewed_no_change": 2,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/tui/test/scroll-focus.test.ts",
+   "status": "changed",
+   "before_sha256": "50e0b1166cb891249daa73cadd9b78a06002f5d86c8a5ad8d5988f9b4ffc032c",
+   "after_sha256": "b03e9214afdbaf9866bbc2252d06915001d8fe6ea2d4e6a32b3e6374433ee981",
+   "natural_language_residual": 0,
+   "machine_classification": "360e37d3、OPR.0.6.0.5/.0.8、S19 a4c9548a、braille/hatchet、字形、SGR #181818/#ad6755/#6867aa(38;2;104;103;170)、dev.qa 保留"
+  },
+  {
+   "path": "packages/tui/test/slack-print-link.test.ts",
+   "status": "changed",
+   "before_sha256": "7f5700bea5b9fcedb2c8808e514acd9dc76e1925b9336ebfb7781e6198cfa261",
+   "after_sha256": "60c8843059401636e233444ac6ab3c8875e83442cead30d28de5b960cc96aec9",
+   "natural_language_residual": 0,
+   "machine_classification": "360e37d3、OPR.0.6.0.5/.0.8、S19 a4c9548a、braille/hatchet、字形、SGR #181818/#ad6755/#6867aa(38;2;104;103;170)、dev.qa 保留"
+  },
+  {
+   "path": "packages/tui/test/startup.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "5a2911b6acf6b71fe84b2a2fb2881ed7a27c48821ce59460c8018604b8825c05",
+   "after_sha256": "39dae3f98c983df9269163b91d4ee3665ca53a1eb38e56248dade3990414a112",
+   "natural_language_residual": 0,
+   "machine_classification": "360e37d3、OPR.0.6.0.5/.0.8、S19 a4c9548a、braille/hatchet、字形、SGR #181818/#ad6755/#6867aa(38;2;104;103;170)、dev.qa 保留"
+  },
+  {
+   "path": "packages/tui/test/state.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "f535738b95edc8e1d40f141eaa639d4a1ab524b62b289aa3d98722e35a223520",
+   "after_sha256": "b633860fff5ad9b2e95fa2b8c85d4ec588d15d6d9377453b0b9d9a07bb16dc0f",
+   "natural_language_residual": 0,
+   "machine_classification": "360e37d3、OPR.0.6.0.5/.0.8、S19 a4c9548a、braille/hatchet、字形、SGR #181818/#ad6755/#6867aa(38;2;104;103;170)、dev.qa 保留"
+  },
+  {
+   "path": "packages/tui/test/terminal-journey.test.ts",
+   "status": "changed",
+   "before_sha256": "aeed6101b1eda6f5a49ec88841280945cbd637f0b1a93c323c962c176e441c65",
+   "after_sha256": "dc9f999185ba31ffdba6530d68e7917b7a73874cf6a5564384c1744417789aa1",
+   "natural_language_residual": 0,
+   "machine_classification": "360e37d3、OPR.0.6.0.5/.0.8、S19 a4c9548a、braille/hatchet、字形、SGR #181818/#ad6755/#6867aa(38;2;104;103;170)、dev.qa 保留"
+  },
+  {
+   "path": "packages/tui/test/topology-view.test.ts",
+   "status": "changed",
+   "before_sha256": "3868fa679bff8454ac8b2011a8993589c1ff25362ca56dd0ec5628603cdfd891",
+   "after_sha256": "f9e57e3b6624c51649db22c4c10937b729141bec204a7eff7254adbfb1580d8c",
+   "natural_language_residual": 0,
+   "machine_classification": "360e37d3、OPR.0.6.0.5/.0.8、S19 a4c9548a、braille/hatchet、字形、SGR #181818/#ad6755/#6867aa(38;2;104;103;170)、dev.qa 保留"
+  }
+ ]
+}

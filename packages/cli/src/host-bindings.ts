@@ -3,33 +3,32 @@ import { dirname } from "node:path";
 import { getDefaultOpenRigPath } from "./openrig-compat.js";
 
 /**
- * The LEARNED host-identity sidecar — hosts.yaml's `known_hosts`.
+ * 学习得到的主机身份 sidecar——hosts.yaml 的 `known_hosts`。
  *
- * `hosts.yaml` is hand-authored (the operator's `~/.ssh/config`); this file is machine-learned
- * (first-contact TOFU from `/healthz` `selfHostId` on probes we already run) and DISPOSABLE —
- * delete it to re-learn. The registry write path canonically rewrites hosts.yaml and drops
- * operator comments, so learned bindings NEVER go there; they live here, keyed by the registry
- * entry's alias (`id`).
+ * `hosts.yaml` 是手工维护的（运维人员的 `~/.ssh/config`）；本文件则是机器学习来的
+ * （在我们已有的探测中，从 `/healthz` 的 `selfHostId` 做首次接触 TOFU），
+ * 且可随意丢弃——删掉它即可重新学习。注册表写入路径会规范重写 hosts.yaml 并丢掉
+ * 运维人员的注释，因此学习到的绑定绝不写回那里；它们存放在这里，以注册表条目的
+ * 别名（`id`）为键。
  *
- * Failure semantics (the known_hosts lesson — a broken binding must fail LOUDLY):
- * - First observation for an alias: bind silently (TOFU).
- * - A LATER observation that DIFFERS: the stored binding is NEVER silently overwritten; the
- *   contradiction is recorded on the binding and surfaced by every reader (host ls flag, doctor
- *   row, resolution warning). A host's self-id is minted once and never re-keyed, so a changed
- *   observation means a genuine re-key or a mis-registration — both deserve a loud surface.
- * - ABSENCE stays fail-open: an unbound alias resolves exactly as today.
+ * 失败语义（known_hosts 的教训——损坏的绑定必须大声报错）：
+ * - 别名首次观测：静默绑定（TOFU）。
+ * - 之后观测到【不一致】：绝不再静默覆盖已存绑定；矛盾会记录在该绑定上，并被每个读取方
+ *   （host ls 标志、doctor 行、解析警告）暴露出来。主机的 self-id 只生成一次、永不换钥，
+ *   因此观测变化意味着真正的换钥或错误登记——两者都值得大声暴露。
+ * - 缺失保持 fail-open：未绑定的别名仍与今天一样可解析。
  */
 export interface HostBinding {
   hostId: string;
   firstObservedAt: string;
   lastObservedAt: string;
-  /** A later observation that CONTRADICTED the stored binding — kept visible, never adopted. */
+  /** 与已存绑定【矛盾】的后续观测——保留可见，绝不采纳。 */
   conflict?: { hostId: string; observedAt: string };
 }
 
 export interface HostBindingsFile {
   version: 1;
-  /** Keyed by the registry entry's alias (`HostEntry.id`). */
+  /** 以注册表条目的别名（`HostEntry.id`）为键。 */
   bindings: Record<string, HostBinding>;
 }
 
@@ -37,17 +36,17 @@ export function defaultHostBindingsPath(): string {
   return getDefaultOpenRigPath("host-bindings.json");
 }
 
-/** Load the sidecar. Fail-open by contract: missing, unreadable, or corrupt → empty bindings
- *  (a broken sidecar must never break resolution; delete it to re-learn). */
+/** 加载 sidecar。按契约 fail-open：缺失、不可读或损坏 → 空绑定
+ *  （损坏的 sidecar 绝不能破坏解析；删掉它即可重新学习）。 */
 export function loadHostBindings(path: string = defaultHostBindingsPath()): HostBindingsFile {
   const empty: HostBindingsFile = { version: 1, bindings: {} };
   if (!existsSync(path)) return empty;
   try {
     const parsed = JSON.parse(readFileSync(path, "utf-8")) as unknown;
     if (!parsed || typeof parsed !== "object") return empty;
-    // A declared version other than 1 is a FUTURE sidecar shape — treat it as unreadable (empty,
-    // fail-open) rather than mis-parsing v2 fields through v1 eyes. Absent version reads as v1
-    // (files this code wrote always carry it; hand-trimmed ones stay readable).
+    // 声明了非 1 的 version 是【未来】的 sidecar 形状——当作不可读（空、fail-open），
+    // 而不是用 v1 的眼光误解析 v2 字段。缺省 version 视为 v1
+    // （本代码写出的文件总会带它；手工删减过的文件仍保持可读）。
     const version = (parsed as { version?: unknown }).version;
     if (version !== undefined && version !== 1) return empty;
     const bindings = (parsed as { bindings?: unknown }).bindings;
@@ -80,21 +79,20 @@ export function loadHostBindings(path: string = defaultHostBindingsPath()): Host
   }
 }
 
-// r1 B4 follow-on (F2) — the read-modify-write needs a concurrency guard: 15 seats run
-// send/capture/doctor concurrently, and an interleaved write could erase a sibling's binding —
-// benign for a BINDING (TOFU re-learns) but not for a CONFLICT record, whose loss is the exact
-// silence the known_hosts lesson forbids. Guard: an mkdir-based advisory lock (atomic on every
-// platform) held across load→mutate→rename, with bounded busy-wait retries and a stale-lock
-// takeover. If the lock cannot be won inside the budget the write proceeds UNGUARDED (fail-open —
-// availability over the rare loss; the conflict re-records on the next contradicting observation).
+// r1 B4 后续（F2）—— 读-改-写需要并发保护：15 个席位并发运行
+// send/capture/doctor，交错写入可能抹掉兄弟进程的绑定——
+// 对 BINDING 而言无害（TOFU 会重新学习），但对 CONFLICT 记录则不然：
+// 丢失它正是 known_hosts 教训所禁止的“静默”。保护方式：基于 mkdir 的建议锁
+// （在所有平台上都是原子的），跨 load→mutate→rename 持有，带有限次忙等重试
+// 与陈旧锁接管。若在预算内拿不到锁，写入就【不加保护】地继续（fail-open——
+// 可用性优先于极罕见的丢失；下一次矛盾观测会重新记录冲突）。
 const LOCK_RETRIES = 40;
 const LOCK_RETRY_MS = 5;
-// NAMED TAIL (r1 F2 review, not built for): after a stale takeover the ORIGINAL holder still
-// believes it holds the lock, so its release rmdirs the NEW holder's lock — in principle that
-// cascades. Low: the critical section is fully synchronous (the loop cannot preempt it) and 2s is
-// ~3 orders of magnitude over normal hold time — but this box has run loadavg 9-11 with
-// multi-minute stalls, so the tail is not zero. The token-verified-release fix is more machinery
-// than a fail-open advisory lock over a self-healing cache justifies.
+// 已知隐患（r1 F2 评审，未为此实现）：陈旧接管后，原持有者仍自以为持锁，
+// 于是它的 release 会 rmdir 掉【新】持有者的锁——理论上会级联。风险低：
+// 临界区完全同步（循环无法抢占它），且 2s 比正常持有时间大约长三个数量级——
+// 但这台机器曾跑过 loadavg 9-11、卡顿达数分钟，所以隐患不为零。
+// 用 token 校验释放的修法对“自愈缓存上的 fail-open 建议锁”而言属于过度工程。
 const LOCK_STALE_MS = 2_000;
 
 function acquireLock(lockDir: string): boolean {
@@ -106,28 +104,28 @@ function acquireLock(lockDir: string): boolean {
       try {
         if (Date.now() - statSync(lockDir).mtimeMs > LOCK_STALE_MS) rmdirSync(lockDir);
       } catch {
-        /* raced away — retry */
+        /* 被并发抢走——重试 */
       }
       const until = Date.now() + LOCK_RETRY_MS;
-      while (Date.now() < until) { /* bounded busy-wait: sync API, sub-ms slices */ }
+      while (Date.now() < until) { /* 有限忙等：同步 API，亚毫秒切片 */ }
     }
   }
   return false;
 }
 
 function releaseLock(lockDir: string): void {
-  try { rmdirSync(lockDir); } catch { /* best-effort */ }
+  try { rmdirSync(lockDir); } catch { /* 尽力而为 */ }
 }
 
 export type HostObservationOutcome =
   | { outcome: "bound"; binding: HostBinding }
   | { outcome: "confirmed"; binding: HostBinding }
-  /** The stored binding was NOT changed; the contradiction was recorded on it. */
+  /** 未改动已存绑定；矛盾已记录其上。 */
   | { outcome: "conflict"; binding: HostBinding };
 
 /**
- * Record one observation of `observedHostId` for registry alias `alias` (TOFU + loud-conflict).
- * Persists via write-temp-then-rename so a crashed writer never leaves a torn file.
+ * 为注册表别名 `alias` 记录一次 `observedHostId` 观测（TOFU + 大声报冲突）。
+ * 通过“先写临时文件再 rename”持久化，保证崩溃的写入者绝不会留下残缺文件。
  */
 export function recordHostObservation(args: {
   alias: string;
@@ -158,8 +156,8 @@ function recordUnderLock(alias: string, observedHostId: string, at: string, path
     result = { outcome: "bound", binding };
   } else if (existing.hostId === observedHostId) {
     const binding: HostBinding = { ...existing, lastObservedAt: at };
-    // A re-observation of the ORIGINAL id after a recorded conflict does not clear the conflict —
-    // a flapping identity is more alarming than a stable contradiction, not less.
+    // 在记录过冲突之后再次观测到【原始】id，并不会清除冲突——
+    // 身份反复横跳比稳定的矛盾更令人警惕，而不是更轻。
     file.bindings[alias] = binding;
     result = { outcome: "confirmed", binding };
   } else {
@@ -174,8 +172,8 @@ function recordUnderLock(alias: string, observedHostId: string, at: string, path
   return result;
 }
 
-/** One line naming both ids, shared by every loud surface (ls flag detail, doctor row, resolution
- *  warning) so the operator reads the same story everywhere. */
+/** 一行同时点出两个 id，供所有大声暴露面（ls 标志详情、doctor 行、解析警告）共用，
+ *  使运维人员在各处读到同样的故事。 */
 export function describeBindingConflict(alias: string, binding: HostBinding): string {
-  return `host '${alias}': observed self-id '${binding.conflict?.hostId}' contradicts the learned binding '${binding.hostId}' — a host's self-id is minted once, so this is a re-key or a mis-registration. If the re-key is legitimate, delete the '${alias}' entry in ${defaultHostBindingsPath()} to re-learn (TOFU).`;
+  return `主机 '${alias}'：观测到的 self-id '${binding.conflict?.hostId}' 与已学习绑定 '${binding.hostId}' 矛盾——主机的 self-id 只生成一次，因此这是换钥或错误登记。若换钥是合法的，请在 ${defaultHostBindingsPath()} 中删除 '${alias}' 条目以重新学习（TOFU）。`;
 }

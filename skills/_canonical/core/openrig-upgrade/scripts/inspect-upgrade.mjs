@@ -13,7 +13,7 @@ function probe(name, args, next) {
     try {
       value = JSON.parse(stdout);
     } catch {
-      // Versions and older surfaces may intentionally return plain text.
+      // 版本命令与旧版表面可能有意返回纯文本。
     }
     return { name, ok: true, command: [rig, ...args], value };
   }
@@ -22,7 +22,7 @@ function probe(name, args, next) {
     ok: false,
     command: [rig, ...args],
     exitCode: result.status,
-    error: stderr || stdout || result.error?.message || "command produced no diagnostic",
+    error: stderr || stdout || result.error?.message || "命令未产生诊断信息",
     next,
   };
 }
@@ -30,10 +30,10 @@ function probe(name, args, next) {
 const report = {
   schema: "openrig-upgrade-inspection/v1",
   generatedAt: new Date().toISOString(),
-  rigVersion: probe("rigVersion", ["--version"], `run ${rig} --version directly and verify the installed wrapper`),
-  daemonStatus: probe("daemonStatus", ["daemon", "status"], `run ${rig} daemon status and inspect daemon state and logs`),
-  nodes: probe("nodes", ["ps", "--nodes", "-A", "--json"], `run ${rig} ps --nodes -A --json and resolve control-plane reachability before mutation`),
-  plugins: probe("plugins", ["plugin", "list", "--json"], `run ${rig} plugin list --json and derive the installed plugin roots before refresh`),
+  rigVersion: probe("rigVersion", ["--version"], `请直接运行 ${rig} --version 并验证已安装包装器`),
+  daemonStatus: probe("daemonStatus", ["daemon", "status"], `请运行 ${rig} daemon status 并检查后台服务状态和日志`),
+  nodes: probe("nodes", ["ps", "--nodes", "-A", "--json"], `请运行 ${rig} ps --nodes -A --json，并在变更前解决控制面可达性问题`),
+  plugins: probe("plugins", ["plugin", "list", "--json"], `请运行 ${rig} plugin list --json，并在刷新前确定已安装插件根目录`),
 };
 
 report.ready = [report.rigVersion, report.daemonStatus, report.nodes, report.plugins].every((item) => item.ok);

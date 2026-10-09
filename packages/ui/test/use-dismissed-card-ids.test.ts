@@ -1,9 +1,7 @@
-// OPR.0.3.2.20 — string-keyed dismissal hook tests. Pins BLOCKER-2
-// fix from guard verdict qitem-20260518190827: queue-derived
-// synthetic FeedCards share ActivityEvent.seq=-1, so the old
-// seq-keyed dismissal would collide across all queue-derived cards.
-// useDismissedCardIds keys on the unique string FeedCard.id so each
-// queue-derived card has independent dismissal state.
+// OPR.0.3.2.20——字符串键忽略钩子测试。锁定守卫裁决 qitem-20260518190827 的
+// BLOCKER-2 修复：队列派生的合成 FeedCard 共用 ActivityEvent.seq=-1，因此旧版以 seq 为键的
+// 忽略机制会让所有队列派生卡片冲突。useDismissedCardIds 以唯一字符串 FeedCard.id 为键，
+// 使每张队列派生卡片拥有独立的忽略状态。
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
@@ -60,8 +58,7 @@ describe("useDismissedCardIds — string-keyed dismissal", () => {
     expect(result.current.dismissedIds.has("b")).toBe(true);
   });
 
-  // BLOCKER-2 discriminator: each card.id is its own dismissal key.
-  // Dismissing one queue-derived card MUST NOT hide others.
+  // BLOCKER-2 判别项：每个 card.id 都是独立忽略键；忽略一张队列派生卡片不得隐藏其他卡片。
   it("BLOCKER-2 fix: dismissing one card id does NOT affect other cards (independent dismissal state)", () => {
     const { result } = renderHook(() =>
       useDismissedCardIds(["queue-attention-q1", "queue-attention-q2", "queue-attention-q3"]),
@@ -77,14 +74,14 @@ describe("useDismissedCardIds — string-keyed dismissal", () => {
       DISMISSED_CARD_IDS_STORAGE_KEY,
       JSON.stringify(["queue-attention-evicted", "queue-attention-still-here"]),
     );
-    // Render with currentIds that excludes "queue-attention-evicted"
-    // (the qitem has closed and the card disappeared from the feed).
+    // 使用不含 "queue-attention-evicted" 的 currentIds 渲染；该 qitem 已关闭，
+    // 卡片已从 feed 消失。
     const { result, rerender } = renderHook(
       ({ ids }) => useDismissedCardIds(ids),
       { initialProps: { ids: ["queue-attention-still-here"] } },
     );
     rerender({ ids: ["queue-attention-still-here"] });
-    // After the prune effect runs, the evicted id is gone.
+    // 清理 effect 运行后，被淘汰的 id 消失。
     expect(result.current.dismissedIds.has("queue-attention-evicted")).toBe(false);
     expect(result.current.dismissedIds.has("queue-attention-still-here")).toBe(true);
   });
@@ -97,7 +94,7 @@ describe("useDismissedCardIds — string-keyed dismissal", () => {
   });
 
   it("uses a distinct localStorage namespace from useDismissedSeqs (no cross-contamination)", () => {
-    // Storage key must be different from the seq-keyed hook's key.
+    // 存储键必须与 seq 键钩子的键不同。
     expect(DISMISSED_CARD_IDS_STORAGE_KEY).toBe("forYou.dismissedCardIds");
     expect(DISMISSED_CARD_IDS_STORAGE_KEY).not.toBe("forYou.dismissedSeqs");
   });

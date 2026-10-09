@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { crashCartCommand, type CrashCartEmit } from "../src/commands/crash-cart.js";
 
-// Crash-cart C3 unit-B — the `rig crash-cart --json` verb (coupling ruling C, 4 rails). It prints ONE
-// JSON = emitCrashCartState's verdict (read-only). A fail-closed refusal still prints STRUCTURED JSON
-// (never exit-code-only). emit + write are injected → the action is deterministic; the real-dep
-// assembly is glue proven by the real daemon-down run.
+// Crash-cart C3 unit-B——`rig crash-cart --json` 动词（耦合裁定 C，4 轨道）。它打印一个
+// JSON = emitCrashCartState 的判定（只读）。fail-closed 拒绝仍打印结构化 JSON
+//（绝不仅退出码）。emit + write 注入 → action 确定性；真实依赖
+// 组装是胶水，由真实 daemon 宕机运行证明。
 
 function run(emit: () => Promise<CrashCartEmit>) {
   const write = vi.fn();

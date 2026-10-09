@@ -1,6 +1,5 @@
-// Preview Terminal v0 (PL-018) — useSyncExternalStore React hook
-// wrapping the previewPinStore. Components that read pins should use
-// this hook so they re-render on pin/unpin events.
+// 预览终端 v0（PL-018）——用 useSyncExternalStore 包装 previewPinStore 的 React hook。
+// 读取固定项的组件应使用本 hook，以便在固定/取消固定事件时重新渲染。
 
 import { useSyncExternalStore, useEffect } from "react";
 import { previewPinStore, type PreviewPin } from "./preview-pin-store.js";
@@ -16,7 +15,7 @@ export function usePreviewPins(): {
   const { data: settings } = useSettings();
   const settingMaxPins = settings?.settings?.["ui.preview.max_pins"]?.value as number | undefined;
 
-  // Sync max-pins from settings whenever it changes.
+  // 设置中的 max-pins 变化时同步到 store。
   useEffect(() => {
     if (typeof settingMaxPins === "number") {
       previewPinStore.setMaxPins(settingMaxPins);

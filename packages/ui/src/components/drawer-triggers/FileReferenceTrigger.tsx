@@ -1,4 +1,4 @@
-// V1 attempt-3 Phase 4 — FileReferenceTrigger.
+// V1 attempt-3 Phase 4 —— FileReferenceTrigger。
 
 import { type ReactNode, type CSSProperties } from "react";
 import { useDrawerSelection } from "../AppShell.js";

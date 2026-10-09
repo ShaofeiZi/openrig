@@ -40,7 +40,7 @@ exports:
 
 function resolveAndPlan(manifestYaml: string, repoFiles: Record<string, string>, runtime: "claude-code" | "codex" = "codex") {
   const pkgFiles: Record<string, string> = { "/pkg/package.yaml": manifestYaml };
-  // Add package source files
+  // 添加包源文件。
   pkgFiles["/pkg/skills/foo/SKILL.md"] = SKILL_CONTENT;
   pkgFiles["/pkg/guidance/AGENTS.md"] = "# Guidance content";
   pkgFiles["/pkg/agents/reviewer.yaml"] = AGENT_CONTENT;
@@ -48,19 +48,19 @@ function resolveAndPlan(manifestYaml: string, repoFiles: Record<string, string>,
   const resolverFs = mockFs(pkgFiles);
   const resolved = new PackageResolver(resolverFs).resolve("/pkg");
 
-  // Planner needs to see repo files for exists() checks
+  // 规划器需要读取仓库文件以执行 exists() 检查。
   const allFiles = { ...pkgFiles, ...repoFiles };
   const plannerFs = mockFs(allFiles);
   const plan = new InstallPlanner(plannerFs).plan(resolved, "/repo", runtime);
 
-  // Detector needs package source + repo target files
+  // 检测器需要包源文件和仓库目标文件。
   const detectorFs = mockFs(allFiles);
   return detectConflicts(plan, detectorFs);
 }
 
 describe("ConflictDetector", () => {
-  // Test 1: New skill -> safe_projection
-  it("new skill -> safe_projection unchanged", () => {
+  // 测试 1：新技能 → safe_projection。
+  it("新技能 → safe_projection 保持不变", () => {
     const result = resolveAndPlan(BASIC_MANIFEST, {});
     const skill = result.actionable.find((e) => e.exportType === "skill");
     expect(skill).toBeDefined();
@@ -68,8 +68,8 @@ describe("ConflictDetector", () => {
     expect(result.noOps).toHaveLength(0);
   });
 
-  // Test 2: Existing skill, different content -> conflict with hashes
-  it("existing skill, different content -> conflict with hashes", () => {
+  // 测试 2：技能已存在且内容不同 → 冲突并携带哈希。
+  it("技能已存在且内容不同 → 冲突并携带哈希", () => {
     const result = resolveAndPlan(BASIC_MANIFEST, {
       "/repo/.agents/skills/foo/SKILL.md": SKILL_CONTENT_DIFFERENT,
     });
@@ -80,8 +80,8 @@ describe("ConflictDetector", () => {
     expect(conflict!.conflict!.existingHash).not.toBe(conflict!.conflict!.sourceHash);
   });
 
-  // Test 3: Existing skill, same content -> no-op
-  it("existing skill, same content -> no-op", () => {
+  // 测试 3：技能已存在且内容相同 → 不操作。
+  it("技能已存在且内容相同 → 不操作", () => {
     const result = resolveAndPlan(BASIC_MANIFEST, {
       "/repo/.agents/skills/foo/SKILL.md": SKILL_CONTENT,
     });
@@ -90,16 +90,16 @@ describe("ConflictDetector", () => {
     expect(result.conflicts).toHaveLength(0);
   });
 
-  // Test 4: New guidance file -> safe_projection
-  it("new guidance file -> safe_projection", () => {
+  // 测试 4：新指导文件 → safe_projection。
+  it("新指导文件 → safe_projection", () => {
     const result = resolveAndPlan(BASIC_MANIFEST, {});
     const guidance = result.actionable.find((e) => e.exportType === "guidance");
     expect(guidance).toBeDefined();
     expect(guidance!.classification).toBe("safe_projection");
   });
 
-  // Test 5: Existing guidance, no managed block -> managed_merge, hasExistingBlock=false
-  it("existing guidance, no managed block -> managed_merge, hasExistingBlock=false", () => {
+  // 测试 5：指导文件已存在但没有托管块 → managed_merge，hasExistingBlock=false。
+  it("指导文件已存在但没有托管块 → managed_merge，hasExistingBlock=false", () => {
     const result = resolveAndPlan(BASIC_MANIFEST, {
       "/repo/AGENTS.md": "# Some existing content\nNo managed blocks here.",
     });
@@ -109,8 +109,8 @@ describe("ConflictDetector", () => {
     expect(guidance!.guidanceMeta?.hasExistingBlock).toBe(false);
   });
 
-  // Test 6: Existing guidance, has managed block -> managed_merge, hasExistingBlock=true
-  it("existing guidance, has managed block -> managed_merge, hasExistingBlock=true", () => {
+  // 测试 6：指导文件已存在且有托管块 → managed_merge，hasExistingBlock=true。
+  it("指导文件已存在且有托管块 → managed_merge，hasExistingBlock=true", () => {
     const result = resolveAndPlan(BASIC_MANIFEST, {
       "/repo/AGENTS.md": "# Header\n<!-- BEGIN OpenRig MANAGED BLOCK: test-pkg -->\nold content\n<!-- END OpenRig MANAGED BLOCK: test-pkg -->\n# Footer",
     });
@@ -120,8 +120,8 @@ describe("ConflictDetector", () => {
     expect(guidance!.guidanceMeta?.hasExistingBlock).toBe(true);
   });
 
-  // Test 7: Hook -> deferred passthrough
-  it("hook -> config_mutation, deferred passthrough", () => {
+  // 测试 7：Hook → 延后透传。
+  it("hook → config_mutation，延后透传", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -151,8 +151,8 @@ exports:
     expect(hook!.deferred).toBe(true);
   });
 
-  // Test 8: MCP -> deferred passthrough
-  it("MCP -> config_mutation, deferred passthrough", () => {
+  // 测试 8：MCP → 延后透传。
+  it("MCP → config_mutation，延后透传", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -182,8 +182,8 @@ exports:
     expect(mcp!.deferred).toBe(true);
   });
 
-  // Test 9: Requirement -> external_install, deferred passthrough
-  it("requirement -> external_install, deferred passthrough", () => {
+  // 测试 9：Requirement → external_install，延后透传。
+  it("requirement → external_install，延后透传", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -214,8 +214,8 @@ requirements:
     expect(req!.classification).toBe("external_install");
   });
 
-  // Test 10: Multiple conflicts reported together
-  it("multiple conflicts reported together", () => {
+  // 测试 10：同时报告多个冲突。
+  it("同时报告多个冲突", () => {
     const manifest = `
 schema_version: 1
 name: test
@@ -249,8 +249,8 @@ exports:
     expect(result.conflicts).toHaveLength(2);
   });
 
-  // Test 11: Managed block for DIFFERENT package -> hasExistingBlock=false
-  it("existing guidance with managed block for different package -> hasExistingBlock=false", () => {
+  // 测试 11：托管块属于另一个包 → hasExistingBlock=false。
+  it("现有指导文件的托管块属于另一个包 → hasExistingBlock=false", () => {
     const result = resolveAndPlan(BASIC_MANIFEST, {
       "/repo/AGENTS.md": "# Header\n<!-- BEGIN OpenRig MANAGED BLOCK: other-package -->\nother content\n<!-- END OpenRig MANAGED BLOCK: other-package -->\n",
     });
@@ -259,8 +259,8 @@ exports:
     expect(guidance!.guidanceMeta?.hasExistingBlock).toBe(false);
   });
 
-  // Test 12: Existing agent, same content -> no-op
-  it("existing agent, same content -> no-op", () => {
+  // 测试 12：智能体已存在且内容相同 → 不操作。
+  it("智能体已存在且内容相同 → 不操作", () => {
     const result = resolveAndPlan(BASIC_MANIFEST, {
       "/repo/.agents/reviewer.yaml": AGENT_CONTENT,
     });
@@ -269,8 +269,8 @@ exports:
     expect(agentNoOp!.exportName).toBe("reviewer");
   });
 
-  // Test 13: Existing agent, different content -> conflict
-  it("existing agent, different content -> conflict", () => {
+  // 测试 13：智能体已存在且内容不同 → 冲突。
+  it("智能体已存在且内容不同 → 冲突", () => {
     const result = resolveAndPlan(BASIC_MANIFEST, {
       "/repo/.agents/reviewer.yaml": AGENT_CONTENT_DIFFERENT,
     });
@@ -280,8 +280,8 @@ exports:
     expect(conflict!.conflict!.sourceHash).toBeDefined();
   });
 
-  // Test 14: Agent target paths are YAML files
-  it("agent target paths are .yaml files, not directories", () => {
+  // 测试 14：智能体目标路径是 YAML 文件。
+  it("智能体目标路径是 .yaml 文件而非目录", () => {
     const result = resolveAndPlan(BASIC_MANIFEST, {});
     const agent = result.entries.find((e) => e.exportType === "agent");
     expect(agent).toBeDefined();
@@ -289,8 +289,8 @@ exports:
     expect(agent!.targetPath).toContain("reviewer.yaml");
   });
 
-  // Test 15: Requirement entry has sourcePath undefined
-  it("requirement entry has sourcePath undefined, passes through unchanged", () => {
+  // 测试 15：Requirement 条目的 sourcePath 为 undefined。
+  it("requirement 条目的 sourcePath 为 undefined 时原样透传", () => {
     const manifest = `
 schema_version: 1
 name: test

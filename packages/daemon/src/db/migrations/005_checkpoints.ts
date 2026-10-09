@@ -3,9 +3,9 @@ import type { Migration } from "../migrate.js";
 export const checkpointsSchema: Migration = {
   name: "005_checkpoints.sql",
   sql: `
-    -- checkpoints: per-agent recovery data
-    -- FK to nodes.id with CASCADE — checkpoint is node-scoped recovery data,
-    -- not audit trail. When a node is deleted, its checkpoints are no longer useful.
+    -- checkpoints：逐智能体恢复数据。
+    -- 外键以 CASCADE 指向 nodes.id——checkpoint 是节点范围的恢复数据，而非审计轨迹。
+    -- 节点删除后，其 checkpoint 不再有用。
     CREATE TABLE checkpoints (
       id              TEXT PRIMARY KEY,
       node_id         TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,

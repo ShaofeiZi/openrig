@@ -159,8 +159,8 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
 
   // P6/D12-residue: OPR.0.5.0 scope-honesty — a session-scoped `--nodes --json`
   // (default, when >1 rig is on the host) now returns a scope-DECLARED envelope
-  // { entries, totalNodes, scope } instead of a bare node array, so the correct
-  // scope is visible (silent completeness is silent loss). Fleet-wide (-A) stays a
+  // { entries, totalNodes, scope } 而非裸 node 数组，使正确作用域可见
+  //（静默的完整性即静默的丢失）。全 fleet（-A）仍为
   // bare array. This helper reads the node list from either shape.
   function nodesOf(logs: string[]): Array<Record<string, unknown>> {
     const parsed = JSON.parse(logs.join("")) as unknown;
@@ -182,7 +182,7 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
     expect(names).toEqual(["openrig-comms", "openrig-delivery"]);
   });
 
-  // OPR.0.4.4.21 §1 — THE token-safety invariant: the consolidated default
+  // OPR.0.4.4.21 §1——token 安全不变量：合并后的默认值
   // fetches NO per-node records (one O(rigs) call; no /api/rigs/:id/nodes).
   it("OPR.0.4.4.21 invariant: bare rig ps fetches zero per-node records", async () => {
     setSession("dev1-driver@openrig-delivery");
@@ -201,7 +201,7 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
   });
 
 
-  // AC-1: node-level defaults to current rig
+  // AC-1：node 级默认到当前 rig
   it("AC-1: bare rig ps --nodes --json returns only the current rig's nodes", async () => {
     setSession("dev1-driver@openrig-delivery");
     const { logs } = await captureLogs(async () => {
@@ -215,9 +215,9 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
     }
   });
 
-  // OPR.0.4.4.21 FR-3: -A has exactly ONE meaning — the --nodes fleet
-  // widener. Bare -A is a structured teaching error naming the new default,
-  // the --nodes -A rung, and --include-archived for history.
+  // OPR.0.4.4.21 FR-3：-A 仅有一个含义——--nodes 的 fleet 扩展器。
+  // 裸 -A 是结构化教学错误，指明新默认值、--nodes -A 层级，以及
+  // 用于历史的 --include-archived。
   it("OPR.0.4.4.21 FR-3: -A without --nodes errors with the new grammar", async () => {
     setSession("dev1-driver@openrig-delivery");
     const { logs, exitCode } = await captureLogs(async () => {
@@ -225,12 +225,12 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
     });
     const output = logs.join("\n");
     expect(exitCode).toBe(1);
-    expect(output).toContain("exactly one meaning");
-    expect(output).toContain("rig ps --nodes -A");
+    expect(output).toContain("现在只有一个含义");
+    expect(output).toContain("zrig ps --nodes -A");
     expect(output).toContain("--include-archived");
   });
 
-  // OPR.0.4.4.21 FR-2 — the no-context error (local): outside a managed
+  // OPR.0.4.4.21 FR-2——无上下文错误（本地）：在受管之外
   // session, --nodes has no current rig to default to; explicit-or-error.
   it("OPR.0.4.4.21 FR-2: --nodes outside session context errors asking for a target", async () => {
     savedSession = process.env.OPENRIG_SESSION_NAME;
@@ -240,13 +240,13 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
     });
     const output = logs.join("\n");
     expect(exitCode).toBe(1);
-    expect(output).toContain("no target");
+    expect(output).toContain("没有目标");
     expect(output).toContain("--rig <name>");
-    expect(output).toContain("rig ps --nodes -A");
+    expect(output).toContain("zrig ps --nodes -A");
   });
 
-  // OPR.0.4.4.21 FR-2/FR-5 — remote combos error BEFORE any dispatch
-  // (implicit scope defaults don't cross host boundaries). No host registry
+  // OPR.0.4.4.21 FR-2/FR-5——远程组合在任何分发之前报错
+  //（隐式作用域默认不跨主机边界）。无 host 注册表
   // or HTTP fixture is needed: the validator fires first.
   it("OPR.0.4.4.21: --host h --nodes without --rig/-A errors (session default never crosses hosts)", async () => {
     setSession("dev1-driver@openrig-delivery");
@@ -255,7 +255,7 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
     });
     const output = logs.join("\n");
     expect(exitCode).toBe(1);
-    expect(output).toContain("not a remote scope");
+    expect(output).toContain("不是远程作用域");
     expect(output).toContain("--rig <name>");
   });
 
@@ -266,7 +266,7 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
     });
     const output = logs.join("\n");
     expect(exitCode).toBe(1);
-    expect(output).toContain("FULL explicit ladder");
+    expect(output).toContain("完整的显式阶梯");
     expect(output).toContain("--nodes -A");
   });
 
@@ -276,7 +276,7 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--host", "vm-1", "-A"]);
     });
     expect(exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("exactly one meaning");
+    expect(logs.join("\n")).toContain("现在只有一个含义");
   });
 
   it("OPR.0.4.4.21 FR-3: --all-hosts -A (no --nodes) errors on the fan-out path too", async () => {
@@ -285,10 +285,10 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--all-hosts", "-A"]);
     });
     expect(exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("exactly one meaning");
+    expect(logs.join("\n")).toContain("现在只有一个含义");
   });
 
-  // Positive rungs: the explicit ladder still works.
+  // 正向层级：显式阶梯仍可用。
   it("OPR.0.4.4.21 FR-2 positive: --nodes -A works WITHOUT session context (explicit fleet)", async () => {
     savedSession = process.env.OPENRIG_SESSION_NAME;
     delete process.env.OPENRIG_SESSION_NAME;
@@ -322,7 +322,7 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
     expect(parsed[0].rigName ?? parsed[0].name).toBe("openrig-comms");
   });
 
-  // AC-2: all-states preserved (non-running nodes visible by default)
+  // AC-2：全状态保留（默认可见非运行 node）
   it("AC-2: non-running nodes appear in default (all-states)", async () => {
     setSession("dev1-driver@openrig-delivery");
     const { logs } = await captureLogs(async () => {
@@ -413,6 +413,6 @@ describe("OPR.0.4.0.34 — rig ps current-rig default", () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "--json", "--running", "--filter", "status=running"]);
     });
     expect(exitCode).toBe(1);
-    expect(logs.some((l) => l.includes("cannot be combined"))).toBe(true);
+    expect(logs.some((l) => l.includes("不能同时用"))).toBe(true);
   });
 });

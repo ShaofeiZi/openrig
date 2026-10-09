@@ -6,17 +6,17 @@ import {
   qitemIsGated,
 } from "../src/domain/gate-predicate.js";
 
-describe("gate-predicate (OPR.0.4.3.16 — centralized queue gate predicate)", () => {
-  it("isGateTag recognizes well-formed gate:<role> tags only", () => {
+describe("gate-predicate（OPR.0.4.3.16——集中式队列门禁谓词）", () => {
+  it("isGateTag 只识别格式正确的 gate:<role> tag", () => {
     expect(isGateTag("gate:guard")).toBe(true);
     expect(isGateTag("gate:spec-review")).toBe(true);
-    expect(isGateTag("gate:")).toBe(false); // empty role
+    expect(isGateTag("gate:")).toBe(false); // 角色为空。
     expect(isGateTag("mission:x")).toBe(false);
     expect(isGateTag("slice:16")).toBe(false);
     expect(isGateTag("notagate")).toBe(false);
   });
 
-  it("gateRolesOf extracts + de-duplicates roles, order-preserving", () => {
+  it("gateRolesOf 提取角色并去重，同时保留顺序", () => {
     expect(gateRolesOf(["mission:x", "gate:guard", "gate:qa", "gate:guard"])).toEqual([
       "guard",
       "qa",
@@ -26,20 +26,20 @@ describe("gate-predicate (OPR.0.4.3.16 — centralized queue gate predicate)", (
     expect(gateRolesOf(["slice:16"])).toEqual([]);
   });
 
-  it("qitemIsGated is true for ANY gate:* tag (primary predicate)", () => {
+  it("任意 gate:* tag 都会让 qitemIsGated 为 true（主谓词）", () => {
     expect(qitemIsGated({ tags: ["gate:guard"] })).toBe(true);
     expect(qitemIsGated({ tags: ["mission:x", "gate:spec-review"] })).toBe(true);
     expect(qitemIsGated({ tags: ["mission:x"], tier: "routine" })).toBe(false);
     expect(qitemIsGated({ tags: null })).toBe(false);
   });
 
-  it("qitemIsGated falls back to tier === human-gate (secondary predicate)", () => {
+  it("qitemIsGated 回退到 tier === human-gate（次谓词）", () => {
     expect(qitemIsGated({ tags: null, tier: "human-gate" })).toBe(true);
     expect(qitemIsGated({ tags: ["mission:x"], tier: "human-gate" })).toBe(true);
     expect(qitemIsGated({ tags: null, tier: "deep" })).toBe(false);
   });
 
-  it("effectiveGateRoles surfaces human-gate tier as the human role (deduped)", () => {
+  it("effectiveGateRoles 将 human-gate tier 显示为去重后的人类角色", () => {
     expect(effectiveGateRoles({ tags: ["gate:guard"], tier: "human-gate" })).toEqual([
       "guard",
       "human",

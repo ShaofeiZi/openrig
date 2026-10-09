@@ -1,28 +1,20 @@
-// OPR.0.4.6.WF1 FR-3 (G2): auto-arm the shipped workflow-keepalive
-// policy — the policy registered at startup but NOTHING created a
-// watchdog job carrying context.workflow_instance_id, so the keepalive
-// never fired for any instance.
+// OPR.0.4.6.WF1 FR-3（G2）：自动启用已发布的 workflow-keepalive 策略。
+// 策略虽在启动时注册，却没有任何逻辑创建携带 context.workflow_instance_id 的
+// watchdog job，因此 keepalive 从未对任何实例触发。
 //
-// Arming rides the transactional scribe: instantiate and every handoff
-// projection call ensureWorkflowKeepaliveArmed INSIDE the same
-// db.transaction that routes the step (watchdog register/markTerminal
-// are plain INSERT/UPDATE on the same handle — verified composable).
-// This closes the commit-then-crash-before-nudge window: the armed job
-// exists the instant the routed frontier packet exists, so a lost
-// post-commit nudge is re-issued by the keepalive even when the daemon
-// died before nudging (FR-3 AC; the boot sweep — FR-4 — is the
-// immediate-on-restart leg of the same closure).
+// 启用过程随事务书记员执行：实例化与每次移交投影都在路由步骤的同一个
+// db.transaction 内调用 ensureWorkflowKeepaliveArmed；watchdog 的 register/markTerminal
+// 只是同一句柄上的普通 INSERT/UPDATE，已验证可组合。这样关闭了“提交后、推动前崩溃”的窗口：
+// 已启用 job 与已路由前沿 packet 同时存在，即便后台服务在推动前退出，keepalive 也会重新发出
+// 丢失的提交后推动（FR-3 AC；启动扫描 FR-4 是同一闭环中重启后立即执行的一环）。
 //
-// ONE JOB PER LIVE PACKET for packet-addressed dependency graphs; legacy
-// serial instances retain the original one-job-per-instance shape. The
-// policy resolves the addressed packet owner live from SQLite at every
-// evaluation, while target_session remains the registered fallback.
+// 对按 packet 寻址的依赖图，每个活动 packet 对应一个 job；旧版串行实例保留原来的
+// 每实例一个 job 形状。策略每次评估都从 SQLite 实时解析被寻址 packet 的所有者，
+// target_session 则保留为已注册回退。
 //
-// AUTO-ARMED JOBS ARE DEADLINE-GATED (context.deadline_gated: true):
-// the policy stays QUIET while the instance is healthy and sends only
-// when the FR-2 evaluator reports overdue — preserving the FR-2
-// zero-noise-on-the-happy-path AC. Operator-registered keepalive jobs
-// (no flag) keep the shipped POC always-send parity unchanged.
+// 自动启用的 job 受截止时间门控（context.deadline_gated: true）：实例健康时策略保持静默，
+// 仅在 FR-2 评估器报告逾期时发送，从而保留 FR-2“正常路径零噪声”的验收要求。
+// 操作员注册的 keepalive job（无该标志）仍保持已发布 POC 的始终发送行为。
 
 import type {
   WatchdogJob,
@@ -30,10 +22,8 @@ import type {
 } from "./watchdog-jobs-repository.js";
 
 /**
- * Evaluation cadence for auto-armed keepalive jobs. Deadline-gated
- * evaluations are quiet skips until overdue, so this interval costs
- * nothing on the happy path (quiet skips are not even recorded in
- * watchdog history).
+ * 自动启用 keepalive job 的评估周期。截止时间门控的评估在逾期前都会静默跳过，
+ * 因此正常路径上此周期没有记录开销；静默跳过甚至不会写入 watchdog 历史。
  */
 export const WORKFLOW_KEEPALIVE_AUTO_INTERVAL_SECONDS = 15 * 60;
 
@@ -51,9 +41,8 @@ export function buildKeepaliveSpecYaml(instanceId: string, targetSession: string
 }
 
 /**
- * Find the active auto/manual keepalive job carrying this instance id.
- * Jobs carry context only inside spec_yaml (no context column); ULIDs
- * are 26-char unique so a containment check is exact in practice.
+ * 查找携带此实例 ID 的活动自动/手动 keepalive job。job 仅在 spec_yaml 中携带上下文
+ *（没有 context 列）；ULID 是唯一的 26 字符值，因此包含检查在实践中精确可靠。
  */
 export function findArmedKeepaliveJob(
   repo: WatchdogJobsRepository,
@@ -75,9 +64,8 @@ export function findArmedKeepaliveJob(
 }
 
 /**
- * Idempotent in-transaction arm: registers the addressed packet keepalive
- * (or the legacy instance keepalive) if no active one exists. Composable inside the scribe txn
- * (register is a plain INSERT).
+ * 事务内幂等启用：不存在活动 job 时，注册被寻址 packet 的 keepalive
+ *（或旧版实例 keepalive）。可在书记员事务中组合，因为 register 只是普通 INSERT。
  */
 export function ensureWorkflowKeepaliveArmed(
   repo: WatchdogJobsRepository,
@@ -101,9 +89,8 @@ export function ensureWorkflowKeepaliveArmed(
 }
 
 /**
- * In-transaction disarm on terminal instance state (completed/failed):
- * the job goes terminal so no orphaned watchdog noise survives the
- * instance (FR-3 AC). No-op when nothing is armed.
+ * 实例进入终态（completed/failed）时在事务内停用：job 同步进入终态，避免实例结束后
+ * 仍残留孤立 watchdog 噪声（FR-3 AC）。不存在已启用 job 时为空操作。
  */
 export function disarmWorkflowKeepalive(
   repo: WatchdogJobsRepository,

@@ -1,0 +1,20 @@
+CODECOMMENT promotion-suggestion vs needs-human-review (read-only; NO batch transition)
+generated from _records.json + batch2 evidence logs.
+
+== current status/validation (2026-10-08) ==
+total=3068 status: {'skipped': 145, 'done': 2921, 'pending': 2}
+done=2921 validation: {'self_reported': 1648, 'passed': 452, 'validated': 819, 'needs_review': 2}
+
+== skip145 audit ==
+结论：抽样合理。history evidence23/manifest28/binary-media8/legal3/scm1/machine1/lockfile1 均生成/vendor/范围外，合法。
+code-comment skipped 抽样：DB migrations(008-087)=机器schema生成；ui/components/ui/*(badge/tabs/textarea/tooltip/vellum-input/empty-state/WorkflowScaffold) grep 无用户可见英文散文；daemon *-surface/domain 为内部读层；scripts/check-* 内部gate工具。均判合法。
+待复核 skip：无强不合理项；如后续发现 ui 原语出现可见文案再提。
+
+== can promote (evidence already complete; already applied) ==
+big4: cli queue/restore-packet/daemon-lifecycle.test.ts + daemon bundle-routes.test.ts (passed); UI build-setup-prompt.test.ts (passed); attention/scopepages-progress-remote-gate.test.tsx (passed).
+
+== validate-only bucket (display-surface reviewed + test coverage; NOT whole-file comment audit) ==
+UI runtime-source ~189 TSX (extract-visible-strings.py): 61候选人工分类均为CLI/路径/枚举/code示例，无英文散文 → display-surface reviewed；仅可 validated，不可 passed。
+
+== still needs human review ==
+bulk self_reported code-comment (1592) + config-template/manifest；CLI/TUI 标题批与注释批按深度待作者精确 manifest；bundle-inspector/package-list 测试注释残留待译。

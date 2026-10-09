@@ -1,9 +1,8 @@
-// V1 attempt-3 Phase 4 — useCmuxLaunch.
+// V1 attempt-3 Phase 4 —— useCmuxLaunch。
 //
-// Thin wrapper around the daemon open-or-focus endpoint.
-// `POST /api/rigs/:rigId/nodes/:logicalId/open-cmux` creates a cmux
-// surface when the node is not already bound, and focuses the existing
-// surface when it is.
+// 对后台服务"打开或聚焦"端点的薄封装。
+// `POST /api/rigs/:rigId/nodes/:logicalId/open-cmux` 在节点尚未绑定时创建一个
+// cmux 界面，已绑定时则聚焦到既有界面。
 
 import { useMutation } from "@tanstack/react-query";
 import { terminalAuthHeaders } from "../components/mission-control/missionControlAuth.js";

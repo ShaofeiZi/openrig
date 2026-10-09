@@ -3,7 +3,7 @@ name: solo-stub
 culture_file: culture.md
 pods:
   - id: work
-    label: Work
+    label: 工作
     members:
       - {id: worker, agent_ref: "local:agents/worker", profile: default, runtime: stub, cwd: .}
     edges: []

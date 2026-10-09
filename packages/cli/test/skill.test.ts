@@ -50,9 +50,9 @@ describe("rig skill audit", () => {
     await cmd.parseAsync(["node", "rig", "audit"]);
 
     expect(process.exitCode).toBe(1);
-    expect(logs.some((l) => l.includes("MIRROR DRIFT CHECK UNAVAILABLE"))).toBe(true);
-    expect(logs.some((l) => l.includes("FAIL"))).toBe(true);
-    expect(logs.some((l) => l.includes("PASS"))).toBe(false);
+    expect(logs.some((l) => l.includes("镜像漂移检查不可用"))).toBe(true);
+    expect(logs.some((l) => l.includes("失败："))).toBe(true);
+    expect(logs.some((l) => l.includes("通过："))).toBe(false);
   });
 
   it("mirrorDriftError in JSON mode exits nonzero", async () => {
@@ -87,6 +87,6 @@ describe("rig skill audit", () => {
     await cmd.parseAsync(["node", "rig", "audit"]);
 
     expect(process.exitCode).toBeUndefined();
-    expect(logs.some((l) => l.includes("PASS"))).toBe(true);
+    expect(logs.some((l) => l.includes("通过："))).toBe(true);
   });
 });

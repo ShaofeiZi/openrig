@@ -1,0 +1,42 @@
+{
+"packages/tui/test/attention.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/connections-journey.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/mission-outcomes.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/project-navigation.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/s04-corrected-entry.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/slack-manifest-connections.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/terminal-resize.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/wheel-scroll.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/workflow-journey.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/text-width.test.ts": [
+"tui",
+"validated"
+]
+}

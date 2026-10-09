@@ -1,7 +1,7 @@
 /**
- * Maps instantiate node result status to Tailwind text color class.
- * These are DIFFERENT from restore statuses and runtime node statuses.
- * Instantiate statuses: launched, failed.
+ * 把实例化节点的结果状态映射为 Tailwind 文字颜色类。
+ * 这些状态与恢复状态、运行时节点状态都不同。
+ * 实例化状态:launched、failed。
  */
 export function getInstantiateStatusColorClass(status: string): string {
   switch (status) {

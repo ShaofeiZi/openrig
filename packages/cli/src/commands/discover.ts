@@ -5,7 +5,7 @@ import { realDeps } from "./daemon.js";
 import type { StatusDeps } from "./status.js";
 
 export function discoverCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("discover").description("Scan for unmanaged tmux sessions");
+  const cmd = new Command("discover").description("扫描未纳管的 tmux 会话");
   const getDeps = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   async function getClient(deps: StatusDeps): Promise<DaemonClient | null> {
@@ -18,8 +18,8 @@ export function discoverCommand(depsOverride?: StatusDeps): Command {
   }
 
   cmd
-    .option("--json", "Output as parseable JSON")
-    .option("--draft", "Generate a candidate rig spec from discovered sessions")
+    .option("--json", "输出可解析的 JSON")
+    .option("--draft", "根据发现的会话生成候选工作组规范")
     .action(async (opts: { json?: boolean; draft?: boolean }) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -28,7 +28,7 @@ export function discoverCommand(depsOverride?: StatusDeps): Command {
       const res = await client.post<{ sessions?: Array<Record<string, unknown>>; error?: string }>("/api/discovery/scan", {});
 
       if (res.status >= 400) {
-        console.error(res.data.error ?? `Scan failed (HTTP ${res.status})`);
+        console.error(res.data.error ?? `扫描失败（HTTP ${res.status}）`);
         process.exitCode = 1;
         return;
       }
@@ -36,7 +36,7 @@ export function discoverCommand(depsOverride?: StatusDeps): Command {
       if (opts.draft) {
         const draftRes = await client.postExpectText("/api/discovery/draft-rig", {});
         if (draftRes.status >= 400) {
-          console.error(`Draft generation failed (HTTP ${draftRes.status}). Run a scan first with: rig discover`);
+          console.error(`草稿生成失败（HTTP ${draftRes.status}）。请先用以下命令扫描：zrig discover`);
           process.exitCode = 1;
           return;
         }
@@ -51,13 +51,13 @@ export function discoverCommand(depsOverride?: StatusDeps): Command {
 
       const sessions = res.data.sessions ?? [];
       if (sessions.length === 0) {
-        console.log("No unmanaged sessions discovered.");
+        console.log("未发现未纳管的会话。");
         return;
       }
 
-      console.log("DISCOVERED SESSIONS");
+      console.log("发现的会话");
       for (const s of sessions) {
-        const hint = String(s["runtimeHint"] ?? "unknown").padEnd(12);
+        const hint = String(s["runtimeHint"] ?? "未知").padEnd(12);
         const conf = String(s["confidence"] ?? "").padEnd(8);
         console.log(`  ${s["id"]}  ${hint} ${conf} ${s["tmuxSession"]}:${s["tmuxPane"]}  ${s["cwd"] ?? ""}`);
       }

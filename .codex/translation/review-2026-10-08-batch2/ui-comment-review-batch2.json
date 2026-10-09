@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:38:22",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch2",
+ "files": 10,
+ "changed": 5,
+ "reviewed_no_change": 5,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/vellum-input.test.tsx",
+   "status": "changed",
+   "after_sha256": "114487a17558fb0bbb4ac8c84ac4835d8897c31bf514f764e2cc3f652cfc0585",
+   "natural_language_residual": 0,
+   "machine_classification": "V1/SC-26/OPR.0.4.3.21/0.4.1.11.2(FR-3)、asciicast v2 [time,\"o\",data]、controlPlaneUnhealthy 保留"
+  },
+  {
+   "path": "packages/ui/test/use-daemon-health-signal.test.ts",
+   "status": "changed",
+   "after_sha256": "45a015ff10bd4288819d2f34c206f15c8eb115437d90a9c3e8594f941fda278e",
+   "natural_language_residual": 0,
+   "machine_classification": "V1/SC-26/OPR.0.4.3.21/0.4.1.11.2(FR-3)、asciicast v2 [time,\"o\",data]、controlPlaneUnhealthy 保留"
+  },
+  {
+   "path": "packages/ui/test/use-needs-input-seats.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "c57ee32473424a1ef8a7b846e4079262c98824a2be7852b8e75eaf9771c88eb2",
+   "natural_language_residual": 0,
+   "machine_classification": "V1/SC-26/OPR.0.4.3.21/0.4.1.11.2(FR-3)、asciicast v2 [time,\"o\",data]、controlPlaneUnhealthy 保留"
+  },
+  {
+   "path": "packages/ui/test/mission-status-badge.test.tsx",
+   "status": "changed",
+   "after_sha256": "3400e2d60acd1b06e1c9a65797356201bd242dc3b5c6790f344b95b4d86d197e",
+   "natural_language_residual": 0,
+   "machine_classification": "V1/SC-26/OPR.0.4.3.21/0.4.1.11.2(FR-3)、asciicast v2 [time,\"o\",data]、controlPlaneUnhealthy 保留"
+  },
+  {
+   "path": "packages/ui/test/vellum-select.test.tsx",
+   "status": "changed",
+   "after_sha256": "0e4f5ca9c16f1b2e4bda6a3ad952f3e8bd181d06534d67ea0e3b76b20ade44f4",
+   "natural_language_residual": 0,
+   "machine_classification": "V1/SC-26/OPR.0.4.3.21/0.4.1.11.2(FR-3)、asciicast v2 [time,\"o\",data]、controlPlaneUnhealthy 保留"
+  },
+  {
+   "path": "packages/ui/test/feed-card-drill-ac3.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "a492cb030fab9ed70e34bfe8a0fb21499b5ae2cac8d23d55bb887881e9dd1c2d",
+   "natural_language_residual": 0,
+   "machine_classification": "V1/SC-26/OPR.0.4.3.21/0.4.1.11.2(FR-3)、asciicast v2 [time,\"o\",data]、controlPlaneUnhealthy 保留"
+  },
+  {
+   "path": "packages/ui/test/xterm-input-mapper.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "eeadee80736d48d38aa3924e9957ea4eaadc4a4c9b32bea080963dbd487a3073",
+   "natural_language_residual": 0,
+   "machine_classification": "V1/SC-26/OPR.0.4.3.21/0.4.1.11.2(FR-3)、asciicast v2 [time,\"o\",data]、controlPlaneUnhealthy 保留"
+  },
+  {
+   "path": "packages/ui/test/WorkspaceKindBadge.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "9af016c33d461e2bb0d2b86b00cba3e4a034d079f5ddc54430450435fd1bc398",
+   "natural_language_residual": 0,
+   "machine_classification": "V1/SC-26/OPR.0.4.3.21/0.4.1.11.2(FR-3)、asciicast v2 [time,\"o\",data]、controlPlaneUnhealthy 保留"
+  },
+  {
+   "path": "packages/ui/test/section-header.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "31c47a4e967efc80cfa4c98e12df6689dcb567d9daf5e77ab90b8eeffd05b031",
+   "natural_language_residual": 0,
+   "machine_classification": "V1/SC-26/OPR.0.4.3.21/0.4.1.11.2(FR-3)、asciicast v2 [time,\"o\",data]、controlPlaneUnhealthy 保留"
+  },
+  {
+   "path": "packages/ui/test/twin-capture-asciicast.test.ts",
+   "status": "changed",
+   "after_sha256": "3b4cc0a7c28b944cd2c537c05b9de74f4d59f5e44edb2a055231095a05521b2e",
+   "natural_language_residual": 0,
+   "machine_classification": "V1/SC-26/OPR.0.4.3.21/0.4.1.11.2(FR-3)、asciicast v2 [time,\"o\",data]、controlPlaneUnhealthy 保留"
+  }
+ ]
+}

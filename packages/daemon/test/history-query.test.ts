@@ -16,9 +16,9 @@ describe("HistoryQuery", () => {
   });
 
   describe("extractKeywords", () => {
-    it("splits question, filters stop words and short words, escapes regex", () => {
+    it("拆分问题、过滤停用词和短词，并转义正则字符", () => {
       const kw = extractKeywords("What is the deployment strategy?");
-      // "What" => stop word, "is" => stop word, "the" => stop word
+      // "What"、"is"、"the" 都是停用词。
       expect(kw).toContain("deployment");
       expect(kw).toContain("strategy");
       expect(kw).not.toContain("What");
@@ -26,17 +26,17 @@ describe("HistoryQuery", () => {
       expect(kw).not.toContain("the");
     });
 
-    it("filters words shorter than 3 chars", () => {
+    it("过滤短于 3 个字符的词", () => {
       const kw = extractKeywords("go to db and fix it");
-      // "go" = 2 chars, "to" = 2 chars, "db" = 2 chars, "it" = 2 chars
-      // "and" is a stop word, "fix" stays
+      // "go"、"to"、"db"、"it" 均为 2 个字符。
+      // "and" 是停用词，"fix" 保留。
       expect(kw).toContain("fix");
       expect(kw).not.toContain("go");
       expect(kw).not.toContain("to");
       expect(kw).not.toContain("db");
     });
 
-    it("regex-escapes special characters", () => {
+    it("转义正则特殊字符", () => {
       const kw = extractKeywords("search for file.ts and (pattern)");
       const escaped = kw.find((k) => k.includes("file"));
       expect(escaped).toBe("file\\.ts");
@@ -44,12 +44,12 @@ describe("HistoryQuery", () => {
       expect(parenEscaped).toBe("\\(pattern\\)");
     });
 
-    it("returns empty array for all-stop-word questions", () => {
+    it("问题全部由停用词组成时返回空数组", () => {
       const kw = extractKeywords("what is the");
       expect(kw).toEqual([]);
     });
 
-    it("deduplicates keywords", () => {
+    it("对关键词去重", () => {
       const kw = extractKeywords("deploy deploy deploy strategy");
       const deployCount = kw.filter((k) => k === "deploy").length;
       expect(deployCount).toBe(1);
@@ -57,7 +57,7 @@ describe("HistoryQuery", () => {
   });
 
   describe("search", () => {
-    it("searches transcripts with rg backend", async () => {
+    it("使用 rg 后端搜索 transcript", async () => {
       const rigDir = join(tmpDir, "my-rig");
       mkdirSync(rigDir, { recursive: true });
       writeFileSync(join(rigDir, "dev-impl.log"), "line1 deployment started\nline2 nothing\nline3 deployment done\n");
@@ -77,7 +77,7 @@ describe("HistoryQuery", () => {
       expect(call[0]).toBe("rg");
     });
 
-    it("falls back to grep when rg exits with code >= 2 (not found)", async () => {
+    it("rg 以 >=2 退出时（未找到）回退到 grep", async () => {
       const rigDir = join(tmpDir, "my-rig");
       mkdirSync(rigDir, { recursive: true });
       writeFileSync(join(rigDir, "session.log"), "test error handling\n");
@@ -86,11 +86,11 @@ describe("HistoryQuery", () => {
       const exec: ExecDep = vi.fn(async (cmd: string, _args: string[]) => {
         callCount++;
         if (callCount === 1) {
-          // rg fails with exit code 2 (error)
+          // rg 以错误码 2 失败。
           expect(cmd).toBe("rg");
           return { stdout: "", exitCode: 2 };
         }
-        // grep fallback
+        // grep 回退。
         expect(cmd).toBe("grep");
         return { stdout: "test error handling\n", exitCode: 0 };
       });
@@ -102,7 +102,7 @@ describe("HistoryQuery", () => {
       expect(callCount).toBe(2);
     });
 
-    it("returns no excerpts when rg exit code 1 (no matches)", async () => {
+    it("rg 退出码为 1（无匹配）时不返回摘录", async () => {
       const rigDir = join(tmpDir, "my-rig");
       mkdirSync(rigDir, { recursive: true });
       writeFileSync(join(rigDir, "session.log"), "unrelated content\n");
@@ -119,7 +119,7 @@ describe("HistoryQuery", () => {
       expect(result.insufficient).toBe(true);
     });
 
-    it("returns insufficient for empty keywords", async () => {
+    it("关键词为空时返回 insufficient", async () => {
       const rigDir = join(tmpDir, "my-rig");
       mkdirSync(rigDir, { recursive: true });
 
@@ -133,7 +133,7 @@ describe("HistoryQuery", () => {
       expect(exec).not.toHaveBeenCalled();
     });
 
-    it("returns insufficient when transcript directory does not exist", async () => {
+    it("transcript 目录不存在时返回 insufficient", async () => {
       const exec: ExecDep = vi.fn();
 
       const hq = new HistoryQuery({ transcriptsRoot: tmpDir, exec });
@@ -144,7 +144,7 @@ describe("HistoryQuery", () => {
       expect(exec).not.toHaveBeenCalled();
     });
 
-    it("returns error when both rg and grep fail (exit code 2+)", async () => {
+    it("rg 与 grep 均失败（退出码 >=2）时返回错误", async () => {
       const rigDir = join(tmpDir, "my-rig");
       mkdirSync(rigDir, { recursive: true });
       writeFileSync(join(rigDir, "dev.log"), "some content\n");
@@ -156,10 +156,10 @@ describe("HistoryQuery", () => {
 
       expect(result.insufficient).toBe(true);
       expect(result.backend).toBe("none");
-      expect(result.error).toContain("both failed");
+      expect(result.error).toContain("均失败");
     });
 
-    it("strips ANSI from excerpts", async () => {
+    it("从摘录中移除 ANSI", async () => {
       const rigDir = join(tmpDir, "my-rig");
       mkdirSync(rigDir, { recursive: true });
       writeFileSync(join(rigDir, "session.log"), "content\n");

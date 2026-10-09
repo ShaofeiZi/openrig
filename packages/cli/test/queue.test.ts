@@ -8,12 +8,11 @@ import { resolveQueueBody, previewBody, waitForDeliveryOutcome } from "../src/co
 import { createProgram } from "../src/index.js";
 
 /**
- * `rig queue` CLI tests — PL-004 Phase A revision (R1).
+ * `rig queue` CLI 测试 — PL-004 Phase A 修订（R1）。
  *
- * Pattern mirrors compact-plan.test.ts: mock daemon-lifecycle to fake a
- * running daemon, inject a clientFactory that returns a stubbed HTTP client.
- * Tests assert: command parsing, HTTP request shape, non-2xx exit handling,
- * hot-potato error rendering. No real daemon, no DB, no network.
+ * 模式仿 compact-plan.test.ts：mock daemon-lifecycle 伪装成运行中的 daemon，
+ * 注入一个返回 stubbed HTTP client 的 clientFactory。测试断言：命令解析、
+ * HTTP 请求形状、非 2xx 退出处理、hot-potato 错误渲染。无真实 daemon、无 DB、无网络。
  */
 
 vi.mock("../src/daemon-lifecycle.js", async () => {
@@ -77,10 +76,9 @@ describe("rig queue CLI", () => {
 
   beforeEach(() => {
     vi.unstubAllEnvs();
-    // P21 HERMETIC: the queue verbs derive source/actor from the seat env (X-OpenRig-Session), so an
-    // env-less harness aborts pre-POST. Stub a deterministic seat so these tests never depend on the
-    // AMBIENT OPENRIG_SESSION_NAME (which masked the env-less break in a managed runner). Per-test stubs
-    // that need a specific seat override this.
+    // P21 HERMETIC：queue 动词从席位 env（X-OpenRig-Session）派生 source/actor，因此无 env 的
+    // 夹具会在 POST 之前中止。stub 一个确定性席位，使这些测试永不依赖环境里的
+    // OPENRIG_SESSION_NAME（它曾在受管 runner 中掩盖无 env 破坏）。需要特定席位的逐用例 stub 覆盖此项。
     vi.stubEnv("OPENRIG_SESSION_NAME", "seat@rig");
     logs = [];
     errors = [];
@@ -89,13 +87,13 @@ describe("rig queue CLI", () => {
     process.exitCode = undefined;
   });
 
-  it("queue is registered on createProgram with all R1 subcommands", async () => {
+  it("createProgram 注册 queue 及其全部 R1 子命令", async () => {
     const { deps } = makeDeps();
     const program = createProgram({ queueDeps: deps });
     const queueCmd = program.commands.find((c) => c.name() === "queue");
     expect(queueCmd).toBeDefined();
     const subs = queueCmd!.commands.map((c) => c.name()).sort();
-    // R1 ratified contract: handoff-and-complete + whoami present alongside the originals.
+    // R1 已批准契约：handoff-and-complete + whoami 与原命令并存。
     expect(subs).toContain("create");
     expect(subs).toContain("handoff");
     expect(subs).toContain("handoff-and-complete");
@@ -108,7 +106,7 @@ describe("rig queue CLI", () => {
     expect(subs).toContain("show");
   });
 
-  it("create sends NO body sourceSession — the source derives from the transport header (X-OpenRig-Session); an explicit --source is dropped, never forwarded as a body claim", async () => {
+  it("create 不带 body sourceSession——来源派生自传输头（X-OpenRig-Session）；显式 --source 被丢弃，绝不作为 body 声明转发", async () => {
     const saved = process.env["OPENRIG_SESSION_NAME"];
     process.env["OPENRIG_SESSION_NAME"] = "alice@rig"; // the seat env == the X-OpenRig-Session the DaemonClient stamps
     try {
@@ -127,13 +125,11 @@ describe("rig queue CLI", () => {
       const create = calls.find((c) => c.path === "/api/queue/create");
       expect(create).toBeDefined();
       const body = create!.body as Record<string, unknown>;
-      // P21 I3 reconcile: no body identity claim — the daemon derives the source from the header, and
-      // the forged --source is DROPPED (not forwarded). The destination is the TARGET, a legit body field.
+      // P21 I3 调和：不带 body 身份声明——daemon 从 header 派生 source，伪造的 --source 被丢弃（不转发）。destination 是 TARGET，属合法 body 字段。
       expect(body.sourceSession).toBeUndefined();
       expect(body.destinationSession).toBe("bob@rig");
       expect(body.body).toBe("do thing");
-      // R1: commander's --no-nudge sets opts.nudge to true by default.
-      // The CLI sends nudge: true, and the daemon treats nudge !== false as nudging.
+      // R1：commander 的 --no-nudge 默认把 opts.nudge 置 true。CLI 发送 nudge: true，daemon 把 nudge !== false 视为 nudging。
       expect(body.nudge).toBe(true);
     } finally {
       if (saved === undefined) delete process.env["OPENRIG_SESSION_NAME"];
@@ -142,7 +138,7 @@ describe("rig queue CLI", () => {
   });
 
   // Slice-03 Atom 6b — --body-context snapshot + provenance rule.
-  it("create preserves explicit human intent and authored supplemental file bytes", async () => {
+  it("create 保留显式人工意图与 authored 补充文件字节", async () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "queue-human-detail-"));
     const file = path.join(directory, "detail.txt");
     const detail = "Supporting context.\nEmoji: 😀; symbols: < & >.\n";
@@ -154,7 +150,7 @@ describe("rig queue CLI", () => {
     } finally { fs.rmSync(directory, { recursive: true, force: true }); }
   });
 
-  it("create --body-context snapshots the RESOLVED content as the body + a provenance tag", async () => {
+  it("create --body-context 把已解析内容快照为 body + 来源标签", async () => {
     const { deps, calls } = makeDeps({
       routes: {
         "GET /api/context-packs/library/by-ref/pieces?ref=packs%2Fbrief": { status: 200, data: { ref: "packs/brief", text: "BRIEF-BODY", bytes: 10, missingFiles: [] } },
@@ -171,15 +167,13 @@ describe("rig queue CLI", () => {
     const create = calls.find((c) => c.path === "/api/queue/create");
     expect(create, "expected the qitem to be created").toBeDefined();
     const body = create!.body as { body: string; tags?: string[] };
-    // Snapshot: the RESOLVED content is the body (not the ref); a later library
-    // edit can never rewrite this handoff's history.
+    // 快照：已解析内容即 body（而非引用 ref）；后续库编辑永远无法改写这次 handoff 的历史。
     expect(body.body).toBe("BRIEF-BODY");
-    // Provenance: the ref rides as a tag so "what context was this agent given?"
-    // stays auditable.
+    // 来源溯源：ref 作为标签携带，以便「这个 agent 当时拿到了什么上下文？」始终可审计。
     expect(body.tags).toContain("body-context:packs/brief");
   });
 
-  it("create --body-context ABORTS (no qitem created) when the pack has a missing member", async () => {
+  it("create --body-context 在 pack 缺成员时中止（不创建 qitem）", async () => {
     const { deps, calls } = makeDeps({
       routes: {
         "GET /api/context-packs/library/by-ref/pieces?ref=packs%2Fbroken": { status: 200, data: { ref: "packs/broken", text: "X", missingFiles: [{ path: "gone.md" }] } },
@@ -197,7 +191,7 @@ describe("rig queue CLI", () => {
     expect(errors.join("\n")).toMatch(/gone\.md/);
   });
 
-  it("create --body-context is mutually exclusive with --body", async () => {
+  it("create --body-context 与 --body 互斥", async () => {
     const { deps, calls } = makeDeps();
     const program = createProgram({ queueDeps: deps });
     program.exitOverride();
@@ -208,10 +202,10 @@ describe("rig queue CLI", () => {
     ]);
     expect(calls.find((c) => c.path === "/api/queue/create")).toBeUndefined();
     expect(process.exitCode).toBe(1);
-    expect(errors.join("\n")).toMatch(/mutually exclusive/i);
+    expect(errors.join("\n")).toMatch(/互斥/);
   });
 
-  it("create --no-nudge passes nudge: false to the daemon (cold-queue opt-out)", async () => {
+  it("create --no-nudge 向 daemon 传 nudge: false（冷队列退出）", async () => {
     const { deps, calls } = makeDeps();
     const program = createProgram({ queueDeps: deps });
     program.exitOverride();
@@ -226,7 +220,7 @@ describe("rig queue CLI", () => {
     expect((create!.body as { nudge: boolean }).nudge).toBe(false);
   });
 
-  it("create --verify waits for the existing gateway receipt and keeps persistence, connector acceptance, and readership distinct", async () => {
+  it("create --verify 等待既有网关回执，并保持持久化、连接器验收与读取者彼此区分", async () => {
     const id = "qitem-human-verify";
     const { deps, calls } = makeDeps({
       routes: {
@@ -263,7 +257,7 @@ describe("rig queue CLI", () => {
     expect(calls.filter((call) => call.method === "GET" && call.path === `/api/queue/${id}`)).toHaveLength(2);
   });
 
-  it("create --verify times out indeterminate without retrying or weakening the durable create", async () => {
+  it("create --verify 不确定即超时，不重试也不削弱持久化的 create", async () => {
     const id = "qitem-human-pending";
     const { deps, calls } = makeDeps({
       routes: {
@@ -287,7 +281,7 @@ describe("rig queue CLI", () => {
         outcome: "still-pending",
         connectorAccepted: null,
         humanReadership: "unknown",
-        nextAction: `rig queue show ${id} --json`,
+        nextAction: `zrig queue show ${id} --json`,
       },
     });
     expect(calls.filter((call) => call.method === "POST" && call.path === "/api/queue/create")).toHaveLength(1);
@@ -317,13 +311,13 @@ describe("rig queue CLI", () => {
     },
   );
 
-  it("delivery verification preserves an HTTP refusal as indeterminate", async () => {
+  it("投递校验把 HTTP 拒绝保留为 indeterminate", async () => {
     const result = await waitForDeliveryOutcome({ get: async <T>() => ({ status: 503, data: { error: "projection unavailable" } as T }) }, "qitem-human-http");
     expect(result).toMatchObject({ outcome: "indeterminate", connectorAccepted: null, humanReadership: "unknown" });
     expect(result.detail).toContain("HTTP 503");
   });
 
-  it("delivery verification reports an unreadable receipt as indeterminate, not rejected", async () => {
+  it("投递校验把不可读回执报为 indeterminate，而非 rejected", async () => {
     const result = await waitForDeliveryOutcome(
       { get: async () => { throw new Error("daemon read timed out"); } } as never,
       "qitem-human-indeterminate",
@@ -335,17 +329,17 @@ describe("rig queue CLI", () => {
     });
   });
 
-  // OPR.0.3.2.21.FR-4(a) — body input resolution kills the
-  // backtick-corruption class. Three accepted shapes: --body inline,
-  // --body-file <path>, --body / --body-file - for stdin. Exactly one
-  // of --body / --body-file is required; mutual exclusion validates.
+  // OPR.0.3.2.21.FR-4(a) — body 输入解析终结对
+  // backtick 损坏类。三种可接受形状：--body 内联、
+  // --body-file <path>、--body / --body-file - 表示 stdin。
+  // --body / --body-file 必须二选一；互斥校验。
   describe("FR-4(a) — --body-file + stdin support", () => {
-    it("resolveQueueBody returns inline body when --body is passed", async () => {
+    it("resolveQueueBody：传 --body 时返回内联 body", async () => {
       const out = await resolveQueueBody({ body: "inline value" });
       expect(out).toBe("inline value");
     });
 
-    it("resolveQueueBody reads from a file path when --body-file is passed", async () => {
+    it("resolveQueueBody：传 --body-file 时从文件路径读取", async () => {
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "queue-body-"));
       const bodyPath = path.join(tmp, "body.txt");
       const content = "Multi-line body with `raw backticks` and\nliteral newlines\n— this is the corruption class --body-file kills.";
@@ -353,95 +347,91 @@ describe("rig queue CLI", () => {
       try {
         const out = await resolveQueueBody({ bodyFile: bodyPath });
         expect(out).toBe(content);
-        // Discriminator: the backtick-corruption shell class is bypassed
-        // entirely because no shell substitution happens on file content.
+        // 判别点：反引号损坏的 shell 类别被完全绕过，因为文件内容不发生任何 shell 替换。
         expect(out).toMatch(/`raw backticks`/);
       } finally {
         fs.rmSync(tmp, { recursive: true, force: true });
       }
     });
 
-    it("resolveQueueBody throws 3-part error when both --body and --body-file are passed", async () => {
+    it("resolveQueueBody：同时传 --body 与 --body-file 时抛三段式错误", async () => {
       await expect(resolveQueueBody({ body: "inline", bodyFile: "/tmp/x" })).rejects.toMatchObject({
-        fact: expect.stringMatching(/mutually exclusive|ambiguous/i),
-        consequence: expect.stringMatching(/did not run/),
-        action: expect.stringMatching(/exactly one/),
+        fact: expect.stringMatching(/互斥|歧义/),
+        consequence: expect.stringMatching(/未执行/),
+        action: expect.stringMatching(/只传一个/),
       });
     });
 
-    it("resolveQueueBody throws 3-part error when neither --body nor --body-file is passed", async () => {
+    it("resolveQueueBody：既不传 --body 也不传 --body-file 时抛三段式错误", async () => {
       await expect(resolveQueueBody({})).rejects.toMatchObject({
-        fact: expect.stringMatching(/Neither --body nor --body-file/),
-        consequence: expect.stringMatching(/did not run/),
+        fact: expect.stringMatching(/既没传/),
+        consequence: expect.stringMatching(/未执行/),
         action: expect.stringMatching(/--body|--body-file/),
       });
     });
 
-    it("resolveQueueBody throws 3-part error when --body-file path does not exist", async () => {
+    it("resolveQueueBody：--body-file 路径不存在时抛三段式错误", async () => {
       await expect(resolveQueueBody({ bodyFile: "/tmp/this-path-does-not-exist-fr4a-test.md" })).rejects.toMatchObject({
-        fact: expect.stringMatching(/does not exist/),
-        consequence: expect.stringMatching(/did not run/),
-        action: expect.stringMatching(/Check the path/),
+        fact: expect.stringMatching(/不存在/),
+        consequence: expect.stringMatching(/未执行/),
+        action: expect.stringMatching(/检查路径/),
       });
     });
 
-    // OPR.0.3.2.21.FR-4 cleanup (guard non-blocking note on FR-4a CLEAR): a
-    // directory passed to --body-file used to fall through to fs.readFileSync
-    // and surface a bare Error("EISDIR: illegal operation on a directory") with
-    // blank consequence/action. The cleanup commit emits the 3-part shape
-    // explicitly so the error reads consistently with the other body-resolve
+    // OPR.0.3.2.21.FR-4 清理（FR-4a CLEAR 上的非阻塞说明）：传给 --body-file 的目录过去会落到 fs.readFileSync，
+    // 并浮出裸 Error("EISDIR: illegal operation on a directory")，consequence/action 为空。清理提交显式发出三段式形状，使该错误与其他 body 解析错误读数一致。
     // failure modes.
-    it("resolveQueueBody throws 3-part error when --body-file path is a directory (not a regular file)", async () => {
+    it("resolveQueueBody：--body-file 路径是目录（非普通文件）时抛三段式错误", async () => {
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "queue-body-isdir-"));
       try {
         await expect(resolveQueueBody({ bodyFile: tmp })).rejects.toMatchObject({
-          fact: expect.stringMatching(/not a regular file/),
-          consequence: expect.stringMatching(/did not run/),
-          action: expect.stringMatching(/Pass a path to a readable file/),
+          fact: expect.stringMatching(/不是普通文件/),
+          consequence: expect.stringMatching(/未执行/),
+          action: expect.stringMatching(/可读文件/),
         });
       } finally {
         fs.rmSync(tmp, { recursive: true, force: true });
       }
     });
 
-    it("resolveQueueBody calls the injected stdin reader when --body is -", async () => {
+    it("resolveQueueBody：--body 为 - 时调用注入的 stdin 读取器", async () => {
       const stdinReader = vi.fn(async () => "from stdin\n");
       const out = await resolveQueueBody({ body: "-" }, stdinReader);
       expect(out).toBe("from stdin\n");
       expect(stdinReader).toHaveBeenCalledTimes(1);
     });
 
-    it("resolveQueueBody calls the injected stdin reader when --body-file is -", async () => {
+    it("resolveQueueBody：--body-file 为 - 时调用注入的 stdin 读取器", async () => {
       const stdinReader = vi.fn(async () => "from stdin file dash\n");
       const out = await resolveQueueBody({ bodyFile: "-" }, stdinReader);
       expect(out).toBe("from stdin file dash\n");
       expect(stdinReader).toHaveBeenCalledTimes(1);
     });
 
-    it("S4b RED: refuses an empty --body-file with source-aware 3-part guidance", async () => {
+    it("S4b RED：以来源感知的三段式指引拒绝空 --body-file", async () => {
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "queue-body-empty-"));
       const bodyPath = path.join(tmp, "empty.md");
       fs.writeFileSync(bodyPath, "", "utf8");
       try {
         await expect(resolveQueueBody({ bodyFile: bodyPath })).rejects.toMatchObject({
-          fact: expect.stringMatching(new RegExp(`0 bytes|empty.*${path.basename(bodyPath)}`, "i")),
-          consequence: expect.stringMatching(/nothing was persisted|daemon was not contacted/i),
-          action: expect.stringMatching(/add.*content|non-empty/i),
+          fact: expect.stringMatching(new RegExp(`0 字节|空正文.*${path.basename(bodyPath)}`, "i")),
+          consequence: expect.stringMatching(/未持久化|未联系后台服务/i),
+          action: expect.stringMatching(/加上内容|非空/i),
         });
       } finally {
         fs.rmSync(tmp, { recursive: true, force: true });
       }
     });
 
-    it("S4b RED: refuses empty stdin and names stdin before any queue persistence", async () => {
+    it("S4b RED：拒绝空 stdin，并在任何队列持久化之前点名 stdin", async () => {
       await expect(resolveQueueBody({ bodyFile: "-" }, async () => "")).rejects.toMatchObject({
-        fact: expect.stringMatching(/0 bytes|empty.*stdin/i),
-        consequence: expect.stringMatching(/nothing was persisted|daemon was not contacted/i),
-        action: expect.stringMatching(/provide|pipe.*content|non-empty/i),
+        fact: expect.stringMatching(/0 字节|空.*stdin/i),
+        consequence: expect.stringMatching(/未持久化|未联系后台服务/i),
+        action: expect.stringMatching(/送入|非空/i),
       });
     });
 
-    it("S4b RED: empty file aborts queue create before the daemon can persist a row", async () => {
+    it("S4b RED：空文件在 daemon 持久化行之前中止队列 create", async () => {
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "queue-create-empty-"));
       const bodyPath = path.join(tmp, "empty.md");
       fs.writeFileSync(bodyPath, "", "utf8");
@@ -462,7 +452,7 @@ describe("rig queue CLI", () => {
       }
     });
 
-    it("create --body-file <file-with-backticks> POSTs the file content as body (operator-copy-paste-safe)", async () => {
+    it("create --body-file <含反引号文件> 把文件内容作为 body POST（操作者复制粘贴安全）", async () => {
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "queue-create-body-file-"));
       const bodyPath = path.join(tmp, "body.txt");
       const content = "Per-commit handoff for OPR.X.Y.Z\n\n```bash\nrig queue handoff qitem-1 --to next@rig\n```\n\nDone.";
@@ -484,15 +474,14 @@ describe("rig queue CLI", () => {
         expect(create, "expected POST /api/queue/create to fire").toBeDefined();
         const body = create!.body as Record<string, unknown>;
         expect(body.body).toBe(content);
-        // Discriminator: the backtick fence survived intact, proving the
-        // shell-substitution class never touched the content.
+        // 判别点：反引号围栏完好无损，证明 shell 替换类别从未触及内容。
         expect((body.body as string)).toMatch(/```bash[\s\S]*?```/);
       } finally {
         fs.rmSync(tmp, { recursive: true, force: true });
       }
     });
 
-    it("create with both --body and --body-file errors with exit 1 + 3-part error + does NOT contact the daemon", async () => {
+    it("同时传 --body 与 --body-file 的 create 以退出 1 + 三段式错误失败，且不联系 daemon", async () => {
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "queue-create-conflict-"));
       const bodyPath = path.join(tmp, "body.txt");
       fs.writeFileSync(bodyPath, "x", "utf8");
@@ -521,7 +510,7 @@ describe("rig queue CLI", () => {
       }
     });
 
-    it("create with neither --body nor --body-file errors with exit 1 + does NOT contact the daemon", async () => {
+    it("既不传 --body 也不传 --body-file 的 create 以退出 1 失败，且不联系 daemon", async () => {
       const { deps, calls } = makeDeps();
       const program = createProgram({ queueDeps: deps });
       program.exitOverride();
@@ -542,12 +531,11 @@ describe("rig queue CLI", () => {
     });
   });
 
-  // OPR.0.3.2.21.FR-4(b) — --mission / --slice first-class flags
-  // translate to mission:<id> / slice:<id> tags and compose with --tags.
-  // This is tag-formalization only — no schema change; the qitem still
-  // stores tags as a flat list.
+  // OPR.0.3.2.21.FR-4(b) — --mission / --slice 一等 flag
+  // 译为 mission:<id> / slice:<id> 标签，并与 --tags 组合。
+  // 这只是标签形式化——无 schema 变更；qitem 仍以扁平列表存储 tags。
   describe("FR-4(b) — --mission / --slice first-class flag-formalization", () => {
-    it("--mission translates to a mission:<id> tag", async () => {
+    it("--mission 译为 mission:<id> 标签", async () => {
       const { deps, calls } = makeDeps({
         routes: { "POST /api/queue/create": { status: 201, data: { qitemId: "q-fr4b-1" } } },
       });
@@ -565,7 +553,7 @@ describe("rig queue CLI", () => {
       expect((create!.body as { tags: string[] }).tags).toEqual(["mission:release-0.3.2"]);
     });
 
-    it("--slice translates to a slice:<id> tag", async () => {
+    it("--slice 译为 slice:<id> 标签", async () => {
       const { deps, calls } = makeDeps({
         routes: { "POST /api/queue/create": { status: 201, data: { qitemId: "q-fr4b-2" } } },
       });
@@ -583,7 +571,7 @@ describe("rig queue CLI", () => {
       expect((create!.body as { tags: string[] }).tags).toEqual(["slice:21-fr-4-queue-ergonomics"]);
     });
 
-    it("--mission + --slice + --tags merges all three sets (mission/slice first, --tags appended) and de-duplicates", async () => {
+    it("--mission + --slice + --tags 合并三者（mission/slice 在前，--tags 追加）并去重", async () => {
       const { deps, calls } = makeDeps({
         routes: { "POST /api/queue/create": { status: 201, data: { qitemId: "q-fr4b-3" } } },
       });
@@ -608,7 +596,7 @@ describe("rig queue CLI", () => {
       ]);
     });
 
-    it("--mission release-0.3.2 + --tags mission:release-0.3.2 de-duplicates the redundant tag (one mission:X kept)", async () => {
+    it("--mission release-0.3.2 + --tags mission:release-0.3.2 去重冗余标签（保留一个 mission:X）", async () => {
       const { deps, calls } = makeDeps({
         routes: { "POST /api/queue/create": { status: 201, data: { qitemId: "q-fr4b-4" } } },
       });
@@ -629,7 +617,7 @@ describe("rig queue CLI", () => {
       expect(tags).toContain("gate:guard");
     });
 
-    it("no --mission/--slice/--tags → tags is undefined on the wire (legacy behavior preserved)", async () => {
+    it("无 --mission/--slice/--tags → 线上 tags 为 undefined（保留旧行为）", async () => {
       const { deps, calls } = makeDeps({
         routes: { "POST /api/queue/create": { status: 201, data: { qitemId: "q-fr4b-5" } } },
       });
@@ -647,10 +635,9 @@ describe("rig queue CLI", () => {
     });
   });
 
-  // OPR.0.4.3.16 — --gate <role> first-class flag stamps a gate:<role> tag,
-  // the producer the idle-gate watchdog's centralized predicate reads.
+  // OPR.0.4.3.16 — --gate <role> 一等 flag 盖一个 gate:<role> 标签，即 idle-gate watchdog 的集中谓词读取的生产者。
   describe("OPR.0.4.3.16 — --gate <role> gate-predicate producer", () => {
-    it("create --gate guard translates to a gate:guard tag", async () => {
+    it("create --gate guard 译为 gate:guard 标签", async () => {
       const { deps, calls } = makeDeps({
         routes: { "POST /api/queue/create": { status: 201, data: { qitemId: "q-gate-1" } } },
       });
@@ -668,7 +655,7 @@ describe("rig queue CLI", () => {
       expect((create!.body as { tags: string[] }).tags).toEqual(["gate:guard"]);
     });
 
-    it("create --gate composes with --slice/--tags and de-duplicates", async () => {
+    it("create --gate 与 --slice/--tags 组合并去重", async () => {
       const { deps, calls } = makeDeps({
         routes: { "POST /api/queue/create": { status: 201, data: { qitemId: "q-gate-2" } } },
       });
@@ -692,7 +679,7 @@ describe("rig queue CLI", () => {
       ]);
     });
 
-    it("handoff --gate guard translates to a gate:guard tag on the new qitem", async () => {
+    it("handoff --gate guard 在新 qitem 上译为 gate:guard 标签", async () => {
       const { deps, calls } = makeDeps({
         routes: { "POST /api/queue/q-src/handoff": { status: 201, data: { qitemId: "q-new" } } },
       });
@@ -711,7 +698,7 @@ describe("rig queue CLI", () => {
     });
   });
 
-  it("update --state done WITHOUT --closure-reason renders structured hot-potato error and exits non-zero", async () => {
+  it("update --state done 不带 --closure-reason 时给出结构化 hot-potato 错误并不零退出", async () => {
     const { deps } = makeDeps({
       routes: {
         "POST /api/queue/qitem-x/update": {
@@ -738,7 +725,7 @@ describe("rig queue CLI", () => {
     expect(out).toContain("validReasons");
   });
 
-  it("update accepts a note without state", async () => {
+  it("update 可只带 note 不带 state", async () => {
     const { deps, calls } = makeDeps();
     const program = createProgram({ queueDeps: deps });
     program.exitOverride();
@@ -761,7 +748,7 @@ describe("rig queue CLI", () => {
     });
   });
 
-  it("update forwards explicit reopen acknowledgment", async () => {
+  it("update 转发显式 reopen 确认", async () => {
     const { deps, calls } = makeDeps();
     const program = createProgram({ queueDeps: deps });
     program.exitOverride();
@@ -781,7 +768,7 @@ describe("rig queue CLI", () => {
     });
   });
 
-  it("S03: block forwards the continuation and an atomic timer wake", async () => {
+  it("S03：block 转发续接与一个原子计时器唤醒", async () => {
     const { deps, calls } = makeDeps();
     const program = createProgram({ queueDeps: deps });
     program.exitOverride();
@@ -800,18 +787,18 @@ describe("rig queue CLI", () => {
     });
   });
 
-  it("S03: block help teaches all wake paths and the workspace rule", () => {
+  it("S03：block help 讲清所有唤醒路径与 workspace 规则", () => {
     const { deps } = makeDeps();
     const program = createProgram({ queueDeps: deps });
     const block = program.commands.find((c) => c.name() === "queue")?.commands.find((c) => c.name() === "block");
     const help = block?.helpInformation() ?? "";
     expect(help).toMatch(/watchdog id/i);
-    expect(help).toMatch(/timer/i);
-    expect(help).toMatch(/live blocker/i);
-    expect(help).toMatch(/workspace.*not.imminent/i);
+    expect(help).toMatch(/定时器/);
+    expect(help).toMatch(/存活阻塞者/);
+    expect(help).toMatch(/被推迟.*不紧迫/);
   });
 
-  it("handoff-and-complete sends NO body fromSession — the handing-off seat derives from the transport header (X-OpenRig-Session); --from is dropped, --to stays the target", async () => {
+  it("handoff-and-complete 不带 body fromSession——交出席位派生自传输头（X-OpenRig-Session）；--from 被丢弃，--to 仍为目标", async () => {
     const saved = process.env["OPENRIG_SESSION_NAME"];
     process.env["OPENRIG_SESSION_NAME"] = "bob@rig"; // the seat env == the X-OpenRig-Session the DaemonClient stamps
     try {
@@ -838,8 +825,7 @@ describe("rig queue CLI", () => {
       const call = calls.find((c) => c.path === "/api/queue/qitem-src/handoff-and-complete");
       expect(call).toBeDefined();
       const body = call!.body as Record<string, unknown>;
-      // P21 I3 reconcile: no body identity claim — the daemon derives fromSession from the header, and
-      // the forged --from is DROPPED. toSession is the TARGET, a legit body field.
+      // P21 I3 调和：不带 body 身份声明——daemon 从 header 派生 fromSession，伪造的 --from 被丢弃。toSession 是 TARGET，属合法 body 字段。
       expect(body.fromSession).toBeUndefined();
       expect(body.toSession).toBe("carol@rig");
       expect(body.body).toBe("carol's piece");
@@ -849,7 +835,7 @@ describe("rig queue CLI", () => {
     }
   });
 
-  it("whoami GETs /api/queue/whoami with session + recentLimit query params", async () => {
+  it("whoami 带 session + recentLimit 查询参数 GET /api/queue/whoami", async () => {
     const { deps, calls } = makeDeps({
       routes: {
         "GET /api/queue/whoami?session=bob%40rig&recentLimit=10": {
@@ -876,7 +862,7 @@ describe("rig queue CLI", () => {
     expect(call!.path).toContain("recentLimit=10");
   });
 
-  it("whoami defaults the session from OPENRIG_SESSION_NAME when --session is omitted", async () => {
+  it("whoami 在省略 --session 时从 OPENRIG_SESSION_NAME 默认会话", async () => {
     const saved = process.env["OPENRIG_SESSION_NAME"];
     process.env["OPENRIG_SESSION_NAME"] = "bob@rig";
     try {
@@ -906,7 +892,7 @@ describe("rig queue CLI", () => {
     }
   });
 
-  it("claim sends NO body destinationSession — the claimant derives from the transport header (X-OpenRig-Session); env present ⇒ POST fires", async () => {
+  it("claim 不带 body destinationSession——认领者派生自传输头（X-OpenRig-Session）；env 存在 ⇒ 触发 POST", async () => {
     const saved = process.env["OPENRIG_SESSION_NAME"];
     process.env["OPENRIG_SESSION_NAME"] = "bob@rig";
     try {
@@ -924,8 +910,8 @@ describe("rig queue CLI", () => {
 
       const call = calls.find((c) => c.path === "/api/queue/qitem-x/claim");
       expect(call).toBeDefined();
-      // P21 I3 reconcile: the claimant is NOT a body claim — the daemon derives it from the
-      // X-OpenRig-Session header (env present ⇒ pre-check passes ⇒ POST fires). No forgeable body field.
+      // P21 I3 调和：认领者不是 body 声明——daemon 从 header 派生它。
+      // X-OpenRig-Session header（env 存在 ⇒ 预检通过 ⇒ POST 触发）。无可伪造的 body 字段。
       expect((call!.body as Record<string, unknown>).destinationSession).toBeUndefined();
     } finally {
       if (saved === undefined) delete process.env["OPENRIG_SESSION_NAME"];
@@ -933,7 +919,7 @@ describe("rig queue CLI", () => {
     }
   });
 
-  it("update sends NO body actorSession — the actor derives from the transport header (X-OpenRig-Session); env present ⇒ POST fires", async () => {
+  it("update 不带 body actorSession——执行者派生自传输头（X-OpenRig-Session）；env 存在 ⇒ 触发 POST", async () => {
     const saved = process.env["OPENRIG_SESSION_NAME"];
     process.env["OPENRIG_SESSION_NAME"] = "bob@rig";
     try {
@@ -956,7 +942,7 @@ describe("rig queue CLI", () => {
 
       const call = calls.find((c) => c.path === "/api/queue/qitem-x/update");
       expect(call).toBeDefined();
-      // P21 I3 reconcile: the actor is NOT a body claim — the daemon derives it from the header.
+      // P21 I3 调和：执行者不是 body 声明——daemon 从 header 派生它。
       expect((call!.body as Record<string, unknown>).actorSession).toBeUndefined();
     } finally {
       if (saved === undefined) delete process.env["OPENRIG_SESSION_NAME"];
@@ -964,7 +950,7 @@ describe("rig queue CLI", () => {
     }
   });
 
-  it("handoff sends NO body fromSession — the handing-off seat derives from the transport header (X-OpenRig-Session); env present ⇒ POST fires", async () => {
+  it("handoff 不带 body fromSession——交出席位派生自传输头（X-OpenRig-Session）；env 存在 ⇒ 触发 POST", async () => {
     const saved = process.env["OPENRIG_SESSION_NAME"];
     process.env["OPENRIG_SESSION_NAME"] = "bob@rig";
     try {
@@ -986,7 +972,7 @@ describe("rig queue CLI", () => {
 
       const call = calls.find((c) => c.path === "/api/queue/qitem-x/handoff");
       expect(call).toBeDefined();
-      // P21 I3 reconcile: the handing-off seat is NOT a body claim — the daemon derives it from the header.
+      // P21 I3 调和：交出席位不是 body 声明——daemon 从 header 派生它。
       expect((call!.body as Record<string, unknown>).fromSession).toBeUndefined();
     } finally {
       if (saved === undefined) delete process.env["OPENRIG_SESSION_NAME"];
@@ -994,7 +980,7 @@ describe("rig queue CLI", () => {
     }
   });
 
-  it("create against unknown destination rig surfaces 400 error and exits non-zero", async () => {
+  it("向未知目标 rig 的 create 浮出 400 错误并不零退出", async () => {
     const { deps } = makeDeps({
       routes: {
         "POST /api/queue/create": {
@@ -1020,7 +1006,7 @@ describe("rig queue CLI", () => {
     expect(out).toContain("unknown_destination_rig");
   });
 
-  it("queue create --host attempts the real write when the local health probe is inconclusive and surfaces the daemon response", async () => {
+  it("本地 health probe 不结论时，queue create --host 仍尝试真实写入并浮出 daemon 响应", async () => {
     vi.stubEnv("OPENRIG_URL", "http://127.0.0.1:7766");
     const { getDaemonStatus } = await import("../src/daemon-lifecycle.js");
     vi.mocked(getDaemonStatus).mockResolvedValueOnce({ state: "stopped" });
@@ -1059,11 +1045,11 @@ describe("rig queue CLI", () => {
     });
     expect(clientUrls).toEqual(["http://127.0.0.1:7766"]);
     expect(logs.join("\n")).toContain("unknown_destination_rig");
-    expect(errors.join("\n")).not.toContain("Daemon not running");
+    expect(errors.join("\n")).not.toContain("后台服务未运行");
     expect(process.exitCode).toBe(1);
   });
 
-  it("plain local queue create remains blocked when the daemon probe confirms no reachable operation target", async () => {
+  it("daemon probe 确认无可达操作目标时，普通本地 queue create 仍被阻止", async () => {
     const { getDaemonStatus } = await import("../src/daemon-lifecycle.js");
     vi.mocked(getDaemonStatus).mockResolvedValueOnce({ state: "stopped" });
     const { deps, calls } = makeDeps();
@@ -1079,11 +1065,11 @@ describe("rig queue CLI", () => {
     ]);
 
     expect(calls).toEqual([]);
-    expect(errors.join("\n")).toContain("Daemon not running");
+    expect(errors.join("\n")).toContain("后台服务未运行");
     expect(process.exitCode).toBe(1);
   });
 
-  it("handoff with --no-nudge passes nudge: false through to daemon", async () => {
+  it("handoff --no-nudge 向 daemon 传 nudge: false", async () => {
     const { deps, calls } = makeDeps({
       routes: {
         "POST /api/queue/qitem-x/handoff": {
@@ -1104,7 +1090,7 @@ describe("rig queue CLI", () => {
     expect((call!.body as { nudge: boolean }).nudge).toBe(false);
   });
 
-  it("list constructs /api/queue/list with filter params", async () => {
+  it("list 构造带过滤参数的 /api/queue/list", async () => {
     const { deps, calls } = makeDeps();
     const program = createProgram({ queueDeps: deps });
     program.exitOverride();
@@ -1125,7 +1111,7 @@ describe("rig queue CLI", () => {
     expect(call!.path).not.toContain("rig=");
   });
 
-  it("list -a includes history (no activeOnly param)", async () => {
+  it("list -a 含历史（无 activeOnly 参数）", async () => {
     const saved = process.env.OPENRIG_SESSION_NAME;
     process.env.OPENRIG_SESSION_NAME = "dev1@my-rig";
     try {
@@ -1176,7 +1162,7 @@ describe("rig queue CLI", () => {
     expect(call!.path).not.toContain("as=");
   });
 
-  it("list with --destination does not inject implicit rig scope", async () => {
+  it("list 带 --destination 时不注入隐式 rig 范围", async () => {
     const saved = process.env.OPENRIG_SESSION_NAME;
     process.env.OPENRIG_SESSION_NAME = "my-seat@my-rig";
     try {
@@ -1196,7 +1182,7 @@ describe("rig queue CLI", () => {
     }
   });
 
-  it("list --mine scopes to caller session", async () => {
+  it("list --mine 限定为调用者会话", async () => {
     const saved = process.env.OPENRIG_SESSION_NAME;
     process.env.OPENRIG_SESSION_NAME = "dev1-driver@openrig-delivery";
     try {
@@ -1214,7 +1200,7 @@ describe("rig queue CLI", () => {
     }
   });
 
-  it("S4b RED: list --owned scopes only to rows whose destination is the caller", async () => {
+  it("S4b RED：list --owned 只限定 destination 为调用者的行", async () => {
     const saved = process.env.OPENRIG_SESSION_NAME;
     process.env.OPENRIG_SESSION_NAME = "dev1-driver@openrig-delivery";
     try {
@@ -1234,7 +1220,7 @@ describe("rig queue CLI", () => {
     }
   });
 
-  it("S4b final RED: list --owned without either seat identity refuses before any GET", async () => {
+  it("S4b final RED：list --owned 缺任一席位身份时在任何 GET 之前拒绝", async () => {
     vi.stubEnv("OPENRIG_SESSION_NAME", "");
     vi.stubEnv("RIGGED_SESSION_NAME", "");
     const { deps, calls } = makeDeps();
@@ -1248,17 +1234,17 @@ describe("rig queue CLI", () => {
     expect(calls.some((call) => call.method === "GET" && call.path.startsWith("/api/queue/list"))).toBe(false);
   });
 
-  it("S4b RED: list help distinguishes destination-owned obligations from --mine's authored union", () => {
+  it("S4b RED：list help 区分 destination 所属义务与 --mine 的 authored 并集", () => {
     const { deps } = makeDeps();
     const program = createProgram({ queueDeps: deps });
     const queue = program.commands.find((command) => command.name() === "queue")!;
     const list = queue.commands.find((command) => command.name() === "list")!;
     const help = list.helpInformation();
-    expect(help).toMatch(/--owned[^\n]*(destination|assigned|owe)/i);
-    expect(help).toMatch(/--mine[^\n]*(source or destination|authored.*do not own)/i);
+    expect(help).toMatch(/--owned[^\n]*(指派|义务|destination)/);
+    expect(help).toMatch(/--mine[^\n]*(source 或 destination|撰写但不拥有)/);
   });
 
-  it("list default injects rig=<rigName> + activeOnly=1 + compact=1", async () => {
+  it("list 默认注入 rig=<rigName> + activeOnly=1 + compact=1", async () => {
     const saved = process.env.OPENRIG_SESSION_NAME;
     process.env.OPENRIG_SESSION_NAME = "dev1-driver@openrig-delivery";
     try {
@@ -1279,8 +1265,8 @@ describe("rig queue CLI", () => {
   });
 
   // OPR.0.4.3.03 — `rig queue show` body preview + `--full` compatibility.
-  // Bound + bodyTruncated are CODE-POINT-count based (IMPL-SPEC §2.3-2.4);
-  // bodyBytes is the honest TRUE total UTF-8 byte size.
+  // Bound + bodyTruncated 基于码点计数（IMPL-SPEC §2.3-2.4）；
+  // bodyBytes 是诚实的真实 UTF-8 总字节数。
   describe("queue show body preview (OPR.0.4.3.03)", () => {
     const PREVIEW_MAX_CODEPOINTS = 512;
 
@@ -1294,7 +1280,7 @@ describe("rig queue CLI", () => {
       expect(previewBody("")).toEqual({ preview: "", bodyBytes: 0, bodyTruncated: false });
     });
 
-    it("previewBody: small body under bound → full body, honest bytes, not truncated", () => {
+    it("previewBody：低于上限的小 body → 完整 body、诚实字节数，不截断", () => {
       const small = "hello world";
       expect(previewBody(small)).toEqual({
         preview: small,
@@ -1303,12 +1289,12 @@ describe("rig queue CLI", () => {
       });
     });
 
-    it("previewBody: body exactly at 512 code points → not truncated (boundary inclusive)", () => {
+    it("previewBody：恰为 512 code point 的 body → 不截断（边界含端点）", () => {
       const exact = "z".repeat(512);
       expect(previewBody(exact)).toEqual({ preview: exact, bodyBytes: 512, bodyTruncated: false });
     });
 
-    it("previewBody: oversized body (>512 code points) → truncated, honest bodyBytes = TRUE total, preview = first 512 code points", () => {
+    it("previewBody：超大 body（>512 code point）→ 截断，诚实 bodyBytes=真实总数，preview=前 512 code point", () => {
       const body = "x".repeat(1000);
       const out = previewBody(body);
       expect(out.bodyTruncated).toBe(true);
@@ -1317,28 +1303,27 @@ describe("rig queue CLI", () => {
       expect(out.preview).toBe("x".repeat(512));
     });
 
-    it("previewBody: multibyte body >512 code points → 512-code-point slice on a clean code-point boundary (valid UTF-8, no split surrogate)", () => {
-      // 4-byte emoji (astral, surrogate pair in UTF-16). 600 of them = 600 code
-      // points / 2400 bytes → exceeds the 512-CODE-POINT bound.
+    it("previewBody：多字节 body >512 code point → 在干净 code point 边界切 512 code point（合法 UTF-8，不劈代理对）", () => {
+      // 4 字节 emoji（astral，UTF-16 中为代理对）。600 个 = 600 code point。
+      // 码点 / 2400 字节 → 超过 512 码点上限。
       const emoji = "😀"; // 4 UTF-8 bytes, 1 code point, 2 UTF-16 units
       const body = emoji.repeat(600);
       const out = previewBody(body);
       expect(out.bodyTruncated).toBe(true); // 600 code points > 512
       expect(out.bodyBytes).toBe(2400); // honest total byte size
-      // Preview is exactly the first 512 code points (each a whole emoji)...
+      // preview 恰为前 512 code point（每个都是完整 emoji）……
       expect(Array.from(out.preview).length).toBe(512);
       expect([...out.preview].every((ch) => ch === emoji)).toBe(true);
-      // ...ending on a clean code-point boundary: re-encode round-trips, no
-      // lone surrogate / U+FFFD replacement char from a split sequence.
+      // ……并在干净 code point 边界结束：重编码往返一致，不会因劈开序列产生孤立代理对 / U+FFFD 替换符。
       expect(Buffer.byteLength(out.preview, "utf8")).toBe(512 * 4);
       const roundTrip = Buffer.from(out.preview, "utf8").toString("utf8");
       expect(roundTrip).toBe(out.preview);
       expect(roundTrip).not.toContain("�");
     });
 
-    // --- show command (end-to-end via program) ---
+    // --- show 命令（经 program 端到端）---
 
-    it("show default: oversized body → preview + marker line + honest bodyBytes + bodyTruncated=true (human)", async () => {
+    it("show 默认：超大 body → preview + 标记行 + 诚实 bodyBytes + bodyTruncated=true（人类可读）", async () => {
       const full = "A".repeat(1000);
       const { deps } = showRoute({ qitemId: "qitem-1", state: "pending", body: full });
       const program = createProgram({ queueDeps: deps });
@@ -1348,8 +1333,8 @@ describe("rig queue CLI", () => {
       expect(printed.bodyTruncated).toBe(true);
       expect(printed.bodyBytes).toBe(1000);
       expect(Array.from(printed.body).length).toBe(512);
-      // marker line on its OWN line, with the honest total byte size
-      expect(logs.join("\n")).toContain("bounded preview — complete body is 1000 bytes; full record");
+      // 标记行单独占一行，并给出诚实的总字节大小
+      expect(logs.join("\n")).toContain("有界预览——完整正文 1000 字节；完整记录");
       expect(logs.join("\n")).toContain("rig queue show 'qitem-1' --full --json");
       expect(logs.join("\n")).not.toMatch(/\btruncated\b/i);
     });
@@ -1379,7 +1364,7 @@ describe("rig queue CLI", () => {
       expect(process.exitCode).not.toBe(1);
     });
 
-    it("show default --json: carries preview + bodyBytes + bodyTruncated (JSON parity)", async () => {
+    it("show 默认 --json：携带 preview + bodyBytes + bodyTruncated（JSON 对齐）", async () => {
       const full = "B".repeat(1000);
       const { deps } = showRoute({ qitemId: "qitem-1", body: full });
       const program = createProgram({ queueDeps: deps });
@@ -1392,13 +1377,13 @@ describe("rig queue CLI", () => {
       expect(Array.from(printed.body).length).toBe(PREVIEW_MAX_CODEPOINTS);
     });
 
-    it("show --full --json: byte-identical COMPLETE item body (compatibility contract — no preview fields)", async () => {
+    it("show --full --json：字节级一致的完整 item body（兼容性契约——无 preview 字段）", async () => {
       const item = { qitemId: "qitem-1", state: "pending", body: "C".repeat(1000), chain_of_record: [{ a: 1 }] };
       const { deps } = showRoute(item);
       const program = createProgram({ queueDeps: deps });
       program.exitOverride();
       await program.parseAsync(["node", "rig", "queue", "show", "qitem-1", "--full", "--json"]);
-      // Byte-identical to a raw JSON.stringify of the item (today's shape).
+      // 与 item 的原始 JSON.stringify 字节级一致（当前形状）。
       expect(logs[0]).toBe(JSON.stringify(item));
       const printed = JSON.parse(logs[0]);
       expect(printed.body).toBe("C".repeat(1000)); // complete, untruncated
@@ -1423,32 +1408,31 @@ describe("rig queue CLI", () => {
 
   // ───────────────────────────────────────────────────────────────────────────
   // slice-08 OPR.0.4.7.8 — queue verb-surface body-input parity (TEST-ONLY RED).
-  // Production queue.ts is NOT edited yet; these pin the atomic-A contract so it
-  // fails today and passes after the four verbs route through the shipped
-  // resolveQueueBody. Anchors grounded at 4b05f970; locked spec sha b2db0f2b.
+  // 生产 queue.ts 尚未改；这些钉住 atomic-A 契约，使其今日失败、四动词走通发货路径后通过。
+  // resolveQueueBody。锚点基于 4b05f970；锁定 spec sha b2db0f2b。
   //
-  // Guard-ruled classification (honest, per-input):
-  //   GENUINE RED (fails today): --body-file exact POST ×4; --body - stdin exact
-  //     POST ×4; --help documents --body-file + stdin '-' ×4; command-neutral
-  //     resolver error wording.
-  //   PRESERVATION GREEN (must NOT regress): handoff/handoff-and-complete neither
-  //     → POST body undefined (source-body default); inbox-drop/outbox-record
-  //     neither → error + no POST (mechanism-neutral: Commander requiredOption
-  //     today, resolver reject tomorrow).
-  //   NEW-CAPABILITY GREEN: both sources → error + no POST (unknown-option today).
-  // Exact equality only for all 8 body transports; never length/contains.
+  // 按 guard 规则分类（诚实，逐输入）：
+  //   GENUINE RED（今日失败）：--body-file 精确 POST ×4；--body - stdin 精确
+  //     POST ×4；--help 记载 --body-file + stdin '-' ×4；命令中立的
+  //     resolver 错误措辞。
+  //   PRESERVATION GREEN（不得回归）：handoff/handoff-and-complete 二者皆无
+  //     → POST body undefined（source-body 默认）；inbox-drop/outbox-record
+  //     二者皆无 → 报错 + 无 POST（机制中立：今日 Commander requiredOption，
+  //     明日 resolver 拒绝）。
+  //   NEW-CAPABILITY GREEN：两源皆给 → 报错 + 无 POST（今日未知选项）。
+  // 仅对全部 8 种 body 传输做精确相等；绝不用 length/contains。
   // ───────────────────────────────────────────────────────────────────────────
   describe("slice-08 OPR.0.4.7.8 — queue body-input parity", () => {
-    // Byte-discriminating body: multiline + Unicode + backticks — the exact
-    // corruption class file/stdin input kills.
+    // 字节可区分的 body：多行 + Unicode + 反引号——正是
+    // file/stdin 输入会触发的损坏类。
     const DISCRIMINATOR =
       "line-1 `raw backticks`\nlíne-2 ünïcode ☑\n```bash\nrig queue handoff q --to x\n```\n";
 
-    // Command-level stdin harness (Guard-specified): swap process.stdin for an
-    // ended PassThrough carrying exact bytes; restore the ORIGINAL descriptor in
-    // finally. Node22 process.stdin is getter-only but configurable, so
-    // defineProperty is viable; a PassThrough is not a TTY so defaultStdinReader
-    // reads it to EOF instead of short-circuiting empty.
+    // 命令级 stdin 支架（Guard 指定）：把 process.stdin 换成携带精确字节的
+    // 已结束 PassThrough；在 finally 中恢复原始描述符。Node22 process.stdin
+    // 是 getter-only 但可配置，故 defineProperty 可行；PassThrough 不是 TTY，
+    // 故 defaultStdinReader 会把它读到 EOF 而非短路空。
+    // 把它读到 EOF 而非短路空。
     async function withStdin(bytes: string, fn: () => Promise<void>): Promise<void> {
       const originalStdin = Object.getOwnPropertyDescriptor(process, "stdin");
       const prevExit = process.exitCode;
@@ -1458,9 +1442,7 @@ describe("rig queue CLI", () => {
       try {
         await fn();
       } finally {
-        // Restore BOTH globals this helper owns: the stdin descriptor and
-        // process.exitCode. If process had no own stdin descriptor originally,
-        // delete the temporary own property rather than leaving it installed.
+        // 恢复这个 helper 拥有的两个全局：stdin 描述符与 process.exitCode。若 process 原本没有自己的 stdin 描述符，则删除临时自有属性而非留装。
         if (originalStdin) Object.defineProperty(process, "stdin", originalStdin);
         else delete (process as unknown as Record<string, unknown>).stdin;
         process.exitCode = prevExit;
@@ -1473,8 +1455,7 @@ describe("rig queue CLI", () => {
       return queue.commands.find((c) => c.name() === name)!;
     }
 
-    // Endpoints + required flags grounded at 4b05f970. `argv` is everything after
-    // `rig` except the body flags; `neither` is the verb's no-body contract.
+    // 端点 + 必填 flag 锚定在 4b05f970。`argv` 是 `rig` 之后除 body flag 外的全部；`neither` 是该动词的无 body 契约。
     const VERBS = [
       {
         name: "handoff",
@@ -1502,9 +1483,9 @@ describe("rig queue CLI", () => {
       },
     ];
 
-    // ── STEP 1: harness calibration on EXISTING create --body - (GREEN today).
-    // Proves the process.stdin swap technique works before it carries any RED.
-    it("CALIBRATION (green): create --body - consumes the stdin PassThrough as the exact POST body", async () => {
+    // ── 步骤 1：在既有 create --body - 上做夹具校准（今日为绿）。
+    // 先证明 process.stdin 交换技术可行，再让它承载任何 RED。
+    it("校准（绿）：create --body - 把 stdin PassThrough 当作精确 POST body 消费", async () => {
       const { deps, calls } = makeDeps({
         routes: { "POST /api/queue/create": { status: 201, data: { qitemId: "q-cal", state: "pending" } } },
       });
@@ -1518,7 +1499,7 @@ describe("rig queue CLI", () => {
       expect((post!.body as Record<string, unknown>).body).toBe(DISCRIMINATOR);
     });
 
-    // ── GENUINE RED ×4: --body-file exact POST body.
+    // ── 真 RED ×4：--body-file 精确 POST body。
     for (const v of VERBS) {
       it(`RED: ${v.name} --body-file <path> POSTs the exact file bytes`, async () => {
         const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `s08-${v.name}-file-`));
@@ -1528,9 +1509,7 @@ describe("rig queue CLI", () => {
         const program = createProgram({ queueDeps: deps });
         program.exitOverride();
         try {
-          // Today --body-file is an unknown option on these verbs; catch the
-          // Commander rejection so the discriminator is the missing/incorrect
-          // POST body, not an uncaught parser throw.
+          // 今日 --body-file 在这些动词上是未知选项；捕获 Commander 拒绝，使判别点是缺失/错误的 POST body，而非未捕获的解析器抛错。
           try {
             await program.parseAsync(["node", "rig", ...v.argv, "--body-file", bodyPath, "--json"]);
           } catch {
@@ -1545,7 +1524,7 @@ describe("rig queue CLI", () => {
       });
     }
 
-    // ── GENUINE RED ×4: --body - stdin exact POST body.
+    // ── 真 RED ×4：--body - stdin 精确 POST body。
     for (const v of VERBS) {
       it(`RED: ${v.name} --body - consumes stdin as the exact POST body`, async () => {
         const { deps, calls } = makeDeps();
@@ -1555,12 +1534,12 @@ describe("rig queue CLI", () => {
           try {
             await program.parseAsync(["node", "rig", ...v.argv, "--body", "-", "--json"]);
           } catch {
-            /* no throw expected today (--body exists); guarded for symmetry */
+            /* 今日不期待抛错（--body 已存在）；为对称而守护 */
           }
         });
         const post = calls.find((c) => v.pathMatch(c.path));
         expect(post, `${v.name} should POST after consuming stdin`).toBeDefined();
-        // Today this is the literal "-" (bodyBytes:1) — the exact silent-dash bug.
+        // 今日它是字面量 "-"（bodyBytes:1）——正是静默短横 bug。
         expect((post!.body as Record<string, unknown>).body).toBe(DISCRIMINATOR);
       });
     }
@@ -1594,7 +1573,7 @@ describe("rig queue CLI", () => {
     }
 
     // ── PRESERVATION GREEN ×2: inbox/outbox, neither → error + no POST
-    // (mechanism-neutral across Commander requiredOption today and resolver reject later).
+    //（机制中立，跨今日 Commander requiredOption 与后续 resolver 拒绝）。
     for (const v of VERBS.filter((x) => x.neither === "reject")) {
       it(`PRESERVE (green): ${v.name} with no body errors and does NOT contact the daemon`, async () => {
         const { deps, calls } = makeDeps();
@@ -1618,7 +1597,7 @@ describe("rig queue CLI", () => {
     }
 
     // ── NEW-CAPABILITY GREEN ×4: both sources → error + no POST
-    // (unknown-option today; resolver mutual-exclusion after A — either way no daemon contact).
+    //（今日未知选项；A 之后 resolver 互斥——两种情况都不联系 daemon）。
     for (const v of VERBS) {
       it(`NEW-CAP (green): ${v.name} with both --body and --body-file errors and does NOT POST`, async () => {
         const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `s08-${v.name}-both-`));
@@ -1645,22 +1624,21 @@ describe("rig queue CLI", () => {
       });
     }
 
-    // ── GENUINE RED: shared resolver errors must be command-NEUTRAL.
-    // Today all four say "rig queue create did not run" — false once handoff/
-    // inbox/outbox share the helper. Pin generic wording; no stale "queue create".
-    it("RED: resolveQueueBody 'neither' error wording is command-neutral (no 'queue create')", async () => {
+    // ── 真 RED：共享 resolver 错误必须与命令中立。
+    // 今日四者都写 "rig queue create did not run"——一旦 handoff/inbox/outbox 共享该 helper 即失真。钉住通用措辞；不留过时的 "queue create"。
+    it("RED：resolveQueueBody「两者皆无」错误措辞与命令无关（不含 'queue create'）", async () => {
       await expect(resolveQueueBody({})).rejects.toMatchObject({
         consequence: expect.not.stringMatching(/queue create/i),
       });
     });
 
-    it("RED: resolveQueueBody 'both' error wording is command-neutral (no 'queue create')", async () => {
+    it("RED：resolveQueueBody「两者同传」错误措辞与命令无关（不含 'queue create'）", async () => {
       await expect(resolveQueueBody({ body: "x", bodyFile: "/tmp/y" })).rejects.toMatchObject({
         consequence: expect.not.stringMatching(/queue create/i),
       });
     });
 
-    it("RED: resolveQueueBody missing-file error wording is command-neutral (no 'queue create')", async () => {
+    it("RED：resolveQueueBody 缺文件错误措辞与命令无关（不含 'queue create'）", async () => {
       await expect(
         resolveQueueBody({ bodyFile: "/tmp/s08-does-not-exist-neutral-wording.md" }),
       ).rejects.toMatchObject({
@@ -1668,10 +1646,8 @@ describe("rig queue CLI", () => {
       });
     });
 
-    // BLOCKER-1 fix: the FOURTH stale consequence — the not-a-regular-file /
-    // directory branch — was unguarded. A negative search found FOUR 'rig queue
-    // create did not run' occurrences; the packet must pin all four, not three.
-    it("RED: resolveQueueBody not-a-regular-file error wording is command-neutral (no 'queue create')", async () => {
+    // BLOCKER-1 修复：第四个过时 consequence——not-a-regular-file / 目录分支——此前未守护。一次反向搜索发现四处 'rig queue create did not run'；该 packet 必须钉住全部四处，而非三处。
+    it("RED：resolveQueueBody 非普通文件错误措辞与命令无关（不含 'queue create'）", async () => {
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "s08-notregular-wording-"));
       try {
         await expect(resolveQueueBody({ bodyFile: tmp })).rejects.toMatchObject({
@@ -1682,11 +1658,9 @@ describe("rig queue CLI", () => {
       }
     });
 
-    // BLOCKER-2 fix: the gate required generic BODY guidance, not only the
-    // consequence. The neither ACTION today is "Pass the qitem body via …",
-    // which is false for inbox/outbox records. It must teach --body/--body-file
-    // and stay generic — no 'qitem'. Phrasing-tolerant (no exact-prose lock).
-    it("RED: resolveQueueBody 'neither' action gives generic body guidance (no 'qitem')", async () => {
+    // BLOCKER-2 修复：该闸门需要通用 body 指引，而不止 consequence。今日 neither 动作是 "Pass the qitem body via …"，对 inbox/outbox 记录是失真的。它必须教 --body/--body-file。
+    // 并保持通用——无 'qitem'。措辞容忍（无逐字 prose 锁定）。
+    it("RED：resolveQueueBody「两者皆无」动作给出通用 body 指引（不含 'qitem'）", async () => {
       await expect(resolveQueueBody({})).rejects.toMatchObject({
         action: expect.stringMatching(/--body\b|--body-file/),
       });
@@ -1697,16 +1671,14 @@ describe("rig queue CLI", () => {
   });
 });
 
-// P3 — authored-summary TEACHING LAYER. The shipped warn-then-require rail (OPR.0.4.1.18
-// FR-7) tells callers a missing --summary falls back to a bounded body preview; the teaching
-// layer additionally TEACHES the convention (what a good summary is + where a human reads it), so
-// the needs-you rows a human skims are actually authored, not just hoped for. Rails held:
-// warn → stderr (json stdout clean), warn-not-hard-break, the two handoff advisories stay
-// byte-identical, facts-not-fabricated (teaches, never invents).
+// P3—— authored-summary 教学层。已交付 warn-then-require 轨道（OPR.0.4.1.18
+// FR-7）告诉调用者：缺失 --summary 会回退到有界 body preview；教学层还额外教约定（什么是好 summary + 人在哪里读它），使人略读的 needs-you 行确实是 authored 出来的，而非只是被期待。保留的护栏：
+// warn → stderr（json stdout 干净），warn 非硬中断，两个 handoff 提示保持
+// 逐字节一致，不编造事实（教学，绝不杜撰）。
 describe("P3 — authored-summary teaching layer (advisory + --summary hint)", () => {
   let stderrOut: string[];
-  const TEACHES_WHERE = /needs-you view/;      // teaches WHERE the summary is read
-  const TEACHES_WHY = /why it needs this seat/; // teaches the WHAT+WHY convention
+  const TEACHES_WHERE = /needs-you/;      // teaches WHERE the summary is read
+  const TEACHES_WHY = /为什么需要这个 seat/; // teaches the WHAT+WHY convention
 
   beforeEach(() => {
     stderrOut = [];
@@ -1717,7 +1689,7 @@ describe("P3 — authored-summary teaching layer (advisory + --summary hint)", (
     process.exitCode = undefined;
   });
 
-  it("create without --summary teaches the same truthful bounded-preview fallback and does NOT hard-break", async () => {
+  it("不带 --summary 的 create 给出同样如实的有界 preview 兜底，且不硬崩", async () => {
     const { deps, calls } = makeDeps({
       routes: { "POST /api/queue/create": { status: 201, data: { qitemId: "q1", state: "pending" } } },
     });
@@ -1730,14 +1702,14 @@ describe("P3 — authored-summary teaching layer (advisory + --summary hint)", (
     const warn = stderrOut.join("");
     expect(warn).toMatch(TEACHES_WHERE);
     expect(warn).toMatch(TEACHES_WHY);
-    expect(warn).toMatch(/pass --summary <text>/i);
-    expect(warn).toMatch(/bounded body preview/i);
+    expect(warn).toMatch(/传 --summary <文本>/);
+    expect(warn).toMatch(/有界正文预览/);
     expect(warn).not.toMatch(/body truncation/i);
-    // warn-not-require rail: the qitem is still created (no hard-break on omission).
+    // warn-not-require 护栏：qitem 仍被创建（省略时不硬崩）。
     expect(calls.find((c) => c.path === "/api/queue/create")).toBeDefined();
   });
 
-  it("handoff + handoff-and-complete without --summary carry the SAME teaching advisory (byte-identical parity)", async () => {
+  it("不带 --summary 的 handoff 与 handoff-and-complete 携带同样的教学提示（字节级一致）", async () => {
     async function warnFor(sub: "handoff" | "handoff-and-complete"): Promise<string> {
       stderrOut = [];
       const { deps } = makeDeps({
@@ -1760,13 +1732,13 @@ describe("P3 — authored-summary teaching layer (advisory + --summary hint)", (
     const hc = await warnFor("handoff-and-complete");
     expect(h).toMatch(TEACHES_WHERE);
     expect(h).toMatch(TEACHES_WHY);
-    expect(h).toMatch(/pass --summary <text>/i);
-    expect(h).toMatch(/bounded body preview/i);
+    expect(h).toMatch(/传 --summary <文本>/);
+    expect(h).toMatch(/有界正文预览/);
     expect(h).not.toMatch(/body truncation/i);
     expect(hc).toBe(h); // parity rail: the two handoff advisories are byte-identical
   });
 
-  it("the create --summary option hint teaches WHERE the summary is read (not only the cost)", () => {
+  it("create --summary 选项提示讲清 summary 从哪里读取（不止讲成本）", () => {
     const { deps } = makeDeps();
     const program = createProgram({ queueDeps: deps });
     const queueCmd = program.commands.find((c) => c.name() === "queue")!;

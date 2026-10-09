@@ -1,10 +1,8 @@
-// Slice 26 Checkpoint B — Settings page tests.
-// Covers PoliciesPage (HG-5 empty-state) + SettingsCenter refactor
-// (HG-7 top-row tabs removed discriminator). LogPage + StatusPage
-// route mounts are verified by static route registration in routes.tsx
-// + structural inspection; their component-level rendering is QA
-// walk scope (operator clicks /settings/log + /settings/status on the
-// founder-walk VM).
+// Slice 26 Checkpoint B——Settings 页测试。
+// 覆盖 PoliciesPage（HG-5 empty-state）+ SettingsCenter 重构
+//（HG-7 顶行 tabs 去除判别器）。LogPage + StatusPage
+// 路由挂载由 routes.tsx 静态路由注册 + 结构检查验证；其组件级渲染属 QA
+// walk 范围（operator 在 founder-walk VM 上点 /settings/log + /settings/status）。
 
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
@@ -24,8 +22,8 @@ afterEach(() => {
   cleanup();
 });
 
-// useActivityFeed + useSettings have hook surfaces we don't want to
-// wire up for these focused page-render tests. Stub them.
+// useActivityFeed + useSettings 有 hook 表面，我们不想为这些聚焦页渲染测试接线。
+// stub 它们。
 vi.mock("../src/hooks/useActivityFeed.js", () => ({
   useActivityFeed: () => ({ events: [] }),
 }));
@@ -52,7 +50,7 @@ describe("PoliciesPage (Claude auto-compaction form)", () => {
       </Wrapper>,
     );
     expect(screen.getByTestId("settings-page-policies")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: /policies/i })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "策略" })).toBeTruthy();
   });
 
   it("renders operator-facing intro copy (no slice/release internals)", () => {
@@ -62,11 +60,11 @@ describe("PoliciesPage (Claude auto-compaction form)", () => {
       </Wrapper>,
     );
     const page = screen.getByTestId("settings-page-policies");
-    // Intro paragraph mentions policy/policies + opt-in default-off framing
-    expect(page.textContent?.toLowerCase()).toMatch(/policy|policies/i);
-    // No internal-release references in user-facing UI copy (per
-    // velocity-guard 26.B carry-forward concern: slice-number tokens
-    // are implementation detail; should not leak into product UI).
+    // 简介同时说明策略用途与默认关闭、按需启用的规则。
+    expect(page.textContent).toContain("影响智能体运行时行为的可选策略");
+    expect(page.textContent).toContain("每条策略默认关闭，可独立开启");
+    // 面向用户的 UI 文案不得包含内部发布引用（沿用 velocity-guard 26.B 的关注点：
+    // slice 编号属于实现细节，不应泄漏到产品 UI）。
     expect(page.textContent).not.toMatch(/slice\s*\d+/i);
   });
 });
@@ -87,18 +85,17 @@ describe("SettingsCenter refactor (HG-7: top-row tabs removed)", () => {
         <SettingsCenter />
       </Wrapper>,
     );
-    // Top-row tab nav had testid="settings-tab-nav"; must be gone post
-    // refactor.
+    // 顶行 tab nav 曾有 testid="settings-tab-nav"；重构后必须消失。
     expect(screen.queryByTestId("settings-tab-nav")).toBeNull();
-    // Per-tab testids must also be gone.
+    // 每 tab 的 testid 也必须消失。
     expect(screen.queryByTestId("settings-tab-settings")).toBeNull();
     expect(screen.queryByTestId("settings-tab-log")).toBeNull();
     expect(screen.queryByTestId("settings-tab-status")).toBeNull();
-    // role=tablist on the page-level chrome is also gone.
+    // 页级 chrome 上的 role=tablist 也消失。
     const tablists = screen.queryAllByRole("tablist");
-    // SettingsTab (the config keys form) may itself contain
-    // sub-tablists; gate the assertion to "no tablist labeled
-    // 'Settings sections'" which was the legacy top-row label.
+    // SettingsTab（config keys 表单）自身可能含子 tablist；
+    // 把断言门控为"无标为 'Settings sections' 的 tablist"，
+    // 那是旧顶行标签。
     for (const tl of tablists) {
       expect(tl.getAttribute("aria-label")).not.toBe("Settings sections");
     }

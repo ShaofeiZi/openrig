@@ -1,14 +1,11 @@
-// OPR.0.4.6.MH3 C1 — cross-host queue CREATE (forward-then-strip) + origin-side
-// PK identity handling. The load-bearing pins:
-//   - no-host / "local" create = today's local path byte-identical (FR-6);
-//   - a registered http host FORWARDS the whole body (minted id + provenance +
-//     nudge, hostId stripped) to /api/queue/create; origin response verbatim;
-//     NO local row ever written (FR-2, origin-owns-the-record);
-//   - unknown / ssh / unreachable host = structured host-named failure, nothing
-//     written (FR-2 honest-failure taxonomy);
-//   - origin-side: a re-forwarded create with the SAME id absorbs on the PK when
-//     identity matches (FR-5/Q-a), and a same-id/different-identity create is a
-//     structured qitem_id_reuse conflict, never a silent overwrite.
+// OPR.0.4.6.MH3 C1——跨主机 queue CREATE（先转发再剥离）+ 来源端主键身份处理。关键约束：
+//   - 无 host / "local" create = 与当前本地路径逐字节一致（FR-6）；
+//   - 已登记的 http host 把完整 body（生成的 id + provenance + nudge，剥离 hostId）转发到
+//     /api/queue/create；原样返回来源响应；绝不写入本地行（FR-2，来源拥有记录）；
+//   - unknown / ssh / unreachable host = 包含 host 名称的结构化失败，不写入任何内容
+//     （FR-2 如实失败分类）；
+//   - 来源端：重新转发的 create 在 id 相同且身份匹配时按主键吸收（FR-5/Q-a）；id 相同但身份
+//     不同时产生结构化 qitem_id_reuse 冲突，绝不静默覆盖。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -66,8 +63,8 @@ function makeApp(opts: {
 }
 
 function post(app: Hono, body: Record<string, unknown>) {
-  // P21 I3: create derives the sender from the transport header; header==body claim ⇒ tolerated
-  // (bodies untouched, incl. the already-triple sourceSession the forward-restamp tests assert).
+  // P21 I3：create 从 transport header 派生 sender；header==body 声明时允许通过（body 不变，
+  // 包括 forward-restamp 测试断言的已有三段式 sourceSession）。
   const sender = body["sourceSession"] ?? body["fromSession"] ?? body["actorSession"];
   return app.request("/api/queue/create", {
     method: "POST",
@@ -83,9 +80,9 @@ function rowCount(db: Database.Database): number {
   return (db.prepare("SELECT COUNT(*) c FROM queue_items").get() as { c: number }).c;
 }
 
-const BASE = { sourceSession: "orch@rig-a", destinationSession: "dev@rig-b", body: "do the thing" };
+const BASE = { sourceSession: "orch@rig-a", destinationSession: "dev@rig-b", body: "执行任务" };
 
-describe("MH-3 C1 — cross-host queue create (route)", () => {
+describe("MH-3 C1——跨主机 queue create（route）", () => {
   let db: Database.Database;
   let bus: EventBus;
 
@@ -96,7 +93,7 @@ describe("MH-3 C1 — cross-host queue create (route)", () => {
   });
   afterEach(() => db.close());
 
-  it("no-host create: the local path runs and writes ONE local row (FR-6 zero-regression)", async () => {
+  it("无 host create：执行本地路径并写入一行本地记录（FR-6 零回归）", async () => {
     const app = makeApp({ db, bus });
     const res = await post(app, BASE);
     expect(res.status).toBe(201);
@@ -106,7 +103,7 @@ describe("MH-3 C1 — cross-host queue create (route)", () => {
     expect("hostId" in item).toBe(false);
   });
 
-  it('hostId "local": same local path, one local row, no forward', async () => {
+  it('hostId 为 "local"：使用相同本地路径，只写一行且不转发', async () => {
     let forwarded = false;
     const app = makeApp({ db, bus, fetchImpl: (async () => { forwarded = true; return jsonResponse({}); }) as unknown as typeof fetch });
     const res = await post(app, { ...BASE, hostId: "local" });
@@ -115,7 +112,7 @@ describe("MH-3 C1 — cross-host queue create (route)", () => {
     expect(forwarded).toBe(false);
   });
 
-  it("cross-host create: forwards the WHOLE body (minted id, provenance, nudge) with hostId STRIPPED; origin response verbatim; NO local row", async () => {
+  it("跨主机 create：转发完整 body（生成的 id、provenance、nudge）并剥离 hostId；原样返回来源响应；无本地行", async () => {
     const capture: { url?: string; body?: Record<string, unknown> } = {};
     const app = makeApp({
       db,
@@ -128,30 +125,28 @@ describe("MH-3 C1 — cross-host queue create (route)", () => {
     });
     const res = await post(app, { ...BASE, hostId: "vps-b", nudge: true, tags: ["existing"] });
     expect(res.status).toBe(201);
-    // Origin response verbatim.
+    // 原样返回来源响应。
     expect((await res.json()) as { qitemId: string }).toMatchObject({ qitemId: "qitem-origin-1" });
-    // Forwarded to the origin's create route.
+    // 转发到来源端的 create route。
     expect(capture.url).toContain("/api/queue/create");
-    // Minted id present (Q-a — not caller-dependent).
+    // 包含生成的 id（Q-a——不依赖调用方）。
     expect(String(capture.body?.["qitemId"])).toMatch(/^qitem-/);
-    // hostId stripped at the edge (BR-1 — never in-band).
+    // 在边缘剥离 hostId（BR-1——绝不带内传输）。
     expect("hostId" in (capture.body ?? {})).toBe(false);
-    // Whole body incl. nudge forwarded (FR-3).
+    // 转发包括 nudge 在内的完整 body（FR-3）。
     expect(capture.body?.["nudge"]).toBe(true);
-    // Provenance appended, existing tag preserved (D-4).
+    // 追加 provenance，保留已有 tag（D-4）。
     expect(capture.body?.["tags"]).toContain(CROSS_HOST_TAG);
     expect(capture.body?.["tags"]).toContain("existing");
-    // NO local row (origin-owns-the-record).
+    // 无本地行（来源拥有记录）。
     expect(rowCount(db)).toBe(0);
   });
 
-  // 51-09 incr 4a correction — STAMP-AT-FORWARD: the forwarding daemon IS the
-  // origin/sender host, so it stamps its OWN self-id onto sourceSession when
-  // building the forward body. Otherwise the DESTINATION daemon's create() would
-  // stamp the RECEIVER's host onto a bare member@rig — sender-identity FORGERY on
-  // exactly the cross-host path this slice exists to make honest (replies would
-  // route to the wrong host). The not-bare guard then protects it at the remote.
-  it("cross-host create STAMPS the ORIGIN self-id onto sourceSession at FORWARD (never the receiver)", async () => {
+  // 51-09 incr 4a 修正——STAMP-AT-FORWARD：转发 daemon 就是来源/sender host，因此构建转发
+  // body 时把自身 self-id 写入 sourceSession。否则目的地 daemon 的 create() 会把 receiver host
+  // 写入裸 member@rig——恰好在本 slice 要求如实处理的跨主机路径上伪造 sender 身份（响应会路由到
+  // 错误 host）。随后由远端的非裸值 guard 保护它。
+  it("跨主机 create 在转发时把来源 self-id 写入 sourceSession（绝不是 receiver）", async () => {
     setSelfHostId("host-origin");
     try {
       const capture: { body?: Record<string, unknown> } = {};
@@ -164,14 +159,14 @@ describe("MH-3 C1 — cross-host queue create (route)", () => {
       });
       const res = await post(app, { ...BASE, hostId: "vps-b" }); // BASE.sourceSession = "orch@rig-a" (bare)
       expect(res.status).toBe(201);
-      // origin-stamped (host-origin), NOT the receiver vps-b.
+      // 由来源写入（host-origin），而非 receiver vps-b。
       expect(capture.body?.["sourceSession"]).toBe("orch@rig-a@host-origin");
     } finally {
       setSelfHostId(null);
     }
   });
 
-  it("cross-host create preserves an ALREADY-triple sourceSession verbatim at forward (origin not re-forged)", async () => {
+  it("跨主机 create 转发时原样保留已有三段式 sourceSession（不重新伪造来源）", async () => {
     setSelfHostId("host-origin");
     try {
       const capture: { body?: Record<string, unknown> } = {};
@@ -189,7 +184,7 @@ describe("MH-3 C1 — cross-host queue create (route)", () => {
     }
   });
 
-  it("cross-host create to a URL-only (anonymous) host: forward omits Authorization; bearer host still sends it", async () => {
+  it("向仅 URL（匿名）host 跨主机 create：转发省略 Authorization；bearer host 仍发送该 header", async () => {
     const anonHeaders: { value?: HeadersInit } = {};
     const anonApp = makeApp({
       db,
@@ -217,7 +212,7 @@ describe("MH-3 C1 — cross-host queue create (route)", () => {
     expect((bearerHeaders.value as Record<string, string>)["Authorization"]).toBe("Bearer remote-token");
   });
 
-  it("cross-host create with a caller --id: forwards THAT id (mint only if absent)", async () => {
+  it("调用方提供 --id 的跨主机 create：转发该 id（仅在缺失时生成）", async () => {
     const capture: { body?: Record<string, unknown> } = {};
     const app = makeApp({
       db,
@@ -231,7 +226,7 @@ describe("MH-3 C1 — cross-host queue create (route)", () => {
     expect(capture.body?.["qitemId"]).toBe("qitem-mine");
   });
 
-  it("unknown host: structured host-named failure (502), NOTHING written locally", async () => {
+  it("未知 host：返回包含 host 名称的结构化失败（502），本地不写入任何内容", async () => {
     const app = makeApp({ db, bus });
     const res = await post(app, { ...BASE, hostId: "nope" });
     expect(res.status).toBe(502);
@@ -242,7 +237,7 @@ describe("MH-3 C1 — cross-host queue create (route)", () => {
     expect(rowCount(db)).toBe(0);
   });
 
-  it("ssh host: unsupported-transport (502), NOTHING written locally", async () => {
+  it("ssh host：返回 unsupported-transport（502），本地不写入任何内容", async () => {
     const app = makeApp({ db, bus });
     const res = await post(app, { ...BASE, hostId: "ssh-1" });
     expect(res.status).toBe(502);
@@ -250,7 +245,7 @@ describe("MH-3 C1 — cross-host queue create (route)", () => {
     expect(rowCount(db)).toBe(0);
   });
 
-  it("origin unreachable: structured unreachable failure, NOTHING written locally", async () => {
+  it("来源不可达：返回结构化 unreachable 失败，本地不写入任何内容", async () => {
     const app = makeApp({
       db,
       bus,
@@ -263,7 +258,7 @@ describe("MH-3 C1 — cross-host queue create (route)", () => {
   });
 });
 
-describe("MH-3 C1 — origin-side PK identity handling (repo)", () => {
+describe("MH-3 C1——来源端主键身份处理（repo）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let repo: QueueRepository;
@@ -276,38 +271,38 @@ describe("MH-3 C1 — origin-side PK identity handling (repo)", () => {
   });
   afterEach(() => db.close());
 
-  it("PK absorb: a re-forwarded create with the SAME id + matching identity returns the existing row, exactly one row", async () => {
+  it("主键吸收：重新转发的 create 使用相同 id + 匹配身份时返回现有行，且恰好一行", async () => {
     const first = await repo.create({ qitemId: "qitem-x", ...BASE, nudge: false });
     const again = await repo.create({ qitemId: "qitem-x", ...BASE, nudge: false });
     expect(again.qitemId).toBe(first.qitemId);
-    expect(again.tsCreated).toBe(first.tsCreated); // the STORED row, not a new insert
+    expect(again.tsCreated).toBe(first.tsCreated); // 已存储行，而非新插入
     expect(rowCount(db)).toBe(1);
   });
 
-  it("id-reuse: same id, DIFFERENT destination = structured qitem_id_reuse conflict; original untouched", async () => {
+  it("id-reuse：相同 id、不同 destination = 结构化 qitem_id_reuse 冲突；原记录不变", async () => {
     await repo.create({ qitemId: "qitem-x", ...BASE, nudge: false });
     await expect(
-      repo.create({ qitemId: "qitem-x", sourceSession: "orch@rig-a", destinationSession: "SOMEONE@rig-z", body: "different", nudge: false }),
+      repo.create({ qitemId: "qitem-x", sourceSession: "orch@rig-a", destinationSession: "SOMEONE@rig-z", body: "不同内容", nudge: false }),
     ).rejects.toMatchObject({ code: "qitem_id_reuse" });
     const row = db.prepare("SELECT destination_session d FROM queue_items WHERE qitem_id = 'qitem-x'").get() as { d: string };
-    expect(row.d).toBe("dev@rig-b"); // never overwritten
+    expect(row.d).toBe("dev@rig-b"); // 从未覆盖
     expect(rowCount(db)).toBe(1);
   });
 });
 
-describe("MH-3 C1 — pure helpers", () => {
-  it("crossHostProvenanceTags: appends marker + from-host, preserves existing, idempotent", () => {
+describe("MH-3 C1——纯辅助函数", () => {
+  it("crossHostProvenanceTags：追加 marker + from-host、保留已有值且幂等", () => {
     const once = crossHostProvenanceTags(["keep"]);
     expect(once).toContain("keep");
     expect(once).toContain(CROSS_HOST_TAG);
     expect(once.some((t) => t.startsWith("from-host:"))).toBe(true);
-    // idempotent — re-tagging an already-tagged list adds nothing new.
+    // 幂等——重新标记已标记的列表不会添加新内容。
     expect(crossHostProvenanceTags(once).length).toBe(once.length);
-    // undefined base is safe.
+    // undefined 基值可安全处理。
     expect(crossHostProvenanceTags(undefined)).toContain(CROSS_HOST_TAG);
   });
 
-  it("isQitemPrimaryKeyConflict: true for PK/UNIQUE constraint on qitem_id, false otherwise", () => {
+  it("isQitemPrimaryKeyConflict：qitem_id 的 PK/UNIQUE 约束返回 true，否则返回 false", () => {
     const byCode = Object.assign(new Error("x"), { code: "SQLITE_CONSTRAINT_PRIMARYKEY" });
     expect(isQitemPrimaryKeyConflict(byCode)).toBe(true);
     const byMsg = new Error("UNIQUE constraint failed: queue_items.qitem_id");

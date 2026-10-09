@@ -1,10 +1,9 @@
-// Preview Terminal v0 (PL-018) — UI hook for live terminal preview.
+// 预览终端 v0（PL-018）——实时终端预览的界面 hook。
 //
-// Polls /api/rigs/:rigId/nodes/:logicalId/preview at the operator-
-// configured interval (`ui.preview.refresh_interval_seconds`, default
-// 3s; read from /api/config). Honest fallback when the daemon doesn't
-// have the new route (cross-CLI-version drift): consumers see
-// `unavailable: true` instead of an exception.
+// 按操作者配置的间隔轮询 /api/rigs/:rigId/nodes/:logicalId/preview
+// （`ui.preview.refresh_interval_seconds`，默认 3 秒；从 /api/config 读取）。
+// 当后台服务没有该新路由（跨 CLI 版本漂移）时诚实兜底：消费方看到的是
+// `unavailable: true` 而非异常。
 
 import { useQuery } from "@tanstack/react-query";
 import { useSettings } from "./useSettings.js";
@@ -30,7 +29,7 @@ export async function fetchNodePreview(
 ): Promise<NodePreviewResponse | NodePreviewUnavailable> {
   const url = `/api/rigs/${encodeURIComponent(rigId)}/nodes/${encodeURIComponent(logicalId)}/preview?lines=${lines}`;
   const res = await fetch(url, { headers: terminalAuthHeaders() });
-  // 404 from a daemon without the route OR with no such node → unavailable.
+  // 后台服务无此路由，或节点不存在 → 404 视为不可用。
   if (res.status === 404) {
     const body = await res.json().catch(() => ({})) as { error?: string };
     return { unavailable: true, reason: body.error ?? "preview_unavailable" };
@@ -54,9 +53,9 @@ export async function fetchNodePreview(
 export interface UseNodePreviewOpts {
   rigId: string | null;
   logicalId: string | null;
-  /** Override line count; defaults to ui.preview.default_lines. */
+  /** 覆盖行数；默认取 ui.preview.default_lines。 */
   lines?: number;
-  /** Pause polling (e.g., when the drawer is collapsed). */
+  /** 暂停轮询（例如抽屉折叠时）。 */
   paused?: boolean;
 }
 
@@ -83,9 +82,8 @@ export function isNodePreviewUnavailable(
   return Boolean(data && "unavailable" in data);
 }
 
-// --- Session-keyed preview (composes with surfaces that have a session
-// name but no rigId/logicalId — Loop State panel, Slice Story View
-// Topology tab). Same shape; different route. ---
+// --- 按会话名预览（与“有会话名但无 rigId/logicalId”的界面组合使用——
+// Loop State 面板、Slice Story 视图的 Topology 标签页）。结构相同，路由不同。 ---
 
 export async function fetchSessionPreview(
   sessionName: string,

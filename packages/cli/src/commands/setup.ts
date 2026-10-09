@@ -76,32 +76,32 @@ const CORE_STEP_IDS = [
 ];
 const FULL_EXTRA_STEP_IDS = ["jq_install", "gh_install"];
 const BASE_RUNTIME_CONFIG_DISCLOSURE: RuntimeConfigDisclosure[] = [
-  // OPR.0.4.8.2 agnostic rip-out: OpenRig no longer writes ~/.claude/settings.json — the global
-  // permission allow-list (C2) is removed, so that global file is no longer touched at all.
+  // OPR.0.4.8.2 无关化剥离：OpenRig 不再写 ~/.claude/settings.json——全局
+  // 权限允许列表（C2）已移除，所以那个全局文件完全不再触碰。
   {
     scope: "global",
     runtime: "claude-code",
     path: "~/.claude.json",
-    purpose: "Pre-trust managed workspaces and mark Claude onboarding complete.",
+    purpose: "预信任受管工作区，并标记 Claude onboarding 完成。",
   },
   {
     scope: "project",
     runtime: "claude-code",
     path: ".claude/settings.local.json",
     purpose:
-      "Apply context-collector statusLine config and the acceptEdits floor fragment. OpenRig bakes NO allow/ask/deny permission policy — the harness-native permissions are the control surface.",
+      "应用 context-collector statusLine 配置与 acceptEdits 底线片段。zrig 不烘焙任何 allow/ask/deny 权限策略——harness 原生权限才是控制面。",
   },
   {
     scope: "project",
     runtime: "claude-code",
     path: ".mcp.json",
-    purpose: "Apply selected Claude MCP runtime-resource fragments.",
+    purpose: "应用选定的 Claude MCP 运行时资源片段。",
   },
   {
     scope: "global",
     runtime: "codex",
     path: "~/.codex/config.toml",
-    purpose: "Pre-trust managed workspaces and apply selected Codex config runtime-resource fragments.",
+    purpose: "预信任受管工作区，并应用选定的 Codex 配置运行时资源片段。",
   },
 ];
 
@@ -109,7 +109,7 @@ const DARWIN_RUNTIME_CONFIG_DISCLOSURE: RuntimeConfigDisclosure = {
   scope: "global",
   runtime: "cmux",
   path: CMUX_SETTINGS_DISCLOSURE_PATH,
-  purpose: "Set cmux socket control to an OpenRig-compatible automation mode.",
+  purpose: "把 cmux socket 控制设为 zrig 兼容的自动化模式。",
 };
 
 export function defaultDeps(): SetupDeps {
@@ -174,7 +174,7 @@ async function tryEnableCmuxControl(deps: SetupDeps, platform: NodeJS.Platform):
     try {
       deps.exec("cmux reload-config");
     } catch {
-      // Best effort: if reload fails, the daemon-side verification will surface it honestly.
+      // 尽力而为：reload 失败时，后台服务侧校验会如实暴露。
     }
     return waitForCmuxCapabilities(deps, 1);
   }
@@ -182,7 +182,7 @@ async function tryEnableCmuxControl(deps: SetupDeps, platform: NodeJS.Platform):
   try {
     deps.exec("open -a /Applications/cmux.app");
   } catch {
-    // Best effort: cmux may already be running or the app open may be blocked; capability probe decides readiness.
+    // 尽力而为：cmux 可能已在跑，或 app 打开被阻止；capability 探测决定就绪度。
   }
 
   return waitForCmuxCapabilities(deps);
@@ -218,32 +218,32 @@ async function probeDaemonCmuxStatus(doctorDeps?: DoctorDeps): Promise<"availabl
   }
 }
 
-// Slice-03 Lane B (OPR.0.4.8) onboarding RECORD path. RULING-C (b4913ed4): the v1 onboarding menu
-// EDITS/RECORDS a deliberate policy choice into an EXISTING RigSpec only — a NEW INSTALL has no spec,
-// so nothing is written and the floor holds by ABSENCE. Persistence is the RigSpec `permission_policy`
-// field ONLY (P6 fence: no config.json / daemon-state widening). The record is a least-destructive
-// YAML edit (parse -> set the one key -> serialize), never a codec re-emit that could drop keys.
-//   chosen built-in  -> permission_policy: builtin:<name>   (Seam-B ref semantics)
-//   deliberate-none  -> permission_policy: none             (origin deliberate_none; floor==absent)
-// P3: the record runs ONLY on an explicit --policy selection, NEVER on skip/quit/timeout (no flag =>
-// no step => bare setup byte-unchanged). P1: no path here upgrades an absent spec to deliberate_none.
+// Slice-03 Lane B（OPR.0.4.8）onboarding RECORD 路径。RULING-C（b4913ed4）：v1 onboarding 菜单
+// 只把刻意的策略选择编辑/记录到一个已存在的 RigSpec 中——全新安装没有 spec，
+// 所以什么都不写，底线靠缺席成立。持久化只走 RigSpec 的 `permission_policy`
+// 字段（P6 围栏：不扩 config.json / 后台服务状态）。记录是最小破坏式
+// YAML 编辑（parse -> 设一个键 -> serialize），绝不做可能丢键的 codec 重发。
+//   选内置  -> permission_policy: builtin:<name>  （Seam-B 引用语义）
+//   刻意 none -> permission_policy: none            （origin deliberate_none；底线==缺席）
+// P3：记录只在显式 --policy 选择时跑，绝不在 skip/quit/timeout 时跑
+//（无标志 => 无步骤 => 裸 setup 字节不变）。P1：这里没有路径会把缺席 spec 升级为 deliberate_none。
 export const POLICY_CHOICES = ["locked", "standard", "open", "yolo", "none"] as const;
 export type PolicyChoice = (typeof POLICY_CHOICES)[number];
 
-// Root-spec filenames, matching the CLI's established file-or-directory spec convention
-// (see specs.ts resolveAddSpecSource + `rig up <source>`).
+// 根 spec 文件名，与 CLI 已确立的 file-or-directory spec 约定一致
+//（见 specs.ts resolveAddSpecSource + `rig up <source>`）。
 const ROOT_SPEC_NAMES = ["rig.yaml", "rig.yml", "agent.yaml", "agent.yml"];
 
 function policyRefFor(choice: PolicyChoice): string {
-  // Deliberate-none is the explicit reserved value; every built-in name carries the MANDATORY
-  // `builtin:` prefix (bare canonical names never resolve — anti-shadowing, policy-ref.ts A1).
+  // Deliberate-none 是显式保留值；每个内置名都带强制 `builtin:` 前缀
+  //（裸 canonical 名永不解析——反阴影，policy-ref.ts A1）。
   return choice === "none" ? "none" : `builtin:${choice}`;
 }
 
 /**
- * Resolve `specPath` to a readable EXISTING root spec file, or null. Accepts a direct file path or a
- * directory containing a root spec. Uses deps.readFile as the read+existence probe (null = absent), so
- * the resolver stays fs-injectable and never mints a spec — RULING-C: no scaffold-authoring here.
+ * 把 `specPath` 解析为可读的已存在根 spec 文件，或 null。接受直接文件路径或
+ * 含根 spec 的目录。用 deps.readFile 作为读+存在性探测（null = 缺席），所以
+ * resolver 保持 fs 可注入，绝不铸造 spec——RULING-C：这里不做 scaffold 创作。
  */
 export function resolveExistingSpecPath(deps: SetupDeps, specPath: string): string | null {
   if (deps.readFile(specPath) !== null) return specPath;
@@ -255,18 +255,18 @@ export function resolveExistingSpecPath(deps: SetupDeps, specPath: string): stri
 }
 
 /**
- * Record a deliberate policy choice into an existing spec, returning the `policy_record` SetupStep.
- * Only called when the operator explicitly passed --policy (P3). Unknown choice or no resolvable
- * existing spec => a `fail` step and NOTHING is written (P1 + RULING-C new-install-writes-nothing).
+ * 把刻意的策略选择记录到已有 spec，返回 `policy_record` SetupStep。
+ * 仅当操作人员显式传 --policy 时调用（P3）。未知选择或无可解析的已有 spec =>
+ * `fail` 步骤，什么都不写（P1 + RULING-C 全新安装什么都不写）。
  */
 export function recordPermissionPolicyStep(deps: SetupDeps, choice: string, specPath: string | undefined): SetupStep {
   if (!(POLICY_CHOICES as readonly string[]).includes(choice)) {
     return {
       id: "policy_record",
       status: "fail",
-      message: `Unknown policy choice '${choice}'.`,
-      reason: `--policy must be one of: ${POLICY_CHOICES.join(", ")}.`,
-      fixHint: `Re-run with --policy <${POLICY_CHOICES.join("|")}>.`,
+      message: `未知策略选择 '${choice}'。`,
+      reason: `--policy 必须是以下之一：${POLICY_CHOICES.join(", ")}。`,
+      fixHint: `用 --policy <${POLICY_CHOICES.join("|")}> 重跑。`,
     };
   }
 
@@ -275,20 +275,20 @@ export function recordPermissionPolicyStep(deps: SetupDeps, choice: string, spec
     return {
       id: "policy_record",
       status: "fail",
-      message: "No existing rig spec to record the policy into.",
+      message: "没有可记录策略的已有 rig spec。",
       reason:
-        "The onboarding menu records a policy choice into an EXISTING spec only. A new install has no spec, so nothing is written — the usability floor holds by absence.",
-      fixHint: "Point --spec at an existing rig.yaml (or a directory containing one), then re-run `rig setup --policy`.",
+        "onboarding 菜单只把策略选择记录到已存在的 spec 中。全新安装没有 spec，所以什么都不写——可用性底线靠缺席成立。",
+      fixHint: "把 --spec 指向一个已有 rig.yaml（或含它的目录），然后重跑 `zrig setup --policy`。",
     };
   }
 
   const ref = policyRefFor(choice as PolicyChoice);
   try {
     const raw = deps.readFile(resolved) ?? "";
-    // Comment-preserving least-destructive edit: parseDocument retains comment TEXT (top + inline),
-    // key ORDER, QUOTING, and STRUCTURE; we set ONLY the permission_policy key and re-serialize. (Honest
-    // API limit: pre-`#` padding may normalize — this is a text/structure preserve, not a byte-image of
-    // arbitrary whitespace.) A plain parse->stringify would DROP every comment — pinned by the test above.
+    // 保留注释的最小破坏式编辑：parseDocument 保留注释文本（顶部 + 行内）、
+    // 键顺序、引号与结构；我们只设 permission_policy 键再序列化。
+    //（诚实 API 限制：`#` 前的填充可能归一化——这是文本/结构保留，不是任意空白的字节镜像。）
+    // 单纯 parse->stringify 会丢掉所有注释——上面的测试已 pin 住这一点。
     const doc = parseDocument(raw);
     doc.set("permission_policy", ref);
     deps.writeFile(resolved, String(doc));
@@ -296,9 +296,9 @@ export function recordPermissionPolicyStep(deps: SetupDeps, choice: string, spec
     return {
       id: "policy_record",
       status: "fail",
-      message: `Could not record the policy into ${resolved}: ${(err as Error).message}`,
-      reason: "The spec could not be parsed or written; no partial change was applied.",
-      fixHint: "Repair the spec YAML, then re-run `rig setup --policy`.",
+      message: `无法把策略记录到 ${resolved}：${(err as Error).message}`,
+      reason: "spec 无法解析或写入；未应用部分修改。",
+      fixHint: "修复 spec YAML，然后重跑 `zrig setup --policy`。",
     };
   }
 
@@ -307,8 +307,8 @@ export function recordPermissionPolicyStep(deps: SetupDeps, choice: string, spec
     status: "applied",
     message:
       choice === "none"
-        ? `Recorded a deliberate no-policy choice (permission_policy: none) into ${resolved}.`
-        : `Recorded permission_policy: ${ref} into ${resolved}.`,
+        ? `已把刻意的无策略选择（permission_policy: none）记录到 ${resolved}。`
+        : `已把 permission_policy: ${ref} 记录到 ${resolved}。`,
   };
 }
 
@@ -321,35 +321,35 @@ export async function runSetup(deps: SetupDeps, opts: { dryRun?: boolean; full?:
 
   if (opts.dryRun) {
     for (const id of stepIds) {
-      steps.push({ id, status: "skipped", message: `Dry run: ${id} would be attempted.` });
+      steps.push({ id, status: "skipped", message: `Dry run：会尝试 ${id}。` });
     }
     if (opts.policy !== undefined) {
-      steps.push({ id: "policy_record", status: "skipped", message: `Dry run: would record permission_policy for '${opts.policy}'.` });
+      steps.push({ id: "policy_record", status: "skipped", message: `Dry run：会为 '${opts.policy}' 记录 permission_policy。` });
     }
     return { profile, platform, ready: false, steps, runtimeConfig };
   }
 
-  // Core steps
-  // 1. Homebrew (macOS-first setup path)
+  // 核心步骤
+  // 1. Homebrew（macOS 优先的 setup 路径）
   let brewOk = false;
   if (platform !== "darwin") {
     steps.push({
       id: "brew",
       status: "skipped",
-      message: "Skipped: Homebrew setup path is only used on macOS.",
+      message: "跳过：Homebrew setup 路径仅在 macOS 上使用。",
     });
   } else {
     try {
       deps.exec("brew --version");
       brewOk = true;
-      steps.push({ id: "brew", status: "pass", message: "Homebrew available." });
+      steps.push({ id: "brew", status: "pass", message: "Homebrew 可用。" });
     } catch {
       steps.push({
         id: "brew",
         status: "fail",
-        message: "Homebrew not found.",
-        reason: "Homebrew is required to install tmux and cmux on macOS.",
-        fixHint: "Install Homebrew: https://brew.sh",
+        message: "未找到 Homebrew。",
+        reason: "macOS 上安装 tmux 和 cmux 需要 Homebrew。",
+        fixHint: "安装 Homebrew：https://brew.sh",
       });
     }
   }
@@ -358,17 +358,17 @@ export async function runSetup(deps: SetupDeps, opts: { dryRun?: boolean; full?:
   const tmuxProbe = probeTmuxControl((cmd) => deps.exec(cmd));
   if (tmuxProbe.code === "not_installed") {
     if (!brewOk) {
-      steps.push({ id: "tmux_install", status: "skipped", message: "Skipped: Homebrew not available.", reason: "tmux install requires Homebrew." });
+      steps.push({ id: "tmux_install", status: "skipped", message: "跳过：Homebrew 不可用。", reason: "安装 tmux 需要 Homebrew。" });
     } else {
       try {
         installCommand(deps, "brew install tmux");
-        steps.push({ id: "tmux_install", status: "applied", message: "Installed tmux with Homebrew." });
+        steps.push({ id: "tmux_install", status: "applied", message: "已用 Homebrew 安装 tmux。" });
       } catch (err) {
-        steps.push({ id: "tmux_install", status: "fail", message: `Failed to install tmux: ${(err as Error).message}` });
+        steps.push({ id: "tmux_install", status: "fail", message: `安装 tmux 失败：${(err as Error).message}` });
       }
     }
   } else if (!tmuxProbe.available) {
-    const failure = buildTmuxControlFailure(tmuxProbe.detail ?? "unknown tmux control failure");
+    const failure = buildTmuxControlFailure(tmuxProbe.detail ?? "未知 tmux 控制失败");
     steps.push({
       id: "tmux_install",
       status: "fail",
@@ -377,7 +377,7 @@ export async function runSetup(deps: SetupDeps, opts: { dryRun?: boolean; full?:
       fixHint: failure.fix,
     });
   } else {
-    steps.push({ id: "tmux_install", status: "pass", message: "tmux available." });
+    steps.push({ id: "tmux_install", status: "pass", message: "tmux 可用。" });
   }
 
   // 3. cmux
@@ -388,9 +388,9 @@ export async function runSetup(deps: SetupDeps, opts: { dryRun?: boolean; full?:
       steps.push({
         id: "cmux_install",
         status: "fail",
-        message: "cmux settings file is unreadable.",
-        reason: `OpenRig could not parse ${CMUX_SETTINGS_DISCLOSURE_PATH}: ${socketMode.error}`,
-        fixHint: "Repair or remove the cmux settings file, then rerun `rig setup`.",
+        message: "cmux 设置文件不可读。",
+        reason: `zrig 无法解析 ${CMUX_SETTINGS_DISCLOSURE_PATH}：${socketMode.error}`,
+        fixHint: "修复或删除 cmux 设置文件，然后重跑 `zrig setup`。",
       });
     } else if (platform === "darwin" && !isCmuxSocketControlCompatible(socketMode.mode)) {
       if (await tryEnableCmuxControl(deps, platform)) {
@@ -399,36 +399,36 @@ export async function runSetup(deps: SetupDeps, opts: { dryRun?: boolean; full?:
           steps.push({
             id: "cmux_install",
             status: "fail",
-            message: "OpenRig updated cmux settings, but the running daemon still cannot control cmux.",
-            reason: "The cmux settings file is now compatible, so the remaining blocker is in the live daemon/cmux session state.",
-            fixHint: "Restart the daemon with `rig daemon start`, then rerun `rig doctor` to confirm cmux daemon control.",
+            message: "zrig 已更新 cmux 设置，但运行中的后台服务仍无法控制 cmux。",
+            reason: "cmux 设置文件现在已兼容，所以剩余阻塞在活动后台服务/cmux 会话状态里。",
+            fixHint: "用 `zrig daemon start` 重启后台服务，然后重跑 `zrig doctor` 确认 cmux 后台服务控制。",
           });
         } else {
           steps.push({
             id: "cmux_install",
             status: "applied",
-            message: "Normalized cmux socket control to automation mode in ~/.config/cmux/settings.json.",
+            message: "已在 ~/.config/cmux/settings.json 中把 cmux socket 控制归一化为 automation 模式。",
           });
         }
       } else {
         steps.push({
           id: "cmux_install",
           status: "fail",
-          message: "cmux shell control works, but OpenRig could not normalize cmux socket control.",
-          reason: "OpenRig needs a compatible cmux socket control mode so the daemon can open CMUX surfaces reliably.",
-          fixHint: `Set automation.socketControlMode to "automation" in ${CMUX_SETTINGS_DISCLOSURE_PATH}, then rerun \`rig setup\` or \`rig doctor\`.`,
+          message: "cmux shell 控制可用，但 zrig 无法归一化 cmux socket 控制。",
+          reason: "zrig 需要兼容的 cmux socket 控制模式，后台服务才能可靠打开 CMUX 界面。",
+          fixHint: `在 ${CMUX_SETTINGS_DISCLOSURE_PATH} 中把 automation.socketControlMode 设为 "automation"，然后重跑 \`zrig setup\` 或 \`zrig doctor\`。`,
         });
       }
     } else if (daemonCmuxBefore === "unavailable") {
       steps.push({
         id: "cmux_install",
         status: "fail",
-        message: "cmux shell control works, but the running daemon still cannot control cmux.",
-        reason: "Current cmux settings already look compatible, so the remaining blocker is outside the cmux settings file OpenRig can repair automatically.",
-        fixHint: "Run `rig doctor` for the exact daemon cmux diagnosis, then restart the daemon after clearing the underlying blocker.",
+        message: "cmux shell 控制可用，但运行中的后台服务仍无法控制 cmux。",
+        reason: "当前 cmux 设置看起来已兼容，所以剩余阻塞在 zrig 无法自动修复的 cmux 设置文件之外。",
+        fixHint: "跑 `zrig doctor` 看后台服务 cmux 的确切诊断，清除底层阻塞后重启后台服务。",
       });
     } else {
-      steps.push({ id: "cmux_install", status: "pass", message: "cmux available." });
+      steps.push({ id: "cmux_install", status: "pass", message: "cmux 可用。" });
     }
   } else {
     try {
@@ -440,52 +440,52 @@ export async function runSetup(deps: SetupDeps, opts: { dryRun?: boolean; full?:
           steps.push({
             id: "cmux_install",
             status: "fail",
-            message: "OpenRig enabled cmux socket control, but the running daemon still cannot control cmux.",
-            reason: "The cmux app and settings are now in place, so the remaining blocker is in the live daemon/cmux session state.",
-            fixHint: "Restart the daemon with `rig daemon start`, then rerun `rig doctor` to confirm cmux daemon control.",
+            message: "zrig 已启用 cmux socket 控制，但运行中的后台服务仍无法控制 cmux。",
+            reason: "cmux app 和设置已就位，所以剩余阻塞在活动后台服务/cmux 会话状态里。",
+            fixHint: "用 `zrig daemon start` 重启后台服务，然后重跑 `zrig doctor` 确认 cmux 后台服务控制。",
           });
         } else {
           steps.push({
             id: "cmux_install",
             status: "applied",
-            message: "Enabled cmux socket control in ~/.config/cmux/settings.json.",
+            message: "已在 ~/.config/cmux/settings.json 中启用 cmux socket 控制。",
           });
         }
       } else {
         steps.push({
           id: "cmux_install",
           status: platform === "darwin" ? "fail" : "warn",
-          message: "cmux installed but control unavailable.",
-          reason: "Open CMUX workflows need cmux socket control to be enabled.",
+          message: "cmux 已安装，但控制不可用。",
+          reason: "开放 CMUX 工作流需要启用 cmux socket 控制。",
           fixHint: platform === "darwin"
-            ? `Set automation.socketControlMode to "automation" in ${CMUX_SETTINGS_DISCLOSURE_PATH}, then rerun \`rig setup\` or \`rig doctor\`.`
-            : "Open cmux, approve any first-run prompts, and rerun `rig setup` or `rig doctor`.",
+            ? `在 ${CMUX_SETTINGS_DISCLOSURE_PATH} 中把 automation.socketControlMode 设为 "automation"，然后重跑 \`zrig setup\` 或 \`zrig doctor\`.`
+            : "打开 cmux，批准首次运行提示，然后重跑 `zrig setup` 或 `zrig doctor`。",
         });
       }
     } catch {
       if (!brewOk) {
-        steps.push({ id: "cmux_install", status: "skipped", message: "Skipped: Homebrew not available." });
+        steps.push({ id: "cmux_install", status: "skipped", message: "跳过：Homebrew 不可用。" });
       } else {
         try {
           installCommand(deps, "brew install --cask cmux");
           if (await tryEnableCmuxControl(deps, platform) || await waitForCmuxCapabilities(deps, 1)) {
-            steps.push({ id: "cmux_install", status: "applied", message: "Installed cmux with Homebrew." });
+            steps.push({ id: "cmux_install", status: "applied", message: "已用 Homebrew 安装 cmux。" });
           } else {
             steps.push({
               id: "cmux_install",
               status: platform === "darwin" ? "fail" : "warn",
-              message: "Installed cmux, but control is still unavailable.",
-              reason: "Open CMUX workflows need the cmux app to expose socket control after installation.",
-              fixHint: "Open cmux, approve any first-run prompts, and rerun `rig setup` or `rig doctor`.",
+              message: "已安装 cmux，但控制仍不可用。",
+              reason: "开放 CMUX 工作流需要 cmux app 在安装后暴露 socket 控制。",
+              fixHint: "打开 cmux，批准首次运行提示，然后重跑 `zrig setup` 或 `zrig doctor`。",
             });
           }
         } catch (err) {
           steps.push({
             id: "cmux_install",
             status: "fail",
-            message: `Failed to install cmux: ${(err as Error).message}`,
-            reason: "Open CMUX workflows stay unavailable until the cmux app and CLI are installed.",
-            fixHint: "Retry `brew install --cask cmux` after connectivity stabilizes, or install cmux manually.",
+            message: `安装 cmux 失败：${(err as Error).message}`,
+            reason: "在 cmux app 和 CLI 装好之前，开放 CMUX 工作流保持不可用。",
+            fixHint: "网络稳定后重试 `brew install --cask cmux`，或手动安装 cmux。",
           });
         }
       }
@@ -493,25 +493,25 @@ export async function runSetup(deps: SetupDeps, opts: { dryRun?: boolean; full?:
   }
 
   // 4. tmux config
-  // 4. Claude Code runtime
+  // 4. Claude Code 运行时
   let claudeInstalled = false;
   try {
     deps.exec("claude --version");
     claudeInstalled = true;
-    steps.push({ id: "claude_install", status: "pass", message: "Claude Code available." });
+    steps.push({ id: "claude_install", status: "pass", message: "Claude Code 可用。" });
   } catch {
     try {
       installCommand(deps, "npm install -g @anthropic-ai/claude-code");
       deps.exec("claude --version");
       claudeInstalled = true;
-      steps.push({ id: "claude_install", status: "applied", message: "Installed Claude Code with npm." });
+      steps.push({ id: "claude_install", status: "applied", message: "已用 npm 安装 Claude Code。" });
     } catch (err) {
       steps.push({
         id: "claude_install",
         status: "fail",
-        message: `Failed to install Claude Code: ${(err as Error).message}`,
-        reason: "Claude Code seats need the Claude CLI; a Codex-only project can use its own runtime readiness result.",
-        fixHint: "Install Claude Code with `npm install -g @anthropic-ai/claude-code`.",
+        message: `安装 Claude Code 失败：${(err as Error).message}`,
+        reason: "Claude Code 席位需要 Claude CLI；纯 Codex 项目可以用自己的运行时就绪结果。",
+        fixHint: "用 `npm install -g @anthropic-ai/claude-code` 安装 Claude Code。",
       });
     }
   }
@@ -519,44 +519,44 @@ export async function runSetup(deps: SetupDeps, opts: { dryRun?: boolean; full?:
   if (claudeInstalled) {
     try {
       deps.exec("claude auth status");
-      steps.push({ id: "claude_auth", status: "pass", message: "Claude Code authentication available." });
+      steps.push({ id: "claude_auth", status: "pass", message: "Claude Code 认证可用。" });
     } catch (err) {
       steps.push({
         id: "claude_auth",
         status: "fail",
-        message: `Claude Code is installed but not ready to launch: ${(err as Error).message}`,
-        reason: "Claude Code seats cannot launch until the Claude CLI is logged in and usable.",
-        fixHint: "Run `claude auth login` or open `claude` once to complete authentication, then rerun `rig setup` or `rig doctor`.",
+        message: `Claude Code 已安装但尚不能启动：${(err as Error).message}`,
+        reason: "Claude Code 席位在 Claude CLI 登录可用前不能启动。",
+        fixHint: "跑 `claude auth login` 或打开一次 `claude` 完成认证，然后重跑 `zrig setup` 或 `zrig doctor`。",
       });
     }
   } else {
     steps.push({
       id: "claude_auth",
       status: "skipped",
-      message: "Skipped: Claude Code is not installed.",
-      reason: "Authentication cannot be checked until the Claude Code CLI is installed.",
+      message: "跳过：Claude Code 未安装。",
+      reason: "在 Claude Code CLI 装好前无法检查认证。",
     });
   }
 
-  // 5. Codex runtime
+  // 5. Codex 运行时
   let codexInstalled = false;
   try {
     deps.exec("codex --version");
     codexInstalled = true;
-    steps.push({ id: "codex_install", status: "pass", message: "Codex available." });
+    steps.push({ id: "codex_install", status: "pass", message: "Codex 可用。" });
   } catch {
     try {
       installCommand(deps, "npm install -g @openai/codex");
       deps.exec("codex --version");
       codexInstalled = true;
-      steps.push({ id: "codex_install", status: "applied", message: "Installed Codex with npm." });
+      steps.push({ id: "codex_install", status: "applied", message: "已用 npm 安装 Codex。" });
     } catch (err) {
       steps.push({
         id: "codex_install",
         status: "fail",
-        message: `Failed to install Codex: ${(err as Error).message}`,
-        reason: "Codex seats need the Codex CLI installed on this machine.",
-        fixHint: "Install Codex with `npm install -g @openai/codex`.",
+        message: `安装 Codex 失败：${(err as Error).message}`,
+        reason: "Codex 席位需要本机安装 Codex CLI。",
+        fixHint: "用 `npm install -g @openai/codex` 安装 Codex。",
       });
     }
   }
@@ -564,22 +564,22 @@ export async function runSetup(deps: SetupDeps, opts: { dryRun?: boolean; full?:
   if (codexInstalled) {
     try {
       deps.exec("codex login status");
-      steps.push({ id: "codex_auth", status: "pass", message: "Codex authentication available." });
+      steps.push({ id: "codex_auth", status: "pass", message: "Codex 认证可用。" });
     } catch (err) {
       steps.push({
         id: "codex_auth",
         status: "fail",
-        message: `Codex is installed but not ready to launch: ${(err as Error).message}`,
-        reason: "Codex seats cannot launch until the Codex CLI is logged in and usable.",
-        fixHint: "Run `codex login` and complete authentication, then rerun `rig setup` or `rig doctor`.",
+        message: `Codex 已安装但尚不能启动：${(err as Error).message}`,
+        reason: "Codex 席位在 Codex CLI 登录可用前不能启动。",
+        fixHint: "跑 `codex login` 完成认证，然后重跑 `zrig setup` 或 `zrig doctor`。",
       });
     }
   } else {
     steps.push({
       id: "codex_auth",
       status: "skipped",
-      message: "Skipped: Codex is not installed.",
-      reason: "Authentication cannot be checked until the Codex CLI is installed.",
+      message: "跳过：Codex 未安装。",
+      reason: "在 Codex CLI 装好前无法检查认证。",
     });
   }
 
@@ -596,55 +596,55 @@ export async function runSetup(deps: SetupDeps, opts: { dryRun?: boolean; full?:
   try {
     const existing = deps.readFile(TMUX_CONF);
     if (existing && existing.includes(MANAGED_MARKER)) {
-      // Replace existing managed block
+      // 替换已有 managed 块
       const replaced = existing.replace(
         new RegExp(`${MANAGED_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s\\S]*?# End ${MANAGED_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
         MANAGED_BLOCK,
       );
       deps.writeFile(TMUX_CONF, replaced);
-      steps.push({ id: "tmux_config", status: "applied", message: "Updated OpenRig managed tmux config block." });
+      steps.push({ id: "tmux_config", status: "applied", message: "已更新 zrig 托管的 tmux 配置块。" });
     } else if (existing) {
       deps.writeFile(TMUX_CONF, existing.trimEnd() + "\n\n" + MANAGED_BLOCK + "\n");
-      steps.push({ id: "tmux_config", status: "applied", message: "Appended OpenRig managed tmux config block." });
+      steps.push({ id: "tmux_config", status: "applied", message: "已追加 zrig 托管的 tmux 配置块。" });
     } else {
       deps.writeFile(TMUX_CONF, MANAGED_BLOCK + "\n");
-      steps.push({ id: "tmux_config", status: "applied", message: "Created .tmux.conf with OpenRig managed block." });
+      steps.push({ id: "tmux_config", status: "applied", message: "已创建带 zrig 托管块的 .tmux.conf。" });
     }
   } catch (err) {
-    steps.push({ id: "tmux_config", status: "warn", message: `Could not update tmux config: ${(err as Error).message}` });
+    steps.push({ id: "tmux_config", status: "warn", message: `无法更新 tmux 配置：${(err as Error).message}` });
   }
 
-  // 7. Verify
+  // 7. 校验
   const tmuxOk = steps.some((s) => s.id === "tmux_install" && (s.status === "pass" || s.status === "applied"));
   const anyFail = steps.some((s) => s.status === "fail");
   steps.push({
     id: "verify",
     status: anyFail ? "warn" : "pass",
-    message: anyFail ? "Some setup steps failed. Run `rig doctor` for detailed diagnostics." : "Core setup verified.",
+    message: anyFail ? "部分 setup 步骤失败。跑 `zrig doctor` 看详细诊断。" : "核心 setup 已校验。",
   });
 
-  // Full profile extras
+  // Full profile 额外项
   if (opts.full) {
     for (const tool of [{ id: "jq_install", cmd: "jq", brew: "jq" }, { id: "gh_install", cmd: "gh", brew: "gh" }]) {
       try {
         deps.exec(`${tool.cmd} --version`);
-        steps.push({ id: tool.id, status: "pass", message: `${tool.cmd} available.` });
+        steps.push({ id: tool.id, status: "pass", message: `${tool.cmd} 可用。` });
       } catch {
         if (!brewOk) {
-          steps.push({ id: tool.id, status: "skipped", message: `Skipped: Homebrew not available.` });
+          steps.push({ id: tool.id, status: "skipped", message: `跳过：Homebrew 不可用。` });
         } else {
           try {
             installCommand(deps, `brew install ${tool.brew}`);
-            steps.push({ id: tool.id, status: "applied", message: `Installed ${tool.cmd} with Homebrew.` });
+            steps.push({ id: tool.id, status: "applied", message: `已用 Homebrew 安装 ${tool.cmd}。` });
           } catch {
-            steps.push({ id: tool.id, status: "warn", message: `Failed to install ${tool.cmd}.`, fixHint: `Install ${tool.cmd} manually.` });
+            steps.push({ id: tool.id, status: "warn", message: `安装 ${tool.cmd} 失败。`, fixHint: `手动安装 ${tool.cmd}。` });
           }
         }
       }
     }
   }
 
-  // Run doctor-backed verification if not dry-run and doctorDeps available
+  // 非 dry-run 且有 doctorDeps 时跑 doctor 支持的校验
   let verification: SetupResult["verification"];
   if (!opts.dryRun && opts.doctorDeps) {
     const doctorDeps = opts.doctorDeps;
@@ -662,13 +662,13 @@ export async function runSetup(deps: SetupDeps, opts: { dryRun?: boolean; full?:
     };
   }
 
-  // P3: record a deliberate policy choice ONLY when --policy was explicitly passed (never on a bare
-  // run). No flag => no policy_record step => bare setup byte-unchanged (anchor 1).
+  // P3：只在显式传 --policy 时记录刻意的策略选择（绝不在裸跑时记录）。
+  // 无标志 => 无 policy_record 步骤 => 裸 setup 字节不变（锚点 1）。
   if (opts.policy !== undefined) {
     steps.push(recordPermissionPolicyStep(deps, opts.policy, opts.specPath));
   }
 
-  // ready = no fail statuses in steps or verification checks
+  // ready = steps 或 verification checks 中无 fail 状态
   const stepsFailed = steps.some((s) => s.status === "fail");
   const verificationFailed = verification?.checks.some((c) => c.status === "fail") ?? false;
   const ready = !stepsFailed && !verificationFailed;
@@ -701,58 +701,58 @@ function buildDefaultDoctorDeps(setupDeps: SetupDeps): DoctorDeps {
 }
 
 /**
- * OPR.0.3.3.04.2 (AC-1): the ONE canonical ordered golden path over EXISTING
- * verbs - no magic mega-command, no hidden state. `rig setup` prints this as its
- * next-steps; `rig status`/`rig doctor` only HINT back to it; the durable
- * reference is docs/reference/getting-started.md. Returns the lines to print.
+ * OPR.0.3.3.04.2（AC-1）：在已有动词之上的唯一 canonical 有序黄金路径——
+ * 不搞魔法 mega-command，不藏状态。`rig setup` 把它作为下一步打印；
+ * `rig status`/`rig doctor` 只回指它；持久参考是 docs/reference/getting-started.md。
+ * 返回要打印的行。
  */
 export function goldenPathNextSteps(): string[] {
   return [
-    "Next steps (the guided path; full reference: docs/reference/getting-started.md):",
-    "  1. cd <your-repository>             Choose the code the team will work on",
-    "  2. rig up first-project --cwd .     Launch an owner + checker (Codex); auto-starts daemon and kernel",
-    "  3. rig status                       Check daemon/kernel readiness; rig ps --nodes --rig first-project checks the team",
-    "  4. rig send dev-owner@first-project '<one useful change, boundaries, and how to check it>'",
-    "  5. rig tui --shared                  Join the kernel dashboard; plain rig tui opens your own view",
-    "  Next: rig queue list --rig first-project; rig workspace doctor; rig scope ...; rig workflow specs",
+    "下一步（引导路径；完整参考：docs/reference/getting-started.md）：",
+    "  1. cd <你的仓库>                 选团队要工作的代码",
+    "  2. zrig up first-project --cwd .  启动 owner + checker（Codex）；自动启动后台服务与 kernel",
+    "  3. zrig status                     检查后台服务/kernel 就绪；zrig ps --nodes --rig first-project 检查团队",
+    "  4. zrig send dev-owner@first-project '<一条有用的改动、边界、以及怎么检查>'",
+    "  5. zrig tui --shared              加入 kernel 看板；裸 zrig tui 打开你自己的视图",
+    "  接下来：zrig queue list --rig first-project；zrig workspace doctor；zrig scope ...；zrig workflow specs",
   ];
 }
 
 /**
- * Slice-03 Lane B (OPR.0.4.8) onboarding menu copy. The 0.4.8 lineage has no TUI, so the "menu" is
- * calm-register narrative text presenting the permission-policy choice. Copy is FROZEN + founder-picked
- * (missions/.../MENU-COPY-FROZEN-2026-08-04): verbatim `Policy Mode`/`YOLO Mode` labels, the NAME
- * "Operator" never appears (YOLO Mode is the user-facing label for it), the exact deliberate-none and
- * skip-line phrasing, NO pre-selected default, and `Standard` carries the ⭐ recommendation marker.
- * REGISTER RULE (pm-lead): factual + version-neutral — never "treacherous"/editorializing/
- * founder-internal wording. Recording is a thought, never a gate — `rig up` always works bare.
+ * Slice-03 Lane B（OPR.0.4.8）onboarding 菜单文案。0.4.8 这一脉没有 TUI，
+ * 所以"菜单"是平静登记的叙事文本，呈现权限策略选择。文案已冻结 + 创始人钦定
+ *（missions/.../MENU-COPY-FROZEN-2026-08-04）：逐字 `Policy Mode`/`YOLO Mode` 标签，
+ * "Operator"这个名字从不出现（YOLO Mode 是它面向用户的标签），刻意-none 与
+ * 跳过行的确切措辞，无预选默认，`Standard` 带 ⭐ 推荐标记。
+ * 登记规则（pm-lead）：事实 + 版本中立——绝不"奸诈"/说教/创始人内部措辞。
+ * 记录是想法，绝不是门槛——`rig up` 永远能裸跑。
  */
 export function permissionPolicyMenuLines(): string[] {
   return [
-    "Permission policy (optional — recording is a thought, not a gate; `rig up` always works without one):",
-    "  Policy Mode:",
-    "    Locked            The most restrictive built-in policy.",
-    "    Standard  ⭐      The recommended balanced built-in policy.",
-    "    Open              The least restrictive built-in policy.",
-    "  YOLO Mode           The full-bypass built-in policy.",
-    "  No policy — deliberate choice (recorded)",
+    "权限策略（可选——记录是想法，不是门槛；`zrig up` 没有它也永远能跑）：",
+    "  Policy Mode：",
+    "    Locked            最严格的内置策略。",
+    "    Standard  ⭐      推荐的平衡内置策略。",
+    "    Open              最宽松的内置策略。",
+    "  YOLO Mode           完全旁路的内置策略。",
+    "  无策略——刻意选择（已记录）",
     "",
-    "  If you skip: OpenRig sets nothing — the usability floor only",
+    "  如果你跳过：zrig 什么都不设——只有可用性底线",
     "",
-    "  To record a choice into an existing spec:",
-    "    rig setup --policy <locked|standard|open|yolo|none> --spec <path>",
+    "  要把选择记录到已有 spec：",
+    "    zrig setup --policy <locked|standard|open|yolo|none> --spec <path>",
   ];
 }
 
 export function setupCommand(depsOverride?: SetupDeps): Command {
-  const cmd = new Command("setup").description("Prepare the machine for OpenRig");
+  const cmd = new Command("setup").description("为 zrig 准备本机");
 
   cmd
-    .option("--dry-run", "Show the plan without making changes")
-    .option("--json", "Machine-readable JSON output")
-    .option("--full", "Install broader operator workstation tools")
-    .option("--policy <name>", `Record a deliberate permission-policy choice into an existing spec (${POLICY_CHOICES.join("|")})`)
-    .option("--spec <path>", "Existing rig spec (file or directory) to record the --policy choice into")
+    .option("--dry-run", "展示计划但不做修改")
+    .option("--json", "机器可读 JSON 输出")
+    .option("--full", "安装更广泛的操作人员工作站工具")
+    .option("--policy <name>", `把刻意的权限策略选择记录到已有 spec（${POLICY_CHOICES.join("|")}）`)
+    .option("--spec <path>", "要记录 --policy 选择的已有 rig spec（文件或目录）")
     .action(async (opts: { dryRun?: boolean; json?: boolean; full?: boolean; policy?: string; spec?: string }) => {
       const deps = depsOverride ?? defaultDeps();
       const doctorDeps = opts.dryRun ? undefined : buildDefaultDoctorDeps(deps);
@@ -764,35 +764,35 @@ export function setupCommand(depsOverride?: SetupDeps): Command {
         return;
       }
 
-      console.log(`\nProfile: ${result.profile}`);
-      console.log(`Platform: ${result.platform}\n`);
-      console.log("OpenRig may modify runtime config in these locations:");
+      console.log(`\nProfile：${result.profile}`);
+      console.log(`平台：${result.platform}\n`);
+      console.log("zrig 可能在以下位置修改运行时配置：");
       for (const item of result.runtimeConfig) {
         console.log(`  - [${item.scope}] ${item.runtime} ${item.path} — ${item.purpose}`);
       }
-      console.log("  - Note: already-running adopted sessions may need restart to pick up runtime config changes.\n");
+      console.log("  - 注意：已在跑的已认领会话可能需要重启才能拿到运行时配置改动。\n");
 
       for (const step of result.steps) {
         const icon = step.status === "pass" ? "OK" : step.status === "applied" ? "APPLIED" : step.status === "warn" ? "WARN" : step.status === "skipped" ? "SKIP" : "FAIL";
-        console.log(`  [${icon}] ${step.id}: ${step.message}`);
-        if (step.reason) console.log(`       Why: ${step.reason}`);
-        if (step.fixHint) console.log(`       Fix: ${step.fixHint}`);
+        console.log(`  [${icon}] ${step.id}：${step.message}`);
+        if (step.reason) console.log(`       原因：${step.reason}`);
+        if (step.fixHint) console.log(`       修复：${step.fixHint}`);
       }
 
-      // Surface the permission-policy choice (the 0.4.8 onboarding "menu" is calm-register narrative,
-      // not a TUI). Recording is optional and never a gate.
+      // 暴露权限策略选择（0.4.8 onboarding "菜单"是平静登记的叙事，不是 TUI）。
+      // 记录是可选的，绝不是门槛。
       console.log("");
       for (const line of permissionPolicyMenuLines()) console.log(line);
 
-      // OPR.0.3.3.04.2 (AC-1): the canonical ordered golden path. `rig setup` is
-      // the primary surface for the new-operator sequence (status/doctor only
-      // HINT back to it; the durable reference is docs/reference/getting-started.md).
+      // OPR.0.3.3.04.2（AC-1）：canonical 有序黄金路径。`rig setup` 是新操作人员
+      // 序列的主要接口（status/doctor 只回指它；持久参考是
+      // docs/reference/getting-started.md）。
       if (result.ready) {
-        console.log("\nSetup complete.\n");
+        console.log("\nSetup 完成。\n");
         for (const line of goldenPathNextSteps()) console.log(line);
       } else {
-        console.log("\nSome steps need attention. Run `rig doctor` for detailed diagnostics.");
-        console.log("Once setup is healthy, follow the guided path: docs/reference/getting-started.md");
+        console.log("\n部分步骤需要关注。跑 `zrig doctor` 看详细诊断。");
+        console.log("Setup 健康后，按引导路径走：docs/reference/getting-started.md");
       }
       if (!opts.dryRun && !result.ready) process.exitCode = 1;
     });

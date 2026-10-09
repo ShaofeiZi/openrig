@@ -1,39 +1,37 @@
-// OPR.0.4.1.11.2 (FR-5) — deterministic artifact naming + placement for twin captures.
-// A pure resolver: given a slice + surface + output root, it returns the stable, collision-safe
-// paths the capture wrapper writes (intent.html / intent.png / change.diff) under a per-slice
-// folder. Pure + deterministic so the same input always yields the same paths — the foundation
-// FR-2's deterministic-naming + the D-1 capture-twice check depend on. `outRoot` is a parameter
-// (not baked) because the canonical root path + normalize-existing decision are an open
-// convention call (Open-Q3); this module owns only the deterministic MECHANISM.
+// OPR.0.4.1.11.2（FR-5）——twin 截图的确定性产物命名与放置。
+// 纯解析器：给定 slice + 界面 + 输出根，返回截图包装器写入的稳定、无冲突路径
+// （intent.html / intent.png / change.diff），放在按 slice 划分的文件夹下。纯且确定性，
+// 使同一输入总得到同一路径——这是 FR-2 确定性命名与 D-1 截两次校验所依赖的地基。
+// `outRoot` 是参数（不写死），因为规范根路径 + 已存在项规范化的决策仍是开放约定
+// （Open-Q3）；本模块只拥有确定性机制。
 import path from "node:path";
 
 export interface ArtifactPathInput {
-  /** Slice identifier — becomes the per-slice folder name (slugified). */
+  /** Slice 标识符——成为按 slice 划分的文件夹名（slug 化）。 */
   slice: string;
-  /** The surface/mockup the artifact captures (e.g. a route or human label) — becomes the file base (slugified). */
+  /** 产物所捕获的界面/样机（例如一条路由或人类可读标签）——成为文件基名（slug 化）。 */
   surface: string;
-  /** The digital-twin artifact root the per-slice folder lands under. */
+  /** 数字孪生产物根，按 slice 划分的文件夹落在其下。 */
   outRoot: string;
 }
 
 export interface ArtifactPaths {
-  /** outRoot/<slice-slug> — the per-slice folder. */
+  /** outRoot/<slice-slug>——按 slice 划分的文件夹。 */
   dir: string;
-  /** <dir>/<surface-slug>.intent.html — the regenerable single-file prototype. */
+  /** <dir>/<surface-slug>.intent.html——可重新生成的单文件原型。 */
   intentHtml: string;
-  /** <dir>/<surface-slug>.intent.png — the durable INTENT screenshot (from the twin, pre-build). */
+  /** <dir>/<surface-slug>.intent.png——持久的 INTENT 截图（来自 twin，构建前）。 */
   intentPng: string;
-  /** <dir>/<surface-slug>.proof.png — the durable PROOF screenshot (from the real shipped UI, post-build). Pairs with intentPng. */
+  /** <dir>/<surface-slug>.proof.png——持久的 PROOF 截图（来自真实发布 UI，构建后）。与 intentPng 成对。 */
   proofPng: string;
-  /** <dir>/<surface-slug>.change.diff — the durable fixture/variant override diff. */
+  /** <dir>/<surface-slug>.change.diff——持久的 fixture/变体覆盖 diff。 */
   changeDiff: string;
 }
 
 /**
- * Slugify an arbitrary label/route into a lowercase, filesystem-safe token for the SURFACE base:
- * collapse every run of non-alphanumeric characters (including dots and slashes) to a single
- * hyphen and trim leading/trailing hyphens. Deterministic (no time/randomness) so output is
- * reproducible. Use for surface/route names — NOT for the slice-id (see sanitizeSliceId).
+ * 把任意标签/路由 slug 化为小写、文件系统安全的 token，用作 SURFACE 基名：
+ * 把每段非字母数字字符（含点和斜杠）折叠为单个连字符，并修剪首尾连字符。
+ * 确定性（无时间/随机），输出可复现。用于界面/路由名——不要用于 slice-id（见 sanitizeSliceId）。
  */
 export function slugify(value: string): string {
   return value
@@ -43,10 +41,10 @@ export function slugify(value: string): string {
 }
 
 /**
- * Sanitize a slice identifier into the per-slice FOLDER name. Unlike slugify, this PRESERVES dots
- * because the ratified convention (pm + brief1-curator) is digital-twin/<slice-id>/ where the
- * slice-id is the dotted OPR id (e.g. `opr-0.4.1.11.2`). Lowercases and collapses any other unsafe
- * run (spaces/slashes/etc.) to a single hyphen; dots stay. Deterministic.
+ * 把 slice 标识符清洗为按 slice 划分的文件夹名。与 slugify 不同，这里保留点号，
+ * 因为已批准的约定（pm + brief1-curator）是 digital-twin/<slice-id>/，其中 slice-id 是
+ * 带点的 OPR id（例如 `opr-0.4.1.11.2`）。转小写并把其他不安全片段（空格/斜杠等）折叠为
+ * 单个连字符；点号保留。确定性。
  */
 export function sanitizeSliceId(value: string): string {
   return value
@@ -55,7 +53,7 @@ export function sanitizeSliceId(value: string): string {
     .replace(/^[-.]+|[-.]+$/g, "");
 }
 
-/** Resolve the deterministic artifact paths for a twin capture. */
+/** 为一次 twin 截图解析确定性产物路径。 */
 export function resolveArtifactPaths(input: ArtifactPathInput): ArtifactPaths {
   const dir = path.posix.join(input.outRoot, sanitizeSliceId(input.slice));
   const base = slugify(input.surface);

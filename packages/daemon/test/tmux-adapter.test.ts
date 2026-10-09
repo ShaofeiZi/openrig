@@ -19,7 +19,7 @@ function mockExec(responses: Record<string, { stdout?: string; error?: Error }>)
 }
 
 describe("TmuxAdapter", () => {
-  it("starts only an empty terminal server and reconciles repeated requests", async () => {
+  it("只启动空 terminal server，并协调重复请求", async () => {
     let live = false;
     const exec = vi.fn(async (command: string) => {
       if (command.startsWith("tmux -D")) { live = true; return ""; }
@@ -31,13 +31,13 @@ describe("TmuxAdapter", () => {
     expect(exec.mock.calls.filter(([command]) => command.startsWith("tmux -D"))).toHaveLength(1);
     expect(exec.mock.calls.some(([command]) => command.includes("new-session"))).toBe(false);
   });
-  it("does not start a server when socket observation fails with a permission error", async () => {
+  it("socket 观察因权限错误失败时不启动 server", async () => {
     const exec = vi.fn(async () => { throw new Error("permission denied"); });
     expect(await new TmuxAdapter(exec).startServer()).toMatchObject({ ok: false, code: "tmux_unavailable" });
     expect(exec).toHaveBeenCalledOnce();
   });
   describe("listSessions", () => {
-    it("calls exec with exact tmux list-sessions command and format string", async () => {
+    it("使用精确 tmux list-sessions 命令与格式字符串调用 exec", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -49,7 +49,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("parses output into typed TmuxSession objects", async () => {
+    it("把输出解析为类型化 TmuxSession 对象", async () => {
       const output = [
         "my-session|1|2026-03-23T01:00:00|1",
         "other-sess|3|2026-03-23T02:00:00|0",
@@ -67,7 +67,7 @@ describe("TmuxAdapter", () => {
       expect(sessions[1]!.attached).toBe(false);
     });
 
-    it("returns empty array on 'no server running' error", async () => {
+    it("遇到 'no server running' 错误时返回空数组", async () => {
       const adapter = new TmuxAdapter(mockExec({ "list-sessions": { error: NO_SERVER_ERROR } }));
       const sessions = await adapter.listSessions();
       expect(sessions).toEqual([]);
@@ -75,7 +75,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("listWindows", () => {
-    it("calls exec with exact tmux list-windows command and format string", async () => {
+    it("使用精确 tmux list-windows 命令与格式字符串调用 exec", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -87,7 +87,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("shell-sensitive session name is quoted in list-windows", async () => {
+    it("list-windows 中引用 shell 敏感的 session 名称", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -99,7 +99,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("parses output into typed TmuxWindow objects", async () => {
+    it("把输出解析为类型化 TmuxWindow 对象", async () => {
       const output = [
         "0\tmain\t1\t1",
         "1\twork\t2\t0",
@@ -117,7 +117,7 @@ describe("TmuxAdapter", () => {
       expect(windows[1]!.active).toBe(false);
     });
 
-    it("returns empty array on 'no server running' error", async () => {
+    it("遇到 'no server running' 错误时返回空数组", async () => {
       const adapter = new TmuxAdapter(mockExec({ "list-windows": { error: NO_SERVER_ERROR } }));
       const windows = await adapter.listWindows("my-session");
       expect(windows).toEqual([]);
@@ -125,7 +125,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("listPanes", () => {
-    it("calls exec with exact tmux list-panes command and format string", async () => {
+    it("使用精确 tmux list-panes 命令与格式字符串调用 exec", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -137,7 +137,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("shell-sensitive target is quoted in list-panes", async () => {
+    it("list-panes 中引用 shell 敏感的 target", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -149,7 +149,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("parses output into typed TmuxPane objects", async () => {
+    it("把输出解析为类型化 TmuxPane 对象", async () => {
       const output = [
         "%1|0|/home/user/code|180|40|1",
         "%2|1|/tmp|180|40|0",
@@ -167,7 +167,7 @@ describe("TmuxAdapter", () => {
       expect(panes[1]!.active).toBe(false);
     });
 
-    it("returns empty array on 'no server running' error", async () => {
+    it("遇到 'no server running' 错误时返回空数组", async () => {
       const adapter = new TmuxAdapter(mockExec({ "list-panes": { error: NO_SERVER_ERROR } }));
       const panes = await adapter.listPanes("my-session:0");
       expect(panes).toEqual([]);
@@ -175,68 +175,68 @@ describe("TmuxAdapter", () => {
   });
 
   describe("hasSession", () => {
-    it("returns true when tmux has-session exits 0", async () => {
+    it("tmux has-session 以 0 退出时返回 true", async () => {
       const adapter = new TmuxAdapter(mockExec({ "has-session": { stdout: "" } }));
       expect(await adapter.hasSession("target-session")).toBe(true);
     });
 
-    it("returns false when session not found", async () => {
+    it("找不到 session 时返回 false", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "has-session": { error: new Error("session not found: missing-session") },
       }));
       expect(await adapter.hasSession("missing-session")).toBe(false);
     });
 
-    it("returns false when can't find session", async () => {
+    it("无法找到 session 时返回 false", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "has-session": { error: new Error("can't find session: old-session") },
       }));
       expect(await adapter.hasSession("old-session")).toBe(false);
     });
 
-    it("returns false on 'no server running' error", async () => {
+    it("遇到 'no server running' 错误时返回 false", async () => {
       const adapter = new TmuxAdapter(mockExec({ "has-session": { error: NO_SERVER_ERROR } }));
       expect(await adapter.hasSession("any-session")).toBe(false);
     });
 
-    it("throws on unexpected probe error (permission denied / socket failure)", async () => {
+    it("遇到意外 probe 错误（permission denied / socket failure）时抛错", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "has-session": { error: new Error("error connecting to /tmp/tmux-501/default (Permission denied)") },
       }));
       await expect(adapter.hasSession("any-session")).rejects.toThrow("Permission denied");
     });
 
-    it("throws on generic unrecognized exec error", async () => {
+    it("遇到无法识别的通用 exec 错误时抛错", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "has-session": { error: new Error("Command failed with exit code 127") },
       }));
       await expect(adapter.hasSession("any-session")).rejects.toThrow("exit code 127");
     });
 
-    // L1 cold-start tmux truth repair: post-reboot socket absence must classify
-    // as "no session" so the reconciler can detach stale rows without manual fix.
-    it("returns false when tmux socket is gone post-reboot (No such file or directory)", async () => {
+    // L1 冷启动 tmux 真相修复：重启后 socket 缺失必须分类为“无 session”，使 reconciler
+    // 无需手动修复即可 detach 陈旧行。
+    it("重启后 tmux socket 消失（No such file or directory）时返回 false", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "has-session": { error: new Error("error connecting to /private/tmp/tmux-501/default (No such file or directory)") },
       }));
       expect(await adapter.hasSession("any-session")).toBe(false);
     });
 
-    it("returns false on Connection refused against a tmux socket path", async () => {
+    it("tmux socket 路径返回 Connection refused 时返回 false", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "has-session": { error: new Error("error connecting to /private/tmp/tmux-501/default (Connection refused)") },
       }));
       expect(await adapter.hasSession("any-session")).toBe(false);
     });
 
-    it("rethrows on 'Operation not permitted' (permission must remain fail-closed)", async () => {
+    it("遇到 'Operation not permitted' 时重新抛出（权限必须保持关闭式失败）", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "has-session": { error: new Error("error connecting to /private/tmp/tmux-501/default (Operation not permitted)") },
       }));
       await expect(adapter.hasSession("any-session")).rejects.toThrow("Operation not permitted");
     });
 
-    it("rethrows on EACCES (permission must remain fail-closed)", async () => {
+    it("遇到 EACCES 时重新抛出（权限必须保持关闭式失败）", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "has-session": { error: new Error("EACCES: permission denied, /private/tmp/tmux-501/default") },
       }));
@@ -245,7 +245,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("hasSessionEnv", () => {
-    it("distinguishes a usable variable from absent or blank values", async () => {
+    it("区分可用变量与缺失或空白值", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue([
         "OPENRIG_URL=http://127.0.0.1:7433",
         "OPENRIG_ACTIVITY_HOOK_TOKEN=",
@@ -261,7 +261,7 @@ describe("TmuxAdapter", () => {
       expect(exec).toHaveBeenCalledWith("tmux show-environment -t 'seat@rig'");
     });
 
-    it("returns unknown when the session environment cannot be inspected", async () => {
+    it("无法检查 session 环境时返回 unknown", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "show-environment": { error: new Error("can't find session: missing") },
       }));
@@ -271,7 +271,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("createSession", () => {
-    it("calls exec with exact command (name + cwd, both quoted)", async () => {
+    it("使用精确命令调用 exec（name + cwd 均引用）", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -283,7 +283,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("with cwd containing spaces: path is quoted", async () => {
+    it("cwd 包含空格时引用路径", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -295,7 +295,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("with shell-sensitive session name: name is quoted", async () => {
+    it("session 名称对 shell 敏感时引用名称", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -307,7 +307,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("without cwd omits -c flag", async () => {
+    it("没有 cwd 时省略 -c flag", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -319,13 +319,13 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("returns { ok: true } on success", async () => {
+    it("成功时返回 { ok: true }", async () => {
       const adapter = new TmuxAdapter(mockExec({ "new-session": { stdout: "" } }));
       const result: TmuxResult = await adapter.createSession("r01-dev1-impl");
       expect(result).toEqual({ ok: true });
     });
 
-    it("with env map constructs -e flags for each key=value", async () => {
+    it("提供 env map 时为每个 key=value 构建 -e flag", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -341,7 +341,7 @@ describe("TmuxAdapter", () => {
       expect(cmd).toContain("-c '/tmp'");
     });
 
-    it("without env still works as before", async () => {
+    it("没有 env 时仍与此前一样工作", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -352,7 +352,7 @@ describe("TmuxAdapter", () => {
       expect(cmd).toBe("tmux new-session -d -s 'r01-test' -c '/tmp'");
     });
 
-    it("returns { ok: false, code: 'duplicate_session' } on duplicate", async () => {
+    it("重复时返回 { ok: false, code: 'duplicate_session' }", async () => {
       const err = new Error("duplicate session: r01-dev1-impl");
       const adapter = new TmuxAdapter(mockExec({ "new-session": { error: err } }));
       const result = await adapter.createSession("r01-dev1-impl");
@@ -388,13 +388,13 @@ describe("TmuxAdapter", () => {
       expect(unlink).toHaveBeenCalledWith("/tmp/text.txt");
     });
 
-    it("returns { ok: true } on success", async () => {
+    it("成功时返回 { ok: true }", async () => {
       const adapter = new TmuxAdapter(mockExec({ "paste-buffer": { stdout: "" } }));
       const result: TmuxResult = await adapter.sendText("r01-dev1-impl", "test");
       expect(result).toEqual({ ok: true });
     });
 
-    it("returns { ok: false, code: 'session_not_found' } on missing target", async () => {
+    it("target 缺失时返回 { ok: false, code: 'session_not_found' }", async () => {
       const err = new Error("can't find session: r01-dev1-impl");
       const adapter = new TmuxAdapter(mockExec({ "paste-buffer": { error: err } }));
       const result = await adapter.sendText("r01-dev1-impl", "test");
@@ -406,7 +406,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("sendKeys", () => {
-    it("calls exec with exact command (target quoted, key names individually quoted)", async () => {
+    it("使用精确命令调用 exec（引用 target，并逐个引用 key 名称）", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -418,7 +418,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("shell-sensitive key names are individually quoted", async () => {
+    it("逐个引用 shell 敏感的 key 名称", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -430,13 +430,13 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("returns { ok: true } on success", async () => {
+    it("成功时返回 { ok: true }", async () => {
       const adapter = new TmuxAdapter(mockExec({ "send-keys": { stdout: "" } }));
       const result: TmuxResult = await adapter.sendKeys("r01-dev1-impl", ["Enter"]);
       expect(result).toEqual({ ok: true });
     });
 
-    it("returns { ok: false, code: 'session_not_found' } on missing target", async () => {
+    it("target 缺失时返回 { ok: false, code: 'session_not_found' }", async () => {
       const err = new Error("can't find session: r01-dev1-impl");
       const adapter = new TmuxAdapter(mockExec({ "send-keys": { error: err } }));
       const result = await adapter.sendKeys("r01-dev1-impl", ["Enter"]);
@@ -448,7 +448,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("killSession", () => {
-    it("calls exec with exact quoted command", async () => {
+    it("使用精确引用命令调用 exec", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -460,13 +460,13 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("returns { ok: true } on success", async () => {
+    it("成功时返回 { ok: true }", async () => {
       const adapter = new TmuxAdapter(mockExec({ "kill-session": { stdout: "" } }));
       const result: TmuxResult = await adapter.killSession("r01-dev1-impl");
       expect(result).toEqual({ ok: true });
     });
 
-    it("returns { ok: false, code: 'session_not_found' } on missing session", async () => {
+    it("session 缺失时返回 { ok: false, code: 'session_not_found' }", async () => {
       const err = new Error("can't find session: r01-dev1-impl");
       const adapter = new TmuxAdapter(mockExec({ "kill-session": { error: err } }));
       const result = await adapter.killSession("r01-dev1-impl");
@@ -476,7 +476,7 @@ describe("TmuxAdapter", () => {
       }
     });
 
-    it("with shell-sensitive name: exact quoted command", async () => {
+    it("名称对 shell 敏感时使用精确引用命令", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -490,7 +490,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("setSessionOption", () => {
-    it("calls exec with exact tmux set-option command (session and key/value quoted)", async () => {
+    it("使用精确 tmux set-option 命令调用 exec（引用 session 与 key/value）", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -502,13 +502,13 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("returns { ok: true } on success", async () => {
+    it("成功时返回 { ok: true }", async () => {
       const adapter = new TmuxAdapter(mockExec({ "set-option": { stdout: "" } }));
       const result = await adapter.setSessionOption("s", "@k", "v");
       expect(result).toEqual({ ok: true });
     });
 
-    it("returns { ok: false, code: 'session_not_found' } on missing session", async () => {
+    it("session 缺失时返回 { ok: false, code: 'session_not_found' }", async () => {
       const err = new Error("can't find session: ghost");
       const adapter = new TmuxAdapter(mockExec({ "set-option": { error: err } }));
       const result = await adapter.setSessionOption("ghost", "@k", "v");
@@ -517,11 +517,11 @@ describe("TmuxAdapter", () => {
     });
   });
 
-  // OPR.0.4.6.02 S1 (guard b2) — the SERVER-scope writer/reader + the
-  // scope-discipline teeth: server options use `-s` and NEVER a `-t` session
-  // target; session options use `-t` and NEVER `-s`. The two are never crossed.
+  // OPR.0.4.6.02 S1（guard b2）——SERVER-scope writer/reader + scope 纪律约束：server option
+  // 使用 `-s`，绝不使用 `-t` session target；session option 使用 `-t`，绝不使用 `-s`。
+  // 两者绝不交叉。
   describe("setServerOption / showServerOption (OPR.0.4.6.02 S1)", () => {
-    it("setServerOption emits `set-option -s` with the option quoted — has -s, NO -t", async () => {
+    it("setServerOption 发出引用 option 的 `set-option -s`——有 -s，无 -t", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -534,7 +534,7 @@ describe("TmuxAdapter", () => {
       expect(cmd).not.toContain(" -t ");
     });
 
-    it("setServerOption quotes a copy-command value with spaces safely", async () => {
+    it("setServerOption 安全引用含空格的 copy-command 值", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
       await adapter.setServerOption("copy-command", "xclip -selection clipboard -i");
@@ -543,13 +543,13 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("setServerOption returns ok:false via classifyWriteError (no throw)", async () => {
+    it("setServerOption 通过 classifyWriteError 返回 ok:false（不抛错）", async () => {
       const adapter = new TmuxAdapter(mockExec({ "set-option": { error: new Error("no server running") } }));
       const result = await adapter.setServerOption("set-clipboard", "on");
       expect(result.ok).toBe(false);
     });
 
-    it("showServerOption reads via `show-options -sv`", async () => {
+    it("showServerOption 通过 `show-options -sv` 读取", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("on\n");
       const adapter = new TmuxAdapter(exec);
       const v = await adapter.showServerOption("set-clipboard");
@@ -557,14 +557,14 @@ describe("TmuxAdapter", () => {
       expect(v).toBe("on");
     });
 
-    it("showServerOption returns null when unset/empty or on error", async () => {
+    it("未设置、为空或出错时 showServerOption 返回 null", async () => {
       const empty = new TmuxAdapter(vi.fn<ExecFn>().mockResolvedValue("  \n"));
       expect(await empty.showServerOption("copy-command")).toBeNull();
       const errored = new TmuxAdapter(mockExec({ "show-options": { error: new Error("no server running") } }));
       expect(await errored.showServerOption("copy-command")).toBeNull();
     });
 
-    it("SCOPE CROSS-CHECK: session writer uses -t (no -s); server writer uses -s (no -t)", async () => {
+    it("SCOPE 交叉检查：session writer 使用 -t（无 -s）；server writer 使用 -s（无 -t）", async () => {
       const sessExec = vi.fn<ExecFn>().mockResolvedValue("");
       await new TmuxAdapter(sessExec).setSessionOption("sess", "mouse", "on");
       const sessCmd = sessExec.mock.calls[0]![0];
@@ -580,7 +580,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("getSessionOption", () => {
-    it("calls exec with exact tmux show-option -v command", async () => {
+    it("使用精确 tmux show-option -v 命令调用 exec", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("node-abc123\n");
       const adapter = new TmuxAdapter(exec);
 
@@ -593,38 +593,38 @@ describe("TmuxAdapter", () => {
       expect(val).toBe("node-abc123");
     });
 
-    it("returns null on error (session not found, no server, etc.)", async () => {
+    it("出错时返回 null（找不到 session、无 server 等）", async () => {
       const err = new Error("can't find session: ghost");
       const adapter = new TmuxAdapter(mockExec({ "show-option": { error: err } }));
       const val = await adapter.getSessionOption("ghost", "@rigged_node_id");
       expect(val).toBeNull();
     });
 
-    it("returns null on empty output", async () => {
+    it("输出为空时返回 null", async () => {
       const adapter = new TmuxAdapter(mockExec({ "show-option": { stdout: "\n" } }));
       const val = await adapter.getSessionOption("s", "@k");
       expect(val).toBeNull();
     });
   });
 
-  describe("canonical session names with @", () => {
-    it("createSession + sendKeys with @ in name produce correct quoted commands", async () => {
+  describe("包含 @ 的规范 session 名称", () => {
+    it("createSession + sendKeys 处理含 @ 名称时生成正确引用命令", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
-      // createSession with canonical name
+      // 使用规范名称 createSession。
       await adapter.createSession("dev-impl@auth-feats", "/home/user/code");
       expect(exec.mock.calls[0]![0]).toBe(
         "tmux new-session -d -s 'dev-impl@auth-feats' -c '/home/user/code'"
       );
 
-      // sendKeys targeting canonical name
+      // sendKeys 指向规范名称。
       await adapter.sendKeys("dev-impl@auth-feats", ["Enter"]);
       expect(exec.mock.calls[1]![0]).toBe(
         "tmux send-keys -t 'dev-impl@auth-feats' 'Enter'"
       );
 
-      // sendText targeting canonical name
+      // sendText 指向规范名称。
       await adapter.sendText("dev-impl@auth-feats", "hello");
       expect(exec.mock.calls[3]![0]).toMatch(
         /^tmux paste-buffer -t 'dev-impl@auth-feats' -b '[^']+' -d -r -p$/
@@ -632,8 +632,8 @@ describe("TmuxAdapter", () => {
     });
   });
 
-  describe("malformed output", () => {
-    it("bad lines skipped, valid lines returned", async () => {
+  describe("格式错误的输出", () => {
+    it("跳过无效行，返回有效行", async () => {
       const output = [
         "good-session|2|2026-03-23T01:00:00|1",
         "this is garbage",
@@ -650,16 +650,16 @@ describe("TmuxAdapter", () => {
     });
   });
 
-  // Discovery adapter extensions
+  // Discovery adapter 扩展。
   describe("getPanePid", () => {
-    it("returns parsed integer PID from tmux output", async () => {
+    it("从 tmux 输出返回解析后的整数 PID", async () => {
       const exec: ExecFn = async () => "1234\n";
       const adapter = new TmuxAdapter(exec);
       const pid = await adapter.getPanePid("%0");
       expect(pid).toBe(1234);
     });
 
-    it("returns null for empty or non-numeric output", async () => {
+    it("输出为空或非数值时返回 null", async () => {
       const exec: ExecFn = async () => "\n";
       const adapter = new TmuxAdapter(exec);
       expect(await adapter.getPanePid("%0")).toBeNull();
@@ -671,14 +671,14 @@ describe("TmuxAdapter", () => {
   });
 
   describe("getPaneCommand", () => {
-    it("returns command string from tmux output", async () => {
+    it("从 tmux 输出返回命令字符串", async () => {
       const exec: ExecFn = async () => "claude\n";
       const adapter = new TmuxAdapter(exec);
       const cmd = await adapter.getPaneCommand("%0");
       expect(cmd).toBe("claude");
     });
 
-    it("returns null for empty output", async () => {
+    it("输出为空时返回 null", async () => {
       const exec: ExecFn = async () => "\n";
       const adapter = new TmuxAdapter(exec);
       expect(await adapter.getPaneCommand("%0")).toBeNull();
@@ -686,7 +686,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("capturePaneContent", () => {
-    it("calls exact tmux capture-pane command with shell quoting", async () => {
+    it("使用 shell 引用调用精确 tmux capture-pane 命令", async () => {
       const exec: ExecFn = vi.fn(async () => "line 1\nline 2\n") as unknown as ExecFn;
       const adapter = new TmuxAdapter(exec);
 
@@ -696,14 +696,14 @@ describe("TmuxAdapter", () => {
       expect(exec).toHaveBeenCalledWith("tmux capture-pane -p -t '%0' -S -20");
     });
 
-    it("returns null on error", async () => {
+    it("出错时返回 null", async () => {
       const exec: ExecFn = async () => { throw new Error("pane gone"); };
       const adapter = new TmuxAdapter(exec);
 
       expect(await adapter.capturePaneContent("%0")).toBeNull();
     });
 
-    it("uses custom line count", async () => {
+    it("使用自定义行数", async () => {
       const exec: ExecFn = vi.fn(async () => "output") as unknown as ExecFn;
       const adapter = new TmuxAdapter(exec);
 
@@ -714,20 +714,20 @@ describe("TmuxAdapter", () => {
   });
 
   describe("startPipePane", () => {
-    it("constructs shell-safe command with quoted session name and path", async () => {
+    it("使用已引用的 session 名称和路径构建 shell-safe 命令", async () => {
       const exec: ExecFn = vi.fn(async () => "") as unknown as ExecFn;
       const adapter = new TmuxAdapter(exec);
 
       await adapter.startPipePane("dev-impl@my-rig", "/home/user/.openrig/transcripts/my-rig/dev-impl@my-rig.log");
 
-      // The command is: tmux pipe-pane -t <quoted session> <quoted 'cat >> <quoted path>'>
+      // 命令为：tmux pipe-pane -t <quoted session> <quoted 'cat >> <quoted path>'>
       const cmd = (exec as ReturnType<typeof vi.fn>).mock.calls[0]![0] as string;
       expect(cmd).toContain("tmux pipe-pane -t 'dev-impl@my-rig'");
       expect(cmd).toContain("cat >>");
       expect(cmd).toContain("dev-impl@my-rig.log");
     });
 
-    it("quotes path with spaces safely inside pipe command", async () => {
+    it("在 pipe 命令内安全引用含空格路径", async () => {
       const exec: ExecFn = vi.fn(async () => "") as unknown as ExecFn;
       const adapter = new TmuxAdapter(exec);
 
@@ -739,7 +739,7 @@ describe("TmuxAdapter", () => {
       expect(cmd).toContain("with spaces");
     });
 
-    it("handles apostrophes in path safely", async () => {
+    it("安全处理路径中的单引号", async () => {
       const exec: ExecFn = vi.fn(async () => "") as unknown as ExecFn;
       const adapter = new TmuxAdapter(exec);
 
@@ -747,11 +747,11 @@ describe("TmuxAdapter", () => {
 
       const cmd = (exec as ReturnType<typeof vi.fn>).mock.calls[0]![0] as string;
       expect(cmd).toContain("tmux pipe-pane -t 'dev@rig'");
-      // The apostrophe should be escaped, not left raw
+      // 单引号应被转义，不应原样保留。
       expect(cmd).not.toContain("it's/");
     });
 
-    it("returns { ok: false } on session not found error", async () => {
+    it("遇到 session not found 错误时返回 { ok: false }", async () => {
       const exec: ExecFn = vi.fn(async () => { throw new Error("can't find session: dev@rig"); }) as unknown as ExecFn;
       const adapter = new TmuxAdapter(exec);
 
@@ -761,7 +761,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("stopPipePane", () => {
-    it("constructs correct empty pipe-pane command", async () => {
+    it("构建正确的空 pipe-pane 命令", async () => {
       const exec: ExecFn = vi.fn(async () => "") as unknown as ExecFn;
       const adapter = new TmuxAdapter(exec);
 
@@ -772,7 +772,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("readPaneLastActivity", () => {
-    it("constructs `tmux display-message -p -t <pane> '#{window_activity}'`", async () => {
+    it("构建 `tmux display-message -p -t <pane> '#{window_activity}'`", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("1716000000\n");
       const adapter = new TmuxAdapter(exec);
 
@@ -784,29 +784,29 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("returns the Unix-epoch-seconds integer when tmux yields a numeric value", async () => {
+    it("tmux 返回数值时返回 Unix epoch 秒整数", async () => {
       const adapter = new TmuxAdapter(mockExec({ "display-message": { stdout: "1716000000\n" } }));
       expect(await adapter.readPaneLastActivity("dev@rig")).toBe(1716000000);
     });
 
-    it("returns null on read error / missing session (no signal)", async () => {
+    it("读取错误/session 缺失（无信号）时返回 null", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "display-message": { error: new Error("can't find session: dev@rig") },
       }));
       expect(await adapter.readPaneLastActivity("dev@rig")).toBe(null);
     });
 
-    it("returns null when tmux returns a blank value (slice 15 BLOCKING-fix discriminator — observed on tmux 3.6a)", async () => {
+    it("tmux 返回空白值时返回 null（slice 15 BLOCKING 修复判别项——在 tmux 3.6a 上观察到）", async () => {
       const adapter = new TmuxAdapter(mockExec({ "display-message": { stdout: "" } }));
       expect(await adapter.readPaneLastActivity("dev@rig")).toBe(null);
     });
 
-    it("returns null on unparseable output (defensive — daemon code should not crash on tmux quirks)", async () => {
+    it("输出无法解析时返回 null（防御性处理——daemon 不应因 tmux 异常而崩溃）", async () => {
       const adapter = new TmuxAdapter(mockExec({ "display-message": { stdout: "garbage" } }));
       expect(await adapter.readPaneLastActivity("dev@rig")).toBe(null);
     });
 
-    it("returns null on zero / negative integers (sentinel from uninitialized window_activity)", async () => {
+    it("零/负整数时返回 null（未初始化 window_activity 的 sentinel）", async () => {
       const a = new TmuxAdapter(mockExec({ "display-message": { stdout: "0\n" } }));
       expect(await a.readPaneLastActivity("dev@rig")).toBe(null);
       const b = new TmuxAdapter(mockExec({ "display-message": { stdout: "-5\n" } }));
@@ -814,14 +814,12 @@ describe("TmuxAdapter", () => {
     });
   });
 
-  // OPR.0.3.3.16 - large-payload transport. A >100KB startup pack embedded in
-  // one tmux/shell argv exceeds the OS per-arg limit and the launch silently
-  // fails, so sendText routes large text through a temp file + tmux buffer.
-  // `paste-buffer -d -r -p`: `-r` preserves raw LF (tmux's
-  // default paste replaces LF->CR = Enter = catastrophic per-line submit in the
-  // Claude/Codex TUIs); `-d` drops the buffer after a successful paste.
-  describe("sendText large-payload buffer path", () => {
-    // Just over the 100KB byte threshold (ASCII => 1 byte/char).
+  // OPR.0.3.3.16——大 payload transport。把大于 100KB 的启动包嵌入单个 tmux/shell argv
+  // 会超过操作系统单参数限制并导致启动静默失败，因此 sendText 通过临时文件 + tmux buffer
+  // 路由大文本。`paste-buffer -d -r -p`：`-r` 保留原始 LF（tmux 默认粘贴把 LF→CR = Enter，
+  // 会在 Claude/Codex TUI 中灾难性地逐行提交）；`-d` 在粘贴成功后删除 buffer。
+  describe("sendText 大 payload buffer 路径", () => {
+    // 刚刚超过 100KB 字节阈值（ASCII => 1 字节/字符）。
     const BIG = "x".repeat(100 * 1024 + 1);
 
     function fixedFileOps() {
@@ -839,7 +837,7 @@ describe("TmuxAdapter", () => {
       };
     }
 
-    it("writes a temp file via fs and pastes it; payload never in any exec command", async () => {
+    it("通过 fs 写临时文件并粘贴；payload 永不进入任何 exec 命令", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const { ops, writeFile, unlink } = fixedFileOps();
       const adapter = new TmuxAdapter(exec, ops);
@@ -847,24 +845,23 @@ describe("TmuxAdapter", () => {
       const result: TmuxResult = await adapter.sendText("dev@rig", BIG);
 
       expect(result).toEqual({ ok: true });
-      // The raw payload is written to disk via fs, NOT embedded in a shell command.
+      // 原始 payload 通过 fs 写入磁盘，不嵌入 shell 命令。
       expect(writeFile).toHaveBeenCalledWith("/tmp/openrig-tmux-send-FIXED.txt", BIG);
       const cmds = exec.mock.calls.map((c) => c[0] as string);
       expect(cmds).toEqual([
         "tmux load-buffer -b 'openrig_FIXED' '/tmp/openrig-tmux-send-FIXED.txt'",
         "tmux paste-buffer -t 'dev@rig' -b 'openrig_FIXED' -d -r -p",
       ]);
-      // The argv-size regression: the payload must never reach an exec command.
+      // argv 大小回归：payload 绝不能进入 exec 命令。
       for (const cmd of cmds) expect(cmd).not.toContain(BIG);
-      // Temp file cleaned up in finally.
+      // finally 中清理临时文件。
       expect(unlink).toHaveBeenCalledWith("/tmp/openrig-tmux-send-FIXED.txt");
     });
 
-    it("a payload over tmux's INLINE command ceiling but under the old 100KB bound takes the buffer path (the world-install walk specimen)", async () => {
-      // Test-A preflight repair (row 0ac358a9): a 19.8KB piece failed LIVE with
-      // tmux's own "command too long" — tmux bounds the inline command line far
-      // below the OS per-arg limit (measured ceiling ~9.4KB). Anything above
-      // the inline ceiling must route through load-buffer/paste-buffer.
+    it("超过 tmux INLINE 命令上限但低于旧 100KB 边界的 payload 走 buffer 路径（world-install walk specimen）", async () => {
+      // Test-A preflight 修复（row 0ac358a9）：19.8KB 片段在线上遇到 tmux 自身的
+      // "command too long"；tmux 的 inline 命令行上限远低于操作系统单参数限制（实测约
+      // 9.4KB）。超过 inline 上限的内容必须通过 load-buffer/paste-buffer 路由。
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const { ops, writeFile } = fixedFileOps();
       const adapter = new TmuxAdapter(exec, ops);
@@ -877,8 +874,8 @@ describe("TmuxAdapter", () => {
       for (const cmd of exec.mock.calls.map((c) => c[0] as string)) expect(cmd).not.toContain(MID);
     });
 
-    it("missing target on the large path returns session_not_found and leaks no temp file or buffer", async () => {
-      // load-buffer succeeds (buffer is global); paste-buffer fails on missing target.
+    it("大 payload 路径 target 缺失时返回 session_not_found，且不泄漏临时文件或 buffer", async () => {
+      // load-buffer 成功（buffer 为全局）；paste-buffer 因 target 缺失而失败。
       const exec = vi.fn<ExecFn>(async (cmd: string) => {
         if (cmd.includes("paste-buffer")) throw new Error("can't find session: dev@rig");
         return "";
@@ -891,16 +888,15 @@ describe("TmuxAdapter", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.code).toBe("session_not_found");
       const cmds = exec.mock.calls.map((c) => c[0] as string);
-      // Buffer was loaded then explicitly deleted on the error path (no leak).
+      // buffer 已加载，随后在错误路径显式删除（无泄漏）。
       expect(cmds).toContain("tmux delete-buffer -b 'openrig_FIXED'");
-      // Temp file unlinked regardless of failure (no leak).
+      // 无论成功失败都 unlink 临时文件（无泄漏）。
       expect(unlink).toHaveBeenCalledWith("/tmp/openrig-tmux-send-FIXED.txt");
     });
 
-    it("generates a unique temp file and buffer name per call (concurrency-safe for parallel rig up)", async () => {
-      // Default (production) fileOps - proves the real generators are unique.
-      // exec is mocked so no real tmux runs; the temp file is written to the OS
-      // tmpdir and removed in finally.
+    it("每次调用生成唯一临时文件和 buffer 名称（并行 zrig up 时并发安全）", async () => {
+      // 默认（生产）fileOps——证明真实生成器具有唯一性。exec 已 mock，不运行真实 tmux；
+      // 临时文件写入操作系统 tmpdir，并在 finally 中移除。
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -915,12 +911,11 @@ describe("TmuxAdapter", () => {
     });
   });
 
-  // OPR.0.4.0.38 - net-new live-seed primitives lifted from the FR-4 seed work
-  // (.worktrees/opr-0.4.0.1-ff-interaction-model, on-disk-only). The broker
-  // seeds a new subscriber with the CURRENT VISIBLE SCREEN + cursor so a live
-  // terminal paints immediately instead of staying blank until next output.
-  describe("capturePaneScreen (visible screen, NOT scrollback)", () => {
-    it("calls `tmux capture-pane -p -t <pane>` with NO -S flag (scrollback would reintroduce row drift)", async () => {
+  // OPR.0.4.0.38——从 FR-4 seed 工作（.worktrees/opr-0.4.0.1-ff-interaction-model，
+  // 仅磁盘）提升的全新 live-seed primitive。broker 用当前可见屏幕 + cursor 初始化新 subscriber，
+  // 使实时 terminal 立即绘制，不必保持空白直到下一次输出。
+  describe("capturePaneScreen（可见屏幕，不含 scrollback）", () => {
+    it("调用 `tmux capture-pane -p -t <pane>` 且无 -S flag（scrollback 会重新引入行漂移）", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("row a\nrow b\n");
       const adapter = new TmuxAdapter(exec);
 
@@ -931,7 +926,7 @@ describe("TmuxAdapter", () => {
       expect(exec.mock.calls[0]![0]).toBe("tmux capture-pane -p -t '%0'");
     });
 
-    it("shell-quotes a session-name target safely", async () => {
+    it("安全地对 session-name target 做 shell 引用", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("x");
       const adapter = new TmuxAdapter(exec);
 
@@ -940,12 +935,12 @@ describe("TmuxAdapter", () => {
       expect(exec.mock.calls[0]![0]).toBe("tmux capture-pane -p -t 'dev-impl@my-rig'");
     });
 
-    it("returns null on error (pane gone)", async () => {
+    it("出错（pane 消失）时返回 null", async () => {
       const adapter = new TmuxAdapter(async () => { throw new Error("can't find pane"); });
       expect(await adapter.capturePaneScreen("%0")).toBeNull();
     });
 
-    it("returns null on empty output (nothing to seed)", async () => {
+    it("输出为空（无内容可 seed）时返回 null", async () => {
       const adapter = new TmuxAdapter(mockExec({ "capture-pane": { stdout: "" } }));
       expect(await adapter.capturePaneScreen("%0")).toBeNull();
     });
@@ -955,7 +950,7 @@ describe("TmuxAdapter", () => {
     const EXPECTED_CMD =
       `tmux display-message -p -t '%0' "#{cursor_x}\t#{cursor_y}\t#{pane_width}\t#{pane_height}"`;
 
-    it("constructs the tab-delimited display-message command and parses {x,y,width,height}", async () => {
+    it("构建 tab 分隔的 display-message 命令并解析 {x,y,width,height}", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("4\t7\t120\t40\n");
       const adapter = new TmuxAdapter(exec);
 
@@ -965,24 +960,24 @@ describe("TmuxAdapter", () => {
       expect(pos).toEqual({ x: 4, y: 7, width: 120, height: 40 });
     });
 
-    it("accepts a zero cursor origin (x=0,y=0 valid)", async () => {
+    it("接受零 cursor 原点（x=0、y=0 有效）", async () => {
       const adapter = new TmuxAdapter(mockExec({ "display-message": { stdout: "0\t0\t80\t24\n" } }));
       expect(await adapter.getPaneCursorPosition("%0")).toEqual({ x: 0, y: 0, width: 80, height: 24 });
     });
 
-    it("returns null on error", async () => {
+    it("出错时返回 null", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "display-message": { error: new Error("can't find session") },
       }));
       expect(await adapter.getPaneCursorPosition("%0")).toBeNull();
     });
 
-    it("returns null on unparseable / non-finite output", async () => {
+    it("输出无法解析/非有限值时返回 null", async () => {
       const adapter = new TmuxAdapter(mockExec({ "display-message": { stdout: "garbage\n" } }));
       expect(await adapter.getPaneCursorPosition("%0")).toBeNull();
     });
 
-    it("returns null on out-of-range geometry (width<1 / negative coords)", async () => {
+    it("geometry 越界（width<1 / 坐标为负）时返回 null", async () => {
       const zeroWidth = new TmuxAdapter(mockExec({ "display-message": { stdout: "1\t1\t0\t40\n" } }));
       expect(await zeroWidth.getPaneCursorPosition("%0")).toBeNull();
       const negX = new TmuxAdapter(mockExec({ "display-message": { stdout: "-1\t1\t80\t24\n" } }));
@@ -990,10 +985,10 @@ describe("TmuxAdapter", () => {
     });
   });
 
-  // OPR.0.4.3.26 — seat-recovery switch-client view retarget. Two new read/switch
-  // seams; VIEW-ONLY (no session mutation, no routing/identity change).
+  // OPR.0.4.3.26——seat-recovery switch-client view 重定向。两个新的 read/switch seam；
+  // 仅 view（不修改 session，不改变 routing/identity）。
   describe("listClients", () => {
-    it("calls exec with exact tmux list-clients command and format string", async () => {
+    it("使用精确 tmux list-clients 命令与格式字符串调用 exec", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -1005,7 +1000,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("parses output into typed TmuxClient objects (name + session)", async () => {
+    it("把输出解析为类型化 TmuxClient 对象（name + session）", async () => {
       const output = [
         "/dev/ttys003\tdev-impl@my-rig",
         "/dev/ttys007\tother-session",
@@ -1019,26 +1014,26 @@ describe("TmuxAdapter", () => {
       expect(clients[1]).toEqual({ name: "/dev/ttys007", session: "other-session" });
     });
 
-    it("returns empty array on 'no server running' error (no attachable client)", async () => {
+    it("遇到 'no server running' 错误（无可 attach client）时返回空数组", async () => {
       const adapter = new TmuxAdapter(mockExec({ "list-clients": { error: NO_SERVER_ERROR } }));
       expect(await adapter.listClients()).toEqual([]);
     });
 
-    it("returns empty array when tmux socket is gone post-reboot", async () => {
+    it("重启后 tmux socket 消失时返回空数组", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "list-clients": { error: new Error("error connecting to /private/tmp/tmux-501/default (No such file or directory)") },
       }));
       expect(await adapter.listClients()).toEqual([]);
     });
 
-    it("rethrows an unexpected error (permission) rather than reporting no clients", async () => {
+    it("重新抛出意外错误（权限），而非报告无 client", async () => {
       const adapter = new TmuxAdapter(mockExec({
         "list-clients": { error: new Error("error connecting to /private/tmp/tmux-501/default (Permission denied)") },
       }));
       await expect(adapter.listClients()).rejects.toThrow("Permission denied");
     });
 
-    it("skips malformed (single-field) lines", async () => {
+    it("跳过格式错误（单字段）的行", async () => {
       const output = ["garbage-no-tab", "/dev/ttys003\tdev-impl@my-rig", ""].join("\n");
       const adapter = new TmuxAdapter(mockExec({ "list-clients": { stdout: output } }));
       const clients = await adapter.listClients();
@@ -1047,7 +1042,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("switchClient", () => {
-    it("calls exec with exact `switch-client -c <client> -t <session>:<window>` command", async () => {
+    it("使用精确 `switch-client -c <client> -t <session>:<window>` 命令调用 exec", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -1060,7 +1055,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("shell-quotes a client and target with sensitive characters", async () => {
+    it("对含敏感字符的 client 与 target 做 shell 引用", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -1071,7 +1066,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("returns { ok: false, code: 'session_not_found' } when the target session is gone", async () => {
+    it("target session 消失时返回 { ok: false, code: 'session_not_found' }", async () => {
       const err = new Error("can't find session: dev-impl@my-rig");
       const adapter = new TmuxAdapter(mockExec({ "switch-client": { error: err } }));
       const result = await adapter.switchClient("/dev/ttys003", "dev-impl@my-rig:0");
@@ -1080,13 +1075,13 @@ describe("TmuxAdapter", () => {
     });
   });
 
-  // Seat-handover cutover (plan 411c43de): the successor RESUMES INTO THE SAME PANE via respawn-pane,
-  // so native scrollback survives (predecessor history stays above the successor boot).
+  // Seat-handover 切换（plan 411c43de）：successor 通过 respawn-pane 在同一 pane 中恢复，因此
+  // 原生 scrollback 得以保留（predecessor 历史位于 successor 启动内容上方）。
   describe("respawnPane", () => {
-    it("respawns the pane in place WITHOUT -k (retiree already exited; -k would CLEAR scrollback)", async () => {
-      // Empirically (tmux 3.6a): respawn-pane -k CLEARS the pane's scrollback, defeating the money-proof.
-      // The cutover terminates the retiree FIRST (graceful exit + remain-on-exit), then respawns the
-      // now-dead pane with NO -k — which PRESERVES the predecessor history above the successor boot.
+    it("原地 respawn pane 且不使用 -k（retiree 已退出；-k 会清除 scrollback）", async () => {
+      // 实测（tmux 3.6a）：respawn-pane -k 会清除 pane scrollback，破坏关键证明。切换先终止
+      // retiree（优雅退出 + remain-on-exit），再以无 -k 方式 respawn 已失活 pane，从而保留
+      // successor 启动内容上方的 predecessor 历史。
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -1097,7 +1092,7 @@ describe("TmuxAdapter", () => {
       expect(exec.mock.calls[0]![0]).not.toContain(" -k"); // -k clears scrollback — never used
     });
 
-    it("with env + cwd injects -c and -e flags (successor self-identifies in the reused pane), command stays last", async () => {
+    it("提供 env + cwd 时注入 -c 与 -e flag（successor 在复用 pane 中自我标识），命令保持最后", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -1112,7 +1107,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("with NO command re-runs the pane's default login shell (omits the trailing command arg)", async () => {
+    it("无命令时重新运行 pane 默认 login shell（省略末尾 command 参数）", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
 
@@ -1127,7 +1122,7 @@ describe("TmuxAdapter", () => {
       );
     });
 
-    it("classifies a write error (no server) as a failure", async () => {
+    it("把写入错误（无 server）分类为失败", async () => {
       const adapter = new TmuxAdapter(mockExec({ "respawn-pane": { error: NO_SERVER_ERROR } }));
       const result = await adapter.respawnPane("%3", "cmd");
       expect(result.ok).toBe(false);
@@ -1135,13 +1130,13 @@ describe("TmuxAdapter", () => {
   });
 
   describe("setRemainOnExit", () => {
-    it("sets the pane-scoped remain-on-exit option so the pane survives the retiree's exit (for respawn)", async () => {
+    it("设置 pane-scoped remain-on-exit option，使 pane 在 retiree 退出后保留（供 respawn）", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
       await adapter.setRemainOnExit("%3", true);
       expect(exec.mock.calls[0]![0]).toBe("tmux set-option -p -t '%3' remain-on-exit on");
     });
-    it("clears it with off", async () => {
+    it("使用 off 清除该选项", async () => {
       const exec = vi.fn<ExecFn>().mockResolvedValue("");
       const adapter = new TmuxAdapter(exec);
       await adapter.setRemainOnExit("%3", false);
@@ -1150,19 +1145,19 @@ describe("TmuxAdapter", () => {
   });
 
   describe("isPaneDead", () => {
-    it("returns true when pane_dead is 1 (retiree has exited; pane held by remain-on-exit)", async () => {
+    it("pane_dead 为 1 时返回 true（retiree 已退出；pane 由 remain-on-exit 保留）", async () => {
       const adapter = new TmuxAdapter(mockExec({ "display-message": { stdout: "1\n" } }));
       expect(await adapter.isPaneDead("%3")).toBe(true);
     });
-    it("returns false when pane_dead is 0 (retiree still live)", async () => {
+    it("pane_dead 为 0 时返回 false（retiree 仍存活）", async () => {
       const adapter = new TmuxAdapter(mockExec({ "display-message": { stdout: "0\n" } }));
       expect(await adapter.isPaneDead("%3")).toBe(false);
     });
-    it("returns true when tmux proves the pane disappeared after TERM", async () => {
+    it("tmux 证明 pane 在 TERM 后消失时返回 true", async () => {
       const adapter = new TmuxAdapter(async () => { throw new Error("can't find pane: %3"); });
       expect(await adapter.isPaneDead("%3")).toBe(true);
     });
-    it("returns true when the sole pane exit removes the tmux server", async () => {
+    it("唯一 pane 退出导致 tmux server 移除时返回 true", async () => {
       const adapter = new TmuxAdapter(mockExec({ "display-message": { error: NO_SERVER_ERROR } }));
       expect(await adapter.isPaneDead("%3")).toBe(true);
     });
@@ -1176,7 +1171,7 @@ describe("TmuxAdapter", () => {
   });
 
   describe("signalPaneProcess", () => {
-    it("sends the given signal to the pane's foreground pid (graceful TERM / fallback KILL)", async () => {
+    it("向 pane 前台 pid 发送指定 signal（优雅 TERM / 回退 KILL）", async () => {
       const calls: string[] = [];
       const exec = vi.fn<ExecFn>(async (cmd: string) => { calls.push(cmd); return cmd.includes("pane_pid") ? "4242\n" : ""; });
       const adapter = new TmuxAdapter(exec);
@@ -1185,7 +1180,7 @@ describe("TmuxAdapter", () => {
       expect(calls.some((c) => c.includes("#{pane_pid}") && c.includes("'%3'"))).toBe(true);
       expect(calls).toContain("kill -TERM 4242");
     });
-    it("returns a failure (no throw) when the pane pid is unavailable", async () => {
+    it("pane pid 不可用时返回失败（不抛错）", async () => {
       const adapter = new TmuxAdapter(mockExec({ "display-message": { stdout: "\n" } }));
       const res = await adapter.signalPaneProcess("%3", "KILL");
       expect(res.ok).toBe(false);

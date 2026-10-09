@@ -1,0 +1,22 @@
+{
+"packages/cli/test/plugin.test.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/test/cross-host-executor.test.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/test/cross-host-target.test.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/test/front-door.test.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/test/config.test.ts": [
+"cli-a",
+"self_reported"
+]
+}

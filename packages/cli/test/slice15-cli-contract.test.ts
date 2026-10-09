@@ -1,9 +1,9 @@
 // Slice 15 (OPR.0.4.7.15) — CLI contract honesty regression tests.
 //   1. shared --json error path (machine-parseable error + nonzero exit)
 //   2. `queue overdue` rig-scoped + bounded + body-free by default
-//   3. unknown `-o` format rejected (queue list) — not accepted-then-ignored
+//   3. 未知 `-o` 格式被拒（queue list）——非接受后忽略
 //   4. invalid `--limit` (negative/zero/non-numeric) rejected (queue list)
-//   5. `rig ps --active` honest: fails loudly without --nodes (no silent no-op)
+//   5. `rig ps --active` 诚实：无 --nodes 大声失败（不静默 no-op）
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createProgram } from "../src/index.js";
 import { runProgram } from "../src/cli-error.js";
@@ -36,7 +36,7 @@ function makeQueueDeps(): { deps: QueueDeps; calls: Array<{ method: string; path
   };
 }
 
-// Run the CLI through the SHARED error path (runProgram), capturing stdout/stderr/exit.
+// 经共享错误路径（runProgram）运行 CLI，捕获 stdout/stderr/exit。
 async function runCli(args: string[], deps?: Parameters<typeof createProgram>[0]) {
   const out: string[] = [];
   const err: string[] = [];
@@ -61,7 +61,7 @@ describe("Slice 15 — CLI contract honesty", () => {
       const parsed = JSON.parse(out); // MUST be parseable
       expect(parsed.ok).toBe(false);
       expect(parsed.error.code).toBe("commander.invalidArgument");
-      expect(parsed.error.message).toMatch(/positive integer/);
+      expect(parsed.error.message).toMatch(/正整数/);
     });
 
     it("without --json, the same failure is plain text on stderr (no JSON on stdout) + nonzero exit", async () => {
@@ -69,7 +69,7 @@ describe("Slice 15 — CLI contract honesty", () => {
       const { out, err, exitCode } = await runCli(["queue", "list", "--limit", "-1"], { queueDeps: deps });
       expect(exitCode).toBe(1);
       expect(out).toBe(""); // nothing parseable-but-wrong on stdout
-      expect(err).toMatch(/positive integer/);
+      expect(err).toMatch(/正整数/);
     });
 
     it("the path is SHARED across families — a send-family error also emits JSON under --json", async () => {
@@ -91,7 +91,7 @@ describe("Slice 15 — CLI contract honesty", () => {
       const { deps } = makeQueueDeps();
       const { err, exitCode } = await runCli(["queue", "list", "-o", "yaml"], { queueDeps: deps });
       expect(exitCode).toBe(1);
-      expect(err).toMatch(/must be one of: json/);
+      expect(err).toMatch(/one of.*json|必须.*json/);
     });
     it("`-o json` is accepted (exit 0)", async () => {
       const { deps } = makeQueueDeps();
@@ -105,7 +105,7 @@ describe("Slice 15 — CLI contract honesty", () => {
       const { deps } = makeQueueDeps();
       const { err, exitCode } = await runCli(["queue", "list", "--limit", bad], { queueDeps: deps });
       expect(exitCode).toBe(1);
-      expect(err).toMatch(/positive integer/);
+      expect(err).toMatch(/正整数/);
     });
     it("`--limit 25` accepted (exit 0)", async () => {
       const { deps } = makeQueueDeps();
@@ -143,7 +143,7 @@ describe("Slice 15 — CLI contract honesty", () => {
       const { deps } = makeQueueDeps();
       const { exitCode, err } = await runCli(["queue", "overdue", "--limit", "-3"], { queueDeps: deps });
       expect(exitCode).toBe(1);
-      expect(err).toMatch(/positive integer/);
+      expect(err).toMatch(/正整数/);
     });
   });
 
@@ -185,7 +185,7 @@ describe("Slice 15 — CLI contract honesty", () => {
       try { await program.parseAsync(["node", "rig", "ps", "--active"]); } catch { /* commander throw */ }
       expect(process.exitCode).toBe(1);
       expect(errs.join("\n")).toMatch(/--nodes/);
-      expect(errs.join("\n")).toMatch(/node tier/i);
+      expect(errs.join("\n")).toMatch(/节点层/i);
       vi.restoreAllMocks();
     });
   });

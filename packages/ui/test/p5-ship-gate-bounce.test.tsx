@@ -1,20 +1,18 @@
-// V1 attempt-3 Phase 5 ship-gate bounce P0-1 + P0-2 regression guards.
+// V1 attempt-3 Phase 5 ship-gate bounce P0-1 + P0-2 回归守卫。
 //
-// P0-1: TopologyTableView previously called useNodeInventory inside a
-// scopedRigs.map() — when rigs grew from undefined → [N], hook count
-// jumped 0 → N which is a Rules-of-Hooks violation. At desktop this was
-// masked because table view-mode mounted only after the user clicked,
-// by which time rigs was already resolved (consistent count from first
-// render). At mobile (P5-9), /topology graph degrades to table at first
-// render, so the table mounts BEFORE rigs resolves → crash. Fixed by
-// switching to `useQueries` (single hook call regardless of array length).
+// P0-1：TopologyTableView 此前在 scopedRigs.map() 内调用 useNodeInventory——
+// 当 rigs 从 undefined → [N]，hook 计数跳 0 → N，违反 Rules-of-Hooks。
+// 桌面端此问题被掩盖，因 table view-mode 只在用户点击后挂载，
+// 彼时 rigs 已解析（首渲染计数一致）。移动端（P5-9）/topology graph
+// 首渲染即降级为 table，故 table 在 rigs 解析前挂载 → 崩溃。
+// 修复：改用 `useQueries`（无论数组长度仅一次 hook 调用）。
 //
-// P0-2: NodeDetailPanel previously self-pinned with
-// `absolute inset-y-0 right-0 z-20 w-80` (320px) which left ~288px
-// orphan whitespace inside the 38rem (608px) drawer chrome. Fixed by
-// switching to fill-parent (`relative w-full h-full`).
+// P0-2：NodeDetailPanel 此前自钉
+// `absolute inset-y-0 right-0 z-20 w-80`（320px），在 38rem（608px）
+// drawer chrome 内留 ~288px 孤立空白。修复：改用 fill-parent
+//（`relative w-full h-full`）。
 //
-// Both regressions break the V1 ship-gate UX; tests must permanently guard.
+// 两个回归都破坏 V1 ship-gate UX；测试须永久守卫。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, waitFor } from "@testing-library/react";
@@ -54,7 +52,7 @@ function withQueryClient(ui: React.ReactNode, opts: { selectedHost?: string } = 
 }
 
 // -----------------------------------------------------------------------
-// P0-1: TopologyTableView no-crash regression — mount before rigs resolve.
+// P0-1：TopologyTableView 不崩溃回归——在 rigs 解析前挂载。
 // -----------------------------------------------------------------------
 
 import { TopologyTableView } from "../src/components/topology/TopologyTableView.js";
@@ -64,9 +62,9 @@ describe("TopologyTableView P0-1 regression: no rules-of-hooks crash on first-re
     let resolveSummary: ((value: unknown) => void) | null = null;
     mockFetch.mockImplementation(async (url: string) => {
       if (url.includes("/api/rigs/summary")) {
-        // Hold the summary promise so first render sees rigs=undefined,
-        // then resolve it → second render sees rigs=[N]. Pre-fix, this
-        // sequence crashed (hook count 0 → N).
+        // 挂起 summary promise，使首渲染见 rigs=undefined，
+        // 再解析它 → 第二渲染见 rigs=[N]。修复前此序列
+        // 崩溃（hook 计数 0 → N）。
         return new Promise((resolve) => {
           resolveSummary = (value) => {
             resolve(new Response(JSON.stringify(value)));
@@ -81,11 +79,11 @@ describe("TopologyTableView P0-1 regression: no rules-of-hooks crash on first-re
     });
 
     const { container } = withQueryClient(<TopologyTableView />);
-    // Initial render: rigs not yet resolved; component must NOT crash.
+    // 初始渲染：rigs 尚未解析；组件不得崩溃。
     expect(container.querySelector("[data-testid='topology-table-view']")).toBeTruthy();
 
-    // Now resolve the summary with multiple rigs — hook count would
-    // change under the old shape; under the fix (useQueries) it stays at 1.
+    // 现用多 rigs 解析 summary——旧形状下 hook 计数会变；
+    // 修复后（useQueries）保持 1。
     resolveSummary!([
       { id: "rig-1", name: "rig-1" },
       { id: "rig-2", name: "rig-2" },
@@ -93,7 +91,7 @@ describe("TopologyTableView P0-1 regression: no rules-of-hooks crash on first-re
     ]);
 
     await waitFor(() => {
-      // Component still alive after rigs resolution.
+      // rigs 解析后组件仍存活。
       expect(container.querySelector("[data-testid='topology-table-view']")).toBeTruthy();
     });
   });
@@ -128,11 +126,11 @@ describe("TopologyTableView P0-1 regression: no rules-of-hooks crash on first-re
       ),
       "utf8",
     );
-    // useQueries import + call present.
+    // useQueries import + 调用存在。
     expect(src).toMatch(/import\s*\{[^}]*useQueries[^}]*\}\s*from\s*["']@tanstack\/react-query["']/);
     expect(src).toMatch(/useQueries\s*\(/);
-    // Negative-assertion: legacy `.map((r) => ({ ..., inv: useNodeInventory(r.id) }))`
-    // pattern absent — strip comments first.
+    // 负向断言：旧 `.map((r) => ({ ..., inv: useNodeInventory(r.id) }))`
+    // 模式不存在——先剥注释。
     const codeOnly = src
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/[^\n]*\n/gm, "");
@@ -141,19 +139,16 @@ describe("TopologyTableView P0-1 regression: no rules-of-hooks crash on first-re
 });
 
 // -----------------------------------------------------------------------
-// P0-2: NodeDetailPanel fill-parent regression — no self-pinning.
+// P0-2：NodeDetailPanel fill-parent 回归——不自钉。
 // -----------------------------------------------------------------------
 
 describe("NodeDetailPanel P0-2 regression: drawer fill-parent guard", () => {
-  // V1 polish slice Phase 5.1 P5.1-D2: NodeDetailPanel.tsx is fully
-  // RETIRED at V1 polish; the canonical agent-detail surface is now
-  // LiveNodeDetails.tsx (center page). The original P0-2 ship-gate
-  // bounce regression guarded NodeDetailPanel's drawer fill-parent
-  // layout; now that the file is gone, the guard becomes the
-  // file-doesn't-exist assertion (which lives in
-  // node-selection-migration.test.tsx). This block converts to a
-  // companion source-assertion on LiveNodeDetails: the canonical
-  // surface must NOT regress into legacy absolute self-pinning.
+  // V1 polish slice Phase 5.1 P5.1-D2：NodeDetailPanel.tsx 在 V1 polish
+  // 完全退役；规范 agent-detail 表面现为 LiveNodeDetails.tsx（居中页）。
+  // 原 P0-2 ship-gate bounce 回归守卫 NodeDetailPanel 的 drawer fill-parent
+  // 布局；既然文件已删，守卫变为文件不存在断言（位于
+  // node-selection-migration.test.tsx）。本段转为对 LiveNodeDetails 的
+  // 配套源码断言：规范表面不得回退到旧 absolute 自钉。
   it("LiveNodeDetails.tsx does not regress into legacy 'absolute inset-y-0 right-0 w-80' self-pinning", async () => {
     const liveSrc = readFileSync(
       path.resolve(__dirname, "../src/components/LiveNodeDetails.tsx"),

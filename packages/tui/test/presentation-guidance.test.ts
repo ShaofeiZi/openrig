@@ -10,11 +10,12 @@ import { createStyle } from "../src/theme.js";
 import { healthDetailLines, healthListLines } from "../src/health/health-model.js";
 import type { HealthRecord } from "../src/types.js";
 import type { ConfigEntry } from "../src/config/config-model.js";
+import { strWidth } from "../src/text-width.js";
 
 afterEach(() => vi.unstubAllEnvs());
 
-describe("S06 installed presentation contracts", () => {
-  it("does not color configuration provenance words as operational status", () => {
+describe("S06 已安装的展示契约", () => {
+  it("不把配置来源词按运营状态着色", () => {
     const snap = emptySnapshot(), view = createViewState({ instanceId: "colors", getSnapshot: () => snap });
     const entry: ConfigEntry = { key: "host.name", group: "general", value: "running", defaultValue: "localhost", source: "file", visibility: "shown", reason: null, scope: "instance", application: "running application unverified" };
     snap.config = { home: "/fixture", observedAt: "now", readOnly: true, entries: [entry], sources: [], exclusions: [] };
@@ -38,19 +39,20 @@ describe("S06 installed presentation contracts", () => {
         const screen = renderScreen(state, snap, { cols, rows, commandContext: context, unavailable: "prerequisite unavailable" });
         const body = screen.lines.join("\n");
         expect(body).toContain(`› ${COMMAND_REGISTRY[selection]!.name}`);
-        expect(body.replace(/\s+/g, " ")).toContain(`Example: ${COMMAND_REGISTRY[selection]!.sample}`);
-        expect(body).toContain("Esc return");
-        expect(body).toContain("rig <command> --help");
-        expect(body).toContain("S returns to Startup");
+        expect(body.replace(/\s+/g, " ")).toContain(`示例：${COMMAND_REGISTRY[selection]!.sample}`);
+        expect(body).toContain("Esc 返回");
+        expect(body).toContain("zrig <command> --help");
+        expect(body).toContain("S 返回启动页");
         expect(screen.lines).toHaveLength(rows);
-        expect(screen.lines.every(l => l.length <= cols)).toBe(true);
+        const tooWide = screen.lines.map((line, index) => ({ index, width: strWidth(line), line })).filter((item) => item.width > cols);
+        expect(tooWide).toEqual([]);
       }
     }
     view.dispatch({ type: "palette-close" });
     expect(view.get()).toMatchObject({ section: before.section, selection: before.selection, history: before.history, contentOffset: before.contentOffset });
   });
 
-  it("pulses idle focus on the rendering clock while typing and reduced motion stay steady", () => {
+  it("输入与 reduced motion 保持稳定时，idle focus 在渲染时钟上脉冲", () => {
     const snap = emptySnapshot(), view = createViewState({ instanceId: "focus", getSnapshot: () => snap });
     for (const [time, visible] of [[0, true], [1500, true], [2000, false], [2500, false], [3000, true]] as const) {
       const screen = renderScreen(view.get(), snap, { nowMs: time });
@@ -74,7 +76,7 @@ describe("S06 installed presentation contracts", () => {
     expect(decodeInput("\x1b")).toEqual([{ type: "key", key: "escape" }]);
   });
 
-  it.each([[403, /Access denied/], [404, /endpoint was not found/], [500, /cause was not identified/]])("reports observed CONFIG failure %i without guessing daemon age", async (status, reason) => {
+  it.each([[403, /拒绝访问/], [404, /端点未找到/], [500, /原因未识别/]])("reports observed CONFIG failure %i without guessing daemon age", async (status, reason) => {
     const secret = "synthetic-secret-never-display";
     const client = new DaemonClient({ baseUrl: "http://fixture", fetchImpl: (async () => new Response(secret, { status })) as typeof fetch });
     const view = createViewState({ instanceId: "config", getSnapshot: emptySnapshot });
@@ -87,12 +89,12 @@ describe("S06 installed presentation contracts", () => {
     expect(body).not.toMatch(/older daemon|synthetic-secret/);
   });
 
-  it("distinguishes not loaded, unavailable, stale and Unknown assessment while retaining INFO and full evidence", () => {
+  it("区分未加载、不可用、陈旧与未知评估，同时保留 INFO 与完整证据", () => {
     const snap = emptySnapshot(), scope = { kind: "instance", local: true } as const;
     delete snap.health;
-    expect(healthListLines(snap, scope, 130)[0]!.text).toContain("Not assessed");
+    expect(healthListLines(snap, scope, 130)[0]!.text).toContain("未评估");
     snap.health = { availability: "unavailable", records: [], total: 0, truncated: false, evaluatedAt: null };
-    expect(healthListLines(snap, scope, 130)[0]!.text).toContain("Unavailable");
+    expect(healthListLines(snap, scope, 130)[0]!.text).toContain("不可用");
     const reason = "No current context-usage sample was served";
     const path = "/exact/" + "unbroken-source-reference".repeat(8);
     const record: HealthRecord = { schema: "openrig.health/v0alpha1", id: "fixture", detector: "context", category: "context", scope: { type: "instance", instanceId: "fixture" }, severity: "info", confidence: "medium", status: "indeterminate", startedAt: null, lastObservedAt: null,
@@ -100,11 +102,11 @@ describe("S06 installed presentation contracts", () => {
       freshness: { state: "unavailable", evaluatedAt: "2026-09-10T01:00:00Z", newestSourceAt: null, maxAgeSeconds: 30, ageSeconds: null }, summary: "Context usage", evidence: [], threshold: "policy", explanation: reason, suggestedInspection: path, indeterminateReason: reason };
     snap.health = { availability: "loaded", records: [record], total: 1, truncated: false, evaluatedAt: record.freshness.evaluatedAt };
     const body = healthDetailLines(snap, record.id, 54).map(l => l.text).join("\n");
-    expect(body).toContain("INFO Unknown");
+    expect(body).toContain("信息 未知");
     expect(body.replace(/\s+/g, " ")).toContain(reason);
     expect(body.replace(/\s/g, "")).toContain(path);
     expect(record.status).toBe("indeterminate");
     record.freshness.state = "stale";
-    expect(healthListLines(snap, scope, 54).some(l => l.text.includes("STALE"))).toBe(true);
+    expect(healthListLines(snap, scope, 54).some(l => l.text.includes("过期"))).toBe(true);
   });
 });

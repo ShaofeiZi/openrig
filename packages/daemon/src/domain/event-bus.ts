@@ -50,8 +50,7 @@ export class EventBus {
   }
 
   /**
-   * Persist an event and notify subscribers. Use this for standalone emit
-   * outside of a caller-managed transaction.
+   * 持久化事件并通知订阅者。用于调用方管理的事务之外的独立 emit。
    */
   emit(event: RigEvent): PersistedEvent {
     const persisted = this.persistWithinTransaction(event);
@@ -60,11 +59,9 @@ export class EventBus {
   }
 
   /**
-   * Insert an event row into the events table and return a PersistedEvent.
-   * Call this inside a caller-managed db.transaction() so the event insert
-   * is atomic with other writes (e.g., session + binding + event in one txn).
-   * Does NOT notify subscribers. A notify envelope drains after commit;
-   * legacy single-event callers retain their explicit post-commit notify.
+   * 向 events 表插入事件行并返回 PersistedEvent。应在调用方管理的 db.transaction() 内调用，
+   * 使事件插入与其他写入保持原子性（例如在一个事务中写 session + binding + event）。
+   * 不通知订阅者。notify envelope 在提交后排空；旧版单事件调用方保留显式的提交后通知。
    */
   persistWithinTransaction(event: RigEvent): NotifyToken {
     const rigId = "rigId" in event ? (event as { rigId: string }).rigId : null;
@@ -92,9 +89,8 @@ export class EventBus {
   }
 
   /**
-   * Register an exact token from a nested transactional writer with the
-   * caller's active notify envelope. Returns false outside an envelope so the
-   * same writer can collect the token for legacy post-commit notification.
+   * 将嵌套事务 writer 的精确 token 注册到调用方当前 notify envelope。envelope 外返回 false，
+   * 使同一 writer 可为旧版提交后通知收集 token。
    */
   registerPersistedWithinActiveEnvelope(token: PersistedEvent): boolean {
     if (!this.activeEnvelope) return false;
@@ -103,16 +99,15 @@ export class EventBus {
   }
 
   /**
-   * Run one caller-owned synchronous transaction under the W2b notification
-   * envelope. Every token persisted through EventBus during the callback must
-   * be registered before it returns. The exact object-identity sets are
-   * compared before commit; committed rows are then delivered from the log.
+   * 在 W2b notification envelope 下运行一个由调用方拥有的同步事务。callback 期间经 EventBus
+   * 持久化的每个 token 都必须在返回前注册。提交前比较精确的对象 identity 集合；随后从日志投递
+   * 已提交的行。
    */
   withNotifyEnvelope<T>(callback: (register: NotifyRegister) => T): T {
     if (this.activeEnvelope) {
       throw new NotifyEnvelopeError(
         "nested_notify_envelope",
-        "notify envelope cannot be nested",
+        "notify envelope 不能嵌套",
       );
     }
 
@@ -129,7 +124,7 @@ export class EventBus {
         if (!setsEqual(envelope.persisted, envelope.registered)) {
           throw new NotifyEnvelopeError(
             "notify_registration_mismatch",
-            `notify envelope persisted ${envelope.persisted.size} token(s) but registered ${envelope.registered.size} exact token(s)`,
+            `notify envelope 持久化了 ${envelope.persisted.size} 个 token，但只注册了 ${envelope.registered.size} 个精确 token`,
           );
         }
         return result;
@@ -154,13 +149,12 @@ export class EventBus {
 
   assertNotifyEnvelopeExercised(): void {
     if (this.notifyEnvelopeRuns === 0) {
-      throw new Error("zero notify envelope transactions examined");
+      throw new Error("未检查任何 notify envelope 事务");
     }
   }
 
   /**
-   * Fan out a persisted event to in-memory subscribers.
-   * Does NOT insert into DB. Subscriber errors are isolated.
+   * 将持久事件扇出给内存订阅者。不会插入数据库；订阅者错误彼此隔离。
    */
   notifySubscribers(event: PersistedEvent): void {
     const nestedRowsStartAfter = this.maxSeq();
@@ -168,7 +162,7 @@ export class EventBus {
       try {
         subscriber(event);
       } catch (err) {
-        console.error("EventBus subscriber error:", err);
+        console.error("EventBus 订阅者错误：", err);
       }
     }
     this.notifyDrainStatus.watermark = Math.max(this.notifyDrainStatus.watermark, event.seq);
@@ -214,8 +208,8 @@ export class EventBus {
             event = this.rowToPersistedEvent(row);
           } catch (caught) {
             const error = caught instanceof SyntaxError
-              ? "invalid event payload JSON"
-              : "invalid event payload shape";
+              ? "事件 payload JSON 无效"
+              : "事件 payload 结构无效";
             const payloadSha = createHash("sha256").update(row.payload).digest("hex");
             this.notifyDrainStatus = {
               state: "unparseable",
@@ -264,7 +258,7 @@ export class EventBus {
       typeof (parsed as { type?: unknown }).type !== "string" ||
       (parsed as { type: string }).type.length === 0
     ) {
-      throw new Error("invalid event payload shape");
+      throw new Error("事件 payload 结构无效");
     }
     const event = parsed as RigEvent;
     return {

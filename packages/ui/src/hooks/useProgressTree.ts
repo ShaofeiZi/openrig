@@ -1,8 +1,8 @@
-// UI Enhancement Pack v0 — progress browse hook.
+// UI 增强包 v0 —— 进度浏览 hook。
 //
-// Wraps GET /api/progress/tree. Surfaces the daemon's
-// "progress_scan_roots_not_configured" 503 path as a structured
-// `unavailable` sentinel so the UI can render a setup hint.
+// 封装 GET /api/progress/tree。把后台服务的
+// "progress_scan_roots_not_configured" 503 路径以结构化的 `unavailable` 哨兵暴露，
+// 以便界面能渲染出设置提示。
 
 import { useQuery } from "@tanstack/react-query";
 

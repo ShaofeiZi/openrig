@@ -1,18 +1,15 @@
 /**
- * Slice 51-02 delta D1 — TOPOLOGY STAGING + per-seat stub-script delivery.
+ * Slice 51-02 delta D1——拓扑暂存 + 逐席位 stub script 投递。
  *
- * The lock requires scenarios to resolve PER-SEAT stub scripts, and the shipped
- * stub reads exactly `<cwd>/.openrig/stub/script.json` (stub-runner-protocol) —
- * so distinct scripts require distinct seat CWDs. `rig up --cwd` cannot express
- * that: `resolveLaunchCwd(authored, specRoot, override)` makes the override win
- * for EVERY seat, so one shared cwd means one shared script.
+ * 锁定规则要求 scenario 解析逐席位 stub script，而已交付 stub 会精确读取
+ * `<cwd>/.openrig/stub/script.json`（stub-runner-protocol），因此不同 script 需要不同席位 CWD。
+ * `zrig up --cwd` 无法表达这一点：`resolveLaunchCwd(authored, specRoot, override)` 会让 override
+ * 对每个席位生效，所以共享一个 cwd 就会共享一个 script。
  *
- * Therefore the pipeline stages the topology and authors a per-seat `cwd` in the
- * STAGED copy (no --cwd flag). Staging a lone YAML would rebase the spec root and
- * orphan the relative closure the committed fixtures rely on — `culture_file:
- * culture.md` and `agent_ref: "local:agents/worker"` both resolve relative to the
- * rig-spec directory — so the whole SOURCE DIRECTORY is copied and the staged YAML
- * is mutated inside it. The committed fixtures are never written to.
+ * 因此流水线先暂存拓扑，再在暂存副本中写入逐席位 `cwd`，不使用 --cwd flag。若只暂存 YAML，
+ * spec 根会重新定基准，并使已提交 fixture 依赖的相对闭包失去来源；`culture_file: culture.md`
+ * 与 `agent_ref: "local:agents/worker"` 都相对工作组 spec 目录解析。因此需复制整个来源目录，
+ * 并在其中修改暂存 YAML；绝不写入已提交 fixture。
  */
 
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -20,17 +17,17 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { parseStubScript } from "../../src/adapters/stub-script.js";
 
-/** A staged, self-contained topology root with per-seat CWDs authored in place. */
+/** 自包含的暂存拓扑根，其中已就地写入逐席位 CWD。 */
 export interface StagedTopology {
-  /** The staged root directory (a copy of the source topology directory). */
+  /** 暂存根目录，即来源拓扑目录的副本。 */
   root: string;
-  /** The staged rig-spec path to hand to `rig up`. */
+  /** 交给 `zrig up` 的暂存工作组 spec 路径。 */
   topologyPath: string;
-  /** `<pod>-<member>` → that seat's absolute, existing staged cwd. */
+  /** `<pod>-<member>` → 该席位已存在的绝对暂存 cwd。 */
   seatCwds: Record<string, string>;
 }
 
-/** Thrown when an `env.stub_scripts` key does not name exactly one stub seat. */
+/** `env.stub_scripts` key 未精确指向一个 stub 席位时抛出。 */
 export class StubScriptTargetError extends Error {
   constructor(message: string) {
     super(message);
@@ -66,11 +63,10 @@ function indexMembers(doc: unknown): MemberIndexEntry[] {
 }
 
 /**
- * Resolve every `env.stub_scripts` key to exactly ONE runtime:stub member, or
- * throw. Runs BEFORE any filesystem write or process spawn: a misspelled seat
- * must never silently fall to the default while its script lands in an unused
- * directory. Keys may be pod-qualified (`dev-alpha`) or a bare member id when
- * unambiguous. Returns key → qualified seat name.
+ * 将每个 `env.stub_scripts` key 精确解析到一个 runtime:stub member，否则抛错。在任何文件系统
+ * 写入或进程 spawn 前执行；拼错的席位绝不能静默回退默认值，同时把 script 写入未使用目录。
+ * Key 可以是 pod 限定形式（`dev-alpha`），也可以在无歧义时使用裸 member id。
+ * 返回 key → 限定席位名。
  */
 export function resolveStubScriptTargets(
   topologyDoc: unknown,
@@ -85,28 +81,28 @@ export function resolveStubScriptTargets(
     const matches = index.filter((e) => e.qualified === key || e.memberId === key);
     if (matches.length === 0) {
       throw new StubScriptTargetError(
-        `env.stub_scripts."${key}": no such seat in the topology — stub seats are: ${stubSeats.join(", ") || "(none)"}. ` +
-          `A misspelled seat would silently run the built-in default while its script landed in an unused directory, so this fails loud.`,
+        `env.stub_scripts."${key}"：拓扑中没有该席位——stub 席位为：${stubSeats.join(", ") || "（无）"}。` +
+          `拼错的席位会静默运行内置默认值，而 script 落入未使用目录，因此这里必须明确失败。`,
       );
     }
     if (matches.length > 1) {
       throw new StubScriptTargetError(
-        `env.stub_scripts."${key}": ambiguous — matches ${matches.map((m) => m.qualified).join(", ")}. ` +
-          `Use the pod-qualified form (<pod>-<member>).`,
+        `env.stub_scripts."${key}"：有歧义——匹配 ${matches.map((m) => m.qualified).join(", ")}。` +
+          `请使用 pod 限定形式（<pod>-<member>）。`,
       );
     }
     const hit = matches[0]!;
     if (hit.runtime !== "stub") {
       throw new StubScriptTargetError(
-        `env.stub_scripts."${key}": seat ${hit.qualified} is runtime:${hit.runtime ?? "(unset)"}, not a stub — ` +
-          `only a runtime:stub seat reads a delivered script, so a script here would never be read.`,
+        `env.stub_scripts."${key}"：席位 ${hit.qualified} 的 runtime 为 ${hit.runtime ?? "（未设置）"}，不是 stub——` +
+          `只有 runtime:stub 席位会读取已投递 script，因此此处 script 永远不会被读取。`,
       );
     }
     const prior = claimedBy[hit.qualified];
     if (prior !== undefined) {
       throw new StubScriptTargetError(
-        `env.stub_scripts."${key}" and "${prior}" resolve to the SAME seat ${hit.qualified} (duplicate alias) — ` +
-          `one seat reads exactly one script, so the intended one is unknowable.`,
+        `env.stub_scripts."${key}" 与 "${prior}" 解析到同一席位 ${hit.qualified}（重复 alias）——` +
+          `一个席位只读取一个 script，因此无法判断预期项。`,
       );
     }
     claimedBy[hit.qualified] = key;
@@ -116,10 +112,9 @@ export function resolveStubScriptTargets(
 }
 
 /**
- * Copy the topology's SOURCE DIRECTORY into `destRoot` (self-contained: the
- * relative `culture_file` / `local:` agent closure travels with it), then author
- * an absolute, existing per-seat `cwd` into the staged YAML. Returns the staged
- * path and the seat→cwd map. The source directory is never modified.
+ * 把拓扑来源目录复制到 `destRoot`；副本自包含，相对 `culture_file` / `local:` 智能体闭包一并复制。
+ * 随后在暂存 YAML 中写入逐席位、绝对且已存在的 `cwd`。返回暂存路径与 seat→cwd 映射。
+ * 来源目录绝不修改。
  */
 export function stageTopologyRoot(sourceTopologyPath: string, destRoot: string): StagedTopology {
   const sourceDir = dirname(resolve(sourceTopologyPath));
@@ -141,8 +136,8 @@ export function stageTopologyRoot(sourceTopologyPath: string, destRoot: string):
       const memberId = (m as { id?: unknown }).id;
       if (typeof memberId !== "string") continue;
       const qualified = `${podId}-${memberId}`;
-      // Own dir per seat: the stub reads <cwd>/.openrig/stub/script.json, and the
-      // seat's managed writes (AGENTS.md, readiness sidecar) stay in scratch.
+      // 每个席位使用独立目录：stub 读取 <cwd>/.openrig/stub/script.json，席位受管写入
+      //（AGENTS.md、readiness sidecar）也留在 scratch 中。
       const cwd = join(destRoot, "seat-cwd", qualified);
       mkdirSync(cwd, { recursive: true });
       (m as Record<string, unknown>).cwd = cwd;
@@ -155,10 +150,9 @@ export function stageTopologyRoot(sourceTopologyPath: string, destRoot: string):
 }
 
 /**
- * Write each mapped seat's script to ITS OWN staged cwd. An unmapped seat gets no
- * file at all, so 51-01's built-in default applies — never a neighbour's script.
- * Validates through the SHIPPED parser (stub-script.ts), so a malformed script
- * fails here rather than at seat boot.
+ * 把每个已映射席位的 script 写入其独立暂存 cwd。未映射席位完全不写文件，从而应用 51-01
+ * 内置默认值，绝不会读取相邻席位 script。通过已交付 parser（stub-script.ts）校验，
+ * 使格式错误 script 在此失败，而不是到席位启动时才失败。
  */
 export function deliverStubScripts(
   staged: StagedTopology,
@@ -177,12 +171,11 @@ export function deliverStubScripts(
       raw = readFileSync(scriptPath, "utf-8");
     } catch (err) {
       throw new StubScriptTargetError(
-        `env.stub_scripts."${key}": cannot read script ${scriptPath} — ${(err as Error).message}`,
+        `env.stub_scripts."${key}"：无法读取 script ${scriptPath}——${(err as Error).message}`,
       );
     }
-    // Shipped-parser validation: the same contract the stub runner enforces at
-    // boot (it takes the raw JSON text), applied here so an authoring error
-    // surfaces before any seat launches rather than as a dead seat.
+    // 使用已交付 parser 校验：与 stub runner 启动时对原始 JSON 文本执行的契约相同。
+    // 在此应用可让作者错误在任何席位启动前暴露，而不是表现为死亡席位。
     parseStubScript(raw);
     const dir = join(staged.seatCwds[seat]!, ".openrig", "stub");
     mkdirSync(dir, { recursive: true });

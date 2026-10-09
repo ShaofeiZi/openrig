@@ -59,7 +59,7 @@ edges: []
 `;
 
 describe("R2 bootstrap provenance fault probe", () => {
-  it("SELECTIVE first-setter fault in a TWO-member bootstrap: the sibling may launch (partial-success semantics), but the failed member must NOT survive as a resumable node whose restore posture widens to the rig full_bypass (Guard multi-seat probe at 16e853a7)", async () => {
+  it("双成员 bootstrap 中首个写入者选择性故障：同级可启动（部分成功语义），但失败成员不得作为可恢复节点残留，否则恢复姿态会扩大为工作组 full_bypass（16e853a7 多席位守卫探针）", async () => {
     const bindings: NodeBinding[] = [];
     const adapter: RuntimeAdapter = {
       runtime: "claude-code",
@@ -81,7 +81,7 @@ describe("R2 bootstrap provenance fault probe", () => {
           },
         },
       });
-      // selective fault: FIRST provenance write throws, later ones delegate normally
+      // 选择性故障：第一次出处写入抛错，后续写入正常委托。
       const original = setup.rigRepo.setNodePolicyProvenance.bind(setup.rigRepo);
       let calls = 0;
       setup.rigRepo.setNodePolicyProvenance = (nodeId, prov) => {
@@ -92,15 +92,15 @@ describe("R2 bootstrap provenance fault probe", () => {
 
       const outcome = await setup.podInstantiator.instantiate(TWO_MEMBER_RIG_YAML, "/rig");
 
-      // partial-success semantics: the UNAFFECTED sibling may launch and the rig may report ok
+      // 部分成功语义：未受影响的同级可以启动，工作组可以报告 ok。
       expect(bindings.length, "exactly the unaffected sibling launches").toBe(1);
       void outcome; // ok may be true under partial-success — that is the preserved contract
 
-      // the load-bearing invariant: NO resumable node lacking required provenance survives.
+      // 关键不变量：不得留下缺少必要出处的可恢复节点。
       const rows = db.prepare("SELECT logical_id FROM nodes WHERE logical_id LIKE 'dev.%'").all() as { logical_id: string }[];
       const survivors = rows.map((r) => r.logical_id).sort();
       expect(survivors, "the failed member must not survive as a half-created node").toHaveLength(1);
-      // the surviving sibling carries its member provenance (locked/floor), never the rig widening
+      // 存活同级携带自身成员出处（locked/floor），绝不扩大为工作组级。
       const survivor = db.prepare("SELECT id, rig_id FROM nodes WHERE logical_id = ?").get(survivors[0]!) as { id: string; rig_id: string };
       expect(setup.rigRepo.getNodePolicyProvenance(survivor.id)).toMatchObject({ origin: "builtin", launchPosture: "floor" });
     } finally {
@@ -108,7 +108,7 @@ describe("R2 bootstrap provenance fault probe", () => {
     }
   });
 
-  it("happy path: bootstrap persists the MEMBER attachment (locked/floor) with the rig attachment (yolo) alongside — precedence + restart truth agree", async () => {
+  it("正常路径：bootstrap 同时持久化 MEMBER attachment（locked/floor）和工作组 attachment（yolo），优先级与重启后的事实一致", async () => {
     const bindings: NodeBinding[] = [];
     const adapter: RuntimeAdapter = {
       runtime: "claude-code",
@@ -142,7 +142,7 @@ describe("R2 bootstrap provenance fault probe", () => {
     }
   });
 
-  it("does not silently succeed when the member attachment cannot be persisted", async () => {
+  it("成员 attachment 无法持久化时不会静默成功", async () => {
     const bindings: NodeBinding[] = [];
     const adapter: RuntimeAdapter = {
       runtime: "claude-code",
@@ -173,12 +173,12 @@ describe("R2 bootstrap provenance fault probe", () => {
 
       const outcome = await setup.podInstantiator.instantiate(RIG_YAML, "/rig");
 
-      // CORRECTED contract (R2 terminal at 4c49c758): member provenance is LOAD-BEARING
-      // restart truth on the bootstrap path — a real setter fault must be fail-visible.
+      // 修正后的契约（R2 终态 4c49c758）：成员出处是 bootstrap 路径上关键的重启事实；
+      // 真实 setter 故障必须可见。
       expect(outcome.ok, "bootstrap must not report success after losing restart truth").toBe(false);
       if (!outcome.ok) expect(JSON.stringify(outcome), "the failure names the injected fault").toContain("injected provenance write failure");
       expect(bindings, "a rejected bootstrap must not launch at an unpersisted posture").toHaveLength(0);
-      // no invented provenance, and no half-committed node that restore could misread:
+      // 不臆造出处，也不留下 restore 可能误读的半提交节点：
       const node = db.prepare("SELECT id FROM nodes WHERE logical_id = 'dev.impl'").get() as { id: string } | undefined;
       if (node) expect(setup.rigRepo.getNodePolicyProvenance(node.id)).toBeNull();
     } finally {

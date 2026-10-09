@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { precheckSwitch } from "../src/domain/provider/provider-policy.js";
 import type { ProviderSignal } from "../src/domain/provider/provider-types.js";
 
-// Slice-04 (OPR.0.5.0.4) — the §1 precheck contract (proof item 7, unit portion). precheck
-// returns { safe: true } | { safe: false, reasons[] } so the UI/automation never offers an
-// unsafe switch. Reasons at minimum: would_strand_live_conversation, target_needs_reauth
-// (validate-at-use), signal_unknown_or_stale, rebind_unsupported_for_runtime. Every unsafe
-// condition is explicit and fail-visible; reasons combine.
+// 切片 04（OPR.0.5.0.4）——§1 预检契约（证明项 7，单元测试部分）。precheck 返回
+// { safe: true } | { safe: false, reasons[] }，使 UI/自动化绝不提供不安全切换。原因至少包括：
+// would_strand_live_conversation、target_needs_reauth（使用时校验）、
+// signal_unknown_or_stale、rebind_unsupported_for_runtime。每种不安全条件都明确且失败可见；
+// 多个原因会组合。
 
 const NOW = "2026-08-03T12:00:00.000Z";
 const FRESH = "2026-08-03T12:05:00.000Z";
@@ -25,8 +25,8 @@ const FRESH_KNOWN_SIGNAL: ProviderSignal = {
   automationUse: "allow_switch_decision",
 };
 
-describe("precheckSwitch — §1 switch-safety gate", () => {
-  it("a codex target with active auth, no live conversation, fresh known signal is SAFE", () => {
+describe("precheckSwitch——§1 切换安全门禁", () => {
+  it("认证活跃、无实时对话且信号已知且新鲜的 codex 目标是安全的", () => {
     const r = precheckSwitch({
       targetProvider: "codex",
       targetAuthState: "active",
@@ -37,35 +37,35 @@ describe("precheckSwitch — §1 switch-safety gate", () => {
     expect(r.safe).toBe(true);
   });
 
-  it("a claude target is rebind_unsupported_for_runtime (rig auth is codex-only)", () => {
+  it("claude 目标为 rebind_unsupported_for_runtime（rig auth 仅支持 codex）", () => {
     const r = precheckSwitch({ targetProvider: "claude", targetAuthState: "active", seatHasLiveConversation: false });
     expect(r.safe).toBe(false);
     if (!r.safe) expect(r.reasons).toContain("rebind_unsupported_for_runtime");
   });
 
-  it("a target needing reauth is target_needs_reauth (validate-at-use)", () => {
+  it("需要重新认证的目标为 target_needs_reauth（使用时校验）", () => {
     const r = precheckSwitch({ targetProvider: "codex", targetAuthState: "needs_reauth", seatHasLiveConversation: false });
     expect(r.safe).toBe(false);
     if (!r.safe) expect(r.reasons).toContain("target_needs_reauth");
   });
 
-  it("a target with UNKNOWN auth fails closed under the DISTINCT target_auth_unknown reason", () => {
+  it("认证状态未知的目标以独立原因 target_auth_unknown 闭合失败", () => {
     const r = precheckSwitch({ targetProvider: "codex", targetAuthState: "unknown", seatHasLiveConversation: false });
     expect(r.safe).toBe(false);
     if (!r.safe) {
       expect(r.reasons).toContain("target_auth_unknown");
-      // unknown is NOT relabeled as a re-auth need.
+      // unknown 不会被重新标记为需要重新认证。
       expect(r.reasons).not.toContain("target_needs_reauth");
     }
   });
 
-  it("a live conversation on the seat is would_strand_live_conversation", () => {
+  it("seat 上存在实时对话时为 would_strand_live_conversation", () => {
     const r = precheckSwitch({ targetProvider: "codex", targetAuthState: "active", seatHasLiveConversation: true });
     expect(r.safe).toBe(false);
     if (!r.safe) expect(r.reasons).toContain("would_strand_live_conversation");
   });
 
-  it("an unknown/stale triggering signal is signal_unknown_or_stale (reuses the BR-2 predicate)", () => {
+  it("未知/陈旧的触发信号为 signal_unknown_or_stale（复用 BR-2 谓词）", () => {
     const staleSignal: ProviderSignal = { ...FRESH_KNOWN_SIGNAL, staleAfter: STALE };
     const r = precheckSwitch({
       targetProvider: "codex",
@@ -78,7 +78,7 @@ describe("precheckSwitch — §1 switch-safety gate", () => {
     if (!r.safe) expect(r.reasons).toContain("signal_unknown_or_stale");
   });
 
-  it("an advisory (non-unknown, non-stale) triggering signal does NOT add signal_unknown_or_stale", () => {
+  it("建议性（非未知、非陈旧）触发信号不会添加 signal_unknown_or_stale", () => {
     const advisory: ProviderSignal = { ...FRESH_KNOWN_SIGNAL, automationUse: "advisory_only" };
     const r = precheckSwitch({
       targetProvider: "codex",
@@ -87,14 +87,13 @@ describe("precheckSwitch — §1 switch-safety gate", () => {
       triggeringSignal: advisory,
       now: NOW,
     });
-    // advisory is a BR-2 concern, NOT an unknown/stale precheck concern — this switch is safe.
+    // advisory 属于 BR-2 关注项，而非未知/陈旧预检关注项——此次切换安全。
     expect(r.safe).toBe(true);
   });
 
-  it("fail-closed: an untyped caller passing a trigger WITHOUT now is unsafe (signal_unknown_or_stale)", () => {
-    // Deliberate untyped/JS-style call (the paired union forbids this for typed callers): a
-    // triggering signal is present but `now` is omitted. A missing clock cannot prove freshness,
-    // so it must NOT silently return safe.
+  it("闭合失败：无类型调用方传入触发信号但没有 now 时不安全（signal_unknown_or_stale）", () => {
+    // 刻意采用无类型/JS 风格调用（配对联合类型会禁止类型化调用方这么做）：存在触发信号，
+    // 但省略 `now`。缺少时钟便无法证明新鲜度，因此绝不能静默返回安全。
     const r = precheckSwitch({
       targetProvider: "codex",
       targetAuthState: "active",
@@ -105,7 +104,7 @@ describe("precheckSwitch — §1 switch-safety gate", () => {
     if (!r.safe) expect(r.reasons).toContain("signal_unknown_or_stale");
   });
 
-  it("multiple unsafe conditions combine into all their reasons", () => {
+  it("多个不安全条件会组合全部对应原因", () => {
     const r = precheckSwitch({
       targetProvider: "claude",
       targetAuthState: "needs_reauth",

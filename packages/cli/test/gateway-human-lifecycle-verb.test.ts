@@ -10,8 +10,8 @@ import { humansDir, addHumanFragment, loadHumanRegistry } from "@openrig/daemon/
 
 // OPR.0.5.5.12 — `rig gateway human list|show|set|remove` verb wiring. Same harness as the
 // add-verb test: temp OPENRIG_HOME, real command end-to-end, fs effects asserted at source.
-// remove's queue-row check is injected (HumanRowsLookup) so these tests never need a daemon —
-// the INDETERMINATE path is pinned with a lookup that fails like an unreachable daemon.
+// remove 的 queue-row 检查是注入的（HumanRowsLookup），故这些测试无需 daemon——
+// INDETERMINATE 路径用一个像不可达 daemon 那样失败的 lookup 钉住。
 
 async function runAdd(name: string, extra: string[] = []): Promise<void> {
   const p = createProgram();
@@ -26,7 +26,7 @@ async function runAdd(name: string, extra: string[] = []): Promise<void> {
 }
 
 /** The hand-authoring path (registry surface, not the verb) — how a second fragment
- *  legitimately comes to exist under A1. */
+ *  在 A1 下合法地存在。 */
 function seedSecondHuman(name: string): void {
   const res = addHumanFragment({
     entityId: name,
@@ -40,7 +40,7 @@ function seedSecondHuman(name: string): void {
 }
 
 /** Stub daemon honoring /api/queue/list `limit` over REAL HTTP: `total` active rows exist;
- *  a request returns min(limit, total) — exactly the shape that hid the 500-cap omission. */
+ *  请求返回 min(limit, total)——正是掩盖了 500-cap 遗漏的形状。 */
 function stubQueueDaemon(total: number): Promise<{ server: Server; url: string }> {
   return new Promise((resolve) => {
     const server = createServer((req, res) => {
@@ -141,10 +141,10 @@ describe("rig gateway human lifecycle verbs (S12)", () => {
     process.env.OPENRIG_URL = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
     const cases = [
       { status: 503, body: { error: "human_registry_unavailable", message: "fixture projection unavailable" }, detail: /HTTP 503.*human_registry_unavailable/ },
-      { status: 200, body: { ok: true }, detail: /HTTP 200.*malformed/i },
-      { status: 200, body: { ok: false, readiness: valid }, detail: /HTTP 200.*malformed/i },
-      { status: 200, body: { ok: true, readiness: { ...valid, enabled: "true" } }, detail: /HTTP 200.*malformed/i },
-      { status: 200, body: { ok: true, readiness: { ...valid, state: "indeterminate" } }, detail: /HTTP 200.*malformed/i },
+      { status: 200, body: { ok: true }, detail: /HTTP 200.*格式错误/i },
+      { status: 200, body: { ok: false, readiness: valid }, detail: /HTTP 200.*格式错误/i },
+      { status: 200, body: { ok: true, readiness: { ...valid, enabled: "true" } }, detail: /HTTP 200.*格式错误/i },
+      { status: 200, body: { ok: true, readiness: { ...valid, state: "indeterminate" } }, detail: /HTTP 200.*格式错误/i },
       { status: 200, body: { ok: true, readiness: valid }, detail: null },
     ];
     try {
@@ -164,14 +164,14 @@ describe("rig gateway human lifecycle verbs (S12)", () => {
               const readiness = (command[0] === "list" ? result.humans[0] : result.record).deliveryReadiness;
               if (!entry.detail) expect(readiness).toEqual(valid);
               else {
-                expect(readiness).toMatchObject({ state: "indeterminate", configured: null, enabled: null, active: null, ready: false, nextAction: "rig status" });
+                expect(readiness).toMatchObject({ state: "indeterminate", configured: null, enabled: null, active: null, ready: false, nextAction: "zrig status" });
                 expect(readiness.reason).toMatch(entry.detail);
               }
             } else if (entry.detail) {
               expect(output).toContain("indeterminate");
               expect(output).toMatch(entry.detail);
-              expect(output).toContain("next: rig status");
-            } else expect(output).toMatch(/delivery(?:-readiness: |=)ready/);
+              expect(output).toContain("下一步：zrig status");
+            } else expect(output).toMatch(/投递(就绪状态)?[=：].*ready/);
           }
         }
       }
@@ -183,8 +183,8 @@ describe("rig gateway human lifecycle verbs (S12)", () => {
   });
 
   it("A1 advisory receipt: with several hand-authored fragments list --json renders all + the 0.5.7 advisory", async () => {
-    // Fix-r1 F1: the SECOND human arrives by hand-authoring (the registry surface), never
-    // through the add verb — the verb is the single-human boundary.
+    // Fix-r1 F1：第二个人工通过手工撰写（registry 表面）进入，绝不
+    // 经 add 动词——该动词是单人边界。
     seedSecondHuman("ana");
     logSpy.mockClear();
     const p = program();
@@ -251,7 +251,7 @@ describe("rig gateway human lifecycle verbs (S12)", () => {
       expect(process.exitCode).toBe(1);
     }
     const err = errSpy.mock.calls.map((c) => String(c[0])).join("\n");
-    expect(err).toContain("could not be checked"); // names the unchecked surface, never fabricates absence
+    expect(err).toContain("无法检查"); // names the unchecked surface, never fabricates absence
     expect(existsSync(join(humansDir(home), "mike.yaml"))).toBe(true);
   });
 
@@ -272,7 +272,7 @@ describe("rig gateway human lifecycle verbs (S12)", () => {
     const err = errSpy.mock.calls.map((c) => String(c[0])).join("\n");
     expect(err).toContain("mike");        // the existing human, named
     expect(err).toContain("0.5.7");       // where multi-human management lives
-    expect(err).toContain("hand-author"); // the sanctioned several-fragment path
+    expect(err).toContain("手工编写"); // 认可的多 fragment 路径
     // Zero new fragment bytes: directory unchanged, existing fragment byte-identical.
     expect(readdirSync(humansDir(home)).sort()).toEqual(dirBefore);
     expect(readFileSync(join(humansDir(home), "mike.yaml"), "utf8")).toBe(mikeBytes);

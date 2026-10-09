@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 
-/** Item 1 / slice-05: provenance metadata surfaced by /api/bundles/inspect (camelCase contract per both v1 + v2 routes). */
+/** 第 1 项 / slice-05：由 /api/bundles/inspect 呈现的来源元数据；v1 和 v2 路由均采用 camelCase 契约。 */
 export interface InspectProvenance {
   createdAt?: string;
   sourceHost?: string;
@@ -12,7 +12,7 @@ export interface InspectProvenance {
   notes?: string;
 }
 
-/** Item 2 / slice-05: compatibility block surfaced by /api/bundles/inspect (camelCase contract). */
+/** 第 2 项 / slice-05：由 /api/bundles/inspect 呈现的兼容性块，采用 camelCase 契约。 */
 export interface InspectCompatibility {
   minDaemonVersion?: string;
   minCliVersion?: string;
@@ -27,9 +27,9 @@ export interface InspectResult {
     schemaVersion?: number;
     packages?: Array<{ name: string; version: string; path: string }>;
     agents?: Array<{ name: string; version: string; path: string }>;
-    /** Item 1 provenance block (when bundle carries it). */
+    /** 第 1 项来源块（包携带时）。 */
     provenance?: InspectProvenance;
-    /** Item 2 compatibility block (when bundle carries it). */
+    /** 第 2 项兼容性块（包携带时）。 */
     compatibility?: InspectCompatibility;
   };
   digestValid: boolean;

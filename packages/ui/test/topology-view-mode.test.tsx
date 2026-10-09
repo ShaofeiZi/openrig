@@ -1,8 +1,8 @@
-// V1 attempt-3 Phase 3 — Topology view-mode tabs IN-PLACE single URL test (SC-10).
+// V1 attempt-3 Phase 3——Topology view-mode tab 原位单 URL 测试（SC-10）。
 //
-// LOAD-BEARING: attempt-2 violated this by using separate URLs per
-// view-mode (`/topology/host/table` etc). Phase 3 implements view-mode
-// tabs as React state IN-PLACE — the URL stays the same when switching
+// 承重：attempt-2 违反此点，按 view-mode 用分离 URL
+//（`/topology/host/table` 等）。Phase 3 把 view-mode tab 实现为
+// React 状态原位——切换时 URL 不变
 // tabs.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -34,14 +34,13 @@ afterEach(() => {
   cleanup();
 });
 
-// Slice 52 (UI wall-clock hardening): the timed fixture no longer imports
-// ../src/routes.js. The scope pages + AppShell chrome are what these tests
-// assert; the full route tree (all lazy page modules) was the wall-clock-heavy
-// import that raced the 5000ms waitFor under fleet load. A minimal router with
-// AppShell as the root and only the topology scope routes mounts the SAME
-// components with no heavy import and no clock to race. HostScopePage takes no
-// params; RigScopePage reads useParams({ from: "/topology/rig/$rigId" }), so
-// that route path is spelled exactly to preserve the strict param binding.
+// Slice 52（UI wall-clock 加固）：timed fixture 不再 import
+// ../src/routes.js。这些测试断言的是 scope 页 + AppShell chrome；
+// 完整路由树（全部 lazy 页模块）是 fleet 负载下与 5000ms waitFor
+// 竞争的 wall-clock 重 import。以 AppShell 为根、仅 topology scope
+// 路由的最小 router 挂载相同组件，无重 import、无时钟竞争。
+// HostScopePage 不取 params；RigScopePage 读 useParams({ from:
+// "/topology/rig/$rigId" })，故该路由路径精确拼写以保留严格 param 绑定。
 function buildTopologyRouter(initialPath: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   const rootRoute = createRootRoute({
@@ -64,8 +63,7 @@ async function renderTopologyAt(initialPath: string) {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440, writable: true });
   const r = buildTopologyRouter(initialPath);
   const result = render(<RouterProvider router={r} />);
-  // Wait for the app rail to mount (route resolution complete);
-  // each test then waits for its scope-specific tab list.
+  // 等待 app rail 挂载（路由解析完成）；随后每个测试等待其 scope 特定 tab 列表。
   await waitFor(() => {
     expect(result.container.querySelector("[data-testid='app-rail']")).toBeTruthy();
   }, { timeout: 5000 });
@@ -91,9 +89,9 @@ describe("SC-10: topology view-mode tabs IN-PLACE single URL", () => {
     expect(r.history.location.pathname).toBe("/topology");
     const tableTab = container.querySelector("[data-testid='topology-host-tab-table']") as HTMLElement;
     fireEvent.click(tableTab);
-    // URL must remain unchanged.
+    // URL 必须不变。
     expect(r.history.location.pathname).toBe("/topology");
-    // Active state moved.
+    // 活动状态已移动。
     await waitFor(() => {
       expect(tableTab.getAttribute("data-active")).toBe("true");
     });
@@ -110,38 +108,35 @@ describe("SC-10: topology view-mode tabs IN-PLACE single URL", () => {
     expect(container.querySelector("[data-testid='topology-rig-tab-overview']")).toBeTruthy();
   });
 
-  // Seat scope brings in LiveNodeDetails which makes additional fetches.
-  // Host + rig scope tests above prove the IN-PLACE pattern; the
-  // source-assertion regression test below proves no view-mode-as-URL
-  // anti-patterns. Skipping the explicit seat-scope route render here.
+  // Seat scope 引入 LiveNodeDetails，产生额外拉取。上面 host + rig scope
+  // 测试证明原位模式；下面 source-assertion 回归测试证明无
+  // view-mode-as-URL 反模式。此处跳过显式 seat-scope 路由渲染。
   it.skip("seat scope at /topology/seat/$rigId/$logicalId — covered by source-assertion + scope-page direct test", () => {});
 });
 
 describe("Seat scope tabs (direct render — bypasses route fetching)", () => {
   it("SeatScopePage renders all three seat tabs when mounted directly", async () => {
-    // Direct render uses the SeatScopePage useParams from a memory router
-    // stub; skipping that complexity, we already cover seat tabs in the
-    // SEAT_SCOPE_TABS export shape.
+    // 直接渲染用 memory router stub 的 SeatScopePage useParams；跳过该
+    // 复杂度，我们已在 SEAT_SCOPE_TABS 导出形状中覆盖 seat tab。
     const { SEAT_SCOPE_TABS } = await import("../src/components/topology/TopologyViewModeTabs.js");
     expect(SEAT_SCOPE_TABS.map((t) => t.id)).toEqual(["detail", "transcript", "terminal"]);
   });
 });
 
-// V1 attempt-3 Phase 3 bounce-fix Class B — selective vellum overlay
-// negative assertion (ritual #8): non-topology destinations MUST NEVER
-// receive the vellum-translucent overlay treatment. Only the topology
-// destination (and only its graph view-mode) gets data-explorer-mode='overlay';
-// all other routes — including /, /project, /specs, /for-you, /settings —
-// must show data-explorer-mode='opaque' (or no Explorer at all for
-// destinations with surface='none').
+// V1 attempt-3 Phase 3 bounce-fix Class B——选择性 vellum overlay
+// 负面断言（ritual #8）：非 topology destination 绝不得接收
+// vellum 半透明 overlay 处理。仅 topology destination（且仅其 graph
+// view-mode）得 data-explorer-mode='overlay'；所有其他路由——含 /、
+// /project、/specs、/for-you、/settings——必须显示
+// data-explorer-mode='opaque'（或 surface='none' 的 destination 无 Explorer）。
 //
-// Codifies the runtime assertion that previously only ran in agent-browser
-// during driver self-walk. guard-3 process gate: this test must be in CI.
+// 将先前仅在 driver self-walk 期间于 agent-browser 运行的运行时断言
+// 成文化。guard-3 进程门禁：本测试必须在 CI。
 describe("Class B negative assertion: non-topology routes never get vellum overlay (ritual #8)", () => {
   async function renderAndWait(initialPath: string) {
-    // Slice 52: minimal router (no ../src/routes.js import) — same as
-    // renderTopologyAt above. Non-topology routes fall through to the
-    // catch-all stub; AppShell still computes their surface from the pathname.
+    // Slice 52：最小 router（无 ../src/routes.js import）——同上
+    // renderTopologyAt。非 topology 路由落到 catch-all stub；AppShell
+    // 仍从 pathname 计算其 surface。
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440, writable: true });
     const r = buildTopologyRouter(initialPath);
     const result = render(<RouterProvider router={r} />);
@@ -165,9 +160,9 @@ describe("Class B negative assertion: non-topology routes never get vellum overl
 
   it("topology graph (/topology) DOES carry data-explorer-mode='overlay' (positive companion)", async () => {
     const { container } = await renderAndWait("/topology");
-    // The active tab defaults to 'graph' on first mount per HostScopePage;
-    // useOverlayForActiveTab effect sets the topology overlay context to
-    // 'overlay'. AppShell propagates that to the Explorer's overlayMode prop.
+    // 按 HostScopePage，活动 tab 首次挂载默认 'graph'；useOverlayForActiveTab
+    // effect 把 topology overlay 上下文设为 'overlay'。AppShell 把它传播到
+    // Explorer 的 overlayMode prop。
     await waitFor(() => {
       const explorer = container.querySelector("[data-testid='explorer']");
       expect(explorer?.getAttribute("data-explorer-mode")).toBe("overlay");
@@ -175,10 +170,10 @@ describe("Class B negative assertion: non-topology routes never get vellum overl
   });
 });
 
-// CSS-source-assertion regression test (per pseudo-element-paint contract):
-// guard that routes.tsx never grows view-mode-as-URL paths
-// (e.g., `/topology/host/table`, `/topology/rig/$rigId/graph`).
-// Attempt-2 violated SC-10 with exactly this anti-pattern.
+// CSS source-assertion 回归测试（按 pseudo-element-paint 契约）：
+// 守卫 routes.tsx 永不长出 view-mode-as-URL 路径
+//（如 `/topology/host/table`、`/topology/rig/$rigId/graph`）。
+// Attempt-2 恰以此反模式违反 SC-10。
 describe("SC-10 source-assertion regression — no view-mode-as-URL paths in routes.tsx", () => {
   const ROUTES_SRC = readFileSync(
     path.resolve(__dirname, "../src/routes.tsx"),

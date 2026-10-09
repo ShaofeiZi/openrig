@@ -1,21 +1,18 @@
-// Preview Terminal v0 (PL-018) — per-session rate limiter for /preview.
+// 终端预览 v0（PL-018）——/preview 的逐会话限流器。
 //
-// Live preview polling could hammer tmux if every operator + every
-// pinned pane fires an unthrottled `tmux capture-pane`. This in-memory
-// cache returns the last captured payload for any subsequent request
-// inside the rate-limit window.
+// 如果每个操作人员和每个固定窗格都不受限地执行 `tmux capture-pane`，
+// 实时预览轮询可能压垮 tmux。这个内存缓存会在限流窗口内为后续请求
+// 返回最近一次捕获的 payload。
 //
-// Default window: 1 second per session. UI poll defaults to 3 seconds
-// (`ui.preview.refresh_interval_seconds`), so collisions only happen
-// when multiple panes pin the same seat or the operator manually
-// refreshes faster — which is exactly when caching is the right move.
+// 默认窗口：每个会话 1 秒。UI 默认每 3 秒轮询一次
+//（`ui.preview.refresh_interval_seconds`），所以只有多个窗格固定到同一席位，
+// 或操作人员手动刷新更快时才会冲突——恰好是适合缓存的场景。
 //
-// MVP single-host context: one daemon process; no shared state across
-// hosts. Map is per-process.
+// MVP 单主机场景：只有一个后台服务进程，不跨主机共享状态；Map 属于单个进程。
 
 export interface CachedCapture<T> {
   payload: T;
-  capturedAt: number; // epoch ms
+  capturedAt: number; // epoch 毫秒
 }
 
 export class PreviewRateLimiter<T> {
@@ -27,9 +24,8 @@ export class PreviewRateLimiter<T> {
   ) {}
 
   /**
-   * Returns the cached payload for `sessionName` if it was captured
-   * within the rate-limit window; otherwise null. Caller is expected
-   * to take a fresh capture and write back via `set` on null.
+   * 若 `sessionName` 的 payload 在限流窗口内捕获，则返回缓存；否则返回 null。
+   * 收到 null 时，调用方应重新捕获并通过 `set` 写回。
    */
   get(sessionName: string): CachedCapture<T> | null {
     const cached = this.cache.get(sessionName);
@@ -44,7 +40,7 @@ export class PreviewRateLimiter<T> {
     return entry;
   }
 
-  /** Clear cache entry for a session (e.g., on session teardown). */
+  /** 清除某个会话的缓存条目，例如会话拆除时。 */
   clear(sessionName: string): void {
     this.cache.delete(sessionName);
   }

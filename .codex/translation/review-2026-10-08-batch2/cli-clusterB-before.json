@@ -1,0 +1,122 @@
+{
+"packages/cli/src/commands/down.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/expand.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/export.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/fork.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/grow.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/heartbeat.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/host.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/package.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/parked.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/plugin.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/policy.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/project-jev.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/proof.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/provider.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/ps.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/queue.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/release.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/remove.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/requirements.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/env.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/file.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/gateway.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/health.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/import.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/launch.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/mcp.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/preflight.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/project-worker.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/project.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/reconcile-session.ts": [
+"cli-a",
+"self_reported"
+]
+}

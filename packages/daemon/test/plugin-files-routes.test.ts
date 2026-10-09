@@ -1,8 +1,7 @@
-// Slice 28 Checkpoint C-1 — plugin docs-browser routes + skillCount enrichment.
+// Slice 28 Checkpoint C-1——plugin 文档浏览器路由与 skillCount 增强。
 //
-// SC-29 EXCEPTION #11 declared verbatim in packages/daemon/src/routes/plugins.ts
-// header. This test file exercises the two new endpoints + the additive
-// PluginEntry.skillCount field.
+// SC-29 例外 #11 已在 packages/daemon/src/routes/plugins.ts 文件头逐字声明。本测试文件覆盖
+// 两个新 endpoint 和增量的 PluginEntry.skillCount 字段。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -79,12 +78,12 @@ function makePluginWithFolders(pluginsDir: string, name: string, opts: { skills?
   return pluginDir;
 }
 
-describe("PluginEntry.skillCount enrichment (slice 28)", () => {
+describe("PluginEntry.skillCount 增强（slice 28）", () => {
   let env: TestEnv;
   beforeEach(() => { env = setup(); });
   afterEach(() => { rmSync(env.root, { recursive: true, force: true }); });
 
-  it("populates skillCount = 0 when plugin has no skills/ folder", async () => {
+  it("plugin 没有 skills/ 目录时填充 skillCount = 0", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "skinny");
     const res = await createApp(env.service).request("/api/plugins");
     const body = (await res.json()) as Array<{ id: string; skillCount: number }>;
@@ -93,7 +92,7 @@ describe("PluginEntry.skillCount enrichment (slice 28)", () => {
     expect(skinny!.skillCount).toBe(0);
   });
 
-  it("populates skillCount = N when plugin ships N skill folders", async () => {
+  it("plugin 发布 N 个 skill 目录时填充 skillCount = N", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core", {
       skills: ["openrig-user", "openrig-architect", "queue-handoff"],
     });
@@ -104,16 +103,16 @@ describe("PluginEntry.skillCount enrichment (slice 28)", () => {
     expect(core!.skillCount).toBe(3);
   });
 
-  it("populates skillCount on PluginDetail.entry too (detail endpoint parity)", async () => {
+  it("也在 PluginDetail.entry 上填充 skillCount（detail endpoint 对齐）", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core", { skills: ["alpha", "beta"] });
     const res = await createApp(env.service).request("/api/plugins/openrig-core");
     const body = (await res.json()) as { entry: { skillCount: number } };
     expect(body.entry.skillCount).toBe(2);
   });
 
-  it("skillCount counts only subdirectories under skills/ (ignores stray files)", async () => {
+  it("skillCount 只计算 skills/ 下的子目录（忽略散落文件）", async () => {
     const pluginDir = makePluginWithFolders(env.openrigPluginsDir, "core-with-stray", { skills: ["a", "b"] });
-    // Drop a stray file inside skills/ — must NOT count.
+    // 在 skills/ 中放入散落文件，不得计数。
     writeFileSync(join(pluginDir, "skills", "README.md"), "stray file");
     const res = await createApp(env.service).request("/api/plugins");
     const body = (await res.json()) as Array<{ id: string; skillCount: number }>;
@@ -122,12 +121,12 @@ describe("PluginEntry.skillCount enrichment (slice 28)", () => {
   });
 });
 
-describe("GET /api/plugins/:id/files/list (slice 28)", () => {
+describe("GET /api/plugins/:id/files/list（slice 28）", () => {
   let env: TestEnv;
   beforeEach(() => { env = setup(); });
   afterEach(() => { rmSync(env.root, { recursive: true, force: true }); });
 
-  it("lists files + dirs at the plugin root (path='')", async () => {
+  it("列出 plugin 根目录的文件和目录（path=''）", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core", {
       skills: ["alpha"],
       readme: "# OpenRig Core\nplugin docs",
@@ -139,19 +138,19 @@ describe("GET /api/plugins/:id/files/list (slice 28)", () => {
     expect(body.pluginId).toBe("openrig-core");
     expect(body.path).toBe("");
     const names = body.entries.map((e) => e.name);
-    // Dirs first (sorted by name), then files. Plugin root contains:
-    // .claude-plugin/, hooks/, skills/, README.md.
+    // 目录优先（按名称排序），随后是文件。Plugin 根目录包含：
+    // .claude-plugin/、hooks/、skills/、README.md。
     expect(names).toContain(".claude-plugin");
     expect(names).toContain("hooks");
     expect(names).toContain("skills");
     expect(names).toContain("README.md");
-    // Verify dir-before-file ordering.
+    // 验证目录先于文件的顺序。
     const readmeIdx = names.indexOf("README.md");
     const skillsIdx = names.indexOf("skills");
     expect(skillsIdx).toBeLessThan(readmeIdx);
   });
 
-  it("lists nested directory contents (path='skills')", async () => {
+  it("列出嵌套目录内容（path='skills'）", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core", { skills: ["alpha", "beta"] });
     const res = await createApp(env.service).request("/api/plugins/openrig-core/files/list?path=skills");
     expect(res.status).toBe(200);
@@ -162,12 +161,12 @@ describe("GET /api/plugins/:id/files/list (slice 28)", () => {
     expect(body.entries.every((e) => e.type === "dir")).toBe(true);
   });
 
-  it("returns 404 when plugin id unknown", async () => {
+  it("plugin id 未知时返回 404", async () => {
     const res = await createApp(env.service).request("/api/plugins/missing/files/list?path=");
     expect(res.status).toBe(404);
   });
 
-  it("rejects '..' escape attempt with 400 path_escape", async () => {
+  it("以 400 path_escape 拒绝 '..' 逃逸尝试", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core", { skills: ["alpha"] });
     const res = await createApp(env.service).request("/api/plugins/openrig-core/files/list?path=..%2Fsomewhere");
     expect(res.status).toBe(400);
@@ -175,7 +174,7 @@ describe("GET /api/plugins/:id/files/list (slice 28)", () => {
     expect(body.error).toBe("path_escape");
   });
 
-  it("rejects absolute path with 400 path_invalid", async () => {
+  it("以 400 path_invalid 拒绝绝对路径", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core");
     const res = await createApp(env.service).request("/api/plugins/openrig-core/files/list?path=%2Fetc");
     expect(res.status).toBe(400);
@@ -183,9 +182,9 @@ describe("GET /api/plugins/:id/files/list (slice 28)", () => {
     expect(body.error).toBe("path_invalid");
   });
 
-  it("rejects symlink escape (realpath outside plugin folder)", async () => {
+  it("拒绝 symlink 逃逸（realpath 位于 plugin 目录外）", async () => {
     const pluginDir = makePluginWithFolders(env.openrigPluginsDir, "openrig-core");
-    // Create a symlink inside the plugin pointing OUTSIDE.
+    // 在 plugin 内创建指向外部的 symlink。
     const escapeTarget = join(env.root, "outside-target");
     mkdirSync(escapeTarget, { recursive: true });
     writeFileSync(join(escapeTarget, "secret.txt"), "out-of-bounds");
@@ -197,12 +196,12 @@ describe("GET /api/plugins/:id/files/list (slice 28)", () => {
   });
 });
 
-describe("GET /api/plugins/:id/files/read (slice 28)", () => {
+describe("GET /api/plugins/:id/files/read（slice 28）", () => {
   let env: TestEnv;
   beforeEach(() => { env = setup(); });
   afterEach(() => { rmSync(env.root, { recursive: true, force: true }); });
 
-  it("reads README.md at plugin root", async () => {
+  it("读取 plugin 根目录的 README.md", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core", { readme: "# Plugin docs body" });
     const res = await createApp(env.service).request("/api/plugins/openrig-core/files/read?path=README.md");
     expect(res.status).toBe(200);
@@ -221,7 +220,7 @@ describe("GET /api/plugins/:id/files/read (slice 28)", () => {
     expect(body.truncated).toBe(false);
   });
 
-  it("reads a nested skill SKILL.md file", async () => {
+  it("读取嵌套 skill 的 SKILL.md 文件", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core", { skills: ["openrig-user"] });
     const res = await createApp(env.service).request("/api/plugins/openrig-core/files/read?path=skills%2Fopenrig-user%2FSKILL.md");
     expect(res.status).toBe(200);
@@ -229,7 +228,7 @@ describe("GET /api/plugins/:id/files/read (slice 28)", () => {
     expect(body.content).toContain("# openrig-user");
   });
 
-  it("returns 400 path_required when path query missing", async () => {
+  it("缺少 path query 时返回 400 path_required", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core");
     const res = await createApp(env.service).request("/api/plugins/openrig-core/files/read");
     expect(res.status).toBe(400);
@@ -237,12 +236,12 @@ describe("GET /api/plugins/:id/files/read (slice 28)", () => {
     expect(body.error).toBe("path_required");
   });
 
-  it("returns 404 plugin-id unknown", async () => {
+  it("plugin id 未知时返回 404", async () => {
     const res = await createApp(env.service).request("/api/plugins/missing/files/read?path=README.md");
     expect(res.status).toBe(404);
   });
 
-  it("returns 404 stat_failed when file does not exist under plugin", async () => {
+  it("plugin 下文件不存在时返回 404 stat_failed", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core");
     const res = await createApp(env.service).request("/api/plugins/openrig-core/files/read?path=nonexistent.md");
     expect(res.status).toBe(404);
@@ -250,7 +249,7 @@ describe("GET /api/plugins/:id/files/read (slice 28)", () => {
     expect(body.error).toBe("stat_failed");
   });
 
-  it("rejects '..' escape attempt with 400 path_escape", async () => {
+  it("以 400 path_escape 拒绝 '..' 逃逸尝试", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core");
     const res = await createApp(env.service).request("/api/plugins/openrig-core/files/read?path=..%2Fsomewhere.md");
     expect(res.status).toBe(400);
@@ -259,17 +258,16 @@ describe("GET /api/plugins/:id/files/read (slice 28)", () => {
   });
 });
 
-describe("Route-order discipline (slice 28): /files/list + /files/read mounted BEFORE bare /:id", () => {
+describe("路由顺序纪律（slice 28）：/files/list + /files/read 在裸 /:id 之前挂载", () => {
   let env: TestEnv;
   beforeEach(() => { env = setup(); });
   afterEach(() => { rmSync(env.root, { recursive: true, force: true }); });
 
-  it("/api/plugins/openrig-core/files/list does NOT get caught by /:id catchall (404 vs detail)", async () => {
+  it("/api/plugins/openrig-core/files/list 不会被 /:id catchall 捕获（404 与 detail 的区别）", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core", { skills: ["alpha"] });
-    // /:id catchall would treat 'openrig-core' as the id + ignore the
-    // remainder. /files/list mounted earlier intercepts the sub-path
-    // BEFORE that catchall. Discriminator: response shape includes
-    // `entries` (list) not `entry` + `skills` (detail).
+    // /:id catchall 会把 'openrig-core' 当作 id 并忽略余下路径。更早挂载的 /files/list 会在该
+    // catchall 之前拦截子路径。判别条件：响应结构包含 `entries`（list），而非 `entry` + `skills`
+    //（detail）。
     const res = await createApp(env.service).request("/api/plugins/openrig-core/files/list?path=");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { entries?: unknown; entry?: unknown };
@@ -277,7 +275,7 @@ describe("Route-order discipline (slice 28): /files/list + /files/read mounted B
     expect(body.entry).toBeUndefined();
   });
 
-  it("/api/plugins/openrig-core/files/read does NOT get caught by /:id catchall", async () => {
+  it("/api/plugins/openrig-core/files/read 不会被 /:id catchall 捕获", async () => {
     makePluginWithFolders(env.openrigPluginsDir, "openrig-core", { readme: "doc" });
     const res = await createApp(env.service).request("/api/plugins/openrig-core/files/read?path=README.md");
     expect(res.status).toBe(200);

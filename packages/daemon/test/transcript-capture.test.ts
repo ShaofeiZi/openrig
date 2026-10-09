@@ -20,7 +20,7 @@ import { TranscriptStore } from "../src/domain/transcript-store.js";
 import type { TmuxAdapter } from "../src/adapters/tmux.js";
 import { clearAllTranscriptRotationsForTest } from "../src/domain/transcript-rotation.js";
 
-describe("transcript capture boot recovery", () => {
+describe("transcript capture 启动恢复", () => {
   let db: Database.Database;
   let tmpDir: string;
 
@@ -46,7 +46,7 @@ describe("transcript capture boot recovery", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("reattaches capture for running tmux sessions after a daemon restart", async () => {
+  it("daemon restart 后为 running tmux session 重新接入 capture", async () => {
     const rigRepo = new RigRepository(db);
     const sessions = new SessionRegistry(db);
     const rig = rigRepo.createRig("restart-rig");

@@ -91,7 +91,7 @@ test("locations-only output names file and line without quoting the matched text
 });
 
 test("the report says so when nothing is found and groups findings when something is", () => {
-  assert.match(renderReport([], "x..y"), /No matching machine-specific values detected/);
+  assert.match(renderReport([], "x..y"), /未检测到与机器绑定的值/);
   const report = renderReport(findPortabilityIssues(addedLines(diff)), "x..y");
   assert.match(report, /## Home path \(1\)/);
   assert.match(report, /docs\/a\.md:10/);

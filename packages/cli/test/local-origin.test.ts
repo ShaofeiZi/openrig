@@ -31,58 +31,58 @@ function client(targetId?: string) {
   }) as typeof fetch });
   return {requests, factory};
 }
-describe("local durable origin", () => {
-  it("does not create a missing database or infer the remote identity", async () => {
+describe("本地持久来源", () => {
+  it("不会创建缺失的数据库，也不会推断远程身份", async () => {
     expect(readLocalOrigin()).toBeUndefined(); expect(existsSync(dbPath)).toBe(false);
     const fetch = vi.fn(async () => ({ok:true,json:async()=>({selfHostId:"wrong-destination"})}));
     expect(await resolveOriginSelfHostId({fetch} as never)).toBeUndefined(); expect(fetch).not.toHaveBeenCalled();
   });
-  it("reads the minted id despite a different configured display name", () => {
+  it("即使配置了不同显示名称，也读取已生成的 id", () => {
     seed("host-a1b2c3d4"); writeFileSync(join(home,"config.json"),JSON.stringify({host:{name:"new-display-name"}}));
     expect(readLocalOrigin()).toBe("host-a1b2c3d4");
   });
-  it("keeps explicit DB configuration above the previous launch record", () => {
+  it("显式 DB 配置优先于先前启动记录", () => {
     seed("configured-origin"); const previous=join(home,"old.sqlite"); seed("old-origin",previous);
     writeFileSync(join(home,"daemon.json"),JSON.stringify({db:previous})); expect(readLocalOrigin()).toBe("configured-origin");
   });
-  it("retains an explicit --db from the last launch when no DB override exists", () => {
+  it("不存在 DB 覆盖时保留上次启动的显式 --db", () => {
     seed("launch-origin"); vi.stubEnv("OPENRIG_DB","");
     writeFileSync(join(home,"daemon.json"),JSON.stringify({db:dbPath})); expect(readLocalOrigin()).toBe("launch-origin");
   });
-  it("honors a file-configured DB", () => {
+  it("遵循文件中配置的 DB", () => {
     seed("file-origin"); vi.stubEnv("OPENRIG_DB","");
     writeFileSync(join(home,"config.json"),JSON.stringify({db:{path:dbPath}})); expect(readLocalOrigin()).toBe("file-origin");
   });
-  it.each(["", "local", "localhost", "has@separator"])("does not promote invalid identity %s", id => {
+  it.each(["", "local", "localhost", "has@separator"])("不提升无效身份 %s", id => {
     seed(id); expect(readLocalOrigin()).toBeUndefined();
   });
-  it("unreadable schema stays unknown", () => { writeFileSync(dbPath,"not sqlite"); expect(readLocalOrigin()).toBeUndefined(); });
+  it("不可读 schema 保持未知", () => { writeFileSync(dbPath,"not sqlite"); expect(readLocalOrigin()).toBeUndefined(); });
 });
-describe("direct endpoint attribution", () => {
-  it.each(["parent-origin", undefined])("carries origin when target %s is remote or unproved", async target => {
+describe("直连端点来源归属", () => {
+  it.each(["parent-origin", undefined])("目标 %s 为远程或未经证明时携带来源", async target => {
     seed("vm-origin"); const {factory,requests}=client(target); const c=factory("http://127.0.0.1:12345");
     await c.post("/write",{}); await c.post("/again",{});
     expect(requests.filter(r=>r.url.endsWith("/healthz"))).toHaveLength(1);
     expect(requests.at(-1)?.headers["X-OpenRig-Session"]).toBe("rig-admin@ops@vm-origin");
   });
-  it("proven-local direct endpoint preserves bare addressing", async () => {
+  it("已证明为本地的直连端点保留裸地址", async () => {
     seed("vm-origin"); const {factory,requests}=client("vm-origin"); await factory("http://alias:7433").post("/write",{});
     expect(requests.at(-1)?.headers["X-OpenRig-Session"]).toBe("rig-admin@ops");
   });
-  it("unknown origin delivers a durable uncertainty marker and diagnostic", async () => {
+  it("未知来源会投递持久的不确定性标记与诊断", async () => {
     const {factory,requests}=client("parent-origin"); await factory("http://parent:7433").post("/write",{});
     expect(requests.at(-1)?.headers).toMatchObject({"X-OpenRig-Session":"rig-admin@ops","X-OpenRig-Origin-Unknown":"true"});
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Origin instance unknown"));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("来源实例未知"));
   });
-  it("ordinary default local requests do not need an origin read/probe", async () => {
+  it("普通默认本地请求无需读取或探测来源", async () => {
     vi.stubEnv("OPENRIG_URL",""); const {factory,requests}=client(); await factory("http://localhost:7433").post("/write",{});
     expect(requests).toHaveLength(1); expect(requests[0]?.headers).toMatchObject({"X-OpenRig-Session":"rig-admin@ops"});
   });
-  it("already-qualified sender survives unavailable local evidence", async () => {
+  it("本地证据不可用时，已限定的发送者仍保持不变", async () => {
     vi.stubEnv("OPENRIG_SESSION_NAME","rig-admin@ops@upstream"); const {factory,requests}=client(); await factory("http://parent:7433").post("/write",{});
     expect(requests).toHaveLength(1); expect(requests[0]?.headers["X-OpenRig-Session"]).toBe("rig-admin@ops@upstream");
   });
-  it("registered remote construction uses local durable fallback, never its target", async () => {
+  it("已登记远程构造使用本地持久回退，绝不使用目标身份", async () => {
     seed("vm-origin"); const {factory,requests}=client("parent-origin"); await remoteDaemonClient(factory,"http://parent:7433").post("/write",{});
     expect(requests).toHaveLength(1); expect(requests[0]?.headers["X-OpenRig-Session"]).toBe("rig-admin@ops@vm-origin");
   });

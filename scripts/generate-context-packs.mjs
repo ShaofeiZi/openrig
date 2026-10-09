@@ -1,34 +1,29 @@
 #!/usr/bin/env node
-// OPR.0.5.3.7 R2 — content ships WITH the CLI (the staleness kill).
+// OPR.0.5.3.7 R2——内容随 CLI 一起发货（干掉过期漂移）。
 //
-// Projects public skill content from its declared spec/plugin source into
-// context-pack entries under packages/daemon/context-packs/. The daemon
-// already registers that directory as a `builtin` discovery root resolved
-// RELATIVE TO THE BINARY (startup.ts: `import.meta.dirname/../context-packs`),
-// and `rig context get` already serves any builtin-root pack — so once this
-// projection is generated and shipped, served bytes match `rig --version` by
-// construction and matches the source shipped by the same package.
+// 把公开的 skill 内容，从其声明的 spec/plugin 源，投影为 packages/daemon/context-packs/ 下的
+// context-pack 条目。daemon 已把该目录登记为一个 `builtin` 发现根，且按相对二进制位置解析
+// （startup.ts：`import.meta.dirname/../context-packs`），`rig context get` 也已能服务任何
+// builtin 根下的 pack——因此一旦这份投影被生成并随包发货，所服务的字节在构造上就与 `rig --version`
+// 一致，并与同一包所发的源一致。
 //
-// RULED SHAPE (dev-planner entry-shape ruling 2026-08-23, generated-manifest-
-// at-package-time): the projection is DERIVED AT PACKAGE TIME, never edited in
-// place. The output dir is gitignored and regenerated on every build, so there
-// is no committed projection to drift; the only hazard window is the build
-// step, and this script makes a malformed projection FAIL THE BUILD by
-// validating every generated manifest through the DAEMON's own parser — the
-// single authority, never a second parser.
+// 已裁决形态（dev-planner 入口形态裁决 2026-08-23，打包时生成 manifest）：投影在打包时推导，
+// 绝不原地编辑。输出目录被 gitignore，每次构建都重新生成，因此没有“已提交的投影”会漂移；
+// 唯一的风险窗口是构建步骤，而本脚本通过 daemon 自己的解析器校验每一份生成的 manifest——唯一权威，
+// 绝不搞第二份解析器——使畸形投影直接让构建失败。
 //
-// Usage:
-//   node scripts/generate-context-packs.mjs            # clean + write + validate
-//   node scripts/generate-context-packs.mjs --check    # validate only, write nothing (build/CI gate)
+// 用法：
+//   node scripts/generate-context-packs.mjs            # 清空 + 写入 + 校验
+//   node scripts/generate-context-packs.mjs --check    # 只校验、不写入（构建/CI 闸门）
 //   node scripts/generate-context-packs.mjs --version=0.5.3
-// Overridable for tests: OPENRIG_SKILLS_SOURCE, OPENRIG_PACKS_OUT, OPENRIG_PACKAGE_VERSION.
+// 供测试覆盖：OPENRIG_SKILLS_SOURCE、OPENRIG_PACKS_OUT、OPENRIG_PACKAGE_VERSION。
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse as parseYaml } from "yaml";
-// The projection membership MIRRORS the canonical mirror EXACTLY — imported so the
-// two never drift (r1/r2 HIGH-1: a narrower rule dropped referenced helper assets).
+// 投影的成员集合与 canonical mirror 完全一致——这样 import 过来，两者永不漂移
+// （r1/r2 HIGH-1：一条更窄的规则曾漏掉被引用的辅助资产）。
 import { EXCLUDES as MIRROR_EXCLUDES, shipSetFromMembership } from "./mirror-skills.mjs";
 import { scanInternalLeaks, buildInternalLeakMessage } from "./internal-leak-scanner.mjs";
 
@@ -42,41 +37,32 @@ const OUT = process.env.OPENRIG_PACKS_OUT
   ? path.resolve(process.env.OPENRIG_PACKS_OUT)
   : path.join(REPO, "packages/daemon/context-packs");
 
-// STATIC packs (Test-A preflight repair, row 0ac358a9): committed pack sources —
-// manifest.yaml + content files, e.g. the world/install atom graph — projected
-// verbatim into the same builtin root and validated through the same daemon
-// parser. The projection stamps the package version over the committed
-// `version: "0"` placeholder (single-line, comment-preserving).
+// STATIC pack（Test-A 预检修复，row 0ac358a9）：已提交的 pack 源——manifest.yaml + 内容文件，
+// 例如 world/install 原子图——逐字投影进同一个 builtin 根，并通过同一个 daemon 解析器校验。
+// 投影会把包版本盖到已提交的 `version: "0"` 占位符上（单行、保留注释）。
 const STATIC_SOURCE = process.env.OPENRIG_STATIC_PACKS_SOURCE
   ? path.resolve(process.env.OPENRIG_STATIC_PACKS_SOURCE)
   : path.join(REPO, "packages/daemon/context-packs-src");
 
-// Static pack content is scanned with the FULL committed leak authority —
-// scripts/internal-tokens.generated.json, the same generated policy the public
-// mirror flow consumes (charged terms, internal path prefixes, seat/rig and
-// host identities, internal path globs, allow-context exceptions). One
-// authority, never a local subset: a narrowed local list false-greens exactly
-// the internal paths it omits (review50-r2 BLOCKING-2).
+// 静态 pack 内容用完整的、已提交的泄漏权威规则扫描——scripts/internal-tokens.generated.json，
+// 即公开 mirror 流程所消费的同一份生成策略（带电词、内部路径前缀、seat/rig 与 host 身份、
+// 内部路径 glob、允许上下文的例外）。一份权威，绝不搞本地子集：收窄的本地清单会恰恰在它漏掉的内部
+// 路径上假绿（review50-r2 BLOCKING-2）。
 const STATIC_LEAK_RULES = JSON.parse(
   fs.readFileSync(path.join(REPO, "scripts/internal-tokens.generated.json"), "utf8"),
 );
 
-// Reuse the DAEMON's manifest parser (the single authority; the entry-shape
-// ruling forbids a second parser). It lives in compiled dist, which the package
-// build produces before this script runs. Resolved relative to this script so
-// it works from any cwd.
+// 复用 daemon 的 manifest 解析器（唯一权威；入口形态裁决禁止搞第二份解析器）。它在编译后的 dist 里，
+// 包构建会在本脚本运行前产出。按相对本脚本的位置解析，使它在任何 cwd 下都能用。
 const PARSER_URL = pathToFileURL(
   path.join(REPO, "packages/daemon/dist/domain/context-packs/manifest-parser.js"),
 ).href;
 
-// Membership is the canonical mirror's, derived FROM its EXCLUDES so the two stay
-// in lockstep: include every file EXCEPT the mirror's excludes. We do NOT re-narrow
-// by suffix here — R2 ships "the mirror-skills canonical output", and a skill's
-// referenced helper assets (find-polluter.sh, condition-based-waiting-example.ts)
-// are part of that output. A suffix the daemon parser cannot serve is NOT silently
-// dropped: it reaches the manifest and FAILS THE BUILD in validation (loud), per
-// the ruled "drift between canon and projection is a build failure".
-//   EXCLUDES entries: bare name ("feedback.md", ".DS_Store"), dir ("evals/"), glob ("*.local.md").
+// 成员集合取自身 canonical mirror，从它的 EXCLUDES 推导，使两者严格同步：包含除 mirror 排除项之外的所有文件。
+// 这里我们不再按后缀收窄——R2 发的是“mirror-skills 的 canonical 输出”，而一个 skill 被引用的辅助资产
+// （find-polluter.sh、condition-based-waiting-example.ts）也是该输出的一部分。daemon 解析器无法服务的后缀
+// 绝不静默丢弃：它会进入 manifest，并在校验时让构建响亮失败，按已裁决的“canon 与投影之间漂移即构建失败”执行。
+//   EXCLUDES 条目：裸名（"feedback.md"、".DS_Store"）、目录（"evals/"）、glob（"*.local.md"）。
 const EXCLUDE_NAMES = new Set(MIRROR_EXCLUDES.filter((p) => !p.includes("/") && !p.includes("*")));
 const EXCLUDE_DIRS = new Set(MIRROR_EXCLUDES.filter((p) => p.endsWith("/")).map((p) => p.replace(/\/+$/, "")));
 const EXCLUDE_GLOB_SUFFIXES = MIRROR_EXCLUDES.filter((p) => p.startsWith("*.")).map((p) => p.slice(1));
@@ -96,15 +82,15 @@ function resolveVersion() {
   return sanitizeVersion(raw || fromPkg());
 }
 
-// isSafePackVersion in the daemon: /^[A-Za-z0-9][A-Za-z0-9._+-]{0,31}$/.
+// 与 daemon 里的 isSafePackVersion 对齐：/^[A-Za-z0-9][A-Za-z0-9._+-]{0,31}$/。
 function sanitizeVersion(v) {
   let s = String(v).replace(/[^A-Za-z0-9._+-]/g, "-").slice(0, 32);
   if (!/^[A-Za-z0-9]/.test(s)) s = ("v" + s).slice(0, 32);
   return s;
 }
 
-// Discover skill packs: a pack is a directory containing SKILL.md. Packs are
-// leaves — we do not descend below one (mirrors the library's discoverPackDirs).
+// 发现 skill pack：一个 pack 就是含 SKILL.md 的目录。pack 是叶子——我们不在其下继续递归
+// （与库的 discoverPackDirs 一致）。
 function findSkillDirs(dir, rel = "") {
   const found = [];
   let entries;
@@ -137,7 +123,7 @@ function findPluginOnlyPublicSkillDirs() {
   );
   const pluginEdge = layout.edges?.plugin;
   if (!pluginEdge || pluginEdge.layout !== "flat" || typeof pluginEdge.path !== "string") {
-    return { skills: [], errors: ["skill edge layout must declare a flat plugin source"] };
+    return { skills: [], errors: ["skill 边布局必须声明一个扁平的 plugin 源"] };
   }
 
   const pluginRoot = path.resolve(REPO, pluginEdge.path);
@@ -149,7 +135,7 @@ function findPluginOnlyPublicSkillDirs() {
     const abs = path.join(pluginRoot, name);
     const skillFile = path.join(abs, "SKILL.md");
     if (!fs.existsSync(skillFile) || !fs.statSync(skillFile).isFile()) {
-      errors.push(`public plugin-only skill '${name}' is missing declared plugin content at ${skillFile}`);
+      errors.push(`公开的 plugin-only skill '${name}' 在 ${skillFile} 缺少声明的 plugin 内容`);
       continue;
     }
     skills.push({ abs, rel: name });
@@ -157,7 +143,7 @@ function findPluginOnlyPublicSkillDirs() {
   return { skills, errors };
 }
 
-// Collect servable content files inside a skill dir, as posix relative paths.
+// 收集 skill 目录内可服务的内容文件，返回 posix 相对路径。
 function collectContentFiles(skillDir, rel = "") {
   const files = [];
   for (const e of fs.readdirSync(skillDir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -187,17 +173,16 @@ function oneLine(s) {
   return String(s).replace(/\s+/g, " ").trim();
 }
 
-// Deterministic YAML emission — JSON-encoded scalars are valid YAML flow
-// scalars, so key order and escaping are fully controlled (no serializer
-// dependence). SKILL.md is the pack's instruction; siblings are references.
+// 确定性的 YAML 输出——JSON 编码的标量就是合法的 YAML flow 标量，因此键序与转义完全受控
+// （不依赖任何序列化器）。SKILL.md 是 pack 的指令；其余兄弟文件是引用。
 function renderManifest({ name, version, purpose, files }) {
   const lines = [
-    "# GENERATED by scripts/generate-context-packs.mjs — DO NOT EDIT.",
-    "# Package-time projection of a canonical skill; regenerated every build.",
+    "# 由 scripts/generate-context-packs.mjs 生成——请勿手改。",
+    "# 某个 canonical skill 在打包时的投影；每次构建重新生成。",
     `name: ${JSON.stringify(name)}`,
     `version: ${JSON.stringify(version)}`,
-    // OPR.0.5.6.10 mini-req 3 — the projection stamps its packs "skills":
-    // a skill pack is procedural capability by construction.
+    // OPR.0.5.6.10 mini-req 3——投影把它的 pack 标记为 "skills"：
+    // skill pack 在构造上就是过程性能力。
     'taxonomy: "skills"',
   ];
   if (purpose) lines.push(`purpose: ${JSON.stringify(purpose)}`);
@@ -211,8 +196,7 @@ function renderManifest({ name, version, purpose, files }) {
   return lines.join("\n") + "\n";
 }
 
-// Discover static packs: any NESTED dir under STATIC_SOURCE containing
-// manifest.yaml (mirrors the library's own discovery; packs are leaves).
+// 发现静态 pack：STATIC_SOURCE 下任何含 manifest.yaml 的嵌套目录（与库自己的发现一致；pack 是叶子）。
 function findStaticPackDirs(dir, rel = "") {
   const found = [];
   let entries;
@@ -234,22 +218,20 @@ function findStaticPackDirs(dir, rel = "") {
   return found;
 }
 
-// A static pack projects VERBATIM: the committed manifest is the authority
-// (atoms graph included); only the version placeholder line is stamped. The
-// complete static source tree is scanned below, regardless of suffix or pack
-// membership, before any projection is written.
+// 静态 pack 逐字投影：已提交的 manifest 是权威（含 atoms 图）；只把 version 占位符那一行盖掉。
+// 在写任何投影之前，会按完整的静态源码树扫描，不看后缀、不看 pack 成员。
 function buildStaticPack(pack, version) {
   const rawManifest = fs.readFileSync(path.join(pack.abs, "manifest.yaml"), "utf8");
   const parsedManifest = parseYaml(rawManifest);
   if (parsedManifest?.taxonomy === "lore") {
     throw new Error(
-      "lore-class refusal: taxonomy: lore is structurally unshippable. " +
-      "Genericize the content, cite its public home, or re-home it to the internal pack root.",
+      "lore 类拒绝：taxonomy: lore 在结构上不可发货。" +
+      "请泛化内容、标注其公开出处，或把它迁回内部 pack 根。",
     );
   }
   const stamped = rawManifest.replace(/^version:\s*"0"\s*$/m, `version: ${JSON.stringify(version)}`);
   if (stamped === rawManifest && !new RegExp(`^version: ${JSON.stringify(version).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "m").test(rawManifest)) {
-    throw new Error(`static pack ${pack.rel}: manifest must carry the 'version: "0"' placeholder for the projection to stamp`);
+    throw new Error(`静态 pack ${pack.rel}：manifest 必须带 'version: "0"' 占位符，供投影盖戳`);
   }
   const contentFiles = [];
   const walk = (dir, rel = "") => {
@@ -263,10 +245,8 @@ function buildStaticPack(pack, version) {
   return { ref: pack.rel, files: contentFiles, manifestYaml: stamped, srcDir: pack.abs };
 }
 
-// The source boundary is wider than the set of projected pack files: a renamed
-// provenance sidecar can sit beside a pack and otherwise evade both discovery
-// and copy. Scan every source file, regardless of suffix or pack membership,
-// before validating or writing any projection.
+// 源码边界比“被投影的 pack 文件集合”更宽：一个改了名的来源 sidecar 可以待在 pack 旁边，
+// 否则会同时躲过发现与拷贝。在校验或写入任何投影之前，按每个源文件扫描，不看后缀、不看 pack 成员。
 function scanStaticSource() {
   const files = [];
   const walk = (dir, rel = "") => {
@@ -290,9 +270,9 @@ function scanStaticSource() {
 function buildPack(skill, version) {
   const files = collectContentFiles(skill.abs);
   if (!files.includes("SKILL.md")) {
-    throw new Error(`skill at ${skill.rel} has no servable SKILL.md`);
+    throw new Error(`位于 ${skill.rel} 的 skill 没有可服务的 SKILL.md`);
   }
-  // SKILL.md first, then the rest (deterministic, instruction leads).
+  // SKILL.md 在前，其余在后（确定性，指令打头）。
   const ordered = ["SKILL.md", ...files.filter((f) => f !== "SKILL.md")];
   const fm = readFrontmatter(skill.abs);
   const name = typeof fm.name === "string" && fm.name.length ? fm.name : skill.rel.split("/").pop();
@@ -312,15 +292,15 @@ async function main() {
     ({ parseManifest } = await import(PARSER_URL));
   } catch (err) {
     console.error(
-      `[generate-context-packs] cannot load the daemon manifest parser at\n  ${PARSER_URL}\n` +
-      `Build the daemon first (npm --prefix packages/daemon run build). Cause: ${err.message}`,
+      `[generate-context-packs] 无法在\n  ${PARSER_URL}\n加载 daemon manifest 解析器。` +
+      `请先构建 daemon（npm --prefix packages/daemon run build）。原因：${err.message}`,
     );
     process.exit(2);
   }
 
   const sharedSkills = findSkillDirs(SOURCE);
   if (sharedSkills.length === 0) {
-    console.error(`[generate-context-packs] no skills found under ${SOURCE}`);
+    console.error(`[generate-context-packs] 在 ${SOURCE} 下未找到任何 skill`);
     process.exit(2);
   }
 
@@ -336,12 +316,11 @@ async function main() {
       errors.push(`${skill.rel}: ${err.message}`);
       continue;
     }
-    // Package-time validation THROUGH the daemon's own parser — a malformed
-    // projection fails the build here, never at serve time.
+    // 打包时经由 daemon 自己的解析器校验——畸形投影在这里就让构建失败，绝不拖到服务时才暴露。
     try {
       parseManifest(pack.manifestYaml, `${pack.ref}/manifest.yaml`);
     } catch (err) {
-      errors.push(`${pack.ref}: manifest invalid — ${err.message}`);
+      errors.push(`${pack.ref}：manifest 非法——${err.message}`);
       continue;
     }
     packs.push(pack);
@@ -350,8 +329,8 @@ async function main() {
   const staticLeaks = scanStaticSource();
   if (staticLeaks.length > 0) errors.push(buildInternalLeakMessage(staticLeaks));
 
-  // STATIC packs project after skills; same validation authority, same
-  // fail-the-build contract. An empty static source is legal (no packs).
+  // 静态 pack 在 skills 之后投影；同一校验权威、同一份“失败即构建失败”契约。
+  // 静态源为空是合法的（没有 pack）。
   for (const staticPack of findStaticPackDirs(STATIC_SOURCE)) {
     let pack;
     try {
@@ -363,37 +342,35 @@ async function main() {
     try {
       parseManifest(pack.manifestYaml, `${pack.ref}/manifest.yaml`);
     } catch (err) {
-      errors.push(`${pack.ref}: manifest invalid — ${err.message}`);
+      errors.push(`${pack.ref}：manifest 非法——${err.message}`);
       continue;
     }
     packs.push(pack);
   }
 
-  // Pack refs must be UNIQUE across BOTH discovery sources: the write loop keys
-  // the output dir by ref, so a collision would silently overwrite one
-  // validated pack with another (review50-r2 BLOCKING-3). Fail loud BEFORE any
-  // check-success or output mutation.
+  // pack ref 在两个发现来源之间必须唯一：写入循环以 ref 作为输出目录的键，
+  // 因此一旦冲突就会用另一个静默覆盖掉已校验的 pack（review50-r2 BLOCKING-3）。
+  // 在任何 check-success 或输出改动之前就响亮失败。
   const seenRefs = new Map();
   for (const pack of packs) {
     if (seenRefs.has(pack.ref)) {
-      errors.push(`duplicate pack ref '${pack.ref}' — a skill projection and a static pack (or two packs) collide; the write would silently overwrite one validated pack with another`);
+      errors.push(`pack ref 重复 '${pack.ref}'——一个 skill 投影与一个静态 pack（或两个 pack）相撞；写入会用一个已校验 pack 静默覆盖另一个`);
     }
     seenRefs.set(pack.ref, pack);
   }
 
   if (errors.length > 0) {
-    console.error(`[generate-context-packs] ${errors.length} invalid pack(s) — FAILING THE BUILD:`);
+    console.error(`[generate-context-packs] 共 ${errors.length} 个非法 pack——构建失败：`);
     for (const e of errors) console.error(`  - ${e}`);
     process.exit(1);
   }
 
   if (check) {
-    console.log(`[generate-context-packs] --check OK: ${packs.length} pack(s) project + validate clean (version ${version}).`);
+    console.log(`[generate-context-packs] --check 通过：${packs.length} 个 pack 投影与校验均干净（version ${version}）。`);
     return;
   }
 
-  // Write mode: clean the output root and regenerate from scratch (the
-  // projection is never edited in place; a stale entry cannot survive).
+  // 写入模式：清空输出根并从零重新生成（投影绝不原地编辑；过期条目无法残留）。
   fs.rmSync(OUT, { recursive: true, force: true });
   for (const pack of packs) {
     const packDir = path.join(OUT, pack.ref);
@@ -408,10 +385,10 @@ async function main() {
     }
     fs.writeFileSync(path.join(packDir, "manifest.yaml"), pack.manifestYaml);
   }
-  console.log(`[generate-context-packs] wrote ${packs.length} pack(s) to ${OUT} (version ${version}).`);
+  console.log(`[generate-context-packs] 已写入 ${packs.length} 个 pack 到 ${OUT}（version ${version}）。`);
 }
 
 main().catch((err) => {
-  console.error(`[generate-context-packs] unexpected failure: ${err.stack || err.message}`);
+  console.error(`[generate-context-packs] 意外失败：${err.stack || err.message}`);
   process.exit(2);
 });

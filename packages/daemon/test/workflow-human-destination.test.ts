@@ -17,8 +17,8 @@ import { addHumanFragment, writeProjection, projectionPath, type HumanFragment }
 import { makeEnsureStuckExceptionItem } from "../src/domain/workflow-exception-escalation.js";
 import { workflowRoutes } from "../src/routes/workflow.js";
 
-// SettingsStore captures its default path at import time. Keep real setting
-// resolution, but bind each caller to this test's registry/config directory.
+// SettingsStore 在 import 时捕获默认路径。保留真实设置解析，但把每个调用方绑定到本测试的
+// registry/config 目录。
 vi.mock("../src/domain/user-settings/settings-store.js", async importOriginal => {
   const actual = await importOriginal<typeof import("../src/domain/user-settings/settings-store.js")>();
   return { ...actual, SettingsStore: class extends actual.SettingsStore {
@@ -40,7 +40,7 @@ const SERIAL_SPEC = `workflow:
       allowed_exits: [done, failed]
 `;
 
-describe.each(["serial", "dependency"])("workflow registered-human selection at the actual runtime callers (%s)", (graph) => {
+describe.each(["serial", "dependency"])("实际 runtime 调用方的 workflow registered-human 选择（%s）", (graph) => {
   const spec = graph === "dependency" ? SERIAL_SPEC.replace("      actor_role: worker", "      actor_role: worker\n      depends_on: []") : SERIAL_SPEC;
   let dir: string;
   let db: ReturnType<typeof createDb>;
@@ -72,13 +72,13 @@ describe.each(["serial", "dependency"])("workflow registered-human selection at 
     currentPacketId: i.entryQitemId, actorSession: "worker@rig", exit: "failed" });
   const exceptions = () => db.prepare("SELECT * FROM queue_items WHERE tags LIKE '%workflow-exception%'").all() as Array<Record<string, unknown>>;
 
-  it("failed projection and overdue detection both route to the registered gateway address, never its terminal", async () => {
+  it("projection 失败和 overdue 检测都路由到已注册 gateway 地址，绝不到其 terminal", async () => {
     add("decision-owner");
     const first = await start();
     terminal.mockClear();
     await fail(first);
     expect(exceptions()[0]).toMatchObject({ destination_session: "decision-owner@external", tier: "human-gate" });
-    expect(exceptions()[0]!.evidence_ref).toBe(`rig workflow trace ${first.instance.instanceId}`);
+    expect(exceptions()[0]!.evidence_ref).toBe(`zrig workflow trace ${first.instance.instanceId}`);
     expect(exceptions()[0]!.last_nudge_result).toMatch(/^gateway-owned:/);
     expect(terminal).not.toHaveBeenCalled();
     const second = await start();
@@ -94,18 +94,18 @@ describe.each(["serial", "dependency"])("workflow registered-human selection at 
     expect(terminal).not.toHaveBeenCalled();
   });
 
-  it("an explicit existing setting selects among humans and is re-read for the next episode", () => {
+  it("显式现有设置在多个 human 中作选择，并在下一 episode 重新读取", () => {
     add("owner-one"); add("owner-two");
-    expect(() => resolveWorkflowHumanDestination()).toThrow(/explicitly select/);
+    expect(() => resolveWorkflowHumanDestination()).toThrow(/显式选择/);
     vi.stubEnv("OPENRIG_WORKSPACE_OPERATOR_SEAT_NAME", "owner-two@external");
     expect(resolveWorkflowHumanDestination()).toBe("owner-two@external");
     vi.stubEnv("OPENRIG_WORKSPACE_OPERATOR_SEAT_NAME", "owner-one@external");
     expect(resolveWorkflowHumanDestination()).toBe("owner-one@external");
     vi.stubEnv("OPENRIG_WORKSPACE_OPERATOR_SEAT_NAME", "human@host");
-    expect(() => resolveWorkflowHumanDestination()).toThrow(/does not select a registered human/);
+    expect(() => resolveWorkflowHumanDestination()).toThrow(/未选择已注册 human/);
   });
 
-  it.each(["missing", "ambiguous", "registry-unavailable"])("%s selection returns 409 and rolls back the failed close without a phantom row", async (state) => {
+  it.each(["missing", "ambiguous", "registry-unavailable"])("%s 选择返回 409，并回滚失败的 close 而不留下虚假行", async (state) => {
     if (state === "ambiguous") { add("owner-one"); add("owner-two"); }
     if (state === "registry-unavailable") { add("owner-one"); writeFileSync(projectionPath(), "not a registry"); }
     const i = await start();
@@ -124,13 +124,13 @@ describe.each(["serial", "dependency"])("workflow registered-human selection at 
     expect(exceptions()).toHaveLength(0);
   });
 
-  it("a configured orchestrator route works without any registered human", async () => {
+  it("已配置的 orchestrator 路由无需任何已注册 human 即可工作", async () => {
     writeFileSync(specPath, spec + "  exception_routing:\n    orchestrator_role: worker\n");
     await fail(await start());
     expect(exceptions()[0]).toMatchObject({ destination_session: "worker@rig", tier: "mode2" });
   });
 
-  it("a storage/admission failure cannot be relabeled as a bad agent destination", async () => {
+  it("storage/admission 失败不能重新标记为错误 agent 目标", async () => {
     add("owner-one");
     writeFileSync(specPath, spec + "  exception_routing:\n    orchestrator_role: worker\n");
     const i = await start();
@@ -141,7 +141,7 @@ describe.each(["serial", "dependency"])("workflow registered-human selection at 
     expect(spy).toHaveBeenCalledTimes(1);
     expect(exceptions()).toHaveLength(0);
   });
-  it("only an unavailable agent rig falls back to the registered human during admission", async () => {
+  it("admission 期间只有不可用的 agent rig 才回退到已注册 human", async () => {
     add("owner-one");
     writeFileSync(specPath, spec + "  exception_routing: { orchestrator_role: worker }\n");
     const i = await start();
@@ -158,7 +158,7 @@ describe.each(["serial", "dependency"])("workflow registered-human selection at 
     expect(exceptions()[0]).toMatchObject({ destination_session: "owner-one@external", tier: "human-gate" });
   });
 
-  it("honors an authored human-only policy without trying the selected agent", async () => {
+  it("遵循已编写的 human-only policy，不尝试所选 agent", async () => {
     add("owner-one");
     writeFileSync(specPath, spec + "  exception_routing: { default: human_only, orchestrator_role: worker }\n");
     const i = await start(); terminal.mockClear();
@@ -167,7 +167,7 @@ describe.each(["serial", "dependency"])("workflow registered-human selection at 
     expect(exceptions()[0]).toMatchObject({ destination_session: "owner-one@external", tier: "human-gate" });
     expect(terminal).not.toHaveBeenCalled();
   });
-  it.each(["project", "overdue"] as const)("%s preserves capability, preferred and no-match routing while exposing read faults", async (channel) => {
+  it.each(["project", "overdue"] as const)("%s 在暴露读取故障时保留 capability、preferred 和 no-match 路由", async (channel) => {
     add("owner-one");
     const rigs = new RigRepository(db);
     const pod = new PodRepository(db).createPod("r", "dev", "dev");
@@ -236,7 +236,7 @@ describe.each(["serial", "dependency"])("workflow registered-human selection at 
     }
   });
 
-  it("reports the selected owner, no-match, and read faults without converting an unknown to human fallback", async () => {
+  it("报告所选 owner、no-match 和读取故障，不把 unknown 转为 human fallback", async () => {
     add("owner-one");
     const pod = new PodRepository(db).createPod("r", "dev", "dev");
     const node = new RigRepository(db).addNode("r", "dev.orch", { role: "orch", runtime: "codex", cwd: dir,
@@ -259,16 +259,16 @@ describe.each(["serial", "dependency"])("workflow registered-human selection at 
     expect(runtime.exceptionReadiness(id)?.routes[0]).toMatchObject({ state: "unavailable", roleResolution: "unavailable", destinationSession: null, message: "fixture inventory unavailable" });
   });
 
-  it("distinguishes an intentional human policy from an unselected ordinary owner and checks authored target identity", async () => {
+  it("区分有意 human policy 与未选择的普通 owner，并检查已编写目标 identity", async () => {
     add("owner-one");
     const missing = await start();
     const r = runtime.exceptionReadiness(missing.instance.instanceId)!;
     expect(r.selection).toMatchObject({ state: "missing", role: null, source: specPath + "#workflow.exception_routing.orchestrator_role" });
-    expect(r.nextAction).toContain("A defined entry/ordinary role does not select exception ownership");
+    expect(r.nextAction).toContain("已定义的入口/普通角色不等于选择了异常所有者");
     expect(r.routes[0]).toMatchObject({ position: "fallback", roleResolution: "missing-selection", destinationSession: "owner-one@external" });
     writeFileSync(specPath, spec.replace("version: 1", "version: 2") + "  exception_routing: { default: human_only }\n");
     const direct = await start();
-    expect(runtime.exceptionReadiness(direct.instance.instanceId)?.nextAction).toContain("no orchestrator selection is required");
+    expect(runtime.exceptionReadiness(direct.instance.instanceId)?.nextAction).toContain("无需选择编排者");
     writeFileSync(specPath, spec.replace("version: 1", "version: 3") + "  exception_routing: { orchestrator_role: worker }\n");
     const preferred = await start();
     expect(runtime.exceptionReadiness(preferred.instance.instanceId)?.routes[0]).toMatchObject({ state: "unregistered", roleResolution: "preferred-target", destinationSession: "worker@rig" });

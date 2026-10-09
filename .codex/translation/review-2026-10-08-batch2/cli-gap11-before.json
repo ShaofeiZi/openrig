@@ -1,0 +1,46 @@
+{
+"packages/cli/src/lib/permission-policy/policy-ref.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/lib/permission-policy/policy-spec.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/lib/scope/capability-delta.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/lib/scope/scope-fs.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/lib/scope/templates.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/lib/scope/dot-id.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/lib/scope/mission-composition.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/lib/scope/progress-edit.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/lib/scope/scope-audit.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/lib/scope/trust.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/lib/scope/types.ts": [
+"cli-core-a",
+"self_reported"
+]
+}

@@ -1,23 +1,19 @@
-// V0.3.1 slice 05 kernel-rig-as-default — forward-fix #3 architectural.
-// Decouples daemon health/listen from kernel-agent readiness.
+// V0.3.1 分片 05 kernel-rig-as-default——前向修复 #3（架构）。
+// 将 daemon 健康状态/监听与 kernel agent 就绪状态解耦。
 //
-// Prior behavior: `bootKernelIfNeeded` awaited `bootstrapOrchestrator.bootstrap(...)`
-// inside `createDaemon`, so the daemon process couldn't reach `serve()` until
-// the kernel rig's members had been launched + their startup deliveries
-// completed. A broken kernel agent (e.g., Codex unauthenticated mid-boot)
-// stalled healthz too. The CLI then reported "daemon failed to start" even
-// though the daemon itself was perfectly happy — only the *kernel* was sad.
+// 先前行为：`bootKernelIfNeeded` 在 `createDaemon` 内等待
+// `bootstrapOrchestrator.bootstrap(...)`，因此只有 kernel 工作组成员启动且启动投递完成后，
+// daemon 进程才能执行到 `serve()`。损坏的 kernel agent（例如 Codex 启动期间未认证）也会阻塞
+// healthz。于是 CLI 会报告“daemon 启动失败”，尽管 daemon 本身完全正常——只有 *kernel* 出了问题。
 //
-// New behavior: `bootKernelIfNeeded` builds a tracker, fires the bootstrap
-// in the background, and returns immediately. The daemon binds healthz as
-// soon as `createDaemon` completes (HTTP server bind happens in server.ts
-// right after). Tracker state is published via GET /api/kernel/status so
-// operators (and CLI flags like `--wait-for-kernel`) can observe progress.
+// 新行为：`bootKernelIfNeeded` 构建追踪器，在后台触发 bootstrap，并立即返回。
+// `createDaemon` 完成后 daemon 随即绑定 healthz（HTTP 服务器随后在 server.ts 中绑定）。
+// 追踪器状态通过 GET /api/kernel/status 发布，使操作人员（以及 `--wait-for-kernel` 等 CLI
+// 标志）可以观察进度。
 //
-// A configurable degraded-timer (default 90s) emits a single
-// `kernel.agent.degraded` event if the kernel doesn't reach a ready / partial-
-// ready state in time — telemetry that something is keeping the kernel
-// stuck (auth / spec / tmux / etc.).
+// 可配置的降级计时器（默认 90 秒）会在 kernel 未能及时达到 ready / partial_ready 状态时
+// 发出一次 `kernel.agent.degraded` 事件，用遥测表明某个因素（认证 / spec / tmux 等）
+// 正在阻塞 kernel。
 
 import type { EventBus } from "./event-bus.js";
 import type { SessionRegistry } from "./session-registry.js";
@@ -35,25 +31,24 @@ export type KernelState =
   | "degraded";         // Booting > degradedTimeoutMs without reaching ready/partial_ready
 
 export interface KernelAgentStatus {
-  /** Session name (e.g. `advisor-lead@kernel`). */
+  /** 会话名（例如 `advisor-lead@kernel`）。 */
   sessionName: string;
-  /** Runtime declared in the agent profile (claude-code / codex / terminal). */
+  /** agent profile 中声明的 runtime（claude-code / codex / terminal）。 */
   runtime: string;
-  /** Startup status from the sessions table. Same enum as session-registry. */
+  /** sessions 表中的启动状态，与 session-registry 使用相同枚举。 */
   startupStatus: "pending" | "ready" | "attention_required" | "failed";
 }
 
 export interface KernelBootStatus {
   kernelState: KernelState;
   agents: KernelAgentStatus[];
-  /** ISO timestamp of when the kernel first entered booting; null in
-   *  terminal/skipped states. */
+  /** kernel 首次进入 booting 的 ISO 时间戳；处于终态或 skipped 时为 null。 */
   firstUnreadySince: string | null;
-  /** Filename of the picked variant (rig.yaml / rig-claude-only.yaml /
-   *  rig-codex-only.yaml). null when no variant was selected. */
+  /** 所选变体的文件名（rig.yaml / rig-claude-only.yaml / rig-codex-only.yaml）。
+   *  未选择变体时为 null。 */
   variant: string | null;
-  /** Human-readable detail for auth_blocked / spec_missing /
-   *  bootstrap_failed / degraded states. null otherwise. */
+  /** auth_blocked / spec_missing / bootstrap_failed / degraded 状态的人类可读详情；
+   *  其他状态为 null。 */
   detail: string | null;
 }
 
@@ -61,11 +56,9 @@ export interface KernelBootTrackerDeps {
   eventBus: EventBus;
   sessionRegistry: SessionRegistry;
   rigRepo: RigRepository;
-  /** Milliseconds the tracker waits in `booting` before emitting
-   *  `kernel.agent.degraded` and transitioning to the `degraded` state.
-   *  Default 90_000 (90s) per IMPL-PRD §6.3 amendment. Tests pass
-   *  shorter values; daemon startup honors the OPENRIG_KERNEL_DEGRADED_MS
-   *  env override resolved by startup.ts. */
+  /** 追踪器在 `booting` 中等待多少毫秒后发出 `kernel.agent.degraded` 并转入 `degraded`。
+   *  根据 IMPL-PRD §6.3 修订，默认值为 90_000（90 秒）。测试传入更短值；daemon 启动时
+   *  遵循由 startup.ts 解析的 OPENRIG_KERNEL_DEGRADED_MS 环境变量覆盖值。 */
   degradedTimeoutMs?: number;
 }
 
@@ -80,9 +73,8 @@ export class KernelBootTracker {
 
   constructor(private readonly deps: KernelBootTrackerDeps) {}
 
-  /** Mark the tracker as having intentionally not booted (--no-kernel,
-   *  already-managed short-circuit, VITEST auto-skip). Terminal state;
-   *  no degraded timer. */
+  /** 将追踪器标记为有意不启动（--no-kernel、已托管短路、VITEST 自动跳过）。
+   *  这是终态，不设降级计时器。 */
   setSkipped(detail: string): void {
     this.cancelTimer();
     this.state = "skipped";
@@ -90,7 +82,7 @@ export class KernelBootTracker {
     this.firstUnreadySince = null;
   }
 
-  /** Auth-blocked terminal. Operator sees the 3-part error in detail. */
+  /** 认证阻塞终态。操作人员可在 detail 中看到三段式错误。 */
   setAuthBlocked(message: string): void {
     this.cancelTimer();
     this.state = "auth_blocked";
@@ -98,7 +90,7 @@ export class KernelBootTracker {
     this.firstUnreadySince = null;
   }
 
-  /** Spec-missing terminal. Path is in detail for ops triage. */
+  /** spec 缺失终态。路径置于 detail 中，便于运维分诊。 */
   setSpecMissing(specPath: string): void {
     this.cancelTimer();
     this.state = "spec_missing";
@@ -106,8 +98,7 @@ export class KernelBootTracker {
     this.firstUnreadySince = null;
   }
 
-  /** Begin tracking an in-flight bootstrap. The bootstrap promise
-   *  is awaited internally; the caller does NOT block on it. */
+  /** 开始追踪进行中的 bootstrap。bootstrap Promise 在内部等待，调用方不会被其阻塞。 */
   startBooting(variant: string, bootstrapPromise: Promise<BootstrapResult>): void {
     if (this.bootstrapInFlight) return;
     this.bootstrapInFlight = true;
@@ -123,13 +114,12 @@ export class KernelBootTracker {
       .catch((err) => this.onBootstrapError(err));
   }
 
-  /** Read current status. Computes agents[] live from the sessions
-   *  table so the response always reflects the freshest startup_status. */
+  /** 读取当前状态。根据 sessions 表实时计算 agents[]，使响应始终反映最新 startup_status。 */
   getStatus(): KernelBootStatus {
     const agents = this.computeAgents();
     let kernelState = this.state;
-    // Once bootstrap has completed (state == 'booting' before then),
-    // promote to ready / partial_ready based on agent startup_status.
+    // bootstrap 完成后（此前 state == 'booting'），根据 agent startup_status
+    // 提升为 ready / partial_ready。
     if (this.state === "booting" && !this.bootstrapInFlight) {
       kernelState = this.aggregateReadinessFromAgents(agents);
     }
@@ -145,9 +135,8 @@ export class KernelBootTracker {
     };
   }
 
-  /** Stop the degraded timer. Safe to call from anywhere (idempotent).
-   *  Production callers don't need this; tests + graceful daemon
-   *  shutdown do. */
+  /** 停止降级计时器。可从任何位置安全调用（幂等）。生产调用方无需调用；
+   *  测试和 daemon 优雅关闭需要调用。 */
   stop(): void {
     this.cancelTimer();
   }
@@ -160,11 +149,9 @@ export class KernelBootTracker {
       this.detail = result.errors.join("; ");
       return;
     }
-    // Bootstrap returned cleanly. State transitions to ready /
-    // partial_ready are computed on read from agents[]. Cancel the
-    // degraded timer ONLY when at least one agent is ready — until
-    // then, the kernel is still effectively booting and the operator
-    // wants the degraded telemetry if no agent ever reaches ready.
+    // Bootstrap 正常返回。读取时根据 agents[] 计算到 ready / partial_ready 的状态转换。
+    // 只有至少一个 agent 就绪时才取消降级计时器——在此之前 kernel 实际仍在启动；若始终没有
+    // agent 就绪，操作人员需要看到降级遥测。
     const agents = this.computeAgents();
     const aggregated = this.aggregateReadinessFromAgents(agents);
     if (aggregated === "ready" || aggregated === "partial_ready") {
@@ -183,9 +170,8 @@ export class KernelBootTracker {
     agents: KernelAgentStatus[],
   ): KernelState {
     if (agents.length === 0) {
-      // Bootstrap finished but no agents are registered yet (race
-      // window between session insert + status update). Keep state
-      // as booting so the operator sees progress, not a false ready.
+      // Bootstrap 已完成，但尚无已注册 agent（会话插入与状态更新之间的竞争窗口）。
+      // 保持 booting，使操作人员看到实际进度而非虚假 ready。
       return "booting";
     }
     const readyCount = agents.filter((a) => a.startupStatus === "ready").length;
@@ -202,9 +188,8 @@ export class KernelBootTracker {
       for (const rig of kernelRigs) {
         const sessions = this.deps.sessionRegistry.getSessionsForRig(rig.id);
         for (const s of sessions) {
-          // session-registry's Session shape carries startupStatus +
-          // sessionName; runtime comes from the node row. Read minimal
-          // fields here so the tracker doesn't pull in node-repository.
+          // session-registry 的 Session 结构携带 startupStatus + sessionName；runtime 来自 node 行。
+          // 此处只读取最少字段，避免追踪器引入 node-repository。
           out.push({
             sessionName: s.sessionName,
             runtime: (s as { runtime?: string }).runtime ?? "unknown",
@@ -214,9 +199,8 @@ export class KernelBootTracker {
       }
       return out;
     } catch {
-      // Tracker must NEVER throw — /api/kernel/status returning a
-      // valid envelope with empty agents[] is more useful than a 500
-      // when the DB has a transient hiccup.
+      // 追踪器绝不能抛错——数据库短暂异常时，/api/kernel/status 返回 agents[] 为空的有效信封，
+      // 比返回 500 更有用。
       return [];
     }
   }
@@ -226,7 +210,7 @@ export class KernelBootTracker {
     if (ms <= 0) return;
     this.cancelTimer();
     this.degradedTimer = setTimeout(() => this.checkDegraded(), ms);
-    // Allow the daemon to exit cleanly without waiting on the timer.
+    // 允许 daemon 无需等待计时器即可干净退出。
     if (typeof this.degradedTimer === "object" && "unref" in this.degradedTimer) {
       (this.degradedTimer as unknown as { unref(): void }).unref();
     }
@@ -246,10 +230,10 @@ export class KernelBootTracker {
         ? this.aggregateReadinessFromAgents(agents)
         : this.state;
     if (aggregated === "ready" || aggregated === "partial_ready") {
-      // Made it before the deadline; no degraded emission.
+      // 在截止时间前就绪，不发出降级事件。
       return;
     }
-    // Promote to degraded + emit telemetry exactly once.
+    // 提升为 degraded，并且只发出一次遥测。
     if (this.degradedEmitted) return;
     this.degradedEmitted = true;
     this.state = "degraded";
@@ -265,7 +249,7 @@ export class KernelBootTracker {
         detail: this.detail,
       });
     } catch {
-      // Best-effort telemetry; tracker must not throw.
+      // 尽力而为的遥测；追踪器不得抛错。
     }
   }
 }

@@ -8,7 +8,7 @@ export interface StoredNativePermissionSelection extends NativePermissionSelecti
   updatedAt: string;
 }
 
-/** The stable node owns the desired setting. Native history and current processes are untouched. */
+/** 期望设置归稳定节点所有；不修改原生历史记录和当前进程。 */
 export class NativePermissionStore {
   constructor(private readonly db: Database.Database) {}
 
@@ -19,7 +19,7 @@ export class NativePermissionStore {
     if (!row) return null;
     if ((row.runtime !== "codex" && row.runtime !== "claude-code") || !/^[A-Za-z][A-Za-z0-9_]*$/.test(row.mode)
       || (row.runtime === "codex" && row.mode !== "floor" && row.mode !== "full_bypass")) {
-      throw new Error("Invalid persisted native permission selection; launch refused.");
+      throw new Error("持久化的原生权限选择无效，已拒绝启动。");
     }
     return { runtime: row.runtime, mode: row.mode, actor: row.actor, reason: row.reason, updatedAt: row.updated_at };
   }
@@ -38,7 +38,7 @@ export class NativePermissionStore {
 
   apply(binding: NodeBinding, runtime: string): NodeBinding {
     const selection = this.read(binding.nodeId);
-    if (selection && selection.runtime !== runtime) throw new Error("Seat runtime changed since permission selection; explicitly select again or inherit.");
+    if (selection && selection.runtime !== runtime) throw new Error("权限选择后席位运行时已改变；请重新显式选择或继承设置。");
     return { ...binding, ...permissionBindingOverride(selection) };
   }
 }

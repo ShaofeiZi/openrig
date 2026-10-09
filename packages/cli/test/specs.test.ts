@@ -88,10 +88,10 @@ describe("Specs CLI", () => {
     cmd.configureOutput({ writeOut: (str) => logs.push(str), writeErr: (str) => logs.push(str) });
     cmd.outputHelp();
     const help = logs.join("");
-    expect(help).toContain("Browse, preview, and manage the spec library, including managed apps");
+    expect(help).toContain("浏览、预览和管理 spec 库，包括受管 app");
     expect(help).toContain("rig specs ls");
     expect(help).toContain("rig specs preview secrets-manager");
-    expect(help).toContain("Add a spec file or full spec directory to the user library");
+    expect(help).toContain("把 spec 文件或完整 spec 目录添加到用户库");
   });
 
   it("specs ls prints library entries", async () => {
@@ -122,7 +122,7 @@ describe("Specs CLI", () => {
   });
 
   it("specs show with ambiguous name errors with candidates", async () => {
-    // Create a server with duplicate names
+    // 创建一个带重名的 server
     const dupServer = http.createServer((req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify([
@@ -142,7 +142,7 @@ describe("Specs CLI", () => {
     });
     dupServer.close();
 
-    expect(logs.join("\n")).toContain("ambiguous");
+    expect(logs.join("\n")).toContain("有歧义");
     expect(exitCode).toBe(1);
   });
 
@@ -169,7 +169,7 @@ describe("Specs CLI", () => {
     dupServer.close();
 
     const output = logs.join("\n");
-    expect(output).toContain("Kind:     rig");
+    expect(output).toContain("类型：    rig");
     expect(output).toContain("/builtin/review-rig.yaml");
     expect(exitCode).toBeUndefined();
   });
@@ -179,7 +179,7 @@ describe("Specs CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "specs", "show", "missing-app"]);
     });
 
-    expect(logs.join("\n")).toContain("Run 'rig specs ls' to see available rigs, agents, workflows, and managed apps.");
+    expect(logs.join("\n")).toContain("运行 'rig specs ls' 查看可用的工作组、智能体、工作流与受管 app。");
     expect(exitCode).toBe(1);
   });
 
@@ -205,7 +205,7 @@ describe("Specs CLI", () => {
     const { join } = await import("node:path");
     const { tmpdir } = await import("node:os");
 
-    // Use temp OpenRig home to avoid polluting real ~/.openrig/specs/
+    // 使用临时 OpenRig home 以避免污染真实 ~/.openrig/specs/
     const tmpDir = mkdtempSync(join(tmpdir(), "specs-add-"));
     const specPath = join(tmpDir, "test-spec.yaml");
     writeFileSync(specPath, 'name: test-spec\nversion: "0.2"\npods: []\nedges: []\n');
@@ -246,7 +246,7 @@ describe("Specs CLI", () => {
 
     addServer.close();
 
-    // Verify it copied to temp HOME, not real HOME
+    // 验证其复制到临时 HOME，而非真实 HOME
     expect(existsSync(join(tmpDir, ".openrig", "specs", "test-spec.yaml"))).toBe(true);
 
     process.env["HOME"] = savedHome;
@@ -255,9 +255,9 @@ describe("Specs CLI", () => {
     rmSync(tmpDir, { recursive: true, force: true });
 
     const output = logs.join("\n");
-    expect(output).toContain("Added");
+    expect(output).toContain("已将");
     expect(output).toContain("test-spec");
-    expect(output).toContain("ID:");
+    expect(output).toContain("ID：");
   });
 
   it("specs add installs a full rig directory with adjacent resources", async () => {
@@ -350,7 +350,7 @@ describe("Specs CLI", () => {
       expect(existsSync(join(tmpDir, ".openrig", "specs", "building-openrig", "guidance", "builder.md"))).toBe(true);
       expect(existsSync(join(tmpDir, ".openrig", "specs", "building-openrig", "agents", "lead", "agent.yaml"))).toBe(true);
       expect(logs.join("\n")).toContain("building-openrig");
-      expect(logs.join("\n")).toContain("ID:");
+      expect(logs.join("\n")).toContain("ID：");
     } finally {
       addServer.close();
       process.env["HOME"] = savedHome;
@@ -366,7 +366,7 @@ describe("Specs CLI", () => {
     });
 
     expect(exitCode).toBeUndefined();
-    expect(logs.join("\n")).toContain("Removed");
+    expect(logs.join("\n")).toContain("已从库中移除");
     expect(logs.join("\n")).toContain("review-rig");
   });
 
@@ -376,7 +376,7 @@ describe("Specs CLI", () => {
     });
 
     expect(exitCode).toBeUndefined();
-    expect(logs.join("\n")).toContain("Renamed");
+    expect(logs.join("\n")).toContain("重命名为");
     expect(logs.join("\n")).toContain("renamed-rig");
   });
 });

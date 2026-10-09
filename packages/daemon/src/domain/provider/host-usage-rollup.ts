@@ -1,40 +1,34 @@
-// Slice-04 S-A (OPR.0.5.0.4, founder re-center amendment A2) — HOST-LEVEL USAGE ROLLUP.
+// Slice-04 S-A（OPR.0.5.0.4，创始人重新聚焦修订 A2）——主机级用量汇总。
 //
-// Usage is metered per account and this deployment runs ONE account per host, so a
-// usage-limit park is a HOST-level event. This module aggregates the seat-sourced
-// signal rows (C3 Claude statusline lane, sealed 5b56a2a4 · C4 Codex reactive lane,
-// sealed 6508330d) into ONE honest state row per (host, provider):
+// usage 按 account 计量，且此 deployment 每个 host 运行一个 account，因此 usage-limit park 是
+// host-level event。本模块将 seat-sourced signal row（C3 Claude statusline lane，sealed
+// 5b56a2a4；C4 Codex reactive lane，sealed 6508330d）聚合为每个（host、provider）一条诚实
+// 状态行：
 //
-//   ok | nearing | limited (until resets_at when known) | explicit_unknown
+//   ok | nearing | limited（已知 resets_at 时持续至该时刻）| explicit_unknown
 //
-// THE THREE BINDING HONESTY CONDITIONS (PM pattern check, verbatim-class):
-//   (i)  host==account is a DEPLOYMENT INVARIANT and every row SAYS so in its
-//        provenance — it is never presented as source-derived account
-//        classification (the C3 Option-A bar stands: the statusline carries no
-//        account identity and none is fabricated here). Rollup keys are
-//        (host, provider) ONLY; no account id/ref ever appears in a row.
-//   (ii) CONFLICTING seat windows on one host falsify the invariant for that
-//        host: they surface as a first-class `conflicting_seat_windows` anomaly
-//        plus an explicit_unknown host state — never a silent merge, never an
-//        averaged/fabricated number. The conflicting facts stay visible.
-//   (iii) usage-limit granularity rides ONLY what the C3 rows already carry
-//        (window / usedPercent / resetsAt / asOf) — nothing coerced, nothing
-//        invented. Codex has NO remaining-meter lane yet (C2 is a later seam),
-//        so codex state derives from fresh reactive EXHAUSTION evidence only,
-//        and its absence is an explicit unknown — never "ok" by silence.
+// 三个 BINDING 诚实条件（PM pattern check，verbatim-class）：
+//   (i)  host==account 是 deployment invariant，每个 row 都在 provenance 中明确说明——绝不把它
+//        呈现为 source-derived account classification（C3 Option-A 标准不变：statusline 不携带
+//        account identity，此处也不伪造）。Rollup key 仅为（host、provider）；row 中绝不出现
+//        account id/ref。
+//   (ii) 同一 host 上冲突的 seat window 会证伪该 host 的 invariant：以一等
+//        `conflicting_seat_windows` anomaly + explicit_unknown host state 呈现——绝不静默 merge，
+//        也绝不平均或伪造数值。冲突事实保持可见。
+//   (iii) usage-limit 粒度只使用 C3 row 已携带的数据（window / usedPercent / resetsAt / asOf）——
+//        不强制转换，也不虚构。Codex 尚无 remaining-meter lane（C2 是后续 seam），因此 codex
+//        state 只从 fresh reactive EXHAUSTION evidence 派生；缺失时明确 unknown，绝不因静默而“ok”。
 //
-// The single-daemon scope IS the host scope: rows carry host="local" (the
-// reserved local host id). Multi-host aggregation is explicitly out of scope
-// (the PRD's MH-lane later).
+// single-daemon scope 就是 host scope：row 携带 host="local"（保留的 local host id）。
+// multi-host aggregation 明确不在 scope 内（PRD 的后续 MH lane）。
 
 import type { ProviderKind, ProviderSignal, SignalWindow } from "./provider-types.js";
 
-/** Nearing = the shipped default advisory threshold on the C3-carried percentage. */
+/** Nearing = 对 C3 所携带百分比使用已交付的默认 advisory threshold。 */
 export const NEARING_THRESHOLD_PERCENT = 80;
 
-/** Same-window resets_at spread tolerated as sampling skew before it is a CONFLICT.
- *  Two seats on ONE account can read the same window seconds apart; two different
- *  accounts' reset schedules differ by far more than this. */
+/** same-window resets_at spread 在判为 CONFLICT 前允许作为 sampling skew。一个 account 上的两个
+ *  seat 可能相隔数秒读取同一 window；两个不同 account 的 reset schedule 差异远大于此。 */
 export const CONFLICTING_RESETS_EPSILON_MS = 120_000;
 
 export type HostUsageState = "ok" | "nearing" | "limited" | "explicit_unknown";
@@ -44,7 +38,7 @@ export interface HostUsageWindowFact {
   usedPercent?: number;
   resetsAt?: string;
   asOf: string;
-  /** The contributing seat (topology identity, never an account identity). */
+  /** 贡献数据的 seat（topology identity，绝不是 account identity）。 */
   seatSession?: string;
 }
 
@@ -57,20 +51,20 @@ export interface HostUsageConflictAnomaly {
 }
 
 export interface HostUsageRow {
-  /** The reserved LOCAL host id — this daemon's own scope (MH aggregation is out of scope). */
+  /** 保留的 LOCAL host id——此 daemon 自身 scope（MH aggregation 不在 scope 内）。 */
   host: "local";
   provider: ProviderKind;
   state: HostUsageState;
-  /** For `limited`: when the limit lifts, when the source carried it. Honest absence otherwise. */
+  /** 对 `limited`：source 携带时表示 limit 解除时间；否则诚实缺失。 */
   resetsAt?: string;
-  /** (iii) exactly the C3-carried granularity — never normalized-away, never invented. */
+  /** (iii) 精确保留 C3 携带的粒度——绝不 normalize 掉，也绝不虚构。 */
   windows: HostUsageWindowFact[];
   provenance: {
     basis: "one_account_per_host_deployment_invariant";
     note: string;
   };
   anomalies: HostUsageConflictAnomaly[];
-  /** Contributing evidence refs: seat sessions (C3) / labeled reactive events (C4). */
+  /** 贡献数据的 evidence ref：seat session（C3）/ 带 label 的 reactive event（C4）。 */
   evidenceSeats: string[];
   unknownReason?: string;
   asOf: string;
@@ -82,8 +76,8 @@ const PROVENANCE_NOTE =
 
 export interface HostUsageRollupInput {
   signals: ProviderSignal[];
-  /** Deployment presence for codex (auth profiles on disk) — presence without a meter is an
-   *  explicit unknown, never an omitted row (the blindside must be visible). */
+  /** codex 的 deployment presence（磁盘上的 auth profile）——存在但无 meter 时为显式 unknown，
+   *  绝不省略 row（blindside 必须可见）。 */
   codexProfilesPresent: boolean;
   now: string;
 }
@@ -100,11 +94,11 @@ export function rollupHostUsage(input: HostUsageRollupInput): HostUsageRow[] {
   return rows;
 }
 
-// ——— Claude: the C3 seat-keyed statusline lane (meter rows + explicit-unknown rows) ———
+// ——— Claude：C3 按 seat 索引的 statusline lane（meter row + explicit-unknown row）——————
 
 function rollupClaude(input: HostUsageRollupInput): HostUsageRow | null {
   const lane = input.signals.filter((s) => s.provider === "claude");
-  if (lane.length === 0) return null; // no claude deployment presence → no row
+  if (lane.length === 0) return null; // 无 claude deployment presence → 无 row
 
   const meterRows = lane.filter(
     (s) => s.sourceClass === "provider_statusline" && typeof s.usedPercent === "number",
@@ -130,15 +124,15 @@ function rollupClaude(input: HostUsageRollupInput): HostUsageRow | null {
   };
 
   if (meterRows.length === 0) {
-    // Only explicit-unknown seat rows (absent cache / pre-first-response / api-key):
-    // the host state is honestly unknown, carrying the lane's own reason.
+    // 只有 explicit-unknown seat row（cache 缺失 / 首次 response 前 / api-key）：host state 诚实地
+    // 为 unknown，并携带 lane 自身原因。
     const reason = lane.find((s) => s.unknownReason)?.unknownReason ?? "no_usable_claude_usage_rows";
     return { ...base, state: "explicit_unknown", unknownReason: reason };
   }
 
-  // (ii) conflict detection per window: under host==account, every seat reading the SAME
-  // window must see the SAME reset schedule (within sampling skew). A wider spread means
-  // the seats are watching DIFFERENT accounts — the invariant is falsified for this host.
+  // (ii) 按 window 检测 conflict：在 host==account 下，每个 seat 读取同一 window 时必须看到相同
+  // reset schedule（允许 sampling skew）。更大的 spread 表示 seat 正在观察不同 account——该 host
+  // 的 invariant 被证伪。
   const anomalies: HostUsageConflictAnomaly[] = [];
   const byWindow = new Map<string, ProviderSignal[]>();
   for (const s of meterRows) {
@@ -185,16 +179,16 @@ function rollupClaude(input: HostUsageRollupInput): HostUsageRow | null {
   return { ...base, state: "ok" };
 }
 
-// ——— Codex: the C4 reactive lane (exhaustion evidence only — no meter until C2) ———
+// ——— Codex：C4 reactive lane（仅 exhaustion evidence——C2 前无 meter）———————————
 
 function rollupCodex(input: HostUsageRollupInput): HostUsageRow | null {
   const lane = input.signals.filter((s) => s.provider === "codex");
-  if (lane.length === 0 && !input.codexProfilesPresent) return null; // no deployment presence
+  if (lane.length === 0 && !input.codexProfilesPresent) return null; // 无 deployment presence
 
   const nowMs = Date.parse(input.now);
-  // At-limit exhaustion evidence = a reactive_error event row the C4 tap marked as an
-  // actionable switch trigger (at_limit → allow_switch_decision; stream/stop errors are
-  // advisory and are NOT usage evidence). Freshness is inclusive-expiry (BR-2 class).
+  // at-limit exhaustion evidence = C4 tap 标记为 actionable switch trigger 的 reactive_error
+  // event row（at_limit → allow_switch_decision；stream/stop error 是 advisory，不是 usage
+  // evidence）。Freshness 采用 inclusive-expiry（BR-2 类）。
   const freshAtLimit = lane.filter(
     (s) =>
       s.sourceClass === "provider_event" &&
@@ -209,7 +203,7 @@ function rollupCodex(input: HostUsageRollupInput): HostUsageRow | null {
   const base: Omit<HostUsageRow, "state"> = {
     host: "local",
     provider: "codex",
-    windows: [], // (iii): codex carries no remaining-meter granularity yet — nothing is invented
+    windows: [], // (iii)：codex 尚无 remaining-meter 粒度——不虚构任何数据
     provenance: { basis: "one_account_per_host_deployment_invariant", note: PROVENANCE_NOTE },
     anomalies: [],
     evidenceSeats: freshAtLimit.map((s) => `reactive_event asOf=${s.asOf}`),

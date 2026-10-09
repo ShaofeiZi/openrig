@@ -1,11 +1,9 @@
-// V0.3.1 slice 12 walk-item 1 — useScopeMarkdown generalization tests.
+// V0.3.1 slice 12 walk-item 1——useScopeMarkdown 泛化测试。
 //
-// useScopeMarkdown(scopePath, filename) generalizes the slice-06 era
-// useSliceTimelineMarkdown to read any markdown file under any project
-// scope (mission, slice, workspace). The backward-compat shim at
-// useSliceTimelineMarkdown.ts is exercised separately; this file
-// exercises the generalized hook directly with the README.md and
-// PROGRESS.md filenames the Mission tabs consume.
+// useScopeMarkdown(scopePath, filename) 将 slice-06 时期的 useSliceTimelineMarkdown 泛化，
+// 可读取任意项目工作范围（任务目标、slice、工作区）下的任意 Markdown 文件。
+// useSliceTimelineMarkdown.ts 中的向后兼容垫片另行测试；本文件使用任务目标标签页消费的
+// README.md 与 PROGRESS.md 文件名直接验证泛化钩子。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor, cleanup } from "@testing-library/react";
@@ -133,9 +131,8 @@ describe("useScopeMarkdown — production wire honors arbitrary filename", () =>
   });
 
   it("returns unavailable=true when scopePath is null (no scope selected) — and issues ZERO file requests", async () => {
-    // OPR.0.4.6.MH2 guard-B1 — a null scope path must not even fetch
-    // /api/files/roots (remote-selected surfaces pass null; /api/files/*
-    // is local-only and excluded from the read-through).
+    // OPR.0.4.6.MH2 守卫 B1——工作范围路径为 null 时甚至不能获取 /api/files/roots；
+    // 选择远程目标的表面会传入 null，而 /api/files/* 仅限本地，不参与透传读取。
     fetchSpy.mockImplementation(async () => new Response(JSON.stringify({ roots: [] }), { status: 200 }));
     const { result } = renderHook(
       () => useScopeMarkdown(null, "README.md"),

@@ -9,6 +9,7 @@ import { displayTime, resolveTimeZone } from "../src/time.js";
 import { healthDetailLines } from "../src/health/health-model.js";
 import { workflowDetail } from "../src/execution/workflow-model.js";
 import { demoSnapshot } from "../src/demo-data.js";
+import { dropW, strWidth } from "../src/text-width.js";
 
 function fixture() {
   const snapshot = demoSnapshot();
@@ -25,8 +26,8 @@ function fixture() {
   return { snapshot, view };
 }
 
-describe("registry-backed command completion", () => {
-  it("offers registry commands and aliases without executing them", () => {
+describe("基于 registry 的命令补全", () => {
+  it("提供 registry 命令与 alias，但不执行", () => {
     const snapshot = emptySnapshot(); const view = createViewState({ instanceId: "c" });
     const ctx = { state: view.get(), snapshot };
     for (const entry of COMMAND_REGISTRY.filter((e) => !e.prefix)) for (const word of [entry.name, ...entry.aliases])
@@ -36,9 +37,9 @@ describe("registry-backed command completion", () => {
     expect(completeCommand("conf", ctx).line).toBe("config ");
     expect(completeCommand("ag", ctx).line).toBe("agent ");
     expect(view.get().section).toBe("topology");
-    expect(completeCommand("", ctx).message).toContain("matches");
+    expect(completeCommand("", ctx).message).toContain("匹配");
   });
-  it("narrows ambiguous prefixes and preserves unmatched text", () => {
+  it("收窄歧义前缀并保留未匹配文本", () => {
     const { snapshot, view } = fixture(); const ctx = { snapshot, state: view.get() };
     expect(completeCommand("s", ctx).candidates.length).toBeGreaterThan(1);
     expect(completeCommand("s", ctx).line).toBe("s");
@@ -48,7 +49,7 @@ describe("registry-backed command completion", () => {
     expect(completeCommand("scroll d", ctx).line).toBe("scroll down");
     expect(completeCommand("style braille-", ctx).line).toBe("style braille-fallback");
   });
-  it("offers only valid tabs and only workflows in the selected mission", () => {
+  it("只提供有效 tab 与所选 mission 中的 workflow", () => {
     const { snapshot, view } = fixture();
     view.dispatch(parseCommand(":connections"));
     expect(completeCommand("tab ", { snapshot, state: view.get() }).candidates).toEqual(["pulse"]);
@@ -58,7 +59,7 @@ describe("registry-backed command completion", () => {
     expect(completeCommand("workflow r", { snapshot, state: view.get() }).line).toBe("workflow run-1");
     expect(completeCommand("packet w", { snapshot, state: view.get() }).line).toBe("packet work-1");
   });
-  it("qualifies duplicate seats rather than choosing a twin", () => {
+  it("对重复席位做限定，而非选双胞胎", () => {
     const { snapshot, view } = fixture();
     const h = snapshot.hosts[0]!; const r = h.rigs[0]!;
     const a = r.pods[0]!.agents[0]!;
@@ -67,24 +68,24 @@ describe("registry-backed command completion", () => {
     expect(candidates).not.toContain(a.name);
     for (const name of candidates) { view.dispatch(parseCommand(`agent ${name}`)); expect(view.get().lastError).toBeNull(); }
   });
-  it("does not complete unavailable commands in recovery", () => {
+  it("recovery 下不补全不可用命令", () => {
     const view = createViewState({ instanceId: "c" }); const ctx = { state: view.get(), snapshot: emptySnapshot() };
     expect(completeCommand("con", ctx, "daemon-down").candidates).toEqual([]);
     expect(completeCommand("hel", ctx, "daemon-down").line).toBe("help");
   });
 });
 
-describe("keyboard stream boundaries", () => {
-  it("decodes Tab once, preserving neighboring text and backspace", () => {
+describe("键盘流边界", () => {
+  it("Tab 只解码一次，保留相邻文本与退格", () => {
     expect(decodeInput("ag\t\x7f")).toEqual([{ type: "char", ch: "a" }, { type: "char", ch: "g" }, { type: "key", key: "tab" }, { type: "key", key: "backspace" }]);
   });
-  it("does not flush an open paste on the bare-Escape key timer", () => {
+  it("不在裸 Escape 键定时器上刷新未完成的粘贴", () => {
     const decoder = createInputDecoder();
     expect(decoder.write("\x1b[200~slow paste")).toEqual([]);
     expect(decoder.hasPending()).toBe(false);
     expect(decoder.write(" continues\x1b[201~")).toEqual([{ type: "paste", text: "slow paste continues" }]);
   });
-  it("bracketed paste never becomes a shortcut, completion or submission at any byte split", () => {
+  it("bracketed paste 在任意字节切分下都不变成快捷键/补全/提交", () => {
     const bytes = Buffer.from("\x1b[200~q?界🙂\tnew\nline\x1b[201~");
     for (let split = 1; split < bytes.length; split++) {
       const decoder = createInputDecoder();
@@ -93,11 +94,11 @@ describe("keyboard stream boundaries", () => {
   });
 });
 
-describe("Recent play-by-play", () => {
+describe("Recent 逐项时间线", () => {
   it.each([140, 84])("keeps actor/change/subject/order readable at %i columns", (cols) => {
     const { snapshot, view } = fixture(); const before = JSON.stringify(snapshot.recentTransitions);
     const screen = renderScreen(view.get(), snapshot, { cols, rows: 140 });
-    const content = screen.lines.map((l) => l.slice(screen.explorerWidth + 2)).join("\n");
+    const content = screen.lines.map((l) => dropW(l, screen.explorerWidth + 1)).join("\n");
     const text = content.replace(/\s+/g, " ");
     expect(text).toContain("launch requested; result unconfirmed");
     expect(text).toContain("failed: destination unavailable");
@@ -105,12 +106,12 @@ describe("Recent play-by-play", () => {
     expect(text).toContain("without losing what happened");
     expect(text.indexOf("#31")).toBeLessThan(text.indexOf("#32"));
     expect(text.indexOf("#32")).toBeLessThan(text.indexOf("#33"));
-    expect(text).toContain("time unknown");
+    expect(text).toContain("时间未知");
     expect(JSON.stringify(snapshot.recentTransitions)).toBe(before);
     expect(screen.contentTargets.filter((t) => t.action.type === "recent-open")).toHaveLength(3);
-    expect(screen.lines.every((l) => l.length <= cols)).toBe(true);
+    expect(screen.lines.every((l) => strWidth(l) <= cols)).toBe(true);
   });
-  it("opens the exact record, keeps it through refresh, and returns to the prior scroll", () => {
+  it("打开确切记录，刷新后保留，并回到先前滚动位置", () => {
     const { snapshot, view } = fixture();
     view.dispatch({ type: "layout", contentMaxOffset: 20, contentTargetCount: 3 });
     view.dispatch({ type: "content-scroll", delta: 7 });
@@ -122,23 +123,23 @@ describe("Recent play-by-play", () => {
     const back = resolveEscapeAction({ type: "key", key: "escape" }, view.get());
     expect(back).toEqual({ type: "back" }); view.dispatch(back!);
     expect(view.get()).toMatchObject({ recentOpen: null, viewTab: "recent", contentOffset: 7 });
-    view.dispatch(parseCommand("recent 31")); expect(view.get().lastError).toContain("outside");
+    view.dispatch(parseCommand("recent 31")); expect(view.get().lastError).toContain("已服务近期窗口");
   });
 });
 
-describe("named local time", () => {
-  it("uses Pacific winter and summer offsets, not the machine timezone", () => {
+describe("命名本地时间", () => {
+  it("用 Pacific 冬/夏令偏移，而非机器时区", () => {
     expect(displayTime("2026-01-15T20:00:00Z")).toBe("2026-01-15 12:00:00 PST");
     expect(displayTime("2026-07-15T20:00:00Z")).toBe("2026-07-15 13:00:00 PDT");
     expect(displayTime("2026-01-15 20:00:00")).toBe("2026-01-15 12:00:00 PST");
     expect(displayTime("2026-07-15T20:00:00Z", "Europe/London")).toBe("2026-07-15 21:00:00 GMT+1");
   });
-  it("does not invent an instant or hide invalid timezone configuration", () => {
-    for (const bad of [null, "", "nonsense", "2026-01-15T20:00:00", "2026-13-15T20:00:00Z", "2026-02-30T20:00:00Z", "2026-01-15T24:00:00Z"]) expect(displayTime(bad)).toBe("time unknown");
-    expect(resolveTimeZone("Mars/Olympus")).toMatchObject({ timeZone: "America/Los_Angeles", warning: expect.stringContaining("invalid") });
-    expect(displayTime("2026-07-15T20:00:00Z", "Mars/Olympus")).toContain("fallback");
+  it("不伪造时刻，也不隐藏无效时区配置", () => {
+    for (const bad of [null, "", "nonsense", "2026-01-15T20:00:00", "2026-13-15T20:00:00Z", "2026-02-30T20:00:00Z", "2026-01-15T24:00:00Z"]) expect(displayTime(bad)).toBe("时间未知");
+    expect(resolveTimeZone("Mars/Olympus")).toMatchObject({ timeZone: "America/Los_Angeles", warning: expect.stringContaining("无效") });
+    expect(displayTime("2026-07-15T20:00:00Z", "Mars/Olympus")).toContain("时区回退");
   });
-  it("uses the chosen zone in workflow, health and Recent", () => {
+  it("在 workflow、health 与 Recent 使用所选时区", () => {
     const { snapshot } = fixture(); const ts = "2026-07-15T20:00:00Z";
     const view = createViewState({ instanceId: "z", timeZone: "Europe/London", getSnapshot: () => snapshot });
     view.dispatch(parseCommand("recent 32"));
@@ -149,6 +150,6 @@ describe("named local time", () => {
     expect(healthDetailLines(snapshot, "h", 100, "Europe/London").map((l) => l.text).join("\n")).toContain("21:00:00 GMT+1");
     view.dispatch(parseCommand("timezone"));
     const help = renderScreen(view.get(), snapshot, { cols: 100, rows: 50 }).lines.join("\n");
-    expect(help).toContain("rig config set ui.timezone Europe/London");
+    expect(help).toContain("zrig config set ui.timezone Europe/London");
   });
 });

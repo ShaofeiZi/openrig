@@ -8,12 +8,12 @@ const LONG_RUNNING_TIMEOUT_MS = 45_000;
 
 export function envCommand(depsOverride?: StatusDeps): Command {
   const cmd = new Command("env")
-    .description("Inspect and control rig environment services for service-backed rigs and managed apps")
+    .description("查看并控制服务型工作组的环境服务与受管应用")
     .addHelpText("after", `
-Examples:
-  rig env status secrets-manager
-  rig env logs secrets-manager vault
-  rig env down secrets-manager
+示例：
+  zrig env status secrets-manager
+  zrig env logs secrets-manager vault
+  zrig env down secrets-manager
 `);
   const getDeps = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
@@ -26,15 +26,15 @@ Examples:
   async function resolveRigId(client: DaemonClient, rigRef: string): Promise<string> {
     const summaries = await client.get<Array<{ id: string; name: string }>>("/api/rigs/summary");
     const match = summaries.data.find((r) => r.name === rigRef || r.id === rigRef);
-    if (!match) throw new Error(`Rig '${rigRef}' not found`);
+    if (!match) throw new Error(`未找到工作组 '${rigRef}'`);
     return match.id;
   }
 
-  // rig env status <rig>
+  // zrig env status <rig>
   cmd
     .command("status")
-    .argument("<rig>", "Rig name or ID")
-    .option("--json", "JSON output")
+    .argument("<rig>", "工作组名或 ID")
+    .option("--json", "以 JSON 输出")
     .action(async (rig: string, opts: { json?: boolean }) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -53,32 +53,32 @@ Examples:
       }
 
       if (!res.data["hasServices"]) {
-        console.log("No services configured for this rig.");
+        console.log("该工作组未配置任何服务。");
         return;
       }
 
       const receipt = res.data["receipt"] as Record<string, unknown> | null;
       if (!receipt) {
-        console.log("Services configured but no receipt available yet.");
+        console.log("已配置服务，但回执尚未生成。");
         return;
       }
 
-      console.log(`Env: ${res.data["kind"]} (${res.data["projectName"]})`);
+      console.log(`环境：${res.data["kind"]}（${res.data["projectName"]}）`);
       const services = receipt["services"] as Array<{ name: string; status: string; health?: string | null }>;
       if (services) {
         for (const svc of services) {
-          const health = svc.health ? ` (${svc.health})` : "";
-          console.log(`  ${svc.name}: ${svc.status}${health}`);
+          const health = svc.health ? `（${svc.health}）` : "";
+          console.log(`  ${svc.name}：${svc.status}${health}`);
         }
       }
     });
 
-  // rig env logs <rig> [service]
+  // zrig env logs <rig> [service]
   cmd
     .command("logs")
-    .argument("<rig>", "Rig name or ID")
-    .argument("[service]", "Specific service name")
-    .option("--tail <n>", "Number of lines", "100")
+    .argument("<rig>", "工作组名或 ID")
+    .argument("[service]", "指定服务名")
+    .option("--tail <n>", "显示行数", "100")
     .action(async (rig: string, service: string | undefined, opts: { tail: string }) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -97,7 +97,7 @@ Examples:
       );
 
       if (res.status >= 400 || !res.data.ok) {
-        console.error(res.data.error ?? `Failed to get logs (HTTP ${res.status})`);
+        console.error(res.data.error ?? `日志获取失败（HTTP ${res.status}）`);
         process.exitCode = 1;
         return;
       }
@@ -105,11 +105,11 @@ Examples:
       console.log(res.data.output ?? "");
     });
 
-  // rig env down <rig> [--volumes]
+  // zrig env down <rig> [--volumes]
   cmd
     .command("down")
-    .argument("<rig>", "Rig name or ID")
-    .option("--volumes", "Also remove volumes")
+    .argument("<rig>", "工作组名或 ID")
+    .option("--volumes", "同时删除数据卷")
     .action(async (rig: string, opts: { volumes?: boolean }) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -127,12 +127,12 @@ Examples:
       );
 
       if (res.status >= 400 || !res.data.ok) {
-        console.error(res.data.error ?? `Failed to stop services (HTTP ${res.status})`);
+        console.error(res.data.error ?? `服务停止失败（HTTP ${res.status}）`);
         process.exitCode = 1;
         return;
       }
 
-      console.log(`Services stopped for ${rig}.`);
+      console.log(`已停止 ${rig} 的服务。`);
     });
 
   return cmd;

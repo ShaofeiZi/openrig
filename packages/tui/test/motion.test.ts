@@ -1,6 +1,6 @@
-// ROUND-3 mr7 — the MOTION design language mechanics (sign-off = open item c;
-// these pins cover the MECHANICS + discipline: reduced-motion everywhere,
-// max ONE persistent animation per region, honest fallbacks).
+// ROUND-3 mr7——MOTION 设计语言机制（签收 = open item c；
+// 这些锚点覆盖机制 + 纪律：处处 reduced-motion、
+// 每区最多一个持久动画、诚实回退）。
 import { describe, it, expect } from "vitest";
 import { reducedMotion, spinnerFrame, flashActive, barCells } from "../src/motion.js";
 import { computeExplorerRows, createViewState } from "../src/state.js";
@@ -9,27 +9,27 @@ import { stylizeLines } from "../src/stylize.js";
 import { createStyle, stripAnsi } from "../src/theme.js";
 import { demoSnapshot } from "../src/demo-data.js";
 
-describe("motion primitives", () => {
-  it("reducedMotion honors the env kill-switch", () => {
+describe("motion 原语", () => {
+  it("reducedMotion 遵守 env 终止开关", () => {
     expect(reducedMotion({ OPENRIG_REDUCED_MOTION: "1" })).toBe(true);
     expect(reducedMotion({ REDUCED_MOTION: "1" })).toBe(true);
     expect(reducedMotion({})).toBe(false);
   });
 
-  it("spinner: braille frames in truecolor/256, line frames at 16-color, STATIC dot under reduced motion", () => {
+  it("spinner：truecolor/256 用 braille 帧，16-color 用 line 帧，reduced motion 下静态点", () => {
     expect(spinnerFrame(0, "truecolor", false)).toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
     expect(spinnerFrame(1, "truecolor", false)).not.toBe(spinnerFrame(0, "truecolor", false)); // animates
     expect(spinnerFrame(0, "16", false)).toMatch(/[|\/\-\\]/); // 16-color fallback
     expect(spinnerFrame(5, "truecolor", true)).toBe("·"); // reduced: static, honest
   });
 
-  it("flashActive is ONE-SHOT: true within the window, false after, never under reduced motion", () => {
+  it("flashActive 一次性：窗口内 true，之后 false，reduced motion 下绝不为 true", () => {
     expect(flashActive(1000, 1300, 600, false)).toBe(true);
     expect(flashActive(1000, 1700, 600, false)).toBe(false);
     expect(flashActive(1000, 1300, 600, true)).toBe(false);
   });
 
-  it("barCells renders REAL fractions only — null/NaN gives no bar, never a fabricated fill", () => {
+  it("barCells 只渲染真实分数——null/NaN 不给条，绝不伪造填充", () => {
     expect(barCells(0.5, 10)).toBe("█████░░░░░");
     expect(barCells(0, 10)).toBe("░░░░░░░░░░");
     expect(barCells(1, 10)).toBe("██████████");
@@ -38,33 +38,33 @@ describe("motion primitives", () => {
   });
 });
 
-describe("motion wiring + region discipline", () => {
+describe("motion 接线 + 区域纪律", () => {
   const snap = demoSnapshot();
-  it("unavailable Attention stays static and does not pulse legacy operational signals", () => {
+  it("不可用 Attention 保持静态，不脉冲遗留运营信号", () => {
     const s = createViewState({ instanceId: "m", getSnapshot: () => snap });
     s.dispatch({ type: "jump", section: "needs" });
     const screen = renderScreen(s.get(), snap, { cols: 140, rows: 34 });
     const styled = stylizeLines(screen, createStyle("truecolor"));
     const body = styled.join("\n");
-    expect(body).toContain("Unavailable: Feed");
+    expect(body).toContain("不可用: 待关注");
     expect(body).not.toContain("⚑");
     expect(body).not.toMatch(/\x1b\[(?:\d+;)*5(?:;\d+)*m/);
     expect(screen.motionActive).toBeFalsy();
     styled.forEach((l, i) => expect(stripAnsi(l)).toBe(screen.lines[i]));
   });
 
-  it("the detail context line shows a quiet DETERMINATE bar for the real ctx fraction (and none when unknown)", () => {
+  it("详情上下文行对真实 ctx 分数显示安静确定条（未知时无）", () => {
     const s = createViewState({ instanceId: "m2", getSnapshot: () => snap });
     s.dispatch({ type: "drill", resource: "agent", name: "dev50.driver", target: { host: "vm-host", rig: "openrig-build", pod: "dev50" } });
     const body = renderScreen(s.get(), snap, { cols: 150, rows: 40 }).lines.join("\n");
-    expect(body).toMatch(/62% used[^\n]*[█░]{10}/); // driver ctx 62 → a real 10-cell bar
+    expect(body).toMatch(/62% 已用[^\n]*[█░]{10}/); // driver ctx 62 → a real bar
     const s2 = createViewState({ instanceId: "m3", getSnapshot: () => snap });
     s2.dispatch({ type: "drill", resource: "agent", name: "dev50.qa", target: { host: "vm-host", rig: "openrig-build", pod: "dev50" } });
     const body2 = renderScreen(s2.get(), snap, { cols: 150, rows: 40 }).lines.join("\n");
-    expect(body2).not.toMatch(/— \(not yet known\)[^\n]*█/); // no fabricated bar
+    expect(body2).not.toMatch(/— \(尚未知\)[^\n]*█/); // no fabricated bar
   });
 
-  it("typing keeps command focus steady without terminal-dependent blink", () => {
+  it("输入保持命令焦点稳定，无终端相关闪烁", () => {
     const s = createViewState({ instanceId: "m4", getSnapshot: () => snap });
     const screen = renderScreen(s.get(), snap, { cols: 140, rows: 34 }, "rig x");
     const styled = stylizeLines(screen, createStyle("truecolor"));
@@ -73,7 +73,7 @@ describe("motion wiring + region discipline", () => {
   });
 });
 
-describe("motion rides the LOAD LIFECYCLE — guard round-5 finding 1 (spinner = real in-flight state, never data absence)", () => {
+describe("motion 跟随加载生命周期——guard round-5 finding 1（spinner=真实 in-flight 状态，绝非数据缺失）", () => {
   const snap = demoSnapshot();
   const LOADING = { inFlight: true, settled: false } as const;
   function graphTabStore(base = snap) {
@@ -84,113 +84,113 @@ describe("motion rides the LOAD LIFECYCLE — guard round-5 finding 1 (spinner =
     return { s, noGraph };
   }
 
-  it("IN-FLIGHT + unanswered graph: the spinner renders and ANIMATES, marking the screen motion-active", () => {
+  it("in-flight + 未应答 graph：spinner 渲染并动画，标记屏幕 motion-active", () => {
     const { s, noGraph } = graphTabStore();
     const at = (nowMs: number) =>
-      renderScreen(s.get(), noGraph, { cols: 140, rows: 34, nowMs, colorMode: "truecolor", load: LOADING }).lines.find((l) => l.includes("read pending"))!;
+      renderScreen(s.get(), noGraph, { cols: 140, rows: 34, nowMs, colorMode: "truecolor", load: LOADING }).lines.find((l) => l.includes("读取挂起"))!;
     const f0 = at(0);
     const f1 = at(500);
-    expect(f0).toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] topology read pending/);
+    expect(f0).toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] 拓扑 读取挂起/);
     expect(f1).not.toBe(f0); // frame/time transition
     const screen = renderScreen(s.get(), noGraph, { cols: 140, rows: 34, nowMs: 0, colorMode: "truecolor", load: LOADING });
     expect(screen.motionActive).toBe(true); // the entry loop keeps redrawing while loading
   });
 
-  it("SETTLED absence does NOT spin: proven-empty renders a static honest-empty line (default options = settled)", () => {
+  it("settled 缺失不转：proven-empty 渲染静态诚实空行（默认选项=settled）", () => {
     const { s, noGraph } = graphTabStore();
     const screen = renderScreen(s.get(), noGraph, { cols: 140, rows: 34, nowMs: 0, colorMode: "truecolor" });
-    const line = screen.lines.find((l) => l.includes("topology graph"))!;
-    expect(line).toMatch(/no topology graph served/);
+    const line = screen.lines.find((l) => l.includes("未服务拓扑图"))!;
+    expect(line).toMatch(/未服务拓扑图 — 诚实空/);
     expect(line).not.toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏·] /);
     expect(screen.motionActive).toBeFalsy(); // nothing animates over settled truth
   });
 
-  it("SETTLED NAMED read failure does not spin: the graph line reports the failure statically", () => {
+  it("settled 具名读取失败不转：graph 行静态报告失败", () => {
     const { s, noGraph } = graphTabStore();
     noGraph.readErrors.push("graph(openrig-build): fetch failed");
     const screen = renderScreen(s.get(), noGraph, { cols: 140, rows: 34, nowMs: 0, colorMode: "truecolor" });
-    const line = screen.lines.find((l) => l.includes("topology graph"))!;
-    expect(line).toMatch(/✕ topology graph read failed/);
+    const line = screen.lines.find((l) => l.includes("拓扑图读取失败"))!;
+    expect(line).toMatch(/✕ 拓扑图读取失败/);
     expect(line).not.toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
     expect(screen.motionActive).toBeFalsy();
   });
 
-  it("SPECS: in-flight spins, settled proven-empty and settled named failure render static", () => {
+  it("SPECS：in-flight 转，settled proven-empty 与 settled 具名失败静态渲染", () => {
     const empty = structuredClone(snap);
     empty.specs = [];
     const s = createViewState({ instanceId: "sl", getSnapshot: () => empty });
     s.dispatch({ type: "jump", section: "specs" });
     const loading = renderScreen(s.get(), empty, { cols: 140, rows: 34, nowMs: 0, colorMode: "truecolor", load: LOADING }).lines.join("\n");
-    expect(loading).toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] specs read pending/);
+    expect(loading).toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] 规范 读取挂起/);
     const settled = renderScreen(s.get(), empty, { cols: 140, rows: 34, nowMs: 0, colorMode: "truecolor" });
-    expect(settled.lines.join("\n")).toMatch(/library empty — proven/);
+    expect(settled.lines.join("\n")).toMatch(/库为空 — 已证明/);
     expect(settled.motionActive).toBeFalsy();
     empty.readErrors.push("specs-library: boom");
     const failed = renderScreen(s.get(), empty, { cols: 140, rows: 34, nowMs: 0, colorMode: "truecolor" });
-    expect(failed.lines.join("\n")).toMatch(/✕ library read failed/);
+    expect(failed.lines.join("\n")).toMatch(/✕ 库读取失败/);
     expect(failed.motionActive).toBeFalsy();
   });
 
-  it("Attention source absence is pending until its first read settles", () => {
+  it("Attention 源缺失在首次读取 settle 前为 pending", () => {
     const unprobed = { ...structuredClone(snap), humanQueueProbed: false, needs: [] };
     const s = createViewState({ instanceId: "hq", getSnapshot: () => unprobed });
     s.dispatch({ type: "jump", section: "needs" });
     const loading = renderScreen(s.get(), unprobed, { cols: 140, rows: 34, nowMs: 0, colorMode: "truecolor", load: LOADING }).lines.join("\n");
-    expect(loading).toContain("feed read pending");
-    expect(loading).not.toContain("Unavailable:");
-    expect(loading).not.toContain("No current items");
+    expect(loading).toContain("待关注 读取挂起");
+    expect(loading).not.toContain("不可用:");
+    expect(loading).not.toContain("无当前项");
     const settled = renderScreen(s.get(), unprobed, { cols: 140, rows: 34, nowMs: 0, colorMode: "truecolor" });
-    const line = settled.lines.find((l) => l.includes("Unavailable: Feed"))!;
-    expect(line).toContain("sources have not answered");
-    expect(line).not.toMatch(/read pending|[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
+    const line = settled.lines.find((l) => l.includes("不可用: 待关注"))!;
+    expect(line).toContain("源尚未应答");
+    expect(line).not.toMatch(/读取挂起|[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/);
     expect(settled.motionActive).toBeFalsy();
   });
 
-  it("16-color in-flight renders the LINE spinner; reduced motion renders the honest static dot and no motion-active", () => {
+  it("16-color in-flight 渲染 LINE spinner；reduced motion 渲染诚实静态点，无 motion-active", () => {
     const { s, noGraph } = graphTabStore();
-    const line16 = renderScreen(s.get(), noGraph, { cols: 140, rows: 34, nowMs: 0, colorMode: "16", load: LOADING }).lines.find((l) => l.includes("read pending"))!;
-    expect(line16).toMatch(/[|/\-\\] topology read pending/);
+    const line16 = renderScreen(s.get(), noGraph, { cols: 140, rows: 34, nowMs: 0, colorMode: "16", load: LOADING }).lines.find((l) => l.includes("读取挂起"))!;
+    expect(line16).toMatch(/[|/\-\\] 拓扑 读取挂起/);
     process.env["OPENRIG_REDUCED_MOTION"] = "1";
     try {
       const reduced = renderScreen(s.get(), noGraph, { cols: 140, rows: 34, nowMs: 0, colorMode: "truecolor", load: LOADING });
-      expect(reduced.lines.find((l) => l.includes("read pending"))!).toMatch(/· topology read pending/);
+      expect(reduced.lines.find((l) => l.includes("读取挂起"))!).toMatch(/· 拓扑 读取挂起/);
       expect(reduced.motionActive).toBeFalsy();
     } finally {
       delete process.env["OPENRIG_REDUCED_MOTION"];
     }
   });
 
-  it("Attention animates only its current read while its own sources are pending", () => {
+  it("Attention 自身源 pending 时只动画当前读取", () => {
     const probing = { ...structuredClone(snap), humanQueueProbed: false };
     const s = createViewState({ instanceId: "rd", getSnapshot: () => probing });
     s.dispatch({ type: "jump", section: "needs" });
     const screen = renderScreen(s.get(), probing, { cols: 140, rows: 34, nowMs: 0, colorMode: "truecolor", load: LOADING });
-    expect(screen.lines.join("\n")).toContain("feed read pending");
-    expect(screen.lines.join("\n")).not.toContain("Unavailable: Feed");
+    expect(screen.lines.join("\n")).toContain("待关注 读取挂起");
+    expect(screen.lines.join("\n")).not.toContain("不可用: 待关注");
     expect(screen.motionActive).toBe(true);
   });
 });
 
-describe("fresh pane-output ROW FLASH — guard round-5 finding 2 (exact agent row, never the ambient stream footer)", () => {
+describe("新鲜 pane-output 行闪烁——guard round-5 finding 2（确切 agent 行，绝非环境流 footer）", () => {
   const snap = demoSnapshot();
   const DRIVER_KEY = "agent:vm-host/openrig-build/dev50/dev50.driver";
-  // inverse = a STANDALONE SGR param 7 (never the 7 inside e.g. 77;189;178)
+  // inverse = 独立 SGR 参数 7（绝非 e.g. 77;189;178 里的那个 7）
   const INVERSE = /\x1b\[(?:[0-9;]+;)?7(?:;[0-9;]+)?m/;
   function agentRowsStore() {
     const s = createViewState({ instanceId: "fl", getSnapshot: () => snap });
-    // drilling the pod auto-expands it — agent rows become visible explorer rows
+    // drill pod 自动展开它——agent 行变为可见 explorer 行
     s.dispatch({ type: "drill", resource: "pod", name: "dev50", target: { host: "vm-host", rig: "openrig-build" } });
     return s;
   }
 
-  it("an in-window flash inverse-paints EXACTLY the flashed agent's explorer row and marks motion-active", () => {
+  it("窗口内闪烁恰好反色被闪 agent 的 explorer 行，并标 motion-active", () => {
     const s = agentRowsStore();
     const screen = renderScreen(s.get(), snap, { cols: 140, rows: 34, nowMs: 1300, rowFlashes: [{ key: DRIVER_KEY, at: 1000 }] });
     expect(screen.flashRows).toHaveLength(1);
     const y = screen.flashRows![0]!;
     expect(screen.explorerRows.find((row) => row.y === y)?.key).toBe(DRIVER_KEY); // exact-row targeting
-    // round-6 (guard finding 2): the PLAIN layer carries the stable ack glyph
-    // too — the event stays observable in NO_COLOR, never SGR-only
+    // round-6（guard finding 2）：PLAIN 层也带稳定 ack 字形
+    // ——事件在 NO_COLOR 下仍可观察，绝非仅 SGR
     expect(screen.lines[y - 1]!.startsWith("≈")).toBe(true);
     expect(screen.motionActive).toBe(true); // the expiry redraw is scheduled off this
     const styled = stylizeLines(screen, createStyle("truecolor"));
@@ -200,18 +200,18 @@ describe("fresh pane-output ROW FLASH — guard round-5 finding 2 (exact agent r
     styled.forEach((l, i) => expect(stripAnsi(l)).toBe(screen.lines[i]));
   });
 
-  it("the flash is ONE-SHOT: past the window both the inverse and the ack glyph are gone", () => {
+  it("闪烁一次性：过窗口后反色与 ack 字形都消失", () => {
     const s = agentRowsStore();
     const after = renderScreen(s.get(), snap, { cols: 140, rows: 34, nowMs: 1700, rowFlashes: [{ key: DRIVER_KEY, at: 1000 }] });
     expect(after.flashRows ?? []).toHaveLength(0);
-    // the driver's OWN row is back to normal paint (the content-pane selection
-    // bar legitimately uses inverse elsewhere — scope the pin to the row)
+    // driver 自己的行恢复正常绘制（content 窗格选择条
+    // 在他处合法用 inverse——把锚点限定到该行）
     const driverIdx = after.explorerRows.find((row) => row.key === DRIVER_KEY)!.y - 1;
     expect(stylizeLines(after, createStyle("truecolor"))[driverIdx]!).not.toMatch(INVERSE);
     expect(after.lines[driverIdx]!.startsWith("≈")).toBe(false); // the ack expires cleanly too
   });
 
-  it("reduced motion keeps a STABLE static fresh-output acknowledgement — plain-layer glyph, no SGR flash, no geometry drift (guard round-6 finding 2)", () => {
+  it("reduced motion 保持稳定静态新鲜输出确认——纯层字形，无 SGR 闪烁，无几何漂移（guard round-6 finding 2）", () => {
     const s = agentRowsStore();
     const base = renderScreen(s.get(), snap, { cols: 140, rows: 34, nowMs: 1300 }); // same frame, no event
     process.env["OPENRIG_REDUCED_MOTION"] = "1";
@@ -224,9 +224,9 @@ describe("fresh pane-output ROW FLASH — guard round-5 finding 2 (exact agent r
       expect(reduced.lines[y]!.slice(1)).toBe(base.lines[y]!.slice(1).replace(/[\u280b\u2819\u2839\u2838\u283c\u2834\u2826\u2827\u2807\u280f]/, "●")); // reduced motion also freezes the approved working mark
       expect(reduced.hitMap).toEqual(base.hitMap); // no hit-map drift
       expect(reduced.motionActive).toBe(true); // one bounded expiry redraw is scheduled — the ack settles cleanly
-      // NO_COLOR: the acknowledgement is glyph/text, never SGR-only
+      // NO_COLOR：确认是字形/文本，绝非仅 SGR
       expect(stylizeLines(reduced, createStyle("none"))[y]!).toContain("≈");
-      // expiry under reduced motion too
+      // reduced-motion 下同样过期
       const after = renderScreen(s.get(), snap, { cols: 140, rows: 34, nowMs: 1700, rowFlashes: [{ key: DRIVER_KEY, at: 1000 }] });
       expect(after.lines[y]!.startsWith("≈")).toBe(false);
       expect(after.motionActive).toBeFalsy();
@@ -235,7 +235,7 @@ describe("fresh pane-output ROW FLASH — guard round-5 finding 2 (exact agent r
     }
   });
 
-  it("SELECTED agent × fresh event × reduced motion: selection stays visible AND the ack is a distinct stable signal; expiry returns to the exact baseline (guard round-7 collision matrix)", () => {
+  it("选中 agent × 新鲜事件 × reduced motion：选择保持可见且 ack 为不同稳定信号；过期返回确切基线（guard round-7 碰撞矩阵）", () => {
     const s = agentRowsStore();
     const idx = computeExplorerRows(s.get(), snap).findIndex((r) => r.key === DRIVER_KEY);
     expect(idx).toBeGreaterThan(0);
@@ -259,7 +259,7 @@ describe("fresh pane-output ROW FLASH — guard round-5 finding 2 (exact agent r
     }
   });
 
-  it("the ambient rig-stream footer ticker NEVER inverse-flashes (round-4 wiring rejected: wrong event source)", () => {
+  it("环境 rig-stream footer ticker 绝不反色闪烁（round-4 接线已拒绝：错误事件源）", () => {
     const s = createViewState({ instanceId: "ft", getSnapshot: () => snap }); // footer ticker is on by default
     const screen = renderScreen(s.get(), snap, { cols: 140, rows: 34, nowMs: 1300 });
     const styled = stylizeLines(screen, createStyle("truecolor"));

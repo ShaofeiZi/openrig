@@ -1,17 +1,14 @@
-// 51-08 A3 — the over-time query + top-N burn projection over usage_samples.
+// 51-08 A3——usage_samples 的时序 query + top-N burn projection。
 //
-// ONE projection serves the HTTP route and the CLI (PM decisions 3+4): the rig
-// serves FACTS — raw rows, token deltas, per-window velocities, sample spans —
-// and the detector/edge owns thresholds and judgments (serve the fact, derive
-// at the edge; no fifth copy of tier constants).
+// 同一个 projection 服务 HTTP route 与 CLI（PM 决策 3+4）：工作组提供事实——raw row、token delta、
+// per-window velocity、sample span——detector/edge 负责 threshold 与 judgment（提供事实，在边缘
+// 推导；不复制第五份 tier constant）。
 //
-// HONESTY RAILS (contract item 5): a seat without enough in-window samples is
-// an explicit `unknown` entry with its reason — never a fabricated zero row. A
-// totals reset (session restart) never produces negative burn: consecutive
-// POSITIVE deltas sum; resets are counted and reported as a fact.
+// 诚实性边界（contract 第 5 项）：窗口内 sample 不足的 seat 是带 reason 的显式 `unknown` entry，
+// 绝不是伪造的零值 row。total reset（session restart）绝不会产生负 burn：累加连续正 delta，
+// reset 次数作为事实计数并报告。
 //
-// OPTION-A BAR: rows carry seat/node identity only; no account field exists in
-// any served shape.
+// OPTION-A 边界：row 只携带 seat/node identity；所有服务 shape 均无 account field。
 import type { Database } from "better-sqlite3";
 
 export interface UsageSeriesQuery {
@@ -38,8 +35,8 @@ export interface UsageSeriesRow {
   resetsAt: string | null;
 }
 
-/** Serve the RAW stored rows, oldest first. Bounds are absolute on captured_at
- *  (since inclusive-of-later, i.e. `>=`; until exclusive `<`). */
+/** 提供原始存储 row，最旧项优先。边界绝对作用于 captured_at
+ *  （since 包含等于及之后，即 `>=`；until 不含等于，即 `<`）。 */
 export function queryUsageSeries(db: Database, q: UsageSeriesQuery): UsageSeriesRow[] {
   const where: string[] = [];
   const params: unknown[] = [];
@@ -86,20 +83,20 @@ export interface WindowVelocity {
   window: string;
   usedPercentFirst: number | null;
   usedPercentLast: number | null;
-  /** percent-points per hour over the actual sample span; null when unmeasurable */
+  /** 实际 sample span 上的每小时百分点；无法测量时为 null */
   percentPerHour: number | null;
   resetsAt: string | null;
 }
 
 export interface SeatBurn {
   seatSession: string;
-  /** summed POSITIVE consecutive token deltas over the actual sample span, per hour */
+  /** 实际 sample span 内连续正 token delta 的总和，按小时折算 */
   tokensPerHour: number;
-  /** total positive token delta inside the window */
+  /** window 内正 token delta 总量 */
   tokensDelta: number;
-  /** count of negative total-token transitions (session restarts) inside the window */
+  /** window 内 total-token 负向 transition（session restart）的数量 */
   resets: number;
-  /** actual span between first and last in-window context sample, hours */
+  /** window 内首尾 context sample 的实际间隔，单位为小时 */
   spanHours: number;
   samples: number;
   windows: WindowVelocity[];
@@ -115,7 +112,7 @@ export interface TopBurnResult {
   sinceIso: string;
   ranked: SeatBurn[];
   unknown: UnknownSeat[];
-  /** total seats that ranked BEFORE the topN cap — truncation is never silent */
+  /** 应用 topN 上限前参与排名的 seat 总数——截断绝不静默 */
   totalRankedSeats: number;
 }
 
@@ -123,7 +120,7 @@ function hoursBetween(aIso: string, bIso: string): number {
   return (new Date(bIso).getTime() - new Date(aIso).getTime()) / 3_600_000;
 }
 
-/** The money question: top-N seats by token burn over the last H hours. */
+/** 核心问题：过去 H 小时内按 token burn 排名前 N 的 seat。 */
 export function computeTopBurn(db: Database, q: TopBurnQuery): TopBurnResult {
   const sinceIso = new Date(new Date(q.nowIso).getTime() - q.windowHours * 3_600_000).toISOString();
 
@@ -137,7 +134,7 @@ export function computeTopBurn(db: Database, q: TopBurnQuery): TopBurnResult {
   for (const seat of seats) {
     const ctx = queryUsageSeries(db, { seatSession: seat, lane: "context", sinceIso });
     if (ctx.length === 0) {
-      // history exists (the seat appeared in the census) but nothing fresh
+      // history 存在（seat 曾出现在 census 中），但没有新鲜数据
       unknown.push({ seatSession: seat, reason: "no_fresh_samples" });
       continue;
     }
@@ -152,7 +149,7 @@ export function computeTopBurn(db: Database, q: TopBurnQuery): TopBurnResult {
       const cur = (ctx[i]!.totalInputTokens ?? 0) + (ctx[i]!.totalOutputTokens ?? 0);
       const delta = cur - prev;
       if (delta >= 0) tokensDelta += delta;
-      else resets += 1; // a restart dropped the totals — never a negative burn
+      else resets += 1; // restart 使 total 下降——绝不产生负 burn
     }
     const spanHours = hoursBetween(ctx[0]!.capturedAt, ctx[ctx.length - 1]!.capturedAt);
     const tokensPerHour = spanHours > 0 ? tokensDelta / spanHours : 0;

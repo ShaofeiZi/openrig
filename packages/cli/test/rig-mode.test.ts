@@ -1,13 +1,10 @@
 // Slice 09 (OPR.0.3.2.9) — `rig policy` CLI tests.
 //
-// HG-4 / HG-7 anchored at the CLI layer:
-//   - HG-7: `rig policy set <mode>` WITHOUT --confirm restates the
-//     proposed binding and exits 2; daemon is NOT called.
-//   - HG-7: bare-word + `mode:` prefix BOTH normalize to a valid mode.
-//   - HG-4: with --confirm + --bearer, an Authorization header is sent
-//     on the PUT.
-//   - HG-3: `rig policy effective` surfaces Q6 unknown_posture cleanly
-//     when no binding matches.
+// HG-4 / HG-7 锚定在 CLI 层：
+//   - HG-7：不带 --confirm 的 `rig policy set <mode>` 重述提议的绑定并退出 2；不调用 daemon。
+//   - HG-7：裸词与 `mode:` 前缀都归一化为合法 mode。
+//   - HG-4：带 --confirm + --bearer 时，PUT 上发送 Authorization header。
+//   - HG-3：无绑定匹配时，`rig policy effective` 干净地浮出 Q6 unknown_posture。
 //   - Citation helper format matches convention §Citation Rules
 //     (short-prose with mode + scope(:qualifier) + operator source).
 
@@ -129,7 +126,7 @@ describe("formatCitation (Component 5)", () => {
     });
     expect(line).toContain("`debug`");
     expect(line).toContain("`qitem:q-1`");
-    expect(line).toContain("operator");
+    expect(line).toContain("操作人员");
     expect(line).toContain("2026-05-17T00:00:00.000Z");
   });
   it("omits qualifier when null (global_host)", () => {
@@ -154,7 +151,7 @@ describe("rig policy set — restate-and-confirm gate (HG-7)", () => {
     expect(process.exitCode).toBe(2);
     const puts = calls.filter((c) => c.method === "PUT");
     expect(puts).toHaveLength(0);
-    expect(logs.join("\n")).toContain("Proposed binding (restate-and-confirm — NOT applied)");
+    expect(logs.join("\n")).toContain("提议的绑定（复述并确认——未应用）");
     expect(logs.join("\n")).toContain("debug");
   });
 
@@ -185,7 +182,7 @@ describe("rig policy set — restate-and-confirm gate (HG-7)", () => {
     // BLOCKING-1: record must NOT carry `mode` inside.
     expect(putBody.record.mode).toBeUndefined();
     expect(putBody.record.scope).toBe("qitem");
-    expect(logs.join("\n")).toContain("Operating in `debug` mode at `qitem:q-1`");
+    expect(logs.join("\n")).toContain("已设置：qitem:q-1");
   });
 
   it("HG-4: --bearer forwards Authorization: Bearer <token>", async () => {
@@ -213,7 +210,7 @@ describe("rig policy set — restate-and-confirm gate (HG-7)", () => {
     await cmd.parseAsync(["node", "rig", "set", "banana", "--qualifier", "q-1"]);
     expect(process.exitCode).toBe(1);
     expect(calls.filter((c) => c.method === "PUT")).toHaveLength(0);
-    expect(errs.join("\n")).toMatch(/Unknown mode/);
+    expect(errs.join("\n")).toMatch(/未知模式/);
   });
 
   it("forwards 401 from daemon with operator hint", async () => {
@@ -221,7 +218,7 @@ describe("rig policy set — restate-and-confirm gate (HG-7)", () => {
     const cmd = rigModeCommand(deps(client));
     await cmd.parseAsync(["node", "rig", "set", "debug", "--qualifier", "q-1", "--confirm"]);
     expect(process.exitCode).toBe(1);
-    expect(errs.join("\n")).toMatch(/Unauthorized/);
+    expect(errs.join("\n")).toMatch(/未授权/);
   });
 });
 
@@ -239,7 +236,7 @@ describe("rig policy cite — convention citation rules", () => {
     const { client } = fakeClient({});
     const cmd = rigModeCommand(deps(client));
     await cmd.parseAsync(["node", "rig", "cite", "--qitem", "q-1"]);
-    expect(logs.join("\n")).toContain("without an explicit");
+    expect(logs.join("\n")).toContain("在没有显式");
   });
 
   it("emits citation line when a binding resolves", async () => {
@@ -265,7 +262,7 @@ describe("rig policy cite — convention citation rules", () => {
     const cmd = rigModeCommand(deps(client));
     await cmd.parseAsync(["node", "rig", "cite", "--qitem", "q-1"]);
     const line = logs.join("\n");
-    expect(line).toMatch(/Operating in `debug` mode at `qitem:q-1` per operator/);
+    expect(line).toMatch(/按操作人员在 `qitem:q-1` 以 `debug` 模式运行/);
   });
 });
 
@@ -279,7 +276,7 @@ describe("normalizeScopeQualifier (CLI mirror of daemon-route parseScopeAndQuali
   it("global_host + explicit qualifier → REJECTED (no silent drop)", () => {
     const r = normalizeScopeQualifier("global_host", "unexpected");
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.message).toMatch(/Global-host bindings cannot carry a qualifier/);
+    if (!r.ok) expect(r.message).toMatch(/global_host 绑定不能带 qualifier/);
   });
   it("rig + qualifier → ok with the qualifier", () => {
     const r = normalizeScopeQualifier("rig", "rig-a");
@@ -289,7 +286,7 @@ describe("normalizeScopeQualifier (CLI mirror of daemon-route parseScopeAndQuali
   it("rig + no qualifier → rejected (qualifier_required)", () => {
     const r = normalizeScopeQualifier("rig", undefined);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.message).toMatch(/requires a qualifier/);
+    if (!r.ok) expect(r.message).toMatch(/需要 qualifier/);
   });
 });
 
@@ -301,7 +298,7 @@ describe("BLOCKING re-verify-2 (qitem-20260518045300): explicit --scope global_h
     expect(process.exitCode).toBe(1);
     // BLOCKING re-verify-2 evidence: zero daemon calls of any kind.
     expect(calls).toHaveLength(0);
-    expect(errs.join("\n")).toMatch(/Global-host bindings cannot carry a qualifier/);
+    expect(errs.join("\n")).toMatch(/global_host 绑定不能带 qualifier/);
     expect(logs.join("\n")).not.toContain("Proposed binding");
   });
 
@@ -311,7 +308,7 @@ describe("BLOCKING re-verify-2 (qitem-20260518045300): explicit --scope global_h
     await cmd.parseAsync(["node", "rig", "set", "sleep", "--scope", "global_host", "--qualifier", "unexpected", "--confirm"]);
     expect(process.exitCode).toBe(1);
     expect(calls).toHaveLength(0);
-    expect(errs.join("\n")).toMatch(/Global-host bindings cannot carry a qualifier/);
+    expect(errs.join("\n")).toMatch(/global_host 绑定不能带 qualifier/);
   });
 
   it("WITH --json: emits ok:false + qualifier_invalid; zero daemon calls", async () => {
@@ -331,7 +328,7 @@ describe("BLOCKING re-verify-2 (qitem-20260518045300): explicit --scope global_h
     await cmd.parseAsync(["node", "rig", "set", "debug", "--scope", "rig"]);
     expect(process.exitCode).toBe(1);
     expect(calls).toHaveLength(0);
-    expect(errs.join("\n")).toMatch(/requires a qualifier/);
+    expect(errs.join("\n")).toMatch(/需要 qualifier/);
   });
 
   it("Explicit unknown scope rejected locally: zero daemon calls", async () => {
@@ -340,7 +337,7 @@ describe("BLOCKING re-verify-2 (qitem-20260518045300): explicit --scope global_h
     await cmd.parseAsync(["node", "rig", "set", "debug", "--scope", "banana", "--qualifier", "q-1"]);
     expect(process.exitCode).toBe(1);
     expect(calls).toHaveLength(0);
-    expect(errs.join("\n")).toMatch(/Unknown scope 'banana'/);
+    expect(errs.join("\n")).toMatch(/未知范围 'banana'/);
   });
 
   it("Positive: set sleep --scope global_host --confirm → PUT /bindings/global_host (one GET /defaults + one PUT)", async () => {
@@ -371,7 +368,7 @@ describe("BLOCKING re-verify-2 (qitem-20260518045300): explicit --scope global_h
     await cmd.parseAsync(["node", "rig", "set", "debug"]);
     expect(process.exitCode).toBe(1);
     expect(calls.filter((c) => c.method === "PUT")).toHaveLength(0);
-    expect(errs.join("\n")).toMatch(/requires a qualifier/);
+    expect(errs.join("\n")).toMatch(/需要 qualifier/);
   });
 });
 
@@ -402,7 +399,7 @@ describe("rig policy unset — operator-only DELETE", () => {
     await cmd.parseAsync(["node", "rig", "unset", "global_host", "unexpected"]);
     expect(process.exitCode).toBe(1);
     expect(calls.filter((c) => c.method === "DELETE")).toHaveLength(0);
-    expect(errs.join("\n")).toMatch(/Global-host bindings cannot carry a qualifier/);
+    expect(errs.join("\n")).toMatch(/global_host 绑定不能带 qualifier/);
   });
 
   it("Positive: unset global_host (no qualifier) targets /bindings/global_host", async () => {

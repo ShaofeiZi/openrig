@@ -1,0 +1,10 @@
+使用 zrig 安装并启动托管应用 "acme-build"。
+
+关于：带专用构建席位与健康检查的示例托管应用
+
+来源：/specs/rigs/build.yaml
+
+步骤：
+1. 运行：zrig up acme-build
+2. 监控：zrig ps --nodes --rig acme-build
+3. 检查环境：zrig env status <rig-name>

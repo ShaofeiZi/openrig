@@ -32,8 +32,8 @@ export interface Node {
   runtime: string | null;
   model: string | null;
   codexConfigProfile?: string | null;
-  /** OPR.0.4.8.3 Seam B: attached permission_policy REF (builtin:<name> or spec-relative custom
-   *  path), or null when none is attached (= the floor). */
+  /** OPR.0.4.8.3 接缝 B：附加的 permission_policy 引用（builtin:<name> 或相对
+   * 规范的自定义路径）；未附加时为 null（即采用下限）。 */
   permissionPolicy?: string | null;
   cwd: string | null;
   surfaceHint: string | null;
@@ -44,7 +44,7 @@ export interface Node {
   agentRef: string | null;
   profile: string | null;
   label: string | null;
-  /** Exact validated RigSpec declaration retained for export/recreate fidelity. */
+  /** 保留经过校验的精确 RigSpec 声明，确保导出/重建保真。 */
   sessionSource?: SessionSourceSpec | null;
   resolvedSpecName: string | null;
   resolvedSpecVersion: string | null;
@@ -86,9 +86,9 @@ export interface Session {
   status: string;
   resumeType: string | null;
   resumeToken: string | null;
-  // OPR.0.4.3.20 FR-3/FR-6 — resume ledger provenance + verification freshness.
-  // Optional so pre-45 rows and old serialized snapshots degrade (undefined →
-  // treated as missing/unverified in the restore plan), never a crash.
+  // OPR.0.4.3.20 FR-3/FR-6——恢复台账来源与验证新鲜度。
+  // 字段可选，使迁移 45 前的记录和旧序列化快照安全降级（undefined 在恢复计划中
+  // 视为缺失/未验证），绝不崩溃。
   resumeProvenance?: string | null;
   resumeLastVerified?: string | null;
   resumeLastProbeStatus?: string | null;
@@ -100,14 +100,14 @@ export interface Session {
   startupCompletedAt: string | null;
 }
 
-// -- Event types --
+// -- 事件类型 --
 
 export type RigEvent =
   | { type: "proof.judged" | "proof.sources_changed"; scope: string; revision: string }
   | { type: "event.delivery_poisoned"; poisonedSeq: number; error: string; payloadSha: string }
   | { type: "rig.created"; rigId: string }
-  // B8 / slice-07 A3 — the durable model-divergence proclamation record: effective vs pinned at the
-  // earliest reliable read, with every channel's delivery outcome (delivered/failed/deferred) named.
+  // B8 / slice-07 A3——持久化的模型偏差声明记录：在最早可靠读取时对比实际模型与固定模型，
+  // 并明确记录每个通道的投递结果（delivered/failed/deferred）。
   | {
       type: "seat.model_divergence";
       rigId: string;
@@ -125,8 +125,8 @@ export type RigEvent =
   | { type: "binding.updated"; rigId: string; nodeId: string }
   | { type: "session.status_changed"; rigId: string; nodeId: string; status: string }
   | { type: "session.detached"; rigId: string; nodeId: string; sessionName: string }
-  // S5 (OPR.0.5.4.7) — seat-lifecycle audit trail: the three supported seat verbs each persist
-  // their mutation with actor + reason in the same transaction as the mutation itself.
+  // S5（OPR.0.5.4.7）——席位生命周期审计轨迹：三个受支持的席位动作都在执行
+  // 修改的同一事务中持久化 actor 与 reason。
   | { type: "node.model_changed"; rigId: string; nodeId: string; logicalId: string; from: string | null; to: string; reason: string; operator: string | null }
   | { type: "node.permissions_changed"; rigId: string; nodeId: string; from: unknown; to: unknown; actor: string; reason: string; source: "seat_selection"; effect: "future_launches_only" }
   | { type: "session.stopped"; rigId: string; nodeId: string; sessionName: string; reason: string; operator: string | null }
@@ -140,109 +140,97 @@ export type RigEvent =
   | { type: "restore.completed"; rigId: string; snapshotId: string; result: RestoreResult }
   | { type: "restore.subset_completed"; rigId: string; snapshotId: string; result: RestoreResult }
   | { type: "node.held"; rigId: string; nodeId: string; logicalId: string; reason: string }
-  // L3: appended (never replaces) when reconcileNodeRuntimeTruth upgrades a
-  // failed/attention_required restoreOutcome to operator_recovered after
-  // visible-runtime-evidence preconditions hold. The original failure event
-  // is preserved in the log; this event records the audit trail of the upgrade.
+  // L3：reconcileNodeRuntimeTruth 在可见运行时证据前提成立后，将 failed/
+  // attention_required 的 restoreOutcome 升级为 operator_recovered 时追加此事件
+  // （绝不替换）。原失败事件保留在日志中；本事件记录升级审计轨迹。
   | { type: "restore.outcome_reconciled"; rigId: string; nodeId: string; attemptId: number; from: "failed" | "attention_required"; to: "operator_recovered"; evidence: { tmux: boolean; fgProcess: "claude" | "codex" | string; resumeTokenUsed: boolean; paneState: "usable" } | { source: string; reason?: string; kind?: string; state?: string; runtimeCwdVerified?: boolean } }
   | { type: "agent.activity"; rigId: string; nodeId: string; sessionName: string; runtime: string | null; activity: AgentActivity }
-  // OPR.0.4.1.10 — audit record for a --dangerously-interact send that drove a target's interactive
-  // prompt / permission block. overrideReason = caller's --reason; detectedReason/evidenceSource =
-  // what the classifier saw (kept distinct so permission_prompt vs selection_prompt vs unknown stays visible).
+  // OPR.0.4.1.10 —— --dangerously-interact 发送触发目标交互提示/权限阻塞时的审计记录。
+  // overrideReason = 调用方的 --reason；detectedReason/evidenceSource = 分类器观察结果。
+  // 二者保持分离，使 permission_prompt、selection_prompt 与 unknown 的差异可见。
   | { type: "transport.prompt_override"; rigId: string; nodeId: string; sessionName: string; actorSession: string | null; detectedState: string; detectedReason: string; evidenceSource: string; overrideReason: string | null }
-  // OPR.0.4.6.PI1 FR-5 — "rpc" provenance is ADDITIVE: Pi session identity comes
-  // from the pi-runner's RPC get_state / typed events, never pane scraping.
+  // OPR.0.4.6.PI1 FR-5 —— "rpc" 来源是加法字段：Pi 会话身份来自 pi-runner 的
+  // RPC get_state/类型化事件，绝不来自 pane 抓取。
   | { type: "agent.session_identity"; rigId: string; nodeId: string; sessionName: string; runtime: string; sessionId: string; provenance: "hook" | "scrape" | "rpc" }
-  // OPR.0.4.0.22 — append-only audit of a managed resume-token write. Emitted
-  // on an operator set (`operator_set`) and on reconcile capture-on-adopt
-  // (`reconcile_capture`). NEVER carries the raw token (credential-class);
-  // `redacted: true` marks that the token value is intentionally omitted.
+  // OPR.0.4.0.22 —— 托管恢复令牌写入的仅追加审计。操作员设置（`operator_set`）
+  // 和对账时的接管捕获（`reconcile_capture`）都会发送。绝不携带凭据级原始令牌；
+  // `redacted: true` 表示令牌值被有意省略。
   | { type: "session.resume_token_set"; rigId: string; nodeId: string; sessionName: string; sessionId: string; resumeType: string; previousProvenance: "hook" | "scrape" | "operator" | null; newProvenance: "operator" | "scrape"; source: "operator_set" | "reconcile_capture"; reason?: string; operator?: string; redacted: true }
-  // OPR.0.4.3.20 FR-3 — append-only observability of an adoption-boundary
-  // resume-token capture (reconcile / adopt / bind). `captured` records a
-  // successful persist (provenance "adoption"); `preserved` records that a valid
-  // token WAS derived but the provenance guard refused the write because a
-  // higher-rank token (hook/operator) already exists — the ledger is correctly
-  // kept and the event must NOT falsely claim a captured adoption write;
-  // `skipped` records an honest failure (the seat SHOULD have resumed but the
-  // token was not derivable) with a stated reason — the "surfaced loudly, no
-  // silent gap" AC. Terminal/unknown runtimes are exempt and emit NO event.
-  // Carries resumeType/provenance, never the raw token (`redacted: true` = the
-  // token value is intentionally omitted; this is observability, NOT a
-  // secret-boundary control — resume tokens are not treated as secret per the
-  // 2026-07-02 founder ruling).
+  // OPR.0.4.3.20 FR-3 —— 接管边界恢复令牌捕获（reconcile/adopt/bind）的仅追加
+  // 可观测记录。`captured` 表示成功持久化（来源为 "adoption"）；`preserved` 表示
+  // 已派生有效令牌，但来源守卫因已有更高等级令牌（hook/operator）拒绝写入，台账
+  // 被正确保留，事件不能谎称发生了接管写入；`skipped` 以明确原因记录如实失败：
+  // 席位本应恢复，但无法派生令牌，对应“明确呈现、无静默缺口”的验收标准。
+  // terminal/unknown 运行时免于处理且不发事件。事件携带 resumeType/provenance，
+  // 绝不携带原始令牌；`redacted: true` 表示有意省略令牌值。这属于可观测性，
+  // 不是密钥边界控制；依据 2026-07-02 创始人裁定，恢复令牌不按密钥处理。
   | { type: "session.resume_token_captured"; rigId: string; nodeId: string; sessionName: string; sessionId: string; runtime: string; outcome: "captured" | "preserved" | "skipped"; resumeType?: string; provenance?: "adoption"; reason?: "missing_sidecar" | "parse_error" | "probe_timeout" | "invalid_token" | "higher_rank_present"; redacted: true }
   | { type: "seat.attention_cleared"; rigId: string; nodeId: string; sessionName: string; from: string; to: "ready"; clearedBy: "evidence" | "operator_attestation"; evidence?: { kind: string; state?: string; reason?: string }; reason?: string; previousError: string | null }
   | { type: "rig.imported"; rigId: string; specName: string; specVersion: string }
-  // Package events (cross-rig, no rigId)
+  // 包事件（跨工作组，无 rigId）。
   | { type: "package.validated"; packageName: string; valid: boolean }
   | { type: "package.planned"; packageName: string; actionable: number; deferred: number; conflicts: number }
   | { type: "package.installed"; packageName: string; packageVersion: string; installId: string; applied: number; deferred: number }
   | { type: "package.rolledback"; installId: string; restored: number }
   | { type: "package.install_failed"; packageName: string; code: string; message: string }
-  // Bootstrap events (cross-rig, no rigId)
+  // 引导事件（跨工作组，无 rigId）。
   | { type: "bootstrap.planned"; runId: string; sourceRef: string; stages: number }
   | { type: "bootstrap.started"; runId: string; sourceRef: string }
   | { type: "bootstrap.completed"; runId: string; rigId: string; sourceRef: string }
   | { type: "bootstrap.partial"; runId: string; sourceRef: string; rigId?: string; completed: number; failed: number }
   | { type: "bootstrap.failed"; runId: string; sourceRef: string; error: string }
-  // Discovery events (cross-rig, no rigId)
+  // 发现事件（跨工作组，无 rigId）。
   | { type: "session.discovered"; discoveredId: string; tmuxSession: string; tmuxPane: string; runtimeHint: string; confidence: string }
   | { type: "session.vanished"; tmuxSession: string; tmuxPane: string }
   | { type: "node.claimed"; rigId: string; nodeId: string; logicalId: string; discoveredId: string }
-  // OPR.0.3.4.3 — a live (hand-resumed) canonical session adopted back into its
-  // persisted node WITHOUT launch/relaunch/input. Distinct from node.claimed so
-  // the operator is never misled about which op happened.
+  // OPR.0.3.4.3——将一个实时（手动恢复的）规范会话重新采纳到其持久化节点中，
+  // 不启动、不重新启动，也不输入。与 node.claimed 区分，避免误导操作者实际执行了哪种操作。
   | { type: "node.reconciled"; rigId: string; nodeId: string; logicalId: string; sessionName: string }
   | { type: "seat.handover_completed"; rigId: string; nodeId: string; logicalId: string; previousOccupant: string; currentOccupant: string; source: string; reason: string; operator: string | null;
-      /** OPR.0.5.5.5 (fix B2) — the executed source outcome, persisted so the DURABLE
-       *  record (not just the command response) carries what primed the successor:
-       *  fork provenance, or rebuild's exact primed set / gaps / empty-chain reason. */
+      /** OPR.0.5.5.5（修复 B2）——已执行的来源结果。持久化后，持久记录（不仅是命令响应）
+       *  会携带用于预热后继者的内容：fork 来源，或 rebuild 的精确预热集合、缺口与空链原因。 */
       sourceOutcome?:
         | { mode: "fork"; forkedFrom: string }
         | { mode: "rebuild"; primedArtifacts: Array<{ address: string; label: string }>; gaps: string[]; emptyChainReason?: string } }
-  // Bundle events (cross-rig)
+  // Bundle 事件（跨工作组）。
   | { type: "bundle.created"; bundleName: string; bundleVersion: string; archiveHash: string }
-  // Teardown events
+  // 拆除事件。
   | { type: "rig.stopped"; rigId: string }
-  // OPR.0.3.3.19 - rig archive affordance (soft, reversible; NOT a delete)
+  // OPR.0.3.3.19 —— 工作组归档能力（软操作、可逆，并非删除）。
   | { type: "rig.archived"; rigId: string }
   | { type: "rig.unarchived"; rigId: string }
-  // AgentSpec reboot events — pods + startup + continuity
+  // AgentSpec 重启事件——pod、启动和连续性。
   | { type: "pod.created"; rigId: string; podId: string; namespace: string; label: string }
   | { type: "pod.deleted"; rigId: string; podId: string }
   | { type: "node.startup_pending"; rigId: string; nodeId: string; startupProof?: StartupProofSelection }
   | { type: "node.startup_ready"; rigId: string; nodeId: string }
   | { type: "node.startup_failed"; rigId: string; nodeId: string; error: string; sessionId?: string; freshContextPending?: boolean }
-  // OPR.0.4.3.06 — startup proof (challenge-verified orientation). Append-only.
-  // `node.startup_challenged` freezes this launch's challenge ground truth
-  // (challengeId + contractHash; the expected answer is recomputed, never
-  // stored). `node.startup_proof_verified`/`_rejected` are the verified/rejected
-  // evidence; `node.startup_proof_skipped` retires a previous challenge on a
-  // lean launch. None route through updateStartupStatus; `ready` never means oriented.
+  // OPR.0.4.3.06——启动证明（经挑战验证的定向），仅追加。
+  // `node.startup_challenged` 冻结本次启动的挑战真相（challengeId + contractHash；
+  // 预期答案每次重算，从不存储）。`node.startup_proof_verified`/`_rejected` 是已验证/
+  // 已拒绝证据；`node.startup_proof_skipped` 在精简启动时退役此前挑战。它们都不经过
+  // updateStartupStatus；`ready` 从不表示已完成定向。
   | { type: "node.startup_challenged"; rigId: string; nodeId: string; challengeId: string; contractHash: string }
   | { type: "node.startup_proof_skipped"; rigId: string; nodeId: string; reason: "not_selected" | "terminal" }
   | { type: "node.startup_proof_verified"; rigId: string; nodeId: string; sessionId: string; challengeId: string; contractHash: string }
   | { type: "node.startup_proof_rejected"; rigId: string; nodeId: string; challengeId: string | null; reason: "identity_unbound" | "identity_mismatch" | "challenge_stale" | "contract_mismatch" | "bare_ack" }
   | { type: "continuity.sync"; rigId: string; podId: string; nodeId: string }
   | { type: "continuity.degraded"; rigId: string; podId: string; nodeId: string; reason: string }
-  // V0.3.1 slice 05 kernel-rig-as-default — forward-fix #3 architectural.
-  // Emitted exactly once by KernelBootTracker when the kernel rig fails to
-  // reach ready / partial_ready within the configurable degraded-timer
-  // window (default 90s). Observability signal that healthz bound cleanly
-  // but the kernel itself is stuck — operator triage with `rig ps --rig kernel`.
+  // V0.3.1 slice 05 kernel-rig-as-default —— 前向修复 #3 的架构事件。
+  // kernel 工作组未能在可配置的降级计时窗口（默认 90 秒）内达到 ready/
+  // partial_ready 时，由 KernelBootTracker 恰好发送一次。该可观测信号表示 healthz
+  // 已成功绑定，但 kernel 自身卡住；操作员可用 `zrig ps --rig kernel` 排查。
   | { type: "kernel.agent.degraded"; agents: Array<{ sessionName: string; runtime: string; startupStatus: string }>; firstUnreadySince: string | null; detail: string | null }
-  // Chat events
+  // 聊天事件。
   | { type: "chat.message"; rigId: string; messageId: string; sender: string; kind: string; body: string; topic?: string }
-  // Expansion events
+  // 扩展事件。
   | { type: "rig.expanded"; rigId: string; podId: string; podNamespace: string; nodes: Array<{ logicalId: string; status: string }>; status: string }
-  // Coordination primitive (PL-004 Phase A) — stream / queue / inbox.
-  // Host-scoped; rigId is left null because items reference seats by string
-  // (`<member>@<rig>`) and can cross rigs.
+  // 协同原语（PL-004 Phase A）——stream/queue/inbox。
+  // 范围按主机限定；rigId 保持 null，因为条目用字符串（`<member>@<rig>`）引用
+  // 席位，并且可能跨工作组。
   | { type: "stream.emitted"; streamItemId: string; sourceSession: string; hintDestination: string | null; hintType: string | null; hintUrgency: string | null; interrupt: boolean }
-  // OPR.0.4.4.19 FR-1: every queue.* payload carries the qitem's summary
-  // (null for legacy/omitted — always present, never absent, so consumers
-  // can title feed cards without a second fetch).
+  // OPR.0.4.4.19 FR-1：每个 queue.* 负载都携带 qitem 摘要。旧版或省略时为 null，
+  // 但字段始终存在，使消费者无需二次获取即可为动态卡片设置标题。
   | { type: "queue.created"; qitemId: string; sourceSession: string; destinationSession: string; priority: string; tier: string | null; summary: string | null }
   | { type: "queue.handed_off"; qitemId: string; fromSession: string; toSession: string; closureReason: "handed_off_to"; summary: string | null }
   | { type: "queue.claimed"; qitemId: string; destinationSession: string; claimedAt: string; closureRequiredAt: string | null; summary: string | null }
@@ -251,38 +239,34 @@ export type RigEvent =
   | { type: "qitem.closure_overdue"; qitemId: string; destinationSession: string; closureRequiredAt: string; overdueSince: string }
   | { type: "inbox.absorbed"; inboxId: string; destinationSession: string; senderSession: string; promotedQitemId: string }
   | { type: "inbox.denied"; inboxId: string; destinationSession: string; senderSession: string; reason: string }
-  // PL-004 Phase B R2: queue.updated emitted from QueueRepository.update()
-  // for general state mutations (pending → blocked, in-progress → done,
-  // closure transitions, etc.). Lets the view-event-bridge wake SSE
-  // consumers on /api/views/:name/sse when ANY queue state mutation
-  // changes a view result-set, not just create/handoff/claim/unclaim.
+  // PL-004 Phase B R2：QueueRepository.update() 在一般状态变更（pending → blocked、
+  // in-progress → done、关闭转换等）时发送 queue.updated。任何队列状态变更导致视图
+  // 结果集变化时，view-event-bridge 都可唤醒 /api/views/:name/sse 的 SSE 消费者，
+  // 而不只限于 create/handoff/claim/unclaim。
   | { type: "queue.updated"; qitemId: string; fromState: string; toState: string; closureReason: string | null; closureTarget: string | null; actorSession: string; summary: string | null }
-  // Coordination primitive (PL-004 Phase B) — project (classifier) / view.
-  // project.classified: emitted when a stream item is successfully projected.
-  // classifier.lease_*: lifecycle of the daemon-enforced single-writer lease.
-  // classifier.dead: heartbeat absence past TTL detected (deadness inference).
-  // classifier.reclaimed: operator-verb reclaim took the lease.
-  // view.changed: a view's projection result-set changed (SSE consumers see deltas).
+  // 协同原语（PL-004 Phase B）——project（classifier）/view。
+  // project.classified：stream 条目成功投影时发送。
+  // classifier.lease_*：后台服务强制单写者租约的生命周期。
+  // classifier.dead：检测到心跳缺失超过 TTL（失活推断）。
+  // classifier.reclaimed：操作员命令已回收租约。
+  // view.changed：视图投影结果集变化（SSE 消费者可见增量）。
   | { type: "project.classified"; projectId: string; streamItemId: string; classifierSession: string; classificationType: string | null; classificationDestination: string | null }
   | { type: "classifier.lease_acquired"; leaseId: string; classifierSession: string; acquiredAt: string; expiresAt: string }
   | { type: "classifier.lease_expired"; leaseId: string; classifierSession: string; expiredAt: string }
   | { type: "classifier.dead"; leaseId: string; classifierSession: string; lastHeartbeat: string; detectedAt: string }
   | { type: "classifier.reclaimed"; leaseId: string; previousClassifierSession: string; reclaimedBySession: string; reason: string; reclaimedAt: string }
   | { type: "view.changed"; viewName: string; cause: string }
-  // PL-004 Phase C: daemon-native Watchdog supervision tree events.
-  // Three policies in scope (periodic-reminder, artifact-pool-ready,
-  // edge-artifact-required); workflow-keepalive deferred to Phase D.
-  // Pure `not_due` polls are NOT recorded in history and NOT emitted
-  // as events; only meaningful evaluations + lifecycle transitions are.
+  // PL-004 Phase C：后台服务原生看门狗监管树事件。
+  // 范围内含三种策略（periodic-reminder、artifact-pool-ready、
+  // edge-artifact-required）；workflow-keepalive 延后到 Phase D。纯 `not_due` 轮询
+  // 不写入历史，也不作为事件发送；只记录有意义的评估与生命周期转换。
   | { type: "watchdog.evaluation_fired"; jobId: string; policy: string; targetSession: string; deliveryStatus: string }
   | { type: "watchdog.evaluation_skipped"; jobId: string; policy: string; skipReason: string }
   | { type: "watchdog.evaluation_terminal"; jobId: string; policy: string; terminalReason: string }
   | { type: "watchdog.job_registered"; jobId: string; policy: string; targetSession: string; registeredBy: string }
   | { type: "watchdog.job_stopped"; jobId: string; reason: string }
-  // PL-004 Phase D: daemon-native Workflow Runtime events. Step closure
-  // and next-qitem projection are emitted within the SAME daemon
-  // transaction (transactional-scribe contract). Subscribers see the
-  // pair atomically.
+  // PL-004 Phase D：后台服务原生工作流运行时事件。步骤关闭与下一个 qitem 投影在
+  // 同一个后台服务事务中发送（事务式记录契约），订阅方以原子方式观察二者。
   | { type: "workflow.revised"; instanceId: string; workflowName: string; operationKey: string; compiledInputDigest: string; revisedBy: string }
   | { type: "workflow.instantiated"; instanceId: string; workflowName: string; workflowVersion: string; createdBy: string }
   | { type: "workflow.step_closed"; instanceId: string; stepId: string; closureReason: string; actorSession: string; priorQitemId: string }
@@ -290,25 +274,19 @@ export type RigEvent =
   | { type: "workflow.completed"; instanceId: string; workflowName: string }
   | { type: "workflow.failed"; instanceId: string; workflowName: string; reason: string }
   | { type: "workflow.resumed"; instanceId: string; workflowName: string; stepId: string; occurrenceId?: string; resumedBy: string; decision: string | null; resumeCount: number }
-  // OPR.0.4.6.WF3 FR-4 (arch R1): extended ADDITIVELY for the route
-  // verb — the shipped {rigName, cause} consumers are untouched; route
-  // emissions carry the re-route detail in the optional fields.
+  // OPR.0.4.6.WF3 FR-4（架构 R1）：为 route 动作做增量扩展；已交付的 {rigName, cause}
+  // 使用方不受影响，route 事件通过可选字段携带重路由详情。
   | { type: "workflow.routing_table_changed"; rigName: string; cause: string; instanceId?: string; stepId?: string | null; from?: string; to?: string }
   // Slice 11 (release-0.3.1 workflow-spec-folder-discovery): folder-scan
-  // deletion path. Emitted once per workflow_specs cache row removed
-  // because its source file disappeared from the scanned workflows folder.
-  // Provides a traceable audit-log entry for OQ-4 ("Remove cache row when
-  // file disappears + audit-log entry. Clean Library + traceable.").
+  // 删除路径。当源文件从已扫描 workflows 目录消失而移除 workflow_specs 缓存行时，每行发送一次。
+  // 为 OQ-4 提供可追踪的审计日志条目：“文件消失时移除缓存行并记录审计日志；资料库整洁且可追踪。”
   | { type: "workflow_spec.removed"; sourcePath: string; specId: string | null; specName: string | null; specVersion: string | null; reason: "file_disappeared" }
-  // PL-005 Phase A: Mission Control / Queue Observability events.
-  // Action audit + cross-CLI-version drift detection. view_refreshed
-  // is emitted when a Mission Control view is recomputed (SSE
-  // consumers can choose whether to re-fetch).
+  // PL-005 阶段 A：任务控制台/队列可观测性事件。用于操作审计和跨 CLI 版本漂移检测。
+  // 重新计算任务控制台视图时发送 view_refreshed，SSE 使用方可自行决定是否重新获取。
   | { type: "mission_control.action_executed"; actionId: string; actionVerb: string; qitemId: string | null; actorSession: string }
   | { type: "mission_control.cli_drift_detected"; rigName: string; missingField: string; observedAt: string }
   | { type: "mission_control.view_refreshed"; viewName: string; cause: string }
-  // PL-005 Phase B: notification dispatch events. Best-effort delivery;
-  // failure does NOT interrupt the underlying action being notified about.
+  // PL-005 Phase B：通知分发事件。尽力交付；失败不会中断被通知的底层动作。
   | { type: "mission_control.notification_sent"; mechanism: string; target: string; qitemId: string | null; sentAt: string }
   | { type: "mission_control.notification_failed"; mechanism: string; target: string; qitemId: string | null; error: string; failedAt: string };
 
@@ -317,7 +295,7 @@ export type PersistedEvent = RigEvent & {
   createdAt: string;
 };
 
-// -- Composite types --
+// -- 复合类型 --
 
 export interface NodeWithBinding extends Node {
   binding: Binding | null;
@@ -353,20 +331,16 @@ export interface SnapshotData {
   nodes: NodeWithBinding[];
   edges: Edge[];
   sessions: Session[];
-  /** OPR.0.5.7.1 D1 — the ACTIVE-OCCUPANT relation, captured explicitly at
-   *  snapshot time: nodeId -> the session row id that was the node's live
-   *  occupant, or null when no single occupant existed at capture (zero or
-   *  several running rows). Restore consumes this directly; it never infers
-   *  the occupant from row ordering. Absent on legacy snapshots — restore
-   *  then falls back to the uniquely-running invariant, and ambiguity makes
-   *  the seat unrecoverable-until-resolved, never newest-row-wins. */
+  /** OPR.0.5.7.1 D1——快照时显式捕获的活跃占用者关系：nodeId 映射到当时作为
+   *  节点实时占用者的会话行 ID；若捕获时不存在唯一占用者（零个或多个运行行）则为 null。
+   *  恢复直接消费此字段，从不根据行顺序推断占用者。旧快照中缺失时，恢复回退到唯一运行
+   *  不变量；若存在歧义，该席位在解决前不可恢复，绝不采用“最新行胜出”。 */
   activeSessionIdByNode?: Record<string, string | null>;
-  /** OPR.0.5.9.14 — explicit occupant truth. Unlike the legacy relation map,
-   *  this never overloads null: zero candidates is absent, one live candidate
-   *  is resolved, and multiple candidates retain their exact ids. */
+  /** OPR.0.5.9.14——显式占用者真相。与旧关系映射不同，此处不复用 null：
+   *  零候选为 absent，一个实时候选为 resolved，多个候选保留其精确 ID。 */
   activeOccupantsByNode?: Record<string, SnapshotOccupantState>;
-  /** The immutable intended membership for this snapshot's restore attempt.
-   *  Historical node records remain in `nodes` but are not in this roster. */
+  /** 此快照恢复尝试不可变的预期成员集合。历史节点记录仍保留在 `nodes` 中，但不在
+   * 本名册内。 */
   topologyRoster?: SnapshotTopologyRoster;
   checkpoints: Record<string, Checkpoint | null>;
   pods?: Pod[];
@@ -457,24 +431,19 @@ export interface RestoreValidationBlocker {
 export interface RestoreNodeResult {
   nodeId: string;
   logicalId: string;
-  // L3: `attention_required` is set when the post-launch probe detects a
-  // Claude resume-selection prompt. `operator_recovered` is the terminal
-  // outcome after `restore.outcome_reconciled`; never produced directly by
-  // the orchestrator's restore pipeline (only by reconcileNodeRuntimeTruth).
+  // L3：启动后探针检测到 Claude 恢复选择提示时设置 `attention_required`。
+  // `operator_recovered` 是 `restore.outcome_reconciled` 之后的终态结果；恢复编排器
+  // 流水线从不直接产生，只能由 reconcileNodeRuntimeTruth 产生。
   //
-  // OPR.0.3.4.2 — the ratified five-term restore vocabulary:
-  // `resumed` (original session resumed) / `fresh-primed` (deliberate
-  // blank-slate launch, policy- or --fresh-driven; replaces the old `fresh`
-  // for launches) / `awaiting-decision` (original unresumable + no --fresh:
-  // STOPPED with ZERO session running — operator must choose) /
-  // `attention_required` (a LIVE session parked on a runtime prompt) /
-  // `failed` (genuine harness error only). `awaiting-decision` is never
-  // emitted while a session is live. (`fresh` is retained for the legacy
-  // continuity-restoring skip path only; `rebuilt`/`operator_recovered` sit
-  // outside the five-term split.)
+  // OPR.0.3.4.2——获准的五词恢复词汇：`resumed`（恢复原会话）；`fresh-primed`
+  //（有意从空白状态启动，由策略或 --fresh 驱动，取代旧启动结果 `fresh`）；
+  // `awaiting-decision`（原会话不可恢复且无 --fresh：已停止且运行会话为零，必须由操作者选择）；
+  // `attention_required`（实时会话停在运行时提示处）；`failed`（仅真实 harness 错误）。
+  // 会话仍在运行时绝不发出 `awaiting-decision`。`fresh` 只保留给旧连续性恢复跳过路径；
+  // `rebuilt`/`operator_recovered` 不属于这五词划分。
   status: "resumed" | "rebuilt" | "fresh" | "fresh-primed" | "awaiting-decision" | "failed" | "attention_required" | "operator_recovered";
   error?: string;
-  /** Pane evidence captured when status is `attention_required` (L3, optional). */
+  /** status 为 `attention_required` 时捕获的 pane 证据（L3，可选）。 */
   attentionEvidence?: string | null;
 }
 
@@ -491,19 +460,17 @@ export type RestoreOutcome =
   | { ok: false; code: "service_boot_failed"; message: string }
   | { ok: false; code: "pre_restore_validation_failed"; message: string; result: RestoreResult };
 
-// -- Node inventory projection (NS-T02) --
+// -- 节点清单投影（NS-T02）--
 
-// L3 extends with `attention_required` (Claude resume-selection prompt proxy)
-// and `operator_recovered` (terminal post-reconciliation outcome — never produced
-// directly by restore, only emitted via `restore.outcome_reconciled`).
-// OPR.0.3.4.2 - carries the five-term restore vocabulary into `rig ps`.
+// L3 增加 `attention_required`（Claude 恢复选择提示的代理）与 `operator_recovered`
+//（终端对账后的结果；恢复过程从不直接产生，只通过 `restore.outcome_reconciled` 发出）。
+// OPR.0.3.4.2——把五词恢复词汇带入 `rig ps`。
 export type NodeRestoreOutcome = "resumed" | "rebuilt" | "fresh" | "fresh-primed" | "awaiting-decision" | "failed" | "attention_required" | "operator_recovered" | "n-a";
 
-// OPR.0.4.3.06 — challenge-verified startup orientation, DISTINCT from
-// startupStatus (`ready` = delivered/interactive only). `verified` = a proof
-// answering this launch's challenge was accepted; `missing` = challenged, not
-// yet proven; `rejected` = the latest proof for this challenge was rejected;
-// `n-a` = never challenged (resumed restore / non-agent / skip-harness).
+// OPR.0.4.3.06——经挑战验证的启动定向，与 startupStatus 不同（`ready` 只表示
+// 已投递/可交互）。`verified` 表示回答本次启动挑战的证明已接受；`missing` 表示已挑战
+// 但尚未证明；`rejected` 表示本挑战的最新证明被拒绝；`n-a` 表示从未挑战
+//（恢复式续接、非智能体或跳过 harness）。
 export type NodeOriented = "verified" | "missing" | "rejected" | "n-a";
 export type OccupantLifecycle = "active" | "retiring" | "retired" | "context_walled" | "compacted" | "crashed" | "unknown";
 export type ContinuityOutcome = "resumed" | "rebuilt" | "forked" | "fresh" | "failed";
@@ -512,11 +479,10 @@ export type AgentActivityState = "running" | "needs_input" | "idle" | "unknown";
 export type AgentActivityEvidenceSource =
   | "runtime_hook"
   | "pane_heuristic"
-  /** ACTIVITY D1+D2 — tmux `#{window_activity}` motion (SeatActivityService). A fact about BYTES on
-   *  the pane, so it is runtime-AGNOSTIC: it sees a generating Codex seat and a generating Claude
-   *  seat identically, where a TUI-string matcher has to be re-taught on every provider reskin. The
-   *  UI has called this source `terminal_activity` since slice 15 (activity-visuals.ts); the daemon
-   *  reports under the SAME name rather than minting a second word for one signal. */
+  /** ACTIVITY D1+D2——tmux `#{window_activity}` 动态（SeatActivityService）。这是关于窗格字节的
+   * 事实，因此与运行时无关：正在生成内容的 Codex 席位和 Claude 席位表现相同；基于 TUI 字符串
+   * 的匹配器则会在每次提供方换肤时重新学习。自 slice 15 起，UI 将此来源称为
+   * `terminal_activity`（activity-visuals.ts）；后台服务沿用同一名称，不为同一信号另造词汇。 */
   | "terminal_activity"
   | "tmux_session"
   | "external_cli"
@@ -534,18 +500,16 @@ export interface AgentActivity {
   runtime?: string | null;
   fallback?: boolean;
   stale?: boolean;
-  /** W2a-1 — the occupant-tenure generation_uuid in force when this claim was recorded — the per-tenure
-   *  occupant identity that CHANGES for a new occupant (a handover/swap to a different occupant mints a
-   *  new generation) and persists only WITHIN a single tenure (a same-native-session relaunch is a
-   *  continuation, same generation); null = UNKNOWN at record time. node_id, NOT this, is what is stable
-   *  across handover — that is exactly why comparing generation detects a dead tenure. */
+  /** W2a-1——记录此声明时生效的占用任期 generation_uuid。它是逐任期的占用者身份：
+   *  新占用者会改变该值（交接/替换到不同占用者会生成新代），并且只在单次任期内保持
+   *  不变（同一原生会话重新启动属于延续，代次不变）。null 表示记录时未知。跨交接保持
+   *  稳定的是 node_id 而不是本字段，这正是比较 generation 能发现死亡任期的原因。 */
   generation?: string | null;
-  /** W2a-1 — the read-side provenance verdict for the occupant generation (present only when the
-   *  read resolved through an injected generation resolver): `resolved` = both the recorded and the
-   *  live generation were known (equal here; a KNOWN mismatch returns state:"unknown" instead);
-   *  `unresolved` = null on either side, so the claim is DELIVERED carrying this honest label rather
-   *  than dropped or bare-attributed (pm ruling 2026-08-08, the P21 claimed-era pattern). Absent when
-   *  no resolver is wired (legacy clock-only path). */
+  /** W2a-1——占用者代次的读取侧来源判定（仅在读取经注入的代次解析器完成时存在）。
+   *  `resolved` 表示记录代次和实时代次都已知且在此相等；已知但不相等时会改为返回
+   *  state:"unknown"。`unresolved` 表示任一侧为 null，此时声明仍会投递并带上诚实标签，
+   *  而非被丢弃或无来源归因（PM 裁定 2026-08-08，P21 已认领时期模式）。未接入解析器
+   *  时缺失（旧版仅时钟路径）。 */
   generationProvenance?: "resolved" | "unresolved";
 }
 
@@ -555,31 +519,29 @@ export interface NodeRecoveryGuidance {
   notes: string[];
 }
 
-// Per-node lifecycle projection derived from session/restore state plus snapshot resume metadata.
-// L2 cold-start truth model: distinguishes a recoverable detached node from a node that would
-// fresh-launch, and surfaces "attention required" for the post-L3 Claude resume-prompt proxy.
+// 从会话/恢复状态和快照恢复元数据派生的逐节点生命周期投影。
+// L2 冷启动真相模型：区分可恢复的分离节点与需要全新启动的节点，并为 L3 后的 Claude
+// 恢复提示代理展示“需要关注”。
 export type NodeLifecycleState = "running" | "detached" | "recoverable" | "attention_required";
 
 /**
- * OPR.0.4.3.19 — the liveness identity verdict for a managed seat.
+ * OPR.0.4.3.19——托管席位的存活身份判定。
  *
- * A THIRD axis, orthogonal to slice-15's `terminalActive` (tmux output
- * recency) and `hasAssignedWork` (queue-derived). It answers: does the process
- * currently in the seat's registered tmux pane match the seat we are reporting?
- * Computed by the periodic SeatIdentityReconciler from the pane PID/command vs
- * the registered `bindings.tmux_pane`, NEVER from queue/classifier/hook
- * heartbeats. Only `mismatch` and `pane_missing` down-rank a `running`
- * projection; `verified`, `binding_absent`, and `tmux_unavailable` (and an
- * absent verdict) leave it unchanged.
+ * 它是第三条轴，与 slice-15 的 `terminalActive`（tmux 输出新鲜度）和
+ * `hasAssignedWork`（队列派生）正交。它回答：席位已登记 tmux pane 中当前进程是否与
+ * 我们正在报告的席位匹配？周期性 SeatIdentityReconciler 通过 pane PID/命令与已登记的
+ * `bindings.tmux_pane` 计算，绝不来自队列、分类器或 hook 心跳。只有 `mismatch` 与
+ * `pane_missing` 会把 `running` 投影降级；`verified`、`binding_absent`、
+ * `tmux_unavailable` 以及无判定都保持原状。
  */
 export type SeatIdentityVerdictKind = "verified" | "mismatch" | "pane_missing" | "binding_absent" | "tmux_unavailable";
 
 export interface SeatIdentityVerdict {
   nodeId: string;
   verdict: SeatIdentityVerdictKind;
-  /** Which observation axis produced the verdict. Null for `verified`. */
+  /** 产生判定的观察维度；`verified` 时为 null。 */
   evidenceSource: "pane_process" | "tmux_session" | null;
-  /** The specific reason for a non-verified verdict. Null for `verified`. */
+  /** 非 verified 判定的具体原因；`verified` 时为 null。 */
   reason:
     | "process_identity_mismatch"
     | "process_identity_ambiguous"
@@ -600,9 +562,8 @@ export interface SeatIdentityVerdict {
 }
 
 /**
- * OPR.0.4.3.19 — the two verdict kinds that down-rank a `running`/`active`
- * projection to a non-green state. `verified`, `tmux_unavailable`, and an
- * ABSENT verdict all leave the projection unchanged (fail-open on unknown).
+ * OPR.0.4.3.19——会把 `running`/`active` 投影降为非绿色状态的两类判定。
+ * `verified`、`tmux_unavailable` 和缺失判定都保持投影不变（未知时开放失败）。
  */
 export function identityVerdictDownranksRunning(
   verdict: SeatIdentityVerdictKind | null | undefined,
@@ -610,17 +571,17 @@ export function identityVerdictDownranksRunning(
   return verdict === "mismatch" || verdict === "pane_missing";
 }
 
-// Per-rig lifecycle aggregate folded from per-node states.
-//   running           — every node is running.
-//   recoverable       — every node is non-running and at least one node has a usable snapshot token.
-//   stopped           — every node is non-running and no node has a usable snapshot token.
-//   degraded          — mixed running + non-running on the same rig.
-//   attention_required — any node is attention_required (priority over above).
+// 根据逐节点状态折叠出的逐工作组生命周期聚合。
+//   running            —— 所有节点都在运行。
+//   recoverable        —— 所有节点均未运行，且至少一个节点有可用快照令牌。
+//   stopped            —— 所有节点均未运行，且没有节点有可用快照令牌。
+//   degraded           —— 同一工作组内同时存在运行和未运行节点。
+//   attention_required —— 任一节点需要关注（优先级高于上述状态）。
 export type RigLifecycleState = "running" | "recoverable" | "stopped" | "degraded" | "attention_required";
 
 export interface NodeInventoryEntry {
-  /** Stable daemon node identity. Health scopes and other canonical records
-   * key seats by this value; logicalId remains the human-facing address. */
+  /** 稳定的后台服务节点身份。健康范围和其他规范记录用此值标识席位；logicalId
+   * 仍是面向人的地址。 */
   nodeId: string;
   rigId: string;
   rigName: string;
@@ -628,9 +589,8 @@ export interface NodeInventoryEntry {
   podId: string | null;
   podNamespace?: string | null;
   /**
-   * OPR.0.4.6.FAC1: the seat's declared role (`nodes.role`, written by
-   * the pod-member path). The workflow binding layer's role→seat
-   * candidate filter reads exactly this. null = role-less.
+   * OPR.0.4.6.FAC1：席位声明的角色（`nodes.role`，由 pod-member 路径写入）。
+   * 工作流绑定层的角色→席位候选筛选器精确读取此字段。null 表示无角色。
    */
   role: string | null;
   canonicalSessionName: string | null;
@@ -640,8 +600,7 @@ export interface NodeInventoryEntry {
   sessionStatus: string | null;
   startupStatus: "pending" | "ready" | "attention_required" | "failed" | null;
   restoreOutcome: NodeRestoreOutcome;
-  // OPR.0.4.3.06 — challenge-verified orientation, surfaced beside (never
-  // folded into) startupStatus.
+  // OPR.0.4.3.06——经挑战验证的定向，与 startupStatus 并列展示，绝不折叠进去。
   oriented: NodeOriented;
   lifecycleState: NodeLifecycleState;
   occupantLifecycle: OccupantLifecycle;
@@ -653,12 +612,12 @@ export interface NodeInventoryEntry {
   resumeCommand: string | null;
   recoveryGuidance: NodeRecoveryGuidance | null;
   latestError: string | null;
-  // Extended fields
+  // 扩展字段。
   model: string | null;
   agentRef: string | null;
   profile: string | null;
   codexConfigProfile?: string | null;
-  /** OPR.0.4.8.3 Seam B: attached permission_policy REF, or null when none is attached. */
+  /** OPR.0.4.8.3 接缝 B：附加的 permission_policy 引用；未附加时为 null。 */
   permissionPolicy?: string | null;
   resolvedSpecName: string | null;
   resolvedSpecVersion: string | null;
@@ -670,31 +629,25 @@ export interface NodeInventoryEntry {
   startupCompletedAt: string | null;
   agentActivity?: AgentActivity;
   contextUsage?: ContextUsage;
-  /** Health of the daemon-owned transcript capture for this seat. */
+  /** 后台服务所拥有的该席位 transcript 捕获健康状态。 */
   transcriptIngest?: import("./transcript-store.js").TranscriptIngestHealth & {
     runtime: string | null;
   };
   /**
-   * Slice 15 — `terminal-active` primitive (tmux byte-stream).
+   * Slice 15——`terminal-active` 原语（tmux 字节流）。
    *
-   *   true  → seat is currently producing tmux output (window_activity
-   *           timestamp within the silence window)
-   *   false → seat is silent past the threshold
-   *   null  → no signal (not tmux-bound, or transient read error).
-   *           Distinct from `false`: consumers
-   *           treat `null` as "no observation right now", not "definitely
-   *           idle".
+   *   true  → 席位当前正在产生 tmux 输出（window_activity 时间戳位于静默窗口内）；
+   *   false → 席位静默时间已超过阈值；
+   *   null  → 无信号（未绑定 tmux，或出现瞬时读取错误）。它与 `false` 不同：
+   *           消费者将 `null` 视为“当前没有观察结果”，而非“确定空闲”。
    *
-   * MUST NOT be derived from `hasAssignedWork` or queue/assignment state.
-   * The non-inference contract (slice 15 README + IMPL-PRD §2.3) is the
-   * core correctness item: this field is computed independently from
-   * `hasAssignedWork`.
+   * 绝不能从 `hasAssignedWork` 或队列/分配状态派生。非推断契约（slice 15 README +
+   * IMPL-PRD §2.3）是核心正确性要求：本字段独立于 `hasAssignedWork` 计算。
    */
   terminalActive?: boolean | null;
-  /** S19 — the arbitrated three-axis taxonomy state served from the ONE oracle
-   *  (SeatActivityService ladder). `display` is computed server-side via the single
-   *  deriveDisplayActivity bridge so no consumer re-derives vocabulary. Absent = old
-   *  enrichment path; null = oracle has no state for this seat (honest). */
+  /** S19——由唯一判定源（SeatActivityService 阶梯）提供的仲裁后三轴分类状态。
+   *  `display` 由服务端通过唯一 deriveDisplayActivity 桥计算，消费者无需重新派生词汇。
+   *  字段缺失表示旧增强路径；null 表示判定源没有该席位状态（如实呈现）。 */
   activityState?: {
     activity: string;
     display: string;
@@ -704,86 +657,71 @@ export interface NodeInventoryEntry {
     lastSwap: { generation: string; at: string } | null;
   } | null;
   /**
-   * ARCH RULING 3a947fb1 (FR-7 additive) — the seat's RAW `lastActivityAt`
-   * fact (SeatActivity.lastActivityAt), projected per-seat alongside
-   * `terminalActive`. ISO string when an observation exists; `null` when
-   * the seat has no observation (never polled / non-tmux); `undefined`
-   * when no SeatActivityService is wired — exactly the honest-absence
-   * ladder `terminalActive` uses. NO `ageSeconds` sibling: age is a VIEW
-   * derived at the renderer from this fact + a reader clock (C3).
+   * 架构裁定 3a947fb1（FR-7 加法变更）——席位原始 `lastActivityAt` 事实
+   *（SeatActivity.lastActivityAt），与 `terminalActive` 一起逐席位投影。有观察时为 ISO
+   * 字符串；从未轮询或非 tmux 席位无观察时为 null；未接入 SeatActivityService 时为
+   * undefined，与 `terminalActive` 使用的诚实缺失阶梯完全一致。不提供 `ageSeconds`
+   * 同级字段：时长是视图层根据该事实和读取者时钟派生的值（C3）。
    */
   lastActivityAt?: string | null;
   /**
-   * Slice 15 — `has-work-to-do` primitive. Derived from queue/assignment
-   * projection (pending, in-progress, or blocked qitems whose
-   * `destination_session` matches this seat's canonical coordinate).
+   * Slice 15——`has-work-to-do` 原语。由队列/分配投影派生：状态为 pending、
+   * in-progress 或 blocked，且 `destination_session` 与本席位规范坐标匹配的 qitem。
    *
-   * MUST NOT be derived from `terminalActive` or tmux output. Two
-   * orthogonal primitives, never one inferred from the other.
+   * 绝不能从 `terminalActive` 或 tmux 输出派生。二者是正交原语，不得相互推断。
    */
   hasAssignedWork?: boolean;
-  /** Total active qitems assigned to this seat (pending + in-progress + blocked). */
+  /** 分配给此席位的 active qitem 总数（pending + in-progress + blocked）。 */
   assignedWorkCount?: number;
-  /** Optional count of pending qitems assigned to this seat (cheap aggregate). */
+  /** 分配给此席位的 pending qitem 数（可选的低成本聚合）。 */
   pendingWorkCount?: number;
-  /** Optional count of claimed in-progress qitems assigned to this seat. */
+  /** 分配给此席位且已领取的 in-progress qitem 数（可选）。 */
   inProgressWorkCount?: number;
-  /** Optional count of blocked qitems still assigned to this seat. */
+  /** 仍分配给此席位的 blocked qitem 数（可选）。 */
   blockedWorkCount?: number;
   /**
-   * OPR.0.4.3.19 — liveness identity verdict (the THIRD axis). Present when
-   * the SeatIdentityReconciler has recorded a verdict for this node; absent
-   * (undefined) when never polled. A `mismatch`/`pane_missing` verdict
-   * down-ranks the node's `lifecycleState`/`occupantLifecycle` away from
-   * running/active and carries the evidence. MUST NOT be derived from
-   * `terminalActive`, `hasAssignedWork`, or any queue/classifier/hook
-   * heartbeat — process identity only.
+   * OPR.0.4.3.19——存活身份判定（第三条轴）。SeatIdentityReconciler 为节点记录过
+   * 判定时存在；从未轮询时缺失（undefined）。`mismatch`/`pane_missing` 判定会把节点
+   * `lifecycleState`/`occupantLifecycle` 从 running/active 降级并携带证据。绝不能从
+   * `terminalActive`、`hasAssignedWork` 或任何队列/分类器/hook 心跳派生，只看进程身份。
    */
   identityVerdict?: SeatIdentityVerdict | null;
-  /** OPR.0.3.4.11 — held reason derived from the latest `node.held` event.
-   *  Null when no held event, or superseded by a running session / later launch. */
+  /** OPR.0.3.4.11——从最新 `node.held` 事件派生的暂停原因。没有暂停事件，或被运行中
+   *  会话/后续启动取代时为 null。 */
   heldReason?: string | null;
-  /** PL-007: per-node workspace block when the rig declares a workspace.
-   *  workspaceRoot mirrors RigSpec.workspace.workspaceRoot. activeRepo is
-   *  the repo whose path contains the node's cwd, or RigSpec.workspace.
-   *  defaultRepo when no containing repo is found. kind is the kind of
-   *  the active repo, or `knowledge` when cwd is under knowledgeRoot.
-   *  null when the rig does not declare a workspace. */
+  /** PL-007：工作组声明工作区时的逐节点工作区块。workspaceRoot 镜像
+   *  RigSpec.workspace.workspaceRoot。activeRepo 是路径包含节点 cwd 的仓库；若无匹配仓库，
+   *  则采用 RigSpec.workspace.defaultRepo。kind 是活跃仓库类型；cwd 位于 knowledgeRoot
+   *  下时为 `knowledge`。工作组未声明工作区时为 null。 */
   workspace?: NodeWorkspaceInfo | null;
 }
 
 /**
- * Slice 15 — `terminal-active` observation for a single seat's pane.
+ * Slice 15——单席位 pane 的 `terminal-active` 观察。
  *
- * Sourced from tmux's `#{window_activity}` format (Unix-epoch-seconds
- * timestamp of the last output on the window). The producing service
- * polls the timestamp at a configurable cadence and compares it
- * against the silence window threshold; `isActiveWithinWindow` is true
- * when the most recent activity is within that window. The
- * The daemon no longer configures tmux's `monitor-silence` option at
- * launch (removed OPR.0.4.0.18); `window_activity` is the sole source.
+ * 来源为 tmux 的 `#{window_activity}` 格式，即窗口最后一次输出的 Unix 秒时间戳。
+ * 生产服务按可配置频率轮询时间戳并与静默窗口阈值比较；最近活动仍在窗口内时，
+ * `isActiveWithinWindow` 为 true。后台服务启动时不再配置 tmux 的 `monitor-silence`
+ * 选项（已在 OPR.0.4.0.18 移除）；`window_activity` 是唯一来源。
  */
 export interface SeatActivity {
-  /** tmux pane id OR canonical session name — whatever the daemon binds. */
+  /** tmux pane ID 或规范会话名，以后台服务实际绑定者为准。 */
   paneId: string;
-  /** True ⟺ pane has produced output within `silenceWindowSeconds`. */
+  /** true 当且仅当 pane 在 `silenceWindowSeconds` 内产生过输出。 */
   isActiveWithinWindow: boolean;
-  /** Configured threshold at observation time. */
+  /** 观察时生效的配置阈值。 */
   silenceWindowSeconds: number;
-  /** ISO timestamp of the most recent observation. */
+  /** 最近一次观察的 ISO 时间戳。 */
   lastObservedAt: string;
   /**
-   * ARCH RULING 3a947fb1 (FR-7 additive) — the RAW `window_activity`
-   * timestamp (last output on the pane), as ISO. This is the input the
-   * service already reads to derive active/idle; surfaced verbatim so
-   * consumers can compute a fresh idle-age = f(fact, reader-clock).
+   * 架构裁定 3a947fb1（FR-7 加法变更）——原始 `window_activity` 时间戳，即 pane
+   * 最后输出时间，以 ISO 表示。服务已用它派生 active/idle；此处逐字公开，使消费者能
+   * 计算新鲜的 idle-age = f(fact, reader-clock)。
    *
-   * RAW FACT, never clamped: clock skew can put this slightly AHEAD of
-   * `lastObservedAt` (the service reads negative age as active); the
-   * value is stored as observed and renderers clamp for display only.
-   * Distinct from `lastObservedAt` (when WE looked) — this is when the
-   * pane last produced output. A record only exists when tmux returned a
-   * signal, so this is always present on a record (absence = no record).
+   * 这是从不钳制的原始事实：时钟偏差可能使其略晚于 `lastObservedAt`（服务把负时长
+   * 视为活跃）；存储观察原值，渲染器只为展示而钳制。它不同于表示“我们何时观察”的
+   * `lastObservedAt`，此字段表示 pane 何时最后产生输出。只有 tmux 返回信号时才有记录，
+   * 因而记录存在时本字段必定存在；缺失即无记录。
    */
   lastActivityAt: string;
 }
@@ -822,7 +760,7 @@ export interface NodeDetailCompactSpec {
 }
 
 export interface NodeDetailEntry extends NodeInventoryEntry {
-  /** W3 opt-in single-seat diagnostic; never populated on inventory lists. */
+  /** W3 可选单席位诊断；绝不填充到清单列表中。 */
   permissionDrift?: import("./permission-drift.js").PermissionDriftDiagnostic | null;
   binding: Binding | null;
   startupFiles: Array<{ path: string; deliveryHint: string; required: boolean }>;
@@ -836,7 +774,7 @@ export interface NodeDetailEntry extends NodeInventoryEntry {
   compactSpec: NodeDetailCompactSpec;
 }
 
-// -- AgentSpec types (AgentSpec reboot) --
+// -- AgentSpec 类型（AgentSpec 重启）--
 
 export interface ImportSpec {
   ref: string;
@@ -844,7 +782,7 @@ export interface ImportSpec {
 }
 
 export interface StartupFile {
-  /** Startup artifacts are files; context packs are composed separately. */
+  /** 启动产物是文件；上下文包另行组合。 */
   kind?: "file";
   path: string;
   deliveryHint: "auto" | "guidance_merge" | "skill_install" | "send_text";
@@ -855,7 +793,7 @@ export interface StartupFile {
 export interface StartupProofSelection {
   mode: "authenticated" | "none";
   source: "authored" | "default";
-  /** Index in the composed startup action sequence. */
+  /** 在组合后的启动动作序列中的索引。 */
   actionIndex?: number;
 }
 
@@ -875,13 +813,12 @@ export interface StartupBlock {
 
 export interface LifecycleDefaults {
   executionMode: "interactive_resident";
-  // OPR.0.5.6.20 B-3/B-4: optional so a lifecycle block that omits a field preserves
-  // ABSENCE through normalization — a level that does not specify does not
-  // participate in precedence. The defaults level materializes the defaults
-  // (default-compaction per F-6; resume_if_possible for restore).
+  // OPR.0.5.6.20 B-3/B-4：设为可选，使省略字段的 lifecycle 块在规范化后仍保留
+  // “缺失”；未指定该字段的层级不参与优先级。defaults 层负责实体化默认值
+  //（按 F-6 使用 default-compaction；恢复使用 resume_if_possible）。
   compactionStrategy?: "default-compaction" | "managed-compaction" | "handover" | "apprentice-handover";
-  /** Canonical seat@rig address that executes an apprentice cutover. No default: absence
-   *  is a materialization-time refusal for apprentice-handover. */
+  /** 执行 apprentice 切换的规范 seat@rig 地址。无默认值：缺失会使 apprentice-handover
+   *  在实体化时被拒绝。 */
   mechanic?: string;
   restorePolicy?: "resume_if_possible" | "relaunch_fresh" | "checkpoint_only";
 }
@@ -921,11 +858,10 @@ export interface ProfileSpec {
     runtimeResources: string[];
   };
   /**
-   * Per-seat activity-detection tuning. `silenceWindowSeconds` is the
-   * threshold below which terminal output reads as "terminal-active".
-   * Currently inert: the live SeatActivityService poller uses the global
-   * 3s default and does not read per-seat windows. Retained for a future
-   * per-seat-poller decision. Invalid values are dropped at normalize time.
+   * 逐席位活动检测调优。`silenceWindowSeconds` 是终端输出被判定为
+   * “terminal-active”的时间阈值。当前尚未启用：实时 SeatActivityService 轮询器使用
+   * 全局 3 秒默认值，不读取逐席位窗口。该字段保留给未来的逐席位轮询决策；无效值在
+   * 规范化时丢弃。
    */
   activity?: {
     silenceWindowSeconds?: number;
@@ -947,8 +883,8 @@ export interface AgentSpec {
   profiles: Record<string, ProfileSpec>;
 }
 
-// -- Legacy RigSpec types (Phase 3, pre-reboot flat contract) --
-// TODO: Remove when AS-T08b/AS-T12 migrate all consumers to pod-aware RigSpec
+// -- 旧版 RigSpec 类型（Phase 3，重启前的扁平契约）--
+// TODO：AS-T08b/AS-T12 将所有消费者迁移到 pod-aware RigSpec 后删除。
 
 export interface LegacyRigSpec {
   schemaVersion: number;
@@ -976,7 +912,7 @@ export interface LegacyRigSpecEdge {
   kind: string;
 }
 
-// -- RigSpec types (pod-aware, AgentSpec reboot) --
+// -- RigSpec 类型（感知 pod，AgentSpec 重启）--
 
 export interface ContinuityPolicySpec {
   enabled: boolean;
@@ -986,21 +922,17 @@ export interface ContinuityPolicySpec {
 }
 
 /**
- * Member-level launch input for declaring how a new managed seat should
- * derive its starting context. Discriminated union over `mode`:
+ * 成员级启动输入，用于声明新托管席位如何派生初始上下文。按 `mode` 区分联合类型：
  *
- * - `fork` — start from a prior native runtime conversation source
- *   (Claude `--fork-session` / Codex `fork`); persists a NEW post-fork
- *   token; identity-honest (parent token is NEVER persisted onto the
- *   new seat). v1 supports `ref.kind: "native_id"` only.
+ * - `fork`——从既有原生运行时对话来源启动（Claude `--fork-session` / Codex `fork`）；
+ *   持久化一个新的 fork 后令牌；身份如实（父令牌绝不写入新席位）。v1 只支持
+ *   `ref.kind: "native_id"`。
  *
- * - `rebuild` — fresh-launch a new seat seeded with operator-declared
- *   artifacts (CULTURE, role doc, handover packet, queue files, session
- *   logs). NO native-runtime resume or fork; NO `resumeToken` on the
- *   resulting seat; `continuityOutcome` is `"rebuilt"` (NEVER `"fresh"`,
- *   `"resumed"`, or `"forked"`). v1 supports `ref.kind: "artifact_set"`
- *   only, with `ref.value` as a non-empty array of file paths in
- *   operator-declared trust-precedence order.
+ * - `rebuild`——用操作者声明的产物（CULTURE、角色文档、交接包、队列文件、会话日志）
+ *   预热并全新启动席位。不执行原生运行时 resume 或 fork；结果席位没有 `resumeToken`；
+ *   `continuityOutcome` 为 `"rebuilt"`，绝不是 `"fresh"`、`"resumed"` 或 `"forked"`。
+ *   v1 只支持 `ref.kind: "artifact_set"`，其中 `ref.value` 是按操作者声明信任优先级
+ *   排列的非空文件路径数组。
  */
 export type SessionSourceSpec =
   | SessionSourceForkSpec
@@ -1024,40 +956,34 @@ export interface SessionSourceRebuildSpec {
 }
 
 /**
- * PL-016 Item 4 — agent_image session source.
- * The instantiator looks up the named image in the
- * AgentImageLibraryService, captures the runtime resume token from the
- * manifest, and dispatches the launch through the existing fork code
- * path (forkSource: { kind: "native_id", value: <resumeToken> }) so
- * `nativeResumeProbe` semantics are preserved.
+ * PL-016 第 4 项——agent_image 会话来源。实例化器在 AgentImageLibraryService 中
+ * 查找具名镜像，从 manifest 捕获运行时恢复令牌，并通过现有 fork 代码路径
+ *（forkSource: { kind: "native_id", value: <resumeToken> }）派发启动，从而保留
+ * `nativeResumeProbe` 语义。
  *
- * v0 supports `ref.kind: "image_name"` only; `image_id` and
- * `image_hash` are NAMED v1+ triggers per PRD § v0 Out.
+ * v0 只支持 `ref.kind: "image_name"`；按 PRD § v0 Out，`image_id` 和
+ * `image_hash` 是已具名的 v1+ 触发项。
  */
 export interface SessionSourceAgentImageSpec {
   mode: "agent_image";
   ref: {
     kind: "image_name";
     value: string;
-    /** Optional version selector; defaults to "1" at consumption
-     *  time (matches the manifest convention). */
+    /** 可选版本选择器；消费时默认为 "1"，与 manifest 约定一致。 */
     version?: string;
   };
 }
 
 /**
- * Reference to a named agent-starter registry entry. Artifact-seeded
- * fresh-launch context: the starter's curated artifacts are added to the
- * member's startup-file chain at launch time. Composes additively with
- * `sessionSource` (independent semantics: starter_ref seeds context;
- * session_source declares the runtime-source mode). v0 schema constraint:
- * `starter_ref` MAY combine with `session_source.mode: "rebuild"` (both
- * apply on `fresh_start`) but MAY NOT combine with `session_source.mode:
- * "fork"` (the v1+ "Real native-fork-from-registered-thread-id starter
- * proof" trigger covers that composition).
+ * 对具名 agent-starter 注册表条目的引用。它提供产物预热的全新启动上下文：启动时把
+ * starter 精选产物加入成员启动文件链。它与 `sessionSource` 做加法组合，二者语义独立：
+ * starter_ref 预热上下文，session_source 声明运行时来源模式。v0 schema 约束允许
+ * `starter_ref` 与 `session_source.mode: "rebuild"` 组合（两者都在 `fresh_start` 应用），
+ * 但禁止与 `session_source.mode: "fork"` 组合；v1+ 的“从已登记线程 ID 做真实原生 fork
+ * 的 starter 证明”触发项负责覆盖该组合。
  */
 export interface StarterRefSpec {
-  /** Registry key. Matches an entry at `<registryRoot>/<name>.yaml`. */
+  /** 注册表键，对应 `<registryRoot>/<name>.yaml` 中的条目。 */
   name: string;
 }
 
@@ -1070,36 +996,31 @@ export interface RigSpecPodMember {
   codexConfigProfile?: string;
   model?: string;
   /**
-   * OPR.0.4.6.FAC1: optional seat-side role declaration (writes the
-   * existing `nodes.role` column via createMemberNode → addNode). The
-   * workflow binding layer resolves workflow roles to seats by this
-   * dimension. Opt-in: a role-less member is never role-resolved and
-   * stays reachable only via explicit preferred_targets.
+   * OPR.0.4.6.FAC1：可选的席位侧角色声明，通过 createMemberNode → addNode 写入
+   * 现有 `nodes.role` 列。工作流绑定层据此维度把工作流角色解析为席位。此能力选择加入：
+   * 无角色成员从不参与角色解析，只能通过显式 preferred_targets 到达。
    */
   role?: string;
-  /** OPR.0.4.8.3 Seam B: optional per-seat permission_policy REF (builtin:<name> or a spec-relative
-   *  custom path). Absent = the floor. Overrides the rig-level ref. */
+  /** OPR.0.4.8.3 接缝 B：可选的逐席位 permission_policy 引用（builtin:<name> 或
+   *  相对规范的自定义路径）。缺失表示采用下限；覆盖工作组级引用。 */
   permissionPolicy?: string;
   cwd: string;
   restorePolicy?: string;
-  /** OPR.0.5.6.20 — per-member continuity override (most-specific-wins; canonical or
-   *  deprecated-alias spelling, normalized at resolution). Absent = inherit. */
+  /** OPR.0.5.6.20——逐成员连续性覆盖（最具体者优先；解析时规范化规范拼写或弃用别名）。
+   *  缺失表示继承。 */
   compactionStrategy?: string;
-  /** Per-member continuity mechanic override; resolves beside compactionStrategy. */
+  /** 逐成员连续性机制覆盖值，与 compactionStrategy 一同解析。 */
   mechanic?: string;
   startup?: StartupBlock;
   /**
-   * Optional fork source declaration. v1 MVP: mode="fork" with
-   * ref.kind="native_id". Validated by `rigspec-schema.ts` and translated
-   * to the runtime adapter's `forkSource` opt at launch time.
+   * 可选的 fork 来源声明。v1 MVP 为 mode="fork" 且 ref.kind="native_id"。
+   * 由 `rigspec-schema.ts` 校验，并在启动时转换为运行时适配器的 `forkSource` 选项。
    */
   sessionSource?: SessionSourceSpec;
   /**
-   * Optional reference to a named starter registry entry.
-   * See {@link StarterRefSpec}. Resolved by `AgentStarterResolver` at
-   * launch time; resolved artifacts seed the STARTER layer of the
-   * member's startup-file chain. Mutually exclusive with
-   * `sessionSource.mode: "fork"` per v0 schema (validateStarterRef).
+   * 对具名 starter 注册表条目的可选引用，见 {@link StarterRefSpec}。启动时由
+   * `AgentStarterResolver` 解析；解析后的产物用于预热成员启动文件链的 STARTER 层。
+   * 按 v0 schema（validateStarterRef），它与 `sessionSource.mode: "fork"` 互斥。
    */
   starterRef?: StarterRefSpec;
 }
@@ -1131,32 +1052,30 @@ export interface RigSpecDoc {
 }
 
 /**
- * PL-007 Workspace Primitive — typed workspace kinds enum. Reserved set
- * at v0; adding a sixth kind is a v1+ amendment per the PL-007 product
- * spec. Each kind has folder shape + frontmatter contract + ownership
- * rules (see `frontmatter-validator.ts` for the per-kind required-field
- * map).
+ * PL-007 工作区原语——类型化工作区种类枚举。v0 保留该集合；按 PL-007 产品规范，
+ * 增加第六种属于 v1+ 修订。每种都有文件夹形态、frontmatter 契约和所有权规则；
+ * 各类型必填字段映射见 `frontmatter-validator.ts`。
  */
 export const WORKSPACE_KINDS = ["user", "project", "knowledge", "lab", "delivery"] as const;
 export type WorkspaceKind = (typeof WORKSPACE_KINDS)[number];
 
-/** PL-007 — RigSpec.workspace.repos[] entry (typed). */
+/** PL-007——类型化的 RigSpec.workspace.repos[] 条目。 */
 export interface WorkspaceRepoSpec {
   name: string;
-  /** Absolute path after normalization. Authors may declare a path relative to
-   *  `workspaceRoot` in YAML; the codec resolves to absolute at parse time. */
+  /** 规范化后的绝对路径。作者可在 YAML 中声明相对于 `workspaceRoot` 的路径；
+   * codec 在解析时将其转换为绝对路径。 */
   path: string;
   kind: WorkspaceKind;
 }
 
-/** PL-007 — Optional RigSpec.workspace block. Rigs without it stay valid;
- *  whoami / node-inventory return a null workspace block in that case. */
+/** PL-007——可选 RigSpec.workspace 块。未声明它的工作组仍然有效；此时 whoami /
+ *  node-inventory 返回 null 工作区块。 */
 export interface WorkspaceSpec {
   workspaceRoot: string;
   repos: WorkspaceRepoSpec[];
   defaultRepo?: string;
-  /** Optional knowledge-canon root (e.g., a shared docs repo path).
-   *  Treated as kind=knowledge when surfaced through whoami / UI. */
+  /** 可选的知识规范根目录（例如共享文档仓库路径）。通过 whoami/UI 呈现时视为
+   * kind=knowledge。 */
   knowledgeRoot?: string;
 }
 
@@ -1165,15 +1084,15 @@ export interface RigSpec {
   name: string;
   summary?: string;
   cultureFile?: string;
-  /** OPR.0.4.8.3 Seam B: optional rig-level permission_policy REF (builtin:<name> or a
-   *  spec-relative custom path). Absent = the floor. A per-member ref overrides this. */
+  /** OPR.0.4.8.3 接缝 B：可选的工作组级 permission_policy 引用（builtin:<name>
+   *  或相对规范的自定义路径）。缺失表示采用下限；逐成员引用会覆盖它。 */
   permissionPolicy?: string;
-  /** #25: per-runtime managed-block destination. Absent = CLAUDE.md. */
+  /** #25：逐运行时的托管块目标；缺失时为 CLAUDE.md。 */
   managedBlocks?: { "claude-code"?: import("./managed-blocks.js").ClaudeManagedBlockFile };
   docs?: RigSpecDoc[];
   startup?: StartupBlock;
   services?: RigServicesSpec;
-  /** PL-007 Workspace Primitive — optional typed workspace declaration. */
+  /** PL-007 工作区原语——可选的类型化工作区声明。 */
   workspace?: WorkspaceSpec;
   pods: RigSpecPod[];
   edges: RigSpecCrossPodEdge[];
@@ -1257,8 +1176,8 @@ export interface RigServicesRecord {
 export interface ValidationResult {
   valid: boolean;
   errors: string[];
-  /** OPR.0.5.3.3 — non-blocking advisories (e.g. alias-form model pins). Fail-open: advisories
-   *  never affect `valid`. Absent/empty when there is nothing to advise. */
+  /** OPR.0.5.3.3 —— 非阻塞建议（例如别名形式的模型固定）。失败开放：建议绝不影响
+   * `valid`；没有建议时缺失或为空。 */
   advisories?: string[];
 }
 
@@ -1275,18 +1194,14 @@ export type InstantiateOutcome =
   | { ok: false; code: "instantiate_error"; message: string }
   | { ok: false; code: "cycle_error"; message: string }
   | { ok: false; code: "service_boot_failed"; message: string }
-  // S5b (OPR.0.5.4.11) — the running-name guard refusal: a same-name rig is
-  // RUNNING, so instantiation refuses before any create/launch. The message
-  // teaches the running rig's identity and the supported alternatives.
-  // (Additive variant per orch-lead territory ruling on row r054-s5b-build.)
+  // S5b（OPR.0.5.4.11）——运行中同名守卫拒绝：同名工作组正在运行，因此实例化会在
+  // 任何创建/启动前拒绝。消息会说明该运行中工作组的身份和受支持的替代方案。
+  //（按 r054-s5b-build 行的 orch-lead 领域裁定添加的变体。）
   | { ok: false; code: "rig_name_running"; message: string; runningRig: { id: string; name: string; runningSessionCount: number } }
-  // OPR.0.3.2.CT (conveyor-trust-minimal-fix):
-  // When every launched node reaches a recoverable attention_required
-  // state (e.g., workspace-trust prompt), do NOT tear the rig down.
-  // The rig + sessions are preserved, listable, and approvable; the
-  // operator's path is "approve trust → resume". `attentionNodes`
-  // carries the actionable per-node detail for the route's 3-part
-  // error response.
+  // OPR.0.3.2.CT（conveyor-trust-minimal-fix）：当每个已启动节点都进入可恢复的
+  // attention_required 状态（例如工作区信任提示）时，不拆除工作组。工作组与会话会保留，
+  // 可列出、可批准；操作者路径为“批准信任 → 恢复”。`attentionNodes` 携带可操作的逐节点
+  // 详情，供路由的三段式错误响应使用。
   | {
       ok: false;
       code: "attention_required";
@@ -1306,17 +1221,13 @@ export interface InstantiateResult {
   rigId: string;
   specName: string;
   specVersion: string;
-  // Per-node startup status — `launched` and `failed` are the legacy
-  // terminal states; `attention_required` (OPR.0.3.2.CT) marks a
-  // recoverable parked node awaiting operator action (e.g., trust
-  // approval). The session row's startup_status carries the same
-  // signal so `rig ps` surfaces it.
+  // 逐节点启动状态：`launched` 与 `failed` 是旧终态；`attention_required`
+  //（OPR.0.3.2.CT）标记等待操作者操作（例如批准信任）的可恢复停放节点。会话行的
+  // startup_status 携带相同信号，使 `rig ps` 能展示它。
   //
-  // `sessionName` + `evidence` carry runtime detail needed by
-  // BootstrapOrchestrator to construct AttentionNode[] for the mixed
-  // launched+attention_required path (the route's 3-part error
-  // response needs sessionName for the tmux-attach hint). Optional
-  // because legacy callers don't supply them on terminal-only paths.
+  // `sessionName` 与 `evidence` 携带 BootstrapOrchestrator 为 launched +
+  // attention_required 混合路径构造 AttentionNode[] 所需的运行时详情；路由三段式错误响应
+  // 需要 sessionName 生成 tmux-attach 提示。设为可选，因为旧调用方在仅终端路径中不提供它们。
   nodes: {
     logicalId: string;
     status: "launched" | "failed" | "attention_required";
@@ -1327,7 +1238,7 @@ export interface InstantiateResult {
   warnings?: string[];
 }
 
-// -- Expansion types --
+// -- 扩展类型 --
 
 export interface ExpansionPodFragment {
   id: string;
@@ -1341,27 +1252,23 @@ export interface ExpansionPodFragment {
     cwd?: string;
     model?: string;
     codexConfigProfile?: string;
-    /** OPR.0.4.8.3 Seam B: per-seat permission_policy REF — threaded through the
-     *  expansion ingress exactly like role (never silently dropped). Typed UNKNOWN
-     *  (R2 at 4ac243c3): the ingress preserves RAW presence — including null and other
-     *  invalid shapes — so the ONE canonical RigSpec validator rejects present-invalid
-     *  values; the normalizer must never erase presence into absence/floor. */
+    /** OPR.0.4.8.3 接缝 B：逐席位 permission_policy 引用，像 role 一样贯穿扩展入口，
+     *  绝不静默丢弃。类型为 unknown（4ac243c3 的 R2）：入口保留原始“存在”事实，包括 null
+     *  与其他无效形态，让唯一规范 RigSpec 校验器拒绝“存在但无效”的值；规范化器绝不能
+     *  把存在抹成缺失/下限。 */
     permissionPolicy?: unknown;
     restorePolicy?: string;
     label?: string;
     /**
-     * OPR.0.4.6.FAC1: optional seat-side role; threaded through
-     * buildExpansionSpecObject → the pod-member schema → nodes.role
-     * (a provided role is never silently dropped — the sibling-layer
-     * rule).
+     * OPR.0.4.6.FAC1：可选席位侧角色，沿 buildExpansionSpecObject → pod-member
+     * schema → nodes.role 传递；已提供的角色绝不静默丢弃，这是同级层规则。
      */
     role?: string;
-    /** Optional session source declaration; threaded through to launch. */
+    /** 可选的会话来源声明，贯穿传递到启动阶段。 */
     sessionSource?: SessionSourceSpec;
     /**
-     * Optional reference to a named starter registry entry; threaded
-     * through expansion → buildSyntheticSpec → daemon instantiation,
-     * matching the pass-through shape of `sessionSource`.
+     * 对具名 starter 注册表条目的可选引用；沿 expansion → buildSyntheticSpec →
+     * 后台服务实例化传递，与 `sessionSource` 的透传形态一致。
      */
     starterRef?: StarterRefSpec;
   }>;
@@ -1378,10 +1285,9 @@ export interface ExpansionRequest {
 export interface ExpansionNodeOutcome {
   logicalId: string;
   nodeId: string;
-  // OPR.0.3.2.CT — `attention_required` is a recoverable parked state
-  // (e.g., workspace-trust prompt awaiting operator action). The
-  // session row's startup_status carries the same signal so `rig ps`
-  // surfaces it. Distinct from `failed` (terminal).
+  // OPR.0.3.2.CT——`attention_required` 是可恢复的停放状态，例如等待操作者操作的
+  // 工作区信任提示。会话行 startup_status 携带同一信号，使 `rig ps` 展示它。
+  // 该状态与终态 `failed` 不同。
   status: "launched" | "failed" | "attention_required";
   error?: string;
   sessionName?: string;
@@ -1391,7 +1297,7 @@ export type ExpansionResult =
   | { ok: true; status: "ok" | "partial" | "failed"; podId: string; podNamespace: string; nodes: ExpansionNodeOutcome[]; warnings: string[]; retryTargets: string[] }
   | { ok: false; code: string; error: string };
 
-// -- Context usage types --
+// -- 上下文用量类型 --
 
 export type ContextAvailability = "known" | "unknown";
 

@@ -1,0 +1,57 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch9",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/response-integrity.test.ts",
+      "before_sha256_16": "74569cbd84803713",
+      "after_sha256_16": "5dae74f4a63eb48b",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/cli/test/queue-update-metadata-reject-cli.test.ts",
+      "before_sha256_16": "184fe18864b2bfd5",
+      "after_sha256_16": "6b7d72aa474d2d62",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/daemon/test/execution-view.test.ts",
+      "before_sha256_16": "f62e98eb7c6b2484",
+      "after_sha256_16": "f62e98eb7c6b2484",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/cli/test/daemon-lifecycle.test.ts",
+      "before_sha256_16": "5601e46c3149ade5",
+      "after_sha256_16": "5601e46c3149ade5",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/cli/test/cross-host-http.test.ts",
+      "before_sha256_16": "1ffee414d5cd7b18",
+      "after_sha256_16": "fd71b6755dcb5dfa",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    }
+  ]
+}

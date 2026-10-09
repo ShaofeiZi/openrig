@@ -1,28 +1,26 @@
-// B8 / slice-07 A3 — per-runtime EFFECTIVE-model reads (the load-bearing signal).
+// B8 / slice-07 A3——按运行时读取实际生效模型（承重信号）。
 //
-// The detector compares effective vs pinned; these readers own "effective". Both specimens proved
-// the REQUESTED echo lies (the codex banner kept naming the pinned model while the footer ran a
-// fallback), so each read comes from the runtime's own record of what is actually answering:
-//   - claude-code: the newest determinate, non-synthetic model-bearing assistant record in the
-//     provider transcript — the API response names the model that produced it. Absent until the
-//     seat's first such record.
-//   - codex: the latest `world_state` event's `collaboration_mode.model` in the rollout.
+// 检测器比较 effective 与 pinned；这些读取器负责“effective”。两个样本都证明 REQUESTED
+// 回显并不可靠（Codex 横幅仍显示固定模型，但页脚实际运行 fallback），因此每次读取都来自
+// 运行时自身记录的实际应答模型：
+//   - claude-code：provider 转录中最新、确定、非合成且包含模型的 assistant 记录；API 响应会
+//     标出生成它的模型。在席位产生第一条此类记录前，该信号不存在。
+//   - codex：rollout 中最新 `world_state` 事件的 `collaboration_mode.model`。
 //
-// BOUNDED READS by contract: provider records on live seats reach hundreds of MB (a whole-file
-// readFileSync throws ERR_STRING_TOO_LONG past ~0.5GB and stalls the loop long before that — the
-// B12 lesson). The claude signal recurs every assistant turn, so a single 512KB tail always holds
-// it on a live seat. The codex world_state is SPARSE (r1 measured a 65.9MB rollout whose newest
-// record sat 0.80MB from EOF — outside one tail window), so the codex reader scans BACKWARD in
-// tail-sized chunks up to MAX_SCAN_BYTES. A signal older than the scan cap reads as null (honest
-// UNKNOWN — the detector reports it as observable pending), never a guess.
+// 契约要求有界读取：活跃席位的 provider 记录可达数百 MB（整文件 readFileSync 在约 0.5GB
+// 后会抛出 ERR_STRING_TOO_LONG，并且更早就会阻塞循环——B12 的教训）。Claude 信号每个
+// assistant 轮次都会出现，因此单个 512KB 尾部窗口足以覆盖活跃席位。Codex world_state
+// 较稀疏（r1 实测一个 65.9MB rollout 的最新记录距 EOF 0.80MB，超出单个尾部窗口），所以
+// Codex 读取器以尾部窗口大小的分块向后扫描，最多 MAX_SCAN_BYTES。早于扫描上限的信号返回
+// null（如实 UNKNOWN；检测器将其报告为可观察的 pending），绝不猜测。
 
 import { openSync, readSync, closeSync, fstatSync } from "node:fs";
 
 const TAIL_BYTES = 512 * 1024;
 const MAX_SCAN_BYTES = 8 * 1024 * 1024;
 
-/** Read at most the last TAIL_BYTES of a file as utf-8, split into whole lines (the first,
- *  possibly-truncated line is dropped). Missing/unreadable → []. */
+/** 最多读取文件末尾 TAIL_BYTES 字节并按 utf-8 拆成完整行；丢弃第一条可能被截断的行。
+ * 缺失或不可读时返回 []。 */
 export function readTailLines(path: string, tailBytes = TAIL_BYTES): string[] {
   let fd: number;
   try {
@@ -36,7 +34,7 @@ export function readTailLines(path: string, tailBytes = TAIL_BYTES): string[] {
     const buf = Buffer.alloc(size - start);
     readSync(fd, buf, 0, buf.length, start);
     const lines = buf.toString("utf-8").split("\n");
-    if (start > 0) lines.shift(); // first line may be cut mid-record
+    if (start > 0) lines.shift(); // 第一行可能从记录中间开始。
     return lines;
   } catch {
     return [];
@@ -45,9 +43,9 @@ export function readTailLines(path: string, tailBytes = TAIL_BYTES): string[] {
   }
 }
 
-/** The model from the seat's newest determinate, non-synthetic model-bearing assistant record, or
- *  null when no such record is in the tail window (a just-launched or synthetic-only seat has none
- *  — the detector treats null as PENDING, not as a match). */
+/** 返回席位最新、确定、非合成且包含模型的 assistant 记录中的模型。尾部窗口中没有此类
+ * 记录时返回 null（刚启动或仅有合成记录的席位不会有该记录；检测器将 null 视为 PENDING，
+ * 而不是匹配）。 */
 export function readClaudeEffectiveModel(transcriptPath: string): string | null {
   const lines = readTailLines(transcriptPath);
   for (let i = lines.length - 1; i >= 0; i--) {
@@ -59,7 +57,7 @@ export function readClaudeEffectiveModel(transcriptPath: string): string | null 
         return obj.message.model;
       }
     } catch {
-      /* corrupt line — keep scanning */
+      /* 损坏行——继续扫描。 */
     }
   }
   return null;
@@ -68,12 +66,11 @@ export function readClaudeEffectiveModel(transcriptPath: string): string | null 
 function newestCodexModel(lines: string[]): string | null {
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i]!;
-    // PRIMARY: turn_context.payload.model — preferred for DENSITY, not existence. (~~"old July-era
-    // records carry NO collaboration_mode"~~ — WRONG, r1 measured 14/72 world_states carrying it in
-    // the same July file; the truth is collaboration_mode is SPARSE WITHIN world_state, while
-    // turn_context.model recurs every turn — 232 occurrences in that file — so it sits near EOF on
-    // any live seat. A reader deciding whether the world_state belt can be dropped: it cannot; both
-    // signals are real, turn_context is just denser.)
+    // 主信号：turn_context.payload.model——因密度高而优先，并非因为另一信号不存在。
+    // “旧七月记录没有 collaboration_mode”的判断是错误的：r1 在同一七月文件中实测 72 个
+    // world_state 有 14 个携带该字段。实际情况是 collaboration_mode 在 world_state 中稀疏，
+    // 而 turn_context.model 每轮都会出现（该文件共 232 次），所以活跃席位的文件末尾通常
+    // 能找到它。world_state 后备信号不能删除；两个信号都真实，只是 turn_context 更密集。
     if (line.includes('"turn_context"')) {
       try {
         const obj = JSON.parse(line) as { type?: unknown; payload?: { model?: unknown } };
@@ -82,10 +79,10 @@ function newestCodexModel(lines: string[]): string | null {
           if (typeof model === "string" && model.length > 0) return model;
         }
       } catch {
-        /* corrupt line — keep scanning */
+        /* 损坏行——继续扫描。 */
       }
     }
-    // BELT: world_state.collaboration_mode.model (the new-format state snapshot).
+    // 后备信号：world_state.collaboration_mode.model（新格式状态快照）。
     if (line.includes('"world_state"')) {
       try {
         const obj = JSON.parse(line) as {
@@ -97,18 +94,17 @@ function newestCodexModel(lines: string[]): string | null {
           if (typeof model === "string" && model.length > 0) return model;
         }
       } catch {
-        /* corrupt line — keep scanning */
+        /* 损坏行——继续扫描。 */
       }
     }
   }
   return null;
 }
 
-/** The codex runtime's own current model per its NEWEST turn_context (primary; both rollout
- *  formats) or world_state collaboration_mode (belt). Scans backward from EOF in tail-sized
- *  windows up to MAX_SCAN_BYTES: the signal is sparse relative to bulk event lines (r1's live
- *  census put records 0.4-0.8MB from EOF on the big rollouts), so one tail window is not always
- *  enough, but 8MB bounds the read far under the loop-stall class. */
+/** 根据最新 turn_context（主信号，兼容两种 rollout 格式）或 world_state
+ * collaboration_mode（后备信号）读取 Codex 运行时自身的当前模型。从 EOF 开始按尾部窗口
+ * 向后扫描，最多 MAX_SCAN_BYTES。与大量事件行相比该信号较稀疏（r1 对大 rollout 的实时
+ * 统计显示记录距 EOF 0.4–0.8MB），单个尾部窗口未必足够；8MB 上限让读取远低于循环阻塞量级。 */
 export function readCodexEffectiveModel(rolloutPath: string, maxScanBytes = MAX_SCAN_BYTES): string | null {
   let fd: number;
   try {
@@ -125,12 +121,11 @@ export function readCodexEffectiveModel(rolloutPath: string, maxScanBytes = MAX_
       const buf = Buffer.alloc(end - start);
       readSync(fd, buf, 0, buf.length, start);
       const lines = buf.toString("utf-8").split("\n");
-      // The first line may be a record's TAIL cut at the window boundary. Drop it here — and size
-      // the next window to END just past that fragment, so the straddling record is re-read WHOLE
-      // from its own line start. A fixed small overlap loses any straddler longer than it (r1
-      // proved a 20KB record vanishing over a 4KB overlap — and a lost straddler usually means a
-      // STALE model read, the exact silence this detector exists to end; real world_state records
-      // reach ~22KB). Sizing from the dropped fragment makes the overlap exact by construction.
+      // 第一行可能是被窗口边界截断的记录尾部。此处丢弃它，并让下一窗口结束于该片段之后，
+      // 使跨界记录能从自身行首被完整重读。固定的小重叠会丢失任何比重叠更长的跨界记录
+      //（r1 证明 20KB 记录会越过 4KB 重叠而消失；丢失跨界记录通常会造成过期模型读取，
+      // 正是此检测器要消除的静默；真实 world_state 记录可达约 22KB）。依据被丢片段定尺寸，
+      // 可以从结构上得到精确重叠。
       let droppedBytes = 0;
       if (start > 0 && lines.length > 0) {
         droppedBytes = Buffer.byteLength(lines[0]!, "utf-8");
@@ -139,13 +134,12 @@ export function readCodexEffectiveModel(rolloutPath: string, maxScanBytes = MAX_
       const model = newestCodexModel(lines);
       if (model !== null) return model;
       if (start === scanFloor) break;
-      // Fragment-sized step-back — UNLESS the fragment fills the whole window (a single line wider
-      // than 512KB: real, r1 measured 44 such lines on this box, longest 8.2MB). In that case
-      // `start + droppedBytes + 1` would be ≥ end and the old `min(end - 1, …)` guard degraded to
-      // ONE-BYTE steps re-reading 512KB each — r1 measured a 6MB file grinding past 30s
-      // (extrapolated ~1.4TB of reads) on the exact deep-scan file the cap exists to serve. When
-      // fragment sizing yields no progress, step a FULL window instead: the giant line cannot be
-      // recovered whole either way (the accepted tradeoff), but the scan terminates.
+      // 按片段大小后退，但若片段填满整个窗口则例外。单行超过 512KB 是真实情况：r1 在本机
+      // 测得 44 行，最长 8.2MB。此时 `start + droppedBytes + 1` 会大于等于 end，旧的
+      // `min(end - 1, …)` 防护会退化成每次只后退一个字节、反复读取 512KB；r1 在本应受
+      // 扫描上限保护的深度扫描文件上测得 6MB 文件耗时超过 30 秒（外推读取量约 1.4TB）。
+      // 若按片段定尺寸无法前进，则改为后退完整窗口：无论如何都无法完整恢复超大行
+      //（这是接受的权衡），但扫描能够终止。
       const next = start + droppedBytes + 1;
       end = next < end ? next : start;
     }

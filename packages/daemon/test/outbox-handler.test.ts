@@ -5,7 +5,7 @@ import { migrate } from "../src/db/migrate.js";
 import { outboxEntriesSchema } from "../src/db/migrations/027_outbox_entries.js";
 import { OutboxHandler } from "../src/domain/outbox-handler.js";
 
-describe("OutboxHandler", () => {
+describe("OutboxHandler 发件箱处理器", () => {
   let db: Database.Database;
   let outbox: OutboxHandler;
 
@@ -17,7 +17,7 @@ describe("OutboxHandler", () => {
 
   afterEach(() => db.close());
 
-  it("record creates entry in pending state", () => {
+  it("record 创建 pending 状态的条目", () => {
     const e = outbox.record({
       senderSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -29,25 +29,25 @@ describe("OutboxHandler", () => {
     expect(e.tags).toEqual(["info"]);
   });
 
-  it("record is idempotent on outbox_id", () => {
+  it("record 对 outbox_id 幂等", () => {
     const id = "outbox-fixed-id-0001";
     const a = outbox.record({
       outboxId: id,
       senderSession: "alice@rig",
       destinationSession: "bob@rig",
-      body: "first",
+      body: "第一条",
     });
     const b = outbox.record({
       outboxId: id,
       senderSession: "alice@rig",
       destinationSession: "bob@rig",
-      body: "second-ignored",
+      body: "第二条（忽略）",
     });
     expect(a.outboxId).toBe(b.outboxId);
-    expect(b.body).toBe("first");
+    expect(b.body).toBe("第一条");
   });
 
-  it("markDelivered updates state and timestamp", () => {
+  it("markDelivered 更新状态与时间戳", () => {
     const e = outbox.record({
       senderSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -58,7 +58,7 @@ describe("OutboxHandler", () => {
     expect(delivered.deliveredAt).toBeTruthy();
   });
 
-  it("markDelivered on already-delivered is a no-op (returns existing)", () => {
+  it("对已交付条目调用 markDelivered 不执行操作（返回现有条目）", () => {
     const e = outbox.record({
       senderSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -69,7 +69,7 @@ describe("OutboxHandler", () => {
     expect(second.deliveryState).toBe("delivered");
   });
 
-  it("markFailed transitions pending → failed", () => {
+  it("markFailed 将 pending 转换为 failed", () => {
     const e = outbox.record({
       senderSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -79,11 +79,10 @@ describe("OutboxHandler", () => {
     expect(failed.deliveryState).toBe("failed");
   });
 
-  // W1-b (transactional closure) — INDETERMINATE is the ambiguous-outcome state:
-  // a delivery whose landing could not be confirmed (transport res.ok but not
-  // verified) records `indeterminate`, never silently `delivered` and never
-  // `failed`. It is a holding state resolved out-of-band, not a retry state.
-  it("markIndeterminate transitions pending → indeterminate (CAS from pending)", () => {
+  // W1-b（事务闭合）——INDETERMINATE 表示结果不明确：无法确认是否落地的交付
+  //（传输 res.ok 但未验证）记录为 `indeterminate`，绝不静默记为 `delivered`，也绝不
+  // 记为 `failed`。这是在带外解决的保留状态，不是重试状态。
+  it("markIndeterminate 将 pending 转换为 indeterminate（从 pending 执行 CAS）", () => {
     const e = outbox.record({
       senderSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -93,26 +92,25 @@ describe("OutboxHandler", () => {
     expect(indet.deliveryState).toBe("indeterminate");
   });
 
-  it("markIndeterminate NEVER clobbers a confirmed delivery (delivered stays delivered)", () => {
+  it("markIndeterminate 绝不覆盖已确认交付（delivered 保持 delivered）", () => {
     const e = outbox.record({
       senderSession: "alice@rig",
       destinationSession: "bob@rig",
       body: "x",
     });
     outbox.markDelivered(e.outboxId);
-    // A late/racing indeterminate resolution must not overwrite a delivered row —
-    // the CAS guards on delivery_state='pending', so this is a no-op.
+    // 延迟或竞态产生的不确定解析不得覆盖 delivered 行——CAS 以
+    // delivery_state='pending' 为条件，因此这里不执行操作。
     const after = outbox.markIndeterminate(e.outboxId);
     expect(after.deliveryState).toBe("delivered");
   });
 
-  // RULED (W1-b, planner-confirmed): indeterminate is TERMINAL-BY-CAS. markDelivered
-  // and markFailed both gate on delivery_state='pending', so neither can afterwards
-  // touch an indeterminate row. This is intended — an ambiguous outcome is never
-  // silently flipped to delivered (we cannot confirm) nor to failed (it may have
-  // landed); re-delivering would risk a double-send. Reconciliation of an
-  // indeterminate row is an out-of-scope follow-on, not a W1 transition.
-  it("indeterminate is terminal-by-CAS: markDelivered is a no-op on it", () => {
+  // 已裁定（W1-b，经规划者确认）：indeterminate 是由 CAS 保证的终态。markDelivered
+  // 与 markFailed 均以 delivery_state='pending' 为门禁，因此之后都不能触碰
+  // indeterminate 行。这是预期行为——结果不明确时不能静默改为 delivered（无法确认），
+  // 也不能改为 failed（可能已落地）；重新交付会有重复发送风险。协调 indeterminate 行
+  // 属于范围外后续工作，不是 W1 转换。
+  it("indeterminate 是 CAS 终态：对其调用 markDelivered 不执行操作", () => {
     const e = outbox.record({
       senderSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -123,7 +121,7 @@ describe("OutboxHandler", () => {
     expect(after.deliveryState).toBe("indeterminate");
   });
 
-  it("indeterminate is terminal-by-CAS: markFailed is a no-op on it", () => {
+  it("indeterminate 是 CAS 终态：对其调用 markFailed 不执行操作", () => {
     const e = outbox.record({
       senderSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -134,7 +132,7 @@ describe("OutboxHandler", () => {
     expect(after.deliveryState).toBe("indeterminate");
   });
 
-  it("listForSender returns reverse-chronological", () => {
+  it("listForSender 按时间倒序返回", () => {
     outbox.record({ senderSession: "a@r", destinationSession: "b@r", body: "1" });
     outbox.record({ senderSession: "a@r", destinationSession: "b@r", body: "2" });
     outbox.record({ senderSession: "x@r", destinationSession: "b@r", body: "3" });

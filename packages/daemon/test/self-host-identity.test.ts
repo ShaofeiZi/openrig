@@ -1,8 +1,8 @@
-// 51-09 increment 1 — durable daemon SELF-HOST identity (RED-first).
+// 51-09 增量 1——持久化的后台服务自身主机身份（先红后绿）。
 //
-// Grounds: arch ruling cb19867f (canonical self-host identity is NET-NEW; extend
-// the seat-identity substrate; NEVER host.name-display / NEVER the 'local'
-// sentinel) + IMPL-PLAN 426ec065. host.name is a DISPLAY-ONLY candidate SEED.
+// 依据：架构裁定 cb19867f（规范自身主机身份是全新概念；扩展席位身份底座；绝不使用
+// host.name 展示值，也绝不使用 'local' 哨兵）+ 实施计划 426ec065。host.name 仅可作为
+// 展示型候选种子。
 
 import { describe, it, expect } from "vitest";
 import { createFullTestDb } from "./helpers/test-app.js";
@@ -14,16 +14,16 @@ import {
 
 const RESERVED = ["local", "kernel", "host", "localhost"];
 
-describe("51-09 incr1: durable self-host identity", () => {
-  it("no-record-at-base: fresh canonical DB has the table but NO self-host record before reconcile", () => {
+describe("51-09 增量 1：持久化自身主机身份", () => {
+  it("基线无记录：全新规范数据库有表，但 reconcile 前没有自身主机记录", () => {
     const db = createFullTestDb();
-    // verify-at-source encoded: nothing durable self-id exists until minted.
+    // 源头验证已编码：创建前不存在任何持久化自身 id。
     expect(new SelfHostIdentityStore(db).get()).toBeNull();
-    // the table exists (migration wired) — a query must not throw.
+    // 表已存在（迁移已接线）——查询不得抛出异常。
     expect(() => db.prepare("SELECT * FROM self_host_identity").all()).not.toThrow();
   });
 
-  it("mint-on-first-boot: first reconcile mints a non-empty, non-reserved id", () => {
+  it("首次启动时创建：第一次 reconcile 创建非空且非保留的 id", () => {
     const db = createFullTestDb();
     const store = new SelfHostIdentityStore(db);
     const r = reconcileSelfHostIdentity(store, { nowIso: "2026-08-06T00:00:00.000Z", hostNameCandidate: null });
@@ -33,7 +33,7 @@ describe("51-09 incr1: durable self-host identity", () => {
     expect(store.get()?.hostId).toBe(r.hostId);
   });
 
-  it("stable-across-restart: second reconcile keeps the id + updates reconciled_at, minted_at unchanged", () => {
+  it("跨重启稳定：第二次 reconcile 保留 id，更新 reconciled_at，minted_at 不变", () => {
     const db = createFullTestDb();
     const store = new SelfHostIdentityStore(db);
     const first = reconcileSelfHostIdentity(store, { nowIso: "2026-08-06T00:00:00.000Z", hostNameCandidate: "mars-01" });
@@ -47,7 +47,7 @@ describe("51-09 incr1: durable self-host identity", () => {
     expect(rec2.reconciledAt).toBe("2026-08-06T01:00:00.000Z"); // reconciled_at advances
   });
 
-  it("never-'local': minted id is never a reserved/default; the assert throws on them; a reserved seed is rejected → generated", () => {
+  it("绝不为 'local'：创建的 id 绝非保留/默认值；断言会拒绝它们；保留种子被拒后重新生成", () => {
     for (const reserved of ["local", "kernel", "host", "localhost", "LOCAL", "Localhost"]) {
       expect(() => assertNeverReservedHostId(reserved), reserved).toThrow();
     }
@@ -61,7 +61,7 @@ describe("51-09 incr1: durable self-host identity", () => {
     }
   });
 
-  it("adopt: an unambiguous host.name seeds the self-id (operator-meaningful)", () => {
+  it("接管：无歧义的 host.name 作为自身 id 种子（对操作者有意义）", () => {
     const db = createFullTestDb();
     const r = reconcileSelfHostIdentity(new SelfHostIdentityStore(db), { nowIso: "2026-08-06T00:00:00.000Z", hostNameCandidate: "mars-01" });
     expect(r.minted).toBe(true);
@@ -69,7 +69,7 @@ describe("51-09 incr1: durable self-host identity", () => {
     expect(r.conflict).toBeNull();
   });
 
-  it("conflict: a stored id + a differing host.name keeps the stored id AND surfaces a LOUD conflict naming both — never silent re-key", () => {
+  it("冲突：已存 id 与不同 host.name 并存时保留已存 id，并明确报告双方——绝不静默重设键", () => {
     const db = createFullTestDb();
     const store = new SelfHostIdentityStore(db);
     reconcileSelfHostIdentity(store, { nowIso: "2026-08-06T00:00:00.000Z", hostNameCandidate: "mars-01" });

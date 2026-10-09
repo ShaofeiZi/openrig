@@ -1,9 +1,8 @@
-// V1 attempt-3 Phase 3 — system status panel for Settings>Status tab.
-// Per code-map AFTER tree (NEW). Composes daemon health + cmux status
-// from existing data sources.
+// V1 attempt-3 Phase 3——设置>状态标签页的系统状态面板。
+// 按 code-map AFTER 树（新建）。由现有数据源组合后台服务健康 + cmux 状态。
 //
-// Phase 3 bounce-fix A4: restored cmux block (regression — extracted
-// from original SystemPanel L52–L131 missed the cmux query + section).
+// Phase 3 回弹修复 A4：恢复 cmux 块（回归——从原 SystemPanel L52–L131 抽取时
+// 漏掉了 cmux 查询与区块）。
 
 import { useQuery } from "@tanstack/react-query";
 import { SectionHeader } from "../ui/section-header.js";
@@ -64,56 +63,56 @@ export function SettingsSystemStatusPanel() {
   return (
     <div data-testid="settings-status-panel" className="space-y-4">
       <section>
-        <SectionHeader tone="muted">Daemon</SectionHeader>
+        <SectionHeader tone="muted">后台服务</SectionHeader>
         <div className="mt-2 flex items-center justify-between font-mono text-xs">
-          <span className="text-on-surface-variant">Reachable</span>
+          <span className="text-on-surface-variant">可达</span>
           <StatusPip
             status={daemonStatus}
             label={
               daemonConnected
-                ? "OK"
+                ? "正常"
                 : healthQuery.isError
-                ? "ERROR"
+                ? "错误"
                 : healthQuery.isLoading
-                ? "LOADING"
-                : "DISCONNECTED"
+                ? "加载中"
+                : "未连接"
             }
             variant="pill"
             testId="status-daemon"
           />
         </div>
       </section>
-      {/* A4 bounce-fix: cmux control row restored. */}
+      {/* A4 回弹修复：恢复 cmux 控制行。 */}
       <section>
-        <SectionHeader tone="muted">Cmux control</SectionHeader>
+        <SectionHeader tone="muted">CMUX 控制</SectionHeader>
         <div className="mt-2 flex items-center justify-between font-mono text-xs">
-          <span className="text-on-surface-variant">Adapter</span>
+          <span className="text-on-surface-variant">适配器</span>
           <StatusPip
             status={cmuxStatus}
             label={
               cmuxAvailable === true
-                ? "AVAILABLE"
+                ? "可用"
                 : cmuxAvailable === false
-                ? "UNAVAILABLE"
-                : "UNKNOWN"
+                ? "不可用"
+                : "未知"
             }
             variant="pill"
             testId="status-cmux"
           />
         </div>
         <div className="mt-1 font-mono text-[10px] text-on-surface-variant">
-          OpenRig can control cmux surfaces for node open-or-focus.
+          zrig 可控制 cmux 界面，用于打开或聚焦节点。
         </div>
       </section>
       <section>
-        <SectionHeader tone="muted">Rigs</SectionHeader>
+        <SectionHeader tone="muted">工作组</SectionHeader>
         <div className="mt-2 space-y-1.5 font-mono text-xs">
           <div className="flex justify-between">
-            <span className="text-on-surface-variant">Total</span>
+            <span className="text-on-surface-variant">总计</span>
             <span className="text-on-surface font-bold" data-testid="status-rigs-total">{totalRigs}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-on-surface-variant">Running</span>
+            <span className="text-on-surface-variant">运行中</span>
             <span className="text-on-surface font-bold" data-testid="status-rigs-running">{runningRigs}</span>
           </div>
         </div>

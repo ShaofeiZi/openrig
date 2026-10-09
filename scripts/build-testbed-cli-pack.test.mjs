@@ -7,23 +7,21 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { remainingDaemonImports } from "./rewrite-daemon-imports.mjs";
 
-// 51-04 Q2 — the pack-step proof. The old guard only string-matched `npm pack`, so it stayed GREEN
-// over THREE stacked breaks (root package / no bin / non-standalone-installable). Tiers:
-//   1. fast OFFLINE pre-check — the tarball is @openrig/cli, ships the `rig` bin, and does NOT depend
-//      on the unpublished @openrig/daemon (#66: package managers that ignore bundling tried the
-//      registry and got a 404);
-//   2. PACKAGE PROOF (host-runnable) — assemble via build-package.sh + pack, and prove the tarball
-//      ships the daemon exports-map surfaces under daemon/dist and that no packaged JS still imports
-//      @openrig/daemon;
-//   3. FULL install+LOAD GATE (opt-in RUN_TESTBED_PACK_GATE=1) — the desk-ruled effect proof on a
-//      CLEAN target: install + run a command that LOADS the daemon. It requires TARGET build tools
-//      because better-sqlite3 builds on target when its bundled prebuilds lack the platform (desk caveat 1); on a host
-//      without them it stops at that native build, so the operator's Debian Docker rerun IS this gate.
+// 51-04 Q2——打包这一步的证明。旧守卫只对 `npm pack` 做字符串匹配，因此在三处叠加的破坏下
+// （根包 / 无 bin / 不可独立安装）一直保持绿。分层：
+//   1. 快速离线预检——tarball 是 @openrig/cli，附带 `rig` bin，且不依赖未发布的 @openrig/daemon
+//      （#66：忽略 bundling 的包管理器会去 registry 试，结果 404）；
+//   2. 打包证明（宿主机可跑）——经 build-package.sh 组装 + pack，并证明 tarball 在 daemon/dist 下
+//      附带 daemon exports-map 各表面，且没有任何被打包的 JS 仍 import @openrig/daemon；
+//   3. 完整 install+LOAD 闸门（可选 RUN_TESTBED_PACK_GATE=1）——桌面裁决的效果证明，在一个干净目标上：
+//      安装 + 跑一条会加载 daemon 的命令。它需要目标机构建工具，因为 better-sqlite3 在其随包预编译
+//      缺少该平台时会在目标机上源码构建（桌面附注 1）；在没有这些工具的宿主机上它会停在那次原生构建，
+//      因此操作者在 Debian Docker 里的重跑，本身就是这个闸门。
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");
 const CLI_DIR = join(REPO_ROOT, "packages", "cli");
-// Daemon exports-map surfaces the cli's runtime value-imports resolve to after packaging.
+// 打包后 cli 的运行时值 import 所解析到的 daemon exports-map 表面。
 const DAEMON_SURFACES = [
   "daemon/dist/gateway-human-registry-surface.js",
   "daemon/dist/crash-cart-surface.js",
@@ -43,7 +41,7 @@ test("pre-check: @openrig/cli, ships the `rig` bin, and does not depend on the u
 });
 
 test("package proof: the tarball ships the daemon surfaces and no packaged JS imports @openrig/daemon", () => {
-  // assemble (stages daemon/, rewrites daemon imports) — heavy but no install/native build
+  // 组装（暂存 daemon/、重写 daemon import）——较重，但不安装、不做原生构建
   execFileSync("bash", [join(REPO_ROOT, "scripts", "build-package.sh")], { cwd: REPO_ROOT, stdio: "inherit" });
   assert.ok(!existsSync(join(CLI_DIR, "node_modules", "@openrig", "daemon")),
     "build-package.sh must not leave a bundled <cli>/node_modules/@openrig/daemon copy");
@@ -83,13 +81,13 @@ test("package proof: the tarball ships the daemon surfaces and no packaged JS im
 });
 
 test("install RED (resident, docker-free): a clean install materializes a COMPLETE better-sqlite3 (binding.gyp present)", () => {
-  // Q2 break #5 (historical: the daemon is no longer bundled): the BUNDLED @openrig/daemon package.json declared its cli-SUBSET deps
-  // (better-sqlite3 + hono/tar/ulid/yaml/@hono/*), so `npm install -g` treated them as bundle-provided
-  // UNDER @openrig/daemon and left an EMPTY <cli>/node_modules/better-sqlite3 (no binding.gyp →
-  // 'prebuild-install: not found' + 'binding.gyp not found'). The pack-CONTENT assertion above
-  // (daemon present + better-sqlite3 absent) FALSE-GREENS this — it passes on the broken pack. The
-  // effect is only visible one layer later, at INSTALL. --ignore-scripts skips the native build, so
-  // this is TOOLCHAIN-INDEPENDENT + fast (the effect one layer earlier than the container gate).
+  // Q2 break #5（历史背景：daemon 现已不再随包附带）：随包附带的 @openrig/daemon package.json 声明了它的
+  // cli 子集依赖（better-sqlite3 + hono/tar/ulid/yaml/@hono/*），于是 `npm install -g` 把它们当作由
+  // @openrig/daemon 底下的 bundle 提供，留下一个空的 <cli>/node_modules/better-sqlite3（没有 binding.gyp →
+  // 'prebuild-install: not found' + 'binding.gyp not found'）。上面那条“包内容”断言
+  // （daemon 在场 + better-sqlite3 缺席）会对这个假绿——它在破损的包上照样通过。该效果要再往下一层、
+  // 在安装时才看得见。--ignore-scripts 会跳过原生构建，所以本检查与工具链无关、且很快（比容器闸门
+  // 早一层抓到该效果）。
   execFileSync("bash", [join(REPO_ROOT, "scripts", "build-package.sh")], { cwd: REPO_ROOT, stdio: "inherit" });
   const prefix = mkdtempSync(join(tmpdir(), "q2-install-red-"));
   let tgzPath;

@@ -12,16 +12,16 @@ export function proofSourceObservation(c: { get: (key: never) => unknown }) {
   return (c.get("proofSourceWatch" as never) as ProofSourceWatch | undefined)?.observation() ?? { state: "unavailable", revision: "unverified" };
 }
 
-/** Push invalidation over the existing bus; existing client quiet refresh is the missed-event repair. */
+/** 通过现有 bus 推送失效通知；现有客户端静默刷新负责修复漏失 event。 */
 export function watchProofSources(missionsRoot: string, invalidate: () => void, bus: EventBus): ProofSourceWatch {
   const workspace = path.dirname(missionsRoot);
-  // ponytail: bounded local workspaces use a full semantic read after a file burst.
-  // Keep this workload measured; subtree indexing is warranted only when that bound is exceeded.
+  // ponytail：有界本地 workspace 在文件突发后执行一次完整语义读取。持续测量此工作量；只有超过
+  // 该边界时才值得做 subtree indexing。
   const basis = () => createHash("sha256").update(JSON.stringify(readProjectReadiness(missionsRoot).missions.map(m => [m.name, m.revision]))).digest("hex");
   let state: "watching" | "unavailable" = "unavailable";
   let revision = "unavailable", timer: NodeJS.Timeout | undefined;
-  try { revision = basis(); state = "watching"; } catch { /* Direct reads name unavailable inputs; watching may recover them. */ }
-  const notify = (next: string) => { try { bus.emit({ type: "proof.sources_changed", scope: missionsRoot, revision: next }); } catch { /* Quiet refresh remains the repair path. */ } };
+  try { revision = basis(); state = "watching"; } catch { /* 直接读取会点明不可用输入；watching 可能恢复它们。 */ }
+  const notify = (next: string) => { try { bus.emit({ type: "proof.sources_changed", scope: missionsRoot, revision: next }); } catch { /* 静默刷新仍是修复路径。 */ } };
   let watcher: fs.FSWatcher;
   try { watcher = fs.watch(workspace, { recursive: true, persistent: false }, () => {
     if (timer) return;

@@ -1,0 +1,11 @@
+skip145 逐文件 reason 分类 + config-template 首批10审计 (read-only)
+
+== skip145 全量分类（非抽样，逐文件） ==
+history-evidence 23 / vendor-fixture-machine 18 / machine-manifest 15 / generated-db-migration 14 / internal-read-layer 12 / internal-gate-script 9 / binary-media 7 / ui-primitive-no-prose 7 / legal 5 / scm 3 / lockfile 1 = 114 判合法。
+== OTHER 31 细分 ==
+机器生成（合法）：context7.json、scripts/*.generated.json(4)、claude-mcp/settings.fragment.json、codex-config.fragment.toml、restore-summary.schema.json、tui/spike json、demo/test-system agent.yaml(10)、docker base-image。
+待复核 skip（真正可疑）：5 个 cli src code-comment 被跳过——packages/cli/src/cross-host-types.ts、lib/hosts/fanout-contract.ts、lib/scope/{attestation-lineage,logical-checkbox,scaffold-placeholder}.ts。需确认是机器类型定义无散文，还是漏译。
+
+== config-template 首批8审计（用户可见字段） ==
+.github/ISSUE_TEMPLATE bug_report/config/feature_request.yml、workflows/portability-report.yml、demo/rig.yaml、project-release-profile.yaml、release-surface fixture、onboarding-width manifest：name/description/label/placeholder/about 均已中文；机器 label/枚举保留。未见英文自然语言缺口。
+建议：证据充分可升 passed（待复验），不自动批转。

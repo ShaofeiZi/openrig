@@ -16,8 +16,8 @@ function makeProbe(overrides: Partial<ProbeResult> & { name: string; status: Pro
 }
 
 describe("ExternalInstallPlanner", () => {
-  // T1: Missing CLI tool on darwin -> auto_approvable, brew install
-  it("missing CLI tool on darwin -> auto_approvable with brew install", () => {
+  // T1：darwin 上缺少 CLI tool -> auto_approvable，使用 brew install
+  it("darwin 上缺少 CLI tool -> auto_approvable，使用 brew install", () => {
     const planner = new ExternalInstallPlanner({ platform: "darwin" });
 
     const plan = planner.planInstalls([
@@ -33,8 +33,8 @@ describe("ExternalInstallPlanner", () => {
     expect(action.commandPreview).toBe("brew install 'ripgrep'");
   });
 
-  // T2: Missing CLI tool on non-darwin -> manual_only
-  it("missing CLI tool on non-darwin -> manual_only", () => {
+  // T2：非 darwin 上缺少 CLI tool -> manual_only
+  it("非 darwin 上缺少 CLI tool -> manual_only", () => {
     const planner = new ExternalInstallPlanner({ platform: "linux" });
 
     const plan = planner.planInstalls([
@@ -49,8 +49,8 @@ describe("ExternalInstallPlanner", () => {
     expect(action.commandPreview).toBeNull();
   });
 
-  // T3: Already installed -> no action, name in alreadyInstalled
-  it("already installed -> no action, name in alreadyInstalled", () => {
+  // T3：已安装 -> 无 action，name 位于 alreadyInstalled
+  it("已安装 -> 无 action，name 位于 alreadyInstalled", () => {
     const planner = new ExternalInstallPlanner({ platform: "darwin" });
 
     const plan = planner.planInstalls([
@@ -61,8 +61,8 @@ describe("ExternalInstallPlanner", () => {
     expect(plan.alreadyInstalled).toEqual(["git"]);
   });
 
-  // T4: installHints preserved on action but not in commandPreview
-  it("installHints preserved on action, not used in commandPreview", () => {
+  // T4：installHints 保留在 action 上，但不用于 commandPreview
+  it("installHints 保留在 action 上，但不用于 commandPreview", () => {
     const hints = { homebrew: "brew install ripgrep", apt: "sudo apt install ripgrep" };
     const planner = new ExternalInstallPlanner({ platform: "darwin" });
 
@@ -72,13 +72,13 @@ describe("ExternalInstallPlanner", () => {
 
     const action = plan.actions[0]!;
     expect(action.installHints).toEqual(hints);
-    // commandPreview is the trusted provider command, not from hints
+    // commandPreview 是可信 provider command，并非来自 hint
     expect(action.commandPreview).toBe("brew install 'ripgrep'");
     expect(action.commandPreview).not.toContain("sudo");
   });
 
-  // T5: Multiple missing -> multiple actions in input order
-  it("multiple missing requirements produce actions in input order", () => {
+  // T5：多个缺失项 -> 按输入顺序产生多个 action
+  it("多个缺失 requirement 按输入顺序产生 action", () => {
     const planner = new ExternalInstallPlanner({ platform: "darwin" });
 
     const plan = planner.planInstalls([
@@ -93,8 +93,8 @@ describe("ExternalInstallPlanner", () => {
     expect(plan.alreadyInstalled).toEqual(["jq"]);
   });
 
-  // T6: commandPreview uses shell-quoted name
-  it("commandPreview uses shell-quoted package name", () => {
+  // T6：commandPreview 使用经 shell quote 的 package name
+  it("commandPreview 使用经 shell quote 的 package name", () => {
     const planner = new ExternalInstallPlanner({ platform: "darwin" });
 
     const plan = planner.planInstalls([
@@ -104,8 +104,8 @@ describe("ExternalInstallPlanner", () => {
     expect(plan.actions[0]!.commandPreview).toBe("brew install 'my-pkg'");
   });
 
-  // T7: status='unsupported' -> manual_only
-  it("unsupported probe status -> manual_only", () => {
+  // T7：status='unsupported' → manual_only
+  it("probe status 为 unsupported → manual_only", () => {
     const planner = new ExternalInstallPlanner({ platform: "darwin" });
 
     const plan = planner.planInstalls([
@@ -115,11 +115,11 @@ describe("ExternalInstallPlanner", () => {
     expect(plan.actions).toHaveLength(1);
     expect(plan.manualOnly).toHaveLength(1);
     expect(plan.actions[0]!.classification).toBe("manual_only");
-    expect(plan.actions[0]!.reason).toContain("no trusted provider");
+    expect(plan.actions[0]!.reason).toContain("没有可信 provider");
   });
 
-  // T8: Split arrays correct
-  it("plan splits actions into auto/review/manual arrays", () => {
+  // T8：正确拆分 array
+  it("plan 将 action 拆分到 auto/review/manual array", () => {
     const planner = new ExternalInstallPlanner({ platform: "darwin" });
 
     const plan = planner.planInstalls([
@@ -136,8 +136,8 @@ describe("ExternalInstallPlanner", () => {
     expect(plan.alreadyInstalled).toEqual(["git"]);
   });
 
-  // T9: status='unknown' -> manual_only (probe failed)
-  it("unknown probe status -> manual_only with probe-failed reason", () => {
+  // T9：status='unknown' -> manual_only（probe 失败）
+  it("unknown probe status -> manual_only，并带 probe-failed reason", () => {
     const planner = new ExternalInstallPlanner({ platform: "darwin" });
 
     const plan = planner.planInstalls([
@@ -148,12 +148,12 @@ describe("ExternalInstallPlanner", () => {
     expect(plan.manualOnly).toHaveLength(1);
     const action = plan.actions[0]!;
     expect(action.classification).toBe("manual_only");
-    expect(action.reason).toContain("probe failed");
+    expect(action.reason).toContain("probe 失败");
     expect(action.commandPreview).toBeNull();
   });
 
-  // T10: Missing system_package on darwin -> auto_approvable, brew install
-  it("missing system_package on darwin -> auto_approvable with brew install", () => {
+  // T10：darwin 上缺少 system_package -> auto_approvable，使用 brew install
+  it("darwin 上缺少 system_package -> auto_approvable，使用 brew install", () => {
     const planner = new ExternalInstallPlanner({ platform: "darwin" });
 
     const plan = planner.planInstalls([

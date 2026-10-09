@@ -1,14 +1,11 @@
-// release-0.4.7 intent-stage/scaffold-projection — T5: the NAMED R3
-// divergence test. ONE placeholder-only fixture (a pristine `rig scope slice
-// create` output, template-derived via the real CLI renderers) is read by all
-// three consumers of the shared scaffold-placeholder grammar, and they must
-// AGREE it carries no authored content:
-//   1. scope-audit (both twins — parity-pinned) → the
-//      proof_contract_missing_or_malformed finding FIRES,
-//   2. review compose → extractProofContract = [] (promised empty),
-//   3. slice-detail-projector → acceptance items = 0.
-// audit-says-present / review-says-absent is the seam map's R3 class; this
-// test makes any future divergence a CI failure, not a dogfood finding.
+// release-0.4.7 intent-stage/scaffold-projection——T5：具名 R3 分歧测试。共享
+// scaffold-placeholder 语法的三个消费者都会读取同一个纯 placeholder fixture（由真实 CLI
+// renderer 从模板生成的原始 `zrig scope slice create` 输出），且必须一致认定它不含已创作内容：
+//   1. scope-audit（两个 twin，固定一致性）→ 触发 proof_contract_missing_or_malformed finding；
+//   2. review compose → extractProofContract = []（promised 为空）；
+//   3. slice-detail-projector → acceptance item = 0。
+// audit-says-present / review-says-absent 是 seam map 的 R3 类；本测试让未来任何分歧成为
+// CI 失败，而不是 dogfood finding。
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
@@ -53,7 +50,7 @@ beforeAll(async () => {
   };
 });
 
-describe("T5 — shared-helper agreement across the three readers (the R3 pin, proven)", () => {
+describe("T5——三个 reader 之间的 shared-helper 一致性（已证明的 R3 固定点）", () => {
   let db: Database.Database;
   let cleanupRoot: string;
 
@@ -74,10 +71,9 @@ describe("T5 — shared-helper agreement across the three readers (the R3 pin, p
     rmSync(cleanupRoot, { recursive: true, force: true });
   });
 
-  it("audit + compose + acceptance all read the pristine fixture as carrying NO authored deliverables", () => {
-    // Reader 1 — scope-audit: the contract-malformed finding FIRES on a
-    // placeholder-only PRD (pre-fix it stayed silent: checkbox-presence
-    // counted as a contract).
+  it("audit + compose + acceptance 都把原始 fixture 读作不含已创作 deliverable", () => {
+    // Reader 1——scope-audit：纯 placeholder PRD 会触发 contract-malformed finding（修复前
+    // 保持静默：仅 checkbox 存在便被算作 contract）。
     const audit = classifyScopeItem({
       id: "OPR.T.97",
       path: "/fixture/97-crossread",
@@ -91,10 +87,10 @@ describe("T5 — shared-helper agreement across the three readers (the R3 pin, p
     });
     expect(audit.findings.map((f) => f.kind)).toContain("proof_contract_missing_or_malformed");
 
-    // Reader 2 — review compose: promised = [] (placeholder-only).
+    // Reader 2——review compose：promised = []（仅 placeholder）。
     expect(extractProofContract(tpl.prd)).toEqual([]);
 
-    // Reader 3 — slice-detail-projector: acceptance = 0 items.
+    // Reader 3——slice-detail-projector：acceptance = 0 个 item。
     const slicesRoot = join(cleanupRoot, "slices");
     const dir = join(slicesRoot, "97-crossread");
     mkdirSync(dir, { recursive: true });
@@ -108,10 +104,10 @@ describe("T5 — shared-helper agreement across the three readers (the R3 pin, p
     expect(projector.project(slice!).acceptance.totalItems).toBe(0);
   });
 
-  it("the same three readers all see an AUTHORED contract line (agreement holds in the positive too)", () => {
+  it("相同三个 reader 都能看到已创作 contract 行（正例也保持一致）", () => {
     const prd = tpl.prd.replace(
-      /^## Proof contract\s*$/m,
-      "## Proof contract\n\n- [ ] phone journey video",
+      /^##\s+(?:Proof contract|证明契约|证据约定)\s*$/m,
+      "## 证明契约\n\n- [ ] 手机流程视频",
     );
     const audit = classifyScopeItem({
       id: "OPR.T.97",
@@ -125,16 +121,15 @@ describe("T5 — shared-helper agreement across the three readers (the R3 pin, p
       implementationPrdContent: prd,
     });
     expect(audit.findings.map((f) => f.kind)).not.toContain("proof_contract_missing_or_malformed");
-    expect(extractProofContract(prd).map((i) => i.text)).toEqual(["phone journey video"]);
+    expect(extractProofContract(prd).map((i) => i.text)).toEqual(["手机流程视频"]);
   });
 });
 
 // ---------------------------------------------------------------------------
-// release-0.4.7 placeholder-suppression completeness — T-A1 (audit mini-reqs
-// arm learns the merged grammar) + T-A2 (the IF-3 paren-grammar HEAL:
-// RED at base b8c11535 proves today's audit-absent/review-present divergence;
-// green post-change proves audit joined compose's already-ratified grammar —
-// an arch-framed expected-change disclosure, not a regression).
+// release-0.4.7 placeholder-suppression 完整性——T-A1（audit mini-reqs 分支学习合并语法）+
+// T-A2（IF-3 括号语法修复：基线 b8c11535 的 RED 证明当前 audit-absent/review-present
+// 分歧；变更后的 green 证明 audit 加入了 compose 已批准的语法——这是架构限定的预期变更披露，
+// 不是回归）。
 // ---------------------------------------------------------------------------
 
 function auditFor(prd: string) {
@@ -151,41 +146,39 @@ function auditFor(prd: string) {
   });
 }
 
-describe("T-A1 — audit mini-reqs arm counts only AUTHORED numbered items", () => {
-  it("placeholder-only mini-reqs → mini_requirements finding FIRES (was: silent)", () => {
-    const audit = auditFor(tpl.prd); // pristine template: `1. [...]` placeholder + placeholder contract
+describe("T-A1——audit mini-reqs 分支只计算已创作的编号 item", () => {
+  it("纯 placeholder mini-reqs → 触发 mini_requirements finding（此前：静默）", () => {
+    const audit = auditFor(tpl.prd); // 原始模板：`1. [...]` placeholder + placeholder contract
     expect(audit.findings.map((f) => f.kind)).toContain("mini_requirements_missing_or_malformed");
   });
 
-  it("authored dot-form mini-reqs → no mini_requirements finding", () => {
-    const prd = tpl.prd.replace(/^1\. \[.*\]$/m, "1. One real observable outcome.");
+  it("已创作的点号形式 mini-reqs → 无 mini_requirements finding", () => {
+    const prd = tpl.prd.replace(/^1\. \[.*\]$/m, "1. 一个真实可观察结果。");
     const audit = auditFor(prd);
     expect(audit.findings.map((f) => f.kind)).not.toContain("mini_requirements_missing_or_malformed");
   });
 });
 
-describe("T-A2 — the IF-3 heal: `1)` paren-form authored items — audit joins compose's grammar", () => {
-  it("paren-form authored mini-reqs: audit finding ABSENT and compose reads authored (agreement)", async () => {
-    const prd = tpl.prd.replace(/^1\. \[.*\]$/m, "1) One real observable outcome.");
-    // Reader 1 — audit: no malformed finding (RED at base: dot-only regex misses `1)`).
+describe("T-A2——IF-3 修复：`1)` 括号形式的已创作 item——audit 加入 compose 语法", () => {
+  it("括号形式的已创作 mini-reqs：audit finding 缺席，compose 读取为已创作（一致）", async () => {
+    const prd = tpl.prd.replace(/^1\. \[.*\]$/m, "1) 一个真实可观察结果。");
+    // Reader 1——audit：无 malformed finding（基线 RED：只识别点号的正则漏掉 `1)`）。
     const audit = auditFor(prd);
     expect(audit.findings.map((f) => f.kind)).not.toContain("mini_requirements_missing_or_malformed");
-    // Reader 2 — compose: authored TRUE via the same shared grammar.
+    // Reader 2——compose：通过同一共享语法得到 authored TRUE。
     const { extractMiniReqs, hasAuthoredMiniReqs } = await import("../src/domain/review/compose.js");
     expect(hasAuthoredMiniReqs(extractMiniReqs(prd))).toBe(true);
   });
 });
 
 // ---------------------------------------------------------------------------
-// PM dogfood #1 (qitem-20260720015700-630eef64) — the INVERSE agreement: an
-// authored README section wins over a PRISTINE scaffold-only PRD section, and
-// all three grammar consumers agree. The projector leg asserts the VM-006
-// QA-verdict LIFT (done:true, doneVia:"qa-verdict") — the discriminator: row
-// existence alone passes today via the README scan; the lift cannot fire
-// while `promised` extracts from the pristine PRD only.
+// PM dogfood #1（qitem-20260720015700-630eef64）——反向一致性：已创作 README section
+// 优先于原始纯 scaffold PRD section，三个语法消费者保持一致。projector 分支断言 VM-006
+// QA-verdict 提升（done:true、doneVia:"qa-verdict"）——判别点：仅 row 存在可通过当前 README
+// 扫描；若 `promised` 只从原始 PRD 提取，则无法触发提升。
 // ---------------------------------------------------------------------------
 
-describe("PM dogfood #1 — authored README + pristine PRD: three-reader agreement (RED pre-fix)", () => {
+describe("PM dogfood #1——已创作 README + 原始 PRD：三个 reader 一致（修复前 RED）", () => {
   let db2: Database.Database;
   let root2: string;
 
@@ -207,11 +200,11 @@ describe("PM dogfood #1 — authored README + pristine PRD: three-reader agreeme
   });
 
   function authoredReadme(): string {
-    // Real renderer output with ONLY the two convention rows authored — the
-    // dogfood fixture shape (status stays `placeholder` in the frontmatter).
+    // 真实 renderer 输出，仅创作两个约定行——即 dogfood fixture 的形状（frontmatter 中
+    // status 仍为 `placeholder`）。
     return tpl.readme
-      .replace(/^1\. \[.*\]$/m, "1. first authored requirement")
-      .replace(/^- \[ \] \[.*\]$/m, "- [ ] authored deliverable one");
+      .replace(/^1\. \[.*\]$/m, "1. 第一条已创作需求")
+      .replace(/^- \[ \] \[.*\]$/m, "- [ ] 第一项已创作交付物");
   }
 
   const QA_ARTIFACT = [
@@ -220,16 +213,16 @@ describe("PM dogfood #1 — authored README + pristine PRD: three-reader agreeme
     "candidate_sha: cafe1234",
     "artifact_type: qa",
     "verdict: PASS",
-    'money_evidence: "compared the rendered UI to the authored contract row"',
-    "self_check: compared against the authored contract row",
+    'money_evidence: "已将渲染后的 UI 与已创作 contract 行比较"',
+    "self_check: 已与已创作 contract 行比较",
     "evidences:",
-    "  - authored deliverable one",
+    "  - 第一项已创作交付物",
     "---",
     "",
-    "QA verified the authored deliverable.",
+    "QA 已验证已创作交付物。",
   ].join("\n");
 
-  it("reader 1 — audit: NO convention finding for authored README + pristine PRD", () => {
+  it("reader 1——audit：已创作 README + 原始 PRD 不产生 convention finding", () => {
     const audit = classifyScopeItem({
       id: "OPR.T.97",
       path: "/fixture/97-crossread",
@@ -246,7 +239,7 @@ describe("PM dogfood #1 — authored README + pristine PRD: three-reader agreeme
     expect(kinds).not.toContain("proof_contract_missing_or_malformed");
   });
 
-  it("reader 2 — review compose: PLAN + DELIVERED project the authored README sections", async () => {
+  it("reader 2——review compose：PLAN + DELIVERED 投影已创作 README section", async () => {
     const { composeSliceReview } = await import("../src/domain/review/compose.js");
     const r = composeSliceReview({
       slice: { name: "97-crossread", id: "OPR.T.97", title: "Crossread", missionId: "release-t" },
@@ -264,12 +257,12 @@ describe("PM dogfood #1 — authored README + pristine PRD: three-reader agreeme
       approval: { spec: null, delivery: null },
       nowIso: "2026-07-20T00:00:00.000Z",
     });
-    expect(r.plan.concise.text).not.toBeNull(); // RED pre-fix: no projection
-    expect(r.plan.concise.text!).toContain("first authored requirement");
-    expect(r.delivered.items.map((i) => i.promised.text)).toEqual(["authored deliverable one"]);
+    expect(r.plan.concise.text).not.toBeNull(); // 修复前 RED：无投影
+    expect(r.plan.concise.text!).toContain("第一条已创作需求");
+    expect(r.delivered.items.map((i) => i.promised.text)).toEqual(["第一项已创作交付物"]);
   });
 
-  it("reader 3 — slice-detail-projector: the README-authored contract row LIFTS on a matching QA PASS (done:true, doneVia:'qa-verdict')", () => {
+  it("reader 3——slice-detail-projector：README 已创作 contract 行在匹配 QA PASS 时提升（done:true、doneVia:'qa-verdict'）", () => {
     const slicesRoot = join(root2, "slices");
     const dir = join(slicesRoot, "97-crossread");
     mkdirSync(join(dir, "proof"), { recursive: true });
@@ -281,10 +274,10 @@ describe("PM dogfood #1 — authored README + pristine PRD: three-reader agreeme
     const projector = new SliceDetailProjector({ db: db2, indexer, workflowSpecCache: new WorkflowSpecCache(db2) });
     const slice = indexer.get("97-crossread");
     expect(slice).toBeTruthy();
-    const row = projector.project(slice!).acceptance.items.find((i) => i.text === "authored deliverable one");
-    expect(row, "README-authored contract row must appear as an acceptance item").toBeTruthy();
-    // The discriminator: the QA-verdict lift requires `promised` to carry the
-    // README-authored contract item — impossible while extraction is PRD-only.
+    const row = projector.project(slice!).acceptance.items.find((i) => i.text === "第一项已创作交付物");
+    expect(row, "README 中已创作的 contract 行必须显示为 acceptance item").toBeTruthy();
+    // 判别点：QA-verdict 提升要求 `promised` 携带 README 中已创作的 contract item；
+    // 若只从 PRD 提取则不可能做到。
     expect(row!.done).toBe(true);
     expect(row!.doneVia).toBe("qa-verdict");
   });

@@ -1,8 +1,6 @@
-// PL-019 item 5: read-side join helper used by GET /api/rigs/:id/graph
-// to attach in-progress qitem ownership per node session. Tested as a
-// focused unit so we exercise the SQL shape + capping + body-excerpt
-// behavior without spinning up the full route stack (which depends on
-// many migrations / services).
+// PL-019 第 5 项：GET /api/rigs/:id/graph 使用的读侧联接辅助函数，用于按节点会话附加
+// 进行中 qitem 的所有权。采用聚焦单元测试，以便无需启动依赖许多迁移/服务的完整路由栈，
+// 即可验证 SQL 结构、数量上限和正文摘录行为。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -41,7 +39,7 @@ function insertQitem(db: Database.Database, opts: {
   );
 }
 
-describe("PL-019 loadCurrentQitemsForSessions read-side join", () => {
+describe("PL-019 loadCurrentQitemsForSessions 读侧联接", () => {
   let db: Database.Database;
 
   beforeEach(() => {
@@ -55,18 +53,18 @@ describe("PL-019 loadCurrentQitemsForSessions read-side join", () => {
 
   afterEach(() => db.close());
 
-  it("returns empty map for empty session list", () => {
+  it("会话列表为空时返回空映射", () => {
     const result = loadCurrentQitemsForSessions(db, []);
     expect(result.size).toBe(0);
   });
 
-  it("returns empty map when no qitems exist for the queried sessions", () => {
+  it("查询的会话不存在 qitem 时返回空映射", () => {
     insertQitem(db, { qitemId: "q1", source: "src@r", destination: "other@r", state: "in-progress", body: "x" });
     const result = loadCurrentQitemsForSessions(db, ["alpha@r", "beta@r"]);
     expect(result.size).toBe(0);
   });
 
-  it("includes only state='in-progress' qitems (excludes pending/closed/handed-off)", () => {
+  it("仅包含 state='in-progress' 的 qitem（排除 pending/closed/handed-off）", () => {
     insertQitem(db, { qitemId: "q-pending", source: "s@r", destination: "alpha@r", state: "pending", body: "p" });
     insertQitem(db, { qitemId: "q-inprog", source: "s@r", destination: "alpha@r", state: "in-progress", body: "wip" });
     insertQitem(db, { qitemId: "q-closed", source: "s@r", destination: "alpha@r", state: "closed", body: "done" });
@@ -76,7 +74,7 @@ describe("PL-019 loadCurrentQitemsForSessions read-side join", () => {
     expect(result.get("alpha@r")?.[0].qitemId).toBe("q-inprog");
   });
 
-  it("groups qitems by destination_session", () => {
+  it("按 destination_session 对 qitem 分组", () => {
     insertQitem(db, { qitemId: "q1", source: "s@r", destination: "alpha@r", state: "in-progress", body: "a" });
     insertQitem(db, { qitemId: "q2", source: "s@r", destination: "beta@r", state: "in-progress", body: "b" });
     insertQitem(db, { qitemId: "q3", source: "s@r", destination: "alpha@r", state: "in-progress", body: "c" });
@@ -86,7 +84,7 @@ describe("PL-019 loadCurrentQitemsForSessions read-side join", () => {
     expect(result.get("beta@r")).toHaveLength(1);
   });
 
-  it("caps per-node at 3 qitems even when more in-progress rows exist", () => {
+  it("即使存在更多进行中行，每个节点也最多返回 3 个 qitem", () => {
     for (let i = 0; i < 6; i++) {
       insertQitem(db, {
         qitemId: `q-${i}`,
@@ -101,7 +99,7 @@ describe("PL-019 loadCurrentQitemsForSessions read-side join", () => {
     expect(result.get("alpha@r")).toHaveLength(3);
   });
 
-  it("excerpts body bodies longer than 80 chars with ellipsis", () => {
+  it("正文超过 80 个字符时以省略号截取", () => {
     const longBody = "x".repeat(120);
     insertQitem(db, { qitemId: "q-long", source: "s@r", destination: "alpha@r", state: "in-progress", body: longBody });
     const result = loadCurrentQitemsForSessions(db, ["alpha@r"]);
@@ -111,13 +109,13 @@ describe("PL-019 loadCurrentQitemsForSessions read-side join", () => {
     expect(entry!.bodyExcerpt.endsWith("…")).toBe(true);
   });
 
-  it("preserves short bodies verbatim", () => {
+  it("原样保留短正文", () => {
     insertQitem(db, { qitemId: "q-short", source: "s@r", destination: "alpha@r", state: "in-progress", body: "tiny" });
     const result = loadCurrentQitemsForSessions(db, ["alpha@r"]);
     expect(result.get("alpha@r")?.[0].bodyExcerpt).toBe("tiny");
   });
 
-  it("orders rows by ts_updated DESC (most-recently-touched first)", () => {
+  it("按 ts_updated DESC 排序行（最近更新优先）", () => {
     insertQitem(db, { qitemId: "q-old", source: "s@r", destination: "alpha@r", state: "in-progress", body: "old", tsUpdated: "2026-05-04T00:00:00.000Z" });
     insertQitem(db, { qitemId: "q-mid", source: "s@r", destination: "alpha@r", state: "in-progress", body: "mid", tsUpdated: "2026-05-04T01:00:00.000Z" });
     insertQitem(db, { qitemId: "q-new", source: "s@r", destination: "alpha@r", state: "in-progress", body: "new", tsUpdated: "2026-05-04T02:00:00.000Z" });
@@ -127,7 +125,7 @@ describe("PL-019 loadCurrentQitemsForSessions read-side join", () => {
     expect(list.map((q) => q.qitemId)).toEqual(["q-new", "q-mid", "q-old"]);
   });
 
-  it("carries tier through verbatim (string or null)", () => {
+  it("原样透传 tier（字符串或 null）", () => {
     insertQitem(db, { qitemId: "q-mode2", source: "s@r", destination: "alpha@r", state: "in-progress", body: "x", tier: "mode2" });
     insertQitem(db, { qitemId: "q-no-tier", source: "s@r", destination: "alpha@r", state: "in-progress", body: "y", tier: null, tsUpdated: "2026-05-04T01:00:00.000Z" });
 

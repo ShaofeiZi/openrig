@@ -23,20 +23,20 @@ import type { PersistedEvent } from "./types.js";
 import type { AppliedLaunchObservation } from "./permission-drift.js";
 import { AppliedLaunchObservationStore } from "./applied-launch-observation-store.js";
 
-/** A bounded labeled-from-record recap of the predecessor's last exchanges + the record path,
- *  resolved from the predecessor's provider transcript (claude transcript_path / codex rollout_path).
- *  The permanent claude-runtime leg of scrollback preservation (alternate-screen seats keep no
- *  native scrollback); renders on codex seats too, where native scrollback is the money proof. */
+/** 从前任的 provider 记录（claude transcript_path / codex rollout_path）解析出的有界回顾，
+ *  包含带有“来自记录”标签的最后几轮交互及记录路径。它是 claude 运行时保留回滚内容的
+ *  永久支路（备用屏幕中的 seat 不保留原生回滚）；也会在 codex seat 上渲染，后者的
+ *  原生回滚是关键证明。 */
 export interface PredecessorRecap {
   recap: JsonlExchange[];
   recordPath: string;
 }
-/** B16 — every no-recap outcome is NAMED: the resolver returns either the recap or the reason it
- *  is unavailable, and the packet prints that reason (honest-degraded means labeled, not silent). */
+/** B16 — 每个无回顾结果都有明确名称：解析器返回回顾或其不可用原因，数据包会打印该原因
+ *  （如实降级意味着带标签，而非静默处理）。 */
 export type PredecessorRecapResolution = PredecessorRecap | { unavailableReason: string };
 
-/** Resolve the predecessor's bounded recap for the successor boot packet, or a named unavailable
- *  verdict (never a silent null — the packet renders the reason). */
+/** 为后继启动数据包解析前任的有界回顾，或返回具名的不可用结论
+ *  （绝不静默返回 null——数据包会渲染原因）。 */
 export type PredecessorRecapResolver = (args: {
   nodeId: string;
   runtime: string | null;
@@ -49,9 +49,8 @@ export interface SeatHandoverMutationResult {
   mutated: true;
   continuityTransferred: false;
   seat: SeatHandoverPlan["seat"];
-  // The source reported to the operator is the ORIGINAL intent
-  // (fresh/rebuild/fork/discovered). Non-discovered sources are internally
-  // routed through a created discovery candidate, but provenance stays honest.
+  // 向操作者报告的源是原始意图（fresh/rebuild/fork/discovered）。非 discovered 源
+  // 在内部经由创建出的发现候选项路由，但来源信息始终如实保留。
   source: SeatHandoverSource;
   reason: string;
   operator: string | null;
@@ -73,10 +72,9 @@ export interface SeatHandoverMutationResult {
     startupContextDelivered: boolean;
     provenanceRecordWritten: false;
   };
-  /** OPR.0.5.5.5 — per-source execution outcome. fork: the resolved fork origin;
-   *  rebuild: EXACTLY which durable artifacts primed the successor, which
-   *  declared addresses were gaps, and (when the chain is empty) the named
-   *  reason — recorded, never silently dropped. Absent for fresh/discovered. */
+  /** OPR.0.5.5.5 — 逐源执行结果。fork：解析出的 fork 来源；rebuild：精确记录哪些
+   *  持久工件初始化了后继、哪些声明地址存在缺口，以及（链为空时）具名原因——
+   *  绝不静默丢弃。fresh/discovered 时不存在。 */
   sourceOutcome?:
     | { mode: "fork"; forkedFrom: string }
     | { mode: "rebuild"; primedArtifacts: Array<{ address: string; label: string }>; gaps: string[]; emptyChainReason?: string };
@@ -95,11 +93,11 @@ interface NodeRow {
   id: string;
   runtime: string | null;
   cwd: string | null;
-  // 0.5.2-07: the seat's SPEC-pinned model, threaded onto the successor binding so handover
-  // does not silently revert a spec-pinned seat to the runtime default (adapter emits -m/--model).
+  // 0.5.2-07：seat 在规范中固定的模型，会传递到后继绑定，避免 handover 将固定模型的
+  // seat 静默恢复为运行时默认值（适配器会发出 -m/--model）。
   model: string | null;
-  // 0.5.2-07 A4-profile: the seat's SPEC-pinned codex config profile (nodes.codex_config_profile),
-  // threaded onto the successor binding for the same reason as model — the adapter emits `-p <profile>`.
+  // 0.5.2-07 A4-profile：seat 在规范中固定的 codex 配置 profile
+  //（nodes.codex_config_profile），出于与模型相同的原因传递到后继绑定——适配器发出 `-p <profile>`。
   codex_config_profile: string | null;
 }
 
@@ -123,72 +121,63 @@ interface SeatHandoverServiceDeps {
   eventBus: EventBus;
   tmuxAdapter: TmuxAdapter;
   now?: () => Date;
-  /** OpenRig identity/activity env stamped onto a created successor session,
-   *  mirroring the launch identity env. Defaults to {} (the three core identity
-   *  vars are always derived internally). */
+  /** 写入新建后继会话的 OpenRig 身份/活动环境变量，与启动身份环境一致。默认为 {}
+   *  （三个核心身份变量始终在内部派生）。 */
   sessionEnv?: Record<string, string | undefined>;
-  /** Injectable id source for the successor session name (tests). */
+  /** 后继会话名称的可注入 id 来源（用于测试）。 */
   newSuccessorId?: () => string;
-  /** Runtime adapters keyed by runtime — used to launch a fresh successor into
-   *  a LIVE agent (B1) before commit. Absent → fresh handover cannot launch. */
+  /** 以 runtime 为键的运行时适配器——提交前用于将全新后继启动为实时 agent（B1）。
+   *  缺失 → 无法启动 fresh handover。 */
   runtimeAdapters?: Record<string, RuntimeAdapter>;
-  /** Claude sidecar reader for discovered-mode resume-token capture (B2). */
+  /** 用于 discovered 模式恢复令牌捕获的 Claude sidecar 读取器（B2）。 */
   contextUsageStore?: ResumeTokenCaptureDeps["contextUsageStore"];
-  /** Codex thread-id capturer for discovered-mode resume-token capture (B2). */
+  /** 用于 discovered 模式恢复令牌捕获的 Codex 线程 id 捕获器（B2）。 */
   resumeTokenCapturer?: ResumeTokenCaptureDeps["resumeTokenCapturer"];
-  /** OPR.0.4.6.PI1 FR-6 — pi-runner sidecar reader for Pi resume-token capture. */
+  /** OPR.0.4.6.PI1 FR-6 — 用于捕获 Pi 恢复令牌的 pi-runner sidecar 读取器。 */
   piRunnerStateStore?: ResumeTokenCaptureDeps["piRunnerStateStore"];
-  /** Readiness timeout for the successor launch (tests shorten it). */
+  /** 后继启动的就绪超时（测试中会缩短）。 */
   readinessTimeoutMs?: number;
-  /** Injectable sleep for the successor readiness backoff (tests). */
+  /** 后继就绪退避使用的可注入 sleep（用于测试）。 */
   sleep?: (ms: number) => Promise<void>;
   /**
-   * OPR.0.4.6.02 S1 — the SHARED tmux option-defaults applier, threaded into
-   * the successor launcher so a FRESH handover successor gets the same
-   * mouse/status/clipboard defaults as a NodeLauncher-launched seat.
+   * OPR.0.4.6.02 S1 — 共享的 tmux 默认选项应用器，传入后继启动器，使 fresh handover
+   * 后继获得与 NodeLauncher 所启动 seat 相同的鼠标、状态栏和剪贴板默认值。
    */
   tmuxOptionDefaults?: TmuxOptionDefaultsApplier;
   /**
-   * Ghost-stage (e) seam — the per-store retiring-occupant invalidator, authored by the ghost-stage
-   * slice and CALLED once at commit() so the cutover successor never inherits a predecessor's seat-name-
-   * keyed state. Optional: absent until the ghost-stage slice lands → the commit call is skipped (never
-   * blocking the handover). See occupant-invalidator.ts.
+   * Ghost-stage (e) 接缝——逐 store 的退役 occupant 失效器，由 ghost-stage 切片实现，
+   * 在 commit() 时调用一次，确保切换后的后继绝不继承前任以 seat 名称为键的状态。可选：
+   * 在 ghost-stage 切片落地前若缺失，则跳过提交调用（绝不阻塞 handover）。参见 occupant-invalidator.ts。
    */
   occupantInvalidator?: OccupantInvalidator;
   /**
-   * Resolves the predecessor's bounded from-record recap for the successor boot packet (claude
-   * transcript_path / codex rollout_path → parseJsonlExchanges). Optional: absent → the recap
-   * sections are omitted honestly. The recap is the permanent claude-runtime leg of scrollback
-   * preservation (alternate-screen seats keep no native scrollback); on codex seats the preserved
-   * native scrollback is the money proof. Wired in production to ContextUsageStore + parseJsonlExchanges.
+   * 为后继启动数据包解析前任有界的“来自记录”回顾（claude transcript_path / codex
+   * rollout_path → parseJsonlExchanges）。可选：缺失时如实省略回顾章节。回顾是 claude
+   * 运行时保留回滚内容的永久支路（备用屏幕中的 seat 不保留原生回滚）；在 codex seat 上，
+   * 保留下来的原生回滚是关键证明。生产环境连接到 ContextUsageStore + parseJsonlExchanges。
    */
   predecessorRecapResolver?: PredecessorRecapResolver;
   /**
-   * OPR.0.5.3.5 mini-req 7 — resolves the AUTHORED seat recap (RECAP.md beside LEARNED, written by
-   * the outgoing occupant) for the successor packet's pointer leg. Optional: absent -> the authored
-   * leg is omitted (the feature never ran); a resolver that finds nothing returns the labeled
-   * absence. Wired in production to seat-recap-store + the topology.root seat layout.
+   * OPR.0.5.3.5 微需求 7——为后继数据包的指针支路解析人工编写的 seat 回顾（LEARNED
+   * 旁的 RECAP.md，由离任 occupant 编写）。可选：缺失时省略人工编写支路（功能从未运行）；
+   * 未找到内容的解析器返回带标签的缺失结果。生产环境连接到 seat-recap-store +
+   * topology.root seat 布局。
    */
   authoredRecapResolver?: (seatRef: string) => { address: string; chainLength: number } | { absentReason: string };
   /**
-   * S19 (territory ruling qitem-20260827001530, EXACT bounds): ONE narrow call into the
-   * activity oracle at the completion/rebind commit point so seat-keyed activity state
-   * treats the cutover as its own visible event and the successor's rung inventory
-   * starts unpromoted (never inheriting the retiree's rung authority). Optional: absent
-   * → skipped, never blocks a handover.
+   * S19（范围裁定 qitem-20260827001530，精确边界）：在完成/重新绑定的提交点仅调用一次
+   * activity oracle，使以 seat 为键的活动状态把切换视为独立可见事件，并让后继的层级清单
+   * 从未提升状态开始（绝不继承退役者的层级权限）。可选：缺失时跳过，绝不阻塞 handover。
    */
   activityOracle?: { declareOccupantSwap: (seatNodeId: string, generation: string) => void };
   /**
-   * OPR.0.5.5.5 — resolves the seat's durable rebuild-priming chain (authored
-   * recap chain, LEARNED, restore-packet record) in trust-precedence order for
-   * `--source rebuild`. Optional: absent → rebuild executes with a named empty
-   * chain. Wired in production to seat-recap-store (listRecapChain) + the
-   * topology.root seat layout.
+   * OPR.0.5.5.5 — 为 `--source rebuild` 按信任优先级解析 seat 的持久 rebuild 初始化链
+   * （人工回顾链、LEARNED、恢复数据包记录）。可选：缺失时使用具名空链执行 rebuild。
+   * 生产环境连接到 seat-recap-store（listRecapChain）+ topology.root seat 布局。
    */
   rebuildPrimingResolver?: (seatRef: string) => { artifacts: Array<{ address: string; label: string }> } | { emptyReason: string };
-  /** OPR.0.5.5.5 — filesystem existence check for declared rebuild artifacts
-   *  (the session-source-rebuild-resolver seam). Default: node:fs existsSync;
-   *  tests inject. */
+  /** OPR.0.5.5.5 — 检查声明的 rebuild 工件是否存在于文件系统
+   *  （session-source-rebuild-resolver 接缝）。默认使用 node:fs existsSync；测试可注入。 */
   rebuildArtifactExists?: (path: string) => boolean;
 }
 
@@ -209,16 +198,16 @@ export class SeatHandoverService {
   private activityOracle: SeatHandoverServiceDeps["activityOracle"] | null;
   private rebuildPrimingResolver: SeatHandoverServiceDeps["rebuildPrimingResolver"] | null;
   private rebuildArtifactExists: (path: string) => boolean;
-  /** Injectable sleep (tests): also carries the shared paste-then-submit settle in deliverRestorePacket. */
+  /** 可注入的 sleep（用于测试）：也承载 deliverRestorePacket 中共享的粘贴后提交稳定等待。 */
   private sleep: (ms: number) => Promise<void>;
   private appliedLaunchObservations: AppliedLaunchObservationStore;
   private now: () => Date;
 
   constructor(deps: SeatHandoverServiceDeps) {
-    if (deps.db !== deps.rigRepo.db) throw new Error("SeatHandoverService: rigRepo must share the same db handle");
-    if (deps.db !== deps.sessionRegistry.db) throw new Error("SeatHandoverService: sessionRegistry must share the same db handle");
-    if (deps.db !== deps.discoveryRepo.db) throw new Error("SeatHandoverService: discoveryRepo must share the same db handle");
-    if (deps.db !== deps.eventBus.db) throw new Error("SeatHandoverService: eventBus must share the same db handle");
+    if (deps.db !== deps.rigRepo.db) throw new Error("SeatHandoverService：rigRepo 必须共享同一个数据库句柄");
+    if (deps.db !== deps.sessionRegistry.db) throw new Error("SeatHandoverService：sessionRegistry 必须共享同一个数据库句柄");
+    if (deps.db !== deps.discoveryRepo.db) throw new Error("SeatHandoverService：discoveryRepo 必须共享同一个数据库句柄");
+    if (deps.db !== deps.eventBus.db) throw new Error("SeatHandoverService：eventBus 必须共享同一个数据库句柄");
     this.db = deps.db;
     this.rigRepo = deps.rigRepo;
     this.sessionRegistry = deps.sessionRegistry;
@@ -268,8 +257,8 @@ export class SeatHandoverService {
           return {
             ok: false,
             code: "successor_creation_not_implemented",
-            message: "Seat handover mutation is not available through dry-run planning.",
-            guidance: "Re-run with --dry-run to inspect the two-phase handover plan without changing topology.",
+            message: "试运行计划不提供 seat handover 变更操作。",
+            guidance: "请使用 --dry-run 重新运行，以便在不更改拓扑的情况下检查两阶段 handover 计划。",
           };
         case "missing_reason":
         case "invalid_source":
@@ -291,8 +280,8 @@ export class SeatHandoverService {
       return {
         ok: false,
         code: "missing_reason",
-        message: "Missing required option: --reason <reason>",
-        guidance: "Provide an explicit handover reason, for example: --reason context-wall",
+        message: "缺少必填选项：--reason <reason>",
+        guidance: "请提供明确的 handover 原因，例如：--reason context-wall",
       };
     }
 
@@ -300,16 +289,15 @@ export class SeatHandoverService {
     if (!parsed.ok) {
       return parsed;
     }
-    // OPR.0.5.5.5 — execution dispatches on the SAME capability table the
-    // dry-run plan renders from, so the plan can never promise a source the
-    // executor refuses. Every current mode executes; a future non-executing
-    // mode must declare `executes: false` in its table row to be refused here.
+    // OPR.0.5.5.5 — 执行过程基于试运行计划所使用的同一能力表进行分派，因此计划绝不会
+    // 承诺执行器拒绝的源。当前每种模式都可执行；未来不可执行的模式必须在表项中声明
+    // `executes: false`，以便在此拒绝。
     if (!SEAT_HANDOVER_SOURCE_CAPABILITIES[parsed.source.mode].executes) {
       return {
         ok: false,
         code: "source_not_supported",
-        message: `${parsed.source.mode} handover does not execute on this daemon.`,
-        guidance: "Use a source the dry-run plan marks executable.",
+        message: `此 daemon 不执行 ${parsed.source.mode} handover。`,
+        guidance: "请使用试运行计划标记为可执行的源。",
       };
     }
 
@@ -321,8 +309,8 @@ export class SeatHandoverService {
       return {
         ok: false,
         code: "current_occupant_required",
-        message: `Seat "${input.seatRef}" has no current occupant to hand over from.`,
-        guidance: "Start or claim the current seat occupant first, then retry handover.",
+        message: `席位 "${input.seatRef}" 没有可供交接的当前占用者。`,
+        guidance: "请先启动或认领当前 seat occupant，然后重试 handover。",
       };
     }
 
@@ -336,17 +324,16 @@ export class SeatHandoverService {
       return {
         ok: false,
         code: "current_occupant_required",
-        message: `Seat "${input.seatRef}" has no session row to supersede.`,
-        guidance: "Inspect the seat with: rig seat status <seat>",
+        message: `席位 "${input.seatRef}" 没有可替代的会话记录。`,
+        guidance: "请使用以下命令检查 seat：zrig seat status <seat>",
       };
     }
 
     const operator = input.operator?.trim() || null;
 
-    // OPR.0.5.5.5 fork: resolve the native conversation id BEFORE any mutation
-    // (the respawn), so a missing/undiscoverable token is an honest pre-mutation
-    // refusal — never a blank successor silently reported as a fork, and never a
-    // mid-swap abort for a condition knowable up front.
+    // OPR.0.5.5.5 fork：在任何变更（respawn）之前解析原生对话 id，使缺失或无法发现的
+    // 令牌触发如实的变更前拒绝——绝不会把空白后继静默报告为 fork，也不会因预先可知的
+    // 条件而在切换途中中止。
     let forkSource: { kind: "native_id"; value: string } | null = null;
     if (parsed.source.mode === "fork") {
       const forkRef = parsed.source.ref ?? latestSession.session_name;
@@ -356,30 +343,30 @@ export class SeatHandoverService {
           ok: false,
           code: discovery.failure.code === "session_not_found" ? "fork_source_not_found" : "resume_token_unavailable",
           message: discovery.failure.message,
-          guidance: "Fork needs a resolvable native conversation id. Inspect the source session with: rig ps --nodes",
+          guidance: "Fork 需要可解析的原生对话 id。请使用以下命令检查源会话：zrig ps --nodes",
         };
       }
       if (!discovery.result.nativeId) {
         return {
           ok: false,
           code: "resume_token_unavailable",
-          message: `No native resume id is discoverable for fork source "${forkRef}" — the conversation may not have produced output yet. No successor was created and the seat is untouched.`,
-          guidance: "Retry after the source session has a native conversation id, or use --source fresh.",
+          message: `无法发现 fork 源 "${forkRef}" 的原生恢复 id——该对话可能尚未产生输出。未创建后继，seat 保持不变。`,
+          guidance: "请在源会话拥有原生对话 id 后重试，或使用 --source fresh。",
         };
       }
       if (node.runtime && discovery.result.runtime && node.runtime !== discovery.result.runtime) {
         return {
           ok: false,
           code: "runtime_mismatch",
-          message: `Seat expects runtime "${node.runtime}", but fork source "${forkRef}" is "${discovery.result.runtime}".`,
-          guidance: "Fork from a source session that runs the seat's runtime.",
+          message: `Seat 要求运行时 "${node.runtime}"，但 fork 源 "${forkRef}" 使用 "${discovery.result.runtime}"。`,
+          guidance: "请选择运行该 seat 所需运行时的源会话进行 fork。",
         };
       }
       forkSource = { kind: "native_id", value: discovery.result.nativeId };
     }
 
-    // Already-created successor: route straight through the discovered->commit
-    // path with nothing to unwind (byte-identical to the shipped behavior).
+    // 已创建的后继：直接走 discovered->commit 路径，无需回滚任何内容
+    //（与已发布行为逐字节一致）。
     if (parsed.source.mode === "discovered" && parsed.source.ref) {
       return this.finalizeWithDiscovered({
         seatRef: input.seatRef,
@@ -398,59 +385,56 @@ export class SeatHandoverService {
       });
     }
 
-    // Full-cycle composer for fresh (CUTOVER): capture -> respawn a live successor INTO the departing
-    // pane in place -> deliver captured context -> verify continuity -> rebind. The registry BINDING is
-    // untouched until the commit inside finalizeWithDiscovered (the SOLE, LAST rebind), but the retiree
-    // PROCESS is force-replaced at the in-place respawn (it exits in place; its provider session file is
-    // the durable wake target). (fork/rebuild were rejected above; discovered was finalized above.)
+    // fresh（切换）的完整周期编排：捕获 -> 在离任 pane 中原地 respawn 实时候继 -> 投递捕获的
+    // 上下文 -> 验证连续性 -> 重新绑定。在 finalizeWithDiscovered 内提交（唯一且最后一次重新绑定）
+    // 之前，注册表绑定不会改变；但退役进程会在原地 respawn 时被强制替换（它原地退出，其
+    // provider 会话文件是持久唤醒目标）。（fork/rebuild 已在上方拒绝；discovered 已在上方完成。）
 
-    // 1. Capture the departing seat's context BEFORE the respawn replaces it.
+    // 1. 在 respawn 替换离任 seat 之前捕获其上下文。
     const capturedContext = await this.captureDepartingContext(latestSession.session_name);
     const predecessorGeneration = this.sessionRegistry.currentOccupantTenure(node.id)?.generationUuid;
 
-    // 1b. B16 — resolve the predecessor's from-record recap NOW, before the successor exists: the
-    // claude sidecar is keyed by SESSION NAME and the cutover reuses the canonical name, so once the
-    // successor harness boots it overwrites the very sidecar the resolver reads (the live defect:
-    // the resolver ran post-launch, read the successor's fresh sidecar, and honestly found nothing —
-    // silently). Resolution is a pure read; nothing downstream of it depends on the launch.
+    // 1b. B16——在后继创建前立即解析前任的“来自记录”回顾：claude sidecar 以会话名称为键，
+    // 而切换会复用规范名称，因此后继 harness 一旦启动，就会覆盖解析器要读取的 sidecar
+    //（线上缺陷：解析器在启动后运行，读取到后继的新 sidecar，并且确实什么也没找到——但被
+    // 静默处理）。解析是纯读取操作；其下游没有任何内容依赖启动。
     const rawRecapResolution = this.predecessorRecapResolver
       ? this.predecessorRecapResolver({ nodeId: node.id, runtime: node.runtime, sessionName: latestSession.session_name })
       : undefined;
-    // Defensive against the pre-B16 resolver contract (null = silent no-recap): an injected legacy
-    // resolver must not crash the handover — its null becomes a named unavailable like every other.
+    // 防御 B16 之前的解析器契约（null = 静默无回顾）：注入的旧解析器不得导致 handover
+    // 崩溃——其 null 与其他情况一样转换为具名的不可用结果。
     const predecessorRecapResolution: PredecessorRecapResolution =
-      rawRecapResolution ?? { unavailableReason: this.predecessorRecapResolver ? "recap resolver returned no result" : "no recap resolver wired on this daemon" };
+      rawRecapResolution ?? { unavailableReason: this.predecessorRecapResolver ? "回顾解析器未返回结果" : "此 daemon 未接入回顾解析器" };
 
-    // 2. Respawn the successor INTO the retiree's pane and launch it into a LIVE, READY agent (§2.1b
-    //    seam, B1): resolve departing pane -> respawn-pane in place (preserved name) -> real runtime
-    //    startup (launchHarness + readiness) -> upsertDiscoveredSession. The successor is a live agent,
-    //    not a bare shell, before it can commit.
-    // Seam B Guard-F1: an ORGANIC seat has no node provenance — the inherited rig
-    // attachment still carries to the successor (continuity of the same seat).
+    // 2. 在退役者 pane 中原地 respawn 后继，并将其启动为实时、就绪的 agent（§2.1b 接缝，B1）：
+    //    解析离任 pane -> 原地 respawn-pane（保留名称）-> 真实运行时启动（launchHarness + 就绪）
+    //    -> upsertDiscoveredSession。后继只有成为实时 agent，而非裸 shell 后，才能提交。
+    // 接缝 B Guard-F1：自然形成的 seat 没有节点来源——继承的 rig 附着仍会传递给后继
+    //（同一 seat 的连续性）。
     const successorPosture = this.rigRepo.getNodePolicyProvenance(node.id)?.launchPosture
       ?? this.rigRepo.getRigPolicyProvenance(statusResult.status.rig_id)?.launchPosture
-      ?? "floor"; // R2 terminal: absence = the locked floor on the continuity edge too
+      ?? "floor"; // R2 terminal：在连续性边上，缺失也等于锁定下限
     let permissionOverride: ReturnType<typeof permissionBindingOverride>;
     try {
       const selection = new NativePermissionStore(this.db).read(node.id);
-      if (selection && selection.runtime !== node.runtime) throw new Error("Seat runtime changed since permission selection; explicitly select again or inherit.");
+      if (selection && selection.runtime !== node.runtime) throw new Error("自权限选择后 seat 运行时已变化；请重新显式选择或继承。");
       permissionOverride = permissionBindingOverride(selection);
-    } catch (error) { return { ok: false, code: "successor_create_failed", message: `Permission selection: ${(error as Error).message}`,
-      guidance: "No successor was created. Inspect the seat permission selection before a separately authorized retry." }; }
-    // The successor must carry its own generation from its first byte. This reservation writes no
-    // ledger row; commit consumes it, while every failed pre-commit branch remains unregistered.
+    } catch (error) { return { ok: false, code: "successor_create_failed", message: `权限选择：${(error as Error).message}`,
+      guidance: "未创建后继。请检查 seat 权限选择，再另行授权重试。" }; }
+    // 后继必须从第一个字节起就携带自身 generation。该预留不会写入台账行；提交会消费它，
+    // 而所有提交前失败分支都保持未注册。
     const occupantGeneration = this.sessionRegistry.reserveOccupantGeneration();
     const launch = await this.successorLauncher.createSuccessor({
-      // Seam B: the successor is the SAME seat continuing — persisted policy posture carries.
-      // 0.5.2-07 model fidelity: carry the seat's SPEC-pinned model so the successor launch reads the
-      // spec (else the running topology drifts from the founder-designed one at every handover).
-      // A4-profile: likewise carry the codex config profile (adapter emits -p) — the restore path
-      // already threads it; handover must too, or a profile-pinned codex seat reverts at handover.
+      // 接缝 B：后继延续的是同一个 seat——持久化的策略姿态会继续传递。
+      // 0.5.2-07 模型保真：携带 seat 在规范中固定的模型，使后继启动读取该规范
+      //（否则运行中的拓扑会在每次 handover 时偏离创始人设计）。
+      // A4-profile：同样携带 codex 配置 profile（适配器发出 -p）——恢复路径已传递该值；
+      // handover 也必须如此，否则固定 profile 的 codex seat 会在 handover 时恢复默认值。
       node: { id: node.id, runtime: node.runtime, cwd: node.cwd, launchPosture: successorPosture, ...permissionOverride, model: node.model, codexConfigProfile: node.codex_config_profile ?? undefined },
       departingSessionName: latestSession.session_name,
       occupantGeneration,
-      // OPR.0.5.5.5: a fork-sourced successor launches as a NATIVE FORK of the
-      // resolved id — it carries the incumbent context from its first byte.
+      // OPR.0.5.5.5：fork 来源的后继会以已解析 id 的原生 fork 方式启动——
+      // 从第一个字节起就携带现任上下文。
       ...(forkSource ? { forkSource } : {}),
       ...(predecessorGeneration
         ? { onReplacementStarted: () => { this.appliedLaunchObservations.invalidateGeneration(predecessorGeneration); } }
@@ -460,21 +444,19 @@ export class SeatHandoverService {
       return {
         ok: false,
         code: "successor_create_failed",
-        message: `Handover failed at step "${launch.step}": ${launch.message}`,
-        // The registry binding is unchanged (commit never ran). A resolve_pane failure leaves the live
-        // retiree wholly untouched; a failure after the in-place respawn leaves the seat re-wakeable from
-        // its provider session file (never destroyed). Inspect tmux/daemon logs and retry.
-        guidance: "The seat's registry binding is unchanged. If the failure was after the in-place respawn, the seat is re-wakeable from its provider session file. Inspect tmux/daemon logs and retry.",
+        message: `Handover 在步骤 "${launch.step}" 失败：${launch.message}`,
+        // 注册表绑定未改变（从未执行提交）。resolve_pane 失败会让实时退役者完全不受影响；
+        // 原地 respawn 后失败时，seat 仍可从其 provider 会话文件重新唤醒（绝不会被销毁）。
+        // 请检查 tmux/daemon 日志后重试。
+        guidance: "Seat 的注册表绑定未改变。若故障发生在原地 respawn 之后，仍可从 provider 会话文件重新唤醒 seat。请检查 tmux/daemon 日志后重试。",
       };
     }
 
-    // 3. fresh: deliver the captured restore packet to the live successor BEFORE
-    //    continuity verify (a blank occupant is a relaunch, not a handover).
-    //    discovered is operator-prepared and needs no delivery.
+    // 3. fresh：在连续性验证之前，将捕获的恢复数据包投递给实时候继
+    //    （空白 occupant 属于重新启动，而非 handover）。discovered 由操作者预先准备，无需投递。
     let contextDelivered = false;
-    // OPR.0.5.3.5 mini-req 7 — the authored recap pointer leg, resolved through the injected
-    // reader; every outcome labeled (present with chain depth / named absence / omitted when
-    // the resolver itself is absent).
+    // OPR.0.5.3.5 微需求 7——通过注入的读取器解析人工回顾指针支路；每种结果都有标签
+    //（存在时带链深度 / 具名缺失 / 解析器本身缺失时省略）。
     let authoredRecapInfo: { authoredRecap?: { address: string; chainLength: number }; authoredRecapAbsentReason?: string } | null = null;
     if (this.authoredRecapResolver) {
       const authored = this.authoredRecapResolver(input.seatRef);
@@ -483,8 +465,8 @@ export class SeatHandoverService {
         : { authoredRecapAbsentReason: authored.absentReason };
     }
     if (parsed.source.mode === "fresh") {
-      // B16 — the recap was resolved at step 1b (pre-launch); an unavailable verdict rides the
-      // packet as a NAMED line, never a silent omission.
+      // B16——回顾已在步骤 1b（启动前）解析；不可用结论会作为具名行写入数据包，
+      // 绝不静默省略。
       const resolved = "recap" in predecessorRecapResolution ? predecessorRecapResolution : null;
       const delivered = await this.deliverRestorePacket(launch.tmuxSession, {
         seatRef: input.seatRef,
@@ -497,33 +479,32 @@ export class SeatHandoverService {
         ...(authoredRecapInfo ?? {}),
       });
       if (!delivered.ok) {
-        // Partial: the successor is live in the preserved pane but the context packet never landed —
-        // unwind the discovery candidate (cleanup marks it vanished; it NEVER kills the preserved seat)
-        // and leave the binding unchanged (no false-green). The seat is re-wakeable from its session file.
+        // 部分完成：后继已在保留的 pane 中运行，但上下文数据包未送达——回滚发现候选项
+        //（cleanup 将其标记为 vanished；绝不会终止保留的 seat），并保持绑定不变
+        //（不产生虚假成功）。seat 可从其会话文件重新唤醒。
         await this.successorLauncher.cleanup(launch.tmuxSession, launch.discoveredId);
         return {
           ok: false,
           code: "context_delivery_failed",
-          message: `Handover failed at step "deliver-restore-packet": ${delivered.message}`,
-          guidance: "The successor candidate was unwound and the seat's binding is unchanged; the seat is re-wakeable from its provider session file. Retry after tmux delivery is healthy.",
+          message: `Handover 在步骤 "deliver-restore-packet" 失败：${delivered.message}`,
+          guidance: "已回滚后继候选项，seat 绑定保持不变；仍可从 provider 会话文件重新唤醒 seat。请在 tmux 投递恢复正常后重试。",
         };
       }
       contextDelivered = true;
     }
 
-    // OPR.0.5.5.5 — per-source execution outcome, recorded on the result so the
-    // operator sees exactly what carried context (fork origin / primed set).
+    // OPR.0.5.5.5 — 在结果中记录逐源执行结果，使操作者准确看到上下文由何者承载
+    //（fork 来源 / 初始化集合）。
     let sourceOutcome: SeatHandoverMutationResult["sourceOutcome"];
     if (parsed.source.mode === "fork" && forkSource) {
       sourceOutcome = { mode: "fork", forkedFrom: parsed.source.ref ?? latestSession.session_name };
     }
     if (parsed.source.mode === "rebuild") {
-      // rebuild: the successor is a FRESH conversation primed from the seat's
-      // durable chain — the live incumbent's context is deliberately not
-      // trusted. The executed set, its gaps, and an empty chain are all named.
+      // rebuild：后继是从 seat 持久链初始化的全新对话——刻意不信任实时现任者的上下文。
+      // 执行集合、其中的缺口和空链均会明确命名。
       const chain = this.rebuildPrimingResolver
         ? this.rebuildPrimingResolver(input.seatRef)
-        : { emptyReason: "no rebuild priming resolver wired on this daemon" };
+        : { emptyReason: "此 daemon 未接入 rebuild 初始化解析器" };
       let primedArtifacts: Array<{ address: string; label: string }> = [];
       let gaps: string[] = [];
       let emptyChainReason: string | undefined;
@@ -540,7 +521,7 @@ export class SeatHandoverService {
           emptyChainReason = resolved.error;
         }
       } else {
-        emptyChainReason = "artifacts" in chain ? "the durable chain resolved to zero artifacts" : chain.emptyReason;
+        emptyChainReason = "artifacts" in chain ? "持久链解析出的工件数量为零" : chain.emptyReason;
       }
       sourceOutcome = { mode: "rebuild", primedArtifacts, gaps, ...(emptyChainReason ? { emptyChainReason } : {}) };
       const delivered = await this.deliverRebuildPrimingPacket(launch.tmuxSession, {
@@ -552,21 +533,21 @@ export class SeatHandoverService {
         emptyChainReason,
       });
       if (!delivered.ok) {
-        // Same partial-state contract as the fresh packet: unwind the candidate,
-        // binding unchanged, seat re-wakeable — never a false complete.
+        // 与 fresh 数据包采用相同的部分状态契约：回滚候选项、保持绑定不变、seat 可重新唤醒——
+        // 绝不产生虚假完成状态。
         await this.successorLauncher.cleanup(launch.tmuxSession, launch.discoveredId);
         return {
           ok: false,
           code: "context_delivery_failed",
-          message: `Handover failed at step "deliver-rebuild-priming": ${delivered.message}`,
-          guidance: "The successor candidate was unwound and the seat's binding is unchanged; the seat is re-wakeable from its provider session file. Retry after tmux delivery is healthy.",
+          message: `Handover 在步骤 "deliver-rebuild-priming" 失败：${delivered.message}`,
+          guidance: "已回滚后继候选项，seat 绑定保持不变；仍可从 provider 会话文件重新唤醒 seat。请在 tmux 投递恢复正常后重试。",
         };
       }
       contextDelivered = true;
     }
 
-    // 4. Verify continuity + rebind via the EXISTING discovered->commit path.
-    //    On any failure, unwind the created successor (no binding to unwind).
+    // 4. 通过现有的 discovered->commit 路径验证连续性并重新绑定。
+    //    任何失败都会回滚已创建的后继（没有需要回滚的绑定）。
     return this.finalizeWithDiscovered({
       seatRef: input.seatRef,
       status: statusResult.status,
@@ -577,8 +558,8 @@ export class SeatHandoverService {
       reason,
       operator,
       contextDelivered,
-      // B2 (launched/fresh): the launch-scraped resume token captured by the
-      // successor launcher is persisted atomically at commit (provenance scrape).
+      // B2（launched/fresh）：由后继启动器在启动时抓取的恢复令牌会在提交时原子持久化
+      //（来源为 scrape）。
       launchToken: launch.resumeToken ? { token: launch.resumeToken, resumeType: launch.resumeType } : null,
       occupantGeneration,
       appliedLaunch: launch.appliedLaunch ?? null,
@@ -588,11 +569,9 @@ export class SeatHandoverService {
   }
 
   /**
-   * The shared discovered->commit path (validation + presence-verify + rebind).
-   * `cleanup` is invoked before returning ANY failure so a composer-created
-   * successor is unwound; the discovered-source caller passes null (nothing to
-   * unwind). The `hasSession` probe here is the continuity/presence verify that
-   * runs BEFORE the commit releases the original binding.
+   * 共享的 discovered->commit 路径（校验 + 存在性验证 + 重新绑定）。返回任何失败前
+   * 都会调用 `cleanup`，以回滚编排器创建的后继；discovered 源调用方传入 null
+   * （无需回滚）。这里的 `hasSession` 探测是在提交释放原绑定之前执行的连续性/存在性验证。
    */
   private async finalizeWithDiscovered(input: {
     seatRef: string;
@@ -604,13 +583,13 @@ export class SeatHandoverService {
     reason: string;
     operator: string | null;
     contextDelivered: boolean;
-    /** Launch-scraped resume token for a fresh successor (persisted at commit). */
+    /** 为 fresh 后继在启动时抓取的恢复令牌（提交时持久化）。 */
     launchToken: { token: string; resumeType?: string } | null;
-    /** Source-bound generation reserved before a fresh successor started; null for discovered seats. */
+    /** fresh 后继启动前预留的源绑定 generation；discovered seat 为 null。 */
     occupantGeneration: string | null;
-    /** Exact enforcing value returned by the launch adapter; absent for adopted/discovered successors. */
+    /** 启动适配器返回的精确执行值；adopted/discovered 后继不存在。 */
     appliedLaunch: AppliedLaunchObservation | null;
-    /** OPR.0.5.5.5 — per-source execution outcome, threaded onto the result. */
+    /** OPR.0.5.5.5 — 传递到结果中的逐源执行结果。 */
     sourceOutcome?: SeatHandoverMutationResult["sourceOutcome"];
     cleanup: (() => Promise<void>) | null;
   }): Promise<SeatHandoverResult> {
@@ -624,30 +603,28 @@ export class SeatHandoverService {
       return fail({
         ok: false,
         code: "discovered_not_found",
-        message: `Discovery record "${input.discoveredRef}" not found.`,
-        guidance: "Run discovery and list active discovered sessions before retrying.",
+        message: `未找到发现记录 "${input.discoveredRef}"。`,
+        guidance: "重试前请运行发现流程并列出活跃的已发现会话。",
       });
     }
     if (discovered.status !== "active") {
       return fail({
         ok: false,
         code: "discovered_not_active",
-        message: `Discovery record "${discovered.id}" is ${discovered.status}, not active.`,
-        guidance: "Use an active, unclaimed discovered successor session.",
+        message: `发现记录 "${discovered.id}" 的状态为 ${discovered.status}，并非 active。`,
+        guidance: "请使用活跃且未被认领的已发现后继会话。",
       });
     }
-    // A COMPOSER-LAUNCHED successor (fresh/fork/rebuild — OPR.0.5.5.5 executes all
-    // three through the same cutover) INTENTIONALLY reuses the departing session's
-    // canonical name — it respawns into the retiree's pane in place, preserving the
-    // seat name (that is the whole point). Only a DISCOVERED-source successor must
-    // be a DISTINCT session; handing a seat to its own current session is a no-op
-    // there, so the guard applies to discovered only.
+    // 由编排器启动的后继（fresh/fork/rebuild——OPR.0.5.5.5 通过同一切换执行三者）
+    // 会刻意复用离任会话的规范名称——它在退役者 pane 中原地 respawn，保留 seat 名称
+    //（这正是目的所在）。只有 discovered 源后继必须使用不同会话；在那里把 seat 交给
+    // 自己当前的会话属于空操作，因此该守卫只适用于 discovered。
     if (input.reportedSource.mode === "discovered" && discovered.tmuxSession === input.latestSession.session_name) {
       return fail({
         ok: false,
         code: "successor_is_current",
-        message: "Discovered successor is already the current occupant for this seat.",
-        guidance: "Use a distinct successor session.",
+        message: "已发现的后继已经是此 seat 的当前 occupant。",
+        guidance: "请使用不同的后继会话。",
       });
     }
 
@@ -659,8 +636,8 @@ export class SeatHandoverService {
       return fail({
         ok: false,
         code: "successor_already_managed",
-        message: `Successor tmux session "${discovered.tmuxSession}" is already managed by ${managedOwner.logical_id}@${managedOwner.rig_name}.`,
-        guidance: "Use an unclaimed discovered successor session.",
+        message: `后继 tmux 会话 "${discovered.tmuxSession}" 已由 ${managedOwner.logical_id}@${managedOwner.rig_name} 管理。`,
+        guidance: "请使用未被认领的已发现后继会话。",
       });
     }
 
@@ -671,16 +648,16 @@ export class SeatHandoverService {
       return fail({
         ok: false,
         code: "tmux_probe_failed",
-        message: `Could not verify successor tmux session "${discovered.tmuxSession}": ${err instanceof Error ? err.message : String(err)}`,
-        guidance: "Retry after tmux health is known; probe failures are not treated as absence.",
+        message: `无法验证后继 tmux 会话 "${discovered.tmuxSession}"：${err instanceof Error ? err.message : String(err)}`,
+        guidance: "请在确认 tmux 健康状态后重试；探测失败不会被视为会话不存在。",
       });
     }
     if (!tmuxPresent) {
       return fail({
         ok: false,
         code: "successor_tmux_absent",
-        message: `Successor tmux session "${discovered.tmuxSession}" is not present.`,
-        guidance: "Run discovery again or provide a live discovered successor session.",
+        message: `后继 tmux 会话 "${discovered.tmuxSession}" 不存在。`,
+        guidance: "请重新运行发现流程，或提供一个实时的已发现后继会话。",
       });
     }
 
@@ -702,12 +679,10 @@ export class SeatHandoverService {
     if (!committed.ok) return fail(committed);
     this.tmuxAdapter.deliveryGuard?.rebindLifecycle(input.node.id);
 
-    // B2 (discovered): the successor is an operator-prepared live session we did
-    // NOT launch, so no launch token was scraped. Best-effort capture its live
-    // resume token AT COMMIT — reusing the FR-3 pure derive-helper — so a crash
-    // right after handover can still resume (the window FR-3 closes elsewhere).
-    // Post-commit + non-blocking (mirrors FR-3): the async derivation cannot run
-    // inside better-sqlite3's synchronous transaction. Never logs the token.
+    // B2（discovered）：后继是操作者预先准备、并非由我们启动的实时会话，因此未抓取启动令牌。
+    // 在提交时尽力捕获其实时恢复令牌——复用 FR-3 纯派生辅助函数——使 handover 后立即崩溃
+    // 仍可恢复（FR-3 在其他位置关闭该窗口）。提交后执行且不阻塞（与 FR-3 一致）：异步派生
+    // 无法在 better-sqlite3 的同步事务内运行。绝不记录令牌。
     if (input.reportedSource.mode === "discovered" && "result" in committed) {
       await this.captureDiscoveredResumeToken({
         rigId: input.status.rig_id,
@@ -721,11 +696,10 @@ export class SeatHandoverService {
   }
 
   /**
-   * B2 — best-effort discovered-mode resume-token capture at commit. Derives the
-   * live token via the shared FR-3 derive-helper (pure read), persists it with
-   * provenance "adoption" (the rank guard governs clobber), and emits the same
-   * captured/preserved/skipped events FR-3 uses. Honest failure = persist
-   * nothing + a redacted skip event. NEVER throws, never logs the token.
+   * B2——提交时尽力捕获 discovered 模式恢复令牌。通过共享的 FR-3 派生辅助函数（纯读取）
+   * 派生实时令牌，以来源 "adoption" 持久化（覆盖由等级守卫控制），并发出与 FR-3 相同的
+   * captured/preserved/skipped 事件。如实失败 = 不持久化任何内容 + 一个已脱敏的跳过事件。
+   * 绝不抛错，也绝不记录令牌。
    */
   private async captureDiscoveredResumeToken(input: {
     rigId: string; nodeId: string; sessionId: string; sessionName: string; runtime: string | null;
@@ -736,7 +710,7 @@ export class SeatHandoverService {
         this.captureDeps,
       );
       if (derived.outcome === "exempt" || derived.outcome === "noop") return;
-      const runtime = input.runtime as string; // non-null past exempt
+      const runtime = input.runtime as string; // 经过 exempt 分支后必定非 null
       if (derived.outcome === "skipped") {
         this.emitCaptureSkip(input, runtime, derived.reason);
         return;
@@ -754,9 +728,9 @@ export class SeatHandoverService {
               rigId: input.rigId, nodeId: input.nodeId, sessionName: input.sessionName, sessionId: input.sessionId,
               runtime, outcome: "preserved", resumeType: derived.resumeType, reason: "higher_rank_present", redacted: true,
             });
-      } catch { /* best-effort */ }
+      } catch { /* 尽力而为 */ }
     } catch {
-      // best-effort — capture never fails or blocks the handover
+      // 尽力而为——捕获绝不会导致 handover 失败或阻塞
     }
   }
 
@@ -771,12 +745,11 @@ export class SeatHandoverService {
         rigId: input.rigId, nodeId: input.nodeId, sessionName: input.sessionName, sessionId: input.sessionId,
         runtime, outcome: "skipped", reason, redacted: true,
       });
-    } catch { /* best-effort */ }
+    } catch { /* 尽力而为 */ }
   }
 
-  /** Best-effort capture of the departing seat's visible terminal before the
-   *  successor is created. Never throws; an empty capture is honestly recorded
-   *  as "no capture available" in the restore packet. */
+  /** 创建后继前尽力捕获离任 seat 的可见终端。绝不抛错；空捕获会在恢复数据包中
+   *  如实记录为“没有可用的捕获内容”。 */
   private async captureDepartingContext(departingSession: string): Promise<string> {
     try {
       const screen = await this.tmuxAdapter.capturePaneScreen(departingSession);
@@ -786,10 +759,9 @@ export class SeatHandoverService {
     }
   }
 
-  /** OPR.0.5.5.5 — deliver the rebuild priming packet through the same shipped
-   *  interactive-text transport as the restore packet. The packet points the
-   *  successor at the durable artifacts (it reads them itself) and names every
-   *  gap and an empty chain out loud — never a silent partial priming. */
+  /** OPR.0.5.5.5 — 通过与恢复数据包相同的已发布交互文本通道投递 rebuild 初始化数据包。
+   *  数据包将后继指向持久工件（由后继自行读取），并明确列出每个缺口和空链——
+   *  绝不静默地只完成部分初始化。 */
   private async deliverRebuildPrimingPacket(
     successorSession: string,
     info: {
@@ -802,36 +774,35 @@ export class SeatHandoverService {
     },
   ): Promise<{ ok: true } | { ok: false; message: string }> {
     const lines = [
-      `# Seat rebuild handover — ${info.seatRef}`,
-      `You are a REBUILT successor for this seat (reason: ${info.reason}, at ${this.now().toISOString()}). Your predecessor session was ${info.departingSession}; its live context was deliberately NOT carried. Prime yourself from the durable artifacts below, highest trust first.`,
+      `# Seat rebuild handover——${info.seatRef}`,
+      `你是此 seat 的重建后继（原因：${info.reason}，时间：${this.now().toISOString()}）。你的前任会话是 ${info.departingSession}；它的实时上下文被刻意排除。请按最高信任优先的顺序，使用下列持久工件初始化自身。`,
     ];
     if (info.primedArtifacts.length > 0) {
-      lines.push("", "Priming artifacts (read each, in order):");
+      lines.push("", "初始化工件（请按顺序逐一读取）：");
       for (const artifact of info.primedArtifacts) lines.push(`- ${artifact.address} — ${artifact.label}`);
     }
     if (info.gaps.length > 0) {
-      lines.push("", "Declared but MISSING on disk (known gaps, named so nothing is silently dropped):");
+      lines.push("", "已声明但磁盘上缺失的内容（已知缺口；明确列出以免静默丢弃）：");
       for (const gap of info.gaps) lines.push(`- ${gap}`);
     }
     if (info.emptyChainReason) {
-      lines.push("", `The durable chain is EMPTY: ${info.emptyChainReason}. You start from seat identity alone — say so in your first status report.`);
+      lines.push("", `持久链为空：${info.emptyChainReason}。你将仅从 seat 身份开始——请在第一份状态报告中明确说明。`);
     }
     const sent = await this.tmuxAdapter.sendText(successorSession, lines.join("\n"));
     if (!sent.ok) {
-      return { ok: false, message: (sent as { message?: string }).message ?? "send_text failed" };
+      return { ok: false, message: (sent as { message?: string }).message ?? "send_text 失败" };
     }
-    // Same spike-proven 200ms settle as the restore packet (staged-not-consumed class).
+    // 与恢复数据包采用相同、经尖峰验证的 200ms 稳定等待（已暂存但未消费类别）。
     await this.sleep(200);
     const submit = await this.tmuxAdapter.sendKeys(successorSession, ["C-m"]);
     if (!submit.ok) {
-      return { ok: false, message: (submit as { message?: string }).message ?? "submit failed" };
+      return { ok: false, message: (submit as { message?: string }).message ?? "提交失败" };
     }
     return { ok: true };
   }
 
-  /** Deliver the captured restore packet to a fresh successor via the shipped
-   *  interactive-text transport (send_text + Enter), mirroring the startup
-   *  orchestrator's initial-prompt delivery. */
+  /** 通过已发布的交互文本通道（send_text + Enter）将捕获的恢复数据包投递给 fresh 后继，
+   *  与启动编排器投递初始提示词的方式一致。 */
   private async deliverRestorePacket(
     successorSession: string,
     info: {
@@ -839,10 +810,10 @@ export class SeatHandoverService {
       reason: string;
       departingSession: string;
       capturedContext: string;
-      /** The predecessor's bounded from-record recap + record path (omitted when unresolved). */
+      /** 前任有界的“来自记录”回顾 + 记录路径（无法解析时省略）。 */
       recap?: JsonlExchange[];
       recordPath?: string;
-      /** B16 — when the recap did not resolve, the NAMED reason (rendered, never silent). */
+      /** B16 — 回顾无法解析时的具名原因（会渲染，绝不静默处理）。 */
       recapUnavailableReason?: string;
       authoredRecap?: { address: string; chainLength: number };
       authoredRecapAbsentReason?: string;
@@ -851,17 +822,17 @@ export class SeatHandoverService {
     const packet = buildRestorePacket({ ...info, handoverAt: this.now().toISOString() });
     const sent = await this.tmuxAdapter.sendText(successorSession, packet);
     if (!sent.ok) {
-      return { ok: false, message: (sent as { message?: string }).message ?? "send_text failed" };
+      return { ok: false, message: (sent as { message?: string }).message ?? "send_text 失败" };
     }
-    // B16 rework (r2 live door finding): the SHARED paste-then-submit sequencing — the transport's
-    // spike-proven 200ms settle between send_text and C-m (session-transport.ts, "Wait 200ms").
-    // Without it the multi-KB packet sat STAGED-UNSENT as collapsed paste blocks in the successor's
-    // input box (r2 measured 46s until a manual Enter) — the handover committed complete while the
-    // packet was never consumed: the staged-not-consumed class, shipped by the product itself.
+    // B16 重做（r2 线上入口发现）：共享的“粘贴后提交”顺序——在 send_text 与 C-m 之间采用
+    // 经通道尖峰验证的 200ms 稳定等待（session-transport.ts，"Wait 200ms"）。若无此等待，
+    // 数 KB 数据包会以折叠粘贴块形式停留在后继输入框中，处于已暂存但未发送状态
+    //（r2 测得直到手动按 Enter 前持续 46 秒）——handover 已提交为完成，但数据包从未被消费：
+    // 这是产品自身发布的“已暂存但未消费”类别。
     await this.sleep(200);
     const submit = await this.tmuxAdapter.sendKeys(successorSession, ["C-m"]);
     if (!submit.ok) {
-      return { ok: false, message: (submit as { message?: string }).message ?? "submit failed" };
+      return { ok: false, message: (submit as { message?: string }).message ?? "提交失败" };
     }
     return { ok: true };
   }
@@ -873,8 +844,8 @@ export class SeatHandoverService {
     return {
       ok: false,
       code: "runtime_mismatch",
-      message: `Seat expects runtime "${nodeRuntime}", but discovered successor is "${discoveredRuntime}".`,
-      guidance: "Use a discovered successor with a matching runtime hint.",
+      message: `Seat 要求运行时 "${nodeRuntime}"，但已发现后继使用 "${discoveredRuntime}"。`,
+      guidance: "请使用运行时提示匹配的已发现后继。",
     };
   }
 
@@ -945,32 +916,30 @@ export class SeatHandoverService {
         tmuxWindow: input.discovered.tmuxWindow,
         tmuxPane: input.discovered.tmuxPane,
       });
-      // (e/Class-B): capture the RETIRING occupant's generation BEFORE registerClaimedSession mints the
-      // successor's tenure below — after that mint the node's "current" generation IS the successor's
-      // (the name is reused), so this is the only point the retiree's generation is resolvable.
+      // (e/Class-B)：在下方 registerClaimedSession 生成后继任期之前，捕获退役 occupant 的
+      // generation——生成之后，节点的 "current" generation 就属于后继（名称会复用），
+      // 因此这是唯一能解析退役者 generation 的时点。
       const retiringGeneration =
         this.sessionRegistry.currentOccupantGenerationForSession(input.latestSession.session_name) ?? undefined;
-      // atom-B: a seat handover mints a HANDOVER-kind occupant generation (not the default 'adopt').
+      // atom-B：seat handover 会生成 HANDOVER 类型的 occupant generation（而非默认的 'adopt'）。
       const newSession = this.sessionRegistry.registerClaimedSession(
         input.node.id,
         input.discovered.tmuxSession,
         "handover",
         input.occupantGeneration,
       );
-      // W3: registerClaimedSession mints the successor generation. Only now may
-      // the exact adapter-returned launch effect be attached to that tenure.
-      // The store is best-effort, so observation persistence can never make an
-      // otherwise successful handover fail.
+      // W3：registerClaimedSession 生成后继 generation。只有此时，才能把适配器返回的
+      // 精确启动效果附加到该任期。store 采用尽力而为策略，因此观察持久化绝不会让原本
+      // 成功的 handover 失败。
       if (input.appliedLaunch) {
         const successorGeneration = this.sessionRegistry.currentOccupantTenure(input.node.id)?.generationUuid;
         if (successorGeneration) {
           this.appliedLaunchObservations.recordGeneration(successorGeneration, input.appliedLaunch);
         }
       }
-      // B2 (launched/fresh): persist the launch-scraped resume token atomically
-      // with the claim, provenance "scrape" (mirrors StartupOrchestrator's
-      // launch-token capture). Validity-guarded; a malformed token is dropped,
-      // never a bad write. The token is never logged.
+      // B2（launched/fresh）：与认领操作原子地持久化启动时抓取的恢复令牌，来源为 "scrape"
+      //（与 StartupOrchestrator 的启动令牌捕获一致）。受有效性守卫保护；格式错误的令牌会被
+      // 丢弃，绝不会写入坏数据。令牌永远不会写入日志。
       if (input.launchToken) {
         const validated = validateResumeToken(input.node.runtime, input.launchToken.token);
         if (validated.ok) {
@@ -978,14 +947,13 @@ export class SeatHandoverService {
         }
       }
       this.discoveryRepo.markClaimed(input.discovered.id, input.node.id);
-      // KI-14: the continuity label must describe THIS launch. A NULL here let node-inventory derive
-      // the seat's continuity from restore_outcome — a stamp from a restore days earlier — so the
-      // 2026-08-22 wave's seats reported fresh/fresh-primed while their panes ran resumed contexts.
-      // fresh mode is now verified-blank at launch (successor_pane_not_blank guards it), so 'fresh'
-      // is earned; a discovered successor's continuity is genuinely unknown and stays NULL.
-      // OPR.0.5.5.5 — the executed source records its own continuity vocabulary
-      // (the startup-orchestrator set): fresh->fresh, fork->forked,
-      // rebuild->rebuilt; discovered stays null (continuity unknown to us).
+      // KI-14：连续性标签必须描述本次启动。这里若为 NULL，node-inventory 会从 restore_outcome
+      // 派生 seat 连续性——那可能是数天前恢复留下的标记——因此 2026-08-22 批次的 seat 会报告
+      // fresh/fresh-primed，而其 pane 实际运行恢复后的上下文。fresh 模式如今会在启动时验证为空
+      //（由 successor_pane_not_blank 守卫），因此 'fresh' 名副其实；discovered 后继的连续性
+      // 确实未知，保持 NULL。
+      // OPR.0.5.5.5 — 已执行的源记录自己的连续性词汇（startup-orchestrator 集合）：
+      // fresh->fresh、fork->forked、rebuild->rebuilt；discovered 保持 null（我们不知道连续性）。
       const continuityOutcome = input.reportedSource.mode === "fresh" ? "fresh"
         : input.reportedSource.mode === "fork" ? "forked"
         : input.reportedSource.mode === "rebuild" ? "rebuilt"
@@ -1000,13 +968,12 @@ export class SeatHandoverService {
         WHERE id = ?
       `).run(continuityOutcome, input.latestSession.session_name, handoverAt, input.node.id);
 
-      // Ghost-stage (e) re-key seam — the rebind is done; now invalidate the RETIRING occupant's
-      // seat-name-keyed stores so the successor never inherits a ghost (drained compaction stage, frozen
-      // telemetry sample, delayed lifecycle message to the retired generation). The ghost-stage slice
-      // owns the per-store impls behind OccupantInvalidator; this seat owns this single call. Under the
-      // cutover the successor reuses the seat name, so retiring === successor here — Class-A is safe by
-      // TIMING (runs before the successor writes) and Class-B is gen-scoped via retiringGeneration (the
-      // retiree's generation, captured above pre-mint). Optional dep: absent → skipped, never blocks.
+      // Ghost-stage (e) 重键接缝——重新绑定已完成；此时让退役 occupant 以 seat 名称为键的 store
+      // 失效，确保后继绝不继承幽灵状态（已排空的压缩阶段、冻结的遥测样本、发送给退役 generation
+      // 的延迟生命周期消息）。ghost-stage 切片负责 OccupantInvalidator 背后的逐 store 实现；
+      // 此 seat 只负责这一次调用。切换时后继复用 seat 名称，所以此处 retiring === successor——
+      // Class-A 通过时序保证安全（在后继写入前运行），Class-B 则通过 retiringGeneration 限定
+      // generation 范围（即上方生成前捕获的退役者 generation）。可选依赖：缺失时跳过，绝不阻塞。
       this.occupantInvalidator?.invalidateRetiringOccupant({
         retiringSessionName: input.latestSession.session_name,
         successorSessionName: input.discovered.tmuxSession,
@@ -1031,16 +998,15 @@ export class SeatHandoverService {
     let committed: { newSessionId: string; previousSessionIdsSuperseded: string[]; event: PersistedEvent };
     try {
       committed = tx();
-      // S19 ruling 01530 — the SOLE narrow call: after the commit lands, the activity
-      // oracle sees the swap as its own event, keyed by the durable node id, identified
-      // by the successor tenure (never the retiree's). In-memory, post-commit, optional.
+      // S19 裁定 01530——唯一的窄调用：提交落地后，activity oracle 将切换视为独立事件，
+      // 以持久节点 id 为键，并用后继任期标识（绝不使用退役者任期）。内存中、提交后、可选。
       this.activityOracle?.declareOccupantSwap(input.node.id, committed.newSessionId);
     } catch (err) {
       return {
         ok: false,
         code: "handover_commit_failed",
-        message: `Seat handover commit failed: ${err instanceof Error ? err.message : String(err)}`,
-        guidance: "Inspect daemon logs and retry after the seat state is consistent.",
+        message: `Seat handover 提交失败：${err instanceof Error ? err.message : String(err)}`,
+        guidance: "请检查 daemon 日志，并在 seat 状态一致后重试。",
       };
     }
 
@@ -1133,80 +1099,75 @@ export class SeatHandoverService {
   }
 }
 
-/** Assemble the restore packet delivered to a fresh successor: seat identity + handover reason +
- *  predecessor session + the captured predecessor terminal, and a bounded LABELED-FROM-RECORD recap
- *  of the last few predecessor exchanges + a receipt line naming the predecessor record path
- *  (honest-degraded). The recap is the permanent claude-runtime leg of scrollback preservation —
- *  claude-code seats run in the tmux alternate screen, which keeps no scrollback buffer, so no
- *  successor pane can natively scroll into the predecessor conversation there; the cutover's
- *  respawn-pane owns native scrollback on codex seats. Never called "scrollback": the label must
- *  make replay unmistakable, because passing a replayed recap off as native history is the one
- *  thing the requirement cannot survive. Exported for unit test. */
+/** 组装投递给 fresh 后继的恢复数据包：seat 身份 + handover 原因 + 前任会话 + 捕获的前任终端，
+ *  再加上前任最后几轮交互的有界“来自记录”标签回顾，以及标明前任记录路径的回执行
+ *  （如实降级）。回顾是 claude 运行时保留回滚内容的永久支路——claude-code seat 运行在
+ *  tmux 备用屏幕中，该屏幕不保留回滚缓冲区，因此后继 pane 无法原生回滚到前任对话；
+ *  而在 codex seat 上，切换使用的 respawn-pane 拥有原生回滚。绝不称其为 "scrollback"：
+ *  标签必须清楚表明这是重放，因为把重放回顾冒充原生历史会彻底违背需求。导出供单元测试使用。 */
 export function buildRestorePacket(info: {
   seatRef: string;
   reason: string;
   departingSession: string;
   handoverAt: string;
   capturedContext: string;
-  /** The last few predecessor exchanges read from the provider JSONL, bounded on count and per-exchange length. */
+  /** 从 provider JSONL 读取的前任最后几轮交互，限制条数及单轮长度。 */
   recap?: Array<{ role: string; content: string }>;
-  /** The predecessor provider record path (claude transcript_path / codex rollout_path). */
+  /** 前任 provider 记录路径（claude transcript_path / codex rollout_path）。 */
   recordPath?: string | null;
-  /** B16 — the NAMED reason when no recap resolved; rendered as its own labeled line so the absence
-   *  is visible in the pane (honest-degraded means labeled, not silent). */
+  /** B16 — 无法解析回顾时的具名原因；渲染为独立的带标签行，使缺失情况在 pane 中可见
+   *  （如实降级意味着带标签，而非静默处理）。 */
   recapUnavailableReason?: string;
-  /** OPR.0.5.3.5 mini-req 7 — the AUTHORED seat recap (decisions-with-rationale, written by the
-   *  outgoing occupant): rendered as a POINTER to its address (no-copy composition — the packet
-   *  never inlines the bytes; the successor pulls by address). */
+  /** OPR.0.5.3.5 微需求 7——人工编写的 seat 回顾（由离任 occupant 编写，记录决策及理由）：
+   *  渲染为指向其地址的指针（无复制组合——数据包绝不内联字节；后继按地址拉取）。 */
   authoredRecap?: { address: string; chainLength: number };
-  /** Labeled absence for the authored leg (B16 doctrine — never a silent omission). */
+  /** 人工编写支路的带标签缺失信息（B16 原则——绝不静默省略）。 */
   authoredRecapAbsentReason?: string;
 }): string {
   const captured = info.capturedContext.trim();
   const lines = [
-    "=== OpenRig seat handover — restore context ===",
-    `Seat: ${info.seatRef}`,
-    `Reason: ${info.reason}`,
-    `Predecessor session: ${info.departingSession}`,
-    `Handover at: ${info.handoverAt}`,
+    "=== zrig seat handover——恢复上下文 ===",
+    `Seat：${info.seatRef}`,
+    `原因：${info.reason}`,
+    `前任会话：${info.departingSession}`,
+    `Handover 时间：${info.handoverAt}`,
     "",
-    "--- Predecessor terminal (captured) ---",
-    captured.length > 0 ? captured : "(no capture available)",
+    "--- 前任终端（已捕获）---",
+    captured.length > 0 ? captured : "（没有可用的捕获内容）",
   ];
-  // The from-record recap + receipt, ONLY when a record is actually available (no fabrication).
-  // B16 — an absent recap is no longer a silent omission: the packet names the reason, so a
-  // successor (and the operator reading the pane) can tell "nothing resolved because X" from
-  // "the feature never ran".
+  // 仅在记录确实可用时添加“来自记录”回顾及回执（绝不伪造）。
+  // B16——缺失回顾不再静默省略：数据包会说明原因，使后继（以及查看 pane 的操作者）
+  // 能区分“因 X 未解析到任何内容”和“该功能从未运行”。
   if (info.recap && info.recap.length > 0 && info.recordPath) {
     lines.push(
       "",
-      "--- Predecessor recap (replayed from record, not the live terminal) ---",
+      "--- 前任回顾（从记录重放，并非实时终端）---",
       ...info.recap.map((e) => `${e.role}: ${e.content}`),
       "",
-      `Predecessor record: ${info.recordPath}`,
-      "  (honest-degraded: durable, true, and grep-able — not human-scrollable; the recap above is replayed from it)",
+      `前任记录：${info.recordPath}`,
+      "  （如实降级：持久、真实且可用 grep 检索——但不便人工滚动查看；上方回顾由此记录重放）",
     );
   } else if (info.recapUnavailableReason) {
     lines.push(
       "",
-      `--- Predecessor recap unavailable: ${info.recapUnavailableReason} ---`,
+      `--- 前任回顾不可用：${info.recapUnavailableReason} ---`,
     );
   }
-  // The AUTHORED recap leg (mini-req 7): a pointer, never inlined bytes — the
-  // successor pulls by address so there is exactly one copy to trust.
+  // 人工编写的回顾支路（微需求 7）：使用指针，绝不内联字节——后继按地址拉取，
+  // 因而只有一份可信副本。
   if (info.authoredRecap) {
     const chainNote = info.authoredRecap.chainLength > 0
-      ? ` (${info.authoredRecap.chainLength} superseded predecessor${info.authoredRecap.chainLength === 1 ? "" : "s"} retained on the seat tree)`
+      ? `（seat 树上保留了 ${info.authoredRecap.chainLength} 个已被替代的前任）`
       : "";
     lines.push(
       "",
-      `--- Authored seat recap: ${info.authoredRecap.address}${chainNote} ---`,
-      "Composed into handover/post-compaction profiles automatically (rig context profile <pack> --situation handover --rig <rig> --seat <seat>); or read it directly at the seat tree address above.",
+      `--- 人工编写的 seat 回顾：${info.authoredRecap.address}${chainNote} ---`,
+      "它会自动组合到 handover/压缩后 profile 中（zrig context profile <pack> --situation handover --rig <rig> --seat <seat>）；也可直接从上方 seat 树地址读取。",
     );
   } else if (info.authoredRecapAbsentReason) {
     lines.push(
       "",
-      `--- Authored seat recap: ${info.authoredRecapAbsentReason} ---`,
+      `--- 人工编写的 seat 回顾：${info.authoredRecapAbsentReason} ---`,
     );
   }
   return lines.join("\n");

@@ -1,5 +1,5 @@
-// OPR.0.3.4.7 — Codex profile-v2 preflight probe tests.
-// Exec-injected: no real Codex needed.
+// OPR.0.3.4.7——Codex profile-v2 预检探针测试。
+// 注入 exec，无需真实 Codex。
 
 import { describe, it, expect, vi } from "vitest";
 import { verifyCodexProfileLoads } from "../src/domain/codex-profile-preflight.js";
@@ -7,7 +7,7 @@ import { verifyCodexProfiles } from "../src/domain/rigspec-preflight.js";
 import type { RigSpec as PodRigSpec } from "../src/domain/types.js";
 
 describe("verifyCodexProfileLoads", () => {
-  it("PASS: valid profile loads successfully", async () => {
+  it("通过：有效 profile 成功加载", async () => {
     const exec = vi.fn(async () => "");
     const result = await verifyCodexProfileLoads("openrig_pm", exec);
     expect(result.ok).toBe(true);
@@ -15,29 +15,28 @@ describe("verifyCodexProfileLoads", () => {
     expect(exec).toHaveBeenCalledWith("codex -p openrig_pm mcp list");
   });
 
-  it("PASS: missing profile file (Codex treats absent .config.toml as valid default-config layering)", async () => {
-    // Advisor ruling Option B: Codex 0.139+ exits 0 for an absent profile file
-    // (default-config layering). Failing preflight on this would be a false
-    // negative — preflight rejecting a config that launch ACCEPTS.
+  it("通过：profile 文件缺失（Codex 把缺失 .config.toml 视为有效默认配置分层）", async () => {
+    // Advisor 裁决方案 B：Codex 0.139+ 在 profile 文件缺失时退出码为 0（默认配置分层）。
+    // 若预检在此失败会形成假阴性：预检拒绝了 launch 实际接受的配置。
     const exec = vi.fn(async () => "");
     const result = await verifyCodexProfileLoads("missing", exec);
     expect(result.ok).toBe(true);
     expect(result.profile).toBe("missing");
   });
 
-  it("FAIL: legacy [profiles.<name>] table blocks loading (the headline discriminator)", async () => {
+  it("失败：旧版 [profiles.<name>] 表阻止加载（主要判别条件）", async () => {
     const exec = vi.fn(async () => {
       throw new Error("Error: failed to load configuration: --profile openrig_pm cannot be used while config.toml contains legacy [profiles.openrig_pm] config; move those settings into ~/.codex/openrig_pm.config.toml and remove the legacy selector/table.");
     });
     const result = await verifyCodexProfileLoads("openrig_pm", exec);
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("failed to load");
-    expect(result.migrationHint).toContain("Move the profile settings");
+    expect(result.error).toContain("加载失败");
+    expect(result.migrationHint).toContain("请将 profile 设置移入");
     expect(result.migrationHint).toContain("openrig_pm.config.toml");
     expect(result.migrationHint).toContain("[profiles.openrig_pm]");
   });
 
-  it("FAIL: captures stderr from execSync-style errors (err.stderr)", async () => {
+  it("失败：从 execSync 风格错误（err.stderr）捕获 stderr", async () => {
     const exec = vi.fn(async () => {
       const err = new Error("Command failed") as Error & { stderr: string };
       err.stderr = "Error: failed to load configuration: --profile test cannot be used while config.toml contains legacy [profiles.test] config";
@@ -45,11 +44,11 @@ describe("verifyCodexProfileLoads", () => {
     });
     const result = await verifyCodexProfileLoads("test", exec);
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("failed to load");
-    expect(result.migrationHint).toContain("Move the profile settings");
+    expect(result.error).toContain("加载失败");
+    expect(result.migrationHint).toContain("请将 profile 设置移入");
   });
 
-  it("FAIL: invalid TOML stderr is NOT misclassified as legacy migration (surfaces parse reason)", async () => {
+  it("失败：无效 TOML stderr 不会误分类为旧版迁移（呈现解析原因）", async () => {
     const exec = vi.fn(async () => {
       const err = new Error("Command failed") as Error & { stderr: string };
       err.stderr = "Error: failed to load configuration\nexpected newline, found a period at line 3 column 12\n  in /Users/x/.codex/qa_invalid.config.toml";
@@ -59,31 +58,31 @@ describe("verifyCodexProfileLoads", () => {
     expect(result.ok).toBe(false);
     expect(result.error).toContain("expected newline");
     expect(result.migrationHint).not.toContain("[profiles.qa_invalid]");
-    expect(result.migrationHint).toContain("valid TOML");
+    expect(result.migrationHint).toContain("有效 TOML");
   });
 
-  it("honest failure: unknown error carries generic hint", async () => {
+  it("诚实失败：未知错误携带通用提示", async () => {
     const exec = vi.fn(async () => { throw new Error("permission denied"); });
     const result = await verifyCodexProfileLoads("test", exec);
     expect(result.ok).toBe(false);
-    expect(result.migrationHint).toContain("manually to diagnose");
+    expect(result.migrationHint).toContain("手动运行");
   });
 
-  it("FAIL: probe is bounded by timeout (never hangs indefinitely)", async () => {
+  it("失败：探针受超时约束（绝不无限挂起）", async () => {
     const exec = vi.fn(() => new Promise<string>(() => {}));
     const result = await verifyCodexProfileLoads("stuck", exec, 50);
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("timed out");
+    expect(result.error).toContain("超时");
   });
 
-  it("profile name with special characters is shell-quoted", async () => {
+  it("含特殊字符的 profile 名称会进行 shell quoting", async () => {
     const exec = vi.fn(async () => "");
     await verifyCodexProfileLoads("my profile", exec);
     expect(exec).toHaveBeenCalledWith("codex -p 'my profile' mcp list");
   });
 });
 
-describe("verifyCodexProfiles (rigspec integration)", () => {
+describe("verifyCodexProfiles（rigspec 集成）", () => {
   function makeSpec(members: Array<{ id: string; runtime: string; codexConfigProfile?: string }>): PodRigSpec {
     return {
       name: "test-rig",
@@ -104,7 +103,7 @@ describe("verifyCodexProfiles (rigspec integration)", () => {
     } as unknown as PodRigSpec;
   }
 
-  it("skips non-codex members", async () => {
+  it("跳过非 codex member", async () => {
     const exec = vi.fn(async () => "");
     const errors = await verifyCodexProfiles(
       makeSpec([{ id: "impl", runtime: "claude-code" }]),
@@ -114,7 +113,7 @@ describe("verifyCodexProfiles (rigspec integration)", () => {
     expect(exec).not.toHaveBeenCalled();
   });
 
-  it("skips codex members without a profile", async () => {
+  it("跳过未配置 profile 的 codex member", async () => {
     const exec = vi.fn(async () => "");
     const errors = await verifyCodexProfiles(
       makeSpec([{ id: "impl", runtime: "codex" }]),
@@ -124,7 +123,7 @@ describe("verifyCodexProfiles (rigspec integration)", () => {
     expect(exec).not.toHaveBeenCalled();
   });
 
-  it("probes codex member with a profile", async () => {
+  it("探测带 profile 的 codex member", async () => {
     const exec = vi.fn(async () => "");
     const errors = await verifyCodexProfiles(
       makeSpec([{ id: "impl", runtime: "codex", codexConfigProfile: "openrig_pm" }]),
@@ -134,7 +133,7 @@ describe("verifyCodexProfiles (rigspec integration)", () => {
     expect(exec).toHaveBeenCalledWith("codex -p openrig_pm mcp list");
   });
 
-  it("dedupes same profile across multiple members", async () => {
+  it("对多个 member 使用的同一 profile 去重", async () => {
     const exec = vi.fn(async () => "");
     const errors = await verifyCodexProfiles(
       makeSpec([
@@ -147,7 +146,7 @@ describe("verifyCodexProfiles (rigspec integration)", () => {
     expect(exec).toHaveBeenCalledTimes(1);
   });
 
-  it("returns error for a failing profile", async () => {
+  it("profile 失败时返回错误", async () => {
     const exec = vi.fn(async () => { throw new Error("failed to load configuration"); });
     const errors = await verifyCodexProfiles(
       makeSpec([{ id: "impl", runtime: "codex", codexConfigProfile: "broken" }]),

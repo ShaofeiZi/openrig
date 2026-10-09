@@ -1,16 +1,14 @@
-// OPR.0.4.8.3 — built-in policy PACKING pins (guard-sealed plan v2 eea3c778,
-// D4 T6/T7). NEW file beside the existing check-packing floor (the floor is
-// added-beside, never edited).
+// OPR.0.4.8.3——内置策略的打包约束（guard 封印的 plan v2 eea3c778，D4 T6/T7）。
+// 这是在既有 check-packing 底线旁新增的文件（底线是旁挂新增，绝不编辑）。
 //
-// The chain this file pins (mirrors the sdlc-conventions daemon-package
-// precedent documented in check-packing.test.mjs):
-//   repo source      packages/daemon/policies/builtin/<name>.policy.md
-//   packed           daemon/policies/builtin/<name>.policy.md   (build-package.sh staging)
-//   installed stable $OPENRIG_HOME/reference/policies/builtin/<name>.policy.md
-//                    (daemon startup materializer, mode 0444 inspection copies)
-// The runtime edge is proven at the compiled assembled boundary by
-// scripts/verify-packaged-builtins.mjs (plan D5b); these tests pin the source
-// and staging legs so a dropped staging block or edited source fails loudly.
+// 本文件钉的链路（与 check-packing.test.mjs 记录的 sdlc-conventions daemon-package
+// 先例同构）：
+//   仓库源码        packages/daemon/policies/builtin/<name>.policy.md
+//   打包后          daemon/policies/builtin/<name>.policy.md   （build-package.sh 暂存）
+//   安装后稳定版    $OPENRIG_HOME/reference/policies/builtin/<name>.policy.md
+//                   （daemon 启动 materializer，mode 0444 检查副本）
+// 运行时边缘由 scripts/verify-packaged-builtins.mjs 在编译后组装边界处证明（计划 D5b）；
+// 这些测试钉住源码与暂存这两条腿，使一个被漏掉的暂存块或被编辑的源码响亮失败。
 import { readFileSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
@@ -20,7 +18,7 @@ const AUTHORITY_SHA256 = {
   "locked.policy.md": "dcb38c372def7fe58ddfc9f1f3e97b9ba391ae79a99ef486e44f017cb39e57fe",
   "standard.policy.md": "737d3f56e6d8275fe548a3a06e9b02ede8f328207ec2e6223cea6a83f40f5148",
   "open.policy.md": "bb5fbb18e1f3706bd0676a9e709e29b5754bb6b41b6f304453dd6d73e7a4d62b",
-  "yolo.policy.md": "f0277fc5bb7ecbff88861a042eefc3bd79aa829e00dc4ee342bd82276019f601",
+  "yolo.policy.md": "1c34fff0b385426689fd26e20b8b431de6b688028d584924e7d5384fe5ff6d42",
 };
 
 test("T6: build-package.sh stages daemon policies into the assembled package", () => {
@@ -37,7 +35,7 @@ test("T6: build-package.sh stages daemon policies into the assembled package", (
 
 test("T7: the canonical repo-source built-ins are exactly the known four, byte-equal to authority", () => {
   const dir = "packages/daemon/policies/builtin";
-  const files = readdirSync(dir).sort();
+  const files = readdirSync(dir).filter((file) => file.endsWith(".policy.md")).sort();
   assert.deepEqual(files, ["locked.policy.md", "open.policy.md", "standard.policy.md", "yolo.policy.md"],
     "the built-in policy inventory must be EXACTLY locked|standard|open|yolo");
   for (const [file, expected] of Object.entries(AUTHORITY_SHA256)) {

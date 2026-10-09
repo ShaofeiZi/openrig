@@ -1,18 +1,19 @@
-// P6(A) — the refs→membership→ship-categories→disk CHAIN CHECK (PM pin upgrade; the
-// class-kill for the 0.4.8/864cea6b stranding). Every list is validated against ITS
-// CONSUMER, end to end, so a stranding has no layer to hide in:
+// P6(A)——refs→membership→ship-categories→disk 链路检查（PM pin 升级；
+// 对 0.4.8/864cea6b 搁浅问题的类别绝杀）。每条列表都对照其消费者
+// 端到端校验，使搁浅无处藏身：
 //
-//   Leg 1  refs ⊆ membership              — everything agent.yaml references exists in the oracle
-//   Leg 2  membership ⊆ SHIP_CATEGORIES   — every oracle product_public category is consumed by the
-//                                            mirror's ship set (the accept-and-drop cousin at the
-//                                            pipeline layer: 864cea6b's mirror carried a category the
-//                                            script never consumed — restored_role_pm_selected — so
-//                                            the PM's re-add was silently dropped and never shipped)
-//   Leg 3  ship-set ⊆ disk                — every skill the oracle says ships exists on disk in the pool
+//   Leg 1  refs ⊆ membership              ——agent.yaml 引用的一切都在 oracle 中存在
+//   Leg 2  membership ⊆ SHIP_CATEGORIES   ——oracle 的每个 product_public 类别都被
+//                                            mirror 的 ship 集消费（pipeline 层的
+//                                            accept-and-drop 近亲：864cea6b 的 mirror
+//                                            带了一个脚本从不消费的类别——
+//                                            restored_role_pm_selected——故 PM 的
+//                                            重新添加被静默丢弃、从未发货）
+//   Leg 3  ship-set ⊆ disk                ——oracle 说要发货的每个 skill 都在盘上 pool 中存在
 //
-// The three faces of one bug: 864cea6b deleted the pod/pm SKILL.md files (leg 3), the PM re-added
-// them to a product_public category the mirror never read (leg 2), and agent.yaml kept referencing
-// them (leg 1). This gate makes any recurrence fail LOUD in CI instead of at daemon boot.
+// 一个 bug 的三张面孔：864cea6b 删了 pod/pm 的 SKILL.md 文件（leg 3），PM 把它们
+// 重新加进 mirror 从不读取的 product_public 类别（leg 2），而 agent.yaml 仍在引用
+// 它们（leg 1）。本闸门让任何复发在 CI 中响亮失败，而非在 daemon 启动时才暴露。
 
 import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
@@ -25,16 +26,14 @@ const AGENT_YAML = join(__dirname, "..", "specs", "agents", "shared", "agent.yam
 const MEMBERSHIP = JSON.parse(readFileSync(join(REPO_ROOT, "scripts", "product-public-skills.generated.json"), "utf8"));
 const LAYOUT = JSON.parse(readFileSync(join(REPO_ROOT, "scripts", "skill-edge-layout.generated.json"), "utf8"));
 
-// Skills the oracle ships that live ONLY in the external, founder-gated skill canon: authored there,
-// already tracked in the generated edge digests, but not yet mirrored into this repo (their source
-// isn't in git and the founder mirror inputs — OPENRIG_SKILL_CANON_ROOT + the authority YAMLs — are
-// unset here, so they can't be restored from the repo). This is a repo↔external-canon SYNC GAP the
-// next founder mirror closes, NOT the silent 864cea6b category-drop (leg 2 catches that). The guard
-// test below keeps this set MINIMAL and self-policing: every entry MUST be ship-set + digest-tracked
-// + absent from repo disk — so a genuinely-forgotten stranding can never hide behind it.
-// Currently empty: oversight-team and retiring-and-inheriting-a-seat landed via the 2026-08-24
-// mirror-apply, so their exemptions self-destructed (the minimality checks below fail any entry
-// that is actually on disk).
+// oracle 发货、但仅存在于外部 founder 门禁 skill canon 的 skill：在那里编写、
+// 已计入生成的 edge digest，但尚未镜像进本仓库（其源不在 git，founder mirror 输入
+// ——OPENRIG_SKILL_CANON_ROOT + 权威 YAML——在此未设置，故无法从仓库恢复）。这是
+// 仓库↔外部 canon 的同步缺口，由下一次 founder mirror 关闭，不是 864cea6b 那种
+// 静默类别丢弃（leg 2 捕获后者）。下方守卫测试保持此集合最小且自管：每条必须是
+// ship-set + digest 跟踪 + 仓库盘上缺失——故真正遗忘的搁浅永远无法借它藏身。
+// 当前为空：oversight-team 与 retiring-and-inheriting-a-seat 经 2026-08-24
+// mirror-apply 落地，其豁免自毁（下方最小性检查会对任何实际在盘上的条目失败）。
 const EXTERNAL_CANON_PENDING = new Set<string>([]);
 
 type Membership = Record<string, unknown>;
@@ -62,8 +61,8 @@ function agentSkills(yamlPath: string): AgentSkill[] {
   return doc.resources?.skills ?? [];
 }
 
-// Leg 1 — refs ⊆ membership. Only `skills/`-path entries are oracle-governed; `runtime/` fragments
-// (claude-settings, mcp, codex-config, activity-hooks) are packaged config, not skills.
+// Leg 1——refs ⊆ membership。只有 `skills/` 路径条目由 oracle 治理；`runtime/` 片段
+//（claude-settings、mcp、codex-config、activity-hooks）是打包配置，不是 skill。
 function refsNotInMembership(skills: AgentSkill[], m: Membership): string[] {
   const known = fullMembershipSkills(m);
   return skills
@@ -72,8 +71,8 @@ function refsNotInMembership(skills: AgentSkill[], m: Membership): string[] {
     .filter((id) => !known.has(id));
 }
 
-// Leg 2 — membership ⊆ SHIP_CATEGORIES. Every product_public category the oracle declares MUST be
-// consumed by the mirror's ship set, or a whole category of skills is accepted-and-dropped.
+// Leg 2——membership ⊆ SHIP_CATEGORIES。oracle 声明的每个 product_public 类别都必须被
+// mirror 的 ship 集消费，否则整类 skill 会被 accept-and-drop。
 function categoriesNotConsumed(m: Membership, shipCategories: readonly string[]): string[] {
   const declared = Object.keys((m.product_public as Record<string, unknown>) ?? {});
   const consumed = new Set(shipCategories);
@@ -106,33 +105,33 @@ function shipSetNotOnDisk(m: Membership, layout: Layout, repoRoot: string): stri
   return missing;
 }
 
-describe("P6(A) skill refs→membership→ship-categories→disk chain (0.4.8 stranding class-kill)", () => {
-  it("LEG 1 — every skills/-path agent.yaml reference exists in the oracle membership", () => {
+describe("P6(A) 技能引用→成员关系→发布类别→磁盘链（0.4.8 消除搁浅类别）", () => {
+  it("第 1 段——agent.yaml 中每个 skills/ 路径引用都存在于判定源成员关系中", () => {
     const stranded = refsNotInMembership(agentSkills(AGENT_YAML), MEMBERSHIP);
     expect(stranded, `agent.yaml references NOT in the oracle: ${stranded.join(", ")}`).toEqual([]);
   });
 
-  it("LEG 2 — every oracle product_public category is consumed by the mirror SHIP_CATEGORIES", () => {
+  it("第 2 段——判定源中的每个 product_public 类别都被镜像 SHIP_CATEGORIES 消费", () => {
     const dropped = categoriesNotConsumed(MEMBERSHIP, SHIP_CATEGORIES);
     expect(dropped, `oracle categories the mirror silently drops: ${dropped.join(", ")}`).toEqual([]);
   });
 
-  it("LEG 3 — every oracle ship-set skill exists on disk in each declared edge", () => {
+  it("第 3 段——判定源发布集合中的每项技能都存在于各声明边的磁盘上", () => {
     const missing = shipSetNotOnDisk(MEMBERSHIP, LAYOUT, REPO_ROOT).filter(
       (v) => !EXTERNAL_CANON_PENDING.has(v.split("@")[0]),
     );
     expect(missing, `ship-set skills with no on-disk SKILL.md: ${missing.join(", ")}`).toEqual([]);
   });
 
-  // The external-canon-pending allowlist must stay MINIMAL: each entry MUST be (a) in the ship set,
-  // (b) LAYOUT-tracked — the founder layout still demands it, so the control-plane staleness check stays
-  // LOUD about its absence (layout-missing) and only the named allowlist tolerates it — and (c) genuinely
-  // absent from repo disk. An entry off the ship set, off the layout, or actually on disk is stale and
-  // fails here, so a real stranding can never be silently parked in the allowlist.
-  // NOTE: the property is LAYOUT-tracked, not digest-tracked — the disk-truth digest regen correctly
-  // omits a digest for a file that isn't on disk (a hash of a ghost is meaningless); "loud" comes from
-  // the layout demanding it (layout = authority, disk = reality).
-  it("external-canon-pending allowlist is minimal + self-policing (no real stranding hides here)", () => {
+  // external-canon-pending 白名单必须保持最小：每条必须 (a) 在 ship 集中，
+  // (b) LAYOUT 跟踪——founder layout 仍要求它，故控制面陈旧检查对其缺失保持
+  // 响亮（layout-missing），仅命名白名单容忍它——且 (c) 仓库盘上确实缺失。
+  // 不在 ship 集、不在 layout、或实际在盘上的条目都是陈旧的，在此失败，
+  // 故真实搁浅永远无法被静默停进白名单。
+  // 注意：该属性是 LAYOUT 跟踪，不是 digest 跟踪——disk-truth digest 重新生成
+  // 正确地为盘上不存在的文件省略 digest（幽灵的哈希无意义）；"响亮"来自
+  // layout 要求它（layout = 权威，disk = 现实）。
+  it("external-canon-pending 白名单最小且自校验（不隐藏真实搁浅）", () => {
     const shipSet = new Set(shipSetFromMembership(MEMBERSHIP));
     const layoutTracked = new Set(
       Object.entries((LAYOUT.skills ?? {}) as Record<string, { edges?: string[] }>)
@@ -148,12 +147,12 @@ describe("P6(A) skill refs→membership→ship-categories→disk chain (0.4.8 st
   });
 
   // Each leg must actually CATCH its stranding face — synthetic fixtures reproducing 864cea6b.
-  it("catches the 864cea6b stranding on every leg (fixture REDs)", () => {
+  it("在每一段捕获 864cea6b 搁浅问题（fixture 应失败）", () => {
     // Leg 1: a referenced skill absent from the oracle.
     expect(
       refsNotInMembership([{ id: "orphan-skill", path: "skills/pods/orphan-skill" }], { product_public: {} }),
     ).toEqual(["orphan-skill"]);
-    // Leg 2: an oracle category the mirror never consumes (the exact 864cea6b face).
+    // Leg 2：mirror 从不消费的 oracle 类别（正是 864cea6b 的面孔）。
     expect(
       categoriesNotConsumed({ product_public: { restored_role_pm_selected: ["x"] } }, ["clean"]),
     ).toEqual(["restored_role_pm_selected"]);

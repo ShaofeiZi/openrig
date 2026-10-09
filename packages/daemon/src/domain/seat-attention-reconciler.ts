@@ -1,5 +1,5 @@
-// OPR.0.3.4.10 — seat attention reconciler: evidence-gated clear of stuck
-// startup_status=attention_required. Managed writer + append-only audit.
+// OPR.0.3.4.10——席位待关注 reconciler：依据 evidence 清除卡住的
+// startup_status=attention_required。使用托管 writer + append-only audit。
 
 import type Database from "better-sqlite3";
 import type { SessionRegistry } from "./session-registry.js";
@@ -19,8 +19,8 @@ export type PaneIdentityReconcileResult =
   | { ok: true; pane: string; pid: number; command: string | null }
   | { ok: false; detail: string };
 
-/** Rebind one managed seat to the sole pane currently in its named tmux
- * session and positively identify its declared agent runtime. */
+/** 把一个托管席位重新绑定到其具名 tmux session 当前唯一的 pane，并正向识别其声明的
+ * 智能体运行时。 */
 export async function rebindAndVerifyPaneIdentity(input: {
   db: Database.Database;
   sessionRegistry: SessionRegistry;
@@ -39,7 +39,7 @@ export async function rebindAndVerifyPaneIdentity(input: {
   try {
     panes = await input.tmux.listPanes(input.sessionName);
   } catch (error) {
-    return { ok: false, detail: `tmux pane lookup failed: ${(error as Error).message}` };
+    return { ok: false, detail: `查询 tmux pane 失败：${(error as Error).message}` };
   }
   if (panes.length !== 1) {
     const registeredPane = input.sessionRegistry.getBindingForNode(input.nodeId)?.tmuxPane ?? null;
@@ -55,8 +55,8 @@ export async function rebindAndVerifyPaneIdentity(input: {
     return {
       ok: false,
       detail: panes.length === 0
-        ? `tmux session '${input.sessionName}' has no attachable pane`
-        : `tmux session '${input.sessionName}' has ${panes.length} panes; exact seat pane is ambiguous`,
+        ? `tmux session '${input.sessionName}' 没有可 attach 的 pane`
+        : `tmux session '${input.sessionName}' 有 ${panes.length} 个 pane；无法确定席位对应的准确 pane`,
     };
   }
 
@@ -67,7 +67,7 @@ export async function rebindAndVerifyPaneIdentity(input: {
     pid = await input.tmux.getPanePid(pane.id);
     command = await input.tmux.getPaneCommand(pane.id);
   } catch (error) {
-    return { ok: false, detail: `tmux pane identity lookup failed: ${(error as Error).message}` };
+    return { ok: false, detail: `查询 tmux pane identity 失败：${(error as Error).message}` };
   }
   let runtimeMatch = classifyPaneRuntimeMatch(command, input.runtime);
   const normalizedCommand = command?.trim().toLowerCase() ?? "";
@@ -77,7 +77,7 @@ export async function rebindAndVerifyPaneIdentity(input: {
     && expectedResumeToken !== null
     && (input.runtime === "claude-code" || input.runtime === "codex");
   if (input.runtime === "codex") {
-    // A shell/Node label describes the wrapper, not the native occupant.
+    // shell/Node label 描述的是 wrapper，而不是 native occupant。
     runtimeMatch = "match";
     const native = await verifyCodexPaneProcess({ target: pane.id, tmux: input.tmux,
       listProcesses: input.listProcesses, expectedToken: expectedResumeToken,
@@ -93,7 +93,7 @@ export async function rebindAndVerifyPaneIdentity(input: {
         expectedResumeToken!,
       );
     } catch {
-      // Missing process evidence is ambiguity, never positive identity.
+      // 缺少 process evidence 表示歧义，绝不能当成正向 identity。
     }
   }
   const runtimeAmbiguous = input.runtime === "codex" ? lineageMatch === null : runtimeMatch === "match" && (strictNativeLineage
@@ -124,9 +124,8 @@ export async function rebindAndVerifyPaneIdentity(input: {
     observedAt,
   };
 
-  // Persist the replacement pane before the verdict so both records describe
-  // the same current binding. A non-green verdict remains applicable and
-  // therefore keeps the public topology in attention_required.
+  // 在 verdict 前持久化替换后的 pane，使两条 record 描述同一个当前 binding。非 green verdict
+  // 仍然适用，因此公开 topology 保持 attention_required。
   input.sessionRegistry.updateBinding(input.nodeId, {
     tmuxSession: input.sessionName,
     tmuxPane: pane.id,
@@ -134,18 +133,18 @@ export async function rebindAndVerifyPaneIdentity(input: {
   identityStore.upsert(verdict);
 
   if (verdict.verdict === "pane_missing") {
-    return { ok: false, detail: `tmux pane '${pane.id}' has no live process` };
+    return { ok: false, detail: `tmux pane '${pane.id}' 没有存活进程` };
   }
   if (verdict.verdict === "mismatch") {
     if (runtimeAmbiguous) {
       return {
         ok: false,
-        detail: `tmux pane '${pane.id}' foreground command '${command ?? "unknown"}' does not positively identify runtime '${input.runtime}'`,
+        detail: `tmux pane '${pane.id}' 的前台命令 '${command ?? "unknown"}' 无法正向识别 runtime '${input.runtime}'`,
       };
     }
     return {
       ok: false,
-      detail: `tmux pane '${pane.id}' foreground command '${command ?? "unknown"}' contradicts runtime '${input.runtime ?? "unknown"}'`,
+      detail: `tmux pane '${pane.id}' 的前台命令 '${command ?? "unknown"}' 与 runtime '${input.runtime ?? "unknown"}' 矛盾`,
     };
   }
   return { ok: true, pane: pane.id, pid: pid!, command };
@@ -223,10 +222,10 @@ export class SeatAttentionReconciler {
   ): Promise<ClearAttentionResult> {
     const { sessionRegistry, eventBus, agentActivityStore } = this.deps;
 
-    // Resolve session -> node + current startup_status.
+    // 解析 session → node + 当前 startup_status。
     const session = this.findLatestSessionByName(sessionName);
     if (!session) {
-      return { ok: false, code: "not_in_attention", detail: `Session '${sessionName}' not found` };
+      return { ok: false, code: "not_in_attention", detail: `未找到会话 '${sessionName}'` };
     }
 
     const startupClassActive = session.startupStatus === "attention_required" || session.startupStatus === "failed";
@@ -234,23 +233,22 @@ export class SeatAttentionReconciler {
     const identityClassActive = this.getActiveIdentityVerdict(session, sessionName);
 
     if (!startupClassActive && !derivedOutcome && !identityClassActive) {
-      return { ok: false, code: "not_in_attention", detail: `Session startup_status is '${session.startupStatus}', restoreOutcome is not attention/failed, and pane identity is not mismatched/missing — not in attention` };
+      return { ok: false, code: "not_in_attention", detail: `会话 startup_status 为 '${session.startupStatus}'，restoreOutcome 不是 attention/failed，pane identity 也不是 mismatched/missing，因此不在待关注状态` };
     }
 
     const previousError = session.latestError ?? null;
 
-    // Full-restore outcomes belong to one immutable attempt. Generic activity,
-    // send verification, and operator attestation cannot prove that lineage;
-    // delegate to the restore owner that checks the exact native resume token
-    // and appends the attempt-scoped reconciliation event. Subset restores do
-    // not have a restore.started receipt and retain their established path.
+    // 完整恢复 outcome 属于一次不可变 attempt。通用 activity、send verification 与 operator
+    // attestation 无法证明该 lineage；委托给 restore owner，由其检查精确 native resume token
+    // 并追加 attempt-scoped reconciliation event。subset restore 没有 restore.started receipt，
+    // 继续使用既有路径。
     if (derivedOutcome?.source === "restore.completed") {
       const reconcile = this.deps.reconcileRestoreOutcome;
       if (!reconcile) {
         return {
           ok: false,
           code: "not_demonstrably_responsive",
-          detail: "Uncleared attention class restore_outcome: strict restore reconciler is unavailable",
+          detail: "未清除待关注类别 restore_outcome：strict restore reconciler 不可用",
         };
       }
       const restored = await reconcile(session.rigId, session.nodeId);
@@ -258,7 +256,7 @@ export class SeatAttentionReconciler {
         return {
           ok: false,
           code: "not_demonstrably_responsive",
-          detail: `Uncleared attention class restore_outcome: ${restored.code}: ${restored.detail}`,
+          detail: `未清除待关注类别 restore_outcome：${restored.code}：${restored.detail}`,
         };
       }
 
@@ -297,15 +295,14 @@ export class SeatAttentionReconciler {
       };
     }
 
-    // A pane-identity class can be cleared only by re-resolving the current
-    // session to one concrete live pane. The same proof is strong enough to
-    // clear any coexisting historical startup/restore attention class.
+    // 只有把当前 session 重新解析到一个具体存活 pane，才能清除 pane-identity 类别。同一份 proof
+    // 足以清除并存的历史 startup/restore attention 类别。
     if (identityClassActive) {
       if (!this.deps.db || !this.deps.tmux) {
         return {
           ok: false,
           code: "not_demonstrably_responsive",
-          detail: "Uncleared attention class pane_identity: tmux identity verifier is unavailable",
+          detail: "未清除待关注类别 pane_identity：tmux identity verifier 不可用",
         };
       }
       const identity = await rebindAndVerifyPaneIdentity({
@@ -320,7 +317,7 @@ export class SeatAttentionReconciler {
         return {
           ok: false,
           code: "not_demonstrably_responsive",
-          detail: `Uncleared attention class pane_identity: ${identity.detail}`,
+          detail: `未清除待关注类别 pane_identity：${identity.detail}`,
         };
       }
       return this.performEvidenceClear(
@@ -334,7 +331,7 @@ export class SeatAttentionReconciler {
       );
     }
 
-    // Operator attestation override (--reason).
+    // 操作员 attestation 覆盖（--reason）。
     if (opts?.reason) {
       const clearedClasses: ("startup_status" | "restore_outcome" | "pane_identity")[] = [];
       if (startupClassActive) {
@@ -379,7 +376,7 @@ export class SeatAttentionReconciler {
       };
     }
 
-    // Evidence-gated clear.
+    // 依据 evidence 执行清除。
     const activity = agentActivityStore.getLatestForNode({
       nodeId: session.nodeId,
       sessionName,
@@ -397,7 +394,7 @@ export class SeatAttentionReconciler {
       );
     }
 
-    // Second evidence path: active send-verify round-trip.
+    // 第二条 evidence 路径：主动 send-verify 往返。
     if (this.deps.sendVerify) {
       try {
         const probeText = `# OpenRig attention-clear liveness probe ${Date.now()}`;
@@ -437,8 +434,8 @@ export class SeatAttentionReconciler {
       ok: false,
       code: "not_demonstrably_responsive",
       detail: activity
-        ? `Latest activity: state='${activity.state}', stale=${activity.stale ?? false}, reason='${activity.reason}' -- not positive evidence; send-verify also not confirmed`
-        : "No recent agent activity found; send-verify also not confirmed",
+        ? `最近 activity：state='${activity.state}'，stale=${activity.stale ?? false}，reason='${activity.reason}'——不是正向 evidence；send-verify 也未确认`
+        : "未找到近期智能体 activity；send-verify 也未确认",
     };
   }
 
@@ -579,9 +576,8 @@ export class SeatAttentionReconciler {
         if (row.type === "restore.outcome_reconciled") {
           const ev = JSON.parse(row.payload) as { nodeId: string; attemptId?: number; to: "operator_recovered" };
           if (ev.nodeId !== session.nodeId) continue;
-          // Before restore receipts, both whole and subset clears used the
-          // unscoped attemptId 0. It remains terminal for a subset, but cannot
-          // settle a whole restore whose exact attempt still needs proof.
+          // restore receipt 引入前，whole/subset clear 都使用无 scope 的 attemptId 0。它对 subset
+          // 仍是终态，但不能结算仍需证明精确 attempt 的 whole restore。
           if (ev.attemptId === 0) {
             sawLegacyReconciliation = true;
             continue;
@@ -592,8 +588,8 @@ export class SeatAttentionReconciler {
         const n = ev.result.nodes.find((nd) => nd.nodeId === session.nodeId);
         if (!n) continue;
         if (sawLegacyReconciliation && row.type === "restore.subset_completed") return null;
-        // Mirror deriveNodeLifecycleState: attention_required regardless of
-        // sessionStatus; failed only when sessionStatus=running.
+        // 镜像 deriveNodeLifecycleState：无论 sessionStatus 如何都保留 attention_required；
+        // 只有 sessionStatus=running 时才保留 failed。
         const source = row.type as DerivedAttentionOutcome["source"];
         if (n.status === "attention_required") return { status: "attention_required", source };
         if (n.status === "failed" && session.sessionStatus === "running") return { status: "failed", source };

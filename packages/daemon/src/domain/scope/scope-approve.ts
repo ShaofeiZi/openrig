@@ -1,20 +1,16 @@
-// OPR.0.4.4.19 FR-9 — scope approve: frontmatter sole-writer + append-only
-// audit row (kills vibe-shuttled approval).
+// OPR.0.4.4.19 FR-9——scope approve：frontmatter 唯一 writer + 仅追加 audit 行
+//（终止凭感觉传递的审批）。
 //
-// Daemon-side by design (plan-review CONFIRMED; arch-lead interface-cell
-// PASS): the stamp is a workspace frontmatter write, the audit row is a
-// mission_control_actions insert, and the freeze-trigger interface cell
-// (Packet 2) invokes the compose-and-freeze endpoint AFTER the stamp+audit
-// commit — so the stamp+audit pair lives behind ONE daemon operation.
+// 按设计位于后台服务侧（plan-review 已确认；arch-lead interface-cell 通过）：stamp 是 workspace
+// frontmatter 写入，audit 行是 mission_control_actions 插入；freeze-trigger interface cell
+//（Packet 2）在 stamp+audit 提交后调用 compose-and-freeze endpoint。因此 stamp+audit 对位于一个
+// 后台服务操作之后。
 //
-// Ordering (arch-lead PIN, 2026-07-04): frontmatter-first → audit-second →
-// on audit failure LOUD-FAIL + byte-restore the prior frontmatter. The
-// compensating-DELETE variant is REJECTED — no row is ever deleted from
-// mission_control_actions; append-only stands.
+// 顺序（arch-lead 钉扎，2026-07-04）：先 frontmatter → 后 audit → audit 失败时显著失败并按字节恢复
+// 原 frontmatter。拒绝补偿性 DELETE 方案——绝不从 mission_control_actions 删除行；保持仅追加。
 //
-// Two-regime role clarity (BR-6, ratified): approval is the freeze/LOCKED
-// trigger and the regime-2 sign-off — it is NEVER the source of proven-green.
-// Nothing here computes or stores "green".
+// 两阶段职责清晰（BR-6，已批准）：approval 是 freeze/LOCKED 触发器和 regime-2 sign-off，绝不是
+// proven-green 的来源。此处不计算也不存储“green”。
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -29,34 +25,28 @@ export type ApprovalScope = "spec" | "delivery";
 
 export interface ScopeApproveInput {
   scopeTier: ScopeTier;
-  /** Canonical missions-root-relative path (e.g.
-   *  "release-0.4.4/slices/19-living-notes-signal-layer" or "release-0.4.4"). */
+  /** 相对于 missions 根目录的 canonical 路径（例如
+   *  "release-0.4.4/slices/19-living-notes-signal-layer" 或 "release-0.4.4"）。 */
   scopePath: string;
-  /** STAGED APPROVAL (founder un-deferred): `spec` = "the SPEC matches my
-   *  intent" (the first accept-point); `delivery` = the terminal sign-off
-   *  (the freeze trigger). Omitted upstream ⇒ delivery (back-compat). */
+  /** 分阶段审批（founder 不再 defer）：`spec` = “SPEC 符合我的 intent”（首个接受点）；
+   * `delivery` = 最终 sign-off（freeze 触发器）。上游省略 ⇒ delivery（向后兼容）。 */
   approvalScope: ApprovalScope;
-  /** The REAL invoking session (honest provenance — never overwritten by
-   *  delegation). */
+  /** 真实调用 session（如实记录 provenance，绝不被 delegation 覆盖）。 */
   actorSession: string;
-  /** P21 era-stamp: how actorSession was established. The route passes `transport:v1` when it derived
-   *  the actor from the authenticated transport chokepoint; omitted (null) ⇒ claimed-era (a direct
-   *  caller / pre-P21 row), rendered "recorded (pre-verification era)", never re-labeled. */
+  /** P21 era-stamp：actorSession 的确定方式。当 route 从认证 transport chokepoint 派生 actor 时传入
+   * `transport:v1`；省略（null）⇒ claimed-era（直接调用方 / P21 前行），渲染为“已记录（验证前时代）”，
+   * 绝不重新标记。 */
   identityProvenance?: string | null;
-  /** DELEGATED APPROVAL: whose decision this stamp records when an agent
-   *  invokes on the founder's behalf. Recorded in the audit notes only. */
+  /** 委托审批：agent 代表 founder 调用时，此 stamp 记录谁的决定。仅记录在 audit notes 中。 */
   onBehalfOf?: string | null;
-  /** OPR.0.5.0.18 — AMEND/RE-STAMP: re-approve an already-approved scope as a
-   *  new reasoned attestation superseding the prior (both preserved in the
-   *  append-only audit log; ARCH-SHAPING 9d64ceb6 v2). Atomic: same
-   *  frontmatter-first → audit-second → byte-restore ordering; no unapprove
-   *  window ever exists. */
+  /** OPR.0.5.0.18——修订/重新盖章：用一份新的有理由 attestation 重新批准已批准 scope，取代先前
+   * attestation（两者都保留在仅追加 audit log 中；ARCH-SHAPING 9d64ceb6 v2）。原子性：采用相同的
+   * frontmatter-first → audit-second → byte-restore 顺序，不存在 unapprove 窗口。 */
   reApprove?: boolean;
-  /** REQUIRED with reApprove (a reasoned deliberate act, never an accident). */
+  /** 使用 reApprove 时必填（有理由的有意操作，绝非意外）。 */
   reason?: string | null;
-  /** PLAN-LOCK ONLY — the stamper's EXPLICIT locked-artifact set (slice-relative paths). When
-   *  present it REPLACES the derived default entirely: the set is chosen, not inherited. Each path
-   *  must exist in the slice directory. Ignored for delivery/mission approvals. */
+  /** 仅 PLAN-LOCK——盖章者显式指定的 locked-artifact 集合（slice 相对路径）。存在时完全替换派生
+   * 默认值：集合由人选择，而非继承。每条路径必须存在于 slice 目录。delivery/mission 审批忽略它。 */
   lockedArtifacts?: string[] | null;
 }
 
@@ -69,13 +59,12 @@ export interface ScopeApproveResult {
   approvedAt: string;
   onBehalfOf: string | null;
   actionId: string;
-  /** Packet-2 interface cell: only the DELIVERY stamp fires the freeze; the
-   *  compose-and-freeze endpoint ships in Packet 2, so P1 always reports
-   *  false. The stamp + audit row stand regardless of any render outcome. */
+  /** Packet-2 interface cell：只有 DELIVERY stamp 触发 freeze；compose-and-freeze endpoint 在
+   * Packet 2 发布，因此 P1 始终报告 false。无论 render 结果如何，stamp + audit 行都成立。 */
   freezeFired: false;
-  /** OPR.0.5.0.18 — true when this result is an amendment (a re-stamp). */
+  /** OPR.0.5.0.18——结果是修订（重新盖章）时为 true。 */
   reApproved: boolean;
-  /** The superseded attestation (present only on a re-stamp). */
+  /** 被取代的 attestation（仅重新盖章时存在）。 */
   priorApprovedBy?: string;
   priorApprovedAt?: string | null;
 }
@@ -91,10 +80,9 @@ export class ScopeApproveError extends Error {
   }
 }
 
-/** The pinned audit_notes_json shape (spec-guard blocker 2): a stable,
- *  queryable scope-target identity + the approval scope + delegation
- *  provenance. The audit-browse read path filters on these keys — the pair
- *  is what makes Packet 2's one-query UNVERIFIED-stamp cross-check real. */
+/** 锁定的 audit_notes_json 结构（spec-guard blocker 2）：稳定、可查询的 scope-target identity +
+ * approval scope + delegation provenance。audit-browse 读取路径按这些 key 过滤——正是这组信息
+ * 让 Packet 2 的单次查询 UNVERIFIED-stamp 交叉检查真正可行。 */
 export interface ScopeApprovalAuditNotes extends Record<string, unknown> {
   kind: "scope-approval";
   scope_tier: ScopeTier;
@@ -110,8 +98,7 @@ const STAMP_FIELDS: Record<ApprovalScope, { by: string; at: string; priors: stri
 };
 
 interface ScopeApproveDeps {
-  /** Resolves the live missions root (SliceIndexer.slicesRoot), or null when
-   *  the workspace is not configured. */
+  /** 解析实时 missions 根目录（SliceIndexer.slicesRoot）；workspace 未配置时返回 null。 */
   missionsRoot: () => string | null;
   actionLog: MissionControlActionLog;
   now?: () => Date;
@@ -129,17 +116,16 @@ export class ScopeApproveService {
     if (!missionsRoot) {
       throw new ScopeApproveError(
         "workspace_not_configured",
-        "The daemon has no missions root configured; scope approve needs the workspace primitive.",
+        "后台服务未配置 missions 根目录；scope approve 需要 workspace primitive。",
       );
     }
 
-    // Path containment: the scope path must resolve INSIDE the missions root
-    // (content-surfaces discipline — no ../ escapes).
+    // 路径包含性：scope path 必须解析到 missions 根目录内（content-surfaces 约束——禁止 ../ 逃逸）。
     const resolved = path.resolve(missionsRoot, input.scopePath);
     if (resolved !== missionsRoot && !resolved.startsWith(missionsRoot + path.sep)) {
       throw new ScopeApproveError(
         "scope_path_escape",
-        `scopePath '${input.scopePath}' resolves outside the missions root.`,
+        `scopePath '${input.scopePath}' 解析到了 missions 根目录之外。`,
         { scopePath: input.scopePath },
       );
     }
@@ -147,7 +133,7 @@ export class ScopeApproveService {
     if (!readmePath) {
       throw new ScopeApproveError(
         "scope_not_found",
-        `No ${NODE_FILE_PRECEDENCE.join(" or ")} at ${input.scopePath} under the missions root — not a declared ${input.scopeTier}.`,
+        `missions 根目录下的 ${input.scopePath} 中没有 ${NODE_FILE_PRECEDENCE.join(" 或 ")}——它不是已声明的 ${input.scopeTier}。`,
         { scopePath: input.scopePath, scopeTier: input.scopeTier },
       );
     }
@@ -161,18 +147,15 @@ export class ScopeApproveService {
     if (!scopeId) {
       throw new ScopeApproveError(
         "scope_id_missing",
-        `${input.scopePath} has no frontmatter id (dot-ID) — the audit target contract requires a stable scope_id.`,
-        { scopePath: input.scopePath, action: "Run: rig scope " + input.scopeTier + " reconcile <path> to mint the id, then re-approve." },
+        `${input.scopePath} 没有 frontmatter id（dot-ID）——audit target 契约要求稳定的 scope_id。`,
+        { scopePath: input.scopePath, action: "请运行：rig scope " + input.scopeTier + " reconcile <path> 生成 id，然后重新审批。" },
       );
     }
 
-    // OPR.0.5.0.18 — the amend/re-stamp verb (ARCH-SHAPING 9d64ceb6 v2): a
-    // lock is a point-in-time ATTESTATION, not an irreversible seal. Without
-    // --re-approve, an existing stamp still refuses loudly — but the refusal
-    // TEACHES the sanctioned verb instead of dead-ending. With it, the stamp
-    // is superseded by a new reasoned attestation; both live in the
-    // append-only audit log. A spec stamp followed by a delivery stamp is
-    // still the normal staged sequence (different scopes never collide).
+    // OPR.0.5.0.18——修订/重新盖章动词（ARCH-SHAPING 9d64ceb6 v2）：lock 是时间点
+    // ATTESTATION，而非不可逆 seal。无 --re-approve 时，已有 stamp 仍会显著拒绝，但拒绝信息会教授
+    // 获准动词，而非形成死路。使用时，新有理由 attestation 取代旧 stamp；两者均保留在仅追加 audit
+    // log 中。spec stamp 后接 delivery stamp 仍是常规分阶段顺序（不同 scope 绝不冲突）。
     const fields = STAMP_FIELDS[input.approvalScope];
     const existingBy = frontmatter[fields.by];
     const hasExistingStamp = typeof existingBy === "string" && existingBy.trim().length > 0;
@@ -180,7 +163,7 @@ export class ScopeApproveService {
     if (hasExistingStamp && !isReApprove) {
       throw new ScopeApproveError(
         "already_approved",
-        `${input.scopePath} already carries a ${input.approvalScope} approval stamp: ${fields.by}: ${existingBy}, ${fields.at}: ${String(frontmatter[fields.at] ?? "?")}. To amend/re-stamp it as a new reasoned attestation (prior preserved in the audit log), re-run with --re-approve --reason "<why>".`,
+        `${input.scopePath} 已有 ${input.approvalScope} approval stamp：${fields.by}: ${existingBy}，${fields.at}: ${String(frontmatter[fields.at] ?? "?")}。若要以新的有理由 attestation 修订/重新盖章（先前记录保留在 audit log 中），请使用 --re-approve --reason "<why>" 重新运行。`,
         { scopePath: input.scopePath, approvalScope: input.approvalScope, existingBy, existingAt: frontmatter[fields.at] ?? null },
       );
     }
@@ -188,14 +171,14 @@ export class ScopeApproveService {
     if (isReApprove && reason.length === 0) {
       throw new ScopeApproveError(
         "reason_required",
-        `--re-approve is a reasoned deliberate act: pass --reason "<why>" describing what changed since the prior ${input.approvalScope} attestation.`,
+        `--re-approve 是有理由的有意操作：请传入 --reason "<why>"，说明自上一份 ${input.approvalScope} attestation 以来发生的变化。`,
         { scopePath: input.scopePath, approvalScope: input.approvalScope },
       );
     }
     if (isReApprove && !hasExistingStamp) {
       throw new ScopeApproveError(
         "nothing_to_reapprove",
-        `${input.scopePath} carries no ${input.approvalScope} approval stamp to supersede — run a plain approve (without --re-approve) for the first attestation.`,
+        `${input.scopePath} 没有可取代的 ${input.approvalScope} approval stamp——第一次 attestation 请执行普通 approve（不带 --re-approve）。`,
         { scopePath: input.scopePath, approvalScope: input.approvalScope },
       );
     }
@@ -207,16 +190,13 @@ export class ScopeApproveService {
 
     const approvedAt = (this.deps.now?.() ?? new Date()).toISOString();
 
-    // Stage-3 Lever A — plan-lock snapshot: ONLY a slice SPEC approval derives +
-    // co-serializes the `locked-artifacts` set (mission/delivery NEVER create it;
-    // a delivery merge preserves an existing list). PRD read fails open to null.
+    // Stage-3 Lever A——plan-lock snapshot：只有 slice SPEC 审批才派生并共同序列化
+    // `locked-artifacts` 集合（mission/delivery 绝不创建；delivery merge 保留现有列表）。PRD 读取
+    // 失败时开放式回退为 null。
     //
-    // B14 — the set must be CHOSEN, not inherited. An explicit `lockedArtifacts`
-    // replaces derivation entirely (validated to exist, slice-relative). Without
-    // it the derived default still applies, but a set that would freeze only a
-    // missing/scaffold PRD refuses loudly: a plan-lock says "THIS artifact set
-    // is what gets built", and two live locks froze placeholder bytes before
-    // this check existed.
+    // B14——集合必须由人选择，而非继承。显式 `lockedArtifacts` 完全替代派生（校验为存在的 slice
+    // 相对路径）。缺席时仍采用派生默认值，但若集合只会冻结缺失/脚手架 PRD，则显著拒绝：plan-lock
+    // 表示“构建的就是这组 artifact”，而此检查出现前曾有两个 live lock 冻结 placeholder 字节。
     const isPlanLock = input.scopeTier === "slice" && input.approvalScope === "spec";
     let lockedArtifacts: ReturnType<typeof derivePlanLockArtifacts> | undefined;
     if (isPlanLock) {
@@ -232,36 +212,33 @@ export class ScopeApproveService {
         if (isContentlessPlanLockSet(originalBytes, lockedArtifacts)) {
           throw new ScopeApproveError(
             "plan_lock_contentless",
-            `${input.scopePath}: the derived locked-artifacts set contains only a contentless ${nodeFileName} — the lock would freeze content nobody chose.`,
+            `${input.scopePath}：派生的 locked-artifacts 集合只包含无内容的 ${nodeFileName}——该 lock 会冻结无人选择的内容。`,
             {
               scopePath: input.scopePath,
-              action: "Author SPEC.md so the plan carries real content, or name the real set explicitly: rig scope slice approve <slice> --scope spec --locked-artifacts \"SPEC.md,PLAN-….md\".",
+              action: "请编写 SPEC.md，让计划包含真实内容；或显式指定真实集合：rig scope slice approve <slice> --scope spec --locked-artifacts \"SPEC.md,PLAN-….md\"。",
             },
           );
         }
       }
     }
 
-    // 1. Frontmatter FIRST (the arch-pinned ordering). The stamp AND the
-    // co-serialized `locked-artifacts` land in ONE writeFrontmatterFields +
-    // writeFileSync — so a later audit failure restores a clean verbatim README.
+    // 1. 先写 Frontmatter（架构锁定顺序）。stamp 与共同序列化的 `locked-artifacts` 通过一次
+    // writeFrontmatterFields + writeFileSync 落盘，后续 audit 失败即可恢复干净且逐字一致的 README。
     const updated = writeFrontmatterFields(originalBytes, {
       [fields.by]: input.actorSession,
       [fields.at]: approvedAt,
-      // OPR.0.5.0.18 — amendment lineage in the ONE atomic frontmatter write:
-      // prior-count rides beside the current attestation so the (filesystem-
-      // local) scope audit can show lineage; the rows hold the full history.
+      // OPR.0.5.0.18——一次原子 frontmatter 写入中的修订 lineage：prior-count 与当前
+      // attestation 一并写入，使文件系统本地 scope audit 可显示 lineage；行中保留完整历史。
       ...(isReApprove ? { [fields.priors]: priorCount + 1 } : {}),
       ...(isPlanLock ? { "locked-artifacts": lockedArtifacts } : {}),
-      // P21 era-stamp: a `provenance:` line beside the approved-by stamp records how the approver
-      // identity was established. Present (`transport:v1`) ⇒ transport-derived; absent ⇒ claimed-era.
+      // P21 era-stamp：approved-by stamp 旁的 `provenance:` 行记录 approver identity 的确定方式。
+      // 存在（`transport:v1`）⇒ transport-derived；缺席 ⇒ claimed-era。
       ...(input.identityProvenance ? { provenance: input.identityProvenance } : {}),
     });
     fs.writeFileSync(readmePath, updated, "utf8");
 
-    // 2. Audit SECOND. On failure: byte-restore the prior frontmatter and
-    // fail loudly — a failed audit write can never leave a trusted half-stamp
-    // (QA plan-review guardrail), and no audit row is ever deleted.
+    // 2. 后写 Audit。失败时按字节恢复先前 frontmatter 并显著失败；audit 写入失败绝不能留下被信任的
+    // 半 stamp（QA plan-review guardrail），且绝不删除 audit 行。
     const scopePathCanonical = path.relative(missionsRoot, resolved).split(path.sep).join("/");
     const auditNotes: ScopeApprovalAuditNotes = {
       kind: "scope-approval",
@@ -270,10 +247,9 @@ export class ScopeApproveService {
       scope_path: scopePathCanonical,
       approval_scope: input.approvalScope,
       on_behalf_of: input.onBehalfOf ?? null,
-      // OPR.0.5.0.18 — the amendment row makes the supersession explicit
-      // (additive keys; the audit-browse scope filters are untouched). The
-      // provenance triple: authorizer = on_behalf_of, acting agent =
-      // actor_session, reason = the verbatim operator reason.
+      // OPR.0.5.0.18——修订行显式表达取代关系（增量 key；audit-browse scope filter 不变）。
+      // provenance 三元组：authorizer = on_behalf_of、acting agent = actor_session、
+      // reason = 操作员原样 reason。
       ...(isReApprove
         ? {
             re_approval: true,
@@ -291,7 +267,7 @@ export class ScopeApproveService {
         : `scope-approval (${input.approvalScope})`;
       const entry = this.deps.actionLog.record({
         actionVerb: "approve",
-        qitemId: null, // scope approvals are NOT qitem actions
+        qitemId: null, // scope approval 不是 qitem action。
         actorSession: input.actorSession,
         actedAt: approvedAt,
         reason: isReApprove ? `${baseReason} re-approve: ${reason}` : baseReason,
@@ -303,16 +279,14 @@ export class ScopeApproveService {
       fs.writeFileSync(readmePath, originalBytes, "utf8");
       throw new ScopeApproveError(
         "audit_write_failed",
-        `The approval audit row could not be written; the frontmatter stamp was restored to its prior state (no half-stamp). Cause: ${err instanceof Error ? err.message : String(err)}`,
+        `无法写入 approval audit 行；frontmatter stamp 已恢复到先前状态（无半 stamp）。原因：${err instanceof Error ? err.message : String(err)}`,
         { scopePath: input.scopePath, approvalScope: input.approvalScope },
       );
     }
 
-    // 3. Freeze-trigger interface cell (Packet 2): the DELIVERY stamp will
-    // synchronously invoke the ONE compose-and-freeze endpoint AFTER this
-    // point. The endpoint does not exist at P1; when it lands, a failed
-    // render never un-approves and never half-stamps — the stamp + audit
-    // row above stand regardless of the render outcome.
+    // 3. Freeze-trigger interface cell（Packet 2）：DELIVERY stamp 会在此点之后同步调用唯一
+    // compose-and-freeze endpoint。P1 中该 endpoint 尚不存在；实现后，render 失败也绝不会撤销
+    // approval 或留下半 stamp——无论 render 结果如何，上述 stamp + audit 行均成立。
 
     return {
       scopeTier: input.scopeTier,
@@ -332,8 +306,8 @@ export class ScopeApproveService {
   }
 }
 
-// ——— frontmatter helpers (daemon-side mirror of the CLI scope-fs shape:
-// hand-rolled split + YAML.parse, safe-by-default per PRD §4 leg 2) ———
+// ——frontmatter helper（CLI scope-fs 结构的后台服务侧镜像：手写 split + YAML.parse，
+// 按 PRD §4 第 2 分支默认安全）——
 
 function parseFrontmatter(content: string): Record<string, unknown> {
   if (!content.startsWith("---")) return {};
@@ -347,8 +321,8 @@ function parseFrontmatter(content: string): Record<string, unknown> {
   }
 }
 
-/** Reads the slice IMPLEMENTATION-PRD.md; returns null on ANY missing/unreadable
- *  error (never throws) — the plan-lock derivation fails open to a PRD-only set. */
+/** 读取 slice IMPLEMENTATION-PRD.md；任何缺失/不可读错误都返回 null（绝不抛错），使 plan-lock
+ * 派生开放式回退为仅 PRD 集合。 */
 function tryReadPRD(sliceDir: string): string | null {
   try {
     return fs.readFileSync(path.join(sliceDir, "IMPLEMENTATION-PRD.md"), "utf8");
@@ -357,9 +331,9 @@ function tryReadPRD(sliceDir: string): string | null {
   }
 }
 
-/** B14 — the stamper's explicit plan-lock set: slice-relative, normalized by the SAME rules as the
- *  derived path (no scheme/absolute/escape), each file verified to EXIST — a chosen set naming a
- *  missing file is the same defect the explicit path exists to end. Dedup, first wins. */
+/** B14——盖章者显式指定的 plan-lock 集合：slice 相对路径，按与派生路径相同的规则规范化
+ *（无 scheme/绝对路径/逃逸），并验证每个文件存在。选定集合若指向缺失文件，正是显式路径旨在
+ * 消除的同类缺陷。去重时首项优先。 */
 function resolveExplicitPlanLockArtifacts(
   raw: string[],
   sliceDir: string,
@@ -371,7 +345,7 @@ function resolveExplicitPlanLockArtifacts(
     if (/^[a-z][a-z0-9+.-]*:/i.test(ref)) {
       throw new ScopeApproveError(
         "locked_artifact_invalid",
-        `${scopePath}: locked artifact "${ref}" carries a URI scheme — every locked-artifact path is slice-relative.`,
+        `${scopePath}：locked artifact "${ref}" 带 URI scheme——每个 locked-artifact 路径都必须相对于 slice。`,
         { scopePath, ref },
       );
     }
@@ -379,14 +353,14 @@ function resolveExplicitPlanLockArtifacts(
     if (norm === null) {
       throw new ScopeApproveError(
         "locked_artifact_invalid",
-        `${scopePath}: locked artifact "${ref}" is absolute or escapes the slice directory — every locked-artifact path is slice-relative.`,
+        `${scopePath}：locked artifact "${ref}" 是绝对路径或逃逸出 slice 目录——每个 locked-artifact 路径都必须相对于 slice。`,
         { scopePath, ref },
       );
     }
     if (!fs.existsSync(path.join(sliceDir, norm))) {
       throw new ScopeApproveError(
         "locked_artifact_missing",
-        `${scopePath}: locked artifact "${norm}" does not exist in the slice directory — a chosen set must name real files.`,
+        `${scopePath}：locked artifact "${norm}" 在 slice 目录中不存在——选定集合必须指向真实文件。`,
         { scopePath, ref: norm },
       );
     }
@@ -397,16 +371,12 @@ function resolveExplicitPlanLockArtifacts(
   return out;
 }
 
-/** P15 (WRITER-EXCEEDS-ITS-OWNERSHIP fix, PM-ruled 2026-08-07): the stamp is
- *  sole-writer of its OWN keys and must byte-preserve every line it does not
- *  own. The old implementation parsed and RE-SERIALIZED the whole block, so
- *  stamping invalidated any seal taken over the file — seal-then-lock broke by
- *  construction. Now: each owned key is serialized alone and spliced in by
- *  index (replace-in-place when the key exists, append at the block end when
- *  absent). Unowned bytes — folded scalars, quoting style, ordering — are
- *  untouched, so stripping exactly the owned lines restores the pre-stamp
- *  bytes. Index splicing (never String.replace with a dynamic replacement)
- *  keeps $-metacharacters in values inert. */
+/** P15（WRITER-EXCEEDS-ITS-OWNERSHIP 修复，PM 于 2026-08-07 裁定）：stamp 是自身 key
+ * 的唯一 writer，必须按字节保留不归其所有的每一行。旧实现解析并重新序列化整个 block，导致盖章
+ * 使文件上的任何 seal 失效——seal-then-lock 按构造损坏。现在每个自有 key 单独序列化，并按索引
+ * 拼接（key 存在时就地替换，缺席时追加到 block 末尾）。非自有字节——折叠 scalar、引号风格、
+ * 顺序——保持不变，因此精确移除自有行即可恢复 stamp 前字节。按索引拼接（绝不使用带动态替换的
+ * String.replace）使值中的 $ 元字符保持惰性。 */
 function writeFrontmatterFields(content: string, fields: Record<string, unknown>): string {
   const match = /^---\s*\n([\s\S]*?)\n---/.exec(content);
   if (!match) {
@@ -418,7 +388,7 @@ function writeFrontmatterFields(content: string, fields: Record<string, unknown>
     if (value === undefined) continue;
     const rendered = YAML.stringify({ [key]: value }).trimEnd();
     const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    // a top-level `key:` line plus its indented continuation lines (nested blocks)
+    // 顶层 `key:` 行及其缩进 continuation 行（嵌套 block）。
     const keyRe = new RegExp(`^${escaped}:[^\\n]*(?:\\n[ \\t]+[^\\n]*)*`, "m");
     const existing = keyRe.exec(block);
     if (existing) {

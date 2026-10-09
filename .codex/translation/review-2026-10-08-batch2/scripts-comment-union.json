@@ -1,0 +1,361 @@
+{
+  "total_disk": 58,
+  "missing": 0,
+  "duplicates": 0,
+  "extra": 0,
+  "by_category": {
+    "changed_translated": 7,
+    "nochange_verified": 5,
+    "already_cn_scanned": 46
+  },
+  "files": [
+    {
+      "path": "scripts/bootstrap-product-factory-vps.sh",
+      "sha": "179ad31909d705ac",
+      "category": "nochange_verified",
+      "evidence": "batch1 nochange (usage example or already-CN confirmed)"
+    },
+    {
+      "path": "scripts/build-package.sh",
+      "sha": "956325bcfb0e39b3",
+      "category": "nochange_verified",
+      "evidence": "batch1 nochange (usage example or already-CN confirmed)"
+    },
+    {
+      "path": "scripts/build-testbed-cli-pack.test.mjs",
+      "sha": "16d2f3b8c627966d",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/build-testbed-image.sh",
+      "sha": "dc17b9fbfbb69a8a",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/build-testbed-image.test.mjs",
+      "sha": "b475f94ef2019f2a",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/check-cli-daemon-freshness.test.mjs",
+      "sha": "0404f971d56dabf7",
+      "category": "changed_translated",
+      "evidence": "batch1 translated+node --check+test passed"
+    },
+    {
+      "path": "scripts/check-docs-guard.mjs",
+      "sha": "96616e58623806ff",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/check-docs-guard.test.mjs",
+      "sha": "eb1e2eeac83db151",
+      "category": "changed_translated",
+      "evidence": "batch1 translated+node --check+test passed"
+    },
+    {
+      "path": "scripts/check-engines.test.mjs",
+      "sha": "1214a34f32a45f8e",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/check-internal-leak-guard.mjs",
+      "sha": "bfd511cfffaf4f07",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/check-internal-leak-guard.test.mjs",
+      "sha": "545a152f1bd74a9f",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/check-packing-policies.test.mjs",
+      "sha": "5513a75513277204",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/check-packing.test.mjs",
+      "sha": "7befc77ede14bfa8",
+      "category": "changed_translated",
+      "evidence": "batch1 translated+node --check+test passed"
+    },
+    {
+      "path": "scripts/check-substance-gate.mjs",
+      "sha": "19298156f3d8b8df",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/check-substance-gate.test.mjs",
+      "sha": "538f1e6fa9f89c6a",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/cli-license.test.mjs",
+      "sha": "ccf0f90eb1a34a0c",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/gate-lane-candidate-binding.test.mjs",
+      "sha": "bf54bacaa62a3975",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/gate-lane-consume.mjs",
+      "sha": "c17299279111c136",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/gate-lane-consume.test.mjs",
+      "sha": "b68b352ff6b2b170",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/gate-lane-hermeticity.mjs",
+      "sha": "0ab04e7c92319e9c",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/gate-lane-hermeticity.test.mjs",
+      "sha": "668c902757bb94b7",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/gate-lane-ledger.mjs",
+      "sha": "e2d0c213eb14d6f2",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/gate-lane-ledger.test.mjs",
+      "sha": "2222aced108e8cb4",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/gate-lane-lock.mjs",
+      "sha": "2fd8aabe0e93bac3",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/gate-lane-lock.test.mjs",
+      "sha": "6f88e41e550d5fe9",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/gate-lane-run.mjs",
+      "sha": "cc23570b8e7af276",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/gate-lane-run.test.mjs",
+      "sha": "8f7db0e42b55b22f",
+      "category": "changed_translated",
+      "evidence": "batch1 translated+node --check+test passed"
+    },
+    {
+      "path": "scripts/gate-lane.mjs",
+      "sha": "c82076c0cf79d25c",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/generate-context-packs.mjs",
+      "sha": "008b4135baddac9f",
+      "category": "nochange_verified",
+      "evidence": "batch1 nochange (usage example or already-CN confirmed)"
+    },
+    {
+      "path": "scripts/generate-context-packs.test.mjs",
+      "sha": "3ed8d64ab09e038f",
+      "category": "changed_translated",
+      "evidence": "batch1 translated+node --check+test passed"
+    },
+    {
+      "path": "scripts/internal-leak-scanner.mjs",
+      "sha": "e2b702851fdbcbf8",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/internal-leak-scanner.test.mjs",
+      "sha": "fd49572a8e450496",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/mirror-skills.mjs",
+      "sha": "907bd5263ac2fed8",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/mirror-skills.test.mjs",
+      "sha": "25646af88ddc4ebb",
+      "category": "changed_translated",
+      "evidence": "batch1 translated+node --check+test passed"
+    },
+    {
+      "path": "scripts/portability-report.mjs",
+      "sha": "e3e03cb69a6715ae",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/portability-report.test.mjs",
+      "sha": "037aebd174386122",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/regen-edge-digests.mjs",
+      "sha": "45f47636cdce8521",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/rewrite-daemon-imports.mjs",
+      "sha": "fea312f83f650a4c",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/rewrite-daemon-imports.test.mjs",
+      "sha": "a64daf55bba47fbc",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/smoke-fresh-install.sh",
+      "sha": "ab5456bea94ebbda",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/sync-scope-lineage.mjs",
+      "sha": "5efbb7b3fcfb9190",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/sync-scope-lineage.test.mjs",
+      "sha": "5c865df6f44b929a",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/test-tui-package.mjs",
+      "sha": "a9146217f29e6a15",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/testbed-build-inputs.mjs",
+      "sha": "42da04c3d220dc56",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/testbed-build-inputs.test.mjs",
+      "sha": "520462cff13a6c1d",
+      "category": "nochange_verified",
+      "evidence": "batch1 nochange (usage example or already-CN confirmed)"
+    },
+    {
+      "path": "scripts/testbed-dockerfile.test.mjs",
+      "sha": "1f30a0b5def2c1ce",
+      "category": "changed_translated",
+      "evidence": "batch1 translated+node --check+test passed"
+    },
+    {
+      "path": "scripts/testbed-emit-manifest.mjs",
+      "sha": "fd55aed8eaf0de3b",
+      "category": "nochange_verified",
+      "evidence": "batch1 nochange (usage example or already-CN confirmed)"
+    },
+    {
+      "path": "scripts/testbed-emit-manifest.test.mjs",
+      "sha": "51c527bd5c6fa4d0",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/testbed-manifest.mjs",
+      "sha": "84b90ecef69bfad4",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/testbed-manifest.test.mjs",
+      "sha": "822b0e3284e094c5",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/testbed-stub-assets.test.mjs",
+      "sha": "8e6e38ef5d86cc56",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/typecheck-order.test.mjs",
+      "sha": "aebabb386b8b1a19",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/verify-packaged-builtins.mjs",
+      "sha": "e110efeaf8b45984",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "scripts/zrig-entry.test.mjs",
+      "sha": "ddb05f30d9403f80",
+      "category": "already_cn_scanned",
+      "evidence": "full scan: no English prose comments (only JSDoc/machine/usage)"
+    },
+    {
+      "path": "packages/cli/scripts/check-abi.mjs",
+      "sha": "b0dc33429e5c7846",
+      "category": "already_cn_scanned",
+      "evidence": "manual review: all comments already Chinese, no English prose"
+    },
+    {
+      "path": "packages/cli/vitest.config.ts",
+      "sha": "6ce4f30d5d5282a1",
+      "category": "already_cn_scanned",
+      "evidence": "manual review: all comments already Chinese, no English prose"
+    },
+    {
+      "path": "scripts/vm-bootstrap/two-daemon-start.sh",
+      "sha": "edd68cbbfadc10f0",
+      "category": "already_cn_scanned",
+      "evidence": "manual review: all comments already Chinese, no English prose"
+    },
+    {
+      "path": "vitest.config.ts",
+      "sha": "f20c8911aabde3aa",
+      "category": "already_cn_scanned",
+      "evidence": "manual review: all comments already Chinese, no English prose"
+    }
+  ]
+}

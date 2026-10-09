@@ -1,24 +1,19 @@
-// OPR.0.4.6.MH5 — the FLEET attention altitude (placement option A, the
-// founder-locked /fleet route; the LOCK ships BOTH — FleetBand is option B).
+// OPR.0.4.6.MH5 —— 车队关注高度（放置选项 A，创始者锁定的 /fleet 路由；
+// 锁同时发布两者——FleetBand 是选项 B）。
 //
-// The blessed Mission Control grammar lifted ONE altitude above host:
-// rollup header → NEEDS YOU (the fleet union, host-attributed, ● agent vs
-// ▲ derived at equal rank, exceptions carry inline evidence + threshold)
-// → HOSTS (the field band — every factory, honest per-host status;
-// unreachable = items ABSENT-not-zero + a REAL-refetch retry) → SETTLED
-// (minimal, host-chipped). Same grammar, new altitude — never a new
-// interface (mini-req 3).
+// 受祝福的任务控制语法提升了一个高度到主机之上：
+// 汇总头 → 需要你处理（车队并集，主机归属，● 智能体 vs ▲ 推导同等等级，
+// 异常携带内联证据 + 阈值）→ 主机（现场带——每个工厂，诚实的每主机状态；
+// 不可达 = 事项缺失而非零 + 真实重新获取重试）→ 已解决（最小化，主机切片）。
+// 相同语法，新高度——绝不新接口（mini-req 3）。
 //
-// Read + surface only (FR-5): the boundary renders ON the surface; acting
-// on a remote host's item rides MH-3/MH-4. Drill-in (FR-4) = the MH-2
-// selected-host retarget (the ONE selection write path) landing on the
-// per-host workspace with the FLEET ▸ eyebrow; the navigation below is
-// MH-2 verbatim. Rollup math renders the DAEMON's rollup (computed from
-// the deduped rows — checkable against the HOSTS band on this surface).
+// 只读表面（FR-5）：边界渲染在表面上；对远端主机事项的操作走 MH-3/MH-4。
+// 钻取（FR-4）= MH-2 选定主机重定向（唯一选择写入路径）落在每主机工作区，
+// 带车队 ▸ 眉标；下方导航是 MH-2 逐字。汇总数学渲染后台服务的汇总
+//（从去重行计算——可对照此表面的主机带检查）。
 //
-// Route discipline: zoom-addressed like /agents (ADDRESSING, not nav
-// chrome). Expanded state rides ?open=<fleetKey> so every state is
-// deep-link addressable (the RigAgentsPage query-param idiom).
+// 路由纪律：像 /agents 一样缩放寻址（寻址，非导航装饰）。展开状态携带
+// ?open=<fleetKey>，使每个状态深度链接可寻址（RigAgentsPage 查询参数惯用）。
 
 import { Link } from "@tanstack/react-router";
 import { Globe } from "lucide-react";
@@ -53,11 +48,10 @@ function HostChip({ hostId }: { hostId: string }) {
   );
 }
 
-/** FR-4: the ONE drill verb — the MH-2 selected-host retarget (the same
- *  one write path the CLI + host picker use), then the per-host workspace
- *  with drill continuity (?from=fleet renders the FLEET ▸ eyebrow; the
- *  surface below is unchanged MH-2). Selecting the already-selected host
- *  is idempotent, so the verb needs no local/remote special case. */
+/** FR-4：唯一钻取动词——MH-2 选定主机重定向（CLI + 主机选择器使用的相同
+ *  一条写入路径），然后是带钻取连续性的每主机工作区
+ *（?from=fleet 渲染车队 ▸ 眉标；下方表面是不变的 MH-2）。
+ * 选择已选主机是幂等的，因此该动词无需本地/远端特殊情况。 */
 function useOpenHost() {
   const selectHost = useSelectHost();
   return (hostId: string) => {
@@ -93,7 +87,7 @@ function FleetNeedsYouRow({
         <span className="flex flex-wrap items-center gap-2">
           <span
             className={cn("font-mono text-[11px]", item.source === "derived" ? "text-amber-700" : "text-emerald-700")}
-            title={item.source === "derived" ? "machine-derived exception" : "agent-initiated"}
+            title={item.source === "derived" ? "机器推导的异常" : "智能体发起"}
           >
             {item.source === "derived" ? "▲" : "●"}
           </span>
@@ -108,33 +102,33 @@ function FleetNeedsYouRow({
       </button>
       {item.derived ? (
         <p className="mt-0.5 pl-6 font-mono text-[10px] text-on-surface-variant">
-          ▲ {item.derived.evidence} · threshold: {item.derived.threshold}
+          ▲ {item.derived.evidence} · 阈值：{item.derived.threshold}
         </p>
       ) : null}
-      {/* FR-3: the one-count is INSPECTABLE — the altitudes this identity
-          was visible from on its host, still ONE row here. */}
+      {/* FR-3：单一计数是可检查的——此身份在其主机上可见的高度，
+          此处仍为一行。 */}
       <p className="mt-0.5 pl-6 font-mono text-[9px] text-on-surface-variant/80">
-        counted once · seen from {item.seenFrom.join(" · ")} on {item.hostId}
+        计一次 · 从 {item.seenFrom.join(" · ")} 在 {item.hostId} 上可见
       </p>
       {expanded ? (
         <div
           data-testid={`fleet-item-expanded-${item.fleetKey}`}
           className="mt-1.5 ml-6 border border-outline-variant bg-surface-low/50 px-2 py-1.5"
         >
-          {/* The Q4 one-count key, VERBATIM. */}
+          {/* Q4 单一计数键，逐字。 */}
           <p className="font-mono text-[10px] text-on-surface">
-            identity: <span className="text-on-surface-variant">{item.fleetKey}</span>
+            身份：<span className="text-on-surface-variant">{item.fleetKey}</span>
           </p>
           {item.derived ? (
             <p className="mt-0.5 font-mono text-[10px] text-on-surface">
-              evidence: <span className="text-on-surface-variant">{item.derived.evidence}</span>
+              证据：<span className="text-on-surface-variant">{item.derived.evidence}</span>
             </p>
           ) : null}
-          {/* FR-5: read + surface only — the boundary is ON the surface. */}
+          {/* FR-5：只读表面——边界在表面上。 */}
           <p className="mt-1 font-mono text-[9px] uppercase tracking-wide text-on-surface-variant">
-            read-only here — acting on a remote host&apos;s item rides cross-host routing (MH-3/MH-4) ·{" "}
+            此处只读——对远端主机事项的操作走跨主机路由 (MH-3/MH-4) ·{" "}
             <button type="button" onClick={() => onOpenHost(item.hostId)} className="underline">
-              open {item.hostId} →
+              打开 {item.hostId} →
             </button>
           </p>
         </div>
@@ -153,12 +147,12 @@ export function FleetPage() {
   const openKey = readSearchParam("open");
 
   if (isLoading) {
-    return <p className="p-4 font-mono text-[11px] text-on-surface-variant">composing the fleet glance…</p>;
+    return <p className="p-4 font-mono text-[11px] text-on-surface-variant">正在编排车队概览…</p>;
   }
   if (error || !data) {
     return (
       <p data-testid="fleet-error" className="p-4 font-mono text-[11px] text-error">
-        fleet glance unavailable: {error instanceof Error ? error.message : "composer unreachable"}
+        车队概览不可用：{error instanceof Error ? error.message : "编排器不可达"}
       </p>
     );
   }
@@ -167,43 +161,43 @@ export function FleetPage() {
 
   return (
     <div data-testid="fleet-page" className="mx-auto max-w-4xl space-y-5 p-4">
-      {/* Breadcrumb — FLEET is the TOP of the spine; everything drills DOWN. */}
+      {/* 面包屑——车队是脊柱顶部；一切向下钻取。 */}
       <nav className="flex items-center gap-2 font-mono text-[10px] uppercase text-on-surface-variant">
-        <span data-testid="fleet-crumb" className="text-on-surface">fleet</span>
+        <span data-testid="fleet-crumb" className="text-on-surface">车队</span>
         <span>·</span>
-        <span>every factory, one glance</span>
+        <span>每个工厂，一览无余</span>
       </nav>
 
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-[14px] font-semibold uppercase">Fleet — needs me / stuck / failing</h2>
-        {/* FR-3: the DAEMON's rollup (computed from the deduped rows) —
-            checkable against the HOSTS band's per-host counts below. */}
+        <h2 className="text-[14px] font-semibold uppercase">车队 — 需要我 / 卡住 / 失败</h2>
+        {/* FR-3：后台服务的汇总（从去重行计算）——
+            可对照下方主机带的每主机计数检查。 */}
         <div data-testid="fleet-rollup" className="flex items-center gap-2 font-mono text-[10px] uppercase">
-          <span className="text-emerald-700">● {data.rollup.needsYouCount} need you</span>
+          <span className="text-emerald-700">● {data.rollup.needsYouCount} 需要你处理</span>
           <span className="text-amber-700">
-            ▲ {data.rollup.exceptionCount} exceptions
+            ▲ {data.rollup.exceptionCount} 个异常
             {data.rollup.exceptionsByKind.length > 0
-              ? ` (${data.rollup.exceptionsByKind.map((e) => `${e.count} ${e.kind}`).join(" · ")})`
+              ? `（${data.rollup.exceptionsByKind.map((e) => `${e.count} ${e.kind}`).join(" · ")}）`
               : ""}
           </span>
-          <span className="text-on-surface-variant">{data.rollup.hostCount} hosts</span>
+          <span className="text-on-surface-variant">{data.rollup.hostCount} 台主机</span>
           {data.rollup.unreachableCount > 0 ? (
-            <span className="text-error">{data.rollup.unreachableCount} unreachable</span>
+            <span className="text-error">{data.rollup.unreachableCount} 台不可达</span>
           ) : null}
         </div>
       </header>
 
-      {/* An existing-but-unreadable registry is surfaced, never silent. */}
+      {/* 存在但不可读的注册表被呈现，绝不静默。 */}
       {data.registryError ? (
         <p data-testid="fleet-registry-error" className="font-mono text-[10px] text-error">
-          host registry unreadable — this glance is LOCAL-ONLY, not the fleet: {data.registryError}
+          主机注册表不可读——此概览仅本地，非车队：{data.registryError}
         </p>
       ) : null}
 
-      {/* Band 1: NEEDS YOU — the fleet union, host-attributed, ● and ▲ at
-          equal rank (the shipped grammar, one altitude up). */}
+      {/* 带 1：需要你处理——车队并集，主机归属，● 和 ▲ 同等等级
+         （已发布语法，高一个高度）。 */}
       <section data-testid="fleet-needs-you" className={cn("space-y-1 p-2", VELLUM_CARD)}>
-        <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">NEEDS YOU</h3>
+        <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">需要你处理</h3>
         {data.needsYou.items.length > 0 ? (
           <ul className="divide-y divide-outline-variant/50">
             {data.needsYou.items.map((item) => (
@@ -220,10 +214,10 @@ export function FleetPage() {
         <p className="font-mono text-[9px] text-on-surface-variant">{data.needsYou.provenance}</p>
       </section>
 
-      {/* Band 2: HOSTS — the field band at fleet altitude (each factory,
-          honest status; the MH-2 drill-in is the row's verb). */}
+      {/* 带 2：主机——车队高度的现场带（每个工厂，诚实状态；
+          MH-2 钻取是行的动词）。 */}
       <section data-testid="fleet-hosts" className={cn("space-y-1 p-2", VELLUM_CARD)}>
-        <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">HOSTS</h3>
+        <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">主机</h3>
         <ul className="divide-y divide-outline-variant/50">
           {data.hosts.map((h) => {
             const glyph = hostGlyph(h);
@@ -234,7 +228,7 @@ export function FleetPage() {
                 <Globe className="h-3 w-3 text-on-surface-variant" />
                 <span className="font-mono text-[11px] uppercase text-on-surface">{h.hostId}</span>
                 {h.kind === "local" ? (
-                  <span className="font-mono text-[8px] uppercase text-on-surface-variant">local</span>
+                  <span className="font-mono text-[8px] uppercase text-on-surface-variant">本地</span>
                 ) : null}
                 {ok ? (
                   <>
@@ -248,7 +242,7 @@ export function FleetPage() {
                       </span>
                     ))}
                     <span className="font-mono text-[9px] text-on-surface-variant">
-                      {h.rigCount} rigs · {h.seatCount} seats
+                      {h.rigCount} 个工作组 · {h.seatCount} 个席位
                     </span>
                     <button
                       type="button"
@@ -256,16 +250,16 @@ export function FleetPage() {
                       onClick={() => openHost(h.hostId)}
                       className="font-mono text-[10px] uppercase text-on-surface hover:underline"
                     >
-                      open →
+                      打开 →
                     </button>
                   </>
                 ) : (
                   <>
-                    {/* Honest per-host truth: items ABSENT from this glance,
-                        not zero (the k9s stale-header anti-pattern). */}
+                    {/* 诚实的每主机真相：事项在此概览中缺失，
+                        非零（k9s 过期标题反模式）。 */}
                     <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-error">
                       {h.status.status}
-                      {h.status.error ? ` — ${h.status.error}` : ""} · items absent from this glance, not zero
+                      {h.status.error ? ` — ${h.status.error}` : ""} · 事项在此概览中缺失，非零
                     </span>
                     <button
                       type="button"
@@ -273,7 +267,7 @@ export function FleetPage() {
                       onClick={() => void refetch()}
                       className="border border-error px-1.5 py-0.5 font-mono text-[9px] uppercase text-error hover:bg-surface-low"
                     >
-                      retry
+                      重试
                     </button>
                   </>
                 )}
@@ -283,9 +277,9 @@ export function FleetPage() {
         </ul>
       </section>
 
-      {/* Band 3: SETTLED — the record band, minimal (D-5), host-chipped. */}
+      {/* 带 3：已解决——记录带，最小化（D-5），主机切片。 */}
       <section data-testid="fleet-settled" className="space-y-1">
-        <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">SETTLED</h3>
+        <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">已解决</h3>
         {data.settled.length > 0 ? (
           <ul className="divide-y divide-outline-variant/50 border border-outline-variant">
             {data.settled.map((row) => (
@@ -304,9 +298,9 @@ export function FleetPage() {
       </section>
 
       <p data-testid="fleet-fanout-footer" className="font-mono text-[10px] text-on-surface-variant">
-        composed {data.composedAt} · fleet fan-out {okHosts}/{data.hosts.length} hosts ok ·{" "}
+        编排于 {data.composedAt} · 车队分发 {okHosts}/{data.hosts.length} 台主机正常 ·{" "}
         <Link to="/agents" className="hover:underline">
-          this host&apos;s agents →
+          此主机的智能体 →
         </Link>
       </p>
     </div>

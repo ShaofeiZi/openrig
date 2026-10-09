@@ -27,9 +27,8 @@ import { WorkflowProjectorError } from "../src/domain/workflow-projector.js";
 import { workflowRoutes } from "../src/routes/workflow.js";
 
 /**
- * OPR.0.4.6.WF3 FR-4 — `route` contract pins. THE ZOMBIE REVOCATION
- * TEST IS FIRST (the adjudication's load-bearing fact: if it fails,
- * nothing else matters).
+ * OPR.0.4.6.WF3 FR-4——`route` 契约锁定。ZOMBIE REVOCATION 测试置于首位（裁定中的
+ * 承重事实：若它失败，其他结果都不再重要）。
  */
 
 const SPEC = `workflow:
@@ -67,9 +66,9 @@ const SPEC = `workflow:
       - failed
 `;
 
-// OPR.0.5.1 slice-51-06 D2 bounded correction — a handler-role-gated step (metadata rides the
-// packet) whose exit=waiting parks it on a NON-HUMAN blocker ("external-gate"). Routing that packet
-// must NOT trip D2's non-park metadata reject (route re-supplies redundant summary/evidence).
+// OPR.0.5.1 slice-51-06 D2 有界修正——一个受 handler role gate 约束的 step（metadata 随 packet
+// 携带），其 exit=waiting 会将它停放在非 HUMAN blocker（"external-gate"）上。路由该 packet 不得
+// 触发 D2 的非停放 metadata 拒绝（route 会重新提供冗余 summary/evidence）。
 const SPEC_GATED = `workflow:
   id: route-repark-fixture
   version: 1
@@ -120,7 +119,7 @@ function buildApp(opts: { eventBus: EventBus; runtime: WorkflowRuntime }): Hono 
   return app;
 }
 
-describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
+describe("workflow route（WF3 FR-4——close+recreate+rebind）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let runtime: WorkflowRuntime;
@@ -142,8 +141,8 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     bus = new EventBus(db);
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
     queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用 fail-closed（MF2）——旨在 nudge 的终止 close 需要同数据库 intent store，
+    // 才能使其 wake 持久可靠。
     queueRepo.attachOutbox(new OutboxHandler(db));
     runtime = new WorkflowRuntime({ exceptionDial: { hostDefault: () => null, humanFallbackSeat: "human@host" }, db, eventBus: bus, queueRepo });
     app = buildApp({ eventBus: bus, runtime });
@@ -166,7 +165,7 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     return { instanceId: r.instance.instanceId, entryPacket: r.entryQitemId };
   }
 
-  it("THE ZOMBIE REVOCATION PROOF: old owner's stale project → structured packet_not_on_frontier 409; new owner succeeds", async () => {
+  it("ZOMBIE REVOCATION 证明：旧 owner 的陈旧 project → 结构化 packet_not_on_frontier 409；新 owner 成功", async () => {
     const { instanceId, entryPacket } = await instantiate();
     const routed = await runtime.route({
       instanceId,
@@ -175,8 +174,7 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
       reason: "owner seat dead",
     });
 
-    // The zombie (old owner, waking post-compaction) tries to advance
-    // its stale packet — the shipped replay guard rejects STRUCTURALLY.
+    // zombie（compaction 后醒来的旧 owner）尝试推进其陈旧 packet——随附 replay guard 从结构上拒绝。
     const zombie = await app.request(`/api/workflow/project`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -191,7 +189,7 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     const zbody = await zombie.json() as { error: string };
     expect(zbody.error).toBe("packet_not_on_frontier");
 
-    // The NEW owner advances the SAME step successfully.
+    // 新 owner 成功推进同一 step。
     const advanced = await runtime.project({
       instanceId,
       currentPacketId: routed.newPacketId,
@@ -201,7 +199,7 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     expect(advanced.nextStepId).toBe("review");
   });
 
-  it("the observable contract: owner changed, step UNCHANGED, honest handoff closure (no forged completion), provenance durable, version bumped, hop count NOT bumped", async () => {
+  it("可观测契约：owner 改变、step 不变、handoff 如实闭合（不伪造完成）、provenance 持久、version 增加、hop count 不增加", async () => {
     const { instanceId, entryPacket } = await instantiate();
     const before = runtime.instanceStore.getByIdOrThrow(instanceId);
     const routed = await runtime.route({
@@ -212,21 +210,20 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     });
     const after = runtime.instanceStore.getByIdOrThrow(instanceId);
 
-    // (1) owner is the target (queue row read directly — queueRepo is
-    // runtime-private by design)
+    // (1) owner 是目标（直接读取 queue row——queueRepo 按设计为 runtime 私有）。
     const qrow = (id: string) =>
       db.prepare(`SELECT destination_session, state, closure_reason, closure_target, blocked_on, chain_of_record FROM queue_items WHERE qitem_id = ?`).get(id) as Record<string, string | null> | undefined;
     const newPacket = qrow(routed.newPacketId);
     expect(newPacket?.destination_session).toBe("producer2@rig");
-    // (2) step identity unchanged
+    // (2) step identity 不变。
     expect(after.currentStepId).toBe(before.currentStepId);
     expect(after.currentStepId).toBe("produce");
-    // (4) the old packet closed as handed_off_to — NEVER done/no-follow-on
+    // (4) 旧 packet 以 handed_off_to 闭合——绝不是 done/no-follow-on。
     const oldPacket = qrow(entryPacket);
     expect(oldPacket?.state).toBe("handed-off");
     expect(oldPacket?.closure_reason).toBe("handed_off_to");
     expect(oldPacket?.closure_target).toBe("producer2@rig");
-    // (3) provenance queryable: actor + reason + old→new in the transition
+    // (3) provenance 可查询：transition 中包含 actor + reason + old→new。
     const transition = db
       .prepare(`SELECT transition_note FROM queue_transitions WHERE qitem_id = ? ORDER BY rowid DESC LIMIT 1`)
       .get(entryPacket) as { transition_note?: string } | undefined;
@@ -234,16 +231,16 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     expect(transition?.transition_note).toContain("producer@rig");
     expect(transition?.transition_note).toContain("producer2@rig");
     expect(transition?.transition_note).toContain("rebalance");
-    // (5) frontier non-dangling
+    // (5) frontier 不悬空。
     expect(after.currentFrontier).toEqual([routed.newPacketId]);
-    // (7) version guard exercised (bump); route is NOT an advance (no hop bump)
+    // (7) version guard 已执行（bump）；route 并非推进（hop 不增加）。
     expect(after.version).toBe(before.version + 1);
     expect(after.hopCount).toBe(before.hopCount);
-    // chainOfRecord threads the lineage
+    // chainOfRecord 串起 lineage。
     expect(String(newPacket?.chain_of_record ?? "")).toContain(entryPacket);
   });
 
-  it("(6) routing_table_changed emits with the ADDITIVE re-route detail", async () => {
+  it("(6) 发出 routing_table_changed，并携带追加的 re-route detail", async () => {
     const { instanceId, entryPacket } = await instantiate();
     const seen: Array<Record<string, unknown>> = [];
     bus.subscribe((e) => {
@@ -261,14 +258,14 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     void entryPacket;
   });
 
-  it("rejection matrix: completed instance → instance_not_active; empty-frontier handled; HTTP mapping 409/400", async () => {
+  it("拒绝矩阵：已完成 instance → instance_not_active；处理空 frontier；HTTP 映射 409/400", async () => {
     const { instanceId, entryPacket } = await instantiate();
     await runtime.project({ instanceId, currentPacketId: entryPacket, exit: "failed", actorSession: "producer@rig" });
     await expect(
       runtime.route({ instanceId, toSession: "x@rig", actorSession: "orch@rig" }),
     ).rejects.toMatchObject({ code: "instance_not_active" });
 
-    // HTTP surface: 409 for the terminal instance; 400 for missing fields.
+    // HTTP surface：终止 instance 返回 409；缺失字段返回 400。
     const res409 = await app.request(`/api/workflow/${instanceId}/route`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -283,7 +280,7 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     expect(res400.status).toBe(400);
   });
 
-  it("a waiting instance routes with its park PRESERVED (owner changes, recorded state does not)", async () => {
+  it("路由 waiting instance 时保留其停放状态（owner 改变，记录状态不变）", async () => {
     const { instanceId, entryPacket } = await instantiate();
     await runtime.project({
       instanceId,
@@ -301,14 +298,13 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     expect(inst.currentStepId).toBe("produce");
   });
 
-  it("concurrency: the version guard serializes — a stale-versioned frontier write after route conflicts", async () => {
+  it("并发：version guard 强制串行——route 后使用陈旧 version 写 frontier 会冲突", async () => {
     const { instanceId } = await instantiate();
     const stale = runtime.instanceStore.getByIdOrThrow(instanceId);
     await runtime.route({ instanceId, toSession: "producer2@rig", actorSession: "orch@rig" });
-    // A writer holding the PRE-route version loses (the WF-1 guard —
-    // same mechanism the projector rides; true same-instant commits are
-    // impossible under better-sqlite3's synchronous single-writer, so
-    // the stale-read simulation is the faithful race, arch-blessed).
+    // 持有 route 前 version 的 writer 会失败（WF-1 guard——projector 使用同一机制；在
+    // better-sqlite3 的同步单 writer 模型下，真正同一时刻的 commit 不可能发生，因此陈旧读取模拟
+    // 就是忠实且经架构认可的竞争）。
     expect(() =>
       runtime.instanceStore.updateFrontier(instanceId, ["qitem-fake"], "active", {
         expectedVersion: stale.version,
@@ -316,12 +312,10 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     ).toThrowError(/instance_version_conflict|version/);
   });
 
-  it("HUMAN-GATED park routes with summary/evidence_ref PRESERVED — never human_route_fields_required (rev1-r2 BLOCKING fold)", async () => {
-    // The waiting-on-human class is the one route most exists for: a
-    // human-parked packet whose ROLE OWNER seat died. The successor
-    // must keep the park AND its human-route fields, or the shipped
-    // validateHumanPark rejects the repark and the instance is
-    // un-routable exactly when it matters.
+  it("路由 HUMAN-GATED 停放项时保留 summary/evidence_ref——绝不出现 human_route_fields_required（rev1-r2 BLOCKING fold）", async () => {
+    // waiting-on-human 类是 route 最主要的适用场景：由 HUMAN 停放的 packet，其 ROLE OWNER seat
+    // 已失效。successor 必须同时保留停放状态和 human-route 字段，否则随附的 validateHumanPark 会
+    // 拒绝再次停放，使 instance 恰恰在最需要时无法路由。
     const gatedSpecPath = join(tmp, "gated.yaml");
     writeFileSync(gatedSpecPath, `workflow:
   id: route-gated-human
@@ -353,7 +347,7 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
       createdBySession: "orch@rig",
     });
     const iid = r.instance.instanceId;
-    // Entry parked on the human seat WITH the required fields.
+    // entry 携带必需字段停放在 human seat 上。
     const qrow = (id: string) =>
       db.prepare(`SELECT destination_session, state, blocked_on, summary, evidence_ref FROM queue_items WHERE qitem_id = ?`).get(id) as Record<string, string | null>;
     const parked = qrow(r.entryQitemId);
@@ -361,7 +355,7 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     expect(parked.blocked_on).toBe("human@kernel");
     expect(parked.summary).toBe("Sign off the walk");
 
-    // Route the parked step to a new role-owner seat: must SUCCEED.
+    // 将停放的 step 路由到新的 role-owner seat：必须成功。
     const routed = await runtime.route({
       instanceId: iid,
       toSession: "producer2@rig",
@@ -372,17 +366,16 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     expect(successor.destination_session).toBe("producer2@rig");
     expect(successor.state).toBe("blocked");
     expect(successor.blocked_on).toBe("human@kernel");
-    // THE FIX: the human-route fields survive the re-route.
+    // 修复点：human-route 字段在重新路由后仍保留。
     expect(successor.summary).toBe("Sign off the walk");
     expect(successor.evidence_ref).toBe("proof/PROOF.md");
-    // Step identity + instance state preserved.
+    // 保留 step identity 与 instance state。
     const inst = runtime.instanceStore.getByIdOrThrow(iid);
     expect(inst.currentStepId).toBe("produce");
     expect(inst.currentFrontier).toEqual([routed.newPacketId]);
-    // OPR.0.4.6.WF5 (rev1-r2 B1): the class-(c) exception identity
-    // CARRIES to the routed successor — the live frontier item stays
-    // queryable, and the occurrence stays the ORIGINAL gate packet id
-    // (route changes the owner, never the episode).
+    // OPR.0.4.6.WF5（rev1-r2 B1）：class-(c) exception identity 会传递给路由后的 successor——
+    // live frontier item 保持可查询，occurrence 保留原始 gate packet id（route 改变 owner，
+    // 绝不改变 episode）。
     const successorTags = String(
       (db.prepare(`SELECT tags FROM queue_items WHERE qitem_id = ?`).get(routed.newPacketId) as { tags: string }).tags,
     );
@@ -393,9 +386,8 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     expect(successorTags).toContain("re-route");
   });
 
-  it("PIN-VIOLATING TARGET rejected 409 harness_pin_unsatisfied; a matching-harness target routes fine (guard prepass finding 3)", async () => {
-    // Seed managed nodes so nodeRuntimeOf resolves runtimes (the WF-2
-    // seedSeat pattern).
+  it("违反 PIN 的目标以 409 harness_pin_unsatisfied 拒绝；匹配 harness 的目标可正常路由（guard 预检 finding 3）", async () => {
+    // 预置受管 node，使 nodeRuntimeOf 能解析 runtime（WF-2 seedSeat 模式）。
     const seedSeat = (sessionName: string, runtimeName: string, nodeId: string): void => {
       db.prepare(`INSERT INTO nodes (id, rig_id, logical_id, runtime) VALUES (?, 'r-1', ?, ?)`)
         .run(nodeId, sessionName.split("@")[0], runtimeName);
@@ -434,7 +426,7 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     });
     const iid = r.instance.instanceId;
 
-    // Wrong harness at the HTTP surface: structured 409, nothing mutated.
+    // HTTP surface 上 harness 错误：返回结构化 409，不改变任何内容。
     const res = await app.request(`/api/workflow/${iid}/route`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -446,17 +438,17 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     const untouched = runtime.instanceStore.getByIdOrThrow(iid);
     expect(untouched.currentFrontier).toEqual([r.entryQitemId]);
 
-    // Matching harness routes fine.
+    // 匹配的 harness 可正常路由。
     const routed = await runtime.route({ instanceId: iid, toSession: "codex-seat2@rig", actorSession: "orch@rig" });
     expect(routed.toSession).toBe("codex-seat2@rig");
   });
 
-  it("route on an unknown instance throws instance_not_found (404 at the route layer)", async () => {
+  it("路由未知 instance 时抛出 instance_not_found（路由层返回 404）", async () => {
     await expect(
       runtime.route({ instanceId: "nope", toSession: "x@rig", actorSession: "orch@rig" }),
     ).rejects.toSatisfy((e: unknown) => {
-      // instanceStore.getByIdOrThrow throws its own store error class;
-      // the HTTP mapper turns it into 404 — pinned at the HTTP level:
+      // instanceStore.getByIdOrThrow 抛出自己的 store error class；HTTP mapper 将其转为 404——
+      // 在 HTTP 层锁定：
       return e instanceof Error;
     });
     const res = await app.request(`/api/workflow/nope/route`, {
@@ -468,23 +460,22 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     void WorkflowProjectorError;
   });
 
-  // OPR.0.5.1 slice-51-06 D2 bounded correction (terminal NOT-CLEAR regression). RED before the
-  // fix: routing a handler-gated metadata packet that is projected WAITING on a non-human blocker
-  // tripped D2 (the repark redundantly re-supplied summary/evidence) -> the route txn rolled back
-  // and POST /:id/route surfaced HTTP 500 summary_evidence_not_persistable. GREEN after: route
-  // commits, the successor retains the metadata (from create-side carry) on the exact non-human
-  // blocker, and the frontier rebinds with no orphan.
-  it("D2×route: a handler-gated metadata packet WAITING on a non-human blocker routes cleanly (no 500, metadata retained, frontier rebound)", async () => {
+  // OPR.0.5.1 slice-51-06 D2 有界修正（terminal NOT-CLEAR 回归）。修复前 RED：路由一个投影为
+  // WAITING 在非 human blocker 上、由 handler gate 约束的 metadata packet 会触发 D2（再次停放时
+  // 重复提供 summary/evidence）-> route txn 回滚，POST /:id/route 呈现 HTTP 500
+  // summary_evidence_not_persistable。修复后 GREEN：route 提交，successor 在准确的非 human blocker
+  // 上保留 metadata（由 create 侧传递），且 frontier 重新绑定、无 orphan。
+  it("D2×route：WAITING 在非 human blocker 上的 handler-gated metadata packet 可干净路由（无 500、保留 metadata、frontier 重新绑定）", async () => {
     const gatedPath = join(tmp, "gated.yaml");
     writeFileSync(gatedPath, SPEC_GATED);
     const inst = await runtime.instantiate({ specPath: gatedPath, rootObjective: "repark", createdBySession: "orch@rig" });
     const instanceId = inst.instance.instanceId;
     const frontier = (): string[] => runtime.instanceStore.getByIdOrThrow(instanceId).currentFrontier;
 
-    // produce -> review (handler-gated: summary/evidence ride the review packet, dest handler@rig)
+    // produce -> review（handler-gated：summary/evidence 随 review packet 携带，目标为 handler@rig）。
     await runtime.project({ instanceId, currentPacketId: inst.entryQitemId, exit: "handoff", actorSession: "producer@rig" });
     const reviewPacket = frontier()[0]!;
-    // review projected WAITING -> blocked on the NON-HUMAN "external-gate", metadata retained
+    // review 投影为 WAITING -> 阻塞于非 HUMAN "external-gate"，metadata 得以保留。
     await runtime.project({ instanceId, currentPacketId: reviewPacket, exit: "waiting", actorSession: "handler@rig" });
     const waited = queueRepo.getByIdOrThrow(reviewPacket);
     expect(waited.state).toBe("blocked");
@@ -495,7 +486,7 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     expect(before.currentStepId).toBe("review");
     expect(before.status).toBe("waiting");
 
-    // REAL POST /api/workflow/:instance_id/route (pre-fix: 500 summary_evidence_not_persistable)
+    // 真实 POST /api/workflow/:instance_id/route（修复前：500 summary_evidence_not_persistable）。
     const res = await app.request(`/api/workflow/${instanceId}/route`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -504,20 +495,20 @@ describe("workflow route (WF3 FR-4 — close+recreate+rebind)", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { newPacketId: string };
 
-    // successor is the SOLE frontier; the workflow stays waiting on the SAME step (route ≠ advance)
+    // successor 是唯一 frontier；workflow 继续在同一 step 上等待（route ≠ advance）。
     const after = runtime.instanceStore.getByIdOrThrow(instanceId);
     expect(after.currentFrontier).toEqual([body.newPacketId]);
     expect(after.currentStepId).toBe("review");
     expect(after.currentStepId).toBe(before.currentStepId);
     expect(after.status).toBe("waiting");
-    // successor: owner=handler2@rig, still blocked on the EXACT non-human blocker, metadata RETAINED
+    // successor：owner=handler2@rig，仍阻塞于同一非 human blocker，metadata 保留。
     const successor = queueRepo.getByIdOrThrow(body.newPacketId);
     expect(successor.destinationSession).toBe("handler2@rig");
     expect(successor.state).toBe("blocked");
     expect(successor.blockedOn).toBe("external-gate");
     expect(successor.summary).toBe("needs handler sign-off");
     expect(successor.evidenceRef).toBe("proof/review.md");
-    // the OLD blocked packet is closed HONESTLY: handed-off with the EXACT closure target (no orphan)
+    // 旧 blocked packet 如实闭合：以准确 closure target 执行 handed-off（无 orphan）。
     const old = queueRepo.getByIdOrThrow(reviewPacket);
     expect(old.state).toBe("handed-off");
     expect(old.closureReason).toBe("handed_off_to");

@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { NtfyNotificationAdapter } from "../src/domain/mission-control/notification-adapter-ntfy.js";
 import { WebhookNotificationAdapter } from "../src/domain/mission-control/notification-adapter-webhook.js";
 
-describe("NtfyNotificationAdapter (PL-005 Phase B)", () => {
-  it("POSTs to topic URL with title/click/tags headers + body", async () => {
+describe("NtfyNotificationAdapter（PL-005 Phase B）", () => {
+  it("向 topic URL POST title/click/tags header 与 body", async () => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
     const fakeFetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
       calls.push({ url: String(url), init: init ?? {} });
@@ -30,7 +30,7 @@ describe("NtfyNotificationAdapter (PL-005 Phase B)", () => {
     expect(headers.Tags).toBe("openrig,mission-control");
   });
 
-  it("returns ok=false on non-2xx response", async () => {
+  it("响应非 2xx 时返回 ok=false", async () => {
     const fakeFetch = (async () => new Response("nope", { status: 500 })) as unknown as typeof fetch;
     const adapter = new NtfyNotificationAdapter({
       topicUrl: "https://ntfy.sh/x",
@@ -41,7 +41,7 @@ describe("NtfyNotificationAdapter (PL-005 Phase B)", () => {
     expect(result.error).toContain("500");
   });
 
-  it("returns ok=false on fetch throw", async () => {
+  it("fetch 抛错时返回 ok=false", async () => {
     const fakeFetch = (async () => {
       throw new Error("network down");
     }) as unknown as typeof fetch;
@@ -54,7 +54,7 @@ describe("NtfyNotificationAdapter (PL-005 Phase B)", () => {
     expect(result.error).toContain("network down");
   });
 
-  it("sanitizes title (no newlines + max length 250)", async () => {
+  it("清理 title（移除换行且最大长度为 250）", async () => {
     const calls: Array<Record<string, string>> = [];
     const fakeFetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
       calls.push(init?.headers as Record<string, string>);
@@ -72,8 +72,8 @@ describe("NtfyNotificationAdapter (PL-005 Phase B)", () => {
   });
 });
 
-describe("WebhookNotificationAdapter (PL-005 Phase B)", () => {
-  it("POSTs JSON body to endpoint URL with stable schema", async () => {
+describe("WebhookNotificationAdapter（PL-005 Phase B）", () => {
+  it("以稳定 schema 向 endpoint URL POST JSON body", async () => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
     const fakeFetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
       calls.push({ url: String(url), init: init ?? {} });
@@ -101,7 +101,7 @@ describe("WebhookNotificationAdapter (PL-005 Phase B)", () => {
     expect(typeof body.emitted_at).toBe("string");
   });
 
-  it("includes extra headers when configured", async () => {
+  it("配置后包含额外 header", async () => {
     const calls: Array<Record<string, string>> = [];
     const fakeFetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
       calls.push(init?.headers as Record<string, string>);
@@ -117,7 +117,7 @@ describe("WebhookNotificationAdapter (PL-005 Phase B)", () => {
     expect(calls[0]!["Content-Type"]).toBe("application/json");
   });
 
-  it("returns ok=false on non-2xx", async () => {
+  it("响应非 2xx 时返回 ok=false", async () => {
     const fakeFetch = (async () => new Response("err", { status: 502 })) as unknown as typeof fetch;
     const adapter = new WebhookNotificationAdapter({
       endpointUrl: "https://example.com/webhook",

@@ -1,6 +1,6 @@
-// OPR.0.4.6.02 C3 — the `rig terminal` CLI family. Pins arg parsing, the daemon
-// path/body each subcommand hits, the --json shape, and the open exit
-// semantics (partial-with-names = exit 0; zero-pane = non-zero).
+// OPR.0.4.6.02 C3——`rig terminal` CLI 族。pin 参数解析、每个子命令命中的
+// daemon path/body、--json 形状、及 open 退出
+// 语义（带名部分 = 退出 0；零 pane = 非零）。
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { TerminalDeps } from "../src/commands/terminal.js";
@@ -101,7 +101,7 @@ describe("rig terminal CLI", () => {
       const program = createProgram({ terminalDeps: deps });
       program.exitOverride();
       await program.parseAsync(["node", "rig", "terminal", "open", "acme-build"]);
-      expect(log.mock.calls.map((c) => String(c[0])).join("\n")).toContain('  note: A workspace named "acme-build" already exists, so this one is "acme-build (2)".');
+      expect(log.mock.calls.map((c) => String(c[0])).join("\n")).toContain('  注：A workspace named "acme-build" already exists, so this one is "acme-build (2)".');
     } finally { log.mockRestore(); }
   });
 

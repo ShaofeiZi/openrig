@@ -38,16 +38,15 @@ function seedCanonicalNode(db: Database.Database, rigName = "auto-rig") {
   return { rigRepo, rig, node, sessionName: `dev-qa@${rigName}` };
 }
 
-describe("W2c watchdog auto-registration — production composition", () => {
+describe("W2c watchdog 自动注册——production composition", () => {
   const originalNoKernel = process.env.OPENRIG_NO_KERNEL;
   const originalAutoRegister = process.env.OPENRIG_POLICIES_IDLE_GATE_QITEM_AUTO_REGISTER;
   const tempRoots: string[] = [];
 
   beforeAll(() => {
     process.env.OPENRIG_NO_KERNEL = "1";
-    // B6 — auto-registration is no longer default-on; this suite exercises the
-    // registration machinery, so it runs under the explicit fleet opt-in. The
-    // ruled default ("off") has its own describe below.
+    // B6——自动注册不再默认开启；本 suite 验证注册机制，因此在显式 fleet opt-in 下运行。
+    // 已裁定的默认值（"off"）由下方独立 describe 覆盖。
     process.env.OPENRIG_POLICIES_IDLE_GATE_QITEM_AUTO_REGISTER = "all";
   });
 
@@ -63,7 +62,7 @@ describe("W2c watchdog auto-registration — production composition", () => {
     vi.restoreAllMocks();
   });
 
-  it("production-wired NodeLauncher registers one configured role-bound job for a canonical seat", async () => {
+  it("production 接线的 NodeLauncher 为 canonical seat 注册一个已配置的 role-bound job", async () => {
     const { db, deps, eventLoopMonitor } = await createDaemon({
       dbPath: ":memory:",
       tmuxExec: async () => "",
@@ -105,7 +104,7 @@ describe("W2c watchdog auto-registration — production composition", () => {
     }
   }, 30_000);
 
-  it("a post-start repository failure preserves the launched seat and reports exact missing coverage", async () => {
+  it("启动后 repository 失败时保留已启动 seat，并报告精确的 missing coverage", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { db, deps, eventLoopMonitor } = await createDaemon({
       dbPath: ":memory:",
@@ -135,7 +134,7 @@ describe("W2c watchdog auto-registration — production composition", () => {
     }
   }, 30_000);
 
-  it("legacy and noncanonical claimed seats are named exclusions with no ensure or coverage", async () => {
+  it("legacy 与非 canonical 的 claimed seat 是具名排除项，不执行 ensure 或 coverage", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { db, deps, eventLoopMonitor } = await createDaemon({
       dbPath: ":memory:",
@@ -175,7 +174,7 @@ describe("W2c watchdog auto-registration — production composition", () => {
     }
   }, 30_000);
 
-  it("coverage refuses a formerly valid row after its persisted state mutates outside the closed set", async () => {
+  it("已持久化 state 变异到 closed set 外后，coverage 拒绝原先有效的 row", async () => {
     const { db, deps, eventLoopMonitor } = await createDaemon({
       dbPath: ":memory:",
       tmuxExec: async () => "",
@@ -197,7 +196,7 @@ describe("W2c watchdog auto-registration — production composition", () => {
     }
   }, 30_000);
 
-  it("coverage warnings retain node, seat, and every conflicting job id/state", async () => {
+  it("coverage warning 保留 node、seat 及每个冲突 job 的 id/state", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { db, deps, eventLoopMonitor } = await createDaemon({
       dbPath: ":memory:",
@@ -221,7 +220,7 @@ describe("W2c watchdog auto-registration — production composition", () => {
 
       deps.sessionRegistry.registerClaimedSession(node.id, sessionName, "handover");
       const lines = warn.mock.calls.map((args) => args.map(String).join(" "));
-      const coverage = lines.find((line) => line.includes("watchdog coverage FAILED"));
+      const coverage = lines.find((line) => line.includes("watchdog coverage 失败"));
       expect(coverage).toContain(node.id);
       expect(coverage).toContain(sessionName);
       expect(coverage).toContain(first.jobId);
@@ -233,7 +232,7 @@ describe("W2c watchdog auto-registration — production composition", () => {
     }
   }, 30_000);
 
-  it("canonical rig mismatch is a loud target_mismatch while the core session persists", async () => {
+  it("canonical rig 不匹配时明确报告 target_mismatch，并保留 core session", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { db, deps, eventLoopMonitor } = await createDaemon({
       dbPath: ":memory:",
@@ -256,7 +255,7 @@ describe("W2c watchdog auto-registration — production composition", () => {
     }
   }, 30_000);
 
-  it("missing rig topology is a loud target_mismatch while the core session persists", async () => {
+  it("rig topology 缺失时明确报告 target_mismatch，并保留 core session", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { db, deps, eventLoopMonitor } = await createDaemon({
       dbPath: ":memory:",
@@ -283,7 +282,7 @@ describe("W2c watchdog auto-registration — production composition", () => {
     }
   }, 30_000);
 
-  it("startup coverage reports a dangling missing-node session without deleting the core row", async () => {
+  it("startup coverage 报告悬空的 missing-node session，但不删除 core row", async () => {
     const root = mkdtempSync(join(tmpdir(), "w2c-missing-node-"));
     tempRoots.push(root);
     const dbPath = join(root, "openrig.sqlite");
@@ -314,7 +313,7 @@ describe("W2c watchdog auto-registration — production composition", () => {
     }
   }, 30_000);
 
-  it("startup sweep reports a pre-existing latest unknown canonical seat with missing coverage", async () => {
+  it("startup sweep 报告预先存在且最新状态未知、缺少 coverage 的 canonical seat", async () => {
     const root = mkdtempSync(join(tmpdir(), "w2c-startup-sweep-"));
     tempRoots.push(root);
     const dbPath = join(root, "openrig.sqlite");
@@ -343,7 +342,7 @@ describe("W2c watchdog auto-registration — production composition", () => {
     }
   }, 30_000);
 
-  it("generation turnover reuses one role-bound job and the real idle-gate engine delivers once", async () => {
+  it("generation turnover 复用一个 role-bound job，真实 idle-gate engine 只交付一次", async () => {
     const now = new Date("2026-08-08T18:00:00.000Z");
     const fresh = "2026-08-08T17:59:00.000Z";
     const { db, deps, eventLoopMonitor } = await createDaemon({
@@ -416,18 +415,15 @@ describe("W2c watchdog auto-registration — production composition", () => {
       expect(deliveries[0]?.message).toContain("q-w2c-delivery");
       expect(history.listForJob(rows[0]!.jobId).map((entry) => entry.outcome)).toEqual(["sent"]);
 
-      // AMENDED by OPR.0.5.8.1 S2. The subject — "delivers once" — is unchanged
-      // and still asserted by the delivery count below. Only the skip REASON
-      // moved: the gated-condition gate now decides before the engine's
-      // active-wake window is consulted. The two are not interchangeable, so
-      // the new reason is asserted exactly rather than relaxed to "some skip".
+      // 经 OPR.0.5.8.1 S2 修订。主题“只交付一次”未改变，仍由下方 delivery count 固定。
+      // 只有 skip reason 改变：现在 gated-condition gate 会在 engine 查询 active-wake window
+      // 前作出决定。两者不可互换，因此精确 assert 新 reason，而不是放宽为“某种 skip”。
       const second = await engine.evaluate(deps.watchdogJobsRepo!.getByIdOrThrow(rows[0]!.jobId));
       expect(second.outcome).toEqual({
         action: "skip",
         reason: "gate_condition_unchanged",
-        // Notes match the convention of this policy's sibling quiet skips
-        // (seat_active carries them too): available to a caller inspecting the
-        // outcome, while the quiet classification keeps them out of history.
+        // Note 遵循此 policy 其他 quiet skip 的惯例（seat_active 也携带它）：caller 检查
+        // outcome 时可见，而 quiet classification 使其不进入 history。
         notes: { seat: sessionName, pendingGateCount: 1 },
       });
       expect(deliveries).toHaveLength(1);
@@ -462,8 +458,8 @@ describe("W2c watchdog auto-registration — production composition", () => {
   }, 30_000);
 });
 
-describe("W2c watchdog auto-registration — mint altitude", () => {
-  it("NodeLauncher invokes ensure then coverage while registerSession is still unknown", async () => {
+describe("W2c watchdog 自动注册——mint 层级", () => {
+  it("registerSession 仍为 unknown 时，NodeLauncher 先调用 ensure 再调用 coverage", async () => {
     const db = createFullTestDb();
     try {
       const { rigRepo, rig, node, sessionName } = seedCanonicalNode(db, "launch-rig");
@@ -504,9 +500,9 @@ describe("W2c watchdog auto-registration — mint altitude", () => {
   });
 });
 
-// B6 founder ruling — the RULED DEFAULT: auto-registration is NOT default-on. These tests build the
-// registration unit directly with a fake settings store so the gate is exercised without env plumbing.
-describe("B6 — idle-gate auto-registration default-off / opt-in gate", () => {
+// B6 founder 裁定——已裁定默认值：自动注册不默认开启。这些测试直接使用 fake settings store
+// 构建 registration unit，无需 env 接线即可验证 gate。
+describe("B6——idle-gate 自动注册默认关闭 / opt-in gate", () => {
   const settings = (autoRegister: string, optIn = "") => ({
     resolveOne: (key: string) => {
       if (key === "policies.idle_gate_qitem.auto_register") return { value: autoRegister };
@@ -532,7 +528,7 @@ describe("B6 — idle-gate auto-registration default-off / opt-in gate", () => {
     return { db, rig, node, sessionName, jobsRepo, unit };
   }
 
-  it("default off: a fresh canonical seat gets NO job, and coverage reads that as the ruled state (null, no throw)", async () => {
+  it("默认关闭：全新 canonical seat 不获得 job，coverage 将其读作已裁定状态（null、不抛错）", async () => {
     const { db, node, sessionName, unit } = await build("off");
     try {
       expect(unit.ensure(node.id, sessionName)).toBeNull();
@@ -541,7 +537,7 @@ describe("B6 — idle-gate auto-registration default-off / opt-in gate", () => {
     } finally { db.close(); }
   });
 
-  it("a seat named in opt_in_sessions gets exactly its job while the mode is off", async () => {
+  it("mode 为 off 时，opt_in_sessions 中具名 seat 恰好获得自己的 job", async () => {
     const { db, node, sessionName, unit } = await build("off", ` other@rig , ${"dev-qa@gate-rig"} `);
     try {
       const job = unit.ensure(node.id, sessionName);
@@ -551,16 +547,16 @@ describe("B6 — idle-gate auto-registration default-off / opt-in gate", () => {
     } finally { db.close(); }
   });
 
-  it('store-to-enforcer: a validator-accepted whitespace-padded " all " opts the fleet in (the gate compares the same normalization the validator accepted)', async () => {
+  it('store-to-enforcer：validator 接受的带空白 " all " 会启用整个 fleet（gate 使用相同 normalize 结果比较）', async () => {
     const { SettingsStore } = await import("../src/domain/user-settings/settings-store.js");
     const home = mkdtempSync(join(tmpdir(), "b6-trim-"));
     const prevEnv = process.env.OPENRIG_POLICIES_IDLE_GATE_QITEM_AUTO_REGISTER;
     process.env.OPENRIG_POLICIES_IDLE_GATE_QITEM_AUTO_REGISTER = " all ";
     try {
       const realStore = new SettingsStore(join(home, "config.yaml"));
-      // The REAL store hands the padded value through as valid env config…
+      // 真实 store 将带空白的值作为有效 env config 传递……
       expect(String(realStore.resolveOne("policies.idle_gate_qitem.auto_register").value)).toBe(" all ");
-      // …and the enforcement gate must read it as the mode the validator accepted.
+      // ……enforcement gate 必须将它读作 validator 接受的 mode。
       const { WatchdogAutoRegistration } = await import("../src/domain/watchdog-auto-registration.js");
       const db = createFullTestDb();
       const { node, sessionName } = seedCanonicalNode(db, "trim-rig");
@@ -581,7 +577,7 @@ describe("B6 — idle-gate auto-registration default-off / opt-in gate", () => {
     }
   });
 
-  it('auto_register "all" restores fleet-wide registration', async () => {
+  it('auto_register "all" 恢复 fleet-wide 注册', async () => {
     const { db, node, sessionName, unit } = await build("all");
     try {
       expect(unit.ensure(node.id, sessionName)).not.toBeNull();
@@ -589,11 +585,11 @@ describe("B6 — idle-gate auto-registration default-off / opt-in gate", () => {
     } finally { db.close(); }
   });
 
-  it("an EXISTING job survives the default flip and keeps being maintained (ensure still returns it, coverage still audits)", async () => {
+  it("现有 job 在默认值切换后仍存活并持续维护（ensure 仍返回它，coverage 仍审计）", async () => {
     const { db, node, sessionName, jobsRepo, unit } = await build("all");
     try {
       expect(unit.ensure(node.id, sessionName)).not.toBeNull();
-      // The fleet later flips to the ruled default; the surviving job must not be dropped or ignored.
+      // fleet 随后切换到已裁定默认值；幸存 job 不得被丢弃或忽略。
       const flipped = new (unit.constructor as new (deps: unknown) => typeof unit)({
         db, jobsRepo, settingsStore: settings("off") as never, warn: () => {},
       });

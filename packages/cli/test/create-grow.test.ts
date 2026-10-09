@@ -136,7 +136,7 @@ describe("rig create", () => {
       program.parseAsync(["node", "rig", "create", "alpha"]));
 
     expect(exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("shipped default agent is unavailable");
+    expect(logs.join("\n")).toContain("随附的默认智能体不可用");
     expect(client.postText).not.toHaveBeenCalled();
   });
 });
@@ -415,7 +415,7 @@ describe("rig grow", () => {
       program.parseAsync(["node", "rig", "grow", "rig-1", "worker"]));
 
     expect(exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("Choose a pod with --pod");
+    expect(logs.join("\n")).toContain("请用 --pod 指定一个 Pod");
     expect(client.post).not.toHaveBeenCalled();
   });
 

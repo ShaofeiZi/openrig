@@ -18,9 +18,9 @@ describe("token-format", () => {
 
   it("builds an exact tooltip for available token counts", () => {
     expect(formatTokenTotalTitle(120_000, 14_000)).toBe([
-      "Tokens: 134,000",
-      "Input: 120,000",
-      "Output: 14,000",
+      "令牌数：134,000",
+      "输入：120,000",
+      "输出：14,000",
     ].join("\n"));
   });
 });

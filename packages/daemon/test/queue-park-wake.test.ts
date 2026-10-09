@@ -21,9 +21,9 @@ import { WatchdogJobsRepository } from "../src/domain/watchdog-jobs-repository.j
 import { WatchdogHistoryLog } from "../src/domain/watchdog-history-log.js";
 import { WatchdogPolicyEngine } from "../src/domain/watchdog-policy-engine.js";
 
-// S03 R25 RED-FIRST fixture: this is the contract shape migration 073 will ship.
-// Keeping the table local in the RED commit lets every behavior fail on its own
-// assertion at the old base instead of one missing-module error masking the set.
+// S03 R25 RED-FIRST fixture：这是 migration 073 将交付的 contract shape。
+// 在 RED commit 中将 table 保持为本地定义，可让每项行为在旧基线上各自因 assertion 失败，
+// 避免一个 module 缺失错误掩盖整组结果。
 function createWakeContractTable(db: Database.Database): void {
   db.exec(`
     CREATE TABLE queue_transition_wakes (
@@ -41,7 +41,7 @@ function createWakeContractTable(db: Database.Database): void {
   `);
 }
 
-describe("S03 R25 — a park records its wake on the append-only transition", () => {
+describe("S03 R25——park 会在 append-only transition 上记录 wake", () => {
   let db: Database.Database;
   let bus: EventBus;
   let repo: QueueRepository;
@@ -89,7 +89,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     ).all(qitemId) as Array<Record<string, unknown>>;
   }
 
-  it("records an existing active watchdog id on the park transition", async () => {
+  it("在 park transition 上记录现有 active watchdog id", async () => {
     const row = await item();
     const job = jobs.register({
       policy: "periodic-reminder",
@@ -113,7 +113,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     ]);
   });
 
-  it("arms a timer atomically and records its generated watchdog id", async () => {
+  it("以原子方式启用 timer，并记录生成的 watchdog id", async () => {
     const row = await item();
     repo.update({
       qitemId: row.qitemId,
@@ -128,29 +128,26 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(wake?.wake_kind).toBe("timer");
     const job = wake ? jobs.getById(wake.wake_ref) : null;
     expect(job).toMatchObject({ state: "active", targetSession: "worker@rig", intervalSeconds: 90 });
-    // AMENDED by OPR.0.5.8.1 S1. This test's subject — a park arms a timer
-    // ATOMICALLY and records its generated watchdog id — is unchanged and still
-    // asserted above. Only these two incidental lines described behaviour that
-    // was a defect: an unseeded `last_evaluation_at` made `isDue` true at
-    // registration, so a 90s timer (like the measured 20m and 2h ones) fired on
-    // the scheduler's first pass. The interval now starts at registration for
-    // every explicit `--wake-after`, as it already did for provider-limit parks.
+    // 经 OPR.0.5.8.1 S1 修订。本测试主题——park 以原子方式启用 timer 并记录生成的 watchdog id——
+    // 未改变，且仍由上方 assertion 固定。只有下面两行附带检查描述了缺陷行为：未初始化的
+    // `last_evaluation_at` 会让 `isDue` 在注册时为 true，因此 90 秒 timer（与实测的 20 分钟和
+    // 2 小时 timer 一样）会在 scheduler 首次遍历时触发。现在每个显式 `--wake-after` 都从注册时刻
+    // 开始计时，与 provider-limit park 既有行为一致。
     expect(job?.lastEvaluationAt).toBe(job?.registeredAt);
     const armedAt = Date.parse(job!.registeredAt);
-    expect(isDue(job!, armedAt)).toBe(false);              // not due the instant it is armed
-    expect(isDue(job!, armedAt + 89_999)).toBe(false);     // nor one tick early
-    expect(isDue(job!, armedAt + 90_000)).toBe(true);      // due at the requested 90s
-    // Unchanged and deliberately still asserted: this repair does not add an
-    // expiry field to ordinary timer parks (no new per-wake bookkeeping).
+    expect(isDue(job!, armedAt)).toBe(false);              // 启用瞬间尚未到期
+    expect(isDue(job!, armedAt + 89_999)).toBe(false);     // 也不会提前一个 tick 到期
+    expect(isDue(job!, armedAt + 90_000)).toBe(true);      // 在请求的 90 秒时到期
+    // 此项未改变且刻意保留 assertion：本次修复不会给普通 timer park 添加 expiry 字段
+    //（不新增 per-wake bookkeeping）。
     expect(repo.getParkWakeStatus(row.qitemId)).not.toHaveProperty("expiresAt");
   });
 
-  it("OPR.0.5.8.1 S1 — two materially different --wake-after durations do NOT converge on one latency", async () => {
-    // The SPEC's own contract line. Measured on the base build through the real
-    // public seam: a requested 20m fired 0.69s after arming and a requested 2h
-    // fired 0.77s — a 6x difference in request collapsing to a shared sub-second
-    // latency, because `isDue` treats a job with no `last_evaluation_at` as due.
-    // Each duration must now be measured against its own arming instant.
+  it("OPR.0.5.8.1 S1——两个显著不同的 --wake-after 时长不会收敛为同一延迟", async () => {
+    // SPEC 自身的 contract line。通过真实 public seam 在基础 build 上测得：请求 20 分钟的任务
+    // 在启用后 0.69 秒触发，请求 2 小时的任务在 0.77 秒触发——相差 6 倍的请求被压缩为共同的
+    // 亚秒级延迟，因为 `isDue` 将没有 `last_evaluation_at` 的 job 视为到期。现在每个时长都必须
+    // 相对各自的启用时刻计算。
     const short = await item("worker@rig");
     const long = await item("worker@rig");
     await repo.update({
@@ -170,23 +167,22 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     const shortArmed = Date.parse(shortJob.registeredAt);
     const longArmed = Date.parse(longJob.registeredAt);
 
-    // Neither fires on the scheduler's first pass.
+    // 两者都不会在 scheduler 首次遍历时触发。
     expect(isDue(shortJob, shortArmed + 1_000)).toBe(false);
     expect(isDue(longJob, longArmed + 1_000)).toBe(false);
 
-    // At two minutes the short one is due and the long one is emphatically not:
-    // the durations separate instead of converging.
+    // 两分钟时，短任务到期，长任务明确未到期：时长彼此区分，不再收敛。
     expect(isDue(shortJob, shortArmed + 120_000)).toBe(true);
     expect(isDue(longJob, longArmed + 120_000)).toBe(false);
 
-    // And the long one comes due only at its own requested time.
+    // 长任务只在自己请求的时刻到期。
     expect(isDue(longJob, longArmed + 7_199_999)).toBe(false);
     expect(isDue(longJob, longArmed + 7_200_000)).toBe(true);
   });
 
-  it("OPR.0.5.8.1 S1b — a park timer is ONE-SHOT: firing ends it, no second wake", async () => {
-    // `periodic-reminder` repeats every intervalSeconds forever. An unstopped
-    // park timer therefore wakes its owner again at +2 intervals, +3, forever.
+  it("OPR.0.5.8.1 S1b——park timer 是一次性的：触发即结束，不会二次 wake", async () => {
+    // `periodic-reminder` 会永久按 intervalSeconds 重复。未停止的 park timer 因此会在第 2、
+    // 第 3 个间隔及之后持续再次唤醒 owner。
     const row = await item("worker@rig");
     repo.update({
       qitemId: row.qitemId, actorSession: "worker@rig", state: "blocked",
@@ -197,14 +193,13 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
 
     repo.recordWatchdogWakeAttempt(ref, "verified");
 
-    // Ended by the fire itself, so the scheduler can never pick it up again.
+    // 由触发本身终止，因此 scheduler 再也不会选中它。
     expect(jobs.getById(ref)!.state).not.toBe("active");
   });
 
-  it("OPR.0.5.8.1 S1b — leaving the park ends the timer: a terminal row cannot be woken", async () => {
-    // Specimen: job 01M1E6F3QG41N76Y1CDX48P766 fired at 10:18:07Z for a row that
-    // went handed-off at 10:02:03Z — sixteen minutes terminal, and the wake still
-    // instructed the seat to resume it. Done must never read as owed.
+  it("OPR.0.5.8.1 S1b——离开 park 会结束 timer：terminal row 不可被唤醒", async () => {
+    // 样本：job 01M1E6F3QG41N76Y1CDX48P766 在 10:18:07Z 为一条 10:02:03Z 已 handed-off
+    // 的 row 触发——它已 terminal 十六分钟，wake 却仍指示 seat 恢复。done 绝不能被读作欠办。
     const row = await item("worker@rig");
     repo.update({
       qitemId: row.qitemId, actorSession: "worker@rig", state: "blocked",
@@ -218,14 +213,14 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
       closureReason: "no-follow-on", transitionNote: "row closed while parked",
     } as never);
 
-    // The timer is gone at the moment the park ended — long before its 2h due
-    // time — so no clock advance can produce a wake for a closed row.
+    // park 结束时 timer 即消失——远早于其 2 小时到期时刻——因此无论怎样推进时钟，
+    // 都不会为已关闭 row 产生 wake。
     expect(jobs.getById(ref)!.state).not.toBe("active");
     expect(repo.recordWatchdogWakeAttempt(ref, "verified")).toBeUndefined();
     expect(wakes(row.qitemId).some((w) => (w as { phase: string }).phase === "fired")).toBe(false);
   });
 
-  it("OPR.0.5.8.1 S1c — a legacy park timer bound to a terminal row is refused before transport", async () => {
+  it("OPR.0.5.8.1 S1c——绑定到 terminal row 的 legacy park timer 会在 transport 前被拒绝", async () => {
     const row = await item("worker@rig");
     repo.update({
       qitemId: row.qitemId, actorSession: "worker@rig", state: "blocked",
@@ -233,9 +228,8 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     } as never);
     const timerId = (wakes(row.qitemId)[0] as { wake_ref: string }).wake_ref;
 
-    // Exact legacy residue: an older daemon closed the row without retiring its
-    // generated timer. The current delivery seam must defend this persisted
-    // preimage even though there is no new row transition left to intercept.
+    // 精确模拟 legacy residue：旧 daemon 关闭 row 时未终止其生成的 timer。即使已没有新的
+    // row transition 可拦截，当前 delivery seam 也必须防御这个持久化 preimage。
     db.prepare("UPDATE queue_items SET state = 'done', blocked_on = NULL WHERE qitem_id = ?").run(row.qitemId);
     expect(jobs.getById(timerId)?.state).toBe("active");
 
@@ -268,7 +262,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(wakes(row.qitemId).some((w) => (w as { phase: string }).phase === "fired")).toBe(false);
   });
 
-  it("OPR.0.5.8.1 S1c — the delivery guard preserves actionable timers and attached watchdogs", async () => {
+  it("OPR.0.5.8.1 S1c——delivery guard 保留可操作 timer 与附加 watchdog", async () => {
     const deliveries: Array<{ targetSession: string; message: string }> = [];
     const engine = new WatchdogPolicyEngine({
       jobsRepo: jobs,
@@ -322,15 +316,12 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(jobs.getById(operatorJob.jobId)?.state).toBe("active");
   });
 
-  it("OPR.0.5.8.1 S1c — ONE SHARED JOB: a terminal timer row must not terminal an attached watchdog", async () => {
-    // R2 blocking finding at ea0e80d2. The control above uses two DIFFERENT job
-    // ids, so it cannot see the composition that actually ships: --wake-watchdog
-    // accepts any active job whose target matches the parked owner, including
-    // the job another row's --wake-after just created. Both bindings then hang
-    // off ONE wake_ref. The timer lookup selects wake_kind='timer' only, so a
-    // legacy-terminal timer row made the resolver claim the whole job — and the
-    // engine terminals it before transport, so the still-blocked operator
-    // attachment can never wake.
+  it("OPR.0.5.8.1 S1c——共享同一 job 时，terminal timer row 不得终止附加 watchdog", async () => {
+    // ea0e80d2 的 R2 blocking finding。上方 control 使用两个不同 job id，无法覆盖真实交付组合：
+    // --wake-watchdog 接受 target 匹配 parked owner 的任意 active job，包括另一条 row 的
+    // --wake-after 刚创建的 job。随后两个 binding 都挂在同一个 wake_ref 上。timer lookup 只选择
+    // wake_kind='timer'，所以 legacy-terminal timer row 会使 resolver 认领整个 job，engine 又会
+    // 在 transport 前终止它，导致仍 blocked 的用户 attachment 永远无法 wake。
     const deliveries: Array<{ targetSession: string; message: string }> = [];
     const engine = new WatchdogPolicyEngine({
       jobsRepo: jobs,
@@ -345,7 +336,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
       onWakeAttempt: ({ jobId, deliveryStatus }) => repo.recordWatchdogWakeAttempt(jobId, deliveryStatus),
     });
 
-    // Row A parks with --wake-after, producing job J and a timer binding.
+    // Row A 使用 --wake-after park，产生 job J 与一个 timer binding。
     const timerRow = await item("shared-owner@rig");
     repo.update({
       qitemId: timerRow.qitemId, actorSession: "shared-owner@rig", state: "blocked",
@@ -355,7 +346,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
       "SELECT wake_ref FROM queue_transition_wakes WHERE qitem_id = ? AND wake_kind = 'timer'",
     ).get(timerRow.qitemId) as { wake_ref: string }).wake_ref;
 
-    // Row B parks against THE SAME job with the supported --wake-watchdog path.
+    // Row B 通过受支持的 --wake-watchdog 路径绑定同一个 job 并 park。
     const attachedRow = await item("shared-owner@rig");
     repo.update({
       qitemId: attachedRow.qitemId, actorSession: "shared-owner@rig", state: "blocked",
@@ -363,18 +354,16 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
       wakeWatchdogId: sharedJobId,
     } as never);
 
-    // The exact legacy residue S1c exists to guard, written the way R2's probe
-    // writes it: DIRECT SQL, deliberately bypassing repo.update. Closing the row
-    // through the normal path would fire S1b's transition-time retirement and
-    // there would be no residue left to guard against — the fixture has to
-    // model an OLDER daemon that closed the row without that hook.
+    // 精确构造 S1c 要防御的 legacy residue，方式与 R2 probe 相同：直接执行 SQL，刻意绕过
+    // repo.update。通过正常路径关闭 row 会触发 S1b 的 transition-time retirement，不会留下可供
+    // 防御的 residue——fixture 必须模拟没有该 hook 的旧 daemon。
     db.prepare("UPDATE queue_items SET state = 'done', blocked_on = NULL WHERE qitem_id = ?")
       .run(timerRow.qitemId);
     expect(repo.getById(attachedRow.qitemId)?.state).toBe("blocked");
 
     const result = await engine.evaluate(jobs.getByIdOrThrow(sharedJobId));
 
-    // The attachment is actionable work; the job must survive and deliver.
+    // attachment 是可操作工作；job 必须存活并交付。
     expect(result.outcome).not.toMatchObject({ reason: "park_timer_target_terminal" });
     expect(result.outcome.action).toBe("send");
     expect(jobs.getById(sharedJobId)?.state).toBe("active");
@@ -383,10 +372,9 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     ]);
   });
 
-  it("OPR.0.5.8.1 S1c — a solely-park-generated timer with a terminal row is still refused", async () => {
-    // The other side of the ownership boundary: adding the watchdog check must
-    // not disarm the guard S1c exists for. With no attachment sharing the job,
-    // a terminal timer row still retires the legacy residue.
+  it("OPR.0.5.8.1 S1c——仅由 park 生成且绑定 terminal row 的 timer 仍会被拒绝", async () => {
+    // ownership boundary 的另一面：增加 watchdog 检查不能解除 S1c 所保护的 guard。若没有
+    // attachment 共享此 job，terminal timer row 仍会终止 legacy residue。
     const engine = new WatchdogPolicyEngine({
       jobsRepo: jobs,
       historyLog: new WatchdogHistoryLog(db),
@@ -405,7 +393,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     const jobId = (db.prepare(
       "SELECT wake_ref FROM queue_transition_wakes WHERE qitem_id = ? AND wake_kind = 'timer'",
     ).get(row.qitemId) as { wake_ref: string }).wake_ref;
-    // Same legacy-residue shape as above, and for the same reason.
+    // 与上方相同的 legacy-residue shape，原因也相同。
     db.prepare("UPDATE queue_items SET state = 'done', blocked_on = NULL WHERE qitem_id = ?")
       .run(row.qitemId);
 
@@ -414,7 +402,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(result.outcome).toMatchObject({ action: "terminal", reason: "park_timer_target_terminal" });
   });
 
-  it("OPR.0.5.8.1 S1b — an unpark (blocked -> in-progress) also ends the timer", async () => {
+  it("OPR.0.5.8.1 S1b——unpark（blocked -> in-progress）也会结束 timer", async () => {
     const row = await item("worker@rig");
     repo.update({
       qitemId: row.qitemId, actorSession: "worker@rig", state: "blocked",
@@ -430,13 +418,12 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(jobs.getById(ref)!.state).not.toBe("active");
   });
 
-  // --- OPR.0.5.8.1 S1b repair (review50-r2 NOT-CLEAR at 8dfe8a3a) ---
+  // --- OPR.0.5.8.1 S1b 修复（8dfe8a3a 上 review50-r2 NOT-CLEAR）---
   //
-  // `queue_items.state` is written by SIX methods, not one. The first repair
-  // hooked only the generic `update()` path, so every other writer kept the timer
-  // alive — including `handoff()`, the exact route the founding specimen took.
-  // Each exit below is pinned through its REAL method, not another spelling of
-  // `update()`, which is what made the gap invisible the first time.
+  // `queue_items.state` 由六个方法写入，而非一个。首次修复只接入通用 `update()` 路径，
+  // 因此其他 writer 都让 timer 保持 active——包括原始样本实际经过的 `handoff()`。
+  // 下方每个 exit 都通过其真实方法固定，而不是换一种方式调用 `update()`；后者正是
+  // 首次未发现缺口的原因。
 
   async function parkedWithTimer(session = "worker@rig", seconds = 7200) {
     const row = await item(session);
@@ -452,9 +439,9 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     (db.prepare("SELECT terminal_reason FROM watchdog_jobs WHERE job_id = ?")
       .get(ref) as { terminal_reason: string | null }).terminal_reason;
 
-  it("OPR.0.5.8.1 S1b — handoff() retires the timer (the founding specimen's own route)", async () => {
-    // Row b7a70333 went handed-off at 10:02:03Z and its timer fired at 10:18:07Z.
-    // handoff() is its own transaction and never routes through update().
+  it("OPR.0.5.8.1 S1b——handoff() 会终止 timer（原始样本自身的路径）", async () => {
+    // Row b7a70333 在 10:02:03Z handed-off，其 timer 却在 10:18:07Z 触发。
+    // handoff() 使用独立 transaction，从不经过 update()。
     const { row, ref } = await parkedWithTimer();
 
     await repo.handoff({
@@ -466,7 +453,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(terminalReason(ref)).toBe("park_ended:handed-off");
   });
 
-  it("OPR.0.5.8.1 S1b — handoffAndComplete() retires the timer", async () => {
+  it("OPR.0.5.8.1 S1b——handoffAndComplete() 会终止 timer", async () => {
     const { row, ref } = await parkedWithTimer();
 
     await repo.handoffAndComplete({
@@ -477,9 +464,9 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(terminalReason(ref)).toBe("park_ended:done");
   });
 
-  it("OPR.0.5.8.1 S1b — closeCrossHostHandoffSource() retires the timer", async () => {
-    // Third member of the handoff family. Same own-transaction bypass; found by
-    // enumerating state writers rather than by being told about it.
+  it("OPR.0.5.8.1 S1b——closeCrossHostHandoffSource() 会终止 timer", async () => {
+    // handoff family 的第三个成员。同样绕过通用路径并使用自己的 transaction；它是通过枚举
+    // state writer 找到的，而不是由既有说明指出。
     const { row, ref } = await parkedWithTimer();
 
     repo.closeCrossHostHandoffSource({
@@ -494,9 +481,9 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(terminalReason(ref)).toBe("park_ended:handed-off");
   });
 
-  it("OPR.0.5.8.1 S1b — claim() retires the timer (claim-resume, named by the contract)", async () => {
-    // A blocked row IS claimable, so claiming is a real park exit that writes
-    // state directly. My earlier pin spelled this through update(), not claim().
+  it("OPR.0.5.8.1 S1b——claim() 会终止 timer（contract 指定的 claim-resume）", async () => {
+    // blocked row 可以被 claim，因此 claim 是直接写入 state 的真实 park exit。此前的 pin
+    // 通过 update() 表达此行为，而非 claim()。
     const { row, ref } = await parkedWithTimer();
 
     repo.claim({ qitemId: row.qitemId, destinationSession: "worker@rig" } as never);
@@ -506,9 +493,9 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(terminalReason(ref)).toBe("park_ended:claimed");
   });
 
-  it("OPR.0.5.8.1 S1b — auto-unpark on blocker completion retires the timer", async () => {
-    // `--on X --wake-after 20m` carries BOTH a blocker and a timer. When X
-    // completes, the blocker does its job and the timer must not fire afterwards.
+  it("OPR.0.5.8.1 S1b——blocker 完成时 auto-unpark 会终止 timer", async () => {
+    // `--on X --wake-after 20m` 同时携带 blocker 与 timer。X 完成后 blocker 已发挥作用，
+    // timer 不得再触发。
     const blocker = await item("gate@rig");
     const row = await item("worker@rig");
     repo.update({
@@ -529,9 +516,9 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(terminalReason(ref)).toBe("park_ended:auto-unparked");
   });
 
-  it("OPR.0.5.8.1 S1b — the handoff exit leaves an operator's ATTACHED watchdog alone", async () => {
-    // The shared ownership predicate is used by every exit caller; this test
-    // executes one real handoff route rather than claiming a six-route matrix.
+  it("OPR.0.5.8.1 S1b——handoff exit 不会触碰用户附加的 watchdog", async () => {
+    // 每个 exit caller 都使用共享 ownership predicate；本测试执行一条真实 handoff route，
+    // 而非声称覆盖六条 route 的矩阵。
     const job = jobs.register({
       policy: "periodic-reminder",
       specYaml: "policy: periodic-reminder\ntarget:\n  session: \"worker@rig\"\nmessage: \"operator's own\"\n",
@@ -551,10 +538,9 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(jobs.getById(job.jobId)!.state).toBe("active");
   });
 
-  it("OPR.0.5.8.1 S1b — re-parking SUPERSEDES the old timer: exactly one live job", async () => {
-    // The third repeat route. Re-parking used to arm a second job while the first
-    // stayed active, so one row carried two live timers, each firing on its own
-    // cadence. A new park episode now supersedes the old.
+  it("OPR.0.5.8.1 S1b——再次 park 会取代旧 timer：恰好一个 live job", async () => {
+    // 第三条重复路径。再次 park 过去会在首个 job 仍 active 时启用第二个 job，导致一条 row
+    // 携带两个各自按节奏触发的 live timer。现在新的 park episode 会取代旧 episode。
     const row = await item("worker@rig");
     repo.update({
       qitemId: row.qitemId, actorSession: "worker@rig", state: "blocked",
@@ -570,22 +556,22 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     const second = repo.getParkWakeStatus(row.qitemId)!.ref;
     expect(second).not.toBe(first);
 
-    // exactly one live timer on this row
+    // 此 row 上恰好一个 live timer
     expect(jobs.getById(first)!.state).not.toBe("active");
     expect((db.prepare("SELECT terminal_reason FROM watchdog_jobs WHERE job_id = ?")
       .get(first) as { terminal_reason: string | null }).terminal_reason).toBe("park_superseded");
     expect(jobs.getById(second)!.state).toBe("active");
 
-    // and the survivor is measured from ITS OWN arming, at ITS OWN duration
+    // 幸存者从自己的启用时刻起，按自己的时长计算
     const secondJob = jobs.getById(second)!;
     expect(secondJob.intervalSeconds).toBe(3600);
     const armed = Date.parse(secondJob.registeredAt);
-    expect(isDue(secondJob, armed + 90_000)).toBe(false);      // not the old 90s
+    expect(isDue(secondJob, armed + 90_000)).toBe(false);      // 不是旧的 90 秒
     expect(isDue(secondJob, armed + 3_599_999)).toBe(false);
     expect(isDue(secondJob, armed + 3_600_000)).toBe(true);
   });
 
-  it("OPR.0.5.8.1 S1b — re-parking does NOT touch an operator's attached watchdog", async () => {
+  it("OPR.0.5.8.1 S1b——再次 park 不会触碰用户附加的 watchdog", async () => {
     const job = jobs.register({
       policy: "periodic-reminder",
       specYaml: "policy: periodic-reminder\ntarget:\n  session: \"worker@rig\"\nmessage: \"operator's own\"\n",
@@ -604,16 +590,14 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
       blockedOn: "external:cooldown", transitionNote: "re-park with a timer", wakeAfterSeconds: 90,
     } as never);
 
-    expect(jobs.getById(job.jobId)!.state).toBe("active");   // still the operator's
+    expect(jobs.getById(job.jobId)!.state).toBe("active");   // 仍归用户所有
   });
 
-  it("OPR.0.5.8.1 S1b — the S16 provider-limit path is UNCHANGED, and stays distinguishable", async () => {
-    // Contract item 3 asked me to state whether this repair touches S16 and pin
-    // it either way. It does not: provider-limit timers already ended after
-    // firing, and they end for their OWN reason with their own blocker
-    // resolution, which a plain park timer must never perform. Asserting the
-    // reason rather than merely "terminal" is what keeps the two paths apart if
-    // someone later merges them.
+  it("OPR.0.5.8.1 S1b——S16 provider-limit 路径保持不变且可区分", async () => {
+    // Contract 第 3 项要求明确本修复是否影响 S16，并用测试固定结论。答案是不影响：
+    // provider-limit timer 原本就会在触发后结束，并因自己的原因结束、执行自己的 blocker
+    // resolution；普通 park timer 绝不能这样做。assert 具体 reason 而不只检查 "terminal"，
+    // 能防止以后合并代码时混淆两条路径。
     const blocker = await repo.create({
       sourceSession: "wake-ladder@system",
       destinationSession: "wake-ladder@rig",
@@ -632,14 +616,13 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
 
     const reason = (db.prepare("SELECT terminal_reason FROM watchdog_jobs WHERE job_id = ?")
       .get(ref) as { terminal_reason: string | null }).terminal_reason;
-    expect(reason).toBe("usage_limit_expiry_fired");     // not park_timer_fired_once
-    expect(repo.getById(blocker.qitemId)!.state).toBe("done");  // its blocker resolution still runs
+    expect(reason).toBe("usage_limit_expiry_fired");     // 不是 park_timer_fired_once
+    expect(repo.getById(blocker.qitemId)!.state).toBe("done");  // 其 blocker resolution 仍执行
   });
 
-  it("OPR.0.5.8.1 S1b — an operator's ATTACHED watchdog survives the park ending", async () => {
-    // Only park-GENERATED timers are owned by the park. A job the operator
-    // attached with --wake-watchdog is theirs, may target other rows, and must
-    // not be destroyed by this row's lifecycle.
+  it("OPR.0.5.8.1 S1b——用户附加的 watchdog 会在 park 结束后继续存活", async () => {
+    // 只有 park 生成的 timer 归 park 所有。用户通过 --wake-watchdog 附加的 job 归用户所有，
+    // 可能指向其他 row，不得被此 row 的 lifecycle 销毁。
     const job = jobs.register({
       policy: "periodic-reminder",
       specYaml: "policy: periodic-reminder\ntarget:\n  session: \"worker@rig\"\nmessage: \"operator's own\"\n",
@@ -660,10 +643,10 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
       closureReason: "no-follow-on", transitionNote: "row closed while parked",
     } as never);
 
-    expect(jobs.getById(job.jobId)!.state).toBe("active");   // still the operator's
+    expect(jobs.getById(job.jobId)!.state).toBe("active");   // 仍归用户所有
   });
 
-  it("rolls the generated timer back when the park transaction aborts", async () => {
+  it("park transaction 中止时回滚生成的 timer", async () => {
     const row = await item();
     db.exec(`
       CREATE TRIGGER reject_test_park BEFORE UPDATE OF state ON queue_items
@@ -684,7 +667,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(wakes(row.qitemId)).toEqual([]);
   });
 
-  it("auto-unpark publishes the dependent event and records the real post-commit delivery outcome", async () => {
+  it("auto-unpark 发布 dependent event，并记录真实的 commit 后 delivery outcome", async () => {
     const blocker = await item("gate@rig");
     const row = await item();
     const sibling = await item("worker-2@rig");
@@ -749,7 +732,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(intent.n).toBe(2);
   });
 
-  it("outer transactions publish every auto-unpark event through the exact notify envelope", async () => {
+  it("外围 transaction 通过精确 notify envelope 发布每个 auto-unpark event", async () => {
     const blocker = await item("gate@rig");
     const row = await item();
     repo.update({
@@ -780,7 +763,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     await vi.waitFor(() => expect(sent).toHaveLength(1));
   });
 
-  it("a rolled-back blocker completion leaves no intent and performs no wake effect", async () => {
+  it("回滚的 blocker completion 不留下 intent，也不执行 wake effect", async () => {
     const blocker = await item("gate@rig");
     const row = await item();
     repo.update({
@@ -810,7 +793,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect((db.prepare("SELECT COUNT(*) AS n FROM outbox_entries").get() as { n: number }).n).toBe(0);
   });
 
-  it("a committed auto-unpark intent survives a missing transport and the recovery drain records its delivery", async () => {
+  it("已提交的 auto-unpark intent 可在 transport 缺失时存留，recovery drain 会记录其交付", async () => {
     const blocker = await item("gate@rig");
     const row = await item();
     repo.update({
@@ -847,6 +830,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
       delivered: 1,
       indeterminate: 0,
       failed: 0,
+      retained: 0,
     });
     expect(sent).toHaveLength(1);
     expect(wakes(row.qitemId).at(-1)).toMatchObject({
@@ -857,7 +841,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     });
   });
 
-  it("S16 resolves one provider-limit timer into exactly one durable wake per dependent", async () => {
+  it("S16 将一个 provider-limit timer 解析为每个 dependent 恰好一次 durable wake", async () => {
     const blocker = await repo.create({
       sourceSession: "wake-ladder@system",
       destinationSession: "wake-ladder@rig",
@@ -917,7 +901,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(sent).toHaveLength(3);
   });
 
-  it("S16 initializes its timer baseline so it becomes due at the projected expiry, never immediately", async () => {
+  it("S16 初始化 timer baseline，使其在预计到期时到期，而非立即到期", async () => {
     const blocker = await repo.create({
       sourceSession: "wake-ladder@system",
       destinationSession: "wake-ladder@rig",
@@ -945,7 +929,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(isDue(job, registeredAt + 60_000)).toBe(true);
   });
 
-  it("an ordinary blocker wake remains expiry-less", async () => {
+  it("普通 blocker wake 仍不带 expiry", async () => {
     const blocker = await item("gate@rig");
     const row = await item();
     repo.update({
@@ -963,7 +947,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(repo.getParkWakeStatus(row.qitemId)).not.toHaveProperty("expiresAt");
   });
 
-  it("negative control: a wakeless park still succeeds and records no invented wake", async () => {
+  it("负向对照：不带 wake 的 park 仍成功，且不记录虚构 wake", async () => {
     const row = await item();
     const parked = repo.update({
       qitemId: row.qitemId,
@@ -976,13 +960,13 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
     expect(wakes(row.qitemId)).toEqual([]);
     expect(repo.getParkWakeStatus(row.qitemId)).toBeNull();
 
-    const teaching = "`parked` means the row is blocked; use `rig parked` to diagnose its wake.";
-    expect(teaching).toContain("`parked` means the row is blocked");
-    expect(teaching).toContain("`rig parked`");
-    expect(teaching).not.toContain("it carries its wake and legitimately waits");
+    const teaching = "`parked` 表示该记录已阻塞；请使用 `zrig parked` 诊断其 wake。";
+    expect(teaching).toContain("该记录已阻塞");
+    expect(teaching).toContain("`zrig parked`");
+    expect(teaching).not.toContain("它携带 wake 并合理等待");
   });
 
-  it("a fired timer appends a resume attempt; remaining blocked makes it observably unconsumed", async () => {
+  it("已触发 timer 追加 resume attempt；保持 blocked 会使其可观察地处于未消费状态", async () => {
     const row = await item();
     repo.update({
       qitemId: row.qitemId,
@@ -1008,7 +992,7 @@ describe("S03 R25 — a park records its wake on the append-only transition", ()
       .getParkWakeStatus(row.qitemId)?.unconsumed).toBe(true);
   });
 
-  it("FR-6 negative control: valid human-seat park still requires and persists summary + evidence", async () => {
+  it("FR-6 负向对照：有效 human-seat park 仍要求并持久化 summary + evidence", async () => {
     const row = await item();
     const parked = repo.update({
       qitemId: row.qitemId,

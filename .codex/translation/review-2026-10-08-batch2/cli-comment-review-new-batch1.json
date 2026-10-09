@@ -1,0 +1,52 @@
+{
+  "batch": "cli-comment-review-new-batch1",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/config.test.ts",
+      "before_sha256_16": "16dc719e06cc7298",
+      "after_sha256_16": "d7d2276c14d48a00",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/cross-host-executor.test.ts",
+      "before_sha256_16": "ba9044bf5f8a92eb",
+      "after_sha256_16": "c0f5105af308b3fb",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/cross-host-target.test.ts",
+      "before_sha256_16": "efc4fe143b1be884",
+      "after_sha256_16": "25aa48be196f653c",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/front-door.test.ts",
+      "before_sha256_16": "a3af4af993d46814",
+      "after_sha256_16": "8fbc8a8d2d776bce",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/plugin.test.ts",
+      "before_sha256_16": "1794803cf5f86987",
+      "after_sha256_16": "1cf489e21e6798e5",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

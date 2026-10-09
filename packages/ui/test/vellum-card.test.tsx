@@ -1,8 +1,7 @@
-// V1 Shell Redesign — Phase 1 — VellumCard primitive.
+// V1 Shell 重设计——阶段 1——VellumCard 原语。
 //
-// API surface tests: default render, header, registrationMarks toggle,
-// elevation + variant variants, accentClass, href (Link wrapper),
-// polymorphic as prop, testId.
+// API 表面测试：默认渲染、页头、registrationMarks 开关、elevation 与 variant 变体、
+// accentClass、href（Link 包装器）、多态 as 属性和 testId。
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";

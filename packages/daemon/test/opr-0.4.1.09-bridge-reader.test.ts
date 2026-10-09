@@ -1,10 +1,10 @@
-// OPR.0.4.1.09 (part 2b — reader side): the compaction-restore bridge resolves ONLY this
-// seat's keyed marker. The previous fallback-to-newest handed a seat with NO marker the
-// NEWEST marker on disk — which can be ANOTHER seat's restore state (the reader-side
-// parallel of the part-1 wrong-seat extra bug). No seat identity / no keyed marker -> no
-// delivery (absence = the loud JSONL fallback the restore prompt already describes), never
-// a wrong-seat guess. The bridge also surfaces the per-seat restoreMapPath the PreCompact
-// writer (precompact-hook.mjs) recorded. Spawn-based to match how Claude invokes the hook.
+// OPR.0.4.1.09（part 2b——reader 侧）：compaction-restore 桥仅解析本
+// seat 的带 key 标记。先前 fallback-to-newest 会把磁盘上最新的标记交给一个
+// 无标记的 seat——而那可能是另一个 seat 的恢复状态（part-1 错 seat 多余 bug 的
+// reader 侧对应）。无 seat 身份/无带 key 标记 → 不投递（缺席 = restore prompt
+// 已描述的响亮 JSONL 回退），绝不做错 seat 猜测。桥还浮出 PreCompact
+// writer（precompact-hook.mjs）记录的 per-seat restoreMapPath。基于 spawn，
+// 以匹配 Claude 调用 hook 的方式。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { spawnSync } from "node:child_process";
@@ -91,7 +91,7 @@ describe("OPR.0.4.1.09 part 2b — bridge reader resolves ONLY this seat's marke
     // no marker written
     const { stdout, stderr } = runBridge(home, { hook_event_name: "UserPromptSubmit", session_id: "sess-A", transcript_path: "/t/sess-A.jsonl" });
     expect(stdout.trim()).toBe(""); // nothing to deliver (no marker)
-    expect(stderr.toLowerCase()).toContain("expected"); // loud on the miss
+    expect(stderr).toContain("本应生成恢复包"); // 缺失时明确告警。
   });
 
   // Guard: policy OFF = no hook = no sentinel = silent by construction (never false-loud).
@@ -121,7 +121,7 @@ describe("OPR.0.4.1.09 part 2b — bridge reader resolves ONLY this seat's marke
     const first = runBridge(home, { hook_event_name: "UserPromptSubmit" });
     expect(first.status).toBe(0);
     expect(first.stdout).toContain("additionalContext");
-    expect(first.stdout).toContain("Per-seat restore map");
+    expect(first.stdout).toContain("逐席位恢复映射");
     expect(first.stdout).toContain(`${SEAT}.md`);
     const second = runBridge(home, { hook_event_name: "UserPromptSubmit" });
     expect(second.stdout.trim()).toBe(""); // deliver-once (deliveryCount > 0)
@@ -134,6 +134,6 @@ describe("OPR.0.4.1.09 part 2b — bridge reader resolves ONLY this seat's marke
     });
     const { stdout } = runBridge(home, { hook_event_name: "UserPromptSubmit" });
     expect(stdout).toContain("additionalContext");
-    expect(stdout).not.toContain("Per-seat restore map");
+    expect(stdout).not.toContain("逐席位恢复映射");
   });
 });

@@ -1,9 +1,8 @@
-// Fork Primitive + Starter Agent Images v0 (PL-016) — manifest parser.
+// Fork Primitive + Starter Agent Images v0（PL-016）——manifest 解析器。
 //
-// Parses ~/.openrig/agent-images/<name>/manifest.yaml into a typed
-// AgentImageManifest. Pure (no fs touches in the parser; caller hands
-// in raw YAML). Validation guards: required field checks, runtime
-// allow-list, path-traversal rejection on supplementary files.
+// 将 ~/.openrig/agent-images/<name>/manifest.yaml 解析为类型化 AgentImageManifest。
+// 这是纯函数：解析器不访问文件系统，由调用方传入原始 YAML。校验包括必填字段、
+// runtime 白名单，以及拒绝补充文件中的路径遍历。
 
 import { parse as parseYaml } from "yaml";
 import {
@@ -23,14 +22,14 @@ export function parseAgentImageManifest(rawYaml: string, sourcePath: string): Ag
   } catch (err) {
     throw new AgentImageError(
       "manifest_parse_error",
-      `manifest at ${sourcePath} is not valid YAML: ${(err as Error).message}`,
+      `${sourcePath} 中的 manifest 不是有效 YAML：${(err as Error).message}`,
       { sourcePath },
     );
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new AgentImageError(
       "manifest_invalid",
-      `manifest at ${sourcePath} must be a YAML object at the root`,
+      `${sourcePath} 中 manifest 的根节点必须是 YAML 对象`,
       { sourcePath },
     );
   }
@@ -40,7 +39,7 @@ export function parseAgentImageManifest(rawYaml: string, sourcePath: string): Ag
   if (typeof name !== "string" || name.length === 0) {
     throw new AgentImageError(
       "manifest_invalid",
-      `manifest at ${sourcePath} is missing required field 'name'`,
+      `${sourcePath} 中的 manifest 缺少必填字段 'name'`,
       { sourcePath },
     );
   }
@@ -49,7 +48,7 @@ export function parseAgentImageManifest(rawYaml: string, sourcePath: string): Ag
   if (versionRaw === undefined || versionRaw === null) {
     throw new AgentImageError(
       "manifest_invalid",
-      `manifest at ${sourcePath} is missing required field 'version'`,
+      `${sourcePath} 中的 manifest 缺少必填字段 'version'`,
       { sourcePath },
     );
   }
@@ -59,19 +58,18 @@ export function parseAgentImageManifest(rawYaml: string, sourcePath: string): Ag
   if (typeof runtime !== "string" || !ALLOWED_RUNTIMES.has(runtime as AgentImageRuntime)) {
     throw new AgentImageError(
       "manifest_invalid",
-      `manifest at ${sourcePath} has invalid runtime '${runtime}'; allowed: ${[...ALLOWED_RUNTIMES].join(", ")}`,
+      `${sourcePath} 中 manifest 的 runtime '${runtime}' 无效；允许值：${[...ALLOWED_RUNTIMES].join(", ")}`,
       { sourcePath, runtime },
     );
   }
 
-  // Source seat / session id / resume token are required on a real
-  // image. The PRD's v0 manifest schema reads these as load-bearing —
-  // an image without a resume token can't be consumed.
+  // 真实镜像必须包含源席位、会话 ID 和恢复 token。PRD 的 v0 manifest schema 将这些字段
+  // 视为承重信息——没有恢复 token 的镜像无法被消费。
   const sourceSeatRaw = obj["source_seat"] ?? obj["sourceSeat"];
   if (typeof sourceSeatRaw !== "string" || sourceSeatRaw.length === 0) {
     throw new AgentImageError(
       "manifest_invalid",
-      `manifest at ${sourcePath} is missing required field 'source_seat'`,
+      `${sourcePath} 中的 manifest 缺少必填字段 'source_seat'`,
       { sourcePath },
     );
   }
@@ -79,7 +77,7 @@ export function parseAgentImageManifest(rawYaml: string, sourcePath: string): Ag
   if (typeof sourceSessionIdRaw !== "string" || sourceSessionIdRaw.length === 0) {
     throw new AgentImageError(
       "manifest_invalid",
-      `manifest at ${sourcePath} is missing required field 'source_session_id'`,
+      `${sourcePath} 中的 manifest 缺少必填字段 'source_session_id'`,
       { sourcePath },
     );
   }
@@ -87,7 +85,7 @@ export function parseAgentImageManifest(rawYaml: string, sourcePath: string): Ag
   if (typeof sourceResumeTokenRaw !== "string" || sourceResumeTokenRaw.length === 0) {
     throw new AgentImageError(
       "manifest_invalid",
-      `manifest at ${sourcePath} is missing required field 'source_resume_token'`,
+      `${sourcePath} 中的 manifest 缺少必填字段 'source_resume_token'`,
       { sourcePath },
     );
   }
@@ -99,10 +97,8 @@ export function parseAgentImageManifest(rawYaml: string, sourcePath: string): Ag
 
   const notes = typeof obj["notes"] === "string" ? (obj["notes"] as string) : undefined;
 
-  // PL-016 source-cwd behavior: optional
-  // source_cwd captured at snapshot time. Manifests authored before this
-  // fix omit the field; consumers fall back to "no cwd line" rendering
-  // (back-compat).
+  // PL-016 source-cwd 行为：source_cwd 是创建快照时捕获的可选字段。此修复之前生成的
+  // manifest 没有该字段；消费者会回退为“不显示 cwd 行”，以保持向后兼容。
   const sourceCwdRaw = obj["source_cwd"] ?? obj["sourceCwd"];
   const sourceCwd = typeof sourceCwdRaw === "string" && sourceCwdRaw.length > 0
     ? sourceCwdRaw
@@ -116,7 +112,7 @@ export function parseAgentImageManifest(rawYaml: string, sourcePath: string): Ag
       if (!f || typeof f !== "object" || Array.isArray(f)) {
         throw new AgentImageError(
           "manifest_invalid",
-          `manifest at ${sourcePath} has malformed entry at files[${i}] (must be object with path + role)`,
+          `${sourcePath} 中 manifest 的 files[${i}] 条目格式错误（必须是包含 path 和 role 的对象）`,
           { sourcePath, index: i },
         );
       }
@@ -125,21 +121,21 @@ export function parseAgentImageManifest(rawYaml: string, sourcePath: string): Ag
       if (typeof path !== "string" || path.length === 0) {
         throw new AgentImageError(
           "manifest_invalid",
-          `manifest at ${sourcePath} files[${i}] missing 'path'`,
+          `${sourcePath} 中 manifest 的 files[${i}] 缺少 'path'`,
           { sourcePath, index: i },
         );
       }
       if (path.includes("..") || path.startsWith("/")) {
         throw new AgentImageError(
           "manifest_invalid",
-          `manifest at ${sourcePath} files[${i}].path '${path}' must be a relative path inside the image (no '..', no leading '/')`,
+          `${sourcePath} 中 manifest 的 files[${i}].path '${path}' 必须是镜像内的相对路径（不能包含 '..'，也不能以 '/' 开头）`,
           { sourcePath, index: i, path },
         );
       }
       if (!ALLOWED_FILE_SUFFIXES.some((s) => path.endsWith(s))) {
         throw new AgentImageError(
           "manifest_invalid",
-          `manifest at ${sourcePath} files[${i}].path '${path}' has unsupported suffix; allowed: ${ALLOWED_FILE_SUFFIXES.join(", ")}`,
+          `${sourcePath} 中 manifest 的 files[${i}].path '${path}' 使用了不支持的后缀；允许值：${ALLOWED_FILE_SUFFIXES.join(", ")}`,
           { sourcePath, index: i, path },
         );
       }
@@ -147,7 +143,7 @@ export function parseAgentImageManifest(rawYaml: string, sourcePath: string): Ag
       if (typeof role !== "string" || role.length === 0) {
         throw new AgentImageError(
           "manifest_invalid",
-          `manifest at ${sourcePath} files[${i}] missing 'role'`,
+          `${sourcePath} 中 manifest 的 files[${i}] 缺少 'role'`,
           { sourcePath, index: i, path },
         );
       }

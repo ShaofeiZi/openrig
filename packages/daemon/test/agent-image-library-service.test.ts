@@ -1,4 +1,4 @@
-// PL-016 — library service tests.
+// PL-016——library service 测试。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
@@ -35,7 +35,7 @@ describe("AgentImageLibraryService", () => {
   });
   afterEach(() => rmSync(tmp, { recursive: true, force: true }));
 
-  it("scans an image and emits a normalized entry", () => {
+  it("扫描 image 并生成规范化 entry", () => {
     writeImage(userRoot, "smoke", `
 name: smoke
 version: 1
@@ -59,7 +59,7 @@ files: []
     expect(entries[0]!.pinned).toBe(false);
   });
 
-  it("captures parse errors instead of throwing them out of scan", () => {
+  it("捕获解析错误，而不是让错误从 scan 抛出", () => {
     writeImage(userRoot, "broken", "{not valid yaml", {});
     const lib = new AgentImageLibraryService({
       roots: [{ path: userRoot, sourceType: "user_file" }],
@@ -70,7 +70,7 @@ files: []
     expect(result.errors[0]!.error).toContain("manifest_parse_error");
   });
 
-  it("recordConsumption increments fork count + bumps lastUsedAt", () => {
+  it("recordConsumption 增加 fork count 并更新 lastUsedAt", () => {
     writeImage(userRoot, "p", `
 name: p
 version: 1
@@ -92,14 +92,14 @@ files: []
     expect(after.stats.forkCount).toBe(1);
     expect(after.stats.lastUsedAt).toBe("2026-05-04T20:00:00.000Z");
 
-    // stats.json is rewritten with the new values
+    // 用新值重写 stats.json。
     const statsPath = join(after.sourcePath, "stats.json");
     expect(existsSync(statsPath)).toBe(true);
     const stats = JSON.parse(readFileSync(statsPath, "utf-8"));
     expect(stats.forkCount).toBe(1);
   });
 
-  it("recordConsumption with incrementForkCount: false bumps lastUsedAt only", () => {
+  it("incrementForkCount: false 时 recordConsumption 只更新 lastUsedAt", () => {
     writeImage(userRoot, "p", `
 name: p
 version: 1
@@ -116,8 +116,7 @@ files: []
     const before = lib.list()[0]!;
     expect(before.stats.forkCount).toBe(0);
 
-    // Pre-launch optimistic call — bumps lastUsedAt without inflating
-    // fork_count (lastUsedAt records intent regardless of outcome).
+    // 启动前乐观调用——更新 lastUsedAt，但不虚增 fork_count（lastUsedAt 记录意图，不受结果影响）。
     lib.recordConsumption(before.id, {
       incrementForkCount: false,
       now: () => new Date("2026-05-04T20:00:00Z"),
@@ -126,7 +125,7 @@ files: []
     expect(afterIntent.stats.forkCount).toBe(0);
     expect(afterIntent.stats.lastUsedAt).toBe("2026-05-04T20:00:00.000Z");
 
-    // Post-launch success call — bumps fork_count.
+    // 启动成功后的调用——增加 fork_count。
     lib.recordConsumption(before.id, {
       incrementForkCount: true,
       now: () => new Date("2026-05-04T20:00:05Z"),
@@ -136,7 +135,7 @@ files: []
     expect(afterSuccess.stats.lastUsedAt).toBe("2026-05-04T20:00:05.000Z");
   });
 
-  it("recordConsumption back-compat: legacy positional `now` form still works", () => {
+  it("recordConsumption 向后兼容：旧版位置 `now` 形式仍有效", () => {
     writeImage(userRoot, "p", `
 name: p
 version: 1
@@ -151,16 +150,15 @@ files: []
     });
     lib.scan();
     const before = lib.list()[0]!;
-    // Legacy form: positional `() => Date` argument is treated as the
-    // clock and incrementForkCount defaults to true (preserves the
-    // first-shipped signature for any out-of-tree callers).
+    // 旧版形式：位置 `() => Date` 参数视为时钟，incrementForkCount 默认为 true（为树外调用方
+    // 保留首个已发布签名）。
     lib.recordConsumption(before.id, () => new Date("2026-05-04T20:00:00Z"));
     const after = lib.list()[0]!;
     expect(after.stats.forkCount).toBe(1);
     expect(after.stats.lastUsedAt).toBe("2026-05-04T20:00:00.000Z");
   });
 
-  it("pin / unpin write and remove the .pinned sentinel", () => {
+  it("pin / unpin 写入和删除 .pinned sentinel", () => {
     writeImage(userRoot, "p", `
 name: p
 version: 1
@@ -183,7 +181,7 @@ files: []
     expect(lib.list()[0]!.pinned).toBe(false);
   });
 
-  it("install writes manifest + stats + supplementary files", () => {
+  it("install 写入 manifest、stats 和补充文件", () => {
     const lib = new AgentImageLibraryService({
       roots: [{ path: userRoot, sourceType: "user_file" }],
     });
@@ -203,13 +201,13 @@ files: []
     expect(existsSync(join(targetDir, "manifest.yaml"))).toBe(true);
     expect(existsSync(join(targetDir, "stats.json"))).toBe(true);
     expect(readFileSync(join(targetDir, "supplement.md"), "utf-8")).toBe("supplementary content");
-    // Re-scan picks up the new entry
+    // 重新扫描会发现新 entry。
     lib.scan();
     expect(lib.list()).toHaveLength(1);
     expect(lib.list()[0]!.name).toBe("installed");
   });
 
-  it("install rejects duplicate name", () => {
+  it("install 拒绝重复名称", () => {
     const lib = new AgentImageLibraryService({
       roots: [{ path: userRoot, sourceType: "user_file" }],
     });
@@ -219,10 +217,10 @@ files: []
       createdAt: "2026-01-01T00:00:00Z", files: [],
     };
     lib.install(userRoot, manifest, new Map());
-    expect(() => lib.install(userRoot, manifest, new Map())).toThrow(/already exists/);
+    expect(() => lib.install(userRoot, manifest, new Map())).toThrow(/已存在/);
   });
 
-  it("workspace root wins on collision (last in roots array)", () => {
+  it("发生冲突时 workspace root 优先（位于 roots 数组最后）", () => {
     const sameManifest = `
 name: collision
 version: 1
@@ -246,24 +244,24 @@ files: []
 });
 
 describe("agentImageId / parseAgentImageId", () => {
-  it("encodes and decodes name:version", () => {
+  it("编码和解码 name:version", () => {
     expect(agentImageId("foo", "1")).toBe("agent-image:foo:1");
     expect(parseAgentImageId("agent-image:foo:1")).toEqual({ name: "foo", version: "1" });
   });
 
-  it("splits on the LAST colon so names with colons round-trip", () => {
+  it("在最后一个冒号处分割，使含冒号名称可往返", () => {
     const id = agentImageId("project:alpha", "3");
     expect(parseAgentImageId(id)).toEqual({ name: "project:alpha", version: "3" });
   });
 
-  it("returns null for non-agent-image ids", () => {
+  it("对非 agent-image id 返回 null", () => {
     expect(parseAgentImageId("context-pack:foo:1")).toBeNull();
     expect(parseAgentImageId("workflow:foo:1")).toBeNull();
   });
 });
 
 describe("estimateTokensFromBytes", () => {
-  it("uses chars/4 heuristic", () => {
+  it("使用字符数/4 启发式", () => {
     expect(estimateTokensFromBytes(0)).toBe(0);
     expect(estimateTokensFromBytes(7)).toBe(2);
     expect(estimateTokensFromBytes(100)).toBe(25);

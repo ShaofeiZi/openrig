@@ -1,12 +1,10 @@
-// OPR.0.4.6.WF5 FR-2 class (a): the born-in-transaction exception item.
+// OPR.0.4.6.WF5 FR-2 class (a)：在事务中诞生的 exception item。
 //
-// The load-bearing never-lost AC: there is NO window where an instance is
-// failed and no attention item exists — they commit together or roll back
-// together (guard attention flag 1). Plus: THE TIER SPLIT at the wire
-// (an orchestrator-routed item matches NEITHER leg of the shipped
-// attention union), the never-lost fallback at every dial position, the
-// write-gate fallback, and the happy-path zero-items negative (FR-5's
-// teeth — zero items of ANY routing).
+// 承重的“绝不丢失”验收条件：不存在实例已失败但 attention item 尚不存在的窗口，两者要么
+// 一起提交，要么一起回滚（guard attention flag 1）。此外还覆盖：接线层的 tier 分流
+//（路由到 orchestrator 的条目不匹配已发布 attention union 的任一分支）、每个旋钮位置的
+// never-lost fallback、write-gate fallback，以及 happy path 下零条目的反例（FR-5 的约束：
+// 任意路由均为零条目）。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -71,7 +69,7 @@ function exceptionRows(db: Database.Database): Array<Record<string, unknown>> {
     .all() as Array<Record<string, unknown>>;
 }
 
-describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
+describe("WF-5 FR-2 class (a)：事务内创建的 exception item", () => {
   let db: Database.Database;
   let queueRepo: QueueRepository;
   let runtime: WorkflowRuntime;
@@ -85,8 +83,8 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     queueRepo = new QueueRepository(db, bus, {
       validateRig: opts?.validateRig ?? (() => true),
     });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用 fail-closed（MF2）；期望 nudge 的终态关闭需要同数据库的 intent
+    // store 才能持久化 wake。
     queueRepo.attachOutbox(new OutboxHandler(db));
     runtime = new WorkflowRuntime({
       db,
@@ -129,7 +127,7 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     vi.restoreAllMocks();
   });
 
-  it("the failing commit carries the item: failed instance + exception item exist together, routed to the orchestrator target with the ORDINARY tier", async () => {
+  it("失败提交携带条目：failed 实例与 exception item 同时存在，并以普通 tier 路由到 orchestrator 目标", async () => {
     build();
     const { instanceId, packetId } = await failEntryStep(seed(SPEC_WITH_ORCH));
 
@@ -137,23 +135,23 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     expect(rows).toHaveLength(1);
     const item = rows[0]!;
     expect(item.destination_session).toBe("orch-lead@rig");
-    // THE TIER-SPLIT NEGATIVE at the wire: neither attention-union leg
-    // matches — ordinary tier AND non-human destination.
+    // 接线层的 tier-split 反例：普通 tier 且目标非 human，因此不匹配 attention union
+    // 的任一分支。
     expect(item.tier).not.toBe("human-gate");
     expect(isHumanSeatSession(item.destination_session)).toBe(false);
-    // identity tags: queryable joins, never summary parsing
+    // identity tag 用于可查询 join，绝不依赖 summary 解析。
     const tags = String(item.tags);
     expect(tags).toContain(`instance:${instanceId}`);
     expect(tags).toContain("step:produce");
     expect(tags).toContain("exception:unmapped_failed");
     expect(tags).toContain(`occurrence:${packetId}`);
-    // actionable: summary + evidence pointer + resolution affordance
-    expect(String(item.summary)).toContain("no remediation branch");
-    expect(String(item.evidence_ref)).toContain("rig workflow trace");
-    expect(String(item.body)).toContain("rig workflow resume");
+    // 可执行信息：summary + evidence 指针 + 解决入口。
+    expect(String(item.summary)).toContain("没有补救分支");
+    expect(String(item.evidence_ref)).toContain("zrig workflow trace");
+    expect(String(item.body)).toContain("zrig workflow resume");
   });
 
-  it("ATOMICITY: an injected failure during item creation rolls back the ENTIRE close — no failed-without-item window, no item-without-failure", async () => {
+  it("原子性：创建条目时注入失败会回滚整个关闭，不出现有失败无条目或有条目无失败的窗口", async () => {
     build();
     const specPath = seed(SPEC_WITH_ORCH);
     const inst = await runtime.instantiate({
@@ -178,8 +176,7 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     ).rejects.toThrow(/boom-injected/);
     spy.mockRestore();
 
-    // whole txn rolled back: instance NOT failed, packet still open on
-    // the frontier, zero exception items.
+    // 整个事务回滚：实例未失败，packet 仍在 frontier 上打开，exception item 为零。
     const instRow = db
       .prepare(`SELECT status FROM workflow_instances WHERE instance_id = ?`)
       .get(inst.instance.instanceId) as { status: string };
@@ -191,7 +188,7 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     expect(["pending", "in-progress"]).toContain(packet.state);
   });
 
-  it("NEVER-LOST FALLBACK: no exception_routing + no host default → the item routes human@host with the human-gate tier", async () => {
+  it("NEVER-LOST FALLBACK：无 exception_routing 且无 host 默认值时，以 human-gate tier 路由到 human@host", async () => {
     build();
     await failEntryStep(seed(SPEC_NO_ROUTING));
     const rows = exceptionRows(db);
@@ -200,7 +197,7 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     expect(rows[0]!.tier).toBe("human-gate");
   });
 
-  it("HUMAN-ONLY dial: the item routes human@host FIRST with the human-gate tier (matches the shipped attention union's tier leg)", async () => {
+  it("HUMAN-ONLY 旋钮：优先以 human-gate tier 路由到 human@host（匹配已发布 attention union 的 tier 分支）", async () => {
     build();
     await failEntryStep(seed(SPEC_HUMAN_ONLY));
     const rows = exceptionRows(db);
@@ -209,7 +206,7 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     expect(rows[0]!.tier).toBe("human-gate");
   });
 
-  it("host dial default (link 3) applies when the spec declares nothing", async () => {
+  it("规范未声明路由时应用 host 旋钮默认值（link 3）", async () => {
     build({ hostDefault: () => "human_only" });
     await failEntryStep(seed(SPEC_NO_ROUTING.replace("wf5-exc-noroute", "wf5-exc-hostdial")));
     const rows = exceptionRows(db);
@@ -217,7 +214,7 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     expect(rows[0]!.tier).toBe("human-gate");
   });
 
-  it("WRITE-GATE FALLBACK: a routed destination the queue gate rejects re-routes human@host instead of losing the exception or failing the close", async () => {
+  it("WRITE-GATE FALLBACK：queue gate 拒绝目标时改路由到 human@host，不丢异常也不让关闭失败", async () => {
     build({
       validateRig: (ref: string) => !ref.includes("orch-lead"),
     });
@@ -232,7 +229,7 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     expect(instRow.status).toBe("failed");
   });
 
-  it("HAPPY-PATH NEGATIVE (FR-5's teeth): a healthy end-to-end run creates ZERO exception items of ANY routing", async () => {
+  it("HAPPY-PATH 反例（FR-5 约束）：健康端到端运行不创建任何路由类型的 exception item", async () => {
     build();
     const specPath = seed(SPEC_WITH_ORCH.replace("id: wf5-exc-pipeline", "id: wf5-exc-happy"));
     const inst = await runtime.instantiate({
@@ -258,15 +255,15 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
       .get(inst.instance.instanceId) as { status: string };
     expect(instRow.status).toBe("completed");
     expect(exceptionRows(db)).toHaveLength(0);
-    // FR-5's second tooth: zero UNSOLICITED orchestrator involvement —
-    // the declared orchestrator seat received NOTHING on a healthy run.
+    // FR-5 的第二条约束：orchestrator 零主动介入；健康运行时，声明的 orchestrator seat
+    // 不会收到任何内容。
     const orchBound = db
       .prepare(`SELECT COUNT(*) AS n FROM queue_items WHERE destination_session = 'orch-lead@rig'`)
       .get() as { n: number };
     expect(orchBound.n).toBe(0);
   });
 
-  it("class (c) MID-FLOW: the WF-2 human gate item IS the exception item — one packet carrying the full class-c identity, occurrence = its own id (guard code-review fold)", async () => {
+  it("class (c) 流程中段：WF-2 human gate 条目就是 exception item，单个 packet 携带完整 class-c 身份且 occurrence 等于自身 ID", async () => {
     build();
     const gated = SPEC_WITH_ORCH.replace("id: wf5-exc-pipeline", "id: wf5-exc-gate").replace(
       `    - id: review
@@ -295,19 +292,19 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     const rows = exceptionRows(db);
     expect(rows).toHaveLength(1);
     const item = rows[0]!;
-    // ONE item: the gate packet ITSELF (no second minted item)
+    // 只有一个条目：gate packet 本身，不再创建第二个条目。
     expect(item.qitem_id).toBe(r.nextQitemId);
     const tags = String(item.tags);
     expect(tags).toContain("exception:human_gate_trip");
     expect(tags).toContain("step:review");
     expect(tags).toContain(`occurrence:${r.nextQitemId}`);
     expect(tags).toContain(`instance:${inst.instance.instanceId}`);
-    // attention via the park leg (blocked_on human@host)
+    // 通过 park 分支呈现 attention（blocked_on human@host）。
     expect(item.state).toBe("blocked");
     expect(item.blocked_on).toBe("human@host");
   });
 
-  it("class (c) GATED ENTRY: the entry gate packet carries the class-c identity from birth", async () => {
+  it("class (c) GATED ENTRY：入口 gate packet 从创建起即携带 class-c 身份", async () => {
     build();
     const entryGated = SPEC_WITH_ORCH.replace("id: wf5-exc-pipeline", "id: wf5-exc-entrygate").replace(
       `    - id: produce
@@ -339,7 +336,7 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     expect(tags).toContain(`occurrence:${entryId}`);
   });
 
-  it("class (c) NEGATIVE: a handler-role gate carries NO exception identity (deterministic handoff)", async () => {
+  it("class (c) 反例：handler-role gate 不携带 exception identity（确定性交接）", async () => {
     build();
     const handlerGated = SPEC_WITH_ORCH.replace("id: wf5-exc-pipeline", "id: wf5-exc-handlergate").replace(
       `    - id: review
@@ -366,7 +363,7 @@ describe("WF-5 FR-2 class (a): born-in-txn exception item", () => {
     expect(exceptionRows(db)).toHaveLength(0);
   });
 
-  it("a MAPPED failed (WF-2 branch) is remediation, NOT an exception — zero items", async () => {
+  it("已映射的 failed（WF-2 分支）属于 remediation 而非 exception，因此条目为零", async () => {
     build();
     const branched = SPEC_WITH_ORCH.replace(
       "id: wf5-exc-pipeline",

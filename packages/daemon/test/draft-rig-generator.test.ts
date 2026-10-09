@@ -25,9 +25,9 @@ function makeSession(overrides: Partial<DiscoveredSession>): DiscoveredSession {
   };
 }
 
-describe("Draft rig generator", () => {
-  // Test 1: groups by shared CWD
-  it("groups sessions by shared CWD into pods", () => {
+describe("工作组草稿生成器", () => {
+  // 测试 1：按共享 CWD 分组。
+  it("按共享 CWD 把 session 分组为 pod", () => {
     const sessions = [
       makeSession({ id: "s1", tmuxSession: "impl", cwd: "/project/code" }),
       makeSession({ id: "s2", tmuxSession: "qa", cwd: "/project/code", runtimeHint: "codex" }),
@@ -37,11 +37,11 @@ describe("Draft rig generator", () => {
     const result = generateDraftRig(sessions);
     const raw = RigSpecCodec.parse(result.yaml);
     const pods = (raw as Record<string, unknown>)["pods"] as Array<Record<string, unknown>>;
-    expect(pods.length).toBe(2); // code pod + infra pod
+    expect(pods.length).toBe(2); // code pod + infra pod。
   });
 
-  // Test 2: assigns names from session names
-  it("assigns pod/member names from session names", () => {
+  // 测试 2：根据 session 名分配 pod/member 名称。
+  it("根据 session 名分配 pod 与成员名称", () => {
     const sessions = [
       makeSession({ id: "s1", tmuxSession: "dev-lead", cwd: "/project" }),
     ];
@@ -53,8 +53,8 @@ describe("Draft rig generator", () => {
     expect(members[0]!["id"]).toBe("dev-lead");
   });
 
-  // Test 3: produces valid rig spec YAML
-  it("produces valid rig spec that passes schema validation", () => {
+  // 测试 3：生成有效的工作组规范 YAML。
+  it("生成可通过 schema 验证的有效工作组规范", () => {
     const sessions = [
       makeSession({ id: "s1", tmuxSession: "impl", cwd: "/project" }),
     ];
@@ -65,8 +65,8 @@ describe("Draft rig generator", () => {
     expect(validation.valid).toBe(true);
   });
 
-  // Test 4: handles mixed runtimes
-  it("handles mixed runtimes (claude-code + codex + terminal)", () => {
+  // 测试 4：处理混合 runtime。
+  it("处理混合 runtime（claude-code + codex + terminal）", () => {
     const sessions = [
       makeSession({ id: "s1", tmuxSession: "impl", runtimeHint: "claude-code", cwd: "/project" }),
       makeSession({ id: "s2", tmuxSession: "qa", runtimeHint: "codex", cwd: "/project" }),
@@ -78,7 +78,7 @@ describe("Draft rig generator", () => {
     const validation = RigSpecSchema.validate(raw);
     expect(validation.valid).toBe(true);
 
-    // Terminal member should have sentinel values
+    // Terminal 成员应使用哨兵值。
     const pods = (raw as Record<string, unknown>)["pods"] as Array<Record<string, unknown>>;
     const members = (pods[0] as Record<string, unknown>)["members"] as Array<Record<string, unknown>>;
     const terminal = members.find((m) => m["runtime"] === "terminal");
@@ -87,8 +87,8 @@ describe("Draft rig generator", () => {
     expect(terminal!["profile"]).toBe("none");
   });
 
-  // Test 5: single session rig
-  it("handles single-session rigs", () => {
+  // 测试 5：单 session 工作组。
+  it("处理单 session 工作组", () => {
     const sessions = [makeSession({ id: "s1", tmuxSession: "solo", cwd: "/project" })];
     const result = generateDraftRig(sessions);
     const raw = RigSpecCodec.parse(result.yaml);
@@ -96,8 +96,8 @@ describe("Draft rig generator", () => {
     expect(validation.valid).toBe(true);
   });
 
-  // Test 6: excludes unknown runtime with warning
-  it("excludes unknown runtime sessions with warning", () => {
+  // 测试 6：排除未知 runtime 并给出警告。
+  it("排除 runtime 未知的 session 并给出警告", () => {
     const sessions = [
       makeSession({ id: "s1", tmuxSession: "known", runtimeHint: "claude-code", cwd: "/project" }),
       makeSession({ id: "s2", tmuxSession: "mystery", runtimeHint: "unknown", cwd: "/project" }),
@@ -106,11 +106,11 @@ describe("Draft rig generator", () => {
     const result = generateDraftRig(sessions);
     expect(result.warnings.length).toBeGreaterThan(0);
     expect(result.warnings[0]).toContain("mystery");
-    expect(result.yaml).toContain("# WARNING");
+    expect(result.yaml).toContain("# 警告");
   });
 
-  // Test 7: deduplicates colliding names
-  it("deduplicates colliding member names", () => {
+  // 测试 7：对冲突名称去重。
+  it("对冲突的成员名称去重", () => {
     const sessions = [
       makeSession({ id: "s1", tmuxSession: "impl", cwd: "/project" }),
       makeSession({ id: "s2", tmuxSession: "impl", cwd: "/project", runtimeHint: "codex" }),
@@ -121,7 +121,7 @@ describe("Draft rig generator", () => {
     const pods = (raw as Record<string, unknown>)["pods"] as Array<Record<string, unknown>>;
     const members = (pods[0] as Record<string, unknown>)["members"] as Array<Record<string, unknown>>;
     const ids = members.map((m) => m["id"]);
-    expect(new Set(ids).size).toBe(2); // No duplicates
+    expect(new Set(ids).size).toBe(2); // 不允许重复。
     expect(ids).toContain("impl");
     expect(ids).toContain("impl-2");
   });

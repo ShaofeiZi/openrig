@@ -6,10 +6,10 @@ import { demoSnapshot } from "../src/demo-data.js";
 import { createStyle, stripAnsi, detectColorMode } from "../src/theme.js";
 import { stylizeLines } from "../src/stylize.js";
 
-// Founder visual-polish directive: styling is a zero-width post-pass. The
-// LOAD-BEARING invariant: stripAnsi(styled[i]) === plain[i] for EVERY line of
-// EVERY view — color can never move a hit target, change a width, or shear a
-// frame (the stable-frame guarantee stays proven).
+// Founder 视觉润色指令：styling 是零宽后处理。
+// 承重不变量：每个视图每一行 stripAnsi(styled[i]) === plain[i]——
+// 颜色绝不能移动命中目标、改变宽度或剪切
+// 帧（稳定帧保证持续成立）。
 
 const snap = demoSnapshot();
 
@@ -32,7 +32,7 @@ const VIEWS: Array<[string, string[]]> = [
   ["named error", ["agent nobody.here"]],
 ];
 
-describe("stylize invariant: strip(styled) === plain, every view, every mode", () => {
+describe("stylize 不变量：strip(styled) === plain，每视图、每模式", () => {
   for (const mode of ["truecolor", "256", "16"] as const) {
     it(`holds in ${mode} mode across all views`, () => {
       const style = createStyle(mode);
@@ -47,65 +47,65 @@ describe("stylize invariant: strip(styled) === plain, every view, every mode", (
     });
   }
 
-  it("none mode returns the plain lines untouched (NO_COLOR honesty)", () => {
+  it("none 模式原样返回纯行（NO_COLOR 诚实）", () => {
     const screen = screenFor("rig openrig-build");
     expect(stylizeLines(screen, createStyle("none"))).toEqual(screen.lines);
   });
 });
 
-describe("treatment (mockup palette semantics)", () => {
+describe("treatment（mockup 调色板语义）", () => {
   const style = createStyle("truecolor");
 
-  it("colors STATUS semantically: active=ok-green, needs-attention=amber, unknown=dim", () => {
+  it("按语义给 STATUS 着色：active=ok-green，needs-attention=amber，unknown=dim", () => {
     const styled = stylizeLines(screenFor("rig openrig-build"), style).join("\n");
-    expect(styled).toContain("\x1b[38;2;152;195;121mworking\x1b[0m");
-    expect(styled).toContain("\x1b[38;2;244;190;92mneeds you\x1b[0m");
-    expect(styled).toContain("\x1b[38;2;109;116;128munknown\x1b[0m");
+    expect(styled).toContain("\x1b[38;2;152;195;121m工作中\x1b[0m");
+    expect(styled).toContain("\x1b[38;2;244;190;92m需要你\x1b[0m");
+    expect(styled).toContain("\x1b[38;2;109;116;128m未知\x1b[0m");
   });
 
-  it("paints selection as an inverse accent bar (visible highlight, not just a glyph)", () => {
+  it("把选择绘为反色强调条（可见高亮，非仅字形）", () => {
     const styled = stylizeLines(screenFor(), style);
     const bar = styled.find((l) => l.includes("\x1b[1;38;2;111;168;255;48;2;34;52;82m"));
     expect(bar).toBeDefined();
     expect(stripAnsi(bar!)).toMatch(/^▶/);
   });
 
-  it("links/acts get the G2 accent (term ▸, open ▸, tabs)", () => {
+  it("链接/动作获 G2 强调色（term ▸、open ▸、tabs）", () => {
     const styled = stylizeLines(screenFor("rig openrig-build"), style).join("\n");
-    expect(styled).toContain("\x1b[1;38;2;111;168;255mterm ▸\x1b[0m");
+    expect(styled).toContain("\x1b[1;38;2;111;168;255m终端 ▸\x1b[0m");
   });
 
-  it("Attention styling preserves unavailable truth without legacy fleet alerts", () => {
+  it("Attention 样式保留不可用真相，无遗留 fleet 告警", () => {
     const styled = stylizeLines(screenFor(":needs"), style).join("\n");
-    expect(stripAnsi(styled)).toContain("Unavailable: Feed");
+    expect(stripAnsi(styled)).toContain("不可用: 待关注");
     expect(stripAnsi(styled)).not.toContain("✖ remote-host");
     expect(styled).not.toMatch(/\x1b\[5;38;2;244;190;92m⚑/);
   });
 
-  it("chrome rules carry pane titles; hint bar and status line are styled", () => {
+  it("chrome 规则带窗格标题；提示条与状态行被样式化", () => {
     const styled = stylizeLines(screenFor("rig openrig-build"), style);
-    expect(stripAnsi(styled[1]!)).toMatch(/EXPLORER.*╋.*TOPOLOGY/);
-    const hint = styled.find((l) => stripAnsi(l).includes("q quit"));
+    expect(stripAnsi(styled[1]!)).toMatch(/资源管理器.*╋.*拓扑/);
+    const hint = styled.find((l) => stripAnsi(l).includes("q 退出"));
     expect(hint).toBeDefined();
     expect(hint).toContain("\x1b[");
   });
 
-  it("16-color mode emits only basic SGR (no 38;2 / 38;5) — sane degradation", () => {
+  it("16 色模式仅发基础 SGR（无 38;2 / 38;5）——合理降级", () => {
     const styled = stylizeLines(screenFor("rig openrig-build"), createStyle("16")).join("\n");
     expect(styled).not.toContain("38;2;");
     expect(styled).not.toContain("38;5;");
     expect(styled).toContain("\x1b[");
   });
 
-  it("256 mode uses 38;5 indexed colors", () => {
+  it("256 模式用 38;5 索引色", () => {
     const styled = stylizeLines(screenFor("rig openrig-build"), createStyle("256")).join("\n");
     expect(styled).toContain("38;5;");
     expect(styled).not.toContain("38;2;");
   });
 });
 
-describe("color-mode detection", () => {
-  it("honors NO_COLOR, dumb terms, COLORTERM and 256color TERM", () => {
+describe("颜色模式检测", () => {
+  it("遵守 NO_COLOR、哑终端、COLORTERM 与 256color TERM", () => {
     expect(detectColorMode({ NO_COLOR: "1", TERM: "xterm-256color" })).toBe("none");
     expect(detectColorMode({ TERM: "dumb" })).toBe("none");
     expect(detectColorMode({ TERM: "xterm-256color", COLORTERM: "truecolor" })).toBe("truecolor");

@@ -1,10 +1,10 @@
-// OPR.0.4.3.29 — dashboard theming: registry + resolution + persistence + no-FOUC
-// contract + provider/selector behavior. Proves the AC-level guarantees:
-//  - switch applies (the .dark class toggles on <html>) and persists across reload
-//  - light is the default look; dark is a selectable new theme
-//  - first load with no stored choice follows the OS (system) — the pre-paint path
-//  - an explicit choice wins over the OS
-//  - extensibility: the selector is registry-driven (adding a theme is data-only)
+// OPR.0.4.3.29——dashboard 主题：注册表 + 解析 + 持久化 + no-FOUC
+// 契约 + provider/selector 行为。证明 AC 级保证：
+//  - 切换生效（.dark 类在 <html> 上切换）并跨 reload 持久
+//  - light 为默认外观；dark 为可选新主题
+//  - 无存储选择的首载跟随 OS（system）——pre-paint 路径
+//  - 显式选择胜过 OS
+//  - 可扩展：selector 由注册表驱动（加主题仅改数据）
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
@@ -20,7 +20,7 @@ import {
 import { ThemeProvider, useTheme } from "../src/components/ThemeProvider.js";
 import { ThemeSelector } from "../src/components/ThemeSelector.js";
 
-/** Override window.matchMedia so `(prefers-color-scheme: dark)` reports `osDark`. */
+/** 覆写 window.matchMedia，使 `(prefers-color-scheme: dark)` 报告 `osDark`。 */
 function mockOsDark(osDark: boolean) {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
@@ -135,7 +135,7 @@ describe("ThemeProvider + ThemeSelector", () => {
     expect(document.documentElement.classList.contains("dark")).toBe(true);
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
 
-    // Simulate a reload: unmount + remount reads the persisted choice.
+    // 模拟 reload：卸载 + 重挂载读取持久化选择。
     unmount();
     document.documentElement.classList.remove("dark");
     render(

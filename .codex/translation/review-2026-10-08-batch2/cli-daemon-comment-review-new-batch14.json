@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch14",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/walk.test.ts",
+      "before_sha256_16": "33268ad2f90f0a16",
+      "after_sha256_16": "e4ad2bec6d270b46",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/context-address-fork.test.ts",
+      "before_sha256_16": "fc64c115d512db6b",
+      "after_sha256_16": "ff4df6f4106235a5",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/file-transfer.test.ts",
+      "before_sha256_16": "f5b3f96ca47e4201",
+      "after_sha256_16": "8810bc6023a4e933",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/client-headers.test.ts",
+      "before_sha256_16": "e65ff936fe308a73",
+      "after_sha256_16": "9d2841941f5fd332",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/stub-runner-compaction-e2e.test.ts",
+      "before_sha256_16": "d7bc2a7c4d14a617",
+      "after_sha256_16": "55846c42a3a2bbb5",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

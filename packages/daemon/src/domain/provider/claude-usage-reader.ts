@@ -1,12 +1,11 @@
-// Slice-04 (OPR.0.5.0.4) seam C3 — the Claude statusline provider_usage cache LANE.
-// A statusline sidecar writes a per-seat provider_usage cache with an atomic tmp+rename (so a
-// concurrent daemon read never sees a torn file); the daemon reads it here and normalizes it into
-// provider_statusline signal rows via the existing claudeStatuslineSignals. Absent cache
-// (pre-first-response) and empty/malformed readings each become an EXPLICIT
-// unknown row with an unknownReason — never a missing row and never a fabricated zero. Never throws.
+// Slice-04（OPR.0.5.0.4）接缝 C3——Claude statusline provider_usage 缓存通道。
+// statusline sidecar 使用原子 tmp+rename 写入逐席位 provider_usage 缓存，使后台服务并发读取时
+// 绝不会看到残缺文件；后台服务在此读取，并通过现有 claudeStatuslineSignals 归一化为
+// provider_statusline 信号行。缓存不存在（首次响应前）以及空/畸形读取，都会成为带
+// unknownReason 的明确 unknown 行，绝不缺行，也绝不伪造零值；本模块绝不抛错。
 //
-// SCOPE: this atom is the cache producer/reader + collectSignals wiring ONLY. It does not touch the
-// C4 reactive tap, C2 Codex app-server, activity-accurate precheck, D switch execution, or BR-1.
+// 范围：本原子只包含缓存生产/读取与 collectSignals 接线，不涉及 C4 reactive tap、
+// C2 Codex app-server、活动准确性预检、D switch 执行或 BR-1。
 
 import fs from "node:fs";
 import nodePath from "node:path";
@@ -21,21 +20,21 @@ export interface ProviderUsageCacheFs {
   exists(path: string): boolean;
 }
 
-/** The on-disk provider_usage cache shape (authored by the Claude statusline sidecar). */
+/** 磁盘上的 provider_usage 缓存结构（由 Claude statusline sidecar 写入）。 */
 export interface ProviderUsageCache {
   seatSession: string;
-  /** Present only when the statusline carried valid Pro/Max rate_limits. */
+  /** 仅当 statusline 携带有效 Pro/Max rate_limits 时存在。 */
   accountKind?: "subscription";
   asOf: string;
-  /** Present only when the statusline carried a rate_limits object. */
+  /** 仅当 statusline 携带 rate_limits 对象时存在。 */
   rateLimits?: ClaudeStatuslineReading;
   staleAfter?: string;
 }
 
 /**
- * Atomic write: serialize to a tmp sibling, then rename over the target. rename(2) is atomic on the
- * same filesystem, so a concurrent reader sees EITHER the old file OR the fully-written new one —
- * never a half-written (torn) read. The sidecar uses this so the daemon never parses a partial cache.
+ * 原子写入：先序列化到同级 tmp 文件，再 rename 覆盖目标。rename(2) 在同一文件系统内是原子的，
+ * 因此并发读取方只会看到旧文件或完整写入的新文件，绝不会读到半写入的残缺内容。
+ * sidecar 使用此方式，避免后台服务解析不完整缓存。
  */
 export function writeProviderUsageCacheAtomic(
   fs: ProviderUsageCacheFs,
@@ -52,18 +51,18 @@ export interface ClaudeSeatRef {
 }
 
 export interface ClaudeUsageReaderDeps {
-  /** The live Claude seats to read provider_usage for. */
+  /** 要读取 provider_usage 的活跃 Claude 席位。 */
   listClaudeSeats: () => ClaudeSeatRef[];
-  /** Raw cache JSON for a seat, or null if the cache file is absent (pre-first-response). Never throws. */
+  /** 席位的原始缓存 JSON；缓存文件不存在（首次响应前）时为 null；绝不抛错。 */
   readCacheRaw: (seatSession: string) => string | null;
   now: () => string;
 }
 
 /**
- * Read each Claude seat's provider_usage cache → provider_statusline rows via
- * claudeStatuslineSignals. Explicit unknown rows for absent cache (no_statusline_cache_yet) and
- * cache-present-but-no/-malformed windows (empty_reading).
- * Never throws — a malformed cache is treated as present-with-no-windows, not a crash.
+ * 读取每个 Claude 席位的 provider_usage 缓存，通过 claudeStatuslineSignals 转为
+ * provider_statusline 行。缓存缺失（no_statusline_cache_yet）以及缓存存在但窗口缺失/畸形
+ *（empty_reading）时都生成明确的 unknown 行。绝不抛错；畸形缓存按“存在但无窗口”处理，
+ * 不视为崩溃。
  */
 export function collectClaudeStatuslineSignals(deps: ClaudeUsageReaderDeps): ProviderSignal[] {
   const now = deps.now();
@@ -84,7 +83,7 @@ export function collectClaudeStatuslineSignals(deps: ClaudeUsageReaderDeps): Pro
         staleAfter = parsed.staleAfter;
         capturedAsOf = typeof parsed.asOf === "string" ? parsed.asOf : undefined;
       } catch {
-        // Malformed cache → present-with-no-windows (empty_reading unknown), never a throw.
+        // 畸形缓存 → 存在但无窗口（empty_reading unknown），绝不抛错。
         reading = undefined;
       }
     }
@@ -93,7 +92,7 @@ export function collectClaudeStatuslineSignals(deps: ClaudeUsageReaderDeps): Pro
         seatSession: seat.seatSession,
         cachePresent,
         reading,
-        // Signal asOf = when the reading was captured (the cache's asOf) when present+valid; else now.
+        // 缓存存在且有效时，信号 asOf 取读取捕获时间（缓存的 asOf）；否则取当前时间。
         asOf: cachePresent && capturedAsOf ? capturedAsOf : now,
         staleAfter,
       }),
@@ -102,7 +101,7 @@ export function collectClaudeStatuslineSignals(deps: ClaudeUsageReaderDeps): Pro
   return out;
 }
 
-/** Read the seat-keyed cache directory using the same path consumed by daemon startup. */
+/** 使用后台服务启动流程消费的同一路径，读取按席位索引的缓存目录。 */
 export function collectClaudeSignalsFromProviderUsageDirectory(
   directory: string,
   now: () => string = () => new Date().toISOString(),

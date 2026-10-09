@@ -1,5 +1,5 @@
-// Stub data standing in for the §4.A daemon reads. Shapes mirror what the real
-// endpoints return closely enough to exercise navigation; no daemon calls in the spike.
+// Stub 数据代替 §4.A 的后台服务读取。数据结构与真实端点足够接近，可用于验证导航；
+// 此 spike 不会调用后台服务。
 export const STUB = {
   hosts: [
     {
@@ -39,8 +39,8 @@ export const STUB = {
     ],
   },
   needs: [
-    { kind: 'idle-with-work', target: 'dev50.guard', detail: 'assigned work, idle 42m' },
-    { kind: 'host-down', target: 'mm2-host', detail: 'unreachable 12m' },
+    { kind: 'idle-with-work', target: 'dev50.guard', detail: '已分配工作，空闲 42 分钟' },
+    { kind: 'host-down', target: 'mm2-host', detail: '不可达 12 分钟' },
   ],
 }
 

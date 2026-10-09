@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch31",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/cli/test/crash-cart-command.test.ts",
+      "before_sha256_16": "1d484e6c7516f09e",
+      "after_sha256_16": "7f690a3894216d51",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/file-command.test.ts",
+      "before_sha256_16": "64b88df550870419",
+      "after_sha256_16": "5e850f32df3c4b10",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/gateway-human-registry-verb.test.ts",
+      "before_sha256_16": "6add45f6ab14cd59",
+      "after_sha256_16": "e4d4d85312c2d55e",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/import-running-name-render.test.ts",
+      "before_sha256_16": "b417e9ecf3a33efb",
+      "after_sha256_16": "ea88f21e12c1a972",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/launch.test.ts",
+      "before_sha256_16": "6889ad3622d2dc69",
+      "after_sha256_16": "fd504f308d4309e1",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

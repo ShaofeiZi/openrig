@@ -1,16 +1,16 @@
-// Rig Context / Composable Context Injection v0 (PL-014) — daemon HTTP
-// routes for context_packs.
+// Rig Context / 可组合上下文注入 v0（PL-014）——context_packs 的后台服务 HTTP
+// 路由。
 //
-// Endpoints (Slice-03 Atom 5 — ref-primary; colon-id `/library/:id` removed):
-//   GET    /api/context-packs/library                  — list all packs
-//   POST   /api/context-packs/library/sync             — re-walk discovery roots
-//   POST   /api/context-packs/library/compose          — compose files into a durable ref
-//   GET    /api/context-packs/library/by-ref?ref=      — pack manifest + files
-//   DELETE /api/context-packs/library/by-ref?ref=      — remove a pack
-//   GET    /api/context-packs/library/by-ref/preview?ref= — assembled bundle (dry-run shape)
+// 端点（Slice-03 Atom 5——ref 为主；冒号 id `/library/:id` 已移除）：
+//   GET    /api/context-packs/library                  — 列出全部 pack
+//   POST   /api/context-packs/library/sync            — 重新遍历发现根
+//   POST   /api/context-packs/library/compose         — 把文件组合成持久 ref
+//   GET    /api/context-packs/library/by-ref?ref=      — pack manifest + 文件
+//   DELETE /api/context-packs/library/by-ref?ref=      — 删除 pack
+//   GET    /api/context-packs/library/by-ref/preview?ref= — 组装后的 bundle（dry-run 形状）
 //
-// A pack is addressed by its path-like ref (e.g. `packs/compaction-restore`);
-// the entry's opaque `id` is `context-pack:<ref>` (UI routing key only).
+// pack 由其路径样 ref 寻址（例如 `packs/compaction-restore`）；
+// 条目的不透明 `id` 是 `context-pack:<ref>`（仅作 UI 路由 key）。
 
 import { Hono } from "hono";
 import { createHash } from "node:crypto";
@@ -60,8 +60,7 @@ export function contextPacksRoutes(): Hono {
   const router = new Hono();
 
   // GET /library
-  router.get("/library", (c) => {
-    const lib = c.get("contextPackLibrary" as never) as ContextPackLibraryService | undefined;
+  router.get("/library", (c) => {    const lib = c.get("contextPackLibrary" as never) as ContextPackLibraryService | undefined;
     if (!lib) return c.json({ error: "context_pack_library_unavailable" }, 503);
     return c.json(lib.list());
   });
@@ -74,7 +73,7 @@ export function contextPacksRoutes(): Hono {
     return c.json({ ...result, entries: lib.list() });
   });
 
-  // POST /library/compose — Atom 3's delivery-free file -> durable-ref path.
+  // POST /library/compose——Atom 3 的无投递 file -> durable-ref 路径。
   router.post("/library/compose", async (c) => {
     const lib = c.get("contextPackLibrary" as never) as ContextPackLibraryService | undefined;
     if (!lib) return c.json({ error: "context_pack_library_unavailable" }, 503);
@@ -92,7 +91,7 @@ export function contextPacksRoutes(): Hono {
     ) {
       return c.json({
         error: "invalid_compose_request",
-        message: "body must include { outRef, sources: [{ path, label }, ...] }",
+        message: "body 必须包含 { outRef, sources: [{ path, label }, ...] }",
       }, 400);
     }
     try {
@@ -116,21 +115,20 @@ export function contextPacksRoutes(): Hono {
     }
   });
 
-  // Slice-03 Atom 4 — the ref-primary read/delete surface. A path-like ref
-  // carries '/', so it travels as a `?ref=` query, never a `:id` path segment.
-  // Registered BEFORE `/library/:id` so the static `by-ref` segment is never
-  // captured as a colon-id. Both verbs flow through the store's sealed
-  // getByRef/removeByRef boundary (assertSafePackRef before any effect).
+  // Slice-03 Atom 4——以 ref 为主的读/删表面。路径样 ref 携带 '/'，
+  // 因此走 `?ref=` 查询，绝不作 `:id` 路径段。在 `/library/:id` 之前注册，
+  // 使静态 `by-ref` 段绝不被捕获为冒号 id。两个动词都流经 store 密封的
+  // getByRef/removeByRef 边界（任何副作用前先 assertSafePackRef）。
 
-  // GET /library/by-ref?ref=<path-like-ref>
+  // GET /library/by-ref?ref=<路径样 ref>
   router.get("/library/by-ref", (c) => {
     const lib = c.get("contextPackLibrary" as never) as ContextPackLibraryService | undefined;
     if (!lib) return c.json({ error: "context_pack_library_unavailable" }, 503);
     const ref = c.req.query("ref");
-    if (!ref) return c.json({ error: "ref_required", message: "query must include ?ref=<path-like-ref>" }, 400);
+    if (!ref) return c.json({ error: "ref_required", message: "查询必须包含 ?ref=<路径样 ref>" }, 400);
     try {
       const entry = lib.getByRef(ref);
-      if (!entry) return c.json({ error: "pack_not_found", message: `Context pack '${ref}' not found in library` }, 404);
+      if (!entry) return c.json({ error: "pack_not_found", message: `镜像库中未找到 context pack '${ref}'` }, 404);
       return c.json(entry);
     } catch (err) {
       if (err instanceof ContextPackError) {
@@ -141,12 +139,12 @@ export function contextPacksRoutes(): Hono {
     }
   });
 
-  // DELETE /library/by-ref?ref=<path-like-ref>
+  // DELETE /library/by-ref?ref=<路径样 ref>
   router.delete("/library/by-ref", (c) => {
     const lib = c.get("contextPackLibrary" as never) as ContextPackLibraryService | undefined;
     if (!lib) return c.json({ error: "context_pack_library_unavailable" }, 503);
     const ref = c.req.query("ref");
-    if (!ref) return c.json({ error: "ref_required", message: "query must include ?ref=<path-like-ref>" }, 400);
+    if (!ref) return c.json({ error: "ref_required", message: "查询必须包含 ?ref=<路径样 ref>" }, 400);
     try {
       const result = lib.removeByRef(ref);
       return c.json({ ...result, count: lib.list().length });
@@ -165,15 +163,14 @@ export function contextPacksRoutes(): Hono {
     }
   });
 
-  // Slice-03 Atom 5 — preview migrated off the removed colon-id `/library/:id`
-  // route onto the ref-primary `?ref=` surface (getByRef-backed). A resolved
-  // entry's opaque `id` (context-pack:<ref>) is echoed for the UI, but resolution
-  // is by ref only.
+  // Slice-03 Atom 5——preview 从已移除的冒号 id `/library/:id` 路由迁移到
+  // 以 ref 为主的 `?ref=` 表面（getByRef 后端）。已解析条目的不透明 `id`
+  // （context-pack:<ref>）回显给 UI，但解析只按 ref。
   const resolveByRef = (
     lib: ContextPackLibraryService,
     ref: string | undefined,
   ): { entry: ContextPackEntry } | { error: ReturnType<typeof jsonError> } => {
-    if (!ref) return { error: jsonError(400, "ref_required", "query must include ?ref=<path-like-ref>") };
+    if (!ref) return { error: jsonError(400, "ref_required", "查询必须包含 ?ref=<路径样 ref>") };
     let entry: ContextPackEntry | null;
     try {
       entry = lib.getByRef(ref);
@@ -183,11 +180,11 @@ export function contextPacksRoutes(): Hono {
       }
       return { error: jsonError(500, "by_ref_failed", (err as Error).message) };
     }
-    if (!entry) return { error: jsonError(404, "pack_not_found", `Context pack '${ref}' not found in library`) };
+    if (!entry) return { error: jsonError(404, "pack_not_found", `镜像库中未找到 context pack '${ref}'`) };
     return { entry };
   };
 
-  // GET /library/by-ref/preview?ref=<path-like-ref> — assembled bundle (read-only)
+  // GET /library/by-ref/preview?ref=<路径样 ref>——组装后的 bundle（只读）
   router.get("/library/by-ref/preview", (c) => {
     const lib = c.get("contextPackLibrary" as never) as ContextPackLibraryService | undefined;
     if (!lib) return c.json({ error: "context_pack_library_unavailable" }, 503);
@@ -211,8 +208,8 @@ export function contextPacksRoutes(): Hono {
     }
   });
 
-  // GET /library/by-ref/pieces?ref=<path-like-ref> — ordered per-member
-  // contents for `rig walk`; missing members are reported before delivery.
+  // GET /library/by-ref/pieces?ref=<路径样 ref>——按成员有序内容，供 `zrig walk`；
+  // 缺失成员在投递前报告。
   router.get("/library/by-ref/pieces", (c) => {
     const lib = c.get("contextPackLibrary" as never) as ContextPackLibraryService | undefined;
     if (!lib) return c.json({ error: "context_pack_library_unavailable" }, 503);
@@ -233,27 +230,24 @@ export function contextPacksRoutes(): Hono {
         missingFiles.push({ path: file.path, role: file.role });
       }
     }
-    // Slice-03 Atom 6b: `text` = the WHOLE plain content (present members joined
-    // by the sealed compose separator via assemblePlainFiles, read-only) — the
-    // one-payload form the --context/--body-context delivery flags inject/snapshot,
-    // vs `pieces` which walk paces separately. `bytes` lets a caller size-warn.
+    // Slice-03 Atom 6b：`text` = 整个 plain 内容（在场成员经密封的 compose 分隔符
+    // 由 assemblePlainFiles 连接，只读）——--context/--body-context 投递 flag 注入/快照的
+    // 单载荷形式，与逐段走步的 `pieces` 相对。`bytes` 让调用方做大小预警。
     const assembled = assemblePlainFiles({ files: pieces.map((p) => ({ path: p.path, content: p.content })) });
     return c.json({ ref: entry.relativePath, id: entry.id, pieces, missingFiles, text: assembled.text, bytes: assembled.bytes });
   });
 
-  // OPR.0.5.3.5 Atom 4c — GET /library/resolve-address?address=<name#H2/H3>:
-  // the ONE resolver home for the ref-grammar address form (mini-req 6 / Q4).
-  // The daemon owns the whole resolution — longest-prefix pack match against
-  // the library index, file within the pack (containment-checked by the
-  // library service), span within the file (Atom-1 machinery: Q1 full span,
-  // fence-protected, fail-loud with candidates, ambiguity rejected). The
-  // addressable unit is the FILE per the locked grammar; the assembled bundle
-  // is never an address target (its '## File:' frames are themselves H2s).
+  // OPR.0.5.3.5 Atom 4c——GET /library/resolve-address?address=<name#H2/H3>：
+  // ref 语法地址形式的唯一 resolver 归属（mini-req 6 / Q4）。
+  // 后台服务拥有整个解析——对库索引做最长前缀 pack 匹配，pack 内文件
+  // （由库服务做包含校验），文件内 span（Atom-1 机制：Q1 完整 span、
+  // fence 保护、带候选 fail-loud、歧义拒绝）。可寻址单元按锁定语法是 FILE；
+  // 组装后的 bundle 绝非地址目标（其 '## File:' 框本身就是 H2）。
   router.get("/library/resolve-address", (c) => {
     const lib = c.get("contextPackLibrary" as never) as ContextPackLibraryService | undefined;
     if (!lib) return c.json({ error: "context_pack_library_unavailable" }, 503);
     const address = c.req.query("address");
-    if (!address) return c.json({ error: "missing_address", message: "address is required: <pack-ref>/<file>[#H2-slug[/H3-slug]]" }, 400);
+    if (!address) return c.json({ error: "missing_address", message: "address 为必填：<pack-ref>/<file>[#H2-slug[/H3-slug]]" }, 400);
 
     let parsed;
     try {
@@ -262,14 +256,12 @@ export function contextPacksRoutes(): Hono {
       return c.json({ error: "invalid_address", message: (err as Error).message }, 400);
     }
 
-    // Longest-prefix pack match: pack refs and file paths share '/', so the
-    // library index decides the split — never a guess. BORROWED INVARIANT,
-    // named here because this loop's correctness rests on it (r1 4c rec): the
-    // scanner does NOT recurse into a pack directory, so no pack ref can be a
-    // segment-boundary prefix of another and this loop matches AT MOST ONE
-    // pack. If sub-pack indexing is ever added, this split becomes ambiguous —
-    // the no-nested-packs pin in context-pack-address-route.test.ts goes red
-    // there so the change cannot land silently.
+    // 最长前缀 pack 匹配：pack ref 与文件路径共享 '/'，因此由库索引决定切分——
+    // 绝不猜。借用不变量，在此处具名，因为本循环的正确性依赖它（r1 4c rec）：
+    // scanner 不递归进 pack 目录，因此没有 pack ref 能是另一个的段边界前缀，
+    // 本循环至多匹配一个 pack。若未来加子 pack 索引，此切分会变歧义——
+    // context-pack-address-route.test.ts 中的 no-nested-packs pin 会在那里变红，
+    // 使该变更无法静默落地。
     const entries = lib.list();
     const segments = parsed.ref.split("/");
     let entry: ContextPackEntry | undefined;
@@ -284,20 +276,20 @@ export function contextPacksRoutes(): Hono {
       }
     }
     if (!entry) {
-      return c.json({ error: "pack_not_found", message: `no library pack matches any prefix of '${parsed.ref}' — run 'rig context list' for the available refs` }, 404);
+      return c.json({ error: "pack_not_found", message: `没有库 pack 匹配 '${parsed.ref}' 的任何前缀——运行 'zrig context list' 查看可用 ref` }, 404);
     }
     if (filePath.length === 0) {
-      return c.json({ error: "missing_file_path", message: `'${parsed.ref}' names pack '${entry.relativePath}' but no file within it — the addressable unit is the file: <pack-ref>/<file>[#...]` }, 400);
+      return c.json({ error: "missing_file_path", message: `'${parsed.ref}' 命名了 pack '${entry.relativePath}' 但其中无文件——可寻址单元是文件：<pack-ref>/<file>[#...]` }, 400);
     }
     const declared = entry.files.find((f) => f.path === filePath);
     if (!declared) {
-      return c.json({ error: "file_not_in_pack", message: `pack '${entry.relativePath}' declares no file '${filePath}' — declared: ${entry.files.map((f) => f.path).join(", ")}` }, 404);
+      return c.json({ error: "file_not_in_pack", message: `pack '${entry.relativePath}' 未声明文件 '${filePath}'——已声明：${entry.files.map((f) => f.path).join(", ")}` }, 404);
     }
     let fileText: string;
     try {
       fileText = readFileSync(lib.resolveFileWithinPack(entry, filePath), "utf-8");
     } catch (err) {
-      return c.json({ error: "file_unreadable", message: `pack '${entry.relativePath}' file '${filePath}': ${(err as Error).message}` }, 422);
+      return c.json({ error: "file_unreadable", message: `pack '${entry.relativePath}' 文件 '${filePath}'：${(err as Error).message}` }, 422);
     }
     if (parsed.headerPath.length === 0) {
       return c.json({ address, packRef: entry.relativePath, filePath, text: fileText });
@@ -321,12 +313,11 @@ export function contextPacksRoutes(): Hono {
     }
   });
 
-  // OPR.0.5.3.5 Atom 4b — GET /library/by-ref/profile?ref=&situation=&runtime=
-  // [&budget=][&rig=&seat=]: situation-composed delivery over the pack's atom
-  // graph + the seat tree. The manifest flows through the ONE parser chokepoint;
-  // the seat root resolves from topology.root CONFIG (slice-06 D1 layout:
-  // rigs/<rig>/seats/<seat>), never a literal; every compose failure is a NAMED
-  // 4xx — a profile is never quietly thinner than its graph says.
+  // OPR.0.5.3.5 Atom 4b——GET /library/by-ref/profile?ref=&situation=&runtime=
+  // [&budget=][&rig=&seat=]：经 pack 的 atom 图 + seat 树做 situation 组合投递。
+  // manifest 流经唯一 parser chokepoint；seat 根从 topology.root CONFIG 解析
+  // （slice-06 D1 布局：rigs/<rig>/seats/<seat>），绝不字面写死；每次 compose
+  // 失败都是具名 4xx——profile 绝不悄悄比其图所说更薄。
   router.get("/library/by-ref/profile", (c) => {
     const lib = c.get("contextPackLibrary" as never) as ContextPackLibraryService | undefined;
     if (!lib) return c.json({ error: "context_pack_library_unavailable" }, 503);
@@ -336,18 +327,18 @@ export function contextPacksRoutes(): Hono {
 
     const situation = c.req.query("situation");
     if (situation !== "fresh" && situation !== "handover" && situation !== "post-compaction") {
-      return c.json({ error: "invalid_situation", message: `situation must be fresh | handover | post-compaction (got: ${situation ?? "(missing)"})` }, 400);
+      return c.json({ error: "invalid_situation", message: `situation 必须是 fresh | handover | post-compaction（收到：${situation ?? "(缺失)"}）` }, 400);
     }
     const runtime = c.req.query("runtime");
     if (runtime !== "claude" && runtime !== "codex") {
-      return c.json({ error: "invalid_runtime", message: `runtime must be claude | codex (got: ${runtime ?? "(missing)"})` }, 400);
+      return c.json({ error: "invalid_runtime", message: `runtime 必须是 claude | codex（收到：${runtime ?? "(缺失)"}）` }, 400);
     }
     const budgetRaw = c.req.query("budget");
     let budgetTokens: number | undefined;
     if (budgetRaw !== undefined) {
       budgetTokens = Number(budgetRaw);
       if (!Number.isInteger(budgetTokens) || budgetTokens < 0) {
-        return c.json({ error: "invalid_budget", message: `budget must be a non-negative integer (got: ${budgetRaw})` }, 400);
+        return c.json({ error: "invalid_budget", message: `budget 必须是非负整数（收到：${budgetRaw}）` }, 400);
       }
     }
 
@@ -358,7 +349,7 @@ export function contextPacksRoutes(): Hono {
       return c.json({ error: "manifest_unreadable", message: (err as Error).message }, 422);
     }
     if (!manifest.atoms || manifest.atoms.length === 0) {
-      return c.json({ error: "no_atoms", message: `pack '${entry.relativePath}' declares no atoms — a profile composes from atom metadata (mini-req 1); add an atoms: section to its manifest` }, 422);
+      return c.json({ error: "no_atoms", message: `pack '${entry.relativePath}' 未声明 atoms——profile 从 atom 元数据组合（mini-req 1）；请在其 manifest 加 atoms: 段` }, 422);
     }
     const requestedProfileId = c.req.query("profile");
     const selectedProfile = requestedProfileId === undefined
@@ -367,25 +358,22 @@ export function contextPacksRoutes(): Hono {
     if (requestedProfileId !== undefined && !selectedProfile) {
       return c.json({
         error: "profile_not_found",
-        message: `pack '${entry.relativePath}' declares no profile '${requestedProfileId}' — available: ${manifest.profiles?.map((profile) => profile.id).join(", ") || "(none)"}`,
+        message: `pack '${entry.relativePath}' 未声明 profile '${requestedProfileId}'——可用：${manifest.profiles?.map((profile) => profile.id).join(", ") || "(无)"}`,
       }, 400);
     }
     if (selectedProfile && !selectedProfile.situations.includes(situation)) {
-      return c.json({ error: "profile_situation_mismatch", message: `profile '${selectedProfile.id}' does not apply to situation '${situation}'` }, 400);
+      return c.json({ error: "profile_situation_mismatch", message: `profile '${selectedProfile.id}' 不适用于 situation '${situation}'` }, 400);
     }
     if (selectedProfile && !selectedProfile.runtimes.includes(runtime)) {
-      return c.json({ error: "profile_runtime_mismatch", message: `profile '${selectedProfile.id}' does not apply to runtime '${runtime}'` }, 400);
+      return c.json({ error: "profile_runtime_mismatch", message: `profile '${selectedProfile.id}' 不适用于 runtime '${runtime}'` }, 400);
     }
 
-    // Seat root from CONFIG when the caller names its seat. rig/seat are path
-    // SEGMENTS — the bounded token check keeps a query string from walking the
-    // topology tree (same class as the install-ref segment rule). TRUST
-    // BOUNDARY (r1 rider 2): passing rig+seat is the caller's EXPLICIT GRANT of
-    // read access to that seat DIRECTORY SUBTREE — the pack chooses paths
-    // within the granted root (that is what a root grant means), and every tree
-    // read is visible in the provenance surface below, so an untrusted
-    // (URL-installed) pack's seat: atoms can neither read a root the caller
-    // did not grant nor deliver bytes whose origin is hidden.
+    // 当调用方命名 seat 时，seat 根来自 CONFIG。rig/seat 是路径段——有界 token
+    // 检查防止查询串走遍 topology 树（与 install-ref 段规则同类）。信任边界
+    // （r1 rider 2）：传 rig+seat 即调用方对该 seat 目录子树的显式读授权——
+    // pack 在授权根内选路径（这正是根授权的含义），每次树读都在下面 provenance
+    // 表面可见，因此不可信（URL 安装）pack 的 seat: atom 既读不到调用方未授权的根，
+    // 也投递不了来源隐藏的字节。
     const roots: ProfileSourceRoots = {};
     let atoms: ContextPackAtom[] = manifest.atoms;
     const contextAtoms: Partial<Record<"project" | "mission" | "seat" | "slice", ContextPackAtom[]>> = {};
@@ -396,7 +384,7 @@ export function contextPacksRoutes(): Hono {
     const seat = c.req.query("seat");
     if (rig !== undefined || seat !== undefined) {
       if (!rig || !seat || !SEGMENT.test(rig) || !SEGMENT.test(seat)) {
-        return c.json({ error: "invalid_seat_params", message: "rig and seat must BOTH be single bounded segments ([A-Za-z0-9][A-Za-z0-9._-]{0,63})" }, 400);
+        return c.json({ error: "invalid_seat_params", message: "rig 和 seat 必须都是单个有界段（[A-Za-z0-9][A-Za-z0-9._-]{0,63}）" }, 400);
       }
       const topologyRoot = String(new SettingsStore().resolveOne("topology.root").value);
       roots.seat = join(topologyRoot, "rigs", rig, "seats", seat);
@@ -412,29 +400,28 @@ export function contextPacksRoutes(): Hono {
       }];
       workMeta.set("profile-seat-learned", { altitude: "seat", source: "default" });
     }
-    // Mission root on the RULED existing key (desk row 2675535d: reuse
-    // workspace.slices_root, never mint a sibling): mission root =
-    // <slices_root>/<mission>, same bounded-segment gate, same grant
-    // semantics — naming the mission grants this compose read access to that
-    // mission directory subtree.
+    // Mission 根在已裁决的既有 key 上（desk row 2675535d：复用
+    // workspace.slices_root，绝不新造兄弟）：mission 根 =
+    // <slices_root>/<mission>，同样的有界段门、同样的授权语义——
+    // 命名 mission 即授予本次 compose 对该 mission 目录子树的读权限。
     const mission = c.req.query("mission");
     const slice = c.req.query("slice");
     const requiredProfileContext = new Set(selectedProfile?.phases.flatMap((phase) => phase.context ?? []) ?? []);
     if (requiredProfileContext.has("seat") && (!rig || !seat)) {
-      return c.json({ error: "profile_context_missing", message: `profile '${selectedProfile!.id}' needs seat context; pass both rig and seat` }, 400);
+      return c.json({ error: "profile_context_missing", message: `profile '${selectedProfile!.id}' 需要 seat 上下文；请同时传 rig 和 seat` }, 400);
     }
     if (["project", "mission", "slice"].some((source) => requiredProfileContext.has(source as "project" | "mission" | "slice")) && (!mission || !slice)) {
-      return c.json({ error: "profile_context_missing", message: `profile '${selectedProfile!.id}' needs situated project/mission/task context; pass both mission and slice` }, 400);
+      return c.json({ error: "profile_context_missing", message: `profile '${selectedProfile!.id}' 需要情境化 project/mission/task 上下文；请同时传 mission 和 slice` }, 400);
     }
     if (slice !== undefined && mission === undefined) {
-      return c.json({ error: "mission_required", message: "slice requires an exact mission selection; the legacy work hierarchy is project -> mission -> slice" }, 400);
+      return c.json({ error: "mission_required", message: "slice 需要精确的 mission 选择；legacy 工作层级是 project -> mission -> slice" }, 400);
     }
     if (slice !== undefined && !SEGMENT.test(slice)) {
-      return c.json({ error: "invalid_slice_param", message: "slice must be a single bounded segment ([A-Za-z0-9][A-Za-z0-9._-]{0,63})" }, 400);
+      return c.json({ error: "invalid_slice_param", message: "slice 必须是单个有界段（[A-Za-z0-9][A-Za-z0-9._-]{0,63}）" }, 400);
     }
     if (mission !== undefined) {
       if (!SEGMENT.test(mission)) {
-        return c.json({ error: "invalid_mission_param", message: "mission must be a single bounded segment ([A-Za-z0-9][A-Za-z0-9._-]{0,63})" }, 400);
+        return c.json({ error: "invalid_mission_param", message: "mission 必须是单个有界段（[A-Za-z0-9][A-Za-z0-9._-]{0,63}）" }, 400);
       }
       const settings = new SettingsStore();
       const slicesRoot = String(settings.resolveOne("workspace.slices_root").value);
@@ -447,23 +434,22 @@ export function contextPacksRoutes(): Hono {
       if (slice === undefined && !hasAuthoredWorkAtom && !selectedProfile) {
         return c.json({
           error: "slice_required",
-          message: `pack '${entry.relativePath}' declares no project: or mission: atoms, so --mission alone would be a no-op; pass the exact --slice to request the legacy default work walk`,
+          message: `pack '${entry.relativePath}' 未声明 project: 或 mission: atom，因此单独 --mission 会是 no-op；请传精确 --slice 以请求 legacy 默认工作走步`,
         }, 400);
       }
 
-      // Story 1's bounded compatibility seam. Supplying BOTH mission and slice
-      // asks for the existing single-project hierarchy's conventional Markdown
-      // walk. It is deliberately limited to the unambiguous legacy layout;
-      // multi-project/catalog resolution belongs to its later story.
+      // Story 1 的有界兼容接缝。同时提供 mission 和 slice 即请求既有单 project
+      // 层级的常规 Markdown 走步。刻意限于无歧义的 legacy 布局；
+      // 多 project/目录解析属于后续 story。
       if (slice !== undefined) {
         if (situation !== "fresh") {
-          return c.json({ error: "legacy_default_fresh_only", message: "the bounded legacy default work walk is available only for a fresh profile" }, 400);
+          return c.json({ error: "legacy_default_fresh_only", message: "有界 legacy 默认工作走步仅对 fresh profile 可用" }, 400);
         }
         const workspaceRoot = String(settings.resolveOne("workspace.root").value);
         if (resolve(slicesRoot) !== resolve(workspaceRoot, "missions")) {
           return c.json({
             error: "legacy_workspace_required",
-            message: `legacy default composition requires workspace.slices_root to be <workspace.root>/missions; got ${slicesRoot}`,
+            message: `legacy 默认组合要求 workspace.slices_root 为 <workspace.root>/missions；实际 ${slicesRoot}`,
           }, 422);
         }
         roots.project = workspaceRoot;
@@ -482,13 +468,13 @@ export function contextPacksRoutes(): Hono {
             projectIntent = manifestIntent;
             projectIntentSource = "manifest";
           } else if (manifestIntent !== undefined) {
-            warnings.push("project.yaml: optional install.intent must be a relative Markdown address; ignored the invalid value and kept the baseline work install.");
+            warnings.push("project.yaml：可选 install.intent 必须是相对 Markdown 地址；已忽略该非法值并保留基线工作 install。");
           }
           const manifestContext = projectManifest?.install?.context;
           if (Array.isArray(manifestContext) && manifestContext.every(isRelativeMarkdownAddress)) {
             projectContext = manifestContext;
           } else if (manifestContext !== undefined) {
-            warnings.push("project.yaml: optional install.context must be a list of relative Markdown addresses; ignored the invalid value and kept the baseline work install.");
+            warnings.push("project.yaml：可选 install.context 必须是相对 Markdown 地址列表；已忽略该非法值并保留基线工作 install。");
           }
         }
         const projectAtoms: ContextPackAtom[] = [
@@ -542,7 +528,7 @@ export function contextPacksRoutes(): Hono {
         ];
         const collision = defaultAtoms.find((atom) => atoms.some((existing) => existing.id === atom.id));
         if (collision) {
-          return c.json({ error: "default_atom_conflict", message: `pack '${entry.relativePath}' already declares reserved atom id '${collision.id}'` }, 422);
+          return c.json({ error: "default_atom_conflict", message: `pack '${entry.relativePath}' 已声明保留 atom id '${collision.id}'` }, 422);
         }
         if (selectedProfile) {
           contextAtoms.project = projectAtoms;
@@ -602,8 +588,8 @@ export function contextPacksRoutes(): Hono {
     }
 
     try {
-      // Byte provenance per read (r1 rider 1): the source label must be
-      // CHECKABLE. Keyed by ref — every piece with that ref shares the read.
+      // 每次读的字节 provenance（r1 rider 1）：source 标签必须可校验。
+      // 按 ref 建 key——同 ref 的每个 piece 共享该次读。
       const readsByRef = new Map<string, SourceReadRecord>();
       const composeInput: ComposeInput = {
         atoms,
@@ -622,22 +608,21 @@ export function contextPacksRoutes(): Hono {
         : composeProfile(composeInput);
       const pieces = profile.pieces.map((p) => {
         const record = readsByRef.get(parseAddress(p.address).ref);
-        // Per-piece sha256: the Test-A door compares the profile's selected
-        // pieces to the walk's delivered pieces hash-exactly, not by count.
+        // 每 piece sha256：Test-A 门把 profile 选中的 piece 与走步投递的 piece
+        // 按哈希精确比较，而非按数量。
         const pieceWorkMeta = workMeta.get(p.atomId);
         const hashed = { ...p, ...(pieceWorkMeta ?? {}), sha256: createHash("sha256").update(p.text, "utf8").digest("hex") };
         return record
           ? { ...hashed, provenance: { nominalPath: record.nominalPath, realPath: record.realPath, escapesRoot: record.escapesRoot } }
           : hashed;
       });
-      // ALWAYS an array (consumer guards one shape): empty = every piece's
-      // bytes came from inside its granted root. Report, never block —
-      // realpath containment would break legitimately-symlinked layouts.
+      // 始终是数组（消费方只守卫一种形状）：空 = 每个 piece 的字节都来自其授权根内。
+      // 只报告、绝不阻断——realpath 包含检查会破坏合法的符号链接布局。
       const provenanceWarnings = pieces
         .filter((p) => "provenance" in p && (p as { provenance: { escapesRoot: boolean } }).provenance.escapesRoot)
         .map((p) => {
           const prov = (p as { provenance: { realPath: string } }).provenance;
-          return `piece '${p.atomId}' (${p.address}): bytes came from OUTSIDE its ${p.sourceKind} root — real path ${prov.realPath}`;
+          return `piece '${p.atomId}'（${p.address}）：字节来自其 ${p.sourceKind} 根之外——真实路径 ${prov.realPath}`;
         });
       const phases = profile.phases?.map((phase) => ({
         ...phase,

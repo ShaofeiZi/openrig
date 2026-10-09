@@ -57,10 +57,10 @@ export function realDeps(): LifecycleDeps {
     fetch: async (url) => {
       const res = await fetchWithTimeout(globalThis.fetch, url, {}, {
         timeoutMs: 1_500,
-        timeoutMessage: `Daemon health probe timed out for ${url}`,
+        timeoutMessage: `后台服务健康探测超时：${url}`,
       });
-      // OPR.0.4.3.21 — expose json() so getDaemonStatus can read the enriched
-      // /healthz event-loop evidence. Bound to this Response instance.
+      // OPR.0.4.3.21 —— 暴露 json()，使 getDaemonStatus 能读取更丰富的
+      // /healthz 事件循环证据。绑定到本 Response 实例。
       return { ok: res.ok, json: () => res.json() };
     },
     kill: (pid, signal) => { process.kill(pid, signal as NodeJS.Signals); return true; },
@@ -91,36 +91,34 @@ export function realDeps(): LifecycleDeps {
     openForAppend: (p) => fs.openSync(p, "a"),
     closeFile: (fd) => fs.closeSync(fd),
     isProcessAlive,
-    // RULING 1ae863d2 — sibling-home scan (home-resolution honesty).
+    // RULING 1ae863d2 —— 兄弟 home 扫描（home 解析诚实性）。
     listDir: (p) => { try { return fs.readdirSync(p); } catch { return []; } },
   };
 }
 
 export function daemonCommand(depsOverride?: LifecycleDeps): Command {
   const getDeps = () => depsOverride ?? realDeps();
-  const cmd = new Command("daemon").description("Manage the OpenRig daemon");
+  const cmd = new Command("daemon").description("管理 zrig 后台服务");
 
   cmd
     .command("start")
-    .description("Start the daemon")
-    .addHelpText("after", "\nStartup reserves this local instance before initialization and verifies the spawned child PID on every required listener.\nMissing/mismatched identity or child exit fails startup; failed publication withdraws only this launch's matching state. Use a matching CLI/daemon installation.\nA concurrent start fails without spawning another child. Inspect daemon-start.lock for launcher/child PIDs after an interrupted start;\nonly archive an abandoned reservation after proving both processes absent. A failed cleanup retains it and reports the child PID.\n")
-    .option("--port <port>", "Port to listen on")
-    .option("--host <host>", "Host to bind on")
-    .option("--db <path>", "Database path")
-    // V0.3.1 slice 05 kernel-rig-as-default — skip the kernel auto-boot
-    // path. Used by test fixtures, headless CI, and operators who want
-    // a no-kernel daemon for ad-hoc topology work. The daemon proceeds
-    // and serves its HTTP API normally; just doesn't materialize the
-    // kernel rig.
-    .option("--no-kernel", "Skip kernel auto-boot (daemon serves without the kernel rig)")
-    // V0.3.1 slice 05 kernel-rig-as-default — forward-fix #3 architectural.
-    // After the daemon's healthz binds (current behavior preserved),
-    // additionally poll /api/kernel/status until kernel_state is
-    // ready / partial_ready, or the timeout elapses. Used by operators
-    // who want a "kernel-ready" signal at start-time rather than the
-    // weaker "daemon-ready". Default 60s; override with --wait-for-kernel-ms.
-    .option("--wait-for-kernel", "After daemon binds, also wait for kernel-agent readiness (default timeout 60s)")
-    .option("--wait-for-kernel-ms <ms>", "Override --wait-for-kernel timeout in milliseconds")
+    .description("启动后台服务")
+    .addHelpText("after", "\n启动会在初始化前预留本本地实例，并在每个必需监听器上校验派生出的子进程 PID。\n身份缺失/不匹配或子进程退出都会使启动失败；发布失败只撤回本次启动对应的状态。请使用配套的 CLI/后台服务安装。\n并发启动不会再派生另一个子进程而失败。启动中断后可查看 daemon-start.lock 了解启动器/子进程 PID；\n只有在证明两个进程都已不存在后，才可归档被遗弃的预留。清理失败会保留它并报告子进程 PID。\n")
+    .option("--port <port>", "监听端口")
+    .option("--host <host>", "绑定主机")
+    .option("--db <path>", "数据库路径")
+    // V0.3.1 slice 05 kernel-rig-as-default —— 跳过内核自动引导
+    // 路径。供测试夹具、无头 CI，以及只想要无内核后台服务做临时
+    // 拓扑工作的操作者使用。后台服务照常启动并提供 HTTP API；
+    // 只是不物化内核工作组。
+    .option("--no-kernel", "跳过内核自动引导（后台服务在无内核工作组下提供服务）")
+    // V0.3.1 slice 05 kernel-rig-as-default —— 前瞻性修复 #3 架构。
+    // 在后台服务 healthz 绑定后（保留当前行为），额外轮询
+    // /api/kernel/status 直到 kernel_state 为 ready / partial_ready，
+    // 或超时。供那些在启动时想要"内核就绪"信号、而非较弱的
+    // "后台服务就绪"的操作者使用。默认 60s；用 --wait-for-kernel-ms 覆盖。
+    .option("--wait-for-kernel", "后台服务绑定后，再等待内核智能体就绪（默认超时 60s）")
+    .option("--wait-for-kernel-ms <ms>", "覆盖 --wait-for-kernel 超时，单位毫秒")
     .action(async (opts: { port?: string; host?: string; db?: string; kernel?: boolean; waitForKernel?: boolean; waitForKernelMs?: string }) => {
       try {
         const { ConfigStore } = await import("../config-store.js");
@@ -129,15 +127,14 @@ export function daemonCommand(depsOverride?: LifecycleDeps): Command {
         const configStore = new ConfigStore();
         const config = configStore.resolve();
         const effectivePort = opts.port ? parseInt(opts.port, 10) : config.daemon.port;
-        // bug-fix slice auth-bearer-tailscale-trust: distinguish
-        // user-explicit from default-fallback so the daemon can
-        // multi-bind (loopback + tailscale auto-detect) when the operator
-        // never opted in to a specific host.
+        // bug-fix slice auth-bearer-tailscale-trust：区分
+        // 用户显式指定与默认回退，使后台服务在操作者
+        // 从未选择特定主机时能多绑定（回环 + tailscale 自动探测）。
         const hostResolution = configStore.resolveWithSource("daemon.host");
-        // S20 — bind intent comes ONLY from the dedicated surfaces: the --host flag,
-        // a FILE-sourced daemon.host, or OPENRIG_BIND_HOST. An env-sourced daemon.host
-        // is the overloaded routing channel (ENV_MAP maps it from OPENRIG_HOST — the
-        // exact injected state a managed environment carries) and never creates intent.
+        // S20 —— 绑定意图只来自专门入口：--host 标志、
+        // 文件来源的 daemon.host，或 OPENRIG_BIND_HOST。环境变量来源的
+        // daemon.host 是重载的路由通道（ENV_MAP 把它从 OPENRIG_HOST 映射来——
+        // 即托管环境携带的注入状态），绝不产生意图。
         const intent = resolveBindIntent({
           flagHost: opts.host,
           envBindHost: process.env["OPENRIG_BIND_HOST"],
@@ -148,7 +145,7 @@ export function daemonCommand(depsOverride?: LifecycleDeps): Command {
         const effectiveHost = intent.host ?? "127.0.0.1";
         const hostForDaemon = intent.host;
 
-        // Run preflight before starting
+        // 启动前运行预检
           const preflight = new SystemPreflight({
             exec: async (cmd) => execSync(cmd, { encoding: "utf-8" }),
             configStore,
@@ -158,15 +155,15 @@ export function daemonCommand(depsOverride?: LifecycleDeps): Command {
         const preflightResult = await preflight.run({ port: effectivePort, host: effectiveHost });
         if (!preflightResult.ready) {
           for (const check of preflightResult.checks.filter((c) => !c.ok)) {
-            console.error(`✗ ${check.name}: ${check.error}`);
-            if (check.reason) console.error(`  Why: ${check.reason}`);
-            if (check.fix) console.error(`  Fix: ${check.fix}`);
+            console.error(`✗ ${check.name}：${check.error}`);
+            if (check.reason) console.error(`  原因：${check.reason}`);
+            if (check.fix) console.error(`  修复：${check.fix}`);
           }
           process.exitCode = 1;
           return;
         }
 
-        // V0.3.1 slice 05 — Commander's --no-kernel inverts to opts.kernel === false.
+        // V0.3.1 slice 05 —— Commander 的 --no-kernel 反转为 opts.kernel === false。
         const skipKernel = opts.kernel === false;
         const state = await startDaemon(
           {
@@ -179,27 +176,25 @@ export function daemonCommand(depsOverride?: LifecycleDeps): Command {
             contextRoot: config.context.root,
             skillsRoot: config.skills.root,
             topologyRoot: config.topology.root,
-            // V1 pre-release CLI/daemon Item 1 — project the
-            // ConfigStore-resolved rotation tunables into the daemon
-            // process env so file-stored values
-            // (`rig config set transcripts.lines 500`) actually
-            // reach the rotation hook.
+            // V1 预发布 CLI/后台服务 第 1 项 —— 把 ConfigStore
+            // 解析出的轮转可调项投射到后台服务进程环境，使文件里
+            // 存的值（`rig config set transcripts.lines 500`）
+            // 真正到达轮转钩子。
             transcriptsLines: config.transcripts.lines,
             transcriptsPollIntervalSeconds: config.transcripts.pollIntervalSeconds,
-            // V0.3.1 slice 05 kernel-rig-as-default — propagated via
-            // OPENRIG_NO_KERNEL env var so the daemon's kernel-boot
-            // check in startup.ts honors the flag.
+            // V0.3.1 slice 05 kernel-rig-as-default —— 经
+            // OPENRIG_NO_KERNEL 环境变量传递，使后台服务在
+            // startup.ts 里的内核启动检查遵守该标志。
             skipKernelBoot: skipKernel,
           },
           getDeps(),
         );
-        console.log(`Daemon started on port ${state.port} (pid ${state.pid})`);
+        console.log(`后台服务已在端口 ${state.port} 启动（pid ${state.pid}）`);
 
-        // V0.3.1 slice 05 forward-fix #3 architectural — --wait-for-kernel
-        // post-bind polling. Kernel boot is fire-and-forget after the
-        // daemon binds healthz, so without this flag the CLI doesn't
-        // know whether the kernel itself reached ready. Operators who
-        // need a kernel-ready signal opt in here.
+        // V0.3.1 slice 05 前瞻性修复 #3 架构 —— --wait-for-kernel
+        // 绑定后轮询。后台服务绑定 healthz 后内核引导是 fire-and-forget，
+        // 因此没有该标志时 CLI 不知道内核本身是否到达 ready。
+        // 需要内核就绪信号的操作者在此选择加入。
         if (opts.waitForKernel) {
           const { waitForKernelReady } = await import("../daemon-lifecycle.js");
           const timeoutMs = opts.waitForKernelMs && /^\d+$/.test(opts.waitForKernelMs)
@@ -208,15 +203,15 @@ export function daemonCommand(depsOverride?: LifecycleDeps): Command {
           const baseUrl = `http://${state.host}:${state.port}`;
           const result = await waitForKernelReady(baseUrl, timeoutMs);
           if (result.ok) {
-            console.log(`Kernel ${result.kernelState}; variant=${result.variant ?? "(none)"}`);
+            console.log(`内核 ${result.kernelState}；variant=${result.variant ?? "（无）"}`);
           } else {
-            // Honest 3-part error per banked discipline.
+            // 按既定纪律给出诚实的三段式错误。
             console.error(
-              `Error: kernel did not reach ready / partial_ready within ${timeoutMs}ms.\n` +
-                `Reason: kernel_state=${result.kernelState ?? "unknown"}` +
-                (result.detail ? `; ${result.detail}` : "") +
+              `错误：内核在 ${timeoutMs}ms 内未到达 ready / partial_ready。\n` +
+                `原因：kernel_state=${result.kernelState ?? "未知"}` +
+                (result.detail ? `；${result.detail}` : "") +
                 "\n" +
-                "Fix: inspect `rig ps --rig kernel` for stalled agents, or run `claude auth status` / `codex login status` to confirm runtime auth.",
+                "修复：用 `zrig ps --rig kernel` 检查卡住的智能体，或运行 `claude auth status` / `codex login status` 确认运行时登录。",
             );
             process.exitCode = 1;
           }
@@ -229,12 +224,12 @@ export function daemonCommand(depsOverride?: LifecycleDeps): Command {
 
   cmd
     .command("stop")
-    .description("Stop the daemon (10s shutdown budget; 12s process wait; incomplete drain exits nonzero)")
-    .addHelpText("after", "\nSends at most one SIGTERM to a live target and verifies the original PID and listener. Repeated signals join shutdown.\nFor a recorded target, missing/stale receipts and incomplete drains exit nonzero, including retries.\nTarget state is retained until a matching clean receipt; status reads preserve unverified state.\nNo target is a distinct no-op, never clean-drain certification; unbound incomplete evidence stays unverified.\nInspect OPENRIG_HOME/daemon-shutdown.json and daemon.log for the phase and outcome.\nThe bound covers asynchronous shutdown; an event-loop wedge still requires operator recovery.\n")
+    .description("停止后台服务（10s 关停预算；12s 进程等待；排空不完整则非零退出）")
+    .addHelpText("after", "\n对存活目标至多发送一次 SIGTERM，并校验原 PID 与监听器。重复信号并入关停。\n对已记录目标，回执缺失/过期与排空不完整都会非零退出，包括重试。\n目标状态保留直到匹配的干净回执；状态读取保留未验证状态。\n无目标是一种独立的空操作，绝非干净排空认证；未绑定的不完整证据保持未验证。\n请查看 OPENRIG_HOME/daemon-shutdown.json 与 daemon.log 了解阶段与结果。\n该绑定覆盖异步关停；事件循环卡住仍需操作者恢复。\n")
     .action(async () => {
       try {
         const outcome = await stopDaemon(getDeps());
-        console.log(outcome === "stopped" ? "Daemon stopped" : "No daemon target recorded; listener refused. Nothing to stop; prior drain not certified.");
+        console.log(outcome === "stopped" ? "后台服务已停止" : "未记录后台服务目标；监听器拒绝连接。无可停止；此前排空未认证。");
       } catch (err) {
         console.error(err instanceof Error ? err.message : String(err));
         process.exitCode = 1;
@@ -243,50 +238,49 @@ export function daemonCommand(depsOverride?: LifecycleDeps): Command {
 
   cmd
     .command("status")
-    .description("Show daemon status")
+    .description("显示后台服务状态")
     .action(async () => {
       const status = await getDaemonStatus(getDeps());
-      const pidSuffix = status.pid !== undefined ? ` (pid ${status.pid})` : "";
+      const pidSuffix = status.pid !== undefined ? `（pid ${status.pid}）` : "";
       switch (status.state) {
         case "running":
           if (status.healthy === false) {
-            // OPR.0.4.3.21 — process-present but unhealthy: name the real
-            // cause (wedged control plane), not a bare "healthz failed", and
-            // attach the event-loop evidence + seat-preserving recovery hint.
+            // OPR.0.4.3.21 —— 进程在但不健康：指明真实原因（控制面卡住），
+            // 而不是干巴巴的 "healthz failed"，并附上事件循环证据 + 保席位的恢复提示。
             const cause = status.reason === "unresponsive"
-              ? "unresponsive (event loop may be starved — /healthz timed out)"
+              ? "无响应（事件循环可能被饿死——/healthz 超时）"
               : status.reason === "event-loop-starved"
-                ? "event-loop starved"
-                : "healthz failed";
-            console.log(`Daemon running on port ${status.port}${pidSuffix} — process present but UNHEALTHY: ${cause}`);
+                ? "事件循环被饿死"
+                : "healthz 失败";
+            console.log(`后台服务运行于端口 ${status.port}${pidSuffix} —— 进程在但不健康：${cause}`);
             if (status.eventLoop) {
               const el = status.eventLoop;
               console.log(
-                `  event-loop: lag mean ${el.lagMeanMs.toFixed(1)}ms, p99 ${el.lagP99Ms.toFixed(1)}ms, `
-                + `utilization ${(el.utilization * 100).toFixed(0)}%, last-tick age ${el.lastTickAgeMs.toFixed(0)}ms`,
+                `  事件循环：lag 均值 ${el.lagMeanMs.toFixed(1)}ms，p99 ${el.lagP99Ms.toFixed(1)}ms，`
+                + `利用率 ${(el.utilization * 100).toFixed(0)}%，最近一拍距今 ${el.lastTickAgeMs.toFixed(0)}ms`,
               );
             }
-            console.log("  Recovery: restart the daemon only (`rig daemon stop && rig daemon start`) — this preserves the tmux seats.");
+            console.log("  恢复：仅重启后台服务（`zrig daemon stop && zrig daemon start`）——这样会保留 tmux 席位。");
           } else {
-            console.log(`Daemon running on port ${status.port}${pidSuffix}`);
+            console.log(`后台服务运行于端口 ${status.port}${pidSuffix}`);
           }
           break;
         case "stopped":
-          console.log("Daemon stopped");
+          console.log("后台服务已停止");
           break;
         case "stale":
-          console.log("Daemon PID is absent (stale state)");
+          console.log("后台服务 PID 已不存在（状态过期）");
           break;
         case "unverified":
-          // 1ae863d2 — C3 semantics: we could NOT confirm up or down; never claim stopped.
+          // 1ae863d2 —— C3 语义：我们无法确认它是起是落；绝不声称已停止。
           if (status.siblingHint) {
-            console.log("Daemon state UNVERIFIED — the resolved OPENRIG_HOME has no daemon state, but a live daemon appears under a sibling home:");
-            console.log(`  resolved: ${status.siblingHint.resolvedHome}`);
-            console.log(`  sibling:  ${status.siblingHint.siblingHome}`);
-            console.log("  Fix: point OPENRIG_HOME at the right home (or check your shell env) — this CLI is likely resolving the wrong home.");
+            console.log("后台服务状态未验证——解析出的 OPENRIG_HOME 没有后台服务状态，但兄弟 home 下似乎有一个运行中的后台服务：");
+            console.log(`  已解析：${status.siblingHint.resolvedHome}`);
+            console.log(`  兄弟：  ${status.siblingHint.siblingHome}`);
+            console.log("  修复：把 OPENRIG_HOME 指向正确的 home（或检查你的 shell 环境）——本 CLI 很可能解析错了 home。");
           } else {
-            console.log("Daemon state UNVERIFIED — the probe timed out or was inconclusive (this is NOT evidence the daemon is down).");
-            console.log("  Re-check with: rig daemon status  ·  direct: curl the daemon /healthz");
+            console.log("后台服务状态未验证——探测超时或结果不确定（这并不代表后台服务已宕）。");
+            console.log("  用以下命令复查：zrig daemon status  ·  直连：curl 后台服务 /healthz");
           }
           break;
       }
@@ -294,8 +288,8 @@ export function daemonCommand(depsOverride?: LifecycleDeps): Command {
 
   cmd
     .command("logs")
-    .description("Show daemon logs")
-    .option("--follow", "Follow log output")
+    .description("显示后台服务日志")
+    .option("--follow", "持续跟踪日志输出")
     .action((opts: { follow?: boolean }) => {
       if (opts.follow) {
         tailLogs(getDeps(), { follow: true });
@@ -304,7 +298,7 @@ export function daemonCommand(depsOverride?: LifecycleDeps): Command {
         if (content) {
           console.log(content);
         } else {
-          console.log("No daemon logs found");
+          console.log("未找到后台服务日志");
         }
       }
     });

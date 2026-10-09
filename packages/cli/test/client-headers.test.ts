@@ -9,8 +9,8 @@ import { resolveOriginSelfHostId } from "../src/daemon-lifecycle.js";
 function srcFiles(pkg: string): Array<[string, string]> {
   // cwd-INDEPENDENT: derive the path from THIS test file's location, never process.cwd(). The old
   // `path.resolve(process.cwd(), "..", pkg, "src")` vacuously returned [] when vitest ran from the repo
-  // root, silently no-op'ing the grep-guards below (clause 1's `.toEqual([])` would false-green). See the
-  // P18 guard rework in send.test.ts for the same fix.
+  // root，对下方 grep 守卫静默 no-op（clause 1 的 `.toEqual([])` 会假绿）。
+  // 同样的修复见 send.test.ts 的 P18 guard 重做。
   const here = path.dirname(fileURLToPath(import.meta.url)); // .../packages/cli/test
   const root = path.resolve(here, "..", "..", pkg, "src");   // .../packages/<pkg>/src
   const out: Array<[string, string]> = [];
@@ -133,9 +133,9 @@ describe("DaemonClient sender-identity header (P18)", () => {
 });
 
 // ── A4 — HTTP-path origin-triple carry: a REMOTE-targeting client stamps the ORIGIN triple so the
-//    remote daemon's wrapPaneEnvelope renders the ORIGIN host, not the destination's. Identity stays
-//    DERIVED (env session + THIS host's selfHostId), never caller-supplied. These lock the composition
-//    mechanism; they would fail against the pre-A4 stamp (which ignored the arg and emitted 2-part). ──
+//    远端 daemon 的 wrapPaneEnvelope 渲染 ORIGIN host，而非目的地 host。身份保持
+//    派生（env session + 本 host 的 selfHostId），绝非调用方提供。这些钉住组合
+//    机制；对 A4 之前的盖章（忽略该参数并发出 2 段）会失败。 ──
 describe("A4 — origin-triple carry (senderIdentityHeaders + remoteDaemonClient)", () => {
   const savedSession = process.env.OPENRIG_SESSION_NAME;
   const savedRigged = process.env.RIGGED_SESSION_NAME;

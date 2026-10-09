@@ -1,30 +1,27 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * Workflow step trails (PL-004 Phase D; append-only history).
+ * Workflow 步骤轨迹（PL-004 阶段 D；只追加历史）。
  *
- * Per PRD § L4 Workflow Runtime: every workflow step transition records
- * a trail entry. Append-only: writers only INSERT. UPDATE/DELETE are
- * not exposed by WorkflowStepTrailLog API; direct SQL would succeed
- * (SQLite has no view/role layer) but is a contract violation enforced
- * at the domain-layer API boundary.
+ * 根据 PRD § L4 Workflow Runtime：每次 workflow 步骤转换都会记录一条轨迹。只追加：
+ * 写入方只能 INSERT。WorkflowStepTrailLog API 不公开 UPDATE/DELETE；直接 SQL 会成功
+ *（SQLite 没有视图/角色层），但属于由领域层 API 边界强制执行的契约违规。
  *
- * Columns:
- *   - trail_id (ULID PK)
- *   - instance_id (FK to workflow_instances)
- *   - step_id (from spec; e.g., "produce", "review-convergence")
- *   - step_role (from spec; e.g., "producer", "orchestrator")
- *   - closed_at (ISO timestamp of the closure/transition)
- *   - closure_reason (enum: "handoff", "waiting", "done", "failed")
- *   - closure_evidence_json (operator-supplied evidence + system-derived
- *     audit context; JSON-encoded)
- *   - actor_session (the session that closed the packet — owner-as-author)
- *   - next_qitem_id (FK to queue_items; null on terminal closure)
- *   - prior_qitem_id (the closed packet; FK to queue_items)
+ * 列：
+ *   - trail_id（ULID 主键）
+ *   - instance_id（指向 workflow_instances 的外键）
+ *   - step_id（来自 spec，例如 "produce"、"review-convergence"）
+ *   - step_role（来自 spec，例如 "producer"、"orchestrator"）
+ *   - closed_at（闭环/转换的 ISO 时间戳）
+ *   - closure_reason（枚举："handoff"、"waiting"、"done"、"failed"）
+ *   - closure_evidence_json（操作员提供的证据 + 系统派生的审计上下文；JSON 编码）
+ *   - actor_session（关闭该包的 session——owner-as-author）
+ *   - next_qitem_id（指向 queue_items 的外键；终态闭环时为 null）
+ *   - prior_qitem_id（已关闭的包；指向 queue_items 的外键）
  *
- * Indexes:
- *   - (instance_id, closed_at DESC) — fast "trail for one workflow instance"
- *   - (closed_at DESC) — global recent activity
+ * 索引：
+ *   - (instance_id, closed_at DESC)——快速查询“某个 workflow 实例的轨迹”
+ *   - (closed_at DESC)——全局近期活动
  */
 export const workflowStepTrailsSchema: Migration = {
   name: "035_workflow_step_trails.sql",

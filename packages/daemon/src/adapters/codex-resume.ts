@@ -19,7 +19,7 @@ interface CodexResumeOptions {
   maxWaitMs?: number;
   sleep?: (ms: number) => Promise<void>;
   exec?: (cmd: string) => Promise<string>;
-  /** #69: whether the installed Codex supports --no-daemon; absent keeps the existing invocation. */
+  /** #69：已安装 Codex 是否支持 --no-daemon；缺失时保持现有调用。 */
   detectDaemonSupport?: CodexDaemonSupportDetector;
 }
 
@@ -31,9 +31,9 @@ export class CodexResumeAdapter {
 
   canResume(resumeType: string | null, resumeToken: string | null): boolean {
     if (!resumeType || !CODEX_TYPES.has(resumeType)) return false;
-    // codex_last does not need a token
+    // codex_last 不需要 token。
     if (resumeType === "codex_last") return true;
-    // codex_id needs a token
+    // codex_id 需要 token。
     if (!resumeToken) return false;
     return true;
   }
@@ -44,15 +44,15 @@ export class CodexResumeAdapter {
     resumeToken: string | null,
     cwd: string,
     codexConfigProfile?: string | null,
-    // OPR.0.4.8.3 Seam B: persisted resolved posture threaded from restore.
+    // OPR.0.4.8.3 接缝 B：从 restore 贯穿传入的持久化已解析姿态。
     resolvedPosture?: "floor" | "full_bypass",
-    // 0.5.2-07: the seat's SPEC-pinned model. TRAILING param so existing positional callers that pass
-    // resolvedPosture as the 6th arg stay correct; threaded so the legacy (non-pod-aware) restore boots
-    // the resumed seat on its spec model, not the runtime default; absent → command byte-identical.
+    // 0.5.2-07：席位由 spec 固定的 model。作为尾部参数，使把 resolvedPosture 作为第 6 个参数的
+    // 现有位置调用保持正确；沿调用链传递，使 legacy（不感知 pod）restore 以 spec model 而非
+    // runtime 默认值启动恢复后的席位；缺失时命令逐字节不变。
     model?: string | null,
   ): Promise<ResumeResult> {
     if (!this.canResume(resumeType, resumeToken)) {
-      return { ok: false, code: "no_resume", message: "Codex resume not available" };
+      return { ok: false, code: "no_resume", message: "Codex resume 不可用" };
     }
 
     if (codexConfigProfile?.trim()) {
@@ -68,12 +68,12 @@ export class CodexResumeAdapter {
         return {
           ok: false,
           code: "resume_failed",
-          message: `Profile preflight failed: ${probeResult.error}${probeResult.migrationHint ? `\n  Fix: ${probeResult.migrationHint}` : ""}`,
+          message: `Profile 预检失败：${probeResult.error}${probeResult.migrationHint ? `\n  修复：${probeResult.migrationHint}` : ""}`,
         };
       }
     }
 
-    // #69: detect for the Codex the restored pane runs (its cwd, the launch PATH).
+    // #69：针对恢复后 pane 实际运行的 Codex 进行检测（其 cwd 与启动 PATH）。
     const daemonSupport = this.options.detectDaemonSupport ? await this.options.detectDaemonSupport(cwd) : undefined;
     if (daemonSupport?.kind === "unknown") {
       return { ok: false, code: "resume_failed", message: unknownDaemonSupportMessage(daemonSupport.detail) };
@@ -103,11 +103,9 @@ export class CodexResumeAdapter {
     return result.ok ? { ...result, appliedLaunch } : result;
   }
 
-  // Mirrors ClaudeResumeAdapter.verifyResume: poll the pane, run the native
-  // probe, return resumed / retry_fresh / attention_required / resume_failed
-  // based on observable runtime state. The `attention_required` outcome
-  // (Codex auth refusal — stored OAuth token can no longer be refreshed)
-  // closes the deferral recorded by the lifecycle scenario matrix slice.
+  // 镜像 ClaudeResumeAdapter.verifyResume：轮询 pane，运行原生 probe，并根据可观察 runtime
+  // 状态返回 resumed/retry_fresh/attention_required/resume_failed。`attention_required` 结果
+  //（Codex 鉴权拒绝——已存 OAuth token 无法再刷新）关闭生命周期场景矩阵 slice 记录的延后项。
   private async verifyResume(tmuxSessionName: string): Promise<ResumeResult> {
     const pollMs = this.options.pollMs ?? 200;
     const maxWaitMs = this.options.maxWaitMs ?? 5_000;
@@ -127,14 +125,13 @@ export class CodexResumeAdapter {
         return {
           ok: false,
           code: "retry_fresh",
-          message: "Codex resume failed: no saved session found for the requested token",
+          message: "Codex resume 失败：找不到所请求 token 对应的已保存 session",
         };
       }
 
-      // Codex auth-refusal is alive-but-recoverable: the stored access token
-      // can no longer be refreshed. Surface evidence (last 12 pane lines) so
-      // the operator/UI can decide whether to `codex login` and continue, or
-      // mark the seat permanently rebuilt. Mirror Claude's evidence shape.
+      // Codex 鉴权拒绝表示仍存活但可恢复：已存 access token 无法再刷新。展示证据（pane 最后
+      // 12 行），让操作员/UI 决定执行 `codex login` 后继续，还是把席位标为永久重建。
+      // 镜像 Claude 的证据结构。
       if (probe.status === "attention_required") {
         return {
           ok: false,
@@ -169,14 +166,14 @@ export class CodexResumeAdapter {
       return {
         ok: false,
         code: "retry_fresh",
-        message: "Codex resume failed: pane returned to shell instead of entering Codex",
+        message: "Codex resume 失败：pane 返回 shell，而未进入 Codex",
       };
     }
 
     return {
       ok: false,
       code: "resume_failed",
-      message: "Codex resume failed: timed out waiting for Codex to become active",
+      message: "Codex resume 失败：等待 Codex 进入活跃状态超时",
     };
   }
 }

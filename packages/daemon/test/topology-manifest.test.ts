@@ -1,9 +1,7 @@
-// OPR.0.4.4.11 — topology-manifest parse/validate (FR-1: the CLOSED key set).
+// OPR.0.4.4.11——topology-manifest parse/validate（FR-1：封闭 key set）。
 //
-// The rejection legs are the load-bearing tests here: the key set being
-// CLOSED is the thin-manifest enforcement itself (arch R11-1), and the
-// edge/routing rejection must NAME the founder-ratified non-goal — silently
-// ignoring an unknown key would reopen it by stealth.
+// rejection 分支是这里的关键测试：key set 封闭本身就是 thin-manifest 强制规则（arch R11-1）；
+// edge/routing rejection 必须点名 founder 批准的 non-goal。静默忽略未知 key 会暗中重新开放它。
 
 import { describe, it, expect } from "vitest";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
@@ -22,8 +20,8 @@ function errorsOf(res: ReturnType<typeof validateTopologyManifest>): string[] {
   return res.ok ? [] : res.errors;
 }
 
-describe("topology-manifest — valid shapes", () => {
-  it("minimal one-rig manifest normalizes to concurrency 1 (sequential default)", () => {
+describe("topology-manifest——有效结构", () => {
+  it("最小单工作组 manifest 规范化为 concurrency 1（默认串行）", () => {
     const res = validateTopologyManifest({ rigs: [{ source: "factory.yaml" }] }, SRC);
     expect(res.ok).toBe(true);
     if (res.ok) {
@@ -31,7 +29,7 @@ describe("topology-manifest — valid shapes", () => {
     }
   });
 
-  it("multi-rig with per-entry host placement + explicit concurrency, order preserved", () => {
+  it("多工作组 manifest 支持逐 entry 主机放置与显式 concurrency，并保留顺序", () => {
     const res = validateTopologyManifest(
       {
         rigs: [
@@ -52,67 +50,67 @@ describe("topology-manifest — valid shapes", () => {
     }
   });
 
-  it("extensionless PATH-form spec entries stay valid (a spec path needs no extension; bare NAMES are the rejected form)", () => {
+  it("无扩展名 PATH 形式 spec entry 仍有效；spec path 无需扩展名，裸 NAME 才被拒绝", () => {
     const res = validateTopologyManifest({ rigs: [{ source: "specs/myrig" }] }, SRC);
     expect(res.ok).toBe(true);
   });
 });
 
-describe("topology-manifest — CLOSED key set (FR-1 rejection legs)", () => {
-  it("rejects a non-object document with the what/why/fix shape", () => {
+describe("topology-manifest——封闭 key set（FR-1 rejection 分支）", () => {
+  it("以 what/why/fix 结构拒绝非 object 文档", () => {
     const res = validateTopologyManifest("nope", SRC);
     expect(res.ok).toBe(false);
-    expect(errorsOf(res)[0]).toContain("must be a YAML object with a top-level 'rigs' list");
+    expect(errorsOf(res)[0]).toContain("必须是顶层包含 'rigs' 列表的 YAML 对象");
   });
 
-  it("rejects missing/non-list/empty rigs per-case", () => {
-    expect(errorsOf(validateTopologyManifest({}, SRC))[0]).toContain("'rigs' must be a list");
-    expect(errorsOf(validateTopologyManifest({ rigs: {} }, SRC))[0]).toContain("'rigs' must be a list");
-    expect(errorsOf(validateTopologyManifest({ rigs: [] }, SRC))[0]).toContain("'rigs' is empty");
+  it("分别拒绝缺失、非 list 或空 rigs", () => {
+    expect(errorsOf(validateTopologyManifest({}, SRC))[0]).toContain("'rigs' 必须是");
+    expect(errorsOf(validateTopologyManifest({ rigs: {} }, SRC))[0]).toContain("'rigs' 必须是");
+    expect(errorsOf(validateTopologyManifest({ rigs: [] }, SRC))[0]).toContain("'rigs' 为空");
   });
 
-  it("rejects unknown MANIFEST-level keys naming the closed set", () => {
+  it("拒绝未知 MANIFEST 级 key，并点名封闭集合", () => {
     const res = validateTopologyManifest({ rigs: [{ source: "a.yaml" }], banner: "x" }, SRC);
     expect(res.ok).toBe(false);
-    expect(errorsOf(res)[0]).toContain("unknown key 'banner'");
-    expect(errorsOf(res)[0]).toContain("CLOSED");
+    expect(errorsOf(res)[0]).toContain("未知键 'banner'");
+    expect(errorsOf(res)[0]).toContain("键集合封闭");
   });
 
-  it("rejects unknown ENTRY-level keys naming the closed entry set", () => {
+  it("拒绝未知 ENTRY 级 key，并点名封闭 entry 集合", () => {
     const res = validateTopologyManifest({ rigs: [{ source: "a.yaml", retries: 3 }] }, SRC);
     expect(res.ok).toBe(false);
     expect(errorsOf(res)[0]).toContain("rigs[0]");
-    expect(errorsOf(res)[0]).toContain("unknown key 'retries'");
+    expect(errorsOf(res)[0]).toContain("未知键 'retries'");
   });
 
-  it("REJECTS cross-rig edge/routing keys NAMING the founder-ratified non-goal (manifest level)", () => {
+  it("在 manifest 级拒绝跨工作组 edge/routing key，并点名 founder 批准的 non-goal", () => {
     for (const key of ["edges", "routing", "depends_on"]) {
       const res = validateTopologyManifest({ rigs: [{ source: "a.yaml" }], [key]: [] }, SRC);
       expect(res.ok).toBe(false);
       const msg = errorsOf(res).find((e) => e.includes(`'${key}'`));
       expect(msg).toBeDefined();
-      expect(msg).toContain("founder-ratified non-goal");
+      expect(msg).toContain("创建者批准的非目标");
       expect(msg).toContain("topology-Q1");
     }
   });
 
-  it("REJECTS edge/routing keys at ENTRY level with the same non-goal message", () => {
+  it("在 ENTRY 级以相同 non-goal 消息拒绝 edge/routing key", () => {
     const res = validateTopologyManifest({ rigs: [{ source: "a.yaml", needs: ["b"] }] }, SRC);
     expect(res.ok).toBe(false);
     const msg = errorsOf(res)[0];
     expect(msg).toContain("rigs[0]");
     expect(msg).toContain("'needs'");
-    expect(msg).toContain("founder-ratified non-goal");
+    expect(msg).toContain("创建者批准的非目标");
   });
 
-  it("rejects 'on_failure' with the removed-for-v0 stop-on-failure message", () => {
+  it("以 v0 已移除 stop-on-failure 的消息拒绝 'on_failure'", () => {
     const res = validateTopologyManifest({ rigs: [{ source: "a.yaml" }], on_failure: "continue" }, SRC);
     expect(res.ok).toBe(false);
-    expect(errorsOf(res)[0]).toContain("'on_failure' was removed for v0");
-    expect(errorsOf(res)[0]).toContain("stop-on-failure");
+    expect(errorsOf(res)[0]).toContain("v0 已移除 'on_failure'");
+    expect(errorsOf(res)[0]).toContain("失败即停止");
   });
 
-  it("rejects bad source/host shapes per-entry", () => {
+  it("逐 entry 拒绝错误 source/host 结构", () => {
     const res = validateTopologyManifest(
       { rigs: [{ source: "  " }, { host: "h" }, { source: "ok.yaml", host: "" }, "not-an-object"] },
       SRC,
@@ -122,10 +120,10 @@ describe("topology-manifest — CLOSED key set (FR-1 rejection legs)", () => {
     expect(errs.find((e) => e.includes("rigs[0].source"))).toBeDefined();
     expect(errs.find((e) => e.includes("rigs[1].source"))).toBeDefined();
     expect(errs.find((e) => e.includes("rigs[2].host"))).toBeDefined();
-    expect(errs.find((e) => e.includes("rigs[3]") && e.includes("must be an object"))).toBeDefined();
+    expect(errs.find((e) => e.includes("rigs[3]") && e.includes("必须是") && e.includes("对象"))).toBeDefined();
   });
 
-  it("collects ALL structural errors in one pass (per-entry reporting, not fail-fast)", () => {
+  it("单次收集全部结构错误，逐 entry 报告而非 fail-fast", () => {
     const res = validateTopologyManifest(
       { rigs: [{ source: "" }, { source: "b.yaml", extra: 1 }], concurrency: 0, edges: [] },
       SRC,
@@ -135,42 +133,42 @@ describe("topology-manifest — CLOSED key set (FR-1 rejection legs)", () => {
     expect(errs.length).toBe(4); // edges + concurrency + rigs[0].source + rigs[1].extra
   });
 
-  it("rejects non-positive-integer concurrency values", () => {
+  it("拒绝非正整数 concurrency 值", () => {
     for (const bad of [0, -1, 1.5, "2"]) {
       const res = validateTopologyManifest({ rigs: [{ source: "a.yaml" }], concurrency: bad }, SRC);
       expect(res.ok).toBe(false);
-      expect(errorsOf(res)[0]).toContain("'concurrency' must be a positive integer");
+      expect(errorsOf(res)[0]).toContain("'concurrency' 必须是正整数");
     }
   });
 });
 
-describe("topology-manifest — v0 source-form boundary (arch ruling 2026-07-05: SPEC PATHS ONLY, parse-time)", () => {
-  it(".rigbundle entries reject naming the v0 boundary AND the direct single-rig rig-up workaround (stamped FR-1 wording)", () => {
+describe("topology-manifest——v0 source-form 边界（2026-07-05 架构裁定：只接受 SPEC PATH，parse-time）", () => {
+  it(".rigbundle entry 拒绝时点名 v0 边界和直接单工作组启动 workaround（固定 FR-1 措辞）", () => {
     const res = validateTopologyManifest({ rigs: [{ source: "./workers.rigbundle" }] }, SRC);
     expect(res.ok).toBe(false);
     const msg = errorsOf(res)[0]!;
     expect(msg).toContain("rigs[0].source");
-    expect(msg).toContain("SPEC PATHS ONLY");
-    expect(msg).toContain("per-entry targetRoot");
-    expect(msg).toContain("launch that rig directly — single-rig 'rig up ./workers.rigbundle'");
+    expect(msg).toContain("只允许 SPEC PATH");
+    expect(msg).toContain("逐条 targetRoot");
+    expect(msg).toContain("直接启动该工作组；单工作组命令 'zrig up ./workers.rigbundle'");
   });
 
-  it("bare library/rig-name entries reject naming the deferral AND the rig-up-individually workaround", () => {
+  it("裸 library/rig-name entry 拒绝时点名延期项和逐工作组启动 workaround", () => {
     const res = validateTopologyManifest({ rigs: [{ source: "orchestrator" }] }, SRC);
     expect(res.ok).toBe(false);
     const msg = errorsOf(res)[0]!;
-    expect(msg).toContain("'orchestrator' is a bare library/rig name");
-    expect(msg).toContain("SPEC PATHS ONLY");
-    expect(msg).toContain("rig up orchestrator");
+    expect(msg).toContain("'orchestrator' 是裸库/工作组名称");
+    expect(msg).toContain("只允许 SPEC PATH");
+    expect(msg).toContain("zrig up orchestrator");
   });
 
-  it("nested .rigtopology entries reject at parse time", () => {
+  it("嵌套 .rigtopology entry 在 parse 时拒绝", () => {
     const res = validateTopologyManifest({ rigs: [{ source: "./inner.rigtopology" }] }, SRC);
     expect(res.ok).toBe(false);
-    expect(errorsOf(res)[0]).toContain("nested topology manifests are not supported");
+    expect(errorsOf(res)[0]).toContain("不支持嵌套拓扑 manifest");
   });
 
-  it("form rejections are per-entry and collected alongside the rest (not fail-fast)", () => {
+  it("form rejection 逐 entry 记录，并与其他错误一起收集而非 fail-fast", () => {
     const res = validateTopologyManifest(
       { rigs: [{ source: "good.yaml" }, { source: "bad.rigbundle" }, { source: "barename" }] },
       SRC,
@@ -183,14 +181,14 @@ describe("topology-manifest — v0 source-form boundary (arch ruling 2026-07-05:
   });
 });
 
-describe("topology-manifest — file loading", () => {
-  it("missing file returns the canonical what/why/fix error, never a throw", () => {
+describe("topology-manifest——文件加载", () => {
+  it("文件缺失时返回 canonical what/why/fix 错误，绝不抛出", () => {
     const res = loadTopologyManifest("/nonexistent/factory.rigtopology");
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.errors[0]).toContain("topology manifest not found at /nonexistent/factory.rigtopology");
+    if (!res.ok) expect(res.errors[0]).toContain("在 /nonexistent/factory.rigtopology 未找到拓扑 manifest");
   });
 
-  it("loads + validates a real file from disk", () => {
+  it("从磁盘加载并验证真实文件", () => {
     const dir = mkdtempSync(join(tmpdir(), "topo-manifest-"));
     const p = join(dir, "factory.rigtopology");
     writeFileSync(p, "rigs:\n  - source: ./orch.yaml\n  - source: ./workers/rig.yaml\n    host: vps-b\nconcurrency: 2\n");
@@ -204,19 +202,19 @@ describe("topology-manifest — file loading", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it("unparseable YAML errors AS a topology (declared kind binds — no rig-spec fall-through)", () => {
+  it("无法解析的 YAML 作为 topology 报错；已声明 kind 会绑定，不回落到 rig-spec", () => {
     const dir = mkdtempSync(join(tmpdir(), "topo-manifest-"));
     const p = join(dir, "broken.rigtopology");
     writeFileSync(p, "rigs: [unclosed\n  - :::\n");
     const res = loadTopologyManifest(p);
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.errors[0]).toContain("failed to parse topology manifest YAML");
+    if (!res.ok) expect(res.errors[0]).toContain("拓扑 manifest YAML 失败");
     rmSync(dir, { recursive: true, force: true });
   });
 });
 
-describe("topology-manifest — detection sniffs (the router's G-1 contract)", () => {
-  it("hasTopLevelRigsList: true ONLY for a top-level rigs LIST", () => {
+describe("topology-manifest——探测 sniff（router G-1 契约）", () => {
+  it("hasTopLevelRigsList：只对顶层 rigs LIST 返回 true", () => {
     expect(hasTopLevelRigsList({ rigs: [] })).toBe(true);
     expect(hasTopLevelRigsList({ rigs: [{ source: "a" }], concurrency: 2 })).toBe(true);
     expect(hasTopLevelRigsList({ rigs: {} })).toBe(false); // not a list — extension is the escape hatch
@@ -226,7 +224,7 @@ describe("topology-manifest — detection sniffs (the router's G-1 contract)", (
     expect(hasTopLevelRigsList("rigs")).toBe(false);
   });
 
-  it("yamlTextHasTopLevelRigsList: sniffs raw text; unparseable text sniffs false (flows to existing handling)", () => {
+  it("yamlTextHasTopLevelRigsList：sniff 原始文本；无法解析的文本返回 false 并流向现有处理", () => {
     expect(yamlTextHasTopLevelRigsList("rigs:\n  - source: a\n")).toBe(true);
     expect(yamlTextHasTopLevelRigsList("name: factory\npods: []\n")).toBe(false);
     expect(yamlTextHasTopLevelRigsList("rigs: [unclosed\n  - :::\n")).toBe(false);

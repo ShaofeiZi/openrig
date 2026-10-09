@@ -39,18 +39,18 @@ async function stop(deps: LifecycleDeps) {
 it("verifies the captured target after state removal, without probing the default listener", async () => {
   vi.useFakeTimers(); const deps = fixture(); const result = await stop(deps);
   expect(result.err).toBe(""); expect(result.code).not.toBe(1);
-  expect(result.out).toContain("Daemon stopped");
+  expect(result.out).toContain("后台服务已停止");
   expect(vi.mocked(deps.fetch).mock.calls.every(([url]) => url === "http://127.0.0.1:17433/healthz")).toBe(true);
 });
 it("reports a surviving PID and refused listener separately", async () => {
   vi.useFakeTimers(); const result = await stop(fixture({ survives: true }));
-  expect(result.code).toBe(1); expect(result.err).toMatch(/process.*present|pid.*present/i);
-  expect(result.err).toMatch(/listener.*refused/i); expect(result.err).not.toMatch(/still listening/i);
+  expect(result.code).toBe(1); expect(result.err).toMatch(/PID.*存在/);
+  expect(result.err).toMatch(/监听者 refused/); expect(result.err).not.toMatch(/仍在监听/);
 });
 it("an unavailable final probe cannot certify shutdown", async () => {
   vi.useFakeTimers(); const result = await stop(fixture({ unknownProbe: true }));
-  expect(result.code).toBe(1); expect(result.err).toMatch(/unavailable|unverified/i);
-  expect(result.out).not.toContain("Daemon stopped");
+  expect(result.code).toBe(1); expect(result.err).toMatch(/未获核实|unavailable/);
+  expect(result.out).not.toContain("后台服务已停止");
 });
 it.each(["failed", "timed-out"])("a %s drain is not success even after process and listener exit", async (outcome) => {
   vi.useFakeTimers(); const now = new Date().toISOString();
@@ -63,7 +63,7 @@ it.each([null, { pid: 123 }, { pid: 987, startedAt: "2020-01-01T00:00:00Z" }])("
   const receipt = override === null ? null : { schema: "openrig.daemon-shutdown/v1", pid: 987,
     startedAt: now, completedAt: now, outcome: "clean", phase: "complete", failures: [], ...override };
   const result = await stop(fixture({ receipt: JSON.stringify(receipt) }));
-  expect(result.code).toBe(1); expect(result.err).toMatch(/unverified.*receipt/i);
+  expect(result.code).toBe(1); expect(result.err).toMatch(/未获核实.*关闭回执/);
 });
 
 it.each(["failed", "timed-out"])("retains an already-exited %s outcome and identity on repeated stop", async outcome => {
@@ -83,36 +83,36 @@ it("a missing receipt stays unverified across status and retry without another s
   expect(deps.exists(STATE_FILE)).toBe(true);
   expect((await getDaemonStatus(deps)).state).toBe("stale");
   expect(deps.exists(STATE_FILE)).toBe(true);
-  const retry = await stop(deps); expect(retry.code).toBe(1); expect(retry.err).toMatch(/unverified/);
+  const retry = await stop(deps); expect(retry.code).toBe(1); expect(retry.err).toMatch(/未获核实|无法核实/);
   expect(deps.kill).toHaveBeenCalledTimes(1);
 });
 it("clean completion permits a truthful no-target repeat", async () => {
   vi.useFakeTimers(); vi.stubEnv("OPENRIG_URL", "http://127.0.0.1:17433");
   const deps = fixture(); const first = await stop(deps);
-  expect(first.code).not.toBe(1); expect(first.out).toContain("Daemon stopped");
+  expect(first.code).not.toBe(1); expect(first.out).toContain("后台服务已停止");
   expect(deps.exists(STATE_FILE)).toBe(false);
   const again = await stop(deps); expect(again.code).not.toBe(1);
-  expect(again.out).toContain("No daemon target recorded"); expect(again.out).not.toContain("Daemon stopped");
+  expect(again.out).toContain("未记录后台服务目标"); expect(again.out).not.toContain("后台服务已停止");
   expect(deps.kill).toHaveBeenCalledTimes(1);
 });
 it("no recorded target or receipt is a useful no-op, not clean-drain certification", async () => {
   vi.useFakeTimers(); vi.stubEnv("OPENRIG_URL", "http://127.0.0.1:17433");
   const deps = fixture({ noState: true, exited: true, receipt: null });
   const result = await stop(deps);
-  expect(result.code).not.toBe(1); expect(result.out).toContain("No daemon target recorded");
-  expect(result.out).toContain("prior drain not certified"); expect(deps.kill).not.toHaveBeenCalled();
+  expect(result.code).not.toBe(1); expect(result.out).toContain("未记录后台服务目标");
+  expect(result.out).toContain("此前排空未认证"); expect(deps.kill).not.toHaveBeenCalled();
 });
 it.each(["malformed", JSON.stringify({ outcome: "failed", pid: 123 })])("no-state does not silently discard unbound incomplete evidence: %s", async receipt => {
   vi.useFakeTimers(); vi.stubEnv("OPENRIG_URL", "http://127.0.0.1:17433");
   const deps = fixture({ noState: true, exited: true, receipt }); const result = await stop(deps);
-  expect(result.code).toBe(1); expect(result.err).toContain("unverified");
-  expect(result.err).toContain("cannot attribute"); expect(deps.kill).not.toHaveBeenCalled();
+  expect(result.code).toBe(1); expect(result.err).toContain("无法核实");
+  expect(result.err).toContain("无法把它归因到"); expect(deps.kill).not.toHaveBeenCalled();
 });
 it.each([{pid: 123}, {startedAt: "2020-01-01T00:00:00Z"}])("an exited target cannot borrow unrelated clean evidence: %s", async override => {
   vi.useFakeTimers(); const now = new Date().toISOString();
   const deps = fixture({ exited: true, receipt: JSON.stringify({ schema: "openrig.daemon-shutdown/v1", pid: 987,
     startedAt: now, completedAt: now, outcome: "clean", phase: "complete", failures: [], ...override }) });
-  const result = await stop(deps); expect(result.code).toBe(1); expect(result.err).toContain("unverified");
+  const result = await stop(deps); expect(result.code).toBe(1); expect(result.err).toContain("未获核实");
   expect(deps.exists(STATE_FILE)).toBe(true); expect(deps.kill).not.toHaveBeenCalled();
 });
 it("status may clean an exited target only with its matching clean receipt", async () => {
@@ -136,6 +136,6 @@ it("an unreadable target file is not a never-recorded no-target control", async 
   const deps = fixture({ exited: true, receipt: null }); const read = deps.readFile;
   deps.readFile = p => p === STATE_FILE ? "{malformed" : read(p);
   const result = await stop(deps);
-  expect(result.code).toBe(1); expect(result.err).toContain("unverified");
-  expect(result.out).not.toContain("No daemon target recorded"); expect(deps.kill).not.toHaveBeenCalled();
+  expect(result.code).toBe(1); expect(result.err).toContain("无法核实");
+  expect(result.out).not.toContain("未记录后台服务目标"); expect(deps.kill).not.toHaveBeenCalled();
 });

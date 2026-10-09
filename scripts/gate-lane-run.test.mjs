@@ -5,24 +5,24 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderRefusal, runLegs, buildVerdict, runGate, observeForeignLoad, cleanStaleVendoredBundle } from "./gate-lane-run.mjs";
 
-// F1 gate-lane runner logic (arch d6a6c1db, 5 pins). Legs: typecheck AND vitest (repo + supported
-// workspaces). The web-UI leg is ruled OUT (founder, 2026-08-21) — see the absence test below.
-// P5: refusal teaches the port constant, names the gate holder or honest-unknown, always hard-refuse.
+// F1 gate-lane runner 逻辑（arch d6a6c1db，5 条约束）。腿：typecheck 与 vitest（repo + 受支持工作区）。
+// web-UI 这条腿被裁决排除（创始人，2026-08-21）——见下面的“缺席”测试。
+// P5：拒绝时告知端口常量，点名闸门持锁者或诚实标注未知，始终硬拒绝。
 
 test("P5 refusal — gate holder is NAMED (pid/started-at) + teaches the port constant, always refuses", () => {
   const t = renderRefusal({ reason: "gate-holder", holder: { pid: 4242, startedAt: "2026-08-07T09:00:00Z" } }, 40404);
   assert.match(t, /40404/);            // teaches the port constant
   assert.match(t, /4242/);             // names the holder pid
   assert.match(t, /2026-08-07T09:00:00Z/); // + started-at
-  assert.match(t, /refus/i);           // hard-refuse
+  assert.match(t, /拒绝执行/);         // hard-refuse
 });
 
 test("P5 refusal — foreign squatter is HONEST-UNKNOWN + still teaches the port constant + refuses", () => {
   const t = renderRefusal({ reason: "foreign-holder" }, 40404);
   assert.match(t, /40404/);
-  assert.match(t, /unknown|foreign/i); // honest-unknown, not a fabricated holder
+  assert.match(t, /外来进程.*未知/);    // honest-unknown, not a fabricated holder
   assert.doesNotMatch(t, /pid \d/i);   // no fabricated pid
-  assert.match(t, /refus/i);
+  assert.match(t, /拒绝执行/);
 });
 
 test("runLegs runs the two supported legs — and the web-UI leg is ruled OUT, never present", async () => {
@@ -32,8 +32,8 @@ test("runLegs runs the two supported legs — and the web-UI leg is ruled OUT, n
   const names = legs.map((l) => l.name);
   assert.ok(names.includes("typecheck"), "typecheck leg");
   assert.ok(names.includes("vitest"), "vitest leg (repo + supported workspaces)");
-  // Founder ruling 2026-08-21: the web UI is best-effort experimental since the 0.5.0 TUI pivot —
-  // the gate must not run or block on packages/ui. This absence is deliberate; do not re-add.
+  // 创始人裁决 2026-08-21：自 0.5.0 TUI 转向以来，web UI 是尽力而为的实验性项目——
+  // 闸门不得运行或阻塞 packages/ui。此缺席是有意的；不要重新添加。
   assert.ok(!names.includes("vitest:ui"), "no web-UI leg — ruled out, not forgotten");
   assert.ok(ran.every((c) => !/test:ui/.test(c)), "gate never invokes test:ui");
   assert.ok(legs.every((l) => l.ok));
@@ -59,7 +59,7 @@ test("advisory foreign-load — counts foreign node/vitest/tsc processes + loada
   });
   assert.equal(fl.foreignProcessCount, 2);
   assert.deepEqual(fl.loadavg, [4.1, 3.2, 2.0]);
-  assert.ok(fl.advisory.some((a) => /2 foreign/.test(a)));
+  assert.ok(fl.advisory.some((a) => /2 个外来/.test(a)));
   assert.ok(fl.advisory.some((a) => /loadavg/.test(a)));
 });
 
@@ -76,12 +76,12 @@ test("C2 verdict — a GREEN carries the foreign-load context it ran under (reco
 
 test("exclusion-ledger — empty seed stays STRICT; an active resident covering a failed leg → PASS + named", () => {
   const legs = [{ name: "typecheck", ok: true }, { name: "vitest", ok: false }, { name: "vitest:ui", ok: true }];
-  // EMPTY seed (the shipped reality): the failed vitest leg is uncovered → gate FAIL (strict).
+  // 空种子（发布的现实）：失败的 vitest 腿未被覆盖 → 闸门 FAIL（严格）。
   const strict = buildVerdict({ legs, foreignLoad: { advisory: [] }, startedAt: "t0", endedAt: "2025-08-10", ledger: [] });
   assert.equal(strict.gate, "fail");
   assert.equal(strict.ledger.activeExclusions.length, 0);
-  assert.match(strict.ledgerState, /0 exclusion|no exclusion/i);
-  // With an ACTIVE resident excluding the failed leg → gate PASS, exclusion NAMED in the verdict.
+  assert.match(strict.ledgerState, /0 项排除/);
+  // 有一个 ACTIVE 常驻者覆盖失败的腿 → 闸门 PASS，排除在裁决中被命名。
   const excl = [{ suite: "vitest", reason: "known-flaky", receipt: "A/B abc", owner: "dev-driver", expiry: "2025-08-20" }];
   const covered = buildVerdict({ legs, foreignLoad: { advisory: [] }, startedAt: "t0", endedAt: "2025-08-10", ledger: excl, cutCeiling: "2025-09-01" });
   assert.equal(covered.gate, "pass");
@@ -89,11 +89,10 @@ test("exclusion-ledger — empty seed stays STRICT; an active resident covering 
   assert.match(covered.ledgerState, /vitest/);
 });
 
-// The gate tests SOURCE truth. A stale desk leftover at packages/cli/daemon (a gitignored build
-// artifact from a prior `npm run build:package`) would poison test:repo's freshness guard — the guard
-// correctly flags an assembled-but-stale bundle, but the gate is not a package-time context. The runner
-// removes it at gate start so a leftover can never poison a run; real package-time assembly is still
-// guarded, and a fresh clone (no bundle) is a no-op.
+// 闸门测的是源码真实性。packages/cli/daemon 处一个过期的桌面残留（早先 `npm run build:package`
+// 留下的、被 gitignore 的构建产物）会污染 test:repo 的新鲜度守卫——守卫会正确地标出一个已组装但已过期的包，
+// 但闸门不是打包语境。runner 在闸门启动时删掉它，使残留永远不可能污染一次运行；真实打包时的组装仍受守护，
+// 而全新 clone（没有包）是 no-op。
 test("gate cleans a stale vendored daemon bundle at start so a desk leftover can't poison test:repo", () => {
   const root = mkdtempSync(join(tmpdir(), "gate-vendored-"));
   const bundleDist = join(root, "packages", "cli", "daemon", "dist");
@@ -105,36 +104,35 @@ test("gate cleans a stale vendored daemon bundle at start so a desk leftover can
   assert.equal(existsSync(join(root, "packages", "cli", "daemon")), false, "the whole vendored daemon tree is removed");
   assert.match(removed, /packages[\\/]cli[\\/]daemon$/);
 
-  // idempotent: a fresh clone with no bundle is a clean no-op (force:true), never a throw.
+  // 幂等：没有包的全新 clone 是干净 no-op（force:true），绝不抛错。
   assert.doesNotThrow(() => cleanStaleVendoredBundle(root));
 });
 
-// SELF-DESCRIBING VERDICT (gate-lane.mjs:56 smoke-indistinguishability fix). A SMOKE run skips every
-// leg but is sealed as a NORMAL PASS — hash-verifying the JSON proved the file authentic while proving
-// NOTHING about whether the gate RAN. The verdict must now CARRY its mode + per-leg evidence.
+// 自描述裁决（gate-lane.mjs:56 冒烟不可区分性修复）。一次 SMOKE 运行跳过每条腿，
+// 却被封成一个普通 PASS——对 JSON 做哈希校验只能证明文件真实，完全证明不了闸门到底跑没跑。
+// 裁决现在必须自带它的模式 + 每条腿的证据。
 test("SELF-DESCRIBING (pm GATE CONDITION): verdict.smoke tracks WHAT RAN via runGate — the SHIPPED wiring, not a mirror", async () => {
-  // Calls the SAME runGate gate-lane.mjs calls (ONE wiring origin — not a lookalike that could pass
-  // while production drifts). realExec is a SPY, so we observe the EFFECT without spawning real npm: on a
-  // smoking run runGate picks its skip branch and realExec is NEVER touched; on a real run runGate routes
-  // every leg through realExec. The field must coincide with what the spy saw — an env/hardcoded field
-  // cannot satisfy BOTH directions AND both effect assertions.
+  // 调用 gate-lane.mjs 所调用的同一个 runGate（唯一定线点——不是一个仿冒品，否则生产漂移时它照样能过）。
+  // realExec 是个 spy，于是我们不 spawn 真 npm 就能观测“效果”：冒烟运行时 runGate 选跳过分支、
+  // realExec 绝不被碰；真跑时 runGate 把每条腿都路由过 realExec。该字段必须与 spy 所见一致——
+  // 一个从环境读/硬编码的字段不可能同时满足两个方向、以及两组效果断言。
   const gateWith = async (smoke) => {
     const ran = [];
     const realExec = async (cmd) => { ran.push(cmd); return { ok: true, code: 0 }; };
     const verdict = await runGate({ smoke, realExec, foreignLoad: { advisory: [] }, startedAt: "t0", ledger: [] });
     return { verdict, ran };
   };
-  // NEGATIVE CONTROL A — a SMOKING run seals smoke:true AND runs nothing (a hardcoded smoke:false fails
-  // the first; a field decoupled from the wiring fails the second).
+  // 负对照 A——SMOKE 运行封 smoke:true 且不跑任何东西（硬编码 smoke:false 会让第一个失败；
+  // 与接线解耦的字段会让第二个失败）。
   const smoked = await gateWith(true);
   assert.equal(smoked.verdict.smoke, true, "the smoking run seals smoke:true");
   assert.equal(smoked.ran.length, 0, "smoke:true coincides with ZERO real executions (the effect)");
-  // NEGATIVE CONTROL B — a REAL run seals smoke:false AND routes every leg through realExec (a hardcoded
-  // smoke:true fails). Both directions + both effect checks together forbid a constant that lies.
+  // 负对照 B——真实运行封 smoke:false 且把每条腿路由过 realExec（硬编码 smoke:true 失败）。
+  // 两个方向 + 两组效果断言合在一起，禁止一个说谎的常量。
   const real = await gateWith(false);
   assert.equal(real.verdict.smoke, false, "the real run seals smoke:false");
   assert.equal(real.ran.length, 2, "smoke:false coincides with both legs routed through realExec (the effect)");
-  // FAIL-SAFE — buildVerdict without a smoke arg defaults false, never a silent true.
+  // 故障安全——buildVerdict 不带 smoke 参数时默认 false，绝不静默 true。
   assert.equal(buildVerdict({ legs: [], foreignLoad: { advisory: [] }, startedAt: "t0", endedAt: "t1" }).smoke, false);
 });
 
@@ -145,7 +143,7 @@ test("SELF-DESCRIBING: per-leg durationMs recorded (the mixed-mode discriminator
     assert.equal(typeof l.durationMs, "number", `${l.name} carries a numeric durationMs`);
     assert.ok(l.durationMs >= 0, `${l.name} durationMs is non-negative`);
   }
-  // and buildVerdict carries them through PER LEG (not only the whole-run startedAt/endedAt).
+  // 且 buildVerdict 按每条腿携带它们（不只是整次运行的 startedAt/endedAt）。
   const v = buildVerdict({ legs, foreignLoad: { advisory: [] }, startedAt: "t0", endedAt: "t1" });
   assert.ok(v.legs.every((l) => typeof l.durationMs === "number"), "verdict.legs carry per-leg durationMs");
 });

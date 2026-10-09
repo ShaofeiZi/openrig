@@ -6,10 +6,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { acquireGateLane, GATE_LANE_PORT } from "./gate-lane-lock.mjs";
 
-// F1 gate-lane (arch d6a6c1db; mechanism (B) bound-localhost-port, desk-concurred): a machine-wide
-// kernel-released-on-death mutex. Acquire NON-BLOCKING; gate-vs-gate contention HARD-REFUSES naming the
-// holder (pid/started-at); a FOREIGN process on the port with NO holder-info file is FAIL-CLOSED
-// ("foreign-holder", load-115). flock(2) is anonymous → a holder-info file is needed under any mechanism.
+// F1 gate-lane（arch d6a6c1db；机制 (B) 绑定 localhost 端口，桌面侧已同意）：一个机器级互斥锁，
+// 进程死亡时由内核释放。非阻塞获取；闸门对闸门争用时硬拒绝并点名持锁者（pid/started-at）；
+// 端口上有外来进程、却没有 holder-info 文件时失败关闭（"foreign-holder"，load-115）。
+// flock(2) 是匿名的 → 无论哪种机制都需要一个 holder-info 文件。
 const info = () => join(mkdtempSync(join(tmpdir(), "gl-")), "holder.json");
 
 test("acquires the lane on a free port + writes holder-info (pid, started-at)", async () => {
@@ -50,7 +50,7 @@ test("FOREIGN process on the port + NO holder-info → FAIL-CLOSED 'foreign-hold
 });
 
 test("P2 exclusivity (no SO_REUSEPORT): a second CONCURRENT bind on the same port MUST fail", async () => {
-  // Load-bearing: with SO_REUSEPORT both binds would succeed and the mutex would silently vanish.
+  // 承重断言：若带 SO_REUSEPORT，两次 bind 都会成功，互斥锁会静默消失。
   const s1 = net.createServer();
   await new Promise((r) => s1.listen(45875, "127.0.0.1", r));
   const s2 = net.createServer();
@@ -70,13 +70,13 @@ test("P2 exclusivity (no SO_REUSEPORT): a second CONCURRENT bind on the same por
 test("P3: GATE_LANE_PORT is the ONE named lock (numeric, valid range, env-overridable)", () => {
   assert.equal(typeof GATE_LANE_PORT, "number");
   assert.ok(GATE_LANE_PORT > 0 && GATE_LANE_PORT < 65536);
-  // NOTE: this test must NOT acquire the DEFAULT port — GATE_LANE_PORT is the real machine lock, so a
-  // running gate (which runs this very suite via test:repo) HOLDS it; acquiring it here would EADDRINUSE
-  // against the parent gate. acquire-uses-the-passed-port is covered by the explicit-port tests above.
+  // 注意：这个测试绝不能获取默认端口——GATE_LANE_PORT 是真实的机器锁，一个正在运行的闸门
+  // （它正是通过 test:repo 跑这套测试的）已经占着它；在这里再获取会与父闸门 EADDRINUSE。
+  // “acquire 用的是传入端口”已由上面显式传端口的测试覆盖。
 });
 
 test("P4 best-effort: a failed holder-info write does NOT lose the already-held lane (bind is the lock)", async () => {
-  // Parent path is a FILE, so the holder-info mkdir/write fails — but the port bind still holds the lane.
+  // 父路径是一个文件，所以 holder-info 的 mkdir/write 会失败——但端口 bind 仍然占着 lane。
   const f = join(mkdtempSync(join(tmpdir(), "gl-")), "notadir");
   writeFileSync(f, "x");
   const a = await acquireGateLane({ port: 45876, holderInfoPath: join(f, "holder.json") });

@@ -1,16 +1,14 @@
-// User Settings v0 — daemon HTTP route for the UI System drawer
-// Settings panel.
+// 用户设置 v0 —— 面向 UI System 抽屉设置面板的后台服务 HTTP 路由。
 //
-// Endpoints:
-//   GET    /api/config                  → all keys with value/source/default
-//   GET    /api/config/:key             → one key with value/source/default
-//   POST   /api/config/:key             → set a key (body: { value: string })
-//   DELETE /api/config/:key             → reset one key (revert to default)
-//   POST   /api/config/init-workspace   → scaffold default workspace dirs
+// 端点：
+//   GET    /api/config                  → 所有键及其 value/source/default
+//   GET    /api/config/:key             → 单个键及其 value/source/default
+//   POST   /api/config/:key             → 设置一个键（body: { value: string }）
+//   DELETE /api/config/:key             → 重置一个键（恢复默认）
+//   POST   /api/config/init-workspace   → 搭建默认工作区目录
 //
-// The CLI (`rig config get/set/reset/init-workspace`) is the canonical
-// edit surface for operators + agents. This route exists for the UI;
-// agents stay on CLI-shell-out per the shipped openrig-user-settings skill.
+// CLI（`zrig config get/set/reset/init-workspace`）是操作员 + 智能体的规范编辑表面。
+// 本路由为 UI 而存在；按已交付的 openrig-user-settings 技能，智能体仍走 CLI-shell-out。
 
 import { Hono } from "hono";
 import { settingsBrowser } from "../domain/user-settings/settings-browser.js";
@@ -27,7 +25,7 @@ import {
 
 interface InitWorkspaceBody {
   root?: string;
-  /** Deprecated compatibility input. Existing files are always preserved. */
+  /** 已废弃的兼容输入。既有文件始终保留。 */
   force?: boolean;
   dryRun?: boolean;
 }
@@ -41,11 +39,10 @@ export function configRoutes(opts: { home?: string } = {}): Hono {
     if (c.req.query("view") === "browser") {
       const gateway = c.get("gatewaySubsystem" as never) as { status(): Record<string, unknown> } | undefined;
       let observed: Record<string, unknown> | null = null;
-      try { observed = gateway?.status() ?? null; } catch { /* configuration still browsable */ }
+      try { observed = gateway?.status() ?? null; } catch { /* 仍可浏览配置 */ }
       return c.json(settingsBrowser(store, observed, opts.home));
     }
-    // OPR.0.4.4.15: dynamic-class enumeration rides ADDITIVELY beside the
-    // static settings map (existing consumers of `settings` unaffected).
+    // OPR.0.4.4.15：动态类枚举以叠加方式位于静态设置映射旁（既有 `settings` 消费方不受影响）。
     try {
       return c.json({ settings: store.resolveAllWithSource(), feedHostSubscriptions: store.listFeedHostSubscriptions() });
     } catch (err) {
@@ -70,12 +67,11 @@ export function configRoutes(opts: { home?: string } = {}): Hono {
     const key = c.req.param("key");
     const removedMessage = removedContextSettingMessage(key);
     if (removedMessage) return c.json({ error: removedMessage, replacement: "context.root" }, 400);
-    // OPR.0.4.4.15: the ONE registered dynamic class resolves here; every
-    // other unknown key keeps the 400 below byte-for-byte.
+    // OPR.0.4.4.15：唯一注册的动态类在此解析；其他未知键保持下面的 400 字节不变。
     const dynamic = store.resolveFeedHostSubscription(key);
     if (dynamic) return c.json(dynamic);
     if (!isSettingsValidKey(key)) {
-      return c.json({ error: `Unknown config key '${key}'`, validKeys: SETTINGS_VALID_KEYS }, 400);
+      return c.json({ error: `未知配置键 '${key}'`, validKeys: SETTINGS_VALID_KEYS }, 400);
     }
     try {
       return c.json(store.resolveOne(key));
@@ -92,11 +88,11 @@ export function configRoutes(opts: { home?: string } = {}): Hono {
     if (removedMessage) return c.json({ error: removedMessage, replacement: "context.root" }, 400);
     const isDynamic = parseFeedHostSubscriptionKey(key) !== null;
     if (!isDynamic && !isSettingsValidKey(key)) {
-      return c.json({ error: `Unknown config key '${key}'`, validKeys: SETTINGS_VALID_KEYS }, 400);
+      return c.json({ error: `未知配置键 '${key}'`, validKeys: SETTINGS_VALID_KEYS }, 400);
     }
     const body = (await c.req.json<{ value?: string }>().catch(() => ({}))) as { value?: string };
     if (typeof body.value !== "string") {
-      return c.json({ error: "value_required", hint: "POST body must be { \"value\": <string> }" }, 400);
+      return c.json({ error: "value_required", hint: "POST body 必须为 { \"value\": <string> }" }, 400);
     }
     try {
       store.set(key, body.value);
@@ -114,7 +110,7 @@ export function configRoutes(opts: { home?: string } = {}): Hono {
     if (removedMessage) return c.json({ error: removedMessage, replacement: "context.root" }, 400);
     const isDynamic = parseFeedHostSubscriptionKey(key) !== null;
     if (!isDynamic && !isSettingsValidKey(key)) {
-      return c.json({ error: `Unknown config key '${key}'`, validKeys: SETTINGS_VALID_KEYS }, 400);
+      return c.json({ error: `未知配置键 '${key}'`, validKeys: SETTINGS_VALID_KEYS }, 400);
     }
     try {
       store.reset(key);

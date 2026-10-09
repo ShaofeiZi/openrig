@@ -28,15 +28,15 @@ function formatAge(timestamp: string): string {
   const then = new Date(timestamp).getTime();
   const diffMs = now - then;
   const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 1) return "刚刚";
+  if (diffMin < 60) return `${diffMin} 分钟前`;
   const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffHr < 24) return `${diffHr} 小时前`;
   const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
+  return `${diffDay} 天前`;
 }
 
-// Uses shared restore-status-colors.ts — single source of truth for restore vocabulary
+// 复用共享的 restore-status-colors.ts —— 恢复状态词表的唯一真源
 
 export function SnapshotPanel({ rigId }: SnapshotPanelProps) {
   const { data: snapshots = [], isPending: loading, error: fetchError } = useSnapshots(rigId);
@@ -74,20 +74,20 @@ export function SnapshotPanel({ rigId }: SnapshotPanelProps) {
       data-testid="snapshot-panel"
       className="vellum-heavy border-l-2 border-on-surface shadow-[-10px_0_30px_rgba(46,52,46,0.05)] p-spacing-6 lg:min-w-[280px] lg:max-w-[320px] overflow-y-auto relative"
     >
-      {/* Crosshair registration marks */}
+      {/* 十字对准标记 */}
       <div className="absolute top-2 left-2 w-2 h-2 crosshair" />
       <div className="absolute top-2 right-2 w-2 h-2 crosshair" />
       <div className="absolute bottom-2 left-2 w-2 h-2 crosshair" />
       <div className="absolute bottom-2 right-2 w-2 h-2 crosshair" />
 
-      {/* Header */}
+      {/* 头部 */}
       <div className="flex justify-between items-start mb-spacing-6">
         <div>
           <h3 className="font-headline text-2xl font-extrabold uppercase tracking-tighter leading-none">
-            SNAPSHOTS
+            快照
           </h3>
           <div className="font-mono text-[9px] text-on-surface-variant mt-1">
-            {snapshots.length} capture{snapshots.length !== 1 ? "s" : ""}
+            {snapshots.length} 个快照
           </div>
         </div>
         <button
@@ -95,21 +95,21 @@ export function SnapshotPanel({ rigId }: SnapshotPanelProps) {
           onClick={handleCreate}
           disabled={createSnapshot.isPending}
         >
-          {createSnapshot.isPending ? "CREATING..." : "CREATE"}
+          {createSnapshot.isPending ? "创建中…" : "创建"}
         </button>
       </div>
 
-      {/* Error */}
+      {/* 错误 */}
       {(error ?? fetchError?.message) && (
         <div data-testid="restore-error" className="stamp-badge mb-spacing-3 w-full">
           {error ?? fetchError?.message}
         </div>
       )}
 
-      {/* Restore result */}
+      {/* 恢复结果 */}
       {restoreResult && (
         <div data-testid="restore-result" className="mb-spacing-4 p-spacing-3 bg-surface-low">
-          <div className="font-mono text-[9px] text-on-surface-variant uppercase mb-spacing-2">RESTORE COMPLETE</div>
+          <div className="font-mono text-[9px] text-on-surface-variant uppercase mb-spacing-2">恢复完成</div>
           <div className="space-y-spacing-1">
             {restoreResult.map((n) => (
               <div key={n.nodeId} className="flex items-center justify-between font-mono text-[10px]">
@@ -123,14 +123,14 @@ export function SnapshotPanel({ rigId }: SnapshotPanelProps) {
         </div>
       )}
 
-      {/* Restore loading */}
+      {/* 恢复中 */}
       {restoreSnapshot.isPending && (
         <div data-testid="restore-loading" className="font-mono text-[10px] text-on-surface-variant mb-spacing-3">
-          Restoring...
+          正在恢复…
         </div>
       )}
 
-      {/* Snapshot list */}
+      {/* 快照列表 */}
       {loading ? (
         <div data-testid="snapshot-loading" className="space-y-spacing-2">
           {[1, 2].map((i) => (
@@ -142,7 +142,7 @@ export function SnapshotPanel({ rigId }: SnapshotPanelProps) {
         </div>
       ) : snapshots.length === 0 ? (
         <div className="font-mono text-[10px] text-on-surface-variant py-spacing-4 text-center italic">
-          No snapshots yet
+          暂无快照
         </div>
       ) : (
         <div className="space-y-spacing-2">
@@ -162,7 +162,7 @@ export function SnapshotPanel({ rigId }: SnapshotPanelProps) {
                   data-testid={`restore-btn-${snap.id}`}
                   onClick={() => setConfirmRestore(snap.id)}
                 >
-                  RESTORE
+                  恢复
                 </button>
               </div>
             </div>
@@ -170,13 +170,13 @@ export function SnapshotPanel({ rigId }: SnapshotPanelProps) {
         </div>
       )}
 
-      {/* Confirmation dialog */}
+      {/* 确认对话框 */}
       <Dialog open={confirmRestore !== null} onOpenChange={(open) => { if (!open) setConfirmRestore(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-headline text-xl font-extrabold uppercase tracking-tighter">Restore Snapshot</DialogTitle>
+            <DialogTitle className="font-headline text-xl font-extrabold uppercase tracking-tighter">恢复快照</DialogTitle>
             <DialogDescription className="text-body-sm text-on-surface-variant">
-              This will restore the rig from snapshot {confirmRestore?.slice(0, 12)}. Existing sessions will be restarted.
+              将从快照 {confirmRestore?.slice(0, 12)} 恢复工作组。现有会话将被重启。
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -185,14 +185,14 @@ export function SnapshotPanel({ rigId }: SnapshotPanelProps) {
               data-testid={confirmRestore ? `cancel-restore-${confirmRestore}` : undefined}
               onClick={() => setConfirmRestore(null)}
             >
-              Cancel
+              取消
             </Button>
             <Button
               variant="default"
               data-testid={confirmRestore ? `confirm-restore-${confirmRestore}` : undefined}
               onClick={() => confirmRestore && handleRestore(confirmRestore)}
             >
-              Confirm Restore
+              确认恢复
             </Button>
           </DialogFooter>
         </DialogContent>

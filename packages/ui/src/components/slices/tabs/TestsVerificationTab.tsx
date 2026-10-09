@@ -1,18 +1,14 @@
-// Slice Story View v0 — Tests / Verification tab.
+// 切片故事视图 v0——测试/验证页签。
 //
-// Load-bearing capability: inline screenshot images and provide a working
-// <video> player when proof packets carry them.
+// 关键能力：证明包携带截图和视频时，行内显示截图并提供可用的 <video> 播放器。
 //
-// Per PRD audit row 6 amendment: real proof-packet layout differs from
-// the original PRD proposal — directories like
-// `dogfood-evidence/<prefix>-<slice>-<date>/` with `*.md` at top level,
-// `screenshots/*.png`, and optional `headed-browser/screenshots/`.
-// Videos are not yet captured by QA; the tab handles that gracefully
-// (empty videos array → no <video> element rendered, no error).
+// 按 PRD 审计第 6 行修订，真实证明包布局不同于原 PRD 提案：目录形如
+// `dogfood-evidence/<prefix>-<slice>-<date>/`，顶层为 `*.md`，另含 `screenshots/*.png`
+// 和可选的 `headed-browser/screenshots/`。QA 尚未捕获视频；页签会优雅处理，videos 数组为空时
+// 不渲染 <video> 元素，也不报错。
 //
-// Aggregate pass/fail badge sits in the header and reflects a heuristic
-// pass/fail extracted from the primary markdown. The actual canonical
-// answer is in the markdown body which is rendered inline.
+// 聚合通过/失败徽标位于标题中，反映从主 Markdown 启发式提取的结果。真正的规范答案位于
+// 行内渲染的 Markdown 正文中。
 
 import { useState } from "react";
 import type { SliceDetail, ProofPacketRendered } from "../../../hooks/useSlices.js";
@@ -48,31 +44,30 @@ export function TestsVerificationTab({
         data-testid="tests-empty"
       >
         <div className="text-[10px] uppercase tracking-[0.14em] text-on-surface-variant">
-          No proof packet matched
+          未匹配到校验包
         </div>
         <p
           data-testid="tests-empty-reason"
           className="mt-2 max-w-2xl text-[11px] leading-relaxed text-on-surface"
         >
-          The proof matcher did not find a dogfood-evidence directory whose
-          name contains this slice id. Evidence may still exist under the
-          configured evidence root or under a related mission folder.
+          校验匹配器未找到名称包含此切片 id 的 dogfood 证据目录。证据仍可能存在于
+          已配置的证据根或相关任务文件夹下。
         </p>
         <div
           data-testid="tests-empty-diagnostics"
           className="mt-3 grid gap-2 text-[10px] text-on-surface-variant sm:grid-cols-3"
         >
-          <Metric label="Qitems" value={qitemCount ?? 0} />
-          <Metric label="Indexed files" value={docsCount ?? 0} />
-          <Metric label="Last activity" value={formatMaybeDate(lastActivityAt ?? null)} />
+          <Metric label="队列项" value={qitemCount ?? 0} />
+          <Metric label="已索引文件" value={docsCount ?? 0} />
+          <Metric label="最近活动" value={formatMaybeDate(lastActivityAt ?? null)} />
         </div>
         <ul
           data-testid="tests-empty-next-steps"
           className="mt-3 list-disc space-y-1 pl-4 text-[10px] leading-relaxed text-on-surface-variant"
         >
-          <li>Check Artifacts for slice-local files and commit refs.</li>
-          <li>Check the evidence root for dogfood screenshots or proof notes with related names.</li>
-          <li>When a proof packet is added with a matching directory name, this tab will render it inline.</li>
+          <li>在“产物”中查看切片本地文件与提交引用。</li>
+          <li>在证据根中查看名称相关的 dogfood 截图或校验说明。</li>
+          <li>当加入目录名匹配的校验包时，此标签页会内联渲染它。</li>
         </ul>
       </div>
     );
@@ -82,11 +77,11 @@ export function TestsVerificationTab({
       <header className="flex items-center justify-between border-b border-outline-variant pb-2">
         <div className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-on-surface">
           <ToolMark tool="proof" size="xs" />
-          Tests / Verification
+          测试 / 校验
         </div>
         <div className="font-mono text-[10px] text-on-surface-variant" data-testid="tests-aggregate">
-          {tests.aggregate.passCount} pass, {tests.aggregate.failCount} fail
-          {" · "}{tests.proofPackets.length} packet{tests.proofPackets.length === 1 ? "" : "s"}
+          {tests.aggregate.passCount} 通过，{tests.aggregate.failCount} 失败
+          {" · "}{tests.proofPackets.length} 个校验包
         </div>
       </header>
       {tests.proofPackets.map((packet) => (
@@ -106,7 +101,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 }
 
 function formatMaybeDate(ts: string | null): string {
-  if (!ts) return "unknown";
+  if (!ts) return "未知";
   const date = new Date(ts);
   if (Number.isNaN(date.getTime())) return ts;
   return date.toLocaleString();
@@ -144,7 +139,7 @@ function ProofPacketSection({ sliceName, packet }: { sliceName: string; packet: 
           <section data-testid={`tests-packet-screenshots-${packet.dirName}`}>
             <div className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-on-surface-variant">
               <ToolMark tool="screenshot" size="xs" className="mr-1 inline-block align-[-2px]" decorative />
-              Screenshots ({packet.screenshots.length})
+              截图（{packet.screenshots.length}）
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {packet.screenshots.map((rel) => (
@@ -185,7 +180,7 @@ function ProofPacketSection({ sliceName, packet }: { sliceName: string; packet: 
           <section data-testid={`tests-packet-videos-${packet.dirName}`}>
             <div className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-on-surface-variant">
               <ToolMark tool="video" size="xs" className="mr-1 inline-block align-[-2px]" decorative />
-              Videos ({packet.videos.length})
+              视频（{packet.videos.length}）
             </div>
             <div className="space-y-3">
               {packet.videos.map((rel) => (
@@ -210,7 +205,7 @@ function ProofPacketSection({ sliceName, packet }: { sliceName: string; packet: 
           <section data-testid={`tests-packet-traces-${packet.dirName}`}>
             <div className="mb-1 font-mono text-[8px] uppercase tracking-[0.12em] text-on-surface-variant">
               <ToolMark tool="trace" size="xs" className="mr-1 inline-block align-[-2px]" decorative />
-              Traces (download)
+              跟踪记录（下载）
             </div>
             <ul className="font-mono text-[10px]">
               {packet.traces.map((rel) => (
@@ -232,7 +227,7 @@ function ProofPacketSection({ sliceName, packet }: { sliceName: string; packet: 
         {packet.additionalMarkdown.length > 0 && (
           <details>
             <summary className="cursor-pointer font-mono text-[10px] text-on-surface" data-testid={`tests-packet-additional-md-toggle-${packet.dirName}`}>
-              Additional markdown ({packet.additionalMarkdown.length})
+              其他 Markdown（{packet.additionalMarkdown.length}）
             </summary>
             <div className="mt-2 space-y-2">
               {packet.additionalMarkdown.map((md) => (

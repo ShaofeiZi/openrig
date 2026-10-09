@@ -11,7 +11,7 @@ import {
   MISSION_CONTROL_VERBS,
 } from "../src/domain/mission-control/mission-control-action-log.js";
 
-describe("MissionControlActionLog (PL-005 Phase A; append-only)", () => {
+describe("MissionControlActionLog（PL-005 Phase B；仅追加）", () => {
   let db: Database.Database;
   let log: MissionControlActionLog;
 
@@ -27,7 +27,7 @@ describe("MissionControlActionLog (PL-005 Phase A; append-only)", () => {
 
   afterEach(() => db.close());
 
-  it("record persists all Mission Control verbs", () => {
+  it("记录并持久化所有 Mission Control 动词", () => {
     for (const verb of MISSION_CONTROL_VERBS) {
       const e = log.record({
         actionVerb: verb,
@@ -43,7 +43,7 @@ describe("MissionControlActionLog (PL-005 Phase A; append-only)", () => {
     expect(log.countAll()).toBe(MISSION_CONTROL_VERBS.length);
   });
 
-  it("record(annotate) requires annotation", () => {
+  it("记录 annotate 时要求 annotation", () => {
     try {
       log.record({
         actionVerb: "annotate",
@@ -58,7 +58,7 @@ describe("MissionControlActionLog (PL-005 Phase A; append-only)", () => {
     }
   });
 
-  it("record(hold/drop) requires reason", () => {
+  it("记录 hold/drop 时要求 reason", () => {
     for (const verb of ["hold", "drop"] as const) {
       try {
         log.record({
@@ -75,7 +75,7 @@ describe("MissionControlActionLog (PL-005 Phase A; append-only)", () => {
     }
   });
 
-  it("record rejects unknown verb", () => {
+  it("记录时拒绝未知 verb", () => {
     try {
       log.record({
         actionVerb: "totally-bogus" as never,
@@ -90,7 +90,7 @@ describe("MissionControlActionLog (PL-005 Phase A; append-only)", () => {
     }
   });
 
-  it("record JSON-encodes before/after state and audit notes", () => {
+  it("记录会将前后状态和审计备注编码为 JSON", () => {
     log.record({
       actionVerb: "approve",
       qitemId: "q-1",
@@ -106,7 +106,7 @@ describe("MissionControlActionLog (PL-005 Phase A; append-only)", () => {
     expect(list[0]?.auditNotes).toEqual({ evidence: "/path/x" });
   });
 
-  it("listRecent returns DESC by acted_at", () => {
+  it("listRecent 按 acted_at 降序返回", () => {
     log.record({ actionVerb: "approve", qitemId: "q-1", actorSession: "x@r", actedAt: "2026-05-04T01:00:00.000Z" });
     log.record({ actionVerb: "approve", qitemId: "q-1", actorSession: "x@r", actedAt: "2026-05-04T01:01:00.000Z" });
     const list = log.listRecent();
@@ -122,7 +122,7 @@ describe("MissionControlActionLog (PL-005 Phase A; append-only)", () => {
     expect(log.listForActor("bob@r")).toHaveLength(1);
   });
 
-  it("API surface lacks update/delete (append-only contract)", () => {
+  it("API 表面没有 update/delete（仅追加契约）", () => {
     const proto = Object.getPrototypeOf(log) as Record<string, unknown>;
     const names = Object.getOwnPropertyNames(proto);
     expect(names).not.toContain("update");

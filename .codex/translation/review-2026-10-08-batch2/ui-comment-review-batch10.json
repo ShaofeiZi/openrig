@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T01:03:45",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch10",
+ "files": 10,
+ "changed": 7,
+ "reviewed_no_change": 3,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/feed-multi-host.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "292896ee6aa5fedb1f419bf0a00a8fa9857add98cdb4578e0abd4fb12522fd1d",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.1.31/0.4.3.29/0.4.4.20、P5.1-7、FR-2/FR-5、cap=2、useTerminalCap、HostMultiRigGraph、qitem/d6135921、scopeTier/scopePath、%3A、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/use-dismissed-card-ids.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "6e9427d2355665503419d7491b8b2bb3a5589e07f29e9a5af074cd4ad020877d",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.1.31/0.4.3.29/0.4.4.20、P5.1-7、FR-2/FR-5、cap=2、useTerminalCap、HostMultiRigGraph、qitem/d6135921、scopeTier/scopePath、%3A、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/p5-1-table-cmux.test.tsx",
+   "status": "changed",
+   "after_sha256": "624f4202c25c40e41822b65a5f6afb1f18ea60b59904466241861a618647dfd5",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.1.31/0.4.3.29/0.4.4.20、P5.1-7、FR-2/FR-5、cap=2、useTerminalCap、HostMultiRigGraph、qitem/d6135921、scopeTier/scopePath、%3A、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/graphics-runtime-mark.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "1471c3a4af082f6eb4a22ce64a1210742c838072664607f3bd584134769fa0b1",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.1.31/0.4.3.29/0.4.4.20、P5.1-7、FR-2/FR-5、cap=2、useTerminalCap、HostMultiRigGraph、qitem/d6135921、scopeTier/scopePath、%3A、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/topology-tab-progressive.test.tsx",
+   "status": "changed",
+   "after_sha256": "b0c0d1fc67c9979e82419c3870b4d4a37591597d20a9b7cf45864bcbe3e75a54",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.1.31/0.4.3.29/0.4.4.20、P5.1-7、FR-2/FR-5、cap=2、useTerminalCap、HostMultiRigGraph、qitem/d6135921、scopeTier/scopePath、%3A、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/library-page-workflow-diagnostic.test.tsx",
+   "status": "changed",
+   "after_sha256": "f53eb375b60998bc84cebff1935ba74ed7cf749fc25d26cf889b5af707798752",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.1.31/0.4.3.29/0.4.4.20、P5.1-7、FR-2/FR-5、cap=2、useTerminalCap、HostMultiRigGraph、qitem/d6135921、scopeTier/scopePath、%3A、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/dashboard-fidelity.test.tsx",
+   "status": "changed",
+   "after_sha256": "bbf741ede2ea158fbc6cf4aa92a7aa072434edf3c3bfc3d7d96e3089f829ba43",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.1.31/0.4.3.29/0.4.4.20、P5.1-7、FR-2/FR-5、cap=2、useTerminalCap、HostMultiRigGraph、qitem/d6135921、scopeTier/scopePath、%3A、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/terminal-token-carry.test.ts",
+   "status": "changed",
+   "after_sha256": "788239d9cf69b2eb373ea967a538521ce1c6efcb9fdc22127c81bb7f20abae46",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.1.31/0.4.3.29/0.4.4.20、P5.1-7、FR-2/FR-5、cap=2、useTerminalCap、HostMultiRigGraph、qitem/d6135921、scopeTier/scopePath、%3A、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/review-actions-and-evidence-containment.test.tsx",
+   "status": "changed",
+   "after_sha256": "9363a3336a6a1f4da53510103d598d04d39445e3c0f5b7b6150f5487d8b790a0",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.1.31/0.4.3.29/0.4.4.20、P5.1-7、FR-2/FR-5、cap=2、useTerminalCap、HostMultiRigGraph、qitem/d6135921、scopeTier/scopePath、%3A、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/theme.test.tsx",
+   "status": "changed",
+   "after_sha256": "2084900f9f33996bd383c5f866455ebf934b9f94da4f9ba5b1abba49102bb205",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.1.31/0.4.3.29/0.4.4.20、P5.1-7、FR-2/FR-5、cap=2、useTerminalCap、HostMultiRigGraph、qitem/d6135921、scopeTier/scopePath、%3A、@vitest-environment jsdom 保留"
+  }
+ ]
+}

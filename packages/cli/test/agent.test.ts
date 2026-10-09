@@ -115,14 +115,14 @@ describe("rig agent", () => {
     };
   }
 
-  // T1: rig agent validate valid spec -> exit 0, output contains "valid"
-  it("agent validate valid spec: prints valid + name + version", async () => {
+  // T1: rig agent validate valid spec -> exit 0, output contains 校验通过
+  it("agent validate valid spec: prints 校验通过 + name + version", async () => {
     const deps = agentDeps("name: my-agent\nversion: 1.2.0\nruntime: claude-code\n");
     const program = new Command();
     program.addCommand(agentCommand(deps));
     const { logs, exitCode } = await captureLogs(() => program.parseAsync(["node", "rig", "agent", "validate", "agent.yaml"]));
     const output = logs.join("\n");
-    expect(output).toContain("Agent spec valid");
+    expect(output).toContain("智能体规格校验通过");
     expect(output).toContain("my-agent");
     expect(output).toContain("v1.2.0");
     expect(exitCode).toBeUndefined();
@@ -135,8 +135,22 @@ describe("rig agent", () => {
     program.addCommand(agentCommand(deps));
     const { logs, exitCode } = await captureLogs(() => program.parseAsync(["node", "rig", "agent", "validate", "agent.yaml"]));
     const output = logs.join("\n");
+    // 后台服务原样回传错误条目；CLI 用中文标题包裹并引导用户修文件
     expect(output).toContain("name is required");
     expect(output).toContain("missing runtime");
+    expect(output).toContain("智能体规格校验未通过");
+    expect(output).toContain("请更新 agent.yaml");
     expect(exitCode).toBe(1);
+  });
+
+  // T3（中文行为）：校验通过时输出同时带"智能体"与"v"前缀版本号
+  it("agent validate valid spec: 中文输出同时包含智能体与版本号", async () => {
+    const deps = agentDeps("name: demo-bot\nversion: 0.0.1\nruntime: claude-code\n");
+    const program = new Command();
+    program.addCommand(agentCommand(deps));
+    const { logs, exitCode } = await captureLogs(() => program.parseAsync(["node", "rig", "agent", "validate", "bot.yaml"]));
+    const output = logs.join("\n");
+    expect(output).toMatch(/智能体规格校验通过：demo-bot v0\.0\.1/);
+    expect(exitCode).toBeUndefined();
   });
 });

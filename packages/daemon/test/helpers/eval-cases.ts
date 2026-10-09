@@ -1,7 +1,6 @@
 /**
- * slice-07 R6 — the eval-case LOADER. Reads the declarative YAML case files, parses each list,
- * and validates every case through the shared schema. Invalid cases are collected (loud), never
- * silently dropped — the runner and the conformance guard share this one path.
+ * slice-07 R6——eval case loader。读取声明式 YAML case 文件、解析每个列表，并通过共享 schema
+ * 校验所有 case。无效 case 会被明确收集，绝不静默丢弃；runner 与一致性 guard 共用此路径。
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -21,7 +20,7 @@ export interface LoadedEvalCases {
   errors: CaseLoadError[];
 }
 
-/** Load + validate every eval case under `dir` (each `*.yaml` file is a list of cases). */
+/** 加载并校验 `dir` 下所有 eval case；每个 `*.yaml` 文件都是 case 列表。 */
 export function loadEvalCasesFromDir(dir: string): LoadedEvalCases {
   const cases: EvalCase[] = [];
   const errors: CaseLoadError[] = [];

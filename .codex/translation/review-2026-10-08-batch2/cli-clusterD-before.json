@@ -1,0 +1,122 @@
+{
+"packages/cli/src/bin-wrapper.ts": [
+"entry",
+"self_reported"
+],
+"packages/cli/src/build-info.ts": [
+"entry",
+"self_reported"
+],
+"packages/cli/src/commands/workflow-render.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/ask-wake.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/config-store.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/cross-host-target.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/destroy-helpers.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/lib/context-git.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/lib/walk-consumption.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/lib/work-install.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/cmux-config.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/context-resolve.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/cross-host-cli-helpers.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/cross-host-executor.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/cross-host-types.ts": [
+"cli-core-a",
+null
+],
+"packages/cli/src/daemon-lifecycle-status.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/daemon-lifecycle.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/daemon-start-lock.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/fetch-with-timeout.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/host-bindings.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/lib/codex-auth.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/lib/context-install.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/lib/file-transfer.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/lib/path-safety.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/lib/topology-trace.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/commands/whoami.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/workflow-errors.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/workflow-follow.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/workflow.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/workspace.ts": [
+"cli-a",
+"self_reported"
+]
+}

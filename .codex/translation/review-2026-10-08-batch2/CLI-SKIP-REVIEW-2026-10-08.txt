@@ -1,0 +1,16 @@
+5 cli skip 源码全文只读复核结论 + config-template 首批8 (2026-10-08)
+
+== 5 cli skip 复核（全文 1..末行） ==
+cross-host-types.ts(1行): 类型 re-export stub，无散文。skip合法。
+lib/hosts/fanout-contract.ts(96行): 注释全中文完整（OPR.0.4.4.15 契约/self-host 语义），类型/枚举机器。skip合法，无英文NL。
+lib/scope/attestation-lineage.ts(35行): 注释全中文（OPR.0.5.0.18 镜像/codegen 约定）。skip合法。
+lib/scope/logical-checkbox.ts(74行): 注释全中文（twin-plus-parity/byIndex 约定）。skip合法。
+lib/scope/scaffold-placeholder.ts(109行): 注释全中文；LEGACY_GENERIC_SCAFFOLD_ACCEPTANCE 英文三项为有意旧版兼容（L82注释说明）。skip合法。
+结论：5 skip 全部合法，无英文自然语言缺口，无需 CLI 作者修。
+
+== config-template 首批8 ==
+用户可见字段 name/description/label/placeholder/about 均中文，机器枚举保留。无测试（非测试类），全文审读+语义证据充分，建议 passed（不自动批转）。
+
+== skip 31 OTHER 精确 sum ==
+机器生成合法30：context7.json(1)+scripts/*.generated.json(4)+claude-mcp/settings.fragment.json(2)+codex-config.fragment.toml(1)+restore-summary.schema.json(1)+tui/spike json(1)+demo/test-system agent.yaml(10)+docker base-image(1)+demo agent.yaml(5)+release-surface-diff.yaml(1)+copy-workflow-specs.mjs(1)+permission-policy-parity.test.ts(1)+portability-report.test.mjs(1)=30。
+5 cli src 复核后判合法（见上）。31=30机器+5复核合法，无非合法 skip。

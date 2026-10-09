@@ -18,7 +18,7 @@ import type { ProjectionPlan } from "../src/domain/projection-planner.js";
 import type { RigSpec, SessionSourceRebuildSpec } from "../src/domain/types.js";
 
 // ============================================================================
-// Fixtures
+// Fixture
 // ============================================================================
 
 function baseValidSpec(): Record<string, unknown> {
@@ -54,11 +54,11 @@ function withMember(spec: Record<string, unknown>, override: Record<string, unkn
 }
 
 // ============================================================================
-// Schema validation — Honest Refusal Matrix (rebuild-mode rows)
+// Schema 校验——诚实拒绝矩阵（rebuild-mode row）
 // ============================================================================
 
-describe("session_source rebuild — schema validation", () => {
-  it("accepts claude-code + rebuild + artifact_set with non-empty value array", () => {
+describe("session_source rebuild——schema 校验", () => {
+  it("接受 claude-code + rebuild + 非空 value array 的 artifact_set", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: {
         mode: "rebuild",
@@ -70,7 +70,7 @@ describe("session_source rebuild — schema validation", () => {
     expect(result.errors).toEqual([]);
   });
 
-  it("accepts codex + rebuild + artifact_set", () => {
+  it("接受 codex + rebuild + artifact_set", () => {
     const spec = withMember(baseValidSpec(), {
       runtime: "codex",
       session_source: { mode: "rebuild", ref: { kind: "artifact_set", value: ["/x/y.md"] } },
@@ -79,7 +79,7 @@ describe("session_source rebuild — schema validation", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("rejects terminal runtime with rebuild", () => {
+  it("拒绝 terminal runtime 使用 rebuild", () => {
     const spec = withMember(baseValidSpec(), {
       runtime: "terminal",
       agent_ref: "builtin:terminal",
@@ -88,83 +88,83 @@ describe("session_source rebuild — schema validation", () => {
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("terminal runtime has no native fork primitive and no agent context to rebuild"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("terminal 运行时没有原生 fork 原语，也没有可重建的 agent 上下文"))).toBe(true);
   });
 
-  it("rejects rebuild + ref.kind=native_id (kind belongs to fork mode)", () => {
+  it("拒绝 rebuild + ref.kind=native_id（该 kind 属于 fork mode）", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "rebuild", ref: { kind: "native_id", value: "abc" } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('rebuild mode requires ref.kind: "artifact_set"'))).toBe(true);
-    expect(result.errors.some((e) => e.includes('belong to mode: "fork"'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('rebuild 模式要求 ref.kind: "artifact_set"'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('属于 "fork" 模式'))).toBe(true);
   });
 
-  it("rejects rebuild + ref.kind=artifact_path", () => {
+  it("拒绝 rebuild + ref.kind=artifact_path", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "rebuild", ref: { kind: "artifact_path", value: "/x" } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('rebuild mode requires ref.kind: "artifact_set"'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('rebuild 模式要求 ref.kind: "artifact_set"'))).toBe(true);
   });
 
-  it("rejects rebuild + empty artifact_set value", () => {
+  it("拒绝 rebuild + 空 artifact_set value", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "rebuild", ref: { kind: "artifact_set", value: [] } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("rebuild requires at least one artifact path"))).toBe(true);
-    // The error mentions trust-precedence ordering as guidance.
-    expect(result.errors.some((e) => e.includes("trust-precedence"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("rebuild 至少需要一个工件路径"))).toBe(true);
+    // error 会提及 trust-precedence 顺序作为指引。
+    expect(result.errors.some((e) => e.includes("信任优先级"))).toBe(true);
   });
 
-  it("rejects rebuild + value not an array", () => {
+  it("拒绝 rebuild + 非 array 的 value", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "rebuild", ref: { kind: "artifact_set", value: "/just/one/path.md" } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("required non-empty array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("非空工件路径数组"))).toBe(true);
   });
 
-  it("rejects rebuild + value array containing empty strings", () => {
+  it("拒绝 rebuild + 包含空字符串的 value array", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "rebuild", ref: { kind: "artifact_set", value: ["/x.md", "  "] } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("each entry must be a non-empty string"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("每一项都必须是非空字符串"))).toBe(true);
   });
 
-  it("rejects unknown ref.kind for rebuild", () => {
+  it("拒绝 rebuild 使用未知 ref.kind", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "rebuild", ref: { kind: "magic", value: ["/x"] } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('v1 rebuild mode supports "artifact_set" only'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('v1 rebuild 模式仅支持 "artifact_set"'))).toBe(true);
   });
 
-  it("rejects unknown mode (neither fork nor rebuild)", () => {
+  it("拒绝未知 mode（既非 fork 也非 rebuild）", () => {
     const spec = withMember(baseValidSpec(), {
       session_source: { mode: "snapshot", ref: { kind: "native_id", value: "x" } },
     });
     const result = RigSpecSchema.validate(spec);
     expect(result.valid).toBe(false);
-    // PL-016 Item 4: error message names the now-three valid modes.
-    expect(result.errors.some((e) => e.includes('supports "fork", "rebuild", or "agent_image"'))).toBe(true);
+    // PL-016 第 4 项：error message 列出当前三个有效 mode。
+    expect(result.errors.some((e) => e.includes('支持 "fork"、"rebuild" 或 "agent_image"'))).toBe(true);
   });
 });
 
 // ============================================================================
-// Codec roundtrip
+// Codec 往返
 // ============================================================================
 
-describe("session_source rebuild — codec roundtrip", () => {
-  it("preserves rebuild + artifact_set + value array through serialize → parse → normalize", () => {
+describe("session_source rebuild——codec 往返", () => {
+  it("经过 serialize → parse → normalize 后保留 rebuild + artifact_set + value array", () => {
     const seed: RigSpec = {
       version: "0.2",
       name: "rebuild-test-rig",
@@ -210,23 +210,23 @@ describe("resolveRebuildArtifacts", () => {
     return { mode: "rebuild", ref: { kind: "artifact_set", value: paths } };
   }
 
-  it("resolves all-existing paths into ResolvedStartupFile[] preserving operator order", () => {
+  it("将全部存在的 path 解析为 ResolvedStartupFile[]，并保留用户顺序", () => {
     const exists = (p: string) => p === "/x/CULTURE.md" || p === "/y/role.md" || p === "/z/handover.md";
     const result = resolveRebuildArtifacts(makeSpec(["/x/CULTURE.md", "/y/role.md", "/z/handover.md"]), { exists });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.files.map((f) => f.absolutePath)).toEqual(["/x/CULTURE.md", "/y/role.md", "/z/handover.md"]);
       expect(result.gaps).toEqual([]);
-      // Identity-honesty: deliveryHint is `send_text` (operator-curated context for the running TUI).
+      // Identity-honesty：deliveryHint 为 `send_text`（用户为运行中的 TUI 整理的 context）。
       expect(result.files.every((f) => f.deliveryHint === "send_text")).toBe(true);
-      // appliesOn: ["fresh_start"] — rebuild IS a fresh launch from the runtime's perspective.
+      // appliesOn: ["fresh_start"]——从 runtime 视角看，rebuild 就是一次全新启动。
       expect(result.files.every((f) => f.appliesOn.includes("fresh_start"))).toBe(true);
-      // Required so the orchestrator surfaces missing-resource failures honestly.
+      // 必须设为 required，使 orchestrator 如实呈现资源缺失失败。
       expect(result.files.every((f) => f.required === true)).toBe(true);
     }
   });
 
-  it("records missing paths as gaps without failing if some files exist", () => {
+  it("部分文件存在时，将缺失 path 记录为 gap 而不失败", () => {
     const exists = (p: string) => p === "/exists.md";
     const result = resolveRebuildArtifacts(makeSpec(["/exists.md", "/missing.md", "/also-missing.md"]), { exists });
     expect(result.ok).toBe(true);
@@ -236,18 +236,18 @@ describe("resolveRebuildArtifacts", () => {
     }
   });
 
-  it("fails the launch with a clear error when ALL declared paths are missing", () => {
+  it("所有声明 path 都缺失时，以明确 error 使启动失败", () => {
     const exists = () => false;
     const result = resolveRebuildArtifacts(makeSpec(["/missing-1.md", "/missing-2.md"]), { exists });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain("none of the 2 declared artifact paths resolved");
-      expect(result.error).toContain("trust-precedence order");
+      expect(result.error).toContain("声明的 artifact 路径共 2 项，均未解析到现有文件");
+      expect(result.error).toContain("信任优先级");
       expect(result.gaps).toEqual(["/missing-1.md", "/missing-2.md"]);
     }
   });
 
-  it("preserves operator-declared ordering (does NOT impose alphabetical or any other sort)", () => {
+  it("保留用户声明顺序（不施加字母顺序或其他排序）", () => {
     const exists = () => true;
     const order = ["/zzz-low-trust.md", "/aaa-mid-trust.md", "/mmm-highest-trust.md"];
     const result = resolveRebuildArtifacts(makeSpec(order), { exists });
@@ -259,7 +259,7 @@ describe("resolveRebuildArtifacts", () => {
 });
 
 // ============================================================================
-// Startup orchestrator — rebuild integration
+// Startup orchestrator——rebuild 集成
 // ============================================================================
 
 function mockOrchTmux(): TmuxAdapter {
@@ -282,8 +282,8 @@ function makeStubAdapter(): RuntimeAdapter {
     project: vi.fn(async () => ({ projected: [], skipped: [], failed: [] })),
     deliverStartup: vi.fn(async () => ({ delivered: 0, failed: [] })),
     checkReady: vi.fn(async () => ({ ready: true })),
-    // Fresh-launch shape: returns ok with NO resumeToken (rebuild seats have
-    // no native runtime conversation to resume from).
+    // Fresh-launch shape：返回 ok 且没有 resumeToken（rebuild seat 没有可恢复的
+    // native runtime conversation）。
     launchHarness: vi.fn(async () => ({ ok: true })),
   };
 }
@@ -292,7 +292,7 @@ function emptyPlan(): ProjectionPlan {
   return { runtime: "claude-code", cwd: ".", entries: [], startup: { files: [], actions: [] }, conflicts: [], noOps: [], diagnostics: [] };
 }
 
-describe("StartupOrchestrator rebuild integration", () => {
+describe("StartupOrchestrator rebuild 集成", () => {
   let db: Database.Database;
   let sessionRegistry: SessionRegistry;
   let eventBus: EventBus;
@@ -345,7 +345,7 @@ describe("StartupOrchestrator rebuild integration", () => {
     ];
   }
 
-  it("sets continuityOutcome=rebuilt when rebuildArtifacts is provided and launch succeeds", async () => {
+  it("提供 rebuildArtifacts 且启动成功时设置 continuityOutcome=rebuilt", async () => {
     const s = seed();
     const orch = createOrch();
     const result = await orch.startNode(makeInput(s, { rebuildArtifacts: makeRebuildArtifacts() }));
@@ -356,7 +356,7 @@ describe("StartupOrchestrator rebuild integration", () => {
     });
   });
 
-  it("calls adapter.launchHarness with NO resumeToken AND NO forkSource on rebuild", async () => {
+  it("rebuild 时调用 adapter.launchHarness，不传 resumeToken 和 forkSource", async () => {
     const s = seed();
     const adapter = makeStubAdapter();
     const launchSpy = adapter.launchHarness as ReturnType<typeof vi.fn>;
@@ -369,7 +369,7 @@ describe("StartupOrchestrator rebuild integration", () => {
     expect(opts.forkSource).toBeUndefined();
   });
 
-  it("rebuild seat persists with NO resumeToken (identity-honesty: rebuild is artifact-injected, not native-resumed)", async () => {
+  it("rebuild seat 持久化时没有 resumeToken（identity-honesty：rebuild 是 artifact 注入，而非 native resume）", async () => {
     const s = seed();
     const orch = createOrch();
     await orch.startNode(makeInput(s, { rebuildArtifacts: makeRebuildArtifacts() }));
@@ -378,7 +378,7 @@ describe("StartupOrchestrator rebuild integration", () => {
     expect(row.resume_token).toBeNull();
   });
 
-  it("hands rebuild artifacts to adapter.deliverStartup (post-launch delivery via send_text)", async () => {
+  it("将 rebuild artifact 交给 adapter.deliverStartup（启动后通过 send_text 交付）", async () => {
     const s = seed();
     const adapter = makeStubAdapter();
     const deliverSpy = adapter.deliverStartup as ReturnType<typeof vi.fn>;
@@ -387,16 +387,16 @@ describe("StartupOrchestrator rebuild integration", () => {
 
     await orch.startNode(makeInput(s, { adapter, rebuildArtifacts: artifacts }));
 
-    // deliverStartup is called twice: once pre-launch (filesystem files; empty
-    // for rebuild-only) and once post-launch (TUI files; the rebuild artifacts).
+    // deliverStartup 调用两次：一次在启动前（filesystem file；仅 rebuild 时为空），
+    // 一次在启动后（TUI file；即 rebuild artifact）。
     expect(deliverSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
-    // Post-launch call must include the rebuild artifacts in operator order.
+    // 启动后调用必须按用户顺序包含 rebuild artifact。
     const allDeliveredFiles = deliverSpy.mock.calls.flatMap((call) => call[0] as ResolvedStartupFile[]);
     const deliveredAbsPaths = allDeliveredFiles.map((f) => f.absolutePath);
     for (const artifact of artifacts) {
       expect(deliveredAbsPaths).toContain(artifact.absolutePath);
     }
-    // Operator order preserved: CULTURE before role before handover.
+    // 保留用户顺序：CULTURE 位于 role 前，role 位于 handover 前。
     const cultureIdx = deliveredAbsPaths.indexOf("/x/CULTURE.md");
     const roleIdx = deliveredAbsPaths.indexOf("/y/role.md");
     const handoverIdx = deliveredAbsPaths.indexOf("/z/handover.md");
@@ -405,14 +405,14 @@ describe("StartupOrchestrator rebuild integration", () => {
     expect(roleIdx).toBeLessThan(handoverIdx);
   });
 
-  it("fresh path (no rebuildArtifacts, no resumeToken, no forkSource) is unchanged: continuityOutcome=fresh", async () => {
+  it("fresh 路径（无 rebuildArtifacts、resumeToken、forkSource）保持不变：continuityOutcome=fresh", async () => {
     const s = seed();
     const orch = createOrch();
     const result = await orch.startNode(makeInput(s));
     expect(result).toEqual({ ok: true, startupStatus: "ready", continuityOutcome: "fresh" });
   });
 
-  it("fork path (forkSource set) is unchanged by rebuild plumbing: continuityOutcome=forked", async () => {
+  it("fork 路径（已设置 forkSource）不受 rebuild 接线影响：continuityOutcome=forked", async () => {
     const s = seed();
     const adapter = makeStubAdapter();
     (adapter.launchHarness as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -430,31 +430,31 @@ describe("StartupOrchestrator rebuild integration", () => {
 });
 
 // ============================================================================
-// Honest UX literal contract — continuityOutcome includes "rebuilt"; no
-// `restored|resumed|snapshot|forked` slips into the rebuild dossier wording.
+// 诚实 UX literal contract——continuityOutcome 包含 "rebuilt"；rebuild dossier 文案中不会
+// 混入 `restored|resumed|snapshot|forked`。
 // ============================================================================
 
-describe("identity-honesty literal contract — rebuild", () => {
-  it('continuityOutcome union accepts "rebuilt" alongside other outcomes', () => {
+describe("identity-honesty literal contract——rebuild", () => {
+  it('continuityOutcome union 除其他结果外也接受 "rebuilt"', () => {
     const r: { ok: true; startupStatus: "ready"; continuityOutcome: "rebuilt" } = {
       ok: true, startupStatus: "ready", continuityOutcome: "rebuilt",
     };
     expect(r.continuityOutcome).toBe("rebuilt");
   });
 
-  it("rebuild mode literal is 'rebuild' (NOT 'fresh', 'resumed', 'forked', 'restored', or 'snapshot')", () => {
+  it("rebuild mode literal 是 'rebuild'（不是 'fresh'、'resumed'、'forked'、'restored' 或 'snapshot'）", () => {
     const spec: SessionSourceRebuildSpec = { mode: "rebuild", ref: { kind: "artifact_set", value: ["/x"] } };
     expect(spec.mode).toBe("rebuild");
     expect(["fresh", "resumed", "forked", "restored", "snapshot"]).not.toContain(spec.mode as string);
   });
 
-  it("resolver-produced ResolvedStartupFile entries do NOT carry any 'restored'/'resumed'/'snapshot'/'forked' tags", () => {
+  it("resolver 产生的 ResolvedStartupFile entry 不携带任何 restored/resumed/snapshot/forked tag", () => {
     const exists = () => true;
     const result = resolveRebuildArtifacts(
       { mode: "rebuild", ref: { kind: "artifact_set", value: ["/x.md"] } },
       { exists },
     );
-    if (!result.ok) throw new Error("expected ok");
+    if (!result.ok) throw new Error("预期结果为 ok");
     const serialized = JSON.stringify(result.files);
     expect(serialized).not.toMatch(/restored/i);
     expect(serialized).not.toMatch(/resumed/i);
@@ -464,10 +464,10 @@ describe("identity-honesty literal contract — rebuild", () => {
 });
 
 // ============================================================================
-// Real-filesystem smoke: resolver default `exists` works (light integration)
+// 真实 filesystem smoke：resolver 默认 `exists` 可用（轻量集成）
 // ============================================================================
 
-describe("rebuild resolver real-filesystem smoke (default existsSync)", () => {
+describe("rebuild resolver 真实 filesystem smoke（默认 existsSync）", () => {
   let dir: string;
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "openrig-rebuild-resolver-"));
@@ -476,7 +476,7 @@ describe("rebuild resolver real-filesystem smoke (default existsSync)", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it("resolves real files written under a temp dir", () => {
+  it("解析写入临时目录的真实文件", () => {
     const a = join(dir, "CULTURE.md");
     const b = join(dir, "role.md");
     writeFileSync(a, "culture body");
@@ -493,10 +493,10 @@ describe("rebuild resolver real-filesystem smoke (default existsSync)", () => {
     }
   });
 
-  it("returns gaps for missing files alongside resolved ones", () => {
+  it("同时存在已解析文件时，为缺失文件返回 gap", () => {
     const real = join(dir, "real.md");
     writeFileSync(real, "x");
-    const ghost = join(dir, "ghost.md"); // never written
+    const ghost = join(dir, "ghost.md"); // 刻意不写入
 
     const result = resolveRebuildArtifacts({
       mode: "rebuild",

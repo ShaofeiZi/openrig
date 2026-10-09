@@ -24,7 +24,7 @@ function seedBootstrapRun(db: Database.Database, id: string): void {
   db.prepare("INSERT INTO bootstrap_runs (id, source_kind, source_ref) VALUES (?, ?, ?)").run(id, "rig_spec", "/tmp/rig.yaml");
 }
 
-describe("ExternalInstallExecutor", () => {
+describe("ExternalInstallExecutor 外部安装执行器", () => {
   let db: Database.Database;
 
   beforeEach(() => {
@@ -36,8 +36,8 @@ describe("ExternalInstallExecutor", () => {
     db.close();
   });
 
-  // T1: Approved action executes commandPreview via exec
-  it("approved action executes commandPreview via exec", async () => {
+  // T1：approved action 通过 exec 执行 commandPreview
+  it("approved action 通过 exec 执行 commandPreview", async () => {
     seedBootstrapRun(db, "bs-1");
     const exec = vi.fn(async () => "installed ripgrep 14.1.0") as unknown as ExecFn;
     const executor = new ExternalInstallExecutor({ exec, db });
@@ -53,8 +53,8 @@ describe("ExternalInstallExecutor", () => {
     expect(summary.completed[0]!.requirementName).toBe("ripgrep");
   });
 
-  // T2: Success journaled with stdout, status='completed', durationMs > 0
-  it("success journaled with stdout and positive durationMs", async () => {
+  // T2：成功结果以 stdout、status='completed'、durationMs > 0 记入 journal
+  it("成功结果连同 stdout 与非负 durationMs 记入 journal", async () => {
     seedBootstrapRun(db, "bs-1");
     const exec = vi.fn(async () => "ok") as unknown as ExecFn;
     const executor = new ExternalInstallExecutor({ exec, db });
@@ -69,8 +69,8 @@ describe("ExternalInstallExecutor", () => {
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
-  // T3: Failure journaled with errorMessage, status='failed'
-  it("failure journaled with errorMessage", async () => {
+  // T3：失败结果以 errorMessage、status='failed' 记入 journal
+  it("失败结果连同 errorMessage 记入 journal", async () => {
     seedBootstrapRun(db, "bs-1");
     const exec = vi.fn(async () => { throw new Error("brew: package not found"); }) as unknown as ExecFn;
     const executor = new ExternalInstallExecutor({ exec, db });
@@ -83,8 +83,8 @@ describe("ExternalInstallExecutor", () => {
     expect(summary.failed[0]!.errorMessage).toContain("package not found");
   });
 
-  // T4: manual_only in approved list still skipped (defense in depth)
-  it("manual_only action skipped even when approved", async () => {
+  // T4：approved list 中的 manual_only 仍跳过（纵深防御）
+  it("manual_only action 即使 approved 也会跳过", async () => {
     seedBootstrapRun(db, "bs-1");
     const exec = vi.fn() as unknown as ExecFn;
     const executor = new ExternalInstallExecutor({ exec, db });
@@ -98,8 +98,8 @@ describe("ExternalInstallExecutor", () => {
     expect(summary.skipped[0]!.status).toBe("skipped");
   });
 
-  // T5: Multiple actions in sequence (verify exec call order)
-  it("multiple actions executed in input order", async () => {
+  // T5：按序执行多个 action（验证 exec 调用顺序）
+  it("按 input 顺序执行多个 action", async () => {
     seedBootstrapRun(db, "bs-1");
     const callOrder: string[] = [];
     const exec = vi.fn(async (cmd: string) => { callOrder.push(cmd); return "ok"; }) as unknown as ExecFn;
@@ -113,8 +113,8 @@ describe("ExternalInstallExecutor", () => {
     expect(callOrder).toEqual(["brew install 'first'", "brew install 'second'"]);
   });
 
-  // T6: Partial failure does not abort remaining
-  it("partial failure does not abort remaining actions", async () => {
+  // T6：部分失败不终止剩余 action
+  it("部分失败不终止剩余 action", async () => {
     seedBootstrapRun(db, "bs-1");
     let callCount = 0;
     const exec = vi.fn(async () => {
@@ -135,8 +135,8 @@ describe("ExternalInstallExecutor", () => {
     expect(summary.completed[0]!.requirementName).toBe("ok-pkg");
   });
 
-  // T7: bootstrap_actions row mapping: all fields verified
-  it("bootstrap_actions row has correct field mapping", async () => {
+  // T7：bootstrap_actions row mapping：验证所有字段
+  it("bootstrap_actions row 具有正确字段映射", async () => {
     seedBootstrapRun(db, "bs-1");
     const exec = vi.fn(async () => "installed ok") as unknown as ExecFn;
     const executor = new ExternalInstallExecutor({ exec, db });
@@ -161,8 +161,8 @@ describe("ExternalInstallExecutor", () => {
     expect(typeof detail.durationMs).toBe("number");
   });
 
-  // T8: All tests use mock ExecFn (structural — verified by no real shell in any test)
-  it("all tests use mock ExecFn — exec is vi.fn", async () => {
+  // T8：所有测试使用 mock ExecFn（结构性——所有测试都不调用真实 shell）
+  it("所有测试使用 mock ExecFn——exec 为 vi.fn", async () => {
     seedBootstrapRun(db, "bs-1");
     const exec = vi.fn(async () => "ok") as unknown as ExecFn;
     const executor = new ExternalInstallExecutor({ exec, db });
@@ -175,8 +175,8 @@ describe("ExternalInstallExecutor", () => {
     expect(exec).toHaveBeenCalledTimes(1);
   });
 
-  // T9: Action with null commandPreview skipped
-  it("action with null commandPreview is skipped", async () => {
+  // T9：跳过 commandPreview 为 null 的 action
+  it("跳过 commandPreview 为 null 的 action", async () => {
     seedBootstrapRun(db, "bs-1");
     const exec = vi.fn() as unknown as ExecFn;
     const executor = new ExternalInstallExecutor({ exec, db });
@@ -189,8 +189,8 @@ describe("ExternalInstallExecutor", () => {
     expect(summary.skipped).toHaveLength(1);
   });
 
-  // T10: Unapproved action journaled as skipped, not executed; later approved runs
-  it("unapproved action journaled as skipped, approved action still executes", async () => {
+  // T10：unapproved action 以 skipped 记入 journal 且不执行；后续 approved action 仍运行
+  it("unapproved action 以 skipped 记入 journal，approved action 仍执行", async () => {
     seedBootstrapRun(db, "bs-1");
     const exec = vi.fn(async () => "ok") as unknown as ExecFn;
     const executor = new ExternalInstallExecutor({ exec, db });
@@ -200,11 +200,11 @@ describe("ExternalInstallExecutor", () => {
       { action: makeAction({ requirementName: "approved-pkg" }), approved: true },
     ]);
 
-    // Unapproved not executed
+    // 不执行 unapproved action
     expect(exec).toHaveBeenCalledTimes(1);
     expect(exec).toHaveBeenCalledWith("brew install 'approved-pkg'");
 
-    // Both journaled
+    // 两者都记入 journal
     const rows = db.prepare("SELECT * FROM bootstrap_actions WHERE bootstrap_id = ? ORDER BY seq")
       .all("bs-1") as Array<{ subject_name: string; status: string }>;
     expect(rows).toHaveLength(2);

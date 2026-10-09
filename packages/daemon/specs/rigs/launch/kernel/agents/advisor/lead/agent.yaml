@@ -1,6 +1,6 @@
 name: advisor.lead
 version: "1.0"
-description: Advisor lead — pilots user intent; figures out what to do, asks the operator or queue worker to actually do it
+description: 顾问负责人——引导用户意图，判断应做什么，并请操作员或队列 worker 实际执行
 
 defaults:
   runtime: claude-code

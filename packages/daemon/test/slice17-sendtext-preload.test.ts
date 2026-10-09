@@ -1,6 +1,5 @@
-// The original Slice 17 preload is superseded for the four SDLC roles:
-// profile skills remain available, but startup must not invoke an unselected
-// process. Keep the designer's unchanged explicit action as a restore control.
+// 四个 SDLC 角色不再使用原始 Slice 17 preload：profile skill 仍可用，但 startup 不得调用未选择的
+// process。保留 designer 未改动的显式 action，作为 restore 对照。
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -19,13 +18,13 @@ function readAgent(spec: string): Record<string, unknown> {
   return parseYaml(readFileSync(`${SPECS}agents/${spec}/agent.yaml`, "utf8"));
 }
 
-describe("Product-team startup respects SDLC selection", () => {
-  it.each(SELECTION_DRIVEN_ROLES)("%s: fresh and restored seats get role context without process preloading", (spec) => {
+describe("Product-team startup 遵循 SDLC 选择", () => {
+  it.each(SELECTION_DRIVEN_ROLES)("%s：fresh 与 restored 席位获得角色 context，但不预加载 process", (spec) => {
     const raw = readAgent(spec);
     expect(validateStartupBlock(raw.startup, `${spec}.startup`)).toEqual([]);
     const startup = normalizeStartupBlock(raw.startup);
 
-    // No action may choose work before the role resolves its assignment.
+    // 在角色解析其任务前，任何 action 都不得选择工作。
     expect(startup.actions).toEqual([]);
     expect(startup.files).toContainEqual(expect.objectContaining({
       path: "guidance/role.md",
@@ -38,7 +37,7 @@ describe("Product-team startup respects SDLC selection", () => {
     expect(role).not.toMatch(/BEFORE you do anything else|load and invoke your process skills NOW/i);
   });
 
-  it("an explicitly authored designer action remains runtime-neutral and safe to replay", () => {
+  it("显式编写的 designer action 保持 runtime-neutral，且可安全 replay", () => {
     const raw = readAgent("design/product-designer");
     expect(validateStartupBlock(raw.startup, "designer.startup")).toEqual([]);
     const startup = normalizeStartupBlock(raw.startup);

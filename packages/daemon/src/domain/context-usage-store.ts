@@ -10,15 +10,15 @@ import {
   telemetrySidecarPath,
 } from "./telemetry-state-paths.js";
 
-/** Freshness threshold: samples older than this are considered stale for compact displays. */
-export const FRESHNESS_THRESHOLD_MS = 600_000; // 10 minutes per PM spec
+/** freshness threshold：早于此阈值的 sample 在 compact display 中视为 stale。 */
+export const FRESHNESS_THRESHOLD_MS = 600_000; // PM spec 规定为 10 分钟
 
 export interface ContextUsageStoreOpts {
   stateDir: string;
   codexHomeDir?: string | null;
-  // GHOST-STAGE (c-id): resolve the LIVE occupant's boot time (atom-B tenure) for a node, so a
-  // reading sampled BEFORE the current occupant booted (a prior generation) is rejected instead of
-  // driving the threshold. null = UNKNOWN → the gate is inert (note-2).
+  // GHOST-STAGE（c-id）：解析 node 的 live occupant boot time（atom-B tenure），使当前 occupant
+  // boot 前采样的 reading（前一 generation）被拒绝，而不是驱动 threshold。null = UNKNOWN → gate
+  // 不生效（note-2）。
   resolveOccupantBootAt?: (nodeId: string) => string | null;
 }
 
@@ -33,8 +33,8 @@ interface SidecarRaw {
   };
   session_id?: string;
   session_name?: string;
-  /** Managed seat generation inherited by the status-line collector. Lets consumers distinguish
-   *  a canonical occupant from a retained predecessor whose launch-time --name aliases the seat. */
+  /** status-line collector 继承的 managed seat generation。使 consumer 能区分 canonical occupant
+   *  与 launch-time --name alias 到同一 seat 的 retained predecessor。 */
   occupant_generation?: string;
   transcript_path?: string;
   sampled_at?: string;
@@ -94,13 +94,12 @@ export class ContextUsageStore {
   }
 
   /**
-   * GHOST-STAGE (c-id): is this reading from a generation PRIOR to the node's live occupant?
-   * A reading sampled strictly before the current occupant booted belongs to a retired tenure
-   * (the frozen-88% specimen in the mixed-gen window after handover, where the name is reused so
-   * session_mismatch cannot catch it). Returns false when boot time is UNKNOWN or the reading has
-   * no sampled_at — the gate is inert (note-2: never treat unknown as stale), leaving
-   * session_mismatch + freshness as the remaining guards. Date.parse tolerates the format skew
-   * between the collector's ISO sampled_at and SQLite datetime('now') boot_at.
+   * GHOST-STAGE（c-id）：此 reading 是否来自 node live occupant 之前的 generation？严格早于当前
+   * occupant boot 时刻采样的 reading 属于已退役 tenure（handover 后 mixed-gen window 中 frozen-88%
+   * 样本；由于名称被复用，session_mismatch 无法捕获）。boot time 为 UNKNOWN 或 reading 无 sampled_at
+   * 时返回 false——gate 不生效（note-2：绝不将 unknown 视为 stale），剩余 guard 为
+   * session_mismatch + freshness。Date.parse 可容忍 collector ISO sampled_at 与 SQLite
+   * datetime('now') boot_at 之间的格式差异。
    */
   private isPriorGenerationReading(nodeId: string, sampledAt: string | null): boolean {
     if (!sampledAt) return false;
@@ -112,30 +111,29 @@ export class ContextUsageStore {
     return sampled < boot;
   }
 
-  /** Get the sidecar file path for a session. */
+  /** 获取 session 的 sidecar 文件路径。 */
   getSidecarPath(sessionName: string): string {
     return telemetrySidecarPath(contextUsageDirectory(this.stateDir), sessionName);
   }
 
   /**
-   * GHOST-STAGE (e) Class-A 2a: remove a retiring occupant's name-keyed context sidecar so a
-   * same-name successor does not read the predecessor's frozen telemetry sample (the "gen-1 88%
-   * resurfaced as a live threshold flag" specimen). Safe by TIMING — the cutover seam
-   * (OccupantInvalidator) calls this inside SeatHandoverService.commit(), BEFORE the successor
-   * writes its own sidecar. Missing file = no-op; best-effort (a leftover is caught downstream by
-   * the freshness gate). NOTE: this is the DISK sidecar (name-keyed); the context_usage DB table is
-   * node_id-keyed + already session_mismatch-gated, so it needs no invalidation here.
+   * GHOST-STAGE（e）Class-A 2a：移除 retiring occupant 按 name 索引的 context sidecar，使同名
+   * successor 不会读取 predecessor 的 frozen telemetry sample（“gen-1 88% 再次作为 live threshold
+   * flag 出现”的样本）。按时序保证安全——cutover seam（OccupantInvalidator）在
+   * SeatHandoverService.commit() 内、successor 写入自身 sidecar 之前调用。文件缺失 = no-op；
+   * best-effort（残留由下游 freshness gate 捕获）。注意：这是 disk sidecar（按 name 索引）；
+   * context_usage DB table 按 node_id 索引且已有 session_mismatch gate，因此此处无需 invalidation。
    */
   invalidateOccupantSidecar(sessionName: string): void {
     const filePath = this.getSidecarPath(sessionName);
     try {
       if (existsSync(filePath)) unlinkSync(filePath);
     } catch {
-      /* best-effort — a stale leftover is still gated by isFresh downstream */
+      /* best-effort——stale 残留仍由下游 isFresh gate 拦截 */
     }
   }
 
-  /** Read and parse a sidecar JSON file. Returns discriminated result. */
+  /** 读取并解析 sidecar JSON 文件。返回 discriminated result。 */
   readSidecar(sessionName: string): { ok: true; data: SidecarRaw } | { ok: false; reason: "missing_sidecar" | "parse_error" } {
     const canonical = this.readSidecarAt(this.getSidecarPath(sessionName));
     if (canonical.ok || canonical.reason !== "missing_sidecar") return canonical;
@@ -155,14 +153,14 @@ export class ContextUsageStore {
     }
   }
 
-  /** Read sidecar and normalize into ContextUsage in one step. */
+  /** 一步读取 sidecar 并 normalize 为 ContextUsage。 */
   readAndNormalize(sessionName: string): ContextUsage {
     const result = this.readSidecar(sessionName);
     if (!result.ok) return this.unknownUsage(result.reason);
     return this.normalizeSample(result.data);
   }
 
-  /** Read the latest Codex token_count event for a thread and normalize it. */
+  /** 读取 thread 最新的 Codex token_count event 并 normalize。 */
   readCodexAndNormalize(input: { threadId: string | null | undefined; sessionName: string }): ContextUsage {
     const threadId = input.threadId?.trim();
     if (!threadId) return this.unknownUsage("no_data");
@@ -181,12 +179,12 @@ export class ContextUsageStore {
     });
   }
 
-  /** Resolve an explicitly selected native thread, even before its first token count. */
+  /** 解析显式选择的 native thread，即使其尚未出现首个 token count。 */
   readCodexTranscriptPath(threadId: string): string | null {
     return this.readCodexThread(threadId)?.rollout_path ?? null;
   }
 
-  /** Normalize raw sidecar data into a ContextUsage record. */
+  /** 将 raw sidecar data normalize 为 ContextUsage record。 */
   normalizeSample(raw: SidecarRaw | null): ContextUsage {
     if (!raw) {
       return this.unknownUsage("missing_sidecar");
@@ -218,7 +216,7 @@ export class ContextUsageStore {
     };
   }
 
-  /** Normalize a Codex token_count JSONL event into ContextUsage. */
+  /** 将 Codex token_count JSONL event normalize 为 ContextUsage。 */
   private normalizeCodexTokenCount(input: {
     event: CodexTokenCountEvent;
     sessionName: string;
@@ -263,7 +261,7 @@ export class ContextUsageStore {
     };
   }
 
-  /** Persist a context usage record for a node. Upserts. */
+  /** 持久化 node 的 context usage record。执行 upsert。 */
   persist(nodeId: string, usage: ContextUsage): void {
     this.db.prepare(`
       INSERT INTO context_usage (
@@ -305,21 +303,21 @@ export class ContextUsageStore {
     );
   }
 
-  /** Get context usage for a single node. Session-aware: mismatched session returns unknown. */
+  /** 获取单个 node 的 context usage。感知 session：session 不匹配时返回 unknown。 */
   getForNode(nodeId: string, currentSessionName: string | null): ContextUsage {
     if (!currentSessionName) return this.unknownUsage("not_managed");
 
     const row = this.db.prepare("SELECT * FROM context_usage WHERE node_id = ?").get(nodeId) as ContextUsageRow | undefined;
     if (!row) return this.unknownUsage("no_data");
 
-    // Session mismatch guard: prevent stale cross-session inheritance
+    // Session mismatch guard：防止 stale cross-session inheritance
     if (row.session_name && row.session_name !== currentSessionName) {
       return this.unknownUsage("session_mismatch");
     }
 
-    // GHOST-STAGE (c-id): generation guard. Under handover the name is REUSED, so session_mismatch
-    // passes while the table still holds the retiree's pre-boot reading (the mixed-gen window).
-    // Reject readings from before the live occupant booted → insufficient-data, evaluate current-gen only.
+    // GHOST-STAGE（c-id）：generation guard。handover 时名称会复用，因此即使 table 仍保存 retiree
+    // pre-boot reading（mixed-gen window），session_mismatch 也会通过。拒绝 live occupant boot 前的
+    // reading → insufficient-data，只评估 current-gen。
     if (this.isPriorGenerationReading(nodeId, row.sampled_at)) {
       return this.unknownUsage("stale_generation");
     }
@@ -327,7 +325,7 @@ export class ContextUsageStore {
     return this.rowToUsage(row);
   }
 
-  /** Batch get context usage for multiple nodes. Session-aware per entry. */
+  /** 批量获取多个 node 的 context usage。每个 entry 都感知 session。 */
   getForNodes(entries: Array<{ nodeId: string; currentSessionName: string | null }>): Map<string, ContextUsage> {
     const result = new Map<string, ContextUsage>();
     if (entries.length === 0) return result;
@@ -358,7 +356,7 @@ export class ContextUsageStore {
         continue;
       }
 
-      // GHOST-STAGE (c-id): generation guard — see getForNode. Reject pre-boot (prior-gen) readings.
+      // GHOST-STAGE（c-id）：generation guard——见 getForNode。拒绝 pre-boot（prior-gen）reading。
       if (this.isPriorGenerationReading(entry.nodeId, row.sampled_at)) {
         result.set(entry.nodeId, this.unknownUsage("stale_generation"));
         continue;
@@ -370,7 +368,7 @@ export class ContextUsageStore {
     return result;
   }
 
-  /** Create an unknown ContextUsage with an honest reason. */
+  /** 用诚实原因创建 unknown ContextUsage。 */
   unknownUsage(reason: ContextUnknownReason): ContextUsage {
     return {
       availability: "unknown",
@@ -390,7 +388,7 @@ export class ContextUsageStore {
     };
   }
 
-  /** Check if a sample timestamp is fresh. */
+  /** 检查 sample timestamp 是否 fresh。 */
   private isFresh(sampledAt: string): boolean {
     try {
       const age = Date.now() - new Date(sampledAt).getTime();
@@ -400,7 +398,7 @@ export class ContextUsageStore {
     }
   }
 
-  /** Convert a DB row to a ContextUsage, applying freshness. */
+  /** 将 DB row 转换为 ContextUsage，并应用 freshness 判断。 */
   private rowToUsage(row: ContextUsageRow): ContextUsage {
     const fresh = row.sampled_at ? this.isFresh(row.sampled_at) : false;
     return {

@@ -1,10 +1,9 @@
-// V1 attempt-3 Phase 5 P5-5 + P5-6 — filesystem-based mission discovery +
-// MissionStatusBadge live PROGRESS.md fetch.
+// V1 attempt-3 Phase 5 P5-5 + P5-6——基于文件系统的 mission discovery +
+// MissionStatusBadge live PROGRESS.md 抓取。
 //
-// Both features ride on the existing /api/files/list + /api/files/read
-// daemon routes (no new daemon endpoints; SC-29 honored). When the
-// allowlist doesn't expose workspace.root, the tree falls back to the
-// legacy railItem-grouped slice listing — also tested here.
+// 两个特性都依托既有 /api/files/list + /api/files/read daemon 路由（无新 daemon
+// 端点；遵守 SC-29）。当 allowlist 不暴露 workspace.root 时，树回退到旧
+// railItem 分组 slice 列表——也在此测试。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, waitFor } from "@testing-library/react";
@@ -31,8 +30,8 @@ afterEach(() => {
 });
 
 // -----------------------------------------------------------------------
-// parseMissionStatus — unit-level (Phase 3 already covered most paths;
-// adding a few P5-6 path-specific cases for invariant guard).
+// parseMissionStatus——unit 级（Phase 3 已覆盖多数路径；为不变量守卫补几条
+// P5-6 路径特定用例）。
 // -----------------------------------------------------------------------
 
 describe("parseMissionStatus (P5-6 invariants)", () => {
@@ -64,29 +63,29 @@ describe("parseMissionStatus (P5-6 invariants)", () => {
 });
 
 // -----------------------------------------------------------------------
-// useMissionDiscovery — integration via ProjectTreeView (the real consumer).
+// useMissionDiscovery——经 ProjectTreeView（真实消费者）集成。
 // -----------------------------------------------------------------------
 
 import { ProjectTreeView } from "../src/components/project/ProjectTreeView.js";
 
 interface RenderTreeOpts {
-  // Settings response: workspace.root absolute path. Pass null to render
-  // the unset/unreachable empty-state.
+  // Settings 响应：workspace.root 绝对路径。传 null 渲染
+  // 未设置/不可达空状态。
   workspaceRoot: string | null;
   settingsAvailable?: boolean;
-  // Files API mocks.
+  // Files API mocks。
   roots: Array<{ name: string; path: string }>;
-  // Map "<root>:<path>" → directory entries.
+  // Map "<root>:<path>" -> 目录条目。
   listings?: Record<string, Array<{ name: string; type: "dir" | "file" }>>;
-  // Map "<root>:<path>" → file content.
+  // Map "<root>:<path>" -> 文件内容。
   reads?: Record<string, { content: string; mtime?: string }>;
-  // useSlices response.
+  // useSlices 响应。
   slices?: Array<{ name: string; missionId?: string | null; displayName: string; railItem: string | null; status: string; rawStatus: string | null; qitemCount: number; hasProofPacket: boolean; lastActivityAt: string | null }>;
 }
 
 function setupFetch(opts: RenderTreeOpts) {
   mockFetch.mockImplementation(async (url: string) => {
-    // MH-2: the selection-known files gate needs the hosts payload (local).
+    // MH-2：selection-known files gate 需要 hosts payload（local）。
     if (url.includes("/api/hosts")) {
       return new Response(JSON.stringify({ ownName: "localhost", selected: "local", hosts: [] }), { status: 200 });
     }
@@ -293,10 +292,10 @@ describe("ProjectTreeView P5-5/P5-6 mission discovery", () => {
 
     expect(await findByTestId("project-discovery-degraded")).toBeTruthy();
     expect((await findByTestId("project-mission-section-current")).textContent).toContain(
-      "Current Work · 1",
+      "当前工作 · 1",
     );
     expect((await findByTestId("project-mission-section-archive")).textContent).toContain(
-      "Archive · 1",
+      "归档 · 1",
     );
 
     const liveMission = await findByTestId("project-mission-RELEASE-PROOF");
@@ -308,10 +307,9 @@ describe("ProjectTreeView P5-5/P5-6 mission discovery", () => {
     expect(queryByTestId("project-slice-seed-slice-active")).toBeNull();
   });
 
-  // Slice 19 follow-up: slice items in the Project tree keep readable
-  // title/aria metadata but replace inline prose metadata with two
-  // compact icons: qitem count + status dot. Names can wrap for long
-  // mission/slice identifiers.
+  // Slice 19 后续：Project 树中 slice 项保留可读 title/aria 元数据，但用两个
+  // 紧凑图标替换 inline prose 元数据：qitem count + status dot。长
+  // mission/slice 标识符名称可换行。
   it("slice 19 follow-up: project tree slice items render wrapped names with queue/status icons", async () => {
     const { findByTestId } = renderTree({
       workspaceRoot: "/Users/example/workspace",
@@ -333,13 +331,13 @@ describe("ProjectTreeView P5-5/P5-6 mission discovery", () => {
     const sliceLink = await findByTestId("project-slice-density-slice");
     expect(sliceLink.className).toMatch(/\bflex\b/);
     expect(sliceLink.className).not.toMatch(/\bblock\b/);
-    expect(sliceLink.getAttribute("title")).toContain("42 qitems");
-    expect(sliceLink.getAttribute("aria-label")).toContain("42 qitems");
+    expect(sliceLink.getAttribute("title")).toContain("42 个队列项");
+    expect(sliceLink.getAttribute("aria-label")).toContain("42 个队列项");
     const meta = await findByTestId("project-slice-density-slice-meta");
     expect(meta.className).toMatch(/\bflex\b/);
     expect(meta.className).not.toMatch(/\bblock\b/);
     expect(meta.textContent).toBe("42");
-    expect((await findByTestId("project-slice-density-slice-qitems")).getAttribute("aria-label")).toBe("42 qitems");
+    expect((await findByTestId("project-slice-density-slice-qitems")).getAttribute("aria-label")).toBe("42 个队列项");
     expect((await findByTestId("project-slice-density-slice-status")).getAttribute("data-tone")).toBe("info");
     expect(sliceLink.textContent).not.toContain("qitems");
     expect(sliceLink.textContent).not.toContain("proof");
@@ -439,10 +437,10 @@ describe("ProjectTreeView P5-5/P5-6 mission discovery", () => {
     });
 
     expect((await findByTestId("project-mission-section-current")).textContent).toContain(
-      "Current Work · 2",
+      "当前工作 · 2",
     );
     expect((await findByTestId("project-mission-section-archive")).textContent).toContain(
-      "Archive · 1",
+      "归档 · 1",
     );
     expect(await findByTestId("project-slice-idea-ledger-find-ideas-cycle-4")).toBeTruthy();
     expect((await findByTestId("project-mission-demo-seed")).getAttribute("data-mission-bucket")).toBe("current");
@@ -450,11 +448,11 @@ describe("ProjectTreeView P5-5/P5-6 mission discovery", () => {
     expect((await findByTestId("project-mission-unsorted")).getAttribute("data-mission-bucket")).toBe("archive");
   });
 
-  // qitem-render-driver #3 characterization — the sidebar badge renders the
-  // API's per-slice qitemCount VERBATIM. The observed host 355 is a DAEMON
-  // producer defect (matchQitems' zero-typed fallback unions missionId, and
-  // railItem defaults to missionId), not a UI fallback: with a nonzero
-  // mission aggregate present, a zero-count slice must still visibly show 0.
+  // qitem-render-driver #3 characterization——sidebar badge 逐字渲染 API 的
+  // per-slice qitemCount。观测到 host 355 是 DAEMON producer 缺陷
+  //（matchQitems 的 zero-typed fallback 联合 missionId，且 railItem 默认
+  // missionId），非 UI fallback：存在非零 mission 聚合时，zero-count slice
+  // 仍必须可见显示 0。
   it("#3 pin: a slice whose API qitemCount is 0 visibly stays 0 even alongside nonzero-count siblings in the same mission", async () => {
     const { findByTestId } = renderTree({
       workspaceRoot: "/Users/admin/.openrig/workspace",
@@ -486,10 +484,10 @@ describe("ProjectTreeView P5-5/P5-6 mission discovery", () => {
     });
     const badge = await findByTestId("project-slice-zero-slice-qitems");
     const shown = (badge.textContent ?? "").trim();
-    // Exact visible zero — never empty, never the sibling/mission aggregate.
+    // 精确可见 0——绝不空，绝非 sibling/mission 聚合。
     expect(shown, "zero-count badge must render a visible 0").toBe("0");
-    expect(badge.getAttribute("aria-label"), "accessible label must state 0 qitems").toBe("0 qitems");
-    expect(badge.getAttribute("title")).toBe("0 qitems");
+    expect(badge.getAttribute("aria-label"), "accessible label must state 0 个队列项").toBe("0 个队列项");
+    expect(badge.getAttribute("title")).toBe("0 个队列项");
     const sibling = await findByTestId("project-slice-busy-sibling-qitems");
     expect((sibling.textContent ?? "").trim(), "sibling keeps its own count").toBe("7");
   });

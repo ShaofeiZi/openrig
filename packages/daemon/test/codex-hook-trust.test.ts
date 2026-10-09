@@ -1,16 +1,15 @@
-// OPR.0.4.3.33 hook-trust-autoclear — reproduce Codex's own `[hooks.state."<key>"] trusted_hash`
-// record for the daemon's 4 authored activity hooks, pre-written on the provisioning seam so the
-// unmanaged inline hooks are trusted on every path (launch/adopt/reconcile) without a manual
-// `/hooks` "Trust all" keystroke.
+// OPR.0.4.3.33 hook-trust-autoclear——复现 Codex 自己的 `[hooks.state."<key>"] trusted_hash`
+// 记录，用于 daemon 的 4 个 authored activity hooks，在 provisioning seam 预写，使 unmanaged
+// inline hooks 在每条路径（launch/adopt/reconcile）上都被信任，无需手动 `/hooks`
+// "Trust all" 按键。
 //
-// GROUND-TRUTH CAVEAT: Codex's key/hash is a private impl. The HASH is reproduced deterministically
-// from the open source (canonical-JSON sha256 of NormalizedHookIdentity → version_for_toml; see the
-// block comment in codex-runtime-adapter.ts). The fixtures below are marked PIN-TO-VM: they are the
-// values THIS reproduction emits and the perturbation tests prove the identity fields are folded in
-// — but the DEFINITIVE correctness check is a byte-for-byte read-back of a real Codex `[hooks.state]`
-// after `/hooks`→"Trust all" (the QA VM proof). Until that read-back confirms them, the exact
-// key_source (canonicalized config path) and positional indices are PROVISIONAL. A mismatch is
-// fail-safe (gate reappears + Layer-2 keystroke floor), never a false-trusted run.
+// GROUND-TRUTH 警示：Codex 的 key/hash 是私有实现。HASH 从开源确定性复现
+//（NormalizedHookIdentity 的 canonical-JSON sha256 → version_for_toml；见
+// codex-runtime-adapter.ts 的块注释）。下方 fixture 标记为 PIN-TO-VM：它们是本复现发出的值，
+// 扰动测试证明 identity 字段被折入——但 DEFINITIVE 正确性检查是真实 Codex `[hooks.state]`
+// 在 `/hooks`→"Trust all" 后逐字节 read-back（QA VM 证明）。在该 read-back 确认之前，
+// 精确 key_source（canonicalized config 路径）与位置索引为 PROVISIONAL。不匹配是 fail-safe
+//（门重现 + Layer-2 按键底线），绝不 false-trusted 运行。
 import { describe, it, expect, vi } from "vitest";
 import {
   CodexRuntimeAdapter,
@@ -25,9 +24,9 @@ const CONFIG = "/home/test/.codex/config.toml";
 const COMMAND = `node "${RELAY}"`;
 const EVENTS = ["SessionStart", "UserPromptSubmit", "Stop", "PermissionRequest"] as const;
 
-// PIN TO VM READ-BACK (qa gate) — PROVISIONAL from open-source reproduction (PR #20321 / commits
-// 0452dca, ffcc9cc; codex-rs fingerprint.rs version_for_toml). keySource here is the NON-canonical
-// mock path `/home/test/.codex/config.toml`; the real key_source is std::fs::canonicalize(config.toml).
+// PIN 到 VM read-back（qa 门）——来自开源复现的 PROVISIONAL（PR #20321 / 提交
+// 0452dca、ffcc9cc；codex-rs fingerprint.rs version_for_toml）。此处 keySource 是非 canonical
+// mock 路径 `/home/test/.codex/config.toml`；真实 key_source 是 std::fs::canonicalize(config.toml)。
 const PROVISIONAL_FIXTURE: Record<(typeof EVENTS)[number], { key: string; hash: string }> = {
   SessionStart: {
     key: "/home/test/.codex/config.toml:session_start:0:0",
@@ -63,8 +62,8 @@ function mockTmux(): TmuxAdapter {
   return { sendText: vi.fn(async () => ({ ok: true as const })) } as unknown as TmuxAdapter;
 }
 
-describe("OPR.0.4.3.33 — computeCodexHookTrust (key + hash derivation)", () => {
-  it("reproduces the PROVISIONAL (PIN-TO-VM) key + trusted_hash for all four authored hooks", () => {
+describe("OPR.0.4.3.33——computeCodexHookTrust（key + hash 派生）", () => {
+  it("为四个 authored hook 复现 PROVISIONAL（PIN-TO-VM）key + trusted_hash", () => {
     for (const ev of EVENTS) {
       const got = computeCodexHookTrust(ev, { keySource: CONFIG, command: COMMAND, timeoutSec: 5 });
       expect(got).toEqual(PROVISIONAL_FIXTURE[ev]);
@@ -72,14 +71,14 @@ describe("OPR.0.4.3.33 — computeCodexHookTrust (key + hash derivation)", () =>
     }
   });
 
-  it("folds the timeout into the hash (perturbation: timeout 5 -> 6 changes the hash, not the key)", () => {
+  it("把 timeout 折入 hash（扰动：timeout 5→6 改 hash，不改 key）", () => {
     const base = computeCodexHookTrust("Stop", { keySource: CONFIG, command: COMMAND, timeoutSec: 5 });
     const perturbed = computeCodexHookTrust("Stop", { keySource: CONFIG, command: COMMAND, timeoutSec: 6 });
     expect(perturbed.key).toBe(base.key);
     expect(perturbed.hash).not.toBe(base.hash);
   });
 
-  it("folds the command (relay path) into the hash (perturbation: different relay -> different hash)", () => {
+  it("把 command（relay 路径）折入 hash（扰动：不同 relay → 不同 hash）", () => {
     const base = computeCodexHookTrust("Stop", { keySource: CONFIG, command: COMMAND, timeoutSec: 5 });
     const perturbed = computeCodexHookTrust("Stop", {
       keySource: CONFIG,
@@ -89,7 +88,7 @@ describe("OPR.0.4.3.33 — computeCodexHookTrust (key + hash derivation)", () =>
     expect(perturbed.hash).not.toBe(base.hash);
   });
 
-  it("folds a present matcher into the hash (proves matcher is part of the identity, not absent)", () => {
+  it("把存在的 matcher 折入 hash（证明 matcher 是 identity 一部分，不是缺席）", () => {
     const none = computeCodexHookTrust("Stop", { keySource: CONFIG, command: COMMAND, timeoutSec: 5 });
     const withMatcher = computeCodexHookTrust("Stop", {
       keySource: CONFIG,
@@ -100,7 +99,7 @@ describe("OPR.0.4.3.33 — computeCodexHookTrust (key + hash derivation)", () =>
     expect(withMatcher.hash).not.toBe(none.hash);
   });
 
-  it("keys off the source path + event label + positional indices", () => {
+  it("以 source path + event label + 位置索引为 key", () => {
     const got = computeCodexHookTrust("PermissionRequest", {
       keySource: "/x/config.toml",
       command: COMMAND,
@@ -110,22 +109,22 @@ describe("OPR.0.4.3.33 — computeCodexHookTrust (key + hash derivation)", () =>
   });
 });
 
-describe("OPR.0.4.3.33 — upsertCodexHookTrust (idempotent, non-clobbering, section-scoped)", () => {
+describe("OPR.0.4.3.33——upsertCodexHookTrust（幂等、不覆盖、section 作用域）", () => {
   const KEY = PROVISIONAL_FIXTURE.SessionStart.key;
   const HASH = PROVISIONAL_FIXTURE.SessionStart.hash;
 
-  it("creates the [hooks.state.\"<key>\"] table with trusted_hash when absent", () => {
+  it("缺失时创建带 trusted_hash 的 [hooks.state.\"<key>\"] 表", () => {
     const out = upsertCodexHookTrust("", KEY, HASH);
     expect(out).toBe(`[hooks.state.${JSON.stringify(KEY)}]\ntrusted_hash = ${JSON.stringify(HASH)}\n`);
   });
 
-  it("is idempotent — same key+hash twice is byte-identical (no-op)", () => {
+  it("幂等——同 key+hash 两次 byte 一致（no-op）", () => {
     const once = upsertCodexHookTrust("", KEY, HASH);
     const twice = upsertCodexHookTrust(once, KEY, HASH);
     expect(twice).toBe(once);
   });
 
-  it("splices only the trusted_hash line when the hash changes (does not duplicate the table)", () => {
+  it("hash 变化时只拼接 trusted_hash 行（不重复表）", () => {
     const first = upsertCodexHookTrust("", KEY, "sha256:old");
     const updated = upsertCodexHookTrust(first, KEY, HASH);
     expect(updated.match(new RegExp(`\\[hooks\\.state\\.`, "g"))?.length).toBe(1);
@@ -133,50 +132,50 @@ describe("OPR.0.4.3.33 — upsertCodexHookTrust (idempotent, non-clobbering, sec
     expect(updated).not.toContain("sha256:old");
   });
 
-  it("does NOT clobber an unrelated [hooks.state], a [projects] trust entry, or other content", () => {
+  it("不覆盖无关 [hooks.state]、[projects] trust 条目或其他内容", () => {
     const existing =
       '[projects."/some/project"]\ntrust_level = "trusted"\n\n' +
       '[hooks.state."/other/config.toml:pre_tool_use:0:0"]\ntrusted_hash = "sha256:other"\n';
     const out = upsertCodexHookTrust(existing, KEY, HASH);
-    // every pre-existing line preserved byte-identically
+    // 每条既有行 byte 一致保留
     expect(out).toContain('[projects."/some/project"]');
     expect(out).toContain('trust_level = "trusted"');
     expect(out).toContain('[hooks.state."/other/config.toml:pre_tool_use:0:0"]');
     expect(out).toContain('trusted_hash = "sha256:other"');
-    // our new entry appended
+    // 我们的新条目追加
     expect(out).toContain(`[hooks.state.${JSON.stringify(KEY)}]`);
     expect(out).toContain(`trusted_hash = ${JSON.stringify(HASH)}`);
-    // the OTHER state entry's hash was NOT touched
+    // 另一个 state 条目的 hash 未被触碰
     expect(out.match(/sha256:other/g)?.length).toBe(1);
   });
 });
 
-describe("OPR.0.4.3.33 — provisioning-seam coupling (ensureCodexActivityHooks pre-trusts our 4 hooks)", () => {
+describe("OPR.0.4.3.33——provisioning seam 耦合（ensureCodexActivityHooks 预信任我们的 4 个 hook）", () => {
   function makeAdapter(fs: CodexAdapterFsOps): CodexRuntimeAdapter {
     return new CodexRuntimeAdapter({ tmux: mockTmux(), fsOps: fs, activityRelayPath: RELAY });
   }
 
-  it("emits BOTH the managed hook block AND exactly the 4 [hooks.state] trust records", () => {
+  it("同时发 managed hook 块和恰好 4 条 [hooks.state] trust 记录", () => {
     const fs = mockCodexFs({ [RELAY]: "// relay" });
     makeAdapter(fs).ensureCodexActivityHooks();
     const cfg = fs._store[CONFIG]!;
     expect(cfg).toBeDefined();
-    // the managed hook block is present
+    // managed hook 块在场
     expect(cfg).toContain("# BEGIN OPENRIG MANAGED ACTIVITY HOOKS");
     for (const ev of EVENTS) expect(cfg).toContain(`[[hooks.${ev}]]`);
-    // and exactly the 4 trust state entries (keySource falls back to the plain config path
-    // because the mock fs never lands the file on the real disk for realpathSync)
+    // 且恰好 4 条 trust state 条目（keySource 回退到普通 config 路径，因为 mock fs
+    // 从不让文件落到真实磁盘供 realpathSync 使用）
     for (const ev of EVENTS) {
       const { key, hash } = PROVISIONAL_FIXTURE[ev];
       expect(cfg).toContain(`[hooks.state.${JSON.stringify(key)}]`);
       expect(cfg).toContain(`trusted_hash = ${JSON.stringify(hash)}`);
     }
-    // scope: exactly 4 hooks.state tables, no more, no wildcard/blanket entry
+    // 作用域：恰好 4 个 hooks.state 表，不多，无通配/blanket 条目
     expect(cfg.match(/^\[hooks\.state\./gm)?.length).toBe(4);
     expect(cfg).not.toContain('[hooks.state."*"]');
   });
 
-  it("is idempotent — re-running produces byte-identical config (no duplicate trust tables)", () => {
+  it("幂等——重跑产生 byte 一致 config（无重复 trust 表）", () => {
     const fs = mockCodexFs({ [RELAY]: "// relay" });
     const adapter = makeAdapter(fs);
     adapter.ensureCodexActivityHooks();
@@ -187,7 +186,7 @@ describe("OPR.0.4.3.33 — provisioning-seam coupling (ensureCodexActivityHooks 
     expect(second.match(/^\[hooks\.state\./gm)?.length).toBe(4);
   });
 
-  it("preserves a pre-existing [projects] trust entry through the hook + trust write", () => {
+  it("在 hook + trust 写入过程中保留既有 [projects] trust 条目", () => {
     const fs = mockCodexFs({
       [RELAY]: "// relay",
       [CONFIG]: '[projects."/some/project"]\ntrust_level = "trusted"\n',

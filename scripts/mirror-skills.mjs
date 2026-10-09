@@ -18,11 +18,10 @@ import {
   scanInternalLeaks,
 } from "./internal-leak-scanner.mjs";
 
-// Mirror canonical skills from packages/daemon/specs/agents/shared/skills/
-// to <repo-root>/skills/_canonical/. Hand-authored files at <repo-root>/skills/
-// (README, CHANGELOG, LICENSE, plugin manifests) live alongside _canonical/
-// and are NEVER touched by the mirror — strict-ownership lets us add new
-// top-level files without coupling the script to the destination shape.
+// 把 canonical skills 从 packages/daemon/specs/agents/shared/skills/
+// 镜像到 <repo-root>/skills/_canonical/。<repo-root>/skills/ 下手写的文件
+// （README、CHANGELOG、LICENSE、plugin manifest）与 _canonical/ 并列，
+// 镜像绝不碰它们——严格的所有权划分让我们能新增顶层文件，而不必把脚本和目标形态耦合死。
 
 export const SOURCE_DIR = "packages/daemon/specs/agents/shared/skills/";
 export const TARGET_DIR = "skills/_canonical/";
@@ -35,12 +34,10 @@ export const EXCLUDES = [
 ];
 
 function rsyncArgs({ dryRun }) {
-  // --checksum compares file contents via hash instead of mtime+size.
-  // Used in --check (dry-run) mode so the drift-detect is content-stable
-  // — a `git checkout` or `cp` updating mtimes does NOT register as drift
-  // when the bytes match. In apply mode we keep the default (mtime+size)
-  // for speed; rsync's archive flag preserves mtime so subsequent checks
-  // stay clean.
+  // --checksum 用哈希比对文件内容，而不是 mtime+size。在 --check（dry-run）模式下使用，
+  // 使漂移检测以内容为准——`git checkout` 或 `cp` 更新了 mtime 时，只要字节一致就不算漂移。
+  // 在 apply 模式下我们保留默认（mtime+size）以图快；rsync 的 archive 标志会保留 mtime，
+  // 使后续检查保持干净。
   return [
     "-a",
     "--delete",
@@ -53,18 +50,16 @@ function rsyncArgs({ dryRun }) {
   ];
 }
 
-// Parse rsync --itemize-changes output for content or regular-file mode changes.
-// First-column codes per rsync(1):
-//   `<` / `>` — file transferred (content change)
-//   `c`        — created entry (file/dir/symlink/device)
-//   `h`        — hardlink redirected
-//   `.`        — item exists with NO update OR metadata-only update; retain
-//                only `.f...p.....` permission changes
-//   `*`        — message line; we only care about `*deleting `
-// In --check mode the script invokes rsync with `--checksum`, so a `.`
-// leading line means the bytes match even if mtime drifts (e.g., after
-// `git checkout` or `cp`); permission is the one metadata field the public
-// mirror must preserve, while mtime-only drift stays ignored.
+// 解析 rsync --itemize-changes 输出，挑出内容或常规文件模式的变更。
+// 首列代码含义见 rsync(1)：
+//   `<` / `>` —— 文件被传输（内容变更）
+//   `c`        —— 新建条目（文件/目录/软链/设备）
+//   `h`        —— 硬链接重定向
+//   `.`        —— 条目无更新，或仅元数据更新；只保留 `.f...p.....` 这种权限变更
+//   `*`        —— 消息行；我们只关心 `*deleting `
+// 在 --check 模式下脚本以 `--checksum` 调 rsync，所以以 `.` 开头的行意味着即使 mtime 漂移
+// （例如 `git checkout` 或 `cp` 之后）字节也是一致的；权限是公开镜像唯一必须保留的元数据字段，
+// 而仅 mtime 的漂移继续被忽略。
 export function parseChanges(output) {
   const lines = output.split("\n").filter(Boolean);
   return [
@@ -81,8 +76,8 @@ export function parseChanges(output) {
 
 export function buildStaleMessage(changes) {
   return [
-    "Skills mirror is stale at skills/_canonical/. Run: npm run mirror-skills",
-    "Changes that would land:",
+    "skills 镜像在 skills/_canonical/ 已过期。请运行：npm run mirror-skills",
+    "将落地的变更：",
     ...changes.map((c) => `  ${c}`),
   ].join("\n");
 }
@@ -120,11 +115,10 @@ export function checkModeAbsolute(sourceDir, targetDir, exec = execFileSync) {
   return { stale: changes.length > 0, changes, output };
 }
 
-// The product_public categories the mirror's ship set CONSUMES. Exported so the refs→membership
-// chain gate (leg 2) can prove every oracle category is consumed — a category present in the oracle
-// but absent here is silently accepted-and-dropped (the 0.4.8/864cea6b stranding: the PM's
-// `restored_role_pm_selected` re-add landed in the oracle but this list never read it, so the 10
-// pod/pm skills were never re-shipped despite being membership-selected).
+// 镜像 ship 集合所消费的 product_public 类别。导出它，使 refs→membership 链闸门（第 2 腿）
+// 能证明每个 oracle 类别都被消费——一个出现在 oracle 里、却不在此处的类别会被静默接受后丢弃
+// （0.4.8/864cea6b 那次搁浅：PM 的 `restored_role_pm_selected` 重新加入落进了 oracle，
+// 但这份列表从没读到它，于是那 10 个 pod/pm skill 虽被成员集选中，却始终没被重新发货）。
 export const SHIP_CATEGORIES = [
   "clean",
   "ship_after_fix",
@@ -199,16 +193,15 @@ export async function stagePublicSkills({
   }
 }
 
-// External-canon-pending skills: authored in the external skill canon and listed in the layout
-// ship set, but not yet mirrored into THIS repo (their SKILL.md isn't in git; the canon mirror-apply
-// on the cut checklist — run with the explicit canon-root path — lands them). Their layout-missing is
-// tolerated here — but ONLY these named few,
-// and ONLY while genuinely absent from disk. Any OTHER layout-demanded file missing from disk stays
-// LOUD (a future accidental deletion is never silently blessed), and a name that reappears on disk is
-// flagged `external-canon-allowlist-stale` so this list self-destructs. Same self-policing shape as the
-// P6(A) chain gate. Layout = authority, disk = reality; the digest regen touches only reality.
-// (Currently empty: oversight-team and retiring-and-inheriting-a-seat landed via the 2026-08-24
-// mirror-apply, so their exemptions self-destructed.)
+// external-canon-pending 的 skill：写在外部 skill canon 里、也列在 layout 的 ship 集合中，
+// 但尚未镜像进本仓库（它们的 SKILL.md 还不在 git 里；裁剪清单上的 canon mirror-apply——
+// 用显式 canon-root 路径运行——会把它们落进来）。它们“layout 要求却缺失”在这里被容忍——
+// 但只容忍这寥寥几个具名者，且只在它们确实不在磁盘上时。任何其他“layout 要求却缺失”的文件仍响亮失败
+// （未来一次误删绝不被默默放过）；而一个名字重新出现在磁盘上时会被标记 `external-canon-allowlist-stale`，
+// 使这份清单自我销毁。与 P6(A) 链闸门同一套自我约束形态。layout = 权威，磁盘 = 现实；
+// digest 重算只触及现实。
+// （当前为空：oversight-team 与 retiring-and-inheriting-a-seat 已通过 2026-08-24 的 mirror-apply 落地，
+// 于是它们的豁免自我销毁了。）
 const EXTERNAL_CANON_PENDING = new Set([]);
 
 export async function checkGeneratedEdges({
@@ -282,8 +275,7 @@ export async function checkGeneratedEdges({
       layout.skills ?? {},
     ).sort()) {
       if (expectedEntry.edges.includes(edge) && !actualSkills.has(skill)) {
-        // Tolerate ONLY the named external-canon-pending skills; every other layout-demanded file
-        // missing from disk stays loud.
+        // 只容忍具名的 external-canon-pending skill；任何其他“layout 要求却缺失”的文件仍响亮报错。
         if (externalCanonPending.has(skill)) continue;
         changes.push({
           edge,
@@ -294,9 +286,8 @@ export async function checkGeneratedEdges({
     }
   }
 
-  // Self-destruct guard: a name reappearing on disk must leave the allowlist. If an external-canon-pending
-  // skill is now present, its exemption is stale — flag it LOUD so the list can never silently outlive
-  // the gap it covered.
+  // 自我销毁守卫：一个重新出现在磁盘上的名字必须离开白名单。若某个 external-canon-pending skill
+  // 如今已存在磁盘上，它的豁免就是过期的——响亮标记它，使这份清单永远不能默默活得比它所补的缺口更久。
   for (const skill of externalCanonPending) {
     if (onDiskSkills.has(skill)) {
       changes.push({ edge: "-", path: skill, reason: "external-canon-allowlist-stale" });
@@ -318,10 +309,10 @@ export async function regeneratePublicSkills({
   const shipping = shipSetFromMembership(membership);
   for (const skill of shipping) {
     if (!existsSync(join(canonRoot, skill))) {
-      throw new Error(`Missing shipping skill in canon: ${skill}`);
+      throw new Error(`canon 中缺少待发货 skill：${skill}`);
     }
     if (!layout.skills[skill]?.edges?.length) {
-      throw new Error(`Missing shipping skill in edge layout: ${skill}`);
+      throw new Error(`边布局中缺少待发货 skill：${skill}`);
     }
   }
 
@@ -346,7 +337,7 @@ export async function regeneratePublicSkills({
         const category =
           edgeConfig.layout === "flat" ? null : skillLayout.category;
         if (edgeConfig.layout !== "flat" && !category) {
-          throw new Error(`Missing category for shipping skill ${skill} on ${edge}`);
+          throw new Error(`待发货 skill ${skill} 在 ${edge} 上缺少 category`);
         }
         const destination = category
           ? join(projectedRoot, category, skill)
@@ -414,9 +405,9 @@ export async function main(argv = process.argv.slice(2), dependencies = {}) {
   const log = dependencies.log ?? console.log;
   const { changes } = await apply();
   if (changes.length === 0) {
-    log("Public skill edges already in sync; no changes.");
+    log("公开 skill 边已同步，无变更。");
   } else {
-    log(`Public skill edge regeneration measured ${changes.length} change(s):`);
+    log(`公开 skill 边重新生成共测得 ${changes.length} 处变更：`);
     for (const { edge, path, reason } of changes) {
       log(`  ${edge}: ${path} (${reason})`);
     }
@@ -450,7 +441,7 @@ function defaultGenerateControlPlaneJson() {
   for (const [name, path] of Object.entries(required)) {
     if (!path) {
       throw new Error(
-        `Authoring apply requires the ${name} authority path environment variable`,
+        `authoring apply 需要 ${name} 权威路径环境变量`,
       );
     }
   }
@@ -478,7 +469,7 @@ function defaultReadAuthoringInputs() {
   const canonRoot = process.env.OPENRIG_SKILL_CANON_ROOT;
   if (!canonRoot) {
     throw new Error(
-      "The mirror apply requires OPENRIG_SKILL_CANON_ROOT — set it to the skill-canon root to run the real apply. This is an explicit-path authoring guard (the apply reads the canon from that path), not an authorization gate.",
+      "mirror apply 需要 OPENRIG_SKILL_CANON_ROOT——把它设为 skill-canon 根再运行真正的 apply。这是一条显式路径 authoring 守卫（apply 从该路径读取 canon），不是授权闸门。",
     );
   }
   return {
@@ -496,7 +487,7 @@ function defaultReadAuthoringInputs() {
 
 function buildGeneratedStaleMessage(changes) {
   return [
-    "Generated skill edges are stale. Regenerate the control-plane manifests.",
+    "生成的 skill 边已过期。请重新生成 control-plane manifest。",
     ...changes.map(
       ({ edge, path, reason }) => `  ${edge}: ${path} (${reason})`,
     ),
@@ -581,14 +572,14 @@ function stripInternalFences(content, path, fence) {
   for (const [index, line] of lines.entries()) {
     if (line.includes(fence.begin)) {
       if (openedAt !== null) {
-        throw new Error(`${path}: unmatched internal fence at line ${index + 1}`);
+        throw new Error(`${path}：第 ${index + 1} 行有未配对的内部围栏`);
       }
       openedAt = index + 1;
       continue;
     }
     if (line.includes(fence.end)) {
       if (openedAt === null) {
-        throw new Error(`${path}: unmatched internal fence at line ${index + 1}`);
+        throw new Error(`${path}：第 ${index + 1} 行有未配对的内部围栏`);
       }
       openedAt = null;
       continue;
@@ -596,7 +587,7 @@ function stripInternalFences(content, path, fence) {
     if (openedAt === null) kept.push(line);
   }
   if (openedAt !== null) {
-    throw new Error(`${path}: unmatched internal fence at line ${openedAt}`);
+    throw new Error(`${path}：第 ${openedAt} 行有未闭合的内部围栏`);
   }
   return kept.join("\n");
 }
@@ -645,11 +636,11 @@ function walkFiles(root) {
   const stat = lstatSync(root, { throwIfNoEntry: false });
   if (!stat) return [];
   if (stat.isSymbolicLink()) {
-    throw new Error(`${root}: symlink entries are not allowed`);
+    throw new Error(`${root}：不允许软链接条目`);
   }
   if (stat.isFile()) return [root];
   if (!stat.isDirectory()) {
-    throw new Error(`${root}: unsupported filesystem entry`);
+    throw new Error(`${root}：不支持的文件系统条目`);
   }
   return readdirSync(root)
     .sort()
@@ -702,18 +693,18 @@ function rsyncChangePath(line) {
 function validateGeneratedControls(layout, digests) {
   validateAuthoringLayout(layout);
   if (!isRecord(digests?.edges) || Object.keys(digests.edges).length === 0) {
-    throw new Error("Digest control must contain edge inventories");
+    throw new Error("Digest 控制必须包含边清单");
   }
   for (const edge of Object.keys(layout.edges)) {
     if (!isRecord(digests.edges[edge])) {
-      throw new Error(`Digest control is missing edge ${edge}`);
+      throw new Error(`Digest 控制缺少边 ${edge}`);
     }
   }
 }
 
 function validateAuthoringLayout(layout) {
   if (!isRecord(layout?.edges) || Object.keys(layout.edges).length === 0) {
-    throw new Error("Layout control must contain edges");
+    throw new Error("Layout 控制必须包含 edges");
   }
   const edgeNames = Object.keys(layout.edges).sort();
   const requiredEdges = ["canonical", "plugin", "spec"];
@@ -722,11 +713,11 @@ function validateAuthoringLayout(layout) {
     edgeNames.some((edge, index) => edge !== requiredEdges[index])
   ) {
     throw new Error(
-      "Layout control must contain exactly canonical, plugin, and spec edges",
+      "Layout 控制必须恰好包含 canonical、plugin、spec 三条边",
     );
   }
   if (!isRecord(layout.skills) || Object.keys(layout.skills).length === 0) {
-    throw new Error("Layout control must contain skills");
+    throw new Error("Layout 控制必须包含 skills");
   }
   for (const [edge, config] of Object.entries(layout.edges)) {
     if (
@@ -735,7 +726,7 @@ function validateAuthoringLayout(layout) {
       config.path.length === 0 ||
       !["categorized", "mirror-of-spec", "flat"].includes(config.layout)
     ) {
-      throw new Error(`Layout control has invalid edge ${edge}`);
+      throw new Error(`Layout 控制中有非法边 ${edge}`);
     }
   }
   for (const [skill, config] of Object.entries(layout.skills)) {
@@ -745,7 +736,7 @@ function validateAuthoringLayout(layout) {
       config.edges.length === 0 ||
       config.edges.some((edge) => !Object.hasOwn(layout.edges, edge))
     ) {
-      throw new Error(`Layout control has invalid skill ${skill}`);
+      throw new Error(`Layout 控制中有非法 skill ${skill}`);
     }
   }
 }

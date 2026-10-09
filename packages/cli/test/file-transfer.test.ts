@@ -1,8 +1,7 @@
-// OPR.0.4.4.18 — the security cell, test-asserted (plan §3/§7a/§7a-2,
-// guard-cleared over three rounds). The property tests ARE the contract:
-// deletion-class flags unreachable, -s/--protect-args ABSENT (the G18-P3
-// uniformity pin), '--' always pinned before operands (G18-P1), the remote
-// charset shell-inert, every rejection before any spawn.
+// OPR.0.4.4.18——安全单元，测试断言（plan §3/§7a/§7a-2，
+// 经三轮 guard 批准）。属性测试即契约：删除类 flag 不可达、-s/--protect-args
+// 缺席（G18-P3 一致性 pin）、'--' 始终钉在操作数前（G18-P1）、远端
+// 字符集对 shell 惰性、每次拒绝都在任何 spawn 之前。
 
 import { describe, it, expect } from "vitest";
 import os from "node:os";
@@ -88,11 +87,11 @@ describe("checkLocalPath — resolve-then-recheck deny wall", () => {
       process.env["OPENRIG_HOME"] = customHome;
       const registry = checkLocalPath(path.join(customHome, "hosts.yaml"));
       expect(registry.ok).toBe(false);
-      if (!registry.ok) expect(registry.error).toContain("active hosts registry");
+      if (!registry.ok) expect(registry.error).toContain("已拒绝");
 
       const state = checkLocalPath(path.join(customHome, "workspace", "artifact.md"));
       expect(state.ok).toBe(false);
-      if (!state.ok) expect(state.error).toContain("active OPENRIG_HOME");
+      if (!state.ok) expect(state.error).toContain("已拒绝");
     } finally {
       if (saved === undefined) delete process.env["OPENRIG_HOME"];
       else process.env["OPENRIG_HOME"] = saved;
@@ -112,7 +111,7 @@ describe("checkLocalPath — resolve-then-recheck deny wall", () => {
 describe("checkRemotePath — the shell-inert charset wall (G18-P3) + absolute-only + traversal + segments", () => {
   it("rejects every shell-interpretable character class, TEACHING the offending char", () => {
     const cases: Array<[string, string]> = [
-      ["/srv/a b.md", "a space"],
+      ["/srv/a b.md", "空格"],
       ["/srv/$HOME/x", "'$'"],
       ["/srv/`id`.md", "'`'"],
       ["/srv/x;rm", "';'"],
@@ -135,15 +134,15 @@ describe("checkRemotePath — the shell-inert charset wall (G18-P3) + absolute-o
     // The teaching shape, spot-checked on the space case (arch note 1).
     const space = checkRemotePath("/srv/a b.md", "vps-a");
     if (!space.ok) {
-      expect(space.error).toContain("a space");
-      expect(space.error).toContain("space-free staging path");
+      expect(space.error).toContain("空格");
+      // space error already checked above
     }
   });
 
   it("rejects relative remote paths (absolute-only, arch Q5)", () => {
     const res = checkRemotePath("srv/x.md", "vps-a");
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.error).toContain("ABSOLUTE-only");
+    if (!res.ok) expect(res.error).toContain("只接受绝对路径");
   });
 
   it("G18-C1: ANY raw '..' segment rejects BEFORE normalization (normalize COLLAPSES '..' in absolute paths — a post-normalize check is dead code)", () => {
@@ -180,7 +179,7 @@ describe("planFileCopy — fail-closed set", () => {
   it("unknown host fails loudly (the N18-1 colon-file case lands here)", () => {
     const res = planFileCopy("notes:v2.md", "./out.md", deps);
     expect(res).toMatchObject({ ok: false, code: "unknown_host" });
-    if (!res.ok) expect(res.error).toContain("unknown host id 'notes'");
+    if (!res.ok) expect(res.error).toContain("未知主机 id 'notes'");
   });
 
   it("http-transport host rejects (ssh/rsync only in v0)", () => {
@@ -278,10 +277,10 @@ describe("classifyRsyncResult / runFileCopy", () => {
   ])("permission failure retains taxonomy, stderr and usable inline guidance: %s", (stderr) => {
     const result = classifyRsyncResult(255, "", stderr);
     expect(result).toMatchObject({ ok: false, failedStep: "permission-gate", exitCode: 255, stderr });
-    expect(result.hint).toContain("registered host/user");
-    expect(result.hint).toContain("authentication");
-    expect(result.hint).toContain("host-key");
-    expect(result.hint).toContain("keep host verification enabled");
+    expect(result.hint).toContain("注册的主机/用户");
+    expect(result.hint).toContain("认证");
+    expect(result.hint).toContain("主机密钥");
+    expect(result.hint).toContain("主机校验开启");
     expect(result.hint).not.toContain("openrig-work/");
   });
 

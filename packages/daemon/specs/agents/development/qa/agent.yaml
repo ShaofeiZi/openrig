@@ -1,6 +1,6 @@
 name: qa
 version: "1.0"
-description: QA agent — verifies assigned user outcomes by effect
+description: QA 智能体——按实际效果验证分配的用户结果
 
 defaults:
   runtime: codex

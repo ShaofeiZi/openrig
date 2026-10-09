@@ -1,14 +1,12 @@
-// OPR.0.3.3.20 + OPR.0.4.0.24 — For-You card-level drill into the source/
-// author seat's LIVE terminal (manage-by-exception, video B6).
+// OPR.0.3.3.20 + OPR.0.4.0.24 —— For-You 卡片级下钻到来源/作者席位的
+// 实时终端（按异常管理，视频 B6）。
 //
-// Session-NAME keyed only: the drill reuses TerminalPreviewPopover which
-// mounts FocusedTerminal (a live xterm/WebSocket terminal). It performs
-// NO rigId/logicalId/agentActivity topology resolution — the card's already-
-// resolved source session string is the whole address.
+// 仅按会话名寻址：下钻复用 TerminalPreviewPopover，后者挂载 FocusedTerminal
+// （一个实时 xterm/WebSocket 终端）。它不做任何 rigId/logicalId/agentActivity
+// 拓扑解析——卡片上已解析好的来源会话字符串就是全部地址。
 //
-// Honesty: when the live terminal cannot connect, FocusedTerminal surfaces
-// an honest unavailable/disconnected state. When no session resolves for
-// the card, the drill renders DISABLED with an honest title.
+// 诚实呈现：当实时终端连不上时，FocusedTerminal 会诚实地呈现不可用/断开状态。
+// 当卡片解析不到任何会话时，下钻按钮以禁用态渲染，并带诚实的 title。
 
 import { TerminalPreviewPopover } from "../topology/TerminalPreviewPopover.js";
 
@@ -26,10 +24,10 @@ export function FeedCardTerminalDrill({ cardId, sessionName }: FeedCardTerminalD
         type="button"
         disabled
         data-testid={`feed-card-drill-${cardId}`}
-        title="No session resolved for this card — live terminal unavailable"
+        title="本卡片未解析到会话——实时终端不可用"
         className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide text-on-surface-variant cursor-not-allowed"
       >
-        live terminal
+        实时终端
       </button>
     );
   }
@@ -47,10 +45,10 @@ export function FeedCardTerminalDrill({ cardId, sessionName }: FeedCardTerminalD
         type="button"
         data-testid={`feed-card-drill-${cardId}`}
         onClick={openPreview}
-        title={`Open live terminal for ${sessionName}`}
+        title={`为 ${sessionName} 打开实时终端`}
         className="font-mono text-[10px] uppercase tracking-wide text-on-surface hover:text-on-surface underline"
       >
-        live terminal
+        实时终端
       </button>
       <TerminalPreviewPopover
         rigId={cardId}

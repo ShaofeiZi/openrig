@@ -1,16 +1,11 @@
-// OPR.0.4.6.MH3 guard fixback (review of 86ba8b42, Finding 1) — PL-007
-// target_repo validation must run on the SOURCE host BEFORE any cross-host
-// forward. The validation authority is the source rig's typed workspace,
-// which lives HERE; the target daemon passes-through when it doesn't know
-// the source rig, so a bypass is not recoverable remotely. Pins:
-//   - cross-host create/handoff/handoff-and-complete with an INVALID explicit
-//     targetRepo → 400 unknown_target_repo, NO forward fired, no local write,
-//     and (handoff variants) the source NOT closed;
-//   - a VALID explicit targetRepo still forwards (the check gates, it does
-//     not block the feature);
-//   - an INHERITED source.targetRepo (no explicit override) is NOT
-//     re-validated on handoff — it was already accepted on the source row
-//     (guard fix shape, point 2).
+// OPR.0.4.6.MH3 guard fixback（review 86ba8b42，Finding 1）——PL-007 target_repo 校验
+// 必须在任何跨主机转发前运行于 SOURCE 主机。校验权威是位于本地的 source 工作组 typed
+// workspace；target 后台服务不认识 source 工作组时会直接透传，因此远端无法补救旁路。固定项：
+//   - cross-host create/handoff/handoff-and-complete 带无效显式 targetRepo 时，返回 400
+//     unknown_target_repo，不触发转发、不本地写入，handoff 变体也不关闭 source；
+//   - 有效显式 targetRepo 仍会转发，check 只做 gate，不阻断功能；
+//   - 继承的 source.targetRepo（无显式覆盖）在 handoff 时不重新校验，因为 source row 已接受
+//     它（guard fix shape，第 2 点）。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -32,7 +27,7 @@ const REGISTRY: HostRegistry = {
 };
 process.env["MH3B"] = "remote-token";
 
-// The fake PL-007 authority: source rig "rig-a" declares exactly one repo.
+// fake PL-007 权威：source 工作组 "rig-a" 恰好声明一个 repo。
 const FAKE_RIG_REPO = {
   findRigsByName: (name: string) => (name === "rig-a" ? [{ id: "rig-a-id" }] : []),
   getRigWorkspace: (rigId: string) =>
@@ -64,7 +59,7 @@ function makeHarness() {
   });
   app.route("/api/queue", queueRoutes());
   const post = (path: string, body: Record<string, unknown>) => {
-    // P21 I3: create/handoff derive the sender from the transport header; header==body claim ⇒ tolerated.
+    // P21 I3：create/handoff 从 transport header 派生 sender；header==body claim 时允许。
     const sender = body["sourceSession"] ?? body["fromSession"] ?? body["actorSession"];
     return app.request(path, {
       method: "POST",
@@ -76,11 +71,11 @@ function makeHarness() {
   return { db, repo, post, rowCount, forwards: () => forwardCount };
 }
 
-describe("MH-3 guard fixback — PL-007 target_repo validates BEFORE any cross-host forward", () => {
+describe("MH-3 guard fixback——PL-007 target_repo 在任何跨主机转发前校验", () => {
   let h: ReturnType<typeof makeHarness>;
   afterEach(() => h?.db.close());
 
-  it("cross-host CREATE with an invalid explicit targetRepo: 400 unknown_target_repo, NO forward, no local write", async () => {
+  it("跨主机 CREATE 带无效显式 targetRepo：400 unknown_target_repo，不转发、不本地写入", async () => {
     h = makeHarness();
     const res = await h.post("/api/queue/create", {
       sourceSession: "orch@rig-a", destinationSession: "dev@rig-b",
@@ -92,7 +87,7 @@ describe("MH-3 guard fixback — PL-007 target_repo validates BEFORE any cross-h
     expect(h.rowCount()).toBe(0);
   });
 
-  it("cross-host CREATE with a valid explicit targetRepo: validated, then forwarded (no local row)", async () => {
+  it("跨主机 CREATE 带有效显式 targetRepo：校验后转发，不写本地 row", async () => {
     h = makeHarness();
     const res = await h.post("/api/queue/create", {
       sourceSession: "orch@rig-a", destinationSession: "dev@rig-b",
@@ -103,7 +98,7 @@ describe("MH-3 guard fixback — PL-007 target_repo validates BEFORE any cross-h
     expect(h.rowCount()).toBe(0);
   });
 
-  it("cross-host HANDOFF with an invalid explicit targetRepo: 400 BEFORE the forward; source NOT closed", async () => {
+  it("跨主机 HANDOFF 带无效显式 targetRepo：转发前返回 400，source 不关闭", async () => {
     h = makeHarness();
     await h.repo.create({ qitemId: "qitem-src", sourceSession: "orch@rig-a", destinationSession: "worker@rig-a", body: "src", nudge: false });
     const res = await h.post("/api/queue/qitem-src/handoff", {
@@ -118,7 +113,7 @@ describe("MH-3 guard fixback — PL-007 target_repo validates BEFORE any cross-h
     expect(source.closureTarget).toBeNull();
   });
 
-  it("cross-host HANDOFF-AND-COMPLETE with an invalid explicit targetRepo: 400 BEFORE the forward; source NOT closed", async () => {
+  it("跨主机 HANDOFF-AND-COMPLETE 带无效显式 targetRepo：转发前返回 400，source 不关闭", async () => {
     h = makeHarness();
     await h.repo.create({ qitemId: "qitem-src2", sourceSession: "orch@rig-a", destinationSession: "worker@rig-a", body: "src", nudge: false });
     const res = await h.post("/api/queue/qitem-src2/handoff-and-complete", {
@@ -130,7 +125,7 @@ describe("MH-3 guard fixback — PL-007 target_repo validates BEFORE any cross-h
     expect(h.repo.getById("qitem-src2")!.state).toBe("pending");
   });
 
-  it("cross-host HANDOFF with a valid explicit targetRepo: validated, forwarded, source closed", async () => {
+  it("跨主机 HANDOFF 带有效显式 targetRepo：完成校验与转发，并关闭 source", async () => {
     h = makeHarness();
     await h.repo.create({ qitemId: "qitem-src3", sourceSession: "orch@rig-a", destinationSession: "worker@rig-a", body: "src", nudge: false });
     const res = await h.post("/api/queue/qitem-src3/handoff", {
@@ -142,23 +137,22 @@ describe("MH-3 guard fixback — PL-007 target_repo validates BEFORE any cross-h
     expect(h.repo.getById("qitem-src3")!.state).toBe("handed-off");
   });
 
-  it("INHERITED source.targetRepo (no explicit override) is NOT re-validated on cross-host handoff (already accepted on the source row)", async () => {
+  it("跨主机 handoff 不重新校验继承的 source.targetRepo，因为 source row 已接受且没有显式覆盖", async () => {
     h = makeHarness();
-    // Seed the source row with a targetRepo the fake authority would REJECT
-    // today (repo layer accepts it — older rows / evolved workspaces exist).
+    // 用 fake authority 当前会拒绝的 targetRepo 填种 source row；repo 层接受它，因为旧 row 或
+    // 已演进 workspace 可能存在。
     await h.repo.create({ qitemId: "qitem-src4", sourceSession: "someone@rig-z", destinationSession: "worker@rig-a", body: "src", targetRepo: "repo-legacy", nudge: false });
     const res = await h.post("/api/queue/qitem-src4/handoff", {
       fromSession: "worker@rig-a", toSession: "dev@rig-b",
       hostId: "vps-b", nudge: false,
     });
-    // No explicit override → no re-validation → the forward proceeds and the
-    // inherited value rides the forwarded body.
+    // 无显式覆盖 → 不重新校验 → 继续转发，继承值随 forwarded body 传递。
     expect(res.status).toBe(201);
     expect(h.forwards()).toBe(1);
     expect(h.repo.getById("qitem-src4")!.state).toBe("handed-off");
   });
 
-  it("LOCAL create/handoff validation ordering unchanged (invalid explicit targetRepo still 400s locally)", async () => {
+  it("本地 create/handoff 校验顺序不变，无效显式 targetRepo 仍在本地返回 400", async () => {
     h = makeHarness();
     const create = await h.post("/api/queue/create", {
       sourceSession: "orch@rig-a", destinationSession: "worker@rig-a",

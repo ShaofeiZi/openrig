@@ -14,10 +14,10 @@ function getDeps(c: { get: (key: string) => unknown }) {
 export function envRoutes(): Hono {
   const app = new Hono();
 
-  // GET /api/rigs/:rigId/env — env status with fresh receipt
+  // GET /api/rigs/:rigId/env —— 带新鲜回执的 env 状态
   app.get("/", async (c) => {
     const rigId = c.req.param("rigId");
-    if (!rigId) return c.json({ error: "Missing rigId" }, 400);
+    if (!rigId) return c.json({ error: "缺少 rigId" }, 400);
 
     const { rigRepo, serviceOrchestrator } = getDeps(c);
     const record = rigRepo.getServicesRecord(rigId);
@@ -25,7 +25,7 @@ export function envRoutes(): Hono {
       return c.json({ ok: true, hasServices: false });
     }
 
-    // Refresh receipt with honest probe tracking
+    // 用诚实的探测跟踪刷新回执
     let receipt = record.latestReceiptJson ? JSON.parse(record.latestReceiptJson) : null;
     let probeStatus: "fresh" | "stale" | "no_orchestrator" = "no_orchestrator";
     let probeError: string | undefined;
@@ -37,7 +37,7 @@ export function envRoutes(): Hono {
           probeStatus = "fresh";
         } else {
           probeStatus = "stale";
-          probeError = "Probe returned no receipt — services record may no longer exist";
+          probeError = "探测未返回回执——services 记录可能已不存在";
         }
       } catch (err) {
         probeStatus = "stale";
@@ -45,12 +45,12 @@ export function envRoutes(): Hono {
       }
     }
 
-    // Parse surfaces from specJson (best-effort)
+    // 尽力从 specJson 解析 surfaces
     let surfaces: unknown = undefined;
     try {
       const spec = JSON.parse(record.specJson) as Record<string, unknown>;
       if (spec["surfaces"]) surfaces = spec["surfaces"];
-    } catch { /* safe default */ }
+    } catch { /* 安全默认 */ }
 
     return c.json({
       ok: true,
@@ -65,19 +65,19 @@ export function envRoutes(): Hono {
     });
   });
 
-  // GET /api/rigs/:rigId/env/logs — service logs
+  // GET /api/rigs/:rigId/env/logs —— 服务日志
   app.get("/logs", async (c) => {
     const rigId = c.req.param("rigId");
-    if (!rigId) return c.json({ error: "Missing rigId" }, 400);
+    if (!rigId) return c.json({ error: "缺少 rigId" }, 400);
 
     const { rigRepo, composeAdapter } = getDeps(c);
     const record = rigRepo.getServicesRecord(rigId);
     if (!record) {
-      return c.json({ error: "No services configured for this rig" }, 404);
+      return c.json({ error: "该工作组未配置任何服务" }, 404);
     }
 
     if (!composeAdapter) {
-      return c.json({ error: "Compose adapter not available" }, 500);
+      return c.json({ error: "Compose 适配器不可用" }, 500);
     }
 
     const service = c.req.query("service");
@@ -85,7 +85,7 @@ export function envRoutes(): Hono {
     const tail = tailStr ? parseInt(tailStr, 10) : 100;
 
     let spec: { profiles?: string[] } = {};
-    try { spec = JSON.parse(record.specJson); } catch { /* empty */ }
+    try { spec = JSON.parse(record.specJson); } catch { /* 空 */ }
 
     const result = await composeAdapter.logs({
       composeFile: record.composeFile,
@@ -102,19 +102,19 @@ export function envRoutes(): Hono {
     return c.json({ ok: true, output: result.output });
   });
 
-  // POST /api/rigs/:rigId/env/down — tear down services
+  // POST /api/rigs/:rigId/env/down —— 拆除服务
   app.post("/down", async (c) => {
     const rigId = c.req.param("rigId");
-    if (!rigId) return c.json({ error: "Missing rigId" }, 400);
+    if (!rigId) return c.json({ error: "缺少 rigId" }, 400);
 
     const { rigRepo, serviceOrchestrator } = getDeps(c);
     const record = rigRepo.getServicesRecord(rigId);
     if (!record) {
-      return c.json({ error: "No services configured for this rig" }, 404);
+      return c.json({ error: "该工作组未配置任何服务" }, 404);
     }
 
     if (!serviceOrchestrator) {
-      return c.json({ error: "Service orchestrator not available" }, 500);
+      return c.json({ error: "服务编排器不可用" }, 500);
     }
 
     const body = await c.req.json<{ volumes?: boolean }>().catch(() => ({} as { volumes?: boolean }));

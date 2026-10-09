@@ -6,12 +6,16 @@ import { DEFAULT_TIME_ZONE, displayTime } from "./time.js";
 import { startupLines, type StartupState } from "./startup.js";
 import { configLines } from "./config/config-model.js";
 import { connectionsLines } from "./connections/connections-model.js";
-// Hand-rolled ANSI renderer (Phase-0 substrate decision). Pure function:
-// (state, snapshot) → {lines, hitMap, explorerRows}. BOTH panes emit hit
-// targets — explorer rows AND content-pane surfaces (table rows, view tabs,
-// agent-refs, Needs-You items) — so a mouse click anywhere resolves to the
-// SAME semantic actions commands produce (PIN 1). Isolated seam: a substrate
-// swap touches only this module (spike verdict revisit trigger).
+function sectionLabel(section: string): string {
+  return { topology: "拓扑", specs: "规范", scopes: "项目", needs: "待关注", terminals: "终端", system: "系统", config: "配置", connections: "连接" }[section] ?? section.toUpperCase();
+}
+
+// 手写 ANSI 渲染器（Phase-0 基础决策）。纯函数：
+// (状态, 快照) → {lines, hitMap, explorerRows}。两个窗格都发出命中
+// 目标——资源管理器行和内容窗格表面（表行、视图标签、
+// 智能体引用、需要你项）——因此任何位置的鼠标点击解析为
+// 命令产生的相同语义动作（PIN 1）。隔离接缝：基础
+// 替换仅触及此模块（spike 判定复核触发器）。
 import { computeExplorerRows, findAgent, findSpec, findAgentBySession, agentsRunningSpec, agentsRunningSpecTargets, specDetailArrowsScroll } from "./state.js";
 import { scopesContentLines } from "./scopes/scopes-model.js";
 import { executionContentLines, executionSliceStripLines } from "./execution/execution-model.js";
@@ -35,26 +39,30 @@ import type { Action, FleetSnapshot, LoadState, NeedsItem, RecentTransitionSnap,
 
 interface ContentLine {
   text: string;
-  /** dispatched when this line is clicked (open/navigate class only) */
+  /** 点击此行时分派，仅限打开/导航类操作。 */
   action?: Action;
-  /** sub-line click zones (content-relative indices); matched before `action`.
-   * BR-9: zone actions are drive-structure only (lifecycle + navigation). */
+  /** 行内点击区域（相对于内容的索引），先于 `action` 匹配。BR-9：区域操作只驱动结构，
+   * 即生命周期和导航。 */
   zones?: Array<{ start: number; end: number; action: Action }>;
-  /** slice-17: token segments for canvas-rendered rows (graph view) */
+  /** slice-17：画布渲染行（图视图）的 token 分段。 */
   segs?: Array<{ text: string; token?: import("./theme.js").Token; bold?: boolean; bg?: import("./theme.js").Token }>;
 }
 
+import { columnIndex, strWidth, clipW as truncateToWidth, padEndW, clipW } from "./text-width.js";
+
 function pad(text: string | number | null | undefined, width: number): string {
   const t = String(text ?? "");
-  if (t.length <= width) return t + " ".repeat(width - t.length);
-  // never hard-clip mid-word: any truncation reads as an ellipsis (glance honesty)
-  return t.slice(0, Math.max(width - 1, 0)) + "…";
+  const w = strWidth(t);
+  if (w <= width) return t + " ".repeat(width - w);
+  return padEndW(truncateToWidth(t, width), width);
 }
 
 function padLeft(text: string | number | null | undefined, width: number): string {
   const t = String(text ?? "");
-  if (t.length <= width) return " ".repeat(width - t.length) + t;
-  return t.slice(0, Math.max(width - 1, 0)) + "…";
+  const w = strWidth(t);
+  if (w <= width) return " ".repeat(width - w) + t;
+  const clipped = truncateToWidth(t, width);
+  return " ".repeat(Math.max(0, width - strWidth(clipped))) + clipped;
 }
 
 type Align = "left" | "right";
@@ -67,43 +75,43 @@ function columnsWidth(columns: AgentColumn[]): number {
 
 function agentColumns(contentWidth: number): AgentColumn[] {
   if (contentWidth >= 110) return [
-    ["pod", "POD", 8, "left"], ["seat", "SEAT", 15, "left"], ["runtime", "RT", 4, "left"],
-    ["model", "MODEL", 12, "left"], ["context", "CTX", 8, "right"], ["status", "STATE", 11, "left"],
-    ["queue", "Q", 3, "right"], ["work", "WORK", 15, "left"], ["now", "NOW", 27, "left"],
-    ["actions", "ACTIONS", 14, "left"],
+    ["pod", "席位", 8, "left"], ["seat", "席位", 15, "left"], ["runtime", "运行时", 6, "left"],
+    ["model", "模型", 12, "left"], ["context", "上下文", 8, "right"], ["status", "状态", 11, "left"],
+    ["queue", "队列", 4, "right"], ["work", "工作", 15, "left"], ["now", "现在", Math.max(7, contentWidth - 103), "left"],
+    ["actions", "动作", 15, "left"],
   ];
   if (contentWidth >= 88) return [
-    ["pod", "POD", 6, "left"], ["seat", "SEAT", 12, "left"], ["runtime", "RT", 3, "left"],
-    ["model", "MODEL", 8, "left"], ["context", "CTX", 6, "right"], ["status", "STATE", 9, "left"],
-    ["queue", "Q", 2, "right"], ["work", "WORK", 8, "left"], ["now", "NOW", 11, "left"],
-    ["actions", "ACTIONS", 14, "left"],
+    ["pod", "席位", 5, "left"], ["seat", "席位", 8, "left"], ["runtime", "运行时", 6, "left"],
+    ["model", "模型", 8, "left"], ["context", "上下文", 6, "right"], ["status", "状态", 8, "left"],
+    ["queue", "队列", 4, "right"], ["work", "工作", 8, "left"], ["now", "现在", Math.max(11, contentWidth - 77), "left"],
+    ["actions", "动作", 15, "left"],
   ];
-  // At 84x28 the L2 content pane is 58 cells. The three explicitly deferred
-  // columns (MODEL/NOW/ACTIONS) move to drill; identity, state and work remain.
-  const fixed = 6 + 12 + 3 + 5 + 9 + 2 + 6; // widths + separators, excluding WORK
+  // 在 84x28 下，L2 内容窗格宽 58 个单元格。明确延后的三列（MODEL/NOW/ACTIONS）移入详情；
+  // 身份、状态和工作仍保留。
+  const fixed = 6 + 12 + 6 + 6 + 9 + 4 + 6; // widths + separators, excluding WORK
   return [
-    ["pod", "POD", 6, "left"], ["seat", "SEAT", 12, "left"], ["runtime", "RT", 3, "left"],
-    ["context", "CTX", 5, "right"], ["status", "STATE", 9, "left"], ["queue", "Q", 2, "right"],
-    ["work", "WORK", Math.max(4, contentWidth - fixed), "left"],
+    ["pod", "席位", 6, "left"], ["seat", "席位", 12, "left"], ["runtime", "运行时", 6, "left"],
+    ["context", "上下文", 6, "right"], ["status", "状态", 9, "left"], ["queue", "队列", 4, "right"],
+    ["work", "工作", Math.max(4, contentWidth - fixed), "left"],
   ];
 }
 
 function instanceAgentColumns(contentWidth: number): AgentColumn[] {
   if (contentWidth >= 110) return [
-    ["rig", "RIG", 13, "left"], ["pod", "POD", 8, "left"], ["seat", "SEAT", 14, "left"],
-    ["runtime", "RT", 3, "left"], ["context", "CTX", 7, "right"], ["status", "STATE", 10, "left"],
-    ["queue", "Q", 2, "right"], ["work", "WORK", 12, "left"], ["now", "NOW", Math.max(18, contentWidth - 78), "left"],
+    ["rig", "工作组", 13, "left"], ["pod", "席位", 8, "left"], ["seat", "席位", 14, "left"],
+    ["runtime", "运行时", 6, "left"], ["context", "上下文", 8, "right"], ["status", "状态", 10, "left"],
+    ["queue", "队列", 4, "right"], ["work", "工作", 12, "left"], ["now", "现在", Math.max(18, contentWidth - 84), "left"],
   ];
   if (contentWidth >= 78) return [
-    ["rig", "RIG", 10, "left"], ["pod", "POD", 6, "left"], ["seat", "SEAT", 12, "left"],
-    ["runtime", "RT", 3, "left"], ["context", "CTX", 5, "right"], ["status", "STATE", 9, "left"],
-    ["queue", "Q", 2, "right"], ["work", "WORK", Math.max(8, contentWidth - 54), "left"],
+    ["rig", "工作组", 10, "left"], ["pod", "席位", 6, "left"], ["seat", "席位", 12, "left"],
+    ["runtime", "运行时", 6, "left"], ["context", "上下文", 6, "right"], ["status", "状态", 9, "left"],
+    ["queue", "队列", 4, "right"], ["work", "工作", Math.max(8, contentWidth - 58), "left"],
   ];
-  const fixed = 8 + 5 + 11 + 2 + 5 + 8 + 2 + 7;
+  const fixed = 10 + 6 + 12 + 6 + 6 + 9 + 4 + 6;
   return [
-    ["rig", "RIG", 8, "left"], ["pod", "POD", 5, "left"], ["seat", "SEAT", 11, "left"],
-    ["runtime", "RT", 2, "left"], ["context", "CTX", 5, "right"], ["status", "STATE", 8, "left"],
-    ["queue", "Q", 2, "right"], ["work", "WORK", Math.max(4, contentWidth - fixed), "left"],
+    ["rig", "工作组", 10, "left"], ["pod", "席位", 6, "left"], ["seat", "席位", 12, "left"],
+    ["runtime", "运行时", 6, "left"], ["context", "上下文", 6, "right"], ["status", "状态", 9, "left"],
+    ["queue", "队列", 4, "right"], ["work", "工作", Math.max(4, contentWidth - fixed), "left"],
   ];
 }
 
@@ -119,7 +127,7 @@ function runtimeShort(runtime: string): string {
   return runtime.slice(0, 2) || "—";
 }
 
-/** Tables optimize for glance width; details retain the canonical model id. */
+/** 表格针对扫视宽度优化；详情保留规范模型 ID。 */
 function tableModel(model: string | null | undefined): string {
   return model?.replace(/^claude-/i, "") || "—";
 }
@@ -136,19 +144,35 @@ function seatName(pod: string, name: string): string {
   return name;
 }
 
+function operationalStateLabel(status: string | null | undefined): string {
+  const key = (status ?? "").toLowerCase().replaceAll("_", "-");
+  if (key === "active" || key === "working" || key === "running") return "工作中";
+  if (key === "attention-required" || key === "needs-attention" || key === "needs-input") return "需要你";
+  if (key === "blocked") return "被阻塞";
+  if (key === "failed" || key === "down") return "失败";
+  if (key === "idle") return "空闲";
+  if (key === "detached" || key === "stopped") return "已分离";
+  return "未知";
+}
+
 function operationalState(status: string, motion: MotionCtx): { mark: string; word: string } {
   const key = status.toLowerCase().replaceAll("_", "-");
   if (key === "active" || key === "working" || key === "running") {
     if (!motion.reduced) motion.used = true;
-    return { mark: motion.reduced ? "●" : motion.frame, word: "working" };
+    return { mark: motion.reduced ? "●" : motion.frame, word: operationalStateLabel(status) };
   }
   if (key === "attention-required" || key === "needs-attention" || key === "needs-input")
-    return { mark: "◐", word: "needs you" };
-  if (key === "blocked") return { mark: "⚑", word: "blocked" };
-  if (key === "failed" || key === "down") return { mark: "✕", word: "failed" };
-  if (key === "idle") return { mark: "·", word: "idle" };
-  if (key === "detached" || key === "stopped") return { mark: "○", word: "detached" };
-  return { mark: "?", word: "unknown" };
+    return { mark: "◐", word: operationalStateLabel(status) };
+  if (key === "blocked") return { mark: "⚑", word: operationalStateLabel(status) };
+  if (key === "failed" || key === "down") return { mark: "✕", word: operationalStateLabel(status) };
+  if (key === "idle") return { mark: "·", word: operationalStateLabel(status) };
+  if (key === "detached" || key === "stopped") return { mark: "○", word: operationalStateLabel(status) };
+  return { mark: "?", word: operationalStateLabel(status) };
+}
+
+/** 工作组生命周期只在展示层翻译；服务端枚举值保持原样。 */
+function lifecycleLabel(value: string | null | undefined): string {
+  return { running: "运行中", recoverable: "可恢复", stopped: "已停止", archived: "已归档" }[value ?? ""] ?? value ?? "未知";
 }
 
 function queueFacts(snap: FleetSnapshot, session: string | null | undefined): { count: number; work: string; now: string } {
@@ -170,7 +194,8 @@ function queueFacts(snap: FleetSnapshot, session: string | null | undefined): { 
     ? `S${slice.slice(slice.lastIndexOf(".") + 1)}`
     : slice ?? "—";
   const summary = primary.row.summary?.trim() || primary.row.body.split("\n").find((line) => line.trim())?.trim() || primary.row.qitemId;
-  const now = primary.role === "working" ? summary : `${primary.role} · ${summary}`;
+  const queueRole = { "needs you": "需要你", blocked: "已阻塞", queued: "已排队" }[primary.role] ?? primary.role;
+  const now = primary.role === "working" ? summary : `${queueRole} · ${summary}`;
   return { count: rows.length, work, now };
 }
 
@@ -178,23 +203,29 @@ function number(value: number | null | undefined): string {
   return value == null ? "—" : value.toLocaleString("en-US");
 }
 
+function queueStateLabel(value: string): string {
+  return { pending: "待处理", "in-progress": "进行中", blocked: "已阻塞", done: "已完成", "handed-off": "已交接" }[value] ?? value;
+}
+
 function wrapDetailValue(label: string, value: string, width: number): ContentLine[] {
-  const prefix = `  ${`${label}:`.padEnd(LABEL_W)} `;
-  const continuation = " ".repeat(prefix.length);
-  const room = Math.max(8, width - prefix.length);
+  const prefix = `  ${padEndW(`${label}:`, LABEL_W)} `;
+  const continuation = " ".repeat(strWidth(prefix));
+  const room = Math.max(8, width - strWidth(prefix));
   const words = value.trim().split(/\s+/).filter(Boolean);
   const chunks: string[] = [];
   let line = "";
   for (const raw of words) {
     let word = raw;
-    while (word.length > room) {
+    while (strWidth(word) > room) {
       if (line) { chunks.push(line); line = ""; }
-      chunks.push(word.slice(0, room));
-      word = word.slice(room);
+      const clipped = clipW(word, room + 1);
+      const chunk = clipped.endsWith("…") ? clipped.slice(0, -1) : clipped;
+      chunks.push(chunk);
+      word = word.slice(chunk.length);
     }
     if (!word) continue;
     if (!line) line = word;
-    else if (line.length + word.length + 1 <= room) line += ` ${word}`;
+    else if (strWidth(line) + strWidth(word) + 1 <= room) line += ` ${word}`;
     else { chunks.push(line); line = word; }
   }
   if (line) chunks.push(line);
@@ -213,13 +244,13 @@ function rowsForAgent(snap: FleetSnapshot, session: string, sources: Array<Fleet
 }
 
 function workRows(rows: FleetSnapshot["attention"], width: number): ContentLine[] {
-  if (rows.length === 0) return [fieldLine({ label: "rows", value: "none in the served bounded lists" })];
+  if (rows.length === 0) return [fieldLine({ label: "行", value: "已服务有界列表中无项" })];
   return rows.flatMap((row) => {
-    const summary = row.summary?.trim() || row.body.split("\n").find((line) => line.trim())?.trim() || "no summary served";
+    const summary = row.summary?.trim() || row.body.split("\n").find((line) => line.trim())?.trim() || "未服务摘要";
     return [
-      ...wrapDetailValue("qitem", `${row.qitemId} · ${row.state}`, width),
-      ...wrapDetailValue("work", summary, width),
-      ...(row.blockedOn ? wrapDetailValue("blocker", `blocked on ${row.blockedOn}`, width) : []),
+      ...wrapDetailValue("队列项", `${row.qitemId} · ${queueStateLabel(row.state)}`, width),
+      ...wrapDetailValue("工作", summary, width),
+      ...(row.blockedOn ? wrapDetailValue("阻塞者", `被 ${row.blockedOn} 阻塞`, width) : []),
     ];
   });
 }
@@ -244,11 +275,11 @@ function agentDetailLines(
   const blocked = agent.blockedWorkCount ?? currentRows.filter((row) => row.state === "blocked").length;
   const context = agent.context;
   const meterWidth = Math.max(10, Math.min(36, contentWidth - 24));
-  const rtName = agent.runtime ?? "unknown";
+  const rtName = agent.runtime ?? "未知";
   const rtSegs = [
     { text: "  " },
-    { text: "runtime:", token: "dim" as const },
-    { text: " ".repeat(LABEL_W - "runtime:".length + 1) },
+    { text: "运行时:", token: "dim" as const },
+    { text: " ".repeat(Math.max(1, LABEL_W - strWidth("运行时:") + 1)) },
     { text: rtName },
     { text: "  " },
     ...runtimeMarkSegs(agent.runtime),
@@ -257,39 +288,39 @@ function agentDetailLines(
   const activityReason = agent.activity?.needsInput?.reason ?? agent.activity?.signalReason ?? null;
   const needsRows = needs.length > 0
     ? needs.flatMap((item) => [
-      ...wrapDetailValue("qitem", item.qitemId ?? "no actionable qitem id served", contentWidth),
-      ...wrapDetailValue("reason", item.detail, contentWidth),
-      ...(item.unblocks ? wrapDetailValue("action", `unblocks ${item.unblocks}`, contentWidth) : []),
-      ...(item.evidenceRef ? wrapDetailValue("evidence", item.evidenceRef, contentWidth) : []),
+      ...wrapDetailValue("队列项", item.qitemId ?? "未服务可操作队列项 id", contentWidth),
+      ...wrapDetailValue("原因", item.detail, contentWidth),
+      ...(item.unblocks ? wrapDetailValue("动作", `解除 ${item.unblocks} 阻塞`, contentWidth) : []),
+      ...(item.evidenceRef ? wrapDetailValue("证据", item.evidenceRef, contentWidth) : []),
     ])
     : agent.activity?.needsInput && agent.activity.needsInput.count > 0
-      ? wrapDetailValue("reason", agent.activity.needsInput.reason ?? "input required; no reason served", contentWidth)
-      : [fieldLine({ label: "state", value: "none on the served projections" })];
+      ? wrapDetailValue("原因", agent.activity.needsInput.reason ?? "需要输入；未服务原因", contentWidth)
+      : [fieldLine({ label: "状态", value: "已服务投影上无项" })];
 
   return [
-    ...detailPage({ text: `agent ${agent.name} · ${agent.status}` }, [
+    ...detailPage({ text: `智能体 ${agent.name} · ${operationalStateLabel(agent.status)}` }, [
       {
-        title: `CONTEXT · ${context == null ? "unknown" : `${context}%`}`,
+        title: `上下文 · ${context == null ? "未知" : `${context}%`}`,
         lines: [
-          fieldLine({ label: "meter", value: context == null ? "— (not yet known)" : `${context}% used  ${barCells(context / 100, meterWidth)}` }),
-          fieldLine({ label: "tokens", value: `${number(agent.totalInputTokens)} input · ${number(agent.totalOutputTokens)} output · ${number(agent.contextWindowSize)} window` }),
+          fieldLine({ label: "仪表", value: context == null ? "— (尚未知)" : `${context}% 已用  ${barCells(context / 100, meterWidth)}` }),
+          fieldLine({ label: "令牌", value: `${number(agent.totalInputTokens)} 输入 · ${number(agent.totalOutputTokens)} 输出 · ${number(agent.contextWindowSize)} 窗口` }),
           runtimeLine,
-          ...(agent.attach ? [fieldLine({ label: "attach", value: agent.attach })] : []),
-          fieldLine({ label: "terminal", value: `term ▸ pod ${pod.name}`, link: { type: "act", act: "open-terminal", view: `pod:${rig.name}/${pod.name}` } }),
+          ...(agent.attach ? [fieldLine({ label: "附加", value: agent.attach })] : []),
+          fieldLine({ label: "终端", value: `终端 ▸ 席位 ${pod.name}`, link: { type: "act", act: "open-terminal", view: `pod:${rig.name}/${pod.name}` } }),
         ],
       },
       {
-        title: "CURRENT ACTIVITY",
+        title: "当前活动",
         fields: [
-          { label: "activity", value: agent.activity?.activity ?? agent.status },
-          ...(activityReason ? [{ label: "reason", value: activityReason }] : []),
-          ...(agent.activity?.decidedBy ? [{ label: "decided by", value: agent.activity.decidedBy }] : []),
-          ...(agent.activity?.signalSource || agent.activity?.signalReason ? [{ label: "signal", value: `${agent.activity.signalSource ?? "unknown"} · ${agent.activity.signalReason ?? "no reason"}` }] : []),
-          ...(agent.activity?.eventAt ? [{ label: "changed", value: displayTime(agent.activity.eventAt, timeZone) }] : []),
+          { label: "活动", value: operationalStateLabel(agent.activity?.activity ?? agent.status) },
+          ...(activityReason ? [{ label: "原因", value: activityReason }] : []),
+          ...(agent.activity?.decidedBy ? [{ label: "决定者", value: agent.activity.decidedBy }] : []),
+          ...(agent.activity?.signalSource || agent.activity?.signalReason ? [{ label: "信号", value: `${agent.activity.signalSource ?? "未知"} · ${agent.activity.signalReason ?? "无原因"}` }] : []),
+          ...(agent.activity?.eventAt ? [{ label: "变更", value: displayTime(agent.activity.eventAt, timeZone) }] : []),
         ],
       },
       {
-        title: "HEALTH",
+        title: "健康",
         lines: healthAgentLines(snap, {
           kind: "seat",
           rigId: rig.id ?? rig.name,
@@ -298,38 +329,38 @@ function agentDetailLines(
           local: found.host === snap.hosts[0],
         }, contentWidth),
       },
-      { title: `CURRENT WORK · ${currentRows.length}`, lines: workRows(currentRows, contentWidth) },
+      { title: `当前工作 · ${currentRows.length}`, lines: workRows(currentRows, contentWidth) },
       {
-        title: "QUEUE",
+        title: "队列",
         lines: [
-          ...wrapDetailValue("depth", `${assigned} assigned · ${pending} pending · ${inProgress} in progress · ${blocked} blocked`, contentWidth),
-          ...(agent.assignedWorkCount == null ? wrapDetailValue("basis", `${visibleAssigned} rows visible in bounded list reads; complete count not served`, contentWidth) : []),
+          ...wrapDetailValue("深度", `${assigned} 已分配 · ${pending} 待处理 · ${inProgress} 进行中 · ${blocked} 已阻塞`, contentWidth),
+          ...(agent.assignedWorkCount == null ? wrapDetailValue("基础", `${visibleAssigned} 行在有界列表读取中可见；完整计数未服务`, contentWidth) : []),
         ],
       },
-      { title: `UP NEXT · ${pending}`, lines: workRows(pendingRows, contentWidth) },
-      { title: `NEEDS YOU · ${needs.length || agent.activity?.needsInput?.count || 0}`, lines: needsRows },
-      ...(recentRows.length ? [{ title: "RECENTLY FINISHED · bounded window", lines: workRows(recentRows, contentWidth) }] : []),
+      { title: `下一个 · ${pending}`, lines: workRows(pendingRows, contentWidth) },
+      { title: `需要你 · ${needs.length || agent.activity?.needsInput?.count || 0}`, lines: needsRows },
+      ...(recentRows.length ? [{ title: "刚完成 · 有界窗口", lines: workRows(recentRows, contentWidth) }] : []),
       {
-        title: "SEAT",
+        title: "席位",
         fields: [
-          { label: "host", value: found.host.name },
-          { label: "rig", value: rig.name },
-          { label: "pod", value: pod.name },
+          { label: "主机", value: found.host.name },
+          { label: "工作组", value: rig.name },
+          { label: "席位", value: pod.name },
         ],
         lines: [
-          fieldLine({ label: "cwd", value: agent.cwd ?? "— (not served)" }),
+          fieldLine({ label: "工作目录", value: agent.cwd ?? "— (未服务)" }),
         ],
       },
       {
-        title: "SPEC · effective seat binding",
+        title: "规范 · 有效席位绑定",
         fields: [specInLibrary
-          ? { label: "spec", value: agent.spec, link: { type: "cross", kind: "spec-of", name: agent.name, target: { host: found.host.name, rig: rig.name, pod: pod.name } } }
-          : { label: "spec", value: agent.spec ? `${agent.spec}  (not in library)` : "—" }],
+          ? { label: "规范", value: agent.spec, link: { type: "cross", kind: "spec-of", name: agent.name, target: { host: found.host.name, rig: rig.name, pod: pod.name } } }
+          : { label: "规范", value: agent.spec ? `${agent.spec}  (不在库中)` : "—" }],
         lines: [
-          ...wrapDetailValue("profile", agent.profile ?? "not served", contentWidth),
-          ...wrapDetailValue("version", agent.specVersion ?? "not served", contentWidth),
-          ...wrapDetailValue("source hash", agent.specHash ?? "not served", contentWidth),
-          ...wrapDetailValue("basis", "Served seat binding; the authored library may have changed since launch.", contentWidth),
+          ...wrapDetailValue("配置", agent.profile ?? "未服务", contentWidth),
+          ...wrapDetailValue("版本", agent.specVersion ?? "未服务", contentWidth),
+          ...wrapDetailValue("源哈希", agent.specHash ?? "未服务", contentWidth),
+          ...wrapDetailValue("基础", "已服务席位绑定；撰写库自启动以来可能已变更。", contentWidth),
         ],
       },
     ]),
@@ -337,22 +368,22 @@ function agentDetailLines(
 }
 
 function tabsLine(state: ViewState, suffix: string): ContentLine[] {
-  // Each topology tab is its own click zone (the first zone starts at
-  // content col 0, preserving the focus-marker floor); `tab graph` = the
-  // topology graph view (frame-01 hatchet mainline)
+  // 每个拓扑标签是自己的点击区（第一区从
+  // 内容列 0 开始，保留焦点标记底线）；`tab graph` =
+  // 拓扑图视图（frame-01 hatchet 主线）
   const labels: Array<[Extract<ViewState["viewTab"], "table" | "recent" | "overview" | "graph" | "health">, string]> = [
-    ["table", state.viewTab === "table" ? "[ TABLE ]" : "  TABLE  "],
-    ["recent", state.viewTab === "recent" ? "[ RECENT ]" : "  RECENT  "],
-    ["overview", state.viewTab === "overview" ? "[ OVERVIEW ]" : "  OVERVIEW  "],
-    ["graph", state.viewTab === "graph" ? "[ GRAPH ]" : "  GRAPH  "],
-    ["health", state.viewTab === "health" ? "[ HEALTH ]" : "  HEALTH  "],
+    ["table", state.viewTab === "table" ? "[ 表格 ]" : "  表格  "],
+    ["recent", state.viewTab === "recent" ? "[ 近期 ]" : "  近期  "],
+    ["overview", state.viewTab === "overview" ? "[ 概览 ]" : "  概览  "],
+    ["graph", state.viewTab === "graph" ? "[ 图 ]" : "  图  "],
+    ["health", state.viewTab === "health" ? "[ 健康 ]" : "  健康  "],
   ];
   const text = `${labels.map(([, label]) => label).join("")}   ${suffix}`;
   const zones: ContentLine["zones"] = [];
   let at = 0;
   for (const [tab, label] of labels) {
-    zones.push({ start: at, end: at + label.length, action: { type: "tab", tab } });
-    at += label.length;
+    zones.push({ start: at, end: at + strWidth(label), action: { type: "tab", tab } });
+    at += strWidth(label);
   }
   return [{ text, zones }];
 }
@@ -364,7 +395,7 @@ function queueRows(snap: FleetSnapshot): FleetSnapshot["attention"] {
 function recentWorkText(snap: FleetSnapshot, row: RecentTransitionSnap): string {
   const qitem = queueRows(snap).find((candidate) => candidate.qitemId === row.qitemId);
   const work = qitem?.summary?.trim() || qitem?.body.split("\n").find((line) => line.trim())?.trim();
-  return row.summary?.trim() || work || "no work served";
+  return row.summary?.trim() || work || "未服务工作";
 }
 
 function agentDrillForSession(snap: FleetSnapshot, session: string): Action | undefined {
@@ -407,15 +438,15 @@ function recentLines(snap: FleetSnapshot, scope: RecentScope, width: number, exp
   const rows = expanded ? snap.recentTransitions : snap.recentTransitions.slice(-5);
   const lines: ContentLine[] = [
     ...(expanded ? [] : [{ text: "" }]),
-    sectionRule(`RECENT · ${scope.kind === "instance" ? "instance" : `rig ${scope.rig}`}`, width),
-    { text: "  Recorded queue changes · oldest to newest · Enter inspects" },
+    sectionRule(`近期 · ${scope.kind === "instance" ? "实例" : `工作组 ${scope.rig}`}`, width),
+    { text: "  已记录队列变更 · 旧到新 · 回车检查" },
   ];
-  if (rows.length === 0) return [...lines, { text: "  No recorded transitions in the current window." }];
+  if (rows.length === 0) return [...lines, { text: "  当前窗口中无已记录变更。" }];
   for (const row of rows) {
     lines.push(listItem(`${displayTime(row.ts, timeZone)} · #${row.transitionId}`, { type: "recent-open", transitionId: row.transitionId }),
-      { text: `    ${row.actorSession || "actor unknown"} · ${row.change || "change unknown"}` },
+      { text: `    ${row.actorSession || "未知执行者"} · ${row.change || "未知变更"}` },
       { text: `    ${recentWorkText(snap, row)}` },
-      { text: `    ${row.targetKind}: ${row.target}${scope.kind === "instance" ? ` · rig ${row.rig ?? "unknown"}` : ""}` },
+      { text: `    ${row.targetKind}: ${row.target}${scope.kind === "instance" ? ` · 工作组 ${row.rig ?? "未知"}` : ""}` },
       { text: "" });
   }
   return wrapDetailLines(lines, width);
@@ -425,55 +456,56 @@ function recentDetailLines(state: ViewState, snap: FleetSnapshot, width: number)
   const row = state.recentOpen!;
   const target = recentTargetAction(snap, row);
   return wrapDetailLines([
-    { text: `Recent event #${row.transitionId} · Esc returns` },
-    fieldLine({ label: "when", value: displayTime(row.ts, state.timeZone) }),
-    fieldLine({ label: "actor", value: row.actorSession || "unknown" }),
-    fieldLine({ label: "change", value: row.change || "unknown" }),
-    fieldLine({ label: "work", value: recentWorkText(snap, row) }),
-    fieldLine({ label: "target", value: `${row.targetKind}: ${row.target}` }),
-    fieldLine({ label: "rig", value: row.rig ?? "not served" }),
-    fieldLine({ label: "queue item", value: row.qitemId }),
-    fieldLine({ label: "raw time", value: row.ts }),
-    { text: "  This is the recorded change, not an independent check of its outcome." },
-    ...(target ? [listItem("Related work / owner", target)] : [{ text: "  Related work is outside the current snapshot." }]),
-    listItem("Back · Esc", { type: "back" }),
+    { text: `近期事件 #${row.transitionId} · Esc 返回` },
+    fieldLine({ label: "时间", value: displayTime(row.ts, state.timeZone) }),
+    fieldLine({ label: "执行者", value: row.actorSession || "未知" }),
+    fieldLine({ label: "变更", value: row.change || "未知" }),
+    fieldLine({ label: "工作", value: recentWorkText(snap, row) }),
+    fieldLine({ label: "目标", value: `${row.targetKind}: ${row.target}` }),
+    fieldLine({ label: "工作组", value: row.rig ?? "未服务" }),
+    fieldLine({ label: "队列项", value: row.qitemId }),
+    fieldLine({ label: "原始时间", value: row.ts }),
+    { text: "  这是已记录的变更，不是对其结果的独立检查。" },
+    ...(target ? [listItem("相关工作 / 所有者", target)] : [{ text: "  相关工作在当前快照之外。" }]),
+    listItem("返回 · Esc", { type: "back" }),
   ], width);
 }
 
 function timeZoneLines(state: ViewState, width: number): ContentLine[] {
   return wrapDetailLines([
-    { text: "Local time · presentation setting" },
-    fieldLine({ label: "timezone", value: state.timeZone }),
+    { text: "本地时间 · 显示设置" },
+    fieldLine({ label: "时区", value: state.timeZone }),
     ...(state.timeZoneWarning ? [{ text: `  ${state.timeZoneWarning}` }] : []),
-    { text: "  Absolute times include date and zone. Daylight saving follows the named zone. Elapsed ages stay relative; source timestamps are unchanged." },
+    { text: "  绝对时间包含日期和时区。夏令时跟随命名时区。经过时间保持相对；源时间戳不变。" },
     { text: "" },
-    { text: "  Change the persistent setting from the shell, then reopen this TUI:" },
-    { text: "  rig config set ui.timezone Europe/London" },
-    { text: "  rig config reset ui.timezone" },
-    { text: "  rig config get ui.timezone --show-source" },
-    { text: "  Default: America/Los_Angeles. OPENRIG_UI_TIMEZONE overrides the file setting on this TUI's instance." },
-    listItem("Back · Esc", { type: "back" }),
+    { text: "  从 shell 更改持久设置，然后重新打开此 TUI：" },
+    { text: "  zrig config set ui.timezone Europe/London" },
+    { text: "  zrig config reset ui.timezone" },
+    { text: "  zrig config get ui.timezone --show-source" },
+    { text: "  默认: America/Los_Angeles. OPENRIG_UI_TIMEZONE 覆盖此 TUI 实例的文件设置。" },
+    listItem("返回 · Esc", { type: "back" }),
   ], width);
 }
 
 function specTabsLine(state: ViewState): ContentLine {
   const active = state.viewTab === "topology" || state.viewTab === "yaml" ? state.viewTab : "configuration";
   const labels = ["topology", "configuration", "yaml"] as const;
-  const parts = labels.map((tab) => (tab === active ? `[ ${tab.toUpperCase()} ]` : `  ${tab.toUpperCase()}  `));
-  const text = parts.join(" ");
+  const visible = { topology: "拓扑", configuration: "配置", yaml: "YAML" } as const;
+  const parts = labels.map((tab) => (tab === active ? `[ ${visible[tab]} ]` : `  ${visible[tab]}  `));
+  const text = parts.join(" " );
   return {
     text,
     zones: labels.map((tab, index) => {
       const label = parts[index]!;
       const start = text.indexOf(label);
-      return { start, end: start + label.length, action: { type: "tab", tab } };
+      const displayStart = strWidth(text.slice(0, start));
+      return { start: displayStart, end: displayStart + strWidth(label), action: { type: "tab", tab } };
     }),
   };
 }
 
 function needsLine(prefix: string, item: NeedsItem, snap: FleetSnapshot): ContentLine {
-  // aligned columns (glance speed): kind · host · target · detail — same fact,
-  // same visual place, every row
+  // 对齐列以提升扫视速度：类型、主机、目标、详情；每行的同类事实都位于相同视觉位置。
   const found = findAgentBySession(snap, item.target, item.hostId);
   const cols = alignedRow([
     [item.kind, 16],
@@ -481,29 +513,29 @@ function needsLine(prefix: string, item: NeedsItem, snap: FleetSnapshot): Conten
     [item.target, 34],
   ]);
   return {
-    text: `${prefix}${cols} ${item.detail}${found ? "  (open ▸)" : ""}`,
+    text: `${prefix}${cols} ${item.detail}${found ? "  (打开 ▸)" : ""}`,
     ...(found ? { action: { type: "drill", resource: "agent", name: found.agent.name, target: { host: found.host.name, rig: found.rig.name, pod: found.pod.name } } as const } : {}),
   };
 }
 
 function sourceProvenance(spec: FleetSnapshot["specs"][number]): string {
-  if (spec.sourceType === "builtin") return "built-in library";
-  if (spec.sourceType === "user_file") return "user library";
-  return spec.sourceState === "library_item" ? "library" : "source unknown";
+  if (spec.sourceType === "builtin") return "内置库";
+  if (spec.sourceType === "user_file") return "用户库";
+  return spec.sourceState === "library_item" ? "库" : "源未知";
 }
 
 function specSourceLines(spec: FleetSnapshot["specs"][number], snap: FleetSnapshot): ContentLine[] {
-  if (!spec.sourcePath) return [{ text: "Source path unavailable; no current-file claim." }];
+  if (!spec.sourcePath) return [{ text: "源路径不可用；无当前文件声明。" }];
   const target = fileTargetForPath(spec.resolvedSourcePath ?? spec.sourcePath, snap.fileRoots ?? []) ?? { root: "", path: spec.sourcePath };
-  const lines = [fieldLine({ label: "source", value: `${displayPath(spec.sourcePath, 56)} · ${sourceProvenance(spec)}` }), listItem("View current source", { type: "file-open", target })];
-  if (!target.root) lines.push({ text: "Source is not mapped to a configured readable root." });
+  const lines = [fieldLine({ label: "源", value: `${displayPath(spec.sourcePath, 56)} · ${sourceProvenance(spec)}` }), listItem("查看当前源", { type: "file-open", target })];
+  if (!target.root) lines.push({ text: "源未映射到配置的可读根。" });
   if (target.root) {
-    lines.push({ text: `Readable root: ${target.root}` }, ...referenceLines(spec.description ?? "", target));
+    lines.push({ text: `可读根: ${target.root}` }, ...referenceLines(spec.description ?? "", target));
     const markdownLinks = new Set([...((spec.description ?? "").matchAll(/\[[^\]\n]+\]\(<?([^\s)>]+)/g))].map((match) => match[1]));
-    // Prose paths stay relative to the named source, not an inferred checkout.
+    // 散文路径保持相对于命名源，而非推断检出。
     for (const match of (spec.description ?? "").matchAll(/(?:[\w.-]+\/)+[\w.-]+\.(?:md|txt|ya?ml)(?:#[\w-]+)?/g)) {
       if (markdownLinks.has(match[0])) continue;
-      lines.push(listItem(`Reference: ${match[0]} · relative to source`, referenceAction(target, match[0])));
+      lines.push(listItem(`引用: ${match[0]} · 相对于源`, referenceAction(target, match[0])));
     }
   }
   return lines;
@@ -522,7 +554,7 @@ function displayPath(path: string, max = 68): string {
 }
 
 function wrappedList(prefix: string, values: string[], max = 84): ContentLine[] {
-  if (values.length === 0) return [{ text: `${prefix}(none)` }];
+  if (values.length === 0) return [{ text: `${prefix}(无)` }];
   const lines: ContentLine[] = [];
   const indent = " ".repeat(prefix.length);
   let current = prefix;
@@ -539,20 +571,18 @@ function wrappedList(prefix: string, values: string[], max = 84): ContentLine[] 
   return lines;
 }
 
-/** field row whose value list wraps at the value column (label rhythm kept) */
+/** 值列表在值列处换行的字段行，保持标签节奏。 */
 function fieldWrapped(label: string, values: string[]): ContentLine[] {
-  if (values.length === 0) return [fieldLine({ label, value: "(none)" })];
+  if (values.length === 0) return [fieldLine({ label, value: "(无)" })];
   const valueCol = 2 + 12 + 1; // indent + LABEL_W + gap — where field values start
   const wrapped = wrappedList(" ".repeat(valueCol), values, 92);
   const first = wrapped[0]!.text.slice(valueCol);
   return [fieldLine({ label, value: first }), ...wrapped.slice(1)];
 }
 
-/** S19 round-5 (guard): the loading spinner's frame for this render pass +
- * a used-flag so the entry loop knows the frame is time-driven and must keep
- * redrawing. `loading` is the refresh OWNER's explicit lifecycle — the ONLY
- * state the spinner may ride; settled absence (proven-empty or a NAMED read
- * failure) renders static honest text, never a fabricated pending claim. */
+/** S19 第 5 轮（守卫）：本次渲染的加载旋转帧，以及供入口循环判断该帧由时间驱动、必须继续重绘的
+ * 使用标志。`loading` 是刷新所有者的显式生命周期，也是旋转器唯一可依附的状态；已结算的缺席
+ *（已证明为空或具名读取失败）渲染静态如实文本，绝不虚构等待中声明。 */
 interface MotionCtx {
   frame: string;
   reduced: boolean;
@@ -567,50 +597,50 @@ function instanceContentLines(
   contentWidth: number,
   motion: MotionCtx,
 ): ContentLine[] {
-  const lines = tabsLine(state, `instance ${host.name}`);
+  const lines = tabsLine(state, `实例 ${host.name}`);
   const scope = { kind: "instance", local: host === snap.hosts[0] } as const;
   if (state.viewTab === "health") return [...lines, { text: "" }, ...healthListLines(snap, scope, contentWidth)];
   if (state.viewTab === "recent") {
     const recent = recentLines(snap, scope, contentWidth, true, state.timeZone);
     return recent.length > 0
       ? [...lines, ...recent]
-      : [...lines, { text: "" }, { text: motion.loading ? `${motion.frame} instance RECENT read pending` : "(instance RECENT window not served)" }];
+      : [...lines, { text: "" }, { text: motion.loading ? `${motion.frame} 实例近期读取挂起` : "(实例近期窗口未服务)" }];
   }
   if (state.viewTab === "overview") {
     return [
       ...lines,
       ...detailPage({ text: `instance ${host.name}` }, [
         {
-          title: "instance",
+          title: "实例",
           fields: [
-            { label: "identity", value: host.name },
-            { label: "transport", value: host.id ?? "local" },
-            { label: "shape", value: host.rigs.some(r => r.inventoryUnavailable) ? `${host.rigs.length} rigs · seat inventory incomplete` : `${host.rigs.length} rigs · ${host.rigs.reduce((n, rig) => n + rig.pods.reduce((m, pod) => m + pod.agents.length, 0), 0)} seats` },
+            { label: "标识", value: host.name },
+            { label: "传输", value: host.id ?? "本地" },
+            { label: "形态", value: host.rigs.some(r => r.inventoryUnavailable) ? `${host.rigs.length} 个工作组 · 席位清单不完整` : `${host.rigs.length} 个工作组 · ${host.rigs.reduce((n, rig) => n + rig.pods.reduce((m, pod) => m + pod.agents.length, 0), 0)} 个席位` },
           ],
         },
         {
-          title: "rigs",
+          title: "工作组",
           lines: host.rigs.length > 0
             ? host.rigs.map((rig) => listItem(
-                alignedRow([[rig.name, 20], [rig.lifecycleState ?? "unknown", 20], [rig.inventoryUnavailable ? "inventory unavailable" : `${rig.pods.length} pods · ${rig.pods.reduce((n, pod) => n + pod.agents.length, 0)} seats`, 24]]),
+                alignedRow([[rig.name, 20], [lifecycleLabel(rig.lifecycleState), 20], [rig.inventoryUnavailable ? "清单不可用" : `${rig.pods.length} 个席位 · ${rig.pods.reduce((n, pod) => n + pod.agents.length, 0)} 个席位`, 24]]),
                 { type: "drill", resource: "rig", name: rig.name, target: { host: host.name } },
               ))
-            : [{ text: "  (no local rigs served — proven empty)" }],
+            : [{ text: "  (未服务本地工作组 — 已证明为空)" }],
         },
       ]),
     ];
   }
   if (state.viewTab === "graph") {
     for (const rig of host.rigs) {
-      lines.push({ text: "" }, sectionRule(`rig ${rig.name} · ${rig.lifecycleState ?? "unknown"}`, contentWidth));
+      lines.push({ text: "" }, sectionRule(`工作组 ${rig.name} · ${lifecycleLabel(rig.lifecycleState)}`, contentWidth));
       if (!rig.graph) {
         if (motion.loading) {
           if (!motion.reduced) motion.used = true;
-          lines.push({ text: `  ${motion.frame} topology graph read pending` });
+          lines.push({ text: `  ${motion.frame} 拓扑图读取挂起` });
         } else if (snap.readErrors.some((error) => error.startsWith(`graph(${rig.name})`))) {
-          lines.push({ text: "  ✕ topology graph read failed — named in the status line" });
+          lines.push({ text: "  ✕ 拓扑图读取失败 — 已在状态行命名" });
         } else {
-          lines.push({ text: "  (no topology graph served)" });
+          lines.push({ text: "  (未服务拓扑图)" });
         }
         continue;
       }
@@ -623,15 +653,15 @@ function instanceContentLines(
         zones: canvas.zones.filter((zone) => zone.y === row).map((zone) => ({ start: zone.start, end: zone.end, action: zone.action })),
       });
     }
-    if (host.rigs.length === 0) lines.push({ text: "" }, { text: "  (no local rigs served — proven empty)" });
-    lines.push({ text: "" }, { text: `  style: ${state.graphStyle} · style hatchet|braille|braille-fallback rides the command bar` });
+    if (host.rigs.length === 0) lines.push({ text: "" }, { text: "  (未服务本地工作组 — 已证明为空)" });
+    lines.push({ text: "" }, { text: `  样式: ${state.graphStyle} · style hatchet|braille|braille-fallback 走命令栏` });
     return lines;
   }
 
   lines.push(healthSummaryLine(snap, scope, contentWidth));
-  lines.push({ text: state.filter ? `/ filter instance rows: ${state.filter} · / replace · esc clear` : "/ filter instance rows…" });
+  lines.push({ text: state.filter ? `/ 过滤实例行: ${state.filter} · / 替换 · Esc 清除` : "/ 过滤实例行…" });
   const columns = instanceAgentColumns(contentWidth);
-  lines.push({ text: tableRow(columns, { rig: "RIG", pod: "POD", seat: "SEAT", runtime: "RT", context: "CTX", status: "STATE", queue: "Q", work: "WORK", now: "NOW" }) });
+  lines.push({ text: tableRow(columns, { rig: "工作组", pod: "席位", seat: "席位", runtime: "运行时", context: "上下文", status: "状态", queue: "队列", work: "工作", now: "现在" }) });
   lines.push({ text: "━".repeat(columnsWidth(columns)) });
   let seatCount = 0;
   let workingCount = 0;
@@ -644,7 +674,7 @@ function instanceContentLines(
     const rigAction: Action = { type: "drill", resource: "rig", name: rig.name, target: { host: host.name } };
     if (agents.length === 0) {
       lines.push({
-        text: tableRow(columns, { rig: rig.name, pod: "—", seat: rig.inventoryUnavailable ? "(read failed)" : "(no seats)", status: rig.lifecycleState ?? "unknown" }),
+        text: tableRow(columns, { rig: rig.name, pod: "—", seat: rig.inventoryUnavailable ? "(读取失败)" : "(无席位)", status: lifecycleLabel(rig.lifecycleState) }),
         action: rigAction,
       });
       continue;
@@ -677,7 +707,7 @@ function instanceContentLines(
       });
     }
   }
-  lines.push({ text: "" }, { text: host.rigs.some(r => r.inventoryUnavailable) ? `${host.rigs.length} rigs · inventory incomplete · ${seatCount} seats read` : `${host.rigs.length} rigs · ${seatCount} seats · ${workingCount} working · ${attentionCount} need attention · ${openCount} open rows` });
+  lines.push({ text: "" }, { text: host.rigs.some(r => r.inventoryUnavailable) ? `${host.rigs.length} 个工作组 · 清单不完整 · ${seatCount} 个席位已读` : `${host.rigs.length} 个工作组 · ${seatCount} 个席位 · ${workingCount} 工作中 · ${attentionCount} 需要关注 · ${openCount} 行打开` });
   lines.push(...recentLines(snap, scope, contentWidth, false, state.timeZone));
   return lines;
 }
@@ -685,7 +715,7 @@ function instanceContentLines(
 function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: number, motion: MotionCtx): ContentLine[] {
   if (state.file) {
     const read = JSON.stringify(snap.fileRead?.target) === JSON.stringify(state.file) ? snap.fileRead?.result : null;
-    return [...(state.project ? wrapDetailLines([{ text: `Project ${state.project.id} · ${state.project.root}` }], contentWidth) : []), ...fileLines(read, state.file, contentWidth)];
+    return [...(state.project ? wrapDetailLines([{ text: `项目 ${state.project.id} · ${state.project.root}` }], contentWidth) : []), ...fileLines(read, state.file, contentWidth)];
   }
   if (state.externalUrl) return externalLines(state.externalUrl, contentWidth);
   const contentWidthForGraph = contentWidth;
@@ -697,17 +727,17 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
   if (state.section === "config") return configLines(state, snap, contentWidth);
   if (state.section === "connections") return connectionsLines(snap, contentWidth, state.timeZone, state.expanded);
   if (state.healthOpen) return healthDetailLines(snap, state.healthOpen, contentWidth, state.timeZone);
-  if (state.section === "system") return [{ text: "System · Instance health" }, { text: "" }, ...healthListLines(snap, { kind: "instance", local: true }, contentWidth)];
-  // PULSE is a FULL-WIDTH view handled by an early return in renderScreen
-  // (renderPulseScreen) — it never reaches the sidebar+content layout below.
+  if (state.section === "system") return [{ text: "系统 · 实例健康" }, { text: "" }, ...healthListLines(snap, { kind: "instance", local: true }, contentWidth)];
+  // PULSE 是全宽视图，由 renderScreen 中的提前返回处理
+  //（renderPulseScreen）——它绝不到达下方的侧栏+内容布局。
   if (state.section === "topology") {
     if (state.runningOf) {
       const seats = agentsRunningSpecTargets(snap, state.runningOf);
-      return detailPage({ text: `seats running spec ${state.runningOf}` }, [
+      return detailPage({ text: `运行规范 ${state.runningOf} 的席位` }, [
         {
           lines:
             seats.length === 0
-              ? [{ text: "  (no seats currently run it)" }]
+              ? [{ text: "  (当前无席位运行它)" }]
               : seats.map((seat) =>
                   listItem(`${seat.agent.name}  ·  ${seat.rig.name} / ${seat.pod.name}  ·  ${seat.agent.status}`, {
                     type: "drill",
@@ -725,37 +755,37 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
       const rigName = state.drill.find((part) => part.kind === "rig")?.name;
       const podName = state.drill.find((part) => part.kind === "pod")?.name;
       const found = hostName ? findAgent(snap, leaf.name, { host: hostName, rig: rigName, pod: podName }) : findAgent(snap, leaf.name);
-      if (!found) return [{ text: `agent "${leaf.name}" not in the current snapshot` }];
+      if (!found) return [{ text: `智能体 "${leaf.name}" 不在当前快照中` }];
       return agentDetailLines(snap, found, contentWidth, state.timeZone);
     }
     const hostName = state.drill.find((d) => d.kind === "host")?.name;
     const host = (hostName ? snap.hosts.find((candidate) => candidate.name === hostName) : snap.hosts[0]);
     if (leaf?.kind === "host" && host) return instanceContentLines(state, snap, host, contentWidth, motion);
     if (!leaf && host?.rigs.length) return wrapDetailLines([
-      { text: `TOPOLOGY · ${host.name}` }, { text: "Choose a rig to read its seats and work." },
-      { text: `${host.rigs.length} rig${host.rigs.length === 1 ? "" : "s"} · select one in Explorer` },
-      { text: "Bright ▦ live agents · gray ▦ none · ? unknown" },
+      { text: `拓扑 · ${host.name}` }, { text: "选择一个工作组以读取其席位和工作。" },
+      { text: `${host.rigs.length} 个工作组 · 在资源管理器中选择一个` },
+      { text: "亮 ▦ 活跃智能体 · 灰 ▦ 无 · ? 未知" },
     ], contentWidth);
     const rigName = state.drill.find((d) => d.kind === "rig")?.name ;
     const rig = host?.rigs.find((candidate) => candidate.name === rigName);
     if (!rig || !host) {
-      const notLoaded = snap.readErrors.find((error) => error.startsWith("Live data not loaded"));
+      const notLoaded = snap.readErrors.find((error) => error.startsWith("实时数据未加载"));
       if (notLoaded) return [{ text: notLoaded }];
-      // round-6 (guard): the ROOT topology branch consumes the OWNER's load
-      // truth like every other read surface — a real in-flight cold start
-      // renders the spinner; after settlement only a NAMED rigs-summary
-      // failure or the proven no-rigs truth may render, never "waiting"
+      // round-6（守卫）：根拓扑分支像其他读取表面一样消耗所有者的负载
+      // 真相——真实在飞冷启动
+      // 渲染旋转器；结算后仅命名工作组摘要
+      // 失败或证明无工作组真相可渲染，绝不"等待"
       if (motion.loading) {
         if (!motion.reduced) motion.used = true;
-        return [{ text: `${motion.frame} topology read pending — waiting on the daemon rigs read (honest-empty, not fabricated)` }];
+        return [{ text: `${motion.frame} 拓扑读取挂起 — 等待后台服务工作组读取（诚实空，非伪造）` }];
       }
       if (snap.readErrors.some((e) => e.startsWith("rigs-summary"))) {
-        return [{ text: "✕ rigs read failed — named in the status line (honest-empty, not fabricated)" }];
+        return [{ text: "✕ 工作组读取失败 — 已在状态行命名（诚实空，非伪造）" }];
       }
-      return [{ text: "(no rigs served — proven empty, not fabricated)" }];
+      return [{ text: "(未服务工作组 — 已证明为空，非伪造)" }];
     }
-    if (rig.inventoryNotLoaded) return [{ text: `Reading ${rig.name}…` }];
-    if (rig.inventoryUnavailable) return [{ text: `Inventory unavailable for ${rig.name} · refresh to Retry` }];
+    if (rig.inventoryNotLoaded) return [{ text: `正在读取 ${rig.name}…` }];
+    if (rig.inventoryUnavailable) return [{ text: `${rig.name} 的清单不可用 · 刷新以重试` }];
     const podFilter = leaf?.kind === "pod" ? leaf.name : null;
     const all = rig.pods.flatMap((p) => p.agents.map((a) => ({ pod: p.name, ...a })));
     const rows = all
@@ -763,38 +793,37 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
       .filter((a) => !state.filter || a.name.includes(state.filter) || a.pod.includes(state.filter));
     const suffix = `rig ${rig.name}${podFilter ? ` · pod ${podFilter}` : ""}${state.filter ? ` · filter "${state.filter}"` : ""}`;
     lines.push(...tabsLine(state, suffix));
-    // OPR.0.6.0.8: open every live seat of the rig as terminal tiles (Herdr: 4×4 per tab).
-    if (!podFilter) lines.push(fieldLine({ label: "terminal", value: `term ▸ rig ${rig.name}`, link: { type: "act", act: "open-terminal", view: `rig:${rig.name}` } }));
+    // OPR.0.6.0.8：将工作组的每个活跃席位打开为终端磁贴（Herdr：每标签 4×4）。
+    if (!podFilter) lines.push(fieldLine({ label: "终端", value: `终端 ▸ 工作组 ${rig.name}`, link: { type: "act", act: "open-terminal", view: `rig:${rig.name}` } }));
     const healthScope = { kind: "rig" as const, rigId: rig.id ?? rig.name, rigName: rig.name, local: host === snap.hosts[0] };
     if (state.viewTab === "health") return [...lines, { text: "" }, ...healthListLines(snap, healthScope, contentWidth)];
     if (state.viewTab === "recent") {
       const recent = recentLines(snap, { kind: "rig", rig: rig.name }, contentWidth, true, state.timeZone);
       return recent.length > 0
         ? [...lines, ...recent]
-        : [...lines, { text: "" }, { text: motion.loading ? `${motion.frame} rig RECENT read pending` : "(rig RECENT window not served)" }];
+        : [...lines, { text: "" }, { text: motion.loading ? `${motion.frame} 工作组近期读取挂起` : "(工作组近期窗口未服务)" }];
     }
     if (state.viewTab === "graph") {
-      // slice-17 topology view (frame-01): the rig's SERVED /graph projection
-      // rendered by the style registry; honest-empty until the read answers.
+      // slice-17 拓扑视图（frame-01）：工作组的已服务 /graph 投影
+      // 由样式注册表渲染；读取应答前诚实空。
       if (!rig.graph) {
         lines.push({ text: "" });
-        // round-5 (guard): the spinner rides the OWNER's in-flight state only;
-        // settled absence renders the honest static truth — a NAMED failure or
-        // a proven-empty read — and never spins
+        // round-5（守卫）：旋转器仅乘坐所有者的在飞状态；
+        // 结算缺失渲染诚实静态真相 — 命名失败或
+        // 证明空读取 — 绝不旋转
         if (motion.loading) {
           if (!motion.reduced) motion.used = true;
-          lines.push({ text: `  ${motion.frame} topology graph read pending (honest-empty, never fabricated)` });
+          lines.push({ text: `  ${motion.frame} 拓扑图读取挂起（诚实空，绝不伪造）` });
         } else if (snap.readErrors.some((e) => e.startsWith(`graph(${rig.name})`))) {
-          lines.push({ text: "  ✕ topology graph read failed — named in the status line (honest-empty, never fabricated)" });
+          lines.push({ text: "  ✕ 拓扑图读取失败 — 已在状态行命名（诚实空，绝不伪造）" });
         } else {
-          lines.push({ text: "  (no topology graph served — honest-empty, never fabricated)" });
+          lines.push({ text: "  (未服务拓扑图 — 诚实空，绝不伪造)" });
         }
         return lines;
       }
-      // PER-VIEW zoom (PM b7f95c4b): a pod drill scopes the SAME projection to
-      // that pod's containment subgraph — nodes clipped at rig scale become
-      // visible AND eligible here; eligibility is always the current view's
-      // clipped hit-zone truth, never a global filter.
+      // 逐视图放大（PM b7f95c4b）：进入 Pod 详情时，将同一投影限定到该 Pod 的包含子图。
+      // 在工作组尺度被裁掉的节点会在此变得可见且可操作；可操作性始终取当前视图裁剪后的命中区事实，
+      // 绝不是全局筛选。
       let graphView = rig.graph;
       if (podFilter) {
         const podGroup = rig.graph.nodes.find((n) => n.type === "podGroup" && (n.data.podNamespace ?? n.data.logicalId) === podFilter);
@@ -815,28 +844,28 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
         });
       }
       lines.push({ text: "" });
-      lines.push({ text: `  style: ${state.graphStyle} · style hatchet|braille|braille-fallback rides the command bar` });
+      lines.push({ text: `  样式: ${state.graphStyle} · style hatchet|braille|braille-fallback 走命令栏` });
       return lines;
     }
-    lines.push(listItem("CONFIG · instance settings", { type: "jump", section: "config" }));
+    lines.push(listItem("配置 · 实例设置", { type: "jump", section: "config" }));
     lines.push(healthSummaryLine(snap, healthScope, contentWidth));
-    lines.push({ text: state.filter ? `/ filter agents: ${state.filter} · / replace · esc clear` : "/ filter agents…" });
+    lines.push({ text: state.filter ? `/ 过滤智能体: ${state.filter} · / 替换 · Esc 清除` : "/ 过滤智能体…" });
     if (state.viewTab === "overview") {
       lines.push(
         ...detailPage({ text: `rig ${rig.name}` }, [
           {
-            title: "rig",
+            title: "工作组",
             fields: [
-              { label: "host", value: host.name },
-              { label: "shape", value: `${rig.pods.length} pods · ${all.length} agents` },
-              ...(rig.lifecycleState ? [{ label: "state", value: rig.lifecycleState }] : []),
+              { label: "主机", value: host.name },
+              { label: "形态", value: `${rig.pods.length} 个席位 · ${all.length} 个智能体` },
+              ...(rig.lifecycleState ? [{ label: "状态", value: lifecycleLabel(rig.lifecycleState) }] : []),
             ],
           },
           {
-            title: "pods",
+            title: "席位",
             lines: rig.pods.map((pod) =>
               listItem(
-                alignedRow([[pod.name, 14], [`${pod.agents.length} agents`, 10], [pod.agents.map((a) => a.status).filter((s, i, arr) => arr.indexOf(s) === i).join(" · "), 40]]),
+                alignedRow([[pod.name, 14], [`${pod.agents.length} 个智能体`, 10], [pod.agents.map((a) => a.status).filter((s, i, arr) => arr.indexOf(s) === i).join(" · "), 40]]),
                 { type: "drill", resource: "pod", name: pod.name, target: { host: host.name, rig: rig.name } },
               ),
             ),
@@ -847,11 +876,11 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
     }
     const agentCols = agentColumns(contentWidth);
     const narrowFactory = !agentCols.some(([key]) => key === "model");
-    if (narrowFactory) lines.push({ text: "MODEL/NOW/ACTIONS on drill (enter)" });
+    if (narrowFactory) lines.push({ text: "模型/当前/动作 在钻取时（回车）" });
     lines.push({
       text: tableRow(agentCols, {
-        pod: "POD", seat: "SEAT", runtime: "RT", model: "MODEL", context: "CTX",
-        status: "STATE", queue: "Q", work: "WORK", now: "NOW", actions: "ACTIONS",
+        pod: "席位", seat: "席位", runtime: "运行时", model: "模型", context: "上下文",
+        status: "状态", queue: "队列", work: "工作", now: "现在", actions: "动作",
       }),
     });
     lines.push({ text: "━".repeat(columnsWidth(agentCols)) });
@@ -862,28 +891,29 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
       const firstInPod = a.pod !== previousPod;
       if (firstInPod && previousPod != null && !narrowFactory) lines.push({ text: "┈".repeat(columnsWidth(agentCols)) });
       previousPod = a.pod;
-      // ACTIONS = drive-structure ONLY (BR-9), each mapped to an EXISTING
-      // write contract: `run ▸` = the rig-restore write (rendered only where
-      // it applies — the seat is not running); `term ▸` = the terminal-open
-      // view contract (pod-scoped, the web's granularity). No false affordance.
+      // 动作 = 仅驱动结构（BR-9），每个映射到现有
+      // 写入契约：`运行 ▸` = 工作组恢复写入（仅在
+      // 适用处渲染 — 席位未运行）；`终端 ▸` = 终端打开
+      // 视图契约（席位范围，web 的粒度）。无虚假提示。
       const canRun = a.canRun ?? !a.live;
-      const actionsCell = canRun ? "run ▸ · term ▸" : "term ▸";
+      const actionsCell = canRun ? "运行 ▸ · 终端 ▸" : "终端 ▸";
       const zones: ContentLine["zones"] = [];
       if (actionsColStart >= 0) {
-        const termOffset = actionsColStart + actionsCell.indexOf("term ▸");
-        zones.push({ start: termOffset, end: termOffset + "term ▸".length, action: { type: "act", act: "open-terminal", view: `pod:${rig.name}/${a.pod}` } });
+        const termIndex = actionsCell.indexOf("终端 ▸");
+        const termOffset = actionsColStart + strWidth(actionsCell.slice(0, termIndex));
+        zones.push({ start: termOffset, end: termOffset + strWidth("终端 ▸"), action: { type: "act", act: "open-terminal", view: `pod:${rig.name}/${a.pod}` } });
       }
       if (canRun && actionsColStart >= 0)
         zones.push({
           start: actionsColStart,
-          end: actionsColStart + "run ▸".length,
+          end: actionsColStart + strWidth("运行 ▸"),
           action: { type: "act", act: "run", rigId: rig.id ?? rig.name, agent: a.name },
         });
       const stateCell = operationalState(a.status, motion);
       const queue = queueFacts(snap, a.session);
       lines.push({
-        // the WHOLE row is the hit surface (not a testid'd control): clicking
-        // any visible cell opens the agent; the ACTIONS zones override.
+        // 整行是命中表面（非 testid 控件）：点击
+        // 任何可见单元格打开智能体；动作区覆盖。
         text: tableRow(agentCols, {
           pod: firstInPod ? a.pod : "",
           seat: `${stateCell.mark} ${seatName(a.pod, a.name)}`,
@@ -903,7 +933,7 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
     lines.push({ text: "" });
     const working = rows.filter((agent) => ["active", "working", "running"].includes(agent.status)).length;
     const attention = rows.filter((agent) => /attention|needs|blocked|unknown|failed/.test(agent.status)).length;
-    lines.push({ text: `${rows.length} seats · ${working} working · ${attention} need attention · ${rows.reduce((n, agent) => n + queueFacts(snap, agent.session).count, 0)} open rows` });
+    lines.push({ text: `${rows.length} 个席位 · ${working} 工作中 · ${attention} 需要关注 · ${rows.reduce((n, agent) => n + queueFacts(snap, agent.session).count, 0)} 行打开` });
     if (!podFilter) lines.push(...recentLines(snap, { kind: "rig", rig: rig.name }, contentWidth, false, state.timeZone));
     return lines;
   }
@@ -911,33 +941,33 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
     const leaf = state.drill.at(-1);
     if (leaf?.kind === "spec") {
       const spec = findSpec(snap, leaf.name);
-      if (!spec) return [{ text: snap.readErrors.find((error) => error.startsWith("specs-library")) ?? (!snap.specsLoaded ? "Specs catalog read pending" : `spec "${leaf.name}" not in the current catalog`) }];
+      if (!spec) return [{ text: snap.readErrors.find((error) => error.startsWith("specs-library")) ?? (!snap.specsLoaded ? "规范目录读取挂起" : `规范 "${leaf.name}" 不在当前目录中`) }];
       if (spec.kind === "rig") lines.push(specTabsLine(state));
-      lines.push({ text: `${spec.kind} spec ${spec.name}` });
-      lines.push(fieldLine({ label: "purpose", value: spec.description ?? "not declared in the available source" }));
-      lines.push(fieldLine({ label: "provenance", value: `${sourceProvenance(spec)} · ${spec.sourceState ?? "source state not served"}` }));
+      lines.push({ text: `${spec.kind} 规范 ${spec.name}` });
+      lines.push(fieldLine({ label: "用途", value: spec.description ?? "未在可用源中声明" }));
+      lines.push(fieldLine({ label: "来源", value: `${sourceProvenance(spec)} · ${spec.sourceState ?? "源状态未服务"}` }));
       lines.push(...specSourceLines(spec, snap));
-      lines.push({ text: "  Authored declaration. Resource availability is not the effective loadout of a running seat." });
-      lines.push(sectionRule("Observed consumers · open for effective runtime/configuration", contentWidth));
+      lines.push({ text: "  撰写声明。资源可用性不是运行中席位的有效装载。" });
+      lines.push(sectionRule("观察到的消费者 · 为有效运行时/配置打开", contentWidth));
       for (const consumer of spec.consumers ?? []) {
         const resource = consumer.agent ? "agent" : "rig";
         lines.push(listItem(`${consumer.agent ?? consumer.rig} · ${consumer.status ?? "unknown"}${consumer.runtime ? ` · ${consumer.runtime}` : ""}${consumer.model ? ` · ${consumer.model}` : ""}`, { type: "drill", resource, name: consumer.agent ?? consumer.rig, target: { host: consumer.host, rig: consumer.rig } }));
       }
-      if (spec.consumers && !spec.consumers.length) lines.push({ text: "  No consumers observed in the available local inventory (remote seats are not enumerated)." });
-      if (spec.consumers === undefined) lines.push({ text: "  Consumer projection unavailable." });
-      for (const error of snap.readErrors.filter((error) => error.startsWith("nodes(") || error.startsWith("rig-spec(") || error.startsWith("rigs-summary:"))) lines.push({ text: `  Inventory incomplete: ${error}` });
-      lines.push(listItem("Back · Esc", { type: "back" }));
-      if (spec.sourceUnavailable) return wrapDetailLines([...lines, { text: `  Source unavailable: ${spec.sourceUnavailable}` }], contentWidth);
+      if (spec.consumers && !spec.consumers.length) lines.push({ text: "  可用本地清单中未观察到消费者（远程席位未枚举）。" });
+      if (spec.consumers === undefined) lines.push({ text: "  消费者投影不可用。" });
+      for (const error of snap.readErrors.filter((error) => error.startsWith("nodes(") || error.startsWith("rig-spec(") || error.startsWith("rigs-summary:"))) lines.push({ text: `  清单不完整: ${error}` });
+      lines.push(listItem("返回 · Esc", { type: "back" }));
+      if (spec.sourceUnavailable) return wrapDetailLines([...lines, { text: `  源不可用: ${spec.sourceUnavailable}` }], contentWidth);
       if (spec.kind === "rig") {
         if (state.viewTab === "topology") {
-          // ROUND-4 item 1: the established table treatment, not unformatted rows
+          // ROUND-4 条目 1：已建立的表格处理，非未格式化行
           const nodes = spec.graph?.nodes ?? [];
           const graphEdges = spec.graph?.edges ?? [];
-          const NODE_COLS: Array<[string, number]> = [["NODE", 16], ["LABEL", 24], ["POD", 12], ["RUNTIME", 14]];
-          lines.push(fieldLine({ label: "shape", value: `${nodes.length} nodes · ${graphEdges.length} edges` }));
+          const NODE_COLS: Array<[string, number]> = [["节点", 16], ["标签", 24], ["席位", 12], ["运行时", 14]];
+          lines.push(fieldLine({ label: "形态", value: `${nodes.length} 个节点 · ${graphEdges.length} 条边` }));
           lines.push({ text: "" });
           if (nodes.length === 0) {
-            lines.push({ text: "  (topology projection is empty)" });
+            lines.push({ text: "  (拓扑投影为空)" });
             return wrapDetailLines(lines, contentWidth);
           }
           lines.push({ text: `  ${alignedRow(NODE_COLS)}` });
@@ -946,13 +976,13 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
             lines.push({ text: `  ${alignedRow([[node.id, 16], [node.label, 24], [node.pod ?? "—", 12], [node.runtime, 14]])}` });
           if (graphEdges.length > 0) {
             lines.push({ text: "" });
-            lines.push(sectionRule("edges"));
+            lines.push(sectionRule("边"));
             for (const edge of graphEdges) lines.push({ text: `  ${alignedRow([[edge.source, 16], ["→", 2], [edge.target, 20]])} (${edge.kind})` });
           }
           return wrapDetailLines(lines, contentWidth);
         }
         if (state.viewTab === "yaml") {
-          for (const rawLine of (spec.raw ?? "# raw YAML unavailable").split("\n")) lines.push({ text: `  ${rawLine}` });
+          for (const rawLine of (spec.raw ?? "# 原始 YAML 不可用").split("\n")) lines.push({ text: `  ${rawLine}` });
           return wrapDetailLines(lines, contentWidth);
         }
         const members = spec.pods?.reduce((count, pod) => count + pod.members.length, 0) ?? spec.legacyNodes?.length ?? 0;
@@ -961,51 +991,51 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
           ...detailPage({ text: "" }, [
             {
               fields: [
-                ...(spec.format ? [{ label: "format", value: spec.format.replace("_", "-") }] : []),
-                { label: "shape", value: `${spec.pods?.length ?? 0} pods · ${members} members · ${edges} edges` },
+                ...(spec.format ? [{ label: "格式", value: spec.format.replace("_", "-") }] : []),
+                { label: "形态", value: `${spec.pods?.length ?? 0} 个席位 · ${members} 个成员 · ${edges} 条边` },
               ],
             },
             ...(spec.pods ?? []).map((pod) => ({
-              title: `pod ${pod.namespace ?? pod.id}${pod.label ? ` — ${pod.label}` : ""}`,
+              title: `席位 ${pod.namespace ?? pod.id}${pod.label ? ` — ${pod.label}` : ""}`,
               lines: [
                 ...pod.members.map((member) =>
                   listItem(
-                    `${alignedRow([[member.id, 12], [member.agentRef, 34], [member.runtime, 12]])}${member.profile ? ` profile ${member.profile}` : ""}`,
+                    `${alignedRow([[member.id, 12], [member.agentRef, 34], [member.runtime, 12]])}${member.profile ? ` 配置 ${member.profile}` : ""}`,
                     { type: "drill", resource: "spec", name: member.agentRef },
                   ),
                 ),
                 ...pod.edges.map((edge) => ({ text: `    ${edge.from} → ${edge.to}  (${edge.kind})` })),
-                // an empty pod still exists — render it honestly, never skip it
-                ...(pod.members.length === 0 && pod.edges.length === 0 ? [{ text: "  (no members)" }] : []),
+                // 空席位仍存在 — 诚实渲染，绝不跳过
+                ...(pod.members.length === 0 && pod.edges.length === 0 ? [{ text: "  (无成员)" }] : []),
               ],
             })),
             ...(spec.legacyNodes?.length
-              ? [{ title: "nodes", lines: spec.legacyNodes.map((node) => listItem(`${alignedRow([[node.id, 16], [node.runtime, 12]])}${node.role ? ` ${node.role}` : ""}`)) }]
+              ? [{ title: "节点", lines: spec.legacyNodes.map((node) => listItem(`${alignedRow([[node.id, 16], [node.runtime, 12]])}${node.role ? ` ${node.role}` : ""}`)) }]
               : []),
             ...((spec.edges?.length ?? 0) > 0
-              ? [{ title: "cross-pod edges", lines: (spec.edges ?? []).map((edge) => ({ text: `  ${edge.from} → ${edge.to}  (${edge.kind})` })) }]
+              ? [{ title: "跨席位边", lines: (spec.edges ?? []).map((edge) => ({ text: `  ${edge.from} → ${edge.to}  (${edge.kind})` })) }]
               : []),
           ]).slice(1),
         );
       } else if (spec.kind === "workflow") {
         lines.push(
-          ...detailPage({ text: `workflow spec ${spec.name}${spec.version ? `  ·  v${spec.version}` : ""}` }, [
+          ...detailPage({ text: `工作流规范 ${spec.name}${spec.version ? `  ·  v${spec.version}` : ""}` }, [
             {
-              title: "workflow",
+              title: "工作流",
               fields: [
-                { label: "roles", value: spec.rolesCount != null ? String(spec.rolesCount) : "—" },
-                { label: "steps", value: spec.stepsCount != null ? String(spec.stepsCount) : "—" },
-                { label: "status", value: spec.workflowStatus ?? "—" },
+                { label: "角色", value: spec.rolesCount != null ? String(spec.rolesCount) : "—" },
+                { label: "步骤", value: spec.stepsCount != null ? String(spec.stepsCount) : "—" },
+                { label: "状态", value: spec.workflowStatus ?? "—" },
               ],
             },
             {
-              title: "source",
-              fields: [{ label: "source", value: spec.sourcePath ? `${displayPath(spec.sourcePath)} · ${sourceProvenance(spec)}` : "—" }],
+              title: "源",
+              fields: [{ label: "源", value: spec.sourcePath ? `${displayPath(spec.sourcePath)} · ${sourceProvenance(spec)}` : "—" }],
             },
           ]),
         );
       } else {
-        // the mockup's agent-spec frame IS the field-grid reference — recreate it
+        // mockup 的智能体规范框架就是字段网格引用 — 重建它
         const seats = agentsRunningSpec(snap, spec.name);
         const resources = [
           spec.resources?.guidance.length ? `guidance ${spec.resources.guidance.join(", ")}` : "",
@@ -1013,41 +1043,41 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
           spec.resources?.subagents.length ? `subagents ${spec.resources.subagents.join(", ")}` : "",
         ].filter(Boolean);
         lines.push(
-          ...detailPage({ text: `agent spec ${spec.name}${spec.version ? `  ·  v${spec.version}` : ""}` }, [
+          ...detailPage({ text: `智能体规范 ${spec.name}${spec.version ? `  ·  v${spec.version}` : ""}` }, [
             {
-              title: "spec",
+              title: "规范",
               fields: [
-                ...(spec.description ? [{ label: "about", value: spec.description }] : []),
-                { label: "runtime", value: spec.runtime ?? "—" },
+                ...(spec.description ? [{ label: "关于", value: spec.description }] : []),
+                { label: "运行时", value: spec.runtime ?? "—" },
               ],
-              lines: spec.skills ? fieldWrapped("skills", spec.skills) : [],
+              lines: spec.skills ? fieldWrapped("技能", spec.skills) : [],
             },
             {
-              title: "startup",
+              title: "启动",
               fields: [
-                ...(spec.hasGuidance != null ? [{ label: "guidance", value: spec.hasGuidance ? "yes" : "no" }] : []),
-                ...(spec.startupFiles ?? []).map((f) => ({ label: "startup", value: `${f.path}${f.required ? "  (required)" : ""}` })),
-                ...(spec.profiles?.length ? [{ label: "profiles", value: spec.profiles.join(", ") }] : []),
-                ...(spec.resources ? [{ label: "resources", value: resources.join(" · ") || "(none beyond skills)" }] : []),
+                ...(spec.hasGuidance != null ? [{ label: "指导", value: spec.hasGuidance ? "是" : "否" }] : []),
+                ...(spec.startupFiles ?? []).map((f) => ({ label: "启动", value: `${f.path}${f.required ? "  (必需)" : ""}` })),
+                ...(spec.profiles?.length ? [{ label: "配置", value: spec.profiles.join(", ") }] : []),
+                ...(spec.resources ? [{ label: "资源", value: resources.join(" · ") || "(技能之外无)" }] : []),
               ],
             },
             {
-              title: "source",
-              fields: [{ label: "source", value: spec.sourcePath ? `${displayPath(spec.sourcePath, 56)} · ${sourceProvenance(spec)}` : "—" }],
+              title: "源",
+              fields: [{ label: "源", value: spec.sourcePath ? `${displayPath(spec.sourcePath, 56)} · ${sourceProvenance(spec)}` : "—" }],
             },
             {
-              title: "Declared rig references",
+              title: "声明的工作组引用",
               fields: [
                 ...((spec.usedByRigs?.length ?? 0) === 0
-                  ? [{ label: "declared by", value: "—" }]
+                  ? [{ label: "声明者", value: "—" }]
                   : (spec.usedByRigs ?? []).map((rig) => ({
-                      label: "declared by",
-                      value: `rig ${rig}`,
+                      label: "声明者",
+                      value: `工作组 ${rig}`,
                       link: { type: "drill", resource: "spec", name: rig } as Action,
                     }))),
                 {
-                  label: "seats now",
-                  value: seats.join(", ") || "(none)",
+                  label: "当前席位",
+                  value: seats.join(", ") || "(无)",
                   link: { type: "cross", kind: "running", name: spec.name },
                 },
               ],
@@ -1057,29 +1087,29 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
       }
       return wrapDetailLines(lines, contentWidth);
     }
-    if (state.filter) lines.push({ text: `/ filter specs: ${state.filter} · / replace · esc clear` });
+    if (state.filter) lines.push({ text: `/ 过滤规范: ${state.filter} · / 替换 · Esc 清除` });
     const selected = computeExplorerRows(state, snap)[state.selection]?.action;
     const spec = selected?.type === "drill" && selected.resource === "spec" ? findSpec(snap, selected.name) : null;
     if (spec) {
       lines.push({ text: `${spec.name} · ${spec.kind} · ${sourceProvenance(spec)}` });
-      lines.push({ text: "" }, { text: spec.description?.trim() || "Purpose not declared in the available source." });
-      if (spec.kind === "rig") lines.push(fieldLine({ label: "contents", value: `${spec.pods?.length ?? 0} pods · ${spec.pods?.reduce((n, p) => n + p.members.length, 0) ?? spec.legacyNodes?.length ?? 0} members · ${spec.agentRefs?.join(", ") || "no member references served"}` }));
-      else if (spec.kind === "agent") lines.push(fieldLine({ label: "contents", value: `${spec.runtime ?? "runtime not declared"} · ${(spec.skills ?? []).length} skills · ${(spec.startupFiles ?? []).length} startup files` }));
-      else lines.push(fieldLine({ label: "contents", value: `${spec.rolesCount ?? "unknown"} roles · ${spec.stepsCount ?? "unknown"} steps` }));
-      lines.push({ text: "" }, listItem("Read details · Enter", { type: "drill", resource: "spec", name: spec.name }), ...specSourceLines(spec, snap));
-      if (spec.sourceUnavailable) lines.push({ text: `Source unavailable: ${spec.sourceUnavailable}` });
+      lines.push({ text: "" }, { text: spec.description?.trim() || "用途未在可用源中声明。" });
+      if (spec.kind === "rig") lines.push(fieldLine({ label: "内容", value: `${spec.pods?.length ?? 0} 个席位 · ${spec.pods?.reduce((n, p) => n + p.members.length, 0) ?? spec.legacyNodes?.length ?? 0} 个成员 · ${spec.agentRefs?.join(", ") || "未服务成员引用"}` }));
+      else if (spec.kind === "agent") lines.push(fieldLine({ label: "内容", value: `${spec.runtime ?? "运行时未声明"} · ${(spec.skills ?? []).length} 个技能 · ${(spec.startupFiles ?? []).length} 个启动文件` }));
+      else lines.push(fieldLine({ label: "内容", value: `${spec.rolesCount ?? "未知"} 个角色 · ${spec.stepsCount ?? "未知"} 个步骤` }));
+      lines.push({ text: "" }, listItem("读取详情 · 回车", { type: "drill", resource: "spec", name: spec.name }), ...specSourceLines(spec, snap));
+      if (spec.sourceUnavailable) lines.push({ text: `源不可用: ${spec.sourceUnavailable}` });
     } else {
-      lines.push({ text: "SPEC LIBRARY" }, { text: "Choose a spec at left to preview its purpose, contents and source." },
-        { text: "Enter reads details · / filters · source opens current disk content" }, { text: "" });
-      if (snap.specsLoaded !== false && !snap.readErrors.some(e => e.startsWith("specs-library"))) for (const kind of ["rig", "agent", "workflow"] as const) lines.push({ text: `${kind}: ${snap.specs.filter((spec) => spec.kind === kind).length} available` });
+      lines.push({ text: "规范库" }, { text: "在左侧选择规范以预览其用途、内容和源。" },
+        { text: "回车读取详情 · / 过滤 · 源打开当前磁盘内容" }, { text: "" });
+      if (snap.specsLoaded !== false && !snap.readErrors.some(e => e.startsWith("specs-library"))) for (const kind of ["rig", "agent", "workflow"] as const) lines.push({ text: `${kind}: ${snap.specs.filter((spec) => spec.kind === kind).length} 个可用` });
       if (!snap.specs.length) {
         if (motion.loading) {
           if (!motion.reduced) motion.used = true;
-          lines.push({ text: `  ${motion.frame} library read pending` });
+          lines.push({ text: `  ${motion.frame} 库读取挂起` });
         } else {
           const failure = snap.readErrors.find((error) => error.startsWith("specs-library"));
-          const notLoaded = snap.readErrors.find((error) => error.startsWith("Live data not loaded"));
-          lines.push({ text: failure ? `  ✕ library read failed: ${failure}` : notLoaded ?? (snap.specsLoaded === false ? "Specs catalog read unavailable" : "  (library empty — proven, no specs served)") });
+          const notLoaded = snap.readErrors.find((error) => error.startsWith("实时数据未加载"));
+          lines.push({ text: failure ? `  ✕ 库读取失败: ${failure}` : notLoaded ?? (snap.specsLoaded === false ? "规范目录读取不可用" : "  (库为空 — 已证明，未服务规范)") });
         }
       }
     }
@@ -1090,35 +1120,39 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
   if (state.section === "scopes") {
     const catalog = snap.projects;
     if (!state.project && catalog !== undefined) return wrapDetailLines([
-      { text: "PROJECTS · select a project" },
-      { text: catalog ? `Catalog: ${catalog.catalogPath}` : "Project catalog unavailable or loading" },
+      { text: "项目 · 选择项目" },
+      { text: catalog ? `目录: ${catalog.catalogPath}` : "项目目录不可用或加载中" },
       ...(snap.readErrors ?? []).map(text => ({ text })),
-      ...(catalog?.projects ?? []).flatMap(p => [listItem(`${p.name} · ${p.id}`, { type: "project-select", id: p.id }), { text: p.root }, ...(p.error ? [{ text: `Unavailable: ${p.error}` }] : [])]),
-      ...(catalog?.projects.length === 0 ? [{ text: "No projects declared in this catalog." }] : []),
+      ...(catalog?.projects ?? []).flatMap(p => [listItem(`${p.name} · ${p.id}`, { type: "project-select", id: p.id }), { text: p.root }, ...(p.error ? [{ text: `不可用: ${p.error}` }] : [])]),
+      ...(catalog?.projects.length === 0 ? [{ text: "此目录中未声明项目。" }] : []),
     ], contentWidth);
-    const identity = state.project ? wrapDetailLines([{ text: `PROJECT ${state.project.id}` }, { text: state.project.root }], contentWidth) : [];
-    if (state.project && (snap.projectRead?.id !== state.project.id || snap.projectRead?.root !== state.project.root)) return [...identity, { text: "Reading selected project…" }];
+    const identity = state.project ? wrapDetailLines([{ text: `项目 ${state.project.id}` }, { text: state.project.root }], contentWidth) : [];
+    if (state.project && (snap.projectRead?.id !== state.project.id || snap.projectRead?.root !== state.project.root)) return [...identity, { text: "正在读取所选项目…" }];
     const entry = catalog?.projects.find(p => p.id === state.project!.id && p.root === state.project!.root);
-    const errors = (snap.readErrors ?? []).map(text => ({ text: `Unavailable: ${text}` }));
+    const readErrorLabel: Record<string, string> = { "attention": "待关注", "review-fleet": "评审-船队", "scopes": "工作范围", "execution": "执行" };
+    const errors = (snap.readErrors ?? []).map(text => {
+      const mapped = text.replace(/^(attention|review-fleet|scopes|execution)(:|\s)/, (_, prefix, sep) => `${readErrorLabel[prefix] ?? prefix}${sep}`);
+      return { text: `不可用: ${mapped}` };
+    });
     const missionOverview = !!state.scopesMission && !state.scopesSelected && !state.executionOpen;
     const projectHeader = state.project ? missionOverview
-      ? [{ text: `PROJECT ${state.project.id}`, action: { type: "project-source" as const } }, ...wrapDetailLines(errors, contentWidth)]
-      : [...identity, listItem("Read current source", { type: "project-source" }), ...wrapDetailLines(errors, contentWidth)] : [];
-    if (state.project && (!entry || entry.error)) return [...projectHeader, { text: "Choose a project again or go Back." }];
-    if (state.project && !state.scopesMission) return [...projectHeader, { text: "Choose a mission" }, ...(snap.scopes ?? []).map(m => listItem(m.mission + (m.error ? " · source unavailable" : ""), { type: "scopes-mission-open", mission: m.mission })), ...(!snap.scopes?.length && !errors.length ? [{ text: "No missions found in this project." }] : [])];
-    // SCOPES owns both levels. Both mission-graph and Explorer slice routes land
-    // on the same execution-backed canonical detail; store-direct content is
-    // composed into that page instead of surviving as a competing destination.
+      ? [{ text: `项目 ${state.project.id}`, action: { type: "project-source" as const } }, ...wrapDetailLines(errors, contentWidth)]
+      : [...identity, listItem("读取当前源", { type: "project-source" }), ...wrapDetailLines(errors, contentWidth)] : [];
+    if (state.project && (!entry || entry.error)) return [...projectHeader, { text: "请重新选择项目或返回。" }];
+    if (state.project && !state.scopesMission) return [...projectHeader, { text: "选择任务目标" }, ...(snap.scopes ?? []).map(m => listItem(m.mission + (m.error ? " · 源不可用" : ""), { type: "scopes-mission-open", mission: m.mission })), ...(!snap.scopes?.length && !errors.length ? [{ text: "此项目中未找到任务目标。" }] : [])];
+    // SCOPES 拥有两个层级。任务图和资源管理器切片路由都落在
+    // 同一执行支持的规范详情上；存储直接内容
+    // 组合到该页面，而非作为竞争目的地存活。
     const sel = state.scopesSelected;
     const missionName = state.scopesMission;
     const mission = snap.scopes?.find(m => m.mission === missionName);
-    if (mission?.error) return [...projectHeader, ...wrapDetailLines([{ text: `${missionName} · Source unavailable` }, { text: mission.error }, { text: "Correct the source and refresh; Back returns to other missions." }], contentWidth)];
+    if (mission?.error) return [...projectHeader, ...wrapDetailLines([{ text: `${missionName} · 源不可用` }, { text: mission.error }, { text: "修正源并刷新；返回回到其他任务目标。" }], contentWidth)];
     const execution = snap.execution?.mission === missionName ? snap.execution : null;
     const detail = sel
       ? (snap.scopes ?? []).find((m) => m.mission === sel.mission)?.slices.find((sl) => sl.dirName === sel.slice) ?? null
       : null;
-    if (detail?.error) return [...projectHeader, ...wrapDetailLines([{ text: `${missionName}/${detail.dirName} · Source unavailable` }, { text: detail.error }, { text: "Correct the source and refresh; Back returns to other slices." }], contentWidth)];
-    if (!sel && !state.executionOpen) projectHeader.push(...(mission?.slices.filter(s => s.error) ?? []).map(s => listItem(`${s.dirName} · source unavailable`, { type: "scopes-open", mission: missionName!, slice: s.dirName })));
+    if (detail?.error) return [...projectHeader, ...wrapDetailLines([{ text: `${missionName}/${detail.dirName} · 源不可用` }, { text: detail.error }, { text: "修正源并刷新；返回回到其他切片。" }], contentWidth)];
+    if (!sel && !state.executionOpen) projectHeader.push(...(mission?.slices.filter(s => s.error) ?? []).map(s => listItem(`${s.dirName} · 源不可用`, { type: "scopes-open", mission: missionName!, slice: s.dirName })));
     if (state.executionOpen && execution) {
       return [...projectHeader, ...executionContentLines(execution, snap.scopes, snap.readErrors, state.executionOpen, contentWidth, false, snap.sliceDetail, {
         collapseReqs: state.scopesCollapseReqs,
@@ -1133,7 +1167,7 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
     }
     if (!detail && missionName) {
       const lines = executionContentLines(execution, snap.scopes, snap.readErrors, state.executionOpen, contentWidth, !snap.hydratedAt || snap.executionMission !== missionName, undefined, undefined, state.timeZone);
-      return [...projectHeader, ...(execution ? lines : [{ text: `  ${missionName} EXECUTION` }, ...lines])];
+      return [...projectHeader, ...(execution ? lines : [{ text: `  ${missionName} 执行` }, ...lines])];
     }
     return [...projectHeader, ...scopesContentLines(detail, missionName, {
       collapseReqs: state.scopesCollapseReqs,
@@ -1146,51 +1180,51 @@ function contentLines(state: ViewState, snap: FleetSnapshot, contentWidth: numbe
 }
 
 export interface RenderOptions {
-  /** First visit: preserve the prior frame with its original label and no effect targets. */
+/** 首次访问：保留先前帧及其原始标签，无效果目标。 */
   previousPage?: { state: ViewState; snapshot: FleetSnapshot };
   startup?: StartupState;
-  /** I5 — the live command context (from the C3 detector); default "standard". */
+  /** I5 — 实时命令上下文（来自 C3 检测器）；默认 "standard"。 */
   commandContext?: string;
   completion?: { candidates: string[]; message: string } | null;
   cols?: number;
   rows?: number;
-  /** wall-clock ms for time-driven motion (spinner frames, flash windows);
-   * renderScreen stays pure — the caller supplies time (round-4 wiring) */
+  /** 挂钟 ms 用于时间驱动运动（旋转器帧、闪烁窗口）；
+   * renderScreen 保持纯 — 调用者提供时间（round-4 接线） */
   nowMs?: number;
-  /** the active Style's color mode — picks braille vs line spinner frames */
+  /** 活动样式的颜色模式 — 选择盲文 vs 线条旋转器帧 */
   colorMode?: ColorMode;
-  /** S19 round-5 (guard): the refresh owner's honest load lifecycle — the
-   * spinner renders ONLY while un-settled/in-flight; omitted = settled
-   * (demo/fixtures: the data given IS the answer, nothing is loading) */
+  /** S19 round-5（守卫）：刷新所有者的诚实负载生命周期 —
+   * 旋转器仅在未结算/在飞时渲染；省略 = 已结算
+   *（演示/fixture：给定数据就是答案，无加载中） */
   load?: LoadState;
-  /** S19 round-5 (guard): per-seat fresh pane-output events from the refresh
-   * owner — renderScreen targets each agent's explorer row while its one-shot
-   * window is open; omitted = no flashes */
+  /** S19 round-5（守卫）：来自刷新所有者的每席位新窗格输出
+   * 事件 — renderScreen 在一次性窗口打开时定位每个智能体的
+   * 资源管理器行；省略 = 无闪烁 */
   rowFlashes?: RowFlash[];
-  /** 5.2 crash-cart: the resolved daemon-down signal. Present ⇒ the whole screen is the daemon-down
-   *  path — the normal fleet views have no data when the daemon isn't serving. */
+  /** 5.2 故障诊断：已解析后台服务关闭信号。存在 ⇒ 整屏为后台服务关闭
+   * 路径 — 后台服务不服务时正常组视图无数据。 */
   daemonState?: DaemonState;
   unavailable?: string;
   unavailableExpanded?: boolean;
   starting?: string;
-  /** the cockpit model — rendered when daemonState === "down". */
+  /** 驾驶舱模型 — 当 daemonState === "down" 时渲染。 */
   crashCart?: CrashCartModel;
-  /** evidence for the UNVERIFIED screen — rendered when daemonState === "unverified". */
+  /** UNVERIFIED 屏幕的证据 — 当 daemonState === "unverified" 时渲染。 */
   daemonEvidence?: DaemonUnverifiedEvidence;
-  /** B1 ROUND 2 — the live fleet-restore lifecycle; when present it renders (progress → rollup+triage)
-   *  and takes precedence over the cockpit, so restore progress and the triage list are visible. */
+  /** B1 ROUND 2 — 实时组恢复生命周期；存在时渲染（进度 → 汇总+分类）
+   * 并优先于驾驶舱，因此恢复进度和分类列表可见。 */
   restore?: RestoreLifecycleVM;
-  /** B1 ROUND 3 (HIGH-2) — vertical scroll offset into the restore content, so a triage list longer
-   *  than the viewport stays keyboard-walkable (the shell reports contentMaxOffset for clamping). */
+  /** B1 ROUND 3 (HIGH-2) — 恢复内容的垂直滚动偏移，因此分类列表长于
+   * 视口保持键盘可走（shell 报告 contentMaxOffset 用于钳制）。 */
   restoreScroll?: number;
-  /** B1 ROUND 10 — the ⏎ confirm banner text (non-zero-generation restore). Rendered IN the cockpit so
-   *  the confirm is visible where the operator looks (ViewState.notice is not shown in the cockpit). */
+  /** B1 ROUND 10 — ⏎ 确认横幅文本（非零代数恢复）。在驾驶舱中渲染，因此
+   * 确认在操作员查看处可见（ViewState.notice 不在驾驶舱中显示）。 */
   confirm?: string;
 }
 
-/** replace ONE character at a plain-text position inside a token-segment row
- * with the keyboard focus marker (accent, bold) — keeps plain(segs) equal to
- * the spliced content text (R2 HIGH-3) */
+/** 将一个字符替换为纯文本位置的 token 分段行中的
+ * 键盘焦点标记（重音、粗体）— 保持 plain(segs) 等于
+ * 拼接内容文本（R2 HIGH-3） */
 function spliceMarkerIntoSegs(
   segs: NonNullable<ContentLine["segs"]>,
   pos: number,
@@ -1216,56 +1250,76 @@ function paneRule(cols: number, explW: number, joint: "top" | "bottom", leftTitl
   void joint;
   const left = leftTitle ? `━ ${leftTitle} ` : "";
   const right = rightTitle ? `━ ${rightTitle} ` : "";
-  const leftPart = (left + "━".repeat(explW)).slice(0, explW);
-  const rightPart = (right + "━".repeat(cols)).slice(0, Math.max(cols - explW - 1, 0));
+  const rulePart = (head: string, width: number) => {
+    const clipped = truncateToWidth(head, width);
+    return clipped + "━".repeat(Math.max(0, width - strWidth(clipped)));
+  };
+  const leftPart = rulePart(left, explW);
+  const rightPart = rulePart(right, Math.max(cols - explW - 1, 0));
   return `${leftPart}╋${rightPart}`;
 }
 
 function keybindHints(state: ViewState): string {
-  if (state.copyMode) return "drag to select/copy · v resume mouse · q quit";
-  // Affordance surfaces on REAL scrollability (contentMaxOffset), never gated
-  // behind already-being-content-focused — that gate was the catch-22 (the
-  // hint hid exactly where it was needed). When ↑↓ themselves scroll (a
-  // scrollable spec detail), the nav label says so; otherwise ↑↓ move and the
-  // page keys carry the scroll.
+  if (state.copyMode) return "拖动选择/复制 · v 恢复鼠标 · q 退出";
+  // 提示面基于真实可滚动性（contentMaxOffset），绝不门控
+  // 在已内容聚焦后 — 那个门控是第22条军规（
+  // 提示恰好在需要处隐藏）。当 ↑↓ 自身滚动时（
+  // 可滚动规范详情），导航标签如此说明；否则 ↑↓ 移动且
+  // 翻页键携带滚动。
   if (state.section === "config") return state.configKey
-    ? `${specDetailArrowsScroll(state) ? "↑↓ scroll" : "↑↓ move"} · esc back · v select/copy · refresh · q quit`
-    : "↑↓ move · ←→ pane · ⏎ open · / search · esc back · refresh · q quit";
+    ? `${specDetailArrowsScroll(state) ? "↑↓ 滚动" : "↑↓ 移动"} · Esc 返回 · v 选择/复制 · 刷新 · q 退出`
+    : "↑↓ 移动 · ←→ 窗格 · ⏎ 打开 · / 搜索 · Esc 返回 · 刷新 · q 退出";
   const arrowsScroll = specDetailArrowsScroll(state);
-  const nav = arrowsScroll ? "↑↓ scroll" : "↑↓ move";
-  const pageScroll = state.contentMaxOffset > 0 && !arrowsScroll ? "⇞⇟ scroll · " : "";
-  const filter = state.filter ? "/ replace · esc clear" : "/ filter";
-  return `${nav} · ←→ pane · ⏎ open · ${pageScroll}: command · ${filter} · S startup · v select/copy · f footer · q quit`;
+  const nav = arrowsScroll ? "↑↓ 滚动" : "↑↓ 移动";
+  const pageScroll = state.contentMaxOffset > 0 && !arrowsScroll ? "⇞⇟ 滚动 · " : "";
+  const filter = state.filter ? "/ 替换 · Esc 清除" : "/ 过滤";
+  return `${nav} · ←→ 窗格 · ⏎ 打开 · ${pageScroll}: 命令 · ${filter} · S 启动 · v 选择/复制 · f 页脚 · q 退出`;
 }
 
-/** The PULSE view renders FULL-WIDTH with NO explorer sidebar (increment 2). A
- * minimal self-contained screen: cmd bar + a full-width titled rule + the pulse
- * lines laid across all `cols` + the bottom chrome. Skips computeExplorerRows
- * and the left│content paint entirely. */
-/** Truncate a seg list to a column budget, cutting the final seg mid-text if
- * needed — keeps plain(segs) === the truncated content prefix (strip-invariant). */
+/** PULSE 视图全宽渲染，无资源管理器侧栏（增量 2）。一个
+ * 最小自包含屏幕：命令栏 + 全宽标题线 + pulse
+ * 行跨所有 `cols` + 底部装饰。跳过 computeExplorerRows
+ * 和左│内容绘制。 */
+/** 将分段列表截断到列预算，必要时在文本中间切最终段 —
+ * 保持 plain(segs) === 截断内容前缀（剥离不变）。 */
 function truncateSegs(
   segs: NonNullable<Screen["segRows"]>[number],
   width: number,
 ): NonNullable<Screen["segRows"]>[number] {
+  const totalWidth = segs.reduce((sum, segment) => sum + strWidth(segment.text), 0);
+  if (totalWidth <= width) return segs;
   const out: NonNullable<Screen["segRows"]>[number] = [];
   let used = 0;
+  const textBudget = Math.max(0, width - 1);
+  let finalStyle: NonNullable<Screen["segRows"]>[number][number] | undefined;
   for (const s of segs) {
-    if (used >= width) break;
-    const room = width - used;
-    if (s.text.length <= room) {
+    if (used >= textBudget) break;
+    const room = textBudget - used;
+    const segmentWidth = strWidth(s.text);
+    if (segmentWidth <= room) {
       out.push(s);
-      used += s.text.length;
+      used += segmentWidth;
+      finalStyle = s;
     } else {
-      out.push({ ...s, text: s.text.slice(0, room) });
+      let text = "";
+      let columns = 0;
+      for (const char of s.text) {
+        const charWidth = strWidth(char);
+        if (columns + charWidth > room) break;
+        text += char;
+        columns += charWidth;
+      }
+      if (text) out.push({ ...s, text });
+      finalStyle = s;
       break;
     }
   }
+  out.push({ ...(finalStyle ?? {}), text: "…" });
   return out;
 }
 
-/** The disclosure cell is a distinct control from the row body. Hit lookup is
- * first-match, so register this one-cell target before the row-wide target. */
+/** 披露单元格是与行体不同的控件。命中查找是
+ * 首次匹配，因此在行级目标之前注册这个单格目标。 */
 function pushExplorerTargets(
   hitMap: Screen["hitMap"],
   row: import("./types.js").ExplorerRow,
@@ -1283,30 +1337,30 @@ function pushExplorerTargets(
 function readStatus(load: import("./types.js").LoadState, zone: string): string {
   const at = load.retainedAt ?? load.lastSuccessAt;
   const basis = at === undefined ? "" : ` · last ${displayTime(new Date(at).toISOString(), zone)}`;
-  if (load.inFlight) return `${load.settled ? "Refreshing" : "Loading"}…${basis} · ? Help`;
-  if (load.stale) return `${at === undefined ? "Read failed" : "Could not refresh"}${basis} · refresh to Retry`;
-  return `Tab complete · ? help${basis}`;
+  if (load.inFlight) return `${load.settled ? "刷新中" : "加载中"}…${basis} · ? 帮助`;
+  if (load.stale) return `${at === undefined ? "读取失败" : "无法刷新"}${basis} · 刷新以重试`;
+  return `标签页完成 · ? 帮助${basis}`;
 }
 
 function renderPulseScreen(state: ViewState, snap: FleetSnapshot, options: RenderOptions, inputLine: string): Screen {
   const { cols = 120, rows = 32, nowMs = 0 } = options;
   const explW = explorerWidth(cols);
-  // FOUNDER OPTION-B (supersedes the earlier full-width ruling): PULSE renders as
-  // a content-pane view INSIDE the normal chrome — the EXPLORER sidebar STAYS (it
-  // is the founder's action path: from a needs-you row, mouse to the sidebar and
-  // navigate). So this builds the same explorer│content split every other view
-  // uses; the lanes truncate to the content width (trade accepted by the founder).
-  // The per-cell selection highlight + fresh-output flash paint through the NORMAL
-  // split-pane segRows path — no full-width stylize bypass (that special-case is
-  // gone). incr-5's refresh-seam/motion/reader-clock ride along unchanged.
+  // 创建者选项-B（取代早期全宽判定）：PULSE 渲染为
+  // 标准装饰内的内容窗格视图 — 资源管理器侧栏保留（它
+  // 是创建者的动作路径：从需要你行，鼠标到侧栏并
+  // 导航）。因此这构建每个其他视图使用的相同资源管理器│内容分割；
+  // 泳道截断到内容宽度（创建者接受的权衡）。
+  // 每格选择高亮 + 新输出闪烁通过正常
+  // 分割窗格 segRows 路径绘制 — 无全宽样式绕过（那个特殊情况
+  // 已消失）。incr-5 的刷新接缝/运动/读取器时钟沿不变。
   //
-  // WHY a dedicated renderer + custom cell targets instead of the generic content
-  // zone machinery (reviewer: the documented reason parity-with-native yields):
-  // the approved mock's `.sel` row is a HIGHLIGHTED CELL — an affordance the
-  // native "›"-marker zone selection cannot express. The mock BINDS that
-  // affordance, so selection stays incr-4's per-cell accent-bg, walked
-  // COLUMN-MAJOR by pulseLaneTargets. The sidebar half is the normal split (same
-  // helpers), so the founder's navigator behaves identically to every other view.
+  // 为什么专用渲染器 + 自定义格目标而非通用内容
+  // 区机制（审阅者：与原生对等的文档化原因产生）：
+  // 已批准 mock 的 `.sel` 行是高亮格 — 原生
+  // "›"标记区选择无法表达的提示。mock 绑定那个
+  // 提示，因此选择保持 incr-4 的每格 accent-bg，由
+  // pulseLaneTargets 列主序走。侧栏半是正常分割（相同
+  // 助手），因此创建者导航器行为与每个其他视图相同。
   const reduced = reducedMotion();
   const load = options.load ?? { inFlight: false, settled: true };
   const loading = load.inFlight || !load.settled;
@@ -1328,10 +1382,10 @@ function renderPulseScreen(state: ViewState, snap: FleetSnapshot, options: Rende
   if (options.completion) {
     lines.push(pad(options.completion.message, cols));
     for (const candidate of options.completion.candidates.slice(0, 4)) lines.push(pad(`  ${candidate}`, cols));
-    if (options.completion.candidates.length > 4) lines.push(pad("  … keep typing to narrow matches", cols));
+    if (options.completion.candidates.length > 4) lines.push(pad("  … 继续键入以缩小匹配", cols));
   }
 
-  const explorerTitle = state.focusedPane === "explorer" ? "{ EXPLORER }" : "EXPLORER";
+  const explorerTitle = state.focusedPane === "explorer" ? "{ 资源管理器 }" : "资源管理器";
   const contentTitle = state.focusedPane === "content" ? "{ PULSE }" : "PULSE";
   lines.push(paneRule(cols, explW, "top", explorerTitle, contentTitle));
 
@@ -1343,14 +1397,14 @@ function renderPulseScreen(state: ViewState, snap: FleetSnapshot, options: Rende
   const maxContentOffset = Math.max(renderPulseView(model).length - bodyRows, 0);
   const contentStart = Math.min(state.contentOffset, maxContentOffset);
 
-  // Lane cells (column-major), CLIPPED to the content width: a cell whose column
-  // span starts past the content edge is not rendered → not a target (no
-  // invisible-but-actionable cell). x is content-relative (1-based within lanes).
+  // 泳道格（列主序），截断到内容宽度：列
+  // 跨度起始超过内容边缘的格不渲染 → 非目标（无
+  // 不可见但可动作的格）。x 是内容相对的（泳道内 1 基）。
   const allTargets = pulseLaneTargets(model).filter((t) => t.x1 <= contentWidth);
   const visibleTargets = allTargets.filter((t) => t.lineIndex >= contentStart && t.lineIndex < contentStart + bodyRows);
 
-  // The lane cursor lives on the CONTENT pane; it shows only when content is
-  // focused (explorer-focused → the sidebar cursor leads, the founder's path).
+  // 泳道光标位于内容窗格上；仅在内容
+  // 聚焦时显示（资源管理器聚焦 → 侧栏光标领先，创建者的路径）。
   const sel =
     state.focusedPane === "content" && visibleTargets.length > 0
       ? Math.min(Math.max(state.contentSelection, 0), visibleTargets.length - 1)
@@ -1360,9 +1414,9 @@ function renderPulseScreen(state: ViewState, snap: FleetSnapshot, options: Rende
     model.lanes[t.lane]!.rows[t.row]!.selected = true; // per-cell accent-bg (mock affordance)
   }
 
-  // motion budget: NOW (lane 0) cells whose seat produced fresh pane output flash
-  // per-cell (inverse) — the SAME served terminalActive false→true onset the table
-  // row flash rides. JUST FINISHED / UP NEXT never flash (no shipped finish event).
+  // 运动预算：现在（泳道 0）席位产生新窗格输出的格闪烁
+  // 每格（反相）— 相同已服务 terminalActive false→true 起始，表
+  // 行闪烁乘坐。刚完成/下一个绝不闪烁（无已服务完成事件）。
   if (liveFlashes.length) {
     for (const t of allTargets) {
       if (t.lane !== 0) continue;
@@ -1376,23 +1430,23 @@ function renderPulseScreen(state: ViewState, snap: FleetSnapshot, options: Rende
   const pulseLines = renderPulseView(model);
   const visiblePulse = pulseLines.slice(contentStart, contentStart + bodyRows);
 
-  // EXPLORER sidebar = the normal navigator (same helpers as every other view).
+  // 资源管理器侧栏 = 正常导航器（与每个其他视图相同助手）。
   const explorer = computeExplorerRows(state, snap);
   const { labels: explorerDisplay, metas: explorerMetas } = navigatorDisplay(explorer, snap, explW - 1);
   const explorerStart = Math.min(Math.max(state.selection - bodyRows + 1, 0), Math.max(explorer.length - bodyRows, 0));
 
   for (let i = 0; i < bodyRows; i++) {
     const y = lines.length + 1;
-    // EXPLORER half (identical to the normal split — real chrome, the action path)
+    // 资源管理器半（与正常分割相同 — 真实装饰，动作路径）
     const explorerIndex = explorerStart + i;
     const row = explorer[explorerIndex];
     const flashed = row?.key != null && ackFlashes.some((f) => f.key === row.key);
     if (flashed) flashAck = true;
     const marker = explorerIndex === state.selection && row ? (flashed ? "◆" : "▶") : flashed ? "≈" : " ";
     const left = pad(row ? `${marker}${explorerDisplay[explorerIndex] ?? row.label}` : "", explW);
-    // CONTENT half = the pulse view, truncated to the content width. Selection is
-    // the per-cell bg on the segs (mock affordance), so the content marker slot
-    // stays blank — no "›" chevron (the native affordance the mock overrides).
+    // 内容半 = pulse 视图，截断到内容宽度。选择是
+    // segs 上的每格 bg（mock 提示），因此内容标记槽
+    // 保持空白 — 无 "›" 箭头（mock 覆盖的原生提示）。
     const citem = visiblePulse[i];
     const contentText = (citem?.text ?? "").slice(0, contentWidth);
     lines.push(pad(`${left}┃ ${contentText}`, cols));
@@ -1406,8 +1460,8 @@ function renderPulseScreen(state: ViewState, snap: FleetSnapshot, options: Rende
     if (citem?.segs) segRows[y] = truncateSegs(citem.segs, contentWidth);
   }
 
-  // Lane cells → content targets, x mapped into the content column (origin =
-  // explorer boundary + 3, matching normal content geometry), clamped to `cols`.
+  // 泳道格 → 内容目标，x 映射到内容列（原点 =
+  // 资源管理器边界 + 3，匹配正常内容几何），钳制到 `cols`。
   for (const t of visibleTargets) {
     const x1 = explW + 2 + t.x1;
     if (x1 > cols) continue;
@@ -1419,16 +1473,16 @@ function renderPulseScreen(state: ViewState, snap: FleetSnapshot, options: Rende
   lines.push(paneRule(cols, explW, "bottom"));
   lines.push(pad(keybindHints(state), cols));
   const drillPath = state.drill.map((d) => d.name).join(" → ");
-  const readWarn = snap.readErrors.length > 0 ? `  ⚠ ${snap.readErrors.length} read(s) failed: ${snap.readErrors[0]}` : "";
-  // Honest first-load lifecycle: while the refresh owner's FIRST hydrate is in
-  // flight (!settled) show a spinner-tagged "loading" — distinguishing "still
-  // reading" from a genuinely empty fleet. Once settled, refreshes are silent;
-  // the footer's live "updated Ns ago" IS the ongoing refresh signal (reader
-  // clock), so a settled empty view stays calm. Reduced motion → static "·".
-  const loadTag = loading ? `  ${frame} loading` : "";
+  const readWarn = snap.readErrors.length > 0 ? `  ⚠ ${snap.readErrors.length} 次读取失败: ${snap.readErrors[0]}` : "";
+  // 诚实首次加载生命周期：刷新所有者的首次水合在飞时
+  // （！结算）显示旋转器标记的"加载中" — 区分"仍在
+  // 读取"与真正空组。结算后，刷新静默；
+  // 页脚的实时"N 秒前更新"是进行中刷新信号（读取器
+  // 时钟），因此结算空视图保持平静。减少运动 → 静态 "·"。
+  const loadTag = loading ? `  ${frame} 加载中` : "";
   lines.push(
     pad(
-      `[${state.instanceId}] ${state.section}${drillPath ? " · " + drillPath : ""}${state.lastError ? "  ✗ " + state.lastError : ""}${state.notice ? "  ▸ " + state.notice : ""}${readWarn}${loadTag}${state.timeZoneWarning ? " · ⚠ timezone; run timezone" : ""}`,
+      `[${state.instanceId}] ${sectionLabel(state.section)}${drillPath ? " · " + drillPath : ""}${state.lastError ? "  ✗ " + state.lastError : ""}${state.notice ? "  ▸ " + state.notice : ""}${readWarn}${loadTag}${state.timeZoneWarning ? " · ⚠ 时区; 运行 timezone" : ""}`,
       cols,
     ),
   );
@@ -1443,46 +1497,54 @@ function renderPulseScreen(state: ViewState, snap: FleetSnapshot, options: Rende
     explorerRows,
     segRows,
     explorerMeta,
-    // whole-line explorer activity flash (tmux-style) on the sidebar half, exactly
-    // as the table view; PULSE cell flashes are PER-CELL (inverse in segRows).
+    // 整行资源管理器活动闪烁（tmux 风格）在侧栏半，完全
+    // 如表视图；PULSE 格闪烁是每格（segs 中反相）。
     flashRows,
-    // schedule the bounded-expiry redraw while the first-load spinner or an
-    // un-expired flash is live; reduced motion (no animation) settles via refresh.
+    // 调度有界过期重绘，当首次加载旋转器或
+    // 未过期闪烁活跃时；减少运动（无动画）通过刷新结算。
     motionActive: (!reduced && loading) || anyFlash || flashRows.length > 0 || flashAck,
   };
 }
 
-// Crash-cart shell (ruling 3c6c2be0): the daemon-down cockpit as a content-pane view inside the
-// standard explorer│content shell — the LEDGER-FED explorer on the left (honestly marked), the
-// approved content on the right. Mirrors renderPulseScreen's split; content segs paint via the normal
-// split-pane path (stylize │ branch), so no full-width bypass. All rails live in the content builders.
+// 故障诊断外壳（判定 3c6c2be0）：后台服务关闭驾驶舱作为内容窗格视图在
+// 标准资源管理器│内容外壳内 — 左侧账本馈送的资源管理器（诚实标记），
+// 右侧已批准内容。镜像 renderPulseScreen 的分割；内容 segs 通过正常
+// 分割窗格路径绘制（stylize │ 分支），无全宽绕过。所有轨道在内容构建器中。
 type PaneContentLine = { text: string; action?: Action; segs?: Array<{ text: string; token?: Token; bold?: boolean; bg?: Token; inverse?: boolean }> };
 
-/** Word-wrap long content lines to the pane width with a hanging indent, so nothing is silently
- *  clipped off the right edge. Used ONLY where the content is short enough to afford the extra rows
- *  (the restore lifecycle view) — the fixed-height cockpit still clips to preserve its row layout. */
+/** 长内容字换行到窗格宽度，带悬挂缩进，因此无内容静默
+ * 从右边缘裁剪。仅在内容短到可承受额外行处使用
+ * （恢复生命周期视图）— 固定高度驾驶舱仍裁剪以保留其行布局。 */
 function wrapContentLines(content: PaneContentLine[], width: number): PaneContentLine[] {
   if (width <= 0) return content;
   const out: PaneContentLine[] = [];
   const indent = "     ";
   for (const item of content) {
     const text = item.text ?? "";
-    if (text.length <= width) {
+    if (strWidth(text) <= width) {
       out.push(item);
       continue;
     }
     let rest = text;
     let first = true;
-    while (rest.length > 0) {
-      const w = first ? width : Math.max(1, width - indent.length);
-      let cut = rest.length <= w ? rest.length : w;
+    while (strWidth(rest) > 0) {
+      const w = first ? width : Math.max(1, width - strWidth(indent));
+      let prefix = "";
+      let used = 0;
+      for (const char of rest) {
+        const charWidth = strWidth(char);
+        if (used + charWidth > w) break;
+        prefix += char;
+        used += charWidth;
+      }
+      let cut = prefix.length;
       if (cut < rest.length) {
-        const sp = rest.lastIndexOf(" ", cut);
-        if (sp > 0 && sp >= Math.floor(w * 0.5)) cut = sp; // break on a word boundary when reasonable
+        const sp = prefix.lastIndexOf(" ");
+        if (sp >= Math.floor(prefix.length / 2)) cut = sp;
       }
       const chunk = rest.slice(0, cut).trimEnd();
       rest = rest.slice(cut).replace(/^\s+/, "");
-      out.push(first ? { text: chunk, segs: item.segs, action: item.action } : { text: indent + chunk });
+      out.push(first ? { text: chunk, action: item.action } : { text: indent + chunk });
       first = false;
     }
   }
@@ -1505,14 +1567,14 @@ function crashCartShell(
   lines.push(pad(`cmd ▸ ${inputLine}▊`, cols));
   lines.push(paneRule(cols, explW, "top", "{ EXPLORER }", contentTitle));
 
-  // The explorer's source note, then any discovered rigs (name + seat count).
+  // 资源管理器的源注释，然后任何发现的工作组（名称 + 席位计数）。
   const leftRows: string[] = [led.note, "", ...led.rows.map((r) => `${r.label} (${r.seatCount})`)];
   const contentWidth = Math.max(cols - explW - 2, 0);
   if (opts?.wrap) content = wrapContentLines(content, contentWidth);
-  const bodyRows = Math.max(rows - 2 - 3, 1); // minus cmd bar + top rule + (bottom rule, hints, status)
-  // HIGH-2 — when content exceeds the viewport, it is VERTICALLY SCROLLABLE: contentMaxOffset is the
-  // furthest row the operator can scroll to, and the rendered window starts at the clamped scroll offset.
-  // A list that fits (offset 0, maxOffset 0) is unchanged. Only the content pane scrolls; the explorer stays.
+  const bodyRows = Math.max(rows - 2 - 3, 1); // 减命令栏 + 顶线 + (底线、提示、状态)
+  // HIGH-2 — 内容超过视口时，垂直可滚动：contentMaxOffset 是
+  // 操作员可滚动到的最远行，渲染窗口从钳制滚动偏移开始。
+  // 适合的列表（偏移 0，maxOffset 0）不变。仅内容窗格滚动；资源管理器保留。
   const contentMaxOffset = Math.max(0, content.length - bodyRows);
   const scroll = Math.max(0, Math.min(contentMaxOffset, opts?.scroll ?? 0));
   for (let i = 0; i < bodyRows; i++) {
@@ -1526,8 +1588,8 @@ function crashCartShell(
   }
   lines.push(paneRule(cols, explW, "bottom"));
   lines.push(pad("", cols));
-  const scrollHint = contentMaxOffset > 0 ? ` · ↑↓ scroll (${scroll}/${contentMaxOffset})` : "";
-  lines.push(pad(`[crash-cart] ${led.note}${scrollHint}`, cols));
+  const scrollHint = contentMaxOffset > 0 ? ` · ↑↓ 滚动 (${scroll}/${contentMaxOffset})` : "";
+  lines.push(pad(`[故障诊断] ${led.note}${scrollHint}`, cols));
   while (lines.length < rows) lines.push("");
   return {
     lines: lines.slice(0, rows),
@@ -1567,22 +1629,22 @@ function renderBody(state: ViewState, snap: FleetSnapshot, options: RenderOption
     })), Math.max(1, cols - explW - 2));
     const selected = content.findIndex((line) => line.action?.type === "startup" && line.action.key === `select:${startup.local?.selected ?? startup.selected}`);
     const scroll = startup.local && !startup.local.result.entries ? startup.local.scroll : startup.expanded ? startup.scroll : Math.max(0, selected - Math.max(1, rows - 12));
-    const screen = crashCartShell(content, { note: "startup", rows: [] }, "START AND RETURN", cols, rows, "", { scroll });
-    screen.lines[rows - 1] = pad("? Help · w Skip · L Local · ↑↓ scroll · Enter read · Esc Back · q Quit", cols);
+    const screen = crashCartShell(content, { note: "启动", rows: [] }, "启动并返回", cols, rows, "", { scroll });
+    screen.lines[rows - 1] = pad("? 帮助 · w 跳过 · L 本地 · ↑↓ 滚动 · 回车读取 · Esc 返回 · q 退出", cols);
     return screen;
   }
-  // 5.2 crash-cart (shell-placement rework, ruling 3c6c2be0): daemon-DOWN renders as a CONTENT-PANE
-  // view inside the standard shell — the explorer sidebar is ALWAYS present, ledger-fed + honestly
-  // marked (from the SAME one-JSON discovery, never a second read). Content moves into the right pane
-  // verbatim; all rails stand. DOWN → cockpit; UNVERIFIED → cannot-verify (no restore).
-  // B1 ROUND 2 — an ACTIVE fleet restore takes precedence over the cockpit: the operator sees live
-  // progress (from the poll stream) and, on done, the rollup + keyboard-walkable triage list.
+  // 5.2 故障诊断（外壳放置返工，判定 3c6c2be0）：后台服务关闭渲染为内容窗格
+  // 视图在标准外壳内 — 资源管理器侧栏始终存在，账本馈送 + 诚实
+  // 标记（来自同一单 JSON 发现，绝不第二次读取）。内容移入右窗格
+  // 逐字；所有轨道保留。DOWN → 驾驶舱；UNVERIFIED → 无法验证（无恢复）。
+  // B1 ROUND 2 — 活动组恢复优先于驾驶舱：操作员看到实时
+  // 进度（来自轮询流），完成时，汇总 + 键盘可走分类列表。
   if (options.restore) {
     const led = buildLedgerExplorer(options.crashCart?.foundOnHost ?? []);
-    // wrap: the triage needs are full sentences — wrap them to the pane so the EXACT need is never
-    // clipped off the edge. scroll: a triage list longer than the viewport is vertically scrollable so
-    // the final row's exact need is reachable (HIGH-2 — keyboard-walkable, not viewport-truncated).
-    return crashCartShell(renderRestoreLifecycleView(options.restore), led, "RESTORE", cols, rows, inputLine, {
+    // 换行：分类需求是完整句子 — 换行到窗格，因此确切需求绝不
+    // 从边缘裁剪。滚动：长于视口的分类列表垂直可滚动，因此
+    // 最终行的确切需求可达（HIGH-2 — 键盘可走，非视口截断）。
+    return crashCartShell(renderRestoreLifecycleView(options.restore), led, "恢复", cols, rows, inputLine, {
       wrap: true,
       scroll: options.restoreScroll ?? 0,
     });
@@ -1594,40 +1656,40 @@ function renderBody(state: ViewState, snap: FleetSnapshot, options: RenderOption
       .replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/gi, "$1[redacted]@")
       .replace(/Bearer\s+[^\s]+/gi, "Bearer [redacted]");
     const summary = /NODE_MODULE_VERSION|ERR_DLOPEN_FAILED|better-sqlite3/i.test(detail)
-      ? "The installed native module cannot load in this runtime. Repair the installation prerequisite, then retry."
-      : "Startup state could not be read. Retry after resolving the reported prerequisite.";
+      ? "已安装的原生模块无法在此运行时加载。修复安装前提，然后重试。"
+      : "无法读取启动状态。解决报告的前提后重试。";
     return crashCartShell([
-      { text: "Startup prerequisite unavailable" },
+      { text: "启动前提不可用" },
       { text: summary },
-      { text: "Saved identity and conversation history have not been classified as missing." },
+      { text: "已保存身份和对话历史未被分类为缺失。" },
       { text: "" },
-      { text: "r retry · d details · q quit" },
+      { text: "r 重试 · d 详情 · q 退出" },
       ...(options.unavailableExpanded ? [{ text: "" }, { text: detail }] : []),
-    ], { note: "state unavailable", rows: [] }, "STARTUP", cols, rows, inputLine,
+    ], { note: "状态不可用", rows: [] }, "启动", cols, rows, inputLine,
     { wrap: true, scroll: options.restoreScroll ?? 0 });
   }
   if (options.daemonState === "down" && options.crashCart) {
     const led = buildLedgerExplorer(options.crashCart.foundOnHost);
-    // B1 ROUND 10 — when a confirm is armed, render it at the TOP of the cockpit (where the operator
-    // looks) so the first ⏎ is visibly acknowledged; wrap so the sentence is not clipped at the pane edge.
+    // B1 ROUND 10 — 确认武装时，在驾驶舱顶部渲染（操作员
+    // 查看处），因此第一个 ⏎ 被可见确认；换行使句子不在窗格边缘裁剪。
     const content = options.starting
-      ? [{ text: `Starting daemon at ${options.starting}…` }, { text: "Seats remain stopped until selected." }]
+      ? [{ text: `正在 ${options.starting} 启动后台服务…` }, { text: "席位保持停止，直到被选择。" }]
       : options.confirm
       ? [...renderConfirmBanner(options.confirm), ...renderCrashCartView(options.crashCart)]
       : renderCrashCartView(options.crashCart);
-    return crashCartShell(content, led, "CRASH-CART", cols, rows, inputLine, options.confirm ? { wrap: true } : undefined);
+    return crashCartShell(content, led, "故障诊断", cols, rows, inputLine, options.confirm ? { wrap: true } : undefined);
   }
   if (options.daemonState === "unverified" && options.daemonEvidence) {
-    const led = { note: "daemon unverified", rows: [] }; // No ledger discovery occurred on this path.
-    return crashCartShell(renderUnverifiedView(options.daemonEvidence), led, "DAEMON?", cols, rows, inputLine);
+    const led = { note: "后台服务未验证", rows: [] }; // 此路径未发生账本发现。
+    return crashCartShell(renderUnverifiedView(options.daemonEvidence), led, "后台服务?", cols, rows, inputLine);
   }
-  // PULSE (founder Option-B): a content-pane view inside the NORMAL explorer│
-  // content chrome — renderPulseScreen builds its own split (sidebar + lanes)
-  // and rides the same segRows paint path, so it returns before the table layout.
+  // PULSE（创建者选项-B）：标准资源管理器│
+  // 内容装饰内的内容窗格视图 — renderPulseScreen 构建自己的分割（侧栏 + 泳道）
+  // 并乘坐相同 segRows 绘制路径，因此它在表布局之前返回。
   if (state.viewTab === "pulse" && options.load?.settled !== false) return renderPulseScreen(state, snap, options, inputLine);
-  // S19 round-5 (guard): one spinner frame per render pass from caller time;
-  // `loading` comes from the refresh OWNER (omitted = settled — demo/fixture
-  // data IS the answer); reduced-motion kills all of it
+  // S19 round-5（守卫）：每次渲染通过从调用者时间取一个旋转器帧；
+  // `loading` 来自刷新所有者（省略 = 已结算 — 演示/fixture
+  // 数据就是答案）；减少运动杀死所有这些
   const reduced = reducedMotion();
   const load = options.load ?? { inFlight: false, settled: true };
   const motion: MotionCtx = {
@@ -1638,51 +1700,52 @@ function renderBody(state: ViewState, snap: FleetSnapshot, options: RenderOption
   };
   const lines: string[] = [];
   const hitMap: Screen["hitMap"] = [];
-  // S19 MR5a (guard-corrected): ONE ▊ insertion cell renders at the bar's
-  // current insertion point for EMPTY and non-empty buffers alike — the
-  // shell accepts typing from the empty state, so the honest readiness
-  // affordance must show BEFORE the first key (no new focus state; stylize
-  // paints the cell; the shared motion clock controls its visibility).
+  // S19 MR5a（守卫修正）：一个 ▊ 插入格在栏的
+  // 当前插入点渲染，对空和非空缓冲区都一样 —
+  // shell 从空状态接受键入，因此诚实就绪
+  // 提示必须在第一个键之前显示（无新焦点状态；stylize
+  // 绘制格；共享运动时钟控制其可见性）。
   lines.push(pad(`cmd ▸ ${inputLine}▊${inputLine ? "" : "  " + readStatus(load, state.timeZone)}`, cols));
   if (load.stale && !inputLine) hitMap.push({ y: 1, x1: 9, x2: cols, action: { type: "noop" } });
   if (options.completion) {
     lines.push(pad(options.completion.message, cols));
     for (const candidate of options.completion.candidates.slice(0, 4)) lines.push(pad(`  ${candidate}`, cols));
-    if (options.completion.candidates.length > 4) lines.push(pad("  … keep typing to narrow matches", cols));
+    if (options.completion.candidates.length > 4) lines.push(pad("  … 继续键入以缩小匹配", cols));
   }
 
-  const sectionTitle = { topology: "TOPOLOGY", specs: "SPECS", scopes: "PROJECTS", needs: "FEED", system: "SYSTEM · HEALTH", config: "SYSTEM · CONFIGURATION", connections: "SYSTEM · CONNECTIONS" }[state.section] ?? state.section.toUpperCase();
-  // active-pane emphasis (k9s-class chrome): the focused pane's title is bracketed
-  const explorerTitle = state.focusedPane === "explorer" ? "{ EXPLORER }" : "EXPLORER";
+  const sectionTitle = { topology: "拓扑", specs: "规范", scopes: "项目", needs: "待关注", system: "系统 · 健康", config: "系统 · 配置", connections: "系统 · 连接" }[state.section] ?? state.section.toUpperCase();
+  // 活动窗格强调（k9s 类装饰）：聚焦窗格的标题加括号
+  const explorerTitle = state.focusedPane === "explorer" ? "{ 资源管理器 }" : "资源管理器";
   const contentTitle = state.focusedPane === "content" ? `{ ${sectionTitle} }` : sectionTitle;
-  lines.push(fullReading ? pad(`━ ${state.file ? "READ" : state.externalUrl ? "EXTERNAL URL" : "SPECS"} · Esc / ← Back `, cols) : paneRule(cols, explW, "top", explorerTitle, contentTitle));
+  lines.push(fullReading ? pad(`━ ${state.file ? "读取" : state.externalUrl ? "外部 URL" : "规范"} · Esc / ← 返回 `, cols) : paneRule(cols, explW, "top", explorerTitle, contentTitle));
 
   const explorer = fullReading ? [] : computeExplorerRows(state, snap);
-  // Slice-17: the file-tree re-skin is a DISPLAY transform only — rows, keys,
-  // actions, and the hit-map all keep resolving against the row model above.
+  // Slice-17：文件树重皮肤是显示变换 — 行、键、
+  // 动作和命中图都保持针对上方行模型解析。
   const { labels: explorerDisplay, metas: explorerMetas } = navigatorDisplay(explorer, snap, explW - 1);
   const contentWidth = Math.max(cols - explW - (fullReading ? 1 : 2), 0);
   const previous = !load.settled && !state.externalUrl ? options.previousPage : undefined;
   const content: ContentLine[] = previous
-    ? [...wrapDetailLines([{ text: `Previous: ${previous.state.section} · ${previous.state.file ? `${previous.state.file.root}/${previous.state.file.path}` : previous.state.drill.map(d => d.name).join(" / ") || [previous.state.project?.id, previous.state.scopesMission, previous.state.terminalView].filter(Boolean).join(" / ") || "overview"}` }], contentWidth),
-       { text: `Opening ${sectionTitle.toLowerCase()}… · Explorer remains available` },
+    ? [...wrapDetailLines([{ text: `先前: ${sectionLabel(previous.state.section)} · ${previous.state.file ? `${previous.state.file.root}/${previous.state.file.path}` : previous.state.drill.map(d => d.name).join(" / ") || [previous.state.project?.id, previous.state.scopesMission, previous.state.terminalView].filter(Boolean).join(" / ") || "概览"}` }], contentWidth),
+       { text: `正在打开 ${sectionTitle.toLowerCase()}… · 资源管理器保持可用` },
        ...contentLines(previous.state, previous.snapshot, contentWidth, { ...motion, loading: false }).map(line => ({ text: line.text }))]
     : !load.settled && !state.externalUrl
-      ? [{ text: `${sectionTitle} · choose a location in Explorer` }, { text: `${motion.frame} ${sectionTitle.toLowerCase()} read pending…` }]
+      ? [{ text: `${sectionTitle} · 在资源管理器中选择位置` }, { text: `${motion.frame} ${sectionTitle.toLowerCase()} 读取挂起…` }]
       : contentLines(state, snap, contentWidth, motion);
   if (!load.settled && !reduced) motion.used = true;
   const footer = state.footerOn ? snap.stream.at(-1) : undefined;
-  // round-5 (guard): the tmux-style ONE-SHOT activity flash targets the
-  // flashed agent's EXPLORER row — per-seat pane-output events from the
-  // refresh owner, windowed here. The ambient rig-stream footer is NOT an
-  // event source and never flashes. round-6 (guard finding 2): the SGR
-  // inverse is the animation (killed under reduced motion), while the
-  // acknowledgement WINDOW itself ignores reduced — the plain-layer "≈"
-  // marker-slot glyph is the stable static signal reduced motion (and
-  // NO_COLOR) keeps, expiring with the same bounded window.
+  // round-5（守卫）：tmux 风格一次性活动闪烁定位
+  // 闪烁智能体的资源管理器行 — 来自
+  // 刷新所有者的每席位窗格输出事件，在此窗口化。环境
+  // 工作组流页脚不是
+  // 事件源且绝不闪烁。round-6（守卫发现 2）：SGR
+  // 反相是动画（在减少运动下杀死），而
+  // 确认窗口本身忽略减少 — 纯层 "≈"
+  // 标记槽字形是减少运动（和
+  // NO_COLOR）保留的稳定静态信号，随相同有界窗口过期。
   const liveFlashes = (options.rowFlashes ?? []).filter((f) => flashActive(f.at, nowMs, 600, reduced));
   const ackFlashes = (options.rowFlashes ?? []).filter((f) => flashActive(f.at, nowMs, 600, false));
-  const chromeRows = footer ? 4 : 3; // bottom rule + hint bar + status line (+ footer)
+  const chromeRows = footer ? 4 : 3; // 底线 + 提示栏 + 状态行 (+ 页脚)
   const bodyRows = Math.max(rows - lines.length - chromeRows, 1);
   const explorerStart = Math.min(
     Math.max(state.selection - bodyRows + 1, 0),
@@ -1693,7 +1756,7 @@ function renderBody(state: ViewState, snap: FleetSnapshot, options: RenderOption
   const contentStart = Math.min(state.contentOffset, maxContentOffset);
   const visibleContent = content.slice(contentStart, contentStart + contentRows);
   if (content.length > bodyRows) {
-    const scrollText = `scroll ↑/↓ · ${contentStart + 1}-${contentStart + visibleContent.length} of ${content.length}`;
+    const scrollText = `滚动 ↑/↓ · ${contentStart + 1}-${contentStart + visibleContent.length} / ${content.length}`;
     const up = scrollText.indexOf("↑");
     const down = scrollText.indexOf("↓");
     visibleContent.push({
@@ -1714,12 +1777,12 @@ function renderBody(state: ViewState, snap: FleetSnapshot, options: RenderOption
     const y = lines.length + 1; // 1-based terminal row this line will occupy
     const explorerIndex = explorerStart + i;
     const row = explorer[explorerIndex];
-    // round-6/7 (guard): the fresh-output ack rides the marker slot (zero
-    // geometry drift). Collision matrix: a SELECTED flashed row shows "»" —
-    // still unmistakably the selection chevron, while visibly distinct from
-    // both the plain "›" baseline and the unselected "≈" ack — so neither
-    // signal is lost under reduced motion / NO_COLOR; expiry returns the
-    // exact "›" baseline
+    // round-6/7（守卫）：新输出确认乘坐标记槽（零
+    // 几何漂移）。冲突矩阵：所选闪烁行显示 "»" —
+    // 仍明确是选择箭头，同时视觉区分于
+    // 纯 "›" 基线和未选 "≈" 确认 — 因此无
+    // 信号在减少运动 / NO_COLOR 下丢失；过期返回
+    // 确切 "›" 基线
     const flashed = row?.key != null && ackFlashes.some((f) => f.key === row.key);
     if (flashed) flashAck = true;
     const marker = explorerIndex === state.selection && row ? (flashed ? "◆" : "▶") : flashed ? "≈" : " ";
@@ -1730,15 +1793,17 @@ function renderBody(state: ViewState, snap: FleetSnapshot, options: RenderOption
     const selectedOnLine = state.focusedPane === "content" ? state.contentSelection - targetIndex : -1;
     const selectedZone = selectedOnLine >= 0 && selectedOnLine < zones.length ? zones[selectedOnLine] : undefined;
     const selectedAction = !!item?.action && selectedOnLine === zones.length;
-    let contentText = item?.text ?? "";
+    let contentText = clipW(item?.text ?? "", contentWidth);
     let contentMarker = selectedAction ? "›" : " ";
     let rowSegs = item?.segs;
     if (selectedZone) {
       if (selectedZone.start > 0) {
-        contentText = `${contentText.slice(0, selectedZone.start - 1)}›${contentText.slice(selectedZone.start)}`;
-        // R2 HIGH-3: a segs row's paint source must carry the SAME splice the
-        // plain text carries, or stylization erases the keyboard focus marker
-        if (rowSegs) rowSegs = spliceMarkerIntoSegs(rowSegs, selectedZone.start - 1);
+        const markerAt = columnIndex(contentText, selectedZone.start - 1);
+        const afterMarker = columnIndex(contentText, selectedZone.start);
+        contentText = `${contentText.slice(0, markerAt)}›${contentText.slice(afterMarker)}`;
+        // R2 HIGH-3：segs 行的绘制源必须携带相同拼接，
+        // 纯文本携带，否则样式化擦除键盘焦点标记
+        if (rowSegs) rowSegs = spliceMarkerIntoSegs(rowSegs, markerAt);
       } else contentMarker = "›";
     }
     lines.push(pad(fullReading ? `${contentMarker}${contentText}` : `${left}┃${contentMarker}${contentText}`, cols));
@@ -1746,10 +1811,10 @@ function renderBody(state: ViewState, snap: FleetSnapshot, options: RenderOption
       pushExplorerTargets(hitMap, row, explorerDisplay[explorerIndex] ?? row.label, y, explW);
       explorerRows.push({ ...row, y });
       const em = explorerMetas[explorerIndex];
-      if (em && em.length) explorerMeta[y] = em.map((run) => ({ start: 1 + run.start, segs: run.segs })); // +1 = marker slot
+      if (em && em.length) explorerMeta[y] = em.map((run) => ({ start: 1 + run.start, segs: run.segs })); // +1 = 标记槽
       if (row.key && liveFlashes.some((f) => f.key === row.key)) flashRows.push(y);
     }
-    // zones first: hit lookup takes the first match, so a zone wins over the row-wide action
+    // 区优先：命中查找取首次匹配，因此区赢过全行动作
     for (const z of zones) {
       const target = { y, x1: (fullReading ? 2 : explW + 3) + z.start, x2: (fullReading ? 1 : explW + 2) + z.end, action: z.action };
       hitMap.push(target);
@@ -1760,17 +1825,17 @@ function renderBody(state: ViewState, snap: FleetSnapshot, options: RenderOption
       hitMap.push(target);
       contentTargets.push(target);
     }
-    if (rowSegs) segRows[y] = rowSegs;
+    if (rowSegs) segRows[y] = truncateSegs(rowSegs, contentWidth);
   }
 
   if (footer) lines.push(pad(`≋ ${displayTime(footer.tsEmitted, state.timeZone)} ${footer.sourceSession}: ${footer.body}`, cols));
   const drillPath = state.drill.map((d) => d.name).join(" → ");
-  const readWarn = snap.readErrors.length > 0 ? `  ⚠ ${snap.readErrors.length} read(s) failed: ${snap.readErrors[0]}` : "";
+  const readWarn = snap.readErrors.length > 0 ? `  ⚠ ${snap.readErrors.length} 次读取失败: ${snap.readErrors[0]}` : "";
   lines.push(fullReading ? "━".repeat(cols) : paneRule(cols, explW, "bottom"));
-  lines.push(pad(fullReading ? "↑↓ scroll / links · → links · Enter open · Esc Back · refresh · v copy" : keybindHints(state), cols));
+  lines.push(pad(fullReading ? "↑↓ 滚动 / 链接 · → 链接 · 回车打开 · Esc 返回 · 刷新 · v 复制" : keybindHints(state), cols));
   lines.push(
     pad(
-      `[${state.instanceId}] ${state.section}${drillPath ? " · " + drillPath : ""}${state.lastError ? "  ✗ " + state.lastError : ""}${state.notice ? "  ▸ " + state.notice : ""}${readWarn}${state.timeZoneWarning ? " · ⚠ timezone; run timezone" : ""}`,
+      `[${state.instanceId}] ${sectionLabel(state.section)}${drillPath ? " · " + drillPath : ""}${state.lastError ? "  ✗ " + state.lastError : ""}${state.notice ? "  ▸ " + state.notice : ""}${readWarn}${state.timeZoneWarning ? " · ⚠ 时区; 运行 timezone" : ""}`,
       cols,
     ),
   );
@@ -1785,8 +1850,8 @@ function renderBody(state: ViewState, snap: FleetSnapshot, options: RenderOption
     segRows,
     explorerMeta,
     flashRows,
-    // an un-expired ack (even the static reduced-motion glyph) schedules the
-    // bounded expiry redraw — the acknowledgement must settle cleanly
+    // 未过期确认（即使静态减少运动字形）调度
+    // 有界过期重绘 — 确认必须干净结算
     motionActive: motion.used || flashRows.length > 0 || flashAck,
   };
 }

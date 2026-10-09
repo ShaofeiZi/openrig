@@ -9,13 +9,13 @@ import type { ContextUsageStore } from "../src/domain/context-usage-store.js";
 function seedPodAwareRig(db: Database.Database, opts?: { rigName?: string }) {
   const rigName = opts?.rigName ?? "test-rig";
   db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-1", rigName);
-  // Pod
-  db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)").run("pod-1", "rig-1", "dev", "Dev");
-  // Agent node
+  // Pod。
+  db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)").run("pod-1", "rig-1", "dev", "开发");
+  // Agent 节点。
   db.prepare(
     "INSERT INTO nodes (id, rig_id, logical_id, runtime, cwd, pod_id, agent_ref, profile, resolved_spec_name, resolved_spec_version, resolved_spec_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).run("node-1", "rig-1", "dev.impl", "claude-code", "/project", "pod-1", "local:agents/impl", "default", "impl", "1.0.0", "abc123");
-  // Terminal/infrastructure node
+  // Terminal/infrastructure 节点。
   db.prepare(
     "INSERT INTO nodes (id, rig_id, logical_id, runtime, cwd, pod_id, agent_ref, profile) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
   ).run("node-2", "rig-1", "infra.server", "terminal", "/project", "pod-1", "builtin:terminal", "none");
@@ -40,7 +40,7 @@ function seedSession(db: Database.Database, nodeId: string, sessionName: string,
     opts?.resumeToken ?? null,
     opts?.startupCompletedAt ?? null,
   );
-  // Binding with real PK
+  // 使用真实主键的 binding。
   const bindingId = `bind-${nodeId}`;
   db.prepare("INSERT OR REPLACE INTO bindings (id, node_id, tmux_session) VALUES (?, ?, ?)").run(bindingId, nodeId, sessionName);
   return id;
@@ -81,7 +81,7 @@ function mockAdapter(overrides?: Partial<RuntimeAdapter>): RuntimeAdapter {
   };
 }
 
-describe("Node Inventory Projection", () => {
+describe("节点 inventory 投影", () => {
   let db: Database.Database;
 
   beforeEach(() => {
@@ -92,8 +92,8 @@ describe("Node Inventory Projection", () => {
     db.close();
   });
 
-  // Test 1: Inventory includes all nodes for a pod-aware rig
-  it("includes all nodes for a pod-aware rig", () => {
+  // 测试 1：inventory 包含 pod-aware rig 的所有节点。
+  it("包含 pod-aware rig 的所有节点", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
     seedSession(db, "node-2", "infra-server@test-rig");
@@ -105,8 +105,8 @@ describe("Node Inventory Projection", () => {
     expect(entries.every((e) => e.podNamespace === "dev")).toBe(true);
   });
 
-  // Test 2: Inventory includes correct canonical session names
-  it("includes correct canonical session names", () => {
+  // 测试 2：inventory 包含正确的规范 session 名称。
+  it("包含正确的规范 session 名称", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
 
@@ -115,8 +115,8 @@ describe("Node Inventory Projection", () => {
     expect(agentEntry?.canonicalSessionName).toBe("dev-impl@test-rig");
   });
 
-  // Test 3: nodeKind is 'agent' for claude-code/codex, 'infrastructure' for terminal
-  it("nodeKind distinguishes agent from infrastructure", () => {
+  // 测试 3：claude-code/codex 的 nodeKind 为 'agent'，terminal 为 'infrastructure'。
+  it("nodeKind 区分 agent 与 infrastructure", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
     seedSession(db, "node-2", "infra-server@test-rig");
@@ -128,8 +128,8 @@ describe("Node Inventory Projection", () => {
     expect(infra?.nodeKind).toBe("infrastructure");
   });
 
-  // Test 4: tmuxAttachCommand computed correctly
-  it("tmuxAttachCommand computed from session name", () => {
+  // 测试 4：正确计算 tmuxAttachCommand。
+  it("从 session 名称计算 tmuxAttachCommand", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
 
@@ -138,8 +138,8 @@ describe("Node Inventory Projection", () => {
     expect(entry?.tmuxAttachCommand).toBe("tmux attach -t dev-impl@test-rig");
   });
 
-  // Test 5: resumeCommand uses correct runtime syntax
-  it("resumeCommand uses correct runtime syntax", () => {
+  // 测试 5：resumeCommand 使用正确的 runtime 语法。
+  it("resumeCommand 使用正确的 runtime 语法", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig", {
       resumeType: "claude",
@@ -151,8 +151,8 @@ describe("Node Inventory Projection", () => {
     expect(entry?.resumeCommand).toBe("claude --resume 'abc-123-def'");
   });
 
-  // Test 6: resumeCommand is null when no resume token
-  it("resumeCommand is null when no resume token", () => {
+  // 测试 6：没有 resume token 时 resumeCommand 为 null。
+  it("没有 resume token 时 resumeCommand 为 null", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
 
@@ -161,28 +161,27 @@ describe("Node Inventory Projection", () => {
     expect(entry?.resumeCommand).toBeNull();
   });
 
-  it("recoveryGuidance prefers native Claude resume but includes picker fallback", () => {
+  it("recoveryGuidance 优先使用 Claude 原生恢复，但包含选择器回退", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig", {
       resumeToken: "abc-123-def",
     });
 
-    // OPR.0.4.0.26: recoveryGuidance is relocated off the LIST onto the
-    // single-node detail path. The LIST entry no longer inlines it.
+    // OPR.0.4.0.26：recoveryGuidance 从 LIST 迁移到单节点 detail 路径；LIST 条目不再内联。
     const entry = getNodeInventory(db, "rig-1").find((e) => e.logicalId === "dev.impl");
     expect(entry?.recoveryGuidance).toBeNull();
     const detail = getNodeDetail(db, "rig-1", "dev.impl");
-    expect(detail?.recoveryGuidance?.summary).toContain("native Claude resume");
+    expect(detail?.recoveryGuidance?.summary).toContain("Claude 原生恢复");
     expect(detail?.recoveryGuidance?.commands).toContain("claude --resume 'abc-123-def' --name 'dev-impl@test-rig'");
     expect(detail?.recoveryGuidance?.commands).toContain("cd /project");
     expect(detail?.recoveryGuidance?.commands).toContain("claude --resume");
-    expect(detail?.recoveryGuidance?.notes).toContain("Look for session name: dev-impl@test-rig");
-    expect(detail?.recoveryGuidance?.notes).toContain("Choose the full conversation option, not summary.");
+    expect(detail?.recoveryGuidance?.notes).toContain("查找会话名称：dev-impl@test-rig");
+    expect(detail?.recoveryGuidance?.notes).toContain("请选择完整会话选项，不要选择摘要。");
   });
 
-  it("recoveryGuidance for Codex without token uses workspace-local picker fallback", () => {
+  it("没有 token 的 Codex recoveryGuidance 使用工作区本地选择器回退", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-2", "test-rig");
-    db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)").run("pod-2", "rig-2", "dev", "Dev");
+    db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)").run("pod-2", "rig-2", "dev", "开发");
     db.prepare(
       "INSERT INTO nodes (id, rig_id, logical_id, runtime, cwd, pod_id, agent_ref, profile, resolved_spec_name, resolved_spec_version, resolved_spec_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     ).run("node-codex", "rig-2", "dev.qa", "codex", "/workspace/app", "pod-2", "local:agents/qa", "default", "qa", "1.0.0", "hash");
@@ -190,18 +189,18 @@ describe("Node Inventory Projection", () => {
 
     const entry = getNodeInventory(db, "rig-2").find((e) => e.logicalId === "dev.qa");
     expect(entry?.resumeCommand).toBeNull();
-    expect(entry?.recoveryGuidance).toBeNull(); // relocated to detail
+    expect(entry?.recoveryGuidance).toBeNull(); // 已迁移到 detail
     const detail = getNodeDetail(db, "rig-2", "dev.qa");
     expect(detail?.recoveryGuidance?.summary).toContain("codex -s workspace-write resume --last");
-    expect(detail?.recoveryGuidance?.summary).toContain("explicit -s workspace-write floor flag");
+    expect(detail?.recoveryGuidance?.summary).toContain("显式设置 -s workspace-write 底线参数");
     expect(detail?.recoveryGuidance?.commands).toEqual(["cd /workspace/app", "codex -s workspace-write resume --last"]);
-    expect(detail?.recoveryGuidance?.notes).toContain("Use workspace and recent prompt text to identify the right conversation.");
-    expect(detail?.recoveryGuidance?.notes).toContain("If the identity anchor was captured, the picker may include: dev-qa@test-rig");
+    expect(detail?.recoveryGuidance?.notes).toContain("请结合工作区和近期提示词文本识别正确会话。");
+    expect(detail?.recoveryGuidance?.notes).toContain("如果已捕获身份锚点，选择器中可能包含：dev-qa@test-rig");
   });
 
-  it("resumeCommand and recoveryGuidance preserve Codex config profile", () => {
+  it("resumeCommand 与 recoveryGuidance 保留 Codex config profile", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-2", "test-rig");
-    db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)").run("pod-2", "rig-2", "platform", "Platform");
+    db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)").run("pod-2", "rig-2", "platform", "平台");
     db.prepare(
       "INSERT INTO nodes (id, rig_id, logical_id, runtime, codex_config_profile, cwd, pod_id, agent_ref, profile, resolved_spec_name, resolved_spec_version, resolved_spec_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     ).run("node-codex", "rig-2", "platform.mac-admin", "codex", "sysadmin", "/Users/example", "pod-2", "local:agents/mac-admin", "default", "mac-admin", "1.0.0", "hash");
@@ -214,15 +213,15 @@ describe("Node Inventory Projection", () => {
 
     expect(entry?.codexConfigProfile).toBe("sysadmin");
     expect(entry?.resumeCommand).toBe("codex -p 'sysadmin' resume 'sess-456'");
-    expect(entry?.recoveryGuidance).toBeNull(); // relocated to detail
+    expect(entry?.recoveryGuidance).toBeNull(); // 已迁移到 detail
     const detail = getNodeDetail(db, "rig-2", "platform.mac-admin");
     expect(detail?.codexConfigProfile).toBe("sysadmin");
     expect(detail?.recoveryGuidance?.commands).toContain("codex -p 'sysadmin' resume 'sess-456'");
-    expect(detail?.recoveryGuidance?.notes).toContain("Preserve Codex config profile: sysadmin");
+    expect(detail?.recoveryGuidance?.notes).toContain("保留 Codex 配置 profile：sysadmin");
   });
 
-  // Test 7: startupStatus reflects session startup_status column
-  it("startupStatus reflects session startup_status", () => {
+  // 测试 7：startupStatus 反映 session startup_status 列。
+  it("startupStatus 反映 session startup_status", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig", { startupStatus: "failed" });
 
@@ -231,8 +230,8 @@ describe("Node Inventory Projection", () => {
     expect(entry?.startupStatus).toBe("failed");
   });
 
-  // Test 8: restoreOutcome populated from restore.completed event
-  it("restoreOutcome = 'resumed' from restore.completed event", () => {
+  // 测试 8：从 restore.completed 事件填充 restoreOutcome。
+  it("从 restore.completed 事件得到 restoreOutcome = 'resumed'", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
     seedEvent(db, "rig-1", "node-1", "restore.completed", {
@@ -256,9 +255,9 @@ describe("Node Inventory Projection", () => {
     expect(infra?.restoreOutcome).toBe("failed");
   });
 
-  // OPR.0.3.4.6 — cross-surface regression guard: restoreOutcome attention_required
-  // projects to both restoreOutcome=attention_required AND lifecycleState=attention_required.
-  it("OPR.0.3.4.6 guard: restoreOutcome attention_required projects to node lifecycleState attention_required (never failed)", () => {
+  // OPR.0.3.4.6——跨 surface 回归 guard：restoreOutcome attention_required 同时投影为
+  // restoreOutcome=attention_required 与 lifecycleState=attention_required。
+  it("OPR.0.3.4.6 guard：restoreOutcome attention_required 投影为节点 lifecycleState attention_required（绝非 failed）", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
     seedEvent(db, "rig-1", "node-1", "restore.completed", {
@@ -281,8 +280,8 @@ describe("Node Inventory Projection", () => {
     expect(node?.lifecycleState).not.toBe("failed");
   });
 
-  // Resume state naming: rebuilt and fresh outcomes from inventory
-  it("restoreOutcome maps checkpoint_written to 'rebuilt' and fresh_no_checkpoint to 'fresh'", () => {
+  // Resume 状态命名：inventory 中的 rebuilt 与 fresh outcome。
+  it("restoreOutcome 把 checkpoint_written 映射为 'rebuilt'，把 fresh_no_checkpoint 映射为 'fresh'", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
     seedSession(db, "node-2", "infra-server@test-rig");
@@ -307,28 +306,28 @@ describe("Node Inventory Projection", () => {
     expect(infra?.restoreOutcome).toBe("fresh");
   });
 
-  // Test 9: latestError populated from startup_failed events
-  it("latestError from startup_failed event", () => {
+  // 测试 9：从 startup_failed 事件填充 latestError。
+  it("从 startup_failed 事件得到 latestError", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig", { startupStatus: "failed" });
     seedEvent(db, "rig-1", "node-1", "node.startup_failed", {
       rigId: "rig-1",
       nodeId: "node-1",
-      error: "harness launch timeout after 30s",
+      error: "harness 启动 30 秒后超时",
     });
 
     const entries = getNodeInventory(db, "rig-1");
     const entry = entries.find((e) => e.logicalId === "dev.impl");
-    expect(entry?.latestError).toBe("harness launch timeout after 30s");
+    expect(entry?.latestError).toBe("harness 启动 30 秒后超时");
   });
 
-  it("clears stale latestError when the newest session is ready", () => {
+  it("最新 session ready 时清除陈旧 latestError", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig", { startupStatus: "ready" });
     seedEvent(db, "rig-1", "node-1", "node.startup_failed", {
       rigId: "rig-1",
       nodeId: "node-1",
-      error: "old startup failure",
+      error: "旧启动失败",
     });
 
     const entries = getNodeInventory(db, "rig-1");
@@ -336,14 +335,14 @@ describe("Node Inventory Projection", () => {
     expect(entry?.latestError).toBeNull();
   });
 
-  it("clears stale attention_required residue when the newest session is ready", () => {
+  it("最新 session ready 时清除陈旧 attention_required 残留", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig-old", { id: "sess-node-1-0001", startupStatus: "attention_required" });
     seedSession(db, "node-1", "dev-impl@test-rig", { id: "sess-node-1-0002", startupStatus: "ready" });
     seedEvent(db, "rig-1", "node-1", "node.startup_failed", {
       rigId: "rig-1",
       nodeId: "node-1",
-      error: "Claude was waiting for trust approval",
+      error: "Claude 正在等待信任批准",
     });
 
     const entries = getNodeInventory(db, "rig-1");
@@ -352,8 +351,8 @@ describe("Node Inventory Projection", () => {
     expect(entry?.latestError).toBeNull();
   });
 
-  // Test 10: Legacy rigs produce inventory with legacy session names
-  it("legacy rigs produce inventory with legacy session names", () => {
+  // 测试 10：旧版 rig 使用旧版 session 名称生成 inventory。
+  it("旧版 rig 使用旧版 session 名称生成 inventory", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-leg", "r01");
     db.prepare(
       "INSERT INTO nodes (id, rig_id, logical_id, runtime) VALUES (?, ?, ?, ?)"
@@ -367,8 +366,8 @@ describe("Node Inventory Projection", () => {
     expect(entries[0]!.podId).toBeNull();
   });
 
-  // Test 11: getNodeDetail returns startupFiles from node_startup_context
-  it("getNodeDetail returns startupFiles from node_startup_context", () => {
+  // 测试 11：getNodeDetail 从 node_startup_context 返回 startupFiles。
+  it("getNodeDetail 从 node_startup_context 返回 startupFiles", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
     seedStartupContext(db, "node-1", {
@@ -382,18 +381,18 @@ describe("Node Inventory Projection", () => {
     expect(detail).not.toBeNull();
     expect(detail!.startupFiles).toHaveLength(2);
     expect(detail!.startupFiles[0]!.path).toBe("role.md");
-    // Binding.id regression: must match the real PK from bindings table
+    // Binding.id 回归：必须匹配 bindings 表中的真实主键。
     expect(detail!.binding).not.toBeNull();
     expect(detail!.binding!.id).toBe("bind-node-1");
   });
 
-  // Test 12: getNodeDetail returns recentEvents using events.node_id
-  it("getNodeDetail returns recentEvents for the node", () => {
+  // 测试 12：getNodeDetail 使用 events.node_id 返回 recentEvents。
+  it("getNodeDetail 返回节点的 recentEvents", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
     seedEvent(db, "rig-1", "node-1", "node.startup_pending", { rigId: "rig-1", nodeId: "node-1" });
     seedEvent(db, "rig-1", "node-1", "node.startup_ready", { rigId: "rig-1", nodeId: "node-1" });
-    // Event for a different node — should not appear
+    // 其他节点的事件不应出现。
     seedEvent(db, "rig-1", "node-2", "node.startup_pending", { rigId: "rig-1", nodeId: "node-2" });
 
     const detail = getNodeDetail(db, "rig-1", "dev.impl");
@@ -402,12 +401,12 @@ describe("Node Inventory Projection", () => {
     expect(detail!.recentEvents.map((e) => e.type)).toEqual(["node.startup_ready", "node.startup_pending"]);
   });
 
-  // Test 13: getNodeDetail installedResources fallback from startup context projection
-  it("getNodeDetail installedResources from startup context projection fallback", () => {
+  // 测试 13：getNodeDetail installedResources 回退到 startup context projection。
+  it("getNodeDetail installedResources 使用 startup context projection 回退", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
     seedStartupContext(db, "node-1", {
-      // Use real persisted shape from startup-orchestrator.ts line 139
+      // 使用 startup-orchestrator.ts 第 139 行的真实持久化形状。
       projectionEntries: [
         { effectiveId: "skill-1", category: "skills", target: ".claude/skills/skill-1", sourceSpec: "impl", sourcePath: "skills/s1", resourcePath: "s1", absolutePath: "/project/agents/impl/skills/s1", mergeStrategy: "overwrite" },
         { effectiveId: "guidance-1", category: "guidance", target: "CLAUDE.md", sourceSpec: "impl", sourcePath: "guidance.md", resourcePath: "guidance.md", absolutePath: "/project/agents/impl/guidance.md", mergeStrategy: "append" },
@@ -421,8 +420,8 @@ describe("Node Inventory Projection", () => {
     expect(detail!.installedResources[0]!.targetPath).toBe(".claude/skills/skill-1");
   });
 
-  // Test 14: getNodeDetail infrastructureStartupCommand from terminal send_text
-  it("getNodeDetail infrastructureStartupCommand for terminal node", () => {
+  // 测试 14：getNodeDetail 从 terminal send_text 获得 infrastructureStartupCommand。
+  it("getNodeDetail 返回 terminal 节点的 infrastructureStartupCommand", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-2", "infra-server@test-rig");
     seedStartupContext(db, "node-2", {
@@ -439,8 +438,8 @@ describe("Node Inventory Projection", () => {
     expect(detail!.nodeKind).toBe("infrastructure");
   });
 
-  // Test 15: getNodeDetail installedResources adapter-backed path
-  it("getNodeDetail installedResources via adapter listInstalled", () => {
+  // 测试 15：getNodeDetail installedResources 的 adapter-backed 路径。
+  it("getNodeDetail 通过 adapter listInstalled 返回 installedResources", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
     const adapter = mockAdapter({
@@ -457,7 +456,7 @@ describe("Node Inventory Projection", () => {
     expect(detail!.installedResources[0]!.id).toBe("live-skill");
   });
 
-  // L2 lifecycleState projection
+  // L2 lifecycleState 投影。
   describe("lifecycleState (L2)", () => {
     function seedSnapshotForRig(rigId: string, sessions: Array<{ nodeId: string; resumeToken: string | null }>): void {
       const data = {
@@ -484,7 +483,7 @@ describe("Node Inventory Projection", () => {
         .run(`snap-${rigId}`, rigId, "manual", "complete", JSON.stringify(data));
     }
 
-    it("running session -> lifecycleState=running", () => {
+    it("运行中的 session → lifecycleState=running", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig", { status: "running" });
 
@@ -493,7 +492,7 @@ describe("Node Inventory Projection", () => {
       expect(entry?.lifecycleState).toBe("running");
     });
 
-    it("detached session + usable snapshot with token for THIS node -> lifecycleState=recoverable", () => {
+    it("detached session + 含本节点 token 的可用 snapshot → lifecycleState=recoverable", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig", { status: "detached" });
       seedSnapshotForRig("rig-1", [{ nodeId: "node-1", resumeToken: "abc-123" }]);
@@ -503,10 +502,10 @@ describe("Node Inventory Projection", () => {
       expect(entry?.lifecycleState).toBe("recoverable");
     });
 
-    it("detached session + snapshot exists but resume token is null for this node -> lifecycleState=detached", () => {
+    it("detached session + snapshot 存在但本节点 resume token 为 null → lifecycleState=detached", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig", { status: "detached" });
-      // Snapshot has token for a DIFFERENT node, not this one
+      // Snapshot 含其他节点的 token，而非本节点。
       seedSnapshotForRig("rig-1", [{ nodeId: "node-2", resumeToken: "xyz-789" }]);
 
       const entries = getNodeInventory(db, "rig-1");
@@ -514,7 +513,7 @@ describe("Node Inventory Projection", () => {
       expect(entry?.lifecycleState).toBe("detached");
     });
 
-    it("detached session + no snapshot -> lifecycleState=detached", () => {
+    it("detached session + 无 snapshot → lifecycleState=detached", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig", { status: "detached" });
 
@@ -523,10 +522,10 @@ describe("Node Inventory Projection", () => {
       expect(entry?.lifecycleState).toBe("detached");
     });
 
-    it("restoreOutcome=failed + tmux session alive -> lifecycleState=attention_required (Claude resume-prompt proxy)", () => {
+    it("restoreOutcome=failed + tmux session 存活 → lifecycleState=attention_required（Claude resume-prompt 代理）", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig", { status: "running" });
-      // Persist a restore.completed event with this node failed
+      // 持久化一个本节点失败的 restore.completed 事件。
       seedEvent(db, "rig-1", "node-1", "restore.completed", {
         result: { rigResult: "partially_restored", nodes: [{ nodeId: "node-1", status: "failed" }] },
       });
@@ -537,7 +536,7 @@ describe("Node Inventory Projection", () => {
       expect(entry?.lifecycleState).toBe("attention_required");
     });
 
-    it("exited session + no snapshot -> lifecycleState=detached", () => {
+    it("exited session + 无 snapshot → lifecycleState=detached", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig", { status: "exited" });
 
@@ -547,8 +546,8 @@ describe("Node Inventory Projection", () => {
     });
   });
 
-  describe("deriveRestoreOutcome per-node-latest (OPR.0.3.4.11)", () => {
-    it("reads restore.subset_completed for a target node", () => {
+  describe("deriveRestoreOutcome 逐节点最新值（OPR.0.3.4.11）", () => {
+    it("读取目标节点的 restore.subset_completed", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig");
       seedEvent(db, "rig-1", "node-1", "restore.subset_completed", {
@@ -568,11 +567,11 @@ describe("Node Inventory Projection", () => {
       expect(agent?.restoreOutcome).toBe("resumed");
     });
 
-    it("non-target node keeps prior restore.completed outcome after restore.subset_completed", () => {
+    it("restore.subset_completed 后非目标节点保留先前 restore.completed outcome", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig");
       seedSession(db, "node-2", "infra-server@test-rig");
-      // Prior full restore: node-2 was attention_required
+      // 先前完整 restore：node-2 为 attention_required。
       seedEvent(db, "rig-1", "node-2", "restore.completed", {
         rigId: "rig-1",
         snapshotId: "snap-0",
@@ -585,7 +584,7 @@ describe("Node Inventory Projection", () => {
           warnings: [],
         },
       });
-      // Later subset launch: only node-1
+      // 后续 subset launch：仅 node-1。
       seedEvent(db, "rig-1", "node-1", "restore.subset_completed", {
         rigId: "rig-1",
         snapshotId: "snap-1",
@@ -602,11 +601,11 @@ describe("Node Inventory Projection", () => {
       const target = entries.find((e) => e.logicalId === "dev.impl");
       const nonTarget = entries.find((e) => e.logicalId === "infra.server");
       expect(target?.restoreOutcome).toBe("resumed");
-      // Non-target keeps its prior outcome, NOT clobbered to n-a
+      // 非目标节点保留先前 outcome，不会被覆盖为 n-a。
       expect(nonTarget?.restoreOutcome).toBe("attention_required");
     });
 
-    it("never-restored node remains n-a even after subset_completed for other nodes", () => {
+    it("即使其他节点完成 subset_completed，从未 restore 的节点仍为 n-a", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig");
       seedEvent(db, "rig-1", "node-1", "restore.subset_completed", {
@@ -628,21 +627,21 @@ describe("Node Inventory Projection", () => {
   });
 
   describe("heldReason (OPR.0.3.4.11)", () => {
-    it("derives heldReason from node.held event", () => {
+    it("从 node.held 事件派生 heldReason", () => {
       seedPodAwareRig(db);
       seedEvent(db, "rig-1", "node-2", "node.held", {
         rigId: "rig-1",
         nodeId: "node-2",
         logicalId: "infra.server",
-        reason: "codex auth expired",
+        reason: "Codex 身份验证已过期",
       });
 
       const entries = getNodeInventory(db, "rig-1");
       const held = entries.find((e) => e.logicalId === "infra.server");
-      expect(held?.heldReason).toBe("codex auth expired");
+      expect(held?.heldReason).toBe("Codex 身份验证已过期");
     });
 
-    it("heldReason is null when no node.held event exists", () => {
+    it("不存在 node.held 事件时 heldReason 为 null", () => {
       seedPodAwareRig(db);
 
       const entries = getNodeInventory(db, "rig-1");
@@ -650,7 +649,7 @@ describe("Node Inventory Projection", () => {
       expect(entry?.heldReason).toBeNull();
     });
 
-    it("heldReason is superseded (null) when node has a running session", () => {
+    it("节点有 running session 时 heldReason 被覆盖为 null", () => {
       seedPodAwareRig(db);
       seedEvent(db, "rig-1", "node-1", "node.held", {
         rigId: "rig-1",
@@ -665,16 +664,16 @@ describe("Node Inventory Projection", () => {
       expect(entry?.heldReason).toBeNull();
     });
 
-    it("heldReason is superseded by a newer restore.subset_completed containing the node (rig-scoped event, no node_id)", () => {
+    it("包含该节点的较新 restore.subset_completed 会覆盖 heldReason（rig-scoped 事件，无 node_id）", () => {
       seedPodAwareRig(db);
-      // First: held (node-scoped)
+      // 首先：held（node-scoped）。
       seedEvent(db, "rig-1", "node-1", "node.held", {
         rigId: "rig-1",
         nodeId: "node-1",
         logicalId: "dev.impl",
         reason: "excluded_from_subset",
       });
-      // Then: launched via subset — rig-scoped event (node_id NULL in production)
+      // 随后：通过 subset 启动——rig-scoped 事件（生产中 node_id 为 NULL）。
       db.prepare(
         "INSERT INTO events (rig_id, node_id, type, payload) VALUES (?, NULL, ?, ?)"
       ).run("rig-1", "restore.subset_completed", JSON.stringify({
@@ -696,8 +695,8 @@ describe("Node Inventory Projection", () => {
     });
   });
 
-  describe("deriveRestoreOutcome folds restore.outcome_reconciled (OPR.0.4.0.16)", () => {
-    it("reconcile event overrides earlier failed restore outcome", () => {
+  describe("deriveRestoreOutcome 折叠 restore.outcome_reconciled（OPR.0.4.0.16）", () => {
+    it("reconcile 事件覆盖较早的 failed restore outcome", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig");
       seedEvent(db, "rig-1", "node-1", "restore.completed", {
@@ -714,7 +713,7 @@ describe("Node Inventory Projection", () => {
       expect(entry?.restoreOutcome).toBe("operator_recovered");
     });
 
-    it("newer failed restore outcome is NOT overridden by older reconcile", () => {
+    it("较新的 failed restore outcome 不会被较早的 reconcile 覆盖", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig");
       db.prepare("INSERT INTO events (rig_id, node_id, type, payload) VALUES (?, ?, ?, ?)").run(
@@ -731,7 +730,7 @@ describe("Node Inventory Projection", () => {
       expect(entry?.restoreOutcome).toBe("failed");
     });
 
-    it("reconcile for one node does not affect another node", () => {
+    it("一个节点的 reconcile 不影响其他节点", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig");
       seedSession(db, "node-2", "infra-server@test-rig");
@@ -752,7 +751,7 @@ describe("Node Inventory Projection", () => {
       expect(entries.find((e) => e.logicalId === "infra.server")?.restoreOutcome).toBe("failed");
     });
 
-    it("no reconcile event leaves failed restore outcome unchanged", () => {
+    it("没有 reconcile 事件时 failed restore outcome 保持不变", () => {
       seedPodAwareRig(db);
       seedSession(db, "node-1", "dev-impl@test-rig");
       seedEvent(db, "rig-1", "node-1", "restore.completed", {
@@ -766,16 +765,14 @@ describe("Node Inventory Projection", () => {
   });
 });
 
-// OPR.0.4.0.26 — node-LIST payload source dedupe. The LIST drops the heavy
-// per-node recoveryGuidance prose and the currentUsage blob; the full data
-// is RELOCATED (not deleted) onto the single-node detail / whoami path.
-describe("OPR.0.4.0.26 — node-list payload source dedupe", () => {
+// OPR.0.4.0.26——node-LIST payload 来源去重。LIST 丢弃笨重的逐节点 recoveryGuidance 文本与
+// currentUsage blob；完整数据迁移（而非删除）到单节点 detail / whoami 路径。
+describe("OPR.0.4.0.26——node-list payload 来源去重", () => {
   let db: Database.Database;
   beforeEach(() => { db = createFullTestDb(); });
   afterEach(() => { db.close(); });
 
-  // A quote-free marker inside the blob so substring checks survive JSON
-  // escaping when the value is serialized inside a larger payload.
+  // blob 内使用不含引号的 marker，使值序列化进更大 payload 后，子串检查仍不受 JSON 转义影响。
   const HEAVY_BLOB_MARKER = "ZZHEAVYCURRENTUSAGEBLOBZZ";
   const HEAVY_CURRENT_USAGE = JSON.stringify({ model_context_window: 258400, blob: HEAVY_BLOB_MARKER + "x".repeat(4000) });
 
@@ -798,8 +795,7 @@ describe("OPR.0.4.0.26 — node-list payload source dedupe", () => {
     };
   }
 
-  // Stub store: returns the full usage for every node so we can observe the
-  // list-vs-detail split without persisting real samples.
+  // Stub store：为每个节点返回完整 usage，从而无需持久化真实 sample 即可观察 list/detail 分离。
   function stubStore(): ContextUsageStore {
     return {
       getForNodes: (entries: Array<{ nodeId: string }>) =>
@@ -809,7 +805,7 @@ describe("OPR.0.4.0.26 — node-list payload source dedupe", () => {
     } as unknown as ContextUsageStore;
   }
 
-  it("LIST omits recoveryGuidance (relocated to detail)", () => {
+  it("LIST 省略 recoveryGuidance（迁移到 detail）", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig", { resumeToken: "abc-123-def" });
 
@@ -821,16 +817,16 @@ describe("OPR.0.4.0.26 — node-list payload source dedupe", () => {
     expect(detail?.recoveryGuidance?.summary).toBeTruthy();
   });
 
-  it("LIST contextUsage drops currentUsage but keeps every scalar", () => {
+  it("LIST contextUsage 丢弃 currentUsage，但保留每个 scalar", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
 
     const listEntry = getNodeInventoryWithContext(db, "rig-1", stubStore())
       .find((e) => e.logicalId === "dev.impl");
     const ctx = listEntry?.contextUsage;
-    // The heavy blob is gone from the LIST...
+    // 笨重 blob 已从 LIST 移除……
     expect(ctx?.currentUsage).toBeNull();
-    // ...but the scalars the ring/table/filter consumers use are intact.
+    // ……但 ring/table/filter 消费者使用的 scalar 完整保留。
     expect(ctx?.usedPercentage).toBe(42);
     expect(ctx?.remainingPercentage).toBe(58);
     expect(ctx?.contextWindowSize).toBe(200000);
@@ -842,7 +838,7 @@ describe("OPR.0.4.0.26 — node-list payload source dedupe", () => {
     expect(ctx?.availability).toBe("known");
   });
 
-  it("LIST exposes per-seat transcript ingest health from the capture store", () => {
+  it("LIST 从 capture store 暴露逐席位 transcript ingest 健康状态", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
     const getIngestHealth = vi.fn(() => ({
@@ -869,30 +865,29 @@ describe("OPR.0.4.0.26 — node-list payload source dedupe", () => {
     });
   });
 
-  it("DETAIL contextUsage retains the full currentUsage (relocation, not loss)", () => {
+  it("DETAIL contextUsage 保留完整 currentUsage（迁移而非丢失）", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig");
 
     const detail = getNodeDetailWithContext(db, "rig-1", "dev.impl", stubStore());
     expect(detail?.contextUsage?.currentUsage).toBe(HEAVY_CURRENT_USAGE);
-    // Detail also carries full recoveryGuidance.
+    // Detail 也携带完整 recoveryGuidance。
     expect(detail?.recoveryGuidance).not.toBeNull();
   });
 
-  it("AC-1: LIST JSON omits the heavy blobs; DETAIL JSON keeps them (slimmed + relocated)", () => {
+  it("AC-1：LIST JSON 省略笨重 blob；DETAIL JSON 保留它们（精简 + 迁移）", () => {
     seedPodAwareRig(db);
     seedSession(db, "node-1", "dev-impl@test-rig", { resumeToken: "abc-123-def" });
 
     const listJson = JSON.stringify(getNodeInventoryWithContext(db, "rig-1", stubStore()));
-    // The heavy currentUsage blob and the per-node guidance prose are NOT in
-    // the LIST payload — the two source hogs no longer dominate.
+    // 笨重 currentUsage blob 与逐节点指导文本不在 LIST payload 中——这两个主要来源不再占据主导。
     expect(listJson).not.toContain(HEAVY_BLOB_MARKER);
-    expect(listJson).not.toContain("Choose the full conversation option");
+    expect(listJson).not.toContain("请选择完整会话选项");
     expect(listJson).toContain('"recoveryGuidance":null');
 
     const detailJson = JSON.stringify(getNodeDetailWithContext(db, "rig-1", "dev.impl", stubStore()));
-    // The full data remains retrievable on the single-node DETAIL path.
+    // 完整数据仍可在单节点 DETAIL 路径上获取。
     expect(detailJson).toContain(HEAVY_BLOB_MARKER);
-    expect(detailJson).toContain("Choose the full conversation option");
+    expect(detailJson).toContain("请选择完整会话选项");
   });
 });

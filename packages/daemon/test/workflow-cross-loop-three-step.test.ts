@@ -19,13 +19,12 @@ import { QueueRepository } from "../src/domain/queue-repository.js";
 import { WorkflowRuntime } from "../src/domain/workflow-runtime.js";
 
 /**
- * PRD § Acceptance Criteria load-bearing case (Phase D):
- *   "A workflow instance with three steps, instantiated and run by
- *    three different rigs, completes with a continuous step trail and
- *    no orphaned packets."
+ * PRD § 验收标准承重用例（Phase D）：
+ *   “一个含三步的 workflow 实例，由三个不同 rig 实例化并运行，
+ *    以连续的 step 轨迹完成，且无孤儿 packet。”
  *
- * This test simulates the three different rigs by using three
- * different actor sessions on canonical rig names; the daemon
+ * 本测试通过在 canonical rig 名上使用三个不同的 actor session
+ * 来模拟三个不同 rig；daemon
  * doesn't gate this test on rig topology being live.
  */
 
@@ -65,7 +64,7 @@ const SPEC = `workflow:
       - done
 `;
 
-describe("workflow cross-loop three-step (PL-004 Phase D PRD acceptance)", () => {
+describe("工作流跨循环三步流程（PL-004 Phase D PRD 验收）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -98,7 +97,7 @@ describe("workflow cross-loop three-step (PL-004 Phase D PRD acceptance)", () =>
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("three steps × three actors → completed with continuous trail + zero orphans", async () => {
+  it("三步 × 三个执行者完成连续轨迹且无孤儿记录", async () => {
     const events: Array<{ type: string }> = [];
     bus.subscribe((e) => events.push(e));
 

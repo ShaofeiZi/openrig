@@ -1,17 +1,19 @@
-// V1 attempt-3 Phase 3 bounce-fix — A3 fix.
+// V1 attempt-3 Phase 3 反弹修复 —— A3 修复。
 //
-// Smarter formatter for activity-feed event payloads. Original Phase 3
-// LogPanel + RecentActivity only checked `payload.summary` and rendered
-// "—" for events that don't carry that field — most events DO NOT.
+// 面向活动 feed 事件负载的更聪明的格式化器。早期 Phase 3 的 LogPanel 与
+// RecentActivity 只看 `payload.summary`，对不带该字段的事件一律渲染 "—"——
+// 而大多数事件并不带这个字段。
 //
-// Strategy:
-//   1. Try common message-style keys (summary, body, detail, message, title).
-//   2. Build a compact key=value preview from up to 4 top-level payload keys
-//      (skipping noise keys like timestamps and ULIDs).
-//   3. Final fallback: JSON.stringify(payload).slice(0, 200).
+// 策略：
+//   1. 先尝试常见的 message 风格键（summary、body、detail、message、title）。
+//   2. 从最多 4 个顶层负载键构建紧凑的 key=value 预览
+//      （跳过时间戳、ULID 这类噪声键）。
+//   3. 最终兜底：JSON.stringify(payload).slice(0, 200)。
 
+// 候选 message 键名，均为协议字段，保持原值。
 const MESSAGE_KEYS = ["summary", "body", "detail", "message", "title", "text", "description"] as const;
 
+// 紧凑预览中要跳过的噪声键（时间戳、排序键等机器字段）。
 const NOISE_KEYS = new Set([
   "ts",
   "ts_created",
@@ -36,14 +38,14 @@ function valuePreview(v: unknown): string | null {
     return trimmed.length > 0 ? shorten(trimmed) : null;
   }
   if (typeof v === "number" || typeof v === "boolean") return String(v);
-  return null; // skip nested objects/arrays in the compact preview
+  return null; // 紧凑预览中跳过嵌套对象/数组
 }
 
 export function formatEventPayload(payload: unknown): string {
   if (!payload || typeof payload !== "object") return "—";
   const obj = payload as Record<string, unknown>;
 
-  // Pass 1: explicit message keys.
+  // 第一遍：显式的 message 键。
   for (const key of MESSAGE_KEYS) {
     const v = obj[key];
     if (typeof v === "string" && v.trim().length > 0) {
@@ -51,7 +53,7 @@ export function formatEventPayload(payload: unknown): string {
     }
   }
 
-  // Pass 2: compact key=value preview of top-level scalar fields.
+  // 第二遍：顶层标量字段的紧凑 key=value 预览。
   const previewParts: string[] = [];
   for (const [k, v] of Object.entries(obj)) {
     if (NOISE_KEYS.has(k)) continue;
@@ -62,7 +64,7 @@ export function formatEventPayload(payload: unknown): string {
   }
   if (previewParts.length > 0) return previewParts.join(" · ");
 
-  // Pass 3: JSON fallback (truncated).
+  // 第三遍：JSON 兜底（截断）。
   try {
     const json = JSON.stringify(obj);
     return shorten(json, 200);

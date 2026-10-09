@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch30",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/daemon/test/rigspec-workspace.test.ts",
+      "before_sha256_16": "2734024ccf63e45d",
+      "after_sha256_16": "2dd83ea53afb68f6",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/scope-audit-parity.test.ts",
+      "before_sha256_16": "8b8547ec06c07fab",
+      "after_sha256_16": "cdb5516c42353d4a",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/whoami-workspace.test.ts",
+      "before_sha256_16": "19152d6912e33a4e",
+      "after_sha256_16": "f36fe032dc1518f9",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/bootstrap.test.ts",
+      "before_sha256_16": "6855d86cfa55ece4",
+      "after_sha256_16": "022e17f28c26f89a",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/context-resolve.test.ts",
+      "before_sha256_16": "2779b408c089626e",
+      "after_sha256_16": "a782ccd8820d42a9",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

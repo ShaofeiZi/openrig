@@ -29,7 +29,7 @@ export type DiscoveryAdoptTarget =
   | { kind: "node"; logicalId: string }
   | { kind: "pod"; podId: string; podNamespace: string; memberName: string };
 
-/** Trigger a discovery scan. On success, invalidates discovery list queries. */
+/** 触发一次发现扫描。成功后使发现列表相关查询失效。 */
 export function useDiscoveryScan() {
   const queryClient = useQueryClient();
   return useMutation<{ sessions: DiscoveredSession[] }, Error>({
@@ -55,7 +55,7 @@ function buildDiscoveryUrl(query?: DiscoveryQuery): string {
   return qs ? `/api/discovery?${qs}` : "/api/discovery";
 }
 
-/** Read discovered sessions list. Pure read, no scan side effect. Normalizes non-array responses. */
+/** 读取已发现会话列表。纯读取，不触发扫描副作用。对非数组响应做归一化。 */
 export function useDiscoveredSessions(query?: DiscoveryQuery, enabled: boolean = true) {
   const url = buildDiscoveryUrl(query);
   const queryKey = ["discovery", query?.status ?? "all", query?.runtimeHint?.join(",") ?? "any", query?.minConfidence ?? "any"];
@@ -71,15 +71,15 @@ export function useDiscoveredSessions(query?: DiscoveryQuery, enabled: boolean =
   });
 }
 
-/** Conditional hook for discovered sessions — only fetches when enabled */
+/** 发现会话的条件 hook——仅在 enabled 为真时才发起请求 */
 export function useDiscoveredSessionsConditional(enabled: boolean): DiscoveredSession[] {
   const { data } = useDiscoveredSessions({ status: "active" }, enabled);
   return data ?? [];
 }
 
-// useClaimSession removed — use useBindSession instead
+// useClaimSession 已移除——请改用 useBindSession
 
-/** Bind a discovered session to an existing logical node. Invalidates discovery + rig graph. */
+/** 把一个已发现会话绑定到既有的逻辑节点。失效发现列表与 rig 图。 */
 export function useBindSession() {
   const queryClient = useQueryClient();
   return useMutation<{ ok: true; nodeId: string; sessionId: string }, Error, { discoveredId: string; rigId: string; logicalId: string }>({
@@ -102,7 +102,7 @@ export function useBindSession() {
   });
 }
 
-/** Adopt a discovered session into a rig by binding to an existing node or creating one inside a pod. */
+/** 通过绑定到既有节点或在 pod 内新建节点，把一个已发现会话纳入某个 rig。 */
 export function useAdoptSession() {
   const queryClient = useQueryClient();
   return useMutation<
@@ -129,16 +129,16 @@ export function useAdoptSession() {
   });
 }
 
-/** Poll-based scan trigger: scans every intervalMs while active. */
+/** 基于轮询的扫描触发器：激活期间每隔 intervalMs 扫描一次。 */
 export function useDiscoveryPoll(intervalMs: number = 30_000, enabled: boolean = true) {
   const scanMutation = useDiscoveryScan();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
-    // Initial scan on mount
+    // 挂载时先扫描一次
     scanMutation.mutate();
-    // Poll
+    // 之后按间隔轮询
     intervalRef.current = setInterval(() => {
       scanMutation.mutate();
     }, intervalMs);

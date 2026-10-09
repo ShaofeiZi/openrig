@@ -1,23 +1,19 @@
-// OPR.0.4.1.19 — Story tab: reconstruct a FOREST of DAGs from queue-item lineage.
+// OPR.0.4.1.19 —— Story 标签页：从 queue-item 谱系重建一组 DAG 森林。
 //
-// The edges are REAL, never inferred. The daemon records lineage three ways
-// (queue-repository.ts / migrations 024,025,035):
-//   - chain_of_record: an ordered ancestry array of qitem-ids
-//     `[...source.chain, source.qitemId]` — the tail is the DIRECT parent, the
-//     whole array is the path back to a root.
-//   - handed_off_from: the parent QITEM ID on a handoff-created qitem (== chain
-//     tail). (NB the asymmetry: the source's handed_off_to is a SESSION.)
-//   - workflow_step_trails prior->next: explicit edges when a workflow is active.
+// 边是真实的，从不推断。后台服务以三种方式记录谱系
+// （queue-repository.ts / migrations 024,025,035）：
+//   - chain_of_record：qitem-id 的有序祖先数组
+//     `[...source.chain, source.qitemId]`——尾是直接父节点，整个数组是回到根的路径。
+//   - handed_off_from：在交接创建的 qitem 上记录的父 QITEM ID（== chain 尾）。
+//     （注意不对称：源的 handed_off_to 是一个 SESSION。）
+//   - workflow_step_trails prior->next：工作流激活时的显式边。
 //
-// Each qitem has at most ONE parent => the Story graph is a TRUE ACYCLIC
-// git-history DAG (loops are linear repetition; branches need not reconverge).
-// Fan-OUT is real data (a parent with several children). A visual fan-IN /
-// convergence is a RENDERING affordance ONLY, never a 2-parent data node — which
-// is why git-merge stays illustrative (build guardrail 1).
+// 每个 qitem 至多一个父节点 => Story 图是真正的无环 git 历史 DAG
+// （环是线性重复；分支不必重新汇合）。Fan-out（扇出）是真实数据（一个父节点有多个子节点）。
+// 视觉上的 fan-in / 汇合只是渲染辅助，绝不是双父数据节点——这就是 git-merge 始终仅作示意的原因（构建护栏 1）。
 //
-// fallback() appends a non-qitem sentinel `fallback-from:<session>` to a chain,
-// so the reconstructor must tolerate chain entries that do not resolve to a known
-// qitem (skip them; never crash).
+// fallback() 会向 chain 追加一个非 qitem 哨兵 `fallback-from:<session>`，
+// 因此重建器必须容忍无法解析为已知 qitem 的 chain 条目（跳过它们；绝不崩溃）。
 
 export interface StoryQitemInput {
   qitemId: string;
@@ -33,7 +29,7 @@ export interface StoryQitemInput {
   blockedOn?: string | null;
   tags: string[] | null;
   body: string;
-  /** OPR.0.4.1.18 enforced human-readable summary; degrade to first body line when absent. */
+  /** OPR.0.4.1.18 强制的人类可读摘要；缺失时退化为正文首行。 */
   summary?: string | null;
   chainOfRecord: string[] | null;
   handedOffFrom?: string | null;
@@ -51,7 +47,7 @@ export interface StoryQitemInput {
 export interface StoryNode {
   qitemId: string;
   summary: string;
-  /** The seat that owns/owned the work (destination). Component may render source->dest. */
+  /** 拥有/曾拥有该工作的席位（目的地）。组件可渲染 源->目的。 */
   owner: string;
   sourceSession: string;
   destinationSession: string;
@@ -75,19 +71,19 @@ export interface StoryNode {
   lastHeartbeat: string | null;
   resolution: string | null;
   targetRepo: string | null;
-  /** Full chain_of_record (may include unresolved / sentinel entries). */
+  /** 完整 chain_of_record（可能含未解析/哨兵条目）。 */
   chain: string[];
-  /** Resolved direct parent qitem id, or null for a root. */
+  /** 已解析的直接父 qitem id；根节点为 null。 */
   parentId: string | null;
   childIds: string[];
   isRoot: boolean;
   isHumanOrigin: boolean;
-  /** Gutter lane index (0 = the mission spine). */
+  /** 槽道序号（0 = 任务主轴）。 */
   lane: number;
 }
 
 export interface StoryForest {
-  /** Ordered most-recent-first (top of the upward-growing graph). */
+  /** 按最新在前排序（向上生长的图的顶部）。 */
   nodes: StoryNode[];
   roots: string[];
   laneCount: number;
@@ -95,7 +91,7 @@ export interface StoryForest {
 
 function firstBodyLine(body: string): string {
   const line = (body ?? "").split("\n").map((l) => l.trim()).find((l) => l.length > 0);
-  return line ?? "(no summary)";
+  return line ?? "（无摘要）";
 }
 
 function deriveSummary(item: StoryQitemInput): string {
@@ -106,15 +102,14 @@ function deriveSummary(item: StoryQitemInput): string {
 function isHumanOrigin(item: StoryQitemInput, tags: string[]): boolean {
   if (tags.includes("human-origin")) return true;
   const src = item.sourceSession ?? "";
-  // Managed seats are `pod-member@rig`; a bare token (no `@`) is a human origin.
+  // 托管席位是 `pod-member@rig`；裸 token（无 `@`）即人类来源。
   if (!src.includes("@")) return true;
   return /\b(founder|human|operator)\b/i.test(src);
 }
 
 /**
- * Resolve a qitem's direct parent: the LAST chain_of_record entry that resolves
- * to a known qitem (walking past unknown / sentinel entries), falling back to
- * handed_off_from when the chain is absent. Returns null for a root.
+ * 解析 qitem 的直接父节点：chain_of_record 中最后一个能解析为已知 qitem 的条目
+ * （越过未知/哨兵条目），chain 缺失时回退到 handed_off_from。根节点返回 null。
  */
 function resolveParent(item: StoryQitemInput, known: Set<string>): string | null {
   const chain = item.chainOfRecord ?? [];
@@ -130,14 +125,14 @@ function resolveParent(item: StoryQitemInput, known: Set<string>): string | null
 }
 
 /**
- * Reconstruct the forest of DAGs from queue items. Pure: no I/O, deterministic.
+ * 从 queue 项重建 DAG 森林。纯函数：无 I/O，确定。
  */
 export function buildStoryForest(items: StoryQitemInput[]): StoryForest {
   if (items.length === 0) return { nodes: [], roots: [], laneCount: 0 };
 
   const known = new Set(items.map((i) => i.qitemId));
 
-  // Base node objects (lanes filled in below).
+  // 基础节点对象（lanes 在下方填充）。
   const nodeById = new Map<string, StoryNode>();
   for (const item of items) {
     const tags = item.tags ?? [];
@@ -176,7 +171,7 @@ export function buildStoryForest(items: StoryQitemInput[]): StoryForest {
     });
   }
 
-  // Wire children + roots.
+  // 连接子节点与根。
   const roots: string[] = [];
   for (const node of nodeById.values()) {
     if (node.parentId && nodeById.has(node.parentId)) {
@@ -188,12 +183,10 @@ export function buildStoryForest(items: StoryQitemInput[]): StoryForest {
     }
   }
 
-  // Lane assignment over chronological order (oldest first = bottom of the graph).
-  // First child continues its parent's lane; later children (fan-out) get a fresh
-  // lane; a tip with no children frees its lane. A freed lane is reusable only by
-  // a STRICTLY-LATER node that is NOT a sibling — so concurrent branches and
-  // fan-out siblings stay visually distinct while long missions still compact
-  // (git-graph "lanes that close out"), bounding total width.
+  // 按时间顺序分配 lane（最旧在前 = 图的底部）。
+  // 第一个子节点延续父节点的 lane；后续子节点（扇出）获得新 lane；无子节点的尖端释放其 lane。
+  // 被释放的 lane 只能被严格更晚且非同父的节点复用——因此并发分支和扇出兄弟在视觉上保持区分，
+  // 同时长任务仍保持紧凑（git 图“收束的 lane”），限制总宽度。
   const chronological = [...items].sort(
     (a, b) => tsValue(a.tsCreated) - tsValue(b.tsCreated),
   );
@@ -235,12 +228,12 @@ export function buildStoryForest(items: StoryQitemInput[]): StoryForest {
     }
     node.lane = lane;
     if (node.childIds.length === 0) {
-      // Tip closes out -> its lane can be reused by a strictly-later non-sibling.
+      // 尖端收束 -> 其 lane 可被严格更晚的非兄弟节点复用。
       freed.push({ lane, ts: tsValue(node.tsCreated), parentId: node.parentId });
     }
   }
 
-  // Render order: most-recent first (top), so the graph grows upward.
+  // 渲染顺序：最新在前（顶部），使图向上生长。
   const nodes = [...nodeById.values()].sort(
     (a, b) => tsValue(b.tsCreated) - tsValue(a.tsCreated),
   );
@@ -254,16 +247,15 @@ function tsValue(ts: string): number {
 }
 
 /**
- * Story-row date format (OPR.0.4.1.19 date-not-time fix).
+ * Story 行日期格式（OPR.0.4.1.19 用日期而非时间的修复）。
  *
- * The shipped row date used `formatFriendlyDate`, which collapses same-day
- * timestamps to "Today HH:MM" — during active development every story item is
- * same-day, so the calendar date was hidden (effectively time-only). The founder
- * wants the explicit DATE always. This always renders month + day + time
- * (e.g. "Jun 23 4:50"), never "Today"/"Yesterday", matching the approved mockup.
+ * 已发布的行日期曾用 `formatFriendlyDate`，它把同一天的时间戳折叠为
+ * "Today HH:MM"——在活跃开发期间每个 story 项都是当天，因此日历日期被隐藏
+ * （实际只剩时间）。创始人要求始终显示显式日期。本函数始终渲染 月+日+时间
+ * （例如 "6月23日 4:50"），绝不显示 "今天"/"昨天"，与已批准的稿图一致。
  */
 export function formatStoryDate(value: string | undefined | null): string {
-  if (!value) return "unknown";
+  if (!value) return "未知";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat(undefined, {

@@ -1,7 +1,6 @@
-// OPR activity-hook r3 Part 3 — route altitude: the managed-activity-hook delivery-gap warning
-// must cross the REAL /api/up route. An apply of a claude-code member that selects
-// claude_activity_hooks with the delivery assets unavailable must SUCCEED (rc0 — rigId returned,
-// no hard failure) AND carry the exact nonfatal warning in the response body.
+// OPR activity-hook r3 第 3 部分——路由层级：受管活动 hook 的交付缺口警告必须穿过真实
+// /api/up 路由。应用选择 claude_activity_hooks 但交付资源不可用的 claude-code 成员时，
+// 必须成功（rc0，返回 rigId，没有硬失败），并在响应正文中携带准确的非致命警告。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
@@ -41,7 +40,7 @@ pods:
 edges: []
 `;
 
-describe("/api/up — managed activity-hook delivery-gap warning crosses the route (rc0)", () => {
+describe("/api/up——受管活动 hook 交付缺口警告穿过路由（rc0）", () => {
   let db: Database.Database;
   let specDir: string;
 
@@ -68,7 +67,7 @@ describe("/api/up — managed activity-hook delivery-gap warning crosses the rou
     },
   };
 
-  it("apply of a claude_activity_hooks seat with MISSING delivery assets → rc0 + exact warning in the response", async () => {
+  it("应用交付资源缺失的 claude_activity_hooks 席位时返回 rc0 和准确警告", async () => {
     const { app } = createTestApp(db, {
       upRouterFsOps: realFs,
       podInstantiatorFsOps: { exists: (p: string) => fs.existsSync(p), readFile: (p: string) => fs.readFileSync(p, "utf-8") },
@@ -84,12 +83,12 @@ describe("/api/up — managed activity-hook delivery-gap warning crosses the rou
     });
     const body = await res.json();
 
-    // rc0: the apply SUCCEEDED (a rigId came back) — the delivery gap did not gate startup.
+    // rc0：应用成功并返回 rigId，交付缺口没有阻塞启动。
     expect(res.status, JSON.stringify(body)).toBeLessThan(400);
     expect(body.rigId, JSON.stringify(body)).toBeDefined();
-    // The exact nonfatal warning crossed the route.
+    // 准确的非致命警告已穿过路由。
     const warnings: string[] = body.warnings ?? [];
-    expect(warnings.some((w) => /managed Claude activity hooks cannot be delivered/.test(w)), JSON.stringify(body)).toBe(true);
+    expect(warnings.some((w) => /无法交付受管 Claude 活动 hook/.test(w)), JSON.stringify(body)).toBe(true);
     expect(warnings.some((w) => w.includes("dev.impl"))).toBe(true);
   });
 });

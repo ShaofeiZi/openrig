@@ -55,9 +55,8 @@ export function formatWatchdogRegistrationError(error: unknown): string {
 }
 
 /**
- * W2c's one structural seam: every canonical seat mint ensures its role-bound
- * idle-gate job, while startup only audits existing live-like seats. Core seat
- * creation remains fail-isolated from this additive supervision layer.
+ * W2c 的唯一结构接缝：每次创建规范席位都确保其角色绑定 idle-gate job，
+ * 启动阶段则只审计既有的类活动席位。核心席位创建与此增量监督层保持失败隔离。
  */
 export class WatchdogAutoRegistration {
   private readonly warn: (message: string) => void;
@@ -66,16 +65,15 @@ export class WatchdogAutoRegistration {
     this.warn = deps.warn ?? ((message) => console.warn(message));
   }
 
-  /** Named exclusions: flat legacy and noncanonical/external seats cannot own qitems. */
+  /** 具名排除：扁平旧版、非规范及外部席位不能拥有 qitem。 */
   isEligibleSessionName(sessionName: string): boolean {
     return validateSessionName(sessionName) && parseSessionName(sessionName).kind === "canonical";
   }
 
   /**
-   * A discovered handover may legitimately claim a noncanonical tmux name.
-   * It is not eligible for a new role job, but the retired canonical target
-   * must stop being deliverable. Terminal history lets a later canonical
-   * occupant create a fresh active job; an operator-stopped row stays stopped.
+   * 发现式移交可能合法认领非规范 tmux 名称。它不符合新角色 job 条件，
+   * 但已退役规范目标必须停止投递。终态历史允许后续规范占用者创建新的活动 job；
+   * 被操作员停止的行则保持停止。
    */
   reconcileHandover(nodeId: string, sessionName: string): WatchdogJob | null {
     const row = this.deps.db.prepare(
@@ -86,7 +84,7 @@ export class WatchdogAutoRegistration {
     if (!row || row.rig_name === null) {
       throw new WatchdogAutoRegistrationError(
         "target_mismatch",
-        `watchdog handover topology missing for node_id="${nodeId}" session="${sessionName}"`,
+        `watchdog 移交拓扑缺失：node_id="${nodeId}" session="${sessionName}"`,
         { nodeId, sessionName, actualRig: row?.rig_name ?? null },
       );
     }
@@ -102,15 +100,13 @@ export class WatchdogAutoRegistration {
   }
 
   /**
-   * B6 founder ruling — auto-registration is NOT default-on. A NEW job is created only when the
-   * fleet opted in (`auto_register: "all"`) or this seat is named in `opt_in_sessions`. A seat that
-   * ALREADY HAS a job keeps being maintained regardless: existing registered jobs survive the
-   * default flip, and their alias refresh must not silently stop.
+   * B6 创建者裁定——自动注册默认不开启。只有车队显式启用（`auto_register: "all"`）
+   * 或席位列在 `opt_in_sessions` 中时才创建新 job。已经拥有 job 的席位无论如何都会继续维护：
+   * 既有注册 job 不受默认值切换影响，其别名刷新也不得静默停止。
    */
   private autoRegisterAllowed(sessionName: string): boolean {
-    // Trimmed at the enforcement seam: the validator accepts whitespace-padded enum values
-    // (it validates the trimmed raw), so the gate must compare the same normalization — an
-    // accepted " all " silently behaving as "off" is a config that lies.
+    // 在强制接缝处 trim：校验器接受带空白的枚举值（校验的是 trim 后原值），
+    // 因此门禁必须比较相同规范化结果；若接受的 " all " 静默表现为 "off"，配置就在说谎。
     const mode = String(this.deps.settingsStore.resolveOne("policies.idle_gate_qitem.auto_register").value ?? "off").trim();
     if (mode === "all") return true;
     const optIn = String(this.deps.settingsStore.resolveOne("policies.idle_gate_qitem.opt_in_sessions").value ?? "");
@@ -127,7 +123,7 @@ export class WatchdogAutoRegistration {
         null,
         this.canonicalAliases(nodeId, topology.rig_name, sessionName),
       );
-      if (!existing) return null; // fresh seat, not opted in — no job, by ruling
+      if (!existing) return null; // 新席位未选择加入；按裁定不创建 job。
     }
     const cadence = this.resolveCadence();
     return this.deps.jobsRepo.ensureAutoRegistration(
@@ -155,12 +151,12 @@ export class WatchdogAutoRegistration {
       this.canonicalAliases(nodeId, topology.rig_name, sessionName),
     );
     if (!job || job.targetSession !== sessionName) {
-      // B6 — no job on a seat that is not opted in is the RULED default, not a
-      // coverage failure; only an opted-in seat (or a stale-targeted job) pages.
+      // B6——未选择加入的席位没有 job 是裁定后的默认值，并非覆盖失败；
+      // 只有已选择加入的席位（或目标已过期的 job）才告警。
       if (!job && !this.autoRegisterAllowed(sessionName)) return null;
       throw new WatchdogAutoRegistrationError(
         "missing",
-        `watchdog auto-registration missing for node_id="${nodeId}" session="${sessionName}"`,
+        `watchdog 自动注册缺失：node_id="${nodeId}" session="${sessionName}"`,
         {
           nodeId,
           sessionName,
@@ -174,7 +170,7 @@ export class WatchdogAutoRegistration {
     return job;
   }
 
-  /** Audit every latest live-like seat at startup; never create or delete rows. */
+  /** 启动时审计每个最新类活动席位；绝不创建或删除行。 */
   assertLiveSeatCoverage(): void {
     const rows = this.deps.db.prepare(
       `SELECT node_id, session_name, status
@@ -188,13 +184,13 @@ export class WatchdogAutoRegistration {
       if (TERMINAL_SESSION_STATUSES.has(row.status)) continue;
       if (!this.isEligibleSessionName(row.session_name)) continue;
       try {
-        // B6 — assertCoverage is gate-aware: a non-opted seat with no job returns
-        // null (the ruled default) instead of warning at every startup audit.
+        // B6——assertCoverage 感知门禁：未选择加入且无 job 的席位返回 null
+        //（裁定默认值），而不是在每次启动审计时警告。
         this.assertCoverage(row.node_id, row.session_name);
       } catch (error) {
         this.warn(
-          `[watchdog-auto-registration] startup coverage FAILED for node_id="${row.node_id}" ` +
-          `session="${row.session_name}": ${formatWatchdogRegistrationError(error)}`,
+          `[watchdog-auto-registration] 启动覆盖失败：node_id="${row.node_id}" ` +
+          `session="${row.session_name}"：${formatWatchdogRegistrationError(error)}`,
         );
       }
     }
@@ -212,7 +208,7 @@ export class WatchdogAutoRegistration {
     if (!row || row.rig_name === null || row.rig_name !== parsed.rig) {
       throw new WatchdogAutoRegistrationError(
         "target_mismatch",
-        `canonical seat topology mismatch for node_id="${nodeId}" session="${sessionName}"`,
+        `规范席位拓扑不匹配：node_id="${nodeId}" session="${sessionName}"`,
         { nodeId, sessionName, parsedRig: parsed.rig, actualRig: row?.rig_name ?? null },
       );
     }

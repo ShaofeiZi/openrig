@@ -1,5 +1,5 @@
-// OPR.0.4.0.22 FR-1 CLI — rig seat set-resume-token. Token is read from STDIN
-// only (never argv), carried to the authed route, and never echoed.
+// OPR.0.4.0.22 FR-1 CLI——rig seat set-resume-token。Token 仅从 STDIN
+// 读取（绝不经 argv），携带至 authed 路由，且绝不回显。
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { seatCommand, type SeatDeps } from "../src/commands/seat.js";
@@ -53,11 +53,11 @@ describe("rig seat set-resume-token", () => {
     expect(postCalls.length).toBe(1);
     expect(postCalls[0]!.path).toBe("/api/sessions/dev-impl%40my-rig/resume-token");
     expect(postCalls[0]!.body).toEqual({ token: "claude-stdin-tok-789", reason: "founder re-authed" });
-    // Auth headers were passed (terminalAuthHeaders()).
+    // 已传 Auth headers（terminalAuthHeaders()）。
     expect(postCalls[0]!.options).toHaveProperty("headers");
-    // The token never appears in stdout.
+    // token 绝不出现于 stdout。
     expect(logs.join("\n")).not.toContain("claude-stdin-tok-789");
-    expect(logs.join("\n")).toContain("Token redacted");
+    expect(logs.join("\n")).toContain("token 已脱敏");
     expect(process.exitCode).toBeUndefined();
   });
 

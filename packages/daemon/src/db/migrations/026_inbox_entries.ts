@@ -1,15 +1,13 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * Inbox entries (PL-004 Phase A; mailbox-style asynchronous deposit).
+ * Inbox 条目（PL-004 阶段 A；邮箱式异步投递）。
  *
- * Inbox is the canonical async/bulk path,
- * NOT a contention fallback. Any authenticated sender may inbox-drop with
- * attribution + audit. Receiver chooses absorb (promote to main queue) or
- * deny (reject with reason). Idempotent on inbox_id.
+ * Inbox 是 canonical 异步/批量路径，不是争用回退。任何通过认证的发送方都可以带归属和审计信息
+ * 投递到 inbox。接收方选择 absorb（提升到主队列）或 deny（附原因拒绝）。以 inbox_id 保证幂等。
  *
- * State enum: pending | absorbed | denied
- * `absorbed_qitem_id` records which queue_item the absorbed entry became.
+ * 状态枚举：pending | absorbed | denied
+ * `absorbed_qitem_id` 记录被吸收条目转化成的 queue_item。
  */
 export const inboxEntriesSchema: Migration = {
   name: "026_inbox_entries.sql",

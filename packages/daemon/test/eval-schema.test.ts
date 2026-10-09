@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { validateEvalCase } from "./helpers/eval-schema.js";
 
-// slice-07 R6 — RED-first pins for the eval-case validator. Against the accept-everything stub the
-// rejection cases fail; that is the intended RED. GREEN lands when validateEvalCase discriminates.
+// slice-07 R6——eval-case 校验器的 RED-first 固定测试。面对全量接受的 stub，拒绝用例会失败，
+// 这正是预期 RED；validateEvalCase 能正确区分后进入 GREEN。
 
 const VALID_SELECTION = {
   id: "sel-01",
@@ -29,35 +29,35 @@ function codes(doc: unknown): string[] {
   return r.ok ? [] : r.errors.map((e) => e.code);
 }
 
-describe("eval-schema — case validator", () => {
-  it("accepts a well-formed selection case", () => {
+describe("eval-schema——用例校验器", () => {
+  it("接受格式正确的 selection 用例", () => {
     expect(validateEvalCase(VALID_SELECTION).ok).toBe(true);
   });
 
-  it("accepts a well-formed loading case", () => {
+  it("接受格式正确的 loading 用例", () => {
     expect(validateEvalCase(VALID_LOADING).ok).toBe(true);
   });
 
-  it("rejects an unknown category", () => {
+  it("拒绝未知 category", () => {
     expect(codes({ ...VALID_SELECTION, category: "sideways" })).toContain("UNKNOWN_CATEGORY");
   });
 
-  it("rejects a non-compilable expected pattern", () => {
+  it("拒绝无法编译的 expected pattern", () => {
     expect(codes({ ...VALID_SELECTION, expectedPatterns: ["rig context get ("] })).toContain(
       "PATTERN_NOT_REGEX",
     );
   });
 
-  it("rejects a loading case with no order block", () => {
+  it("拒绝缺少 order 块的 loading 用例", () => {
     const { order: _omit, ...noOrder } = VALID_LOADING;
     expect(codes(noOrder)).toContain("ORDER_MISSING_FOR_LOADING");
   });
 
-  it("rejects a selection case that carries an order block", () => {
+  it("拒绝携带 order 块的 selection 用例", () => {
     expect(codes({ ...VALID_SELECTION, order: VALID_LOADING.order })).toContain("ORDER_ON_SELECTION");
   });
 
-  it("rejects a case missing its prompt", () => {
+  it("拒绝缺少 prompt 的用例", () => {
     const { prompt: _omit, ...noPrompt } = VALID_SELECTION;
     expect(codes(noPrompt)).toContain("PROMPT_MISSING");
   });

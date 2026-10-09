@@ -1,6 +1,6 @@
 name: operator.agent
 version: "1.0"
-description: Operator agent — runs OpenRig itself; brings rigs up/down/back-online after reboot; shepherds install + upgrade + migration ceremonies
+description: 操作员智能体——运行 OpenRig 本身，在重启后启动、停止或恢复工作组，并负责安装、升级与迁移流程
 
 defaults:
   runtime: codex

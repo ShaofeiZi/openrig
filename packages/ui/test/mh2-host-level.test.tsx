@@ -1,7 +1,6 @@
-// OPR.0.4.6.MH2 — the UI host level: FR-2 plumbing (withHostParam identity
-// for local = the zero-regression negative), FR-1 tree host level (expand =
-// select, one write path), FR-3 indicator states, FR-5 HOSTS toggles over
-// the shipped subscription write path.
+// OPR.0.4.6.MH2——UI host 层：FR-2 管线（local 的 withHostParam identity =
+// 零回归负例）、FR-1 树 host 层（expand = select，单写路径）、FR-3 指示器状态、
+// FR-5 经已交付订阅写路径的 HOSTS 切换。
 
 import type { ReactElement } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -27,9 +26,8 @@ import { RigScopePage } from "../src/components/topology/ScopePages.js";
 import { DiscoveryPanel } from "../src/components/DiscoveryPanel.js";
 import { useClearPlacementOnHostSwitch } from "../src/hooks/useHosts.js";
 
-// DiscoveryPanel's discovery hooks are mocked file-wide (no other test here
-// consumes them) — the regressions assert AFFORDANCE state, and the adopt
-// POST path is covered by zero-POST fetch asserts.
+// DiscoveryPanel 的 discovery hooks 全文件 mock（此处无其他测试消费）——
+// 回归断言 AFFORDANCE 状态，adopt POST 路径由 zero-POST fetch 断言覆盖。
 const mockUseDiscoveredSessions = vi.fn();
 const mockUseDiscoveryScan = vi.fn();
 const mockUseAdoptSession = vi.fn();
@@ -107,8 +105,8 @@ function renderWithRouter(node: () => ReactElement) {
 beforeEach(() => {
   mockFetch.mockReset();
 });
-// This vitest setup has NO RTL auto-cleanup (the MH-1 field lesson) —
-// explicit cleanup keeps containers from accumulating across tests.
+// 此 vitest 设置无 RTL auto-cleanup（MH-1 现场教训）——显式 cleanup 防止
+// container 跨测试累积。
 afterEach(() => {
   cleanup();
 });
@@ -138,8 +136,8 @@ describe("TopologyTreeView host level (FR-1)", () => {
   });
 
   it("registry hosts render as collapsed nodes; local is expanded + viewing", async () => {
-    // The tree's local label reads MH-1's canonical stored name — the
-    // host.name SETTINGS key (the settings twins), not the hosts payload.
+    // 树的 local label 读 MH-1 规范存储名——host.name SETTINGS key
+    //（settings twins），非 hosts payload。
     wireFetch({ hosts: HOSTS_TWO, settings: { "host.name": { value: "Linkpix Proof Host" } } });
     renderWithRouter(() => <TopologyTreeView />);
     await waitFor(() => expect(screen.getByTestId("topology-host-vps-a")).toBeTruthy());
@@ -149,7 +147,7 @@ describe("TopologyTreeView host level (FR-1)", () => {
     expect(screen.getByTestId("topology-host-chip-local").textContent).toBe("viewing");
     const vpsA = screen.getByTestId("topology-host-vps-a");
     expect(vpsA.getAttribute("data-selected")).toBe("false");
-    // the unreachable registry probe renders honestly on the collapsed row
+    // 不可达 registry probe 在折叠行上如实渲染
     expect(screen.getByTestId("topology-host-chip-vps-b").textContent).toBe("unreachable");
   });
 
@@ -174,7 +172,7 @@ describe("TopologyTreeView host level (FR-1)", () => {
       expect(screen.getByTestId("topology-host-vps-a").getAttribute("data-selected")).toBe("true"),
     );
     expect(screen.getByTestId("topology-host-localhost").getAttribute("data-selected")).toBe("false");
-    // the archived-rigs read is not allowlisted — no Archive under a remote host
+    // archived-rigs read 不在 allowlist——remote host 下无 Archive
     expect(screen.queryByTestId("topology-archive-section")).toBeNull();
   });
 });
@@ -240,9 +238,9 @@ describe("guard-B1 files gate — a remote selection issues ZERO /api/files/* re
       if (u.startsWith("/api/files/list")) return { ok: true, json: async () => ({ root: "ws", path: "missions", entries: [] }) };
       if (u.startsWith("/api/slices/test-slice")) return { ok: true, json: async () => SLICE_DETAIL };
       if (u.startsWith("/api/slices")) return { ok: true, json: async () => ({ slices: [] }) };
-      // Review composer deliberately errors — its UNAVAILABLE state is a
-      // deterministic render; the PROOF.md scope-markdown hook has already
-      // run by then (hooks precede early returns), which is what we gate.
+      // Review composer 故意出错——其 UNAVAILABLE 状态是确定性渲染；届时
+      // PROOF.md scope-markdown hook 已运行（hooks 先于 early return），
+      // 这正是我们 gate 的对象。
       if (u.startsWith("/api/review")) return { ok: false, status: 500, json: async () => ({}) };
       if (u.startsWith("/api/scope/audit")) return { ok: true, json: async () => ({ slices: [] }) };
       return { ok: true, json: async () => [] };
@@ -259,8 +257,8 @@ describe("guard-B1 files gate — a remote selection issues ZERO /api/files/* re
     expect(filesCalls()).toEqual([]);
     cleanup();
     mockFetch.mockClear();
-    // Local control: the same tree with local selected DOES walk discovery —
-    // proving this harness would catch a gate violation.
+    // Local 对照：同一棵 local 选中的树确实走 discovery——证明此 harness 会
+    // 捕获 gate 违规。
     wireFilesGateFetch("local");
     renderWithRouter(() => <ProjectTreeView />);
     await waitFor(() => expect(screen.getByTestId("project-workspace-node")).toBeTruthy());
@@ -281,15 +279,15 @@ describe("guard-B1 files gate — a remote selection issues ZERO /api/files/* re
         <RouterProvider router={router1} />
       </QueryClientProvider>,
     );
-    // Under remote the Review tab renders the honest gated state (the
-    // composer reads LOCAL /api/review — same A-over-B class, API flavor).
+    // remote 下 Review tab 渲染如实 gated 状态（composer 读 LOCAL
+    // /api/review——同 A-over-B 类，API flavor）。
     await waitFor(() => expect(screen.getByTestId("slice-review-remote-gated")).toBeTruthy());
     expect(filesCalls()).toEqual([]);
     expect(reviewCalls()).toEqual([]);
     cleanup();
     mockFetch.mockClear();
-    // Local control: same page, local selected — the PROOF.md scope reader
-    // resolves against local roots, so /api/files/roots fires.
+    // Local 对照：同页，local 选中——PROOF.md scope reader 相对 local roots
+    // 解析，故 /api/files/roots 触发。
     wireFilesGateFetch("local");
     const qc2 = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
     const rootRoute2 = createRootRoute({ component: () => <Outlet /> });
@@ -304,14 +302,14 @@ describe("guard-B1 files gate — a remote selection issues ZERO /api/files/* re
       </QueryClientProvider>,
     );
     await waitFor(() => expect(filesCalls().length).toBeGreaterThan(0));
-    // Local-positive /api/review control: the composer DOES fire when
-    // known-local — proving the review-gate assertions are non-vacuous.
+    // Local-positive /api/review 对照：composer 在 known-local 时确实触发——
+    // 证明 review-gate 断言非空泛。
     await waitFor(() => expect(reviewCalls().length).toBeGreaterThan(0));
   });
 
   it("SliceScopePage Review under an UNKNOWN selection: pending state, zero /api/review (the race class)", async () => {
-    // /api/hosts NEVER resolves — the selection stays unknown; the review
-    // composer must not fire local reads on the local-presumed default.
+    // /api/hosts 永不 resolve——selection 保持 unknown；review composer 不得在
+    // local 假定默认上触发 local read。
     wireFilesGateFetch("vps-a");
     const base = mockFetch.getMockImplementation()!;
     mockFetch.mockImplementation(async (url: string, init?: RequestInit) => {
@@ -337,10 +335,9 @@ describe("guard-B1 files gate — a remote selection issues ZERO /api/files/* re
 
   it("MissionScopePage Review tab: remote-selected → honest gate + zero /api/review; local control → composer fires", async () => {
     const { MissionScopePage } = await import("../src/components/project/ScopePages.js");
-    // The default steering landing renders first — give it a valid payload
-    // so the walk to the Review tab is deterministic; the review composer
-    // itself deliberately 500s (its error state is deterministic and the
-    // fetch COUNT is what the control asserts).
+    // 默认 steering landing 先渲染——给它有效 payload，使走到 Review tab 是
+    // 确定性的；review composer 自身故意 500（其错误状态确定，且对照断言
+    // fetch COUNT）。
     const wireMission = (selected: string) => {
       wireFilesGateFetch(selected);
       const base = mockFetch.getMockImplementation()!;
@@ -435,8 +432,8 @@ describe("guard-B1 files gate round 2 — mission landing + portfolio glance (re
     cleanup();
     mockFetch.mockClear();
 
-    // Local control: the same landing DOES read MISSION_BRIEF via the roots
-    // resolver — proving the harness catches gate violations.
+    // Local 对照：同一 landing 确实经 roots resolver 读 MISSION_BRIEF——
+    // 证明 harness 捕获 gate 违规。
     wireMissionFetch("local");
     mountAt(new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } }));
     await waitFor(() => expect(filesCalls2().length).toBeGreaterThan(0));
@@ -470,7 +467,7 @@ describe("guard-B1 files gate round 2 — mission landing + portfolio glance (re
     cleanup();
     mockFetch.mockClear();
 
-    // Local control: the expanded glance DOES read MISSION_BRIEF via roots.
+    // Local 对照：展开 glance 确实经 roots 读 MISSION_BRIEF。
     wire("local");
     renderWithRouter(() => <WorkspacePortfolioPanel />);
     await waitFor(() => expect(screen.getByTestId("portfolio-toggle-m1")).toBeTruthy());
@@ -497,7 +494,7 @@ describe("SubscriptionToggleList HOSTS section (FR-5 — complete, don't rebuild
     });
     renderWithRouter(() => <SubscriptionToggleList />);
     await waitFor(() => expect(screen.getByTestId("subscription-host-toggle-list")).toBeTruthy());
-    expect(screen.getByTestId("subscription-host-toggle-local").textContent).toContain("forced ON");
+    expect(screen.getByTestId("subscription-host-toggle-local").textContent).toContain("强制开启");
     expect(screen.getByTestId("subscription-host-toggle-vps-a").getAttribute("data-on")).toBe("true");
     expect(screen.getByTestId("subscription-host-toggle-vps-b").getAttribute("data-on")).toBe("false");
     expect(screen.getByTestId("subscription-host-toggle-vps-gone").getAttribute("data-on")).toBe("true");
@@ -519,18 +516,17 @@ describe("SubscriptionToggleList HOSTS section (FR-5 — complete, don't rebuild
   });
 });
 
-// ── rev1-r2 B1/B2 — remote views mount NO local action affordances and fire
-// NO bare local requests (FR-7 UI contract). Every remote zero-case carries a
-// LOCAL-POSITIVE CONTROL proving the harness would catch a violation.
-// The gate primitive is the useSelectedHostId CACHE OBSERVER, so these tests
-// PRIME the ["hosts"] cache directly (no /api/hosts fetch needed).
+// ── rev1-r2 B1/B2——remote view 不挂载 local action affordance，也不触发
+// bare local 请求（FR-7 UI 契约）。每个 remote 零例都带 LOCAL-POSITIVE 对照，
+// 证明 harness 会捕获违规。gate 原语是 useSelectedHostId CACHE OBSERVER，
+// 故这些测试直接 PRIME ["hosts"] 缓存（无需 /api/hosts fetch）。
 
 describe("rev1-r2 B1/B2 — remote action gates (topology table / terminal grid / slice seats / seat page)", () => {
   let OriginalEventSource: typeof EventSource | undefined;
 
   beforeEach(() => {
     OriginalEventSource = globalThis.EventSource;
-    // useTopologyActivity surfaces (table + seat page) subscribe to SSE.
+    // useTopologyActivity 表面（table + seat page）订阅 SSE。
     class StubEventSource {
       onmessage: ((e: MessageEvent) => void) | null = null;
       onerror: (() => void) | null = null;
@@ -570,9 +566,9 @@ describe("rev1-r2 B1/B2 — remote action gates (topology table / terminal grid 
     agentActivity: null, currentQitems: [],
   };
 
-  /** hostsSelected must MATCH the primed-cache selection — components with an
-   *  ACTIVE useHosts (ProjectTreeView) refetch /api/hosts and would otherwise
-   *  overwrite the primed entry with a conflicting selection. */
+  /** hostsSelected 必须匹配 primed-cache selection——带 ACTIVE useHosts 的组件
+   * （ProjectTreeView）会 refetch /api/hosts，否则会用冲突 selection 覆盖 primed
+   * 条目。 */
   function hostsPayload(selected: string) {
     return {
       ownName: "Linkpix Proof Host",
@@ -598,8 +594,8 @@ describe("rev1-r2 B1/B2 — remote action gates (topology table / terminal grid 
     });
   }
 
-  /** Renders with a PRIMED ["hosts"] cache (the gate primitive is a cache
-   *  observer) — gcTime kept finite-large so the primed entry survives. */
+  /** 以 PRIMED ["hosts"] 缓存渲染（gate 原语是 cache observer）——gcTime 保持
+   *  有限大，使 primed 条目存活。 */
   function renderPrimed(node: () => ReactElement, selected: string, opts: { path?: string; entry?: string } = {}) {
     const qc = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 5 * 60_000 } },
@@ -646,9 +642,9 @@ describe("rev1-r2 B1/B2 — remote action gates (topology table / terminal grid 
     renderPrimed(() => <TopologyTableView />, LOCAL_HOST_ID);
     await waitFor(() => expect(screen.getByTestId("topology-table-cmux-a1")).toBeTruthy());
     expect(screen.getByTestId("topology-table-actions-a1").getAttribute("data-remote-readonly")).toBeNull();
-    // proves the trigger testid shape the remote negative asserts against
-    // (the -terminal-popover panel only exists while OPEN; the always-rendered
-    // affordance is the -terminal-open trigger button)
+    // 证明 remote 负例断言所依据的 trigger testid 形状（-terminal-popover 面板
+    // 仅在 OPEN 时存在；always-rendered affordance 是 -terminal-open trigger
+    // 按钮）
     expect(screen.getByTestId("topology-table-a1-terminal-open")).toBeTruthy();
   });
 
@@ -692,11 +688,11 @@ describe("rev1-r2 B1/B2 — remote action gates (topology table / terminal grid 
     wireB1Fetch();
     renderPrimed(() => <LiveNodeDetails rigId="r1" logicalId="a1" />, "vps-a");
     await waitFor(() => expect(screen.getByTestId("live-node-actions-remote-readonly")).toBeTruthy());
-    // B1: no local action affordances, terminal honestly gated
+    // B1：无 local action affordance，terminal 如实 gated
     expect(screen.queryByTestId("detail-cmux-open")).toBeNull();
     expect(screen.queryByTestId("detail-copy-attach")).toBeNull();
     expect(screen.getByTestId("node-detail-terminal-remote-gated")).toBeTruthy();
-    // B2: the detail read rides the host envelope; the bare local URL never fires
+    // B2：detail read 搭 host envelope；bare local URL 永不触发
     const detailCalls = mockFetch.mock.calls.map(([u]) => String(u)).filter((u) => u.includes("/nodes/a1"));
     expect(detailCalls.length).toBeGreaterThan(0);
     expect(detailCalls.every((u) => u === "/api/rigs/r1/nodes/a1?host=vps-a")).toBe(true);
@@ -713,15 +709,13 @@ describe("rev1-r2 B1/B2 — remote action gates (topology table / terminal grid 
     expect(detailCalls.every((u) => u === "/api/rigs/r1/nodes/a1")).toBe(true);
   });
 
-  // ── rev1-r2 RE-VERDICT B1 — the restore/launch class + the enumerated
-  // same-class refresh affordance (mutation-verb enumeration, not feature
-  // family). RigGraph's placement-target sibling lives in rig-graph.test.tsx
-  // next to its local-positive control.
+  // ── rev1-r2 RE-VERDICT B1——restore/launch 类 + 枚举同类 refresh affordance
+  //（mutation-verb 枚举，非 feature 族）。RigGraph 的 placement-target sibling
+  // 位于 rig-graph.test.tsx，紧邻其 local-positive 对照。
 
   const RIG_STATUS = {
-    // rigId rides IN the response — RigStatusCard testids derive from
-    // status.rigId, not the page param (run-4 field find: omitting it
-    // renders rig-primary-action-undefined).
+    // rigId 在 response 内——RigStatusCard testid 派生自 status.rigId，非页面
+    // 参数（run-4 现场发现：省略它渲染 rig-primary-action-undefined）。
     rigId: "r1", rigName: "rig-one", isKernel: false, status: "down",
     seatsTotal: 1, seatsRunning: 0, recoverable: true, perSeat: [], src: ["daemon"],
   };
@@ -773,11 +767,11 @@ describe("rev1-r2 B1/B2 — remote action gates (topology table / terminal grid 
     await waitFor(() => expect(screen.getByTestId("project-tree-refresh")).toBeTruthy());
   });
 
-  // ── rev1-r2 RE-RE-VERDICT B1 (stale placement/adopt) + GUARD tri-state
-  // (unknown-selection fail-open on lifecycle surfaces).
+  // ── rev1-r2 RE-RE-VERDICT B1（陈旧 placement/adopt）+ GUARD 三态
+  //（lifecycle 表面 unknown-selection fail-open）。
 
-  /** UNPRIMED render — the ["hosts"] cache starts EMPTY so the selection is
-   *  genuinely UNKNOWN (the guard blocker's window). */
+  /** UNPRIMED 渲染——["hosts"] 缓存起始为空，故 selection 真正 UNKNOWN
+   * （guard blocker 窗口）。 */
   function renderUnprimed(node: () => ReactElement, opts: { path?: string; entry?: string } = {}) {
     const qc = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 5 * 60_000 } },
@@ -831,9 +825,9 @@ describe("rev1-r2 B1/B2 — remote action gates (topology table / terminal grid 
   };
 
   function wireDiscoveryMocks() {
-    // the target-flow region renders INSIDE the selected discovered-session's
-    // card — the selected id must resolve to a real session (stage-1 field
-    // find: an empty list renders neither the card nor the remote note).
+    // target-flow 区域渲染在所选 discovered-session 的卡片内——所选 id 必须
+    // 解析到真实 session（stage-1 现场发现：空列表既不渲染卡片也不渲染 remote
+    // 注记）。
     mockUseDiscoveredSessions.mockReturnValue({
       data: [
         {
@@ -920,7 +914,7 @@ describe("rev1-r2 B1/B2 — remote action gates (topology table / terminal grid 
     );
     await waitFor(() => expect(screen.getByTestId("belt-probe")).toBeTruthy());
     expect(clear).not.toHaveBeenCalled();
-    // the host switch — a target created while local must not survive this
+    // host 切换——local 时创建的 target 不得在此存活
     qc.setQueryData(["hosts"], {
       ownName: "Linkpix Proof Host",
       selected: "vps-a",

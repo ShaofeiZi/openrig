@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch25",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/host-select.test.ts",
+      "before_sha256_16": "898a8335890d6e09",
+      "after_sha256_16": "dae8f141bee59ff3",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/doctor-spec-conformance.test.ts",
+      "before_sha256_16": "4fa1baca4021ac5b",
+      "after_sha256_16": "21b93a59bc434877",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/context-recap-write.test.ts",
+      "before_sha256_16": "0c9272b4544cb76f",
+      "after_sha256_16": "417c298ee6591d3a",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/rigspec-import-running-name.test.ts",
+      "before_sha256_16": "de44f70744d31a0e",
+      "after_sha256_16": "6724dcb3246369a7",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/refocus-occupant-baseline.test.ts",
+      "before_sha256_16": "cc0c722d1b9536c0",
+      "after_sha256_16": "9fd64b7520e410b9",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 name: rig-bundles-and-shareable-artifacts
 version: "1"
 taxonomy: skills
-purpose: "(eval fixture) package a rig for a machine that never had the source"
+purpose: "（评估夹具）为从未获得源码的机器打包工作组"
 files:
   - path: content.md
     role: source

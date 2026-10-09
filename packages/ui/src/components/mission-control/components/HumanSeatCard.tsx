@@ -1,17 +1,13 @@
-// PL-005 Phase A: first-class human-seat rendering.
+// PL-005 阶段 A：一等人工席位渲染。
 //
-// Human queues are first-class product concepts, NOT invisible config-layer
-// convention. Mission Control renders the operator's human seat
-// (default `operator-${USER}@kernel`, where ${USER} is the OS username
-// from `workspace.operator_seat_name` setting; V0.3.1 slice 05) with its
-// own card showing identity, load, and capabilities.
+// 人工队列是一等产品概念，而不是不可见的配置层约定。任务控制台使用独立卡片渲染操作人员的
+// 人工席位，显示身份、负载和能力。默认名称为 `operator-${USER}@kernel`，其中 ${USER}
+// 是通过 `workspace.operator_seat_name` 设置取得的操作系统用户名（V0.3.1 slice 05）。
 //
-// V1 attempt-3 Phase 5 P5-8: refactored to compose VellumCard primitive
-// (Phase 1) — replaces the ad-hoc `border border-outline-variant bg-background`
-// chrome with the canonical vellum aesthetic (cream paper background +
-// 1px outline-variant border + RegistrationMarks + hard-shadow). Aligns
-// HumanSeatCard with the V1 tactical-dossier visual language for the
-// design-reviewer "professional grade met" V1 ship gate verdict.
+// V1 第三次尝试第 5 阶段 P5-8：重构为组合第 1 阶段的 VellumCard 原语，以规范 vellum 美学
+//（奶油纸背景、1px outline-variant 边框、RegistrationMarks 和硬阴影）替代临时的
+// `border border-outline-variant bg-background` 外观。使 HumanSeatCard 与 V1 战术档案视觉语言
+// 对齐，满足设计评审“达到专业级”的 V1 交付门禁裁定。
 
 import { VellumCard } from "../../ui/vellum-card.js";
 import { SectionHeader } from "../../ui/section-header.js";
@@ -19,13 +15,12 @@ import { StatusPip } from "../../ui/status-pip.js";
 import type { CompactStatusRow } from "../hooks/useMissionControlView.js";
 
 export interface HumanSeatCardProps {
-  /** Canonical session label, e.g., `operator-alex@kernel` (default
-   *  derived from the OS username via the `workspace.operator_seat_name`
-   *  setting; V0.3.1 slice 05). */
+  /** 规范会话标签，例如 `operator-alex@kernel`；默认通过
+   * `workspace.operator_seat_name` 设置从操作系统用户名派生（V0.3.1 slice 05）。 */
   session: string;
-  /** Pending human-gate items (for load indication). */
+  /** 待处理的 human-gate 项，用于负载指示。 */
   rows: CompactStatusRow[];
-  /** Optional capabilities label (which verbs this seat can fire). */
+  /** 可选能力标签，说明此席位可触发哪些动作。 */
   capabilities?: string[];
 }
 
@@ -38,9 +33,8 @@ export function HumanSeatCard({
     (r) => r.state === "idle" || r.state === "attention" || r.state === "blocked",
   ).length;
   const blockedCount = rows.filter((r) => r.state === "blocked").length;
-  // Reflect attention level via the same StatusPip taxonomy used elsewhere
-  // (warning for blocked, info for plain pending). Keeps the card's
-  // semantic palette aligned with the rest of V1.
+  // 使用其他位置相同的 StatusPip 分类反映注意力级别：blocked 为 warning，普通 pending 为 info。
+  // 使卡片的语义色板与 V1 其余部分保持一致。
   const pendingTone =
     blockedCount > 0 ? "warning" : pendingCount > 0 ? "info" : "active";
   return (
@@ -51,7 +45,7 @@ export function HumanSeatCard({
       <div className="px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <SectionHeader tone="muted">Human seat</SectionHeader>
+            <SectionHeader tone="muted">人工席位</SectionHeader>
             <div
               data-testid="mc-human-seat-session"
               className="mt-1 font-mono text-sm text-on-surface truncate"
@@ -67,7 +61,7 @@ export function HumanSeatCard({
               {pendingCount}
             </div>
             <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant mt-1">
-              pending
+              待处理
             </div>
           </div>
         </div>
@@ -75,7 +69,7 @@ export function HumanSeatCard({
           <div className="mt-3 flex items-center gap-2">
             <StatusPip
               status="warning"
-              label={`${blockedCount} blocked`}
+              label={`${blockedCount} 个已阻塞`}
               variant="pill"
               testId="mc-human-seat-blocked"
             />
@@ -84,7 +78,7 @@ export function HumanSeatCard({
           <div className="mt-3">
             <StatusPip
               status={pendingTone}
-              label={pendingCount === 0 ? "all clear" : `${pendingCount} pending`}
+              label={pendingCount === 0 ? "一切正常" : `${pendingCount} 个待处理`}
               variant="pill"
             />
           </div>

@@ -1,10 +1,7 @@
-// OPR.0.4.6.WF4 (C3b) — the shape renderer's binding pins:
-//  - Q-B: handle assignment is a PURE FUNCTION of the edge record (via the
-//    set-determined shortest-path depth) — permuting the edges array yields an
-//    IDENTICAL assignment (the permutation-invariance "unit vector"), and a
-//    reciprocal pair docks DISTINCT lanes so it never overlaps (WF4-F4).
-//  - zero-instance: the extracted component renders (overlay props absent = the
-//    base render; the additive overlay is the only instance-dependent surface).
+// OPR.0.4.6.WF4（C3b）——形状渲染器的绑定锁定项：
+//  - Q-B：handle 分配是边记录的纯函数，通过集合决定的最短路径深度计算；重排 edges 数组
+//    得到完全相同的分配（置换不变“单位向量”），双向边对停靠在不同通道，绝不重叠（WF4-F4）。
+//  - 零实例：抽取出的组件仍会渲染；缺少叠层属性即基础渲染，增量叠层是唯一依赖实例的表面。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
@@ -27,8 +24,8 @@ const node = (stepId: string, over: Partial<Topology["nodes"][number]> = {}): To
   ...over,
 });
 
-// A → B with a reciprocal branch B → A (the remediation-loop shape, WF4-F4),
-// plus a forward B → C. B→A is the back-edge.
+// A → B 带一条 B → A 反向分支（修复循环形状，WF4-F4），另有 B → C 正向边；
+// B → A 是回边。
 const RECIPROCAL: Topology = {
   nodes: [node("A", { isEntry: true }), node("B"), node("C", { isTerminal: true })],
   edges: [
@@ -61,7 +58,7 @@ describe("WF-4 Q-B: pure handle assignment", () => {
   it("a forward edge docks the top/bottom lane; a back-edge docks the side lane", () => {
     const d = computeStepDepths(RECIPROCAL);
     expect(assignEdgeHandles("A", "B", d)).toEqual({ sourceHandle: "out-bottom", targetHandle: "in-top" });
-    // B→A goes UP (depth A < depth B) → the side lane, NOT the forward lane.
+    // B → A 向上（A 深度小于 B），因此走侧通道而非正向通道。
     expect(assignEdgeHandles("B", "A", d)).toEqual({ sourceHandle: "out-side", targetHandle: "in-side" });
   });
 
@@ -74,10 +71,10 @@ describe("WF-4 Q-B: pure handle assignment", () => {
 
   it("PERMUTATION-INVARIANT — the full handle vector is identical for any edge ORDER (same edge SET)", () => {
     const original = handleVector(RECIPROCAL);
-    // Reverse the edges array — the SET is unchanged.
+    // 反转 edges 数组，集合保持不变。
     const permuted: Topology = { nodes: RECIPROCAL.nodes, edges: [...RECIPROCAL.edges].reverse() };
     expect(handleVector(permuted)).toEqual(original);
-    // And a rotation.
+    // 再做一次轮换。
     const rotated: Topology = {
       nodes: RECIPROCAL.nodes,
       edges: [RECIPROCAL.edges[2]!, RECIPROCAL.edges[0]!, RECIPROCAL.edges[1]!],

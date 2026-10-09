@@ -1,9 +1,8 @@
-// Workflows in Spec Library + Activation Lens v0 — boundToWorkflow filter.
+// Spec Library + Activation Lens v0 中的 workflow——boundToWorkflow 过滤器。
 //
-// Pins that GET /api/slices?boundToWorkflow=<name>:<version> narrows the
-// slice list to those whose primary workflow_instance binding matches the
-// requested spec (name + version), via the same findSliceWorkflowBinding
-// helper Slice Story View v1 uses for its detail projection.
+// 锁定 GET /api/slices?boundToWorkflow=<name>:<version>：通过 Slice Story View v1 为详情投影
+// 所用的同一个 findSliceWorkflowBinding helper，将 slice 列表缩小到 primary workflow_instance
+// binding 与请求 spec（name + version）匹配的项。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -108,11 +107,10 @@ describe("GET /api/slices?boundToWorkflow=<name>:<version>", () => {
     fs.rmSync(cleanupDir, { recursive: true, force: true });
   });
 
-  it("narrows the list to slices whose primary instance matches the spec", async () => {
+  it("将列表缩小到 primary instance 与 spec 匹配的 slice", async () => {
     const qBound = "01J0BOUND0000000000000000";
     const qOther = "01J0OTHER0000000000000000";
-    // Body text mentions the slice name so SliceIndexer.matchQitems
-    // associates the qitem with the slice.
+    // Body 文本提到 slice 名，使 SliceIndexer.matchQitems 将 qitem 与 slice 关联。
     ensureQitem(db, qBound, "work for alpha");
     ensureQitem(db, qOther, "work for beta");
     writeSlice(slicesRoot, "alpha", "alpha slice", [qBound]);
@@ -143,7 +141,7 @@ describe("GET /api/slices?boundToWorkflow=<name>:<version>", () => {
     expect(body.boundToWorkflow.matched).toBe(1);
   });
 
-  it("returns an empty list when no slice matches", async () => {
+  it("没有 slice 匹配时返回空列表", async () => {
     const q = "01J0NOMATCH00000000000000";
     ensureQitem(db, q, "work for alpha");
     writeSlice(slicesRoot, "alpha", "alpha slice", [q]);
@@ -160,7 +158,7 @@ describe("GET /api/slices?boundToWorkflow=<name>:<version>", () => {
     expect(body.boundToWorkflow.matched).toBe(0);
   });
 
-  it("400s on malformed boundToWorkflow value (no colon)", async () => {
+  it("畸形 boundToWorkflow 值（无冒号）返回 400", async () => {
     writeSlice(slicesRoot, "alpha", "alpha slice", []);
     const res = await app.request("/api/slices?boundToWorkflow=just-name");
     expect(res.status).toBe(400);
@@ -168,7 +166,7 @@ describe("GET /api/slices?boundToWorkflow=<name>:<version>", () => {
     expect(body.error).toBe("boundToWorkflow_invalid");
   });
 
-  it("returns the unfiltered list when boundToWorkflow is absent", async () => {
+  it("boundToWorkflow 缺席时返回未过滤列表", async () => {
     writeSlice(slicesRoot, "alpha", "alpha slice", []);
     writeSlice(slicesRoot, "beta", "beta slice", []);
     const res = await app.request("/api/slices");
@@ -179,16 +177,14 @@ describe("GET /api/slices?boundToWorkflow=<name>:<version>", () => {
 });
 
 // ---------------------------------------------------------------------------
-// qitem-ccf87c0d amended gate — boundToWorkflow composite-operation load
-// contract. The route runs list() then indexer.get() per filtered slice; on
-// 75245ed6 each uncached get builds its own 2-scan batch: 82 total queue
-// scans at 40 slices (guard-reproduced). Contract: one lens request = a
-// CONSTANT number of queue_items scan executions. This path has NO gather
-// reads, so the count-EVERYTHING rule applies cleanly (LIKE and non-LIKE;
-// INSERTs and PK point lookups WHERE qitem_id IN excluded).
+// qitem-ccf87c0d 修订 gate——boundToWorkflow 复合操作负载契约。route 先运行 list()，再对每个
+// 已过滤 slice 运行 indexer.get()；在 75245ed6 上，每次未缓存 get 都建立自己的 2-scan batch：
+// 40 个 slice 共执行 82 次 queue 扫描（由 guard 复现）。契约：一次 lens 请求执行恒定次数的
+// queue_items 扫描。此路径没有 gather 读取，因此可直接应用全量计数规则（LIKE 与非 LIKE；排除
+// INSERT 和 WHERE qitem_id IN 的主键点查）。
 // ---------------------------------------------------------------------------
 
-describe("qitem-ccf87c0d — boundToWorkflow total queue-scan load contract", () => {
+describe("qitem-ccf87c0d——boundToWorkflow 总 queue-scan 负载契约", () => {
   function instrumentQueueScans(target: Database.Database): () => number {
     let n = 0;
     const origPrepare = target.prepare.bind(target);
@@ -208,7 +204,7 @@ describe("qitem-ccf87c0d — boundToWorkflow total queue-scan load contract", ()
     return () => n;
   }
 
-  it("one GET /api/slices?boundToWorkflow over 40 slices executes <= 4 total queue_items scans, response diagnostic intact", async () => {
+  it("对 40 个 slice 的一次 GET /api/slices?boundToWorkflow 最多执行 4 次 queue_items 扫描，且响应诊断完整", async () => {
     const db = createDb();
     migrate(db, [
       coreSchema, eventsSchema, streamItemsSchema, queueItemsSchema,
@@ -233,8 +229,7 @@ describe("qitem-ccf87c0d — boundToWorkflow total queue-scan load contract", ()
     const body = (await res.json()) as { boundToWorkflow: { matched: number; total: number }; slices: unknown[] };
     expect(body.boundToWorkflow).toEqual({ specName: "openrig-velocity", specVersion: "1.0", matched: 0, total: 40 });
     expect(body.slices).toHaveLength(0);
-    // Pre-fix on 75245ed6: 2 (cold list batch) + 40x2 (uncached get per
-    // filtered slice) = 82. Contract: constant.
+    // 75245ed6 修复前：2（冷 list batch）+ 40x2（每个已过滤 slice 的未缓存 get）= 82。契约：恒定。
     expect(scans()).toBeLessThanOrEqual(4);
     db.close();
     fs.rmSync(base, { recursive: true, force: true });

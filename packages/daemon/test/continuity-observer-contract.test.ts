@@ -6,8 +6,8 @@ function source(path: string): string {
   return readFileSync(resolve(import.meta.dirname, path), "utf8");
 }
 
-describe("S20 P5 current-occupant observer contract", () => {
-  it("has one generation mint definition, two reservation callers, two injectors, and one faithful relay", () => {
+describe("S20 P5 当前占用者观察器契约", () => {
+  it("包含一个代际铸造定义、两个预留调用方、两个注入器和一个忠实中继", () => {
     const registry = source("../src/domain/session-registry.ts");
     const launcher = source("../src/domain/node-launcher.ts");
     const handover = source("../src/domain/seat-handover-service.ts");
@@ -23,7 +23,7 @@ describe("S20 P5 current-occupant observer contract", () => {
     expect(relay).toMatch(/generation,/);
   });
 
-  it("persists the successor pane at commit and the reconciler rereads that canonical column", () => {
+  it("提交时持久化继任者窗格，协调器重新读取该标准列", () => {
     const handover = source("../src/domain/seat-handover-service.ts");
     const reconciler = source("../src/domain/seat-identity-reconciler.ts");
 

@@ -1,16 +1,14 @@
-# 51-02 delta D1 fixture — THREE runtime:stub seats in one pod.
+# 51-02 delta D1 fixture——一个 pod 中有三个 runtime:stub 席位。
 #
-# Exercises per-seat script delivery: two seats get DIFFERENT scenario-resolved
-# scripts, the third is unmapped and must fall to 51-01's built-in default. The
-# relative closure (culture_file + local: agent_ref) is what makes staging a lone
-# YAML impossible — both resolve against the rig-spec directory, so the whole
-# source root is staged.
+# 验证逐席位脚本投递：两个席位分别获得不同的场景解析脚本，第三个没有映射，必须回退到
+# 51-01 的内置默认值。相对闭包（culture_file + local: agent_ref）决定了不能只暂存一个
+# YAML——两者都相对于 rig-spec 目录解析，因此必须暂存整个源根目录。
 version: "0.2"
 name: scn-scripts
 culture_file: culture.md
 pods:
   - id: dev
-    label: Dev
+    label: 开发
     members:
       - id: alpha
         agent_ref: "local:agents/worker"

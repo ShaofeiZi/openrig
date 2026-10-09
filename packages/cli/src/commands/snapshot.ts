@@ -5,7 +5,7 @@ import { realDeps } from "./daemon.js";
 import type { StatusDeps } from "./status.js";
 
 export function snapshotCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("snapshot").description("Manage rig snapshots");
+  const cmd = new Command("snapshot").description("管理工作组快照");
   const getDeps = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   async function getClient(deps: StatusDeps): Promise<DaemonClient | null> {
@@ -14,10 +14,10 @@ export function snapshotCommand(depsOverride?: StatusDeps): Command {
     return deps.clientFactory(getDaemonUrl(status));
   }
 
-  // rig snapshot <rigId> — default action creates a snapshot
+  // zrig snapshot <rigId> — 默认动作为创建快照
   cmd
-    .argument("<rigId>", "Rig ID to snapshot")
-    .option("--intended-seats <ids>", "Comma-separated intended topology roster stored with the snapshot")
+    .argument("<rigId>", "要创建快照的工作组 ID")
+    .option("--intended-seats <ids>", "随快照保存的预期拓扑席位名单，逗号分隔")
     .action(async (rigId: string, opts: { intendedSeats?: string }) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -29,21 +29,21 @@ export function snapshotCommand(depsOverride?: StatusDeps): Command {
         intendedSeats ? { intendedSeats } : undefined,
       );
       if (res.status === 404) {
-        console.error(`Rig '${rigId}' not found`);
+        console.error(`未找到工作组 '${rigId}'`);
         process.exitCode = 1;
       } else if (res.status >= 400) {
-        console.error(`Snapshot failed: ${(res.data as { error?: string }).error ?? "unknown error"}`);
+        console.error(`快照创建失败：${(res.data as { error?: string }).error ?? "未知错误"}`);
         process.exitCode = 1;
       } else {
-        console.log(`Snapshot created: ${res.data.id}`);
-        console.log(`To restore: rig restore ${res.data.id} --rig ${rigId}`);
+        console.log(`快照已创建：${res.data.id}`);
+        console.log(`恢复命令：zrig restore ${res.data.id} --rig ${rigId}`);
       }
     });
 
-  // rig snapshot list <rigId>
+  // zrig snapshot list <rigId>
   cmd
     .command("list <rigId>")
-    .description("List snapshots for a rig")
+    .description("列出某个工作组的快照")
     .action(async (rigId: string) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -51,18 +51,18 @@ export function snapshotCommand(depsOverride?: StatusDeps): Command {
 
       const res = await client.get<Array<{ id: string; kind: string; status: string; createdAt: string }>>(`/api/rigs/${encodeURIComponent(rigId)}/snapshots`);
       if (res.status >= 400) {
-        console.error(`Failed to list snapshots: ${(res.data as { error?: string }).error ?? "unknown error"}`);
+        console.error(`快照列表获取失败：${(res.data as { error?: string }).error ?? "未知错误"}`);
         process.exitCode = 1;
         return;
       }
 
       const snapshots = res.data;
       if (snapshots.length === 0) {
-        console.log("No snapshots");
+        console.log("暂无快照");
         return;
       }
 
-      console.log("ID                         Kind    Status    Created");
+      console.log("ID                         类型      状态        创建时间");
       for (const snap of snapshots) {
         console.log(`${snap.id.padEnd(27)} ${snap.kind.padEnd(8)} ${snap.status.padEnd(10)} ${snap.createdAt}`);
       }

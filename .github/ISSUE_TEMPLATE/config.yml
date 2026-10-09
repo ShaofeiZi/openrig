@@ -1,14 +1,14 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Ask a question
+  - name: 提问
     url: https://github.com/mvschwarz/openrig/discussions/categories/q-a
-    about: Setup, usage and "is this expected" questions go to Discussions Q&A.
-  - name: Share an idea or a setup
+    about: 安装、用法以及“这是否符合预期”类问题请到 Discussions 的 Q&A 版块。
+  - name: 分享想法或配置
     url: https://github.com/mvschwarz/openrig/discussions
-    about: Ideas and Show and tell live in Discussions.
-  - name: Documentation
+    about: 产品想法与成果展示（Show and tell）请发在 Discussions。
+  - name: 文档
     url: https://openrig.dev/docs
-    about: Getting started, CLI reference, configuration and troubleshooting.
-  - name: Security report
+    about: 入门指南、CLI 参考、配置与故障排查。
+  - name: 安全报告
     url: https://github.com/mvschwarz/openrig/security/policy
-    about: Read how to arrange a private report. Do not include vulnerability details in public issues.
+    about: 了解如何私下报告安全问题。请勿在公开 issue 中泄露漏洞细节。

@@ -16,7 +16,7 @@ function fixture(phases: Array<[string, () => unknown]>) {
   const shutdown = createDaemonShutdown({ phases, markClean, exit, log, receiptPath });
   return { shutdown, exit, markClean, log, receipt: () => JSON.parse(fs.readFileSync(receiptPath, "utf8")) };
 }
-it("writes clean lifecycle evidence only after every phase has drained", async () => {
+it("仅在所有阶段排空后写入干净的生命周期证据", async () => {
   vi.useFakeTimers(); let release!: () => void;
   const f = fixture([["connections", () => new Promise<void>(r => { release = r; })], ["recorder", () => {}]]);
   f.shutdown("SIGTERM"); await Promise.resolve();
@@ -25,7 +25,7 @@ it("writes clean lifecycle evidence only after every phase has drained", async (
   expect(f.markClean).toHaveBeenCalledOnce(); expect(f.exit).toHaveBeenCalledWith(0);
   expect(f.receipt()).toMatchObject({ outcome: "clean", phase: "complete", failures: [] });
 });
-it.each(["health-diagnosis", "watchdog", "wake-ladder", "connections", "recorder"])("bounds an unresolved %s phase from the first await", async (phase) => {
+it.each(["health-diagnosis", "watchdog", "wake-ladder", "connections", "recorder"])("从首次等待起限制未解决的 %s 阶段", async (phase) => {
   vi.useFakeTimers(); const f = fixture([[phase, () => new Promise(() => {})]]);
   f.shutdown("SIGTERM"); await vi.advanceTimersByTimeAsync(DAEMON_SHUTDOWN_TIMEOUT_MS - 1);
   expect(f.exit).not.toHaveBeenCalled();
@@ -41,7 +41,7 @@ it.each([undefined, null, new Error("service failed")])("records even falsey rej
   expect(f.markClean).not.toHaveBeenCalled();
   expect(f.receipt()).toMatchObject({ outcome: "failed", phase: "watchdog" });
 });
-it("repeat signals and late completion cannot write conflicting cleanup or clean evidence", async () => {
+it("重复信号和延迟完成不能写入冲突的清理结果或干净证据", async () => {
   vi.useFakeTimers(); let release!: () => void;
   const late = vi.fn(); const first = vi.fn(() => new Promise<void>(r => { release = r; }));
   const f = fixture([["watchdog", first], ["recorder", late]]);
@@ -51,7 +51,7 @@ it("repeat signals and late completion cannot write conflicting cleanup or clean
   expect(f.exit).toHaveBeenCalledExactlyOnceWith(1); expect(f.markClean).not.toHaveBeenCalled();
   expect(f.receipt().outcome).toBe("timed-out");
 });
-it("a lifecycle stop-write failure cannot yield a clean receipt", async () => {
+it("生命周期停止写入失败时不能生成干净回执", async () => {
   vi.useFakeTimers(); const f = fixture([]);
   f.markClean.mockImplementation(() => { throw new Error("DB write failed"); });
   f.shutdown("SIGTERM"); await vi.runAllTimersAsync();
@@ -59,7 +59,7 @@ it("a lifecycle stop-write failure cannot yield a clean receipt", async () => {
   expect(f.receipt()).toMatchObject({ outcome: "failed", phase: "lifecycle-stop" });
 });
 
-it("enforces the whole-shutdown deadline with no other referenced handles", async () => {
+it("在没有其他引用句柄时强制执行完整关闭期限", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shutdown-process-")); dirs.push(dir);
   const receiptPath = path.join(dir, "receipt.json");
   const moduleUrl = pathToFileURL(path.resolve(import.meta.dirname, "../src/daemon-shutdown.ts")).href;

@@ -25,7 +25,7 @@ import { WatchdogPolicyEngine } from "../src/domain/watchdog-policy-engine.js";
 import { WatchdogScheduler } from "../src/domain/watchdog-scheduler.js";
 import { watchdogRoutes } from "../src/routes/watchdog.js";
 
-describe("context-usage-threshold watchdog", () => {
+describe("context-usage-threshold 看门狗", () => {
   let db: Database.Database;
   let repo: WatchdogJobsRepository;
   let history: WatchdogHistoryLog;
@@ -99,7 +99,7 @@ describe("context-usage-threshold watchdog", () => {
       specYaml:
         `policy: context-usage-threshold\n` +
         `target:\n  session: ${specTarget}\n` +
-        `message: Context threshold crossed; prepare continuity now.\n`,
+        `message: 上下文阈值已越过；请立即准备连续性。\n`,
       targetSession,
       intervalSeconds: 60,
       registeredBySession: "ops@kernel",
@@ -109,7 +109,7 @@ describe("context-usage-threshold watchdog", () => {
     });
   }
 
-  it("registers a generated birth-race as pending, then binds visibly with a durable receipt", async () => {
+  it("将生成时的出生竞态注册为待处理，随后以持久回执显式绑定", async () => {
     const job = repo.register({
       policy: "context-usage-threshold",
       specYaml:
@@ -117,7 +117,7 @@ describe("context-usage-threshold watchdog", () => {
         "generated_by: continuity-policy-materializer\n" +
         "continuity_mode: managed-compaction\n" +
         "target:\n  session: target@rig\n" +
-        "message: Deposit continuity context before managed compaction.\n",
+        "message: 请在托管压缩前存放连续性上下文。\n",
       targetSession: "target@rig",
       intervalSeconds: 60,
       registeredBySession: "daemon@kernel",
@@ -168,7 +168,7 @@ describe("context-usage-threshold watchdog", () => {
     ]));
   });
 
-  it("keeps the wrong seat silent, fires once with reason, and survives an engine restart", async () => {
+  it("让错误席位保持静默，带原因触发一次，并可跨引擎重启保持状态", async () => {
     const job = register({ specTarget: "wrong-seat@rig" });
 
     const below = await engine().evaluate(job);
@@ -180,10 +180,10 @@ describe("context-usage-threshold watchdog", () => {
     expect(fired.outcome.action).toBe("send");
     expect(deliveries).toEqual([{
       targetSession: "target@rig",
-      message: "Context threshold crossed; prepare continuity now.",
+      message: "上下文阈值已越过；请立即准备连续性。",
     }]);
     expect(history.listForJob(job.jobId)[0]?.evaluationNotes).toMatchObject({
-      reason: expect.stringContaining("10 transcript bytes crossed the 8-byte threshold"),
+      reason: expect.stringContaining("转录达到 10 字节，超过 8 字节阈值"),
       observedBytes: 10,
       thresholdBytes: 8,
       occupantGeneration: "gen-1",
@@ -195,7 +195,7 @@ describe("context-usage-threshold watchdog", () => {
     expect(repo.getByIdOrThrow(job.jobId).lastFiredGeneration).toBe("gen-1");
   });
 
-  it("threads a cutover action through the real threshold fire with the target occupant generation", async () => {
+  it("在真实阈值触发中透传带目标占用者代际的切换动作", async () => {
     writeFileSync(transcript, "1234567890");
     const job = repo.register({
       policy: "context-usage-threshold",
@@ -204,12 +204,12 @@ describe("context-usage-threshold watchdog", () => {
         "generated_by: continuity-policy-materializer\n" +
         "continuity_mode: apprentice-handover\n" +
         "target:\n  session: target@rig\n" +
-        "message: Cut over now.\n" +
+        "message: 立即切换。\n" +
         "context:\n" +
         "  continuity_action:\n" +
         "    type: create-cutover-baton\n" +
         "    destination: mechanic@kernel\n" +
-        "    body: Owned cutover baton with one-active-walker and authority-effective-at-effect-receipt.\n",
+        "    body: 已拥有切换接力棒，遵循单活跃执行者，并在效果回执时权限生效。\n",
       targetSession: "target@rig",
       intervalSeconds: 60,
       registeredBySession: "daemon@kernel",
@@ -221,19 +221,19 @@ describe("context-usage-threshold watchdog", () => {
 
     expect(deliveries).toEqual([expect.objectContaining({
       targetSession: "target@rig",
-      message: "Cut over now.",
+      message: "立即切换。",
       continuityAction: {
         type: "create-cutover-baton",
         jobId: job.jobId,
         occupantGeneration: "gen-1",
         sourceSession: "target@rig",
         destination: "mechanic@kernel",
-        body: expect.stringContaining("one-active-walker"),
+        body: expect.stringContaining("单活跃执行者"),
       },
     })]);
   });
 
-  it("retries a refused structured cutover until one durable baton exists, then stamps the generation", async () => {
+  it("重试被拒绝的结构化切换，直到存在一根持久接力棒，再记录代际", async () => {
     migrate(db, ALL_MIGRATIONS);
     writeFileSync(transcript, "1234567890");
     let destinationExists = false;
@@ -247,12 +247,12 @@ describe("context-usage-threshold watchdog", () => {
         "generated_by: continuity-policy-materializer\n" +
         "continuity_mode: apprentice-handover\n" +
         "target:\n  session: target@rig\n" +
-        "message: Cut over now.\n" +
+        "message: 立即切换。\n" +
         "context:\n" +
         "  continuity_action:\n" +
         "    type: create-cutover-baton\n" +
         "    destination: mechanic@missing-rig\n" +
-        "    body: Owned cutover baton with one-active-walker and authority-effective-at-effect-receipt.\n",
+        "    body: 已拥有切换接力棒，遵循单活跃执行者，并在效果回执时权限生效。\n",
       targetSession: "target@rig",
       intervalSeconds: 60,
       registeredBySession: "daemon@kernel",
@@ -272,7 +272,7 @@ describe("context-usage-threshold watchdog", () => {
           }
           return {
             status: "failed" as const,
-            error: "terminal send failed after durable baton creation",
+            error: "创建持久接力棒后终端发送失败",
             continuityActionCompleted,
           };
         } catch (error) {
@@ -298,7 +298,7 @@ describe("context-usage-threshold watchdog", () => {
     const second = await retryEngine.evaluate(repo.getByIdOrThrow(job.jobId));
     expect(second.delivery).toMatchObject({
       status: "failed",
-      error: "terminal send failed after durable baton creation",
+      error: "创建持久接力棒后终端发送失败",
       continuityActionCompleted: true,
     });
     expect(repo.getByIdOrThrow(job.jobId).lastFiredGeneration).toBe("gen-1");
@@ -309,7 +309,7 @@ describe("context-usage-threshold watchdog", () => {
     expect((db.prepare("SELECT COUNT(*) AS n FROM queue_items").get() as { n: number }).n).toBe(1);
   });
 
-  it("rebinds a new occupant to its own transcript and preserves that receipt through restart", async () => {
+  it("将新占用者重新绑定到自身记录，并跨重启保留该回执", async () => {
     writeFileSync(transcript, "1234567890");
     const successorTranscript = join(tmp, "successor.jsonl");
     writeFileSync(successorTranscript, "1");
@@ -329,8 +329,7 @@ describe("context-usage-threshold watchdog", () => {
     ).run(successorTranscript);
     generation = "gen-2";
 
-    // Daemon restart: the durable job must resolve the CURRENT generation's
-    // small transcript B, never reuse predecessor transcript A (still large).
+    // 守护进程重启：持久任务必须解析当前代际的小记录 B，绝不复用前任仍很大的记录 A。
     repo = new WatchdogJobsRepository(db, undefined, () => generation);
     const below = await engine().evaluate(repo.getByIdOrThrow(job.jobId));
     expect(below.outcome).toMatchObject({
@@ -355,7 +354,7 @@ describe("context-usage-threshold watchdog", () => {
     expect(deliveries).toHaveLength(2);
   });
 
-  it("waits visibly for a successor transcript sample before rebinding and firing", async () => {
+  it("重新绑定和触发前，显式等待继任者的记录样本", async () => {
     writeFileSync(transcript, "1234567890");
     const successorTranscript = join(tmp, "successor.jsonl");
     writeFileSync(successorTranscript, "1234567890");
@@ -370,8 +369,7 @@ describe("context-usage-threshold watchdog", () => {
     ).run();
     generation = "gen-2";
 
-    // A restart before the successor's first sample must wait, not measure
-    // the predecessor transcript or permanently terminalize the active job.
+    // 在继任者首个样本前重启时必须等待，不得测量前任记录或永久终止活跃任务。
     repo = new WatchdogJobsRepository(db, undefined, () => generation);
     const pending = await engine().evaluate(repo.getByIdOrThrow(job.jobId));
     expect(pending.outcome).toMatchObject({
@@ -420,7 +418,7 @@ describe("context-usage-threshold watchdog", () => {
     expect(deliveries).toHaveLength(2);
   });
 
-  it("requires an earlier job receipt for the same occupant generation", async () => {
+  it("要求同一占用者代际已有前序任务回执", async () => {
     writeFileSync(transcript, "1234567890");
     const prepare = register();
     const cutover = register({ requiresJobId: prepare.jobId });
@@ -441,7 +439,7 @@ describe("context-usage-threshold watchdog", () => {
     expect(deliveries.map((delivery) => delivery.targetSession)).toEqual(["target@rig", "target@rig"]);
   });
 
-  it("advances only one requires rung per scheduler evaluation pass", async () => {
+  it("每轮调度器评估只推进一个 requires 阶段", async () => {
     writeFileSync(transcript, "1234567890");
     let clockMs = Date.parse("2026-08-28T09:50:00.000Z");
     const now = () => new Date(clockMs++);
@@ -478,7 +476,7 @@ describe("context-usage-threshold watchdog", () => {
     expect(repo.getByIdOrThrow(cutover.jobId).lastFiredGeneration).toBe("gen-1");
   });
 
-  it("a missing watched file is terminal and loud in status history", async () => {
+  it("被监视文件缺失会终止，并在状态历史中明确显示", async () => {
     const missing = join(tmp, "missing.jsonl");
     const job = register({ watchedFilePath: missing });
     const result = await engine().evaluate(job);
@@ -494,7 +492,7 @@ describe("context-usage-threshold watchdog", () => {
     });
   });
 
-  it("shrinking a transcript never clears the generation receipt", async () => {
+  it("记录缩小绝不会清除代际回执", async () => {
     writeFileSync(transcript, "1234567890");
     const job = register();
     await engine().evaluate(job);
@@ -506,7 +504,7 @@ describe("context-usage-threshold watchdog", () => {
   });
 });
 
-describe("context-usage-threshold registration", () => {
+describe("context-usage-threshold 注册", () => {
   let db: Database.Database;
   let tmp: string;
 
@@ -559,7 +557,7 @@ describe("context-usage-threshold registration", () => {
     };
   }
 
-  it("derives a transcript path from recorded context usage", async () => {
+  it("从已记录的上下文用量推导记录路径", async () => {
     const derived = join(tmp, "derived.jsonl");
     writeFileSync(derived, "1234");
     db.prepare("INSERT INTO rigs (id, name) VALUES ('rig-1', 'rig')").run();
@@ -585,7 +583,7 @@ describe("context-usage-threshold registration", () => {
     expect(await response.json()).toMatchObject({ watchedFilePath: derived, thresholdBytes: 8 });
   });
 
-  it("an explicit watched file wins over the derived path", async () => {
+  it("显式监视文件优先于推导路径", async () => {
     const derived = join(tmp, "derived.jsonl");
     const explicit = join(tmp, "explicit.jsonl");
     writeFileSync(derived, "1234");
@@ -613,7 +611,7 @@ describe("context-usage-threshold registration", () => {
     expect(await response.json()).toMatchObject({ watchedFilePath: explicit });
   });
 
-  it("fails registration loudly when neither resolution path exists", async () => {
+  it("两种解析路径均不存在时明确注册失败", async () => {
     const response = await app().request("/api/watchdog/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

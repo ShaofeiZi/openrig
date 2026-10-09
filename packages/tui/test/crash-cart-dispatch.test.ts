@@ -3,33 +3,33 @@ import { createViewState, emptySnapshot } from "../src/state.js";
 import { renderScreen } from "../src/render.js";
 import { demoCrashCartModel } from "../src/crash-cart/crash-cart-model.js";
 
-// Crash-cart C3 (SUB-3b) — renderScreen dispatches to the daemon-down screens on the resolved signal
-// carried in RenderOptions. DOWN → the cockpit; UNVERIFIED → the distinct cannot-verify screen; absent
-// (UP / normal) → the fleet views untouched. The cockpit is DOWN-only; UNVERIFIED never offers restore.
+// Crash-cart C3（SUB-3b）——renderScreen 按 RenderOptions 携带的解析信号
+// dispatch 到 daemon-down 屏。DOWN → cockpit；UNVERIFIED → 独立 cannot-verify 屏；缺省
+// （UP / normal）→ fleet 视图不动。cockpit 仅 DOWN；UNVERIFIED 绝不提供 restore。
 
 const snap = emptySnapshot();
 const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
 
-describe("renderScreen — daemon-down dispatch", () => {
-  it("DOWN → the crash-cart cockpit (RESTORE EVERYTHING + the daemon-down header)", () => {
+describe("renderScreen——daemon-down 分发", () => {
+  it("DOWN → crash-cart 驾驶舱（恢复全部 + daemon-down 头）", () => {
     const body = renderScreen(view.get(), snap, { daemonState: "down", crashCart: demoCrashCartModel() }).lines.join("\n");
-    expect(body).toContain("◌ daemon not running");
-    expect(body).toContain("⏎ RESTORE EVERYTHING");
+    expect(body).toContain("◌ 后台服务未运行");
+    expect(body).toContain("⏎ 恢复全部");
   });
 
-  it("UNVERIFIED → the cannot-verify screen; NO restore offered", () => {
+  it("UNVERIFIED → 无法验证界面；不提供恢复", () => {
     const body = renderScreen(view.get(), snap, {
       daemonState: "unverified",
       daemonEvidence: { pidState: "alive (pid 7)", probeResult: "timeout", failedSignal: "healthz timed out" },
     }).lines.join("\n");
-    expect(body).toContain("cannot verify the daemon");
+    expect(body).toContain("无法验证后台服务");
     expect(body).toContain("alive (pid 7)");
-    expect(body).not.toContain("RESTORE EVERYTHING");
+    expect(body).not.toContain("恢复全部");
   });
 
-  it("absent daemonState (UP / normal) → the fleet views, no cockpit", () => {
+  it("缺省 daemonState（UP/正常）→ fleet 视图，无驾驶舱", () => {
     const body = renderScreen(view.get(), snap, {}).lines.join("\n");
-    expect(body).not.toContain("RESTORE EVERYTHING");
-    expect(body).not.toContain("cannot verify the daemon");
+    expect(body).not.toContain("恢复全部");
+    expect(body).not.toContain("无法验证后台服务");
   });
 });

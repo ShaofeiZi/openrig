@@ -16,7 +16,7 @@ profiles:
       skills: []`;
 }
 
-describe("RigSpec session_source persistence", () => {
+describe("RigSpec session_source 持久化", () => {
   let db: Database.Database;
   let app: ReturnType<typeof createTestApp>;
 
@@ -26,7 +26,7 @@ describe("RigSpec session_source persistence", () => {
       podInstantiatorFsOps: {
         readFile: (path: string) => {
           if (path === `${RIG_ROOT}/agents/impl/agent.yaml`) return agentYaml();
-          throw new Error(`Not found: ${path}`);
+          throw new Error(`未找到：${path}`);
         },
         exists: (path: string) => path === `${RIG_ROOT}/agents/impl/agent.yaml`,
       },
@@ -35,7 +35,7 @@ describe("RigSpec session_source persistence", () => {
 
   afterEach(() => { db.close(); });
 
-  it("round-trips a versioned agent_image declaration through materialize and export", async () => {
+  it("通过 materialize 和 export 往返保留带版本的 agent_image 声明", async () => {
     const sessionSource = {
       mode: "agent_image",
       ref: { kind: "image_name", value: "builder-base", version: "3" },
@@ -70,7 +70,7 @@ describe("RigSpec session_source persistence", () => {
     expect(exported.pods[0]!.members[0]!.sessionSource).toEqual(sessionSource);
   });
 
-  it("round-trips session_source through the bootstrap instantiate path", async () => {
+  it("通过 bootstrap instantiate 路径往返保留 session_source", async () => {
     const sessionSource = {
       mode: "fork",
       ref: { kind: "native_id", value: "parent-session-id" },

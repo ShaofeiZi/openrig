@@ -6,9 +6,9 @@ import {
   type BundleAuditRecord,
 } from "../src/domain/bundle-audit.js";
 
-// Item 4 / slice-05 Checkpoint 5.1: bundle-audit unit tests.
-// Discriminator pattern: any test asserting append + read round-trip must
-// fail if writer.append or reader.list is broken.
+// 条目 4 / slice-05 Checkpoint 5.1：bundle-audit 单元测试。
+// 判别模式：任何断言 append + read 往返的测试，都必须在 writer.append
+// 或 reader.list 损坏时失败。
 
 function mockFs(): BundleAuditFsOps & { _state: Map<string, string>; _mkdirpCalls: string[] } {
   const state = new Map<string, string>();
@@ -53,15 +53,15 @@ function record(overrides?: Partial<BundleAuditRecord>): BundleAuditRecord {
 }
 
 describe("BundleAuditWriter + BundleAuditReader", () => {
-  // A1: empty file → empty list
-  it("reading an empty audit file returns an empty array", () => {
+  // A1：空文件 → 空列表
+  it("读取空审计文件时返回空数组", () => {
     const fs = mockFs();
     const reader = makeReader(fs);
     expect(reader.list()).toEqual([]);
   });
 
-  // A2: append + read single record round-trips
-  it("append + list round-trips a single record verbatim", () => {
+  // A2：append + read 单条记录往返
+  it("append + list 可原样往返单条记录", () => {
     const fs = mockFs();
     const writer = makeWriter(fs);
     const reader = makeReader(fs);
@@ -72,8 +72,8 @@ describe("BundleAuditWriter + BundleAuditReader", () => {
     expect(out[0]).toEqual(r);
   });
 
-  // A3: append creates the parent dir
-  it("first append creates the parent directory via mkdirp", () => {
+  // A3：append 创建父目录
+  it("首次 append 通过 mkdirp 创建父目录", () => {
     const fs = mockFs();
     const writer = makeWriter(fs);
     writer.append(record());
@@ -81,23 +81,23 @@ describe("BundleAuditWriter + BundleAuditReader", () => {
     expect(fs._mkdirpCalls[0]).toBe("/test/.openrig");
   });
 
-  // A4: each record is one JSONL line terminated by newline
-  it("each append writes exactly one JSON object followed by a newline (JSONL format)", () => {
+  // A4：每条记录占一行 JSONL，并以换行符结尾
+  it("每次 append 恰好写入一个 JSON 对象并追加换行符（JSONL 格式）", () => {
     const fs = mockFs();
     const writer = makeWriter(fs);
     writer.append(record({ targetRigName: "rig-a" }));
     writer.append(record({ targetRigName: "rig-b" }));
     const raw = fs._state.get(FIXTURE_PATH)!;
     const lines = raw.split("\n");
-    // Two records → two non-empty lines + a trailing empty (from trailing \n)
+    // 两条记录 → 两个非空行 + 一个由末尾 \n 产生的空行
     expect(lines.length).toBe(3);
     expect(lines[2]).toBe("");
     expect(JSON.parse(lines[0]!).targetRigName).toBe("rig-a");
     expect(JSON.parse(lines[1]!).targetRigName).toBe("rig-b");
   });
 
-  // A5: list returns records in append order
-  it("list returns records in append order (oldest first)", () => {
+  // A5：list 按 append 顺序返回记录
+  it("list 按 append 顺序返回记录（最早的在前）", () => {
     const fs = mockFs();
     const writer = makeWriter(fs);
     writer.append(record({ installedAt: "2026-05-18T10:00:00Z", targetRigName: "rig-a" }));
@@ -107,8 +107,8 @@ describe("BundleAuditWriter + BundleAuditReader", () => {
     expect(out.map((r) => r.targetRigName)).toEqual(["rig-a", "rig-b", "rig-c"]);
   });
 
-  // A6: rig filter scopes to matching records
-  it("rig filter returns only records whose targetRigName matches", () => {
+  // A6：rig 过滤器将范围限制到匹配记录
+  it("rig 过滤器只返回 targetRigName 匹配的记录", () => {
     const fs = mockFs();
     const writer = makeWriter(fs);
     writer.append(record({ targetRigName: "alpha" }));
@@ -119,8 +119,8 @@ describe("BundleAuditWriter + BundleAuditReader", () => {
     expect(out.every((r) => r.targetRigName === "alpha")).toBe(true);
   });
 
-  // A7: since filter scopes to records at-or-after the cutoff
-  it("since filter returns only records whose installedAt is >= the cutoff", () => {
+  // A7：since 过滤器将范围限制到截止时间及之后的记录
+  it("since 过滤器只返回 installedAt 大于等于截止时间的记录", () => {
     const fs = mockFs();
     const writer = makeWriter(fs);
     writer.append(record({ installedAt: "2026-05-18T10:00:00Z" }));
@@ -134,8 +134,8 @@ describe("BundleAuditWriter + BundleAuditReader", () => {
     ]);
   });
 
-  // A8: combined rig + since filters
-  it("rig + since filters both apply (AND semantics)", () => {
+  // A8：组合 rig + since 过滤器
+  it("rig + since 过滤器同时生效（AND 语义）", () => {
     const fs = mockFs();
     const writer = makeWriter(fs);
     writer.append(record({ installedAt: "2026-05-18T10:00:00Z", targetRigName: "alpha" }));
@@ -146,8 +146,8 @@ describe("BundleAuditWriter + BundleAuditReader", () => {
     expect(out[0]!.installedAt).toBe("2026-05-18T12:00:00Z");
   });
 
-  // A9: malformed lines are skipped silently (forward-compat)
-  it("malformed JSONL lines are skipped silently; valid lines still surface", () => {
+  // A9：静默跳过格式错误的行（向前兼容）
+  it("静默跳过格式错误的 JSONL 行，同时仍返回有效行", () => {
     const fs = mockFs();
     fs._state.set(FIXTURE_PATH, [
       JSON.stringify(record({ targetRigName: "a" })),
@@ -159,8 +159,8 @@ describe("BundleAuditWriter + BundleAuditReader", () => {
     expect(out.map((r) => r.targetRigName)).toEqual(["a", "b"]);
   });
 
-  // A10: outcome field is preserved literally (success / failed / partial)
-  it("outcome field round-trips for all three values", () => {
+  // A10：原样保留 outcome 字段（success / failed / partial）
+  it("outcome 字段的三个值均可往返", () => {
     const fs = mockFs();
     const writer = makeWriter(fs);
     writer.append(record({ outcome: "success", targetRigName: "ok" }));

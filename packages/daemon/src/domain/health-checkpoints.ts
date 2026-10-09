@@ -7,8 +7,8 @@ import { healthHash, object, type HealthPolicyStore } from "./health-policy.js";
 import { adaptQueueTransitionEvidence, adaptLifecycleReceiptEvidence, boundHealthEvidence, deriveHealthSourceFreshness, type HealthScope } from "./health-projection.js";
 import type { HealthDetectorObservation, HealthObservationSource } from "./health-detectors.js";
 
-/** Authored outcome-boundary census, not a per-edit event feed. Queue references
- * are verified locally; product/authority meaning remains attributed testimony. */
+/** authored outcome-boundary census，而非逐次编辑的 event feed。queue reference 在本地验证；
+ * product/authority 含义仍属于带归因的陈述。 */
 export interface HealthCheckpoint {
   schema: "openrig.health-checkpoint/v0alpha1";
   lineageQitemId: string;
@@ -24,12 +24,12 @@ export interface HealthCheckpoint {
   authorityPaths: { project: string[]; mission: string[]; slice: string[] };
 }
 interface StoredCheckpoint { actor: string; checkpoint: HealthCheckpoint; episodeStartedAt: string; active: boolean; qualifying: HealthCheckpoint | null; }
-function text(value: unknown): asserts value is string { if (typeof value !== "string" || !value.trim() || value.length > 4096) throw new Error("Expected a nonempty bounded string"); }
-function timestamp(value: unknown): number { text(value); const time = Date.parse(value); if (!Number.isFinite(time)) throw new Error("Invalid checkpoint timestamp"); return time; }
+function text(value: unknown): asserts value is string { if (typeof value !== "string" || !value.trim() || value.length > 4096) throw new Error("应为非空且长度受限的字符串"); }
+function timestamp(value: unknown): number { text(value); const time = Date.parse(value); if (!Number.isFinite(time)) throw new Error("checkpoint timestamp 无效"); return time; }
 function scope(value: unknown): asserts value is HealthScope {
   const type = (value as HealthScope)?.type;
   const fields = { instance: ["instanceId"], rig: ["rigId"], seat: ["rigId", "seatId"], mission: ["projectId", "missionId"], slice: ["projectId", "missionId", "sliceId"] }[type];
-  if (!fields) throw new Error("Unknown health scope");
+  if (!fields) throw new Error("未知 health scope");
   const s = object(value, ["type", ...fields]); fields.forEach((f) => text(s[f]));
 }
 export class HealthCheckpointSource implements HealthObservationSource {
@@ -39,42 +39,41 @@ export class HealthCheckpointSource implements HealthObservationSource {
   }
   private validate(value: unknown, allowDerive = false): HealthCheckpoint {
     const c = object(value, ["schema", "lineageQitemId", "scope", "startedAt", "observedAt", "transitionIds", "productOutcomes", "productCensusRef", "boundedAuthority", "authorityPaths", ...["includeHandoffs", "sdlc"].filter((key) => Object.hasOwn(value ?? {}, key))]);
-    if (c.schema !== "openrig.health-checkpoint/v0alpha1") throw new Error("Unsupported checkpoint schema");
+    if (c.schema !== "openrig.health-checkpoint/v0alpha1") throw new Error("不支持的 checkpoint schema");
     text(c.lineageQitemId); text(c.productCensusRef); scope(c.scope);
     const start = timestamp(c.startedAt); const end = timestamp(c.observedAt);
-    if (end < start || end > Date.parse(this.now())) throw new Error("Checkpoint window is reversed or future");
-    // Resolve once on explicit submission, then retain exact IDs in the audit.
-    // Reads and stored checkpoints never silently acquire later traffic.
+    if (end < start || end > Date.parse(this.now())) throw new Error("Checkpoint window 顺序颠倒或位于未来");
+    // 显式提交时解析一次，随后在 audit 中保留精确 ID。读取与已存 checkpoint 绝不静默获取后续流量。
     if (allowDerive && c.transitionIds === "derive") c.transitionIds = this.transitions(c as unknown as HealthCheckpoint).map((t) => t.transitionId);
-    if (!Array.isArray(c.transitionIds) || c.transitionIds.length > 10000 || c.transitionIds.some((x) => !Number.isInteger(x) || x < 1) || new Set(c.transitionIds).size !== c.transitionIds.length) throw new Error("Invalid, duplicate, or excessive transition IDs");
-    if (!Array.isArray(c.productOutcomes) || c.productOutcomes.length > 1000) throw new Error("Invalid product outcomes");
+    if (!Array.isArray(c.transitionIds) || c.transitionIds.length > 10000 || c.transitionIds.some((x) => !Number.isInteger(x) || x < 1) || new Set(c.transitionIds).size !== c.transitionIds.length) throw new Error("transition ID 无效、重复或过多");
+    if (!Array.isArray(c.productOutcomes) || c.productOutcomes.length > 1000) throw new Error("product outcome 无效");
     const ids = new Set();
     for (const outcome of c.productOutcomes) {
       const o = object(outcome, ["id", "observedAt", "evidenceRef"]); text(o.id); text(o.evidenceRef);
-      const at = timestamp(o.observedAt); if (at < start || at > end || ids.has(o.id)) throw new Error("Product outcome is duplicate or outside the lineage window"); ids.add(o.id);
+      const at = timestamp(o.observedAt); if (at < start || at > end || ids.has(o.id)) throw new Error("product outcome 重复或位于 lineage window 外"); ids.add(o.id);
     }
     const authority = object(c.boundedAuthority, ["applies", "evidenceRef"]); text(authority.evidenceRef);
-    if (authority.applies !== null && typeof authority.applies !== "boolean") throw new Error("Authority must be true, false or unknown");
-    if (c.includeHandoffs !== undefined && typeof c.includeHandoffs !== "boolean") throw new Error("includeHandoffs must be boolean");
+    if (authority.applies !== null && typeof authority.applies !== "boolean") throw new Error("Authority 必须为 true、false 或 unknown");
+    if (c.includeHandoffs !== undefined && typeof c.includeHandoffs !== "boolean") throw new Error("includeHandoffs 必须为 boolean");
     if (c.sdlc !== undefined) {
       const sdlc = object(c.sdlc, ["expectation", "evidenceRef"]); text(sdlc.expectation); text(sdlc.evidenceRef);
     }
     const paths = object(c.authorityPaths, ["project", "mission", "slice"]);
     for (const list of Object.values(paths)) {
-      if (!Array.isArray(list) || list.length > 10) throw new Error("Invalid authority path list"); list.forEach(text);
+      if (!Array.isArray(list) || list.length > 10) throw new Error("authority path list 无效"); list.forEach(text);
     }
     const row = this.queue.getById(c.lineageQitemId);
-    if (!row || row.tags?.some((t) => t === "health-diagnosis" || t === "health-human")) throw new Error("Checkpoint must name existing product work, not health traffic");
+    if (!row || row.tags?.some((t) => t === "health-diagnosis" || t === "health-human")) throw new Error("Checkpoint 必须指向现有 product work，而非 health traffic");
     const transitions = this.transitions(value as HealthCheckpoint);
     const members = [...new Set(transitions.map((t) => t.qitemId))].map((id) => this.queue.getById(id)!);
-    if (members.some((member) => member.tags?.some((tag) => tag === "health-diagnosis" || tag === "health-human"))) throw new Error("Checkpoint excludes health traffic");
+    if (members.some((member) => member.tags?.some((tag) => tag === "health-diagnosis" || tag === "health-human"))) throw new Error("Checkpoint 不得包含 health traffic");
     if (c.includeHandoffs) {
       const expected = c.scope.type === "slice" ? { "mission:": c.scope.missionId, "slice:": c.scope.sliceId }
         : c.scope.type === "mission" ? { "mission:": c.scope.missionId } : {};
-      if (members.some((member) => member.tags?.some((tag) => Object.entries(expected).some(([prefix, id]) => tag.startsWith(prefix) && tag !== `${prefix}${id}`)))) throw new Error("Handoff lineage crosses the declared checkpoint scope");
+      if (members.some((member) => member.tags?.some((tag) => Object.entries(expected).some(([prefix, id]) => tag.startsWith(prefix) && tag !== `${prefix}${id}`)))) throw new Error("Handoff lineage 超出声明的 checkpoint scope");
     }
     const actual = new Set(transitions.map((t) => t.transitionId));
-    if (actual.size !== c.transitionIds.length || c.transitionIds.some((id) => !actual.has(id))) throw new Error("Checkpoint transition census does not match this exact lineage/window");
+    if (actual.size !== c.transitionIds.length || c.transitionIds.some((id) => !actual.has(id))) throw new Error("Checkpoint transition census 与此精确 lineage/window 不匹配");
     return structuredClone(c as unknown as HealthCheckpoint);
   }
   private transitions(c: HealthCheckpoint) {
@@ -90,14 +89,14 @@ export class HealthCheckpointSource implements HealthObservationSource {
     if (!existsSync(file) && existsSync(this.dir) && readdirSync(this.dir).filter((name) => /^[a-f0-9]{64}\.json$/.test(name)).length >= 200) throw new Error("health_checkpoint_source_limit");
     const previous = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) as StoredCheckpoint : null;
     if (previous && healthHash(previous.checkpoint) === healthHash(checkpoint)) return previous;
-    if (previous && Date.parse(checkpoint.observedAt) <= Date.parse(previous.checkpoint.observedAt)) throw new Error("Checkpoint must advance observation time");
+    if (previous && Date.parse(checkpoint.observedAt) <= Date.parse(previous.checkpoint.observedAt)) throw new Error("Checkpoint 必须推进 observation time");
     const p = this.policy.read().policy.thresholds;
     const active = checkpoint.boundedAuthority.applies !== true && checkpoint.transitionIds.length >= p.ceremonyTransitions
       && checkpoint.transitionIds.length / Math.max(checkpoint.productOutcomes.length, 1) >= p.ceremonyRatio;
     const stored: StoredCheckpoint = { actor, checkpoint, active,
       episodeStartedAt: previous?.active ? previous.episodeStartedAt : checkpoint.startedAt,
       qualifying: active ? checkpoint : previous?.active ? previous.qualifying : null };
-    // Recurrence starts at the first new qualifying checkpoint, not the previous episode's window.
+    // recurrence 从第一个新的 qualifying checkpoint 开始，而非上一个 episode 的 window。
     if (active && previous && !previous.active) stored.episodeStartedAt = checkpoint.observedAt;
     if (Buffer.byteLength(JSON.stringify(stored)) > 1048576) throw new Error("health_checkpoint_too_large");
     mkdirSync(join(this.dir, "history"), { recursive: true });
@@ -127,8 +126,8 @@ export class HealthCheckpointSource implements HealthObservationSource {
       const thresholds = policy.thresholds;
       const active = current.boundedAuthority.applies !== true && current.transitionIds.length >= thresholds.ceremonyTransitions
         && current.transitionIds.length / Math.max(current.productOutcomes.length, 1) >= thresholds.ceremonyRatio;
-      // A missing counter-signal is unknown, even when the authored value would
-      // suppress the rule. Keep a potential observation until refs are resolved.
+      // 缺失 counter-signal 表示 unknown，即使 authored value 本会抑制规则也是如此。
+      // 在 ref 解析前保留 potential observation。
       const c = active ? current : stored.qualifying ?? (current.transitionIds.length >= thresholds.ceremonyTransitions ? current : null);
       if (!c) return [];
       const ids = new Set(c.transitionIds);
@@ -157,7 +156,7 @@ export class HealthCheckpointSource implements HealthObservationSource {
       }
       const breakdown = [...gateCounts].sort(([a], [b]) => a.localeCompare(b, "en-US")).map(([tag, count]) => `${tag}=${count}`).join(", ");
       return [{ kind: "coordination-lineage" as const, scope: current.scope, episodeStartedAt: stored.episodeStartedAt,
-        lastObservedAt: current.observedAt, conditionCleared: !active && stored.qualifying !== null, confidence: "medium" as const, sourceDescription: `Outcome census attributed to ${stored.actor}; latest authored census: ${current.transitionIds.length} transitions, ${current.productOutcomes.length} listed product outcomes, bounded authority ${String(current.boundedAuthority.applies)}. Observed census: ${rows.size} qitems; transition breakdown by literal gate tags: ${breakdown}. Selected SDLC expectation: ${current.sdlc?.expectation ?? "SDLC expectation unavailable"}. Product, authority and expectation meaning are authored evidence, not inferred by the daemon. A known ratio is a signal to inspect proportionality against that expectation, not a verdict that a review was unnecessary. Unavailable references: ${missing.length ? missing.map((ref) => ref || "SDLC expectation unavailable").join(", ") : "none"}.`, lineageId: c.lineageQitemId,
+        lastObservedAt: current.observedAt, conditionCleared: !active && stored.qualifying !== null, confidence: "medium" as const, sourceDescription: `结果 census 归因于 ${stored.actor}；最新 authored census：${current.transitionIds.length} 个 transition、${current.productOutcomes.length} 个已列出的 product outcome，bounded authority 为 ${String(current.boundedAuthority.applies)}。观测 census：${rows.size} 个 qitem；按字面 gate tag 统计的 transition：${breakdown}。选定的 SDLC 预期：${current.sdlc?.expectation ?? "SDLC 预期不可用"}。product、authority 与 expectation 的含义是 authored evidence，并非 daemon 推断。已知 ratio 表示应对照该 expectation 检查比例是否合理，而不是判定 review 没有必要。不可用 reference：${missing.length ? missing.map((ref) => ref || "SDLC 预期不可用").join(", ") : "无"}。`, lineageId: c.lineageQitemId,
         coordinationTransitions: c.transitionIds.length, productStateChanges: outcomeCount,
         boundedAuthority: available && c.boundedAuthority.applies === true,
         reviewReturns: 0, candidateChanges: 0, newRiskClasses: 0,

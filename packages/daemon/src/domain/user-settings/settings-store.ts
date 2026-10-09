@@ -1,19 +1,14 @@
-// User Settings v0 — daemon-side settings store.
+// User Settings v0——后台服务侧设置存储。
 //
-// The CLI's @openrig/cli ConfigStore is the canonical write surface
-// (operator + agent edit via `rig config`). The daemon needs read+write
-// access too — for the UI's System drawer Settings panel + the daemon
-// HTTP route at /api/config. Rather than depend on the CLI package
-// (which would require workspace exports + a dist build), this module
-// duplicates the small, stable resolution + write logic. The constants
-// (VALID_KEYS, ENV_MAP, KEY_TO_PATH) are kept in lockstep with
-// cli/src/config-store.ts via cross-package tests.
+// CLI 的 @openrig/cli ConfigStore 是规范写入表面（操作员与智能体通过 `zrig config` 编辑）。
+// 后台服务也需要读写访问，供 UI 的 System 抽屉 Settings 面板与 /api/config HTTP 路由使用。
+// 为避免依赖 CLI 包（这需要工作区 export 与 dist 构建），本模块复制少量稳定的解析与写入逻辑。
+// 常量（VALID_KEYS、ENV_MAP、KEY_TO_PATH）通过跨包测试与 cli/src/config-store.ts 保持同步。
 //
-// Storage: same single source of truth at ~/.openrig/config.json.
-// Resolution: same env > file > default precedence. Decoded helpers
-// (parseNamedPairs / resolveAllowlist / resolveProgressScanRoots /
-// resolveWorkspacePaths) project the raw strings into structured data
-// the daemon's UEP routes + Slice Story View consume.
+// 存储：共同的单一事实来源 ~/.openrig/config.json。
+// 解析：共同的 env > file > default 优先级。解码辅助函数（parseNamedPairs / resolveAllowlist /
+// resolveProgressScanRoots / resolveWorkspacePaths）把原始字符串投影为后台服务 UEP 路由与
+// Slice Story View 消费的结构化数据。
 
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync } from "node:fs";
 import * as path from "node:path";
@@ -29,15 +24,15 @@ const DEFAULT_WORKSPACE_ROOT = path.join(
   "workspace",
 );
 
-// OPR.0.5.3.6 D1/D2 — the topology tree's derived default. The instance
-// altitude is the TOP of this root: <root>/<CHAIN>.md, then
-// <root>/rigs/<rig>/<CHAIN>.md, then <root>/rigs/<rig>/seats/<seat>/<CHAIN>.md.
+// OPR.0.5.3.6 D1/D2——拓扑树的派生默认值。实例层级位于此根目录顶部：
+// <root>/<CHAIN>.md，然后是 <root>/rigs/<rig>/<CHAIN>.md，
+// 再到 <root>/rigs/<rig>/seats/<seat>/<CHAIN>.md。
 const DEFAULT_TOPOLOGY_ROOT = path.join(
   process.env["OPENRIG_HOME"] || process.env["RIGGED_HOME"] || path.join(os.homedir(), ".openrig"),
   "topology",
 );
 
-// OPR.0.5.9.5 Wave B — canonical addressable context library.
+// OPR.0.5.9.5 Wave B——规范的可寻址上下文库。
 const DEFAULT_CONTEXT_ROOT = path.join(
   process.env["OPENRIG_HOME"] || process.env["RIGGED_HOME"] || path.join(os.homedir(), ".openrig"),
   "context",
@@ -48,14 +43,11 @@ const DEFAULT_SKILLS_ROOT = path.join(
   "skills",
 );
 
-/** OPR.0.5.3.6 — the LEGACY topology location, ruled an arbitrary folder
- *  (founder, 2026-08-14) but kept readable so pre-convention rigs migrate
- *  instead of flag-daying. Resolves where legacy code ACTUALLY wrote —
- *  mirroring the codex adapter's shared-docs precedent (OPENRIG_SHARED_DOCS_ROOT
- *  env, else the literal ~/.openrig/shared-docs), NOT $OPENRIG_HOME: boxes with
- *  a non-default home still carry their legacy tree at ~/.openrig/shared-docs.
- *  This helper is the ONE home for the literal: walkers call it for their
- *  fallback and must emit the named advisory when a read resolves here. */
+/** OPR.0.5.3.6——旧版拓扑位置，已裁定为任意文件夹（founder，2026-08-14），但保持可读，
+ * 使约定前的工作组能够迁移而无需一次性切换。解析到旧代码实际写入的位置：对应 codex 适配器的
+ * shared-docs 先例（环境变量 OPENRIG_SHARED_DOCS_ROOT，否则为字面路径 ~/.openrig/shared-docs），
+ * 而不是 $OPENRIG_HOME；使用非默认 home 的机器仍把旧版树放在 ~/.openrig/shared-docs。
+ * 本辅助函数是该字面路径的唯一归属；walker 回退时调用它，读取解析到此处时必须发出具名提示。 */
 export function resolveLegacyTopologyRigsRoot(): string {
   const sharedDocsRoot = process.env["OPENRIG_SHARED_DOCS_ROOT"]?.trim()
     || path.join(os.homedir(), ".openrig", "shared-docs");
@@ -65,25 +57,22 @@ export function resolveLegacyTopologyRigsRoot(): string {
 export const SETTINGS_VALID_KEYS = [
   "daemon.port",
   "daemon.host",
-  // OPR.0.4.6.MH1 FR-1 — the persisted host-selection pointer, ONE
-  // static key, lockstep with cli/src/config-store.ts VALID_KEYS (the
-  // twins parity test pins both). Default "local" (unset ≡ local host).
-  // Value registry-validation lives at the `rig host select` verb.
+  // OPR.0.4.6.MH1 FR-1——持久化主机选择指针，一个静态 key，与 cli/src/config-store.ts
+  // VALID_KEYS 同步（孪生一致性测试固定两者）。默认为 "local"（未设置等同本地主机）。
+  // 值的注册表校验位于 `zrig host select` verb。
   "host.selected",
-  // OPR.0.4.6.MH1 FR-4 — the own-host display name (arch Ruling 1: home =
-  // the settings twins, never hosts.yaml). Default "localhost".
+  // OPR.0.4.6.MH1 FR-4——本机展示名称（架构裁定 1：归属 settings 孪生实现，绝不在 hosts.yaml）。
+  // 默认为 "localhost"。
   "host.name",
-  // OPR.0.4.6.WF5 FR-2 — the host-level maturity-dial default (arch config
-  // ruling: the MH-1 dynamic-key pattern class). "orchestrator" |
-  // "human_only"; unset ≡ the orchestrator-first engine default. Consumed
-  // at exception-item creation only — dial flips are never retroactive.
+  // OPR.0.4.6.WF5 FR-2——主机级成熟度拨盘默认值（架构配置裁定：MH-1 动态 key 模式类）。
+  // 值为 "orchestrator" | "human_only"；未设置等同引擎默认的 orchestrator-first。
+  // 仅在创建异常项时消费，拨盘变更绝不追溯生效。
   "workflow.exception_routing",
   "db.path",
   "transcripts.enabled",
   "transcripts.path",
-  // V1 pre-release CLI/daemon Item 1 — capture-pane rotation tunables.
-  // SC-29 EXCEPTION #4 allowlist sub-piece (lockstep with
-  // cli/src/config-store.ts).
+  // V1 发布前 CLI/后台服务 Item 1——capture-pane 轮换可调参数。
+  // SC-29 EXCEPTION #4 allowlist 子项，与 cli/src/config-store.ts 同步。
   "transcripts.lines",
   "transcripts.poll_interval_seconds",
   "workspace.root",
@@ -92,16 +81,13 @@ export const SETTINGS_VALID_KEYS = [
   "workspace.specs_root",
   "workspace.projects_root",
   "workspace.catalog_path",
-  // OPR.0.5.3.6 D1 — the TOPOLOGY tree root (instance altitude at its top,
-  // rigs/<rig>/seats/<seat> beneath). Derived default $OPENRIG_HOME/topology;
-  // keying to the home makes the ~/.openrig-vs-$OPENRIG_HOME split a
-  // non-question (a box with two homes is two instances, each with its own
-  // topology tree). Legacy shared-docs/rigs stays readable as a fallback WITH
-  // a named advisory — resolveLegacyTopologyRigsRoot below is the one home
-  // for that literal, so walkers carry none. Lockstep with the CLI
-  // config-store twin (each side's parity test pins its own list).
+  // OPR.0.5.3.6 D1——TOPOLOGY 树根（实例层级位于顶部，下方为 rigs/<rig>/seats/<seat>）。
+  // 派生默认值为 $OPENRIG_HOME/topology；按 home 索引使 ~/.openrig 与 $OPENRIG_HOME 的分歧
+  // 不再成为问题（一个机器有两个 home 就是两个实例，各有自己的拓扑树）。旧版 shared-docs/rigs
+  // 仍可作为回退读取，但会附带具名提示；下方 resolveLegacyTopologyRigsRoot 是该字面路径的唯一归属，
+  // walker 不携带它。与 CLI config-store 孪生实现同步（双方的一致性测试固定各自列表）。
   "topology.root",
-  // OPR.0.5.9.5 Wave B — canonical context library; old key is refused.
+  // OPR.0.5.9.5 Wave B——规范上下文库；旧 key 会被拒绝。
   "context.root",
   "context.system_world",
   "skills.root",
@@ -114,44 +100,36 @@ export const SETTINGS_VALID_KEYS = [
   "ui.preview.max_pins",
   "ui.preview.default_lines",
   "ui.timezone",
-  // OPR.0.4.0.1 — global cap on simultaneously-live terminals (default 2).
+  // OPR.0.4.0.1——同时活跃终端的全局上限（默认 2）。
   "ui.terminal.max_live_terminals",
   "recovery.auto_drive_provider_prompts",
   "recovery.provider_auth_env_allowlist",
-  // V1 attempt-3 Phase 4 - Advisor / Operator rail icon V1 placeholders
-  // per universal-shell.md L82–L84. SC-29 EXCEPTION declared in
-  // dispatch ACK §4: allowlist-only edit; no migrations / new
-  // endpoints / event types.
+  // V1 attempt-3 阶段 4——按 universal-shell.md L82–L84 设置 Advisor / Operator rail icon
+  // V1 占位符。dispatch ACK §4 声明 SC-29 EXCEPTION：只编辑 allowlist，
+  // 不新增迁移、端点或事件类型。
   "agents.advisor_session",
   "agents.operator_session",
-  // Explicit operator override; unset means discover the registered human.
+  // 操作员显式覆盖；未设置时发现已注册人员。
   "workspace.operator_seat_name",
-  // V1 attempt-3 Phase 5 P5-3 — For You feed subscription toggles per
-  // for-you-feed.md L144–L151. SC-29 EXCEPTION declared in Phase 5
-  // dispatch ACK §5 (DRIFT P5-D2; same scope as Phase 4: allowlist-only;
-  // no migrations / new endpoints / event types). action_required is
-  // forced ON in the UI (cannot be toggled per L145); the key exists
-  // for future operator override but is not surfaced as a toggle in V1.
+  // V1 attempt-3 阶段 5 P5-3——按 for-you-feed.md L144–L151 设置“为你推荐”feed 订阅开关。
+  // 阶段 5 dispatch ACK §5 声明 SC-29 EXCEPTION（DRIFT P5-D2；范围与阶段 4 相同：
+  // 只编辑 allowlist，不新增迁移、端点或事件类型）。UI 强制开启 action_required
+  //（按 L145 不可切换）；该 key 为未来操作员覆盖保留，但 V1 不显示为开关。
   "feed.subscriptions.action_required",
   "feed.subscriptions.approvals",
   "feed.subscriptions.shipped",
   "feed.subscriptions.progress",
   "feed.subscriptions.audit_log",
-  // plugin-primitive Phase 3a slice 3.5 — Codex feature flag.
-  // When true (default), daemon ensures `codex_hooks = true` in
-  // ~/.codex/config.toml on launch so plugin-shipped hooks fire on
-  // Codex runtime. When false, operator is managing Codex config
-  // independently — daemon does NOT mutate.
+  // plugin-primitive 阶段 3a slice 3.5——Codex 功能开关。为 true（默认）时，后台服务在启动时
+  // 确保 ~/.codex/config.toml 中 `codex_hooks = true`，使插件附带的 hook 在 Codex 运行时触发。
+  // 为 false 时，操作员独立管理 Codex 配置，后台服务不修改。
   "runtime.codex.hooks_enabled",
-  // Slice 27 — Claude auto-compaction policy. SC-29 EXCEPTION #10:
-  // 7 keys (lockstep with cli/src/config-store.ts VALID_KEYS).
-  // Opt-in default-off; daemon ContextMonitor reads `enabled` +
-  // `threshold_percent` to decide when to send pre-compact prep +
-  // /compact. The daemon wraps `pre_compact_instruction` with usage
-  // variables, passes `compact_instruction` as slash-command args for
-  // the actual compaction phase, uses `message_inline` +
-  // `message_file_path` for post-compaction restore guidance, then
-  // wraps `post_restore_audit_instruction` as the read-depth nudge.
+  // Slice 27——Claude 自动压缩策略。SC-29 EXCEPTION #10：7 个 key，
+  // 与 cli/src/config-store.ts VALID_KEYS 同步。选择启用，默认关闭；后台服务 ContextMonitor
+  // 读取 `enabled` 与 `threshold_percent`，决定何时发送压缩前准备与 /compact。
+  // 后台服务将 usage 变量注入 `pre_compact_instruction`，把 `compact_instruction`
+  // 作为 slash-command 参数传给实际压缩阶段，使用 `message_inline` 与 `message_file_path`
+  // 提供压缩后恢复指引，再把 `post_restore_audit_instruction` 包装为阅读深度 nudge。
   "policies.claude_compaction.enabled",
   "policies.claude_compaction.threshold_percent",
   "policies.claude_compaction.pre_compact_instruction",
@@ -161,44 +139,39 @@ export const SETTINGS_VALID_KEYS = [
   "policies.claude_compaction.post_restore_audit_instruction",
   "policies.idle_gate_qitem.scan_interval_seconds",
   "policies.idle_gate_qitem.active_wake_interval_seconds",
-  // B6 founder ruling — idle-gate auto-registration is NOT default-on. "off"
-  // (default) registers no new jobs; "all" restores fleet-wide registration.
-  // opt_in_sessions is a comma-separated list of canonical session names that
-  // get a job while the mode is off. Existing registered jobs always survive
-  // and keep being maintained regardless of either key.
+  // B6 创始人裁定：idle-gate 自动注册默认不启用。"off"（默认）不注册新 job；
+  // "all" 恢复全队列注册。opt_in_sessions 是逗号分隔的规范会话名称列表，
+  // mode 为 off 时这些会话仍获得 job。无论两个 key 如何设置，已有注册 job 始终保留并继续维护。
   "policies.idle_gate_qitem.auto_register",
   "policies.idle_gate_qitem.opt_in_sessions",
   "snapshots.periodic.enabled",
   "snapshots.periodic.interval_seconds",
   "snapshots.periodic.retention_keep",
-  // OPR.0.4.6.02 S1 — the inner-tmux status-bar default applied to a
-  // session at LAUNCH. ONE static boolean key (default off), lockstep
-  // with cli/src/config-store.ts VALID_KEYS (the parity test pins both
-  // twins). Consumed by NodeLauncher at session-create only; a flip is
-  // future-launches-only and never retroactive (BR-1 never-retro).
+  // OPR.0.4.6.02 S1——启动时应用到会话的内层 tmux 状态栏默认值。
+  // 单一静态 boolean key（默认关闭），与 cli/src/config-store.ts VALID_KEYS 同步
+  //（一致性测试固定两个孪生实现）。仅在创建会话时由 NodeLauncher 消费；
+  // 开关变更只影响未来启动，绝不追溯生效（BR-1 never-retro）。
   "terminal.status_bar",
-  // OPR.0.4.6.FS-1 W2 — queue-retention maintenance knobs (arch D3; closed-set,
-  // arch-safe defaults BAKED in getDefaultValue, bounded validation in
-  // KEY_CONSTRAINTS). CLI-settable twin: lockstep with cli/src/config-store.ts
-  // VALID_KEYS (each side's exact-equality parity test pins its own list). A
-  // flip is read at the next daily maintenance tick — never retroactive to an
-  // in-flight sweep.
+  // OPR.0.4.6.FS-1 W2——队列保留维护参数（架构 D3；闭集；架构安全默认值固化在
+  // getDefaultValue，有界校验位于 KEY_CONSTRAINTS）。可由 CLI 设置的孪生实现与
+  // cli/src/config-store.ts VALID_KEYS 同步（双方的精确相等一致性测试分别固定列表）。
+  // 开关变更在下一个每日维护 tick 读取，绝不追溯影响正在执行的 sweep。
   "retention.enabled",
   "retention.transitions_days",
   "retention.watchdog_days",
   "retention.usage_samples_days",
   "retention.watchdog_keep_per_job",
   "retention.batch_size",
-  // S04 (OPR.0.5.5.4) — pickup-receipt stall threshold; net-new key, OPENRIG_* only,
-  // CLI-settable twin lockstep with cli/src/config-store.ts VALID_KEYS. Fresh-read per
-  // derivation (a flip applies to the next projection read; never retroactive).
+  // S04（OPR.0.5.5.4）——pickup-receipt 停滞阈值；全新 key，仅使用 OPENRIG_*，
+  // 可由 CLI 设置的孪生实现与 cli/src/config-store.ts VALID_KEYS 同步。每次派生时重新读取；
+  // 变更应用于下一次投影读取，绝不追溯生效。
   "queue.pickup_stall_threshold_minutes",
-  // S02 (OPR.0.5.5.2) — standing stuck sweep: cadence + the A1 unclaimed-obligation age.
-  // Same lockstep contract as the pickup key.
+  // S02（OPR.0.5.5.2）——常驻 stuck sweep：执行频率与 A1 未认领义务年龄。
+  // 与 pickup key 使用相同同步契约。
   "queue.stuck_sweep_interval_seconds",
   "queue.stuck_sweep_unclaimed_age_minutes",
-  // S01 (OPR.0.5.5.1) — wake-or-escalate ladder: retry cadence + cap, the F1
-  // unconfirmed-confirmation window, and the F2 post-swap grace. Same lockstep contract.
+  // S01（OPR.0.5.5.1）——唤醒或升级阶梯：重试频率与上限、F1 未确认窗口及 F2 切换后宽限期。
+  // 使用相同同步契约。
   "queue.wake_retry_interval_seconds",
   "queue.wake_retry_cap",
   "queue.wake_unconfirmed_window_minutes",
@@ -208,8 +181,7 @@ export const SETTINGS_VALID_KEYS = [
 export type SettingsValidKey = typeof SETTINGS_VALID_KEYS[number];
 
 const ENV_MAP: Record<SettingsValidKey, { primary: string; legacy?: string }> = {
-  // Only the original runtime keys keep RIGGED_* aliases for upgrade
-  // compatibility. New typed keys use OPENRIG_* only.
+  // 只有原始运行时 key 为升级兼容保留 RIGGED_* 别名；新类型化 key 仅使用 OPENRIG_*。
   "daemon.port": { primary: "OPENRIG_PORT", legacy: "RIGGED_PORT" },
   "daemon.host": { primary: "OPENRIG_HOST", legacy: "RIGGED_HOST" },
   "db.path": { primary: "OPENRIG_DB", legacy: "RIGGED_DB" },
@@ -242,7 +214,7 @@ const ENV_MAP: Record<SettingsValidKey, { primary: string; legacy?: string }> = 
   "agents.advisor_session": { primary: "OPENRIG_AGENTS_ADVISOR_SESSION" },
   "host.selected": { primary: "OPENRIG_HOST_SELECTED" },
   "host.name": { primary: "OPENRIG_HOST_NAME" },
-  // OPR.0.4.6.WF5 FR-2 — new key, OPENRIG_* only.
+  // OPR.0.4.6.WF5 FR-2——新 key，仅使用 OPENRIG_*。
   "workflow.exception_routing": { primary: "OPENRIG_WORKFLOW_EXCEPTION_ROUTING" },
   "agents.operator_session": { primary: "OPENRIG_AGENTS_OPERATOR_SESSION" },
   "workspace.operator_seat_name": { primary: "OPENRIG_WORKSPACE_OPERATOR_SEAT_NAME" },
@@ -251,12 +223,10 @@ const ENV_MAP: Record<SettingsValidKey, { primary: string; legacy?: string }> = 
   "feed.subscriptions.shipped": { primary: "OPENRIG_FEED_SUBSCRIPTIONS_SHIPPED" },
   "feed.subscriptions.progress": { primary: "OPENRIG_FEED_SUBSCRIPTIONS_PROGRESS" },
   "feed.subscriptions.audit_log": { primary: "OPENRIG_FEED_SUBSCRIPTIONS_AUDIT_LOG" },
-  // plugin-primitive Phase 3a slice 3.5 — net-new key post-rename;
-  // OPENRIG_X primary only per the post-rename 5-key boundary doctrine
-  // (no RIGGED_X legacy on net-new keys).
+  // plugin-primitive 阶段 3a slice 3.5——重命名后的全新 key；按重命名后的 5-key 边界原则，
+  // 只使用 OPENRIG_X 主 key（全新 key 不提供旧版 RIGGED_X）。
   "runtime.codex.hooks_enabled": { primary: "OPENRIG_RUNTIME_CODEX_HOOKS_ENABLED" },
-  // Slice 27 — Claude auto-compaction policy. Net-new keys; OPENRIG_X
-  // primary only.
+  // Slice 27——Claude 自动压缩策略。全新 key，仅使用 OPENRIG_X 主 key。
   "policies.claude_compaction.enabled": { primary: "OPENRIG_POLICIES_CLAUDE_COMPACTION_ENABLED" },
   "policies.claude_compaction.threshold_percent": { primary: "OPENRIG_POLICIES_CLAUDE_COMPACTION_THRESHOLD_PERCENT" },
   "policies.claude_compaction.pre_compact_instruction": { primary: "OPENRIG_POLICIES_CLAUDE_COMPACTION_PRE_COMPACT_INSTRUCTION" },
@@ -271,16 +241,16 @@ const ENV_MAP: Record<SettingsValidKey, { primary: string; legacy?: string }> = 
   "snapshots.periodic.enabled": { primary: "OPENRIG_SNAPSHOTS_PERIODIC_ENABLED" },
   "snapshots.periodic.interval_seconds": { primary: "OPENRIG_SNAPSHOTS_PERIODIC_INTERVAL_SECONDS" },
   "snapshots.periodic.retention_keep": { primary: "OPENRIG_SNAPSHOTS_PERIODIC_RETENTION_KEEP" },
-  // OPR.0.4.6.02 S1 — net-new key; OPENRIG_* primary only (no RIGGED_* legacy).
+  // OPR.0.4.6.02 S1——全新 key；仅使用 OPENRIG_* 主 key，不提供旧版 RIGGED_*。
   "terminal.status_bar": { primary: "OPENRIG_TERMINAL_STATUS_BAR" },
-  // OPR.0.4.6.FS-1 W2 — retention knobs; net-new keys, OPENRIG_* primary only.
+  // OPR.0.4.6.FS-1 W2——保留参数；全新 key，仅使用 OPENRIG_* 主 key。
   "retention.enabled": { primary: "OPENRIG_RETENTION_ENABLED" },
   "retention.transitions_days": { primary: "OPENRIG_RETENTION_TRANSITIONS_DAYS" },
   "retention.watchdog_days": { primary: "OPENRIG_RETENTION_WATCHDOG_DAYS" },
   "retention.usage_samples_days": { primary: "OPENRIG_RETENTION_USAGE_SAMPLES_DAYS" },
   "retention.watchdog_keep_per_job": { primary: "OPENRIG_RETENTION_WATCHDOG_KEEP_PER_JOB" },
   "retention.batch_size": { primary: "OPENRIG_RETENTION_BATCH_SIZE" },
-  // S04 — net-new key; OPENRIG_* primary only.
+  // S04——全新 key，仅使用 OPENRIG_* 主 key。
   "queue.pickup_stall_threshold_minutes": { primary: "OPENRIG_QUEUE_PICKUP_STALL_THRESHOLD_MINUTES" },
   "queue.stuck_sweep_interval_seconds": { primary: "OPENRIG_QUEUE_STUCK_SWEEP_INTERVAL_SECONDS" },
   "queue.stuck_sweep_unclaimed_age_minutes": { primary: "OPENRIG_QUEUE_STUCK_SWEEP_UNCLAIMED_AGE_MINUTES" },
@@ -379,40 +349,34 @@ const REMOVED_CONTEXT_ENV = "OPENRIG_CONTEXT_PACKS_ROOT";
 
 export function removedContextSettingMessage(key: string): string | null {
   return key === REMOVED_CONTEXT_KEY
-    ? 'Config key "context.packs_root" was removed; use "context.root".'
+    ? '配置键 "context.packs_root" 已移除；请改用 "context.root"。'
     : null;
 }
 
 function assertNoRemovedContextSetting(fileConfig: Record<string, unknown>): void {
   if (process.env[REMOVED_CONTEXT_ENV]?.trim()) {
     throw new Error(
-      "OPENRIG_CONTEXT_PACKS_ROOT was removed; use OPENRIG_CONTEXT_ROOT (config key context.root).",
+      "OPENRIG_CONTEXT_PACKS_ROOT 已移除；请改用 OPENRIG_CONTEXT_ROOT（配置键 context.root）。",
     );
   }
   if (getNestedValue(fileConfig, ["context", "packsRoot"]) !== undefined) {
     throw new Error(
-      'Config file contains removed key "context.packs_root" (context.packsRoot); replace it with "context.root" (context.root).',
+      '配置文件包含已移除的键 "context.packs_root"（context.packsRoot）；请替换为 "context.root"（context.root）。',
     );
   }
 }
 
-// ── OPR.0.4.4.15 (guard G15-P1 fold, arch-endorsed) ─────────────────────────
-// ONE registered dynamic key CLASS — NOT a general dynamic-key mechanism:
-// `feed.subscriptions.<hostId>.enabled` (boolean; the v1 per-host key set is
-// CLOSED to {enabled}). The closed-set discipline applies to the store's key
-// GRAMMAR: only this pattern is accepted beyond SETTINGS_VALID_KEYS; every
-// other unknown key keeps the existing reject-loud behavior byte-for-byte.
-// hostId segment: [A-Za-z0-9_-]+ (a dotted host id is inexpressible in
-// dotted keys — the write gate rejects it as unknown; readers warn-and-
-// ignore); RESERVED segments (the flat toggle tails + 'enabled') never parse
-// as host ids, so the flat keys and the dynamic class cannot collide.
-// No env-var mapping for the dynamic class in v1 — file/API only.
-// Twin: packages/cli/src/config-store.ts carries the same class (parity test
-// pins them — the host-registry twin discipline).
+// ── OPR.0.4.4.15（guard G15-P1 合并，架构认可）─────────────────────────
+// 唯一注册的动态 key 类，不是通用动态 key 机制：
+// `feed.subscriptions.<hostId>.enabled`（boolean；v1 逐主机 key 集闭合为 {enabled}）。
+// 闭集纪律作用于存储的 key 语法：除 SETTINGS_VALID_KEYS 外只接受此模式；其他未知 key
+// 逐字节保留现有的明确拒绝行为。hostId 段为 [A-Za-z0-9_-]+；带点主机 id 无法用点分 key 表达，
+// 写入守卫会按未知 key 拒绝，读取方提示并忽略。保留段（扁平开关尾部加 'enabled'）绝不解析为
+// 主机 id，因此扁平 key 与动态类不会冲突。v1 不为动态类提供环境变量映射，只支持文件/API。
+// 孪生实现 packages/cli/src/config-store.ts 携带同一类（一致性测试固定两者，遵循主机注册表孪生纪律）。
 const FEED_HOST_KEY_RE = /^feed\.subscriptions\.([A-Za-z0-9_-]+)\.enabled$/;
-// Reserved in BOTH spellings: the key-level snake_case toggle tails AND the
-// camelCase FILE-level leaf names (KEY_TO_PATH maps audit_log→auditLog etc.),
-// so no host id can ever shadow a flat toggle at either layer.
+// 两种拼写都保留：key 层 snake_case 开关尾部，以及文件层 camelCase 叶名称
+//（KEY_TO_PATH 把 audit_log 映射为 auditLog 等），使主机 id 在任一层都无法遮蔽扁平开关。
 export const FEED_HOST_RESERVED_SEGMENTS = new Set([
   "action_required",
   "actionRequired",
@@ -436,7 +400,7 @@ function coerceFeedHostSubscriptionValue(key: string, raw: string): boolean {
   const v = raw.trim().toLowerCase();
   if (v === "true") return true;
   if (v === "false") return false;
-  throw new Error(`Invalid value for ${key}: expected "true" or "false", got "${raw}"`);
+  throw new Error(`${key} 的值无效：应为 "true" 或 "false"，实际为 "${raw}"`);
 }
 
 function readEnv(primary: string, legacy?: string): string | undefined {
@@ -502,28 +466,27 @@ const WORKSPACE_DERIVED_KEYS: ReadonlySet<SettingsValidKey> = new Set([
 ]);
 
 const DEFAULT_CLAUDE_COMPACTION_PRE_COMPACT_INSTRUCTION =
-  "Read the claude-compaction-restore skill and follow its \"If You Are About To Compact\" protocol. Create or update the mental-model restore map before compaction. If you are in the middle of a tiny atomic step, finish that step first; otherwise this preparation is the next priority.";
+  "阅读 claude-compaction-restore 技能，并遵循其中的‘即将压缩时’协议。压缩前创建或更新心智模型恢复图。如果正在完成一个很小的原子步骤，请先完成该步骤；否则优先执行此准备工作。";
 
 const DEFAULT_CLAUDE_COMPACTION_COMPACT_INSTRUCTION = "";
 
 const DEFAULT_CLAUDE_COMPACTION_RESTORE_INSTRUCTION =
-  "Read the claude-compaction-restore skill and follow its \"If You Just Compacted\" protocol.";
+  "阅读 claude-compaction-restore 技能，并遵循其中的‘刚完成压缩时’协议。";
 
 const DEFAULT_CLAUDE_COMPACTION_POST_RESTORE_AUDIT_INSTRUCTION =
-  "Read the claude-compaction-restore skill and follow its \"Required Read-Depth Audit\" protocol.";
+  "阅读 claude-compaction-restore 技能，并遵循其中的‘必需阅读深度审计’协议。";
 
 const DEFAULT_CLAUDE_COMPACTION_EXTRA_INSTRUCTION_RELATIVE_PATH = path.join(
   "compaction",
   "post-compact-extra.md",
 );
 
-export const DEFAULT_CLAUDE_COMPACTION_EXTRA_INSTRUCTION_FILE_CONTENT = `# OpenRig Post-Compact Extra Instructions
+export const DEFAULT_CLAUDE_COMPACTION_EXTRA_INSTRUCTION_FILE_CONTENT = `# zrig 压缩后附加指令
 
-No mission-specific extra restore instructions are configured yet.
+尚未配置任务专用的附加恢复指令。
 
-Add additional file paths, reading lists, or mission-specific restore notes here
-when this session needs more context than the canonical claude-compaction-restore
-skill provides.
+当本会话需要的上下文超出规范 claude-compaction-restore 技能所提供的内容时，
+请在此添加额外文件路径、阅读清单或任务专用恢复说明。
 `;
 
 export function defaultClaudeCompactionExtraInstructionFilePath(openrigHome = path.dirname(DEFAULT_CONFIG_PATH)): string {
@@ -549,17 +512,17 @@ function getDefaultValue(key: SettingsValidKey, workspaceRoot: string): string |
     case "db.path": return path.join(path.dirname(DEFAULT_CONFIG_PATH), "openrig.sqlite");
     case "transcripts.enabled": return true;
     case "transcripts.path": return path.join(path.dirname(DEFAULT_CONFIG_PATH), "transcripts");
-    // V1 pre-release CLI/daemon Item 1 — capture-pane rotation defaults.
+    // V1 发布前 CLI/后台服务 Item 1——capture-pane 轮换默认值。
     case "transcripts.lines": return 1000;
     case "transcripts.poll_interval_seconds": return 2;
     case "workspace.operator_seat_name": return ""; // unset: discover a registered human, never invent a kernel seat
-    // OPR.0.4.6.MH1 FR-1 — "local" ≡ no remote selection (LOCAL_HOST_ID);
-    // the FR-2 zero-regression posture by construction.
+    // OPR.0.4.6.MH1 FR-1——"local" 等同未选择远程主机（LOCAL_HOST_ID）；
+    // 结构上保证 FR-2 零回归姿态。
     case "host.selected": return "local";
-    // OPR.0.4.6.MH1 FR-4 — the own-host display-name default (PRD-named).
+    // OPR.0.4.6.MH1 FR-4——本机展示名称默认值（PRD 指定）。
     case "host.name": return "localhost";
     case "workspace.root": return DEFAULT_WORKSPACE_ROOT;
-    // OPR.0.5.3.6 D1 — derived under $OPENRIG_HOME, never a shared-docs literal.
+    // OPR.0.5.3.6 D1——在 $OPENRIG_HOME 下派生，绝不使用 shared-docs 字面路径。
     case "topology.root": return DEFAULT_TOPOLOGY_ROOT;
     case "context.root": return DEFAULT_CONTEXT_ROOT;
     case "context.system_world": return "default";
@@ -567,36 +530,32 @@ function getDefaultValue(key: SettingsValidKey, workspaceRoot: string): string |
     case "onboarding.default_pack.enabled": return true;
     case "health.context_pressure.warning_percent": return 95;
     case "health.context_pressure.critical_percent": return 99;
-    // Preview Terminal v0 (PL-018) defaults — match cli/src/config-store.ts.
+    // Preview Terminal v0（PL-018）默认值，与 cli/src/config-store.ts 一致。
     case "ui.preview.refresh_interval_seconds": return 3;
     case "ui.preview.max_pins": return 4;
     case "ui.preview.default_lines": return 50;
     case "ui.timezone": return "America/Los_Angeles";
     case "recovery.auto_drive_provider_prompts": return false;
     case "recovery.provider_auth_env_allowlist": return "";
-    // V1 Phase 4 — Advisor default per universal-shell.md L83;
-    // Operator default empty per L84 ("not configured").
+    // V1 阶段 4——Advisor 默认值遵循 universal-shell.md L83；
+    // Operator 按 L84 默认为空（"not configured"）。
     case "agents.advisor_session": return "advisor-lead@openrig-velocity";
     case "agents.operator_session": return "";
-    // V1 Phase 5 P5-3 — For You feed subscription defaults per
-    // for-you-feed.md L144–L151. action_required is forced ON in the UI
-    // (cannot be disabled per L145 — load-bearing human-gate items);
-    // approvals/shipped/progress default ON; audit_log default OFF
-    // (verbose; opt-in for triage runs).
+    // V1 阶段 5 P5-3——“为你推荐”feed 订阅默认值遵循 for-you-feed.md L144–L151。
+    // UI 强制开启 action_required（按 L145 不可关闭，它承载关键 human-gate 项）；
+    // approvals/shipped/progress 默认开启，audit_log 默认关闭（输出详细，排障时选择启用）。
     case "feed.subscriptions.action_required": return true;
     case "feed.subscriptions.approvals": return true;
     case "feed.subscriptions.shipped": return true;
     case "feed.subscriptions.progress": return true;
     case "feed.subscriptions.audit_log": return false;
-    // plugin-primitive Phase 3a slice 3.5 — Codex feature flag default ON.
-    // Daemon ensures `codex_hooks = true` in ~/.codex/config.toml on
-    // launch unless operator explicitly sets to false.
+    // plugin-primitive 阶段 3a slice 3.5——Codex 功能开关默认开启。
+    // 除非操作员显式设为 false，否则后台服务在启动时确保 ~/.codex/config.toml 中
+    // `codex_hooks = true`。
     case "runtime.codex.hooks_enabled": return true;
-    // Slice 27 — Claude auto-compaction policy defaults. Opt-in
-    // default-off; threshold 80% per spec. Pre/post defaults point at
-    // the canonical restore skill; compact_instruction is intentionally
-    // blank because Claude's native compact summary is less reliable
-    // than the explicit pre-compact and post-compact user-channel flow.
+    // Slice 27——Claude 自动压缩策略默认值。选择启用，默认关闭；按 spec 阈值为 80%。
+    // 压缩前后默认值指向规范恢复 skill；compact_instruction 有意留空，因为 Claude 原生
+    // 压缩摘要不如显式的压缩前和压缩后用户通道流程可靠。
     case "policies.claude_compaction.enabled": return false;
     case "policies.claude_compaction.threshold_percent": return 80;
     case "policies.claude_compaction.pre_compact_instruction": return DEFAULT_CLAUDE_COMPACTION_PRE_COMPACT_INSTRUCTION;
@@ -606,19 +565,17 @@ function getDefaultValue(key: SettingsValidKey, workspaceRoot: string): string |
     case "policies.claude_compaction.post_restore_audit_instruction": return DEFAULT_CLAUDE_COMPACTION_POST_RESTORE_AUDIT_INSTRUCTION;
     case "policies.idle_gate_qitem.scan_interval_seconds": return 60;
     case "policies.idle_gate_qitem.active_wake_interval_seconds": return 900;
-    // B6 — NOT default-on by founder ruling; "all" is the explicit fleet opt-in.
+    // B6——按创始人裁定默认不开启；"all" 是全队列显式选择启用。
     case "policies.idle_gate_qitem.auto_register": return "off";
     case "policies.idle_gate_qitem.opt_in_sessions": return "";
     case "snapshots.periodic.enabled": return true;
     case "snapshots.periodic.interval_seconds": return 300;
     case "snapshots.periodic.retention_keep": return 10;
-    // OPR.0.4.6.02 S1 — inner-tmux status bar OFF at launch by default
-    // (herdr's pane label already carries identity; the inner tmux status
-    // is redundant chrome). Operator flip is future-launches-only.
+    // OPR.0.4.6.02 S1——启动时默认关闭内层 tmux 状态栏；Herdr 窗格标签已携带身份，
+    // 内层 tmux 状态栏属于重复 chrome。操作员开关只影响未来启动。
     case "terminal.status_bar": return false;
-    // OPR.0.4.6.FS-1 W2 — retention defaults (arch D3 safe values: archive
-    // terminal+aged transitions >30d; prune watchdog_history >14d keep-50/job;
-    // 500 rows/qitems per bounded batch; enabled by default).
+    // OPR.0.4.6.FS-1 W2——保留默认值（架构 D3 安全值：归档超过 30 天的终态旧 transition；
+    // 清理超过 14 天的 watchdog_history，每个 job 保留 50 条；每个有界批次 500 行/qitem；默认启用）。
     case "retention.enabled": return true;
     case "retention.transitions_days": return 30;
     case "retention.watchdog_days": return 14;
@@ -640,25 +597,24 @@ function coerceValue(key: SettingsValidKey, raw: string, workspaceRoot: string):
   const def = getDefaultValue(key, workspaceRoot);
   if (typeof def === "number") {
     const n = parseInt(raw, 10);
-    if (isNaN(n)) throw new Error(`Invalid value for ${key}: expected a number, got "${raw}"`);
+    if (isNaN(n)) throw new Error(`${key} 的值无效：应为数字，实际为 "${raw}"`);
     return n;
   }
   if (typeof def === "boolean") {
     if (raw === "true" || raw === "1") return true;
     if (raw === "false" || raw === "0") return false;
-    throw new Error(`Invalid value for ${key}: expected true/false, got "${raw}"`);
+    throw new Error(`${key} 的值无效：应为 true/false，实际为 "${raw}"`);
   }
   return raw;
 }
 
-// Slice 27 — strict per-key constraint validators applied AFTER coerceValue
-// in `set()`. Lockstep with cli/src/config-store.ts KEY_CONSTRAINTS so the
-// daemon's HTTP write surface (/api/config POST) rejects the same input
-// the CLI rejects.
+// Slice 27——`set()` 中在 coerceValue 之后应用的严格逐 key 约束校验器。
+// 与 cli/src/config-store.ts KEY_CONSTRAINTS 同步，使后台服务 HTTP 写入表面
+//（/api/config POST）拒绝与 CLI 相同的输入。
 function positiveIntegerConstraint(key: string) {
   return (raw: string, coerced: string | number | boolean): void => {
     if (!/^\d+$/.test((raw ?? "").trim()) || typeof coerced !== "number" || !Number.isInteger(coerced) || coerced <= 0) {
-      throw new Error(`Invalid value for ${key}: must be a positive integer, got "${raw}"`);
+      throw new Error(`${key} 的值无效：必须为正整数，实际为 "${raw}"`);
     }
   };
 }
@@ -670,7 +626,7 @@ function percentageConstraint(key: string) {
       || !Number.isInteger(coerced)
       || coerced < 1
       || coerced > 100) {
-      throw new Error(`Invalid value for ${key}: must be an integer in [1, 100], got "${raw}"`);
+      throw new Error(`${key} 的值无效：必须为 [1, 100] 范围内的整数，实际为 "${raw}"`);
     }
   };
 }
@@ -680,7 +636,7 @@ const KEY_CONSTRAINTS: Partial<Record<SettingsValidKey, (raw: string, coerced: s
     try {
       if (typeof value !== "string" || !value || /^[+-]/.test(value)) throw new Error();
       new Intl.DateTimeFormat("en-US", { timeZone: value });
-    } catch { throw new Error("Invalid ui.timezone: use an IANA timezone such as America/Los_Angeles or Europe/London"); }
+    } catch { throw new Error("ui.timezone 无效：请使用 IANA 时区，例如 America/Los_Angeles 或 Europe/London"); }
   },
   "health.context_pressure.warning_percent": percentageConstraint("health.context_pressure.warning_percent"),
   "health.context_pressure.critical_percent": percentageConstraint("health.context_pressure.critical_percent"),
@@ -689,89 +645,86 @@ const KEY_CONSTRAINTS: Partial<Record<SettingsValidKey, (raw: string, coerced: s
   "policies.idle_gate_qitem.auto_register": (raw) => {
     const v = (raw ?? "").trim();
     if (v !== "off" && v !== "all") {
-      throw new Error(`Invalid value for policies.idle_gate_qitem.auto_register: must be "off" or "all", got "${raw}"`);
+      throw new Error(`policies.idle_gate_qitem.auto_register 的值无效：必须为 "off" 或 "all"，实际为 "${raw}"`);
     }
   },
-  // Policy threshold: integer in [1, 100]. Documented contract from
-  // slice 27 README. parseInt's permissive coercion ("80abc" → 80;
-  // "80.5" → 80) is not safe for a key the daemon's compaction trigger
-  // reads at every poll tick; runtime validator rejects what the
-  // contract forbids per banked feedback_static_gates_mirror_runtime_validators.
+  // 策略阈值：范围 [1, 100] 的整数，契约见 slice 27 README。parseInt 的宽松转换
+  //（"80abc" → 80；"80.5" → 80）不适用于后台服务压缩触发器每次轮询都会读取的 key；
+  // 按既有 feedback_static_gates_mirror_runtime_validators，运行时校验器拒绝契约禁止的输入。
   "policies.claude_compaction.threshold_percent": (raw, coerced) => {
     const trimmed = (raw ?? "").trim();
     if (!/^-?\d+$/.test(trimmed)) {
       throw new Error(
-        `Invalid value for policies.claude_compaction.threshold_percent: expected an integer in [1, 100], got "${raw}"`,
+        `policies.claude_compaction.threshold_percent 的值无效：应为 [1, 100] 范围内的整数，实际为 "${raw}"`,
       );
     }
     if (typeof coerced !== "number" || !Number.isInteger(coerced)) {
       throw new Error(
-        `Invalid value for policies.claude_compaction.threshold_percent: expected an integer in [1, 100], got "${raw}"`,
+        `policies.claude_compaction.threshold_percent 的值无效：应为 [1, 100] 范围内的整数，实际为 "${raw}"`,
       );
     }
     if (coerced < 1 || coerced > 100) {
       throw new Error(
-        `Invalid value for policies.claude_compaction.threshold_percent: must be in [1, 100], got ${coerced}`,
+        `policies.claude_compaction.threshold_percent 的值无效：必须在 [1, 100] 范围内，实际为 ${coerced}`,
       );
     }
   },
   "snapshots.periodic.interval_seconds": (raw, coerced) => {
     if (!/^-?\d+$/.test((raw ?? "").trim())) {
       throw new Error(
-        `Invalid value for snapshots.periodic.interval_seconds: expected an integer >= 60, got "${raw}"`,
+        `snapshots.periodic.interval_seconds 的值无效：应为大于等于 60 的整数，实际为 "${raw}"`,
       );
     }
     if (typeof coerced !== "number" || !Number.isInteger(coerced) || coerced < 60) {
       throw new Error(
-        `Invalid value for snapshots.periodic.interval_seconds: must be >= 60, got ${raw}`,
+        `snapshots.periodic.interval_seconds 的值无效：必须大于等于 60，实际为 ${raw}`,
       );
     }
   },
   "snapshots.periodic.retention_keep": (raw, coerced) => {
     if (!/^-?\d+$/.test((raw ?? "").trim())) {
       throw new Error(
-        `Invalid value for snapshots.periodic.retention_keep: expected an integer >= 1, got "${raw}"`,
+        `snapshots.periodic.retention_keep 的值无效：应为大于等于 1 的整数，实际为 "${raw}"`,
       );
     }
     if (typeof coerced !== "number" || !Number.isInteger(coerced) || coerced < 1) {
       throw new Error(
-        `Invalid value for snapshots.periodic.retention_keep: must be >= 1, got ${raw}`,
+        `snapshots.periodic.retention_keep 的值无效：必须大于等于 1，实际为 ${raw}`,
       );
     }
   },
-  // OPR.0.4.6.FS-1 W2 — retention numeric bounds (arch D3). Lockstep with the
-  // cli/src/config-store.ts KEY_CONSTRAINTS twin so the daemon HTTP write
-  // surface rejects exactly what the CLI rejects. `retention.enabled` is a
-  // boolean (coerceValue enforces true/false) — no constraint entry needed.
+  // OPR.0.4.6.FS-1 W2——保留数值边界（架构 D3）。与 cli/src/config-store.ts
+  // KEY_CONSTRAINTS 孪生实现同步，使后台服务 HTTP 写入表面精确拒绝 CLI 所拒绝的输入。
+  // `retention.enabled` 是 boolean（coerceValue 强制 true/false），无需约束条目。
   "retention.transitions_days": (raw, coerced) => {
     if (!/^-?\d+$/.test((raw ?? "").trim()) || typeof coerced !== "number" || !Number.isInteger(coerced) || coerced < 1) {
-      throw new Error(`Invalid value for retention.transitions_days: must be an integer >= 1, got "${raw}"`);
+      throw new Error(`retention.transitions_days 的值无效：必须为大于等于 1 的整数，实际为 "${raw}"`);
     }
   },
   "retention.watchdog_days": (raw, coerced) => {
     if (!/^-?\d+$/.test((raw ?? "").trim()) || typeof coerced !== "number" || !Number.isInteger(coerced) || coerced < 1) {
-      throw new Error(`Invalid value for retention.watchdog_days: must be an integer >= 1, got "${raw}"`);
+      throw new Error(`retention.watchdog_days 的值无效：必须为大于等于 1 的整数，实际为 "${raw}"`);
     }
   },
   "retention.usage_samples_days": (raw, coerced) => {
     if (!/^-?\d+$/.test((raw ?? "").trim()) || typeof coerced !== "number" || !Number.isInteger(coerced) || coerced < 1) {
-      throw new Error(`Invalid value for retention.usage_samples_days: must be an integer >= 1, got "${raw}"`);
+      throw new Error(`retention.usage_samples_days 的值无效：必须为大于等于 1 的整数，实际为 "${raw}"`);
     }
   },
   "retention.watchdog_keep_per_job": (raw, coerced) => {
     if (!/^-?\d+$/.test((raw ?? "").trim()) || typeof coerced !== "number" || !Number.isInteger(coerced) || coerced < 0) {
-      throw new Error(`Invalid value for retention.watchdog_keep_per_job: must be an integer >= 0, got "${raw}"`);
+      throw new Error(`retention.watchdog_keep_per_job 的值无效：必须为大于等于 0 的整数，实际为 "${raw}"`);
     }
   },
   "retention.batch_size": (raw, coerced) => {
     if (!/^-?\d+$/.test((raw ?? "").trim()) || typeof coerced !== "number" || !Number.isInteger(coerced) || coerced < 1) {
-      throw new Error(`Invalid value for retention.batch_size: must be an integer >= 1, got "${raw}"`);
+      throw new Error(`retention.batch_size 的值无效：必须为大于等于 1 的整数，实际为 "${raw}"`);
     }
   },
   "queue.pickup_stall_threshold_minutes": positiveIntegerConstraint("queue.pickup_stall_threshold_minutes"),
   "queue.stuck_sweep_interval_seconds": positiveIntegerConstraint("queue.stuck_sweep_interval_seconds"),
   "queue.stuck_sweep_unclaimed_age_minutes": positiveIntegerConstraint("queue.stuck_sweep_unclaimed_age_minutes"),
-  // S01 — wake-or-escalate ladder knobs (same positive-integer contract).
+  // S01——唤醒或升级阶梯参数（同一正整数契约）。
   "queue.wake_retry_interval_seconds": positiveIntegerConstraint("queue.wake_retry_interval_seconds"),
   "queue.wake_retry_cap": positiveIntegerConstraint("queue.wake_retry_cap"),
   "queue.wake_unconfirmed_window_minutes": positiveIntegerConstraint("queue.wake_unconfirmed_window_minutes"),
@@ -783,11 +736,10 @@ function validateKeyConstraints(key: SettingsValidKey, raw: string, coerced: str
   if (check) check(raw, coerced);
 }
 
-// Slice 27 BLOCKING-FIX-2 — shared coerce + validate. Used by set()
-// (daemon write path), resolveOne env-source branch, and via
-// validateTypedFileValue by the resolveOne file-source branch. Lockstep
-// with cli/src/config-store.ts so every input layer applies the same
-// contract per banked feedback_audit_every_layer_function_and_module_constants.
+// Slice 27 BLOCKING-FIX-2——共享转换与校验。由 set()（后台服务写入路径）、resolveOne
+// 环境变量来源分支，以及 resolveOne 文件来源分支经 validateTypedFileValue 使用。
+// 与 cli/src/config-store.ts 同步，使每个输入层都按既有
+// feedback_audit_every_layer_function_and_module_constants 应用同一契约。
 function coerceAndValidate(key: SettingsValidKey, raw: string, workspaceRoot: string): string | number | boolean {
   const coerced = coerceValue(key, raw, workspaceRoot);
   validateKeyConstraints(key, raw, coerced);
@@ -802,9 +754,8 @@ function validateTypedFileValue(key: SettingsValidKey, value: string | number | 
 }
 
 /**
- * Slice 27 — projected Claude auto-compaction policy. ContextMonitor
- * consumes this snapshot per-poll; the PreCompact hook reads the same
- * shape via direct config.json read (without depending on the daemon).
+ * Slice 27——投影后的 Claude 自动压缩策略。ContextMonitor 每次轮询都消费此快照；
+ * PreCompact hook 通过直接读取 config.json 使用同一结构，无需依赖后台服务。
  */
 export interface ClaudeCompactionPolicy {
   enabled: boolean;
@@ -832,11 +783,11 @@ export interface ResolvedConfig {
   workspaceSpecsRoot: string;
   workspaceProjectsRoot: string;
   workspaceCatalogPath: string;
-  // Explicit operator selection; empty leaves identity discovery to the consumer.
+  // 操作员显式选择；为空时由消费方发现身份。
   workspaceOperatorSeatName: string;
   filesAllowlistRaw: string;
   progressScanRootsRaw: string;
-  // Preview Terminal v0 (PL-018) — UI preview preferences.
+  // Preview Terminal v0（PL-018）——UI 预览偏好。
   uiPreviewRefreshIntervalSeconds: number;
   uiPreviewMaxPins: number;
   uiPreviewDefaultLines: number;
@@ -883,10 +834,9 @@ export class SettingsStore {
 
   private resolveOneUnpaired(key: SettingsValidKey, fc: Record<string, unknown>, wr: string): ResolvedSetting {
     const defaultValue = getDefaultValue(key, wr);
-    // Slice 27 BLOCKING-FIX-2 — env override is validated; on invalid
-    // env, drop the override + warn so the operator sees the
-    // misconfiguration on daemon stderr (which captures-pane / log
-    // surfaces). Bad env never poisons the resolved value.
+    // Slice 27 BLOCKING-FIX-2——校验环境变量覆盖；环境变量无效时丢弃覆盖并提示，
+    // 使操作员能在后台服务 stderr（由 capture-pane / log 呈现）看到错误配置。
+    // 错误环境变量绝不污染解析值。
     const envVal = readEnv(ENV_MAP[key].primary, ENV_MAP[key].legacy);
     if (envVal !== undefined && envVal !== "") {
       try {
@@ -904,9 +854,8 @@ export class SettingsStore {
       if (legacyDefault !== null && fileVal === legacyDefault) {
         return { value: defaultValue, source: "default", defaultValue };
       }
-      // Validate the file-source value too. Hand-edited config.json
-      // with a bad threshold (0, "80abc", 80.5, etc.) falls back to
-      // default rather than poisoning the trigger contract.
+      // 同样校验文件来源值。手工编辑的 config.json 若包含错误阈值
+      //（0、"80abc"、80.5 等），则回退默认值，而不是污染触发契约。
       try {
         validateTypedFileValue(key, fileVal as string | number | boolean);
         return { value: fileVal as string | number | boolean, source: "file", defaultValue };
@@ -930,7 +879,7 @@ export class SettingsStore {
     return out;
   }
 
-  /** Project the raw resolution into a flattened config structure for daemon consumers. */
+  /** 把原始解析结果投影为供后台服务消费方使用的扁平配置结构。 */
   resolveConfig(): ResolvedConfig {
     const fc = this.readConfigFile();
     const wr = this.resolveWorkspaceRootRaw(fc);
@@ -957,9 +906,8 @@ export class SettingsStore {
   }
 
   /**
-   * Slice 27 — read the Claude auto-compaction policy as a typed snapshot.
-   * Called per-poll by ContextMonitor so live edits to ~/.openrig/config.json
-   * take effect within one polling interval without daemon restart.
+   * Slice 27——把 Claude 自动压缩策略读取为类型化快照。ContextMonitor 每次轮询时调用，
+   * 使对 ~/.openrig/config.json 的实时编辑无需重启后台服务，即可在一个轮询周期内生效。
    */
   resolveClaudeCompactionPolicy(): ClaudeCompactionPolicy {
     const fc = this.readConfigFile();
@@ -975,7 +923,7 @@ export class SettingsStore {
     };
   }
 
-  /** Fresh-read context-pressure detector policy; changes apply to the next projection. */
+  /** 每次重新读取上下文压力检测策略；变更在下一次投影时生效。 */
   resolveContextPressurePolicy(): ContextPressurePolicy {
     const fc = this.readConfigFile();
     const wr = this.resolveWorkspaceRootRaw(fc);
@@ -986,24 +934,23 @@ export class SettingsStore {
     };
   }
 
-  // GHOST-STAGE (d) twin of the CLI ConfigStore guard: verify-readback + fail-loud. After a write,
-  // re-read this.configPath (the canonical config) and confirm the value persisted; a mismatch means
-  // the write silently did not take, so REFUSE loudly rather than report a phantom success
-  // (config-set-success-without-persist). The daemon already writes canonical (DEFAULT_CONFIG_PATH),
-  // so this is the defense-in-depth half of the paired fix.
+  // GHOST-STAGE (d) CLI ConfigStore 守卫的孪生实现：回读校验并明确失败。写入后重新读取
+  // this.configPath（规范配置），确认值已持久化；不匹配表示写入静默失败，应明确拒绝而不是报告
+  // 虚假成功（config-set-success-without-persist）。后台服务已经写入规范位置
+  //（DEFAULT_CONFIG_PATH），因此这是成对修复中的纵深防御部分。
   private verifyPersisted(keyPath: string[], expected: unknown): void {
     let reread: Record<string, unknown>;
     try {
       reread = JSON.parse(readFileSync(this.configPath, "utf-8")) as Record<string, unknown>;
     } catch (e) {
       throw new Error(
-        `config write did NOT persist: could not read it back at ${this.configPath} (${(e as Error).message}). Refusing to report success.`,
+        `配置写入未持久化：无法从 ${this.configPath} 读回（${(e as Error).message}）。拒绝报告成功。`,
       );
     }
     const got = getNestedValue(reread, keyPath);
     if (JSON.stringify(got) !== JSON.stringify(expected)) {
       throw new Error(
-        `config write did NOT persist to ${this.configPath}: it still shows ${JSON.stringify(got)} for [${keyPath.join(".")}] (expected ${JSON.stringify(expected)}). Refusing to report a phantom success.`,
+        `配置写入未持久化到 ${this.configPath}：[${keyPath.join(".")}] 仍为 ${JSON.stringify(got)}（预期 ${JSON.stringify(expected)}）。拒绝报告虚假成功。`,
       );
     }
   }
@@ -1011,9 +958,7 @@ export class SettingsStore {
   set(key: string, value: string): void {
     const removedMessage = removedContextSettingMessage(key);
     if (removedMessage) throw new Error(removedMessage);
-    // OPR.0.4.4.15: the ONE registered dynamic class is accepted here;
-    // every OTHER unknown key keeps the reject-loud behavior below
-    // byte-for-byte.
+    // OPR.0.4.4.15：此处接受唯一注册的动态类；其他所有未知 key 逐字节保持下方明确拒绝行为。
     const feedHost = parseFeedHostSubscriptionKey(key);
     if (feedHost) {
       const coercedDyn = coerceFeedHostSubscriptionValue(key, value);
@@ -1025,7 +970,7 @@ export class SettingsStore {
       return;
     }
     if (!isSettingsValidKey(key)) {
-      throw new Error(`Unknown config key "${key}". Valid keys: ${SETTINGS_VALID_KEYS.join(", ")}`);
+      throw new Error(`未知配置键 "${key}"。有效键：${SETTINGS_VALID_KEYS.join(", ")}`);
     }
     const fc = this.readConfigFile();
     const wr = this.resolveWorkspaceRootRaw(fc);
@@ -1037,7 +982,7 @@ export class SettingsStore {
       const critical = getNestedValue(fc, KEY_TO_PATH["health.context_pressure.critical_percent"])
         ?? getDefaultValue("health.context_pressure.critical_percent", wr);
       if ((warning as number) >= (critical as number)) {
-        throw new Error(`Invalid context-pressure policy: warning (${warning}) must be less than critical (${critical})`);
+        throw new Error(`上下文压力策略无效：warning (${warning}) 必须小于 critical (${critical})`);
       }
     }
     mkdirSync(path.dirname(this.configPath), { recursive: true });
@@ -1045,10 +990,9 @@ export class SettingsStore {
     this.verifyPersisted(KEY_TO_PATH[key], coerced);
   }
 
-  /** OPR.0.4.4.15 — resolve one dynamic feed-host subscription key.
-   *  File-or-default only (no env mapping for the dynamic class in v1);
-   *  default false = not subscribed. Returns null for keys outside the
-   *  registered class. */
+  /** OPR.0.4.4.15——解析一个动态 feed-host 订阅 key。只支持文件或默认值
+   *（v1 不为动态类提供环境变量映射）；默认 false 表示未订阅。
+   * 不属于已注册类的 key 返回 null。 */
   resolveFeedHostSubscription(key: string): ResolvedSetting | null {
     const feedHost = parseFeedHostSubscriptionKey(key);
     if (!feedHost) return null;
@@ -1058,17 +1002,15 @@ export class SettingsStore {
     return { value: false, source: "default", defaultValue: false };
   }
 
-  /** OPR.0.4.4.15 — enumerate persisted per-host subscriptions (the
-   *  aggregator's read). Reserved segments and non-conforming shapes are
-   *  WARNED and IGNORED (the ratified guard: operator error surfaces
-   *  visibly, never misparses, never rejects the whole config). */
+  /** OPR.0.4.4.15——枚举持久化的逐主机订阅（聚合器读取）。保留段与不合规结构会收到提示并被忽略；
+   * 这是已批准的守卫：操作员错误明确可见，绝不误解析，也绝不拒绝整个配置。 */
   listFeedHostSubscriptions(): Array<{ hostId: string; enabled: boolean }> {
     const fc = this.readConfigFile();
     const subs = getNestedValue(fc, ["feed", "subscriptions"]);
     if (subs === null || subs === undefined || typeof subs !== "object" || Array.isArray(subs)) return [];
     const out: Array<{ hostId: string; enabled: boolean }> = [];
     for (const [segment, node] of Object.entries(subs as Record<string, unknown>)) {
-      if (node === null || typeof node !== "object" || Array.isArray(node)) continue; // flat toggle leaves — not host nodes
+      if (node === null || typeof node !== "object" || Array.isArray(node)) continue; // 扁平开关叶节点，不是主机节点
       if (FEED_HOST_RESERVED_SEGMENTS.has(segment) || !/^[A-Za-z0-9_-]+$/.test(segment)) {
         process.stderr.write(
           `[openrig-settings] feed.subscriptions.${segment} ignored as a host subscription: segment is ${FEED_HOST_RESERVED_SEGMENTS.has(segment) ? "a reserved toggle name" : "not a valid host id segment ([A-Za-z0-9_-]+)"}\n`,
@@ -1087,13 +1029,12 @@ export class SettingsStore {
 
   reset(key?: string): void {
     if (key === undefined) {
-      try { unlinkSync(this.configPath); } catch { /* missing is fine */ }
+      try { unlinkSync(this.configPath); } catch { /* 文件不存在也正常 */ }
       return;
     }
     const removedMessage = removedContextSettingMessage(key);
     if (removedMessage) throw new Error(removedMessage);
-    // OPR.0.4.4.15: dynamic-class reset removes the whole host node
-    // (unsubscribe leaves no residue).
+    // OPR.0.4.4.15：重置动态类时移除整个主机节点，取消订阅不留残余。
     const feedHost = parseFeedHostSubscriptionKey(key);
     if (feedHost) {
       if (!existsSync(this.configPath)) return;
@@ -1104,7 +1045,7 @@ export class SettingsStore {
       return;
     }
     if (!isSettingsValidKey(key)) {
-      throw new Error(`Unknown config key "${key}". Valid keys: ${SETTINGS_VALID_KEYS.join(", ")}`);
+      throw new Error(`未知配置键 "${key}"。有效键：${SETTINGS_VALID_KEYS.join(", ")}`);
     }
     if (!existsSync(this.configPath)) return;
     const fc = this.readConfigFile();
@@ -1119,7 +1060,7 @@ export class SettingsStore {
         const critical = getNestedValue(fc, KEY_TO_PATH["health.context_pressure.critical_percent"])
           ?? getDefaultValue("health.context_pressure.critical_percent", workspaceRoot);
         if ((warning as number) >= (critical as number)) {
-          throw new Error(`Invalid context-pressure policy: warning (${warning}) must be less than critical (${critical})`);
+          throw new Error(`上下文压力策略无效：warning (${warning}) 必须小于 critical (${critical})`);
         }
       }
     }
@@ -1142,7 +1083,7 @@ export class SettingsStore {
         parsed = JSON.parse(raw) as Record<string, unknown>;
       } catch {
         throw new Error(
-          `Config file at ${this.configPath} is malformed. Fix the JSON or reset with: rig config reset`,
+          `${this.configPath} 中的配置文件格式错误。请修复 JSON，或运行：zrig config reset`,
         );
       }
     }
@@ -1151,7 +1092,7 @@ export class SettingsStore {
   }
 }
 
-// --- User Settings v0: shared decoders ---
+// --- User Settings v0：共享解码器 ---
 
 export interface NamedPair {
   name: string;

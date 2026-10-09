@@ -1,7 +1,7 @@
 name: queue-handoff
 version: "1"
 taxonomy: skills
-purpose: "(eval fixture) pass active work durably before a turn ends"
+purpose: "（评估夹具）在轮次结束前持久交接活动工作"
 files:
   - path: content.md
     role: source

@@ -1,6 +1,6 @@
-// OPR.0.4.0.22 FR-1b/FR-2/FR-5 — POST /api/sessions/:sessionName/resume-token.
-// Managed/attested/audited resume-token set, with per-runtime validation,
-// credential redaction across response/error/event, and terminalAuthGuard.
+// OPR.0.4.0.22 FR-1b/FR-2/FR-5——POST /api/sessions/:sessionName/resume-token。
+// 受管理、可证明、可审计的 resume-token 设置，包含逐运行时校验、响应/错误/事件中的凭证
+// 脱敏，以及 terminalAuthGuard。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -39,7 +39,7 @@ describe("POST /api/sessions/:sessionName/resume-token", () => {
   });
   afterEach(() => { db.close(); });
 
-  it("sets a claude token (operator provenance), redacts the token, emits an audit event", async () => {
+  it("设置 Claude token（operator 来源），对 token 脱敏并发出审计事件", async () => {
     const { app, sessionRegistry } = createTestApp(db);
     sessionRegistry.registerSession("node-1", "dev1-impl@test-rig");
 
@@ -49,17 +49,17 @@ describe("POST /api/sessions/:sessionName/resume-token", () => {
     expect(json.ok).toBe(true);
     expect(json.resumeType).toBe("claude_id");
     expect(json.provenance).toBe("operator");
-    // Redaction: the response NEVER carries the raw token.
+    // 脱敏：响应绝不携带原始 token。
     expect(JSON.stringify(json)).not.toContain("claude-sess-abc123");
 
-    // Persisted with operator provenance.
+    // 以 operator 来源持久化。
     const ctx = sessionRegistry.findResumeContextByName("dev1-impl@test-rig");
     expect(ctx?.currentProvenance).toBe("operator");
     const row = db.prepare("SELECT resume_token, resume_type FROM sessions WHERE id = ?").get(ctx!.sessionId) as { resume_token: string; resume_type: string };
     expect(row.resume_token).toBe("claude-sess-abc123");
     expect(row.resume_type).toBe("claude_id");
 
-    // Audit event present, with required fields and NO raw token.
+    // 审计事件存在，包含必填字段且不含原始 token。
     const events = resumeTokenEvents(db);
     expect(events.length).toBe(1);
     const ev = events[0]!;
@@ -71,7 +71,7 @@ describe("POST /api/sessions/:sessionName/resume-token", () => {
     expect(JSON.stringify(ev)).not.toContain("claude-sess-abc123");
   });
 
-  it("operator set OUTRANKS an existing hook token", async () => {
+  it("operator 设置的 token 优先级高于现有 hook token", async () => {
     const { app, sessionRegistry } = createTestApp(db);
     const s = sessionRegistry.registerSession("node-1", "dev1-impl@test-rig");
     sessionRegistry.updateResumeToken(s.id, "claude_id", "hook-token", "hook");
@@ -83,7 +83,7 @@ describe("POST /api/sessions/:sessionName/resume-token", () => {
     expect(row.resume_provenance).toBe("operator");
   });
 
-  it("rejects a malformed token (422) WITHOUT echoing it, and does not persist", async () => {
+  it("拒绝格式错误的 token（422）且不回显，也不持久化", async () => {
     const { app, sessionRegistry } = createTestApp(db);
     const s = sessionRegistry.registerSession("node-1", "dev1-impl@test-rig");
 
@@ -93,33 +93,33 @@ describe("POST /api/sessions/:sessionName/resume-token", () => {
     const json = await res.json() as Record<string, unknown>;
     expect(JSON.stringify(json)).not.toContain("rm -rf");
     expect(JSON.stringify(json)).not.toContain(evil);
-    // Not persisted.
+    // 未持久化。
     const row = db.prepare("SELECT resume_token FROM sessions WHERE id = ?").get(s.id) as { resume_token: string | null };
     expect(row.resume_token).toBeNull();
     expect(resumeTokenEvents(db).length).toBe(0);
   });
 
-  it("requires --reason (400 when missing)", async () => {
+  it("要求 --reason（缺失时返回 400）", async () => {
     const { app, sessionRegistry } = createTestApp(db);
     sessionRegistry.registerSession("node-1", "dev1-impl@test-rig");
     const res = await post(app, "dev1-impl@test-rig", { token: "claude-tok" });
     expect(res.status).toBe(400);
   });
 
-  it("404 when the session is not found", async () => {
+  it("找不到会话时返回 404", async () => {
     const { app } = createTestApp(db);
     const res = await post(app, "ghost@test-rig", { token: "claude-tok", reason: "x" });
     expect(res.status).toBe(404);
   });
 
-  it("422 for a runtime with no resume token (terminal)", async () => {
+  it("运行时不支持 resume token（terminal）时返回 422", async () => {
     const { app, sessionRegistry } = createTestApp(db);
     sessionRegistry.registerSession("node-3", "infra-term@test-rig");
     const res = await post(app, "infra-term@test-rig", { token: "anything", reason: "x" });
     expect(res.status).toBe(422);
   });
 
-  it("AC-6: the route REQUIRES terminalAuthGuard (401 without the bearer, OK with it)", async () => {
+  it("AC-6：路由要求 terminalAuthGuard（无 bearer 时 401，携带时成功）", async () => {
     const sessionRegistry = new SessionRegistry(db);
     const eventBus = new EventBus(db);
     sessionRegistry.registerSession("node-1", "dev1-impl@test-rig");

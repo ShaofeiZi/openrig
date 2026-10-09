@@ -82,26 +82,24 @@ function stripOrphanCursorFragments(line: string): string {
 
 function isStartupSplashLine(line: string): boolean {
   const hasBoxChars = /[│╭╰╮╯]/.test(line);
-  // Strip box-drawing wrappers from Codex-style banners before matching
+  // 匹配前移除 Codex 风格 banner 的方框绘制字符。
   const stripped = line.replace(/[│╭╰╮╯─━]/g, "").trim();
 
   if (!stripped) {
-    // Empty after stripping box chars — a box border or blank row inside a
-    // startup banner. Only filter when the original had box-drawing chars
-    // (genuine blank lines are already handled by the blank-line filter).
+    // 移除方框字符后为空，说明这是 startup banner 的边框或空白行。仅在原行包含方框字符时
+    // 过滤；真正的空行已由空行 filter 处理。
     return hasBoxChars;
   }
 
-  // Claude Code version header: "Claude Code v2.1.101"
+  // Claude Code 版本 header："Claude Code v2.1.101"。
   if (/^Claude Code v[\d.]+/.test(stripped)) return true;
-  // Claude model/plan line: "Opus 4.6 (Claude Max)", "Sonnet 4.6 (1M context)"
+  // Claude model/plan 行："Opus 4.6 (Claude Max)"、"Sonnet 4.6 (1M context)"。
   if (/^(?:Opus|Sonnet|Haiku) \d[\d.]+ /.test(stripped)) return true;
-  // Codex version header: "OpenAI Codex (v0.120.0)", ">_ OpenAI Codex (v0.120.0)"
+  // Codex 版本 header："OpenAI Codex (v0.120.0)"、">_ OpenAI Codex (v0.120.0)"。
   if (/^>?_?\s*(?:OpenAI )?Codex\b.*v[\d.]+/.test(stripped)) return true;
 
-  // Box-wrapped startup banner inner content (model/directory lines inside
-  // │...│). Only match when the original line has box-drawing wrappers so
-  // standalone "model:" or "directory:" in normal output survives.
+  // 方框包裹的 startup banner 内部内容（│...│ 内的 model/directory 行）。仅在原行带方框字符
+  // 时匹配，以保留普通输出中独立出现的 "model:" 或 "directory:"。
   if (hasBoxChars) {
     if (/^model:\s+/i.test(stripped)) return true;
     if (/^directory:\s+/i.test(stripped)) return true;
@@ -123,9 +121,8 @@ function isStatusOverlayLine(line: string): boolean {
 const TAIL_CHUNK_SIZE = 16 * 1024;
 
 /**
- * Read the last N raw lines from a file by reading backwards in chunks.
- * Handles UTF-8 multibyte characters at chunk boundaries by adjusting
- * the read offset to avoid splitting characters.
+ * 从文件尾部按 chunk 反向读取最后 N 行原始文本。通过调整 read offset 处理 chunk 边界处的
+ * UTF-8 多字节字符，避免拆断字符。
  */
 function readTailChunked(filePath: string, rawLines: number): string | null {
   const stat = statSync(filePath);
@@ -142,10 +139,9 @@ function readTailChunked(filePath: string, rawLines: number): string | null {
       const buf = Buffer.alloc(readSize);
       readSync(fd, buf, 0, readSize, offset);
 
-      // Adjust for split UTF-8 multibyte: if the first byte is a continuation
-      // byte (10xxxxxx = 0x80-0xBF), we've split a character. Move the offset
-      // forward past the continuation bytes so the leading char bytes will be
-      // included in the next (earlier) chunk read.
+      // 调整被拆开的 UTF-8 多字节字符：首字节若为 continuation byte
+      //（10xxxxxx = 0x80-0xBF），说明字符已被截断。把 offset 向前移过 continuation byte，
+      // 使字符起始字节落入下一次更早的 chunk 读取。
       let skipBytes = 0;
       while (skipBytes < buf.length && (buf[skipBytes]! & 0xC0) === 0x80) {
         skipBytes++;
@@ -195,7 +191,7 @@ export class TranscriptStore {
 
   getTranscriptPath(rigName: string, sessionName: string): string {
     const resolved = join(this.root, rigName, `${sessionName}.log`);
-    // Guard against path traversal from rig/session names containing ".."
+    // 防止工作组/session name 中的 ".." 造成路径穿越。
     if (!resolved.startsWith(this.root + "/") && resolved !== this.root) {
       return join(this.root, "_unsafe", `${sessionName}.log`);
     }
@@ -212,11 +208,9 @@ export class TranscriptStore {
         return { state: "unavailable", reason: "capture_missing", lastCapturedAt: null };
       }
       const stat = statSync(filePath);
-      // Liveness is decoupled from the file mtime: the unchanged-content guard in
-      // transcript rotation freezes mtime on an idle seat whose pane is static,
-      // even though capture is still running every tick. Prefer the in-memory
-      // last-capture timestamp; fall back to mtime when no rotation record exists
-      // for this session (adopted sessions, or before this process's first tick).
+      // Liveness 与文件 mtime 解耦：transcript rotation 的内容未变化 guard 会冻结静止 pane 的
+      // idle 席位 mtime，即使每个 tick 仍在 capture。优先使用内存中的 last-capture 时间；该
+      // session 没有 rotation record 时（adopted session 或本进程首次 tick 前）回退到 mtime。
       const lastCaptureMs = getLastCaptureAt(sessionName) ?? stat.mtimeMs;
       const lastCapturedAt = new Date(lastCaptureMs).toISOString();
       if (stat.size === 0) {
@@ -235,7 +229,7 @@ export class TranscriptStore {
     if (!this._enabled) return false;
     try {
       const dir = join(this.root, rigName);
-      // Guard against path traversal
+      // 防止路径穿越。
       if (!dir.startsWith(this.root + "/") && dir !== this.root) {
         return false;
       }
@@ -250,11 +244,9 @@ export class TranscriptStore {
     if (!this._enabled) return false;
     try {
       const filePath = this.getTranscriptPath(rigName, sessionName);
-      // Ensure the rig directory exists so the marker write succeeds
-      // even when called before the launcher's ensureTranscriptDir.
-      // Restore orchestration writes the marker before launch; the
-      // launcher creates the dir later, which used to lose markers
-      // for the first restore on a fresh rig.
+      // 确保工作组目录存在，使 marker 写入在 launcher.ensureTranscriptDir 之前调用时也能成功。
+      // 恢复编排会在 launch 前写 marker，而 launcher 之后才建目录；旧行为会丢失新工作组首次
+      // 恢复的 marker。
       mkdirSync(dirname(filePath), { recursive: true });
       const marker = `--- SESSION BOUNDARY: ${reason} at ${new Date().toISOString()} ---\n`;
       appendFileSync(filePath, marker, "utf-8");
@@ -266,20 +258,20 @@ export class TranscriptStore {
 
   stripAnsi(text: string): string {
     return text
-      // Preserve horizontal spacing from cursor-forward/absolute motions.
+      // 保留 cursor-forward/absolute motion 产生的水平间距。
       .replace(/\x1b\[(\d*)C/g, (_, n: string) => " ".repeat(Math.max(1, Number(n || "1"))))
       .replace(/\x1b\[(\d*)G/g, (_, n: string) => " ".repeat(Math.max(1, Number(n || "1"))))
-      // Strip OSC/title updates like ESC ] 0;title BEL.
+      // 移除 ESC ] 0;title BEL 等 OSC/title update。
       .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, "")
-      // Strip remaining CSI and single-char escape sequences.
+      // 移除剩余 CSI 和单字符 escape sequence。
       .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
       .replace(/\x1b[@-_]/g, "")
-      // Shell redraws often emit char + backspace before replaying the line.
+      // Shell redraw 常在重放整行前发出字符 + backspace。
       .replace(/\r/g, "\n")
       .replace(/\u00a0/g, " ")
       .replace(/[^\n]\x08/g, (match) => applyBackspaces(match))
       .replace(/\x08+/g, "")
-      // Treat carriage-return redraws as separate transcript lines.
+      // 把 carriage-return redraw 视为独立 transcript 行。
       .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "")
       .replace(/[ \t]+\n/g, "\n")
       .replace(/\n{3,}/g, "\n\n");
@@ -292,7 +284,7 @@ export class TranscriptStore {
       const fileSize = statSync(filePath).size;
       if (fileSize === 0) return "";
 
-      // Adaptive: start with a generous oversample, expand if cleanup filters too many
+      // 自适应：先宽裕 oversample；cleanup 过滤过多时再扩大读取量。
       let rawMultiplier = 8;
       const MAX_MULTIPLIER = 64;
 
@@ -306,7 +298,7 @@ export class TranscriptStore {
           return finalTail.length > 0 ? finalTail.join("\n") + "\n" : "";
         }
 
-        // Not enough lines after cleanup — read more raw lines
+        // cleanup 后行数不足，继续读取更多原始行。
         rawMultiplier *= 2;
       }
 
@@ -335,18 +327,13 @@ export class TranscriptStore {
   }
 
   /**
-   * Read the entire transcript file as a single string. Returns the raw
-   * file contents (callers handle ANSI/cleanup as needed for their use
-   * case). Returns null if the file is missing OR any I/O error occurs.
-   * Returns "" for an existing-but-empty file.
+   * 把整个 transcript 文件读取为单个字符串。返回原始文件内容，调用方按自身场景处理 ANSI/
+   * cleanup。文件缺失或发生任意 I/O 错误时返回 null；文件存在但为空时返回 ""。
    *
-   * Used by GET /api/transcripts/:session/full (M2c-Daemon). Unlike
-   * `readTail`, this does not apply terminal-cleanup heuristics — the
-   * route's caller (e.g., the restore-packet generator) needs the
-   * unfiltered content the runtime emitted. Route-level redaction is
-   * applied at the route layer via `redactTranscriptContent` BEFORE
-   * serialization (per orch decision approved-option-a:
-   * open-route-with-redaction-as-protective-primitive).
+   * 供 GET /api/transcripts/:session/full（M2c-Daemon）使用。与 `readTail` 不同，本方法不应用
+   * terminal-cleanup heuristic，因为路由调用方（例如 restore-packet generator）需要 runtime
+   * 发出的未过滤内容。按 orch 裁定 approved-option-a，路由层在序列化前通过
+   * `redactTranscriptContent` 执行 redaction（open-route-with-redaction-as-protective-primitive）。
    */
   readFull(rigName: string, sessionName: string): string | null {
     try {
@@ -382,7 +369,7 @@ export class TranscriptStore {
         const readSize = Math.min(CHUNK_SIZE, stat.size - offset);
         const buf = Buffer.alloc(readSize);
         readSync(fd, buf, 0, readSize, offset);
-        // StringDecoder handles incomplete multibyte sequences at chunk boundaries
+        // StringDecoder 处理 chunk 边界处不完整的多字节序列。
         const chunk = remainder + decoder.write(buf);
         const lines = chunk.split("\n");
         remainder = lines.pop() ?? "";
@@ -398,7 +385,7 @@ export class TranscriptStore {
         }
       }
 
-      // Flush any remaining bytes from the decoder
+      // 刷出 decoder 中剩余的字节。
       const finalChunk = remainder + decoder.end();
       if (finalChunk) {
         const stripped = this.stripAnsi(finalChunk);

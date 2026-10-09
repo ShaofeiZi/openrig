@@ -68,7 +68,7 @@ function membershipSelector(markdown: string): string | null {
 
 function membershipFor(selector: string | null, layout: Layout): string[] {
   if (selector !== "layout.skills[*].edges.length > 0") {
-    throw new Error(`unsupported or missing index membership rule: ${selector ?? "<none>"}`);
+    throw new Error(`不支持或缺少 index membership 规则：${selector ?? "<none>"}`);
   }
   return Object.entries(layout.skills)
     .filter(([, entry]) => entry.edges.length > 0)
@@ -115,13 +115,13 @@ function builtinLibrary(): ContextPackLibraryService {
   return library;
 }
 
-describe("S22 OpenRig skill router coverage", () => {
-  it("derives one complete index from its own stated membership rule", () => {
+describe("S22 OpenRig skill router 覆盖", () => {
+  it("根据自身声明的 membership 规则派生完整 index", () => {
     expect(membershipSelector(INDEX)).toBe("layout.skills[*].edges.length > 0");
     expect(coverage(INDEX, LAYOUT)).toEqual({ dark: [], dead: [], duplicates: [] });
   });
 
-  it("the zero/zero detector is RED-able for seeded dark and dead routes", () => {
+  it("zero/zero 检测器能被播种的 dark/dead route 置为 RED", () => {
     const darkLayout = structuredClone(LAYOUT);
     darkLayout.skills["seeded-dark-pack"] = { edges: ["spec"], category: "core" };
     expect(coverage(INDEX, darkLayout).dark).toContain("seeded-dark-pack");
@@ -133,7 +133,7 @@ describe("S22 OpenRig skill router coverage", () => {
     expect(coverage(deadIndex, LAYOUT).dead).toContain("seeded-dead-route");
   });
 
-  it("the always-loaded spine equals the Codex-visible plugin catalog", () => {
+  it("always-loaded spine 等于 Codex 可见的 plugin catalog", () => {
     const expected = Object.entries(LAYOUT.skills)
       .filter(([, entry]) => entry.edges.includes("plugin"))
       .map(([skill]) => skill)
@@ -142,7 +142,7 @@ describe("S22 OpenRig skill router coverage", () => {
     expect(pluginSkills()).toEqual(expected);
   });
 
-  it("a fresh receiver can discover and retrieve both router refs from one projection", () => {
+  it("全新接收者可从一次投影中发现并获取两个 router ref", () => {
     expect(pluginSkills()).toContain("openrig-skills");
     const library = builtinLibrary();
     const full = library.getByRef("skills/core/openrig-skills");
@@ -158,7 +158,7 @@ describe("S22 OpenRig skill router coverage", () => {
     expect(servedBytes).toBe(pluginBytes);
   });
 
-  it("ships transport-neutral human teaching and preserves one legacy blocker receipt", async () => {
+  it("发布 transport-neutral 的人工教学，并保留一条 legacy blocker receipt", async () => {
     expect(pluginSkills()).toContain("messaging-the-human");
     const library = builtinLibrary();
     const teaching = library.getByRef("skills/core/messaging-the-human");
@@ -246,9 +246,9 @@ describe("S22 OpenRig skill router coverage", () => {
     }
   });
 
-  it("preserves terminal send semantics and fails loud for an unregistered human", () => {
+  it("保留 terminal send 语义，并对未注册 human 明确失败", () => {
     const sendSource = readFileSync(join(REPO_ROOT, "packages/cli/src/commands/send.ts"), "utf8");
-    expect(sendSource).toContain('.description("Send a message to an agent\'s terminal")');
+    expect(sendSource).toContain('.description("向智能体的终端发送一条消息")');
 
     const unresolved = resolveExternal("not-registered", registry.entities);
     expect(unresolved.kind).toBe("unregistered");

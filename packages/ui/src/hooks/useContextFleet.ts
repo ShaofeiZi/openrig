@@ -1,12 +1,10 @@
-// Token / Context Usage Surface v0 (PL-012) — fleet-wide context view.
+// Token / 上下文用量界面 v0（PL-012）——跨 fleet 的上下文视图。
 //
-// Fetches /api/ps then per-rig /api/rigs/:id/nodes (matching how
-// rig ps --nodes -A assembles the cross-rig list — daemon API, unaffected
-// by the v0.4.4 CLI default flip), enriches each node with
-// the existing contextUsage block, and projects a flat per-seat list
-// for the /context dashboard.
+// 先拉 /api/ps，再逐 rig 拉 /api/rigs/:id/nodes（与 rig ps --nodes -A 组装
+// 跨 rig 列表的方式一致——走后台服务 API，不受 v0.4.4 CLI 默认翻转影响），
+// 用既有的 contextUsage 块丰富每个节点，并投影为扁平的每席位列表，供 /context 仪表盘使用。
 //
-// No new daemon route at v0; reuses what's already shipped.
+// v0 不新增后台服务路由；复用已上线的能力。
 
 import { useQuery } from "@tanstack/react-query";
 import type { NodeInventoryEntry } from "./useNodeInventory.js";
@@ -53,7 +51,7 @@ interface PsRig {
 
 async function fetchFleet(): Promise<FleetData> {
   const psRes = await fetch("/api/ps");
-  if (!psRes.ok) throw new Error(`HTTP ${psRes.status} from /api/ps`);
+  if (!psRes.ok) throw new Error(`/api/ps 返回 HTTP ${psRes.status}`);
   const rigs = (await psRes.json()) as PsRig[];
 
   const seats: FleetSeat[] = [];

@@ -1,4 +1,4 @@
-// Read-only subprocess used by the TUI. No daemon, cache, credentials or lifecycle effects.
+// 供 TUI 使用的只读子进程。不涉及后台服务、缓存、凭据或任何生命周期副作用。
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,27 +12,27 @@ export function localRead(request: LocalRequest) {
   const roots = decodeAllowlist(config.files.allowlist);
   if (request.op === "roots") {
     const targets = [
-      ["Project intent", config.workspace.root ? path.join(config.workspace.root, "SPEC.md") : "", "file"],
-      ["Specs", config.workspace.specsRoot, "directory"],
-      ["Projects", config.workspace.projectsRoot, "directory"],
-      ["Missions and slices", config.workspace.slicesRoot, "directory"],
+      ["项目意图", config.workspace.root ? path.join(config.workspace.root, "SPEC.md") : "", "file"],
+      ["规格", config.workspace.specsRoot, "directory"],
+      ["项目", config.workspace.projectsRoot, "directory"],
+      ["任务目标与切片", config.workspace.slicesRoot, "directory"],
     ];
-    return { source: "local configuration and disk", readAt: new Date().toISOString(),
+    return { source: "本地配置与磁盘", readAt: new Date().toISOString(),
       entries: targets.map(([label, source, kind]) => {
         let canonical = source!;
-        try { canonical = fs.realpathSync(source!); } catch { /* the selected read reports the actual error */ }
+        try { canonical = fs.realpathSync(source!); } catch { /* 选中的读取会报告真实错误 */ }
         const root = [...roots].sort((a, b) => b.canonicalPath.length - a.canonicalPath.length)
           .find((r) => canonical === r.canonicalPath || canonical.startsWith(r.canonicalPath + path.sep));
         return { label, kind, source, root: root?.name ?? "", path: root ? path.relative(root.canonicalPath, canonical) : "",
-          ...(!source ? { error: "Source is not configured" } : !root ? { error: "Source is outside files.allowlist; no local read permitted" } : {}) };
+          ...(!source ? { error: "未配置数据源" } : !root ? { error: "数据源不在 files.allowlist 内，不允许本地读取" } : {}) };
       }),
     };
   }
-  if (!request.root || typeof request.path !== "string") throw new Error("root and path required");
+  if (!request.root || typeof request.path !== "string") throw new Error("root 与 path 为必填项");
   if (request.op === "read") return readAllowedFile(roots, request.root, request.path);
-  if (request.op !== "list") throw new Error("Unknown local read operation");
+  if (request.op !== "list") throw new Error("未知的本地读取操作");
   const directory = resolveAllowedDirectory(roots, request.root, request.path);
-  // Browse one selected directory at a time; never scan the workspace at startup.
+  // 一次只浏览一个选定目录；启动时绝不扫描整个工作区。
   return { source: directory, readAt: new Date().toISOString(),
     entries: fs.readdirSync(directory, { withFileTypes: true }).filter((e) => !e.name.startsWith("."))
       .map((entry) => {

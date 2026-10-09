@@ -1,20 +1,17 @@
-// OPR.0.4.6.WF4 (C4) P3 — the ANTI-PROSE negative (arch Q6-P3, made mechanical).
+// OPR.0.4.6.WF4（C4）P3——反散文负向保证（架构 Q6-P3，机械化执行）。
 //
-// The ONLY workflow-identity join in the UI is the structured Q6 `row.workflow`
-// pointer (stamped daemon-side). No UI module may derive an instance id for
-// routing/navigation by parsing prose — the `identity` composed string, the
-// `evidenceRef` CLI command, the summary, or a tag prefix. This source-level
-// grep-negative makes that rule enforceable, not aspirational.
+// UI 中唯一的工作流身份关联是结构化 Q6 `row.workflow` 指针，由后台服务侧写入。任何 UI
+// 模块都不得通过解析散文来派生路由/导航所需的实例 id，包括组合后的 `identity` 字符串、
+// `evidenceRef` CLI 命令、summary 或标签前缀。此源码级否定检索让规则可执行，而非停留在愿望。
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-// Resolve source files via import.meta.dirname (the vitest-stable anchor used by
-// the other source-grep tests, e.g. focused-terminal-lifecycle.test.ts). The
-// prior `fileURLToPath(new URL("../src/…", import.meta.url))` form resolved to
-// `test/undefined` under this vitest setup — a test-harness path bug, not a
-// product issue (OPR.0.4.6.WF4 leg-8 test-only fix).
+// 通过 import.meta.dirname 解析源文件；这是其他源码检索测试（如
+// focused-terminal-lifecycle.test.ts）使用的 Vitest 稳定锚点。旧写法
+// `fileURLToPath(new URL("../src/…", import.meta.url))` 在此 Vitest 设置下会解析为
+// `test/undefined`，属于测试工具路径缺陷而非产品问题（OPR.0.4.6.WF4 环节 8 测试专用修复）。
 function src(rel: string): string {
   return readFileSync(path.resolve(import.meta.dirname, "../src", rel), "utf8");
 }
@@ -30,18 +27,17 @@ const WORKFLOW_UI_FILES = [
 describe("WF-4 P3: workflow routing joins the structured pointer, never prose", () => {
   it("the NEEDS-YOU deep-link derives the instance id ONLY from item.workflow (the Q6 pointer)", () => {
     const accordion = src("components/review/NeedsYouAccordion.tsx");
-    // The positive join: the structured pointer feeds the route params verbatim.
+    // 正向关联：结构化指针逐字传入路由参数。
     expect(accordion).toContain("params={{ instanceId: item.workflow.instanceId }}");
-    // The rejected twin field never resurfaces.
+    // 已拒绝的 twin 字段绝不再次出现。
     expect(accordion).not.toContain("workflowInstanceRef");
   });
 
   it("no workflow UI module parses identity / evidenceRef / summary strings for navigation", () => {
     for (const rel of WORKFLOW_UI_FILES) {
       const s = src(rel);
-      // A prose parse feeding an instance id (the exact failure the rule bans):
-      // `.split(` producing an id, or evidenceRef/identity/summary used to build
-      // a route param. None of these patterns may appear.
+      // 规则明确禁止由散文解析产生实例 id：包括 `.split(` 生成 id，或使用
+      // evidenceRef/identity/summary 构建路由参数。这些模式一律不得出现。
       expect(s, `${rel} must not derive an instanceId from a split() parse`).not.toMatch(
         /instanceId[^\n]*\.split\(|\.split\([^\n]*instanceId/,
       );
@@ -55,14 +51,13 @@ describe("WF-4 P3: workflow routing joins the structured pointer, never prose", 
   });
 
   it("the instance route param comes from a structured field, never a tag-prefix slice", () => {
-    // Any `to="/workflow/instance/..."` navigation in these files must resolve
-    // its instanceId from `.instanceId` (a structured field), never from a
-    // string manipulation of a tag/prose value.
+    // 这些文件中的任何 `to="/workflow/instance/..."` 导航都必须从结构化 `.instanceId`
+    // 字段解析 instanceId，绝不能通过处理标签/散文字符串得到。
     for (const rel of WORKFLOW_UI_FILES) {
       const s = src(rel);
       const usesInstanceRoute = s.includes("/workflow/instance/$instanceId");
       if (!usesInstanceRoute) continue;
-      // Every such file resolves the param from a `.instanceId` structured read.
+      // 每个此类文件都从 `.instanceId` 结构化读取中解析参数。
       expect(s, `${rel} routes to the instance page but not via a structured .instanceId`).toMatch(
         /instanceId:\s*[A-Za-z0-9_.]*\.instanceId/,
       );

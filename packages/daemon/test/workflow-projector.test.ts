@@ -56,10 +56,9 @@ const SPEC = `workflow:
       - failed
 `;
 
-// Permissive spec for testing closure-shape variants (done, waiting, failed)
-// without walking through the whole workflow. The entry step allows all four
-// exit kinds; otherwise R2's allowed_exits enforcement (correctly) rejects
-// non-handoff closures on a step that only declares handoff.
+// 宽松规范用于测试不同关闭形状（done、waiting、failed），无需走完整个工作流。入口步骤
+// 允许全部四种 exit；否则 R2 的 allowed_exits 执行会正确拒绝只声明 handoff 的步骤上的
+// 非 handoff 关闭。
 const PERMISSIVE_SPEC = `workflow:
   id: pd-permissive
   version: 1
@@ -93,7 +92,7 @@ const PERMISSIVE_SPEC = `workflow:
       - failed
 `;
 
-describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scribe LOAD-BEARING)", () => {
+describe("WorkflowProjector + WorkflowRuntime（PL-004 阶段 D，事务式记录器承重测试）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -115,11 +114,11 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
       workflowStepTrailsSchema,
     ]);
     bus = new EventBus(db);
-    // Seed a rig + node so QueueRepository.validateRig accepts the targets.
+    // 预置工作组和节点，使 QueueRepository.validateRig 接受这些目标。
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
     queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用 fail-closed（MF2）；期望 nudge 的终态关闭需要同数据库的 intent
+    // store 才能持久化 wake。
     queueRepo.attachOutbox(new OutboxHandler(db));
     tmp = mkdtempSync(join(tmpdir(), "wf-proj-"));
     specPath = join(tmp, "spec.yaml");
@@ -134,7 +133,24 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("instantiate creates an instance + entry qitem in same transaction; emits workflow.instantiated + queue.created", async () => {
+  it("刷新 continuation 时会移除旧的中文工作流方法行", async () => {
+    const { withWorkflowContinuation } = await import("../src/domain/workflow-projector.js");
+    const body = [
+      "任务正文",
+      "工作流方法：旧方法",
+      "工作流方法：旧命令 --packet old",
+    ].join("\n");
+    const refreshed = withWorkflowContinuation({
+      body,
+      instanceId: "instance-1",
+      packetId: "packet-new",
+      ownerSession: "worker@rig",
+    });
+    expect(refreshed).not.toContain("旧方法");
+    expect(refreshed).not.toContain("--packet old");
+  });
+
+  it("instantiate 在同一事务中创建实例和入口 qitem，并发出 workflow.instantiated + queue.created", async () => {
     const events: Array<{ type: string }> = [];
     bus.subscribe((e) => events.push(e));
     const result = await runtime.instantiate({
@@ -146,16 +162,16 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     expect(result.instance.currentFrontier).toEqual([result.entryQitemId]);
     expect(events.some((e) => e.type === "workflow.instantiated")).toBe(true);
     expect(events.some((e) => e.type === "queue.created")).toBe(true);
-    // Entry qitem actually exists with the expected destination.
+    // 入口 qitem 确实存在且目标符合预期。
     const entryItem = queueRepo.getById(result.entryQitemId);
     expect(entryItem?.destinationSession).toBe("producer@rig");
     expect(entryItem?.state).toBe("pending");
   });
 
-  // R1 fix (guard blocker 1): project handoff persists Phase A queue
-  // closure metadata (closure_reason, closure_target, handed_off_to) +
-  // appends queue_transitions row + emits queue.updated event.
-  it("project(handoff) persists Phase A queue closure metadata + transition row + queue.updated event", async () => {
+  // R1 修复（guard blocker 1）：project handoff 持久化阶段 A 的 queue 关闭元数据
+  //（closure_reason、closure_target、handed_off_to），追加 queue_transitions 行，并发出
+  // queue.updated 事件。
+  it("project(handoff) 持久化阶段 A queue 关闭元数据、transition 行和 queue.updated 事件", async () => {
     const events: Array<{ type: string }> = [];
     bus.subscribe((e) => events.push(e));
     const inst = await runtime.instantiate({
@@ -170,27 +186,27 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
       actorSession: "producer@rig",
       resultNote: "produced",
     });
-    // Phase A queue closure contract preserved.
+    // 保留阶段 A 的 queue 关闭契约。
     const closedItem = queueRepo.getById(inst.entryQitemId);
     expect(closedItem?.state).toBe("handed-off");
     expect(closedItem?.closureReason).toBe("handed_off_to");
     expect(closedItem?.closureTarget).toBe("reviewer@rig");
     expect(closedItem?.handedOffTo).toBe("reviewer@rig");
-    // queue_transitions row appended.
+    // 已追加 queue_transitions 行。
     const transitions = db
       .prepare(`SELECT * FROM queue_transitions WHERE qitem_id = ? ORDER BY ts DESC`)
       .all(inst.entryQitemId) as Array<{ state: string; closure_reason: string | null; closure_target: string | null }>;
     expect(transitions.find((t) => t.state === "handed-off")).toBeDefined();
     expect(transitions.find((t) => t.state === "handed-off")?.closure_reason).toBe("handed_off_to");
-    // queue.updated event emitted.
+    // 已发出 queue.updated 事件。
     expect(events.find((e) => e.type === "queue.updated")).toBeDefined();
-    // Workflow events too.
+    // 同时发出工作流事件。
     expect(events.find((e) => e.type === "workflow.step_closed")).toBeDefined();
     expect(events.find((e) => e.type === "workflow.next_qitem_projected")).toBeDefined();
     expect(projected.nextStepId).toBe("review");
   });
 
-  it("project(done) without exposed closure overrides defaults closure_reason to no-follow-on", async () => {
+  it("project(done) 未暴露关闭覆盖值时默认使用 closure_reason=no-follow-on", async () => {
     const inst = await runtime.instantiate({
       specPath: permissiveSpecPath,
       rootObjective: "x",
@@ -210,7 +226,7 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     expect(events.find((e) => e.type === "queue.updated")).toBeDefined();
   });
 
-  it("project(waiting) uses Phase A blocked state + closure_reason=blocked_on + blocked_on column", async () => {
+  it("project(waiting) 使用阶段 A blocked 状态、closure_reason=blocked_on 与 blocked_on 列", async () => {
     const inst = await runtime.instantiate({
       specPath: permissiveSpecPath,
       rootObjective: "x",
@@ -230,7 +246,7 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     expect(closedItem?.blockedOn).toBe("external-gate-x");
   });
 
-  it("project(handoff) closes current packet AND creates next-step packet IN ONE TRANSACTION; emits step_closed + next_qitem_projected", async () => {
+  it("project(handoff) 在同一事务中关闭当前 packet 并创建下一步骤 packet，发出两个事件", async () => {
     const events: Array<{ type: string }> = [];
     bus.subscribe((e) => events.push(e));
     const inst = await runtime.instantiate({
@@ -249,16 +265,16 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     expect(projected.nextStepId).toBe("review");
     expect(projected.nextOwnerSession).toBe("reviewer@rig");
     expect(projected.nextQitemId).not.toBeNull();
-    // Prior packet closed.
+    // 前一个 packet 已关闭。
     expect(queueRepo.getById(inst.entryQitemId)?.state).toBe("handed-off");
-    // Next packet exists.
+    // 下一个 packet 已存在。
     expect(queueRepo.getById(projected.nextQitemId!)?.state).toBe("pending");
-    // Both events emitted.
+    // 两个事件均已发出。
     expect(events.filter((e) => e.type === "workflow.step_closed")).toHaveLength(1);
     expect(events.filter((e) => e.type === "workflow.next_qitem_projected")).toHaveLength(1);
   });
 
-  it("project(handoff) follows next_hop.suggested_roles so a final review step can loop back to intake", async () => {
+  it("project(handoff) 遵循 next_hop.suggested_roles，使最终 review 步骤可回到 intake", async () => {
     const loopSpec = `workflow:
   id: loop-regression
   version: 1
@@ -329,18 +345,18 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     expect(queueRepo.getById(qaProjection.nextQitemId!)?.closureTarget).toBe("discovery@rig");
   });
 
-  it("transactional-scribe ROLLBACK: if next-qitem creation fails, prior packet remains in-progress + no trail row + no orphan qitem", async () => {
+  it("事务式记录器回滚：下一 qitem 创建失败时，旧 packet 保持进行中且不产生 trail 或孤立 qitem", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "x",
       createdBySession: "ops@rig",
     });
-    // Force projection failure by invalidating destination via validateRig flip.
+    // 通过翻转 validateRig 让目标无效，从而强制投影失败。
     const failingRepo = new QueueRepository(db, bus, {
       validateRig: () => false,
     });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用 fail-closed（MF2）；期望 nudge 的终态关闭需要同数据库的 intent
+    // store 才能持久化 wake。
     failingRepo.attachOutbox(new OutboxHandler(db));
     const failingRuntime = new WorkflowRuntime({ exceptionDial: { hostDefault: () => null, humanFallbackSeat: "human@host" }, db, eventBus: bus, queueRepo: failingRepo });
     const trailCountBefore = failingRuntime.trailLog.countForInstance(inst.instance.instanceId);
@@ -359,26 +375,26 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     }
     expect(threw).toBe(true);
 
-    // Prior packet still pending (rollback).
+    // 旧 packet 仍为 pending（已回滚）。
     expect(queueRepo.getById(inst.entryQitemId)?.state).toBe("pending");
-    // No trail row written.
+    // 未写入 trail 行。
     expect(failingRuntime.trailLog.countForInstance(inst.instance.instanceId)).toBe(trailCountBefore);
-    // No orphan qitem created.
+    // 未创建孤立 qitem。
     const queueCountAfter = db.prepare(`SELECT COUNT(*) AS n FROM queue_items`).get() as { n: number };
     expect(queueCountAfter.n).toBe(queueCountBefore.n);
-    // Instance frontier unchanged.
+    // 实例 frontier 不变。
     const instAfter = failingRuntime.instanceStore.getByIdOrThrow(inst.instance.instanceId);
     expect(instAfter.currentFrontier).toEqual([inst.entryQitemId]);
     expect(instAfter.status).toBe("active");
   });
 
-  it("project(done) on terminal step → status=completed + frontier=[]", async () => {
+  it("在终结步骤执行 project(done) → status=completed + frontier=[]", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "x",
       createdBySession: "ops@rig",
     });
-    // Walk through all 3 steps.
+    // 走完全部 3 个步骤。
     let projected = await runtime.project({
       instanceId: inst.instance.instanceId,
       currentPacketId: inst.entryQitemId,
@@ -402,12 +418,12 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     expect(projected.instance.currentFrontier).toEqual([]);
     expect(projected.instance.completedAt).not.toBeNull();
     expect(projected.nextQitemId).toBeNull();
-    // Step trail has 3 entries.
+    // 步骤 trail 有 3 条记录。
     const trail = runtime.trailLog.listForInstance(inst.instance.instanceId);
     expect(trail).toHaveLength(3);
   });
 
-  it("project rejects packet not on frontier → 409 packet_not_on_frontier", async () => {
+  it("project 拒绝不在 frontier 上的 packet → 409 packet_not_on_frontier", async () => {
     const inst = await runtime.instantiate({
       specPath,
       rootObjective: "x",
@@ -420,14 +436,14 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
         exit: "done",
         actorSession: "x@r",
       });
-      throw new Error("should have thrown");
+      throw new Error("本应抛出异常");
     } catch (err) {
       expect(err).toBeInstanceOf(WorkflowProjectorError);
       expect((err as WorkflowProjectorError).code).toBe("packet_not_on_frontier");
     }
   });
 
-  it("project rejects on completed instance → 409 instance_not_active", async () => {
+  it("project 拒绝已完成实例 → 409 instance_not_active", async () => {
     const inst = await runtime.instantiate({
       specPath: permissiveSpecPath,
       rootObjective: "x",
@@ -447,18 +463,17 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
         exit: "done",
         actorSession: "anyone@rig",
       });
-      throw new Error("should have thrown");
+      throw new Error("本应抛出异常");
     } catch (err) {
       expect(err).toBeInstanceOf(WorkflowProjectorError);
       expect((err as WorkflowProjectorError).code).toBe("instance_not_active");
     }
   });
 
-  // R1 fix (guard blocker 2b): project(waiting) PRESERVES the closed
-  // packet on currentFrontier so workflow-keepalive can still resolve
-  // the owner. The blocker bug was: removing the closed packet left
-  // single-packet waiting workflows with no owner to wake.
-  it("project(waiting) sets status=waiting AND preserves the closed packet on currentFrontier (workflow-keepalive resolvability)", async () => {
+  // R1 修复（guard blocker 2b）：project(waiting) 把已关闭 packet 保留在 currentFrontier，
+  // 使 workflow-keepalive 仍可解析 owner。原 blocker 缺陷会移除已关闭 packet，导致单 packet
+  // waiting 工作流没有可唤醒的 owner。
+  it("project(waiting) 设置 status=waiting 并在 currentFrontier 保留已关闭 packet", async () => {
     const inst = await runtime.instantiate({
       specPath: permissiveSpecPath,
       rootObjective: "x",
@@ -474,23 +489,22 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     });
     expect(projected.instance.status).toBe("waiting");
     expect(projected.nextQitemId).toBeNull();
-    // Phase A queue closure shape on the blocked packet.
+    // blocked packet 上的阶段 A queue 关闭形状。
     expect(queueRepo.getById(inst.entryQitemId)?.state).toBe("blocked");
-    // FRONTIER PRESERVED — workflow-keepalive can still wake the owner.
+    // 保留 FRONTIER，workflow-keepalive 仍可唤醒 owner。
     expect(projected.instance.currentFrontier).toEqual([inst.entryQitemId]);
-    // Re-fetch to confirm the persisted instance row reflects the same.
+    // 重新读取，确认持久化实例行反映同样状态。
     const reread = runtime.instanceStore.getByIdOrThrow(inst.instance.instanceId);
     expect(reread.currentFrontier).toEqual([inst.entryQitemId]);
   });
 
-  // R2 fix (guard blocker 1): durable current-step binding. After
-  // handoff to step N then waiting on the same packet, resuming with
-  // done/handoff must close step N — NOT step N+1 (the trail-based
-  // bug R1 didn't catch). This is the canonical "resume after parked"
-  // regression per skill lesson feedback_resume_after_parked_state_regression.
-  it("R2 resume regression: handoff → waiting on step N → done on same qitem closes step N (not N+1)", async () => {
-    // Use a 3-step spec where step "review" allows handoff + waiting + done
-    // (so we can park at step 2 and resume).
+  // R2 修复（guard blocker 1）：持久化 current-step binding。handoff 到步骤 N 后在同一
+  // packet 上 waiting，再以 done/handoff 恢复时必须关闭步骤 N，而不是 N+1（R1 未捕获的
+  // trail 推断缺陷）。这是技能经验 feedback_resume_after_parked_state_regression 定义的规范
+  // “park 后 resume”回归。
+  it("R2 resume 回归：handoff → 步骤 N 上 waiting → 同一 qitem 上 done 会关闭步骤 N 而非 N+1", async () => {
+    // 使用三步骤规范，其中 "review" 允许 handoff + waiting + done，以便在第 2 步 park
+    // 后恢复。
     const resumeSpec = `workflow:
   id: pd-resume-after-waiting
   version: 1
@@ -530,7 +544,7 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     const resumeSpecPath = join(tmp, "resume.yaml");
     writeFileSync(resumeSpecPath, resumeSpec);
 
-    // Step 1: instantiate, then handoff produce → review.
+    // 步骤 1：instantiate，然后 handoff produce → review。
     const inst = await runtime.instantiate({
       specPath: resumeSpecPath,
       rootObjective: "resume regression",
@@ -545,12 +559,12 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     expect(handed.nextStepId).toBe("review");
     const reviewQitemId = handed.nextQitemId!;
 
-    // current_step_id now bound to "review".
+    // current_step_id 现在绑定到 "review"。
     let instAfterHandoff = runtime.instanceStore.getByIdOrThrow(inst.instance.instanceId);
     expect(instAfterHandoff.currentStepId).toBe("review");
     expect(instAfterHandoff.currentFrontier).toEqual([reviewQitemId]);
 
-    // Step 2: park review on the same qitem.
+    // 步骤 2：在同一 qitem 上 park review。
     const waited = await runtime.project({
       instanceId: inst.instance.instanceId,
       currentPacketId: reviewQitemId,
@@ -559,16 +573,14 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
       blockedOn: "external-gate",
     });
     expect(waited.instance.status).toBe("waiting");
-    // Frontier preserved AND current_step_id still "review" (NOT advanced
-    // to "finalize" by trail order).
+    // frontier 保留，且 current_step_id 仍为 "review"，不会因 trail 顺序推进到 "finalize"。
     let instWaiting = runtime.instanceStore.getByIdOrThrow(inst.instance.instanceId);
     expect(instWaiting.currentFrontier).toEqual([reviewQitemId]);
     expect(instWaiting.currentStepId).toBe("review");
 
-    // Step 3: resume with done on the SAME packet. Must close step "review",
-    // not "finalize". And the workflow_step_trails should have a "review"
-    // closure (the R1 bug was that trail-based inference would have
-    // resumed as if we were now on "finalize" — wrong).
+    // 步骤 3：在同一 packet 上用 done 恢复。必须关闭 "review"，而不是 "finalize"；
+    // workflow_step_trails 也应包含 "review" 关闭记录（R1 缺陷会根据 trail 错误推断为
+    // 已处于 "finalize"）。
     const resumed = await runtime.project({
       instanceId: inst.instance.instanceId,
       currentPacketId: reviewQitemId,
@@ -577,34 +589,32 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
       resultNote: "review complete",
     });
 
-    // Last trail entry is for step "review", NOT "finalize".
+    // 最新 trail 条目属于 "review"，而非 "finalize"。
     const trail = runtime.trailLog.listForInstance(inst.instance.instanceId);
-    const lastTrail = trail[0]!; // DESC order
+    const lastTrail = trail[0]!; // 降序排列。
     expect(lastTrail.stepId).toBe("review");
     expect(lastTrail.closureReason).toBe("done");
     expect(lastTrail.priorQitemId).toBe(reviewQitemId);
 
-    // The done exit on review with no successor on the frontier means the
-    // workflow is now... actually the spec says "review" can exit with done,
-    // and the next step "finalize" exists but isn't projected because we
-    // chose "done" not "handoff". So the workflow ends here as completed.
+    // review 上的 done exit 且 frontier 无后继，表示工作流此时完成。规范允许 "review"
+    // 以 done 退出；虽然存在下一步骤 "finalize"，但选择的是 "done" 而非 "handoff"，
+    // 因此不会投影该步骤。
     expect(resumed.instance.status).toBe("completed");
     expect(resumed.instance.currentFrontier).toEqual([]);
 
-    // Critical: NO trail row was written for "finalize" — the bug would
-    // have either skipped to finalize OR made the closure target the
-    // wrong step.
+    // 关键约束：不会为 "finalize" 写入 trail 行；旧缺陷会跳到 finalize，或让关闭目标
+    // 指向错误步骤。
     expect(trail.find((t) => t.stepId === "finalize")).toBeUndefined();
   });
 
-  // R2 fix (guard blocker 2): allowed_exits enforcement positive case.
-  it("R2 allowed_exits enforcement (positive): exit included in step.allowed_exits succeeds", async () => {
+  // R2 修复（guard blocker 2）：allowed_exits 强制执行的正向用例。
+  it("R2 allowed_exits 正向用例：step.allowed_exits 包含该 exit 时成功", async () => {
     const inst = await runtime.instantiate({
-      specPath, // produce step allows handoff
+      specPath, // produce 步骤允许 handoff。
       rootObjective: "x",
       createdBySession: "ops@rig",
     });
-    // handoff IS in produce's allowed_exits — must succeed.
+    // handoff 位于 produce.allowed_exits 中，必须成功。
     const projected = await runtime.project({
       instanceId: inst.instance.instanceId,
       currentPacketId: inst.entryQitemId,
@@ -614,11 +624,10 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     expect(projected.nextStepId).toBe("review");
   });
 
-  // R2 fix (guard blocker 2): allowed_exits enforcement negative case
-  // with rollback/no-side-effect coverage.
-  it("R2 allowed_exits enforcement (negative): disallowed exit throws exit_not_allowed with NO side effects", async () => {
+  // R2 修复（guard blocker 2）：allowed_exits 强制执行的反向用例，并覆盖回滚/无副作用。
+  it("R2 allowed_exits 反向用例：不允许的 exit 抛出 exit_not_allowed 且无副作用", async () => {
     const inst = await runtime.instantiate({
-      specPath, // produce step allows handoff ONLY
+      specPath, // produce 步骤只允许 handoff。
       rootObjective: "x",
       createdBySession: "ops@rig",
     });
@@ -629,7 +638,7 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     const eventsBefore: Array<{ type: string }> = [];
     bus.subscribe((e) => eventsBefore.push(e));
 
-    // done is NOT in produce.allowed_exits — must throw.
+    // done 不在 produce.allowed_exits 中，必须抛错。
     let threw = false;
     try {
       await runtime.project({
@@ -649,21 +658,20 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     }
     expect(threw).toBe(true);
 
-    // NO SIDE EFFECTS: queue state, instance frontier, current_step_id,
-    // trail count, events all unchanged.
+    // 无副作用：queue state、instance frontier、current_step_id、trail 数量和事件均不变。
     expect(queueRepo.getById(inst.entryQitemId)?.state).toBe(beforeQueueState);
     const instAfter = runtime.instanceStore.getByIdOrThrow(inst.instance.instanceId);
     expect(instAfter.currentFrontier).toEqual(beforeFrontier);
     expect(instAfter.currentStepId).toBe(beforeStepId);
     expect(runtime.trailLog.countForInstance(inst.instance.instanceId)).toBe(beforeTrailCount);
-    // No workflow.* events emitted by the rejected projection.
+    // 被拒绝的投影不会发出 workflow.* 事件。
     expect(eventsBefore.find((e) => e.type === "workflow.step_closed")).toBeUndefined();
     expect(eventsBefore.find((e) => e.type === "queue.updated")).toBeUndefined();
   });
 
-  // R1 fix (guard blocker 2a): exit=failed sets workflow status=failed
-  // (not completed) AND emits workflow.failed (not workflow.completed).
-  it("project(failed) sets workflow status=failed AND emits workflow.failed (NOT completed)", async () => {
+  // R1 修复（guard blocker 2a）：exit=failed 设置 workflow status=failed（不是 completed），
+  // 并发出 workflow.failed（不是 workflow.completed）。
+  it("project(failed) 设置 workflow status=failed 并发出 workflow.failed，而非 completed", async () => {
     const events: Array<{ type: string }> = [];
     bus.subscribe((e) => events.push(e));
     const inst = await runtime.instantiate({
@@ -681,11 +689,11 @@ describe("WorkflowProjector + WorkflowRuntime (PL-004 Phase D; transactional-scr
     expect(projected.instance.status).toBe("failed");
     expect(events.find((e) => e.type === "workflow.failed")).toBeDefined();
     expect(events.find((e) => e.type === "workflow.completed")).toBeUndefined();
-    // Phase A queue closure: state=done with closure_reason=denied.
+    // 阶段 A queue 关闭：state=done 且 closure_reason=denied。
     const closedItem = queueRepo.getById(inst.entryQitemId);
     expect(closedItem?.state).toBe("done");
     expect(closedItem?.closureReason).toBe("denied");
-    // Persisted failed event carries the reason.
+    // 持久化的 failed 事件携带原因。
     const failedEvent = events.find((e) => e.type === "workflow.failed") as
       | { type: "workflow.failed"; reason: string }
       | undefined;

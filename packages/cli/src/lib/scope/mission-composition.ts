@@ -35,12 +35,12 @@ export function planMissionMembershipAdd(
   const loaded = loadMissionComposition(missionPath);
   if (!loaded) return null;
   assertSafeRelative(ref);
-  if (!Number.isInteger(order)) fail(`Membership order for ${ref} must be an integer.`);
+  if (!Number.isInteger(order)) fail(`为 ${ref} 指定的成员顺序必须是整数。`);
   if (loaded.members.some((member) => path.normalize(member.ref) === path.normalize(ref))) {
-    fail(`Mission composition already contains ${ref}.`);
+    fail(`任务组合已包含 ${ref}。`);
   }
   if (loaded.members.some((member) => member.order === order)) {
-    fail(`Mission composition already contains order ${order}.`);
+    fail(`任务组合已包含顺序号 ${order}。`);
   }
   const members = [...loaded.members, { ref, order, active: true }]
     .sort((a, b) => a.order - b.order);
@@ -56,7 +56,7 @@ export function planMissionMembershipRemove(
   const normalized = path.normalize(ref);
   const members = loaded.members.filter((member) => path.normalize(member.ref) !== normalized);
   if (members.length === loaded.members.length) {
-    fail(`Mission composition does not contain ${ref}.`);
+    fail(`任务组合不包含 ${ref}。`);
   }
   return renderEdit(loaded, members);
 }
@@ -66,7 +66,7 @@ export function nextMissionMembershipOrder(missionPath: string): number {
   return (members.at(-1)?.order ?? 0) + 10;
 }
 
-/** Replace one or more already-validated manifests with rollback on write error. */
+/** 用回滚机制替换一份或多份已校验的 manifest：写入出错时回滚。 */
 export function applyMissionCompositionEdits(edits: MissionCompositionEdit[]): void {
   const unique = Array.from(new Map(edits.map((edit) => [edit.manifestPath, edit])).values());
   const staged: Array<{ edit: MissionCompositionEdit; temporary: string }> = [];
@@ -92,14 +92,13 @@ export function applyMissionCompositionEdits(edits: MissionCompositionEdit[]): v
 
 function loadMissionComposition(missionPath: string): LoadedComposition | null {
   const manifestPath = path.join(missionPath, "mission.yaml");
-  // Legacy work nodes remain valid indefinitely.  Absence means this mission
-  // has not opted into manifest-backed composition; malformed explicit input
-  // still refuses loudly.
+  // 遗留的工作节点长期有效。缺失表示该任务尚未选用“manifest 驱动的组合”；
+  // 但显式提供的输入若格式错误仍要大声拒绝。
   if (!fs.existsSync(manifestPath)) return null;
-  if (fs.lstatSync(manifestPath).isSymbolicLink()) fail(`Mission manifest may not be a symlink: ${manifestPath}.`);
+  if (fs.lstatSync(manifestPath).isSymbolicLink()) fail(`任务 manifest 不得是符号链接：${manifestPath}。`);
   const original = fs.readFileSync(manifestPath, "utf8");
   const document = parseDocument(original);
-  if (document.errors.length > 0) fail(`Mission manifest is invalid YAML: ${document.errors[0]!.message}`);
+  if (document.errors.length > 0) fail(`任务 manifest 不是合法 YAML：${document.errors[0]!.message}`);
   const root = document.toJS() as unknown;
   let members: MissionSliceMembership[];
   try {
@@ -122,14 +121,14 @@ function renderEdit(loaded: LoadedComposition, members: MissionSliceMembership[]
 
 function assertSafeRelative(ref: string): void {
   if (path.isAbsolute(ref) || path.normalize(ref).split(path.sep).includes("..")) {
-    fail(`Mission membership must be a safe relative path without '..': ${ref}.`);
+    fail(`任务成员关系必须是不含 '..' 的安全相对路径：${ref}。`);
   }
 }
 
 function fail(fact: string): never {
   throw new ScopeCliError({
     fact,
-    consequence: "Scope composition was not changed.",
-    action: "Repair mission.yaml or the referenced slice, then retry.",
+    consequence: "范围组合未被改动。",
+    action: "请修复 mission.yaml 或被引用的 slice，然后重试。",
   });
 }

@@ -8,19 +8,17 @@ import { fileURLToPath } from "node:url";
 import { STUB_MID_TURN_DEATH_EXIT_CODE } from "../src/adapters/stub-runner.js";
 import type { StubScript } from "../src/adapters/stub-script.js";
 
-// Slice 51-01 items 6-8 — mid_turn_death real-spawn observable: the WIRED runner really
-// DIES mid-turn. Production-identical death signals (the reliable ones — activity POSTs
-// are fire-and-forget and process.exit may truncate in-flight ones, which is FAITHFUL: a
-// real death loses in-flight hooks): the process exits with the death code, the exited
-// sidecar is recorded (synchronous, so the daemon never false-greens a stale ready), and
-// Stop is NEVER sent (hooks ceased). The hermetic executor test proves the no-Stop /
-// halt dispatch deterministically; this closes the in-memory-hides-real-spawn gap.
+// Slice 51-01 条目 6-8——mid_turn_death 真实进程可观察性：已接线 runner 确实在轮次中途死亡。
+// 与生产一致且可靠的死亡信号如下：activity POST 为发后即忘，process.exit 可能截断在途请求，
+// 这符合真实情况，因为进程死亡确实会丢失在途 hook。进程以死亡码退出；同步记录 exited
+// sidecar，使后台服务不会把过期 ready 错标为绿色；hooks 停止，因此绝不发送 Stop。隔离的
+// 执行器测试确定性证明无 Stop / halt 派发，关闭“内存实现掩盖真实进程启动”的缺口。
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNNER = resolve(HERE, "../src/adapters/stub-runner.ts");
 const SEAT = "dev-worker@death-e2e";
 
-describe("stub-runner mid_turn_death (real-spawn death)", () => {
+describe("stub-runner mid_turn_death（真实进程死亡）", () => {
   let child: ChildProcess | undefined;
   let dir: string | undefined;
   let server: Server | undefined;
@@ -33,7 +31,7 @@ describe("stub-runner mid_turn_death (real-spawn death)", () => {
     dir = undefined;
   });
 
-  it("exits with the death code, records the exited sidecar, and NEVER sends Stop", async () => {
+  it("以死亡码退出、记录 exited sidecar，且绝不发送 Stop", async () => {
     dir = mkdtempSync(join(tmpdir(), "death-e2e-"));
     const home = join(dir, ".openrig");
     mkdirSync(join(dir, ".openrig", "stub"), { recursive: true });
@@ -44,7 +42,7 @@ describe("stub-runner mid_turn_death (real-spawn death)", () => {
     server = createServer((req, res) => {
       let raw = ""; req.on("data", (c) => { raw += c; });
       req.on("end", () => {
-        try { events.push(String((JSON.parse(raw) as Record<string, unknown>).hookEvent)); } catch { /* ignore */ }
+        try { events.push(String((JSON.parse(raw) as Record<string, unknown>).hookEvent)); } catch { /* 忽略无效测试事件。 */ }
         res.writeHead(200); res.end("{}");
       });
     });
@@ -58,13 +56,13 @@ describe("stub-runner mid_turn_death (real-spawn death)", () => {
       child.on("exit", (code) => resolvePromise(code));
     });
 
-    // The process really died with the death code.
+    // 进程确实以死亡码退出。
     expect(exitCode).toBe(STUB_MID_TURN_DEATH_EXIT_CODE);
-    // The exited sidecar was recorded synchronously (daemon never false-greens a dead seat).
+    // exited sidecar 已同步记录，后台服务不会把死亡席位错误标绿。
     const sidecar = JSON.parse(readFileSync(join(dir, ".openrig", "stub", "state.json"), "utf8"));
     expect(sidecar.ready).toBe(false);
     expect(sidecar.exited?.code).toBe(STUB_MID_TURN_DEATH_EXIT_CODE);
-    // Hooks ceased: Stop was NEVER sent (grace already elapsed — the process has exited).
+    // Hooks 已停止：绝不发送 Stop；宽限期已过，进程已退出。
     await new Promise((r) => setTimeout(r, 200));
     expect(events).not.toContain("Stop");
   }, 30_000);

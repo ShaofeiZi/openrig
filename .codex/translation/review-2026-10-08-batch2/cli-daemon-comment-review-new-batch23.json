@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch23",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/expand.test.ts",
+      "before_sha256_16": "47cac40d6322d5bc",
+      "after_sha256_16": "a5476997abfea997",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/daemon-status-three-state.test.ts",
+      "before_sha256_16": "a194f750d62491c8",
+      "after_sha256_16": "f215e779584e93cf",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/d14-loud-queue-transport-failure.test.ts",
+      "before_sha256_16": "3d7751f5b3dbb922",
+      "after_sha256_16": "8747e1e9070882b0",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/graph-projection.test.ts",
+      "before_sha256_16": "18c3a6ed7f2de149",
+      "after_sha256_16": "8036566b93400fc7",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/workflow-follow.test.ts",
+      "before_sha256_16": "0e4092eabde5efdf",
+      "after_sha256_16": "31e8a5b02df8f24e",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

@@ -1,13 +1,10 @@
-// VM-006 (progress-review-done-coherence) — the ONE home for the slice
-// proof-artifact read (arch Cell A ruling A1, 2026-07-11): this function is
-// `gather.readProofArtifacts` extracted VERBATIM (gather delegates to it;
-// the slice-detail projector imports the same reader), so pm-lead's
-// exact-mirror semantics ruling holds BY CONSTRUCTION — same `.md` filter,
-// same `.sort()`, same `mtime → ISO` droppedAt, same per-file
-// try/catch-skip. One implementation cannot drift from itself; if the two
-// tabs ever read different artifact sets they re-diverge, which is the
-// disease this slice exists to kill. compose.ts stays PURE — impure proof
-// IO lives here, never there.
+// VM-006（progress-review-done-coherence）——slice proof artifact 读取的唯一归属点
+//（架构 Cell A 裁定 A1，2026-07-11）。本函数从 `gather.readProofArtifacts` 原样抽出：
+// gather 委托给它，slice-detail projector 也导入同一个 reader。因此 pm-lead 的精确镜像语义
+// 从构造上成立：使用相同的 `.md` 过滤、相同的 `.sort()`、相同的 `mtime → ISO` droppedAt，
+// 以及相同的逐文件 try/catch-skip。一份实现不可能与自身漂移；若两个页签读取不同的 artifact
+// 集合，就会再次分叉，而这正是本 slice 要消除的问题。compose.ts 必须保持纯函数；有副作用的
+// proof I/O 只能放在这里。
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -17,7 +14,8 @@ export function readProofArtifacts(sliceDir: string) {
   const proofDir = path.join(sliceDir, "proof");
   let entries: string[] = [];
   try {
-    entries = fs.readdirSync(proofDir).filter((f) => f.endsWith(".md"));
+    // 本地化 companion 只供人阅读，不能作为第二份机器裁决参与 evidence join。
+    entries = fs.readdirSync(proofDir).filter((f) => f.endsWith(".md") && !f.endsWith(".zh-CN.md"));
   } catch {
     return [];
   }

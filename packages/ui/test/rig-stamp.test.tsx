@@ -1,4 +1,4 @@
-// V1 Shell Redesign — Phase 1 — RigStamp primitive.
+// V1 Shell 重设计——阶段 1——RigStamp 原语。
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";

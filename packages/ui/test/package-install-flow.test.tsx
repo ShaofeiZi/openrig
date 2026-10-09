@@ -91,7 +91,7 @@ function renderFlow() {
 async function advanceToStep(target: "validated" | "configure" | "planned" | "done") {
   renderFlow();
 
-  // Enter path
+  // 输入 path
   await waitFor(() => expect(screen.getByTestId("source-path-input")).toBeTruthy());
   act(() => { fireEvent.change(screen.getByTestId("source-path-input"), { target: { value: "/test/pkg" } }); });
 
@@ -129,15 +129,15 @@ describe("PackageInstallFlow", () => {
     });
   });
 
-  // T5-AS-T14: Heading contains "(Legacy)"
-  it("heading contains (Legacy)", async () => {
+  // T5-AS-T14：标题包含“（旧版）”。
+  it("标题包含（旧版）", async () => {
     renderFlow();
     await waitFor(() => {
-      expect(screen.getByText(/INSTALL PACKAGE \(Legacy\)/)).toBeTruthy();
+      expect(screen.getByText(/安装软件包（旧版）/)).toBeTruthy();
     });
   });
 
-  // Test 1: Step indicator shows correct active step
+  // 测试 1：Step 指示器显示正确 active step
   it("step indicator shows correct active step", async () => {
     renderFlow();
     await waitFor(() => {
@@ -146,7 +146,7 @@ describe("PackageInstallFlow", () => {
     });
   });
 
-  // Test 2: Enter step: input + disabled validate button
+  // 测试 2：Enter step：input + 禁用 validate 按钮
   it("enter step: input field and disabled validate button when empty", async () => {
     renderFlow();
     await waitFor(() => {
@@ -161,7 +161,7 @@ describe("PackageInstallFlow", () => {
     expect(screen.getByTestId("validate-btn")).toHaveProperty("disabled", false);
   });
 
-  // Test 3: Validate step shows manifest summary
+  // 测试 3：Validate step 显示 manifest 摘要
   it("validate step shows manifest summary", async () => {
     await advanceToStep("validated");
 
@@ -170,7 +170,7 @@ describe("PackageInstallFlow", () => {
     expect(screen.getByText("A test package")).toBeTruthy();
   });
 
-  // Test 4: Configure step shows runtime picker, target root, allow-merge toggle
+  // 测试 4：Configure step 显示 runtime picker、target root、allow-merge toggle
   it("configure step shows runtime picker, target root, and allow-merge toggle", async () => {
     await advanceToStep("configure");
 
@@ -179,7 +179,7 @@ describe("PackageInstallFlow", () => {
     expect(screen.getByTestId("allow-merge-toggle")).toBeTruthy();
   });
 
-  // Test 5: Plan step shows classified entries with correct policy status
+  // 测试 5：Plan step 显示带正确 policy 状态的分类条目
   it("plan step shows entries with policy status colors", async () => {
     await advanceToStep("planned");
 
@@ -190,7 +190,7 @@ describe("PackageInstallFlow", () => {
     expect(entries[2]!.getAttribute("data-policy-status")).toBe("deferred");
   });
 
-  // Test 6: Plan step shows deferred items with reasons
+  // 测试 6：Plan step 显示带原因的 deferred 条目
   it("plan step shows deferred reasons", async () => {
     await advanceToStep("planned");
 
@@ -199,7 +199,7 @@ describe("PackageInstallFlow", () => {
     expect(deferredEntry.textContent).toContain("Hooks deferred to Phase 5");
   });
 
-  // Test 7: Plan step conflicts block Apply button
+  // 测试 7：Plan step 冲突阻塞 Apply 按钮
   it("conflicts block Apply button", async () => {
     renderFlow();
     await waitFor(() => expect(screen.getByTestId("source-path-input")).toBeTruthy());
@@ -223,17 +223,17 @@ describe("PackageInstallFlow", () => {
     expect(screen.getByTestId("apply-btn")).toHaveProperty("disabled", true);
   });
 
-  // Test 8: Apply success shows installId + counts
+  // 测试 8：Apply 成功显示 installId + 计数
   it("apply success shows installId and counts", async () => {
     await advanceToStep("done");
 
     expect(screen.getByTestId("result-install-id").textContent).toBe("inst-123");
     expect(screen.getByTestId("result-applied").textContent).toBe("1");
     expect(screen.getByTestId("result-deferred").textContent).toBe("1");
-    expect(screen.getByTestId("result-verified").textContent).toBe("PASS");
+    expect(screen.getByTestId("result-verified").textContent).toBe("通过");
   });
 
-  // Test 9: Error with TRY AGAIN
+  // 测试 9：错误带 TRY AGAIN
   it("error at any step shows alert with TRY AGAIN", async () => {
     renderFlow();
     await waitFor(() => expect(screen.getByTestId("source-path-input")).toBeTruthy());
@@ -249,7 +249,7 @@ describe("PackageInstallFlow", () => {
     await waitFor(() => expect(screen.getByTestId("source-path-input")).toBeTruthy());
   });
 
-  // Test 10: Role dropdown populated + selecting role sends roleName in plan request
+  // 测试 10：Role dropdown 填充 + 选 role 在 plan 请求中发 roleName
   it("role selection sends roleName in plan request", async () => {
     renderFlow();
     await waitFor(() => expect(screen.getByTestId("source-path-input")).toBeTruthy());
@@ -262,15 +262,15 @@ describe("PackageInstallFlow", () => {
     act(() => { fireEvent.click(screen.getByTestId("configure-btn")); });
     await waitFor(() => expect(screen.getByTestId("configure-step")).toBeTruthy());
 
-    // Verify role dropdown is populated
+    // 验证 role dropdown 已填充
     const roleSelect = screen.getByTestId("role-select");
     expect(roleSelect.innerHTML).toContain("dev");
     expect(roleSelect.innerHTML).toContain("Developer role");
 
-    // Select the dev role
+    // 选 dev role
     act(() => { fireEvent.change(roleSelect, { target: { value: "dev" } }); });
 
-    // Plan — mock returns filtered entries (only skill from dev role, no other exports)
+    // Plan——mock 返回过滤条目（仅 dev role 的 skill，无其他 exports）
     mockPlanSuccess({
       entries: [
         { exportType: "skill", exportName: "tool/SKILL.md", classification: "safe_projection", targetPath: "/x", deferred: false, policyStatus: "approved" },
@@ -281,7 +281,7 @@ describe("PackageInstallFlow", () => {
     act(() => { fireEvent.click(screen.getByTestId("plan-btn")); });
     await waitFor(() => expect(screen.getByTestId("plan-preview")).toBeTruthy());
 
-    // Verify plan was called with roleName
+    // 验证 plan 以 roleName 被调用
     const planCall = fetchMock.mock.calls.find(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("/api/packages/plan")
     );
@@ -289,12 +289,12 @@ describe("PackageInstallFlow", () => {
     const planBody = JSON.parse((planCall![1] as { body: string }).body);
     expect(planBody.roleName).toBe("dev");
 
-    // Verify filtered entries rendered (only 1 entry, not the full 3)
+    // 验证过滤条目已渲染（仅 1 条，非全部 3 条）
     const entries = screen.getAllByTestId("plan-entry");
     expect(entries.length).toBe(1);
   });
 
-  // Test 11: Allow-merge toggle affects plan classification
+  // 测试 11：Allow-merge toggle 影响 plan 分类
   it("allow-merge toggle affects plan policy status", async () => {
     renderFlow();
     await waitFor(() => expect(screen.getByTestId("source-path-input")).toBeTruthy());
@@ -307,10 +307,10 @@ describe("PackageInstallFlow", () => {
     act(() => { fireEvent.click(screen.getByTestId("configure-btn")); });
     await waitFor(() => expect(screen.getByTestId("configure-step")).toBeTruthy());
 
-    // Enable allow-merge
+    // 启用 allow-merge
     act(() => { fireEvent.click(screen.getByTestId("allow-merge-toggle")); });
 
-    // Plan with allow-merge — guidance now approved
+    // Plan with allow-merge——guidance 现已 approved
     mockPlanSuccess({
       entries: [
         { exportType: "skill", exportName: "tool/SKILL.md", classification: "safe_projection", targetPath: "/x", deferred: false, policyStatus: "approved" },
@@ -326,7 +326,7 @@ describe("PackageInstallFlow", () => {
     expect(entries[1]!.getAttribute("data-policy-status")).toBe("approved");
   });
 
-  // Test 12: Configure shows requirements
+  // 测试 12：Configure 显示 requirements
   it("configure step shows requirements from validate response", async () => {
     await advanceToStep("configure");
 
@@ -334,7 +334,7 @@ describe("PackageInstallFlow", () => {
     expect(screen.getByTestId("requirements-section").textContent).toContain("jq");
   });
 
-  // Test 13: Done state detail link navigates to package detail
+  // 测试 13：Done 状态 detail 链接导航到 package detail
   it("done state: detail link navigates to package detail", async () => {
     await advanceToStep("done");
 

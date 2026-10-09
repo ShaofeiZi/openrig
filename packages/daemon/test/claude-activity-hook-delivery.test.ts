@@ -1,19 +1,15 @@
-// OPR activity-hook r3 — Claude managed activity-hook DELIVERY pins.
+// OPR activity-hook r3——Claude 托管 activity-hook 投递固定测试。
 //
-// COEXISTS with `activity-hook-rip-proof.test.ts` (it does NOT supersede it): the
-// rip-proof suite guards the DISTINCT `deliverStartup` seam (old path/name
-// `activity-hook-relay`), which stays ripped. This suite pins the r3 MANAGED
-// delivery driven from the always-run `ClaudeCodeAdapter.project()` seam.
+// 与 `activity-hook-rip-proof.test.ts` 共存（不会取代它）：rip-proof 套件守卫独立的
+// `deliverStartup` 接缝（旧路径/名称 `activity-hook-relay`），后者继续保持移除状态。
+// 本套件固定由始终运行的 `ClaudeCodeAdapter.project()` 接缝驱动的 r3 托管投递。
 //
-// The always-run seam is load-bearing: `project()` iterates `plan.entries`
-// unconditionally, so DISABLE (strip owned entries) is production-reachable even
-// when a profile REMOVES the resource and no entry is emitted. ENABLE fires when a
-// `claude_activity_hooks` runtime_resource entry is present AND the relay source +
-// canonical event manifest are readable. Event vocabulary is DERIVED from the
-// canonical `claude.json` (no parallel hand-maintained constant). Ownership is the
-// EXACT `node <quoted relay path>` shape (a user command that merely contains the
-// path is preserved). Malformed settings are preserved (fail-closed). Missing
-// source produces NO dangling commands and NO false projected claim.
+// 始终运行的接缝承担关键语义：`project()` 无条件遍历 `plan.entries`，因此即使 profile
+// 移除了资源且没有生成条目，DISABLE（删除自有条目）在生产环境仍可达。存在
+// `claude_activity_hooks` runtime_resource 条目，且 relay 源与规范事件清单可读时，
+// ENABLE 才会触发。事件词汇从规范 `claude.json` 派生（没有并行手工维护的常量）。
+// 所有权严格限定为 `node <quoted relay path>` 结构（仅仅包含该路径的用户命令会被保留）。
+// 格式错误的设置会保留（闭合失败）。源缺失时不产生悬空命令，也不产生虚假的已投影声明。
 
 import { describe, it, expect } from "vitest";
 import { ClaudeCodeAdapter, type ClaudeAdapterFsOps } from "../src/adapters/claude-code-adapter.js";
@@ -31,13 +27,13 @@ const RELAY_SRC = "/assets/plugins/openrig-core/hooks/scripts/activity-relay.cjs
 const MANIFEST_SRC = "/assets/plugins/openrig-core/hooks/claude.json";
 const RELAY_DEST = "/project/.openrig/hooks/scripts/activity-relay.cjs";
 const SETTINGS = "/project/.claude/settings.local.json";
-// The concrete, absolute, shell-quoted leg-B firing shape — never ${CLAUDE_PLUGIN_ROOT}.
+// 具体、绝对且经 shell 引用的 B 支路触发形式——绝不使用 ${CLAUDE_PLUGIN_ROOT}。
 const OWNED_CMD = `node ${shellQuote(RELAY_DEST)}`;
 const OWNED_MARKER = ".openrig/hooks/scripts/activity-relay.cjs";
 const EVENTS = ["SessionStart", "UserPromptSubmit", "Stop", "Notification"] as const;
 
-// A faithful subset of the canonical claude.json: the 4 relay events (unscoped
-// relay group) interleaved with compaction/bridge groups that must be excluded.
+// 规范 claude.json 的忠实子集：4 个 relay 事件（无 scope 的 relay 组），与必须排除的
+// compaction/bridge 组交错。
 const CANONICAL_MANIFEST = JSON.stringify({
   hooks: {
     SessionStart: [
@@ -62,7 +58,7 @@ function mockFs(files?: Store, modes?: Modes): ClaudeAdapterFsOps & { _store: St
   const store: Store = { ...files };
   const modeMap: Modes = { ...modes };
   return {
-    readFile: (p: string) => { if (p in store) return store[p]!; throw new Error(`Not found: ${p}`); },
+    readFile: (p: string) => { if (p in store) return store[p]!; throw new Error(`未找到：${p}`); },
     writeFile: (p: string, c: string) => { store[p] = c; },
     exists: (p: string) => p in store,
     mkdirp: () => {},
@@ -88,7 +84,7 @@ function makeAdapter(fs: ClaudeAdapterFsOps, relayPath = RELAY_SRC, manifestPath
   return new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: fs, activityRelayPath: relayPath, claudeHooksManifestPath: manifestPath } as ConstructorParameters<typeof ClaudeCodeAdapter>[0]);
 }
 
-/** Enable-ready fs: relay asset (0755) + canonical manifest seeded. */
+/** 可启用的文件系统：已植入 relay 工件（0755）和规范清单。 */
 function enableFs(extra?: Store): ReturnType<typeof mockFs> {
   return mockFs({ [RELAY_SRC]: "// relay", [MANIFEST_SRC]: CANONICAL_MANIFEST, ...extra }, { [RELAY_SRC]: 0o755 });
 }
@@ -123,34 +119,34 @@ function allCommands(settings: Record<string, any>): string[] {
   return out;
 }
 
-/** settings.local.json pre-seeded with the 4 managed owned entries. */
+/** settings.local.json 已预置 4 个托管自有条目。 */
 function seededOwned(): string {
   const hooks: Record<string, any> = {};
   for (const ev of EVENTS) hooks[ev] = [{ hooks: [{ type: "command", command: OWNED_CMD, timeout: 5 }] }];
   return JSON.stringify({ hooks });
 }
 
-// Packaged contract (QA blocker 1f53796c): the projected relay must be 0755, and production
-// PRESERVES the source mode (no adapter chmod policy). So the SHIPPED asset itself must be
-// executable — this regression STATS the real committed asset, not a synthetic 0o755 fixture.
-describe("Claude activity-hook delivery — shipped relay asset executable mode (0755 contract)", () => {
-  it("the committed activity-relay.cjs asset is executable 0755 (so the preserved projection meets the contract)", () => {
+// 打包契约（QA 阻塞项 1f53796c）：投影出的 relay 必须为 0755，且生产代码保留源模式
+//（适配器没有 chmod 策略）。因此已发布工件本身必须可执行——此回归测试 stat 真实提交的
+// 工件，而非合成的 0o755 fixture。
+describe("Claude activity-hook 投递——已发布 relay 工件的可执行模式（0755 契约）", () => {
+  it("已提交的 activity-relay.cjs 工件可执行且模式为 0755（使保留模式的投影满足契约）", () => {
     const assetPath = pathResolve(import.meta.dirname, "../assets/plugins/openrig-core/hooks/scripts/activity-relay.cjs");
     const mode = statSync(assetPath).mode & 0o777;
-    expect(mode & 0o111, `shipped relay mode is 0${mode.toString(8)}, expected executable`).not.toBe(0);
-    expect(mode, `shipped relay mode is 0${mode.toString(8)}, expected 0755`).toBe(0o755);
+    expect(mode & 0o111, `已发布 relay 模式为 0${mode.toString(8)}，预期可执行`).not.toBe(0);
+    expect(mode, `已发布 relay 模式为 0${mode.toString(8)}，预期为 0755`).toBe(0o755);
   });
 });
 
-describe("Claude activity-hook delivery — ENABLE (entry present, source + manifest readable)", () => {
-  it("copies the relay to <cwd>/.openrig/hooks/scripts/ at mode 0755", async () => {
+describe("Claude activity-hook 投递——启用（条目存在，源与清单可读）", () => {
+  it("以 0755 模式将 relay 复制到 <cwd>/.openrig/hooks/scripts/", async () => {
     const fs = enableFs();
     await makeAdapter(fs).project(plan([activityEntry()]), binding());
     expect(fs._store[RELAY_DEST]).toBe("// relay");
     expect(fs._modes[RELAY_DEST]! & 0o777).toBe(0o755);
   });
 
-  it("upserts the owned relay command for exactly the 4 relay events with the concrete absolute command", async () => {
+  it("用具体绝对命令为恰好 4 个 relay 事件更新或插入自有 relay 命令", async () => {
     const fs = enableFs();
     await makeAdapter(fs).project(plan([activityEntry()]), binding());
     const settings = readSettings(fs);
@@ -161,7 +157,7 @@ describe("Claude activity-hook delivery — ENABLE (entry present, source + mani
     expect(JSON.stringify(settings.hooks)).not.toContain("CLAUDE_PLUGIN_ROOT");
   });
 
-  it("injects NO compaction hooks (PreCompact/PostCompact/compaction-restore-bridge)", async () => {
+  it("不注入任何压缩钩子（PreCompact/PostCompact/compaction-restore-bridge）", async () => {
     const fs = enableFs();
     await makeAdapter(fs).project(plan([activityEntry()]), binding());
     const settings = readSettings(fs);
@@ -170,8 +166,8 @@ describe("Claude activity-hook delivery — ENABLE (entry present, source + mani
     expect(JSON.stringify(settings.hooks ?? {})).not.toContain("compaction-restore-bridge");
   });
 
-  it("derives the injected events from the canonical claude.json manifest (no hardcoded event set)", async () => {
-    // A manifest where ONLY Stop references the relay → only Stop is injected.
+  it("从规范 claude.json 清单派生注入事件（无硬编码事件集合）", async () => {
+    // 仅 Stop 引用 relay 的清单 → 只注入 Stop。
     const onlyStop = JSON.stringify({ hooks: {
       Stop: [{ hooks: [{ type: "command", command: 'node "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/activity-relay.cjs"', timeout: 9 }] }],
       PreCompact: [{ hooks: [{ type: "command", command: "node bridge.cjs" }] }],
@@ -181,7 +177,7 @@ describe("Claude activity-hook delivery — ENABLE (entry present, source + mani
     expect(Object.keys(readSettings(fs).hooks)).toEqual(["Stop"]);
   });
 
-  it("is idempotent: a second project() adds no duplicate owned entries", async () => {
+  it("具备幂等性：第二次 project() 不会添加重复的自有条目", async () => {
     const fs = enableFs();
     const adapter = makeAdapter(fs);
     await adapter.project(plan([activityEntry()]), binding());
@@ -191,7 +187,7 @@ describe("Claude activity-hook delivery — ENABLE (entry present, source + mani
     expect(allCommands(readSettings(fs)).filter((c) => c.includes(OWNED_MARKER)).length).toBe(EVENTS.length);
   });
 
-  it("preserves pre-existing user hooks while adding the owned entry", async () => {
+  it("添加自有条目时保留预先存在的用户钩子", async () => {
     const fs = enableFs({ [SETTINGS]: JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "node ./my-stop-hook.cjs", timeout: 10 }] }] } }) });
     await makeAdapter(fs).project(plan([activityEntry()]), binding());
     const cmds = allCommands(readSettings(fs));
@@ -199,7 +195,7 @@ describe("Claude activity-hook delivery — ENABLE (entry present, source + mani
     expect(cmds).toContain(OWNED_CMD);
   });
 
-  it("replaces a stale owned entry at a CHANGED relay path (no duplicate)", async () => {
+  it("替换 relay 路径已变化的陈旧自有条目（不重复）", async () => {
     const stale = JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: `node ${shellQuote(`/old/prefix/${OWNED_MARKER}`)}`, timeout: 5 }] }] } });
     const fs = enableFs({ [SETTINGS]: stale });
     await makeAdapter(fs).project(plan([activityEntry()]), binding());
@@ -208,7 +204,7 @@ describe("Claude activity-hook delivery — ENABLE (entry present, source + mani
   });
 });
 
-describe("Claude activity-hook delivery — DISABLE via the always-run project() seam", () => {
+describe("Claude activity-hook 投递——通过始终运行的 project() 接缝禁用", () => {
   function seededManaged(extra?: Record<string, any>) {
     const hooks: Record<string, any> = {};
     for (const ev of EVENTS) hooks[ev] = [{ hooks: [{ type: "command", command: OWNED_CMD, timeout: 5 }] }];
@@ -216,20 +212,20 @@ describe("Claude activity-hook delivery — DISABLE via the always-run project()
     return JSON.stringify({ hooks });
   }
 
-  it("strips owned entries when NO claude_activity_hooks entry is present (production-reachable disable)", async () => {
+  it("不存在 claude_activity_hooks 条目时删除自有条目（生产环境可达的禁用路径）", async () => {
     const fs = enableFs({ [SETTINGS]: seededManaged() });
     await makeAdapter(fs).project(plan([]), binding());
     expect(allCommands(readSettings(fs)).filter((c) => c.includes(OWNED_MARKER))).toEqual([]);
   });
 
-  it("prunes emptied event containers after stripping", async () => {
+  it("删除条目后清理已空的事件容器", async () => {
     const fs = enableFs({ [SETTINGS]: seededManaged() });
     await makeAdapter(fs).project(plan([]), binding());
     const settings = readSettings(fs);
     for (const ev of EVENTS) expect(settings.hooks?.[ev]).toBeUndefined();
   });
 
-  it("strips ONLY owned entries and preserves user hooks on disable", async () => {
+  it("禁用时仅删除自有条目，并保留用户钩子", async () => {
     const fs = enableFs({ [SETTINGS]: seededManaged({ Stop: [{ hooks: [{ type: "command", command: "node ./my-stop-hook.cjs", timeout: 10 }] }] }) });
     await makeAdapter(fs).project(plan([]), binding());
     const cmds = allCommands(readSettings(fs));
@@ -238,76 +234,75 @@ describe("Claude activity-hook delivery — DISABLE via the always-run project()
   });
 });
 
-describe("Claude activity-hook delivery — hardening (guard r3 findings)", () => {
-  it("EXACT ownership: does NOT strip a user command that merely CONTAINS the relay path", async () => {
-    // An echo whose argument contains the marker — NOT the owned `node <path>` shape.
+describe("Claude activity-hook 投递——加固（守卫 r3 发现）", () => {
+  it("精确所有权：不会删除仅仅包含 relay 路径的用户命令", async () => {
+    // 参数包含标记的 echo——并非自有的 `node <path>` 结构。
     const userCmd = `echo ${shellQuote(`/somewhere/${OWNED_MARKER}`)}`;
     const fs = enableFs({ [SETTINGS]: JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: userCmd, timeout: 3 }] }] } }) });
-    await makeAdapter(fs).project(plan([]), binding()); // disable path exercises the strip
+    await makeAdapter(fs).project(plan([]), binding()); // 通过禁用路径执行删除逻辑
     expect(allCommands(readSettings(fs))).toContain(userCmd);
   });
 
-  it("FAIL-CLOSED: preserves malformed settings bytes (no clobber to {})", async () => {
+  it("闭合失败：保留格式错误的设置字节（不覆盖为 {}）", async () => {
     const malformed = "{ broken json";
     const fs = enableFs({ [SETTINGS]: malformed });
     await makeAdapter(fs).project(plan([activityEntry()]), binding());
     expect(fs._store[SETTINGS]).toBe(malformed);
   });
 
-  it("MISSING SOURCE: writes NO dangling commands and reports the entry skipped, not projected", async () => {
-    const fs = mockFs({ [MANIFEST_SRC]: CANONICAL_MANIFEST }, {}); // relay source absent
+  it("源缺失：不写入悬空命令，并将条目报告为已跳过而非已投影", async () => {
+    const fs = mockFs({ [MANIFEST_SRC]: CANONICAL_MANIFEST }, {}); // relay 源缺失
     const res = await makeAdapter(fs, "/assets/missing-relay.cjs").project(plan([activityEntry()]), binding());
     expect(allCommands(readSettings(fs)).filter((c) => c.includes(OWNED_MARKER))).toEqual([]);
     expect(res.projected).not.toContain("claude-activity-hooks");
     expect(res.skipped).toContain("claude-activity-hooks");
   });
 
-  // PREVALIDATE BEFORE MUTATION: a relay source present but a canonical manifest that is
-  // missing / malformed / yields zero relay events must NOT strip existing managed hooks,
-  // NOT copy the relay, NOT mutate settings, and NOT claim projected/delivered.
+  // 变更前预校验：relay 源存在但规范清单缺失、格式错误或不产生 relay 事件时，不得删除
+  // 现有托管钩子、不得复制 relay、不得更改设置，也不得声明已投影/已投递。
   for (const [label, manifest] of [
-    ["ABSENT manifest", undefined],
-    ["MALFORMED manifest", "{ broken json"],
-    ["ZERO-relay-event manifest", JSON.stringify({ hooks: { PreCompact: [{ hooks: [{ type: "command", command: "node bridge.cjs" }] }] } })],
+    ["清单缺失", undefined],
+    ["清单格式错误", "{ broken json"],
+    ["清单没有 relay 事件", JSON.stringify({ hooks: { PreCompact: [{ hooks: [{ type: "command", command: "node bridge.cjs" }] }] } })],
   ] as const) {
-    it(`${label} on enable: preserves existing managed hooks + settings bytes, no projected claim, no relay copy`, async () => {
+    it(`${label}时启用：保留现有托管钩子与设置字节，不声明已投影，也不复制 relay`, async () => {
       const seeded = seededOwned();
       const files: Store = { [RELAY_SRC]: "// relay", [SETTINGS]: seeded };
       if (manifest !== undefined) files[MANIFEST_SRC] = manifest;
       const fs = mockFs(files, { [RELAY_SRC]: 0o755 });
       const manifestPath = manifest === undefined ? "/assets/missing-manifest.json" : MANIFEST_SRC;
       const res = await makeAdapter(fs, RELAY_SRC, manifestPath).project(plan([activityEntry()]), binding());
-      expect(fs._store[SETTINGS]).toBe(seeded); // settings bytes untouched (no strip, no write)
-      expect(allCommands(readSettings(fs)).filter((c) => c.includes(OWNED_MARKER)).length).toBe(EVENTS.length); // managed hooks preserved
-      expect(fs._store[RELAY_DEST]).toBeUndefined(); // relay NOT copied
+      expect(fs._store[SETTINGS]).toBe(seeded); // 设置字节未改变（不删除、不写入）
+      expect(allCommands(readSettings(fs)).filter((c) => c.includes(OWNED_MARKER)).length).toBe(EVENTS.length); // 保留托管钩子
+      expect(fs._store[RELAY_DEST]).toBeUndefined(); // 未复制 relay
       expect(res.projected).not.toContain("claude-activity-hooks");
       expect(res.skipped).toContain("claude-activity-hooks");
     });
   }
 });
 
-// M1 (R1 verdict): ownership must ROUND-TRIP shellQuote. A cwd containing a legal apostrophe
-// (O'Brien) makes shellQuote escape ' as '"'"', which the naive quoted-arg matcher missed —
-// so owned hooks accumulated without bound on re-enable and dangled on disable.
-describe("Claude activity-hook delivery — ownership round-trips shellQuote (apostrophe cwd)", () => {
-  it("cwd with an apostrophe (O'Brien): enable x2 keeps exactly one owned entry/event, disable strips all", async () => {
+// M1（R1 裁决）：所有权必须能往返处理 shellQuote。包含合法撇号的 cwd（O'Brien）会让
+// shellQuote 将 ' 转义为 '"'"'，朴素的引号参数匹配器会漏掉它——因此重复启用时自有钩子
+// 会无界累积，禁用时还会残留。
+describe("Claude activity-hook 投递——所有权可往返处理 shellQuote（cwd 含撇号）", () => {
+  it("cwd 包含撇号（O'Brien）时：启用两次仍为每事件一个自有条目，禁用后全部删除", async () => {
     const cwd = "/project/O'Brien";
     const settingsPath = `${cwd}/.claude/settings.local.json`;
     const ownedCmd = `node ${shellQuote(`${cwd}/.openrig/hooks/scripts/activity-relay.cjs`)}`;
     const fs = enableFs();
     const adapter = makeAdapter(fs);
     await adapter.project(plan([activityEntry()]), binding(cwd));
-    await adapter.project(plan([activityEntry()]), binding(cwd)); // idempotent re-enable
+    await adapter.project(plan([activityEntry()]), binding(cwd)); // 幂等地重新启用
     const enabled = JSON.parse(fs._store[settingsPath]!);
-    expect(allCommands(enabled).filter((c) => c === ownedCmd).length, "no unbounded accumulation").toBe(EVENTS.length);
-    await adapter.project(plan([]), binding(cwd)); // disable
+    expect(allCommands(enabled).filter((c) => c === ownedCmd).length, "不会无界累积").toBe(EVENTS.length);
+    await adapter.project(plan([]), binding(cwd)); // 禁用
     const disabled = fs._store[settingsPath] ? JSON.parse(fs._store[settingsPath]!) : {};
-    expect(allCommands(disabled).filter((c) => c.includes(OWNED_MARKER)), "no dangling owned hook").toEqual([]);
+    expect(allCommands(disabled).filter((c) => c.includes(OWNED_MARKER)), "没有悬空的自有钩子").toEqual([]);
   });
 
-  it("PRESERVES a user multi-arg command whose LAST arg ends in the relay suffix (not one owned token)", async () => {
-    // Both of these are USER commands: node <user-arg> <relay-path>. Neither is a single
-    // canonical shellQuote token, so ownership must NOT claim (and delete) them.
+  it("保留末尾参数以 relay 后缀结尾的用户多参数命令（并非单个自有令牌）", async () => {
+    // 两者都是用户命令：node <user-arg> <relay-path>。它们都不是单个规范 shellQuote
+    // 令牌，因此所有权逻辑不得认领（并删除）它们。
     const userSingle = `node 'user-arg' ${shellQuote("/tmp/.openrig/hooks/scripts/activity-relay.cjs")}`;
     const userDouble = `node "user-arg" "/tmp/.openrig/hooks/scripts/activity-relay.cjs"`;
     const seeded = JSON.stringify({ hooks: { Stop: [{ hooks: [
@@ -315,47 +310,47 @@ describe("Claude activity-hook delivery — ownership round-trips shellQuote (ap
       { type: "command", command: userDouble, timeout: 3 },
     ] }] } });
     const fs = enableFs({ [SETTINGS]: seeded });
-    await makeAdapter(fs).project(plan([]), binding()); // disable exercises the strip
+    await makeAdapter(fs).project(plan([]), binding()); // 通过禁用执行删除逻辑
     const cmds = allCommands(readSettings(fs));
-    expect(cmds, "single-quoted multi-arg user command preserved").toContain(userSingle);
-    expect(cmds, "double-quoted multi-arg user command preserved").toContain(userDouble);
+    expect(cmds, "保留单引号多参数用户命令").toContain(userSingle);
+    expect(cmds, "保留双引号多参数用户命令").toContain(userDouble);
   });
 });
 
-// Production-altitude reachability: the ACTUAL SHIPPED profile bytes (development/implementer,
-// which selects shared:claude-activity-hooks) must resolve — through the REAL resolveAgentRef ->
-// resolveNodeConfig -> planProjection -> adapter — to a plan entry the adapter enables. Loaded
-// from disk (not an in-memory AgentSpec) so this pins the shipped selection, not a mirror.
-describe("Claude activity-hook — REAL SHIPPED-spec resolver -> planner -> adapter reachability", () => {
+// 生产高度可达性：实际发布的 profile 字节（development/implementer，选择
+// shared:claude-activity-hooks）必须通过真实的 resolveAgentRef -> resolveNodeConfig ->
+// planProjection -> adapter，解析为适配器会启用的计划条目。从磁盘加载（不是内存中的
+// AgentSpec），因此固定的是已发布选择，而非镜像。
+describe("Claude activity-hook——真实已发布规范的解析器 -> 规划器 -> 适配器可达性", () => {
   const SHIPPED_SPECS_ROOT = pathResolve(import.meta.dirname, "../specs");
   const realSpecFs = { readFile: (p: string) => readFileSync(p, "utf-8"), exists: (p: string) => existsSync(p) };
   const member = (): RigSpecPodMember => ({ id: "impl", agentRef: "local:agents/development/implementer", profile: "default", runtime: "claude-code", cwd: "." } as RigSpecPodMember);
   const pod = (): RigSpecPod => ({ id: "dev", label: "Dev", members: [member()], edges: [] } as RigSpecPod);
   const rig = (): RigSpec => ({ version: "0.2", name: "test-rig", pods: [pod()], edges: [] } as RigSpec);
 
-  it("the SHIPPED development/implementer profile selects claude_activity_hooks -> plan entry -> adapter ENABLES", async () => {
-    // 1. Resolve the ACTUAL shipped agent.yaml + its shared import from disk.
+  it("已发布 development/implementer profile 选择 claude_activity_hooks -> 计划条目 -> 适配器启用", async () => {
+    // 1. 从磁盘解析实际发布的 agent.yaml 及其共享导入。
     const rr = resolveAgentRef("local:agents/development/implementer", SHIPPED_SPECS_ROOT, realSpecFs);
-    expect(rr.ok, rr.ok ? "" : `resolve failed: ${JSON.stringify(rr)}`).toBe(true);
+    expect(rr.ok, rr.ok ? "" : `解析失败：${JSON.stringify(rr)}`).toBe(true);
     if (!rr.ok) return;
     const ctx: ResolutionContext = {
       baseSpec: rr.resolved as ResolvedAgentSpec, importedSpecs: rr.imports, collisions: rr.collisions,
       profileName: "default", member: member(), pod: pod(), rig: rig(),
     };
-    // 2. REAL resolver — the shipped selection resolves to a claude_activity_hooks runtime resource.
+    // 2. 真实解析器——已发布选择解析为 claude_activity_hooks 运行时资源。
     const rc = resolveNodeConfig(ctx);
     expect(rc.ok).toBe(true);
     if (!rc.ok) return;
     expect(rc.config.selectedResources.runtimeResources.some((qr) => (qr.resource as { type?: string }).type === "claude_activity_hooks")).toBe(true);
-    // 3. REAL planner emits the entry.
+    // 3. 真实规划器生成该条目。
     const pr = planProjection({ config: rc.config, collisions: [], fsOps: { readFile: () => "{}", exists: () => true } });
     expect(pr.ok).toBe(true);
     if (!pr.ok) return;
     const entry = pr.plan.entries.find((e) => e.resourceType === "claude_activity_hooks");
-    expect(entry, "planner must emit a claude_activity_hooks entry from the shipped spec").toBeDefined();
+    expect(entry, "规划器必须从已发布规范生成 claude_activity_hooks 条目").toBeDefined();
     expect(entry!.category).toBe("runtime_resource");
-    // 4. REAL adapter enables from the REAL plan (skill-entry projection noise is irrelevant —
-    //    the always-run reconcile delivers off the manifest DI).
+    // 4. 真实适配器根据真实计划启用（技能条目投影噪声无关紧要——始终运行的协调逻辑
+    //    通过清单依赖注入完成投递）。
     const fs = enableFs();
     await makeAdapter(fs).project(pr.plan, binding());
     expect(fs._store[RELAY_DEST]).toBe("// relay");

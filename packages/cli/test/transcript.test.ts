@@ -106,7 +106,7 @@ describe("Transcript CLI", () => {
     const output = logs.join("\n");
     expect(output).toContain("line1"); // content still printed
     expect(output).toContain("CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN"); // names the lever
-    expect(output.toLowerCase()).toContain("fullscreen renderer"); // names the cause
+    expect(output.toLowerCase()).toContain("全屏渲染器"); // names the cause
   });
 
   it("a healthy (non-thin) transcript does NOT emit the renderer note", async () => {
@@ -152,7 +152,7 @@ describe("Transcript CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "transcript", "dev-impl@my-rig", "--tail", "10", "--grep", "decision"]);
     });
     const output = logs.join("\n");
-    // grep mode: should show matched lines, not tail content
+    // grep 模式：应显示匹配行，而非 tail 内容
     expect(output).toContain("decision made");
   });
 });

@@ -15,10 +15,9 @@ import type {
   EvidenceRungId,
 } from "../src/domain/activity-taxonomy.js";
 
-// OPR.0.5.5.19 A3 — the ranked evidence ladder on the ONE oracle. Every pin here drives
-// SeatActivityService through its S19 surfaces with an injected clock; no tmux, no
-// daemon. The non-inference contract is untouched: nothing in these fixtures ever
-// presents queue state to the service.
+// OPR.0.5.5.19 A3——在唯一 oracle 上的排序证据阶梯。这里每个 pin 都用注入时钟
+// 经 S19 表面驱动 SeatActivityService；无 tmux、无 daemon。非推断契约不动：
+// 这些 fixture 中绝无任何东西把 queue 状态呈现给该服务。
 
 const SEAT = "node-claude-1";
 const SESSION = "dev50-qa@v-openrig-build";
@@ -49,7 +48,7 @@ const CODEX_INVENTORY: AdapterRungInventory = {
   adapterId: "codex-runtime-adapter",
   runtime: "codex",
   rungs: [
-    // AM-2: the fixture-verified hook rung enters at TRIAL, never straight to authority.
+    // AM-2：经 fixture 验证的 hook 梯级从 TRIAL 进入，绝不直接到 authority。
     { rung: "lifecycle-hooks", lifecycleCoverage: "full", initialTrust: "trial" },
     { rung: "window-sampling", lifecycleCoverage: "full", initialTrust: "authoritative" },
   ],
@@ -75,14 +74,14 @@ function ev(
   };
 }
 
-describe("S19 A3 — the ladder ranks and falls honestly", () => {
+describe("S19 A3——证据层级如实排序并降级", () => {
   let h: ReturnType<typeof makeHarness>;
   beforeEach(() => {
     h = makeHarness();
     h.svc.declareRungInventory({ seatNodeId: SEAT, sessionName: SESSION }, CLAUDE_INVENTORY);
   });
 
-  it("self-report decides working/idle when present, above hooks and sampling", () => {
+  it("自我报告决定工作/空闲（当存在时），高于挂钩和采样", () => {
     h.svc.reportEvidence(ev(h.clock, "window-sampling", "tmux:window-activity", "idle-at-prompt"));
     h.svc.reportEvidence(ev(h.clock, "lifecycle-hooks", "claude:hooks", "idle-at-prompt"));
     h.svc.reportEvidence(ev(h.clock, "self-report", "claude:pid-json", "working"));
@@ -91,7 +90,7 @@ describe("S19 A3 — the ladder ranks and falls honestly", () => {
     expect(s.decidedBy).toBe("self-report");
   });
 
-  it("self-report absent (unreadable file = no evidence) falls silently to hooks, then sampling, then unknown", () => {
+  it("缺少自我报告（文件不可读即无证据）时依次回退到 hook、采样和 unknown", () => {
     expect(h.svc.getSeatState(SEAT)!.activity).toBe("unknown"); // nothing yet — honest
     h.svc.reportEvidence(ev(h.clock, "window-sampling", "tmux:window-activity", "working"));
     expect(h.svc.getSeatState(SEAT)!.decidedBy).toBe("window-sampling");
@@ -101,7 +100,7 @@ describe("S19 A3 — the ladder ranks and falls honestly", () => {
     expect(s.decidedBy).toBe("lifecycle-hooks");
   });
 
-  it("stale or reordered per-source seq is dropped: a late lower-seq 'working' never revives an idle seat", () => {
+  it("陈旧或重新排序的每个源 seq 被丢弃：后期的较低 seq“工作”永远不会恢复空闲席位", () => {
     const idle = ev(h.clock, "lifecycle-hooks", "claude:hooks", "idle-at-prompt");
     const lateWorking: ActivityEvidence = { ...ev(h.clock, "lifecycle-hooks", "claude:hooks", "working"), seq: idle.seq - 5 };
     h.svc.reportEvidence(idle);
@@ -109,7 +108,7 @@ describe("S19 A3 — the ladder ranks and falls honestly", () => {
     expect(h.svc.getSeatState(SEAT)!.activity).toBe("idle-at-prompt");
   });
 
-  it("visible needs-input chrome OUTRANKS a working self-report for the needs-input signal only", () => {
+  it("可见的 needs-input chrome 仅对 needs-input 信号优先于 working 自我报告", () => {
     h.svc.reportEvidence(ev(h.clock, "self-report", "claude:pid-json", "working"));
     h.svc.reportEvidence(ev(h.clock, "needs-input-chrome", "tmux:chrome", undefined, {
       needsInput: { count: 1, reason: "permission prompt" },
@@ -119,7 +118,7 @@ describe("S19 A3 — the ladder ranks and falls honestly", () => {
     expect(s.needsInput).toEqual({ count: 1, reason: "permission prompt" });
   });
 
-  it("hook authority is TIME-BOUNDED: expired hook evidence stops deciding and the ladder falls through", () => {
+  it("hook 权威有时效限制：过期的 hook 证据不再参与判定，层级继续回退", () => {
     h.svc.reportEvidence(ev(h.clock, "lifecycle-hooks", "claude:hooks", "working"));
     h.svc.reportEvidence(ev(h.clock, "window-sampling", "tmux:window-activity", "idle-at-prompt"));
     expect(h.svc.getSeatState(SEAT)!.activity).toBe("working"); // hook fresh, hook decides
@@ -131,8 +130,8 @@ describe("S19 A3 — the ladder ranks and falls honestly", () => {
   });
 });
 
-describe("S19 A3 — AM-1: alive-and-partial degradation, visible", () => {
-  it("persistent hook-vs-sampler contradiction degrades the hook rung to identity-only with a rung-health event", () => {
+describe("S19 A3 —— AM-1：存活但部分降级，且清晰可见", () => {
+  it("持续的挂钩与采样器矛盾会通过梯级运行状况事件将挂钩梯级降级为仅身份", () => {
     const h = makeHarness();
     h.svc.declareRungInventory({ seatNodeId: SEAT, sessionName: SESSION }, CLAUDE_INVENTORY);
     const events: RungHealthEvent[] = [];
@@ -157,8 +156,8 @@ describe("S19 A3 — AM-1: alive-and-partial degradation, visible", () => {
   });
 });
 
-describe("S19 A3 — flap dies, waits don't race", () => {
-  it("sampling-decided working→idle debounces for the stated ticks; an authoritative turn boundary bypasses instantly", () => {
+describe("S19 A3 —— 消除抖动，等待过程无竞态", () => {
+  it("采样决定的工作→空闲去抖对于指定的刻度线；权威转弯边界瞬间绕过", () => {
     const h = makeHarness();
     h.svc.declareRungInventory({ seatNodeId: SEAT, sessionName: SESSION }, CLAUDE_INVENTORY);
     h.svc.reportEvidence(ev(h.clock, "window-sampling", "tmux:window-activity", "working"));
@@ -183,7 +182,7 @@ describe("S19 A3 — flap dies, waits don't race", () => {
     expect(h.svc.getSeatState(SEAT)!.activity).toBe("idle-at-prompt"); // no debounce on a real turn boundary
   });
 
-  it("state changes carry a monotonic seq and wait-after-seq observes a fast transient transition (lost-wakeup fixture)", async () => {
+  it("状态变化带有单调的 seq，并且 wait-after-seq 观察到快速瞬态转换（丢失唤醒装置）", async () => {
     const h = makeHarness();
     h.svc.declareRungInventory({ seatNodeId: SEAT, sessionName: SESSION }, CLAUDE_INVENTORY);
     h.svc.reportEvidence(ev(h.clock, "self-report", "claude:pid-json", "idle-at-prompt"));
@@ -200,8 +199,8 @@ describe("S19 A3 — flap dies, waits don't race", () => {
   });
 });
 
-describe("S19 A3 — AM-2: symmetric admission (trial → measured promotion)", () => {
-  it("a TRIAL rung's evidence never decides state; measured production agreement promotes it, visibly", () => {
+describe("S19 A3 — AM-2：对称录取（试用→衡量晋升）", () => {
+  it("TRIAL 级别的证据永远不会决定状态；计量生产协议明显地促进了它", () => {
     const h = makeHarness();
     const codexSeat = "node-codex-1";
     const codexSession = "orch-lead@v-openrig-build";
@@ -247,8 +246,8 @@ describe("S19 A3 — AM-2: symmetric admission (trial → measured promotion)", 
   });
 });
 
-describe("S19 A3 — seat-keyed state through an occupant swap", () => {
-  it("a swap is its OWN visible event: no activity flicker, no bleed, and rung trust resets (AM-1 corollary)", () => {
+describe("S19 A3 —— 占用者切换期间保持按席位键控的状态", () => {
+  it("交换是其自己的可见事件：无活动闪烁、无出血、梯级信任重置（AM-1 推论）", () => {
     const h = makeHarness();
     h.svc.declareRungInventory({ seatNodeId: SEAT, sessionName: SESSION }, CLAUDE_INVENTORY);
     h.svc.reportEvidence(ev(h.clock, "self-report", "claude:pid-json", "working"));
@@ -269,7 +268,7 @@ describe("S19 A3 — seat-keyed state through an occupant swap", () => {
     expect(after.rungs.find((r) => r.rung === "lifecycle-hooks")!.trust).toBe("trial");
   });
 
-  it("two seats are independent (seat-keyed, never session-global)", () => {
+  it("两个席位是独立的（席位键控，从不会话全局）", () => {
     const h = makeHarness();
     h.svc.declareRungInventory({ seatNodeId: "node-a", sessionName: "a@rig" }, CLAUDE_INVENTORY);
     h.svc.declareRungInventory({ seatNodeId: "node-b", sessionName: "b@rig" }, CLAUDE_INVENTORY);

@@ -6,12 +6,11 @@ import { LOCAL_HOST_ID, hostsCovered, type AggregatedPayload } from "../src/lib/
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..", "..");
 
-// OPR.0.4.4.21 × OPR.0.4.4.15 — THE intra-P4 shared fan-out contract.
-// Slice 15 defines the module daemon-side (first lander, 0ecd329b); the CLI
-// cannot import across the package boundary (deliberately daemon-free), so
-// it carries a BYTE-IDENTICAL copy enforced here — the shipped scope-audit
-// parity pattern. Any intentional contract change lands in BOTH copies and
-// is a cross-PRD re-review (slices 15 + 21) per the arch adjudication.
+// OPR.0.4.4.21 × OPR.0.4.4.15——P4 内共享 fan-out 契约。
+// Slice 15 在 daemon 侧定义该模块（首个登陆，0ecd329b）；CLI
+// 不能跨包边界 import（刻意无 daemon），故它携带一份逐字节相同副本
+// 在此强制——已交付 scope-audit 对账模式。任何有意契约变更须落入两份副本，
+// 且按 arch 裁决为跨 PRD 复审（slice 15 + 21）。
 describe("fanout-contract CLI/daemon parity (CI-FAILING)", () => {
   it("fanout-contract.ts is byte-equivalent across CLI and daemon", () => {
     const cliContent = fs.readFileSync(path.join(REPO_ROOT, "packages/cli/src/lib/hosts/fanout-contract.ts"), "utf-8");

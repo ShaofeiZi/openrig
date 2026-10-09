@@ -19,12 +19,11 @@ vi.mock("../src/daemon-lifecycle.js", async () => {
 });
 
 /**
- * OPR.0.4.6.WF3 FR-3 part B — the `status` rollup pins (commit 5).
+ * OPR.0.4.6.WF3 FR-3 part B——`status` rollup pin（commit 5）。
  *
- * RAIL 1 is structurally pinned here: every fixture provides ONLY the
- * API-carried deadline.state/evidence — no timestamps the CLI could
- * do threshold math on — and classification still works, proving the
- * composer consumes and never recomputes.
+ * RAIL 1 在此被结构性钉住：每个 fixture 仅提供 API 携带的
+ * deadline.state/evidence——无 CLI 可据以做阈值计算的时间戳——而分类仍工作，
+ * 证明 composer 只消费、从不重算。
  */
 
 const HEALTHY = {
@@ -85,13 +84,13 @@ describe("composeAttentionRollup (WF3 FR-3b)", () => {
     expect(ids).not.toContain("WF-C");
     const stuck = rollup.attention.find((r) => r.instanceId === "WF-S");
     expect(stuck?.classes).toEqual(["stuck"]);
-    expect(stuck?.reasons[0]).toContain("overdue-unclaimed at step review (owner rev@rig)");
+    expect(stuck?.reasons[0]).toContain("overdue-unclaimed，位于步骤 review（所有者 rev@rig）");
     expect(stuck?.reasons[0]).toContain("120m"); // 7200s consumed, not computed
     expect(stuck?.affordance).toContain("rig workflow route WF-S");
     const failed = rollup.attention.find((r) => r.instanceId === "WF-F");
     expect(failed?.affordance).toContain("rig workflow trace WF-F");
     const waiting = rollup.attention.find((r) => r.instanceId === "WF-W");
-    expect(waiting?.reasons[0]).toBe("waiting on founder-gate-2");
+    expect(waiting?.reasons[0]).toBe("等待中，阻塞于 founder-gate-2");
   });
 
   it("RAIL 2 dedup: waiting+stuck instance renders ONCE with BOTH classes and reasons", () => {
@@ -113,8 +112,8 @@ describe("composeAttentionRollup (WF3 FR-3b)", () => {
 
   it("proven-empty: clean fleet renders counts + the explicit empty statement, never blank", () => {
     const lines = renderStatus(composeAttentionRollup([HEALTHY, COMPLETED]));
-    expect(lines[0]).toBe("2 instances: 1 active · 0 waiting · 1 completed · 0 failed · 0 aborted");
-    expect(lines[1]).toContain("No instances need attention");
+    expect(lines[0]).toBe("2 个实例：1 活跃 · 0 等待 · 1 完成 · 0 失败 · 0 中止");
+    expect(lines[1]).toContain("没有实例需要关注");
   });
 
   it("keeps an unresolved branch failure visible while an independent sibling remains active", () => {
@@ -123,8 +122,8 @@ describe("composeAttentionRollup (WF3 FR-3b)", () => {
       failureOccurrences: [{ occurrenceId: "Q-A", stepId: "left", status: "unresolved" as const, targetedAction: "resume" as const }],
     };
     const rollup = composeAttentionRollup([activeWithFailure]);
-    expect(rollup.attention).toMatchObject([{ classes: ["failed-branch"], reasons: ["1 unresolved branch failure"] }]);
-    expect(attentionMarker(activeWithFailure)).toBe("▲ failed-branch");
+    expect(rollup.attention).toMatchObject([{ classes: ["failed-branch"], reasons: ["1 个未解决的分支失败"] }]);
+    expect(attentionMarker(activeWithFailure)).toBe("▲ 失败分支");
   });
 
   it("does not classify terminal unresolved history with targetedAction=none as live attention", () => {
@@ -143,7 +142,7 @@ describe("composeAttentionRollup (WF3 FR-3b)", () => {
   it("human render: table with CLASS column and per-row affordance line", () => {
     const lines = renderStatus(composeAttentionRollup([WAITING_AND_STUCK, FAILED]));
     const text = lines.join("\n");
-    expect(text).toMatch(/INSTANCE\s+WORKFLOW\s+CLASS\s+REASON/);
+    expect(text).toMatch(/实例\s+工作流\s+类别\s+原因/);
     expect(text).toContain("stuck+waiting");
     expect(text).toContain("└ ");
   });
@@ -151,16 +150,16 @@ describe("composeAttentionRollup (WF3 FR-3b)", () => {
 
 describe("attentionMarker stuck upgrade (list column)", () => {
   it("stuck marker consumed from the API field; priority failed > stuck > waiting", () => {
-    expect(attentionMarker(STUCK)).toBe("▲ stuck");
-    expect(attentionMarker({ ...STUCK, status: "failed" })).toBe("▲ failed");
-    expect(attentionMarker(WAITING)).toBe("▲ waiting");
-    expect(attentionMarker(WAITING_AND_STUCK)).toBe("▲ stuck");
+    expect(attentionMarker(STUCK)).toBe("▲ 卡住");
+    expect(attentionMarker({ ...STUCK, status: "failed" })).toBe("▲ 失败");
+    expect(attentionMarker(WAITING)).toBe("▲ 等待");
+    expect(attentionMarker(WAITING_AND_STUCK)).toBe("▲ 卡住");
     expect(attentionMarker(HEALTHY)).toBe("");
   });
 
   it("list rows render the stuck marker", () => {
     const lines = renderInstanceList([STUCK], "2026-07-07T00:00:00Z");
-    expect(lines[1]).toContain("▲ stuck");
+    expect(lines[1]).toContain("▲ 卡住");
   });
 });
 

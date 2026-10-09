@@ -1,10 +1,10 @@
-// OPR.0.4.4.18 — `rig file` (v0: ONE explicit verb, copy).
+// OPR.0.4.4.18 — `zrig file`（v0：只提供一个显式动词 copy）。
 //
-// Every transfer names its source, destination, and policy: <hostId>:<path>
-// is remote (resolving the registry's ssh entries), a bare path is local,
-// and NOTHING is inferred from cwd/env/session (FR-2). Existing destination
-// files are OVERWRITTEN — v0 copy semantics, stated (arch R18-2); --dry-run
-// is the guard rail. The security wall lives in lib/file-transfer.ts.
+// 每次传输都必须显式写出源、目标与策略：<hostId>:<path> 表示远程
+// （解析注册表中的 ssh 条目），纯路径表示本地，绝不从 cwd/环境变量/会话
+// 推断任何信息（FR-2）。已存在的目标文件会被覆盖——这是 v0 的复制语义，
+// 明确声明（arch R18-2）；--dry-run 是安全护栏。安全校验在
+// lib/file-transfer.ts 中实现。
 
 import { Command } from "commander";
 import {
@@ -25,16 +25,16 @@ function operandLabel(side: CopyPlan["src"]): string {
 
 export function fileCommand(deps: FileCommandDeps = {}): Command {
   const file = new Command("file").description(
-    "Cross-host file movement over ssh/rsync (v0: one explicit verb — copy)",
+    "通过 ssh/rsync 在主机间传输文件（v0：只提供一个显式动词 copy）",
   );
 
   file
     .command("copy <src> <dst>")
     .description(
-      "Copy one file. <hostId>:<absolute-path> = remote (ssh registry entry); bare path = local; local files with a colon need the ./ prefix. Valid shapes: local→remote, remote→local, local→local. An existing destination is OVERWRITTEN — preview with --dry-run.",
+      "复制单个文件。<hostId>:<绝对路径> = 远程（ssh 注册表条目）；纯路径 = 本地；含冒号的本地路径需加 ./ 前缀。支持的形式：本地→远程、远程→本地、本地→本地。已存在的目标会被覆盖——请先用 --dry-run 预览。",
     )
-    .option("--dry-run", "Print the exact planned transfer (src, dst, host, files/bytes) and move nothing")
-    .option("--json", "JSON output for agents")
+    .option("--dry-run", "打印计划中的完整传输信息（源、目标、主机、文件数/字节数），不实际传输")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (src: string, dst: string, opts: { dryRun?: boolean; json?: boolean }) => {
       const planned = planFileCopy(src, dst, { dryRun: opts.dryRun, registryLoader: deps.registryLoader });
       if (!planned.ok) {
@@ -63,9 +63,9 @@ export function fileCommand(deps: FileCommandDeps = {}): Command {
             bytesTransferred: result.bytesTransferred ?? null,
             filesTransferred: result.filesTransferred ?? null,
             exitCode: result.exitCode,
-            error: result.ok ? null : result.stderr.trim() || `rsync failed (${result.failedStep})`,
+            error: result.ok ? null : result.stderr.trim() || `rsync 失败（${result.failedStep}）`,
             hint: result.hint ?? null,
-            rsyncArgv: buildRsyncArgv(plan), // transparency for agents; the builder is closed
+            rsyncArgv: buildRsyncArgv(plan), // 供智能体核对；参数构造逻辑不对外展开
           }),
         );
         if (!result.ok) process.exitCode = 1;
@@ -74,18 +74,18 @@ export function fileCommand(deps: FileCommandDeps = {}): Command {
 
       if (result.ok) {
         if (plan.dryRun) {
-          console.log(`DRY RUN — nothing moved. Planned transfer:`);
+          console.log(`试运行——未传输任何内容。计划传输：`);
           console.log(`  ${srcLabel} → ${dstLabel}`);
-          if (result.filesTransferred !== undefined) console.log(`  files: ${result.filesTransferred}${result.bytesTransferred !== undefined ? `, bytes: ${result.bytesTransferred}` : ""}`);
+          if (result.filesTransferred !== undefined) console.log(`  文件数：${result.filesTransferred}${result.bytesTransferred !== undefined ? `，字节数：${result.bytesTransferred}` : ""}`);
           const itemized = result.stdout.split("\n").filter((l) => /^[<>ch.*][fdLDS]/.test(l));
           for (const line of itemized) console.log(`  ${line}`);
         } else {
-          console.log(`Copied ${srcLabel} → ${dstLabel}${result.bytesTransferred !== undefined ? ` (${result.bytesTransferred} bytes)` : ""}`);
+          console.log(`已复制 ${srcLabel} → ${dstLabel}${result.bytesTransferred !== undefined ? `（${result.bytesTransferred} 字节）` : ""}`);
         }
         return;
       }
-      console.error(`file copy failed [${result.failedStep}]: ${result.stderr.trim() || `exit ${result.exitCode}`}`);
-      if (result.hint) console.error(`Hint: ${result.hint}`);
+      console.error(`文件复制失败 [${result.failedStep}]：${result.stderr.trim() || `退出码 ${result.exitCode}`}`);
+      if (result.hint) console.error(`提示：${result.hint}`);
       process.exitCode = 1;
     });
 

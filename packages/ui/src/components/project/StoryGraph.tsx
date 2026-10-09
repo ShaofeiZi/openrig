@@ -1,12 +1,10 @@
-// OPR.0.4.1.19 — Story tab: queue lineage as a scrollable, upward-growing
-// git-graph UI (most-recent at the TOP, origin at the BOTTOM).
+// OPR.0.4.1.19——故事页签：以可滚动、向上增长的 Git 图界面展示队列传承；
+// 最新项在顶部，起点在底部。
 //
-// NORTH STAR: represent the REAL queue system. The graph is reconstructed from
-// queue-item lineage (story-graph-model); git vocabulary is illustrative only.
-// State badges show the REAL qitem state — there is no "merged" queue state
-// (that mockup label is illustrative); a visual fan-in is a rendering affordance,
-// never a 2-parent data node. 3-tier home: one-line row -> full-width-bands
-// expand -> existing right-hand drawer (QueueItemTrigger).
+// 核心目标：呈现真实队列系统。图根据队列项传承关系（story-graph-model）重建，Git 词汇仅用于
+// 辅助说明。状态徽标显示真实 qitem 状态；队列不存在 "merged" 状态，该模型图标签只是示意。
+// 视觉汇入只是渲染提示，绝不表示双父节点数据。三级归属：单行 → 展开为全宽信息带 →
+// 现有右侧抽屉（QueueItemTrigger）。
 
 import { useMemo, useState } from "react";
 import { QueueItemTrigger } from "../drawer-triggers/QueueItemTrigger.js";
@@ -24,35 +22,37 @@ const NODE_R = 5.5;
 const NODE_R_BIG = 6.5;
 
 function shortSeat(session: string | null | undefined): string {
-  if (!session) return "unknown";
-  // OPR.0.4.6.MH1 FR-8: the shared parse contract's display helper.
+  if (!session) return "未知";
+  // OPR.0.4.6.MH1 FR-8：共享解析契约的展示辅助函数。
   return sessionMemberLabel(session);
 }
 
-/** Map the REAL qitem state to a badge class + label. No invented states. */
+/** 把真实的队列项状态映射到徽章样式 + 标签。不发明状态。 */
 function stateBadge(node: StoryNode): { cls: string; label: string } {
   const reason = (node.closureReason ?? "").toLowerCase();
   switch (node.state) {
     case "in-progress":
-      return { cls: "sg-progress", label: "In progress" };
+      return { cls: "sg-progress", label: "进行中" };
     case "blocked":
-      return { cls: "sg-blocked", label: "Blocked" };
+      return { cls: "sg-blocked", label: "已阻塞" };
     case "handed-off":
-      return { cls: "sg-done", label: "Handed off" };
+      return { cls: "sg-done", label: "已移交" };
     case "failed":
+      return { cls: "sg-blocked", label: "失败" };
     case "denied":
+      return { cls: "sg-blocked", label: "已拒绝" };
     case "canceled":
-      return { cls: "sg-blocked", label: node.state.charAt(0).toUpperCase() + node.state.slice(1) };
+      return { cls: "sg-blocked", label: "已取消" };
     case "done":
     default:
-      // A terminal close-out; show the real closure flavor when present.
-      if (reason === "no-follow-on") return { cls: "sg-done", label: "Done" };
-      if (reason === "handed_off_to") return { cls: "sg-done", label: "Handed off" };
-      return { cls: "sg-done", label: "Done" };
+      // 终态收尾；有真实收尾原因时显示之。
+      if (reason === "no-follow-on") return { cls: "sg-done", label: "完成" };
+      if (reason === "handed_off_to") return { cls: "sg-done", label: "已移交" };
+      return { cls: "sg-done", label: "完成" };
   }
 }
 
-/** Gutter node colour follows state; human-origin nodes are amber-filled. */
+/** 边沟节点颜色随状态变化；人工来源节点使用琥珀色填充。 */
 function nodeStroke(node: StoryNode): string {
   if (node.isHumanOrigin) return "var(--sg-amber)";
   if (node.state === "in-progress") return "var(--sg-blue)";
@@ -60,8 +60,7 @@ function nodeStroke(node: StoryNode): string {
   return "var(--sg-green)";
 }
 
-/** Pull obvious artifact paths out of the agent-speak body. Honest: omit the
- *  band when none are present (never fabricate outputs). */
+/** 从智能体叙述正文中提取明显的产物路径。没有路径时如实省略信息带，绝不虚构输出。 */
 function extractArtifacts(body: string): string[] {
   const matches = body.match(/[\w./-]+\.(?:ts|tsx|js|jsx|md|png|jpg|gif|mp4|patch|diff|json|yaml|yml|sql|css|html)\b/g);
   if (!matches) return [];
@@ -75,7 +74,7 @@ function bodyContext(body: string): string {
 }
 
 function toViewerData(node: StoryNode): QueueItemViewerData {
-  // Tier-3 drawer = the FULL queue-item detail: every field + the full chain.
+  // 第三级抽屉展示完整队列项详情：所有字段和完整传承链。
   return {
     qitemId: node.qitemId,
     source: node.sourceSession,
@@ -101,17 +100,15 @@ function toViewerData(node: StoryNode): QueueItemViewerData {
     resolution: node.resolution,
     targetRepo: node.targetRepo,
     chain: node.chain,
-    // Tier-3 = the full source-of-truth view: render EVERY field labeled, empties
-    // shown as "—" (not hidden). Other QueueItemViewer callsites stay compact.
+    // 第三级是完整事实来源视图：渲染并标注每个字段，空值显示为“—”而非隐藏。
+    // 其他 QueueItemViewer 调用位置仍保持紧凑。
     fullDetail: true,
   };
 }
 
-/** A body artifact is "viewable" when it is an absolute path — route it through
- *  FileLink so a click opens it in the drawer (FileViewer infers kind, so images
- *  render inline). Non-absolute refs (repo/workspace-relative) are not reliably
- *  resolvable against the daemon allowlist, so they stay inert + explicitly
- *  labelled rather than pretending to be openable. */
+/** 正文产物为绝对路径时才“可查看”：通过 FileLink 路由，点击后在抽屉中打开。FileViewer 会推断
+ * 类型，因此图片可行内渲染。非绝对引用（相对仓库/工作区）无法可靠地依据后台服务白名单解析，
+ * 所以保持不可操作并明确标注，而不是假装可以打开。 */
 function isViewableArtifact(path: string): boolean {
   return path.startsWith("/");
 }
@@ -127,9 +124,8 @@ export function StoryGraph({ forest }: { forest: StoryForest }) {
       return next;
     });
 
-  // Row layout (top -> bottom = most-recent -> origin). Each row owns a topline
-  // (54px) plus, when expanded, a detail panel. Heights drive the gutter SVG so
-  // the continuous lanes reflow on expand/collapse.
+  // 行布局从上到下为最新项到起点。每行拥有 54px 顶行，展开时另有详情面板。高度驱动边沟 SVG，
+  // 使连续线路在展开/折叠时重新流动。
   const layout = useMemo(() => {
     const rows: { node: StoryNode; topY: number; centerY: number; height: number; isExpanded: boolean }[] = [];
     let y = 0;
@@ -155,8 +151,8 @@ export function StoryGraph({ forest }: { forest: StoryForest }) {
   if (forest.nodes.length === 0) {
     return (
       <EmptyState
-        label="NO STORY YET"
-        description="No queue items are indexed for this scope. The Story graph reconstructs from queue-item lineage as work flows through the topology."
+        label="暂无故事"
+        description="此范围内尚未索引到队列项。故事图会在工作流经拓扑时，从队列项谱系重建。"
         variant="card"
         testId="story-graph-empty"
       />
@@ -166,17 +162,17 @@ export function StoryGraph({ forest }: { forest: StoryForest }) {
   return (
     <div className="sg-wrap" data-testid="story-graph" style={{ ["--sg-gutter" as string]: `${gutterWidth}px` }}>
       <div className="sg-legend">
-        STORY &middot; QUEUE LINEAGE AS A GIT GRAPH &middot; ONE CLEAN LINE PER NODE &middot; CLICK TO EXPAND &middot;{" "}
-        <b>HUMAN-ORIGIN LANE</b>
+        故事 &middot; 队列谱系以 git 图呈现 &middot; 每节点一条干净线 &middot; 点击展开 &middot;{" "}
+        <b>人工发起泳道</b>
       </div>
       <div className="sg-tbl">
         <div className="sg-thead">
-          <div>GRAPH</div>
-          <div>SUMMARY</div>
-          <div>OWNER</div>
-          <div>STATE</div>
-          <div>DATE</div>
-          <div>QITEM</div>
+          <div>图</div>
+          <div>摘要</div>
+          <div>负责人</div>
+          <div>状态</div>
+          <div>日期</div>
+          <div>队列项</div>
         </div>
         <div className="sg-tbody">
           <div className="sg-gutcol" aria-hidden="true">
@@ -259,20 +255,18 @@ export function StoryGraph({ forest }: { forest: StoryForest }) {
   );
 }
 
-/** Estimate the expanded panel height so the gutter SVG can lay out lanes. The
- *  estimate is intentionally generous; the real DOM height may differ slightly
- *  but the lane geometry stays continuous because every node's centerY is on its
- *  54px topline. */
+/** 估算展开面板高度，供边沟 SVG 布局线路。估算值有意留出余量；真实 DOM 高度可能略有差异，
+ * 但每个节点的 centerY 都位于其 54px 顶行，因此线路几何仍保持连续。 */
 function estimateDetailHeight(node: StoryNode): number {
   const hasArtifacts = extractArtifacts(node.body).length > 0;
-  // context (~36) + lineage band (~34) + optional artifacts (~34) + meta (~40) + padding
+  // 上下文（约 36）+ 传承信息带（约 34）+ 可选产物（约 34）+ 元数据（约 40）+ 内边距。
   return 36 + 34 + (hasArtifacts ? 34 : 0) + 40 + 22;
 }
 
 function StoryDetail({ node, forest }: { node: StoryNode; forest: StoryForest }) {
   const artifacts = extractArtifacts(node.body);
   const byId = useMemo(() => new Map(forest.nodes.map((n) => [n.qitemId, n])), [forest.nodes]);
-  // Lineage chain: resolved ancestors (root->parent) -> self -> forward (handedOffTo / children).
+  // 传承链：已解析祖先（根 → 父）→ 自身 → 后继（handedOffTo / 子项）。
   const ancestors = node.chain.filter((id) => byId.has(id));
   const children = forest.nodes.filter((n) => n.parentId === node.qitemId).map((n) => n.qitemId);
 
@@ -280,14 +274,14 @@ function StoryDetail({ node, forest }: { node: StoryNode; forest: StoryForest })
     <div className="sg-detail" data-testid={`story-detail-${node.qitemId}`}>
       <div className="sg-dctx">{bodyContext(node.body)}</div>
       <div className="sg-band">
-        <div className="sg-bl">LINEAGE</div>
+        <div className="sg-bl">谱系</div>
         <div className="sg-bc">
           <span className="sg-chain">
             {ancestors.map((id) => (
               <LineageRef key={id} node={byId.get(id)!} />
             ))}
             {ancestors.length > 0 ? <span className="sg-carrow">→</span> : null}
-            <span className="sg-cnode sg-self">◆ this</span>
+            <span className="sg-cnode sg-self">◆ 本节点</span>
             {children.map((id) => (
               <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
                 <span className="sg-carrow">→</span>
@@ -299,7 +293,7 @@ function StoryDetail({ node, forest }: { node: StoryNode; forest: StoryForest })
       </div>
       {artifacts.length > 0 ? (
         <div className="sg-band">
-          <div className="sg-bl">ARTIFACTS</div>
+          <div className="sg-bl">产物</div>
           <div className="sg-bc">
             {artifacts.map((a) =>
               isViewableArtifact(a) ? (
@@ -316,7 +310,7 @@ function StoryDetail({ node, forest }: { node: StoryNode; forest: StoryForest })
                 <span
                   key={a}
                   className="sg-chip sg-chip-inert"
-                  title="reference (not directly viewable)"
+                  title="引用（不可直接查看）"
                 >
                   {a}
                 </span>
@@ -338,14 +332,14 @@ function StoryDetail({ node, forest }: { node: StoryNode; forest: StoryForest })
         <span className="sg-fieldline">
           {shortSeat(node.sourceSession)} → {shortSeat(node.destinationSession)}
           {node.closureReason ? ` · ${node.closureReason}` : ""}
-          {` · opened ${formatStoryDate(node.tsCreated)}`}
+          {` · 开启于 ${formatStoryDate(node.tsCreated)}`}
         </span>
         <QueueItemTrigger
           data={toViewerData(node)}
           testId={`story-open-${node.qitemId}`}
           className="sg-openlink"
         >
-          Open full queue item →
+          打开完整队列项 →
         </QueueItemTrigger>
       </div>
     </div>

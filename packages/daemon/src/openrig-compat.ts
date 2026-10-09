@@ -30,7 +30,7 @@ export function readOpenRigEnv(primary: string, legacy?: string): string | undef
   if (legacy) {
     const legacyValue = process.env[legacy];
     if (legacyValue !== undefined && legacyValue !== "") {
-      warnOnce(`env:${legacy}`, `Warning: ${legacy} is deprecated; use ${primary} instead.`);
+      warnOnce(`env:${legacy}`, `警告：${legacy} 已弃用；请改用 ${primary}。`);
       return legacyValue;
     }
   }
@@ -46,7 +46,7 @@ export function getPreferredOpenRigHome(): string {
   if (existsSync(legacyRiggedHome)) {
     warnOnce(
       "path:home",
-      `Warning: using legacy state directory ${legacyRiggedHome}; migrate to ${openrigHome}.`,
+      `警告：正在使用旧状态目录 ${legacyRiggedHome}；请迁移到 ${openrigHome}。`,
     );
     return legacyRiggedHome;
   }
@@ -67,7 +67,7 @@ export function getCompatibleOpenRigPath(filename: string): string {
   if (existsSync(legacyPath)) {
     warnOnce(
       `path:${filename}`,
-      `Warning: using legacy state path ${legacyPath}; migrate to ${primaryPath}.`,
+      `警告：正在使用旧状态路径 ${legacyPath}；请迁移到 ${primaryPath}。`,
     );
     return legacyPath;
   }

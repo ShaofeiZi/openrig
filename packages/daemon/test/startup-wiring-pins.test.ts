@@ -1,9 +1,9 @@
-// P16 — STARTUP-WIRING PIN GRADUATION (the UNINJECTED-SERVICE class, twice
-// recurred: validateRig-uninjected + the dead occupant-invalidator). A service
-// with an optional safety dep passes every unit test while production startup
-// silently never injects it — the feature is OFF in prod and nothing notices.
+// P16——启动接线 pin 毕业（UNINJECTED-SERVICE 类，复发两次：
+// validateRig-uninjected + 死掉的 occupant-invalidator）。一个带可选 safety
+// dep 的服务通过每个单测，而生产启动静默地从不注入它——该特性在 prod 关闭，
+// 无人察觉。
 //
-// These pins drive the REAL createDaemon composition ONCE and assert, per
+// 这些 pin 驱动真实 createDaemon 组合一次，并按
 // SAFETY-classified optional dep, that the production injection actually
 // happened. A pin here failing means a startup edit un-wired a safety feature.
 //
@@ -66,7 +66,7 @@ function priv<T>(obj: unknown, key: string): T {
   return (obj as Record<string, T>)[key] as T;
 }
 
-describe("P16 — AppDeps members with safety semantics are composed (definedness pins)", () => {
+describe("P16 — 具有安全语义的 AppDeps 成员组成（定义引脚）", () => {
   const MEMBERS: Array<keyof AppDeps> = [
     "queueRepo", "inboxHandler", "outboxHandler", "sessionTransport",
     "transcriptStore", "providerService", "seatIdentityReconciler",
@@ -85,8 +85,8 @@ describe("P16 — AppDeps members with safety semantics are composed (definednes
   }
 });
 
-describe("P16 — domain-internal safety injections (the recurred class, pinned at the wire)", () => {
-  it("QueueRepository.validateRig is the topology gate, not the permissive default (recurrence #1)", async () => {
+describe("P16 — 域内部安全注入（重复类，固定在线路上）", () => {
+  it("QueueRepository.validateRig 是拓扑门，而不是默认的许可（重复#1）", async () => {
     // behavioral probe through the composed object: an unknown-rig destination must refuse.
     await expect(
       deps.queueRepo!.create({
@@ -94,47 +94,47 @@ describe("P16 — domain-internal safety injections (the recurred class, pinned 
         destinationSession: "b@definitely-unregistered-rig",
         body: "wiring probe",
       } as never),
-    ).rejects.toThrow(/unknown rig/);
+    ).rejects.toThrow(/未知 rig/);
   });
 
-  it("QueueRepository.workflowFrontierPredicate is injected (the close-path guard)", () => {
+  it("QueueRepository.workflowFrontierPredicate 被注入（近路径防护）", () => {
     expect(priv(deps.queueRepo, "workflowFrontierPredicate")).toBeTruthy();
   });
 
-  it("SessionTransport carries the eventBus (dangerous-override audit fails closed without it)", () => {
+  it("SessionTransport携带eventBus（没有它的话危险覆盖审计失败关闭）", () => {
     expect(priv(deps.sessionTransport, "eventBus")).toBeTruthy();
   });
 
-  it("SessionTransport carries the slow-op recorder (composed conditionally at startup:238 — a real-db daemon must have it)", () => {
+  it("SessionTransport 带有慢速操作记录器（在启动时有条件地组成：238 — real-db 后台服务必须拥有它）", () => {
     expect(priv(deps.sessionTransport, "slowOpRecorder")).toBeTruthy();
   });
 
-  it("ContextMonitor carries the compaction enforcer (threshold->action detector)", () => {
+  it("ContextMonitor携带压缩执行器（阈值->动作检测器）", () => {
     expect(priv(contextMonitor, "compactionEnforcer")).toBeTruthy();
   });
 
-  it.todo("51-08 (graduates at the slice fold): ContextMonitor carries usageSamples + providerWindowSampler — pin flips live when hv/51-08-telemetry lands; asserting now would pin a wiring main does not yet carry");
+  it.todo("51-08（切片折叠处的毕业生）：ContextMonitor 携带 useSamples + providerWindowSampler — 当 hv/51-08-telemetry 落地时 pin 翻转；现在断言将引脚主接线尚未携带");
 
-  it("ClassifierLeaseManager.isAlive is attached post-construction (the lease-liveness seam)", () => {
+  it("ClassifierLeaseManager.isAlive 是在构建后附加的（租赁活动接缝）", () => {
     expect(priv(deps.classifierLeaseManager, "isAlive")).toBeTruthy();
   });
 
-  it("QueueRepository transport is attached post-construction (the wake path)", () => {
+  it("QueueRepository 传输是在构建后附加的（唤醒路径）", () => {
     expect(priv(deps.queueRepo, "transport")).toBeTruthy();
   });
 });
 
-describe("P16 — UNINJECTED-SERVICE findings ledger (routed to desk; todo graduates to a pin when the fix lands)", () => {
-  it.todo("FINDING A1: SeatHandoverService.occupantInvalidator UNINJECTED (routes/seat.ts construction) — every handover commits with zero state invalidation; ghost-stage atom-B lane owns the impl");
-  it.todo("FINDING A2: projection-planner resolveTargetPath UNINJECTED (rigspec-instantiator.ts:1672) — hash_conflict classification dead; operator-modified files silently overwritten");
-  it.todo("FINDING A3: InboxHandler.authenticate UNINJECTED (startup.ts:950) — sender-spoofing gate is allow-all; route forwards client-supplied authenticatedSender");
-  it.todo("FINDING A4: WorkflowValidator seatLivenessCheck never constructed — role_no_live_preferred_target advisory dead; instances stall at step 1 unwarned");
-  it("A5 GRADUATED (P19): AskService's PsProjectionService carries seatActivity — one terminalActive truth across both paths", () => {
+describe("P16 — 未注入服务发现分类账（发送到办公桌；修复完成后，待办事项会转到大头针上）", () => {
+  it.todo("发现 A1：SeatHandoverService.occupantInvalidator 未注入（routes/seat.ts 构造）——每次切换都会提交零状态失效； Ghost-stage Atom-B Lane 拥有该 impl");
+  it.todo("发现A2：投影规划器resolveTargetPath未注入（rigspec-instantiator.ts：1672）- hash_conflict分类已死；操作员修改的文件被静默覆盖");
+  it.todo("发现 A3：InboxHandler.authenticate 未注入 (startup.ts:950) — 发件人欺骗门是允许所有的；路由转发客户端提供的authentiatedSender");
+  it.todo("发现 A4：WorkflowValidator SeatLivenessCheck 从未构建 — role_no_live_preferred_target 建议已失效；实例在没有警告的情况下停在步骤 1");
+  it("A5 毕业 (P19)：AskService 的 PsProjectionService 携带 SeatActivity — 一个终端活跃的事实跨越两条路径", () => {
     const ps = priv<unknown>(deps.askService, "deps") as { psProjectionService: unknown };
     expect(priv(ps.psProjectionService, "seatActivity"), "the ask path must inject seatActivity like the attention path does").toBeTruthy();
   });
 
-  it("SLOW-OP REQUEST MIDDLEWARE WIRED: server.ts app.use's the createSlowOpRequestMiddleware seam", () => {
+  it("慢速操作请求中间件连线：server.ts app.use 是 createSlowOpRequestMiddleware 接缝", () => {
     // The middleware CONTRACT moved to hermetic unit tests (slow-op-recorder.test), which cannot cover
     // 'the real server actually uses this middleware' — the uninjected-service enable-path gap. This pin
     // closes it at the source: the seam must be imported AND app.use'd (an import alone leaves the

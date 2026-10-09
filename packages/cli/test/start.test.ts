@@ -1,6 +1,6 @@
 // OPR.0.3.4.1 — rig start: one-command recovery orchestrator tests.
 // Tests verify composition (slice-02 /api/up called, never private restore),
-// headless flags, honest reporting, kernel invariant, and idempotency.
+// headless 标志、诚实报告、kernel 不变量与幂等性。
 
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vitest";
 import http from "node:http";
@@ -145,7 +145,7 @@ describe("rig start (OPR.0.3.4.1)", () => {
       { id: "rig-1", name, nodeCount: 2, lifecycleState },
     ];
     routes["/api/rigs/:id"] = () => ({ sessions: [{ lastSeenAt: "2026-06-14T12:00:00Z" }] });
-    // Both plan preview AND apply go through the id-based route.
+    // plan preview 与 apply 都走基于 id 的路由。
     routes["/api/rigs/:id/up"] = (_req, body) => {
       if (body.plan === true) {
         return {
@@ -171,7 +171,7 @@ describe("rig start (OPR.0.3.4.1)", () => {
     };
   }
 
-  // ---- HEADLESS FLAGS ----
+  // ---- headless 标志 ----
 
   it("--last restores all candidates with ZERO prompts", async () => {
     setupCandidateRig("my-rig");
@@ -225,7 +225,7 @@ describe("rig start (OPR.0.3.4.1)", () => {
     expect(applyBodies[0]!._rigIdRoute).toBe("rig-1");
   });
 
-  // ---- COMPOSE, NOT REIMPLEMENT ----
+  // ---- 组合，而非重实现 ----
 
   it("restore goes through /api/rigs/:id/up (id-based route), not a private implementation", async () => {
     setupCandidateRig("my-rig");
@@ -237,7 +237,7 @@ describe("rig start (OPR.0.3.4.1)", () => {
     expect(applyBodies.some((b) => b._rigIdRoute === "rig-1")).toBe(true);
   });
 
-  // ---- TOKENLESS INCLUSION (guard rev1 discriminator) ----
+  // ---- 无 token 纳入（guard rev1 判别器） ----
 
   it("a tokenless rig (no resume token, restore-usable snapshot) is LISTED and previewed as awaiting-decision", async () => {
     setupCandidateRig("tokenless-rig", { hasToken: false });
@@ -251,7 +251,7 @@ describe("rig start (OPR.0.3.4.1)", () => {
     expect(applyBodies.length).toBeGreaterThanOrEqual(1);
   });
 
-  // ---- KERNEL INVARIANT ----
+  // ---- kernel 不变量 ----
 
   it("kernel failure -> honest hard-fail, restore NOT attempted", async () => {
     routes["/api/kernel/status"] = () => ({ kernel_state: "auth_blocked", detail: "Claude not authorized" });
@@ -260,8 +260,8 @@ describe("rig start (OPR.0.3.4.1)", () => {
       await makeCmd().parseAsync(["node", "rig", "start", "--last"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("Kernel failed");
-    expect(output).toContain("Cannot proceed");
+    expect(output).toContain("内核启动失败");
+    expect(output).toContain("没有可用内核无法继续恢复工作组");
     expect(exitCode).toBe(1);
     const applyBodies = upBodies.filter((b) => b.plan !== true);
     expect(applyBodies).toHaveLength(0);
@@ -277,7 +277,7 @@ describe("rig start (OPR.0.3.4.1)", () => {
       await makeCmd().parseAsync(["node", "rig", "start", "--all"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("No rigs to restore");
+    expect(output).toContain("没有需要恢复的工作组");
     expect(upBodies.filter((b) => b.plan !== true)).toHaveLength(0);
   });
 
@@ -317,7 +317,7 @@ describe("rig start (OPR.0.3.4.1)", () => {
       await prog.parseAsync(["node", "rig", "start", "--last"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("may still be processing");
+    expect(output).toContain("可能仍在处理");
     expect(output).toContain("rig ps");
     expect(exitCode).toBe(1);
   });
@@ -408,7 +408,7 @@ describe("rig start (OPR.0.3.4.1)", () => {
     });
     const output = logs.join("\n");
     // Both should appear — never "No rigs to restore".
-    expect(output).not.toContain("No rigs to restore");
+    expect(output).not.toContain("没有需要恢复的工作组");
     expect(output).not.toContain("ambiguous_name");
     // The id-based route was used for both preview AND apply.
     const idBodies = upBodies.filter((b) => b._rigIdRoute);

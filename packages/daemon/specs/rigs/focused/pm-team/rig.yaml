@@ -2,14 +2,13 @@ version: "0.2"
 name: pm-team
 culture_file: CULTURE.md
 summary: >
-  Product management rig with a PM lead running the 8-step feature flow
-  (validate, context, requirements, mockups, review, exec summary, handoff).
-  Includes a researcher for competitive/regulatory/customer intelligence
-  and a coder for UI mockups and prototypes.
+  产品管理工作组，由 PM 负责人执行八步功能流程（验证、上下文、需求、mockup、评审、
+  执行摘要与交接）。包含一名负责竞品、监管和客户情报的研究员，以及一名负责 UI mockup
+  与原型的编码人员。
 
 pods:
   - id: pm
-    label: Product Management
+    label: 产品管理
     members:
       - id: lead
         agent_ref: "local:../../../agents/product-management/pm"
@@ -30,7 +29,7 @@ pods:
         to: lead
 
   - id: dev
-    label: Development Support
+    label: 开发支持
     members:
       - id: coder
         agent_ref: "local:../../../agents/development/implementer"

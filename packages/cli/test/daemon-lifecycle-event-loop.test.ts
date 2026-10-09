@@ -7,8 +7,8 @@ import {
   type DaemonState,
 } from "../src/daemon-lifecycle.js";
 
-// OPR.0.4.3.21 — getDaemonStatus reads event-loop wedge evidence from the
-// enriched /healthz body and reports process-present/UNHEALTHY honestly.
+// OPR.0.4.3.21——getDaemonStatus 从增强 /healthz body 读取
+// event-loop wedge 证据，并诚实报告 process-present/UNHEALTHY。
 
 function mockDeps(overrides?: Partial<LifecycleDeps>): LifecycleDeps {
   return {

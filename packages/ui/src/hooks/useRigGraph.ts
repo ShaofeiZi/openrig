@@ -8,8 +8,8 @@ interface GraphData {
 }
 
 async function fetchGraph(rigId: string, hostId: string): Promise<GraphData> {
-  // OPR.0.4.6.MH2 FR-2 — selected-host envelope; origin shape verbatim;
-  // local path unchanged (withHostParam is identity for local).
+  // OPR.0.4.6.MH2 FR-2——所选主机信封；来源结构逐字保留；本地路径不变
+  //（withHostParam 对本地请求是恒等操作）。
   const res = await fetch(withHostParam(`/api/rigs/${encodeURIComponent(rigId)}/graph`, hostId));
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();

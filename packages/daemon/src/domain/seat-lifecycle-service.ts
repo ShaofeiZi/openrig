@@ -21,23 +21,22 @@ import { NativePermissionStore } from "./native-permission-store.js";
 import { validateNativePermissionSelection, unresolvedClaudePermissionModes } from "./native-permission-selection.js";
 
 /**
- * S5 (OPR.0.5.4.7) — the seat-lifecycle verb surface: set-model, single-seat stop,
- * dead-session clean. One coherent design (KI-5.3-9):
+ * S5（OPR.0.5.4.7）——seat-lifecycle verb surface：set-model、单席位 stop、dead-session
+ * clean。遵循一套统一设计（KI-5.3-9）：
  *
- *   - ONE seat-resolution path shared by all three verbs (the SeatStatusService
- *     findMatches semantics: parseSessionName greedy first-@ rig; canonical-name or
- *     logical-id match; ambiguity returns the match list) — never a per-verb resolver.
- *   - Every mutation is transactional and persists its audit event in the SAME
- *     transaction (node.model_changed / session.stopped / session.cleaned).
- *   - Every refusal names what was actually checked; an indeterminate tmux probe is
- *     a refusal, never a guess (the S1 error bar applied at birth).
+ *   - 三个 verb 共享唯一的席位解析路径，即 SeatStatusService findMatches 语义：
+ *     parseSessionName 从第一个 @ 起贪婪解析 rig；按 canonical-name 或 logical-id 匹配；
+ *     有歧义时返回 match 列表。绝不为每个 verb 各写一套 resolver。
+ *   - 每次修改都在事务中执行，并在同一事务持久化 audit event：node.model_changed /
+ *     session.stopped / session.cleaned。
+ *   - 每次拒绝都点明确切检查内容；无法确定的 tmux probe 必须拒绝，绝不猜测（从一开始就应用
+ *     S1 错误边界）。
  */
 
-const SEAT_LOOKUP_GUIDANCE = "List seats with: rig ps --nodes";
+const SEAT_LOOKUP_GUIDANCE = "使用 zrig ps --nodes 列出席位";
 
-/** Terminal session statuses — rows the clean verb must NOT touch (they already
- *  record an ended tenancy; the vocabulary is shared with seat-handover-service
- *  and the watchdog's TERMINAL_SESSION_STATUSES). */
+/** Terminal session status——clean verb 绝不能触碰的 row，因为它们已经记录结束的 tenancy。
+ *  该词表与 seat-handover-service 及 watchdog 的 TERMINAL_SESSION_STATUSES 共享。 */
 const TERMINAL_SESSION_STATUSES = new Set(["superseded", "detached", "exited"]);
 
 export interface SeatLifecycleDeps {
@@ -164,9 +163,9 @@ export class SeatLifecycleService {
   private readonly activityOracle: SeatLifecycleDeps["activityOracle"] | null;
 
   constructor(deps: SeatLifecycleDeps) {
-    if (deps.db !== deps.rigRepo.db) throw new Error("SeatLifecycleService: rigRepo must share the same db handle");
-    if (deps.db !== deps.sessionRegistry.db) throw new Error("SeatLifecycleService: sessionRegistry must share the same db handle");
-    if (deps.db !== deps.eventBus.db) throw new Error("SeatLifecycleService: eventBus must share the same db handle");
+    if (deps.db !== deps.rigRepo.db) throw new Error("SeatLifecycleService：rigRepo 必须共享同一个数据库句柄");
+    if (deps.db !== deps.sessionRegistry.db) throw new Error("SeatLifecycleService：sessionRegistry 必须共享同一个数据库句柄");
+    if (deps.db !== deps.eventBus.db) throw new Error("SeatLifecycleService：eventBus 必须共享同一个数据库句柄");
     this.db = deps.db;
     this.rigRepo = deps.rigRepo;
     this.sessionRegistry = deps.sessionRegistry;
@@ -184,7 +183,7 @@ export class SeatLifecycleService {
     const required = this.requireReason(input.reason);
     if (required) return required;
     if (!input.model?.trim()) {
-      return { ok: false, code: "missing_model", message: "A target model id is required (--model)." };
+      return { ok: false, code: "missing_model", message: "必须提供目标 model id（--model）。" };
     }
     const resolved = this.resolveSeat(input.seatRef);
     if ("code" in resolved) return resolved;
@@ -193,7 +192,7 @@ export class SeatLifecycleService {
     const seat = this.describe(resolved);
     const from = resolved.entry.model ?? null;
     if (from === model) {
-      // Honest no-op: the persisted value already IS the target; no event is minted.
+      // 真实 no-op：持久值已经是目标值，不生成 event。
       return { ok: true, seat, from, to: model, changed: false };
     }
 
@@ -224,7 +223,7 @@ export class SeatLifecycleService {
     input = { ...input };
     const required = this.requireReason(input.reason);
     if (required) return required;
-    if (!input.actor.trim()) return { ok: false, code: "permission_selection_refused", message: "Sender identity is required for permission audit." };
+    if (!input.actor.trim()) return { ok: false, code: "permission_selection_refused", message: "权限审计必须提供发送方 identity。" };
     const resolved = this.resolveSeat(input.seatRef);
     if ("code" in resolved) return resolved;
     const seat = this.describe(resolved);
@@ -241,7 +240,7 @@ export class SeatLifecycleService {
       const result = this.db.transaction(() => {
         launch?.assertCurrent();
         const currentRuntime = this.db.prepare("SELECT runtime FROM nodes WHERE id = ?").get(seat.nodeId) as { runtime: string } | undefined;
-        if (currentRuntime?.runtime !== runtime) throw new Error("Seat runtime changed while checking native options; selection was not changed.");
+        if (currentRuntime?.runtime !== runtime) throw new Error("检查 native option 期间席位 runtime 已变化；未修改 selection。");
         const from = store.read(seat.nodeId);
         const changed = from?.runtime !== to?.runtime || from?.mode !== to?.mode;
         if (changed) {
@@ -250,7 +249,7 @@ export class SeatLifecycleService {
             nodeId: seat.nodeId, from, to, actor: input.actor.trim(), reason: input.reason.trim(), source: "seat_selection", effect: "future_launches_only" });
         }
         return { ok: true as const, seat, from, to, changed,
-          effect: "Future managed launches only. The current native process, history, permission rules and work posture are unchanged; no relaunch was requested." };
+          effect: "只影响后续托管 launch。当前 native process、history、permission rule 与 work posture 均未改变；未请求 relaunch。" };
       })();
       if (persisted) this.eventBus.notifySubscribers(persisted);
       return result;
@@ -272,28 +271,28 @@ export class SeatLifecycleService {
 
     const session = this.latestSession(resolved.nodeId);
     if (!session) {
-      return { ok: false, code: "no_session", message: `Seat "${input.seatRef}" has no session to stop (checked: latest sessions row for node ${seat.logicalId}).` };
+      return { ok: false, code: "no_session", message: `席位 "${input.seatRef}" 没有可停止的会话（已检查节点 ${seat.logicalId} 的最新 sessions row）。` };
     }
     if (session.origin === "claimed") {
       return {
         ok: false,
         code: "claimed_session",
-        message: `Session "${session.session_name}" was adopted (origin=claimed), not launched by OpenRig — stop refuses to kill it.`,
-        guidance: "Release an adopted session with: rig unclaim",
+        message: `会话 "${session.session_name}" 是接管的（origin=claimed），并非由 zrig 启动；stop 拒绝终止它。`,
+        guidance: "释放已接管会话：zrig unclaim",
       };
     }
 
-    // Wave-2 fix round 1 (r1 row 9baac99f): consume the CLASSIFIED probe, never the
-    // collapsed hasSession view — a transport blip is INDETERMINATE, not absence
-    // (KI-5.3-8 fabricated-absence class, destructive direction).
-    const probed = await this.probeLiveness(session.session_name, "stop refuses rather than kill blind");
+    // Wave-2 fix round 1（r1 row 9baac99f）：消费 CLASSIFIED probe，绝不使用折叠后的
+    // hasSession view。transport 短暂故障属于 INDETERMINATE，而不是 absence（KI-5.3-8
+    // fabricated-absence 类别，破坏性方向）。
+    const probed = await this.probeLiveness(session.session_name, "stop 会拒绝，而不是盲目终止");
     if ("code" in probed) return probed;
     if (probed.state === "absent") {
       return {
         ok: false,
         code: "session_not_live",
-        message: `Session "${session.session_name}" is absent in tmux (checked: tmux has-session, POSITIVE absence evidence) — there is nothing to stop.`,
-        guidance: "A dead seat with stale records is returned to launchable with: rig seat clean",
+        message: `会话 "${session.session_name}" 在 tmux 中不存在（已检查 tmux has-session，这是正向 absence evidence），没有可停止的内容。`,
+        guidance: "清理 stale record 并让已停止席位恢复可启动：zrig seat clean",
       };
     }
 
@@ -317,20 +316,18 @@ export class SeatLifecycleService {
     ).all(resolved.nodeId) as LatestSessionRow[])
       .filter((s) => !TERMINAL_SESSION_STATUSES.has(s.status));
 
-    // Fix r2-F3 (row 30045f39): clean MUTATES every non-terminal session row, so
-    // its safety checks must cover exactly that set — probing only the newest row
-    // fabricates safety for the others (older-live/newer-dead under canonical-name
-    // churn). Every row that would be touched is checked for adopted origin and
-    // probed for POSITIVE absence (r1 discipline); the binding's own tmux session
-    // is probed too when it names a session no row carries.
+    // 修复 r2-F3（row 30045f39）：clean 会修改每个非 terminal session row，因此安全检查必须
+    // 精确覆盖这个集合。只探测最新 row 会为其他 row 伪造安全性，例如 canonical-name churn 下
+    // older-live/newer-dead。每个将被触碰的 row 都检查 adopted origin，并探测正向 absence
+    //（r1 纪律）；binding 自身 tmux session 若未被任何 row 携带，也要探测。
     const mutationTargets = nonTerminal;
     for (const row of mutationTargets) {
       if (row.origin === "claimed") {
         return {
           ok: false,
           code: "claimed_session",
-          message: `Session "${row.session_name}" was adopted (origin=claimed) — clean refuses to touch adopted state.`,
-          guidance: "Release an adopted session with: rig unclaim",
+          message: `会话 "${row.session_name}" 是接管的（origin=claimed）；clean 拒绝触碰已接管状态。`,
+          guidance: "释放已接管会话：zrig unclaim",
         };
       }
     }
@@ -339,14 +336,14 @@ export class SeatLifecycleService {
       ...(binding?.tmuxSession ? [binding.tmuxSession] : []),
     ])];
     for (const name of probeNames) {
-      const probed = await this.probeLiveness(name, "clean refuses rather than clear state under a possibly-live seat");
+      const probed = await this.probeLiveness(name, "席位可能仍存活时，clean 会拒绝而不是清除状态");
       if ("code" in probed) return probed;
       if (probed.state === "present") {
         return {
           ok: false,
           code: "session_live",
-          message: `Session "${name}" is alive in tmux (checked: tmux has-session, against EVERY session row clean would mutate) — clean only operates on dead seats.`,
-          guidance: "Stop a live seat first with: rig seat stop",
+          message: `会话 "${name}" 在 tmux 中仍存活（已对 clean 会修改的每个 session row 检查 tmux has-session）；clean 只处理已停止席位。`,
+          guidance: "请先停止存活席位：zrig seat stop",
         };
       }
     }
@@ -356,7 +353,7 @@ export class SeatLifecycleService {
       return {
         ok: false,
         code: "nothing_to_clean",
-        message: `Seat "${input.seatRef}" is already clean (checked: no binding row for the node, and no session rows outside terminal statuses ${[...TERMINAL_SESSION_STATUSES].join("/")}).`,
+        message: `席位 "${input.seatRef}" 已是 clean 状态（已检查：节点没有 binding row，且没有 terminal status ${[...TERMINAL_SESSION_STATUSES].join("/")} 之外的 session row）。`,
       };
     }
 
@@ -385,9 +382,8 @@ export class SeatLifecycleService {
     return { ok: true, seat, actions: { sessionsExited, bindingCleared: binding !== null } };
   }
 
-  /** Finish context delivery to the same fresh occupant after its native gate.
-   * This never launches a process or replays an uncertain/finished delivery.
-   */
+  /** native gate 后，向同一个 fresh occupant 完成 context delivery。绝不启动进程，也不重放
+   *  不确定或已经结束的 delivery。 */
   async continueFreshStartup(seatRef: string) {
     const resolved = this.resolveSeat(seatRef);
     if ("code" in resolved) return resolved;
@@ -406,21 +402,21 @@ export class SeatLifecycleService {
     const binding = this.sessionRegistry.getBindingForNode(seat.nodeId);
     if (!node || !session || !binding?.tmuxSession || !this.startupOrchestrator
       || !this.startupOrchestrator.canContinueFresh(node.id, session.id)) {
-      return { ok: false as const, code: "continuation_unavailable", message: "No verified pending fresh-context delivery exists for this occupant. Refresh to inspect its actual state." };
+      return { ok: false as const, code: "continuation_unavailable", message: "该 occupant 没有经过验证的 pending fresh-context delivery。请刷新以检查实际状态。" };
     }
     const pane = await observeSolePane(this.tmuxAdapter, binding.tmuxSession);
-    if (!pane.ok || pane.pane !== binding.tmuxPane) return { ok: false as const, code: "binding_changed", message: "The managed terminal binding changed; context was not delivered." };
+    if (!pane.ok || pane.pane !== binding.tmuxPane) return { ok: false as const, code: "binding_changed", message: "托管 terminal binding 已变化；未投递 context。" };
     const adapter = node.runtime ? this.runtimeAdapters[node.runtime] : undefined;
-    if (!adapter) return { ok: false as const, code: "runtime_adapter_missing", message: "The configured runtime adapter is unavailable." };
+    if (!adapter) return { ok: false as const, code: "runtime_adapter_missing", message: "已配置的 runtime adapter 不可用。" };
     const ready = await adapter.checkReady({ ...binding, cwd: node.cwd ?? "." });
-    if (!ready.ready) return { ok: false as const, code: "attention_required", message: ready.reason ?? "Resolve the native prerequisite first." };
+    if (!ready.ready) return { ok: false as const, code: "attention_required", message: ready.reason ?? "请先解决 native prerequisite。" };
     const startup = this.readStartupContext(node.id, node.cwd ?? ".");
     if (!startup.ok) return startup.refusal;
-    if (startup.context.runtime !== node.runtime) return { ok: false as const, code: "startup_context_runtime_mismatch", message: "The saved startup context belongs to a different runtime." };
-    // Recheck after the asynchronous native observation; startNode immediately
-    // records pending before its first await, consuming the retained permission.
+    if (startup.context.runtime !== node.runtime) return { ok: false as const, code: "startup_context_runtime_mismatch", message: "已保存的 startup context 属于不同 runtime。" };
+    // 异步 native observation 后重新检查；startNode 会在首次 await 前立即记录 pending，消费
+    // 保留的权限。
     if (this.latestSession(node.id)?.id !== session.id || this.sessionRegistry.getBindingForNode(node.id)?.tmuxPane !== pane.pane
-      || !this.startupOrchestrator.canContinueFresh(node.id, session.id)) return { ok: false as const, code: "continuation_unavailable", message: "Startup changed during the readiness check. Refresh." };
+      || !this.startupOrchestrator.canContinueFresh(node.id, session.id)) return { ok: false as const, code: "continuation_unavailable", message: "readiness 检查期间 startup 已变化，请刷新。" };
     const result = await this.startupOrchestrator.startNode({
       rigId: seat.rigId, nodeId: node.id, sessionId: session.id,
       binding: { ...binding, cwd: node.cwd ?? ".", model: node.model ?? undefined, codexConfigProfile: node.codexConfigProfile ?? undefined },
@@ -428,10 +424,10 @@ export class SeatLifecycleService {
       startupActions: startup.context.startupActions, isRestore: false,
       sessionName: session.session_name, skipHarnessLaunch: true, continueFreshStartup: true, includeDurableObligations: true, allowFreshFallback: false,
     });
-    return { ...result, message: result.ok ? "Configured context delivered to the existing fresh conversation." : result.errors.join("; ") };
+    return { ...result, message: result.ok ? "已把配置的 context 投递到现有 fresh conversation。" : result.errors.join("; ") };
   }
 
-  /** Deliberately replace exactly one managed seat with a blank native occupant. */
+  /** 有意把恰好一个托管席位替换为空白 native occupant。 */
   async launchFresh(input: {
     seatRef: string;
     fresh: boolean;
@@ -445,7 +441,7 @@ export class SeatLifecycleService {
       return {
         ok: false,
         code: "fresh_required",
-        message: "Explicit fresh launch requires fresh=true (--fresh); no continuity mode is inferred.",
+        message: "显式 fresh launch 要求 fresh=true（--fresh）；不会推断 continuity mode。",
       };
     }
     const resolved = this.resolveSeat(input.seatRef);
@@ -458,10 +454,10 @@ export class SeatLifecycleService {
     const rig = this.rigRepo.getRig(seat.rigId);
     const node = rig?.nodes.find((candidate) => candidate.id === seat.nodeId);
     if (!rig || !node) {
-      return { ok: false, code: "seat_not_found", message: `Seat "${input.seatRef}" no longer exists.`, guidance: SEAT_LOOKUP_GUIDANCE };
+      return { ok: false, code: "seat_not_found", message: `席位 "${input.seatRef}" 已不存在。`, guidance: SEAT_LOOKUP_GUIDANCE };
     }
     if (!this.nodeLauncher || !this.startupOrchestrator) {
-      return { ok: false, code: "launch_unavailable", message: "Fresh-launch services are unavailable in this daemon." };
+      return { ok: false, code: "launch_unavailable", message: "此后台服务中 fresh-launch service 不可用。" };
     }
 
     const startup = this.readStartupContext(node.id, node.cwd ?? ".");
@@ -470,7 +466,7 @@ export class SeatLifecycleService {
       return {
         ok: false,
         code: "startup_context_runtime_mismatch",
-        message: `Persisted startup context runtime '${startup.context.runtime}' does not match current node runtime '${node.runtime ?? "missing"}'.`,
+        message: `持久化 startup context runtime '${startup.context.runtime}' 与当前节点 runtime '${node.runtime ?? "missing"}' 不匹配。`,
       };
     }
     const adapter = this.runtimeAdapters[node.runtime];
@@ -478,7 +474,7 @@ export class SeatLifecycleService {
       return {
         ok: false,
         code: "runtime_adapter_missing",
-        message: `No runtime adapter is available for '${node.runtime}'.`,
+        message: `没有可用于 '${node.runtime}' 的 runtime adapter。`,
       };
     }
 
@@ -489,12 +485,12 @@ export class SeatLifecycleService {
       return {
         ok: false,
         code: "claimed_session",
-        message: `Seat "${input.seatRef}" has an adopted/operator-owned occupant; fresh launch refuses even with --stop.`,
-        guidance: "Stop the adopted process yourself, then run rig seat clean before launching fresh.",
+        message: `席位 "${input.seatRef}" 有 adopted/operator-owned occupant；即使带 --stop，fresh launch 也会拒绝。`,
+        guidance: "请自行停止已接管进程，然后在 fresh launch 前运行 zrig seat clean。",
       };
     }
-    // Detached is terminal for process cleanup, but remains a reboot candidate.
-    // A deliberate fresh launch must retire that prior history as well.
+    // detached 对进程清理而言是 terminal，但仍是 reboot candidate。有意 fresh launch 也必须
+    // 退役这段既往 history。
     const supersededSessionIds = (this.db.prepare(
       "SELECT id FROM sessions WHERE node_id = ? AND status NOT IN ('superseded', 'exited')",
     ).all(node.id) as Array<{ id: string }>).map((row) => row.id);
@@ -502,7 +498,7 @@ export class SeatLifecycleService {
 
     const canonicalProbe = await this.probeLiveness(
       canonicalSessionName,
-      "fresh launch refuses rather than overwrite a possibly-live canonical session",
+      "可能存活的 canonical session 存在时，fresh launch 会拒绝而不是覆盖",
     );
     if ("code" in canonicalProbe) return canonicalProbe;
     if (canonicalProbe.state === "present") {
@@ -517,15 +513,15 @@ export class SeatLifecycleService {
         return {
           ok: false,
           code: "unmanaged_session_collision",
-          message: `Canonical tmux session "${canonicalSessionName}" exists but is not owned by this seat's current managed rows; refusing to overwrite it.`,
+          message: `Canonical tmux session "${canonicalSessionName}" 已存在，但不属于该席位当前托管 row；拒绝覆盖。`,
         };
       }
       if (!input.stop) {
         return {
           ok: false,
           code: "session_live",
-          message: `Seat "${input.seatRef}" is live; fresh launch refuses without --stop.`,
-          guidance: "Re-run with --stop to end exactly this managed occupant, or use rig handover to carry context.",
+          message: `席位 "${input.seatRef}" 仍存活；不带 --stop 时 fresh launch 会拒绝。`,
+          guidance: "重新运行并添加 --stop，以准确结束该托管 occupant；或使用 zrig handover 携带 context。",
         };
       }
       const observedPane = await observeSolePane(this.tmuxAdapter, canonicalSessionName);
@@ -533,14 +529,14 @@ export class SeatLifecycleService {
         return {
           ok: false,
           code: "tmux_probe_failed",
-          message: `${observedPane.detail}; fresh launch refuses rather than kill without live occupant identity.`,
+          message: `${observedPane.detail}；无法确认 live occupant identity 时，fresh launch 会拒绝而不是终止。`,
         };
       }
       if (!observedPane.ok || observedPane.pane !== currentBinding?.tmuxPane) {
         return {
           ok: false,
           code: "unmanaged_session_collision",
-          message: `Canonical tmux session "${canonicalSessionName}" is live, but its pane does not match this seat's current managed binding; refusing to stop it.`,
+          message: `Canonical tmux session "${canonicalSessionName}" 仍存活，但其 pane 与该席位当前托管 binding 不匹配；拒绝停止。`,
         };
       }
       const stopped = await this.stopManagedTmuxSeat(
@@ -552,7 +548,7 @@ export class SeatLifecycleService {
       if (!stopped.ok) return stopped;
     }
 
-    // Reuse clean's exhaustive, positive-absence gate for stale/history rows.
+    // 为 stale/history row 复用 clean 的穷尽式正向 absence gate。
     const remaining = this.nonTerminalSessions(node.id);
     const binding = this.sessionRegistry.getBindingForNode(node.id);
     if (remaining.length > 0 || binding !== null) {
@@ -564,22 +560,22 @@ export class SeatLifecycleService {
       if (!cleaned.ok) return cleaned;
     }
 
-    // The stop/clean composition may have taken time; buy absence again at the
-    // mutation boundary. NodeLauncher also refuses duplicate_session and never kills it.
+    // stop/clean 组合可能已经耗时；在 mutation boundary 再次确认 absence。NodeLauncher 同样会
+    // 拒绝 duplicate_session，绝不会终止它。
     const finalProbe = await this.probeLiveness(
       canonicalSessionName,
-      "fresh launch refuses rather than race a canonical-session collision",
+      "fresh launch 会拒绝，而不是与 canonical-session 冲突竞争",
     );
     if ("code" in finalProbe) return finalProbe;
     if (finalProbe.state === "present") {
       return {
         ok: false,
         code: "unmanaged_session_collision",
-        message: `Canonical tmux session "${canonicalSessionName}" appeared before launch; refusing to overwrite it.`,
+        message: `Canonical tmux session "${canonicalSessionName}" 在 launch 前出现；拒绝覆盖。`,
       };
     }
 
-    // Historical rows remain append-only but no longer look current.
+    // 历史行继续仅追加保留，但不再表现为当前记录。
     for (const sessionId of supersededSessionIds) this.sessionRegistry.markSuperseded(sessionId);
     this.occupantInvalidator?.invalidateRetiringOccupant({
       retiringSessionName: canonicalSessionName,
@@ -610,11 +606,11 @@ export class SeatLifecycleService {
         model: node.model,
         reason: input.reason,
         operator: input.operator,
-        errors: ["new occupant generation was not persisted"],
+        errors: ["未持久化新的 occupant generation"],
       });
       return compensation === "zero"
-        ? { ok: false, code: "startup_failed", status: "failed", message: "Fresh launch could not persist a new occupant generation; the new session was rolled back." }
-        : { ok: false, code: "attention_required", status: "attention_required", message: "Fresh launch could not persist a new occupant generation and the new process could not be confirmed stopped; the seat requires attention.", sessionName: canonicalSessionName, sessionId: launch.session.id };
+        ? { ok: false, code: "startup_failed", status: "failed", message: "Fresh launch 无法持久化新的 occupant generation；已回滚新会话。" }
+        : { ok: false, code: "attention_required", status: "attention_required", message: "Fresh launch 无法持久化新的 occupant generation，且无法确认新进程已停止；该席位需要关注。", sessionName: canonicalSessionName, sessionId: launch.session.id };
     }
     this.activityOracle?.declareOccupantSwap(node.id, generation);
 
@@ -660,13 +656,13 @@ export class SeatLifecycleService {
             ok: false,
             code: "startup_failed",
             status: "failed",
-            message: `Fresh startup failed and was rolled back to zero live session/binding: ${startupResult.errors.join("; ")}`,
+            message: `Fresh startup 失败，已回滚到零 live session/binding：${startupResult.errors.join("; ")}`,
           }
         : {
             ok: false,
             code: "attention_required",
             status: "attention_required",
-            message: `Fresh startup failed and the new process could not be confirmed stopped; the seat requires attention: ${startupResult.errors.join("; ")}`,
+            message: `Fresh startup 失败，且无法确认新进程已停止；该席位需要关注：${startupResult.errors.join("; ")}`,
             sessionName: canonicalSessionName,
             sessionId: launch.session.id,
             generation,
@@ -726,8 +722,8 @@ export class SeatLifecycleService {
         code: startupResult.ok ? "runtime_identity_unverified" : "attention_required",
         status: "attention_required",
         message: startupResult.ok
-          ? `Fresh occupant started but runtime identity requires attention: ${identity.ok ? "unknown" : identity.detail}`
-          : `Fresh occupant started but startup requires attention: ${startupResult.errors.join("; ")}`,
+          ? `Fresh occupant 已启动，但 runtime identity 需要关注：${identity.ok ? "unknown" : identity.detail}`
+          : `Fresh occupant 已启动，但 startup 需要关注：${startupResult.errors.join("; ")}`,
         sessionName: canonicalSessionName,
         sessionId: launch.session.id,
         generation,
@@ -747,7 +743,7 @@ export class SeatLifecycleService {
     };
   }
 
-  // -- shared internals --
+  // -- 共享内部实现 --
 
   private async stopManagedTmuxSeat(
     resolved: ResolvedSeat,
@@ -761,7 +757,7 @@ export class SeatLifecycleService {
       return {
         ok: false,
         code: "tmux_probe_failed",
-        message: `tmux kill-session for "${session.session_name}" failed: ${kill.message ?? kill.code}`,
+        message: `对 "${session.session_name}" 执行 tmux kill-session 失败：${kill.message ?? kill.code}`,
       };
     }
     let persisted: PersistedEvent | null = null;
@@ -809,7 +805,7 @@ export class SeatLifecycleService {
         refusal: {
           ok: false,
           code: "startup_context_missing",
-          message: `Persisted startup context is missing for node ${nodeId}; fresh launch refuses to invent an empty startup policy.`,
+          message: `节点 ${nodeId} 缺少持久化 startup context；fresh launch 拒绝编造空 startup policy。`,
         },
       };
     }
@@ -822,10 +818,10 @@ export class SeatLifecycleService {
       rawFiles = JSON.parse(row.resolved_files_json);
       rawActions = JSON.parse(row.startup_actions_json);
     } catch (error) {
-      return this.malformedStartupContext(nodeId, `JSON parse failed: ${error instanceof Error ? error.message : String(error)}`);
+      return this.malformedStartupContext(nodeId, `JSON 解析失败：${error instanceof Error ? error.message : String(error)}`);
     }
     if (!Array.isArray(rawEntries) || !Array.isArray(rawFiles) || !Array.isArray(rawActions) || !row.runtime?.trim()) {
-      return this.malformedStartupContext(nodeId, "projection entries, resolved files, and startup actions must be arrays and runtime must be non-empty");
+      return this.malformedStartupContext(nodeId, "projection entry、resolved file 和 startup action 必须是数组，runtime 必须非空");
     }
 
     const entries: ProjectionEntry[] = [];
@@ -837,10 +833,10 @@ export class SeatLifecycleService {
         || !isOptionalString(raw["target"])
         || !isOptionalOneOf(raw["mergeStrategy"], ["managed_block", "append"] as const)
         || !isOptionalOneOf(raw["pluginType"], ["claude", "codex", "auto"] as const)) {
-        return this.malformedStartupContext(nodeId, "projection_entries_json contains an invalid entry");
+        return this.malformedStartupContext(nodeId, "projection_entries_json 包含无效 entry");
       }
-      // S04 owns the live ambient skill set. Replaying the older catalog
-      // selection here could reinstall a skill that work-install removed.
+      // S04 拥有 live ambient skill set。在这里重放旧 catalog selection 可能重新安装已由
+      // work-install 移除的 skill。
       if (raw["category"] === "skill") continue;
       entries.push({
         category: raw["category"],
@@ -865,7 +861,7 @@ export class SeatLifecycleService {
         || typeof raw["required"] !== "boolean"
         || !isStringArrayOf(raw["appliesOn"], ["fresh_start", "restore"] as const)
         || !isOptionalOneOf(raw["kind"], ["file"] as const)) {
-        return this.malformedStartupContext(nodeId, "resolved_files_json contains an invalid entry");
+        return this.malformedStartupContext(nodeId, "resolved_files_json 包含无效 entry");
       }
       resolvedStartupFiles.push({
         path: raw["path"],
@@ -887,7 +883,7 @@ export class SeatLifecycleService {
         || !isStringArrayOf(raw["appliesOn"], ["fresh_start", "restore"] as const)
         || typeof raw["idempotent"] !== "boolean"
         || !isOptionalOneOf(raw["builtin"], ["session_identity"] as const)) {
-        return this.malformedStartupContext(nodeId, "startup_actions_json contains an invalid entry");
+        return this.malformedStartupContext(nodeId, "startup_actions_json 包含无效 entry");
       }
       startupActions.push({
         type: raw["type"],
@@ -936,7 +932,7 @@ export class SeatLifecycleService {
       refusal: {
         ok: false,
         code: "startup_context_malformed",
-        message: `Persisted startup context is malformed for node ${nodeId}: ${detail}.`,
+        message: `节点 ${nodeId} 的持久化 startup context 格式错误：${detail}。`,
       },
     };
   }
@@ -957,7 +953,7 @@ export class SeatLifecycleService {
     const stopped = !kill || kill.ok || kill.code === "session_not_found";
     const errors = stopped
       ? input.errors
-      : [...input.errors, `tmux kill-session failed: ${kill.message ?? kill.code}`];
+      : [...input.errors, `tmux kill-session 失败：${kill.message ?? kill.code}`];
     let persisted: PersistedEvent | null = null;
     const tx = this.db.transaction(() => {
       if (stopped) {
@@ -995,15 +991,12 @@ export class SeatLifecycleService {
   }
 
   /**
-   * The ONE liveness read both mutating verbs share (fix r1, row 9baac99f):
-   * the CLASSIFIED probeSession, never the collapsed hasSession view.
-   *   present / absent        → returned for the verb to act on (absent is
-   *                             POSITIVE tmux evidence, per OPR.0.5.4.2).
-   *   transport_unavailable   → an INDETERMINATE refusal: session existence was
-   *                             NOT determined, so neither verb may act — and the
-   *                             refusal never routes the operator to a
-   *                             destructive verb.
-   *   unexpected probe throw  → the same indeterminate refusal (fail closed).
+   * 两个修改 verb 共享的唯一 liveness 读取（修复 r1，row 9baac99f）：使用 CLASSIFIED
+   * probeSession，绝不使用折叠后的 hasSession view。
+   *   present / absent        → 返回给 verb 执行；按 OPR.0.5.4.2，absent 是正向 tmux evidence。
+   *   transport_unavailable   → INDETERMINATE refusal：未确定 session 是否存在，所以两个 verb
+   *                             都不能执行；该拒绝绝不把操作员引向破坏性 verb。
+   *   unexpected probe throw  → 同样返回无法确定的拒绝（fail closed）。
    */
   private async probeLiveness(
     sessionName: string,
@@ -1016,14 +1009,14 @@ export class SeatLifecycleService {
       return {
         ok: false,
         code: "tmux_probe_failed",
-        message: `tmux liveness probe for "${sessionName}" failed (${err instanceof Error ? err.message : String(err)}) — liveness is INDETERMINATE, so ${refusalConsequence}.`,
+        message: `对 "${sessionName}" 的 tmux liveness 探测失败（${err instanceof Error ? err.message : String(err)}）；liveness 为 INDETERMINATE，因此${refusalConsequence}。`,
       };
     }
     if (probe.state === "transport_unavailable") {
       return {
         ok: false,
         code: "tmux_probe_failed",
-        message: `tmux transport unavailable probing "${sessionName}" (${probe.cause}) — session existence was NOT determined (checked: classified tmux probe), so ${refusalConsequence}. Retry when the tmux transport is back.`,
+        message: `探测 "${sessionName}" 时 tmux transport 不可用（${probe.cause}）；未能确定 session 是否存在（已检查 classified tmux probe），因此${refusalConsequence}。请在 tmux transport 恢复后重试。`,
       };
     }
     return { state: probe.state };
@@ -1031,7 +1024,7 @@ export class SeatLifecycleService {
 
   private requireReason(reason: string): SeatRefusal | null {
     if (!reason?.trim()) {
-      return { ok: false, code: "missing_reason", message: "An audit reason is required (--reason)." };
+      return { ok: false, code: "missing_reason", message: "必须提供 audit reason（--reason）。" };
     }
     return null;
   }
@@ -1052,15 +1045,14 @@ export class SeatLifecycleService {
     return row ?? null;
   }
 
-  /** The ONE resolution path, mirroring SeatStatusService.findMatches semantics
-   *  (seat-status-service.ts) so every seat verb resolves identically: a canonical
-   *  `name@rig` ref scopes to that rig's inventory; a bare ref scans all rigs;
-   *  matches are by canonicalSessionName or logicalId; >1 match is a listed
-   *  ambiguity, never a pick. */
+  /** 唯一解析路径，镜像 SeatStatusService.findMatches（seat-status-service.ts）语义，使每个
+   *  seat verb 的解析完全一致：canonical `name@rig` ref 限定到该工作组 inventory；裸 ref
+   *  扫描全部工作组；按 canonicalSessionName 或 logicalId 匹配；超过一个 match 时列出歧义，
+   *  绝不擅自选择。 */
   private resolveSeat(seatRef: string): ResolvedSeat | SeatRefusal {
     const ref = seatRef?.trim() ?? "";
     if (!ref) {
-      return { ok: false, code: "seat_ref_required", message: "seat reference is required", guidance: SEAT_LOOKUP_GUIDANCE };
+      return { ok: false, code: "seat_ref_required", message: "必须提供席位引用", guidance: SEAT_LOOKUP_GUIDANCE };
     }
 
     const matches = this.findMatches(ref);
@@ -1068,7 +1060,7 @@ export class SeatLifecycleService {
       return {
         ok: false,
         code: "seat_not_found",
-        message: `Seat "${ref}" not found (checked: canonical session names and logical ids across ${parseSessionName(ref).kind === "canonical" ? "the named rig" : "all rigs"}).`,
+        message: `未找到席位 "${ref}"（已在${parseSessionName(ref).kind === "canonical" ? "指定工作组" : "所有工作组"}中检查 canonical session name 与 logical id）。`,
         guidance: SEAT_LOOKUP_GUIDANCE,
       };
     }
@@ -1076,7 +1068,7 @@ export class SeatLifecycleService {
       return {
         ok: false,
         code: "seat_ambiguous",
-        message: `Seat "${ref}" matched multiple nodes`,
+        message: `席位 "${ref}" 匹配到多个节点`,
         guidance: SEAT_LOOKUP_GUIDANCE,
         matches: matches.map((entry) => ({
           rig_name: entry.rigName,
@@ -1091,7 +1083,7 @@ export class SeatLifecycleService {
       "SELECT id FROM nodes WHERE rig_id = ? AND logical_id = ?",
     ).get(entry.rigId, entry.logicalId) as { id: string } | undefined;
     if (!nodeRow) {
-      return { ok: false, code: "seat_not_found", message: `Seat "${ref}" resolved to a node that no longer exists.`, guidance: SEAT_LOOKUP_GUIDANCE };
+      return { ok: false, code: "seat_not_found", message: `席位 "${ref}" 解析到一个已不存在的节点。`, guidance: SEAT_LOOKUP_GUIDANCE };
     }
     return { entry, nodeId: nodeRow.id };
   }

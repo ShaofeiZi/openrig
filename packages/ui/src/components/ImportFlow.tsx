@@ -50,9 +50,9 @@ interface ImportFlowProps {
 }
 
 const STEPS = [
-  { num: 1, label: "VALIDATE RIGSPEC" },
-  { num: 2, label: "PREFLIGHT" },
-  { num: 3, label: "INSTANTIATE" },
+  { num: 1, label: "校验 RigSpec" },
+  { num: 2, label: "预检" },
+  { num: 3, label: "实例化" },
 ] as const;
 
 function getStepNumber(step: Step): number {
@@ -103,14 +103,14 @@ export function ImportFlow({ onBack }: ImportFlowProps = {}) {
       });
       const data = (await res.json()) as ValidationResult;
       if (!data.valid) {
-        setErrors(data.errors ?? ["Validation failed"]);
+        setErrors(data.errors ?? ["校验失败"]);
         setErrorAtStep(1);
         setStep("error");
       } else {
         setStep("valid");
       }
     } catch {
-      setErrors(["Validation request failed"]);
+      setErrors(["校验请求失败"]);
       setErrorAtStep(1);
       setStep("error");
     }
@@ -129,7 +129,7 @@ export function ImportFlow({ onBack }: ImportFlowProps = {}) {
         body: yaml,
       });
       const data = (await res.json()) as PreflightResult;
-      // Always capture warnings, even when there are also errors
+      // 即使同时有错误，也要始终记录警告
       setWarnings(data.warnings ?? []);
       if (data.errors && data.errors.length > 0) {
         setErrors(data.errors);
@@ -139,7 +139,7 @@ export function ImportFlow({ onBack }: ImportFlowProps = {}) {
         setStep("preflight_done");
       }
     } catch {
-      setErrors(["Preflight request failed"]);
+      setErrors(["预检请求失败"]);
       setErrorAtStep(2);
       setStep("error");
     }
@@ -155,13 +155,13 @@ export function ImportFlow({ onBack }: ImportFlowProps = {}) {
     } catch (err) {
       if (err instanceof ImportError) {
         if (err.code === "cycle_error") {
-          setErrors(["Cycle detected in rig topology"]);
+          setErrors(["工作组拓扑中检测到环路"]);
         } else {
           setErrors(err.errors);
         }
         setWarnings(err.warnings);
       } else {
-        setErrors([err instanceof Error ? err.message : "Instantiate request failed"]);
+        setErrors([err instanceof Error ? err.message : "实例化请求失败"]);
       }
       setErrorAtStep(3);
       setStep("error");
@@ -172,9 +172,9 @@ export function ImportFlow({ onBack }: ImportFlowProps = {}) {
     <WorkspacePage>
       <div data-testid="import-flow" className="space-y-8">
       <WorkflowHeader
-        eyebrow="Rig Import"
-        title="Import Rig"
-        description="Validate a RigSpec, run preflight checks, then instantiate a topology from YAML."
+        eyebrow="工作组导入"
+        title="导入工作组"
+        description="校验 RigSpec、运行预检检查，再从 YAML 实例化一个拓扑。"
       />
 
       <WorkflowStepIndicator
@@ -184,19 +184,19 @@ export function ImportFlow({ onBack }: ImportFlowProps = {}) {
         errorAtStep={step === "error" ? errorAtStep : 0}
       />
 
-      {/* Step 1: Input */}
+      {/* 第 1 步：输入 */}
       {step === "input" && (
-        <WorkflowSection title="Rig YAML" description="Paste a rig spec and optionally provide a rig root to anchor relative references during import.">
+        <WorkflowSection title="工作组 YAML" description="粘贴一份工作组规格，可选地提供工作组根目录，以便在导入时锚定相对引用。">
           <Textarea
             data-testid="yaml-input"
             value={yaml}
             onChange={(e) => setYaml(e.target.value)}
-            placeholder="Paste YAML rig spec here..."
+            placeholder="在此粘贴 YAML 工作组规格…"
             rows={14}
             className="font-mono text-body-sm mb-spacing-4"
           />
           <div className="mb-spacing-4">
-            <label className="text-label-sm text-foreground-muted uppercase tracking-[0.04em] block mb-spacing-1">RIG ROOT (OPTIONAL)</label>
+            <label className="text-label-sm text-foreground-muted uppercase tracking-[0.04em] block mb-spacing-1">工作组根目录（可选）</label>
             <Input
               data-testid="rig-root-input"
               type="text"
@@ -212,63 +212,63 @@ export function ImportFlow({ onBack }: ImportFlowProps = {}) {
             onClick={handleValidate}
             disabled={!yaml.trim()}
           >
-            VALIDATE RIGSPEC
+            校验 RigSpec
           </Button>
         </WorkflowSection>
       )}
 
-      {/* Validating */}
+      {/* 校验中 */}
       {step === "validating" && (
-        <div className="text-label-md text-foreground-muted">Validating...</div>
+        <div className="text-label-md text-foreground-muted">正在校验…</div>
       )}
 
-      {/* Step 2: Valid -> Preflight */}
+      {/* 第 2 步：校验通过 -> 预检 */}
       {step === "valid" && (
-        <WorkflowSection title="Validation Passed" description="The RigSpec is valid. Run preflight checks before you instantiate it.">
+        <WorkflowSection title="校验通过" description="RigSpec 有效。实例化前请先运行预检检查。">
           <Alert className="mb-spacing-4" data-testid="valid-message">
-            <AlertDescription className="text-primary">RigSpec valid. Run preflight checks?</AlertDescription>
+            <AlertDescription className="text-primary">RigSpec 有效。运行预检检查？</AlertDescription>
           </Alert>
           <Button variant="tactical" data-testid="preflight-btn" onClick={handlePreflight}>
-            RUN PREFLIGHT
+            运行预检
           </Button>
         </WorkflowSection>
       )}
 
-      {/* Running preflight */}
+      {/* 预检运行中 */}
       {step === "preflight" && (
-        <div className="text-label-md text-foreground-muted">Running preflight...</div>
+        <div className="text-label-md text-foreground-muted">正在运行预检…</div>
       )}
 
-      {/* Step 3: Preflight done -> Instantiate */}
+      {/* 第 3 步：预检完成 -> 实例化 */}
       {step === "preflight_done" && (
-        <WorkflowSection title="Preflight Results" description="Review warnings before you instantiate the rig into live runtime sessions.">
+        <WorkflowSection title="预检结果" description="把工作组实例化到运行时会话之前，请检查警告。">
           {warnings.length > 0 && (
             <Alert className="mb-spacing-4" data-testid="preflight-warnings">
               <AlertDescription className="text-warning">
-                <div className="text-label-md uppercase mb-spacing-1">WARNINGS</div>
+                <div className="text-label-md uppercase mb-spacing-1">警告</div>
                 {warnings.map((w, i) => <div key={i}>— {w}</div>)}
               </AlertDescription>
             </Alert>
           )}
           <Alert className="mb-spacing-4" data-testid="preflight-ready">
-            <AlertDescription className="text-primary">Preflight passed. Ready to instantiate.</AlertDescription>
+            <AlertDescription className="text-primary">预检通过。可以实例化。</AlertDescription>
           </Alert>
           <Button variant="tactical" data-testid="instantiate-btn" onClick={handleInstantiate}>
-            INSTANTIATE
+            实例化
           </Button>
         </WorkflowSection>
       )}
 
-      {/* Instantiating */}
+      {/* 实例化中 */}
       {step === "instantiating" && (
-        <div className="text-label-md text-foreground-muted">Instantiating...</div>
+        <div className="text-label-md text-foreground-muted">正在实例化…</div>
       )}
 
-      {/* Done: Results */}
+      {/* 完成：结果 */}
       {step === "done" && result && (
         <WorkflowSection
-          title="Instantiate Result"
-          description="The daemon returned per-node launch status for the imported topology."
+          title="实例化结果"
+          description="后台服务返回了导入拓扑逐节点的启动状态。"
           className="space-y-4"
         >
         <div data-testid="import-result">
@@ -282,8 +282,8 @@ export function ImportFlow({ onBack }: ImportFlowProps = {}) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>NODE</TableHead>
-                <TableHead>STATUS</TableHead>
+                <TableHead>节点</TableHead>
+                <TableHead>状态</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -303,7 +303,7 @@ export function ImportFlow({ onBack }: ImportFlowProps = {}) {
           {onBack ? (
             <div className="mt-spacing-6">
               <Button variant="ghost" onClick={onBack}>
-                Close
+                关闭
               </Button>
             </div>
           ) : null}
@@ -311,14 +311,14 @@ export function ImportFlow({ onBack }: ImportFlowProps = {}) {
         </WorkflowSection>
       )}
 
-      {/* Error state */}
+      {/* 错误状态 */}
       {step === "error" && (
-        <WorkflowSection title="Import Errors" description="Fix the reported issues, then retry the import flow.">
+        <WorkflowSection title="导入错误" description="修复报告的问题后，重试导入流程。">
         <div data-testid="import-errors">
           {warnings.length > 0 && (
             <Alert className="mb-spacing-2" data-testid="error-warnings">
               <AlertDescription className="text-warning">
-                <div className="text-label-md uppercase mb-spacing-1">WARNINGS</div>
+                <div className="text-label-md uppercase mb-spacing-1">警告</div>
                 {warnings.map((w, i) => <div key={i}>— {w}</div>)}
               </AlertDescription>
             </Alert>
@@ -333,7 +333,7 @@ export function ImportFlow({ onBack }: ImportFlowProps = {}) {
             className="mt-spacing-4"
             onClick={() => { setStep("input"); setErrors([]); setWarnings([]); setResult(null); setErrorAtStep(0); setRigRoot(""); }}
           >
-            TRY AGAIN
+            重试
           </Button>
         </div>
         </WorkflowSection>

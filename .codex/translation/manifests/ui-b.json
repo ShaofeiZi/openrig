@@ -1,0 +1,1615 @@
+{
+  "owner": "ui-b",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": "packages/ui/postcss.config.js",
+      "target_path": "packages/ui/postcss.config.js",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 6,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 配置注释/分区注释中文化，标识符/环境变量/路径保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/App.tsx",
+      "target_path": "packages/ui/src/App.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 58,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 维护提示文案改中文zrig；关闭按钮aria-label中文化；注释翻译；storage key机器标识保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/ActivityFeed.tsx",
+      "target_path": "packages/ui/src/components/ActivityFeed.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 126,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 日志面板提示/空态/关闭aria/头部中文化；无注释文件registration-marks无NL",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/AgentSpecReview.tsx",
+      "target_path": "packages/ui/src/components/AgentSpecReview.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 77,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 状态标签/来源/安装次数/空态/按钮/页头/JSDoc中文化；RigSpec品牌名保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/BundleInspector.tsx",
+      "target_path": "packages/ui/src/components/BundleInspector.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 197,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | Bundle检查页标题/路径/按钮/摘要完整性/来源/兼容性/文件完整性/安装按钮中文化；路径占位/文件名/版本保留 | 本轮局部增量:错误块{error.message}→检查失败:{error.message}加中文前缀;仅错误框提示,不代表error.message已译;视觉未验,待6回归;不升done | 回归:UI 6文件52测试全过(补错误断言前);累计唯一测试114,0失败;canvas/Browserslist日志警告非断言失败,归因未定;待新断言,不升done | t06:UI新2错误断言21用例通过;仍视觉未验,不升done",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/DaemonHealthProvider.tsx",
+      "target_path": "packages/ui/src/components/DaemonHealthProvider.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 12,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；Loading rig status/按钮文案中文化；status枚举值与RigStatusCard的statusHelp属他组保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/DiscoveryOverlay.tsx",
+      "target_path": "packages/ui/src/components/DiscoveryOverlay.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 372,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 会话发现页标题/扫描/空态/采纳对话框/按钮/错误提示中文化；命令/路径/runtime枚举保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/Explorer.tsx",
+      "target_path": "packages/ui/src/components/Explorer.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 400,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | Explorer界面/活动提示/aria折叠展开/高级开关/背景注释中文化；枚举/路由保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/LaunchRecoveryModal.tsx",
+      "target_path": "packages/ui/src/components/LaunchRecoveryModal.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 267,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 恢复弹窗标题/描述/策略选项/阻塞横幅/加载错误/表头/取消执行按钮中文化；保留恢复词表枚举resume-original等与tokenState原值",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/LibraryReview.tsx",
+      "target_path": "packages/ui/src/components/LibraryReview.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 725,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 库评审页四类(智能体/工作组/工作流/上下文包/镜像)标签/摘要卡/空态/按钮/谱系/片段中文化；技术值/路径/id保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/PackageList.tsx",
+      "target_path": "packages/ui/src/components/PackageList.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 181,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 状态标签/来源/安装次数/空态/按钮/页头/JSDoc中文化；RigSpec品牌名保留 | 本轮局部增量:Alert错误{error.message}→加载旧版包失败:{error.message}加中文前缀;仅错误框提示,不代表error.message已译;视觉未验,待6回归;不升done | 回归:UI 6文件52测试全过(补错误断言前);累计唯一测试114,0失败;canvas/Browserslist日志警告非断言失败,归因未定;待新断言,不升done | t06:UI新2错误断言21用例通过;仍视觉未验,不升done",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/RigNode.tsx",
+      "target_path": "packages/ui/src/components/RigNode.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 414,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 拓扑RigNode悬停提示/活动aria/停滞/上下文标题/恢复定向徽章/ATTN失败/cmux按钮中文化；枚举值/数据id保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/RigStatusControl.tsx",
+      "target_path": "packages/ui/src/components/RigStatusControl.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 80,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；Loading rig status/按钮文案中文化；status枚举值与RigStatusCard的statusHelp属他组保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/ThemeSelector.tsx",
+      "target_path": "packages/ui/src/components/ThemeSelector.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 31,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 主题选择器aria/sr-only→主题；错误边界兜底文案中文化；注释翻译；标签枚举保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/WorkspacePage.tsx",
+      "target_path": "packages/ui/src/components/WorkspacePage.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 30,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；Loading rig status/按钮文案中文化；status枚举值与RigStatusCard的statusHelp属他组保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/agent-images/ForkNowAction.tsx",
+      "target_path": "packages/ui/src/components/agent-images/ForkNowAction.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 241,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 证据打开错误/提示中文化；派生表单标签/占位/按钮/结果中文化；镜像名/runtime枚举保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/dashboard/vellum/CornerBracket.tsx",
+      "target_path": "packages/ui/src/components/dashboard/vellum/CornerBracket.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 35,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 角括号/中层装饰文案/桶导出注释中文化；动作动词标签与描述中文化；auth无NL；截图预览aria中文化",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/dashboard/vellum/MidLayerContent.tsx",
+      "target_path": "packages/ui/src/components/dashboard/vellum/MidLayerContent.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 43,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 角括号/中层装饰文案/桶导出注释中文化；动作动词标签与描述中文化；auth无NL；截图预览aria中文化",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/dashboard/vellum/VellumDestinationCard.tsx",
+      "target_path": "packages/ui/src/components/dashboard/vellum/VellumDestinationCard.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 363,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 卡片注释/JSDoc/警告条/目的地/活动产物/规格插件技能标签中文化；路由[to]与数字标记保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/dashboard/vellum/fidelity-glyphs.tsx",
+      "target_path": "packages/ui/src/components/dashboard/vellum/fidelity-glyphs.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 160,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | SVG图标文件仅注释翻译；[01]图形索引标记保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/dashboard/vellum/graphics.tsx",
+      "target_path": "packages/ui/src/components/dashboard/vellum/graphics.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 95,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | SVG图标文件仅注释翻译；[01]图形索引标记保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/dashboard/vellum/index.ts",
+      "target_path": "packages/ui/src/components/dashboard/vellum/index.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 26,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 角括号/中层装饰文案/桶导出注释中文化；动作动词标签与描述中文化；auth无NL；截图预览aria中文化",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/drawer-triggers/FileReferenceTrigger.tsx",
+      "target_path": "packages/ui/src/components/drawer-triggers/FileReferenceTrigger.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 28,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | vellum-card无NL；chat前导合同串属agent提示保留英文并注释说明；drawer触发注释翻译",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/drawer-triggers/QueueItemTrigger.tsx",
+      "target_path": "packages/ui/src/components/drawer-triggers/QueueItemTrigger.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 32,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | vellum-card无NL；chat前导合同串属agent提示保留英文并注释说明；drawer触发注释翻译",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/for-you/Feed.tsx",
+      "target_path": "packages/ui/src/components/for-you/Feed.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 529,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 为你推荐feed标题/镜头chip/空态文案/主机筛选/忽略toast与全量注释中文化；host/status枚举保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/graphics/RuntimeMark.tsx",
+      "target_path": "packages/ui/src/components/graphics/RuntimeMark.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 505,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 操作员/mood标题/Pi注释中文化；品牌名Claude/Codex/Pi/CMUX/tmux/VSCode保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/lab/CardPreviewsLab.tsx",
+      "target_path": "packages/ui/src/components/lab/CardPreviewsLab.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 144,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 卡片预览lab区块标题/说明/示例卡展示文案与顶部注释中文化；id/status枚举/路由保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/lab/ProjectGraphicsPreview.tsx",
+      "target_path": "packages/ui/src/components/lab/ProjectGraphicsPreview.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 324,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 项目图形预览事件词表/卡片治疗/区块标题/说明中文化；标签值/地址/文件名保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/lab/VellumBackgroundLab.tsx",
+      "target_path": "packages/ui/src/components/lab/VellumBackgroundLab.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 703,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | vellum背景lab全部设计迭代注释中文化；SVG几何/尺寸/testid保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/markdown/SyntaxHighlight.tsx",
+      "target_path": "packages/ui/src/components/markdown/SyntaxHighlight.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 272,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 语法高亮注释；CMUX按钮/状态串中文化；终端popover JSDoc与aria/title中文化；端点/枚举保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/markdown/blocks.tsx",
+      "target_path": "packages/ui/src/components/markdown/blocks.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 71,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 围栏块回退文案；热土豆边注释；工作流实例状态标签/位置/龄期/计数/空态中文化；枚举经映射展示，原值保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/mission-control/action-verb-meta.ts",
+      "target_path": "packages/ui/src/components/mission-control/action-verb-meta.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 73,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 角括号/中层装饰文案/桶导出注释中文化；动作动词标签与描述中文化；auth无NL；截图预览aria中文化",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/mission-control/missionControlAuth.ts",
+      "target_path": "packages/ui/src/components/mission-control/missionControlAuth.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 60,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 角括号/中层装饰文案/桶导出注释中文化；动作动词标签与描述中文化；auth无NL；截图预览aria中文化",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/preview/PreviewPane.tsx",
+      "target_path": "packages/ui/src/components/preview/PreviewPane.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 107,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 预览面板实时/固定/加载/错误/空态/捕获时间/行数中文化；rig capture命令保留；注释翻译",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/preview/PreviewStack.tsx",
+      "target_path": "packages/ui/src/components/preview/PreviewStack.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 43,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 预览面板实时/固定/加载/错误/空态/捕获时间/行数中文化；rig capture命令保留；注释翻译",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/preview/usePreviewPins.ts",
+      "target_path": "packages/ui/src/components/preview/usePreviewPins.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 39,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 预览面板实时/固定/加载/错误/空态/捕获时间/行数中文化；rig capture命令保留；注释翻译",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/project/ProjectTreeView.tsx",
+      "target_path": "packages/ui/src/components/project/ProjectTreeView.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 479,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 项目树头部/空态/折叠aria/分组标签/当前归档/主机chip/刷新按钮中文化；id/路径/schema保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/project/ProofImageViewer.tsx",
+      "target_path": "packages/ui/src/components/project/ProofImageViewer.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 53,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 角括号/中层装饰文案/桶导出注释中文化；动作动词标签与描述中文化；auth无NL；截图预览aria中文化",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/project/ProofTab.tsx",
+      "target_path": "packages/ui/src/components/project/ProofTab.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 300,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 校验标签页空态/读取错误/画廊计数/aria/lightbox/滚动条/section标题中文化；判定徽章映射PASS/PARTIAL/FAIL→通过/部分/失败；文件名/路径保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/project/ScopePages.tsx",
+      "target_path": "packages/ui/src/components/project/ScopePages.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 1382,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 工作范围页标签/空态/指标/ eyebrow/命令示例(zrig)/注释全部中文化；testid/路由/状态枚举/数据值保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/project/StoryGraph.css",
+      "target_path": "packages/ui/src/components/project/StoryGraph.css",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 211,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | StoryGraph样式表4处设计/字体/分层/可点击注释中文化；选择器/变量/色值不动",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/review/EvidenceOpener.tsx",
+      "target_path": "packages/ui/src/components/review/EvidenceOpener.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 172,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 证据打开错误/提示中文化；派生表单标签/占位/按钮/结果中文化；镜像名/runtime枚举保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/review/RigAgentsPage.tsx",
+      "target_path": "packages/ui/src/components/review/RigAgentsPage.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 174,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | AGENTS页面包屑/标题/分组/待关注/已了结/汇聚时间/错误中文化；provenance拼接中文",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/review/TranscriptDrillPanel.tsx",
+      "target_path": "packages/ui/src/components/review/TranscriptDrillPanel.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 148,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 转录钻取按钮/占位/加载/无匹配/错误提示中文化；session名与路由保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/review/chat.ts",
+      "target_path": "packages/ui/src/components/review/chat.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 28,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | vellum-card无NL；chat前导合同串属agent提示保留英文并注释说明；drawer触发注释翻译",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/slices/tabs/DecisionsTab.tsx",
+      "target_path": "packages/ui/src/components/slices/tabs/DecisionsTab.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 117,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 时间线空态/分页/未标记/事件详情/更多行；决策空态/搜索占位/前后态中文化；数据verb/actor保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/slices/tabs/SliceWorkflowGraph.tsx",
+      "target_path": "packages/ui/src/components/slices/tabs/SliceWorkflowGraph.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 265,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 工作流图头部/回路/步边计数/只读/状态/入口当前终止徽章中文化；步骤id/角色为数据保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/slices/tabs/TimelineTab.tsx",
+      "target_path": "packages/ui/src/components/slices/tabs/TimelineTab.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 333,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 时间线空态/分页/未标记/事件详情/更多行；决策空态/搜索占位/前后态中文化；数据verb/actor保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/specs/SkillDetailPage.tsx",
+      "target_path": "packages/ui/src/components/specs/SkillDetailPage.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 307,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 技能详情页加载/未找到/树空态/选择提示/截断提示/section标题中文化；路径/文件名/字节数保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/specs/SpecsTreeView.tsx",
+      "target_path": "packages/ui/src/components/specs/SpecsTreeView.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 442,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 规格树9区块标签/折叠展开aria/空态/技能分类/工具标题中文化；id/路由/版本保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/system/SettingsCenter.tsx",
+      "target_path": "packages/ui/src/components/system/SettingsCenter.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 21,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 设置根页标题/注释中文化",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/system/SettingsExplorer.tsx",
+      "target_path": "packages/ui/src/components/system/SettingsExplorer.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 90,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 设置侧边栏4目的地标签与标题中文化；路由href保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/system/SettingsSystemStatusPanel.tsx",
+      "target_path": "packages/ui/src/components/system/SettingsSystemStatusPanel.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 123,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 设置状态面板后台服务/cmux/工作组区块标签与状态标签中文化",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/terminal/LiveTerminalProvider.tsx",
+      "target_path": "packages/ui/src/components/terminal/LiveTerminalProvider.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 78,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 终端provider注释/JSDoc翻译，无展示串",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/topology/HotPotatoEdge.tsx",
+      "target_path": "packages/ui/src/components/topology/HotPotatoEdge.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 101,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 围栏块回退文案；热土豆边注释；工作流实例状态标签/位置/龄期/计数/空态中文化；枚举经映射展示，原值保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/topology/HybridTopologyNodes.tsx",
+      "target_path": "packages/ui/src/components/topology/HybridTopologyNodes.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 348,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 拓扑节点活动/aria/cmux按钮/title/错误条/注释中文化；pod fallback→Pod；逻辑id/runtime数据保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/topology/LaunchCmuxButton.tsx",
+      "target_path": "packages/ui/src/components/topology/LaunchCmuxButton.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 176,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 语法高亮注释；CMUX按钮/状态串中文化；终端popover JSDoc与aria/title中文化；端点/枚举保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/topology/TerminalPreviewPopover.tsx",
+      "target_path": "packages/ui/src/components/topology/TerminalPreviewPopover.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 290,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 语法高亮注释；CMUX按钮/状态串中文化；终端popover JSDoc与aria/title中文化；端点/枚举保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/ui/ErrorBoundary.tsx",
+      "target_path": "packages/ui/src/components/ui/ErrorBoundary.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 55,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 主题选择器aria/sr-only→主题；错误边界兜底文案中文化；注释翻译；标签枚举保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/ui/dialog.tsx",
+      "target_path": "packages/ui/src/components/ui/dialog.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 122,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | Close sr-only/Close sheet aria中文化；宽度/边框注释翻译",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/ui/registration-marks.tsx",
+      "target_path": "packages/ui/src/components/ui/registration-marks.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 20,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 日志面板提示/空态/关闭aria/头部中文化；无注释文件registration-marks无NL",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/ui/vellum-card.tsx",
+      "target_path": "packages/ui/src/components/ui/vellum-card.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 102,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | vellum-card无NL；chat前导合同串属agent提示保留英文并注释说明；drawer触发注释翻译",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/ui/vellum-sheet.tsx",
+      "target_path": "packages/ui/src/components/ui/vellum-sheet.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 70,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | Close sr-only/Close sheet aria中文化；宽度/边框注释翻译",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/components/workflow/WorkflowInstancesBand.tsx",
+      "target_path": "packages/ui/src/components/workflow/WorkflowInstancesBand.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 157,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 围栏块回退文案；热土豆边注释；工作流实例状态标签/位置/龄期/计数/空态中文化；枚举经映射展示，原值保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useAttentionItems.ts",
+      "target_path": "packages/ui/src/hooks/useAttentionItems.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 108,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部与JSDoc注释中文化；枚举/接口字段/HTTP错误保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useCompletedMissions.ts",
+      "target_path": "packages/ui/src/hooks/useCompletedMissions.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 64,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；无新增展示串，接口字段/URL/错误HTTP保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useContextFleet.ts",
+      "target_path": "packages/ui/src/hooks/useContextFleet.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 112,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部与JSDoc注释中文化；枚举/接口字段/HTTP错误保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useContextPackLibrary.ts",
+      "target_path": "packages/ui/src/hooks/useContextPackLibrary.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 91,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部/JSDoc/内联注释中文化；接口字段、reason枚举、URL保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useCountUp.ts",
+      "target_path": "packages/ui/src/hooks/useCountUp.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 51,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；无新增展示串，接口字段/URL/错误HTTP保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useDiscovery.ts",
+      "target_path": "packages/ui/src/hooks/useDiscovery.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 152,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；无新增展示串，接口字段/URL/错误HTTP保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useFiles.ts",
+      "target_path": "packages/ui/src/hooks/useFiles.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 227,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释全译；冲突提示file changed externally→文件已被外部修改；FilesReadError字节兼容message保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useKernelStatus.ts",
+      "target_path": "packages/ui/src/hooks/useKernelStatus.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 60,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部与JSDoc注释中文化；枚举/接口字段/HTTP错误保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useMissionProgressStatus.ts",
+      "target_path": "packages/ui/src/hooks/useMissionProgressStatus.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 75,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部/JSDoc/内联注释中文化；接口字段、reason枚举、URL保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useNodeDetail.ts",
+      "target_path": "packages/ui/src/hooks/useNodeDetail.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 110,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；reason错误码/URL/接口字段保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useNodePreview.ts",
+      "target_path": "packages/ui/src/hooks/useNodePreview.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 127,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；reason错误码/URL/接口字段保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/usePackages.ts",
+      "target_path": "packages/ui/src/hooks/usePackages.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 27,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；无新增展示串；枚举/URL/错误码保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/usePluginFiles.ts",
+      "target_path": "packages/ui/src/hooks/usePluginFiles.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 67,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；端点/枚举/字段保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useProgressTree.ts",
+      "target_path": "packages/ui/src/hooks/useProgressTree.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 57,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；无新增展示串；枚举/URL/错误码保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/usePsEntries.ts",
+      "target_path": "packages/ui/src/hooks/usePsEntries.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 51,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；状态枚举/URL保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useReviewAgents.ts",
+      "target_path": "packages/ui/src/hooks/useReviewAgents.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 39,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；无新增展示串；枚举/URL/错误码保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useRigEnv.ts",
+      "target_path": "packages/ui/src/hooks/useRigEnv.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 35,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；无新增展示串，接口字段/URL/错误HTTP保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useRigStatus.ts",
+      "target_path": "packages/ui/src/hooks/useRigStatus.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 55,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；状态枚举/URL保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useSkillFiles.ts",
+      "target_path": "packages/ui/src/hooks/useSkillFiles.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 65,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；端点/枚举/字段保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useSpecLibrary.ts",
+      "target_path": "packages/ui/src/hooks/useSpecLibrary.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 167,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；端点/枚举/字段保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useSpecReview.ts",
+      "target_path": "packages/ui/src/hooks/useSpecReview.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 128,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；事件类型/枚举/端点保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useTopologyEdgeActivity.ts",
+      "target_path": "packages/ui/src/hooks/useTopologyEdgeActivity.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 168,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；事件类型/枚举/端点保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/hooks/useWorkflow.ts",
+      "target_path": "packages/ui/src/hooks/useWorkflow.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 131,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释中文化；事件类型/枚举/端点保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/lib/activity-visuals.ts",
+      "target_path": "packages/ui/src/lib/activity-visuals.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 218,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 活动标签running/needs_input/idle/unknown→运行中/待输入/空闲/未知；汇总与时长文案中文化；注释翻译；枚举值保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/lib/attention-feed.ts",
+      "target_path": "packages/ui/src/lib/attention-feed.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 202,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释全译；Approval/Action required标题、needs input卡片文案中文化；ID模板内unknown机器标识保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/lib/display-name.ts",
+      "target_path": "packages/ui/src/lib/display-name.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 31,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 展示兜底文案ungrouped/unknown→未分组/未知；大段注释翻译；枚举值保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/lib/format-event-payload.ts",
+      "target_path": "packages/ui/src/lib/format-event-payload.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 72,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 头部与三遍逻辑注释中文化；message/noise键为协议字段保留；em-dash占位保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/lib/project-mission-state.ts",
+      "target_path": "packages/ui/src/lib/project-mission-state.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 224,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 注释全译；展示连接词qitems/stale/from/proof/declared→队列项/已停滞/来自/校验包/声明；枚举值与AUTHORED映射保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/lib/restore-status-colors.ts",
+      "target_path": "packages/ui/src/lib/restore-status-colors.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 23,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 展示兜底文案ungrouped/unknown→未分组/未知；大段注释翻译；枚举值保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/lib/status-colors.ts",
+      "target_path": "packages/ui/src/lib/status-colors.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 18,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 展示兜底文案ungrouped/unknown→未分组/未知；大段注释翻译；枚举值保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/lib/theme.ts",
+      "target_path": "packages/ui/src/lib/theme.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 87,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 主题标签Vellum浅色/深色/跟随系统；注释中文化；事件类型/状态枚举/存储键保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/lib/topology-activity.ts",
+      "target_path": "packages/ui/src/lib/topology-activity.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 468,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 主题标签Vellum浅色/深色/跟随系统；注释中文化；事件类型/状态枚举/存储键保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/lib/utils.ts",
+      "target_path": "packages/ui/src/lib/utils.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 6,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 主题标签Vellum浅色/深色/跟随系统；注释中文化；事件类型/状态枚举/存储键保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/src/main.tsx",
+      "target_path": "packages/ui/src/main.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 23,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 无用户可见文本与英文注释，仅import/render，行为不变",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/tailwind.config.ts",
+      "target_path": "packages/ui/tailwind.config.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 115,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 配置注释/分区注释中文化，标识符/环境变量/路径保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/test/activity-feed.test.tsx",
+      "target_path": "packages/ui/test/activity-feed.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 573,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-203 ui-comment-batch19:整文件注释/标题/失败消息审读residual0;9changed131测试过+1nochange(drawer-primitives误报已含中文)历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/agent-spec-review.test.tsx",
+      "target_path": "packages/ui/test/agent-spec-review.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 90,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-156 ui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;7changed24测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/agent-spec-validate-flow.test.tsx",
+      "target_path": "packages/ui/test/agent-spec-validate-flow.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 119,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | 展示断言 VALIDATE AGENT→验证智能体；testid/行为保留 | b2-177 ui-comment-batch6:整文件注释/标题/失败消息审读residual0;5changed复跑过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/app-shell.test.tsx",
+      "target_path": "packages/ui/test/app-shell.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 435,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | 品牌断言 OPENRIG→zrig；href=/等行为断言保留；已修复误删的 href 断言行 | b2-204 ui-comment-batch20:整文件注释/标题/失败消息审读residual0;4changed145测试过+2nochange历史→passed(UI comment closure197/197)",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/bundle-inspector.test.tsx",
+      "target_path": "packages/ui/test/bundle-inspector.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 247,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-105: 注释+英文it标题全译;21/21复跑通过;UI-TEST-ENGLISH-RESIDUE清单已清零",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/bundle-install-flow.test.tsx",
+      "target_path": "packages/ui/test/bundle-install-flow.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 126,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-171 ui-comment-batch8:整文件注释/标题/失败消息审读residual0;8changed测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/dashboard-card-vellum.test.tsx",
+      "target_path": "packages/ui/test/dashboard-card-vellum.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 98,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | 展示断言 Welcome back→欢迎回来；(s*)/Operator 等其余行为/源串断言保留 | Eyes Everywhere→监视无处不在；其余 stats/testid/源类断言保留 | b2-177 ui-comment-batch9:整文件注释/标题/失败消息审读residual0;5changed29测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/feed-card-no-source-type-leak.test.tsx",
+      "target_path": "packages/ui/test/feed-card-no-source-type-leak.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 83,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-177 ui-comment-batch6:整文件注释/标题/失败消息审读residual0;5changed复跑过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/feed-decision-band-sort.test.ts",
+      "target_path": "packages/ui/test/feed-decision-band-sort.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 84,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-177 ui-comment-batch6:整文件注释/标题/失败消息审读residual0;5changed复跑过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/file-link.test.tsx",
+      "target_path": "packages/ui/test/file-link.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 104,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-167 ui-comment-batch7:整文件注释/标题/失败消息审读residual0;8changed37测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/flagship-review-polish.test.tsx",
+      "target_path": "packages/ui/test/flagship-review-polish.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 338,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | no passing QA comparison→无通过的 QA 对比；cut-gating COMPLETE→交付门控 完成；cutCompleteBasis=all slices settled 为透传机器字段保留英文 | +N more queue-scoped agents→+N 个更多队列范围智能体；provenance 透传数据保留 | b2-202 ui-comment-batch18:整文件注释/标题/失败消息审读residual0;8changed101测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/fleet-band.test.tsx",
+      "target_path": "packages/ui/test/fleet-band.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 214,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-199 ui-comment-batch15:整文件注释/标题/失败消息审读residual0;7changed66测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/fleet-page.test.tsx",
+      "target_path": "packages/ui/test/fleet-page.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 249,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | 展示标签中文化：阈值/需要你处理/工作组·席位/事项缺失/身份/证据/此处只读/打开→/仅本地非车队；kind(stuck/overdue)/status/testid/计数行为保留 | b2-200 ui-comment-batch16:整文件注释/标题/失败消息审读residual0;8changed102测试过+1legal skip(no_real_daemon)+2nochange历史→passed(文件级,单case skip不计入pass)",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/fork-now-action.test.tsx",
+      "target_path": "packages/ui/test/fork-now-action.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 142,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-187 ui-comment-batch12:整文件注释/标题/失败消息审读residual0;5changed25测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/graphics-runtime-mark.test.tsx",
+      "target_path": "packages/ui/test/graphics-runtime-mark.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 102,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-179 ui-comment-batch10:整文件注释/标题/失败消息审读residual0;7changed36测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/helpers/mock-event-source.ts",
+      "target_path": "packages/ui/test/helpers/mock-event-source.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 75,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/test/helpers/test-router.tsx",
+      "target_path": "packages/ui/test/helpers/test-router.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 99,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过)",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/test/index-html.test.ts",
+      "target_path": "packages/ui/test/index-html.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 16,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-151 ui-comment-batch1:整文件注释/标题/失败消息审读residual0,机器token保留;2changed4测试过+8nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/library-page-workflow-diagnostic.test.tsx",
+      "target_path": "packages/ui/test/library-page-workflow-diagnostic.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 138,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-179 ui-comment-batch10:整文件注释/标题/失败消息审读residual0;7changed36测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/library-page.test.tsx",
+      "target_path": "packages/ui/test/library-page.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 409,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | heading Library→库；badge 2 images→2 个镜像，MB 保留；行为断言未动 | b2-202 ui-comment-batch18:整文件注释/标题/失败消息审读residual0;8changed101测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/live-node-details.test.tsx",
+      "target_path": "packages/ui/test/live-node-details.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 674,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | batch2: 作者称自然语言注释/标题已完成 sha7a3bfeba09fb;待复验通过后升passed(当前保持validated) | b2-109: 29/29复验通过;自然语言注释/标题0残留;sha7a3bfeba09fb",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/liveness-identity-visuals.test.ts",
+      "target_path": "packages/ui/test/liveness-identity-visuals.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 64,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-156 ui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;7changed24测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/markdown-viewer-storytelling.test.tsx",
+      "target_path": "packages/ui/test/markdown-viewer-storytelling.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 171,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | INCIDENT TIMELINE→事件时间线；kind-badge testid/其余展示断言保留 | b2-192 ui-comment-batch13:整文件注释/标题/失败消息审读residual0;7changed56测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/mission-status-reconcile.test.ts",
+      "target_path": "packages/ui/test/mission-status-reconcile.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 252,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-201 ui-comment-batch17:整文件注释/标题/失败消息审读residual0;8changed105测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/opr-0.4.1.13-table-crash.test.tsx",
+      "target_path": "packages/ui/test/opr-0.4.1.13-table-crash.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 162,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-192 ui-comment-batch13:整文件注释/标题/失败消息审读residual0;7changed56测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/opr-0.4.1.31-hybrid-cmux-error.test.tsx",
+      "target_path": "packages/ui/test/opr-0.4.1.31-hybrid-cmux-error.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 97,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-167 ui-comment-batch7:整文件注释/标题/失败消息审读residual0;8changed37测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/p5-1-table-cmux.test.tsx",
+      "target_path": "packages/ui/test/p5-1-table-cmux.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 136,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-179 ui-comment-batch10:整文件注释/标题/失败消息审读residual0;7changed36测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/p5-3-activity-ring-hot-potato.test.tsx",
+      "target_path": "packages/ui/test/p5-3-activity-ring-hot-potato.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 368,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-202 ui-comment-batch18:整文件注释/标题/失败消息审读residual0;8changed101测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/p5-3-hybrid-layout.test.ts",
+      "target_path": "packages/ui/test/p5-3-hybrid-layout.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 79,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-159 ui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;5changed43测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/p5-3-topology-event-hub.test.tsx",
+      "target_path": "packages/ui/test/p5-3-topology-event-hub.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 195,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-192 ui-comment-batch13:整文件注释/标题/失败消息审读residual0;7changed56测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/p5-human-seat-card.test.tsx",
+      "target_path": "packages/ui/test/p5-human-seat-card.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 103,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-167 ui-comment-batch7:整文件注释/标题/失败消息审读residual0;8changed37测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/p5-mission-discovery.test.tsx",
+      "target_path": "packages/ui/test/p5-mission-discovery.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 497,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-203 ui-comment-batch19:整文件注释/标题/失败消息审读residual0;9changed131测试过+1nochange(drawer-primitives误报已含中文)历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/p5-trigger-sites.test.tsx",
+      "target_path": "packages/ui/test/p5-trigger-sites.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 472,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-203 ui-comment-batch19:整文件注释/标题/失败消息审读residual0;9changed131测试过+1nochange(drawer-primitives误报已含中文)历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/package-detail.test.tsx",
+      "target_path": "packages/ui/test/package-detail.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 537,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-203 ui-comment-batch19:整文件注释/标题/失败消息审读residual0;9changed131测试过+1nochange(drawer-primitives误报已含中文)历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/package-list.test.tsx",
+      "target_path": "packages/ui/test/package-list.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 254,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-105: 注释+英文it标题全译;21/21复跑通过;UI-TEST-ENGLISH-RESIDUE清单已清零",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/priority-rail-rule.test.ts",
+      "target_path": "packages/ui/test/priority-rail-rule.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 178,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | 人读展示断言 Constraint→约束；行为断言未动 | b2-182 ui-comment-batch11:整文件注释/标题/失败消息审读residual0;4changed35测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/proof-tab.test.tsx",
+      "target_path": "packages/ui/test/proof-tab.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 345,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-203 ui-comment-batch19:整文件注释/标题/失败消息审读residual0;9changed131测试过+1nochange(drawer-primitives误报已含中文)历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/prooftab-state-copy.test.tsx",
+      "target_path": "packages/ui/test/prooftab-state-copy.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 82,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-167 ui-comment-batch7:整文件注释/标题/失败消息审读residual0;8changed37测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/query-hooks.test.tsx",
+      "target_path": "packages/ui/test/query-hooks.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 260,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-200 ui-comment-batch16:整文件注释/标题/失败消息审读residual0;8changed102测试过+1legal skip(no_real_daemon)+2nochange历史→passed(文件级,单case skip不计入pass)",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/rig-node-progressive.test.tsx",
+      "target_path": "packages/ui/test/rig-node-progressive.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 62,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-156 ui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;7changed24测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/rig-status-launch-control.test.tsx",
+      "target_path": "packages/ui/test/rig-status-launch-control.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 318,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-202 ui-comment-batch18:整文件注释/标题/失败消息审读residual0;8changed101测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/settings-pages.test.tsx",
+      "target_path": "packages/ui/test/settings-pages.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 106,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-167 ui-comment-batch7:整文件注释/标题/失败消息审读residual0;8changed37测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/snapshot-panel.test.tsx",
+      "target_path": "packages/ui/test/snapshot-panel.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 390,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-202 ui-comment-batch18:整文件注释/标题/失败消息审读residual0;8changed101测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/story-graph-model.test.ts",
+      "target_path": "packages/ui/test/story-graph-model.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 192,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-199 ui-comment-batch15:整文件注释/标题/失败消息审读residual0;7changed66测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/story-graph.test.tsx",
+      "target_path": "packages/ui/test/story-graph.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 184,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-198 ui-comment-batch14:整文件注释/标题/失败消息审读residual0;8changed63测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/storytelling-cards.test.tsx",
+      "target_path": "packages/ui/test/storytelling-cards.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 210,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-199 ui-comment-batch15:整文件注释/标题/失败消息审读residual0;7changed66测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/storytelling-mark-complete.test.tsx",
+      "target_path": "packages/ui/test/storytelling-mark-complete.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 205,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-198 ui-comment-batch14:整文件注释/标题/失败消息审读residual0;8changed63测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/storytelling-wires.test.tsx",
+      "target_path": "packages/ui/test/storytelling-wires.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 94,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-167 ui-comment-batch7:整文件注释/标题/失败消息审读residual0;8changed37测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/terminal-launcher.test.tsx",
+      "target_path": "packages/ui/test/terminal-launcher.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 259,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-200 ui-comment-batch16:整文件注释/标题/失败消息审读residual0;8changed102测试过+1legal skip(no_real_daemon)+2nochange历史→passed(文件级,单case skip不计入pass)",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/terminal-styling-polish.test.tsx",
+      "target_path": "packages/ui/test/terminal-styling-polish.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 138,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-198 ui-comment-batch14:整文件注释/标题/失败消息审读residual0;8changed63测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/tests-verification-tab.test.tsx",
+      "target_path": "packages/ui/test/tests-verification-tab.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 157,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-198 ui-comment-batch14:整文件注释/标题/失败消息审读residual0;8changed63测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/topology-edge-activity-pl019.test.ts",
+      "target_path": "packages/ui/test/topology-edge-activity-pl019.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 74,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-165 ui-comment-batch5:整文件注释/标题/失败消息审读residual0;5changed队列复跑过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/topology-grid-responsive.test.ts",
+      "target_path": "packages/ui/test/topology-grid-responsive.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 54,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-156 ui-comment-batch3:整文件注释/标题/失败消息审读residual0,机器token保留;7changed24测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/topology-tab-progressive.test.tsx",
+      "target_path": "packages/ui/test/topology-tab-progressive.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 112,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-179 ui-comment-batch10:整文件注释/标题/失败消息审读residual0;7changed36测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/topology-view-mode.test.tsx",
+      "target_path": "packages/ui/test/topology-view-mode.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 204,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-200 ui-comment-batch16:整文件注释/标题/失败消息审读residual0;8changed102测试过+1legal skip(no_real_daemon)+2nochange历史→passed(文件级,单case skip不计入pass)",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/twin-capture-artifact-paths.test.ts",
+      "target_path": "packages/ui/test/twin-capture-artifact-paths.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 49,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-159 ui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;5changed43测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/twin-capture-headless-chrome.test.ts",
+      "target_path": "packages/ui/test/twin-capture-headless-chrome.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 70,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-159 ui-comment-batch4:整文件注释/标题/失败消息审读residual0,机器token保留;5changed43测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/ui-maintenance-notice.test.tsx",
+      "target_path": "packages/ui/test/ui-maintenance-notice.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 43,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-151 ui-comment-batch1:整文件注释/标题/失败消息审读residual0,机器token保留;2changed4测试过+8nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/undo-toast.test.tsx",
+      "target_path": "packages/ui/test/undo-toast.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 50,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-151 ui-comment-batch1:整文件注释/标题/失败消息审读residual0,机器token保留;2changed4测试过+8nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/use-activity-feed-attention-invalidation.test.tsx",
+      "target_path": "packages/ui/test/use-activity-feed-attention-invalidation.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 207,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-187 ui-comment-batch12:整文件注释/标题/失败消息审读residual0;5changed25测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/use-daemon-health-signal.test.ts",
+      "target_path": "packages/ui/test/use-daemon-health-signal.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 46,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-153 ui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;5changed29测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/use-dismissed-seqs.test.ts",
+      "target_path": "packages/ui/test/use-dismissed-seqs.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 89,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-171 ui-comment-batch8:整文件注释/标题/失败消息审读residual0;8changed测试过+2nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/use-slice-timeline-markdown.test.tsx",
+      "target_path": "packages/ui/test/use-slice-timeline-markdown.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 166,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-187 ui-comment-batch12:整文件注释/标题/失败消息审读residual0;5changed25测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/vellum-input.test.tsx",
+      "target_path": "packages/ui/test/vellum-input.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 53,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-153 ui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;5changed29测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/vellum-select.test.tsx",
+      "target_path": "packages/ui/test/vellum-select.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 71,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-153 ui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;5changed29测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/vellum-sheet.test.tsx",
+      "target_path": "packages/ui/test/vellum-sheet.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 79,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-165 ui-comment-batch5:整文件注释/标题/失败消息审读residual0;5changed队列复跑过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/verb-actions-optimistic-error.test.tsx",
+      "target_path": "packages/ui/test/verb-actions-optimistic-error.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 233,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-199 ui-comment-batch15:整文件注释/标题/失败消息审读residual0;7changed66测试过+3nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/verb-actions-remote-host.test.tsx",
+      "target_path": "packages/ui/test/verb-actions-remote-host.test.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 85,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-165 ui-comment-batch5:整文件注释/标题/失败消息审读residual0;5changed队列复跑过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/xterm-input-mapper.test.ts",
+      "target_path": "packages/ui/test/xterm-input-mapper.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 75,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 展示断言已随组件中文化同步；纯逻辑/枚举/testid/路由断言保留未动；本组定向 vitest 全绿(67文件/601通过) | b2-153 ui-comment-batch2:整文件注释/标题/失败消息审读residual0,机器token保留;5changed29测试过+5nochange历史→passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/twin/capture/artifact-paths.ts",
+      "target_path": "packages/ui/twin/capture/artifact-paths.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 69,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | twin dev夹具注释/展示名/标题中文化；会话名/命令/路径/qitem正文/字节精确schema保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/twin/capture/payload-diff.ts",
+      "target_path": "packages/ui/twin/capture/payload-diff.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 64,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | twin dev夹具注释/展示名/标题中文化；会话名/命令/路径/qitem正文/字节精确schema保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/twin/eventsource-stub.ts",
+      "target_path": "packages/ui/twin/eventsource-stub.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 76,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | twin dev夹具注释/展示名/标题中文化；会话名/命令/路径/qitem正文/字节精确schema保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/twin/fixtures.ts",
+      "target_path": "packages/ui/twin/fixtures.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 279,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | twin dev夹具注释/展示名/标题中文化；会话名/命令/路径/qitem正文/字节精确schema保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/twin/index.html",
+      "target_path": "packages/ui/twin/index.html",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 12,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | twin dev夹具注释/展示名/标题中文化；会话名/命令/路径/qitem正文/字节精确schema保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/twin/twin-main.tsx",
+      "target_path": "packages/ui/twin/twin-main.tsx",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 80,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | twin dev夹具注释/展示名/标题中文化；会话名/命令/路径/qitem正文/字节精确schema保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/vite.config.ts",
+      "target_path": "packages/ui/vite.config.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 26,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 配置注释/分区注释中文化，标识符/环境变量/路径保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/vite.twin.config.ts",
+      "target_path": "packages/ui/vite.twin.config.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 88,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 配置注释/分区注释中文化，标识符/环境变量/路径保留",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/ui/test/bundle-inspector.test.ts",
+      "target_path": "packages/ui/test/bundle-inspector.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 0,
+      "notes": "漏登补登 2026-10-08(UI冻结批次,untracked测试);全文审读全中文/补精准断言,无需改产品;待最终实测,不升done | b2-210:UI补登untracked测试21过;全文审读全中文→done+passed",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/test/package-list.test.ts",
+      "target_path": "packages/ui/test/package-list.test.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 0,
+      "notes": "漏登补登 2026-10-08(UI冻结批次,untracked测试);全文审读全中文/补精准断言,无需改产品;待最终实测,不升done | b2-210:UI补登untracked测试21过;全文审读全中文→done+passed",
+      "validation_state": "passed"
+    }
+  ]
+}

@@ -1,19 +1,14 @@
-// Living Notes — the deterministic composer (OPR.0.4.4.20, rebuilt per the
-// CORRECTIVE REDESIGN of 2026-07-05).
+// Living Notes——确定性组合器（OPR.0.4.4.20，按 2026-07-05 的纠正性重设计重建）。
 //
-// PURE: `(gathered inputs) -> composed doc`. Same inputs (including the
-// caller-supplied view-time facts nowIso/mainTip/git facts) -> byte-identical
-// output. Every section has a named SSOT and a degrade value; a missing
-// source renders its degrade, never invented content. The gatherer that
-// assembles inputs from disk/queue/git lives beside this file; keeping the
-// core pure is what makes the idempotence AC hold by construction.
+// 纯函数：`(gathered inputs) -> composed doc`。相同输入（包括调用方提供的视图时间事实
+// nowIso/mainTip/git facts）产生逐字节相同输出。每个 section 都有具名 SSOT 与降级值；
+// 来源缺失时渲染降级值，绝不捏造内容。从磁盘/队列/git 汇集输入的 gatherer 与本文件并列；
+// 保持核心纯粹，使幂等 AC 在结构上成立。
 //
-// CORRECTIVE §3.1 — the composer builds ONE renderable structure per slice:
-// the INTENT → PLAN → DELIVERED stack. It no longer emits `sections`,
-// `acceptance`, `compare`, `join`, or a coequal `green` field. The
-// recorded-verdict rigor behind the old green lives on in two places only:
-// the per-deliverable `verified` signal (§11) and the mission ledger's
-// completion green (FR-7 — a mission-altitude fact, not a slice structure).
+// 纠正性设计 §3.1——组合器为每个切片构建唯一可渲染结构：INTENT → PLAN → DELIVERED 堆栈。
+// 它不再发出 `sections`、`acceptance`、`compare`、`join` 或同级 `green` 字段。
+// 旧 green 背后的记录判定严谨性只保留在两处：逐交付项 `verified` 信号（§11），以及
+// 任务目标 ledger 的 completion green（FR-7：任务目标层级事实，不是切片结构）。
 
 import YAML from "yaml";
 import { createHash } from "node:crypto";
@@ -60,11 +55,11 @@ import {
 } from "../scope/scaffold-placeholder.js";
 import { parseLogicalCheckboxes, type LogicalCheckboxItem } from "../scope/logical-checkbox.js";
 
-// --- Fixed, visible v1 thresholds (markdown-steered tuning is a named fast-follow) ---
+// --- 固定且可见的 v1 阈值（由 Markdown 引导的调优是具名后续项） ---
 export const IDLE_WITH_WORK_THRESHOLD_MIN = 30;
 
 // ---------------------------------------------------------------------------
-// Media refs (shared shape helpers — pure string work, no filesystem)
+// 媒体引用（共享结构辅助函数；纯字符串处理，不访问文件系统）
 // ---------------------------------------------------------------------------
 
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"]);
@@ -83,8 +78,7 @@ export function mediaKind(ref: string): ReviewMedia["kind"] | null {
   return null;
 }
 
-/** Markdown/HTML media refs in a source string (http(s) refs excluded —
- *  media is co-located slice content, FR-5). */
+/** 源字符串中的 Markdown/HTML 媒体引用；排除 http(s) 引用，因为媒体是切片同目录内容（FR-5）。 */
 export function extractMediaRefs(markdown: string | null): string[] {
   if (!markdown) return [];
   const refs: string[] = [];
@@ -96,10 +90,8 @@ export function extractMediaRefs(markdown: string | null): string[] {
   return refs;
 }
 
-/** Normalizes a media ref written relative to `baseDir` (slice-relative "")
- *  into a slice-relative path. Returns null when the ref is absolute or
- *  escapes the slice dir — the caller records the defect (FR-5), never a
- *  silent drop. */
+/** 把相对 `baseDir`（切片相对根为 ""）书写的媒体引用归一化为切片相对路径。
+ * 引用为绝对路径或越出切片目录时返回 null；调用方记录缺陷（FR-5），绝不静默丢弃。 */
 export function sliceRelativeMediaPath(ref: string, baseDir: string): string | null {
   if (ref.startsWith("/")) return null;
   const joined = baseDir ? posixPath.join(baseDir, ref) : ref;
@@ -126,13 +118,12 @@ function dedupMedia(media: ReviewMedia[]): ReviewMedia[] {
 }
 
 // ---------------------------------------------------------------------------
-// C1 header parsing
+// C1 头部解析
 // ---------------------------------------------------------------------------
 
-/** Parses a proof artifact's YAML frontmatter into a ProofArtifact.
- *  Out-of-set / missing verdicts become null (a present artifact is not a
- *  verdict — FR-2); the parse never throws on malformed input. Body media
- *  refs are captured for the §3.4 curated-proof projection. */
+/** 把证明 artifact 的 YAML frontmatter 解析为 ProofArtifact。集合外/缺失 verdict 转为 null
+ *（artifact 存在不等同于 verdict，见 FR-2）；遇到畸形输入也不抛错。
+ * 正文媒体引用会被捕获，供 §3.4 精选证明投影使用。 */
 export function parseC1Header(content: string, relPath: string, droppedAtIso: string): ProofArtifact {
   const out: ProofArtifact = {
     relPath,
@@ -170,10 +161,10 @@ export function parseC1Header(content: string, relPath: string, droppedAtIso: st
 }
 
 // ---------------------------------------------------------------------------
-// FR-2 — verdict selection, pass-mapping, lineage (KEEP)
+// FR-2——verdict 选择、通过映射、lineage（保留）
 // ---------------------------------------------------------------------------
 
-/** The pinned pass-mapping ("passing" is never left to interpretation). */
+/** 固定的通过映射；“passing”绝不留给自由解释。 */
 export function isPassing(artifactType: C1ArtifactType, verdict: C1Verdict | null): boolean {
   if (verdict === null) return false;
   if (artifactType === "qa") return verdict === "PASS";
@@ -187,9 +178,8 @@ function toneFor(artifactType: C1ArtifactType, verdict: C1Verdict | null): Verdi
   return isPassing(artifactType, verdict) ? "pass" : "fail";
 }
 
-/** Latest-wins per (candidate_sha, artifact_type) — the ratified C1 selection
- *  rule. A non-passing verdict is superseded only by a LATER artifact of the
- *  SAME tuple, never by adjacent artifacts, presence, or approval. */
+/** 每个 (candidate_sha, artifact_type) 采用最新项，这是批准的 C1 选择规则。
+ * 未通过 verdict 只能被同一 tuple 的更晚 artifact 取代，不能被相邻 artifact、存在性或批准取代。 */
 export function selectWinning(
   artifacts: ProofArtifact[],
   candidateSha: string | null,
@@ -206,9 +196,8 @@ export function selectWinning(
   return winning;
 }
 
-/** The candidate under judgment: the candidate_sha of the latest-dropped gate
- *  artifact (deterministic; ties broken by relPath). Null when no artifact
- *  carries one. */
+/** 待评判候选项：最新落盘 gate artifact 的 candidate_sha；结果确定，同时间按 relPath 打破平局。
+ * 没有 artifact 携带该值时为 null。 */
 export function deriveCandidateSha(artifacts: ProofArtifact[]): string | null {
   let best: ProofArtifact | null = null;
   for (const a of artifacts) {
@@ -237,15 +226,15 @@ export function deriveGateCells(artifacts: ProofArtifact[], candidateSha: string
 
 export interface GitFacts {
   mainTip: string;
-  /** Parsed from `Merge OPR.<id>` subjects; null = unmerged. */
+  /** 从 `Merge OPR.<id>` subject 解析；null 表示未合并。 */
   mergeSha: string | null;
-  /** Post-merge: is the merge an ancestor of tip? */
+  /** 合并后：merge 是否为 tip 的祖先？ */
   mergeIsAncestorOfTip: boolean | null;
-  /** Pre-merge: commits the candidate's merge-base is behind tip; null = unknown. */
+  /** 合并前：候选项 merge-base 落后 tip 的 commit 数；null 表示 unknown。 */
   candidateBehindTip: number | null;
 }
 
-/** Near-tip tolerance for the pre-merge fresh label. */
+/** 合并前 fresh 标签允许落后 tip 的范围。 */
 const FRESH_BEHIND_TOLERANCE = 3;
 
 export function composeLineage(
@@ -269,20 +258,20 @@ export function composeLineage(
 }
 
 // ---------------------------------------------------------------------------
-// §4 — the two locks (the SHIPPED staged-approval stamps, arch F-A)
+// §4——两个 lock（已交付的分阶段批准印记，架构 F-A）
 // ---------------------------------------------------------------------------
 
 export interface ApprovalStampFacts {
   by: string;
   at: string;
-  /** One-query cross-check against the pinned scope-approval audit shape. */
+  /** 通过一次查询交叉检查固定的 scope-approval 审计结构。 */
   auditRowPresent: boolean;
 }
 
 export interface ApprovalFacts {
-  /** `--scope spec` stamp (approved-spec-by/at) → plan.lock. */
+  /** `--scope spec` 印记（approved-spec-by/at）→ plan.lock。 */
   spec: ApprovalStampFacts | null;
-  /** `--scope delivery` stamp (approved-by/at) → delivered.lock. */
+  /** `--scope delivery` 印记（approved-by/at）→ delivered.lock。 */
   delivery: ApprovalStampFacts | null;
 }
 
@@ -292,15 +281,14 @@ export function lockFrom(stamp: ApprovalStampFacts | null): LockState | null {
 }
 
 // ---------------------------------------------------------------------------
-// Mission-ledger green (FR-7). NOT a slice-review structure: the slice
-// contract's coequal `green` field is REMOVED (§11); this recorded-verdict
-// computation feeds the mission completion ledger + the regime-2
-// confirm-faithful trigger only. Approval NEVER colors it (BR-6).
+// 任务目标 ledger green（FR-7）。它不是切片审阅结构：切片契约中同级的 `green` 字段
+// 已移除（§11）；此记录判定计算只供任务目标完成 ledger 与 regime-2 confirm-faithful 触发器使用。
+// 批准状态绝不影响它（BR-6）。
 // ---------------------------------------------------------------------------
 
 export interface RecordedGreen {
   green: boolean;
-  /** 1 = full gate-verdict set; 2 = adjudicated confirm-faithful; null when not green. */
+  /** 1 = 完整 gate-verdict 集；2 = 已裁决 confirm-faithful；非 green 时为 null。 */
   regime: 1 | 2 | null;
 }
 
@@ -315,22 +303,33 @@ export function computeRecordedGreen(
   return { green: false, regime: null };
 }
 
-/** Convenience for the mission gatherer: derive the ledger green straight
- *  from a slice's artifacts (candidate + gate cells derived internally). */
+/** 供任务目标 gatherer 使用的便捷函数：直接从切片 artifact 派生 ledger green；
+ * candidate 与 gate cell 在内部派生。 */
 export function composeRecordedGreenForSlice(artifacts: ProofArtifact[]): RecordedGreen {
   const candidateSha = deriveCandidateSha(artifacts);
   return computeRecordedGreen(deriveGateCells(artifacts, candidateSha), artifacts, candidateSha);
 }
 
 // ---------------------------------------------------------------------------
-// FR-1 — markdown structure extraction (KEEP the extractors; the sections/
-// acceptance/compare structures they used to feed are gone)
+// FR-1——Markdown 结构提取（保留 extractor；此前供给的 sections/acceptance/compare 结构已移除）
 // ---------------------------------------------------------------------------
 
-/** Extracts a `## <heading>` section body, verbatim (character-identical). */
+const SECTION_HEADING_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  Intent: ["Intent", "意图"],
+  "Mini-requirements(?:[^\\n]*)?": [
+    "Mini-requirements(?:[^\\n]*)?",
+    "最小需求(?:[^\\n]*)?",
+    "小型需求(?:[^\\n]*)?",
+  ],
+  "Proof contract": ["Proof contract", "证明契约", "证据约定"],
+  "Intent visual": ["Intent visual", "意图视觉稿", "意图视觉"],
+};
+
+/** 逐字提取中英文 H2 section 正文，保持字符完全相同。 */
 export function extractSection(markdown: string | null, heading: string): string | null {
   if (!markdown) return null;
-  const re = new RegExp(`^##\\s+${heading}\\s*$`, "im");
+  const aliases = SECTION_HEADING_ALIASES[heading] ?? [heading];
+  const re = new RegExp(`^##\\s+(?:${aliases.join("|")})\\s*$`, "im");
   const m = re.exec(markdown);
   if (!m) return null;
   const start = m.index + m[0].length;
@@ -340,56 +339,47 @@ export function extractSection(markdown: string | null, heading: string): string
   return body.replace(/^\n+/, "").replace(/\s+$/, "");
 }
 
-/** The pinned mini-requirements tier at the PRD top (plan.concise.text). */
+/** PRD 顶部固定的 mini-requirements 层级（plan.concise.text）。 */
 export function extractMiniReqs(prd: string | null): string | null {
   return extractSection(prd, "Mini-requirements(?:[^\\n]*)?");
 }
 
-/** release-0.4.7 intent-stage — true when the (already-extracted) mini-reqs
- *  section carries at least one numbered item whose text is NOT a scaffold
- *  placeholder (the template scaffolds `1. [...]`).
+/** release-0.4.7 intent-stage：已提取的 mini-reqs section 至少包含一条文本并非 scaffold
+ * 占位符的编号项时为 true；模板会生成 `1. [...]`。
  *
- *  SINGLE-PARSE PIN (arch AR-2): the derivePhase `prdAuthored` signal AND the
- *  PLAN concise render decision MUST both derive from this ONE parse of the
- *  ONE extractMiniReqs extraction — a second mini-reqs grammar anywhere in
- *  this file would recreate the seam map's R3 divergence class intra-file.
+ * 单次解析固定点（架构 AR-2）：derivePhase 的 `prdAuthored` 信号与 PLAN 简洁渲染决策，
+ * 必须同时派生自这一次 extractMiniReqs 提取的一次解析。在本文件任何位置引入第二套 mini-reqs
+ * 语法，都会在文件内重现 seam map 的 R3 分歧类别。
  *
- *  release-0.4.7 micro-bundle A: the LINE grammar now lives in the twin
- *  module's `hasAuthoredNumberedItem` (shared with both scope-audit mini-reqs
- *  arms — the IF-3 dot/paren heal, arch MB-AR-1); this function keeps the
- *  parse-side contract above and delegates the grammar. Prose/bullet-only is
- *  deliberately not-authored — reviewer-L1 ruling 2026-07-11, intent-stage
- *  gate: the numbered tier is where approval starts. */
+ * release-0.4.7 micro-bundle A：行语法现归属孪生模块的 `hasAuthoredNumberedItem`
+ *（与 scope-audit 的两条 mini-reqs 支线共享，即 IF-3 句点/括号修复，架构 MB-AR-1）。
+ * 本函数保留上述解析侧契约并委托语法。只有散文/项目符号时刻意视为未编写；
+ * reviewer-L1 2026-07-11 裁定的 intent-stage gate 规定，批准从编号层级开始。 */
 export function hasAuthoredMiniReqs(miniReqs: string | null): boolean {
   return hasAuthoredNumberedItem(miniReqs);
 }
 
-/** One promised deliverable from the D2 `## Proof contract` (§3.1): the item
- *  text plus an optional planned-mockup ref written as a markdown image on
- *  the same checkbox line (`- [ ] drawer opens right ![mockup](mockups/x.png)`). */
+/** D2 `## Proof contract`（§3.1）中的一个承诺交付项：条目文本，以及可选的 planned-mockup
+ * 引用；后者以 Markdown 图片写在同一复选框行
+ *（`- [ ] 抽屉向右打开 ![模型图](mockups/x.png)`）。 */
 export interface PromisedItem {
   text: string;
-  /** VM-006 (arch PIN-C, Option-A raw-key join): the authored contract line
-   *  body exactly as written, trim-only — captured BEFORE the inline-image
-   *  strip that produces `text`. Acceptance rows on the Progress tab keep
-   *  their RAW checkbox text, so this is the carrier that lets the two tabs
-   *  join on the SAME relation the acceptance dedup already uses. `text`
-   *  stays stripped and byte-unchanged, so `refMatches` and every DELIVERED
-   *  render are untouched. */
+  /** VM-006（架构 PIN-C，Option-A raw-key join）：编写的契约行正文原样保存，只做 trim；
+   * 在移除行内图片并生成 `text` 之前捕获。Progress 标签页的验收行保留原始复选框文本，
+   * 因而此字段使两个标签页按验收去重已使用的同一关系关联。`text` 仍移除图片并保持逐字节不变，
+   * 因此 `refMatches` 与所有 DELIVERED 渲染不受影响。 */
   rawText: string;
   plannedRef: string | null;
 }
 
-// KI-5.3-2 — the logical-checkbox grammar (LogicalCheckboxItem +
-// parseLogicalCheckboxes) now lives in the twinned module
-// ../scope/logical-checkbox.ts, byte-equal with the CLI so `rig proof add`
-// indexes the SAME items this composer renders. Re-exported here so existing
-// readers (slice-detail-projector) keep importing it from the composer; the
-// ONE parse is unchanged.
+// KI-5.3-2——logical-checkbox 语法（LogicalCheckboxItem + parseLogicalCheckboxes）现归属孪生模块
+// ../scope/logical-checkbox.ts，与 CLI 逐字节一致，使 `zrig proof add` 索引的条目与本组合器
+// 渲染的条目相同。此处重新导出，使现有读取方（slice-detail-projector）继续从组合器导入；
+// 单次解析保持不变。
 export { parseLogicalCheckboxes };
 export type { LogicalCheckboxItem };
 
-/** Shared identity for judgment authority and readers; preserve existing receipt hashes. */
+/** judgment 权威与读取方共享的身份；保留现有回执哈希。 */
 export function proofItemIdentity(rawText: string): { id: string; text: string } {
   const declared = /<!--\s*proof-item:\s*([a-zA-Z0-9_-]+)\s*-->/.exec(rawText);
   const text = rawText.replace(/<!--\s*proof-item:\s*[a-zA-Z0-9_-]+\s*-->/g, "").trim();
@@ -400,15 +390,13 @@ export function extractProofContract(prd: string | null): PromisedItem[] {
   const body = extractSection(prd, "Proof contract");
   if (!body) return [];
   const items: PromisedItem[] = [];
-  // ONE parse: the shared logical-checkbox relation (continuations joined).
+  // 单次解析：共享 logical-checkbox 关系，续行已连接。
   for (const logical of parseLogicalCheckboxes(body)) {
-    // release-0.4.7 intent-stage: a scaffold-template placeholder row is not
-    // a promise — a pristine contract extracts to [] so DELIVERED renders its
-    // honest empty copy instead of "missing" rows (shared grammar:
-    // ../scope/scaffold-placeholder.ts).
+    // release-0.4.7 intent-stage：scaffold 模板占位行不算承诺；原始契约提取为 []，
+    // 使 DELIVERED 如实渲染空状态，而非 "missing" 行（共享语法见 ../scope/scaffold-placeholder.ts）。
     if (isScaffoldPlaceholderText(logical.rawText)) continue;
-    // The authored bytes are the record's rawText — the VM-006 key. Display
-    // text derives FROM it (image stripped); the key itself stays pre-strip.
+    // 编写的字节就是记录的 rawText，即 VM-006 key。展示文本由它派生（移除图片），
+    // key 本身保持移除前形式。
     const rawText = logical.rawText;
     let text = rawText;
     let plannedRef: string | null = null;
@@ -423,14 +411,12 @@ export function extractProofContract(prd: string | null): PromisedItem[] {
 }
 
 // ---------------------------------------------------------------------------
-// PM dogfood #1 (qitem-20260720015700-630eef64) — per-SECTION source
-// selection, shared by this composer and the slice-detail projector: an
-// authored PRD section is canonical, but a PRESENT-and-PRISTINE scaffold-only
-// PRD section yields to an authored (non-pristine) README section. Missing /
-// prose-malformed / mixed-authored PRD sections stay PRD-canonical
-// (isPristineScaffoldSection(null) is false — a missing section never
-// triggers fallback). Status-blind: no lifecycle status is read. The
-// existing extractors are unchanged; these wrap them.
+// PM dogfood #1（qitem-20260720015700-630eef64）——逐 section 来源选择，由本组合器与
+// slice-detail projector 共享：已编写 PRD section 是规范来源；仅含 scaffold 且保持原样的
+// PRD section 则让位给已编写（非原样 scaffold）的 README section。缺失、散文格式错误或
+// 混合编写的 PRD section 仍以 PRD 为规范来源（isPristineScaffoldSection(null) 为 false，
+// 缺失 section 不触发回退）。它不感知状态，不读取 lifecycle status。
+// 现有 extractor 保持不变，这些函数只在外层封装。
 // ---------------------------------------------------------------------------
 
 export function extractMiniReqsSelected(
@@ -447,13 +433,10 @@ export function extractMiniReqsSelected(
   return { body: prdBody, fromReadme: false };
 }
 
-// KI-5.3-2 second face (row e69daaef): source selection is ONE-HOMED in the
-// scaffold-placeholder twin (selectProofContractBody) so this reader, the
-// scope-audit twins, and proof-add can never diverge on the fallback target
-// again (the confirmed split-brain: proof-add derived from SPEC while this
-// reader fell back to README with no SPEC path). The optional `spec` param
-// keeps legacy 2-arg callers compiling; they get the shipped README-only
-// behavior until threaded.
+// KI-5.3-2 第二表面（row e69daaef）：来源选择唯一归属于 scaffold-placeholder 孪生模块
+//（selectProofContractBody），使本读取方、scope-audit 孪生实现与 proof-add 不再对回退目标产生分歧。
+// 已确认的脑裂曾表现为 proof-add 从 SPEC 派生，而本读取方在没有 SPEC 路径时回退 README。
+// 可选 `spec` 参数让旧版双参数调用方继续编译；在参数接入前，它们保持已交付的仅 README 行为。
 export function extractProofContractSelected(prd: string | null, readme: string | null, spec: string | null = null): { items: PromisedItem[]; fromReadme: boolean; source: "prd" | "spec" | "readme" | null } {
   const selection = selectProofContractBody({
     prdBody: extractSection(prd, "Proof contract"),
@@ -462,46 +445,40 @@ export function extractProofContractSelected(prd: string | null, readme: string 
   });
   if (selection.source === "spec") return { items: extractProofContract(spec), fromReadme: false, source: "spec" };
   if (selection.source === "readme") return { items: extractProofContract(readme), fromReadme: true, source: "readme" };
-  // source "prd" (authored) or null (nothing authored): the shipped behavior —
-  // parse the PRD; a pristine/absent PRD yields its own (empty/placeholder)
-  // item set, and `source` tells the caller which state it is in.
+  // source 为 "prd"（已编写）或 null（没有已编写内容）时沿用已交付行为：解析 PRD；
+  // 原样/缺失 PRD 产生自身的空/占位条目集，`source` 告诉调用方当前状态。
   const authoredPrd = !isPristineScaffoldSection(extractSection(prd, "Proof contract"));
   return { items: extractProofContract(prd), fromReadme: false, source: authoredPrd && prd !== null ? "prd" : null };
 }
 
 // ---------------------------------------------------------------------------
-// FR-3 — derived phase (five-way, top-down precedence — KEEP)
+// FR-3——派生阶段（五类，自上而下优先级；保留）
 // ---------------------------------------------------------------------------
 
 export interface PhaseSignals {
-  /** The spec carries authored STRUCTURE (arch AR-2): a post-placeholder-filter
-   *  promised item, or an authored (non-placeholder) mini-reqs numbered item —
-   *  read from the per-section SELECTED source (PM dogfood #1: an authored
-   *  README section riding the selection counts; a pristine scaffold PRD
-   *  still is not a spec). Replaces the old file-presence `prdPresent`. */
+  /** spec 携带已编写结构（架构 AR-2）：过滤占位符后的承诺项，或已编写且非占位符的 mini-reqs
+   * 编号项；从逐 section 选定来源读取（PM dogfood #1：入选的已编写 README section 会计入，
+   * 原样 scaffold PRD 仍不算 spec）。取代旧版文件存在性 `prdPresent`。 */
   prdAuthored: boolean;
-  /** REAL dropped proof artifacts only (`artifacts.length > 0`). PROOF.md is
-   *  scaffolded at slice birth, so its file-presence is NOT construction
-   *  evidence — its VERDICT content already feeds the review tier via
-   *  `verdictOrEvidenceSetPresent` (release-0.4.7 intent-stage). */
+  /** 只计算真实落盘的 proof artifact（`artifacts.length > 0`）。PROOF.md 在切片创建时即生成
+   * scaffold，因此文件存在本身不是构建证据；其 VERDICT 内容已通过
+   * `verdictOrEvidenceSetPresent` 进入 review 层级（release-0.4.7 intent-stage）。 */
   realProofArtifactsPresent: boolean;
   activeQitemPresent: boolean;
-  /** Evidence/verdict set present (any recorded verdict OR a claimed PROOF.md + media set). */
+  /** 存在 evidence/verdict 集（任一已记录 verdict，或声明的 PROOF.md + 媒体集）。 */
   verdictOrEvidenceSetPresent: boolean;
-  /** The PLAN plan-lock stamp (`--scope spec`) — authored by fiat: the honest
-   *  operator override that promotes a slice to spec regardless of content. */
+  /** PLAN 的 plan-lock 印记（`--scope spec`）：由明确授权写入，是操作员不依赖内容
+   * 把切片提升为 spec 的如实覆盖。 */
   specLocked: boolean;
-  /** The delivery approval stamp. */
+  /** 交付批准印记。 */
   approved: boolean;
 }
 
-/** Top-down by precedence — locked > review > building > spec > intent —
- *  stated explicitly because one signal can satisfy two lanes.
+/** 按优先级自上而下：locked > review > building > spec > intent。
+ * 明确写出顺序，因为一个信号可能满足两个通道。
  *
- *  The phase chip describes SDLC ARTIFACT progression, not coordination
- *  activity (arch AR-3): a bare tracking qitem is coordination and counts
- *  toward building only when paired with an authored/locked spec;
- *  coordination itself renders in the queue/agents bands. */
+ * phase 标签描述 SDLC artifact 进度，而非协作活动（架构 AR-3）：单独的跟踪 qitem 属于协作，
+ * 只有与已编写/已锁定 spec 配对时才计入 building；协作本身渲染在 queue/agents 区域。 */
 export function derivePhase(s: PhaseSignals): ReviewPhase {
   if (s.approved) return "locked";
   if (s.verdictOrEvidenceSetPresent) return "review";
@@ -511,10 +488,10 @@ export function derivePhase(s: PhaseSignals): ReviewPhase {
 }
 
 // ---------------------------------------------------------------------------
-// §3.1 DELIVERED — the redesigned join: planned ↔ curated proof ↔ verified
+// §3.1 DELIVERED——重新设计的关联：planned ↔ curated proof ↔ verified
 // ---------------------------------------------------------------------------
 
-/** An `evidences:` ref matches a promised item by exact text or 1-based index. */
+/** `evidences:` 引用按精确文本或从 1 开始的索引匹配承诺项。 */
 function refMatches(ref: string, promised: PromisedItem[], index: number): boolean {
   const trimmed = ref.trim();
   return trimmed === promised[index]!.text || trimmed === String(index + 1);
@@ -523,24 +500,36 @@ function refMatches(ref: string, promised: PromisedItem[], index: number): boole
 export interface ComposedDelivered {
   items: DeliveredItem[];
   extraProof: ReviewMedia[];
-  /** Feeds ▲ insufficient-proof (FR-4) and the board's building-cell n/m (FR-7). */
+  /** 为 ▲ insufficient-proof（FR-4）与看板 building 单元格 n/m（FR-7）提供数据。 */
   missingCount: number;
-  /** Artifact media refs that escape the slice dir (FR-5 defect findings). */
+  /** 越出切片目录的 artifact 媒体引用（FR-5 缺陷发现）。 */
   escapingRefs: string[];
 }
 
+/** 仅供展示使用；不改变 readiness 协议枚举。 */
+function readinessStateLabel(state: string): string {
+  return ({
+    ready: "就绪",
+    "not-ready": "未就绪",
+    accepted: "已接受",
+    pending: "待处理",
+    rejected: "已拒绝",
+    withdrawn: "已撤回",
+    unknown: "未知",
+    legacy: "旧版",
+  } as Record<string, string>)[state] ?? state;
+}
+
 /**
- * `delivered.items` IS the join, reframed (§3.1): each `## Proof contract`
- * deliverable pairs with the CURATED proof media of the artifacts covering it
- * and QA's recorded comparison signal.
+ * `delivered.items` 就是重新设计后的关联（§3.1）：每个 `## Proof contract` 交付项
+ * 与覆盖它的 artifact 精选证明媒体、QA 已记录的比较信号配对。
  *
- * `verified` binds to the SHIPPED C1 fields (arch F3), never presence:
- *   verified   — a covering qa|adjudication artifact records the comparison
- *                (self_check) AND its recorded verdict is passing;
- *   unverified — some covering artifact exists but no passing recorded QA
- *                comparison (QA's why-kicked-back note still surfaces);
- *   missing    — promised, nothing delivered.
- * Fail-open by construction: these are render states, never blocks.
+ * `verified` 绑定已交付的 C1 字段（架构 F3），绝不依据存在性：
+ *   verified   — 覆盖该项的 qa|adjudication artifact 记录了比较（self_check），
+ *                且已记录 verdict 为通过；
+ *   unverified — 存在覆盖 artifact，但没有已记录且通过的 QA 比较（仍显示 QA 驳回说明）；
+ *   missing    — 已承诺但没有交付。
+ * 结构上失败开放：这些只是渲染状态，绝不阻塞。
  */
 export function composeDelivered(promised: PromisedItem[], artifacts: ProofArtifact[], readiness?: ScopeReadiness): ComposedDelivered {
   const escaping = new Set<string>();
@@ -576,13 +565,13 @@ export function composeDelivered(promised: PromisedItem[], artifacts: ProofArtif
     if (readiness?.configured) {
       const current = readiness.items.find(i => i.id === proofItemIdentity(p.rawText).id);
       item.verified = current?.state === "accepted" && !readiness.issues.length ? "verified" : current?.judgment || covering.length ? "unverified" : "missing";
-      item.note = current ? `Judgment ${current.state}: ${current.reason}` : `Current judgment unavailable: ${readiness.issues.join("; ")}`;
-    } else if (verifiedBy) item.note = `Legacy recorded verification (item revision unbound). ${item.note ?? ""}`.trim();
+      item.note = current ? `判定 ${readinessStateLabel(current.state)}：${current.reason}` : `当前判定不可用：${readiness.issues.join("; ")}`;
+    } else if (verifiedBy) item.note = `旧版已记录验证（未绑定条目修订）。${item.note ?? ""}`.trim();
     return item;
   });
 
-  // Helpful-but-unmapped artifacts (§6): their media renders bounded under
-  // the extraProof label — visible, never dropped, never a primary-view pile.
+  // 有帮助但未映射的 artifact（§6）：其媒体在 extraProof 标签下有界渲染；
+  // 保持可见，绝不丢弃，也绝不堆到主视图中。
   const extraProof = dedupMedia(
     artifacts
       .filter((a) => !covered.has(a.relPath))
@@ -599,7 +588,7 @@ export function composeDelivered(promised: PromisedItem[], artifacts: ProofArtif
 }
 
 // ---------------------------------------------------------------------------
-// FR-4 — NEEDS YOU (two sources, one queue) + AGENTS (KEEP)
+// FR-4——需要你处理（两个来源、一个队列）+ 智能体（保留）
 // ---------------------------------------------------------------------------
 
 export interface AttentionInput {
@@ -614,8 +603,8 @@ export interface AttentionInput {
   unblocks: string | null;
   destinationSession: string | null;
   closureRequiredAtIso: string | null;
-  /** OPR.0.4.6.WF4 Q6 — set by the gatherer when the item carries an
-   *  `instance:<id>` workflow-exception tag; carried verbatim to the row. */
+  /** OPR.0.4.6.WF4 Q6——item 携带 `instance:<id>` workflow-exception tag 时由 gatherer 设置；
+   * 逐字携带到结果行。 */
   workflow?: WorkflowRowRef;
 }
 
@@ -623,9 +612,9 @@ export interface AgentInput {
   agentName: string;
   sessionName: string;
   runtime: AgentRow["runtime"];
-  /** Queue-proven park target (human/qitem/etc.); null means no parked row state. */
+  /** 队列证明的 park 目标（human/qitem 等）；null 表示没有 parked 行状态。 */
   parkedOn: string | null;
-  /** null = telemetry down (honest-unknown). */
+  /** null 表示 telemetry 不可用（如实 unknown）。 */
   idle: boolean | null;
   idleSinceIso: string | null;
   doing: string | null;
@@ -638,18 +627,15 @@ function minutesBetween(aIso: string, bIso: string): number {
   return Math.floor((Date.parse(bIso) - Date.parse(aIso)) / 60_000);
 }
 
-/** The delivered-completeness facts the ▲ insufficient-proof rule reads
- *  (was the old join's counts; §3.1 re-bind — the signal is the
- *  delivered.items MISSING count). */
+/** ▲ insufficient-proof 规则读取的交付完整性事实（原为旧 join 的计数；§3.1 重新绑定后，
+ * 信号为 delivered.items 的 MISSING 数量）。 */
 export interface DeliveredCounts {
   promisedCount: number;
   missingCount: number;
 }
 
-/** The four ▲ exception rules over captured signals. Every row carries its
- *  evidence + crossed threshold; no evidence -> no exception (never a bare
- *  accusation). A ▲ is information for the human, invisible to the flagged
- *  agent's workflow. */
+/** 对已捕获信号应用四条 ▲ 异常规则。每行都携带证据和越过的阈值；没有证据就没有异常，
+ * 绝不无依据指控。▲ 是给人看的信息，对被标记智能体的工作流不可见。 */
 export function deriveExceptions(
   agents: AgentInput[],
   attention: AttentionInput[],
@@ -684,11 +670,11 @@ export function deriveExceptions(
       if (idleMin >= IDLE_WITH_WORK_THRESHOLD_MIN) {
         push(
           `${a.sessionName}|stuck|${a.idleSinceIso}`,
-          `${a.agentName} looks stuck`,
+          `${a.agentName} 似乎已卡住`,
           {
             kind: "stuck",
-            evidence: `idle ${idleMin}m >= ${IDLE_WITH_WORK_THRESHOLD_MIN}m default · holds ${a.holdsCount}`,
-            threshold: `idle-with-work >= ${IDLE_WITH_WORK_THRESHOLD_MIN}m`,
+            evidence: `空闲 ${idleMin}m >= 默认值 ${IDLE_WITH_WORK_THRESHOLD_MIN}m · 持有 ${a.holdsCount}`,
+            threshold: `有工作时空闲 >= ${IDLE_WITH_WORK_THRESHOLD_MIN}m`,
           },
         );
       }
@@ -698,11 +684,11 @@ export function deriveExceptions(
     if (q.closureRequiredAtIso && q.closureRequiredAtIso < nowIso) {
       push(
         `${q.qitemId}|overdue|${q.closureRequiredAtIso}`,
-        `${q.summary ?? q.qitemId} is overdue`,
+        `${q.summary ?? q.qitemId} 已逾期`,
         {
           kind: "overdue",
-          evidence: `closure required at ${q.closureRequiredAtIso} · now ${nowIso}`,
-          threshold: "past closure_required_at",
+          evidence: `要求在 ${q.closureRequiredAtIso} 前关闭 · 当前 ${nowIso}`,
+          threshold: "已超过 closure_required_at",
         },
       );
     }
@@ -710,22 +696,22 @@ export function deriveExceptions(
   if (delivered.promisedCount > 0 && delivered.missingCount > 0) {
     push(
       `${scopeLabel}|insufficient-proof|${delivered.missingCount}`,
-      `insufficient proof: ${delivered.missingCount}/${delivered.promisedCount} promised items missing`,
+      `证明不足：${delivered.promisedCount} 个承诺项中缺少 ${delivered.missingCount} 个`,
       {
         kind: "insufficient-proof",
-        evidence: `${delivered.missingCount} of ${delivered.promisedCount} promised deliverables have no delivered evidence`,
-        threshold: "delivered.items MISSING count > 0",
+        evidence: `${delivered.promisedCount} 个承诺交付项中有 ${delivered.missingCount} 个缺少已交付证据`,
+        threshold: "delivered.items 的 MISSING 数量 > 0",
       },
     );
   }
   if (latestArtifactIso && governingStampIso && latestArtifactIso > governingStampIso) {
     push(
       `${scopeLabel}|stale-after-change|${latestArtifactIso}`,
-      "artifacts changed after the governing stamp",
+      "artifact 在治理印记后发生变化",
       {
         kind: "stale-after-change",
-        evidence: `artifact at ${latestArtifactIso} is newer than the stamp at ${governingStampIso}`,
-        threshold: "artifact newer than governing stamp",
+        evidence: `${latestArtifactIso} 的 artifact 晚于 ${governingStampIso} 的印记`,
+        threshold: "artifact 晚于治理印记",
       },
     );
   }
@@ -741,8 +727,7 @@ export function composeNeedsYou(
 ): NeedsYouBand {
   const agentItems: NeedsYouItem[] = attention.map((q) => ({
     source: "agent",
-    // OPR.0.4.6.WF4 Q6 — carry the gatherer's pointer verbatim; OMITTED for
-    // non-workflow items (byte-identity-by-omission).
+    // OPR.0.4.6.WF4 Q6——逐字携带 gatherer 的指针；非工作流项省略，按省略保持字节身份。
     ...(q.workflow ? { workflow: q.workflow } : {}),
     identity: q.qitemId,
     summary: q.summary ?? q.qitemId,
@@ -757,14 +742,14 @@ export function composeNeedsYou(
     destinationSession: q.destinationSession,
     derived: null,
   }));
-  // One-count identity rule: distinct identities within this scope only.
+  // 单次计数身份规则：只在当前范围内对不同身份去重。
   const seen = new Set<string>();
   const all = [...agentItems, ...confirmFaithful, ...derived].filter((i) => {
     if (seen.has(i.identity)) return false;
     seen.add(i.identity);
     return true;
   });
-  // Priority-ordered, most-consequential-first: explicit priority rank, then age.
+  // 按优先级排序，影响最大者优先：先显式 priority 等级，再按年龄。
   const rank: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
   all.sort((a, b) => {
     const ra = rank[a.priority ?? "normal"] ?? 2;
@@ -776,32 +761,29 @@ export function composeNeedsYou(
     items: all,
     provenance:
       all.length === 0
-        ? `0 attention items · 0 parks · 0 unconfirmed proofs — computed from ${computedOver} at ${nowIso}`
-        : `computed from ${computedOver} at ${nowIso}`,
+        ? `0 个待关注项 · 0 个 park · 0 个未确认证明 · 根据 ${computedOver} 计算于 ${nowIso}`
+        : `根据 ${computedOver} 计算于 ${nowIso}`,
   };
 }
 
-// --- OPR.0.4.4.22 (slice 22): agent-scope exceptions + the rig read root (KEEP) ---
+// --- OPR.0.4.4.22（slice 22）：智能体范围异常 + 工作组读取根（保留） ---
 
-/** OPR.0.4.6.WF5 FR-3 — one recorded workflow-instance view for the ▲
- *  band. The GATHERER assembles these from recorded state only
- *  (workflow_instances + queue rows + the WF-1 evaluator verdict + the
- *  open exception item by tag query); this module derives rows PURELY. */
+/** OPR.0.4.6.WF5 FR-3——▲ 区域的一条已记录工作流实例视图。GATHERER 只根据已记录状态
+ *（workflow_instances + 队列行 + WF-1 评估器判定 + 按 tag 查询的开放异常项）组装；
+ * 本模块以纯函数方式派生行。 */
 export interface WorkflowExceptionInput {
   instanceId: string;
   workflowName: string;
   status: string;
   currentStepId: string | null;
-  /** The WF-1 evaluator's verdict state for the frontier ("healthy" or
-   *  the overdue states) + its evidence line, precomposed by the
-   *  gatherer. Never recomputed here (one-threshold-home). */
+  /** WF-1 评估器对 frontier 的判定状态（"healthy" 或 overdue 状态）及证据行，
+   * 由 gatherer 预先组合。此处绝不重新计算，确保阈值只有一个归属。 */
   deadlineState: string;
   deadlineEvidence: string | null;
-  /** True when a frontier id resolves to a NON-OPEN packet (the
-   *  out-of-band corruption state — WF-3 FR-6's guard is the
-   *  prevention; this row is the detection backstop). */
+  /** frontier id 解析到非开放 packet 时为 true。这是带外损坏状态；
+   * WF-3 FR-6 守卫负责预防，本行作为检测兜底。 */
   frontierRefsNonOpenPacket: boolean;
-  /** The OPEN exception item for this instance (tag query), if any. */
+  /** 此实例的开放异常项（按 tag 查询）；不存在时为 null。 */
   openItem: {
     qitemId: string;
     destinationSession: string;
@@ -812,23 +794,23 @@ export interface WorkflowExceptionInput {
 }
 
 /**
- * OPR.0.4.6.WF5 FR-3 — the workflow_instances ▲ source + THE AWARENESS
- * CHANNEL. One-count across channels (BR-3): an exception with a live
- * HUMAN-routed ● item renders NOTHING here (the item IS the human's
- * row); an ORCHESTRATOR-routed ● item renders exactly ONE awareness row
- * (same identity, second projection — the human KNOWS at altitude); a
- * failed instance with NO item renders the ▲ backstop naming BOTH the
- * exception AND the missing-item anomaly (the backstop firing is itself
- * evidence of a bug). Healthy instances render zero rows (the band's
- * zero-noise negative). Durable-by-derivation: recomputed from recorded
- * state on every composition; rows clear on state-exit (recomposition,
- * never hand-clearing).
+ * OPR.0.4.6.WF5 FR-3——workflow_instances ▲ 来源与感知通道。跨通道只计一次（BR-3）：
+ * 带活跃人员路由 ● 项的异常在此不渲染任何内容，因为该项本身就是人员行；
+ * ORCHESTRATOR 路由 ● 项只渲染一条感知行（同一身份、第二投影，使人能在高层看到）；
+ * 没有项的失败实例渲染 ▲ 兜底，同时指出异常和缺项异常（兜底触发本身就是 bug 证据）。
+ * 健康实例渲染零行，满足该区域零噪声负向要求。通过派生保持持久：每次组合都从已记录状态
+ * 重新计算；状态退出时通过重组清除行，绝不手工清除。
  */
 export function deriveWorkflowExceptions(
   workflows: WorkflowExceptionInput[],
   scopeLabel: string,
   nowIso: string,
 ): NeedsYouItem[] {
+  const workflowStateLabel = (state: string): string => ({
+    failed: "失败",
+    "overdue-claimed": "已认领但逾期",
+    "overdue-unclaimed": "未认领且逾期",
+  })[state] ?? state;
   const items: NeedsYouItem[] = [];
   const push = (
     identity: string,
@@ -839,7 +821,7 @@ export function deriveWorkflowExceptions(
   ) => {
     items.push({
       source: "derived",
-      // OPR.0.4.6.WF4 Q6 — every derived workflow row carries the pointer.
+      // OPR.0.4.6.WF4 Q6——每条派生工作流行都携带指针。
       workflow,
       identity,
       summary,
@@ -856,24 +838,23 @@ export function deriveWorkflowExceptions(
     });
   };
   for (const w of workflows) {
-    const trace = `rig workflow trace ${w.instanceId}`;
-    // OPR.0.4.6.WF4 Q6 — the pointer for every row this instance emits;
-    // identity derived exactly once, here (never from prose downstream).
+    const trace = `zrig workflow trace ${w.instanceId}`;
+    // OPR.0.4.6.WF4 Q6——此实例发出的每行都携带指针；身份仅在此处派生一次，
+    // 绝不由下游自然语言派生。
     const wref: WorkflowRowRef = {
       instanceId: w.instanceId,
       workflowName: w.workflowName,
       ...(w.currentStepId ? { stepId: w.currentStepId } : {}),
     };
-    // The anomaly backstop fires regardless of item state — the
-    // corruption is orthogonal to exception routing.
+    // 无论 item 状态如何都触发异常兜底，因为损坏与异常路由相互正交。
     if (w.frontierRefsNonOpenPacket) {
       push(
         `${w.instanceId}|anomaly|frontier-non-open`,
-        `${w.workflowName} instance frontier references a closed packet`,
+        `${w.workflowName} 实例 frontier 引用了已关闭 packet`,
         {
           kind: "anomaly",
-          evidence: `instance ${w.instanceId} frontier points at a non-open packet — out-of-band closure got past the WF-3 close-path guard`,
-          threshold: "frontier packet must be open",
+          evidence: `实例 ${w.instanceId} 的 frontier 指向非开放 packet；带外关闭绕过了 WF-3 关闭路径守卫`,
+          threshold: "frontier packet 必须处于开放状态",
         },
         trace,
         wref,
@@ -882,39 +863,36 @@ export function deriveWorkflowExceptions(
     const exceptional =
       w.status === "failed" || (w.deadlineState !== "healthy" && w.deadlineEvidence !== null);
     if (!exceptional) continue;
-    const kindLabel = w.status === "failed" ? "failed" : w.deadlineState;
+    const kindLabel = workflowStateLabel(w.status === "failed" ? "failed" : w.deadlineState);
     if (w.openItem && w.openItem.humanRouted) {
-      // The ● item already sits in the human attention legs — a row
-      // here would double-render (one-count).
+      // ● item 已位于人员待关注支线；在此再生成一行会重复渲染，违反单次计数。
       continue;
     }
     if (w.openItem) {
-      // ORCHESTRATOR-routed: the awareness row — holder + age +
-      // evidence; awareness, not assignment. Same recorded identity as
-      // the ● item, projected into the human band.
+      // ORCHESTRATOR 路由：感知行包含 holder、age 与 evidence；用于感知而非分派。
+      // 使用与 ● item 相同的记录身份，投影到人员区域。
       const ageMin = w.openItem.createdAtIso ? minutesBetween(w.openItem.createdAtIso, nowIso) : null;
       push(
         `${w.instanceId}|awareness|${w.openItem.qitemId}`,
-        `awareness: ${w.workflowName} ${kindLabel} — held by ${w.openItem.destinationSession}`,
+        `感知：${w.workflowName} ${kindLabel} · 由 ${w.openItem.destinationSession} 持有`,
         {
           kind: "awareness",
-          evidence: `exception item ${w.openItem.qitemId} on ${w.openItem.destinationSession}${ageMin !== null ? ` for ${ageMin}m` : ""}${w.openItem.summary ? ` — ${w.openItem.summary}` : ""}`,
-          threshold: "awareness (orchestrator acting; step in any time)",
+          evidence: `${w.openItem.destinationSession} 上的异常项 ${w.openItem.qitemId}${ageMin !== null ? `，已持续 ${ageMin}m` : ""}${w.openItem.summary ? ` — ${w.openItem.summary}` : ""}`,
+          threshold: "感知（orchestrator 正在处理；步骤可处于任意时间点）",
         },
         trace,
         wref,
       );
       continue;
     }
-    // NO item: the ▲ backstop — names the exception AND the anomaly of
-    // the missing item.
+    // 没有 item：▲ 兜底同时指出异常与缺项异常。
     push(
       `${w.instanceId}|workflow-${kindLabel}|no-item`,
-      `${w.workflowName} instance ${kindLabel} with NO exception item`,
+      `${w.workflowName} 实例为 ${kindLabel}，但没有异常项`,
       {
         kind: w.status === "failed" ? "workflow-failed" : "stuck",
-        evidence: `${w.deadlineEvidence ?? `instance ${w.instanceId} is ${kindLabel} at step ${w.currentStepId ?? "?"}`} · MISSING-ITEM ANOMALY: the never-lost channel produced no item (itself a bug — report it)`,
-        threshold: w.status === "failed" ? "failed instances carry an exception item" : "past the WF-1 deadline evaluator threshold",
+        evidence: `${w.deadlineEvidence ?? `实例 ${w.instanceId} 在步骤 ${w.currentStepId ?? "?"} 为 ${kindLabel}`} · 缺项异常：never-lost 通道未生成条目（这本身就是 bug，请报告）`,
+        threshold: w.status === "failed" ? "失败实例应携带异常项" : "已超过 WF-1 截止时间评估器阈值",
       },
       trace,
       wref,
@@ -923,22 +901,17 @@ export function deriveWorkflowExceptions(
   return items;
 }
 
-/** The third NAMED ▲ heuristic's visible v1 default (slice-22 FR-3:
- *  too-long-in-state — no transition beyond threshold). Lives HERE because
- *  compose.ts is the single threshold home (P2 arch note N2): changes land
- *  once and every altitude inherits. Same markdown-steered tuning
- *  fast-follow as IDLE_WITH_WORK_THRESHOLD_MIN. */
+/** 第三个具名 ▲ 启发式规则的可见 v1 默认值（slice-22 FR-3：too-long-in-state，
+ * 超过阈值仍无转换）。它位于此处，因为 compose.ts 是唯一阈值归属（P2 架构注记 N2）：
+ * 只需改一次，各层级都会继承。与 IDLE_WITH_WORK_THRESHOLD_MIN 一样，Markdown 引导调优是后续项。 */
 export const TOO_LONG_IN_STATE_THRESHOLD_MIN = 120;
 
 /**
- * Slice-22 FR-3 — the agent-scope ▲ set: exactly the three NAMED heuristics
- * (idle-with-assigned-work, overdue handoff, too-long-in-state). The first
- * two REUSE deriveExceptions' rules (called with zero delivered counts and
- * no artifact/stamp facts, so the slice-only insufficient-proof /
- * stale-after-change rules cannot fire); too-long-in-state is added here —
- * additively, so slice-scope composition is byte-unchanged. No evidence →
- * no exception (unknown is not idle; unknown lastTransition is not
- * too-long).
+ * Slice-22 FR-3——智能体范围 ▲ 集，严格包含三个具名启发式规则：idle-with-assigned-work、
+ * overdue handoff、too-long-in-state。前两个复用 deriveExceptions 规则（调用时交付计数为零，
+ * 且无 artifact/stamp 事实，因此切片专用 insufficient-proof / stale-after-change 不会触发）；
+ * too-long-in-state 在此追加，使切片范围组合逐字节不变。没有证据就没有异常：unknown 不是 idle，
+ * unknown lastTransition 也不是 too-long。
  */
 export function deriveAgentScopeExceptions(
   agents: AgentInput[],
@@ -954,7 +927,7 @@ export function deriveAgentScopeExceptions(
         items.push({
           source: "derived",
           identity: `${a.sessionName}|too-long-in-state|${a.lastTransitionIso}`,
-          summary: `${a.agentName} has not transitioned in ${sinceMin}m`,
+          summary: `${a.agentName} 已有 ${sinceMin}m 未发生转换`,
           leg: "stuck",
           where: scopeLabel,
           ageIso: null,
@@ -966,8 +939,8 @@ export function deriveAgentScopeExceptions(
           destinationSession: null,
           derived: {
             kind: "stuck",
-            evidence: `no transition for ${sinceMin}m >= ${TOO_LONG_IN_STATE_THRESHOLD_MIN}m default · holds ${a.holdsCount}`,
-            threshold: `too-long-in-state >= ${TOO_LONG_IN_STATE_THRESHOLD_MIN}m`,
+            evidence: `无转换 ${sinceMin}m >= 默认值 ${TOO_LONG_IN_STATE_THRESHOLD_MIN}m · 持有 ${a.holdsCount}`,
+            threshold: `状态停留过久 >= ${TOO_LONG_IN_STATE_THRESHOLD_MIN}m`,
           },
         });
       }
@@ -983,16 +956,16 @@ export interface RigComposeInputs {
   settled: SettledRow[];
   handoffsToday: number;
   overdueCount: number;
-  /** The FR-1 roster display window, named on-surface in provenance
-   *  (plan-review ruling: "computed from queue+ps · window: today"). */
+  /** FR-1 roster 展示窗口，在 provenance 表面具名（plan-review 裁定：
+   * “根据 queue+ps 计算 · 窗口：今日”）。 */
   rosterWindow: string;
-  /** OPR.0.4.6.WF5 FR-3: recorded workflow-instance views (optional). */
+  /** OPR.0.4.6.WF5 FR-3：已记录的工作流实例视图（可选）。 */
   workflows?: WorkflowExceptionInput[];
   nowIso: string;
 }
 
-/** Slice-22 FR-1..FR-4 — the rig-scope composition root. PURE: same inputs,
- *  byte-identical output (idempotence is a money proof). */
+/** Slice-22 FR-1..FR-4——工作组范围组合根。纯函数：相同输入产生逐字节相同输出，
+ * 幂等性是关键证明。 */
 export function composeRigAgents(inputs: RigComposeInputs): ComposedRigAgents {
   const { nowIso } = inputs;
   const scopeLabel = "rig";
@@ -1004,7 +977,7 @@ export function composeRigAgents(inputs: RigComposeInputs): ComposedRigAgents {
     inputs.attention,
     derived,
     [],
-    `queue+ps (rig scope) · window: ${inputs.rosterWindow}`,
+    `queue+ps（工作组范围）· 窗口：${inputs.rosterWindow}`,
     nowIso,
   );
   const band = composeAgentsBand(inputs.agents, "rig", derived, nowIso);
@@ -1015,21 +988,21 @@ export function composeRigAgents(inputs: RigComposeInputs): ComposedRigAgents {
       ...band,
       provenance:
         band.rows.length === 0
-          ? `no agents holding or recently holding work — computed from queue+ps · window: ${inputs.rosterWindow} · at ${nowIso}`
-          : `computed from queue+ps · window: ${inputs.rosterWindow} · at ${nowIso}`,
-      // FR-4: one health line per scope, from the transitions log.
-      coordinationHealth: `${inputs.handoffsToday} handoffs today · ${inputs.overdueCount} overdue`,
+          ? `没有正在或近期持有工作的智能体 · 根据 queue+ps 计算 · 窗口：${inputs.rosterWindow} · 时间：${nowIso}`
+          : `根据 queue+ps 计算 · 窗口：${inputs.rosterWindow} · 时间：${nowIso}`,
+      // FR-4：每个范围一条健康状态行，来自 transitions 日志。
+      coordinationHealth: `今日 ${inputs.handoffsToday} 次交接 · ${inputs.overdueCount} 个逾期`,
     },
     settled: inputs.settled,
     settledProvenance:
       inputs.settled.length === 0
-        ? `0 handoffs today — computed from queue transitions · window: today · at ${nowIso}`
-        : `computed from queue transitions · window: today · at ${nowIso}`,
+        ? `今日 0 次交接 · 根据队列转换计算 · 窗口：今日 · 时间：${nowIso}`
+        : `根据队列转换计算 · 窗口：今日 · 时间：${nowIso}`,
     composedAt: nowIso,
   };
 }
 
-/** Region membership derives from work-on-THIS-scope, never rig co-residency. */
+/** 区域成员关系从当前范围上的工作派生，绝不依据工作组共存关系。 */
 export function composeAgentsBand(
   agents: AgentInput[],
   scope: AgentsScope,
@@ -1055,36 +1028,35 @@ export function composeAgentsBand(
     rows,
     provenance:
       rows.length === 0
-        ? `no agents holding or recently holding work — computed from queue at ${nowIso}`
-        : `computed from queue at ${nowIso}`,
+        ? `没有正在或近期持有工作的智能体 · 根据队列计算于 ${nowIso}`
+        : `根据队列计算于 ${nowIso}`,
     coordinationHealth: null,
   };
 }
 
 // ---------------------------------------------------------------------------
-// The slice composition root — the ONE structure (§3.1)
+// 切片组合根——唯一结构（§3.1）
 // ---------------------------------------------------------------------------
 
 export interface SliceComposeInputs {
   readiness?: ScopeReadiness;
   slice: { name: string; id: string | null; title: string; missionId: string | null };
-  /** Raw file contents (null = absent). */
+  /** 原始文件内容（null 表示缺失）。 */
   readme: string | null;
-  /** Which node filename supplied `readme`; absent preserves legacy caller behavior. */
+  /** 提供 `readme` 的节点文件名；缺失时保持旧版调用方行为。 */
   nodeFileName?: "SPEC.md" | "README.md";
   prd: string | null;
   proofMd: string | null;
   artifacts: ProofArtifact[];
-  /** The pinned plan set — a frontmatter READ (`locked-artifacts:` on the slice README). */
+  /** 固定的计划集：从切片 README 的 `locked-artifacts:` 读取 frontmatter。 */
   lockedArtifacts: LockedArtifact[];
-  /** Media refs found in composed sources; absolute/escaping paths are defect findings (FR-5). */
+  /** 在组合来源中找到的媒体引用；绝对路径或越界路径属于缺陷发现（FR-5）。 */
   mediaRefs: string[];
-  /** True when the slice's proof/ dir exists (the "see all proof" drill-in target). */
+  /** 切片 proof/ 目录存在时为 true；该目录是“查看所有证明”的深入目标。 */
   proofDirExists: boolean;
   attention: AttentionInput[];
   agents: AgentInput[];
-  /** OPR.0.4.6.WF5 FR-3: recorded workflow-instance views (optional —
-   *  absent renders byte-identically to pre-WF-5). */
+  /** OPR.0.4.6.WF5 FR-3：已记录的工作流实例视图（可选；缺失时与 WF-5 前逐字节一致）。 */
   workflows?: WorkflowExceptionInput[];
   activeQitemPresent: boolean;
   git: GitFacts;
@@ -1092,7 +1064,7 @@ export interface SliceComposeInputs {
   nowIso: string;
 }
 
-/** A self-asserted PASS in the slice's own PROOF.md (never a verdict). */
+/** 切片自身 PROOF.md 中自我声明的 PASS；绝不视为 verdict。 */
 export function proofClaimsPass(proofMd: string | null): boolean {
   if (!proofMd) return false;
   return proofMd
@@ -1121,20 +1093,17 @@ export function composeSliceReview(inputs: SliceComposeInputs): ComposedSliceRev
   const deliveredLock = lockFrom(inputs.approval.delivery);
 
   const escaping = new Set<string>();
-  // release-0.4.7 micro-bundle B: a placeholder-only Intent section (the
-  // shipped template scaffolds it as one fully-bracket-wrapped line) is
-  // treated as ABSENT at the source, so the EXISTING "no intent recorded"
-  // degrade fires — no new string, UI/freeze inherit (R7). Any authored line
-  // in the block keeps the section verbatim (byte-identity carve).
+  // release-0.4.7 micro-bundle B：仅含占位符的 Intent section（已交付模板将其 scaffold
+  // 为一整行方括号内容）在来源处视为缺失，使现有“未记录意图”降级触发；不新增字符串，
+  // UI/freeze 继承（R7）。块内存在任一已编写行时，逐字保留整个 section（字节身份例外）。
   const currentSpec = inputs.nodeFileName === "SPEC.md" ? inputs.readme : null;
   const legacyReadme = inputs.nodeFileName === "SPEC.md" ? null : inputs.readme;
   const intentTextRaw = extractSection(inputs.readme, "Intent");
   const intentText = intentTextRaw !== null && !isPlaceholderOnlyBlock(intentTextRaw) ? intentTextRaw : null;
   const intentMedia = sectionMedia(intentText, escaping);
-  // PM dogfood #1 — the per-section SELECTED sources (authored PRD canonical;
-  // a pristine scaffold-only PRD section yields to an authored README
-  // section). ONE selected parse per section drives BOTH the render and the
-  // phase signal below (the single-parse pin, AR-2/S5, preserved).
+  // PM dogfood #1——逐 section 选定来源：已编写 PRD 为规范来源；原样 scaffold-only PRD
+  // section 让位给已编写 README section。每个 section 的一次选定解析同时驱动渲染与下方
+  // phase 信号，保留单次解析固定点 AR-2/S5。
   const miniSel = extractMiniReqsSelected(inputs.prd, legacyReadme, currentSpec);
   const miniReqs = miniSel.body;
   const planMedia = dedupMedia([
@@ -1152,13 +1121,10 @@ export function composeSliceReview(inputs: SliceComposeInputs): ComposedSliceRev
   const anyRecordedVerdict = gateCells.some((c) => c.state !== "missing");
   const evidencePresent = inputs.artifacts.length > 0 || claimedPass;
 
-  // release-0.4.7 intent-stage: `promised` is the POST-placeholder-filter
-  // contract (extracted ONCE above from the SELECTED source, consumed by both
-  // DELIVERED and this signal); `miniReqsIsAuthored` derives from the ONE
-  // selected mini-reqs parse and also drives the PLAN concise render below
-  // (the single-parse pin). PM dogfood #1: authored README sections riding
-  // the selection count as authored structure — the render and the signal
-  // move together, never apart.
+  // release-0.4.7 intent-stage：`promised` 是过滤占位符后的契约，在上方从选定来源仅提取一次，
+  // 同时供 DELIVERED 与此信号消费；`miniReqsIsAuthored` 从唯一一次选定 mini-reqs 解析派生，
+  // 并驱动下方 PLAN 简洁渲染，保持单次解析固定点。PM dogfood #1：入选的已编写 README section
+  // 作为已编写结构计数，渲染与信号始终同步。
   const miniReqsIsAuthored = hasAuthoredMiniReqs(miniReqs);
   const phase = derivePhase({
     prdAuthored: (currentSpec !== null || inputs.prd !== null) && (promised.length > 0 || miniReqsIsAuthored),
@@ -1169,21 +1135,21 @@ export function composeSliceReview(inputs: SliceComposeInputs): ComposedSliceRev
     approved: deliveredLock !== null,
   });
 
-  // Regime 2: evidence present, NO recorded passing state -> confirm-faithful.
+  // Regime 2：存在证据但没有已记录的通过状态 → confirm-faithful。
   const recordedGreen = computeRecordedGreen(gateCells, inputs.artifacts, candidateSha);
   const confirmFaithful: NeedsYouItem[] = [];
   if (!inputs.readiness?.configured && !recordedGreen.green && evidencePresent && claimedPass) {
     confirmFaithful.push({
       source: "agent",
       identity: `${slice.name}|confirm-faithful|${candidateSha ?? "no-sha"}`,
-      summary: "confirm this proof is faithful",
+      summary: "确认此证明真实可靠",
       leg: "confirm-faithful",
       where: sliceRef,
       ageIso: null,
       priority: "high",
       tier: null,
       evidenceRef: "PROOF.md",
-      unblocks: `${slice.name} green (regime 2)`,
+      unblocks: `${slice.name} 达到通过条件（regime 2）`,
       qitemId: null,
       destinationSession: null,
       derived: null,
@@ -1207,23 +1173,22 @@ export function composeSliceReview(inputs: SliceComposeInputs): ComposedSliceRev
   const needsYou = composeNeedsYou(inputs.attention, [...derived, ...workflowDerived], confirmFaithful, "queue+artifacts", nowIso);
   const agents = composeAgentsBand(inputs.agents, `slice:${slice.name}`, derived, nowIso);
 
-  // FR-5: an out-of-slice media ref = a defect finding, never a silent
-  // no-render. Absolute paths AND ../ traversal segments both escape the
-  // co-located contract (rev1 fixback at d6135921 — slice-19 containment class).
+  // FR-5：越出切片的媒体引用属于缺陷发现，绝不静默不渲染。绝对路径与 ../ 遍历段都会越出
+  // 同目录契约（d6135921 的 rev1 回补，slice-19 路径约束类别）。
   const defects = [
     ...inputs.mediaRefs
       .filter((r) => r.startsWith("/") || /(^|\/)\.\.(\/|$)/.test(r))
       .map((r) =>
         r.startsWith("/")
-          ? `absolute media path (must be slice-relative): ${r}`
-          : `media ref escapes the slice dir (must be co-located): ${r}`,
+          ? `绝对媒体路径（必须为切片相对路径）：${r}`
+          : `媒体引用越出切片目录（必须同目录存放）：${r}`,
       ),
     ...[...escaping]
       .sort()
       .map((r) =>
         r.startsWith("/")
-          ? `absolute media path (must be slice-relative): ${r}`
-          : `media ref escapes the slice dir (must be co-located): ${r}`,
+          ? `绝对媒体路径（必须为切片相对路径）：${r}`
+          : `媒体引用越出切片目录（必须同目录存放）：${r}`,
       ),
   ];
 
@@ -1238,19 +1203,17 @@ export function composeSliceReview(inputs: SliceComposeInputs): ComposedSliceRev
       text: intentText,
       media: intentMedia,
       ssotPath: inputs.readme !== null ? `${sliceRef}/${inputs.nodeFileName ?? "README.md"}` : null,
-      degrade: intentText === null ? "no intent recorded" : null,
+      degrade: intentText === null ? "未记录意图" : null,
     },
     plan: {
-      // release-0.4.7 intent-stage (S5 fold-in): a mini-reqs section with no
-      // authored numbered item (placeholder-only or prose-only, per arch AR-2)
-      // renders as ABSENT so the existing "— not planned yet" degrade fires —
-      // same boolean as the phase signal (the single-parse pin).
+      // release-0.4.7 intent-stage（S5 合入）：没有已编写编号项的 mini-reqs section
+      //（按架构 AR-2，仅占位符或仅散文）渲染为缺失，使现有“— 尚未规划”降级触发；
+      // 使用与 phase 信号相同的 boolean，保持单次解析固定点。
       concise: { text: miniReqsIsAuthored ? miniReqs : null, media: planMedia },
       lockedArtifacts: inputs.lockedArtifacts,
       lock: planLock,
-      // PM dogfood #1 — the ssot pointer follows the SELECTED mini-reqs
-      // source (README when its authored section won over a pristine PRD
-      // section); absent-source behavior unchanged.
+      // PM dogfood #1——SSOT 指针跟随选定的 mini-reqs 来源；当已编写 README section
+      // 胜过原样 PRD section 时指向 README。来源缺失行为不变。
       ssotPath: currentSpec !== null
         ? `${sliceRef}/SPEC.md`
         : miniSel.fromReadme
@@ -1273,14 +1236,14 @@ export function composeSliceReview(inputs: SliceComposeInputs): ComposedSliceRev
 }
 
 // ---------------------------------------------------------------------------
-// FR-7 — mission composition (board + ledger + union bands — KEEP; the
-// ledger's green is the recorded-verdict completion fact at mission altitude)
+// FR-7——任务目标组合（看板 + ledger + 联合区域；保留；ledger 的 green 是任务目标层级
+// 已记录 verdict 的完成事实）
 // ---------------------------------------------------------------------------
 
 export interface MissionSliceEntry {
   review: ComposedSliceReview;
-  /** Recorded-verdict green for the completion ledger (computeRecordedGreen
-   *  over the slice's artifacts — supplied by the gatherer, which holds them). */
+  /** 完成 ledger 的已记录 verdict green；由持有切片 artifact 的 gatherer 对其调用
+   * computeRecordedGreen 后提供。 */
   green: boolean;
 }
 
@@ -1300,24 +1263,24 @@ export function composeMissionReview(inputs: MissionComposeInputs): ComposedMiss
     let stageCell: string;
     switch (s.phase) {
       case "spec":
-        stageCell = s.plan.lock ? `spec-approved ${s.plan.lock.at}` : "spec unstamped";
+        stageCell = s.plan.lock ? `规格已批准 ${s.plan.lock.at}` : "规格未盖章";
         break;
       case "building":
         stageCell =
           s.delivered.items.length > 0
-            ? `${s.delivered.items.filter((it) => it.verified !== "missing").length}/${s.delivered.items.length} proofs`
-            : "building";
+            ? `${s.delivered.items.filter((it) => it.verified !== "missing").length}/${s.delivered.items.length} 个证明`
+            : "构建中";
         break;
       case "review":
-        stageCell = `${green ? "GREEN" : "not green"} · ${s.lineage.mergeSha ?? "UNMERGED"}`;
+        stageCell = `${green ? "通过" : "未通过"} · ${s.lineage.mergeSha ?? "未合并"}`;
         break;
       case "locked":
-        stageCell = `stamped ${s.delivered.lock?.at ?? "?"}`;
+        stageCell = `已盖章 ${s.delivered.lock?.at ?? "?"}`;
         break;
       default:
-        stageCell = "intent";
+        stageCell = "意图";
     }
-    if (s.readiness?.configured) stageCell = `proof ${s.readiness.state} · ${s.readiness.revision.slice(0, 12)}`;
+    if (s.readiness?.configured) stageCell = `证明 ${readinessStateLabel(s.readiness.state)} · ${s.readiness.revision.slice(0, 12)}`;
     const changedSinceStamp = s.needsYou.items.some((i) => i.derived?.kind === "stale-after-change");
     return {
       slice: s.slice,
@@ -1331,8 +1294,7 @@ export function composeMissionReview(inputs: MissionComposeInputs): ComposedMiss
     };
   });
 
-  // The completion ledger — a query over the mission's slice set, never an
-  // authored list (omission-proof by construction).
+  // 完成 ledger：对任务目标切片集执行查询，绝不是编写列表；结构上防遗漏。
   const ledger: LedgerRow[] = inputs.slices.map(({ review: s, green }) => ({
     slice: s.slice,
     candidateSha: s.lineage.candidateSha,
@@ -1342,13 +1304,13 @@ export function composeMissionReview(inputs: MissionComposeInputs): ComposedMiss
     green: s.readiness?.configured ? s.readiness.state === "ready" : green,
   }));
 
-  // Cut-complete: TRUE only when EVERY in-cut slice is (a) green, (b) merged,
-  // (c) zero open needs-human items — never asserted from a status field.
+  // Cut-complete：只有每个切入切片都满足 (a) green、(b) 已合并、(c) 开放 needs-human 项为零时
+  // 才为 TRUE；绝不从 status 字段推断。
   const incomplete = ledger.filter((r) => !(r.green && r.mergeSha !== null && r.needsHumanCount === 0));
   const cutComplete = ledger.length > 0 && incomplete.length === 0;
 
-  // Mission NEEDS YOU = the union query (slice ∪ mission ∪ ▲), distinct
-  // identities — an item at N altitudes is one item seen from N heights.
+  // 任务目标 NEEDS YOU = 联合查询（slice ∪ mission ∪ ▲），按身份去重；
+  // 一个条目出现在 N 个层级，表示从 N 个高度看到同一条目。
   const seen = new Set<string>();
   const unionItems: NeedsYouItem[] = [];
   for (const { review: s } of inputs.slices) {
@@ -1359,7 +1321,7 @@ export function composeMissionReview(inputs: MissionComposeInputs): ComposedMiss
       }
     }
   }
-  const missionBand = composeNeedsYou(inputs.missionAttention, [], [], "mission queue+slice unions", nowIso);
+  const missionBand = composeNeedsYou(inputs.missionAttention, [], [], "任务目标队列与切片并集", nowIso);
   for (const i of missionBand.items) {
     if (!seen.has(i.identity)) {
       seen.add(i.identity);
@@ -1379,15 +1341,15 @@ export function composeMissionReview(inputs: MissionComposeInputs): ComposedMiss
     board,
     ledger,
     cutComplete,
-    cutCompleteBasis: (inputs.slices.some(s => s.review.readiness?.configured) ? "Proof readiness plus historical merge/attention facts; distinct outcome/publication decisions remain separate. " : "") + (cutComplete
-      ? `all ${ledger.length} in-cut slices green + merged + zero needs-human · computed at ${nowIso}`
-      : `${incomplete.length} of ${ledger.length} slices not cut-complete (${incomplete.map((r) => r.slice).join(", ") || "none"}) · computed at ${nowIso}`),
+    cutCompleteBasis: (inputs.slices.some(s => s.review.readiness?.configured) ? "证明就绪度加历史合并/关注事实；结果与发布决策仍彼此独立。" : "") + (cutComplete
+      ? `切入的 ${ledger.length} 个切片全部通过、已合并且需人工处理项为零 · 计算于 ${nowIso}`
+      : `${ledger.length} 个切片中有 ${incomplete.length} 个尚未完成切入（${incomplete.map((r) => r.slice).join(", ") || "无"}）· 计算于 ${nowIso}`),
     needsYou: {
       items: unionItems,
       provenance:
         unionItems.length === 0
-          ? `0 attention items across ${inputs.slices.length} slices — computed from queue+artifacts at ${nowIso}`
-          : `union of ${inputs.slices.length} slice scopes + mission scope · computed at ${nowIso}`,
+          ? `${inputs.slices.length} 个切片中有 0 个待关注项 · 根据 queue+artifacts 计算于 ${nowIso}`
+          : `${inputs.slices.length} 个切片范围与任务目标范围的并集 · 计算于 ${nowIso}`,
     },
     agents,
     composedAt: nowIso,

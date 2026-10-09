@@ -42,8 +42,8 @@ function fixture() {
 }
 function signal() { let release!: () => void; const ready = new Promise<void>(r => { release = r; }); return { ready, release }; }
 
-describe("delivery pause and durable custody", () => {
-  it("does not activate between paste/submit or before lifecycle finishes", async () => {
+describe("投递暂停与持久监管", () => {
+  it("不会在 paste/submit 之间或 lifecycle 完成前启用", async () => {
     const { db, guard } = fixture(); const pasted = signal(); const finish = signal(); const writes: string[] = [];
     const running = guard.operation("a", async () => {
       await guard.input("a", async () => { writes.push("paste"); }); pasted.release(); await finish.ready;
@@ -58,7 +58,7 @@ describe("delivery pause and durable custody", () => {
     await expect(guard.input("a", async () => { writes.push("bad"); })).rejects.toMatchObject({ code: "typing_guard_enabled" });
     db.close();
   });
-  it("service-level strict pause permits only explicit human input and sibling", async () => {
+  it("service 层严格暂停只允许显式人工输入和 sibling", async () => {
     const { db, guard } = fixture(); await guard.set("a", true, "actor", "draft"); const writes: string[] = [];
     for (let attempt = 0; attempt < 2; attempt++) {
       await expect(guard.input("a", async () => { writes.push("automated"); })).rejects.toMatchObject({ code: "typing_guard_enabled" });
@@ -69,7 +69,7 @@ describe("delivery pause and durable custody", () => {
     await guard.set("a", false, "actor", "resume new delivery");
     await guard.input("a", async () => { writes.push("off"); }); expect(writes.at(-1)).toBe("off"); db.close();
   });
-  it("refuses stale occupants, unknown identity and escaped lease writes", async () => {
+  it("拒绝陈旧 occupant、未知 identity 和逃逸 lease 写入", async () => {
     const { db, guard, targets } = fixture();
     await guard.operation("a", async () => {
       targets.a = { ...targets.a!, occupant: "replacement" };
@@ -81,7 +81,7 @@ describe("delivery pause and durable custody", () => {
     await guard.set("a", true, "actor", "pause");go.release();
     await expect(detached).rejects.toMatchObject({ code: "typing_guard_enabled" }); db.close();
   });
-  it("retains one ID; detects mismatch; retirement frees quota without deleting evidence", () => {
+  it("保留一个 ID、检测不匹配，retirement 在不删除证据的情况下释放 quota", () => {
     const { db, targets, outbox } = fixture(); const input = { outboxId: "id", senderSession: "sender", destinationSession: "a", body: "draft-safe" };
     expect(outbox.retain(input, targets.a!).deliveryState).toBe("retained");
     expect(outbox.retain(input, targets.a!).outboxId).toBe("id");
@@ -91,7 +91,7 @@ describe("delivery pause and durable custody", () => {
     expect(outbox.heldForNode("a").total).toBe(0);
     expect(outbox.listPending("id")).toEqual([]); db.close();
   });
-  it("rolls back rejected staging but retains committed overflow members with original bodies", () => {
+  it("回滚被拒的 staging，但保留已提交 overflow 成员及其原始 body", () => {
     const { db, targets, outbox } = fixture();
     for(let i=0;i<100;i++) outbox.retain({ outboxId: `h${i}`, senderSession: "s", destinationSession:"a", body:`body${i}` },targets.a!);
     const next={outboxId:"next",senderSession:"s",destinationSession:"a",body:"new"};
@@ -103,7 +103,7 @@ describe("delivery pause and durable custody", () => {
     outbox.retire("h0","person","ack");outbox.retire("h1","person","ack");outbox.retire("h2","person","ack");
     expect(outbox.retain(next,targets.a!).deliveryState).toBe("retained");db.close();
   });
-  it("guard DB failure cannot fall through to input; crash activation honors desired", async () => {
+  it("guard DB 失败不能落入 input；崩溃后 activation 遵循 desired", async () => {
     const { db, guard } = fixture(); let writes=0;
     db.prepare("INSERT INTO seat_delivery_guards VALUES ('a',1,0,'actor','crash','now')").run();
     guard.recoverActivation();expect(guard.preference("a")).toMatchObject({desired:true,effective:true});
@@ -129,8 +129,8 @@ function transportFixture() {
   return { ...f, tmux, transport, commands, files };
 }
 
-describe("real adapter/transport guard boundaries with no external effects", () => {
-  it("retains raw/force/verify/danger sends without even capturing or writing; submit-only refuses", async () => {
+describe("无外部副作用的真实 adapter/transport guard 边界", () => {
+  it("无需捕获或写入即可保留 raw/force/verify/danger send；submit-only 拒绝", async () => {
     const f = transportFixture(); await f.guard.set("a", true, "person", "draft");
     for (const options of [{}, {force:true}, {verify:true}, {dangerouslyInteract:true,reason:"explicit"}, {waitForIdleMs:10}]) {
       const result = await f.transport.send("a", "message", options);
@@ -141,7 +141,7 @@ describe("real adapter/transport guard boundaries with no external effects", () 
     expect(f.commands).toEqual([]);expect(f.files).toEqual([]);expect(f.tmux.listPanes).not.toHaveBeenCalled();
     expect(f.outbox.heldForNode("a").total).toBe(5);f.db.close();
   });
-  it("one retained ID stays not-delivered after disable/retirement, and preserves committed coalesced IDs", async () => {
+  it("一个 retained ID 在 disable/retirement 后仍未投递，并保留已提交的合并 ID", async () => {
     const f = transportFixture();await f.guard.set("a",true,"person","draft");
     const opts={deliveryId:"exact",actorSession:"sender"};
     await f.transport.send("a","body",opts);await f.transport.send("a","body",opts);
@@ -154,7 +154,7 @@ describe("real adapter/transport guard boundaries with no external effects", () 
     expect(await f.transport.send("a","body",opts)).toMatchObject({outcome:"retained",sent:false});
     expect(f.commands).toEqual([]);expect(f.db.prepare("SELECT count(*) AS n FROM outbox_entries").get()).toEqual({n:3});f.db.close();
   });
-  it("automatic low-level keys/text/shell and lifecycle creation refuse, human broker path and sibling write", async () => {
+  it("自动低层 keys/text/shell 与 lifecycle 创建会拒绝，human broker 路径和 sibling 可写入", async () => {
     const f=transportFixture();await f.guard.set("a",true,"person","draft");
     expect(await f.tmux.sendText("a","automatic")).toMatchObject({ok:false,code:"typing_guard_enabled"});
     expect(await f.tmux.sendKeys("%1",["Enter"])).toMatchObject({ok:false,code:"typing_guard_enabled"});
@@ -165,7 +165,7 @@ describe("real adapter/transport guard boundaries with no external effects", () 
     expect(await f.tmux.sendKeys("b",["Enter"])).toEqual({ok:true});
     expect(f.commands).toHaveLength(2);expect(f.commands[0]).toContain("%1");expect(f.commands[1]).toContain("%2");f.db.close();
   });
-  it("checks actual pane identity after asynchronous observation and refuses replacement/unknown targets", async () => {
+  it("异步观察后检查实际 pane identity，并拒绝替换或未知目标", async () => {
     const f=transportFixture();
     vi.mocked(f.tmux.listPanes).mockResolvedValue([{id:"%replacement"} as never]);
     expect(await f.tmux.sendText("a","bad")).toMatchObject({ok:false,code:"guard_target_unknown"});
@@ -174,7 +174,7 @@ describe("real adapter/transport guard boundaries with no external effects", () 
     expect(await f.tmux.sendKeys("a",["Enter"])).toMatchObject({ok:false,code:"guard_target_changed"});
     expect(f.commands).toEqual([]);expect(f.files).toEqual([]);f.db.close();
   });
-  it("whole multi-node lifecycle keeps activation pending through rebind and final submit", async () => {
+  it("完整多节点 lifecycle 在 rebind 和最终 submit 期间保持 activation pending", async () => {
     const f=transportFixture();const started=signal(),finish=signal();
     const work=f.guard.lifecycle(["b","a"],async()=>{
       started.release();await finish.ready;
@@ -185,7 +185,7 @@ describe("real adapter/transport guard boundaries with no external effects", () 
     finish.release();await work;await new Promise(r=>setTimeout(r,0));
     expect(f.guard.preference("a").effective).toBe(true);expect(f.commands).toHaveLength(1);expect(f.commands[0]).toContain("%3");f.db.close();
   });
-  it("private probe exemption requires fresh allocation, never an existing managed or recycled pane", async () => {
+  it("私有 probe 豁免要求全新分配，绝不使用现有 managed 或 recycled pane", async () => {
     const f=transportFixture();await f.guard.set("a",true,"person","draft");
     expect(await f.tmux.createProbeSession("a")).toMatchObject({ok:false,code:"guard_target_managed"});
     expect(f.commands).toEqual([]);
@@ -221,8 +221,8 @@ function queueFixture() {
   return {db,guard,transport,outbox,bus,repo,writes,tmux,rigRepo,sessionRegistry};
 }
 
-describe("real queue transaction and retained delivery",()=>{
-  it("precommit quota refusal rolls back closure, successor, transitions and events",async()=>{
+describe("真实 queue 事务与 retained 投递",()=>{
+  it("precommit quota 拒绝会回滚 closure、successor、transition 和 event",async()=>{
     const f=queueFixture();const source=await f.repo.create({sourceSession:"sender@test",destinationSession:"relay@test",body:"work",nudge:false});
     await f.guard.set("a",true,"person","draft");
     for(let i=0;i<100;i++) f.outbox.retain({outboxId:`full${i}`,senderSession:"sender@test",destinationSession:"worker@test",body:"held"},f.guard.target("a"));
@@ -235,7 +235,7 @@ describe("real queue transaction and retained delivery",()=>{
     expect(JSON.stringify(f.db.prepare("SELECT * FROM events").all())).toBe(events);
     expect(f.writes).toEqual([]);f.db.close();
   });
-  it("handoff retains one audited intent without duplicate transport record or delivered label",async()=>{
+  it("handoff 保留一条已审计 intent，不产生重复 transport record 或 delivered 标签",async()=>{
     const f=queueFixture();const source=await f.repo.create({sourceSession:"sender@test",destinationSession:"relay@test",body:"work",nudge:false});
     await f.guard.set("a",true,"person","draft");
     const {created,closed}=await f.repo.handoff({qitemId:source.qitemId,fromSession:"relay@test",toSession:"worker@test"});
@@ -249,7 +249,7 @@ describe("real queue transaction and retained delivery",()=>{
     f.outbox.retire(held.items[0]!.outboxId,"person","read");
     expect(f.repo.getById(created.qitemId)!.state).toBe("pending");expect(f.writes).toEqual([]);f.db.close();
   });
-  it("postcommit activation retains exact staged intent beyond quota, without fictional rollback",async()=>{
+  it("postcommit activation 在超过 quota 时保留精确 staged intent，不虚构回滚",async()=>{
     const f=queueFixture();const source=await f.repo.create({sourceSession:"sender@test",destinationSession:"relay@test",body:"work",nudge:false});
     for(let i=0;i<100;i++) f.outbox.retain({outboxId:`full${i}`,senderSession:"sender@test",destinationSession:"worker@test",body:"held"},f.guard.target("a"));
     let activation:Promise<unknown>|undefined;
@@ -259,7 +259,7 @@ describe("real queue transaction and retained delivery",()=>{
     expect(f.outbox.heldForNode("a").total).toBe(101);expect(f.outbox.getById(`wake-intent-${created.qitemId}`)!.body).toContain(created.qitemId);
     expect(f.writes).toEqual([]);f.db.close();
   });
-  it("pending coalesced members retain individual frozen bodies and refuse a changed occupant",async()=>{
+  it("pending 合并成员保留各自冻结 body，并拒绝已变化 occupant",async()=>{
     const f=queueFixture();const ids:string[]=[];
     for(let i=0;i<2;i++) {
       const item=await f.repo.create({sourceSession:"sender@test",destinationSession:"worker@test",body:`work${i}`,nudge:false});
@@ -275,7 +275,7 @@ describe("real queue transaction and retained delivery",()=>{
     f.db.prepare("INSERT INTO occupant_tenures(id,node_id,generation_ordinal,generation_uuid,kind) VALUES ('gb2','b',2,'new','fresh')").run();
     await f.repo.drainPendingWakeIntents();
     expect(f.outbox.getById(`wake-intent-${item.qitemId}`)!.deliveryState).toBe("failed");
-    expect(f.repo.getById(item.qitemId)!.lastNudgeResult).toContain("identity changed");expect(f.writes).toEqual([]);f.db.close();
+    expect(f.repo.getById(item.qitemId)!.lastNudgeResult).toContain("身份发生变化");expect(f.writes).toEqual([]);f.db.close();
   });
 });
 
@@ -290,8 +290,8 @@ function httpFixture() {
   const post=async(path:string,body:unknown)=>app.request(path,{method:"POST",headers:{"content-type":"application/json","x-openrig-session":"human@test"},body:JSON.stringify(body)});
   return {...f,app,post};
 }
-describe("supported route effects and lifecycle preflight",()=>{
-  it("enable/read/send/retire/read-by-ID/disable exposes actual custody once, no body actor override",async()=>{
+describe("受支持的路由效果与 lifecycle preflight",()=>{
+  it("enable/read/send/retire/read-by-ID/disable 只公开一次真实 custody，不允许 body actor 覆盖",async()=>{
     const f=httpFixture();
     expect((await f.post("/api/seat/set-typing-guard/worker@test",{enabled:true,reason:"draft"})).status).toBe(200);
     const status=await (await f.app.request("/api/seat/status/worker@test")).json();expect(status.typingGuard).toMatchObject({desired:true,effective:true,heldCount:0});
@@ -310,7 +310,7 @@ describe("supported route effects and lifecycle preflight",()=>{
     await f.post("/api/seat/set-typing-guard/worker@test",{enabled:false,reason:"new sends"});
     expect(f.writes).toEqual([]);expect(f.db.prepare("SELECT count(*) n FROM seat_delivery_guard_changes").get()).toEqual({n:2});f.db.close();
   });
-  it("broadcast and concurrent senders retain protected targets while sibling normal send remains active",async()=>{
+  it("broadcast 与并发 sender 保留受保护目标，同时 sibling 正常 send 仍有效",async()=>{
     const f=httpFixture();await f.guard.set("a",true,"person","draft");
     const r=await f.post("/api/transport/broadcast",{sessions:["worker@test","sibling@test"],text:"broadcast",force:true});
     expect(r.status).toBe(200);expect(await r.json()).toMatchObject({total:2,sent:1,retained:1,failed:0});
@@ -318,7 +318,7 @@ describe("supported route effects and lifecycle preflight",()=>{
     await Promise.all(["first","second"].map(actor=>f.transport.send("worker@test",actor,{actorSession:actor,deliveryId:actor})));
     expect(f.outbox.heldForNode("a").total).toBe(3);f.db.close();
   });
-  it("remove refuses before fallback queue mutation and any terminal effect",async()=>{
+  it("remove 在 fallback queue 修改及任何 terminal 副作用前拒绝",async()=>{
     const f=queueFixture();const work=await f.repo.create({sourceSession:"sender@test",destinationSession:"worker@test",body:"owned",nudge:false});
     const lifecycle=new RigLifecycleService({db:f.db,rigRepo:f.rigRepo,sessionRegistry:f.sessionRegistry,discoveryRepo:new DiscoveryRepository(f.db),eventBus:f.bus,queueRepo:f.repo,tmuxAdapter:f.tmux});
     await f.guard.set("a",true,"person","draft");
@@ -326,7 +326,7 @@ describe("supported route effects and lifecycle preflight",()=>{
     expect(f.repo.getById(work.qitemId)!.destinationSession).toBe("worker@test");
     expect(f.rigRepo.getRig("rig")!.nodes).toHaveLength(2);expect(f.writes).toEqual([]);f.db.close();
   });
-  it("reopens persisted preference/retention and reconciles attempted wakes without replay",async()=>{
+  it("重新打开持久化 preference/retention，并协调已尝试 wake 而不 replay",async()=>{
     const f=queueFixture();await f.guard.set("a",true,"person","draft");await f.transport.send("worker@test","held",{deliveryId:"survivor"});
     f.outbox.record({outboxId:"wake-intent-crash",senderSession:"s",destinationSession:"worker@test",body:"attempted"});f.outbox.claimForDelivery("wake-intent-crash");
     const db=new Database(f.db.serialize());f.db.close();
@@ -337,7 +337,7 @@ describe("supported route effects and lifecycle preflight",()=>{
   });
 });
 
-it("automatic reminder records retained custody and no delivered fire or input",async()=>{
+it("自动 reminder 记录 retained custody，且不产生 delivered fire 或 input",async()=>{
   const f=queueFixture();await f.guard.set("a",true,"person","draft");
   const jobs=new WatchdogJobsRepository(f.db), history=new WatchdogHistoryLog(f.db);
   const job=jobs.register({policy:"periodic-reminder",targetSession:"worker@test",specYaml:"target:\n  session: worker@test\nmessage: reminder\n",intervalSeconds:60,registeredBySession:"sender@test"});
@@ -356,7 +356,7 @@ it("automatic reminder records retained custody and no delivered fire or input",
   expect(f.writes).toEqual([]);f.db.close();
 });
 
- it("whole lifecycle refuses launch, teardown, stop, clean and delete before effects with typed HTTP refusal",async()=>{
+  it("完整 lifecycle 在副作用前以类型化 HTTP 拒绝 launch、teardown、stop、clean 和 delete",async()=>{
   const f=httpFixture();await f.guard.set("a",true,"person","draft");
   const snapshot={db:f.db,capture:vi.fn()} as never;
   const launcher=new NodeLauncher({db:f.db,rigRepo:f.rigRepo,sessionRegistry:f.sessionRegistry,eventBus:f.bus,tmuxAdapter:f.tmux});
@@ -372,7 +372,7 @@ it("automatic reminder records retained custody and no delivered fire or input",
   expect((await f.app.request("/api/rigs/rig",{method:"DELETE"})).status).toBe(409);
   expect(f.rigRepo.getRig("rig")!.nodes).toHaveLength(2);expect(f.writes).toEqual([]);expect((snapshot as any).capture).not.toHaveBeenCalled();f.db.close();
  });
- it("fresh launch off rebinds the original lease, then protection prevents lifecycle and stale writes",async()=>{
+  it("关闭 fresh launch 后重新绑定原始 lease，随后保护机制阻止 lifecycle 和陈旧写入",async()=>{
   const f=queueFixture();f.db.exec("INSERT INTO nodes(id,rig_id,logical_id) VALUES ('c','rig','fresh');");
   vi.mocked(f.tmux.listPanes).mockImplementation(async name=>[{id:name==="r00-test-fresh"?"%3":f.guard.target(name).pane!} as never]);
   const launcher=new NodeLauncher({db:f.db,rigRepo:f.rigRepo,sessionRegistry:f.sessionRegistry,eventBus:f.bus,tmuxAdapter:f.tmux});
@@ -381,7 +381,7 @@ it("automatic reminder records retained custody and no delivered fire or input",
   await f.guard.set("c",true,"person","draft");const count=f.writes.length;
   expect(await f.tmux.sendText("r00-test-fresh","no")).toMatchObject({ok:false,code:"typing_guard_enabled"});expect(f.writes).toHaveLength(count);f.db.close();
  });
- it("guarded session termination binds the immutable session ID, never recycled name",async()=>{
+  it("受 guard 保护的 session 终止绑定不可变 session ID，绝不绑定复用名称",async()=>{
   const {db,guard}=fixture();const commands:string[]=[];
   const tmux=new TmuxAdapter(async command=>{commands.push(command);return command.includes("display-message")?"$123\n":"";});tmux.deliveryGuard=guard;
   vi.spyOn(tmux,"listPanes").mockResolvedValue([{id:"%1"} as never]);
@@ -389,7 +389,7 @@ it("automatic reminder records retained custody and no delivered fire or input",
   expect(commands.at(-1)).toBe("tmux kill-session -t '$123'");db.close();
  });
 
- it("failed first binding compensates only its proven fresh session under the same lifecycle lease",async()=>{
+  it("首次绑定失败时只补偿同一 lifecycle lease 下已证明为 fresh 的 session",async()=>{
   const f=queueFixture();f.db.exec("INSERT INTO nodes(id,rig_id,logical_id) VALUES ('c','rig','fresh');");
   const commands:string[]=[];const tmux=new TmuxAdapter(async command=>{commands.push(command);return command.includes("display-message")?"$44\n":"";});tmux.deliveryGuard=f.guard;
   vi.spyOn(tmux,"listPanes").mockResolvedValue([{id:"%3"} as never]);
@@ -398,7 +398,7 @@ it("automatic reminder records retained custody and no delivered fire or input",
   expect(await launcher.launchNode("rig","fresh")).toMatchObject({ok:false,code:"db_error"});
   expect(commands.at(-1)).toBe("tmux kill-session -t '$44'");expect(f.guard.target("c").pane).toBeNull();f.db.close();
  });
- it("private probe termination uses only its positively allocated session identity",async()=>{
+  it("私有 probe 终止只使用其正向分配的 session identity",async()=>{
   const {db,guard}=fixture();const commands:string[]=[];
   const tmux=new TmuxAdapter(async command=>{commands.push(command);return command.includes("display-message")?"$55\n":"";});tmux.deliveryGuard=guard;
   vi.spyOn(tmux,"listPanes").mockResolvedValue([{id:"%55"} as never]);
@@ -407,14 +407,14 @@ it("automatic reminder records retained custody and no delivered fire or input",
   expect(await tmux.sendKeys("probe",["Enter"])).toMatchObject({ok:false});expect(commands).toHaveLength(count);db.close();
  });
 
- it("claim hint is one retained notification, not an injected adoption message",async()=>{
+  it("claim 提示是一条 retained 通知，而非注入的 adoption 消息",async()=>{
   const f=queueFixture();await f.guard.set("a",true,"person","draft");
   const claim=new ClaimService({db:f.db,rigRepo:f.rigRepo,sessionRegistry:f.sessionRegistry,discoveryRepo:new DiscoveryRepository(f.db),eventBus:f.bus,tmuxAdapter:f.tmux});
   for(let i=0;i<2;i++)await (claim as any).deliverClaimHint("worker@test",{rigName:"test",logicalId:"worker"});
   expect(f.outbox.heldForNode("a").total).toBe(1);expect(f.outbox.heldForNode("a").items[0]).toMatchObject({senderSession:"claim@system",deliveryState:"retained",deliveredAt:null});
   expect(f.writes).toEqual([]);f.db.close();
  });
- it("broker explicit human text survives while its automatic redraw and compaction refuse",async()=>{
+  it("broker 的显式人工文本可通过，而自动 redraw 和 compaction 被拒绝",async()=>{
   const f=queueFixture();await f.guard.set("a",true,"person","draft");
   const broker=new TerminalSessionBroker("worker@test",f.tmux);
   await broker.input({type:"text",text:"human draft"});
@@ -428,7 +428,7 @@ it("automatic reminder records retained custody and no delivered fire or input",
   expect(await enforcer.triggerManualCompact(input,{operatorInitiated:true})).toMatchObject({triggered:false,reason:"typing_guard_enabled"});
   expect(f.writes).toHaveLength(count);f.db.close();
  });
- it("model notice channels label retained custody and reuse producer identity without delivery claim",async()=>{
+  it("model 通知通道标记 retained custody，并复用 producer identity 而不声称已投递",async()=>{
   const f=queueFixture();await f.guard.set("a",true,"person","draft");const recorded:any[]=[];
   const monitor=new ModelDivergenceMonitor({listPinnedSeats:()=>[{nodeId:"b",sessionName:"sibling@test",rigId:"rig",rigName:"test",runtime:"codex",pinnedModel:"gpt-5.1-codex-mini",generation:"g2"}],
    readEffectiveModel:()=>({ok:true,model:"gpt-5.4-mini"}),resolveOrchSeats:()=>["worker@test"],resolveOperatorSeat:()=>null,resolveOversightSeat:()=>null,recordProclamation:p=>recorded.push(p),warn:()=>{},
@@ -439,7 +439,7 @@ it("automatic reminder records retained custody and no delivered fire or input",
   await monitor.checkOnce();expect(f.outbox.heldForNode("a").total).toBe(1);expect(f.writes).toEqual([]);f.db.close();
  });
 
- it("two wake drainers preserve one original intent without duplicate retained ownership",async()=>{
+  it("两个 wake drainer 保留同一原始 intent，不产生重复 retained ownership",async()=>{
   const f=queueFixture();const item=await f.repo.create({sourceSession:"sender@test",destinationSession:"worker@test",body:"work",nudge:false});
   f.repo.stageWakeIntent(item.qitemId,"sender@test","worker@test",null,true);const id=`wake-intent-${item.qitemId}`;const body=f.outbox.getById(id)!.body;
   await f.guard.set("a",true,"person","draft");await Promise.all([f.repo.drainPendingWakeIntents(),f.repo.drainPendingWakeIntents()]);

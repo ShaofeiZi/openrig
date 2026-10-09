@@ -69,7 +69,7 @@ function stoppedDeps(): StatusDeps {
   };
 }
 
-// Captured request bodies for assertion
+// 捕获的请求体，供断言
 let capturedBodies: Record<string, unknown>[] = [];
 
 function createMockDaemon() {
@@ -83,7 +83,7 @@ function createMockDaemon() {
       return;
     }
 
-    // Collect body for POST requests
+    // 收集 POST 请求体
     if (req.method === "POST") {
       let body = "";
       req.on("data", (chunk) => { body += chunk; });
@@ -96,7 +96,7 @@ function createMockDaemon() {
       return;
     }
 
-    // GET routes
+    // GET 路由
     if (req.method === "GET") {
       handleRoute(url.pathname, {}, res);
       return;
@@ -219,7 +219,7 @@ function createMockDaemon() {
         }));
         return;
       }
-      // Default: clean install with applied + deferred
+      // 默认：干净安装，含 applied + deferred
       res.writeHead(201, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         installId: "inst-1",
@@ -328,8 +328,8 @@ describe("rig package", () => {
     expect(output).toContain("test-pkg");
     expect(output).toContain("helper");
     expect(output).toContain("safe_projection");
-    expect(output).toContain("Actionable: 1");
-    expect(output).toContain("Deferred: 1");
+    expect(output).toContain("可执行：1");
+    expect(output).toContain("延后：1");
   });
 
   // Test 5: plan with conflicts → conflict info
@@ -338,7 +338,7 @@ describe("rig package", () => {
     const output = logs.join("\n");
     expect(output).toContain("helper");
     expect(output).toContain("already exists");
-    expect(output).toContain("Conflicts: 1");
+    expect(output).toContain("冲突：1");
   });
 
   // Test 6: install clean → applied + deferred items
@@ -371,7 +371,7 @@ describe("rig package", () => {
   it("install conflicts: prints conflicts, exitCode 1", async () => {
     const { logs, exitCode } = await captureLogs(() => makeProgram().parseAsync(["node", "rig", "package", "install", "/conflict/path", "--target", "/repo"]));
     const output = logs.join("\n");
-    expect(output).toContain("conflict");
+    expect(output).toContain("冲突");
     expect(output).toContain("already exists");
     expect(exitCode).toBe(1);
   });
@@ -396,7 +396,7 @@ describe("rig package", () => {
   it("install policy_rejected: prints rejected, exitCode 1", async () => {
     const { logs, exitCode } = await captureLogs(() => makeProgram().parseAsync(["node", "rig", "package", "install", "/policy-reject/path", "--target", "/repo"]));
     const output = logs.join("\n");
-    expect(output).toContain("Policy rejected");
+    expect(output).toContain("策略拒绝");
     expect(output).toContain("allowMerge");
     expect(exitCode).toBe(1);
   });
@@ -406,8 +406,8 @@ describe("rig package", () => {
     const { logs } = await captureLogs(() => makeProgram().parseAsync(["node", "rig", "package", "rollback", "inst-1"]));
     const output = logs.join("\n");
     expect(output).toContain("inst-1");
-    expect(output).toContain("1 restored");
-    expect(output).toContain("1 deleted");
+    expect(output).toContain("恢复 1 个");
+    expect(output).toContain("删除 1 个");
   });
 
   // Test 13: rollback not found (404) → exitCode 1
@@ -436,7 +436,7 @@ describe("rig package", () => {
       program.addCommand(packageCommand(deps));
       return program.parseAsync(["node", "rig", "package", "validate", "/any"]);
     });
-    expect(logs.join("\n")).toMatch(/not running/i);
+    expect(logs.join("\n")).toMatch(/后台服务未运行/);
     expect(deps.clientFactory).not.toHaveBeenCalled();
   });
 
@@ -445,7 +445,7 @@ describe("rig package", () => {
     const program = new Command();
     program.addCommand(packageCommand(runningDeps(port)));
     const helpOutput = program.commands.find(c => c.name() === "package")?.description();
-    expect(helpOutput).toContain("(legacy)");
+    expect(helpOutput).toContain("（旧版）");
   });
 
   // Test 16: request-body assertion — install flags → correct JSON body

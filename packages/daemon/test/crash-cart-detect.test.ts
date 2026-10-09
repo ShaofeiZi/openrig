@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import { classifyDaemonState, resolveDaemonState, type HealthzProbeResult } from "../src/domain/crash-cart-detect.js";
 
-// Crash-cart C3 — the daemon-state classifier (planner+PM ruling, honest-degraded false-negative rail).
-// THREE states: UP (healthz answered) · DOWN (POSITIVE evidence only: pid dead/absent AND healthz
-// connection-REFUSED) · UNVERIFIED (everything else — timeout, wedged, foreign occupant). The cockpit
-// + C2 read fire ONLY on DOWN; a probe blip must NEVER fabricate a crash narrative. Single-shot; the
-// bounded retry is the caller's. All probes injected → hermetic.
+// 故障诊断 C3——后台服务状态分类器（规划者 + PM 裁定，诚实降级的防漏报护栏）。三种状态：
+// UP（healthz 已响应）· DOWN（仅有确证：pid 已终止/不存在且 healthz 连接被拒）·
+// UNVERIFIED（其他所有情况——超时、卡死、外来占用者）。驾驶舱 + C2 读取仅在 DOWN
+// 时触发；探测抖动绝不能捏造崩溃叙事。此处只探测一次；有界重试由调用方负责。
+// 所有探针均通过注入提供 → 测试完全隔离。
 
 const deps = (over: Partial<Parameters<typeof classifyDaemonState>[0]> = {}) => ({
   openrigHome: "/scratch/.openrig",
@@ -16,32 +16,32 @@ const deps = (over: Partial<Parameters<typeof classifyDaemonState>[0]> = {}) => 
   ...over,
 });
 
-describe("classifyDaemonState — 3-state honest-degraded rail", () => {
-  it("UP when healthz answers (even if the recorded pid looks dead)", async () => {
+describe("classifyDaemonState——三态诚实降级护栏", () => {
+  it("healthz 响应时为 UP（即使记录的 pid 看起来已终止）", async () => {
     expect(await classifyDaemonState(deps({ probeHealthz: async () => "answered" }))).toBe("up");
   });
 
-  it("DOWN only on POSITIVE evidence: pid dead AND healthz refused", async () => {
+  it("仅在有确证时为 DOWN：pid 已终止且 healthz 被拒", async () => {
     expect(await classifyDaemonState(deps({ isProcessAlive: () => false, probeHealthz: async () => "refused" }))).toBe("down");
   });
 
-  it("DOWN when there is no daemon.json AND healthz refused", async () => {
+  it("没有 daemon.json 且 healthz 被拒时为 DOWN", async () => {
     expect(await classifyDaemonState(deps({ readDaemonJson: () => undefined, probeHealthz: async () => "refused" }))).toBe("down");
   });
 
-  it("UNVERIFIED when the pid is alive but healthz refused (process exists, not serving — wedged/starting)", async () => {
+  it("pid 存活但 healthz 被拒时为 UNVERIFIED（进程存在但未服务——卡死或启动中）", async () => {
     expect(await classifyDaemonState(deps({ isProcessAlive: () => true, probeHealthz: async () => "refused" }))).toBe("unverified");
   });
 
-  it("UNVERIFIED on a healthz TIMEOUT (never DOWN — a blip must not fabricate a crash)", async () => {
+  it("healthz 超时时为 UNVERIFIED（绝非 DOWN——抖动不能捏造崩溃）", async () => {
     expect(await classifyDaemonState(deps({ isProcessAlive: () => false, probeHealthz: async () => "timeout" }))).toBe("unverified");
   });
 
-  it("UNVERIFIED when a non-openrig process answers the port", async () => {
+  it("非 OpenRig 进程响应该端口时为 UNVERIFIED", async () => {
     expect(await classifyDaemonState(deps({ probeHealthz: async () => "not-openrig" }))).toBe("unverified");
   });
 
-  it("probes OPENRIG_URL when set, else daemon.json host:port, else the default", async () => {
+  it("设置 OPENRIG_URL 时探测该地址，否则依次使用 daemon.json host:port 和默认地址", async () => {
     const seen: string[] = [];
     const probe = async (url: string) => {
       seen.push(url);
@@ -58,7 +58,7 @@ describe("classifyDaemonState — 3-state honest-degraded rail", () => {
   });
 });
 
-describe("resolveDaemonState — bounded retry (injected clock; timeout never promotes to DOWN)", () => {
+describe("resolveDaemonState——有界重试（注入时钟；超时绝不升级为 DOWN）", () => {
   function seq(results: HealthzProbeResult[]) {
     let i = 0;
     return async () => results[Math.min(i++, results.length - 1)]!;
@@ -75,25 +75,25 @@ describe("resolveDaemonState — bounded retry (injected clock; timeout never pr
     ...over,
   });
 
-  it("resolves UP on the first answered probe, no retry", async () => {
+  it("第一次探测有响应时解析为 UP，不重试", async () => {
     const sleep = vi.fn(async () => {});
     expect(await resolveDaemonState(rdeps({ probeHealthz: seq(["answered"]), sleep }))).toBe("up");
     expect(sleep).not.toHaveBeenCalled();
   });
 
-  it("resolves DOWN immediately on refused + pid-dead (decisive, no retry)", async () => {
+  it("连接被拒且 pid 已终止时立即解析为 DOWN（结论明确，不重试）", async () => {
     const sleep = vi.fn(async () => {});
     expect(await resolveDaemonState(rdeps({ probeHealthz: seq(["refused"]), sleep }))).toBe("down");
     expect(sleep).not.toHaveBeenCalled();
   });
 
-  it("retries through a transient timeout then resolves UP", async () => {
+  it("遇到瞬时超时后重试并解析为 UP", async () => {
     const sleep = vi.fn(async () => {});
     expect(await resolveDaemonState(rdeps({ probeHealthz: seq(["timeout", "answered"]), sleep }))).toBe("up");
     expect(sleep).toHaveBeenCalledTimes(1);
   });
 
-  it("persistent timeout → UNVERIFIED after the bound (never DOWN), with maxProbes-1 sleeps", async () => {
+  it("持续超时 → 达到边界后为 UNVERIFIED（绝非 DOWN），休眠 maxProbes-1 次", async () => {
     const sleep = vi.fn(async () => {});
     expect(await resolveDaemonState(rdeps({ probeHealthz: seq(["timeout"]), sleep, maxProbes: 3 }))).toBe("unverified");
     expect(sleep).toHaveBeenCalledTimes(2);

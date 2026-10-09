@@ -1,0 +1,122 @@
+{
+"packages/cli/src/commands/add.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/adopt.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/agent-image.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/archive.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/auth.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/bind.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/broadcast.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/context.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/crash-cart.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/create.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/daemon.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/commands/discover.ts": [
+"cli-b",
+"self_reported"
+],
+"packages/cli/src/client.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/front-door.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/openrig-compat.ts": [
+"cli-core-b",
+"self_reported"
+],
+"packages/cli/src/cli-error.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/index.ts": [
+"cli-core-a",
+"self_reported"
+],
+"packages/cli/src/commands/agent.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/ask.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/attach.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/bootstrap.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/bundle.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/capture.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/chatroom.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/compact-plan.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/compact.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/config-init-workspace.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/config.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/destroy.ts": [
+"cli-a",
+"self_reported"
+],
+"packages/cli/src/commands/doctor.ts": [
+"cli-a",
+"self_reported"
+]
+}

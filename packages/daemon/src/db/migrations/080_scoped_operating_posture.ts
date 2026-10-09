@@ -1,6 +1,6 @@
 import type { Migration } from "../migrate.js";
 
-/** Extend the existing binding store, preserving every legacy row and its identity. */
+/** 扩展现有绑定存储，保留每个 legacy 行及其身份。 */
 export const scopedOperatingPostureSchema: Migration = {
   name: "080_scoped_operating_posture.sql",
   sql: `

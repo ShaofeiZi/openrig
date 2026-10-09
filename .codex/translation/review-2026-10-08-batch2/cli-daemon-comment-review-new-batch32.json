@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch32",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/cli/test/requirements.test.ts",
+      "before_sha256_16": "93959c2941233e3b",
+      "after_sha256_16": "a25c66d4cec581da",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/scope-progress.test.ts",
+      "before_sha256_16": "cb6d8d3925201168",
+      "after_sha256_16": "d051cb2ee1a88bc0",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/seat-set-resume-token.test.ts",
+      "before_sha256_16": "41b7e58592bbcae3",
+      "after_sha256_16": "489545a58de54b91",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/slack-cutover-cli.test.ts",
+      "before_sha256_16": "42782c2ec1025a4c",
+      "after_sha256_16": "f46cd41efd451d2f",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/up-topology-host-rejection.test.ts",
+      "before_sha256_16": "84ea336c7209c6b9",
+      "after_sha256_16": "cc1fbc628afa851f",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

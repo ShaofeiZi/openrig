@@ -64,7 +64,7 @@ export class CheckpointStore {
   }
 
   getCheckpointsForRig(rigId: string): Record<string, Checkpoint | null> {
-    // Get all nodes for this rig
+    // 获取此工作组的所有节点。
     const nodes = this.db
       .prepare("SELECT id FROM nodes WHERE rig_id = ?")
       .all(rigId) as { id: string }[];

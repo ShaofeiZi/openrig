@@ -4,9 +4,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { DaemonClient, launchNodeNotice } from "../src/daemon-client.js";
 
-// FR-8 / R7 no-new-data: the TUI's entire daemon surface is this ONE module,
-// and every route it can emit is on the §4.A table of EXISTING web-consumed
-// reads. This test pins the audit: exercise every wrapper, collect every URL.
+// FR-8 / R7 no-new-data：TUI 整个 daemon 面就是这一个模块，
+// 它能发出的每条路由都在 §4.A 既有 web 消费
+// 读表上。此测试钉住审计：走每个 wrapper，收集每个 URL。
 
 const SPEC_4A_ROUTES = [
   "/api/rigs/openrig-build/graph",
@@ -34,8 +34,8 @@ const SPEC_4A_ROUTES = [
   "/api/health?limit=200",
 ];
 
-describe("daemon client = the §4.A table, one module, nothing else (FR-8/FR-9)", () => {
-  it("every wrapper emits exactly a §4.A route", async () => {
+describe("daemon client = §4.A 表，单模块，别无其他 (FR-8/FR-9)", () => {
+  it("每个 wrapper 恰好发出一条 §4.A 路由", async () => {
     const seen: string[] = [];
     const fetchImpl = (async (url: unknown) => {
       seen.push(String(url).replace("http://x", ""));
@@ -70,19 +70,19 @@ describe("daemon client = the §4.A table, one module, nothing else (FR-8/FR-9)"
     expect(seen.sort()).toEqual([...SPEC_4A_ROUTES].sort());
   });
 
-  it("is the ONLY module that talks HTTP (one-file source-check stays one file)", () => {
+  it("是唯一与 HTTP 通信的模块（单文件源检查保持单文件）", () => {
     const srcDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src");
     const files = ["state.ts", "render.ts", "grammar.ts", "input.ts", "socket-server.ts", "main.ts", "types.ts", "demo-data.ts", "index.ts", "hydrate.ts"];
     for (const file of files) {
       const text = readFileSync(path.join(srcDir, file), "utf8");
       expect(text, `${file} must not fetch`).not.toMatch(/fetch\(/);
-      // state.ts carries §4.A provenance notes in the section registry
-      // (sourceRead metadata) — those are documentation, not request paths.
+      // state.ts 在 section 注册表带 §4.A 来源注
+      //（sourceRead 元数据）——那些是文档，非请求路径。
       if (file !== "state.ts") expect(text, `${file} must not carry routes`).not.toMatch(/\/api\//);
     }
   });
 
-  it("write surface = EXACTLY the two BR-8 drive-structure contracts (terminal-open, seat-launch)", async () => {
+  it("写面 = 恰好两个 BR-8 驱动结构契约（terminal-open, seat-launch）", async () => {
     const seen: string[] = [];
     const fetchImpl = (async (url: unknown, init?: RequestInit) => {
       if (init?.method === "POST") seen.push(String(url).replace("http://x", ""));
@@ -97,21 +97,21 @@ describe("daemon client = the §4.A table, one module, nothing else (FR-8/FR-9)"
     await c.openTerminal("pod:dev");
     await c.launchNode("myrig", "dev.qa");
     expect(seen).toEqual(["/api/terminal/open", "/api/rigs/myrig/nodes/dev.qa/launch"]);
-    // and no other method on the client POSTs
+    // 且 client 上无其他方法 POST
     const postCalls = Object.getOwnPropertyNames(Object.getPrototypeOf(c)).filter((m) =>
       ["openTerminal", "launchNode"].includes(m),
     );
     expect(postCalls).toHaveLength(2);
   });
 
-  it("reports an already-running launch response honestly", () => {
+  it("诚实报告已在运行的 launch 响应", () => {
     expect(launchNodeNotice("dev.qa", { ok: true, code: "already_running", alreadyRunning: [{ logicalId: "dev.qa" }] }))
-      .toBe("agent already running: dev.qa");
+      .toBe("智能体已在运行: dev.qa");
     expect(launchNodeNotice("dev.qa", { ok: true, launched: [{ logicalId: "dev.qa" }] }))
-      .toBe("agent run requested: dev.qa");
+      .toBe("已请求运行智能体: dev.qa");
   });
 
-  it("does not report a zero-pane HTTP 200 terminal result as opened", async () => {
+  it("不把零窗格 HTTP 200 终端结果报告为已打开", async () => {
     const fetchImpl = (async () => ({
       ok: true,
       json: async () => ({
@@ -129,12 +129,12 @@ describe("daemon client = the §4.A table, one module, nothing else (FR-8/FR-9)"
     await expect(c.openTerminal("pod:dev")).rejects.toThrow(/herdr control socket is not answering ping/);
   });
 
-  it("surfaces a failed read as a NAMED error (route + status), never silent", async () => {
+  it("把失败读取呈现为具名错误（路由 + 状态），绝不静默", async () => {
     const fetchImpl = (async () => ({ ok: false, status: 503, json: async () => ({}) }) as Response) as typeof fetch;
     const c = new DaemonClient({ baseUrl: "http://x", fetchImpl });
     await expect(c.ps()).rejects.toThrow(/GET \/api\/ps → 503/);
   });
-  it("reads the current terminal credential after first daemon start", async () => {
+  it("首次 daemon 启动后读取当前终端凭证", async () => {
     let headers: Record<string, string> = {};
     const seen: unknown[] = [];
     const c = new DaemonClient({ baseUrl: "http://x", headers: () => headers,

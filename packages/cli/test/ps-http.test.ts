@@ -85,7 +85,7 @@ describe("rig ps --host HTTP", () => {
     };
     await captureLogs(async () => {
       // OPR.0.4.4.21 FR-2: remote --nodes requires an explicit target
-      // (implicit scope defaults don't cross host boundaries).
+      //（隐式 scope 默认不跨 host 边界）。
       await makeCmd(deps).parseAsync(["node", "rig", "ps", "--host", "host-b", "--nodes", "--rig", "test-rig", "--json"]);
     });
     const nodesCalls = client._calls.filter((c) => c.path.includes("/nodes"));
@@ -142,7 +142,7 @@ describe("rig ps --host HTTP", () => {
       await makeCmd(deps).parseAsync(["node", "rig", "ps", "--host", "host-b", "--limit", "abc", "--json"]);
     });
     expect(client._calls.length).toBe(0);
-    expect(stderr.some((s) => s.includes("non-negative integer"))).toBe(true);
+    expect(stderr.some((s) => s.includes("非负整数"))).toBe(true);
   });
 
   it("--active sugar works on HTTP path", async () => {
@@ -180,7 +180,7 @@ describe("rig ps --host HTTP", () => {
       await makeCmd(deps).parseAsync(["node", "rig", "ps", "--host", "host-b", "--active", "--filter", "status=running", "--json"]);
     });
     expect(client._calls.length).toBe(0);
-    expect(stderr.some((s) => s.includes("cannot be combined"))).toBe(true);
+    expect(stderr.some((s) => s.includes("不能同时用"))).toBe(true);
   });
   it("--nodes --json returns flattened node array (not rig wrappers)", async () => {
     vi.stubEnv("HOST_B_TOKEN", "tok");
@@ -291,7 +291,7 @@ describe("rig ps --all-hosts fan-out", () => {
     const { stderr } = await captureLogs(async () => {
       await makeCmd(deps).parseAsync(["node", "rig", "ps", "--hosts", "typo-host", "--json"]);
     });
-    expect(stderr.some((s) => s.includes("unknown host ids"))).toBe(true);
+    expect(stderr.some((s) => s.includes("未知主机 id"))).toBe(true);
   });
 
   it("ssh-only --hosts id gets per-host failure entry", async () => {
@@ -310,8 +310,8 @@ describe("rig ps --all-hosts fan-out", () => {
     const { stdout } = await captureLogs(async () => {
       await makeCmd(deps).parseAsync(["node", "rig", "ps", "--hosts", "ssh-host", "--json"]);
     });
-    // OPR.0.4.4.21 FR-5 — the shared P4 contract: an SSH-declared host is a
-    // STRUCTURED unsupported-transport status in hosts[], never silence.
+    // OPR.0.4.4.21 FR-5——共享 P4 契约：SSH 声明的 host 是
+    // hosts[] 中 STRUCTURED 的 unsupported-transport 状态，绝非静默。
     const parsed = JSON.parse(stdout.join(""));
     expect(Array.isArray(parsed.items)).toBe(true);
     const sshEntry = parsed.hosts.find((h: { hostId: string }) => h.hostId === "ssh-host");
@@ -319,8 +319,8 @@ describe("rig ps --all-hosts fan-out", () => {
     expect(sshEntry.status).toBe("unsupported-transport");
   });
 
-  // OPR.0.4.4.21 FR-5 — the intra-P4 shared payload contract
-  // (fanout-contract.ts): items stamped with origin hostId + the per-host
+  // OPR.0.4.4.21 FR-5——P4 内部共享 payload 契约
+  //（fanout-contract.ts）：条目盖上 origin hostId + per-host
   // structured status array covering EVERY targeted host.
   it("fan-out --json emits AggregatedPayload: hostId-stamped items + closed-enum statuses", async () => {
     vi.stubEnv("TOK_B", "secret-b");
@@ -368,7 +368,7 @@ describe("rig ps --all-hosts fan-out", () => {
       await makeCmd(deps).parseAsync(["node", "rig", "ps", "--all-hosts", "--nodes", "--json"]);
     });
     const err = stderr.join("\n");
-    expect(err).toContain("FULL explicit ladder");
+    expect(err).toContain("完整的显式阶梯");
     expect(err).toContain("--nodes -A");
   });
 
@@ -483,7 +483,7 @@ describe("rig ps --all-hosts fan-out", () => {
     const { stderr } = await captureLogs(async () => {
       await makeCmd(deps).parseAsync(["node", "rig", "ps", "--all-hosts", "--summary", "--json"]);
     });
-    expect(stderr.join("\n")).toContain("does not compose with the merged fan-out payload");
+    expect(stderr.join("\n")).toContain("不能与合并后的 fan-out 负载组合");
   });
 
   it("fan-out rejects bogus --fields BEFORE any HTTP call", async () => {

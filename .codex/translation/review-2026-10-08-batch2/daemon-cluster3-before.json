@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/discovery-coordinator.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/event-bus.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/external-install-executor.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/daemon-lifecycle-store.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/daemon-version.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/execution-view.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/health-diagnosis.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/demo-rig-selector.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/discovery-repository.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/fresh-occupant-relation.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/event-loop-monitor.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/gate-predicate.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/discovery-types.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/health-context.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/health-detectors.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/draft-rig-generator.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/external-install-planner.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/graph-projection.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/health-checkpoints.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/errors.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

@@ -1,33 +1,24 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * Slice 09 Rig Policy Primitive (OPR.0.3.2.9) — operator-context-mode
- * binding table.
+ * Slice 09 Rig Policy Primitive（OPR.0.3.2.9）——operator-context-mode 绑定表。
  *
- * One row per scoped binding:
- *   (scope, qualifier) is a unique key; multiple modes at different
- *   scopes coexist (e.g., sleep@global_host + debug@qitem). The
- *   effective-mode resolver picks the most-specific applicable row
- *   for a (rig, workstream, qitem) read context.
+ * 每个范围绑定一行：(scope, qualifier) 是唯一键；不同范围的多个 mode 可共存（例如
+ * sleep@global_host + debug@qitem）。effective-mode 解析器为 (rig, workstream, qitem)
+ * 读取上下文选择最具体的适用行。
  *
- * Schema follows the workspace-primitive migration pattern: small
- * table, JSON column for the 10-field record (the validator owns
- * its integrity at write time). This matches the typed-primitive
- * precedent the slice IMPL-PRD names (HG-5: no parallel store).
+ * Schema 遵循 workspace-primitive 迁移模式：小表，以及保存 10 字段记录的 JSON 列
+ *（写入时由验证器负责完整性）。这符合 slice IMPL-PRD 指定的 typed-primitive 先例
+ *（HG-5：不设并行存储）。
  *
- * `qualifier` is NULL for `scope = 'global_host'` and carries the
- * appropriate id for the other three scopes.
+ * `scope = 'global_host'` 时 `qualifier` 为 NULL；其他三个范围保存相应 id。
  *
- * `set_at` is a UTC ISO string written by the daemon. The drift
- * mechanism reads this to compute long-gap re-confirmation prompts
- * (v0 ships the field; the numeric threshold is convention Q3
- * follow-on).
+ * `set_at` 是后台服务写入的 UTC ISO 字符串。漂移机制读取它来计算长间隔重新确认提示
+ *（v0 发布此字段；数值阈值属于约定 Q3 的后续工作）。
  *
- * `set_by` is always `'operator'` in v0 — there is no agent-set path.
- * The column exists so future operator-attribution work (e.g.,
- * multi-operator hosts) can shape per-operator views without a
- * schema migration; v0's validator + route enforce the operator-only
- * contract at the boundary.
+ * v0 中 `set_by` 始终为 `'operator'`——没有智能体设置路径。保留此列使未来的操作员归属工作
+ *（例如多操作员主机）无需 schema 迁移即可形成逐操作员视图；v0 的验证器与路由在边界强制
+ * 执行仅限操作员的契约。
  */
 export const rigPolicySchema: Migration = {
   name: "041_rig_policy.sql",

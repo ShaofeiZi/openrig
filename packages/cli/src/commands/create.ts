@@ -23,17 +23,17 @@ interface CreateResult {
 }
 
 export function createCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("create").description("Create a one-seat rig without writing a spec");
+  const cmd = new Command("create").description("无需编写规范即可创建单席位工作组");
   const getDeps = () => depsOverride ?? {
     lifecycleDeps: realDeps(),
     clientFactory: (url: string) => new DaemonClient(url),
   };
 
   cmd
-    .argument("<name>", "Name of the new rig")
-    .option("--runtime <runtime>", "Agent runtime", "claude-code")
-    .option("--cwd <path>", "Working directory for the seat", process.cwd())
-    .option("--json", "JSON output for agents")
+    .argument("<name>", "新工作组的名称")
+    .option("--runtime <runtime>", "智能体运行时", "claude-code")
+    .option("--cwd <path>", "席位的工作目录", process.cwd())
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (name: string, opts: { runtime: string; cwd: string; json?: boolean }) => {
       const deps = getDeps();
       const status = await getDaemonStatus(deps.lifecycleDeps);
@@ -90,14 +90,14 @@ export function createCommand(depsOverride?: StatusDeps): Command {
           node,
         }, null, 2));
       } else if (ok) {
-        console.log(`Created rig ${name} (${res.data.rigId})`);
-        console.log(`  Seat: ${logicalId}${node?.sessionName ? ` (${node.sessionName})` : ""}`);
+        console.log(`已创建工作组 ${name}（${res.data.rigId}）`);
+        console.log(`  席位：${logicalId}${node?.sessionName ? `（${node.sessionName}）` : ""}`);
       } else {
-        const detail = res.data.errors?.join("; ")
+        const detail = res.data.errors?.join("；")
           ?? res.data.message
           ?? res.data.error
           ?? node?.error
-          ?? `Create failed (HTTP ${res.status})`;
+          ?? `创建失败（HTTP ${res.status}）`;
         console.error(detail);
       }
 

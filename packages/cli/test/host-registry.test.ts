@@ -86,7 +86,7 @@ hosts:
     const r = loadHostRegistry("/tmp/openrig-non-existent-hosts.yaml");
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.error).toContain("host registry not found");
+      expect(r.error).toContain("未找到主机注册表");
       expect(r.error).toContain("transport: ssh");
     }
   });
@@ -95,7 +95,7 @@ hosts:
     withTempFile("hosts.yaml", `hosts: "not-an-array"\n`, (path) => {
       const r = loadHostRegistry(path);
       expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.error).toContain("'hosts' must be an array");
+      if (!r.ok) expect(r.error).toContain("'hosts' 必须是数组");
     });
   });
 
@@ -107,7 +107,7 @@ hosts:
 `, (path) => {
       const r = loadHostRegistry(path);
       expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.error).toContain("id: required non-empty string");
+      if (!r.ok) expect(r.error).toContain("id：必需的非空字符串");
     });
   });
 
@@ -119,7 +119,7 @@ hosts:
 `, (path) => {
       const r = loadHostRegistry(path);
       expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.error).toContain("target: required non-empty string");
+      if (!r.ok) expect(r.error).toContain("target：必需的非空字符串");
     });
   });
 
@@ -133,7 +133,7 @@ hosts:
       const r = loadHostRegistry(path);
       expect(r.ok).toBe(false);
       if (!r.ok) {
-        expect(r.error).toContain("must be one of");
+        expect(r.error).toContain("必须是");
         expect(r.error).toContain('"tailscale"');
       }
     });
@@ -151,7 +151,7 @@ hosts:
 `, (path) => {
       const r = loadHostRegistry(path);
       expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.error).toContain("duplicate host id 'vm-x'");
+      if (!r.ok) expect(r.error).toContain("重复的主机 id 'vm-x'");
     });
   });
 
@@ -165,7 +165,7 @@ hosts:
 `, (path) => {
       const r = loadHostRegistry(path);
       expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.error).toContain("user: optional, but if present must be a non-empty string");
+      if (!r.ok) expect(r.error).toContain("user：可选，但如果存在必须是非空字符串");
     });
   });
 
@@ -173,14 +173,14 @@ hosts:
     withTempFile("hosts.yaml", `hosts:\n  - id: vm-x\n  transport: ssh\n  target: x.local\nnot-valid: [`, (path) => {
       const r = loadHostRegistry(path);
       expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.error).toContain("failed to parse host registry YAML");
+      if (!r.ok) expect(r.error).toContain("解析") && expect(r.error).toContain("主机注册表 YAML");
     });
   });
 
   it("rejects top-level non-object YAML", () => {
     const result = validateHostRegistry("just-a-string", "/x");
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("must be a YAML object with a 'hosts' array");
+    if (!result.ok) expect(result.error).toContain("必须是带 'hosts' 数组的 YAML 对象");
   });
 });
 
@@ -202,7 +202,7 @@ describe("host registry — resolveHost", () => {
     const r = resolveHost(registry, "vm-unknown");
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.error).toContain("unknown host id 'vm-unknown'");
+      expect(r.error).toContain("未知主机 id 'vm-unknown'");
       expect(r.error).toContain("vm-a");
       expect(r.error).toContain("vm-b");
     }
@@ -211,6 +211,6 @@ describe("host registry — resolveHost", () => {
   it("indicates an empty registry honestly", () => {
     const r = resolveHost({ hosts: [] }, "vm-x");
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toContain("registry is empty");
+    if (!r.ok) expect(r.error).toContain("注册表为空");
   });
 });

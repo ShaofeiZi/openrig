@@ -5,7 +5,7 @@ import os from "node:os";
 import { createHash } from "node:crypto";
 import * as tar from "tar";
 import { pack, unpack, verifyArchiveDigest } from "../src/domain/bundle-archive.js";
-// TODO: AS-T12 — migrate to pod-aware bundle types
+// TODO：AS-T12——迁移到感知 pod 的 bundle 类型。
 import { serializeLegacyBundleManifest as serializeBundleManifest, type LegacyBundleManifest as BundleManifest } from "../src/domain/bundle-types.js";
 import { computeIntegrity, writeIntegrity, type IntegrityFsOps } from "../src/domain/bundle-integrity.js";
 
@@ -33,7 +33,7 @@ function realIntegrityFsOps(): IntegrityFsOps {
   };
 }
 
-describe("Bundle archive", () => {
+describe("Bundle 归档", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -57,15 +57,15 @@ describe("Bundle archive", () => {
     };
     fs.writeFileSync(path.join(staging, "bundle.yaml"), serializeBundleManifest(manifest));
 
-    // Add integrity
+    // 添加 integrity。
     const integrity = computeIntegrity(staging, realIntegrityFsOps());
     writeIntegrity(staging, integrity, realIntegrityFsOps());
 
     return staging;
   }
 
-  // T1: Pack creates valid tar.gz
-  it("pack creates valid tar.gz file", async () => {
+  // T1：打包会创建有效 tar.gz。
+  it("pack 创建有效 tar.gz 文件", async () => {
     const staging = createStaging();
     const outputPath = path.join(tmpDir, "test.rigbundle");
 
@@ -76,8 +76,8 @@ describe("Bundle archive", () => {
     expect(fs.statSync(outputPath).size).toBeGreaterThan(0);
   });
 
-  // T2: Unpack extracts to correct structure
-  it("unpack extracts to correct directory structure", async () => {
+  // T2：解包到正确结构。
+  it("unpack 解压到正确目录结构", async () => {
     const staging = createStaging();
     const archivePath = path.join(tmpDir, "test.rigbundle");
     await pack(staging, archivePath);
@@ -90,8 +90,8 @@ describe("Bundle archive", () => {
     expect(fs.existsSync(path.join(extractDir, "packages/pkg/SKILL.md"))).toBe(true);
   });
 
-  // T3: Round-trip
-  it("round-trip: pack -> unpack -> files match", async () => {
+  // T3：往返。
+  it("往返：pack -> unpack 后文件匹配", async () => {
     const staging = createStaging();
     const archivePath = path.join(tmpDir, "test.rigbundle");
     await pack(staging, archivePath);
@@ -104,31 +104,31 @@ describe("Bundle archive", () => {
     expect(extractedSkill).toBe(origSkill);
   });
 
-  // T4: Path traversal rejected — create archive with ../ via low-level tar pack
-  it("path traversal in archive entry rejected during extraction", async () => {
-    // Create a staging dir with a file, then manually pack with a ../ prefix
+  // T4：拒绝路径遍历——通过底层 tar pack 创建含 ../ 的归档。
+  it("解压时拒绝归档条目中的路径遍历", async () => {
+    // 创建含文件的 staging 目录，再手工使用 ../ 前缀打包。
     const malDir = path.join(tmpDir, "mal-staging");
     fs.mkdirSync(malDir, { recursive: true });
     fs.writeFileSync(path.join(malDir, "evil.txt"), "escape!");
 
     const malArchive = path.join(tmpDir, "mal.rigbundle");
-    // Use tar.create with prefix to inject ../ into entry names
+    // 使用带 prefix 的 tar.create，把 ../ 注入条目名称。
     await tar.create(
       { gzip: true, file: malArchive, cwd: malDir, prefix: "../escape" },
       ["evil.txt"],
     );
 
-    // Write a valid .sha256 digest so we get past the digest check
+    // 写入有效 .sha256 摘要，使流程通过摘要检查。
     const archiveHash = createHash("sha256").update(fs.readFileSync(malArchive)).digest("hex");
     fs.writeFileSync(`${malArchive}.sha256`, archiveHash);
 
     await expect(unpack(malArchive, path.join(tmpDir, "out")))
-      .rejects.toThrow(/Unsafe archive entry|path traversal/i);
+      .rejects.toThrow(/不安全的归档 entry|路径穿越/i);
   });
 
-  // T4b: Symlink entry rejection
-  it("symlink in archive rejected during extraction", async () => {
-    // Create an archive that includes a symlink entry
+  // T4b：拒绝 symlink 条目。
+  it("解压时拒绝归档中的 symlink", async () => {
+    // 创建包含 symlink 条目的归档。
     const symlinkDir = path.join(tmpDir, "sym-staging");
     fs.mkdirSync(symlinkDir, { recursive: true });
     fs.writeFileSync(path.join(symlinkDir, "real.txt"), "real content");
@@ -147,8 +147,8 @@ describe("Bundle archive", () => {
       .rejects.toThrow(/Unsafe archive entry|SymbolicLink/i);
   });
 
-  // T5: Corrupted archive -> error
-  it("corrupted archive throws on unpack", async () => {
+  // T5：损坏的归档产生错误。
+  it("解包损坏的归档时抛错", async () => {
     const archivePath = path.join(tmpDir, "corrupt.rigbundle");
     fs.writeFileSync(archivePath, "not a real tar.gz");
     fs.writeFileSync(`${archivePath}.sha256`, sha256("not a real tar.gz"));
@@ -157,34 +157,34 @@ describe("Bundle archive", () => {
       .rejects.toThrow();
   });
 
-  // T6: Content integrity verified after unpack
-  it("content integrity verified after extraction", async () => {
+  // T6：解包后验证内容完整性。
+  it("解压后验证内容完整性", async () => {
     const staging = createStaging();
     const archivePath = path.join(tmpDir, "test.rigbundle");
     await pack(staging, archivePath);
 
-    // Unpack should succeed (integrity passes)
+    // 解包应成功（完整性检查通过）。
     const extractDir = path.join(tmpDir, "extracted");
     await unpack(archivePath, extractDir);
-    // No error = integrity passed
+    // 没有错误即表示完整性检查通过。
   });
 
-  // T7: Tampered file detected post-unpack
-  it("tampered file in archive detected after extraction", async () => {
+  // T7：解包后检测被篡改文件。
+  it("解压后检测归档中被篡改的文件", async () => {
     const staging = createStaging();
     const archivePath = path.join(tmpDir, "test.rigbundle");
     await pack(staging, archivePath);
 
-    // Extract first
+    // 先解压。
     const extractDir = path.join(tmpDir, "extracted");
     await unpack(archivePath, extractDir);
 
-    // Tamper a file
+    // 篡改文件。
     fs.writeFileSync(path.join(extractDir, "rig.yaml"), "tampered!");
 
-    // Re-verification would fail (but unpack already verified — this tests the verify function)
+    // 重新验证会失败（unpack 已完成验证，此处测试 verify 函数）。
     const { verifyIntegrity: vi2 } = await import("../src/domain/bundle-integrity.js");
-    // TODO: AS-T12 — migrate to pod-aware bundle types
+    // TODO：AS-T12——迁移到感知 pod 的 bundle 类型。
     const { parseLegacyBundleManifest: parseBundleManifest, normalizeLegacyBundleManifest: normalizeBundleManifest } = await import("../src/domain/bundle-types.js");
     const manifestYaml = fs.readFileSync(path.join(extractDir, "bundle.yaml"), "utf-8");
     const manifest = normalizeBundleManifest(parseBundleManifest(manifestYaml));
@@ -193,15 +193,15 @@ describe("Bundle archive", () => {
     expect(result.mismatches).toContain("rig.yaml");
   });
 
-  // T8: .rigbundle extension enforced
-  it(".rigbundle extension enforced on output path", async () => {
+  // T8：强制使用 .rigbundle 扩展名。
+  it("输出路径强制使用 .rigbundle 扩展名", async () => {
     const staging = createStaging();
     await expect(pack(staging, path.join(tmpDir, "test.tar.gz")))
       .rejects.toThrow(/\.rigbundle/);
   });
 
-  // T9: .sha256 sibling written during pack
-  it(".sha256 sibling file written during pack", async () => {
+  // T9：打包时写入同级 .sha256 文件。
+  it("pack 时写入同级 .sha256 文件", async () => {
     const staging = createStaging();
     const archivePath = path.join(tmpDir, "test.rigbundle");
     const hash = await pack(staging, archivePath);
@@ -211,35 +211,35 @@ describe("Bundle archive", () => {
     expect(fs.readFileSync(digestPath, "utf-8").trim()).toBe(hash);
   });
 
-  // T10: Missing .sha256 -> unpack throws
-  it("missing .sha256 throws on unpack", async () => {
+  // T10：缺少 .sha256 时 unpack 抛错。
+  it("缺少 .sha256 时 unpack 抛错", async () => {
     const staging = createStaging();
     const archivePath = path.join(tmpDir, "test.rigbundle");
     await pack(staging, archivePath);
 
-    // Remove the digest file
+    // 删除摘要文件。
     fs.unlinkSync(`${archivePath}.sha256`);
 
     await expect(unpack(archivePath, path.join(tmpDir, "out")))
-      .rejects.toThrow(/digest file required/);
+      .rejects.toThrow(/缺少必需的归档 digest 文件/);
   });
 
-  // T11: Digest mismatch -> unpack throws
-  it("archive digest mismatch throws on unpack", async () => {
+  // T11：摘要不匹配时 unpack 抛错。
+  it("归档摘要不匹配时 unpack 抛错", async () => {
     const staging = createStaging();
     const archivePath = path.join(tmpDir, "test.rigbundle");
     await pack(staging, archivePath);
 
-    // Tamper the digest
+    // 篡改摘要。
     fs.writeFileSync(`${archivePath}.sha256`, "0000000000000000000000000000000000000000000000000000000000000000");
 
     await expect(unpack(archivePath, path.join(tmpDir, "out")))
-      .rejects.toThrow(/integrity check failed/);
+      .rejects.toThrow(/完整性检查失败/);
   });
 
-  // T12b: Missing integrity section in bundle.yaml -> unpack rejects
-  it("unpack rejects archive whose bundle.yaml lacks integrity section", async () => {
-    // Create staging without integrity
+  // T12b：bundle.yaml 缺少 integrity section 时 unpack 拒绝。
+  it("unpack 拒绝 bundle.yaml 缺少 integrity section 的归档", async () => {
+    // 创建不含 integrity 的 staging。
     const staging = path.join(tmpDir, "no-integ-staging");
     fs.mkdirSync(path.join(staging, "packages/pkg"), { recursive: true });
     fs.writeFileSync(path.join(staging, "rig.yaml"), "schema_version: 1\nname: test\nversion: '1.0'\nnodes:\n  - id: dev\n    runtime: claude-code\nedges: []");
@@ -249,7 +249,7 @@ describe("Bundle archive", () => {
       schemaVersion: 1, name: "no-integ", version: "0.1.0",
       createdAt: "2026-01-01T00:00:00Z", rigSpec: "rig.yaml",
       packages: [{ name: "pkg", version: "1.0", path: "packages/pkg", originalSource: "" }],
-      // No integrity section
+      // 没有 integrity section。
     };
     fs.writeFileSync(path.join(staging, "bundle.yaml"), serializeBundleManifest(manifest));
 
@@ -257,11 +257,11 @@ describe("Bundle archive", () => {
     await pack(staging, archivePath);
 
     await expect(unpack(archivePath, path.join(tmpDir, "out")))
-      .rejects.toThrow(/missing integrity section/);
+      .rejects.toThrow(/缺少 integrity section/);
   });
 
-  // T12: Deterministic output
-  it("pack same content twice produces identical archives", async () => {
+  // T12：确定性输出。
+  it("对相同内容打包两次会产生完全相同的归档", async () => {
     const staging = createStaging();
     const out1 = path.join(tmpDir, "a.rigbundle");
     const out2 = path.join(tmpDir, "b.rigbundle");

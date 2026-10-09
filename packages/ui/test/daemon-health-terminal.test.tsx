@@ -3,9 +3,9 @@ import { render, cleanup, act } from "@testing-library/react";
 import React from "react";
 import type { DaemonHealthSignal } from "../src/hooks/useDaemonHealth.js";
 
-// OPR.0.4.3.21 — the live terminal disambiguates the broker's GENERIC
-// "terminal broker unavailable" close from a genuinely unhealthy control plane,
-// while preserving every SPECIFIC broker/session error.
+// OPR.0.4.3.21——live 终端把 broker 的通用
+// "terminal broker unavailable" 关闭与真正不健康的控制面区分开，
+// 同时保留每个具体 broker/session 错误。
 
 const instances: MockWS[] = [];
 
@@ -92,7 +92,7 @@ describe("FocusedTerminal health-aware error disambiguation", () => {
       instances[0]!.onclose?.({ code: 1011, reason: "terminal broker unavailable" });
     });
     const el = getByTestId("focused-terminal-dev@rig");
-    expect(el.textContent).toContain("daemon control plane unhealthy");
+    expect(el.textContent).toContain("后台服务控制面不健康");
     expect(el.textContent).not.toContain("terminal broker unavailable");
   });
 
@@ -103,7 +103,7 @@ describe("FocusedTerminal health-aware error disambiguation", () => {
     });
     const el = getByTestId("focused-terminal-dev@rig");
     expect(el.textContent).toContain("terminal broker unavailable");
-    expect(el.textContent).not.toContain("daemon control plane unhealthy");
+    expect(el.textContent).not.toContain("后台服务控制面不健康");
   });
 
   it("preserves a SPECIFIC session-missing error even when the control plane is unhealthy", async () => {
@@ -113,7 +113,7 @@ describe("FocusedTerminal health-aware error disambiguation", () => {
     });
     const el = getByTestId("focused-terminal-dev@rig");
     expect(el.textContent).toContain("session not found: dev@rig");
-    expect(el.textContent).not.toContain("daemon control plane unhealthy");
+    expect(el.textContent).not.toContain("后台服务控制面不健康");
   });
 
   it("preserves a SPECIFIC pipe-pane failure even when the control plane is unhealthy", async () => {
@@ -123,6 +123,6 @@ describe("FocusedTerminal health-aware error disambiguation", () => {
     });
     const el = getByTestId("focused-terminal-dev@rig");
     expect(el.textContent).toContain("pipe-pane failed: boom");
-    expect(el.textContent).not.toContain("daemon control plane unhealthy");
+    expect(el.textContent).not.toContain("后台服务控制面不健康");
   });
 });

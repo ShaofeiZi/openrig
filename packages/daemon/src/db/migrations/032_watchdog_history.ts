@@ -1,29 +1,24 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * Watchdog history (PL-004 Phase C; append-only audit log).
+ * Watchdog 历史（PL-004 阶段 C；只追加审计日志）。
  *
- * Per PRD § Watchdog + slice IMPL § Guard Checkpoint Focus item 2:
- * append-only history of meaningful watchdog events. Pure `not_due`
- * polls are NOT recorded (matches POC; minimizes table size). Only
- * `sent` (delivery executed), `skipped` (policy ran but skipped per
- * its own logic — e.g., suppress_if_recent_success or
- * no_actionable_artifacts), and `terminal` (policy declared job done)
- * are recorded.
+ * 根据 PRD § Watchdog 与 slice IMPL § Guard Checkpoint Focus 第 2 项：记录有意义的
+ * watchdog 事件的只追加历史。纯 `not_due` 轮询不会记录（与 POC 一致并缩小表体积）。只记录
+ * `sent`（已执行投递）、`skipped`（策略已运行但按自身逻辑跳过，例如
+ * suppress_if_recent_success 或 no_actionable_artifacts）和 `terminal`（策略声明任务完成）。
  *
- * Append-only contract: writers only INSERT. UPDATE/DELETE are not
- * exposed by WatchdogHistoryLog API; direct SQL UPDATE/DELETE would
- * succeed at the DB level (SQLite has no view/role layer) but is a
- * contract violation enforced at the domain-layer API boundary.
+ * 只追加契约：写入方只能 INSERT。WatchdogHistoryLog API 不公开 UPDATE/DELETE；直接 SQL
+ * UPDATE/DELETE 会在数据库层成功（SQLite 没有视图/角色层），但属于由领域层 API 边界强制
+ * 执行的契约违规。
  *
- * Outcome enum:
- *   sent     - policy.evaluate() returned action=send and delivery executed
- *   skipped  - policy.evaluate() returned action=skip (with reason)
- *   terminal - policy.evaluate() returned action=terminal (job declared done)
+ * 结果枚举：
+ *   sent     ——policy.evaluate() 返回 action=send 且已执行投递
+ *   skipped  ——policy.evaluate() 返回 action=skip（附原因）
+ *   terminal ——policy.evaluate() 返回 action=terminal（任务已声明完成）
  *
- * FK to watchdog_jobs(job_id) for referential integrity. Indexes on
- * (job_id, evaluated_at DESC) for "recent history for one job" queries
- * and (outcome, evaluated_at DESC) for cross-job outcome queries.
+ * 以指向 watchdog_jobs(job_id) 的外键保证引用完整性。在 (job_id, evaluated_at DESC) 上建立
+ * 索引以查询“某一任务的近期历史”，在 (outcome, evaluated_at DESC) 上建立索引以跨任务查询结果。
  */
 export const watchdogHistorySchema: Migration = {
   name: "032_watchdog_history.sql",

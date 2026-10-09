@@ -11,6 +11,7 @@ import { renderScreen } from "../src/render.js";
 import { resolveEscapeAction } from "../src/input.js";
 import { fileLines, referenceAction } from "../src/reading.js";
 import type { Action, FleetSnapshot, ViewStateStore } from "../src/types.js";
+import { strWidth } from "../src/text-width.js";
 
 let home: string, root: string, snap: FleetSnapshot, view: ViewStateStore, client: DaemonClient;
 let requests: string[], failRead: boolean;
@@ -47,7 +48,7 @@ function draw(cols = 80, rows = 24) {
 function back() { view.dispatch(resolveEscapeAction({ type: "key", key: "escape" }, view.get())!); }
 function open(target: { root: string; path: string; anchor?: string }) { view.dispatch({ type: "file-open", target }); }
 
-describe("current-file reading through real routes and TUI state", () => {
+describe("经真实路由与 TUI 状态的当前文件阅读", () => {
   it.each([[140, 42], [80, 24]])("previews actual purpose, opens detail/source and preserves the caller at %ix%i", async (cols, rows) => {
     view.dispatch({ type: "jump", section: "specs" }); await refresh();
     view.dispatch({ type: "filter", text: "story" });
@@ -55,20 +56,20 @@ describe("current-file reading through real routes and TUI state", () => {
     view.dispatch({ type: "select", index });
     let screen = draw(cols, rows);
     expect(screen.lines.join("\n")).toContain("Understand the manuscript.");
-    expect(screen.lines.join("\n")).toContain("View current source");
-    expect(screen.lines.every((line) => !/[\r\n]/.test(line) && line.length <= cols)).toBe(true);
+    expect(screen.lines.join("\n")).toContain("查看当前源");
+    expect(screen.lines.every((line) => !/[\r\n]/.test(line) && strWidth(line) <= cols)).toBe(true);
     const caller = view.get(); view.dispatch({ type: "activate" }); await refresh(); screen = draw(cols, rows);
     if (cols === 80) expect(screen.explorerWidth).toBe(0);
     const action = screen.contentTargets.find((t) => t.action.type === "file-open")!.action;
     view.dispatch(action); await refresh(); screen = draw(cols, rows);
     expect(screen.lines.join("\n")).toContain("summary: |");
-    expect(screen.lines.join("\n")).toContain("Read from disk");
+    expect(screen.lines.join("\n")).toContain("从磁盘读取");
     back(); draw(cols, rows); await refresh(); back();
     expect(view.get()).toMatchObject({ selection: caller.selection, contentOffset: caller.contentOffset, filter: "story", drill: [] });
     expect(requests.every((r) => /GET \/(?:healthz|api\/(?:specs\/library|files\/))/.test(r))).toBe(true);
     expect(requests.some((r) => r.includes("review/fleet"))).toBe(false);
   });
-  it("re-reads current bytes, follows relative files and anchors, and restores scroll through an in-flight Back", async () => {
+  it("重读当前字节、跟随相对文件与锚点，并在 in-flight Back 后恢复滚动", async () => {
     open({ root: "project", path: "docs/chapter.md" }); await refresh(); draw();
     view.dispatch({ type: "content-scroll", delta: 25 }); draw();
     const caller = view.get();
@@ -81,7 +82,7 @@ describe("current-file reading through real routes and TUI state", () => {
     await refresh(); draw(); expect(view.get().contentOffset).toBe(caller.contentOffset);
     view.dispatch(referenceAction(view.get().file!, "#second-act")); await refresh();
     expect(draw().lines.join("\n")).toContain("The second act is current.");
-    expect(draw().lines.join("\n")).toContain("Showing from #second-act");
+    expect(draw().lines.join("\n")).toContain("从 #second-act 显示");
     writeFileSync(join(root, "docs/chapter.md"), "## Second act\nCHANGED ON DISK\n"); await refresh();
     expect(draw().lines.join("\n")).toContain("CHANGED ON DISK");
     expect(draw().lines.join("\n")).not.toContain("The second act is current.");
@@ -89,7 +90,7 @@ describe("current-file reading through real routes and TUI state", () => {
     expect(draw().lines.join("\n")).toContain("read_unavailable");
     expect(draw().lines.join("\n")).not.toContain("CHANGED ON DISK");
   });
-  it("resolves links from an internal symlink's actual source, never an unrelated root", async () => {
+  it("从内部符号链接的真实源解析链接，绝非无关根", async () => {
     open({ root: "project", path: "alias.md", anchor: "second-act" }); await refresh();
     const result = snap.fileRead!.result;
     expect(result).toHaveProperty("resolvedPath", "docs/chapter.md");
@@ -101,18 +102,18 @@ describe("current-file reading through real routes and TUI state", () => {
     expect(draw().lines.join("\n")).toContain(error);
     expect(draw().lines.join("\n")).not.toContain("not readable through project root");
   });
-  it("labels binary and truncated content without presenting them as complete text", async () => {
+  it("标注二进制与截断内容，不把它们当作完整文本", async () => {
     writeFileSync(join(root, "binary.dat"), Buffer.from([0, 1, 2, 255]));
-    open({ root: "project", path: "binary.dat" }); await refresh(); expect(draw().lines.join("\n")).toContain("Binary / non-UTF-8");
+    open({ root: "project", path: "binary.dat" }); await refresh(); expect(draw().lines.join("\n")).toContain("二进制 / 非 UTF-8");
     writeFileSync(join(root, "non-utf8.dat"), Buffer.from([255, 128, 42]));
     open({ root: "project", path: "non-utf8.dat" }); await refresh();
     expect(snap.fileRead!.result).toHaveProperty("binary", true);
-    expect(draw().lines.join("\n")).toContain("Binary / non-UTF-8");
+    expect(draw().lines.join("\n")).toContain("二进制 / 非 UTF-8");
     writeFileSync(join(root, "large.md"), "A paragraph.\n".repeat(100000));
     open({ root: "project", path: "large.md", anchor: "beyond-prefix" }); await refresh();
     const lines = fileLines(snap.fileRead!.result, view.get().file!, 100).map((line) => line.text).join("\n");
-    expect(lines).toContain("TRUNCATED at 1048576 bytes");
-    expect(lines).toContain("Heading not found: #beyond-prefix in the returned prefix");
+    expect(lines).toContain("在 1048576 / 1300000 字节处截断");
+    expect(lines).toContain("未找到标题：#beyond-prefix 在返回的前缀中");
   });
   it.each([[140, 42], [80, 24]])("reads a capped long line and line-broken control, then returns at %ix%i", async (cols, rows) => {
     view.dispatch({ type: "jump", section: "specs" }); await refresh();
@@ -126,23 +127,23 @@ describe("current-file reading through real routes and TUI state", () => {
       const result = snap.fileRead!.result;
       expect(result).toMatchObject({ truncated: true, truncatedAtBytes: 1048576, totalBytes: content.length + 15, binary: false });
       const lines = fileLines(result, view.get().file!, cols - 2);
-      expect(lines.every((line) => line.text.length <= cols - 2)).toBe(true);
+      expect(lines.every((line) => strWidth(line.text) <= cols - 2)).toBe(true);
       expect(lines.filter((line) => /^\s*x+$/.test(line.text)).map((line) => line.text.trimStart()).join("")).toBe(content.slice(0, 1048576).replace(/\n/g, ""));
       const screen = draw(cols, rows).lines.join("\n");
-      expect(screen).toContain("Read from disk");
-      expect(screen).toContain("TRUNCATED at 1048576 bytes");
-      expect(screen).toContain("Heading not found: #after-limit in the returned prefix");
+      expect(screen).toContain("从磁盘读取");
+      expect(screen).toContain("在 1048576 /");
+      expect(screen).toContain("未找到标题：#after-limit 在返回的前缀中");
       view.dispatch({ type: "content-scroll", delta: 10 }); draw(cols, rows);
       back(); await refresh(); draw(cols, rows);
       expect(view.get()).toMatchObject({ file: null, filter: caller.filter, selection: caller.selection, contentOffset: caller.contentOffset });
     }
   });
-  it("keeps missing anchors and HTTP destinations visible with no browser or fetch effect", async () => {
+  it("缺失锚点与 HTTP 目的地保持可见，无浏览器或 fetch 效果", async () => {
     open({ root: "project", path: "outline.md", anchor: "missing" }); await refresh();
-    expect(draw().lines.join("\n")).toContain("Heading not found: #missing");
+    expect(draw().lines.join("\n")).toContain("未找到标题：#missing");
     const before = requests.length;
     view.dispatch(referenceAction(view.get().file!, "https://example.org/story")); await refresh();
-    expect(draw().lines.join("\n")).toContain("No browser opened");
+    expect(draw().lines.join("\n")).toContain("未打开浏览器");
     expect(draw().lines.join("\n")).toContain("https://example.org/story");
     expect(requests).toHaveLength(before);
     back(); expect(view.get().file?.anchor).toBe("missing");

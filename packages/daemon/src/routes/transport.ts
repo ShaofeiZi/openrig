@@ -5,18 +5,16 @@ import { requireSenderIdentity } from "./require-sender-identity.js";
 import type { OutboxHandler } from "../domain/outbox-handler.js";
 import { wrapPaneEnvelope } from "../lib/pane-envelope.js";
 
-// S2 (OPR.0.5.4.3) — the sender-side half of two-ended honesty: appended to any
-// unattributed delivery's success payload and surfaced by the CLI renderers.
-// Held to the S1 truthfulness bar for a success payload: what happened, what the
-// recipient cannot know, and the concrete fix (sign).
+// S2（OPR.0.5.4.3）——两端诚实的发送方半侧：附加到任何未归属投递的成功响应上，
+// 由 CLI renderer 呈现。按 S1 成功响应的诚实门槛：发生了什么、接收方无法知道什么、
+// 以及具体修复方式（签名）。
 const UNKNOWN_SENDER_NOTICE =
-  "Delivered without sender identity: this request carried no X-OpenRig-Session header, so your recipient has no way of knowing who sent it. Follow up and sign it — send from a seat shell (the header stamps automatically) or state your identity in the message body.";
+  "以无发送方身份投递：本请求未携带 X-OpenRig-Session 头，接收方无法知道是谁发的。请跟进并签名——从席位 shell 发送（该头会自动盖），或在消息正文中说明你的身份。";
 
-// The unknown-sender From: marker, DERIVED from the canonical envelope wrapper
-// (pane-envelope.ts SENDER_FALLBACK is unexported and its literal is
-// canonicity-guarded to exactly two twin sites) — deriving at module load keeps
-// one source of truth with no third definition. wrapPaneEnvelope with an absent
-// sender renders "From: <marker>" as its first line.
+// 未知发送方 From: 标记，从规范 envelope wrapper DERIVED（pane-envelope.ts 的
+// SENDER_FALLBACK 未导出，其字面量被 canonicity 守卫在恰好两个孪生位置）——
+// 在模块加载时派生，保持单一事实源、无第三处定义。wrapPaneEnvelope 在 sender 缺失时
+// 渲染 "From: <marker>" 作为首行。
 const UNKNOWN_SENDER_MARKER = wrapPaneEnvelope(undefined, "", "").split("\n")[0]!.replace(/^From: /, "");
 
 export function transportRoutes(opts?: { bearerToken?: string | null }): Hono {
@@ -42,25 +40,25 @@ export function transportRoutes(opts?: { bearerToken?: string | null }): Hono {
       expectedStagedLineCount?: number;
     }>();
 
-    // submitOnly (mechanics-gate fix d9b3989a) sends NO text — the Enter-only retry for staged
-    // content; every other send still requires text.
+    // submitOnly（mechanics-gate fix d9b3989a）不发送任何文本——对已 staged 内容只按 Enter 的重试；
+    // 其他所有 send 仍需 text。
     if (!body.session || (!body.text && !body.submitOnly)) {
-      return c.json({ error: "Missing required fields: session, text" }, 400);
+      return c.json({ error: "缺少必填字段：session、text" }, 400);
     }
-    // OPR.0.4.1.10 — the danger override and wait mode are contradictory; reject before transport.
+    // OPR.0.4.1.10——danger override 与 wait 模式互斥；在 transport 之前拒绝。
     if (body.dangerouslyInteract && body.waitForIdleMs !== undefined) {
       return c.json({
         ok: false,
         reason: "invalid_dangerously_interact",
-        error: "--dangerously-interact cannot be combined with --wait-for-idle. No text was sent.",
+        error: "--dangerously-interact 不能与 --wait-for-idle 组合。未发送任何文本。",
       }, 400);
     }
-    // The override must carry a reason for the audit record.
+    // override 必须携带 reason 以记入审计。
     if (body.dangerouslyInteract && (!body.reason || body.reason.trim().length === 0)) {
       return c.json({
         ok: false,
         reason: "dangerously_interact_requires_reason",
-        error: "--dangerously-interact requires --reason explaining why the prompt is being driven. No text was sent.",
+        error: "--dangerously-interact 需要 --reason 说明为何要驱动 prompt。未发送任何文本。",
       }, 400);
     }
     if (body.waitForIdleMs !== undefined) {
@@ -68,29 +66,27 @@ export function transportRoutes(opts?: { bearerToken?: string | null }): Hono {
         return c.json({
           ok: false,
           reason: "invalid_wait_for_idle",
-          error: "--wait-for-idle cannot be combined with force. No text was sent.",
+          error: "--wait-for-idle 不能与 force 组合。未发送任何文本。",
         }, 400);
       }
       if (typeof body.waitForIdleMs !== "number" || !Number.isFinite(body.waitForIdleMs) || body.waitForIdleMs <= 0) {
         return c.json({
           ok: false,
           reason: "invalid_wait_for_idle",
-          error: "waitForIdleMs must be a positive number. No text was sent.",
+          error: "waitForIdleMs 必须是正数。未发送任何文本。",
         }, 400);
       }
     }
 
-    // P21 I4 + S2 (OPR.0.5.4.3): the actor (the --dangerously-interact override AUDIT actor) is
-    // DERIVED from the transport header, never body.actorSession. A body claim that DIFFERS is
-    // simply SUPERSEDED, never a refusal: the wire decides the actor and the body never does
-    // (PM ruling (A), 2026-08-11 — see require-sender-identity.ts:16-22). An ABSENT header no
-    // longer refuses (founder descope, S2): a spoofer defeats a refusal by adding a header, so
-    // the 401 only ever stopped honest uncounted callers. Instead the send DELIVERS, the
-    // already-nullable audit actor records null (projected "unknown"), and the response carries
-    // the sign-it notice below.
+    // P21 I4 + S2（OPR.0.5.4.3）：actor（--dangerously-interact override 的审计 actor）
+    // 从 transport 头 DERIVED，绝不来自 body.actorSession。body 中不同的声明只是被取代，
+    // 绝不拒绝：wire 决定 actor，body 永不决定（PM 裁定 (A)，2026-08-11——见
+    // require-sender-identity.ts:16-22）。头缺失不再拒绝（founder descope，S2）：
+    // 欺骗者加个头就能绕过拒绝，401 只会拦住诚实的未计数调用方。改为：send 照常投递，
+    // 本就可空的审计 actor 记为 null（投影为 "unknown"），响应携带下面的签名提示。
     const derivedActor = c.req.header("x-openrig-session")?.trim() || null;
 
-    // Check for ambiguity first
+    // 先检查歧义
     const resolved = await transport.resolveSessions({ session: body.session });
     if (!resolved.ok) {
       const status = resolved.code === "ambiguous" ? 409 : 404;
@@ -104,9 +100,9 @@ export function transportRoutes(opts?: { bearerToken?: string | null }): Hono {
       waitForIdleMs: body.waitForIdleMs,
       dangerouslyInteract: body.dangerouslyInteract,
       reason: body.reason,
-      actorSession: derivedActor, // transport-derived, never the body claim
-      // Mechanics-gate fix (d9b3989a): the walk retry's bare-Enter mode, guarded in the
-      // transport by the expected-staged-text precheck.
+      actorSession: derivedActor, // 从 transport 派生，绝不取 body 声明
+      // Mechanics-gate fix（d9b3989a）：walk 重试的裸 Enter 模式，
+      // 在 transport 中由 expected-staged-text 预检守卫。
       submitOnly: body.submitOnly,
       expectedStagedText: body.expectedStagedText,
       expectedStagedLineCount: body.expectedStagedLineCount,
@@ -141,16 +137,14 @@ export function transportRoutes(opts?: { bearerToken?: string | null }): Hono {
       return c.json(result, status);
     }
 
-    // A3 (P22): auto-record the DISPATCHED send into the sender-side outbox, so a derived send cannot
-    // accept-and-drop at the audit layer (the specimen-5 window: no outbox row, attribution survived only
-    // via provider JSONL). STRICTLY DOWNSTREAM of the certified header-derivation (line 65): it consumes
-    // the already-derived `derivedActor`, never re-derives or alters it. Records only a DERIVED send —
-    // `derivedActor` present — with the era-stamp `transport:v1` (the sole mode this header-derived route
-    // produces; a cross-host relay's header IS the origin triple, so the recorded sender is the ORIGIN,
-    // never the relay). A null-actor send has no derived sender to attribute (no fabricated row). The
-    // send is already committed, so a rare audit-write failure is LOGGED, never a false-negative on a
-    // delivered send.
-    if (derivedActor && !body.submitOnly) { // submitOnly types no text — nothing to outbox-record
+    // A3（P22）：把已 dispatch 的 send 自动记入发送方 outbox，使派生 send 不能在审计层
+    // accept-and-drop（specimen-5 窗口：无 outbox 行，归属仅靠 provider JSONL 存活）。
+    // 严格位于已认证头派生（line 65）的下游：消费已派生的 `derivedActor`，绝不重新派生或修改。
+    // 只记录 DERIVED send（`derivedActor` 存在时），带 era 戳 `transport:v1`
+    // （此头派生路由产出的唯一模式；跨 host relay 的头就是 origin 三元组，因此记录的
+    // sender 是 ORIGIN，绝不是 relay）。null-actor send 没有可归属的派生 sender（不造行）。
+    // send 已提交，因此罕见的审计写失败只记日志，绝不变成已投递 send 的假阴性。
+    if (derivedActor && !body.submitOnly) { // submitOnly 不输入文本——无需记入 outbox
       const outbox = c.get("outboxHandler" as never) as OutboxHandler | undefined;
       if (outbox) {
         try {
@@ -161,14 +155,13 @@ export function transportRoutes(opts?: { bearerToken?: string | null }): Hono {
             identityProvenance: "transport:v1",
           });
         } catch (err) {
-          console.warn(`[transport/send] outbox auto-record failed (send already delivered): ${(err as Error).message}`);
+          console.warn(`[transport/send] outbox 自动记录失败（send 已投递）：${(err as Error).message}`);
         }
       }
     }
 
-    // S2 (OPR.0.5.4.3) sender-side honesty: an unattributed delivery tells the sender, on the
-    // success payload the CLI renderers surface, that the recipient cannot know who sent it.
-    // Composes with any existing transport warning; attributed sends see no change and no nag.
+    // S2（OPR.0.5.4.3）发送方诚实：未归属投递在 CLI renderer 呈现的成功响应上告知发送方，
+    // 接收方无法知道是谁发的。与既有 transport warning 叠加；已归属的 send 无变化、无打扰。
     if (!derivedActor) {
       result.warning = result.warning ? `${result.warning} ${UNKNOWN_SENDER_NOTICE}` : UNKNOWN_SENDER_NOTICE;
     }
@@ -185,7 +178,7 @@ export function transportRoutes(opts?: { bearerToken?: string | null }): Hono {
       lines?: number;
     }>();
 
-    // Multi-target: rig or pod
+    // 多目标：rig 或 pod
     if (body.rig || body.pod) {
       const target: TargetSpec = body.pod
         ? { pod: body.pod, rig: body.rig }
@@ -204,9 +197,9 @@ export function transportRoutes(opts?: { bearerToken?: string | null }): Hono {
       return c.json({ results });
     }
 
-    // Single target: session
+    // 单目标：session
     if (!body.session) {
-      return c.json({ error: "Provide session, rig, or pod to capture" }, 400);
+      return c.json({ error: "请提供要 capture 的 session、rig 或 pod" }, 400);
     }
 
     const result = await transport.capture(body.session, { lines: body.lines });
@@ -228,41 +221,38 @@ export function transportRoutes(opts?: { bearerToken?: string | null }): Hono {
     const body = await c.req.json<{
       rig?: string;
       pod?: string;
-      // OPR.0.4.3.30 — explicit multi-recipient list (`rig send --to a,b`).
+      // OPR.0.4.3.30——显式多接收方列表（`zrig send --to a,b`）。
       sessions?: string[];
       text: string;
       verify?: boolean;
       force?: boolean;
-      // OPR.0.4.3.30 — plumbed through so `rig send` fan-out carries the same guard/wait
-      // semantics as a single send. Each is applied PER recipient inside broadcast()'s loop
-      // (the danger audit fires once per seat, not once per batch).
+      // OPR.0.4.3.30——透传使 `zrig send` fan-out 携带与单 send 相同的 guard/wait 语义。
+      // 在 broadcast() 循环内按接收方逐个应用（danger 审计每席位触发一次，而非每批一次）。
       waitForIdleMs?: number;
       dangerouslyInteract?: boolean;
       reason?: string;
       actorSession?: string | null;
-      // OPR.0.4.3.30 — when set, the fan-out wraps each recipient in its own From/To envelope.
-      // `rig broadcast` never sets it (raw-to-all, unchanged).
+      // OPR.0.4.3.30——设置时，fan-out 为每个接收方包裹独立的 From/To envelope。
+      // `zrig broadcast` 从不设置它（raw-to-all，不变）。
       envelopeSender?: string | null;
     }>();
 
     if (!body.text) {
-      return c.json({ error: "Missing required field: text" }, 400);
+      return c.json({ error: "缺少必填字段：text" }, 400);
     }
 
-    // P21 I4 + S2 (OPR.0.5.4.3): the --dangerously-interact override AUDIT actor is DERIVED from the
-    // transport header (see /send). An absent header no longer refuses — the send proceeds and the
-    // audit's already-nullable actor records null (projected "unknown"); the response carries the
-    // sign-it notice below.
+    // P21 I4 + S2（OPR.0.5.4.3）：--dangerously-interact override 的审计 actor 从
+    // transport 头 DERIVED（见 /send）。头缺失不再拒绝——send 继续，
+    // 本就可空的审计 actor 记为 null（投影为 "unknown"）；响应携带下面的签名提示。
     const derivedActor = c.req.header("x-openrig-session")?.trim() || null;
 
-    // P21 I4 (orch ruling from specimen 5 — the false "From: pm-lead" the incident acted upon): the
-    // From: line rendered into every recipient's terminal MUST DERIVE from the transport identity, never
-    // the body value. A present body.envelopeSender signals the ENVELOPED fan-out (rig send); its value
-    // is IGNORED and the From: is the derived actor. A cross-host relay re-stamps X-OpenRig-Session from
-    // ITS authenticated context (not a caller --from string). S2 (OPR.0.5.4.3): an unattributable
-    // enveloped send now DELIVERS with the explicit unknown-sender marker as its From: — the specimen-5
-    // rule is preserved unweakened: the body claim is STILL never rendered; the recipient sees honest
-    // "unknown", never an unverified name. Raw `rig broadcast` = no envelope.
+    // P21 I4（orch 自 specimen 5 裁定——事件中被采信的假 "From: pm-lead"）：渲染进每个
+    // 接收方终端的 From: 行必须从 transport 身份 DERIVED，绝不来自 body 值。
+    // body.envelopeSender 存在表示带 envelope 的 fan-out（zrig send）；其值被忽略，
+    // From: 即派生 actor。跨 host relay 从其自己的已鉴权 context 重盖 X-OpenRig-Session
+    // （不是调用方的 --from 字符串）。S2（OPR.0.5.4.3）：不可归属的带 envelope send 现在以
+    // 显式未知发送方标记作为 From: 投递——specimen-5 规则原样保留：body 声明仍绝不渲染；
+    // 接收方看到诚实的 "unknown"，绝不是未核实的名字。裸 `zrig broadcast` = 无 envelope。
     let envelopeSender: string | undefined = undefined;
     if (body.envelopeSender !== undefined && body.envelopeSender !== null) {
       envelopeSender = derivedActor ?? UNKNOWN_SENDER_MARKER;
@@ -283,17 +273,16 @@ export function transportRoutes(opts?: { bearerToken?: string | null }): Hono {
       waitForIdleMs: body.waitForIdleMs,
       dangerouslyInteract: body.dangerouslyInteract,
       reason: body.reason,
-      actorSession: derivedActor, // transport-derived, never the body claim
-      envelopeSender, // the From: is the DERIVED identity (never the body value) — orch ruling (a)
+      actorSession: derivedActor, // 从 transport 派生，绝不取 body 声明
+      envelopeSender, // From: 是派生身份（绝非 body 值）——orch 裁定 (a)
     });
 
-    // A3b (P22 follow-on, planner-ruled IN scope): auto-record the fan-out — N rows, ONE per RESOLVED
-    // recipient. The schema is a per-recipient design (destination_session is typed + indexed; per-row
-    // delivery_state), so a partial fan-out records the TRUTH per recipient, never a lossy aggregate.
-    // STRICTLY DOWNSTREAM of the certified derivation (derivedActor above): each row's sender is the
-    // already-derived actor; destination = the RESOLVED session, NEVER the TargetSpec (which would poison
-    // the typed session column). Best-effort per row: the fan-out is already dispatched, so a rare
-    // audit-write failure is logged, never a false-negative on delivery.
+    // A3b（P22 follow-on，planner 裁定在范围内）：自动记录 fan-out——N 行，每个已解析
+    // 接收方一行。schema 是按接收方设计的（destination_session 有类型+索引；每行有
+    // delivery_state），因此部分 fan-out 按接收方记录真相，绝不有损聚合。严格位于已认证
+    // 派生（上面的 derivedActor）下游：每行的 sender 是已派生 actor；destination = 已解析
+    // session，绝不 TargetSpec（那会污染有类型的 session 列）。每行 best-effort：fan-out 已
+    // dispatch，罕见的审计写失败只记日志，绝不变成投递假阴性。
     if (derivedActor) {
       const outbox = c.get("outboxHandler" as never) as OutboxHandler | undefined;
       if (outbox) {
@@ -309,14 +298,14 @@ export function transportRoutes(opts?: { bearerToken?: string | null }): Hono {
             if (r.ok) outbox.markDelivered(entry.outboxId);
             else outbox.markFailed(entry.outboxId);
           } catch (err) {
-            console.warn(`[transport/broadcast] outbox auto-record failed for ${r.sessionName} (fan-out already dispatched): ${(err as Error).message}`);
+            console.warn(`[transport/broadcast] outbox 自动记录失败（${r.sessionName}，fan-out 已 dispatch）：${(err as Error).message}`);
           }
         }
       }
     }
 
-    // S2 (OPR.0.5.4.3) sender-side honesty: an unattributed fan-out's response carries the
-    // sign-it notice for the CLI renderers to surface. Attributed fan-outs are unchanged.
+    // S2（OPR.0.5.4.3）发送方诚实：未归属 fan-out 的响应携带签名提示，供 CLI renderer
+    // 呈现。已归属 fan-out 不变。
     if (!derivedActor) {
       return c.json({ ...result, warning: UNKNOWN_SENDER_NOTICE });
     }

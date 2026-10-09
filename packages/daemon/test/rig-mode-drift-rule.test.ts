@@ -1,22 +1,17 @@
-// Slice 09 — HG-8 drift-rule discipline.
+// Slice 09 —— HG-8 漂移规则纪律。
 //
-// The convention's drift-recovery rule is: long-gap / day-boundary /
-// observed-conflict → re-confirm (a QUESTION, never a silent switch).
-// No signal→auto-mode path exists. v0 ships the
-// `expiry_or_stale_rule` FIELD + a conservative default; downstream
-// consumers READ it and prompt re-confirmation. The daemon NEVER
-// auto-switches a binding.
+// 约定的漂移恢复规则为：长时间间隔、跨日或观测冲突 → 重新确认（提出问题，绝不
+// 静默切换）。不存在“信号→自动模式”路径。v0 提供 `expiry_or_stale_rule` 字段和
+// 保守默认值；下游消费者读取它并提示重新确认。后台服务绝不自动切换绑定。
 //
-// This file anchors that discipline at the slice source level:
+// 本文件在切片源码层固定这项纪律：
 //
-//   1. Conservative default rule-kind is `re_confirm_on_long_gap`.
-//   2. Validator rejects auto-switch-shaped rule values that aren't
-//      in the closed enum.
-//   3. The store NEVER mutates bindings during a read. resolveEffective
-//      is pure — same binding, same setAt, repeatable.
-//   4. Source grep: rig-mode domain code contains NO identifiers
-//      that imply automatic mode-switching (auto-switch / auto-apply /
-//      signal-based / etc.).
+//   1. 保守的默认规则类型为 `re_confirm_on_long_gap`。
+//   2. 校验器拒绝闭集枚举外形似自动切换的规则值。
+//   3. 存储在读取期间绝不修改绑定。resolveEffective 是纯函数：相同绑定、相同
+//      setAt，可重复执行。
+//   4. 源码 grep：rig-mode 领域代码不含暗示自动模式切换的标识符
+//      （auto-switch、auto-apply、signal-based 等）。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -42,20 +37,20 @@ function makeRecord(overrides?: Partial<OperatorContextModeRecord>): OperatorCon
   };
 }
 
-describe("HG-8 drift-rule mechanism — convention §Component 4 + §Q3", () => {
-  it("DEFAULT_STALE_RULE is the convention's conservative re-confirmation rule", () => {
+describe("HG-8 漂移规则机制——约定 §Component 4 + §Q3", () => {
+  it("DEFAULT_STALE_RULE 是约定的保守的重新确认规则", () => {
     expect(DEFAULT_STALE_RULE).toBe("re_confirm_on_long_gap");
     expect(STALE_RULES).toContain(DEFAULT_STALE_RULE);
   });
 
-  it("validator rejects auto-switch-shaped rule values not in the closed enum", () => {
+  it("校验器拒绝闭集枚举外形似自动切换的规则值", () => {
     for (const auto of ["auto_switch", "auto_apply", "switch_on_long_gap", "silent_switch", "on_signal"]) {
       const res = validateRecord(makeRecord({ expiry_or_stale_rule: auto as unknown as OperatorContextModeRecord["expiry_or_stale_rule"] }));
       expect(res.ok, `value '${auto}' must be rejected`).toBe(false);
     }
   });
 
-  it("validator accepts every member of STALE_RULES", () => {
+  it("验证器接受 STALE_RULES 的每个成员", () => {
     for (const rule of STALE_RULES) {
       const res = validateRecord(makeRecord({ expiry_or_stale_rule: rule }));
       expect(res.ok, `value '${rule}' must be accepted`).toBe(true);
@@ -63,7 +58,7 @@ describe("HG-8 drift-rule mechanism — convention §Component 4 + §Q3", () => 
   });
 });
 
-describe("HG-8 — store reads NEVER mutate bindings (no silent switch path)", () => {
+describe("HG-8 —— 存储读取绝不修改绑定（没有静默切换路径）", () => {
   let db: Database.Database;
   let store: RigModeStore;
 
@@ -76,7 +71,7 @@ describe("HG-8 — store reads NEVER mutate bindings (no silent switch path)", (
     db.close();
   });
 
-  it("resolveEffective is pure: repeated reads return the same binding (same setAt)", () => {
+  it("resolveEffective 是纯函数：重复读取返回相同绑定（相同 setAt）", () => {
     store.setBinding("qitem", "q-1", "debug", makeRecord({ scope: "qitem" }));
     const r1 = store.resolveEffective({ qitemId: "q-1" });
     const r2 = store.resolveEffective({ qitemId: "q-1" });
@@ -88,7 +83,7 @@ describe("HG-8 — store reads NEVER mutate bindings (no silent switch path)", (
     expect(r2!.binding.mode).toBe("debug");
   });
 
-  it("getBinding is pure: repeated reads return the same record", () => {
+  it("getBinding 是纯函数：重复读取返回相同记录", () => {
     store.setBinding("rig", "rig-a", "focus", makeRecord({ scope: "rig" }));
     const first = store.getBinding("rig", "rig-a");
     const second = store.getBinding("rig", "rig-a");
@@ -96,7 +91,7 @@ describe("HG-8 — store reads NEVER mutate bindings (no silent switch path)", (
     expect(first!.record).toEqual(second!.record);
   });
 
-  it("listBindings is pure: count and identities stable across reads", () => {
+  it("listBindings 是纯函数：多次读取的数量和身份保持稳定", () => {
     store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
     store.setBinding("rig", "rig-a", "focus", makeRecord({ scope: "rig" }));
     const a = store.listBindings();
@@ -105,11 +100,9 @@ describe("HG-8 — store reads NEVER mutate bindings (no silent switch path)", (
     expect(a.map((x) => x.setAt)).toEqual(b.map((x) => x.setAt));
   });
 
-  // Negative — auto-switch class. No code path in the slice domain
-  // module mutates a binding's mode from a signal / timer / external
-  // observation. This is the source-level discriminator for
-  // "no silent switch path exists" (HG-8).
-  it("HG-8 source grep: rig-mode domain code contains no auto-switch / auto-apply / signal-driven identifiers", async () => {
+  // 负向检查——自动切换类别。切片领域模块中没有任何代码路径会根据信号、计时器或
+  // 外部观察修改绑定模式。这是“没有静默切换路径”（HG-8）的源码级判别器。
+  it("HG-8 源码 grep：rig-mode 领域代码不含 auto-switch/auto-apply/signal-driven 标识符", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const url = await import("node:url");

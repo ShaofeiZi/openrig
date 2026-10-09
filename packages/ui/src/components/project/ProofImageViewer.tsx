@@ -20,7 +20,7 @@ export function ProofImageViewer({
   return (
     <div
       role="dialog"
-      aria-label="Screenshot preview"
+      aria-label="截图预览"
       data-testid={testId}
       className="fixed bottom-0 right-0 top-14 z-[1000] flex items-center justify-center bg-stone-950/20 p-6 backdrop-blur-[2px] lg:left-[21rem]"
       onClick={onClose}
@@ -42,7 +42,7 @@ export function ProofImageViewer({
             data-testid={closeTestId}
             onClick={onClose}
             className="inline-flex h-7 w-7 items-center justify-center border border-white/30 text-stone-50 hover:bg-white/10"
-            aria-label="Close screenshot preview"
+            aria-label="关闭截图预览"
           >
             <X className="h-3.5 w-3.5" strokeWidth={1.5} />
           </button>

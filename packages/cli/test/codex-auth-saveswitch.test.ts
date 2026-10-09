@@ -58,7 +58,7 @@ describe("authSwitch (activate a saved profile, restart note, no content echo)",
     fs.rmSync(paths.activeAuth);
     const r = authSwitch(paths, "work");
     expect(r).toMatchObject({ ok: true, name: "work", mode: "600" });
-    if (r.ok) expect(r.note).toMatch(/restart/i);
+    if (r.ok) expect(r.note).toMatch(/重启/);
     expect(JSON.stringify(r)).not.toContain(SENTINEL);
     expect((fs.statSync(paths.activeAuth).mode & 0o777).toString(8)).toBe("600");
   });
@@ -77,8 +77,8 @@ describe("authSwitch (activate a saved profile, restart note, no content echo)",
   it("refuses a symlinked active auth and never writes profile bytes through it (unsafe_path)", () => {
     writeActive();
     authSave(paths, "work");
-    // Replace the active auth with a symlink pointing OUTSIDE CODEX_HOME. copyFileSync would otherwise
-    // follow it and write the profile's secret bytes to `outside`, escaping the managed boundary.
+    // 用指向 CODEX_HOME 外的 symlink 替换 active auth。否则 copyFileSync 会
+    // 跟随它并把 profile 的 secret 字节写入 `outside`，逃出托管边界。
     const outside = path.join(home, "outside-target.json");
     fs.writeFileSync(outside, JSON.stringify({ note: "untouched" }), { mode: 0o600 });
     fs.rmSync(paths.activeAuth);

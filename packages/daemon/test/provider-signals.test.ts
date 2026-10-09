@@ -5,16 +5,16 @@ import {
   reactiveEventSignal,
 } from "../src/domain/provider/provider-signals.js";
 
-// Slice-04 (OPR.0.5.0.4) — signals[] normalization, the §1 contract's honesty rules
-// (packet 3ffa3c22 IMPLEMENTATION-PRD §1/§2 + the 2026-07-31 RESEARCH verdict).
-// The load-bearing negatives (BR-2 seed): an absent/unsupported reading is an EXPLICIT
-// `unknown` row, never a silent zero and never a missing row.
+// Slice-04（OPR.0.5.0.4）——signals[] 规范化及 §1 契约的如实规则
+//（数据包 3ffa3c22 IMPLEMENTATION-PRD §1/§2 + 2026-07-31 RESEARCH 裁决）。
+// 关键反例（BR-2 种子）：缺失/不受支持的读数必须是显式 `unknown` 行，绝不是静默零值，
+// 也绝不能缺行。
 
 const ASOF = "2026-08-03T12:00:00.000Z";
 const RESET = "2026-08-03T17:00:00.000Z";
 
-describe("codexRateLimitSignals — normalization honesty", () => {
-  it("feature-probe negative yields exactly one explicit unknown row (not a silent zero, not empty)", () => {
+describe("codexRateLimitSignals——如实规范化", () => {
+  it("功能探测反例恰好产生一条显式 unknown 行（不是静默零值，也不是空结果）", () => {
     const sigs = codexRateLimitSignals({
       accountRef: "acct-1",
       probe: { supported: false },
@@ -27,22 +27,22 @@ describe("codexRateLimitSignals — normalization honesty", () => {
     expect(s.sourceClass).toBe("unknown");
     expect(s.authority).toBe("unknown");
     expect(s.unknownReason).toBeTruthy();
-    // The silent-zero trap: usedPercent must be ABSENT, never defaulted to 0.
+    // 静默零值陷阱：usedPercent 必须缺省，绝不能默认为 0。
     expect(s.usedPercent).toBeUndefined();
     expect(s.resetsAt).toBeUndefined();
-    // BR-2: an unknown signal must never be automatable.
+    // BR-2：unknown 信号绝不能用于自动化。
     expect(s.automationUse).toBe("do_not_automate");
-    // App-server absent → no notification transport.
+    // App server 缺失 → 无通知传输能力。
     expect(s.supportsNotification).toBe(false);
     expect(s.asOf).toBe(ASOF);
   });
 
-  it("preserves a GENUINE zero from a real read (0 is real data, distinct from omitted-unknown)", () => {
+  it("保留真实读数中的真正零值（0 是真实数据，不同于缺省 unknown）", () => {
     const sigs = codexRateLimitSignals({
       accountRef: "acct-1",
       probe: { supported: true },
       reading: {
-        // usedPercent 0 is a REAL reading (fresh window, nothing used) — must survive as 0.
+        // usedPercent 0 是真实读数（新鲜窗口、未使用）——必须保留为 0。
         primary: { usedPercent: 0, windowDurationMins: 300, resetsAt: RESET },
         secondary: { usedPercent: 88, windowDurationMins: 10080, resetsAt: RESET },
       },
@@ -52,20 +52,20 @@ describe("codexRateLimitSignals — normalization honesty", () => {
     expect(primary).toBeDefined();
     expect(primary!.sourceClass).toBe("provider_structured_read");
     expect(primary!.authority).toBe("account_cross_device");
-    // Genuine zero preserved (NOT omitted, NOT treated as unknown).
+    // 保留真正零值（不缺省，也不视为 unknown）。
     expect(primary!.usedPercent).toBe(0);
     expect(primary!.resetsAt).toBe(RESET);
     expect(primary!.windowDurationMins).toBe(300);
-    // Codex app-server carries updated-notifications; automatable structured read.
+    // Codex app server 提供更新通知；结构化读数可用于自动化。
     expect(primary!.supportsNotification).toBe(true);
     expect(primary!.automationUse).toBe("allow_switch_decision");
-    // Provider-native secondary window preserved, not collapsed.
+    // 保留 provider 原生次级窗口，不进行合并。
     const secondary = sigs.find((s) => s.window === "secondary");
     expect(secondary).toBeDefined();
     expect(secondary!.usedPercent).toBe(88);
   });
 
-  it("supported-but-empty read degrades to unknown DATA but keeps KNOWN transport capability", () => {
+  it("受支持但为空的读数降级为 unknown 数据，同时保留已知传输能力", () => {
     const sigs = codexRateLimitSignals({
       accountRef: "acct-1",
       probe: { supported: true },
@@ -74,19 +74,19 @@ describe("codexRateLimitSignals — normalization honesty", () => {
     });
     expect(sigs).toHaveLength(1);
     expect(sigs[0].sourceClass).toBe("unknown");
-    // Still no fabricated zero.
+    // 仍不伪造零值。
     expect(sigs[0].usedPercent).toBeUndefined();
     expect(sigs[0].automationUse).toBe("do_not_automate");
-    // The app-server IS present, so account/rateLimits/updated capability is KNOWN true —
-    // unknown data must not erase known transport capability.
+    // app server 确实存在，因此 account/rateLimits/updated 能力已知为 true——unknown
+    // 数据不得抹除已知传输能力。
     expect(sigs[0].supportsNotification).toBe(true);
   });
 });
 
-describe("S16 usage-limit pool derivation", () => {
+describe("S16 用量限制池推导", () => {
   const NOW = new Date("2026-08-28T12:00:00.000Z");
 
-  it("groups every Claude seat under one local limit and keeps the latest stated reset", () => {
+  it("将所有 Claude 席位归入同一本地限制，并保留声明的最晚重置时间", () => {
     const pools = deriveUsageLimitPools({
       now: NOW,
       fallbackSeconds: 300,
@@ -132,7 +132,7 @@ describe("S16 usage-limit pool derivation", () => {
     ]);
   });
 
-  it("uses the signal as-of plus the config fallback for a fresh Codex at-limit event with no reset", () => {
+  it("对无重置时间的新鲜 Codex 到限事件，使用信号 as-of 加配置回退值", () => {
     const pools = deriveUsageLimitPools({
       now: NOW,
       fallbackSeconds: 300,
@@ -166,7 +166,7 @@ describe("S16 usage-limit pool derivation", () => {
     ]);
   });
 
-  it("never guesses usage-limit from unknown, advisory, stale, or already-expired evidence", () => {
+  it("绝不根据 unknown、建议性、过期或已失效证据猜测用量限制", () => {
     const pools = deriveUsageLimitPools({
       now: NOW,
       fallbackSeconds: 300,

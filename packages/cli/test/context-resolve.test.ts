@@ -1,7 +1,6 @@
-// Slice-03 Atom 6b — the shared context-ref resolver (reused by --context /
-// --body-context). Pins the whole-content resolution, the all-or-nothing
-// missing-member abort (the walk consistency doctrine extended to the flags),
-// and the §4 walk-sized warning.
+// Slice-03 Atom 6b——共享 context-ref 解析器（--context / --body-context 复用）。
+// pin 全文内容解析、全有或全无缺失成员中止（walk 一致性原则扩展至 flag）、
+// 以及 §4 walk 规模警告。
 
 import { describe, it, expect } from "vitest";
 import { resolveContextRef, walkSizedWarning, WALK_SIZED_THRESHOLD_BYTES } from "../src/context-resolve.js";
@@ -21,7 +20,7 @@ describe("resolveContextRef (Atom 6b)", () => {
   it("ABORTS (throws) when the pack has a missing/unreadable member — no partial context", async () => {
     const client = fakeClient(200, { ref: "packs/x", text: "A", bytes: 1, pieces: [], missingFiles: [{ path: "gone.md" }] });
     await expect(resolveContextRef(client, "packs/x")).rejects.toThrow(/gone\.md/);
-    await expect(resolveContextRef(client, "packs/x")).rejects.toThrow(/whole context or none/i);
+    await expect(resolveContextRef(client, "packs/x")).rejects.toThrow(/完整上下文|要么.*要么/);
   });
 
   it("points an absent ref at the live delivery-free context list command", async () => {
@@ -32,7 +31,7 @@ describe("resolveContextRef (Atom 6b)", () => {
       error = caught as Error;
     }
     expect(error?.message).toBe(
-      "Context pack 'packs/absent' not found in library. Run 'rig context list' to see the available refs.",
+      "在上下文库中未找到上下文 pack 'packs/absent'。请运行 'zrig context list' 查看可用引用。",
     );
     expect(error?.message).not.toContain("rig context-pack");
   });
@@ -54,7 +53,7 @@ describe("walkSizedWarning (Atom 6b — §4 size warn)", () => {
 
   it("advises rig walk (naming the seat + ref) above the threshold", () => {
     const w = walkSizedWarning({ ref: "packs/big", text: "", bytes: WALK_SIZED_THRESHOLD_BYTES + 1 }, "dev@rig");
-    expect(w).toMatch(/walk-sized/);
-    expect(w).toMatch(/rig walk dev@rig --through packs\/big/);
+    expect(w).toMatch(/walk 量级/);
+    expect(w).toMatch(/zrig walk dev@rig --through packs\/big/);
   });
 });

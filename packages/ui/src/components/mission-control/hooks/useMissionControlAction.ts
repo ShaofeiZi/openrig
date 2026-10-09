@@ -1,4 +1,4 @@
-// PL-005 Phase A: mutation hook for the 7 Mission Control verbs.
+// PL-005 A 阶段：7 个任务控制动词的变更 hook。
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { missionControlAuthHeaders } from "../missionControlAuth.js";
 
@@ -24,9 +24,8 @@ export interface MissionControlActionInput {
   reason?: string;
   notify?: boolean;
   auditNotes?: Record<string, unknown>;
-  /** OPR.0.4.4.15 FR-4 — origin host for remote items: the daemon forwards
-   *  the verb server-side to that host's write path (absent/'local' =
-   *  today's local path byte-for-byte). */
+  /** OPR.0.4.4.15 FR-4 —— 远端事项的源主机：后台服务在服务端将动词
+   *  转发到该主机的写入路径（缺省/'local' = 今日本地路径逐字节不变）。 */
   hostId?: string;
 }
 
@@ -68,8 +67,7 @@ export function useMissionControlAction() {
   return useMutation({
     mutationFn: postAction,
     onSuccess: (result, input) => {
-      // Invalidate all Mission Control views so the operator sees the
-      // post-action state without a manual refresh.
+      // 使所有任务控制视图失效，操作者无需手动刷新即可看到操作后状态。
       queryClient.invalidateQueries({ queryKey: ["mission-control", "view"] });
       queryClient.invalidateQueries({ queryKey: ["mission-control", "audit"] });
       queryClient.invalidateQueries({ queryKey: ["queue", "item", input.qitemId] });

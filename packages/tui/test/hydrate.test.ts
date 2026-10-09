@@ -4,11 +4,11 @@ import { describe, expect, it } from "vitest";
 import { DaemonClient } from "../src/daemon-client.js";
 import { hydrateSnapshot } from "../src/hydrate.js";
 import { renderScreen } from "../src/render.js";
-import { createViewState } from "../src/state.js";
+import { createViewState, emptySnapshot } from "../src/state.js";
 
-// Fixtures mirror the SERVED shapes traced firsthand at 5f3b5bd4 (Phase-2
-// endpoint-shape survey): real field names, real enum values, real evidence
-// strings — fixture realism is the point (a text-only stub would false-green).
+// fixture 镜像 5f3b5bd4（Phase-2 端点形状普查）亲手追踪的服务形状：
+// 真字段名、真枚举值、真证据
+// 串——fixture 真实性才是重点（纯文本 stub 会假绿）。
 
 const FIXTURES: Record<string, unknown> = {
   "/healthz": { ok: true, selfHostId: "mm2-openrig1" },
@@ -109,8 +109,8 @@ const FIXTURES: Record<string, unknown> = {
     },
     { rigId: "01JRIG", rigName: "myrig", logicalId: "svc.db", podId: null, podNamespace: null, role: null, canonicalSessionName: null, nodeKind: "infrastructure", runtime: null, sessionStatus: null, startupStatus: null, restoreOutcome: "n-a", oriented: "n-a", lifecycleState: "running", occupantLifecycle: "unknown", continuityOutcome: null, handoverResult: null, previousOccupant: null, handoverAt: null, tmuxAttachCommand: null, resumeCommand: null, recoveryGuidance: null, latestError: null, model: null, agentRef: null, profile: null, resolvedSpecName: null, resolvedSpecVersion: null, resolvedSpecHash: null, cwd: null, restorePolicy: null, resumeType: null, resumeToken: null, startupCompletedAt: null },
   ],
-  // slice-17: the topology view consumes the DECLARED graph read — the
-  // closed route enumeration gains the row; assertions below are unchanged
+  // slice-17：topology 视图消费声明的 graph 读——
+  // 闭合路由枚举获得该行；下方断言不变
   "/api/rigs/01JRIG/graph": { nodes: [], edges: [] },
   "/api/rigs/01JDOWN/graph": { nodes: [], edges: [] },
   "/api/rigs/01JRIG/spec.json": {
@@ -148,15 +148,15 @@ const FIXTURES: Record<string, unknown> = {
       { hostId: "mm2-host", status: "unreachable", error: "read timed out after 5000ms", failedStep: "remote-daemon-unreachable" },
     ],
   },
-  // PULSE exception joins (increment 2) — default empty; per-test responses override
+  // PULSE exception join（increment 2）——默认空；各测试响应覆盖
   "/api/queue/list?attention=1": [],
 
   "/api/scopes?detail=1": { missions: [] },
   "/api/views/execution": { rowCount: 1, rows: [{ view: "execution", mission: "release-0.5.8", q1_lanes: [], q2_sequencing: [], q4_ladder: [], q5_park: [], sources: {} }] },
   "/api/queue/list?state=blocked": [],
-  // PULSE ◌ PARKED WITH BATON source (increment 2b) — in-progress qitems
+  // PULSE ◌ PARKED WITH BATON 源（increment 2b）——in-progress qitems
   "/api/queue/list?state=in-progress": [],
-  // PULSE ○ UP NEXT + ✓ JUST FINISHED lane sources (increment 3) — same /list route
+  // PULSE ○ UP NEXT + ✓ JUST FINISHED lane 源（increment 3）——同一 /list 路由
   "/api/queue/list?state=pending&limit=50": [],
   "/api/queue/list?state=done,handed-off&limit=20": [],
   "/api/queue/recent-transitions?scope=rig&rig=myrig&limit=20": [],
@@ -178,18 +178,18 @@ function expectIncompleteNeedsTruth(snap: Awaited<ReturnType<typeof hydrateSnaps
   const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
   view.dispatch({ type: "jump", section: "needs" });
   const text = renderScreen(view.get(), snap, { cols: 140, rows: 34 }).lines.join("\n");
-  // A legacy fleet read cannot stand in for the dedicated Attention authority.
-  expect(text).toContain("Unavailable: Feed sources have not answered.");
+  // 旧式 fleet 读不能替代专用的 Attention 权威。
+  expect(text).toContain("不可用: 待关注源尚未应答。");
   expect(text).not.toContain("(read pending)");
   expect(text).not.toContain("no fleet attention items right now");
 }
 
-describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
-  it("hydrates the execution projection through the existing generic view route", async () => {
+describe("基于 §4.A 读取的快照 hydration（Phase 2）", () => {
+  it("经既有通用视图路由 hydration execution projection", async () => {
     const snap = await hydrateSnapshot(fixtureClient());
     expect(snap.execution).toMatchObject({ view: "execution", mission: "release-0.5.8" });
   });
-  it("hydrates the bounded canonical health projection and stable node join", async () => {
+  it("hydrate 有界 canonical health projection 与稳定 node join", async () => {
     const snap = await hydrateSnapshot(fixtureClient());
     expect((snap as unknown as { health: unknown }).health).toMatchObject({
       availability: "loaded",
@@ -199,7 +199,7 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     });
     expect(snap.hosts[0]?.rigs[0]?.pods[0]?.agents[0]).toMatchObject({ nodeId: "01JNODEIMPL" });
   });
-  it("requests the currently selected mission rather than reusing the daemon default", async () => {
+  it("请求当前所选 mission，而非复用 daemon 默认", async () => {
     const mission = "release-next";
     const route = `/api/views/execution?mission=${mission}`;
     const snap = await hydrateSnapshot(fixtureClient({}, {
@@ -208,7 +208,7 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     expect(snap.execution).toMatchObject({ view: "execution", mission });
     expect(snap.executionMission).toBe(mission);
   });
-  it("hydrates the existing rich slice detail only for the selected slice directory", async () => {
+  it("仅对所选 slice 目录 hydration 既有丰富 slice 详情", async () => {
     const slice = "11-production-tui-composed-system";
     const route = `/api/slices/${slice}`;
     const detail = {
@@ -225,7 +225,7 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     expect(snap.sliceDetail).toEqual(detail);
     expect(snap.sliceDetailName).toBe(slice);
   });
-  it("maps topology: pods grouped, agent rows VERBATIM from the maintained projection (PIN 2)", async () => {
+  it("映射 topology：pod 分组，agent 行逐字取自维护的 projection (PIN 2)", async () => {
     const snap = await hydrateSnapshot(fixtureClient());
     const local = snap.hosts.find((h) => h.id === "local");
     expect(local?.rigs[0]?.name).toBe("myrig");
@@ -237,14 +237,14 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
       contextWindowSize: 200000, totalInputTokens: 120345, totalOutputTokens: 8422,
       hasAssignedWork: true, pendingWorkCount: 2,
     });
-    // honest-unknown: availability "unknown" → null cells; lifecycleState verbatim
+    // 诚实未知：availability "unknown" → null 格；lifecycleState 逐字
     const qa = dev?.agents[1];
     expect(qa).toMatchObject({ context: null, tokens: null, status: "unknown", canRun: true });
-    // infrastructure nodes are not agent rows
+    // 基础设施节点不是 agent 行
     expect(local?.rigs[0]?.pods.flatMap((p) => p.agents.map((a) => a.name))).not.toContain("svc.db");
   });
 
-  it("keeps the two stuck legs DISTINCT — served evidence/threshold strings verbatim, no client threshold", async () => {
+  it("保持两条 stuck 腿区分——served evidence/threshold 字符串逐字，无客户端 threshold", async () => {
     const snap = await hydrateSnapshot(fixtureClient());
     const stuck = snap.needs.filter((n) => n.kind === "stuck");
     expect(stuck).toHaveLength(2);
@@ -254,20 +254,20 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     expect(stuck[1]?.detail).toContain("no transition for 180m >= 120m default");
   });
 
-  it("composes host-down AND rig-down BESIDE the items, never into the item shape (PIN 3)", async () => {
+  it("把 host-down 与 rig-down 组合在 items 旁，绝不并入 item 形状 (PIN 3)", async () => {
     const snap = await hydrateSnapshot(fixtureClient());
     expect(snap.hostsDown).toEqual([
       { hostId: "mm2-host", status: "unreachable", error: "read timed out after 5000ms" },
-      { hostId: "rig:downrig", status: "recoverable (down)", error: "0/2 seats running" },
+      { hostId: "rig:downrig", status: "recoverable (down)", error: "0/2 个席位运行中" },
     ]);
     expect(snap.needs.some((n) => n.target === "mm2-host" || n.target.includes("downrig"))).toBe(false);
-    // and the unreachable host appears in topology with honest reachability
+    // 且不可达主机以诚实可达性出现在 topology
     expect(snap.hosts.find((h) => h.name === "mm2-host")?.reachable).toBe(false);
-    // the non-running rig carries its served lifecycleState verbatim (QA blocker 3)
+    // 未运行 rig 逐字携带其服务 lifecycleState（QA blocker 3）
     expect(snap.hosts.find((h) => h.id === "local")?.rigs.find((r) => r.name === "downrig")?.lifecycleState).toBe("recoverable");
   });
 
-  it("hydrates agent-spec structured detail from the LIVE /:id/review route (QA blocker 2)", async () => {
+  it("从 LIVE /:id/review 路由 hydration agent-spec 结构化详情 (QA blocker 2)", async () => {
     const cache = new Map();
     const snap = await hydrateSnapshot(fixtureClient(), cache);
     const impl = snap.specs.find((s) => s.name === "implementer");
@@ -290,7 +290,7 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     expect(cache.size).toBe(2); // rig + agent reviews memoized by id@updatedAt
   });
 
-  it("hydrates the locked rig-spec structure and library provenance from the LIVE /:id/review route", async () => {
+  it("从 LIVE /:id/review 路由 hydration 锁定的 rig-spec 结构与库来源", async () => {
     const snap = await hydrateSnapshot(fixtureClient());
     expect(snap.specs.find((s) => s.name === "myrig")).toMatchObject({
       sourceState: "library_item",
@@ -311,7 +311,7 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     });
   });
 
-  it("maps the human-queue leg and marks it PROBED (proven-empty vs not-yet-known)", async () => {
+  it("映射 human-queue 腿并标为 PROBED（proven-empty vs not-yet-known）", async () => {
     const snap = await hydrateSnapshot(fixtureClient());
     expect(snap.humanQueueProbed).toBe(true);
     expect(snap.needs.filter((item) => item.source === "agent")).toEqual([
@@ -320,7 +320,7 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     ]);
   });
 
-  it("preserves the daemon's fleet-wide Needs priority order across agent and derived sources", async () => {
+  it("跨 agent 与派生源保留 daemon 的 fleet-wide Needs 优先级顺序", async () => {
     const ordered = [
       { source: "derived", identity: "urgent@rig|stuck|1", summary: "urgent derived", leg: "stuck", where: "rig", priority: "urgent", derived: { kind: "stuck", evidence: "urgent evidence" }, hostId: "local" },
       { source: "agent", identity: "q-high", summary: "high human", leg: "human-routed", where: "human@kernel", priority: "high", destinationSession: "human@kernel", derived: null, hostId: "local" },
@@ -342,7 +342,7 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     ]);
   });
 
-  it("preserves legacy fleet priority data without substituting it for the Attention authority", async () => {
+  it("保留遗留 fleet 优先级数据，但不替代 Attention 权威", async () => {
     const items = [
       { source: "agent", identity: "q-high", summary: "HIGH HUMAN APPROVAL", leg: "human-routed", where: "human@kernel", priority: "high", destinationSession: "human@kernel", derived: null, hostId: "local" },
       ...Array.from({ length: 30 }, (_, index) => ({
@@ -362,12 +362,12 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
 
     expect(snap.needs[0]?.detail).toContain("HIGH HUMAN APPROVAL");
     const text = screen.lines.join("\n");
-    expect(text).toContain("Unavailable: Feed");
+    expect(text).toContain("不可用: 待关注");
     expect(text).not.toContain("HIGH HUMAN APPROVAL");
     expect(text).not.toContain("normal exception 0");
   });
 
-  it("marks fleet attention incomplete when any remote host is absent, never proven-empty", async () => {
+  it("任一远程 host 缺失时把 fleet attention 标为不完整，绝不 proven-empty", async () => {
     const snap = await hydrateSnapshot(fixtureClient({}, {
       "/api/review/fleet": {
         needsYou: { items: [] },
@@ -382,7 +382,7 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     expectIncompleteNeedsTruth(snap);
   });
 
-  it("treats a fleet registry error as named incomplete state, never proven-empty", async () => {
+  it("把 fleet registry 错误视为具名不完整状态，绝不 proven-empty", async () => {
     const snap = await hydrateSnapshot(fixtureClient({}, {
       "/api/review/fleet": {
         needsYou: { items: [] },
@@ -395,7 +395,7 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     expectIncompleteNeedsTruth(snap);
   });
 
-  it("gives failed, attention, and needs-input truth precedence over terminal active/idle", async () => {
+  it("让 failed、attention、needs-input 真相优先于 terminal active/idle", async () => {
     const base = (FIXTURES["/api/rigs/01JRIG/nodes"] as Array<Record<string, unknown>>)[0]!;
     const nodes = [
       { ...base, logicalId: "dev.failed", startupStatus: "failed", lifecycleState: "attention_required", terminalActive: true },
@@ -421,24 +421,28 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     const view = createViewState({ instanceId: "t", getSnapshot: () => snap });
     view.dispatch({ type: "drill", resource: "rig", name: "myrig" });
     const output = renderScreen(view.get(), snap, { cols: 140, rows: 34 });
-    expect(output.lines.find((line) => /\bmismatch\s/.test(line))).not.toContain("run ▸");
-    expect(output.lines.find((line) => /\bmissing\s/.test(line))).not.toContain("run ▸");
+    for (const name of ["dev.mismatch", "dev.missing"]) {
+      const row = output.contentTargets.find((target) =>
+        target.action.type === "drill" && target.action.resource === "agent" && target.action.name === name);
+      expect(row, name).toBeDefined();
+      expect(output.contentTargets.some((target) => target.y === row!.y && target.action.type === "act" && target.action.act === "run"), name).toBe(false);
+    }
   });
 
-  it("joins Specs↔Topology over existing reads: rig agentRefs + agent usedByRigs", async () => {
+  it("在既有读取上 join Specs↔Topology：rig agentRefs + agent usedByRigs", async () => {
     const snap = await hydrateSnapshot(fixtureClient());
     expect(snap.specs.find((s) => s.name === "myrig")?.agentRefs).toEqual(["implementer", "qa-agent"]);
     expect(snap.specs.find((s) => s.name === "implementer")?.usedByRigs).toEqual(["myrig"]);
     expect(snap.specs.find((s) => s.name === "conveyor")?.kind).toBe("workflow");
   });
 
-  it("PULSE BLOCKED: resolves blockedOn (qitem id) to the blocker's OWNER via GET /:qitemId; human-park skipped; a miss degrades QUIETLY", async () => {
+  it("PULSE BLOCKED：经 GET /:qitemId 把 blockedOn（qitem id）解析为 blocker 的 OWNER；human-park 跳过；未命中静默降级", async () => {
     const blockedList = [
-      // agent-block: blockedOn is a qitem POINTER → resolves to the owner
-      { qitemId: "b1", state: "blocked", destinationSession: "dev-a@rig", blockedOn: "qitem-blkA", handedOffTo: null, tier: null, tags: null, summary: "waiting", body: "", claimedAt: "2026-08-05T09:00:00.000Z", tsUpdated: "2026-08-05T09:00:00.000Z" },
-      // human-park: blockedOn is a SESSION → NOT resolved (no lookup, belongs under NEEDS YOU)
+      // agent-block：blockedOn 是 qitem 指针 → 解析为 owner
+      { qitemId: "b1", state: "blocked", destinationSession: "dev-a@rig", blockedOn: "qitem-blkA", handedOffTo: null, tier: null, tags: null, summary: "等待", body: "", claimedAt: "2026-08-05T09:00:00.000Z", tsUpdated: "2026-08-05T09:00:00.000Z" },
+      // human-park：blockedOn 是 SESSION → 不解析（无查找，属 NEEDS YOU 下）
       { qitemId: "b2", state: "blocked", destinationSession: "dev-b@rig", blockedOn: "human-yeah@kernel", handedOffTo: null, tier: null, tags: null, summary: "human", body: "", claimedAt: "2026-08-05T09:00:00.000Z", tsUpdated: "2026-08-05T09:00:00.000Z" },
-      // agent-block whose blocker read 404s → blockerSession null, NO readError (enrichment)
+      // blocker 读 404 的 agent-block → blockerSession null，无 readError（enrichment）
       { qitemId: "b3", state: "blocked", destinationSession: "dev-c@rig", blockedOn: "qitem-gone", handedOffTo: null, tier: null, tags: null, summary: "stale", body: "", claimedAt: "2026-08-05T09:00:00.000Z", tsUpdated: "2026-08-05T09:00:00.000Z" },
     ];
     const snap = await hydrateSnapshot(fixtureClient({ "/api/queue/qitem-gone": { status: 404 } }, {
@@ -449,29 +453,29 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     expect(by["b1"]?.blockerSession).toBe("review-r1@rig"); // resolved owner = the blocking agent
     expect(by["b2"]?.blockerSession ?? null).toBeNull();     // human-park not resolved
     expect(by["b3"]?.blockerSession ?? null).toBeNull();     // 404 miss → null (fallback to raw at render)
-    // the per-row enrichment is NOT load-bearing: a miss must not pollute readErrors
+    // 每行 enrichment 非承重：miss 不得污染 readErrors
     expect(snap.readErrors.filter((e) => e.includes("queue-blocker") || e.includes("qitem-gone"))).toEqual([]);
   });
 
-  it("PULSE PARKED (2b): builds per-seat ps/activity (session→terminalActive+lastActivityAt) from the nodes reads, and carries the in-progress read", async () => {
+  it("PULSE PARKED (2b)：从 nodes 读取构建每席 ps/activity（session→terminalActive+lastActivityAt），并携带 in-progress 读取", async () => {
     const inProgress = [
       { qitemId: "qitem-p1", state: "in-progress", destinationSession: "dev-impl@myrig", blockedOn: null, handedOffTo: null, tier: null, tags: null, summary: "parked?", body: "", claimedAt: "2026-08-02T09:00:00.000Z", tsUpdated: "2026-08-02T09:00:00.000Z" },
     ];
     const snap = await hydrateSnapshot(fixtureClient({}, { "/api/queue/list?state=in-progress": inProgress }));
 
-    // seatActivity: one entry per agent seat WITH a canonical session (svc.db has
-    // none → excluded). lastActivityAt carried VERBATIM; terminalActive verbatim.
+    // seatActivity：每个带规范 session 的 agent 席一条（svc.db 无
+    // → 排除）。lastActivityAt 逐字携带；terminalActive 逐字。
     const bySession = Object.fromEntries(snap.seatActivity.map((s) => [s.session, s]));
     expect(bySession["dev-impl@myrig"]).toEqual({ session: "dev-impl@myrig", logicalId: "dev.impl", terminalActive: false, lastActivityAt: "2026-08-02T09:15:00.000Z" });
     expect(bySession["dev-qa@myrig"]).toEqual({ session: "dev-qa@myrig", logicalId: "dev.qa", terminalActive: null, lastActivityAt: null });
     expect(snap.seatActivity.some((s) => s.session == null)).toBe(false); // infra seat (no session) excluded
 
-    // in-progress read carried into the snapshot for the PARKED join
+    // 为 PARKED join 带入快照的 in-progress 读
     expect(snap.inProgress.map((q) => q.qitemId)).toEqual(["qitem-p1"]);
     expect(snap.inProgress[0]?.destinationSession).toBe("dev-impl@myrig");
   });
 
-  it("PULSE lanes (incr 3): carries the pending (UP NEXT) + done/handed-off (JUST FINISHED) reads and stamps hydratedAt", async () => {
+  it("PULSE lanes (incr 3)：携带 pending（UP NEXT）+ done/handed-off（JUST FINISHED）读取并盖 hydratedAt 时间戳", async () => {
     const pending = [
       { qitemId: "qp1", state: "pending", destinationSession: "dev-a@rig", blockedOn: null, handedOffTo: null, tier: null, tags: null, summary: "next up", body: "", claimedAt: null, tsUpdated: "2026-08-06T11:00:00.000Z" },
     ];
@@ -485,12 +489,12 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     }));
     expect(snap.pending.map((q) => q.qitemId)).toEqual(["qp1"]);
     expect(snap.recentlyFinished.map((q) => q.qitemId)).toEqual(["qf1", "qf2"]);
-    // hydratedAt is the TUI's own render-time completion stamp (not a daemon read) — a valid ISO
+    // hydratedAt 是 TUI 自己的渲染时完成戳（非 daemon 读）——合法 ISO
     expect(snap.hydratedAt).toBeDefined();
     expect(Number.isNaN(Date.parse(snap.hydratedAt!))).toBe(false);
   });
 
-  it("leaves a failed read honest-empty with a NAMED error; other sections still hydrate", async () => {
+  it("让失败读取保持诚实空态并带具名错误；其他区段仍 hydration", async () => {
     const snap = await hydrateSnapshot(fixtureClient({ "/api/review/fleet": { status: 503 } }));
     expect(snap.humanQueueProbed).toBe(false);
     expect(snap.needs).toEqual([]);
@@ -498,9 +502,24 @@ describe("snapshot hydration over the §4.A reads (Phase 2)", () => {
     expect(snap.hosts.find((h) => h.id === "local")?.rigs[0]?.name).toBe("myrig");
     expectIncompleteNeedsTruth(snap);
   });
+
+  it("config 读取失败呈现中文显示标签；旧英文读取标签不得回归", async () => {
+    // CONFIG 分支的命名 readError 是纯展示文案（无 startsWith 路由匹配），
+    // 中文化后应为中文 label；机器路由前缀（execution:/nodes(/rigs-summary:）不在此分支，保持原值。
+    const view = createViewState({ instanceId: "t", getSnapshot: () => emptySnapshot() });
+    view.dispatch({ type: "jump", section: "config" });
+    const snap = await hydrateSnapshot(fixtureClient({ "/api/gateway/connections": { status: 503 } }, {
+      // configBrowser 需完整浏览器契约（readOnly + entries/sources/exclusions），否则
+      // 会另抛"配置读取"错误；这里让它成功，从而把 readError 隔离成仅 Slack 连接故障。
+      "/api/config?view=browser": { readOnly: true, groups: [], entries: [], sources: [], exclusions: [] },
+    }), undefined, null, null, null, view.get());
+    expect(snap.readErrors.some((e) => e.startsWith("Slack 连接观察: 不可用"))).toBe(true);
+    expect(snap.readErrors.some((e) => e.startsWith("Slack observation"))).toBe(false);
+    expect(snap.readErrors.filter((e) => e.includes("不可用"))).toHaveLength(1);
+  });
 });
 
-describe("footer stream tail via the bounded latest-active projection", () => {
+describe("经有界 latest-active projection 的 footer 流尾", () => {
   function streamClient(responses: unknown[][]): DaemonClient {
     const calls: string[] = [];
     const fetchImpl = (async (url: unknown) => {
@@ -522,7 +541,7 @@ describe("footer stream tail via the bounded latest-active projection", () => {
     format: "text", hintType: null, hintUrgency: null, hintDestination: null, hintTags: null, interrupt: false, archivedAt: null,
   });
 
-  it("beyond-cap: with 6 unarchived items the ticker shows the SIXTH (QA's exact repro shape)", async () => {
+  it("超上限：6 个未归档项时 ticker 显示第 6 个（QA 确切复现形状）", async () => {
     const six = Array.from({ length: 6 }, (_, i) => item(i + 1));
     const client = streamClient([six.slice(-5)]);
     const snap = await hydrateSnapshot(client, new Map());
@@ -532,7 +551,7 @@ describe("footer stream tail via the bounded latest-active projection", () => {
     ]);
   });
 
-  it("archive truth replaces a cached newest row on the very next refresh", async () => {
+  it("archive 真相在下次刷新即替换缓存的最新行", async () => {
     const client = streamClient([[item(1), item(2)], [item(1)]]);
     const first = await hydrateSnapshot(client, new Map());
     const afterArchive = await hydrateSnapshot(client, new Map());
@@ -540,7 +559,7 @@ describe("footer stream tail via the bounded latest-active projection", () => {
     expect(afterArchive.stream.at(-1)?.body).toBe("item-1");
   });
 
-  it("an empty stream and a failed latest read stay honest instead of reusing stale rows", async () => {
+  it("空流与失败最新读取保持诚实，不复用陈旧行", async () => {
     const empty = streamClient([[]]);
     const snap = await hydrateSnapshot(empty, new Map());
     expect(snap.stream).toEqual([]);
@@ -559,7 +578,7 @@ describe("footer stream tail via the bounded latest-active projection", () => {
     expect(snap2.readErrors.some((e) => e.startsWith("stream-tail"))).toBe(true);
   });
 
-  it("one bounded read completes even when the source could always append another full page", async () => {
+  it("即使源总能再追加整页，一次有界读取也完成", async () => {
     let calls = 0;
     const client = streamClient([Array.from({ length: 5 }, (_, index) => item(index + 10))]);
     const original = (client as unknown as { __calls: string[] }).__calls;
@@ -569,7 +588,7 @@ describe("footer stream tail via the bounded latest-active projection", () => {
     expect(snap.stream.at(-1)?.body).toBe("item-14");
   });
 
-  it("concurrent hydrations have no shared cursor and report no false non-progress error", async () => {
+  it("并发 hydration 无共享游标，且不报虚假的无进展错误", async () => {
     const client = streamClient([[item(1)], [item(2)]]);
     const [first, second] = await Promise.all([
       hydrateSnapshot(client, new Map()),
@@ -580,11 +599,11 @@ describe("footer stream tail via the bounded latest-active projection", () => {
   });
 });
 
-describe("S05 authored source and observed consumers", () => {
-  it("shows the shipped first-project summary as its purpose", async () => {
+describe("S05 authored 源与观测到的消费者", () => {
+  it("把 shipped first-project 摘要显示为其目的", async () => {
     const raw = readFileSync(new URL("../../daemon/specs/rigs/launch/first-project/rig.yaml", import.meta.url), "utf8");
     const { summary } = parseYaml(raw) as { summary: string };
-    expect(summary).toContain("Two Codex seats");
+    expect(summary).toContain("两个 Codex 席位");
     const snap = await hydrateSnapshot(fixtureClient({}, {
       "/api/specs/library/a1/review": { ...(FIXTURES["/api/specs/library/a1/review"] as object), raw },
     }));
@@ -606,7 +625,7 @@ describe("S05 authored source and observed consumers", () => {
     expect(snap.specs.find((s) => s.name === "myrig")!.description).toBe(expected);
   });
 
-  it("separates library declarations from served rig and seat consumers", async () => {
+  it("把 library 声明与 served rig/seat 消费者分离", async () => {
     const snap = await hydrateSnapshot(fixtureClient({}, { "/api/specs/library/a1/review": { ...(FIXTURES["/api/specs/library/a1/review"] as object), raw: "name: myrig\ndescription: Build and review software" } }));
     const rig = snap.specs.find((s) => s.name === "myrig")!;
     expect(rig.description).toBe("Build and review software");
@@ -627,7 +646,7 @@ describe("S05 authored source and observed consumers", () => {
     expect(view.get()).toMatchObject({ drill: origin.drill, filter: "implementer", contentOffset: 6, viewTab: origin.viewTab });
   });
 
-  it("refreshes the selected file even with the same library revision and does not hide a later failure behind its cache", async () => {
+  it("即使同一 library revision 也刷新所选文件，且不把后续失败藏在缓存后", async () => {
     const cache = new Map();
     const context = { section: "specs", viewTab: "configuration" as const, drill: [{ kind: "spec" as const, name: "myrig" }] };
     await hydrateSnapshot(fixtureClient(), cache, undefined, undefined, undefined, context);
@@ -638,11 +657,11 @@ describe("S05 authored source and observed consumers", () => {
     view.dispatch({ type: "drill", resource: "spec", name: "myrig" });
     const screen = renderScreen(view.get(), failed, { cols: 90, rows: 40 });
     const body = screen.lines.join("\n");
-    expect(body).toContain("Source unavailable");
+    expect(body).toContain("源不可用");
     expect(body).not.toContain("Stale index purpose");
     expect(failed.specs.find((s) => s.name === "myrig")!.description).toBeUndefined();
-    expect(body).not.toContain("0 pods");
-    expect(body).toContain("Observed consumers");
+    expect(body).not.toContain("0 个席位");
+    expect(body).toContain("观察到的消费者");
     expect(screen.lines.every((line) => line.length <= 90)).toBe(true);
   });
 });

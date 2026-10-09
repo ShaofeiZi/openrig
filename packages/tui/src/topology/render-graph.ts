@@ -1,9 +1,9 @@
-// Slice-17 topology leg — the PRODUCTION style registry (narrowed from the
-// spike per the FOUNDER STYLE VERDICT): hatchet = the shipped mainline
-// (frame-01), braille = the conditional smooth style (frame-09) with its
-// proven TIER-1 fallback. Frame-06 tree is RESERVED (deliberately NOT wired);
-// flow/blocks stay spike-only. Every style renders the ONE served /graph
-// projection over the SAME view-state (R7 + PIN-1).
+// Slice-17 拓扑腿——生产样式注册表（按创建者样式裁决从
+// spike 收窄）：hatchet = 已发布主线
+//（frame-01），braille = 条件平滑样式（frame-09）带其
+// 已证明的 TIER-1 回退。Frame-06 树保留（刻意不接线）；
+// flow/blocks 保持仅 spike。每个样式渲染一个服务 /graph
+// 投影在相同视图状态上（R7 + PIN-1）。
 import { GraphCanvas } from "./canvas.js";
 import { layoutGraph } from "./layout.js";
 import { renderHatchet, type StyleContext } from "./styles/hatchet.js";
@@ -24,8 +24,8 @@ export function renderGraphStyle(style: string, graph: RigGraph, ctx: StyleConte
     case "braille-fallback":
       return renderBraille(layoutGraph(graph, width, ctx.rig), ctx, width, true);
     default:
-      // hatchet is the mainline AND the unknown-style safety floor — the
-      // reducer already rejects unknown names before render (one surface)
+      // hatchet 是主线也是未知样式安全地板——
+      // reducer 已在渲染前拒绝未知名称（一个表面）
       return renderHatchet(layoutGraph(graph, width, ctx.rig), ctx, width);
   }
 }

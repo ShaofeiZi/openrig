@@ -1,0 +1,102 @@
+{
+"packages/daemon/src/attention-surface.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/build-info.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/context-pack-taxonomy-surface.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/crash-cart-surface.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/daemon-db-path.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/daemon-shutdown.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/health-detectors-surface.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/health-projection-surface.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/instance-initialization-surface.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/local-reading-surface.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/openrig-compat.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/project-catalog-surface.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/project-lifecycle-surface.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/seed.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/gateway-human-registry-surface.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/gateway-protocol-surface.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/gateway-slack-surface.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/index.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/server.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/startup.ts": [
+"daemon-api",
+"validated",
+"done"
+]
+}

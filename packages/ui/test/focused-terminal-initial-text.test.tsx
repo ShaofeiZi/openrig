@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 
-// OPR.0.4.4.20 delta-C — FocusedTerminal initialText: EXACTLY ONE text frame
-// on first connect, NO Enter/keys frame, never re-sent on reconnect (BR-12:
-// the terminal is the chat surface; the only new wiring is this prop).
+// OPR.0.4.4.20 delta-C——FocusedTerminal initialText：首连时恰一 text 帧，
+// 无 Enter/键帧，重连绝不重发（BR-12：终端即聊天表面；唯一新接线是此 prop）。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, act } from "@testing-library/react";
@@ -54,7 +53,7 @@ vi.mock("@xterm/xterm", () => ({
 import { FocusedTerminal } from "../src/components/terminal/FocusedTerminal.js";
 
 const PREAMBLE =
-  "[review:slice-x qitem-abc] Standing contract: record the outcome on the qitem. user message begins here: ";
+  "[评审：slice-x qitem-abc] 常驻契约：请把结果记录到 qitem。用户消息从这里开始：";
 
 function textFrames(ws: MockWS): Array<{ type: string; text?: string }> {
   return ws.sent.map((s) => JSON.parse(s) as { type: string; text?: string }).filter((f) => f.type === "text");
@@ -80,7 +79,7 @@ describe("FocusedTerminal initialText (delta-C)", () => {
     const frames = textFrames(instances[0]!);
     expect(frames).toHaveLength(1);
     expect(frames[0]!.text).toBe(PREAMBLE);
-    expect(frames[0]!.text!.endsWith("user message begins here: ")).toBe(true);
+    expect(frames[0]!.text!.endsWith("用户消息从这里开始：")).toBe(true);
     expect(keysFrames(instances[0]!)).toHaveLength(0); // no Enter, ever
   });
 
@@ -89,7 +88,7 @@ describe("FocusedTerminal initialText (delta-C)", () => {
     await act(async () => { await vi.runOnlyPendingTimersAsync(); });
     const first = instances[0]!;
     expect(textFrames(first)).toHaveLength(1);
-    // Drop the socket; the component schedules a reconnect.
+    // 断开 socket；组件调度一次重连。
     await act(async () => {
       first.onclose?.({ code: 1006, reason: "drop" });
       await vi.advanceTimersByTimeAsync(5000);

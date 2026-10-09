@@ -13,49 +13,48 @@ vi.mock("../src/daemon-lifecycle.js", async () => {
 });
 
 /**
- * OPR.0.4.6.WF3 FR-5 — error-UX pins (commit 4). Every named daemon
- * rejection renders the 3-part what/why/fix in human mode with the
- * correct fix pointer; --json stays the raw body byte-identically;
- * exit codes unchanged.
+ * OPR.0.4.6.WF3 FR-5——error-UX pin（commit 4）。每个具名 daemon
+ * 拒绝在人类模式渲染三段 what/why/fix 与正确修复指针；--json 保持原始 body
+ * 逐字节一致；退出码不变。
  */
 
 describe("describeDaemonRejection (WF3 FR-5)", () => {
   it("packet_not_on_frontier → explains the moved frontier, points at trace", () => {
     const rej = describeDaemonRejection({ error: "packet_not_on_frontier", instanceId: "WF1" });
-    expect(rej?.fact).toContain("not on the instance frontier");
-    expect(rej?.consequence).toContain("frontier has moved");
-    expect(rej?.action).toContain("rig workflow trace WF1");
+    expect(rej?.fact).toContain("该数据包不在实例前沿上");
+    expect(rej?.consequence).toContain("前沿已经越过它");
+    expect(rej?.action).toContain("zrig workflow trace WF1");
   });
 
   it("instance_not_active → names the actual state; fix pointer names ONLY shipped verbs (BR-1 — flipped at WF-5: resume is real now)", () => {
     const rej = describeDaemonRejection({ error: "instance_not_active", message: "failed", instanceId: "WF1" });
     expect(rej?.fact).toContain("failed");
-    expect(rej?.action).toContain("rig workflow show WF1");
-    // OPR.0.4.6.WF5 FR-4: the WF-3-era negative asserted NO resume
-    // pointer because the verb did not ship yet (BR-1: never point at
-    // a verb that does not exist). WF-5 shipped it, and the pointer
+    expect(rej?.action).toContain("zrig workflow show WF1");
+    // OPR.0.4.6.WF5 FR-4：WF-3 时代的负向断言无 resume
+    // 指针，因为该动词尚未发布（BR-1：绝不指向不存在的
+    // 动词）。WF-5 发布了它，指针
     // upgraded exactly as the WF-3 comment promised — same BR-1
     // principle, inverted assertion.
-    expect(rej?.action).toContain("rig workflow resume");
+    expect(rej?.action).toContain("zrig workflow resume");
   });
 
   it("instance_version_conflict → names expected/actual, says whole-rollback, fix = re-read + retry", () => {
     const rej = describeDaemonRejection({ error: "instance_version_conflict", expectedVersion: 4, actualVersion: 5 });
-    expect(rej?.fact).toContain("expected version 4");
-    expect(rej?.fact).toContain("actual 5");
-    expect(rej?.consequence).toContain("rolled back whole");
-    expect(rej?.action).toContain("retry");
+    expect(rej?.fact).toContain("期望版本 4");
+    expect(rej?.fact).toContain("实际 5");
+    expect(rej?.consequence).toContain("整体回滚");
+    expect(rej?.action).toContain("重试");
   });
 
   it("exit_not_allowed → lists allowed exits when the body carries them", () => {
     const rej = describeDaemonRejection({ error: "exit_not_allowed", allowedExits: ["handoff", "failed"] });
-    expect(rej?.action).toBe("Use one of: handoff | failed.");
+    expect(rej?.action).toBe("可选其一：handoff | failed。");
   });
 
   it("no_next_step / next_owner_unresolved / instance_not_found all render with fixes", () => {
     expect(describeDaemonRejection({ error: "no_next_step" })?.action).toContain("--exit done | failed");
     expect(describeDaemonRejection({ error: "next_owner_unresolved" })?.action).toContain("--next-owner");
-    expect(describeDaemonRejection({ error: "instance_not_found" })?.action).toContain("rig workflow list");
+    expect(describeDaemonRejection({ error: "instance_not_found" })?.action).toContain("zrig workflow list");
   });
 
   it("unrecognized bodies return null (raw-JSON fallback preserved)", () => {
@@ -67,7 +66,7 @@ describe("describeDaemonRejection (WF3 FR-5)", () => {
 
   it("formatThreePart renders the emit3PartError shape", () => {
     const lines = formatThreePart({ fact: "f", consequence: "c", action: "a" });
-    expect(lines).toEqual(["Error: f", "c", "a"]);
+    expect(lines).toEqual(["错误：f", "c", "a"]);
   });
 });
 
@@ -103,7 +102,7 @@ describe("wire-level FR-5 behavior", () => {
       "--instance", "WF1", "--current-packet", "Q1", "--exit", "handoff", "--actor-session", "a@r",
     ]);
     const stderrText = errSpy.mock.calls.map((c) => String(c[0])).join("");
-    expect(stderrText).toContain("Error: A concurrent writer advanced the instance first");
+    expect(stderrText).toContain("有并发写入方先推进了该实例");
     // The raw JSON blob is NOT dumped in human mode for a named rejection.
     expect(logSpy.mock.calls.map((c) => String(c[0])).join("")).not.toContain("instance_version_conflict");
     expect(process.exitCode).toBe(1);

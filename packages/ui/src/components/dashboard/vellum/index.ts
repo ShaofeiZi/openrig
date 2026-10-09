@@ -1,6 +1,5 @@
-// Barrel export for the vellum dashboard primitives. Single source of
-// truth between the production /dashboard surface and the /lab/vellum-lab
-// design reference.
+// vellum 仪表盘基础组件的桶导出。生产 /dashboard 界面与 /lab/vellum-lab
+// 设计参考之间的唯一真相来源。
 
 export { BackLayerContent } from "./BackLayerContent.js";
 export { BackVellumSheet } from "./BackVellumSheet.js";

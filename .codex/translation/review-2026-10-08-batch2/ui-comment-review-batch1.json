@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:37:04",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch1",
+ "files": 10,
+ "changed": 2,
+ "reviewed_no_change": 8,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/index-html.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "f8881c3aed7fe56cfcdc76e1119d43e3e624f0b634d2b7582d148c8b27fce768",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.6.WF4/0.4.1.11.2、POST /api/workflow/:id/resume、actorSession、routes/workflow.ts:266、400 保留"
+  },
+  {
+   "path": "packages/ui/test/display-id.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "b6057f42091655482be91a4c10b6aa70b38df58ad1556130273144407904ac18",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.6.WF4/0.4.1.11.2、POST /api/workflow/:id/resume、actorSession、routes/workflow.ts:266、400 保留"
+  },
+  {
+   "path": "packages/ui/test/token-format.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "32ccb54e68af351fdfd848043aff1099ef5b8af91f14f10265c46dba84722b28",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.6.WF4/0.4.1.11.2、POST /api/workflow/:id/resume、actorSession、routes/workflow.ts:266、400 保留"
+  },
+  {
+   "path": "packages/ui/test/workspace-page.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "1a9ee8ac8606eb71c8fbddc22b68dc89fa83f67cc03461e16771c668a527d984",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.6.WF4/0.4.1.11.2、POST /api/workflow/:id/resume、actorSession、routes/workflow.ts:266、400 保留"
+  },
+  {
+   "path": "packages/ui/test/ui-maintenance-notice.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "35daff370b01394f7529113bb77799936943c0d5d338a1c2ffea4848325d0532",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.6.WF4/0.4.1.11.2、POST /api/workflow/:id/resume、actorSession、routes/workflow.ts:266、400 保留"
+  },
+  {
+   "path": "packages/ui/test/workflow-resume.test.ts",
+   "status": "changed",
+   "after_sha256": "89b4cb96e503193c222f34a69e8e25fca1a496c2665642ac852f1572d1b26f90",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.6.WF4/0.4.1.11.2、POST /api/workflow/:id/resume、actorSession、routes/workflow.ts:266、400 保留"
+  },
+  {
+   "path": "packages/ui/test/twin-capture-payload-diff.test.ts",
+   "status": "changed",
+   "after_sha256": "43689a4a280cc40ce0e0969c7f281b812db79ac59570e96414c323b575f1a766",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.6.WF4/0.4.1.11.2、POST /api/workflow/:id/resume、actorSession、routes/workflow.ts:266、400 保留"
+  },
+  {
+   "path": "packages/ui/test/error-boundary.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "e61933a5862003e9e8f8f28822e777afc3b59d5b21d0170742bbdf727d4d5484",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.6.WF4/0.4.1.11.2、POST /api/workflow/:id/resume、actorSession、routes/workflow.ts:266、400 保留"
+  },
+  {
+   "path": "packages/ui/test/undo-toast.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "3505a0a69aa60a0324908b89f54de5477bbf11d59f627505ef3626f4a4212b26",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.6.WF4/0.4.1.11.2、POST /api/workflow/:id/resume、actorSession、routes/workflow.ts:266、400 保留"
+  },
+  {
+   "path": "packages/ui/test/feed-card-terminal-session.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "ded4ba87225e124e4f00baabfe3dc3564666243a14603d8ed2a0aa342e6155b8",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.6.WF4/0.4.1.11.2、POST /api/workflow/:id/resume、actorSession、routes/workflow.ts:266、400 保留"
+  }
+ ]
+}

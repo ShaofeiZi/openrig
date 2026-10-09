@@ -1,13 +1,12 @@
-// Slice 18 §3.5 — durable mission status lookup.
+// Slice 18 §3.5 —— 持久化的任务状态查询。
 //
-// Fans out GET /api/missions/:missionId per discovered mission and
-// returns a Map<missionId, status>. The storytelling preview gates
-// on status === "complete" so a mission whose frontmatter says
-// "complete" hides even on a fresh browser/localStorage-clear.
+// 对每个发现的任务扇出 GET /api/missions/:missionId，返回
+// Map<missionId, status>。storytelling 预览以 status === "complete" 为门控，
+// 这样 frontmatter 标注为 "complete" 的任务即使在全新浏览器/清空 localStorage 后
+// 也会被隐藏。
 //
-// One react-query query per missionId — small N (the storytelling
-// band caps at the first 2 missions today) so the fan-out is cheap.
-// React-query handles caching + dedupe.
+// 每个 missionId 一个 react-query 查询——N 很小（storytelling 带目前最多取前 2 个
+// 任务），所以扇出代价低。react-query 负责缓存 + 去重。
 
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";

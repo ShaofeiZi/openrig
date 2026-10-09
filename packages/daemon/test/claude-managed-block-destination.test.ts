@@ -29,14 +29,13 @@ import type { AgentResolverFsOps } from "../src/domain/agent-resolver.js";
 import type { NodeBinding, RuntimeAdapter } from "../src/domain/runtime-adapter.js";
 import type { TmuxAdapter } from "../src/adapters/tmux.js";
 
-// #25 — a rig can send Claude Code's OpenRig-managed blocks to CLAUDE.local.md
-// instead of the (often git-tracked) CLAUDE.md. These drive the real
-// instantiate/restore/expand/teardown paths with the real Claude adapter
-// writing into a temporary cwd.
+// #25——工作组可将 Claude Code 的 OpenRig 受管块发送到 CLAUDE.local.md，
+// 而不是通常被 Git 跟踪的 CLAUDE.md。这些测试驱动真实的实例化、恢复、扩容和拆除路径，
+// 并由真实 Claude adapter 写入临时工作目录。
 
 const BEGIN = "<!-- BEGIN OpenRig MANAGED BLOCK:";
 const LOCAL = "managed_blocks:\n  claude-code: CLAUDE.local.md";
-// A tracked CLAUDE.md that already carries blocks from an earlier default-target run.
+// 一个已跟踪的 CLAUDE.md，其中已有先前默认目标运行写入的块。
 const OLD_BLOCKS_CLAUDE_MD = [
   "# Project rules",
   "",
@@ -162,8 +161,8 @@ async function launched(f: ReturnType<typeof fixture>): Promise<string> {
   return (result as { ok: true; result: { rigId: string } }).result.rigId;
 }
 
-describe("#25 journey — rig YAML selects the Claude managed-block destination", () => {
-  it("managed_blocks: { claude-code: CLAUDE.local.md } writes the blocks to CLAUDE.local.md and never touches CLAUDE.md", async () => {
+describe("#25 使用流程——rig YAML 选择 Claude 受管块目标文件", () => {
+  it("managed_blocks: { claude-code: CLAUDE.local.md } 将块写入 CLAUDE.local.md，且绝不触碰 CLAUDE.md", async () => {
     const tracked = "# Project rules\n\nKeep this file short.\n";
     const f = fixture(LOCAL, { claudeMd: tracked });
     await launched(f);
@@ -172,7 +171,7 @@ describe("#25 journey — rig YAML selects the Claude managed-block destination"
     f.db.close();
   });
 
-  it("absent managed_blocks keeps today's destination: CLAUDE.md", async () => {
+  it("缺少 managed_blocks 时保留当前默认目标 CLAUDE.md", async () => {
     const f = fixture("");
     await launched(f);
     expect(f.read("CLAUDE.md")).toContain(BEGIN);
@@ -180,7 +179,7 @@ describe("#25 journey — rig YAML selects the Claude managed-block destination"
     f.db.close();
   });
 
-  it("managed_blocks: { claude-code: CLAUDE.md } is the explicit default", async () => {
+  it("managed_blocks: { claude-code: CLAUDE.md } 是显式默认值", async () => {
     const f = fixture("managed_blocks:\n  claude-code: CLAUDE.md");
     await launched(f);
     expect(f.read("CLAUDE.md")).toContain(BEGIN);
@@ -189,7 +188,7 @@ describe("#25 journey — rig YAML selects the Claude managed-block destination"
   });
 });
 
-describe("#25 schema — accepted keys and values, rejected before launch", () => {
+describe("#25 schema——接受合法 key 和值，并在启动前拒绝非法值", () => {
   const base = (managedBlocks: unknown) => ({
     version: "0.2", name: "r",
     ...(managedBlocks === undefined ? {} : { managed_blocks: managedBlocks }),
@@ -197,35 +196,35 @@ describe("#25 schema — accepted keys and values, rejected before launch", () =
     edges: [],
   });
 
-  it("accepts both supported destinations and absence", () => {
+  it("接受两个受支持目标以及缺省配置", () => {
     expect(RigSpecSchema.validate(base(undefined)).errors).toEqual([]);
     expect(RigSpecSchema.validate(base({ "claude-code": "CLAUDE.md" })).errors).toEqual([]);
     expect(RigSpecSchema.validate(base({ "claude-code": "CLAUDE.local.md" })).errors).toEqual([]);
     expect(RigSpecSchema.validate(base({})).errors).toEqual([]);
   });
 
-  it("rejects an unsupported value, naming both supported files", () => {
+  it("拒绝不支持的值，并点名两个受支持文件", () => {
     for (const bad of ["AGENTS.md", "docs/CLAUDE.md", "../CLAUDE.local.md", "", 7, null]) {
       const errors = RigSpecSchema.validate(base({ "claude-code": bad })).errors;
       expect(errors).toHaveLength(1);
-      expect(errors[0]).toContain("managed_blocks.claude-code: must be one of CLAUDE.md, CLAUDE.local.md");
+      expect(errors[0]).toContain("managed_blocks.claude-code：必须是 CLAUDE.md, CLAUDE.local.md 之一");
     }
   });
 
-  it("rejects any other runtime key, naming the supported key (Codex stays on AGENTS.md)", () => {
+  it("拒绝其他 runtime key，并指出受支持的 key（Codex 仍使用 AGENTS.md）", () => {
     for (const key of ["codex", "pi", "terminal", "claude"]) {
       const errors = RigSpecSchema.validate(base({ [key]: "CLAUDE.local.md" })).errors;
-      expect(errors).toEqual([`managed_blocks.${key}: unsupported runtime "${key}"; only "claude-code" is configurable`]);
+      expect(errors).toEqual([`managed_blocks.${key}：不支持运行时 "${key}"；仅可配置 "claude-code"`]);
     }
   });
 
-  it("rejects a non-mapping value", () => {
+  it("拒绝非映射值", () => {
     for (const bad of ["CLAUDE.local.md", ["CLAUDE.local.md"], null]) {
-      expect(RigSpecSchema.validate(base(bad)).errors).toEqual(["managed_blocks: must be a mapping such as { claude-code: CLAUDE.local.md }"]);
+      expect(RigSpecSchema.validate(base(bad)).errors).toEqual(["managed_blocks：必须是映射，例如 { claude-code: CLAUDE.local.md }"]);
     }
   });
 
-  it("an invalid value is refused by instantiate before any seat launches or file is written", async () => {
+  it("无效值会在实例化阶段、任何席位启动或文件写入前被拒绝", async () => {
     const f = fixture("managed_blocks:\n  claude-code: AGENTS.md");
     const result = await f.inst.instantiate(f.yaml, f.rigRoot);
     expect(result).toMatchObject({ ok: false, code: "validation_failed" });
@@ -235,8 +234,8 @@ describe("#25 schema — accepted keys and values, rejected before launch", () =
   });
 });
 
-describe("#25 selected-file semantics — preservation, idempotence, the other file", () => {
-  it("keeps user text in CLAUDE.local.md and leaves a CLAUDE.md with old blocks byte-identical", async () => {
+describe("#25 所选文件语义——保留、幂等和其他文件", () => {
+  it("保留 CLAUDE.local.md 中的用户文本，并让含旧块的 CLAUDE.md 字节不变", async () => {
     const userLocal = "# My local notes\n\nprefer short answers\n";
     const f = fixture(LOCAL, { claudeMd: OLD_BLOCKS_CLAUDE_MD, claudeLocalMd: userLocal });
     await launched(f);
@@ -247,7 +246,7 @@ describe("#25 selected-file semantics — preservation, idempotence, the other f
     f.db.close();
   });
 
-  it("repeated projection into CLAUDE.local.md is idempotent", async () => {
+  it("重复投影到 CLAUDE.local.md 保持幂等", async () => {
     const f = fixture(LOCAL, { claudeLocalMd: "user line\n" });
     const rigId = await launched(f);
     const first = f.read("CLAUDE.local.md");
@@ -259,8 +258,8 @@ describe("#25 selected-file semantics — preservation, idempotence, the other f
     await f.claude.deliverStartup(files, { ...binding, claudeManagedBlockFile: "CLAUDE.local.md" });
     await f.claude.deliverStartup(files, { ...binding, claudeManagedBlockFile: "CLAUDE.local.md" });
     const again = f.read("CLAUDE.local.md")!;
-    // Blocks are replaced in place, never duplicated. mergeManagedBlock's trailing
-    // blank-line growth on re-merge predates #25 and is file-independent (parity below).
+    // 块会原地替换，绝不重复。mergeManagedBlock 在重新合并时增长尾部空行的行为早于 #25，
+    // 且与文件无关（见下方对等性检查）。
     const count = (text: string) => text.split(BEGIN).length - 1;
     expect(count(again)).toBe(count(first!));
     expect(again.trimEnd()).toBe(first!.trimEnd());
@@ -271,7 +270,7 @@ describe("#25 selected-file semantics — preservation, idempotence, the other f
     f.db.close();
   });
 
-  it("profile managed_block projection uses the selected file too", async () => {
+  it("profile 的 managed_block 投影也使用所选文件", async () => {
     const root = fs.mkdtempSync(nodePath.join(os.tmpdir(), "or-issue25-proj-"));
     tmpDirs.push(root);
     const src = nodePath.join(root, "guide.md");
@@ -287,13 +286,13 @@ describe("#25 selected-file semantics — preservation, idempotence, the other f
     expect(fs.existsSync(nodePath.join(root, "CLAUDE.md"))).toBe(false);
   });
 
-  it("the conflict target follows the selection; the default is unchanged", () => {
+  it("冲突目标跟随选择，默认值保持不变", () => {
     expect(claudeConflictTargetPath("guidance", "g", "/cwd")).toBe("/cwd/CLAUDE.md");
     expect(claudeConflictTargetPath("guidance", "g", "/cwd", undefined, "CLAUDE.local.md")).toBe("/cwd/CLAUDE.local.md");
     expect(claudeConflictTargetPath("skill", "s", "/cwd", undefined, "CLAUDE.local.md")).toBe("/cwd/.claude/skills/s/SKILL.md");
   });
 
-  it("the Codex adapter ignores the Claude selection and stays on AGENTS.md", async () => {
+  it("Codex adapter 忽略 Claude 的选择，仍使用 AGENTS.md", async () => {
     const root = fs.mkdtempSync(nodePath.join(os.tmpdir(), "or-issue25-codex-"));
     tmpDirs.push(root);
     const src = nodePath.join(root, "culture.md");
@@ -309,10 +308,10 @@ describe("#25 selected-file semantics — preservation, idempotence, the other f
   });
 });
 
-describe("#25 carriage — the selection holds across the lifecycle", () => {
-  // Restore after a daemon restart: reopened DB, real pod-aware RestoreOrchestrator.
-  // `withResumeToken: false` forces a fresh-primed relaunch, which replays startup;
-  // an exact native resume replays nothing by design (D6a containment).
+describe("#25 携带——选择在整个生命周期中保持", () => {
+  // 后台服务重启后恢复：重新打开数据库，并使用真实、感知 pod 的 RestoreOrchestrator。
+  // `withResumeToken: false` 强制执行重新准备的新启动，从而重放启动流程；
+  // 按设计，精确的原生恢复不会重放任何内容（D6a 边界）。
   async function restoreAfterRestart(withResumeToken: boolean) {
     const f = fixture(LOCAL, { claudeMd: OLD_BLOCKS_CLAUDE_MD });
     const rigId = await launched(f);
@@ -346,20 +345,20 @@ describe("#25 carriage — the selection holds across the lifecycle", () => {
     return { f, restored: restored as { ok: true; result: { nodes: Array<{ status: string }> } } };
   }
 
-  it("restore with a fresh-primed relaunch replays the blocks into CLAUDE.local.md only", { timeout: 30000 }, async () => {
+  it("重新准备的新启动恢复仅将块重放到 CLAUDE.local.md", { timeout: 30000 }, async () => {
     const { f, restored } = await restoreAfterRestart(false);
     expect(restored.result.nodes[0]!.status, JSON.stringify(restored)).not.toBe("failed");
     expect(f.read("CLAUDE.local.md")).toContain(BEGIN);
     expect(f.read("CLAUDE.md")).toBe(OLD_BLOCKS_CLAUDE_MD);
   });
 
-  it("restore by exact native resume writes neither file (containment unchanged)", { timeout: 30000 }, async () => {
+  it("精确原生恢复不会写入任一文件（边界保持不变）", { timeout: 30000 }, async () => {
     const { f } = await restoreAfterRestart(true);
     expect(f.read("CLAUDE.local.md")).toBeNull();
     expect(f.read("CLAUDE.md")).toBe(OLD_BLOCKS_CLAUDE_MD);
   });
 
-  it("relaunch/continue replay of the persisted startup context binds the rig's selection even when the caller's binding omits it", async () => {
+  it("重新启动或继续时重放持久化启动上下文，即使调用方 binding 省略选择也会绑定工作组选择", async () => {
     const f = fixture(LOCAL, { claudeMd: OLD_BLOCKS_CLAUDE_MD });
     const rigId = await launched(f);
     fs.rmSync(nodePath.join(f.cwd, "CLAUDE.local.md"));
@@ -367,7 +366,7 @@ describe("#25 carriage — the selection holds across the lifecycle", () => {
     const session = f.sessionRegistry.getSessionsForRig(rigId).find((s) => s.nodeId === node.id)!;
     const ctx = f.db.prepare("SELECT projection_entries_json, resolved_files_json, startup_actions_json FROM node_startup_context WHERE node_id = ?")
       .get(node.id) as { projection_entries_json: string; resolved_files_json: string; startup_actions_json: string };
-    // Same startNode inputs seat-lifecycle-service builds for launchFresh/continueFreshStartup.
+    // 与 seat-lifecycle-service 为 launchFresh/continueFreshStartup 构造的 startNode 输入一致。
     const result = await f.startupOrchestrator.startNode({
       rigId, nodeId: node.id, sessionId: session.id,
       binding: { cwd: f.cwd, tmuxSession: session.sessionName } as NodeBinding,
@@ -383,7 +382,7 @@ describe("#25 carriage — the selection holds across the lifecycle", () => {
     f.db.close();
   });
 
-  it("expand/add: a member added to the running rig receives CLAUDE.local.md", async () => {
+  it("扩容或添加：加入运行中工作组的成员会收到 CLAUDE.local.md", async () => {
     const f = fixture(LOCAL);
     const rigId = await launched(f);
     const cwd2 = nodePath.join(f.root, "repo2");
@@ -397,7 +396,7 @@ describe("#25 carriage — the selection holds across the lifecycle", () => {
     f.db.close();
   });
 
-  it("export → YAML → import round trip keeps the selection (and the default exports nothing)", async () => {
+  it("导出 → YAML → 导入往返会保留选择（默认值不输出）", async () => {
     const f = fixture(LOCAL);
     const rigId = await launched(f);
     const exported = new RigSpecExporter({ rigRepo: f.rigRepo, sessionRegistry: f.sessionRegistry, podRepo: f.podRepo }).exportRig(rigId);
@@ -414,7 +413,7 @@ describe("#25 carriage — the selection holds across the lifecycle", () => {
     g.db.close();
   });
 
-  it("bundle rig.yaml rewrite (normalize → serialize) keeps the selection", () => {
+  it("重写 bundle rig.yaml（归一化 → 序列化）会保留选择", () => {
     const f = fixture(LOCAL);
     const raw = RigSpecCodec.parse(f.yaml) as Record<string, unknown>;
     const rewritten = RigSpecCodec.serialize(RigSpecSchema.normalize(raw));
@@ -423,7 +422,7 @@ describe("#25 carriage — the selection holds across the lifecycle", () => {
   });
 });
 
-describe("#25 teardown — cleans the selected file only", () => {
+describe("#25 拆除——仅清理所选文件", () => {
   function teardown(f: ReturnType<typeof fixture>) {
     return new RigTeardownOrchestrator({
       db: f.db, rigRepo: f.rigRepo, sessionRegistry: f.sessionRegistry, tmuxAdapter: f.tmux, eventBus: f.eventBus,
@@ -431,7 +430,7 @@ describe("#25 teardown — cleans the selected file only", () => {
     });
   }
 
-  it("strips blocks from CLAUDE.local.md, keeps its user text, and leaves CLAUDE.md with old blocks byte-identical", async () => {
+  it("从 CLAUDE.local.md 移除块并保留用户文本，同时让含旧块的 CLAUDE.md 字节不变", async () => {
     const f = fixture(LOCAL, { claudeMd: OLD_BLOCKS_CLAUDE_MD, claudeLocalMd: "my local line\n" });
     const rigId = await launched(f);
     for (const s of f.sessionRegistry.getSessionsForRig(rigId)) f.sessionRegistry.updateStatus(s.id, "running");
@@ -441,7 +440,7 @@ describe("#25 teardown — cleans the selected file only", () => {
     f.db.close();
   });
 
-  it("removes a CLAUDE.local.md that held only managed blocks", async () => {
+  it("移除仅含受管块的 CLAUDE.local.md", async () => {
     const f = fixture(LOCAL, { claudeMd: OLD_BLOCKS_CLAUDE_MD });
     const rigId = await launched(f);
     await teardown(f).teardown(rigId);
@@ -450,7 +449,7 @@ describe("#25 teardown — cleans the selected file only", () => {
     f.db.close();
   });
 
-  it("default rig teardown still cleans CLAUDE.md and never creates or touches CLAUDE.local.md", async () => {
+  it("默认工作组拆除仍清理 CLAUDE.md，且绝不创建或触碰 CLAUDE.local.md", async () => {
     const f = fixture("", { claudeLocalMd: OLD_BLOCKS_CLAUDE_MD });
     const rigId = await launched(f);
     expect(f.read("CLAUDE.md")).toContain(BEGIN);

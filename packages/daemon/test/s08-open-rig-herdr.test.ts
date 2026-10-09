@@ -1,6 +1,6 @@
-// OPR.0.6.0.8 — open the whole rig in Herdr. A real TerminalService + real HerdrAdapter over an
-// injected socket transport, with a synthetic 17-seat rig. These prove what the adapter SENDS and
-// how it reads replies; they do not prove what a real Herdr does with duplicate labels or focus.
+// OPR.0.6.0.8——在 Herdr 中打开整个 rig。通过注入的 socket transport 使用真实
+// TerminalService + HerdrAdapter，并构造一个有 17 个席位的 rig。测试证明 adapter 发送的内容
+// 及其读取响应的方式，不证明真实 Herdr 如何处理重复 label 或 focus。
 import { describe, expect, it } from "vitest";
 import { TerminalService, type TerminalServiceDeps } from "../src/domain/terminal/terminal-service.js";
 import { HerdrAdapter, HERDR_PANES_PER_PAGE, planHerdrLayout } from "../src/domain/terminal/herdr-adapter.js";
@@ -72,8 +72,8 @@ const cellSeats = (root: unknown): string[] => {
   return out;
 };
 
-describe("S08 — the rig opens as one Herdr space, 16 cells per tab", () => {
-  it("17 live seats → workspace named after the rig, tabs of 16 then 1, each cell on its own seat, in order", async () => {
+describe("S08——把 rig 作为一个 Herdr space 打开，每个 tab 16 个 cell", () => {
+  it("17 个存活席位 → workspace 以 rig 命名，tab 依次容纳 16 和 1 个席位，每个 cell 按顺序对应一个席位", async () => {
     const { transport, requests } = herdrTransport();
     const { svc } = service(new HerdrAdapter({ transportFactory: () => transport, newLaunchToken: () => "tok" }));
     const res = await svc.openView({ view: `rig:${RIG}` });
@@ -87,7 +87,7 @@ describe("S08 — the rig opens as one Herdr space, 16 cells per tab", () => {
     expect([...cellSeats(applies[0]!.params["root"]), ...cellSeats(applies[1]!.params["root"])]).toEqual(rows.map((r) => r.canonicalSessionName));
   });
 
-  it("the first tab is a 4×4 equal grid; the preview plan pages the same way", async () => {
+  it("第一个 tab 是 4×4 等分网格；preview plan 使用相同分页方式", async () => {
     const { transport } = herdrTransport();
     const { svc } = service(new HerdrAdapter({ transportFactory: () => transport }));
     const preview = await svc.previewView({ view: `rig:${RIG}` }) as { grids: Array<{ columns: number; rows: number; blanks: number }>; composed: ComposedView };
@@ -96,7 +96,7 @@ describe("S08 — the rig opens as one Herdr space, 16 cells per tab", () => {
     expect(HERDR_PANES_PER_PAGE).toBe(16);
   });
 
-  it("after layout it focuses the first populated tab, then closes the blank starting tab", async () => {
+  it("layout 后聚焦首个非空 tab，再关闭空白起始 tab", async () => {
     const { transport, requests } = herdrTransport();
     const { svc } = service(new HerdrAdapter({ transportFactory: () => transport }));
     const res = await svc.openView({ view: `rig:${RIG}` });
@@ -106,7 +106,7 @@ describe("S08 — the rig opens as one Herdr space, 16 cells per tab", () => {
     expect(res.notes).toBeUndefined();
   });
 
-  it("never closes a tab that holds a page, even if herdr reuses the starting tab", async () => {
+  it("即使 herdr 复用起始 tab，也绝不关闭承载页面的 tab", async () => {
     const { transport, requests } = herdrTransport((m) =>
       m === "workspace.create" ? { type: "c", workspace: { workspace_id: "w1" }, tab: { tab_id: "w1:t0" } }
         : m === "layout.apply" ? { type: "l", layout: { tab_id: "w1:t0" } } : { type: "ok" });
@@ -115,7 +115,7 @@ describe("S08 — the rig opens as one Herdr space, 16 cells per tab", () => {
     expect(requests.some((r) => r.method === "tab.close")).toBe(false);
   });
 
-  it("re-opening creates a second space with the same name and different tab labels", async () => {
+  it("重新打开会创建同名的第二个 space，并使用不同 tab label", async () => {
     const { transport, requests } = herdrTransport();
     let n = 0;
     const { svc } = service(new HerdrAdapter({ transportFactory: () => transport, newLaunchToken: () => `l${++n}` }));
@@ -128,10 +128,10 @@ describe("S08 — the rig opens as one Herdr space, 16 cells per tab", () => {
     expect(labels[0]).not.toBe(labels[2]);
   });
 
-  it("if herdr refuses a duplicate name, it retries with a numbered suffix and says so", async () => {
+  it("herdr 拒绝重复名称时，以数字后缀重试并明确说明", async () => {
     const { transport, requests } = herdrTransport((m, p) => {
       if (m === "workspace.create") {
-        if (p["label"] === RIG) throw new Error("label already in use");
+        if (p["label"] === RIG) throw new Error("label 已被使用");
         return { type: "c", workspace: { workspace_id: "w2" }, tab: { tab_id: "w2:t0" } };
       }
       if (m === "workspace.list") return { type: "workspaces", workspaces: [{ label: RIG }, { label: `${RIG} (2)` }] };
@@ -142,43 +142,43 @@ describe("S08 — the rig opens as one Herdr space, 16 cells per tab", () => {
     const res = await svc.openView({ view: `rig:${RIG}` });
     expect(requests.filter((r) => r.method === "workspace.create").map((c) => c.params["label"])).toEqual([RIG, `${RIG} (3)`]);
     expect(res.ok).toBe(true);
-    expect(res.notes).toEqual([`A workspace named "${RIG}" already exists, so this one is "${RIG} (3)".`]);
+    expect(res.notes).toEqual([`名为“${RIG}”的工作区已存在，因此新工作区命名为“${RIG} (3)”。`]);
   });
 
-  it("a refused focus or close is a note; the opened seats are unchanged", async () => {
+  it("focus 或 close 被拒绝时记录 note；已打开席位不变", async () => {
     const { transport } = herdrTransport((m, _p, n) => {
       if (m === "workspace.create") return { type: "c", workspace: { workspace_id: "w1" }, tab: { tab_id: "w1:t0" } };
       if (m === "layout.apply") return { type: "l", layout: { tab_id: `w1:t${n + 1}` } };
-      throw new Error(`${m} unsupported`);
+      throw new Error(`${m} 不受支持`);
     });
     const { svc } = service(new HerdrAdapter({ transportFactory: () => transport }));
     const res = await svc.openView({ view: `rig:${RIG}` });
     expect(res.opened).toHaveLength(17);
     expect(res.degraded).toEqual([]);
-    expect(res.notes).toEqual(["herdr did not focus the first tab: tab.focus unsupported", "herdr kept the blank starting tab: tab.close unsupported"]);
+    expect(res.notes).toEqual(["herdr 未聚焦第一个 tab：tab.focus 不受支持", "herdr 保留了空白起始 tab：tab.close 不受支持"]);
   });
 
-  it("honest partials: a page herdr refuses names its seats as degraded; the tile count never overclaims", async () => {
+  it("如实报告部分成功：herdr 拒绝页面时把其中席位标为 degraded，tile 数绝不多报", async () => {
     let applyCall = 0;
     const { transport } = herdrTransport((m) => {
       if (m === "workspace.create") return { type: "c", workspace: { workspace_id: "w1" }, tab: { tab_id: "w1:t0" } };
-      if (m === "layout.apply") { applyCall++; if (applyCall === 2) throw new Error("page refused"); return { type: "l", layout: { tab_id: "w1:t1" } }; }
+      if (m === "layout.apply") { applyCall++; if (applyCall === 2) throw new Error("页面被拒绝"); return { type: "l", layout: { tab_id: "w1:t1" } }; }
       return { type: "ok" };
     });
     const { svc } = service(new HerdrAdapter({ transportFactory: () => transport }));
     const res = await svc.openView({ view: `rig:${RIG}` });
     expect(res.opened).toHaveLength(16);
     expect(res.degraded.map((d) => d.seat)).toEqual([rows[16]!.canonicalSessionName]);
-    expect(res.degraded[0]!.reason).toContain("page refused");
+    expect(res.degraded[0]!.reason).toContain("页面被拒绝");
   });
 });
 
-describe("S08 correction — the starting tab is kept unless it is known blank", () => {
+describe("S08 修正——除非确认起始 tab 为空，否则予以保留", () => {
   const create = { type: "c", workspace: { workspace_id: "w1" }, tab: { tab_id: "t0" } };
   const closes = (reqs: Req[]) => reqs.filter((r) => r.method === "tab.close");
-  const KEPT = "The starting tab was kept because it could not be confirmed empty.";
+  const KEPT = "无法确认起始 tab 为空，因此予以保留。";
 
-  it("a page applied without a tab id (maybe into the starting tab) keeps the starting tab; the known page is focused", async () => {
+  it("应用页面但没有 tab id（可能进入起始 tab）时保留起始 tab，并聚焦已知页面", async () => {
     let n = 0;
     const { transport, requests } = herdrTransport((m) => {
       if (m === "workspace.create") return create;
@@ -193,19 +193,19 @@ describe("S08 correction — the starting tab is kept unless it is known blank",
     expect(res.notes).toEqual([KEPT]);
   });
 
-  it("no page reports a tab id: no focus and no close, both said", async () => {
+  it("没有页面报告 tab id：既不 focus 也不 close，并同时说明", async () => {
     const { transport, requests } = herdrTransport((m) => (m === "workspace.create" ? create : { type: "l" }));
     const { svc } = service(new HerdrAdapter({ transportFactory: () => transport }));
     const res = await svc.openView({ view: `rig:${RIG}` });
     expect(requests.map((r) => r.method)).toEqual(["workspace.create", "layout.apply", "layout.apply"]);
-    expect(res.notes).toEqual(["herdr returned no tab id for any page, so no tab was focused explicitly.", KEPT]);
+    expect(res.notes).toEqual(["herdr 未为任何页面返回 tab id，因此未显式聚焦 tab。", KEPT]);
   });
 
-  it("a failed apply (which may still have taken effect) keeps the starting tab; its seats stay degraded, not counted", async () => {
+  it("apply 失败（但可能已生效）时保留起始 tab；其席位保持 degraded 且不计数", async () => {
     let n = 0;
     const { transport, requests } = herdrTransport((m) => {
       if (m === "workspace.create") return create;
-      if (m === "layout.apply") { n++; if (n === 1) throw new Error("reply lost"); return { type: "l", layout: { tab_id: "t2" } }; }
+      if (m === "layout.apply") { n++; if (n === 1) throw new Error("响应丢失"); return { type: "l", layout: { tab_id: "t2" } }; }
       return { type: "ok" };
     });
     const { svc } = service(new HerdrAdapter({ transportFactory: () => transport }));
@@ -216,8 +216,8 @@ describe("S08 correction — the starting tab is kept unless it is known blank",
     expect(res.notes).toEqual([KEPT]);
   });
 
-  it("every page fails: nothing is focused or closed", async () => {
-    const { transport, requests } = herdrTransport((m) => { if (m === "workspace.create") return create; throw new Error("refused"); });
+  it("所有页面都失败时：不 focus 或 close 任何内容", async () => {
+    const { transport, requests } = herdrTransport((m) => { if (m === "workspace.create") return create; throw new Error("已拒绝"); });
     const { svc } = service(new HerdrAdapter({ transportFactory: () => transport }));
     const res = await svc.openView({ view: `rig:${RIG}` });
     expect(requests.map((r) => r.method)).toEqual(["workspace.create", "layout.apply", "layout.apply"]);
@@ -225,7 +225,7 @@ describe("S08 correction — the starting tab is kept unless it is known blank",
     expect(res.degraded).toHaveLength(17);
   });
 
-  it("all pages known and none is the starting tab: the close still happens", async () => {
+  it("所有页面均已知且都不是起始 tab 时，仍会执行 close", async () => {
     const { transport, requests } = herdrTransport();
     const { svc } = service(new HerdrAdapter({ transportFactory: () => transport }));
     const res = await svc.openView({ view: `rig:${RIG}` });
@@ -234,9 +234,9 @@ describe("S08 correction — the starting tab is kept unless it is known blank",
   });
 });
 
-describe("S08 correction — catalog pages match the Herdr open", () => {
+describe("S08 修正——catalog 页数与 Herdr open 一致", () => {
   const ten = rows.slice(0, 10);
-  const saved = { id: "ten", name: "Ten", members: ten.map((r) => ({ seat: r.canonicalSessionName, tmuxSession: r.tmuxSession })) };
+  const saved = { id: "ten", name: "十席位", members: ten.map((r) => ({ seat: r.canonicalSessionName, tmuxSession: r.tmuxSession })) };
   function catalogService(batch: boolean): TerminalService {
     const { transport } = herdrTransport();
     const herdr = new HerdrAdapter({ transportFactory: () => transport });
@@ -251,7 +251,7 @@ describe("S08 correction — catalog pages match the Herdr open", () => {
   }
 
   for (const batch of [false, true]) {
-    it(`${batch ? "batch" : "fallback"} inventory: saved and derived entries show 1 page for 10 seats, like preview`, async () => {
+    it(`${batch ? "批量" : "回退"} inventory：saved 与 derived 条目和 preview 一样，为 10 个席位显示 1 页`, async () => {
       const svc = catalogService(batch);
       const views = await svc.listViews(true);
       const pages = Object.fromEntries((views.catalog ?? []).map((e) => [e.view, e.pages]));
@@ -262,8 +262,8 @@ describe("S08 correction — catalog pages match the Herdr open", () => {
   }
 });
 
-describe("S08 — cmux is unchanged", () => {
-  it("cmux still pages at the default 9 and keeps its 12-per-workspace and 2-column limits", async () => {
+describe("S08——cmux 保持不变", () => {
+  it("cmux 仍按默认每页 9 个分页，并保持每 workspace 12 个与 2 列限制", async () => {
     const { transport } = herdrTransport();
     const { svc, cmux } = service(new HerdrAdapter({ transportFactory: () => transport }));
     await svc.openView({ view: `rig:${RIG}`, provider: "cmux" });
@@ -273,7 +273,7 @@ describe("S08 — cmux is unchanged", () => {
     expect(MAX_COLS).toBe(2);
   });
 
-  it("the workspace name rule is Herdr-only: a mission/slice/saved view keeps its view id", () => {
+  it("workspace 命名规则仅适用于 Herdr：mission/slice/saved view 保留其 view id", () => {
     const view: ComposedView = { id: "mission:4.6", opened: [], absent: [], degraded: [], pages: [] };
     expect(planHerdrLayout(view, "t").workspaceLabel).toBe("mission:4.6");
   });

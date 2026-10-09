@@ -1,63 +1,62 @@
-// Slice-03 rig-context v1 (OPR.0.5.0.3) — ref hardening (proof item 6 + R2 closure item 8).
-// The addressing contract §2 calls "the ONE thing that must be right": PATH-LIKE MULTI-SEGMENT
-// refs (e.g. `packs/compaction-restore`) with PER-SEGMENT validation (salvaged assertSafePackName
-// charset, bent per `/`-segment, still banning traversal/absolute/empty/injection), and the
-// bounded delimiter-free version token isSafePackVersion (salvaged verbatim from checkpoint
-// b10c1618 — fixes R2 (a) ENAMETOOLONG + the store-id half of (b)).
+// Slice-03 rig-context v1（OPR.0.5.0.3）——ref 加固（证明条目 6 + R2 收尾条目 8）。
+// 寻址契约 §2 称其为“唯一必须正确的内容”：类路径多分段 ref（例如
+// `packs/compaction-restore`）需要逐段校验。复用 assertSafePackName 字符集并按 `/` 分段调整，
+// 同时继续禁止遍历、绝对路径、空段和注入。isSafePackVersion 是有界且不含分隔符的版本 token，
+// 从检查点 b10c1618 原样复用，修复 R2 (a) ENAMETOOLONG 和 (b) 的存储 ID 部分。
 
 import { describe, it, expect } from "vitest";
 import { isSafePackRef, assertSafePackRef, isSafePackVersion } from "../src/domain/context-packs/ref-safety.js";
 
-describe("isSafePackRef — path-like multi-segment ref validation (per-segment)", () => {
-  it("accepts a path-like multi-segment ref (each segment on the salvaged charset)", () => {
+describe("isSafePackRef——类路径多分段 ref 校验（逐段）", () => {
+  it("接受每段都符合复用字符集的类路径多分段 ref", () => {
     expect(isSafePackRef("packs/compaction-restore")).toBe(true);
-    expect(isSafePackRef("compaction-restore")).toBe(true); // single segment still valid
+    expect(isSafePackRef("compaction-restore")).toBe(true); // 单段仍有效。
     expect(isSafePackRef("a/b/c.d_e-f")).toBe(true);
   });
 
   for (const bad of [
-    "../evil",                 // parent-traversal segment
-    "packs/../evil",           // traversal mid-ref
-    "packs/..",                // trailing ..
-    "/abs/path",               // absolute → empty leading segment
-    "packs//nested",           // empty interior segment
-    "packs/",                  // empty trailing segment
-    "",                        // empty ref
-    ".",                       // dot segment
-    "packs/.hidden",           // segment not starting on the leading charset
-    "packs/na me",             // whitespace (injection surface)
-    "packs/na:me",             // colon (YAML/id injection)
-    "packs/na\nme",            // newline (YAML injection)
-    "packs/na\tme",            // tab
-    `packs/${"x".repeat(65)}`, // segment over the 64-char component cap
+    "../evil",                 // 父目录遍历分段
+    "packs/../evil",           // ref 中间的遍历
+    "packs/..",                // 尾部 ..
+    "/abs/path",               // 绝对路径会产生空的首段
+    "packs//nested",           // 中间空段
+    "packs/",                  // 尾部空段
+    "",                        // 空 ref
+    ".",                       // 点分段
+    "packs/.hidden",           // 分段未以允许的首字符开头
+    "packs/na me",             // 空白字符，存在注入风险
+    "packs/na:me",             // 冒号，存在 YAML/ID 注入风险
+    "packs/na\nme",            // 换行符，存在 YAML 注入风险
+    "packs/na\tme",            // 制表符
+    `packs/${"x".repeat(65)}`, // 分段超过 64 字符上限
   ]) {
-    it(`rejects unsafe ref ${JSON.stringify(bad)}`, () => {
+    it(`拒绝不安全 ref ${JSON.stringify(bad)}`, () => {
       expect(isSafePackRef(bad)).toBe(false);
       expect(() => assertSafePackRef(bad)).toThrow();
     });
   }
 
-  it("assertSafePackRef is a no-op (no throw) for a valid ref", () => {
+  it("assertSafePackRef 对有效 ref 不执行操作且不抛错", () => {
     expect(() => assertSafePackRef("packs/compaction-restore")).not.toThrow();
   });
 });
 
-describe("isSafePackVersion — bounded delimiter-free version token (salvaged; R2 (a)/(b) fix)", () => {
-  it("accepts a bounded version token", () => {
+describe("isSafePackVersion——有界且不含分隔符的版本 token（复用；R2 (a)/(b) 修复）", () => {
+  it("接受有界版本 token", () => {
     expect(isSafePackVersion("1.0.0")).toBe(true);
     expect(isSafePackVersion("2026-08-04")).toBe(true);
     expect(isSafePackVersion("v1_2+build")).toBe(true);
   });
 
   for (const bad of [
-    "x".repeat(300),   // R2 (a): a 300-char version → ENAMETOOLONG on `${name}-${version}.md`
-    "1.0 0",           // whitespace
-    "1:0:0",           // colon → store-id collision (R2 (b))
-    "1/0",             // separator
-    "@1.0",            // leading non-charset / @
-    "",                // empty
+    "x".repeat(300),   // R2 (a)：300 字符版本会让 `${name}-${version}.md` 触发 ENAMETOOLONG
+    "1.0 0",           // 空白字符
+    "1:0:0",           // 冒号会导致存储 ID 冲突（R2 (b)）
+    "1/0",             // 分隔符
+    "@1.0",            // 首字符不在允许字符集 / @
+    "",                // 空值
   ]) {
-    it(`rejects unsafe version ${JSON.stringify(bad.length > 20 ? bad.slice(0, 12) + "…" : bad)}`, () => {
+    it(`拒绝不安全版本 ${JSON.stringify(bad.length > 20 ? bad.slice(0, 12) + "…" : bad)}`, () => {
       expect(isSafePackVersion(bad)).toBe(false);
     });
   }

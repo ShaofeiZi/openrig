@@ -1,10 +1,10 @@
-// S10 — durability through failure, duplicate ABSENCE pinned (proof contract):
-//   1. induced Slack API TIMEOUT → the retry RECONCILES BY MARKER before any send: marker
-//      found → ack without repost (the timeout had landed); marker absent → send once. Never a
-//      blind repost; an unreadable channel stays retained (delay, never a duplicate).
-//   2. induced CRASH between persist and dispatch → the next activation's replay delivers
-//      EXACTLY once; a second replay re-acks without a second post.
-// Any duplicate human notification is the red.
+// S10——故障下的持久性，固定验证重复不存在（证明契约）：
+//   1. 人为触发 Slack API TIMEOUT → 重试在发送前按标记协调：找到标记 → 不重发直接 ack
+//     （超时请求实际已送达）；未找到标记 → 发送一次。绝不盲目重发；channel 不可读时继续保留
+//     （只延迟，绝不重复）。
+//   2. 在 persist 与 dispatch 之间人为触发 CRASH → 下次激活的 replay 恰好投递一次；
+//      第二次 replay 不再次 post，直接重新 ack。
+// 任何重复的人工通知都会使测试变 red。
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -31,27 +31,27 @@ const clock = () => new Date("2026-08-27T00:00:00.000Z");
 const flush = () => new Promise((r) => setTimeout(r, 5));
 const activeCount = (s: string, form: string): number => s.split(form).length - 1;
 
-/** A Slack double that can: TIMEOUT the first post (while actually landing it or not), serve
- *  conversations.history with the landed texts, and count real posts. */
+/** Slack 测试替身可让首次 post TIMEOUT（可选择实际送达或未送达）、通过 conversations.history
+ *  返回已送达文本，并统计真实 post 次数。 */
 function slackDouble(opts: { timeoutFirstPost: boolean; timeoutLanded: boolean; historyReadable?: boolean; extraHistory?: string[] }) {
-  const posted: string[] = []; // texts that actually LANDED on "Slack"
+  const posted: string[] = []; // 实际已送达 "Slack" 的文本
   let postCalls = 0;
   const fetchImpl: FetchImpl = async (url, init) => {
     if (url.endsWith("chat.postMessage")) {
       postCalls++;
       const text = String((JSON.parse(String(init?.body ?? "{}")) as { text?: string }).text ?? "");
       if (opts.timeoutFirstPost && postCalls === 1) {
-        if (opts.timeoutLanded) posted.push(text); // it LANDED — but the sender never learns
-        throw new Error("timeout after 15000ms"); // the ambiguous outcome
+        if (opts.timeoutLanded) posted.push(text); // 实际已送达——但发送方并不知道
+        throw new Error("timeout after 15000ms"); // 结果存在歧义
       }
       posted.push(text);
       return new Response(JSON.stringify({ ok: true, ts: `${1000 + postCalls}.1` }), { status: 200, headers: { "content-type": "application/json" } });
     }
-    if (url.includes("conversations.history")) { // S10 shape-fix: the read scan is GET + query now
+    if (url.includes("conversations.history")) { // S10 shape-fix：读取扫描现在使用 GET + query
       if (opts.historyReadable === false) {
         return new Response(JSON.stringify({ ok: false, error: "channel_unreadable" }), { status: 200, headers: { "content-type": "application/json" } });
       }
-      // History = whatever else is in the channel (ordinary coordination prose) + the landed posts.
+      // History = channel 中的其他内容（普通协调文本）+ 已送达 post。
       const texts = [...(opts.extraHistory ?? []), ...posted];
       return new Response(JSON.stringify({ ok: true, messages: texts.map((t) => ({ text: t })) }), { status: 200, headers: { "content-type": "application/json" } });
     }
@@ -77,35 +77,34 @@ function harness(fetchImpl: FetchImpl) {
 const payload: OutboundPostPayload = { qitemId: "qitem-dur-1", summary: "Decide X", body: "b", destinationSession: "mike@external", sourceSession: "dev-driver@v-openrig-build" };
 const decision: OutboundDecision = { kind: "outbound_decision", decisionId: "d-dur-1", op: OUTBOUND_OP, entityBindingRef: "mike#slack", payload };
 
-describe("H1 — induced timeout → reconcile-by-marker, never a blind repost", () => {
-  it("timeout that LANDED: the retry finds the qitem marker and ACKS WITHOUT reposting — exactly ONE human notification", async () => {
+describe("H1——人为超时 → 按标记协调，绝不盲目重发", () => {
+  it("已送达但超时：重试找到 qitem 标记，不重发而直接 ACK——恰好一个人工通知", async () => {
     const slack = slackDouble({ timeoutFirstPost: true, timeoutLanded: true });
     const { deliver, outboundSeen } = harness(slack.fetchImpl);
     const first = await deliver(decision);
-    expect(first.ok).toBe(false); // ambiguous outcome surfaces as a failure class → retained
-    expect(slack.posted).toHaveLength(1); // …but it LANDED on Slack
-    const retry = await deliver(decision); // the replay
-    expect(retry.ok).toBe(true); // reconciled: marker found → ack
-    expect(slack.posted).toHaveLength(1); // duplicate ABSENCE: still exactly one message
-    expect(slack.postCount()).toBe(1); // and no second post was even attempted
-    expect(outboundSeen.load().has("qitem-dur-1")).toBe(true); // qitem seen via reconcile
+    expect(first.ok).toBe(false); // 歧义结果呈现为失败类别 → 保留
+    expect(slack.posted).toHaveLength(1); // 但实际已送达 Slack
+    const retry = await deliver(decision); // replay
+    expect(retry.ok).toBe(true); // 已协调：找到标记 → ack
+    expect(slack.posted).toHaveLength(1); // 不存在重复：仍恰好一条消息
+    expect(slack.postCount()).toBe(1); // 甚至没有尝试第二次 post
+    expect(outboundSeen.load().has("qitem-dur-1")).toBe(true); // 通过协调确认已见 qitem
   });
 
-  it("timeout that did NOT land: the retry finds no marker and sends ONCE", async () => {
+  it("超时且未送达：重试找不到标记并发送一次", async () => {
     const slack = slackDouble({ timeoutFirstPost: true, timeoutLanded: false });
     const { deliver } = harness(slack.fetchImpl);
     expect((await deliver(decision)).ok).toBe(false);
-    expect(slack.posted).toHaveLength(0); // genuinely lost
+    expect(slack.posted).toHaveLength(0); // 确实丢失
     const retry = await deliver(decision);
     expect(retry.ok).toBe(true);
-    expect(slack.posted).toHaveLength(1); // delivered exactly once
+    expect(slack.posted).toHaveLength(1); // 恰好投递一次
   });
 
-  it("F-B1r MARKER EFFECT: a HOSTILE qitemId timeout-that-landed reconciles by the ESCAPED marker — producer and scanner compare the SAME bytes, no repost, and no active syntax ever posts", async () => {
-    // The round-2 byte-fidelity requirement, pinned by EFFECT: the footer now posts the id
-    // escaped, so the reconcile scan must search the escaped form or a landed hostile-id post
-    // would be missed and REPOSTED (a duplicate human notification — the H red). For minted
-    // ids escaped == raw, so behavior is unchanged.
+  it("F-B1r MARKER EFFECT：包含危险内容的 qitemId 在送达后超时时按转义标记协调——producer 与 scanner 比较相同字节，不重发且绝不发布活跃语法", async () => {
+    // 第 2 轮字节保真要求，由效果固定：footer 现在发布转义后的 ID，因此协调扫描必须搜索转义形式；
+    // 否则已送达、包含危险内容的 ID post 会被遗漏并重发（重复人工通知——H red）。对于生成的 ID，
+    // escaped == raw，因此行为不变。
     const slack = slackDouble({ timeoutFirstPost: true, timeoutLanded: true });
     const { deliver, outboundSeen } = harness(slack.fetchImpl);
     const hostile: OutboundDecision = {
@@ -113,28 +112,28 @@ describe("H1 — induced timeout → reconcile-by-marker, never a blind repost",
       payload: { ...payload, qitemId: "<!channel>" },
     };
     const first = await deliver(hostile);
-    expect(first.ok).toBe(false); // ambiguous timeout → retained
-    expect(slack.posted).toHaveLength(1); // …but it LANDED
+    expect(first.ok).toBe(false); // 歧义超时 → 保留
+    expect(slack.posted).toHaveLength(1); // 但实际已送达
     expect(activeCount(slack.posted[0]!, "<!channel>"), "the landed post itself must carry no active syntax").toBe(0);
     const retry = await deliver(hostile);
-    expect(retry.ok).toBe(true); // reconciled: the ESCAPED marker matched the landed bytes
-    expect(slack.posted).toHaveLength(1); // duplicate ABSENCE: exactly one message, ever
-    expect(outboundSeen.load().has("<!channel>")).toBe(true); // qitem seen via reconcile
+    expect(retry.ok).toBe(true); // 已协调：转义标记匹配已送达字节
+    expect(slack.posted).toHaveLength(1); // 不存在重复：始终恰好一条消息
+    expect(outboundSeen.load().has("<!channel>")).toBe(true); // 通过协调确认已见 qitem
   });
 
-  it("reconcile scan UNREADABLE: retained (a delay), NEVER a blind repost", async () => {
+  it("协调扫描 UNREADABLE：保留（延迟），绝不盲目重发", async () => {
     const slack = slackDouble({ timeoutFirstPost: true, timeoutLanded: true, historyReadable: false });
     const { deliver } = harness(slack.fetchImpl);
     await deliver(decision);
     const retry = await deliver(decision);
     expect(retry.ok).toBe(false);
     expect((retry as { class: string }).class).toBe("reconcile-unreadable");
-    expect(slack.posted).toHaveLength(1); // the landed copy stays the only copy
+    expect(slack.posted).toHaveLength(1); // 已送达副本始终是唯一副本
   });
 });
 
-describe("R2 round-3 — reconciliation identity is STRUCTURAL: guaranteed in the scanned surface, scoped to the target message (ordinary data only)", () => {
-  it("EFFECT A: a valid LONG routine summary (2900 units) + timeout-that-landed → exactly ONE landed copy, zero repost (the identity fits the complete fallback)", async () => {
+describe("R2 第 3 轮——协调身份具有结构性：保证存在于扫描范围，并限定到目标消息（仅普通数据）", () => {
+  it("EFFECT A：有效的超长 routine summary（2900 单位）+ 已送达但超时 → 恰好一个已送达副本，零重发（完整回退可容纳该身份）", async () => {
     const slack = slackDouble({ timeoutFirstPost: true, timeoutLanded: true });
     const { deliver } = harness(slack.fetchImpl);
     const longRow: OutboundDecision = {
@@ -142,18 +141,18 @@ describe("R2 round-3 — reconciliation identity is STRUCTURAL: guaranteed in th
       payload: { ...payload, qitemId: "qitem-routine-long-summary", summary: "s".repeat(2900), body: "ordinary body" },
     };
     const first = await deliver(longRow);
-    expect(first.ok).toBe(false); // ambiguous timeout → retained
-    expect(slack.posted).toHaveLength(1); // …but it LANDED, with the fallback text at the cap
+    expect(first.ok).toBe(false); // 歧义超时 → 保留
+    expect(slack.posted).toHaveLength(1); // 但实际已送达，且回退文本达到上限
     const retry = await deliver(longRow);
     expect(retry.ok).toBe(true);
-    expect(slack.posted, "duplicate ABSENCE: the landed long-summary post must be recognized, never reposted").toHaveLength(1);
+    expect(slack.posted, "不存在重复：必须识别已送达的长 summary post，绝不重发").toHaveLength(1);
   });
 
-  it("EFFECT B: unrelated routine prose QUOTING the id + timeout-that-did-NOT-land → never false-acks; the target posts exactly once on retry", async () => {
+  it("EFFECT B：无关的 routine 文本引用 ID + 超时且未送达 → 绝不错误 ack；重试时目标恰好 post 一次", async () => {
     const slack = slackDouble({
       timeoutFirstPost: true,
       timeoutLanded: false,
-      extraHistory: ["status: qitem-routine-target is waiting on another lane"], // ordinary coordination prose
+      extraHistory: ["status: qitem-routine-target is waiting on another lane"], // 普通协调文本
     });
     const { deliver } = harness(slack.fetchImpl);
     const target: OutboundDecision = {
@@ -162,14 +161,14 @@ describe("R2 round-3 — reconciliation identity is STRUCTURAL: guaranteed in th
     };
     const first = await deliver(target);
     expect(first.ok).toBe(false);
-    expect(slack.posted).toHaveLength(0); // genuinely lost — only the unrelated quote exists
+    expect(slack.posted).toHaveLength(0); // 确实丢失——只存在无关引用
     const retry = await deliver(target);
     expect(retry.ok).toBe(true);
-    expect(slack.posted, "the quote must not satisfy reconciliation — the target itself must post").toHaveLength(1);
-    expect(slack.posted[0]).toContain("short summary"); // the landed copy is the TARGET, not a phantom
+    expect(slack.posted, "引用不得满足协调条件——目标本身必须 post").toHaveLength(1);
+    expect(slack.posted[0]).toContain("short summary"); // 已送达副本是目标，而非虚假匹配
   });
 
-  it("SCOPING: prose containing the qitem id AND a lookalike token shape cannot match — only the exact decision-scoped token does; and the token survives a max-length message", async () => {
+  it("SCOPING：包含 qitem ID 和相似 token 形态的文本不能匹配——只有精确限定到 decision 的 token 可以；且 token 在最长消息中仍保留", async () => {
     const slack = slackDouble({
       timeoutFirstPost: true,
       timeoutLanded: false,
@@ -186,52 +185,52 @@ describe("R2 round-3 — reconciliation identity is STRUCTURAL: guaranteed in th
     await deliver(scoped);
     const retry = await deliver(scoped);
     expect(retry.ok).toBe(true);
-    expect(slack.posted).toHaveLength(1); // posted despite both decoys (no false-ack)
-    // and the posted max-length text still carries the reconcile identity within the cap:
+    expect(slack.posted).toHaveLength(1); // 尽管有两个干扰项仍成功 post（无错误 ack）
+    // 已发布的最长文本仍在长度上限内携带协调身份：
     expect(slack.posted[0]!.length).toBeLessThanOrEqual(3900);
-    expect(slack.posted[0]).toContain("d-scope-check"); // the decision-scoped token remains in the complete fallback
+    expect(slack.posted[0]).toContain("d-scope-check"); // 限定到 decision 的 token 保留在完整回退中
   });
 });
 
-describe("H2 — crash between persist and dispatch → replay delivers EXACTLY once", () => {
+describe("H2——persist 与 dispatch 之间崩溃 → replay 恰好投递一次", () => {
   let home: string;
   beforeEach(() => { home = mkdtempSync(join(tmpdir(), "s10-dur-")); });
   afterEach(() => { rmSync(home, { recursive: true, force: true }); });
 
-  it("a persisted-never-dispatched decision delivers once on replay; a second activation re-acks without a second post", async () => {
-    // CRASH WINDOW: the decision reached the durable buffer, the process died before send.
+  it("已持久化但从未 dispatch 的 decision 在 replay 时投递一次；第二次激活不再次 post，直接重新 ack", async () => {
+    // CRASH WINDOW：decision 已进入持久 buffer，但进程在发送前终止。
     new DispatchBuffer(home).enqueue(decision);
     const slack = slackDouble({ timeoutFirstPost: false, timeoutLanded: false });
     const { deliver } = harness(slack.fetchImpl);
-    // Activation 1: replay delivers it.
+    // 第 1 次激活：replay 将其投递。
     const w1 = buildInProcessWire({ home, ops: [OUTBOUND_OP], deliver });
     w1.startServices?.();
     await flush();
     expect(slack.posted).toHaveLength(1);
-    expect(new DispatchBuffer(home).pending()).toHaveLength(0); // drained after the ack
-    // Activation 2 (same durable stores would be shared in prod; here the buffer is empty):
+    expect(new DispatchBuffer(home).pending()).toHaveLength(0); // ack 后已清除
+    // 第 2 次激活（生产环境会共享同一持久 store；此处 buffer 为空）：
     const w2 = buildInProcessWire({ home, ops: [OUTBOUND_OP], deliver });
     w2.startServices?.();
     await flush();
-    expect(slack.posted).toHaveLength(1); // exactly once, ever
+    expect(slack.posted).toHaveLength(1); // 始终恰好一次
   });
 
-  it("crash AFTER delivery but BEFORE the ack drained the buffer: replay re-acks via the delivered-store, no double post", async () => {
+  it("delivery 后、ack 清除 buffer 前崩溃：replay 通过 delivered-store 重新 ack，不重复 post", async () => {
     const slack = slackDouble({ timeoutFirstPost: false, timeoutLanded: false });
     const { deliver } = harness(slack.fetchImpl);
-    // Persist + deliver via replay (pins the decisionId to d-dur-1).
+    // 通过 replay 持久化并投递（将 decisionId 固定为 d-dur-1）。
     new DispatchBuffer(home).enqueue(decision);
     const w1 = buildInProcessWire({ home, ops: [OUTBOUND_OP], deliver });
     w1.startServices?.();
     await flush();
     expect(slack.posted).toHaveLength(1);
-    // CRASH WINDOW: delivered.mark happened, the ack-drain did not — the SAME decision sits
-    // durable again for the next activation.
+    // CRASH WINDOW：delivered.mark 已发生，但 ack-drain 尚未发生——同一 decision 再次持久保留，
+    // 等待下次激活。
     new DispatchBuffer(home).enqueue(decision);
     const w2 = buildInProcessWire({ home, ops: [OUTBOUND_OP], deliver });
     w2.startServices?.();
     await flush();
-    // The delivered-store re-acks decisionId d-dur-1 without a second post.
+    // delivered-store 对 decisionId d-dur-1 重新 ack，而不进行第二次 post。
     expect(slack.posted).toHaveLength(1);
     expect(slack.posted.filter((t) => t.includes("(or-mark:d-dur-1)"))).toHaveLength(1);
   });

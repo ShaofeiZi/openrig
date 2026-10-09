@@ -21,10 +21,10 @@ export class RigSpecExporter {
 
   constructor(deps: RigSpecExporterDeps) {
     if (deps.rigRepo.db !== deps.sessionRegistry.db) {
-      throw new Error("RigSpecExporter: rigRepo and sessionRegistry must share the same db handle");
+      throw new Error("RigSpecExporter：rigRepo 与 sessionRegistry 必须共享同一个数据库句柄");
     }
     if (deps.podRepo && deps.rigRepo.db !== deps.podRepo.db) {
-      throw new Error("RigSpecExporter: podRepo must share the same db handle");
+      throw new Error("RigSpecExporter：podRepo 必须共享同一个数据库句柄");
     }
     this.db = deps.rigRepo.db;
     this.rigRepo = deps.rigRepo;
@@ -38,7 +38,7 @@ export class RigSpecExporter {
       throw new RigNotFoundError(rigId);
     }
 
-    // Detect pod-aware: any node has a non-null podId, or pods exist explicitly.
+    // 检测是否支持 pod：任一 node 的 podId 非 null，或显式存在 pod。
     const isPodAware = rig.nodes.some((n) => n.podId != null) || (this.podRepo?.getPodsForRig(rigId).length ?? 0) > 0;
 
     if (isPodAware && this.podRepo) {
@@ -49,14 +49,14 @@ export class RigSpecExporter {
   }
 
   private exportLegacy(rigId: string, rig: import("./types.js").RigWithRelations): LegacyRigSpec {
-    // Get all sessions for restorePolicy lookup
+    // 获取所有会话，用于查找 restorePolicy。
     const sessions = this.sessionRegistry.getSessionsForRig(rigId);
 
-    // Build a map: nodeId (DB PK) -> logical_id
+    // 构建映射：nodeId（数据库主键）-> logical_id。
     const idToLogical = new Map(rig.nodes.map((n) => [n.id, n.logicalId]));
 
     const nodes: LegacyRigSpecNode[] = rig.nodes.map((node) => {
-      // Find latest session's restorePolicy for this node
+      // 查找此节点最新会话的 restorePolicy。
       const nodeSessions = sessions
         .filter((s) => s.nodeId === node.id)
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
@@ -69,7 +69,7 @@ export class RigSpecExporter {
         ?? undefined;
 
       if (!node.runtime) {
-        throw new Error(`Cannot export node '${node.logicalId}': runtime is required but missing`);
+        throw new Error(`无法导出节点 '${node.logicalId}'：缺少必填 runtime`);
       }
 
       const specNode: LegacyRigSpecNode = {
@@ -91,11 +91,11 @@ export class RigSpecExporter {
     const edges: LegacyRigSpecEdge[] = rig.edges.map((edge) => {
       const from = idToLogical.get(edge.sourceId);
       if (!from) {
-        throw new Error(`Cannot export edge: unmapped source node ID '${edge.sourceId}'`);
+        throw new Error(`无法导出 edge：source node ID '${edge.sourceId}' 未映射`);
       }
       const to = idToLogical.get(edge.targetId);
       if (!to) {
-        throw new Error(`Cannot export edge: unmapped target node ID '${edge.targetId}'`);
+        throw new Error(`无法导出 edge：target node ID '${edge.targetId}' 未映射`);
       }
       return { from, to, kind: edge.kind };
     });
@@ -113,14 +113,13 @@ export class RigSpecExporter {
     const pods = this.podRepo!.getPodsForRig(rigId);
     const sessions = this.sessionRegistry.getSessionsForRig(rigId);
 
-    // Build maps for lookups
-    // logicalId is "podSpecId.memberLocalId" — extract both parts
+    // 构建查询映射。logicalId 采用 `podSpecId.memberLocalId`，需提取两部分。
     const idToLogical = new Map(rig.nodes.map((n) => [n.id, n.logicalId]));
     const idToMemberLocal = new Map(rig.nodes.map((n) => [n.id, n.logicalId.includes(".") ? n.logicalId.split(".").slice(1).join(".") : n.logicalId]));
     const idToNode = new Map(rig.nodes.map((n) => [n.id, n]));
     const nodeIdToPodId = new Map(rig.nodes.map((n) => [n.id, n.podId]));
 
-    // Group nodes by podId
+    // 按 podId 对节点分组。
     const nodesByPod = new Map<string, typeof rig.nodes>();
     for (const node of rig.nodes) {
       if (node.podId) {
@@ -130,7 +129,7 @@ export class RigSpecExporter {
       }
     }
 
-    // Helper: get restorePolicy for a node
+    // 辅助函数：获取节点的 restorePolicy。
     const getRestorePolicy = (nodeId: string): string | undefined => {
       const nodeSessions = sessions
         .filter((s) => s.nodeId === nodeId)
@@ -139,14 +138,14 @@ export class RigSpecExporter {
       return latest?.restorePolicy ?? idToNode.get(nodeId)?.restorePolicy ?? undefined;
     };
 
-    // Build pod specs
+    // 构建 pod spec。
     const podSpecs: RigSpecPod[] = pods.map((pod) => {
       const podNodes = nodesByPod.get(pod.id) ?? [];
       const memberNodeIds = new Set(podNodes.map((n) => n.id));
 
       const members: RigSpecPodMember[] = podNodes.map((node) => {
         if (!node.runtime) {
-          throw new Error(`Cannot export node '${node.logicalId}': runtime is required but missing`);
+          throw new Error(`无法导出节点 '${node.logicalId}'：缺少必填 runtime`);
         }
         const member: RigSpecPodMember = {
           id: idToMemberLocal.get(node.id) ?? node.logicalId,
@@ -158,11 +157,10 @@ export class RigSpecExporter {
         if (node.label) member.label = node.label;
         if (node.codexConfigProfile) member.codexConfigProfile = node.codexConfigProfile;
         if (node.model) member.model = node.model;
-        // OPR.0.4.6.FAC1: a declared seat role exports with the pod
-        // member (round-trip fidelity — export→import keeps the role).
+        // OPR.0.4.6.FAC1：已声明的席位 role 随 pod member 导出；export→import 往返会保留 role。
         if (node.role) member.role = node.role;
-        // OPR.0.4.8.3 Seam B: the seat's RAW permission_policy ref round-trips
-        // (export truth = the ref, never the resolved provenance).
+        // OPR.0.4.8.3 Seam B：席位的原始 permission_policy ref 可往返；
+        // 导出真值是 ref，绝不是已解析 provenance。
         if (node.permissionPolicy) member.permissionPolicy = node.permissionPolicy;
         if (node.sessionSource) member.sessionSource = node.sessionSource;
         const rp = getRestorePolicy(node.id);
@@ -170,7 +168,7 @@ export class RigSpecExporter {
         return member;
       });
 
-      // Pod-local edges: both endpoints are in this pod
+      // Pod-local edge：两个 endpoint 都位于当前 pod。
       const podEdges: RigSpecPodEdge[] = rig.edges
         .filter((e) => memberNodeIds.has(e.sourceId) && memberNodeIds.has(e.targetId))
         .map((e) => ({
@@ -179,7 +177,7 @@ export class RigSpecExporter {
           to: idToMemberLocal.get(e.targetId)!,
         }));
 
-      // Derive pod spec id from the first member's logicalId prefix (e.g., "dev" from "dev.impl")
+      // pod spec ID 使用 pod namespace；与 logicalId 前缀一致，例如 `dev.impl` 中的 `dev`。
       const podSpecId = pod.namespace;
       const podSpec: RigSpecPod = {
         id: podSpecId,
@@ -191,13 +189,13 @@ export class RigSpecExporter {
       if (pod.continuityPolicyJson) {
         try {
           podSpec.continuityPolicy = JSON.parse(pod.continuityPolicyJson);
-        } catch { /* skip if invalid JSON */ }
+        } catch { /* JSON 无效时跳过。 */ }
       }
       return podSpec;
     });
 
-    // Cross-pod edges: endpoints in different pods
-    // logicalId is already "podSpecId.memberLocalId" — use directly as qualified ref
+    // Cross-pod edge：endpoint 位于不同 pod。logicalId 已是 `podSpecId.memberLocalId`，
+    // 可直接作为 qualified ref。
     const crossPodEdges: RigSpecCrossPodEdge[] = rig.edges
       .filter((e) => {
         const srcPod = nodeIdToPodId.get(e.sourceId);
@@ -210,11 +208,11 @@ export class RigSpecExporter {
         to: idToLogical.get(e.targetId)!,
       }));
 
-    // OPR.0.4.8.3 Seam B: rig-level permission_policy is a RIG-ROW field (not derivable
-    // from the spec re-emit) — explicit repository read, emitted only when set.
+    // OPR.0.4.8.3 Seam B：工作组级 permission_policy 是 RIG-ROW 字段，无法从重新生成的 spec 派生；
+    // 因此显式读取 repository，且只在已设置时输出。
     const rigPermissionPolicy = this.rigRepo.getRigPermissionPolicy(rigId);
     const workspace = this.rigRepo.getRigWorkspace(rigId);
-    // #25: the selected Claude managed-block file is also a rig-row field.
+    // #25：已选择的 Claude managed-block 文件同样是 rig-row 字段。
     const claudeManagedBlockFile = this.rigRepo.getRigClaudeManagedBlockFile(rigId);
 
     return {

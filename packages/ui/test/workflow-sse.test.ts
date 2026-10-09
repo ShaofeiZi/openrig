@@ -1,7 +1,6 @@
-// OPR.0.4.6.WF4 (C3) — the workflow SSE feed's binding contract:
-// Q5-P1 the subscription is UNSCOPED (never `?rigId=` — a scoped subscription
-// silently drops the workflow spine since workflow.* events persist
-// rig_id=NULL), and a workflow.* event invalidates the ["workflow"] family.
+// OPR.0.4.6.WF4（C3）——工作流 SSE feed 的绑定契约：Q5-P1 要求订阅不限定工作组范围，
+// 永远不带 `?rigId=`；由于 workflow.* 事件持久化时 rig_id=NULL，限定范围的订阅会静默
+// 丢失工作流主干。任一 workflow.* 事件都会使 ["workflow"] 查询族失效。
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
@@ -43,12 +42,12 @@ describe("useWorkflowSse — Q5-P1 rig-unscoped primary feed", () => {
     renderHook(() => useWorkflowSse(), { wrapper: wrapperWith(qc) });
 
     expect(constructedUrls).toContain("/api/workflow/sse");
-    // The named negative: no subscription carrying workflow kinds ever scopes by rig.
+    // 具名负向保证：携带工作流类别的订阅绝不按工作组限定范围。
     for (const url of constructedUrls) {
       expect(url).not.toContain("rigId");
       expect(url).not.toContain("?");
     }
-    // The single source of the URL is the exported constant — unscoped, no query string.
+    // URL 的唯一来源是导出的常量，不限定范围，也不带查询串。
     expect(WORKFLOW_SSE_URL).toBe("/api/workflow/sse");
     expect(WORKFLOW_SSE_URL).not.toContain("rigId");
   });

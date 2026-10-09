@@ -9,7 +9,7 @@ export type PaneBindingObservation =
       detail: string;
     };
 
-/** Observe the sole pane of one tmux session without mutating either tmux or DB. */
+/** 观察一个 tmux 会话的唯一 pane，不修改 tmux 或数据库。 */
 export async function observeSolePane(
   tmux: Pick<TmuxAdapter, "listPanes">,
   sessionName: string,
@@ -38,7 +38,7 @@ export async function observeSolePane(
   }
 }
 
-/** Durable named state for a launch/adopt/refresh ingress that cannot resolve a sole pane. */
+/** 启动、接管或刷新入口无法解析唯一 pane 时使用的持久命名状态。 */
 export function paneObservationVerdict(input: {
   nodeId: string;
   sessionName: string;

@@ -1,13 +1,11 @@
-// V1 attempt-3 Phase 3 — Project tree per project-tree.md L13–L46 + SC-24.
+// V1 attempt-3 Phase 3——项目树，按 project-tree.md L13–L46 + SC-24。
 //
-// V1 attempt-3 Phase 5 P5-5 + P5-6: filesystem-based mission discovery via
-// useMissionDiscovery (walks workspace.root/missions/ over /api/files/list).
-// When the allowlist doesn't expose workspace.root, the tree falls back to
-// the legacy railItem/missionId-grouped slice listing.
-// VM-005 (release-0.4.7): mission-status chips come from the reconciled home
-// (authored README frontmatter via the slices-payload sidecar, derived
-// roll-up as fallback) — the P5-6 PROGRESS.md live status override is
-// retired (see the MissionChipBadge comment below).
+// V1 attempt-3 Phase 5 P5-5 + P5-6：经 useMissionDiscovery 做基于文件系统的任务发现
+// （遍历 workspace.root/missions/，走 /api/files/list）。当白名单未暴露 workspace.root 时，
+// 树回退到旧的 railItem/missionId 分组 slice 列表。
+// VM-005（release-0.4.7）：任务状态 chip 来自已对账的主页
+// （作者撰写的 README frontmatter，经 slices-payload sidecar；派生汇总为回退）——
+// P5-6 的 PROGRESS.md 实时状态覆盖已退役（见下方 MissionChipBadge 注释）。
 
 import { useState, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
@@ -39,16 +37,15 @@ function ProjectTreeRefreshHeader({ remoteReadonly }: { remoteReadonly: boolean 
   return (
     <div className="flex items-center justify-between px-2 pb-2 border-b border-outline-variant">
       <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-on-surface-variant">
-        Project
+        项目
       </span>
-      {/* OPR.0.4.6.MH2 rev1-r2 re-verdict B1 (same-class, enumerated): the
-          refresh POSTs the LOCAL slice/file rescan — a local mutation
-          affordance never renders on the remote-labeled tree. */}
+      {/* OPR.0.4.6.MH2 rev1-r2 重新判定 B1（同类、枚举）：刷新 POST 本地 slice/文件重扫——
+          一个本地变更提示，绝不在带远程标签的树上渲染。 */}
       {remoteReadonly ? null : (
         <button
           type="button"
           data-testid="project-tree-refresh"
-          title="Refresh slice + file caches"
+          title="刷新切片与文件缓存"
           onClick={() => refresh.mutate()}
           disabled={refresh.isPending}
           className="flex items-center gap-1 px-1 py-0.5 text-on-surface-variant hover:text-on-surface disabled:opacity-50"
@@ -57,7 +54,7 @@ function ProjectTreeRefreshHeader({ remoteReadonly }: { remoteReadonly: boolean 
             className={`h-3 w-3 ${refresh.isPending ? "animate-spin" : ""}`}
             aria-hidden="true"
           />
-          <span className="font-mono text-[9px] uppercase tracking-wide">refresh</span>
+          <span className="font-mono text-[9px] uppercase tracking-wide">刷新</span>
         </button>
       )}
     </div>
@@ -71,19 +68,16 @@ type GroupedMission = {
   statusLabel: string;
   statusSource: MissionStatusSource;
   slices: ProjectSliceRow[];
-  // P5-5: filesystem-discovered missions carry root + path so the live
-  // PROGRESS.md status fetcher knows where to read.
+  // P5-5：文件系统发现的任务携带 root + path，使实时 PROGRESS.md 状态获取器知道从何处读。
   fsRoot?: string;
   fsPath?: string;
 };
 
-// VM-005 FR-1 (Q1 Option A, PIN Q1-P1): the PROGRESS.md live mission-status
-// override (LiveMissionStatusBadge / useMissionProgressStatus) is REMOVED —
-// SC-26's "PROGRESS.md is the source of truth for mission status" is
-// SUPERSEDED for mission-status CHIPS by the reconciled home
-// (authored README frontmatter wins, derived roll-up is fallback-only).
-// SC-26's PROGRESS.md authority survives scoped to its real domain, the
-// Progress tab/rail. The hook itself stays (consumer-dormant, PIN Q1-P2).
+// VM-005 FR-1（Q1 选项 A，PIN Q1-P1）：PROGRESS.md 实时任务状态覆盖
+// （LiveMissionStatusBadge / useMissionProgressStatus）已移除——SC-26 的
+// “PROGRESS.md 是任务状态的真相来源”对任务状态 chip 而言，已被已对账主页取代
+// （作者 README frontmatter 优先，派生汇总仅作回退）。SC-26 的 PROGRESS.md 权威
+// 在其真实域——Progress 标签页/轨道——保留。hook 本身保留（消费者休眠，PIN Q1-P2）。
 function MissionChipBadge({ mission }: { mission: GroupedMission }) {
   return (
     <MissionStatusBadge
@@ -97,22 +91,19 @@ function MissionChipBadge({ mission }: { mission: GroupedMission }) {
 export function ProjectTreeView() {
   const { data: slicesResp } = useSlices("all");
   const workspace = useWorkspaceName();
-  // OPR.0.4.6.MH2 FR-4 — the selected host + registry drive the project
-  // explorer's HOST level (fr4a ruling). Discovery walks LOCAL workspace
-  // files, so for a remote selection it is GATED OFF AT THE HOOK
-  // (enabled:false ⇒ zero /api/files requests — guard-B1: a post-hoc
-  // result wrapper is not a gate) and missions derive from the host-keyed
-  // slice list only — local folders are never labeled as the remote
-  // host's (the twin's mock-seam rule, kept in the build).
+  // OPR.0.4.6.MH2 FR-4——所选主机 + 注册表驱动项目浏览器的主机层（fr4a 裁定）。
+  // 发现遍历本地工作区文件，因此对远程选择，它在 hook 处被门控关闭
+  // （enabled:false ⇒ 零 /api/files 请求——guard-B1：事后的结果包装器不是门控），
+  // 任务仅从主机键控的 slice 列表派生——本地文件夹绝不被标注为远程主机的
+  // （twin 的 mock 接缝规则，保留在构建中）。
   const { data: hostsData } = useHosts();
   const selectHost = useSelectHost();
   const selectedHost = hostsData?.selected ?? LOCAL_HOST_ID;
   const isRemote = selectedHost !== LOCAL_HOST_ID;
   const remoteHosts = hostsData?.hosts ?? [];
-  // Discovery waits for the selection to be KNOWN (hosts payload landed):
-  // gating on !isRemote alone raced — the first render defaults local and
-  // fired /api/files/roots before a remote selection resolved. The ONE
-  // shared gate (useLocalFilesAllowed) encodes both conditions.
+  // 发现等待选择已知（主机负载已到达）：仅门控 !isRemote 会竞态——首次渲染默认本地，
+  // 在远程选择解析前就触发了 /api/files/roots。唯一的共享门控（useLocalFilesAllowed）
+  // 同时编码两个条件。
   const filesAllowed = useLocalFilesAllowed();
   const discovery = useMissionDiscovery({ enabled: filesAllowed });
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
@@ -123,16 +114,15 @@ export function ProjectTreeView() {
 
   const sliceList: SliceListEntry[] =
     slicesResp && "slices" in slicesResp ? slicesResp.slices : [];
-  // VM-005: the daemon's authored mission-status sidecar (authored-wins
-  // precedence). Keys with no entry (railItem groups, zero-slice discovered
-  // missions, older daemons) reconcile from the derived roll-up. Memoized so
-  // the missions memo below keeps a stable dep identity.
+  // VM-005：后台服务的作者撰写任务状态 sidecar（作者优先）。无条目的键
+  // （railItem 分组、零 slice 发现任务、旧后台服务）从派生汇总对账。memo 化，
+  // 使下方任务 memo 保持稳定的依赖身份。
   const authoredStatuses = useMemo(
     () => (slicesResp && "slices" in slicesResp ? (slicesResp.missions ?? {}) : {}),
     [slicesResp],
   );
 
-  // Group slices by missionId first, then railItem for legacy flat roots.
+  // 先按 missionId 分组 slice，再按 railItem 作为旧的扁平根。
   const slicesByMissionKey = useMemo(() => {
     const buckets = new Map<string, ProjectSliceRow[]>();
     for (const s of sliceList) {
@@ -143,9 +133,8 @@ export function ProjectTreeView() {
     return buckets;
   }, [sliceList]);
 
-  // P5-5: when filesystem mission discovery is available, surface the
-  // disk-discovered missions and attach their slices via missionId match.
-  // Otherwise fall back to missionId/railItem grouping alone.
+  // P5-5：当文件系统任务发现可用时，展示磁盘发现的任务并经 missionId 匹配挂载其 slice。
+  // 否则回退到仅 missionId/railItem 分组。
   const missions = useMemo<GroupedMission[]>(() => {
     if (!discovery.unavailable && discovery.missions.length > 0) {
       const consumedKeys = new Set<string>();
@@ -167,9 +156,8 @@ export function ProjectTreeView() {
           fsPath: m.path,
         };
       });
-      // Any slice whose mission key doesn't match a disk mission goes into
-      // its own indexed group so legacy railItem missions do not get
-      // collapsed into one mixed current/archive bucket.
+      // 其 mission 键不匹配磁盘任务的任何 slice，归入自己的索引组，使旧 railItem 任务
+      // 不被折叠进一个混合的当前/归档桶。
       for (const [missionKey, slices] of slicesByMissionKey.entries()) {
         if (consumedKeys.has(missionKey)) continue;
         const rec = reconcileMissionStatus(
@@ -178,7 +166,7 @@ export function ProjectTreeView() {
         );
         discovered.push({
           id: missionKey,
-          label: missionKey === "unsorted" ? "Unsorted" : missionKey,
+          label: missionKey === "unsorted" ? "未分类" : missionKey,
           status: rec.state,
           statusLabel: rec.label,
           statusSource: rec.source,
@@ -187,12 +175,12 @@ export function ProjectTreeView() {
       }
       return discovered;
     }
-    // Fallback: missionId/railItem grouping only.
+    // 回退：仅 missionId/railItem 分组。
     return Array.from(slicesByMissionKey.entries()).map(([k, slices]) => {
       const rec = reconcileMissionStatus(authoredStatuses[k]?.authoredStatus ?? null, slices, undefined, authoredStatuses[k]?.readiness);
       return {
         id: k,
-        label: k === "unsorted" ? "Unsorted" : k,
+        label: k === "unsorted" ? "未分类" : k,
         status: rec.state,
         statusLabel: rec.label,
         statusSource: rec.source,
@@ -205,11 +193,9 @@ export function ProjectTreeView() {
     return partitionProjectMissions(missions);
   }, [missions]);
 
-  // A5 bounce-fix: replace hardcoded "openrig-work" with live-wired
-  // workspace name from ConfigStore. When unset/unreachable: render an
-  // honest empty-state node ("No workspace connected" + Link to /settings).
-  // MH-2: local-only — the workspace name is LOCAL config; a remote
-  // selection renders the remote tree regardless of local workspace state.
+  // A5 回弹修复：用 ConfigStore 实时接线的工作区名取代硬编码 "openrig-work"。
+  // 未设置/不可达时：渲染诚实的空态节点（"未连接工作区" + 指向 /settings 的 Link）。
+  // MH-2：仅本地——工作区名是本地配置；远程选择按本地工作区状态无关地渲染远程树。
   if (!isRemote && !workspace.isLoading && workspace.name === null) {
     return (
       <div
@@ -221,28 +207,27 @@ export function ProjectTreeView() {
           className="border border-outline-variant bg-surface-low px-3 py-3 font-mono text-[10px]"
         >
           <div className="text-on-surface uppercase tracking-wide font-bold mb-1">
-            No workspace connected
+            未连接工作区
           </div>
           <p className="text-on-surface-variant mb-2">
-            Configure a workspace root to browse missions and slices.
+            请配置工作区根，以便浏览任务与切片。
           </p>
           <Link
             to="/settings"
             data-testid="project-no-workspace-cta"
             className="inline-flex items-center text-on-surface hover:underline uppercase"
           >
-            Open settings →
+            打开设置 →
           </Link>
         </div>
       </div>
     );
   }
 
-  // MH-2 honest label: a remote host's workspace NAME is not readable in
-  // v1 (config is not on the read allowlist; /api/hosts carries no remote
-  // workspaceName) — the HOST level above names the host, the workspace
-  // node stays generic. Recorded as a named twin deviation.
-  const workspaceLabel = isRemote ? "workspace" : (workspace.name ?? "loading…");
+  // MH-2 诚实标签：远程主机的工作区名在 v1 中不可读（配置不在读取白名单；
+  // /api/hosts 不带远程 workspaceName）——上方主机层命名主机，工作区节点保持通用。
+  // 记为已命名的 twin 偏差。
+  const workspaceLabel = isRemote ? "工作区" : (workspace.name ?? "正在加载…");
   const isExpanded = (key: string, defaultValue = false) => expanded[key] ?? defaultValue;
 
   const renderMission = (m: GroupedMission, bucket: ProjectMissionBucket) => {
@@ -257,7 +242,7 @@ export function ProjectTreeView() {
         <div className="w-full flex items-center gap-1 px-2 py-0.5 hover:bg-surface-low text-left">
           <button
             type="button"
-            aria-label={`${missionExpanded ? "Collapse" : "Expand"} ${m.label}`}
+            aria-label={`${missionExpanded ? "折叠" : "展开"} ${m.label}`}
             onClick={() =>
               setExpanded((p) => ({
                 ...p,
@@ -287,7 +272,7 @@ export function ProjectTreeView() {
           <ul className="ml-4 border-l border-outline-variant">
             {m.slices.length === 0 ? (
               <li className="px-2 py-0.5 font-mono text-[10px] text-on-surface-variant italic">
-                No slices.
+                  暂无切片。
               </li>
             ) : (
               m.slices.map((s) => {
@@ -351,7 +336,7 @@ export function ProjectTreeView() {
               onClick={(e) => e.stopPropagation()}
               className="font-mono text-[9px] uppercase tracking-wide text-on-surface-variant hover:text-on-surface"
             >
-              open
+              打开
             </Link>
           </button>
           {isExpanded("workspace") ? (
@@ -362,12 +347,12 @@ export function ProjectTreeView() {
                   className="px-2 py-1 font-mono text-[9px] text-on-surface-variant italic"
                   title={discovery.hint}
                 >
-                  Workspace missions folder unavailable; showing indexed slice grouping. Expected workspace/missions/&lt;mission&gt;/slices/&lt;slice&gt;.
+              工作区任务文件夹不可用；展示已索引的切片分组。预期路径为 workspace/missions/&lt;mission&gt;/slices/&lt;slice&gt;。
                 </li>
               ) : null}
               {missions.length === 0 ? (
                 <li className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic">
-                  No missions yet.
+                  暂无任务。
                 </li>
               ) : (
                 <>
@@ -375,7 +360,7 @@ export function ProjectTreeView() {
                     data-testid="project-mission-section-current"
                     className="px-2 pt-2 pb-1 font-mono text-[9px] uppercase tracking-[0.16em] text-on-surface-variant"
                   >
-                    Current Work · {missionSections.current.length}
+                    当前工作 · {missionSections.current.length}
                   </li>
                   {missionSections.current.length > 0 ? (
                     missionSections.current.map((m) => renderMission(m, "current"))
@@ -384,14 +369,14 @@ export function ProjectTreeView() {
                       data-testid="project-mission-section-current-empty"
                       className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic"
                     >
-                      No current work.
+                      暂无当前工作。
                     </li>
                   )}
                   <li
                     data-testid="project-mission-section-archive"
                     className="px-2 pt-3 pb-1 font-mono text-[9px] uppercase tracking-[0.16em] text-on-surface-variant"
                   >
-                    Archive · {missionSections.archive.length}
+                    归档 · {missionSections.archive.length}
                   </li>
                   {missionSections.archive.length > 0 ? (
                     missionSections.archive.map((m) => renderMission(m, "archive"))
@@ -400,7 +385,7 @@ export function ProjectTreeView() {
                       data-testid="project-mission-section-archive-empty"
                       className="px-2 py-1 font-mono text-[10px] text-on-surface-variant italic"
                     >
-                      No archived work.
+                      暂无归档工作。
                     </li>
                   )}
                 </>
@@ -410,16 +395,15 @@ export function ProjectTreeView() {
         </li>
   );
 
-  // OPR.0.4.6.MH2 FR-4 (fr4a RULED) — HOST → WORKSPACE → MISSION → SLICE.
-  // The host level renders only when the registry is non-empty (FR-1's
-  // "GIVEN one or more added hosts") — an empty registry keeps today's
-  // exact tree (zero-regression). Expand = select, mirroring the topology
-  // tree: exactly one host's workspace on screen, indicator + data atomic.
+  // OPR.0.4.6.MH2 FR-4（fr4a 已裁定）——主机 → 工作区 → 任务 → slice。
+  // 主机层仅在注册表非空时渲染（FR-1 的“给定一个或多个已添加主机”）——
+  // 空注册表保持今天的确切树（零回归）。展开 = 选中，镜像拓扑树：
+  // 屏上恰好一个主机的工作区，指示 + 数据原子。
   const showHostLevel = remoteHosts.length > 0 || isRemote;
   const ownName = hostsData?.ownName && hostsData.ownName.trim() !== "" ? hostsData.ownName : "localhost";
   const hostRow = (opts: { hostId: string; label: string; isLocal: boolean }) => {
     const isSelected = selectedHost === opts.hostId;
-    const chip = isSelected ? "viewing" : opts.isLocal ? "local" : null;
+    const chip = isSelected ? "查看中" : opts.isLocal ? "本地" : null;
     return (
       <li
         key={opts.hostId}
@@ -440,7 +424,7 @@ export function ProjectTreeView() {
             <span
               className={cn(
                 "font-mono text-[9px] uppercase tracking-[0.12em]",
-                chip === "viewing" ? "bg-inverse-surface px-1 text-background" : "text-on-surface-variant",
+                isSelected ? "bg-inverse-surface px-1 text-background" : "text-on-surface-variant",
               )}
             >
               {chip}
@@ -455,13 +439,11 @@ export function ProjectTreeView() {
   return (
     <div data-testid="project-tree-view" className="flex-1 overflow-y-auto py-2">
       {/*
-        V0.3.1 slice 17 founder-walk-workspace-state-correctness — walk item 8 (Explorer auto-show). Manual refresh button drops the
-        daemon-side indexer cache and react-query slice/file caches so
-        newly-created slice / mission folders appear without restarting
-        the daemon. Window-focus refetch in useSlices / useFilesList
-        handles the common "switched away to mkdir + came back" case;
-        this button is the explicit fallback when window-focus doesn't
-        fire (e.g., a fast operator who never blurs the tab).
+        V0.3.1 slice 17 founder-walk-workspace-state-correctness——第 8 步（Explorer 自动展示）。手动刷新按钮丢弃
+        后台服务侧索引器缓存与 react-query slice/文件缓存，使新建的 slice/任务文件夹
+        无需重启后台服务即可出现。useSlices / useFilesList 中的 window-focus 重取
+        处理常见的“切出去 mkdir 又回来”情形；此按钮是 window-focus 不触发时的
+        显式回退（例如从不离开标签页的快操作手）。
       */}
       <ProjectTreeRefreshHeader remoteReadonly={isRemote} />
       <ul>

@@ -24,17 +24,14 @@ import { RigRepository } from "../src/domain/rig-repository.js";
 import { PodRepository } from "../src/domain/pod-repository.js";
 import { selectRoleSeat, type RoleSeatCandidateFacts } from "../src/domain/workflow-role-resolver.js";
 
-// OPR.0.4.6.FAC1 commit 3 — the capability resolver (AC-2 core; BR-1/2/
-// 3/5; ARCH Q1/Q2/Q3/Q5; GUARD B1-B4). Two layers here:
-//   1. the PURE policy (selectRoleSeat) — behavior vectors (the full
-//      determinism/permutation vector set is commit 4's);
-//   2. the SIX owner-resolution call-site rows, each wired through a
-//      REAL db (projector next-step · human-gate owner · handler-role
-//      gate destination · entry · eager/structural · resume) + the Q3
-//      exception-routing uniformity pass + vanished-rig honesty +
-//      unbound byte-parity.
+// OPR.0.4.6.FAC1 commit 3——能力解析器（AC-2 核心；BR-1/2/3/5；ARCH Q1/Q2/Q3/Q5；
+// GUARD B1-B4）。这里分两层：
+//   1. 纯策略（selectRoleSeat）——行为向量（完整的确定性/排列向量集属于 commit 4）；
+//   2. 六个 owner 解析调用点，每个都接入真实数据库（projector 下一步骤、human-gate owner、
+//      handler-role gate 目标、entry、eager/structural、resume），再加 Q3 异常路由一致性、
+//      工作组消失时的诚实性与 unbound 字节一致性。
 
-// ---------- layer 1: the pure policy ----------
+// ---------- 第 1 层：纯策略 ----------
 
 function facts(over: Partial<RoleSeatCandidateFacts>): RoleSeatCandidateFacts {
   return {
@@ -50,8 +47,8 @@ function facts(over: Partial<RoleSeatCandidateFacts>): RoleSeatCandidateFacts {
   };
 }
 
-describe("FAC-1 C3: selectRoleSeat (pure policy behavior)", () => {
-  it("selects the qualified seat and names every decoy's disqualifier (the decoy axes)", () => {
+describe("FAC-1 C3：selectRoleSeat（纯策略行为）", () => {
+  it("选择合格 seat，并列出每个干扰候选的不合格原因", () => {
     const result = selectRoleSeat({
       role: "driver",
       candidates: [
@@ -71,7 +68,7 @@ describe("FAC-1 C3: selectRoleSeat (pure policy behavior)", () => {
     expect(byId.get("dev.adopted")).toBe("adopted_seat_not_role_resolvable_v1");
   });
 
-  it("unpinned steps accept any agent runtime; least pending backlog wins; coordinate codepoint breaks ties", () => {
+  it("未固定的步骤接受任意 agent runtime，pending backlog 最少者优先，并按坐标码点打破平局", () => {
     const result = selectRoleSeat({
       role: "driver",
       candidates: [
@@ -80,11 +77,11 @@ describe("FAC-1 C3: selectRoleSeat (pure policy behavior)", () => {
         facts({ logicalId: "c", coordinate: "dev-a@f", rawSessionName: "dev-a@f", pendingWorkCount: 0 }),
       ],
     });
-    expect(result.seat).toBe("dev-a@f"); // 0-load tie → codepoint ascending
+    expect(result.seat).toBe("dev-a@f"); // 零负载平局时按码点升序。
     expect(result.qualified.map((q) => q.coordinate)).toEqual(["dev-a@f", "dev-c@f", "dev-b@f"]);
   });
 
-  it("returns seat=null with the full disqualified list when nothing qualifies", () => {
+  it("没有合格项时返回 seat=null 与完整的不合格列表", () => {
     const result = selectRoleSeat({
       role: "qa",
       candidates: [facts({ role: "qa", lifecycleState: "detached" })],
@@ -93,7 +90,7 @@ describe("FAC-1 C3: selectRoleSeat (pure policy behavior)", () => {
     expect(result.disqualified).toHaveLength(1);
   });
 
-  it("infrastructure/terminal nodes are out of scope entirely (never listed)", () => {
+  it("infrastructure/terminal 节点完全不在范围内（绝不列出）", () => {
     const result = selectRoleSeat({
       role: "driver",
       candidates: [facts({ nodeKind: "infrastructure" })],
@@ -103,7 +100,7 @@ describe("FAC-1 C3: selectRoleSeat (pure policy behavior)", () => {
   });
 });
 
-// ---------- layer 2: the six call-site rows over a real db ----------
+// ---------- 第 2 层：基于真实数据库的六个调用点 ----------
 
 const ROLE_ONLY_SPEC = `workflow:
   id: fac1-role-only
@@ -175,7 +172,7 @@ const HUMAN_GATE_SPEC = `workflow:
         evidence_ref: proof/x.md
 `;
 
-describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
+describe("FAC-1 C3：绑定工作组上的六个 owner 解析调用点", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -224,11 +221,10 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
 
   beforeEach(() => {
     db = createFullTestDb();
-    // createFullTestDb carries the node/rig/queue set; the workflow
-    // tables ride the canonical migration objects on top. 044/048 are
-    // load-bearing for the human-gate park path (summary/evidence_ref
-    // columns — VM-caught: without them the gate item's create-carried
-    // summary silently drops and validateHumanPark fails at park).
+    // createFullTestDb 提供 node/rig/queue 集合；workflow 表通过规范 migration 对象叠加。
+    // 044/048 对 human-gate park 路径至关重要（summary/evidence_ref 列；VM 已发现：没有
+    // 它们时，gate 条目在 create 时携带的 summary 会静默丢失，validateHumanPark 会在
+    // park 时失败）。
     migrate(db, [
       outboxEntriesSchema,
       queueItemSummarySchema,
@@ -243,8 +239,8 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
     ]);
     bus = new EventBus(db);
     queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用 fail-closed（MF2）；期望 nudge 的终态关闭需要同数据库的 intent
+    // store 才能持久化 wake。
     queueRepo.attachOutbox(new OutboxHandler(db));
     rigRepo = new RigRepository(db);
     podRepo = new PodRepository(db);
@@ -259,7 +255,7 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("ROW 3 + ROW 1: entry resolves live on the bound rig; the next step resolves-and-records at projection with owner_resolution trail evidence", async () => {
+  it("ROW 3 + ROW 1：entry 在绑定工作组上实时解析，下一步骤在投影时解析并记录 owner_resolution trail 证据", async () => {
     seedSeat(rigAId, "factory-a", "dev", "planner1", { role: "planner" });
     const driverSeat = seedSeat(rigAId, "factory-a", "dev", "driver1", { role: "driver" });
     const specPath = writeSpec("role-only.yaml", ROLE_ONLY_SPEC);
@@ -269,11 +265,11 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
       rootObjective: "t",
       createdBySession: "orch@factory-a",
     });
-    // ROW 3: entry resolved by capability (no preferred_targets anywhere).
+    // ROW 3：entry 按能力解析（任何位置都没有 preferred_targets）。
     expect(inst.entryOwnerSession).toBe("dev-planner1@factory-a");
     expect(inst.instance.boundRig).toBe("factory-a");
 
-    // ROW 1: projector next-step resolves the driver role and RECORDS it.
+    // ROW 1：projector 下一步骤解析并记录 driver role。
     const projected = await runtime.projector.project({
       instanceId: inst.instance.instanceId,
       currentPacketId: inst.entryQitemId,
@@ -283,7 +279,7 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
     expect(projected.nextOwnerSession).toBe(driverSeat);
     const packet = queueRepo.getById(projected.nextQitemId!);
     expect(packet?.destinationSession).toBe(driverSeat);
-    // owner_resolution trail evidence (mode=role, boundRig named).
+    // owner_resolution trail 证据（mode=role，并记录 boundRig）。
     const trail = runtime.trailLog.listForInstance(inst.instance.instanceId);
     const evidence = trail.find((t) => t.priorQitemId === inst.entryQitemId)?.closureEvidence as
       | Record<string, Record<string, unknown>>
@@ -296,14 +292,14 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
     });
   });
 
-  it("ROW 1 decoys: the qualified seat wins over dead / wrong-runtime / role-less / loaded decoys", async () => {
+  it("ROW 1 干扰项：合格 seat 优先于 dead、runtime 错误、无 role 和高负载候选", async () => {
     seedSeat(rigAId, "factory-a", "dev", "planner1", { role: "planner" });
     seedSeat(rigAId, "factory-a", "dev", "dead1", { role: "driver", sessionStatus: "stopped" });
     seedSeat(rigAId, "factory-a", "dev", "wrongrt", { role: "driver", runtime: "codex" });
     seedSeat(rigAId, "factory-a", "dev", "roleless", {});
     const loaded = seedSeat(rigAId, "factory-a", "dev", "driver1", { role: "driver" });
     const idle = seedSeat(rigAId, "factory-a", "dev", "driver2", { role: "driver" });
-    // Load the first driver with a PENDING item (claimed items rank zero).
+    // 给第一个 driver 增加一个 PENDING 条目（已认领条目的排序值为零）。
     await queueRepo.create({ sourceSession: "orch@factory-a", destinationSession: loaded, body: "busywork" });
 
     const specPath = writeSpec("role-only.yaml", ROLE_ONLY_SPEC);
@@ -317,7 +313,7 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
     expect(projected.nextOwnerSession).toBe(idle);
   });
 
-  it("ROW 2b: a role-only HANDLER-ROLE gate resolves the handler seat by capability on the bound rig", async () => {
+  it("ROW 2b：仅声明 role 的 HANDLER-ROLE gate 按绑定工作组能力解析 handler seat", async () => {
     seedSeat(rigAId, "factory-a", "dev", "planner1", { role: "planner" });
     const guardSeat = seedSeat(rigAId, "factory-a", "rev", "guard1", { role: "guard" });
     const specPath = writeSpec("handler-gate.yaml", HANDLER_GATE_SPEC);
@@ -330,11 +326,11 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
       actorSession: "dev-planner1@factory-a",
     });
     expect(projected.nextOwnerSession).toBe(guardSeat);
-    // Handler-role gates park nothing on a human; instance parks waiting on the gate item.
+    // Handler-role gate 不在 human 上 park；实例在 gate 条目上保持 waiting。
     expect(projected.instance.status).toBe("waiting");
   });
 
-  it("ROW 2a: a role-only HUMAN-gated step's parked packet OWNER resolves by capability on the bound rig", async () => {
+  it("ROW 2a：仅声明 role 的 HUMAN-gated 步骤按绑定工作组能力解析已 park packet 的 OWNER", async () => {
     const plannerSeat = seedSeat(rigAId, "factory-a", "dev", "planner1", { role: "planner" });
     const specPath = writeSpec("human-gate.yaml", HUMAN_GATE_SPEC);
 
@@ -345,36 +341,36 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
       exit: "handoff",
       actorSession: plannerSeat,
     });
-    // The gate packet belongs to the ROLE OWNER (capability-resolved) and parks on the human.
+    // gate packet 属于按能力解析的 ROLE OWNER，并停放到 human。
     const packet = queueRepo.getById(projected.nextQitemId!);
     expect(packet?.destinationSession).toBe(plannerSeat);
     expect(packet?.blockedOn).toBe("human@kernel");
   });
 
-  it("ROW 4: instantiate hard-fails ONLY on structural zero-role coverage; a declared-but-stopped seat instantiates fine", async () => {
+  it("ROW 4：instantiate 仅在结构性零 role 覆盖时硬失败，已声明但停止的 seat 可正常实体化", async () => {
     seedSeat(rigAId, "factory-a", "dev", "planner1", { role: "planner" });
     const specPath = writeSpec("role-only.yaml", ROLE_ONLY_SPEC);
 
-    // No seat declares "driver" anywhere → structural hard-fail, loud.
+    // 没有任何 seat 声明 "driver"，因此明确地结构性硬失败。
     await expect(
       runtime.instantiate({ specPath, rootObjective: "t", createdBySession: "orch@factory-a" }),
     ).rejects.toMatchObject({ code: "bound_rig_role_uncovered" });
 
-    // A STOPPED driver seat = structural coverage (existence, not
-    // liveness) → instantiate succeeds; liveness is projection's concern.
+    // STOPPED driver seat 代表结构覆盖（只看存在性，不看 liveness），所以 instantiate 成功；
+    // liveness 由投影阶段负责。
     seedSeat(rigAId, "factory-a", "dev", "driver1", { role: "driver", sessionStatus: "stopped" });
     const inst = await runtime.instantiate({ specPath, rootObjective: "t", createdBySession: "orch@factory-a" });
     expect(inst.instance.boundRig).toBe("factory-a");
   });
 
-  it("ROW 4 scale-out timing: the stopped role seat comes alive AFTER instantiate and resolves at projection (guard B1 pin)", async () => {
+  it("ROW 4 扩容时序：停止的 role seat 在 instantiate 后恢复，并在投影时解析（guard B1）", async () => {
     seedSeat(rigAId, "factory-a", "dev", "planner1", { role: "planner" });
-    // Node exists role-declared but NOT running at instantiate.
+    // instantiate 时节点存在且已声明 role，但未运行。
     const nodeCoord = seedSeat(rigAId, "factory-a", "dev", "driver1", { role: "driver", sessionStatus: null });
     const specPath = writeSpec("role-only.yaml", ROLE_ONLY_SPEC);
     const inst = await runtime.instantiate({ specPath, rootObjective: "t", createdBySession: "orch@factory-a" });
 
-    // Seat comes alive BEFORE the step projects (the warm-up story).
+    // seat 在步骤投影前恢复（预热场景）。
     const node = db.prepare(`SELECT id FROM nodes WHERE logical_id = 'dev.driver1'`).get() as { id: string };
     db.prepare(`INSERT INTO sessions (id, node_id, session_name, status) VALUES ('s-late', ?, ?, 'running')`).run(
       node.id,
@@ -389,7 +385,7 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
     expect(projected.nextOwnerSession).toBe(nodeCoord);
   });
 
-  it("ROW 5: resume RE-RESOLVES by capability — inventory changed between failure and resume routes the NEW seat", async () => {
+  it("ROW 5：resume 按能力重新解析，失败到恢复期间 inventory 变化时路由到新 seat", async () => {
     seedSeat(rigAId, "factory-a", "dev", "planner1", { role: "planner" });
     const firstDriver = seedSeat(rigAId, "factory-a", "dev", "driver1", { role: "driver" });
     const specPath = writeSpec("role-only.yaml", ROLE_ONLY_SPEC);
@@ -401,7 +397,7 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
       actorSession: "dev-planner1@factory-a",
     });
     expect(projected.nextOwnerSession).toBe(firstDriver);
-    // The driver step fails → instance failed.
+    // driver 步骤失败，实例转为 failed。
     await runtime.projector.project({
       instanceId: inst.instance.instanceId,
       currentPacketId: projected.nextQitemId!,
@@ -409,27 +405,27 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
       actorSession: firstDriver,
       resultNote: "driver died",
     });
-    // Inventory changes: driver1 stops; a fresh driver0 (codepoint-earlier) comes up.
+    // Inventory 变化：driver1 停止，码点更靠前的新 driver0 启动。
     db.prepare(`UPDATE sessions SET status = 'stopped' WHERE session_name = ?`).run(firstDriver);
     const newDriver = seedSeat(rigAId, "factory-a", "dev", "driver0", { role: "driver" });
 
     const resumed = await runtime.resume({ instanceId: inst.instance.instanceId, actorSession: "orch@factory-a" });
-    expect(resumed.ownerSession).toBe(newDriver); // re-resolve, never copy
+    expect(resumed.ownerSession).toBe(newDriver); // 重新解析，绝不复制旧值。
   });
 
-  it("Q3: a bound instance's unmapped-failed exception routes to the rig-local orchestrator seat by capability (dial position 3)", async () => {
+  it("Q3：绑定实例的未映射 failed exception 按能力路由到工作组本地 orchestrator seat（旋钮位置 3）", async () => {
     seedSeat(rigAId, "factory-a", "dev", "planner1", { role: "planner" });
     seedSeat(rigAId, "factory-a", "dev", "driver1", { role: "driver" });
     const orchSeat = seedSeat(rigAId, "factory-a", "orch", "lead", { role: "orchestrator" });
-    // The role-only spec + the WF-5 dial: orchestrator_role declared,
-    // orchestrator role with ZERO preferred_targets (the capability leg).
+    // 仅声明 role 的规范 + WF-5 旋钮：声明 orchestrator_role，且 orchestrator role 的
+    // preferred_targets 为零（能力分支）。
     const specText = ROLE_ONLY_SPEC.replace(
       "  roles:",
       "  exception_routing:\n    orchestrator_role: orchestrator\n  roles:\n    orchestrator: {}",
     );
     const specPath = writeSpec("role-exc.yaml", specText);
     const inst = await runtime.instantiate({ specPath, rootObjective: "t", createdBySession: "orch@factory-a" });
-    // Fail the ENTRY packet (unmapped failed → class-a exception born in-txn).
+    // 让 ENTRY packet 失败（未映射 failed → 在事务内创建 class-a exception）。
     await runtime.projector.project({
       instanceId: inst.instance.instanceId,
       currentPacketId: inst.entryQitemId,
@@ -446,12 +442,12 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
     expect(items[0]!.destination_session).toBe(orchSeat);
   });
 
-  it("vanished rig: the bound rig torn down mid-run fails resolution loud with bound_rig_not_found", async () => {
+  it("工作组消失：绑定工作组在运行中被拆除时，以 bound_rig_not_found 明确解析失败", async () => {
     seedSeat(rigAId, "factory-a", "dev", "planner1", { role: "planner" });
     seedSeat(rigAId, "factory-a", "dev", "driver1", { role: "driver" });
     const specPath = writeSpec("role-only.yaml", ROLE_ONLY_SPEC);
     const inst = await runtime.instantiate({ specPath, rootObjective: "t", createdBySession: "orch@factory-a" });
-    // The rig vanishes (name no longer resolves).
+    // 工作组消失，名称不再可解析。
     db.prepare(`UPDATE rigs SET name = 'renamed-away' WHERE id = ?`).run(rigAId);
     await expect(
       runtime.projector.project({
@@ -463,7 +459,7 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
     ).rejects.toMatchObject({ code: "bound_rig_not_found" });
   });
 
-  it("loud-with-candidates: all role seats stopped → structured per-candidate disqualifiers; zero-declaring → the named zero-candidate message", async () => {
+  it("明确列出候选：所有 role seat 停止时返回逐候选结构化原因，零声明时返回命名消息", async () => {
     seedSeat(rigAId, "factory-a", "dev", "planner1", { role: "planner" });
     seedSeat(rigAId, "factory-a", "dev", "driver1", { role: "driver", sessionStatus: "stopped" });
     const specPath = writeSpec("role-only.yaml", ROLE_ONLY_SPEC);
@@ -485,16 +481,16 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
     const driver1 = candidates.find((c) => c.coordinate === "dev-driver1@factory-a");
     expect(driver1?.disqualifier).toMatch(/^not_live\(lifecycleState=/);
 
-    // Zero-candidate: a fresh rig where NO seat declares the entry role.
+    // 零候选：新工作组中没有 seat 声明 entry role。
     const rigB = rigRepo.createRig("factory-b");
     seedSeat(rigB.id, "factory-b", "dev", "somebody", {});
-    // Structural check fires first at instantiate — the named zero-coverage error.
+    // instantiate 时先触发结构检查，返回命名的零覆盖错误。
     await expect(
       runtime.instantiate({ specPath, rootObjective: "t", createdBySession: "orch@factory-a", targetRig: "factory-b" }),
     ).rejects.toMatchObject({ code: "bound_rig_role_uncovered" });
   });
 
-  it("UNBOUND byte-parity: a no-target role step on an unbound instance keeps the shipped next_owner_unresolved shape (no candidates machinery)", async () => {
+  it("UNBOUND 字节一致性：未绑定实例中无 target 的 role 步骤保留既有 next_owner_unresolved 形状", async () => {
     const unboundSpec = ROLE_ONLY_SPEC.replace("  target:\n    rig: factory-a\n", "");
     const specPath = writeSpec("unbound.yaml", unboundSpec);
     seedSeat(rigAId, "factory-a", "dev", "planner1", { role: "planner" });
@@ -519,9 +515,9 @@ describe("FAC-1 C3: the six owner-resolution call sites on a bound rig", () => {
     }
     const e = thrown as WorkflowProjectorError;
     expect(e.code).toBe("next_owner_unresolved");
-    // The SHIPPED unbound message (supply nextOwnerSession / add
-    // preferred_targets) — no bound-rig candidates block.
-    expect(e.message).toContain("supply nextOwnerSession explicitly");
+    // 已发布的 unbound 消息（提供 nextOwnerSession / 添加 preferred_targets），不包含
+    // bound-rig candidates 区块。
+    expect(e.message).toContain("请显式提供 nextOwnerSession");
     expect(e.details?.["candidates"]).toBeUndefined();
   });
 });

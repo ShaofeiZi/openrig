@@ -1,7 +1,6 @@
-// PL-012 Token / Context Usage Surface v0 — `rig ps --nodes --filter
-// contextUsage.percent>=N` + `contextUsage.state=…` + `--fields contextUsage`.
-// Mirrors the PL-019 mock-daemon harness so this stays independent of
-// any other slice in flight.
+// PL-012 Token / 上下文用量界面 v0——`zrig ps --nodes --filter
+// contextUsage.percent>=N` + `contextUsage.state=…` + `--fields contextUsage`。
+// 镜像 PL-019 的 mock 后台服务 harness，使本测试独立于其他进行中的切片。
 
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import http from "node:http";
@@ -84,7 +83,7 @@ function nodeAt(logicalId: string, percent: number | null, fresh = true) {
   };
 }
 
-describe("PL-012 ps --filter contextUsage.* + CTX field", () => {
+describe("PL-012 ps --filter contextUsage.* + CTX 字段", () => {
   let server: http.Server;
   let port: number;
   let nodesByRig: Record<string, unknown[]>;
@@ -122,7 +121,7 @@ describe("PL-012 ps --filter contextUsage.* + CTX field", () => {
     return prog;
   }
 
-  it("--filter contextUsage.percent>=80 narrows to critical seats", async () => {
+  it("--filter contextUsage.percent>=80 只保留临界席位", async () => {
     nodesByRig["rig-1"] = [
       nodeAt("alpha", 90),
       nodeAt("beta", 65),
@@ -138,7 +137,7 @@ describe("PL-012 ps --filter contextUsage.* + CTX field", () => {
     expect(entries.map((e: { canonicalSessionName: string }) => e.canonicalSessionName)).toEqual(["demo-alpha"]);
   });
 
-  it("--filter contextUsage.percent<60 picks low/ok seats only", async () => {
+  it("--filter contextUsage.percent<60 只选择低用量/正常席位", async () => {
     nodesByRig["rig-1"] = [nodeAt("alpha", 90), nodeAt("beta", 65), nodeAt("gamma", 30)];
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--filter", "contextUsage.percent<60"]);
@@ -149,7 +148,7 @@ describe("PL-012 ps --filter contextUsage.* + CTX field", () => {
     expect(entries.map((e: { canonicalSessionName: string }) => e.canonicalSessionName)).toEqual(["demo-gamma"]);
   });
 
-  it("--filter contextUsage.percent>=N excludes nodes with no sample (unknown availability)", async () => {
+  it("--filter contextUsage.percent>=N 排除无样本节点（可用性未知）", async () => {
     nodesByRig["rig-1"] = [nodeAt("alpha", 90), nodeAt("delta", null)];
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--filter", "contextUsage.percent>=0"]);
@@ -159,7 +158,7 @@ describe("PL-012 ps --filter contextUsage.* + CTX field", () => {
     expect(entries.map((e: { canonicalSessionName: string }) => e.canonicalSessionName)).toEqual(["demo-alpha"]);
   });
 
-  it("--filter contextUsage.state=critical maps tier semantics correctly", async () => {
+  it("--filter contextUsage.state=critical 正确映射分级语义", async () => {
     nodesByRig["rig-1"] = [
       nodeAt("alpha", 90),  // critical
       nodeAt("beta", 65),   // warning
@@ -174,7 +173,7 @@ describe("PL-012 ps --filter contextUsage.* + CTX field", () => {
     expect(entries.map((e: { canonicalSessionName: string }) => e.canonicalSessionName)).toEqual(["demo-alpha"]);
   });
 
-  it("--filter contextUsage.state=unknown picks no-sample seats", async () => {
+  it("--filter contextUsage.state=unknown 选择无样本席位", async () => {
     nodesByRig["rig-1"] = [nodeAt("alpha", 90), nodeAt("delta", null)];
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--filter", "contextUsage.state=unknown"]);
@@ -184,7 +183,7 @@ describe("PL-012 ps --filter contextUsage.* + CTX field", () => {
     expect(entries.map((e: { canonicalSessionName: string }) => e.canonicalSessionName)).toEqual(["demo-delta"]);
   });
 
-  it("--filter contextUsage.percent>=invalid fails fast with three-part error and exit 1", async () => {
+  it("--filter contextUsage.percent>=invalid 以三段式错误和退出码 1 快速失败", async () => {
     nodesByRig["rig-1"] = [nodeAt("alpha", 90)];
     const { errLogs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--filter", "contextUsage.percent>=banana"]);
@@ -192,11 +191,11 @@ describe("PL-012 ps --filter contextUsage.* + CTX field", () => {
     expect(exitCode).toBe(1);
     const out = errLogs.join("\n");
     expect(out).toContain("contextUsage.percent>='banana'");
-    expect(out).toContain("a finite number");
-    expect(out).toContain("rig ps --nodes --fields contextUsage --json");
+    expect(out).toContain("一个有限数");
+    expect(out).toContain("zrig ps --nodes --fields contextUsage --json");
   });
 
-  it("--filter contextUsage.state=bogus fails fast with three-part error and exit 1", async () => {
+  it("--filter contextUsage.state=bogus 以三段式错误和退出码 1 快速失败", async () => {
     nodesByRig["rig-1"] = [nodeAt("alpha", 90)];
     const { errLogs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--filter", "contextUsage.state=lol-no"]);
@@ -205,19 +204,19 @@ describe("PL-012 ps --filter contextUsage.* + CTX field", () => {
     const out = errLogs.join("\n");
     expect(out).toContain("contextUsage.state='lol-no'");
     expect(out).toContain("critical, low, unknown, warning");
-    expect(out).toContain("rig ps --nodes --fields contextUsage --json");
+    expect(out).toContain("zrig ps --nodes --fields contextUsage --json");
   });
 
-  it("--filter contextUsage.percent>=N rejects equality-only on non-numeric keys cleanly", async () => {
+  it("--filter contextUsage.percent>=N 对非数值 key 清晰拒绝数值比较", async () => {
     nodesByRig["rig-1"] = [nodeAt("alpha", 90)];
     const { errLogs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--filter", "name>=demo"]);
     });
     expect(exitCode).toBe(1);
-    expect(errLogs.join("\n")).toContain("numeric comparator on a non-numeric key");
+    expect(errLogs.join("\n")).toContain("在非数值 key 上用了数值比较符");
   });
 
-  it("--fields contextUsage projects only the contextUsage column", async () => {
+  it("--fields contextUsage 只投影 contextUsage 列", async () => {
     nodesByRig["rig-1"] = [nodeAt("alpha", 73)];
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--fields", "logicalId,contextUsage"]);
@@ -228,7 +227,7 @@ describe("PL-012 ps --filter contextUsage.* + CTX field", () => {
     expect(entries[0]).toEqual({ logicalId: "alpha", contextUsage: expect.objectContaining({ usedPercentage: 73 }) });
   });
 
-  it("CTX column appears in --full human output", async () => {
+  it("CTX 列出现在 --full 人类可读输出中", async () => {
     nodesByRig["rig-1"] = [nodeAt("alpha", 73), nodeAt("delta", null)];
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--full"]);

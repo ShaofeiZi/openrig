@@ -1,6 +1,6 @@
-// release-0.3.2 slice 12 — dot-ID grammar unit tests.
+// release-0.3.2 slice 12——dot-ID 语法单元测试。
 //
-// Aligned with `openrig-work/conventions/scope-and-versioning/README.md` §1.
+// 对齐 `openrig-work/conventions/scope-and-versioning/README.md` §1。
 
 import { describe, expect, it } from "vitest";
 import {
@@ -107,9 +107,8 @@ describe("BLOCK 1 — tier-aware validation (isMissionDotId / isSliceDotId)", ()
   });
 
   it("isMissionDotId REJECTS slice-shaped IDs (4+ numeric segments) — guard BC discriminator", () => {
-    // The crux of BLOCK 1: a slice-depth ID like OPR.0.3.2.12 must
-    // not pass mission validation, even though it parses as a valid
-    // dot-ID at SOME tier.
+    // BLOCK 1 的关键：像 OPR.0.3.2.12 这样的 slice 深度 ID 必须
+    // 不通过 mission 校验，即便它在某个层级能解析为合法 dot-ID。
     expect(isMissionDotId("OPR.0.3.2.12")).toBe(false);
     expect(isMissionDotId("OPR.99.0.1.5")).toBe(false);
   });
@@ -128,9 +127,8 @@ describe("BLOCK 1 — tier-aware validation (isMissionDotId / isSliceDotId)", ()
   });
 
   it("isSliceDotId admits the inherent depth-3 overlap (release X.Y.Z mission shape = slice for an X.Y parent)", () => {
-    // The convention's positional grammar can't distinguish a
-    // release-X.Y.Z mission from a slice of a release-X.Y mission
-    // by depth alone. Both shapes are accepted by isSliceDotId; the
+    // 该约定的位置语法无法仅凭深度区分 release-X.Y.Z mission 与
+    // release-X.Y mission 的一个 slice。两种形状都被 isSliceDotId 接受；
     // CLI disambiguates by tier at use sites (mission create uses
     // isMissionDotId; slice IDs are minted from a parent + ordinal,
     // never user-typed).

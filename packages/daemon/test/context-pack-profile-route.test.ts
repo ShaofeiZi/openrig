@@ -1,11 +1,10 @@
-// OPR.0.5.3.5 Atom 4b — the PROFILE route: situation-composed delivery over the
-// library + tree sources (mini-reqs 1/3/5/7 productized at the daemon surface).
+// OPR.0.5.3.5 Atom 4b——PROFILE 路由：基于 library + tree source 的 situation-composed
+// delivery（mini-req 1/3/5/7 在后台服务 surface 产品化）。
 // GET /library/by-ref/profile?ref=&situation=&runtime=[&budget=][&rig=&seat=]
-// resolves the pack's atoms through the ONE parser chokepoint, builds the
-// fail-loud multi-source readFile (library = pack dir; seat: = the topology tree
-// seat directory resolved from topology.root CONFIG — rigs/<rig>/seats/<seat>,
-// slice-06 D1 layout), labels every piece, and returns the composed profile.
-// Every compose failure surfaces as a NAMED 4xx error — never a thinned walk.
+// 通过唯一 parser chokepoint 解析 pack atom，构建 fail-loud 多 source readFile（library = pack
+// dir；seat: = 从 topology.root 配置解析的 topology tree 席位目录，即
+// rigs/<rig>/seats/<seat>，slice-06 D1 layout），为每个 piece 标记来源并返回组合后的 profile。
+// 每次 compose 失败都呈现具名 4xx 错误，绝不退化成内容缩水的 walk。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -38,7 +37,7 @@ atoms:
     priority: core
 `;
 
-describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)", () => {
+describe("GET /library/by-ref/profile——situation-composed delivery（Atom 4b）", () => {
   let tmp: string;
   let libRoot: string;
   let app: Hono;
@@ -51,7 +50,7 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
     mkdirSync(packDir, { recursive: true });
     writeFileSync(join(packDir, "manifest.yaml"), MANIFEST);
     writeFileSync(join(packDir, "walk.md"), "## Welcome\nhello world");
-    // The seat tree per slice-06 D1: <topology.root>/rigs/<rig>/seats/<seat>/
+    // slice-06 D1 定义的 seat tree：<topology.root>/rigs/<rig>/seats/<seat>/。
     const seatDir = join(tmp, "topology", "rigs", "r1", "seats", "s1");
     mkdirSync(seatDir, { recursive: true });
     writeFileSync(join(seatDir, "RECAP.md"), "## Recent Decisions\nwe chose X because Y");
@@ -74,7 +73,7 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
 
   const url = (qs: string) => `/api/context-packs/library/by-ref/profile?ref=${encodeURIComponent("packs/world")}&${qs}`;
 
-  it("composes HANDOVER with a SEAT-TREE-homed recap assembled by address, source label visible", async () => {
+  it("组合 HANDOVER，其中 recap 位于 SEAT-TREE 并按地址组装，source label 可见", async () => {
     const res = await app.request(url("situation=handover&runtime=claude&rig=r1&seat=s1"));
     expect(res.status).toBe(200);
     const body = await res.json() as { pieces: Array<{ atomId: string; sourceKind: string; text: string }> };
@@ -85,7 +84,7 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
     expect(body.pieces.find((p) => p.atomId === "welcome")!.sourceKind).toBe("library");
   });
 
-  it("every piece carries its sha256 so profile and walk are hash-exact-comparable (Test-A door gate)", async () => {
+  it("每个 piece 携带 sha256，使 profile 与 walk 可按精确 hash 比较（Test-A door gate）", async () => {
     const res = await app.request(url("situation=handover&runtime=claude&rig=r1&seat=s1"));
     expect(res.status).toBe(200);
     const body = await res.json() as { pieces: Array<{ text: string; sha256: string }> };
@@ -95,22 +94,22 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
     }
   });
 
-  it("FRESH composes without the seat tree (no rig/seat params needed when no tree atom selects)", async () => {
+  it("FRESH 不使用 seat tree 也可组合；未选择 tree atom 时无需 rig/seat 参数", async () => {
     const res = await app.request(url("situation=fresh&runtime=claude"));
     expect(res.status).toBe(200);
     const body = await res.json() as { pieces: Array<{ atomId: string }> };
     expect(body.pieces.map((p) => p.atomId)).toEqual(["welcome"]);
   });
 
-  it("a tree atom WITHOUT rig/seat params fails LOUD naming the missing config, never a thinned walk", async () => {
+  it("tree atom 缺少 rig/seat 参数时明确失败并点名缺失配置，绝不返回缩水 walk", async () => {
     const res = await app.request(url("situation=handover&runtime=claude"));
     expect(res.status).toBe(422);
     const body = await res.json() as { message: string };
     expect(body.message).toMatch(/seat/i);
-    expect(body.message).toMatch(/root|config|rig/i);
+    expect(body.message).toMatch(/根|配置|rig/i);
   });
 
-  it("budget overage is REPORTED with drop candidates, nothing truncated", async () => {
+  it("报告 budget 超限和 drop candidate，不截断任何内容", async () => {
     const res = await app.request(url("situation=handover&runtime=claude&rig=r1&seat=s1&budget=1"));
     expect(res.status).toBe(200);
     const body = await res.json() as { pieces: unknown[]; budget?: { overageTokens: number; dropCandidates: unknown[] } };
@@ -119,17 +118,15 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
     expect(body.budget!.overageTokens).toBeGreaterThan(0);
   });
 
-  it("r1 RIDER 1: every piece carries BYTE provenance — a symlinked read is reported, labels never lie about where bytes came from", async () => {
-    // r1's live probe on 4a: a symlink inside the seat root returned an
-    // out-of-root secret while the source label stayed 'seat' — accurate about
-    // the REF, wrong about the BYTES. Q2-Amendment 1 binds per-piece source
-    // labels; provenance must follow the bytes. Report, never block: realpath
-    // containment would break the product's own legitimately-symlinked layouts.
+  it("r1 RIDER 1：每个 piece 携带字节 provenance；报告 symlink read，label 不谎报字节来源", async () => {
+    // r1 对 4a 的 live probe：seat root 内 symlink 返回 root 外 secret，但 source label 仍为
+    // 'seat'；它对 REF 正确，对 BYTE 错误。Q2-Amendment 1 绑定逐 piece source label；provenance
+    // 必须跟随字节。只报告、不阻塞，因为 realpath containment 会破坏产品自身合法 symlink 布局。
     const { symlinkSync, realpathSync } = await import("node:fs");
     const outside = join(tmp, "outside-secret.md");
     writeFileSync(outside, "## Recent Decisions\nSECRET BYTES");
-    // macOS /var is itself a symlink to /private/var — compare against the
-    // REAL path, which is exactly what the provenance surface reports.
+    // macOS /var 本身是指向 /private/var 的 symlink；与真实路径比较，也就是 provenance surface
+    // 报告的路径。
     const outsideReal = realpathSync(outside);
     const seatDir = join(tmp, "topology", "rigs", "r1", "seats", "s1");
     rmSync(join(seatDir, "RECAP.md"));
@@ -144,23 +141,18 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
     expect(recap.provenance.realPath).toBe(outsideReal);
     expect(recap.provenance.escapesRoot).toBe(true);
     expect(body.provenanceWarnings.some((w) => w.includes("recap"))).toBe(true);
-    // The honest piece stays quiet: no warning names 'welcome', and its real
-    // path sits inside the pack.
+    // 真实 piece 保持安静：没有 warning 点名 'welcome'，其真实路径位于 pack 内。
     const welcome = body.pieces.find((p) => p.atomId === "welcome")!;
     expect(welcome.provenance.escapesRoot).toBe(false);
     expect(body.provenanceWarnings.some((w) => w.includes("welcome"))).toBe(false);
   });
 
-  it("r1 RIDER 2: without the explicit rig/seat grant, an untrusted pack's seat: atoms read NOTHING — and the grant is scoped to the named seat", async () => {
-    // Slice-07 R4 installs packs from URLs: a hostile manifest may carry
-    // seat:/mission: atoms. Ingest passes them BY DESIGN; the trust boundary is
-    // the compose call — rig/seat params are the caller's explicit grant of
-    // read access to that ONE seat directory. No params, no reads (already
-    // pinned above as the missing-config 422); and the grant never widens
-    // beyond the named seat (the segment gate pins that). This pin nails the
-    // GRANT SEMANTICS end-to-end: the same pack, same atoms — no grant = 422
-    // naming the missing root, grant = the read happens and is visible in the
-    // provenance surface.
+  it("r1 RIDER 2：没有显式 rig/seat grant 时，不可信 pack 的 seat: atom 不读取任何内容；grant 仅限具名席位", async () => {
+    // Slice-07 R4 从 URL 安装 pack，恶意 manifest 可能携带 seat:/mission: atom。ingest 按设计
+    // 透传它们；trust boundary 是 compose 调用，rig/seat 参数是调用方对那个席位目录读权限的
+    // 显式 grant。无参数就不读取（上方已固定为 missing-config 422）；grant 绝不超出具名席位。
+    // 本 pin 端到端固定 GRANT SEMANTICS：相同 pack、相同 atom；无 grant = 422 并点名缺失
+    // root，有 grant = 发生读取且在 provenance surface 可见。
     const denied = await app.request(url("situation=handover&runtime=claude"));
     expect(denied.status).toBe(422);
     expect(((await denied.json()) as { message: string }).message).toMatch(/seat/i);
@@ -170,15 +162,14 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
     expect(body.pieces.find((p) => p.atomId === "recap")!.provenance.realPath).toContain(join("rigs", "r1", "seats", "s1"));
   });
 
-  it("r1 F1 (round 3): a file NAMED '..hidden-notes.md' inside its root is NOT flagged — segment comparison, never prefix-matching a path string", async () => {
-    // r1's measured shape: relative() returned '..hidden-notes.md' and a bare
-    // startsWith('..') read it as an escape — the identical bug class as
-    // startsWith(base), reproduced one level in. A trust surface that cries
-    // wolf on innocent files trains readers to skim it.
+  it("r1 F1（round 3）：root 内名为 '..hidden-notes.md' 的文件不被标记；比较 segment，不按路径字符串 prefix 匹配", async () => {
+    // r1 实测结构：relative() 返回 '..hidden-notes.md'，裸 startsWith('..') 把它当成 escape；
+    // 这与 startsWith(base) 是同一 bug 类别，只是向内复现一层。trust surface 若对无辜文件误报，
+    // 会让读者习惯忽略它。
     const seatDir = join(tmp, "topology", "rigs", "r1", "seats", "s1");
     writeFileSync(join(seatDir, "..hidden-notes.md"), "## Recent Decisions\ninnocent bytes");
     const manifest2 = MANIFEST.replace("seat:RECAP.md#recent-decisions", "seat:..hidden-notes.md#recent-decisions");
-    // A '..'-PREFIXED FILENAME is not a '..' SEGMENT — parseSourceRef must agree.
+    // 以 '..' 开头的文件名不是 '..' segment，parseSourceRef 必须一致。
     writeFileSync(join(libRoot, "packs", "world", "manifest.yaml"), manifest2);
     const res = await app.request(url("situation=handover&runtime=claude&rig=r1&seat=s1"));
     expect(res.status).toBe(200);
@@ -190,7 +181,7 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
     expect(body.provenanceWarnings).toEqual([]);
   });
 
-  it("r1 pre-judgment (2): a DANGLING symlink is its own NAMED failure, never a garbled provenance error", async () => {
+  it("r1 pre-judgment（2）：DANGLING symlink 使用自身具名失败，绝不是乱码 provenance error", async () => {
     const { symlinkSync } = await import("node:fs");
     const seatDir = join(tmp, "topology", "rigs", "r1", "seats", "s1");
     rmSync(join(seatDir, "RECAP.md"));
@@ -198,11 +189,11 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
     const res = await app.request(url("situation=handover&runtime=claude&rig=r1&seat=s1"));
     expect(res.status).toBe(422);
     const body = await res.json() as { message: string };
-    expect(body.message).toMatch(/dangling|symlink/i);
+    expect(body.message).toMatch(/悬空|符号链接/i);
     expect(body.message).toContain("RECAP.md");
   });
 
-  it("r1 pre-judgment (minor): provenanceWarnings is ALWAYS an array — empty on a clean compose", async () => {
+  it("r1 pre-judgment（minor）：provenanceWarnings 始终是数组；clean compose 时为空", async () => {
     const res = await app.request(url("situation=handover&runtime=claude&rig=r1&seat=s1"));
     expect(res.status).toBe(200);
     const body = await res.json() as { provenanceWarnings: string[] };
@@ -210,9 +201,9 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
     expect(body.provenanceWarnings).toEqual([]);
   });
 
-  it("Atom 4d: a mission: atom resolves from the RULED workspace.slices_root key when the caller names the mission — absent param stays a loud missing-config", async () => {
-    // Desk ruling (row 2675535d): do NOT mint a new config key — the missions
-    // tree already has workspace.slices_root; mission root = <slices_root>/<mission>.
+  it("Atom 4d：调用方点名任务目标时，mission: atom 从指定 workspace.slices_root key 解析；缺参仍明确 missing-config", async () => {
+    // Desk 裁定（row 2675535d）：不要新增 config key；missions tree 已有 workspace.slices_root；
+    // mission root = <slices_root>/<mission>。
     const savedSlices = process.env["OPENRIG_WORKSPACE_SLICES_ROOT"];
     try {
       const missionDir = join(tmp, "missions", "release-x");
@@ -234,7 +225,7 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
       const watch = body.pieces.find((p) => p.atomId === "watch")!;
       expect(watch.sourceKind).toBe("mission");
       expect(watch.text).toContain("W-99 lives here");
-      // No mission param: the mission-homed atom fails loud, never a thinner walk.
+      // 没有 mission 参数：位于任务目标的 atom 明确失败，绝不返回缩水 walk。
       const denied = await app.request(url("situation=handover&runtime=claude&rig=r1&seat=s1"));
       expect(denied.status).toBe(422);
       expect(((await denied.json()) as { message: string }).message).toMatch(/mission/i);
@@ -244,7 +235,7 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
     }
   });
 
-  it("Story 1: an explicit legacy mission/slice adds the conventional project -> mission -> slice SPEC walk with default provenance", async () => {
+  it("Story 1：显式 legacy mission/slice 以默认 provenance 添加常规 project → mission → slice SPEC walk", async () => {
     const savedWorkspace = process.env["OPENRIG_WORKSPACE_ROOT"];
     const savedSlices = process.env["OPENRIG_WORKSPACE_SLICES_ROOT"];
     try {
@@ -296,7 +287,7 @@ describe("GET /library/by-ref/profile — situation-composed delivery (Atom 4b)"
     }
   });
 
-  it("Story 2: a valid project manifest relabels the conventional intent and appends project context in declared order", async () => {
+  it("Story 2：有效 project manifest 重新标记常规 intent，并按声明顺序追加 project context", async () => {
     const savedWorkspace = process.env["OPENRIG_WORKSPACE_ROOT"];
     const savedSlices = process.env["OPENRIG_WORKSPACE_SLICES_ROOT"];
     try {
@@ -366,7 +357,7 @@ missions:
     }
   });
 
-  it("Story 2: a valid project manifest replaces the conventional intent address", async () => {
+  it("Story 2：有效 project manifest 替换常规 intent address", async () => {
     const savedWorkspace = process.env["OPENRIG_WORKSPACE_ROOT"];
     const savedSlices = process.env["OPENRIG_WORKSPACE_SLICES_ROOT"];
     try {
@@ -455,7 +446,7 @@ missions:
         .map(({ atomId, address, altitude, source, text, sha256 }) => ({ atomId, address, altitude, source, text, sha256 }));
       expect(workShape(invalid.pieces)).toEqual(workShape(baseline.pieces));
       expect(invalid.warnings).toEqual([
-        "project.yaml: optional install.intent must be a relative Markdown address; ignored the invalid value and kept the baseline work install.",
+        "project.yaml：可选 install.intent 必须是相对 Markdown 地址；已忽略该非法值并保留基线工作 install。",
       ]);
       expect(invalid.provenanceWarnings).toEqual([]);
     } finally {
@@ -516,7 +507,7 @@ missions:
         .map(({ atomId, address, altitude, source, text, sha256 }) => ({ atomId, address, altitude, source, text, sha256 }));
       expect(workShape(invalid.pieces)).toEqual(workShape(baseline.pieces));
       expect(invalid.warnings).toEqual([
-        "project.yaml: optional install.context must be a list of relative Markdown addresses; ignored the invalid value and kept the baseline work install.",
+        "project.yaml：可选 install.context 必须是相对 Markdown 地址列表；已忽略该非法值并保留基线工作 install。",
       ]);
       expect(invalid.provenanceWarnings).toEqual([]);
     } finally {
@@ -527,7 +518,7 @@ missions:
     }
   });
 
-  it("Story 1: a legacy-default request without an exact slice refuses loudly instead of accepting a no-op mission grant", async () => {
+  it("Story 1：没有准确 slice 的 legacy-default 请求明确拒绝，而不是接受 no-op mission grant", async () => {
     const savedWorkspace = process.env["OPENRIG_WORKSPACE_ROOT"];
     const savedSlices = process.env["OPENRIG_WORKSPACE_SLICES_ROOT"];
     try {
@@ -547,7 +538,7 @@ missions:
     }
   });
 
-  it("bad inputs are NAMED 4xx errors: unknown situation, a pack without atoms, an unknown ref", async () => {
+  it("错误输入产生具名 4xx：未知 situation、无 atom pack、未知 ref", async () => {
     const badSituation = await app.request(url("situation=someday&runtime=claude"));
     expect(badSituation.status).toBe(400);
     expect(((await badSituation.json()) as { message: string }).message).toMatch(/situation/);
@@ -557,7 +548,7 @@ missions:
     writeFileSync(join(noAtomsDir, "manifest.yaml"), 'name: bare\nversion: "1"\ntaxonomy: world\nfiles:\n  - { path: a.md, role: x }\n');
     writeFileSync(join(noAtomsDir, "a.md"), "## A\nbody");
     const lib2res = await app.request("/api/context-packs/library/by-ref/profile?ref=packs%2Fbare&situation=fresh&runtime=claude");
-    // Library must be re-synced to see it; the route itself reads the manifest fresh.
+    // Library 必须重新 sync 才能看到它；路由自身会重新读取 manifest。
     expect([200, 404, 422]).toContain(lib2res.status);
     if (lib2res.status === 422) {
       expect(((await lib2res.json()) as { message: string }).message).toMatch(/atoms/);
@@ -593,7 +584,7 @@ atoms:
   - { id: recap, address: "seat:RECAP.md", taxonomy: lore, situations: [handover, post-compaction], purpose: width, order: 9, priority: core }
 `;
 
-describe("synthetic world graph — the seat RECAP composes through the real route", () => {
+describe("synthetic world graph——seat RECAP 通过真实路由组合", () => {
   let tmp: string;
   let app: Hono;
   const savedTopologyRoot = process.env["OPENRIG_TOPOLOGY_ROOT"];
@@ -644,7 +635,7 @@ describe("synthetic world graph — the seat RECAP composes through the real rou
 
   const profileUrl = (qs: string) => `/api/context-packs/library/by-ref/profile?ref=${encodeURIComponent("world/install")}&${qs}`;
 
-  it("HANDOVER = the fresh walk + the seat-sourced RECAP, sentinel bytes and sourceKind seat", async () => {
+  it("HANDOVER = fresh walk + seat-sourced RECAP，并保留 sentinel byte 与 sourceKind seat", async () => {
     buildApp(true);
     const res = await app.request(profileUrl("situation=handover&runtime=claude&rig=r1&seat=s1"));
     expect(res.status).toBe(200);
@@ -657,7 +648,7 @@ describe("synthetic world graph — the seat RECAP composes through the real rou
     expect(recap.text).toContain("sentinel-recap-7fce914a8");
   });
 
-  it("POST-COMPACTION = the measured re-prime + the seat-sourced RECAP", async () => {
+  it("POST-COMPACTION = 实测 re-prime + seat-sourced RECAP", async () => {
     buildApp(true);
     const res = await app.request(profileUrl("situation=post-compaction&runtime=claude&rig=r1&seat=s1"));
     expect(res.status).toBe(200);
@@ -668,7 +659,7 @@ describe("synthetic world graph — the seat RECAP composes through the real rou
     expect(body.pieces.find((p) => p.atomId === "recap")!.sourceKind).toBe("seat");
   });
 
-  it("a MISSING seat RECAP fails LOUD with a named error — never a silently thinner handover", async () => {
+  it("缺少 seat RECAP 时以具名错误明确失败，绝不静默返回缩水 handover", async () => {
     buildApp(false);
     const res = await app.request(profileUrl("situation=handover&runtime=claude&rig=r1&seat=s1"));
     expect(res.status).toBe(422);
@@ -676,7 +667,7 @@ describe("synthetic world graph — the seat RECAP composes through the real rou
     expect(body.message).toMatch(/recap/i);
   });
 
-  it("FRESH needs no seat tree and stays the six-piece walk (recap never leaks into fresh)", async () => {
+  it("FRESH 无需 seat tree，保持六 piece walk；recap 绝不泄漏进 fresh", async () => {
     buildApp(true);
     const res = await app.request(profileUrl("situation=fresh&runtime=claude"));
     expect(res.status).toBe(200);

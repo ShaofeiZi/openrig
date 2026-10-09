@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch16",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/whoami.test.ts",
+      "before_sha256_16": "1f2300e10e7cd49f",
+      "after_sha256_16": "edbda651df9019fe",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/snapshot-restore.test.ts",
+      "before_sha256_16": "e73e4df23b01e3ff",
+      "after_sha256_16": "7c942a1f55e9a4a8",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/send-header.test.ts",
+      "before_sha256_16": "fd869e2f7d027f67",
+      "after_sha256_16": "b93b62647967bb4a",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/rig-mode.test.ts",
+      "before_sha256_16": "12f9275d86c856fe",
+      "after_sha256_16": "5ab359ee3aaa8c0a",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/release-surface.test.ts",
+      "before_sha256_16": "306b8aa688c3074c",
+      "after_sha256_16": "845d8ed623765668",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

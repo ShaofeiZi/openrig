@@ -7,6 +7,7 @@ import { renderScreen } from "../src/render.js";
 import { computeExplorerRows, createViewState } from "../src/state.js";
 import { createStyle, stripAnsi } from "../src/theme.js";
 import { stylizeLines } from "../src/stylize.js";
+import { strWidth } from "../src/text-width.js";
 import type { AgentRow, FleetSnapshot } from "../src/types.js";
 
 function agent(name: string, session: string, status: string, context: number | null, model = "gpt-5.6"): AgentRow {
@@ -97,11 +98,22 @@ function openInstance(snap: FleetSnapshot) {
   return view;
 }
 
+function sliceFromTerminalColumn(line: string, columns: number): string {
+  let index = 0;
+  let used = 0;
+  for (const char of line) {
+    if (used >= columns) break;
+    used += strWidth(char);
+    index += char.length;
+  }
+  return line.slice(index);
+}
+
 afterEach(() => {
   delete process.env["OPENRIG_REDUCED_MOTION"];
 });
 
-describe("S12 instance mission control", () => {
+describe("S12 instance mission 控制", () => {
   it.each([[160, 42], [120, 34], [84, 28]])("renders every rig and seat with full scroll reach at %ix%i", (cols, rows) => {
     const snap = multiRigSnapshot();
     const buildRig = snap.hosts[0]!.rigs[0]!;
@@ -122,9 +134,9 @@ describe("S12 instance mission control", () => {
         if (target.action.type !== "drill" || target.action.resource !== "agent") continue;
         reached.add(target.action.name);
         const rig = target.action.target?.rig;
-        const content = stripAnsi(screen.lines[target.y - 1] ?? "").slice(screen.explorerWidth + 2);
-        if (!rig || !/\b(working|needs you|idle|detached|failed|unknown|blocked)\b/.test(content)) continue;
-        const headingVisible = screen.lines.some((line) => stripAnsi(line).slice(screen.explorerWidth + 2).includes(`RIG ${rig} ·`));
+        const content = sliceFromTerminalColumn(stripAnsi(screen.lines[target.y - 1] ?? ""), screen.explorerWidth + 2);
+        if (!rig || !/(工作中|需要你|空闲|已分离|失败|未知|已阻塞)/.test(content)) continue;
+        const headingVisible = screen.lines.some((line) => sliceFromTerminalColumn(stripAnsi(line), screen.explorerWidth + 2).includes(`工作组 ${rig} ·`));
         if (headingVisible) continue;
         scrolledSeatRows += 1;
         expect(content.trimStart().startsWith(rig), `${cols}: scrolled seat row retains rig identity`).toBe(true);
@@ -133,24 +145,24 @@ describe("S12 instance mission control", () => {
     }
     const whole = renderScreen(view.get(), snap, { cols, rows: 120, nowMs: 0, colorMode: "none" }).lines.join("\n");
     expect(whole).toContain("mm2-openrig1");
-    expect(whole).toMatch(/RIG\s+POD\s+SEAT/);
-    expect(whole).not.toMatch(/── RIG (?:build|docs|empty)/);
+    expect(whole).toMatch(/工作组\s+席位\s+席位/);
+    expect(whole).not.toMatch(/── 工作组 (?:build|docs|empty)/);
     expect(whole).toMatch(/build\s+dev\s+/);
     expect(whole).toMatch(/docs\s+write\s+/);
-    expect(whole).toMatch(/empty\s+—\s+\(no seats\).*stopped/);
+    expect(whole).toMatch(/empty\s+—\s+\(无席位\).*已停止/);
     expect(whole).toMatch(/dev\s+[\s\S]*┈{8,}[\s\S]*qa\s+/);
     expect((whole.match(/┈{8,}/g) ?? [])).toHaveLength(1);
     expect(whole).not.toMatch(/\+\d+|more hidden/i);
     expect(reached).toEqual(expectedAgents);
     expect(scrolledSeatRows).toBeGreaterThan(0);
-    screen.lines.forEach((line) => expect(stripAnsi(line).length).toBeLessThanOrEqual(cols));
+    screen.lines.forEach((line) => expect(strWidth(stripAnsi(line))).toBeLessThanOrEqual(cols));
   });
 
-  it("shares one ordered event set between the instance TABLE tail and RECENT tab", () => {
+  it("在 instance TABLE 尾部与 RECENT tab 间共享同一有序事件集", () => {
     const snap = multiRigSnapshot();
     const view = openInstance(snap);
     const table = renderScreen(view.get(), snap, { cols: 160, rows: 90 }).lines.join("\n");
-    expect(table).toMatch(/TABLE.*RECENT.*OVERVIEW.*GRAPH/);
+    expect(table).toMatch(/表格.*近期.*概览.*图/);
     expect(table.indexOf("16:01")).toBeLessThan(table.indexOf("16:02"));
     expect((table.match(/16:01/g) ?? [])).toHaveLength(1);
     expect(table).toContain("Build the instance mission-control hierarchy");
@@ -163,14 +175,14 @@ describe("S12 instance mission control", () => {
     expect((recent.match(/16:02/g) ?? [])).toHaveLength(1);
     expect(recent.indexOf("16:01")).toBeLessThan(recent.indexOf("16:02"));
     expect(recent).toContain("dev-driver@build");
-    expect(recent).toContain("rig build");
+    expect(recent).toContain("工作组 build");
     expect(recent).toContain("write-editor@docs");
-    expect(recent).toContain("rig docs");
+    expect(recent).toContain("工作组 docs");
     expect(recent).toContain("Document the operator journey");
     expect(recent).not.toContain("no summary served");
   });
 
-  it("uses the same actions for root, tabs, rig rows, seats, and transition targets", () => {
+  it("对 root、tab、rig 行、seat 与 transition 目标用同一组动作", () => {
     const snap = multiRigSnapshot();
     const byCommand = createViewState({ instanceId: "cmd", getSnapshot: () => snap });
     byCommand.dispatch(parseCommand("host mm2-openrig1"));
@@ -200,7 +212,7 @@ describe("S12 instance mission control", () => {
     expect(guard).toBeDefined();
   });
 
-  it("reaches the RECENT tab identically by command, mouse, and keyboard", () => {
+  it("通过命令、鼠标、键盘以相同方式到达 RECENT tab", () => {
     const snap = multiRigSnapshot();
     const byCommand = openInstance(snap);
     byCommand.dispatch(parseCommand("tab recent"));
@@ -234,7 +246,7 @@ describe("S12 instance mission control", () => {
     expect(byKeyboard.get().drill).toEqual(byCommand.get().drill);
   });
 
-  it("keeps no-color geometry and reduced-motion frames stable", () => {
+  it("保持 no-color 几何与 reduced-motion 帧稳定", () => {
     const snap = multiRigSnapshot();
     const view = openInstance(snap);
     const plain = renderScreen(view.get(), snap, { cols: 120, rows: 34, nowMs: 0, colorMode: "none" });
@@ -246,10 +258,10 @@ describe("S12 instance mission control", () => {
     );
   });
 
-  it("keeps continuous rig rows semantically colored without changing geometry", () => {
+  it("让连续 rig 行保持语义着色，不改几何", () => {
     const snap = multiRigSnapshot();
     const screen = renderScreen(openInstance(snap).get(), snap, { cols: 160, rows: 120, nowMs: 0, colorMode: "none" });
-    const docs = screen.lines.findIndex((line) => line.includes("docs") && line.includes("detached"));
+    const docs = screen.lines.findIndex((line) => line.includes("docs") && line.includes("已分离"));
     expect(docs).toBeGreaterThan(0);
     const styled = stylizeLines(screen, createStyle("truecolor"));
     expect(styled[docs]).toContain("\x1b[");
@@ -257,8 +269,8 @@ describe("S12 instance mission control", () => {
   });
 });
 
-describe("S12 view-aware hydration", () => {
-  it("uses one instance RECENT read and no eager graph/spec read for instance TABLE", async () => {
+describe("S12 视图感知 hydration", () => {
+  it("instance TABLE 用一次 instance RECENT 读取，不预热 graph/spec 读取", async () => {
     const seen: string[] = [];
     const fetchImpl = (async (url: unknown) => {
       const route = String(url).replace("http://x", "");
@@ -301,7 +313,7 @@ describe("S12 view-aware hydration", () => {
     expect(seen.some((route) => route.includes("/graph") || route.includes("/spec.json") || route.includes("/specs/library"))).toBe(false);
   });
 
-  it("falls back to local only when health serves no instance identity", async () => {
+  it("仅当 health 未提供 instance 身份时回退到本地", async () => {
     const client = new DaemonClient({ baseUrl: "http://x", fetchImpl: (async (url: unknown) => {
       const route = String(url).replace("http://x", "");
       const empty: Record<string, unknown> = {

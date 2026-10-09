@@ -6,8 +6,8 @@ const skillsRoot = resolve(import.meta.dirname, "../assets/plugins/openrig-core/
 const skill = (name: string, relative = "SKILL.md") =>
   readFileSync(resolve(skillsRoot, name, relative), "utf8");
 
-describe("S20 P6 principles-first role guidance", () => {
-  it("gives the incumbent and successor their distinct apprentice-mode arcs with reasons", () => {
+describe("S20 P6 原则优先的角色指南", () => {
+  it("为现任者和继任者提供各自不同且附带理由的学徒模式路径", () => {
     const incumbent = skill("retiring-and-inheriting-a-seat");
     const successor = skill("orienting-to-an-inherited-seat");
 
@@ -19,7 +19,7 @@ describe("S20 P6 principles-first role guidance", () => {
     expect(successor).toMatch(/because reading a deposit does not install it/i);
   });
 
-  it("keeps mechanic detail in one portable SOP and routes the orchestrator to its own reference", () => {
+  it("把机制细节集中在一份可移植 SOP 中，并将编排者引导到专属参考文档", () => {
     const continuity = skill("seat-continuity-and-handover");
     const sopPath = resolve(skillsRoot, "seat-continuity-and-handover/references/apprentice-successor-seat-cutover.md");
     const orchestratorPath = resolve(skillsRoot, "seat-continuity-and-handover/references/orchestrator-role.md");
@@ -31,7 +31,7 @@ describe("S20 P6 principles-first role guidance", () => {
     expect(readFileSync(orchestratorPath, "utf8")).toMatch(/word is the gate/i);
   });
 
-  it("ships the experiment apparatus as an optional, stakes-matched toolkit", () => {
+  it("以可选且与风险相称的工具包形式提供实验装置", () => {
     const toolkitPath = resolve(skillsRoot, "seat-continuity-and-handover/references/apprentice-evidence-toolkit.md");
     expect(existsSync(toolkitPath)).toBe(true);
     const toolkit = readFileSync(toolkitPath, "utf8");

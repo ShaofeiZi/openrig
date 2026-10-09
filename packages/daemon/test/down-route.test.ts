@@ -3,9 +3,9 @@ import { createFullTestDb, createTestApp, mockTmuxAdapter } from "./helpers/test
 import { RigTeardownOrchestrator } from "../src/domain/rig-teardown.js";
 import { createApp } from "../src/server.js";
 
-describe("POST /api/down route", () => {
-  // R1: missing rigId -> 400
-  it("returns 400 when rigId is missing", async () => {
+describe("POST /api/down 路由", () => {
+  // R1：缺少 rigId -> 400
+  it("缺少 rigId 时返回 400", async () => {
     const { app } = createTestApp(createFullTestDb());
     const res = await app.request("/api/down", {
       method: "POST",
@@ -17,8 +17,8 @@ describe("POST /api/down route", () => {
     expect(body.error).toMatch(/rigId/);
   });
 
-  // R2: nonexistent rig -> 404
-  it("returns 404 for nonexistent rig", async () => {
+  // R2：装备不存在 -> 404
+  it("装备不存在时返回 404", async () => {
     const { app } = createTestApp(createFullTestDb());
     const res = await app.request("/api/down", {
       method: "POST",
@@ -27,13 +27,13 @@ describe("POST /api/down route", () => {
     });
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toMatch(/not found/i);
+    expect(body.error).toMatch(/未找到/);
   });
 
-  // R3: --delete blocked by kill failure -> 409
-  it("returns 409 when delete is blocked by kill failures", async () => {
+  // R3：终止失败阻止 --delete -> 409
+  it("终止失败阻止删除时返回 409", async () => {
     const tmux = mockTmuxAdapter();
-    (tmux.killSession as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, message: "kill failed" });
+    (tmux.killSession as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, message: "终止失败" });
     const db = createFullTestDb();
     const { app, rigRepo, sessionRegistry } = createTestApp(db, { tmux });
 
@@ -53,12 +53,12 @@ describe("POST /api/down route", () => {
     expect(body.deleted).toBe(false);
   });
 
-  // R4: same-db-handle invariant
-  it("throws if teardownOrchestrator uses a different db", () => {
+  // R4：同一数据库句柄不变量
+  it("teardownOrchestrator 使用不同数据库时抛错", () => {
     const db1 = createFullTestDb();
     const { app: _ignore, ...testApp1 } = createTestApp(db1);
 
-    // Build a valid RigTeardownOrchestrator on a separate db
+    // 在独立数据库上构建有效的 RigTeardownOrchestrator
     const db2 = createFullTestDb();
     const { teardownOrchestrator: foreignTeardown } = createTestApp(db2);
 
@@ -67,11 +67,11 @@ describe("POST /api/down route", () => {
         ...testApp1,
         teardownOrchestrator: foreignTeardown,
       });
-    }).toThrow(/teardownOrchestrator must share the same db handle/);
+    }).toThrow(/teardownOrchestrator 必须共享同一个数据库句柄/);
   });
 
-  // R5: internal delete failure -> 500 (via route catch, not TeardownResult)
-  it("returns 500 for internal delete failure (not 409)", async () => {
+  // R5：内部删除失败 -> 500（经路由 catch，而非 TeardownResult）
+  it("内部删除失败时返回 500（不是 409）", async () => {
     const tmux = mockTmuxAdapter();
     const db = createFullTestDb();
     const { app, rigRepo, sessionRegistry } = createTestApp(db, { tmux });
@@ -81,9 +81,9 @@ describe("POST /api/down route", () => {
     const session = sessionRegistry.registerSession(node.id, "r01-dev1");
     sessionRegistry.updateStatus(session.id, "running");
 
-    // Kill succeeds but deleteRig throws (internal failure during atomicDelete)
+    // 终止成功，但 deleteRig 抛错（atomicDelete 期间的内部失败）
     const origDelete = rigRepo.deleteRig.bind(rigRepo);
-    rigRepo.deleteRig = () => { throw new Error("disk full"); };
+    rigRepo.deleteRig = () => { throw new Error("磁盘已满"); };
 
     const res = await app.request("/api/down", {
       method: "POST",
@@ -92,16 +92,16 @@ describe("POST /api/down route", () => {
     });
     expect(res.status).toBe(500);
     const body = await res.json();
-    // Route returns TeardownResult when orchestrator catches internally
-    // but this path propagates via the non-alreadyStopped branch's try-catch
+    // 编排器在内部捕获时，路由返回 TeardownResult；但此路径经非 alreadyStopped
+    // 分支的 try-catch 传播
     expect(body.deleted).toBe(false);
     expect(body.deleteBlocked).toBe(false);
 
     rigRepo.deleteRig = origDelete;
   });
 
-  // R6: --delete + snapshot failure + successful delete -> 200
-  it("returns 200 when delete succeeds despite snapshot warnings", async () => {
+  // R6：--delete + 快照失败 + 删除成功 -> 200
+  it("尽管有快照警告，删除成功时仍返回 200", async () => {
     const tmux = mockTmuxAdapter();
     const db = createFullTestDb();
     const { app, rigRepo, sessionRegistry, snapshotCapture } = createTestApp(db, { tmux });
@@ -111,16 +111,16 @@ describe("POST /api/down route", () => {
     const session = sessionRegistry.registerSession(node.id, "r01-dev1");
     sessionRegistry.updateStatus(session.id, "running");
 
-    // Sabotage snapshot to produce an error
+    // 破坏快照流程以产生错误
     const origCapture = snapshotCapture.captureSnapshot.bind(snapshotCapture);
-    snapshotCapture.captureSnapshot = () => { throw new Error("snapshot disk full"); };
+    snapshotCapture.captureSnapshot = () => { throw new Error("快照磁盘已满"); };
 
     const res = await app.request("/api/down", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rigId: rig.id, delete: true, snapshot: true }),
     });
-    // Snapshot failure → errors[], but delete still succeeds → 200
+    // 快照失败 → errors[]，但删除仍成功 → 200
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.deleted).toBe(true);
@@ -129,8 +129,8 @@ describe("POST /api/down route", () => {
     snapshotCapture.captureSnapshot = origCapture;
   });
 
-  // NS-T06: auto-snapshot on down
-  it("auto-snapshots before teardown (auto-pre-down)", async () => {
+  // NS-T06：down 时自动创建快照
+  it("拆除前自动创建快照（auto-pre-down）", async () => {
     const db = createFullTestDb();
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const rig = rigRepo.createRig("auto-snap-rig");
@@ -145,16 +145,16 @@ describe("POST /api/down route", () => {
     });
     expect(res.status).toBe(200);
     const body = await res.json();
-    // Auto-snapshot should have been created
+    // 应已创建自动快照
     expect(body.snapshotId).toBeTruthy();
-    // Verify snapshot kind
+    // 验证快照类型
     const snap = db.prepare("SELECT kind FROM snapshots WHERE id = ?").get(body.snapshotId) as { kind: string } | undefined;
     expect(snap?.kind).toBe("auto-pre-down");
     db.close();
   });
 
-  // NS-T06: down response includes rig name for handoff
-  it("response includes rigName for post-command handoff", async () => {
+  // NS-T06：down 响应包含用于命令后交接的装备名称
+  it("响应包含用于命令后交接的 rigName", async () => {
     const db = createFullTestDb();
     const { app, rigRepo, sessionRegistry } = createTestApp(db);
     const rig = rigRepo.createRig("handoff-test");

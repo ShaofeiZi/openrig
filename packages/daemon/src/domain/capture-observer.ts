@@ -1,37 +1,33 @@
 import { createHash } from "node:crypto";
 
 /**
- * Read-only capture observer (0.6.0 S01/S02 P2).
+ * 只读捕获观察器（0.6.0 S01/S02 P2）。
  *
- * Records what the send/verify, probe and guard-retention paths ALREADY saw, so a
- * later offline or asynchronous consumer can classify it. It never decides
- * anything: it grants no paste/Enter/replay authority, takes no new capture and
- * never changes the caller's result.
+ * 记录发送/验证、探测和 guard 保留路径已经看到的内容，供后续离线或异步消费者
+ * 分类。它从不作出决策：不授予粘贴、Enter 或重放权限，不进行新捕获，也绝不
+ * 改变调用方结果。
  *
- * `record()` is the only call made on the hot path. It is synchronous, does no
- * I/O, never awaits and never throws: an internal failure is counted, not raised.
- * The queue is bounded; when full, the NEW observation is dropped and counted so
- * denominators stay honest. `drain()` hands bounded batches to an injected
- * consumer; it never replays a batch and never blocks `record()`.
+ * `record()` 是热路径上的唯一调用。它同步执行，不做 I/O、不等待且永不抛出：
+ * 内部失败只计数，不向上抛。队列有界；满载时丢弃并统计新观察，确保分母真实。
+ * `drain()` 把有界批次交给注入的消费者；绝不重放批次，也绝不阻塞 `record()`。
  */
 
 export type ObserverSeam = "send_verify" | "probe_activity" | "retained_no_write";
 
 /**
- * What a capture slot held. `unavailable` never claims a cause it cannot know.
- * captureSeq orders observed capture invocations in one transport process;
- * capturedAt timestamps their return/error. Neither is observation enqueue order
- * or a provider clock. Join persisted evidence by attemptId and pre/post slot.
+ * 捕获槽中保存的内容。`unavailable` 不会臆测无法得知的原因。captureSeq 对单个
+ * 传输进程中观测到的捕获调用排序；capturedAt 记录返回或出错时间。二者都不是
+ * 观察入队顺序或提供方时钟。持久化证据应按 attemptId 和 pre/post 槽关联。
  */
 export type CaptureSlot =
   | { state: "captured"; content: string; capturedAt: string; captureSeq: number }
-  /** The adapter returned null, which at this base means empty OR failed. */
+  /** 适配器返回 null；在此基础层只能确定其为空或失败。 */
   | { state: "unavailable"; cause: "empty_or_failed"; capturedAt: string; captureSeq: number }
-  /** The capture call threw: the failure itself is known. */
+  /** 捕获调用抛出异常：已知发生了失败。 */
   | { state: "unavailable"; cause: "capture_error"; capturedAt: string; captureSeq: number }
-  /** This attempt did not ask for this capture (e.g. send without verify). */
+  /** 本次尝试未请求此捕获（例如仅发送而不验证）。 */
   | { state: "not_requested" }
-  /** Requested, but the attempt ended before reaching it (e.g. paste failed). */
+  /** 已请求，但尝试在执行到此处前结束（例如粘贴失败）。 */
   | { state: "not_reached" };
 
 export interface ObservedBinding {
@@ -43,25 +39,25 @@ export interface ObservedBinding {
 
 export interface ObservationInput {
   seam: ObserverSeam;
-  /** One id per transport attempt; the same attempt's observations share it. */
+  /** 每次传输尝试一个 ID；同一次尝试的观察共享该 ID。 */
   attemptId: string;
   binding: ObservedBinding;
   runtime: string | null;
-  /** Hash of the sent text, never the text itself; null when nothing was sent. */
+  /** 已发送文本的哈希，绝不保存文本本身；未发送内容时为 null。 */
   sentHash: string | null;
   pre: CaptureSlot;
   post: CaptureSlot;
   /**
-   * The existing regex/transport verdict: only fields the caller actually
-   * produced are copied; an absent optional field stays absent, never a verdict.
+   * 既有的正则/传输判定：只复制调用方实际产生的字段；缺失的可选字段保持缺失，
+   * 绝不凭空构造判定。
    */
   regexResult: Record<string, unknown>;
-  /** When the attempt completed (distinct from each capture's capturedAt). */
+  /** 尝试完成时间（不同于每次捕获各自的 capturedAt）。 */
   completedAt: string;
 }
 
 export interface Observation extends Readonly<ObservationInput> {
-  /** Monotonic order of acceptance into this observer. */
+  /** 观察器接受记录的单调递增顺序。 */
   readonly seq: number;
 }
 
@@ -94,7 +90,7 @@ export function hashSentText(text: string): string {
   return `sha256:${createHash("sha256").update(text).digest("hex")}`;
 }
 
-/** Deep-freeze plain data so a queued observation cannot be mutated later. */
+/** 深度冻结普通数据，防止已入队的观察随后被修改。 */
 function freeze<T>(value: T): T {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {
     Object.freeze(value);
@@ -125,7 +121,7 @@ export class CaptureObserver {
     this.maxObservationBytes = positiveInteger(opts?.maxObservationBytes, 256 * 1024);
   }
 
-  /** Hot-path entry. Synchronous, no I/O, never throws. */
+  /** 热路径入口。同步、无 I/O、永不抛出异常。 */
   record(input: ObservationInput): void {
     if (!this.accepting) return;
     try {
@@ -154,9 +150,9 @@ export class CaptureObserver {
   }
 
   /**
-   * Hand up to `maxItems` queued observations to `consumer`, in order. Removed
-   * before the call: a failing consumer loses that batch (counted), it is never
-   * replayed. Concurrent drains are refused (returns 0) rather than awaited.
+   * 按顺序把最多 `maxItems` 条已入队观察交给 `consumer`。调用前即从队列移除：
+   * 消费者失败时该批次会丢失（并计数），绝不重放。并发 drain 会被拒绝并返回 0，
+   * 而不是等待。
    */
   async drain(consumer: ObservationConsumer, maxItems = DEFAULT_DRAIN_BATCH): Promise<number> {
     if (this.draining) return 0;
@@ -182,11 +178,11 @@ export class CaptureObserver {
     return { ...this.counters, queued: this.queue.length, queuedBytes: this.queuedBytes, drainingBytes: this.drainingBytes };
   }
 
-  /** Stop new observations; an already queued batch remains available to drain. */
+  /** 停止接收新观察；已入队批次仍可 drain。 */
   stopRecording(): void { this.accepting = false; }
 }
 
-/** The narrow interface the transport depends on (any sink with a safe record()). */
+/** 传输层依赖的窄接口（任何提供安全 record() 的接收端均可）。 */
 export interface CaptureObserverSink {
   record(input: ObservationInput): void;
 }

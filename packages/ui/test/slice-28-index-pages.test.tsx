@@ -1,16 +1,15 @@
-// Slice 28 Checkpoint C — Index page rolled-up-rows regression (HG-9 + HG-10).
+// Slice 28 Checkpoint C——Index 页 rolled-up-rows 回归（HG-9 + HG-10）。
 //
-// Pre-slice-28 the index pages grouped entries by source via
-// LibraryTopLevelEntry (workspace / openrig-managed buckets for skills;
-// vendored / claude-cache / codex-cache for plugins). Founder-walk
-// feedback: rolled-up flat rows surface ALL entries at a glance + per-row
-// metadata (source / file-count for skills; version / runtimes / source
-// for plugins) + click → detail.
+// slice 28 前，index 页经 LibraryTopLevelEntry 按 source 分组条目
+//（skills 为 workspace / openrig-managed 桶；plugins 为
+// vendored / claude-cache / codex-cache）。Founder-walk 反馈：rolled-up
+// 扁平行一目了然显示全部条目 + per-row 元数据（skills 为 source / file-count；
+// plugins 为 version / runtimes / source）+ 点击 -> detail。
 //
-// Discriminators: rolled-up testids exist (`skills-index-row-<id>`,
-// `plugins-index-row-<id>`); legacy LibraryTopLevelEntry testids
-// (`library-top-level-skills`, `library-folder-<source>`,
-// `library-item-<id>`) are ABSENT in DOM.
+// 判别：rolled-up testid 存在（`skills-index-row-<id>`、
+// `plugins-index-row-<id>`）；legacy LibraryTopLevelEntry testid
+//（`library-top-level-skills`、`library-folder-<source>`、
+// `library-item-<id>`）在 DOM 中缺席。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
@@ -66,7 +65,7 @@ function renderPluginsIndex() {
 }
 
 describe("SkillsIndexPage — slice 28 HG-9 (rolled-up flat rows)", () => {
-  // C-4: mocks the new /api/skills/library endpoint (daemon-owned discovery).
+  // C-4：mock 新 /api/skills/library 端点（daemon 拥有的发现）。
   function mockSkillsFetch(skillNames: string[]) {
     mockFetch.mockImplementation(async (url: string) => {
       if (url === "/api/skills/library") {
@@ -114,8 +113,8 @@ describe("SkillsIndexPage — slice 28 HG-9 (rolled-up flat rows)", () => {
     await waitFor(() => {
       expect(screen.getByTestId(`skills-index-row-${id}-source`)).toBeTruthy();
     });
-    expect(screen.getByTestId(`skills-index-row-${id}-source`).textContent).toContain("OpenRig managed");
-    expect(screen.getByTestId(`skills-index-row-${id}-filecount`).textContent).toMatch(/1 file/);
+    expect(screen.getByTestId(`skills-index-row-${id}-source`).textContent).toContain("zrig 托管");
+    expect(screen.getByTestId(`skills-index-row-${id}-filecount`).textContent).toMatch(/1 个文件/);
   });
 
   it("DISCRIMINATOR: legacy LibraryTopLevelEntry testids ABSENT in DOM", async () => {
@@ -207,7 +206,7 @@ describe("PluginsIndexPage — slice 28 HG-10 (rolled-up flat rows)", () => {
     const runtimesEl = screen.getByTestId("plugins-index-row-openrig-core-runtimes");
     expect(runtimesEl.textContent).toContain("claude");
     expect(runtimesEl.textContent).toContain("codex");
-    expect(screen.getByTestId("plugins-index-row-openrig-core-skillcount").textContent).toBe("5 skills");
+    expect(screen.getByTestId("plugins-index-row-openrig-core-skillcount").textContent).toBe("5 个技能");
     expect(screen.getByTestId("plugins-index-row-openrig-core-source").textContent).toContain("vendored");
   });
 
@@ -220,8 +219,8 @@ describe("PluginsIndexPage — slice 28 HG-10 (rolled-up flat rows)", () => {
     await waitFor(() => {
       expect(screen.getByTestId("plugins-index-row-single-skillcount")).toBeTruthy();
     });
-    expect(screen.getByTestId("plugins-index-row-single-skillcount").textContent).toBe("1 skill");
-    expect(screen.getByTestId("plugins-index-row-zero-skillcount").textContent).toBe("0 skills");
+    expect(screen.getByTestId("plugins-index-row-single-skillcount").textContent).toBe("1 个技能");
+    expect(screen.getByTestId("plugins-index-row-zero-skillcount").textContent).toBe("0 个技能");
   });
 
   it("DISCRIMINATOR: legacy LibraryTopLevelEntry testids ABSENT in DOM", async () => {
@@ -251,7 +250,7 @@ describe("PluginsIndexPage — slice 28 HG-10 (rolled-up flat rows)", () => {
     ]);
     renderPluginsIndex();
     await waitFor(() => {
-      expect(screen.getByTestId("plugins-index-count").textContent).toBe("3 plugins");
+      expect(screen.getByTestId("plugins-index-count").textContent).toBe("3 个插件");
     });
   });
 });

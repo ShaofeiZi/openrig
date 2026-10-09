@@ -120,7 +120,7 @@ edges: []
 describe("SpecReviewService", () => {
   const svc = new SpecReviewService();
 
-  it("reviewRigSpec pod-aware returns structured pods/members/edges + graph", () => {
+  it("reviewRigSpec pod-aware 返回结构化 pods/members/edges 和 graph", () => {
     const result = svc.reviewRigSpec(POD_AWARE_YAML, "draft");
 
     expect(result.kind).toBe("rig");
@@ -137,16 +137,16 @@ describe("SpecReviewService", () => {
     expect(result.edges).toHaveLength(1);
     expect(result.edges[0]!.from).toBe("orch.lead");
 
-    // Graph
+    // Graph。
     expect(result.graph.nodes).toHaveLength(3);
     expect(result.graph.edges.length).toBeGreaterThan(0);
-    // Graph nodes should have pod grouping
+    // Graph node 应带 pod 分组。
     const implNode = result.graph.nodes.find((n) => n.id === "dev.impl");
     expect(implNode).toBeDefined();
     expect(implNode!.pod).toBe("dev");
   });
 
-  it("reviewRigSpec legacy returns structured nodes/edges + graph", () => {
+  it("reviewRigSpec 旧版返回结构化 nodes/edges 和 graph", () => {
     const result = svc.reviewRigSpec(LEGACY_YAML, "file_preview");
 
     expect(result.kind).toBe("rig");
@@ -162,11 +162,11 @@ describe("SpecReviewService", () => {
     expect(result.graph.edges).toHaveLength(1);
   });
 
-  it("reviewRigSpec invalid YAML throws with validation errors", () => {
+  it("reviewRigSpec 遇到无效 YAML 时抛出校验错误", () => {
     expect(() => svc.reviewRigSpec("name: test\n", "draft")).toThrow();
   });
 
-  it("reviewAgentSpec returns profiles, resources, startup", () => {
+  it("reviewAgentSpec 返回 profiles、resources 和 startup", () => {
     const result = svc.reviewAgentSpec(AGENT_YAML, "draft");
 
     expect(result.kind).toBe("agent");
@@ -184,11 +184,11 @@ describe("SpecReviewService", () => {
     expect(result.startup.actions).toHaveLength(1);
   });
 
-  it("reviewAgentSpec invalid YAML throws with validation errors", () => {
+  it("reviewAgentSpec 遇到无效 YAML 时抛出校验错误", () => {
     expect(() => svc.reviewAgentSpec("foo: bar\n", "draft")).toThrow();
   });
 
-  it("reviewRigSpec returns structured services for service-backed rigs", () => {
+  it("reviewRigSpec 为 service-backed rig 返回结构化 services", () => {
     const result = svc.reviewRigSpec(SERVICE_RIG_YAML, "library_item");
 
     expect(result.format).toBe("pod_aware");
@@ -214,7 +214,7 @@ describe("SpecReviewService", () => {
     expect(commands[0]!["name"]).toBe("Status");
   });
 
-  it("reviewRigSpec preserves tcp and service+condition wait targets from real contract", () => {
+  it("reviewRigSpec 保留真实契约中的 tcp 和 service+condition wait target", () => {
     const yaml = `
 version: "0.2"
 name: multi-wait-rig
@@ -246,19 +246,19 @@ edges: []
     const waitFor = services["waitFor"] as Array<Record<string, unknown>>;
     expect(waitFor).toHaveLength(3);
 
-    // url target
+    // URL target。
     expect(waitFor[0]!["url"]).toBe("http://127.0.0.1:8080/health");
 
-    // tcp target — must be a string, not { host, port }
+    // TCP target——必须是字符串，而不是 { host, port }。
     expect(waitFor[1]!["tcp"]).toBe("127.0.0.1:5432");
     expect(typeof waitFor[1]!["tcp"]).toBe("string");
 
-    // service + condition target
+    // service + condition target。
     expect(waitFor[2]!["service"]).toBe("db");
     expect(waitFor[2]!["condition"]).toBe("healthy");
   });
 
-  it("reviewRigSpec returns no services for non-service rigs", () => {
+  it("reviewRigSpec 对非 service rig 不返回 services", () => {
     const result = svc.reviewRigSpec(POD_AWARE_YAML, "draft");
     const services = (result as Record<string, unknown>)["services"];
     expect(services).toBeUndefined();

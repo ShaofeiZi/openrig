@@ -1,21 +1,18 @@
-// Slice 28 Checkpoint C — Detail pages docs-browser (real file tree).
+// Slice 28 Checkpoint C——Detail 页 docs-browser（真实文件树）。
 //
-// Checkpoint C-1 added daemon endpoints
+// Checkpoint C-1 新增 daemon 端点
 //   GET /api/plugins/:id/files/list?path=<rel>
 //   GET /api/plugins/:id/files/read?path=<rel>
-// + PluginEntry.skillCount enrichment. SC-29 EXCEPTION #11.
+// + PluginEntry.skillCount enrichment。SC-29 EXCEPTION #11。
 //
-// Checkpoint C-2 (this file) rewires the UI:
-//   SkillDetailPage: in-page file tree using existing /api/files/list +
-//     /read, rooted at skill.directoryPath under the discovered allowlist
-//     root. SKILL.md auto-selected; subfolder navigation supported via
-//     currentPath + entry-click.
-//   PluginDetailPage: in-page file tree using new usePluginFiles hook
-//     (wrapping the new daemon endpoints). README.md auto-selected at
-//     plugin root; subfolder navigation supported.
-// Both pages preserve the header strip with structured metadata (manifest
-// version + runtimes + source + skill-count + used-by-count for plugins;
-// source + name for skills).
+// Checkpoint C-2（本文件）重接 UI：
+//   SkillDetailPage：使用既有 /api/files/list + /read 的页内文件树，根在
+//     discovered allowlist root 下的 skill.directoryPath。SKILL.md 自动选中；
+//     经 currentPath + entry-click 支持子文件夹导航。
+//   PluginDetailPage：使用新 usePluginFiles hook（包装新 daemon 端点）的页内文件树。
+//     README.md 在 plugin root 自动选中；支持子文件夹导航。
+// 两页都保留带结构化元数据的 header strip（plugins：manifest version +
+// runtimes + source + skill-count + used-by-count；skills：source + name）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -68,8 +65,8 @@ function renderPluginDetail(pluginId: string) {
 }
 
 describe("SkillDetailPage — slice 28 HG-7 + HG-8 docs-browser (daemon skill-library API)", () => {
-  // C-4: mocks /api/skills/library + /api/skills/:id/files/{list,read}
-  // (daemon-owned skill discovery; SC-29 #11 cumulative).
+  // C-4：mock /api/skills/library + /api/skills/:id/files/{list,read}
+  //（daemon-owned skill discovery；SC-29 #11 累积）。
   function mockOneSkill(opts: {
     rootFiles?: Array<{ name: string; type: "file" | "dir" }>;
     subFolders?: Record<string, Array<{ name: string; type: "file" | "dir" }>>;
@@ -163,9 +160,8 @@ describe("SkillDetailPage — slice 28 HG-7 + HG-8 docs-browser (daemon skill-li
     await waitFor(() => {
       expect(screen.getByTestId("skill-detail-tree-entry-SKILL.md")).toBeTruthy();
     });
-    // HG-7 DISCRIMINATOR: non-markdown files appear in the tree (pre-C2
-    // useLibrarySkills filtered to .md/.mdx only; the new in-page tree
-    // uses /api/files/list which returns ALL entries).
+    // HG-7 判别器：非 markdown 文件出现在树中（pre-C2 useLibrarySkills 仅过滤
+    // .md/.mdx；新页内树用返回 ALL 条目的 /api/files/list）。
     expect(screen.getByTestId("skill-detail-tree-entry-config.json")).toBeTruthy();
     expect(screen.getByTestId("skill-detail-tree-entry-fixture.yaml")).toBeTruthy();
     expect(screen.getByTestId("skill-detail-tree-entry-examples")).toBeTruthy();
@@ -211,7 +207,7 @@ describe("SkillDetailPage — slice 28 HG-7 + HG-8 docs-browser (daemon skill-li
       expect(screen.getByTestId("skill-detail-tree-entry-examples/basic.md")).toBeTruthy();
     });
     expect(screen.getByTestId("skill-detail-tree-entry-examples/advanced.md")).toBeTruthy();
-    // 'up' (..) entry visible when not at the skill root.
+    // 不在 skill root 时 'up' (..) 条目可见。
     expect(screen.getByTestId("skill-detail-tree-up")).toBeTruthy();
   });
 
@@ -375,15 +371,15 @@ describe("PluginDetailPage — slice 28 HG-6 + HG-8 docs-browser (real file tree
     });
     renderPluginDetail("openrig-core");
     await waitFor(() => {
-      // Heading + breadcrumbs both contain plugin name; pin to the h1 via role.
+      // Heading + breadcrumbs 都含 plugin 名称；经 role 锁定到 h1。
       expect(screen.getByRole("heading", { name: "openrig-core" })).toBeTruthy();
     });
     expect(screen.getByText("v0.1.0")).toBeTruthy();
     expect(screen.getByTestId("plugin-detail-runtime-claude")).toBeTruthy();
     expect(screen.getByTestId("plugin-detail-runtime-codex")).toBeTruthy();
     expect(screen.getByText("vendored:openrig-core")).toBeTruthy();
-    expect(screen.getByTestId("plugin-detail-skill-count").textContent).toBe("5 skills");
-    expect(screen.getByTestId("plugin-detail-used-by-count").textContent).toBe("used by 2 agents");
+    expect(screen.getByTestId("plugin-detail-skill-count").textContent).toBe("5 个技能");
+    expect(screen.getByTestId("plugin-detail-used-by-count").textContent).toBe("被 2 个智能体使用");
   });
 
   it("HG-6 tree lists plugin root entries from daemon /files/list endpoint", async () => {
@@ -494,8 +490,7 @@ describe("PluginDetailPage — slice 28 HG-6 + HG-8 docs-browser (real file tree
     await waitFor(() => {
       expect(screen.getByTestId("plugin-detail-tree")).toBeTruthy();
     });
-    // The virtual-tree shape from the pre-C2 (HG-6 SHELL) approach used
-    // these testids; the real-file-tree replaces them.
+    // pre-C2（HG-6 SHELL）方法的虚拟树形状用过这些 testid；真实文件树替换它们。
     expect(screen.queryByTestId("plugin-detail-tree-manifest")).toBeNull();
     expect(screen.queryByTestId("plugin-detail-tree-skills-root")).toBeNull();
     expect(screen.queryByTestId("plugin-detail-tree-hooks-root")).toBeNull();

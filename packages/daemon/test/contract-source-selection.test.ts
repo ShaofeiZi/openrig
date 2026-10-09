@@ -1,75 +1,72 @@
-// KI-5.3-2 follow-up (row e69daaef; r1 A3 CONFIRMED in verdict 17dbf8ba) — the
-// proof-contract SOURCE-SELECTION one-home and the readers'-agreement
-// discriminators. The confirmed split: proof-add derived from SPEC while
-// compose's DELIVERED pairing had no SPEC path at the FUNCTION level. (Wiring
-// truth found during the fix, stated for the record: compose/audit callers
-// pass the resolved NODE FILE — SPEC-first precedence — so on the observed
-// shape their BYTES already agreed; the residual function-level divergence and
-// the source-label honesty are what this closes, plus proof-add's missing
-// README-node-file corner.)
+// KI-5.3-2 后续（行 e69daaef；裁决 17dbf8ba 中确认 r1 A3）——证明契约的单一
+// 来源选择位置及读取方一致性判别器。已确认的分裂：proof-add 从 SPEC 派生，而
+// compose 的 DELIVERED 配对在函数层没有 SPEC 路径。（修复期间发现的接线事实在此记录：
+// compose/audit 调用方传入按 SPEC 优先级解析的节点文件，因此在观察到的形态上，其
+// 字节本已保持一致；本修复关闭的是残余的函数层分歧与来源标签真实性，并覆盖
+// proof-add 缺少 README 节点文件的边界情况。）
 
 import { describe, it, expect } from "vitest";
 import { selectProofContractBody } from "../src/domain/scope/scaffold-placeholder.js";
 import { extractProofContractSelected } from "../src/domain/review/compose.js";
 
-const PRISTINE_BODY = "- [ ] [One promised deliverable, written as an observable outcome — captured.]";
-const SPEC_BODY = "- [ ] ALPHA DOOR: alpha proves itself\n- [ ] BETA DOOR: beta proves itself\n- [ ] GAMMA DOOR: gamma proves itself";
-const AUTHORED_PRD_BODY = "- [ ] REAL ITEM ONE\n- [ ] REAL ITEM TWO";
+const PRISTINE_BODY = "- [ ] [一个承诺的交付物，以可观察结果描述——已捕获。]";
+const SPEC_BODY = "- [ ] ALPHA 门：alpha 自证\n- [ ] BETA 门：beta 自证\n- [ ] GAMMA 门：gamma 自证";
+const AUTHORED_PRD_BODY = "- [ ] 真实事项一\n- [ ] 真实事项二";
 
 const doc = (body: string) => `---\nid: x\n---\n# s\n\n## Proof contract\n\n${body}\n`;
 
-describe("selectProofContractBody — the ONE selection home (scaffold-placeholder twins)", () => {
-  it("the observed split-brain shape: pristine PRD + authored SPEC + no README selects the SPEC", () => {
+describe("selectProofContractBody——唯一选择位置（scaffold-placeholder 双生实现）", () => {
+  it("观察到的分裂形态：原始 PRD + 已编写 SPEC + 无 README 时选择 SPEC", () => {
     const sel = selectProofContractBody({ prdBody: PRISTINE_BODY, specBody: SPEC_BODY, readmeBody: null });
     expect(sel.source).toBe("spec");
     expect(sel.body).toBe(SPEC_BODY);
   });
 
-  it("SPEC is canonical even when a legacy authored PRD remains beside it", () => {
-    const sel = selectProofContractBody({ prdBody: AUTHORED_PRD_BODY, specBody: SPEC_BODY, readmeBody: "- [ ] readme item" });
+  it("即使旁边仍有旧版已编写 PRD，SPEC 仍是标准来源", () => {
+    const sel = selectProofContractBody({ prdBody: AUTHORED_PRD_BODY, specBody: SPEC_BODY, readmeBody: "- [ ] README 事项" });
     expect(sel.source).toBe("spec");
     expect(sel.body).toBe(SPEC_BODY);
   });
 
-  it("an authored PRD remains a readable legacy fallback when SPEC is absent", () => {
-    const sel = selectProofContractBody({ prdBody: AUTHORED_PRD_BODY, specBody: null, readmeBody: "- [ ] readme item" });
+  it("SPEC 缺失时，已编写 PRD 仍是可读的旧版回退来源", () => {
+    const sel = selectProofContractBody({ prdBody: AUTHORED_PRD_BODY, specBody: null, readmeBody: "- [ ] README 事项" });
     expect(sel.source).toBe("prd");
   });
 
-  it("pristine PRD + no SPEC + authored README keeps the shipped node-file fallback (README slot)", () => {
-    const sel = selectProofContractBody({ prdBody: PRISTINE_BODY, specBody: null, readmeBody: "- [ ] readme item" });
+  it("原始 PRD + 无 SPEC + 已编写 README 时保留发行版节点文件回退（README 槽位）", () => {
+    const sel = selectProofContractBody({ prdBody: PRISTINE_BODY, specBody: null, readmeBody: "- [ ] README 事项" });
     expect(sel.source).toBe("readme");
   });
 
-  it("everything pristine or absent: source null — never the placeholder", () => {
+  it("所有内容均为原始状态或缺失：来源为 null——绝不选择占位符", () => {
     const sel = selectProofContractBody({ prdBody: PRISTINE_BODY, specBody: null, readmeBody: null });
     expect(sel.source).toBeNull();
     expect(sel.body).toBeNull();
   });
 
-  it("SPEC-before-README precedence mirrors NODE_FILE_PRECEDENCE when both are authored", () => {
-    const sel = selectProofContractBody({ prdBody: null, specBody: SPEC_BODY, readmeBody: "- [ ] readme item" });
+  it("两者均已编写时，SPEC 优先于 README 的顺序与 NODE_FILE_PRECEDENCE 一致", () => {
+    const sel = selectProofContractBody({ prdBody: null, specBody: SPEC_BODY, readmeBody: "- [ ] README 事项" });
     expect(sel.source).toBe("spec");
   });
 });
 
-describe("the readers AGREE — the split-brain discriminator", () => {
-  it("compose's DELIVERED pairing selects the same source AND the same indices as the one home on the observed shape", () => {
+describe("读取方保持一致——分裂判别器", () => {
+  it("在观察到的形态上，compose 的 DELIVERED 配对选择与单一位置相同的来源及索引", () => {
     const composed = extractProofContractSelected(doc(PRISTINE_BODY), null, doc(SPEC_BODY));
     expect(composed.source).toBe("spec");
     expect(composed.items.map((i) => i.text)).toEqual([
-      "ALPHA DOOR: alpha proves itself",
-      "BETA DOOR: beta proves itself",
-      "GAMMA DOOR: gamma proves itself",
+      "ALPHA 门：alpha 自证",
+      "BETA 门：beta 自证",
+      "GAMMA 门：gamma 自证",
     ]);
   });
 
-  it("compose's legacy 2-arg call (node file in the readme slot) yields the SAME indices — wiring-compatible", () => {
+  it("compose 的旧版双参数调用（节点文件位于 README 槽位）产生相同索引——接线兼容", () => {
     const composed = extractProofContractSelected(doc(PRISTINE_BODY), doc(SPEC_BODY));
     expect(composed.items.map((i) => i.text)).toEqual([
-      "ALPHA DOOR: alpha proves itself",
-      "BETA DOOR: beta proves itself",
-      "GAMMA DOOR: gamma proves itself",
+      "ALPHA 门：alpha 自证",
+      "BETA 门：beta 自证",
+      "GAMMA 门：gamma 自证",
     ]);
   });
 });

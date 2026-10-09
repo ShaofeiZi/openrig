@@ -33,16 +33,14 @@ const FIXTURES = join(DAEMON_ROOT, "test", "fixtures", "scenarios");
 
 const argv = process.argv.slice(2);
 
-// B12-S safety refusal (ruled). This runner takes scenario YAML paths ONLY. Before this
-// guard, a dash-prefixed arg was resolve()'d into a bogus path that threw mid-loop and was
-// counted as one failed "scenario" WHILE the remaining files still ran in host-mode — so
-// `run-scenarios.mjs --container x.yaml` printed one [ERROR] plus a partial-success summary
-// that a reader could mistake for container mode having run. Refuse BEFORE anything executes
-// so an unknown flag runs ZERO scenarios (no PASS/FAIL lines, no partial summary). A flagless
-// invocation is byte-identical to before.
+// B12-S 安全拒绝（已裁定）。此 runner 只接受场景 YAML 路径。加入此守卫前，以短横线开头的
+// 参数会被 resolve() 为无效路径，在循环中途抛错并计为一个失败“场景”，同时其余文件仍以
+// 主机模式运行；因此 `run-scenarios.mjs --container x.yaml` 会打印一条 [ERROR] 和部分成功摘要，
+// 容易让读者误以为容器模式已运行。现在在执行任何内容前拒绝未知标志，使其运行零个场景
+//（无 PASS/FAIL 行，也无部分摘要）。不带标志的调用保持逐字节一致。
 const flagArg = argv.find((a) => a.startsWith("-"));
 if (flagArg) {
-  console.error(`[REFUSED] unknown flag '${flagArg}' — this runner takes scenario YAML paths only; container mode is not a flag (see slice 15).`);
+  console.error(`[已拒绝] 未知标志 '${flagArg}'——此 runner 只接受场景 YAML 路径；容器模式不是标志（见 slice 15）。`);
   process.exit(2);
 }
 
@@ -64,8 +62,8 @@ for (const file of files) {
     if (result.verdict !== "PASS") failures++;
   } catch (err) {
     failures++;
-    console.log(`[ERROR] ${file}\n  ${(err && err.message) || err}`);
+    console.log(`[错误] ${file}\n  ${(err && err.message) || err}`);
   }
 }
-console.log(`\n${files.length - failures}/${files.length} scenarios passed`);
+console.log(`\n${files.length - failures}/${files.length} 个场景通过`);
 process.exit(failures > 0 ? 1 : 0);

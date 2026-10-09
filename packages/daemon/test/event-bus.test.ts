@@ -30,7 +30,7 @@ describe("EventBus", () => {
     db.close();
   });
 
-  it("emit persists event to DB with monotonic seq", () => {
+  it("emit 将事件以单调 seq 持久化到数据库", () => {
     const e1 = bus.emit({ type: "rig.created", rigId: "rig-1" });
     const e2 = bus.emit({ type: "node.added", rigId: "rig-1", nodeId: "n1", logicalId: "worker" });
 
@@ -38,14 +38,14 @@ describe("EventBus", () => {
     expect(typeof e2.seq).toBe("number");
     expect(e2.seq).toBeGreaterThan(e1.seq);
 
-    // Verify actually in DB
+    // 验证确实在 DB 中
     const rows = db.prepare("SELECT seq FROM events ORDER BY seq").all() as { seq: number }[];
     expect(rows).toHaveLength(2);
     expect(rows[0]!.seq).toBe(e1.seq);
     expect(rows[1]!.seq).toBe(e2.seq);
   });
 
-  it("emit returns PersistedEvent with seq and createdAt", () => {
+  it("emit 返回带 seq 和 createdAt 的 PersistedEvent", () => {
     const persisted = bus.emit({ type: "rig.created", rigId: "rig-1" });
 
     expect(persisted.seq).toBeDefined();
@@ -54,7 +54,7 @@ describe("EventBus", () => {
     expect(persisted.rigId).toBe("rig-1");
   });
 
-  it("subscribe receives PersistedEvent with seq", () => {
+  it("subscribe 收到带 seq 的 PersistedEvent", () => {
     const received: PersistedEvent[] = [];
     bus.subscribe((event) => received.push(event));
 
@@ -66,7 +66,7 @@ describe("EventBus", () => {
     expect(received[0]!.createdAt).toBeDefined();
   });
 
-  it("multiple subscribers all receive the same event", () => {
+  it("多个订阅者都收到同一事件", () => {
     const received1: PersistedEvent[] = [];
     const received2: PersistedEvent[] = [];
     bus.subscribe((event) => received1.push(event));
@@ -79,7 +79,7 @@ describe("EventBus", () => {
     expect(received1[0]!.seq).toBe(received2[0]!.seq);
   });
 
-  it("unsubscribe stops delivery", () => {
+  it("unsubscribe 停止交付", () => {
     const received: PersistedEvent[] = [];
     const unsubscribe = bus.subscribe((event) => received.push(event));
 
@@ -91,7 +91,7 @@ describe("EventBus", () => {
     expect(received).toHaveLength(1); // no new events
   });
 
-  it("subscriber error does not break emitter or other subscribers", () => {
+  it("订阅者错误不会破坏发送方或其他订阅者", () => {
     const received: PersistedEvent[] = [];
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -100,18 +100,18 @@ describe("EventBus", () => {
     });
     bus.subscribe((event) => received.push(event));
 
-    // Should not throw despite first subscriber erroring
+    // 即使第一个订阅者出错，也不应抛出异常。
     expect(() =>
       bus.emit({ type: "rig.created", rigId: "rig-1" })
     ).not.toThrow();
 
-    // Second subscriber still received the event
+    // 第二个订阅者仍收到事件。
     expect(received).toHaveLength(1);
 
     consoleError.mockRestore();
   });
 
-  it("typed event discrimination works", () => {
+  it("类型化事件判别正常工作", () => {
     const received: PersistedEvent[] = [];
     bus.subscribe((event) => received.push(event));
 
@@ -126,11 +126,11 @@ describe("EventBus", () => {
     }
   });
 
-  it("emit persists before notify — subscriber can query DB during callback", () => {
+  it("emit 在通知前持久化，使订阅者可在回调期间查询数据库", () => {
     let seqFoundInDb = false;
 
     bus.subscribe((event) => {
-      // During the callback, the event should already be in the DB
+    // 回调期间，事件应已写入数据库。
       const row = db
         .prepare("SELECT seq FROM events WHERE seq = ?")
         .get(event.seq) as { seq: number } | undefined;
@@ -142,7 +142,7 @@ describe("EventBus", () => {
     expect(seqFoundInDb).toBe(true);
   });
 
-  it("replaySince returns events after given seq in order", () => {
+  it("replaySince 按顺序返回给定 seq 之后的事件", () => {
     const e1 = bus.emit({ type: "rig.created", rigId: "rig-1" });
     const e2 = bus.emit({ type: "node.added", rigId: "rig-1", nodeId: "n1", logicalId: "a" });
     const e3 = bus.emit({ type: "node.added", rigId: "rig-1", nodeId: "n2", logicalId: "b" });
@@ -154,7 +154,7 @@ describe("EventBus", () => {
     expect(replay[0]!.type).toBe("node.added");
   });
 
-  it("replaySince filters by rigId", () => {
+  it("replaySince 按 rigId 筛选", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run(
       "rig-2",
       "other-rig"
@@ -169,7 +169,7 @@ describe("EventBus", () => {
     expect(replay.every((e) => e.rigId === "rig-1")).toBe(true);
   });
 
-  it("persistWithinTransaction inserts row, returns PersistedEvent with seq", () => {
+  it("persistWithinTransaction 插入记录并返回带 seq 的 PersistedEvent", () => {
     const persisted = bus.persistWithinTransaction({
       type: "rig.created",
       rigId: "rig-1",
@@ -180,7 +180,7 @@ describe("EventBus", () => {
     expect(persisted.type).toBe("rig.created");
     expect(persisted.createdAt).toBeDefined();
 
-    // Verify it's in the DB
+    // 验证记录已经写入数据库。
     const row = db
       .prepare("SELECT seq FROM events WHERE seq = ?")
       .get(persisted.seq) as { seq: number } | undefined;
@@ -188,8 +188,8 @@ describe("EventBus", () => {
     expect(row!.seq).toBe(persisted.seq);
   });
 
-  // T12: AgentSpec reboot event types persist and round-trip
-  it("new AgentSpec reboot event types persist via EventBus", () => {
+  // T12：AgentSpec 重启事件类型可持久化并往返。
+  it("新的 AgentSpec 重启事件类型通过 EventBus 持久化", () => {
     const events: RigEvent[] = [
       { type: "pod.created", rigId: "rig-1", podId: "p1", namespace: "dev", label: "Dev" },
       { type: "pod.deleted", rigId: "rig-1", podId: "p1" },
@@ -206,7 +206,7 @@ describe("EventBus", () => {
       expect(persisted.type).toBe(event.type);
     }
 
-    // Verify all 7 are in the DB
+    // 验证全部 7 个事件都在数据库中。
     const rows = db.prepare("SELECT type FROM events ORDER BY seq").all() as { type: string }[];
     const types = rows.map((r) => r.type);
     expect(types).toContain("pod.created");
@@ -218,7 +218,7 @@ describe("EventBus", () => {
     expect(types).toContain("continuity.degraded");
   });
 
-  it("notifySubscribers fans out to subscribers without DB insert", () => {
+  it("notifySubscribers 在不写数据库时向订阅者扇出", () => {
     const received: PersistedEvent[] = [];
     bus.subscribe((event) => received.push(event));
 
@@ -226,7 +226,7 @@ describe("EventBus", () => {
       db.prepare("SELECT COUNT(*) as cnt FROM events").get() as { cnt: number }
     ).cnt;
 
-    // Create a fake persisted event (not from DB)
+    // 创建一个不来自数据库的伪持久化事件。
     const fakeEvent: PersistedEvent = {
       type: "rig.created",
       rigId: "rig-1",
@@ -236,7 +236,7 @@ describe("EventBus", () => {
 
     bus.notifySubscribers(fakeEvent);
 
-    // Subscriber received it
+    // subscriber 已收到
     expect(received).toHaveLength(1);
     expect(received[0]!.seq).toBe(9999);
 

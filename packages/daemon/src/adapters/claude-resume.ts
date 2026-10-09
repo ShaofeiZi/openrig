@@ -9,9 +9,8 @@ import type { ClaudeManagedLaunch } from "../domain/claude-managed-launch.js";
 
 export type ResumeResult =
   | { ok: true; appliedLaunch?: AppliedLaunchObservation }
-  // L3: `attention_required` is a non-terminal failure — Claude is alive and
-  // recoverable, but the resume-selection prompt is blocking. Caller maps to
-  // restoreOutcome=attention_required (do NOT auto-answer per Decision 2).
+  // L3：`attention_required` 是非终态失败——Claude 仍存活且可恢复，但 resume 选择提示正在
+  // 阻塞。调用方映射为 restoreOutcome=attention_required（按决策 2 不得自动回答）。
   | { ok: false; code: "attention_required"; message: string; evidence?: string }
   | { ok: false; code: string; message: string };
 
@@ -42,23 +41,23 @@ export class ClaudeResumeAdapter {
     resumeType: string | null,
     resumeToken: string | null,
     cwd: string,
-    // OPR.0.4.8.3 Seam B: the seat's PERSISTED resolved posture (restore re-derivation);
-    // absent = the env decision (0.4.8.2), unchanged.
+    // OPR.0.4.8.3 接缝 B：席位持久化的已解析姿态（restore 时重新派生）；缺失时沿用
+    // 0.4.8.2 的环境决策。
     resolvedPosture?: "floor" | "full_bypass",
-    // 0.5.2-07: the seat's SPEC-pinned model. TRAILING param so existing positional callers that pass
-    // resolvedPosture as the 5th arg stay correct; threaded so the legacy (non-pod-aware) restore boots
-    // the resumed seat on its spec model, not the runtime default; absent → command byte-identical.
+    // 0.5.2-07：席位由 spec 固定的 model。作为尾部参数，使把 resolvedPosture 作为第 5 个参数的
+    // 现有位置调用保持正确；沿调用链传递，使 legacy（不感知 pod）restore 以 spec model 而非
+    // runtime 默认值启动恢复后的席位；缺失时命令逐字节不变。
     model?: string | null,
     selectedPermissionMode?: string,
     nodeId?: string,
   ): Promise<ResumeResult> {
     if (!this.canResume(resumeType, resumeToken)) {
-      return { ok: false, code: "no_resume", message: "Claude resume not available" };
+      return { ok: false, code: "no_resume", message: "Claude resume 不可用" };
     }
 
-    // OPR.0.4.8.2: the RESTORE path uses the SAME launch-posture decision as fresh launch (the
-    // unconditional acceptEdits floor when OFF; the full bypass when YOLO is ON) — every seat.
-    // 0.5.2-07: --model matches the fresh-launch adapter (claude-code-adapter), emitted after posture.
+    // OPR.0.4.8.2：每个席位的 restore 路径都使用与全新启动相同的启动姿态决策（关闭 YOLO
+    // 时无条件采用 acceptEdits floor；开启时完全 bypass）。0.5.2-07：--model 与全新启动
+    // adapter（claude-code-adapter）一致，放在 posture 之后。
     const modelArg = model ? ` --model ${shellQuote(model)}` : "";
     let managed: Awaited<ReturnType<ClaudeManagedLaunch["prepare"]>> | undefined;
     if (selectedPermissionMode !== undefined) {
@@ -75,14 +74,13 @@ export class ClaudeResumeAdapter {
     const textResult = managed ? await this.tmux.sendShellCommand(tmuxSessionName, cmd, managed.assertCurrent)
       : await this.tmux.sendText(tmuxSessionName, cmd);
     if (!textResult.ok) {
-      // sendText failed — nothing in the buffer, no cleanup needed
+      // sendText 失败——缓冲区没有内容，无需清理。
       return { ok: false, code: "resume_failed", message: textResult.message };
     }
 
     const keyResult = managed ? { ok: true as const } : await this.tmux.sendKeys(tmuxSessionName, ["Enter"]);
     if (!keyResult.ok) {
-      // Partial failure: command text is in the buffer but Enter failed.
-      // Best-effort cleanup: send C-c to clear the typed command.
+      // 部分失败：命令文本已在缓冲区中，但 Enter 失败。尽力发送 C-c 清除已输入命令。
       await this.tmux.sendKeys(tmuxSessionName, ["C-c"]);
       return { ok: false, code: "resume_failed", message: keyResult.message };
     }
@@ -110,15 +108,13 @@ export class ClaudeResumeAdapter {
         return {
           ok: false,
           code: "retry_fresh",
-          message: "Claude resume failed: no conversation found for the requested session",
+          message: "Claude resume 失败：找不到所请求 session 的会话",
         };
       }
 
-      // L3: Claude resume-selection prompt → attention_required (not failed).
-      // The runtime is alive and recoverable but blocked on operator selection.
-      // Decision 2 forbids auto-answering; surface evidence and let the
-      // operator/UI act, then later reconciliation may upgrade to
-      // operator_recovered when the pane reaches usable state.
+      // L3：Claude resume 选择提示 → attention_required（不是 failed）。runtime 仍存活且可恢复，
+      // 但被操作员选择阻塞。决策 2 禁止自动回答；应展示证据并让操作员/UI 处理，之后 pane 达到
+      // 可用状态时，协调流程可升级为 operator_recovered。
       if (probe.status === "attention_required") {
         return {
           ok: false,
@@ -153,14 +149,14 @@ export class ClaudeResumeAdapter {
       return {
         ok: false,
         code: "retry_fresh",
-        message: "Claude resume failed: pane returned to shell instead of entering Claude",
+        message: "Claude resume 失败：pane 返回 shell，而未进入 Claude",
       };
     }
 
     return {
       ok: false,
       code: "resume_failed",
-      message: "Claude resume failed: timed out waiting for Claude to become active",
+      message: "Claude resume 失败：等待 Claude 进入活跃状态超时",
     };
   }
 }

@@ -25,20 +25,20 @@ function paragraphs(text: string): string[] {
     .filter((paragraph) => paragraph.length >= 80);
 }
 
-describe("default onboarding pack", () => {
-  it("ships as exactly two ordered files below the source walk message ceiling", () => {
+describe("默认入门包", () => {
+  it("恰好以两个有序文件发行，且低于源文件遍历消息上限", () => {
     expect(PACK_PATHS.map((path) => readFileSync(path).byteLength)).toEqual([
       expect.any(Number),
       expect.any(Number),
     ]);
     for (const path of PACK_PATHS) {
       const bytes = readFileSync(path).byteLength;
-      expect(bytes, `${path} must remain walk-sized`).toBeLessThanOrEqual(MESSAGE_CEILING_BYTES);
-      expect(bytes, `${path} must carry substantive orientation`).toBeGreaterThan(500);
+      expect(bytes, `${path} 必须保持适合遍历的大小`).toBeLessThanOrEqual(MESSAGE_CEILING_BYTES);
+      expect(bytes, `${path} 必须包含实质性的入门指引`).toBeGreaterThan(500);
     }
   });
 
-  it("contains no provenance-marked or mechanically suspicious instance facts", () => {
+  it("不包含标记来源或在结构上可疑的实例事实", () => {
     const text = packText();
     const bannedProvenance = [
       /TELLS-/i,
@@ -62,7 +62,7 @@ describe("default onboarding pack", () => {
     for (const pattern of mechanicalCandidates) expect(text).not.toMatch(pattern);
   });
 
-  it("discovers an optional world pack without naming a dead default", () => {
+  it("发现可选世界包，且不提及失效的默认值", () => {
     const text = packText();
     const stepTwo = readFileSync(PACK_PATHS[1]!, "utf8");
     expect(text).toContain("rig context list");
@@ -96,7 +96,7 @@ describe("default onboarding pack", () => {
     expect(copied).toEqual([]);
   });
 
-  it("keeps operator contact open without teaching a router hop", () => {
+  it("保持操作员联系通道开放，但不教授路由器跳转", () => {
     const pack = packText();
 
     expect(pack).toContain("Any agent may contact them directly for");
@@ -105,7 +105,7 @@ describe("default onboarding pack", () => {
     expect(pack).not.toMatch(/other seats route through them|role-gated/i);
   });
 
-  it("ships a no-shared-vocabulary selection probe that is red on blank and green on packed context", () => {
+  it("发行无共享词汇的选择探针：空白上下文为红，已打包上下文为绿", () => {
     const prompt = "An open-ended cleanup request arrives. Name the physical-world question that prevents a chain of locally defensible improvements from solving the wrong problem.";
     const expected = /how big is the dog\??/i;
     expect(prompt).not.toMatch(/\bbig\b|\bdog\b/i);
@@ -113,7 +113,7 @@ describe("default onboarding pack", () => {
     expect(packText()).toMatch(expected);
   });
 
-  it("wires the typed setting into the production instantiator at launch time", () => {
+  it("启动时将类型化设置接入生产实例化器", () => {
     const startup = readFileSync(resolve(DAEMON_ROOT, "src/startup.ts"), "utf8");
     expect(startup).toContain('resolveOne("onboarding.default_pack.enabled")');
     expect(startup).toContain("onboardingEnabledResolver");
@@ -124,7 +124,7 @@ describe("default onboarding pack", () => {
     expect(instantiator).toContain("assets/onboarding/02-self-and-competent-action.md");
   });
 
-  it("keeps onboarding changes inside the declared product territory", () => {
+  it("将入门变更限制在声明的产品范围内", () => {
     const packageJson = readFileSync(resolve(REPO_ROOT, "package.json"), "utf8");
     expect(packageJson).toContain('"packages/daemon"');
   });

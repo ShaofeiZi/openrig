@@ -1,17 +1,14 @@
-// Build B — make spec-vs-live topology drift VISIBLE. RED-first.
+// Build B——让 spec-vs-live topology 漂移可见。RED-first。
 //
-// WHY THIS EXISTS: nothing writes a rig spec back after a runtime mutation. `rig expand` adds a pod
-// to a RUNNING rig via the daemon and the rigRoot spec is never touched, so drift is not an accident
-// — it is the guaranteed outcome of the shipped verbs. The spec is still read as authoritative by
-// everything that RECREATES the rig, and `bundle-assembler` copies it VERBATIM into a bundle without
-// ever consulting the live DB. On this host that means a bundle export produces an 8-seat rig while
-// 14 seats are running, silently, because the spec is internally consistent and validates clean.
+// 存在原因：runtime 修改后没有任何内容回写 rig spec。`rig expand` 通过后台服务向运行中的 rig 添加
+// pod，但从不触碰 rigRoot spec，因此漂移不是意外，而是已发布动作的必然结果。所有重建 rig 的组件
+// 仍把 spec 视为权威，`bundle-assembler` 也从不查询实时 DB，直接把它逐字复制进 bundle。在此主机上，
+// 这意味着运行 14 个席位时，bundle export 会静默产生 8 席位 rig，因为 spec 内部一致且验证干净。
 //
-// This module does not fix the drift. It makes the drift SAYABLE at the two moments it does damage.
+// 此模块不修复漂移，而是在漂移造成损害的两个时刻让它可被表达。
 //
-// THE INVARIANT THAT MATTERS MOST: `message` is non-null EXACTLY when `conforms` is false. A check
-// that cannot stay silent is as useless as one that cannot fire — a warning on every export trains
-// the reader to skim, and then the one real case reads like the ninety-six before it.
+// 最重要的不变量：当且仅当 `conforms` 为 false 时，`message` 非 null。无法保持安静的检查和无法触发
+// 的检查一样无用；每次 export 都告警会训练读者略过，然后真正的一次看起来与此前 96 次相同。
 
 import { describe, it, expect } from "vitest";
 import {
@@ -21,7 +18,7 @@ import {
   type Topology,
 } from "../src/domain/spec-live-conformance.js";
 
-/** The shape this host is actually in: spec says orch/dev/review, live also runs dev50/review50. */
+/** 此 host 的实际结构：spec 声明 orch/dev/review，实时状态还运行 dev50/review50。 */
 const SPEC_3_8: Topology = {
   pods: ["orch", "dev", "review"],
   seats: ["orch.lead", "orch.advisor", "dev.planner", "dev.guard", "dev.driver", "dev.qa", "review.r1", "review.r2"],
@@ -35,8 +32,8 @@ const LIVE_5_14: Topology = {
   ],
 };
 
-describe("spec-vs-live conformance", () => {
-  it("NEGATIVE CONTROL — a rig with no drift conforms and says NOTHING", () => {
+describe("spec-vs-live 一致性", () => {
+  it("负对照——无漂移的 rig 符合要求且不输出任何内容", () => {
     const r = compareSpecToLive(SPEC_3_8, { ...SPEC_3_8 });
     expect(r.conforms).toBe(true);
     expect(r.message).toBeNull();
@@ -44,7 +41,7 @@ describe("spec-vs-live conformance", () => {
     expect(r.seatsMissingFromSpec).toEqual([]);
   });
 
-  it("order and duplicates do not manufacture drift", () => {
+  it("顺序和重复项不会制造漂移", () => {
     const shuffled: Topology = {
       pods: ["review", "orch", "dev", "orch"],
       seats: [...SPEC_3_8.seats].reverse().concat("dev.qa"),
@@ -52,7 +49,7 @@ describe("spec-vs-live conformance", () => {
     expect(compareSpecToLive(SPEC_3_8, shuffled).conforms).toBe(true);
   });
 
-  it("this host's real drift — names the pods absent from the spec, with both counts", () => {
+  it("此 host 的真实漂移——点名 spec 中缺失的 pod，并给出两边计数", () => {
     const r = compareSpecToLive(SPEC_3_8, LIVE_5_14);
     expect(r.conforms).toBe(false);
     expect(r.spec).toEqual({ pods: 3, seats: 8 });
@@ -62,9 +59,9 @@ describe("spec-vs-live conformance", () => {
     expect(r.podsMissingFromLive).toEqual([]);
   });
 
-  it("the message names the ACTUAL delta, not a generic caution", () => {
+  it("消息点明实际差异，而非泛泛提醒", () => {
     const m = compareSpecToLive(SPEC_3_8, LIVE_5_14).message!;
-    // A reader must be able to act on this line alone.
+    // 读者必须仅凭这一行就能采取行动。
     expect(m).toContain("3 pods");
     expect(m).toContain("8 seats");
     expect(m).toContain("5");
@@ -73,7 +70,7 @@ describe("spec-vs-live conformance", () => {
     expect(m).toContain("review50");
   });
 
-  it("drift in the other direction — a pod in the spec that is not running", () => {
+  it("反方向漂移——spec 中存在但未运行的 pod", () => {
     const live: Topology = {
       pods: ["orch", "dev"],
       seats: SPEC_3_8.seats.filter((s) => !s.startsWith("review.")),
@@ -85,7 +82,7 @@ describe("spec-vs-live conformance", () => {
     expect(r.message).toContain("review");
   });
 
-  it("seat-level drift inside a pod both sides declare", () => {
+  it("双方都声明的 pod 内存在席位级漂移", () => {
     const live: Topology = { pods: SPEC_3_8.pods, seats: [...SPEC_3_8.seats, "dev.second-driver"] };
     const r = compareSpecToLive(SPEC_3_8, live);
     expect(r.conforms).toBe(false);
@@ -93,7 +90,7 @@ describe("spec-vs-live conformance", () => {
     expect(r.seatsMissingFromSpec).toEqual(["dev.second-driver"]);
   });
 
-  it("message is non-null EXACTLY when conforms is false", () => {
+  it("当且仅当 conforms 为 false 时 message 非 null", () => {
     const cases: Array<[Topology, Topology]> = [
       [SPEC_3_8, SPEC_3_8],
       [SPEC_3_8, LIVE_5_14],
@@ -106,18 +103,18 @@ describe("spec-vs-live conformance", () => {
     }
   });
 
-  it("an EMPTY live topology is not reported as conforming drift-free silence", () => {
-    // A daemon that returned no nodes must not read as "the spec matches". Silence from the live
-    // side is absence of evidence, and the check has to say so rather than pass.
+  it("空 live topology 不会被报告为符合且无漂移的静默状态", () => {
+    // 后台服务未返回节点时不得读作“spec 匹配”。live 侧静默意味着缺少证据，检查必须明确说明，
+    // 而不是通过。
     const r = compareSpecToLive(SPEC_3_8, { pods: [], seats: [] });
     expect(r.conforms).toBe(false);
-    // Sorted, not declaration order — the same normalisation that stops ordering manufacturing drift.
+    // 使用排序而非声明顺序；与阻止顺序制造漂移的归一化一致。
     expect(r.podsMissingFromLive).toEqual(["dev", "orch", "review"]);
   });
 });
 
-describe("topology extraction", () => {
-  it("reads pods and seats off a parsed RigSpec", () => {
+describe("topology 提取", () => {
+  it("从解析后的 RigSpec 读取 pod 和 seat", () => {
     const spec = {
       pods: [
         { id: "orch", members: [{ id: "lead" }, { id: "advisor" }] },
@@ -130,7 +127,7 @@ describe("topology extraction", () => {
     });
   });
 
-  it("derives live topology from node logicalIds, ignoring malformed ids", () => {
+  it("从 node logicalId 派生 live topology，并忽略格式错误的 id", () => {
     const t = topologyFromLiveLogicalIds([
       "orch.lead", "orch.advisor", "dev50.driver", "", null as never, "no-dot",
     ]);

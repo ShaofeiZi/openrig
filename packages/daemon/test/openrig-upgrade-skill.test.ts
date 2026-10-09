@@ -134,17 +134,14 @@ describe("openrig-upgrade stays agent-driven", () => {
   });
 
   it("teaches the ALL-RIG node read for the post-upgrade seat check, in every shipped copy", () => {
-    // R2 F2 at 13531c17. Step 9 taught `rig ps --nodes --json`, which the live
-    // CLI scopes to the CURRENT rig. A daemon upgrade protects seats across
-    // every rig on the host, so the narrow form reports a verified upgrade
-    // while seats outside the caller's rig were never looked at. The inspect
-    // helper already used -A; the public step that runs AFTER the mutation did
-    // not, and only the helper's argv was pinned — which is why the
-    // contradiction stayed green.
+    // R2 F2 at 13531c17。Step 9 教的是 `rig ps --nodes --json`，而线上
+    // CLI 会把它限定到当前 rig。daemon 升级保护的是 host 上每个 rig 的 seat，
+    // 故窄形式报已验证升级，却从未查看调用方 rig 之外的 seat。inspect helper
+    // 已用 -A；在 mutation 之后运行的公共 step 没有用，且只有 helper 的 argv
+    // 被钉住——这就是矛盾一直保持绿的原因。
     //
-    // Both copies are asserted: the byte-for-byte mirror pin above covers the
-    // three helper scripts, not SKILL.md, so a divergent public copy would
-    // otherwise ship unnoticed.
+    // 两份副本都断言：上方逐字节镜像钉住覆盖三个 helper 脚本，不覆盖
+    // SKILL.md，否则分歧的公共副本会悄无声息地随包发布。
     for (const copy of [
       skillPath,
       path.join(repoRoot, "skills/_canonical/core/openrig-upgrade/SKILL.md"),
@@ -416,8 +413,8 @@ describe("backup-sqlite helper", () => {
     expect(result.status).toBe(1);
     expect(JSON.parse(result.stderr)).toEqual(expect.objectContaining({
       ok: false,
-      error: expect.stringMatching(/destination already exists/i),
-      next: expect.stringMatching(/never overwrites/i),
+      error: expect.stringMatching(/目标已存在/),
+      next: expect.stringMatching(/绝不会覆盖备份/),
     }));
     expect(fs.readFileSync(destination, "utf8")).toBe("keep this");
   });
@@ -447,7 +444,7 @@ esac
       { rigName: "other", logicalId: "worker" },
     ]);
     expect(report.plugins.ok).toBe(false);
-    expect(report.plugins.next).toMatch(/run .*plugin list --json/i);
+    expect(report.plugins.next).toMatch(/运行 .*plugin list --json/i);
     expect(report.ready).toBe(false);
   });
 });
@@ -470,8 +467,8 @@ exit 7
     const help = spawnSync(process.execPath, [scriptPath, "--help"], { encoding: "utf8", env });
     expect(help.status, help.stderr).toBe(0);
     expect(help.stderr).toBe("");
-    expect(help.stdout).toContain("Usage: migrate-telemetry-state-0.5.9.mjs");
-    expect(help.stdout).toContain("No phase flag runs the read-only plan");
+    expect(help.stdout).toContain("用法：migrate-telemetry-state-0.5.9.mjs");
+    expect(help.stdout).toContain("不提供阶段标志时运行只读计划");
     expect(help.stdout).toContain("--apply-state");
     expect(help.stdout).toContain("--verify");
     expect(help.stdout).toContain("--apply-library");
@@ -638,7 +635,7 @@ exit 7
 
     const applied = runJson(helper, ["--home", fixture.home, "--apply-state", "--preimage", preimage], env);
     expect(applied).toEqual(expect.objectContaining({ phase: "apply-state", applied: true, complete: false }));
-    expect(applied.next).toMatch(/canonical-only writes/i);
+    expect(applied.next).toContain("仅写 canonical");
     expect(fs.existsSync(path.join(fixture.home, "state", "context-usage", `${fixture.sessionName}.json`))).toBe(false);
     expect(fs.existsSync(path.join(fixture.home, "state", "provider-usage", `${fixture.sessionName}.json`))).toBe(false);
     expect(fs.readFileSync(fixture.settingsPath, "utf8")).toBe(fixture.originalSettings);

@@ -1,9 +1,8 @@
-// Build B — the bundle-export drift warning, tested against a REAL database.
+// 构建 B——使用真实数据库测试 bundle-export 偏移警告。
 //
-// The domain comparator is pinned separately; what is unproven there is the WIRING: does the export
-// path find the running rig BY NAME, read its live seats, and stay silent in every case where there
-// is genuinely nothing to say? A warning that fires on a brand-new rig being authored would be
-// noise on every first export, and noise is how a real warning gets skipped.
+// 领域比较器已单独固定；尚未证明的是接线：导出路径能否按名称找到运行中的工作组、
+// 读取其实时席位，并在确实无事可报时保持静默？若新建工作组首次导出就触发警告，
+// 每次首次导出都会产生噪声，而真正的警告正会因此被忽略。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -18,7 +17,7 @@ const SPEC = {
   pods: [{ id: "orch", members: [{ id: "lead" }] }, { id: "dev", members: [{ id: "driver" }] }],
 };
 
-describe("bundle export — spec-vs-live drift warning", () => {
+describe("bundle export——spec 与实时状态的偏移警告", () => {
   let db: Database.Database;
   let repo: RigRepository;
 
@@ -38,7 +37,7 @@ describe("bundle export — spec-vs-live drift warning", () => {
     return rigId;
   }
 
-  it("WARNS, naming the pods the bundle would silently drop", () => {
+  it("发出警告，并点名 bundle 会静默丢弃的 pod", () => {
     seedRig("drift-rig", ["orch.lead", "dev.driver", "dev50.driver", "dev50.qa"]);
     const w = describeSpecLiveDrift(SPEC, repo);
     expect(w).toBeTruthy();
@@ -49,53 +48,52 @@ describe("bundle export — spec-vs-live drift warning", () => {
     expect(w!.toLowerCase()).toContain("spec");
   });
 
-  it("SILENT when the running rig matches the spec", () => {
+  it("运行中的工作组与 spec 匹配时保持静默", () => {
     seedRig("drift-rig", ["orch.lead", "dev.driver"]);
     expect(describeSpecLiveDrift(SPEC, repo)).toBeNull();
   });
 
-  it("SILENT when no rig of that name is running — authoring a NEW rig is not drift", () => {
+  it("没有同名工作组在运行时保持静默——编写新工作组不属于偏移", () => {
     seedRig("some-other-rig", ["orch.lead", "dev.driver", "dev50.driver"]);
     expect(describeSpecLiveDrift(SPEC, repo)).toBeNull();
   });
 
-  // SUPERSEDED 2026-08-12, and the old expectation is kept named here rather than deleted.
+  // 已于 2026-08-12 被取代；旧预期在此保留名称，而不是直接删除。
   //
-  // Build B shipped this as `SILENT for a legacy non-pod-aware spec` — a deliberate scope limit, not
-  // a property of legacy specs. It was wrong in the way that matters: a v1 spec exports through the
-  // same create endpoint and produces the same confidently-wrong artifact, so silence there was the
-  // defect wearing a passing test. Legacy now compares too (flat `nodes:` ids against flat
-  // `logical_id`s), and the route refuses a legacy spec that would drop live seats.
-  it("WARNS for a legacy non-pod-aware spec — the format never made the drift safe", () => {
+  // 构建 B 曾以“对不感知 pod 的旧版 spec 保持静默”交付——这是刻意的范围限制，
+  // 并非旧版 spec 的固有属性。它在关键处是错误的：v1 spec 经同一个创建端点导出，
+  // 会生成同样确定却错误的产物；当时的静默只是被通过测试掩盖的缺陷。现在旧版也会比较
+  //（扁平 `nodes:` id 对扁平 `logical_id`），路由会拒绝会丢弃实时席位的旧版 spec。
+  it("对不感知 pod 的旧版 spec 发出警告——旧格式不会让偏移变得安全", () => {
     seedRig("drift-rig", ["orch.lead", "dev.driver", "dev50.driver"]);
     const warning = describeSpecLiveDrift({ name: "drift-rig", nodes: [{ id: "dev" }] }, repo);
     expect(warning).not.toBeNull();
     expect(warning).toContain("dev.driver");
   });
 
-  // Still silent, and for a reason the legacy change does not touch: with no `name:` there is no rig
-  // to look up, so there is nothing to compare against and nothing honest to say.
-  it("SILENT for a nameless spec", () => {
+  // 这里仍保持静默，理由不受旧版改动影响：没有 `name:` 就没有可查询的工作组，
+  // 因而既无比较对象，也没有可诚实报告的内容。
+  it("对无名称 spec 保持静默", () => {
     seedRig("drift-rig", ["orch.lead", "dev.driver", "dev50.driver"]);
     expect(describeSpecLiveDrift({ pods: SPEC.pods }, repo)).toBeNull();
   });
 
-  it("SILENT rather than throwing when there is no repository at all", () => {
+  it("完全没有 repository 时保持静默而非抛错", () => {
     expect(describeSpecLiveDrift(SPEC, undefined)).toBeNull();
   });
 
-  // The two helpers deliberately DIVERGE on repository failure, and this pins the reporting half.
-  // `describeSpecLiveDrift` swallows it — the worst case for a banner is a missing banner. The
-  // enforcement half (`assessSpecLiveDrift`) propagates instead, so the create route fails closed
-  // rather than exporting on a comparison that never ran; that side is pinned at the route.
-  it("SILENT rather than throwing when the topology query itself fails", () => {
+  // 两个辅助函数在 repository 失败时有意采用不同策略，本测试固定报告侧。
+  // `describeSpecLiveDrift` 会吞掉错误——对横幅而言最坏结果只是缺少横幅；执行侧
+  // `assessSpecLiveDrift` 则会向上传播，使创建路由失败关闭，而不是在比较根本未运行时导出；
+  // 该侧由路由测试固定。
+  it("拓扑查询本身失败时保持静默而非抛错", () => {
     seedRig("drift-rig", ["orch.lead", "dev.driver"]);
     db.prepare("DROP TABLE nodes").run();
     expect(() => describeSpecLiveDrift(SPEC, repo)).not.toThrow();
     expect(describeSpecLiveDrift(SPEC, repo)).toBeNull();
   });
 
-  it("never throws into the export path, even on a hostile spec value", () => {
+  it("即使 spec 值异常，也绝不向导出路径抛错", () => {
     seedRig("drift-rig", ["orch.lead"]);
     for (const bad of [null, undefined, 42, "a string", { name: "drift-rig", pods: "not-an-array" }]) {
       expect(() => describeSpecLiveDrift(bad, repo)).not.toThrow();

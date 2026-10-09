@@ -12,7 +12,7 @@ export interface PreflightCheck {
   error?: string;
   reason?: string;
   fix?: string;
-  /** Set on a passing check that carries a qualification (e.g. untested Node major). */
+  /** 在通过的检查上设置，携带限定条件（例如未测试的 Node 大版本）。 */
   warning?: string;
 }
 
@@ -41,21 +41,21 @@ interface WritableHomeCheckDeps {
 }
 
 function checkPort(host: string, port: number): Promise<boolean> {
-  if (port <= 0) return Promise.resolve(true); // port 0 is always available
+  if (port <= 0) return Promise.resolve(true); // 端口 0 始终可用
   return new Promise((resolve) => {
     const socket = new net.Socket();
     socket.setTimeout(1000);
     socket.on("connect", () => {
       socket.destroy();
-      resolve(false); // port is in use
+      resolve(false); // 端口已被占用
     });
     socket.on("error", () => {
       socket.destroy();
-      resolve(true); // port is available
+      resolve(true); // 端口可用
     });
     socket.on("timeout", () => {
       socket.destroy();
-      resolve(true); // timeout = nothing listening
+      resolve(true); // 超时 = 无监听
     });
     socket.connect(port, host);
   });
@@ -70,15 +70,15 @@ export function buildWritableHomeCheck(
   const checkWritable = deps.checkWritable ?? ((dirPath: string) => accessSync(dirPath, constants.W_OK));
 
   const pathsToCheck = [
-    { path: openrigHome, label: "OpenRig home" },
+    { path: openrigHome, label: "zrig 主目录" },
   ];
   const dbDir = dirname(config.db.path);
   if (dbDir && dbDir !== openrigHome && !dbDir.startsWith(openrigHome + "/")) {
-    pathsToCheck.push({ path: dbDir, label: "Database directory" });
+    pathsToCheck.push({ path: dbDir, label: "数据库目录" });
   }
   const transcriptPath = config.transcripts.path;
   if (transcriptPath && transcriptPath !== openrigHome && !transcriptPath.startsWith(openrigHome + "/")) {
-    pathsToCheck.push({ path: transcriptPath, label: "Transcript directory" });
+    pathsToCheck.push({ path: transcriptPath, label: "转录目录" });
   }
 
   const writableErrors: string[] = [];
@@ -87,7 +87,7 @@ export function buildWritableHomeCheck(
       mkdirp(dirPath);
       checkWritable(dirPath);
     } catch {
-      writableErrors.push(`Cannot write to ${dirPath} (${label}).`);
+      writableErrors.push(`无法写入 ${dirPath}（${label}）。`);
     }
   }
 
@@ -99,8 +99,8 @@ export function buildWritableHomeCheck(
     name: "writable_home",
     ok: false,
     error: writableErrors.join(" "),
-    reason: "OpenRig stores database, config, and transcripts in these directories.",
-    fix: "Fix directory permissions, or change paths with rig config set db.path / transcripts.path.",
+    reason: "zrig 在这些目录中存储数据库、配置和转录。",
+    fix: "修复目录权限，或用 zrig config set db.path / transcripts.path 更改路径。",
   };
 }
 
@@ -118,7 +118,7 @@ export class SystemPreflight {
     const effectiveHost = overrides?.host ?? config.daemon.host;
     const openrigHome = this.deps.openrigHome ?? this.deps.riggedHome ?? "";
 
-    // 1. Node version
+    // 1. Node 版本
     const nodeSupport = classifyNodeVersion(process.version);
     if (nodeSupport.kind === "supported") {
       checks.push({ name: "node_version", ok: true });
@@ -134,20 +134,20 @@ export class SystemPreflight {
       });
     }
 
-    // 2. tmux availability
+    // 2. tmux 可用性
     const tmuxProbe = await probeTmuxControlAsync(this.deps.exec);
     if (tmuxProbe.code === "not_installed") {
       checks.push({
         name: "tmux",
         ok: false,
-        error: "tmux was not found in PATH.",
-        reason: "OpenRig uses tmux to create and control agent sessions.",
-        fix: "Install tmux (brew install tmux on macOS, apt install tmux on Debian/Ubuntu).",
+        error: "在 PATH 中未找到 tmux。",
+        reason: "zrig 使用 tmux 创建和控制智能体会话。",
+        fix: "安装 tmux（macOS 上 brew install tmux，Debian/Ubuntu 上 apt install tmux）。",
       });
     } else if (tmuxProbe.available) {
       checks.push({ name: "tmux", ok: true });
     } else {
-      const failure = buildTmuxControlFailure(tmuxProbe.detail ?? "unknown tmux control failure");
+      const failure = buildTmuxControlFailure(tmuxProbe.detail ?? "未知 tmux 控制失败");
       checks.push({
         name: "tmux",
         ok: false,
@@ -157,10 +157,10 @@ export class SystemPreflight {
       });
     }
 
-    // 3. Writable OpenRig home + transcript path
+    // 3. 可写的 OpenRig home + 转录路径
     checks.push(buildWritableHomeCheck(config, openrigHome));
 
-    // 4. Daemon port availability
+    // 4. 后台服务端口可用性
     const status = await this.deps.getDaemonStatus();
     const daemonOnSameEndpoint =
       status.state === "running" &&
@@ -168,7 +168,7 @@ export class SystemPreflight {
       status.port === effectivePort;
 
     if (daemonOnSameEndpoint) {
-      // Our daemon is already running on this exact endpoint — skip
+      // 我们的后台服务已在此端点上运行——跳过
       checks.push({ name: "port_available", ok: true });
     } else {
       const available = await checkPort(effectiveHost, effectivePort);
@@ -178,9 +178,9 @@ export class SystemPreflight {
         checks.push({
           name: "port_available",
           ok: false,
-          error: `Port ${effectivePort} is already in use on ${effectiveHost}.`,
-          reason: "The daemon cannot bind to a port that is already occupied.",
-          fix: `Run rig config set daemon.port ${effectivePort + 1} and retry, or find the existing process with lsof -nP -iTCP:${effectivePort} -sTCP:LISTEN.`,
+          error: `端口 ${effectivePort} 在 ${effectiveHost} 上已被占用。`,
+          reason: "后台服务无法绑定到已被占用的端口。",
+          fix: `运行 zrig config set daemon.port ${effectivePort + 1} 并重试，或用 lsof -nP -iTCP:${effectivePort} -sTCP:LISTEN 找到已有进程。`,
         });
       }
     }

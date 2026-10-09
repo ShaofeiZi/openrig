@@ -1,9 +1,9 @@
-// OPR.0.4.3.05 seat-forking closeout — the narrow daemon fork composer route
-// (POST /api/agent-images/fork). Proves the three driver-note invariants:
-//   1. resume-token discovery runs server-side (resume-token-discovery.ts).
-//   2. the native resume id is kept DAEMON-LOCAL — never in the route response.
-//   3. --keep-image pins the image AND the evidence guard protects it AFTER
-//      pinning (pin-on-keep is a real, shipped protection mechanism).
+// OPR.0.4.3.05 席位分叉收尾——守护进程的窄范围分叉编排路由
+//（POST /api/agent-images/fork）。验证驱动说明中的三项不变量：
+//   1. 恢复令牌发现服务端运行（resume-token-discovery.ts）。
+//   2. 原生恢复 ID 仅保留在守护进程本地——绝不出现在路由响应中。
+//   3. --keep-image 会固定镜像，并且证据护栏在固定后保护它
+//      （保留即固定是真实发行的保护机制）。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
@@ -31,7 +31,7 @@ function writeImage(root: string, name: string, manifest: string): void {
   writeFileSync(join(dir, "manifest.yaml"), manifest);
 }
 
-describe("agent-images fork composer route (OPR.0.4.3.05)", () => {
+describe("智能体镜像分叉编排路由（OPR.0.4.3.05）", () => {
   let tmp: string;
   let libRoot: string;
   let specRoot: string;
@@ -50,11 +50,11 @@ describe("agent-images fork composer route (OPR.0.4.3.05)", () => {
   });
 
   afterEach(() => {
-    try { db.close(); } catch { /* ignore */ }
+    try { db.close(); } catch { /* 忽略 */ }
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  /** Seed a claude-code source seat with a native resume id. */
+  /** 植入带有原生恢复 ID 的 claude-code 源席位。 */
   function seedClaudeSource(sessionName: string, resumeToken: string | null): void {
     const rig = rigRepo.createRig("src-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", {
@@ -94,7 +94,7 @@ describe("agent-images fork composer route (OPR.0.4.3.05)", () => {
       if (opts.capturer) c.set("snapshotCapturer" as never, opts.capturer);
       await next();
     });
-    // Expose the spy for assertions.
+    // 暴露 spy 供断言使用。
     (app as unknown as { _addMember: unknown })._addMember = podInstantiator.addMemberToPod;
     app.route("/api/agent-images", agentImagesRoutes({ specRoots: () => [specRoot] }));
     return app;
@@ -108,7 +108,7 @@ describe("agent-images fork composer route (OPR.0.4.3.05)", () => {
     });
   }
 
-  it("default fork → add_member(mode:fork, native_id); native id NEVER in response (driver note 2)", async () => {
+  it("默认分叉 → add_member(mode:fork, native_id)；响应中绝不包含原生 ID（驱动说明 2）", async () => {
     seedClaudeSource("dev-impl@src-rig", NATIVE_SECRET);
     const addMember = vi.fn(async () => ({
       ok: true as const,
@@ -119,12 +119,12 @@ describe("agent-images fork composer route (OPR.0.4.3.05)", () => {
     const res = await post(app, { sourceSession: "dev-impl@src-rig", rigId: "dst-rig", pod: "dev", member: "forked" });
     expect(res.status).toBe(201);
     const raw = await res.text();
-    // Native id kept daemon-local — must not leak in the response body.
+    // 原生 ID 仅保留在守护进程本地——不得泄漏到响应体。
     expect(raw).not.toContain(NATIVE_SECRET);
     const body = JSON.parse(raw);
     expect(body.ok).toBe(true);
 
-    // The composed member fragment carried mode:fork + the discovered native id.
+    // 编排后的成员片段携带 mode:fork 和发现的原生 ID。
     expect(addMember).toHaveBeenCalledTimes(1);
     const [rigId, pod, member] = addMember.mock.calls[0]!;
     expect(rigId).toBe("dst-rig");
@@ -137,14 +137,14 @@ describe("agent-images fork composer route (OPR.0.4.3.05)", () => {
     });
   });
 
-  it("unknown source session → 404 session_not_found", async () => {
+  it("未知源会话 → 404 session_not_found", async () => {
     const app = buildApp({ addMember: vi.fn(async () => ({ ok: true } as unknown as AddMemberOutcome)) });
     const res = await post(app, { sourceSession: "nope@nope", rigId: "r", pod: "p", member: "m" });
     expect(res.status).toBe(404);
     expect((await res.json() as { error: string }).error).toBe("session_not_found");
   });
 
-  it("terminal-runtime source → honest reject (400 runtime_unsupported)", async () => {
+  it("terminal 运行时源 → 如实拒绝（400 runtime_unsupported）", async () => {
     seedTerminalSource("ops-term@term-rig");
     const addMember = vi.fn(async () => ({ ok: true } as unknown as AddMemberOutcome));
     const app = buildApp({ addMember });
@@ -154,22 +154,22 @@ describe("agent-images fork composer route (OPR.0.4.3.05)", () => {
     expect(addMember).not.toHaveBeenCalled();
   });
 
-  it("source with NO derivable resume token → honest 409, no fabrication, no launch", async () => {
-    seedClaudeSource("dev-impl@src-rig", null); // no resume_token, no context_usage
+  it("源没有可推导的恢复令牌 → 如实返回 409，不伪造、不启动", async () => {
+    seedClaudeSource("dev-impl@src-rig", null); // 没有 resume_token，也没有 context_usage
     const addMember = vi.fn(async () => ({ ok: true } as unknown as AddMemberOutcome));
     const app = buildApp({ addMember });
     const res = await post(app, { sourceSession: "dev-impl@src-rig", rigId: "r", pod: "p", member: "m" });
     expect(res.status).toBe(409);
     const body = await res.json() as { error: string; message: string };
     expect(body.error).toBe("resume_token_unavailable");
-    expect(body.message).toMatch(/fabricated/i);
+    expect(body.message).toMatch(/伪造/);
     expect(addMember).not.toHaveBeenCalled();
   });
 
-  it("member_conflict from add_member → surfaced honestly as 409", async () => {
+  it("add_member 返回 member_conflict → 如实呈现为 409", async () => {
     seedClaudeSource("dev-impl@src-rig", NATIVE_SECRET);
     const addMember = vi.fn(async () => ({
-      ok: false as const, code: "member_conflict" as const, message: 'Member "dev.forked" already exists',
+      ok: false as const, code: "member_conflict" as const, message: '成员 "dev.forked" 已存在',
     }));
     const app = buildApp({ addMember: addMember as never });
     const res = await post(app, { sourceSession: "dev-impl@src-rig", rigId: "r", pod: "dev", member: "forked" });
@@ -177,11 +177,11 @@ describe("agent-images fork composer route (OPR.0.4.3.05)", () => {
     expect((await res.json() as { code: string }).code).toBe("member_conflict");
   });
 
-  it("--keep-image → durable image is created, PINNED, and evidence-guard-protected AFTER pinning (driver note 3)", async () => {
+  it("--keep-image → 创建持久镜像并固定，且固定后受证据护栏保护（驱动说明 3）", async () => {
     seedClaudeSource("dev-impl@src-rig", NATIVE_SECRET);
     const lib = new AgentImageLibraryService({ roots: [{ path: libRoot, sourceType: "user_file" }] });
-    // capturer stub installs a real image dir (as the real capturer would) so
-    // the route's lib.pin + a subsequent evaluateProtection operate on a real entry.
+    // capturer 存根像真实捕获器一样安装真实镜像目录，使路由的 lib.pin 和后续
+    // evaluateProtection 操作真实条目。
     const capturer = {
       capture: vi.fn((o: { name: string; version?: string }) => {
         writeImage(libRoot, o.name, `\nname: ${o.name}\nversion: ${o.version ?? "1"}\nruntime: claude-code\nsource_seat: dev-impl@src-rig\nsource_session_id: ${NATIVE_SECRET}\nsource_resume_token: ${NATIVE_SECRET}\nfiles: []\n`);
@@ -199,26 +199,26 @@ describe("agent-images fork composer route (OPR.0.4.3.05)", () => {
     const res = await post(app, { sourceSession: "dev-impl@src-rig", rigId: "dst-rig", pod: "dev", member: "forked", keepImage: true, imageName: "kept" });
     expect(res.status).toBe(201);
     const raw = await res.text();
-    expect(raw).not.toContain(NATIVE_SECRET); // still daemon-local
+    expect(raw).not.toContain(NATIVE_SECRET); // 仍仅保留在守护进程本地
     const body = JSON.parse(raw) as { image: { id: string; name: string; pinned: boolean } };
     expect(body.image).toEqual({ id: "agent-image:kept:1", name: "kept", version: "1", pinned: true });
 
-    // The image is pinned in the live library...
+    // 镜像已在实时库中固定……
     expect(lib.get("agent-image:kept:1")!.pinned).toBe(true);
-    // ...and — asserted AFTER pinning — the evidence guard now protects it.
+    // ……并且在固定后断言：证据护栏现在会保护它。
     const protections = evaluateProtection({ images: lib.list(), specRoots: [specRoot] });
     const kept = protections.find((p) => p.imageId === "agent-image:kept:1")!;
     expect(kept.protected).toBe(true);
     expect(kept.reasons).toContain("pinned");
 
-    // Launch went through mode:agent_image (not a raw native id).
+    // 通过 mode:agent_image 启动（不是原始原生 ID）。
     const [, , member] = addMember.mock.calls[0]!;
     expect((member as Record<string, unknown>).session_source).toEqual({
       mode: "agent_image", ref: { kind: "image_name", value: "kept", version: "1" },
     });
   });
 
-  it("missing required fields → 400", async () => {
+  it("缺少必填字段 → 400", async () => {
     const app = buildApp({ addMember: vi.fn(async () => ({ ok: true } as unknown as AddMemberOutcome)) });
     const res = await post(app, { sourceSession: "x@y" });
     expect(res.status).toBe(400);

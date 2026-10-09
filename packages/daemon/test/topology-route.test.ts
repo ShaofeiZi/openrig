@@ -1,10 +1,8 @@
-// OPR.0.4.4.11 — routes/up.ts topology branch (S11-6).
+// OPR.0.4.4.11——routes/up.ts 拓扑分支（S11-6）。
 //
-// Pins: the branch classifies through the REAL router, validates through the
-// real manifest module, resolves path-form entries against the MANIFEST dir,
-// drives the injected orchestrator seams (the same public bootstrap() +
-// tryAcquire/release pair), rejects host-flag+topology on the public write
-// path (R11-2 daemon side), and returns the honest closed aggregate.
+// 固定项：该分支经真实路由器分类、经真实清单模块校验、相对于清单目录解析路径形式
+// 的条目、驱动注入式编排器接缝（同一公开 bootstrap() 与 tryAcquire/release 组合）、
+// 在公开写入路径拒绝 host 标志加拓扑（R11-2 守护进程侧），并返回如实的封闭聚合。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
@@ -75,7 +73,7 @@ function makeApp(opts: { bootstrapResult?: (call: BootstrapCall) => { status: st
   return { app, calls, locks };
 }
 
-describe("POST /api/up — topology branch", () => {
+describe("POST /api/up——拓扑分支", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -92,7 +90,7 @@ describe("POST /api/up — topology branch", () => {
     return p;
   }
 
-  it("launches an all-local topology through the injected bootstrap seam; entries resolve against the MANIFEST dir; 200 + closed aggregate", async () => {
+  it("通过注入式 bootstrap 接缝启动全本地拓扑；条目相对清单目录解析；返回 200 与封闭聚合", async () => {
     fs.writeFileSync(path.join(tmpDir, "a.yaml"), VALID_SPEC);
     fs.writeFileSync(path.join(tmpDir, "b.yaml"), VALID_SPEC);
     const manifest = writeManifest("rigs:\n  - source: ./a.yaml\n  - source: ./b.yaml\n");
@@ -111,26 +109,25 @@ describe("POST /api/up — topology branch", () => {
       { rigRef: "./a.yaml", host: "local", status: "ok" },
       { rigRef: "./b.yaml", host: "local", status: "ok" },
     ]);
-    // The leaf was INVOKED with manifest-dir-resolved refs + the request's autoApprove.
+    // 叶节点以相对清单目录解析的引用和请求中的 autoApprove 调用。
     expect(calls).toEqual([
       { sourceRef: path.join(tmpDir, "a.yaml"), sourceKind: "rig_spec", autoApprove: true },
       { sourceRef: path.join(tmpDir, "b.yaml"), sourceKind: "rig_spec", autoApprove: true },
     ]);
-    // Route-side lock discipline per entry (guard G-2), sequential order —
-    // and the lock key IS the launched ref (guard F1): a concurrent
-    // standalone `rig up <resolved path>` shares this exact lock domain.
+    // 路由侧逐条目锁纪律（护栏 G-2），按顺序执行——锁键就是启动引用（护栏 F1）：
+    // 并发的独立 `zrig up <resolved path>` 共享完全相同的锁域。
     expect(locks).toEqual([
       `acquire:${path.join(tmpDir, "a.yaml")}`,
       `release:${path.join(tmpDir, "a.yaml")}`,
       `acquire:${path.join(tmpDir, "b.yaml")}`,
       `release:${path.join(tmpDir, "b.yaml")}`,
     ]);
-    // Invariant, explicitly: every acquired key equals a bootstrapped sourceRef.
+    // 显式不变量：每个获取的键都等于已 bootstrap 的 sourceRef。
     const acquired = locks.filter((l) => l.startsWith("acquire:")).map((l) => l.slice("acquire:".length));
     expect(acquired).toEqual(calls.map((c) => c.sourceRef));
   });
 
-  it("R11-2 daemon side: host flag + topology source → 400 naming per-entry host: (public write path)", async () => {
+  it("R11-2 守护进程侧：host 标志 + 拓扑源 → 400，并指出逐条目 host:（公开写入路径）", async () => {
     fs.writeFileSync(path.join(tmpDir, "a.yaml"), VALID_SPEC);
     const manifest = writeManifest("rigs:\n  - source: ./a.yaml\n");
     const { app, calls } = makeApp();
@@ -143,10 +140,10 @@ describe("POST /api/up — topology branch", () => {
     const data = (await res.json()) as Record<string, unknown>;
     expect(data["code"]).toBe("host_flag_topology");
     expect(String(data["error"])).toContain("per-entry 'host:'");
-    expect(calls).toEqual([]); // nothing launched
+    expect(calls).toEqual([]); // 未启动任何内容
   });
 
-  it("invalid manifest → 400 invalid_topology_manifest with the per-entry errors (edge key names the non-goal)", async () => {
+  it("无效清单 → 400 invalid_topology_manifest 与逐条目错误（edge 键指出非目标）", async () => {
     const manifest = writeManifest("rigs:\n  - source: ./a.yaml\nedges:\n  - from: a\n");
     const { app, calls } = makeApp();
     const res = await app.request("/api/up", {
@@ -157,18 +154,18 @@ describe("POST /api/up — topology branch", () => {
     expect(res.status).toBe(400);
     const data = (await res.json()) as Record<string, unknown>;
     expect(data["code"]).toBe("invalid_topology_manifest");
-    expect(String((data["errors"] as string[])[0])).toContain("founder-ratified non-goal");
+    expect(String((data["errors"] as string[])[0])).toContain("创建者批准的非目标");
     expect(calls).toEqual([]);
   });
 
-  it("failed entry → 500 with the honest partial aggregate (ok + failed + explicit skipped)", async () => {
+  it("条目失败 → 500 与如实的部分聚合（ok + failed + 显式 skipped）", async () => {
     fs.writeFileSync(path.join(tmpDir, "a.yaml"), VALID_SPEC);
     fs.writeFileSync(path.join(tmpDir, "bad.yaml"), VALID_SPEC);
     fs.writeFileSync(path.join(tmpDir, "c.yaml"), VALID_SPEC);
     const manifest = writeManifest("rigs:\n  - source: ./a.yaml\n  - source: ./bad.yaml\n  - source: ./c.yaml\n");
     const { app } = makeApp({
       bootstrapResult: (call) =>
-        call.sourceRef.endsWith("bad.yaml") ? { status: "failed", errors: ["Stage IMPORT_RIG failed: boom"] } : { status: "completed", errors: [] },
+        call.sourceRef.endsWith("bad.yaml") ? { status: "failed", errors: ["阶段 IMPORT_RIG 失败：boom"] } : { status: "completed", errors: [] },
     });
     const res = await app.request("/api/up", {
       method: "POST",
@@ -179,11 +176,11 @@ describe("POST /api/up — topology branch", () => {
     const data = (await res.json()) as { ok: boolean; entries: Array<Record<string, unknown>> };
     expect(data.ok).toBe(false);
     expect(data.entries[0]).toMatchObject({ status: "ok" });
-    expect(data.entries[1]).toMatchObject({ status: "failed", error: "Stage IMPORT_RIG failed: boom" });
-    expect(data.entries[2]).toMatchObject({ status: "skipped" }); // explicit, never absent
+    expect(data.entries[1]).toMatchObject({ status: "failed", error: "阶段 IMPORT_RIG 失败：boom" });
+    expect(data.entries[2]).toMatchObject({ status: "skipped" }); // 显式存在，绝不缺省
   });
 
-  it("plan + topology → 400 topology_plan_unsupported (no silent half-support)", async () => {
+  it("plan + topology → 400 topology_plan_unsupported（不静默提供半支持）", async () => {
     fs.writeFileSync(path.join(tmpDir, "a.yaml"), VALID_SPEC);
     const manifest = writeManifest("rigs:\n  - source: ./a.yaml\n");
     const { app } = makeApp();
@@ -196,7 +193,7 @@ describe("POST /api/up — topology branch", () => {
     expect(((await res.json()) as Record<string, unknown>)["code"]).toBe("topology_plan_unsupported");
   });
 
-  it("bare-name entry rejects at PARSE time (arch ruling: spec paths only) — 400, nothing launched", async () => {
+  it("裸名称条目在解析时被拒绝（架构裁定：仅规范路径）——400，不启动任何内容", async () => {
     const manifest = writeManifest("rigs:\n  - source: some-existing-rig\n");
     const { app, calls } = makeApp();
     const res = await app.request("/api/up", {
@@ -207,12 +204,12 @@ describe("POST /api/up — topology branch", () => {
     expect(res.status).toBe(400);
     const data = (await res.json()) as Record<string, unknown>;
     expect(data["code"]).toBe("invalid_topology_manifest");
-    expect(String((data["errors"] as string[])[0])).toContain("bare library/rig name");
-    expect(String((data["errors"] as string[])[0])).toContain("rig up some-existing-rig");
-    expect(calls).toEqual([]); // bootstrap never invoked
+    expect(String((data["errors"] as string[])[0])).toContain("裸库/工作组名称");
+    expect(String((data["errors"] as string[])[0])).toContain("zrig up some-existing-rig");
+    expect(calls).toEqual([]); // 从未调用 bootstrap
   });
 
-  it(".rigbundle entry rejects at PARSE time with the direct single-rig rig-up workaround — 400, nothing launched", async () => {
+  it(".rigbundle 条目在解析时被拒绝，并给出直接启动单装备的替代方案——400，不启动任何内容", async () => {
     const manifest = writeManifest("rigs:\n  - source: ./workers.rigbundle\n");
     const { app, calls } = makeApp();
     const res = await app.request("/api/up", {
@@ -223,7 +220,7 @@ describe("POST /api/up — topology branch", () => {
     expect(res.status).toBe(400);
     const data = (await res.json()) as Record<string, unknown>;
     expect(data["code"]).toBe("invalid_topology_manifest");
-    expect(String((data["errors"] as string[])[0])).toContain("single-rig 'rig up ./workers.rigbundle' accepts all source kinds unchanged");
+    expect(String((data["errors"] as string[])[0])).toContain("单工作组命令 'zrig up ./workers.rigbundle' 仍接受所有源类型");
     expect(calls).toEqual([]);
   });
 });

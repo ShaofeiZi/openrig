@@ -1,0 +1,641 @@
+{
+  "owner": "daemon-content",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": "packages/daemon/assets/claude-statusline-context.cjs",
+      "target_path": "packages/daemon/assets/claude-statusline-context.cjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 113,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 运行时钩子的注释、诊断和注入提示已中文化；hook event、JSON 字段、状态码、环境变量与恢复确认格式保持不变；node --check 通过，6 文件 71/71 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/hooks/scripts/activity-relay.cjs",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/hooks/scripts/activity-relay.cjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 192,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 运行时钩子的注释、诊断和注入提示已中文化；hook event、JSON 字段、状态码、环境变量与恢复确认格式保持不变；node --check 通过，6 文件 71/71 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/hooks/scripts/compaction-restore-bridge.cjs",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/hooks/scripts/compaction-restore-bridge.cjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 238,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 运行时钩子的注释、诊断和注入提示已中文化；hook event、JSON 字段、状态码、环境变量与恢复确认格式保持不变；node --check 通过，6 文件 71/71 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/hooks/scripts/refocus.cjs",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/hooks/scripts/refocus.cjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 322,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 运行时钩子的注释、诊断和注入提示已中文化；hook event、JSON 字段、状态码、环境变量与恢复确认格式保持不变；node --check 通过，6 文件 71/71 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/scripts/precompact-hook.mjs",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/scripts/precompact-hook.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 261,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 压缩恢复脚本的注释、诊断和生成恢复文档已中文化；expectedAck、hook JSON、事件与路径协议保持；node --check 通过，20 项测试中 18 通过、2 个既有条件跳过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/scripts/restore-from-jsonl.mjs",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/scripts/restore-from-jsonl.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 495,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 压缩恢复脚本的注释、诊断和生成恢复文档已中文化；expectedAck、hook JSON、事件与路径协议保持；node --check 通过，20 项测试中 18 通过、2 个既有条件跳过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/loading-addressable-markdown/scripts/resolve-markdown.mjs",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/loading-addressable-markdown/scripts/resolve-markdown.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 170,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释及人类可读帮助/诊断已中文化；地址语法、命令参数、退出码与数据格式保持；node/bash 语法检查和 4 文件 77/77 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/scripts/compose.py",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/scripts/compose.py",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 572,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释、渲染说明、告警及 CLI 帮助已中文化；机器状态、frontmatter keys 与参数保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/scripts/scaffold.sh",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/scripts/scaffold.sh",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 34,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释及人类可读帮助/诊断已中文化；地址语法、命令参数、退出码与数据格式保持；node/bash 语法检查和 4 文件 77/77 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/scripts/trace-due.sh",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/scripts/trace-due.sh",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 32,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释及人类可读帮助/诊断已中文化；地址语法、命令参数、退出码与数据格式保持；node/bash 语法检查和 4 文件 77/77 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/scripts/trace-stamp.sh",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/scripts/trace-stamp.sh",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 5,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释及人类可读帮助/诊断已中文化；地址语法、命令参数、退出码与数据格式保持；node/bash 语法检查和 4 文件 77/77 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/scripts/trunk-diff.sh",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/scripts/trunk-diff.sh",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 18,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释及人类可读帮助/诊断已中文化；地址语法、命令参数、退出码与数据格式保持；node/bash 语法检查和 4 文件 77/77 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/refocusing/scripts/trace-to-root.py",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/refocusing/scripts/trace-to-root.py",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 264,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 追踪说明与诊断已中文化；配置键、环境变量、JSON 协议保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/context-packs-src/world-public/verify-world.sh",
+      "target_path": "packages/daemon/context-packs-src/world-public/verify-world.sh",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 538,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 仅翻译验证器自身注释、结果说明和汇总；英文文档验收锚点保持逐字不变 | 验证器注释、结果说明和汇总已中文化；英文文档内容匹配锚点保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/scripts/capture-send-header.mjs",
+      "target_path": "packages/daemon/scripts/capture-send-header.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 57,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释与命令行报告已中文化；信封机器结构与哈希不变；node --check 通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/scripts/copy-workflow-specs.mjs",
+      "target_path": "packages/daemon/scripts/copy-workflow-specs.mjs",
+      "category": "code-comment",
+      "status": "skipped",
+      "lines": 19,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 纯文件复制脚本，无注释、日志或人类可见文本",
+      "reason_class": "uncovered"
+    },
+    {
+      "source_path": "packages/daemon/scripts/gen-control-plane-json.mjs",
+      "target_path": "packages/daemon/scripts/gen-control-plane-json.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 340,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释与诊断中文化；JSON 字段、边名和 layout 枚举保持不变 | 注释与诊断已中文化；控制平面 JSON 字段、边名和 layout 枚举保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/scripts/probe-health-calibration.mjs",
+      "target_path": "packages/daemon/scripts/probe-health-calibration.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 134,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 探针注释已中文化；JSON 字段、verdict 状态值和探测逻辑保持；node --check 通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/scripts/probe-health-diagnosis.mjs",
+      "target_path": "packages/daemon/scripts/probe-health-diagnosis.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 124,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 探针注释已中文化；JSON 字段、verdict 状态值和探测逻辑保持；node --check 通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/scripts/probe-passive-ceremony.mjs",
+      "target_path": "packages/daemon/scripts/probe-passive-ceremony.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 112,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 探针注释已中文化；JSON 字段、verdict 状态值和探测逻辑保持；node --check 通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/scripts/run-evals.mjs",
+      "target_path": "packages/daemon/scripts/run-evals.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 130,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释、摘要和操作员诊断中文化；provider 与 PASS/FAIL/ERROR 机器标记保持不变 | 注释、运行摘要和操作员诊断已中文化；provider 名与 PASS/FAIL/ERROR 标记保持不变",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/scripts/run-scenarios.mjs",
+      "target_path": "packages/daemon/scripts/run-scenarios.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 71,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释及 CLI 拒绝/汇总文本已中文化；退出码与场景协议保持；2/2 标志拒绝测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/apps/vault-specialist/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/apps/vault-specialist/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 36,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/conveyor/builder/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/conveyor/builder/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 35,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/conveyor/lead/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/conveyor/lead/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 35,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/conveyor/planner/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/conveyor/planner/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 35,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/conveyor/reviewer/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/conveyor/reviewer/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 35,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/design/product-designer/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/design/product-designer/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 39,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/development/implementer/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/development/implementer/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 30,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/development/qa/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/development/qa/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 30,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/factory-rsi/dogfood/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/factory-rsi/dogfood/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 30,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/factory-rsi/release-manager/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/factory-rsi/release-manager/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 30,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/orchestration/orchestrator/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/orchestration/orchestrator/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 30,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/product-management/pm/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/product-management/pm/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 42,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/research/analyst/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/research/analyst/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 30,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/research/synthesizer/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/research/synthesizer/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 30,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/review/independent-reviewer/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/review/independent-reviewer/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 30,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/agent.yaml",
+      "target_path": "packages/daemon/specs/agents/shared/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 69,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/runtime/codex-config.fragment.toml",
+      "target_path": "packages/daemon/specs/agents/shared/runtime/codex-config.fragment.toml",
+      "category": "config-template",
+      "status": "skipped",
+      "lines": 5,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 纯 MCP 配置，仅含机器键和值，无可翻译自然语言",
+      "reason_class": "uncovered"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/openrig-upgrade/scripts/backup-sqlite.mjs",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/openrig-upgrade/scripts/backup-sqlite.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 62,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释和操作员诊断已中文化；JSON schema/key 与命令参数不变；canonical 镜像及 digest 同步，48/48 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/openrig-upgrade/scripts/inspect-upgrade.mjs",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/openrig-upgrade/scripts/inspect-upgrade.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 40,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释和操作员诊断已中文化；JSON schema/key 与命令参数不变；canonical 镜像及 digest 同步，48/48 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/openrig-upgrade/scripts/migrate-telemetry-state-0.5.9.mjs",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/openrig-upgrade/scripts/migrate-telemetry-state-0.5.9.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 1419,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 帮助、异常和 next 说明中文化；schema、phase、issue code、decision、字段及 CLI 选项保持不变；canonical 镜像同步 | 帮助、异常和 next 说明已中文化；schema/phase/code/decision/字段/CLI 选项保持不变，canonical 镜像已同步",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/openrig-upgrade/scripts/refresh-managed-plugin.mjs",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/openrig-upgrade/scripts/refresh-managed-plugin.mjs",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 151,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释和操作员诊断已中文化；JSON schema/key 与命令参数不变；canonical 镜像及 digest 同步，48/48 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/condition-based-waiting-example.ts",
+      "target_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/condition-based-waiting-example.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 158,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释与可读超时诊断已中文化；事件名和 API 保持不变，canonical 镜像已同步",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/find-polluter.sh",
+      "target_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/find-polluter.sh",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 77,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 注释及人类可读帮助/诊断已中文化；地址语法、命令参数、退出码与数据格式保持；node/bash 语法检查和 4 文件 77/77 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/focused/adversarial-review/rig.yaml",
+      "target_path": "packages/daemon/specs/rigs/focused/adversarial-review/rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 40,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/focused/pm-team/rig.yaml",
+      "target_path": "packages/daemon/specs/rigs/focused/pm-team/rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 51,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/focused/research-team/rig.yaml",
+      "target_path": "packages/daemon/specs/rigs/focused/research-team/rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 40,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/conveyor/rig.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/conveyor/rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 72,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/demo/rig.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/demo/rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 91,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/factory-rsi/rig.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/factory-rsi/rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 115,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/first-project/rig.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/first-project/rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 31,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/implementation-pair/rig.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/implementation-pair/rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 27,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/kernel/agents/advisor/lead/agent.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/kernel/agents/advisor/lead/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 35,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/kernel/agents/operator/agent/agent.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/kernel/agents/operator/agent/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 35,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/kernel/agents/queue/worker/agent.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/kernel/agents/queue/worker/agent.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 35,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/kernel/rig-claude-only.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/kernel/rig-claude-only.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 66,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/kernel/rig-codex-only.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/kernel/rig-codex-only.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 66,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/kernel/rig.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/kernel/rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 78,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/secrets-manager/rig.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/secrets-manager/rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 37,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/secrets-manager/secrets-manager.compose.yaml",
+      "target_path": "packages/daemon/specs/rigs/launch/secrets-manager/secrets-manager.compose.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 18,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/preview/product-team/rig.yaml",
+      "target_path": "packages/daemon/specs/rigs/preview/product-team/rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 90,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | YAML 中人类可读 description/summary/label 与启动提示已中文化；name/id/runtime/ref/kind 与 rig tui 执行动作保持不变；33 文件 YAML 解析通过，相关 3 文件 36/36 测试通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    },
+    {
+      "source_path": "packages/daemon/vitest.config.ts",
+      "target_path": "packages/daemon/vitest.config.ts",
+      "category": "code-comment",
+      "status": "done",
+      "lines": 15,
+      "notes": "translate comments/runtime-visible NL only; preserve identifiers, protocol fields, envs, paths, ANSI; behavior unchanged | 本轮未覆盖，仍需翻译 | 测试配置注释已中文化；超时和 include 行为不变；daemon 测试已使用该配置通过",
+      "reason_class": "uncovered",
+      "validation_state": "validated"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "batch": "cli-comment-review-new-batch4",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/agent-image.test.ts",
+      "before_sha256_16": "17d5a56f8cbdbd08",
+      "after_sha256_16": "621e2ef50ec1024e",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/cli/test/agent.test.ts",
+      "before_sha256_16": "85db2cec0cfb0fe1",
+      "after_sha256_16": "85db2cec0cfb0fe1",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "no English NL comments present; verified Chinese"
+    },
+    {
+      "path": "packages/cli/test/archive.test.ts",
+      "before_sha256_16": "3b6be151813c07eb",
+      "after_sha256_16": "c4671362cded61d3",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/cli/test/ask-seat.test.ts",
+      "before_sha256_16": "516369be21d4f9bf",
+      "after_sha256_16": "516369be21d4f9bf",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "no English NL comments present; verified Chinese"
+    },
+    {
+      "path": "packages/cli/test/ask-session.test.ts",
+      "before_sha256_16": "d7327243c53deece",
+      "after_sha256_16": "d7327243c53deece",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "no English NL comments present; verified Chinese"
+    }
+  ]
+}

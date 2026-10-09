@@ -1,0 +1,138 @@
+{
+"packages/daemon/src/domain/gateway/slack/message.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/state-store.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/bootstrap-orchestrator.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/bundle-plugins-router.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/bundle-workflow-specs-router.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/slack-delivery.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/chat-repository.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/cmux-layout-service.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/outbound-driver.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/claude-activity-hooks.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/bundle-agent-images-router.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/terminal/view-composer.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/bootstrap-types.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/bundle-types.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/checkpoint-store.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/classification-attempts.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/claude-managed-launch.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/conflict-detector.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/builtin-policy-reference.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/bundle-context-packs-router.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/classification-sources.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/classifier-lease-manager.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/secrets.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/slack-api.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/bundle-skills-router.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/claim-service.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/slack-subsystem.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/gateway-process-main.ts": [
+"daemon-api",
+"self_reported"
+],
+"packages/daemon/src/domain/codex-daemon-support.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/codex-thread-id.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/context-monitor.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/queue-access.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/thread-routing.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/gateway/slack/thread-seat-map.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

@@ -1,8 +1,7 @@
-// V1 attempt-3 Phase 4 — QueueItemTrigger.
+// V1 attempt-3 Phase 4 —— QueueItemTrigger。
 //
-// Wraps clickable elements (qitem rows, feed cards "show context"
-// affordances) and opens the drawer on click with the QueueItemViewer
-// payload.
+// 包裹可点击元素（qitem 行、feed 卡片上的“显示上下文”提示），点击时用
+// QueueItemViewer 负载打开抽屉。
 
 import { type ReactNode, type CSSProperties } from "react";
 import { useDrawerSelection } from "../AppShell.js";

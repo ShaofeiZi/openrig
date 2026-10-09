@@ -1,48 +1,40 @@
-// Operator Surface Reconciliation v0 — steering composer.
+// Operator Surface Reconciliation v0——指导信息组合器。
 //
-// Item 1 (HEADLINE): one-screen composed steering surface. Daemon-side
-// composer reads four filesystem sources and returns a payload the UI
-// renders across the priority-stack / roadmap-rail / lane-rails panels.
+// 条目 1（HEADLINE）：单屏组合指导界面。后台服务侧组合器读取四个文件系统来源，并返回
+// 由 UI 在 priority-stack / roadmap-rail / lane-rails 面板中渲染的载荷。
 //
-// Why this composer and NOT a full daemon orchestration of Mission
-// Control + agentActivity + everything: the steering UI fetches PL-005
-// queue views (in-motion / loop-state) and health summaries via their
-// own existing endpoints, so the composer stays narrow + testable. The
-// composer is responsible only for the filesystem-derived pieces:
-//   - STEERING.md priority stack (verbatim render upstream)
-//   - roadmap PROGRESS.md (PL-XXX checklist + next-unchecked marker)
-//   - delivery-ready/mode-{0..3}/PROGRESS.md (per-lane top-N + health
-//     badges + next-pull marker per Priority Rail Rule semantics)
+// 为什么只做此组合器，而不在后台服务中完整编排 Mission Control、agentActivity 等全部内容：
+// 指导 UI 通过各自既有端点获取 PL-005 队列视图（in-motion / loop-state）和健康摘要，
+// 因此组合器保持精简且可测试，只负责从文件系统派生的部分：
+//   - STEERING.md 优先级栈（上游逐字渲染）
+//   - roadmap PROGRESS.md（PL-XXX 检查列表 + 下一个未勾选标记）
+//   - delivery-ready/mode-{0..3}/PROGRESS.md（每泳道 Top-N + 健康标记 + 按 Priority Rail
+//     Rule 语义确定的 next-pull 标记）
 //
-// Configuration: per the env-var-pivot pattern from UI Enhancement
-// Pack v0 (ConfigStore's strict VALID_KEYS won't admit dynamic family
-// keys cleanly), the steering composer reads a single workspace root
-// from OPENRIG_STEERING_WORKSPACE. Everything else derives relative to
-// that root: STEERING.md, roadmap/PROGRESS.md, delivery-ready/mode-*/
-// PROGRESS.md. Operator-overridable via OPENRIG_STEERING_PATH /
-// OPENRIG_ROADMAP_PATH / OPENRIG_DELIVERY_READY_DIR for non-canonical
-// layouts. Empty/unset → composer.isReady() = false → route returns
-// 503 with structured setup hint.
+// 配置：沿用 UI Enhancement Pack v0 的环境变量转向模式（ConfigStore 严格的 VALID_KEYS
+// 难以容纳动态键族），指导组合器从 OPENRIG_STEERING_WORKSPACE 读取单一工作区根目录。
+// 其他路径都相对于该根目录派生：STEERING.md、roadmap/PROGRESS.md、
+// delivery-ready/mode-*/PROGRESS.md。非标准布局可由操作者通过 OPENRIG_STEERING_PATH /
+// OPENRIG_ROADMAP_PATH / OPENRIG_DELIVERY_READY_DIR 覆盖。为空或未设置时，
+// composer.isReady() = false，路由返回 503 和结构化配置提示。
 
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { ProgressIndexer, type ProgressFileNode, type ProgressRow } from "../progress/progress-indexer.js";
 
 export interface SteeringComposerOpts {
-  /** Workspace root (e.g., the openrig-work substrate dir). Optional
-   *  per-piece overrides (steeringPath / roadmapPath / deliveryReadyDir)
-   *  trump the workspace-root-derived defaults. */
+  /** 工作区根目录，例如 openrig-work substrate 目录。可选的逐项覆盖（steeringPath /
+   * roadmapPath / deliveryReadyDir）优先于从工作区根目录派生的默认路径。 */
   workspaceRoot: string | null;
   steeringPath?: string | null;
   roadmapPath?: string | null;
   deliveryReadyDir?: string | null;
-  /** Per-lane top-N items to surface; default 3 (PRD § Item 1D). */
+  /** 每个泳道展示的 Top-N 条目数，默认 3（PRD § 条目 1D）。 */
   topNPerLane?: number;
 }
 
 export interface PriorityStackPayload {
-  /** Verbatim STEERING.md content. UI renders via the v0 MarkdownViewer
-   *  for consistency with the Files browser. */
+  /** STEERING.md 原文。UI 通过 v0 MarkdownViewer 渲染，以保持与文件浏览器一致。 */
   content: string;
   absolutePath: string;
   mtime: string;
@@ -53,9 +45,9 @@ export interface RoadmapRailItem {
   line: number;
   text: string;
   done: boolean;
-  /** Detected PL-XXX rail-item code if present (e.g., "PL-019"). */
+  /** 检测到的 PL-XXX 轨道条目编码（存在时，例如 "PL-019"）。 */
   railItemCode: string | null;
-  /** True for the first unchecked item on the rail (UI marks visually). */
+  /** 对轨道上第一个未勾选条目为 true；UI 会进行视觉标记。 */
   isNextUnchecked: boolean;
 }
 
@@ -63,7 +55,7 @@ export interface RoadmapRailPayload {
   absolutePath: string;
   mtime: string;
   items: RoadmapRailItem[];
-  /** Total checkbox rows / done / next-unchecked-line for header. */
+  /** 供标题显示的复选框总数、已完成数和下一个未勾选行号。 */
   counts: { total: number; done: number; nextUncheckedLine: number | null };
 }
 
@@ -71,22 +63,21 @@ export interface LaneRailItem {
   line: number;
   text: string;
   status: "active" | "done" | "blocked" | "unknown";
-  /** True when this is the lane's "next pull" per the Priority Rail
-   *  Rule: first non-done, non-blocked checkbox row on the lane. */
+  /** 按 Priority Rail Rule，当它是泳道的 next pull 时为 true：即第一个非 done、非 blocked
+   * 的复选框行。 */
   isNextPull: boolean;
 }
 
 export interface LaneRailPayload {
-  /** "mode-0" / "mode-1" / etc. — derived from the file's parent dir. */
+  /** "mode-0" / "mode-1" 等，由文件父目录派生。 */
   laneId: string;
   absolutePath: string;
   mtime: string;
-  /** Top-N items shown on the steering panel (active/blocked first;
-   *  done items only filling remainder). */
+  /** 指导面板显示的 Top-N 条目；active/blocked 优先，done 只用于填充剩余名额。 */
   topItems: LaneRailItem[];
-  /** Lane-health aggregate counts across ALL rows in the file. */
+  /** 文件全部行的泳道健康状态汇总计数。 */
   healthBadges: { active: number; blocked: number; done: number; total: number };
-  /** Convenience: line number of the lane's next-pull row, null if none. */
+  /** 便捷字段：泳道 next-pull 行号；不存在时为 null。 */
   nextPullLine: number | null;
 }
 
@@ -94,9 +85,7 @@ export interface SteeringPayload {
   priorityStack: PriorityStackPayload | null;
   roadmapRail: RoadmapRailPayload | null;
   laneRails: LaneRailPayload[];
-  /** Surface-level diagnostics for the UI to render setup hints when
-   *  individual sources are missing. Each entry names the env var that
-   *  would resolve it. */
+  /** 界面级诊断信息；单个来源缺失时供 UI 渲染配置提示。每条都会指出可解决问题的环境变量。 */
   unavailableSources: Array<{ section: string; reason: string; envVar?: string }>;
 }
 
@@ -107,8 +96,8 @@ const ENV_ROADMAP_PATH = "OPENRIG_ROADMAP_PATH";
 const ENV_DELIVERY_READY_DIR = "OPENRIG_DELIVERY_READY_DIR";
 
 export function steeringOptsFromEnv(env: NodeJS.ProcessEnv = process.env): SteeringComposerOpts {
-  // Use || (not ??) so an empty-string env var falls through to the next
-  // candidate. Same precedent as the UI Enhancement Pack v0 env helpers.
+  // 使用 || 而不是 ??，使空字符串环境变量继续回退到下一个候选；沿用 UI Enhancement
+  // Pack v0 环境变量辅助函数的先例。
   const workspaceRoot = (env[ENV_WORKSPACE] || env[ENV_LEGACY_WORKSPACE] || "").trim() || null;
   return {
     workspaceRoot,
@@ -149,9 +138,8 @@ export class SteeringComposer {
     };
   }
 
-  /** True when at least one source is resolvable. Routes use this to
-   *  decide between 200 (with possibly-empty unavailableSources) and
-   *  503 (no sources at all). */
+  /** 至少一个来源可解析时为 true。路由据此选择返回 200（unavailableSources 可能非空）
+   * 还是 503（完全没有来源）。 */
   isReady(): boolean {
     return Boolean(
       this.resolveSteeringPath() ||
@@ -168,12 +156,12 @@ export class SteeringComposer {
     return { priorityStack, roadmapRail, laneRails, unavailableSources };
   }
 
-  // --- per-section composers ---
+  // --- 各分区组合器 ---
 
   private composePriorityStack(unavailableSources: SteeringPayload["unavailableSources"]): PriorityStackPayload | null {
     const p = this.resolveSteeringPath();
     if (!p) {
-      unavailableSources.push({ section: "priorityStack", reason: "STEERING.md path not configured", envVar: ENV_STEERING_PATH });
+      unavailableSources.push({ section: "priorityStack", reason: "未配置 STEERING.md 路径", envVar: ENV_STEERING_PATH });
       return null;
     }
     try {
@@ -188,7 +176,7 @@ export class SteeringComposer {
     } catch (err) {
       unavailableSources.push({
         section: "priorityStack",
-        reason: `failed to read STEERING.md: ${err instanceof Error ? err.message : String(err)}`,
+        reason: `读取 STEERING.md 失败：${err instanceof Error ? err.message : String(err)}`,
         envVar: ENV_STEERING_PATH,
       });
       return null;
@@ -198,7 +186,7 @@ export class SteeringComposer {
   private composeRoadmapRail(unavailableSources: SteeringPayload["unavailableSources"]): RoadmapRailPayload | null {
     const p = this.resolveRoadmapPath();
     if (!p) {
-      unavailableSources.push({ section: "roadmapRail", reason: "roadmap PROGRESS.md path not configured", envVar: ENV_ROADMAP_PATH });
+      unavailableSources.push({ section: "roadmapRail", reason: "未配置 roadmap PROGRESS.md 路径", envVar: ENV_ROADMAP_PATH });
       return null;
     }
     let content: string;
@@ -209,7 +197,7 @@ export class SteeringComposer {
     } catch (err) {
       unavailableSources.push({
         section: "roadmapRail",
-        reason: `failed to read roadmap PROGRESS.md: ${err instanceof Error ? err.message : String(err)}`,
+        reason: `读取 roadmap PROGRESS.md 失败：${err instanceof Error ? err.message : String(err)}`,
         envVar: ENV_ROADMAP_PATH,
       });
       return null;
@@ -254,15 +242,13 @@ export class SteeringComposer {
     if (!dir) {
       unavailableSources.push({
         section: "laneRails",
-        reason: "delivery-ready directory not configured",
+        reason: "未配置 delivery-ready 目录",
         envVar: ENV_DELIVERY_READY_DIR,
       });
       return [];
     }
-    // Use the existing ProgressIndexer to parse mode-{0..3}/PROGRESS.md
-    // — same checkbox-status semantics as the UI Enhancement Pack v0
-    // /progress view, so the steering view stays consistent with what
-    // the operator sees in the Progress workspace.
+    // 使用既有 ProgressIndexer 解析 mode-{0..3}/PROGRESS.md。它与 UI Enhancement Pack v0
+    // /progress 视图采用相同复选框状态语义，使指导视图与操作者在 Progress 工作区看到的内容一致。
     const indexer = new ProgressIndexer({
       roots: [{ name: "delivery-ready", canonicalPath: dir }],
       maxDepth: 3,
@@ -270,7 +256,7 @@ export class SteeringComposer {
     const result = indexer.scan();
     const lanes: LaneRailPayload[] = [];
     for (const file of result.files) {
-      // Derive laneId from "mode-N/PROGRESS.md" or fallback to relPath.
+      // 从 "mode-N/PROGRESS.md" 派生 laneId，否则回退到 relPath。
       const m = file.relPath.match(/^(mode-\d+)\/PROGRESS\.md$/);
       const laneId = m ? m[1]! : file.relPath.replace(/\/?PROGRESS\.md$/i, "") || file.relPath;
       lanes.push(this.composeLaneFromFile(laneId, file));
@@ -281,15 +267,12 @@ export class SteeringComposer {
 
   private composeLaneFromFile(laneId: string, file: ProgressFileNode): LaneRailPayload {
     const checkboxRows = file.rows.filter((r) => r.kind === "checkbox");
-    // Priority Rail Rule "next pull": first non-done, non-blocked
-    // checkbox row on the lane. Per the workstream-continuity convention
-    // (cited in the PRD), shelf/queue recency does NOT override; first
-    // ready item wins.
+    // Priority Rail Rule 的 next pull：泳道上第一个非 done、非 blocked 的复选框行。根据 PRD
+    // 引用的 workstream-continuity 约定，shelf/queue 新近程度不能覆盖此规则；首个就绪项优先。
     const nextPullIdx = checkboxRows.findIndex((r) => r.status !== "done" && r.status !== "blocked");
     const nextPullLine = nextPullIdx >= 0 ? (checkboxRows[nextPullIdx]?.line ?? null) : null;
-    // Top-N: prefer active+blocked rows; only fall back to done if there
-    // aren't enough non-done rows to fill N (rare on healthy lanes,
-    // common on closed lanes).
+    // Top-N：优先 active + blocked 行；只有非 done 行不足 N 条时才用 done 补齐。健康泳道
+    // 很少发生，已关闭泳道较常见。
     const N = this.opts.topNPerLane;
     const nonDoneRows = checkboxRows.filter((r) => r.status !== "done");
     const doneRows = checkboxRows.filter((r) => r.status === "done");
@@ -315,7 +298,7 @@ export class SteeringComposer {
     };
   }
 
-  // --- path resolvers ---
+  // --- 路径解析器 ---
 
   private resolveSteeringPath(): string | null {
     if (this.opts.steeringPath) return this.opts.steeringPath;
@@ -338,7 +321,7 @@ export class SteeringComposer {
     try {
       const st = fs.statSync(candidate);
       if (st.isDirectory()) return candidate;
-    } catch { /* fall through */ }
+    } catch { /* 继续回退。 */ }
     return null;
   }
 }

@@ -9,6 +9,7 @@ import { streamItemsSchema } from "../src/db/migrations/023_stream_items.js";
 import { classifierLeasesSchema } from "../src/db/migrations/029_classifier_leases.js";
 import { projectClassificationsSchema } from "../src/db/migrations/028_project_classifications.js";
 import { classificationFieldsAndAttemptsSchema } from "../src/db/migrations/086_classification_fields_and_attempts.js";
+import { classificationIdentityProvenanceSchema } from "../src/db/migrations/089_classification_identity_provenance.js";
 import { EventBus } from "../src/domain/event-bus.js";
 import { ClassifierLeaseManager } from "../src/domain/classifier-lease-manager.js";
 import { ProjectClassifier } from "../src/domain/project-classifier.js";
@@ -31,7 +32,7 @@ function buildApp(opts: {
   return app;
 }
 
-describe("projects routes (PL-004 Phase B)", () => {
+describe("projects 路由（PL-004 阶段 B）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let leaseMgr: ClassifierLeaseManager;
@@ -39,20 +40,19 @@ describe("projects routes (PL-004 Phase B)", () => {
   let streamStore: StreamStore;
   let app: Hono;
 
-  // R1 fix (BLOCKER 1): tests now migrate streamItemsSchema (Phase A
-  // migration 023) and seed real stream_items rows so the L1→L2 FK +
-  // existence check is exercised end-to-end through the route.
+  // R1 修复（阻塞项 1）：测试现在迁移 streamItemsSchema（阶段 A 迁移 023），
+  // 并植入真实 stream_items 行，使 L1→L2 外键与存在性检查通过路由进行端到端演练。
   function seedStreamItem(streamItemId: string): void {
     streamStore.emit({
       streamItemId,
       sourceSession: "discovery@rig",
-      body: `body for ${streamItemId}`,
+      body: `${streamItemId} 的正文`,
     });
   }
 
   beforeEach(() => {
     db = createDb();
-    migrate(db, [coreSchema, eventsSchema, streamItemsSchema, classifierLeasesSchema, projectClassificationsSchema, classificationFieldsAndAttemptsSchema]);
+    migrate(db, [coreSchema, eventsSchema, streamItemsSchema, classifierLeasesSchema, projectClassificationsSchema, classificationFieldsAndAttemptsSchema, classificationIdentityProvenanceSchema]);
     bus = new EventBus(db);
     leaseMgr = new ClassifierLeaseManager(db, bus);
     classifier = new ProjectClassifier(db, bus, leaseMgr);
@@ -62,7 +62,7 @@ describe("projects routes (PL-004 Phase B)", () => {
 
   afterEach(() => db.close());
 
-  it("POST /api/projects/lease/acquire returns 201 + active lease", async () => {
+  it("POST /api/projects/lease/acquire 返回 201 和活跃 lease", async () => {
     const res = await app.request("/api/projects/lease/acquire", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -74,7 +74,7 @@ describe("projects routes (PL-004 Phase B)", () => {
     expect(lease.classifierSession).toBe("alice@rig");
   });
 
-  it("POST /api/projects/project requires lease + idempotent on stream_item_id", async () => {
+  it("POST /api/projects/project 要求 lease，并对 stream_item_id 幂等", async () => {
     seedStreamItem("stream-x");
     await app.request("/api/projects/lease/acquire", {
       method: "POST",
@@ -110,7 +110,7 @@ describe("projects routes (PL-004 Phase B)", () => {
     expect(err.error).toBe("idempotency_violation");
   });
 
-  it("POST /api/projects/project without active lease returns 409 no_active_lease", async () => {
+  it("POST /api/projects/project 缺少活跃 lease 时返回 409 no_active_lease", async () => {
     seedStreamItem("stream-x");
     const res = await app.request("/api/projects/project", {
       method: "POST",
@@ -126,13 +126,13 @@ describe("projects routes (PL-004 Phase B)", () => {
     expect(err.error).toBe("no_active_lease");
   });
 
-  it("R1 BLOCKER 1: POST /api/projects/project with nonexistent stream_item_id returns 400 unknown_stream_item", async () => {
+  it("R1 阻塞项 1：POST /api/projects/project 使用不存在的 stream_item_id 时返回 400 unknown_stream_item", async () => {
     await app.request("/api/projects/lease/acquire", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ classifierSession: "alice@rig" }),
     });
-    // Note: NO seedStreamItem call — stream-nonexistent has no row in stream_items.
+    // 注意：未调用 seedStreamItem——stream-nonexistent 在 stream_items 中没有记录。
     const res = await app.request("/api/projects/project", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -150,7 +150,7 @@ describe("projects routes (PL-004 Phase B)", () => {
     expect(err.streamItemId).toBe("stream-nonexistent");
   });
 
-  it("POST /api/projects/reclaim-classifier with --if-dead refuses on alive holder", async () => {
+  it("POST /api/projects/reclaim-classifier 使用 --if-dead 时拒绝仍存活的持有者", async () => {
     await app.request("/api/projects/lease/acquire", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -166,7 +166,7 @@ describe("projects routes (PL-004 Phase B)", () => {
     expect(err.error).toBe("lease_still_active");
   });
 
-  it("POST /api/projects/reclaim-classifier without --if-dead succeeds", async () => {
+  it("POST /api/projects/reclaim-classifier 不使用 --if-dead 时成功", async () => {
     await app.request("/api/projects/lease/acquire", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -183,7 +183,7 @@ describe("projects routes (PL-004 Phase B)", () => {
     expect(lease.reclaimedBySession).toBe("operator@rig");
   });
 
-  it("GET /api/projects/lease returns active lease (or 404 if none)", async () => {
+  it("GET /api/projects/lease 返回活跃 lease（不存在时返回 404）", async () => {
     let res = await app.request("/api/projects/lease");
     expect(res.status).toBe(404);
 
@@ -199,7 +199,7 @@ describe("projects routes (PL-004 Phase B)", () => {
     expect(lease.classifierSession).toBe("alice@rig");
   });
 
-  it("GET /api/projects/list filters by classifierSession + classificationDestination", async () => {
+  it("GET /api/projects/list 按 classifierSession + classificationDestination 筛选", async () => {
     await app.request("/api/projects/lease/acquire", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -223,7 +223,7 @@ describe("projects routes (PL-004 Phase B)", () => {
     expect(data).toHaveLength(2);
   });
 
-  it("R1 SSE pattern: GET /api/projects/sse returns 200 + content-type text/event-stream (handler reached, not /:id)", async () => {
+  it("R1 SSE 模式：GET /api/projects/sse 返回 200 + content-type text/event-stream（命中 handler，而非 /:id）", async () => {
     const res = await app.request("/api/projects/sse");
     try {
       expect(res.status).toBe(200);
@@ -233,7 +233,7 @@ describe("projects routes (PL-004 Phase B)", () => {
     }
   });
 
-  it("R1 SSE pattern: GET /api/projects/watch returns 200 + content-type text/event-stream", async () => {
+  it("R1 SSE 模式：GET /api/projects/watch 返回 200 + content-type text/event-stream", async () => {
     const res = await app.request("/api/projects/watch");
     try {
       expect(res.status).toBe(200);
@@ -243,7 +243,7 @@ describe("projects routes (PL-004 Phase B)", () => {
     }
   });
 
-  it("R1 SSE pattern: GET /api/projects/sse does NOT return project_not_found (route-order regression guard)", async () => {
+  it("R1 SSE 模式：GET /api/projects/sse 不返回 project_not_found（路由顺序回归守卫）", async () => {
     const res = await app.request("/api/projects/sse");
     try {
       expect(res.status).not.toBe(404);

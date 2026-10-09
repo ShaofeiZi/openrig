@@ -24,14 +24,13 @@ import { resolveDefaultOwner } from "../src/domain/workflow-projector.js";
 import { selectRoleSeat, type RoleSeatCandidateFacts } from "../src/domain/workflow-role-resolver.js";
 import type { WorkflowSpec } from "../src/domain/workflow-types.js";
 
-// OPR.0.4.6.FAC1 commit 4 — determinism + zero-regression + handover
-// pins (ARCH F1/F2; QA-3/QA-6; GUARD B1; planner2 §4.8). Tests only.
+// OPR.0.4.6.FAC1 提交 4——确定性 + 零回归 + handover 固定测试
+//（架构 F1/F2；QA-3/QA-6；守卫 B1；planner2 §4.8）。仅测试。
 //
-// The VM captures prove WIRING; PURITY is proven HERE (the QA-6/F2
-// split — a capture-only purity proof is theater). The proof matrix
-// labels the runtime repetition leg accordingly.
+// VM 捕获证明接线；纯度在这里证明（QA-6/F2 的分工——仅靠捕获证明纯度只是表面工作）。
+// 证明矩阵相应标记运行时重复支路。
 
-// ---------- the named unit-vector set (purity) ----------
+// ---------- 具名单位向量集合（纯度）----------
 
 function facts(over: Partial<RoleSeatCandidateFacts>): RoleSeatCandidateFacts {
   return {
@@ -51,19 +50,18 @@ function seat(coordinate: string, pendingWorkCount = 0): RoleSeatCandidateFacts 
   return facts({ logicalId: coordinate, coordinate, rawSessionName: coordinate, pendingWorkCount });
 }
 
-describe("FAC-1 C4: the named determinism unit vectors (QA-6 / ARCH F2)", () => {
+describe("FAC-1 C4：具名确定性单位向量（QA-6 / 架构 F2）", () => {
   const CANDIDATES = [seat("dev-b@f", 1), seat("dev-a@f", 0), seat("dev-c@f", 0)];
 
-  it("repeatability: the same candidate set yields the same seat, every call", () => {
+  it("可重复性：每次调用时，相同候选集合都会得到相同 seat", () => {
     const first = selectRoleSeat({ role: "driver", candidates: CANDIDATES }).seat;
     for (let i = 0; i < 10; i++) {
       expect(selectRoleSeat({ role: "driver", candidates: CANDIDATES }).seat).toBe(first);
     }
   });
 
-  it("permutation-invariance: candidate-array ORDER never affects the outcome", () => {
-    // Deterministic permutations (no runtime randomness in a
-    // determinism test): rotate + reverse cover distinct orderings.
+  it("排列不变性：候选数组顺序绝不影响结果", () => {
+    // 确定性排列（确定性测试中没有运行时随机性）：轮转 + 反转覆盖不同顺序。
     const perms: RoleSeatCandidateFacts[][] = [
       CANDIDATES,
       [...CANDIDATES].reverse(),
@@ -77,10 +75,9 @@ describe("FAC-1 C4: the named determinism unit vectors (QA-6 / ARCH F2)", () => 
     expect(results[0]).toBe("dev-a@f");
   });
 
-  it("THE PINNED COUNTERINTUITIVE VECTOR: driver10@rig < driver2@rig (plain codepoint, never natural sort)", () => {
-    // Anyone \"fixing\" this into natural sort breaks cross-version
-    // replay determinism — the pin exists so the fix is impossible to
-    // make silently.
+  it("固定的反直觉向量：driver10@rig < driver2@rig（普通码点排序，绝非自然排序）", () => {
+    // 任何把它“修复”为自然排序的操作都会破坏跨版本重放的确定性——该固定点确保此类
+    // 修改无法静默发生。
     const result = selectRoleSeat({
       role: "driver",
       candidates: [seat("dev-driver2@rig"), seat("dev-driver10@rig")],
@@ -88,7 +85,7 @@ describe("FAC-1 C4: the named determinism unit vectors (QA-6 / ARCH F2)", () => 
     expect(result.seat).toBe("dev-driver10@rig");
   });
 
-  it("case handling pinned: plain codepoint compare (uppercase sorts before lowercase)", () => {
+  it("固定大小写处理：普通码点比较（大写排在小写之前）", () => {
     const result = selectRoleSeat({
       role: "driver",
       candidates: [seat("dev-a@f"), seat("Dev-a@f")],
@@ -96,7 +93,7 @@ describe("FAC-1 C4: the named determinism unit vectors (QA-6 / ARCH F2)", () => 
     expect(result.seat).toBe("Dev-a@f"); // 'D' (68) < 'd' (100)
   });
 
-  it("NULL-coordinate exclusion: a never-launched seat cannot crash the comparator or win", () => {
+  it("排除 NULL coordinate：从未启动的 seat 不能让比较器崩溃，也不能胜出", () => {
     const result = selectRoleSeat({
       role: "driver",
       candidates: [
@@ -106,19 +103,18 @@ describe("FAC-1 C4: the named determinism unit vectors (QA-6 / ARCH F2)", () => 
     });
     expect(result.seat).toBe("dev-a@f");
     const nullOne = result.disqualified.find((d) => d.logicalId === "flat");
-    // A coordinate-less RUNNING seat is named, never silently skipped.
+    // 没有 coordinate 的 RUNNING seat 会被明确记录，绝不静默跳过。
     expect(nullOne?.disqualifier).toBe("coordinate_underivable");
   });
 
-  it("STATIC IMPORT AUDIT: the policy module carries no clock / randomness / locale / db dependency", () => {
+  it("静态导入审计：策略模块不携带时钟、随机性、locale 或数据库依赖", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const source = readFileSync(
       join(here, "../src/domain/workflow-role-resolver.ts"),
       "utf-8",
     );
-    // Audit CODE lines only — the module's own doc comments NAME the
-    // banned constructs (that is their job); a comment-inclusive match
-    // trips on itself (VM-caught first run).
+    // 仅审计代码行——模块自身的文档注释会明确提到禁用结构（这是其职责）；
+    // 若匹配包含注释，会误中自身（VM 首次运行时发现）。
     const code = source
       .split("\n")
       .filter((l) => {
@@ -130,8 +126,7 @@ describe("FAC-1 C4: the named determinism unit vectors (QA-6 / ARCH F2)", () => 
     expect(code).not.toMatch(/Date\.now|new Date\(/);
     expect(code).not.toMatch(/localeCompare|Intl\./);
     expect(code).not.toMatch(/\basync\b|await/);
-    // ZERO runtime imports: the only permissible import lines are
-    // type-only (import type ...). Today the module imports nothing.
+    // 零运行时导入：仅允许 type-only（import type ...）导入行。当前模块没有任何导入。
     const runtimeImports = code
       .split("\n")
       .filter((l) => /^import /.test(l) && !/^import type /.test(l));
@@ -139,9 +134,9 @@ describe("FAC-1 C4: the named determinism unit vectors (QA-6 / ARCH F2)", () => 
   });
 });
 
-// ---------- tier-2 byte-parity vectors (the zero-regression fence) ----------
+// ---------- tier-2 字节一致向量（零回归围栏）----------
 
-describe("FAC-1 C4: tier-2 byte-parity (declared preferred_targets are NEVER inventory-filtered)", () => {
+describe("FAC-1 C4：tier-2 字节一致性（声明的 preferred_targets 绝不按清单筛选）", () => {
   const runtimeOf = (session: string): string | null =>
     session.includes("codex") ? "codex" : "claude-code";
 
@@ -154,56 +149,55 @@ describe("FAC-1 C4: tier-2 byte-parity (declared preferred_targets are NEVER inv
     };
   }
 
-  it("unpinned targets[0] wins even when a bound-rig context with a 'better' role seat is supplied", () => {
+  it("即使提供含“更优”角色 seat 的 bound-rig 上下文，未固定的 targets[0] 仍胜出", () => {
     const spec = specWith(["declared-seat@rig", "second@rig"]);
     const ctx = {
       boundRig: "factory-a",
       candidatesForRig: () => {
-        throw new Error("tier-2 must NEVER read inventory");
+        throw new Error("tier-2 绝不能读取清单");
       },
     };
     const owner = resolveDefaultOwner(spec, spec.steps[0]!, runtimeOf, ctx);
     expect(owner).toBe("declared-seat@rig");
   });
 
-  it("a DEAD declared target is still returned — liveness-filtering declared targets is the named regression", () => {
-    // The fence: tier 2 consults NO inventory, so a stopped/dead
-    // declared seat routes exactly as today (WF-5's stuck class owns
-    // the consequence, not the resolver).
+  it("仍会返回已失效的声明目标——按活跃性筛选声明目标是具名回归", () => {
+    // 围栏：tier 2 不查询清单，因此 stopped/dead 的声明 seat 与当前行为完全相同地路由
+    //（后果由 WF-5 的 stuck 类负责，而非解析器）。
     const spec = specWith(["dead-seat@rig"]);
     const ctx = {
       boundRig: "factory-a",
       candidatesForRig: () => {
-        throw new Error("tier-2 must NEVER read inventory");
+        throw new Error("tier-2 绝不能读取清单");
       },
     };
     expect(resolveDefaultOwner(spec, spec.steps[0]!, runtimeOf, ctx)).toBe("dead-seat@rig");
   });
 
-  it("harness-pinned selection WITHIN declared targets is untouched by the context", () => {
+  it("声明目标内部由 harness 固定的选择不受上下文影响", () => {
     const spec = specWith(["wrong-codex@rig", "right-claude@rig"]);
     const step = { ...spec.steps[0]!, harness: "claude-code" as const };
     const ctx = {
       boundRig: "factory-a",
       candidatesForRig: () => {
-        throw new Error("tier-2 must NEVER read inventory");
+        throw new Error("tier-2 绝不能读取清单");
       },
     };
     expect(resolveDefaultOwner(spec, step, runtimeOf, ctx)).toBe("right-claude@rig");
   });
 
-  it("unbound no-targets stays byte-identical: null return, no context machinery", () => {
+  it("未绑定且无目标时保持字节一致：返回 null，不使用上下文机制", () => {
     const spec = specWith(undefined);
     expect(resolveDefaultOwner(spec, spec.steps[0]!, runtimeOf, undefined)).toBeNull();
   });
 });
 
-// ---------- replay pins with the read-spy (GUARD B1, binding) ----------
+// ---------- 使用读取 spy 的重放固定测试（守卫 B1，binding）----------
 
 const ROLE_ONLY_SPEC = `workflow:
   id: fac1-c4-replay
   version: 1
-  objective: replay pins
+  objective: 重放固定点
   target:
     rig: factory-a
   entry:
@@ -223,7 +217,7 @@ const ROLE_ONLY_SPEC = `workflow:
         - done
 `;
 
-describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH replay classes", () => {
+describe("FAC-1 C4：重放固定点——两类重放的 role 解析都不读取清单", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -256,10 +250,8 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
     return coordinate;
   }
 
-  /** The read-spy: counts prepared statements that touch the node
-   *  inventory surface (nodes/sessions/bindings FROM-reads). Role
-   *  resolution is the only workflow-path consumer of these tables
-   *  inside project(); replays must never trigger them. */
+  /** 读取 spy：统计触及节点清单表面的预备语句（从 nodes/sessions/bindings 读取）。
+   *  role 解析是 project() 内唯一使用这些表的工作流路径消费者；重放绝不能触发它们。 */
   function spyInventoryReads(): { count: () => number; restore: () => void } {
     const orig = db.prepare.bind(db);
     let n = 0;
@@ -289,8 +281,8 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
     ]);
     bus = new EventBus(db);
     queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用闭合失败（MF2）——意图发送 nudge 的 terminal 关闭需要同数据库
+    // intent store，才能使其唤醒持久化。
     queueRepo.attachOutbox(new OutboxHandler(db));
     rigRepo = new RigRepository(db);
     podRepo = new PodRepository(db);
@@ -306,7 +298,7 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("TERMINAL replay: inventory changes between resolve+record and the replay; the 409 stands, the recorded destination is unchanged, and ZERO inventory reads happen", async () => {
+  it("TERMINAL 重放：清单在解析记录与重放之间变化；仍返回 409，记录目标不变，且不读取清单", async () => {
     seedSeat("dev", "planner1", { role: "planner" });
     const firstDriver = seedSeat("dev", "driver1", { role: "driver" });
     const inst = await runtime.instantiate({ specPath, rootObjective: "t", createdBySession: "orch@factory-a" });
@@ -318,7 +310,7 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
     });
     expect(projected.nextOwnerSession).toBe(firstDriver);
 
-    // Inventory changes: a fresh, less-loaded, codepoint-earlier seat.
+    // 清单变化：新增一个负载更低、码点排序更靠前的 seat。
     seedSeat("dev", "driver0", { role: "driver" });
 
     const spy = spyInventoryReads();
@@ -331,16 +323,16 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
           actorSession: "dev-planner1@factory-a",
         }),
       ).rejects.toMatchObject({ code: "packet_not_on_frontier" });
-      expect(spy.count()).toBe(0); // guard B1: the replay read NOTHING
+      expect(spy.count()).toBe(0); // 守卫 B1：重放未读取任何内容
     } finally {
       spy.restore();
     }
-    // The recorded destination is the determinism anchor — unchanged.
+    // 已记录目标是确定性锚点——保持不变。
     const packet = queueRepo.getById(projected.nextQitemId!);
     expect(packet?.destinationSession).toBe(firstDriver);
   });
 
-  it("ABSORBED waiting replay: the exact duplicate is absorbed with zero writes AND zero inventory reads", async () => {
+  it("已吸收的 waiting 重放：完全相同的重复请求被吸收，既不写入也不读取清单", async () => {
     seedSeat("dev", "planner1", { role: "planner" });
     seedSeat("dev", "driver1", { role: "driver" });
     const inst = await runtime.instantiate({ specPath, rootObjective: "t", createdBySession: "orch@factory-a" });
@@ -353,8 +345,7 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
     };
     await runtime.projector.project(parkInput);
 
-    // Inventory changes between park and replay (immaterial — and the
-    // spy proves the replay never looks).
+    // 清单在 park 与重放之间变化（无关紧要——spy 证明重放从未查看它）。
     seedSeat("dev", "driver0", { role: "driver" });
 
     const spy = spyInventoryReads();
@@ -367,7 +358,7 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
     }
   });
 
-  it("HANDOVER stability pin (AC-3): the occupant swaps behind the seat; the recorded destination AND a fresh resolution both still address the same coordinate", async () => {
+  it("HANDOVER 稳定性固定点（AC-3）：seat 背后的 occupant 切换后，已记录目标和全新解析仍指向同一 coordinate", async () => {
     seedSeat("dev", "planner1", { role: "planner" });
     const driverSeat = seedSeat("dev", "driver1", { role: "driver" });
     const inst = await runtime.instantiate({ specPath, rootObjective: "t", createdBySession: "orch@factory-a" });
@@ -379,9 +370,8 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
     });
     expect(projected.nextOwnerSession).toBe(driverSeat);
 
-    // Simulate the handover mutation (SeatHandoverMutationResult shape):
-    // occupant-era fields change; a NEW session row registers under the
-    // SAME canonical coordinate (the handover relaunch reuses it).
+    // 模拟 handover 变更（SeatHandoverMutationResult 结构）：occupant 时期字段改变；
+    // 新会话行注册到相同规范 coordinate 下（handover 重新启动会复用它）。
     const node = db.prepare(`SELECT id FROM nodes WHERE logical_id = 'dev.driver1'`).get() as { id: string };
     db.prepare(`UPDATE sessions SET status = 'stopped' WHERE node_id = ?`).run(node.id);
     db.prepare(`UPDATE nodes SET previous_occupant = ?, handover_result = 'handed_over' WHERE id = ?`).run(
@@ -393,11 +383,11 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
       driverSeat,
     );
 
-    // (a) the recorded destination still addresses the seat (coordinate-stable).
+    // (a) 已记录目标仍指向该 seat（coordinate 稳定）。
     const packet = queueRepo.getById(projected.nextQitemId!);
     expect(packet?.destinationSession).toBe(driverSeat);
 
-    // (b) a FRESH resolution (a second bound instance) picks the same coordinate.
+    // (b) 全新解析（第二个绑定实例）选择相同 coordinate。
     const inst2 = await runtime.instantiate({ specPath, rootObjective: "t2", createdBySession: "orch@factory-a" });
     const projected2 = await runtime.projector.project({
       instanceId: inst2.instance.instanceId,
@@ -408,7 +398,7 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
     expect(projected2.nextOwnerSession).toBe(driverSeat);
   });
 
-  it("compat: an ENTRY-OWNER override at instantiate beats the resolver on a bound rig", async () => {
+  it("兼容性：实例化时 ENTRY-OWNER 覆盖值优先于 bound rig 上的解析器", async () => {
     seedSeat("dev", "planner1", { role: "planner" });
     seedSeat("dev", "driver1", { role: "driver" });
     const override = seedSeat("dev", "special", {});
@@ -421,7 +411,7 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
     expect(inst.entryOwnerSession).toBe(override);
   });
 
-  it("compat: an EXPLICIT nextOwnerSession override beats the resolver under a bound rig", async () => {
+  it("兼容性：显式 nextOwnerSession 覆盖值优先于 bound rig 下的解析器", async () => {
     seedSeat("dev", "planner1", { role: "planner" });
     seedSeat("dev", "driver1", { role: "driver" });
     const override = seedSeat("dev", "special", {});
@@ -434,7 +424,7 @@ describe("FAC-1 C4: replay pins — zero role-resolution inventory reads on BOTH
       nextOwnerSession: override,
     });
     expect(projected.nextOwnerSession).toBe(override);
-    // Evidence records the explicit mode.
+    // Evidence 记录 explicit 模式。
     const trail = runtime.trailLog.listForInstance(inst.instance.instanceId);
     const evidence = trail[0]?.closureEvidence as Record<string, Record<string, unknown>> | null;
     expect(evidence?.["owner_resolution"]?.["mode"]).toBe("explicit");

@@ -1,11 +1,9 @@
-// Slice 24 Checkpoint C — POST /api/rigs/:rigId/cmux/launch route tests.
+// Slice 24 Checkpoint C——POST /api/rigs/:rigId/cmux/launch 路由测试。
 //
-// Tests the route's coordination logic (rig lookup → cmux availability
-// gate → NodeInventory session-name mapping → ordered-by-pod-then-member
-// → chunked into MAX_PER_WORKSPACE → workspace-name conflict resolution
-// → buildWorkspace per chunk) using mocked deps to keep tests fast +
-// hermetic. Full cmux daemon end-to-end is QA/operator window per
-// permission posture.
+// 使用 mock 依赖测试路由协调逻辑（rig 查找 → cmux 可用性门禁 → NodeInventory session-name 映射
+// → 按 pod 再按 member 排序 → 按 MAX_PER_WORKSPACE 分块 → 解决 workspace 名称冲突
+// → 为每个分块执行 buildWorkspace），以保持测试快速且 hermetic。根据权限姿态，完整 cmux daemon
+// 端到端测试留给 QA/operator 窗口。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -51,10 +49,8 @@ function makeNodeInventoryStub(rigs: Record<string, FakeRigOpts>) {
   return (rigId: string) => {
     const rig = rigs[rigId];
     if (!rig) return [];
-    // Mirror getNodeInventory: emits one entry per node (including
-    // detached/exited ones — sessionStatus distinguishes). Default
-    // sessionStatus = "running" + attachmentType = "tmux" so existing
-    // happy-path tests stay green.
+    // 镜像 getNodeInventory：每个节点生成一个条目（包括 detached/exited 节点，由 sessionStatus 区分）。
+    // 默认 sessionStatus = "running" 且 attachmentType = "tmux"，使现有 happy-path 测试保持 green。
     return rig.nodes.map((n) => ({
       logicalId: n.logicalId,
       canonicalSessionName: n.canonicalSessionName,
@@ -72,9 +68,9 @@ function makeMockAdapter(opts: {
   createOk?: boolean;
   failOn?: "createWorkspace" | "splitSurface" | "sendText" | "listWorkspaces";
   /**
-   * If set, makes createWorkspace fail ONLY when given this specific name.
-   * Enables "chunk 0 succeeds, chunk 1 fails" tests for partial-response
-   * discrimination (slice 24.C carry-forward concern).
+   * 设置后，仅当传入此特定名称时才使 createWorkspace 失败。
+   * 用于验证“chunk 0 成功、chunk 1 失败”的 partial-response 判别
+   *（slice 24.C 延续事项）。
    */
   failOnWorkspaceName?: string;
 }): CmuxAdapter {
@@ -146,11 +142,11 @@ function buildApp(opts: {
   const app = new Hono();
   const rigRepo = makeRigRepoStub(opts.rigs);
   const nodeInventoryFn = makeNodeInventoryStub(opts.rigs);
-  // No-op sleep so tests don't actually wait
+  // 使用空操作 sleep，避免测试实际等待
   const layoutService = new CmuxLayoutService(opts.adapter, { sleep: async () => {} });
-  // OPR.0.3.4.8: default live sessions = sessions whose effective sessionStatus
-  // is "running" (mirrors makeNodeInventoryStub's default: canonicalSessionName
-  // present + no explicit non-running sessionStatus = "running").
+  // OPR.0.3.4.8：默认 live session = 有效 sessionStatus 为 "running" 的 session
+  //（镜像 makeNodeInventoryStub 的默认规则：canonicalSessionName 存在且未显式指定非 running
+  // sessionStatus，即视为 "running"）。
   const defaultLive = new Set<string>();
   for (const rig of Object.values(opts.rigs)) {
     for (const node of rig.nodes ?? []) {
@@ -179,7 +175,7 @@ function buildApp(opts: {
 }
 
 describe("POST /api/rigs/:rigId/cmux/launch", () => {
-  it("returns 404 when rig not found", async () => {
+  it("找不到 rig 时返回 404", async () => {
     const app = buildApp({
       rigs: {},
       adapter: makeMockAdapter({ available: true }),
@@ -190,7 +186,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.error).toBe("rig_not_found");
   });
 
-  it("returns 503 when cmux adapter is unavailable", async () => {
+  it("cmux adapter 不可用时返回 503", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -210,14 +206,14 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.message.toLowerCase()).toMatch(/cmux/);
   });
 
-  it("returns 412 when rig has no running tmux sessions", async () => {
+  it("rig 没有运行中的 tmux session 时返回 412", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
           id: "rig-1",
           name: "my-rig",
           nodes: [
-            { logicalId: "a", podId: "p1", canonicalSessionName: null }, // not running
+            { logicalId: "a", podId: "p1", canonicalSessionName: null }, // 未运行
             { logicalId: "b", podId: "p1", canonicalSessionName: null },
           ],
         },
@@ -232,7 +228,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.error).toBe("rig_not_running");
   });
 
-  it("happy path: 3 running agents → 1 workspace named after rig", async () => {
+  it("happy path：3 个运行中的 agent → 1 个以 rig 命名的 workspace", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -257,7 +253,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.workspaces[0]!.blanks).toBe(1);
   });
 
-  it("13 agents → 2 workspaces (12 + 1)", async () => {
+  it("13 个 agent → 2 个 workspace（12 + 1）", async () => {
     const nodes = Array.from({ length: 13 }, (_, i) => ({
       logicalId: `a${i + 1}`,
       podId: "p1",
@@ -277,7 +273,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.workspaces[1]!.agents).toHaveLength(1);
   });
 
-  it("auto-appends -2 suffix when workspace with rig name already exists in cmux", async () => {
+  it("cmux 中已存在与 rig 同名的 workspace 时自动追加 -2 后缀", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -288,7 +284,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
       },
       adapter: makeMockAdapter({
         available: true,
-        existingWorkspaces: ["existing-rig"], // name collision
+        existingWorkspaces: ["existing-rig"], // 名称冲突
       }),
     });
     const res = await app.request("/api/rigs/rig-1/cmux/launch", { method: "POST" });
@@ -297,7 +293,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.workspaces[0]!.name).toBe("existing-rig-2");
   });
 
-  it("auto-appends sequential suffix when multiple workspaces collide", async () => {
+  it("多个 workspace 冲突时自动追加连续后缀", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -317,7 +313,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.workspaces[0]!.name).toBe("collide-4");
   });
 
-  it("returns 500 with partial-workspace info when a buildWorkspace step fails mid-flight", async () => {
+  it("buildWorkspace 步骤中途失败时返回 500 和部分 workspace 信息", async () => {
     const nodes = Array.from({ length: 13 }, (_, i) => ({
       logicalId: `a${i + 1}`,
       podId: "p1",
@@ -327,7 +323,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
       rigs: { "rig-1": { id: "rig-1", name: "partial-rig", nodes } },
       adapter: makeMockAdapter({
         available: true,
-        failOn: "splitSurface", // splitSurface fails on the FIRST workspace (12 agents need splits)
+        failOn: "splitSurface", // splitSurface 在第一个 workspace 失败（12 个 agent 需要 split）
       }),
     });
     const res = await app.request("/api/rigs/rig-1/cmux/launch", { method: "POST" });
@@ -337,12 +333,11 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.message.toLowerCase()).toMatch(/split failed/);
   });
 
-  // velocity-guard 24.C BLOCKING-CONCERN repair regressions:
-  // canonicalSessionName presence is INSUFFICIENT — the session may be
-  // detached/exited but still have a name recorded in node-inventory.
-  // Route must filter on sessionStatus === "running" too.
+  // velocity-guard 24.C BLOCKING-CONCERN 修复回归：
+  // 仅存在 canonicalSessionName 并不充分——session 可能已 detached/exited，
+  // 但 node-inventory 中仍记录有名称。路由还必须按 sessionStatus === "running" 过滤。
 
-  it("412 rig_not_running when nodes have canonicalSessionName but sessionStatus is 'exited' (BLOCKING-FIX)", async () => {
+  it("节点有 canonicalSessionName 但 sessionStatus 为 'exited' 时返回 412 rig_not_running（BLOCKING-FIX）", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -353,13 +348,13 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
               logicalId: "a",
               podId: "p1",
               canonicalSessionName: "a@stale-rig",
-              sessionStatus: "exited", // stale: session NAME recorded but session has exited
+              sessionStatus: "exited", // stale：记录了 session 名称，但 session 已退出
             },
             {
               logicalId: "b",
               podId: "p1",
               canonicalSessionName: "b@stale-rig",
-              sessionStatus: "detached", // detached: same story
+              sessionStatus: "detached", // detached：情况相同
             },
           ],
         },
@@ -372,7 +367,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.error).toBe("rig_not_running");
   });
 
-  it("mixed stale+running: only running sessions are attached (BLOCKING-FIX discriminator)", async () => {
+  it("混合 stale+running：只 attach 运行中的 session（BLOCKING-FIX 判别测试）", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -406,24 +401,19 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { workspaces: Array<{ agents: string[] }> };
     expect(body.workspaces).toHaveLength(1);
-    // Only the two RUNNING sessions are attached; the exited one (b)
-    // is filtered out. Without the sessionStatus filter, this would
-    // include "b@mixed-rig" and the assertion would fail.
+    // 只 attach 两个 RUNNING session；已退出的 b 被过滤。缺少 sessionStatus 过滤时，
+    // 此处会包含 "b@mixed-rig"，从而导致断言失败。
     expect(body.workspaces[0]!.agents).toEqual(["a@mixed-rig", "c@mixed-rig"]);
   });
 
-  // velocity-guard 24.C-repair ADVISORY-OK carry-forward:
-  // partial-workspace claim wasn't discriminated by prior tests
-  // (failOn:"splitSurface" fails on the FIRST workspace, so partial[]
-  // is always empty in those cases). This test proves the partial[]
-  // payload accumulates successfully-built workspaces before the failure.
+  // velocity-guard 24.C-repair ADVISORY-OK 延续事项：
+  // 先前测试无法判别 partial-workspace 声明（failOn:"splitSurface" 在第一个 workspace 失败，
+  // 因此这些场景中的 partial[] 始终为空）。本测试证明 partial[] payload 会累积失败前已成功构建的 workspace。
 
-  it("500 partial-workspace info DISCRIMINATING: chunk 0 succeeds + chunk 1 fails → partial contains chunk-0 info", async () => {
-    // 13 agents → 2 chunks: "fanout" (12 agents) + "fanout-2" (1 agent).
-    // failOnWorkspaceName="fanout-2" lets the FIRST createWorkspace
-    // succeed (with all its splits + sends), then fails the SECOND
-    // createWorkspace at chunk 1. The response should include the
-    // built workspace from chunk 0 under `partial[]`.
+  it("500 partial-workspace 信息判别：chunk 0 成功 + chunk 1 失败 → partial 包含 chunk-0 信息", async () => {
+    // 13 个 agent → 2 个 chunk："fanout"（12 个 agent）+ "fanout-2"（1 个 agent）。
+    // failOnWorkspaceName="fanout-2" 使第一个 createWorkspace 成功（包括所有 split + send），
+    // 随后在 chunk 1 处使第二个 createWorkspace 失败。响应的 `partial[]` 中应包含 chunk 0 构建的 workspace。
     const nodes = Array.from({ length: 13 }, (_, i) => ({
       logicalId: `a${i + 1}`,
       podId: "p1",
@@ -444,18 +434,17 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
       partial: Array<{ name: string; agents: string[]; blanks: number }>;
     };
     expect(body.error).toBe("build_workspace_failed");
-    // CRITICAL ASSERTION: partial contains the successfully-built
-    // first workspace ("fanout" with 12 agents). Under a broken impl
-    // that doesn't accumulate partial, this would be undefined or [].
+    // 关键断言：partial 包含成功构建的第一个 workspace（"fanout"，含 12 个 agent）。
+    // 如果实现未累积 partial，此处将为 undefined 或 []。
     expect(body.partial).toHaveLength(1);
     expect(body.partial[0]!.name).toBe("fanout");
     expect(body.partial[0]!.agents).toHaveLength(12);
     expect(body.partial[0]!.blanks).toBe(0);
-    // The failure message references the second workspace.
+    // 失败消息引用第二个 workspace。
     expect(body.message.toLowerCase()).toMatch(/fanout-2/);
   });
 
-  it("412 rig_not_running when attachmentType is non-tmux even if sessionStatus is running (defensive)", async () => {
+  it("即使 sessionStatus 为 running，attachmentType 非 tmux 时也返回 412 rig_not_running（防御性）", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -467,7 +456,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
               podId: "p1",
               canonicalSessionName: "a@non-tmux",
               sessionStatus: "running",
-              attachmentType: "ssh", // non-tmux: can't 'tmux attach -t'
+              attachmentType: "ssh", // 非 tmux：无法执行 'tmux attach -t'
             },
           ],
         },
@@ -478,9 +467,9 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(res.status).toBe(412);
   });
 
-  // OPR.0.3.4.8 — cmux launch readiness: tmux-liveness discriminator + honest partial.
+  // OPR.0.3.4.8——cmux launch readiness：tmux-liveness 判别 + 如实 partial。
 
-  it("OPR.0.3.4.8: live detached session (hasSession true) is INCLUDED as a pane", async () => {
+  it("OPR.0.3.4.8：live detached session（hasSession 为 true）作为 pane 包含在内", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -501,7 +490,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.missing).toBeUndefined();
   });
 
-  it("OPR.0.3.4.8: mixed live + stale -> response includes missing with reasons", async () => {
+  it("OPR.0.3.4.8：混合 live + stale -> 响应包含带原因的 missing", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -527,7 +516,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.missing[0]!.reason).toBe("session-missing");
   });
 
-  it("OPR.0.3.4.8: stale dead session (hasSession false) is NOT attached, listed as missing", async () => {
+  it("OPR.0.3.4.8：stale dead session（hasSession 为 false）不 attach，并列为 missing", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -549,7 +538,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.missing.some((m) => m.logicalId === "a")).toBe(true);
   });
 
-  it("OPR.0.3.4.8: fully-ready rig opens all seats with no missing", async () => {
+  it("OPR.0.3.4.8：fully-ready rig 打开所有席位，且无 missing", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -571,7 +560,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.missing).toBeUndefined();
   });
 
-  it("OPR.0.3.4.8: no code branches on sessionStatus === attention_required", async () => {
+  it("OPR.0.3.4.8：没有代码按 sessionStatus === attention_required 分支", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -591,7 +580,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.workspaces[0]!.agents).toContain("a@attn-rig");
   });
 
-  it("OPR.0.3.4.8: candidate hasSession false,false,true before timeout -> included", async () => {
+  it("OPR.0.3.4.8：候选 hasSession 在超时前依次为 false、false、true -> 包含在内", async () => {
     let callCount = 0;
     const dynamicTmux = {
       ...makeTmuxAdapterStub(new Set()),
@@ -632,7 +621,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.missing).toBeUndefined();
   });
 
-  it("OPR.0.3.4.8: no-session at first snapshot -> discovers canonical/live before timeout -> included (multiple null re-reads)", async () => {
+  it("OPR.0.3.4.8：首次 snapshot 无 session -> 超时前发现 canonical/live -> 包含在内（多次重新读取 null）", async () => {
     let inventoryCallCount = 0;
     const dynamicInventoryFn = () => {
       inventoryCallCount++;
@@ -673,7 +662,7 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.missing).toBeUndefined();
   });
 
-  it("OPR.0.3.4.8: stale/exited session remains session-missing (never attached even after polling)", async () => {
+  it("OPR.0.3.4.8：stale/exited session 保持 session-missing（即使轮询后也绝不 attach）", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
@@ -693,14 +682,14 @@ describe("POST /api/rigs/:rigId/cmux/launch", () => {
     expect(body.missing[0]!.reason).toBe("session-missing");
   });
 
-  it("rig.nodes order (DB ORDER BY created_at = pod-then-member) is preserved in agents array", async () => {
+  it("agents 数组保留 rig.nodes 顺序（DB 按 created_at 排序 = 先 pod 后 member）", async () => {
     const app = buildApp({
       rigs: {
         "rig-1": {
           id: "rig-1",
           name: "ordered",
           nodes: [
-            // Order: pod1.lead, pod1.peer, pod2.impl, pod2.qa (created_at order = spec order)
+            // 顺序：pod1.lead、pod1.peer、pod2.impl、pod2.qa（created_at 顺序 = spec 顺序）
             { logicalId: "pod1.lead", podId: "p1", canonicalSessionName: "pod1.lead@ordered" },
             { logicalId: "pod1.peer", podId: "p1", canonicalSessionName: "pod1.peer@ordered" },
             { logicalId: "pod2.impl", podId: "p2", canonicalSessionName: "pod2.impl@ordered" },

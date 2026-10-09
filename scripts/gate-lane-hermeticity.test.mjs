@@ -143,7 +143,7 @@ test("dependency root: a later refusal invalidates a same-HEAD prior PASS", asyn
   assert.equal(existsSync(verdictPath), false, "the refused retry invalidates the prior PASS");
   const consume = spawnSync(process.execPath, [CONSUMER_SCRIPT, verdictPath], { cwd: root, encoding: "utf8" });
   assert.notEqual(consume.status, 0, "the prior PASS is no longer consumable");
-  assert.match(`${consume.stdout}\n${consume.stderr}`, /verdict.*missing/i);
+  assert.match(`${consume.stdout}\n${consume.stderr}`, /裁决缺失/);
 });
 
 test("dependency root: drift during the gate refuses before writing a verdict", async () => {

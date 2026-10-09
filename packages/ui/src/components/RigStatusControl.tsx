@@ -1,17 +1,14 @@
-// OPR.0.4.7.1 — the topology rig-status control: a COMPACT status badge +
-// launch button that opens the existing LaunchRecoveryModal.
+// OPR.0.4.7.1 —— 拓扑页的工作组状态控件：一个紧凑的状态角标 + 启动按钮，
+// 点击打开既有的 LaunchRecoveryModal。
 //
-// Replaces the inline RigStatusCard mount, which rendered as a large
-// left-anchored card underneath the topology explorer overlay (reproduced:
-// the card started at x335 with its left half, text, and action obscured).
-// RigStatusCard itself is untouched — the dashboard kernel card still uses
-// it (OPR.0.4.3.22). Terminal-surface actions (Open in terminal) still live
-// SEPARATELY in the tab bar and never restore or fresh-prime (guard 5).
+// 取代原先内联挂载的 RigStatusCard——它曾是一张大型左对齐卡片，铺在拓扑 explorer 覆盖层下方
+// （复现：卡片从 x335 开始，左半、文字和操作都被遮挡）。RigStatusCard 本身不动——
+// 仪表盘内核卡片仍在使用它（OPR.0.4.3.22）。终端界面的操作（在终端中打开）仍单独放在
+// 标签栏里，绝不做恢复或全新预热（guard 5）。
 //
-// The control stays a BUTTON in every state — status=up opens the modal too:
-// the modal is plan-before-mutation (a read-only forecast on open), so
-// opening it while up is safe, and a control that sometimes isn't clickable
-// reads as broken. The one-line status meaning rides the badge tooltip.
+// 该控件在任何状态下都保持为一个按钮——status=up 时也打开弹窗：弹窗是“先规划后变更”
+// （打开时是只读预测），所以 up 时打开是安全的；而一个有时不可点的控件看起来像坏了。
+// 状态的一行含义挂在角标的 tooltip 上。
 
 import { useState } from "react";
 import { LaunchRecoveryModal } from "./LaunchRecoveryModal.js";
@@ -25,25 +22,24 @@ export function RigStatusControl({ rigId, rigName }: { rigId: string; rigName: s
   const { data: status, isLoading } = useRigStatus(rigId);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Defensive: render the placeholder until a well-formed status object arrives
-  // (a malformed/empty response must never crash the topology page).
+  // 防御：在拿到形态良好的状态对象之前渲染占位（畸形/空响应绝不能让拓扑页崩溃）。
   if (isLoading || !status || typeof status.rigName !== "string" || !Array.isArray(status.src)) {
     return (
       <div
         data-testid={`rig-status-control-${rigId}`}
         className="inline-flex items-center border border-stone-300 bg-white/60 px-3 py-1.5 font-mono text-[9px] text-secondary"
       >
-        Loading rig status…
+        正在加载工作组状态…
       </div>
     );
   }
 
   const primaryLabel =
     status.status === "blocked"
-      ? "Resolve & restore ▸"
+      ? "解决并恢复 ▸"
       : status.status === "up"
-        ? "Running ▸"
-        : "Restore / launch ▸";
+        ? "运行中 ▸"
+        : "恢复 / 启动 ▸";
 
   return (
     <div

@@ -1,8 +1,7 @@
-// OPR.0.3.4.7 — Codex profile-v2 preflight: profile-LOAD proof via Codex's
-// own loader. A profile that file-exists-but-won't-load (legacy
-// [profiles.<name>] table present) MUST FAIL — not just the missing-file case.
-// Shared by rigspec-preflight (pre-launch per Codex node) and
-// codex-runtime-adapter (pre-restore/launch for stored Codex nodes).
+// OPR.0.3.4.7——Codex profile-v2 预检：使用 Codex 自身的加载器证明 profile 可加载。
+// 只要 profile 文件存在却无法加载（例如仍含旧版 [profiles.<name>] 表），就必须失败，
+// 不能只检查文件是否缺失。rigspec-preflight（每个 Codex 节点启动前）与
+// codex-runtime-adapter（已存储 Codex 节点恢复/启动前）共享此检查。
 
 export interface CodexProfileProbeResult {
   ok: boolean;
@@ -23,7 +22,7 @@ export async function verifyCodexProfileLoads(
     await Promise.race([
       exec(cmd),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Codex profile probe timed out after ${timeoutMs}ms`)), timeoutMs),
+        setTimeout(() => reject(new Error(`Codex profile 探测在 ${timeoutMs}ms 后超时`)), timeoutMs),
       ),
     ]);
     return { ok: true, profile };
@@ -39,12 +38,12 @@ export async function verifyCodexProfileLoads(
     const stderrLines = stderr.split("\n").filter((l) => l.trim());
     const reason = stderrLines.slice(0, 3).join("; ");
     const migrationHint = isLegacyTable
-      ? `Move the profile settings into ~/.codex/${profile}.config.toml and remove the legacy [profiles.${profile}] table/selector from config.toml.`
-      : `Check ~/.codex/${profile}.config.toml is valid TOML (an absent file is OK — Codex default-layers it). Run 'codex -p ${profile} mcp list' manually to diagnose.`;
+      ? `请将 profile 设置移入 ~/.codex/${profile}.config.toml，并从 config.toml 删除旧版 [profiles.${profile}] 表/选择器。`
+      : `请检查 ~/.codex/${profile}.config.toml 是否为有效 TOML（文件缺失也可以，Codex 会应用默认层）。可手动运行 'codex -p ${profile} mcp list' 诊断。`;
     return {
       ok: false,
       profile,
-      error: `Codex profile '${profile}' failed to load: ${reason}`,
+      error: `Codex profile '${profile}' 加载失败：${reason}`,
       migrationHint,
     };
   }

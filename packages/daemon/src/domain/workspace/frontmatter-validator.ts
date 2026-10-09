@@ -1,18 +1,16 @@
-// PL-007 Workspace Primitive v0 — frontmatter validator (advisory).
+// PL-007 工作区原语 v0——frontmatter 校验器（建议性）。
 //
-// Walks a workspace root, parses each .md file's YAML frontmatter
-// (delimited by `---` lines at the start of file), and validates per-kind
-// required fields. Outputs a structured gap report:
+// 遍历工作区根目录，解析每个 .md 文件开头由 `---` 行包围的 YAML frontmatter，
+// 并按种类校验必填字段。输出结构化缺口报告：
 //
-//   - missing-required-field
-//   - unrecognized-status-value
-//   - parse-error  (frontmatter present but malformed)
-//   - missing-frontmatter (no frontmatter delimiter found)
+//   - missing-required-field（缺少必填字段）
+//   - unrecognized-status-value（无法识别的状态值）
+//   - parse-error（frontmatter 存在但畸形）
+//   - missing-frontmatter（未找到 frontmatter 分隔符）
 //
-// Advisory only — never modifies files. curate-steward consumes the
-// gap report as hygiene input. The validator is deliberately minimal at
-// v0 (per PL-007 PRD); broken-cross-reference / non-conforming-structure
-// rules are deferred to v1+.
+// 仅提供建议，绝不修改文件。curate-steward 将缺口报告用作卫生检查输入。
+// 按 PL-007 PRD，v0 校验器刻意保持最小范围；broken-cross-reference 和
+// non-conforming-structure 规则推迟到 v1+。
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -28,21 +26,20 @@ export type FrontmatterGapKind =
 
 export interface FrontmatterGap {
   filePath: string;
-  /** Path relative to the validation root, for stable cross-machine output. */
+  /** 相对校验根目录的路径，用于生成跨机器稳定的输出。 */
   relativePath: string;
   kind: FrontmatterGapKind;
-  /** Field name when kind === "missing-required-field" or
-   *  "unrecognized-status-value"; null otherwise. */
+  /** kind 为 "missing-required-field" 或 "unrecognized-status-value" 时的字段名；
+   *  其他情况为 null。 */
   field: string | null;
   message: string;
-  /** Workspace kind the file was validated against (e.g. "knowledge"). */
+  /** 校验文件时采用的工作区种类，例如 "knowledge"。 */
   workspaceKind: WorkspaceKind | null;
 }
 
 export interface FrontmatterValidationReport {
   root: string;
-  /** Workspace kind applied to all files under this root. v0: caller picks
-   *  one root + one kind per invocation. */
+  /** 应用于此根目录下所有文件的工作区种类。v0 中调用方每次选择一个根和一种种类。 */
   workspaceKind: WorkspaceKind | null;
   totalFiles: number;
   filesWithFrontmatter: number;
@@ -52,7 +49,7 @@ export interface FrontmatterValidationReport {
 
 const VALID_STATUS_VALUES = new Set(["active", "draft", "archived", "superseded"]);
 
-/** Per-kind required frontmatter fields. v0 minimum baseline (advisory). */
+/** 各种类的 frontmatter 必填字段。v0 最低基线，仅提供建议。 */
 const REQUIRED_FIELDS_BY_KIND: Record<WorkspaceKind, readonly string[]> = {
   user: ["doc"],
   project: ["doc"],
@@ -64,18 +61,17 @@ const REQUIRED_FIELDS_BY_KIND: Record<WorkspaceKind, readonly string[]> = {
 export interface ValidateOpts {
   root: string;
   workspaceKind?: WorkspaceKind;
-  /** When true, recurse into subdirectories. Defaults to true. */
+  /** 为 true 时递归进入子目录，默认为 true。 */
   recursive?: boolean;
-  /** When true, validate every .md file even if frontmatter is absent
-   *  (records a `missing-frontmatter` gap). Defaults to false — files
-   *  without `---` are skipped silently (treated as informal notes). */
+  /** 为 true 时，即使缺少 frontmatter 也校验每个 .md 文件，并记录
+   *  `missing-frontmatter` 缺口。默认为 false——没有 `---` 的文件会被静默跳过，
+   *  视为非正式笔记。 */
   requireFrontmatter?: boolean;
-  /** Hard cap on files walked. Defaults to 10000. Prevents accidental
-   *  multi-GB walks from runaway invocations. */
+  /** 遍历文件数硬上限，默认 10000，防止失控调用意外遍历数 GB 数据。 */
   maxFiles?: number;
 }
 
-/** Run the frontmatter validator. */
+/** 运行 frontmatter 校验器。 */
 export function validateWorkspaceFrontmatter(opts: ValidateOpts): FrontmatterValidationReport {
   const root = path.resolve(opts.root);
   const recursive = opts.recursive ?? true;
@@ -100,8 +96,8 @@ export function validateWorkspaceFrontmatter(opts: ValidateOpts): FrontmatterVal
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         if (!recursive) continue;
-        // Skip noise dirs that aren't canon: node_modules, .git, .worktrees,
-        // dist/build artifacts. Authors writing canon don't put these here.
+        // 跳过不属于权威内容的噪声目录：node_modules、.git、.worktrees 以及 dist/build 产物。
+        // 编写权威内容的作者不会把内容放在这些目录中。
         if (
           entry.name === "node_modules" ||
           entry.name === ".git" ||
@@ -164,7 +160,7 @@ function validateFile(
         relativePath,
         kind: "missing-frontmatter",
         field: null,
-        message: "no frontmatter delimiter (---) found at start of file",
+        message: "文件开头未找到 frontmatter 分隔符（---）",
         workspaceKind: kind,
       });
     }
@@ -181,7 +177,7 @@ function validateFile(
       relativePath,
       kind: "parse-error",
       field: null,
-      message: err instanceof Error ? err.message : "YAML parse error",
+      message: err instanceof Error ? err.message : "YAML 解析错误",
       workspaceKind: kind,
     });
     return out;
@@ -192,7 +188,7 @@ function validateFile(
       relativePath,
       kind: "parse-error",
       field: null,
-      message: "frontmatter is not a YAML object",
+      message: "frontmatter 不是 YAML 对象",
       workspaceKind: kind,
     });
     return out;
@@ -207,19 +203,19 @@ function validateFile(
           relativePath,
           kind: "missing-required-field",
           field,
-          message: `${kind} canon requires "${field}" frontmatter field`,
+          message: `${kind} 权威内容需要 frontmatter 字段 "${field}"`,
           workspaceKind: kind,
         });
       }
     }
-    // status enum check (only when status is present + a string)
+    // status 枚举检查：仅在 status 已存在且为字符串时执行。
     if (typeof parsed["status"] === "string" && !VALID_STATUS_VALUES.has(parsed["status"] as string)) {
       out.gaps.push({
         filePath,
         relativePath,
         kind: "unrecognized-status-value",
         field: "status",
-        message: `status "${parsed["status"]}" is not one of: ${[...VALID_STATUS_VALUES].join(", ")}`,
+        message: `status "${parsed["status"]}" 不在允许值中：${[...VALID_STATUS_VALUES].join(", ")}`,
         workspaceKind: kind,
       });
     }
@@ -232,12 +228,11 @@ interface FrontmatterExtraction {
   body: string;
 }
 
-/** Extract YAML frontmatter delimited by `---` lines. The opening `---`
- *  must be on the first line. Returns the frontmatter body (between the
- *  delimiters) when found. */
+/** 提取由 `---` 行包围的 YAML frontmatter。开头的 `---` 必须位于第一行；
+ *  找到时返回两个分隔符之间的 frontmatter 正文。 */
 function extractFrontmatter(raw: string): FrontmatterExtraction {
   if (!raw.startsWith("---")) return { found: false, body: "" };
-  // Find the closing delimiter, allowing both LF and CRLF line endings.
+  // 查找结束分隔符，同时允许 LF 与 CRLF 换行。
   const lines = raw.split(/\r?\n/);
   if (lines[0]!.trim() !== "---") return { found: false, body: "" };
   for (let i = 1; i < lines.length; i++) {

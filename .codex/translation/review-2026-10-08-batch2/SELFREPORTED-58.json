@@ -1,0 +1,297 @@
+{
+  "total": 58,
+  "by_owner": {
+    "daemon-core-a": [
+      {
+        "path": "packages/daemon/test/topology-launcher.test.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-b": [
+      {
+        "path": "packages/daemon/test/helpers/scenario-daemon.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-h": [
+      {
+        "path": "packages/daemon/test/activity-motion-fold.test.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/hermetic-env.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/scenario-runner.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/review-fixtures.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-i": [
+      {
+        "path": "packages/daemon/test/restore-plan-preview.test.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-k": [
+      {
+        "path": "packages/daemon/test/queue-stuck-sweep.test.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "entry": [
+      {
+        "path": "packages/cli/scripts/check-abi.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/cli/vitest.config.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/bootstrap-product-factory-vps.sh",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/build-package.sh",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/build-testbed-cli-pack.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/build-testbed-image.sh",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/build-testbed-image.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/check-cli-daemon-freshness.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/check-docs-guard.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/check-docs-guard.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/check-packing-policies.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/check-packing.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/cli-license.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-candidate-binding.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-consume.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/gate-lane-hermeticity.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-ledger.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/gate-lane-ledger.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-lock.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-lock.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-run.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/gate-lane-run.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/generate-context-packs.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/generate-context-packs.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/internal-leak-scanner.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/mirror-skills.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/mirror-skills.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/portability-report.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/regen-edge-digests.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/rewrite-daemon-imports.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/rewrite-daemon-imports.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/smoke-fresh-install.sh",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/sync-scope-lineage.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/sync-scope-lineage.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/test-tui-package.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/testbed-build-inputs.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-build-inputs.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-dockerfile.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-emit-manifest.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/testbed-emit-manifest.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-manifest.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-manifest.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-stub-assets.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/typecheck-order.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/verify-packaged-builtins.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/vm-bootstrap/two-daemon-start.sh",
+        "reason_class": ""
+      },
+      {
+        "path": "vitest.config.ts",
+        "reason_class": ""
+      }
+    ],
+    "tui": [
+      {
+        "path": "packages/tui/scripts/capture-crash-cart.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/vitest.config.ts",
+        "reason_class": ""
+      }
+    ]
+  },
+  "non_entry_breakdown": {
+    "daemon_test_non_helper": [
+      {
+        "owner": "daemon-core-h",
+        "path": "packages/daemon/test/activity-motion-fold.test.ts"
+      },
+      {
+        "owner": "daemon-core-h",
+        "path": "packages/daemon/test/helpers/hermetic-env.ts"
+      },
+      {
+        "owner": "daemon-core-b",
+        "path": "packages/daemon/test/helpers/scenario-daemon.ts"
+      },
+      {
+        "owner": "daemon-core-h",
+        "path": "packages/daemon/test/helpers/scenario-runner.ts"
+      },
+      {
+        "owner": "daemon-core-k",
+        "path": "packages/daemon/test/queue-stuck-sweep.test.ts"
+      },
+      {
+        "owner": "daemon-core-i",
+        "path": "packages/daemon/test/restore-plan-preview.test.ts"
+      },
+      {
+        "owner": "daemon-core-h",
+        "path": "packages/daemon/test/review-fixtures.ts"
+      },
+      {
+        "owner": "daemon-core-a",
+        "path": "packages/daemon/test/topology-launcher.test.ts"
+      }
+    ],
+    "tui_scripts": [
+      {
+        "owner": "tui",
+        "path": "packages/tui/scripts/capture-crash-cart.mjs"
+      },
+      {
+        "owner": "tui",
+        "path": "packages/tui/vitest.config.ts"
+      }
+    ]
+  }
+}

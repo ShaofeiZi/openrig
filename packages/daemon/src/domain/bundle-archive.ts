@@ -1,46 +1,42 @@
 /**
- * TRUST MODEL: Bundle integrity verifies self-consistency, not authenticity.
- * The sibling .sha256 detects corruption during transfer. Content hashes
- * detect tampering of individual files within the archive. Neither mechanism
- * authenticates the bundle author — an attacker who can rewrite the full
- * bundle + digest can bypass verification. Users must trust the source they
- * obtained the bundle from (same model as unsigned npm packages/Docker images).
- * Cryptographic signing (Ed25519) is a future enhancement.
+ * 信任模型：Bundle 完整性只验证自身一致性，不验证真实性。相邻的 .sha256 文件检测传输损坏，
+ * 内容 hash 检测归档内单个文件是否被篡改。两种机制都不能认证 bundle 作者；能同时改写完整
+ * bundle 与 digest 的攻击者可以绕过验证。用户必须信任 bundle 的获取来源，这与未签名的 npm
+ * package/Docker image 采用相同模型。后续可增加 Ed25519 加密签名。
  */
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import nodePath from "node:path";
 import * as tar from "tar";
 import { verifyIntegrity, type IntegrityFsOps } from "./bundle-integrity.js";
-// TODO: AS-T12 — migrate to pod-aware bundle types
+// TODO：AS-T12——迁移到感知 Pod 的包类型。
 import { parseLegacyBundleManifest as parseBundleManifest, normalizeLegacyBundleManifest as normalizeBundleManifest } from "./bundle-types.js";
 
 /**
- * Pack a staging directory into a .rigbundle archive (deterministic tar.gz).
- * Writes sibling .sha256 digest file.
- * @returns SHA-256 hex digest of the archive
+ * 将 staging 目录打包成 .rigbundle 归档（确定性 tar.gz），并写入相邻的 .sha256 digest 文件。
+ * @returns 归档的 SHA-256 十六进制 digest
  */
 export async function pack(stagingDir: string, outputPath: string): Promise<string> {
   if (!outputPath.endsWith(".rigbundle")) {
-    throw new Error("Output path must end with .rigbundle");
+    throw new Error("输出路径必须以 .rigbundle 结尾");
   }
 
-  // Collect all files in deterministic order (alphabetical)
+  // 按确定的字母顺序收集所有文件。
   const allFiles = walkFilesSync(stagingDir).sort();
 
-  // Pack with deterministic settings
+  // 使用确定性设置打包。
   await tar.create(
     {
       gzip: { level: 9 },
       file: outputPath,
       cwd: stagingDir,
-      portable: true, // Normalizes uid/gid/mode
-      mtime: new Date("2026-01-01T00:00:00Z"), // Fixed mtime for determinism
+      portable: true, // 规范化 uid/gid/mode。
+      mtime: new Date("2026-01-01T00:00:00Z"), // 固定 mtime 以保证确定性。
     },
     allFiles,
   );
 
-  // Compute archive digest
+  // 计算归档 digest。
   const archiveHash = hashFile(outputPath);
   fs.writeFileSync(`${outputPath}.sha256`, archiveHash, "utf-8");
 
@@ -48,19 +44,17 @@ export async function pack(stagingDir: string, outputPath: string): Promise<stri
 }
 
 /**
- * Unpack a .rigbundle archive to a directory.
- * Requires sibling .sha256 digest file. Verifies archive integrity before extraction.
- * Rejects symlinks, hardlinks, path traversal, and absolute paths.
- * Runs content integrity verification after extraction.
+ * 将 .rigbundle 归档解包到目录。必须存在相邻的 .sha256 digest 文件；提取前验证归档完整性，
+ * 拒绝 symlink、hardlink、路径穿越与绝对路径，提取后再验证内容完整性。
  */
 export async function unpack(archivePath: string, outputDir: string): Promise<void> {
-  // Step 1: Verify archive-level digest
+  // 步骤 1：验证归档级 digest。
   const digestResult = verifyArchiveDigest(archivePath);
   if (!digestResult.valid) {
-    throw new Error(`Archive integrity check failed: expected ${digestResult.expected}, got ${digestResult.actual}`);
+    throw new Error(`归档完整性检查失败：预期 ${digestResult.expected}，实际 ${digestResult.actual}`);
   }
 
-  // Step 2: Pre-scan archive for unsafe entries BEFORE extraction
+  // 步骤 2：提取前预扫描归档中的不安全 entry。
   const unsafeEntries: string[] = [];
   await tar.list({
     file: archivePath,
@@ -71,50 +65,50 @@ export async function unpack(archivePath: string, outputDir: string): Promise<vo
         unsafeEntries.push(`${entryType}: ${entryPath}`);
       }
       if (entryPath.startsWith("/")) {
-        unsafeEntries.push(`absolute path: ${entryPath}`);
+        unsafeEntries.push(`绝对路径：${entryPath}`);
       }
       const segments = entryPath.split("/");
       if (segments.some((s: string) => s === "..")) {
-        unsafeEntries.push(`path traversal: ${entryPath}`);
+        unsafeEntries.push(`路径穿越：${entryPath}`);
       }
     },
   });
 
   if (unsafeEntries.length > 0) {
-    throw new Error(`Unsafe archive entries rejected: ${unsafeEntries.join("; ")}`);
+    throw new Error(`已拒绝不安全的归档 entry：${unsafeEntries.join("; ")}`);
   }
 
-  // Step 3: Extract (safe — pre-scanned)
+  // 步骤 3：归档已经预扫描，可以安全提取。
   fs.mkdirSync(outputDir, { recursive: true });
   await tar.extract({ file: archivePath, cwd: outputDir });
 
-  // Step 3: Verify content integrity
+  // 步骤 4：验证内容完整性。
   const manifestPath = nodePath.join(outputDir, "bundle.yaml");
   if (!fs.existsSync(manifestPath)) {
-    throw new Error("Extracted archive missing bundle.yaml");
+    throw new Error("提取后的归档缺少 bundle.yaml");
   }
 
   const rawYaml = fs.readFileSync(manifestPath, "utf-8");
   const raw = parseBundleManifest(rawYaml) as Record<string, unknown>;
 
-  // Schema-version-aware integrity extraction
+  // 根据 schema version 提取 integrity。
   const schemaVersion = raw["schema_version"] as number;
   let integrity: { algorithm: string; files: Record<string, string> } | undefined;
 
   if (schemaVersion === 2) {
-    // Pod-aware bundle: integrity is optional in manifest
+    // Pod-aware bundle：manifest 中的 integrity 可选。
     if (raw["integrity"] && typeof raw["integrity"] === "object") {
       const integ = raw["integrity"] as Record<string, unknown>;
       integrity = { algorithm: integ["algorithm"] as string, files: (integ["files"] as Record<string, string>) ?? {} };
     }
   } else {
-    // Legacy bundle: parse as v1
+    // Legacy bundle：按 v1 解析。
     const manifest = normalizeBundleManifest(raw);
     integrity = manifest.integrity;
   }
 
   if (!integrity) {
-    throw new Error("Bundle manifest missing integrity section — cannot verify content");
+    throw new Error("Bundle manifest 缺少 integrity section，无法验证内容");
   }
 
   {
@@ -126,28 +120,27 @@ export async function unpack(archivePath: string, outputDir: string): Promise<vo
       walkFiles: (dir) => walkFilesSync(dir),
     };
 
-    // verifyIntegrity only reads manifest.integrity — safe to cast
+    // verifyIntegrity 只读取 manifest.integrity，因此该转换安全。
     const result = verifyIntegrity(outputDir, { integrity } as unknown as Parameters<typeof verifyIntegrity>[1], fsOps);
     if (!result.passed) {
       const details = [
-        ...result.mismatches.map((f) => `tampered: ${f}`),
-        ...result.missing.map((f) => `missing: ${f}`),
-        ...result.extra.map((f) => `extra: ${f}`),
+        ...result.mismatches.map((f) => `已篡改：${f}`),
+        ...result.missing.map((f) => `缺失：${f}`),
+        ...result.extra.map((f) => `多余：${f}`),
         ...result.errors,
       ];
-      throw new Error(`Content integrity verification failed: ${details.join("; ")}`);
+      throw new Error(`内容完整性验证失败：${details.join("; ")}`);
     }
   }
 }
 
 /**
- * Verify the archive-level SHA-256 digest.
- * Requires sibling .sha256 file.
+ * 验证归档级 SHA-256 digest，要求存在相邻的 .sha256 文件。
  */
 export function verifyArchiveDigest(archivePath: string): { valid: boolean; expected: string; actual: string } {
   const digestPath = `${archivePath}.sha256`;
   if (!fs.existsSync(digestPath)) {
-    throw new Error(`Archive digest file required but missing: ${digestPath}`);
+    throw new Error(`缺少必需的归档 digest 文件：${digestPath}`);
   }
 
   const expected = fs.readFileSync(digestPath, "utf-8").trim();

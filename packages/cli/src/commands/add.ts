@@ -21,15 +21,15 @@ interface AddMemberResponse {
 }
 
 export function addMemberCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("add").description("Add a member to an existing pod in a running rig");
+  const cmd = new Command("add").description("向运行中工作组的已有 Pod 添加一个成员");
   const getDeps = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   cmd
-    .argument("<rig-id>", "ID of the target rig")
-    .argument("<pod-namespace>", "Namespace of the existing pod to add the member to")
-    .argument("<member-fragment-path>", "Path to YAML/JSON member fragment file (spec snake_case fields)")
-    .option("--json", "JSON output for agents")
-    .option("--rig-root <path>", "Root directory for agent resolution")
+    .argument("<rig-id>", "目标工作组 ID")
+    .argument("<pod-namespace>", "要添加成员的已有 Pod 的命名空间")
+    .argument("<member-fragment-path>", "成员片段 YAML/JSON 文件路径（规范为 snake_case 字段）")
+    .option("--json", "供智能体使用的 JSON 输出")
+    .option("--rig-root <path>", "智能体解析的根目录")
     .action(async (rigId: string, podNamespace: string, fragmentPath: string, opts: { json?: boolean; rigRoot?: string }) => {
       const deps = getDeps();
       const status = await getDaemonStatus(deps.lifecycleDeps);
@@ -39,7 +39,7 @@ export function addMemberCommand(depsOverride?: StatusDeps): Command {
       try {
         fileContent = readFileSync(fragmentPath, "utf-8");
       } catch {
-        console.error(`Cannot read file: ${fragmentPath}`);
+        console.error(`无法读取文件：${fragmentPath}`);
         process.exitCode = 1;
         return;
       }
@@ -47,31 +47,30 @@ export function addMemberCommand(depsOverride?: StatusDeps): Command {
       let member: Record<string, unknown>;
       let edges: unknown;
       try {
-        // Dynamic import to avoid bundling yaml at module load (matches expand).
+        // 动态 import，避免在模块加载时打包 yaml（与 expand 一致）。
         const { parse } = await import("yaml");
         const parsed = (parse(fileContent) ?? {}) as Record<string, unknown>;
         if (parsed["member"] && typeof parsed["member"] === "object" && !Array.isArray(parsed["member"])) {
-          // Wrapper form: { member: {...}, edges?: [...] }.
+          // 包装形式：{ member: {...}, edges?: [...] }。
           member = parsed["member"] as Record<string, unknown>;
           edges = parsed["edges"];
         } else {
-          // Bare member form. Lift any top-level `edges:` out as pod-local edges
-          // so they are NOT silently dropped (the schema ignores unknown member
-          // fields). The rest is the member.
+          // 裸成员形式。把任何顶层 `edges:` 提为 Pod 本地边，
+          // 以免被静默丢弃（schema 会忽略未知的成员字段）。其余即为成员。
           const { edges: bareEdges, ...rest } = parsed;
           member = rest;
           edges = bareEdges;
         }
       } catch {
-        console.error("Invalid YAML/JSON in member fragment file");
+        console.error("成员片段文件中的 YAML/JSON 无效");
         process.exitCode = 1;
         return;
       }
 
-      // A PRESENT-but-non-array edges field is an honest error, never silently
-      // omitted (governance FM2 no-silent-drop).
+      // edges 字段存在但非数组是一个诚实的错误，绝不静默省略
+      // （治理规则 FM2：禁止静默丢弃）。
       if (edges !== undefined && edges !== null && !Array.isArray(edges)) {
-        console.error("Invalid member fragment: 'edges' must be an array of { from, to, kind }.");
+        console.error("成员片段无效：'edges' 必须是 { from, to, kind } 的数组。");
         process.exitCode = 1;
         return;
       }
@@ -88,7 +87,7 @@ export function addMemberCommand(depsOverride?: StatusDeps): Command {
 
       if (opts.json) {
         console.log(JSON.stringify(data, null, 2));
-        // Non-zero if the HTTP failed OR the new node did not fully launch.
+        // HTTP 失败或新节点未完全启动时返回非零。
         if (res.status >= 400 || (data.ok && data.result !== undefined && data.result.node.status !== "launched")) {
           process.exitCode = 1;
         }
@@ -96,12 +95,12 @@ export function addMemberCommand(depsOverride?: StatusDeps): Command {
       }
 
       if (res.status >= 400 || !data.ok) {
-        // Honest 3-part error: the daemon's message already says what failed /
-        // why / what to do (pod_not_found lists pods; member_conflict suggests a
-        // new id); validation/preflight surface the specific field errors.
+        // 诚实的三段式错误：后台服务消息已说明失败点 / 原因 / 该做什么
+        // （pod_not_found 会列出 Pod；member_conflict 会建议新 id）；
+        // 校验/预检会给出具体字段错误。
         const msg = data.message
-          ?? (data.errors && data.errors.length > 0 ? data.errors.join("; ") : data.error)
-          ?? `Add member failed (HTTP ${res.status})`;
+          ?? (data.errors && data.errors.length > 0 ? data.errors.join("；") : data.error)
+          ?? `添加成员失败（HTTP ${res.status}）`;
         console.error(msg);
         process.exitCode = 1;
         return;
@@ -109,21 +108,21 @@ export function addMemberCommand(depsOverride?: StatusDeps): Command {
 
       const node = data.result!.node;
       const icon = node.status === "launched" ? "OK" : "FAIL";
-      const session = node.sessionName ? ` (${node.sessionName})` : "";
+      const session = node.sessionName ? `（${node.sessionName}）` : "";
       const error = node.error ? ` - ${node.error}` : "";
-      console.log(`Added member to rig ${rigId}`);
-      console.log(`  Pod: ${data.result!.podNamespace}`);
-      console.log(`  Member: [${icon}] ${node.logicalId}${session}${error}`);
+      console.log(`已向工作组 ${rigId} 添加成员`);
+      console.log(`  Pod：${data.result!.podNamespace}`);
+      console.log(`  成员：[${icon}] ${node.logicalId}${session}${error}`);
 
       const persistedEdges = data.result!.edges ?? [];
       if (persistedEdges.length > 0) {
-        console.log("  Edges:");
+        console.log("  边：");
         for (const e of persistedEdges) console.log(`    ${e.from} ${e.kind} ${e.to}`);
       }
 
       if (data.result!.warnings && data.result!.warnings.length > 0) {
         console.log("");
-        for (const w of data.result!.warnings) console.log(`  Warning: ${w}`);
+        for (const w of data.result!.warnings) console.log(`  警告：${w}`);
       }
 
       if (node.status !== "launched") {

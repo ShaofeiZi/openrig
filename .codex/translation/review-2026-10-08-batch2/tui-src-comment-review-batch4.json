@@ -1,0 +1,20 @@
+{
+  "schema": "openrig.tui-src-comment-review-batch/v1",
+  "batch": 4,
+  "captured_at": "2026-10-09T19:15:00+08:00",
+  "depth": "full_comment_javascript_docstring_reviewed",
+  "owner": "s_000cae46uuw",
+  "natural_residual": 0,
+  "files": [
+    {"path": "packages/tui/src/text-width.ts", "status": "reviewed_no_change", "after_sha256": "faed2edfbd896a229137d60efdc099864d949fd4aada3ff8d56f628dec62700b", "classification": "0 English residual; SGR/CJK contract documented"},
+    {"path": "packages/tui/src/reading.ts", "status": "reviewed_no_change", "after_sha256": "eb24c78e5752b927e1b61a77517d66dc870c537e0b9f8bd724a00e027e718a02", "classification": "0 English residual"},
+    {"path": "packages/tui/src/local-reading.ts", "status": "reviewed_no_change", "after_sha256": "76c0f874015f906eb4ff9e6a837d10ca910bee184dc06a3ebba47bbc9e556cb4", "classification": "0 English residual"},
+    {"path": "packages/tui/src/socket-server.ts", "status": "reviewed_no_change", "after_sha256": "b6b9fc35667afeee1f2d38a3e2912e0107116a1401ce548662b8c2f762bde261", "classification": "0 English residual"},
+    {"path": "packages/tui/src/detail.ts", "status": "reviewed_no_change", "after_sha256": "68af1d81395c42c4347934bfefb692a5268999d8b2a2a296e99e6c9d54374b1a", "classification": "0 English residual"},
+    {"path": "packages/tui/src/attention/attention-model.ts", "status": "reviewed_no_change", "after_sha256": "41ba771bafabec1865efab0c3982e8ea3790dd07ab08b9748c295c4fb531df79", "classification": "0 English residual"},
+    {"path": "packages/tui/src/topology/layout.ts", "status": "reviewed_no_change", "after_sha256": "bc8fcc6a6d5a857a35b7c29782ce458bd95a7117880a2cf9d055b35e7d2dcd8f", "classification": "0 English residual"},
+    {"path": "packages/tui/src/topology/canvas.ts", "status": "reviewed_no_change", "after_sha256": "3757f8b36a4d0d0e330f77285ba1d8f9b8274cde3d9feda7cf99b31cbf1d4094", "classification": "0 English residual"},
+    {"path": "packages/tui/src/crash-cart/restore-lifecycle.ts", "status": "reviewed_no_change", "after_sha256": "e4561cd0eb8e2f68a63619e3fdc8a430a43c166a53bc72deede592e88170bcc7", "classification": "0 English residual"},
+    {"path": "packages/tui/src/topology/styles/hatchet.ts", "status": "reviewed_no_change", "after_sha256": "0022ce34e1d4c077910cf09053ff0088220be7b47e3ba1e7131676b2e37a00f4", "classification": "0 English residual; hatchet glyph algorithm retained"}
+  ]
+}

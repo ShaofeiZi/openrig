@@ -41,7 +41,7 @@ export function resolveStartupProofEndpoint(deps: StartupProofDeps = {}): Endpoi
       baseUrl ??= first(endpoint["baseUrl"]);
       token ??= first(endpoint["token"]);
     } catch {
-      // File discovery is best-effort; env and host/port fallback may still work.
+      // 文件查找是尽力而为；环境变量与 host/port 兜底仍可能生效。
     }
   }
 
@@ -61,7 +61,7 @@ export async function submitStartupProof(
   const fetchImpl = deps.fetchImpl ?? fetch;
   const endpoint = resolveStartupProofEndpoint(deps);
   if (!endpoint) {
-    throw new Error("OpenRig startup proof endpoint is unavailable");
+    throw new Error("zrig 启动校验端点不可用");
   }
 
   const res = await fetchImpl(new URL("/api/activity/hooks", endpoint.baseUrl).toString(), {
@@ -90,29 +90,29 @@ export async function submitStartupProof(
     const message = typeof parsed === "object" && parsed && "error" in parsed
       ? String((parsed as { error?: unknown }).error)
       : text;
-    throw new Error(`startup_proof rejected: ${res.status} ${message}`);
+    throw new Error(`startup_proof 被拒绝：${res.status} ${message}`);
   }
   return parsed as StartupProofSubmitResult;
 }
 
 export function startupProofCommand(depsOverride?: StartupProofDeps): Command {
   const cmd = new Command("startup-proof")
-    .description("Submit and inspect startup orientation proof");
+    .description("提交并查看启动定位校验证明");
 
   cmd.command("submit")
-    .description("Submit this seat's startup proof through the authenticated OpenRig activity hook")
-    .requiredOption("--challenge-id <id>", "Startup challenge id from the startup prompt")
-    .requiredOption("--answer <answer>", "Expected answer from the startup prompt")
-    .option("--json", "Print raw JSON response")
+    .description("通过已认证的 zrig 活动钩子提交本席位的启动证明")
+    .requiredOption("--challenge-id <id>", "启动提示中的启动挑战 id")
+    .requiredOption("--answer <answer>", "启动提示要求的答案")
+    .option("--json", "打印原始 JSON 响应")
     .action(async (opts: { challengeId: string; answer: string; json?: boolean }) => {
       try {
         const result = await submitStartupProof({ challengeId: opts.challengeId, answer: opts.answer }, depsOverride);
         if (opts.json) {
           console.log(JSON.stringify(result));
         } else {
-          console.log(`startup_proof: ${result.oriented}`);
-          console.log(`node_id: ${result.nodeId}`);
-          console.log(`challenge_id: ${result.challengeId}`);
+          console.log(`启动证明：${result.oriented}`);
+          console.log(`节点 ID：${result.nodeId}`);
+          console.log(`挑战 ID：${result.challengeId}`);
         }
       } catch (err) {
         console.error(err instanceof Error ? err.message : String(err));

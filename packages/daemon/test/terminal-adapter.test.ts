@@ -17,8 +17,8 @@ const MOCK_BINDING: NodeBinding = {
 describe("TerminalAdapter", () => {
   const adapter = new TerminalAdapter();
 
-  // Test 1
-  it("project returns empty success", async () => {
+  // 测试 1
+  it("project 返回空成功结果", async () => {
     const result = await adapter.project(
       { entries: [], diagnostics: [], conflicts: [], noOps: [], runtime: "terminal", cwd: "/project" } as any,
       MOCK_BINDING,
@@ -26,29 +26,29 @@ describe("TerminalAdapter", () => {
     expect(result).toEqual({ projected: [], skipped: [], failed: [] });
   });
 
-  // Test 2
-  it("deliverStartup returns empty success", async () => {
+  // 测试 2
+  it("deliverStartup 返回空成功结果", async () => {
     const result = await adapter.deliverStartup([], MOCK_BINDING);
     expect(result).toEqual({ delivered: 0, failed: [] });
   });
 
-  // Test 3
-  it("checkReady returns { ready: true } immediately", async () => {
+  // 测试 3
+  it("checkReady 立即返回 { ready: true }", async () => {
     const result = await adapter.checkReady(MOCK_BINDING);
     expect(result).toEqual({ ready: true });
   });
 
-  it("runtime is 'terminal'", () => {
+  it("runtime 为 'terminal'", () => {
     expect(adapter.runtime).toBe("terminal");
   });
 
-  it("listInstalled returns empty array", async () => {
+  it("listInstalled 返回空数组", async () => {
     const result = await adapter.listInstalled(MOCK_BINDING);
     expect(result).toEqual([]);
   });
 
   // NS-T04
-  it("launchHarness is no-op returning ok", async () => {
+  it("launchHarness 为返回 ok 的 no-op", async () => {
     const result = await adapter.launchHarness(MOCK_BINDING, { name: "infra-server@test-rig" });
     expect(result).toEqual({ ok: true });
   });

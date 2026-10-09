@@ -7,9 +7,9 @@ import { mkdirSync as fs2Mkdir, utimesSync as fs2Utimes } from "node:fs";
 import { resolveHost, type HostRegistry } from "../src/host-registry.js";
 import { resolveCrossHostTarget } from "../src/cross-host-target.js";
 
-// The learned host-identity sidecar (Slice 14 / B4, A2 + Source-1): hosts.yaml's known_hosts.
-// TOFU on first contact; a later contradicting observation is recorded LOUDLY and never adopted;
-// absence and corruption are fail-open; resolution merges registry id/hostId with learned bindings.
+// 学习到的主机身份 sidecar（Slice 14 / B4、A2 + Source-1）就是 hosts.yaml 的 known_hosts。
+// 首次接触采用 TOFU；之后若观察到矛盾，会明确记录且绝不采纳；缺失和损坏按 fail-open 处理；
+// 解析时将 registry id/hostId 与已学习绑定合并。
 
 const dirs: string[] = [];
 function tmpPath(): string {
@@ -110,7 +110,7 @@ describe("resolveHost — learned bindings join the match set", () => {
   });
 
   it("registry id and declared hostId outrank a learned binding", () => {
-    // a learned binding claiming the DECLARED id for another alias must not shadow the declaration
+    // 已学习绑定即使声称另一个别名的已声明 id，也不能遮蔽该声明。
     const res = resolveHost(registry, "host-declared", { "mm2-host": { hostId: "host-declared" } });
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.host.id).toBe("declared");
@@ -162,7 +162,7 @@ describe("resolveCrossHostTarget — the lived reply-hint scenario via the sidec
     expect(out.ok).toBe(true);
     if (out.ok) {
       expect(out.target).toBe("pm@some-rig@host-unknown");
-      expect(out.hint).toContain("no registered host 'host-unknown'");
+      expect(out.hint).toContain("无已注册主机 'host-unknown'");
     }
   });
 });
@@ -188,7 +188,7 @@ describe("doctorLegs — Source-1 learning from the healthz body already in hand
     expect(calls).toEqual([["mm2-host", "host-84c37990"]]);
     const row = rows.find((r) => r.step === "host-identity-binding");
     expect(row).toMatchObject({ status: "pass" });
-    expect(row!.detail).toContain("first contact");
+    expect(row!.detail).toContain("首次接触");
     expect(row!.detail).toContain("host-84c37990");
   });
 
@@ -247,11 +247,9 @@ describe("F2 — concurrency guard: conflict records survive concurrent writers"
   it("REAL multi-process contention: N parallel writers, every binding and the conflict record survive", async () => {
     const path = tmpPath();
     const { spawn } = await import("node:child_process");
-    // CONTENTION SMOKE, not a deterministic discriminator: the pre-guard loss requires a specific
-    // interleave, so a green run does not prove the guard alone — the guard's serialization claim
-    // rests on mkdir's atomicity; this proves the locked path survives real parallel writers.
-    // Seed a binding, then race 6 child processes: 5 write distinct aliases, 1 writes a
-    // CONTRADICTING id for the seeded alias.
+    // 这是争用冒烟测试，而非确定性判别器：旧版无锁丢失需要特定交错，因此一次绿色运行不能单独证明防护；
+    // 防护的串行化依据 mkdir 原子性。这里证明加锁路径能承受真实并行 writer。
+    // 先写入一个种子绑定，再让 6 个子进程竞争：5 个写不同别名，1 个为种子别名写入相矛盾的 id。
     recordHostObservation({ alias: "seed", observedHostId: "host-orig", now: fixedNow, path });
     const runner = (alias: string, id: string) => new Promise<void>((resolve, reject) => {
       const child = spawn(process.execPath, ["--import", "tsx", "-e",
@@ -277,7 +275,7 @@ describe("F2 — concurrency guard: conflict records survive concurrent writers"
     const path = tmpPath();
     const lockDir = `${path}.lock`;
     fs2Mkdir(lockDir);
-    // Backdate the lock beyond the stale threshold.
+    // 将锁时间回拨到超过陈旧阈值。
     const old = Date.now() / 1000 - 10;
     fs2Utimes(lockDir, old, old);
     const out = recordHostObservation({ alias: "x", observedHostId: "host-xxxx", now: fixedNow, path });
@@ -287,7 +285,7 @@ describe("F2 — concurrency guard: conflict records survive concurrent writers"
 });
 
 describe("sidecar file hygiene", () => {
-  it("the write is whole-file JSON a human can read and delete (the disposable contract)", () => {
+  it("写入完整 JSON 文件，便于人类读取和删除（可丢弃契约）", () => {
     const path = tmpPath();
     recordHostObservation({ alias: "mm2-host", observedHostId: "host-84c37990", now: fixedNow, path });
     const raw = readFileSync(path, "utf-8");

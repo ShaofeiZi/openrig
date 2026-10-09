@@ -114,9 +114,9 @@ describe("Attach CLI", () => {
 
     const output = logs.join("\n");
     expect(exitCode).toBeUndefined();
-    expect(output).toContain("Attached this shell to node orch1.lead");
+    expect(output).toContain("已把当前 shell 挂载到工作组 rig-1 的节点 orch1.lead");
     expect(output).toContain("external_cli");
-    expect(output).toContain("inbound tmux transport unavailable");
+    expect(output).toContain("无入站 tmux 传输");
   });
 
   it("attach --self --print-env prints shell exports only", async () => {
@@ -146,7 +146,7 @@ describe("Attach CLI", () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(logs.some((line) => line.includes("Pod attach requires"))).toBe(true);
+    expect(logs.some((line) => line.includes("pod 挂载必须同时提供"))).toBe(true);
   });
 
   it("resolveAttachContext detects tmux session metadata when TMUX_PANE is set", () => {

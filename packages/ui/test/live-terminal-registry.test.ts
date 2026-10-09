@@ -1,8 +1,7 @@
-// OPR.0.4.0.1 — global live-terminal cap registry (PM-locked architecture).
-// Pure, framework-free core: a global cap on simultaneously-live terminals
-// across all surfaces; opening past the cap EVICTS THE OLDEST (reverts it to
-// static — its revert callback runs). Unit-tested in isolation before the
-// React context/component integration.
+// OPR.0.4.0.1——全局 live-terminal 上限注册表（PM 锁定架构）。
+// 纯、无框架核心：对所有表面上同时 live 的终端设全局上限；
+// 超出上限开启时驱逐最旧者（回退为 static——其 revert 回调运行）。
+// 在 React context/组件集成之前先隔离做单元测试。
 
 import { describe, it, expect, vi } from "vitest";
 import { LiveTerminalRegistry } from "../src/components/terminal/live-terminal-registry.js";

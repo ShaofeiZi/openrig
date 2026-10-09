@@ -102,7 +102,7 @@ async function fetchAgentReview(yaml: string, sourceState = "draft"): Promise<Ag
   return res.json();
 }
 
-/** Simple string hash for cache keys — avoids truncation collisions. */
+/** 用于缓存键的简单字符串哈希——避免截断导致的碰撞。 */
 function hashYaml(yaml: string): number {
   let hash = 0;
   for (let i = 0; i < yaml.length; i++) {

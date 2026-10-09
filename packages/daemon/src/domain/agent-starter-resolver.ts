@@ -4,22 +4,20 @@ import os from "node:os";
 import type { ResolvedStartupFile } from "./runtime-adapter.js";
 
 /**
- * Daemon-side productized resolver for the Agent Starter v1 vertical (M1).
- * Mirrors the v0 wrapper-tier `bin/agent-starter-resolve` semantics:
- * read the named registry entry; run the path-aware no-credentials scan;
- * THROW on a failed scan (the orchestrator MUST treat any throw as a
- * hard launch failure); on a clean scan, emit a `ResolvedStartupFile[]` rooted at the
- * registry directory.
+ * Agent Starter v1 纵向切片（M1）的后台服务端产品化解析器。
+ * 与 v0 包装层 `bin/agent-starter-resolve` 的语义一致：读取指定注册表条目，
+ * 执行路径感知的无凭据扫描；扫描失败时抛出异常（编排器必须把任何异常视为
+ * 启动硬失败）；扫描通过后，生成以注册表目录为根的 `ResolvedStartupFile[]`。
  *
- * v0 wrapper references:
- * - Schema spec: `specs/agent-starters/SCHEMA.md` § No-Credentials Proof
- *   (path-aware + content-aware; allowlist for transcript_path under
+ * v0 包装器参考：
+ * - 规范说明：`specs/agent-starters/SCHEMA.md` § 无凭据证明
+ *   （同时感知路径和内容；允许 transcript_path 指向
  *   ~/.claude/projects/ or ~/.openrig/transcripts/).
- * - Refusal verb: `specs/agent-starters/bin/agent-starter-resolve` lines
- *   22-31 (preflights via `scan_starter_file`; refuses with
+ * - 拒绝动作：`specs/agent-starters/bin/agent-starter-resolve` 第 22-31 行
+ *   （通过 `scan_starter_file` 预检；拒绝原因为
  *   credential_path_disallowed / credential_content_disallowed).
  *
- * Pattern reference for the resolver shape:
+ * 解析器结构参考：
  * `session-source-rebuild-resolver.ts:31-90`.
  */
 
@@ -27,24 +25,24 @@ export type ExistsFn = (path: string) => boolean;
 export type ReadFileFn = (path: string) => string;
 
 export interface AgentStarterResolverOpts {
-  /** Optional absolute override; bypasses the lookup chain. */
+  /** 可选的绝对路径覆盖值；设置后跳过查找链。 */
   registryRoot?: string;
   /**
-   * Env var consulted second in the lookup chain. Defaults to
+   * 查找链第二顺位读取的环境变量。默认为
    * `OPENRIG_AGENT_STARTER_ROOT`.
    */
   envVarName?: string;
   /**
-   * Home-directory root consulted third. Defaults to
-   * `~/.openrig/agent-starters/` (resolved against `process.env.HOME` or
+   * 查找链第三顺位读取的主目录根路径。默认为
+   * `~/.openrig/agent-starters/`（相对于 `process.env.HOME` 或
    * `os.homedir()`).
    */
   homeDirRoot?: string;
-  /** Optional fallback consulted last when the home registry is absent. */
+  /** 主目录注册表不存在时最后采用的可选回退路径。 */
   fallbackRoot?: string;
   exists?: ExistsFn;
   readFile?: ReadFileFn;
-  /** Test seam: lets unit tests inject a controlled env map. */
+  /** 测试接缝：允许单元测试注入受控的环境变量映射。 */
   env?: Record<string, string | undefined>;
 }
 
@@ -54,16 +52,14 @@ export interface AgentStarterResolveResult {
 }
 
 /**
- * Thrown by `resolveStarter` when the no-credentials scan fails. The
- * resolver MUST throw rather than
- * return a structured "ok: false" result the orchestrator could ignore;
- * a failed scan is a hard refusal point that aborts the launch.
+ * `resolveStarter` 的无凭据扫描失败时抛出。解析器必须抛出异常，不能返回
+ * 可能被编排器忽略的结构化 `ok: false` 结果；扫描失败是中止启动的硬拒绝点。
  */
 export class AgentStarterCredentialScanFailedError extends Error {
   readonly starterName: string;
   readonly reason: string;
   constructor(starterName: string, reason: string) {
-    super(`Agent Starter "${starterName}" credential scan failed: ${reason}`);
+    super(`Agent Starter“${starterName}”的凭据扫描失败：${reason}`);
     this.name = "AgentStarterCredentialScanFailedError";
     this.starterName = starterName;
     this.reason = reason;
@@ -83,18 +79,17 @@ export class AgentStarterResolver {
     this.registryRoot = AgentStarterResolver.resolveRegistryRoot(opts, this.exists);
   }
 
-  /** Exposed for tests + diagnostics. */
+  /** 向测试和诊断开放。 */
   getRegistryRoot(): string {
     return this.registryRoot;
   }
 
   /**
-   * Look up the registry root via the documented chain:
+   * 按文档约定的顺序查找注册表根目录：
    *   opts.registryRoot > env[envVarName] > homeDirRoot (if exists) > fallbackRoot
    *
-   * The fallback returns even if the path doesn't exist. `resolveStarter`
-   * throws a missing-entry error when the selected root is dead. This keeps
-   * the constructor side-effect-free; the file-existence check lives inside
+   * 即使路径不存在也返回回退值。所选根目录无效时，`resolveStarter` 会抛出
+   * 条目缺失错误。这样构造函数不产生副作用，文件存在性检查集中在
    * `resolveStarter`.
    */
   static resolveRegistryRoot(
@@ -119,31 +114,28 @@ export class AgentStarterResolver {
   }
 
   /**
-   * Resolve a starter by registry name. THROWS on:
-   * - missing registry entry (no `<root>/<name>.yaml`);
-   * - malformed YAML (best-effort detection — empty file, unparseable
-   *   front-matter shape — driver does not pull in a YAML parser at
-   *   M1 to keep the dependency surface narrow);
-   * - failed no-credentials scan (`AgentStarterCredentialScanFailedError`).
+   * 按注册表名称解析 starter。以下情况会抛出异常：
+   * - 注册表条目缺失（不存在 `<root>/<name>.yaml`）；
+   * - YAML 格式异常（尽力检测空文件或无法解析的 front-matter 结构；M1
+   *   为缩小依赖面，不在驱动中引入 YAML 解析器）；
+   * - 无凭据扫描失败（`AgentStarterCredentialScanFailedError`）。
    *
-   * On a clean scan, emits `ResolvedStartupFile[]`. v1 M1 scaffolding
-   * shape: one entry per registry-relative file the starter declares
-   * (currently the registry entry YAML itself, treated as guidance_merge
-   * content; later milestones can extend the resolver to walk the
-   * priming-pack manifest's `read_full` paths once M2/M3 wiring is in
-   * place). All emitted files are tagged `appliesOn: ["fresh_start"]`
-   * because starter context seeds a fresh-launch conversation.
+   * 扫描通过后生成 `ResolvedStartupFile[]`。v1 M1 的脚手架结构为：starter
+   * 声明的每个注册表相对文件对应一个条目（目前就是注册表条目 YAML 本身，
+   * 按 guidance_merge 内容处理；M2/M3 接线完成后，后续里程碑可扩展解析器，
+   * 遍历 priming-pack 清单中的 `read_full` 路径）。所有生成文件都标记为
+   * `appliesOn: ["fresh_start"]`，因为 starter 上下文用于初始化全新启动的会话。
    */
   resolveStarter(name: string): AgentStarterResolveResult {
     if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(name)) {
       throw new Error(
-        `Agent Starter resolver: invalid name ${JSON.stringify(name)} (must be alphanumeric with optional "_" or "-")`,
+        `Agent Starter 解析器：名称 ${JSON.stringify(name)} 无效（必须由字母或数字开头，后续可包含“_”或“-”）`,
       );
     }
     const registryPath = join(this.registryRoot, `${name}.yaml`);
     if (!this.exists(registryPath)) {
       throw new Error(
-        `Agent Starter resolver: no registry entry found at ${registryPath}`,
+        `Agent Starter 解析器：在 ${registryPath} 未找到注册表条目`,
       );
     }
     let content: string;
@@ -151,40 +143,36 @@ export class AgentStarterResolver {
       content = this.readFile(registryPath);
     } catch (err) {
       throw new Error(
-        `Agent Starter resolver: failed to read ${registryPath}: ${(err as Error).message}`,
+        `Agent Starter 解析器：读取 ${registryPath} 失败：${(err as Error).message}`,
       );
     }
     if (typeof content !== "string" || content.trim() === "") {
       throw new Error(
-        `Agent Starter resolver: ${registryPath} is empty or unreadable`,
+        `Agent Starter 解析器：${registryPath} 为空或不可读`,
       );
     }
-    // Smoke check that the file parses as YAML front-matter shape: it must
-    // contain `starter_id:` line. Keeps M1 dependency surface narrow (no
-    // yaml parser pulled in); M2 can swap in a real parser when it walks
-    // the priming-pack manifest.
+    // 冒烟检查文件是否符合 YAML front-matter 结构：必须包含 `starter_id:` 行。
+    // 这可维持 M1 的窄依赖面（不引入 YAML 解析器）；M2 遍历 priming-pack
+    // 清单时可替换成真正的解析器。
     if (!/^starter_id:\s*\S+/m.test(content)) {
       throw new Error(
-        `Agent Starter resolver: ${registryPath} does not match registry-entry shape (missing "starter_id:" field)`,
+        `Agent Starter 解析器：${registryPath} 不符合注册表条目结构（缺少“starter_id:”字段）`,
       );
     }
 
-    // Path-aware + content-aware credential scan. Mirrors the v0 wrapper
-    // helper at `specs/agent-starters/lib/agent-starter-helpers.sh`
-    // `scan_starter_file`. THROWS on match instead of returning a
-    // recoverable result.
+    // 同时感知路径和内容的凭据扫描。其行为与 v0 包装器辅助脚本
+    // `specs/agent-starters/lib/agent-starter-helpers.sh` 中的
+    // `scan_starter_file` 一致。匹配时直接抛出异常，不返回可恢复结果。
     const scanResult = scanForCredentials(content, registryPath);
     if (!scanResult.ok) {
       throw new AgentStarterCredentialScanFailedError(name, scanResult.reason);
     }
 
-    // M1 scaffolding shape: one ResolvedStartupFile pointing at the
-    // registry entry itself. The orchestrator's `deliverStartup` seam
-    // already accepts `deliveryHint: "guidance_merge"`. Later milestones
-    // (M2 instantiator integration; M3 Claude e2e; M4 Codex parity) can
-    // extend the resolver to walk the priming-pack manifest's `read_full`
-    // paths if the e2e proof requires richer per-layer artifacts. The
-    // type contract and refusal semantics are what M1 is locking in.
+    // M1 脚手架结构：用一个 ResolvedStartupFile 指向注册表条目本身。编排器的
+    // `deliverStartup` 接缝已接受 `deliveryHint: "guidance_merge"`。若端到端证明
+    // 需要更丰富的分层产物，后续里程碑（M2 实例化器集成、M3 Claude 端到端、
+    // M4 Codex 对齐）可扩展解析器，遍历 priming-pack 清单中的 `read_full` 路径。
+    // M1 在此锁定的是类型契约和拒绝语义。
     const files: ResolvedStartupFile[] = [
       {
         path: basename(registryPath),
@@ -200,7 +188,7 @@ export class AgentStarterResolver {
   }
 }
 
-// --- No-credentials scan (mirrors `lib/agent-starter-helpers.sh::scan_starter_file`) ---
+// --- 无凭据扫描（与 `lib/agent-starter-helpers.sh::scan_starter_file` 一致）---
 
 const CRED_PATH_LITERALS = [
   ".claude/.credentials.json",
@@ -216,10 +204,9 @@ function scanForCredentials(
   content: string,
   filePath: string,
 ): { ok: true } | { ok: false; reason: string } {
-  // Allowlist exception: `transcript_path` field values under
-  // `~/.claude/projects/` or `~/.openrig/transcripts/` are accepted
-  // (mirrors the v0 wrapper); same paths under any other field/key/comment
-  // are rejected as suspicious copying.
+  // 白名单例外：接受 `transcript_path` 字段中位于 `~/.claude/projects/` 或
+  // `~/.openrig/transcripts/` 下的值（与 v0 包装器一致）；相同路径若出现在其他
+  // 字段、键或注释中，则作为可疑复制而拒绝。
   const transcriptPath = extractFieldValue(content, "transcript_path");
 
   let lineNo = 0;
@@ -227,7 +214,7 @@ function scanForCredentials(
     lineNo += 1;
     const line = rawLine;
 
-    // Allowlist check for transcript_path's own line.
+    // 仅对 transcript_path 自身所在行检查白名单。
     const stripped = line.replace(/^\s+/, "");
     let isAllowlistedTranscript = false;
     if (transcriptPath && stripped.startsWith("transcript_path:")) {
@@ -239,36 +226,33 @@ function scanForCredentials(
       }
     }
 
-    // 1. Literal credential paths.
-    // Refusal reason intentionally REDACTS the matched line content. The
-    // daemon-tier resolver flows error messages into logs/API responses;
-    // echoing the matched line would leak the credential-bearing content
-    // the deny-list is meant to catch. Operators see refusal code + line
-    // number + file path; that's enough to triage. Closes the v0 wrapper
-    // diagnostic-`match`-field caveat at the daemon-tier productization
-    // layer.
+    // 1. 凭据路径字面量。
+    // 拒绝原因会刻意隐去匹配行内容。后台服务层解析器会把错误消息送入日志/API
+    // 响应；回显匹配行会泄露拒绝列表本应拦截的凭据内容。操作员只需拒绝码、
+    // 行号和文件路径即可排查。这在后台服务产品化层消除了 v0 包装器诊断中
+    // `match` 字段可能泄露内容的问题。
     for (const literal of CRED_PATH_LITERALS) {
       if (line.includes(literal)) {
         return {
           ok: false,
-          reason: `credential_path_disallowed: line ${lineNo} of ${filePath} matches a deny-list literal credential path (content redacted)`,
+          reason: `credential_path_disallowed：${filePath} 第 ${lineNo} 行匹配拒绝列表中的凭据路径字面量（内容已隐去）`,
         };
       }
     }
 
-    // 2. Path regex (credentials|auth.json|secrets|tokens.json).
+    // 2. 路径正则（credentials|auth.json|secrets|tokens.json）。
     if (!isAllowlistedTranscript && CRED_PATH_RE.test(line)) {
       return {
         ok: false,
-        reason: `credential_path_disallowed: line ${lineNo} of ${filePath} matches credential path pattern (content redacted)`,
+        reason: `credential_path_disallowed：${filePath} 第 ${lineNo} 行匹配凭据路径模式（内容已隐去）`,
       };
     }
 
-    // 3. Credential string regex (case-insensitive).
+    // 3. 凭据字符串正则（不区分大小写）。
     if (CRED_STRING_RE.test(line)) {
       return {
         ok: false,
-        reason: `credential_content_disallowed: line ${lineNo} of ${filePath} matches credential content pattern (content redacted)`,
+        reason: `credential_content_disallowed：${filePath} 第 ${lineNo} 行匹配凭据内容模式（内容已隐去）`,
       };
     }
   }

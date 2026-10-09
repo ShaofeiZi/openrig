@@ -1,8 +1,8 @@
-// F1 (error-honesty, desk-approved light path): an ERROR payload must never carry a
-// SUCCESS-SHAPED field. The three blocker refusals carried `blockedOn` in their meta — the
-// same key the success shape uses — which invited the field-filtered misread behind the
-// phantom queue-block defect (three independent specimens, one class). The refusals now name
-// the rejected value as `rejectedBlocker`; `blockedOn` appears in an error payload never.
+// F1（错误诚实，桌面批准轻量路径）：ERROR payload 绝不得携带
+// SUCCESS 形状字段。三个 blocker 拒绝在其 meta 中携带 `blockedOn`——即
+// success 形状所用同一 key——这引入了 phantom queue-block 缺陷背后的
+// 字段过滤误读（三个独立样本，一类）。拒绝现将被拒值命名为
+// `rejectedBlocker`；`blockedOn` 绝不出现于 error payload。
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Database from "better-sqlite3";
 import { migrate } from "../src/db/migrate.js";
@@ -10,7 +10,7 @@ import { ALL_MIGRATIONS } from "../src/db/all-migrations.js";
 import { QueueRepository, QueueRepositoryError } from "../src/domain/queue-repository.js";
 import { EventBus } from "../src/domain/event-bus.js";
 
-describe("F1 — blocker refusal payloads carry rejectedBlocker, never the success-shaped blockedOn", () => {
+describe("F1 —— blocker 拒绝载荷携带 rejectedBlocker，绝不携带成功结构的 blockedOn", () => {
   let db: Database.Database;
   let repo: QueueRepository;
   beforeEach(() => {
@@ -32,14 +32,14 @@ describe("F1 — blocker refusal payloads carry rejectedBlocker, never the succe
     throw new Error("expected a refusal");
   }
 
-  it("blocker_not_found: rejectedBlocker named; blockedOn ABSENT from the payload", async () => {
+  it("blocker_not_found：给出 rejectedBlocker，载荷中不含 blockedOn", async () => {
     const r = await refusalMeta("qitem-19990101000000-deadbeef");
     expect(r.code).toBe("blocker_not_found");
     expect(r.meta.rejectedBlocker).toBe("qitem-19990101000000-deadbeef");
     expect("blockedOn" in r.meta, "an error payload must never carry the success-shaped field").toBe(false);
   });
 
-  it("blocker_not_live: rejectedBlocker + blockerState named; blockedOn ABSENT", async () => {
+  it("blocker_not_live：给出 rejectedBlocker 与 blockerState，不含 blockedOn", async () => {
     const dead = await repo.create({ sourceSession: "a@r", destinationSession: "b@r", body: "dead blocker" });
     repo.update({ qitemId: dead.qitemId, actorSession: "a@r", state: "done", closureReason: "no-follow-on", transitionNote: "closed" });
     const r = await refusalMeta(dead.qitemId);
@@ -49,14 +49,14 @@ describe("F1 — blocker refusal payloads carry rejectedBlocker, never the succe
     expect("blockedOn" in r.meta).toBe(false);
   });
 
-  it("blocker_malformed: rejectedBlocker named; blockedOn ABSENT", async () => {
+  it("blocker_malformed：给出 rejectedBlocker，不含 blockedOn", async () => {
     const r = await refusalMeta("fold:");
     expect(r.code).toBe("blocker_malformed");
     expect(r.meta.rejectedBlocker).toBe("fold:");
     expect("blockedOn" in r.meta).toBe(false);
   });
 
-  it("the SUCCESS shape is untouched: a valid park still returns blockedOn on the item", async () => {
+  it("成功结构保持不变：有效 park 仍在条目上返回 blockedOn", async () => {
     const blocker = await repo.create({ sourceSession: "a@r", destinationSession: "b@r", body: "live blocker" });
     const row = await repo.create({ sourceSession: "a@r", destinationSession: "b@r", body: "target" });
     const updated = repo.update({ qitemId: row.qitemId, actorSession: "a@r", state: "blocked", blockedOn: blocker.qitemId, transitionNote: "parked" });

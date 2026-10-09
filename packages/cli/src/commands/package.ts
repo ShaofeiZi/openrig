@@ -5,7 +5,7 @@ import { realDeps } from "./daemon.js";
 import type { StatusDeps } from "./status.js";
 
 export function packageCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("package").description("Manage agent packages (legacy)");
+  const cmd = new Command("package").description("管理智能体包（旧版）");
   const getDeps = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   async function getClient(deps: StatusDeps): Promise<DaemonClient | null> {
@@ -14,10 +14,10 @@ export function packageCommand(depsOverride?: StatusDeps): Command {
     return deps.clientFactory(getDaemonUrl(status));
   }
 
-  // rig package validate <path>
+  // zrig package validate <path>
   cmd
     .command("validate <path>")
-    .description("Validate a package manifest")
+    .description("校验一个包清单")
     .action(async (sourcePath: string) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -32,32 +32,32 @@ export function packageCommand(depsOverride?: StatusDeps): Command {
 
       if (res.status >= 400 || !res.data.valid) {
         if (res.data.errors) {
-          console.error("Validation errors:");
+          console.error("校验错误：");
           for (const e of res.data.errors) {
             console.error(`  - ${e}`);
           }
         } else {
-          console.error(res.data.error ?? "Validation failed");
+          console.error(res.data.error ?? "校验失败");
         }
         process.exitCode = 1;
         return;
       }
 
       const m = res.data.manifest!;
-      console.log(`Valid: ${m.name} v${m.version}`);
+      console.log(`有效：${m.name} v${m.version}`);
       console.log(`  ${m.summary}`);
-      console.log(`  Runtimes: ${m.runtimes.join(", ")}`);
+      console.log(`  运行时：${m.runtimes.join(", ")}`);
       const ec = m.exportCounts;
-      console.log(`  Exports: skills: ${ec.skills}, guidance: ${ec.guidance}, agents: ${ec.agents}, hooks: ${ec.hooks}, mcp: ${ec.mcp}`);
+      console.log(`  导出：skills: ${ec.skills}, guidance: ${ec.guidance}, agents: ${ec.agents}, hooks: ${ec.hooks}, mcp: ${ec.mcp}`);
     });
 
-  // rig package plan <path>
+  // zrig package plan <path>
   cmd
     .command("plan <path>")
-    .description("Preview install plan (dry run)")
-    .option("--target <dir>", "Target repository root", ".")
-    .option("--runtime <runtime>", "Runtime (claude-code or codex)", "claude-code")
-    .option("--role <name>", "Role to install")
+    .description("预览安装计划（演练）")
+    .option("--target <dir>", "目标仓库根目录", ".")
+    .option("--runtime <runtime>", "运行时（claude-code 或 codex）", "claude-code")
+    .option("--role <name>", "要安装的角色")
     .action(async (sourcePath: string, opts: { target: string; runtime: string; role?: string }) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -90,37 +90,37 @@ export function packageCommand(depsOverride?: StatusDeps): Command {
 
       if (res.status >= 400) {
         if (res.data.errors) {
-          console.error("Validation errors:");
+          console.error("校验错误：");
           for (const e of res.data.errors) {
             console.error(`  - ${e}`);
           }
         } else {
-          console.error(res.data.error ?? "Plan failed");
+          console.error(res.data.error ?? "计划失败");
         }
         process.exitCode = 1;
         return;
       }
 
-      console.log(`Plan: ${res.data.packageName} v${res.data.packageVersion}`);
-      console.log(`  Actionable: ${res.data.actionable}  Deferred: ${res.data.deferred}  Conflicts: ${res.data.conflicts}  No-ops: ${res.data.noOps}`);
+      console.log(`计划：${res.data.packageName} v${res.data.packageVersion}`);
+      console.log(`  可执行：${res.data.actionable}  延后：${res.data.deferred}  冲突：${res.data.conflicts}  无操作：${res.data.noOps}`);
 
       if (res.data.entries.length > 0) {
         console.log("");
         for (const e of res.data.entries) {
           const suffix = e.conflict ? ` — ${e.conflict.reason}` : e.deferReason ? ` — ${e.deferReason}` : "";
-          console.log(`  ${e.exportType.padEnd(12)} ${e.exportName.padEnd(20)} ${e.classification.padEnd(18)} ${e.targetPath || "(deferred)"}${suffix}`);
+          console.log(`  ${e.exportType.padEnd(12)} ${e.exportName.padEnd(20)} ${e.classification.padEnd(18)} ${e.targetPath || "（延后）"}${suffix}`);
         }
       }
     });
 
-  // rig package install <path>
+  // zrig package install <path>
   cmd
     .command("install <path>")
-    .description("Install a package")
-    .option("--target <dir>", "Target repository root", ".")
-    .option("--runtime <runtime>", "Runtime (claude-code or codex)", "claude-code")
-    .option("--role <name>", "Role to install")
-    .option("--allow-merge", "Allow managed block merges into existing files")
+    .description("安装一个包")
+    .option("--target <dir>", "目标仓库根目录", ".")
+    .option("--runtime <runtime>", "运行时（claude-code 或 codex）", "claude-code")
+    .option("--role <name>", "要安装的角色")
+    .option("--allow-merge", "允许把受管块合并进已有文件")
     .action(async (sourcePath: string, opts: { target: string; runtime: string; role?: string; allowMerge?: boolean }) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -149,7 +149,7 @@ export function packageCommand(depsOverride?: StatusDeps): Command {
 
       // 500 → exitCode 2
       if (res.status >= 500) {
-        console.error(res.data.error ?? "Install failed");
+        console.error(res.data.error ?? "安装失败");
         process.exitCode = 2;
         return;
       }
@@ -157,56 +157,56 @@ export function packageCommand(depsOverride?: StatusDeps): Command {
       // 400/409/422 → exitCode 1
       if (res.status >= 400) {
         if (res.data.errors) {
-          console.error("Validation errors:");
+          console.error("校验错误：");
           for (const e of res.data.errors) {
             console.error(`  - ${e}`);
           }
         } else if (res.data.code === "conflict_blocked" && res.data.conflicts) {
-          console.error("Unresolved conflicts:");
+          console.error("未解决的冲突：");
           for (const c of res.data.conflicts) {
-            console.error(`  - ${c.existingPath}: ${c.reason}`);
+            console.error(`  - ${c.existingPath}：${c.reason}`);
           }
         } else if (res.data.code === "policy_rejected" && res.data.rejected) {
-          console.error("Policy rejected — no entries approved:");
+          console.error("策略拒绝——没有条目获批：");
           for (const r of res.data.rejected) {
-            console.error(`  - ${r.entry.exportType} ${r.entry.exportName}: ${r.reason}`);
+            console.error(`  - ${r.entry.exportType} ${r.entry.exportName}：${r.reason}`);
           }
         } else {
-          console.error(res.data.error ?? "Install failed");
+          console.error(res.data.error ?? "安装失败");
         }
         process.exitCode = 1;
         return;
       }
 
-      // Success
-      console.log(`Installed: ${res.data.packageName} (${res.data.installId})`);
+      // 成功
+      console.log(`已安装：${res.data.packageName}（${res.data.installId}）`);
 
       if (res.data.applied && res.data.applied.length > 0) {
-        console.log("Applied:");
+        console.log("已应用：");
         for (const a of res.data.applied) {
           console.log(`  ${a.exportType.padEnd(12)} ${a.action.padEnd(14)} ${a.targetPath}`);
         }
       }
 
       if (res.data.deferred && res.data.deferred.length > 0) {
-        console.log("Deferred:");
+        console.log("已延后：");
         for (const d of res.data.deferred) {
           console.log(`  ${d.exportType.padEnd(12)} ${d.exportName.padEnd(20)} ${d.deferReason ?? ""}`);
         }
       }
 
       if (res.data.policyRejected && res.data.policyRejected.length > 0) {
-        console.log("Policy rejected:");
+        console.log("策略拒绝：");
         for (const r of res.data.policyRejected) {
           console.log(`  ${r.entry.exportType.padEnd(12)} ${r.entry.exportName.padEnd(20)} ${r.reason}`);
         }
       }
     });
 
-  // rig package rollback <installId>
+  // zrig package rollback <installId>
   cmd
     .command("rollback <installId>")
-    .description("Rollback an install")
+    .description("回滚一次安装")
     .action(async (installId: string) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -220,30 +220,30 @@ export function packageCommand(depsOverride?: StatusDeps): Command {
       }>(`/api/packages/${encodeURIComponent(installId)}/rollback`);
 
       if (res.status >= 500) {
-        console.error(res.data.error ?? "Rollback failed");
+        console.error(res.data.error ?? "回滚失败");
         process.exitCode = 2;
         return;
       }
 
       if (res.status >= 400) {
-        console.error(res.data.error ?? "Rollback failed");
+        console.error(res.data.error ?? "回滚失败");
         process.exitCode = 1;
         return;
       }
 
-      console.log(`Rolled back ${res.data.installId}: ${res.data.restored.length} restored, ${res.data.deleted.length} deleted`);
+      console.log(`已回滚 ${res.data.installId}：恢复 ${res.data.restored.length} 个，删除 ${res.data.deleted.length} 个`);
       if (res.data.restored.length > 0) {
-        for (const f of res.data.restored) { console.log(`  restored: ${f}`); }
+        for (const f of res.data.restored) { console.log(`  已恢复：${f}`); }
       }
       if (res.data.deleted.length > 0) {
-        for (const f of res.data.deleted) { console.log(`  deleted: ${f}`); }
+        for (const f of res.data.deleted) { console.log(`  已删除：${f}`); }
       }
     });
 
-  // rig package list
+  // zrig package list
   cmd
     .command("list")
-    .description("List installed packages")
+    .description("列出已安装的包")
     .action(async () => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -260,18 +260,18 @@ export function packageCommand(depsOverride?: StatusDeps): Command {
       }>>("/api/packages");
 
       if (res.status >= 400) {
-        console.error("Failed to list packages");
+        console.error("列出包失败");
         process.exitCode = 1;
         return;
       }
 
       const pkgs = res.data;
       if (pkgs.length === 0) {
-        console.log("No packages installed");
+        console.log("未安装任何包");
         return;
       }
 
-      console.log("Name                 Version    Source                Created");
+      console.log("名称                  版本        来源                  创建时间");
       for (const p of pkgs) {
         console.log(`${p.name.padEnd(21)} ${p.version.padEnd(11)} ${p.sourceRef.padEnd(22)} ${p.createdAt}`);
       }

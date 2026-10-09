@@ -27,8 +27,8 @@ const config: SlackConnectorConfig = {
   minimumLevelThatInterrupts: "ALERT",
 };
 
-describe("registered human primary-binding readiness", () => {
-  it("returns connector-neutral ready fields from live scope and membership evidence", async () => {
+describe("已注册 human 的 primary-binding readiness", () => {
+  it("根据 live scope 与 membership evidence 返回 connector-neutral ready 字段", async () => {
     const result = await resolveHumanDeliveryReadiness({ human, config, gatewayState: "active", botToken: "secret" }, {
       verifyScopes: async () => ({ ok: true, granted: ["chat:write", "channels:read"], missing: [] }),
       verifyMembership: async () => ({ ok: true, isMember: true }),
@@ -41,13 +41,13 @@ describe("registered human primary-binding readiness", () => {
       active: true,
       ready: true,
       connector: { kind: "slack", ref: "main" },
-      reason: "required scopes and channel membership verified",
+      reason: "已验证必需 scope 与 channel membership",
       nextAction: null,
       checkedAt: "2026-09-06T01:00:00.000Z",
     });
   });
 
-  it("serves the same connector-neutral record through the gateway human route", async () => {
+  it("通过 gateway human 路由提供相同 connector-neutral record", async () => {
     const app = new Hono();
     app.use("*", async (c, next) => {
       c.set("gatewaySubsystem" as never, { status: () => ({ state: "active" }) } as never);
@@ -69,23 +69,23 @@ describe("registered human primary-binding readiness", () => {
     });
   });
 
-  it("names disabled configuration without probing the connector", async () => {
+  it("点名 disabled 配置，且不探测 connector", async () => {
     const verifyScopes = vi.fn(async () => ({ ok: true, granted: [], missing: [] }));
     const result = await resolveHumanDeliveryReadiness({ human, config: { ...config, enabled: false }, gatewayState: "active", botToken: "secret" }, {
       verifyScopes,
       verifyMembership: async () => ({ ok: true, isMember: true }),
     });
-    expect(result).toMatchObject({ state: "not-ready", configured: true, enabled: false, active: false, ready: false, nextAction: "rig slack enable" });
+    expect(result).toMatchObject({ state: "not-ready", configured: true, enabled: false, active: false, ready: false, nextAction: "zrig slack enable" });
     expect(verifyScopes).not.toHaveBeenCalled();
   });
 
-  it("keeps an unreachable live probe indeterminate instead of calling it ready or failed", async () => {
+  it("不可达 live probe 保持 indeterminate，不判为 ready 或 failed", async () => {
     const result = await resolveHumanDeliveryReadiness({ human, config, gatewayState: "active", botToken: "secret" }, {
       verifyScopes: async () => ({ ok: false, granted: [], missing: config.requiredScopes, error: "request timed out" }),
       verifyMembership: async () => ({ ok: true, isMember: true }),
     });
     expect(result).toMatchObject({ state: "indeterminate", configured: true, enabled: true, active: true, ready: false });
     expect(result.reason).toContain("request timed out");
-    expect(result.nextAction).toBe("rig slack verify --json");
+    expect(result.nextAction).toBe("zrig slack verify --json");
   });
 });

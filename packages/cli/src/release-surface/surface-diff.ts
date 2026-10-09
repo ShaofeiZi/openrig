@@ -1,11 +1,10 @@
-// OPR.0.3.3.13.1 - CLI surface diff (Component 1 of slice 13).
+// OPR.0.3.3.13.1 —— CLI 表面 diff（slice 13 的第 1 个组件）。
 //
-// Given two git refs, reads `packages/cli/src/commands/*.ts` at each ref via
-// `git show`, extracts the Commander surface (extract-surface.ts), diffs them,
-// and emits a deterministic `release-surface-diff.yaml`. Fully offline and
-// deterministic: the only inputs are the two refs + the repo's git object store;
-// no network, no agent/LLM involvement (the deterministic half of slice 13's
-// "deterministic for enumeration, agent for voice" split).
+// 给定两个 git ref，用 `git show` 在每个 ref 上读取 `packages/cli/src/commands/*.ts`，
+// 抽取 Commander 表面（extract-surface.ts），做 diff，产出确定性的
+// `release-surface-diff.yaml`。完全离线且确定：唯一输入是两个 ref + 仓库的 git
+// 对象库；不联网、无 agent/LLM 参与（slice 13“枚举靠确定性、措辞靠 agent”分工里
+// 的确定性那一半）。
 
 import { execFileSync } from "node:child_process";
 import { stringify } from "yaml";
@@ -31,7 +30,7 @@ export interface SurfaceDiff {
   removed_or_renamed: string[];
 }
 
-/** Honest 3-part error matching the repo's CLI error shape (queue.ts:88-111). */
+/** 与仓库 CLI 错误形态一致的三段式错误（见 queue.ts:88-111）。 */
 export class SurfaceParserError extends Error {
   readonly fact: string;
   readonly consequence: string;
@@ -67,9 +66,9 @@ export function resolveRepoRoot(cwd: string): string {
     return git(cwd, ["rev-parse", "--show-toplevel"]).trim();
   } catch {
     throw new SurfaceParserError({
-      fact: `Not inside a git repository (cwd: ${cwd}).`,
-      consequence: "The surface parser reads CLI sources at two git refs; without a repo it cannot run.",
-      action: "Run from inside the openrig git repository, or pass an explicit repoRoot.",
+      fact: `不在 git 仓库内（cwd: ${cwd}）。`,
+      consequence: "表面解析器要在两个 git ref 上读取 CLI 源码；没有仓库就无法运行。",
+      action: "请在 openrig git 仓库内运行，或显式传入 repoRoot。",
     });
   }
 }
@@ -85,9 +84,9 @@ function listCommandTree(repoRoot: string, ref: string): TreeEntry[] {
     out = git(repoRoot, ["ls-tree", ref, `${COMMANDS_DIR}/`]);
   } catch (err) {
     throw new SurfaceParserError({
-      fact: `Could not list ${COMMANDS_DIR}/ at ref "${ref}": ${String((err as Error).message).split("\n")[0]}`,
-      consequence: "The CLI surface for that ref could not be read, so no release-surface diff was produced.",
-      action: `Verify the ref exists (git rev-parse "${ref}") and that ${COMMANDS_DIR}/ is present at that ref.`,
+      fact: `无法在 ref "${ref}" 下列出 ${COMMANDS_DIR}/：${String((err as Error).message).split("\n")[0]}`,
+      consequence: "无法读取该 ref 的 CLI 表面，因此未产出发布面 diff。",
+      action: `请确认该 ref 存在（git rev-parse "${ref}"）且该 ref 上存在 ${COMMANDS_DIR}/。`,
     });
   }
   const entries: TreeEntry[] = [];
@@ -102,19 +101,18 @@ function listCommandTree(repoRoot: string, ref: string): TreeEntry[] {
   }
   if (entries.length === 0) {
     throw new SurfaceParserError({
-      fact: `No Commander command files found under ${COMMANDS_DIR}/ at ref "${ref}".`,
-      consequence: "An empty command layout would make the diff misreport the entire surface as removed or added.",
-      action: `Confirm ${COMMANDS_DIR}/ exists at "${ref}" and holds the CLI command registrations.`,
+      fact: `在 ref "${ref}" 的 ${COMMANDS_DIR}/ 下未找到 Commander 命令文件。`,
+      consequence: "空的命令布局会让 diff 错误地把整个表面都报为新增或移除。",
+      action: `请确认 ${COMMANDS_DIR}/ 在 "${ref}" 上存在，且其中存放 CLI 命令注册。`,
     });
   }
   entries.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   return entries;
 }
 
-// One `git cat-file --batch` reads every blob for a ref (vs one `git show` per
-// file). Keeps the parser fast enough to run repeatedly (and the determinism
-// test under timeout). Byte-accurate: cat-file emits `<oid> blob <size>\n` then
-// exactly <size> content bytes then `\n`, per requested oid, in request order.
+// 一次 `git cat-file --batch` 读取某个 ref 的全部 blob（相比每文件一次 `git show`）。
+// 让解析器快到可反复运行（且确定性测试能在超时内完成）。字节精确：cat-file 按请求顺序、
+// 对每个 oid 输出 `<oid> blob <size>\n`，接着恰好 <size> 字节内容，再 `\n`。
 function readBlobs(repoRoot: string, entries: TreeEntry[]): Map<string, string> {
   const input = entries.map((e) => e.sha).join("\n") + "\n";
   const buf = execFileSync("git", ["cat-file", "--batch"], {
@@ -130,14 +128,14 @@ function readBlobs(repoRoot: string, entries: TreeEntry[]): Map<string, string> 
     const size = Number.parseInt(header.split(" ")[2] ?? "", 10);
     if (!Number.isFinite(size)) {
       throw new SurfaceParserError({
-        fact: `git cat-file returned an unreadable record for blob ${entry.sha} ("${header}").`,
-        consequence: "The command source could not be read, so the surface diff would be wrong.",
-        action: `Verify the repository object store is intact (git fsck) and the ref is valid.`,
+        fact: `git cat-file 返回了 blob ${entry.sha} 的不可读记录（"${header}"）。`,
+        consequence: "命令源码无法读取，表面 diff 会出错。",
+        action: "请确认仓库对象库完好（git fsck）且 ref 有效。",
       });
     }
     const contentStart = nl + 1;
     result.set(entry.sha, buf.toString("utf8", contentStart, contentStart + size));
-    pos = contentStart + size + 1; // skip content + trailing newline
+    pos = contentStart + size + 1; // 跳过内容 + 末尾换行
   }
   return result;
 }
@@ -149,7 +147,7 @@ function readSurfaceAtRef(repoRoot: string, ref: string): Surface {
   return extractSurfaceFromSources(sources);
 }
 
-/** Pure diff of two extracted surfaces into the slice-13 YAML shape. */
+/** 把两个已抽取表面做纯 diff，输出 slice-13 的 YAML 形态。 */
 export function computeDiff(
   from: Surface,
   to: Surface,
@@ -162,10 +160,10 @@ export function computeDiff(
   const removedFlagEntries = [...from.flags].filter((f) => !to.flags.has(f));
 
   const addedCmdSet = new Set(addedCmdPaths);
-  // A top-level command is brand-new when its single-token path was added.
+  // 当一个单 token 路径被新增时，该顶层命令是全新的。
   const newTopCommands = new Set(addedCmdPaths.filter((p) => !p.includes(" ")));
 
-  // added_commands: each brand-new top-level command + its added sub-paths.
+  // added_commands：每个全新顶层命令 + 其新增的子路径。
   const added_commands: AddedCommand[] = [...newTopCommands].sort().map((name) => ({
     name,
     subcommands: addedCmdPaths
@@ -174,21 +172,21 @@ export function computeDiff(
       .sort(),
   }));
 
-  // added_flags: PRE-EXISTING commands that gained flags (keyed by full command
-  // path) and/or new subcommands (keyed by their existing top-level command).
+  // added_flags：新增了 flag 的【既有】命令（按完整命令路径为键）和/或
+  // 新增子命令（按其所属既有顶层命令为键）。
   const flagsByCommand = new Map<string, Set<string>>();
   for (const entry of addedFlagEntries) {
     const { command, flag } = splitFlagEntry(entry);
-    if (newTopCommands.has(firstToken(command))) continue; // new command -> flags implied by added_commands
-    if (addedCmdSet.has(command)) continue; // brand-new subcommand -> flags implied by its listing
+    if (newTopCommands.has(firstToken(command))) continue; // 新命令 → flag 已由 added_commands 隐含
+    if (addedCmdSet.has(command)) continue; // 全新子命令 → flag 已由其列表隐含
     if (!flagsByCommand.has(command)) flagsByCommand.set(command, new Set());
     flagsByCommand.get(command)!.add(flag);
   }
   const subsByTop = new Map<string, Set<string>>();
   for (const p of addedCmdPaths) {
-    if (!p.includes(" ")) continue; // brand-new top-level command (added_commands)
+    if (!p.includes(" ")) continue; // 全新顶层命令（已在 added_commands）
     const top = firstToken(p);
-    if (newTopCommands.has(top)) continue; // subtree of a brand-new top-level command
+    if (newTopCommands.has(top)) continue; // 属于某个全新顶层命令的子树
     if (!subsByTop.has(top)) subsByTop.set(top, new Set());
     subsByTop.get(top)!.add(p.split(" ").slice(1).join(" "));
   }
@@ -213,7 +211,7 @@ export function computeDiff(
   return { release_from: releaseFrom, release_to: releaseTo, added_commands, added_flags, removed_or_renamed };
 }
 
-/** Default `--from`: the latest `v*` tag reachable before `to`. */
+/** `--from` 的默认值：在 `to` 之前可达的最新 `v*` 标签。 */
 function defaultFrom(repoRoot: string, to: string): string {
   try {
     return git(repoRoot, ["describe", "--tags", "--abbrev=0", "--match", "v*", `${to}^`]).trim();
@@ -222,9 +220,9 @@ function defaultFrom(repoRoot: string, to: string): string {
       return git(repoRoot, ["describe", "--tags", "--abbrev=0", "--match", "v*"]).trim();
     } catch {
       throw new SurfaceParserError({
-        fact: "No release tag could be resolved for the default --from ref.",
-        consequence: "Without a prior release ref the surface diff cannot be computed.",
-        action: "Pass an explicit --from <ref> (e.g. --from v0.3.1).",
+        fact: "无法为默认的 --from ref 解析出任何发布标签。",
+        consequence: "没有先前的发布 ref，就无法计算表面 diff。",
+        action: "请显式传入 --from <ref>（例如 --from v0.3.1）。",
       });
     }
   }
@@ -244,7 +242,7 @@ export function generateSurfaceDiff(opts: {
   return computeDiff(fromSurface, toSurface, from, to);
 }
 
-/** Deterministic YAML serialization (stable key + element order). */
+/** 确定性的 YAML 序列化（key 与元素顺序稳定）。 */
 export function diffToYaml(diff: SurfaceDiff): string {
   return stringify(diff, { sortMapEntries: false });
 }

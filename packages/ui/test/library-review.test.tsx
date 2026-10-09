@@ -68,33 +68,33 @@ describe("LibraryReview", () => {
       expect(screen.getByTestId("library-review-rig")).toBeDefined();
     });
 
-    // Specialist card shows canonical identity
+    // Specialist card 显示规范身份
     const specialistCard = screen.getByTestId("lib-rig-specialist");
     expect(specialistCard).toBeDefined();
     expect(specialistCard.textContent).toContain("vault.specialist");
 
-    // Environment tab exists
+    // Environment tab 存在
     expect(screen.getByTestId("lib-tab-environment")).toBeDefined();
 
-    // Tab order: topology, configuration, environment, yaml
+    // Tab 顺序：topology、configuration、environment、yaml
     const tabs = screen.getAllByTestId(/^lib-tab-/);
     const tabNames = tabs.map((t) => t.textContent?.toLowerCase());
-    expect(tabNames).toEqual(["topology", "configuration", "environment", "yaml"]);
+    expect(tabNames).toEqual(["拓扑", "配置", "环境", "yaml"]);
 
-    // Click environment tab and verify stack details
+    // 点 environment tab 并验证 stack 详情
     fireEvent.click(screen.getByTestId("lib-tab-environment"));
 
     await waitFor(() => {
-      // Service name and image from composePreview
+      // 来自 composePreview 的 service 名称和 image
       expect(screen.getByText("vault")).toBeDefined();
       expect(screen.getByText("hashicorp/vault:1.15")).toBeDefined();
       // Surface
       expect(screen.getByText("Vault UI")).toBeDefined();
-      // Wait target (health gate)
+      // 等 target（health gate）
       expect(screen.getByText("http://127.0.0.1:8200/v1/sys/health")).toBeDefined();
     });
 
-    // Copy Setup Prompt button exists and works
+    // Copy Setup Prompt 按钮存在且可用
     const copyBtn = screen.getByTestId("copy-setup-prompt");
     expect(copyBtn).toBeDefined();
 
@@ -103,9 +103,9 @@ describe("LibraryReview", () => {
     await waitFor(() => {
       expect(clipboardMock.writeText).toHaveBeenCalledTimes(1);
     });
-    expect(screen.getByTestId("copy-setup-prompt").textContent).toContain("Copied");
+    expect(screen.getByTestId("copy-setup-prompt").textContent).toContain("已复制");
 
-    // Copied text includes app name, summary, and source reference
+    // 复制文本含 app 名称、summary 和 source 引用
     expect(copiedText).toContain("secrets-manager");
     expect(copiedText).toContain("HashiCorp Vault in dev mode");
     expect(copiedText).toContain("secrets-manager/rig.yaml");
@@ -151,11 +151,11 @@ describe("LibraryReview", () => {
       expect(screen.getByTestId("library-review-rig")).toBeDefined();
     });
 
-    // No environment tab
+    // 无 environment tab
     expect(screen.queryByTestId("lib-tab-environment")).toBeNull();
-    // No setup prompt button
+    // 无 setup prompt 按钮
     expect(screen.queryByTestId("copy-setup-prompt")).toBeNull();
-    // No specialist card
+    // 无 specialist card
     expect(screen.queryByTestId("lib-rig-specialist")).toBeNull();
   });
 
@@ -440,14 +440,14 @@ describe("LibraryReview", () => {
     expect(screen.getByTestId("lib-pack-files").textContent).toContain("2");
     // Per-file row with role + size
     const present = screen.getByTestId("lib-pack-file-prd.md");
-    expect(present.textContent).toContain("role: prd");
+    expect(present.textContent).toContain("角色：prd");
     expect(present.textContent).toContain("200B");
-    // Missing file rendered with MISSING marker + data-missing flag
+    // 缺失文件以 MISSING marker + data-missing flag 渲染
     const missing = screen.getByTestId("lib-pack-file-missing.md");
     expect(missing.getAttribute("data-missing")).toBe("true");
-    expect(missing.textContent).toContain("MISSING");
-    // Bundle preview present + missing-file warning (preview is a
-    // separate query; wait for it to resolve)
+    expect(missing.textContent).toContain("缺失");
+    // Bundle preview 存在 + missing-file 警告（preview 是独立 query；
+    // 等它 resolve）
     await waitFor(() => expect(screen.getByTestId("lib-pack-bundle-text")).toBeDefined());
     expect(screen.getByTestId("lib-pack-bundle-text").textContent).toContain("PRD body");
     expect(screen.getByTestId("lib-pack-missing-warning")).toBeDefined();

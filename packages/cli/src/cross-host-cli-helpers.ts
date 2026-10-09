@@ -1,18 +1,18 @@
 import type { CrossHostResult } from "./cross-host-executor.js";
 
 /**
- * Shared CLI-side helpers for commands that gate on `--host`. Centralizes
- * the structured failure formatting + JSON envelope so `send.ts` and
- * `capture.ts` (and any future v1 cross-host command) format identically.
+ * 为以 `--host` 作为门槛的命令提供共用的 CLI 侧辅助。
+ * 集中处理结构化失败格式 + JSON 信封，使 `send.ts` 与 `capture.ts`
+ * （以及未来任何 v1 跨主机命令）的输出格式保持一致。
  */
 
 /**
- * OPR.0.4.6.MH4 — structured failure surface for the http transport branch.
- * Each branch names its OWN step taxonomy: the http branch surfaces
- * `runRemoteHttpOp`'s steps (registry/unknown-host/permission-gate/
- * remote-daemon-unreachable/remote-command-failed) with the host named and
- * the remote route's own error text as the detail — never a generic
- * "failed", never a locally-invented message.
+ * OPR.0.4.6.MH4 —— http 传输分支的结构化失败面。
+ * 每个分支各自命名自己的步骤分类：http 分支暴露
+ * `runRemoteHttpOp` 的步骤（registry/unknown-host/permission-gate/
+ * remote-daemon-unreachable/remote-command-failed），带上主机名，
+ * 并把远程路由自身的错误文本作为 detail——绝不笼统地写“failed”，
+ * 也绝不凭空捏造本地消息。
  */
 export function emitRemoteHttpFailure(
   hostId: string,
@@ -32,8 +32,8 @@ export function emitRemoteHttpFailure(
       ...(hint ? { hint } : {}),
     }));
   } else {
-    console.error(`cross-host (host=${hostId}, ${target}): http ${result.failedStep}: ${detail}`);
-    if (hint) console.error(`hint: ${hint}`);
+    console.error(`跨主机（host=${hostId}，${target}）：http ${result.failedStep}：${detail}`);
+    if (hint) console.error(`提示：${hint}`);
   }
   process.exitCode = 1;
 }
@@ -42,7 +42,7 @@ export function emitCrossHostError(hostId: string, code: string, message: string
   if (json) {
     console.log(JSON.stringify({ ok: false, cross_host: { host: hostId }, failedStep: code, error: message }));
   } else {
-    console.error(`cross-host (host=${hostId}): ${message}`);
+    console.error(`跨主机（host=${hostId}）：${message}`);
   }
   process.exitCode = 1;
 }
@@ -76,14 +76,14 @@ export function formatCrossHostFailure(
 ): string {
   switch (result.failedStep) {
     case "ssh-unreachable":
-      return `ssh to host=${hostId} (target=${target}) failed: ${oneLine(result.sshStderr)}. Verify SSH access and host registry config.`;
+      return `到主机 host=${hostId}（target=${target}）的 ssh 连接失败：${oneLine(result.sshStderr)}。请检查 SSH 访问与主机注册表配置。`;
     case "permission-gate":
-      return `ssh to host=${hostId} (target=${target}) hit a permission/auth gate: ${oneLine(result.sshStderr)}. ${result.hint ?? ""}`.trim();
+      return `到主机 host=${hostId}（target=${target}）的 ssh 遇到权限/认证门槛：${oneLine(result.sshStderr)}。${result.hint ?? ""}`.trim();
     case "remote-daemon-unreachable":
-      return `remote rig command on host=${hostId} could not reach the remote daemon (exit=${result.remoteExitCode}): ${oneLine(result.stderr || result.stdout)}. Start the daemon on the remote with 'ssh ${target} rig daemon start'.`;
+      return `主机 host=${hostId} 上的远程 zrig 命令连不到远程后台服务（exit=${result.remoteExitCode}）：${oneLine(result.stderr || result.stdout)}。请在远程用 'ssh ${target} zrig daemon start' 启动后台服务。`;
     case "remote-command-not-found":
     case "remote-command-failed":
-      return `remote rig command on host=${hostId} failed (exit=${result.remoteExitCode}): ${oneLine(result.stderr || result.stdout)}`;
+      return `主机 host=${hostId} 上的远程 zrig 命令失败（exit=${result.remoteExitCode}）：${oneLine(result.stderr || result.stdout)}`;
   }
 }
 

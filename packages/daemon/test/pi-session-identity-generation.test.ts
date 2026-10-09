@@ -8,9 +8,8 @@ import type { EventBus } from "../src/domain/event-bus.js";
 import type { RigEvent } from "../src/domain/types.js";
 import { activityRoutes } from "../src/routes/activity.js";
 
-// F1: real runner -> route -> registry with only in-memory persistence and
-// injected runner effects. The independent review first reproduced these four
-// preservation failures; no daemon, native process, filesystem or network here.
+// F1：真实 runner → 路由 → registry，只使用内存持久化与注入的 runner effect。独立审查先复现
+// 这四种保留失败；此处不使用后台服务、原生进程、文件系统或网络。
 const NODE = "pi-node", NAME = "worker@pi-test", CURRENT = "pi-current";
 const databases: Database.Database[] = [];
 afterEach(() => { for (const db of databases.splice(0)) db.close(); });
@@ -68,8 +67,8 @@ function fixture() {
   return { db, registry, events, post, runner, identity, token };
 }
 
-describe("Pi SessionStart occupant binding", () => {
-  it("persists and emits the registered current runner's identity", async () => {
+describe("Pi SessionStart occupant 绑定", () => {
+  it("持久化并发出已登记当前 runner 的身份", async () => {
     const f = fixture();
     const response = await f.identity(f.runner(), "current");
     expect(response.status).toBe(200);
@@ -93,7 +92,7 @@ describe("Pi SessionStart occupant binding", () => {
     expect(f.events).toEqual(events);
   });
 
-  it("preserves the successor row and identity when the old runner answers after renewal", async () => {
+  it("旧 runner 在更新后响应时保留继任者行与身份", async () => {
     const f = fixture(), old = f.runner();
     await f.identity(old, "old");
     f.db.exec(`INSERT INTO occupant_tenures VALUES ('next', 'pi-node', 3, 'pi-next', 'fresh', NULL, '2026-09-27');
@@ -120,7 +119,7 @@ describe("Pi SessionStart occupant binding", () => {
     expect(f.events).toEqual(events);
   });
 
-  it("retains Pi path validation and higher-provenance resume tokens", async () => {
+  it("保留 Pi 路径校验与更高 provenance 的 resume token", async () => {
     const f = fixture();
     f.registry.updateResumeToken("1", "pi_session_file", "/fixture/operator.jsonl", "operator");
     const before = f.token();

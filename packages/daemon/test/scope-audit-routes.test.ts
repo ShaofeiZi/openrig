@@ -24,9 +24,9 @@ function buildApp(indexer: SliceIndexer): Hono {
 }
 
 const VALID_MISSION_BRIEF = [
-  "# test mission — Brief",
+  "# 测试任务目标——摘要",
   "",
-  "## What & why",
+  "## 内容与原因",
   "## Building",
   "## Progress",
   "## Proven",
@@ -40,15 +40,15 @@ function validSliceReadme(frontmatter: string, title = "slice"): string {
 
 ## Intent
 
-Prove the slice shape projects through the SDLC convention fields.
+证明切片结构通过 SDLC 约定字段进行投影。
 
 ## Mini-requirements
 
-1. The slice carries a proportional requirements list.
+1. 切片携带相称的需求列表。
 
 ## Proof contract
 
-- [ ] The proof artifact maps to the declared requirement.
+- [ ] 证明 artifact 映射到声明的需求。
 `;
 }
 
@@ -74,17 +74,17 @@ afterEach(() => {
 });
 
 describe("GET /api/scope/audit", () => {
-  it("returns 400 when mission param is missing", async () => {
+  it("缺少 mission 参数时返回 400", async () => {
     const res = await app.request("/api/scope/audit");
     expect(res.status).toBe(400);
   });
 
-  it("returns 404 when mission does not exist", async () => {
+  it("mission 不存在时返回 404", async () => {
     const res = await app.request("/api/scope/audit?mission=nonexistent");
     expect(res.status).toBe(404);
   });
 
-  it("uses one notes precedence across current-only, legacy-only, both, and neither", async () => {
+  it("对仅当前版、仅旧版、两者兼有和两者皆无使用同一 notes 优先级", async () => {
     for (const [name, files, missing] of [
       ["current", ["NOTES.md"], false],
       ["legacy", ["MISSION_NOTES.md"], false],
@@ -106,9 +106,9 @@ describe("GET /api/scope/audit", () => {
     }
   });
 
-  // SPEC.md compatibility — a node carrying BOTH authored files is invisible without this. Advisory
-  // by construction: low severity, and `ok` must stay true so it can never gate a build.
-  it("advises (never blocks) when a mission AND a slice each carry both SPEC.md and README.md", async () => {
+  // SPEC.md 兼容性——若没有此项，同时携带两个已编写文件的节点将不可见。按结构属于建议：
+  // 严重度较低，且 `ok` 必须保持 true，因此绝不会阻塞构建。
+  it("mission 与 slice 各自同时包含 SPEC.md 和 README.md 时给出建议（绝不阻塞）", async () => {
     const missionDir = path.join(missionsRoot, "both-mission");
     fs.mkdirSync(missionDir, { recursive: true });
     fs.writeFileSync(path.join(missionDir, "SPEC.md"), "---\nid: OPR.99.0.2\n---\n# live\n", "utf8");
@@ -136,7 +136,7 @@ describe("GET /api/scope/audit", () => {
     expect(sl!.severity).toBe("low");
   });
 
-  it("says nothing about a node that has only ONE authored file", async () => {
+  it("对只有一个已编写文件的节点不作提示", async () => {
     const missionDir = path.join(missionsRoot, "single-mission");
     fs.mkdirSync(missionDir, { recursive: true });
     fs.writeFileSync(path.join(missionDir, "SPEC.md"), "---\nid: OPR.99.0.3\n---\n# only\n", "utf8");
@@ -147,7 +147,7 @@ describe("GET /api/scope/audit", () => {
     expect(body.mission.findings.some((f) => f.kind === "shadowed_node_file")).toBe(false);
   });
 
-  it("README-less NN-slug slice dir with no PROGRESS emits missing_id + missing_progress", async () => {
+  it("没有 README 和 PROGRESS 的 NN-slug 切片目录发出 missing_id + missing_progress", async () => {
     const missionDir = path.join(missionsRoot, "test-mission");
     fs.mkdirSync(missionDir, { recursive: true });
     fs.writeFileSync(path.join(missionDir, "README.md"), "---\nid: OPR.99.0.1\n---\n# test\n", "utf8");
@@ -165,7 +165,7 @@ describe("GET /api/scope/audit", () => {
     expect(bare!.findings.some((f) => f.kind === "missing_progress")).toBe(true);
   });
 
-  it("orphan_progress: slice with PROGRESS.md but no README.md", async () => {
+  it("orphan_progress：切片有 PROGRESS.md 但没有 README.md", async () => {
     const missionDir = path.join(missionsRoot, "test-mission");
     fs.mkdirSync(missionDir, { recursive: true });
     fs.writeFileSync(path.join(missionDir, "README.md"), "---\nid: OPR.99.0.1\n---\n# test\n", "utf8");
@@ -184,7 +184,7 @@ describe("GET /api/scope/audit", () => {
     expect(orphan!.findings.some((f) => f.kind === "orphan_progress")).toBe(true);
   });
 
-  it("clean mission with valid slice returns ok:true", async () => {
+  it("包含有效切片的干净 mission 返回 ok:true", async () => {
     const missionDir = path.join(missionsRoot, "clean-mission");
     fs.mkdirSync(missionDir, { recursive: true });
     fs.writeFileSync(path.join(missionDir, "README.md"), "---\nid: OPR.99.0.2\n---\n# clean\n", "utf8");
@@ -203,7 +203,7 @@ describe("GET /api/scope/audit", () => {
     expect(body.totalFindings).toBe(0);
   });
 
-  it("surfaces the advisory dependency graph with ready, waiting, and malformed-edge honesty", async () => {
+  it("显示建议性依赖图，并如实呈现 ready、waiting 和 malformed-edge", async () => {
     const missionName = "graph-mission";
     const missionDir = path.join(missionsRoot, missionName);
     fs.mkdirSync(missionDir, { recursive: true });
@@ -244,14 +244,14 @@ describe("GET /api/scope/audit", () => {
       ready: ["OPR.9.8.6.2", "OPR.9.8.6.4", "OPR.9.8.6.5", "OPR.9.8.6.6"],
       waiting: [{ id: "OPR.9.8.6.3", on: ["OPR.9.8.6.4"] }],
       advisories: [
-        { id: "OPR.9.8.6.5", dependency: "OPR.9.8.6.999", kind: "missing_sibling", message: "Dependency does not resolve to a sibling and was ignored." },
-        { id: "OPR.9.8.6.5", dependency: "OPR.9.9.1.1", kind: "outside_parent", message: "Dependency is outside this mission and was ignored." },
-        { id: "OPR.9.8.6.6", kind: "invalid_field", message: "depends_on must be a list of sibling dot-IDs; the value was ignored." },
+        { id: "OPR.9.8.6.5", dependency: "OPR.9.8.6.999", kind: "missing_sibling", message: "依赖无法解析为同级 slice，已被忽略。" },
+        { id: "OPR.9.8.6.5", dependency: "OPR.9.9.1.1", kind: "outside_parent", message: "依赖不在本 mission 内，已被忽略。" },
+        { id: "OPR.9.8.6.6", kind: "invalid_field", message: "depends_on 必须是同级 dot-ID 的列表；该值已被忽略。" },
       ],
     });
   });
 
-  it("mission missing NOTES returns one advisory without reviving the retired brief gate", async () => {
+  it("mission 缺少 NOTES 时返回一条建议，但不恢复已退役的 brief 门禁", async () => {
     const missionDir = path.join(missionsRoot, "briefless-mission");
     fs.mkdirSync(missionDir, { recursive: true });
     fs.writeFileSync(path.join(missionDir, "README.md"), "---\nid: OPR.99.0.3\n---\n# briefless\n", "utf8");
@@ -273,7 +273,7 @@ describe("GET /api/scope/audit", () => {
     });
   });
 
-  it("done slice without PROOF.md or proof packet returns missing_proof guidance", async () => {
+  it("done 切片缺少 PROOF.md 或 proof 数据包时返回 missing_proof 指引", async () => {
     const missionDir = path.join(missionsRoot, "proof-mission");
     fs.mkdirSync(missionDir, { recursive: true });
     fs.writeFileSync(path.join(missionDir, "README.md"), "---\nid: OPR.99.0.4\n---\n# proof\n", "utf8");
@@ -309,7 +309,7 @@ describe("GET /api/scope/audit", () => {
     expect(body.totalFindings).toBe(1);
   });
 
-  it("proof-packet-backed proven slice without root proof returns missing_proof", async () => {
+  it("由 proof 数据包支持但缺少根 proof 的 proven 切片返回 missing_proof", async () => {
     const dogfoodRoot = path.join(cleanupRoot, "dogfood-evidence");
     fs.mkdirSync(dogfoodRoot, { recursive: true });
     indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: dogfoodRoot, db });
@@ -347,18 +347,15 @@ describe("GET /api/scope/audit", () => {
 });
 
 // ---------------------------------------------------------------------------
-// qitem-43d69e17 — /api/scope/audit composite-operation load contract. The
-// route loops mission slice dirs calling indexer.get(entry) per slice
-// (routes/scope-audit.ts:148) with NO prior list(): on 5c95a8ee each
-// uncached get builds its own membership batch — 2N scans (80 at 40
-// slices, guard-measured). Contract: one audit request = a CONSTANT number
-// of queue_items scan executions. This route performs no other queue reads
-// (verified by source grep), so the count-EVERYTHING rule applies cleanly
-// (LIKE and non-LIKE; INSERTs and PK point lookups WHERE qitem_id IN
-// excluded).
+// qitem-43d69e17——/api/scope/audit 复合操作负载契约。路由遍历 mission 切片目录，
+// 对每个切片调用 indexer.get(entry)（routes/scope-audit.ts:148），且事先不调用 list()：
+// 在 5c95a8ee 中，每次未缓存 get 都构建自己的成员批次——2N 次扫描（40 个切片时为 80，
+// 经守卫测量）。契约：一次审计请求执行常数次 queue_items 扫描。此路由不执行其他队列读取
+//（经源码 grep 验证），因此可以直接应用全量计数规则（LIKE 与非 LIKE；排除 INSERT 和
+// WHERE qitem_id IN 的主键点查询）。
 // ---------------------------------------------------------------------------
 
-describe("qitem-43d69e17 — audit route total queue-scan load contract", () => {
+describe("qitem-43d69e17——audit 路由总队列扫描负载契约", () => {
   function instrumentQueueScans(target: Database.Database): () => number {
     let n = 0;
     const origPrepare = target.prepare.bind(target);
@@ -378,7 +375,7 @@ describe("qitem-43d69e17 — audit route total queue-scan load contract", () => 
     return () => n;
   }
 
-  it("one GET /api/scope/audit over 40 valid slices executes <= 4 total queue_items scans; response semantics fully retained", async () => {
+  it("一次针对 40 个有效切片的 GET /api/scope/audit 最多执行 4 次 queue_items 扫描；响应语义完整保留", async () => {
     const missionDir = path.join(missionsRoot, "load-mission");
     fs.mkdirSync(missionDir, { recursive: true });
     fs.writeFileSync(path.join(missionDir, "README.md"), "---\nid: OPR.99.0.9\n---\n# load mission\n", "utf8");
@@ -398,8 +395,7 @@ describe("qitem-43d69e17 — audit route total queue-scan load contract", () => 
       );
       fs.writeFileSync(path.join(sliceDir, "PROGRESS.md"), "# Progress\n", "utf8");
     }
-    // One queue row matching nothing: membership scans dominate; no
-    // per-slice IN lookups fire.
+    // 一条不匹配任何内容的队列行：成员关系扫描占主导，不触发逐切片 IN 查询。
     db.prepare(
       `INSERT INTO queue_items (qitem_id, ts_created, ts_updated, source_session, destination_session, state, priority, body)
        VALUES ('q-lone', '2026-07-20T00:00:00.000Z', '2026-07-20T00:00:00.000Z', 'a@r', 'b@r', 'done', 'routine', 'fixture')`,
@@ -414,18 +410,17 @@ describe("qitem-43d69e17 — audit route total queue-scan load contract", () => 
       slices: Array<{ name: string; railStatus: string; findings: Array<{ kind: string }> }>;
       totalFindings: number;
     };
-    // Semantic parity: every slice audited and retained, shapes intact.
+    // 语义一致性：每个切片都经过审计并保留，结构完整。
     expect(body.mission.name).toBe("load-mission");
     expect(body.slices.map((s) => s.name).sort()).toEqual([...sliceNames].sort());
     expect(body.slices).toHaveLength(40);
     for (const s of body.slices) {
-      expect(s.railStatus).toBe("present"); // README + PROGRESS both exist
+      expect(s.railStatus).toBe("present"); // README + PROGRESS 均存在
     }
-    // Valid convention slices + populated mission files: no findings at all.
+    // 有效约定切片 + 已填充 mission 文件：完全没有发现项。
     expect(body.totalFindings).toBe(0);
     expect(body.ok).toBe(true);
-    // Pre-fix on 5c95a8ee: 40 uncached gets x 2 membership scans = 80.
-    // Contract: constant.
+    // 5c95a8ee 修复前：40 次未缓存 get × 2 次成员扫描 = 80。契约要求为常数。
     expect(scans()).toBeLessThanOrEqual(4);
   });
 });

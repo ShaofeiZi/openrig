@@ -1,9 +1,8 @@
-// OPR.0.5.6.25 — occupant-generation-aware refocus baseline. The hook keyed its
-// state by SEAT name and stored the prior occupant's transcript size, so a fresh
-// occupant with a smaller transcript computed zero growth forever (the live
-// 24.37MB-vs-5.1MB specimen) and inherited the predecessor's pending delivery.
-// These fixtures pin the occupant-identity rule, the two absence tiers, the
-// diagnostic sentinel's episode semantics, shrink-clears-before-due, bounded
+// OPR.0.5.6.25——occupant 代际感知的 refocus 基线。hook 以 SEAT 名为键
+// 并存前一 occupant 的 transcript 大小，故 transcript 更小的新
+// occupant 永远算出零增长（线上 24.37MB 对 5.1MB 样本），并继承
+// 前任的待处理投递。这些 fixture 钉住 occupant-identity 规则、两档缺席、
+// 诊断哨兵的 episode 语义、到期前收缩即清、有界
 // collision-stable keys, and legacy byte-preservation/non-import.
 import { afterEach, describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
@@ -107,11 +106,11 @@ describe("refocus occupant-generation baseline", () => {
     const afterReset = JSON.parse(readFileSync(occFile, "utf8"));
     expect(afterReset.lastBytes).toBe(2000);
     expect(afterReset.pendingOn).toBeUndefined();
-    expect(resetRun.stderr, "reset advisory surfaces once at the reset").toMatch(/baseline reset/);
+    expect(resetRun.stderr, "重置时只呈现一次提示").toMatch(/已重置基线/);
 
     const quiet = runHook(home, { session_id: "occupant-two", transcript_path: t });
     expect(fired(quiet), "sub-threshold growth after reset stays silent").toBe(false);
-    expect(quiet.stderr, "no repeated advisory without a new reset episode").not.toMatch(/baseline reset/);
+    expect(quiet.stderr, "没有新重置回合时不重复提示").not.toMatch(/已重置基线/);
 
     writeTranscript(2000 + THRESHOLD + 200);
     const growRun = runHook(home, { session_id: "occupant-two", transcript_path: t });
@@ -156,7 +155,7 @@ describe("refocus occupant-generation baseline", () => {
 
     const first = runHook(home, {});
     expect(fired(first)).toBe(false);
-    expect(first.stderr, "first missing-identity event surfaces once").toMatch(/no session identity/);
+    expect(first.stderr, "首次身份缺失事件只呈现一次").toMatch(/没有会话身份/);
     const sentinel = SENTINEL(stateDir);
     expect(existsSync(sentinel)).toBe(true);
     const s1 = JSON.parse(readFileSync(sentinel, "utf8"));
@@ -169,7 +168,7 @@ describe("refocus occupant-generation baseline", () => {
 
     const second = runHook(home, {});
     expect(fired(second)).toBe(false);
-    expect(second.stderr, "repeated missing events stay silent").not.toMatch(/no session identity/);
+    expect(second.stderr, "重复缺失事件保持静默").not.toMatch(/没有会话身份/);
 
     const t = writeTranscript(100);
     const valid = runHook(home, { session_id: "occupant-two", transcript_path: t });
@@ -177,7 +176,7 @@ describe("refocus occupant-generation baseline", () => {
     expect(JSON.parse(readFileSync(sentinel, "utf8")).activeEpisode, "a valid-identity event clears the marker").toBe(false);
 
     const third = runHook(home, {});
-    expect(third.stderr, "a distinct later episode surfaces once again").toMatch(/no session identity/);
+    expect(third.stderr, "后续独立回合再次呈现一次").toMatch(/没有会话身份/);
     expect(JSON.parse(readFileSync(sentinel, "utf8")).activeEpisode).toBe(true);
   });
 

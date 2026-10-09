@@ -1,25 +1,23 @@
-// schema-validator.ts — validates restore-summary.json against the v0 JSON
-// Schema (packages/cli/src/schemas/restore-summary.schema.json).
+// schema-validator.ts — 根据 v0 JSON Schema 验证 restore-summary.json
+// （packages/cli/src/schemas/restore-summary.schema.json）。
 //
-// Per M1 contract § 8 + IMPL § M2 line 167:
-// - generator-side: emit-time self-check against the schema before atomic
-//   rename of the packet directory.
-// - operator-side: M3 `rig restore-packet validate <packet-dir>` runs this
-//   validator and surfaces per-field violations.
+// 根据 M1 契约 § 8 + IMPL § M2 第 167 行：
+// - 生成器端：在原子重命名包目录之前，根据 schema 发出时自检。
+// - 操作者端：M3 `rig restore-packet validate <packet-dir>` 运行此
+//   验证器并暴露逐字段违规。
 //
-// Validator returns a ValidationResult with `valid` and a per-field error
-// list. Each error names: field path, value (truncated/escaped), rule, and
-// severity. Required-field violations are severity `error`; optional-field
-// malformations are severity `warning` per § 8.
+// 验证器返回带 `valid` 和逐字段错误列表的 ValidationResult。
+// 每个错误命名：字段路径、值（截断/转义）、规则和严重程度。
+// 必需字段违规为 `error` 严重程度；可选字段格式错误为
+// `warning` 严重程度（根据 § 8）。
 //
-// M2a R2 packaging fix: the schema is embedded directly in this module as
-// a typed TS const (RESTORE_SUMMARY_SCHEMA) rather than read from the
-// sibling .json file at runtime. tsc emits the const into the compiled
-// validator JS, so the validator works after `tsc` emit without any extra
-// build-script copy step. The canonical JSON Schema file at
-// `packages/cli/src/schemas/restore-summary.schema.json` remains the
-// source of truth for downstream IDE / tooling consumption; a drift-catcher
-// test in `test/restore-packet.test.ts` asserts the two stay byte-equivalent.
+// M2a R2 打包修复：schema 直接嵌入本模块作为类型化 TS 常量
+// （RESTORE_SUMMARY_SCHEMA），而不是在运行时从同级 .json 文件读取。
+// tsc 将常量发射到编译后的验证器 JS 中，因此验证器在 `tsc`
+// 发射后即可工作，无需额外的构建脚本复制步骤。规范 JSON Schema 文件
+// `packages/cli/src/schemas/restore-summary.schema.json` 仍是下游
+// IDE/工具消费的真相来源；`test/restore-packet.test.ts` 中的漂移捕获
+// 测试断言两者保持字节一致。
 
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
@@ -36,9 +34,8 @@ export interface ValidationResult {
   errors: ValidationError[];
 }
 
-// RESTORE_SUMMARY_SCHEMA — verbatim mirror of
-// `packages/cli/src/schemas/restore-summary.schema.json`. Keep these in
-// lockstep; the drift-catcher test enforces equivalence.
+// RESTORE_SUMMARY_SCHEMA — `packages/cli/src/schemas/restore-summary.schema.json`
+// 的逐字镜像。保持同步；漂移捕获测试强制等价。
 export const RESTORE_SUMMARY_SCHEMA: Record<string, unknown> = {
   $schema: "http://json-schema.org/draft-07/schema#",
   $id: "https://openrig.dev/schemas/restore-summary.schema.json",
@@ -237,12 +234,11 @@ export function validateRestoreSummary(summary: unknown): ValidationResult {
     let field = instancePath.replace(/^\//, "").replace(/\//g, ".");
     if (missing) field = field ? `${field}.${missing}` : missing;
     if (additional) field = additional;
-    // Per M1 contract § 8 + IMPL § M3: optional-field malformations are
-    // severity "warning"; required-field violations are severity "error".
-    // The only top-level optional field in v0 is `full_transcript`.
-    // Errors whose path begins at `/full_transcript` come from validating
-    // the optional object's contents, not from a missing-required check
-    // on a required field.
+    // 根据 M1 契约 § 8 + IMPL § M3：可选字段格式错误为
+    // "warning" 严重程度；必需字段违规为 "error" 严重程度。
+    // v0 中唯一的顶层可选字段是 `full_transcript`。
+    // 路径以 `/full_transcript` 开头的错误来自验证
+    // 可选对象的内容，而不是必需字段上的缺失检查。
     const isOptionalFieldError = instancePath.startsWith("/full_transcript");
     return {
       field: field || "<root>",
@@ -251,10 +247,10 @@ export function validateRestoreSummary(summary: unknown): ValidationResult {
       severity: isOptionalFieldError ? "warning" : "error",
     };
   });
-  // `valid` is false on ANY ajv violation (preserves M2c writer
-  // semantics: any malformation should block atomic rename). The M3
-  // validate command consults `errors[].severity` to decide exit code
-  // per M1 contract § 8 (required-field-class errors → exit nonzero;
-  // optional-field warnings → exit 0 with warning text).
+  // 任何 ajv 违规时 `valid` 为 false（保留 M2c 写入器
+  // 语义：任何格式错误都应阻塞原子重命名）。M3
+  // validate 命令根据 `errors[].severity` 决定退出码
+  // （根据 M1 契约 § 8：必需字段类错误 → 非零退出；
+  // 可选字段警告 → 退出 0 并输出警告文本）。
   return { valid: false, errors };
 }

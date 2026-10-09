@@ -1,6 +1,6 @@
 /**
- * Placeholder detail panel — proves selection wiring for NS-T10.
- * NS-T11 replaces this with the full NodeDetailPanel.
+ * 占位详情面板 —— 验证 NS-T10 的选择连线是否正常。
+ * NS-T11 将用完整的 NodeDetailPanel 替换此组件。
  */
 export function NodeDetailPlaceholder({ rigId, logicalId, onClose }: {
   rigId: string;
@@ -12,7 +12,7 @@ export function NodeDetailPlaceholder({ rigId, logicalId, onClose }: {
       await fetch(`/api/rigs/${encodeURIComponent(rigId)}/nodes/${encodeURIComponent(logicalId)}/focus`, {
         method: "POST",
       });
-    } catch { /* best-effort */ }
+    } catch { /* 尽力而为，失败忽略 */ }
   };
 
   return (
@@ -25,17 +25,17 @@ export function NodeDetailPlaceholder({ rigId, logicalId, onClose }: {
         <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface text-sm">&times;</button>
       </div>
       <div className="font-mono text-[9px] text-on-surface-variant">
-        Rig: {rigId}
+        工作组：{rigId}
       </div>
       <button
         onClick={handleFocus}
         data-testid="focus-cmux"
         className="px-3 py-1.5 border border-outline-variant font-mono text-[9px] uppercase hover:bg-surface-high transition-colors"
       >
-        Focus in cmux
+        在 cmux 中聚焦
       </button>
       <div className="font-mono text-[8px] text-on-surface-variant mt-auto">
-        Full detail panel in NS-T11
+        完整详情面板将在 NS-T11 提供
       </div>
     </div>
   );

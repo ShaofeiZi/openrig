@@ -1,0 +1,104 @@
+packages/daemon/src/domain/gateway/external-admission.ts:2:// <local>@external 目标。归属位置为后台服务 gateway-path（topologyValidateRig / 4b，队列侧）
+packages/daemon/src/domain/gateway/external-admission.ts:7://   registered   mike@external            -> 找到实体（偏好在下游应用）
+packages/daemon/src/domain/gateway/external-admission.ts:11://   （未解析且无目标的入站消息）             -> 默认人员席位 human-operator@kernel
+packages/daemon/src/domain/gateway/external-admission.ts:16:// 默认人员操作员身份从 human-registry 的规范归属位置重新导出（单一来源，不重复定义）。
+packages/daemon/src/domain/bundle-conflict-detector.ts:4: * 纯函数。比较 bundle 声明的标识符与后台服务当前状态，并返回结构化冲突报告。
+packages/daemon/src/domain/bundle-conflict-detector.ts:16:/** 工作组名称冲突：bundle 声明的工作组名称已被运行中的工作组使用。 */
+packages/daemon/src/domain/bundle-conflict-detector.ts:19:  /** bundle 的 rig spec 声明的名称。 */
+packages/daemon/src/domain/bundle-conflict-detector.ts:40:  /** bundle 的 rig spec（rig.yaml 的 `name:` 字段）声明的工作组名称。 */
+packages/daemon/src/domain/bundle-conflict-detector.ts:53:  // 工作组名称冲突：bundle 声明了一个已被运行中工作组占用的名称。
+packages/daemon/src/domain/kernel-boot.ts:1:// V0.3.1 切片 05 kernel-rig-as-default——kernel 自动启动路径。
+packages/daemon/src/domain/kernel-boot.ts:3:// 按 IMPL-PRD §6.1 组合进 rig daemon 启动流程：探测 runtime 认证状态，选择一种变体
+packages/daemon/src/domain/kernel-boot.ts:4://（dual / claude-only / codex-only），然后在后台触发进程内 bootstrap 流程。
+packages/daemon/src/domain/kernel-boot.ts:13:// 异常的 kernel agent 不再阻塞 daemon HTTP surface 启动；操作方看到的是
+packages/daemon/src/domain/kernel-boot.ts:14://“daemon 已就绪；kernel <state>”，而不是“daemon 启动失败”。
+packages/daemon/src/domain/kernel-boot.ts:36:  /** daemon specs 目录的绝对路径。参数化后测试可以注入 fixture 根目录；生产调用点解析到
+packages/daemon/src/domain/kernel-boot.ts:37:   *  随包发布的 `packages/daemon/specs/` 位置。 */
+packages/daemon/src/domain/kernel-boot.ts:40:   *  daemon 安装树中运行；没有该覆盖时，bootstrap 路径会以“cwd 位于 zrig 安装目录内”为由
+packages/daemon/src/domain/kernel-boot.ts:45:  /** 日志接收器；默认使用 console.log/warn，使 daemon stdout/stderr 携带启动轨迹。 */
+packages/daemon/src/domain/kernel-boot.ts:52:/** 入口点。此函数具有幂等性，每次 daemon 启动时调用都是安全的。它会立即返回 tracker，
+packages/daemon/src/domain/kernel-boot.ts:64:  // 1. 通过 --no-kernel 选择退出（CLI flag 映射为 OPENRIG_NO_KERNEL）。
+packages/daemon/src/domain/kernel-boot.ts:65:  // VITEST 环境还会直接跳过真实 runtime 探测路径，避免 daemon 组合测试因 shell 执行
+packages/daemon/src/domain/bundle-agent-images-router.ts:4: * 纯函数。把 bundle manifest 的 agent_images[] 块声明的 agent-image 目录，
+packages/daemon/src/domain/bundle-agent-images-router.ts:5: * 从 bundle 解压树复制到操作员的 agent-images 库。不依赖后台服务，
+packages/daemon/src/domain/bundle-agent-images-router.ts:42:  /** bundle 解压根目录的绝对路径（解包产生的临时目录）。 */
+packages/daemon/src/domain/bundle-agent-images-router.ts:44:  /** bundle manifest 的 agent_images[] 块声明的 agent-image 目录相对路径
+packages/daemon/src/domain/bundle-agent-images-router.ts:57:   * "missing" = bundle 中不存在声明的镜像目录（如实跳过）。
+packages/daemon/src/domain/bundle-agent-images-router.ts:80: * 把每个声明的 agent_image 从 bundle 树路由到操作员的 agent-images 库。
+packages/daemon/src/domain/bundle-agent-images-router.ts:149:    // 健全性检查：basename 在结构上安全，但 resolve 对 "" 理论上可能无变化；
+packages/daemon/src/domain/hosts/hosts-registry-reader.ts:6:// 本模块刻意作为 CLI packages/cli/src/host-registry.ts 的独立孪生实现，保持同一 schema
+packages/daemon/src/domain/hosts/hosts-registry-reader.ts:9:// packages/daemon/test/hosts-registry-parity.test.ts 逐项固定两者判定，
+packages/daemon/src/domain/hosts/hosts-registry-reader.ts:59://（packages/cli/src/host-registry.ts 的 RESERVED_HOST_IDS；一致性测试固定两者）。
+packages/daemon/src/domain/hosts/hosts-registry-reader.ts:147:    // 生成的 `host-XXXXXXXX` 形式符合这些规则。
+packages/daemon/src/domain/hosts/hosts-registry-reader.ts:194:      // 最多只能设置一个，绝不能同时设置。此规则镜像 CLI 孪生实现 host-registry.ts。
+packages/daemon/src/domain/hosts/hosts-registry-reader.ts:225:  //（host-bindings.json），使以已知 self-id 结尾的粘贴回复提示可在 CLI 边缘解析。
+packages/daemon/src/domain/crash-cart-detect.ts:6://   DOWN       —（无 daemon.json 或 pid 已终止）且 /healthz 连接被拒绝。REFUSED 是唯一强下线信号；
+packages/daemon/src/domain/crash-cart-detect.ts:26:/** 分类器所需的最小 daemon.json 结构。 */
+packages/daemon/src/domain/policies/periodic-reminder.ts:4:// POC 契约：target.session 必填（spec_yaml 顶层 `target:`）。消息来自顶层
+packages/daemon/src/domain/context-packs/bundle-assembler.ts:1:// Rig Context / Composable Context Injection v0（PL-014）——bundle assembler。
+packages/daemon/src/domain/context-packs/bundle-assembler.ts:4:// `## 文件：<path>（角色：<role>）` header，使目标 seat 能识别 bundle 结构。完整 bundle
+packages/daemon/src/domain/context-packs/bundle-assembler.ts:14:  /** 已拼接、可供 SessionTransport.send 使用的 bundle string。 */
+packages/daemon/src/domain/context-packs/bundle-assembler.ts:18:  /** daemon 派生的估算值（chars / 4 并取整）。 */
+packages/daemon/src/domain/context-packs/bundle-assembler.ts:33:/** Atom 3 刻意保持简单的 composition separator。除此之外不修改 source byte：
+packages/daemon/src/domain/context-packs/bundle-assembler.ts:52: * Atom 3 compose core：按声明顺序拼接存在的文件内容。durable store 将每个 source 保留为
+packages/daemon/src/domain/context-packs/bundle-assembler.ts:90: *   ## 文件：<path>（角色：<role>）
+packages/daemon/src/domain/context-packs/bundle-assembler.ts:93: *   ## 文件：<path>（角色：<role>）
+packages/daemon/src/domain/managed-blocks.ts:11://（`managed_blocks: { claude-code: <file> }`）。这是当前版本支持的集合，
+packages/daemon/src/domain/policies/artifact-pool-helpers.ts:238: * `- /full/absolute/path`。POC 优先使用完整路径，使接收方无需额外查询即可直接
+packages/daemon/src/domain/policies/artifact-pool-helpers.ts:249: * 计算 artifact 的 source-key，对应 POC sourceKeyFor：优先使用 frontmatter[keyField]，
+packages/daemon/src/domain/predecessor-recap-resolver.ts:35:   * 它是前任的 session uuid，用于校验 sidecar 所有权）。 */
+packages/daemon/src/domain/mission-control/notification-adapter-ntfy.ts:16:   * 或自托管的 `https://ntfy.example.com/operator-phone`。
+packages/daemon/src/domain/user-settings/settings-store.ts:9:// 解析：共同的 env > file > default 优先级。解码辅助函数（parseNamedPairs / resolveAllowlist /
+packages/daemon/src/domain/user-settings/settings-store.ts:62:  // 值的注册表校验位于 `zrig host select` verb。
+packages/daemon/src/domain/user-settings/settings-store.ts:68:  // 值为 "orchestrator" | "human_only"；未设置等同引擎默认的 orchestrator-first。
+packages/daemon/src/domain/user-settings/settings-store.ts:143:  // "all" 恢复全队列注册。opt_in_sessions 是逗号分隔的规范会话名称列表，
+packages/daemon/src/domain/user-settings/settings-store.ts:153:  // 开关变更只影响未来启动，绝不追溯生效（BR-1 never-retro）。
+packages/daemon/src/domain/user-settings/settings-store.ts:546:    // UI 强制开启 action_required（按 L145 不可关闭，它承载关键 human-gate 项）；
+packages/daemon/src/domain/user-settings/settings-store.ts:569:    // B6——按创始人裁定默认不开启；"all" 是全队列显式选择启用。
+packages/daemon/src/domain/user-settings/settings-store.ts:939:  // this.configPath（规范配置），确认值已持久化；不匹配表示写入静默失败，应明确拒绝而不是报告
+packages/daemon/src/domain/user-settings/settings-store.ts:940:  // 虚假成功（config-set-success-without-persist）。后台服务已经写入规范位置
+packages/daemon/src/domain/user-settings/settings-store.ts:994:  /** OPR.0.4.4.15——解析一个动态 feed-host 订阅 key。只支持文件或默认值
+packages/daemon/src/domain/provider/provider-signals.ts:9:/** Codex app-server `account/rateLimits/read` 返回的一个 provider 原生用量窗口。 */
+packages/daemon/src/domain/provider/provider-signals.ts:16:/** 本模块消费的 Codex app-server `account/rateLimits/read` 响应子集。 */
+packages/daemon/src/domain/topology-defaults-installer.ts:5: * OPR.0.5.3.6——随产品交付的拓扑 chain-file 默认值（CE-v2 产品化）。
+packages/daemon/src/domain/topology-defaults-installer.ts:7: * 工作组 spec 可携带包含合理默认 chain file 的 `topology/` 文件夹。
+packages/daemon/src/domain/topology-defaults-installer.ts:9: *（见单一事实来源 docs/reference/chain-file-convention.md），分为四个层级：
+packages/daemon/src/domain/seat-switch-client-service.ts:12: * 它作为独立步骤，组合在路由修复 verb（`reconcile-session` / seat handover）之后。
+packages/daemon/src/domain/terminal/view-composer.ts:7://   本地活跃成员                         → `tmux attach -t <session>`
+packages/daemon/src/domain/terminal/view-composer.ts:8://   只读视图 / 跨工作组成员（只读）       → `tmux attach -r -t <session>`
+packages/daemon/src/domain/terminal/view-composer.ts:9://   ssh 主机                            → `ssh <dest> tmux attach [-r] -t <session>`
+packages/daemon/src/domain/terminal/view-composer.ts:10://   http 主机                           → 不创建窗格；如实降级 { seat, host, reason }
+packages/daemon/src/domain/terminal/view-composer.ts:13:// 组合器接收已携带结构化 `host` 字段的成员（主机 id，绝不是
+packages/daemon/src/domain/terminal/view-composer.ts:14:// `member@rig@host` 字符串——MH BR-1）。主机分类（ssh、http 或 unknown）
+packages/daemon/src/domain/terminal/view-composer.ts:34: *（存活探测 + 跨工作组/已保存只读策略），组合器只据此路由。`host` 是结构化主机 id，
+packages/daemon/src/domain/terminal/view-composer.ts:48:  /** 本地存活性（has-session）；远程成员忽略该值，其可达性由 ssh 负责。 */
+packages/daemon/src/domain/terminal/view-composer.ts:65:/** 远程 ssh 目标：声明 user 时为 `user@target`，否则为 `target`。 */
+packages/daemon/src/domain/terminal/view-composer.ts:113:        // 按 R1(a) 如实降级。
+packages/daemon/src/domain/terminal/view-composer.ts:131:      // shell 语义，也不能形似选项。否则，带空格或 shell 元字符的注册表 `user`/`target`
+packages/daemon/src/domain/rig-repository.ts:264:   * 重启后稳定，包含 origin、resolved target、declaring dir 与 launch posture。
+packages/daemon/src/domain/workflow-deadline.ts:15://   1. 已认领且有截止时间：state=in-progress，并设置 closure_required_at
+packages/daemon/src/domain/workflow-deadline.ts:20://   2. 已认领但无截止时间：state=in-progress，closure_required_at 为 NULL（mode2 现状）。
+packages/daemon/src/domain/workflow-deadline.ts:22://   3. 从未认领：state=pending，且从未被认领（认领前席位失效/丢失 nudge 的场景：
+packages/daemon/src/domain/workflow-deadline.ts:25://   4. 认领后取消认领（架构第三状态）：取消认领后 state=pending，同时把 claimed_at 与
+packages/daemon/src/domain/workflow-deadline.ts:89:  /** 当且仅当 state != healthy 时存在。 */
+packages/daemon/src/domain/seat-activity-service.ts:303:  /** wait-after-seq 读取原语（T1 接缝，只在此暴露而不消费）：仲裁 seq 超过 `afterSeq` 时完成；
+packages/daemon/src/domain/seat-activity-service.ts:368:  /** 某层级的最新证据。kind "activity" 返回最新携带活动状态的证据；同一来源仅含 needs-input
+packages/daemon/src/domain/seat-activity-service.ts:447:   * idle-at-prompt）会明确把 hook 层级降为 identity-only；仲裁绝不能让静默失效的来源保持权威。 */
+packages/daemon/src/domain/seat-activity-service.ts:525:    // needs-input：可见 chrome 优先于 hook 携带的证据；PermissionRequest 类事件触发时 hook 携带它，
+packages/daemon/src/domain/review/compose.ts:342: * release-0.4.7 micro-bundle A：行语法现归属孪生模块的 `hasAuthoredNumberedItem`
+packages/daemon/src/domain/review/compose.ts:436:  // source 为 "prd"（已编写）或 null（没有已编写内容）时沿用已交付行为：解析 PRD；
+packages/daemon/src/domain/review/compose.ts:437:  // 原样/缺失 PRD 产生自身的空/占位条目集，`source` 告诉调用方当前状态。
+packages/daemon/src/domain/review/compose.ts:589:  /** 队列证明的 park 目标（human/qitem 等）；null 表示没有 parked 行状态。 */
+packages/daemon/src/domain/review/compose.ts:878:/** 第三个具名 ▲ 启发式规则的可见 v1 默认值（slice-22 FR-3：too-long-in-state，
+packages/daemon/src/domain/review/compose.ts:884: * Slice-22 FR-3——智能体范围 ▲ 集，严格包含三个具名启发式规则：idle-with-assigned-work、
+packages/daemon/src/domain/review/compose.ts:885: * overdue handoff、too-long-in-state。前两个复用 deriveExceptions 规则（调用时交付计数为零，
+packages/daemon/src/domain/review/compose.ts:886: * 且无 artifact/stamp 事实，因此切片专用 insufficient-proof / stale-after-change 不会触发）；
+packages/daemon/src/domain/review/compose.ts:887: * too-long-in-state 在此追加，使切片范围组合逐字节不变。没有证据就没有异常：unknown 不是 idle，
+packages/daemon/src/domain/review/compose.ts:1070:  // release-0.4.7 micro-bundle B：仅含占位符的 Intent section（已交付模板将其 scaffold
+packages/daemon/src/domain/review/compose.ts:1078:  // PM dogfood #1——逐 section 选定来源：已编写 PRD 为规范来源；原样 scaffold-only PRD
+packages/daemon/src/domain/review/compose.ts:1281:  // Cut-complete：只有每个切入切片都满足 (a) green、(b) 已合并、(c) 开放 needs-human 项为零时
+packages/daemon/src/domain/workflow-types.ts:7:// 多 hop 链接、gate-return-sweep 与复杂路由表属于后续演进
+packages/daemon/src/domain/workflow-types.ts:27:  /** 人员席位会话（`human@kernel` 形式）或已声明角色名称。 */
+packages/daemon/src/domain/workflow-types.ts:131: * 完全缺失时使用 host-default → orchestrator-first 链。 */
+packages/daemon/src/domain/workflow-types.ts:150:   * OPR.0.4.6.FAC1：`target.rig` 是默认值，而非硬编码；实例化时的 `targetRig` 参数会覆盖它，
+packages/daemon/src/domain/workflow-types.ts:209:   * `targetRig ?? spec.target.rig ?? null`。角色能力解析（tier 3）依据该工作组清单执行；

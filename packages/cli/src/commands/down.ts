@@ -25,46 +25,42 @@ interface RigSummaryEntry {
 }
 
 /**
- * Outcome of resolving a `rig down <rig>` handle (name OR id) to a concrete id.
- * The destructive teardown only ever runs on a `resolved`/`passthrough` id;
- * `ambiguous`/`not_found` halt BEFORE any `/api/down` POST.
+ * 把 `rig down <rig>` 句柄（名称或 id）解析为具体 id 的结果。
+ * 破坏性拆除只会在 `resolved`/`passthrough` id 上运行；
+ * `ambiguous`/`not_found` 在任何 `/api/down` POST 之前中止。
  */
 type HandleResolution =
   | { kind: "resolved"; id: string }
   | { kind: "ambiguous"; name: string; ids: string[] }
   | { kind: "not_found"; handle: string }
-  // Summary unavailable (non-200 / fetch error): fall back to today's id-only
-  // behavior - POST the raw handle as the id and let the daemon resolve it by
-  // exact id (404 if absent). Safe: the daemon matches a single exact id, so a
-  // name posted this way cannot tear down the wrong rig.
+  // 摘要不可用（非 200 / 抓取错误）：回退到今天的仅 id 行为——
+  // 把原始句柄作为 id POST，让后台服务按精确 id 解析（缺失则 404）。
+  // 安全：后台服务匹配单个精确 id，因此这样 POST 的名称不会拆错工作组。
   | { kind: "passthrough"; handle: string };
 
 /**
- * Resolve a `rig down` handle (rig name OR id) to a concrete rig id, mirroring
- * the `/api/rigs/summary` path `rig up` uses. Resolution is a PRE-STEP: the
- * existing teardown + guards downstream are unchanged; this only maps the
- * handle to an id.
+ * 把 `rig down` 句柄（工作组名或 id）解析为具体工作组 id，与 `rig up`
+ * 使用的 `/api/rigs/summary` 路径对应。解析是前置步骤：现有的拆除 + 下游守卫
+ * 不变；这里只把句柄映射到 id。
  *
- * Safety order (destructive-op):
- *  1. id-exact-match FIRST, across ALL rigs incl. archived - an id is unique, so
- *     it is never ambiguous, and an archived rig's id must still reach the
- *     canonical teardown id path (AC-2 unchanged).
- *  2. else name-filter over ACTIVE (non-archived) rigs only:
- *     - exactly 1 active match -> resolve to that id;
- *     - >1 active matches      -> AMBIGUOUS: halt, never guess (load-bearing AC-3);
- *     - 0 active matches       -> NOT_FOUND: halt, honest error (AC-4).
+ * 安全顺序（破坏性操作）：
+ *  1. 先做 id 精确匹配，跨所有工作组（含已归档）—— id 唯一，因此绝不歧义，
+ *     已归档工作组的 id 仍能到达规范的拆除 id 路径（AC-2 不变）。
+ *  2. 否则只在活跃（未归档）工作组上按名称过滤：
+ *     - 恰好 1 个活跃匹配 -> 解析为该 id；
+ *     - >1 个活跃匹配      -> 歧义：中止，绝不猜测（承重 AC-3）；
+ *     - 0 个活跃匹配       -> 未找到：中止，诚实错误（AC-4）。
  *
- * `/api/rigs/summary` defaults to ACTIVE-only and exposes `archivedAt`; we fetch
- * with `includeArchived=true` so an archived id still id-matches, then filter
- * names to active. So an active+archived same-name pair is NOT ambiguous (only
- * the active candidate counts), and an archived-only name does not resolve by
- * name (use the id, or the archive path).
+ * `/api/rigs/summary` 默认只返回活跃并暴露 `archivedAt`；我们带
+ * `includeArchived=true` 抓取，使已归档 id 仍能 id 匹配，再把名称过滤为活跃。
+ * 因此同名的活跃+已归档配对不歧义（只算活跃候选），而已归档独占的名称无法
+ * 按名称解析（请用 id，或走归档路径）。
  */
 async function resolveRigHandle(client: DaemonClient, handle: string): Promise<HandleResolution> {
   let summaries: RigSummaryEntry[];
   try {
-    // includeArchived=true so an archived rig's id still id-matches below
-    // (preserving today's `rig down <id>` path); names are filtered to active.
+    // includeArchived=true，使已归档工作组的 id 仍能在下面 id 匹配
+    // （保留今天的 `rig down <id>` 路径）；名称则过滤为活跃。
     const res = await client.get<RigSummaryEntry[]>("/api/rigs/summary?includeArchived=true");
     if (res.status !== 200 || !Array.isArray(res.data)) {
       return { kind: "passthrough", handle };
@@ -74,13 +70,13 @@ async function resolveRigHandle(client: DaemonClient, handle: string): Promise<H
     return { kind: "passthrough", handle };
   }
 
-  // 1. id-exact-match first, across ALL rigs incl. archived (AC-2: down by id,
-  //    unchanged; ids are never ambiguous; archived ids still reach teardown).
+  // 1. 先做 id 精确匹配，跨所有工作组（含已归档）（AC-2：按 id 拆除，
+  //    不变；id 绝不歧义；已归档 id 仍能到达拆除）。
   if (summaries.some((r) => r.id === handle)) {
     return { kind: "resolved", id: handle };
   }
 
-  // 2. name-filter over ACTIVE (non-archived) rigs only, symmetric with `up`.
+  // 2. 只在活跃（未归档）工作组上按名称过滤，与 `up` 对称。
   const activeNameMatches = summaries.filter((r) => r.name === handle && r.archivedAt == null);
   if (activeNameMatches.length === 1) {
     return { kind: "resolved", id: activeNameMatches[0]!.id };
@@ -92,25 +88,24 @@ async function resolveRigHandle(client: DaemonClient, handle: string): Promise<H
 }
 
 /**
- * `rig down <rig>` - tear down a rig by name or id.
- * @param depsOverride - injectable deps for testing
- * @returns Commander command
+ * `rig down <rig>` —— 按名称或 id 拆除一个工作组。
+ * @param depsOverride - 可注入的测试依赖
+ * @returns Commander 命令
  */
 export function downCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("down").description("Tear down a rig");
+  const cmd = new Command("down").description("拆除一个工作组");
   const getDepsF = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   cmd
-    .argument("<rig>", "Rig name or id to tear down")
-    .option("--delete", "Delete rig record after stopping")
-    .option("--force", "Kill sessions immediately")
-    .option("--snapshot", "Take snapshot before teardown")
-    .option("--json", "JSON output for agents")
-    .option("--host <id>", "Run on a remote host declared in ~/.openrig/hosts.yaml")
+    .argument("<rig>", "要拆除的工作组名或 id")
+    .option("--delete", "停止后删除工作组记录")
+    .option("--force", "立即结束会话")
+    .option("--snapshot", "拆除前拍快照")
+    .option("--json", "供智能体使用的 JSON 输出")
+    .option("--host <id>", "在 ~/.openrig/hosts.yaml 中声明的远程主机上运行")
     .action(async (rigHandle: string, opts: { delete?: boolean; force?: boolean; snapshot?: boolean; json?: boolean; host?: string }) => {
-      // OPR.0.4.6.MH1 FR-2: selected-host routing — explicit --host wins;
-      // else the persisted selection feeds the SHIPPED --host path; no
-      // selection = today exactly.
+      // OPR.0.4.6.MH1 FR-2：选定主机路由——显式 --host 优先；
+      // 否则已持久化的选择喂给随附的 --host 路径；无选择则与今天完全一致。
       opts.host = resolveEffectiveHost(opts.host);
       const deps = getDepsF();
 
@@ -119,7 +114,7 @@ export function downCommand(depsOverride?: StatusDeps): Command {
         const rigIdResult = await resolveRemoteRigId(opts.host, rigHandle, deps);
         if (!rigIdResult.ok) {
           if (opts.json) console.log(JSON.stringify(rigIdResult));
-          else console.error(`Error: ${rigIdResult.error}`);
+          else console.error(`错误：${rigIdResult.error}`);
           process.exitCode = 1;
           return;
         }
@@ -130,7 +125,7 @@ export function downCommand(depsOverride?: StatusDeps): Command {
         } else if (result.ok) {
           console.log(JSON.stringify(result.data, null, 2));
         } else {
-          console.error(`Error on host ${opts.host}: ${result.error}`);
+          console.error(`主机 ${opts.host} 上出错：${result.error}`);
           process.exitCode = 1;
         }
         return;
@@ -141,19 +136,19 @@ export function downCommand(depsOverride?: StatusDeps): Command {
 
       const client = deps.clientFactory(getDaemonUrl(status));
 
-      // Resolve the handle (name OR id) to a concrete id BEFORE the teardown POST.
-      // Ambiguous/not-found halt here and never reach `/api/down` - for a
-      // destructive op, ambiguity must stop, never guess (AC-3 load-bearing).
+      // 在拆除 POST 之前把句柄（名称或 id）解析为具体 id。
+      // 歧义/未找到在此处中止，绝不走到 `/api/down`——对破坏性操作，
+      // 歧义必须停下，绝不猜测（AC-3 承重）。
       const resolution = await resolveRigHandle(client, rigHandle);
 
       if (resolution.kind === "ambiguous") {
-        const fact = `'${resolution.name}' matches ${resolution.ids.length} rigs.`;
-        const consequence = "Refusing to tear down: an ambiguous name could destroy the wrong rig.";
-        const action = `Re-run with the specific id, e.g. ${resolution.ids.map((id) => `rig down ${id}`).join("  |  ")}`;
+        const fact = `'${resolution.name}' 匹配到 ${resolution.ids.length} 个工作组。`;
+        const consequence = "拒绝拆除：歧义名称可能拆错工作组。";
+        const action = `请用具体 id 重新运行，例如 ${resolution.ids.map((id) => `zrig down ${id}`).join("  |  ")}`;
         if (opts.json) {
           console.log(JSON.stringify({ error: { fact, consequence, action, candidates: resolution.ids } }));
         } else {
-          console.error(`Error: ${fact}`);
+          console.error(`错误：${fact}`);
           console.error(`  ${consequence}`);
           console.error(`  ${action}`);
         }
@@ -162,13 +157,13 @@ export function downCommand(depsOverride?: StatusDeps): Command {
       }
 
       if (resolution.kind === "not_found") {
-        const fact = `No rig found matching '${resolution.handle}'.`;
-        const consequence = "Nothing was torn down.";
-        const action = "List rigs with: rig ps";
+        const fact = `未找到匹配 '${resolution.handle}' 的工作组。`;
+        const consequence = "未拆除任何东西。";
+        const action = "用以下命令列工作组：zrig ps";
         if (opts.json) {
           console.log(JSON.stringify({ error: { fact, consequence, action } }));
         } else {
-          console.error(`Error: ${fact}`);
+          console.error(`错误：${fact}`);
           console.error(`  ${consequence}`);
           console.error(`  ${action}`);
         }
@@ -176,9 +171,9 @@ export function downCommand(depsOverride?: StatusDeps): Command {
         return;
       }
 
-      // resolved -> the looked-up id; passthrough -> the raw handle (summary
-      // unavailable; daemon resolves by exact id, 404s if absent). Either way
-      // the SAME existing teardown path + guards run below - no forked path.
+      // resolved -> 查得的 id；passthrough -> 原始句柄（摘要
+      // 不可用；后台服务按精确 id 解析，缺失则 404）。无论哪种，
+      // 下面都跑同一条既有拆除路径 + 守卫——不分叉路径。
       const rigId = resolution.kind === "resolved" ? resolution.id : resolution.handle;
 
       const res = await client.post<TeardownResult | { error: string }>("/api/down", {
@@ -200,49 +195,49 @@ export function downCommand(depsOverride?: StatusDeps): Command {
         return;
       }
 
-      // HTTP error
+      // HTTP 错误
       if (res.status >= 400) {
-        const errMsg = (res.data as { error: string }).error ?? "unknown error";
-        console.error(`Down failed: ${errMsg} (HTTP ${res.status}). Check rig ID with: rig ps`);
+        const errMsg = (res.data as { error: string }).error ?? "未知错误";
+        console.error(`拆除失败：${errMsg}（HTTP ${res.status}）。用以下命令查看工作组 ID：zrig ps`);
         process.exitCode = 2;
         return;
       }
 
       const result = res.data as TeardownResult;
 
-      // Exit code: errors first, then deleted, then alreadyStopped
+      // 退出码：先 errors，再 deleted，再 alreadyStopped
       if (result.errors.length > 0) {
-        console.log(`Rig ${rigId}: ${result.sessionsKilled} session(s) killed`);
-        if (result.deleted) console.log("Rig deleted");
-        if (result.snapshotId) console.log(`Snapshot: ${result.snapshotId}`);
-        for (const e of result.errors) console.error(`  warning: ${e}`);
+        console.log(`工作组 ${rigId}：已结束 ${result.sessionsKilled} 个会话`);
+        if (result.deleted) console.log("工作组已删除");
+        if (result.snapshotId) console.log(`快照：${result.snapshotId}`);
+        for (const e of result.errors) console.error(`  警告：${e}`);
         process.exitCode = 2;
         return;
       }
 
       if (result.deleted) {
-        console.log(`Rig ${rigId} deleted. ${result.sessionsKilled} session(s) killed.`);
-        if (result.snapshotId) console.log(`Snapshot: ${result.snapshotId}`);
+        console.log(`工作组 ${rigId} 已删除。已结束 ${result.sessionsKilled} 个会话。`);
+        if (result.snapshotId) console.log(`快照：${result.snapshotId}`);
         return;
       }
 
       if (result.alreadyStopped) {
-        console.log(`Rig ${rigId} already stopped`);
+        console.log(`工作组 ${rigId} 已停止`);
         process.exitCode = 1;
         return;
       }
 
-      // Clean stop with post-command handoff
-      console.log(`Rig ${rigId} stopped. ${result.sessionsKilled} session(s) killed.`);
+      // 干净停止 + 命令后交接
+      console.log(`工作组 ${rigId} 已停止。已结束 ${result.sessionsKilled} 个会话。`);
       if (result.snapshotId) {
-        console.log(`Snapshot: ${result.snapshotId}`);
-        // Post-command handoff: how to restore (check for duplicate names)
+        console.log(`快照：${result.snapshotId}`);
+        // 命令后交接：如何恢复（检查是否重名）
         const rigName = (res.data as Record<string, unknown>)["rigName"] as string | undefined;
         const isUniqueName = (res.data as Record<string, unknown>)["isUniqueName"] as boolean | undefined;
         if (rigName && isUniqueName !== false) {
-          console.log(`To restore: rig up ${rigName}`);
+          console.log(`恢复方式：zrig up ${rigName}`);
         } else {
-          console.log(`To restore: rig restore ${result.snapshotId} --rig ${rigId}`);
+          console.log(`恢复方式：zrig restore ${result.snapshotId} --rig ${rigId}`);
         }
       }
     });

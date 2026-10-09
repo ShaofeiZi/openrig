@@ -1,4 +1,4 @@
-// release-0.3.2 slice 12 — scope-fs helpers + frontmatter parser tests.
+// release-0.3.2 slice 12——scope-fs helpers + frontmatter parser 测试。
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs";
@@ -75,11 +75,11 @@ describe("resolveMissionsRoot", () => {
     const empty = mktemp();
     const missingMissions = path.join(empty, "missing-missions");
     const configPath = path.join(empty, "config.json");
-    // An absent config inherits the default mission root, which may exist.
+    // 缺省 config 继承默认 mission root，后者可能存在。
     fs.writeFileSync(configPath, JSON.stringify({ workspace: { slicesRoot: missingMissions } }));
     const resolve = () => resolveMissionsRoot({ override: empty, cwd: empty, configPath });
     expect(resolve).toThrow(ScopeCliError);
-    expect(resolve).toThrow(`Configured workspace.slices_root is not a readable directory: ${missingMissions}.`);
+    expect(resolve).toThrow(`配置的 workspace.slices_root 不是可读目录：${missingMissions}`);
   });
 
   it("uses the typed workspace.slices_root setting instead of walking cwd", () => {
@@ -100,7 +100,7 @@ describe("listMissions + listSlices + nextSliceNN", () => {
     root = mktemp();
     missionsRoot = path.join(root, "missions");
     fs.mkdirSync(missionsRoot, { recursive: true });
-    // mission with 2 active + 1 closed slice
+    // 含 2 个 active + 1 个 closed slice 的 mission
     writeFile(
       path.join(missionsRoot, "release-0.3.2", "README.md"),
       "---\nid: OPR.0.3.2\n---\n# release-0.3.2\n",
@@ -117,7 +117,7 @@ describe("listMissions + listSlices + nextSliceNN", () => {
       path.join(missionsRoot, "release-0.3.2", "closed", "04-baz", "README.md"),
       "---\nid: OPR.0.3.2.4\nstatus: closed-stale\n---\nbody\n",
     );
-    // mission with no README — should be skipped as "no slice count basis"
+    // 无 README 的 mission——应作为“无 slice 计数依据”跳过
     fs.mkdirSync(path.join(missionsRoot, "no-readme"));
   });
 
@@ -127,7 +127,7 @@ describe("listMissions + listSlices + nextSliceNN", () => {
 
   it("lists missions sorted by name with slice counts; SKIPS dirs without README.md (HG-8)", () => {
     const missions = listMissions(missionsRoot);
-    // no-readme/ has no README.md and must NOT appear (HG-8 / PRD §2.1).
+    // no-readme/ 无 README.md，绝不可出现（HG-8 / PRD §2.1）。
     expect(missions.map((m) => m.name)).toEqual(["release-0.3.2"]);
     const r = missions.find((m) => m.name === "release-0.3.2")!;
     expect(r.activeSliceCount).toBe(2);
@@ -136,7 +136,7 @@ describe("listMissions + listSlices + nextSliceNN", () => {
   });
 
   it("HG-8 discriminator: 3 dirs / 1 without README → exactly 2 missions listed", () => {
-    // Seed a third mission alongside the existing fixture for a clear
+    // 在既有 fixture 旁种入第三个 mission，使对照清晰
     // make-it-fail-first signal per guard BC verdict.
     writeFile(
       path.join(missionsRoot, "backlog", "README.md"),
@@ -194,7 +194,7 @@ describe("findSlice + resolution variants", () => {
   });
 
   it("3-part error when slice not found (HG-10)", () => {
-    expect(() => findSlice(missionsRoot, "99-missing", "release-0.3.2")).toThrow(/not found/);
+    expect(() => findSlice(missionsRoot, "99-missing", "release-0.3.2")).toThrow(/未找到/);
   });
 });
 
@@ -215,7 +215,7 @@ describe("BC-2 BLOCK 2 — findMission rejects README-less directories", () => {
   afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
 
   it("findMission throws 3-part error when target directory has no README.md", () => {
-    expect(() => findMission(missionsRoot, "no-readme")).toThrow(/not a declared mission|no README/);
+    expect(() => findMission(missionsRoot, "no-readme")).toThrow(/不是已声明的任务目标|SPEC\.md|README\.md/);
   });
 
   it("findMission still resolves declared missions normally", () => {
@@ -309,7 +309,7 @@ describe("moveSlice — git mv preserves history (HG-5) + refuses dirty tree (HG
     const src = path.join(missionsRoot, "backlog", "slices", "01-foo");
     fs.writeFileSync(path.join(src, "README.md"), "dirty\n", "utf8");
     const dest = path.join(missionsRoot, "release-0.3.2", "slices", "02-foo");
-    expect(() => moveSlice(src, dest)).toThrow(/uncommitted/);
+    expect(() => moveSlice(src, dest)).toThrow(/未提交/);
     expect(fs.existsSync(path.dirname(dest))).toBe(false);
   });
 

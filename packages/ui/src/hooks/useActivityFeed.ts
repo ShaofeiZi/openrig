@@ -39,12 +39,12 @@ export function useActivityFeed(): UseActivityFeedResult {
     };
     setEvents((prev) => [event, ...prev].slice(0, MAX_ACTIVITY_EVENTS));
 
-    // Invalidate package queries on package mutation events.
+    // 收到包变更事件时，使包查询失效。
     if (event.type === "package.installed" || event.type === "package.rolledback") {
       queryClient.invalidateQueries({ queryKey: ["packages"] });
     }
-    // slice-04: ps + default-summary invalidations for bootstrap.completed/partial
-    // are now owned (150ms-coalesced) by useGlobalEvents; ActivityFeed no longer fires them.
+    // slice-04：bootstrap.completed/partial 对 ps 与 default-summary 的失效处理现由
+    // useGlobalEvents 负责（150 毫秒合并）；ActivityFeed 不再触发。
     if (event.type === "session.discovered" || event.type === "session.vanished") {
       queryClient.invalidateQueries({ queryKey: ["discovery"] });
     }
@@ -63,7 +63,7 @@ export function useActivityFeed(): UseActivityFeedResult {
         queryClient.invalidateQueries({ queryKey: ["rig", rigId, "graph"] });
         queryClient.invalidateQueries({ queryKey: ["rig", rigId, "nodes"] });
         queryClient.invalidateQueries({ queryKey: ["rig", rigId, "sessions"] });
-        // slice-04: ps + default-summary now owned by useGlobalEvents (coalesced).
+        // slice-04：ps 与 default-summary 现由 useGlobalEvents 合并处理。
       }
     }
 
@@ -85,26 +85,19 @@ export function useActivityFeed(): UseActivityFeedResult {
         queryClient.invalidateQueries({ queryKey: ["rig", rigId, "nodes"] });
         queryClient.invalidateQueries({ queryKey: ["rig", rigId, "sessions"] });
       }
-      // slice-04: ps + default-summary now owned (coalesced) by useGlobalEvents.
+      // slice-04：ps 与 default-summary 现由 useGlobalEvents 合并处理。
     }
 
-    // OPR.0.3.2.20 — keep the For You attention surface live without
-    // hard reload. Any queue/qitem/inbox event can change the open-
-    // attention set (item created at human-gate tier, destination
-    // routed to a human seat, item claimed/closed/denied, fallback
-    // route added, closure overdue). Invalidate the durable query
-    // so useAttentionItems refetches and the lens updates within
-    // the same browser session.
+    // OPR.0.3.2.20——无需硬刷新即可让“为你推荐”的待关注表面保持实时。任何
+    // queue/qitem/inbox 事件都可能改变开放待关注集合（在人类门禁层创建条目、目标路由到
+    // 人类席位、条目被认领/关闭/拒绝、添加回退路由、关闭超时）。让持久查询失效，
+    // 以便 useAttentionItems 重新获取，并在同一浏览器会话内更新透镜。
     //
-    // QA BLOCKING-A qitem-20260518195533: attention API returned the
-    // newly-created qitem immediately, but the open Approval lens
-    // did not show it until a hard reload — react-query cache
-    // wasn't invalidated on queue.created.
+    // QA BLOCKING-A qitem-20260518195533：待关注 API 已立即返回新建 qitem，但开放的
+    // 审批透镜必须硬刷新后才显示，因为 queue.created 未使 react-query 缓存失效。
     //
-    // The string-match pattern mirrors the feed-classifier's
-    // isQueueVisibilityEvent + closed-state branch. Broad-by-prefix
-    // means a future new event type (e.g., `qitem.escalated`)
-    // auto-invalidates without a code edit.
+    // 字符串匹配模式与 feed-classifier 的 isQueueVisibilityEvent + closed-state 分支一致。
+    // 按前缀宽匹配意味着未来新增事件类型（如 `qitem.escalated`）时无需改代码即可自动失效。
     if (
       event.type.startsWith("queue.")
       || event.type.startsWith("qitem.")
@@ -114,8 +107,7 @@ export function useActivityFeed(): UseActivityFeedResult {
       const qitemId = (event.payload["qitemId"] as string | undefined)
         ?? (event.payload["qitem_id"] as string | undefined);
       if (qitemId) {
-        // Already-fetched detail (useQueueItem*); invalidate so the
-        // hydrated FeedCard picks up the new state too.
+        // 已获取的详情（useQueueItem*）也要失效，使完成数据填充的 FeedCard 同步新状态。
         queryClient.invalidateQueries({ queryKey: ["queue", "item", qitemId] });
       }
     }
@@ -157,7 +149,7 @@ export function formatLogTime(timestamp: string | number | Date): string {
   return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
 
-/** Maps event type to a CSS color class for the status dot */
+/** 将事件类型映射为状态圆点的 CSS 颜色类。 */
 export function eventColor(type: string): string {
   if (type === "bundle.created") return "bg-accent";
   if (type.startsWith("bootstrap.")) return "bg-accent";
@@ -177,7 +169,7 @@ export function eventColor(type: string): string {
   return "bg-foreground-muted-on-dark";
 }
 
-/** Maps event to a one-line summary string */
+/** 将事件映射为单行摘要文本。 */
 export function eventSummary(event: ActivityEvent): string {
   const p = event.payload;
   const rigTail = tailId(p["rigId"]);
@@ -190,83 +182,83 @@ export function eventSummary(event: ActivityEvent): string {
 
   switch (event.type) {
     case "bootstrap.planned":
-      return `bootstrap planned ${p["sourceRef"]}`;
+      return `已规划引导 ${p["sourceRef"]}`;
     case "bootstrap.started":
-      return `bootstrap started ${p["sourceRef"]}`;
+      return `已开始引导 ${p["sourceRef"]}`;
     case "bootstrap.completed":
-      return rigTail ? `bootstrap rig#${rigTail} completed` : `bootstrap completed`;
+      return rigTail ? `工作组#${rigTail} 引导完成` : `引导完成`;
     case "bootstrap.partial":
-      return `bootstrap partial ${p["completed"]} ok ${p["failed"]} failed`;
+      return `引导部分完成：${p["completed"]} 项成功，${p["failed"]} 项失败`;
     case "bootstrap.failed":
-      return `error bootstrap ${p["error"]}`;
+      return `引导失败：${p["error"]}`;
     case "package.validated":
-      return `package ${p["packageName"]} validated`;
+      return `包 ${p["packageName"]} 已验证`;
     case "package.planned":
-      return `package ${p["packageName"]} planned ${p["actionable"]} actionable ${p["deferred"]} deferred`;
+      return `包 ${p["packageName"]} 已规划：${p["actionable"]} 项可执行，${p["deferred"]} 项延后`;
     case "package.installed":
-      return `package ${p["packageName"]}@${p["packageVersion"]} ${p["applied"]} applied ${p["deferred"]} deferred`;
+      return `包 ${p["packageName"]}@${p["packageVersion"]}：${p["applied"]} 项已应用，${p["deferred"]} 项延后`;
     case "package.rolledback":
-      return installTail ? `rollback install#${installTail} restored ${p["restored"]}` : `rollback restored ${p["restored"]}`;
+      return installTail ? `安装#${installTail} 已回滚，恢复 ${p["restored"]} 项` : `已回滚，恢复 ${p["restored"]} 项`;
     case "package.install_failed":
-      return `error package ${p["packageName"]} ${p["message"]}`;
+      return `包 ${p["packageName"]} 安装失败：${p["message"]}`;
     case "rig.created":
-      return rigTail ? `rig rig#${rigTail} created` : "rig created";
+      return rigTail ? `工作组#${rigTail} 已创建` : "工作组已创建";
     case "rig.deleted":
-      return rigTail ? `rig rig#${rigTail} deleted` : "rig deleted";
+      return rigTail ? `工作组#${rigTail} 已删除` : "工作组已删除";
     case "rig.imported":
-      return rigTail ? `import ${p["specName"]} rig#${rigTail} created` : `import ${p["specName"]} created`;
+      return rigTail ? `已导入 ${p["specName"]}，工作组#${rigTail} 已创建` : `已导入并创建 ${p["specName"]}`;
     case "snapshot.created":
-      return rigTail && snapTail ? `snapshot rig#${rigTail} ${p["kind"]} snap#${snapTail}` : `snapshot ${p["kind"]}`;
+      return rigTail && snapTail ? `工作组#${rigTail} 已创建 ${p["kind"]} 快照#${snapTail}` : `已创建 ${p["kind"]} 快照`;
     case "restore.started":
-      return rigTail ? `restore rig#${rigTail} started` : "restore started";
+      return rigTail ? `工作组#${rigTail} 已开始恢复` : "已开始恢复";
     case "restore.completed": {
       const nodes = Array.isArray(p["result"]) ? p["result"] : ((p["result"] as Record<string, unknown>)?.["nodes"] as unknown[]) ?? [];
-      return rigTail ? `restore rig#${rigTail} ${nodes.length} nodes restored` : `restore ${nodes.length} nodes restored`;
+      return rigTail ? `工作组#${rigTail} 已恢复 ${nodes.length} 个节点` : `已恢复 ${nodes.length} 个节点`;
     }
     case "node.launched":
-      return `startup ${logicalId ?? normalizeText(p["nodeId"]) ?? "unknown"} launched`;
+      return `节点 ${logicalId ?? normalizeText(p["nodeId"]) ?? "未知"} 已启动`;
     case "node.startup_pending":
-      return nodeTail ? `startup node#${nodeTail} pending` : "startup pending";
+      return nodeTail ? `节点#${nodeTail} 等待启动` : "等待启动";
     case "node.startup_ready":
-      return nodeTail ? `startup node#${nodeTail} ready` : "startup ready";
+      return nodeTail ? `节点#${nodeTail} 启动就绪` : "启动就绪";
     case "node.startup_failed":
-      return nodeTail ? `error startup node#${nodeTail} ${p["error"]}` : `error startup ${p["error"]}`;
+      return nodeTail ? `节点#${nodeTail} 启动失败：${p["error"]}` : `启动失败：${p["error"]}`;
     case "session.detached":
-      return `error session ${p["sessionName"]} lost`;
+      return `会话 ${p["sessionName"]} 已丢失`;
     case "bundle.created":
-      return `bundle ${p["bundleName"]} v${p["bundleVersion"]} bundled`;
+      return `包 ${p["bundleName"]} v${p["bundleVersion"]} 已生成`;
     case "session.discovered":
-      return `discover ${p["tmuxSession"]}:${p["tmuxPane"]} ${p["runtimeHint"]}`;
+      return `已发现 ${p["tmuxSession"]}:${p["tmuxPane"]} ${p["runtimeHint"]}`;
     case "session.vanished":
-      return `error ${p["tmuxSession"]}:${p["tmuxPane"]} vanished`;
+      return `${p["tmuxSession"]}:${p["tmuxPane"]} 已消失`;
     case "node.claimed":
-      return rigTail ? `claim ${p["logicalId"]} rig#${rigTail}` : `claim ${p["logicalId"]}`;
+      return rigTail ? `已认领 ${p["logicalId"]}，工作组#${rigTail}` : `已认领 ${p["logicalId"]}`;
     case "chat.message":
-      return `chat ${sender ?? "unknown"}: ${body ?? ""}`.trim();
+      return `聊天 ${sender ?? "未知"}：${body ?? ""}`.trim();
     default:
       return event.type;
   }
 }
 
-/** Returns a route path for navigable events, or null for non-navigable ones */
+/** 为可导航事件返回路由路径；不可导航时返回 null。 */
 export function eventRoute(event: ActivityEvent): string | null {
   const p = event.payload;
   const rigId = p["rigId"] as string | undefined;
 
-  // Discovery events
+  // 发现事件。
   if (event.type === "session.discovered" || event.type === "session.vanished") return "/discovery";
   if (event.type === "node.claimed") {
     const claimRigId = event.payload["rigId"] as string | undefined;
     return claimRigId ? `/rigs/${claimRigId}` : "/discovery";
   }
 
-  // Bootstrap events navigate to /bootstrap
+  // 引导事件导航到 /bootstrap。
   if (event.type.startsWith("bootstrap.")) return "/bootstrap";
 
-  // Package events remain bootstrap-adjacent in the product UX
+  // 在产品体验中，包事件仍归于引导流程附近。
   if (event.type.startsWith("package.")) return "/bootstrap";
 
-  // Rig-scoped events
+  // 工作组范围事件。
   if (rigId) {
     return `/rigs/${rigId}`;
   }

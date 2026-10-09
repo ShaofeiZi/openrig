@@ -28,7 +28,7 @@ describe("002_bindings_sessions", () => {
     db.close();
   });
 
-  it("creates bindings and sessions tables", () => {
+  it("创建 bindings 与 sessions table", () => {
     const tables = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
@@ -40,7 +40,7 @@ describe("002_bindings_sessions", () => {
   });
 
   describe("bindings", () => {
-    it("can insert a binding for a node", () => {
+    it("可以为 node 插入 binding", () => {
       seedRigWithNode(db);
       db.prepare(
         "INSERT INTO bindings (id, node_id, tmux_session) VALUES (?, ?, ?)"
@@ -52,7 +52,7 @@ describe("002_bindings_sessions", () => {
       expect(binding.tmux_session).toBe("r01-dev1-impl");
     });
 
-    it("binding is optional — node can exist without binding", () => {
+    it("binding 可选——node 可以在没有 binding 时存在", () => {
       seedRigWithNode(db);
       const binding = db
         .prepare("SELECT * FROM bindings WHERE node_id = ?")
@@ -60,7 +60,7 @@ describe("002_bindings_sessions", () => {
       expect(binding).toBeUndefined();
     });
 
-    it("enforces one binding per node (UNIQUE node_id)", () => {
+    it("强制每个 node 只有一个 binding（UNIQUE node_id）", () => {
       seedRigWithNode(db);
       db.prepare(
         "INSERT INTO bindings (id, node_id, tmux_session) VALUES (?, ?, ?)"
@@ -75,7 +75,7 @@ describe("002_bindings_sessions", () => {
       ).toThrow();
     });
 
-    it("allows updating a binding", () => {
+    it("允许更新 binding", () => {
       seedRigWithNode(db);
       db.prepare(
         "INSERT INTO bindings (id, node_id, tmux_session) VALUES (?, ?, ?)"
@@ -91,7 +91,7 @@ describe("002_bindings_sessions", () => {
       expect(binding.cmux_surface).toBe("surface-42");
     });
 
-    it("supports external_cli attachment without tmux session", () => {
+    it("支持没有 tmux session 的 external_cli attachment", () => {
       seedRigWithNode(db);
       db.prepare(
         "INSERT INTO bindings (id, node_id, attachment_type, external_session_name) VALUES (?, ?, ?, ?)"
@@ -105,7 +105,7 @@ describe("002_bindings_sessions", () => {
       expect(binding.external_session_name).toBe("orch-lead@host");
     });
 
-    it("cascades on node delete", () => {
+    it("删除 node 时级联删除", () => {
       seedRigWithNode(db);
       db.prepare(
         "INSERT INTO bindings (id, node_id, tmux_session) VALUES (?, ?, ?)"
@@ -118,7 +118,7 @@ describe("002_bindings_sessions", () => {
   });
 
   describe("sessions", () => {
-    it("can insert a session for a node", () => {
+    it("可以为 node 插入 session", () => {
       seedRigWithNode(db);
       db.prepare(
         "INSERT INTO sessions (id, node_id, session_name, status) VALUES (?, ?, ?, ?)"
@@ -131,7 +131,7 @@ describe("002_bindings_sessions", () => {
       expect(session.status).toBe("running");
     });
 
-    it("defaults status to unknown", () => {
+    it("status 默认为 unknown", () => {
       seedRigWithNode(db);
       db.prepare(
         "INSERT INTO sessions (id, node_id, session_name) VALUES (?, ?, ?)"
@@ -143,7 +143,7 @@ describe("002_bindings_sessions", () => {
       expect(session.status).toBe("unknown");
     });
 
-    it("supports detached status", () => {
+    it("支持 detached status", () => {
       seedRigWithNode(db);
       db.prepare(
         "INSERT INTO sessions (id, node_id, session_name, status) VALUES (?, ?, ?, ?)"
@@ -160,7 +160,7 @@ describe("002_bindings_sessions", () => {
       expect(session.status).toBe("detached");
     });
 
-    it("cascades on node delete", () => {
+    it("删除 node 时级联删除", () => {
       seedRigWithNode(db);
       db.prepare(
         "INSERT INTO sessions (id, node_id, session_name) VALUES (?, ?, ?)"
@@ -171,7 +171,7 @@ describe("002_bindings_sessions", () => {
       expect(sessions).toHaveLength(0);
     });
 
-    it("does NOT include resume_token (deferred to Phase 2)", () => {
+    it("不包含 resume_token（延后至 Phase 2）", () => {
       const columns = db
         .prepare("PRAGMA table_info(sessions)")
         .all() as { name: string }[];
@@ -179,7 +179,7 @@ describe("002_bindings_sessions", () => {
       expect(columnNames).not.toContain("resume_token");
     });
 
-    it("enforces FK: session must reference valid node", () => {
+    it("强制 FK：session 必须引用有效 node", () => {
       expect(() =>
         db
           .prepare(

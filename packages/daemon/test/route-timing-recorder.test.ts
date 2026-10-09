@@ -7,14 +7,14 @@ import {
 } from "../src/domain/route-timing-recorder.js";
 
 describe("expensiveRouteLabel", () => {
-  it("labels the four expensive topology routes", () => {
+  it("标记四个高开销拓扑路由", () => {
     expect(expensiveRouteLabel("GET", "/api/ps")).toBe("GET /api/ps");
     expect(expensiveRouteLabel("GET", "/api/rigs/summary")).toBe("GET /api/rigs/summary");
     expect(expensiveRouteLabel("GET", "/api/rigs/abc-123/graph")).toBe("GET /api/rigs/:id/graph");
     expect(expensiveRouteLabel("GET", "/api/rigs/abc-123/nodes")).toBe("GET /api/rigs/:id/nodes");
   });
 
-  it("returns null for cheap routes, sub-paths, and non-GET verbs", () => {
+  it("对低开销路由、子路径和非 GET 动词返回 null", () => {
     expect(expensiveRouteLabel("GET", "/healthz")).toBeNull();
     expect(expensiveRouteLabel("GET", "/api/rigs")).toBeNull();
     expect(expensiveRouteLabel("GET", "/api/rigs/abc-123")).toBeNull();
@@ -23,8 +23,8 @@ describe("expensiveRouteLabel", () => {
   });
 });
 
-describe("RouteTimingRecorder rolling last / max / count", () => {
-  it("tracks last, max, and count per label", () => {
+describe("RouteTimingRecorder 滚动统计 last / max / count", () => {
+  it("按标签跟踪 last、max 和 count", () => {
     const r = new RouteTimingRecorder();
     r.record("GET /api/ps", 10);
     r.record("GET /api/ps", 30);
@@ -32,7 +32,7 @@ describe("RouteTimingRecorder rolling last / max / count", () => {
     expect(r.snapshot()["GET /api/ps"]).toEqual({ lastMs: 20, maxMs: 30, count: 3 });
   });
 
-  it("snapshot returns an isolated copy (mutation-safe)", () => {
+  it("snapshot 返回隔离副本，避免外部修改", () => {
     const r = new RouteTimingRecorder();
     r.record("GET /api/ps", 5);
     const snap = r.snapshot();
@@ -41,8 +41,8 @@ describe("RouteTimingRecorder rolling last / max / count", () => {
   });
 });
 
-describe("createRouteTimingMiddleware records ONLY expensive routes", () => {
-  it("records the expensive route and leaves the cheap route untimed", async () => {
+describe("createRouteTimingMiddleware 只记录高开销路由", () => {
+  it("记录高开销路由，不为低开销路由计时", async () => {
     const recorder = new RouteTimingRecorder();
     const app = new Hono();
     app.use("*", createRouteTimingMiddleware(recorder));

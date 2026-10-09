@@ -1,11 +1,10 @@
-# OpenRig 0.3.0 starter workflow.
-# A slower walkthrough loop for watching one work packet move end to end.
+# OpenRig 0.3.0 入门 workflow。
+# 较慢的演示循环，用于观察一个工作包如何从头到尾流转。
 workflow:
   id: basic-loop
   version: 1
   objective: >
-    Walk one work packet through the conveyor rig slowly enough for a new user
-    to inspect each handoff.
+    让一个工作包以足够慢的速度通过 conveyor rig，使新用户能够检查每次 handoff。
   target:
     rig: conveyor
   entry:
@@ -30,35 +29,35 @@ workflow:
   steps:
     - id: intake
       actor_role: intake
-      objective: Restate the objective and hand off one packet.
+      objective: 重述目标并交接一个工作包。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [planner]
     - id: plan
       actor_role: planner
-      objective: Produce a short plan for one build turn.
+      objective: 为一次构建轮次制定简短计划。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [builder]
     - id: build
       actor_role: builder
-      objective: Build or draft the planned output.
+      objective: 构建或起草计划中的输出。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [reviewer]
     - id: review
       actor_role: reviewer
-      objective: Check the output and clear it for close.
+      objective: 检查输出并确认可以闭环。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [closer]
     - id: close
       actor_role: closer
-      objective: Close the walkthrough packet.
+      objective: 关闭演示工作包。
       allowed_exits: [done, failed]
       next_hop:
         mode: forbid
@@ -71,6 +70,6 @@ workflow:
     max_hops: 10
     spawn_budget: 0
   closure:
-    success: Walkthrough packet closed.
-    degraded: Walkthrough stopped with a named blocker.
-    failed: Walkthrough failed with evidence.
+    success: 演示工作包已关闭。
+    degraded: 演示因明确的阻塞项而停止。
+    failed: 演示失败，并已保留证据。

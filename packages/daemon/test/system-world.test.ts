@@ -21,7 +21,7 @@ afterEach(() => {
 });
 
 describe("System World", () => {
-  it("parses the shipped selector without embedding skill bytes", () => {
+  it("解析随附 selector，且不嵌入 skill 字节", () => {
     expect(parseSystemWorldManifest(DEFAULT_SYSTEM_WORLD_MANIFEST)).toEqual({
       schema: "openrig.system-world/v0alpha1",
       id: "openrig-default",
@@ -35,7 +35,7 @@ describe("System World", () => {
     expect(DEFAULT_SYSTEM_WORLD_MANIFEST).not.toContain("SKILL.md");
   });
 
-  it("resolves default, replacement, and disabled as distinct explicit states with provenance", () => {
+  it("把 default、replacement 和 disabled 解析为带来源的不同显式状态", () => {
     const contextRoot = freshRoot();
     mkdirSync(join(contextRoot, "system"));
     writeFileSync(join(contextRoot, "system", "system-world.yaml"), DEFAULT_SYSTEM_WORLD_MANIFEST);
@@ -64,7 +64,7 @@ describe("System World", () => {
     });
   });
 
-  it("refuses a missing or malformed selected manifest instead of inferring disablement", () => {
+  it("拒绝缺失或格式错误的选定清单，而不是推断为 disabled", () => {
     const contextRoot = freshRoot();
     writeFileSync(join(contextRoot, "bad.yaml"), "schema: wrong\n");
     expect(resolveSystemWorld({ contextRoot, selection: "default", source: "default" })).toMatchObject({

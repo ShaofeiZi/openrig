@@ -3,17 +3,15 @@ import nodePath from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * Read the daemon's own package.json version at call time. Function-level read
- * on purpose: a module-level constant would mask test isolation per the
- * audit-every-layer discipline, and the read is cheap. Returns "unknown" on any
- * failure (missing/garbled package.json, no version field) so callers can
- * render an honest fallback rather than crash.
+ * 调用时读取 daemon 自身 package.json 中的版本。这里有意在函数级读取：按照
+ * audit-every-layer 规范，模块级常量会掩盖测试隔离问题，而本次读取成本很低。任何失败
+ *（package.json 缺失或损坏、没有 version 字段）均返回 "unknown"，让调用方可以如实呈现
+ * 回退值，而不是崩溃。
  *
- * Lifted from routes/bundles.ts (where it was introduced in slice-05 for bundle
- * provenance) to a shared helper for OPR.0.4.1.14, so the dashboard Field
- * Environment VERSION row can read the real running daemon version through the
- * health-summary route. The path is resolved relative to THIS module's own
- * location (import.meta.url), so it is correct regardless of the caller.
+ * 此逻辑最初在切片 05 的 routes/bundles.ts 中用于 bundle provenance，现为
+ * OPR.0.4.1.14 提升为共用 helper，使 dashboard 的 Field Environment VERSION 行可以通过
+ * health-summary 路由读取真实运行中的 daemon 版本。路径相对于本模块自身位置
+ *（import.meta.url）解析，因此不受调用方位置影响。
  */
 export function getDaemonVersion(): string {
   try {

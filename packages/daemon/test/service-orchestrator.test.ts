@@ -36,7 +36,7 @@ const COMPOSE_PS_ARRAY = JSON.stringify([
 ]);
 
 describe("ComposeServicesAdapter", () => {
-  it("up calls docker compose up -d with correct flags", async () => {
+  it("up 使用正确参数调用 docker compose up -d", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue("");
     const adapter = new ComposeServicesAdapter(exec);
 
@@ -48,10 +48,10 @@ describe("ComposeServicesAdapter", () => {
     expect(cmd).toContain("-f '/tmp/docker-compose.yml'");
     expect(cmd).toContain("-p 'my-rig'");
     expect(cmd).toContain("up -d");
-    expect(cmd).not.toContain("--wait"); // readiness is separate
+    expect(cmd).not.toContain("--wait"); // readiness 单独处理。
   });
 
-  it("down calls docker compose down", async () => {
+  it("down 调用 docker compose down", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue("");
     const adapter = new ComposeServicesAdapter(exec);
 
@@ -62,7 +62,7 @@ describe("ComposeServicesAdapter", () => {
     expect(cmd).not.toContain("--volumes");
   });
 
-  it("down with down_and_volumes passes --volumes", async () => {
+  it("down 使用 down_and_volumes 时传入 --volumes", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue("");
     const adapter = new ComposeServicesAdapter(exec);
 
@@ -72,7 +72,7 @@ describe("ComposeServicesAdapter", () => {
     expect(cmd).toContain("--volumes");
   });
 
-  it("down with leave_running is a no-op", async () => {
+  it("down 使用 leave_running 时不执行操作", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue("");
     const adapter = new ComposeServicesAdapter(exec);
 
@@ -82,7 +82,7 @@ describe("ComposeServicesAdapter", () => {
     expect(exec).not.toHaveBeenCalled();
   });
 
-  it("status parses one-object-per-line format", async () => {
+  it("status 解析每行一个对象的格式", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue(COMPOSE_PS_LINE);
     const adapter = new ComposeServicesAdapter(exec);
 
@@ -94,7 +94,7 @@ describe("ComposeServicesAdapter", () => {
     expect(result.services[0]!.health).toBe("healthy");
   });
 
-  it("status parses JSON array format", async () => {
+  it("status 解析 JSON 数组格式", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue(COMPOSE_PS_ARRAY);
     const adapter = new ComposeServicesAdapter(exec);
 
@@ -106,17 +106,17 @@ describe("ComposeServicesAdapter", () => {
     expect(result.services[1]!.name).toBe("redis");
   });
 
-  it("status returns an honest error for unparseable non-empty output", async () => {
+  it("status 对无法解析的非空输出返回如实错误", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue("{not-json");
     const adapter = new ComposeServicesAdapter(exec);
 
     const result = await adapter.status({ composeFile: "/tmp/dc.yml", projectName: "rig" });
 
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("unparseable");
+    expect(result.error).toContain("无法解析");
   });
 
-  it("status ignores warning-only output and returns an empty service list", async () => {
+  it("status 忽略只有警告的输出并返回空服务列表", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue(
       'time="2026-04-09T06:06:45-07:00" level=warning msg="compose warning"',
     );
@@ -128,7 +128,7 @@ describe("ComposeServicesAdapter", () => {
     expect(result.services).toEqual([]);
   });
 
-  it("status ignores warning lines before JSON payload", async () => {
+  it("status 忽略 JSON payload 之前的警告行", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue(
       'time="2026-04-09T06:06:45-07:00" level=warning msg="compose warning"\n'
         + COMPOSE_PS_LINE,
@@ -141,7 +141,7 @@ describe("ComposeServicesAdapter", () => {
     expect(result.services[0]!.name).toBe("vault");
   });
 
-  it("logs calls docker compose logs with service filter", async () => {
+  it("logs 调用 docker compose logs 并传入服务过滤器", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue("vault log output");
     const adapter = new ComposeServicesAdapter(exec);
 
@@ -155,7 +155,7 @@ describe("ComposeServicesAdapter", () => {
     expect(cmd).toContain("'vault'");
   });
 
-  it("captureReceipt builds normalized receipt from ps output", async () => {
+  it("captureReceipt 根据 ps 输出构建规范化回执", async () => {
     const adapter = new ComposeServicesAdapter(mockExec({ "ps --format json": COMPOSE_PS_LINE }));
 
     const result = await adapter.status({ composeFile: "/tmp/dc.yml", projectName: "rig" });
@@ -164,7 +164,7 @@ describe("ComposeServicesAdapter", () => {
     expect(result.services[0]!.health).toBe("healthy");
   });
 
-  it("up surfaces underlying compose output on failure", async () => {
+  it("up 失败时呈现底层 compose 输出", async () => {
     const exec = vi.fn<ExecFn>().mockRejectedValue(
       Object.assign(new Error("Command failed: docker compose up -d"), {
         stdout: "unknown shorthand flag: 'f' in -f",
@@ -182,7 +182,7 @@ describe("ComposeServicesAdapter", () => {
 });
 
 describe("services-readiness", () => {
-  it("evaluateWaitTargets — HTTP target healthy", async () => {
+  it("evaluateWaitTargets——HTTP 目标健康", async () => {
     const adapter = new ComposeServicesAdapter(mockExec({ "curl": "200" }));
 
     const results = await evaluateWaitTargets(
@@ -194,7 +194,7 @@ describe("services-readiness", () => {
     expect(results[0]!.status).toBe("healthy");
   });
 
-  it("evaluateWaitTargets — HTTP target unhealthy", async () => {
+  it("evaluateWaitTargets——HTTP 目标不健康", async () => {
     const adapter = new ComposeServicesAdapter(mockExec({ "curl": new Error("connection refused") }));
 
     const results = await evaluateWaitTargets(
@@ -206,7 +206,7 @@ describe("services-readiness", () => {
     expect(results[0]!.status).toBe("unhealthy");
   });
 
-  it("evaluateWaitTargets — condition:healthy via compose status", async () => {
+  it("evaluateWaitTargets——通过 compose status 满足 condition:healthy", async () => {
     const adapter = new ComposeServicesAdapter(mockExec());
 
     const results = await evaluateWaitTargets(
@@ -219,7 +219,7 @@ describe("services-readiness", () => {
     expect(results[0]!.status).toBe("healthy");
   });
 
-  it("evaluateWaitTargets — condition:healthy but service unhealthy", async () => {
+  it("evaluateWaitTargets——要求 condition:healthy 但服务不健康", async () => {
     const adapter = new ComposeServicesAdapter(mockExec());
 
     const results = await evaluateWaitTargets(
@@ -232,20 +232,20 @@ describe("services-readiness", () => {
     expect(results[0]!.status).toBe("pending");
   });
 
-  it("deriveEnvHealth — all healthy", () => {
+  it("deriveEnvHealth——全部健康", () => {
     expect(deriveEnvHealth([
       { target: { url: "http://x" }, status: "healthy", detail: null },
     ])).toBe("healthy");
   });
 
-  it("deriveEnvHealth — mixed", () => {
+  it("deriveEnvHealth——混合状态", () => {
     expect(deriveEnvHealth([
       { target: { url: "http://x" }, status: "healthy", detail: null },
       { target: { url: "http://y" }, status: "unhealthy", detail: "fail" },
     ])).toBe("degraded");
   });
 
-  it("deriveEnvHealth — all unhealthy", () => {
+  it("deriveEnvHealth——全部不健康", () => {
     expect(deriveEnvHealth([
       { target: { url: "http://x" }, status: "unhealthy", detail: "fail" },
     ])).toBe("unhealthy");
@@ -275,7 +275,7 @@ describe("ServiceOrchestrator", () => {
     return rig;
   }
 
-  it("boot — boots services, waits for health, persists receipt", async () => {
+  it("boot——启动服务、等待健康并持久化回执", async () => {
     const spec: RigServicesSpec = {
       kind: "compose",
       composeFile: "docker-compose.yml",
@@ -299,12 +299,12 @@ describe("ServiceOrchestrator", () => {
     expect(result.receipt.waitFor).toHaveLength(1);
     expect(result.receipt.waitFor[0]!.status).toBe("healthy");
 
-    // Verify receipt persisted
+    // 验证回执已持久化。
     const record = rigRepo.getServicesRecord(rig.id);
     expect(record?.latestReceiptJson).toBeTruthy();
   });
 
-  it("boot — wait target failure returns honest error with receipt", async () => {
+  it("boot——等待目标失败时返回如实错误与回执", async () => {
     const spec: RigServicesSpec = {
       kind: "compose",
       composeFile: "docker-compose.yml",
@@ -324,12 +324,12 @@ describe("ServiceOrchestrator", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe("wait_timeout");
-    expect(result.error).toContain("not healthy");
+    expect(result.error).toContain("服务目标仍不健康");
     expect(result.receipt).toBeDefined();
     expect(result.receipt!.waitFor[0]!.status).toBe("unhealthy");
   });
 
-  it("teardown — tears down per down_policy", async () => {
+  it("teardown——按 down_policy 拆除", async () => {
     const spec: RigServicesSpec = {
       kind: "compose",
       composeFile: "docker-compose.yml",
@@ -348,12 +348,12 @@ describe("ServiceOrchestrator", () => {
     expect(cmd).toContain("down");
     expect(cmd).toContain("--volumes");
 
-    // Receipt cleared after teardown
+    // 拆除后清除回执。
     const record = rigRepo.getServicesRecord(rig.id);
     expect(record?.latestReceiptJson).toBeNull();
   });
 
-  it("teardown — leave_running policy skips compose down", async () => {
+  it("teardown——leave_running policy 跳过 compose down", async () => {
     const spec: RigServicesSpec = {
       kind: "compose",
       composeFile: "docker-compose.yml",
@@ -368,14 +368,14 @@ describe("ServiceOrchestrator", () => {
     const result = await orchestrator.teardown(rig.id);
 
     expect(result.ok).toBe(true);
-    expect(exec).not.toHaveBeenCalled(); // no docker compose command issued
+    expect(exec).not.toHaveBeenCalled(); // 未发出 docker compose 命令。
   });
 
-  it("teardown — policyOverride overrides persisted down_policy", async () => {
+  it("teardown——policyOverride 覆盖已持久化的 down_policy", async () => {
     const spec: RigServicesSpec = {
       kind: "compose",
       composeFile: "docker-compose.yml",
-      downPolicy: "down", // persisted policy is plain "down"
+      downPolicy: "down", // 持久化策略只是 "down"。
     };
     const rig = seedRigWithServices(spec);
 
@@ -388,10 +388,10 @@ describe("ServiceOrchestrator", () => {
     expect(result.ok).toBe(true);
     const cmd = exec.mock.calls[0]![0] as string;
     expect(cmd).toContain("down");
-    expect(cmd).toContain("--volumes"); // override wins over persisted "down"
+    expect(cmd).toContain("--volumes"); // 覆盖值优先于持久化的 "down"。
   });
 
-  it("boot — no services record returns honest error", async () => {
+  it("boot——没有 services 记录时返回如实错误", async () => {
     const rig = rigRepo.createRig("bare-rig");
 
     const adapter = new ComposeServicesAdapter(mockExec());
@@ -403,11 +403,11 @@ describe("ServiceOrchestrator", () => {
     expect(result.code).toBe("no_services");
   });
 
-  it("boot — no wait targets still captures receipt", async () => {
+  it("boot——没有等待目标时仍捕获回执", async () => {
     const spec: RigServicesSpec = {
       kind: "compose",
       composeFile: "docker-compose.yml",
-      // no waitFor
+      // 不设置 waitFor。
     };
     const rig = seedRigWithServices(spec);
 
@@ -425,7 +425,7 @@ describe("ServiceOrchestrator", () => {
     expect(result.receipt.waitFor).toHaveLength(0);
   });
 
-  it("boot — no wait targets returns honest error when compose status fails", async () => {
+  it("boot——没有等待目标但 compose status 失败时返回如实错误", async () => {
     const spec: RigServicesSpec = {
       kind: "compose",
       composeFile: "docker-compose.yml",
@@ -446,7 +446,7 @@ describe("ServiceOrchestrator", () => {
     expect(result.error).toContain("compose ps failed");
   });
 
-  it("captureReceipt throws when compose status cannot be read", async () => {
+  it("compose status 无法读取时 captureReceipt 抛错", async () => {
     const spec: RigServicesSpec = {
       kind: "compose",
       composeFile: "docker-compose.yml",

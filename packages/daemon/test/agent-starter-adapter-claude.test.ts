@@ -1,11 +1,8 @@
-// Tier 1 proof for the Agent Starter v1 vertical M2 Revision 2 — real
-// `ClaudeCodeAdapter` proof. M2 R1 used a mock RuntimeAdapter and only
-// asserted the spy received a STARTER ResolvedStartupFile, which is
-// caller-wiring proof, not adapter behavior. M2 R2 instantiates the real
-// `ClaudeCodeAdapter` and
-// mocks at the tmux boundary; the proof is that real `deliverStartup`
-// exercises `guidance_merge` and writes the starter content into the
-// per-seat CLAUDE.md managed block.
+// Agent Starter v1 垂直切片 M2 修订版 2 的一级证明——真实的
+// `ClaudeCodeAdapter` 证明。M2 R1 使用模拟 RuntimeAdapter，只断言 spy 收到
+// STARTER ResolvedStartupFile；这只能证明调用方接线，不能证明适配器行为。
+// M2 R2 实例化真实 `ClaudeCodeAdapter`，并在 tmux 边界模拟；证明内容是实际
+// `deliverStartup` 会执行 `guidance_merge`，并把起始内容写入逐席位 CLAUDE.md 管理块。
 
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
@@ -41,11 +38,9 @@ function mockTmux(): TmuxAdapter {
   } as unknown as TmuxAdapter;
 }
 
-// In-memory FS adapter pattern from claude-runtime-adapter.test.ts. We
-// pre-populate the registry-entry path (which the resolver returns as an
-// absolute path) so the real ClaudeCodeAdapter can read it via its fs
-// seam; writes to <cwd>/CLAUDE.md land in the same store and we read
-// them back to verify the merged-guidance result.
+// 沿用 claude-runtime-adapter.test.ts 的内存 FS 适配器模式。预先填充注册表条目
+// 路径（解析器会以绝对路径返回），使真实 ClaudeCodeAdapter 可经其 fs 接缝读取；
+// 对 <cwd>/CLAUDE.md 的写入落在同一存储中，再读回以验证合并后的指引结果。
 function mockClaudeFs(seed: Record<string, string>): ClaudeAdapterFsOps & { _store: Record<string, string> } {
   const store: Record<string, string> = { ...seed };
   return {
@@ -86,8 +81,8 @@ status: captured
 state: 2-named
 `;
 
-describe("Agent Starter v1 vertical — real Claude adapter delivery (M2 R2)", () => {
-  it("real ClaudeCodeAdapter.deliverStartup writes STARTER content to CLAUDE.md via guidance_merge", async () => {
+describe("Agent Starter v1 垂直切片——真实 Claude 适配器交付（M2 R2）", () => {
+  it("真实 ClaudeCodeAdapter.deliverStartup 通过 guidance_merge 将 STARTER 内容写入 CLAUDE.md", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "starter-adapter-claude-r2-"));
     const registryRoot = path.join(tmpDir, "registry");
     fs.mkdirSync(registryRoot, { recursive: true });
@@ -105,10 +100,8 @@ describe("Agent Starter v1 vertical — real Claude adapter delivery (M2 R2)", (
       const nodeLauncher = new NodeLauncher({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmux });
       const startupOrch = new StartupOrchestrator({ db, sessionRegistry, eventBus, tmuxAdapter: tmux });
 
-      // Real ClaudeCodeAdapter. The fs seam is pre-loaded with the
-      // registry-entry content (matching the path the resolver will hand
-      // back) so the adapter's `readFile(file.absolutePath)` succeeds and
-      // the merge_guidance branch can run.
+      // 真实 ClaudeCodeAdapter。fs 接缝预载注册表条目内容（与解析器返回的路径匹配），
+      // 使适配器的 `readFile(file.absolutePath)` 成功并能运行 merge_guidance 分支。
       const claudeFs = mockClaudeFs({
         [registryEntryPath]: CLAUDE_STARTER,
         [DEFAULT_CULTURE_PATH]: DEFAULT_CULTURE,
@@ -116,8 +109,8 @@ describe("Agent Starter v1 vertical — real Claude adapter delivery (M2 R2)", (
       });
       const claudeAdapter = new ClaudeCodeAdapter({ tmux, fsOps: claudeFs });
 
-      // Pass-through Codex/terminal adapters keep the instantiator's
-      // adapter map type-complete; this test only exercises Claude.
+      // 直通的 Codex/terminal 适配器让实例化器的适配器映射保持类型完整；
+      // 此测试只覆盖 Claude。
       const passThroughAdapter: RuntimeAdapter = {
         runtime: "codex",
         listInstalled: async () => [],
@@ -170,19 +163,17 @@ describe("Agent Starter v1 vertical — real Claude adapter delivery (M2 R2)", (
       const result = await inst.instantiate(yaml, RIG_ROOT);
       expect(result.ok).toBe(true);
 
-      // The Claude adapter's `mergeGuidance` writes to <binding.cwd>/CLAUDE.md
-      // wrapped in a `BEGIN OpenRig MANAGED BLOCK` envelope. The cwd for this
-      // member resolves to RIG_ROOT (`cwd: "."`).
+      // Claude 适配器的 `mergeGuidance` 写入 <binding.cwd>/CLAUDE.md，并包裹在
+      // `BEGIN OpenRig MANAGED BLOCK` 外壳中。此成员的 cwd 解析为 RIG_ROOT
+      //（`cwd: "."`）。
       const expectedClaudeMdPath = path.join(RIG_ROOT, "CLAUDE.md");
       const claudeMd = claudeFs._store[expectedClaudeMdPath];
-      expect(claudeMd, "expected real ClaudeCodeAdapter to have written CLAUDE.md via guidance_merge").toBeDefined();
-      // The managed block is keyed on the starter file path (`file.path`,
-      // which is the basename returned by the resolver).
+      expect(claudeMd, "预期真实 ClaudeCodeAdapter 已通过 guidance_merge 写入 CLAUDE.md").toBeDefined();
+      // 管理块以起始文件路径作为键（`file.path`，即解析器返回的基本名）。
       expect(claudeMd).toContain("BEGIN OpenRig MANAGED BLOCK: claude-fixture-starter.yaml");
       expect(claudeMd).toContain("END OpenRig MANAGED BLOCK: claude-fixture-starter.yaml");
-      // Some piece of the starter YAML body must appear inside the block.
-      // We pick `starter_id: claude-fixture-starter` because it's a stable,
-      // unambiguous marker the resolver passed through.
+      // 起始 YAML 正文必须有一部分出现在块内。选择
+      // `starter_id: claude-fixture-starter`，因为它是解析器透传的稳定、无歧义标记。
       expect(claudeMd).toContain("starter_id: claude-fixture-starter");
       expect(claudeMd).toContain("BEGIN OpenRig MANAGED BLOCK: CULTURE-default.md");
       expect(claudeMd).toContain("Ship good, working product");

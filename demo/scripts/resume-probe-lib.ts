@@ -110,7 +110,7 @@ export async function probeNodeResume(
     try {
       runTmux(["kill-session", "-t", sessionName]);
     } catch {
-      // Best-effort cleanup.
+      // 尽力清理；清理失败不应覆盖探测结果。
     }
   }
 }

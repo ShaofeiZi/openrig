@@ -3,10 +3,10 @@ import { resolveCrashCartKey } from "../src/crash-cart/keys.js";
 import type { CrashCartRenderOpts } from "../src/crash-cart/from-emit.js";
 import type { CrashCartModel } from "../src/crash-cart/crash-cart-model.js";
 
-// Crash-cart C3 follow-on — the cockpit action keys, gated on a daemon-down screen being active. The
-// RESOLVER is pure (key + screen state → action); main.ts performs the action (exec / re-probe). RESTORE
-// (⏎) routes to the C1 batch conductor — EXCLUDED this wave, so it resolves to a labeled seam, never a
-// silent no-op. Keys differ by mode: recovery cockpit offers restore/inspect; first-run only onboarding+start.
+// Crash-cart C3 后续——cockpit 动作键，以 daemon-down 屏激活为门。
+// RESOLVER 纯（键 + 屏状态 → 动作）；main.ts 执行动作（exec / re-probe）。RESTORE
+//（⏎）路由到 C1 批量 conductor——本波排除，故解析为带标签的缝，绝非
+// 静默 no-op。键按模式不同：recovery cockpit 提供 restore/inspect；first-run 仅 onboarding+start。
 
 const opts = (daemonState?: "down" | "unverified", mode?: CrashCartModel["mode"]): CrashCartRenderOpts =>
   daemonState === "down"
@@ -15,15 +15,15 @@ const opts = (daemonState?: "down" | "unverified", mode?: CrashCartModel["mode"]
       ? { daemonState, daemonEvidence: { pidState: "", probeResult: "", failedSignal: "" } }
       : {};
 
-describe("resolveCrashCartKey — cockpit action keys (gated on daemon-down)", () => {
-  it("recovery cockpit: s/i/n/enter → start-daemon/inspect/onboarding/restore", () => {
+describe("resolveCrashCartKey——驾驶舱动作键（daemon-down 门控）", () => {
+  it("recovery 驾驶舱：s/i/n/enter → start-daemon/inspect/onboarding/restore", () => {
     expect(resolveCrashCartKey("s", opts("down", "recovery"))).toBe("start-daemon");
     expect(resolveCrashCartKey("i", opts("down", "recovery"))).toBe("inspect");
     expect(resolveCrashCartKey("n", opts("down", "recovery"))).toBe("onboarding");
     expect(resolveCrashCartKey("enter", opts("down", "recovery"))).toBe("restore");
   });
 
-  it("H2: ⏎ consults the one-click gate — zero-generation (all seats resumable) → direct restore", () => {
+  it("H2：⏎ 咨询一键 gate——零代（所有席位可恢复）→ 直接恢复", () => {
     const zeroGen: CrashCartRenderOpts = {
       daemonState: "down",
       crashCart: {
@@ -36,7 +36,7 @@ describe("resolveCrashCartKey — cockpit action keys (gated on daemon-down)", (
     expect(resolveCrashCartKey("enter", zeroGen)).toBe("restore");
   });
 
-  it("H2: ⏎ with a non-resumable seat → restore-confirm (NOT a silent one-click)", () => {
+  it("H2：⏎ 有不可恢复席位 → restore-confirm（非静默一键）", () => {
     const withDelta: CrashCartRenderOpts = {
       daemonState: "down",
       crashCart: {
@@ -52,20 +52,20 @@ describe("resolveCrashCartKey — cockpit action keys (gated on daemon-down)", (
     expect(resolveCrashCartKey("enter", withDelta)).toBe("restore-confirm");
   });
 
-  it("first-run: only start-daemon + onboarding (no restore-of-nothing, no inspect)", () => {
+  it("首次运行：仅 start-daemon + onboarding（无恢复空对象、无 inspect）", () => {
     expect(resolveCrashCartKey("s", opts("down", "first-run"))).toBe("start-daemon");
     expect(resolveCrashCartKey("n", opts("down", "first-run"))).toBe("onboarding");
     expect(resolveCrashCartKey("enter", opts("down", "first-run"))).toBeNull();
     expect(resolveCrashCartKey("i", opts("down", "first-run"))).toBeNull();
   });
 
-  it("UNVERIFIED: r → retry (re-probe); no recovery actions", () => {
+  it("UNVERIFIED：r → 重试（重新探测）；无恢复动作", () => {
     expect(resolveCrashCartKey("r", opts("unverified"))).toBe("retry");
     expect(resolveCrashCartKey("s", opts("unverified"))).toBeNull();
     expect(resolveCrashCartKey("enter", opts("unverified"))).toBeNull();
   });
 
-  it("normal TUI (no daemon-down screen): every key → null (keys fall through to normal handling)", () => {
+  it("常规 TUI（无 daemon-down 屏）：每键 → null（键落回常规处理）", () => {
     for (const k of ["s", "i", "n", "r", "enter"]) expect(resolveCrashCartKey(k, opts())).toBeNull();
   });
 });

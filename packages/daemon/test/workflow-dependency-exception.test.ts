@@ -32,7 +32,7 @@ const GRAPH = `workflow:
       allowed_exits: [done, failed]
 `;
 
-describe("dependency failure ownership and occurrence-local recovery", () => {
+describe("依赖失败的归属与 occurrence 局部恢复", () => {
   let db: ReturnType<typeof createDb>;
   let queue: QueueRepository;
   let runtime: WorkflowRuntime;
@@ -72,16 +72,16 @@ describe("dependency failure ownership and occurrence-local recovery", () => {
       right: view.frontier.find(p => p.stepId === "right")!.packetId };
   }
 
-  it("admits one evidence-linked owner and durable failed wake while preserving a live sibling", async () => {
+  it("接纳一个有证据关联的 owner 与持久失败 wake，同时保留存活的同级分支", async () => {
     const b = await branches(); const sibling = queue.getById(b.right); const completed = queue.getById(b.root);
     await project(b.id, b.left, "failed");
     expect(runtime.inspect(b.id).instance.status).toBe("active");
     expect(queue.getById(b.right)).toEqual(sibling); expect(queue.getById(b.root)).toEqual(completed);
     const [exception] = exceptions(); expect(exceptions()).toHaveLength(1);
-    expect(exception).toMatchObject({ destination_session: "owner@rig", state: "pending", evidence_ref: `rig workflow trace ${b.id}` });
+    expect(exception).toMatchObject({ destination_session: "owner@rig", state: "pending", evidence_ref: `zrig workflow trace ${b.id}` });
     expect(JSON.parse(exception!.tags)).toEqual(expect.arrayContaining([`instance:${b.id}`, "step:left", `occurrence:${b.left}`, "exception:unmapped_failed"]));
     expect(JSON.parse(exception!.chain_of_record)).toEqual([b.left]);
-    expect(exception!.body).toContain(`rig workflow resume ${b.id} --occurrence ${b.left}`);
+    expect(exception!.body).toContain(`zrig workflow resume ${b.id} --occurrence ${b.left}`);
     expect(runtime.inspect(b.id).failures).toMatchObject([{ occurrenceId: b.left, stepId: "left", status: "unresolved" }]);
     expect(runtime.trailLog.listForInstance(b.id).find(t => t.priorQitemId === b.left)?.closureEvidence)
       .toMatchObject({ evidence_ref: "proof/actual-handout-comparison.json" });
@@ -92,7 +92,7 @@ describe("dependency failure ownership and occurrence-local recovery", () => {
     expect(snapshot()).toEqual(before); expect(sent).toHaveLength(sends);
   });
 
-  it("redrives only the selected episode once and preserves a distinct unresolved failure and completed work", async () => {
+  it("仅重新驱动所选 episode 一次，并保留其他未解决失败与已完成工作", async () => {
     const b = await branches(); const completed = queue.getById(b.root);
     await project(b.id, b.left, "failed"); await project(b.id, b.right, "failed");
     expect(exceptions()).toHaveLength(2);
@@ -117,7 +117,7 @@ describe("dependency failure ownership and occurrence-local recovery", () => {
     expect(runtime.inspect(b.id).failures.find(f => f.occurrenceId === b.right)?.status).toBe("unresolved");
   });
 
-  it.each(["create", "wake"])("rolls back failure, occurrence, queue and events if %s admission fails", async phase => {
+  it.each(["create", "wake"])("%s admission 失败时回滚 failure、occurrence、queue 与 event", async phase => {
     const b = await branches(); const before = snapshot(); const sends = sent.length;
     if (phase === "create") vi.spyOn(queue, "createWithinTransaction").mockImplementation(() => { throw new Error("controlled storage failure"); });
     else vi.spyOn(queue, "stageWakeIntent").mockImplementation(() => { throw new Error("controlled storage failure"); });
@@ -125,7 +125,7 @@ describe("dependency failure ownership and occurrence-local recovery", () => {
     expect(snapshot()).toEqual(before); expect(sent).toHaveLength(sends);
   });
 
-  it("rolls back redrive and occurrence resolution when closing its exception fails", async () => {
+  it("关闭异常失败时回滚重新驱动与 occurrence 解决操作", async () => {
     const b = await branches(); await project(b.id, b.left, "failed"); const before = snapshot(); const sends = sent.length;
     const original = queue.updateWithinTransaction.bind(queue);
     vi.spyOn(queue, "updateWithinTransaction").mockImplementation(input => {
@@ -136,7 +136,7 @@ describe("dependency failure ownership and occurrence-local recovery", () => {
     expect(snapshot()).toEqual(before); expect(sent).toHaveLength(sends);
   });
 
-  it("admits the max-hop failure sibling without duplicating work or losing the other frontier", async () => {
+  it("接纳 max-hop 失败的同级分支，且不重复工作或丢失其他 frontier", async () => {
     const source = GRAPH.replace("  entry:", "  loop_guards: {max_hops: 1}\n  entry:")
       .replace("    - id: left\n", "    - id: left\n      next_hop: {on: {done: root}}\n");
     const b = await branches(source); const sibling = queue.getById(b.right);
@@ -147,7 +147,7 @@ describe("dependency failure ownership and occurrence-local recovery", () => {
     expect(runtime.inspect(b.id).failures).toMatchObject([{ occurrenceId: b.left, status: "unresolved" }]);
   });
 
-  it("preserves an explicitly handled failure as ordinary remediation with no exception", async () => {
+  it("把显式处理的失败保留为普通 remediation，不创建 exception", async () => {
     const source = GRAPH.replace("    - id: left\n", "    - id: left\n      next_hop: {on: {failed: repair}}\n")
       + "    - id: repair\n      actor_role: owner\n      allowed_exits: [done]\n";
     const b = await branches(source); const sibling = queue.getById(b.right);

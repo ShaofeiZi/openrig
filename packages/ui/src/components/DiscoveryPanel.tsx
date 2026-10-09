@@ -136,9 +136,9 @@ export function DiscoveryPanel({
 }: DiscoveryPanelProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentRigId = parseCurrentRigId(pathname);
-  // OPR.0.4.6.MH2 rev1-r2 re-re-verdict B1: adopt is a LOCAL mutation — the
-  // target/adopt flow never renders under a remote selection (the shell also
-  // clears placement on any host switch; this is the panel-side brace).
+  // OPR.0.4.6.MH2 rev1-r2 重新裁定 B1：采纳是本地变更——
+  // 目标/采纳流程在远端选择下从不渲染（shell 也在任何主机切换时清除放置；
+  // 这是面板侧的 brace）。
   const panelIsRemote = useSelectedHostId() !== LOCAL_HOST_ID;
   const { data: sessions = [] } = useDiscoveredSessions({
     status: "active",
@@ -166,22 +166,22 @@ export function DiscoveryPanel({
     }
 
     if (!currentRigId) {
-      return "Select a rig in the explorer to place the selected session.";
+      return "在资源管理器中选择一个工作组以放置所选会话。";
     }
 
     if (!placementTarget) {
-      return `Selected ${selectedSession.tmuxSession}. Click an available node to bind it, or click a pod to add it there.`;
+      return `已选择 ${selectedSession.tmuxSession}。点击可用节点绑定它，或点击 Pod 将其添加到那里。`;
     }
 
     if (!placementTarget.eligible) {
-      return placementTarget.reason ?? "That target cannot receive the selected session.";
+      return placementTarget.reason ?? "该目标无法接收所选会话。";
     }
 
     if (placementTarget.kind === "node") {
-      return `Bind ${selectedSession.tmuxSession} to ${targetNodeLabel(placementTarget.logicalId)}.`;
+      return `将 ${selectedSession.tmuxSession} 绑定到 ${targetNodeLabel(placementTarget.logicalId)}。`;
     }
 
-    return `Add ${selectedSession.tmuxSession} to ${targetPodLabel(placementTarget)} pod.`;
+    return `将 ${selectedSession.tmuxSession} 添加到 ${targetPodLabel(placementTarget)} Pod。`;
   }, [currentRigId, placementTarget, selectedSession]);
 
   const handleConfirm = () => {
@@ -217,12 +217,12 @@ export function DiscoveryPanel({
       className="absolute inset-y-0 right-0 z-20 w-80 border-l border-outline-variant/25 bg-[hsl(var(--background)/0.035)] supports-[backdrop-filter]:bg-[hsl(var(--background)/0.018)] backdrop-blur-[14px] backdrop-saturate-75 shadow-[-6px_0_14px_rgba(46,52,46,0.04)] flex flex-col overflow-hidden"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/35 shrink-0">
-        <h2 className="min-w-0 font-mono text-xs font-bold text-on-surface truncate">discovery</h2>
+        <h2 className="min-w-0 font-mono text-xs font-bold text-on-surface truncate">发现</h2>
         <button
           data-testid="discovery-close"
           onClick={onClose}
           className="text-on-surface-variant hover:text-on-surface text-sm"
-          aria-label="Close"
+          aria-label="关闭"
         >
           ✕
         </button>
@@ -230,7 +230,7 @@ export function DiscoveryPanel({
 
       <div className="border-b border-outline-variant/35 px-4 py-3 shrink-0 space-y-2">
         <div className="flex items-center justify-between gap-3">
-          <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-on-surface-variant">Inventory</div>
+          <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-on-surface-variant">清单</div>
           <Button
             variant="ghost"
             size="sm"
@@ -238,7 +238,7 @@ export function DiscoveryPanel({
             disabled={scanMutation.isPending}
             onClick={() => scanMutation.mutate()}
           >
-            {scanMutation.isPending ? "SCANNING..." : "SCAN NOW"}
+            {scanMutation.isPending ? "扫描中…" : "立即扫描"}
           </Button>
         </div>
         <Link
@@ -247,14 +247,14 @@ export function DiscoveryPanel({
           onClick={onClose}
           className="inline-flex items-center border border-outline-variant bg-surface-lowest px-1.5 py-0.5 font-mono text-[7px] uppercase tracking-[0.12em] text-on-surface transition-colors hover:bg-surface-low hover:text-on-surface"
         >
-          Legacy Inventory Page
+          旧版清单页
         </Link>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {sessions.length === 0 ? (
           <div data-testid="discovery-empty" className="font-mono text-[10px] text-on-surface-variant">
-            No running Claude or Codex sessions are currently visible.
+            当前没有可见的运行中 Claude 或 Codex 会话。
           </div>
         ) : (
           sessions.map((session) => {
@@ -288,21 +288,21 @@ export function DiscoveryPanel({
                     data-testid={`discovery-select-${session.id}`}
                     onClick={() => onSelectDiscoveredId(selected ? null : session.id)}
                   >
-                    {selected ? "SELECTED" : "SELECT"}
+                    {selected ? "已选择" : "选择"}
                   </Button>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   <CopyActionButton
-                    label="copy tmux"
-                    activeLabel="copied"
+                    label="复制 tmux"
+                    activeLabel="已复制"
                     testId={`discovery-copy-tmux-${session.id}`}
                     tool="tmux"
                     onClick={async () => copyText(attachCommand(session))}
                   />
                   {session.cwd ? (
                     <CopyActionButton
-                      label="copy cwd"
-                      activeLabel="copied"
+                      label="复制 cwd"
+                      activeLabel="已复制"
                       testId={`discovery-copy-cwd-${session.id}`}
                       onClick={async () => copyText(session.cwd ?? "")}
                     />
@@ -325,7 +325,7 @@ export function DiscoveryPanel({
                         data-remote-readonly="true"
                         className="border border-outline-variant bg-surface-lowest/70 px-2.5 py-2 font-mono text-[9px] uppercase tracking-wide text-on-surface-variant"
                       >
-                        adopt is a local action — read-only while viewing a remote host
+                        采纳是本地操作——查看远端主机时只读
                       </div>
                     ) : null}
 
@@ -334,22 +334,22 @@ export function DiscoveryPanel({
                         data-testid="discovery-target-error"
                         className="border border-red-200 bg-red-50/80 px-2.5 py-2 font-mono text-[9px] text-red-700"
                       >
-                        {placementTarget.reason ?? "That destination is not available."}
+                        {placementTarget.reason ?? "该目标不可用。"}
                       </div>
                     ) : null}
 
                     {placementTarget?.eligible && !panelIsRemote ? (
                       <div className="space-y-2 border border-emerald-300/80 bg-surface-lowest/70 px-3 py-2" data-testid="discovery-target-card">
-                        <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-emerald-800">Target</div>
+                        <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-emerald-800">目标</div>
                         <div data-testid="discovery-target-summary" className="font-mono text-[10px] text-on-surface">
                           {placementTarget.kind === "node"
-                            ? `${targetNodeLabel(placementTarget.logicalId)} selected`
-                            : `${targetPodLabel(placementTarget)} pod selected`}
+                            ? `已选择 ${targetNodeLabel(placementTarget.logicalId)}`
+                            : `已选择 ${targetPodLabel(placementTarget)} Pod`}
                         </div>
                         {placementTarget.kind === "pod" ? (
                           <div className="space-y-1">
                             <label className="font-mono text-[8px] uppercase tracking-[0.16em] text-emerald-800" htmlFor="discovery-member-name">
-                              Member name
+                              成员名称
                             </label>
                             <input
                               id="discovery-member-name"
@@ -373,7 +373,7 @@ export function DiscoveryPanel({
                             disabled={adoptMutation.isPending || (placementTarget.kind === "pod" && !memberName.trim())}
                             onClick={handleConfirm}
                           >
-                            {adoptMutation.isPending ? "ADOPTING..." : "ADOPT"}
+                            {adoptMutation.isPending ? "采纳中…" : "采纳"}
                           </Button>
                           <Button
                             variant="ghost"
@@ -381,7 +381,7 @@ export function DiscoveryPanel({
                             data-testid="discovery-clear-target"
                             onClick={onClearPlacement}
                           >
-                            CLEAR
+                            清除
                           </Button>
                         </div>
                       </div>

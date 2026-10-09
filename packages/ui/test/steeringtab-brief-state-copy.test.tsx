@@ -1,8 +1,8 @@
-// R1 (release-0.4.7) — C4b: SteeringTab BriefPanel copy mapping per useScopeMarkdown state.
+// R1（release-0.4.7）——C4b：SteeringTab BriefPanel 文案按 useScopeMarkdown 状态映射。
 //
-// The BriefPanel keeps its remote-gate FIRST (unchanged) and its `NO BRIEF YET`
-// absent copy byte-identical; a read failure and a mis-rooted mission path now
-// get honest copies inserted between the loading and absent branches.
+// BriefPanel 保持其 remote-gate 优先（不变）及其 `NO BRIEF YET`
+// 缺失文案字节不变；读失败与错根 mission 路径现各得
+// 诚实文案，插入 loading 与 absent 分支之间。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
@@ -16,8 +16,8 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status });
 }
 
-// options: host = "local" | "remote", roots contain the mission path or not,
-// briefStatus = read status for MISSION_BRIEF.md
+// 选项：host = "local" | "remote"，roots 是否含 mission 路径，
+// briefStatus = MISSION_BRIEF.md 的读状态
 function install(opts: { host?: string; rootPath?: string; briefStatus?: number }) {
   const host = opts.host ?? "local";
   const rootPath = opts.rootPath ?? "/ws";
@@ -40,8 +40,8 @@ describe("R1 C4b — SteeringTab BriefPanel honest copy", () => {
     install({ host: "local", briefStatus: 500 });
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><SteeringTab missionId="m" /></QueryClientProvider>);
     const el = await screen.findByTestId("brief-panel-read-error-state");
-    expect(el.textContent).toContain("BRIEF READ FAILED");
-    expect(el.textContent).toContain("this is a read failure, not a missing brief");
+    expect(el.textContent).toContain("简报读取失败");
+    expect(el.textContent).toContain("这是读取失败，不是简报缺失");
     expect(screen.queryByTestId("brief-panel-empty-state")).toBeNull();
   });
 
@@ -49,7 +49,7 @@ describe("R1 C4b — SteeringTab BriefPanel honest copy", () => {
     install({ host: "local", rootPath: "/elsewhere" });
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><SteeringTab missionId="m" /></QueryClientProvider>);
     const el = await screen.findByTestId("brief-panel-unresolved-state");
-    expect(el.textContent).toContain("BRIEF OUTSIDE FILE ROOTS");
+    expect(el.textContent).toContain("简报在文件根目录之外");
     expect(el.textContent).toContain("OPENRIG_FILES_ALLOWLIST");
     expect(screen.queryByTestId("brief-panel-empty-state")).toBeNull();
   });
@@ -58,9 +58,9 @@ describe("R1 C4b — SteeringTab BriefPanel honest copy", () => {
     install({ host: "local", briefStatus: 404 });
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><SteeringTab missionId="m" /></QueryClientProvider>);
     const el = await screen.findByTestId("brief-panel-empty-state");
-    expect(el.textContent).toContain("NO BRIEF YET");
+    expect(el.textContent).toContain("尚无简报");
     expect(el.textContent).toContain(
-      "No MISSION_BRIEF.md at the mission root. The human-facing brief (what we're building · how far · what's proven · what needs you) projects here once the mission is briefed.",
+      "任务根目录下无 MISSION_BRIEF.md。",
     );
   });
 
@@ -68,7 +68,7 @@ describe("R1 C4b — SteeringTab BriefPanel honest copy", () => {
     install({ host: "remote-host", briefStatus: 404 });
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><SteeringTab missionId="m" /></QueryClientProvider>);
     const el = await screen.findByTestId("brief-panel-remote-gated-state");
-    expect(el.textContent).toContain("LOCAL FILES NOT SHOWN");
+    expect(el.textContent).toContain("不显示本地文件");
     expect(screen.queryByTestId("brief-panel-empty-state")).toBeNull();
     expect(screen.queryByTestId("brief-panel-read-error-state")).toBeNull();
   });

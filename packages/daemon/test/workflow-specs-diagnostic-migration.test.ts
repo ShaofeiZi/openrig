@@ -1,19 +1,13 @@
-// Slice 11 (workflow-spec-folder-discovery) — migration 040
-// adds status + error_message columns to workflow_specs. WorkflowSpecCache
-// gains writeDiagnostic / removeBySourcePath / queryDiagnostics methods
-// so the scanner can record invalid YAML as diagnostic rows.
+// Slice 11（workflow-spec-folder-discovery）——迁移 040 向 workflow_specs 添加 status 和
+// error_message 列。WorkflowSpecCache 新增 writeDiagnostic / removeBySourcePath /
+// queryDiagnostics 方法，使扫描器能把无效 YAML 记录为诊断行。
 //
-// SC-29 #10 (verbatim, declared in commit body):
-// "Slice 11 (workflow-spec-folder-discovery) requires schema migration
-// 040_workflow_specs_diagnostic.ts adding status TEXT DEFAULT 'valid' +
-// error_message TEXT columns to the workflow_specs cache. No new table,
-// no constraint changes beyond default; ALTER TABLE ADD COLUMN preserves
-// existing rows (default 'valid' fills retroactively for already-cached
-// rows). Read-only diagnostic surface — the cache stores parser/validator
-// errors so the Library UI can render them; daemon does not act on the
-// diagnostic state. Per IMPL-PRD §HG-8 'unless provenance / status
-// columns require migration — declare upfront if so': declared upfront
-// in this slice's ACK + commit body."
+// SC-29 #10（提交正文中的逐字声明）：Slice 11 需要 schema 迁移
+// 040_workflow_specs_diagnostic.ts，为 workflow_specs 缓存添加默认值为 'valid' 的 status TEXT
+// 和 error_message TEXT 列。不新增表，除默认值外不改变约束；ALTER TABLE ADD COLUMN 保留
+// 现有记录（默认 'valid' 会追溯填充已缓存记录）。这是只读诊断表面：缓存保存解析器/校验器错误，
+// 供 Library UI 渲染，后台服务不会依据诊断状态采取行动。按照 IMPL-PRD §HG-8
+// “除非出处或状态列需要迁移，如需则预先声明”，已在本 slice ACK 和提交正文中预先声明。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -41,17 +35,17 @@ describe("migration 040 — workflow_specs diagnostic columns", () => {
     db.close();
   });
 
-  it("adds status TEXT DEFAULT 'valid' column to workflow_specs", () => {
+  it("向 workflow_specs 添加默认值为 'valid' 的 status TEXT 列", () => {
     migrate(db, [coreSchema, workflowSpecsSchema, workflowSpecsDiagnosticSchema]);
     const cols = db.prepare("PRAGMA table_info(workflow_specs)").all() as ColumnRow[];
     const status = cols.find((c) => c.name === "status");
     expect(status).toBeDefined();
     expect(status?.type.toUpperCase()).toBe("TEXT");
-    // SQLite default value escaping: 'valid' is stored as the string literal
+    // SQLite 默认值转义：'valid' 存储为字符串字面量。
     expect(status?.dflt_value).toMatch(/'valid'|valid/);
   });
 
-  it("adds error_message TEXT (nullable) column to workflow_specs", () => {
+  it("向 workflow_specs 添加可空的 error_message TEXT 列", () => {
     migrate(db, [coreSchema, workflowSpecsSchema, workflowSpecsDiagnosticSchema]);
     const cols = db.prepare("PRAGMA table_info(workflow_specs)").all() as ColumnRow[];
     const errorMessage = cols.find((c) => c.name === "error_message");
@@ -60,10 +54,9 @@ describe("migration 040 — workflow_specs diagnostic columns", () => {
     expect(errorMessage?.notnull).toBe(0);
   });
 
-  it("existing rows retain valid status by default after migration applies", () => {
-    // Apply pre-040 schema, insert a row, then apply 040; the row's
-    // status should default to 'valid' since the existing read-through
-    // path never set it.
+  it("迁移应用后，现有记录通过默认值保持 valid 状态", () => {
+    // 应用 040 前 schema 并插入记录，再应用 040；由于既有 read-through 路径从未设置 status，
+    // 该记录应默认为 'valid'。
     migrate(db, [coreSchema, workflowSpecsSchema]);
     db.prepare(
       `INSERT INTO workflow_specs (spec_id, name, version, purpose, target_rig, roles_json, steps_json, coordination_terminal_turn_rule, source_path, source_hash, cached_at)
@@ -77,9 +70,9 @@ describe("migration 040 — workflow_specs diagnostic columns", () => {
     expect(row.error_message).toBeNull();
   });
 
-  it("migration is idempotent (re-applying does not error)", () => {
+  it("迁移保持幂等（重复应用不报错）", () => {
     migrate(db, [coreSchema, workflowSpecsSchema, workflowSpecsDiagnosticSchema]);
-    // Re-applying should be a no-op (ALTER TABLE ADD COLUMN IF NOT EXISTS).
+    // 重复应用应为空操作（ALTER TABLE ADD COLUMN IF NOT EXISTS）。
     expect(() => {
       migrate(db, [workflowSpecsDiagnosticSchema]);
     }).not.toThrow();
@@ -130,7 +123,7 @@ describe("WorkflowSpecCache diagnostic methods (slice 11)", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("writeDiagnostic stores an error row keyed by source_path", () => {
+  it("writeDiagnostic 按 source_path 存储错误记录", () => {
     cache.writeDiagnostic({
       sourcePath: "/x/broken.yaml",
       sourceHash: "h1",
@@ -150,12 +143,11 @@ describe("WorkflowSpecCache diagnostic methods (slice 11)", () => {
     expect(row.status).toBe("error");
     expect(row.error_message).toBe("YAML parse error at line 3");
     expect(row.source_path).toBe("/x/broken.yaml");
-    // Name uses the file basename as a fallback so the Library can render
-    // a row identifier even when YAML couldn't be parsed.
+    // 名称回退使用文件 basename，使 Library 即使无法解析 YAML 也能渲染记录标识。
     expect(row.name).toBe("broken.yaml");
   });
 
-  it("writeDiagnostic updates an existing diagnostic row in-place by source_path", () => {
+  it("writeDiagnostic 按 source_path 原地更新现有诊断记录", () => {
     cache.writeDiagnostic({
       sourcePath: "/x/broken.yaml",
       sourceHash: "h1",
@@ -173,7 +165,7 @@ describe("WorkflowSpecCache diagnostic methods (slice 11)", () => {
     expect(rows[0]?.error_message).toBe("second error after edit");
   });
 
-  it("removeBySourcePath removes both valid and diagnostic rows", () => {
+  it("removeBySourcePath 同时移除合法记录和诊断记录", () => {
     cache.writeDiagnostic({
       sourcePath: "/x/gone.yaml",
       sourceHash: "h",
@@ -187,11 +179,11 @@ describe("WorkflowSpecCache diagnostic methods (slice 11)", () => {
     expect(remaining.n).toBe(0);
   });
 
-  it("removeBySourcePath returns 0 when no row exists", () => {
+  it("记录不存在时 removeBySourcePath 返回 0", () => {
     expect(cache.removeBySourcePath("/never/exists.yaml")).toBe(0);
   });
 
-  it("listAll surfaces both valid and diagnostic rows", () => {
+  it("listAll 同时暴露合法记录和诊断记录", () => {
     const validPath = joinPath(tmp, "valid.yaml");
     writeFileSync(validPath, VALID_DIAG_SAMPLE);
     cache.readThrough(validPath);

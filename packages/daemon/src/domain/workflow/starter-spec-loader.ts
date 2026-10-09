@@ -1,26 +1,18 @@
-// Built-in workflow-spec loader.
+// 内置工作流规范加载器。
 //
-// Walks a built-in starter directory at daemon startup and seeds each
-// spec file into PL-004 Phase D's WorkflowSpecCache. Idempotent: on
-// repeated startup (or when an operator has authored a competing spec
-// at a workspace path), the loader SKIPS specs that are already cached
-// for the same (name, version) — the workspace-surface reconciliation
-// contract from Phase D requires that operator edits win at next read,
-// so the loader must not clobber them.
+// 后台服务启动时遍历内置 starter 目录，把每个规范文件写入 PL-004 Phase D 的
+// WorkflowSpecCache。操作幂等：重复启动时，或操作员已在工作区路径编写同名规范时，
+// 加载器会跳过缓存中已有相同 (name, version) 的规范。Phase D 的工作区表面对账
+// 契约要求下一次读取时操作员编辑优先，因此加载器不得覆盖它们。
 //
-// Why skip-if-present rather than always-readThrough:
-//   WorkflowSpecCache.readThrough(absPath) UPDATES the cached row's
-//   source_path to whatever the caller passes. If we called readThrough
-//   on the built-in path every startup, an operator-authored row at a
-//   workspace path would have its source_path overwritten back to the
-//   built-in path — silently undoing the operator's override. The
-//   skip-if-present check preserves the override.
+// 为何存在时跳过，而不是始终 readThrough：
+//   WorkflowSpecCache.readThrough(absPath) 会把缓存记录的 source_path 更新为调用方
+//   传入的路径。若每次启动都对内置路径调用 readThrough，操作员在工作区路径编写的
+//   记录会被改回内置路径，静默撤销覆盖。存在时跳过可保留该覆盖。
 //
-// Resolution: operators who want to refresh the built-in row from the
-// shipped file (e.g., after deleting a workspace override) can call
-// `cache.readThrough(builtinAbsPath)` directly via a future explicit
-// refresh path; v0 does not surface that path, since the typical case
-// (cold daemon, no override) is handled by the loader on first start.
+// 解决方式：希望从随包文件刷新内置记录的操作员（例如删除工作区覆盖后）可通过未来
+// 的显式刷新路径直接调用 `cache.readThrough(builtinAbsPath)`。v0 不暴露该路径，
+// 因为常见场景（后台服务冷启动且无覆盖）已由首次启动时的加载器处理。
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -31,31 +23,29 @@ import {
 } from "../workflow-spec-cache.js";
 
 export interface StarterSpecLoadResult {
-  /** Specs newly seeded into the cache during this call. */
+  /** 本次调用中新写入缓存的规范。 */
   loaded: Array<{ name: string; version: string; sourcePath: string }>;
-  /** Specs that were already cached (operator override or prior startup). */
+  /** 已缓存的规范（操作员覆盖或先前启动写入）。 */
   skipped: Array<{ name: string; version: string; sourcePathInCache: string }>;
-  /** Specs that failed to parse / load — surfaced for diagnostic logging. */
+  /** 解析/加载失败的规范，供诊断日志呈现。 */
   errors: Array<{ sourcePath: string; code: string; message: string }>;
 }
 
 export interface StarterSpecLoaderOpts {
-  /** Phase D's workflow-spec-cache (already constructed in startup.ts). */
+  /** Phase D 的 workflow-spec-cache（已在 startup.ts 中构造）。 */
   cache: WorkflowSpecCache;
-  /** Absolute directory containing built-in starter spec files (.yaml only at v0). */
+  /** 包含内置 starter 规范文件的绝对目录（v0 仅支持 .yaml）。 */
   builtinDir: string;
 }
 
 const SPEC_FILE_EXTENSIONS = new Set([".yaml", ".yml"]);
 
 /**
- * Walks the builtinDir and seeds each spec file into the cache, skipping
- * those that are already cached for the same (name, version). Idempotent
- * on repeated calls. Returns a structured result for diagnostic logging
- * (which the daemon can log at INFO; tests assert on the shape).
+ * 遍历 builtinDir 并把每个规范文件写入缓存，跳过缓存中已有相同 (name, version)
+ * 的规范。重复调用保持幂等。返回结构化结果供诊断日志使用（后台服务可按 INFO
+ * 级别记录；测试对该结构作断言）。
  *
- * If the builtinDir doesn't exist, returns an empty result (no error) —
- * a daemon shipped without bundled starter specs is a valid configuration.
+ * builtinDir 不存在时返回空结果而不报错；未随包提供 starter 规范也是有效配置。
  */
 export function loadStarterWorkflowSpecs(opts: StarterSpecLoaderOpts): StarterSpecLoadResult {
   const result: StarterSpecLoadResult = { loaded: [], skipped: [], errors: [] };
@@ -63,8 +53,7 @@ export function loadStarterWorkflowSpecs(opts: StarterSpecLoaderOpts): StarterSp
   try {
     entries = fs.readdirSync(opts.builtinDir, { withFileTypes: true });
   } catch {
-    // Directory absent — no starter specs bundled. This is a valid
-    // configuration; not an error.
+    // 目录缺失表示未随包提供 starter 规范，这是有效配置而非错误。
     return result;
   }
 
@@ -105,9 +94,8 @@ export function loadStarterWorkflowSpecs(opts: StarterSpecLoaderOpts): StarterSp
       continue;
     }
 
-    // Workspace-surface reconciliation: if an entry already exists for
-    // this (name, version), DO NOT seed — operator override (or a prior
-    // startup's seed) wins.
+    // 工作区表面对账：若该 (name, version) 已存在记录，则不要写入；操作员覆盖或
+    // 先前启动写入的版本优先。
     const existing = opts.cache.getByNameVersion(parsedName, parsedVersion);
     if (existing) {
       result.skipped.push({
@@ -118,10 +106,9 @@ export function loadStarterWorkflowSpecs(opts: StarterSpecLoaderOpts): StarterSp
       continue;
     }
 
-    // Seed via readThrough so the cache's normal insert path runs (hash
-    // computation, cached_at timestamp, JSON serialization of roles +
-    // steps). readThrough re-reads + re-parses the file; that's a small
-    // duplicate-work cost per spec at startup, acceptable for v0.
+    // 通过 readThrough 写入，使缓存的正常插入路径运行（计算哈希、生成 cached_at
+    // 时间戳、对 roles 与 steps 做 JSON 序列化）。readThrough 会再次读取和解析文件；
+    // 每次启动为每份规范付出的少量重复成本在 v0 中可以接受。
     try {
       const row = opts.cache.readThrough(absPath);
       result.loaded.push({ name: row.name, version: row.version, sourcePath: row.sourcePath });
@@ -142,20 +129,18 @@ export function loadStarterWorkflowSpecs(opts: StarterSpecLoaderOpts): StarterSp
 }
 
 /**
- * Resolves the default built-in starter directory relative to this
- * loader file's location on disk. Works in both dev (running from
- * `src/`) and prod (running from `dist/`) — the build step copies the
- * workflow spec files to `dist/builtins/workflow-specs/` when bundled
- * specs are present, so the resolved path works in both layouts.
+ * 相对于当前加载器文件在磁盘上的位置解析默认内置 starter 目录。开发环境
+ * （从 `src/` 运行）和生产环境（从 `dist/` 运行）均适用；存在随包规范时，
+ * 构建步骤会把工作流规范复制到 `dist/builtins/workflow-specs/`，因此解析路径
+ * 可兼容两种布局。
  *
- * Layout: this file is at `<pkg>/{src|dist}/domain/workflow/`. The
- * built-in dir is at `<pkg>/{src|dist}/builtins/workflow-specs/`. Two
- * levels up from this file's dirname is the package's src/ or dist/
- * root.
+ * 布局：本文件位于 `<pkg>/{src|dist}/domain/workflow/`，内置目录位于
+ * `<pkg>/{src|dist}/builtins/workflow-specs/`。从本文件目录向上两级即为包的
+ * src/ 或 dist/ 根目录。
  */
 export function defaultBuiltinSpecsDir(): string {
   const here = path.dirname(new URL(import.meta.url).pathname);
   // here = .../{src|dist}/domain/workflow
-  // package src/dist root = .../{src|dist}
+  // 包的 src/dist 根目录 = .../{src|dist}
   return path.resolve(here, "..", "..", "builtins", "workflow-specs");
 }

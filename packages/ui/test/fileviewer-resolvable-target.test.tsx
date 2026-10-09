@@ -1,18 +1,13 @@
 // @vitest-environment jsdom
 
-// OPR.0.4.4.20 retro-demo fixback — the FileViewer eternal-Loading defect:
-// the demo proof caught the drawer stuck at "NO CONTENT / Loading ..." for
-// PROOF.md while /api/files/read 200'd — the caller (a review-surface SSOT
-// door) passed neither a root nor an absolutePath, so the viewer never had
-// a target to fetch. Three legs pinned here (re-targeted to the CORRECTIVE
-// one-structure surface — the old compare column is a DELETED file):
-//  (1) FileViewer renders an HONEST "NOT RESOLVABLE" state (never eternal
-//      Loading) when given no content and no readable target.
-//  (2) FileViewer still fetches + renders content for an explicit root
-//      target (the successful-read rendering regression the fixback asks).
-//  (3) The PLAN section's "full PRD →" door emits a RESOLVABLE data shape
-//      (root + readPath + absolutePath fallback) built from the slice
-//      context — including the exact-allowlist-root (relPath "") class.
+// OPR.0.4.4.20 追溯演示回修——FileViewer 永久加载缺陷：演示证明发现，当
+// /api/files/read 返回 200 时，PROOF.md 抽屉仍卡在“无内容/加载中…”。调用方（评审表面的
+// SSOT 入口）既未传 root，也未传 absolutePath，因此查看器没有可获取目标。此处锁定三个环节
+//（改为针对 CORRECTIVE 单一结构表面；旧比较列文件已删除）：
+//  (1) 未提供 content 和可读目标时，FileViewer 如实显示“无法解析”，绝不永久加载。
+//  (2) 显式 root 目标仍能由 FileViewer 获取并渲染内容，即回修要求的成功读取渲染回归。
+//  (3) PLAN 分区的“完整 PRD →”入口根据 slice 上下文生成可解析数据结构
+//      （root + readPath + absolutePath 回退），包括恰好等于白名单根目录（relPath ""）的情况。
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, cleanup, screen, waitFor } from "@testing-library/react";
@@ -29,13 +24,13 @@ vi.mock("../src/components/drawer-triggers/FileReferenceTrigger.js", () => ({
   },
 }));
 
-// The PLAN-door regression drives the REAL SliceReviewTab; the orthogonal
-// bands + markdown renderer are stubbed so the test isolates the door shape.
+// PLAN 入口回归驱动真实 SliceReviewTab；无关条带与 Markdown 渲染器使用 stub，使测试聚焦于
+// 入口数据结构。
 vi.mock("../src/components/review/NeedsYouAccordion.js", () => ({ NeedsYouAccordion: () => null }));
 vi.mock("../src/components/review/AgentsBandView.js", () => ({ AgentsBandView: () => null }));
 vi.mock("../src/components/review/VerifyLineageCard.js", () => ({ VerifyLineageCard: () => null }));
-// Render-through stub: FileViewer's fetched-content assertion (leg 2) reads
-// the markdown TEXT, so the stub must pass content through, not blank it.
+// 透传渲染 stub：FileViewer 的已获取内容断言（环节 2）读取 Markdown 文本，因此 stub 必须
+// 透传内容，不能将其置空。
 vi.mock("../src/components/markdown/MarkdownViewer.js", () => ({
   MarkdownViewer: ({ content }: { content?: string }) => <div>{content}</div>,
 }));
@@ -107,7 +102,7 @@ describe("FileViewer — resolvable-target honesty (retro-demo fixback)", () => 
     });
     render(withQuery(<FileViewer path="PROOF.md" kind="markdown" root="workspace" readPath="missions/m/slices/s/PROOF.md" />));
     await waitFor(() => {
-      // The drawer must show the ACTUAL fetched content — the acceptance pin.
+      // 抽屉必须显示实际获取的内容——验收锁定项。
       expect(document.body.textContent).toContain("Proof body from read API");
     });
     expect(screen.queryByTestId("file-viewer-unresolvable")).toBeNull();
@@ -124,16 +119,15 @@ describe("PLAN 'full PRD →' door — emits a resolvable FileViewer target", ()
     expect(door).toBeDefined();
     expect(door).toMatchObject({
       root: "workspace",
-      readPath: "missions/m/slices/s/IMPLEMENTATION-PRD.md", // relPath + FILE — no double prefix
+      readPath: "missions/m/slices/s/IMPLEMENTATION-PRD.md", // relPath + FILE，不重复添加前缀。
       absolutePath: "/abs/m/slices/s/IMPLEMENTATION-PRD.md",
     });
   });
 
   it("exact-allowlist-root ctx (relPath = '') yields the BARE filename readPath, never a dropped or over-prefixed one", () => {
-    // Guard code-review fold (23ca5031 class): useScopeMarkdown exact-root
-    // resolution legally returns relPath "" (the slice dir IS the allowlist
-    // root). The readPath must then be the file alone — the mission-prefixed
-    // ssotPath under that root would fetch an over-prefixed wrong path.
+    // 守卫代码评审折叠（23ca5031 类）：useScopeMarkdown 精确根目录解析可以合法返回
+    // relPath ""，因为 slice 目录本身就是白名单根目录。此时 readPath 必须只含文件名；
+    // 若使用该根目录下带任务目标前缀的 ssotPath，会获取前缀重复的错误路径。
     reviewState.data = fixtureReview();
     scopeState.resolved = { rootName: "slice-root", relPath: "" };
     render(withQuery(<SliceReviewTab sliceName="s" slicePath="/abs/m/slices/s" />));
@@ -149,7 +143,7 @@ describe("PLAN 'full PRD →' door — emits a resolvable FileViewer target", ()
     expect(door).toBeDefined();
     expect(door!["readPath"]).toBeUndefined();
     expect(door).toMatchObject({ absolutePath: "/abs/m/slices/s/IMPLEMENTATION-PRD.md" });
-    // The fetchable-target invariant: a root+readPath pair OR an absolutePath.
+    // 可获取目标不变量：必须有 root+readPath 对，或 absolutePath。
     for (const d of captured) {
       expect(d["root"] !== undefined || d["absolutePath"] !== null).toBe(true);
     }

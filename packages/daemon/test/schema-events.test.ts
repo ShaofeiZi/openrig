@@ -21,7 +21,7 @@ describe("003_events", () => {
     db.close();
   });
 
-  it("creates events table", () => {
+  it("创建 events 表", () => {
     const tables = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='events'"
@@ -30,7 +30,7 @@ describe("003_events", () => {
     expect(tables).toHaveLength(1);
   });
 
-  it("can insert an event with type and JSON payload", () => {
+  it("能插入带 type 和 JSON payload 的事件", () => {
     db.prepare(
       "INSERT INTO events (rig_id, type, payload) VALUES (?, ?, ?)"
     ).run("rig-1", "node.added", JSON.stringify({ logicalId: "worker" }));
@@ -43,7 +43,7 @@ describe("003_events", () => {
     expect(typeof event.seq).toBe("number");
   });
 
-  it("seq is auto-incrementing and monotonic", () => {
+  it("seq 自增且单调", () => {
     db.prepare(
       "INSERT INTO events (rig_id, type, payload) VALUES (?, ?, ?)"
     ).run("rig-1", "event.a", "{}");
@@ -62,7 +62,7 @@ describe("003_events", () => {
     expect(events[1]!.seq).toBeLessThan(events[2]!.seq);
   });
 
-  it("primary invariant: query WHERE seq > N returns correct replay set", () => {
+  it("主不变量：WHERE seq > N 查询返回正确 replay 集", () => {
     for (let i = 0; i < 5; i++) {
       db.prepare(
         "INSERT INTO events (rig_id, type, payload) VALUES (?, ?, ?)"
@@ -72,9 +72,9 @@ describe("003_events", () => {
     const allEvents = db
       .prepare("SELECT seq FROM events ORDER BY seq")
       .all() as { seq: number }[];
-    const seq2 = allEvents[1]!.seq; // second event
+    const seq2 = allEvents[1]!.seq; // 第二个事件
 
-    // Replay after seq2: should get events 3, 4, 5 (indices 2, 3, 4)
+    // 在 seq2 之后 replay：应得到事件 3、4、5（索引 2、3、4）
     const replay = db
       .prepare(
         "SELECT seq, type, payload FROM events WHERE rig_id = ? AND seq > ? ORDER BY seq"
@@ -86,12 +86,12 @@ describe("003_events", () => {
     expect(JSON.parse(replay[1]!.payload)).toEqual({ index: 3 });
     expect(JSON.parse(replay[2]!.payload)).toEqual({ index: 4 });
 
-    // Monotonic order
+    // 单调顺序
     expect(replay[0]!.seq).toBeLessThan(replay[1]!.seq);
     expect(replay[1]!.seq).toBeLessThan(replay[2]!.seq);
   });
 
-  it("query by rig_id filters correctly", () => {
+  it("按 rig_id 查询正确过滤", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run(
       "rig-2",
       "other-rig"
@@ -114,7 +114,7 @@ describe("003_events", () => {
     expect(rig1Events[1]!.type).toBe("event.c");
   });
 
-  it("node_id is nullable — rig-level events work", () => {
+  it("node_id 可空——rig 级事件可工作", () => {
     db.prepare(
       "INSERT INTO events (rig_id, type, payload) VALUES (?, ?, ?)"
     ).run("rig-1", "rig.created", "{}");
@@ -125,13 +125,12 @@ describe("003_events", () => {
     expect(event.node_id).toBeNull();
   });
 
-  // -- Explicit contract: events.node_id is intentionally NOT an FK.
-  // -- Events are an append-only log. They must survive node deletion.
-  // -- See 003_events.ts for the design rationale.
+  // -- 显式契约：events.node_id 刻意不是外键。
+  // -- events 是 append-only 日志。它们必须在节点删除后存活。
+  // -- 设计理由见 003_events.ts。
 
-  it("allows event with node_id referencing a nonexistent node (orphan refs intentional)", () => {
-    // node_id is plain TEXT, not an FK — orphan refs are allowed by design
-    // because the event log records history, not current state
+  it("允许 node_id 引用不存在节点的事件（孤儿引用是刻意的）", () => {
+    // node_id 是普通 TEXT，不是外键——孤儿引用是设计允许的，因为事件日志记录历史而非当前状态
     expect(() =>
       db
         .prepare(
@@ -146,8 +145,8 @@ describe("003_events", () => {
     expect(event.node_id).toBe("nonexistent-node");
   });
 
-  it("events survive node deletion (append-only history preserved)", () => {
-    // Create a node, emit events for it, delete the node — events must remain
+  it("事件在节点删除后存活（append-only 历史保留）", () => {
+    // 创建节点，为它发事件，删除节点——事件必须保留
     db.prepare(
       "INSERT INTO nodes (id, rig_id, logical_id) VALUES (?, ?, ?)"
     ).run("node-1", "rig-1", "worker");
@@ -159,10 +158,10 @@ describe("003_events", () => {
       "INSERT INTO events (rig_id, node_id, type, payload) VALUES (?, ?, ?, ?)"
     ).run("rig-1", "node-1", "session.status_changed", '{"status":"running"}');
 
-    // Delete the node
+    // 删除节点
     db.prepare("DELETE FROM nodes WHERE id = ?").run("node-1");
 
-    // Events must still exist with their original node_id intact
+    // 事件必须仍存在且原始 node_id 完整
     const events = db
       .prepare("SELECT node_id, type FROM events WHERE node_id = ? ORDER BY seq")
       .all("node-1") as { node_id: string; type: string }[];
@@ -173,7 +172,7 @@ describe("003_events", () => {
     expect(events[1]!.type).toBe("session.status_changed");
   });
 
-  it("events survive rig deletion (audit trail preserved)", () => {
+  it("事件在 rig 删除后存活（审计轨迹保留）", () => {
     db.prepare(
       "INSERT INTO events (rig_id, type, payload) VALUES (?, ?, ?)"
     ).run("rig-1", "event.a", "{}");
@@ -183,7 +182,7 @@ describe("003_events", () => {
 
     db.prepare("DELETE FROM rigs WHERE id = ?").run("rig-1");
 
-    // Events must still exist with original rig_id intact
+    // 事件必须仍存在且原始 rig_id 完整
     const events = db
       .prepare("SELECT rig_id, type FROM events ORDER BY seq")
       .all() as { rig_id: string; type: string }[];
@@ -192,7 +191,7 @@ describe("003_events", () => {
     expect(events[1]!.rig_id).toBe("rig-1");
   });
 
-  it("allows event with rig_id referencing nonexistent rig (orphan refs)", () => {
+  it("允许 rig_id 引用不存在 rig 的事件（孤儿引用）", () => {
     expect(() =>
       db
         .prepare(

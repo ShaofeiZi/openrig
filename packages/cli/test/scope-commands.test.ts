@@ -234,8 +234,8 @@ describe("rig scope slice create", () => {
     ], env.missionsRoot);
     const parsed = JSON.parse(r.stdout);
     const readme = fs.readFileSync(path.join(parsed.slice.path, "SPEC.md"), "utf8");
-    expect(readme).toMatch(/## Repro/);
-    expect(readme).toMatch(/## Expected/);
+    expect(readme).toMatch(/## 复现步骤/);
+    expect(readme).toMatch(/## 预期结果/);
   });
 
   it("HG-15: created slice frontmatter has a conformant dot-ID", async () => {
@@ -256,8 +256,8 @@ describe("rig scope slice create", () => {
     const progressPath = path.join(parsed.slice.path, "PROGRESS.md");
     expect(fs.existsSync(progressPath)).toBe(true);
     const content = fs.readFileSync(progressPath, "utf8");
-    expect(content).toContain("# Progress");
-    expect(content).toContain("Implementation complete");
+    expect(content).toContain("# 进度");
+    expect(content).toContain("实现完成");
   });
 
   it("OPR.0.4.1.23 AC-1/AC-3: slice create scaffolds root PROOF.md + sibling empty proof/ dir", async () => {
@@ -276,11 +276,11 @@ describe("rig scope slice create", () => {
     expect(fs.readdirSync(proofDir)).toEqual([]);
 
     const proof = fs.readFileSync(proofPath, "utf8");
-    expect(proof).toContain("# PROOF — OPR.0.3.2.2 Proof Contract");
-    expect(proof).toContain("Closed by:");
-    expect(proof).toContain("## What this proves");
-    expect(proof).toContain("## Artifacts (media in proof/)");
-    expect(proof).toContain("## Residue / caveats (if any)");
+    expect(proof).toContain("# 证明 — OPR.0.3.2.2 Proof Contract");
+    expect(proof).toContain("关闭人：");
+    expect(proof).toContain("## 本证明验证了什么");
+    expect(proof).toContain("## 产物（proof/ 中的媒体）");
+    expect(proof).toContain("## 遗留项 / 注意事项（如有）");
   });
 
   it("adds a new slice to explicit mission composition in stable order", async () => {
@@ -401,7 +401,7 @@ describe("rig scope slice ship (HG-5)", () => {
     ], env.missionsRoot);
 
     expect(r.exitCode).toBe(1);
-    expect(r.stdout).toContain("does not contain slices/01-debt-foo/slice.yaml");
+    expect(r.stdout).toContain("不包含 slices/01-debt-foo/slice.yaml");
     expect(fs.readFileSync(sourceManifest, "utf8")).toBe(sourceBefore);
     expect(fs.existsSync(path.join(env.missionsRoot, "backlog", "slices", "01-debt-foo"))).toBe(true);
     expect(fs.existsSync(path.join(env.missionsRoot, "release-0.3.2", "slices", "02-debt-foo"))).toBe(false);
@@ -528,8 +528,8 @@ describe("rig scope mission create (HG-14 + HG-15)", () => {
   afterEach(() => { fs.rmSync(env.root, { recursive: true, force: true }); });
 
   it("HG-14: mission create is invocable with the SAME pattern as slice create", async () => {
-    // Symmetry test: both verbs take (positional name) + (--template) +
-    // (--json) and emit { ok, [tier]: { name, id, template, path } }.
+    // 对称性测试：两个动词都接受（位置 name）+（--template）+
+    //（--json），并发出 { ok, [tier]: { name, id, template, path } }。
     const r = await run([
       "mission", "create", "release-0.4.0", "--json",
     ], env.missionsRoot);
@@ -582,7 +582,7 @@ describe("rig scope mission create (HG-14 + HG-15)", () => {
     expect(r.exitCode).toBe(1);
     const parsed = JSON.parse(r.stdout);
     expect(parsed.ok).toBe(false);
-    expect(parsed.error.fact).toMatch(/not a mission-tier dot-ID/);
+    expect(parsed.error.fact).toMatch(/不是 mission.*dot-ID/);
   });
 
   it("BLOCK 1 follow-up: mission create still accepts valid mission shapes (escape band + release)", async () => {
@@ -618,7 +618,7 @@ describe("rig scope mission create (HG-14 + HG-15)", () => {
     const mnPath = parsed.mission.notesPath as string;
     expect(fs.existsSync(mnPath)).toBe(true);
     const content = fs.readFileSync(mnPath, "utf8");
-    // Placeholders must be substituted.
+    // 占位符必须被替换。
     expect(content).not.toMatch(/\{\{mission_id\}\}/);
     expect(content).not.toMatch(/\{\{mission_name\}\}/);
     expect(content).not.toMatch(/\{\{created_date\}\}/);
@@ -627,8 +627,8 @@ describe("rig scope mission create (HG-14 + HG-15)", () => {
     // titleFromSlug("0.6.0") → "0.6.0" (no separators to titlecase); the
     // bare version string is what lands in mission_name.
     expect(content).toMatch(/name: 0\.6\.0/);
-    expect(content).toMatch(/# Notes — 0\.6\.0/);
-    expect(content).toContain("`SPEC.md` contract");
+    expect(content).toMatch(/# 备注 — 0\.6\.0/);
+    expect(content).toContain("`SPEC.md` 契约");
   });
 
   it("legacy --no-mission-notes alias opts out — SPEC created, NOTES.md is not", async () => {
@@ -683,11 +683,9 @@ describe("rig scope mission create (HG-14 + HG-15)", () => {
       expect(parsed.ok).toBe(false);
       expect(parsed.error.fact).toMatch(/OPENRIG_MISSION_NOTES_TEMPLATE_PATH/);
       // Discriminator (guard catch qitem-20260601121058): the failed scaffold
-      // MUST NOT leave a half-created mission dir behind. Without the
-      // verify-first-then-write reorder, the mission dir + README would
-      // exist after this command, and a retry would hit
-      // "Mission folder already exists." which the operator would
-      // reasonably read as a CLI bug.
+      // 绝不能留下半创建的 mission 目录。没有"先校验后写入"的重排，
+      // 本命令后 mission 目录 + README 就会存在，重试会撞上
+      // "Mission folder already exists."，操作者会合理地读成 CLI bug。
       const leakedPath = path.join(env.missionsRoot, "release-0.9.0");
       expect(fs.existsSync(leakedPath), `expected no half-created mission at ${leakedPath} after stale env-var failure`).toBe(false);
     } finally {
@@ -703,8 +701,8 @@ describe("rig scope mission create (HG-14 + HG-15)", () => {
     const progressPath = path.join(parsed.mission.path, "PROGRESS.md");
     expect(fs.existsSync(progressPath)).toBe(true);
     const content = fs.readFileSync(progressPath, "utf8");
-    expect(content).toContain("# Progress");
-    expect(content).toContain("Scope complete");
+    expect(content).toContain("# 进度");
+    expect(content).toContain("工作范围完整");
   });
 
   it("mission create emits only the current mission surfaces", async () => {
@@ -720,7 +718,7 @@ describe("rig scope mission create (HG-14 + HG-15)", () => {
 });
 
 // ---------------------------------------------------------------------
-// BC-2 BLOCK 2: README-less dirs are rejected at every mutation surface
+// BC-2 BLOCK 2：无 README 的目录在每个变更表面都被拒绝
 // ---------------------------------------------------------------------
 
 describe("BC-2 BLOCK 2 — README-less dirs are not declared missions at any mutation surface", () => {
@@ -728,8 +726,8 @@ describe("BC-2 BLOCK 2 — README-less dirs are not declared missions at any mut
 
   beforeEach(() => {
     env = seedSubstrate();
-    // Sneak a README-less directory into missions/ to verify every
-    // surface rejects it consistently with listMissions.
+    // 把一个无 README 的目录偷放进 missions/，以验证每个表面
+    // 都与 listMissions 一致地拒绝它。
     fs.mkdirSync(path.join(env.missionsRoot, "no-readme"), { recursive: true });
   });
   afterEach(() => { fs.rmSync(env.root, { recursive: true, force: true }); });
@@ -745,7 +743,7 @@ describe("BC-2 BLOCK 2 — README-less dirs are not declared missions at any mut
     expect(r.exitCode).toBe(1);
     const parsed = JSON.parse(r.stdout);
     expect(parsed.ok).toBe(false);
-    expect(parsed.error.fact).toMatch(/no SPEC\.md or README\.md|no README\.md|not a declared mission/);
+    expect(parsed.error.fact).toMatch(/SPEC\.md|README\.md|不是已声明的任务目标/);
   });
 
   it("slice create no-readme exits 1 + does NOT create slices/foo/", async () => {
@@ -788,8 +786,8 @@ describe("BLOCK 3 — ship/move persist target mission id into target README", (
 
   beforeEach(() => {
     env = seedSubstrate();
-    // Replace release-0.3.2/README.md with an ID-LESS variant so we
-    // can observe the lazy-adopt-and-persist behavior.
+    // 用无 ID 的变体替换 release-0.3.2/README.md，以便
+    // 观察 lazy-adopt-and-persist 行为。
     fs.writeFileSync(
       path.join(env.missionsRoot, "release-0.3.2", "README.md"),
       "# release-0.3.2\n\n(no id frontmatter yet)\n",
@@ -1029,7 +1027,7 @@ describe("rig scope audit edge cases (guard BLOCKING fixes)", () => {
 });
 
 // ---------------------------------------------------------------------
-// S17 fix round 1 — PROGRESS is an acceptance checklist, not a commit log.
+// S17 修复第 1 轮——PROGRESS 是验收清单，不是提交日志。
 // ---------------------------------------------------------------------
 
 describe("rig scope audit — no per-commit PROGRESS enforcement", () => {
@@ -1043,7 +1041,7 @@ describe("rig scope audit — no per-commit PROGRESS enforcement", () => {
     writeFile(path.join(sliceDir, "PROGRESS.md"), "# Progress\n- baseline\n");
     execFileSync("git", ["-C", substrate.root, "add", "."], { stdio: "ignore" });
     execFileSync("git", ["-C", substrate.root, "commit", "-m", "baseline progress", "-q"], { stdio: "ignore" });
-    // HEAD: change ONLY the slice README (no PROGRESS.md touch).
+    // HEAD：只改动 slice README（不碰 PROGRESS.md）。
     fs.appendFileSync(path.join(sliceDir, "README.md"), "\nmore work here\n");
     execFileSync("git", ["-C", substrate.root, "add", path.join(sliceDir, "README.md")], { stdio: "ignore" });
     execFileSync("git", ["-C", substrate.root, "commit", "-m", "work without progress", "-q"], { stdio: "ignore" });
@@ -1241,12 +1239,11 @@ describe("rig scope repair frontmatter conformance (OPR.0.4.1.6 FR-4)", () => {
     expect(fm.stage).toBe("established");                              // untouched
   });
 
-  // OPR.0.5.5.8 writer census: repair reaches frontmatter through the CLI's
-  // updateFrontmatter helper; approve reaches it through the daemon's
-  // writeFrontmatterFields helper. The remaining scope frontmatter consumers
-  // are readers. This fixture pins the repair half of the class at its real
-  // command surface rather than accepting semantic YAML equality: author bytes
-  // are the asset, including quoting, folding, ordering, and provenance.
+  // OPR.0.5.5.8 writer 普查：repair 经 CLI 的 updateFrontmatter helper 到达
+  // frontmatter；approve 经 daemon 的 writeFrontmatterFields helper 到达。
+  // 其余 scope frontmatter 消费者都是 reader。本 fixture 在真实命令表面钉住
+  // 该类的 repair 半，而非接受语义 YAML 相等：作者字节才是资产，
+  // 包括引号、折叠、顺序与出处。
   it("S08 RED: repair appends conformance fields without rewriting any authored frontmatter byte", async () => {
     const slice = path.join(substrate.missionsRoot, "release-0.3.2", "slices", "07-additive-repair");
     const spec = path.join(slice, "SPEC.md");

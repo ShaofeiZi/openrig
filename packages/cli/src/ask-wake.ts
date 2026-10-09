@@ -10,12 +10,12 @@ export interface WakeRunResult {
   timedOut: boolean;
 }
 
-/** Runs a headless one-shot command with a bounded timeout. Injectable for tests. */
+/** 运行一个有界超时的无头一次性命令。可注入，用于测试。 */
 export type WakeRunner = (cmd: string, args: string[], opts: { timeoutMs: number }) => Promise<WakeRunResult>;
 
 export interface WakeDeps {
   runner: WakeRunner;
-  /** Locate the session file for a size advisory (pin 5). Optional. */
+  /** 定位会话文件以给出大小建议（pin 5）。可选。 */
   fileLocator?: (token: string) => { path: string; sizeBytes: number } | null;
 }
 
@@ -30,27 +30,26 @@ export interface WakeOutcome {
   ran: boolean;
   answer?: string;
   timedOut?: boolean;
-  /** true when the wake process exited non-zero (bad token / missing binary /
-   *  auth fail) — an honest failure, NOT a successful empty answer. */
+  /** 当 wake 进程以非零退出码退出时为 true（token 无效 / 缺少二进制 /
+   *  认证失败）——这是诚实的失败，不是成功的空答案。 */
   failed?: boolean;
   code?: number;
   message?: string;
   advisory?: string;
 }
 
-/** Default bounded wake timeout — long enough for a real recall, short enough
- *  that a hang surfaces instead of blocking forever (founder datapoint: ~minutes
- *  on a 635 MB session file). */
+/** 默认有界 wake 超时——足够长以完成真实回忆，又足够短
+ *  使得挂起能暴露出来而不是永远阻塞（创始人数据点：635 MB 会话文件约数分钟）。 */
 export const DEFAULT_WAKE_TIMEOUT_MS = 180_000;
 const WAKE_LARGE_FILE_BYTES = 200 * 1024 * 1024; // 200 MB
-/** The wake prompt is no-preamble by default — raw answers, not essays (pin 5). */
+/** wake 提示词默认无开场白——直接给答案，不写小作文（pin 5）。 */
 const NO_PREAMBLE = "Answer directly and concisely, with no preamble. Question: ";
 
 /**
- * Build the HEADLESS one-shot resume command. `claude -p --resume <token>`
- * prints the answer and EXITS — the wake target is the session FILE, so the
- * process goes back to cold with no lingering process (pin 2/3, mini-PRD A).
- * codex uses `codex exec resume` (adapter-honest; session-file size lags the host).
+ * 构建无头一次性恢复命令。`claude -p --resume <token>`
+ * 打印答案后退出——wake 目标是会话文件，因此进程回到冷态，
+ * 不留残余进程（pin 2/3，mini-PRD A）。
+ * codex 使用 `codex exec resume`（适配器诚实；会话文件大小滞后于主机）。
  */
 export function buildWakeCommand(runtime: "claude" | "codex", token: string, question: string): { cmd: string; args: string[] } {
   const prompt = `${NO_PREAMBLE}${question}`;
@@ -60,8 +59,8 @@ export function buildWakeCommand(runtime: "claude" | "codex", token: string, que
   return { cmd: "claude", args: ["-p", "--resume", token, prompt] };
 }
 
-/** Default runner: execFile with a hard timeout. Resolving means the child
- *  exited (back-to-cold) — we never retain a handle. */
+/** 默认运行器：execFile 加硬超时。resolve 意味着子进程已退出（回到冷态）——
+ *  我们从不保留句柄。 */
 export const defaultWakeRunner: WakeRunner = (cmd, args, opts) =>
   new Promise((resolve) => {
     execFile(cmd, args, { timeout: opts.timeoutMs, maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
@@ -76,7 +75,7 @@ export const defaultWakeRunner: WakeRunner = (cmd, args, opts) =>
     });
   });
 
-/** Default file locator for the size advisory: scan ~/.claude/projects/<cwd>/<token>.jsonl. */
+/** 大小建议的默认文件定位器：扫描 ~/.claude/projects/<cwd>/<token>.jsonl。 */
 export function defaultWakeFileLocator(token: string): { path: string; sizeBytes: number } | null {
   const root = join(homedir(), ".claude", "projects");
   if (!existsSync(root)) return null;
@@ -87,17 +86,16 @@ export function defaultWakeFileLocator(token: string): { path: string; sizeBytes
       if (existsSync(p)) return { path: p, sizeBytes: statSync(p).size };
     }
   } catch {
-    /* best-effort advisory only */
+    /* 仅尽力而为的建议 */
   }
   return null;
 }
 
 /**
- * L3 — wake a session by its resume token, ask one (possibly batched) question,
- * capture the snapshot answer, and let the process go back to cold. EXECUTES —
- * the only level with runtime cost/side effects; it runs ONLY when explicitly
- * invoked (never an implicit escalation from a failed L1/L2 search). Bounded
- * timeout + large-file advisory — never a silent hang.
+ * L3 — 通过恢复 token 唤醒会话，问一个（可能批量的）问题，
+ * 捕获快照答案，然后让进程回到冷态。会执行——
+ * 这是唯一有运行时成本/副作用的层级；它只在显式调用时运行
+ * （绝不从失败的 L1/L2 搜索隐式升级）。有界超时 + 大文件建议——绝不静默挂起。
  */
 export async function runWake(deps: WakeDeps, args: WakeArgs): Promise<WakeOutcome> {
   const timeoutMs = args.timeoutMs ?? DEFAULT_WAKE_TIMEOUT_MS;
@@ -105,7 +103,7 @@ export async function runWake(deps: WakeDeps, args: WakeArgs): Promise<WakeOutco
   let advisory: string | undefined;
   const located = deps.fileLocator?.(args.token);
   if (located && located.sizeBytes > WAKE_LARGE_FILE_BYTES) {
-    advisory = `Session file is large (${(located.sizeBytes / 1024 / 1024).toFixed(0)} MB); waking may take minutes — a large session file lags the host. If it hangs, retry with a longer timeout or a background wake.`;
+    advisory = `会话文件较大（${(located.sizeBytes / 1024 / 1024).toFixed(0)} MB）；唤醒可能需要数分钟——大会话文件滞后于主机。如果挂起，请用更长的超时重试或后台唤醒。`;
   }
 
   const { cmd, args: cmdArgs } = buildWakeCommand(args.runtime, args.token, args.question);
@@ -116,12 +114,12 @@ export async function runWake(deps: WakeDeps, args: WakeArgs): Promise<WakeOutco
       ran: true,
       timedOut: true,
       advisory,
-      message: `Wake did not return within ${Math.round(timeoutMs / 1000)}s. The session may be large or slow — retry with a longer --wake-timeout or a background wake. This is a bounded timeout, not a silent hang.`,
+      message: `wake 在 ${Math.round(timeoutMs / 1000)}s 内未返回。会话可能很大或很慢——请用更长的 --wake-timeout 重试或后台唤醒。这是有界超时，不是静默挂起。`,
     };
   }
 
-  // A non-zero exit is a FAILURE, not a successful empty answer — surface it
-  // honestly (same doctrine as L1/L2 honest-degraded). Only exit 0 is an answer.
+  // 非零退出是失败，不是成功的空答案——诚实暴露
+  // （与 L1/L2 诚实降级相同的原则）。只有退出 0 才是答案。
   if (res.code !== 0) {
     const detail = res.stderr.trim();
     return {
@@ -129,7 +127,7 @@ export async function runWake(deps: WakeDeps, args: WakeArgs): Promise<WakeOutco
       failed: true,
       code: res.code ?? undefined,
       advisory,
-      message: `Wake failed (exit ${res.code ?? "unknown"})${detail ? `: ${detail}` : ""}. The token may be invalid/expired, the runtime binary missing, or auth required.`,
+      message: `wake 失败（退出码 ${res.code ?? "未知"}）${detail ? `：${detail}` : ""}。token 可能无效/已过期、运行时二进制缺失或需要认证。`,
     };
   }
 

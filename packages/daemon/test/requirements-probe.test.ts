@@ -15,8 +15,8 @@ function createMockExec(responses: Record<string, string | Error>): ExecFn {
 }
 
 describe("RequirementsProbeRegistry", () => {
-  // T1: CLI tool installed — status='installed', detectedPath populated, version=null
-  it("CLI tool installed returns installed with detectedPath and null version", async () => {
+  // T1：CLI 工具已安装时 status='installed'、detectedPath 有值、version=null。
+  it("CLI 工具已安装时返回 installed、detectedPath 和 null version", async () => {
     const exec = createMockExec({ "command -v": "/usr/local/bin/ripgrep" });
     const registry = new RequirementsProbeRegistry(exec);
 
@@ -28,8 +28,8 @@ describe("RequirementsProbeRegistry", () => {
     expect(result.kind).toBe("cli_tool");
   });
 
-  // T2: CLI tool missing — status='missing'
-  it("CLI tool missing returns missing status", async () => {
+  // T2：CLI 工具缺失时 status='missing'。
+  it("CLI 工具缺失时返回 missing 状态", async () => {
     const exec = createMockExec({});
     const registry = new RequirementsProbeRegistry(exec);
 
@@ -39,8 +39,8 @@ describe("RequirementsProbeRegistry", () => {
     expect(result.detectedPath).toBeNull();
   });
 
-  // T3: Homebrew package installed — version parsed, provider='homebrew'
-  it("Homebrew package installed returns installed with parsed version", async () => {
+  // T3：Homebrew package 已安装时解析 version，provider='homebrew'。
+  it("Homebrew package 已安装时返回 installed 和解析后的 version", async () => {
     const exec = createMockExec({ "brew list --versions": "ripgrep 14.1.0" });
     const registry = new RequirementsProbeRegistry(exec, { platform: "darwin" });
 
@@ -52,8 +52,8 @@ describe("RequirementsProbeRegistry", () => {
     expect(result.kind).toBe("system_package");
   });
 
-  // T4: Homebrew package missing — status='missing', provider='homebrew'
-  it("Homebrew package missing returns missing with homebrew provider", async () => {
+  // T4：Homebrew package 缺失时 status='missing'、provider='homebrew'。
+  it("Homebrew package 缺失时返回 missing 和 homebrew provider", async () => {
     const exec = createMockExec({ "brew list --versions": new Error("Error: No such keg") });
     const registry = new RequirementsProbeRegistry(exec, { platform: "darwin" });
 
@@ -63,8 +63,8 @@ describe("RequirementsProbeRegistry", () => {
     expect(result.provider).toBe("homebrew");
   });
 
-  // T5: Non-darwin system_package — status='unsupported', command=null, no exec called
-  it("non-darwin system_package returns unsupported with null command", async () => {
+  // T5：非 darwin 的 system_package 返回 status='unsupported'、command=null，且不调用 exec。
+  it("非 darwin system_package 返回 unsupported 和 null command", async () => {
     const exec = vi.fn() as unknown as ExecFn;
     const registry = new RequirementsProbeRegistry(exec, { platform: "linux" });
 
@@ -75,19 +75,19 @@ describe("RequirementsProbeRegistry", () => {
     expect(exec).not.toHaveBeenCalled();
   });
 
-  // T6: Probe timeout — status='unknown', error contains 'timed out'
-  it("probe timeout returns unknown with timeout error", async () => {
+  // T6：探针超时返回 status='unknown'，error 包含超时信息。
+  it("探针超时返回 unknown 和超时错误", async () => {
     const exec: ExecFn = () => new Promise(() => {}); // Never resolves
     const registry = new RequirementsProbeRegistry(exec, { timeoutMs: 50 });
 
     const result = await registry.probeCli("slow-tool");
 
     expect(result.status).toBe("unknown");
-    expect(result.error).toContain("timed out");
+    expect(result.error).toContain("探测超时");
   });
 
-  // T7: probeAll returns results in input order
-  it("probeAll returns results in input order", async () => {
+  // T7：probeAll 按输入顺序返回结果。
+  it("probeAll 按输入顺序返回结果", async () => {
     const exec = createMockExec({
       "'git'": "/usr/bin/git",
       "'node'": "/usr/local/bin/node",
@@ -112,8 +112,8 @@ describe("RequirementsProbeRegistry", () => {
     expect(results[2]!.status).toBe("installed");
   });
 
-  // T8: command field matches exact shell-quoted command string
-  it("probe results include exact shell-quoted command", async () => {
+  // T8：command 字段匹配经过 shell 引号处理的精确命令字符串。
+  it("探针结果包含经过 shell 引号处理的精确命令", async () => {
     const exec = createMockExec({ "command -v": "/usr/bin/tmux" });
     const registry = new RequirementsProbeRegistry(exec);
 
@@ -122,8 +122,8 @@ describe("RequirementsProbeRegistry", () => {
     expect(result.command).toBe("command -v 'tmux'");
   });
 
-  // T9: All probes use mock ExecFn — verify expected commands
-  it("probes use mock ExecFn with expected shell-quoted commands", async () => {
+  // T9：所有探针使用 mock ExecFn，并验证预期的 shell 引号命令。
+  it("探针通过 mock ExecFn 使用预期的 shell 引号命令", async () => {
     const exec = vi.fn(async () => "/usr/bin/test") as unknown as ExecFn;
     const registry = new RequirementsProbeRegistry(exec, { platform: "darwin" });
 
@@ -134,8 +134,8 @@ describe("RequirementsProbeRegistry", () => {
     expect(exec).toHaveBeenCalledWith("brew list --versions 'my-pkg'");
   });
 
-  // T10: Probe specific tools (tmux, claude, codex) — each returns installed
-  it("probe tmux, claude, codex each returns installed", async () => {
+  // T10：探测指定工具（tmux、claude、codex）时均返回 installed。
+  it("探测 tmux、claude、codex 时均返回 installed", async () => {
     const exec = createMockExec({
       "'tmux'": "/usr/local/bin/tmux",
       "'claude'": "/usr/local/bin/claude",
@@ -158,19 +158,19 @@ describe("RequirementsProbeRegistry", () => {
     }
   });
 
-  // T11: Shell metacharacter in name — exec receives shell-quoted command
-  it("shell metacharacters in name are quoted safely", async () => {
+  // T11：name 中含 shell 元字符时，exec 收到经过 shell 引号处理的命令。
+  it("安全引用 name 中的 shell 元字符", async () => {
     const exec = vi.fn(async () => { throw new Error("not found"); }) as unknown as ExecFn;
     const registry = new RequirementsProbeRegistry(exec);
 
     await registry.probeCli("foo; rm -rf /");
 
-    // The name should be single-quoted, preventing injection
+    // name 应使用单引号，防止注入。
     expect(exec).toHaveBeenCalledWith("command -v 'foo; rm -rf /'");
   });
 
-  // T12: probeRequirement preserves installHints from spec onto result
-  it("probeRequirement preserves installHints from spec unchanged", async () => {
+  // T12：probeRequirement 将 spec 中的 installHints 原样保留到结果。
+  it("probeRequirement 原样保留 spec 中的 installHints", async () => {
     const exec = createMockExec({ "command -v": "/usr/bin/rg" });
     const registry = new RequirementsProbeRegistry(exec);
 
@@ -185,8 +185,8 @@ describe("RequirementsProbeRegistry", () => {
     expect(result.status).toBe("installed");
   });
 
-  // T13: EACCES probe error -> unknown (not missing) — trust boundary fix
-  it("EACCES probe error returns unknown, not missing", async () => {
+  // T13：EACCES 探针错误返回 unknown 而非 missing——trust 边界修复。
+  it("EACCES 探针错误返回 unknown 而非 missing", async () => {
     const exec = vi.fn(async () => { throw new Error("EACCES: permission denied"); }) as unknown as ExecFn;
     const registry = new RequirementsProbeRegistry(exec);
 
@@ -196,8 +196,8 @@ describe("RequirementsProbeRegistry", () => {
     expect(result.error).toContain("EACCES");
   });
 
-  // T14: unknown status does NOT become auto_approvable via planner
-  it("unknown probe status maps to manual_only in planner, not auto_approvable", async () => {
+  // T14：unknown 状态不会经 planner 变成 auto_approvable。
+  it("unknown 探针状态在 planner 中映射为 manual_only 而非 auto_approvable", async () => {
     const { ExternalInstallPlanner } = await import("../src/domain/external-install-planner.js");
     const planner = new ExternalInstallPlanner({ platform: "darwin" });
 

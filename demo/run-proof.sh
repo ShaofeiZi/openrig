@@ -4,52 +4,52 @@ set -euo pipefail
 PROOF_DIR="demo/proof"
 mkdir -p "$PROOF_DIR"
 
-echo "=== Rigged North Star Proof Package ==="
-echo "Producing proof artifacts in $PROOF_DIR/"
+echo "=== Rigged North Star 验证包 ==="
+echo "正在 $PROOF_DIR/ 中生成验证产物"
 echo ""
 
-# 0. Start or reuse daemon
-echo "Step 0: Ensure daemon is running..."
-if rig daemon start; then
+# 0. 启动或复用后台服务。
+echo "步骤 0：确保后台服务正在运行..."
+if zrig daemon start; then
   sleep 2
 else
-  echo "Daemon start returned non-zero; checking for an existing healthy daemon..."
-  if rig ps --json >/dev/null 2>&1; then
-    echo "Reusing existing healthy daemon."
+  echo "后台服务启动返回非零状态；正在检查是否已有健康的后台服务..."
+  if zrig ps --json >/dev/null 2>&1; then
+    echo "复用现有的健康后台服务。"
   else
-    echo "ERROR: daemon failed to start and no healthy daemon is available." >&2
+    echo "错误：后台服务启动失败，且没有可用的健康后台服务。" >&2
     exit 1
   fi
 fi
 echo ""
 
-# 1. Boot
-echo "Step 1: Boot demo topology..."
-UP_OUTPUT=$(rig up demo/rig.yaml 2>&1 | tee "$PROOF_DIR/up-transcript.txt")
-RIG_ID=$(printf '%s\n' "$UP_OUTPUT" | sed -n 's/^Rig: //p' | tail -n1)
+# 1. 启动。
+echo "步骤 1：启动演示拓扑..."
+UP_OUTPUT=$(zrig up demo/rig.yaml 2>&1 | tee "$PROOF_DIR/up-transcript.txt")
+RIG_ID=$(printf '%s\n' "$UP_OUTPUT" | sed -n -E 's/^(Rig|工作组): //p' | tail -n1)
 if [ -z "$RIG_ID" ]; then
-  echo "ERROR: No rig ID found in boot output. Proof failed."
+  echo "错误：启动输出中没有工作组 ID，验证失败。"
   exit 1
 fi
 echo ""
 
-# 2. Node status
-echo "Step 2: Node status after boot..."
-# OPR.0.4.4.21: --nodes requires an explicit target outside a managed session.
-rig ps --nodes --rig "$RIG_ID" 2>&1 | tee "$PROOF_DIR/ps-nodes.txt"
+# 2. 节点状态。
+echo "步骤 2：启动后的节点状态..."
+# OPR.0.4.4.21：在托管会话之外使用 --nodes 时必须显式指定目标。
+zrig ps --nodes --rig "$RIG_ID" 2>&1 | tee "$PROOF_DIR/ps-nodes.txt"
 echo ""
 
-# 3. Health check after boot
-echo "Step 3: Health check after boot..."
+# 3. 启动后的健康检查。
+echo "步骤 3：检查启动后的健康状态..."
 npx tsx demo/scripts/check-demo-health.ts --rig "$RIG_ID" --json 2>&1 | tee "$PROOF_DIR/health-after-boot.json"
 echo ""
 
-# 4. Native resume verification immediately after boot
-echo "Step 4: Native resume verification immediately after boot..."
+# 4. 启动后立即验证原生恢复。
+echo "步骤 4：启动后立即验证原生恢复能力..."
 if npx tsx demo/scripts/verify-native-resume.ts --rig "$RIG_ID" --output "$PROOF_DIR/native-resume-after-boot.json" 2>&1 | tee "$PROOF_DIR/native-resume-after-boot.txt"; then
-  echo "Native resume baseline was already ready after boot."
+  echo "启动后原生恢复基线已就绪。"
   cat > "$PROOF_DIR/seed-resume-baseline.txt" <<'EOF'
-Baseline seeding skipped: native resume baseline was already ready after boot.
+跳过基线填充：启动后原生恢复基线已就绪。
 EOF
   cat > "$PROOF_DIR/seed-resume-baseline.json" <<'EOF'
 {
@@ -59,56 +59,56 @@ EOF
 EOF
 else
   echo ""
-  echo "Step 5: Seed resume baseline..."
+  echo "步骤 5：填充恢复基线..."
   npx tsx demo/scripts/seed-resume-baseline.ts --rig "$RIG_ID" --max-rounds 1 --output "$PROOF_DIR/seed-resume-baseline.json" 2>&1 | tee "$PROOF_DIR/seed-resume-baseline.txt"
 fi
 echo ""
 
-# 5. Native resume verification before down
-echo "Step 6: Native resume verification before down..."
+# 5. 停止前验证原生恢复。
+echo "步骤 6：停止前验证原生恢复能力..."
 npx tsx demo/scripts/verify-native-resume.ts --rig "$RIG_ID" --output "$PROOF_DIR/native-resume-before-down.json" 2>&1 | tee "$PROOF_DIR/native-resume-before-down.txt"
 echo ""
 
-# 6. Use captured rig ID for down/restore
-echo "Rig ID: $RIG_ID"
+# 6. 使用已捕获的工作组 ID 执行停止/恢复。
+echo "工作组 ID：$RIG_ID"
 
-# 7. Tear down
+# 7. 拆除。
 echo ""
-echo "Step 7: Tear down..."
-DOWN_OUTPUT=$(rig down "$RIG_ID" 2>&1 | tee "$PROOF_DIR/down-transcript.txt")
-SNAPSHOT_ID=$(printf '%s\n' "$DOWN_OUTPUT" | sed -n 's/^Snapshot: //p' | tail -n1)
+echo "步骤 7：拆除..."
+DOWN_OUTPUT=$(zrig down "$RIG_ID" 2>&1 | tee "$PROOF_DIR/down-transcript.txt")
+SNAPSHOT_ID=$(printf '%s\n' "$DOWN_OUTPUT" | sed -n -E 's/^(Snapshot|快照): //p' | tail -n1)
 if [ -z "$SNAPSHOT_ID" ]; then
-  echo "ERROR: No snapshot ID found in teardown output. Proof failed."
+  echo "错误：拆除输出中没有快照 ID，验证失败。"
   exit 1
 fi
-echo "Snapshot ID: $SNAPSHOT_ID"
+echo "快照 ID：$SNAPSHOT_ID"
 echo ""
 
-# 8. Verify no orphan tmux sessions
-echo "Step 8: Orphan session check..."
-tmux ls 2>&1 | tee "$PROOF_DIR/tmux-check.txt" || echo "No tmux server running (clean)" | tee "$PROOF_DIR/tmux-check.txt"
+# 8. 验证没有孤立 tmux 会话。
+echo "步骤 8：检查孤立会话..."
+tmux ls 2>&1 | tee "$PROOF_DIR/tmux-check.txt" || echo "没有运行中的 tmux server（干净）" | tee "$PROOF_DIR/tmux-check.txt"
 echo ""
 
-# 9. Restore via explicit snapshot + rig ID
-echo "Step 9: Restore via explicit snapshot + rig ID..."
-rig restore "$SNAPSHOT_ID" --rig "$RIG_ID" 2>&1 | tee "$PROOF_DIR/restore-transcript.txt"
+# 9. 使用显式快照和工作组 ID 恢复。
+echo "步骤 9：使用显式快照和工作组 ID 恢复..."
+zrig restore "$SNAPSHOT_ID" --rig "$RIG_ID" 2>&1 | tee "$PROOF_DIR/restore-transcript.txt"
 echo ""
 
-# 10. Node status after restore
-echo "Step 10: Node status after restore..."
-rig ps --nodes --rig "$RIG_ID" 2>&1 | tee "$PROOF_DIR/ps-restored.txt"
+# 10. 恢复后的节点状态。
+echo "步骤 10：恢复后的节点状态..."
+zrig ps --nodes --rig "$RIG_ID" 2>&1 | tee "$PROOF_DIR/ps-restored.txt"
 echo ""
 
-echo "=== Automated proof artifacts produced ==="
+echo "=== 自动验证产物已生成 ==="
 echo ""
-echo "Manual steps remaining:"
-echo "  1. Open http://localhost:5173 in browser"
-echo "     Screenshot Explorer + Graph + Detail Panel"
-echo "     Save to: $PROOF_DIR/browser-screenshot.png"
+echo "剩余手动步骤："
+echo "  1. 在浏览器中打开 http://localhost:5173"
+echo "     截取 Explorer + Graph + Detail Panel"
+echo "     保存到：$PROOF_DIR/browser-screenshot.png"
 echo ""
-echo "  2. Run: tmux attach -t orch-lead@demo-rig"
-echo "     Ask: 'What were you working on?'"
-echo "     Copy response to: $PROOF_DIR/resume-test.txt"
+echo "  2. 运行：tmux attach -t orch-lead@demo-rig"
+echo "     询问：'你刚才在做什么？'"
+echo "     将回答复制到：$PROOF_DIR/resume-test.txt"
 echo ""
-echo "Proof artifacts:"
+echo "验证产物："
 ls -la "$PROOF_DIR/"

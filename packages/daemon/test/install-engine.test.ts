@@ -107,8 +107,8 @@ describe("InstallEngine", () => {
     return full;
   }
 
-  // Test 1: Clean install: skills copied
-  it("clean install: skills copied to target paths", () => {
+  // 测试 1：全新安装——复制技能
+  it("全新安装：将技能复制到目标路径", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "# Foo Skill");
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
@@ -122,8 +122,8 @@ describe("InstallEngine", () => {
     expect(result.applied).toHaveLength(1);
   });
 
-  // Test 2: Guidance with managed block markers
-  it("clean install: guidance created with managed block markers", () => {
+  // 测试 2：带托管块标记的指导文件
+  it("全新安装：创建带托管块标记的指导文件", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("guidance/AGENTS.md", "Review all PRs carefully.");
     const targetPath = path.join(repoRoot, "AGENTS.md");
@@ -144,8 +144,8 @@ describe("InstallEngine", () => {
     expect(content).toContain("<!-- END OpenRig MANAGED BLOCK: test-pkg -->");
   });
 
-  // Test 3: Journal entries with hashes
-  it("clean install: journal entries written with correct hashes", () => {
+  // 测试 3：带哈希的日志条目
+  it("全新安装：写入具有正确哈希的日志条目", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "content");
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
@@ -158,8 +158,8 @@ describe("InstallEngine", () => {
     expect(result.applied[0]!.afterHash!.length).toBe(64); // SHA-256
   });
 
-  // Test 4: Install status = applied
-  it("clean install: package_install status = applied", () => {
+  // 测试 4：安装状态 = applied
+  it("全新安装：package_install 状态 = applied", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "content");
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
@@ -173,8 +173,8 @@ describe("InstallEngine", () => {
     expect(install!.appliedAt).toBeDefined();
   });
 
-  // Test 5: Existing guidance: block inserted without clobbering
-  it("existing guidance: managed block inserted without clobbering", () => {
+  // 测试 5：现有指导文件——插入块且不覆盖原内容
+  it("现有指导文件：插入托管块且不覆盖原内容", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("guidance/AGENTS.md", "New guidance.");
     const targetPath = path.join(repoRoot, "AGENTS.md");
@@ -196,8 +196,8 @@ describe("InstallEngine", () => {
     expect(content).toContain("<!-- BEGIN OpenRig MANAGED BLOCK: test-pkg -->");
   });
 
-  // Test 6: Existing managed block updated in place
-  it("existing managed block: updated in place", () => {
+  // 测试 6：原位更新现有托管块
+  it("现有托管块：原位更新", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("guidance/AGENTS.md", "Updated guidance.");
     const targetPath = path.join(repoRoot, "AGENTS.md");
@@ -222,8 +222,8 @@ describe("InstallEngine", () => {
     expect(content).toContain("# Footer");
   });
 
-  // Test 7: Backup created before overwrite
-  it("backup created before overwrite", () => {
+  // 测试 7：覆盖前创建备份
+  it("覆盖前创建备份", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "New content");
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
@@ -239,8 +239,8 @@ describe("InstallEngine", () => {
     expect(fs.readFileSync(result.applied[0]!.backupPath!, "utf-8")).toBe("Original content");
   });
 
-  // Test 8: Rollback restores from backup
-  it("rollback restores original files from backup", () => {
+  // 测试 8：回滚从备份恢复
+  it("回滚从备份恢复原始文件", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "New");
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
@@ -258,8 +258,8 @@ describe("InstallEngine", () => {
     expect(rollbackResult.restored).toContain(targetPath);
   });
 
-  // Test 9: Rollback of new file -> deleted
-  it("rollback of new file -> file deleted", () => {
+  // 测试 9：回滚新文件 -> 删除
+  it("回滚新文件 -> 删除文件", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "Content");
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
@@ -275,8 +275,8 @@ describe("InstallEngine", () => {
     expect(rollbackResult.deleted).toContain(targetPath);
   });
 
-  // Test 10: Rollback status
-  it("rollback updates package_install status to rolled_back", () => {
+  // 测试 10：回滚状态
+  it("回滚将 package_install 状态更新为 rolled_back", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "Content");
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
@@ -292,15 +292,15 @@ describe("InstallEngine", () => {
     expect(install!.rolledBackAt).toBeDefined();
   });
 
-  // Test 11: Failed mid-apply -> compensating rollback
-  it("failed mid-apply -> compensating rollback, status = failed", () => {
+  // 测试 11：应用中途失败 -> 补偿回滚
+  it("应用中途失败 -> 补偿回滚，状态 = failed", () => {
     const pkg = seedPackage();
     const goodSource = writeSource("skills/foo/SKILL.md", "Good");
     const goodTarget = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
     const badTarget = path.join(repoRoot, ".agents/skills/bar/SKILL.md");
 
     const goodEntry = makeEntry({ exportName: "foo", targetPath: goodTarget, sourcePath: goodSource });
-    // Bad entry: source doesn't exist
+    // 错误条目：来源不存在。
     const badEntry = makeEntry({ exportName: "bar", targetPath: badTarget, sourcePath: "/nonexistent/SKILL.md" });
 
     const engine = new InstallEngine(installRepo, realFs(tmpDir));
@@ -309,16 +309,16 @@ describe("InstallEngine", () => {
       engine.apply(makePolicy([goodEntry, badEntry]), makePlan([goodEntry, badEntry]), pkg.id, repoRoot);
     }).toThrow();
 
-    // Good file should be rolled back
+    // 正常文件应被回滚。
     expect(fs.existsSync(goodTarget)).toBe(false);
 
-    // Install should be marked failed
+    // 安装应标记为 failed。
     const installs = installRepo.listInstalls(pkg.id);
     expect(installs[0]!.status).toBe("failed");
   });
 
-  // Test 12: Journal entries track hashes
-  it("journal entries track before/after hashes", () => {
+  // 测试 12：日志条目追踪哈希
+  it("日志条目追踪前后哈希", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "New content");
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
@@ -334,8 +334,8 @@ describe("InstallEngine", () => {
     expect(result.applied[0]!.beforeHash).not.toBe(result.applied[0]!.afterHash);
   });
 
-  // Test 13: Nonexistent target directory created
-  it("install into nonexistent target directory -> directory created", () => {
+  // 测试 13：创建不存在的目标目录
+  it("安装到不存在的目标目录 -> 创建目录", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "Content");
     const targetPath = path.join(repoRoot, "deep/nested/dir/SKILL.md");
@@ -347,8 +347,8 @@ describe("InstallEngine", () => {
     expect(fs.existsSync(targetPath)).toBe(true);
   });
 
-  // Test 14: listInstalls
-  it("listInstalls returns correct records with status", () => {
+  // 测试 14：listInstalls
+  it("listInstalls 返回包含状态的正确记录", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "Content");
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
@@ -363,8 +363,8 @@ describe("InstallEngine", () => {
     expect(installs[0]!.packageId).toBe(pkg.id);
   });
 
-  // Test 15: Two skills with same filename backed up to distinct paths
-  it("two skills backed up to distinct paths (no collision)", () => {
+  // 测试 15：同名的两个技能备份到不同路径
+  it("两个技能备份到不同路径（无冲突）", () => {
     const pkg = seedPackage();
     const src1 = writeSource("skills/foo/SKILL.md", "Foo new");
     const src2 = writeSource("skills/bar/SKILL.md", "Bar new");
@@ -381,14 +381,14 @@ describe("InstallEngine", () => {
     const engine = new InstallEngine(installRepo, realFs(tmpDir));
     const result = engine.apply(makePolicy([e1, e2]), makePlan([e1, e2]), pkg.id, repoRoot);
 
-    // Both backups exist and have distinct paths
+    // 两个备份都存在且路径不同。
     expect(result.applied[0]!.backupPath).not.toBe(result.applied[1]!.backupPath);
     expect(fs.readFileSync(result.applied[0]!.backupPath!, "utf-8")).toBe("Foo original");
     expect(fs.readFileSync(result.applied[1]!.backupPath!, "utf-8")).toBe("Bar original");
   });
 
-  // Test 16: Rollback appends journal rows
-  it("rollback appends journal entries (action=rollback)", () => {
+  // 测试 16：回滚追加日志行
+  it("回滚追加日志条目（action=rollback）", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "Content");
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
@@ -405,8 +405,8 @@ describe("InstallEngine", () => {
     expect(rollbackEntries[0]!.status).toBe("rolled_back");
   });
 
-  // Test 17: Journal ordering deterministic by seq
-  it("journal entries ordered by seq, rollback reverses", () => {
+  // 测试 17：日志按 seq 确定性排序
+  it("日志条目按 seq 排序，回滚时反向处理", () => {
     const pkg = seedPackage();
     const src1 = writeSource("skills/a/SKILL.md", "A");
     const src2 = writeSource("skills/b/SKILL.md", "B");
@@ -420,16 +420,16 @@ describe("InstallEngine", () => {
 
     const journal = installRepo.getJournalEntries(result.installId);
     const applyEntries = journal.filter((j) => j.action !== "rollback");
-    // seq should be 1, 2 in insertion order
+    // seq 应按插入顺序为 1、2。
     expect(applyEntries[0]!.seq).toBe(1);
     expect(applyEntries[1]!.seq).toBe(2);
-    // Verify unique constraint: same install, different seq
+    // 验证唯一约束：同一安装，不同 seq。
     expect(applyEntries[0]!.seq).not.toBe(applyEntries[1]!.seq);
   });
 
-  // Test 18: Upgrade path — 009 -> 010 backfills seq
-  it("010 migration backfills seq on existing journal rows", () => {
-    // Create DB at 009 (without 010)
+  // 测试 18：升级路径——009 -> 010 回填 seq
+  it("010 迁移为现有日志行回填 seq", () => {
+    // 创建停留在 009（不含 010）的数据库。
     const upgradeDb = createDb();
     migrate(upgradeDb, [
       coreSchema, bindingsSessionsSchema, eventsSchema, snapshotsSchema,
@@ -437,28 +437,28 @@ describe("InstallEngine", () => {
       packagesSchema, installJournalSchema,
     ]);
 
-    // Seed data at 009 level (no seq column yet)
+    // 在 009 层级填充数据（尚无 seq 列）。
     upgradeDb.prepare("INSERT INTO packages (id, name, version, source_kind, source_ref, manifest_hash) VALUES (?, ?, ?, ?, ?, ?)").run("p1", "pkg", "1.0.0", "local_path", "/p", "h");
     upgradeDb.prepare("INSERT INTO package_installs (id, package_id, target_root, scope) VALUES (?, ?, ?, ?)").run("i1", "p1", "/repo", "project_shared");
     upgradeDb.prepare("INSERT INTO install_journal (id, install_id, action, export_type, classification, target_path) VALUES (?, ?, ?, ?, ?, ?)").run("j1", "i1", "copy", "skill", "safe_projection", "/t1");
     upgradeDb.prepare("INSERT INTO install_journal (id, install_id, action, export_type, classification, target_path) VALUES (?, ?, ?, ?, ?, ?)").run("j2", "i1", "copy", "skill", "safe_projection", "/t2");
     upgradeDb.prepare("INSERT INTO install_journal (id, install_id, action, export_type, classification, target_path) VALUES (?, ?, ?, ?, ?, ?)").run("j3", "i1", "merge_block", "guidance", "managed_merge", "/t3");
 
-    // Apply 010
+    // 应用 010。
     migrate(upgradeDb, [
       coreSchema, bindingsSessionsSchema, eventsSchema, snapshotsSchema,
       checkpointsSchema, resumeMetadataSchema, nodeSpecFieldsSchema,
       packagesSchema, installJournalSchema, journalSeqSchema,
     ]);
 
-    // Verify seq backfilled
+    // 验证 seq 已回填。
     const rows = upgradeDb.prepare("SELECT id, seq FROM install_journal WHERE install_id = ? ORDER BY seq").all("i1") as Array<{ id: string; seq: number }>;
     expect(rows).toHaveLength(3);
     expect(rows[0]!.seq).toBe(1);
     expect(rows[1]!.seq).toBe(2);
     expect(rows[2]!.seq).toBe(3);
 
-    // Verify unique constraint
+    // 验证唯一约束。
     expect(() => {
       upgradeDb.prepare("INSERT INTO install_journal (id, install_id, seq, action, export_type, classification, target_path) VALUES (?, ?, ?, ?, ?, ?, ?)").run("j4", "i1", 1, "copy", "skill", "safe_projection", "/t4");
     }).toThrow(/UNIQUE/);
@@ -466,8 +466,8 @@ describe("InstallEngine", () => {
     upgradeDb.close();
   });
 
-  // Test 19: Journal write failure undoes file mutation (R2-H3)
-  it("journal write failure undoes file mutation for that entry", () => {
+  // 测试 19：日志写入失败撤销文件修改（R2-H3）
+  it("日志写入失败会撤销对应条目的文件修改", () => {
     const pkg = seedPackage();
     const sourcePath = writeSource("skills/foo/SKILL.md", "New content");
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
@@ -475,7 +475,7 @@ describe("InstallEngine", () => {
     const entry = makeEntry({ targetPath, sourcePath });
     const engine = new InstallEngine(installRepo, realFs(tmpDir));
 
-    // Spy: first call to createJournalEntry throws
+    // 监视：首次调用 createJournalEntry 时抛错。
     vi.spyOn(installRepo, "createJournalEntry").mockImplementationOnce(() => {
       throw new Error("journal write failed");
     });
@@ -484,10 +484,10 @@ describe("InstallEngine", () => {
       engine.apply(makePolicy([entry]), makePlan([entry]), pkg.id, repoRoot);
     }).toThrow("journal write failed");
 
-    // Target file should NOT exist (new file case: undo deletes it)
+    // 目标文件不应存在（新文件场景：撤销会将其删除）。
     expect(fs.existsSync(targetPath)).toBe(false);
 
-    // Journal should have 0 applied entries
+    // 日志应有 0 条 applied 记录。
     const installs = installRepo.listInstalls(pkg.id);
     expect(installs).toHaveLength(1);
     expect(installs[0]!.status).toBe("failed");

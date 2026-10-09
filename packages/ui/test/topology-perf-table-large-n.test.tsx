@@ -1,45 +1,33 @@
-// V0.3.1 bug-fix slice topology-perf — large-N smoke fixture.
+// V0.3.1 缺陷修复 slice topology-perf——大 N 冒烟 fixture。
 //
-// Production VM walk 2026-05-11 reported a scale-dependent page hang
-// on /topology Table view (~13+ seats across multiple rigs hangs
-// Chrome; smaller topologies do not reproduce). This file is the
-// synthetic-fixture smoke gate: render TopologyTableView with N=20
-// seats across 4 rigs and assert the render path stays bounded.
+// 2026-05-11 的生产 VM 巡检报告 /topology 表格视图存在随规模增长的页面挂起：跨多个工作组
+// 约 13 个以上席位时 Chrome 挂起，较小拓扑无法复现。本文件是合成 fixture 冒烟门禁：
+// 使用跨 4 个工作组的 N=20 个席位渲染 TopologyTableView，并断言渲染路径保持有界。
 //
-// What this test asserts (and what it does NOT — be explicit):
+// 本测试断言的内容，以及明确不作断言的内容：
 //
-//   DOES assert:
-//     - Mounting N=20 rows across 4 rigs issues a BOUNDED, deterministic
-//       fetch pattern: exactly one /api/rigs/summary + exactly one
-//       /api/rigs/rig-N/nodes per rig (each rig once), with no duplicate
-//       and no unknown paths. Re-querying inventory per row / per render
-//       is the over-fetch class behind the scale hang; this catches it
-//       deterministically. (Slice 52: replaced a flaky `elapsedMs < 2000`
-//       assertion that measured machine load, not the code, and
-//       false-failed under fleet contention.)
-//     - DOM cell cardinality is exactly N per cell kind (StatusCell,
-//       ContextCell, TokenCell) — i.e., no row double-mounts.
-//     - Re-rendering the parent with stable props leaves the table's
-//       testid skeleton stable (smoke for React keying + reconciliation;
-//       NOT a memoization proof).
+//   会断言：
+//     - 跨 4 个工作组挂载 N=20 行时，发出有界且确定的 fetch 模式：恰好一次
+//       /api/rigs/summary，并为每个工作组恰好调用一次 /api/rigs/rig-N/nodes；无重复，
+//       无未知路径。逐行/逐渲染重复查询清单是规模挂起背后的过度获取类别，本测试可确定性捕获。
+//       Slice 52 已替换不稳定的 `elapsedMs < 2000` 断言；它测量的是机器负载而非代码，
+//       在全局争用下会误报失败。
+//     - 每种 DOM 单元格（StatusCell、ContextCell、TokenCell）的数量恰好为 N，即没有重复挂载行。
+//     - 使用稳定属性重新渲染父级后，表格 testid 骨架保持稳定；这是 React key 与协调的冒烟检查，
+//       不是 memoization 证明。
 //
-//   Does NOT assert:
-//     - Any wall-clock / render-time bound. happy-dom timing is a function
-//       of machine load, not of the code path, so a time threshold proves
-//       nothing under contention (that was this file's original defect).
-//     - Chrome painting/compositing perf at scale (happy-dom doesn't
-//       paint or composite — only Chrome can tell us about the hang).
-//     - That the React.memo wrappers on the cell components actually
-//       skip re-renders. (This test cannot discriminate the memo'd
-//       vs un-memo'd build — it would pass either way.)
-//     - That the Table hang root cause is fixed.
+//   不断言：
+//     - 任何墙上时钟/渲染耗时上限。happy-dom 耗时取决于机器负载而非代码路径，因此争用时
+//       时间阈值无法证明问题，这也是本文件原先的缺陷。
+//     - Chrome 在大规模下的绘制/合成性能。happy-dom 不做绘制或合成，只有 Chrome 能判断挂起。
+//     - 单元格组件的 React.memo 包装器确实跳过重渲染。本测试无法区分带 memo 与不带 memo 的
+//       构建，两者都会通过。
+//     - 表格挂起的根因已修复。
 //
-// Limitations:
-//   - happy-dom does not implement React.Profiler render-phase tracking
-//     in a way that lets a test discriminate a memo'd subtree from a
-//     non-memo'd one without exporting internal cell components +
-//     instrumenting them. Per the slice's "narrow + honest" charter we
-//     keep the cell components un-exported and the test scope honest.
+// 局限：
+//   - happy-dom 没有以可让测试区分 memo 子树与非 memo 子树的方式实现 React.Profiler
+//     渲染阶段跟踪，除非导出并埋点内部单元格组件。遵循本 slice“范围窄且如实”的约定，
+//     我们不导出单元格组件，并如实限定测试范围。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, waitFor } from "@testing-library/react";
@@ -59,9 +47,8 @@ import { TopologyTableView } from "../src/components/topology/TopologyTableView.
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
 
-// N=20 seats across 4 rigs = production-scale fixture per the bug
-// report. 5 seats per rig matches a typical mid-size rig (orch HA
-// pair + 3 specialized seats).
+// 按缺陷报告，跨 4 个工作组的 N=20 个席位构成生产规模 fixture。每个工作组 5 个席位，
+// 对应典型中型工作组：一对 orch HA 加 3 个专用席位。
 const RIG_COUNT = 4;
 const SEATS_PER_RIG = 5;
 const TOTAL_SEATS = RIG_COUNT * SEATS_PER_RIG;
@@ -137,11 +124,9 @@ describe("TopologyTableView large-N smoke (bug-fix slice topology-perf)", () => 
       expect(rows.length).toBe(TOTAL_SEATS);
     });
 
-    // Slice 52: replaces a flaky wall-clock threshold (elapsedMs < 2000, which
-    // measured machine load and false-failed under fleet contention) with the
-    // DETERMINISTIC invariant the scale hang actually violates — an over-fetch
-    // of inventory. TopologyTableView demand-loads each rig's nodes exactly
-    // once (useQueries keyed per rig) on top of the single rig-roster summary.
+    // Slice 52：用规模挂起真正违反的确定性不变量——清单过度获取——替换不稳定的墙上时钟阈值
+    //（elapsedMs < 2000；它测量机器负载，在全局争用下会误报失败）。除单次工作组名册摘要外，
+    // TopologyTableView 按需且恰好一次加载每个工作组的节点（useQueries 以工作组为键）。
     const urls = mockFetch.mock.calls.map(([u]) => String(u));
     const NODES_RE = /\/api\/rigs\/rig-(\d+)\/nodes/;
     const summaryCalls = urls.filter((u) => u.includes("/api/rigs/summary"));
@@ -150,20 +135,18 @@ describe("TopologyTableView large-N smoke (bug-fix slice topology-perf)", () => 
       (u) => !u.includes("/api/rigs/summary") && !NODES_RE.test(u),
     );
 
-    // Exactly one rig-roster summary.
+    // 恰好一次工作组名册摘要请求。
     expect(summaryCalls).toHaveLength(1);
-    // One /nodes fetch per rig, each rig fetched exactly once. The Set-size
-    // check is load-bearing independently of the count: a duplicated inventory
-    // query for one rig that drops another (e.g. [0,1,1,2]) keeps nodeCalls at
-    // length 4 but collapses the Set to 3 — RED on this line, not vacuously
-    // green. (Falsification only covers the axis it perturbs — assert both.)
+    // 每个工作组一次 /nodes 获取，且恰好获取一次。Set 大小检查独立于计数，属于承重断言：
+    // 若重复查询一个工作组而漏掉另一个（如 [0,1,1,2]），nodeCalls 长度仍为 4，但 Set 会缩为
+    // 3，本行应亮红而不能空洞通过。反证只覆盖它扰动的轴，因此两者都要断言。
     const rigIdxSet = new Set(nodeCalls.map((u) => u.match(NODES_RE)![1]));
     expect(nodeCalls).toHaveLength(RIG_COUNT);
     expect(rigIdxSet.size).toBe(RIG_COUNT);
-    // No fetches to unexpected paths.
+    // 不获取任何意外路径。
     expect(unknownCalls).toHaveLength(0);
-    // Total fetch budget is exactly five: 1 summary + 4 rig inventories. A
-    // straight duplicate (any rig fetched twice) makes this and nodeCalls RED.
+    // fetch 总预算恰好为 5：1 次摘要 + 4 份工作组清单。任一工作组重复获取都会让此断言和
+    // nodeCalls 断言亮红。
     expect(urls).toHaveLength(1 + RIG_COUNT);
   });
 
@@ -188,10 +171,8 @@ describe("TopologyTableView large-N smoke (bug-fix slice topology-perf)", () => 
   });
 
   it("re-rendering the parent with stable props leaves the table testid skeleton stable", async () => {
-    // Smoke for React keying + reconciliation (NOT a memo proof — see
-    // file header). The assertion catches "rerender mints fresh testids"
-    // or "rerender unmounts rows", which would be a different class of
-    // bug than the memo wins this slice is targeting.
+    // React key 与协调的冒烟检查，不是 memo 证明，见文件头。此断言捕获“重渲染产生新 testid”
+    // 或“重渲染卸载行”；它们与本 slice 目标中的 memo 收益属于不同缺陷类别。
     const { container, rerender } = withQueryClient(<TopologyTableView />);
     await waitFor(() => {
       const rows = container.querySelectorAll("[data-testid^='topology-table-row-']");

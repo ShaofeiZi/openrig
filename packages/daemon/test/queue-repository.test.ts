@@ -32,8 +32,8 @@ describe("QueueRepository", () => {
     migrate(db, [coreSchema, eventsSchema, queueItemsSchema, queueTransitionsSchema, outboxEntriesSchema]);
     bus = new EventBus(db);
     repo = new QueueRepository(db, bus);
-    // W1 MF2: a nudge-intended terminal handoff now requires an attached wake-intent
-    // store (production always wires one at startup) — mirror that in the harness.
+    // W1 MF2：旨在 nudge 的 terminal handoff 现在要求已接入 wake-intent store（生产环境总会在
+    // 启动时接入）——harness 中保持一致。
     repo.attachOutbox(new OutboxHandler(db));
     captured = [];
     bus.subscribe((e) => captured.push(e));
@@ -41,7 +41,7 @@ describe("QueueRepository", () => {
 
   afterEach(() => db.close());
 
-  it("create stamps qitem_id + transition + queue.created event", async () => {
+  it("create 写入 qitem_id、transition 与 queue.created event", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig-a",
       destinationSession: "bob@rig-b",
@@ -56,46 +56,45 @@ describe("QueueRepository", () => {
     expect(transitions[0]!.state).toBe("pending");
   });
 
-  // 0.5.1-54 DR-1 — surface create-path failed-nudge strands. last_nudge_result is written but never
-  // queried, so a create whose nudge FAILED (`failed:<msg>`) is invisible (the sender believes delivery
-  // succeeded; the destination was never woken). findUndelivered surfaces exactly that class:
-  // state='pending' AND last_nudge_result LIKE 'failed:%'. V1-ONLY, no false-positive mode — a delivered
-  // row and a never-attempted (NULL) cold-park are both excluded; the never-attempted class stays deferred
-  // behind a forward create-time intent bit (FP-dominated). DR-1 only READS (no retry, no unwind).
-  it("DR-1 findUndelivered: surfaces pending failed:% strands, excludes delivered + never-attempted", async () => {
+  // 0.5.1-54 DR-1——呈现 create 路径上 failed-nudge 的悬挂项。last_nudge_result 被写入却从不查询，
+  // 因此 nudge 失败（`failed:<msg>`）的 create 不可见（sender 以为投递成功，destination 却从未被
+  // 唤醒）。findUndelivered 准确呈现该类别：state='pending' 且 last_nudge_result LIKE 'failed:%'。
+  // 仅限 V1、无 false positive 模式——delivered row 与从未尝试（NULL）的 cold park 都会排除；
+  // never-attempted 类别继续推迟到未来的 create-time intent bit（FP 主导）。DR-1 只读取
+  //（不重试、不回滚）。
+  it("DR-1 findUndelivered：呈现 pending failed:% 悬挂项，排除 delivered 与 never-attempted", async () => {
     const failed = await repo.create({ sourceSession: "a@rig", destinationSession: "b@rig", body: "failed nudge" });
     repo.recordNudgeAttempt(failed.qitemId, "failed:Session 'b@rig' not found");
     const delivered = await repo.create({ sourceSession: "a@rig", destinationSession: "b@rig", body: "delivered" });
     repo.recordNudgeAttempt(delivered.qitemId, "verified");
-    // never-attempted: this harness has no transport → maybeNudge no-ops → last_nudge_result stays NULL.
+    // never-attempted：此 harness 没有 transport → maybeNudge no-op → last_nudge_result 保持 NULL。
     const neverAttempted = await repo.create({ sourceSession: "a@rig", destinationSession: "b@rig", body: "cold park" });
     const ids = repo.findUndelivered().map((s) => s.qitemId);
-    expect(ids, "(a) the failed-nudge strand is surfaced").toContain(failed.qitemId);
-    expect(ids, "(b) V1-only: a delivered row is NOT surfaced").not.toContain(delivered.qitemId);
-    expect(ids, "(b) never-attempted (NULL) cold-park is NOT surfaced").not.toContain(neverAttempted.qitemId);
-    // (c) the nudge-does-NOT-unwind invariant: DR-1 only READS — surfacing a strand must not mutate it.
+    expect(ids, "(a) 呈现 failed-nudge 悬挂项").toContain(failed.qitemId);
+    expect(ids, "(b) 仅限 V1：不呈现 delivered row").not.toContain(delivered.qitemId);
+    expect(ids, "(b) 不呈现 never-attempted（NULL）cold park").not.toContain(neverAttempted.qitemId);
+    // (c) nudge 不回滚不变量：DR-1 只读取——呈现悬挂项不得改变它。
     const after = repo.getById(failed.qitemId)!;
-    expect(after.state, "(c) surfacing does not unwind/close the durable row").toBe("pending");
-    expect(after.lastNudgeResult, "(c) the failure record is untouched by the read").toContain("failed:");
+    expect(after.state, "(c) 呈现不会回滚/关闭持久 row").toBe("pending");
+    expect(after.lastNudgeResult, "(c) 读取不改变 failure record").toContain("failed:");
   });
 
-  // 0.5.1-54 DR-1 classifier fold (PM ruling) — label a strand transient vs permanent-topology so the
-  // count is actionable. permanent-topology = the destination is not resolvable on THIS daemon ("not
-  // found"), route to the addressing family, NOT retry. transient = a live seat refused this attempt.
-  it("DR-1 classifyNudgeFailure: three POSITIVE classes + null; an unrecognized failure is UNKNOWN, never a silent transient", () => {
-    expect(classifyNudgeFailure("failed:Session 'operator-agent@kernel' not found. Check available sessions"), "not-found = unresolvable on this daemon").toBe("permanent-topology");
-    expect(classifyNudgeFailure("failed:Refused: 'orch-advisor@v-openrig-build' is at an interactive prompt"), "a live seat refusing this attempt is transient").toBe("transient");
-    expect(classifyNudgeFailure("failed:timeout after 5000ms"), "a timeout to a resolvable seat is transient").toBe("transient");
-    // The ship-block assertion (PM ruling): an unrecognized failure text is NEITHER known class. It must
-    // NOT collapse into transient (that would assert a claim the text does not support). If someone later
-    // re-defaults the unmatched case to a known class, THIS fires.
-    expect(classifyNudgeFailure("failed:ECONNRESET writing to socket"), "an unrecognized failure is unknown, not a silent transient").toBe("unknown");
-    expect(classifyNudgeFailure("failed:"), "a bare failure with no detail is unknown, not transient").toBe("unknown");
-    expect(classifyNudgeFailure("verified"), "a delivered result is not a failure").toBeNull();
-    expect(classifyNudgeFailure(null), "no nudge record is not a failure").toBeNull();
+  // 0.5.1-54 DR-1 classifier fold（PM 裁定）——将悬挂项标为 transient 或 permanent-topology，使
+  // 计数可采取行动。permanent-topology = destination 在此 daemon 上不可解析（"not found"），应路由
+  // 到 addressing family，而非重试。transient = live seat 拒绝本次尝试。
+  it("DR-1 classifyNudgeFailure：三个正向类别 + null；无法识别的失败为 UNKNOWN，绝不静默归为 transient", () => {
+    expect(classifyNudgeFailure("failed:Session 'operator-agent@kernel' not found. Check available sessions"), "not-found = 无法在此 daemon 上解析").toBe("permanent-topology");
+    expect(classifyNudgeFailure("failed:Refused: 'orch-advisor@v-openrig-build' is at an interactive prompt"), "live seat 拒绝本次尝试属于 transient").toBe("transient");
+    expect(classifyNudgeFailure("failed:timeout after 5000ms"), "可解析 seat 的 timeout 属于 transient").toBe("transient");
+    // ship-block 断言（PM 裁定）：无法识别的失败文本不属于任何已知类别。不得折叠为 transient
+    //（那会声称文本并不支持的结论）。若之后有人再次把未匹配用例默认为已知类别，此处会失败。
+    expect(classifyNudgeFailure("failed:ECONNRESET writing to socket"), "无法识别的失败为 unknown，而非静默 transient").toBe("unknown");
+    expect(classifyNudgeFailure("failed:"), "无详情的裸 failure 为 unknown，而非 transient").toBe("unknown");
+    expect(classifyNudgeFailure("verified"), "已投递结果不是 failure").toBeNull();
+    expect(classifyNudgeFailure(null), "无 nudge record 不是 failure").toBeNull();
   });
 
-  it("create rejects unknown rig when validateRig denies", async () => {
+  it("validateRig 拒绝时，create 拒绝未知 rig", async () => {
     const strictRepo = new QueueRepository(db, bus, {
       validateRig: (s) => s.endsWith("@known-rig"),
     });
@@ -105,10 +104,10 @@ describe("QueueRepository", () => {
         destinationSession: "bob@phantom-rig",
         body: "x",
       })
-    ).rejects.toThrow(/unknown rig/);
+    ).rejects.toThrow(/未知 rig/);
   });
 
-  it("claim transitions pending → in-progress and computes closure_required_at from tier", async () => {
+  it("claim 将 pending 转为 in-progress，并依据 tier 计算 closure_required_at", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -122,7 +121,7 @@ describe("QueueRepository", () => {
     expect(captured.some((e) => e.type === "queue.claimed")).toBe(true);
   });
 
-  it("claim rejects mismatched destination", async () => {
+  it("claim 拒绝不匹配的 destination", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -133,7 +132,7 @@ describe("QueueRepository", () => {
     );
   });
 
-  it("R2: update emits queue.updated event with fromState + toState + closure metadata", async () => {
+  it("R2：update 发出包含 fromState、toState 与 closure metadata 的 queue.updated event", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -165,7 +164,7 @@ describe("QueueRepository", () => {
     expect(evt.actorSession).toBe("bob@rig");
   });
 
-  it("R2: update emits queue.updated for blocked transition (fromState=pending, toState=blocked)", async () => {
+  it("R2：update 为 blocked transition 发出 queue.updated（fromState=pending、toState=blocked）", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -184,26 +183,26 @@ describe("QueueRepository", () => {
     expect(evt!.toState).toBe("blocked");
   });
 
-  // 0.5.1-53 Atom 1b(i) — clear-on-exit. ROOT CAUSE: the update SET writes
-  // `blocked_on = COALESCE(?, blocked_on)`, so exiting `blocked` (input.blockedOn=null)
-  // PRESERVES the old blocker. A non-blocked row must NEVER carry a blocker — a stale
-  // blocked_on is a dead-blocker strand (nothing audits it; the desk sat on one for hours).
-  it("Atom 1b(i): exiting blocked CLEARS blocked_on (no stale dead-blocker)", async () => {
+  // 0.5.1-53 Atom 1b(i)——退出时清除。根因：update SET 写入
+  // `blocked_on = COALESCE(?, blocked_on)`，因此退出 `blocked`（input.blockedOn=null）会保留旧 blocker。
+  // 非 blocked row 绝不能携带 blocker——陈旧 blocked_on 是 dead-blocker 悬挂项（没有任何内容审计它；
+  // desk 曾在这种 blocker 上停滞数小时）。
+  it("Atom 1b(i)：退出 blocked 时清除 blocked_on（无陈旧 dead-blocker）", async () => {
     const blocker = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "blocker" });
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "work" });
-    // Park it on the blocker qitem.
+    // 将它停放在 blocker qitem 上。
     repo.update({ qitemId: item.qitemId, actorSession: "bob@rig", state: "blocked", blockedOn: blocker.qitemId });
     expect(repo.getById(item.qitemId)!.blockedOn).toBe(blocker.qitemId);
-    // Exit blocked (unpark). RED at base: blocked_on still reads the blocker (COALESCE preserved it).
+    // 退出 blocked（unpark）。基线为 RED：blocked_on 仍读到 blocker（COALESCE 保留了它）。
     repo.update({ qitemId: item.qitemId, actorSession: "bob@rig", state: "in-progress" });
-    expect(repo.getById(item.qitemId)!.blockedOn, "a non-blocked row must not carry a blocker").toBeNull();
+    expect(repo.getById(item.qitemId)!.blockedOn, "非 blocked row 不得携带 blocker").toBeNull();
   });
 
-  // 0.5.1-53 Atom 1b(ii) — validate-at-park. A park on a QITEM-reference blocker must name a real,
-  // LIVE blocker; a nonexistent or terminal blocker is a dead-blocker park that can never self-clear
-  // (the exact 21-22 day strands). Scoped to qitem-refs ("qitem-…"): human-seat blockers (member@rig)
-  // and bare gate-names ("external-gate", handled by Atom 1a) are NOT validated here.
-  it("Atom 1b(ii): parking on a NONEXISTENT qitem blocker is refused loud", async () => {
+  // 0.5.1-53 Atom 1b(ii)——停放时校验。停放在 QITEM 引用 blocker 上时必须点名真实、live 的 blocker；
+  // 不存在或 terminal blocker 是永远无法自行清除的 dead-blocker 停放项（正是那些 21-22 天悬挂项）。
+  // 仅适用于 qitem ref（"qitem-…"）：这里不校验 human-seat blocker（member@rig）或裸 gate name
+  //（"external-gate"，由 Atom 1a 处理）。
+  it("Atom 1b(ii)：停放在不存在的 qitem blocker 上会被显著拒绝", async () => {
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "work" });
     try {
       repo.update({ qitemId: item.qitemId, actorSession: "bob@rig", state: "blocked", blockedOn: "qitem-19990101000000-deadbeef" });
@@ -214,7 +213,7 @@ describe("QueueRepository", () => {
     }
   });
 
-  it("Atom 1b(ii): parking on a TERMINAL (done) qitem blocker is refused loud", async () => {
+  it("Atom 1b(ii)：停放在 terminal（done）qitem blocker 上会被显著拒绝", async () => {
     const blocker = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "blocker" });
     repo.claim({ qitemId: blocker.qitemId, destinationSession: "bob@rig" });
     repo.update({ qitemId: blocker.qitemId, actorSession: "bob@rig", state: "done", closureReason: "no-follow-on" });
@@ -228,37 +227,37 @@ describe("QueueRepository", () => {
     }
   });
 
-  // 0.5.1-53 Atom 1b(iii) — propagate-completion. blocked_on PROMISES "A waits until B completes";
-  // that promise never fired (the desk sat on a done blocker for hours). When B reaches a terminal
-  // state, the rows blocked ON it must auto-unpark — the semantic blocked_on always owed.
-  it("Atom 1b(iii): terminalizing a blocker auto-unparks the rows blocked on it", async () => {
+  // 0.5.1-53 Atom 1b(iii)——传播完成。blocked_on 承诺“A 等待 B 完成”；该承诺曾从未触发
+  //（desk 在已 done blocker 上停滞数小时）。当 B 到达 terminal state 时，阻塞于它的 row 必须
+  // 自动 unpark——这是 blocked_on 语义始终应履行的义务。
+  it("Atom 1b(iii)：blocker 进入 terminal 时自动 unpark 阻塞于它的 row", async () => {
     const blocker = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "blocker" });
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "work" });
     repo.update({ qitemId: item.qitemId, actorSession: "bob@rig", state: "blocked", blockedOn: blocker.qitemId });
     expect(repo.getById(item.qitemId)!.state).toBe("blocked");
-    // Complete the blocker.
+    // 完成 blocker。
     repo.claim({ qitemId: blocker.qitemId, destinationSession: "bob@rig" });
     repo.update({ qitemId: blocker.qitemId, actorSession: "bob@rig", state: "done", closureReason: "no-follow-on" });
-    // RED at 1b(ii): the blocked row stays blocked forever (completion never propagated).
+    // 1b(ii) 时为 RED：blocked row 永久保持 blocked（completion 从未传播）。
     const after = repo.getById(item.qitemId)!;
-    expect(after.state, "a row blocked on a now-terminal blocker must auto-unpark").toBe("pending");
-    expect(after.blockedOn, "auto-unpark clears the (now-resolved) blocker").toBeNull();
+    expect(after.state, "阻塞于现已 terminal blocker 的 row 必须自动 unpark").toBe("pending");
+    expect(after.blockedOn, "auto-unpark 清除现已解决的 blocker").toBeNull();
   });
 
-  // 0.5.1-53 Atom 1a — typed non-qitem blocker contract. A park gated on a fold/auth/external
-  // condition (not a qitem, not a human seat) is a first-class blocker: `fold:<what>` etc. It is
-  // compact-visible (blocked_on is carried in the compact projection), settable at the PARK moment,
-  // and the ruling detail rides a transition. A well-formed typed blocker is ACCEPTED; a malformed
-  // one (a bare prefix with no gate body) is refused loud so a typo cannot masquerade as a gate.
-  it("Atom 1a: a well-formed typed non-qitem blocker (fold:) is accepted and legible", async () => {
+  // 0.5.1-53 Atom 1a——有类型的非 qitem blocker 契约。由 fold/auth/external 条件约束的停放项
+  //（既非 qitem，也非 human seat）是一等 blocker，例如 `fold:<what>`。它在 compact 视图中可见
+  //（blocked_on 会进入 compact projection），可在 PARK 时刻设置，且裁定详情随 transition 携带。
+  // 接受格式正确的 typed blocker；显著拒绝格式错误者（只有前缀、没有 gate body），避免拼写错误
+  // 伪装成 gate。
+  it("Atom 1a：接受格式正确且清晰可读的 typed non-qitem blocker（fold:）", async () => {
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "gated work" });
     repo.update({ qitemId: item.qitemId, actorSession: "bob@rig", state: "blocked", blockedOn: "fold:one-home+attestation" });
     const row = repo.getById(item.qitemId)!;
     expect(row.state).toBe("blocked");
-    expect(row.blockedOn, "the typed gate is legible on the row (compact-carried)").toBe("fold:one-home+attestation");
+    expect(row.blockedOn, "typed gate 在 row 上清晰可读（由 compact 携带）").toBe("fold:one-home+attestation");
   });
 
-  it("Atom 1a: a malformed typed blocker (bare prefix, empty body) is refused loud", async () => {
+  it("Atom 1a：格式错误的 typed blocker（裸前缀、空 body）会被显著拒绝", async () => {
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "gated work" });
     try {
       repo.update({ qitemId: item.qitemId, actorSession: "bob@rig", state: "blocked", blockedOn: "fold:" });
@@ -269,12 +268,12 @@ describe("QueueRepository", () => {
     }
   });
 
-  // 0.5.1-53 Atom 2a — supersession-cancel is an ADMITTED FORM. A row corrected by cancel-and-replace
-  // must record that it was SUPERSEDED (reason=superseded + target=successor), not read as abandoned.
-  // Today the closure-coherence whitelist admits reason/target only on done / park-record / handoff-close,
-  // so state=canceled + a reason is refused (closure_fields_not_admitted) — which is exactly why a
-  // superseded row is indistinguishable from an abandoned one (both closureReason=null).
-  it("Atom 2a: a supersession-cancel (canceled + reason=superseded + target) is admitted and recorded", async () => {
+  // 0.5.1-53 Atom 2a——supersession-cancel 是允许形式。通过 cancel-and-replace 修正的 row 必须记录
+  // 它已被 SUPERSEDED（reason=superseded + target=successor），而不能看起来像 abandoned。目前
+  // closure-coherence allowlist 只允许 done / park-record / handoff-close 带 reason/target，所以
+  // state=canceled + reason 会被拒绝（closure_fields_not_admitted）——这正是 superseded row 与
+  // abandoned row 无法区分的原因（二者 closureReason 均为 null）。
+  it("Atom 2a：允许并记录 supersession-cancel（canceled + reason=superseded + target）", async () => {
     const successor = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "successor" });
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "original" });
     repo.claim({ qitemId: item.qitemId, destinationSession: "bob@rig" });
@@ -284,18 +283,18 @@ describe("QueueRepository", () => {
     });
     const row = repo.getById(item.qitemId)!;
     expect(row.state).toBe("canceled");
-    expect(row.closureReason, "a superseded row records it (not null = distinguishable from abandoned)").toBe("superseded");
+    expect(row.closureReason, "superseded row 会记录此原因（非 null，可与 abandoned 区分）").toBe("superseded");
     expect(row.closureTarget).toBe(successor.qitemId);
   });
 
-  it("Atom 2a: a plain cancel (no reason) stays abandoned — closureReason null", async () => {
+  it("Atom 2a：普通 cancel（无 reason）保持 abandoned——closureReason 为 null", async () => {
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "abandon me" });
     repo.claim({ qitemId: item.qitemId, destinationSession: "bob@rig" });
     repo.update({ qitemId: item.qitemId, actorSession: "bob@rig", state: "canceled" });
-    expect(repo.getById(item.qitemId)!.closureReason, "abandoned = no supersession reason").toBeNull();
+    expect(repo.getById(item.qitemId)!.closureReason, "abandoned = 无 supersession reason").toBeNull();
   });
 
-  it("Atom 2a: superseded WITHOUT a successor target is refused loud (no silent no-op)", async () => {
+  it("Atom 2a：superseded 但无 successor target 时被显著拒绝（不静默 no-op）", async () => {
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "orig" });
     repo.claim({ qitemId: item.qitemId, destinationSession: "bob@rig" });
     try {
@@ -305,28 +304,28 @@ describe("QueueRepository", () => {
       expect(err).toBeInstanceOf(QueueRepositoryError);
       expect((err as QueueRepositoryError).code).toBe("missing_closure_target");
     }
-    // the loud rejection must NOT have half-applied: the row stays as it was (in-progress), not canceled.
-    expect(repo.getById(item.qitemId)!.state, "a rejected close must not silently mutate the row").toBe("in-progress");
+    // 显著拒绝不得只应用一半：row 保持原状（in-progress），而非 canceled。
+    expect(repo.getById(item.qitemId)!.state, "被拒绝的 close 不得静默改变 row").toBe("in-progress");
   });
 
-  // 0.5.1-53 Atom 2b — the supersession back-link. A cancel-and-replace must NOT produce an unlinked
-  // orphan pair: the successor records handedOffFrom = the original, so a reader can traverse from the
-  // successor back to what it replaced (proof e). Combined with 2a's forward link (original.closureTarget
-  // = successor), a supersession is fully traversable in both directions and never reads as abandonment.
-  it("Atom 2b: a supersession successor records handedOffFrom = the original (both links present)", async () => {
+  // 0.5.1-53 Atom 2b——supersession 回链。cancel-and-replace 不得产生无关联 orphan pair：successor
+  // 记录 handedOffFrom = original，使 reader 可从 successor 回溯到被替换项（proof e）。结合 2a 的
+  // 前向 link（original.closureTarget = successor），supersession 可双向完整遍历，且绝不会显示为
+  // abandonment。
+  it("Atom 2b：supersession successor 记录 handedOffFrom = original（双向 link 均存在）", async () => {
     const original = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "original (metadata wrong)" });
     const successor = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "corrected", handedOffFrom: original.qitemId });
-    expect(successor.handedOffFrom, "successor -> original back-link").toBe(original.qitemId);
-    // supersede the original toward the successor (2a forward link).
+    expect(successor.handedOffFrom, "successor -> original 回链").toBe(original.qitemId);
+    // 将 original supersede 到 successor（2a 前向 link）。
     repo.claim({ qitemId: original.qitemId, destinationSession: "bob@rig" });
     repo.update({ qitemId: original.qitemId, actorSession: "bob@rig", state: "canceled", closureReason: "superseded", closureTarget: successor.qitemId });
     const orig = repo.getById(original.qitemId)!;
-    expect(orig.closureReason, "superseded, not abandoned").toBe("superseded");
-    expect(orig.closureTarget, "original -> successor forward link").toBe(successor.qitemId);
-    expect(repo.getById(successor.qitemId)!.handedOffFrom, "successor -> original back link").toBe(original.qitemId);
+    expect(orig.closureReason, "superseded，而非 abandoned").toBe("superseded");
+    expect(orig.closureTarget, "original -> successor 前向 link").toBe(successor.qitemId);
+    expect(repo.getById(successor.qitemId)!.handedOffFrom, "successor -> original 回链").toBe(original.qitemId);
   });
 
-  it("update state=done WITHOUT closure_reason rejected with missing_closure_reason", async () => {
+  it("update state=done 但无 closure_reason 时以 missing_closure_reason 拒绝", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -344,7 +343,7 @@ describe("QueueRepository", () => {
     }
   });
 
-  it("update accepts each of the 6 valid closure reasons", async () => {
+  it("update 接受 6 个有效 closure reason 中的每一个", async () => {
     for (const reason of CLOSURE_REASONS) {
       const item = await repo.create({
         sourceSession: "alice@rig",
@@ -365,7 +364,7 @@ describe("QueueRepository", () => {
     }
   });
 
-  it("handoff is transactional: closes source as handed-off + creates new qitem", async () => {
+  it("handoff 具有事务性：将 source 闭合为 handed-off 并创建新 qitem", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -389,7 +388,7 @@ describe("QueueRepository", () => {
     expect(captured.filter((e) => e.type === "queue.created")).toHaveLength(2); // create + handoff-create
   });
 
-  it("handoff refuses on already-terminal qitem", async () => {
+  it("handoff 拒绝已 terminal 的 qitem", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -411,7 +410,7 @@ describe("QueueRepository", () => {
     ).rejects.toThrow(/terminal/);
   });
 
-  it("transitions are append-only — every state change adds a row", async () => {
+  it("transition 仅追加——每次状态变化都会添加一行", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -436,7 +435,7 @@ describe("QueueRepository", () => {
     ]);
   });
 
-  it("findOverdue surfaces in-progress qitems past closure_required_at", async () => {
+  it("findOverdue 呈现超过 closure_required_at 的 in-progress qitem", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -444,19 +443,17 @@ describe("QueueRepository", () => {
       tier: "fast",
     });
     repo.claim({ qitemId: item.qitemId, destinationSession: "bob@rig" });
-    // Slice-15 contract: findOverdue takes an OPTIONS OBJECT (the shape the
-    // runtime caller routes/queue.ts uses) — the old positional timestamp is
-    // not a supported API (broad-suite-residue atom 1).
+    // Slice-15 契约：findOverdue 接受 OPTIONS OBJECT（runtime caller routes/queue.ts 使用的形态）——
+    // 旧位置 timestamp 不是受支持 API（broad-suite-residue atom 1）。
     const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     const overdue = repo.findOverdue({ now: future });
     expect(overdue.map((q) => q.qitemId)).toContain(item.qitemId);
-    // scoped/bounded discriminator: a rig scope that matches nothing returns
-    // empty, and limit bounds the result — the options are honored, not ignored
+    // scoped/bounded 判别：不匹配任何内容的 rig scope 返回空，limit 限制结果——options 会生效而非忽略。
     expect(repo.findOverdue({ now: future, rig: "no-such-rig" })).toEqual([]);
     expect(repo.findOverdue({ now: future, limit: 1 }).length).toBeLessThanOrEqual(1);
   });
 
-  it("routeToFallback emits qitem.fallback_routed and rewrites destination", async () => {
+  it("routeToFallback 发出 qitem.fallback_routed 并重写 destination", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -468,7 +465,7 @@ describe("QueueRepository", () => {
     expect(captured.some((e) => e.type === "qitem.fallback_routed")).toBe(true);
   });
 
-  it("list filters by destination + state", async () => {
+  it("list 按 destination 与 state 过滤", async () => {
     const a = await repo.create({ sourceSession: "x@r", destinationSession: "bob@r", body: "1" });
     await repo.create({ sourceSession: "x@r", destinationSession: "carol@r", body: "2" });
     await repo.create({ sourceSession: "x@r", destinationSession: "bob@r", body: "3" });
@@ -479,10 +476,10 @@ describe("QueueRepository", () => {
     expect(repo.list({ destinationSession: "bob@r", state: ["pending", "in-progress"] })).toHaveLength(2);
   });
 
-  // ---- PL-004 Phase A revision (R1) tests ----
+  // ---- PL-004 阶段 A revision（R1）测试 ----
 
-  describe("R1 default-nudge wiring", () => {
-    it("create nudges destination by default and persists last_nudge_attempt + last_nudge_result", async () => {
+  describe("R1 默认 nudge 接线", () => {
+    it("create 默认 nudge destination，并持久化 last_nudge_attempt 与 last_nudge_result", async () => {
       const sends: Array<{ session: string; text: string }> = [];
       const stubTransport = {
         send: async (sessionName: string, text: string) => {
@@ -504,7 +501,7 @@ describe("QueueRepository", () => {
       expect(fresh.lastNudgeResult).toBe("verified");
     });
 
-    it("(h) HG-5 baseline: the handoff nudge now carries a Sent: stamp + the source's gen suffix, and threads stampISO to send", async () => {
+    it("(h) HG-5 基线：handoff nudge 现在携带 Sent: 时间戳与 source gen suffix，并将 stampISO 传入 send", async () => {
       const sends: Array<{ session: string; text: string; opts?: { verify?: boolean; stampISO?: string } }> = [];
       const stubTransport = {
         send: async (session: string, text: string, opts?: { verify?: boolean; stampISO?: string }) => {
@@ -519,23 +516,23 @@ describe("QueueRepository", () => {
       await nudgingRepo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "ping" });
       expect(sends).toHaveLength(1);
       const { text, opts } = sends[0]!;
-      expect(text).toContain("\nSent: "); // now stamped (was absent — the deferred HG-5 change lands here)
-      expect(text).toContain(" · gen a1b2c3d4"); // the source seat's generation rides g's render
-      expect(opts?.stampISO).toBeDefined(); // threaded so the transport's delivered-latency flag works
+      expect(text).toContain("\nSent: "); // 现在带时间戳（此前缺失——延后的 HG-5 变更在此落地）。
+      expect(text).toContain(" · gen a1b2c3d4"); // source seat 的 generation 随 g 的渲染携带。
+      expect(opts?.stampISO).toBeDefined(); // 完成传递，使 transport 的 delivered-latency flag 生效。
     });
 
-    it("(h) absent resolver ⇒ the nudge stamps but OMITS the gen suffix (UNKNOWN, never forged)", async () => {
+    it("(h) 缺少 resolver ⇒ nudge 带时间戳但省略 gen suffix（UNKNOWN，绝不伪造）", async () => {
       const sends: string[] = [];
       const stubTransport = {
         send: async (_s: string, text: string) => { sends.push(text); return { ok: true, verified: true }; },
       };
-      const nudgingRepo = new QueueRepository(db, bus, { transport: stubTransport }); // no resolver wired
+      const nudgingRepo = new QueueRepository(db, bus, { transport: stubTransport }); // 未接入 resolver。
       await nudgingRepo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "ping" });
       expect(sends[0]).toContain("\nSent: ");
       expect(sends[0]).not.toContain(" · gen ");
     });
 
-    it("create with nudge:false does NOT call transport (cold-queue opt-out)", async () => {
+    it("create 使用 nudge:false 时不调用 transport（cold-queue opt-out）", async () => {
       const sends: Array<{ session: string; text: string }> = [];
       const stubTransport = {
         send: async (sessionName: string, text: string) => {
@@ -556,7 +553,7 @@ describe("QueueRepository", () => {
       expect(fresh.lastNudgeResult).toBeNull();
     });
 
-    it("nudge failure is recorded as failed:<reason>; create still succeeds", async () => {
+    it("nudge 失败记录为 failed:<reason>；create 仍成功", async () => {
       const stubTransport = {
         send: async () => ({ ok: false, error: "tmux pane not found" }),
       };
@@ -568,16 +565,14 @@ describe("QueueRepository", () => {
       });
       const fresh = nudgingRepo.getById(item.qitemId)!;
       expect(fresh.lastNudgeResult).toMatch(/^failed:/);
-      // Item itself created normally — nudge failures don't unwind the create.
+      // item 本身正常创建——nudge 失败不会回滚 create。
       expect(fresh.state).toBe("pending");
     });
 
-    // OPR.0.3.2.21.FR-4(c) — wording rename for the delivered-but-ack-expired
-    // case. Prior literal "sent-unverified" read as a partial-failure even
-    // when the underlying delivery was fine; "delivered-ack-pending" reads
-    // as the healthy-and-expected case (codex seats mid-task commonly miss
-    // the synchronous ack window).
-    it("ok-but-unverified nudge records lastNudgeResult as 'delivered-ack-pending' (was 'sent-unverified')", async () => {
+    // OPR.0.3.2.21.FR-4(c)——重命名已投递但 ack 过期用例的措辞。此前的 "sent-unverified" 即使
+    // 底层投递正常也像部分失败；"delivered-ack-pending" 表达健康且符合预期的情况（任务执行中的
+    // Codex seat 经常错过同步 ack 窗口）。
+    it("ok 但未验证的 nudge 将 lastNudgeResult 记录为 'delivered-ack-pending'（原为 'sent-unverified'）", async () => {
       const stubTransport = {
         send: async () => ({ ok: true, verified: false }),
       };
@@ -589,13 +584,11 @@ describe("QueueRepository", () => {
       });
       const fresh = nudgingRepo.getById(item.qitemId)!;
       expect(fresh.lastNudgeResult).toBe("delivered-ack-pending");
-      // Discriminator: the old wording must NOT appear anywhere on
-      // the freshly-read row (proves the literal was renamed end-to-end,
-      // not just shadowed).
+      // 判别条件：刚读取的 row 中任何位置都不得出现旧措辞（证明字面量已端到端重命名，而非仅遮蔽）。
       expect(fresh.lastNudgeResult).not.toBe("sent-unverified");
     });
 
-    it("handoff nudges new destination by default", async () => {
+    it("handoff 默认 nudge 新 destination", async () => {
       const sends: Array<{ session: string }> = [];
       const stubTransport = {
         send: async (sessionName: string) => {
@@ -604,12 +597,12 @@ describe("QueueRepository", () => {
         },
       };
       const nudgingRepo = new QueueRepository(db, bus, { transport: stubTransport });
-      nudgingRepo.attachOutbox(new OutboxHandler(db)); // W1 MF2: handoff needs a wake-intent store
+      nudgingRepo.attachOutbox(new OutboxHandler(db)); // W1 MF2：handoff 需要 wake-intent store。
       const original = await nudgingRepo.create({
         sourceSession: "alice@rig",
         destinationSession: "bob@rig",
         body: "x",
-        nudge: false, // suppress create-time nudge so we count only handoff
+        nudge: false, // 抑制 create-time nudge，只统计 handoff。
       });
       const result = await nudgingRepo.handoff({
         qitemId: original.qitemId,
@@ -622,20 +615,20 @@ describe("QueueRepository", () => {
       expect(fresh.lastNudgeResult).toBe("verified");
     });
 
-    it("attachTransport() works after construction (post-hoc wiring path)", async () => {
+    it("attachTransport() 可在构造后工作（事后接线路径）", async () => {
       const repoNoTransport = new QueueRepository(db, bus);
       const sends: Array<{ session: string }> = [];
       const stubTransport = {
         send: async (s: string) => { sends.push({ session: s }); return { ok: true, verified: true }; },
       };
-      // First create: no transport, no nudge
+      // 第一次 create：无 transport，无 nudge。
       await repoNoTransport.create({
         sourceSession: "alice@rig",
         destinationSession: "bob@rig",
         body: "before",
       });
       expect(sends).toHaveLength(0);
-      // Attach + create again
+      // attach 后再次 create。
       repoNoTransport.attachTransport(stubTransport);
       await repoNoTransport.create({
         sourceSession: "alice@rig",
@@ -647,7 +640,7 @@ describe("QueueRepository", () => {
   });
 
   describe("R1 handoff-and-complete", () => {
-    it("closes source as state=done with closure_reason=handed_off_to (terminal) and creates new qitem", async () => {
+    it("以 state=done、closure_reason=handed_off_to（terminal）关闭 source，并创建新 qitem", async () => {
       const original = await repo.create({
         sourceSession: "alice@rig",
         destinationSession: "bob@rig",
@@ -659,7 +652,7 @@ describe("QueueRepository", () => {
         toSession: "carol@rig",
         body: "carol's follow-on",
       });
-      expect(result.closed.state).toBe("done"); // not "handed-off"
+      expect(result.closed.state).toBe("done"); // 不是 "handed-off"。
       expect(result.closed.closureReason).toBe("handed_off_to");
       expect(result.closed.handedOffTo).toBe("carol@rig");
       expect(result.created.state).toBe("pending");
@@ -669,7 +662,7 @@ describe("QueueRepository", () => {
       expect(result.created.chainOfRecord).toEqual([original.qitemId]);
     });
 
-    it("refuses on already-terminal qitem", async () => {
+    it("拒绝已 terminal 的 qitem", async () => {
       const item = await repo.create({
         sourceSession: "alice@rig",
         destinationSession: "bob@rig",
@@ -691,7 +684,7 @@ describe("QueueRepository", () => {
       ).rejects.toThrow(/terminal/);
     });
 
-    it("respects validateRig (rejects unknown destination rig)", async () => {
+    it("遵循 validateRig（拒绝未知 destination rig）", async () => {
       const strictRepo = new QueueRepository(db, bus, {
         validateRig: (s) => s.endsWith("@known-rig"),
       });
@@ -706,12 +699,12 @@ describe("QueueRepository", () => {
           fromSession: "bob@known-rig",
           toSession: "carol@phantom-rig",
         })
-      ).rejects.toThrow(/unknown rig/);
+      ).rejects.toThrow(/未知 rig/);
     });
   });
 
   describe("R1 whoami", () => {
-    it("returns counts + recent active qitems for the destination session", async () => {
+    it("返回 destination session 的计数与最近 active qitem", async () => {
       const a = await repo.create({ sourceSession: "x@r", destinationSession: "bob@r", body: "1" });
       await repo.create({ sourceSession: "x@r", destinationSession: "bob@r", body: "2" });
       await repo.create({ sourceSession: "x@r", destinationSession: "carol@r", body: "3" });
@@ -723,7 +716,7 @@ describe("QueueRepository", () => {
       expect(whoami.asDestination.recent).toHaveLength(2);
     });
 
-    it("recent excludes terminal-state qitems", async () => {
+    it("recent 排除 terminal-state qitem", async () => {
       const a = await repo.create({ sourceSession: "x@r", destinationSession: "bob@r", body: "1" });
       repo.claim({ qitemId: a.qitemId, destinationSession: "bob@r" });
       repo.update({ qitemId: a.qitemId, actorSession: "bob@r", state: "done", closureReason: "no-follow-on" });
@@ -733,7 +726,7 @@ describe("QueueRepository", () => {
       expect(whoami.asDestination.recent).toHaveLength(0);
     });
 
-    it("asSource.total counts all source-side qitems regardless of state", async () => {
+    it("asSource.total 统计所有 source 侧 qitem，不受 state 影响", async () => {
       await repo.create({ sourceSession: "alice@r", destinationSession: "bob@r", body: "1" });
       await repo.create({ sourceSession: "alice@r", destinationSession: "carol@r", body: "2" });
       const item = await repo.create({ sourceSession: "alice@r", destinationSession: "dan@r", body: "3" });
@@ -745,21 +738,21 @@ describe("QueueRepository", () => {
   });
 });
 
-describe("QueueRepository summary column (OPR.0.4.1.18)", () => {
+describe("QueueRepository summary 列（OPR.0.4.1.18）", () => {
   let db: Database.Database;
   let repo: QueueRepository;
 
   beforeEach(() => {
     db = createDb();
-    // Includes migration 044 so the summary column exists. (The main suite
-    // deliberately omits it, proving the pre-044 degrade path via the guard.)
+    // 包含 migration 044，使 summary 列存在。（主套件有意省略它，以通过 guard 证明 pre-044
+    // 降级路径。）
     migrate(db, [coreSchema, eventsSchema, queueItemsSchema, queueTransitionsSchema, queueItemSummarySchema]);
     repo = new QueueRepository(db, new EventBus(db));
   });
 
   afterEach(() => db.close());
 
-  it("persists --summary on create and round-trips it through getById", async () => {
+  it("create 时持久化 --summary，并通过 getById 往返读取", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -773,7 +766,7 @@ describe("QueueRepository summary column (OPR.0.4.1.18)", () => {
     );
   });
 
-  it("summary is null when --summary is omitted (degrade contract)", async () => {
+  it("省略 --summary 时 summary 为 null（降级契约）", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -784,7 +777,7 @@ describe("QueueRepository summary column (OPR.0.4.1.18)", () => {
     expect(repo.getById(item.qitemId)?.summary).toBeNull();
   });
 
-  it("handoff persists the new qitem's own summary, not inherited from source", async () => {
+  it("handoff 持久化新 qitem 自己的 summary，而非从 source 继承", async () => {
     const src = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -800,7 +793,7 @@ describe("QueueRepository summary column (OPR.0.4.1.18)", () => {
       nudge: false,
     });
     expect(result.created.summary).toBe("Handoff summary for the new owner.");
-    // Omitted on the next handoff → null (degrade), NOT inherited from source.
+    // 下一次 handoff 省略时 → null（降级），不从 source 继承。
     const result2 = await repo.handoff({
       qitemId: result.created.qitemId,
       fromSession: "carol@rig",
@@ -811,7 +804,7 @@ describe("QueueRepository summary column (OPR.0.4.1.18)", () => {
   });
 });
 
-describe("queue.* event payloads carry summary (OPR.0.4.4.19 FR-1)", () => {
+describe("queue.* event payload 携带 summary（OPR.0.4.4.19 FR-1）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let repo: QueueRepository;
@@ -831,7 +824,7 @@ describe("queue.* event payloads carry summary (OPR.0.4.4.19 FR-1)", () => {
   const eventOf = (type: string) =>
     captured.find((e) => e.type === type) as Record<string, unknown> | undefined;
 
-  it("queue.created carries the provided summary", async () => {
+  it("queue.created 携带所提供的 summary", async () => {
     await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -844,7 +837,7 @@ describe("queue.* event payloads carry summary (OPR.0.4.4.19 FR-1)", () => {
     expect(ev!.summary).toBe("Approve the 0.4.4 cut");
   });
 
-  it("every queue.* event carries summary: null when omitted — present, never absent", async () => {
+  it("每个 queue.* event 都携带 summary：省略时为 null——字段始终存在", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -872,13 +865,13 @@ describe("queue.* event payloads carry summary (OPR.0.4.4.19 FR-1)", () => {
       "queue.handed_off",
     ]) {
       const ev = eventOf(type);
-      expect(ev, `${type} emitted`).toBeDefined();
-      expect("summary" in ev!, `${type} payload has summary key`).toBe(true);
-      expect(ev!.summary, `${type} summary is null`).toBeNull();
+      expect(ev, `${type} 已发出`).toBeDefined();
+      expect("summary" in ev!, `${type} payload 包含 summary key`).toBe(true);
+      expect(ev!.summary, `${type} summary 为 null`).toBeNull();
     }
   });
 
-  it("claim/unclaim/updated events carry the row's persisted summary; handed_off carries the SOURCE summary and the handoff's queue.created carries the NEW summary", async () => {
+  it("claim/unclaim/updated event 携带 row 的持久 summary；handed_off 携带 source summary，handoff 的 queue.created 携带新 summary", async () => {
     const item = await repo.create({
       sourceSession: "alice@rig",
       destinationSession: "bob@rig",
@@ -904,7 +897,7 @@ describe("queue.* event payloads carry summary (OPR.0.4.4.19 FR-1)", () => {
     expect(eventOf("queue.created")!.summary).toBe("New owner summary.");
   });
 
-  it("legacy pre-044 schema (no summary column): events still carry summary key with null", async () => {
+  it("旧版 pre-044 schema（无 summary 列）：event 仍携带值为 null 的 summary key", async () => {
     const legacyDb = createDb();
     migrate(legacyDb, [coreSchema, eventsSchema, queueItemsSchema, queueTransitionsSchema]);
     const legacyBus = new EventBus(legacyDb);
@@ -924,7 +917,7 @@ describe("queue.* event payloads carry summary (OPR.0.4.4.19 FR-1)", () => {
   });
 });
 
-describe("queue_items.evidence_ref column (OPR.0.4.4.19 FR-5 storage)", () => {
+describe("queue_items.evidence_ref 列（OPR.0.4.4.19 FR-5 storage）", () => {
   let db: Database.Database;
   let repo: QueueRepository;
 
@@ -936,7 +929,7 @@ describe("queue_items.evidence_ref column (OPR.0.4.4.19 FR-5 storage)", () => {
 
   afterEach(() => db.close());
 
-  it("persists --evidence-ref on create and round-trips it through getById", async () => {
+  it("create 时持久化 --evidence-ref，并通过 getById 往返读取", async () => {
     const item = await repo.create({
       sourceSession: "pm@rig",
       destinationSession: "human-review@kernel",
@@ -949,7 +942,7 @@ describe("queue_items.evidence_ref column (OPR.0.4.4.19 FR-5 storage)", () => {
     expect(repo.getById(item.qitemId)?.evidenceRef).toBe("missions/release-0.4.4/slices/19/PROOF.md");
   });
 
-  it("evidence_ref is null when omitted (BR-1: ordinary items never require it)", async () => {
+  it("省略时 evidence_ref 为 null（BR-1：普通 item 从不要求它）", async () => {
     const item = await repo.create({
       sourceSession: "a@rig",
       destinationSession: "b@rig",
@@ -959,7 +952,7 @@ describe("queue_items.evidence_ref column (OPR.0.4.4.19 FR-5 storage)", () => {
     expect(item.evidenceRef).toBeNull();
   });
 
-  it("handoff authors its OWN evidence_ref; not inherited from source (summary semantics)", async () => {
+  it("handoff 编写自己的 evidence_ref，不从 source 继承（summary 语义）", async () => {
     const src = await repo.create({
       sourceSession: "a@rig",
       destinationSession: "b@rig",
@@ -984,7 +977,7 @@ describe("queue_items.evidence_ref column (OPR.0.4.4.19 FR-5 storage)", () => {
     expect(result2.created.evidenceRef).toBe("proof/new.md");
   });
 
-  it("listAttention JSON carries evidence_ref for human-routed items (FR-5 read-path AC)", async () => {
+  it("listAttention JSON 为 human-routed item 携带 evidence_ref（FR-5 read-path AC）", async () => {
     await repo.create({
       sourceSession: "pm@rig",
       destinationSession: "human-review@kernel",
@@ -998,7 +991,7 @@ describe("queue_items.evidence_ref column (OPR.0.4.4.19 FR-5 storage)", () => {
     expect(attention[0]!.evidenceRef).toBe("proof/PROOF.md");
   });
 
-  it("legacy pre-048 schema: evidenceRef input degrades silently; reads are null", async () => {
+  it("旧版 pre-048 schema：evidenceRef 输入静默降级；读取值为 null", async () => {
     const legacyDb = createDb();
     migrate(legacyDb, [coreSchema, eventsSchema, queueItemsSchema, queueTransitionsSchema]);
     const legacyRepo = new QueueRepository(legacyDb, new EventBus(legacyDb));
@@ -1014,8 +1007,8 @@ describe("queue_items.evidence_ref column (OPR.0.4.4.19 FR-5 storage)", () => {
   });
 });
 
-// ── GHOST-STAGE (e/Class-B): queue_items generation stamps + release-to-pending at swap ──
-describe("QueueRepository — generation stamps (Class-B)", () => {
+// ── GHOST-STAGE（e/Class-B）：queue_items generation stamp + 切换时 release-to-pending ──
+describe("QueueRepository——generation stamp（Class-B）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let repo: QueueRepository;
@@ -1023,7 +1016,7 @@ describe("QueueRepository — generation stamps (Class-B)", () => {
 
   beforeEach(() => {
     db = createDb();
-    // 063 ALTERs BOTH queue_items + watchdog_jobs (one migration), so watchdog_jobs must exist too.
+    // 063 在同一 migration 中同时 ALTER queue_items 与 watchdog_jobs，因此 watchdog_jobs 也必须存在。
     migrate(db, [coreSchema, eventsSchema, queueItemsSchema, queueTransitionsSchema, watchdogJobsSchema, occupantGenerationStampsSchema]);
     bus = new EventBus(db);
     genBySession = new Map();
@@ -1034,13 +1027,13 @@ describe("QueueRepository — generation stamps (Class-B)", () => {
   const col = (qitemId: string, name: string): string | null =>
     (db.prepare(`SELECT ${name} AS v FROM queue_items WHERE qitem_id = ?`).get(qitemId) as { v: string | null }).v;
 
-  it("stamps minting_generation_uuid from the SOURCE occupant at create", async () => {
+  it("create 时从 source occupant 写入 minting_generation_uuid", async () => {
     genBySession.set("alice@rig", "gen-src");
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "x" });
     expect(col(item.qitemId, "minting_generation_uuid")).toBe("gen-src");
   });
 
-  it("stamps claimed_by_generation_uuid from the CLAIMANT at claim, and clears it on unclaim", async () => {
+  it("claim 时从 claimant 写入 claimed_by_generation_uuid，unclaim 时清除", async () => {
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "x" });
     genBySession.set("bob@rig", "gen-claimant");
     repo.claim({ qitemId: item.qitemId, destinationSession: "bob@rig" });
@@ -1049,7 +1042,7 @@ describe("QueueRepository — generation stamps (Class-B)", () => {
     expect(col(item.qitemId, "claimed_by_generation_uuid")).toBeNull();
   });
 
-  it("RELEASES retired-gen in-progress items to pending (never drops), clears the claim, and audits", async () => {
+  it("将 retired-gen 的 in-progress item 释放为 pending（绝不丢弃），清除 claim 并审计", async () => {
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "x" });
     genBySession.set("bob@rig", "gen-retired");
     repo.claim({ qitemId: item.qitemId, destinationSession: "bob@rig" });
@@ -1057,21 +1050,21 @@ describe("QueueRepository — generation stamps (Class-B)", () => {
     const released = repo.releaseClaimsByGeneration("gen-retired");
     expect(released).toBe(1);
     const after = repo.getById(item.qitemId)!;
-    expect(after.state).toBe("pending"); // RELEASED, not dropped — the item survives
+    expect(after.state).toBe("pending"); // 已释放而非丢弃——item 保留。
     expect(col(item.qitemId, "claimed_by_generation_uuid")).toBeNull();
     const notes = repo.transitionLog.listForQitem(item.qitemId).map((t) => t.transitionNote ?? "");
-    expect(notes.some((n) => /claimant generation retired/.test(n))).toBe(true);
+    expect(notes.some((n) => /claimant generation 已退役/.test(n))).toBe(true);
   });
 
-  it("does NOT release the SUCCESSOR's own claim (same seat name, live gen) — gen-scoped, not name-scoped", async () => {
+  it("不释放 successor 自己的 claim（相同 seat name、live gen）——按 gen 而非 name 限定", async () => {
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "x" });
-    genBySession.set("bob@rig", "gen-live"); // the successor claims under the SAME name, a new generation
+    genBySession.set("bob@rig", "gen-live"); // successor 以相同名称、全新 generation 执行 claim。
     repo.claim({ qitemId: item.qitemId, destinationSession: "bob@rig" });
     expect(repo.releaseClaimsByGeneration("gen-retired")).toBe(0);
-    expect(repo.getById(item.qitemId)!.state).toBe("in-progress"); // untouched
+    expect(repo.getById(item.qitemId)!.state).toBe("in-progress"); // 保持不变。
   });
 
-  it("an empty generation is a no-op (never a catch-all release)", async () => {
+  it("空 generation 为 no-op（绝不进行 catch-all release）", async () => {
     const item = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "x" });
     genBySession.set("bob@rig", "gen-1");
     repo.claim({ qitemId: item.qitemId, destinationSession: "bob@rig" });
@@ -1079,7 +1072,7 @@ describe("QueueRepository — generation stamps (Class-B)", () => {
     expect(repo.getById(item.qitemId)!.state).toBe("in-progress");
   });
 
-  it("a PENDING (never-claimed) item is never released — claimed_by is NULL (UNKNOWN != retired)", async () => {
+  it("pending（从未 claim）item 绝不被 release——claimed_by 为 NULL（UNKNOWN != retired）", async () => {
     const pending = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "y" });
     genBySession.set("bob@rig", "gen-retired");
     expect(repo.releaseClaimsByGeneration("gen-retired")).toBe(0);
@@ -1087,7 +1080,7 @@ describe("QueueRepository — generation stamps (Class-B)", () => {
   });
 });
 
-describe("QueueRepository — S26 blocker-actuation unification (OPR.0.5.6.26)", () => {
+describe("QueueRepository——S26 blocker actuation 统一（OPR.0.5.6.26）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let repo: QueueRepository;
@@ -1104,41 +1097,39 @@ describe("QueueRepository — S26 blocker-actuation unification (OPR.0.5.6.26)",
   });
 
   afterEach(() => db.close());
-  // ── OPR.0.5.6.26 — blocker-actuation unification. blocked_on promises "A waits until B
-  // completes"; the propagate-completion block exists in EXACTLY ONE place (the update path),
-  // and the handoff family writes its terminal states via direct SQL inside its own
-  // transactions — so the promise never fires for ANY closure through that family
-  // (per-code-path class, not per-closure-state). Three live specimens on the spec; these two
-  // fixtures are the locked REDs. Each asserts STATE FIRST so the base failure is the pinned
-  // reason (the blocked row stays blocked), then the full effect-set parity the update path
-  // already produces (transition, wake intent, event).
+  // ── OPR.0.5.6.26——blocker actuation 统一。blocked_on 承诺“A 等待 B 完成”；
+  // propagate-completion block 只存在于一个位置（update 路径），而 handoff family 在自己的
+  // transaction 内通过直接 SQL 写入 terminal state——所以通过该 family 的任何 closure 都不会履行
+  // 承诺（按 code path 类，而非按 closure state）。spec 中有三个 live 样本；以下 fixture 是锁定的
+  // RED。每项先断言 state，使基线失败原因为已锁定项（blocked row 保持 blocked），随后断言 update
+  // 路径已有的完整 effect-set parity（transition、wake intent、event）。
 
-  it("S26 RED 1: a result returned to the waiting owner VIA THE HANDOFF VERB auto-unparks its attached rows", async () => {
+  it("S26 RED 1：通过 handoff verb 向等待 owner 返回结果时，自动 unpark 其关联 row", async () => {
     const blocker = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "blocker A" });
     const parked = await repo.create({ sourceSession: "alice@rig", destinationSession: "carol@rig", body: "work B" });
     repo.update({ qitemId: parked.qitemId, actorSession: "carol@rig", state: "blocked", blockedOn: blocker.qitemId });
     expect(repo.getById(parked.qitemId)!.state).toBe("blocked");
 
-    // Close the blocker through the handoff verb (terminal state 'handed-off', clear successor).
+    // 通过 handoff verb 关闭 blocker（terminal state 'handed-off'，successor 明确）。
     await repo.handoff({ qitemId: blocker.qitemId, fromSession: "bob@rig", toSession: "carol@rig", nudge: false });
     expect(repo.getById(blocker.qitemId)!.state).toBe("handed-off");
 
-    // PINNED RED REASON (specimen-1 shape): at base the parked row stays blocked — the
-    // handoff family never consults propagate-completion.
+    // 锁定的 RED 原因（specimen-1 形态）：基线中 parked row 保持 blocked——handoff family 从不调用
+    // propagate-completion。
     const after = repo.getById(parked.qitemId)!;
-    expect(after.state, "a row blocked on a handed-off blocker must auto-unpark").toBe("pending");
-    expect(after.blockedOn, "auto-unpark clears the resolved blocker").toBeNull();
+    expect(after.state, "阻塞于 handed-off blocker 的 row 必须自动 unpark").toBe("pending");
+    expect(after.blockedOn, "auto-unpark 清除已解决 blocker").toBeNull();
 
-    // Effect-set parity with the update path (identical across entry paths):
+    // 与 update 路径保持 effect-set parity（跨 entry path 一致）：
     const notes = repo.transitionLog.listForQitem(parked.qitemId).map((t) => t.transitionNote ?? "");
     expect(
       notes.some((n) => n.includes("auto-unparked") && n.includes(blocker.qitemId)),
-      "the resume transition names the blocker",
+      "resume transition 点名 blocker",
     ).toBe(true);
     const wake = db
       .prepare("SELECT COUNT(*) AS c FROM outbox_entries WHERE tags LIKE ?")
       .get(`%queue:auto-unpark:blocker%`) as { c: number };
-    expect(wake.c, "a wake intent is staged for the unparked row").toBeGreaterThan(0);
+    expect(wake.c, "为已 unpark row 暂存 wake intent").toBeGreaterThan(0);
     expect(
       captured.some(
         (e) =>
@@ -1147,35 +1138,34 @@ describe("QueueRepository — S26 blocker-actuation unification (OPR.0.5.6.26)",
           (e as { fromState?: string }).fromState === "blocked" &&
           (e as { toState?: string }).toState === "pending",
       ),
-      "the blocked->pending event is emitted",
+      "已发出 blocked->pending event",
     ).toBe(true);
   });
 
-  // R-2 CONFIRM-OR-REFUTE: this fixture encodes a DERIVED PREDICTION with no live specimen —
-  // a 'done' closure via handoffAndComplete rides the same direct-SQL bypass. If this test
-  // UNEXPECTEDLY PASSES at base, the prediction is REFUTED: correct the spec's defect
-  // statement in place (dated, wrong version kept visible) and keep this test as the
-  // regression floor. A base pass is a finding, never something to paper over.
-  it("S26 RED 2 (confirm-or-refute): a blocker closed done VIA HANDOFF-AND-COMPLETE auto-unparks its attached rows", async () => {
+  // R-2 证实或证伪：此 fixture 编码没有 live 样本的派生预测——通过 handoffAndComplete 执行的
+  // 'done' closure 走同一直接 SQL 旁路。若此测试在基线意外通过，则预测被证伪：就地修正 spec 的
+  // 缺陷陈述（保留日期与可见的错误版本），并将此测试保留为回归底线。基线通过是一项发现，绝不能
+  // 掩盖。
+  it("S26 RED 2（证实或证伪）：blocker 通过 handoff-and-complete 以 done 闭合时，自动 unpark 其关联 row", async () => {
     const blocker = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "blocker A2" });
     const parked = await repo.create({ sourceSession: "alice@rig", destinationSession: "carol@rig", body: "work B2" });
     repo.update({ qitemId: parked.qitemId, actorSession: "carol@rig", state: "blocked", blockedOn: blocker.qitemId });
     expect(repo.getById(parked.qitemId)!.state).toBe("blocked");
 
-    // Close the blocker through handoff-and-complete (terminal state 'done', same bypass family).
+    // 通过 handoff-and-complete 关闭 blocker（terminal state 'done'，同一旁路 family）。
     await repo.handoffAndComplete({ qitemId: blocker.qitemId, fromSession: "bob@rig", toSession: "dave@rig", nudge: false });
     expect(repo.getById(blocker.qitemId)!.state).toBe("done");
 
-    // PINNED RED REASON (the derived prediction): at base the parked row stays blocked.
+    // 锁定的 RED 原因（派生预测）：基线中 parked row 保持 blocked。
     const after = repo.getById(parked.qitemId)!;
-    expect(after.state, "a row blocked on a done-via-handoff-and-complete blocker must auto-unpark").toBe("pending");
-    expect(after.blockedOn, "auto-unpark clears the resolved blocker").toBeNull();
+    expect(after.state, "阻塞于经 handoff-and-complete 变为 done 的 blocker 上的 row 必须自动 unpark").toBe("pending");
+    expect(after.blockedOn, "auto-unpark 清除已解决 blocker").toBeNull();
 
-    // Effect-set parity, same assertions as RED 1:
+    // effect-set parity，与 RED 1 的断言相同：
     const notes = repo.transitionLog.listForQitem(parked.qitemId).map((t) => t.transitionNote ?? "");
     expect(
       notes.some((n) => n.includes("auto-unparked") && n.includes(blocker.qitemId)),
-      "the resume transition names the blocker",
+      "resume transition 点名 blocker",
     ).toBe(true);
     expect(
       captured.some(
@@ -1185,24 +1175,22 @@ describe("QueueRepository — S26 blocker-actuation unification (OPR.0.5.6.26)",
           (e as { fromState?: string }).fromState === "blocked" &&
           (e as { toState?: string }).toState === "pending",
       ),
-      "the blocked->pending event is emitted",
+      "已发出 blocked->pending event",
     ).toBe(true);
   });
 
-  // R2 B-1 (HOLD 5496b628) — the third handoff-family path: the LIVE cross-host
-  // terminal close (routes/queue.ts invokes closeCrossHostHandoffSource) commits
-  // handed-off/done via direct SQL and must actuate through the one propagation
-  // site like its two local siblings. Same fixture also pins the ABSORBED-REDRIVE
-  // floor: an idempotent repeat (same closureTarget -> absorbed:true) must NOT
-  // actuate twice — exactly one auto-unpark transition, ever.
-  it("S26 RED 3: a blocker closed via the cross-host terminal close actuates its attached rows, and an absorbed redrive never double-actuates", async () => {
+  // R2 B-1（HOLD 5496b628）——第三条 handoff-family 路径：live 跨 host terminal close
+  //（routes/queue.ts 调用 closeCrossHostHandoffSource）通过直接 SQL 提交 handed-off/done，并且必须
+  // 像两个本地 sibling 一样经唯一传播位置执行。此 fixture 还锁定 ABSORBED-REDRIVE 底线：幂等重复
+  //（同一 closureTarget -> absorbed:true）不得执行两次——始终只有一次 auto-unpark transition。
+  it("S26 RED 3：blocker 经跨 host terminal close 闭合时驱动关联 row，absorbed redrive 绝不重复驱动", async () => {
     const blocker = await repo.create({ sourceSession: "alice@rig", destinationSession: "bob@rig", body: "blocker A3" });
     const parked = await repo.create({ sourceSession: "alice@rig", destinationSession: "carol@rig", body: "work B3" });
     repo.update({ qitemId: parked.qitemId, actorSession: "carol@rig", state: "blocked", blockedOn: blocker.qitemId });
     expect(repo.getById(parked.qitemId)!.state).toBe("blocked");
 
-    // Close the blocker through the cross-host terminal close (terminal state
-    // 'handed-off'; host-qualified successor key rides closure_target per BR-1).
+    // 通过跨 host terminal close 关闭 blocker（terminal state 'handed-off'；按 BR-1，host 限定的
+    // successor key 由 closure_target 携带）。
     const first = repo.closeCrossHostHandoffSource({
       qitemId: blocker.qitemId,
       fromSession: "bob@rig",
@@ -1213,22 +1201,22 @@ describe("QueueRepository — S26 blocker-actuation unification (OPR.0.5.6.26)",
     expect(first.absorbed).toBe(false);
     expect(repo.getById(blocker.qitemId)!.state).toBe("handed-off");
 
-    // PINNED RED REASON (the B-1 class): at base the parked row stays blocked —
-    // this path never consults propagate-completion.
+    // 锁定的 RED 原因（B-1 类）：基线中 parked row 保持 blocked——此路径从不调用
+    // propagate-completion。
     const after = repo.getById(parked.qitemId)!;
-    expect(after.state, "a row blocked on a cross-host-closed blocker must auto-unpark").toBe("pending");
-    expect(after.blockedOn, "auto-unpark clears the resolved blocker").toBeNull();
+    expect(after.state, "阻塞于跨 host closed blocker 的 row 必须自动 unpark").toBe("pending");
+    expect(after.blockedOn, "auto-unpark 清除已解决 blocker").toBeNull();
 
-    // Effect-set parity with the other entry paths:
+    // 与其他 entry path 保持 effect-set parity：
     const unparkNotes = () =>
       repo.transitionLog
         .listForQitem(parked.qitemId)
         .filter((tr) => (tr.transitionNote ?? "").includes("auto-unparked") && (tr.transitionNote ?? "").includes(blocker.qitemId));
-    expect(unparkNotes().length, "the resume transition names the blocker, once").toBe(1);
+    expect(unparkNotes().length, "resume transition 点名 blocker，且只出现一次").toBe(1);
     const wake = db
       .prepare("SELECT COUNT(*) AS c FROM outbox_entries WHERE tags LIKE ?")
       .get(`%queue:auto-unpark:blocker%`) as { c: number };
-    expect(wake.c, "a wake intent is staged for the unparked row").toBeGreaterThan(0);
+    expect(wake.c, "为已 unpark row 暂存 wake intent").toBeGreaterThan(0);
     expect(
       captured.some(
         (e) =>
@@ -1237,11 +1225,11 @@ describe("QueueRepository — S26 blocker-actuation unification (OPR.0.5.6.26)",
           (e as { fromState?: string }).fromState === "blocked" &&
           (e as { toState?: string }).toState === "pending",
       ),
-      "the blocked->pending event is emitted",
+      "已发出 blocked->pending event",
     ).toBe(true);
 
-    // ABSORBED-REDRIVE FLOOR: an idempotent repeat with the SAME closure target
-    // absorbs and must not actuate again — one auto-unpark transition, ever.
+    // ABSORBED-REDRIVE 底线：同一 closure target 的幂等重复会被吸收，且不得再次驱动——始终只有
+    // 一次 auto-unpark transition。
     const redrive = repo.closeCrossHostHandoffSource({
       qitemId: blocker.qitemId,
       fromSession: "bob@rig",
@@ -1249,8 +1237,8 @@ describe("QueueRepository — S26 blocker-actuation unification (OPR.0.5.6.26)",
       closureTarget: "qitem-19990101000000-cafef00d@other-host",
       terminalState: "handed-off",
     });
-    expect(redrive.absorbed, "the repeat is absorbed, never re-closed").toBe(true);
-    expect(unparkNotes().length, "an absorbed redrive never double-actuates").toBe(1);
-    expect(repo.getById(parked.qitemId)!.state, "the unparked row is untouched by the redrive").toBe("pending");
+    expect(redrive.absorbed, "重复操作被吸收，绝不再次闭合").toBe(true);
+    expect(unparkNotes().length, "absorbed redrive 绝不重复驱动").toBe(1);
+    expect(repo.getById(parked.qitemId)!.state, "redrive 不改变已 unpark row").toBe("pending");
   });
 });

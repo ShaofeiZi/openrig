@@ -7,12 +7,12 @@ import { fileURLToPath } from "node:url";
 import { buildStubTranscript } from "../src/adapters/stub-runner.js";
 import type { StubScript } from "../src/adapters/stub-script.js";
 
-// Slice 51-01 items 6-8 — R1 real-spawn proof: the WIRED runner executes a scenario
-// script and its `emit compaction` step FIRES the exact shipped precompact seam,
-// producing a REAL seat-keyed restore-pending marker + packet (arch R3: TRIGGER,
-// never fabricate). The hermetic executor test proves dispatch; this proves the wired
-// process really authors its own transcript, fires the real seam, and idles — closing
-// the in-memory-hides-real-spawn gap (a mocked loop can't prove a real subprocess fires).
+// Slice 51-01 items 6-8——R1 真实 spawn 证明：接线 runner 执行一个 scenario
+// 脚本，其 `emit compaction` 步骤触发随包的确切 precompact 接缝，
+// 产生真实的 seat-keyed restore-pending 标记 + packet（arch R3：触发，
+// 绝不伪造）。密封 executor 测试证明 dispatch；此测试证明接线进程确实自己写出
+// transcript、触发真实接缝并 idle——补上内存掩盖真实 spawn 的缺口
+//（mock 循环无法证明真实子进程被触发）。
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNNER = resolve(HERE, "../src/adapters/stub-runner.ts");
@@ -31,8 +31,8 @@ async function waitForFile(p: string, timeoutMs = 12_000): Promise<void> {
   }
 }
 
-describe("buildStubTranscript (the stub authors its OWN session transcript)", () => {
-  it("emits valid JSONL — one parseable record per say step, keyed to the seat + cwd", () => {
+describe("buildStubTranscript（stub 编写自己的会话 transcript）", () => {
+  it("生成有效 JSONL：每个 say 步骤一条可解析记录，并关联席位与 cwd", () => {
     const script: StubScript = {
       steps: [
         { kind: "say", text: "first line" },
@@ -49,7 +49,7 @@ describe("buildStubTranscript (the stub authors its OWN session transcript)", ()
     for (const r of records) expect(r.cwd).toBe("/managed/cwd");
   });
 
-  it("never emits an empty transcript (analyze needs ≥1 record) even for an emit-only script", () => {
+  it("即使脚本只有 emit，也绝不生成空 transcript（analyze 至少需要一条记录）", () => {
     const jsonl = buildStubTranscript({ steps: [{ kind: "emit", behavior: "compaction" }] },
       { sessionName: SEAT, cwd: "/c", sessionId: "s" });
     const lines = jsonl.trim().split("\n").filter(Boolean);
@@ -58,7 +58,7 @@ describe("buildStubTranscript (the stub authors its OWN session transcript)", ()
   });
 });
 
-describe("stub-runner compaction behavior (real-spawn wiring, R1)", () => {
+describe("stub-runner 压缩行为（真实 spawn 接线，R1）", () => {
   let child: ChildProcess | undefined;
   let dir: string | undefined;
   afterEach(() => {
@@ -68,7 +68,7 @@ describe("stub-runner compaction behavior (real-spawn wiring, R1)", () => {
     dir = undefined;
   });
 
-  it("fires the REAL precompact seam on `emit compaction`, writing a seat-keyed marker + packet", async () => {
+  it("遇到 `emit compaction` 时触发真实 precompact 接缝并写入席位标记与数据包", async () => {
     dir = mkdtempSync(join(tmpdir(), "stub-compaction-e2e-"));
     const home = join(dir, ".openrig");
     // Drop the scenario-resolved script the runner will load from cwd.

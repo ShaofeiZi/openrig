@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/watchdog-auto-registration.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/watchdog-policy-engine.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/transcript-store.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/view-projector.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/transcript-rotation.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/watchdog-scheduler.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/usage-samples-store.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/view-event-bridge.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/wake-resolve-service.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/wake-resolver.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/workflow-boot-sweep.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/topology-defaults-installer.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/watchdog-history-log.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/transcript-redaction.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/whoami-service.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/watchdog-jobs-repository.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/topology-converge.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/usage-series.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/transcript-capture.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/up-command-router.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

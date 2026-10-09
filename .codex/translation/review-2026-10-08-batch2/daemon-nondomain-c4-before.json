@@ -1,0 +1,102 @@
+{
+"packages/daemon/src/routes/require-sender-identity.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/restore-check.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/review.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/rig-cmux.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/rig-mode.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/rigs.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/rigspec.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/scope-approve.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/scope-audit.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/scopes.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/seat.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/sessions.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/skills.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/slices.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/snapshots.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/spec-library.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/spec-review.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/startup.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/steering.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/stream.ts": [
+"daemon-api",
+"self_reported",
+"done"
+]
+}

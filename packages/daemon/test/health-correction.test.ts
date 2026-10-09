@@ -50,7 +50,7 @@ async function setup() {
   return { home, write, db, queue, sends, modes, posture, policy, projection, service, admit };
 }
 
-it("reads selected project planning without inventing a mission or interrupting human-led work", async () => {
+it("读取所选项目规划，不虚构任务目标，也不中断人工主导工作", async () => {
   const t = await setup();
   const before = t.db.prepare("SELECT total_changes() n").get();
   expect(t.posture.resolve({ qitemId: "plan" })).toMatchObject({ posture: "human-led", grantsAuthority: false, context: { projectId: "demo", phase: { value: null, source: null } } });
@@ -67,7 +67,7 @@ it("reads selected project planning without inventing a mission or interrupting 
   expect(t.posture.resolve({ qitemId: "plan" }).context?.missionId).toBeUndefined();
 });
 
-it("refreshes current selected sources while preserving the original diagnosis, including list reads", async () => {
+it("刷新当前所选来源并保留原始诊断，包括列表读取", async () => {
   const t = await setup(), id = await t.admit();
   const original = t.queue.getById(id)!.body;
   t.write("PREFLIGHT.md", "## Current\nRetire disproved reservations; publication remains separately authorized.\n");
@@ -83,10 +83,10 @@ it("refreshes current selected sources while preserving the original diagnosis, 
   await t.queue.create({ qitemId: "unlinked", sourceSession: "owner@rig", destinationSession: "owner@rig", body: "Unlinked", nudge: false });
   expect(t.posture.resolve({ qitemId: "unlinked" }).posture).toBe("unknown");
   t.write("project.yaml", "metadata: {id: conflicting}\n");
-  expect(t.service.show(id).authority).toEqual([expect.objectContaining({ path: "operatingPosture", state: "unavailable", reason: expect.stringContaining("conflicting") })]);
+  expect(t.service.show(id).authority).toEqual([expect.objectContaining({ path: "operatingPosture", state: "unavailable", reason: expect.stringContaining("存在冲突") })]);
 });
 
-it("keeps correction, attribution and later effect separate without requiring a global outcome census", async () => {
+it("保持修正、归属和后续效果分离，无需全局结果普查", async () => {
   const t = await setup(), id = await t.admit();
   const d = { verdict: "insufficient evidence", causalStart: null, steering: "Continue useful planning within the corrected authority", uncertainty: "Global outcome census incomplete; half the retained transitions are automatic bookkeeping, not owner actions. Interruption cost not measured.", evidenceRefs: ["trace.md"],
     correction: { applicability: "Emergency origin no longer establishes current need; publication boundary still applies", causalJudgment: "Retained trace attributes persistence of the disproved premise to the process owner", action: { state: "proposed", summary: "Retire reservations", evidenceRefs: [] as string[] }, effect: { state: "unobserved", summary: "No natural later opportunity", evidenceRefs: [] as string[] } } };
@@ -107,10 +107,10 @@ it("keeps correction, attribution and later effect separate without requiring a 
   expect((await t.service.evaluate("system:health", true)).actions[0]!.action).toBe("retained");
   expect(t.sends).toHaveLength(1);
   expect(() => t.service.dispose(id, "foreign@rig", taken)).toThrow("health_diagnosis_owner_required");
-  expect(() => t.service.dispose(id, "owner@rig", { ...taken, correction: { ...taken.correction, effect: { state: "observed", summary: "Unsupported improvement", evidenceRefs: [] } } })).toThrow("require evidence");
+  expect(() => t.service.dispose(id, "owner@rig", { ...taken, correction: { ...taken.correction, effect: { state: "observed", summary: "Unsupported improvement", evidenceRefs: [] } } })).toThrow("必须提供证据");
 });
 
-it("refuses selected context escapes, aliases, ambiguous spans and oversized selections", async () => {
+it("拒绝所选上下文逃逸、别名、歧义区段和超大选择", async () => {
   const t = await setup(); symlinkSync(join(t.home, "trace.md"), join(t.home, "alias.md"));
   t.write("PREFLIGHT.md", "## Same\nOne\n## Same\nTwo\n");
   t.write("project.yaml", "metadata: {id: demo}\ninstall:\n  context: [../outside.md, alias.md, PREFLIGHT.md#same, 'https://example.com/context']\n");
@@ -119,10 +119,10 @@ it("refuses selected context escapes, aliases, ambiguous spans and oversized sel
   expect(healthSelectedContext(t.home)).toEqual([expect.objectContaining({ state: "unavailable", reason: expect.stringContaining("32") })]);
 });
 
-it("reads only the selected profile and mission context refs, with manifest-relative provenance", async () => {
+it("只读取所选 profile 与任务目标上下文引用，并携带相对 manifest 的溯源", async () => {
   const t = await setup();
   t.write("project.yaml", "metadata: {id: demo}\nlifecycle:\n  profile: chosen\n  profiles:\n    chosen:\n      workflow:\n        context_refs: [trace.md]\n    other:\n      workflow:\n        context_refs: [not-selected.md]\n");
-  // Same root is sufficient for this reference-reader check; work-node identity is tested above.
+  // 同一根目录足以完成本 reference reader 检查；工作节点身份已在上方测试。
   t.write("mission.yaml", "lifecycle:\n  workflow:\n    context_refs: [PREFLIGHT.md#current]\n");
   const refs = healthSelectedContext(t.home, t.home);
   expect(refs).toHaveLength(2);

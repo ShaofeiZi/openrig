@@ -18,7 +18,7 @@ import {
 } from "../src/domain/watchdog-jobs-repository.js";
 import { createFullTestDb } from "./helpers/test-app.js";
 
-describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
+describe("WatchdogJobsRepository（PL-004 阶段 C）", () => {
   let db: Database.Database;
   let repo: WatchdogJobsRepository;
 
@@ -40,7 +40,7 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
   function validInput(overrides: Record<string, unknown> = {}) {
     return {
       policy: "periodic-reminder",
-      specYaml: "policy: periodic-reminder\ntarget: a@rig\ninterval_seconds: 60\ncontext:\n  target:\n    session: a@rig\n  message: hello\n",
+      specYaml: "policy: periodic-reminder\ntarget: a@rig\ninterval_seconds: 60\ncontext:\n  target:\n    session: a@rig\n  message: 你好\n",
       targetSession: "a@rig",
       intervalSeconds: 60,
       registeredBySession: "ops@kernel",
@@ -48,7 +48,7 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
     };
   }
 
-  it("register stores every accepted policy + actionable defaults to false", () => {
+  it("register 存储每个已接受策略，且 actionable 默认为 false", () => {
     for (const p of PHASE_C_POLICIES) {
       const job = repo.register(validInput({
         policy: p,
@@ -64,30 +64,29 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
     }
   });
 
-  // PL-004 Phase D: registration-rejection for workflow-keepalive REPLACED
-  // with positive registration-accept. workflow-keepalive is now an
-  // accepted policy enum value (orch-ratified Phase D extension).
-  it("register accepts workflow-keepalive (Phase D enum extension)", () => {
+  // PL-004 阶段 D：对 workflow-keepalive 的注册拒绝已改为正向接受。workflow-keepalive
+  // 现在是已接受的策略枚举值（经编排批准的阶段 D 扩展）。
+  it("register 接受 workflow-keepalive（阶段 D 枚举扩展）", () => {
     const job = repo.register(validInput({ policy: "workflow-keepalive" }));
     expect(job.policy).toBe("workflow-keepalive");
     expect(job.state).toBe("active");
   });
 
-  it("register rejects unknown policy with policy_unknown", () => {
+  it("register 以 policy_unknown 拒绝未知策略", () => {
     try {
       repo.register(validInput({ policy: "totally-bogus" }));
-      throw new Error("should have thrown");
+      throw new Error("预期应抛错");
     } catch (err) {
       expect(err).toBeInstanceOf(WatchdogJobsError);
       expect((err as WatchdogJobsError).code).toBe("policy_unknown");
     }
   });
 
-  it("register rejects non-positive interval_seconds with interval_invalid", () => {
+  it("register 以 interval_invalid 拒绝非正 interval_seconds", () => {
     for (const bad of [0, -1, 1.5]) {
       try {
         repo.register(validInput({ intervalSeconds: bad }));
-        throw new Error(`should have thrown for ${bad}`);
+        throw new Error(`值 ${bad} 预期应抛错`);
       } catch (err) {
         expect(err).toBeInstanceOf(WatchdogJobsError);
         expect((err as WatchdogJobsError).code).toBe("interval_invalid");
@@ -95,17 +94,17 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
     }
   });
 
-  it("register rejects target_session without @ as target_session_invalid", () => {
+  it("register 以 target_session_invalid 拒绝不含 @ 的 target_session", () => {
     try {
       repo.register(validInput({ targetSession: "no-at-here" }));
-      throw new Error("should have thrown");
+      throw new Error("预期应抛错");
     } catch (err) {
       expect(err).toBeInstanceOf(WatchdogJobsError);
       expect((err as WatchdogJobsError).code).toBe("target_session_invalid");
     }
   });
 
-  it("listActive returns only state=active jobs in registration order", () => {
+  it("listActive 仅按注册顺序返回 state=active 的任务", () => {
     const a = repo.register(validInput({ targetSession: "a@rig" }));
     const b = repo.register(validInput({ targetSession: "b@rig" }));
     const c = repo.register(validInput({ targetSession: "c@rig" }));
@@ -114,7 +113,7 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
     expect(active.map((j) => j.jobId)).toEqual([a.jobId, c.jobId]);
   });
 
-  it("recordEvaluation(fired=true) updates last_evaluation_at + last_fire_at", () => {
+  it("recordEvaluation(fired=true) 更新 last_evaluation_at + last_fire_at", () => {
     const job = repo.register(validInput());
     repo.recordEvaluation(job.jobId, "2026-05-03T07:00:00.000Z", true);
     const after = repo.getByIdOrThrow(job.jobId);
@@ -122,7 +121,7 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
     expect(after.lastFireAt).toBe("2026-05-03T07:00:00.000Z");
   });
 
-  it("recordEvaluation(fired=false) updates only last_evaluation_at", () => {
+  it("recordEvaluation(fired=false) 仅更新 last_evaluation_at", () => {
     const job = repo.register(validInput());
     repo.recordEvaluation(job.jobId, "2026-05-03T07:00:00.000Z", false);
     const after = repo.getByIdOrThrow(job.jobId);
@@ -130,7 +129,7 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
     expect(after.lastFireAt).toBeNull();
   });
 
-  it("markTerminal sets state=terminal + terminal_reason", () => {
+  it("markTerminal 设置 state=terminal + terminal_reason", () => {
     const job = repo.register(validInput());
     repo.markTerminal(job.jobId, "policy_returned_terminal");
     const after = repo.getByIdOrThrow(job.jobId);
@@ -138,26 +137,26 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
     expect(after.terminalReason).toBe("policy_returned_terminal");
   });
 
-  it("stop sets state=stopped + records reason", () => {
+  it("stop 设置 state=stopped 并记录原因", () => {
     const job = repo.register(validInput());
-    const stopped = repo.stop(job.jobId, "operator stop reason");
+    const stopped = repo.stop(job.jobId, "操作者停止原因");
     expect(stopped.state).toBe("stopped");
-    expect(stopped.terminalReason).toBe("operator stop reason");
+    expect(stopped.terminalReason).toBe("操作者停止原因");
   });
 
-  it("stop on already-terminal job throws job_terminal", () => {
+  it("对已终止任务调用 stop 时抛出 job_terminal", () => {
     const job = repo.register(validInput());
     repo.markTerminal(job.jobId, "done");
     try {
       repo.stop(job.jobId);
-      throw new Error("should have thrown");
+      throw new Error("预期应抛错");
     } catch (err) {
       expect(err).toBeInstanceOf(WatchdogJobsError);
       expect((err as WatchdogJobsError).code).toBe("job_terminal");
     }
   });
 
-  it("setActionable(true) sets actionable=1 + last_actionable_at to evaluatedAt by default", () => {
+  it("setActionable(true) 设置 actionable=1，并默认将 last_actionable_at 设为 evaluatedAt", () => {
     const job = repo.register(validInput());
     repo.setActionable(job.jobId, true, "2026-05-03T07:00:00.000Z");
     const after = repo.getByIdOrThrow(job.jobId);
@@ -165,7 +164,7 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
     expect(after.lastActionableAt).toBe("2026-05-03T07:00:00.000Z");
   });
 
-  it("setActionable(true) preserves last_actionable_at when preserve arg passed (continued window)", () => {
+  it("setActionable(true) 传入保留参数时保留 last_actionable_at（延续窗口）", () => {
     const job = repo.register(validInput());
     repo.setActionable(job.jobId, true, "2026-05-03T07:00:00.000Z");
     repo.setActionable(job.jobId, true, "2026-05-03T07:01:00.000Z", "2026-05-03T07:00:00.000Z");
@@ -173,7 +172,7 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
     expect(after.lastActionableAt).toBe("2026-05-03T07:00:00.000Z");
   });
 
-  it("setActionable(false) clears actionable + last_actionable_at", () => {
+  it("setActionable(false) 清除 actionable + last_actionable_at", () => {
     const job = repo.register(validInput());
     repo.setActionable(job.jobId, true, "2026-05-03T07:00:00.000Z");
     repo.setActionable(job.jobId, false, "2026-05-03T07:01:00.000Z");
@@ -182,10 +181,10 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
     expect(after.lastActionableAt).toBeNull();
   });
 
-  it("getByIdOrThrow throws job_not_found for unknown id", () => {
+  it("getByIdOrThrow 对未知 id 抛出 job_not_found", () => {
     try {
       repo.getByIdOrThrow("does-not-exist");
-      throw new Error("should have thrown");
+      throw new Error("预期应抛错");
     } catch (err) {
       expect(err).toBeInstanceOf(WatchdogJobsError);
       expect((err as WatchdogJobsError).code).toBe("job_not_found");
@@ -193,15 +192,15 @@ describe("WatchdogJobsRepository (PL-004 Phase C)", () => {
   });
 });
 
-// ── GHOST-STAGE (e/Class-B): occupant-generation stamp + gen-scoped swap drop ──
-describe("WatchdogJobsRepository — generation stamps (Class-B)", () => {
+// ── GHOST-STAGE（e/Class-B）：occupant-generation 印记 + generation 范围的切换丢弃 ──
+describe("WatchdogJobsRepository——generation 印记（Class-B）", () => {
   let db: Database.Database;
   let repo: WatchdogJobsRepository;
   let genBySession: Map<string, string | null>;
 
   beforeEach(() => {
     db = createDb();
-    // 063 ALTERs BOTH queue_items + watchdog_jobs (one migration), so both tables must exist first.
+    // 063 在同一次迁移中修改 queue_items + watchdog_jobs，因此两个表都必须先存在。
     migrate(db, [coreSchema, eventsSchema, queueItemsSchema, watchdogJobsSchema, watchdogHistorySchema, occupantGenerationStampsSchema]);
     genBySession = new Map();
     repo = new WatchdogJobsRepository(db, undefined, (s) => genBySession.get(s) ?? null);
@@ -210,50 +209,50 @@ describe("WatchdogJobsRepository — generation stamps (Class-B)", () => {
 
   const input = (overrides: Record<string, unknown> = {}) => ({
     policy: "periodic-reminder",
-    specYaml: "policy: periodic-reminder\ntarget: a@rig\ninterval_seconds: 60\ncontext:\n  target:\n    session: a@rig\n  message: hi\n",
+    specYaml: "policy: periodic-reminder\ntarget: a@rig\ninterval_seconds: 60\ncontext:\n  target:\n    session: a@rig\n  message: 你好\n",
     targetSession: "a@rig",
     intervalSeconds: 60,
     registeredBySession: "seat@rig",
     ...overrides,
   });
 
-  it("stamps the ARMING occupant's generation at register", () => {
+  it("注册时写入布防 occupant 的 generation 印记", () => {
     genBySession.set("seat@rig", "gen-1");
     expect(repo.register(input()).registeredByGeneration).toBe("gen-1");
   });
 
-  it("an unresolved arming generation stays NULL (UNKNOWN — never a false stamp)", () => {
+  it("无法解析的布防 generation 保持 NULL（未知——绝不写入虚假印记）", () => {
     expect(repo.register(input({ registeredBySession: "unknown@rig" })).registeredByGeneration).toBeNull();
   });
 
-  it("drops ONLY armed jobs of the retiring generation — the successor's own job (same name, live gen) survives", () => {
+  it("仅丢弃退役 generation 布防的任务——后继自己的任务（同名、实时 generation）会保留", () => {
     genBySession.set("seat@rig", "gen-retired");
     const retired = repo.register(input());
-    genBySession.set("seat@rig", "gen-live"); // successor resumes into the SAME seat name, new gen
+    genBySession.set("seat@rig", "gen-live"); // 后继恢复到相同 seat 名称，但使用新的 generation
     const live = repo.register(input());
 
     const stopped = repo.dropArmedByRegisteringGeneration("gen-retired");
     expect(stopped).toBe(1);
     expect(repo.getById(retired.jobId)!.state).toBe("stopped");
     expect(repo.getById(retired.jobId)!.terminalReason).toContain("retired");
-    expect(repo.getById(live.jobId)!.state).toBe("active"); // NOT name-scoped — successor untouched
+    expect(repo.getById(live.jobId)!.state).toBe("active"); // 不按名称限定范围——后继不受影响
   });
 
-  it("an empty generation is a no-op (never a catch-all drop)", () => {
+  it("空 generation 为空操作（绝不会全部丢弃）", () => {
     genBySession.set("seat@rig", "gen-1");
     repo.register(input());
     expect(repo.dropArmedByRegisteringGeneration("")).toBe(0);
   });
 
-  it("NULL-generation jobs are never matched (UNKNOWN != retired)", () => {
+  it("generation 为 NULL 的任务永不匹配（未知 != 已退役）", () => {
     const job = repo.register(input({ registeredBySession: "unknown@rig" }));
     expect(repo.dropArmedByRegisteringGeneration("gen-anything")).toBe(0);
     expect(repo.getById(job.jobId)!.state).toBe("active");
   });
 
-  it("pre-063 db (no gen column) degrades: register succeeds, gen NULL, drop no-ops (blast-radius containment)", () => {
+  it("063 前数据库（无 generation 列）会降级：注册成功、generation 为 NULL、丢弃为空操作（控制影响范围）", () => {
     const bareDb = createDb();
-    migrate(bareDb, [coreSchema, eventsSchema, watchdogJobsSchema, watchdogHistorySchema]); // NO 063
+    migrate(bareDb, [coreSchema, eventsSchema, watchdogJobsSchema, watchdogHistorySchema]); // 不含 063
     const bareRepo = new WatchdogJobsRepository(bareDb, undefined, () => "gen-x");
     const job = bareRepo.register(input());
     expect(job.registeredByGeneration).toBeNull();
@@ -262,8 +261,8 @@ describe("WatchdogJobsRepository — generation stamps (Class-B)", () => {
   });
 });
 
-// ── GHOST-STAGE (i-c): opt-in TARGET-generation stamp (fire-time gen-gate input) ──
-describe("WatchdogJobsRepository — target-generation stamp (i-c, opt-in)", () => {
+// ── GHOST-STAGE（i-c）：可选启用的 TARGET-generation 印记（触发时 generation 门禁输入）──
+describe("WatchdogJobsRepository——target-generation 印记（i-c，可选启用）", () => {
   let db: Database.Database;
   let repo: WatchdogJobsRepository;
 
@@ -276,46 +275,45 @@ describe("WatchdogJobsRepository — target-generation stamp (i-c, opt-in)", () 
 
   const input = (overrides: Record<string, unknown> = {}) => ({
     policy: "periodic-reminder",
-    specYaml: "policy: periodic-reminder\ntarget: a@rig\ninterval_seconds: 60\ncontext:\n  target:\n    session: a@rig\n  message: hi\n",
+    specYaml: "policy: periodic-reminder\ntarget: a@rig\ninterval_seconds: 60\ncontext:\n  target:\n    session: a@rig\n  message: 你好\n",
     targetSession: "a@rig",
     intervalSeconds: 60,
     registeredBySession: "seat@rig",
     ...overrides,
   });
 
-  // THE CRUX PIN (ratified): a job with no target generation is ROLE-bound — NULL, fires unchanged.
-  it("defaults to NULL (role-bound) when no target generation is supplied", () => {
+  // 核心固定点（已批准）：没有 target generation 的任务按 ROLE 绑定——为 NULL，触发行为不变。
+  it("未提供 target generation 时默认为 NULL（按 role 绑定）", () => {
     expect(repo.register(input()).targetGeneration).toBeNull();
   });
 
-  it("stamps + round-trips an opt-in target generation (generation-bound wake)", () => {
+  it("写入并往返保留可选启用的 target generation（绑定 generation 的唤醒）", () => {
     const job = repo.register(input({ targetGenerationUuid: "gen-target-7" }));
     expect(job.targetGeneration).toBe("gen-target-7");
     expect(repo.getById(job.jobId)!.targetGeneration).toBe("gen-target-7");
   });
 
-  it("role-bound stays role-bound alongside a generation-bound sibling (independent columns)", () => {
+  it("与绑定 generation 的同级任务并存时，绑定 role 的任务仍保持 role-bound（独立列）", () => {
     const roleBound = repo.register(input());
     const genBound = repo.register(input({ targetGenerationUuid: "gen-9" }));
     expect(repo.getById(roleBound.jobId)!.targetGeneration).toBeNull();
     expect(repo.getById(genBound.jobId)!.targetGeneration).toBe("gen-9");
   });
 
-  it("pre-066 db (no target-gen column) degrades: register succeeds, targetGeneration NULL", () => {
+  it("066 前数据库（无 target-generation 列）会降级：注册成功，targetGeneration 为 NULL", () => {
     const bareDb = createDb();
-    migrate(bareDb, [coreSchema, eventsSchema, watchdogJobsSchema, watchdogHistorySchema]); // NO 066
+    migrate(bareDb, [coreSchema, eventsSchema, watchdogJobsSchema, watchdogHistorySchema]); // 不含 066
     const bareRepo = new WatchdogJobsRepository(bareDb);
     const job = bareRepo.register(input({ targetGenerationUuid: "gen-x" }));
-    expect(job.targetGeneration).toBeNull(); // column absent → opt-in silently degrades to role-bound
+    expect(job.targetGeneration).toBeNull(); // 列缺失 → 可选启用值静默降级为 role-bound
     bareDb.close();
   });
 });
 
-// OPR.0.5.1 51-06 W2c — auto-registration is an exact-tuple ensure, not a blind
-// register. These are deliberately repository-altitude: a newer terminal row
-// must not hide an older runnable duplicate, and stopped is a durable operator
-// opt-out rather than a row to resurrect.
-describe("WatchdogJobsRepository — W2c exact-tuple auto-registration", () => {
+// OPR.0.5.1 51-06 W2c——自动注册是精确 tuple ensure，而非盲目 register。测试刻意位于
+// repository 高度：较新的 terminal 行不得隐藏较旧的可运行重复项，而 stopped 是持久的
+// 操作者退出选择，不是应恢复的行。
+describe("WatchdogJobsRepository——W2c 精确 tuple 自动注册", () => {
   let db: Database.Database;
   let repo: WatchdogJobsRepository;
 
@@ -353,7 +351,7 @@ describe("WatchdogJobsRepository — W2c exact-tuple auto-registration", () => {
     return ensure!.bind(repo);
   }
 
-  it("reuses the sole active row and preserves role-bound daemon identity across handover", () => {
+  it("复用唯一 active 行，并在 handover 中保留 role-bound daemon 身份", () => {
     const first = repo.register(input("active@rig"));
     const ensured = ensureFn()(input("active@rig"));
     expect(ensured.jobId).toBe(first.jobId);
@@ -367,7 +365,7 @@ describe("WatchdogJobsRepository — W2c exact-tuple auto-registration", () => {
     expect(repo.getById(first.jobId)?.state).toBe("active");
   });
 
-  it("preserves the sole stopped row as an operator opt-out", () => {
+  it("保留唯一 stopped 行作为操作者退出选择", () => {
     const stopped = repo.register(input("stopped@rig"));
     repo.stop(stopped.jobId, "operator_stopped");
     const ensured = ensureFn()(input("stopped@rig"));
@@ -376,7 +374,7 @@ describe("WatchdogJobsRepository — W2c exact-tuple auto-registration", () => {
     expect(repo.listAll().filter((job) => job.targetSession === "stopped@rig")).toHaveLength(1);
   });
 
-  it("terminal-only history creates one replacement and subsequent ensure reuses it", () => {
+  it("仅有 terminal 历史时创建一个替代项，后续 ensure 复用它", () => {
     const terminal = repo.register(input("terminal@rig"));
     repo.markTerminal(terminal.jobId, "completed");
     const ensure = ensureFn();
@@ -387,16 +385,16 @@ describe("WatchdogJobsRepository — W2c exact-tuple auto-registration", () => {
     expect(repo.listAll().filter((job) => job.targetSession === "terminal@rig")).toHaveLength(2);
   });
 
-  it("inspects full history: older active plus newer terminal reuses the active row", () => {
+  it("检查完整历史：较旧 active 加较新 terminal 时复用 active 行", () => {
     const active = repo.register(input("history@rig"));
     const terminal = repo.register(input("history@rig"));
-    repo.markTerminal(terminal.jobId, "newer terminal history");
+    repo.markTerminal(terminal.jobId, "较新的 terminal 历史");
     const ensured = ensureFn()(input("history@rig"));
     expect(ensured.jobId).toBe(active.jobId);
     expect(repo.listAll().filter((job) => job.targetSession === "history@rig")).toHaveLength(2);
   });
 
-  it("fails loudly on every ambiguous nonterminal cardinality with all job ids and states", () => {
+  it("每种含糊的非终止基数都会明确失败，并列出全部任务 id 和状态", () => {
     const scenarios = [
       { target: "two-active@rig", states: ["active", "active"] as const },
       { target: "two-stopped@rig", states: ["stopped", "stopped"] as const },
@@ -412,7 +410,7 @@ describe("WatchdogJobsRepository — W2c exact-tuple auto-registration", () => {
       });
       try {
         ensure(input(scenario.target));
-        throw new Error("expected ambiguous auto-registration to fail");
+        throw new Error("预期含糊的自动注册会失败");
       } catch (error) {
         expect(error).toBeInstanceOf(WatchdogJobsError);
         expect((error as WatchdogJobsError).code).toBe("auto_registration_ambiguous");
@@ -426,7 +424,7 @@ describe("WatchdogJobsRepository — W2c exact-tuple auto-registration", () => {
   });
 
   it.each(["active", "stopped"] as const)(
-    "retargets the sole %s role-bound historical alias without changing job identity",
+    "重新定向唯一的 %s role-bound 历史别名，而不改变任务身份",
     (state) => {
       const old = repo.register(input("old-seat@rig"));
       if (state === "stopped") repo.stop(old.jobId, "operator_stopped");
@@ -438,12 +436,12 @@ describe("WatchdogJobsRepository — W2c exact-tuple auto-registration", () => {
     },
   );
 
-  it("rejects conflicts across historical aliases with every row in structured details", () => {
+  it("拒绝跨历史别名的冲突，并在结构化详情中列出每一行", () => {
     const old = repo.register(input("old-seat@rig"));
     const current = repo.register(input("new-seat@rig"));
     try {
       ensureFn()(input("new-seat@rig"), ["old-seat@rig", "new-seat@rig"]);
-      throw new Error("expected alias conflict");
+      throw new Error("预期发生别名冲突");
     } catch (error) {
       expect(error).toBeInstanceOf(WatchdogJobsError);
       expect((error as WatchdogJobsError).code).toBe("auto_registration_ambiguous");
@@ -457,7 +455,7 @@ describe("WatchdogJobsRepository — W2c exact-tuple auto-registration", () => {
     }
   });
 
-  it("terminal-only alias history creates one replacement for the current seat", () => {
+  it("仅有 terminal 别名历史时为当前 seat 创建一个替代项", () => {
     const old = repo.register(input("old-seat@rig"));
     repo.markTerminal(old.jobId, "completed");
     const replacement = ensureFn()(input("new-seat@rig"), ["old-seat@rig", "new-seat@rig"]);
@@ -466,12 +464,12 @@ describe("WatchdogJobsRepository — W2c exact-tuple auto-registration", () => {
     expect(repo.listAll()).toHaveLength(2);
   });
 
-  it("refuses any persisted state outside active, stopped, and terminal", () => {
+  it("拒绝 active、stopped 和 terminal 之外的任何持久化状态", () => {
     const invalid = repo.register(input("paused@rig"));
     db.prepare("UPDATE watchdog_jobs SET state = 'paused' WHERE job_id = ?").run(invalid.jobId);
     try {
       ensureFn()(input("paused@rig"));
-      throw new Error("expected invalid state refusal");
+      throw new Error("预期拒绝无效状态");
     } catch (error) {
       expect(error).toBeInstanceOf(WatchdogJobsError);
       expect((error as WatchdogJobsError).code).toBe("auto_registration_state_invalid");

@@ -1,7 +1,6 @@
-// S5b final fix, R2 F1 (row r054-s5b-final-fix) — the rig_name_running refusal
-// must SURVIVE the real /api/up boundary: structured non-500 (409 conflict),
-// top-level code, top-level error carrying the guard's teaching text — instead
-// of the pre-fix bare 500 with the code buried in stages[].detail.
+// S5b 最终修复，R2 F1（row r054-s5b-final-fix）——rig_name_running refusal 必须穿过真实
+// /api/up boundary：返回结构化非 500（409 conflict）、顶层 code，以及携带 guard 指引文本的
+// 顶层 error；不能回退到修复前的裸 500，并把 code 埋在 stages[].detail。
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
 import * as fs from "node:fs";
@@ -25,15 +24,15 @@ const POD_YAML = (name: string) => [
   "edges: []",
 ].join("\n");
 
-describe("POST /api/up — running-name refusal crosses the route boundary (S5b F1)", () => {
+describe("POST /api/up——running-name refusal 穿过路由边界（S5b F1）", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
   let tmpDir: string;
 
   beforeEach(() => {
     db = createFullTestDb();
-    // Real-fs upRouter so POST /api/up can resolve the on-disk YAML spec
-    // (the harness default fsOps is always-false).
+    // 使用真实 fs 的 upRouter，让 POST /api/up 可以解析磁盘上的 YAML spec；harness 默认
+    // fsOps 始终返回 false。
     setup = createTestApp(db, {
       upRouterFsOps: {
         exists: (p: string) => fs.existsSync(p),
@@ -68,7 +67,7 @@ describe("POST /api/up — running-name refusal crosses the route boundary (S5b 
     return (db.prepare("SELECT COUNT(*) AS c FROM rigs WHERE name = ?").get(name) as { c: number }).c;
   }
 
-  it("second up of a RUNNING name: 409, top-level rig_name_running, teaching error, nothing created or launched", async () => {
+  it("对 RUNNING 名称第二次 up：返回 409、顶层 rig_name_running 与指引错误，不创建或启动任何内容", async () => {
     const rig = seedRunningRig("dupe-route");
     const specPath = path.join(tmpDir, "rig.yaml");
     fs.writeFileSync(specPath, POD_YAML("dupe-route"));
@@ -81,22 +80,22 @@ describe("POST /api/up — running-name refusal crosses the route boundary (S5b 
     });
     const body = await res.json() as Record<string, unknown>;
 
-    // The structured non-500 refusal with the code at the TOP LEVEL.
+    // 结构化非 500 refusal，code 位于顶层。
     expect(res.status).toBe(409);
     expect(body["code"]).toBe("rig_name_running");
-    // The teaching content survives to the top-level error field.
+    // 指引内容一直保留到顶层 error 字段。
     const error = String(body["error"] ?? "");
     expect(error).toContain("dupe-route");
     expect(error).toContain(rig.id);
-    expect(error).toMatch(/nothing was created or launched/i);
-    expect(error).toMatch(/rig down/);
+    expect(error).toMatch(/未创建或启动任何内容/i);
+    expect(error).toMatch(/zrig down/);
 
-    // Effect side: nothing created, nothing launched.
+    // 效果侧：未创建、未启动。
     expect(rigCount("dupe-route")).toBe(1);
     expect(createSession).not.toHaveBeenCalled();
   });
 
-  it("control: up of a fresh name through the same route is not affected", async () => {
+  it("对照：通过同一路由 up 全新名称不受影响", async () => {
     const specPath = path.join(tmpDir, "rig.yaml");
     fs.writeFileSync(specPath, POD_YAML("fresh-route"));
 
@@ -106,7 +105,7 @@ describe("POST /api/up — running-name refusal crosses the route boundary (S5b 
       body: JSON.stringify({ sourceRef: specPath }),
     });
 
-    // Whatever this harness's launch outcome is, the guard refusal must not fire.
+    // 无论本 harness 的 launch outcome 如何，guard refusal 都不得触发。
     const body = await res.json() as Record<string, unknown>;
     expect(body["code"]).not.toBe("rig_name_running");
     expect(rigCount("fresh-route")).toBe(1);

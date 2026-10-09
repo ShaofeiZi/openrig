@@ -1,0 +1,243 @@
+// Slice 09 — Rig Policy (operator context mode) HTTP routes.
+//
+// Surface (binding-related ONLY — HG-SAFE):
+//   GET    /api/rig-mode/bindings                      — list bindings
+//   GET    /api/rig-mode/bindings/:scope/:qualifier?   — read one binding
+//   PUT    /api/rig-mode/bindings/:scope/:qualifier?   — upsert (operator)
+//   DELETE /api/rig-mode/bindings/:scope/:qualifier?   — unset (operator)
+//   GET    /api/rig-mode/effective                     — resolve effective
+//                                                          (?rig=&project=&mission=&workstream=&qitem=)
+//   GET    /api/rig-mode/defaults                      — recommended
+//                                                          per-mode 8×7
+//                                                          + default scope
+//                                                          + DEFAULT_STALE_RULE
+//
+// Authority (HG-4): write verbs (PUT / DELETE) require the daemon's
+// operator bearer (same posture as mission-control). Reads are open
+// (within the daemon's existing loopback/tailnet/bearer model). There
+// is NO agent-set code path — the route mounts the bearer middleware
+// on write verbs only; agents calling read endpoints must use the same
+// auth the daemon already enforces at the listen layer.
+//
+// HG-SAFE preserved: this router NEVER touches permission allowlists /
+// runtime configs / auth tokens / tmux / lifecycle. It calls a single
+// store (RigModeStore) whose surface area is itself binding-limited.
+
+import { Hono } from "hono";
+import { authBearerTokenMiddleware } from "../middleware/auth-bearer-token.js";
+import type { RigModeStore } from "../domain/rig-mode/rig-mode-store.js";
+import type { OperatingPostureService } from "../domain/rig-mode/operating-posture.js";
+import {
+  OPERATOR_CONTEXT_SCOPES,
+  SCOPE_SPECIFICITY,
+  type OperatorContextScope,
+} from "../domain/rig-mode/rig-mode-types.js";
+import {
+  DEFAULT_STALE_RULE,
+  RECOMMENDED_DEFAULT_SCOPE,
+  RECOMMENDED_MODE_DEFAULTS,
+} from "../domain/rig-mode/rig-mode-defaults.js";
+
+export interface RigModeRoutesOpts {
+  /** Operator bearer token (same one Mission Control uses). When null,
+   * the daemon's listen layer is loopback-only and write verbs pass
+   * through; non-null requires `Authorization: Bearer <token>`. */
+  bearerToken?: string | null;
+}
+
+const VALID_SCOPES = new Set<string>(OPERATOR_CONTEXT_SCOPES);
+
+function parseScope(raw: string): OperatorContextScope | null {
+  return VALID_SCOPES.has(raw) ? (raw as OperatorContextScope) : null;
+}
+
+interface ScopeQualifierOk {
+  ok: true;
+  scope: OperatorContextScope;
+  qualifier: string | null;
+}
+interface ScopeQualifierErr {
+  ok: false;
+  status: 400;
+  body: { error: string; hint: string };
+}
+
+/**
+ * Parse + validate `:scope` / `:qualifier` path params. Rejects:
+ *   - unknown scope name                          → scope_invalid
+ *   - global_host scope WITH a non-empty qualifier → qualifier_forbidden
+ *     (prevents hidden scope inference / mutation on the global-host
+ *     binding — guard BLOCKER 2)
+ *   - non-global scope WITHOUT a qualifier        → qualifier_required
+ *
+ * Used by every route verb so GET / PUT / DELETE share the exact same
+ * parse rules. No silent qualifier-dropping anywhere on a write path.
+ */
+function parseScopeAndQualifier(scopeRaw: string, qualifierRaw: string | undefined): ScopeQualifierOk | ScopeQualifierErr {
+  const scope = parseScope(scopeRaw);
+  if (!scope) {
+    return {
+      ok: false,
+      status: 400,
+      body: { error: "scope_invalid", hint: `Unknown scope. Allowed: ${OPERATOR_CONTEXT_SCOPES.join(", ")}.` },
+    };
+  }
+  if (scope === "global_host") {
+    if (qualifierRaw !== undefined && qualifierRaw.length > 0) {
+      return {
+        ok: false,
+        status: 400,
+        body: {
+          error: "qualifier_forbidden",
+          hint: "Global-host bindings cannot carry a qualifier. Use /api/rig-mode/bindings/global_host with no trailing path segment.",
+        },
+      };
+    }
+    return { ok: true, scope, qualifier: null };
+  }
+  if (qualifierRaw === undefined || qualifierRaw.length === 0) {
+    return {
+      ok: false,
+      status: 400,
+      body: {
+        error: "qualifier_required",
+        hint: `Scope ${scope} requires a qualifier (rig/project/qitem ID or project/mission[/slice-id]).`,
+      },
+    };
+  }
+  return { ok: true, scope, qualifier: qualifierRaw };
+}
+
+function getStore(c: { get: (key: string) => unknown }): RigModeStore | null {
+  const store = c.get("rigModeStore" as never) as RigModeStore | undefined;
+  return store ?? null;
+}
+
+export function rigModeRoutes(opts?: RigModeRoutesOpts): Hono {
+  const router = new Hono();
+  const bearer = opts?.bearerToken ?? null;
+  const requireOperator = authBearerTokenMiddleware({ expectedToken: bearer });
+
+  // -- read: defaults --------------------------------------------------
+  router.get("/defaults", (c) => {
+    return c.json({
+      recommendedModeDefaults: RECOMMENDED_MODE_DEFAULTS,
+      recommendedDefaultScope: RECOMMENDED_DEFAULT_SCOPE,
+      defaultStaleRule: DEFAULT_STALE_RULE,
+    });
+  });
+
+  // -- read: list ------------------------------------------------------
+  router.get("/bindings", (c) => {
+    const store = getStore(c);
+    if (!store) return c.json({ error: "rig_policy_store_unavailable" }, 503);
+    return c.json({ bindings: store.listBindings() });
+  });
+
+  // -- read: resolveEffective ------------------------------------------
+  router.get("/effective", (c) => {
+    const store = getStore(c);
+    if (!store) return c.json({ error: "rig_policy_store_unavailable" }, 503);
+    const rigId = c.req.query("rig");
+    const projectId = c.req.query("project");
+    const missionId = c.req.query("mission");
+    const workstreamId = c.req.query("workstream");
+    const qitemId = c.req.query("qitem");
+    const input = { rigId, projectId, missionId, workstreamId, qitemId };
+    const service = c.get("operatingPosture" as never) as OperatingPostureService | undefined;
+    const operatingPosture = service?.resolve(input) ?? {
+      posture: "unknown", source: "unknown", context: null, binding: null,
+      reason: "Operating posture resolver unavailable.", grantsAuthority: false,
+    };
+    let resolved;
+    try {
+      // Keep pre-existing ergonomic bindings addressed by raw names readable.
+      const raw = store.resolveEffective(input);
+      const canonical = store.resolveEffective(operatingPosture.context ?? input);
+      resolved = !raw || (canonical && SCOPE_SPECIFICITY[canonical.resolvedScope] > SCOPE_SPECIFICITY[raw.resolvedScope]) ? canonical : raw;
+    }
+    catch { return c.json({ effective: null, posture: "unknown_posture", operatingPosture }); }
+    // Q6 — null = unknown_posture; do NOT silently default. Surface to caller.
+    if (!resolved) {
+      return c.json({
+        effective: null,
+        operatingPosture,
+        posture: "unknown_posture",
+        hint: "No binding matches this read context. Per convention §Q6 callers MUST treat this as unknown_posture (do not default to desk).",
+      });
+    }
+    return c.json({ effective: resolved, posture: "known", operatingPosture });
+  });
+
+  // -- read: one binding (qualifier path-optional via /:scope or /:scope/:qualifier)
+  router.get("/bindings/:scope/:qualifier?", (c) => {
+    const store = getStore(c);
+    if (!store) return c.json({ error: "rig_policy_store_unavailable" }, 503);
+    const parsed = parseScopeAndQualifier(c.req.param("scope"), c.req.param("qualifier"));
+    if (!parsed.ok) return c.json(parsed.body, parsed.status);
+    let binding = store.getBinding(parsed.scope, parsed.qualifier);
+    if (!binding) {
+      const service = c.get("operatingPosture" as never) as OperatingPostureService | undefined;
+      if (service) {
+        try { binding = store.getBinding(parsed.scope, service.target(parsed.scope, parsed.qualifier)); }
+        catch (error) { return c.json({ error: "scope_unresolved", hint: String(error) }, 400); }
+      }
+    }
+    if (!binding) return c.json({ error: "not_found" }, 404);
+    return c.json({ binding });
+  });
+
+  // -- write: upsert (operator-only) -----------------------------------
+  router.put("/bindings/:scope/:qualifier?", requireOperator, async (c) => {
+    const store = getStore(c);
+    if (!store) return c.json({ error: "rig_policy_store_unavailable" }, 503);
+    const parsed = parseScopeAndQualifier(c.req.param("scope"), c.req.param("qualifier"));
+    if (!parsed.ok) return c.json(parsed.body, parsed.status);
+    const body = await c.req.json().catch(() => null);
+    if (body === null || typeof body !== "object") {
+      return c.json({
+        error: "body_required",
+        hint: "PUT body must be { mode: <supported mode>, record: <10-field OperatorContextModeRecord> }.",
+      }, 400);
+    }
+    const { mode, record } = body as { mode?: unknown; record?: unknown };
+    if (mode === undefined || record === undefined) {
+      return c.json({
+        error: "body_shape_invalid",
+        hint: "PUT body must be { mode: <supported mode>, record: <10-field OperatorContextModeRecord> }.",
+      }, 400);
+    }
+    let qualifier = parsed.qualifier;
+    if (mode === "human-led" || mode === "delegated") {
+      const service = c.get("operatingPosture" as never) as OperatingPostureService | undefined;
+      if (!service) return c.json({ error: "operating_posture_unavailable" }, 503);
+      try { qualifier = service.target(parsed.scope, qualifier); }
+      catch (error) { return c.json({ error: "scope_unresolved", hint: String(error) }, 400); }
+    }
+    const result = store.setBinding(parsed.scope, qualifier, mode, record);
+    if (!result.ok) {
+      return c.json({ error: "validation_failed", errors: result.errors }, 400);
+    }
+    return c.json({ binding: result.binding });
+  });
+
+  // -- write: delete (operator-only) -----------------------------------
+  router.delete("/bindings/:scope/:qualifier?", requireOperator, (c) => {
+    const store = getStore(c);
+    if (!store) return c.json({ error: "rig_policy_store_unavailable" }, 503);
+    const parsed = parseScopeAndQualifier(c.req.param("scope"), c.req.param("qualifier"));
+    if (!parsed.ok) return c.json(parsed.body, parsed.status);
+    let qualifier = parsed.qualifier;
+    if (!store.getBinding(parsed.scope, qualifier)) {
+      const service = c.get("operatingPosture" as never) as OperatingPostureService | undefined;
+      if (service) {
+        try { qualifier = service.target(parsed.scope, qualifier); }
+        catch (error) { return c.json({ error: "scope_unresolved", hint: String(error) }, 400); }
+      }
+    }
+    const removed = store.deleteBinding(parsed.scope, qualifier);
+    return c.json({ removed });
+  });
+
+  return router;
+}

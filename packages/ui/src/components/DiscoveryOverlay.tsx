@@ -107,14 +107,14 @@ function DiscoveredSessionCard({ session, onAdopt }: { session: DiscoveredSessio
                 data-testid="runtime-inferred-note"
                 className="text-[10px] uppercase tracking-[0.08em] text-foreground-muted"
               >
-                runtime inferred
+                运行时为推断
               </div>
             ) : null}
           </div>
           {session.cwd ? (
             <div className="mt-spacing-2 min-w-0">
               <div className="text-[10px] uppercase tracking-[0.08em] text-foreground-muted">
-                cwd
+                工作目录
               </div>
               <div
                 className="font-mono text-[12px] leading-5 text-foreground-muted truncate"
@@ -127,8 +127,8 @@ function DiscoveredSessionCard({ session, onAdopt }: { session: DiscoveredSessio
         </div>
         <div className="flex flex-wrap items-center gap-spacing-2 lg:justify-end">
         <DiscoveryActionButton
-          label="copy tmux"
-          activeLabel="copied"
+          label="复制 tmux"
+          activeLabel="已复制"
           testId="copy-tmux-btn"
           tool="tmux"
           onClick={async () => {
@@ -138,8 +138,8 @@ function DiscoveredSessionCard({ session, onAdopt }: { session: DiscoveredSessio
         />
         {session.cwd ? (
           <DiscoveryActionButton
-            label="copy cwd"
-            activeLabel="copied"
+            label="复制工作目录"
+            activeLabel="已复制"
             testId="copy-cwd-btn"
             onClick={async () => {
               const ok = await copyText(session.cwd ?? "");
@@ -153,7 +153,7 @@ function DiscoveredSessionCard({ session, onAdopt }: { session: DiscoveredSessio
             data-testid="adopt-btn"
             onClick={() => onAdopt(session.id)}
           >
-            ADOPT
+            采纳
           </Button>
         </div>
       </div>
@@ -170,13 +170,13 @@ export function GenerateDraftSection() {
     try {
       const res = await fetch("/api/discovery/draft-rig", { method: "POST" });
       if (!res.ok) {
-        setDraftYaml(`# Error: draft generation failed (HTTP ${res.status})`);
+        setDraftYaml(`# 错误：草稿生成失败（HTTP ${res.status}）`);
         return;
       }
       const yaml = await res.text();
       setDraftYaml(yaml);
     } catch {
-      setDraftYaml("# Error: failed to reach daemon");
+      setDraftYaml("# 错误：无法连接后台服务");
     } finally {
       setLoading(false);
     }
@@ -191,11 +191,11 @@ export function GenerateDraftSection() {
         data-testid="generate-draft-btn"
         className="mb-spacing-3"
       >
-        {loading ? "GENERATING..." : "GENERATE RIG SPEC"}
+        {loading ? "生成中…" : "生成工作组规格"}
       </Button>
 
       {draftYaml && (() => {
-        // Extract warning comments from YAML preamble
+        // 从 YAML 前导提取警告注释
         const lines = draftYaml.split("\n");
         const warnings = lines.filter((l) => l.startsWith("# WARNING:")).map((l) => l.replace(/^# WARNING:\s*/, ""));
         const yamlBody = lines.filter((l) => !l.startsWith("# WARNING:")).join("\n").trim();
@@ -214,7 +214,7 @@ export function GenerateDraftSection() {
             className="absolute top-2 right-2 text-label-sm text-foreground-muted hover:text-foreground"
             data-testid="copy-draft-btn"
           >
-            COPY
+            复制
           </button>
         </div>
         );
@@ -269,10 +269,9 @@ export function DiscoveryOverlay() {
         <div>
         <div className="flex flex-col gap-spacing-4 border-b border-foreground/10 pb-spacing-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-[620px]">
-            <h2 className="text-headline-lg uppercase">DISCOVERY</h2>
+            <h2 className="text-headline-lg uppercase">会话发现</h2>
             <p className="mt-spacing-1 text-body-md text-foreground-muted">
-              Running agent sessions currently visible on this machine. Copy a tmux attach command,
-              review the working directory, or adopt the session into a rig.
+              本机当前可见的运行中智能体会话。复制 tmux attach 命令、查看工作目录，或将会话采纳进工作组。
             </p>
           </div>
           <Button
@@ -282,26 +281,26 @@ export function DiscoveryOverlay() {
             disabled={scanMutation.isPending}
             onClick={() => scanMutation.mutate()}
           >
-            {scanMutation.isPending ? "SCANNING..." : "SCAN NOW"}
+            {scanMutation.isPending ? "扫描中…" : "立即扫描"}
           </Button>
         </div>
 
         {scanMutation.isError ? (
           <div className="mt-spacing-4 text-label-sm text-destructive" data-testid="scan-error">
-            Discovery scan failed: {scanMutation.error?.message}
+            会话发现扫描失败：{scanMutation.error?.message}
           </div>
         ) : null}
 
         {visibleSessions.length === 0 ? (
           <div className="py-spacing-8" data-testid="discovery-empty">
-            <p className="text-body-md text-foreground-muted">No running Claude or Codex sessions are currently visible.</p>
+            <p className="text-body-md text-foreground-muted">当前没有可见的运行中 Claude 或 Codex 会话。</p>
           </div>
         ) : (
           <div className="mt-spacing-6 space-y-spacing-3" data-testid="discovery-active-section">
             <div className="mb-spacing-2">
-              <h3 className="text-headline-sm uppercase">Running agents</h3>
+              <h3 className="text-headline-sm uppercase">运行中的智能体</h3>
               <p className="text-label-md text-foreground-muted">
-                {visibleSessions.length} session{visibleSessions.length !== 1 ? "s" : ""} available to inspect or adopt
+                {visibleSessions.length} 个会话可供查看或采纳
               </p>
             </div>
             {visibleSessions.map((session) => (
@@ -316,26 +315,26 @@ export function DiscoveryOverlay() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent data-testid="adopt-dialog">
           <DialogHeader>
-            <DialogTitle className="text-headline-md uppercase">ADOPT SESSION</DialogTitle>
-            <DialogDescription>Bind this session to an existing logical node in the rig.</DialogDescription>
+            <DialogTitle className="text-headline-md uppercase">采纳会话</DialogTitle>
+            <DialogDescription>将会话绑定到工作组中已有的逻辑节点。</DialogDescription>
           </DialogHeader>
           <div className="space-y-spacing-3">
             <div>
-              <label className="text-label-sm uppercase block mb-spacing-1">RIG</label>
+              <label className="text-label-sm uppercase block mb-spacing-1">工作组</label>
               <select
                 data-testid="adopt-rig-input"
                 value={rigId}
                 onChange={(e) => setRigId(e.target.value)}
                 className="w-full bg-surface-lowest border-b border-outline py-spacing-1 text-body-md font-mono focus:outline-none focus:border-on-surface appearance-none cursor-pointer"
               >
-                <option value="">Select a rig...</option>
+                <option value="">选择一个工作组…</option>
                 {rigs.map((r) => (
-                  <option key={r.id} value={r.id}>{r.name} ({r.nodeCount} nodes)</option>
+                  <option key={r.id} value={r.id}>{r.name}（{r.nodeCount} 个节点）</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-label-sm uppercase block mb-spacing-1">LOGICAL ID (required)</label>
+              <label className="text-label-sm uppercase block mb-spacing-1">逻辑 ID（必填）</label>
               <input
                 data-testid="adopt-logical-input"
                 type="text"
@@ -344,7 +343,7 @@ export function DiscoveryOverlay() {
                 className="w-full bg-transparent border-b border-foreground/20 py-spacing-1 text-body-md font-mono focus:outline-none focus:border-primary"
               />
               <p className="mt-spacing-1 text-label-sm text-foreground-muted">
-                Enter the logical ID of an existing node in the target rig. For pod placement, use the Discovery drawer instead.
+                输入目标工作组中已有节点的逻辑 ID。如需 pod 放置，请改用会话发现抽屉。
               </p>
             </div>
           </div>
@@ -354,14 +353,14 @@ export function DiscoveryOverlay() {
             </p>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDialogOpen(false)}>CANCEL</Button>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)}>取消</Button>
             <Button
               variant="tactical"
               onClick={handleAdoptConfirm}
               disabled={!rigId || !logicalId.trim() || adoptPending}
               data-testid="adopt-confirm"
             >
-              {adoptPending ? "ADOPTING..." : "ADOPT"}
+              {adoptPending ? "采纳中…" : "采纳"}
             </Button>
           </DialogFooter>
         </DialogContent>

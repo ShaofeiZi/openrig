@@ -1,7 +1,6 @@
-// Workflows in Spec Library + Activation Lens v0 — route-level tests.
+// Spec Library 中的 Workflow + Activation Lens v0——路由层测试。
 //
-// Covers active-lens GET/POST/DELETE + workflow-kind library entry +
-// /:id/review for workflow entries.
+// 覆盖 active-lens GET/POST/DELETE、workflow-kind library 条目，以及 workflow 条目的 /:id/review。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -54,7 +53,7 @@ const SAMPLE_SPEC = (id: string) => `workflow:
       - done
 `;
 
-describe("workflow library routes (Workflows in Spec Library v0)", () => {
+describe("workflow library 路由（Spec Library 中的 Workflow v0）", () => {
   let db: Database.Database;
   let tmp: string;
   let lensFilePath: string;
@@ -97,7 +96,7 @@ describe("workflow library routes (Workflows in Spec Library v0)", () => {
     return app;
   }
 
-  it("GET /active-lens returns null when no lens is set", async () => {
+  it("未设置 lens 时 GET /active-lens 返回 null", async () => {
     const app = createApp();
     const res = await app.request("/api/specs/library/active-lens");
     expect(res.status).toBe(200);
@@ -105,7 +104,7 @@ describe("workflow library routes (Workflows in Spec Library v0)", () => {
     expect(body.activeLens).toBeNull();
   });
 
-  it("POST /active-lens persists the lens; GET /active-lens returns it", async () => {
+  it("POST /active-lens 持久化 lens，GET /active-lens 返回该值", async () => {
     const app = createApp();
     const post = await app.request("/api/specs/library/active-lens", {
       method: "POST",
@@ -122,7 +121,7 @@ describe("workflow library routes (Workflows in Spec Library v0)", () => {
     expect(getBody.activeLens.specVersion).toBe("1");
   });
 
-  it("POST /active-lens 400s when specName/specVersion missing", async () => {
+  it("specName/specVersion 缺失时 POST /active-lens 返回 400", async () => {
     const app = createApp();
     const res = await app.request("/api/specs/library/active-lens", {
       method: "POST",
@@ -132,7 +131,7 @@ describe("workflow library routes (Workflows in Spec Library v0)", () => {
     expect(res.status).toBe(400);
   });
 
-  it("DELETE /active-lens clears it", async () => {
+  it("DELETE /active-lens 清除 lens", async () => {
     const app = createApp();
     lensStore.set("foo", "1");
     const del = await app.request("/api/specs/library/active-lens", { method: "DELETE" });
@@ -140,7 +139,7 @@ describe("workflow library routes (Workflows in Spec Library v0)", () => {
     expect(lensStore.get()).toBeNull();
   });
 
-  it("GET / surfaces workflow entries from the workflow_specs cache", async () => {
+  it("GET / 展示 workflow_specs 缓存中的 workflow 条目", async () => {
     const path = join(builtinDir, "alpha.yaml");
     writeFileSync(path, SAMPLE_SPEC("alpha"));
     cache.readThrough(path);
@@ -156,7 +155,7 @@ describe("workflow library routes (Workflows in Spec Library v0)", () => {
     expect(entry.isBuiltIn).toBe(true);
   });
 
-  it("GET /:id/review returns the topology graph for workflow entries", async () => {
+  it("GET /:id/review 返回 workflow 条目的 topology graph", async () => {
     const path = join(builtinDir, "alpha.yaml");
     writeFileSync(path, SAMPLE_SPEC("alpha"));
     cache.readThrough(path);
@@ -179,7 +178,7 @@ describe("workflow library routes (Workflows in Spec Library v0)", () => {
     expect(body.steps.map((s) => s.stepId)).toEqual(["step-1", "step-2"]);
   });
 
-  it("GET /:id/review 404s for an unknown workflow id", async () => {
+  it("未知 workflow id 的 GET /:id/review 返回 404", async () => {
     const app = createApp();
     const res = await app.request("/api/specs/library/workflow:missing:1/review");
     expect(res.status).toBe(404);

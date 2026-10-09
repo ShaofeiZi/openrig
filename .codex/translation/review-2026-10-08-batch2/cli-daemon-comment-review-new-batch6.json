@@ -1,0 +1,57 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch6",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/daemon/test/install-planner.test.ts",
+      "before_sha256_16": "d28e3899ff43e623",
+      "after_sha256_16": "30ff8a1d793439d3",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/daemon/test/markdown-address.test.ts",
+      "before_sha256_16": "de97b43343ce3a69",
+      "after_sha256_16": "0c3293fcbf79fcb1",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/daemon/test/slices-routes.test.ts",
+      "before_sha256_16": "66808cdbc81b895a",
+      "after_sha256_16": "8d49b8331d71a5e4",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/daemon/test/slice-indexer.test.ts",
+      "before_sha256_16": "e20620548e2fcd76",
+      "after_sha256_16": "e20620548e2fcd76",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/daemon/test/restore-orchestrator.test.ts",
+      "before_sha256_16": "c406b0c0a92e30e2",
+      "after_sha256_16": "c406b0c0a92e30e2",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    }
+  ]
+}

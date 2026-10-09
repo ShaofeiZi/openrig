@@ -1,34 +1,27 @@
-// V0.3.1 slice 25 second follow-on — Overview info table polish.
+// V0.3.1 slice 25 第二次后续——概览信息表打磨。
 //
-// Column-oriented dense info table at the top of the seat-detail
-// Overview tab. The follow-on-2 polish:
-//   - Section-header row removed (column headers ARE the first row).
-//   - Vertical grid lines (border-r border-outline-variant) between
-//     column cells in header + data rows; clearer cell boundaries.
-//   - "total tokens" column header label tightened to "tokens" to
-//     conserve horizontal width.
-//   - cwd + current-work moved OUT of this table into a separate
-//     primitive (SeatOverviewSecondary) below; this component renders
-//     ONLY the 7-column row of compact fields now.
+// 席位详情"概览"标签页顶部、按列排布的密集信息表。第二次后续打磨：
+//   - 去掉分区头行（列头本身就是第一行）。
+//   - 在表头 + 数据行的列单元格之间加竖网格线（border-r border-outline-variant），
+//     单元格边界更清晰。
+//   - "total tokens" 列表头收紧为 "tokens"，节省横向宽度。
+//   - cwd + 当前工作移出本表，放到下方独立基元（SeatOverviewSecondary）；
+//     本组件现在只渲染这一行 7 列紧凑字段。
 //
-// Mobile (HG-8): the column-header row + data row wrap in an
-// `overflow-x-auto` scroll container so a 375px viewport scrolls
-// horizontally rather than mash 7 cells together.
+// 移动端（HG-8）：列表头行 + 数据行包在 `overflow-x-auto` 滚动容器里，
+// 这样 375px 视口可以横向滚动，而不是把 7 个单元格挤在一起。
 //
-// Data sources (single source of truth across surfaces):
-//   - runtime / model / profile / spec — NodeDetailData directly
-//   - activity — getActivityState(data.agentActivity) baseline OR
-//     activityVisual when wired via useTopologyActivity; same source
-//     the topology graph + table read. State "running" maps to label
-//     "active" so the seat page agrees with topology naming.
-//   - context% / total tokens — data.contextUsage.usedPercentage +
-//     sumTokenCounts(input, output); same helpers TopologyTableView
-//     uses for the topology table.
+// 数据来源（跨界面唯一真源）：
+//   - runtime / model / profile / spec —— 直接取 NodeDetailData
+//   - activity —— getActivityState(data.agentActivity) 基线，或经
+//     useTopologyActivity 接入时取 activityVisual；与拓扑图 + 拓扑表同源。
+//     状态 "running" 映射为标签 "active"，让席位页与拓扑命名一致。
+//   - 上下文占比 / 总 token 数——data.contextUsage.usedPercentage +
+//     sumTokenCounts(input, output)；与 TopologyTableView 拓扑表用同一组 helper。
 //
-// Shimmer: when activity state is "active" (or baseline maps to
-// "running") the activity value picks up the slice-14
-// .topology-table-active-shimmer CSS class. Honors
-// prefers-reduced-motion per DESIGN.md §Motion.
+// 微光：当活动状态为 "active"（或基线映射为 "running"）时，活动值套用
+// slice-14 的 .topology-table-active-shimmer CSS 类。按 DESIGN.md §Motion
+// 遵循 prefers-reduced-motion。
 
 import type { ReactNode } from "react";
 import type { NodeDetailData } from "../hooks/useNodeDetail.js";
@@ -65,13 +58,13 @@ function placeholderOrValue(value: ReactNode | null | undefined): ReactNode {
 }
 
 function activityLabelFromState(state: ActivityState): string {
-  if (state === "running") return "active";
+  if (state === "running") return "活动中";
   return getActivityLabel(state);
 }
 
 function activityLabelFromVisualState(state: TopologyActivityVisual["state"]): string {
-  if (state === "active") return "active";
-  if (state === "needs_input") return "needs input";
+  if (state === "active") return "活动中";
+  if (state === "needs_input") return "需要输入";
   return state;
 }
 
@@ -86,7 +79,7 @@ export function SeatOverviewTable({ data, activityVisual }: SeatOverviewTablePro
     : fallbackActivityState === "running";
   const usingRecentActivityVisual = Boolean(activityVisual?.recent);
   const timeInState = usingRecentActivityVisual ? null : getTimeInState(data.agentActivity);
-  const gradeLabel = !usingRecentActivityVisual && fallbackActivitySource !== "hook" && fallbackActivitySource !== "none" ? " (activity-grade)" : "";
+  const gradeLabel = !usingRecentActivityVisual && fallbackActivitySource !== "hook" && fallbackActivitySource !== "none" ? "（活动分级）" : "";
 
   const contextPercentage =
     data.contextUsage?.availability === "known" &&
@@ -121,7 +114,7 @@ export function SeatOverviewTable({ data, activityVisual }: SeatOverviewTablePro
   const columnFields: ColumnField[] = [
     {
       key: "runtime",
-      label: "runtime",
+      label: "运行时",
       value: data.runtime ? (
         <RuntimeBadge
           runtime={data.runtime}
@@ -133,12 +126,12 @@ export function SeatOverviewTable({ data, activityVisual }: SeatOverviewTablePro
         />
       ) : null,
     },
-    { key: "model", label: "model", value: data.model, mono: true },
-    { key: "profile", label: "profile", value: data.profile, mono: true },
-    { key: "spec", label: "spec", value: specCell, mono: true },
-    { key: "activity", label: "activity", value: activityValue },
-    { key: "context-percent", label: "context %", value: contextPercentage, mono: true },
-    { key: "total-tokens", label: "tokens", value: tokenLabel, mono: true },
+    { key: "model", label: "模型", value: data.model, mono: true },
+    { key: "profile", label: "档案", value: data.profile, mono: true },
+    { key: "spec", label: "规格", value: specCell, mono: true },
+    { key: "activity", label: "活动", value: activityValue },
+    { key: "context-percent", label: "上下文 %", value: contextPercentage, mono: true },
+    { key: "total-tokens", label: "令牌数", value: tokenLabel, mono: true },
   ];
 
   const lastIdx = columnFields.length - 1;

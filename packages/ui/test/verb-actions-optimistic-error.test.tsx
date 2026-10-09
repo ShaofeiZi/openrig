@@ -1,11 +1,9 @@
-// 0.3.1 demo-bug fix verification: VerbActions optimistic outcome +
-// inline error surface.
+// 0.3.1 demo-bug 修复验证：VerbActions 乐观 outcome + 内联错误表面。
 //
-// Founder VM walk regression: clicking Route on a queue-item card
-// silently reverted — no confirmation if success, no error if failure.
-// The fix splits onSuccess/onError; onSuccess fires onOptimisticOutcome
-// (parent renders ActionOutcomePanel instantly) and onError shows an
-// inline error block while preserving the selected verb.
+// Founder VM walk 回归：在 queue-item 卡片点 Route 静默回退——成功无确认，
+// 失败无错误。修复拆分 onSuccess/onError；onSuccess 触发 onOptimisticOutcome
+//（parent 即时渲染 ActionOutcomePanel），onError 显示内联错误块，
+// 同时保留所选 verb。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup, waitFor } from "@testing-library/react";
@@ -31,9 +29,9 @@ function renderVerbActions(props: Parameters<typeof VerbActions>[0]) {
 
 describe("VerbActions — optimistic outcome (demo-bug fix #1)", () => {
   beforeEach(() => {
-    // Stub /api/mission-control/destinations + the action endpoint.
-    // Approve doesn't need destinations, so the destination fetch is
-    // only exercised by the Route test below.
+    // stub /api/mission-control/destinations + action endpoint。
+    // Approve 不需要 destinations，故 destination 拉取
+    // 仅由下面 Route 测试行使。
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string, init?: RequestInit) => {
@@ -87,9 +85,8 @@ describe("VerbActions — optimistic outcome (demo-bug fix #1)", () => {
 
   it("fires onOptimisticOutcome on Route success with destinationSession populated", async () => {
     const onOptimisticOutcome = vi.fn();
-    // Override the destinations fetch to return an empty list so the
-    // component falls into manual-entry mode (much simpler to drive in
-    // jsdom than a controlled <select>).
+    // 覆盖 destinations 拉取返回空列表，使组件落入手动输入模式
+    //（在 jsdom 中比受控 <select> 易驱动得多）。
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string, init?: RequestInit) => {
@@ -146,7 +143,7 @@ describe("VerbActions — optimistic outcome (demo-bug fix #1)", () => {
     fireEvent.click(getByTestId("mc-verb-approve"));
     fireEvent.click(getByTestId("mc-verb-submit"));
     await waitFor(() => expect(onOptimisticOutcome).toHaveBeenCalled());
-    // After success, the verb-detail panel (Cancel/Confirm row) is gone.
+    // 成功后，verb-detail 面板（Cancel/Confirm 行）消失。
     expect(queryByTestId("mc-verb-submit")).toBeNull();
     expect(queryByTestId("mc-verb-error")).toBeNull();
   });
@@ -202,7 +199,7 @@ describe("VerbActions — inline error surface (demo-bug fix #2)", () => {
     fireEvent.click(getByTestId("mc-verb-submit"));
 
     await waitFor(() => getByTestId("mc-verb-error"));
-    // Confirm/Cancel row is still present — the selection survived.
+    // Confirm/Cancel 行仍在——选择存活。
     expect(queryByTestId("mc-verb-submit")).not.toBeNull();
     expect(queryByTestId("mc-verb-cancel")).not.toBeNull();
   });

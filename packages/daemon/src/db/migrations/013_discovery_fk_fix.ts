@@ -3,8 +3,8 @@ import type { Migration } from "../migrate.js";
 export const discoveryFkFix: Migration = {
   name: "013_discovery_fk_fix.sql",
   sql: `
-    -- Rebuild discovered_sessions with ON DELETE SET NULL on claimed_node_id FK.
-    -- Preserves existing rows. Explicit column list for safety.
+    -- 重建 discovered_sessions，使 claimed_node_id 外键采用 ON DELETE SET NULL。
+    -- 保留现有行，并为安全起见显式列出字段。
 
     ALTER TABLE discovered_sessions RENAME TO discovered_sessions_old;
 

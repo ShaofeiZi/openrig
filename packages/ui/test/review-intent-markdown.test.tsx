@@ -1,21 +1,20 @@
 // @vitest-environment jsdom
 
-// qitem-render-driver D1 — INTENT / WHAT & WHY must render markdown with the
-// SAME semantics PLAN already gets.
+// qitem-render-driver D1——INTENT / WHAT & WHY 必须以与 PLAN 相同的
+// 语义渲染 markdown。
 //
-// Live-ledger symptom: PLAN renders `**bold**` / `[link](url)` properly (it
-// routes through MarkdownViewer at SliceReviewTab.tsx:303-304) while every
-// INTENT-class surface interpolates the raw string, so operators read literal
-// markdown markers. Three confirmed roots:
+// Live-ledger 症状：PLAN 正确渲染 `**bold**` / `[link](url)`（经
+// SliceReviewTab.tsx:303-304 的 MarkdownViewer 路由），而每个
+// INTENT 类表面插值原始字符串，故 operator 读到字面 markdown 标记。
+// 三个确认根因：
 //   root-1 SliceReviewTab.tsx:290       slice INTENT           <p>{text}</p>
 //   root-2 MissionReviewTab.tsx:306     mission WHAT & WHY     <pre>{text}</pre>
 //   root-3 MissionReviewTab.tsx:74      BoardRowExpansion INTENT <pre>{text}</pre>
 //
-// Each leg asserts PLAN-equivalent semantics (rendered <strong> + <a>, no
-// literal markers) plus the hideFrontmatter/hideRawToggle parity PLAN uses.
-// The degrade pin keeps missing-intent honesty: a null intent must still
-// surface its existing degrade string verbatim, never swallowed by the
-// markdown pipeline.
+// 每条腿断言与 PLAN 等价的语义（渲染 <strong> + <a>，无字面标记）
+// 加 PLAN 用的 hideFrontmatter/hideRawToggle 对等。degrade 锁保持
+// 缺 intent 的诚实：null intent 仍须逐字呈现其既有 degrade 串，
+// 绝不被 markdown 管线吞掉。
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, cleanup, screen, fireEvent } from "@testing-library/react";
@@ -23,10 +22,9 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ComposedSliceReview, ComposedMissionReview } from "../src/hooks/useReview.js";
 
-// Bands unrelated to the intent surfaces are stubbed so each leg isolates
-// the render root under test.
-// Router Link needs a RouterProvider; a plain anchor keeps the DOM shape
-// without pulling router context into a render-semantics test.
+// 与 intent 表面无关的 band 被 stub，使每条腿隔离被测 render 根。
+// Router Link 需要 RouterProvider；普通 anchor 保持 DOM 形状，
+// 而不把 router 上下文拉进 render-semantics 测试。
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, ...rest }: { children?: React.ReactNode }) => <a {...(rest as Record<string, unknown>)}>{children}</a>,
 }));
@@ -41,8 +39,8 @@ vi.mock("../src/hooks/useReview.js", () => ({
   useMissionReview: () => ({ isLoading: false, isError: false, data: missionState.data, error: null }),
   useInvalidateReview: () => () => {},
 }));
-// Terminal/chat chrome inside the board expansion is irrelevant to the
-// intent-render assertion.
+// board expansion 内的 Terminal/chat chrome 与 intent-render
+// 断言无关。
 vi.mock("../src/components/terminal/ProgressiveTerminal.js", () => ({ ProgressiveTerminal: () => null }));
 vi.mock("../src/hooks/useScopeMarkdown.js", () => ({
   useScopeMarkdown: () => ({ resolved: null, isLoading: false }),
@@ -62,8 +60,7 @@ function withQuery(node: React.ReactElement) {
   return <QueryClientProvider client={qc}>{node}</QueryClientProvider>;
 }
 
-/** The one authored fixture every leg renders — bold + link, the two
- *  inline forms PLAN already handles. */
+/** 每条腿渲染的唯一 authored fixture——bold + link，PLAN 已处理的两种内联形式。 */
 const MD = "**bold** and [link](https://x)";
 
 function sliceReview(over: Partial<ComposedSliceReview> = {}): ComposedSliceReview {
@@ -104,7 +101,7 @@ function missionReview(over: Partial<ComposedMissionReview> = {}): ComposedMissi
   } as ComposedMissionReview;
 }
 
-/** PLAN-equivalent markdown semantics, asserted structurally. */
+/** 与 PLAN 等价的 markdown 语义，结构化断言。 */
 function expectRenderedMarkdown(container: HTMLElement, label: string) {
   expect(container.querySelector("strong"), `${label}: **bold** must render a <strong>`).toBeTruthy();
   const link = container.querySelector('a[href="https://x"]');
@@ -114,7 +111,7 @@ function expectRenderedMarkdown(container: HTMLElement, label: string) {
   expect(text.includes("]("), `${label}: no literal ]( marker may survive`).toBe(false);
 }
 
-/** PLAN passes hideFrontmatter + hideRawToggle; intent surfaces must match. */
+/** PLAN 传 hideFrontmatter + hideRawToggle；intent 表面必须匹配。 */
 function expectPlanParityChrome(container: HTMLElement, label: string) {
   const raw = container.textContent ?? "";
   expect(/\bRAW\b/i.test(raw), `${label}: no raw-toggle control (hideRawToggle parity)`).toBe(false);
@@ -137,8 +134,8 @@ describe("qitem-render-driver D1 — INTENT surfaces render markdown like PLAN",
   });
 
   it("root-3 RED: expanded board-row INTENT renders markdown (BoardRowExpansion)", () => {
-    // The expansion pulls the SLICE review for its row, so both fixtures
-    // carry the same authored markdown.
+    // expansion 为其行拉 SLICE 评审，故两个 fixture
+    // 带相同 authored markdown。
     sliceState.data = sliceReview();
     missionState.data = missionReview({
       board: [{

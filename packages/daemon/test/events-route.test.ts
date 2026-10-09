@@ -9,8 +9,8 @@ import type { ExecFn } from "../src/adapters/tmux.js";
 import type { CmuxTransportFactory } from "../src/adapters/cmux.js";
 
 /**
- * Read SSE lines from a streaming response until we have enough or timeout.
- * Returns parsed SSE events as { id, data } objects.
+ * 从流式响应读取 SSE 行，直到数量足够或超时。
+ * 返回解析为 { id, data } 对象的 SSE 事件。
  */
 async function readSSEEvents(
   res: Response,
@@ -35,7 +35,7 @@ async function readSSEEvents(
     if (done && !value) break;
     if (value) buffer += decoder.decode(value, { stream: true });
 
-    // Parse complete SSE blocks (separated by \n\n)
+    // 解析完整 SSE 块（以 \n\n 分隔）。
     const blocks = buffer.split("\n\n");
     buffer = blocks.pop()!; // keep incomplete block
 
@@ -55,7 +55,7 @@ async function readSSEEvents(
   return events;
 }
 
-describe("SSE events route", () => {
+describe("SSE 事件路由", () => {
   let db: Database.Database;
   let app: Hono;
   let rigRepo: RigRepository;
@@ -73,20 +73,20 @@ describe("SSE events route", () => {
     db.close();
   });
 
-  it("connect to SSE -> receives content-type text/event-stream", async () => {
+  it("连接 SSE 后收到 content-type text/event-stream", async () => {
     const rig = rigRepo.createRig("r01");
     const res = await app.request(`/api/events?rigId=${rig.id}`);
     expect(res.headers.get("content-type")).toContain("text/event-stream");
-    // Cancel the stream
+    // 取消流。
     res.body?.cancel();
   });
 
-  it("emit event on bus -> received on stream as SSE data line with id field", async () => {
+  it("总线发出事件后，流以带 id 字段的 SSE 数据行接收", async () => {
     const rig = rigRepo.createRig("r01");
 
     const res = await app.request(`/api/events?rigId=${rig.id}`);
 
-    // Emit after connection
+    // 连接后发出事件。
     setTimeout(() => {
       eventBus.emit({ type: "rig.created", rigId: rig.id });
     }, 10);
@@ -99,14 +99,14 @@ describe("SSE events route", () => {
     expect(parsed.type).toBe("rig.created");
   });
 
-  it("Last-Event-ID replay: connect with header, get missed events from DB", async () => {
+  it("Last-Event-ID 重放：携带 header 连接后从数据库取得错过的事件", async () => {
     const rig = rigRepo.createRig("r01");
 
-    // Pre-emit events before connecting
+    // 连接前预先发出事件。
     const e1 = eventBus.emit({ type: "rig.created", rigId: rig.id });
     const e2 = eventBus.emit({ type: "node.added", rigId: rig.id, nodeId: "n1", logicalId: "worker" });
 
-    // Connect with Last-Event-ID = e1.seq (should replay e2 only)
+    // 以 Last-Event-ID = e1.seq 连接（应只重放 e2）。
     const res = await app.request(`/api/events?rigId=${rig.id}`, {
       headers: { "Last-Event-ID": String(e1.seq) },
     });
@@ -118,56 +118,54 @@ describe("SSE events route", () => {
     expect(events[0]!.id).toBe(String(e2.seq));
   });
 
-  it("no gap: event emitted during replay window delivered exactly once", async () => {
+  it("无缺口：重放窗口内发出的事件恰好交付一次", async () => {
     const rig = rigRepo.createRig("r01");
 
-    // Pre-emit 2 events
+    // 预先发出 2 个事件。
     const e1 = eventBus.emit({ type: "rig.created", rigId: rig.id });
     eventBus.emit({ type: "node.added", rigId: rig.id, nodeId: "n1", logicalId: "a" });
 
-    // Connect with Last-Event-ID = e1.seq
-    // Then immediately emit another event that could land in the replay/live overlap
+    // 以 Last-Event-ID = e1.seq 连接，随后立即发出另一个可能落入重放和实时重叠窗口的事件。
     const res = await app.request(`/api/events?rigId=${rig.id}`, {
       headers: { "Last-Event-ID": String(e1.seq) },
     });
 
-    // Emit during the replay window
+    // 在重放窗口中发出。
     setTimeout(() => {
       eventBus.emit({ type: "node.added", rigId: rig.id, nodeId: "n2", logicalId: "b" });
     }, 10);
 
     const events = await readSSEEvents(res, 3, 1000);
 
-    // Should have exactly 2: the replayed e2 + the live e3
-    // e2 should appear exactly once (dedup by seq)
+    // 应恰好有 2 个：重放的 e2 加实时的 e3。e2 应只出现一次（按 seq 去重）。
     const seqs = events.map((e) => e.id);
     const uniqueSeqs = new Set(seqs);
     expect(uniqueSeqs.size).toBe(seqs.length); // no duplicates
     expect(events.length).toBe(2);
   });
 
-  it("client disconnect -> subscriber cleaned up (subscriberCount drops)", async () => {
+  it("客户端断开后清理订阅者（subscriberCount 下降）", async () => {
     const rig = rigRepo.createRig("r01");
     const countBefore = eventBus.subscriberCount;
 
     const res = await app.request(`/api/events?rigId=${rig.id}`);
 
-    // Give the stream a moment to establish the subscription
+    // 给流一点时间建立订阅。
     await new Promise((r) => setTimeout(r, 50));
     expect(eventBus.subscriberCount).toBe(countBefore + 1);
 
-    // Read one event then cancel (disconnect)
+    // 读取一个事件后取消（断开连接）。
     setTimeout(() => {
       eventBus.emit({ type: "rig.created", rigId: rig.id });
     }, 10);
     await readSSEEvents(res, 1);
 
-    // readSSEEvents calls reader.cancel() — give the stream time to clean up
+    // readSSEEvents 会调用 reader.cancel()——给流一点清理时间。
     await new Promise((r) => setTimeout(r, 100));
     expect(eventBus.subscriberCount).toBe(countBefore);
   });
 
-  it("rigId filter: only events for requested rig are streamed", async () => {
+  it("rigId 过滤：仅流式发送所请求工作组的事件", async () => {
     const rig1 = rigRepo.createRig("r01");
     const rig2 = rigRepo.createRig("r02");
 
@@ -184,18 +182,18 @@ describe("SSE events route", () => {
     expect(parsed.rigId).toBe(rig1.id);
   });
 
-  it("missing rigId -> global SSE stream (200)", async () => {
+  it("缺少 rigId 时返回全局 SSE 流（200）", async () => {
     const res = await app.request("/api/events");
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/event-stream");
-    // Cancel the stream
+    // 取消流。
     if (res.body) {
       const reader = res.body.getReader();
       reader.cancel().catch(() => {});
     }
   });
 
-  it("invalid Last-Event-ID (non-numeric) -> treated as 0, replays all", async () => {
+  it("无效的 Last-Event-ID（非数字）按 0 处理，并重放全部事件", async () => {
     const rig = rigRepo.createRig("r01");
     eventBus.emit({ type: "rig.created", rigId: rig.id });
     eventBus.emit({ type: "node.added", rigId: rig.id, nodeId: "n1", logicalId: "worker" });
@@ -204,12 +202,12 @@ describe("SSE events route", () => {
       headers: { "Last-Event-ID": "garbage" },
     });
 
-    // Should replay all events (treating malformed as 0)
+    // 应重放全部事件（将畸形值按 0 处理）。
     const events = await readSSEEvents(res, 2);
     expect(events).toHaveLength(2);
   });
 
-  it("SSE id field matches event seq number", async () => {
+  it("SSE id 字段与事件序号匹配", async () => {
     const rig = rigRepo.createRig("r01");
     const emitted = eventBus.emit({ type: "rig.created", rigId: rig.id });
 
@@ -221,7 +219,7 @@ describe("SSE events route", () => {
     expect(events[0]!.id).toBe(String(emitted.seq));
   });
 
-  it("production app mounts /api/events (regression)", async () => {
+  it("生产应用挂载 /api/events（回归）", async () => {
     const cmuxFactory: CmuxTransportFactory = async () => {
       throw Object.assign(new Error(""), { code: "ENOENT" });
     };

@@ -1,16 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { buildTriageModel, renderTriage, type TriageCheckInput } from "../src/crash-cart/triage.js";
 
-// Crash-cart C3 C4 — the post-run aggregate triage list (plan c015d9ed §C4). ONE keyboard-walkable
-// list, never one blocking prompt per seat: each row = a seat + exactly what it needs (the failing
-// restore-check's remediation). GREEN seats are omitted (nothing needed); red before yellow. C4 has NO
-// mock (a text list). The conductor aggregate (C1 attention_required/resume_failed) + the resolve→resume
-// handoff + the live restore-check fetch are seams (C1 excluded this wave); this is the model+render.
+// Crash-cart C3 C4——run 后聚合 triage 列表（plan c015d9ed §C4）。一个可键盘走查的
+// 列表，绝非每席一个阻塞提示：每行 = 一个席 + 它确切所需（失败
+// restore-check 的 remediation）。GREEN 席省略（无需）；红先黄后。C4 无
+// mock（文本列表）。conductor 聚合（C1 attention_required/resume_failed）+ resolve→resume
+// 交接 + live restore-check fetch 是缝（C1 本波排除）；这是 model+render。
 
 const seat = (seat: string, entries: TriageCheckInput["entries"]): TriageCheckInput => ({ seat, entries });
 
-describe("buildTriageModel — flatten per-seat failing checks; green omitted", () => {
-  it("keeps only yellow/red checks, one row per (seat, failing check), red before yellow", () => {
+describe("buildTriageModel——拍平每席失败检查；绿省略", () => {
+  it("只保留黄/红检查，每个(席,失败检查)一行，红排在黄前", () => {
     const rows = buildTriageModel([
       seat("dev-driver@r", [
         { check: "resume.token", status: "green", evidence: "ok", remediation: "" },
@@ -26,27 +26,27 @@ describe("buildTriageModel — flatten per-seat failing checks; green omitted", 
     expect(rows[0]!.remediationSafe).toBe(false);
   });
 
-  it("returns [] when every seat is green (all restored clean)", () => {
+  it("所有席位皆绿（全部干净恢复）时返回 []", () => {
     expect(buildTriageModel([seat("a@r", [{ check: "x", status: "green", evidence: "ok", remediation: "" }])])).toEqual([]);
   });
 });
 
-describe("renderTriage — keyboard-walkable list (or the all-clean line)", () => {
-  it("renders a header + one row per need (seat + remediation), with the check dim", () => {
+describe("renderTriage——可键盘遍历列表（或全干净行）", () => {
+  it("渲染头 + 每条需要一行（席 + 修复），检查项暗显", () => {
     const body = renderTriage(
       buildTriageModel([seat("dev-driver@r", [{ check: "claude.picker", status: "red", evidence: "no token", remediation: "run claude --resume", remediationSafe: false }])]),
     )
       .map((l) => l.text)
       .join("\n");
-    expect(body).toContain("NEEDS ATTENTION (1)");
+    expect(body).toContain("待关注 (1)");
     expect(body).toContain("dev-driver@r");
     expect(body).toContain("run claude --resume");
     expect(body).toContain("claude.picker");
   });
 
-  it("renders the all-clean line when there is nothing to triage", () => {
+  it("无可分诊项时渲染全干净行", () => {
     const body = renderTriage([]).map((l) => l.text).join("\n");
-    expect(body).toContain("all seats restored clean");
-    expect(body).not.toContain("NEEDS ATTENTION");
+    expect(body).toContain("所有席位已干净恢复");
+    expect(body).not.toContain("待关注");
   });
 });

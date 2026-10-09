@@ -11,7 +11,7 @@ describe("004_snapshots", () => {
   beforeEach(() => {
     db = createDb();
     migrate(db, [coreSchema, snapshotsSchema]);
-    // Seed a rig for tests that need one
+    // 为需要工作组的测试预置一个工作组
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-1", "test-rig");
   });
 
@@ -19,14 +19,14 @@ describe("004_snapshots", () => {
     db.close();
   });
 
-  it("creates snapshots table", () => {
+  it("创建 snapshots table", () => {
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='snapshots'")
       .all();
     expect(tables).toHaveLength(1);
   });
 
-  it("can insert snapshot with JSON blob + metadata columns", () => {
+  it("可以插入带 JSON blob + metadata column 的 snapshot", () => {
     const data = JSON.stringify({ rig: {}, nodes: [], edges: [], sessions: [], checkpoints: {} });
     db.prepare(
       "INSERT INTO snapshots (id, rig_id, kind, status, data) VALUES (?, ?, ?, ?, ?)"
@@ -42,7 +42,7 @@ describe("004_snapshots", () => {
     expect(snap.created_at).toBeDefined();
   });
 
-  it("insert without status defaults to 'complete'", () => {
+  it("插入时未提供 status 则默认为 'complete'", () => {
     const data = JSON.stringify({ rig: {} });
     db.prepare(
       "INSERT INTO snapshots (id, rig_id, kind, data) VALUES (?, ?, ?, ?)"
@@ -54,7 +54,7 @@ describe("004_snapshots", () => {
     expect(snap.status).toBe("complete");
   });
 
-  it("query by rig_id returns matching snapshots", () => {
+  it("按 rig_id 查询会返回匹配的 snapshot", () => {
     const data = "{}";
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-2", "other-rig");
     db.prepare("INSERT INTO snapshots (id, rig_id, kind, data) VALUES (?, ?, ?, ?)").run("snap-1", "rig-1", "manual", data);
@@ -68,7 +68,7 @@ describe("004_snapshots", () => {
     expect(rig1Snaps.map((s) => s.id).sort()).toEqual(["snap-1", "snap-3"]);
   });
 
-  it("query by kind filters correctly", () => {
+  it("按 kind 查询可正确过滤", () => {
     const data = "{}";
     db.prepare("INSERT INTO snapshots (id, rig_id, kind, data) VALUES (?, ?, ?, ?)").run("snap-1", "rig-1", "manual", data);
     db.prepare("INSERT INTO snapshots (id, rig_id, kind, data) VALUES (?, ?, ?, ?)").run("snap-2", "rig-1", "pre_restore", data);
@@ -86,9 +86,9 @@ describe("004_snapshots", () => {
     expect(preRestoreSnaps[0]!.id).toBe("snap-2");
   });
 
-  it("query ordered by created_at (most recent last)", () => {
+  it("查询按 created_at 排序（最新项在最后）", () => {
     const data = "{}";
-    // Insert with explicit timestamps to control order
+    // 使用显式 timestamp 插入以控制顺序
     db.prepare("INSERT INTO snapshots (id, rig_id, kind, data, created_at) VALUES (?, ?, ?, ?, ?)").run("snap-old", "rig-1", "manual", data, "2026-03-23 01:00:00");
     db.prepare("INSERT INTO snapshots (id, rig_id, kind, data, created_at) VALUES (?, ?, ?, ?, ?)").run("snap-new", "rig-1", "manual", data, "2026-03-23 02:00:00");
     db.prepare("INSERT INTO snapshots (id, rig_id, kind, data, created_at) VALUES (?, ?, ?, ?, ?)").run("snap-mid", "rig-1", "manual", data, "2026-03-23 01:30:00");
@@ -99,7 +99,7 @@ describe("004_snapshots", () => {
     expect(snaps.map((s) => s.id)).toEqual(["snap-old", "snap-mid", "snap-new"]);
   });
 
-  it("rig delete does NOT delete snapshots (plain TEXT, not FK)", () => {
+  it("删除工作组不会删除 snapshot（普通 TEXT，并非 FK）", () => {
     const data = "{}";
     db.prepare("INSERT INTO snapshots (id, rig_id, kind, data) VALUES (?, ?, ?, ?)").run("snap-1", "rig-1", "manual", data);
 
@@ -109,7 +109,7 @@ describe("004_snapshots", () => {
     expect(snaps).toBeDefined();
   });
 
-  it("snapshot with nonexistent rig_id allowed (orphan refs)", () => {
+  it("允许 snapshot 使用不存在的 rig_id（orphan ref）", () => {
     const data = "{}";
     expect(() =>
       db.prepare("INSERT INTO snapshots (id, rig_id, kind, data) VALUES (?, ?, ?, ?)").run("snap-1", "nonexistent-rig", "manual", data)

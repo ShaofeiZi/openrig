@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 
-// Flagship attempt-0003 — four presentation defects observed firsthand on
-// the compliant real-scale control. These tests deliberately exercise the
-// real Review components; only network/router/terminal boundaries are stubbed.
+// Flagship attempt-0003——在合规真实规模控件上第一手观察到的四个展示缺陷。
+// 这些测试刻意演练真实 Review 组件；仅 network/router/terminal 边界被 stub。
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -135,18 +134,18 @@ describe("flagship attempt-0003 Review polish", () => {
     fireEvent.click(screen.getByTestId("delivered-item-0"));
     const open = screen.getByTestId("delivered-item-open-0");
 
-    expect(within(open).getByText(/verified by artifact; no media attached/i)).toBeTruthy();
+    expect(within(open).getByText(/已由产物校验；未附媒体/)).toBeTruthy();
     expect(open.textContent).toContain("qa-PASS-attempt-0002.md records the comparison.");
-    expect(open.textContent).not.toMatch(/nothing delivered/i);
+    expect(open.textContent).not.toMatch(/尚无交付内容/);
   });
 
-  // slice-04 REV6 (qitem-20260722121455-3f43040c) — render honesty. Per
-  // composeDelivered, `unverified` = covering.length>0 with NO PASSING recorded
-  // comparison, so an artifact was DELIVERED even when proof=[] and note is absent.
-  // The expanded fallback must read "artifact recorded / no media", NEVER "nothing
-  // delivered" (only `missing` keeps that phrase); and the unverified BADGE must say
-  // "no PASSING QA comparison", not "no recorded QA comparison" (a non-passing
-  // comparison may exist and produce the note).
+  // slice-04 REV6（qitem-20260722121455-3f43040c）——render honesty。按
+  // composeDelivered，`unverified` = covering.length>0 且无记录的 PASSING
+  // comparison，故即使 proof=[] 且 note 缺省，artifact 仍被 DELIVERED。展开
+  // fallback 必须读作 "artifact recorded / no media"，绝不能是 "nothing
+  // delivered"（仅 `missing` 保留该短语）；unverified BADGE 必须说
+  // "no PASSING QA comparison"，而非 "no recorded QA comparison"（可能存在
+  // 非 passing comparison 并产生 note）。
   const deliveredUnverified = (note?: string) => ({
     delivered: {
       items: [{ promised: { text: "Blocked outcome" }, proof: [], verified: "unverified" as const, ...(note ? { note } : {}) }],
@@ -159,12 +158,12 @@ describe("flagship attempt-0003 Review polish", () => {
     render(withQuery(<SliceReviewTab sliceName="04-review-tab-observability" slicePath={null} />));
     fireEvent.click(screen.getByTestId("delivered-item-0"));
     const open = screen.getByTestId("delivered-item-open-0");
-    expect(open.textContent).toMatch(/artifact recorded/i);
-    expect(open.textContent).toMatch(/no media/i);
-    expect(open.textContent).not.toMatch(/nothing delivered/i);
+    expect(open.textContent).toMatch(/已记录产物/);
+    expect(open.textContent).toMatch(/未附媒体/);
+    expect(open.textContent).not.toMatch(/尚无交付内容/);
     expect(open.textContent).toContain("The comparison was kicked back; remediation is required.");
     const badge = screen.getByTestId("delivered-item-0").textContent ?? "";
-    expect(badge).toMatch(/no passing QA comparison/i);
+    expect(badge).toMatch(/无通过的 QA 对比/);
     expect(badge).not.toMatch(/no recorded QA comparison/i);
   });
 
@@ -173,9 +172,9 @@ describe("flagship attempt-0003 Review polish", () => {
     render(withQuery(<SliceReviewTab sliceName="04-review-tab-observability" slicePath={null} />));
     fireEvent.click(screen.getByTestId("delivered-item-0"));
     const open = screen.getByTestId("delivered-item-open-0");
-    expect(open.textContent).toMatch(/artifact recorded/i);
-    expect(open.textContent).toMatch(/no media/i);
-    expect(open.textContent).not.toMatch(/nothing delivered/i);
+    expect(open.textContent).toMatch(/已记录产物/);
+    expect(open.textContent).toMatch(/未附媒体/);
+    expect(open.textContent).not.toMatch(/尚无交付内容/);
   });
 
   it("REV6 pin (GREEN): `missing` proof=[] is the ONLY 'nothing delivered' branch (not artifact-recorded)", () => {
@@ -185,8 +184,8 @@ describe("flagship attempt-0003 Review polish", () => {
     render(withQuery(<SliceReviewTab sliceName="04-review-tab-observability" slicePath={null} />));
     fireEvent.click(screen.getByTestId("delivered-item-0"));
     const open = screen.getByTestId("delivered-item-open-0");
-    expect(open.textContent).toMatch(/nothing delivered/i);
-    expect(open.textContent).not.toMatch(/artifact recorded/i);
+    expect(open.textContent).toMatch(/此项尚无交付内容/);
+    expect(open.textContent).not.toMatch(/已记录产物/);
   });
 
   it("R4 keeps six owners visible and owns the all-agents action inside the shared footer", () => {
@@ -205,11 +204,11 @@ describe("flagship attempt-0003 Review polish", () => {
 
     expect(within(visible).getAllByTestId(/^agent-drill-/)).toHaveLength(6);
     expect(within(overflow).getAllByTestId(/^agent-drill-/)).toHaveLength(12);
-    expect(within(overflow).getByText("+12 more queue-scoped agents")).toBeTruthy();
+    expect(within(overflow).getByText("+12 个更多队列范围智能体")).toBeTruthy();
     expect(overflow.hasAttribute("open")).toBe(false);
     const footer = within(band).getByTestId("agents-footer");
     expect(footer.textContent).toContain("18 queue-scoped agents");
-    expect(within(footer).getByRole("link", { name: /all agents/i }).getAttribute("href")).toBe("/agents");
+    expect(within(footer).getByRole("link", { name: /全部智能体/i }).getAttribute("href")).toBe("/agents");
     expect(screen.getByTestId("mission-agents-preview").lastElementChild).toBe(band);
   });
 
@@ -243,13 +242,13 @@ describe("flagship attempt-0003 Review polish", () => {
     const plan = screen.getByTestId("board-lane-card-PLAN");
     expect(plan.className).toContain("backdrop-blur");
     const planHeader = within(plan).getByTestId("board-lane-header-PLAN");
-    expect(within(planHeader).getByText("PLAN")).toBeTruthy();
+    expect(within(planHeader).getByText("计划")).toBeTruthy();
     expect(within(planHeader).getByText("1")).toBeTruthy();
     const locked = screen.getByTestId("board-lane-card-LOCKED");
     const lockedHeader = within(locked).getByTestId("board-lane-header-LOCKED");
-    expect(within(lockedHeader).getByText("LOCKED")).toBeTruthy();
+    expect(within(lockedHeader).getByText("已锁定")).toBeTruthy();
     expect(within(lockedHeader).getByText("1")).toBeTruthy();
-    expect(screen.getByTestId("board-empty-lanes").textContent).toBe("INTENT 0 · BUILD 0 · REVIEW 0");
+    expect(screen.getByTestId("board-empty-lanes").textContent).toBe("意图 0 · 构建 0 · 评审 0");
   });
 
   it("R6 gives SETTLED a vellum card header with cut status inside its hierarchy", () => {
@@ -270,22 +269,21 @@ describe("flagship attempt-0003 Review polish", () => {
     const ledger = screen.getByTestId("mission-ledger");
     expect(ledger.className).toContain("backdrop-blur");
     const header = within(ledger).getByTestId("ledger-header");
-    expect(header.textContent).toContain("SETTLED");
-    expect(header.textContent).toContain("completion ledger");
-    expect(within(header).getByTestId("cut-complete").textContent).toContain("cut-gating COMPLETE");
+    expect(header.textContent).toContain("已定稿");
+    expect(header.textContent).toContain("完成台账");
+    expect(within(header).getByTestId("cut-complete").textContent).toContain("交付门控 完成");
   });
 
   // ===================================================================
-  // STAGE-3 LEVER C (Stage-1) — "not compliant: mini-reqs" render marker.
-  // REV3 d9fa8a2e §5. TEST-ONLY: RED-1/RED-2/RED-3 fail because the marker
-  // element (testid plan-mini-reqs-noncompliant) does not exist yet; the
-  // compliant companion is GREEN today. The marker renders whenever
-  // data.plan.concise.text === null, in EVERY phase (D1: NO phase gate),
-  // presentation-only; copy is FROZEN (D2). They become regression pins when
-  // the marker lands (a SEPARATE Guard-gated GREEN dispatch on SliceReviewTab).
+  // STAGE-3 LEVER C（Stage-1）——"not compliant: mini-reqs" render marker。
+  // REV3 d9fa8a2e §5。仅测试：RED-1/RED-2/RED-3 失败因 marker 元素
+  //（testid plan-mini-reqs-noncompliant）尚不存在；合规伴随项今日 GREEN。
+  // marker 在 data.plan.concise.text === null 时渲染，在每个 phase
+  //（D1：无 phase gate），仅展示；copy 已冻结（D2）。它们在 marker 落地时成为
+  // 回归锁（SliceReviewTab 上一次独立 Guard-gated GREEN 派发）。
   // ===================================================================
   const MARKER_TID = "plan-mini-reqs-noncompliant";
-  const MARKER_COPY = "Not compliant · mini-requirements not authored";
+  const MARKER_COPY = "不合规 · 尚未编写最小需求";
   const planNull = { concise: { text: null, media: [] }, lockedArtifacts: [], lock: null, ssotPath: null };
   const renderSlice = () => render(withQuery(<SliceReviewTab sliceName="04-review-tab-observability" slicePath={null} />));
 
@@ -326,10 +324,10 @@ describe("flagship attempt-0003 Review polish", () => {
     renderSlice();
     const marker = screen.getByTestId(MARKER_TID); // <-- RED: marker element absent
     expect(marker.textContent).toBe(MARKER_COPY);
-    // both plan-section siblings still render (the marker suppresses nothing).
+    // 两个 plan-section 兄弟仍渲染（marker 不抑制任何东西）。
     expect(screen.getByTestId("review-inline-video")).toBeTruthy(); // media sibling
     expect(screen.getByTestId("plan-locked-set")).toBeTruthy(); // locked-set sibling
-    // non-interactive oracle SCOPED TO THE MARKER ELEMENT ONLY (locked-set EvidenceOpeners are valid controls).
+    // 非交互 oracle 仅作用于 marker 元素（locked-set EvidenceOpeners 是有效控件）。
     expect(["A", "BUTTON"]).not.toContain(marker.tagName);
     expect(marker.getAttribute("role")).not.toBe("button");
     expect(marker.getAttribute("role")).not.toBe("link");

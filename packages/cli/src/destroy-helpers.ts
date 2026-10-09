@@ -145,7 +145,7 @@ export function buildDestroyPlan(
       kind,
       ...(backup ? { backupPath: buildBackupPath(path, deps.exists, deps.now()) } : {}),
     });
-    warnings.push(`${kind} is outside state root and will be ${backup ? "backed up separately" : "deleted separately"}: ${path}`);
+    warnings.push(`${kind} 在状态根之外，将被${backup ? "单独备份" : "单独删除"}：${path}`);
   };
 
   addExternalTarget(config.dbPath, "db_file");
@@ -158,7 +158,7 @@ export function buildDestroyPlan(
     try {
       managedTmuxSessions = deps.listManagedTmuxSessions(config.dbPath);
     } catch (err) {
-      warnings.push(`Failed to enumerate managed tmux sessions from ${config.dbPath}: ${err instanceof Error ? err.message : String(err)}`);
+      warnings.push(`无法从 ${config.dbPath} 枚举受管 tmux 会话：${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -186,7 +186,7 @@ export async function executeDestroy(plan: DestroyPlan, deps: DestroyDeps): Prom
   try {
     await deps.stopDaemon();
   } catch (err) {
-    warnings.push(`stopDaemon failed: ${err instanceof Error ? err.message : String(err)}`);
+    warnings.push(`stopDaemon 失败：${err instanceof Error ? err.message : String(err)}`);
   }
 
   let daemonStopped = false;
@@ -200,24 +200,24 @@ export async function executeDestroy(plan: DestroyPlan, deps: DestroyDeps): Prom
         try {
           deps.killProcess(listenerPid);
         } catch (err) {
-          warnings.push(`Failed to terminate listener pid ${listenerPid}: ${err instanceof Error ? err.message : String(err)}`);
+          warnings.push(`无法终止监听进程 ${listenerPid}：${err instanceof Error ? err.message : String(err)}`);
         }
         for (let attempt = 0; attempt < 20; attempt += 1) {
           if ((await deps.inspectListener(plan.daemonHost, plan.daemonPort)).kind === "unreachable") break;
           await deps.sleep(100);
         }
       } else {
-        warnings.push(`OpenRig responded on port ${plan.daemonPort}, but no listener pid was found.`);
+        warnings.push(`zrig 在端口 ${plan.daemonPort} 上有响应，但未找到监听进程。`);
       }
     } else if (before.kind === "other_http") {
-      warnings.push(`Port ${plan.daemonPort} is occupied by a live non-OpenRig HTTP listener. State was left untouched.`);
+      warnings.push(`端口 ${plan.daemonPort} 被一个活跃的非 zrig HTTP 监听器占用。状态未被改动。`);
     }
 
     const after = await deps.inspectListener(plan.daemonHost, plan.daemonPort);
     portCleared = after.kind === "unreachable";
     daemonStopped = portCleared;
   } else {
-    warnings.push(`Daemon host ${plan.daemonHost} is not local. rig destroy only operates on local daemon targets; state was left untouched.`);
+    warnings.push(`后台服务主机 ${plan.daemonHost} 不是本地。rig destroy 仅操作本地后台服务目标；状态未被改动。`);
   }
 
   if (!portCleared) {

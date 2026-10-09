@@ -1,11 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { routeContextPacks, type ContextPacksRouterFsOps, type RouteContextPacksInput } from "../src/domain/bundle-context-packs-router.js";
 
-// Item 6 / slice-05 Checkpoint 7.3f step 2: bundle-context-packs-router
-// pure-function tests. Mirrors plugins router (dir-based) with the
-// context-pack-specific degenerate-input handling per the consumer
-// contract (context-pack-library-service.scan walks pack dirs whose
-// immediate child is manifest.yaml).
+// 第 6 项 / slice-05 检查点 7.3f 第 2 步：bundle-context-packs-router
+// 纯函数测试。仿照基于目录的插件路由器，并依据消费者约定处理上下文包特有的退化输入
+//（context-pack-library-service.scan 遍历直接子项为 manifest.yaml 的包目录）。
 
 function mockFs(initial: { dirs?: string[]; files?: string[]; contents?: Record<string, string> } = {}): ContextPacksRouterFsOps & {
   _copyCalls: Array<{ src: string; dest: string }>;
@@ -24,7 +22,7 @@ function mockFs(initial: { dirs?: string[]; files?: string[]; contents?: Record<
     _mkdirpCalls: mkdirpCalls,
     _dirs: dirs,
     _files: files,
-    // exists() respects both dirs and files (matches node:fs.existsSync semantics)
+    // exists() 同时识别目录与文件（符合 node:fs.existsSync 语义）
     exists: (p: string) => dirs.has(p) || files.has(p),
     isDirectory: (p: string) => dirs.has(p),
     mkdirp: (p: string) => { mkdirpCalls.push(p); dirs.add(p); },
@@ -37,7 +35,7 @@ function mockFs(initial: { dirs?: string[]; files?: string[]; contents?: Record<
   };
 }
 
-/** Convenience: build a complete pack fixture (parent dir + manifest.yaml file). */
+/** 便捷函数：构建完整包夹具（父目录与 manifest.yaml 文件）。 */
 function packFixture(packParentDir: string): { dirs: string[]; files: string[] } {
   return { dirs: [packParentDir], files: [`${packParentDir}/manifest.yaml`] };
 }
@@ -54,9 +52,9 @@ function makeInput(overrides?: Partial<RouteContextPacksInput>): RouteContextPac
   };
 }
 
-describe("routeContextPacks", () => {
-  // C1: empty list → empty records + target dir mkdirp'd
-  it("empty declaredContextPacks produces empty records but still mkdirp's target", () => {
+describe("routeContextPacks 上下文包路由", () => {
+  // C1：空列表 → 空记录，并仍创建目标目录
+  it("declaredContextPacks 为空时生成空记录，但仍创建目标目录", () => {
     const fs = mockFs();
     const result = routeContextPacks(makeInput(), fs);
     expect(result.records).toEqual([]);
@@ -65,8 +63,8 @@ describe("routeContextPacks", () => {
     expect(fs._mkdirpCalls).toContain(TARGET);
   });
 
-  // C2: routes one pack: copyDir from sourceParentDir to target/<dirname>
-  it("routes one context_pack: parent dir copied to target/<dirname>", () => {
+  // C2：路由一个包：通过 copyDir 从 sourceParentDir 复制到 target/<dirname>
+  it("路由一个 context_pack：将父目录复制到 target/<dirname>", () => {
     const fs = mockFs(packFixture(`${BUNDLE_ROOT}/context-packs/intent`));
     const result = routeContextPacks(
       makeInput({ declaredContextPacks: ["context-packs/intent/manifest.yaml"] }),
@@ -82,7 +80,7 @@ describe("routeContextPacks", () => {
     });
   });
 
-  it("refuses a lore-classed pack before copy and teaches the public re-home", () => {
+  it("复制前拒绝 lore 类包，并提示迁移到公开位置", () => {
     const parent = `${BUNDLE_ROOT}/context-packs/lore`;
     const manifest = `${parent}/manifest.yaml`;
     const fs = mockFs({
@@ -105,11 +103,11 @@ describe("routeContextPacks", () => {
     expect(result.rejectedCount).toBe(1);
     expect(result.records[0]!.status).toBe("lore_refused");
     expect(result.records[0]!.detail).toMatch(/lore-class|taxonomy:\s*lore/i);
-    expect(result.records[0]!.detail).toMatch(/genericize|public home|re-home/i);
+    expect(result.records[0]!.detail).toMatch(/通用化|公开来源|内部内容包/);
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  it("refuses internal substance anywhere in a pack before install-side copy", () => {
+  it("安装侧复制前拒绝包中任意位置的内部内容", () => {
     const parent = `${BUNDLE_ROOT}/context-packs/private`;
     const manifest = `${parent}/manifest.yaml`;
     const notes = `${parent}/notes.md`;
@@ -129,12 +127,12 @@ describe("routeContextPacks", () => {
     expect(result.routedCount).toBe(0);
     expect(result.records[0]!.status).toBe("substance_refused");
     expect(result.records[0]!.detail).toMatch(/internal-path/i);
-    expect(result.records[0]!.detail).toMatch(/genericize|public home|re-home/i);
+    expect(result.records[0]!.detail).toMatch(/通用化|公开来源|内部内容包/);
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // C3: multiple distinct packs route correctly
-  it("routes multiple distinct context_packs each to target/<dirname>", () => {
+  // C3：正确路由多个不同的包
+  it("将多个不同的 context_pack 分别路由到 target/<dirname>", () => {
     const fs = mockFs({
       dirs: [`${BUNDLE_ROOT}/context-packs/intent`, `${BUNDLE_ROOT}/context-packs/persona`],
       files: [`${BUNDLE_ROOT}/context-packs/intent/manifest.yaml`, `${BUNDLE_ROOT}/context-packs/persona/manifest.yaml`],
@@ -152,9 +150,8 @@ describe("routeContextPacks", () => {
     expect(fs._copyCalls).toHaveLength(2);
   });
 
-  // C4: missing source pack dir → status=missing (the manifest.yaml file
-  // itself is absent because the parent isn't there either)
-  it("missing source pack dir → status=missing (honest-scoping)", () => {
+  // C4：缺少源包目录 → status=missing（父目录也不存在，因此 manifest.yaml 文件本身缺失）
+  it("缺少源包目录 → status=missing（如实限定范围）", () => {
     const fs = mockFs();
     const result = routeContextPacks(
       makeInput({ declaredContextPacks: ["context-packs/absent/manifest.yaml"] }),
@@ -162,25 +159,25 @@ describe("routeContextPacks", () => {
     );
     expect(result.routedCount).toBe(0);
     expect(result.records[0]!.status).toBe("missing");
-    expect(result.records[0]!.detail).toContain("not present");
+    expect(result.records[0]!.detail).toContain("不存在");
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // C5: unsafe source path escaping bundle workspace rejected
-  it("unsafe source path escaping bundle workspace → status=unsafe", () => {
+  // C5：拒绝逃逸 bundle 工作区的不安全源路径
+  it("源路径逃逸 bundle 工作区 → status=unsafe", () => {
     const fs = mockFs();
     const result = routeContextPacks(
       makeInput({ declaredContextPacks: ["../escape/manifest.yaml"] }),
       fs,
     );
     expect(result.records[0]!.status).toBe("unsafe");
-    expect(result.records[0]!.detail).toContain("escapes bundle workspace");
+    expect(result.records[0]!.detail).toContain("逃逸 bundle 工作区");
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // C6 (degenerate-input): basename not manifest.yaml — consumer-invisible
-  // class. Per banked PRE-handoff degenerate-input dogfood discipline.
-  it("declared path with non-manifest.yaml basename → status=not_manifest", () => {
+  // C6（退化输入）：basename 不是 manifest.yaml——消费者不可见类别。遵循已固化的
+  // 交接前退化输入自测纪律。
+  it("声明路径的 basename 不是 manifest.yaml → status=not_manifest", () => {
     const fs = mockFs({
       dirs: [`${BUNDLE_ROOT}/context-packs/oddpack`],
       files: [`${BUNDLE_ROOT}/context-packs/oddpack/pack.yaml`, `${BUNDLE_ROOT}/context-packs/oddpack/manifest.txt`],
@@ -202,9 +199,9 @@ describe("routeContextPacks", () => {
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // C7 (degenerate-input): parent-dir basename collision — first wins,
-  // second flagged conflict. Banked workflow_specs B1 lesson applied.
-  it("two declared packs sharing parent-dir basename → first routed, second conflict", () => {
+  // C7（退化输入）：父目录 basename 冲突——先到者胜出，第二项标记冲突。
+  // 应用已固化的 workflow_specs B1 经验。
+  it("两个声明包共享父目录 basename → 第一个路由，第二个冲突", () => {
     const fs = mockFs({
       dirs: [`${BUNDLE_ROOT}/a/intent`, `${BUNDLE_ROOT}/b/intent`],
       files: [`${BUNDLE_ROOT}/a/intent/manifest.yaml`, `${BUNDLE_ROOT}/b/intent/manifest.yaml`],
@@ -225,17 +222,16 @@ describe("routeContextPacks", () => {
     expect(result.records[0]!.installedAt).toBe(`${TARGET}/intent`);
     expect(result.records[1]!.status).toBe("conflict");
     expect(result.records[1]!.detail).toContain("intent");
-    expect(result.records[1]!.detail).toContain("collides");
-    // Only the first copyDir fires.
+    expect(result.records[1]!.detail).toContain("冲突");
+    // 仅触发第一次 copyDir。
     expect(fs._copyCalls).toHaveLength(1);
     expect(fs._copyCalls[0]!.src).toBe(`${BUNDLE_ROOT}/a/intent`);
   });
 
-  // C8: pack source path exists but is a file not a directory — edge case
-  // (unusual; manifest.yaml dirname resolved to a file). Skipped honestly.
-  it("source parent exists but is a file (not directory) → status=not_directory", () => {
-    // Make manifest file exist (so the file-existence check passes) but the
-    // parent is registered as a FILE not a directory.
+  // C8：包源路径存在但它是文件而非目录——边界情况（不常见；manifest.yaml 的
+  // dirname 被解析为文件）。如实跳过。
+  it("源父项存在但它是文件而非目录 → status=not_directory", () => {
+    // 让清单文件存在（通过文件存在性检查），但将父项注册为文件而非目录。
     const fs = mockFs({ files: [`${BUNDLE_ROOT}/oddpath`, `${BUNDLE_ROOT}/oddpath/manifest.yaml`] });
     const result = routeContextPacks(
       makeInput({ declaredContextPacks: ["oddpath/manifest.yaml"] }),
@@ -245,9 +241,8 @@ describe("routeContextPacks", () => {
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // C9: mixed list — routed + missing + unsafe + not_manifest + conflict
-  // aggregate correctly
-  it("mixed declared list aggregates correctly across all rejection classes", () => {
+  // C9：混合列表——正确汇总 routed、missing、unsafe、not_manifest 与 conflict
+  it("混合声明列表可正确汇总所有拒绝类别", () => {
     const fs = mockFs({
       dirs: [
         `${BUNDLE_ROOT}/context-packs/ok`,
@@ -263,12 +258,12 @@ describe("routeContextPacks", () => {
     const result = routeContextPacks(
       makeInput({
         declaredContextPacks: [
-          "context-packs/ok/manifest.yaml",         // routed
-          "context-packs/absent/manifest.yaml",      // missing
-          "../escape/manifest.yaml",                  // unsafe
-          "context-packs/odd/pack.yaml",              // not_manifest
-          "context-packs/dup/manifest.yaml",         // routed (1st dup)
-          "elsewhere/dup/manifest.yaml",             // conflict (basename dup with above)
+          "context-packs/ok/manifest.yaml",         // 已路由
+          "context-packs/absent/manifest.yaml",      // 缺失
+          "../escape/manifest.yaml",                  // 不安全
+          "context-packs/odd/pack.yaml",              // 不是清单
+          "context-packs/dup/manifest.yaml",         // 已路由（第一个重复项）
+          "elsewhere/dup/manifest.yaml",             // 冲突（basename 与上项重复）
         ],
       }),
       fs,
@@ -284,17 +279,14 @@ describe("routeContextPacks", () => {
     expect(result.records[5]!.status).toBe("conflict");
   });
 
-  // C11 (degenerate-input / banked guard catch on d491eca9):
-  // manifest.yaml exists at the declared path but is a DIRECTORY, not a
-  // file. fs.exists returns true for both shapes; the live consumer
-  // (context-pack-library-service.ts:135 readFileSync) throws on a dir
-  // path and scan() records an error diagnostic instead of indexing the
-  // pack. Router must reject pre-write so routedCount stays truthful.
-  it("manifest.yaml exists but is a directory → status=not_manifest (no false-positive routed)", () => {
+  // C11（退化输入 / d491eca9 中固化的护栏捕获）：声明路径存在 manifest.yaml，
+  // 但它是目录而非文件。fs.exists 对两种形态都返回 true；实时消费者
+  //（context-pack-library-service.ts:135 readFileSync）对目录路径会抛错，scan()
+  // 只记录错误诊断而不索引包。路由器必须在写入前拒绝，以保持 routedCount 如实。
+  it("manifest.yaml 存在但为目录 → status=not_manifest（无路由假阳性）", () => {
     const fs = mockFs({
-      // Parent dir IS a directory, AND manifest.yaml is ALSO a directory
-      // (not a file). The bare exists check would pass; isDirectory check
-      // catches this.
+      // 父项是目录，manifest.yaml 也是目录（不是文件）。仅 exists 检查会通过；
+      // isDirectory 检查会捕获此情况。
       dirs: [
         `${BUNDLE_ROOT}/context-packs/dirpack`,
         `${BUNDLE_ROOT}/context-packs/dirpack/manifest.yaml`,
@@ -308,21 +300,19 @@ describe("routeContextPacks", () => {
     expect(result.routedCount).toBe(0);
     expect(result.rejectedCount).toBe(1);
     expect(result.records[0]!.status).toBe("not_manifest");
-    expect(result.records[0]!.detail).toContain("directory");
-    // CRUCIAL: no copyDir fires (consumer-invisible pack must not route)
+    expect(result.records[0]!.detail).toContain("目录");
+    // 关键：不触发 copyDir（不得路由消费者不可见的包）
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // C10 (degenerate-input / banked guard catch on a0e7e0e1):
-  // parent dir exists but manifest.yaml file itself is absent —
-  // ContextPackLibraryService.scan skips packs missing manifest.yaml
-  // (context-pack-library-service.ts:76). The router must check the
-  // manifest FILE existence, not just the parent dir, or routedCount
-  // claims a consumer-invisible pack.
-  it("parent dir exists but manifest.yaml file missing → status=missing (no false-positive routed)", () => {
+  // C10（退化输入 / a0e7e0e1 中固化的护栏捕获）：父目录存在，但 manifest.yaml
+  // 文件本身缺失。ContextPackLibraryService.scan 会跳过缺少 manifest.yaml 的包
+  //（context-pack-library-service.ts:76）。路由器必须检查清单文件本身是否存在，
+  // 而不只是父目录，否则 routedCount 会声称路由了消费者不可见的包。
+  it("父目录存在但 manifest.yaml 文件缺失 → status=missing（无路由假阳性）", () => {
     const fs = mockFs({
-      // Parent dir is present + isDirectory, BUT manifest.yaml is NOT in
-      // files (consumer requires the file itself).
+      // 父目录存在且 isDirectory 为真，但 files 中没有 manifest.yaml
+      //（消费者要求文件本身存在）。
       dirs: [`${BUNDLE_ROOT}/context-packs/halfpack`],
     });
     const result = routeContextPacks(
@@ -333,8 +323,8 @@ describe("routeContextPacks", () => {
     expect(result.routedCount).toBe(0);
     expect(result.rejectedCount).toBe(1);
     expect(result.records[0]!.status).toBe("missing");
-    expect(result.records[0]!.detail).toContain("not present");
-    // CRUCIAL: no copyDir fires (operator-invisible pack must not route)
+    expect(result.records[0]!.detail).toContain("不存在");
+    // 关键：不触发 copyDir（不得路由操作员不可见的包）
     expect(fs._copyCalls).toHaveLength(0);
   });
 });

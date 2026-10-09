@@ -35,7 +35,7 @@ function mockLifecycleDeps(): LifecycleDeps {
   };
 }
 
-// Raw-token wakes never touch the daemon — inert lifecycle/client are fine.
+// raw-token 唤醒绝不触碰 daemon——惰性 lifecycle/client 即可。
 function tokenDeps(runner: WakeRunner): StatusDeps {
   return {
     lifecycleDeps: {} as never,
@@ -45,8 +45,8 @@ function tokenDeps(runner: WakeRunner): StatusDeps {
   } as unknown as StatusDeps;
 }
 
-// Seat wakes resolve via the daemon first: running status + a post() that returns
-// the WakeResolution.
+// seat 唤醒先经 daemon 解析：运行中 status + 一个返回
+// WakeResolution 的 post()。
 function seatDeps(runner: WakeRunner, resolution: unknown, httpStatus = 200): StatusDeps {
   const post = vi.fn(async () => ({ status: httpStatus, data: resolution }));
   return {
@@ -73,8 +73,8 @@ function makeCmd(deps: StatusDeps): Command {
 }
 
 describe("rig ask --wake (L3 CLI)", () => {
-  // B8-1b missed-site fix (census belt catch, 2026-08-07): the seat-resolve
-  // precheck must route through the ONE chokepoint (daemonStatusGuard), not a
+  // B8-1b 漏 seat 修复（census 带捕获，2026-08-07）：seat-resolve
+  // 预检必须路由过唯一咽喉（daemonStatusGuard），而非
   // hand-rolled literal render — the epistemic 3-part lands, the wake-specific
   // raw-token tip survives as a supplementary line.
   it("seat-form --wake with the daemon DOWN renders the chokepoint 3-part + the raw-token tip", async () => {
@@ -103,8 +103,8 @@ describe("rig ask --wake (L3 CLI)", () => {
     const out = logs.join("\n");
     expect(exitCode).toBe(1);
     expect(out).toMatch(/rig daemon start/); // the shared guard's action line
-    expect(out).toMatch(/Error: /); // 3-part structure, not the old single-line literal
-    expect(out).toMatch(/raw session token.*--wake/i); // the site-specific tip survives
+    expect(out).toMatch(/错误： /); // 三段结构, not the old single-line literal
+    expect(out).toMatch(/原始会话 token/); // the site-specific tip survives
     expect(runner).not.toHaveBeenCalled();
     for (const [k, v] of Object.entries(saved)) {
       if (v === undefined) delete process.env[k];
@@ -119,7 +119,7 @@ describe("rig ask --wake (L3 CLI)", () => {
     });
     const out = logs.join("\n");
     expect(runner).toHaveBeenCalled();
-    expect(out).toMatch(/snapshot answer.*checked, not believed/i);
+    expect(out).toMatch(/快照回答.*经过核查/);
     expect(out).toContain("the gateway plan is A2 first");
     expect(exitCode).toBeUndefined();
   });
@@ -130,7 +130,7 @@ describe("rig ask --wake (L3 CLI)", () => {
       await makeCmd(tokenDeps(runner)).parseAsync(["node", "rig", "ask", "my-rig", "q", "--wake", "tok", "--wake-timeout", "5"]);
     });
     const out = logs.join("\n");
-    expect(out).toMatch(/did not return|bounded timeout/i);
+    expect(out).toMatch(/未返回|有界超时/);
     expect(exitCode).toBe(2);
   });
 
@@ -140,7 +140,7 @@ describe("rig ask --wake (L3 CLI)", () => {
       await makeCmd(tokenDeps(runner)).parseAsync(["node", "rig", "ask", "my-rig", "q", "--wake", "bad"]);
     });
     const out = logs.join("\n");
-    expect(out).toMatch(/wake failed.*exit 1/i);
+    expect(out).toMatch(/wake 失败.*退出码 1/);
     expect(out).not.toMatch(/no answer returned/i);
     expect(exitCode).toBe(2);
   });
@@ -177,8 +177,8 @@ describe("rig ask --wake (L3 CLI)", () => {
     const out = logs.join("\n");
     expect(runner).not.toHaveBeenCalled(); // never a guessed wake
     expect(out).toMatch(/only 2 tenure/i);
-    expect(out).toMatch(/gen 1: session 20/);
-    expect(out).toMatch(/no resume token/); // gen 2 flagged token-absent
+    expect(out).toMatch(/第 1 代：会话 20/);
+    expect(out).toMatch(/无 resume token/); // gen 2 标记无 token
     expect(exitCode).toBe(2);
   });
 });

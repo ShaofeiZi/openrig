@@ -39,7 +39,7 @@ function collectOption(value: string, previous: string[] = []): string[] {
 function parseBinding(value: string): BindingMapping {
   const splitIndex = value.indexOf("=");
   if (splitIndex <= 0 || splitIndex === value.length - 1) {
-    throw new Error(`Invalid --bind mapping "${value}". Use logicalId=tmuxSessionOrDiscoveryId`);
+    throw new Error(`无效的 --bind 映射 "${value}"。格式应为 logicalId=tmuxSessionOrDiscoveryId`);
   }
   return {
     logicalId: value.slice(0, splitIndex).trim(),
@@ -52,21 +52,21 @@ function parseBindingsFile(yaml: string): BindingMapping[] {
   try {
     parsed = parseYaml(yaml);
   } catch {
-    throw new Error("Bindings file must be valid YAML. Fix: repair the file and retry.");
+    throw new Error("绑定文件必须是有效的 YAML。修复：修好该文件后重试。");
   }
 
   if (!parsed || typeof parsed !== "object") {
-    throw new Error("Bindings file must be an object with a top-level 'bindings' map.");
+    throw new Error("绑定文件必须是一个带有顶层 'bindings' 映射的对象。");
   }
 
   const bindings = (parsed as BindingsFileShape).bindings;
   if (!bindings || typeof bindings !== "object" || Array.isArray(bindings)) {
-    throw new Error("Bindings file must define 'bindings' as a map of logicalId: tmuxSessionOrDiscoveryId.");
+    throw new Error("绑定文件必须把 'bindings' 定义为 logicalId: tmuxSessionOrDiscoveryId 的映射。");
   }
 
   return Object.entries(bindings).map(([logicalId, selector]) => {
     if (typeof selector !== "string" || !selector.trim()) {
-      throw new Error(`Bindings file entry '${logicalId}' must map to a non-empty session selector.`);
+      throw new Error(`绑定文件条目 '${logicalId}' 必须映射到一个非空的会话选择器。`);
     }
     return { logicalId: logicalId.trim(), selector: selector.trim() };
   });
@@ -77,7 +77,7 @@ function findDiscoveredSession(sessions: DiscoveredSessionLike[], selector: stri
 }
 
 export function adoptCommand(depsOverride?: AdoptDeps): Command {
-  const cmd = new Command("adopt").description("Materialize topology and bind discovered live sessions");
+  const cmd = new Command("adopt").description("物化拓扑并绑定已发现的运行中会话");
   const getDeps = (): AdoptDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
     clientFactory: (url: string) => new DaemonClient(url),
@@ -85,12 +85,12 @@ export function adoptCommand(depsOverride?: AdoptDeps): Command {
   };
 
   cmd
-    .argument("<path>", "Path to pod-aware RigSpec or fragment")
-    .option("--bind <logicalId=tmuxSessionOrDiscoveryId>", "Bind a logical node to a discovered tmux session or discovery ID", collectOption, [])
-    .option("--bindings-file <path>", "Load logicalId -> tmux session/discovery ID mappings from YAML")
-    .option("--target-rig <rigId>", "Target existing rig for additive materialization")
-    .option("--rig-root <root>", "Root directory for pod-aware resolution")
-    .option("--json", "Output machine-readable JSON")
+    .argument("<path>", "Pod 感知的 RigSpec 或片段的路径")
+    .option("--bind <logicalId=tmuxSessionOrDiscoveryId>", "把一个逻辑节点绑定到已发现的 tmux 会话或发现 ID", collectOption, [])
+    .option("--bindings-file <path>", "从 YAML 加载 logicalId -> tmux 会话/发现 ID 的映射")
+    .option("--target-rig <rigId>", "用于增量物化的目标已有工作组")
+    .option("--rig-root <root>", "供 Pod 感知解析的根目录")
+    .option("--json", "输出机器可读的 JSON")
     .action(async (filePath: string, opts: { bind?: string[]; bindingsFile?: string; targetRig?: string; rigRoot?: string; json?: boolean }) => {
       const deps = getDeps();
 
@@ -98,7 +98,7 @@ export function adoptCommand(depsOverride?: AdoptDeps): Command {
       try {
         yaml = deps.readFile(filePath);
       } catch {
-        console.error(`Cannot read file: ${filePath}`);
+        console.error(`无法读取文件：${filePath}`);
         process.exitCode = 1;
         return;
       }
@@ -107,25 +107,25 @@ export function adoptCommand(depsOverride?: AdoptDeps): Command {
       try {
         parsed = parseYaml(yaml);
       } catch {
-        console.error("Adopt requires a valid pod-aware RigSpec. Fix: validate the YAML and retry.");
+        console.error("adopt 需要一个有效的 Pod 感知 RigSpec。修复：校验 YAML 后重试。");
         process.exitCode = 1;
         return;
       }
       const podAware = !!parsed && typeof parsed === "object" && Array.isArray((parsed as Record<string, unknown>)["pods"]);
       if (!podAware) {
-        console.error("Adopt requires a pod-aware RigSpec with pods.");
+        console.error("adopt 需要一个带 pods 的 Pod 感知 RigSpec。");
         process.exitCode = 1;
         return;
       }
 
       const inlineBindings = opts.bind ?? [];
       if (inlineBindings.length > 0 && opts.bindingsFile) {
-        console.error("Use either --bind or --bindings-file, not both.");
+        console.error("请选择 --bind 或 --bindings-file，二者不可同时使用。");
         process.exitCode = 1;
         return;
       }
       if (inlineBindings.length === 0 && !opts.bindingsFile) {
-        console.error("Adopt requires at least one binding. Use --bind or --bindings-file.");
+        console.error("adopt 至少需要一条绑定。请使用 --bind 或 --bindings-file。");
         process.exitCode = 1;
         return;
       }
@@ -168,7 +168,7 @@ export function adoptCommand(depsOverride?: AdoptDeps): Command {
 
       if (materializeRes.status >= 400) {
         const data = materializeRes.data as { error?: string; message?: string; errors?: string[] };
-        console.error(data.errors?.join("\n") ?? data.message ?? data.error ?? `Materialize failed (HTTP ${materializeRes.status})`);
+        console.error(data.errors?.join("\n") ?? data.message ?? data.error ?? `物化失败（HTTP ${materializeRes.status}）`);
         process.exitCode = 1;
         return;
       }
@@ -182,14 +182,14 @@ export function adoptCommand(depsOverride?: AdoptDeps): Command {
 
       const scanRes = await client.post<{ sessions?: Array<Record<string, unknown>>; error?: string }>("/api/discovery/scan", {});
       if (scanRes.status >= 400) {
-        console.error(scanRes.data["error"] ?? `Discovery scan failed (HTTP ${scanRes.status})`);
+        console.error(scanRes.data["error"] ?? `发现扫描失败（HTTP ${scanRes.status}）`);
         process.exitCode = 1;
         return;
       }
 
       const discoveryRes = await client.get<DiscoveredSessionLike[]>("/api/discovery?status=active");
       if (discoveryRes.status >= 400) {
-        console.error(`Failed to read discovery inventory (HTTP ${discoveryRes.status}). Run rig discover and retry.`);
+        console.error(`读取发现清单失败（HTTP ${discoveryRes.status}）。请运行 zrig discover 后重试。`);
         process.exitCode = 1;
         return;
       }
@@ -204,7 +204,7 @@ export function adoptCommand(depsOverride?: AdoptDeps): Command {
             logicalId: binding.logicalId,
             selector: binding.selector,
             ok: false,
-            error: `Session "${binding.selector}" not found in active discovery`,
+            error: `在活跃发现中未找到会话 "${binding.selector}"`,
           });
           continue;
         }
@@ -221,7 +221,7 @@ export function adoptCommand(depsOverride?: AdoptDeps): Command {
             sessionName: session.tmuxSession,
             discoveredId: session.id,
             ok: false,
-            error: String(bindRes.data["error"] ?? `Bind failed (HTTP ${bindRes.status})`),
+            error: String(bindRes.data["error"] ?? `绑定失败（HTTP ${bindRes.status}）`),
           });
           continue;
         }
@@ -246,22 +246,22 @@ export function adoptCommand(depsOverride?: AdoptDeps): Command {
       if (opts.json) {
         console.log(JSON.stringify(payload, null, 2));
       } else {
-        console.log(`Rig adopted: ${materialized.specName} (${materialized.rigId})`);
+        console.log(`已采纳工作组：${materialized.specName}（${materialized.rigId}）`);
         for (const node of materialized.nodes) {
-          console.log(`  ${node.logicalId}: ${node.status}`);
+          console.log(`  ${node.logicalId}：${node.status}`);
         }
         for (const result of results) {
           if (result.ok) {
-            console.log(`  bind ${result.logicalId} <- ${result.sessionName ?? result.selector}: bound`);
+            console.log(`  绑定 ${result.logicalId} <- ${result.sessionName ?? result.selector}：已绑定`);
           } else {
-            console.error(`  bind ${result.logicalId} <- ${result.selector}: ${result.error}`);
+            console.error(`  绑定 ${result.logicalId} <- ${result.selector}：${result.error}`);
           }
         }
       }
 
       if (results.some((result) => !result.ok)) {
         if (!opts.json) {
-          console.error("Adopt completed with errors. Fix: run rig discover --json, correct the mappings, and retry failed bindings.");
+          console.error("adopt 完成但有错误。修复：运行 zrig discover --json，校正映射后重试失败的绑定。");
         }
         process.exitCode = 1;
       }

@@ -36,8 +36,8 @@ describe("PackageRepository", () => {
     db.close();
   });
 
-  // Test 5: createPackage persists ALL fields correctly
-  it("createPackage persists and returns all fields", () => {
+  // 测试 5：createPackage 正确持久化所有字段。
+  it("createPackage 持久化并返回所有字段", () => {
     const pkg = repo.createPackage({
       name: "test-pkg",
       version: "1.0.0",
@@ -58,8 +58,8 @@ describe("PackageRepository", () => {
     expect(pkg.createdAt).toBeDefined();
   });
 
-  // Test 6: findByNameVersion returns correct package
-  it("findByNameVersion returns correct package", () => {
+  // 测试 6：findByNameVersion 返回正确 package。
+  it("findByNameVersion 返回正确 package", () => {
     repo.createPackage({
       name: "alpha",
       version: "1.0.0",
@@ -86,8 +86,8 @@ describe("PackageRepository", () => {
     expect(notFound).toBeNull();
   });
 
-  // Test 7: Duplicate name+version -> unique constraint error
-  it("duplicate name+version throws unique constraint error", () => {
+  // 测试 7：name+version 重复时产生唯一约束错误。
+  it("name+version 重复时抛出唯一约束错误", () => {
     repo.createPackage({
       name: "test-pkg",
       version: "1.0.0",
@@ -107,8 +107,8 @@ describe("PackageRepository", () => {
     }).toThrow(/UNIQUE/);
   });
 
-  // Test 8: listPackages returns all
-  it("listPackages returns all packages", () => {
+  // 测试 8：listPackages 返回全部 package。
+  it("listPackages 返回全部 package", () => {
     repo.createPackage({ name: "a", version: "1.0.0", sourceKind: "local_path", sourceRef: "/a", manifestHash: "h1" });
     repo.createPackage({ name: "b", version: "1.0.0", sourceKind: "local_path", sourceRef: "/b", manifestHash: "h2" });
     repo.createPackage({ name: "c", version: "2.0.0", sourceKind: "local_path", sourceRef: "/c", manifestHash: "h3" });
@@ -118,8 +118,8 @@ describe("PackageRepository", () => {
     expect(all.map((p) => p.name).sort()).toEqual(["a", "b", "c"]);
   });
 
-  // Test 10: getPackage by id returns correct Package, nonexistent returns null
-  it("getPackage returns by id, null for nonexistent", () => {
+  // 测试 10：getPackage 按 id 返回正确 Package，不存在时返回 null。
+  it("getPackage 按 id 返回结果，不存在时返回 null", () => {
     const pkg = repo.createPackage({
       name: "test-pkg",
       version: "1.0.0",

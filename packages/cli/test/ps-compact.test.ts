@@ -1,6 +1,6 @@
 // OPR.0.4.0.25 — rig ps token-safe defaults (compact-by-default projection-trim).
 // Large multi-rig fixture exercises compact default, --full byte-equivalence,
-// --rig/--session filters, and field-set honesty. Mirrors ps.test.ts harness.
+// --rig/--session 过滤与字段集合诚实性。镜像 ps.test.ts 的 harness。
 
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vitest";
 import http from "node:http";
@@ -60,9 +60,9 @@ function runningDeps(port: number): StatusDeps {
 }
 
 // --- Large multi-rig fixture ---
-// 3 rigs, ~15 nodes total, with fat fields (contextUsage, agentActivity,
-// resumeCommand, tmuxAttachCommand, extra [key:string]:unknown fields).
-// This is the minimum to prove the compact-default token regression.
+// 3 个 rig、共约 15 个 node，带丰满字段（contextUsage、agentActivity、
+// resumeCommand、tmuxAttachCommand、额外 [key:string]:unknown 字段）。
+// 这是证明 compact 默认 token 回归的最小集合。
 
 function makeFatNode(rigId: string, rigName: string, logicalId: string, opts?: {
   lifecycleState?: string;
@@ -84,9 +84,8 @@ function makeFatNode(rigId: string, rigName: string, logicalId: string, opts?: {
     podId: `pod-${logicalId.split(".")[0]}`,
     podNamespace: logicalId.split(".")[0],
     canonicalSessionName: `${logicalId.replace(".", "-")}@${rigName}`,
-    // Slice 13 fix 2 — the daemon stamps every served row with its boot-reconciled
-    // self-id; the fixture mirrors the served shape so the compact/full ratio guard
-    // measures real surfaces.
+    // Slice 13 修复 2——daemon 给每个服务出的行盖上其启动对账后的
+    // self-id；fixture 镜像服务形状，使 compact/full 比率守卫度量真实表面。
     hostSelfId: "host-84c37990",
     nodeKind: "agent" as const,
     runtime: "claude-code",
@@ -132,7 +131,7 @@ const RIG_A_NODES = [
   makeFatNode("rig-a", "openrig-build", "dev1.qa"),
   makeFatNode("rig-a", "openrig-build", "rev1.r1"),
   makeFatNode("rig-a", "openrig-build", "rev1.r2"),
-  // One attention node — reason must appear in compact
+  // 一个 attention 节点——reason 必须出现在 compact 中
   makeFatNode("rig-a", "openrig-build", "dev1.design", {
     lifecycleState: "attention_required",
     startupStatus: "attention_required",
@@ -233,14 +232,12 @@ describe("OPR.0.4.0.25 — rig ps token-safe defaults", () => {
     const defaultOutput = defaultLogs.join("");
     const fullOutput = fullLogs.join("");
 
-    // Compact must be significantly smaller than full. Re-based /3 → /2.8 for
-    // slice 13 fix 2: hostSelfId is one ruled scalar added to BOTH projections
-    // (host attribution must ride the token-safe default — a merged roster
-    // without it reads as authoritative), which moves the ratio without any
-    // heavy field returning. The real regression guard — heavy fields stay
-    // omitted from compact — is asserted directly in AC-7.
+    // compact 必须显著小于 full。slice 13 修复 2 重定基 /3 → /2.8：
+    // hostSelfId 是加进两个投影的一个受裁定标量（host 归属必须随 token 安全
+    // 默认走——否则合并 roster 读起来像权威），它在没有任何重字段返回的情况下
+    // 移动了比率。真正的回归守卫——重字段保持从 compact 省略——在 AC-7 直接断言。
     expect(defaultOutput.length).toBeLessThan(fullOutput.length / 2.8);
-    // Sanity: full output exists and is nontrivial
+    // 健全性：full 输出存在且非平凡
     expect(fullOutput.length).toBeGreaterThan(1000);
   });
 
@@ -262,9 +259,9 @@ describe("OPR.0.4.0.25 — rig ps token-safe defaults", () => {
     expect(fullNodes.length).toBe(TOTAL_NODE_COUNT);
   });
 
-  // -- AC-3: --full --json is byte-equivalent to today's default --
-  // Today's default emits the raw fat array. After this slice, --full must
-  // emit that same raw array. We capture today's behavior as the golden.
+  // -- AC-3：--full --json 与今日默认逐字节等价 --
+  // 今日默认发出原始 fat 数组。本切片之后，--full 必须
+  // 发出同一个原始数组。我们把今日行为捕获为 golden。
   it("AC-3: --full --json is byte-equivalent to today's raw default", async () => {
     // Today's default IS the full raw array (no compact yet).
     // After slice-25, --full must produce the same output as today's default.
@@ -275,7 +272,7 @@ describe("OPR.0.4.0.25 — rig ps token-safe defaults", () => {
     const fullOutput = fullLogs.join("");
     const fullParsed = JSON.parse(fullOutput);
 
-    // Must be a bare array (not an envelope)
+    // 必须是裸数组（非信封）
     expect(Array.isArray(fullParsed)).toBe(true);
     expect(fullParsed.length).toBe(TOTAL_NODE_COUNT);
 
@@ -312,8 +309,8 @@ describe("OPR.0.4.0.25 — rig ps token-safe defaults", () => {
       expect(node).toHaveProperty("hasAssignedWork");
       expect(node).toHaveProperty("assignedWorkCount");
       expect(node).toHaveProperty("pendingWorkCount");
-      // Detailed state siblings stay available through --full/--fields; compact
-      // keeps every base key plus the total needed to render claimed work honestly.
+      // 详细状态兄弟字段仍经 --full/--fields 可用；compact
+      // 保留每个基础键，加上诚实渲染已声明工作所需的 total。
       expect(node.inProgressWorkCount).toBeUndefined();
       expect(node.blockedWorkCount).toBeUndefined();
 
@@ -325,7 +322,7 @@ describe("OPR.0.4.0.25 — rig ps token-safe defaults", () => {
       expect(node.resumeCommand).toBeUndefined();
       expect(node.tmuxAttachCommand).toBeUndefined();
 
-      // agentActivity is compact (state only, plus reason when attention)
+      // agentActivity 是 compact 的（仅 state，attention 时加 reason）
       expect(node.agentActivity.evidenceSource).toBeUndefined();
       expect(node.agentActivity.evidence).toBeUndefined();
       expect(node.agentActivity.sampledAt).toBeUndefined();
@@ -338,7 +335,7 @@ describe("OPR.0.4.0.25 — rig ps token-safe defaults", () => {
     });
     const nodes = JSON.parse(logs.join(""));
 
-    // dev1.design is the attention node
+    // dev1.design 是 attention 节点
     const attentionNode = nodes.find((n: { canonicalSessionName: string }) =>
       n.canonicalSessionName === "dev1-design@openrig-build"
     );
@@ -347,7 +344,7 @@ describe("OPR.0.4.0.25 — rig ps token-safe defaults", () => {
     expect(attentionNode.agentActivity.reason).toBe("approval_pending");
     expect(attentionNode.latestError).toBe("Compaction imminent");
 
-    // orch1.lead is healthy — reason should be omitted
+    // orch1.lead 是 healthy——reason 应省略
     const healthyNode = nodes.find((n: { canonicalSessionName: string }) =>
       n.canonicalSessionName === "orch1-lead@openrig-build"
     );
@@ -384,7 +381,7 @@ describe("OPR.0.4.0.25 — rig ps token-safe defaults", () => {
     });
     const nodes = JSON.parse(logs.join(""));
     expect(nodes.length).toBe(RIG_C_NODES.length);
-    // Full payload has the heavy fields
+    // full payload 带重字段
     expect(nodes[0].contextUsage).toBeDefined();
     expect(nodes[0].recoveryGuidance).toBeDefined();
     expect(nodes[0].resolvedSpecHash).toBeDefined();
@@ -410,8 +407,8 @@ describe("OPR.0.4.0.25 — rig ps token-safe defaults", () => {
     expect(helpOutput).toContain("--full");
     expect(helpOutput).toContain("--rig");
     expect(helpOutput).toContain("--session");
-    expect(helpOutput).toContain("current-rig");
-    expect(helpOutput).toContain("compact");
+    expect(helpOutput).toContain("当前 rig");
+    expect(helpOutput).toContain("紧凑");
   });
 
   // -- AC-7: both paths in one suite --

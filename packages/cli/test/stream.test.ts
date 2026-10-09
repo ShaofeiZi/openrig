@@ -3,10 +3,10 @@ import type { StreamDeps } from "../src/commands/stream.js";
 import { createProgram } from "../src/index.js";
 
 /**
- * `rig stream` CLI tests — PL-004 Phase A revision (R1).
+ * `rig stream` CLI 测试——PL-004 Phase A 修订（R1）。
  *
- * Covers parser behavior, HTTP request shape, and non-2xx exit handling for
- * stream emit / list / show / archive plus the GA CLI watch consumer over the
+ * 覆盖 parser 行为、HTTP 请求形状、及 stream emit / list / show / archive 的
+ * 非 2xx 退出处理，外加 GA CLI watch 消费者对
  * already-shipped SSE route.
  */
 
@@ -312,9 +312,9 @@ describe("rig stream CLI", () => {
     await runWatch(vi.fn(async () => { throw new Error("socket closed"); }));
 
     expect(errors).toEqual([
-      "Watch failed (HTTP 503)",
-      "Watch failed: response body missing",
-      "Watch error: socket closed",
+      "监视失败（HTTP 503）",
+      "监视失败：缺少响应体",
+      "监视出错：socket closed",
     ]);
   });
 });

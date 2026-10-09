@@ -1,11 +1,11 @@
-// PL-005 Phase B: read-only audit-history browse over mission_control_actions.
+// PL-005 Phase B：只读浏览 mission_control_actions 审计历史。
 //
-// Filters: qitem_id (exact), action_verb (exact), actor_session (exact),
-// since/until (acted_at range). Pagination via before_id + limit.
-// Returns {rows, has_more, next_before_id} shape so the UI can paginate.
+// 筛选条件：qitem_id（精确）、action_verb（精确）、actor_session（精确）、
+// since/until（acted_at 范围）。通过 before_id + limit 分页。
+// 返回 {rows, has_more, next_before_id} 结构，供 UI 分页。
 //
-// Read-only: no writers, no UPDATE/DELETE methods. Phase A's
-// MissionControlActionLog is the only writer; this layer only queries.
+// 只读：没有写入器，也没有 UPDATE/DELETE 方法。Phase A 的
+// MissionControlActionLog 是唯一写入方，本层只负责查询。
 
 import type Database from "better-sqlite3";
 import {
@@ -18,18 +18,17 @@ export interface AuditQueryInput {
   qitemId?: string;
   actionVerb?: string;
   actorSession?: string;
-  /** ISO timestamp; rows with acted_at >= since are included. */
+  /** ISO 时间戳；包含 acted_at >= since 的记录。 */
   since?: string;
-  /** ISO timestamp; rows with acted_at <= until are included. */
+  /** ISO 时间戳；包含 acted_at <= until 的记录。 */
   until?: string;
-  /** Default 50; capped at 200. */
+  /** 默认 50，上限 200。 */
   limit?: number;
-  /** Pagination cursor: returns rows whose action_id < beforeId. */
+  /** 分页游标：返回 action_id < beforeId 的记录。 */
   beforeId?: string;
-  /** OPR.0.4.4.19 FR-9 — the scope-approval target filters (the pinned
-   *  audit_notes_json shape's read path). These make Packet 2's one-query
-   *  UNVERIFIED-stamp cross-check real: filter by the stable scope target
-   *  (tier + dot-ID + canonical path) and/or approval scope. */
+  /** OPR.0.4.4.19 FR-9 —— 工作范围审批目标筛选器（已钉死 audit_notes_json
+   * 结构的读取路径）。它们让 Packet 2 的单查询 UNVERIFIED 标记交叉检查真正生效：
+   * 按稳定的工作范围目标（tier + dot-ID + 规范路径）和/或审批范围筛选。 */
   scopeTier?: string;
   scopeId?: string;
   scopePath?: string;
@@ -67,7 +66,7 @@ export class MissionControlAuditBrowse {
   query(input: AuditQueryInput): AuditQueryResult {
     if (input.actionVerb && !MISSION_CONTROL_VERBS.includes(input.actionVerb as MissionControlVerb)) {
       throw new Error(
-        `unknown action_verb '${input.actionVerb}'; supported: ${MISSION_CONTROL_VERBS.join(", ")}`,
+        `未知 action_verb '${input.actionVerb}'；支持：${MISSION_CONTROL_VERBS.join(", ")}`,
       );
     }
     const limit = clampLimit(input.limit);
@@ -85,9 +84,8 @@ export class MissionControlAuditBrowse {
       where.push("actor_session = ?");
       params.push(input.actorSession);
     }
-    // OPR.0.4.4.19 FR-9 — filter on the pinned audit_notes_json shape via
-    // SQLite JSON1 (ships with better-sqlite3). NULL audit_notes_json rows
-    // simply don't match.
+    // OPR.0.4.4.19 FR-9 —— 通过 SQLite JSON1（随 better-sqlite3 提供）按已钉死的
+    // audit_notes_json 结构筛选；audit_notes_json 为 NULL 的记录自然不会匹配。
     if (input.scopeTier) {
       where.push("json_extract(audit_notes_json, '$.scope_tier') = ?");
       params.push(input.scopeTier);
@@ -113,18 +111,16 @@ export class MissionControlAuditBrowse {
       params.push(input.until);
     }
     if (input.beforeId) {
-      // Look up the cursor row's rowid so pagination uses SQLite's
-      // monotonic insertion order (deterministic) rather than ULID
-      // action_id (whose same-ms tail is random; non-deterministic
-      // for tiebreaks). Filed lesson:
+      // 查找游标记录的 rowid，使分页使用 SQLite 的单调插入顺序（确定性），而不是
+      // ULID action_id（同一毫秒内的尾部随机，无法确定性打破平局）。已归档经验：
       // feedback_ulid_tiebreaker_nondeterministic.md.
       where.push("rowid < (SELECT rowid FROM mission_control_actions WHERE action_id = ?)");
       params.push(input.beforeId);
     }
     const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
-    // Fetch limit+1 to detect hasMore without a separate count query.
-    // ORDER BY acted_at DESC primary; rowid DESC tiebreak (deterministic
-    // insertion order; safer than ULID action_id for same-ms ties).
+    // 多取一条（limit+1）以判断 hasMore，无需额外 count 查询。
+    // 主排序为 acted_at DESC，以 rowid DESC 打破平局（确定性的插入顺序；处理同毫秒
+    // 记录时比 ULID action_id 更安全）。
     const sql = `SELECT * FROM mission_control_actions ${whereClause}
        ORDER BY acted_at DESC, rowid DESC LIMIT ?`;
     const rows = this.db.prepare(sql).all(...params, limit + 1) as ActionRow[];

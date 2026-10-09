@@ -6,16 +6,13 @@ import type { SessionTransport } from "../domain/session-transport.js";
 import { authBearerTokenMiddleware } from "../middleware/auth-bearer-token.js";
 
 /**
- * OPR.0.4.3.14 — manual configurable compaction trigger route.
+ * OPR.0.4.3.14 —— 手动可配置的压缩触发路由。
  *
- * POST /api/compaction/trigger { session } drives the SAME guided compaction
- * lifecycle the auto-policy runs, on demand, for one Claude seat. Mirrors the
- * /api/transport/send auth + resolveSessions ambiguity/404/409 pattern.
+ * POST /api/compaction/trigger { session } 按需为一个 Claude 席位驱动与自动策略相同的
+ * 引导式压缩生命周期。镜像 /api/transport/send 的鉴权 + resolveSessions 歧义/404/409 模式。
  *
- * The route resolves the target to a node + runtime and reads the EXISTING
- * context-usage projection BEFORE triggering — it never invents usage values.
- * The enforcer owns the reject reasons (non-Claude / no-usage) so there is one
- * source of truth for the guided-sequence contract.
+ * 本路由把目标解析到 node + runtime，并在触发前读取已存在的 context-usage 投影——绝不臆造用量值。
+ * 拒绝理由（非 Claude / 无用量）由 enforcer 拥有，使引导序列契约只有一个事实来源。
  */
 export function compactionRoutes(opts?: { bearerToken?: string | null }): Hono {
   const router = new Hono();
@@ -31,24 +28,24 @@ export function compactionRoutes(opts?: { bearerToken?: string | null }): Hono {
       return c.json({
         ok: false,
         reason: "compaction_unavailable",
-        error: "Manual compaction is not available on this daemon (enforcer/transport/context-usage not wired).",
+        error: "手动压缩在此后台服务上不可用（enforcer/transport/context-usage 未接线）。",
       }, 503);
     }
 
     const body = await c.req.json<{ session?: string }>().catch(() => ({} as { session?: string }));
     if (!body.session) {
-      return c.json({ ok: false, error: "Missing required field: session" }, 400);
+      return c.json({ ok: false, error: "缺少必填字段：session" }, 400);
     }
     const sessionName = body.session;
 
-    // Ambiguity / existence check — mirror /send (409 ambiguous, 404 not found).
+    // 歧义/存在性检查——镜像 /send（409 歧义、404 未找到）。
     const resolved = await transport.resolveSessions({ session: sessionName });
     if (!resolved.ok) {
       const status = resolved.code === "ambiguous" ? 409 : 404;
       return c.json({ ok: false, error: resolved.error }, status);
     }
 
-    // Resolve the DB node id + runtime for the latest session row.
+    // 为最新一条会话行解析 DB node id + runtime。
     const row = db.prepare(`
       SELECT n.id AS node_id, n.runtime AS runtime
       FROM sessions s
@@ -61,13 +58,12 @@ export function compactionRoutes(opts?: { bearerToken?: string | null }): Hono {
       return c.json({
         ok: false,
         reason: "session_missing",
-        error: `Session '${sessionName}' not found. Check session names with: rig ps --nodes`,
+        error: `未找到会话 '${sessionName}'。用 zrig ps --nodes 查看会话名`,
       }, 404);
     }
 
-    // Read the KNOWN context-usage projection BEFORE triggering. When usage is
-    // absent / stale / unknown we pass null (never invent a value); the enforcer
-    // returns an honest `no_usage_data` reason for a Claude seat.
+    // 在触发前读取已知的 context-usage 投影。当用量缺失/过期/未知时传 null（绝不臆造值）；
+    // 对 Claude 席位，enforcer 会诚实地返回 `no_usage_data` 理由。
     const usage = usageStore.getForNode(row.node_id, sessionName);
     const outcome = await enforcer.triggerManualCompact(
       {
@@ -77,9 +73,9 @@ export function compactionRoutes(opts?: { bearerToken?: string | null }): Hono {
         transcriptPath: usage.transcriptPath,
         sessionId: usage.sessionId,
       },
-      // This is the OPERATOR's manual-trigger verb (bearer-auth'd); the resulting sequence is
-      // drain-exempt while auto-compaction is disabled. GHOST-STAGE fix (a) actor-gate: automation
-      // paths that do NOT set this are NOT exempt, so they cannot launder a drain past the gate.
+      // 这是操作员的手动触发动作（bearer 鉴权）；在自动压缩禁用期间，产出序列免于 drain。
+      // GHOST-STAGE 修复 (a) actor 门：未设置此项的自动化路径不豁免，因此它们无法把一次 drain
+      // 洗过门。
       { operatorInitiated: true },
     );
 
@@ -118,7 +114,7 @@ export function compactionRoutes(opts?: { bearerToken?: string | null }): Hono {
     }
     const session = c.req.query("session");
     if (!session) {
-      return c.json({ ok: false, error: "Missing required query param: session" }, 400);
+      return c.json({ ok: false, error: "缺少必填查询参数：session" }, 400);
     }
     return c.json({ ok: true, session, state: enforcer.getManualCompactionState(session) });
   });
@@ -129,18 +125,18 @@ export function compactionRoutes(opts?: { bearerToken?: string | null }): Hono {
 function manualReasonMessage(sessionName: string, reason: string): string {
   switch (reason) {
     case "runtime_filter":
-      return `Refused: '${sessionName}' is not a Claude (claude-code) seat. Manual compaction runs the Claude guided lifecycle only.`;
+      return `已拒绝：'${sessionName}' 不是 Claude（claude-code）席位。手动压缩只运行 Claude 引导式生命周期。`;
     case "no_usage_data":
-      return `Refused: no known context-usage sample for '${sessionName}' yet; not triggering blind. Retry once telemetry is fresh.`;
+      return `已拒绝：暂无 '${sessionName}' 的已知 context-usage 采样，不盲目触发。等遥测刷新后重试。`;
     case "mid_work":
-      return `Refused: '${sessionName}' appears mid-task; the pre-compact prep could not be sent. Wait for it to settle and retry.`;
+      return `已拒绝：'${sessionName}' 似乎正在任务中途，无法发送压缩前准备。等它稳定后重试。`;
     case "target_needs_input":
-      return `Refused: '${sessionName}' is at an interactive prompt; the pre-compact prep could not be sent safely.`;
+      return `已拒绝：'${sessionName}' 正处于交互式提示，无法安全发送压缩前准备。`;
     case "target_activity_unknown":
-      return `Refused: '${sessionName}' activity could not be determined; failing closed so /compact cannot land on a prompt.`;
+      return `已拒绝：无法判定 '${sessionName}' 的活动状态，按失败关闭处理，使 /compact 不会落在提示上。`;
     case "wait_for_idle_timeout":
-      return `Prep was sent to '${sessionName}' but it did not go idle in time, so /compact was NOT sent. Retry once the prep turn completes.`;
+      return `准备已发给 '${sessionName}'，但它未及时进入空闲，因此未发送 /compact。等准备这一轮完成后重试。`;
     default:
-      return `Manual compaction for '${sessionName}' did not complete (${reason}).`;
+      return `'${sessionName}' 的手动压缩未完成（${reason}）。`;
   }
 }

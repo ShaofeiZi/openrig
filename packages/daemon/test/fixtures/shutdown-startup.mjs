@@ -1,5 +1,5 @@
-// Consumer-test assembly seam only. startServer, shutdown, scheduler, recorder,
-// lifecycle store, migration and queue code are the compiled production modules.
+// 仅作为消费者测试的装配接缝。startServer、shutdown、scheduler、recorder、
+// lifecycle store、migration 和 queue 代码均使用已编译的生产模块。
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
@@ -31,7 +31,7 @@ export async function createDaemon({ dbPath }) {
   if (mode === 'recorder-timeout') recorder = { close: () => new Promise(() => {}) };
   else {
     const logPath = `${process.env.OPENRIG_HOME}/measurements-${process.pid}.jsonl`;
-    if (mode === 'recorder-failure') fs.mkdirSync(logPath); // real Worker write fails
+    if (mode === 'recorder-failure') fs.mkdirSync(logPath); // 使真实 Worker 写入失败。
     recorder = new SlowOpRecorder({ logPath }); recorder.recordMeasurement('shutdown.consumer', 300);
   }
   const app = new Hono(); app.get('/healthz', c => c.json({ status: 'ok' }));

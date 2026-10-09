@@ -47,17 +47,14 @@ interface TerminalPreviewPopoverProps {
   buttonClassName?: string;
   popoverClassName?: string;
   testIdPrefix: string;
-  /** V0.3.1 slice 14 forward-fix #1 (a11y): when false, the popover
-   *  does NOT render its own trigger button. Used by surfaces that
-   *  own the trigger externally (e.g., TerminalView cards where the
-   *  whole card acts as the trigger) so the popover doesn't add a
-   *  duplicate keyboard tab stop. Default true preserves the
-   *  existing graph-view + table-view button rendering. */
+  /** V0.3.1 slice 14 前向修复 #1（无障碍）：为 false 时，popover 不渲染自己的触发按钮。
+   *  由外部持有触发器的界面使用（例如 TerminalView 卡片，整卡即触发器），
+   *  使 popover 不新增一个重复的键盘 tab 停靠点。默认 true 保留既有的
+   *  graph-view + table-view 按钮渲染。 */
   renderTrigger?: boolean;
-  /** OPR.0.4.0.1: when true, the popover renders the progressive default-static
-   *  -> click-to-go-live ProgressiveTerminal (the topology graph/table surfaces).
-   *  Default false keeps the always-live FocusedTerminal, preserving the
-   *  feed-card live-drill (out of this slice's 3-surface scope). */
+  /** OPR.0.4.0.1：为 true 时，popover 渲染渐进式的“默认静态 → 点击转实时”
+   *  ProgressiveTerminal（拓扑 graph/table 界面）。默认 false 保持始终实时的
+   *  FocusedTerminal，保留 feed-card 的实时钻取（不在本 slice 的 3 界面范围内）。 */
   progressive?: boolean;
 }
 
@@ -116,12 +113,10 @@ export function TerminalPreviewPopover({
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<PopoverPosition | null>(null);
-  // OPR.0.4.0.39 (founder spec): static and live are the SAME 90x27 mirror (same
-  // size, same place) via ProgressiveTerminal -> ScaleToFitTerminal, so the popover
-  // no longer reshapes on go-live. The old compact-static -> wide-live grow was the
-  // "separately shaped, different location" the founder flagged; now the shell holds
-  // the full-terminal width for BOTH states and the static just flips glass->opaque
-  // in place (matching the grid).
+  // OPR.0.4.0.39（创始人规格）：静态与实时是同一个 90x27 镜像（同尺寸、同位置），
+  // 经 ProgressiveTerminal -> ScaleToFitTerminal，因此 popover 在转实时时不再变形。
+  // 旧的 compact-static -> wide-live 长大就是创始人指出的“形状不同、位置不同”；
+  // 现在外壳对两种状态都保持全终端宽度，静态只是原地从玻璃态翻成不透明（对齐网格）。
 
   const updatePosition = useCallback(() => {
     if (!open) return;
@@ -132,12 +127,10 @@ export function TerminalPreviewPopover({
   }, [open]);
 
   useEffect(() => {
-    // OPR.0.4.0.1 (rev1-r2 fix): progressive popovers open via LOCAL state and
-    // COEXIST under the global LiveTerminalRegistry cap, so they do NOT take part
-    // in the single-open TERMINAL_PREVIEW_EVENT -- which force-closes every
-    // sibling popover and would cap the popover surfaces at one live terminal.
-    // Only the non-progressive feed-card drill keeps the one-overlay-at-a-time
-    // single-open behavior.
+    // OPR.0.4.0.1（rev1-r2 修复）：渐进式 popover 经本地状态打开，
+    // 并在全局 LiveTerminalRegistry 上限下共存，因此它们不参与单开的
+    // TERMINAL_PREVIEW_EVENT——后者会强制关闭每个兄弟 popover，把 popover 界面
+    // 限制为一个实时终端。只有非渐进的 feed-card 钻取保持一次一个覆盖层的单开行为。
     if (progressive) return undefined;
     const handleOpen = (event: Event) => {
       const detail = (event as CustomEvent<TerminalPreviewEventDetail>).detail;
@@ -182,10 +175,9 @@ export function TerminalPreviewPopover({
       if (!(target instanceof Node)) return;
       if (rootRef.current?.contains(target)) return;
       if (popoverRef.current?.contains(target)) return;
-      // OPR.0.4.0.1 (rev1-r2 fix): a progressive popover must NOT dismiss when the
-      // pointerdown lands inside ANY terminal-preview surface (a sibling popover or
-      // trigger) -- otherwise interacting with B would close A, breaking multi-live.
-      // Only a click fully outside the terminal-preview system dismisses it.
+      // OPR.0.4.0.1（rev1-r2 修复）：当 pointerdown 落在任一终端预览界面内（兄弟 popover
+      // 或触发器）时，渐进式 popover 不得关闭——否则与 B 交互会关掉 A，破坏多实时。
+      // 只有完全点在终端预览系统之外才关闭它。
       if (progressive) {
         const el = target instanceof Element ? target : target.parentElement;
         if (el?.closest("[data-terminal-preview-surface]")) return;
@@ -201,8 +193,7 @@ export function TerminalPreviewPopover({
   const openPreview = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     if (progressive) {
-      // Toggle THIS popover's own open state; do not touch siblings -- multiple
-      // progressive popovers can be open/live at once under the global cap.
+      // 切换本 popover 自己的开合状态；不动兄弟——在全局上限下多个渐进 popover 可同时打开/实时。
       if (open) {
         setOpen(false);
         return;
@@ -222,14 +213,11 @@ export function TerminalPreviewPopover({
       data-terminal-preview-surface=""
       data-reduced-motion={reducedMotion ? "true" : "false"}
       className={cn(
-        // OPR.0.4.0.1 (FR-4 de-dup): the terminal wrapper/static plate carry the
-        // smoked-glass surface, while the xterm renderer itself stays opaque for
-        // reliable erase/redraw. The popover drops its redundant bg so the wrapper
-        // remains the single terminal plate.
+        // OPR.0.4.0.1（FR-4 去重）：终端外壳/静态板承载烟熏玻璃表面，而 xterm 渲染器本身保持不透明，
+        // 以保证擦除/重绘可靠。popover 去掉多余背景，使外壳成为唯一的终端板。
         "nodrag nopan fixed z-[1000] max-h-[calc(100vh-1rem)] max-w-[calc(100vw-1rem)] overflow-hidden p-1.5 backdrop-blur-sm",
-        // OPR.0.4.0.39: the shell sizes to the terminal (w-max) for BOTH static + live
-        // - no reshape on go-live, no loose empty width. The inner is the canonical
-        // geometry width so the shell tracks the column count automatically.
+        // OPR.0.4.0.39：静态 + 实时两种状态外壳都按终端尺寸（w-max）——转实时不变形，不留空宽度。
+        // 内层是规范几何宽度，使外壳自动跟踪列数。
         "w-max",
         "cursor-default select-text font-mono text-[8px] text-stone-50",
         popoverClassName,
@@ -238,17 +226,14 @@ export function TerminalPreviewPopover({
       onClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
     >
-      {/* OPR.0.4.0.39: the popover holds the full 90-col terminal width (~650px at
-          fontSize 12 ui-monospace, the broker's canonical geometry) for BOTH the
-          static and the live state. ProgressiveTerminal renders the static smoked-
-          glass mirror or the opaque live xterm at the SAME size in place (no reshape).
-          The grid uses a smaller scaled mirror per cell; this popover (graph/table)
-          has room for the near-full-size terminal. */}
+      {/* OPR.0.4.0.39：popover 对静态和实时两种状态都保持全 90 列终端宽度
+          （fontSize 12 ui-monospace 下约 650px，即代理的规范几何）。
+          ProgressiveTerminal 在同一尺寸原地渲染静态烟熏玻璃镜像或不透明实时 xterm（不变形）。
+          网格每格用更小的缩放镜像；本 popover（graph/table）有空间放下近全尺寸终端。 */}
       <div
-        // OPR.0.4.0.39: the inner is the canonical geometry WIDTH (90ch at the live
-        // font) so the static/live mirror fits exactly; height is driven by the
-        // content (ScaleToFitTerminal for progressive, the natural xterm for the feed)
-        // so the bottom is never cut off.
+        // OPR.0.4.0.39：内层是规范几何宽度（实时字体下 90ch），使静态/实时镜像精确贴合；
+        // 高度由内容驱动（渐进用 ScaleToFitTerminal，feed 用自然 xterm），
+        // 因此底部永不被裁。
         className="max-w-[calc(100vw-2rem)]"
         style={{
           width: `${LIVE_TERMINAL_COLS}ch`,
@@ -276,8 +261,8 @@ export function TerminalPreviewPopover({
         <button
           type="button"
           data-testid={`${testIdPrefix}-terminal-open`}
-          aria-label={`View ${logicalId} terminal`}
-          title="View terminal"
+          aria-label={`查看 ${logicalId} 终端`}
+          title="查看终端"
           onClick={openPreview}
           className={buttonClassName}
         >

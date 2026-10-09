@@ -107,9 +107,9 @@ describe("runDoctorChecks", () => {
     const tmuxCheck = checks.find((c) => c.name === "tmux");
 
     expect(tmuxCheck?.status).toBe("fail");
-    expect(tmuxCheck?.message).toContain("control socket");
+    expect(tmuxCheck?.message).toContain("控制套接字");
     expect(tmuxCheck?.reason).toContain("server exited unexpectedly");
-    expect(tmuxCheck?.fix).toContain("restart the default tmux server");
+    expect(tmuxCheck?.fix).toContain("重启默认 tmux 服务");
   });
 
   it("tmux mouse enabled on macOS -> pass", () => {
@@ -125,7 +125,7 @@ describe("runDoctorChecks", () => {
     const { checks } = runDoctorChecks(deps);
     const mouseCheck = checks.find((c) => c.name === "tmux_mouse");
     expect(mouseCheck?.status).toBe("pass");
-    expect(mouseCheck?.message).toContain("enabled");
+    expect(mouseCheck?.message).toContain("已启用");
   });
 
   it("tmux mouse disabled on macOS -> warn with exact fix", () => {
@@ -141,7 +141,7 @@ describe("runDoctorChecks", () => {
     const { checks } = runDoctorChecks(deps);
     const mouseCheck = checks.find((c) => c.name === "tmux_mouse");
     expect(mouseCheck?.status).toBe("warn");
-    expect(mouseCheck?.message).toContain("disabled");
+    expect(mouseCheck?.message).toContain("已禁用");
     expect(mouseCheck?.fix).toContain("tmux set -g mouse on");
     expect(mouseCheck?.fix).toContain("~/.tmux.conf");
     expect(mouseCheck?.fix).toContain("tmux source-file ~/.tmux.conf");
@@ -196,7 +196,7 @@ describe("runDoctorChecks", () => {
     const { checks } = runDoctorChecks(deps);
     const cmuxShell = checks.find((c) => c.name === "cmux_shell");
     expect(cmuxShell?.status).toBe("warn");
-    expect(cmuxShell?.message).toContain("control unavailable");
+    expect(cmuxShell?.message).toContain("不可用控制");
     expect(cmuxShell?.fix).toContain("cmuxOnly");
     expect(cmuxShell?.fix).toContain("socketControlMode");
   });
@@ -211,7 +211,7 @@ describe("runDoctorChecks", () => {
     const { checks } = runDoctorChecks(deps);
     const cmuxShell = checks.find((c) => c.name === "cmux_shell");
     expect(cmuxShell?.status).toBe("warn");
-    expect(cmuxShell?.message).toContain("not found");
+    expect(cmuxShell?.message).toContain("未找到");
   });
 
   it("shell cmux pass + daemon cmux unavailable -> cmux_daemon warn with mismatch guidance", async () => {
@@ -233,7 +233,7 @@ describe("runDoctorChecks", () => {
     const cmuxDaemon = allChecks.find((c) => c.name === "cmux_daemon");
     expect(cmuxDaemon).toBeDefined();
     expect(cmuxDaemon?.status).toBe("warn");
-    expect(cmuxDaemon?.message).toContain("daemon cannot control");
+    expect(cmuxDaemon?.message).toContain("后台服务无法控制");
     expect(cmuxDaemon?.fix).toContain("rig daemon start");
   });
 
@@ -278,7 +278,7 @@ describe("runDoctorChecks", () => {
 
     const cmuxDaemon = allChecks.find((c) => c.name === "cmux_daemon");
     expect(cmuxDaemon?.status).toBe("warn");
-    expect(cmuxDaemon?.reason).toContain("default");
+    expect(cmuxDaemon?.reason).toContain("默认");
     expect(cmuxDaemon?.reason).toContain("cmuxOnly");
     expect(cmuxDaemon?.reason).not.toContain("is 'cmuxOnly' in");
   });
@@ -300,7 +300,7 @@ describe("runDoctorChecks", () => {
 
     const cmuxDaemon = allChecks.find((c) => c.name === "cmux_daemon");
     expect(cmuxDaemon?.status).toBe("warn");
-    expect(cmuxDaemon?.reason).toContain("unreadable");
+    expect(cmuxDaemon?.reason).toContain("不可读");
     expect(cmuxDaemon?.fix).toContain("~/.config/cmux/settings.json");
   });
 
@@ -321,7 +321,7 @@ describe("runDoctorChecks", () => {
 
     const cmuxDaemon = allChecks.find((c) => c.name === "cmux_daemon");
     expect(cmuxDaemon?.status).toBe("warn");
-    expect(cmuxDaemon?.reason).toContain("inherited a terminal/session environment");
+    expect(cmuxDaemon?.reason).toContain("继承的终端/会话环境");
     expect(cmuxDaemon?.reason).not.toContain("socketControlMode");
   });
 
@@ -337,7 +337,7 @@ describe("runDoctorChecks", () => {
     const cmuxDaemon = allChecks.find((c) => c.name === "cmux_daemon");
     expect(cmuxDaemon).toBeDefined();
     expect(cmuxDaemon?.status).toBe("skipped");
-    expect(cmuxDaemon?.message).toContain("not reachable");
+    expect(cmuxDaemon?.message).toContain("无法连接");
 
     const healthy = allChecks.every((c) => c.status !== "fail");
     expect(healthy).toBe(true);
@@ -396,8 +396,8 @@ describe("runDoctorChecks", () => {
       const { checks } = runDoctorChecks(makeDeps());
       const nodeCheck = checks.find((c) => c.name === "node_version");
       expect(nodeCheck?.status).toBe(status);
-      if (status !== "pass") expect(nodeCheck?.message).toContain(status === "warn" ? "untested" : "not supported");
-      if (status === "fail") expect(nodeCheck?.fix).toContain("Node 22 or 24");
+      if (status !== "pass") expect(nodeCheck?.message).toContain(status === "warn" ? "尚未在" : "不受支持");
+      if (status === "fail") expect(nodeCheck?.fix).toContain("Node 22 或 24");
     } finally {
       Object.defineProperty(process, "version", { value: saved, writable: true });
     }
@@ -419,8 +419,8 @@ describe("runDoctorChecks", () => {
     const { checks } = runDoctorChecks(deps);
     const writableCheck = checks.find((c) => c.name === "writable_home");
     expect(writableCheck?.status).toBe("fail");
-    expect(writableCheck?.message).toContain("Cannot write");
-    expect(writableCheck?.fix).toContain("permissions");
+    expect(writableCheck?.message).toContain("无法写入");
+    expect(writableCheck?.fix).toContain("权限");
   });
 
   it("port available -> pass", async () => {
@@ -438,7 +438,7 @@ describe("runDoctorChecks", () => {
       const { portCheck } = runDoctorChecks(deps);
       const result = await portCheck;
       expect(result.status).toBe("fail");
-      expect(result.reason).toContain("port");
+      expect(result.reason).toContain("端口");
       expect(result.fix).toContain("7433");
     } finally {
       globalThis.fetch = origFetch;
@@ -453,7 +453,7 @@ describe("runDoctorChecks", () => {
       const { portCheck } = runDoctorChecks(deps);
       const result = await portCheck;
       expect(result.status).toBe("pass");
-      expect(result.message).toContain("OpenRig daemon");
+      expect(result.message).toContain("zrig 后台服务");
     } finally {
       globalThis.fetch = origFetch;
     }
@@ -590,12 +590,11 @@ describe("rig doctor", () => {
   });
 
   // ===================================================================
-  // SLICE-05 item-4 (D4b) — doctor hardcoded-target RED.
-  // runDoctorChecks probes 127.0.0.1:DEFAULT_PORT(7433) for port/health/cmux and
-  // consults configStore.resolve() ONLY for writable paths — so a healthy daemon
-  // on a NON-default configured port is invisible to these checks (deterministic
-  // false-negative). RED pins that the checks TARGET the configured daemon port;
-  // default-port config is preserved.
+  // SLICE-05 item-4（D4b）——doctor 硬编码目标 RED。
+  // runDoctorChecks 探测 127.0.0.1:DEFAULT_PORT(7433) 的 port/health/cmux，
+  // 且仅对可写路径咨询 configStore.resolve()——故配置在非默认端口的健康 daemon
+  // 对这些检查不可见（确定性假阴）。RED 钉住检查以配置的 daemon 端口为目标；
+  // 默认端口配置保留。
   // ===================================================================
   it("Slice-05 D4b RED: doctor port/health/cmux must target the CONFIGURED host+port, not hardcoded 127.0.0.1:7433", async () => {
     const checkPortArgs: unknown[] = [];

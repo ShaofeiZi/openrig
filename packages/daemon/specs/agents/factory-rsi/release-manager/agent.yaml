@@ -1,6 +1,6 @@
 name: factory-rsi-release-manager
 version: "1.0"
-description: Release-manager agent — prepares the release (notes, docs, PR) and holds the ship decision at the human gate
+description: 发布管理智能体——准备发布说明、文档与 PR，并把发布决策保留在人类门禁
 
 defaults:
   runtime: claude-code

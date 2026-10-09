@@ -93,10 +93,10 @@ describe("terminal-token carry on protected UI fetches", () => {
   });
 
   it("source guard: hook-based open-cmux consumers carry the terminal auth contract via useCmuxLaunch", async () => {
-    // OPR.0.4.1.31 fold (dev1-guard) — the table + hybrid surfaces open cmux
-    // through the useCmuxLaunch hook (which wraps postOpenCmux -> terminalAuthHeaders).
-    // Guard that they keep using the hook and never hand-roll a direct /open-cmux
-    // fetch that would bypass the terminal auth contract.
+    // OPR.0.4.1.31 fold（dev1-guard）——table + hybrid 表面经 useCmuxLaunch
+    // hook 开启 cmux（该 hook 包装 postOpenCmux -> terminalAuthHeaders）。
+    // 守卫它们继续用该 hook，绝不手写直接 /open-cmux
+    // fetch，否则绕过 terminal auth 契约。
     const fs = await import("node:fs");
     const path = await import("node:path");
     const srcDir = path.resolve(import.meta.dirname, "../src");

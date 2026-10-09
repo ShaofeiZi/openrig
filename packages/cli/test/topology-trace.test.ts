@@ -1,6 +1,6 @@
-// OPR.0.5.3.6 + OPR.0.5.8.7 — the productized chain-file trace keyed off
-// topology.root (instance at the TOP, D2), per-level legacy fallback that
-// NAMES its advisory (proof-contract item 2: legacy fallback honesty).
+// OPR.0.5.3.6 + OPR.0.5.8.7——产品化的 chain-file trace，以
+// topology.root（实例在最顶，D2）为键，逐级旧回退并具名其提示
+//（proof-contract 第 2 项：旧回退诚实）。
 import { describe, it, expect } from "vitest";
 import { join } from "node:path";
 import { traceTopologyChain, type TraceFs } from "../src/lib/topology-trace.js";
@@ -69,7 +69,7 @@ describe("traceTopologyChain", () => {
     expect(seat.source).toBe("legacy");
     expect(seat.content).toBe("legacy seat content");
     expect(seat.resolvedPath).toBe(join(LEGACY, "product-team", "seats", "orch1-lead", "LEARNED.md"));
-    // The advisory names the legacy source, the canonical destination, and the config key.
+    // 提示具名旧来源、规范目的地与 config key。
     expect(seat.advisory).toContain("legacy-topology-read");
     expect(seat.advisory).toContain(join(LEGACY, "product-team", "seats", "orch1-lead", "LEARNED.md"));
     expect(seat.advisory).toContain(join(ROOT, "rigs", "product-team", "seats", "orch1-lead", "LEARNED.md"));
@@ -109,7 +109,7 @@ describe("traceTopologyChain", () => {
   });
 
   it("r2-B3: traversal in rig/seat/name is REJECTED before any filesystem read", () => {
-    // r2's discriminator: rig=../../outside, seat=../../../outside-seat,
+    // r2 的判别式：rig=../../outside、seat=../../../outside-seat、
     // name=../../secret resolved every level OUTSIDE topology.root. Each of
     // the three values must be a single safe path segment — no separators,
     // no dot-segments, non-empty — validated before any read.
@@ -127,7 +127,7 @@ describe("traceTopologyChain", () => {
     ];
     for (const args of bad) {
       expect(() => traceTopologyChain({ topologyRoot: ROOT, legacyRigsRoot: LEGACY, fs: spyFs, ...args }),
-        JSON.stringify(args)).toThrow(/invalid|segment/i);
+        JSON.stringify(args)).toThrow(/非法|分隔符|点段/);
     }
     expect(reads).toEqual([]); // rejection happens BEFORE any filesystem contact
   });
@@ -138,7 +138,7 @@ describe("traceTopologyChain", () => {
     expect(() => traceTopologyChain({
       topologyRoot: ROOT, name: "LEARNED.md", rig: "r", seat: "",
       legacyRigsRoot: LEGACY, fs: fsOf({}),
-    })).toThrow(/invalid seat/i);
+    })).toThrow(/非法的 seat/);
     const omitted = traceTopologyChain({
       topologyRoot: ROOT, name: "LEARNED.md", rig: "r", seat: null,
       legacyRigsRoot: LEGACY, fs: fsOf({}),

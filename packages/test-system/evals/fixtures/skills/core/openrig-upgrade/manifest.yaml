@@ -1,7 +1,7 @@
 name: openrig-upgrade
 version: "1"
 taxonomy: skills
-purpose: "(eval fixture) upgrade a running daemon without downtime"
+purpose: "（评估夹具）在不中断服务的情况下升级运行中的后台服务"
 files:
   - path: content.md
     role: source

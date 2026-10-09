@@ -44,7 +44,7 @@ describe("Broadcast CLI", () => {
             }));
           } else
           if (parsed.rig === "fail-rig") {
-            // Partial failure
+            // 部分失败
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({
               total: 2, sent: 1, failed: 1,
@@ -54,8 +54,8 @@ describe("Broadcast CLI", () => {
               ],
             }));
           } else if (parsed.rig === "warn-rig") {
-            // S2 (OPR.0.5.4.3): an unattributed broadcast's response carries the
-            // sign-it notice as an additive warning; the renderer must surface it.
+            // S2（OPR.0.5.4.3）：无归属 broadcast 的响应携带
+            // sign-it 提示作为附加警告；渲染器必须浮出它。
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({
               total: 2, sent: 2, failed: 0,
@@ -66,7 +66,7 @@ describe("Broadcast CLI", () => {
               ],
             }));
           } else {
-            // Success (covers both rig-scoped and global)
+            // 成功（覆盖 rig-scoped 与 global）
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({
               total: 2, sent: 2, failed: 0,
@@ -85,7 +85,7 @@ describe("Broadcast CLI", () => {
 
   afterAll(() => { server.close(); });
 
-  // P18: establish a RESOLVED seat for every test so the marker renders as the real sender
+  // P18：为每个测试建立已解析 seat，使标记渲染为真实发送方
   // ("broadcaster@my-rig"); the deliver-and-label test below overrides it to empty to exercise the
   // `<unknown sender>` fall-open. (Hermetic-gate default is env-UNSET, so without this every broadcast
   // would render the unknown marker.) Restored by afterEach so no stub leaks across tests.
@@ -93,15 +93,14 @@ describe("Broadcast CLI", () => {
     broadcastPosts = 0;
     vi.stubEnv("OPENRIG_SESSION_NAME", "broadcaster@my-rig");
     vi.stubEnv("RIGGED_SESSION_NAME", "");
-    // Broadcast-leak containment: EXPLICITLY bind every broadcast in this file to the
-    // in-process fixture daemon, so an unscoped broadcast cannot reach the live
-    // topology via any code path (ambient env or STATE_FILE fallback) — belt-and-
-    // braces on top of the setup-level fixture-home guard. An unscoped broadcast in a
-    // test is a bug independent of routing; this makes the fixture the only reachable target.
+    // broadcast 泄漏遏制：把本文件每个 broadcast 显式绑到进程内 fixture daemon，
+    // 使未作用域化的 broadcast 无法经任何代码路径（环境 env 或 STATE_FILE 回落）
+    // 到达 live topology——在 setup 级 fixture-home 守卫之上再加双保险。测试中
+    // 未作用域化的 broadcast 是与路由无关的 bug；这使 fixture 成为唯一可达目标。
     vi.stubEnv("OPENRIG_URL", `http://127.0.0.1:${port}`);
     vi.stubEnv("OPENRIG_PORT", String(port));
-    // P37: register this in-process fixture with the request-layer guard so its real
-    // requests are PERMITTED (the guard fails closed on unregistered targets).
+    // P37：把这个进程内 fixture 注册到请求层守卫，使其真实请求被许可
+    //（守卫对未注册目标失败关闭）。
     allowFetchTarget(`http://127.0.0.1:${port}`);
   });
   afterEach(() => { vi.unstubAllEnvs(); });
@@ -118,8 +117,8 @@ describe("Broadcast CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "broadcast", "--rig", "warn-rig", "hello"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("dev-impl@warn-rig: sent");
-    expect(output).toContain("Advisory:");
+    expect(output).toContain("dev-impl@warn-rig：已发送");
+    expect(output).toContain("提示：");
     expect(output).toMatch(/no way of knowing who sent/i);
     expect(output).toMatch(/sign/i);
   });
@@ -129,9 +128,9 @@ describe("Broadcast CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "broadcast", "--rig", "my-rig", "hello"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("dev-impl@my-rig: sent");
-    expect(output).toContain("dev-qa@my-rig: sent");
-    expect(output).toContain("2/2 delivered");
+    expect(output).toContain("dev-impl@my-rig：已发送");
+    expect(output).toContain("dev-qa@my-rig：已发送");
+    expect(output).toContain("已投递 2/2");
   });
 
   it.each(["", " \t\n"])("broadcast refuses empty or whitespace-only content before transport", async (message) => {
@@ -141,7 +140,7 @@ describe("Broadcast CLI", () => {
     const output = logs.join("\n");
     expect(exitCode).toBe(1);
     expect(broadcastPosts).toBe(0);
-    expect(output).toMatch(/empty or whitespace-only/i);
+    expect(output).toMatch(/消息为空或仅空白/);
     expect(output).toMatch(/backtick|\$\(\)/i);
     expect(output).toMatch(/--body-file|stdin/i);
   });
@@ -159,7 +158,7 @@ describe("Broadcast CLI", () => {
     });
     expect(exitCode).toBe(1);
     expect(posts).toEqual([]);
-    expect(logs.join("\n")).toMatch(/empty or whitespace-only/i);
+    expect(logs.join("\n")).toMatch(/消息为空或仅空白/);
   });
 
   it("broadcast without --rig/--pod sends globally", async () => {
@@ -167,7 +166,7 @@ describe("Broadcast CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "broadcast", "System maintenance"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("2/2 delivered");
+    expect(output).toContain("已投递 2/2");
   });
 
   // Slice-03 Atom 6b — --context delivery flag on broadcast.
@@ -189,9 +188,8 @@ describe("Broadcast CLI", () => {
   });
 
   it("broadcast --context ABORTS (no fan-out) when the pack has a missing member", async () => {
-    // The missing-member message (naming the member) is pinned in
-    // context-resolve.test.ts; here we assert the broadcast-level contract:
-    // exit non-zero and ZERO fan-out (no partial context ever leaves).
+    // 缺失成员消息（点名该成员）钉在 context-resolve.test.ts；此处断言
+    // broadcast 级契约：以非零退出，零扇出（绝不发出部分 context）。
     const posts: unknown[] = [];
     const client = {
       get: async () => ({ status: 200, data: { ref: "packs/broken", text: "X", bytes: 1, missingFiles: [{ path: "gone.md" }] } }),
@@ -206,11 +204,11 @@ describe("Broadcast CLI", () => {
     expect(posts).toEqual([]);
   });
 
-  // P21 cross-host broadcast fix (203078d7's death condition): runCrossHostBroadcast REBUILDS the body
-  // and used to drop the enveloped-fan-out marker, so the remote rendered RAW (no From:) while the local
-  // path — same helper — wrapped. The fix ADDS body.envelopeSender via the single-origin helper. The
-  // DaemonClient auto-stamps X-OpenRig-Session=origin env on the POST (client.ts:171), so the remote derives
-  // the From: from the transport; the marker VALUE is ignored.
+  // P21 跨 host broadcast 修复（203078d7 的死亡条件）：runCrossHostBroadcast
+  // 重建 body，曾会丢弃 enveloped-fan-out 标记，使远端渲染为 RAW（无 From:），
+  // 而本地路径——同一个 helper——却包装了。修复经单源 helper 补加
+  // body.envelopeSender。DaemonClient 在 POST 上自动盖 X-OpenRig-Session=origin
+  // env（client.ts:171），故远端从 transport 派生 From:；标记值被忽略。
   function crossHostBcast(): { posts: Array<{ path: string; body: Record<string, unknown> }>; deps: Parameters<typeof broadcastCommand>[0] } {
     const posts: Array<{ path: string; body: Record<string, unknown> }> = [];
     const client = {
@@ -237,11 +235,11 @@ describe("Broadcast CLI", () => {
   });
 
   // P18 DELIVER-AND-LABEL (deletion atom; REVERSES A1, supersedes the P21 session-less pin): an env-less
-  // cross-host broadcast now DELIVERS carrying the honest `<unknown sender>` marker rather than refusing.
-  // The marker's PRESENCE (not its value) is the anti-storm signal, so a session-less broadcast still
-  // WRAPS each recipient (no session-less storm); the daemon half delivers-and-labels the header-absent
-  // write (no downstream 401). Load-bearing: a dispatch DID happen and the marker on the wire is the
-  // honest fallback — never a forged sender.
+  // 跨 host broadcast 现在带诚实的 `<unknown sender>` 标记交付，而非拒绝。
+  // 标记的存在（而非其值）是抗风暴信号，故无会话的 broadcast 仍包装每个
+  // 接收者（无无会话风暴）；daemon 半交付并标注 header 缺失的写入
+  //（无下游 401）。承载要点：确实发生了一次 dispatch，线上的标记是诚实回落——
+  // 绝不是伪造的 sender。
   it("P18: an env-less cross-host broadcast DELIVERS with the honest `<unknown sender>` marker on the wire", async () => {
     vi.stubEnv("OPENRIG_SESSION_NAME", "");
     vi.stubEnv("RIGGED_SESSION_NAME", "");
@@ -272,7 +270,7 @@ describe("Broadcast CLI", () => {
     });
     const output = logs.join("\n");
     expect(output).toContain("No running sessions found");
-    expect(output).toContain("0/0 delivered");
+    expect(output).toContain("已投递 0/0");
     expect(exitCode).toBe(1);
   });
 });

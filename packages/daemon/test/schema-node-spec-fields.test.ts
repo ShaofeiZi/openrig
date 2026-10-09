@@ -16,31 +16,31 @@ describe("007_node_spec_fields", () => {
     db.close();
   });
 
-  it("migration adds surface_hint column", () => {
+  it("migration 添加 surface_hint 列", () => {
     migrate(db, [coreSchema, nodeSpecFieldsSchema]);
     const cols = db.prepare("PRAGMA table_info(nodes)").all() as { name: string }[];
     expect(cols.map((c) => c.name)).toContain("surface_hint");
   });
 
-  it("migration adds workspace column", () => {
+  it("migration 添加 workspace 列", () => {
     migrate(db, [coreSchema, nodeSpecFieldsSchema]);
     const cols = db.prepare("PRAGMA table_info(nodes)").all() as { name: string }[];
     expect(cols.map((c) => c.name)).toContain("workspace");
   });
 
-  it("migration adds restore_policy column", () => {
+  it("migration 添加 restore_policy 列", () => {
     migrate(db, [coreSchema, nodeSpecFieldsSchema]);
     const cols = db.prepare("PRAGMA table_info(nodes)").all() as { name: string }[];
     expect(cols.map((c) => c.name)).toContain("restore_policy");
   });
 
-  it("migration adds package_refs column", () => {
+  it("migration 添加 package_refs 列", () => {
     migrate(db, [coreSchema, nodeSpecFieldsSchema]);
     const cols = db.prepare("PRAGMA table_info(nodes)").all() as { name: string }[];
     expect(cols.map((c) => c.name)).toContain("package_refs");
   });
 
-  it("existing nodes get NULL for all new columns", () => {
+  it("现有 node 的所有新列均为 NULL", () => {
     migrate(db, [coreSchema]);
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-1", "r01");
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id) VALUES (?, ?, ?)").run("node-1", "rig-1", "worker");

@@ -60,9 +60,9 @@ function makeCtx(overrides?: Partial<ResolutionContext>): ResolutionContext {
   };
 }
 
-describe("Profile resolver + precedence engine", () => {
-  // T1: profile selects from combined base+import pool
-  it("profile selects from combined base+import pool with effectiveId and sourcePath", () => {
+describe("Profile 解析器 + 优先级引擎", () => {
+  // T1：profile 从 base+import 合并池中选择
+  it("profile 从 base+import 合并池中选择并携带 effectiveId 与 sourcePath", () => {
     const importSpec = makeSpec({
       name: "lib",
       resources: { skills: [{ id: "lib-skill", path: "skills/lib" }], guidance: [], subagents: [], plugins: [], runtimeResources: [] },
@@ -90,8 +90,8 @@ describe("Profile resolver + precedence engine", () => {
     }
   });
 
-  // T2: unqualified ambiguous resource reference fails (import/import collision)
-  it("unqualified ambiguous resource reference from two imports fails", () => {
+  // T2：未限定且有歧义的资源引用失败（import/import 冲突）
+  it("来自两个 import 的未限定歧义资源引用失败", () => {
     const importA = makeSpec({
       name: "lib-a",
       resources: { skills: [{ id: "shared", path: "skills/shared" }], guidance: [], subagents: [], plugins: [], runtimeResources: [] },
@@ -113,12 +113,12 @@ describe("Profile resolver + precedence engine", () => {
     const result = resolveNodeConfig(ctx);
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors[0]).toMatch(/ambiguous/);
+      expect(result.errors[0]).toMatch(/歧义/);
     }
   });
 
-  // T2b: base/import collision — base keeps unqualified id
-  it("base/import collision: base keeps unqualified id, no ambiguity", () => {
+  // T2b：base/import 冲突——base 保留未限定标识
+  it("base/import 冲突：base 保留未限定标识，不产生歧义", () => {
     const importSpec = makeSpec({
       name: "lib",
       resources: { skills: [{ id: "skill-a", path: "skills/a-lib" }], guidance: [], subagents: [], plugins: [], runtimeResources: [] },
@@ -131,15 +131,15 @@ describe("Profile resolver + precedence engine", () => {
     const result = resolveNodeConfig(ctx);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // Base spec's skill-a is selected (not ambiguous)
+      // 选择 base spec 的 skill-a（无歧义）。
       expect(result.config.selectedResources.skills).toHaveLength(1);
       expect(result.config.selectedResources.skills[0]!.effectiveId).toBe("skill-a");
       expect(result.config.selectedResources.skills[0]!.sourceSpec).toBe("test-agent");
     }
   });
 
-  // T3: qualified colliding reference succeeds
-  it("qualified colliding reference succeeds with sourcePath", () => {
+  // T3：限定后的冲突引用成功
+  it("限定后的冲突引用成功并携带 sourcePath", () => {
     const importSpec = makeSpec({
       name: "lib",
       resources: { skills: [{ id: "skill-a", path: "skills/a-lib" }], guidance: [], subagents: [], plugins: [], runtimeResources: [] },
@@ -163,7 +163,7 @@ describe("Profile resolver + precedence engine", () => {
     }
   });
 
-  it("single imported unqualified skill keeps the unqualified effectiveId", () => {
+  it("单个 import 的未限定技能保留未限定 effectiveId", () => {
     const importSpec = makeSpec({
       name: "shared",
       resources: { skills: [{ id: "openrig-user", path: "skills/openrig-user" }], guidance: [], subagents: [], plugins: [], runtimeResources: [] },
@@ -189,8 +189,8 @@ describe("Profile resolver + precedence engine", () => {
     }
   });
 
-  // T4: rig member runtime overrides profile preference
-  it("rig member runtime overrides profile preference", () => {
+  // T4：工作组成员 runtime 覆盖 profile 偏好
+  it("工作组成员 runtime 覆盖 profile 偏好", () => {
     const ctx = makeCtx({
       baseSpec: makeResolved(makeSpec({
         defaults: { runtime: "codex" },
@@ -204,8 +204,8 @@ describe("Profile resolver + precedence engine", () => {
     if (result.ok) expect(result.config.runtime).toBe("claude-code");
   });
 
-  // T5: rig member model overrides profile preference
-  it("rig member model overrides profile preference", () => {
+  // T5：工作组成员 model 覆盖 profile 偏好
+  it("工作组成员 model 覆盖 profile 偏好", () => {
     const ctx = makeCtx({
       baseSpec: makeResolved(makeSpec({
         defaults: { model: "sonnet" },
@@ -219,8 +219,8 @@ describe("Profile resolver + precedence engine", () => {
     if (result.ok) expect(result.config.model).toBe("opus");
   });
 
-  // T6: rig member cwd is authoritative
-  it("rig member cwd is authoritative", () => {
+  // T6：工作组成员 cwd 是权威值
+  it("工作组成员 cwd 是权威值", () => {
     const ctx = makeCtx({
       specRoot: "/workspace/spec-root",
       member: makeMember({ cwd: "/custom/workdir" }),
@@ -231,7 +231,7 @@ describe("Profile resolver + precedence engine", () => {
     if (result.ok) expect(result.config.cwd).toBe("/custom/workdir");
   });
 
-  it("resolves relative member cwd against specRoot", () => {
+  it("相对于 specRoot 解析成员的相对 cwd", () => {
     const ctx = makeCtx({
       specRoot: "/workspace/spec-root",
       member: makeMember({ cwd: "." }),
@@ -242,7 +242,7 @@ describe("Profile resolver + precedence engine", () => {
     if (result.ok) expect(result.config.cwd).toBe("/workspace/spec-root");
   });
 
-  it("explicit cwdOverride overrides even authored absolute cwd", () => {
+  it("显式 cwdOverride 即使面对已编写的绝对 cwd 也会覆盖", () => {
     const ctx = makeCtx({
       specRoot: "/workspace/spec-root",
       cwdOverride: "/override/project",
@@ -254,8 +254,8 @@ describe("Profile resolver + precedence engine", () => {
     if (result.ok) expect(result.config.cwd).toBe("/override/project");
   });
 
-  // T7: resume_if_possible -> relaunch_fresh narrowing allowed
-  it("restore policy narrowing from resume_if_possible to relaunch_fresh allowed", () => {
+  // T7：允许 resume_if_possible -> relaunch_fresh 收窄
+  it("允许恢复策略从 resume_if_possible 收窄为 relaunch_fresh", () => {
     const ctx = makeCtx({
       baseSpec: makeResolved(makeSpec({
         defaults: { lifecycle: { executionMode: "interactive_resident", compactionStrategy: "harness_native", restorePolicy: "resume_if_possible" } },
@@ -269,8 +269,8 @@ describe("Profile resolver + precedence engine", () => {
     if (result.ok) expect(result.config.restorePolicy).toBe("relaunch_fresh");
   });
 
-  // T8: checkpoint_only -> resume_if_possible broadening rejected
-  it("restore policy broadening from checkpoint_only to resume_if_possible rejected", () => {
+  // T8：拒绝 checkpoint_only -> resume_if_possible 放宽
+  it("拒绝恢复策略从 checkpoint_only 放宽为 resume_if_possible", () => {
     const ctx = makeCtx({
       baseSpec: makeResolved(makeSpec({
         defaults: { lifecycle: { executionMode: "interactive_resident", compactionStrategy: "harness_native", restorePolicy: "checkpoint_only" } },
@@ -281,44 +281,41 @@ describe("Profile resolver + precedence engine", () => {
 
     const result = resolveNodeConfig(ctx);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors[0]).toMatch(/broadens/);
+    if (!result.ok) expect(result.errors[0]).toMatch(/扩宽/);
   });
 
-  // T11: rig cannot inject resources (selectedResources from agent pool only)
-  it("rig cannot inject resources — selection comes from agent pool only", () => {
-    // The resolver only takes resources from AgentSpec + imports.
-    // There is no mechanism for the rig to inject resources.
+  // T11：工作组不能注入资源（selectedResources 只来自 agent 池）
+  it("工作组不能注入资源——只能从 agent 池中选择", () => {
+    // 解析器只从 AgentSpec + imports 取得资源，没有供工作组注入资源的机制。
     const ctx = makeCtx();
     const result = resolveNodeConfig(ctx);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // Only skill-a from the base spec should be selected
+      // 应当只选择 base spec 中的 skill-a。
       expect(result.config.selectedResources.skills).toHaveLength(1);
       expect(result.config.selectedResources.skills[0]!.effectiveId).toBe("skill-a");
     }
   });
 
-  // T12: startup is additive only — no subtraction API exists
-  it("startup is additive only — no removal mechanism", () => {
-    // The resolver only appends. There is no subtract/remove/delete on StartupBlock.
-    // This test verifies the output shape has no removal concept.
+  // T12：startup 只能追加——不存在减法 API
+  it("startup 只能追加——不存在移除机制", () => {
+    // 解析器只追加。StartupBlock 不提供 subtract/remove/delete。
+    // 此测试验证输出结构没有移除概念。
     const ctx = makeCtx();
     const result = resolveNodeConfig(ctx);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // The startup block only has files and actions — no "removals" field
+      // startup 块只有 files 和 actions——没有 "removals" 字段。
       const keys = Object.keys(result.config.startup);
       expect(keys.sort()).toEqual(["actions", "files"]);
     }
   });
 });
 
-describe("V0.3.0 daemon-skill-discovery — filesystem-discovered skills join the resource pool", () => {
-  // Helper to set up a tmp homedir + cwd with skill folders for the
-  // resolver-integration tests. These use real fs because the resolver
-  // calls into discoverSkillsForRuntime synchronously, and a stub layer
-  // would only test the wiring trivially. mkdtemp / rmSync keep each
-  // case isolated.
+describe("V0.3.0 daemon-skill-discovery——文件系统发现的技能加入资源池", () => {
+  // 为解析器集成测试建立包含技能目录的临时主目录 + cwd。这些测试使用真实文件系统，
+  // 因为解析器会同步调用 discoverSkillsForRuntime，而 stub 层只能浅显测试接线。
+  // mkdtemp / rmSync 使每个用例保持隔离。
   const fs = require("node:fs") as typeof import("node:fs");
   const path = require("node:path") as typeof import("node:path");
   const os = require("node:os") as typeof import("node:os");
@@ -341,12 +338,11 @@ describe("V0.3.0 daemon-skill-discovery — filesystem-discovered skills join th
     try { return fn(); } finally { fs.rmSync(tmpRoot, { recursive: true, force: true }); }
   }
 
-  it("accepts a profile.uses.skills entry that resolves only via the discovered ~/.claude/skills/ path", () => {
+  it("接受只能通过发现的 ~/.claude/skills/ 路径解析的 profile.uses.skills 条目", () => {
     withFsFixture(() => {
       writeSkill(path.join(homedir, ".claude/skills/openrig-architect"), "openrig-architect", "Architect rigs");
       const baseSpec = makeSpec({
-        // Note: NO `openrig-architect` in resources.skills; the only way
-        // for the profile to resolve it is via filesystem discovery.
+        // 注意：resources.skills 中没有 `openrig-architect`；profile 只能通过文件系统发现解析它。
         resources: { skills: [], guidance: [], subagents: [], hooks: [], runtimeResources: [] },
         profiles: {
           default: { uses: { skills: ["openrig-architect"], guidance: [], subagents: [], hooks: [], runtimeResources: [] } },
@@ -367,7 +363,7 @@ describe("V0.3.0 daemon-skill-discovery — filesystem-discovered skills join th
     });
   });
 
-  it("accepts a profile.uses.skills entry resolving via a rig-bundled <cwd>/.claude/skills/<name>/", () => {
+  it("接受通过工作组内置 <cwd>/.claude/skills/<name>/ 解析的 profile.uses.skills 条目", () => {
     withFsFixture(() => {
       writeSkill(path.join(cwd, ".claude/skills/web-design-guidelines"), "web-design-guidelines", "Web design checks");
       const baseSpec = makeSpec({
@@ -386,11 +382,11 @@ describe("V0.3.0 daemon-skill-discovery — filesystem-discovered skills join th
     });
   });
 
-  it("rig-local resources.skills wins over a same-id discovered skill (most-specific-wins precedence)", () => {
+  it("工作组本地 resources.skills 胜过同标识的发现技能（最具体者优先）", () => {
     withFsFixture(() => {
       writeSkill(path.join(homedir, ".claude/skills/skill-a"), "skill-a", "Discovered version");
-      // makeSpec already declares { id: 'skill-a', path: 'skills/a' } in
-      // resources.skills; the rig-local version should win.
+      // makeSpec 已在 resources.skills 中声明 { id: 'skill-a', path: 'skills/a' }；
+      // 工作组本地版本应胜出。
       const ctx = makeCtx({
         baseSpec: makeResolved(makeSpec()),
         member: makeMember({ cwd }),
@@ -401,14 +397,14 @@ describe("V0.3.0 daemon-skill-discovery — filesystem-discovered skills join th
       if (result.ok) {
         const skillA = result.config.selectedResources.skills.find((s) => s.effectiveId === "skill-a");
         expect(skillA).toBeDefined();
-        // rig-local sourcePath (the agent spec's sourcePath), NOT the
-        // homedir-discovered SKILL.md directory.
+        // 使用工作组本地 sourcePath（agent spec 的 sourcePath），而不是主目录中发现的
+        // SKILL.md 目录。
         expect(skillA!.sourcePath).toBe("/agents/test");
       }
     });
   });
 
-  it("scans the codex .agents/skills/ tree when the runtime is codex", () => {
+  it("runtime 为 codex 时扫描 .agents/skills/ 目录树", () => {
     withFsFixture(() => {
       writeSkill(path.join(homedir, ".agents/skills/openrig-architect"), "openrig-architect", "Architect rigs");
       const baseSpec = makeSpec({
@@ -427,7 +423,7 @@ describe("V0.3.0 daemon-skill-discovery — filesystem-discovered skills join th
     });
   });
 
-  it("preserves the existing 'skill not found' error when a profile references a skill that exists at neither the rig-local nor the discovered paths", () => {
+  it("profile 引用在工作组本地和发现路径均不存在的技能时，保留现有“找不到技能”错误", () => {
     withFsFixture(() => {
       const baseSpec = makeSpec({
         resources: { skills: [], guidance: [], subagents: [], hooks: [], runtimeResources: [] },
@@ -448,13 +444,11 @@ describe("V0.3.0 daemon-skill-discovery — filesystem-discovered skills join th
     });
   });
 
-  it("surfaces the structural rejection reason when a profile references a skill whose dirname matches a rejected SKILL.md", () => {
+  it("profile 引用目录名与被拒绝 SKILL.md 匹配的技能时，呈现结构拒绝原因", () => {
     withFsFixture(() => {
-      // Operator dropped a SKILL.md with no frontmatter at the
-      // ~/.claude/skills/broken-skill/ path. The profile references
-      // "broken-skill" — instead of the bare "not found in resource
-      // pool" error, the operator should see "rejected because
-      // <reason> at <path>" so they know exactly what to fix.
+      // 操作人员在 ~/.claude/skills/broken-skill/ 路径放置了没有 frontmatter 的 SKILL.md。
+      // profile 引用 "broken-skill"——操作人员应看到“因 <reason> 在 <path> 被拒绝”，
+      // 而非裸露的“资源池中找不到”错误，从而明确知道需要修复什么。
       const dir = path.join(homedir, ".claude/skills/broken-skill");
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, "SKILL.md"), "no frontmatter here\n", "utf-8");
@@ -475,18 +469,17 @@ describe("V0.3.0 daemon-skill-discovery — filesystem-discovered skills join th
       if (!result.ok) {
         const msg = result.errors.find((e) => e.includes("broken-skill"));
         expect(msg).toBeDefined();
-        expect(msg).toMatch(/rejected/i);
+        expect(msg).toMatch(/被拒绝/);
         expect(msg).toMatch(/frontmatter/i);
         expect(msg).toContain(dir);
       }
     });
   });
 
-  it("does not falsely tie an unrelated rejected SKILL.md to a missing-skill error (basename match only)", () => {
+  it("不会把无关的被拒绝 SKILL.md 错误关联到缺失技能（只匹配 basename）", () => {
     withFsFixture(() => {
-      // Operator has a broken skill at ~/.claude/skills/foo/ (rejected)
-      // and a profile that references "bar" (which exists nowhere).
-      // The "bar" error should NOT be conflated with foo's rejection.
+      // 操作人员在 ~/.claude/skills/foo/ 中有一个损坏技能（被拒绝），且 profile 引用
+      // 不存在于任何位置的 "bar"。"bar" 错误不应与 foo 的拒绝混为一谈。
       const dir = path.join(homedir, ".claude/skills/foo");
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, "SKILL.md"), "no frontmatter\n", "utf-8");
@@ -507,19 +500,18 @@ describe("V0.3.0 daemon-skill-discovery — filesystem-discovered skills join th
       if (!result.ok) {
         const msg = result.errors.find((e) => e.includes("bar"));
         expect(msg).toBeDefined();
-        // Plain "not found in resource pool" — not "rejected".
-        expect(msg).toMatch(/not found/);
-        expect(msg).not.toMatch(/rejected/);
+        // 只是“资源池中找不到”，而非“被拒绝”。
+        expect(msg).toMatch(/未在资源池中找到/);
+        expect(msg).not.toMatch(/被拒绝/);
       }
     });
   });
 
-  // Slice 15 HG-7 — per-seat silence-window-seconds passes through
-  // ResolvedNodeConfig.activity for the rigspec-instantiator to plumb
-  // into NodeLauncher.launchNode. Verifies the carry-through; the
-  // launch-call site is exercised by node-launcher tests.
-  describe("slice 15 — profile.activity carries into ResolvedNodeConfig", () => {
-    it("ResolvedNodeConfig.activity.silenceWindowSeconds reflects profile.activity when set", () => {
+  // 分片 15 HG-7——逐席位 silence-window-seconds 通过 ResolvedNodeConfig.activity 传递，
+  // 供 rigspec-instantiator 接入 NodeLauncher.launchNode。这里验证透传；启动调用点由
+  // node-launcher 测试覆盖。
+  describe("分片 15——profile.activity 传入 ResolvedNodeConfig", () => {
+    it("设置时 ResolvedNodeConfig.activity.silenceWindowSeconds 反映 profile.activity", () => {
       const ctx = makeCtx({
         baseSpec: makeResolved(makeSpec({
           profiles: {
@@ -537,7 +529,7 @@ describe("V0.3.0 daemon-skill-discovery — filesystem-discovered skills join th
       }
     });
 
-    it("ResolvedNodeConfig.activity is undefined when the profile does not declare one", () => {
+    it("profile 未声明 activity 时 ResolvedNodeConfig.activity 为 undefined", () => {
       const result = resolveNodeConfig(makeCtx());
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -548,12 +540,11 @@ describe("V0.3.0 daemon-skill-discovery — filesystem-discovered skills join th
 });
 
 // ─── OPR.0.5.6.20 P3 — compactionStrategy resolution, most-specific-WINS ────────
-// RED-FIRST at base: no compactionStrategy resolution exists; ResolvedNodeConfig
-// carries no such field. Layering is override-wins (spec default < profile <
-// member) — deliberately NOT restore_policy's narrowing lattice: the four modes
-// are unordered (desk-concurred planner call, disclosed on baton bd7eef84).
+// 基线先红：尚无 compactionStrategy 解析；ResolvedNodeConfig 不携带该字段。分层采用覆盖者优先
+//（spec 默认值 < profile < member），有意不采用 restore_policy 的收窄格：四种模式无序
+//（经 desk 同意的规划调用，已在 baton bd7eef84 中披露）。
 
-describe("compactionStrategy resolution — most-specific-wins (OPR.0.5.6.20)", () => {
+describe("compactionStrategy 解析——最具体者优先（OPR.0.5.6.20）", () => {
   const specLifecycle = (compactionStrategy: string) => makeSpec({
     defaults: {
       runtime: "claude-code",
@@ -561,7 +552,7 @@ describe("compactionStrategy resolution — most-specific-wins (OPR.0.5.6.20)", 
     },
   } as Partial<AgentSpec>);
 
-  it("member overrides profile overrides spec default (two-level fixture; RED: field absent from config)", () => {
+  it("member 覆盖 profile，profile 覆盖 spec 默认值（两级夹具；红灯：配置缺字段）", () => {
     const spec = specLifecycle("default-compaction");
     spec.profiles["default"].lifecycle = { compactionStrategy: "managed-compaction" } as never;
     const bare = resolveNodeConfig(makeCtx({ baseSpec: makeResolved(spec) }));
@@ -575,20 +566,20 @@ describe("compactionStrategy resolution — most-specific-wins (OPR.0.5.6.20)", 
     if (overridden.ok) expect(overridden.config.compactionStrategy).toBe("apprentice-handover");
   });
 
-  it("absent everywhere resolves to default-compaction (RED: field absent)", () => {
+  it("各级均缺失时解析为 default-compaction（红灯：字段缺失）", () => {
     const result = resolveNodeConfig(makeCtx());
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.config.compactionStrategy).toBe("default-compaction");
   });
 
-  it("an invalid value at any level errors naming the level (restore-policy error style; RED: silently ignored)", () => {
+  it("任一级存在无效值时，错误指出该层级（恢复策略错误风格；红灯：静默忽略）", () => {
     const result = resolveNodeConfig(makeCtx({
       member: makeMember({ compactionStrategy: "bogus" } as never),
     }));
     expect(result.ok).toBe(false);
   });
 
-  it("a deprecated alias at the member level resolves to its canonical value (harness_native → default-compaction; RED: unrecognized)", () => {
+  it("成员级废弃别名解析为规范值（harness_native → default-compaction；红灯：无法识别）", () => {
     const result = resolveNodeConfig(makeCtx({
       member: makeMember({ compactionStrategy: "harness_native" } as never),
     }));
@@ -597,14 +588,12 @@ describe("compactionStrategy resolution — most-specific-wins (OPR.0.5.6.20)", 
   });
 });
 
-// ─── OPR.0.5.6.20 B-3 — a non-specifying level must not participate ────────────
-// RED-FIRST over fad5e26c0 (R1 HOLD finding, real-ingress mixed fixture): the
-// normalization hop materializes default-compaction into a profile lifecycle
-// block that omits compaction_strategy, and the resolver's truthy check then
-// lets that non-specifying profile defeat an explicit spec-level strategy —
-// the flagship advisor shape silently loses its continuity policy.
-describe("compactionStrategy precedence — non-specifying level does not participate (OPR.0.5.6.20 B-3)", () => {
-  it("spec-level strategy survives a profile lifecycle block that omits compaction_strategy (real ingress: yaml -> normalize -> resolve)", () => {
+// ─── OPR.0.5.6.20 B-3——非指定 level 不得参与 ────────────
+// 在 fad5e26c0 上先红（R1 HOLD 发现，真实入口混合夹具）：规范化步骤将 default-compaction
+// 具体化到省略 compaction_strategy 的 profile lifecycle 块中，随后解析器的 truthy 检查使这个
+// 未指定值的 profile 击败显式 spec 级策略——旗舰 advisor 结构静默丢失连续性策略。
+describe("compactionStrategy 优先级——未指定值的层级不参与（OPR.0.5.6.20 B-3）", () => {
+  it("profile lifecycle 块省略 compaction_strategy 时保留 spec 级策略（真实入口：yaml -> normalize -> resolve）", () => {
     const raw = parseAgentSpec(`
 version: "0.2"
 name: b3-fixture
@@ -623,7 +612,7 @@ profiles:
     if (result.ok) expect(result.config.compactionStrategy).toBe("apprentice-handover");
   });
 
-  it("F-6 floor unchanged: absent at every level still resolves to default-compaction through the same real ingress (green at base, floor pin)", () => {
+  it("F-6 下限不变：各级均缺失时仍经同一真实入口解析为 default-compaction（基线绿色，下限固定）", () => {
     const raw = parseAgentSpec(`
 version: "0.2"
 name: b3-floor-fixture
@@ -641,15 +630,13 @@ profiles:
   });
 });
 
-// ─── OPR.0.5.6.20 B-4 — omitted restore_policy must not participate either ─────
-// RED-FIRST over f35214f55 (R2 HOLD finding, same class as B-3 on the sibling
-// field): normalizeLifecycle materializes restorePolicy resume_if_possible into a
-// profile lifecycle block that omits restore_policy, and the narrowing resolver
-// rejects the synthesized value as an invented broadening — a user cannot select
-// the profile-level continuity mode without redundantly repeating an unrelated
-// restore policy. Pre-dates S20 but lies on the candidate's central product path.
-describe("restorePolicy precedence — non-specifying level does not participate (OPR.0.5.6.20 B-4)", () => {
-  it("profile specifying only compaction_strategy neither breaks nor broadens the spec restore policy (real ingress; both outputs proven together)", () => {
+// ─── OPR.0.5.6.20 B-4——省略的 restore_policy 也不得参与 ─────
+// 在 f35214f55 上先红（R2 HOLD 发现，与 B-3 的相邻字段同类）：normalizeLifecycle 将
+// restorePolicy resume_if_possible 具体化到省略 restore_policy 的 profile lifecycle 块中，
+// 收窄解析器又把合成值视为虚构的放宽并拒绝——用户若不冗余重复无关恢复策略，就无法选择
+// profile 级连续性模式。它早于 S20，但位于候选方案的核心产品路径上。
+describe("restorePolicy 优先级——未指定值的层级不参与（OPR.0.5.6.20 B-4）", () => {
+  it("只指定 compaction_strategy 的 profile 不破坏也不放宽 spec 恢复策略（真实入口；同时证明两个输出）", () => {
     const raw = parseAgentSpec(`
 version: "0.2"
 name: b4-fixture
@@ -672,8 +659,8 @@ profiles:
   });
 });
 
-describe("continuity mechanic precedence — shipped three-level path (S20 A8)", () => {
-  it("resolves spec-default < profile < member through real AgentSpec ingress", () => {
+describe("连续性机制优先级——已发布的三级路径（S20 A8）", () => {
+  it("通过真实 AgentSpec 入口解析 spec-default < profile < member", () => {
     const raw = parseAgentSpec(`
 version: "0.2"
 name: mechanic-precedence
@@ -702,7 +689,7 @@ profiles:
     }
   });
 
-  it("preserves absence instead of inventing a default mechanic", () => {
+  it("保留缺失状态，而非虚构默认机制", () => {
     const result = resolveNodeConfig(makeCtx());
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -711,8 +698,8 @@ profiles:
   });
 });
 
-describe("managed catalog selection composition", () => {
-  it("adds system and project skills around a topology-only profile without rebuilding the topology", () => {
+describe("托管目录选择组合", () => {
+  it("围绕仅拓扑 profile 添加系统和项目技能，而不重建拓扑", () => {
     const root = mkdtempSync(join(tmpdir(), "openrig-profile-skill-catalog-"));
     try {
       const catalog = join(root, "skills");
@@ -762,7 +749,7 @@ describe("managed catalog selection composition", () => {
     }
   });
 
-  it("refuses a topology source whose identity matches the catalog but whose bytes do not", () => {
+  it("拒绝身份匹配目录但字节不匹配的拓扑来源", () => {
     const root = mkdtempSync(join(tmpdir(), "openrig-profile-skill-conflict-"));
     try {
       const catalog = join(root, "skills");

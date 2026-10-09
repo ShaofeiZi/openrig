@@ -1,22 +1,19 @@
-// OPR.0.4.1.23 Part-3 — PROOF tab (round-9, curator-INDEPENDENT). PROJECT the
-// per-slice proof location AS-IS, read-only.
+// OPR.0.4.1.23 Part-3——PROOF 标签页（round-9，策展人独立）。按原样、只读地投影
+// 逐 slice 的校验位置。
 //
-// Mechanism: each slice's proof lives at the byte-identical PATH CONTRACT
-// `<slicePath>/PROOF.md` (slice root, like PROGRESS.md) + `<slicePath>/proof/`
-// (media), scaffolded by `rig scope` (Part-1, shipped) and populated by the
-// closeout SOP (Part-2, skill-library) — NO curator in the read path. This tab
-// projects whatever is there: PROOF.md rendered + an artifact gallery of the
-// proof/ captures + a self-explanatory empty-state for a scaffolded-but-unpopulated
-// slice.
+// 机制：每个 slice 的校验位于字节一致的路径契约 `<slicePath>/PROOF.md`
+// （slice 根，如 PROGRESS.md）+ `<slicePath>/proof/`（媒体），由 `rig scope`
+// （Part-1，已发布）脚手架化、由收尾 SOP（Part-2，skill-library）填充——读取路径上无策展人。
+// 本标签页投影那里的一切：渲染 PROOF.md + proof/ 捕获的产物画廊 + 为已脚手架但未填充的
+// slice 提供自解释空态。
 //
-// REUSE, no new surface: reads go through the existing allowlist + traversal-guarded
-// /api/files endpoints exactly like the slice-21 Artifacts navigator —
-// useScopeMarkdown(slicePath,'PROOF.md') for the verdict/prose + useFilesList(root,
-// '<slice>/proof') + fileAssetUrl for the gallery. Inherits the daemon's path-safety.
+// 复用，不新增界面：读取走现有的白名单 + 遍历守卫的 /api/files 端点，与 slice-21
+// Artifacts 导航器完全一致——useScopeMarkdown(slicePath,'PROOF.md') 取判定/正文 +
+// useFilesList(root,'<slice>/proof') + fileAssetUrl 做画廊。继承后台服务的路径安全。
 //
-// LAZY-LOAD (the slice-17/21 lesson): this component only mounts when the PROOF tab
-// is the ACTIVE tab — it never renders (and so never fetches) on the overview/steering
-// landing. Layout is the founder-approved mockup (digital-twin/opr-0.4.1.23/).
+// 懒加载（slice-17/21 的教训）：本组件只在 PROOF 标签页为活动标签时挂载——
+// 在概览/steering 落地页上绝不渲染（也就绝不拉取）。布局是创始人批准的样机
+// （digital-twin/opr-0.4.1.23/）。
 
 import { useState } from "react";
 import { useFilesList, fileAssetUrl } from "../../hooks/useFiles.js";
@@ -25,7 +22,7 @@ import { MarkdownViewer } from "../markdown/MarkdownViewer.js";
 import { SectionHeader } from "../ui/section-header.js";
 import { EmptyState } from "../ui/empty-state.js";
 import { FileLink } from "../ui/FileLink.js";
-// OPR.0.4.4.20: Lightbox extracted (verbatim) for reuse by the Review surface.
+// OPR.0.4.4.20：逐字提取 Lightbox，供评审界面复用。
 import { Lightbox } from "./Lightbox.js";
 
 type Verdict = "PASS" | "PARTIAL" | "FAIL";
@@ -36,28 +33,32 @@ const VERDICT_TONE: Record<Verdict, string> = {
   FAIL: "border-red-500/60 bg-red-50 text-red-800",
 };
 
+// 判定徽章的中文展示（底层仍保留 PASS/PARTIAL/FAIL 枚举）。
+const VERDICT_LABEL: Record<Verdict, string> = {
+  PASS: "通过",
+  PARTIAL: "部分",
+  FAIL: "失败",
+};
+
 const IMAGE_RE = /\.(png|jpe?g|gif|webp|avif|svg)$/i;
-// Markdown proof-of-work artifacts (guard/qa/rev1 verdicts) open IN-APP in the
-// SharedDetailDrawer via FileLink — rendering the C1 header + body — instead of a
-// full-page raw-asset navigation out of the SPA. Non-Markdown other files
-// (logs/video/binary) keep their existing browser-viewable raw-asset link.
+// Markdown 工作凭证产物（guard/qa/rev1 判定）在应用内经 FileLink 于
+// SharedDetailDrawer 打开——渲染 C1 标题 + 正文——而非跳出 SPA 做整页原始资源导航。
+// 非 Markdown 的其他文件（日志/视频/二进制）保留其现有的浏览器可查看原始资源链接。
 const MD_RE = /\.mdx?$/i;
 
-/** Asset base for INLINE PROOF.md images — e.g. `![](proof/real-live.png)` in the
- *  Intent→Proof table, relative to the slice root where PROOF.md lives. MarkdownViewer
- *  appends the relative src with a "/" separator (resolveAssetUrl), so a non-empty
- *  relPath yields the exact /api/files/asset?...path=<relPath>/proof/<img> URL. The
- *  exact-root case (relPath "") anchors on "." so the join stays relative
- *  (path=./proof/<img>) instead of a leading-slash path=/proof/<img>. Without this the
- *  inline images render as broken route-relative `proof/...` URLs (guard fcf1126f). */
+/** 内联 PROOF.md 图片的资源基址——例如 Intent→Proof 表里的 `![](proof/real-live.png)`，
+ *  相对于 PROOF.md 所在的 slice 根。MarkdownViewer 用 "/" 分隔符拼接相对 src
+ *  （resolveAssetUrl），因此非空 relPath 得到精确的 /api/files/asset?...path=<relPath>/proof/<img> URL。
+ *  恰为根的情形（relPath ""）锚定到 "."，使拼接保持相对（path=./proof/<img>），
+ *  而非前导斜杠的 path=/proof/<img>。否则内联图片会渲染成坏掉的路由相对 `proof/...` URL
+ *  （guard fcf1126f）。 */
 function proofAssetBase(rootName: string, relPath: string): string {
   return fileAssetUrl(rootName, relPath || ".");
 }
 
-/** Parse the PROOF.md verdict, ROBUST to multiple authored shapes (the scaffold
- *  template `Verdict: <pass | ...>`, the dev1-qa capture `**Verdict: PASS**`, a bare
- *  `Verdict: pass-with-residue`). A `<...>` angle-bracket placeholder is NOT a real
- *  verdict — an unpopulated scaffold returns null (→ the empty-state). */
+/** 解析 PROOF.md 判定，对多种作者写法稳健（脚手架模板 `Verdict: <pass | ...>`、
+ *  dev1-qa 捕获 `**Verdict: PASS**`、裸 `Verdict: pass-with-residue`）。
+ * `<...>` 尖括号占位符不是真判定——未填充的脚手架返回 null（→ 空态）。 */
 function parseVerdict(content: string | null): Verdict | null {
   if (!content) return null;
   const m = /verdict\s*:?\s*\**\s*([A-Za-z][A-Za-z-]*)/i.exec(content.replace(/`/g, ""));
@@ -69,7 +70,7 @@ function parseVerdict(content: string | null): Verdict | null {
   return null;
 }
 
-/** One slice's proof card — reads <slicePath>/PROOF.md + <slicePath>/proof/ AS-IS. */
+/** 一个 slice 的校验卡片——按原样读取 <slicePath>/PROOF.md + <slicePath>/proof/。 */
 function ProofSliceCard({
   sliceId,
   title,
@@ -81,14 +82,14 @@ function ProofSliceCard({
 }) {
   const [preview, setPreview] = useState<string | null>(null);
 
-  // PROOF.md via the slice-17/21 scope-markdown reader (resolves slicePath to the
-  // allowlist + reads through /api/files/read). `resolved` = the {rootName, relPath}
-  // we reuse for the proof/ listing + asset URLs, so we resolve the path only once.
+  // 经 slice-17/21 的 scope-markdown 读取器取 PROOF.md（把 slicePath 解析到白名单并经
+  // /api/files/read 读取）。`resolved` = 我们复用于 proof/ 列举 + 资源 URL 的
+  // {rootName, relPath}，使路径只解析一次。
   const proofMd = useScopeMarkdown(slicePath, "PROOF.md");
   const resolved = proofMd.resolved;
   const proofRel = resolved ? (resolved.relPath ? `${resolved.relPath}/proof` : "proof") : null;
 
-  // proof/ listing — lazy (enabled:!!root). Disabled until the path resolves.
+  // proof/ 列举——惰性（enabled:!!root）。路径解析前禁用。
   const proofList = useFilesList(resolved ? resolved.rootName : null, proofRel);
   const files = (proofList.data?.entries ?? []).filter((e) => e.type === "file");
   const images = files.filter((f) => IMAGE_RE.test(f.name));
@@ -96,45 +97,44 @@ function ProofSliceCard({
 
   const verdict = parseVerdict(proofMd.content);
   const hasContent = !proofMd.unavailable && !!proofMd.content;
-  // Populated = a real verdict OR at least one captured artifact. A scaffolded-but-
-  // unpopulated slice (placeholder verdict, empty proof/) falls through to the empty-state.
+  // 已填充 = 有真实判定，或至少一个捕获产物。已脚手架但未填充的 slice
+  // （占位判定、空 proof/）落到空态。
   const populated = verdict !== null || images.length > 0 || otherFiles.length > 0;
 
   if (proofMd.isLoading) {
     return (
       <section data-testid={`proof-slice-loading-${sliceId}`} className="border border-outline-variant bg-surface-lowest/25 p-4">
-        <div className="font-mono text-[11px] text-on-surface-variant">Loading proof…</div>
+        <div className="font-mono text-[11px] text-on-surface-variant">正在加载校验…</div>
       </section>
     );
   }
 
   if (!populated) {
-    // R1 (release-0.4.7): the empty-state stops lying. `absent`/`idle` keep
-    // today's "awaiting proof" + "NO PROOF YET" bytes EXACTLY; a mis-rooted
-    // scope (`unresolved`) or an infra read failure (`read_error`) each get an
-    // honest copy so a real config/read problem isn't shown as an empty proof.
+    // R1（release-0.4.7）：空态不再说谎。`absent`/`idle` 精确保持今天的
+    // “待校验”+“尚无校验”字节；根路径错误的 scope（`unresolved`）或基础设施读取失败
+    // （`read_error`）各得到诚实文案，使真实的配置/读取问题不被显示成空校验。
     const empty =
       proofMd.state === "read_error"
         ? {
             micro: null as string | null,
-            label: "PROOF.MD READ FAILED",
+            label: "PROOF.MD 读取失败",
             description:
-              "The daemon could not read PROOF.md — this is a read failure, not an empty proof. Check daemon logs and file permissions.",
+              "后台服务无法读取 PROOF.md——这是读取失败，不是空校验。请检查后台服务日志与文件权限。",
             testId: `proof-read-error-${sliceId}`,
           }
         : proofMd.state === "unresolved"
           ? {
               micro: null as string | null,
-              label: "PROOF.MD OUTSIDE FILE ROOTS",
+              label: "PROOF.MD 不在文件根内",
               description:
-                "This slice's path is not under any of the daemon's allowlisted file roots, so PROOF.md cannot be read. Check OPENRIG_FILES_ALLOWLIST / the daemon's file-roots settings.",
+                "本切片的路径不在后台服务白名单的任一文件根下，因此无法读取 PROOF.md。请检查 OPENRIG_FILES_ALLOWLIST / 后台服务的 file-roots 设置。",
               testId: `proof-unresolved-${sliceId}`,
             }
           : {
-              micro: "awaiting proof" as string | null,
-              label: "NO PROOF YET",
+              micro: "待校验" as string | null,
+              label: "尚无校验",
               description:
-                "This slice has a scaffolded proof/ location that no closeout has populated. Proof-of-work captures (screenshots / videos) and a PROOF.md verdict land here when the closing agent drops them in at slice closeout — no curator required.",
+                "本切片有一个已脚手架化的 proof/ 位置，但尚无收尾流程填充。工作凭证捕获（截图/视频）与 PROOF.md 判定会在收尾智能体处理切片收尾时放入此处——无需策展人。",
               testId: `proof-empty-state-${sliceId}`,
             };
     return (
@@ -172,12 +172,12 @@ function ProofSliceCard({
             data-testid={`proof-verdict-${sliceId}`}
             className={`border px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] ${VERDICT_TONE[verdict]}`}
           >
-            {verdict}
+            {VERDICT_LABEL[verdict]}
           </span>
         ) : null}
       </div>
 
-      {/* PROOF.md rendered AS-IS (markdown → UI, robust like the PROGRESS projection). */}
+      {/* PROOF.md 按原样渲染（markdown → UI，像 PROGRESS 投影那样稳健）。 */}
       {hasContent ? (
         <div data-testid={`proof-md-${sliceId}`} className="mt-3">
           <MarkdownViewer
@@ -189,18 +189,18 @@ function ProofSliceCard({
         </div>
       ) : null}
 
-      {/* Artifact gallery — the proof/ captures, browser-viewable via /api/files/asset. */}
+      {/* 产物画廊——proof/ 捕获，经 /api/files/asset 浏览器可查看。 */}
       {images.length > 0 ? (
         <div className="mt-3">
           <div className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-on-surface-variant">
-            proof/ · {images.length} capture{images.length === 1 ? "" : "s"}
+            proof/ · {images.length} 个捕获
           </div>
           <div data-testid={`proof-gallery-${sliceId}`} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {images.map((img) => {
               const url = fileAssetUrl(resolved!.rootName, `${proofRel}/${img.name}`);
               return (
                 <figure key={img.name} data-testid={`proof-thumb-${img.name}`} className="border border-outline-variant bg-surface-lowest/40">
-                  <button type="button" onClick={() => setPreview(url)} className="block w-full" aria-label={`Open ${img.name}`}>
+                  <button type="button" onClick={() => setPreview(url)} className="block w-full" aria-label={`打开 ${img.name}`}>
                     <img src={url} alt={img.name} loading="lazy" className="block h-[150px] w-full object-cover object-top" />
                   </button>
                   <figcaption className="truncate border-t border-outline-variant px-2 py-1 font-mono text-[8px] uppercase tracking-[0.08em] text-on-surface-variant">
@@ -213,14 +213,14 @@ function ProofSliceCard({
         </div>
       ) : null}
 
-      {/* Non-image proof artifacts (logs/videos/etc) — listed AS-IS as links, nothing hidden. */}
+      {/* 非图片校验产物（日志/视频等）——按原样列成链接，不隐藏任何东西。 */}
       {otherFiles.length > 0 ? (
         <ul data-testid={`proof-files-${sliceId}`} className="mt-3 space-y-1 font-mono text-[10px]">
           {otherFiles.map((f) => (
             <li key={f.name}>
               {MD_RE.test(f.name) ? (
-                // Markdown proof artifact — open in the in-app drawer (C1 header +
-                // body), not a full-page raw-asset navigation out of the SPA.
+                // Markdown 校验产物——在应用内抽屉打开（C1 标题 + 正文），
+                // 而非跳出 SPA 做整页原始资源导航。
                 <FileLink
                   root={resolved!.rootName}
                   path={`proof/${f.name}`}
@@ -244,28 +244,28 @@ function ProofSliceCard({
         </ul>
       ) : null}
 
-      <Lightbox src={preview} alt={preview ? "proof capture" : ""} onClose={() => setPreview(null)} />
+      <Lightbox src={preview} alt={preview ? "校验捕获" : ""} onClose={() => setPreview(null)} />
     </section>
   );
 }
 
 export interface ProofRollupRow {
-  /** slice index name (the `name` from the slice list) */
+  /** slice 索引名（slice 列表里的 `name`） */
   name: string;
-  /** human display id, e.g. "OPR.0.4.1.16" or the slice display name */
+  /** 人类可读展示 id，例如 "OPR.0.4.1.16" 或 slice 展示名 */
   displayName: string;
-  /** absolute filesystem path of the slice folder (PL-007 slicePath) */
+  /** slice 文件夹的绝对文件系统路径（PL-007 slicePath） */
   slicePath: string | null;
 }
 
-/** Per-slice PROOF roll (workspace + mission altitude). Mounts only when the PROOF
- *  tab is active, so its file reads never fire on the overview/steering landing. */
+/** 逐 slice 的校验滚动条（工作区 + 任务高度）。仅在 PROOF 标签页活动时挂载，
+ *  因此其文件读取从不在概览/steering 落地页触发。 */
 export function ScopeProofRollup({ rows }: { rows: ProofRollupRow[] }) {
   if (rows.length === 0) {
     return (
       <EmptyState
-        label="NO SLICES IN SCOPE"
-        description="No slices are indexed for this scope, so there is no proof to project yet."
+        label="工作范围内无切片"
+        description="本工作范围尚未索引任何切片，因此暂无校验可投影。"
         variant="card"
         testId="proof-rollup-empty"
       />
@@ -273,7 +273,7 @@ export function ScopeProofRollup({ rows }: { rows: ProofRollupRow[] }) {
   }
   return (
     <div data-testid="proof-tab" className="space-y-6">
-      <SectionHeader>Proof · proof-of-work per slice</SectionHeader>
+      <SectionHeader>校验 · 逐切片的工作凭证</SectionHeader>
       {rows.map((row) => (
         <ProofSliceCard key={row.name} sliceId={row.displayName} title={row.name} slicePath={row.slicePath} />
       ))}
@@ -281,7 +281,7 @@ export function ScopeProofRollup({ rows }: { rows: ProofRollupRow[] }) {
   );
 }
 
-/** Single-slice PROOF view (slice altitude). */
+/** 单 slice 的校验视图（slice 高度）。 */
 export function SliceProofTab({
   sliceId,
   title,
@@ -293,7 +293,7 @@ export function SliceProofTab({
 }) {
   return (
     <div data-testid="proof-tab" className="space-y-6">
-      <SectionHeader>Proof · proof-of-work</SectionHeader>
+      <SectionHeader>校验 · 工作凭证</SectionHeader>
       <ProofSliceCard sliceId={sliceId} title={title} slicePath={slicePath} />
     </div>
   );

@@ -1,15 +1,14 @@
-// Slice Story View v0 — slices route end-to-end tests.
+// Slice Story View v0——slices 路由端到端测试。
 //
-// Drives the routes against a hand-mounted Hono app with the indexer +
-// projector wired through context middleware (mirrors how the real
-// server.ts wires them via createApp). Covers:
+// 在手工挂载的 Hono app 上驱动路由，indexer + projector 经 context middleware
+// 接线（镜像真实 server.ts 经 createApp 的接线方式）。覆盖：
 //
-//   - GET /api/slices?filter=...  filter validation + status-bucket projection
-//   - GET /api/slices/:name        full per-tab payload shape
-//   - GET /api/slices/:name/proof-asset/...  binary serving + path-traversal guard
-//   - GET /api/slices/:name/doc/...           markdown content
-//   - Route-order discipline: literal `/` not shadowed by `/:name`
-//   - 503 on slices_root_not_configured (graceful when env unset)
+//   - GET /api/slices?filter=...  filter 校验 + status-bucket 投影
+//   - GET /api/slices/:name        完整 per-tab 负载形状
+//   - GET /api/slices/:name/proof-asset/...  二进制服务 + 路径穿越守卫
+//   - GET /api/slices/:name/doc/...           markdown 内容
+//   - 路由顺序纪律：字面 `/` 不被 `/:name` 遮蔽
+//   - slices_root_not_configured 时 503（env 未设时优雅降级）
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -323,7 +322,7 @@ describe("PL-slice-story-view-v0 slices routes", () => {
       writeSlice(slicesRoot, "list", { "README.md": "---\n---\n" });
       const res = await app.request("/api/slices");
       expect(res.status).toBe(200);
-      // Body is the LIST envelope, NOT a per-slice payload.
+      // body 是 LIST 信封，而非 per-slice 负载。
       const body = (await res.json()) as { slices: unknown; totalCount: unknown };
       expect(body).toHaveProperty("slices");
       expect(body).toHaveProperty("totalCount");
@@ -336,8 +335,7 @@ describe("PL-slice-story-view-v0 slices routes", () => {
       fs.writeFileSync(path.join(dir, "screenshots", "x.png"), "px");
       const res = await app.request("/api/slices/ord-slice/proof-asset/screenshots/x.png");
       expect(res.status).toBe(200);
-      // Asserts the response is the binary asset, not the JSON detail
-      // payload (which would have content-type application/json).
+      // 断言响应是二进制资产，而非 JSON 详情负载（后者会是 content-type application/json）。
       expect(res.headers.get("content-type")).toBe("image/png");
     });
   });

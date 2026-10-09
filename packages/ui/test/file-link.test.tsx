@@ -1,13 +1,11 @@
-// V0.3.1 slice 15 walk-items 6 + 11 — FileLink primitive tests.
+// V0.3.1 slice 15 walk-items 6 + 11——FileLink 原语测试。
 //
-// FileLink is a thin wrapper over the existing FileReferenceTrigger
-// that constructs FileViewerData from simpler props (path + root +
-// optional absolutePath / kind / readPath). On click the drawer
-// selection becomes `{ type: "file", data }`. Image-kind inference
-// happens in FileViewer at render time, so FileLink itself doesn't
-// run its own inference path — this test file verifies the data
-// shape that flows to setSelection so a downstream FileViewer would
-// honor inferKind correctly.
+// FileLink 是既有 FileReferenceTrigger 的薄包装，
+// 用更简 props（path + root + 可选 absolutePath / kind / readPath）构造 FileViewerData。
+// 点击时 drawer 选择变为 `{ type: "file", data }`。Image kind 推断
+// 在 FileViewer 渲染时发生，故 FileLink 自身不跑推断路径——
+// 本测试文件验证流到 setSelection 的数据形状，
+// 使下游 FileViewer 正确遵循 inferKind。
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
@@ -88,11 +86,10 @@ describe("FileLink primitive", () => {
   });
 
   it("walk-item 6 fix: image extensions flow through without explicit kind (FileViewer infers at render time)", () => {
-    // FileLink doesn't run kind inference itself — it just constructs
-    // FileViewerData with the path. FileViewer.inferKind() picks up
-    // .png/.jpg/.jpeg/.gif/.webp/.svg → "image" at render time. This
-    // test asserts the data shape is clean (no spurious kind injection)
-    // so the downstream inference path is unblocked.
+    // FileLink 自身不跑 kind 推断——它仅用 path 构造 FileViewerData。
+    // FileViewer.inferKind() 在渲染时拾取
+    // .png/.jpg/.jpeg/.gif/.webp/.svg → "image"。本测试断言数据形状干净
+    //（无伪造 kind 注入），使下游推断路径畅通。
     const { setSelection, getByTestId } = renderWithDrawerCtx(
       <FileLink path="cover.jpg" root="workspace" />,
     );

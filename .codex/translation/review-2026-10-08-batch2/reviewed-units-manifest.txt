@@ -1,0 +1,69 @@
+# s_000cae46wD0 实际审读单元 manifest（2026-10-08）
+# 列：路径 | sha256(前12) | 深度 | 结论
+# depth 取值：逐行全文 / 可见串提取 / 关键节 / fixture修改 / 测试新增
+# hash captured_at=2026-10-08（若后续再改源码，旧 hash 即失效，以本时间为准）
+packages/ui/src/components/MissionStatusBadge.tsx | 0b973c61c9ef | 逐行全文 | 关闭；aria回退中文映射，无残留
+packages/ui/src/components/BundleInspector.tsx | ddee2083022b | 逐行全文 | 关闭；"检查失败："+原错(后台/HTTP)保留
+packages/ui/src/components/PackageList.tsx | 7bf9a0bd2000 | 逐行全文 | 关闭；"加载旧版包失败："+原错(HTTP)保留
+packages/ui/src/components/review/TranscriptDrillPanel.tsx | 50dd111ca055 | 可见串提取+自测 | 尾部/搜索/全文中文映射，三模式测试过
+packages/ui/src/components/system/SettingsExplorer.tsx | fa3a9c382540 | 关键节 | 无可见残留
+packages/ui/src/components/drawer-viewers/FileViewer.tsx | 3b6c06a698f5 | 关键节 | 无可见残留
+packages/ui/src/components/system/LogPage.tsx | fbcb333a1134 | 关键节 | 无可见残留
+packages/ui/src/components/for-you/FeedCard.tsx | 7cb09ef6b16b | 关键节 | 无可见残留
+packages/ui/src/components/feed/cards/storytelling-cards.tsx | 95b8508823ff | 关键节 | 无可见残留
+packages/ui/src/components/AgentSpecReview.tsx | 85d751567286 | 关键节 | :68裸error观察，不加前缀，原样
+packages/ui/src/components/RigSpecReview.tsx | ce9c094a8e30 | 关键节 | :92裸error观察，不加前缀，原样
+packages/ui/src/components/mission-control/views/AuditHistoryView.tsx | 730089842186 | 关键节 | :133已有"错误："前缀
+packages/ui/src/components/system/ClaudeCompactionPolicyForm.tsx | 08fb6ff720da | 关键节 | :78观察，无强行前缀
+packages/ui/src/components/LaunchRecoveryModal.tsx | 9b3e30f67b91 | 关键节 | :194有前缀/:228裸，观察
+packages/ui/twin/fetch-stub.ts | b3939d903860 | fixture修改 | TWIN_FAIL_MODE打桩，默认行为不变
+packages/ui/vite.twin.config.ts | c980901099e1 | fixture修改 | TWIN_ROUTE/THEME/OUT/FAIL_MODE env
+packages/ui/test/transcript-drill-panel.test.tsx | 6eeb6886d501 | 测试新增 | 三模式loading中文断言
+packages/ui/src/components/ImportFlow.tsx | 9bd3f39de713 | 逐行全文 | 干净；步骤流全中文
+packages/ui/src/components/RigNode.tsx | 48e5739e5898 | 可见串提取 | aria/title全中文
+packages/ui/src/components/slices/tabs/DecisionsTab.tsx | b091464f01b4 | 可见串提取 | placeholder含机器verb/qitem
+packages/ui/src/components/mission-control/components/VerbActions.tsx | 75390426a0f3 | 可见串提取 | 全中文
+packages/ui/src/components/markdown/MarkdownViewer.tsx | 83b4e188a3e9 | 可见串提取 | mermaid提示中文
+
+# 第二批补审 20 文件（启发式+抽查，零可见英文残留）
+packages/ui/src/components/ActivityFeed.tsx | 6b6cff46c626 | 可见串全文提取
+packages/ui/src/components/dashboard/Dashboard.tsx | dcda15a1dcf2 | 可见串全文提取
+packages/ui/src/components/dashboard/HostConfigCard.tsx | 93cf00e58a1b | 可见串全文提取
+packages/ui/src/components/Explorer.tsx | afb607389c34 | 可见串全文提取
+packages/ui/src/components/for-you/Feed.tsx | 6f38b3dc98e9 | 可见串全文提取
+packages/ui/src/components/for-you/SubscriptionToggleList.tsx | 95e2aea03ba0 | 可见串全文提取
+packages/ui/src/components/for-you/UndoToast.tsx | e869928a87a1 | 可见串全文提取
+packages/ui/src/components/files/FilesWorkspace.tsx | 9c077e7edea4 | 可见串全文提取
+packages/ui/src/components/KernelStatusCard.tsx | 89730422a411 | 可见串全文提取
+packages/ui/src/components/LibraryReview.tsx | 12b9a9539b36 | 可见串全文提取
+packages/ui/src/components/LiveNodeDetails.tsx | e743934f74d1 | 可见串全文提取
+packages/ui/src/components/PackageDetail.tsx | 56fff17c290c | 可见串全文提取
+packages/ui/src/components/PackageInstallFlow.tsx | 246bc4f37d63 | 可见串全文提取
+packages/ui/src/components/project/ProjectTreeView.tsx | 90be66dc9ffe | 可见串全文提取
+packages/ui/src/components/project/ProofTab.tsx | 997fcca36171 | 可见串全文提取
+packages/ui/src/components/project/ScopePages.tsx | 925cfd524f43 | 可见串全文提取
+packages/ui/src/components/drawer-viewers/QueueItemViewer.tsx | 39040fbd0dff | 可见串全文提取
+packages/ui/src/components/system/SettingsCenter.tsx | 52bbccf19c99 | 可见串全文提取
+packages/ui/src/components/project/WorkspacePortfolioPanel.tsx | dca0a89854a5 | 可见串全文提取
+packages/ui/src/components/HostIndicator.tsx | a680a22ed397 | 可见串全文提取
+
+# 第三批 20 文件（display-reviewed：可见串提取，非整文件全文）
+packages/ui/src/components/agent-images/ForkNowAction.tsx | 941ac46d3426 | display-reviewed
+packages/ui/src/components/AgentSpecDisplay.tsx | 5f243f23f782 | display-reviewed
+packages/ui/src/components/AppShell.tsx | 8b87ad5d9d51 | display-reviewed
+packages/ui/src/components/BundleInstallFlow.tsx | f5cb955be787 | display-reviewed
+packages/ui/src/components/ContextUsageRing.tsx | 6c6be8dc3cca | display-reviewed
+packages/ui/src/components/DiscoveryPanel.tsx | 316959048562 | display-reviewed
+packages/ui/src/components/drawer-viewers/SubSpecPreview.tsx | 771acb0b83d2 | display-reviewed
+packages/ui/src/components/ExpansionOutcome.tsx | 2dfc3b2f050e | display-reviewed
+packages/ui/src/components/for-you/AuthorAgentTag.tsx | 95c49c5b6fb3 | display-reviewed
+packages/ui/src/components/for-you/FeedCardTerminalDrill.tsx | 6d5f5785c385 | display-reviewed
+packages/ui/src/components/for-you/LevelControl.tsx | 6e70b608fe70 | display-reviewed
+packages/ui/src/components/mission-control/components/HumanSeatCard.tsx | e9f90d9dc397 | display-reviewed
+packages/ui/src/components/mission-control/components/CliDriftIndicator.tsx | fc1eca06a571 | display-reviewed
+packages/ui/src/components/mission-control/components/CompactStatusRow.tsx | 22889e08bf71 | display-reviewed
+packages/ui/src/components/mission-control/MissionControlSurface.tsx | b0ab9af866c9 | display-reviewed
+packages/ui/src/components/NodeDetailPlaceholder.tsx | 6afb30513b00 | display-reviewed
+packages/ui/src/components/project/ArtifactsNavigator.tsx | 1e848b8c01bc | display-reviewed
+packages/ui/src/components/project/ProjectMetaPrimitives.tsx | 571c4b8c2d30 | display-reviewed
+packages/ui/src/components/preview/PreviewPane.tsx | 79a6c8b7e211 | display-reviewed

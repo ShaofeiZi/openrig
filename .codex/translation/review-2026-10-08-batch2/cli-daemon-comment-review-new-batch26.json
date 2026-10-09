@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch26",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/daemon/test/provider-signals-reactive.test.ts",
+      "before_sha256_16": "4d4dc3c068cb379e",
+      "after_sha256_16": "96e649cb9476ad0a",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/provider-policy.test.ts",
+      "before_sha256_16": "a0937289e2f6e5d5",
+      "after_sha256_16": "bfc7997d1346715c",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/health-summary.test.ts",
+      "before_sha256_16": "606824b86c8859f8",
+      "after_sha256_16": "babeaaafe37db1b5",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/activity-rejects.test.ts",
+      "before_sha256_16": "2e214260e00c3e19",
+      "after_sha256_16": "4bf472275bbc75a2",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/walk-profile.test.ts",
+      "before_sha256_16": "039dfe076832d139",
+      "after_sha256_16": "ae21792083c5ef7c",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

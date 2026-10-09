@@ -1,8 +1,7 @@
-// Slice-04 (OPR.0.5.0.4) — BR-2, the no-fire policy predicate (packet 3ffa3c22 §2 + BR-2).
-// A PURE predicate (no side effects, no action execution, no orchestration): it only decides
-// whether one signal is eligible to trigger an automated switch. Automation NEVER fires on a
-// signal that is unknown, not allow_switch_decision, or not provably fresh. Every failing
-// condition contributes an explicit, fail-visible refusal reason.
+// Slice-04（OPR.0.5.0.4）—— BR-2 禁止触发策略谓词（packet 3ffa3c22 §2 + BR-2）。
+// 这是纯谓词（无副作用、不执行动作、不参与编排），只判断信号是否具备触发自动
+// 切换的资格。对于未知、非 allow_switch_decision 或无法证明新鲜的信号，自动化
+// 绝不触发。每个失败条件都会产生显式、可见的拒绝原因。
 
 import type {
   AccountAuthState,
@@ -26,10 +25,10 @@ export interface AutomationEligibility {
 }
 
 /**
- * BR-2 eligibility. Eligible ONLY when the signal is known (source + authority), explicitly
- * `allow_switch_decision`, and provably fresh. Fail-closed on freshness: a missing `staleAfter`
- * or an unparsable one is ineligible (NaN must never compare as fresh). Expiry is INCLUSIVE:
- * `now >= staleAfter` is stale. An unparsable `now` also cannot prove freshness → stale.
+ * BR-2 资格判断。只有信号已知（来源和权限明确）、显式为 `allow_switch_decision`，
+ * 且可证明新鲜时才合格。新鲜度采用失败关闭：`staleAfter` 缺失或无法解析时均不合格
+ * （NaN 绝不能比较为新鲜）。过期边界包含等号：`now >= staleAfter` 即为陈旧；
+ * 无法解析的 `now` 同样不能证明新鲜，因此视为陈旧。
  */
 export function signalEligibleForAutomation(
   signal: ProviderSignal,
@@ -49,7 +48,7 @@ export function signalEligibleForAutomation(
       refusals.push("unparsable_freshness_bound");
     } else {
       const nowMs = Date.parse(nowIso);
-      // Fail-closed: an unparsable `now`, or reaching/passing the bound, is stale.
+      // 失败关闭：`now` 无法解析，或达到/超过边界时，都视为陈旧。
       if (Number.isNaN(nowMs) || nowMs >= staleMs) refusals.push("stale");
     }
   }
@@ -57,13 +56,12 @@ export function signalEligibleForAutomation(
   return { eligible: refusals.length === 0, refusals };
 }
 
-// ── Precheck: the §1 switch-safety gate ─────────────────────────────────────────────────
-// precheckSwitch decides whether switching a seat to a target account is SAFE, so the UI and
-// automation never offer an unsafe action. Every unsafe condition is an explicit, fail-visible
-// reason; reasons combine deterministically. A pure predicate — no side effects.
+// ── 预检：§1 切换安全门禁 ─────────────────────────────────────────────────────────
+// precheckSwitch 判断把席位切换到目标账号是否安全，确保 UI 和自动化绝不提供不安全
+// 动作。每个不安全条件都对应显式可见的原因，并按确定顺序组合。该谓词无副作用。
 
-// The subset of BR-2 refusals that mean the triggering signal is unknown/stale (as opposed to
-// merely advisory, which is a BR-2 concern, not a precheck unknown/stale concern).
+// BR-2 拒绝原因中表示触发信号未知/陈旧的子集；仅为 advisory 属于 BR-2 本身的关注点，
+// 不属于预检的未知/陈旧问题。
 const SIGNAL_UNKNOWN_OR_STALE_REFUSALS: readonly AutomationRefusal[] = [
   "sourceClass_unknown",
   "authority_unknown",
@@ -72,21 +70,20 @@ const SIGNAL_UNKNOWN_OR_STALE_REFUSALS: readonly AutomationRefusal[] = [
   "stale",
 ];
 
-/** Fields common to a manual and an automated precheck. */
+/** 手动预检与自动预检共用字段。 */
 interface PrecheckBase {
-  /** The provider of the account being switched TO. */
+  /** 要切换到的目标账号所属提供方。 */
   targetProvider: ProviderKind;
-  /** Validate-at-use: the target's auth state, checked at precheck time (never assumed). */
+  /** 使用时验证：在预检时检查目标认证状态，绝不预设。 */
   targetAuthState: AccountAuthState;
-  /** Whether the seat currently has a live turn/conversation in flight. */
+  /** 席位当前是否有正在进行的实时轮次/对话。 */
   seatHasLiveConversation: boolean;
 }
 
 /**
- * A manual precheck carries NEITHER a triggering signal nor a clock; an automated precheck
- * requires BOTH. The paired union makes "trigger without now" unrepresentable for typed
- * callers (the fail-closed hole is closed at the type level; a runtime guard below covers
- * untyped/JS callers).
+ * 手动预检既不携带触发信号，也不携带时钟；自动预检则两者都必须提供。配对联合类型
+ * 让有类型调用方无法表达“有 trigger 但无 now”（在类型层封闭失败关闭漏洞）；下方
+ * 运行时守卫覆盖无类型/JavaScript 调用方。
  */
 export type PrecheckInput = PrecheckBase &
   ({ triggeringSignal?: undefined; now?: undefined } | { triggeringSignal: ProviderSignal; now: string });
@@ -94,19 +91,19 @@ export type PrecheckInput = PrecheckBase &
 export function precheckSwitch(input: PrecheckInput): PrecheckResult {
   const reasons: PrecheckReason[] = [];
 
-  // rig auth is codex-only at the current switch substrate → a claude target can't be rebound.
+  // 当前切换基础层的 rig auth 仅支持 codex，因此不能重新绑定 claude 目标。
   if (input.targetProvider === "claude") reasons.push("rebind_unsupported_for_runtime");
 
-  // Validate-at-use: only a confirmed-active target is safe. needs_reauth and unknown each fail
-  // closed under their OWN reason — unknown is never relabeled as a re-auth need.
+  // 使用时验证：只有确认 active 的目标才安全。needs_reauth 与 unknown 分别按自身原因
+  // 失败关闭，绝不把 unknown 重新标记为需要重新认证。
   if (input.targetAuthState === "needs_reauth") reasons.push("target_needs_reauth");
   else if (input.targetAuthState === "unknown") reasons.push("target_auth_unknown");
 
   if (input.seatHasLiveConversation) reasons.push("would_strand_live_conversation");
 
-  // A triggering signal is present ONLY for an automated switch. Fail-closed for untyped/JS
-  // callers: if `now` is missing or unparsable it CANNOT prove freshness — the shared predicate
-  // maps an unparsable/absent now to NaN → stale, which is in the unknown/stale subset.
+  // 只有自动切换才携带触发信号。对无类型/JavaScript 调用方同样失败关闭：若 `now`
+  // 缺失或无法解析，就无法证明新鲜；共享谓词把这种 now 映射为 NaN → stale，归入
+  // 未知/陈旧子集。
   if (input.triggeringSignal !== undefined) {
     const { refusals } = signalEligibleForAutomation(input.triggeringSignal, input.now as string);
     if (refusals.some((r) => SIGNAL_UNKNOWN_OR_STALE_REFUSALS.includes(r))) {
@@ -114,7 +111,7 @@ export function precheckSwitch(input: PrecheckInput): PrecheckResult {
     }
   }
 
-  // Deterministic dedupe, insertion-order preserved.
+  // 确定性去重，并保留插入顺序。
   const deduped = [...new Set(reasons)];
   return deduped.length === 0 ? { safe: true } : { safe: false, reasons: deduped };
 }

@@ -1,15 +1,14 @@
 version: "0.2"
 name: first-project
 summary: >
-  Two Codex seats in your repository: an outcome owner and an independent
-  checker. Give the owner one bounded change; follow the durable result and
-  continue at the same address. See docs/reference/getting-started.md.
+  在你的仓库中运行两个 Codex 席位：一名结果负责人和一名独立检查者。向负责人交付一项
+  有界变更，跟进持久化结果，并在同一地址继续。参见 docs/reference/getting-started.md。
 
 culture_file: CULTURE.md
 
 pods:
   - id: dev
-    label: Project
+    label: 项目
     members:
       - id: owner
         agent_ref: "local:../../../agents/development/implementer"

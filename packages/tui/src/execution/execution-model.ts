@@ -1,19 +1,17 @@
 import { DEFAULT_TIME_ZONE, displayTime } from "../time.js";
 import { workflowOverview, workflowDetail } from "./workflow-model.js";
-// MISSION EXECUTION STORY — a pure presentation model over two shipped projections:
-// the scopes store (declared slice state, proof pairing) and the daemon's derived
-// execution view (lanes, sequencing, ladder, parks). It never reads PROGRESS text,
-// queue bodies, or transitions.
+import { padEndW, clipW, strWidth } from "../text-width.js";
+// 任务执行故事——建立在两个已交付投影上的纯展示模型：工作范围存储（声明的切片状态、
+// 证明配对）和后台服务派生执行视图（泳道、顺序、阶梯、停放）。它从不读取 PROGRESS
+// 正文、队列正文或转换记录。
 //
-// Design (founder live-QA correction): a normal person reads the mission top to bottom.
-//   - Identity/state leads; NOW, NEXT, and PROGRESS are compact scan targets.
-//   - NEEDS HUMAN appears only when actionable and opens the affected slice.
-//   - Provenance and any shared evidence gap stay subordinate and drillable.
-//   - Waves remain the dominant body and include every slice; viewport scrolling, not
-//     omission rows, provides access at narrow and short geometries.
-//   - No positional glyph strings, bare abbreviations, or placeholder cells. The full
-//     rung-by-rung ladder with bases lives on the slice page.
-// Every row opens a page built from the projections' own values; `esc` returns.
+// 设计（创建者实时 QA 修正）：普通读者从上到下阅读任务。
+//   - 身份/状态优先；“现在”“下一步”“进度”是紧凑扫描目标。
+//   - “需要人工”只在可操作时出现，并打开受影响切片。
+//   - 来源与共享证据缺口保持次要层级，但可继续钻取。
+//   - 波次仍是主体并包含每个切片；窄或矮窗口靠视口滚动访问，而不是省略行。
+//   - 不使用依赖位置的字形串、裸缩写或占位单元格。带依据的完整逐阶梯信息放在切片页。
+// 每一行都会打开一个由投影自身值构成的页面；按 `esc` 返回。
 import type { Action, SliceDetailSnap } from "../types.js";
 import type { Token } from "../theme.js";
 import { wrapDetailLines, detailPage, listItem, sectionRule, type ContentLine, type Section } from "../detail.js";
@@ -31,7 +29,7 @@ export interface ExecutionViewSnap {
   q4_ladder: Array<Record<string, unknown>>;
   q5_park: Array<Record<string, unknown>>;
   q6_parallelism?: Record<string, unknown>;
-  /** S06: existing workflow engine facts joined to the selected mission. */
+  /** S06：连接到所选任务的现有工作流引擎事实。 */
   lifecycle_instances?: Array<Record<string, unknown>>;
   planning_guidance?: Array<{ label: string; text: string; source: string; wave?: string }>;
 }
@@ -39,8 +37,11 @@ export interface ExecutionViewSnap {
 const INDETERMINATE = "INDETERMINATE";
 const RUNGS = ["locked", "built", "reviewed", "folded", "adopted"] as const;
 type Rung = (typeof RUNGS)[number];
-/** Ordinary words for the ladder rungs. */
-const RUNG_WORD: Record<Rung, string> = { locked: "spec locked", built: "built", reviewed: "reviewed", folded: "merged", adopted: "live" };
+/** 阶梯各层使用的普通用语。 */
+const RUNG_WORD: Record<Rung, string> = { locked: "规范锁定", built: "已构建", reviewed: "已评审", folded: "已合并", adopted: "活跃" };
+const ACTIVITY_WORD: Record<string, string> = { working: "工作中", claimed: "已认领", "in-progress": "进行中", blocked: "已阻塞" };
+const READINESS_WORD: Record<string, string> = { ready: "就绪", pending: "待处理", blocked: "已阻塞" };
+const DECLARED_WORD: Record<string, string> = { active: "活跃", done: "完成", wip: "进行中", blocked: "已阻塞", pending: "待处理", spec: "规范" };
 
 function record(value: unknown): Record<string, unknown> {
   return value != null && typeof value === "object" && !Array.isArray(value)
@@ -57,7 +58,7 @@ function shortSha(value: unknown): string {
 }
 
 function clip(text: string, room: number): string {
-  return text.length > room ? `${text.slice(0, Math.max(room - 1, 0))}…` : text;
+  return clipW(text, room);
 }
 
 type SemanticSeg = NonNullable<ContentLine["segs"]>[number];
@@ -67,12 +68,13 @@ function fitSegs(parts: SemanticSeg[], width: number): SemanticSeg[] {
   let room = Math.max(0, width);
   for (const part of parts) {
     if (room <= 0) break;
-    if (part.text.length <= room) {
+    const partWidth = strWidth(part.text);
+    if (partWidth <= room) {
       out.push(part);
-      room -= part.text.length;
+      room -= partWidth;
       continue;
     }
-    out.push({ ...part, text: room === 1 ? "…" : `${part.text.slice(0, room - 1)}…` });
+    out.push({ ...part, text: clipW(part.text, room) });
     room = 0;
   }
   return out;
@@ -84,14 +86,14 @@ function semantic(parts: SemanticSeg[], width: number, action?: Action): Content
 }
 
 function semanticAction(parts: SemanticSeg[], action: Action, width: number): ContentLine {
-  const suffix: SemanticSeg = { text: "  (open ▸)", token: "accent", bold: true };
-  const body = fitSegs(parts, Math.max(0, width - suffix.text.length));
+  const suffix: SemanticSeg = { text: "  (打开 ▸)", token: "accent", bold: true };
+  const body = fitSegs(parts, Math.max(0, width - strWidth(suffix.text)));
   return semantic([...body, suffix], width, action);
 }
 
 function stateToken(word: string): Token {
-  if (word === "working" || word === "done" || word === "outcome complete" || word === "active") return "ok";
-  if (word === "needs input" || word === "blocked" || word === "parked") return "warn";
+  if (word === "工作中" || word === "done" || word === "结果完成" || word === "active") return "ok";
+  if (word === "需要输入" || word === "已阻塞" || word === "parked") return "warn";
   if (word === "failed") return "error";
   return "dim";
 }
@@ -100,23 +102,23 @@ function open(key: string): Action {
   return { type: "execution-open", key };
 }
 
-/** A drillable row. The text is clamped so the open affordance always survives the pane
- *  width; the full facts live one drill away. */
+/** 可钻取行。文本会受限，使“打开”入口在任何 pane 宽度下都能保留；完整事实位于下一层。 */
 function actionRow(text: string, action: Action, width = Number.MAX_SAFE_INTEGER): ContentLine {
-  return { text: `  ${clip(text, Math.max(width - 13, 24))}  (open ▸)`, action };
+  const suffix = "  (打开 ▸)";
+  return { text: `  ${clip(text, Math.max(width - strWidth(suffix) - 2, 24))}${suffix}`, action };
 }
 
 function row(text: string, key: string, width = Number.MAX_SAFE_INTEGER): ContentLine {
   return actionRow(text, open(key), width);
 }
 
-// ---- facts per slice ----------------------------------------------------------
+// ---- 逐切片事实 ---------------------------------------------------------------
 
 interface RungCell { value: unknown; basis: string; state: "yes" | "no" | "undetermined" }
 
 function rungCell(ladder: Record<string, unknown>, rung: Rung): RungCell {
   const cell = record(ladder[rung]);
-  const basis = str(cell["basis"], "basis unavailable");
+  const basis = str(cell["basis"], "依据不可用");
   if (rung === "built") {
     const sha = cell["candidate_sha"];
     return { value: sha, basis, state: typeof sha === "string" && sha !== INDETERMINATE ? "yes" : "undetermined" };
@@ -125,17 +127,17 @@ function rungCell(ladder: Record<string, unknown>, rung: Rung): RungCell {
   return { value, basis, state: value === true ? "yes" : value === false ? "no" : "undetermined" };
 }
 
-/** Highest rung actually confirmed (true / built sha), 0 = nothing confirmed. */
+/** 实际确认的最高阶梯（true / 构建 SHA）；0 表示无确认项。 */
 function reachedRank(cells: Record<Rung, RungCell>): number {
   for (let i = RUNGS.length - 1; i >= 0; i--) if (cells[RUNGS[i]!].state === "yes") return i + 1;
   return 0;
 }
 
-/** The evidence fact in words: the highest confirmed rung, or the reason nothing is. */
+/** 证据事实的文字表达：最高已确认阶梯，或没有确认项的原因。 */
 function evidenceText(cells: Record<Rung, RungCell>, rank: number): string {
-  if (rank === 0) return cells.built.state === "undetermined" ? "no candidate recorded" : "nothing confirmed";
+  if (rank === 0) return cells.built.state === "undetermined" ? "无候选已记录" : "无已确认项";
   const rung = RUNGS[rank - 1]!;
-  return rung === "built" ? `built ${shortSha(cells.built.value)}` : RUNG_WORD[rung];
+  return rung === "built" ? `已构建 ${shortSha(cells.built.value)}` : RUNG_WORD[rung];
 }
 
 interface SliceFacts {
@@ -158,7 +160,7 @@ interface SliceFacts {
 
 function sliceName(scope: SliceScopeSnap | null, dir: string): string {
   const raw = scope?.displayName ?? dir;
-  // the id column already says which slice; "Slice 04 — " in front of the name is noise
+  // ID 列已经说明是哪个切片，名称前的 `Slice 04 —` 属于噪声。
   return raw.replace(/^slice\s+\d+\s*[—–-]\s*/i, "").trim() || dir;
 }
 
@@ -195,8 +197,8 @@ function sliceFacts(execution: ExecutionViewSnap, scopes: readonly MissionScopes
   }).sort((a, b) => a.order - b.order);
 }
 
-/** blocked_on_rows entries are `{ qitem_id, blocked_on }` — the slice's own row and the row it
- *  waits on. Render the relation, never the object. */
+/** blocked_on_rows 条目为 `{ qitem_id, blocked_on }`，即切片自身行与它等待的行。
+ * 只渲染关系，绝不渲染对象本身。 */
 function blockerText(rows: unknown, lead: "blocker" | "row" = "row"): string {
   if (!Array.isArray(rows) || rows.length === 0) return "";
   return rows
@@ -205,14 +207,14 @@ function blockerText(rows: unknown, lead: "blocker" | "row" = "row"): string {
       const r = record(entry);
       const own = str(r["qitem_id"], "?");
       const blocker = str(r["blocked_on"], "?");
-      return lead === "blocker" ? `waits on ${blocker} · own row ${own}` : `${own} waits on ${blocker}`;
+      return lead === "blocker" ? `等待 ${blocker} · 自身行 ${own}` : `${own} 等待 ${blocker}`;
     })
     .join("; ");
 }
 
-/** Declared work state — the slice file's own status word, verbatim. */
+/** 声明的工作状态——逐字使用切片文件自身的状态词。 */
 function declaredText(slice: SliceFacts): string {
-  return slice.scope?.status?.trim().toLowerCase() || "no declared status";
+  return slice.scope?.status?.trim().toLowerCase() || "无声明状态";
 }
 
 function seatShort(seat: unknown): string {
@@ -220,41 +222,41 @@ function seatShort(seat: unknown): string {
   return full.includes("@") ? full.slice(0, full.indexOf("@")) : full;
 }
 
-/** A live problem on the slice, in words, or null. Elapsed time alone is never a verdict. */
+/** 切片上的实时问题，以文字表示；没有则为 null。仅凭经过时间绝不能形成判定。 */
 function problemText(slice: SliceFacts): string | null {
   const activity = record(slice.lane?.["activity"]);
   const needs = record(activity["needs_input"]);
-  if (Number(needs["count"] ?? 0) > 0) return `needs input: ${str(needs["reason"], String(needs["count"]))}`;
+  if (Number(needs["count"] ?? 0) > 0) return `需要输入: ${str(needs["reason"], String(needs["count"]))}`;
   const blocked = blockerText(slice.sequencing?.["blocked_on_rows"], "blocker");
   if (blocked) return blocked.split(" · own row ")[0]!;
   const pickup = slice.park?.["pickup_state"];
   if (slice.park && pickup !== "working") {
-    const age = slice.park["age_minutes"] != null ? ` ${String(slice.park["age_minutes"])} min` : "";
+    const age = slice.park["age_minutes"] != null ? ` ${String(slice.park["age_minutes"])} 分` : "";
     return `${str(pickup, INDETERMINATE)}${age}`;
   }
   return null;
 }
 
-/** Outcome acceptance, live work and authored intent are separate inputs. */
+/** 结果验收、实时工作和作者意图是彼此独立的输入。 */
 function outcomeComplete(slice: SliceFacts): boolean {
   const r = slice.readiness;
   return !!r?.configured && r.state === "ready" && r.items.length > 0 && r.items.every(i => i.state === "accepted");
 }
 function stateWord(slice: SliceFacts): string {
   const problem = problemText(slice);
-  if (problem) return problem.startsWith("needs input") ? "needs input" : problem.startsWith("waits on") ? "blocked" : "waiting";
-  if (record(slice.lane?.["activity"])["activity"] === "working") return "working";
-  if (slice.work.length) return slice.work.some(w => w["state"] === "blocked") ? "waiting" : "assigned";
-  if (outcomeComplete(slice)) return "outcome complete";
-  if (slice.readiness?.items.some(i => i.state === "withdrawn" || i.state === "rejected")) return "reopened";
-  if (slice.readiness?.configured) return "outcomes pending";
-  return declaredText(slice) === "done" ? "declared done" : "planned";
+  if (problem) return problem.startsWith("需要输入") ? "需要输入" : problem.startsWith("等待") ? "已阻塞" : "等待";
+  if (record(slice.lane?.["activity"])["activity"] === "working") return "工作中";
+  if (slice.work.length) return slice.work.some(w => w["state"] === "blocked") ? "等待" : "已分派";
+  if (outcomeComplete(slice)) return "结果完成";
+  if (slice.readiness?.items.some(i => i.state === "withdrawn" || i.state === "rejected")) return "已重开";
+  if (slice.readiness?.configured) return "结果待处理";
+  return declaredText(slice) === "done" ? "已声明完成" : "计划";
 }
 
 function proofText(scope: SliceScopeSnap | null): string | null {
   if (!scope) return null;
-  if (scope.proof.total === 0) return "no proof contract";
-  return `proof ${scope.proof.paired} of ${scope.proof.total}`;
+  if (scope.proof.total === 0) return "无证明契约";
+  return `证明 ${scope.proof.paired}/${scope.proof.total}`;
 }
 
 function assigneeText(slice: SliceFacts): string | null {
@@ -263,25 +265,25 @@ function assigneeText(slice: SliceFacts): string | null {
 }
 function plannedOwnerText(slice: SliceFacts): string {
   const build = slice.plannedOwners.filter(p => p.component === "build.minimal-gap");
-  return [...new Set((build.length ? build : slice.plannedOwners).map(p => seatShort(p.owner)))].join(", ") || "unknown";
+  return [...new Set((build.length ? build : slice.plannedOwners).map(p => seatShort(p.owner)))].join(", ") || "未知";
 }
 
-/** What unlocks next, only when the projection actually says so. */
+/** 只有投影明确给出时，才描述下一步会解锁什么。 */
 function nextText(slice: SliceFacts): string | null {
   const seq = slice.sequencing;
   if (!seq) return null;
   if (outcomeComplete(slice) || slice.work.length) return null;
-  if (seq["next_up"] === true) return "ready to start";
+  if (seq["next_up"] === true) return "准备开始";
   if (blockerText(seq["blocked_on_rows"])) return null; // the problem column carries it
 
   const deps = seq["depends_on"];
-  if (Array.isArray(deps) && deps.length > 0) return `after ${deps.map(String).join(", ")}`;
+  if (Array.isArray(deps) && deps.length > 0) return `在 ${deps.map(String).join(", ")} 之后`;
   return null;
 }
 
 function waveOf(slice: SliceFacts): string {
   const wave = slice.care?.["build_wave"];
-  return typeof wave === "string" && wave !== INDETERMINATE ? wave : "no wave declared";
+  return typeof wave === "string" && wave !== INDETERMINATE ? wave : "无声明波次";
 }
 
 // ---- rows ----------------------------------------------------------------------
@@ -298,14 +300,14 @@ function countWords(slices: SliceFacts[]): string {
 }
 
 function waveTitle(wave: string, members: SliceFacts[]): string {
-  return `WAVE ${wave} · ${members.length} slice${members.length === 1 ? "" : "s"} · ${countWords(members)}`;
+  return `波次 ${wave} · ${members.length} 个切片 · ${countWords(members)}`;
 }
 
 function stateMark(word: string): string {
-  if (word === "working") return "●";
-  if (word === "needs input") return "◐";
-  if (word === "blocked") return "⚑";
-  if (word === "done" || word === "outcome complete") return "✓";
+  if (word === "工作中") return "●";
+  if (word === "需要输入") return "◐";
+  if (word === "已阻塞") return "⚑";
+  if (word === "done" || word === "结果完成") return "✓";
   if (word === "failed") return "✕";
   return "○";
 }
@@ -320,15 +322,15 @@ function graphNode(slice: SliceFacts, width: number): ContentLine[] {
   const state = stateWord(slice);
   const owners = assigneeText(slice);
   const deps = slice.sequencing?.["depends_on"];
-  const after = Array.isArray(deps) ? deps.map(String).join(", ") || "none declared" : "unknown";
+  const after = Array.isArray(deps) ? deps.map(String).join(", ") || "未声明" : "未知";
   const cell = (text: string, token: Token): ContentLine => semantic([
     { text: "│", token: "chrome" }, { text: padCell(" " + text, inside), token }, { text: "│", token: "chrome" },
   ], width);
   return [
     semantic([{ text: "┌" + padCell(`─ ${slice.id} `, inside).replace(/ +$/, m => "─".repeat(m.length)) + "┐", token: "accentBright" }], width),
     cell(slice.name, "bright"), cell(`${stateMark(state)} ${state}`, stateToken(state)),
-    cell(owners ? `Owner: ${owners}` : `Planned: ${plannedOwnerText(slice)}`, "dim"),
-    cell(`After: ${after}`, "dim"),
+    cell(owners ? `归属: ${owners}` : `计划: ${plannedOwnerText(slice)}`, "dim"),
+    cell(`之后: ${after}`, "dim"),
     semantic([{ text: `└${"─".repeat(inside)}┘`, token: "chrome" }], width),
   ];
 }
@@ -346,7 +348,7 @@ function graphChunk(execution: ExecutionViewSnap, members: SliceFacts[], width: 
       const segs = boxes.flatMap((box, index) => [...(index ? [{ text: " ".repeat(gap) }] : []), ...box[line]!.segs!]);
       out.push({ text: segs.map(seg => seg.text).join(""), segs, zones });
     }
-    if (start + perRow < members.length) out.push(semantic([{ text: "  ↓ next in plan order · dependencies above", token: "chrome" }], width));
+    if (start + perRow < members.length) out.push(semantic([{ text: "  ↓ 计划顺序中的下一项 · 依赖见上方", token: "chrome" }], width));
   }
   return out;
 }
@@ -356,10 +358,10 @@ function planningLines(execution: ExecutionViewSnap, width: number, wave?: strin
     (expanded || (wave ? item.label !== "Review" : item.label === "Integration decision")));
   if (!guidance.length) return [];
   return wrapDetailLines([
-    sectionRule(`Authored guidance${wave ? " · " + wave : " · mission"}`, width),
-    { text: "  Admission guides decisions. Executable dependencies, proof and custody are separate facts." },
-    ...guidance.map(item => ({ text: `  ${item.label}: ${item.text}` })),
-    { text: `  Source: ${guidance[0]!.source.split("#")[0]} · arrangement${wave ? ".waves" : ""}` },
+    sectionRule(`撰写指导${wave ? " · " + wave : " · 任务目标"}`, width),
+    { text: "  准入规则用于辅助决策。可执行依赖、证明和保管责任是相互独立的事实。" },
+    ...guidance.map(item => ({ text: `  ${{ "Integration decision": "集成决策", Admission: "准入", Review: "评审", Exit: "退出条件" }[item.label] ?? item.label}：${item.text}` })),
+    { text: `  来源：${guidance[0]!.source.split("#")[0]} · 安排${wave ? ".波次" : ""}` },
   ], width);
 }
 
@@ -376,7 +378,7 @@ function waveRows(execution: ExecutionViewSnap, wave: string, members: SliceFact
   ];
 }
 
-// ---- the evidence gap, stated once ----------------------------------------------
+// ---- 证据缺口：只陈述一次 ----------------------------------------------
 
 interface BasisGroup { basis: string; where: string; members: string[] }
 
@@ -389,8 +391,7 @@ function collectIndeterminate(execution: ExecutionViewSnap, slices: SliceFacts[]
     if (!existing.members.includes(member)) existing.members.push(member);
     groups.set(key, existing);
   };
-  // Only the FIRST undetermined rung is a blind spot; every rung above it is undetermined
-  // as a consequence and would repeat the same fact.
+  // 只有第一个未确定阶梯是盲点；其上所有阶梯都因此未确定，重复展示只会复述同一事实。
   for (const slice of slices) {
     if (slice.readiness?.configured && slice.cells.built.state !== "yes") continue;
     const first = RUNGS.find((rung) => slice.cells[rung].state === "undetermined");
@@ -398,36 +399,36 @@ function collectIndeterminate(execution: ExecutionViewSnap, slices: SliceFacts[]
   }
   for (const lane of execution.q1_lanes ?? []) {
     const activity = record(lane["activity"]);
-    if (activity["activity"] === INDETERMINATE) add("activity", str(lane["slice"] ?? lane["qitem_id"], "lane"), activity["basis"]);
+    if (activity["activity"] === INDETERMINATE) add("活动", str(lane["slice"] ?? lane["qitem_id"], "泳道"), activity["basis"]);
   }
   return [...groups.values()].sort((a, b) => b.members.length - a.members.length);
 }
 
 function evidenceDetail(execution: ExecutionViewSnap, slices: SliceFacts[], width: number, timeZone = DEFAULT_TIME_ZONE): ContentLine[] {
   const attributed = slices.filter(slice => slice.readiness?.configured);
-  const gitBasis = str(record(execution.sources?.["git"])["basis"], "(no git source cell)");
+  const gitBasis = str(record(execution.sources?.["git"])["basis"], "（无 Git 来源单元格）");
   const lines: ContentLine[] = [
-    { text: `${execution.mission} · ${attributed.length ? "proof provenance" : "evidence gap"} · derived ${displayTime(execution.derived_at, timeZone) || "?"}` },
+    { text: `${execution.mission} · ${attributed.length ? "证明来源" : "证据缺口"} · 派生于 ${displayTime(execution.derived_at, timeZone) || "?"}` },
     { text: "" },
   ];
   if (attributed.length) {
-    lines.push(...wrapDetailLines([{ text: "  Mission proof revision: " + execution.readiness!.revision }], width));
+    lines.push(...wrapDetailLines([{ text: "  任务证明修订：" + execution.readiness!.revision }], width));
     for (const slice of attributed) lines.push(
       { text: "" }, listItem(slice.id + " · " + slice.name, open(`slice:${slice.id}`)),
       ...proofProvenanceLines(slice.readiness, width),
     );
   } else {
-    lines.push(...wrapDetailLines([{ text: "  Declared state comes from each slice file. Legacy code evidence uses candidate tags, review records and Git. Unconfirmed is unknown; it does not establish waiting work or completion." }], width));
+    lines.push(...wrapDetailLines([{ text: "  声明状态来自每个切片文件。旧版代码证据使用候选标签、评审记录和 Git。未确认即未知，不能据此认定工作正在等待或已经完成。" }], width));
   }
-  lines.push({ text: "" }, sectionRule("code lineage · separate from item judgments", width),
-    { text: `  git:         ${gitBasis}` },
-    ...wrapDetailLines([{ text: "  Build, review, merge and live-runtime facts remain on each slice's code evidence. Artifact acceptance supplies none of these code facts." }], width));
+  lines.push({ text: "" }, sectionRule("代码谱系 · 与条目判定分开", width),
+    { text: `  Git：        ${gitBasis}` },
+    ...wrapDetailLines([{ text: "  构建、评审、合并和实时运行事实仍以各切片的代码证据为准。产物验收不会提供这些代码事实。" }], width));
   for (const item of collectIndeterminate(execution, slices)) {
-    lines.push({ text: "" }, sectionRule(`${item.where} unconfirmed for ${item.members.length} slice${item.members.length === 1 ? "" : "s"}`, width));
-    lines.push({ text: `  basis:       ${item.basis}` });
+    lines.push({ text: "" }, sectionRule(`${item.where} 已构建未确认 · ${item.members.length} 个切片`, width));
+    lines.push({ text: `  依据：       ${item.basis}` });
     for (const member of item.members) lines.push(listItem(member, open(`slice:${member}`)));
   }
-  lines.push({ text: "" }, row("projection sources and derivation bases", "sources", width), { text: "" }, back());
+  lines.push({ text: "" }, row("投影来源与派生基础", "sources", width), { text: "" }, back());
   return lines;
 }
 
@@ -435,49 +436,49 @@ function evidenceDetail(execution: ExecutionViewSnap, slices: SliceFacts[], widt
 
 function overviewLines(execution: ExecutionViewSnap, scopes: readonly MissionScopesSnap[] | undefined, width: number, timeZone = DEFAULT_TIME_ZONE): ContentLine[] {
   const slices = sliceFacts(execution, scopes);
-  const live = slices.filter(slice => stateWord(slice) === "working").length;
+  const live = slices.filter(slice => stateWord(slice) === "工作中").length;
   const problems = slices.filter(slice => problemText(slice)).length;
   const build = shortSha(record(execution.sources?.["build_info"])["commit"]);
   const active = slices.filter(slice => slice.work.length || problemText(slice));
-  const needsHuman = slices.filter(slice => problemText(slice)?.startsWith("needs input"));
+  const needsHuman = slices.filter(slice => problemText(slice)?.startsWith("需要输入"));
   const attributed = slices.some(slice => slice.readiness?.configured);
   const done = slices.filter(outcomeComplete).length;
   const allComplete = slices.length > 0 && done === slices.length;
-  const next = slices.find(slice => nextText(slice) === "ready to start") ?? slices.find(slice => !outcomeComplete(slice) && !slice.work.length);
+  const next = slices.find(slice => nextText(slice) === "准备开始") ?? slices.find(slice => !outcomeComplete(slice) && !slice.work.length);
   const unknown = slices.filter(slice => !slice.readiness?.configured).length;
-  const missionState = allComplete ? "OUTCOMES COMPLETE" : "OUTCOMES OPEN";
+  const missionState = allComplete ? "结果完成" : "结果开放";
   const missionToken: Token = problems ? "warn" : allComplete ? "ok" : "dim";
-  const nowText = active.length ? active.map(slice => `${slice.id} · ${assigneeText(slice) ?? "owner unknown"} · ${stateWord(slice)}`).join("; ") : "no open slice work in this read";
-  const nextValue = next ? `${next.id} · ${nextText(next) ?? "dependency eligibility unknown"}`
-    : allComplete ? "outcomes complete; release decision separate"
-    : active.length ? "await current work; outcomes remain open"
-    : "next eligibility unknown";
-  const progress = `${done}/${slices.length} outcomes complete · ${live} working${problems ? ` · ${problems} waiting` : ""}${unknown ? ` · ${unknown} proof unknown` : ""}`;
+  const nowText = active.length ? active.map(slice => `${slice.id} · ${assigneeText(slice) ?? "所有者未知"} · ${stateWord(slice)}`).join("; ") : "此读取中无开放切片工作";
+  const nextValue = next ? `${next.id} · ${nextText(next) ?? "依赖资格未知"}`
+    : allComplete ? "结果已完成；发布决策独立"
+    : active.length ? "等待当前工作；结果仍开放"
+    : "下一项资格未知";
+  const progress = `${done}/${slices.length} 结果完成 · ${live} 工作中${problems ? ` · ${problems} 等待` : ""}${unknown ? ` · ${unknown} 证明未知` : ""}`;
   const fact = (label: string, value: string, token: Token): ContentLine => semantic([
-    { text: `  ${label.padEnd(10)}`, token: "dim", bold: true },
+    { text: `  ${padEndW(label, 10)}`, token: "dim", bold: true },
     { text: value, token },
   ], width);
   const lines: ContentLine[] = [semantic([
     { text: execution.mission, token: "accentBright", bold: true },
     { text: " · ", token: "chrome" },
-    { text: execution.lifecycle_instances?.length ? `Slices: ${missionState}` : missionState, token: missionToken, bold: true },
+    { text: execution.lifecycle_instances?.length ? `切片: ${missionState}` : missionState, token: missionToken, bold: true },
     { text: " · ", token: "chrome" },
-    { text: `${slices.length} slice${slices.length === 1 ? "" : "s"}`, token: "bright" },
+    { text: `${slices.length} 个切片`, token: "bright" },
   ], width)];
 
-  lines.push(fact("NOW", nowText, active.length ? "ok" : "dim"));
+  lines.push(fact("现在", nowText, active.length ? "ok" : "dim"));
   if (active.length) {
     const first = active[0]!;
-    const detail = problemText(first) ?? str(first.work[0]?.["summary"], "Open the slice for queue and activity evidence");
+    const detail = problemText(first) ?? str(first.work[0]?.["summary"], "打开切片查看队列和活动证据");
     lines.push(semanticAction([{ text: "  " + detail, token: problemText(first) ? "warn" : "bright" }], sliceAction(execution, first), width));
   }
-  lines.push(fact("NEXT", nextValue, next ? "accentBright" : "dim"));
-  lines.push(fact("PROGRESS", progress, "bright"));
-  lines.push(fact("LIFECYCLE", `${execution.readiness?.historicalStatus ?? "unknown"} · separate from outcomes`, "dim"));
+  lines.push(fact("下一个", nextValue, next ? "accentBright" : "dim"));
+  lines.push(fact("进度", progress, "bright"));
+  lines.push(fact("生命周期", `${execution.readiness?.historicalStatus === "unknown" ? "未知" : (execution.readiness?.historicalStatus ?? "未知")} · 独立于结果`, "dim"));
   if (needsHuman.length) {
     const first = needsHuman[0]!;
     lines.push(semanticAction([
-      { text: "  ⚑ NEEDS HUMAN ", token: "warn", bold: true },
+      { text: "  ⚑ 需要人类 ", token: "warn", bold: true },
       { text: `${needsHuman.map((slice) => slice.id).join(", ")} · ${problemText(first)}`, token: "bright" },
     ], sliceAction(execution, first), width));
   }
@@ -486,11 +487,11 @@ function overviewLines(execution: ExecutionViewSnap, scopes: readonly MissionSco
   for (const [wave, members] of waves) lines.push(...waveRows(execution, wave, members, width));
   const provenanceAction = attributed || unknown > 0 ? open("evidence") : open("sources");
   const provenance: SemanticSeg[] = [
-    { text: "  provenance · ", token: "dim" },
-    { text: attributed ? `proof judgments · ${done}/${slices.length} ready${unknown ? ` · ${unknown} legacy unknown` : ""}` : unknown > 0 ? `evidence gap ${unknown}/${slices.length} unknown` : `build ${build}`, token: unknown > 0 || (attributed && execution.readiness!.state === "unknown") ? "warn" : "dim" },
+    { text: "  来源 · ", token: "dim" },
+    { text: attributed ? `证明判断 · ${done}/${slices.length} 就绪${unknown ? ` · ${unknown} 遗留未知` : ""}` : unknown > 0 ? `证据缺口 ${unknown}/${slices.length} 未知` : `构建 ${build}`, token: unknown > 0 || (attributed && execution.readiness!.state === "unknown") ? "warn" : "dim" },
   ];
   const localTime = displayTime(execution.derived_at, timeZone);
-  if (provenance.reduce((n, s) => n + s.text.length, 0) + localTime.length + 3 <= width) {
+  if (provenance.reduce((n, s) => n + strWidth(s.text), 0) + strWidth(localTime) + 3 <= width) {
     provenance.push({ text: ` · ${localTime}`, token: "dim" });
     lines.push(semanticAction(provenance, provenanceAction, width));
   } else {
@@ -500,7 +501,7 @@ function overviewLines(execution: ExecutionViewSnap, scopes: readonly MissionSco
   lines.push(...lifecycleLines(execution, width));
   lines.push(...planningLines(execution, width));
 
-  if (slices.length === 0) lines.push({ text: "  (no slices on this mission)" });
+  if (slices.length === 0) lines.push({ text: "  (此任务目标无切片)" });
   return lines;
 }
 
@@ -512,7 +513,7 @@ function waveDetail(execution: ExecutionViewSnap, scopes: readonly MissionScopes
   const members = slices.filter((slice) => waveOf(slice) === wave);
   if (members.length === 0) return null;
   return [
-    { text: `${execution.mission} · wave ${wave} · all ${members.length} rows` },
+    { text: `${execution.mission} · 波次 ${wave} · 全部 ${members.length} 行` },
     ...planningLines(execution, width),
     ...waveRows(execution, wave, members, width, true),
     { text: "" },
@@ -520,25 +521,25 @@ function waveDetail(execution: ExecutionViewSnap, scopes: readonly MissionScopes
   ];
 }
 
-// ---- drill pages -------------------------------------------------------------
+// ---- 详情页面 -----------------------------------------------------------------
 
 function back(): ContentLine {
-  return { text: "  esc back · ⏎ open · : command bar" };
+  return { text: "  Esc 返回 · ⏎ 打开 · : 命令面板" };
 }
 
 function laneKey(lane: Record<string, unknown>): string {
-  return `lane:${str(lane["qitem_id"], "unknown")}`;
+  return `lane:${str(lane["qitem_id"], "未知")}`;
 }
 
 function card(title: string, rows: ContentLine[], width: number): ContentLine[] {
   const w = Math.max(28, width);
   const label = ` ${title} `;
-  const top = `┌─${label}${"─".repeat(Math.max(0, w - label.length - 3))}┐`;
+  const top = `┌─${label}${"─".repeat(Math.max(0, w - strWidth(label) - 3))}┐`;
   return [
     { text: clip(top, w) },
     ...rows.map((item) => {
-      const suffix = item.action ? "  (open ▸)" : "";
-      const value = clip(item.text.trim(), Math.max(1, w - 4 - suffix.length));
+      const suffix = item.action ? "  (打开 ▸)" : "";
+      const value = clip(item.text.trim(), Math.max(1, w - 4 - strWidth(suffix)));
       return { ...item, text: `│ ${padCell(value + suffix, w - 4)} │` };
     }),
     { text: `└${"─".repeat(w - 2)}┘` },
@@ -546,7 +547,7 @@ function card(title: string, rows: ContentLine[], width: number): ContentLine[] 
 }
 
 function cardField(label: string, value: string, action?: Action): ContentLine {
-  return { text: `${`${label}:`.padEnd(13)} ${value}`, ...(action ? { action } : {}) };
+  return { text: `${padEndW(`${label}:`, 13)} ${value}`, ...(action ? { action } : {}) };
 }
 
 function wrapWords(text: string, width: number): string[] {
@@ -555,14 +556,15 @@ function wrapWords(text: string, width: number): string[] {
   let line = "";
   for (const raw of text.split(/\s+/).filter(Boolean)) {
     let word = raw;
-    while (word.length > room) {
+    while (strWidth(word) > room) {
       if (line) { out.push(line); line = ""; }
-      out.push(word.slice(0, room));
-      word = word.slice(room);
+      const chunk = clipW(word, room + 1).slice(0, -1);
+      out.push(chunk);
+      word = word.slice(chunk.length);
     }
     if (!word) continue;
     if (!line) line = word;
-    else if (line.length + word.length + 1 <= room) line += ` ${word}`;
+    else if (strWidth(line) + strWidth(word) + 1 <= room) line += ` ${word}`;
     else { out.push(line); line = word; }
   }
   if (line) out.push(line);
@@ -570,38 +572,38 @@ function wrapWords(text: string, width: number): string[] {
 }
 
 function wrappedCardField(label: string, value: string, width: number): ContentLine[] {
-  const prefix = `${`${label}:`.padEnd(13)} `;
-  const continuation = " ".repeat(prefix.length);
-  const firstRoom = Math.max(8, width - 4 - prefix.length);
+  const prefix = `${padEndW(`${label}:`, 13)} `;
+  const continuation = " ".repeat(strWidth(prefix));
+  const firstRoom = Math.max(8, width - 4 - strWidth(prefix));
   const chunks = wrapWords(value, firstRoom);
   return chunks.map((chunk, index) => ({ text: `${index === 0 ? prefix : continuation}${chunk}` }));
 }
 
 function touchedRows(detail: SliceDetailSnap | null, width: number, timeZone = DEFAULT_TIME_ZONE): ContentLine[] {
-  if (!detail) return [cardField("served data", "slice detail not loaded for this selection")];
+  if (!detail) return [cardField("已送达数据", "此选择的切片详情未加载")];
   const latest = new Map<string, SliceDetailSnap["story"]["events"][number]>();
   for (const event of detail.story.events) if (event.actorSession) latest.set(event.actorSession, event);
-  if (latest.size === 0) return [cardField("actors", "none in the served slice event history")];
+  if (latest.size === 0) return [cardField("执行者", "已服务切片事件历史中无记录")];
   const limit = width < 70 ? 1 : 3;
   const shown = [...latest.entries()].sort((a, b) => b[1].ts.localeCompare(a[1].ts)).slice(0, limit);
   return [
     ...shown.flatMap(([actor, event]) => [
-      ...wrappedCardField("actor", actor, width),
-      ...wrappedCardField("last change", `${displayTime(event.ts, timeZone) || event.ts} · ${event.kind}${event.qitemId ? ` · ${event.qitemId}` : ""}`, width),
+      ...wrappedCardField("执行者", actor, width),
+      ...wrappedCardField("最近变更", `${displayTime(event.ts, timeZone) || event.ts} · ${event.kind}${event.qitemId ? ` · ${event.qitemId}` : ""}`, width),
     ]),
-    cardField("history", `${latest.size} served actor${latest.size === 1 ? "" : "s"} · latest ${shown.length} shown`),
+    cardField("历史", `${latest.size} 个已服务执行者 · 显示最新 ${shown.length} 个`),
   ];
 }
 
 function rulingRows(detail: SliceDetailSnap | null, width: number, timeZone = DEFAULT_TIME_ZONE): ContentLine[] {
-  if (!detail) return [cardField("served data", "slice detail not loaded for this selection")];
+  if (!detail) return [cardField("已送达数据", "此选择的切片详情未加载")];
   const latest = [...detail.decisions.rows].sort((a, b) => b.ts.localeCompare(a.ts))[0];
-  if (!latest) return [cardField("decision", "none in the served slice decision history")];
+  if (!latest) return [cardField("决策", "已服务切片决策历史中无记录")];
   return [
-    ...wrappedCardField("actor", `${latest.actor} · ${displayTime(latest.ts, timeZone) || latest.ts} · ${latest.verb}`, width),
-    ...wrappedCardField("qitem", latest.qitemId, width),
-    ...wrappedCardField("decision", latest.reason ?? "no decision reason served", width),
-    cardField("history", `${detail.decisions.rows.length} served decision${detail.decisions.rows.length === 1 ? "" : "s"} · latest shown`),
+    ...wrappedCardField("执行者", `${latest.actor} · ${displayTime(latest.ts, timeZone) || latest.ts} · ${latest.verb}`, width),
+    ...wrappedCardField("队列项", latest.qitemId, width),
+    ...wrappedCardField("决策", latest.reason ?? "未提供决策原因", width),
+    cardField("历史", `${detail.decisions.rows.length} 条已服务决策 · 显示最新一条`),
   ];
 }
 
@@ -625,10 +627,10 @@ function sliceDetail(
     return Array.isArray(candidateDeps) && candidateDeps.map(String).includes(slice.id);
   }).map((candidate) => candidate.id);
   const ownership: ContentLine[] = [
-    cardField("seat", slice.lane ? str(slice.lane["seat"]) : "none — no claimed lane", slice.lane ? open(laneKey(slice.lane)) : undefined),
-    cardField("activity", slice.lane ? str(activity["activity"], INDETERMINATE) : "not assigned"),
-    cardField("decided by", slice.lane ? str(activity["decided_by"] ?? activity["basis"], "basis unavailable") : "—"),
-    cardField("changed", slice.lane ? str(activity["changed_at"], "—") : "—"),
+    cardField("席位", slice.lane ? str(slice.lane["seat"]) : "无 — 无认领泳道", slice.lane ? open(laneKey(slice.lane)) : undefined),
+    cardField("活动", slice.lane ? (ACTIVITY_WORD[str(activity["activity"], INDETERMINATE)] ?? str(activity["activity"], "已认领")) : "未分配"),
+    cardField("决定于", slice.lane ? str(activity["decided_by"] ?? activity["basis"], "依据不可用") : "—"),
+    cardField("变更于", slice.lane ? str(activity["changed_at"], "—") : "—"),
   ];
   const evidence: ContentLine[] = [];
   for (const rung of RUNGS) {
@@ -639,57 +641,57 @@ function sliceDetail(
   const legs = record(slice.ladder["reviewed"])["legs"];
   if (Array.isArray(legs)) for (const leg of legs) {
     const l = record(leg);
-    evidence.push(cardField("review leg", `${str(l["verdict"], "?")} · ${str(l["artifact_type"], "?")} · ${str(l["path"])}`));
+    evidence.push(cardField("评审腿", `${str(l["verdict"], "?")} · ${str(l["artifact_type"], "?")} · ${str(l["path"])}`));
   }
   const typedRows: ContentLine[] = slice.lane ? [
-    cardField("qitem", str(slice.lane["qitem_id"]), open(laneKey(slice.lane))),
-    cardField("pickup", str(record(slice.lane["pickup"])["state"], str(slice.park?.["pickup_state"], INDETERMINATE))),
-    cardField("needs input", Number(record(activity["needs_input"])["count"] ?? 0) > 0 ? str(record(activity["needs_input"])["reason"], "input") : "none"),
-    cardField("repo join", `${str(slice.lane["worktree_path"], INDETERMINATE)} · ${str(slice.lane["branch"], INDETERMINATE)}`),
-  ] : [cardField("rows", "none — no typed queue row for this slice")];
-  if (slice.park) typedRows.push(cardField("park", `${str(slice.park["pickup_state"], INDETERMINATE)} · wake ${str(slice.park["wake_target"], "none armed")}`));
+    cardField("队列项", str(slice.lane["qitem_id"]), open(laneKey(slice.lane))),
+    cardField("认领", str(record(slice.lane["pickup"])["state"], str(slice.park?.["pickup_state"], INDETERMINATE))),
+    cardField("需要输入", Number(record(activity["needs_input"])["count"] ?? 0) > 0 ? str(record(activity["needs_input"])["reason"], "input") : "none"),
+    cardField("仓库连接", `${str(slice.lane["worktree_path"], INDETERMINATE)} · ${str(slice.lane["branch"], INDETERMINATE)}`),
+  ] : [cardField("行", "无——此切片没有类型化队列行")];
+  if (slice.park) typedRows.push(cardField("暂存", `${str(slice.park["pickup_state"], INDETERMINATE)} · 唤醒 ${str(slice.park["wake_target"], "无已武装")}`));
 
   const dependencies: ContentLine[] = [
-    cardField("wave", waveOf(slice)),
-    cardField("depends on", deps.join(", ") || "none"),
-    cardField("unlocks", unlocks.join(", ") || "none"),
-    cardField("next", nextText(slice) ?? "no next transition derived"),
-    cardField("blocked on", blockerText(slice.sequencing?.["blocked_on_rows"]) || "none"),
+    cardField("波次", waveOf(slice)),
+    cardField("依赖于", deps.join(", ") || "无"),
+    cardField("解锁", unlocks.join(", ") || "无"),
+    cardField("下一个", nextText(slice) ?? "未派生下一转换"),
+    cardField("已阻塞于", blockerText(slice.sequencing?.["blocked_on_rows"]) || "无"),
   ];
 
   const source = record(slice.sequencing?.["source"]);
   const sourceRows = [
-    cardField("spec", str(source["spec_path"], "not named")),
-    cardField("arrangement", str(source["arrangement_path"], "not named")),
-    cardField("wave map", str(source["wave_map_row"], "not named")),
+    cardField("规范", str(source["spec_path"], "未命名")),
+    cardField("安排", str(source["arrangement_path"], "未命名")),
+    cardField("波次映射", str(source["wave_map_row"], "未命名")),
   ];
   const identity = slice.scope
     ? scopeIdentityLines(slice.scope, execution.mission, width)
     : [
-      { text: clip(`${slice.id} · ${slice.name} · ${stateMark(stateWord(slice))} ${stateWord(slice)} · wave ${waveOf(slice)}`, width) },
+      { text: clip(`${slice.id} · ${slice.name} · ${stateMark(stateWord(slice))} ${stateWord(slice)} · 波次 ${waveOf(slice)}`, width) },
     ];
   const authored = slice.scope
     ? scopeContractLines(slice.scope, { ...scopeOpts, width })
-    : [{ text: "" }, ...card("AUTHORED CONTRACT", [cardField("state", "scope detail not served")], width)];
+    : [{ text: "" }, ...card("作者声明的契约", [cardField("状态", "未提供工作范围详情")], width)];
   return [
     ...identity,
-    { text: "" }, ...card("OWNERSHIP", ownership, width),
-    { text: "" }, ...card("TOUCHED", touchedRows(detail, width, timeZone), width),
+    { text: "" }, ...card("归属", ownership, width),
+    { text: "" }, ...card("已触及", touchedRows(detail, width, timeZone), width),
     { text: "" }, ...proofProvenanceLines(slice.readiness, width),
-    { text: "" }, ...card(`${slice.readiness?.configured ? "CODE LINEAGE" : "EVIDENCE"} · declared ${declaredText(slice)} · ${evidenceText(slice.cells, slice.rank)}`, evidence, width),
-    { text: "" }, ...card("RULING", rulingRows(detail, width, timeZone), width),
-    { text: "" }, ...card("NEEDS YOU", [cardField("state", needs ?? "none on current projection")], width),
+    { text: "" }, ...card(`${slice.readiness?.configured ? "代码谱系" : "证据"} · 已声明${DECLARED_WORD[declaredText(slice)?.toLowerCase() ?? ""] ?? declaredText(slice) ?? "无声明状态"} · ${evidenceText(slice.cells, slice.rank)}`, evidence, width),
+    { text: "" }, ...card("裁决", rulingRows(detail, width, timeZone), width),
+    { text: "" }, ...card("需要你", [cardField("状态", needs ?? "当前投影无")], width),
     ...wrapDetailLines([
-      { text: `Outcome: ${outcomeComplete(slice) ? "complete — all current required judgments accepted" : "not complete / proof pending or unknown"}` },
-      ...slice.work.map(w => ({ text: `Queue ${str(w["qitem_id"])} · ${str(w["state"], "assigned")} · owner ${str(w["seat"])} · ${str(w["summary"], "")}${w["blocked_on"] ? ` · waits on ${str(w["blocked_on"])}` : ""}` })),
-      ...slice.plannedOwners.map(p => ({ text: `Planned ${p.component}: ${p.owner} · ${p.source}` })),
-      { text: "Schedule: dependency order only; ETA unknown." },
+      { text: `结果: ${outcomeComplete(slice) ? "完成 — 所有当前必需判断已接受" : "未完成 / 证明待处理或未知"}` },
+      ...slice.work.map(w => ({ text: `队列 ${str(w["qitem_id"])} · ${str(w["state"], "已分派")} · 所有者 ${str(w["seat"])} · ${str(w["summary"], "")}${w["blocked_on"] ? ` · 等待 ${str(w["blocked_on"])}` : ""}` })),
+      ...slice.plannedOwners.map(p => ({ text: `计划 ${p.component}: ${p.owner} · ${p.source}` })),
+      { text: "调度：仅依赖顺序；预计完成时间未知。" },
     ], width),
-    { text: "" }, ...card("TYPED ROWS", typedRows, width),
+    { text: "" }, ...card("类型化行", typedRows, width),
     { text: "" }, ...planningLines(execution, width), ...planningLines(execution, width, waveOf(slice), true),
-    { text: "" }, ...card("DEPENDENCIES", dependencies, width),
+    { text: "" }, ...card("依赖", dependencies, width),
     ...authored,
-    { text: "" }, ...card("SOURCES", sourceRows, width),
+    { text: "" }, ...card("来源", sourceRows, width),
     { text: "" }, back(),
   ];
 }
@@ -703,49 +705,52 @@ function laneDetail(execution: ExecutionViewSnap, key: string): ContentLine[] | 
   const sections: Section[] = [];
   if (lane) {
     sections.push({
-      title: "lane",
+      title: "泳道",
       fields: [
-        { label: "qitem", value: str(lane["qitem_id"]) },
-        { label: "slice", value: str(lane["slice"]), link: open(`slice:${str(lane["slice"])}`) },
-        { label: "seat", value: str(lane["seat"]) },
-        { label: "activity", value: str(activity["activity"], INDETERMINATE) },
-        { label: "decided by", value: str(activity["decided_by"] ?? activity["basis"], "basis unavailable") },
-        { label: "changed", value: str(activity["changed_at"], "—") },
-        { label: "needs input", value: Number(needs["count"] ?? 0) > 0 ? `${str(needs["count"])} · ${str(needs["reason"], "input")}` : "none" },
-        { label: "pickup", value: str(record(lane["pickup"])["state"], INDETERMINATE) },
-        { label: "oracle", value: str(activity["source"], "(not named)") },
+        { label: "队列项", value: str(lane["qitem_id"]) },
+        { label: "切片", value: str(lane["slice"]), link: open(`slice:${str(lane["slice"])}`) },
+        { label: "席位", value: str(lane["seat"]) },
+        { label: "活动", value: ACTIVITY_WORD[str(activity["activity"], INDETERMINATE)] ?? str(activity["activity"], "已认领") },
+        { label: "决定于", value: str(activity["decided_by"] ?? activity["basis"], "依据不可用") },
+        { label: "变更于", value: str(activity["changed_at"], "—") },
+        
+        { label: "认领", value: str(record(lane["pickup"])["state"], INDETERMINATE) },
+        { label: "来源", value: str(activity["source"], "(未命名)") },
       ],
     });
+    if (Number(needs["count"] ?? 0) > 0) {
+      sections.push({ title: "", fields: [{ label: "", value: `需要输入: ${str(needs["count"])} · ${str(needs["reason"], "输入")}` }] });
+    }
     sections.push({
-      title: `repo join${lane["fragile_join"] === true ? " · FRAGILE" : ""}`,
+      title: `仓库关联${lane["fragile_join"] === true ? " · 脆弱" : ""}`,
       fields: [
-        { label: "worktree", value: str(lane["worktree_path"], INDETERMINATE) },
-        { label: "branch", value: str(lane["branch"], INDETERMINATE) },
-        { label: "head", value: str(lane["head_sha"], INDETERMINATE) },
-        { label: "join basis", value: str(lane["join_basis"], "(not named)") },
+        { label: "工作树", value: str(lane["worktree_path"], INDETERMINATE) },
+        { label: "分支", value: str(lane["branch"], INDETERMINATE) },
+        { label: "头指针", value: str(lane["head_sha"], INDETERMINATE) },
+        { label: "关联依据", value: str(lane["join_basis"], "(未命名)") },
       ],
     });
   }
   if (park) {
     sections.push({
-      title: "pickup · park row",
+      title: "认领 · 停放行",
       fields: [
-        { label: "qitem", value: str(park["qitem_id"]) },
-        { label: "pickup", value: str(park["pickup_state"], INDETERMINATE) },
-        { label: "kind", value: str(park["park_kind"], "indeterminate") },
-        { label: "basis", value: str(park["park_kind_basis"], "(not named)") },
-        { label: "wake", value: str(park["wake_target"], "none armed") },
-        { label: "age", value: park["age_minutes"] != null ? `${String(park["age_minutes"])} min since claim` : "—" },
-        ...(park["pickup_evidence"] ? [{ label: "evidence", value: str(park["pickup_evidence"]) }] : []),
+        { label: "队列项", value: str(park["qitem_id"]) },
+        { label: "认领", value: str(park["pickup_state"], INDETERMINATE) },
+        { label: "类型", value: str(park["park_kind"], "不确定") },
+        { label: "依据", value: str(park["park_kind_basis"], "(未命名)") },
+        { label: "唤醒目标", value: str(park["wake_target"], "未设置") },
+        { label: "时长", value: park["age_minutes"] != null ? `${String(park["age_minutes"])} 分钟前认领` : "—" },
+        ...(park["pickup_evidence"] ? [{ label: "证据", value: str(park["pickup_evidence"]) }] : []),
       ],
     });
   }
-  const heading = lane ? `lane ${str(lane["slice"])} · ${str(lane["seat"])}` : `row ${str(park?.["qitem_id"])}`;
+  const heading = lane ? `泳道 ${str(lane["slice"])} · ${str(lane["seat"])}` : `行 ${str(park?.["qitem_id"])}`;
   return [...detailPage({ text: heading }, sections), { text: "" }, back()];
 }
 
 function sourcesDetail(execution: ExecutionViewSnap, timeZone = DEFAULT_TIME_ZONE, width = 96): ContentLine[] {
-  const lines: ContentLine[] = [{ text: `sources behind ${execution.mission} · derived ${displayTime(execution.derived_at, timeZone) || "?"}` }];
+  const lines: ContentLine[] = [{ text: `${execution.mission} 的来源 · 派生于 ${displayTime(execution.derived_at, timeZone) || "?"}` }];
   for (const [name, raw] of Object.entries(execution.sources ?? {})) {
     const cell = record(raw);
     lines.push({ text: "" });
@@ -772,11 +777,14 @@ export function executionContentLines(
 ): ContentLine[] {
   if (!execution) {
     const failure = readErrors.find((entry) => entry.startsWith("execution:"));
-    // three different truths, never one message: the read failed (named), the read has
-    // not answered yet (pending), or it answered with no execution row at all.
-    if (failure) return [sectionRule("ATTENTION  1", width), { text: `  execution projection unavailable — ${failure}` }];
-    if (pending) return [{ text: "  execution projection: read pending — the first daemon read has not answered yet (honest-empty, not fabricated)" }];
-    return [sectionRule("ATTENTION  1", width), { text: "  execution projection served no row — no active mission resolved on the daemon" }];
+  // 三种不同真相绝不能合并为一条消息：读取失败（有明确名称）、读取尚未应答（pending），
+  // 或读取已经应答但完全没有执行行。
+    const mappedFailure = failure
+      ? failure.replace(/^execution:/, "执行:").replace(/daemon read failed/i, "后台服务读取失败")
+      : failure;
+    if (failure) return [sectionRule("待关注  1", width), { text: `  执行投影不可用 — ${mappedFailure}` }];
+    if (pending) return [{ text: "  执行投影: 读取挂起 — 首次后台服务读取尚未应答（诚实空，非虚构）" }];
+    return [sectionRule("待关注  1", width), { text: "  执行投影无行返回 — 后台服务上未解析到活跃任务目标" }];
   }
   if (opened) {
     const slices = sliceFacts(execution, scopes);
@@ -793,13 +801,13 @@ export function executionContentLines(
         : opened.startsWith("lane:") || opened.startsWith("park:")
           ? laneDetail(execution, opened)
           : null;
-    return page ?? [{ text: `  ${opened} is not in the current snapshot (it may have closed or been re-derived)` }, { text: "" }, back()];
+    return page ?? [{ text: `  ${opened} 不在当前快照中（可能已关闭或重新派生）` }, { text: "" }, back()];
   }
   return overviewLines(execution, scopes, width, timeZone);
 }
 
-/** Compact source-grounded execution strip embedded in the existing rich SCOPES
- * slice detail. Missing projection/slice data stays explicit instead of being inferred. */
+/** 嵌入现有丰富 SCOPES 切片详情中的紧凑、基于来源的执行条带。投影或切片数据缺失时
+ * 明确展示，绝不推断。 */
 export function executionSliceStripLines(
   execution: ExecutionViewSnap | null | undefined,
   sliceId: string,
@@ -807,27 +815,29 @@ export function executionSliceStripLines(
   width = 96,
   declared?: string | null,
 ): ContentLine[] {
-  if (!execution) return [{ text: "" }, sectionRule("EXECUTION · not loaded", width), { text: "  mission execution projection not loaded for this selection" }];
+  if (!execution) return [{ text: "" }, sectionRule("执行 · 未加载", width), { text: "  此选择未加载任务目标执行投影" }];
   const slice = sliceFacts(execution, undefined).find((item) => item.id === sliceId || item.dir === sliceDir);
-  if (!slice) return [{ text: "" }, sectionRule("EXECUTION · not in projection", width), { text: "  slice absent from the mission execution projection" }];
+  if (!slice) return [{ text: "" }, sectionRule("执行 · 不在投影中", width), { text: "  切片不在任务目标执行投影中" }];
   const activity = record(slice.lane?.["activity"]);
   const problem = problemText(slice);
   const unconfirmed = RUNGS.filter((rung) => slice.cells[rung].state === "undetermined").map((rung) => RUNG_WORD[rung]);
-  const evidence = `${evidenceText(slice.cells, slice.rank)}${unconfirmed.length ? ` · ${unconfirmed.join(" / ")} unconfirmed (${slice.cells[RUNGS.find((rung) => slice.cells[rung].state === "undetermined")!].basis})` : ""}`;
-  const liveWord = slice.lane ? str(activity["activity"], "claimed") : "no claimed lane";
-  const declaredWord = declared?.trim().toLowerCase() || "no declared status";
-  const next = declaredWord === "done" && !slice.lane
-    ? "none — declared done"
-    : nextText(slice) ?? (slice.lane ? "in progress on the lane above" : "nothing the projection can sequence");
+  const evidence = `${evidenceText(slice.cells, slice.rank)}${unconfirmed.length ? ` · ${unconfirmed.join(" / ")} 未确认 (${slice.cells[RUNGS.find((rung) => slice.cells[rung].state === "undetermined")!].basis})` : ""}`;
+  const liveWord = slice.lane ? (ACTIVITY_WORD[str(activity["activity"], "claimed")] ?? str(activity["activity"], "已认领")) : "无认领泳道";
+  const declaredRaw = declared?.trim().toLowerCase() || "无声明状态";
+  const declaredWord = DECLARED_WORD[declaredRaw] ?? declaredRaw;
+  const next = declaredRaw === "done" && !slice.lane
+    ? "无 — 已声明完成"
+    : nextText(slice) ?? (slice.lane ? "在上游泳道进行中" : "投影无法排序的内容");
+  const readinessWord = slice.readiness ? (READINESS_WORD[slice.readiness.state] ?? slice.readiness.state) : null;
   return [
     { text: "" },
-    sectionRule(`EXECUTION · ${problem ? stateWord(slice) : liveWord} · wave ${waveOf(slice)}`, width),
+    sectionRule(`执行 · ${problem ? stateWord(slice) : liveWord} · 波次 ${waveOf(slice)}`, width),
     ...workflowOverview(execution, width),
-    { text: `  declared    ${declaredWord} (slice file)` },
-    actionRow(slice.readiness?.configured ? `proof ${slice.readiness.state} · inspect judgments and evidence` : `evidence    ${evidence}`, open("evidence"), width),
-    { text: `  assignment  ${slice.lane ? `${str(slice.lane["seat"])} · ${str(activity["activity"], INDETERMINATE)} (${str(activity["decided_by"], "?")})` : "none — no claimed lane"}`, ...(slice.lane ? { action: open(laneKey(slice.lane)) } : {}) },
-    { text: `  next        ${next}` },
-    { text: `  problem     ${problem ?? "none on the projection's current surfaces"}` },
+    { text: `  已声明    ${declaredWord} (切片文件)` },
+    actionRow(slice.readiness?.configured && readinessWord ? `证明 ${readinessWord} · 检查判断和证据` : `证据    ${evidence}`, open("evidence"), width),
+    { text: `  分配  ${slice.lane ? `${str(slice.lane["seat"])} · ${ACTIVITY_WORD[str(activity["activity"], INDETERMINATE)] ?? str(activity["activity"], "已认领")} (${str(activity["decided_by"], "?")})` : "无 — 无认领泳道"}`, ...(slice.lane ? { action: open(laneKey(slice.lane)) } : {}) },
+    { text: `  下一步      ${next}` },
+    { text: `  问题        ${problem ?? "投影当前表面无问题"}` },
     ...planningLines(execution, width), ...planningLines(execution, width, waveOf(slice), true),
   ];
 }

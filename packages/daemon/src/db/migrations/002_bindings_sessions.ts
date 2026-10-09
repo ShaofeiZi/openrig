@@ -3,8 +3,8 @@ import type { Migration } from "../migrate.js";
 export const bindingsSessionsSchema: Migration = {
   name: "002_bindings_sessions.sql",
   sql: `
-    -- bindings: how a node attaches to physical surfaces
-    -- A node MAY have zero or one binding (unbound = not yet materialized)
+    -- bindings：节点如何连接到物理界面。
+    -- 一个节点可以有零个或一个绑定（未绑定 = 尚未实体化）。
     CREATE TABLE bindings (
       id              TEXT PRIMARY KEY,
       node_id         TEXT NOT NULL UNIQUE REFERENCES nodes(id) ON DELETE CASCADE,
@@ -16,8 +16,8 @@ export const bindingsSessionsSchema: Migration = {
       updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- sessions: live harness execution state
-    -- NOTE: resume_token deferred to Phase 2 migration
+    -- sessions：实时 harness 执行状态。
+    -- 注意：resume_token 延后到第 2 阶段迁移。
     CREATE TABLE sessions (
       id              TEXT PRIMARY KEY,
       node_id         TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,

@@ -102,9 +102,9 @@ describe("Up CLI", () => {
     cmd.configureOutput({ writeOut: (str) => logs.push(str), writeErr: (str) => logs.push(str) });
     cmd.outputHelp();
     const help = logs.join("");
-    expect(help).toContain("Launch a rig or managed app from a spec, library entry, or bundle");
-    expect(help).toContain("Target root directory for package installation");
-    expect(help).toContain("does not change agent cwd");
+    expect(help).toContain("从 spec、库条目或 bundle 启动一个工作组或受管 app");
+    expect(help).toContain("包安装的目标根目录");
+    expect(help).toContain("不改变 agent cwd");
     expect(help).toContain("--cwd <path>");
     expect(help).toContain("rig up secrets-manager");
   });
@@ -119,7 +119,7 @@ describe("Up CLI", () => {
     expect(logs.some((l) => l.includes("completed"))).toBe(true);
   });
 
-  // T8: up --plan
+  // T8：up --plan
   it("up --plan prints planned status", async () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "up", "/tmp/rig.yaml", "--plan"]);
@@ -127,7 +127,7 @@ describe("Up CLI", () => {
     expect(logs.some((l) => l.includes("planned"))).toBe(true);
   });
 
-  // T9: --yes sends autoApprove
+  // T9：--yes 发送 autoApprove
   it("up --yes sends autoApprove=true", async () => {
     let lastBody: Record<string, unknown> = {};
     const origListeners = server.listeners("request");
@@ -142,9 +142,8 @@ describe("Up CLI", () => {
         return;
       }
       // OPR.0.3.2.22 Bug 3 — path-form sourceRef triggers a /api/info
-      // call for install-root awareness; respond with a 404 so the CLI
-      // falls through (this test does not exercise the install-internal
-      // path-form gate).
+      // 调用以探测 install-root 感知；以 404 回应，使 CLI
+      // 落入后续路径（本测试不演练 install-internal 路径形式门）。
       res.writeHead(404).end();
     });
 
@@ -167,7 +166,7 @@ describe("Up CLI", () => {
     expect(parsed.status).toBe("completed");
   });
 
-  // T12: Failure -> exit 2
+  // T12：失败 → 退出码 2
   it("failure response returns exit 2", async () => {
     const failServer = http.createServer((_, res) => {
       res.writeHead(500, { "Content-Type": "application/json" });
@@ -211,12 +210,12 @@ describe("Up CLI", () => {
 
     const output = logs.join("\n");
     expect(output).toContain("agent_ref resolution failed");
-    expect(output).toContain("local: agent_ref paths resolve relative to the rig spec directory");
+    expect(output).toContain("local: agent_ref 路径相对于 rig spec 目录解析");
     expect(exitCode).toBe(2);
     failServer.close();
   });
 
-  // T13: Relative path resolved to absolute before sending
+  // T13：发送前相对路径解析为绝对路径
   it("resolves relative path to absolute in POST body", async () => {
     let lastBody: Record<string, unknown> = {};
     const origListeners = server.listeners("request");
@@ -238,7 +237,7 @@ describe("Up CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "up", "relative/spec.yaml"]);
     });
 
-    // sourceRef must be an absolute path, not the raw relative input
+    // sourceRef 必须是绝对路径，而非原始相对输入
     expect(lastBody.sourceRef).toMatch(/^\//);
     expect((lastBody.sourceRef as string).endsWith("relative/spec.yaml")).toBe(true);
 
@@ -375,12 +374,11 @@ describe("Up CLI", () => {
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
   });
 
-  // OPR.0.3.2.22 Bug 3 — path-form `rig up <spec-inside-install>` without
-  // --cwd should default cwdOverride to process.cwd() so the spec's
-  // member-level cwd: "." does not resolve into the OpenRig install root
-  // and trip getOpenRigInstallCwdError at preflight. The bare-name form
-  // is already rescued at the resolveLibrarySpec branch (covered by the
-  // earlier library-name test); this pins the path-form gap.
+  // OPR.0.3.2.22 Bug 3——path 形态 `rig up <安装内的 spec>` 不带
+  // --cwd 时，cwdOverride 应默认为 process.cwd()，使 spec 的
+  // member 级 cwd: "." 不会解析进 OpenRig 安装根、从而在预检触发
+  // getOpenRigInstallCwdError。裸名形态已在 resolveLibrarySpec 分支被
+  // 挽救（由更早的 library-name 测试覆盖）；此处钉住 path 形态缺口。
   it("up path-form spec inside install root defaults cwdOverride to caller cwd and prints notice", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
@@ -420,7 +418,7 @@ describe("Up CLI", () => {
       });
       expect(infoCalls, "expected /api/info to be queried for install-root awareness").toBe(1);
       expect(lastBody.cwdOverride).toBe(process.cwd());
-      expect(logs.some((l) => l.includes("Defaulting cwd to current directory because the spec lives inside the OpenRig install"))).toBe(true);
+      expect(logs.some((l) => l.includes("因为 spec 位于 zrig 安装目录内，cwd 默认取当前目录"))).toBe(true);
     } finally {
       server.removeAllListeners("request");
       for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
@@ -464,7 +462,7 @@ describe("Up CLI", () => {
         await makeCmd().parseAsync(["node", "rig", "up", specPath]);
       });
       expect(lastBody.cwdOverride).toBeUndefined();
-      expect(logs.some((l) => l.includes("Defaulting cwd to current directory because the spec lives inside the OpenRig install"))).toBe(false);
+      expect(logs.some((l) => l.includes("因为 spec 位于 zrig 安装目录内，cwd 默认取当前目录"))).toBe(false);
     } finally {
       server.removeAllListeners("request");
       for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
@@ -505,8 +503,8 @@ describe("Up CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "up", "/tmp/test.yaml"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("Dashboard: rig ui open");
-    expect(output).toContain("Attach:");
+    expect(output).toContain("看板：zrig ui open");
+    expect(output).toContain("Attach：");
     expect(output).toContain("tmux attach -t dev-impl@test-rig");
   });
 
@@ -542,8 +540,8 @@ describe("Up CLI", () => {
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
 
     const output = logs.join("\n");
-    expect(output).toContain("Result: partially_restored");
-    expect(output).toContain("worker: fresh");
+    expect(output).toContain("结果：partially_restored");
+    expect(output).toContain("worker：fresh");
     expect(exitCode).toBe(1);
   });
 
@@ -591,7 +589,7 @@ describe("Up CLI", () => {
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
 
     const output = logs.join("\n");
-    expect(output).toContain("Result: not_attempted");
+    expect(output).toContain("结果：not_attempted");
     expect(output).toContain("Required startup file is missing");
     expect(output).toContain("/workspace/app/STARTUP.md");
     expect(output).toContain("Restore the missing startup file");
@@ -624,7 +622,7 @@ describe("Up CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "up", "/tmp/test.yaml"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("warning: Transcript capture failed");
+    expect(output).toContain("警告：Transcript capture failed");
 
     server.removeAllListeners("request");
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
@@ -817,10 +815,9 @@ describe("Up CLI", () => {
       if (savedPort === undefined) delete process.env["OPENRIG_PORT"];
       else process.env["OPENRIG_PORT"] = savedPort;
 
-      // S20 (r2 blocker repair): env-sourced OPENRIG_HOST is ROUTING state — the
-      // auto-start must create NO bind intent from it and the routing var must not
-      // cross into the daemon env (the incident: injected 127.0.0.1 took single-bind
-      // and dropped the Tailscale listener).
+      // S20（r2 阻塞修复）：env 来源的 OPENRIG_HOST 是路由状态——
+      // 自动启动不得据此产生任何 bind 意图，路由变量也不得跨进 daemon env
+      //（事故：注入的 127.0.0.1 接管了单 bind，并丢弃了 Tailscale 监听器）。
       expect(spawnedEnv["OPENRIG_BIND_HOST"]).toBeUndefined();
       expect(spawnedEnv["OPENRIG_HOST"]).toBeUndefined();
       expect(spawnedEnv["OPENRIG_PORT"]).toBe("7472");
@@ -902,8 +899,8 @@ describe("Up CLI", () => {
     server.removeAllListeners("request");
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
 
-    expect(logs.join("\n")).toContain("ambiguous");
-    expect(logs.join("\n")).toContain("existing rig restore target");
+    expect(logs.join("\n")).toContain("有歧义");
+    expect(logs.join("\n")).toContain("已有工作组恢复目标");
     expect(logs.join("\n")).toContain("/specs/alpha.yaml");
     expect(logs.join("\n")).toContain("rig up alpha --existing");
     expect(logs.join("\n")).not.toContain("rename or remove");
@@ -976,7 +973,7 @@ describe("Up CLI", () => {
 
     expect(lastBody.sourceRef).toBe("alpha");
     expect(lastBody.plan).toBe(plan);
-    expect(logs.join("\n")).toContain('Recovering rig "alpha" from latest snapshot or current DB state');
+    expect(logs.join("\n")).toContain('正在从最新快照或当前 DB 状态恢复工作组 "alpha"...');
     expect(exitCode).toBeUndefined();
   });
 
@@ -1011,7 +1008,7 @@ describe("Up CLI", () => {
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
 
     const output = logs.join("\n");
-    expect(output).toContain('Recovering rig "stale-velocity" from latest snapshot or current DB state');
+    expect(output).toContain('正在从最新快照或当前 DB 状态恢复工作组 "stale-velocity"...');
     expect(output).not.toContain('Turning on rig "stale-velocity"');
     expect(exitCode).toBeUndefined(); // 0
   });
@@ -1045,8 +1042,8 @@ describe("Up CLI", () => {
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
 
     const output = logs.join("\n");
-    expect(output).toContain('Turning on rig "fresh-rig"');
-    expect(output).not.toContain('Recovering rig "fresh-rig"');
+    expect(output).toContain('正在启动工作组 "fresh-rig"');
+    expect(output).not.toContain('正在从最新快照或当前 DB 状态恢复工作组 "fresh-rig"');
     expect(exitCode).toBeUndefined();
   });
 
@@ -1079,8 +1076,8 @@ describe("Up CLI", () => {
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
 
     const output = logs.join("\n");
-    expect(output).not.toContain("Recovering rig");
-    expect(output).not.toContain("Turning on rig");
+    expect(output).not.toContain("正在从最新快照或当前 DB 状态恢复工作组");
+    expect(output).not.toContain("正在启动工作组");
     expect(exitCode).toBeUndefined();
   });
 
@@ -1152,10 +1149,10 @@ describe("Up CLI", () => {
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
 
     const output = logs.join("\n");
-    expect(output).toContain('Rig "tidy-me" is archived');
+    expect(output).toContain('工作组 "tidy-me" 已归档');
     // Remediation must name the rig ID (rig unarchive resolves by id, not name).
-    expect(output).toContain("rig unarchive r-arc");
-    expect(output).not.toContain("rig unarchive tidy-me");
+    expect(output).toContain("zrig unarchive r-arc");
+    expect(output).not.toContain("zrig unarchive tidy-me");
     expect(upHit).toBe(false); // no silent restore
     expect(exitCode).toBe(1);
   });
@@ -1194,7 +1191,7 @@ describe("Up CLI", () => {
     const parsed = JSON.parse(logs.join(""));
     expect(parsed.error).toBe("rig_archived");
     // Action targets the rig ID (rig unarchive resolves by id, not name).
-    expect(parsed.action).toBe("rig unarchive r-arc");
+    expect(parsed.action).toBe("zrig unarchive r-arc");
     expect(parsed.archivedRigIds).toEqual(["r-arc"]);
     expect(upHit).toBe(false);
     expect(exitCode).toBe(1);
@@ -1236,8 +1233,8 @@ describe("Up CLI", () => {
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
 
     const output = logs.join("\n");
-    expect(output).toContain("rig unarchive r-arc-1");
-    expect(output).toContain("rig unarchive r-arc-2");
+    expect(output).toContain("zrig unarchive r-arc-1");
+    expect(output).toContain("zrig unarchive r-arc-2");
     expect(upHit).toBe(false);
     expect(exitCode).toBe(1);
   });
@@ -1272,8 +1269,8 @@ describe("Up CLI", () => {
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
 
     const output = logs.join("\n");
-    expect(output).toContain("Restoring from manual snapshot (kind=manual); no auto-pre-down snapshot available.");
-    expect(output).toContain('Rig "manual-only-rig" restored');
+    expect(output).toContain("正在从手动快照恢复（kind=manual）；没有可用的 auto-pre-down 快照。");
+    expect(output).toContain('工作组 "manual-only-rig" 已恢复');
     expect(exitCode).toBeUndefined();
   });
 
@@ -1306,18 +1303,16 @@ describe("Up CLI", () => {
     for (const l of origListeners) server.on("request", l as (...args: unknown[]) => void);
 
     const output = logs.join("\n");
-    expect(output).not.toContain("Restoring from manual snapshot");
-    expect(output).toContain('Rig "auto-rig" restored');
+    expect(output).not.toContain("正在从手动快照恢复");
+    expect(output).toContain('工作组 "auto-rig" 已恢复');
   });
 
-  // Agent Starter v1 vertical M2 R2 — CLI plan smoke proves resolved
-  // starter contents reach plan output (Path A from the M2 R2 dispatch
-  // packet). The daemon's plan-mode response carries a `resolve_starter`
-  // stage with the resolved starter ResolvedStartupFile shape; the CLI's
-  // --json mode renders the full daemon response, so the starter content
-  // surfaces verbatim in plan output. M2 R1 only asserted argument
-  // forwarding, which proved nothing about plan visibility of starter
-  // resolution.
+  // Agent Starter v1 竖切 M2 R2——CLI plan 冒烟证明解析后的 starter
+  // 内容到达 plan 输出（M2 R2 调度包的路径 A）。daemon 的 plan 模式响应
+  // 带一个 `resolve_starter` 阶段，内含解析后 starter 的 ResolvedStartupFile
+  // 形状；CLI 的 --json 模式渲染完整 daemon 响应，故 starter 内容逐字
+  // 出现在 plan 输出。M2 R1 只断言了参数转发，对 starter 解析在 plan 中
+  // 的可见性毫无证明。
   it("M2 R2: rig up --plan --json against a starter_ref fixture spec surfaces resolved starter contents", async () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = await import("node:fs");
@@ -1351,10 +1346,10 @@ edges: []
       for await (const chunk of req) body += chunk;
       if (req.url === "/api/up" && req.method === "POST") {
         lastBody = JSON.parse(body);
-        // Plan-mode response that carries the resolved starter. The CLI's
-        // --json branch (commands/up.ts:175-181) prints the full response
-        // verbatim — so the starter content reaches operator output as
-        // structured data they can inspect or pipe into other tools.
+        // 带解析后 starter 的 plan 模式响应。CLI 的
+        // --json 分支（commands/up.ts:175-181）逐字打印完整响应
+        // ——故 starter 内容以结构化数据到达操作者输出，供其检查
+        // 或管道进其他工具。
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({
           status: "planned",

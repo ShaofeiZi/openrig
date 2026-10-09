@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch12",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/daemon/test/claude-context-collector.test.ts",
+      "before_sha256_16": "3a1d840a97ef1dde",
+      "after_sha256_16": "9ef2e8269e70fe84",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/startup-wiring-pins.test.ts",
+      "before_sha256_16": "8bffed13946935f5",
+      "after_sha256_16": "5f980ea5ea85343b",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/mission-status-sidecar.test.ts",
+      "before_sha256_16": "4638794cdf8b6a75",
+      "after_sha256_16": "52ea7b60d2a3b18c",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/ps.test.ts",
+      "before_sha256_16": "8e4a7d45f8b4f978",
+      "after_sha256_16": "9ffd60a6800d410b",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/host-pair.test.ts",
+      "before_sha256_16": "74c03fae0f7d9da5",
+      "after_sha256_16": "3c50f911a8990cf0",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

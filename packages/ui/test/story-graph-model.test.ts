@@ -5,10 +5,10 @@ import {
   type StoryQitemInput,
 } from "../src/lib/story-graph-model.js";
 
-// OPR.0.4.1.19 — the qitems -> forest-of-DAGs reconstruction is the load-bearing
-// core of the Story tab. Edges are REAL lineage (chain_of_record tail / handedOffFrom),
-// NOT inferred. Single-parent forest => true acyclic git-history DAG. Visual fan-in is a
-// rendering affordance, never a 2-parent data node (founder guardrail 1).
+// OPR.0.4.1.19——qitems -> forest-of-DAGs 重建是 Story tab 的承重核心。
+// 边是真实 lineage（chain_of_record tail / handedOffFrom），非推断。
+// 单亲森林 => 真无环 git-history DAG。视觉 fan-in 是渲染可点击项，
+// 绝非双父数据节点（founder 护栏 1）。
 
 function qitem(partial: Partial<StoryQitemInput> & { qitemId: string }): StoryQitemInput {
   return {
@@ -57,7 +57,7 @@ describe("buildStoryForest", () => {
     expect(byId.get("A")!.childIds).toContain("B");
     expect(byId.get("B")!.childIds).toContain("C");
     expect(forest.roots).toEqual(["A"]);
-    // a linear handoff chain stays on one lane (no fan-out)
+    // 线性 handoff 链留在一条 lane（无 fan-out）
     expect(byId.get("A")!.lane).toBe(byId.get("C")!.lane);
   });
 
@@ -130,26 +130,26 @@ describe("buildStoryForest", () => {
 
 describe("formatStoryDate (date-not-time bug fix)", () => {
   it("shows month + day + time, never a relative 'Today'/'Yesterday' label", () => {
-    // A same-day timestamp is exactly the case the old formatter hid behind
-    // "Today HH:MM". The fix must surface the calendar date even for today.
+    // 当日 timestamp 正是旧 formatter 藏到 "Today HH:MM" 背后的情形。
+    // 修复即使对今天也必须显示日历日期。
     const now = new Date().toISOString();
     const formatted = formatStoryDate(now);
     expect(formatted).not.toMatch(/today|yesterday/i);
-    // month abbrev + numeric day + h:mm time, e.g. "Jun 23, 4:50 PM" / "Jun 23 4:50"
+    // 月缩写 + 数字日 + h:mm 时间，如 "Jun 23, 4:50 PM" / "Jun 23 4:50"
     expect(formatted).toMatch(/[A-Za-z]{3}\s+\d{1,2}/);
     expect(formatted).toMatch(/\d{1,2}:\d{2}/);
   });
 
   it("renders a known instant with its calendar date", () => {
-    // Midday UTC keeps the calendar day stable across local timezones.
+    // UTC 正午使日历日跨本地时区保持稳定。
     const formatted = formatStoryDate("2026-06-23T12:00:00.000Z");
     expect(formatted).toMatch(/Jun/);
     expect(formatted).toMatch(/\d{1,2}:\d{2}/);
   });
 
   it("returns 'unknown' for nullish and echoes an unparseable value", () => {
-    expect(formatStoryDate(null)).toBe("unknown");
-    expect(formatStoryDate(undefined)).toBe("unknown");
+    expect(formatStoryDate(null)).toBe("未知");
+    expect(formatStoryDate(undefined)).toBe("未知");
     expect(formatStoryDate("not-a-date")).toBe("not-a-date");
   });
 });
@@ -161,7 +161,7 @@ describe("OPR.0.4.1.18 — Story node summary prefers the authored summary, degr
     ]);
     const a = forest.nodes.find((n) => n.qitemId === "A")!;
     expect(a.summary).toBe("Wire the version row to the daemon.");
-    // body is unchanged + inspectable (the source of truth for the drawer).
+    // body 不变 + 可检视（drawer 的真相源）。
     expect(a.body).toBe("agent-speak body line one\nmore detail");
   });
 

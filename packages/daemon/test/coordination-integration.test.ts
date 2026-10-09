@@ -20,12 +20,12 @@ import { streamRoutes } from "../src/routes/stream.js";
 import { queueRoutes } from "../src/routes/queue.js";
 
 /**
- * Integration tests across the full coordination stack:
- *   stream emit → hint → inbox drop → absorb → claim → handoff → terminal close.
+ * 跨完整协调栈的集成测试：
+ *   stream emit → hint → inbox drop → absorb → claim → handoff → terminal close。
  *
- * Mirrors a multi-seat handoff scenario: the same event timeline is
- * reproducible via the daemon path (HTTP), so dogfood runs can compare
- * queue behavior against workspace-level coordination.
+ * 镜像一个多 seat handoff 场景：同一事件时间线可
+ * 经 daemon 路径（HTTP）复现，故 dogfood 运行可将
+ * queue 行为与工作区级协调对照。
  */
 
 function buildApp(deps: {
@@ -49,7 +49,7 @@ function buildApp(deps: {
   return app;
 }
 
-describe("coordination integration — stream → queue → inbox handoff chain", () => {
+describe("协同集成——stream → queue → inbox 交接链", () => {
   let db: Database.Database;
   let bus: EventBus;
   let store: StreamStore;
@@ -80,8 +80,8 @@ describe("coordination integration — stream → queue → inbox handoff chain"
 
   afterEach(() => db.close());
 
-  it("full cross-loop chain: stream-emit → inbox-drop → absorb → claim → handoff → close", async () => {
-    // 1. Stream emit (intake / audit root)
+  it("完整跨循环链：stream-emit → inbox-drop → absorb → claim → handoff → close", async () => {
+    // 1. Stream emit（intake / audit root）
     const streamRes = await app.request("/api/stream/emit", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "intake@conveyor" }, // P21 I3: stream source from the transport header
@@ -174,7 +174,7 @@ describe("coordination integration — stream → queue → inbox handoff chain"
     expect(newTransitions.map((t) => t.state)).toEqual(["pending", "in-progress", "done"]);
   });
 
-  it("hot-potato strict-rejection blocks done without closure_reason at every layer", async () => {
+  it("hot-potato 严格拒绝在各层阻止无 closure_reason 的 done", async () => {
     const create = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "a@r" }, // P21 I3: create derives sender from the transport header
@@ -195,7 +195,7 @@ describe("coordination integration — stream → queue → inbox handoff chain"
     expect(data.validReasons).toEqual([...CLOSURE_REASONS]);
   });
 
-  it("event-bus emits the full coordination event sequence", async () => {
+  it("event-bus 发送完整的协同事件序列", async () => {
     const captured: Array<{ type: string }> = [];
     bus.subscribe((e) => captured.push({ type: e.type }));
 

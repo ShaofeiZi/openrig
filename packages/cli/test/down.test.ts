@@ -58,11 +58,11 @@ describe("Down CLI", () => {
   let lastBody: Record<string, unknown> | undefined;
   let responseOverride: { status: number; body: Record<string, unknown> } | null;
   // When null, GET /api/rigs/summary returns 404 -> down falls back to today's
-  // id-only behavior (so every pre-existing id-based test passes unchanged).
-  // When set, the summary is served at 200 to exercise name resolution.
+  // 仅 id 行为（使每个既有基于 id 的测试不变通过）。
+  // 设定时，summary 以 200 提供，以演练名称解析。
   let summaryOverride: Array<{ id: string; name: string; archivedAt?: string | null; lifecycleState?: string }> | null;
   // Count POST /api/down calls so the AC-3 discriminator can assert that an
-  // ambiguous name reaches teardown ZERO times (fail-safe).
+  // 歧义名称到达 teardown 零次（失败安全）。
   let downCallCount: number;
 
   beforeAll(async () => {
@@ -125,18 +125,18 @@ describe("Down CLI", () => {
     return prog;
   }
 
-  // T1: down success -> exit 0
+  // T1：down 成功 → 退出码 0
   it("down success prints summary and exits 0", async () => {
     responseOverride = null;
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "down", "rig-1"]);
     });
-    expect(logs.some((l) => l.includes("stopped"))).toBe(true);
-    expect(logs.some((l) => l.includes("2 session(s) killed"))).toBe(true);
+    expect(logs.some((l) => l.includes("已结束"))).toBe(true);
+    expect(logs.some((l) => l.includes("2 个会话"))).toBe(true);
     expect(exitCode).toBeUndefined(); // 0
   });
 
-  // T2a: down alreadyStopped (no delete) -> exit 1
+  // T2a：down alreadyStopped（不删除）→ 退出码 1
   it("down alreadyStopped with no delete exits 1", async () => {
     responseOverride = {
       status: 200,
@@ -145,11 +145,11 @@ describe("Down CLI", () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "down", "rig-1"]);
     });
-    expect(logs.some((l) => l.includes("already stopped"))).toBe(true);
+    expect(logs.some((l) => l.includes("已停止"))).toBe(true);
     expect(exitCode).toBe(1);
   });
 
-  // T2b: down alreadyStopped + deleted -> exit 0 (deletion succeeded)
+  // T2b：down alreadyStopped + deleted → 退出码 0（删除成功）
   it("down alreadyStopped with successful delete exits 0", async () => {
     responseOverride = {
       status: 200,
@@ -158,7 +158,7 @@ describe("Down CLI", () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "down", "rig-1"]);
     });
-    expect(logs.some((l) => l.includes("deleted"))).toBe(true);
+    expect(logs.some((l) => l.includes("已删除"))).toBe(true);
     expect(exitCode).toBeUndefined(); // 0
   });
 
@@ -171,7 +171,7 @@ describe("Down CLI", () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "down", "rig-1"]);
     });
-    expect(logs.some((l) => l.includes("warning"))).toBe(true);
+    expect(logs.some((l) => l.includes("警告"))).toBe(true);
     expect(exitCode).toBe(2);
   });
 
@@ -271,7 +271,7 @@ describe("Down CLI", () => {
     });
     expect(lastBody?.["rigId"]).toBe("rig-abc"); // resolved id, not the name
     expect(downCallCount).toBe(1);
-    expect(logs.some((l) => l.includes("rig-abc") && l.includes("stopped"))).toBe(true);
+    expect(logs.some((l) => l.includes("rig-abc") && l.includes("已结束"))).toBe(true);
     expect(exitCode).toBeUndefined(); // 0
   });
 
@@ -308,7 +308,7 @@ describe("Down CLI", () => {
     expect(out).toContain("rig-1a");
     expect(out).toContain("rig-2b");
     expect(out).toMatch(/rig down rig-1a|rig down rig-2b/);
-    expect(out.toLowerCase()).toContain("ambiguous");
+    expect(out.toLowerCase()).toContain("歧义");
     expect(exitCode).toBe(2);
   });
 

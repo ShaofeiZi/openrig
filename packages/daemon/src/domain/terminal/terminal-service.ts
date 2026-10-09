@@ -1,39 +1,31 @@
-// OPR.0.4.6.02 C3 — the TerminalService orchestrator.
+// OPR.0.4.6.02 C3——TerminalService 编排器。
 //
-// ONE daemon-side composer for EVERY view kind (arch R1 / guard b1): the
-// canonical route and the CLI both call this, so there is never a second
-// composition path. It resolves a view ARGUMENT into composer-ready members,
-// composes them into a provider-neutral `ComposedView` (the pure `composeView`
-// owns the local/ssh/http/read-only partition rules), and hands that to the
-// chosen `TerminalProvider`. It adds no pixel logic and no provider-specific
-// branching — the provider paints, the composer partitions, this service only
-// RESOLVES + ROUTES.
+// 每种视图都共用一个后台服务侧 composer（arch R1 / guard b1）：权威路由和 CLI
+// 都调用这里，不存在第二条组合路径。它把视图参数解析成 composer 可用的成员，
+// 组合为 provider 中立的 `ComposedView`（纯函数 `composeView` 负责 local/ssh/http/read-only
+// 分区规则），再交给选定的 `TerminalProvider`。这里不添加像素逻辑，也不做 provider
+// 专用分支——provider 负责绘制，composer 负责分区，本服务只负责解析和路由。
 //
-// View argument resolution (precedence):
-//   1. `mission:<id>` / `slice:<id>`  → derived, LIVE from the review agents
-//      band; READ-ONLY by construction (a cross-rig observational grouping —
-//      AC-3 "another rig's agents ... read-only"). Never persisted (A3).
-//   2. a rig NAME                      → per-rig derived, LIVE from the node
-//      inventory; INTERACTIVE (you asked for that rig, you drive it — AC-1c).
-//   3. a saved-view id                 → from `terminal-views.yaml`; per-member
-//      read-only as the operator saved it.
-//   Anything else → a named `view_not_found` (never a silent empty open).
+// 视图参数解析优先级：
+//   1. `mission:<id>` / `slice:<id>` → 从 review agents 带实时派生；构造上只读
+//      （跨工作组观测分组——AC-3“另一工作组的智能体……只读”），绝不持久化（A3）。
+//   2. 工作组名称 → 从节点 inventory 按工作组实时派生；可交互
+//      （你明确请求该工作组，因此可操作——AC-1c）。
+//   3. saved-view id → 来自 `terminal-views.yaml`；逐成员只读性按操作人员保存值。
+//   其他输入 → 具名 `view_not_found`，绝不静默打开空视图。
 //
-// The read-only policy above is a v1 build decision grounded in AC-1c/AC-3
-// (interactive rig view vs read-only cross-rig/derived view); it is NAMED here
-// for the guard/QA gates, not silently absorbed. Saved views carry their own
-// per-member read-only, so an operator can save an interactive multi-rig view
-// deliberately.
+// 上述只读策略是基于 AC-1c/AC-3 的 v1 构建决策（可交互工作组视图 vs 只读跨工作组/
+// 派生视图）；在此明确命名，供 guard/QA 门禁检查，不会被静默吸收。保存的视图携带
+// 自己的逐成员 read-only，因此操作人员可以有意保存可交互的多工作组视图。
 //
-// The one shared result shape is `OpenViewResult { opened, absent, degraded }`
-// (arch Q3): this service returns it for resolution failures too (view/provider
-// not found), so the route JSON and the CLI JSON carry ONE contract for every
-// outcome.
+// 唯一共享结果形状为 `OpenViewResult { opened, absent, degraded }`（arch Q3）。
+// 解析失败（找不到 view/provider）时本服务也返回此形状，因此路由 JSON 与 CLI JSON
+// 对所有结果只承载一份契约。
 
 import { composeView, type ViewMemberInput } from "./view-composer.js";
 import { createHash } from "node:crypto";
 import { buildGridRoot } from "./herdr-adapter.js";
-// deriveViewMembers is a VALUE exported by the views store (not the composer).
+// deriveViewMembers 是 views store 导出的值，不属于 composer。
 import { deriveViewMembers } from "./terminal-views-store.js";
 import type {
   LiveSeatRow,
@@ -50,16 +42,16 @@ import type {
   TerminalProvider,
 } from "./terminal-provider.js";
 
-/** The v1 provider name set (herdr = proof-gated primary; cmux = best-effort). */
+/** v1 provider 名称集合：herdr 是 proof 门控主选，cmux 为尽力而为。 */
 export type TerminalProviderName = "herdr" | "cmux";
 export const DEFAULT_PROVIDER: TerminalProviderName = "herdr";
 
 export interface OpenViewRequest {
-  /** Provider name; defaults to herdr when omitted. */
+  /** provider 名称；省略时默认为 herdr。 */
   provider?: string;
-  /** The view argument: a rig name | `mission:<id>` | `slice:<id>` | a saved-view id. */
+  /** 视图参数：工作组名、`mission:<id>`、`slice:<id>` 或 saved-view id。 */
   view: string;
-  /** Preview fingerprint. A changed membership/layout must be previewed again. */
+  /** 预览指纹。成员或布局变化后必须重新预览。 */
   expectedPlan?: string;
 }
 
@@ -68,20 +60,20 @@ export interface TerminalPreview {
   view: string;
   planId: string;
   composed: ComposedView;
-  /** The same pure grid roots consumed by the Herder adapter. */
+  /** 与 Herder 适配器消费的网格根完全相同。 */
   grids: ReturnType<typeof buildGridRoot>[];
   status: ProviderStatus;
 }
 
-/** The `rig terminal views` payload: saved views + the live rig names you can open. */
+/** `zrig terminal views` payload：已保存视图 + 可打开的实时工作组名称。 */
 export interface ListViewsResult {
   saved: SavedView[];
-  /** Rig names openable as per-rig derived views (live from the inventory). */
+  /** 可作为逐工作组派生视图打开的工作组名，实时来自 inventory。 */
   rigs: string[];
   catalog?: Array<{ view: string; name: string; kind: "saved" | "derived"; members: string[]; ready: number; absent: number; degraded: number; pages: number }>;
 }
 
-/** One provider's doctor line for `rig terminal status`. */
+/** 某个 provider 在 `zrig terminal status` 中的一条 doctor 记录。 */
 export interface ProviderStatusReport {
   name: string;
   status: ProviderStatus;
@@ -93,44 +85,43 @@ export interface TerminalStatusResult {
 }
 
 export interface TerminalServiceDeps {
-  /** Resolve a provider name to its adapter, or null for an unknown name. */
+  /** 把 provider 名解析为适配器；未知名称返回 null。 */
   resolveProvider(name: string): TerminalProvider | null;
-  /** The saved-views store (read paths only from this service). */
+  /** saved-view 存储；本服务只使用其读取路径。 */
   viewsStore: Pick<TerminalViewsStore, "get" | "list">;
-  /** Live seats of a rig BY NAME; null when no such rig is known (vs [] = a known-but-empty rig). */
+  /** 按名称获取工作组的实时席位；未知工作组为 null，已知但为空的工作组为 []。 */
   listRigSeats(rigName: string): Promise<LiveSeatRow[] | null> | LiveSeatRow[] | null;
-  /** One request-local inventory fold for the derived catalog entries. */
+  /** 为派生目录条目执行一次请求局部 inventory 折叠。 */
   listRigSeatsBatch?(rigNames: string[]): Promise<Map<string, LiveSeatRow[]>> | Map<string, LiveSeatRow[]>;
-  /** Live seats of a pod within a rig (by rig name-or-id + pod namespace); null when the rig/pod is unknown. */
+  /** 按工作组名或 id + pod namespace 获取其中某 pod 的实时席位；工作组或 pod 未知时为 null。 */
   listPodSeats(rigArg: string, podNamespace: string): Promise<LiveSeatRow[] | null> | LiveSeatRow[] | null;
-  /** Live seats for a derived scope (`mission:<id>` | `slice:<id>`); null when the scope is unknown/invalid. */
+  /** 派生 scope（`mission:<id>` 或 `slice:<id>`）的实时席位；scope 未知或无效时为 null。 */
   listScopeSeats(scope: string): Promise<LiveSeatRow[] | null> | LiveSeatRow[] | null;
-  /** Known rig names (for the `views` listing). */
+  /** 已知工作组名称，供 `views` 列表使用。 */
   listRigNames(): Promise<string[]> | string[];
-  /** Read-only host resolution for the composer (registry unavailable → null for every id). */
+  /** 为 composer 提供只读主机解析；注册表不可用时所有 id 都返回 null。 */
   resolveHost(id: string): HostEntry | null;
-  /** Local liveness refine — has-session for a local tmux session; remote members are not probed here. */
+  /** 本地存活性细化——检查本地 tmux 会话是否存在；此处不探测远程成员。 */
   hasSession(tmuxSession: string): Promise<boolean> | boolean;
 }
 
-/** Build the one shared result shape for a pre-provider failure (view/provider not found). */
+/** 为 provider 前失败（找不到 view/provider）构造唯一共享结果形状。 */
 function errorResult(provider: string, code: string, error: string): OpenViewResult {
   return { provider, ok: false, opened: [], absent: [], degraded: [], pages: 0, error, code };
 }
 
-/** Map a persisted saved-view member to a composer input (defaults filled; alive refined later). */
+/** 把持久化 saved-view 成员映射为 composer 输入；填充默认值，稍后细化 alive。 */
 function savedMemberToInput(m: SavedViewMember): ViewMemberInput {
   return {
     seat: m.seat,
     label: m.label ?? m.seat,
-    // A local saved member without an explicit tmuxSession falls back to the
-    // seat's canonical name (the common local seat == session case); a wrong
-    // guess simply lands the seat in absent[] at compose time (honest).
+    // 本地保存成员未显式指定 tmuxSession 时，回退到席位规范名（常见的本地 seat == session
+    // 情况）；猜错只会让席位在组合时落入 absent[]，如实反映。
     tmuxSession: m.tmuxSession ?? m.seat,
     host: m.host ?? null,
     readOnly: m.readOnly === true,
-    // Refined by refineLiveness for local members; remote members are routed by
-    // the composer regardless (ssh reachability is not a has-session concern).
+    // 本地成员由 refineLiveness 细化；远程成员无论如何都由 composer 路由，
+    // 因为 ssh 可达性不属于 has-session 的职责。
     alive: true,
   };
 }
@@ -140,7 +131,7 @@ type ResolvedView = { id: string; members: ViewMemberInput[] } | { code: string;
 export class TerminalService {
   constructor(private readonly deps: TerminalServiceDeps) {}
 
-  /** Open a view in the chosen provider. Always returns the one shared result shape. */
+  /** 在所选 provider 中打开视图，始终返回唯一共享结果形状。 */
   async openView(req: OpenViewRequest): Promise<OpenViewResult> {
     const providerName = (req.provider ?? DEFAULT_PROVIDER).trim() || DEFAULT_PROVIDER;
     const provider = this.deps.resolveProvider(providerName);
@@ -148,21 +139,21 @@ export class TerminalService {
       return errorResult(
         providerName,
         "unknown_provider",
-        `unknown provider '${providerName}' — expected herdr or cmux`,
+        `未知 provider '${providerName}'——应为 herdr 或 cmux`,
       );
     }
 
     const composed = await this.resolveComposed(req.view, provider.panesPerPage);
     if ("code" in composed) return errorResult(providerName, composed.code, composed.error);
     if (req.expectedPlan !== undefined && req.expectedPlan !== this.planId(providerName, composed)) {
-      return errorResult(providerName, "preview_changed", "View membership or layout changed. Refresh the preview before Open; nothing was launched.");
+      return errorResult(providerName, "preview_changed", "视图成员或布局已变化。请刷新预览后再打开；尚未启动任何内容。");
     }
     return provider.openView(composed);
   }
 
   private async resolveComposed(viewArg: string, panesPerPage?: number): Promise<ComposedView | { code: string; error: string }> {
     const view = (viewArg ?? "").trim();
-    if (!view) return { code: "view_required", error: "a view argument is required" };
+    if (!view) return { code: "view_required", error: "必须提供视图参数" };
     const resolved = await this.resolveView(view);
     if ("code" in resolved) return resolved;
     return composeView(resolved.id, await this.refineLiveness(resolved.members), { resolveHost: (id) => this.deps.resolveHost(id), panesPerPage });
@@ -172,17 +163,17 @@ export class TerminalService {
     return createHash("sha256").update(JSON.stringify({ provider, composed, grids: composed.pages.map(buildGridRoot) })).digest("hex");
   }
 
-  /** Passive: inventory, local has-session and provider probe only. Never openView. */
+  /** 被动检查：只做 inventory、本地 has-session 与 provider 探测，绝不调用 openView。 */
   async previewView(req: OpenViewRequest): Promise<TerminalPreview | OpenViewResult> {
     const providerName = (req.provider ?? DEFAULT_PROVIDER).trim() || DEFAULT_PROVIDER;
     const provider = this.deps.resolveProvider(providerName);
-    if (!provider) return errorResult(providerName, "unknown_provider", `unknown provider '${providerName}'`);
+    if (!provider) return errorResult(providerName, "unknown_provider", `未知 provider '${providerName}'`);
     const composed = await this.resolveComposed(req.view, provider.panesPerPage);
     if ("code" in composed) return errorResult(providerName, composed.code, composed.error);
     return { provider: providerName, view: req.view, composed, grids: composed.pages.map(buildGridRoot), planId: this.planId(providerName, composed), status: await provider.status() };
   }
 
-  /** List saved views + the rig names openable as derived views. */
+  /** 列出已保存视图，以及可作为派生视图打开的工作组名称。 */
   async listViews(detail = false): Promise<ListViewsResult> {
     const result: ListViewsResult = {
       saved: this.deps.viewsStore.list(),
@@ -206,7 +197,7 @@ export class TerminalService {
     return result;
   }
 
-  /** Provider availability + liveness (doctor). Unknown named provider → empty report for it. */
+  /** provider 可用性 + 存活性（doctor）。未知的具名 provider 返回其空报告。 */
   async status(providerName?: string): Promise<TerminalStatusResult> {
     const names: string[] = providerName ? [providerName] : ["herdr", "cmux"];
     const providers: ProviderStatusReport[] = [];
@@ -216,7 +207,7 @@ export class TerminalService {
         providers.push({
           name,
           status: { provider: name, available: false, capabilities: {} },
-          liveness: { alive: false, detail: `unknown provider '${name}'` },
+          liveness: { alive: false, detail: `未知 provider '${name}'` },
         });
         continue;
       }
@@ -225,17 +216,17 @@ export class TerminalService {
     return { providers };
   }
 
-  /** Resolve a view argument into composer-ready members (precedence in the file header). */
+  /** 把视图参数解析为 composer 可用的成员；优先级见文件头。 */
   private async resolveView(view: string): Promise<ResolvedView> {
     if (view.startsWith("saved:")) {
       const saved = this.deps.viewsStore.get(view.slice(6));
-      return saved ? { id: saved.id, members: saved.members.map(savedMemberToInput) } : { code: "view_not_found", error: `unknown saved view '${view.slice(6)}'` };
+      return saved ? { id: saved.id, members: saved.members.map(savedMemberToInput) } : { code: "view_not_found", error: `未知 saved view '${view.slice(6)}'` };
     }
-    // 1. derived scope prefixes → live, read-only, never persisted.
+    // 1. 派生 scope 前缀 → 实时、只读、绝不持久化。
     if (view.startsWith("mission:") || view.startsWith("slice:")) {
       const rows = await this.deps.listScopeSeats(view);
       if (rows == null) {
-        return { code: "view_not_found", error: `unknown or invalid scope '${view}'` };
+        return { code: "view_not_found", error: `未知或无效 scope '${view}'` };
       }
       return {
         id: view,
@@ -243,39 +234,38 @@ export class TerminalService {
       };
     }
 
-    // 2. a pod within a rig — `pod:<rig-id-or-name>/<podNamespace>` (AC-5 launcher
-    //    target). Interactive (a subset of your own rig).
+    // 2. 工作组内的 pod——`pod:<rig-id-or-name>/<podNamespace>`（AC-5 启动目标）。
+    //    可交互，因为它是自己工作组的子集。
     if (view.startsWith("pod:")) {
       const rest = view.slice("pod:".length);
       const slash = rest.lastIndexOf("/");
       if (slash <= 0 || slash === rest.length - 1) {
-        return { code: "view_not_found", error: `malformed pod view '${view}' — expected pod:<rig>/<pod>` };
+        return { code: "view_not_found", error: `畸形 pod 视图 '${view}'——应为 pod:<rig>/<pod>` };
       }
       const rows = await this.deps.listPodSeats(rest.slice(0, slash), rest.slice(slash + 1));
       if (rows == null) {
-        return { code: "view_not_found", error: `unknown pod '${rest.slice(slash + 1)}' in rig '${rest.slice(0, slash)}'` };
+        return { code: "view_not_found", error: `工作组 '${rest.slice(0, slash)}' 中没有 pod '${rest.slice(slash + 1)}'` };
       }
       return { id: view, members: deriveViewMembers(rows, { readOnly: false }) };
     }
 
-    // 3. a rig — either the bare name (the common case: `rig terminal open acme`)
-    //    or the explicit `rig:<id-or-name>` form the rig-scoped route alias
-    //    composes (arch R1: the alias just prefixes `rig:<rigId>` and delegates,
-    //    zero composition logic of its own). `listRigSeats` resolves the arg as
-    //    a rig name first, then as a rig id.
+    // 3. 工作组——可以是裸名称（常见用法：`zrig terminal open acme`），也可以是工作组
+    //    作用域路由别名组合出的显式 `rig:<id-or-name>` 形式。arch R1：别名只加
+    //    `rig:<rigId>` 前缀并委托，自身没有组合逻辑。`listRigSeats` 先按工作组名解析参数，
+    //    再按工作组 id 解析。
     const explicitRig = view.startsWith("rig:");
     const rigArg = explicitRig ? view.slice("rig:".length) : view;
     const rigRows = await this.deps.listRigSeats(rigArg);
     if (rigRows != null) {
       return { id: `rig:${rigArg}`, members: deriveViewMembers(rigRows, { readOnly: false }) };
     }
-    // An explicit `rig:<x>` that resolves to no rig is a named not-found — it must
-    // NOT fall through to the saved-view lookup (the caller asked for a rig).
+    // 显式 `rig:<x>` 若无法解析到工作组，必须返回具名 not-found；不能回落到 saved-view
+    // 查找，因为调用方明确请求的是工作组。
     if (explicitRig) {
-      return { code: "view_not_found", error: `unknown rig '${rigArg}'` };
+      return { code: "view_not_found", error: `未知工作组 '${rigArg}'` };
     }
 
-    // 4. a saved-view id.
+    // 4. 已保存视图 id。
     const saved = this.deps.viewsStore.get(view);
     if (saved) {
       return { id: saved.id, members: saved.members.map(savedMemberToInput) };
@@ -283,11 +273,11 @@ export class TerminalService {
 
     return {
       code: "view_not_found",
-      error: `unknown view '${view}' — not a known rig, a mission:/slice: scope, or a saved-view id`,
+      error: `未知视图 '${view}'——它不是已知工作组、mission:/slice: scope 或 saved-view id`,
     };
   }
 
-  /** Refine local members' liveness with a real has-session probe (a dead seat → absent, honest-partial). */
+  /** 用真实 has-session 探针细化本地成员存活性；已死席位进入 absent，形成诚实的部分结果。 */
   private async refineLiveness(members: ViewMemberInput[]): Promise<ViewMemberInput[]> {
     const out: ViewMemberInput[] = [];
     for (const m of members) {

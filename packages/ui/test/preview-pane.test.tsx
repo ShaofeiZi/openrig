@@ -1,11 +1,11 @@
-// Preview Terminal v0 (PL-018) — PreviewPane + PreviewStack tests.
+// Preview Terminal v0（PL-018）——PreviewPane + PreviewStack 测试。
 //
-// Pins:
-//   - PreviewPane renders content + lines + capturedAt + Pin button
-//   - "preview unavailable" fallback for 404/409/502 daemon responses
-//   - Pin / Unpin toggles state
-//   - PreviewStack hides when no pins; shows pinned panes when pinned
-//   - Cap (ui.preview.max_pins) enforced
+// 锁定：
+//   - PreviewPane 渲染 content + lines + capturedAt + Pin 按钮
+//   - 404/409/502 daemon 响应的 "preview unavailable" 兜底
+//   - Pin / Unpin 切换状态
+//   - PreviewStack 无 pin 时隐藏；有 pin 时显示固定 pane
+//   - 上限（ui.preview.max_pins）强制执行
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor, act } from "@testing-library/react";
@@ -19,7 +19,7 @@ const mockFetch = vi.fn();
 beforeEach(() => {
   globalThis.fetch = mockFetch as unknown as typeof fetch;
   mockFetch.mockReset();
-  // Reset pin store between tests
+  // 测试间重置 pin store
   for (const p of previewPinStore.list()) {
     previewPinStore.unpin(p.rigId, p.logicalId);
   }
@@ -144,8 +144,8 @@ describe("PreviewPane (PL-018)", () => {
     fireEvent.click(screen.getByTestId("t-pin-toggle"));
     expect(previewPinStore.isPinned("r-1", "driver")).toBe(true);
 
-    // Re-click → unpin
-    await waitFor(() => expect(screen.getByTestId("t-pin-toggle").textContent).toBe("Unpin"));
+    // 再点 -> unpin
+    await waitFor(() => expect(screen.getByTestId("t-pin-toggle").textContent).toBe("取消固定"));
     fireEvent.click(screen.getByTestId("t-pin-toggle"));
     expect(previewPinStore.isPinned("r-1", "driver")).toBe(false);
   });
@@ -158,7 +158,7 @@ describe("PreviewStack (PL-018)", () => {
       return jsonResponse({});
     });
     render(createTestRouter({ component: () => <PreviewStack />, path: "/" }));
-    // No pins → stack is null → testId not rendered.
+    // 无 pin -> stack 为 null -> testId 不渲染。
     await waitFor(() => {}, { timeout: 50 }).catch(() => {});
     expect(screen.queryByTestId("preview-stack")).toBeNull();
   });
@@ -179,7 +179,7 @@ describe("PreviewStack (PL-018)", () => {
 
     render(createTestRouter({ component: () => <PreviewStack />, path: "/" }));
     await waitFor(() => expect(screen.getByTestId("preview-stack")).toBeDefined());
-    expect(screen.getByTestId("preview-stack").textContent).toContain("1 pinned");
+    expect(screen.getByTestId("preview-stack").textContent).toContain("已固定 1 个实时预览");
   });
 });
 

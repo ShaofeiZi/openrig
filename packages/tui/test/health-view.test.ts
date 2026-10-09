@@ -8,6 +8,7 @@ import { createViewState } from "../src/state.js";
 import { stylizeLines } from "../src/stylize.js";
 import { createStyle, stripAnsi } from "../src/theme.js";
 import type { FleetSnapshot } from "../src/types.js";
+import { dropW, strWidth } from "../src/text-width.js";
 
 function record(input: {
   id: string;
@@ -69,7 +70,7 @@ afterEach(() => {
   delete process.env["OPENRIG_REDUCED_MOTION"];
 });
 
-describe("fleet/system health TUI", () => {
+describe("fleet/system 健康 TUI", () => {
   it.each([129, 89, 58])("makes active severity, type counts, and indeterminate totals self-defining at content width %i", (width) => {
     const snap = healthSnapshot();
     snap.health!.records.push(record({
@@ -84,11 +85,11 @@ describe("fleet/system health TUI", () => {
       width,
     ).text;
 
-    expect(text).toContain("ACTIVE");
-    expect(text).toMatch(/CRIT\s+1\s+WARN\s+1/);
-    expect(text).toMatch(/Unknown\s+1/);
-    expect(text).toMatch(/TYPE\s+context\s+2/i);
-    expect(text.length).toBeLessThanOrEqual(width);
+    expect(text).toContain("活跃");
+    expect(text).toMatch(/严重\s+1\s+警告\s+1/);
+    expect(text).toMatch(/未知\s+1/);
+    expect(text).toMatch(/按类型\s+context\s+2/i);
+    expect(strWidth(text)).toBeLessThanOrEqual(width);
   });
 
   it.each([[160, 42], [120, 34], [84, 28]])("keeps a compact scoped TABLE signal and reachable HEALTH tab at %ix%i", (cols, rows) => {
@@ -96,31 +97,31 @@ describe("fleet/system health TUI", () => {
     const view = open(snap, "host vm-host");
     const table = renderScreen(view.get(), snap, { cols, rows, colorMode: "none", nowMs: 0 });
     const text = table.lines.join("\n");
-    expect(text).toContain("HEALTH");
-    expect(text).toMatch(/CRIT\s*1/);
-    expect(text).toMatch(/WARN\s*1/);
+    expect(text).toContain("健康");
+    expect(text).toMatch(/严重\s*1/);
+    expect(text).toMatch(/警告\s*1/);
     expect(text).toMatch(/context\s*2/i);
     expect(table.contentTargets.some((target) => target.action.type === "tab" && target.action.tab === "health")).toBe(true);
-    table.lines.forEach((line) => expect(stripAnsi(line).length).toBeLessThanOrEqual(cols));
+    table.lines.forEach((line) => expect(strWidth(stripAnsi(line))).toBeLessThanOrEqual(cols));
 
     view.dispatch(parseCommand("tab health"));
     const health = renderScreen(view.get(), snap, { cols, rows, colorMode: "none", nowMs: 0 });
     expect(view.get().viewTab).toBe("health");
     expect(health.lines.join("\n")).toContain("Guard context pressure");
     expect(health.contentTargets.some((target) => target.action.type === "health-open" && target.action.findingId === "health-critical")).toBe(true);
-    const header = health.lines.find((line) => line.includes("SEV") && line.includes("SIGNAL")) ?? "";
-    expect(header).toContain("SCOPE");
-    expect(header).toContain("AGE");
+    const header = health.lines.find((line) => line.includes("级别") && line.includes("信号")) ?? "";
+    expect(header).toContain("范围");
+    expect(header).toContain("年龄");
     if (cols >= 160) {
-      expect(header).toContain("CONF");
-      expect(header).toContain("EVIDENCE");
+      expect(header).toContain("置信");
+      expect(header).toContain("证据");
     } else {
-      expect(header).not.toContain("CONF");
-      expect(header).not.toContain("EVIDENCE");
+      expect(header).not.toContain("置信");
+      expect(header).not.toContain("证据");
     }
   });
 
-  it("reuses one finding record from instance, rig, and seat paths and opens typed evidence detail", () => {
+  it("从 instance、rig、seat 路径复用同一 finding 记录，并打开 typed 证据详情", () => {
     const snap = healthSnapshot();
     for (const command of ["host vm-host", "rig openrig-build", "agent dev50.guard"]) {
       const view = open(snap, command);
@@ -131,8 +132,8 @@ describe("fleet/system health TUI", () => {
       view.dispatch(target!.action);
       screen = renderScreen(view.get(), snap, { cols: 160, rows: 80, colorMode: "none" });
       const detail = screen.lines.join("\n");
-      expect(detail).toContain("EXPLANATION");
-      expect(detail).toMatch(/finding id:\s+health-critical/i);
+      expect(detail).toContain("说明");
+      expect(detail).toMatch(/发现 ID:\s+health-critical/i);
       expect(detail).toContain("fresh context utilization >= 95% (critical at >= 99%)");
       expect(detail).toContain("context-usage");
       expect(detail).toContain("node-guard");
@@ -140,34 +141,34 @@ describe("fleet/system health TUI", () => {
     }
   });
 
-  it("keeps unrelated seat findings out of an agent detail", () => {
+  it("把无关 seat finding 排除在 agent 详情外", () => {
     const snap = healthSnapshot();
     const text = renderScreen(open(snap, "agent dev50.guard").get(), snap, { cols: 160, rows: 90, colorMode: "none" }).lines.join("\n");
     expect(text).toContain("Guard context pressure needs continuity action.");
     expect(text).not.toContain("Driver context pressure is rising.");
   });
 
-  it("does not project local canonical records onto a remote instance or an unjoinable seat", () => {
+  it("不把本地 canonical 记录投射到远程 instance 或不可 join 的 seat", () => {
     const snap = healthSnapshot();
     const remote = open(snap, "host remote-host");
     remote.dispatch(parseCommand("tab health"));
     expect(renderScreen(remote.get(), snap, { cols: 120, rows: 40, colorMode: "none" }).lines.join("\n")).toMatch(
-      /UNAVAILABLE.*remote instance/i,
+      /不可用.*远程实例/i,
     );
 
     const guard = snap.hosts[0]!.rigs[0]!.pods.flatMap((pod) => pod.agents).find((agent) => agent.name === "dev50.guard")!;
     delete guard.nodeId;
     expect(renderScreen(open(snap, "agent dev50.guard").get(), snap, { cols: 160, rows: 80, colorMode: "none" }).lines.join("\n")).toMatch(
-      /UNAVAILABLE.*stable seat identity/i,
+      /不可用.*稳定席位标识/i,
     );
   });
 
-  it("renders empty, unavailable, stale, and indeterminate as distinct non-healthy states", () => {
+  it("把 empty、unavailable、stale、indeterminate 渲染为不同的非健康状态", () => {
     const cases = [
-      [{ availability: "loaded", evaluatedAt: "2026-09-05T12:00:00.000Z", total: 0, truncated: false, records: [] }, /EMPTY.*not a healthy verdict/i],
-      [{ availability: "unavailable", evaluatedAt: null, total: 0, truncated: false, records: [] }, /UNAVAILABLE/i],
-      [{ availability: "loaded", evaluatedAt: "2026-09-05T12:00:00.000Z", total: 1, truncated: false, records: [record({ id: "stale", seatId: "node-guard", freshness: "stale", summary: "Stale source." })] }, /STALE/i],
-      [{ availability: "loaded", evaluatedAt: "2026-09-05T12:00:00.000Z", total: 1, truncated: false, records: [record({ id: "indeterminate", seatId: "node-guard", status: "indeterminate", summary: "Unknown source." })] }, /Unknown/i],
+      [{ availability: "loaded", evaluatedAt: "2026-09-05T12:00:00.000Z", total: 0, truncated: false, records: [] }, /空.*非健康验证/i],
+      [{ availability: "unavailable", evaluatedAt: null, total: 0, truncated: false, records: [] }, /不可用/i],
+      [{ availability: "loaded", evaluatedAt: "2026-09-05T12:00:00.000Z", total: 1, truncated: false, records: [record({ id: "stale", seatId: "node-guard", freshness: "stale", summary: "Stale source." })] }, /过期/i],
+      [{ availability: "loaded", evaluatedAt: "2026-09-05T12:00:00.000Z", total: 1, truncated: false, records: [record({ id: "indeterminate", seatId: "node-guard", status: "indeterminate", summary: "Unknown source." })] }, /未知/i],
     ] as const;
     for (const [health, expected] of cases) {
       const snap = healthSnapshot();
@@ -185,9 +186,9 @@ describe("fleet/system health TUI", () => {
       const view = open(snap, command);
       view.dispatch(parseCommand("tab health"));
       const screen = renderScreen(view.get(), snap, { cols, rows, colorMode: "none" });
-      const content = screen.lines.slice(2, -3).map(line => line.slice(screen.explorerWidth + 2)).join(" ").replace(/\s+/g, " ");
-      expect(content).toContain("no findings served; not a healthy verdict");
-      expect(screen.lines.every(line => line.length <= cols)).toBe(true);
+      const content = screen.lines.slice(2, -3).map(line => dropW(line, screen.explorerWidth + 1)).join(" " ).replace(/\s+/g, " " );
+      expect(content).toContain("未服务发现；非健康验证");
+      expect(screen.lines.every(line => strWidth(line) <= cols)).toBe(true);
       stylizeLines(screen, createStyle("truecolor")).forEach((line, index) => expect(stripAnsi(line)).toBe(screen.lines[index]));
     }
   });
@@ -204,13 +205,13 @@ describe("fleet/system health TUI", () => {
     };
     const stale = findingLine("stale-critical");
     const unknown = findingLine("unknown-warning");
-    expect(stale).toContain("CRITICAL");
-    expect(stale).toContain("STALE");
-    expect(unknown).toContain("WARNING");
-    expect(unknown).toContain("Unknown");
+    expect(stale).toContain("严重");
+    expect(stale).toContain("过期");
+    expect(unknown).toContain("警告");
+    expect(unknown).toContain("未知");
   });
 
-  it("preserves plain geometry in color and freezes fully under reduced motion", () => {
+  it("彩色下保持纯几何，reduced motion 下完全冻结", () => {
     const snap = healthSnapshot();
     const view = open(snap, "rig openrig-build");
     view.dispatch(parseCommand("tab health"));
@@ -231,5 +232,5 @@ describe("fleet/system health TUI", () => {
   const text = lines.map(l => l.text).join("\n");
   expect(text).toContain("human-led"); expect(text).toContain("product-default"); expect(text).toContain("planning");
   expect(text).toContain("context.pressure"); expect(snap.health!.records).toHaveLength(2);
-  expect(lines.every(l => stripAnsi(l.text).length <= width)).toBe(true);
+  expect(lines.every(l => strWidth(stripAnsi(l.text)) <= width)).toBe(true);
 });

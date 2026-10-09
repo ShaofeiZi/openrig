@@ -1,12 +1,9 @@
-// OPR.0.5.6.1 AM-F1 — the 30-minute away-escalation deferral as a DEFERRED
-// DELIVERY on the EXISTING watchdog substrate (SQLite is the schedule; no
-// third timer engine, no setInterval anywhere here). The deferral is recorded
-// AS A TRANSITION on the row (the S01 transitions-are-the-state pattern), the
-// job is a ONE-SHOT (terminal after its single fire — deliberately not the
-// repeating periodic-reminder shape), and a daemon restart mid-window changes
-// nothing: a fresh repository over the same DB sees the same armed job and the
-// same fire-at arithmetic (AM-F1 tooth: exactly once at T+30, never zero,
-// never two).
+// OPR.0.5.6.1 AM-F1——在既有 watchdog 基础设施上，将 30 分钟离开升级延迟实现为
+// DEFERRED DELIVERY。SQLite 就是调度表；此处没有第三套 timer engine，也不使用 setInterval。
+// 延迟作为 TRANSITION 记录在行上（S01 transitions-are-the-state 模式），job 为 ONE-SHOT，
+// 触发一次后进入终态，有意区别于重复的 periodic-reminder。窗口中途重启后台服务也不会改变结果：
+// 新 repository 读取同一数据库时，仍会看到同一 armed job 和同一 fire-at 计算
+//（AM-F1 约束：在 T+30 恰好一次，不能为零，也不能为两次）。
 
 import type { QueueRepository } from "../queue-repository.js";
 import type { WatchdogJobsRepository } from "../watchdog-jobs-repository.js";
@@ -34,9 +31,9 @@ interface DeferralContext {
   notificationKey: string;
 }
 
-/** Arm the one-shot deferral. Idempotent per notification key: an already-armed
- *  live deferral for the same episode is returned, never duplicated (the
- *  exactly-once half of AM-F3 — one delivery at T, never immediate-plus-deferred). */
+/** 设置 one-shot deferral。按 notification key 幂等：同一 episode 已设置且仍有效的 deferral
+ *  会直接返回，绝不重复创建。这是 AM-F3 exactly-once 的一半：在 T 时投递一次，
+ *  绝不会立即投递后再延迟投递。 */
 export function armDeliveryDeferral(input: ArmDeliveryDeferralInput): { jobId: string } {
   const key = input.notificationKey ?? input.qitemId;
   const existing = input.jobsRepo.listActive().find(
@@ -60,7 +57,7 @@ export function armDeliveryDeferral(input: ArmDeliveryDeferralInput): { jobId: s
     intervalSeconds: Math.max(60, input.minutes * 60),
     registeredBySession: "daemon@kernel",
   });
-  // Transitions ARE the state: the deferral is readable off the row after any restart.
+  // Transition 就是状态：任意重启后都能从行上读取 deferral。
   input.queueRepo.update({
     qitemId: input.qitemId,
     actorSession: "daemon@kernel",
@@ -79,8 +76,8 @@ export interface FireDeliveryDeferralInput {
   jobsRepo: WatchdogJobsRepository;
   queueRepo: QueueRepository;
   jobId: string;
-  /** R1 B-3: the EPISODE key rides the fire so the Slice 14 receipt lands
-   *  current-episode-exact — never the bare-qitemId fallback. */
+  /** R1 B-3：触发时携带 EPISODE key，使 Slice 14 receipt 精确落在当前 episode，
+   *  绝不回退到裸 qitemId。 */
   deliverInterrupt: (qitemId: string, notificationKey: string) => Promise<{ ok: boolean }>;
   now?: Date;
 }
@@ -99,14 +96,11 @@ function parseContext(specYaml: string): DeferralContext | null {
   return { qitemId, entityId, minutes: Number(minutes), armedAt, notificationKey };
 }
 
-/** Fire the deferral iff due — v3 (dual-rebind repair, R1 76a8cfd1 + R2
- *  003f4786): the LOCKED contract is exactly-once at T+30, never zero, never
- *  two. The job stays ACTIVE (the redrive) until the episode's own posted
- *  receipt is OBSERVED on the row; only that observation writes the fired
- *  transition and the terminal state. Delivery rides a durable episode-stable
- *  decision id (`deferral:<key>`), so a replayed pending decision and a
- *  re-dispatch converge on one post; a death anywhere before the receipt
- *  leaves the ACTIVE job to redrive after reconstruction. */
+/** 仅在到期时触发 deferral——v3（dual-rebind 修复，R1 76a8cfd1 + R2 003f4786）。锁定契约是
+ *  在 T+30 exactly-once，不能为零，也不能为两次。job 会保持 ACTIVE 以便重新驱动，直到在行上
+ *  观察到 episode 自身的 posted receipt；只有该观察结果会写入 fired transition 和终态。投递使用
+ *  持久且 episode 稳定的 decision ID（`deferral:<key>`），因此重放 pending decision 与重新 dispatch
+ *  会收敛到同一次 post。receipt 前任意位置发生故障，都会留下 ACTIVE job，供重建后重新驱动。 */
 export async function fireDeliveryDeferralIfDue(input: FireDeliveryDeferralInput): Promise<{ fired: boolean }> {
   const job = input.jobsRepo.getById(input.jobId);
   if (!job || job.state !== "active") return { fired: false };
@@ -120,7 +114,7 @@ export async function fireDeliveryDeferralIfDue(input: FireDeliveryDeferralInput
   if (now.getTime() < fireAt) return { fired: false };
 
   const notes = input.queueRepo.listTransitions(ctx.qitemId).map((t) => t.transitionNote ?? "");
-  // The episode's receipt is the ONLY completion evidence: observe -> fired -> terminal.
+  // episode receipt 是唯一完成证据：observe -> fired -> terminal。
   const receipted = notes.some((n) =>
     n.startsWith("slack-owner-notification-posted ") && n.split(/\s+/).includes(`notification_key=${ctx.notificationKey}`));
   if (receipted) {
@@ -140,8 +134,7 @@ export async function fireDeliveryDeferralIfDue(input: FireDeliveryDeferralInput
     return { fired: true };
   }
 
-  // Distinct PENDING state (never terminal, never posted): the dispatch attempt
-  // is on the record while the job redrives.
+  // 独立 PENDING 状态（既非 terminal，也非 posted）：job 重新驱动期间，dispatch attempt 会保留记录。
   if (!notes.some((n) => n.startsWith("delivery-deferral-dispatching"))) {
     input.queueRepo.update({
       qitemId: ctx.qitemId,
@@ -159,7 +152,7 @@ export async function fireDeliveryDeferralIfDue(input: FireDeliveryDeferralInput
       });
     }
   } catch (e) {
-    // A death/throw mid-delivery: the job stays ACTIVE — reconstruction redrives.
+    // 投递中途故障或抛错时，job 保持 ACTIVE，由重建流程重新驱动。
     input.queueRepo.update({
       qitemId: ctx.qitemId,
       actorSession: "daemon@kernel",
@@ -169,9 +162,8 @@ export async function fireDeliveryDeferralIfDue(input: FireDeliveryDeferralInput
   return { fired: false };
 }
 
-/** Watchdog-engine policy wrapper (additionalPolicies injection, the
- *  parked-owner-consumer wiring precedent). The engine's scheduler cadence
- *  drives evaluation; the due arithmetic above owns the timing. */
+/** Watchdog engine policy wrapper（additionalPolicies 注入，沿用 parked-owner-consumer
+ *  接线先例）。engine scheduler cadence 驱动 evaluation，具体到期时间由上方计算负责。 */
 export function makeDeliveryDeferralPolicy(deps: {
   jobsRepo: WatchdogJobsRepository;
   queueRepo: QueueRepository;

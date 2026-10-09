@@ -1,7 +1,7 @@
-// S16 measured RED (23 live rigs, 2026-08-26): 167 direct HTTP reads in
-// 16 seconds, including a 117-read five-second bin; daemon CPU was 15.5%
-// during the TUI window versus 2.125% in the adjacent control. This probe
-// drives the production entrypoint so the cadence cannot pass behind a mock.
+// S16 实测 RED（23 live rigs，2026-08-26）：16 秒内 167 次直连 HTTP 读，
+// 含一个 117 读的五秒 bin；daemon CPU 在 TUI 窗口为 15.5%，
+// 相邻对照为 2.125%。此探针
+// 驱动生产入口点，使节奏不能躲在 mock 后。
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -45,8 +45,8 @@ afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
-describe("production TUI refresh cadence", () => {
-  it("does not restore the five-second read series and still refreshes on operator activity", async () => {
+describe("生产 TUI 刷新节奏", () => {
+  it("不恢复五秒读取序列，仍在操作者活动时刷新", async () => {
     const requests: string[] = [];
     const server = createServer((req, res) => {
       requests.push(req.url ?? "");
@@ -92,15 +92,15 @@ esac
     child.stderr.on("data", (chunk: string) => { stderr += chunk; });
 
     try {
-      await until(() => stdout.includes("Daemon connected.") || child.exitCode != null);
+      await until(() => stdout.includes("后台服务已连接。") || child.exitCode != null);
       expect(child.exitCode, stderr).toBeNull();
-      expect(stdout).toContain("Daemon connected.");
-      // S05 opens startup first. Enter ordinary work before measuring its cadence.
+      expect(stdout).toContain("后台服务已连接。");
+      // S05 先开 startup。测其节奏前进入普通工作。
       const startupReads = requests.length;
       child.stdin.write("w");
       await until(() => requests.length > startupReads || child.exitCode != null);
       expect(child.exitCode, stderr).toBeNull();
-      // Wait for the initial hydration to finish before taking the idle sample.
+      // 取空闲样本前等初始 hydration 完成。
       await new Promise((resolve) => setTimeout(resolve, 100));
       const initialReads = requests.length;
 

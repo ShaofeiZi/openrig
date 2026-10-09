@@ -1,28 +1,22 @@
-// Canonical scope-membership matcher (VM-003 + VM-004).
+// 规范工作范围成员匹配器（VM-003 + VM-004）。
 //
-// "Which qitems belong to scope X" was answered FOUR inconsistent ways in
-// the review pipeline (matchQitems substring > hasActiveQitem JSON-LIKE >
-// attentionForTag JSON-LIKE > agentsForSlices exact-equality). This module
-// is the ONE canonical membership predicate every consumer shares: the
-// documented matchQitems contract (typed tags authoritative, per JSON
-// element, comma-legacy-aware) made canonical.
+// 评审流水线曾用四种互不一致的方式回答“哪些 qitem 属于工作范围 X”
+//（matchQitems 子串 > hasActiveQitem JSON-LIKE > attentionForTag JSON-LIKE >
+// agentsForSlices 精确相等）。本模块提供所有消费者共享的唯一规范成员谓词：把已记录的
+// matchQitems 契约规范化，即类型化 tag 权威、逐 JSON 元素处理，并兼容逗号分隔的旧格式。
 
 export interface QitemScopeTags {
   slices: Set<string>;
   missions: Set<string>;
 }
 
-/** Canonical scope membership from a qitem's raw tags column.
- *  Typed tags AUTHORITATIVE: JSON array parsed per element; each element
- *  comma-split (the legacy CLI form, per the matchQitems contract comment)
- *  and trimmed; exact `slice:`/`mission:` prefix match per token. No
- *  substring semantics live here — the legacy substring tier remains a
- *  matchQitems-local concern behind its zero-typed-rows condition.
+/** 从 qitem 原始 tags 列解析规范工作范围成员关系。
+ * 类型化 tag 具有权威性：逐元素解析 JSON 数组；每个元素按逗号拆分（matchQitems 契约注释所述
+ * 的旧版 CLI 形式）并 trim；每个 token 精确匹配 `slice:`/`mission:` 前缀。本函数不包含子串语义，
+ * 旧版子串层仍是 matchQitems 在“零类型化行”条件后的局部职责。
  *
- *  TWO-TIER DOCTRINE: the SIGNAL tier (phase / band / attention) answers
- *  from canonical membership ONLY — this function. The DISPLAY tier (the
- *  queue-tab's qitemIds) may carry the gated legacy substring fallback.
- *  Never promote a display-tier match into a signal. */
+ * 两层原则：信号层（phase / band / attention）只从本函数的规范成员关系作答；展示层
+ *（queue tab 的 qitemId）可携带受门控的旧版子串回退。绝不能把展示层匹配提升为信号。 */
 export function parseScopeTags(rawTags: string | null | undefined): QitemScopeTags {
   const slices = new Set<string>();
   const missions = new Set<string>();
@@ -32,23 +26,19 @@ export function parseScopeTags(rawTags: string | null | undefined): QitemScopeTa
   try {
     parsed = JSON.parse(rawTags);
   } catch {
-    // Malformed JSON -> empty sets (parity with today's catch-blocks).
+    // JSON 格式错误时返回空集合，与现有 catch 分支保持一致。
     return { slices, missions };
   }
   if (!Array.isArray(parsed)) return { slices, missions };
 
   for (const element of parsed) {
     if (typeof element !== "string") continue;
-    // Comma-split the element (the legacy CLI form matchQitems' comment
-    // names) and trim at the ELEMENT/token level ONLY — never after the
-    // prefix. `slice: X` (space after the colon) therefore yields the name
-    // ` X`, not `X`: it is NOT a membership. WHY: the unquoted SQL prefilter
-    // `LIKE '%slice:<name>%'` does not match the raw string `slice: X`, so
-    // trimming post-prefix would accept a row the prefilter cannot see — an
-    // under-selecting prefilter, the exact invariant breach. With token-only
-    // trim, any accepted element literally CONTAINS the prefilter needle, so
-    // never-under-select holds by construction. (Case/name-drift is NOT
-    // normalized in v1 — exact, case-sensitive match.)
+    // 按逗号拆分元素（matchQitems 注释所指的旧版 CLI 形式），并且只在元素/token 层 trim，
+    // 绝不在前缀之后 trim。因此 `slice: X`（冒号后有空格）得到名称 ` X` 而非 `X`，不会形成
+    // 成员关系。原因是未加引号的 SQL 预过滤 `LIKE '%slice:<name>%'` 不匹配原始字符串
+    // `slice: X`；若在前缀后 trim，就会接受预过滤看不到的行，造成少选并破坏不变量。
+    // 只 trim token 后，每个已接受元素都会从字面上包含预过滤 needle，从构造上保证绝不少选。
+    // v1 不归一化大小写或名称漂移，仍采用精确、区分大小写的匹配。
     for (const rawToken of element.split(",")) {
       const token = rawToken.trim();
       if (token.startsWith("slice:")) {

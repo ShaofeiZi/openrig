@@ -1,17 +1,16 @@
-// PL-004 Phase C R1: shared artifact-pool helpers (TypeScript port of
-// POC `lib/policies/artifact-pool.js`).
+// PL-004 阶段 C R1：共享 artifact-pool 辅助函数（POC
+// `lib/policies/artifact-pool.js` 的 TypeScript 移植版）。
 //
-// R1 fix (guard blocker 3): full POC parity for the scanner. The
-// artifact-pool-ready and edge-artifact-required policies depend on:
-//   - Default ignores: README.md and .DS_Store always excluded.
-//   - Configured ignore_names: per-pool extra exclusions.
-//   - Recursive scan when pool.recursive=true.
-//   - Malformed-frontmatter exclusion unless pool.include_malformed_frontmatter.
-//   - Raw content preserved on every artifact (used by edge-artifact-required
-//     for body-reference target satisfaction).
-//   - Missing pool path returns empty (ENOENT-tolerant).
+// R1 修复（guard blocker 3）：扫描器完整对齐 POC。artifact-pool-ready 与
+// edge-artifact-required 策略依赖以下行为：
+//   - 默认忽略：始终排除 README.md 与 .DS_Store。
+//   - 配置的 ignore_names：每个池可追加排除项。
+//   - pool.recursive=true 时递归扫描。
+//   - 除非设置 pool.include_malformed_frontmatter，否则排除 frontmatter 畸形项。
+//   - 每个 artifact 都保留原始内容（供 edge-artifact-required 判断正文引用目标是否满足）。
+//   - 池路径不存在时返回空结果（容忍 ENOENT）。
 //
-// Pure filesystem scanner; no event-bus, no DB, no Hono.
+// 纯文件系统扫描器，不使用 event-bus、数据库或 Hono。
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
@@ -21,63 +20,58 @@ const DEFAULT_EXTENSIONS = [".md"];
 const DEFAULT_IGNORE_NAMES = ["README.md", ".DS_Store"];
 
 export interface ArtifactPoolSpec {
-  /** Absolute path to the pool directory. POC contract: one path per pool. */
+  /** 池目录的绝对路径。POC 契约规定每个池只有一个路径。 */
   path?: string;
-  /** Convenience array form; expanded to one pool per path. */
+  /** 便捷数组形式；每条路径展开为一个池。 */
   paths?: string[];
-  /** File extensions to include (default: ['.md']). */
+  /** 要包含的文件扩展名（默认 ['.md']）。 */
   extensions?: string[];
-  /** Filter on frontmatter `status:` field. Empty/absent = include all. */
+  /** 按 frontmatter 的 `status:` 字段过滤；为空或缺失时包含全部。 */
   include_statuses?: string[];
-  /** Frontmatter field used for keying artifacts (default: 'entry'). */
+  /** 用作 artifact key 的 frontmatter 字段（默认 'entry'）。 */
   key_field?: string;
-  /** Per-pool extra ignore names (added to defaults). */
+  /** 每个池追加的忽略名称（与默认项合并）。 */
   ignore_names?: string[];
-  /** When true, descend into subdirectories. Default false. */
+  /** 为 true 时进入子目录；默认为 false。 */
   recursive?: boolean;
   /**
-   * When true, artifacts whose frontmatter cannot be parsed are still
-   * included with empty frontmatter. Default false: malformed frontmatter
-   * causes the artifact to be excluded (matches POC behavior so that
-   * agents do not get woken about half-written drafts).
+   * 为 true 时，frontmatter 无法解析的 artifact 仍会以空 frontmatter 纳入。
+   * 默认为 false：畸形 frontmatter 会使 artifact 被排除；这与 POC 行为一致，
+   * 避免智能体因未写完的草稿而被唤醒。
    */
   include_malformed_frontmatter?: boolean;
 }
 
 export interface ScannedArtifact {
-  /** Absolute path to the artifact file. */
+  /** artifact 文件的绝对路径。 */
   path: string;
-  /** The pool path that produced this artifact. */
+  /** 产出此 artifact 的池路径。 */
   pool_path: string;
-  /** Full file content (used by edge-artifact-required body-match). */
+  /** 完整文件内容（供 edge-artifact-required 匹配正文）。 */
   raw: string;
   /**
-   * Parsed YAML frontmatter (top-level keys). Values are kept as `unknown`
-   * because YAML scalars are heterogeneous: timestamps parse to Date,
-   * URLs to string, numbers to number, etc. Frontmatter consumers in
-   * the policy layer (status filter, key_field lookup) coerce to string.
+   * 已解析的 YAML frontmatter（顶层 key）。值保留为 `unknown`，因为 YAML 标量类型各异：
+   * 时间戳解析为 Date、URL 解析为 string、数字解析为 number 等。策略层的 frontmatter
+   * 消费方（状态过滤、key_field 查询）会转换为 string。
    */
   frontmatter: Record<string, unknown>;
-  /** Parse error message when include_malformed_frontmatter=true; else null. */
+  /** include_malformed_frontmatter=true 时的解析错误消息，否则为 null。 */
   frontmatter_parse_error: string | null;
-  /** Convenience accessor for frontmatter.status; null when absent. */
+  /** frontmatter.status 的便捷访问值；缺失时为 null。 */
   status: string | null;
 }
 
 const FRONTMATTER_OPEN = "---\n";
 
 /**
- * Parse top-level YAML frontmatter from a markdown-style document.
- * Returns { raw, frontmatter, parseError } so callers can decide whether
- * to include malformed artifacts.
+ * 从 Markdown 风格文档解析顶层 YAML frontmatter。
+ * 返回 { raw, frontmatter, parseError }，由调用方决定是否纳入畸形 artifact。
  *
- * R2 fix (guard blocker 2): use the `yaml` package (already a daemon
- * dep) rather than a local key/value parser. Mirrors POC's
- * `lib/policies/artifact-pool.js:21-30` which delegates to the shared
- * YAML loader. Valid YAML scalars containing colons (ISO timestamps,
- * URLs) parse cleanly. Only true YAML parse failures (e.g.,
- * `broken: value: still broken` which is genuinely invalid YAML) cause
- * exclusion when `include_malformed_frontmatter` is unset.
+ * R2 修复（guard blocker 2）：使用已有后台服务依赖 `yaml` 包，而非本地 key/value 解析器。
+ * 这对应 POC 的 `lib/policies/artifact-pool.js:21-30`，后者委托共享 YAML 加载器。
+ * 包含冒号的合法 YAML 标量（ISO 时间戳、URL）可正确解析。仅真正的 YAML 解析失败
+ *（例如确实非法的 `broken: value: still broken`）会在未设置
+ * `include_malformed_frontmatter` 时导致排除。
  */
 function readFrontmatter(filePath: string): {
   raw: string;
@@ -103,9 +97,9 @@ function readFrontmatter(filePath: string): {
       frontmatter_parse_error: err instanceof Error ? err.message : "frontmatter parse error",
     };
   }
-  // YAML parsed but produced a non-object root (string, array, null) —
-  // treat as empty frontmatter, NOT a parse error. Matches POC behavior
-  // (lib/policies/artifact-pool.js:35-38): non-object root yields {}.
+  // YAML 已解析但根节点不是对象（string、array、null）：按空 frontmatter 处理，
+  // 不视为解析错误。这与 POC 行为一致（lib/policies/artifact-pool.js:35-38）：
+  // 非对象根节点生成 {}。
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     return { raw, frontmatter: {}, frontmatter_parse_error: null };
   }
@@ -154,10 +148,9 @@ function statusAllowed(status: string | null, pool: ArtifactPoolSpec): boolean {
 }
 
 /**
- * Coerce a YAML-parsed frontmatter status field to a comparable string.
- * YAML loaders may parse unquoted statuses as identifiers (string),
- * but a status like `2026-05-03` would parse as Date. We coerce to ISO
- * for non-string scalars so include_statuses comparisons remain stable.
+ * 把 YAML 解析后的 frontmatter status 字段转换为可比较字符串。
+ * YAML 加载器可能把未引用状态解析为标识符（string），但 `2026-05-03` 这样的状态会解析为 Date。
+ * 非字符串标量统一转换为 ISO，使 include_statuses 比较保持稳定。
  */
 function statusFromFrontmatter(fm: Record<string, unknown>): string | null {
   const v = fm.status;
@@ -168,24 +161,23 @@ function statusFromFrontmatter(fm: Record<string, unknown>): string | null {
 }
 
 /**
- * Scan one or more artifact pools per spec(s). Mirrors POC
- * `scanArtifactPools(pools)`. Returns the flat union of matches across
- * all pools, sorted by absolute path. Missing pools yield empty.
+ * 按一个或多个 spec 扫描 artifact 池，对应 POC 的 `scanArtifactPools(pools)`。
+ * 返回所有池匹配项的扁平并集，按绝对路径排序；池不存在时返回空结果。
  *
- * Throws if `pools` is undefined / empty / shapeless — POC contract:
- * the policy spec MUST declare at least one pool.
+ * 若 `pools` 为 undefined、空值或没有有效结构则抛错。POC 契约要求 policy spec
+ * 必须声明至少一个池。
  */
 export async function scanArtifactPools(
   pools: ArtifactPoolSpec | ArtifactPoolSpec[] | undefined,
 ): Promise<ScannedArtifact[]> {
   const expanded = expandPools(pools);
   if (expanded.length === 0) {
-    throw new Error("artifact pool policy: context pool list is required");
+    throw new Error("产物池策略：必须提供上下文池列表");
   }
   const out: ScannedArtifact[] = [];
   for (const pool of expanded) {
     if (!pool.path) {
-      throw new Error("artifact pool policy: every pool requires a path");
+      throw new Error("产物池策略：每个池都必须提供路径");
     }
     const files = listFiles(pool.path, Boolean(pool.recursive));
     for (const filePath of files) {
@@ -222,8 +214,8 @@ export async function scanArtifactPools(
 }
 
 /**
- * Expand the convenience input shape (single object, array of objects,
- * or `paths: [...]` shorthand) into a flat array of single-path pools.
+ * 把便捷输入结构（单个对象、对象数组或 `paths: [...]` 简写）
+ * 展开为单路径池的扁平数组。
  */
 function expandPools(
   pools: ArtifactPoolSpec | ArtifactPoolSpec[] | undefined,
@@ -242,9 +234,9 @@ function expandPools(
 }
 
 /**
- * Format an artifact list as bullet lines. Mirrors POC formatArtifactList:
- * `- /full/absolute/path`. The POC favors the full path so receivers can
- * cd / open / cat the artifact directly without further lookup.
+ * 把 artifact 列表格式化为项目符号行，对应 POC formatArtifactList：
+ * `- /full/absolute/path`。POC 优先使用完整路径，使接收方无需额外查询即可直接
+ * cd / open / cat 产物。
  */
 export function formatArtifactList(artifacts: ScannedArtifact[], maxItems: number): string {
   return artifacts
@@ -254,9 +246,8 @@ export function formatArtifactList(artifacts: ScannedArtifact[], maxItems: numbe
 }
 
 /**
- * Compute the source-key for an artifact. Mirrors POC sourceKeyFor:
- * prefer frontmatter[keyField], else basename sans .md extension.
- * Coerces non-string scalars (Date, number) to string for comparison.
+ * 计算 artifact 的 source-key，对应 POC sourceKeyFor：优先使用 frontmatter[keyField]，
+ * 否则使用去掉 .md 扩展名的 basename。非字符串标量（Date、number）转换为 string 以便比较。
  */
 export function sourceKeyFor(artifact: ScannedArtifact, keyField: string): string {
   const value = artifact.frontmatter[keyField];

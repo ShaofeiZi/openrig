@@ -1,9 +1,8 @@
-// OPR.0.5.3.5 Q3 harness bridge (mini-req 8, amended) — slice-05 behavior
-// probes run in the SAME live-model eval harness as slice-07's selection cases,
-// as a distinct case CATEGORY; no second runner. Plus the dispositioned Atom-2
-// probe key-gate note (r1): the atom probe shape reconciles with EvalCase —
-// `rubric` and `expectedPatterns` become LEGAL probe keys with a closed set,
-// instead of the natural mistake being silently dropped.
+// OPR.0.5.3.5 Q3 harness bridge（mini-req 8，已修订）——slice-05 behavior probe 与
+// slice-07 selection case 在同一个 live-model eval harness 中运行，使用独立 case category；
+// 不设第二套 runner。另含已处置的 Atom-2 probe key-gate note（r1）：atom probe shape 与
+// EvalCase 对齐——`rubric` 与 `expectedPatterns` 成为 closed set 内的合法 probe key，
+// 避免自然误写被静默丢弃。
 
 import { describe, it, expect } from "vitest";
 import { validateEvalCase } from "./helpers/eval-schema.js";
@@ -46,8 +45,8 @@ atoms:
     priority: optional
 `;
 
-describe("behavior category — the schema admits slice-05's case kind (mini-req 8)", () => {
-  it("a behavior case validates; order on a behavior case rejects (order is loading-only)", () => {
+describe("behavior category——schema 接纳 slice-05 case kind（mini-req 8）", () => {
+  it("behavior case 通过校验；behavior case 上的 order 被拒绝（order 仅适用于 loading）", () => {
     const ok = validateEvalCase({
       id: "beh-01", name: "affordance width returns", category: "behavior",
       prompt: "What can I do here?", expectedPatterns: ["rig context (get|profile)"], rubric: "1-5",
@@ -61,21 +60,21 @@ describe("behavior category — the schema admits slice-05's case kind (mini-req
   });
 });
 
-describe("probe key-gate reconciliation (the dispositioned Atom-2 note)", () => {
-  it("expectedPatterns and rubric are LEGAL probe keys; patterns must compile; unknown probe keys reject loud", () => {
+describe("probe key-gate reconciliation（已处置的 Atom-2 note）", () => {
+  it("expectedPatterns 与 rubric 是合法 probe key；pattern 必须可编译；未知 probe key 会明确拒绝", () => {
     const m = parseManifest(MANIFEST, "m.yaml");
     const probe = m.atoms![0]!.probe!;
     expect(probe.expectedPatterns).toEqual(["rig context (get|profile)"]);
     expect(probe.rubric).toContain("names the verb family");
     expect(() => parseManifest(MANIFEST.replace("expectedPatterns: ['rig context (get|profile)']", "expectedPatterns: ['(unclosed']"), "m.yaml"))
-      .toThrow(/regex|compil/i);
+      .toThrow(/正则表达式源码/);
     expect(() => parseManifest(MANIFEST.replace("rubric:", "rubrics:"), "m.yaml"))
-      .toThrow(/unknown.*rubrics|rubrics.*unknown/i);
+      .toThrow(/未知字段.*rubrics|rubrics.*未知字段/);
   });
 });
 
-describe("compileAtomProbesToEvalCases — atoms feed the ONE harness as data, no second runner", () => {
-  it("probed atoms compile to behavior-category case DATA that the harness's own schema validates", () => {
+describe("compileAtomProbesToEvalCases——atom 作为数据送入唯一 harness，不设第二套 runner", () => {
+  it("已 probe atom 编译为 behavior-category case 数据，并通过 harness 自身 schema 校验", () => {
     const m = parseManifest(MANIFEST, "m.yaml");
     const { cases, skipped } = compileAtomProbesToEvalCases(m, "packs/world");
     expect(cases).toHaveLength(1); // no-probe atom absent entirely
@@ -88,11 +87,9 @@ describe("compileAtomProbesToEvalCases — atoms feed the ONE harness as data, n
     expect(validated.ok).toBe(true);
   });
 
-  it("a probe WITHOUT expectedPatterns has no deterministic-door leg: SKIPPED WITH A REPORT, never an invalid case, never silent", () => {
-    // The harness schema requires a non-empty expectedPatterns — compiling an
-    // empty array would emit a case the schema rejects downstream. The bridge
-    // refuses to fabricate a pattern from prose and refuses to lose the atom
-    // silently: the skip is named with its reason.
+  it("缺少 expectedPatterns 的 probe 没有 deterministic-door 分支：带报告跳过，不产生无效 case，也不静默", () => {
+    // harness schema 要求非空 expectedPatterns——编译空 array 会发出下游 schema 拒绝的 case。
+    // bridge 拒绝从 prose 伪造 pattern，也拒绝静默丢失 atom：skip 会具名并说明原因。
     const patternless = MANIFEST
       .replace("      expectedPatterns: ['rig context (get|profile)']\n", "")
       .replace(/      rubric: \|\n        1 - names nothing\n        5 - names the verb family and the labels\n/, "");
@@ -105,8 +102,8 @@ describe("compileAtomProbesToEvalCases — atoms feed the ONE harness as data, n
   });
 });
 
-describe("ONE HARNESS (the door's shape): behavior + selection grade in the SAME invocation", () => {
-  it("loadEvalCasesFromDir + runEvals over a mixed dir records grades for BOTH categories in one run", async () => {
+describe("单一 HARNESS（door shape）：同一次调用评估 behavior + selection", () => {
+  it("loadEvalCasesFromDir + runEvals 对混合目录一次记录两个 category 的 grade", async () => {
     const dir = mkdtempSync(join(tmpdir(), "s05-evals-"));
     try {
       writeFileSync(join(dir, "selection.yaml"), [

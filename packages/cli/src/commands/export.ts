@@ -10,7 +10,7 @@ export interface ExportDeps extends StatusDeps {
 }
 
 export function exportCommand(depsOverride?: ExportDeps): Command {
-  const cmd = new Command("export").description("Export a rig spec as YAML");
+  const cmd = new Command("export").description("导出工作组规范为 YAML");
   const getDeps = (): ExportDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
     clientFactory: (url: string) => new DaemonClient(url),
@@ -18,8 +18,8 @@ export function exportCommand(depsOverride?: ExportDeps): Command {
   };
 
   cmd
-    .argument("<rigId>", "Rig ID to export")
-    .option("-o, --output <path>", "Output file path", "rig.yaml")
+    .argument("<rigId>", "要导出的工作组 ID")
+    .option("-o, --output <path>", "输出文件路径", "rig.yaml")
     .action(async (rigId: string, opts: { output: string }) => {
       const deps = getDeps();
       const status = await getDaemonStatus(deps.lifecycleDeps);
@@ -30,14 +30,14 @@ export function exportCommand(depsOverride?: ExportDeps): Command {
       const res = await client.getText(`/api/rigs/${encodeURIComponent(rigId)}/spec`);
 
       if (res.status === 404) {
-        console.error(`Rig '${rigId}' not found`);
+        console.error(`工作组 '${rigId}' 未找到`);
         process.exitCode = 1;
       } else if (res.status >= 400) {
-        console.error(`Export failed: ${res.data}`);
+        console.error(`导出失败：${res.data}`);
         process.exitCode = 1;
       } else {
         deps.writeFile(opts.output, res.data);
-        console.log(`Exported to ${opts.output}`);
+        console.log(`已导出到 ${opts.output}`);
       }
     });
 

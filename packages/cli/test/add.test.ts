@@ -226,7 +226,7 @@ describe("rig add", () => {
   });
 
   // Governance FM2: rig add must NOT silently strip pod-local edges from the
-  // fragment file - they must reach the daemon, in both wrapper and bare forms.
+  // 片段文件——它们必须到达 daemon，wrapper 与裸两种形式都要。
   it("forwards wrapper-form edges to the daemon (not stripped)", async () => {
     capturedBody = null;
     writeFileSync(fragmentPath, `member:\n  id: server2\n  runtime: terminal\n  agent_ref: "builtin:terminal"\n  profile: none\n  cwd: /tmp\nedges:\n  - from: server2\n    to: server\n    kind: delegates_to\n`);
@@ -246,7 +246,7 @@ describe("rig add", () => {
     });
     const sent = capturedBody as { member: Record<string, unknown>; edges: unknown[] };
     expect(sent.edges).toEqual([{ from: "server2", to: "server", kind: "delegates_to" }]);
-    // edges lifted OUT of the member, not silently carried as an ignored field.
+    // edges 从 member 中提取，而非作为被忽略字段静默携带。
     expect(sent.member["edges"]).toBeUndefined();
     expect(sent.member["id"]).toBe("server2");
   });
@@ -259,7 +259,7 @@ describe("rig add", () => {
     });
     expect(exitCode).toBe(1);
     expect(logs.join("\n")).toContain("edges");
-    // Rejected before the POST - never silently omitted and sent.
+    // 在 POST 之前拒绝——绝不静默省略后发出。
     expect(capturedBody).toBeNull();
   });
 });

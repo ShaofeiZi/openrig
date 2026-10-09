@@ -1,18 +1,17 @@
-// Slice 26 — Settings destination page shell.
+// 切片 26 —— 设置目标页面外壳。
 //
-// Common chrome (eyebrow + heading + content slot) for every Settings
-// sub-route: /settings, /settings/policies, /settings/log,
-// /settings/status. Replaces the in-place tab navigation that the old
-// SettingsCenter used; the Explorer sidebar now handles destination
-// switching, and each route mounts its own page-level component.
+// 每个设置子路由的通用外壳（eyebrow + 标题 + 内容槽位）：
+// /settings、/settings/policies、/settings/log、/settings/status。
+// 取代旧 SettingsCenter 使用的内联标签页导航；Explorer 侧边栏现在负责
+// 目标切换，每个路由挂载自己的页面级组件。
 
 import type { ReactNode } from "react";
 import { SectionHeader } from "../ui/section-header.js";
 
 interface SettingsPageShellProps {
-  /** Stable testid for the entire page wrapper (e.g., "settings-page-policies"). */
+  /** 整个页面包装器的稳定 testid（如 "settings-page-policies"）。 */
   testId: string;
-  /** Display name shown as the page title — "Settings" / "Policies" / "Log" / "Status". */
+  /** 作为页面标题显示的名称 —— "设置" / "策略" / "日志" / "状态"。 */
   title: string;
   children: ReactNode;
 }
@@ -24,7 +23,7 @@ export function SettingsPageShell({ testId, title, children }: SettingsPageShell
       className="mx-auto w-full max-w-[960px] px-6 py-8"
     >
       <header className="border-b border-outline-variant pb-4 mb-4">
-        <SectionHeader tone="muted">Configuration</SectionHeader>
+        <SectionHeader tone="muted">配置</SectionHeader>
         <h1 className="font-headline text-headline-md font-bold tracking-tight uppercase text-on-surface mt-1">
           {title}
         </h1>

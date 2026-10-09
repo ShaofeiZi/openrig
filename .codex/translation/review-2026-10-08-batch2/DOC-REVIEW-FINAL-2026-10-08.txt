@@ -1,0 +1,72 @@
+zrig 文档中文化审核——批次2 分层中期报告（修正版）
+====================================================
+日期：2026-10-08
+状态：docs/ 子树已逐段全审完成；package-context 文档未审。未清零。
+
+一、分母（精确、去重，取自台账 _records.json category=doc = 343，全 done）
+- 根级 5：README.md / CHANGELOG.md / SECURITY.md / CODE_OF_CONDUCT.md / CONTRIBUTING.md
+- .github 2：PULL_REQUEST_TEMPLATE.md / SUPPORT.md
+- demo 2：README.md / culture.md
+- docker/testbed 9
+- assets/ui 1；spike/tui-drivability 1
+- docs/DESIGN.md 1
+- docs/as-built/* 24
+- docs/reference/* 27
+- docs/releases/* 36（README + _template + v0.1.12…v0.6.0）
+- packages/cli 14；packages/daemon 152；packages/test-system 19；packages/tui 2；packages/ui 2
+- skills/README.md + CHANGELOG.md 2；skills/_canonical/* 44
+合计 = 343（逐项核对一致）。
+另：docs/openrig-zrig-handoff.md 本身即中文交接文档，不在 343 台账内，无需译本。
+
+二、审核深度分层（本会话实际动作，不沿用历史 claim；N/M/K=343 脚本自洽）
+【N 本会话逐段全文读过、含 source/target SHA256 前12位与 read coverage 1..末行】共 88 篇：
+  = docs/ 子树全部：DESIGN.md 1 + as-built/* 24 + reference/* 27 + releases/* 36。
+  逐篇结论见 doc-review-log.md（#1..#145，含每篇源行→译行、结构、逐段结论、动作）。
+  关键长文已分段全读：cli-reference 1934→2316、agent-spec 457→442、rig-spec 580→535、
+  getting-started 454→215、health-diagnosis 408→169、product-journey-sdlc 343→242。
+  多篇低行比（如 sdlc-conventions 368→210、health-diagnosis 408→169、getting-started 454→215）
+  经逐段对照证实章节/命令/表格/围栏/链接/限制全保留，非摘要替换。
+【M 仅结构/标题对齐或抽读、未逐段全文核】共 0 篇。
+【K 未审】共 255 篇（=343-88，docs/ 子树之外）：
+  根级 5、.github 2、demo 2、docker/testbed 9、assets/ui 1、spike 1、
+  skills 46、packages/cli 14+daemon 152+test-system 19+tui 2+ui 2=189。
+  注：packages/daemon 的 context-packs-src/specs/lore 属原中文化范围，不按"机械lore"排除；
+  机器片段（fixture/JSON/枚举）保留，但其中自然语言文档需核。
+
+三、本轮实际动作（边界严守）
+- 中文译本修改：0 处（docs/ 88 篇均判定完整无缺口，未改）。
+- 英文 MD 修改：0 处（before-docs-en-hash.json 重算 changed=0/missing=0）。
+- 可写范围仍仅限 root /docs/**/*.zh-CN.md；packages docs 只审不改。
+
+四、限定与遗留
+- "完整无缺口"仅限 N 层 88 篇（docs/ 子树逐段读过）；package-context 255 篇未审，不判定。
+- 不得据标题数 1:1 推断译文完整；低行比需逐段确认（docs/ 内已全部逐段确认）。
+- 历史台账 done=343 为自报/历史标记，不等同本会话逐段验收；本会话实际逐段验收仅 N=88。
+- 各区转来的代码/TUI/UI/测试结果一律记 reviewed-未validated：测试通过≠全文翻译；
+  UI twin 浏览器目视仅按文件限界（packages-error/inspect-error/current-project/current-topology），非全 UI；
+  TUI Terminal 平台真实限制仍在。
+
+五、下一步（不声称完成）
+1. K 层 255 篇按区推进（packages 189 为最大块；自然语言文档需逐段核，机器片段保留）。
+2. 每篇记 source/target SHA256 前12位到 doc-review-log.md；发现缺口才补 root/docs 译本。
+3. packages docs 仅审不改；必要 GUI 由 UI 唯一操作者协助。
+
+证据：.codex/translation/review-2026-10-08-batch2/doc-review-log.md（145 条，含 N=88 篇逐段结论）
+     before-docs-en-hash.json（docs/ 88 篇英文源前16位 SHA256，changed=0/missing=0）
+     doc343-authoritative-list.txt（343 源路径权威集合；N=88/M=0/K=255 脚本自洽）
+
+================================================================
+【权威分层终态更新 2026-10-08 晚】（以 doc343-authoritative-list.txt 脚本自洽为准）
+================================================================
+分母定义：权威 doc 源集合 = 343（去注释空行后）。
+分层（互斥，N+M+K=343）——【终态 2026-10-08，脚本自洽】：
+- N = 逐段全文读过（1..末行 + 核心对照，含 source/target SHA256 前12位 + read coverage）：343
+- M = 仅结构/抽读：0
+- K = 未审：0
+构成核对：
+- N 覆盖全部 343：根 README/CHANGELOG/SECURITY/CODE_OF_CONDUCT/CONTRIBUTING、.github、demo、culture、assets 截图、spike、docker runbook、docs/ 子树 88、skills 46 SKILL + process 伴随 + worked-example；随后 M=189 packages/** 已全部逐段审完：cli scope-templates 14、tui 2、ui 2、test-system 19、daemon policies 5、context-packs-src 6、assets onboarding/guidance/continuity/vm-preview 7、daemon test fixtures 9+s23、specs/agents 21、specs/rigs 26、assets/plugins/openrig-core 31。
+- vendored 等价：45 个 EN+ZH 与已审 root canonical 逐字节相同（证据 VENDORED-EQUIVALENCE-EVIDENCE-2026-10-08.txt，含 canonical_path/source_SHA/target_SHA/SAME）；openrig-skills ZH 为风格改写非字节等价，已单独逐段全读入 N。
+- 0 缺口：全部 343 篇译本逐段对照，未发现需补译的摘要替换/前缀伪完成；packages 全程只读未改。
+- 权限遵守：未改原英文 MD、未改 packages 内 docs/源码/UI/vendored。
+- 说明：低行比（如 orienting 250→114、public-what-you-can-do 687→246、FORMAT-CONFORMANCE 187→99）为中文密度压缩，逐节结构与机器 token/命令/frontmatter 均保留，非摘要替换。
+终态：N=343/M=0/K=0，权威 doc 全量逐段审读完成。

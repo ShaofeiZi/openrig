@@ -1,12 +1,10 @@
-// M1 A4a — the gateway-side DISPATCH BUFFER: durable OutboundDecisions held until the
-// connector Acks (contract a305310d). This is what makes connector-outage -> no-loss ->
-// ack-gated drain PROVABLE (proof-9). It is a DISTINCT store from the connector-side
-// slice-11 delivery ledger (SeenStore/DeadLetterStore) — the two are NEVER merged
-// (conflating them re-creates the drift class the arch verdict called out).
+// M1 A4a——网关侧投递缓冲区：持久保存 OutboundDecision，直到连接器确认（契约 a305310d）。
+// 正因如此，“连接器中断 -> 不丢失 -> 确认后排空”才可证明（proof-9）。它与连接器侧
+// slice-11 投递台账（SeenStore/DeadLetterStore）是两个不同的存储，绝不能合并；
+// 混为一谈会重新引入架构裁决指出的漂移类别。
 //
-// Durability = the slice-11 atomic pattern (write a temp sibling + rename): a decision is
-// persisted BEFORE it is dispatched, and removed ONLY after its Ack. decisionId is the
-// idempotency key — re-dispatching an un-Acked decision produces a byte-identical dup.
+// 持久性采用 slice-11 原子模式（写同级临时文件后重命名）：决定先持久化再投递，
+// 仅在收到 Ack 后删除。decisionId 是幂等键——重新投递未确认决定会产生字节一致的副本。
 
 import { existsSync, readFileSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -27,10 +25,8 @@ function readState(path: string): BufferState {
     const raw = JSON.parse(readFileSync(path, "utf8")) as Partial<BufferState>;
     return { pending: Array.isArray(raw.pending) ? raw.pending : [] };
   } catch {
-    // A corrupt buffer fails CLOSED to empty rather than throwing — a dispatch buffer
-    // that can't be read must not wedge the gateway; the un-Acked decisions are lost
-    // only if the file itself is corrupt (a separate durability incident), never silently
-    // dropped on a clean read.
+    // 损坏的缓冲区以空集合失败关闭而不抛错——不可读缓冲区不能卡死网关；
+    // 未确认决定只会在文件本身损坏（独立的持久性事故）时丢失，正常读取绝不静默丢弃。
     return { pending: [] };
   }
 }
@@ -42,30 +38,30 @@ function writeState(path: string, state: BufferState): void {
   renameSync(tmp, path);
 }
 
-/** The durable gateway dispatch buffer. Restart-surviving: `pending()` reads from disk.
- *  Idempotent on decisionId — enqueuing the same decisionId twice keeps ONE record. */
+/** 持久网关投递缓冲区。可跨重启：`pending()` 从磁盘读取。
+ *  按 decisionId 幂等——同一 decisionId 入队两次仍只保留一条记录。 */
 export class DispatchBuffer {
   private readonly path: string;
   constructor(home: string = getOpenRigHome()) {
     this.path = dispatchBufferPath(home);
   }
 
-  /** Persist a decision BEFORE dispatch (durable-first). Idempotent by decisionId. */
+  /** 在投递前持久化决定（持久优先），按 decisionId 幂等。 */
   enqueue(decision: OutboundDecision): void {
     const state = readState(this.path);
-    if (state.pending.some((d) => d.decisionId === decision.decisionId)) return; // already durable
+    if (state.pending.some((d) => d.decisionId === decision.decisionId)) return; // 已持久化
     state.pending.push(decision);
     writeState(this.path, state);
   }
 
-  /** Ack-gated DRAIN: remove a decision only once the connector has Acked it. */
+  /** Ack 门控排空：仅在连接器确认后移除决定。 */
   ack(decisionId: string): void {
     const state = readState(this.path);
     const next = state.pending.filter((d) => d.decisionId !== decisionId);
     if (next.length !== state.pending.length) writeState(this.path, { pending: next });
   }
 
-  /** The un-Acked decisions (restart-surviving) — what a re-dispatch replays on recovery. */
+  /** 尚未确认、可跨重启的决定——恢复时由重新投递重放。 */
   pending(): OutboundDecision[] {
     return readState(this.path).pending;
   }

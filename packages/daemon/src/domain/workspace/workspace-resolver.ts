@@ -1,16 +1,13 @@
-// PL-007 Workspace Primitive v0 — runtime resolution of typed workspace
-// context for whoami / node-inventory consumers.
+// PL-007 Workspace Primitive v0——为 whoami / node-inventory 消费方解析带类型的工作区上下文。
 //
-// Given a persisted RigSpec.workspace block + a node's cwd + an optional
-// per-session env override, derive:
-//   - workspaceRoot          — verbatim from the spec
-//   - activeRepo             — env override, else default_repo, else null
-//   - repos                  — typed list (name, path, kind)
-//   - knowledgeRoot, knowledgeKind — verbatim when declared
+// 输入持久化的 RigSpec.workspace block、节点 cwd 和可选的逐会话环境覆盖，派生：
+//   - workspaceRoot          ——逐字取自 spec
+//   - activeRepo             ——优先环境覆盖，其次 default_repo，否则为 null
+//   - repos                  ——带类型的列表（name、path、kind）
+//   - knowledgeRoot、knowledgeKind——声明时逐字保留
 //
-// Per-node kind resolution (used by node-inventory) walks the cwd up the
-// directory tree looking for the longest containing repo path; falls back
-// to "knowledge" when cwd is under knowledgeRoot, else null.
+// node-inventory 使用的逐节点 kind 解析会沿 cwd 目录树向上寻找包含它的最长 repo path；
+// cwd 位于 knowledgeRoot 下时回退为 "knowledge"，否则为 null。
 
 import * as path from "node:path";
 import type { WorkspaceSpec, WorkspaceKind, NodeWorkspaceInfo } from "../types.js";
@@ -31,9 +28,8 @@ export function resolveWorkspaceContext(opts: {
   const { spec, envOverride } = opts;
   if (!spec) return null;
 
-  // env override wins when it names a declared repo; otherwise fall through
-  // to default_repo. Unknown override is honored verbatim per PL-007 PRD §
-  // Item 3 — operators set OPENRIG_TARGET_REPO consciously.
+  // 环境覆盖优先；没有覆盖时回退到 default_repo。按 PL-007 PRD 第 3 项，未知覆盖也逐字
+  // 接受，因为操作员会有意识地设置 OPENRIG_TARGET_REPO。
   const repoNames = new Set(spec.repos.map((r) => r.name));
   let activeRepo: string | null = null;
   if (envOverride && envOverride.trim() !== "") {
@@ -51,9 +47,8 @@ export function resolveWorkspaceContext(opts: {
   };
 }
 
-/** PL-007 — per-node workspace summary derived from a node's cwd against
- *  the rig's WorkspaceSpec. Used by NodeInventory. Returns null when the
- *  rig has no workspace declaration. */
+/** PL-007——根据节点 cwd 与工作组 WorkspaceSpec 派生逐节点工作区摘要，供 NodeInventory
+ *  使用。工作组没有 workspace 声明时返回 null。 */
 export function resolveNodeWorkspace(opts: {
   spec: WorkspaceSpec | null;
   cwd: string | null;
@@ -64,7 +59,7 @@ export function resolveNodeWorkspace(opts: {
   let activeRepo: string | null = null;
   let kind: WorkspaceKind | null = null;
   if (cwd) {
-    // Find the longest-prefix repo whose path contains cwd.
+    // 查找路径包含 cwd 且前缀最长的 repo。
     let best: { name: string; kind: WorkspaceKind; len: number } | null = null;
     for (const r of spec.repos) {
       if (isInside(cwd, r.path) && r.path.length > (best?.len ?? -1)) {
@@ -78,7 +73,7 @@ export function resolveNodeWorkspace(opts: {
       kind = "knowledge";
     }
   }
-  // Fall back to the rig's default_repo when cwd doesn't resolve.
+  // cwd 无法解析时回退到工作组的 default_repo。
   if (!activeRepo && spec.defaultRepo) {
     activeRepo = spec.defaultRepo;
     if (!kind) {

@@ -1,0 +1,102 @@
+{
+"packages/daemon/src/domain/successor-session-launcher.ts": [
+"daemon-core-a",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/startup-validation.ts": [
+"daemon-core-k",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/spec-library-workflow-scanner.ts": [
+"daemon-core-g",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/stream-store.ts": [
+"daemon-core-g",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/telemetry-state-paths.ts": [
+"daemon-core-g",
+null,
+"skipped"
+],
+"packages/daemon/src/domain/skill-discovery.ts": [
+"daemon-core-f",
+"validated",
+"done"
+],
+"packages/daemon/src/domain/skill-mirror-drift.ts": [
+"daemon-core-f",
+"validated",
+"done"
+],
+"packages/daemon/src/domain/spec-live-conformance.ts": [
+"daemon-core-f",
+"validated",
+"done"
+],
+"packages/daemon/src/domain/startup-resolver.ts": [
+"daemon-core-f",
+"validated",
+"done"
+],
+"packages/daemon/src/domain/startup-orchestrator.ts": [
+"daemon-core-j",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/stream-classification-worker.ts": [
+"daemon-core-j",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/spec-library-service.ts": [
+"daemon-core-e",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/system-world.ts": [
+"daemon-core-e",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/skill-catalog.ts": [
+"daemon-core-d",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/startup-proof.ts": [
+"daemon-core-d",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/spec-validation-service.ts": [
+"daemon-core-h",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/skill-library-discovery.ts": [
+"daemon-core-c",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/skill-audit.ts": [
+"daemon-core-b",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/spec-review-service.ts": [
+"daemon-core-b",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/spec-validation-advisory.ts": [
+"daemon-core-b",
+"self_reported",
+"done"
+]
+}

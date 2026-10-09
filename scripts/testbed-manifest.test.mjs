@@ -2,12 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { computeTestbedManifest, TestbedManifestError } from "./testbed-manifest.mjs";
 
-// 51-04 testbed image — the REPRODUCIBLE MANIFEST is the durable identity the runner /
-// 51-05 matrix cite per run (census-receipt discipline, plan §1 + §3). REBUILD CONTRACT:
-// same inputs => byte-identical manifest + digest. The digest is over CANONICAL sorted-key
-// JSON, never a naive field-join — a delimiter inside a value must not forge another input
-// set's digest (hash-join-delimiter-forgery). Loud-fail on missing/invalid input (never a
-// silent partial manifest that would look build-clean). Pure + dep-free: node:test only.
+// 51-04 testbed 镜像——可复现 manifest 是 runner / 51-05 矩阵每次运行所引用的持久身份
+// （清点收据纪律，计划 §1 + §3）。重建契约：相同输入 => 字节一致的 manifest + digest。
+// 摘要取在规范化的排序键 JSON 之上，绝不朴素拼接字段——一个值内嵌的分隔符绝不能伪造出另一组输入的 digest
+// （hash-join-delimiter-forgery）。缺失/非法输入响亮失败（绝不静默产出一份看似构建正常的半成品 manifest）。
+// 纯函数、零依赖：只用 node:test。
 
 const BASE = Object.freeze({
   baseDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -23,9 +22,9 @@ test("produces the four identity fields + image tag + a sha256 manifest digest",
   assert.equal(m.nodeVersion, BASE.nodeVersion);
   assert.equal(m.openrigSha, BASE.openrigSha);
   assert.equal(m.stubAssetsHash, BASE.stubAssetsHash);
-  // Image identity is tagged by the git sha (plan §1: openrig-testbed:<git-sha>).
+  // 镜像身份按 git sha 打标签（计划 §1：openrig-testbed:<git-sha>）。
   assert.equal(m.image, `openrig-testbed:${BASE.gitSha}`);
-  // The manifest carries its own content digest (64-hex sha256).
+  // manifest 自带其内容 digest（64 位十六进制 sha256）。
   assert.match(m.manifestDigest, /^[0-9a-f]{64}$/);
 });
 
@@ -46,9 +45,8 @@ test("per-field sensitivity: changing ANY identity field changes the digest (no 
 });
 
 test("forgery-resistance: a delimiter/quote inside a value cannot forge another input set's digest", () => {
-  // A naive `fields.join(":")` (or unescaped concatenation) would let a crafted value that
-  // embeds the delimiter + a sibling's content collide with a different, honest input set.
-  // Canonical JSON escapes, so these two distinct input sets MUST yield distinct digests.
+  // 朴素的 `fields.join(":")`（或不转义的拼接）会让一个精心构造、内嵌分隔符+兄弟字段内容的值，
+  // 与另一组合法输入相撞。规范化 JSON 会转义，因此这两组不同输入必须产出不同 digest。
   const honest = computeTestbedManifest({ ...BASE, nodeVersion: "22", openrigSha: "abc" });
   const forged = computeTestbedManifest({ ...BASE, nodeVersion: '22","openrigSha":"abc', openrigSha: "z" });
   assert.notEqual(honest.manifestDigest, forged.manifestDigest);

@@ -1,15 +1,13 @@
 import { mockShellCommand } from "./helpers/shell-command-mock.js";
-// OPR.0.4.8.3 Seam B — Guard-correction lifecycle pins (NOT-CLEAR at 9e94c274), RED-first.
-// Production-altitude proofs for the four findings:
-//   F1: rig-level custom provenance is restart-complete (organic seats, structured
-//       add-member with a DIFFERENT operation root, successor continuity).
-//   F2: materialize-time provenance writes are load-bearing (a real write failure fails
-//       the operation — never a silent partial commit).
-//   F3: unreadable custom content at restore uses the PERSISTED posture, never a silent
-//       floor.
-//   F4: real RestoreOrchestrator restores (legacy + pod-aware altitude: the resume adapter
-//       receives the posture) + real adapter COMMAND pins for floor/full_bypass on all
-//       three harnesses incl. the Codex native-fork path (Pi wording = resource trust).
+// OPR.0.4.8.3 接缝 B——守卫修正后的生命周期固定测试（9e94c274 时为 NOT-CLEAR），RED 优先。
+// 四项发现的生产高度证明：
+//   F1：rig 级自定义来源在重启后完整保留（自然形成的 seat、使用不同操作根的结构化
+//       add-member、后继连续性）。
+//   F2：实体化时的来源写入承担关键语义（真实写入失败会导致操作失败，绝不静默部分提交）。
+//   F3：恢复时自定义内容不可读，则使用已持久化的姿态，绝不静默回退到 floor。
+//   F4：真实 RestoreOrchestrator 执行恢复（旧版 + pod 感知高度：resume 适配器收到姿态），
+//       并固定三个 harness 上 floor/full_bypass 的真实适配器命令，包括 Codex 原生 fork 路径
+//       （Pi 文案表示资源信任）。
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -40,11 +38,11 @@ const CUSTOM_POLICY = `---
 policy_schema_version: 1
 name: operator-full
 source: custom
-description: full-bypass flag policy (Seam-A-complete fixture)
+description: full-bypass 标志策略（Seam-A-complete fixture）
 surface: flag
 launch_posture: full_bypass
 ---
-# Operator full
+# 操作者完全权限
 `;
 
 const DECLARING_ROOT = "/project/rigs/original-root";
@@ -58,10 +56,10 @@ function fsOps(policyReadable = true) {
     readFile: (p: string) => {
       if (p.includes("agents/impl")) return agentYaml("impl");
       if (p.includes("policies/operator-full.md")) {
-        if (!policyReadable) throw new Error("EACCES: unreadable");
+        if (!policyReadable) throw new Error("EACCES：不可读");
         return CUSTOM_POLICY;
       }
-      throw new Error(`Not found: ${p}`);
+      throw new Error(`未找到：${p}`);
     },
     exists: (p: string) => p.includes("agents/impl") || (policyReadable && p.includes("policies/operator-full.md")),
   };
@@ -71,7 +69,7 @@ function rigLevelSpec(extraMembers: Record<string, unknown>[] = []): Record<stri
   return {
     version: "0.2",
     name: "lifecycle-rig",
-    permission_policy: "policies/operator-full.md", // RIG-level CUSTOM flag/full_bypass
+    permission_policy: "policies/operator-full.md", // RIG 级自定义 flag/full_bypass
     pods: [{
       id: "dev",
       label: "Dev",
@@ -100,12 +98,12 @@ function mockTmux(): TmuxAdapter {
   } as unknown as TmuxAdapter);
 }
 
-describe("F1 — rig-level custom provenance is RESTART-COMPLETE", () => {
+describe("F1——rig 级自定义来源在重启后完整保留", () => {
   let dir: string;
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "seamb-f1-")); });
   afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
 
-  it("RED-1: organic seat (direct addNode, no member ref) + DB REOPEN + REAL legacy restore keeps full_bypass", async () => {
+  it("RED-1：自然形成的 seat（直接 addNode，无 member 引用）+ 重新打开数据库 + 真实旧版恢复会保留 full_bypass", async () => {
     const dbFile = join(dir, "d.sqlite");
     const db1 = createDb(dbFile);
     migrate(db1, migrationsForFullTestDb);
@@ -113,15 +111,15 @@ describe("F1 — rig-level custom provenance is RESTART-COMPLETE", () => {
     const outcome = await setup1.podInstantiator.materializeStructured(rigLevelSpec(), DECLARING_ROOT);
     expect(outcome.ok).toBe(true);
     const rigId = (outcome as { ok: true; result: { rigId: string } }).result.rigId;
-    // ORGANIC seat: claim/self-attach shape — direct addNode, NO member spec, NO node provenance
+    // 自然形成的 seat：claim/self-attach 结构——直接 addNode，无 member 规范，无节点来源
     const organic = setup1.rigRepo.addNode(rigId, "dev.organic", { runtime: "claude-code", cwd: "/w" });
-    // a resumable session for the organic seat (legacy restore path)
+    // 自然形成 seat 的可恢复会话（旧版恢复路径）
     const session = setup1.sessionRegistry.registerSession(organic.id, "dev-organic@lifecycle-rig");
     setup1.sessionRegistry.updateStatus(session.id, "running");
     db1.prepare("UPDATE sessions SET resume_type = 'claude_id', resume_token = 'tok-123' WHERE id = ?").run(session.id);
     const intendedNodeIds = setup1.rigRepo.getRig(rigId)!.nodes.map((node) => node.id);
     const snap = setup1.snapshotCapture.captureSnapshot(rigId, "manual", { intendedNodeIds });
-    db1.close(); // ── restart boundary ──
+    db1.close(); // ── 重启边界 ──
 
     const db2 = createDb(dbFile);
     const rigRepo2 = new RigRepository(db2);
@@ -147,12 +145,12 @@ describe("F1 — rig-level custom provenance is RESTART-COMPLETE", () => {
       codexResume: { canResume: vi.fn(() => false), resume: vi.fn() } as unknown as CodexResumeAdapter,
     });
     const snapId = snap.id;
-    // policy file readable at restore: served from the ORIGINAL declaring root
+    // 恢复时策略文件可读：从原始声明根目录提供
     await orch.restore(snapId);
-    // PRODUCTION-ALTITUDE assertion: the resume adapter received the rig-inherited posture
+    // 生产高度断言：resume 适配器收到了从 rig 继承的姿态
     const call = (claudeResume.resume as ReturnType<typeof vi.fn>).mock.calls.find((c) => c[2] === "tok-123");
-    expect(call, "organic seat resume should have been attempted").toBeDefined();
-    expect(call![4]).toBe("full_bypass"); // 5th arg = resolvedPosture from RIG provenance
+    expect(call, "应已尝试恢复自然形成的 seat").toBeDefined();
+    expect(call![4]).toBe("full_bypass"); // 第 5 个参数 = 来自 RIG 来源的 resolvedPosture
     expect(new AppliedLaunchObservationStore(db2).readCurrent(organic.id)).toMatchObject({
       runtime: "claude-code",
       axis: "permission",
@@ -162,7 +160,7 @@ describe("F1 — rig-level custom provenance is RESTART-COMPLETE", () => {
     db2.close();
   });
 
-  it("RED-2: structured add-member inherits the ORIGINAL rig attachment (original declaring root), member override still wins", async () => {
+  it("RED-2：结构化 add-member 继承原始 rig 附件（原始声明根），member 覆盖值仍优先", async () => {
     const db = createFullTestDb();
     const reads: string[] = [];
     const ops = fsOps();
@@ -175,7 +173,7 @@ describe("F1 — rig-level custom provenance is RESTART-COMPLETE", () => {
     expect(outcome.ok).toBe(true);
     const rigId = (outcome as { ok: true; result: { rigId: string } }).result.rigId;
 
-    // add_member through the STRUCTURED path with a DIFFERENT operation root
+    // 通过结构化路径执行 add_member，并使用不同的操作根目录
     const OTHER_ROOT = "/somewhere/else/entirely";
     const addOutcome = await setup.podInstantiator.addMemberToPod(
       rigId, "dev",
@@ -184,17 +182,16 @@ describe("F1 — rig-level custom provenance is RESTART-COMPLETE", () => {
     );
     expect(addOutcome.ok).toBe(true);
     const lateNode = (db.prepare("SELECT id FROM nodes WHERE logical_id = 'dev.late'").get() as { id: string } | undefined);
-    expect(lateNode, "dev.late node should exist").toBeDefined();
+    expect(lateNode, "dev.late 节点应存在").toBeDefined();
     const prov = setup.rigRepo.getNodePolicyProvenance(lateNode!.id);
-    // The inherited rig attachment must resolve against the ORIGINAL declaring root —
-    // never the add-member operation's unrelated root.
+    // 继承的 rig 附件必须基于原始声明根目录解析——绝不能使用 add-member 操作的不相关根目录。
     expect(prov).toMatchObject({
       origin: "custom",
       launchPosture: "full_bypass",
       declaringDir: DECLARING_ROOT,
       resolvedTarget: `${DECLARING_ROOT}/policies/operator-full.md`,
     });
-    // member override still wins
+    // member 覆盖值仍然优先
     const addOverride = await setup.podInstantiator.addMemberToPod(
       rigId, "dev",
       { id: "locked1", runtime: "claude-code", agent_ref: "local:agents/impl", profile: "default", cwd: ".", permission_policy: "builtin:locked" },
@@ -202,59 +199,58 @@ describe("F1 — rig-level custom provenance is RESTART-COMPLETE", () => {
     );
     expect(addOverride.ok).toBe(true);
     const lockedNode = (db.prepare("SELECT id FROM nodes WHERE logical_id = 'dev.locked1'").get() as { id: string } | undefined);
-    expect(lockedNode, "dev.locked1 node should exist").toBeDefined();
+    expect(lockedNode, "dev.locked1 节点应存在").toBeDefined();
     expect(setup.rigRepo.getNodePolicyProvenance(lockedNode!.id)).toMatchObject({ origin: "builtin", launchPosture: "floor" });
     db.close();
   });
 
-  it("RED-3: successor continuity for an INHERITED rig attachment preserves posture (organic seat, no node provenance)", async () => {
+  it("RED-3：继承 rig 附件的后继连续性会保留姿态（自然形成的 seat，无节点来源）", async () => {
     const db = createFullTestDb();
     const setup = createTestApp(db, { podInstantiatorFsOps: fsOps() });
     const outcome = await setup.podInstantiator.materializeStructured(rigLevelSpec(), DECLARING_ROOT);
     expect(outcome.ok).toBe(true);
     const rigId = (outcome as { ok: true; result: { rigId: string } }).result.rigId;
     const organic = setup.rigRepo.addNode(rigId, "dev.organic2", { runtime: "claude-code", cwd: "/w" });
-    // the same read the seat-handover successor path performs:
+    // 与 seat-handover 后继路径执行相同的读取：
     const nodeProv = setup.rigRepo.getNodePolicyProvenance(organic.id);
     const rigProv = setup.rigRepo.getRigPolicyProvenance(rigId);
     const successorPosture = nodeProv?.launchPosture ?? rigProv?.launchPosture;
-    expect(successorPosture).toBe("full_bypass"); // inherited rig policy carries to the successor
+    expect(successorPosture).toBe("full_bypass"); // 继承的 rig 策略会传递给后继
     db.close();
   });
 });
 
-describe("F2 — materialize-time provenance writes are LOAD-BEARING", () => {
-  it("RED: a real provenance write failure fails materialization (no silent partial commit)", async () => {
+describe("F2——实体化时的来源写入承担关键语义", () => {
+  it("RED：真实来源写入失败会导致实体化失败（不静默部分提交）", async () => {
     const db = createFullTestDb();
     const setup = createTestApp(db, { podInstantiatorFsOps: fsOps() });
-    // Inject a REAL write failure (not a missing legacy column): break the UPDATE by
-    // dropping the provenance column AFTER migration, simulating a hard SQLite failure.
+    // 注入真实写入失败（而非缺少旧版列）：迁移后破坏 UPDATE，模拟严重 SQLite 故障。
     const original = setup.rigRepo.setNodePolicyProvenance.bind(setup.rigRepo);
     void original;
     vi.spyOn(setup.rigRepo, "setNodePolicyProvenance").mockImplementation(() => {
-      throw new Error("SQLITE_IOERR: disk I/O error (injected)");
+      throw new Error("SQLITE_IOERR：磁盘 I/O 错误（已注入）");
     });
     const outcome = await setup.podInstantiator.materializeStructured(rigLevelSpec(), DECLARING_ROOT);
-    expect(outcome.ok).toBe(false); // must NOT report success
-    // and the partial node state must not have committed
+    expect(outcome.ok).toBe(false); // 不得报告成功
+    // 且不得提交部分节点状态
     const count = (db.prepare("SELECT COUNT(*) AS c FROM nodes").get() as { c: number }).c;
     expect(count).toBe(0);
     db.close();
   });
 });
 
-describe("F3 — unreadable custom content at restore uses the PERSISTED posture", () => {
+describe("F3——恢复时自定义内容不可读，则使用已持久化姿态", () => {
   let dir: string;
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "seamb-f3-")); });
   afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
 
-  it("RED: reopened DB + persisted full_bypass + UNREADABLE custom file → restore launches at full_bypass", async () => {
+  it("RED：重新打开数据库 + 已持久化 full_bypass + 自定义文件不可读 → 以 full_bypass 启动恢复", async () => {
     const dbFile = join(dir, "d.sqlite");
     const db1 = createDb(dbFile);
     migrate(db1, migrationsForFullTestDb);
     const setup1 = createTestApp(db1, { podInstantiatorFsOps: fsOps() });
-    // ORGANIC seat (legacy restore path) with node provenance persisted at attach time —
-    // the resolvedTarget path does NOT exist on this real filesystem = unreadable at restore.
+    // 自然形成的 seat（旧版恢复路径）在附着时持久化了节点来源——resolvedTarget 路径在此
+    // 真实文件系统中不存在，即恢复时不可读。
     const rig = setup1.rigRepo.createRig("f3-rig");
     const rigId = rig.id;
     const implNode = setup1.rigRepo.addNode(rigId, "dev.impl", { runtime: "claude-code", cwd: "/w" });
@@ -269,7 +265,7 @@ describe("F3 — unreadable custom content at restore uses the PERSISTED posture
     setup1.sessionRegistry.updateStatus(session.id, "running");
     db1.prepare("UPDATE sessions SET resume_type = 'claude_id', resume_token = 'tok-f3' WHERE id = ?").run(session.id);
     const snap = setup1.snapshotCapture.captureSnapshot(rigId, "manual");
-    db1.close(); // ── restart; the persisted target path is unreadable on this real fs ──
+    db1.close(); // ── 重启；持久化的目标路径在此真实文件系统中不可读 ──
 
     const db2 = createDb(dbFile);
     const rigRepo2 = new RigRepository(db2);
@@ -294,19 +290,19 @@ describe("F3 — unreadable custom content at restore uses the PERSISTED posture
     const snapId = snap.id;
     await orch.restore(snapId);
     const call = (claudeResume.resume as ReturnType<typeof vi.fn>).mock.calls.find((c) => c[2] === "tok-f3");
-    expect(call, "impl seat resume should have been attempted").toBeDefined();
-    // /project/rigs/original-root/... does not exist on THIS filesystem → unreadable.
-    // The persisted posture must carry — never a silent floor.
+    expect(call, "应已尝试恢复 impl seat").toBeDefined();
+    // /project/rigs/original-root/... 在此文件系统中不存在 → 不可读。
+    // 必须沿用已持久化姿态——绝不静默回退到 floor。
     expect(call![4]).toBe("full_bypass");
     db2.close();
   });
 });
 
-describe("F4 — REAL adapter command pins (floor + full_bypass on every launch path)", () => {
+describe("F4——真实适配器命令固定点（每条启动路径上的 floor + full_bypass）", () => {
   function claudeMockFs(): ClaudeAdapterFsOps {
     const store: Record<string, string> = {};
     return {
-      readFile: (p: string) => { if (p in store) return store[p]!; throw new Error(`Not found: ${p}`); },
+      readFile: (p: string) => { if (p in store) return store[p]!; throw new Error(`未找到：${p}`); },
       writeFile: (p: string, c: string) => { store[p] = c; },
       exists: (p: string) => p in store,
       mkdirp: () => {},
@@ -318,7 +314,7 @@ describe("F4 — REAL adapter command pins (floor + full_bypass on every launch 
     return { id: "b1", nodeId: "n1", tmuxSession: "s1", tmuxWindow: null, tmuxPane: null, cmuxWorkspace: null, cmuxSurface: null, updatedAt: "", cwd: "/project", ...(posture ? { launchPosture: posture } : {}) } as NodeBinding;
   }
 
-  it("Claude FRESH: binding full_bypass emits the bypass flag; binding floor pins acceptEdits even under env YOLO", async () => {
+  it("Claude FRESH：binding full_bypass 发出 bypass 标志；即使环境为 YOLO，binding floor 仍固定 acceptEdits", async () => {
     vi.stubEnv("OPENRIG_YOLO", "1");
     try {
       for (const [posture, expected] of [["full_bypass", "--dangerously-skip-permissions"], ["floor", "--permission-mode acceptEdits"]] as const) {
@@ -338,7 +334,7 @@ describe("F4 — REAL adapter command pins (floor + full_bypass on every launch 
     } finally { vi.unstubAllEnvs(); }
   });
 
-  it("Codex FRESH + NATIVE-FORK: binding posture drives -s danger-full-access vs the workspace-write floor", { timeout: 30000 }, async () => {
+  it("Codex FRESH + NATIVE-FORK：binding 姿态决定 -s danger-full-access 或 workspace-write 下限", { timeout: 30000 }, async () => {
     const codexFs = { readFile: () => { throw new Error("nf"); }, writeFile: () => {}, exists: () => false, mkdirp: () => {}, listFiles: () => [] };
     // fresh
     for (const [posture, expected, absent] of [["full_bypass", " -s danger-full-access", ""], ["floor", " -s workspace-write", "danger-full-access"]] as const) {
@@ -349,7 +345,7 @@ describe("F4 — REAL adapter command pins (floor + full_bypass on every launch 
       expect(result.ok && result.appliedLaunch).toMatchObject({ axis: "sandbox", state: "observed", value: posture === "floor" ? "workspace-write" : "danger-full-access" });
       if (absent) expect(cmd).not.toContain(absent);
     }
-    // native fork (the Slice-02 helper remains the only flag translator)
+    // 原生 fork（切片 02 辅助函数仍是唯一的标志转换器）
     for (const [posture, expected] of [["full_bypass", " -s danger-full-access"], ["floor", " -s workspace-write"]] as const) {
       const tmux = mockTmux();
       const result = await new CodexRuntimeAdapter({ sleep: async () => {}, tmux, fsOps: codexFs as never }).launchHarness(binding(posture), { name: "dev-qa@test-rig", forkSource: { kind: "native_id", value: "parent-thread-1" } as never });
@@ -360,7 +356,7 @@ describe("F4 — REAL adapter command pins (floor + full_bypass on every launch 
     }
   });
 
-  it("Claude RESUME: the threaded posture drives the resume command (floor pins acceptEdits under env YOLO)", async () => {
+  it("Claude RESUME：传递的姿态决定 resume 命令（环境为 YOLO 时 floor 仍固定 acceptEdits）", async () => {
     vi.stubEnv("OPENRIG_YOLO", "1");
     try {
       const { ClaudeResumeAdapter: RealClaudeResume } = await import("../src/adapters/claude-resume.js");
@@ -378,12 +374,12 @@ describe("F4 — REAL adapter command pins (floor + full_bypass on every launch 
   });
 });
 
-// ── Guard round-2 (NOT-CLEAR at 8232199a) ──────────────────────────────────────
+// ── Guard 第 2 轮（8232199a 时为 NOT-CLEAR）──────────────────────────────────
 
-const MALFORMED_POLICY = "---\nname: broken\nsurface: flag\nlaunch_posture: full_bypass\n# unclosed frontmatter — no closing fence\n# body follows\n";
-const UNUSABLE_FLAG_POLICY = `---\npolicy_schema_version: 1\nname: no-posture\nsource: custom\ndescription: flag policy MISSING launch_posture (Seam-A invalid flag contract)\nsurface: flag\n---\nbody\n`;
+const MALFORMED_POLICY = "---\nname: broken\nsurface: flag\nlaunch_posture: full_bypass\n# 未闭合的 frontmatter——没有结束围栏\n# 正文如下\n";
+const UNUSABLE_FLAG_POLICY = `---\npolicy_schema_version: 1\nname: no-posture\nsource: custom\ndescription: 缺少 launch_posture 的标志策略（Seam-A 无效标志契约）\nsurface: flag\n---\n正文\n`;
 
-describe("GF1 — READABLE but malformed/unusable custom content uses the PERSISTED posture", () => {
+describe("GF1——可读但格式错误/不可用的自定义内容使用已持久化姿态", () => {
   let dir: string;
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "seamb-gf1-")); });
   afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
@@ -392,7 +388,7 @@ describe("GF1 — READABLE but malformed/unusable custom content uses the PERSIS
     const { writeFileSync: wf, mkdirSync: mk } = await import("node:fs");
     const declRoot = join(dir, "declaring-root");
     mk(join(declRoot, "policies"), { recursive: true });
-    wf(join(declRoot, "policies", "operator-full.md"), policyBody); // READABLE on the real fs
+    wf(join(declRoot, "policies", "operator-full.md"), policyBody); // 在真实文件系统上可读
     const dbFile = join(dir, `${kind}.sqlite`);
     const db1 = createDb(dbFile);
     migrate(db1, migrationsForFullTestDb);
@@ -441,33 +437,33 @@ describe("GF1 — READABLE but malformed/unusable custom content uses the PERSIS
     await orch.restore(snap.id);
     db2.close();
     const call = (claudeResume.resume as ReturnType<typeof vi.fn>).mock.calls.find((c) => c[2] === "tok-gf1");
-    expect(call, "seat resume should have been attempted").toBeDefined();
+    expect(call, "应已尝试恢复 seat").toBeDefined();
     return call![4];
   }
 
-  it("RED: NODE provenance + readable MALFORMED frontmatter → persisted full_bypass (never silent floor)", async () => {
+  it("RED：NODE 来源 + 可读但格式错误的 frontmatter → 已持久化 full_bypass（绝不静默回退到 floor）", async () => {
     expect(await reopenedRestorePosture("node", MALFORMED_POLICY)).toBe("full_bypass");
   });
 
-  it("RED: NODE provenance + readable UNUSABLE flag contract (missing launch_posture) → persisted full_bypass", async () => {
+  it("RED：NODE 来源 + 可读但不可用的标志契约（缺少 launch_posture）→ 已持久化 full_bypass", async () => {
     expect(await reopenedRestorePosture("node", UNUSABLE_FLAG_POLICY)).toBe("full_bypass");
   });
 
-  it("RED: inherited RIG provenance + readable MALFORMED frontmatter → persisted full_bypass", async () => {
+  it("RED：继承的 RIG 来源 + 可读但格式错误的 frontmatter → 已持久化 full_bypass", async () => {
     expect(await reopenedRestorePosture("rig", MALFORMED_POLICY)).toBe("full_bypass");
   });
 
-  it("valid readable content still RE-DERIVES (the ruling's re-validation stays live)", async () => {
+  it("有效可读内容仍会重新派生（裁定要求的重新校验保持生效）", async () => {
     expect(await reopenedRestorePosture("node", CUSTOM_POLICY)).toBe("full_bypass");
   });
 });
 
-describe("GF2 — the COMPLETE production-altitude launch/restore matrix", () => {
+describe("GF2——完整的生产高度启动/恢复矩阵", () => {
   function binding2(posture?: "floor" | "full_bypass"): NodeBinding {
     return { id: "b1", nodeId: "n1", tmuxSession: "s1", tmuxWindow: null, tmuxPane: null, cmuxWorkspace: null, cmuxSurface: null, updatedAt: "", cwd: "/project", ...(posture ? { launchPosture: posture } : {}) } as NodeBinding;
   }
 
-  it("POD-AWARE restore: the reconstructed binding's posture reaches the REAL adapter's harness command", { timeout: 30000 }, async () => {
+  it("支持 POD 的恢复：重建 binding 的姿态到达真实适配器的 harness 命令", { timeout: 30000 }, async () => {
     const dir = mkdtempSync(join(tmpdir(), "seamb-podaware-"));
     try {
       const dbFile = join(dir, "d.sqlite");
@@ -478,13 +474,13 @@ describe("GF2 — the COMPLETE production-altitude launch/restore matrix", () =>
       expect(outcome.ok).toBe(true);
       const rigId = (outcome as { ok: true; result: { rigId: string } }).result.rigId;
       const implNode = db1.prepare("SELECT id FROM nodes WHERE logical_id = 'dev.impl'").get() as { id: string };
-      // pod-aware = snapshot carries podId nodes; the materialized member has one
+      // 支持 pod = 快照携带有 podId 的节点；实体化 member 拥有该值
       const session = setup1.sessionRegistry.registerSession(implNode.id, "dev-impl@lifecycle-rig");
       setup1.sessionRegistry.updateStatus(session.id, "running");
       db1.prepare("UPDATE sessions SET resume_type = 'claude_id', resume_token = 'tok-pod' WHERE id = ?").run(session.id);
       const snap = setup1.snapshotCapture.captureSnapshot(rigId, "manual");
-      // pod-aware startup replay requires nodeStartupContext (captured at original launch;
-      // seeded here the same way the shipped restore tests do)
+      // 支持 pod 的启动重放需要 nodeStartupContext（在原始启动时捕获；
+      // 此处按已发布恢复测试的相同方式植入）
       {
         const row = db1.prepare("SELECT data FROM snapshots WHERE id = ?").get(snap.id) as { data: string };
         const data = JSON.parse(row.data);
@@ -517,14 +513,14 @@ describe("GF2 — the COMPLETE production-altitude launch/restore matrix", () =>
       await orch.restore(snap.id, { adapters: { "claude-code": realClaude } } as never);
       const cmds = (tmux.sendText as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[1]));
       const launchCmd = cmds.find((c) => c.includes("claude"));
-      expect(launchCmd, `expected a claude harness launch among: ${cmds.join(" | ")}`).toBeDefined();
-      // rig-level custom flag/full_bypass provenance → the harness command carries the bypass
+      expect(launchCmd, `预期下列命令中包含 claude harness 启动：${cmds.join(" | ")}`).toBeDefined();
+      // rig 级自定义 flag/full_bypass 来源 → harness 命令携带 bypass
       expect(launchCmd!).toContain("--dangerously-skip-permissions");
       db2.close();
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 
-  it("Codex RESUME command: full_bypass forces danger-full-access; floor HOLDS workspace-write under env YOLO", { timeout: 30000 }, async () => {
+  it("Codex RESUME 命令：full_bypass 强制 danger-full-access；环境为 YOLO 时 floor 保持 workspace-write", { timeout: 30000 }, async () => {
     vi.stubEnv("OPENRIG_YOLO", "1");
     try {
       const { CodexResumeAdapter: RealCodexResume } = await import("../src/adapters/codex-resume.js");
@@ -544,7 +540,7 @@ describe("GF2 — the COMPLETE production-altitude launch/restore matrix", () =>
     } finally { vi.unstubAllEnvs(); }
   });
 
-  it("Pi FRESH + RESUME: posture drives RESOURCE TRUST (approve vs no-approve), floor holding under env YOLO", { timeout: 30000 }, async () => {
+  it("Pi FRESH + RESUME：姿态决定资源信任（approve 或 no-approve），环境为 YOLO 时保持 floor", { timeout: 30000 }, async () => {
     vi.stubEnv("OPENRIG_YOLO", "1");
     try {
       const { PiRuntimeAdapter } = await import("../src/adapters/pi-runtime-adapter.js");
@@ -555,7 +551,7 @@ describe("GF2 — the COMPLETE production-altitude launch/restore matrix", () =>
         const adapter = new PiRuntimeAdapter({ tmux, fsOps: piFs as never, stateRoot: "/tmp/pi-state", runnerEntryPath: "/tmp/pi-runner.js", sleep: async () => {} });
         await adapter.launchHarness(binding2(posture), { name: "dev-pi@test-rig" });
         const cmd = (tmux.sendText as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
-        // RESOURCE TRUST wording: Pi's --approve/--no-approve govern resource trust, not permissions
+        // 资源信任语义：Pi 的 --approve/--no-approve 控制资源信任，而非权限
         if (expectedTrust === "approve") { expect(cmd).toMatch(/--approve/); expect(cmd).not.toMatch(/--no-approve/); }
         else expect(cmd).toContain("--no-approve");
       }
@@ -570,7 +566,7 @@ describe("GF2 — the COMPLETE production-altitude launch/restore matrix", () =>
     } finally { vi.unstubAllEnvs(); }
   });
 
-  it("Claude NATIVE-FORK command: posture drives the flag on the fork path too (floor holds under env YOLO)", { timeout: 30000 }, async () => {
+  it("Claude NATIVE-FORK 命令：姿态同样决定 fork 路径上的标志（环境为 YOLO 时保持 floor）", { timeout: 30000 }, async () => {
     vi.stubEnv("OPENRIG_YOLO", "1");
     try {
       for (const [posture, expected] of [["full_bypass", "--dangerously-skip-permissions"], ["floor", "--permission-mode acceptEdits"]] as const) {
@@ -587,14 +583,12 @@ describe("GF2 — the COMPLETE production-altitude launch/restore matrix", () =>
   });
 });
 
-// ── R2 terminal at 954d97a0: TRUE ABSENCE = the locked MINIMUM FLOOR ────────────
-// README v4 (absence "floor-only"; founder amendment "DEFAULT IF NONE ATTACHED = the
-// minimum floor (nothing more)") + FINAL2: posture binds explicitly across
-// fresh/resume/fork; ambient OPENRIG_YOLO must NOT widen a seat with no attachment.
-// Absence stays HONEST (no fabricated attachment, no provenance rows) — only the
-// lifecycle BINDING carries the explicit floor.
+// ── 954d97a0 的 R2 终局：真正缺失 = 锁定的最小下限 ─────────────────────────────
+// README v4（缺失为 "floor-only"；创始人修订“未附加时默认 = 最小下限，仅此而已”）+
+// FINAL2：姿态在 fresh/resume/fork 中显式绑定；环境中的 OPENRIG_YOLO 不得扩大无附件 seat
+// 的权限。缺失仍如实呈现（不伪造附件，不生成来源行）——只有生命周期绑定携带显式 floor。
 
-describe("ABSENCE = locked floor at every lifecycle surface (R2 HIGH at 954d97a0)", () => {
+describe("缺失 = 每个生命周期界面上的锁定 floor（954d97a0 的 R2 HIGH）", () => {
   const captureAdapter = (bindings: NodeBinding[]): RuntimeAdapter => ({
     runtime: "claude-code",
     listInstalled: async () => [],
@@ -604,7 +598,7 @@ describe("ABSENCE = locked floor at every lifecycle surface (R2 HIGH at 954d97a0
     checkReady: async () => ({ ready: true }),
   } as unknown as RuntimeAdapter);
 
-  it("RED: fresh structured launch with NO attachment binds EXPLICIT floor (never undefined), even under env YOLO", async () => {
+  it("RED：无附件的 fresh 结构化启动会绑定显式 floor（绝非 undefined），即使环境为 YOLO", async () => {
     vi.stubEnv("OPENRIG_YOLO", "1");
     try {
       const bindings: NodeBinding[] = [];
@@ -620,15 +614,15 @@ describe("ABSENCE = locked floor at every lifecycle surface (R2 HIGH at 954d97a0
       const added = await setup.podInstantiator.addMemberToPod(rigId, "dev", { id: "late", runtime: "claude-code", agent_ref: "local:agents/impl", profile: "default", cwd: "." }, "/rig");
       expect(added.ok).toBe(true);
       expect(bindings).toHaveLength(1);
-      expect(bindings[0]!.launchPosture).toBe("floor"); // explicit, not undefined
-      // honesty preserved: NO fabricated provenance for the absent attachment
+      expect(bindings[0]!.launchPosture).toBe("floor"); // 显式值，而非 undefined
+      // 保持如实呈现：不会为缺失的附件伪造来源
       const lateId = (db.prepare("SELECT id FROM nodes WHERE logical_id = 'dev.late'").get() as { id: string }).id;
       expect(setup.rigRepo.getNodePolicyProvenance(lateId)).toBeNull();
       db.close();
     } finally { vi.unstubAllEnvs(); }
   });
 
-  it("RED: restore with NO provenance anywhere returns EXPLICIT floor to the resume adapter, even under env YOLO", async () => {
+  it("RED：任何位置都无来源时，恢复会向 resume 适配器返回显式 floor，即使环境为 YOLO", async () => {
     vi.stubEnv("OPENRIG_YOLO", "1");
     const dir = mkdtempSync(join(tmpdir(), "seamb-absent-"));
     try {
@@ -666,22 +660,21 @@ describe("ABSENCE = locked floor at every lifecycle surface (R2 HIGH at 954d97a0
       });
       await orch.restore(snap.id);
       const call = (claudeResume.resume as ReturnType<typeof vi.fn>).mock.calls.find((c) => c[2] === "tok-abs");
-      expect(call, "bare seat resume should have been attempted").toBeDefined();
-      expect(call![4]).toBe("floor"); // explicit floor — ambient YOLO must not widen
+      expect(call, "应已尝试恢复裸 seat").toBeDefined();
+      expect(call![4]).toBe("floor"); // 显式 floor——环境中的 YOLO 不得扩大权限
       db2.close();
     } finally { rmSync(dir, { recursive: true, force: true }); vi.unstubAllEnvs(); }
   });
 
-  // (successor-absence pin lives at PRODUCTION altitude in seat-handover-service.test.ts —
-  //  the helper-only variant was removed per Guard at c203812f: it re-computed the fallback
-  //  chain instead of driving SeatHandoverService.)
+  //（后继缺失固定点位于 seat-handover-service.test.ts 的生产高度——仅辅助函数的变体已根据
+  // c203812f 的 Guard 移除：它重新计算回退链，而没有驱动 SeatHandoverService。）
 
-  it("adapter parity under env YOLO: an ABSENT-attachment lifecycle binding (explicit floor) emits FLOOR commands on all three families", async () => {
+  it("环境为 YOLO 时适配器一致：附件缺失的生命周期 binding（显式 floor）在三类适配器上均发出 FLOOR 命令", async () => {
     vi.stubEnv("OPENRIG_YOLO", "1");
     try {
       expect(claudePostureFlag(process.env, "floor")).toBe("--permission-mode acceptEdits");
       expect(codexPostureArg("", process.env, "floor")).toBe(" -s workspace-write");
-      expect(piTrust(undefined, process.env, "floor")).toBe("no-approve"); // resource trust
+      expect(piTrust(undefined, process.env, "floor")).toBe("no-approve"); // 资源信任
     } finally { vi.unstubAllEnvs(); }
   });
 });

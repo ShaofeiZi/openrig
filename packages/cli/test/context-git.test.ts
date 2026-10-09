@@ -43,7 +43,7 @@ describe("Git context selections preserve author work", () => {
     expect(git(f.checkout, "rev-list", "--parents", "-n", "1", "HEAD").split(" ")).toHaveLength(3);
     expect(readdirSync(f.root)).toEqual(["guide"]); // no staging/history becomes another discoverable authority
     expect(readdirSync(`${f.root}-git-history`).some((name) => name.startsWith("previous-"))).toBe(true);
-    expect(result.consumption).toContain("UNVERIFIED");
+    expect(result.consumption).toContain("未验证");
   });
 
   it("stops on a real merge conflict while keeping the old served bytes and both Git parents", () => {
@@ -52,29 +52,29 @@ describe("Git context selections preserve author work", () => {
     const local = git(f.checkout, "rev-parse", "HEAD");
     writeFileSync(join(f.upstream, f.pack, "upstream.md"), "Remote choice\n"); commit(f.upstream, "remote");
     const remote = git(f.upstream, "rev-parse", "HEAD");
-    expect(() => updateGitContext(f.target)).toThrow(/merge failed/);
+    expect(() => updateGitContext(f.target)).toThrow(/merge.*失败|合并|冲突/);
     expect(git(f.checkout, "rev-parse", "HEAD")).toBe(local);
     expect(git(f.checkout, "rev-parse", "MERGE_HEAD")).toBe(remote);
     expect(readFileSync(join(f.target, "upstream.md"), "utf8")).toBe("Revision A\n");
     expect(inspectGitContext(f.target).checkout).toMatchObject({ conflicts: `${f.pack}/upstream.md`, ahead: 1, behind: 1 });
-    expect(() => updateGitContext(f.target)).toThrow(/local changes or conflicts/);
+    expect(() => updateGitContext(f.target)).toThrow(/本地更改或冲突/);
   });
 
   it("refuses dirty checkout and edited served bytes without overwriting either", () => {
     const f = fixture();
     writeFileSync(join(f.checkout, f.pack, "local.md"), "Uncommitted improvement\n");
-    expect(() => updateGitContext(f.target)).toThrow(/local changes/);
+    expect(() => updateGitContext(f.target)).toThrow(/本地更改|冲突/);
     expect(git(f.checkout, "rev-parse", "HEAD")).toBe(f.a);
     writeFileSync(join(f.target, "local.md"), "Direct served improvement\n");
     expect(inspectGitContext(f.target).served.edited).toBe(true);
-    expect(() => updateGitContext(f.target)).toThrow(/Served context has local edits/);
+    expect(() => updateGitContext(f.target)).toThrow(/服务的上下文有本地编辑/);
     expect(readFileSync(join(f.target, "local.md"), "utf8")).toBe("Direct served improvement\n");
   });
 
   it("retains selected bytes on unavailable remote and exposes an unavailable checkout", () => {
     const f = fixture();
     renameSync(f.upstream, `${f.upstream}-offline`);
-    expect(() => updateGitContext(f.target)).toThrow(/fetch failed/);
+    expect(() => updateGitContext(f.target)).toThrow(/fetch.*失败|获取失败/);
     expect(readFileSync(join(f.target, "upstream.md"), "utf8")).toBe("Revision A\n");
     renameSync(f.checkout, `${f.checkout}-offline`);
     expect(inspectGitContext(f.target).checkout).toHaveProperty("unavailable");
@@ -85,24 +85,24 @@ describe("Git context selections preserve author work", () => {
     mkdirSync(join(f.upstream, ".openrig/context-packs/other"));
     writeFileSync(join(f.upstream, ".openrig/context-packs/other/manifest.yaml"), "name: other\nversion: 1\ntaxonomy: world\nfiles: []\n");
     writeFileSync(join(f.upstream, "private-unrelated.txt"), "must stay in checkout"); commit(f.upstream, "other");
-    expect(() => addGitContext(f.upstream, {}, join(f.home, "second"))).toThrow(/Discovered 2/);
+    expect(() => addGitContext(f.upstream, {}, join(f.home, "second"))).toThrow(/发现了.*个/);
     const result = addGitContext(f.upstream, { pack: f.pack, name: "namespaced/guide" }, join(f.home, "third"));
     expect(existsSync(join(result.installedAt, "private-unrelated.txt"))).toBe(false);
   });
 
   it("rejects escaped pack paths, symlinks and unsafe destination refs", () => {
     const f = fixture();
-    expect(() => addGitContext(f.checkout, { checkout: true, pack: "../outside", name: "escape" }, f.root)).toThrow(/relative/);
-    expect(() => addGitContext(f.checkout, { checkout: true, name: "../escape" }, f.root)).toThrow(/unsafe/);
+    expect(() => addGitContext(f.checkout, { checkout: true, pack: "../outside", name: "escape" }, f.root)).toThrow(/相对目录/);
+    expect(() => addGitContext(f.checkout, { checkout: true, name: "../escape" }, f.root)).toThrow(/相对目录|逃逸|不安全/);
     symlinkSync(f.home, join(f.checkout, f.pack, "escape"));
-    expect(() => addGitContext(f.checkout, { checkout: true, name: "escape" }, f.root)).toThrow(/symlink/);
+    expect(() => addGitContext(f.checkout, { checkout: true, name: "escape" }, f.root)).toThrow(/符号链接/);
     expect(existsSync(join(f.root, "escape"))).toBe(false);
   });
 
   it("refuses a detached checkout for update and preserves an explicit selection", () => {
     const f = fixture(); git(f.checkout, "checkout", "--detach", "HEAD");
     expect(inspectGitContext(f.target).checkout).toMatchObject({ branch: null, upstream: null });
-    expect(() => updateGitContext(f.target)).toThrow(/symbolic-ref failed/);
+    expect(() => updateGitContext(f.target)).toThrow(/symbolic-ref.*失败|符号引用/);
     expect(readFileSync(join(f.target, "upstream.md"), "utf8")).toBe("Revision A\n");
   });
 });

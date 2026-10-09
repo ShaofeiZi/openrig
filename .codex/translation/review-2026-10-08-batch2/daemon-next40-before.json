@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/bundle-assembler.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/current-work.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/bundle-archive.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/crash-cart-emit.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/crash-cart-probes.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/claude-compaction-enforcer.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/codex-profile-preflight.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/crash-cart-discovery.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/bundle-audit.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/compose-project-name.ts": [
+"daemon-core-j",
+null
+],
+"packages/daemon/src/domain/continuity-policy-materializer.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/cwd-resolution.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/bundle-conflict-detector.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/crash-cart-detect.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/bootstrap-repository.ts": [
+"daemon-core-d",
+null
+],
+"packages/daemon/src/domain/continuity-stack-packets.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/capture-observer.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/bundle-integrity.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/context-usage-store.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/crash-cart-conductor.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

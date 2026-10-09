@@ -1,6 +1,6 @@
-// ONE instance-scoped view-state with ONE mutation path (dispatch) — PIN 1.
-// No module-level state anywhere in this file (FR-13). The section set is a
-// data registry, not a switch (FR-12): each entry = {name, sourceRead, drillShape}.
+// 每个实例只有一份视图状态，并且只有一个变更入口（dispatch）——PIN 1。
+// 本文件不包含任何模块级状态（FR-13）。section 集合是数据注册表，而不是
+// switch（FR-12）：每项 = {name, sourceRead, drillShape}。
 import { STUB, findAgent, findSpec, findRig, findHost, agentsRunningSpec } from './data.mjs'
 
 export function defaultSections() {
@@ -12,7 +12,7 @@ export function defaultSections() {
 }
 
 export function createViewState({ instanceId, sections = defaultSections() } = {}) {
-  if (!instanceId) throw new Error('createViewState requires an instanceId (A2: instances are addressable)')
+  if (!instanceId) throw new Error('createViewState 需要 instanceId（A2：实例必须可寻址）')
 
   let state = {
     instanceId,
@@ -35,8 +35,8 @@ export function createViewState({ instanceId, sections = defaultSections() } = {
     return () => listeners.delete(fn)
   }
 
-  // The single mutation path. Every adapter (command bar, mouse, keyboard,
-  // control socket) funnels here; nothing else writes state.
+  // 唯一状态变更路径。所有适配器（命令栏、鼠标、键盘、control socket）
+  // 最终都进入这里；其他位置都不能写状态。
   function dispatch(action) {
     state = reduce(state, action)
     for (const fn of listeners) fn(state)
@@ -55,7 +55,7 @@ function reduce(state, action) {
       return { ...next, lastError: action.message }
     case 'jump': {
       if (!state.sections.some((s) => s.name === action.section))
-        return { ...next, lastError: `unknown section "${action.section}"` }
+        return { ...next, lastError: `未知区域 "${action.section}"` }
       return { ...next, section: action.section, drill: [], filter: '', selection: 0, runningOf: null }
     }
     case 'filter':
@@ -66,11 +66,11 @@ function reduce(state, action) {
       return { ...next, selection: Math.min(Math.max(target, 0), count - 1) }
     }
     case 'activate': {
-      // Enter activates the selected explorer row — resolved against the SAME
-      // row model the renderer draws, so keyboard and mouse cannot diverge.
+      // Enter 激活选中的资源浏览器行；解析所用模型与 renderer 绘制的是同一个，
+      // 因此键盘和鼠标路径不会产生分歧。
       const rows = computeExplorerRows(state)
       const row = rows[state.selection]
-      if (!row) return { ...next, lastError: 'nothing selected' }
+      if (!row) return { ...next, lastError: '未选择任何内容' }
       return reduce(next, row.action)
     }
     case 'drill':
@@ -78,7 +78,7 @@ function reduce(state, action) {
     case 'cross':
       return crossNav(next, action)
     default:
-      return { ...next, lastError: `unknown action "${action.type}"` }
+      return { ...next, lastError: `未知操作 "${action.type}"` }
   }
 }
 
@@ -86,12 +86,12 @@ function drillTo(state, { resource, name }) {
   switch (resource) {
     case 'host': {
       const found = findHost(name)
-      if (!found) return { ...state, lastError: `no such host "${name}"` }
+      if (!found) return { ...state, lastError: `主机不存在："${name}"` }
       return { ...state, section: 'topology', drill: [{ kind: 'host', name }], selection: 0, runningOf: null }
     }
     case 'rig': {
       const found = findRig(name)
-      if (!found) return { ...state, lastError: `no such rig "${name}"` }
+      if (!found) return { ...state, lastError: `工作组不存在："${name}"` }
       return { ...state, section: 'topology', drill: [{ kind: 'host', name: found.host.name }, { kind: 'rig', name }], selection: 0, runningOf: null }
     }
     case 'pod': {
@@ -99,11 +99,11 @@ function drillTo(state, { resource, name }) {
         for (const rig of host.rigs)
           if (rig.pods.some((p) => p.name === name))
             return { ...state, section: 'topology', drill: [{ kind: 'host', name: host.name }, { kind: 'rig', name: rig.name }, { kind: 'pod', name }], selection: 0, runningOf: null }
-      return { ...state, lastError: `no such pod "${name}"` }
+      return { ...state, lastError: `pod 不存在："${name}"` }
     }
     case 'agent': {
       const found = findAgent(name)
-      if (!found) return { ...state, lastError: `no such agent "${name}"` }
+      if (!found) return { ...state, lastError: `智能体不存在："${name}"` }
       return {
         ...state,
         section: 'topology',
@@ -119,26 +119,26 @@ function drillTo(state, { resource, name }) {
     }
     case 'spec': {
       const found = findSpec(name)
-      if (!found) return { ...state, lastError: `no such spec "${name}"` }
+      if (!found) return { ...state, lastError: `spec 不存在："${name}"` }
       return { ...state, section: 'specs', drill: [{ kind: 'spec', name }], selection: 0, runningOf: null }
     }
     default:
-      return { ...state, lastError: `unknown resource "${resource}"` }
+      return { ...state, lastError: `未知资源 "${resource}"` }
   }
 }
 
-// The explorer row model — pure function of state, shared by the reducer
-// ('activate') and the renderer (drawing + hit-map). One source of truth.
+// 资源浏览器行模型是 state 的纯函数，由 reducer（'activate'）和 renderer
+//（绘制 + hit-map）共享，因此只有一个事实来源。
 export function computeExplorerRows(state) {
   const rows = []
   for (const section of state.sections) {
     const active = section.name === state.section
-    const label = { topology: 'TOPOLOGY', specs: 'SPECS', needs: 'NEEDS-YOU' }[section.name] ?? section.name.toUpperCase()
+    const label = { topology: '拓扑', specs: 'SPEC', needs: '需要你处理' }[section.name] ?? section.name.toUpperCase()
     rows.push({ label: `${active ? '▾' : '▸'} ${label}`, action: { type: 'jump', section: section.name } })
     if (!active) continue
     if (section.name === 'topology') {
       for (const host of STUB.hosts) {
-        rows.push({ label: `  ▾ ${host.name}${host.reachable ? '' : ' (unreachable)'}`, action: { type: 'drill', resource: 'host', name: host.name } })
+        rows.push({ label: `  ▾ ${host.name}${host.reachable ? '' : '（不可达）'}`, action: { type: 'drill', resource: 'host', name: host.name } })
         for (const rig of host.rigs) {
           rows.push({ label: `    ▾ ${rig.name}`, action: { type: 'drill', resource: 'rig', name: rig.name } })
           for (const pod of rig.pods) {
@@ -163,14 +163,14 @@ export function computeExplorerRows(state) {
 function crossNav(state, { kind, name }) {
   if (kind === 'spec-of') {
     const found = findAgent(name)
-    if (!found) return { ...state, lastError: `no such agent "${name}"` }
+    if (!found) return { ...state, lastError: `智能体不存在："${name}"` }
     return { ...state, section: 'specs', drill: [{ kind: 'spec', name: found.agent.spec }], selection: 0, runningOf: null }
   }
   if (kind === 'running') {
     const spec = findSpec(name)
-    if (!spec) return { ...state, lastError: `no such spec "${name}"` }
+    if (!spec) return { ...state, lastError: `spec 不存在："${name}"` }
     const seats = agentsRunningSpec(name)
     return { ...state, section: 'topology', drill: [], runningOf: name, filter: '', selection: 0, seats }
   }
-  return { ...state, lastError: `unknown cross-nav "${kind}"` }
+  return { ...state, lastError: `未知跨视图导航 "${kind}"` }
 }

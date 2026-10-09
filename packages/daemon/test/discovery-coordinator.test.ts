@@ -69,8 +69,8 @@ describe("DiscoveryCoordinator", () => {
     };
   }
 
-  // T1: Full pipeline
-  it("full pipeline: scan -> fingerprint -> enrich -> persist", async () => {
+  // T1：完整流水线
+  it("完整流水线：扫描 -> 指纹识别 -> 丰富信息 -> 持久化", async () => {
     const pane = makePane();
     const { coordinator, discoveryRepo } = buildCoordinator({ scanner: mockScanner([pane]) });
 
@@ -84,8 +84,8 @@ describe("DiscoveryCoordinator", () => {
     expect(stored).toBeDefined();
   });
 
-  // T2: New session inserted
-  it("new session discovered -> inserted in DB", async () => {
+  // T2：插入新会话
+  it("发现新会话 -> 插入数据库", async () => {
     const { coordinator, discoveryRepo } = buildCoordinator({ scanner: mockScanner([makePane()]) });
 
     await coordinator.scanOnce();
@@ -95,8 +95,8 @@ describe("DiscoveryCoordinator", () => {
     expect(all[0]!.status).toBe("active");
   });
 
-  // T3: Rescan preserves id + first_seen_at
-  it("known session re-scanned -> preserves id and first_seen_at, updates last_seen_at", async () => {
+  // T3：重新扫描保留 id + first_seen_at
+  it("重新扫描已知会话 -> 保留 id 和 first_seen_at，并更新 last_seen_at", async () => {
     const pane = makePane();
     const { coordinator, discoveryRepo } = buildCoordinator({ scanner: mockScanner([pane]) });
 
@@ -104,15 +104,15 @@ describe("DiscoveryCoordinator", () => {
     const firstId = first[0]!.id;
     const firstSeen = first[0]!.firstSeenAt;
 
-    // Small delay to ensure last_seen_at differs
+    // 短暂延迟，确保 last_seen_at 不同。
     const second = await coordinator.scanOnce();
 
     expect(second[0]!.id).toBe(firstId);
     expect(second[0]!.firstSeenAt).toBe(firstSeen);
   });
 
-  // T4: Missing session -> vanished
-  it("missing session marked vanished", async () => {
+  // T4：缺失会话 -> vanished
+  it("将缺失会话标记为 vanished", async () => {
     const pane = makePane();
     const scanner1 = mockScanner([pane]);
     const { coordinator, discoveryRepo } = buildCoordinator({ scanner: scanner1 });
@@ -120,7 +120,7 @@ describe("DiscoveryCoordinator", () => {
     await coordinator.scanOnce();
     expect(discoveryRepo.listDiscovered("active")).toHaveLength(1);
 
-    // Second scan with empty results
+    // 第二次扫描返回空结果。
     (scanner1.scan as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ panes: [], scannedAt: new Date().toISOString() });
     await coordinator.scanOnce();
 
@@ -128,9 +128,9 @@ describe("DiscoveryCoordinator", () => {
     expect(discoveryRepo.listDiscovered("vanished")).toHaveLength(1);
   });
 
-  // T5a: Session-level binding filters all panes in that session
-  it("session-level managed binding filters all panes", async () => {
-    // Create a managed rig + node + binding with no pane
+  // T5a：会话级绑定过滤该会话的所有窗格
+  it("会话级托管绑定过滤所有窗格", async () => {
+    // 创建没有窗格的托管工作组 + 节点 + 绑定。
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-1", "r01");
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id) VALUES (?, ?, ?)").run("n-1", "rig-1", "dev");
     db.prepare("INSERT INTO bindings (id, node_id, tmux_session) VALUES (?, ?, ?)").run("b-1", "n-1", "r01-dev");
@@ -144,13 +144,13 @@ describe("DiscoveryCoordinator", () => {
 
     const results = await coordinator.scanOnce();
 
-    // Only organic session should be discovered
+    // 应当只发现自然会话。
     expect(results).toHaveLength(1);
     expect(results[0]!.tmuxSession).toBe("organic");
   });
 
-  // T5b: Pane-level binding filters only that pane
-  it("pane-level managed binding filters only that pane", async () => {
+  // T5b：窗格级绑定只过滤对应窗格
+  it("窗格级托管绑定只过滤对应窗格", async () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-1", "r01");
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id) VALUES (?, ?, ?)").run("n-1", "rig-1", "dev");
     db.prepare("INSERT INTO bindings (id, node_id, tmux_session, tmux_pane) VALUES (?, ?, ?, ?)").run("b-1", "n-1", "multi", "%1");
@@ -163,31 +163,31 @@ describe("DiscoveryCoordinator", () => {
 
     const results = await coordinator.scanOnce();
 
-    // Only %0 should be discovered, %1 is managed
+    // 应当只发现 %0，%1 已托管。
     expect(results).toHaveLength(1);
     expect(results[0]!.tmuxPane).toBe("%0");
   });
 
-  // T6: Claimed session filtered from rediscovery
-  it("claimed session filtered from future scans", async () => {
+  // T6：已认领会话不会被再次发现
+  it("后续扫描过滤已认领会话", async () => {
     const { coordinator, discoveryRepo } = buildCoordinator({ scanner: mockScanner([makePane()]) });
 
-    // First scan discovers
+    // 首次扫描发现会话。
     const first = await coordinator.scanOnce();
     expect(first).toHaveLength(1);
 
-    // Claim it
+    // 认领会话。
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run("rig-1", "r01");
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id) VALUES (?, ?, ?)").run("n-1", "rig-1", "dev");
     discoveryRepo.markClaimed(first[0]!.id, "n-1");
 
-    // Second scan should not re-discover it
+    // 第二次扫描不应再次发现它。
     const second = await coordinator.scanOnce();
     expect(second).toHaveLength(0);
   });
 
-  // T7: scanOnce returns active sessions
-  it("scanOnce returns active discovered sessions", async () => {
+  // T7：scanOnce 返回活跃会话
+  it("scanOnce 返回已发现的活跃会话", async () => {
     const panes = [makePane({ tmuxPane: "%0" }), makePane({ tmuxPane: "%1" })];
     const { coordinator } = buildCoordinator({ scanner: mockScanner(panes) });
 
@@ -197,8 +197,8 @@ describe("DiscoveryCoordinator", () => {
     expect(results.every((s) => s.status === "active")).toBe(true);
   });
 
-  // T9: Multiple sessions in single scan
-  it("multiple sessions discovered in single scan", async () => {
+  // T9：单次扫描发现多个会话
+  it("单次扫描发现多个会话", async () => {
     const panes = [
       makePane({ tmuxSession: "s1", tmuxPane: "%0" }),
       makePane({ tmuxSession: "s2", tmuxPane: "%0" }),
@@ -211,8 +211,8 @@ describe("DiscoveryCoordinator", () => {
     expect(results).toHaveLength(3);
   });
 
-  // T10: Empty tmux -> empty results
-  it("empty tmux returns empty results", async () => {
+  // T10：空 tmux -> 空结果
+  it("空 tmux 返回空结果", async () => {
     const { coordinator } = buildCoordinator({ scanner: mockScanner([]) });
 
     const results = await coordinator.scanOnce();
@@ -220,15 +220,15 @@ describe("DiscoveryCoordinator", () => {
     expect(results).toHaveLength(0);
   });
 
-  // T11: Events emitted for discover and vanish
-  it("session.discovered and session.vanished events emitted", async () => {
+  // T11：发现和消失时发出事件
+  it("发出 session.discovered 和 session.vanished 事件", async () => {
     const pane = makePane();
     const scanner = mockScanner([pane]);
     const { coordinator } = buildCoordinator({ scanner });
 
     await coordinator.scanOnce();
 
-    // Check discovered event
+    // 检查发现事件。
     const events = db.prepare("SELECT type, payload FROM events ORDER BY seq").all() as Array<{ type: string; payload: string }>;
     const discovered = events.filter((e) => e.type === "session.discovered");
     expect(discovered).toHaveLength(1);
@@ -236,7 +236,7 @@ describe("DiscoveryCoordinator", () => {
     expect(dp.tmuxSession).toBe("organic");
     expect(dp.tmuxPane).toBe("%0");
 
-    // Second scan empty -> vanished event
+    // 第二次扫描为空 -> 消失事件。
     (scanner.scan as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ panes: [], scannedAt: new Date().toISOString() });
     await coordinator.scanOnce();
 
@@ -244,28 +244,28 @@ describe("DiscoveryCoordinator", () => {
     expect(allEvents.some((e) => e.type === "session.vanished")).toBe(true);
   });
 
-  // T12: Repository CRUD operations
-  it("repository CRUD: upsert, list, get, markClaimed, markVanished", () => {
+  // T12：仓库增删改查操作
+  it("仓库增删改查：upsert、list、get、markClaimed、markVanished", () => {
     const repo = new DiscoveryRepository(db);
 
-    // Upsert
+    // 插入或更新。
     const created = repo.upsertDiscoveredSession({
       tmuxSession: "test", tmuxPane: "%0", runtimeHint: "claude-code", confidence: "high",
     });
     expect(created.id).toBeTruthy();
     expect(created.status).toBe("active");
 
-    // List
+    // 列表。
     expect(repo.listDiscovered("active")).toHaveLength(1);
 
-    // Get
+    // 获取。
     expect(repo.getDiscoveredSession(created.id)!.tmuxSession).toBe("test");
 
-    // Mark vanished
+    // 标记为已消失。
     repo.markVanished([created.id]);
     expect(repo.getDiscoveredSession(created.id)!.status).toBe("vanished");
 
-    // Create another + mark claimed
+    // 再创建一个并标记为已认领。
     const s2 = repo.upsertDiscoveredSession({
       tmuxSession: "test2", tmuxPane: "%0", runtimeHint: "codex", confidence: "high",
     });

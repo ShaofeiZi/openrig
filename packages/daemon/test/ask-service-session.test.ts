@@ -27,8 +27,8 @@ function makeDeps(sessionResult: SessionSearchResult): AskDeps {
   };
 }
 
-describe("AskService — session-scoped (L2)", () => {
-  it("routes to searchSession (not whole-rig, not seat) and returns content excerpts", async () => {
+describe("AskService——会话作用域（L2）", () => {
+  it("路由到 searchSession（不是整个工作组或席位）并返回内容摘录", async () => {
     const deps = makeDeps({
       backend: "rg",
       token: "abc-123",
@@ -50,7 +50,7 @@ describe("AskService — session-scoped (L2)", () => {
     expect(result.insufficient).toBe(false);
   });
 
-  it("surfaces session_not_found as guidance — never a silent empty", async () => {
+  it("把 session_not_found 呈现为 guidance，绝不静默返回空结果", async () => {
     const deps = makeDeps({
       backend: "none",
       token: "bogus",

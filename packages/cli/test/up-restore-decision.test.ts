@@ -1,7 +1,6 @@
 // OPR.0.3.4.2 — rig up --existing: resume-original default surface.
-// --fresh opt-in forwarding, the awaiting-decision ASK/offer (TTY [y/N] via
-// injected prompt; headless honest machine-status + --fresh hint), and the
-// five-term distinct-naming render. NEVER an auto-substitution.
+// --fresh opt-in 转发、等待决策的 ASK/offer（经注入 prompt 的 TTY [y/N]；
+// headless 诚实机器状态 + --fresh 提示），以及五项不同命名渲染。绝不自动替换。
 
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vitest";
 import http from "node:http";
@@ -110,15 +109,15 @@ describe("rig up --existing — resume-original default (OPR.0.3.4.2)", () => {
       nodes: [{ logicalId: "dev.impl", status: "awaiting-decision", error: "Original session unresumable: resume attempted but failed." }],
       warnings: [],
     });
-    // No promptYesNo injected and no TTY in vitest -> the headless path.
+    // 无注入 promptYesNo 且 vitest 中无 TTY → headless 路径。
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "up", "myrig", "--existing"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("dev.impl: awaiting-decision");
+    expect(output).toContain("dev.impl：awaiting-decision");
     expect(output).toContain("--fresh dev.impl");
     expect(exitCode).toBe(1);
-    // CRITICAL: exactly one POST — nothing auto-substituted a fresh session.
+    // 关键：恰好一个 POST——绝无东西自动替换出 fresh session。
     expect(upBodies).toHaveLength(1);
   });
 
@@ -146,7 +145,7 @@ describe("rig up --existing — resume-original default (OPR.0.3.4.2)", () => {
     // The accepted seat was re-run as operation B.
     expect(upBodies).toHaveLength(2);
     expect(upBodies[1]!.freshLogicalIds).toEqual(["dev.impl"]);
-    expect(logs.join("\n")).toContain("dev.impl: fresh-primed");
+    expect(logs.join("\n")).toContain("dev.impl：fresh-primed");
   });
 
   it("TTY ASK declined: no second POST, no session started", async () => {
@@ -162,7 +161,7 @@ describe("rig up --existing — resume-original default (OPR.0.3.4.2)", () => {
     });
 
     expect(upBodies).toHaveLength(1);
-    expect(logs.join("\n")).toContain("No fresh sessions started");
+    expect(logs.join("\n")).toContain("未启动任何 fresh 会话");
     expect(exitCode).toBe(1);
   });
 
@@ -186,12 +185,12 @@ describe("rig up --existing — resume-original default (OPR.0.3.4.2)", () => {
       await makeCmd().parseAsync(["node", "rig", "up", "myrig", "--existing", "--plan"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain('Plan: restore rig "myrig"');
+    expect(output).toContain('计划：恢复工作组 "myrig"');
     expect(output).toContain("snap-9");
-    expect(output).toContain("dev.impl: resume-original");
-    expect(output).toContain("dev.qa: awaiting-decision");
+    expect(output).toContain("dev.impl：resume-original");
+    expect(output).toContain("dev.qa：awaiting-decision");
     expect(output).toContain("no token available");
-    expect(output).toContain("No changes made.");
+    expect(output).toContain("未做任何修改");
     expect(exitCode).toBeUndefined();
     // The plan flag reached the daemon body.
     expect(upBodies).toHaveLength(1);
@@ -220,8 +219,8 @@ describe("rig up --existing — resume-original default (OPR.0.3.4.2)", () => {
     expect(upBodies[0]!.plan).toBe(true);
     expect(upBodies[0]!.freshLogicalIds).toEqual(["dev.impl"]);
     const output = logs.join("\n");
-    expect(output).toContain("dev.impl: fresh-primed");
-    expect(output).toContain("No changes made.");
+    expect(output).toContain("dev.impl：fresh-primed");
+    expect(output).toContain("未做任何修改");
   });
 
   it("HONEST TIMEOUT (apply mode): DaemonConnectionError renders in-progress/unknown + verify command, never a bare failure", async () => {
@@ -239,8 +238,8 @@ describe("rig up --existing — resume-original default (OPR.0.3.4.2)", () => {
     });
     const output = logs.join("\n");
     // Honest in-progress/unknown framing, not a false "failed".
-    expect(output).toContain("may still be processing");
-    expect(output).toContain("does not mean the operation failed");
+    expect(output).toContain("操作可能仍在进行中");
+    expect(output).toContain("这不代表操作失败");
     expect(output).toContain("rig ps");
     expect(output).not.toContain("Up failed");
     expect(exitCode).toBe(1);
@@ -305,11 +304,11 @@ describe("rig up --existing — resume-original default (OPR.0.3.4.2)", () => {
       await makeCmd().parseAsync(["node", "rig", "up", "myrig", "--existing"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("a: resumed");
-    expect(output).toContain("b: fresh-primed");
-    expect(output).toContain("c: awaiting-decision");
-    expect(output).toContain("d: attention_required");
-    expect(output).toContain("e: failed");
+    expect(output).toContain("a：resumed");
+    expect(output).toContain("b：fresh-primed");
+    expect(output).toContain("c：awaiting-decision");
+    expect(output).toContain("d：attention_required");
+    expect(output).toContain("e：failed");
     expect(exitCode).toBe(1);
   });
 });

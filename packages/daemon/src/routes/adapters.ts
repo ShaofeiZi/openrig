@@ -18,7 +18,7 @@ adaptersRoutes.get("/tmux/sessions", async (c) => {
   return c.json(sessions);
 });
 
-// GET /api/adapters/cmux/status — live control probe on every request
+// GET /api/adapters/cmux/status —— 每次请求都做一次活动控制探活
 adaptersRoutes.get("/cmux/status", async (c) => {
   const { cmuxAdapter } = getDeps(c);
   await cmuxAdapter.connect();

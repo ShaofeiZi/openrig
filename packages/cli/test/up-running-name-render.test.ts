@@ -1,7 +1,7 @@
-// S5b final fix, R2 F1 (row r054-s5b-final-fix) — `rig up` must RENDER the
-// locked teaching refusal for rig_name_running verbatim, not the generic
-// "Up failed: unknown error ... validate your spec" fallback. The stub serves
-// the daemon's post-fix 409 shape; the pin is on the CLI's rendering.
+// S5b final fix，R2 F1（row r054-s5b-final-fix）——`rig up` 必须逐字渲染
+// rig_name_running 的锁定教学拒绝，而非通用
+// "Up failed: unknown error ... validate your spec" 回退。stub 服务
+// daemon 修复后 409 形状；pin 在 CLI 的渲染。
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import * as http from "node:http";
 import { Command } from "commander";
@@ -93,11 +93,11 @@ describe("rig up rendering — rig_name_running teaching refusal (S5b F1)", () =
     const exitCode = process.exitCode;
     process.exitCode = originalExit;
 
-    // The locked teaching refusal, rendered.
+    // 锁定教学拒绝，已渲染。
     expect(out).toContain('A rig named "dupe-cli" is already RUNNING');
     expect(out).toContain("rig down dupe-cli");
     expect(out).toMatch(/nothing was created or launched/i);
-    // Not the generic fallback noise.
+    // 非通用回退噪声。
     expect(out).not.toContain("unknown error");
     expect(out).not.toContain("validate your spec");
     expect(exitCode).toBe(1);

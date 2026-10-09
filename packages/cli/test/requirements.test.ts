@@ -111,14 +111,14 @@ describe("Requirements CLI", () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "requirements", "/tmp/rig.yaml"]);
     });
-    expect(logs.some((l) => l.includes("REQUIREMENTS"))).toBe(true);
+    expect(logs.some((l) => l.includes("依赖要求"))).toBe(true);
     expect(logs.some((l) => l.includes("OK") && l.includes("git"))).toBe(true);
-    expect(logs.some((l) => l.includes("MISSING") && l.includes("missing-tool"))).toBe(true);
+    expect(logs.some((l) => l.includes("缺失") && l.includes("missing-tool"))).toBe(true);
   });
 
-  // T10: all requirements met -> exit 0
+  // T10：全部要求满足 → 退出 0
   it("all requirements met returns exit 0", async () => {
-    // Override plan response to have all installed
+    // 覆盖 plan 响应使全部已安装
     const orig = planResponse.stages;
     planResponse.stages = [
       { stage: "probe_requirements", status: "ok", detail: {
@@ -143,13 +143,13 @@ describe("Requirements CLI", () => {
     expect(exitCode).toBe(1);
   });
 
-  // T12a: --json with missing requirement -> exit 1
+  // T12a：--json 缺要求 → 退出 1
   it("--json with missing requirement returns exit 1", async () => {
     const { exitCode, logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "requirements", "/tmp/rig.yaml", "--json"]);
     });
     expect(exitCode).toBe(1);
-    // Should still output JSON
+    // 仍应输出 JSON
     const parsed = JSON.parse(logs.join(""));
     expect(parsed.requirements).toBeDefined();
   });

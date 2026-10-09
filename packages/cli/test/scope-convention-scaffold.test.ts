@@ -1,10 +1,9 @@
-// OPR.0.4.4.23 — the scaffold emits the SDLC convention sections for EVERY
-// SliceTemplateKind (the Rev-2 exhaustive contract): a slice that doesn't
-// carry `## Intent` / `## Mini-requirements` / `## Proof contract` doesn't
-// expose the one scope convention, whatever its template kind. The tests
-// ENUMERATE the exported kind set, so a future kind added to
-// SLICE_TEMPLATE_KINDS fails here until its template carries the sections.
-// Conventions SSOT: docs/reference/sdlc-conventions.md.
+// OPR.0.4.4.23——脚手架为每个 SliceTemplateKind 都生成 SDLC 约定段
+//（Rev-2 穷尽契约）：不带 `## Intent` / `## Mini-requirements` /
+// `## Proof contract` 的 slice，无论其模板种类，都未暴露唯一的作用域约定。
+// 测试枚举导出的 kind 集合，故未来加入 SLICE_TEMPLATE_KINDS 的 kind
+// 会在此失败，直到其模板带上这些段。
+// 约定 SSOT：docs/reference/sdlc-conventions.md。
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs";
@@ -24,18 +23,21 @@ import {
 import { MISSION_TEMPLATE_KINDS, SLICE_TEMPLATE_KINDS } from "../src/lib/scope/types.js";
 import { renderMissionTemplate } from "../src/lib/scope/templates.js";
 
-const CONVENTION_SECTIONS = ["## Intent", "## Mini-requirements", "## Proof contract"] as const;
+const CONVENTION_SECTION_VARIANTS = [
+  ["## 意图"],
+  ["## 最小需求", "## 小型需求"],
+  ["## 证明契约", "## 证据约定"],
+] as const;
 const SSOT_POINTER = "docs/reference/sdlc-conventions.md";
 
-// aa922842 — the dual-context pointer contract.
+// aa922842——双上下文指针契约。
 //
-// Scaffolded output lands in a USER's workspace, so it is installed-facing: the reader may
-// have no repo at all. The same doc reaches them by three different paths and only two may
-// ever be taught:
-//   repo source      docs/reference/sdlc-conventions.md          — correct for repo readers
-//   installed stable $OPENRIG_HOME/reference/sdlc-conventions.md — correct for installed agents
-//                                                                  (default ~/.openrig/…)
-//   packed internal  daemon/docs/reference/…                     — assembly input, NEVER taught
+// 脚手架输出落在用户工作区，故面向安装：读者可能根本没有仓库。同一文档经三条
+// 不同路径到达他们，但只有两条可以被指引：
+//   repo 源      docs/reference/sdlc-conventions.md          —— 对 repo 读者正确
+//   安装稳定版 $OPENRIG_HOME/reference/sdlc-conventions.md —— 对已安装 agent 正确
+//                                                                  （默认 ~/.openrig/…）
+//   打包内部    daemon/docs/reference/…                     —— 装配输入，绝不指引
 //
 // Two failure modes this guards, both of which look fine in a repo checkout:
 //   1. teaching ONLY the repo path — an installed agent looks somewhere that does not exist;
@@ -111,8 +113,11 @@ describe("OPR.0.4.4.23 convention scaffold — exhaustive over SliceTemplateKind
       fs.rmSync(path.dirname(specPath), { recursive: true, force: true });
       expect(frontmatter.intent, `template kind "${kind}" has no frontmatter intent`).toBe(RENDER_OPTS.title);
       expect(frontmatter.depends_on, `template kind "${kind}" has no sibling-ordering edge list`).toEqual([]);
-      for (const section of CONVENTION_SECTIONS) {
-        expect(rendered, `template kind "${kind}" is missing "${section}"`).toContain(section);
+      for (const variants of CONVENTION_SECTION_VARIANTS) {
+        expect(
+          variants.some((section) => rendered.includes(section)),
+          `模板类型 "${kind}" 缺少约定章节 "${variants.join(" / ")}"`,
+        ).toBe(true);
       }
       expect(rendered, `template kind "${kind}" is missing the SSOT pointer`).toContain(SSOT_POINTER);
       expect(rendered, `template kind "${kind}" is missing the mission-slice-sop skill pointer`).toContain("mission-slice-sop");
@@ -149,11 +154,11 @@ describe("OPR.0.4.4.23 convention scaffold — exhaustive over SliceTemplateKind
       const rendered = renderSliceTemplate(kind, RENDER_OPTS);
       const firstSectionIdx = rendered.indexOf("## ");
       expect(
-        rendered.slice(firstSectionIdx).startsWith("## Intent"),
-        `template kind "${kind}" does not open its sections with ## Intent`,
+        rendered.slice(firstSectionIdx).startsWith("## 意图"),
+        `模板类型 "${kind}" 没有以 ## 意图 开始其章节`,
       ).toBe(true);
-      const miniIdx = rendered.indexOf("## Mini-requirements");
-      const proofIdx = rendered.indexOf("## Proof contract");
+      const miniIdx = Math.max(rendered.indexOf("## 最小需求"), rendered.indexOf("## 小型需求"));
+      const proofIdx = Math.max(rendered.indexOf("## 证明契约"), rendered.indexOf("## 证据约定"));
       expect(firstSectionIdx, `kind "${kind}" section order broken`).toBeLessThan(miniIdx);
       expect(miniIdx, `kind "${kind}" section order broken`).toBeLessThan(proofIdx);
     }
@@ -194,13 +199,16 @@ describe("scope create — the mode-neutral SPEC/NOTES convention lands on disk"
       const specPath = path.join(slicePath, "SPEC.md");
       const readme = fs.readFileSync(specPath, "utf8");
       expect(readFrontmatter(specPath)).toMatchObject({ intent: `Intent for ${kind}`, depends_on: [] });
-      for (const section of CONVENTION_SECTIONS) {
-        expect(readme, `created SPEC for kind "${kind}" is missing "${section}"`).toContain(section);
+      for (const variants of CONVENTION_SECTION_VARIANTS) {
+        expect(
+          variants.some((section) => readme.includes(section)),
+          `模板类型 "${kind}" 创建的 SPEC 缺少约定章节 "${variants.join(" / ")}"`,
+        ).toBe(true);
       }
 
       expect(fs.statSync(path.join(slicePath, "proof")).isDirectory(), `kind "${kind}" did not scaffold proof/`).toBe(true);
       expect(fs.existsSync(path.join(slicePath, "PROOF.md")), `kind "${kind}" did not scaffold PROOF.md`).toBe(true);
-      expect(fs.readFileSync(path.join(slicePath, "PROGRESS.md"), "utf8")).toContain("## Acceptance");
+      expect(fs.readFileSync(path.join(slicePath, "PROGRESS.md"), "utf8")).toContain("## 验收");
       expect(fs.readFileSync(path.join(slicePath, "PROOF.md"), "utf8")).toContain("SPEC.md");
       expect(parseYaml(fs.readFileSync(path.join(slicePath, "slice.yaml"), "utf8"))).toEqual({
         schema: "openrig.slice/v0alpha1",
@@ -264,16 +272,16 @@ describe("release capability-delta scaffold and expiry advisory", () => {
       "audience:",
       "review_status:",
       "expiry:",
-      "## What you can now do (situation-keyed)",
-      "REACH FOR IT WHEN",
-      "## Landed, not yet drivable",
-      "## What to STOP doing",
-      "Correct before:",
-      "Wrong now:",
-      "## Selection probes",
-      "DELTA-ONLY QUALIFICATION",
-      "## Canon patch",
-      "Already present — do not duplicate",
+      "## 现在可以做什么（按情境索引）",
+      "在以下情况使用",
+      "## 已落地，但尚不可直接操作",
+      "## 应停止做什么",
+      "此前正确：",
+      "现在错误：",
+      "## 选择探针",
+      "仅凭增量判定",
+      "## 规范补丁",
+      "已经存在——不要重复",
       SSOT_POINTER,
       INSTALLED_POINTER_ENV,
     ]) {
@@ -302,8 +310,8 @@ describe("release capability-delta scaffold and expiry advisory", () => {
     const missionPath = JSON.parse(created.stdout).mission.path as string;
     const deltaPath = path.join(missionPath, "CAPABILITY-DELTA-v0.5.4.md");
     const configured = fs.readFileSync(deltaPath, "utf8")
-      .replace('canon_path: "<path to capability canon>"', "canon_path: capability-canon.md")
-      .replace('successor_path: "<path to successor delta>"', "successor_path: CAPABILITY-DELTA-v0.5.5.md");
+      .replace('canon_path: "<能力规范路径>"', "canon_path: capability-canon.md")
+      .replace('successor_path: "<后继增量路径>"', "successor_path: CAPABILITY-DELTA-v0.5.5.md");
     fs.writeFileSync(deltaPath, configured, "utf8");
     fs.writeFileSync(
       path.join(missionPath, "capability-canon.md"),
@@ -349,7 +357,7 @@ describe("release capability-delta scaffold and expiry advisory", () => {
     expect(expiryFindings[0]).toEqual(expect.objectContaining({
       kind: "expired_capability_delta",
       severity: "medium",
-      message: expect.stringMatching(/canon header.*successor.*citable no more/i),
+      message: expect.stringMatching(/canon 头部.*后继文件.*不再可被引用/),
     }));
   });
 });
@@ -424,16 +432,16 @@ describe("OPR.0.4.4.23 teaching surfaces name the drop verb", () => {
   it("every slice template's proving guidance names rig proof add and --media", () => {
     for (const kind of SLICE_TEMPLATE_KINDS) {
       const rendered = renderSliceTemplate(kind, RENDER_OPTS);
-      expect(rendered, `template kind "${kind}" does not name rig proof add`).toContain("rig proof add");
+      expect(rendered, `模板类型 "${kind}" 未提及 zrig proof add`).toContain("zrig proof add");
       expect(rendered, `template kind "${kind}" does not name --media`).toContain("--media");
     }
   });
 
   it("the PROOF.md template names rig proof add and --media and binds to SPEC.md", () => {
     const proof = renderSliceProofTemplate({ id: RENDER_OPTS.id, title: RENDER_OPTS.title });
-    expect(proof).toContain("rig proof add");
+    expect(proof).toContain("zrig proof add");
     expect(proof).toContain("--media");
     expect(proof).toContain("SPEC.md");
-    expect(proof).toContain("Hand-placing files without a drop");
+    expect(proof).toContain("只手工放入文件而不执行 drop");
   });
 });

@@ -15,7 +15,7 @@ import { AgentActivityStore } from "../src/domain/agent-activity-store.js";
 import { AppliedLaunchObservationStore } from "../src/domain/applied-launch-observation-store.js";
 import { observeClaudePermission } from "../src/domain/permission-drift.js";
 
-// -- Mocks --
+// -- Mock --
 
 function mockTmux(overrides?: Partial<TmuxAdapter>): TmuxAdapter {
   return {
@@ -131,15 +131,15 @@ describe("StartupOrchestrator", () => {
     };
   }
 
-  it("deliberate fresh replacement appends the named durable obligation read without an extra message", async () => {
+  it("显式 fresh replacement 会附加具名 durable obligation read，且不增加额外消息", async () => {
     const seed = seedSession();
     await createOrchestrator().startNode(makeInput(seed, { startupActions: [makeIdentityAction()], includeDurableObligations: true }));
     expect(tmux.sendText).toHaveBeenCalledTimes(1);
-    expect(tmux.sendText).toHaveBeenCalledWith("r01-impl", expect.stringContaining("rig queue list --destination r01-impl --state pending,in-progress,blocked"));
+    expect(tmux.sendText).toHaveBeenCalledWith("r01-impl", expect.stringContaining("zrig queue list --destination r01-impl --state pending,in-progress,blocked"));
     expect(tmux.sendText).toHaveBeenCalledWith("r01-impl", expect.stringContaining(makeIdentityAction().value));
   });
 
-  it("persists the authored context before a native gate and exposes only the matching continuation", async () => {
+  it("在 native gate 前持久化 authored context，且仅公开匹配的 continuation", async () => {
     const seed = seedSession(); const orch = createOrchestrator();
     const action = makeAction({ type: "send_text", value: "configured role and durable queue instructions" });
     const adapter = mockAdapter({ launchHarness: vi.fn(async () => ({ ok: false, recovery: "attention_required", error: "Hook review" })) });
@@ -152,7 +152,7 @@ describe("StartupOrchestrator", () => {
     expect(orch.canContinueFresh(seed.nodeId, seed.sessionId)).toBe(false);
   });
 
-  it("exact resume retains configured fresh context while sending no replay", async () => {
+  it("exact resume 保留已配置的 fresh context，且不发送 replay", async () => {
     const seed = seedSession(); const orch = createOrchestrator();
     const action = makeAction({ type: "send_text", value: "configured context" });
     await orch.startNode(makeInput(seed, { startupActions: [action] }));
@@ -172,8 +172,8 @@ describe("StartupOrchestrator", () => {
     const adapter = mockAdapter(gate === "launch"
       ? { launchHarness: vi.fn(async () => ({ ok: false, recovery: "attention_required", error: "Hook review" })) }
       : { checkReady: vi.fn(async () => ({ ready: false, code: "hook_trust_gate", reason: "Hook review" })) });
-    // RestoreOrchestrator's pod-aware exact-resume path contains replay via
-    // empty files/actions, but uses isRestore:false to launch the native harness.
+    // RestoreOrchestrator 支持 pod 的 exact-resume 路径通过空 file/action 表达 replay，
+    // 但使用 isRestore:false 启动 native harness。
     const input = makeInput(seed, { adapter, isRestore: false, resumeToken: "native-original",
       resumeType: "claude_id", preserveStartupContext: true, allowFreshFallback: false });
     expect((await orch.startNode(input)).startupStatus).toBe("attention_required");
@@ -186,8 +186,8 @@ describe("StartupOrchestrator", () => {
     expect(tmux.sendText).not.toHaveBeenCalled();
   });
 
-  // T1: fresh launch enters pending before startup delivery
-  it("marks pending before delivery", async () => {
+  // T1：fresh launch 在 startup delivery 前进入 pending
+  it("在 delivery 前标记为 pending", async () => {
     const seed = seedSession();
     const adapter = mockAdapter();
     let statusDuringProject = "";
@@ -202,8 +202,8 @@ describe("StartupOrchestrator", () => {
     expect(statusDuringProject).toBe("pending");
   });
 
-  // T2: successful startup transitions to ready
-  it("successful startup transitions to ready", async () => {
+  // T2：成功 startup 转为 ready
+  it("成功 startup 转为 ready", async () => {
     const seed = seedSession();
     const orch = createOrchestrator();
     const result = await orch.startNode(makeInput(seed));
@@ -232,7 +232,7 @@ describe("StartupOrchestrator", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM node_startup_context WHERE node_id = ?").get(seed.nodeId)).toEqual({ n: 1 });
   });
 
-  it("records the exact adapter-returned launch effect only after successful managed launch", async () => {
+  it("仅在 managed launch 成功后记录 adapter 返回的精确 launch effect", async () => {
     const seed = seedSession();
     const appliedLaunch = observeClaudePermission("--permission-mode acceptEdits");
     const adapter = mockAdapter({ launchHarness: vi.fn(async () => ({ ok: true, appliedLaunch })) });
@@ -241,7 +241,7 @@ describe("StartupOrchestrator", () => {
     expect(new AppliedLaunchObservationStore(db).readCurrent(seed.nodeId)).toMatchObject(appliedLaunch);
   });
 
-  it("binds a delayed launch observation to the generation that actually launched", async () => {
+  it("将延迟的 launch observation 绑定到实际启动的 generation", async () => {
     const seed = seedSession();
     const launchedGeneration = sessionRegistry.currentOccupantTenure(seed.nodeId)!.generationUuid;
     let releaseLaunch!: () => void;
@@ -265,7 +265,7 @@ describe("StartupOrchestrator", () => {
     });
   });
 
-  it("never resurrects an invalidated generation when delayed readiness completes", async () => {
+  it("延迟 readiness 完成时绝不复活已失效 generation", async () => {
     const seed = seedSession();
     const generation = sessionRegistry.currentOccupantTenure(seed.nodeId)!.generationUuid;
     let releaseReady!: () => void;
@@ -288,7 +288,7 @@ describe("StartupOrchestrator", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM applied_launch_observations WHERE generation_uuid = ?").get(generation)).toEqual({ n: 0 });
   });
 
-  it("does not record an attempted effect when the managed launch fails", async () => {
+  it("managed launch 失败时不记录 attempted effect", async () => {
     const seed = seedSession();
     const adapter = mockAdapter({ launchHarness: vi.fn(async () => ({ ok: false, error: "provider refused" })) });
     const result = await createOrchestrator().startNode(makeInput(seed, { adapter }));
@@ -296,7 +296,7 @@ describe("StartupOrchestrator", () => {
     expect(new AppliedLaunchObservationStore(db).readCurrent(seed.nodeId)).toBeNull();
   });
 
-  it("keeps a successful provider launch successful when observation persistence is unavailable", async () => {
+  it("observation 无法持久化时仍保持 provider launch 成功", async () => {
     const seed = seedSession();
     db.exec("DROP TABLE applied_launch_observations");
     const adapter = mockAdapter({
@@ -307,8 +307,8 @@ describe("StartupOrchestrator", () => {
     expect(result.startupStatus).toBe("ready");
   });
 
-  // T3: delivery failure transitions to failed
-  it("delivery failure transitions to failed", async () => {
+  // T3：delivery 失败转为 failed
+  it("delivery 失败转为 failed", async () => {
     const seed = seedSession();
     const adapter = mockAdapter({
       deliverStartup: vi.fn(async () => ({ delivered: 0, failed: [{ path: "startup.md", error: "disk full" }] })),
@@ -325,8 +325,8 @@ describe("StartupOrchestrator", () => {
     expect(row.startup_status).toBe("failed");
   });
 
-  // T4: action failure transitions to failed
-  it("action failure transitions to failed", async () => {
+  // T4：action 失败转为 failed
+  it("action 失败转为 failed", async () => {
     const seed = seedSession();
     const failTmux = mockTmux({ sendText: vi.fn(async () => ({ ok: false as const, message: "session gone" })) });
     const orch = createOrchestrator({ tmux: failTmux });
@@ -336,8 +336,8 @@ describe("StartupOrchestrator", () => {
     expect(result.startupStatus).toBe("failed");
   });
 
-  // T5: new startup sequence: project → pre-launch deliver → launchHarness → checkReady → post-launch deliver → after_files → after_ready
-  it("startup sequence: pre-launch deliver before launchHarness; after_files after post-launch; after_ready last", async () => {
+  // T5：新 startup 顺序：project → 启动前 deliver → launchHarness → checkReady → 启动后 deliver → after_files → after_ready
+  it("startup 顺序：启动前 deliver 先于 launchHarness；after_files 位于启动后 deliver 之后；after_ready 最后", async () => {
     const seed = seedSession();
     const callOrder: string[] = [];
 
@@ -372,23 +372,22 @@ describe("StartupOrchestrator", () => {
     const afterFilesIdx = callOrder.indexOf("action:/after-files-cmd");
     const afterReadyIdx = callOrder.indexOf("action:/after-ready-cmd");
 
-    // deliver is called twice (pre-launch + post-launch), but we verify order via launchHarness position
+    // deliver 调用两次（启动前 + 启动后），通过 launchHarness 位置验证顺序
     expect(launchIdx).toBeGreaterThan(projectIdx);
     expect(checkReadyIdx).toBeGreaterThan(launchIdx);
     expect(afterFilesIdx).toBeGreaterThan(checkReadyIdx);
     expect(afterReadyIdx).toBeGreaterThan(afterFilesIdx);
   });
 
-  // Slice 51-01 stub-runtime — TEST-ONLY RED (undisputed mechanical FACT 3): the REAL StubRuntimeAdapter,
-  // driven through the REAL StartupOrchestrator, must ride the ordered sequence project → pre-launch
-  // deliver → launchHarness → checkReady → post-launch deliver and reach `ready`. Dynamic import keeps
-  // this file's other tests green; RED now because the adapter module is absent. Fully executable after
-  // the import: a BARE `StubRuntimeAdapter` export fails (methods absent/wrong ⇒ startNode never reaches
-  // ready and deliver is not invoked twice). A send_text-hinted file forces the post-launch phase.
-  // Requires the stub's hermetic testability (a determinism/hermetic design property of the shape).
-  // Encodes NO disputed hook/usage_limit/compaction/packaging surface. Construction deps are
-  // provisional-to-design, finalized when the adapter ships (post fresh Guard CLEAR).
-  it("FACT3: real stub adapter rides ordered project→pre-deliver→launch→ready→post-deliver to ready", async () => {
+  // Slice 51-01 stub-runtime——仅用于测试的 RED（无争议 mechanical FACT 3）：由真实
+  // StartupOrchestrator 驱动的真实 StubRuntimeAdapter 必须按 project → 启动前 deliver →
+  // launchHarness → checkReady → 启动后 deliver 的顺序运行并到达 `ready`。dynamic import 使本文件
+  // 其他测试保持 green；当前因 adapter module 缺失而 RED。导入后完全可执行：只有
+  // `StubRuntimeAdapter` export 而方法缺失/错误时，startNode 无法到达 ready，deliver 也不会调用两次。
+  // 带 send_text hint 的文件会强制进入启动后阶段。要求 stub 可 hermetic 测试（该 shape 的
+  // determinism/hermetic 设计属性）。不编码有争议的 hook/usage_limit/compaction/packaging surface。
+  // construction dependency 暂按设计定义，adapter 交付后（fresh Guard CLEAR 后）定稿。
+  it("FACT3：真实 stub adapter 按 project→pre-deliver→launch→ready→post-deliver 顺序到达 ready", async () => {
     const { StubRuntimeAdapter } = await import("../src/adapters/stub-runtime-adapter.js") as { StubRuntimeAdapter: new (deps: unknown) => RuntimeAdapter }; // RED now: module absent
     const seed = seedSession();
     const t = mockTmux();
@@ -414,8 +413,8 @@ describe("StartupOrchestrator", () => {
     expect(rIdx).toBeLessThan(postDeliver);
   });
 
-  // T6: non-idempotent restore action is skipped
-  it("non-idempotent action skipped on restore", async () => {
+  // T6：restore 时跳过非幂等 action
+  it("restore 时跳过非幂等 action", async () => {
     const seed = seedSession();
     const orch = createOrchestrator();
     const actions: StartupAction[] = [
@@ -423,13 +422,13 @@ describe("StartupOrchestrator", () => {
     ];
     const result = await orch.startNode(makeInput(seed, { startupActions: actions, isRestore: true }));
     expect(result.ok).toBe(true);
-    // Neither an inapplicable action nor an unselected proof is sent.
+    // 不发送不适用的 action 或未选择的 proof。
     const calls = (tmux.sendText as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[1]);
     expect(calls).toEqual([]);
   });
 
-  // T7: idempotent restore action replays safely
-  it("idempotent action replays on restore", async () => {
+  // T7：幂等 restore action 可安全 replay
+  it("幂等 action 在 restore 时 replay", async () => {
     const seed = seedSession();
     const orch = createOrchestrator();
     const actions: StartupAction[] = [
@@ -440,7 +439,7 @@ describe("StartupOrchestrator", () => {
     expect(tmux.sendText).toHaveBeenCalledWith("r01-impl", "/rename impl");
   });
 
-  it("submits startup actions after sending text", async () => {
+  it("发送文本后提交 startup action", async () => {
     const seed = seedSession();
     const orch = createOrchestrator();
     const actions: StartupAction[] = [makeAction({ value: "/rename impl" })];
@@ -452,11 +451,11 @@ describe("StartupOrchestrator", () => {
     expect(tmux.sendKeys).toHaveBeenCalledWith("r01-impl", ["C-m"]);
   });
 
-  // T8: operator debug append executes after resolved startup
-  it("operator debug actions execute in startup sequence", async () => {
+  // T8：用户 debug append 在 resolved startup 后执行
+  it("用户 debug action 在 startup sequence 中执行", async () => {
     const seed = seedSession();
     const orch = createOrchestrator();
-    // Operator debug actions are just regular actions added last by the startup resolver
+    // 用户 debug action 只是由 startup resolver 最后添加的普通 action
     const actions: StartupAction[] = [
       makeAction({ value: "/debug-overlay", phase: "after_ready" }),
     ];
@@ -465,8 +464,8 @@ describe("StartupOrchestrator", () => {
     expect(tmux.sendText).toHaveBeenCalledWith("r01-impl", "/debug-overlay");
   });
 
-  // T9: reconciler reports failed startup state
-  it("failed startup visible in session query", async () => {
+  // T9：reconciler 报告失败的 startup state
+  it("session query 中可见失败的 startup", async () => {
     const seed = seedSession();
     const adapter = mockAdapter({
       checkReady: vi.fn(async () => ({ ready: false, reason: "not responding" })),
@@ -474,14 +473,14 @@ describe("StartupOrchestrator", () => {
     const orch = createOrchestrator();
     await orch.startNode(makeInput(seed, { adapter, readinessTimeoutMs: 100 }));
 
-    // Session should show failed startup
+    // session 应显示 startup 失败
     const sessions = sessionRegistry.getSessionsForRig(seed.rigId);
     const session = sessions.find((s) => s.id === seed.sessionId);
     expect(session).toBeDefined();
     expect(session!.startupStatus).toBe("failed");
   });
 
-  it("recoverable interactive startup blockers become attention_required", async () => {
+  it("可恢复的交互式 startup blocker 转为 attention_required", async () => {
     const seed = seedSession();
     const adapter = mockAdapter({
       checkReady: vi.fn(async () => ({
@@ -500,7 +499,7 @@ describe("StartupOrchestrator", () => {
     expect(row.startup_status).toBe("attention_required");
   });
 
-  it("Claude MCP approval blockers become attention_required", async () => {
+  it("Claude MCP approval blocker 转为 attention_required", async () => {
     const seed = seedSession();
     const adapter = mockAdapter({
       checkReady: vi.fn(async () => ({
@@ -519,7 +518,7 @@ describe("StartupOrchestrator", () => {
     expect(row.startup_status).toBe("attention_required");
   });
 
-  it("injects the session identity into the first fresh send_text prompt", async () => {
+  it("将 session identity 注入首次 fresh send_text prompt", async () => {
     const seed = seedSession();
     const deliverStartup = vi.fn(async (_files: ResolvedStartupFile[]) => ({ delivered: 0, failed: [] }));
     const adapter = mockAdapter({
@@ -562,7 +561,7 @@ describe("StartupOrchestrator", () => {
     expect(deliverStartup).toHaveBeenCalledTimes(1);
   });
 
-  it("does not replay the session identity on a resumed restore", async () => {
+  it("resumed restore 时不 replay session identity", async () => {
     const seed = seedSession();
     const sendText = vi.fn(async () => ({ ok: true as const }));
     const tmuxOverride = mockTmux({ sendText });
@@ -586,23 +585,19 @@ describe("StartupOrchestrator", () => {
     expect(sendText).toHaveBeenCalledWith("r01-impl", "/rename impl");
   });
 
-  // OPR.0.4.7.17 restore-order-correction (qitem-e99624f7). On a real automatic
-  // Codex restore the daemon delivered the work-triggering guidance/role.md FIRST
-  // (its turn ran skill-metadata checks + `rig whoami`), and the after_ready
-  // "BEFORE you do anything else" preload action landed only afterwards — so
-  // non-skill work preceded the action, breaking the locked action-before-work
-  // contract. The fix must be CAUSAL (sequence the preload ahead of the
-  // role-triggered turn), not a larger send delay. This pin asserts the contract
-  // shape-agnostically: across the ordered provider inputs (send_text sends AND
-  // post-launch send_text file deliveries), the preload text is delivered no
-  // later than the role.md work-trigger content, and when bundled into one input
-  // the preload text precedes the role content.
-  it("restore: the after_ready preload action is sequenced before the role.md work-trigger", async () => {
+  // OPR.0.4.7.17 restore-order-correction（qitem-e99624f7）。在真实 automatic Codex restore
+  // 中，daemon 会先交付触发工作的 guidance/role.md（其 turn 执行 skill-metadata 检查 +
+  // `zrig whoami`），after_ready 的“在做其他任何事之前”preload action 随后才到达——导致
+  // 非 skill 工作先于 action，破坏已锁定的 action-before-work contract。修复必须是因果性的
+  //（将 preload 排在 role 触发的 turn 前），而非加大发送延迟。本 pin 不依赖 shape 地断言
+  // contract：在有序 provider input（send_text 发送与启动后 send_text file delivery）中，preload
+  // text 不得晚于 role.md work-trigger content；合并到同一 input 时，preload text 位于 role 前。
+  it("restore：after_ready preload action 排在 role.md work-trigger 前", async () => {
     const seed = seedSession();
     const ROLE = "# Role: QA\nload your named skills: using-superpowers, test-driven-development";
     const PRELOAD = "A task is coming. BEFORE you do anything else, load and invoke your process skills NOW: using-superpowers, test-driven-development. Load them first, then begin the work.";
 
-    // Unified ordered list of provider inputs (what actually reaches the pane).
+    // provider input 的统一有序列表（实际抵达 pane 的内容）。
     const inputs: string[] = [];
     const deliverStartup = vi.fn(async (files: ResolvedStartupFile[]) => {
       for (const f of files) {
@@ -639,22 +634,22 @@ describe("StartupOrchestrator", () => {
 
     const preloadIdx = inputs.findIndex((t) => t.includes("BEFORE you do anything else"));
     const roleIdx = inputs.findIndex((t) => t.includes("# Role: QA"));
-    expect(preloadIdx).toBeGreaterThanOrEqual(0); // the preload action reached the provider
-    expect(roleIdx).toBeGreaterThanOrEqual(0);    // the role.md work-trigger reached the provider
+    expect(preloadIdx).toBeGreaterThanOrEqual(0); // preload action 已抵达 provider
+    expect(roleIdx).toBeGreaterThanOrEqual(0);    // role.md work-trigger 已抵达 provider
 
-    // CONTRACT: the preload must not land after the role.md work-trigger.
+    // CONTRACT：preload 不得晚于 role.md work-trigger 抵达。
     expect(preloadIdx).toBeLessThanOrEqual(roleIdx);
-    // If bundled into a single input, the preload text must precede the role content.
+    // 若合并到单个 input，preload text 必须位于 role content 前。
     if (preloadIdx === roleIdx) {
       const payload = inputs[preloadIdx]!;
       expect(payload.indexOf("BEFORE you do anything else")).toBeLessThan(payload.indexOf("# Role: QA"));
     }
-    // And the preload must not be re-sent as a duplicate separate turn.
+    // preload 不得作为重复的独立 turn 再次发送。
     const preloadDeliveries = inputs.filter((t) => t.includes("BEFORE you do anything else")).length;
     expect(preloadDeliveries).toBe(1);
   });
 
-  it("sends the identity prompt first when restore falls back to a fresh launch", async () => {
+  it("restore 回退到 fresh launch 时先发送 identity prompt", async () => {
     const seed = seedSession();
     const sendText = vi.fn(async () => ({ ok: true as const }));
     const tmuxOverride = mockTmux({ sendText });
@@ -689,7 +684,7 @@ describe("StartupOrchestrator", () => {
     expect(sendText).toHaveBeenNthCalledWith(2, "r01-impl", "/rename impl");
   });
 
-  it("issues a selected startup challenge (oriented=missing, challenge in prompt)", async () => {
+  it("发出选定的 startup challenge（oriented=missing，prompt 中含 challenge）", async () => {
     const seed = seedSession();
     const sendText = vi.fn(async () => ({ ok: true as const }));
     const orch = createOrchestrator({ tmux: mockTmux({ sendText }) });
@@ -702,25 +697,25 @@ describe("StartupOrchestrator", () => {
     const challenged = db.prepare("SELECT COUNT(*) AS n FROM events WHERE node_id = ? AND type = 'node.startup_challenged'").get(seed.nodeId) as { n: number };
     expect(challenged.n).toBe(1);
     expect(deriveOriented(db, seed.nodeId)).toBe("missing");
-    // The challenge instruction is embedded in the first delivered prompt.
-    expect(sendText.mock.calls[0]?.[1]).toContain("startup orientation challenge");
+    // challenge 指令嵌入首次交付的 prompt。
+    expect(sendText.mock.calls[0]?.[1]).toContain("启动定向挑战");
   });
 
-  // OPR.0.4.3.06 — a resumed restore is NOT re-challenged (oriented stays n-a).
-  it("runs a terminal startup command without sending agent-orientation prose to its shell", async () => {
+  // OPR.0.4.3.06——resumed restore 不会再次 challenge（oriented 保持 n-a）。
+  it("运行 terminal startup 命令，不向其 shell 发送 agent-orientation 文案", async () => {
     const seed = seedSession();
     const sendText = vi.fn(async () => ({ ok: true as const }));
     const orch = createOrchestrator({ tmux: mockTmux({ sendText }) });
     await orch.startNode(makeInput(seed, {
       adapter: mockAdapter({ runtime: "terminal" }),
-      startupActions: [makeAction({ type: "startup_proof", value: "authenticated" }), makeAction({ type: "send_text", value: "rig tui" })],
+      startupActions: [makeAction({ type: "startup_proof", value: "authenticated" }), makeAction({ type: "send_text", value: "zrig tui" })],
     }));
     expect(sendText).toHaveBeenCalledTimes(1);
-    expect(sendText).toHaveBeenCalledWith("r01-impl", "rig tui");
+    expect(sendText).toHaveBeenCalledWith("r01-impl", "zrig tui");
     expect(deriveOriented(db, seed.nodeId)).toBe("n-a");
   });
 
-  it("does NOT challenge a resumed restore (oriented=n-a)", async () => {
+  it("不对 resumed restore 发起 challenge（oriented=n-a）", async () => {
     const seed = seedSession();
     const orch = createOrchestrator();
     await orch.startNode(makeInput(seed, {
@@ -830,7 +825,7 @@ describe("StartupOrchestrator", () => {
     expect(db.prepare("SELECT count(*) AS n FROM events WHERE type='node.startup_proof_skipped'").get()).toEqual({ n: 0 });
   });
 
-  it("rejects unknown persisted proof selection before projection or launch", async () => {
+  it("在 projection 或 launch 前拒绝未知的已持久化 proof selection", async () => {
     const seed = seedSession();
     const adapter = mockAdapter();
     const result = await createOrchestrator().startNode(makeInput(seed, {
@@ -842,33 +837,32 @@ describe("StartupOrchestrator", () => {
     expect(tmux.sendText).not.toHaveBeenCalled();
   });
 
-  // T10: launcher does not mark ready before actions complete
-  it("startup_status stays pending until orchestrator completes", async () => {
+  // T10：action 完成前 launcher 不标记 ready
+  it("orchestrator 完成前 startup_status 保持 pending", async () => {
     const seed = seedSession();
-    // After NodeLauncher creates session, startupStatus is pending (default from AS-T00)
+    // NodeLauncher 创建 session 后，startupStatus 为 pending（AS-T00 的默认值）
     const row = db.prepare("SELECT startup_status FROM sessions WHERE id = ?").get(seed.sessionId) as { startup_status: string };
     expect(row.startup_status).toBe("pending"); // launcher left it as default
 
-    // Only after orchestrator.startNode completes does it become ready
+    // 仅在 orchestrator.startNode 完成后才转为 ready
     const orch = createOrchestrator();
     await orch.startNode(makeInput(seed));
     const afterRow = db.prepare("SELECT startup_status FROM sessions WHERE id = ?").get(seed.sessionId) as { startup_status: string };
     expect(afterRow.startup_status).toBe("ready");
   });
 
-  // T11: retrying failed startup does not duplicate irreversible work
-  it("retry-as-restore skips non-idempotent fresh_start actions", async () => {
+  // T11：重试失败 startup 不会重复不可逆工作
+  it("retry-as-restore 跳过非幂等 fresh_start action", async () => {
     const seed = seedSession();
 
-    // First attempt: fails during action (non-idempotent action executes then something else fails)
+    // 首次尝试：在 action 期间失败（非幂等 action 已执行，随后其他内容失败）
     const failAdapter = mockAdapter({
       checkReady: vi.fn()
         .mockResolvedValueOnce({ ready: true }) // first attempt: ready
         .mockResolvedValueOnce({ ready: true }), // retry: ready
     });
-    // OPR.0.4.3.06 — text-aware mock (robust to the extra orientation-challenge
-    // send on fresh continuity): everything succeeds except the FIRST /configure
-    // (attempt 1's second action), which fails as before.
+    // OPR.0.4.3.06——text-aware mock（能适应 fresh continuity 上额外发送的 orientation challenge）：
+    // 除首次 /configure（第 1 次尝试的第二个 action）仍如以前失败外，其他全部成功。
     let configureSeen = 0;
     const failTmux = mockTmux({
       sendText: vi.fn(async (_target: string, text: string) => {
@@ -886,21 +880,21 @@ describe("StartupOrchestrator", () => {
       makeAction({ value: "/configure", idempotent: true, phase: "after_ready", appliesOn: ["fresh_start", "restore"] }),
     ];
 
-    // First attempt fails on second action
+    // 首次尝试在第二个 action 上失败
     const r1 = await orch.startNode(makeInput(seed, { adapter: failAdapter, startupActions: actions, isRestore: false }));
     expect(r1.ok).toBe(false);
 
-    // Retry as restore — non-idempotent /setup-once should be skipped
+    // 以 restore 重试——应跳过非幂等 /setup-once
     const r2 = await orch.startNode(makeInput(seed, { adapter: failAdapter, startupActions: actions, isRestore: true }));
     expect(r2.ok).toBe(true);
 
-    // /setup-once was called once (first attempt only), /configure called in retry
+    // /setup-once 只调用一次（仅首次尝试），/configure 在重试时调用
     const calls = (failTmux.sendText as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[1]);
     expect(calls.filter((c: string) => c === "/setup-once")).toHaveLength(1);
   });
 
-  // T12a: fresh-start-only startup files skipped on restore
-  it("fresh-start-only startup files skipped on restore", async () => {
+  // T12a：restore 时跳过仅限 fresh-start 的 startup file
+  it("restore 时跳过仅限 fresh-start 的 startup file", async () => {
     const seed = seedSession();
     const adapter = mockAdapter();
     const files: ResolvedStartupFile[] = [
@@ -910,7 +904,7 @@ describe("StartupOrchestrator", () => {
     const orch = createOrchestrator();
     await orch.startNode(makeInput(seed, { adapter, resolvedStartupFiles: files, isRestore: true }));
 
-    // Only "always.md" should be delivered, not "fresh.md"
+    // 只应交付 "always.md"，不交付 "fresh.md"
     const deliverCalls = (adapter.deliverStartup as ReturnType<typeof vi.fn>).mock.calls;
     expect(deliverCalls).toHaveLength(1);
     const deliveredFiles = deliverCalls[0][0] as ResolvedStartupFile[];
@@ -918,8 +912,8 @@ describe("StartupOrchestrator", () => {
     expect(deliveredFiles[0]!.path).toBe("always.md");
   });
 
-  // T12b: emits correct lifecycle events
-  it("emits startup_pending and startup_ready events", async () => {
+  // T12b：发出正确的 lifecycle event
+  it("发出 startup_pending 与 startup_ready event", async () => {
     const seed = seedSession();
     const events: string[] = [];
     eventBus.subscribe((e) => events.push(e.type));
@@ -932,12 +926,12 @@ describe("StartupOrchestrator", () => {
     expect(events.indexOf("node.startup_pending")).toBeLessThan(events.indexOf("node.startup_ready"));
   });
 
-  // NS-T04: resolveConcreteHint shared resolver
+  // NS-T04：共享 resolveConcreteHint resolver
   it("resolveConcreteHint: SKILL.md path → skill_install", () => {
     expect(resolveConcreteHint("skills/my-skill/SKILL.md", "some content")).toBe("skill_install");
   });
 
-  it("resolveConcreteHint: content starting with # SKILL → skill_install", () => {
+  it("resolveConcreteHint：以 # SKILL 开头的内容 → skill_install", () => {
     expect(resolveConcreteHint("custom.txt", "# SKILL Some tool")).toBe("skill_install");
   });
 
@@ -945,12 +939,12 @@ describe("StartupOrchestrator", () => {
     expect(resolveConcreteHint("role.md", "You are a developer")).toBe("guidance_merge");
   });
 
-  it("resolveConcreteHint: non-.md file → send_text", () => {
+  it("resolveConcreteHint：非 .md 文件 → send_text", () => {
     expect(resolveConcreteHint("config.yaml", "key: value")).toBe("send_text");
   });
 
-  // NS-T04: skipHarnessLaunch
-  it("skipHarnessLaunch: true skips launchHarness entirely", async () => {
+  // NS-T04：skipHarnessLaunch
+  it("skipHarnessLaunch: true 完全跳过 launchHarness", async () => {
     const seed = seedSession();
     const launchSpy = vi.fn(async () => ({ ok: true as const }));
     const adapter = mockAdapter({ launchHarness: launchSpy });
@@ -960,8 +954,8 @@ describe("StartupOrchestrator", () => {
     expect(launchSpy).not.toHaveBeenCalled();
   });
 
-  // NS-T04: launchHarness failure → startup_failed
-  it("launchHarness failure transitions to startup_failed", async () => {
+  // NS-T04：launchHarness 失败 → startup_failed
+  it("launchHarness 失败转为 startup_failed", async () => {
     const seed = seedSession();
     const adapter = mockAdapter({
       launchHarness: vi.fn(async () => ({ ok: false as const, error: "harness crash" })),
@@ -974,8 +968,8 @@ describe("StartupOrchestrator", () => {
     }
   });
 
-  // NS-T04: launchHarness persists resume token
-  it("launchHarness resume token persisted to session", async () => {
+  // NS-T04：launchHarness 持久化 resume token
+  it("launchHarness resume token 持久化至 session", async () => {
     const seed = seedSession();
     const adapter = mockAdapter({
       launchHarness: vi.fn(async () => ({ ok: true as const, resumeToken: "sess-xyz", resumeType: "claude_id" })),
@@ -989,7 +983,7 @@ describe("StartupOrchestrator", () => {
     expect(session!.resumeType).toBe("claude_id");
   });
 
-  it("launchHarness does not persist empty resume token as restoreable state", async () => {
+  it("launchHarness 不会将空 resume token 持久化为可恢复 state", async () => {
     const seed = seedSession();
     const adapter = mockAdapter({
       launchHarness: vi.fn(async () => ({ ok: true as const, resumeToken: "", resumeType: "claude_id" })),
@@ -1003,7 +997,7 @@ describe("StartupOrchestrator", () => {
     expect(session!.resumeType).toBeNull();
   });
 
-  it("retries restore once as fresh when launchHarness reports resume recovery can safely fall back", async () => {
+  it("launchHarness 报告 resume recovery 可安全回退时，以 fresh 方式重试一次 restore", async () => {
     const seed = seedSession();
     const launchHarness = vi.fn()
       .mockResolvedValueOnce({ ok: false as const, error: "saved session missing", recovery: "retry_fresh" })
@@ -1043,12 +1037,11 @@ describe("StartupOrchestrator", () => {
     expect(session!.startupStatus).toBe("ready");
   });
 
-  // Pod-aware Codex auth-refusal: when launchHarness reports
-  // recovery: "attention_required" with evidence, the orchestrator must
-  // surface startup_status: "attention_required" with the evidence preserved
-  // (NOT fall back to fresh launch — that would lose continuity for a state
-  // the operator can resolve by re-running `codex login`).
-  it("propagates attention_required recovery without falling back to fresh", async () => {
+  // 支持 pod 的 Codex auth-refusal：launchHarness 报告带 evidence 的
+  // recovery: "attention_required" 时，orchestrator 必须呈现
+  // startup_status: "attention_required" 并保留 evidence（不得回退到 fresh launch——
+  // 这会让用户可通过重新运行 `codex login` 解决的 state 丢失 continuity）。
+  it("传播 attention_required recovery，不回退到 fresh", async () => {
     const seed = seedSession();
     const refusalEvidence = [
       "$ codex resume stale-token",
@@ -1074,13 +1067,13 @@ describe("StartupOrchestrator", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.startupStatus).toBe("attention_required");
-      // Evidence is preserved on the StartupResult so restore-orchestrator
-      // can populate attentionEvidence on RestoreNodeResult.
+      // evidence 保留在 StartupResult 上，使 restore-orchestrator 可填充
+      // RestoreNodeResult 的 attentionEvidence。
       expect(result.evidence).toBe(refusalEvidence);
-      expect(result.errors.some((e) => e.includes("requires attention"))).toBe(true);
+      expect(result.errors.some((e) => e.includes("运行环境启动需要处理"))).toBe(true);
     }
-    // Critical: launchHarness called ONCE — no fresh-fallback retry.
-    // Auth-refusal is operator-recoverable, not a stale-token signal.
+    // 关键：launchHarness 仅调用一次——不做 fresh-fallback retry。auth-refusal 可由用户恢复，
+    // 并非 stale-token signal。
     expect(launchHarness).toHaveBeenCalledTimes(1);
 
     const sessions = sessionRegistry.getSessionsForRig(seed.rigId);
@@ -1124,14 +1117,14 @@ describe("StartupOrchestrator", () => {
     expect(session.resumeLastProbeStatus).toBeNull();
   });
 
-  // NS-T05: readiness retry loop
-  it("readiness retries until ready", async () => {
+  // NS-T05：readiness 重试 loop
+  it("readiness 持续重试直至 ready", async () => {
     const seed = seedSession();
     let callCount = 0;
     const adapter = mockAdapter({
       checkReady: vi.fn(async () => {
         callCount++;
-        // Ready on 3rd attempt
+        // 第 3 次尝试时 ready
         return callCount >= 3 ? { ready: true } : { ready: false, reason: "not yet" };
       }),
     });
@@ -1141,7 +1134,7 @@ describe("StartupOrchestrator", () => {
     expect(callCount).toBeGreaterThanOrEqual(3);
   });
 
-  it("readiness timeout → startup_failed with timeout message", async () => {
+  it("readiness 超时 → startup_failed，并带超时消息", async () => {
     const seed = seedSession();
     const adapter = mockAdapter({
       checkReady: vi.fn(async () => ({ ready: false, reason: "harness not interactive" })),
@@ -1150,11 +1143,11 @@ describe("StartupOrchestrator", () => {
     const result = await orch.startNode(makeInput(seed, { adapter, readinessTimeoutMs: 100 }));
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors.some((e) => e.includes("timeout") || e.includes("Readiness timeout"))).toBe(true);
+      expect(result.errors.some((e) => e.includes("超时"))).toBe(true);
     }
   });
 
-  it("readiness blocker fails immediately with the blocker reason instead of a timeout", async () => {
+  it("readiness blocker 立即以 blocker reason 失败，而非等待超时", async () => {
     const seed = seedSession();
     const adapter = mockAdapter({
       checkReady: vi.fn(async () => ({
@@ -1168,12 +1161,12 @@ describe("StartupOrchestrator", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.startupStatus).toBe("attention_required");
-      expect(result.errors.some((e) => e.includes("Startup requires attention"))).toBe(true);
-      expect(result.errors.some((e) => e.includes("timeout"))).toBe(false);
+      expect(result.errors.some((e) => e.includes("启动需要处理"))).toBe(true);
+      expect(result.errors.some((e) => e.includes("超时"))).toBe(false);
     }
   });
 
-  it("delivers openrig-start.md overlay alongside agent role guidance (append, not replace)", async () => {
+  it("在 agent role guidance 旁交付 openrig-start.md overlay（追加而非替换）", async () => {
     const seed = seedSession();
     const deliveredFiles: string[] = [];
     const adapter = mockAdapter({
@@ -1206,7 +1199,7 @@ describe("StartupOrchestrator", () => {
     }));
 
     expect(result.ok).toBe(true);
-    // Both files were delivered — overlay appended, not replacing role guidance
+    // 两个文件都已交付——追加 overlay，而非替换 role guidance
     expect(deliveredFiles).toContain("guidance/role.md");
     expect(deliveredFiles).toContain("openrig-start.md");
   });

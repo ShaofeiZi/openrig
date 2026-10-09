@@ -1,8 +1,8 @@
-// OPR.0.4.1.11.2 (FR-3) — CLI-medium capture. asciinema is NOT on this host, so rather than fake a
-// capture we emit the documented asciicast v2 format directly (zero-dep, "or equivalent" per the
-// impl-prd): a JSON header line followed by [time, "o", data] output-event lines. A real `asciinema
-// rec` interactive session still works where the binary is installed; this zero-dep path covers
-// command-output capture everywhere and is deterministic (no wall-clock unless a timestamp is given).
+// OPR.0.4.1.11.2（FR-3）——CLI-medium 捕获。asciinema 不在此主机，故我们不伪造捕获，而是直接发出
+// 文档化的 asciicast v2 格式（零依赖，按 impl-prd 的"或等价"）：一行 JSON 头，后接
+// [time, "o", data] 输出事件行。二进制安装处真实的 `asciinema rec`
+// 交互会话仍可用；此零依赖路径在所有地方覆盖命令输出捕获，且确定性
+//（除非给出时间戳，否则无墙上时钟）。
 import { describe, it, expect } from "vitest";
 import { buildAsciicast, captureCommandCast } from "../twin/capture/asciicast.js";
 

@@ -17,7 +17,7 @@ import { LegacyRigSpecCodec as RigSpecCodec } from "./rigspec-codec.js"; // TODO
 import type { LegacyRigSpec as RigSpec, LegacyRigSpecEdge as RigSpecEdge, InstantiateOutcome, InstantiateResult } from "./types.js"; // TODO: AS-T08b — migrate to pod-aware RigSpec
 import { resolveLaunchCwd } from "./cwd-resolution.js";
 
-// Only these edge kinds constrain launch order
+// 只有这些 edge kind 会约束 launch 顺序
 const LAUNCH_DEPENDENCY_KINDS = new Set(["delegates_to", "spawned_by"]);
 
 interface RigInstantiatorDeps {
@@ -41,19 +41,19 @@ export class RigInstantiator {
 
   constructor(deps: RigInstantiatorDeps) {
     if (deps.db !== deps.rigRepo.db) {
-      throw new Error("RigInstantiator: rigRepo must share the same db handle");
+      throw new Error("RigInstantiator：rigRepo 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.sessionRegistry.db) {
-      throw new Error("RigInstantiator: sessionRegistry must share the same db handle");
+      throw new Error("RigInstantiator：sessionRegistry 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.eventBus.db) {
-      throw new Error("RigInstantiator: eventBus must share the same db handle");
+      throw new Error("RigInstantiator：eventBus 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.nodeLauncher.db) {
-      throw new Error("RigInstantiator: nodeLauncher must share the same db handle");
+      throw new Error("RigInstantiator：nodeLauncher 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.preflight.db) {
-      throw new Error("RigInstantiator: preflight must share the same db handle");
+      throw new Error("RigInstantiator：preflight 必须共享同一个数据库句柄");
     }
 
     this.db = deps.db;
@@ -66,17 +66,16 @@ export class RigInstantiator {
   }
 
   async instantiate(spec: RigSpec): Promise<InstantiateOutcome> {
-    // 1. Validate
+    // 1. 校验
     const raw = RigSpecCodec.parse(RigSpecCodec.serialize(spec));
     const validation = RigSpecSchema.validate(raw);
     if (!validation.valid) {
       return { ok: false, code: "validation_failed", errors: validation.errors };
     }
 
-    // 1b. S5b running-name guard (OPR.0.5.4.11) — the ONE guard shared by every
-    // instantiator create path, before any preflight/create/launch spend. A
-    // RUNNING same-name rig gets the teaching refusal (preflight's blunt
-    // name-exists check downstream still owns the all-stopped case on this path).
+    // 1b. S5b running-name guard（OPR.0.5.4.11）——所有 instantiator create 路径共享的唯一
+    // guard，位于任何 preflight/create/launch 开销之前。RUNNING 的同名工作组会收到带指引的拒绝
+    //（此路径上 all-stopped case 仍由下游 preflight 直接的 name-exists check 负责）。
     const nameGuard = checkRunningNameGuard({
       findRigsByName: (n) => this.rigRepo.findRigsByName(n),
       countRunningSessions: makeRunningSessionCounter(this.db),
@@ -89,7 +88,7 @@ export class RigInstantiator {
       return { ok: false, code: "preflight_failed", errors: preflightResult.errors, warnings: preflightResult.warnings };
     }
 
-    // 3. Compute launch order BEFORE materialization (detect cycles early)
+    // 3. 在 materialization 前计算 launch 顺序（尽早检测 cycle）
     let launchOrder: string[];
     try {
       launchOrder = this.computeLaunchOrder(spec);
@@ -101,7 +100,7 @@ export class RigInstantiator {
       };
     }
 
-    // 4. Atomic DB materialization: rig + nodes + edges
+    // 4. 原子 DB materialization：工作组 + node + edge
     let rigId: string;
     const nodeIdMap: Record<string, string> = {}; // logicalId -> DB id
     try {
@@ -141,7 +140,7 @@ export class RigInstantiator {
       };
     }
 
-    // 5. Launch nodes in topological order
+    // 5. 按拓扑顺序 launch node
     const nodeResults: { logicalId: string; status: "launched" | "failed"; error?: string }[] = [];
     const launchedSessionNames: string[] = [];
     const instantiateWarnings: string[] = [];
@@ -159,14 +158,14 @@ export class RigInstantiator {
       }
     }
 
-    // Check for total launch failure — kill orphan sessions and clean up the rig
+    // 检查全部 launch 失败——终止 orphan session 并清理工作组
     const allFailed = nodeResults.every((n) => n.status === "failed");
     if (allFailed && nodeResults.length > 0) {
       const cleanup = async () => {
         if (this.tmuxAdapter) {
           for (const sessionName of launchedSessionNames) {
             const stopped = await this.tmuxAdapter.killSession(sessionName);
-            if (!stopped.ok) return; // Preserve custody when termination was refused/unverified.
+            if (!stopped.ok) return; // 终止被拒绝或未经验证时保留 custody。
           }
         }
         this.rigRepo.deleteRig(rigId!);
@@ -177,11 +176,11 @@ export class RigInstantiator {
       return {
         ok: false,
         code: "instantiate_error",
-        message: "all node launches failed",
+        message: "所有 node launch 均失败",
       };
     }
 
-    // 6. Propagate restorePolicy to session metadata (best-effort)
+    // 6. 将 restorePolicy 传播到 session metadata（best-effort）
     try {
       for (const specNode of spec.nodes) {
         const restorePolicy = specNode.restorePolicy ?? "resume_if_possible";
@@ -194,10 +193,10 @@ export class RigInstantiator {
         }
       }
     } catch {
-      // Best-effort: import succeeded even if restorePolicy propagation fails
+      // best-effort：即使 restorePolicy propagation 失败，import 仍成功
     }
 
-    // 6. Emit rig.imported (best-effort)
+    // 6. 发出 rig.imported（best-effort）
     try {
       this.eventBus.emit({
         type: "topology.roster_recorded",
@@ -212,7 +211,7 @@ export class RigInstantiator {
         specVersion: spec.version,
       });
     } catch {
-      // Best-effort: import succeeded even if event persistence fails
+      // best-effort：即使 event persistence 失败，import 仍成功
     }
 
     return {
@@ -249,7 +248,7 @@ export class RigInstantiator {
         from = edge.from;
         to = edge.to;
       } else {
-        // spawned_by: target (parent) before source (child)
+        // spawned_by：target（parent）先于 source（child）
         from = edge.to;
         to = edge.from;
       }
@@ -260,7 +259,7 @@ export class RigInstantiator {
       }
     }
 
-    // Topological sort with alphabetical tiebreaker
+    // 拓扑排序，以字母顺序打破平局
     const queue = Object.keys(inDegree)
       .filter((id) => inDegree[id] === 0)
       .sort();
@@ -274,7 +273,7 @@ export class RigInstantiator {
       for (const neighbor of neighbors) {
         inDegree[neighbor] = (inDegree[neighbor] ?? 1) - 1;
         if ((inDegree[neighbor] ?? 0) === 0) {
-          // Insert sorted
+          // 按顺序插入
           let inserted = false;
           for (let i = 0; i < queue.length; i++) {
             if (queue[i]!.localeCompare(neighbor) > 0) {
@@ -288,17 +287,17 @@ export class RigInstantiator {
       }
     }
 
-    // Cycle detection: if not all nodes reached, there's a cycle
+    // cycle 检测：若未到达全部 node，则存在 cycle
     if (order.length !== nodes.length) {
       const missing = nodes.filter((n) => !order.includes(n.id)).map((n) => n.id);
-      throw new Error(`Dependency cycle detected among nodes: ${missing.join(", ")}`);
+      throw new Error(`检测到 node 之间存在 dependency cycle：${missing.join(", ")}`);
     }
 
     return order;
   }
 }
 
-// -- Pod-aware instantiator (AgentSpec reboot) --
+// -- 感知 Pod 的实例化器（AgentSpec 重启）--
 
 import { RigSpecCodec as PodRigSpecCodec } from "./rigspec-codec.js";
 import { RigSpecSchema as PodRigSpecSchema, VALID_EDGE_KINDS } from "./rigspec-schema.js";
@@ -343,32 +342,28 @@ interface PodInstantiatorDeps {
   nodeLauncher: NodeLauncher;
   startupOrchestrator: StartupOrchestrator;
   fsOps: AgentResolverFsOps;
-  /** §6 reconciliation: main's managed Claude activity-hook delivery asset paths, forwarded to
-   *  preflight (defaults to daemon-shipped assets; tests inject fixtures). Restores main's proven
-   *  threading, dropped when the restacked 4.8 instantiator won the warnings-site conflicts. */
+  /** §6 协调：main 中受管 Claude 活动 hook 的交付资源路径，转发给预检
+   *（默认使用后台服务随附资源；测试注入夹具）。恢复 main 中已验证的接线；它曾在重新堆叠的
+   * 4.8 实例化器解决警告位置冲突时丢失。 */
   claudeActivityAssets?: { relayPath?: string; manifestPath?: string };
   adapters: Record<string, RuntimeAdapter>;
   tmuxAdapter?: TmuxAdapter;
-  /** PL-016 Item 4: optional agent-image library so AgentSpec
-   *  session_source: mode: agent_image entries can resolve to the
-   *  image's resume token. Optional — when absent, agent_image session
-   *  source surfaces a structured error at instantiation time. */
+  /** PL-016 第 4 项：可选的智能体镜像资料库，使 AgentSpec session_source: mode: agent_image
+   * 条目可解析到镜像续接令牌。缺失时，agent_image 会话来源会在实例化时呈现结构化错误。 */
   agentImageLibrary?: import("./agent-images/agent-image-library-service.js").AgentImageLibraryService;
   exec?: (cmd: string) => Promise<string>;
-  /** OPR.0.5.3.6 — resolves the typed topology.root so a spec's shipped
-   *  `topology/` chain-file defaults install at materialization (copy-if-absent,
-   *  best-effort). Absent → no defaults install (tests, legacy composition). */
+  /** OPR.0.5.3.6——解析 typed topology.root，使 spec 已交付的 `topology/` chain-file default 在
+   *  materialization 时安装（缺失时复制，best-effort）。缺失 → 不安装 default（测试、legacy
+   *  composition）。 */
   topologyRootResolver?: () => string;
-  /** S15 — whether new seats receive the compact default mental-model pack.
-   *  Resolved at materialization so config changes affect future launches. */
+  /** S15——新 seat 是否接收 compact 默认 mental-model pack。在 materialization 时解析，使 config
+   *  变更影响未来 launch。 */
   onboardingEnabledResolver?: () => boolean;
-  /** S04 — live config resolver for the authoritative managed skill catalog. */
+  /** S04——权威受管技能目录的实时配置解析器。 */
   skillsRootResolver?: () => string;
-  /** S05 — selected System World. Resolution failures refuse preflight/launch
-   *  rather than falling back to a different system selector. */
+  /** S05——已选择 System World。解析失败时拒绝 preflight/launch，而非回退到其他 system selector。 */
   systemWorldResolver?: () => SystemWorldResolution;
-  /** S04 — exact-byte catalog projection before a harness starts. Optional
-   *  for old tests/embedders; production wires the shared reconciler. */
+  /** S04——harness 启动前的精确字节目录投影。对旧测试/嵌入方可选；生产环境接入共享协调器。 */
   skillReconciler?: (input: {
     loadout: SkillLoadout;
     runtime: SkillRuntime;
@@ -376,8 +371,8 @@ interface PodInstantiatorDeps {
     apply: true;
     topologyOwner?: string;
   }) => ReconcileSkillLoadoutResult;
-  /** S20 P4 — materializes the selected Claude continuity policy by
-   *  registering jobs in the existing watchdog engine after startup succeeds. */
+  /** S20 P4——startup 成功后，在现有 watchdog engine 中注册 job，从而 materialize 已选择的
+   *  Claude 连续性策略。 */
   continuityPolicyMaterializer?: Pick<ContinuityPolicyMaterializer, "arm">;
 }
 
@@ -396,8 +391,8 @@ export type MaterializeOutcome =
   | { ok: false; code: "target_rig_not_found"; message: string }
   | { ok: false; code: "materialize_conflict"; message: string }
   | { ok: false; code: "materialize_error"; message: string }
-  // S5b (OPR.0.5.4.11) — running-name guard refusal on the CREATE branch only
-  // (expand/add_member pass targetRigId and are never guarded here).
+  // S5b（OPR.0.5.4.11）——running-name guard 只在 CREATE 分支拒绝（expand/add_member 传入
+  // targetRigId，因此此处从不 guard）。
   | { ok: false; code: "rig_name_running"; message: string; runningRig: { id: string; name: string; runningSessionCount: number } };
 
 export interface LaunchMaterializedNodeResult {
@@ -413,8 +408,8 @@ export type LaunchMaterializedOutcome =
   | { ok: false; code: "validation_failed"; errors: string[] }
   | { ok: false; code: "target_rig_not_found"; message: string };
 
-/** A pod-local edge declared alongside an added member (from/to are member ids
- *  within the pod; resolved against the new member + existing pod-mates). */
+/** 与新增 member 一并声明的 pod-local edge（from/to 是 pod 内的 member id；
+ *  将对照新 member 与现有同 pod member 解析）。 */
 export interface AddMemberEdge {
   from: string;
   to: string;
@@ -431,20 +426,18 @@ export interface AddMemberResult {
     error?: string;
     sessionName?: string;
   };
-  /** Pod-local edges persisted with the add (empty when none declared). The
-   *  endpoints are qualified logical ids. Edges carry no runtime behavior yet
-   *  (OPR.0.3.3.24 fence) - they record declared topology intent. */
+  /** 随新增操作持久化的 pod-local edge（未声明时为空）。endpoint 是 qualified logical id。
+   *  edge 暂不携带 runtime behavior（OPR.0.3.3.24 边界），只记录已声明的 topology intent。 */
   edges: Array<{ from: string; to: string; kind: string }>;
   warnings?: string[];
 }
 
 /**
- * Outcome of the `add_member` converge op (OPR.0.3.3.24). Mirrors the
- * MaterializeOutcome error vocabulary where it overlaps (validation_failed /
- * preflight_failed) and adds the add-member-specific honest codes
- * (rig_not_found / pod_not_found / member_conflict / edge_unresolved). Every
- * failure carries a human-actionable message or error list (the 3-part
- * honest-error contract that the converge interface surfaces to CLI + MCP).
+ * `add_member` converge op 的结果（OPR.0.3.3.24）。重叠部分沿用 MaterializeOutcome 的
+ * error vocabulary（validation_failed / preflight_failed），并增加 add-member 专属的
+ * 如实错误码（rig_not_found / pod_not_found / member_conflict / edge_unresolved）。
+ * 每个失败都携带可供用户操作的 message 或 error list（converge interface 向 CLI + MCP
+ * 呈现的三段式 honest-error contract）。
  */
 export type AddMemberOutcome =
   | { ok: true; result: AddMemberResult }
@@ -457,23 +450,23 @@ export type AddMemberOutcome =
   | { ok: false; code: "preflight_failed"; errors: string[]; warnings: string[] };
 
 /**
- * Pod-aware rig instantiator. Creates pods, nodes, edges, and runs
- * startup orchestration per node with resolved agent specs.
+ * 支持 pod 的工作组实例化器。创建 pod、node、edge，并使用已解析的 agent spec
+ * 为每个 node 运行 startup orchestration。
  */
 export class PodRigInstantiator {
   readonly db: Database.Database;
   private deps: PodInstantiatorDeps;
 
   constructor(deps: PodInstantiatorDeps) {
-    if (deps.db !== deps.rigRepo.db) throw new Error("PodRigInstantiator: rigRepo must share the same db handle");
-    if (deps.db !== deps.sessionRegistry.db) throw new Error("PodRigInstantiator: sessionRegistry must share the same db handle");
-    if (deps.db !== deps.eventBus.db) throw new Error("PodRigInstantiator: eventBus must share the same db handle");
-    if (deps.db !== deps.nodeLauncher.db) throw new Error("PodRigInstantiator: nodeLauncher must share the same db handle");
+    if (deps.db !== deps.rigRepo.db) throw new Error("PodRigInstantiator：rigRepo 必须共享同一个数据库句柄");
+    if (deps.db !== deps.sessionRegistry.db) throw new Error("PodRigInstantiator：sessionRegistry 必须共享同一个数据库句柄");
+    if (deps.db !== deps.eventBus.db) throw new Error("PodRigInstantiator：eventBus 必须共享同一个数据库句柄");
+    if (deps.db !== deps.nodeLauncher.db) throw new Error("PodRigInstantiator：nodeLauncher 必须共享同一个数据库句柄");
     this.db = deps.db;
     this.deps = deps;
   }
 
-  /** One configured catalog root for preflight, materialization, and launch. */
+  /** preflight、materialization 与 launch 共用一个已配置 catalog root。 */
   resolveSkillsRoot(): string | undefined {
     return this.deps.skillsRootResolver?.();
   }
@@ -512,7 +505,7 @@ export class PodRigInstantiator {
 
     const targetRig = opts?.targetRigId ? this.deps.rigRepo.getRig(opts.targetRigId) : null;
     if (opts?.targetRigId && !targetRig) {
-      return { ok: false, code: "target_rig_not_found", message: `Rig "${opts.targetRigId}" not found` };
+      return { ok: false, code: "target_rig_not_found", message: `未找到工作组 "${opts.targetRigId}"` };
     }
 
     const validation = PodRigSpecSchema.validate(raw, {
@@ -540,23 +533,19 @@ export class PodRigInstantiator {
       return { ok: false, code: "preflight_failed", errors: preflight.errors, warnings: preflight.warnings };
     }
 
-    // OPR.0.3.3.24: parse/validate/preflight is the separable FRONT-END; the
-    // persistence CORE (createPod + create-node + edges + events, in one tx)
-    // takes the already-parsed+validated spec so `expand` and the `add_member`
-    // converge op compose it WITHOUT fabricating a synthetic rig spec.
+    // OPR.0.3.3.24：解析/校验/预检是可分离的前端；持久化核心
+    //（createPod、create-node、edge、event 位于同一事务）接收已解析且已校验的规格，
+    // 使 `expand` 与 `add_member` converge 操作无须伪造合成工作组规格即可组合它。
     return this.materializeValidatedSpec(rigSpec, rigRoot, preflight.warnings, opts);
   }
 
   /**
-   * materialize with a STRUCTURED front (OPR.0.3.3.24): the YAML-free sibling of
-   * materialize(). Runs the SAME front-end (validate + preflight, via the
-   * preflight CORE using this adapter's fsOps) on an already-built raw spec
-   * OBJECT, then the persistence core - so `expand` (and the add_member op) drop
-   * the synthetic-spec YAML round-trip. Byte-identical to materialize(yaml): same
-   * validate(externalQualifiedIds), same preflight checks, same MaterializeOutcome
-   * error codes (validation_failed / preflight_failed / target_rig_not_found /
-   * materialize_conflict). fsOps stays encapsulated here (the expansion service
-   * has none) - this wrapper is mechanics only, no behaviour/layering change.
+   * 使用结构化前端实例化（OPR.0.3.3.24）：materialize() 的不经 YAML 同级路径。对已构建的原始
+   * 规格对象运行同一前端（通过采用此适配器 fsOps 的预检核心执行校验和预检），随后运行持久化核心，
+   * 使 `expand`（及 add_member 操作）去掉合成规格的 YAML 往返。它与 materialize(yaml) 完全等价：
+   * 使用相同 validate(externalQualifiedIds)、相同预检和相同 MaterializeOutcome 错误码
+   *（validation_failed / preflight_failed / target_rig_not_found / materialize_conflict）。fsOps
+   * 仍封装于此（扩容服务无此能力）；该包装器只复用机制，不改变行为或分层。
    */
   async materializeStructured(
     raw: unknown,
@@ -565,7 +554,7 @@ export class PodRigInstantiator {
   ): Promise<MaterializeOutcome> {
     const targetRig = opts?.targetRigId ? this.deps.rigRepo.getRig(opts.targetRigId) : null;
     if (opts?.targetRigId && !targetRig) {
-      return { ok: false, code: "target_rig_not_found", message: `Rig "${opts.targetRigId}" not found` };
+      return { ok: false, code: "target_rig_not_found", message: `未找到工作组 "${opts.targetRigId}"` };
     }
 
     const validation = PodRigSpecSchema.validate(raw, {
@@ -595,14 +584,11 @@ export class PodRigInstantiator {
   }
 
   /**
-   * materialize CORE (OPR.0.3.3.24): the persistence body of materialize, taking
-   * an already-parsed + validated + preflighted PodRigSpec. Creates pods +
-   * member nodes (via the create-node primitive) + edges + events in one
-   * transaction. Parse/validate/preflight is the caller's separable front-end
-   * (materialize() for YAML; expand/add_member build + validate a structured
-   * spec). This is the cut that lets `expand` drop its synthetic-spec hack and
-   * `add_member` reuse the exact create path — create+launch only, no identity
-   * migration.
+   * 实例化核心（OPR.0.3.3.24）：materialize 的持久化主体，接收已解析、校验和预检的
+   * PodRigSpec。在同一事务中创建 Pod、成员节点（通过 create-node 原语）、边和事件。
+   * 解析/校验/预检是调用方可分离的前端（materialize() 处理 YAML；expand/add_member 构建并校验
+   * 结构化规格）。此切分让 `expand` 去掉合成规格权宜手段，让 `add_member` 复用准确创建路径，
+   * 只创建并启动，不迁移身份。
    */
   async materializeValidatedSpec(
     rigSpec: PodRigSpec,
@@ -612,16 +598,15 @@ export class PodRigInstantiator {
       targetRigId?: string;
       suppressSummaryEvent?: boolean;
       cwdOverride?: string;
-      /** S9: ordinary member growth targets this already-persisted pod. */
+      /** S9：普通 member growth 以此已持久化 pod 为目标。 */
       existingPodNamespace?: string;
     },
   ): Promise<MaterializeOutcome> {
     const persistedEvents: Array<ReturnType<EventBus["persistWithinTransaction"]>> = [];
     const nodeResults: Array<{ logicalId: string; status: "materialized" }> = [];
 
-    // S5b running-name guard (OPR.0.5.4.11) — CREATE branch only: an expansion
-    // (targetRigId) adds to an existing rig and never mints a name, so the
-    // guard must not fire there.
+    // S5b running-name guard（OPR.0.5.4.11）——只用于 CREATE 分支：expansion（targetRigId）
+    // 向现有工作组添加内容，绝不生成 name，因此此处不得触发 guard。
     if (!opts?.targetRigId) {
       const nameGuard = checkRunningNameGuard({
         findRigsByName: (n) => this.deps.rigRepo.findRigsByName(n),
@@ -639,21 +624,20 @@ export class PodRigInstantiator {
           persistedEvents.push(this.deps.eventBus.persistWithinTransaction({ type: "rig.created", rigId: materializedRigId }));
         }
 
-        // PL-007: persist the rig's typed workspace block when declared.
+        // PL-007：声明时持久化工作组的类型化工作区块。
         if (rigSpec.workspace) {
           this.deps.rigRepo.setRigWorkspace(materializedRigId, rigSpec.workspace);
         }
-        // #25: the Claude managed-block destination is rig-row state (both persist sites).
+        // #25：Claude managed-block destination 是 rig-row state（两个 persist site）。
         if (rigSpec.managedBlocks?.["claude-code"]) {
           this.deps.rigRepo.setRigClaudeManagedBlockFile(materializedRigId, rigSpec.managedBlocks["claude-code"]);
         }
 
-        // OPR.0.4.8.3 Seam B: persist the rig-level permission_policy REF (raw, like role) —
-        // this is ONE of TWO rig-persist sites (materializeValidatedSpec + instantiate); missing
-        // either drops the rig ref on that path (map correction, independently verified).
-        // Guard-F1: the RESOLVED rig attachment persists too (declaringDir = THIS rigRoot,
-        // the original declaring RigSpec dir) — restart-complete for organic seats,
-        // add-member under a different root, and successor continuity. STRICT (load-bearing).
+        // OPR.0.4.8.3 Seam B：持久化 rig-level permission_policy ref（raw，与 role 相同）——这是
+        // 两个 rig-persist site 之一（materializeValidatedSpec + instantiate）；缺失任一处都会在该路径
+        // 丢失工作组 ref（映射修正，独立验证）。Guard-F1：已解析的工作组附件也持久化
+        //（declaringDir = 此 rigRoot，即原始声明 RigSpec 的目录），为自然席位、不同根目录下的
+        // add-member 与 successor continuity 提供完整 restart 能力。严格执行（关键）。
         if (rigSpec.permissionPolicy) {
           this.deps.rigRepo.setRigPermissionPolicy(materializedRigId, rigSpec.permissionPolicy);
           const rigAttachment = resolvePermissionPolicyAttachment(rigSpec.permissionPolicy, rigRoot, {
@@ -677,12 +661,12 @@ export class PodRigInstantiator {
 
         for (const pod of rigSpec.pods) {
           if (existingPodIds.has(pod.id) && opts?.existingPodNamespace !== pod.id) {
-            throw { code: "materialize_conflict", message: `Pod id '${pod.id}' already exists in rig '${currentRig.rig.name}'` };
+            throw { code: "materialize_conflict", message: `Pod id '${pod.id}' 已存在于工作组 '${currentRig.rig.name}' 中` };
           }
           for (const member of pod.members) {
             const qualifiedId = `${pod.id}.${member.id}`;
             if (logicalIdToNodeId.has(qualifiedId)) {
-              throw { code: "materialize_conflict", message: `Logical ID '${qualifiedId}' already exists in rig '${currentRig.rig.name}'` };
+              throw { code: "materialize_conflict", message: `Logical ID '${qualifiedId}' 已存在于工作组 '${currentRig.rig.name}' 中` };
             }
           }
         }
@@ -693,7 +677,7 @@ export class PodRigInstantiator {
             ? this.deps.podRepo.getPodByNamespace(materializedRigId, pod.id)
             : null;
           if (opts?.existingPodNamespace === pod.id && !existingPod) {
-            throw { code: "materialize_conflict", message: `Existing pod '${pod.id}' not found in rig '${currentRig.rig.name}'` };
+            throw { code: "materialize_conflict", message: `在工作组 '${currentRig.rig.name}' 中未找到现有 pod '${pod.id}'` };
           }
           const podRecord = existingPod ?? this.deps.podRepo.createPod(
             materializedRigId,
@@ -726,11 +710,10 @@ export class PodRigInstantiator {
               cwdOverride: opts?.cwdOverride,
             });
             logicalIdToNodeId.set(qualifiedId, node.id);
-            // Seam B R2: restart-stable provenance persists AT MATERIALIZE (a
-            // materialized-but-never-launched seat must still restore its posture).
-            // R2 HIGH-1: expansion into an EXISTING rig materializes through a SYNTHETIC
-            // fragment with no rig-level ref — a ref-less member must inherit the
-            // PERSISTED target-rig attachment (original declaring dir), never lose it.
+            // Seam B R2：restart-stable provenance 在 MATERIALIZE 时持久化（materialized 但从未
+            // launched 的 seat 仍必须恢复其 posture）。R2 HIGH-1：向现有工作组 expansion 时通过无
+            // 通过不含工作组级 ref 的合成片段实例化；无 ref 成员必须继承持久化的
+            // target-rig attachment（原始 declaring dir），绝不能丢失。
             const materializeAttachment = this.resolveMemberPolicyAttachment(member.permissionPolicy, rigSpec.permissionPolicy, rigRoot);
             if (materializeAttachment) {
               this.persistNodePolicyProvenanceStrict(node.id, materializeAttachment);
@@ -755,7 +738,7 @@ export class PodRigInstantiator {
             const fromId = logicalIdToNodeId.get(`${pod.id}.${edge.from}`);
             const toId = logicalIdToNodeId.get(`${pod.id}.${edge.to}`);
             if (!fromId || !toId) {
-              throw { code: "materialize_conflict", message: `Pod-local edge references missing node: ${pod.id}.${edge.from} -> ${pod.id}.${edge.to}` };
+              throw { code: "materialize_conflict", message: `Pod-local edge 引用了缺失 node：${pod.id}.${edge.from} -> ${pod.id}.${edge.to}` };
             }
             this.deps.rigRepo.addEdge(materializedRigId, fromId, toId, edge.kind);
           }
@@ -765,7 +748,7 @@ export class PodRigInstantiator {
           const fromId = logicalIdToNodeId.get(edge.from);
           const toId = logicalIdToNodeId.get(edge.to);
           if (!fromId || !toId) {
-            throw { code: "materialize_conflict", message: `Cross-pod edge references missing node: ${edge.from} -> ${edge.to}` };
+            throw { code: "materialize_conflict", message: `Cross-pod edge 引用了缺失 node：${edge.from} -> ${edge.to}` };
           }
           this.deps.rigRepo.addEdge(materializedRigId, fromId, toId, edge.kind);
         }
@@ -792,11 +775,10 @@ export class PodRigInstantiator {
         this.deps.eventBus.notifySubscribers(event);
       }
 
-      // OPR.0.5.3.6 — install the spec's shipped topology chain-file defaults
-      // under topology.root (copy-if-absent: earned context is never
-      // overwritten). Best-effort AFTER the persistence tx: a rig never fails
-      // to materialize over a defaults copy, but failures are surfaced as
-      // named warnings, never swallowed.
+      // OPR.0.5.3.6——在 topology.root 下安装 spec 已交付的 topology chain-file default
+      //（缺失时复制：earned context 绝不覆盖）。在 persistence transaction 后 best-effort 执行：
+      // 工作组绝不会因 default copy 失败而 materialize 失败，但 failure 会作为具名 warning 呈现，
+      // 绝不吞掉。
       if (this.deps.topologyRootResolver && !opts?.existingPodNamespace) {
         const defaults = installTopologyDefaults({
           specDir: rigRoot,
@@ -805,7 +787,7 @@ export class PodRigInstantiator {
           topologyRoot: this.deps.topologyRootResolver(),
         });
         for (const f of defaults.failed) {
-          preflightWarnings.push(`topology-defaults: could not install ${f.path}: ${f.error}`);
+          preflightWarnings.push(`topology-defaults：无法安装 ${f.path}：${f.error}`);
         }
       }
 
@@ -844,7 +826,7 @@ export class PodRigInstantiator {
 
     const targetRig = this.deps.rigRepo.getRig(targetRigId);
     if (!targetRig) {
-      return { ok: false, code: "target_rig_not_found", message: `Rig "${targetRigId}" not found` };
+      return { ok: false, code: "target_rig_not_found", message: `未找到工作组 "${targetRigId}"` };
     }
 
     const validation = PodRigSpecSchema.validate(raw, {
@@ -859,12 +841,10 @@ export class PodRigInstantiator {
   }
 
   /**
-   * launch CORE (OPR.0.3.3.24): given an already-parsed+validated spec whose
-   * nodes are already materialized, compute launch order and bring each node
-   * live via the launch-binding primitive. Extracted from launchMaterialized so
-   * `expand` (and the add_member op) launch a structured spec WITHOUT a YAML
-   * round-trip; launchMaterialized(yaml) is the parse/validate/normalize front
-   * over it. Behaviour identical (loop body relocated verbatim).
+   * 启动核心（OPR.0.3.3.24）：给定已解析校验且节点已实例化的规格，计算启动顺序，并通过
+   * launch-binding 原语让每个节点上线。它从 launchMaterialized 提取，使 `expand`（以及
+   * add_member 操作）无须 YAML 往返即可启动结构化规格；launchMaterialized(yaml) 是其上的
+   * 解析/校验/规范化前端。行为一致，循环主体原样迁移。
    */
   async launchValidatedSpec(
     rigSpec: PodRigSpec,
@@ -883,7 +863,7 @@ export class PodRigInstantiator {
           logicalId,
           nodeId: "",
           status: "failed",
-          error: `Unable to resolve member definition for "${logicalId}"`,
+          error: `无法解析 member "${logicalId}" 的定义`,
         });
         continue;
       }
@@ -894,7 +874,7 @@ export class PodRigInstantiator {
           logicalId,
           nodeId: "",
           status: "failed",
-          error: `Node "${logicalId}" not found after materialization`,
+          error: `materialization 后未找到 node "${logicalId}"`,
         });
         continue;
       }
@@ -933,22 +913,17 @@ export class PodRigInstantiator {
   }
 
   /**
-   * add_member converge op (OPR.0.3.3.24): add a single MEMBER to an EXISTING
-   * pod in a live rig. S9 makes this the ordinary-growth front over the same
-   * materializeValidatedSpec + launchValidatedSpec effect ingress used by pod
-   * expansion; this method owns validation and result shaping, not a sibling
-   * create/launch transaction.
+   * add_member converge 操作（OPR.0.3.3.24）：向存活工作组中的现有 Pod 添加单个成员。S9
+   * 使其成为普通增长前端，复用 Pod 扩容所用的同一 materializeValidatedSpec +
+   * launchValidatedSpec 效果入口；此方法负责校验与结果塑形，而非另建创建/启动事务。
    *
-   * Identity-migration-FREE: the new node mints a fresh node id + fresh logical
-   * id + fresh `@rigged_*` at launch; no existing seat's logical id,
-   * continuity_state, queue routing, or session is re-keyed. This is the
-   * source-visible fault line that lets add_member ship while move/fork wait for
-   * the 0.4.0 identity stack.
+   * 不做身份迁移：新节点启动时生成全新的节点 ID、逻辑 ID 和 `@rigged_*`；不重新索引任何
+   * 现有席位的逻辑 ID、continuity_state、队列路由或会话。这条源码可见的边界使 add_member
+   * 可先交付，而 move/fork 等待 0.4.0 身份栈。
    *
-   * It resolves the EXISTING pod's DB id via `podRepo.getPodByNamespace`, then
-   * explicitly tells the shared materializer to reuse that pod. The pod-exists
-   * guard is lifted only for this named target; the per-member duplicate-logical-
-   * id guard is KEPT (AC-3).
+   * 它通过 `podRepo.getPodByNamespace` 解析现有 pod DB id，再显式指示 shared materializer 复用
+   * 该 pod。pod-exists guard 只对该具名 target 放行；保留 per-member duplicate-logical-id guard
+   *（AC-3）。
    */
   async addMemberToPod(
     rigId: string,
@@ -957,15 +932,14 @@ export class PodRigInstantiator {
     rigRoot: string,
     opts?: { cwdOverride?: string; edges?: Array<{ from: string; to: string; kind: string }> },
   ): Promise<AddMemberOutcome> {
-    // 1. Resolve the rig.
+    // 1. 解析工作组。
     const rig = this.deps.rigRepo.getRig(rigId);
     if (!rig) {
-      return { ok: false, code: "rig_not_found", message: `Rig "${rigId}" not found.` };
+      return { ok: false, code: "rig_not_found", message: `未找到工作组 "${rigId}"。` };
     }
 
-    // 2. Resolve the EXISTING pod's DB id via getPodByNamespace (the corrected
-    // pod-id source — NOT a pre-computed namespace->podId map). Honest not-found
-    // with the available namespaces so the caller can correct the handle.
+    // 2. 通过 getPodByNamespace 解析现有 pod 的 DB id（修正后的 pod-id source——不是预计算的
+    // namespace->podId map）。如实返回 not-found 与可用 namespace，使 caller 可修正 handle。
     const pod = this.deps.podRepo.getPodByNamespace(rigId, podNamespace);
     if (!pod) {
       const available = this.deps.podRepo.getPodsForRig(rigId).map((p) => p.namespace);
@@ -973,15 +947,13 @@ export class PodRigInstantiator {
       return {
         ok: false,
         code: "pod_not_found",
-        message: `Pod "${podNamespace}" not found in rig "${rig.rig.name}". Existing pods: ${hint}. Check the namespace, or add a new pod with \`rig expand\`.`,
+        message: `在工作组 "${rig.rig.name}" 中未找到 pod "${podNamespace}"。现有 pod：${hint}。请检查 namespace，或使用 \`zrig expand\` 添加新 pod。`,
       };
     }
 
-    // 3. Build a minimal one-pod-one-member raw spec around the EXISTING pod so
-    // the new member runs the SAME validate + preflight the materialize front
-    // does — without a whole-rig spec or a YAML round-trip. The member fragment
-    // is embedded raw (spec snake_case shape, as expand's structured path emits);
-    // validate/normalize is the type gate.
+    // 3. 围绕现有 Pod 构建最小的单 Pod 单成员原始规格，使新成员执行实例化前端所用的同一套
+    // 校验和预检，无须完整工作组规格或 YAML 往返。成员片段以原始形式嵌入（规格 snake_case
+    // 形态，与 expand 结构化路径输出一致）；校验/规范化构成类型守卫。
     const rawSpec: Record<string, unknown> = {
       version: "0.2",
       name: rig.rig.name,
@@ -989,8 +961,8 @@ export class PodRigInstantiator {
       edges: [],
     };
 
-    // 4. Validate + normalize. externalQualifiedIds is the existing rig's node
-    // set (matches the materialize front; used for cross-pod edge resolution).
+    // 4. 校验并规范化。externalQualifiedIds 是现有工作组的节点集合（与实例化前端一致），
+    // 用于跨 Pod 边解析。
     const validation = PodRigSpecSchema.validate(rawSpec, {
       externalQualifiedIds: rig.nodes.map((node) => node.logicalId),
     });
@@ -1001,23 +973,21 @@ export class PodRigInstantiator {
     const member = rigSpec.pods[0]!.members[0]!;
     const qualifiedId = `${podNamespace}.${member.id}`;
 
-    // 5. KEEP the per-member duplicate-logical-id guard (AC-3). The pod-exists
-    // guard is lifted (we are adding to a live pod on purpose), but minting a
-    // colliding logical id would be a real seat collision — reject it honestly.
-    // (validate's externalQualifiedIds only resolves edge targets; it does NOT
-    // reject a member colliding with an existing node, so this guard is load-bearing.)
+    // 5. 保留 per-member duplicate-logical-id guard（AC-3）。pod-exists guard 已放行（有意向 live
+    // pod 添加），但生成冲突 logical id 会造成真实 seat collision——如实拒绝。
+    //（validate 的 externalQualifiedIds 只解析 edge target；不拒绝与现有 node 冲突的 member，
+    // 因此此 guard 是关键。）
     if (rig.nodes.some((node) => node.logicalId === qualifiedId)) {
       return {
         ok: false,
         code: "member_conflict",
-        message: `Member "${qualifiedId}" already exists in rig "${rig.rig.name}". Pick a different member id, or remove the existing seat first.`,
+        message: `Member "${qualifiedId}" 已存在于工作组 "${rig.rig.name}" 中。请选择其他 member id，或先移除现有 seat。`,
       };
     }
 
-    // 6. Preflight the new member on the normalized spec (same checks the
-    // materialize front runs, via the core, using this adapter's fsOps).
-    // rigNameOverride suppresses the rig-name-collision check (we are appending
-    // to an existing rig, exactly like expand's structured path).
+    // 6. 在 normalized spec 上 preflight 新 member（通过 core 使用此 adapter fsOps，执行与
+    // materialize front 相同的检查）。rigNameOverride 抑制 rig-name-collision check（我们正在向
+    // 现有工作组追加，与 expand structured 路径完全相同）。
     const preflight = await preflightValidatedSpec(rigSpec, {
       rigRoot,
       cwdOverride: opts?.cwdOverride,
@@ -1032,28 +1002,26 @@ export class PodRigInstantiator {
       return { ok: false, code: "preflight_failed", errors: preflight.errors, warnings: preflight.warnings };
     }
 
-    // 7. Validate + resolve any declared pod-local edges BEFORE creating the
-    // node, so a bad edge fails fast with no orphan seat. Two honest failure
-    // classes: (a) DECLARATION validity (non-array / empty fields / a kind
-    // outside the canonical VALID_EDGE_KINDS - mirrors the rigspec pod-local
-    // edge contract, NOT a second looser path) -> validation_failed; (b) live
-    // ENDPOINT resolution against the new member + existing pod-mates ->
-    // edge_unresolved. Edges carry NO runtime behavior yet (the edge-runtime
-    // fence); we persist the declared graph so it is NOT silently dropped (FM2).
+    // 7. 创建节点前校验并解析所有已声明 Pod 内部边，使错误边快速失败且不留下孤儿席位。
+    // 两类明确失败：(a) 声明有效性（非数组、空字段、kind 不在规范 VALID_EDGE_KINDS 中；
+    // 镜像 rigspec 的 Pod 内部边契约，而非第二条更宽松路径）→ validation_failed；
+    // (b) 对照新成员和现有 Pod 同伴解析实时端点 → edge_unresolved。边尚不携带运行时行为
+    //（边运行时隔离）；持久化已声明图，避免其静默丢失
+    //（FM2）。
     const rawEdges = opts?.edges;
     if (rawEdges !== undefined && rawEdges !== null && !Array.isArray(rawEdges)) {
-      return { ok: false, code: "validation_failed", errors: ["edges: must be an array of { from, to, kind }"] };
+      return { ok: false, code: "validation_failed", errors: ["edges：必须是由 { from, to, kind } 组成的数组"] };
     }
     const declaredEdges = Array.isArray(rawEdges) ? rawEdges : [];
     const edgeErrors: string[] = [];
     declaredEdges.forEach((edge, i) => {
       if (typeof edge?.from !== "string" || typeof edge?.to !== "string" || typeof edge?.kind !== "string"
         || edge.from.trim() === "" || edge.to.trim() === "" || edge.kind.trim() === "") {
-        edgeErrors.push(`edges[${i}]: from, to, and kind are required non-empty strings`);
+        edgeErrors.push(`edges[${i}]：from、to 和 kind 必须是非空字符串`);
         return;
       }
       if (!VALID_EDGE_KINDS.has(edge.kind)) {
-        edgeErrors.push(`edges[${i}].kind: must be one of ${[...VALID_EDGE_KINDS].join(", ")} (got "${edge.kind}")`);
+        edgeErrors.push(`edges[${i}].kind：必须是 ${[...VALID_EDGE_KINDS].join(", ")} 之一（收到 "${edge.kind}"）`);
       }
     });
     if (edgeErrors.length > 0) {
@@ -1066,14 +1034,13 @@ export class PodRigInstantiator {
       const to = `${podNamespace}.${edge.to}`;
       if (!knownLogicalIds.has(from) || !knownLogicalIds.has(to)) {
         const missing = !knownLogicalIds.has(from) ? from : to;
-        return { ok: false, code: "edge_unresolved", message: `Pod-local edge references "${missing}", which is neither the new member "${qualifiedId}" nor an existing seat in rig "${rig.rig.name}". Use member ids within pod "${podNamespace}".` };
+        return { ok: false, code: "edge_unresolved", message: `Pod-local edge 引用了 "${missing}"，它既不是新 member "${qualifiedId}"，也不是工作组 "${rig.rig.name}" 中的现有 seat。请使用 pod "${podNamespace}" 内的 member id。` };
       }
       resolvedEdges.push({ from, to, kind: edge.kind });
     }
 
-    // 8. Feed the already-validated member and edges to the ONE creation
-    // effect. Pod-local edges may name existing pod-mates, so they are checked
-    // above against the live topology, then attached after schema validation.
+    // 8. 将已验证 member 与 edge 交给唯一 creation effect。pod-local edge 可能指向现有 pod-mate，
+    // 因此上方先对照 live topology 检查，再在 schema validation 后 attach。
     rigSpec.pods[0]!.edges = declaredEdges;
     const materialized = await this.materializeValidatedSpec(rigSpec, rigRoot, preflight.warnings, {
       targetRigId: rigId,
@@ -1086,27 +1053,26 @@ export class PodRigInstantiator {
         ? materialized.message
         : "errors" in materialized
           ? materialized.errors.join("; ")
-          : "member materialization failed";
+          : "member materialization 失败";
       if (materialized.code === "materialize_conflict") {
         return { ok: false, code: "member_conflict", message };
       }
       return { ok: false, code: "materialize_error", message };
     }
 
-    // 9. The shared launch effect owns startup projection + delivery +
-    // readiness + `@rigged_*` for both expansion and ordinary growth.
+    // 9. 扩容与普通增长的启动投影、交付、就绪状态和 `@rigged_*` 均由共享启动效果负责。
     const launchOutcome = await this.launchValidatedSpec(rigSpec, rigRoot, rigId, opts?.cwdOverride);
     if (!launchOutcome.ok) {
       const message = "message" in launchOutcome
         ? launchOutcome.message
         : "errors" in launchOutcome
           ? launchOutcome.errors.join("; ")
-          : "member launch failed";
+          : "member launch 失败";
       return { ok: false, code: "materialize_error", message };
     }
     const launched = launchOutcome.result.nodes.find((node) => node.logicalId === qualifiedId);
     if (!launched) {
-      return { ok: false, code: "materialize_error", message: `No launch outcome returned for member "${qualifiedId}".` };
+      return { ok: false, code: "materialize_error", message: `member "${qualifiedId}" 没有返回 launch outcome。` };
     }
 
     return {
@@ -1127,11 +1093,10 @@ export class PodRigInstantiator {
     };
   }
 
-  /** Recover the legacy gap where projection failed before startup context was
-   * persisted. This is an explicit first-start retry, never a resume/fresh fallback.
-   * The operator supplies the original member source after exiting and cleaning
-   * the failed shell. Existing validation, projection and startup delivery own all
-   * effects; no node, history, token or startup-context row is fabricated here. */
+  /** 恢复 startup context 持久化前 projection 失败的 legacy gap。这是显式 first-start retry，
+   *  绝不是 resume/fresh fallback。operator 在退出并清理 failed shell 后提供原始 member source。
+   *  所有 effect 均由现有 validation、projection 与 startup delivery 负责；此处不伪造 node、
+   *  history、token 或 startup-context row。 */
   async retryFirstStart(rigId: string, nodeId: string, memberFragment: Record<string, unknown>, rigRoot: string): Promise<
     { ok: false; code: string; message: string } |
     { ok: true; rigId: string; nodeId: string; logicalId: string; status: "launched"; sessionName?: string; warnings?: string[] }
@@ -1144,33 +1109,33 @@ export class PodRigInstantiator {
     const rig = this.deps.rigRepo.getRig(rigId);
     const node = rig?.nodes.find(n => n.id === nodeId);
     const podRow = node && this.deps.podRepo.getPodsForRig(rigId).find(p => p.id === node.podId);
-    if (!rig || !node || !podRow || node.runtime === "terminal") return refuse("Retry requires an existing agent member in a pod.");
+    if (!rig || !node || !podRow || node.runtime === "terminal") return refuse("重试需要 pod 中已有的 agent member。");
     if (!nodePath.isAbsolute(rigRoot)) return refuse("Supply the original absolute --rig-root for agent resolution.");
 
     const eligible = (): string | undefined => {
       const current = this.deps.rigRepo.getRig(rigId)?.nodes.find(n => n.id === nodeId);
-      if (!current || JSON.stringify(current) !== JSON.stringify(node)) return "Seat changed during recovery checks; inspect it before retrying.";
-      if (this.deps.sessionRegistry.getBindingForNode(nodeId)) return "Seat is still bound. Exit the failed shell, then use rig seat clean; retry never stops a process.";
-      if (this.db.prepare("SELECT 1 FROM node_startup_context WHERE node_id = ?").get(nodeId)) return "Startup context already exists; use the ordinary seat lifecycle commands.";
+      if (!current || JSON.stringify(current) !== JSON.stringify(node)) return "恢复检查期间 seat 已发生变化；请先检查再重试。";
+      if (this.deps.sessionRegistry.getBindingForNode(nodeId)) return "Seat 仍有绑定。请退出失败的 shell，再使用 zrig seat clean；重试绝不会停止进程。";
+      if (this.db.prepare("SELECT 1 FROM node_startup_context WHERE node_id = ?").get(nodeId)) return "Startup context 已存在；请使用常规 seat lifecycle 命令。";
       const sessions = this.deps.sessionRegistry.getSessionsForRig(rigId).filter(s => s.nodeId === nodeId);
       if (sessions.length === 0 || sessions.some(s => s.status !== "exited" || s.startupStatus !== "failed" || s.origin !== "launched" || s.resumeToken)) {
-        return "Every prior session must be an exited, failed first start with no native resume token.";
+        return "此前每个 session 都必须是已退出、首次启动失败且没有 native resume token 的状态。";
       }
       if (this.db.prepare("SELECT 1 FROM occupant_tenures WHERE node_id = ? AND native_session_id_at_boot IS NOT NULL").get(nodeId)
         || this.db.prepare("SELECT 1 FROM applied_launch_observations a JOIN occupant_tenures t USING (generation_uuid) WHERE t.node_id = ?").get(nodeId)) {
-        return "A native identity or applied launch was recorded; first-start retry cannot replace it.";
+        return "已记录 native identity 或已应用的 launch；首次启动重试不能替换它。";
       }
       const events = this.db.prepare("SELECT type, payload FROM events WHERE node_id = ? AND type IN ('node.startup_ready', 'node.startup_failed') ORDER BY seq").all(nodeId) as Array<{ type: string; payload: string }>;
-      if (events.some(e => e.type === "node.startup_ready")) return "This seat previously reached startup readiness.";
-      // Old producers have no structured phase field. Admit only their exact
-      // projection-failure prefixes, which precede launchHarness in startNode.
+      if (events.some(e => e.type === "node.startup_ready")) return "此 seat 此前已达到 startup ready。";
+      // 旧 producer 没有结构化 phase 字段。只接纳其精确 projection-failure prefix；这些失败发生在
+      // startNode 的 launchHarness 之前。
       try {
         const failures = events.map(e => JSON.parse(e.payload) as { sessionId?: string; error?: string });
         if (sessions.some(s => {
           const last = failures.filter(f => f.sessionId === s.id).at(-1);
           return !last || typeof last.error !== "string" || !/^Projection (failed for |error: )/.test(last.error);
-        })) return "Retained events do not prove projection failed before native launch for every session.";
-      } catch { return "Retained startup failure evidence is unreadable."; }
+        })) return "保留的 event 无法证明每个 session 都在 native launch 前因 projection 失败。";
+      } catch { return "保留的启动失败证据不可读。"; }
     };
     const initialRefusal = eligible();
     if (initialRefusal) return refuse(initialRefusal);
@@ -1183,10 +1148,10 @@ export class PodRigInstantiator {
     const rigSpec = PodRigSpecSchema.normalize(rawSpec);
     const pod = rigSpec.pods[0]!;
     const member = pod.members[0]!;
-    // These overrides were not retained on the old node. Refuse to guess them or
-    // introduce new startup/session-source behavior in a recovery request.
+    // 旧 node 未保留这些 override。拒绝猜测，也不在 recovery request 中引入新
+    // startup/session-source 行为。
     if (member.startup || member.starterRef || member.sessionSource || member.compactionStrategy || member.mechanic || node.sessionSource) {
-      return refuse("First-start retry does not accept unretained member startup, continuity or session-source overrides.");
+      return refuse("首次启动重试不接受未保留的 member startup、continuity 或 session-source override。");
     }
     const same = (a: unknown, b: unknown) => (a ?? null) === (b ?? null);
     if (`${pod.id}.${member.id}` !== node.logicalId || !same(member.agentRef, node.agentRef) || !same(member.profile, node.profile)
@@ -1194,12 +1159,12 @@ export class PodRigInstantiator {
       || !same(member.permissionPolicy, node.permissionPolicy)) return refuse("Member source disagrees with the retained seat identity or policy.");
     const resolved = resolveAgentRef(member.agentRef, rigRoot, this.deps.fsOps);
     if (!resolved.ok) return refuse(resolved.code === "validation_failed" ? resolved.errors.join("; ") : resolved.error);
-    if (!node.resolvedSpecHash || resolved.resolved.hash !== node.resolvedSpecHash) return refuse("Agent source hash differs from the failed first start.");
+    if (!node.resolvedSpecHash || resolved.resolved.hash !== node.resolvedSpecHash) return refuse("Agent source hash 与失败的首次启动不同。");
     const config = resolveNodeConfig({ baseSpec: resolved.resolved, importedSpecs: resolved.imports, collisions: resolved.collisions,
       profileName: member.profile, specRoot: rigRoot, member, pod, rig: rigSpec, skillsRoot: this.resolveSkillsRoot(), ...this.systemWorldResolutionContext() });
     if (!config.ok) return refuse(config.errors.join("; "));
     if (!same(config.config.model, node.model) || !same(config.config.cwd, node.cwd) || !same(config.config.restorePolicy, node.restorePolicy)) {
-      return refuse("Resolved model, cwd or restore policy differs from the failed first start.");
+      return refuse("解析得到的 model、cwd 或 restore policy 与失败的首次启动不同。");
     }
     const preflight = await preflightValidatedSpec(rigSpec, { rigRoot, fsOps: this.deps.fsOps, skillsRoot: this.resolveSkillsRoot(),
       ...this.systemWorldResolutionContext(), rigNameOverride: rig.rig.name, inheritedPermissionPolicy: this.inheritedPermissionPolicy(rigId), exec: this.deps.exec });
@@ -1208,19 +1173,19 @@ export class PodRigInstantiator {
       ...this.deps.sessionRegistry.getSessionsForRig(rigId).filter(s => s.nodeId === nodeId).map(s => s.sessionName)]);
     try {
       for (const name of names) {
-        if ((await this.deps.tmuxAdapter?.probeSession(name))?.state !== "absent") return refuse(`Session "${name}" is live or its liveness is unknown; no retry was attempted.`);
+        if ((await this.deps.tmuxAdapter?.probeSession(name))?.state !== "absent") return refuse(`Session "${name}" 仍在运行或无法确定其存活状态；未尝试重试。`);
       }
-    } catch { return refuse("Session liveness could not be determined; no retry was attempted."); }
+    } catch { return refuse("无法确定 session 存活状态；未尝试重试。"); }
     const finalRefusal = eligible();
     if (finalRefusal) return refuse(finalRefusal);
     const result = await this.launchExistingAgentMember({ rigId, nodeId, qualifiedId: node.logicalId, rigSpec, rigRoot, pod, member,
       resolveResult: resolved, configResult: config });
-    if (result.status !== "launched") return { ok: false, code: result.status, message: result.error ?? "First-start retry did not reach readiness." };
+    if (result.status !== "launched") return { ok: false, code: result.status, message: result.error ?? "首次启动 retry 未达到 ready。" };
     return { ok: true, rigId, nodeId, logicalId: node.logicalId, status: "launched", sessionName: result.sessionName, warnings: result.warnings };
   }
 
   async instantiate(rigSpecYaml: string, rigRoot: string, opts?: { cwdOverride?: string; force?: boolean; prelaunchHook?: (rigId: string) => Promise<{ ok: true } | { ok: false; code: string; message: string }> }): Promise<InstantiateOutcome> {
-    // 1. Parse + validate
+    // 1. 解析并校验
     let rigSpec: PodRigSpec;
     try {
       const raw = PodRigSpecCodec.parse(rigSpecYaml);
@@ -1233,10 +1198,9 @@ export class PodRigInstantiator {
       return { ok: false, code: "validation_failed", errors: [(err as Error).message] };
     }
 
-    // 1b. S5b running-name guard (OPR.0.5.4.11) — THE rig-up path (the 08-26
-    // duplicate specimen's path). Fires before preflight/create/launch: a
-    // RUNNING same-name rig refuses with the teaching error and spends nothing;
-    // all-stopped generations pass through (name reuse unchanged).
+    // 1b. S5b running-name guard（OPR.0.5.4.11）——rig-up 路径（08-26 duplicate specimen
+    // 路径）。在 preflight/create/launch 前触发：RUNNING 的同名工作组以 teaching error 拒绝，
+    // 不产生开销；all-stopped generation 放行（name reuse 不变）。
     const nameGuard = checkRunningNameGuard({
       findRigsByName: (n) => this.deps.rigRepo.findRigsByName(n),
       countRunningSessions: makeRunningSessionCounter(this.db),
@@ -1249,13 +1213,11 @@ export class PodRigInstantiator {
       return { ok: false, code: "preflight_failed", errors: preflight.errors, warnings: preflight.warnings };
     }
 
-    // 3. Compute launch order from edges (rejects cycles)
+    // 3. 从 edge 计算 launch 顺序（拒绝 cycle）
     //
-    // OPR.0.3.2.22 Bug 2: this MUST run BEFORE createRig. Pre-fix, a
-    // cycle in the spec left an orphan stopped-state rig record because
-    // createRig had already committed before the cycle check ran. The
-    // operator-facing consequence was the "ambiguous library-spec vs
-    // restore-target" UX trap on the very next `rig up <builtin>` retry.
+    // OPR.0.3.2.22 Bug 2：必须在 createRig 前运行。修复前，spec 中的 cycle 会留下 orphan
+    // stopped 状态工作组记录，因为循环检查运行前 createRig 已提交。对操作人员的后果是，
+    // 下一次 `zrig up <builtin>` retry 就会落入“library-spec 与 restore-target 歧义”的 UX 陷阱。
     let launchOrder: string[];
     try {
       launchOrder = this.computePodLaunchOrder(rigSpec);
@@ -1263,23 +1225,23 @@ export class PodRigInstantiator {
       return { ok: false, code: "cycle_error", message: (err as Error).message };
     }
 
-    // 4. Create rig (after cycle check passes)
+    // 4. cycle check 通过后创建工作组
     let rigId: string;
     try {
       const rig = this.deps.rigRepo.createRig(rigSpec.name);
       rigId = rig.id;
-      // PL-007: persist typed workspace block (when declared) on the rig
-      // record. Whoami / node-inventory read it via getRigWorkspace().
+      // PL-007：声明时在工作组记录上持久化类型化工作区块。Whoami / node-inventory
+      // 通过 getRigWorkspace() 读取它。
       if (rigSpec.workspace) {
         this.deps.rigRepo.setRigWorkspace(rigId, rigSpec.workspace);
       }
-      // #25: the second rig-persist site (see materializeValidatedSpec).
+      // #25：第二个 rig-persist site（见 materializeValidatedSpec）。
       if (rigSpec.managedBlocks?.["claude-code"]) {
         this.deps.rigRepo.setRigClaudeManagedBlockFile(rigId, rigSpec.managedBlocks["claude-code"]);
       }
-      // OPR.0.4.8.3 Seam B: the SECOND rig-persist site (bootstrap instantiate path) —
-      // both sites must write or the rig ref silently drops on one instantiate path.
-      // Guard-F1: resolved rig attachment persists here too (declaringDir = rigRoot).
+      // OPR.0.4.8.3 Seam B：第二个 rig-persist site（bootstrap instantiate 路径）——
+      // 两处都必须写入，否则其中一条 instantiate 路径会静默丢失 rig ref。
+      // Guard-F1：已解析的工作组附件也在此持久化（declaringDir = rigRoot）。
       if (rigSpec.permissionPolicy) {
         this.deps.rigRepo.setRigPermissionPolicy(rigId, rigSpec.permissionPolicy);
         const rigAttachment = resolvePermissionPolicyAttachment(rigSpec.permissionPolicy, rigRoot, {
@@ -1296,20 +1258,18 @@ export class PodRigInstantiator {
       return { ok: false, code: "instantiate_error", message: (err as Error).message };
     }
 
-    // 5. Create pods + nodes + edges, then launch in topological order
+    // 5. 创建 pod、node 与 edge，再按拓扑顺序启动
     const nodeResults: { logicalId: string; status: "launched" | "failed" | "attention_required"; error?: string; evidence?: string; sessionName?: string }[] = [];
     const nodeIdMap: Record<string, string> = {}; // "pod.member" -> node DB id
-    const launchedSessionNames: string[] = []; // Track for orphan cleanup on total failure
+    const launchedSessionNames: string[] = []; // 记录 session，以便全部失败时清理 orphan
     const podInstantiateWarnings = preflight.warnings;
 
-    // OPR.0.5.3.6 (r2-B1) — instantiate() is the REAL rig-up door (/api/up →
-    // bootstrap → here), and like the rig-persist sites above, BOTH
-    // instantiation paths must install or defaults silently drop on one of
-    // them (materializeValidatedSpec carries the same guarded block). Runs
-    // BEFORE node launch so seats can read their defaults from first boot.
-    // Best-effort, doubly guarded: the installer itself never throws, and this
-    // wrapper makes even a broken injected fsOps a named warning, never a
-    // failed rig.
+    // OPR.0.5.3.6（r2-B1）——instantiate() 才是真正的 rig-up 入口（/api/up →
+    // bootstrap → 此处）；与上方 rig-persist site 一样，两条实例化路径都必须安装，
+    // 否则其中一条路径会静默丢失 default（materializeValidatedSpec 包含相同的 guard block）。
+    // 在 node launch 前运行，让 seat 首次启动即可读取其 default。best-effort 且双重防护：
+    // installer 本身从不抛错；即使注入的 fsOps 损坏，此 wrapper 也只生成具名 warning，
+    // 不会使工作组失败。
     if (this.deps.topologyRootResolver) {
       try {
         const defaults = installTopologyDefaults({
@@ -1319,16 +1279,16 @@ export class PodRigInstantiator {
           topologyRoot: this.deps.topologyRootResolver(),
         });
         for (const f of defaults.failed) {
-          podInstantiateWarnings.push(`topology-defaults: could not install ${f.path}: ${f.error}`);
+          podInstantiateWarnings.push(`topology-defaults：无法安装 ${f.path}：${f.error}`);
         }
       } catch (err) {
-        podInstantiateWarnings.push(`topology-defaults: installer failed: ${err instanceof Error ? err.message : String(err)}`);
+        podInstantiateWarnings.push(`topology-defaults：安装程序失败：${err instanceof Error ? err.message : String(err)}`);
       }
     }
-    // Store per-member context for deferred launch
+    // 保存各 member 的 context，供延后启动使用
     const memberContext = new Map<string, { pod: typeof rigSpec.pods[0]; member: typeof rigSpec.pods[0]["members"][0]; podId: string; nodeId: string; resolveResult: any; configResult: any }>();
 
-    // Phase 1: Create all pods and collect member entries
+    // 阶段 1：创建全部 pod 并收集 member entry
     const podIdMap: Record<string, string> = {}; // pod.id -> DB pod id
     const memberEntries: Array<{ pod: typeof rigSpec.pods[0]; member: typeof rigSpec.pods[0]["members"][0]; podId: string; qualifiedId: string }> = [];
 
@@ -1342,7 +1302,7 @@ export class PodRigInstantiator {
         podId = podRecord.id;
         podIdMap[pod.id] = podId;
       } catch (err) {
-        nodeResults.push(...pod.members.map((m) => ({ logicalId: `${pod.id}.${m.id}`, status: "failed" as const, error: `Pod creation failed: ${(err as Error).message}` })));
+          nodeResults.push(...pod.members.map((m) => ({ logicalId: `${pod.id}.${m.id}`, status: "failed" as const, error: `Pod 创建失败：${(err as Error).message}` })));
         continue;
       }
       for (const member of pod.members) {
@@ -1350,15 +1310,14 @@ export class PodRigInstantiator {
       }
     }
 
-    // Sort members by topological launch order
+    // 按拓扑启动顺序排列 member
     const orderMap = new Map(launchOrder.map((id, i) => [id, i]));
     memberEntries.sort((a, b) => (orderMap.get(a.qualifiedId) ?? 999) - (orderMap.get(b.qualifiedId) ?? 999));
 
-    // Prelaunch hook: service gate runs after topology setup, before any node launch.
+    // 启动前 hook：service gate 在 topology setup 后、任何 node launch 前运行。
     //
-    // OPR.0.3.2.22 Bug 2: if the hook fails, roll back the rig record so
-    // the spec name is left free for a clean retry. Pods rely on rigs
-    // via ON DELETE CASCADE so deleting the rig is sufficient.
+    // OPR.0.3.2.22 Bug 2：若 hook 失败，则回滚 rig record，使 spec name 可供干净重试。
+    // pod 通过 ON DELETE CASCADE 依赖 rig，因此删除 rig 即可。
     if (opts?.prelaunchHook) {
       const hookResult = await opts.prelaunchHook(rigId);
       if (!hookResult.ok) {
@@ -1367,10 +1326,10 @@ export class PodRigInstantiator {
       }
     }
 
-    // Phase 2: Process members in launch order
+    // 阶段 2：按启动顺序处理 member
     for (const { pod, member, podId, qualifiedId } of memberEntries) {
 
-        // Terminal fast-path: skip agent resolution and profile resolution
+        // Terminal 快速路径：跳过 agent 与 profile 解析
         if (member.agentRef === "builtin:terminal") {
           const termResult = await this.processTerminalMember(
             rigId, rigSpec, rigRoot, pod, member, podId, qualifiedId, nodeIdMap, launchedSessionNames, podInstantiateWarnings, opts?.cwdOverride,
@@ -1379,7 +1338,7 @@ export class PodRigInstantiator {
           continue;
         }
 
-        // Resolve agent ref
+        // 解析 agent ref
         const resolveResult = resolveAgentRef(member.agentRef, rigRoot, this.deps.fsOps);
         if (!resolveResult.ok) {
           const msg = resolveResult.code === "validation_failed"
@@ -1389,7 +1348,7 @@ export class PodRigInstantiator {
           continue;
         }
 
-        // Resolve node config (profile + precedence)
+        // 解析 node config（profile + precedence）
         const configResult = resolveNodeConfig({
           baseSpec: resolveResult.resolved,
           importedSpecs: resolveResult.imports,
@@ -1408,25 +1367,22 @@ export class PodRigInstantiator {
           continue;
         }
 
-        // Create node
+        // 创建 node
         const createUnit = this.db.transaction(() => {
           const node = this.deps.rigRepo.addNode(rigId, qualifiedId, {
-            // OPR.0.4.6.FAC1 (VM-caught): the pod-aware bootstrap
-            // instantiate-from-YAML path (`rig up <spec>`) creates agent
-            // nodes via this INLINE addNode, NOT createMemberNode — so
-            // it needs its own role wire or every up'd rig persists
-            // role=NULL and role→seat resolution can never match. This
-            // is the FOURTH node-creation site (materialize/expand/
-            // add_member share createMemberNode; this one does not); the
-            // C1 sibling-layer sweep missed it because its tests
-            // exercised the createMemberNode paths, not bootstrap.
+            // OPR.0.4.6.FAC1（VM 发现）：支持 pod 的 bootstrap instantiate-from-YAML
+            // 路径（`zrig up <spec>`）通过此处内联的 addNode 创建 agent node，而非
+            // createMemberNode。因此这里需要独立接入 role，否则所有经 up 创建的工作组都会持久化
+            // role=NULL，role→seat 解析永远无法匹配。这是第四个 node-creation site
+            //（materialize/expand/add_member 共用 createMemberNode，此处不共用）；C1 sibling-layer
+            // sweep 未发现它，因为其测试覆盖的是 createMemberNode 路径，而非 bootstrap。
             role: member.role,
             runtime: member.runtime,
             model: member.model,
             codexConfigProfile: member.codexConfigProfile,
-            // OPR.0.4.8.3 Seam B: bootstrap inline addNode is the FOURTH node-creation
-            // site (see the role wire note above) — same member-ref persistence as
-            // createMemberNode or `rig up <spec>` seats lose their policy ref.
+            // OPR.0.4.8.3 Seam B：bootstrap 内联 addNode 是第四个 node-creation site
+            //（见上方 role 接线注释）——必须像 createMemberNode 一样持久化 member ref，
+            // 否则 `zrig up <spec>` 创建的 seat 会丢失 policy ref。
             permissionPolicy: member.permissionPolicy,
             sessionSource: member.sessionSource,
             cwd: configResult.config.cwd,
@@ -1439,12 +1395,10 @@ export class PodRigInstantiator {
             resolvedSpecVersion: configResult.config.resolvedSpecVersion,
             resolvedSpecHash: configResult.config.resolvedSpecHash,
           });
-          // Guard multi-seat correction (16e853a7): node creation + required provenance
-          // are ONE ATOMIC UNIT (SQLite savepoint). A setter fault rolls the INSERT back
-          // too — under partial-success semantics the sibling may proceed, but a failed
-          // member can never survive as a half-created node whose restore posture would
-          // widen to the rig attachment. (Previously the row survived with provenance
-          // null, and resolveRestorePosture fell through to rig full_bypass.)
+          // Guard multi-seat 修正（16e853a7）：node creation 与必需 provenance 是同一个原子单元
+          //（SQLite savepoint）。setter 故障也会回滚 INSERT——在部分成功语义下，sibling 可以继续，
+          // 但失败 member 绝不能以半创建 node 的形式存留，使 restore posture 扩大到 rig attachment。
+          //（此前该行会以 provenance=null 存留，resolveRestorePosture 会落到 rig full_bypass。）
           const bootstrapAttachment = this.resolveMemberPolicyAttachment(member.permissionPolicy, rigSpec.permissionPolicy, rigRoot);
           if (bootstrapAttachment) this.persistNodePolicyProvenanceStrict(node.id, bootstrapAttachment);
           return node.id;
@@ -1452,7 +1406,7 @@ export class PodRigInstantiator {
         let nodeId: string;
         try {
           nodeId = createUnit();
-          // nodeIdMap only AFTER the atomic unit succeeds (Guard contract item 2).
+          // 仅在原子单元成功后写入 nodeIdMap（Guard contract 第 2 项）。
           nodeIdMap[qualifiedId] = nodeId;
         } catch (err) {
           nodeResults.push({ logicalId: qualifiedId, status: "failed", error: (err as Error).message });
@@ -1487,7 +1441,7 @@ export class PodRigInstantiator {
         });
       }
 
-    // Create pod-local edges (after all members created)
+    // 创建 pod-local edge（所有 member 创建后）
     for (const pod of rigSpec.pods) {
       for (const edge of pod.edges) {
         const fromId = nodeIdMap[`${pod.id}.${edge.from}`];
@@ -1500,7 +1454,7 @@ export class PodRigInstantiator {
       }
     }
 
-    // Create cross-pod edges
+    // 创建 cross-pod edge
     for (const edge of rigSpec.edges) {
       const fromId = nodeIdMap[edge.from];
       const toId = nodeIdMap[edge.to];
@@ -1511,19 +1465,14 @@ export class PodRigInstantiator {
       }
     }
 
-    // OPR.0.3.2.CT (conveyor-trust-minimal-fix):
-    // Distinguish recoverable attention_required (e.g., workspace trust
-    // gate) from terminal failure. ANY attention_required node means
-    // the rig is operator-recoverable — do NOT tear down. Only when
-    // every node is TERMINALLY failed (status === "failed") does the
-    // tear-down run, preserving the existing failure-cleanup behavior.
+    // OPR.0.3.2.CT（conveyor-trust-minimal-fix）：
+    // 区分可恢复的 attention_required（例如工作区信任守卫）与终止性失败。
+    // 只要存在 attention_required node，工作组就可由用户恢复——不得拆除。仅当每个 node
+    // 都终止性失败（status === "failed"）时才执行拆除，保留既有 failure-cleanup 行为。
     //
-    // For all-attention_required (no successful launch, no terminal
-    // failure), surface an attention_required outcome that carries
-    // the actionable per-node detail. The route returns a 3-part
-    // error pointing the operator at the approve→resume path. Sessions
-    // remain in startup_status='attention_required' so `rig ps` lists
-    // them and tmux panes are NOT killed.
+    // 对全为 attention_required（无成功启动、无终止性失败）的情况，呈现带有各 node 可操作详情的
+    // attention_required 结果。route 返回三段式 error，引导用户执行 approve→resume。session
+    // 保持 startup_status='attention_required'，使 `zrig ps` 仍能列出它们，且不终止 tmux pane。
     const hasAttention = nodeResults.some((n) => n.status === "attention_required");
     const hasLaunched = nodeResults.some((n) => n.status === "launched");
     const allTerminal = nodeResults.length > 0 && nodeResults.every((n) => n.status === "failed");
@@ -1533,7 +1482,7 @@ export class PodRigInstantiator {
         if (this.deps.tmuxAdapter) {
           for (const sessionName of launchedSessionNames) {
             const stopped = await this.deps.tmuxAdapter.killSession(sessionName);
-            if (!stopped.ok) return; // Do not forget a still-protected/uncertain session.
+            if (!stopped.ok) return; // 不要遗忘仍受保护或状态不确定的 session。
           }
         }
         this.deps.rigRepo.deleteRig(rigId);
@@ -1541,25 +1490,23 @@ export class PodRigInstantiator {
       const guard = this.deps.tmuxAdapter?.deliveryGuard;
       if (guard) await guard.lifecycle(Object.values(nodeIdMap), cleanup);
       else await cleanup();
-      const details = nodeResults.map((n) => `${n.logicalId}: ${n.error ?? "unknown"}`).join("; ");
-      return { ok: false, code: "instantiate_error", message: `all node launches/startups failed — ${details}` };
+      const details = nodeResults.map((n) => `${n.logicalId}：${n.error ?? "未知错误"}`).join("；");
+      return { ok: false, code: "instantiate_error", message: `所有 node launch/startup 均失败——${details}` };
     }
 
     if (hasAttention && !hasLaunched) {
-      // All-attention_required path — rig + sessions PRESERVED; no
-      // tear-down. Inspect the session and reason to distinguish native
-      // decisions from failed/exited runtimes before choosing recovery.
+      // 全 attention_required 路径——保留 rig + session，不拆除。选择恢复方式前，检查 session
+      // 与 reason，以区分 native decision 和失败/退出的 runtime。
       const attentionNodes = nodeResults
         .filter((n) => n.status === "attention_required")
         .map((n) => ({
           logicalId: n.logicalId,
           sessionName: n.sessionName ?? "",
           evidence: n.evidence,
-          reason: n.error ?? "node awaiting attention",
+          reason: n.error ?? "node 正在等待关注",
         }));
-      // Emit rig.imported so callers see the rig exists; nodes are
-      // attention_required, not "launched", so `rig ps` shows the
-      // correct lifecycle state.
+      // 发出 rig.imported，使 caller 知道工作组存在；node 是 attention_required 而非
+      // "launched"，因此 `zrig ps` 会显示正确的 lifecycle state。
       try {
         this.deps.eventBus.emit({
           type: "topology.roster_recorded",
@@ -1572,13 +1519,13 @@ export class PodRigInstantiator {
       return {
         ok: false,
         code: "attention_required",
-        message: `${attentionNodes.length} node${attentionNodes.length === 1 ? " requires" : "s require"} attention before becoming interactive. Inspect the affected sessions and reasons before choosing recovery.`,
+        message: `${attentionNodes.length} 个 node 需要处理后才能交互。选择恢复方式前，请检查受影响的 session 与原因。`,
         rigId,
         attentionNodes,
       };
     }
 
-    // Emit rig.imported
+    // 发出 rig.imported
     try {
       this.deps.eventBus.emit({
         type: "topology.roster_recorded",
@@ -1589,10 +1536,9 @@ export class PodRigInstantiator {
       this.deps.eventBus.emit({ type: "rig.imported", rigId, specName: rigSpec.name, specVersion: rigSpec.version });
     } catch { /* best-effort */ }
 
-    // Carry sessionName + evidence through to InstantiateResult.nodes
-    // so BootstrapOrchestrator can build AttentionNode[] in the mixed
-    // launched+attention_required path (guard verdict
-    // qitem-20260518082933 BLOCKER 1).
+    // 将 sessionName + evidence 传入 InstantiateResult.nodes，使 BootstrapOrchestrator
+    // 能在 launched+attention_required 混合路径构建 AttentionNode[]
+    //（守卫裁定 qitem-20260518082933 BLOCKER 1）。
     const resultNodes = nodeResults.map((n) => ({
       logicalId: n.logicalId,
       status: n.status,
@@ -1613,7 +1559,7 @@ export class PodRigInstantiator {
     const inDegree: Record<string, number> = {};
     const adjacency: Record<string, string[]> = {};
 
-    // Collect all qualified member ids
+    // 收集所有 qualified member id
     for (const pod of rigSpec.pods) {
       for (const member of pod.members) {
         const qid = `${pod.id}.${member.id}`;
@@ -1623,7 +1569,7 @@ export class PodRigInstantiator {
       }
     }
 
-    // Build adjacency from pod-local edges (qualify them) and cross-pod edges (already qualified)
+    // 从 pod-local edge（补全限定名）与 cross-pod edge（已有限定名）构建邻接关系
     for (const pod of rigSpec.pods) {
       for (const edge of pod.edges) {
         if (!LAUNCH_DEP_KINDS.has(edge.kind)) continue;
@@ -1642,7 +1588,7 @@ export class PodRigInstantiator {
       }
     }
 
-    // Topological sort with alphabetical tiebreaker
+    // 拓扑排序，以字母顺序打破平局
     const queue = allIds.filter((id) => inDegree[id] === 0).sort();
     const order: string[] = [];
     while (queue.length > 0) {
@@ -1660,10 +1606,10 @@ export class PodRigInstantiator {
       }
     }
 
-    // Cycle detection: if any nodes remain unvisited, the graph has a cycle
+    // cycle 检测：若仍有 node 未访问，则 graph 中存在 cycle
     if (order.length < allIds.length) {
       const cycled = allIds.filter((id) => !order.includes(id));
-      throw new Error(`Dependency cycle detected among nodes: ${cycled.join(", ")}`);
+      throw new Error(`检测到 node 之间存在 dependency cycle：${cycled.join(", ")}`);
     }
 
     return order;
@@ -1683,7 +1629,7 @@ export class PodRigInstantiator {
     cwdOverride?: string,
   ): Promise<{ logicalId: string; status: "launched" | "failed"; error?: string }> {
     const effectiveCwd = resolveLaunchCwd(member.cwd, rigRoot, cwdOverride);
-    // Create node with sentinel values
+    // 使用 sentinel 值创建 node
     let nodeId: string;
     try {
       const node = this.deps.rigRepo.addNode(rigId, qualifiedId, {
@@ -1737,13 +1683,12 @@ export class PodRigInstantiator {
   }
 
   /**
-   * create-node primitive (OPR.0.3.3.24): mint a fresh node row for one member
-   * (fresh stable id + fresh qualified logical id, `pod_id` = the given pod) plus
-   * the matching `node.added` event. Extracted from materialize's loop so the
-   * `add_member` converge op and a de-YAML'd `expand` create a member node
-   * WITHOUT fabricating a synthetic rig spec. Identity-migration-FREE: addNode
-   * mints a brand-new identity; nothing existing re-keys. The caller pushes the
-   * returned `event` into its transaction's persisted-events list.
+   * create-node primitive（OPR.0.3.3.24）：为一个 member 生成新的 node row
+   *（新的 stable id + 新的 qualified logical id，`pod_id` = 给定 pod）及匹配的
+   * `node.added` event。从 materialize loop 中提取，使 `add_member` converge op 与
+   * 去除 YAML 的 `expand` 无须伪造合成工作组规格即可创建成员节点。
+   * 不做 identity migration：addNode 生成全新 identity，不重设任何现有项的 key。
+   * caller 将返回的 `event` 放入其 transaction 的 persisted-events list。
    */
   createMemberNode(input: {
     rigId: string;
@@ -1759,8 +1704,8 @@ export class PodRigInstantiator {
       runtime: input.member.runtime,
       model: input.member.model,
       codexConfigProfile: input.member.codexConfigProfile,
-      // OPR.0.4.8.3 Seam B: the member's OWN raw ref persists on the node (like role);
-      // rig-level lives on the rig row; precedence applies at RESOLUTION, not storage.
+      // OPR.0.4.8.3 Seam B：member 自己的 raw ref 像 role 一样持久化到 node；rig-level
+      // 存在 rig row 上；precedence 在解析时应用，而非存储时。
       permissionPolicy: input.member.permissionPolicy,
       sessionSource: input.member.sessionSource,
       cwd: effectiveCwd,
@@ -1780,13 +1725,11 @@ export class PodRigInstantiator {
   }
 
   /**
-   * launch-binding primitive (OPR.0.3.3.24): given an already-created node and
-   * its member context, bring it fully live — harness launch + startup
-   * projection + delivery + readiness + `@rigged_*` metadata. Dispatches the
-   * terminal vs agent launch path. Extracted as an independently-callable
-   * primitive so launchMaterialized's loop, `expand`, and the `add_member`
-   * converge op all launch a node WITHOUT fabricating a synthetic rig spec.
-   * Behaviour is identical to the prior inline dispatch.
+   * launch-binding primitive（OPR.0.3.3.24）：给定已创建的 node 与其 member context，
+   * 使其完全上线——harness launch + startup projection + delivery + readiness +
+   * `@rigged_*` metadata。分派 terminal 与 agent 启动路径。提取为可独立调用的 primitive，
+   * 让 launchMaterialized loop、`expand` 与 `add_member` converge op 均无需伪造
+   * 合成工作组规格即可启动节点。行为与此前内联分派完全相同。
    */
   async launchBinding(input: {
     rigId: string;
@@ -1804,10 +1747,9 @@ export class PodRigInstantiator {
   }
 
   /**
-   * OPR.0.4.8.3 Seam B — the ONE precedence + resolution point for a seat's permission
-   * policy at launch: member ref > rig ref > absent (undefined = the env-driven floor).
-   * Custom refs resolve relative to the rig root (the declaring RigSpec's directory in a
-   * materialized rig). Returns undefined when no ref is attached at either level.
+   * OPR.0.4.8.3 Seam B——seat 启动时 permission policy 唯一的 precedence + resolution
+   * 位置：member ref > rig ref > absent（undefined = env-driven floor）。custom ref 相对
+   * rig root（materialized rig 中声明 RigSpec 的目录）解析。两级都未附加 ref 时返回 undefined。
    */
   private resolveMemberPolicyAttachment(
     memberRef: string | undefined,
@@ -1821,10 +1763,9 @@ export class PodRigInstantiator {
     });
   }
 
-  /** Seam B Guard-F2: the STRICT materialize/add-member persist — provenance here is
-   *  LOAD-BEARING restart state; a real write failure must fail the surrounding
-   *  transaction, never commit a node without it. (The repository setter itself still
-   *  no-ops on pre-057 legacy fixture DBs — that narrow compatibility is preserved.) */
+  /** Seam B Guard-F2：严格的 materialize/add-member persist——此处 provenance 是关键的
+   *  restart state；真实写入失败必须使外围 transaction 失败，绝不能提交缺少它的 node。
+   *  （repository setter 在 057 前的 legacy fixture DB 上仍为 no-op，保留此窄兼容性。） */
   private persistNodePolicyProvenanceStrict(nodeId: string, attachment: ResolvedPolicyAttachment): void {
     this.deps.rigRepo.setNodePolicyProvenance(nodeId, {
       origin: attachment.origin,
@@ -1834,8 +1775,8 @@ export class PodRigInstantiator {
     });
   }
 
-  /** Seam B: the LAUNCH-time refresh stays best-effort (idempotent re-write on an already-
-   *  materialized node; a transient failure must not block a launch). */
+  /** Seam B：启动时 refresh 保持 best-effort（对已 materialized node 做幂等重写；
+   *  瞬时失败不得阻止启动）。 */
   private persistNodePolicyProvenance(nodeId: string, attachment: ResolvedPolicyAttachment): void {
     try {
       this.persistNodePolicyProvenanceStrict(nodeId, attachment);
@@ -1851,8 +1792,8 @@ export class PodRigInstantiator {
     qualifiedId: string;
     nodeId: string;
     cwdOverride?: string;
-    /** P20 atom-4 — operator override: overwrite operator-edited (operator_conflict)
-     *  projection targets instead of protecting them. Absent = protect (safe default). */
+    /** P20 atom-4——用户覆盖：覆盖用户编辑过的（operator_conflict）projection target，
+     *  而非保护它们。未设置 = 保护（安全默认值）。 */
     force?: boolean;
     resolveResult?: ReturnType<typeof resolveAgentRef> extends infer T ? T : never;
     configResult?: ReturnType<typeof resolveNodeConfig> extends infer T ? T : never;
@@ -1888,19 +1829,18 @@ export class PodRigInstantiator {
 
     this.updateNodeResolvedConfig(input.nodeId, configResult.config);
 
-    // OPR.0.4.8.3 Seam B: resolve the seat's permission-policy attachment once for this
-    // launch (member > rig precedence; declaring dir = the rig root, where the declaring
-    // RigSpec + its relative policy files live). Also persists restart-stable provenance.
-    // R2 HIGH-1: the LIVE binding must AGREE with persisted provenance — structured
-    // add-member/expansion launch with a SYNTHETIC minimal spec (no rig-level ref), so
-    // when the in-memory spec resolves nothing, the PERSISTED node provenance (written in
-    // the creation tx) and then the PERSISTED rig attachment are the binding's truth.
+    // OPR.0.4.8.3 Seam B：为本次启动解析一次 seat 的 permission-policy attachment
+    //（member > rig precedence；declaring dir = rig root，即声明 RigSpec 及其相对 policy file
+    // 所在位置），并持久化 restart-stable provenance。R2 HIGH-1：live binding 必须与已持久化
+    // 来源一致：结构化 add-member/expansion 使用合成的最小规格（无工作组级 ref）
+    // 启动，因此内存 spec 未解析出内容时，以已持久化的 node provenance（在 creation tx 中写入），
+    // 再以已持久化的 rig attachment 作为 binding 真相。
     const policyAttachment = this.resolveMemberPolicyAttachment(input.member.permissionPolicy, input.rigSpec.permissionPolicy, input.rigRoot);
     if (policyAttachment) this.persistNodePolicyProvenance(input.nodeId, policyAttachment);
-    // R2 terminal (954d97a0): TRUE ABSENCE binds the locked MINIMUM FLOOR explicitly
-    // (README v4 "DEFAULT IF NONE ATTACHED = the minimum floor"; FINAL2) — ambient
-    // OPENRIG_YOLO must never widen a seat with no attachment. Absence stays honest
-    // (no fabricated attachment/provenance); only the lifecycle BINDING is explicit.
+    // R2 terminal（954d97a0）：真正缺失时显式绑定锁定的 MINIMUM FLOOR
+    //（README v4：“未附加时默认采用最低权限基线”；FINAL2）——环境中的
+    // OPENRIG_YOLO 绝不能扩大未附加策略的 seat 权限。缺失状态保持真实（不伪造
+    // attachment/provenance），仅 lifecycle binding 是显式的。
     const launchPosture = policyAttachment?.launchPosture
       ?? this.deps.rigRepo.getNodePolicyProvenance(input.nodeId)?.launchPosture
       ?? this.deps.rigRepo.getRigPolicyProvenance(input.rigId)?.launchPosture
@@ -1932,9 +1872,8 @@ export class PodRigInstantiator {
         };
       }
     }
-    // Forward per-seat silenceWindowSeconds from the resolved profile.
-    // Currently inert: the live SeatActivityService poller uses the
-    // global 3s default. Retained for a future per-seat-poller decision.
+    // 从已解析 profile 转发各 seat 的 silenceWindowSeconds。目前不生效：live
+    // SeatActivityService poller 使用全局 3 秒默认值。保留供未来 per-seat-poller 决策。
     const launchResult = await this.deps.nodeLauncher.launchNode(input.rigId, input.qualifiedId, {
       sessionName: canonicalSessionName,
       silenceWindowSeconds: configResult.config.activity?.silenceWindowSeconds,
@@ -1950,23 +1889,21 @@ export class PodRigInstantiator {
 
     const adapter = this.deps.adapters[input.member.runtime];
     if (!adapter) {
-      return { status: "failed", error: `No adapter for runtime "${input.member.runtime}"`, sessionName: canonicalSessionName, warnings: launchResult.warnings };
+      return { status: "failed", error: `没有适用于 runtime "${input.member.runtime}" 的 adapter`, sessionName: canonicalSessionName, warnings: launchResult.warnings };
     }
 
-    // P20 — the projection manifest: consulted so a divergent target is
-    // discriminated operator-modified (protect) vs stale-projection (safe
-    // overwrite). REAL store-backed lookup on this.db (never a mock/null — the
-    // uninjected-service dead-invalidator class the P17 comment below records).
+    // P20——查询 projection manifest，以区分 divergent target 是用户修改（保护）还是
+    // stale-projection（可安全覆盖）。在 this.db 上执行真实的 store-backed lookup
+    //（绝非 mock/null——即下方 P17 注释记录的未注入 service、失效器失效问题）。
     const projectionManifest = new ProjectionManifestStore(this.db);
     const planResult = planProjection({
       config: configResult.config,
       collisions: resolveResult.collisions,
       fsOps: this.deps.fsOps,
-      // P17 (finding A2): the conflict detector's resolver, UNINJECTED since the
-      // 4.8 restack dropped the warnings-site threading — without it every entry
-      // classified safe_projection and divergent targets overwrote silently.
-      // #25: a Claude seat's guidance conflict target is the rig's selected file (rig row,
-      // the same source startNode binds for the write).
+      // P17（finding A2）：conflict detector 的 resolver；4.8 restack 丢失 warnings-site
+      // threading 后一直未注入。缺少它时，每个 entry 都会归类为 safe_projection，divergent
+      // 目标会被静默覆盖。#25：Claude 席位的引导冲突目标是工作组已选择的
+      // file（rig row，与 startNode 写入时绑定的 source 相同）。
       resolveTargetPath: (category, effectiveId, cwd, sourcePath) => claudeConflictTargetPath(
         category, effectiveId, cwd, sourcePath,
         input.member.runtime === "claude-code" ? this.deps.rigRepo.getRigClaudeManagedBlockFile(input.rigId) ?? undefined : undefined,
@@ -1976,8 +1913,8 @@ export class PodRigInstantiator {
     if (!planResult.ok) {
       return { status: "failed", error: planResult.errors.join("; "), sessionName: canonicalSessionName, warnings: launchResult.warnings };
     }
-    // P17: a divergent target is never SILENT again — each conflict rides the
-    // instantiate warnings surface with the file, reason, and consequence.
+    // P17：divergent target 不再静默处理——每个 conflict 都通过 instantiate warning
+    // 呈现 file、reason 与 consequence。
     (launchResult.warnings ??= []).push(...projectionConflictWarnings(planResult.plan));
 
     const resolvedFiles = this.buildResolvedStartupFiles(
@@ -1990,9 +1927,8 @@ export class PodRigInstantiator {
       input.member,
     );
     const managedDedupedFiles = this.dedupeProjectedManagedStartupFiles(planResult.plan, resolvedFiles);
-    // P20 atom-4 PROTECT: hold back operator-edited skill targets (operator_conflict)
-    // so the adapter never overwrites an operator's edit — unless the operator forces
-    // it (input.force). The per-conflict warning already tells the operator this.
+    // P20 atom-4 PROTECT：暂不交付用户编辑过的 skill target（operator_conflict），使 adapter
+    // 不会覆盖用户的编辑；除非用户强制执行（input.force）。每条 conflict warning 已说明此行为。
     const dedupedResolvedFiles = filterProtectedProjections(
       managedDedupedFiles,
       planResult.plan,
@@ -2011,19 +1947,17 @@ export class PodRigInstantiator {
       cwd: configResult.config.cwd,
       model: configResult.config.model,
       codexConfigProfile: input.member.codexConfigProfile,
-      // OPR.0.4.8.3 Seam B: resolved launch posture (member > rig > persisted > FLOOR)
-      // binds per-seat explicitly; adapters thread it into the yolo-mode helpers.
+      // OPR.0.4.8.3 Seam B：已解析的 launch posture（member > rig > persisted > FLOOR）
+      // 按 seat 显式绑定；adapter 将其传入 yolo-mode helper。
       launchPosture,
     };
 
-    // session_source dispatch: fork (native runtime fork) vs rebuild (artifact-
-    // injected fresh launch) vs agent_image (PL-016 Item 4: dispatch through
-    // fork using the image's resume token). Mutually exclusive on a member.
+    // session_source 分派：fork（原生运行时分叉）、rebuild（注入产物的全新启动）或
+    // agent_image（PL-016 第 4 项：使用镜像续接令牌经 fork 分派）。成员上的三者互斥。
     let forkSourceOpt: { forkSource: { kind: "native_id" | "artifact_path" | "name" | "last"; value?: string } } | undefined;
     let rebuildArtifactsOpt: { rebuildArtifacts: import("./runtime-adapter.js").ResolvedStartupFile[] } | undefined;
-    // Stash the consumed image id + library handle so the post-launch block
-    // can bump fork_count only on startupResult.ok===true (lastUsedAt
-    // already bumped optimistically in the dispatch branch).
+    // 暂存已消费的 image id + library handle，使启动后 block 仅在 startupResult.ok===true 时
+    // 增加 fork_count（lastUsedAt 已在 dispatch 分支中乐观更新）。
     let consumedAgentImageId: string | undefined;
     let consumedAgentImageLibrary: import("./agent-images/agent-image-library-service.js").AgentImageLibraryService | undefined;
     if (input.member.sessionSource?.mode === "fork") {
@@ -2042,15 +1976,14 @@ export class PodRigInstantiator {
       }
       rebuildArtifactsOpt = { rebuildArtifacts: resolved.files };
     } else if (input.member.sessionSource?.mode === "agent_image") {
-      // PL-016 Item 4: agent_image → resolve via library + dispatch
-      // through the native-fork code path so nativeResumeProbe
-      // semantics are preserved
-      // (docs/as-built/architecture/adapters-and-runtimes.md § Resume honesty).
+      // PL-016 第 4 项：agent_image → 通过 library 解析，并经 native-fork 代码路径分派，
+      // 从而保留 nativeResumeProbe 语义
+      //（docs/as-built/architecture/adapters-and-runtimes.md § 续接真实性）。
       const library = this.deps.agentImageLibrary;
       if (!library) {
         return {
           status: "failed",
-          error: `session_source: mode: agent_image requires the daemon AgentImageLibraryService to be wired; restart the daemon or check ~/.openrig/agent-images/ exists.`,
+          error: `session_source: mode: agent_image 要求 daemon 接入 AgentImageLibraryService；请重启 daemon，或检查 ~/.openrig/agent-images/ 是否存在。`,
           sessionName: canonicalSessionName,
         };
       }
@@ -2060,42 +1993,38 @@ export class PodRigInstantiator {
       if (!image) {
         return {
           status: "failed",
-          error: `Agent image '${ref.value}' v${version} not found in library. Run 'rig agent-image list' to see what's installed.`,
+          error: `library 中未找到 agent image '${ref.value}' v${version}。运行 'zrig agent-image list' 查看已安装内容。`,
           sessionName: canonicalSessionName,
         };
       }
       if (image.runtime !== input.member.runtime) {
         return {
           status: "failed",
-          error: `Agent image '${ref.value}' v${version} runtime '${image.runtime}' does not match member '${input.member.id}' runtime '${input.member.runtime}'.`,
+          error: `Agent image '${ref.value}' v${version} 的 runtime '${image.runtime}' 与 member '${input.member.id}' 的 runtime '${input.member.runtime}' 不匹配。`,
           sessionName: canonicalSessionName,
         };
       }
       forkSourceOpt = {
         forkSource: { kind: "native_id", value: image.sourceResumeToken },
       };
-      // Pre-launch bump of lastUsedAt only — records the operator's
-      // INTENT to consume the image. forkCount increments later, gated
-      // on startupResult.ok===true (see post-startNode block below).
-      // Best-effort: stat-write failures don't abort launch.
+      // 启动前仅更新 lastUsedAt——记录用户消费该 image 的意图。forkCount 稍后增加，
+      // 受 startupResult.ok===true 限制（见下方 startNode 后的 block）。best-effort：
+      // stat 写入失败不会中止启动。
       try {
         library.recordConsumption(image.id, { incrementForkCount: false });
       } catch (err) {
-        console.warn(`[openrig] agent-image stats update failed for ${image.id}: ${(err as Error).message}`);
+        console.warn(`[zrig] 更新 agent-image ${image.id} 的统计信息失败：${(err as Error).message}`);
       }
-      // Stash the consumed image for the post-launch fork-count bump.
+      // 暂存已消费的 image，供启动后增加 fork-count。
       consumedAgentImageId = image.id;
       consumedAgentImageLibrary = library;
     }
 
-    // Agent Starter resolver dispatch (Agent Starter v1 vertical M2). When
-    // `member.starterRef` is set, resolve the named registry entry into a
-    // `ResolvedStartupFile[]` that prepends ahead of the member's per-agent
-    // and per-pod startup files (the new STARTER layer at the front of the
-    // layer chain). The resolver THROWS on a failed credential scan, missing
-    // registry entry, or malformed YAML; on any throw we abort the launch
-    // BEFORE `startNode` runs (no STARTER layer added; no adapter
-    // `deliverStartup` called) — load-bearing credential-safety contract.
+    // Agent Starter 解析器分派（Agent Starter v1 纵向切片 M2）。设置 `member.starterRef` 时，
+    // 将具名 registry entry 解析为 `ResolvedStartupFile[]`，置于 member 的 per-agent 与 per-pod
+    // startup file 前（layer chain 最前端的新 STARTER layer）。credential scan 失败、registry
+    // entry 缺失或 YAML 格式错误时，resolver 会抛错；任何抛错都会在 `startNode` 运行前中止启动
+    //（不添加 STARTER layer，也不调用 adapter `deliverStartup`）——这是关键 credential-safety contract。
     let starterArtifacts: import("./runtime-adapter.js").ResolvedStartupFile[] | undefined;
     if (input.member.starterRef) {
       const { AgentStarterResolver } = await import("./agent-starter-resolver.js");
@@ -2106,17 +2035,16 @@ export class PodRigInstantiator {
       } catch (err) {
         return {
           status: "failed",
-          error: `Agent Starter resolver failed: ${(err as Error).message}`,
+          error: `Agent Starter resolver 失败：${(err as Error).message}`,
           sessionName: canonicalSessionName,
           warnings: launchResult.warnings,
         };
       }
     }
 
-    // STARTER layer (artifact-seeded fresh-launch context; precedes per-agent
-    // and per-pod layers). Prepended to dedupedResolvedFiles so the existing
-    // `startupOrchestrator.startNode` consumes the combined chain via the
-    // existing `resolvedStartupFiles` input — NO new orchestrator branch.
+    // STARTER layer（由 artifact 初始化的 fresh-launch context，位于 per-agent 与 per-pod layer 前）。
+    // 添加到 dedupedResolvedFiles 前，使既有 `startupOrchestrator.startNode` 通过既有
+    // `resolvedStartupFiles` input 消费合并后的 chain——不新增 orchestrator 分支。
     const finalResolvedStartupFiles = starterArtifacts
       ? [...starterArtifacts, ...dedupedResolvedFiles]
       : dedupedResolvedFiles;
@@ -2145,13 +2073,12 @@ export class PodRigInstantiator {
       ...(rebuildArtifactsOpt ?? {}),
     });
 
-    // Bump fork_count only on launch success. lastUsedAt already
-    // updated optimistically in the agent_image dispatch branch above.
+    // 仅在启动成功时增加 fork_count。lastUsedAt 已在上方 agent_image dispatch 分支乐观更新。
     if (startupResult.ok && consumedAgentImageId && consumedAgentImageLibrary) {
       try {
         consumedAgentImageLibrary.recordConsumption(consumedAgentImageId, { incrementForkCount: true });
       } catch (err) {
-        console.warn(`[openrig] agent-image fork_count bump failed for ${consumedAgentImageId}: ${(err as Error).message}`);
+        console.warn(`[zrig] 增加 agent-image ${consumedAgentImageId} 的 fork_count 失败：${(err as Error).message}`);
       }
     }
 
@@ -2166,16 +2093,14 @@ export class PodRigInstantiator {
         });
       } catch (err) {
         (launchResult.warnings ??= []).push(
-          `continuity policy was not armed for ${canonicalSessionName}: ${(err as Error).message}`,
+          `未能为 ${canonicalSessionName} 启用 continuity policy：${(err as Error).message}`,
         );
       }
     }
 
-    // OPR.0.3.2.CT — preserve the attention_required distinction so
-    // the instantiator can leave a recoverable rig + sessions instead
-    // of zero-collapsing. The session row's startup_status was already
-    // persisted by startupOrchestrator.fail() (see startup-orchestrator.ts
-    // lines 223-225, 241-243).
+    // OPR.0.3.2.CT——保留 attention_required 区别，使 instantiator 可以留下可恢复的 rig +
+    // session，而非归零折叠。session row 的 startup_status 已由 startupOrchestrator.fail()
+    // 持久化（见 startup-orchestrator.ts 第 223-225、241-243 行）。
     if (startupResult.ok) {
       return {
         status: "launched",
@@ -2212,7 +2137,7 @@ export class PodRigInstantiator {
     const terminalLaunchPosture = terminalPolicyAttachment?.launchPosture
       ?? this.deps.rigRepo.getNodePolicyProvenance(input.nodeId)?.launchPosture
       ?? this.deps.rigRepo.getRigPolicyProvenance(input.rigId)?.launchPosture
-      ?? "floor"; // R2 terminal: absence = the locked floor, explicitly
+      ?? "floor"; // R2 terminal：缺失时显式使用锁定的 floor
     const sessionNameErrors = validateSessionComponents(input.pod.id, input.member.id, input.rigSpec.name);
     if (sessionNameErrors.length > 0) {
       return { status: "failed", error: sessionNameErrors.join("; ") };
@@ -2254,13 +2179,13 @@ export class PodRigInstantiator {
       cmuxSurface: null,
       updatedAt: "",
       cwd: effectiveCwd,
-      // Seam B: a terminal seat has no harness posture flag, but the resolved/persisted
-      // posture (floor when absent) still binds for provenance-consuming consumers.
+      // Seam B：终端席位没有 harness 权限姿态标志，但解析/持久化后的姿态
+      //（缺失时为 floor）仍会绑定，供消费 provenance 的组件使用。
       launchPosture: terminalLaunchPosture,
     };
     const adapter = this.deps.adapters["terminal"];
     if (!adapter) {
-      return { status: "failed", error: 'No adapter for runtime "terminal"', sessionName: canonicalSessionName, warnings: launchResult.warnings };
+      return { status: "failed", error: '没有适用于 runtime "terminal" 的 adapter', sessionName: canonicalSessionName, warnings: launchResult.warnings };
     }
 
     const emptyPlan = {
@@ -2329,8 +2254,8 @@ export class PodRigInstantiator {
   ): ResolvedStartupFile[] {
     const files: ResolvedStartupFile[] = [];
 
-    // Skip layers 1-2 (agent base, profile) — terminal nodes have no agent spec
-    // Layer 3: OpenRig culture floor, then the rig-specific overlay.
+    // 跳过第 1-2 层（agent base、profile）——terminal node 没有 agent spec
+    // 第 3 层：zrig 文化基线，随后是工作组专属叠加层。
     files.push(defaultCultureStartupFile());
     if (rigSpec.cultureFile) {
       files.push({
@@ -2342,19 +2267,19 @@ export class PodRigInstantiator {
         appliesOn: ["fresh_start", "restore"],
       });
     }
-    // Layer 4: Rig startup
+    // 第 4 层：工作组 startup
     if (rigSpec.startup) {
       for (const f of rigSpec.startup.files) {
         files.push({ ...f, absolutePath: nodePath.resolve(rigRoot, f.path), ownerRoot: rigRoot });
       }
     }
-    // Layer 5: Pod startup
+    // 第 5 层：pod startup
     if (pod.startup) {
       for (const f of pod.startup.files) {
         files.push({ ...f, absolutePath: nodePath.resolve(rigRoot, f.path), ownerRoot: rigRoot });
       }
     }
-    // Layer 6: Member startup
+    // 第 6 层：member startup
     if (member.startup) {
       for (const f of member.startup.files) {
         files.push({ ...f, absolutePath: nodePath.resolve(rigRoot, f.path), ownerRoot: rigRoot });
@@ -2374,19 +2299,19 @@ export class PodRigInstantiator {
     member: RigSpecPodMember,
   ): ResolvedStartupFile[] {
     const files: ResolvedStartupFile[] = [];
-    // nodePath imported at top level (ESM)
+    // nodePath 在顶层导入（ESM）
 
-    // 1. Agent base startup
+    // 1. 智能体基础启动文件
     for (const f of agentSpec.startup.files) {
       files.push({ ...f, absolutePath: nodePath.resolve(agentSourcePath, f.path), ownerRoot: agentSourcePath });
     }
-    // 2. Profile startup
+    // 2. Profile 启动文件
     if (profile?.startup) {
       for (const f of profile.startup.files) {
         files.push({ ...f, absolutePath: nodePath.resolve(agentSourcePath, f.path), ownerRoot: agentSourcePath });
       }
     }
-    // 3. OpenRig culture floor, then the rig-specific overlay.
+    // 3. zrig 文化基线，随后是工作组专属叠加层。
     files.push(defaultCultureStartupFile());
     if (rigSpec.cultureFile) {
       files.push({
@@ -2398,26 +2323,26 @@ export class PodRigInstantiator {
         appliesOn: ["fresh_start", "restore"],
       });
     }
-    // 4. Rig startup
+    // 4. 工作组 startup
     if (rigSpec.startup) {
       for (const f of rigSpec.startup.files) {
         files.push({ ...f, absolutePath: nodePath.resolve(rigRoot, f.path), ownerRoot: rigRoot });
       }
     }
-    // 5. Pod startup
+    // 5. Pod 启动文件
     if (pod.startup) {
       for (const f of pod.startup.files) {
         files.push({ ...f, absolutePath: nodePath.resolve(rigRoot, f.path), ownerRoot: rigRoot });
       }
     }
-    // 6. Member startup
+    // 6. 成员启动文件
     if (member.startup) {
       for (const f of member.startup.files) {
         files.push({ ...f, absolutePath: nodePath.resolve(rigRoot, f.path), ownerRoot: rigRoot });
       }
     }
 
-    // 7. Built-in OpenRig onboarding overlay (appended last, does not replace agent guidance)
+    // 7. 内置 zrig 入门叠加层（最后追加，不替换智能体引导）
     const onboardingPath = nodePath.resolve(import.meta.dirname, "../../assets/guidance/openrig-start.md");
     files.push({
       path: "openrig-start.md",
@@ -2480,7 +2405,7 @@ export class PodRigInstantiator {
   }): StartupAction {
     const lines = [
       input.sessionName,
-      "OpenRig session identity:",
+      "zrig session 身份：",
       `- rig: ${input.rigName}`,
       `- pod: ${input.pod.id}`,
       `- pod_label: ${input.pod.label}`,
@@ -2490,9 +2415,9 @@ export class PodRigInstantiator {
       input.resolvedSpecName ? `- agent_spec: ${input.resolvedSpecName}` : null,
       `- runtime: ${input.runtime}`,
       `- session: ${input.sessionName}`,
-      "This is your startup identity hint. For durable identity recovery after compaction, run:",
-      "  rig whoami --json",
-      "That command returns your full topology context: rig, pod, peers, edges, and transcript path.",
+      "这是你的启动身份提示。要在 compaction 后可靠恢复身份，请运行：",
+      "  zrig whoami --json",
+      "该命令会返回完整 topology context：rig、pod、peer、edge 与 transcript path。",
     ].filter((line): line is string => Boolean(line));
 
     return {
@@ -2506,9 +2431,8 @@ export class PodRigInstantiator {
   }
 
   /**
-   * Resolve any remaining 'auto' delivery hints to concrete hints at plan time.
-   * Uses the shared resolveConcreteHint resolver (single source of truth).
-   * After this, no file should have deliveryHint === 'auto'.
+   * 在 plan 阶段把所有剩余的 'auto' delivery hint 解析为具体 hint。使用共享的
+   * resolveConcreteHint resolver（唯一真相源）。此后不应再有文件满足 deliveryHint === 'auto'。
    */
   private resolveAutoHints(files: ResolvedStartupFile[]): ResolvedStartupFile[] {
     return files.map((f) => {
@@ -2517,7 +2441,7 @@ export class PodRigInstantiator {
         const content = this.deps.fsOps.readFile(f.absolutePath);
         return { ...f, deliveryHint: resolveConcreteHint(f.path, content) };
       } catch {
-        // If file can't be read, default to send_text (safest — delivered after harness ready)
+        // 文件无法读取时，默认使用 send_text（最安全——在 harness ready 后交付）
         return { ...f, deliveryHint: "send_text" as const };
       }
     });

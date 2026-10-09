@@ -1,17 +1,15 @@
 import type { CmuxTransport, CmuxTransportFactory } from "./cmux.js";
 import type { ExecFn } from "./tmux.js";
 
-/** Shell-quote a string using single quotes (POSIX-safe). */
+/** 使用单引号为字符串添加 shell 引号（POSIX 安全）。 */
 function shellQuote(s: string): string {
   return "'" + s.replace(/'/g, "'\"'\"'") + "'";
 }
 
 /**
- * Subclass of Error carrying a stable `code` discriminator and (optional)
- * `method` so the broader adapter / route layer can distinguish surface-level
- * unavailability from request execution failures while staying inside the
- * adapter-only patch boundary. The `code: "unavailable"` vocabulary mirrors
- * the existing CmuxAdapter result discriminator (see `adapters/cmux.ts`).
+ * 携带稳定 `code` 判别项和可选 `method` 的 Error 子类，使更广的 adapter/route 层能区分
+ * surface 级不可用与请求执行失败，同时保持在仅 adapter 的补丁边界内。`code: "unavailable"`
+ * 词汇镜像现有 CmuxAdapter 结果判别项（见 `adapters/cmux.ts`）。
  */
 class CmuxSurfaceError extends Error {
   readonly code: string;
@@ -26,17 +24,15 @@ class CmuxSurfaceError extends Error {
 }
 
 /**
- * Parse the subcommand block of `cmux --help` into a Set of available
- * top-level command names. cmux's help format puts each command on a
- * line indented with two spaces, e.g.:
+ * 将 `cmux --help` 的子命令块解析为可用顶层命令名集合。cmux 帮助格式把每个命令放在缩进
+ * 两个空格的一行中，例如：
  *
  *   Commands:
  *     list-panels [--workspace <id|ref>]
  *     focus-panel --panel <id|ref>
  *
- * Lenient: if the help output is unparseable for any reason, the Set is
- * empty and downstream version-adaptive dispatch will treat surfaces as
- * unsupported, which is the honest answer.
+ * 宽松处理：若帮助输出因任何原因无法解析，则集合为空，下游版本自适应分发会把相关 surface
+ * 视为不受支持；这是诚实的结果。
  */
 function parseCmuxCommands(help: string): Set<string> {
   const commands = new Set<string>();
@@ -61,7 +57,7 @@ function buildCommand(
   params: Record<string, unknown> | undefined,
   ctx: BuildContext
 ): BuildResult {
-  // --- Stable commands (present on every supported cmux version) ---
+  // --- 稳定命令（所有受支持 cmux 版本均提供）---
   if (method === "capabilities") {
     return { cmd: "cmux capabilities --json", json: true };
   }
@@ -75,12 +71,10 @@ function buildCommand(
     return { cmd: "cmux current-workspace --json", json: true };
   }
 
-  // --- Version-adaptive: surface listing ---
-  // cmux ≥0.63 ships `list-panels`; older cmux exposed `list-surfaces`.
-  // Architect direction: prefer the new surface, keep the legacy fallback,
-  // never version-pin away newer cmux. Both shapes are normalized to the
-  // `{surfaces: [...]}` payload that downstream `CmuxAdapter.listSurfaces`
-  // expects (see `adapters/cmux.ts:110-123`).
+  // --- 版本自适应：surface 列表 ---
+  // cmux ≥0.63 提供 `list-panels`；旧版 cmux 提供 `list-surfaces`。架构方向：优先新 surface，
+  // 保留 legacy 回退，绝不通过固定版本排除新版 cmux。两种结构都规范化为下游
+  // `CmuxAdapter.listSurfaces` 期望的 `{surfaces: [...]}` payload（见 `adapters/cmux.ts:110-123`）。
   if (method === "surface.list") {
     const workspaceArg = params?.workspaceId
       ? ` --workspace ${shellQuote(String(params.workspaceId))}`
@@ -93,25 +87,24 @@ function buildCommand(
     }
     throw new CmuxSurfaceError(
       method,
-      "cmux does not expose a surface-listing command (neither `list-panels` nor `list-surfaces`)"
+      "cmux 未提供 surface 列表命令（既没有 `list-panels`，也没有 `list-surfaces`）"
     );
   }
 
-  // --- Version-adaptive: agent PID enumeration ---
-  // `cmux agent-pids` was removed in 0.63.x with no replacement. Honest
-  // detection: refuse loudly if the legacy command is absent rather than
-  // calling it and letting cmux emit "Unknown command".
+  // --- 版本自适应：枚举智能体 PID ---
+  // `cmux agent-pids` 在 0.63.x 中移除且无替代项。诚实检测：legacy 命令缺失时明确拒绝，
+  // 而不是调用后让 cmux 输出 "Unknown command"。
   if (method === "workspace.agentPIDs") {
     if (ctx.supported.has("agent-pids")) {
       return { cmd: "cmux agent-pids --json", json: true };
     }
     throw new CmuxSurfaceError(
       method,
-      "cmux does not expose `agent-pids` (removed in cmux 0.63.x; no equivalent surface)"
+      "cmux 未提供 `agent-pids`（已在 cmux 0.63.x 中移除，且无等效 surface）"
     );
   }
 
-  // --- Stable parameterized commands ---
+  // --- 稳定的参数化命令 ---
   if (method === "surface.create" && params?.workspaceId) {
     return {
       cmd: `cmux new-surface --type ${shellQuote(String(params.type ?? "terminal"))} --workspace ${shellQuote(String(params.workspaceId))} --json`,
@@ -139,20 +132,14 @@ function buildCommand(
     };
   }
 
-  // Slice 24 — generic RPC pass-through for layout methods (splitSurface,
-  // createWorkspace, closeWorkspace, listPaneSurfaces; OPR.0.4.7.1 adds
-  // equalizeSplits). cmux exposes a
-  // `cmux rpc <method> '<json-params>'` subcommand that delegates directly
-  // to the daemon RPC. Spike confirmed these methods accept snake_case
-  // params (the adapter passes them in already snake_cased). Generic
-  // path is cleaner than per-method CLI mapping for methods that have a
-  // 1:1 RPC correspondence; reserves the version-adaptive buildCommand
-  // branches above for legacy methods that have CLI-only shapes.
-  // NOTE: an adapter RPC whose method name is missing from this allowlist
-  // throws Unknown cmux method AT RUNTIME ONLY — adapter unit tests ride a
-  // fake transport and cannot catch the omission (the OPR.0.4.7.1 equalize
-  // miss). Every new adapter RPC needs its cmux-transport exact-command
-  // regression test alongside this entry.
+  // Slice 24——布局方法的通用 RPC 透传（splitSurface、createWorkspace、closeWorkspace、
+  // listPaneSurfaces；OPR.0.4.7.1 新增 equalizeSplits）。cmux 提供
+  // `cmux rpc <method> '<json-params>'` 子命令，直接委托给后台服务 RPC。探索验证了这些方法
+  // 接受 snake_case 参数（adapter 传入时已经是 snake_case）。对与 RPC 一一对应的方法，通用路径
+  // 比逐方法 CLI 映射更简洁；上方版本自适应 buildCommand 分支则留给只有 CLI 形态的 legacy 方法。
+  // 注意：method 名称未列入此 allowlist 的 adapter RPC 只会在运行时抛出 Unknown cmux method；
+  // adapter 单元测试使用假 transport，无法发现遗漏（OPR.0.4.7.1 的 equalize 遗漏）。每个新
+  // adapter RPC 都必须在此条目旁配套 cmux-transport 精确命令回归测试。
   if (
     method === "surface.split" ||
     method === "workspace.create" ||
@@ -167,13 +154,12 @@ function buildCommand(
     return { cmd, json: true };
   }
 
-  throw new Error(`Unknown cmux method: ${method}`);
+  throw new Error(`未知 cmux 方法：${method}`);
 }
 
 /**
- * Normalize JSON payloads from version-adaptive commands so downstream
- * consumers see one stable shape regardless of which cmux command actually
- * answered.
+ * 规范化版本自适应命令返回的 JSON payload，使下游消费者无论由哪个 cmux 命令实际响应，
+ * 都看到同一稳定结构。
  */
 function normalizePayload(method: string, raw: unknown): unknown {
   if (method === "workspace.list") {
@@ -191,17 +177,13 @@ function normalizePayload(method: string, raw: unknown): unknown {
   if (method !== "surface.list") return raw;
   if (raw === null || typeof raw !== "object") return raw;
   const obj = raw as Record<string, unknown>;
-  // OPR.0.3.3.18: cmux 0.64.x renamed the surface identifier - `list-panels`
-  // rows carry `ref` with NO `id` (0.63.x rows carried `id`) - AND may key the
-  // array as `panels`/`pane_surfaces`. Resolve BOTH the array key AND each
-  // row's handle to one stable `{surfaces: [{id,title,type}]}` shape so
-  // downstream `CmuxAdapter.listSurfaces` (and the layout service's
-  // `result.data[0].id` read) sees a populated `id` regardless of cmux
-  // version. This is the SAME presence-based adaptation already applied to
-  // `workspace.list` rows (`normalizeWorkspaceRow`) and to the surface-create /
-  // split handles (`adapters/cmux.ts`) - one resolution order, both versions,
-  // NOT a version-negotiation shim. 0.63.x rows that carry `id` resolve
-  // unchanged.
+  // OPR.0.3.3.18：cmux 0.64.x 重命名了 surface 标识符——`list-panels` 行携带 `ref` 而没有
+  // `id`（0.63.x 行携带 `id`），数组键也可能是 `panels`/`pane_surfaces`。同时解析数组键与
+  // 每行 handle，归一为稳定的 `{surfaces: [{id,title,type}]}` 结构，使下游
+  // `CmuxAdapter.listSurfaces`（及布局服务的 `result.data[0].id` 读取）无论 cmux 版本如何都能
+  // 看到填充的 `id`。这是已应用于 `workspace.list` 行（`normalizeWorkspaceRow`）及 surface-create/
+  // split handle（`adapters/cmux.ts`）的同一基于存在性的适配：一种解析顺序覆盖两个版本，而非
+  // 版本协商 shim。携带 `id` 的 0.63.x 行保持不变。
   const rows =
     Array.isArray(obj.surfaces) ? obj.surfaces
     : Array.isArray(obj.panels) ? obj.panels
@@ -224,11 +206,10 @@ function normalizePayload(method: string, raw: unknown): unknown {
 function normalizeSurfaceRow(row: unknown): { id: string; title: string; type: string } | null {
   if (row === null || typeof row !== "object") return null;
   const obj = row as Record<string, unknown>;
-  // OPR.0.3.3.18: resolve the surface handle from whichever key the installed
-  // cmux provides. `ref` is preferred (cmux 0.64.x list-panels) then the
-  // snake_case variants, then `id` (cmux 0.63.x) - the same precedence the
-  // create/split handle resolution uses in `adapters/cmux.ts` and that
-  // `normalizeWorkspaceRow` uses for workspace rows.
+  // OPR.0.3.3.18：从已安装 cmux 提供的任一 key 解析 surface handle。优先 `ref`
+  //（cmux 0.64.x list-panels），其次 snake_case 变体，最后 `id`（cmux 0.63.x）；与
+  // `adapters/cmux.ts` 的 create/split handle 及 `normalizeWorkspaceRow` 的 workspace 行
+  // 使用相同优先级。
   const id =
     typeof obj.ref === "string" && obj.ref.trim()
       ? obj.ref.trim()
@@ -270,14 +251,12 @@ function normalizeWorkspaceRow(row: unknown): { id: string; name: string } | nul
 }
 
 /**
- * CLI-based CmuxTransportFactory.
+ * 基于 CLI 的 CmuxTransportFactory。
  *
- * At factory time, probes `cmux --help` to discover the live cmux command
- * surface. The probe doubles as a binary-presence check (replaces the older
- * `cmux capabilities --json` verify): a missing cmux binary makes exec throw
- * ENOENT, which the factory propagates to the caller. The probe result is
- * cached on the returned transport instance and consulted on every request
- * to dispatch to the correct command for the installed cmux version.
+ * factory 创建时探测 `cmux --help`，发现实时 cmux 命令界面。该探针也用于检查二进制是否存在
+ *（替代旧的 `cmux capabilities --json` 验证）：缺少 cmux 二进制会使 exec 抛出 ENOENT，
+ * factory 将其传播给调用方。探针结果缓存在返回的 transport 实例上，每次请求都据此分发到
+ * 已安装 cmux 版本的正确命令。
  */
 export function createCmuxCliTransport(exec: ExecFn): CmuxTransportFactory {
   return async (): Promise<CmuxTransport> => {
@@ -303,7 +282,7 @@ export function createCmuxCliTransport(exec: ExecFn): CmuxTransportFactory {
               return legacyFallback;
             }
             throw new Error(
-              `Failed to parse JSON from cmux command '${cmd}': ${output.slice(0, 200)}`
+              `无法解析 cmux 命令 '${cmd}' 返回的 JSON：${output.slice(0, 200)}`
             );
           }
           return normalizePayload(method, parsed);
@@ -312,7 +291,7 @@ export function createCmuxCliTransport(exec: ExecFn): CmuxTransportFactory {
         return {};
       },
       close: () => {
-        // CLI-based transport has no persistent connection to close
+        // 基于 CLI 的 transport 没有需要关闭的持久连接。
       },
     };
   };
@@ -324,7 +303,7 @@ function legacyJsonFallback(method: string, output: string): unknown | null {
     return method === "surface.list" ? { surfaces: [] } : null;
   }
 
-  // cmux 0.61.x can still return a bare handle for some --json commands.
+  // cmux 0.61.x 对某些 --json 命令仍可能返回裸 handle。
   if (method === "workspace.current") {
     return { workspace_id: trimmed };
   }

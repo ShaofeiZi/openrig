@@ -1,0 +1,103 @@
+{
+ "schema": "openrig.tui-comment-review-batch/v1",
+ "captured_at": "2026-10-08T23:43:29",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "comment-review-batch1",
+ "files": 10,
+ "changed": 2,
+ "reviewed_no_change": 8,
+ "test_note": "wheel-scroll/workflow-journey 验证 b2-129 5 过；其余复用历史 test logs。workflow line.length 弱断言非残留（前批 strWidth 已修）。",
+ "rows": [
+  {
+   "path": "packages/tui/test/attention.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": null,
+   "after_sha256": "84d1e329952d130a16db564a65015d479375d60b5372a1d690fd8d18c685d9e0",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、逻辑ID 均为机器值，保留未动",
+   "note": "0 英文注释/人失败消息；本就简中"
+  },
+  {
+   "path": "packages/tui/test/connections-journey.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "8fe1e972eb36d889928dce5db8ffa8c0569a16ab6a6263ac4cf2900d5316e98b",
+   "after_sha256": "8fe1e972eb36d889928dce5db8ffa8c0569a16ab6a6263ac4cf2900d5316e98b",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、逻辑ID 均为机器值，保留未动",
+   "note": "0 英文注释/人失败消息"
+  },
+  {
+   "path": "packages/tui/test/mission-outcomes.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "45206a0de943fe0817f2c8193b83dd9f6ff3c68112c240b7581b9f4d1c326d11",
+   "after_sha256": "45206a0de943fe0817f2c8193b83dd9f6ff3c68112c240b7581b9f4d1c326d11",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、逻辑ID 均为机器值，保留未动",
+   "note": "0 英文注释/人失败消息"
+  },
+  {
+   "path": "packages/tui/test/project-navigation.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "d21e602ec06a9c771c2a9f0a01988ae2862570ad91b29f439923ee1b543b7c9a",
+   "after_sha256": "d21e602ec06a9c771c2a9f0a01988ae2862570ad91b29f439923ee1b543b7c9a",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、逻辑ID 均为机器值，保留未动",
+   "note": "0 英文注释/人失败消息"
+  },
+  {
+   "path": "packages/tui/test/slack-manifest-connections.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "92267a4d794bd7bc9b6ad19887bbf44a1f64fc7b4ec8ea941c5dc304a8ac8254",
+   "after_sha256": "92267a4d794bd7bc9b6ad19887bbf44a1f64fc7b4ec8ea941c5dc304a8ac8254",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、逻辑ID 均为机器值，保留未动",
+   "note": "0 英文注释/人失败消息"
+  },
+  {
+   "path": "packages/tui/test/text-width.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": null,
+   "after_sha256": "1c34ac0c6d41be7eb2f443dddf1a6a5b66600cf40ef9f760f3202cca99c44b7b",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、逻辑ID 均为机器值，保留未动",
+   "note": "0 英文注释；弱断言已由前批 strWidth 修复，非注释残留"
+  },
+  {
+   "path": "packages/tui/test/terminal-resize.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "748513334ba90c4a8c5f9181d486bb2daffb801e02323e9ae54ff3b03208e5f8",
+   "after_sha256": "ab655d362627bea40e776857a1e57a69880d540b79202d4061d5da891709989d",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、逻辑ID 均为机器值，保留未动",
+   "note": "0 英文注释/人失败消息"
+  },
+  {
+   "path": "packages/tui/test/s04-corrected-entry.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "f82ad3a95432350e47a5239541ef5541cb566654d8a298f4a543e72a5ecfcfa0",
+   "after_sha256": "1423a2ef2652f53121f04a1d0a68685dae9a4d57cf8f24c4b68f0d4601881071",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、逻辑ID 均为机器值，保留未动",
+   "note": "0 英文注释/人失败消息"
+  },
+  {
+   "path": "packages/tui/test/wheel-scroll.test.ts",
+   "status": "changed",
+   "before_sha256": "8e30da7e672e58542a003d0a99bd26a148035bf1a9a8a7b10c6f2d8d4c7dfdf7",
+   "after_sha256": "d756147c80ef1ecda34f8ecd036441ae86e012236197e8f113e5ac48483b1f98",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、逻辑ID 均为机器值，保留未动",
+   "note": "5 条 SGR 滚轮协议注释译简中；协议令牌 ESC[</button>64/65、ruling cfec754f 保留"
+  },
+  {
+   "path": "packages/tui/test/workflow-journey.test.ts",
+   "status": "changed",
+   "before_sha256": "0d3154869cdb9a1f89d5b15189ef9d5600e9e6c65263dd0d6dd4f8699a002d8e",
+   "after_sha256": "4f38af5400d25c24915188b0a823f2002e7c03e4ca28d089e26c0203f9ef13c9",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、逻辑ID 均为机器值，保留未动",
+   "note": "2 条注释译简中；line.length 弱断言前批已升级 strWidth，非残留"
+  }
+ ]
+}

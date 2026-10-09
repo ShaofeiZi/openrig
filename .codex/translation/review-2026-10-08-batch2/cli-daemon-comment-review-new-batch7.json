@@ -1,0 +1,57 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch7",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/daemon/test/up-route.test.ts",
+      "before_sha256_16": "fab28e38a205da41",
+      "after_sha256_16": "fab28e38a205da41",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/daemon/test/workflow-member-advisory.test.ts",
+      "before_sha256_16": "303b8bc20d9aec64",
+      "after_sha256_16": "303b8bc20d9aec64",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/daemon/test/slice-detail-projector-v1.test.ts",
+      "before_sha256_16": "1b11be8f831882c2",
+      "after_sha256_16": "1b11be8f831882c2",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/daemon/test/lifecycle-scenario-matrix.test.ts",
+      "before_sha256_16": "dc3676a681b271d6",
+      "after_sha256_16": "dc3676a681b271d6",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "scan: comments already Chinese; no English NL"
+    },
+    {
+      "path": "packages/daemon/test/openrig-upgrade-skill.test.ts",
+      "before_sha256_16": "59df5e0919edd9da",
+      "after_sha256_16": "126085e4134af3a2",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    }
+  ]
+}

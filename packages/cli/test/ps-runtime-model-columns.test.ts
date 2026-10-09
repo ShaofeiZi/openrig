@@ -3,12 +3,12 @@ import { compactNodeProjection, padCompactNodeRow, padNodeRow, formatDeclaredMod
 
 // 0.5.1 — rig ps must surface RUNTIME and the DECLARED model.
 //
-// Founder-directed telemetry: an orchestrator diagnosing a silent seat could not
-// see what model it was on, and a Fable rate-limit read as a stall for three hours.
+// 创始人指示的遥测：编排者诊断静默 seat 时看不到它在哪个 model，
+// 一个 Fable rate-limit 被读成卡了三小时。
 //
-// PM's binding constraints, each pinned below:
-//   (i)  a blank model must read as NOT DECLARED, never an em-dash a reader parses
-//        as "this seat has no model" — 13 of 15 claude-code seats are blank today.
+// PM 的约束性限制，各在下方钉住：
+//   (i)  空白 model 必须读作 NOT DECLARED，绝不能是破折号——读者会解析为
+//        “此 seat 无 model”——如今 15 个 claude-code seat 中 13 个是空白。
 //   (ii) the surface says DECLARED in plain words.
 //   (iii) this does NOT expose the RUNNING model; that is the ACTIVITY-umbrella rider.
 describe("rig ps — runtime + declared model", () => {

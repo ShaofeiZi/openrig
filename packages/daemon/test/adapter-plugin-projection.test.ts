@@ -1,19 +1,18 @@
-// Test suite for plugin-primitive Phase 3a slice 3.1 — adapter plugin
-// directory projection. Per velocity-guard cadence boundary (c)
-// 2026-05-10: prove the runtime adapters copy a real plugin tree
-// (nested .claude-plugin/ + skills/ + hooks/ subdirs) to the runtime
-// plugin location, not just compute targetDir math.
+// plugin-primitive Phase 3a slice 3.1 测试套件——adapter plugin directory projection。
+// 按 velocity-guard cadence boundary（c）2026-05-10：证明 runtime adapter 会将真实 plugin
+// tree（嵌套 .claude-plugin/ + skills/ + hooks/ subdir）复制到 runtime plugin 位置，
+// 而不只是计算 targetDir。
 //
 // Claude target: <cwd>/.claude/plugins/<id>/
 // Codex target:  <cwd>/.codex/plugins/<id>/
 //
-// Plugin tree shape (per DESIGN.md §5.5 + IMPL-PRD §2.2):
+// Plugin tree shape（按 DESIGN.md §5.5 + IMPL-PRD §2.2）：
 //   <plugin-root>/
-//     .claude-plugin/plugin.json     (Claude manifest)
-//     .codex-plugin/plugin.json      (Codex manifest; absent for Claude-only plugin)
-//     skills/<id>/SKILL.md           (one or more skill subdirs)
-//     hooks/{claude,codex}.json      (hook event configs)
-//     hooks/scripts/<file>.cjs       (hook command scripts)
+//     .claude-plugin/plugin.json     （Claude manifest）
+//     .codex-plugin/plugin.json      （Codex manifest；Claude-only plugin 中缺失）
+//     skills/<id>/SKILL.md           （一个或多个 skill subdir）
+//     hooks/{claude,codex}.json      （hook event config）
+//     hooks/scripts/<file>.cjs       （hook command script）
 
 import { describe, it, expect, vi } from "vitest";
 import { ClaudeCodeAdapter, type ClaudeAdapterFsOps } from "../src/adapters/claude-code-adapter.js";
@@ -21,7 +20,7 @@ import { CodexRuntimeAdapter, type CodexAdapterFsOps } from "../src/adapters/cod
 import type { ProjectionPlan, ProjectionEntry } from "../src/domain/projection-planner.js";
 import type { NodeBinding } from "../src/domain/types.js";
 
-// ----- Mock helpers shared with existing adapter tests -----
+// ----- 与现有 adapter 测试共享的 mock helper -----
 
 function mockTmux() {
   return {
@@ -92,7 +91,7 @@ function makePlan(entries: ProjectionEntry[]): ProjectionPlan {
 }
 
 // ============================================================
-// Plugin tree fixtures
+// Plugin tree fixture
 // ============================================================
 
 const OPENRIG_CORE_TREE = {
@@ -107,11 +106,11 @@ const OPENRIG_CORE_TREE = {
 };
 
 // ============================================================
-// Claude Code adapter — plugin tree projection
+// Claude Code adapter——plugin tree projection
 // ============================================================
 
-describe("Claude Code adapter — plugin directory projection", () => {
-  it("copies entire plugin tree to <cwd>/.claude/plugins/<id>/ preserving nested structure", async () => {
+describe("Claude Code adapter——plugin directory projection", () => {
+  it("将整个 plugin tree 复制到 <cwd>/.claude/plugins/<id>/，保留嵌套结构", async () => {
     const fs = mockClaudeFs(OPENRIG_CORE_TREE);
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: fs });
     const plan = makePlan([makePluginEntry("openrig-core", "/p/openrig-core")]);
@@ -121,7 +120,7 @@ describe("Claude Code adapter — plugin directory projection", () => {
     expect(result.projected).toContain("openrig-core");
     expect(result.failed).toEqual([]);
 
-    // All 8 source files should land at the correct nested target paths
+    // 所有 8 个 source file 都应落到正确的嵌套 target path
     expect(fs._store["/cwd/.claude/plugins/openrig-core/.claude-plugin/plugin.json"]).toBe('{"name":"openrig-core","version":"0.1.0"}');
     expect(fs._store["/cwd/.claude/plugins/openrig-core/.codex-plugin/plugin.json"]).toBe('{"name":"openrig-core","version":"0.1.0","description":"openrig"}');
     expect(fs._store["/cwd/.claude/plugins/openrig-core/skills/openrig-user/SKILL.md"]).toBe("# openrig-user\nUse for ...");
@@ -132,23 +131,23 @@ describe("Claude Code adapter — plugin directory projection", () => {
     expect(fs._store["/cwd/.claude/plugins/openrig-core/README.md"]).toBe("# openrig-core plugin");
   });
 
-  it("plugin projection lands at .claude/plugins/, NOT .claude/skills/ or other category dirs (drift discriminator)", async () => {
+  it("plugin projection 落到 .claude/plugins/，而非 .claude/skills/ 或其他 category dir（drift discriminator）", async () => {
     const fs = mockClaudeFs({ "/p/test-plugin/.claude-plugin/plugin.json": "{}", "/p/test-plugin/skills/x/SKILL.md": "# x" });
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: fs });
     const plan = makePlan([makePluginEntry("test-plugin", "/p/test-plugin")]);
 
     await adapter.project(plan, makeBinding("/cwd"));
 
-    // Lands at the plugin dir
+    // 落到 plugin dir
     expect(fs._store["/cwd/.claude/plugins/test-plugin/.claude-plugin/plugin.json"]).toBe("{}");
-    // Does NOT land at the skills dir (the skill SKILL.md inside the plugin is part of the plugin tree, not promoted to .claude/skills)
+    // 不会落到 skill dir（plugin 内的 skill SKILL.md 属于 plugin tree，不提升到 .claude/skills）
     expect(fs._store["/cwd/.claude/skills/test-plugin/SKILL.md"]).toBeUndefined();
     expect(fs._store["/cwd/.claude/skills/x/SKILL.md"]).toBeUndefined();
-    // The plugin's nested skill stays inside the plugin tree
+    // plugin 的嵌套 skill 保留在 plugin tree 内
     expect(fs._store["/cwd/.claude/plugins/test-plugin/skills/x/SKILL.md"]).toBe("# x");
   });
 
-  it("multiple plugins project into separate <id> subdirs", async () => {
+  it("多个 plugin 投影到各自的 <id> subdir", async () => {
     const fs = mockClaudeFs({
       "/p/plugin-a/.claude-plugin/plugin.json": '{"name":"plugin-a"}',
       "/p/plugin-a/skills/a-skill/SKILL.md": "# a",
@@ -167,11 +166,11 @@ describe("Claude Code adapter — plugin directory projection", () => {
     expect(result.projected).toContain("plugin-b");
     expect(fs._store["/cwd/.claude/plugins/plugin-a/skills/a-skill/SKILL.md"]).toBe("# a");
     expect(fs._store["/cwd/.claude/plugins/plugin-b/skills/b-skill/SKILL.md"]).toBe("# b");
-    // Plugins stay isolated; b's skill is NOT under a's plugin tree
+    // plugin 保持隔离；b 的 skill 不在 a 的 plugin tree 下
     expect(fs._store["/cwd/.claude/plugins/plugin-a/skills/b-skill/SKILL.md"]).toBeUndefined();
   });
 
-  it("plugin re-projection is a no-op when hash matches (idempotent)", async () => {
+  it("hash 匹配时 plugin re-projection 为 no-op（幂等）", async () => {
     const fs = mockClaudeFs({
       "/p/openrig-core/.claude-plugin/plugin.json": "{}",
       "/cwd/.claude/plugins/openrig-core/.claude-plugin/plugin.json": "{}", // already projected with same content
@@ -185,17 +184,17 @@ describe("Claude Code adapter — plugin directory projection", () => {
 
     await adapter.project(plan, makeBinding("/cwd"));
 
-    // Hash-match should skip the write — no spurious overwrites of unchanged plugin files
+    // hash 匹配时应跳过写入——不无故覆盖未变化的 plugin file
     expect(writeCount).toBe(0);
   });
 });
 
 // ============================================================
-// Codex adapter — plugin tree projection
+// Codex adapter——plugin tree projection
 // ============================================================
 
-describe("Codex adapter — plugin directory projection", () => {
-  it("copies entire plugin tree to <cwd>/.codex/plugins/<id>/ preserving nested structure", async () => {
+describe("Codex adapter——plugin directory projection", () => {
+  it("将整个 plugin tree 复制到 <cwd>/.codex/plugins/<id>/，保留嵌套结构", async () => {
     const fs = mockCodexFs(OPENRIG_CORE_TREE);
     const adapter = new CodexRuntimeAdapter({ tmux: mockTmux(), fsOps: fs });
     const plan = makePlan([makePluginEntry("openrig-core", "/p/openrig-core")]);
@@ -205,7 +204,7 @@ describe("Codex adapter — plugin directory projection", () => {
     expect(result.projected).toContain("openrig-core");
     expect(result.failed).toEqual([]);
 
-    // All 8 source files should land at the correct nested Codex target paths
+    // 所有 8 个 source file 都应落到正确的嵌套 Codex target path
     expect(fs._store["/cwd/.codex/plugins/openrig-core/.claude-plugin/plugin.json"]).toBe('{"name":"openrig-core","version":"0.1.0"}');
     expect(fs._store["/cwd/.codex/plugins/openrig-core/.codex-plugin/plugin.json"]).toBe('{"name":"openrig-core","version":"0.1.0","description":"openrig"}');
     expect(fs._store["/cwd/.codex/plugins/openrig-core/skills/openrig-user/SKILL.md"]).toBe("# openrig-user\nUse for ...");
@@ -213,7 +212,7 @@ describe("Codex adapter — plugin directory projection", () => {
     expect(fs._store["/cwd/.codex/plugins/openrig-core/hooks/scripts/activity-relay.cjs"]).toBe("// relay script body");
   });
 
-  it("Codex plugin lands at .codex/plugins/ NOT .agents/skills/ (drift discriminator vs skill projection)", async () => {
+  it("Codex plugin 落到 .codex/plugins/，而非 .agents/skills/（相对 skill projection 的 drift discriminator）", async () => {
     const fs = mockCodexFs({
       "/p/test-plugin/.codex-plugin/plugin.json": "{}",
       "/p/test-plugin/skills/x/SKILL.md": "# x",
@@ -225,18 +224,18 @@ describe("Codex adapter — plugin directory projection", () => {
 
     expect(fs._store["/cwd/.codex/plugins/test-plugin/.codex-plugin/plugin.json"]).toBe("{}");
     expect(fs._store["/cwd/.codex/plugins/test-plugin/skills/x/SKILL.md"]).toBe("# x");
-    // Nested skill NOT promoted to runtime skills dir
+    // 嵌套 skill 不提升到 runtime skill dir
     expect(fs._store["/cwd/.agents/skills/test-plugin/SKILL.md"]).toBeUndefined();
     expect(fs._store["/cwd/.agents/skills/x/SKILL.md"]).toBeUndefined();
   });
 });
 
 // ============================================================
-// Cross-runtime layer-discrimination — same plugin, different targets
+// Cross-runtime layer-discrimination——同一 plugin，不同 target
 // ============================================================
 
-describe("Plugin projection — cross-runtime target discrimination", () => {
-  it("same plugin source projects to .claude/plugins on Claude AND .codex/plugins on Codex (distinct targets)", async () => {
+describe("Plugin projection——cross-runtime target 区分", () => {
+  it("同一 plugin source 在 Claude 上投影到 .claude/plugins，在 Codex 上投影到 .codex/plugins（不同 target）", async () => {
     const claudeFs = mockClaudeFs(OPENRIG_CORE_TREE);
     const codexFs = mockCodexFs(OPENRIG_CORE_TREE);
     const claudeAdapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: claudeFs });
@@ -246,7 +245,7 @@ describe("Plugin projection — cross-runtime target discrimination", () => {
     await claudeAdapter.project(plan, makeBinding("/cwd"));
     await codexAdapter.project(plan, makeBinding("/cwd"));
 
-    // Claude target distinct from Codex target
+    // Claude target 与 Codex target 不同
     expect(claudeFs._store["/cwd/.claude/plugins/openrig-core/.claude-plugin/plugin.json"]).toBeDefined();
     expect(claudeFs._store["/cwd/.codex/plugins/openrig-core/.codex-plugin/plugin.json"]).toBeUndefined();
 

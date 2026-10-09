@@ -10,6 +10,7 @@ import { renderScreen } from "../src/render.js";
 import { terminalLines } from "../src/terminals/terminal-model.js";
 import { parseCommand } from "../src/grammar.js";
 import type { FleetSnapshot, ViewStateStore } from "../src/types.js";
+import { strWidth } from "../src/text-width.js";
 
 let snap: FleetSnapshot, view: ViewStateStore, client: DaemonClient, service: TerminalService;
 let effects: Array<{ method: string; params: any }>, requests: string[], alive: boolean, providerAlive: boolean, failPage: boolean;
@@ -44,7 +45,7 @@ function draw(cols: number, rows: number) {
   return renderScreen(view.get(), snap, { cols, rows });
 }
 
-describe("terminal browser → preview → explicit Open", () => {
+describe("终端浏览 → 预览 → 显式 Open", () => {
   it.each([[140, 42], [80, 24]])("uses the opened plan, pages and Back at %ix%i", async (cols, rows) => {
     view.dispatch(parseCommand("terminals", view.get().sections)); await refresh();
     expect(snap.terminals?.catalog.map(e => [e.kind, e.readinessUnverified, e.members.length])).toEqual([["saved", true, 21], ["derived", true, 0]]);
@@ -54,22 +55,22 @@ describe("terminal browser → preview → explicit Open", () => {
     view.dispatch({ type: "activate" }); await refresh();
     expect(view.get().terminalView).toBe("saved:fixture");
     let screen = draw(cols, rows);
-    expect(screen.lines.every(line => line.length <= cols && !/[\r\n]/.test(line))).toBe(true);
-    expect(screen.lines.join("\n")).toContain("Open in Herdr");
+    expect(screen.lines.every(line => strWidth(line) <= cols && !/[\r\n]/.test(line))).toBe(true);
+    expect(screen.lines.join("\n")).toContain("在 Herdr 打开");
     const preview = snap.terminals!.preview!;
-    // OPR.0.6.0.8: Herdr pages hold 16 (4×4); 19 openable members → 16 + 3 (2×2, one blank).
+    // OPR.0.6.0.8：Herdr 页持 16（4×4）；19 个可开成员 → 16 + 3（2×2，一空）。
     expect(preview.grids.map(g => [g.columns, g.rows, g.blanks])).toEqual([[4, 4, 0], [2, 2, 1]]);
     view.dispatch({ type: "terminal-page", page: 1 }); await refresh();
     const detail = terminalLines(view.get(), snap, 50).map(l => l.text).join("\n");
-    expect(detail).toContain("blank"); expect(detail).toContain("member-19"); expect(detail).toContain("Unavailable · missing"); expect(detail).toContain("remote-http");
+    expect(detail).toContain("空白"); expect(detail).toContain("member-19"); expect(detail).toContain("不可用 · missing"); expect(detail).toContain("remote-http");
     screen = draw(cols, rows);
-    expect(screen.lines.join("\n")).toContain("Page 2/2");
+    expect(screen.lines.join("\n")).toContain("第 2/2 页");
     expect(effects).toEqual([]); expect(requests.every(r => r.startsWith("GET /api/terminal/"))).toBe(true);
-    // Attention is a side trip: Help and Back must preserve this exact preview page.
+    // Attention 是支线：Help 与 Back 必须保留这个精确预览页。
     view.dispatch(parseCommand("attention"));
     view.dispatch({ type: "attention-open", id: "queue:fixture-request" });
     view.dispatch({ type: "palette-open" });
-    expect(draw(cols, rows).lines.join("\n")).toContain("Esc return");
+    expect(draw(cols, rows).lines.join("\n")).toContain("Esc 返回");
     view.dispatch({ type: "palette-close" });
     expect(view.get().attentionOpen).toBe("queue:fixture-request");
     view.dispatch({ type: "back" });
@@ -77,7 +78,7 @@ describe("terminal browser → preview → explicit Open", () => {
     view.dispatch({ type: "back" }); await refresh();
     expect(view.get()).toMatchObject({ section: "terminals", terminalView: "saved:fixture", terminalPage: 1 });
     screen = draw(cols, rows);
-    expect(screen.lines.join("\n")).toContain("Page 2/2");
+    expect(screen.lines.join("\n")).toContain("第 2/2 页");
     const open = screen.contentTargets.find(t => t.action.type === "act")!.action;
     if (open.type !== "act" || open.act !== "open-terminal") throw new Error("missing explicit Open");
     const result = await client.openTerminal(open.view, open.expectedPlan);
@@ -90,32 +91,32 @@ describe("terminal browser → preview → explicit Open", () => {
     expect(view.get().selection).toBe(before.selection);
   });
 
-  it("refuses a changed plan before any launch, then allows a fresh preview", async () => {
+  it("任何启动前拒绝已变计划，随后允许新预览", async () => {
     const p = await client.previewTerminal("saved:fixture"); alive = false;
-    await expect(client.openTerminal(p.view, p.planId)).rejects.toThrow(/409.*changed/);
+    await expect(client.openTerminal(p.view, p.planId)).rejects.toThrow(/409.*已变化/);
     expect(effects).toEqual([]);
     const fresh = await client.previewTerminal(p.view);
     expect(fresh.planId).not.toBe(p.planId);
     expect((await client.openTerminal(fresh.view, fresh.planId)).opened).toHaveLength(18); // 19 openable, one now down
   });
 
-  it("keeps unavailable-provider preview useful with no Open or recovery effect", async () => {
+  it("保持不可用 provider 预览有用，无 Open 或恢复效果", async () => {
     providerAlive = false;
     view.dispatch({ type: "terminal-preview", view: "saved:fixture" }); await refresh();
     const lines = terminalLines(view.get(), snap, 70);
-    expect(lines.map(l => l.text).join("\n")).toContain("Herdr unavailable");
+    expect(lines.map(l => l.text).join("\n")).toContain("Herdr 不可用");
     expect(lines.some(l => l.action?.type === "act")).toBe(false);
     expect(lines.some(l => l.action?.type === "back")).toBe(true);
     expect(effects).toEqual([]);
   });
 
-  it("preserves a failed Open as failure, without a success notice", async () => {
+  it("把失败 Open 保留为失败，无成功通知", async () => {
     const p = await client.previewTerminal("saved:fixture"); failPage = true;
     await expect(client.openTerminal(p.view, p.planId)).rejects.toThrow("fixture layout refused");
     expect(effects.filter(e => e.method === "layout.apply")).toHaveLength(2);
   });
 
-  it("keeps wrapped partial/failure receipts readable across layout and refresh", async () => {
+  it("保持换行的部分/失败回执在布局与刷新间可读", async () => {
     view.dispatch({ type: "terminal-preview", view: "saved:fixture" }); await refresh();
     view.dispatch({ type: "terminal-result", view: "saved:fixture", message: "Partial Open: 9 opened, 1 absent, 6 degraded. Herdr refused page two." });
     draw(80, 24); await refresh(); draw(80, 24);

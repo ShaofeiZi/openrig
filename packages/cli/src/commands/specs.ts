@@ -45,10 +45,10 @@ function normalizePathForMatch(path: string): string {
 function requireRegularFile(path: string, label: string): void {
   const stat = lstatSync(path);
   if (stat.isSymbolicLink()) {
-    throw new Error(`${label} must not be a symlink: ${path}`);
+    throw new Error(`${label} 不能是符号链接：${path}`);
   }
   if (!stat.isFile()) {
-    throw new Error(`${label} must be a regular file: ${path}`);
+    throw new Error(`${label} 必须是普通文件：${path}`);
   }
 }
 
@@ -59,7 +59,7 @@ function assertTreeHasNoSymlinks(root: string): void {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       const absPath = join(current, entry.name);
       if (entry.isSymbolicLink()) {
-        throw new Error(`Spec directories must not contain symlinks: ${absPath}`);
+        throw new Error(`Spec 目录不能包含符号链接：${absPath}`);
       }
       if (entry.isDirectory()) {
         stack.push(absPath);
@@ -70,12 +70,12 @@ function assertTreeHasNoSymlinks(root: string): void {
 
 function resolveAddSpecSource(inputPath: string): AddSpecSource {
   if (!existsSync(inputPath)) {
-    throw new Error(`File not found: ${inputPath}`);
+    throw new Error(`文件未找到：${inputPath}`);
   }
 
   const stat = lstatSync(inputPath);
   if (stat.isSymbolicLink()) {
-    throw new Error(`Spec path must not be a symlink: ${inputPath}`);
+    throw new Error(`Spec 路径不能是符号链接：${inputPath}`);
   }
 
   if (stat.isFile()) {
@@ -89,16 +89,16 @@ function resolveAddSpecSource(inputPath: string): AddSpecSource {
   }
 
   if (!stat.isDirectory()) {
-    throw new Error(`Spec path must be a YAML file or spec directory: ${inputPath}`);
+    throw new Error(`Spec 路径必须是 YAML 文件或 spec 目录：${inputPath}`);
   }
 
   const rootSpec = ["rig.yaml", "rig.yml", "agent.yaml", "agent.yml"]
     .map((candidate) => join(inputPath, candidate))
     .find((candidate) => existsSync(candidate));
   if (!rootSpec) {
-    throw new Error(`Spec directory must contain rig.yaml or agent.yaml: ${inputPath}`);
+    throw new Error(`Spec 目录必须包含 rig.yaml 或 agent.yaml：${inputPath}`);
   }
-  requireRegularFile(rootSpec, "Root spec file");
+  requireRegularFile(rootSpec, "根 spec 文件");
 
   const installName = basename(inputPath);
   return {
@@ -121,7 +121,7 @@ function installSpecSource(source: AddSpecSource, userRoot: string): string {
   }
 
   if (existsSync(dest)) {
-    throw new Error(`A spec directory already exists at ${dest}. Remove or rename it before adding this spec.`);
+    throw new Error(`目标位置已存在 spec 目录：${dest}。添加本 spec 之前请先移除或改名。`);
   }
 
   assertTreeHasNoSymlinks(source.inputPath);
@@ -139,8 +139,8 @@ function installSpecSource(source: AddSpecSource, userRoot: string): string {
 }
 
 /**
- * Shared name resolution for library specs.
- * Returns the matching entry, or throws with guidance on ambiguity/not-found.
+ * 库 spec 的共用名称解析。
+ * 返回匹配到的条目，或在歧义/未找到时抛出带指引的错误。
  */
 export async function resolveLibrarySpec(
   client: DaemonClient,
@@ -150,33 +150,33 @@ export async function resolveLibrarySpec(
   const res = await client.get<LibraryEntry[]>(opts?.kind ? `/api/specs/library?kind=${opts.kind}` : "/api/specs/library");
   const entries = res.data ?? [];
 
-  // Try exact ID match first
+  // 先尝试精确 ID 匹配
   const byId = entries.find((e) => e.id === nameOrId);
   if (byId) return byId;
 
-  // Try name match
+  // 再尝试名称匹配
   const byName = entries.filter((e) => e.name === nameOrId);
   if (byName.length === 1) return byName[0]!;
 
   if (byName.length > 1) {
-    const candidates = byName.map((e) => `  ${e.id} (${e.kind}) — ${e.sourcePath}`).join("\n");
+    const candidates = byName.map((e) => `  ${e.id}（${e.kind}）—— ${e.sourcePath}`).join("\n");
     const scope = opts?.kind ? ` ${opts.kind}` : "";
     throw new Error(
-      `Spec name '${nameOrId}' is ambiguous — ${byName.length}${scope} entries match.\nUse the ID instead:\n${candidates}`
+      `Spec 名称 '${nameOrId}' 有歧义——${byName.length} 个${scope}条目匹配。\n请改用 ID：\n${candidates}`
     );
   }
 
   const scope = opts?.kind ? ` ${opts.kind}` : "";
   throw new Error(
-    `Spec '${nameOrId}' not found in${scope} library. Run 'rig specs ls' to see available rigs, agents, workflows, and managed apps.`
+    `在${scope}库中未找到 spec '${nameOrId}'。运行 'rig specs ls' 查看可用的工作组、智能体、工作流与受管 app。`
   );
 }
 
 export function specsCommand(depsOverride?: StatusDeps): Command {
   const cmd = new Command("specs")
-    .description("Browse, preview, and manage the spec library, including managed apps")
+    .description("浏览、预览和管理 spec 库，包括受管 app")
     .addHelpText("after", `
-Examples:
+示例：
   rig specs ls
   rig specs preview secrets-manager
   rig specs show vault-specialist
@@ -190,7 +190,7 @@ Examples:
     const deps = getDeps();
     const status = await getDaemonStatus(deps.lifecycleDeps);
     if (status.state !== "running" || status.healthy === false) {
-      // B8-1b: epistemic-matched language via the one helper (down ≠ busy).
+      // B8-1b：通过唯一 helper 做认知匹配语言（宕机 ≠ 忙）。
       const gm = statusGuardMessage(status); throw new Error(`${gm.fact} ${gm.action}`);
     }
     return deps.clientFactory(getDaemonUrl(status));
@@ -198,9 +198,9 @@ Examples:
 
   // specs ls
   cmd.command("ls")
-    .description("List library rigs, agents, and managed apps")
-    .option("--kind <kind>", "Filter by kind (rig, agent, or workflow)")
-    .option("--json", "JSON output")
+    .description("列出库中的工作组、智能体与受管 app")
+    .option("--kind <kind>", "按类型过滤（rig、agent 或 workflow）")
+    .option("--json", "以 JSON 输出")
     .action(async (opts: { kind?: string; json?: boolean }) => {
       try {
         const client = await getClient();
@@ -214,7 +214,7 @@ Examples:
         }
 
         if (entries.length === 0) {
-          console.log("No specs in library. Add specs with: rig specs add <path>");
+          console.log("库中没有 spec。用 rig specs add <path> 添加 spec。");
           return;
         }
 
@@ -227,12 +227,12 @@ Examples:
       }
     });
 
-  // specs show
+  // specs show 命令
   cmd.command("show")
-    .argument("<name-or-id>", "Spec name or library ID")
-    .description("Show spec metadata and path")
-    .option("--kind <kind>", "Disambiguate by kind (rig, agent, or workflow)")
-    .option("--json", "JSON output")
+    .argument("<name-or-id>", "Spec 名称或库 ID")
+    .description("展示 spec 元数据与路径")
+    .option("--kind <kind>", "按类型消歧（rig、agent 或 workflow）")
+    .option("--json", "以 JSON 输出")
     .action(async (nameOrId: string, opts: { kind?: LibraryEntry["kind"]; json?: boolean }) => {
       try {
         const client = await getClient();
@@ -243,24 +243,24 @@ Examples:
           return;
         }
 
-        console.log(`Name:     ${entry.name}`);
-        console.log(`Kind:     ${entry.kind}`);
-        console.log(`Version:  ${entry.version}`);
-        console.log(`Source:   ${entry.sourceType}`);
-        console.log(`Path:     ${entry.sourcePath}`);
-        console.log(`ID:       ${entry.id}`);
+        console.log(`名称：    ${entry.name}`);
+        console.log(`类型：    ${entry.kind}`);
+        console.log(`版本：    ${entry.version}`);
+        console.log(`来源：    ${entry.sourceType}`);
+        console.log(`路径：    ${entry.sourcePath}`);
+        console.log(`ID：      ${entry.id}`);
       } catch (err) {
         console.error((err as Error).message);
         process.exitCode = 1;
       }
     });
 
-  // specs preview
+  // specs preview 命令
   cmd.command("preview")
-    .argument("<name-or-id>", "Spec name or library ID")
-    .description("Show structured spec review, including managed app details")
-    .option("--kind <kind>", "Disambiguate by kind (rig, agent, or workflow)")
-    .option("--json", "JSON output")
+    .argument("<name-or-id>", "Spec 名称或库 ID")
+    .description("展示结构化的 spec 评审，包括受管 app 详情")
+    .option("--kind <kind>", "按类型消歧（rig、agent 或 workflow）")
+    .option("--json", "以 JSON 输出")
     .action(async (nameOrId: string, opts: { kind?: LibraryEntry["kind"]; json?: boolean }) => {
       try {
         const client = await getClient();
@@ -273,14 +273,14 @@ Examples:
         }
 
         const review = res.data;
-        console.log(`${review["name"]} (${review["kind"]}, ${review["format"] ?? "agent"})`);
+        console.log(`${review["name"]}（${review["kind"]}，${review["format"] ?? "agent"}）`);
         if (review["summary"]) console.log(`  ${review["summary"]}`);
-        console.log(`  Source: ${review["sourcePath"]} [${review["sourceState"]}]`);
+        console.log(`  来源：${review["sourcePath"]} [${review["sourceState"]}]`);
 
         if (review["kind"] === "rig" && review["format"] === "pod_aware") {
           const pods = (review["pods"] as Array<{ id: string; members: Array<{ id: string; runtime: string }> }>) ?? [];
           for (const pod of pods) {
-            console.log(`  Pod: ${pod.id} (${pod.members.length} members)`);
+            console.log(`  Pod：${pod.id}（${pod.members.length} 个成员）`);
             for (const m of pod.members) {
               console.log(`    ${m.id} — ${m.runtime}`);
             }
@@ -292,18 +292,18 @@ Examples:
       }
     });
 
-  // specs add
+  // specs add 命令
   cmd.command("add")
-    .argument("<path>", "Path to YAML spec file or spec directory")
-    .description("Add a spec file or full spec directory to the user library")
-    .option("--json", "JSON output")
+    .argument("<path>", "YAML spec 文件或 spec 目录的路径")
+    .description("把 spec 文件或完整 spec 目录添加到用户库")
+    .option("--json", "以 JSON 输出")
     .action(async (inputPath: string, opts: { json?: boolean }) => {
       try {
         const source = resolveAddSpecSource(inputPath);
         const yaml = readFileSync(source.yamlPath, "utf-8");
         const client = await getClient();
 
-        // Validate via daemon
+        // 通过后台服务校验
         let kind = "rig";
         let res = await client.post<Record<string, unknown>>("/api/specs/review/rig", { yaml });
         if (res.status >= 400) {
@@ -311,14 +311,14 @@ Examples:
           kind = "agent";
         }
         if (res.status >= 400) {
-          throw new Error("File is not a valid RigSpec or AgentSpec. Fix validation errors before adding.");
+          throw new Error("文件不是合法的 RigSpec 或 AgentSpec。请先修复校验错误再添加。");
         }
 
-        // Copy to user library
+        // 复制到用户库
         const userRoot = getDefaultOpenRigPath("specs");
         const dest = installSpecSource(source, userRoot);
 
-        // Sync and find the new entry
+        // 同步并找到新条目
         const syncRes = await client.post<LibraryEntry[]>("/api/specs/library/sync");
         const entries = syncRes.data ?? [];
         const name = (res.data as Record<string, unknown>)["name"] as string ?? source.installName;
@@ -332,9 +332,9 @@ Examples:
           return;
         }
 
-        console.log(`Added ${kind} spec '${name}' to library at ${dest}`);
+        console.log(`已将${kind} spec '${name}' 添加到库，位置 ${dest}`);
         if (newEntry) {
-          console.log(`  ID: ${newEntry.id}`);
+          console.log(`  ID：${newEntry.id}`);
         }
       } catch (err) {
         console.error((err as Error).message);
@@ -342,10 +342,10 @@ Examples:
       }
     });
 
-  // specs sync
+  // specs sync 命令
   cmd.command("sync")
-    .description("Rescan spec library roots")
-    .option("--json", "JSON output")
+    .description("重新扫描 spec 库根目录")
+    .option("--json", "以 JSON 输出")
     .action(async (opts: { json?: boolean }) => {
       try {
         const client = await getClient();
@@ -357,18 +357,18 @@ Examples:
           return;
         }
 
-        console.log(`Library synced: ${entries.length} spec(s) indexed.`);
+        console.log(`库已同步：已索引 ${entries.length} 个 spec。`);
       } catch (err) {
         console.error((err as Error).message);
         process.exitCode = 1;
       }
     });
 
-  // specs remove
+  // specs remove 命令
   cmd.command("remove")
-    .argument("<name-or-id>", "Spec name or library ID")
-    .description("Remove a user-file spec from the library")
-    .option("--json", "JSON output")
+    .argument("<name-or-id>", "Spec 名称或库 ID")
+    .description("从库中移除一个用户文件 spec")
+    .option("--json", "以 JSON 输出")
     .action(async (nameOrId: string, opts: { json?: boolean }) => {
       try {
         const client = await getClient();
@@ -382,24 +382,24 @@ Examples:
         }
 
         if (res.status >= 400) {
-          console.error((res.data["error"] as string | undefined) ?? `Remove failed (HTTP ${res.status})`);
+          console.error((res.data["error"] as string | undefined) ?? `移除失败（HTTP ${res.status}）`);
           process.exitCode = 1;
           return;
         }
 
-        console.log(`Removed ${res.data["name"] ?? entry.name} from the library`);
+        console.log(`已从库中移除 ${res.data["name"] ?? entry.name}`);
       } catch (err) {
         console.error((err as Error).message);
         process.exitCode = 1;
       }
     });
 
-  // specs rename
+  // specs rename 命令
   cmd.command("rename")
-    .argument("<name-or-id>", "Spec name or library ID")
-    .argument("<new-name>", "New spec name")
-    .description("Rename a user-file spec in the library")
-    .option("--json", "JSON output")
+    .argument("<name-or-id>", "Spec 名称或库 ID")
+    .argument("<new-name>", "新 spec 名称")
+    .description("在库中重命名一个用户文件 spec")
+    .option("--json", "以 JSON 输出")
     .action(async (nameOrId: string, newName: string, opts: { json?: boolean }) => {
       try {
         const client = await getClient();
@@ -415,13 +415,13 @@ Examples:
         }
 
         if (res.status >= 400) {
-          console.error((res.data["error"] as string | undefined) ?? `Rename failed (HTTP ${res.status})`);
+          console.error((res.data["error"] as string | undefined) ?? `重命名失败（HTTP ${res.status}）`);
           process.exitCode = 1;
           return;
         }
 
         const renamed = (res.data["entry"] as Record<string, unknown> | undefined) ?? {};
-        console.log(`Renamed ${entry.name} to ${renamed["name"] ?? newName}`);
+        console.log(`已将 ${entry.name} 重命名为 ${renamed["name"] ?? newName}`);
       } catch (err) {
         console.error((err as Error).message);
         process.exitCode = 1;

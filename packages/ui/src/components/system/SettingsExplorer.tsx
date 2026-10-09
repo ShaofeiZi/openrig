@@ -1,10 +1,8 @@
-// Slice 26 — Settings destination Explorer sidebar.
+// Slice 26——设置目的地 Explorer 侧边栏。
 //
-// Renders the 4 Settings destinations as a flat sidebar list (peer to
-// Topology / Project / Library / For-You destinations per dispatch).
-// Each item is a TanStack Router Link to its sub-route. The active
-// item is derived from the current router pathname so the sidebar
-// stays in sync regardless of how the user navigated.
+// 把 4 个设置目的地渲染成扁平侧边栏列表（与 Topology / Project / Library / For-You
+// 目的地按 dispatch 同级）。每项是指向其子路由的 TanStack Router Link。活动项由当前路由
+// pathname 派生，因此无论用户如何导航，侧边栏都保持同步。
 
 import { Link, useRouterState } from "@tanstack/react-router";
 import { cn } from "../../lib/utils.js";
@@ -14,9 +12,8 @@ interface SettingsExplorerItem {
   label: string;
   href: string;
   /**
-   * Predicate matching the current pathname to "active" state.
-   * The Settings root is the exact match `/settings`; sub-routes
-   * match their full path.
+   * 把当前 pathname 匹配为“活动”状态的谓词。
+   * 设置根是精确匹配 `/settings`；子路由匹配其完整路径。
    */
   isActive: (pathname: string) => boolean;
 }
@@ -24,26 +21,26 @@ interface SettingsExplorerItem {
 const SETTINGS_ITEMS: SettingsExplorerItem[] = [
   {
     id: "settings",
-    label: "Settings",
+    label: "设置",
     href: "/settings",
-    // Active for the bare /settings only — not for /settings/<sub>.
+    // 仅对裸 /settings 活动——不对 /settings/<sub>。
     isActive: (path) => path === "/settings",
   },
   {
     id: "policies",
-    label: "Policies",
+    label: "策略",
     href: "/settings/policies",
     isActive: (path) => path.startsWith("/settings/policies"),
   },
   {
     id: "log",
-    label: "Log",
+    label: "日志",
     href: "/settings/log",
     isActive: (path) => path.startsWith("/settings/log"),
   },
   {
     id: "status",
-    label: "Status",
+    label: "状态",
     href: "/settings/status",
     isActive: (path) => path.startsWith("/settings/status"),
   },
@@ -60,7 +57,7 @@ export function SettingsExplorer() {
           data-testid="settings-explorer-heading"
           className="block font-mono text-[11px] uppercase tracking-wide text-on-surface px-2 py-1"
         >
-          {"> "}Settings
+          {"> "}设置
         </span>
       </div>
       <ul className="px-2 space-y-0.5">

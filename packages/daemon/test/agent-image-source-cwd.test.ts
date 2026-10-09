@@ -1,15 +1,12 @@
-// PL-016 source-cwd roundtrip tests.
+// PL-016 source-cwd 往返测试。
 //
-// Pins:
-//   - manifest captures source_cwd at create (snapshot capturer reads
-//     source seat's cwd from the nodes table)
-//   - snippet generator emits cwd: <source_cwd> in the rendered
-//     Use-as-starter YAML
-//   - back-compat: manifests without source_cwd still load + render
-//     snippet with omitted cwd (current behavior preserved)
-//   - operator-override scenario (different cwd → fork fails honestly
-//     with no daemon-side override magic — verified by absence of any
-//     daemon cwd-rewriting code path)
+// 固定以下行为：
+//   - 创建时 manifest 捕获 source_cwd（snapshot capturer 从 nodes table 读取 source seat cwd）
+//   - snippet generator 在渲染的“用作 starter”YAML 中发出 cwd: <source_cwd>
+//   - 向后兼容：不含 source_cwd 的 manifest 仍可加载与渲染 snippet，并省略 cwd
+//     （保留当前行为）
+//   - 用户覆盖场景（cwd 不同 → fork 如实失败，不存在 daemon 侧隐式 override——通过不存在
+//     任何 daemon cwd-rewriting 代码路径验证）
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -60,10 +57,10 @@ function writeImage(root: string, name: string, manifest: string): void {
 }
 
 // ============================================================================
-// Test 1 — manifest captures source_cwd at create (snapshot capturer)
+// 测试 1——创建时 manifest 捕获 source_cwd（snapshot capturer）
 // ============================================================================
 
-describe("agent image source_cwd — snapshot capturer captures cwd", () => {
+describe("agent image source_cwd——snapshot capturer 捕获 cwd", () => {
   function setupDb(): { db: Database.Database; rigRepo: RigRepository; sessionRegistry: SessionRegistry } {
     const db = createDb();
     migrate(db, [
@@ -84,14 +81,14 @@ describe("agent image source_cwd — snapshot capturer captures cwd", () => {
     return { db, rigRepo, sessionRegistry };
   }
 
-  it("captures source seat's cwd into manifest source_cwd", () => {
+  it("将 source seat 的 cwd 捕获到 manifest source_cwd", () => {
     const { db, rigRepo, sessionRegistry } = setupDb();
     const rig = rigRepo.createRig("test-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", {
       runtime: "claude-code",
       cwd: "/Users/op/code/projects/openrig",
     });
-    // Create a session row + resume_token so discoverResumeToken returns it.
+    // 创建 session row + resume_token，使 discoverResumeToken 返回它。
     const sessionId = ulid();
     db.prepare(
       `INSERT INTO sessions (id, node_id, session_name, status, created_at)
@@ -112,8 +109,7 @@ describe("agent image source_cwd — snapshot capturer captures cwd", () => {
 
     expect(result.manifest.sourceCwd).toBe("/Users/op/code/projects/openrig");
 
-    // The manifest is also persisted to disk — verify the YAML contains
-    // source_cwd so a fresh re-scan would re-load it correctly.
+    // manifest 也持久化到磁盘——验证 YAML 包含 source_cwd，使全新 re-scan 能正确重新加载。
     const yaml = readFileSync(join(userRoot, "captured-image", "manifest.yaml"), "utf-8");
     expect(yaml).toContain("source_cwd:");
     expect(yaml).toContain("/Users/op/code/projects/openrig");
@@ -121,7 +117,7 @@ describe("agent image source_cwd — snapshot capturer captures cwd", () => {
     db.close();
   });
 
-  it("captures Claude's live context session id instead of stale launch resume_token", () => {
+  it("捕获 Claude live context session id，而非 stale launch resume_token", () => {
     const { db, rigRepo, sessionRegistry } = setupDb();
     const rig = rigRepo.createRig("test-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", {
@@ -159,7 +155,7 @@ describe("agent image source_cwd — snapshot capturer captures cwd", () => {
     db.close();
   });
 
-  it("captures a managed Codex seat's persisted thread id into manifest", () => {
+  it("将 managed Codex seat 已持久化的 thread id 捕获到 manifest", () => {
     const { db, rigRepo, sessionRegistry } = setupDb();
     const rig = rigRepo.createRig("test-rig");
     const node = rigRepo.addNode(rig.id, "dev.qa", {
@@ -193,12 +189,12 @@ describe("agent image source_cwd — snapshot capturer captures cwd", () => {
     db.close();
   });
 
-  it("omits source_cwd when source node has no recorded cwd (legacy fixture)", () => {
+  it("source node 没有已记录 cwd 时省略 source_cwd（legacy fixture）", () => {
     const { db, rigRepo, sessionRegistry } = setupDb();
     const rig = rigRepo.createRig("legacy-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", {
       runtime: "claude-code",
-      // cwd intentionally null — models a pre-cwd-capture node row
+      // cwd 刻意为 null——模拟 cwd-capture 前的 node row
     });
     const sessionId = ulid();
     db.prepare(
@@ -227,10 +223,10 @@ describe("agent image source_cwd — snapshot capturer captures cwd", () => {
 });
 
 // ============================================================================
-// Test 2 — snippet generator emits cwd in the Use-as-starter YAML
+// 测试 2——snippet generator 在“用作 starter”的 YAML 中发出 cwd
 // ============================================================================
 
-describe("agent image source_cwd — snippet generator emits cwd", () => {
+describe("agent image source_cwd——snippet generator 发出 cwd", () => {
   function buildApp(library: AgentImageLibraryService): Hono {
     const app = new Hono();
     app.use("*", async (c, next) => {
@@ -241,7 +237,7 @@ describe("agent image source_cwd — snippet generator emits cwd", () => {
     return app;
   }
 
-  it("rendered snippet includes cwd line when manifest has source_cwd", async () => {
+  it("manifest 含 source_cwd 时，渲染的 snippet 包含 cwd 行", async () => {
     writeImage(userRoot, "with-cwd", `
 name: with-cwd
 version: 1
@@ -263,13 +259,13 @@ files: []
     expect(body.starterSnippet).toContain('cwd: "/Users/op/code/projects/openrig"');
     expect(body.starterSnippet).toContain("session_source:");
     expect(body.starterSnippet).toContain("    value: \"with-cwd\"");
-    // cwd line precedes session_source block (operator pastes verbatim).
+    // cwd 行位于 session_source block 前（用户逐字粘贴）。
     const cwdIdx = body.starterSnippet.indexOf("cwd:");
     const ssIdx = body.starterSnippet.indexOf("session_source:");
     expect(cwdIdx).toBeLessThan(ssIdx);
   });
 
-  it("BACK-COMPAT: snippet omits cwd line when manifest has no source_cwd (current behavior preserved)", async () => {
+  it("向后兼容：manifest 不含 source_cwd 时 snippet 省略 cwd 行（保留当前行为）", async () => {
     writeImage(userRoot, "no-cwd", `
 name: no-cwd
 version: 1
@@ -291,7 +287,7 @@ files: []
     expect(body.starterSnippet).toContain("session_source:");
   });
 
-  it("library entry surfaces sourceCwd verbatim when present and null for older manifests", async () => {
+  it("存在时 library entry 逐字呈现 sourceCwd，旧 manifest 则为 null", async () => {
     writeImage(userRoot, "with-cwd", `
 name: with-cwd
 version: 1
@@ -325,11 +321,11 @@ files: []
 });
 
 // ============================================================================
-// Test 3 — parser back-compat (snake + camel + missing)
+// 测试 3——parser 向后兼容（snake + camel + missing）
 // ============================================================================
 
-describe("agent image source_cwd — manifest parser back-compat", () => {
-  it("accepts source_cwd (snake_case)", () => {
+describe("agent image source_cwd——manifest parser 向后兼容", () => {
+  it("接受 source_cwd（snake_case）", () => {
     const manifest = parseAgentImageManifest(`
 name: x
 version: "1"
@@ -342,7 +338,7 @@ source_cwd: /Users/op/code
     expect(manifest.sourceCwd).toBe("/Users/op/code");
   });
 
-  it("accepts sourceCwd (camelCase)", () => {
+  it("接受 sourceCwd（camelCase）", () => {
     const manifest = parseAgentImageManifest(`
 name: x
 version: "1"
@@ -355,7 +351,7 @@ sourceCwd: /Users/op/code
     expect(manifest.sourceCwd).toBe("/Users/op/code");
   });
 
-  it("manifests without source_cwd still parse (back-compat for pre-Finding-2 fixtures)", () => {
+  it("不含 source_cwd 的 manifest 仍可解析（兼容 Finding-2 前的 fixture）", () => {
     const manifest = parseAgentImageManifest(`
 name: x
 version: "1"
@@ -369,39 +365,36 @@ source_resume_token: t
 });
 
 // ============================================================================
-// Test 4 — operator-override safety: NO daemon-side cwd rewriting exists
+// 测试 4——用户覆盖安全性：不存在 daemon 侧 cwd 重写
 // ============================================================================
 //
-// The daemon must NOT override cwd at fork dispatch — operator's chosen
-// cwd in the rig.yaml is honored verbatim. If wrong, Claude returns
-// "no conversation found" and the operator gets an honest error.
+// daemon 在 fork dispatch 时不得覆盖 cwd——逐字遵循用户在 rig.yaml 中选择的 cwd。若错误，
+// Claude 返回 "no conversation found"，用户收到如实 error。
 //
-// This test enforces the absence of any daemon override path by
-// scanning the rigspec-instantiator + claude-code-adapter source for
-// a documented red flag: if some future patch adds an override here,
-// the test fails and the author must explicitly justify.
+// 本测试扫描 rigspec-instantiator + claude-code-adapter source 中已记录的 red flag，
+// 强制确保不存在 daemon override 路径：若未来 patch 在此加入 override，测试会失败，
+// author 必须显式说明理由。
 
-describe("agent image source_cwd — operator-override safety", () => {
-  it("rigspec-instantiator does NOT mutate member.cwd from agent_image manifest", async () => {
+describe("agent image source_cwd——用户覆盖安全性", () => {
+  it("rigspec-instantiator 不会根据 agent_image manifest 修改 member.cwd", async () => {
     const fs = await import("node:fs/promises");
     const src = await fs.readFile(
       join(import.meta.dirname ?? __dirname, "../src/domain/rigspec-instantiator.ts"),
       "utf-8",
     );
-    // Negative assertion: no code path reads sourceCwd from the
-    // resolved agent_image and overwrites the member's cwd.
+    // 负向 assertion：没有代码路径从 resolved agent_image 读取 sourceCwd 并覆盖 member cwd。
     expect(src).not.toMatch(/member\.cwd\s*=\s*image\.sourceCwd/);
     expect(src).not.toMatch(/cwd:\s*image\.sourceCwd/);
   });
 
-  it("snippet generator emits cwd ONLY from manifest source_cwd (no inferred fallback)", async () => {
+  it("snippet generator 仅根据 manifest source_cwd 发出 cwd（不推断 fallback）", async () => {
     const fs = await import("node:fs/promises");
     const src = await fs.readFile(
       join(import.meta.dirname ?? __dirname, "../src/routes/agent-images.ts"),
       "utf-8",
     );
-    // Positive assertion: snippet generator gates the cwd line on
-    // entry.sourceCwd specifically — no fallback to homedir / cwd / etc.
+    // 正向 assertion：snippet generator 明确以 entry.sourceCwd 控制 cwd 行——
+    // 不回退到 homedir / cwd 等。
     expect(src).toMatch(/if\s*\(\s*entry\.sourceCwd\s*\)/);
   });
 });

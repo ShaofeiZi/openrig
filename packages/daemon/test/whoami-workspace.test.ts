@@ -1,11 +1,11 @@
 // PL-007 Workspace Primitive v0 — whoami workspace block tests.
 //
 // Pins:
-//   - whoami returns workspace block populated when rig has workspace
+//   - rig 有 workspace 时 whoami 返回填充的 workspace block
 //     declared via setRigWorkspace
-//   - whoami returns workspace=null when rig has no workspace
-//   - back-compat: legacy fixture without migration 038 returns null
-//   - per-node workspace.activeRepo resolves from cwd against repos[]
+//   - rig 无 workspace 时 whoami 返回 workspace=null
+//   - 向后兼容：无 migration 038 的旧 fixture 返回 null
+//   - 逐节点 workspace.activeRepo 从 cwd 相对 repos[] 解析
 
 import { describe, it, expect, beforeEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -55,8 +55,8 @@ function makeFixture(withWorkspaceMigration: boolean): void {
 
 beforeEach(() => makeFixture(true));
 
-describe("whoami workspace block (PL-007)", () => {
-  it("returns workspace block when rig has workspace declared", () => {
+describe("whoami 工作区块（PL-007）", () => {
+  it("工作组声明工作区时返回工作区块", () => {
     const rig = rigRepo.createRig("alpha-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code", cwd: "/Users/op/hub/main/sub" });
     rigRepo.setRigWorkspace(rig.id, {
@@ -76,7 +76,7 @@ describe("whoami workspace block (PL-007)", () => {
     expect(result?.workspace?.knowledgeKind).toBe("knowledge");
   });
 
-  it("honors caller-supplied target repo override for CLI-scoped whoami", () => {
+  it("CLI 范围 whoami 遵守调用方提供的目标仓库覆盖值", () => {
     const rig = rigRepo.createRig("alpha-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code", cwd: "/Users/op/hub/main/sub" });
     rigRepo.setRigWorkspace(rig.id, {
@@ -92,7 +92,7 @@ describe("whoami workspace block (PL-007)", () => {
     expect(result?.workspace?.activeRepo).toBe("internal");
   });
 
-  it("returns workspace=null when rig has no workspace declared", () => {
+  it("工作组未声明工作区时返回 workspace=null", () => {
     const rig = rigRepo.createRig("plain-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code", cwd: "/x" });
 
@@ -100,11 +100,11 @@ describe("whoami workspace block (PL-007)", () => {
     expect(result?.workspace).toBeNull();
   });
 
-  it("back-compat: legacy fixture without migration 038 surfaces workspace=null (no throws)", () => {
+  it("向后兼容：没有迁移 038 的旧 fixture 显示 workspace=null 且不抛错", () => {
     makeFixture(false);
     const rig = rigRepo.createRig("legacy-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code", cwd: "/x" });
-    // setRigWorkspace is a no-op when column absent
+    // 列不存在时 setRigWorkspace 为 no-op
     rigRepo.setRigWorkspace(rig.id, {
       workspaceRoot: "/Users/op/hub",
       repos: [{ name: "main", path: "/Users/op/hub/main", kind: "project" }],

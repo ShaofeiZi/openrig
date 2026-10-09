@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:56:43",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch8",
+ "files": 10,
+ "changed": 8,
+ "reviewed_no_change": 2,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/discovery-panel.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "d7ed26516bf7d23fe6e9c3ded48a12cf786e45701e269072fcfaf0201c82e81c",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.31/0.4.1.27/0.4.2.17/0.4.3.29、DRIFT-2、#546073、--secondary、T10-AS-T14、pod_bundle、Slice 26、deriveLevel/setLevel、localStorage 保留"
+  },
+  {
+   "path": "packages/ui/test/bundle-install-flow.test.tsx",
+   "status": "changed",
+   "after_sha256": "dfd33ebfae68172742eac5b241155c0ffe77d043268b5603808ef2a3bc120dc2",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.31/0.4.1.27/0.4.2.17/0.4.3.29、DRIFT-2、#546073、--secondary、T10-AS-T14、pod_bundle、Slice 26、deriveLevel/setLevel、localStorage 保留"
+  },
+  {
+   "path": "packages/ui/test/graph-layout.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "8cd9cfb67f692d08e3890abf831ff5030b982c73e10a3a23cea48a80610e5656",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.31/0.4.1.27/0.4.2.17/0.4.3.29、DRIFT-2、#546073、--secondary、T10-AS-T14、pod_bundle、Slice 26、deriveLevel/setLevel、localStorage 保留"
+  },
+  {
+   "path": "packages/ui/test/steeringtab-brief-state-copy.test.tsx",
+   "status": "changed",
+   "after_sha256": "f90125afb849f77aae445b561b892ca9cd1c3e092214b866d649a62bbc349e66",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.31/0.4.1.27/0.4.2.17/0.4.3.29、DRIFT-2、#546073、--secondary、T10-AS-T14、pod_bundle、Slice 26、deriveLevel/setLevel、localStorage 保留"
+  },
+  {
+   "path": "packages/ui/test/registration-marks.test.tsx",
+   "status": "changed",
+   "after_sha256": "184f2ae4e79eb6631246a2492e8fde5f11fd27fab7c7d946efc8f7622ab2d0df",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.31/0.4.1.27/0.4.2.17/0.4.3.29、DRIFT-2、#546073、--secondary、T10-AS-T14、pod_bundle、Slice 26、deriveLevel/setLevel、localStorage 保留"
+  },
+  {
+   "path": "packages/ui/test/settings-explorer.test.tsx",
+   "status": "changed",
+   "after_sha256": "baa3ffa4b72cdbc49f3e7a1820fd86d74b7c8608d32fca8d32bdaffb9c04a5f9",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.31/0.4.1.27/0.4.2.17/0.4.3.29、DRIFT-2、#546073、--secondary、T10-AS-T14、pod_bundle、Slice 26、deriveLevel/setLevel、localStorage 保留"
+  },
+  {
+   "path": "packages/ui/test/use-dismissed-seqs.test.ts",
+   "status": "changed",
+   "after_sha256": "075b1de8362a3b578654f69aa8fc8fa28668310c23755c6dbfb226ac498ea92e",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.31/0.4.1.27/0.4.2.17/0.4.3.29、DRIFT-2、#546073、--secondary、T10-AS-T14、pod_bundle、Slice 26、deriveLevel/setLevel、localStorage 保留"
+  },
+  {
+   "path": "packages/ui/test/opr-0.4.1.31-table-terminal-errors.test.tsx",
+   "status": "changed",
+   "after_sha256": "d6a5293bc6aaa91526cbcb7f0244e0e9cf2f52548cf7e17062a2ad16e96155e9",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.31/0.4.1.27/0.4.2.17/0.4.3.29、DRIFT-2、#546073、--secondary、T10-AS-T14、pod_bundle、Slice 26、deriveLevel/setLevel、localStorage 保留"
+  },
+  {
+   "path": "packages/ui/test/level-control.test.tsx",
+   "status": "changed",
+   "after_sha256": "197d8dbf73fed3e7316d549cef41482b40046c70f46d2a8c7d874829306b17b1",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.31/0.4.1.27/0.4.2.17/0.4.3.29、DRIFT-2、#546073、--secondary、T10-AS-T14、pod_bundle、Slice 26、deriveLevel/setLevel、localStorage 保留"
+  },
+  {
+   "path": "packages/ui/test/topology-graph-collapse.test.ts",
+   "status": "changed",
+   "after_sha256": "9480d9b210d55ef6b3f58ca4b9358fbac0ed62e54c830530d6b03ba25fcfa814",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.1.31/0.4.1.27/0.4.2.17/0.4.3.29、DRIFT-2、#546073、--secondary、T10-AS-T14、pod_bundle、Slice 26、deriveLevel/setLevel、localStorage 保留"
+  }
+ ]
+}

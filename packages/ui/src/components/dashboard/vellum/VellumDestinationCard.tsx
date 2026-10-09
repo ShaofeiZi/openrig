@@ -1,15 +1,11 @@
-// Vellum destination card + layout dispatchers.
+// Vellum 目的地卡片 + 布局分发。
 //
-// Card wraps a Link with a vellum surface (translucent tint +
-// backdrop-blur) and renders one of 5 layouts. SchematicLayout is the
-// iter-17 founder pick (4-quadrant callouts around a central graphic);
-// the other layouts (numeral / headline / stat / coordinate) ship for
-// spike comparison so /lab/vellum-lab can A/B them.
+// 卡片用 vellum 表面（半透明色调 + 背景模糊）包裹一个 Link，并渲染 5 种布局之一。
+// SchematicLayout 是 iter-17 创始人所选（中央图形四周四象限标注）；其余布局
+// （数字 / 标题 / 统计 / 坐标）一并交付做对比，便于 /lab/vellum-lab 做 A/B。
 //
-// Production dashboard uses layout="numeral" — that's the iter-15-clean
-// reference visual: big stacked numeral (0¹ / 0² / etc) on the left,
-// graphic top-right, body text right-side full-bleed chopped, label +
-// icon + route bottom strip.
+// 生产 dashboard 用 layout="numeral"——这是 iter-15 干净的参考视觉：左侧大号堆叠数字
+// （0¹ / 0² 等），右上图形，右侧满幅裁切的正文，底部条带放标签 + 图标 + 路由。
 
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -22,23 +18,23 @@ export type VellumCardShadow = "soft" | "hard" | "paper" | "long" | "inset" | "h
 export interface VellumDestinationCardProps {
   to: string;
   num: string;
-  /** Two-character stacked numeral for the numeral layout (e.g. "01"). */
+  /** numeral 布局用的两字符堆叠数字（如 "01"）。 */
   big?: string;
   label: string;
   icon: ReactNode;
   body: string;
   graphic: ReactNode;
   positionClass: string;
-  /** Tertiary accent on label + a chopped WARNING bar (e.g. FOR YOU). */
+  /** 标签上的第三强调色 + 一条裁切的警告条（如 FOR YOU）。 */
   accent?: boolean;
-  /** Inky/washed text-shadow on the big numeral + body (e.g. PROJECT). */
+  /** 大数字 + 正文上的墨色/水洗文字阴影（如 PROJECT）。 */
   washed?: boolean;
   layout?: VellumCardLayout;
-  /** 4-item callout array for the schematic layout. */
+  /** schematic 布局用的 4 项标注数组。 */
   callouts?: [string, string, string, string];
-  /** Soft paper tint on the card surface. Defaults to "white". */
+  /** 卡片表面的柔和纸色。默认 "white"。 */
   tint?: VellumCardTint;
-  /** Drop-shadow style. Defaults to "none". */
+  /** 投影样式。默认 "none"。 */
   shadow?: VellumCardShadow;
 }
 
@@ -55,8 +51,8 @@ export function VellumDestinationCard(props: VellumDestinationCardProps) {
   const numClass = washed ? "inky-display" : "";
   const textClass = washed ? "inky-text" : "";
 
-  // Paper tints. All ~/35–/40 alpha so backdrop-blur still does the
-  // vellum work but the surface picks up a soft warm/cool cast.
+  // 纸色色调。全部约 /35–/40 透明度，使背景模糊仍做 vellum 的活，
+  // 但表面带上柔和的暖/冷色调。
   const tintBg: Record<VellumCardTint, string> = {
     white: "bg-surface-lowest/30",
     cream: "bg-amber-50/45",
@@ -77,14 +73,14 @@ export function VellumDestinationCard(props: VellumDestinationCardProps) {
     halo: { boxShadow: "0 0 24px rgba(0, 0, 0, 0.12)" },
     ambient: {
       boxShadow: [
-        "0 2px 4px rgba(0, 0, 0, 0.14)",   // tight key shadow
-        "0 8px 20px rgba(0, 0, 0, 0.16)",  // mid spread
-        "0 0 40px rgba(0, 0, 0, 0.12)",    // ambient halo (all sides)
+        "0 2px 4px rgba(0, 0, 0, 0.14)",   // 紧主阴影
+        "0 8px 20px rgba(0, 0, 0, 0.16)",  // 中层扩散
+        "0 0 40px rgba(0, 0, 0, 0.12)",    // 环境光晕（四周）
       ].join(", "),
     },
   };
 
-  // Stacked numeral defaults to `num` if no explicit `big` supplied.
+  // 若未显式给 `big`，堆叠数字默认用 `num`。
   const stackedNum = big ?? num;
 
   return (
@@ -98,13 +94,13 @@ export function VellumDestinationCard(props: VellumDestinationCardProps) {
         style={shadowStyle[shadow]}
         className={`relative h-full ${tintBg[tint]} backdrop-blur-[10px] overflow-hidden transition-transform duration-300 ease-tactical group-hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0`}
       >
-        {/* 90° corner brackets at all four corners */}
+        {/* 四角的 90° 角括号 */}
         <CornerBracket position="tl" />
         <CornerBracket position="tr" />
         <CornerBracket position="bl" />
         <CornerBracket position="br" />
 
-        {/* "■ NN°" annotation mark */}
+        {/* “■ NN°” 标注标记 */}
         <span className="absolute top-2 right-6 font-mono text-[9px] uppercase tracking-[0.18em] text-on-surface select-none">
           ■ {num}°
         </span>
@@ -125,11 +121,11 @@ export function VellumDestinationCard(props: VellumDestinationCardProps) {
           <NumeralLayout big={stackedNum} numClass={numClass} graphic={graphic} body={body} label={label} icon={icon} to={to} accent={accent} textClass={textClass} />
         )}
 
-        {/* WARNING bar — accent only (FOR YOU). */}
+        {/* 警告条——仅 accent 时（FOR YOU）。 */}
         {accent && (
           <div className="absolute bottom-[88px] right-[-14px] w-[156px] border border-tertiary text-tertiary font-mono text-[7.5px] uppercase tracking-[0.18em] px-1.5 py-[2px] flex items-center gap-1 bg-background/30">
             <span className="inline-block w-[3px] h-[3px] bg-tertiary rounded-full" />
-            Warning · Operator Live
+            警告 · 操作员在线
           </div>
         )}
       </article>
@@ -137,10 +133,9 @@ export function VellumDestinationCard(props: VellumDestinationCardProps) {
   );
 }
 
-/* NUMERAL layout — iter-15 founder pick (and the production default).
-   Big stacked numeral hero on left, graphic top-right, body text
-   right-side full-bleed chopped, destination label + icon + route at
-   bottom. */
+/* NUMERAL 布局——iter-15 创始人所选（也是生产默认）。
+   左侧大号堆叠数字主视觉，右上图形，右侧满幅裁切的正文，
+   底部放目的地标签 + 图标 + 路由。 */
 interface NumeralLayoutProps {
   big: string;
   numClass: string;
@@ -176,7 +171,7 @@ function NumeralLayout({ big, numClass, graphic, body, label, icon, to, accent, 
   );
 }
 
-/* HEADLINE layout — spike: destination name is the hero. */
+/* HEADLINE 布局——spike：目的地名即主视觉。 */
 interface HeadlineLayoutProps {
   label: string;
   icon: ReactNode;
@@ -200,7 +195,7 @@ function HeadlineLayout({ label, icon, body, graphic, to, accent, textClass }: H
       <div className="absolute bottom-3 left-3 right-3 flex items-baseline gap-2">
         <span className={accent ? "text-tertiary" : "text-on-surface"}>{icon}</span>
         <span className={`font-mono text-[9px] uppercase tracking-[0.16em] text-on-surface ${textClass}`}>
-          Destination · 01°
+          目的地 · 01°
         </span>
         <span className={`ml-auto font-mono text-[9px] tracking-tight text-on-surface-variant ${textClass}`}>
           [{to}] →
@@ -210,7 +205,7 @@ function HeadlineLayout({ label, icon, body, graphic, to, accent, textClass }: H
   );
 }
 
-/* STAT layout — real-data hero. Placeholders for demo. */
+/* STAT 布局——真实数据主视觉。演示用占位。 */
 interface StatLayoutProps {
   label: string;
   num: string;
@@ -233,14 +228,14 @@ function StatLayout({ label, num, icon, body, graphic, to, accent, textClass }: 
           38
         </span>
         <div className="flex flex-col leading-tight">
-          <span className="font-mono text-[10px] uppercase tracking-wide text-on-surface">Active</span>
-          <span className="font-mono text-[10px] uppercase tracking-wide text-on-surface">Artifacts</span>
+          <span className="font-mono text-[10px] uppercase tracking-wide text-on-surface">活动</span>
+          <span className="font-mono text-[10px] uppercase tracking-wide text-on-surface">产物</span>
         </div>
       </div>
       <div className="absolute top-[120px] left-3 right-3 grid grid-cols-3 gap-0">
-        <StatCell big="12" small="Specs" />
-        <StatCell big="08" small="Plugins" />
-        <StatCell big="18" small="Skills" />
+        <StatCell big="12" small="规格" />
+        <StatCell big="08" small="插件" />
+        <StatCell big="18" small="技能" />
       </div>
       <p className={`absolute bottom-12 left-3 right-1 font-mono text-[8px] leading-[1.3] uppercase text-on-surface ${textClass}`}>
         {body}
@@ -266,7 +261,7 @@ function StatCell({ big, small }: { big: string; small: string }) {
   );
 }
 
-/* COORDINATE layout — precision instrument frame with ruler ticks. */
+/* COORDINATE 布局——带标尺刻度的精密仪器框。 */
 function CoordinateLayout({ label, num, icon, body, graphic, to, accent, textClass }: StatLayoutProps) {
   const ticks = Array.from({ length: 12 });
   return (
@@ -318,8 +313,8 @@ function CoordinateLayout({ label, num, icon, body, graphic, to, accent, textCla
   );
 }
 
-/* SCHEMATIC layout — graphic dominates center; 4 quadrant callouts
-   numbered .01–.04 label sub-destinations or facets. */
+/* SCHEMATIC 布局——图形居中占主导；4 个象限标注编号 .01–.04，
+   标注子目的地或侧面。 */
 interface SchematicLayoutProps extends StatLayoutProps {
   callouts?: [string, string, string, string];
   washed?: boolean;

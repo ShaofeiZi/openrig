@@ -3,11 +3,9 @@ import type { WorkflowDeps } from "../src/commands/workflow.js";
 import { createProgram } from "../src/index.js";
 import { renderInstanceShow, renderTraceTree } from "../src/commands/workflow-render.js";
 
-// OPR.0.4.6.FAC1 commit 2 — the CLI rig-binding surface (planner2
-// §3.15): `--rig` lands on BOTH instantiate AND run (run instantiates
-// too — missing it would silently narrow the founder surface), and the
-// human renderers surface the bound rig while unbound rows stay
-// byte-identical.
+// OPR.0.4.6.FAC1 commit 2——CLI rig 绑定表面（planner2 §3.15）：`--rig` 同时落在
+// instantiate 与 run 上（run 也会 instantiate——漏掉它会静默收窄创始人表面），且
+// 人类渲染器浮出已绑定 rig，而未绑定行保持逐字节一致。
 
 vi.mock("../src/daemon-lifecycle.js", async () => {
   const actual = await vi.importActual<Record<string, unknown>>("../src/daemon-lifecycle.js");
@@ -109,8 +107,8 @@ describe("FAC-1 C2: --rig on both instantiate verbs + bound-rig rendering", () =
     expect((call!.body as Record<string, unknown>).targetRig).toBeUndefined();
   });
 
-  // OPR.0.4.6.FAC1 arch ruling 2026-07-07 (loudness = guard invariant #1):
-  // when the daemon degrades a bad spec-default to unbound, it returns
+  // OPR.0.4.6.FAC1 arch 裁定 2026-07-07（响度 = 守卫不变量 #1）：
+  // 当 daemon 把坏的 spec-default 降级为 unbound 时，它返回
   // `advisories`; the CLI MUST surface them to stderr even in --json mode
   // (a consumer piping stdout still sees the warning). Never silent.
   it("instantiate surfaces daemon advisories to STDERR even in --json mode", async () => {
@@ -139,7 +137,7 @@ describe("FAC-1 C2: --rig on both instantiate verbs + bound-rig rendering", () =
         "--json",
       ]);
       const stderr = stderrSpy.mock.calls.map((c) => String(c[0])).join("");
-      expect(stderr).toContain("advisory");
+      expect(stderr).toContain("建议");
       expect(stderr).toContain("vanished-rig");
       expect(stderr).toContain("UNBOUND");
     } finally {
@@ -171,7 +169,7 @@ describe("FAC-1 C2: --rig on both instantiate verbs + bound-rig rendering", () =
       { instanceId: "WF01", status: "active", boundRig: "factory-a" },
       "2026-07-07T10:00:00.000Z",
     );
-    expect(bound.some((l) => l.includes("rig:      factory-a"))).toBe(true);
+    expect(bound.some((l) => l.includes("factory-a"))).toBe(true);
 
     const unbound = renderInstanceShow(
       { instanceId: "WF01", status: "active", boundRig: null },

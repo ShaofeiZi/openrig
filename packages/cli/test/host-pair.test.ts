@@ -1,6 +1,5 @@
 // OPR.0.4.6.MH1 FR-6 — rig host pair <url>: the founder-simple add path.
-// One pasted address, one approval on the target, done — and the
-// nothing-persists guarantee on every failure leg.
+// 粘贴一个地址、在目标上批准一次即完成——且每条失败路径都保证不留存任何东西。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
@@ -73,8 +72,8 @@ describe("rig host pair (OPR.0.4.6.MH1 FR-6)", () => {
     const deps = fakeDeps({ poll: [{ status: 200, body: { status: "approved", token: "issued-bearer" } }] });
     const { out, exitCode } = await capture(() => run(deps, ["pair", "vps-a:7433", "--id", "vps-a", "--timeout", "10"]));
     expect(exitCode).toBeUndefined();
-    expect(out.join("\n")).toContain("Pairing code: 424242");
-    expect(out.join("\n")).toContain("Paired. Host 'vps-a' registered");
+    expect(out.join("\n")).toContain("配对码：424242");
+    expect(out.join("\n")).toContain("已配对。主机 'vps-a' 已登记");
 
     const tokenPath = path.join(dir, "secrets", "host-vps-a.token");
     expect(fs.readFileSync(tokenPath, "utf8")).toBe("issued-bearer\n");
@@ -89,8 +88,8 @@ describe("rig host pair (OPR.0.4.6.MH1 FR-6)", () => {
     const deps = fakeDeps({ poll: [{ status: 200, body: { status: "denied" } }] });
     const { err, exitCode } = await capture(() => run(deps, ["pair", "http://vps-a:7433", "--timeout", "10"]));
     expect(exitCode).toBe(1);
-    expect(err.join("\n")).toContain("DENIED");
-    expect(err.join("\n")).toContain("Nothing was persisted");
+    expect(err.join("\n")).toContain("拒绝");
+    expect(err.join("\n")).toContain("未持久化任何东西");
     expect(fs.existsSync(path.join(dir, "hosts.yaml"))).toBe(false);
     expect(fs.existsSync(path.join(dir, "secrets"))).toBe(false);
   }, 15_000);
@@ -107,10 +106,9 @@ describe("rig host pair (OPR.0.4.6.MH1 FR-6)", () => {
   });
 
   it("registry-write failure AFTER approval removes the token file THIS request created (preflight/add race leg)", async () => {
-    // The preflight passes on an empty registry; a conflicting entry then
-    // lands DURING the approval wait (the TOCTOU window preflight cannot
-    // close — addHostEntry stays authoritative). The cleanup must remove
-    // only the token file this request created, and the racing entry's
+    // preflight 在空 registry 上通过；随后一个冲突条目在批准等待期间
+    // 落定（preflight 无法关闭的 TOCTOU 窗口——addHostEntry 保持权威）。
+    // cleanup 必须只移除本请求创建的 token 文件，而竞争条目的
     // registry state must survive untouched.
     const deps = fakeDeps({ poll: [{ status: 200, body: { status: "approved", token: "issued-bearer" } }] });
     const origGet = deps.httpGet;
@@ -124,7 +122,7 @@ describe("rig host pair (OPR.0.4.6.MH1 FR-6)", () => {
     };
     const { err, exitCode } = await capture(() => run(deps, ["pair", "vps-a:7433", "--id", "vps-a", "--timeout", "10"]));
     expect(exitCode).toBe(1);
-    expect(err.join("\n")).toContain("nothing persisted");
+    expect(err.join("\n")).toContain("未持久化任何东西");
     const yaml = fs.readFileSync(path.join(dir, "hosts.yaml"), "utf8");
     expect(yaml).toContain("http://racer:7433");
     expect(yaml).not.toContain("issued-bearer");
@@ -145,7 +143,7 @@ describe("rig host pair (OPR.0.4.6.MH1 FR-6)", () => {
     const deps = fakeDeps({ poll: [] });
     const { err, exitCode } = await capture(() => run(deps, ["pair", "vps-a:7433", "--id", "vps-a"]));
     expect(exitCode).toBe(1);
-    expect(err.join("\n")).toContain("duplicate host id");
+    expect(err.join("\n")).toContain("重复的主机 id");
 
     expect(deps.postCalls()).toBe(0);
     expect(fs.readFileSync(path.join(dir, "hosts.yaml"), "utf8")).toBe(yamlBefore);
@@ -162,7 +160,7 @@ describe("rig host pair (OPR.0.4.6.MH1 FR-6)", () => {
     const deps = fakeDeps({ poll: [] });
     const { err, exitCode } = await capture(() => run(deps, ["pair", "vps-a:7433"]));
     expect(exitCode).toBe(1);
-    expect(err.join("\n")).toContain("never overwritten");
+    expect(err.join("\n")).toContain("绝不覆盖");
 
     expect(deps.postCalls()).toBe(0);
     expect(fs.readFileSync(tokenPath, "utf8")).toBe("stale-but-not-ours-to-delete\n");
@@ -184,8 +182,8 @@ describe("rig host pair (OPR.0.4.6.MH1 FR-6)", () => {
     const deps = fakeDeps({ poll: [{ status: 200, body: { status: "pending", code: "424242" } }] });
     const { err, exitCode } = await capture(() => run(deps, ["pair", "vps-a:7433", "--id", "vps-a", "--timeout", "1"]));
     expect(exitCode).toBe(1);
-    expect(err.join("\n")).toContain("no approval arrived before the timeout");
-    expect(err.join("\n")).toContain("Nothing was persisted");
+    expect(err.join("\n")).toContain("超时前未等到批准");
+    expect(err.join("\n")).toContain("未持久化任何东西");
     expect(fs.existsSync(path.join(dir, "hosts.yaml"))).toBe(false);
     expect(fs.existsSync(path.join(dir, "secrets"))).toBe(false);
   }, 15_000);
@@ -196,7 +194,7 @@ describe("rig host pair (OPR.0.4.6.MH1 FR-6)", () => {
     const deps = fakeDeps({ poll: [] });
     const { err, exitCode } = await capture(() => run(deps, ["pair", "vps-a:7433", "--id", "../escape"]));
     expect(exitCode).toBe(1);
-    expect(err.join("\n")).toContain("not a valid host id");
+    expect(err.join("\n")).toContain("不是有效的主机 id");
     expect(deps.postCalls()).toBe(0);
     expect(fs.existsSync(path.join(dir, "secrets"))).toBe(false);
     expect(fs.existsSync(path.join(dir, "hosts.yaml"))).toBe(false);
@@ -219,7 +217,7 @@ describe("rig host pair (OPR.0.4.6.MH1 FR-6)", () => {
     };
     const { err, exitCode } = await capture(() => run(deps, ["pair", "vps-a:7433", "--id", "vps-a", "--timeout", "10"]));
     expect(exitCode).toBe(1);
-    expect(err.join("\n")).toContain("refusing to overwrite");
+    expect(err.join("\n")).toContain("拒绝覆盖");
     expect(fs.readFileSync(tokenPath, "utf8")).toBe("winner-credential\n");
     expect(fs.existsSync(path.join(dir, "hosts.yaml"))).toBe(false);
   }, 15_000);

@@ -1,34 +1,33 @@
-// OPR.0.6.0.5 F1 — hand over a long value (the Slack create-app link) for exact copying. The TUI
-// grid wraps and frames long text, so selecting it inside the TUI picks up borders and line
-// breaks. This leaves the alternate screen, prints the value as ONE unbroken line on the normal
-// screen, and returns to the TUI on Enter. What a given terminal's selection then copies from a
-// soft-wrapped line is the terminal's behavior; this module only controls the bytes it prints.
-// It writes nothing to the clipboard, opens nothing, and reads no input other than the Enter
-// that returns.
+// OPR.0.6.0.5 F1——交出一个长值（Slack 创建应用链接）以供精确复制。TUI
+// 网格包装和框住长文本，因此在 TUI 内选择它会拾取边框和换行。
+// 这离开备用屏幕，在正常屏幕上将值打印为一行不间断文本，
+// 并在回车时返回 TUI。给定终端的选择从软换行行复制什么
+// 是终端的行为；此模块仅控制它打印的字节。
+// 它不写入剪贴板，不打开任何内容，除了返回的回车外不读取输入。
 import { ALT_SCREEN_OFF, ALT_SCREEN_ON, MOUSE_DISABLE, MOUSE_ENABLE, PASTE_DISABLE, PASTE_ENABLE } from "./input.js";
 
-export const PRINT_FOR_COPY_RETURN_HINT = "Select the line above to copy it. Press Enter to return to OpenRig.";
+export const PRINT_FOR_COPY_RETURN_HINT = "选择上方行以复制。按回车返回 zrig。";
 const LEAVE = PASTE_DISABLE + MOUSE_DISABLE + ALT_SCREEN_OFF;
 const RESTORE = ALT_SCREEN_ON + MOUSE_ENABLE + PASTE_ENABLE;
 
-/** The exact text printed on the normal screen: heading, the value on its own unbroken line, hint. */
+/** 在正常屏幕上打印的确切文本：标题、值在自己的不间断行上、提示。 */
 export function printForCopyText(label: string, value: string): string {
   const oneLine = value.replace(/[\r\n]+/g, "");
   return `\r\n${label}\r\n\r\n${oneLine}\r\n\r\n${PRINT_FOR_COPY_RETURN_HINT}\r\n`;
 }
 
-/** How the wait ended: the user pressed Enter, or terminal input ended, closed or failed. */
+/** 等待如何结束：用户按回车，或终端输入结束、关闭或失败。 */
 export type CopyWaitEnd = "enter" | "end" | "close" | "error";
 
 export interface CopyTerminal {
   write(text: string): void;
   setRawMode(on: boolean): void;
-  /** Settles on the next Enter, or when input ends, closes or errors. Never rejects. */
+  /** 在下次回车时 settle，或输入结束、关闭或错误时。绝不拒绝。 */
   waitForEnter(): Promise<CopyWaitEnd>;
 }
 
-/** Print `value` for copying and wait. Any failure after the first step still attempts to restore
- *  raw mode and the alternate screen, unless `mayRestore()` says the TUI is shutting down. */
+/** 打印 `value` 以供复制并等待。第一步后的任何失败仍尝试恢复
+ *  原始模式和备用屏幕，除非 `mayRestore()` 说 TUI 正在关闭。 */
 export async function printForCopy(term: CopyTerminal, label: string, value: string, mayRestore: () => boolean = () => true): Promise<CopyWaitEnd> {
   try {
     term.setRawMode(false);
@@ -37,16 +36,16 @@ export async function printForCopy(term: CopyTerminal, label: string, value: str
     return await term.waitForEnter();
   } finally {
     if (mayRestore()) {
-      try { term.setRawMode(true); } catch { /* input may already be gone */ }
-      try { term.write(RESTORE); } catch { /* output may already be gone */ }
+      try { term.setRawMode(true); } catch { /* 输入可能已消失 */ }
+      try { term.write(RESTORE); } catch { /* 输出可能已消失 */ }
     }
   }
 }
 
 type InputStream = Pick<NodeJS.EventEmitter, "on" | "off">;
 
-/** A terminal over given streams. Only Enter (CR or LF) counts as input; other input is ignored.
- *  End, close and error also settle the wait. Every listener is removed when it settles. */
+/** 给定流上的终端。仅回车（CR 或 LF）计为输入；其他输入被忽略。
+ *  结束、关闭和错误也 settle 等待。每个 listener 在 settle 时移除。 */
 export function streamCopyTerminal(stdin: InputStream, stdout: { write(text: string): unknown }, setRaw: (on: boolean) => void): CopyTerminal {
   return {
     write: (text) => { stdout.write(text); },
@@ -73,26 +72,26 @@ export interface CopySessionDeps {
   terminal: CopyTerminal;
   label: string;
   value: string;
-  /** Suspend or resume the TUI's own input handling and drawing. */
+  /** 暂停或恢复 TUI 自己的输入处理和绘制。 */
   setSuspended(on: boolean): void;
   isShuttingDown(): boolean;
   notice(message: string): void;
   draw(): void;
 }
 
-/** The whole copy session as the TUI runs it. Never rejects: every outcome ends with the TUI
- *  resumed (unless it is shutting down) and a notice for anything other than a normal Enter. */
+/** TUI 运行的整个复制会话。绝不拒绝：每个结果都以 TUI
+ *  恢复结束（除非正在关闭），并为非正常回车以外的任何结果发出通知。 */
 export async function runCopySession(d: CopySessionDeps): Promise<CopyWaitEnd | "failed"> {
   d.setSuspended(true);
   let outcome: CopyWaitEnd | "failed";
   try {
     outcome = await printForCopy(d.terminal, d.label, d.value, () => !d.isShuttingDown());
-    if (outcome !== "enter") d.notice(`Returned from the printed link: terminal input ${outcome === "error" ? "failed" : "ended"}.`);
+    if (outcome !== "enter") d.notice(`从打印链接返回：终端输入${outcome === "error" ? "失败" : "结束"}。`);
   } catch (err) {
     outcome = "failed";
-    d.notice(`Could not print the link (${err instanceof Error ? err.message : String(err)}). Run: rig slack manifest --url`);
+    d.notice(`无法打印链接（${err instanceof Error ? err.message : String(err)}）。运行：zrig slack manifest --url`);
   }
   d.setSuspended(false);
-  if (!d.isShuttingDown()) { try { d.draw(); } catch { /* the next input or resize redraws */ } }
+  if (!d.isShuttingDown()) { try { d.draw(); } catch { /* 下次输入或调整大小重绘 */ } }
   return outcome;
 }

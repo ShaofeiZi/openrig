@@ -6,7 +6,7 @@ import { whoamiCommand, type WhoamiDeps } from "../src/commands/whoami.js";
 import type { CrossHostResult, RunCrossHostCommandOpts } from "../src/cross-host-executor.js";
 import type { HostRegistryLoadResult } from "../src/host-registry.js";
 
-// Capture stdout / stderr / exitCode for command actions.
+// 捕获命令动作的 stdout / stderr / exitCode。
 interface CapturedOutput {
   stdoutLines: string[];
   stderrLines: string[];
@@ -22,8 +22,8 @@ let originalStdoutWrite: typeof process.stdout.write;
 let originalStderrWrite: typeof process.stderr.write;
 
 beforeEach(() => {
-  // P18: an env-less send DELIVERS-and-labels (no boundary refusal). Stub a DETERMINISTIC origin seat so
-  // the SSH reconstruction's exact-argv assertions stay deterministic: with a resolved origin the relay
+  // P18：无 env 的 send 投递并打标（无边界拒绝）。桩一个确定性 origin seat，使
+  // SSH 重建的 exact-argv 断言保持确定：解析出 origin 后，中继
   // appends `--from <derived origin>` from the seat env — the P23-D1 skew-compat shim for pre-I4 remotes
   // (PM ruled --from removal to P23-D1, qitem-20260811055900-f5920c0e), NOT a boundary guard. An env-less
   // origin would simply omit `--from`. Individual provenance tests override the seat explicitly.
@@ -83,11 +83,11 @@ describe("send --host (cross-host short-circuit)", () => {
       },
     }));
     await cmd.parseAsync(["--host", "vm-a", "dev-impl@my-rig", "hello world", "--verify"], { from: "user" });
-    // P18: with a resolved origin seat (stubbed above) the reconstruction deterministically appends
+    // P18：解析出 origin seat（上方桩）后，重建确定性地追加
     // `--from <derived origin>` from the seat env (never a caller override) — the P23-D1 skew-compat shim
     // for pre-I4 remotes, not a boundary guard. An env-less origin would omit `--from`.
     expect(captureCalls.argv).toEqual(["rig", "send", "dev-impl@my-rig", "hello world", "--verify", "--from", "origin@rig-a"]);
-    expect(captured.stdoutLines[0]).toBe("[via host=vm-a (vm-a.local)]");
+    expect(captured.stdoutLines[0]).toBe("[经由主机 vm-a（vm-a.local）]");
     const stdoutText = captured.stdoutWrites.join("");
     expect(stdoutText).toContain("Verified: yes");
     expect(process.exitCode).toBeUndefined();
@@ -106,7 +106,7 @@ describe("send --host (cross-host short-circuit)", () => {
   });
 
   // P21 I4 (REVISED, was "explicit --from wins"): --from is DEPRECATED + IGNORED — the cross-host origin
-  // is the relay's OWN authenticated seat env (its X-OpenRig-Session), never a caller-supplied override,
+  // 是中继自身已认证 seat 的 env（其 X-OpenRig-Session），绝非调用方提供的覆盖，
   // which was the forgeable surface. A forged --from must NOT appear in the reconstructed argv.
   it("explicit --from is IGNORED — the reconstructed argv carries the DERIVED seat origin, never a --from override", async () => {
     vi.stubEnv("OPENRIG_SESSION_NAME", "orch-lead@rig-a");
@@ -120,10 +120,10 @@ describe("send --host (cross-host short-circuit)", () => {
     expect(argv).not.toContain("worker@rig-a"); // the --from override never rides the wire
   });
 
-  // A2 (P23): the send --host relay passes the ORIGIN triple to the executor as the env-prefix identity
+  // A2 (P23)：send --host 中继把 ORIGIN 三元组作为 env 前缀身份传给 executor
   // (OPENRIG_SESSION_NAME=<triple>), so the remote's rig derives the origin from its env. --from STAYS
   // additive (P23-D1: a pre-I4 remote still reads origin from it). A 3-part origin (an upstream relay's
-  // triple) is preserved VERBATIM — never re-stamped with this host's id.
+  // 三元组）逐字保留——绝不用本 host 的 id 重盖。
   it("A2 — passes the origin triple to the runner (env-prefix); --from stays additive; a 3-part origin is verbatim", async () => {
     vi.stubEnv("OPENRIG_SESSION_NAME", "orch-lead@rig-a@upstream-host"); // already 3-part (upstream relay)
     const captured: { argv?: readonly string[]; opts?: RunCrossHostCommandOpts } = {};
@@ -174,7 +174,7 @@ describe("send --host (cross-host short-circuit)", () => {
   it("unknown host id surfaces a friendly error with discoverability hint", async () => {
     const cmd = sendCommand(deps());
     await cmd.parseAsync(["--host", "vm-unknown", "s@r", "msg"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("unknown host id 'vm-unknown'");
+    expect(captured.stderrLines.join("\n")).toContain("未知主机 id 'vm-unknown'");
     expect(captured.stderrLines.join("\n")).toContain("vm-a"); // known-id hint
     expect(process.exitCode).toBe(1);
   });
@@ -193,8 +193,8 @@ describe("send --host (cross-host short-circuit)", () => {
       run: async () => ({ ok: false, failedStep: "ssh-unreachable", sshStderr: "ssh: connect to host: Connection refused" }),
     }));
     await cmd.parseAsync(["--host", "vm-a", "s@r", "msg"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("ssh to host=vm-a");
-    expect(captured.stderrLines.join("\n")).toContain("Verify SSH access");
+    expect(captured.stderrLines.join("\n")).toContain("到主机 host=vm-a");
+    expect(captured.stderrLines.join("\n")).toContain("请检查 SSH 访问");
     expect(process.exitCode).toBe(1);
   });
 
@@ -203,7 +203,7 @@ describe("send --host (cross-host short-circuit)", () => {
       run: async () => ({ ok: false, failedStep: "permission-gate", sshStderr: "Permission denied", hint: "See keychain doc" }),
     }));
     await cmd.parseAsync(["--host", "vm-a", "s@r", "msg"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("permission/auth gate");
+    expect(captured.stderrLines.join("\n")).toContain("权限/认证门");
     expect(captured.stderrLines.join("\n")).toContain("See keychain doc");
     expect(process.exitCode).toBe(1);
   });
@@ -213,7 +213,7 @@ describe("send --host (cross-host short-circuit)", () => {
       run: async () => ({ ok: false, failedStep: "remote-daemon-unreachable", stdout: "", stderr: "Daemon not running", remoteExitCode: 1 }),
     }));
     await cmd.parseAsync(["--host", "vm-a", "s@r", "msg"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("could not reach the remote daemon");
+    expect(captured.stderrLines.join("\n")).toContain("连不到远程后台服务");
     expect(captured.stderrLines.join("\n")).toContain("rig daemon start");
     expect(process.exitCode).toBe(1);
   });
@@ -223,7 +223,7 @@ describe("send --host (cross-host short-circuit)", () => {
       run: async () => ({ ok: false, failedStep: "remote-command-failed", stdout: "", stderr: "session not found", remoteExitCode: 3 }),
     }));
     await cmd.parseAsync(["--host", "vm-a", "s@r", "msg"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("remote rig command on host=vm-a failed");
+    expect(captured.stderrLines.join("\n")).toContain("远程 zrig 命令失败");
     expect(captured.stderrLines.join("\n")).toContain("session not found");
     expect(process.exitCode).toBe(1);
   });
@@ -257,7 +257,7 @@ describe("capture --host (cross-host short-circuit)", () => {
     }));
     await cmd.parseAsync(["--host", "vm-a", "dev-impl@my-rig", "--lines", "50"], { from: "user" });
     expect(captureCalls.argv).toEqual(["rig", "capture", "dev-impl@my-rig", "--lines", "50"]);
-    expect(captured.stdoutLines[0]).toBe("[via host=vm-a (vm-a.local)]");
+    expect(captured.stdoutLines[0]).toBe("[经由主机 vm-a（vm-a.local）]");
     expect(captured.stdoutWrites.join("")).toContain("pane content here");
   });
 
@@ -276,7 +276,7 @@ describe("capture --host (cross-host short-circuit)", () => {
   it("unknown host id surfaces a friendly error", async () => {
     const cmd = captureCommand(deps());
     await cmd.parseAsync(["--host", "vm-bogus", "s@r"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("unknown host id 'vm-bogus'");
+    expect(captured.stderrLines.join("\n")).toContain("未知主机 id 'vm-bogus'");
     expect(process.exitCode).toBe(1);
   });
 
@@ -285,7 +285,7 @@ describe("capture --host (cross-host short-circuit)", () => {
       run: async () => ({ ok: false, failedStep: "ssh-unreachable", sshStderr: "Connection refused" }),
     }));
     await cmd.parseAsync(["--host", "vm-a", "s@r"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("ssh to host=vm-a");
+    expect(captured.stderrLines.join("\n")).toContain("到主机 host=vm-a");
     expect(process.exitCode).toBe(1);
   });
 
@@ -302,7 +302,7 @@ describe("capture --host (cross-host short-circuit)", () => {
 
 // ---------------------------------------------------------------------------
 // Compat regression: `rig send` and `rig capture` WITHOUT --host MUST NOT add
-// the cross-host annotation and MUST NOT call the executor at all.
+// 跨主机标注，且绝不可调用 executor。
 // ---------------------------------------------------------------------------
 
 describe("compat regression: no --host means no cross-host annotation", () => {
@@ -428,7 +428,7 @@ describe("ps --host (cross-host short-circuit)", () => {
       run: async () => ({ ok: false, failedStep: "ssh-unreachable", sshStderr: "ssh: connect refused" }),
     }));
     await cmd.parseAsync(["--host", "vm-a"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("ssh to host=vm-a");
+    expect(captured.stderrLines.join("\n")).toContain("到主机 host=vm-a");
     expect(process.exitCode).toBe(1);
   });
 
@@ -437,7 +437,7 @@ describe("ps --host (cross-host short-circuit)", () => {
       run: async () => ({ ok: false, failedStep: "permission-gate", sshStderr: "Permission denied", hint: "See keychain doc" }),
     }));
     await cmd.parseAsync(["--host", "vm-a"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("permission/auth gate");
+    expect(captured.stderrLines.join("\n")).toContain("权限/认证门");
     expect(captured.stderrLines.join("\n")).toContain("See keychain doc");
     expect(process.exitCode).toBe(1);
   });
@@ -447,7 +447,7 @@ describe("ps --host (cross-host short-circuit)", () => {
       run: async () => ({ ok: false, failedStep: "remote-daemon-unreachable", stdout: "", stderr: "Daemon not running", remoteExitCode: 1 }),
     }));
     await cmd.parseAsync(["--host", "vm-a"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("could not reach the remote daemon");
+    expect(captured.stderrLines.join("\n")).toContain("连不到远程后台服务");
     expect(process.exitCode).toBe(1);
   });
 
@@ -456,14 +456,14 @@ describe("ps --host (cross-host short-circuit)", () => {
       run: async () => ({ ok: false, failedStep: "remote-command-failed", stdout: "", stderr: "Some rig error", remoteExitCode: 3 }),
     }));
     await cmd.parseAsync(["--host", "vm-a"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("remote rig command on host=vm-a failed");
+    expect(captured.stderrLines.join("\n")).toContain("远程 zrig 命令失败");
     expect(process.exitCode).toBe(1);
   });
 
   it("unknown host id surfaces friendly error with discoverability hint", async () => {
     const cmd = psCommand(psDeps());
     await cmd.parseAsync(["--host", "vm-bogus"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("unknown host id 'vm-bogus'");
+    expect(captured.stderrLines.join("\n")).toContain("未知主机 id 'vm-bogus'");
     expect(process.exitCode).toBe(1);
   });
 
@@ -573,14 +573,14 @@ describe("whoami --host (cross-host short-circuit)", () => {
       run: async () => ({ ok: false, failedStep: "ssh-unreachable", sshStderr: "Connection refused" }),
     }));
     await cmd.parseAsync(["--host", "vm-a"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("ssh to host=vm-a");
+    expect(captured.stderrLines.join("\n")).toContain("到主机 host=vm-a");
     expect(process.exitCode).toBe(1);
   });
 
   it("unknown host id surfaces friendly error", async () => {
     const cmd = whoamiCommand(whoamiDeps());
     await cmd.parseAsync(["--host", "vm-bogus"], { from: "user" });
-    expect(captured.stderrLines.join("\n")).toContain("unknown host id 'vm-bogus'");
+    expect(captured.stderrLines.join("\n")).toContain("未知主机 id 'vm-bogus'");
     expect(process.exitCode).toBe(1);
   });
 

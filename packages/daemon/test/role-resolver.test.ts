@@ -43,23 +43,23 @@ roles:
 `);
 
 describe("RoleResolver", () => {
-  // Test 1: Role with skills only -> referenced skills in output
-  it("role with skills only -> referenced skills in output", () => {
+  // 测试 1：仅包含 skill 的 role -> 输出引用的 skill
+  it("仅包含 skill 的 role -> 输出引用的 skill", () => {
     const result = resolveExports(FULL_MANIFEST, "full-stack");
     expect(result.skills).toHaveLength(2);
     expect(result.skills.map((s) => s.name).sort()).toEqual(["bar", "foo"]);
   });
 
-  // Test 2: Role with hooks -> hooks deferred, skills still actionable
-  it("role with hooks -> hooks deferred, skills still in actionable", () => {
+  // 测试 2：包含 hook 的 role -> hook 延后，skill 仍可操作
+  it("包含 hook 的 role -> hook 延后，skill 仍可操作", () => {
     const result = resolveExports(FULL_MANIFEST, "reviewer");
     expect(result.skills).toHaveLength(1);
     expect(result.skills[0]!.name).toBe("foo");
     expect(result.deferred.some((d) => d.exportType === "hook")).toBe(true);
   });
 
-  // Test 3: Role references nonexistent skill -> error
-  it("role references nonexistent skill -> throws", () => {
+  // 测试 3：role 引用不存在的 skill -> error
+  it("role 引用不存在的 skill -> 抛错", () => {
     const manifest = makeManifest(`
 schema_version: 1
 name: test
@@ -75,20 +75,20 @@ roles:
   - name: broken
     skills: [nonexistent]
 `);
-    expect(() => resolveExports(manifest, "broken")).toThrow(/nonexistent/);
+    expect(() => resolveExports(manifest, "broken")).toThrow(/不存在/);
   });
 
-  // Test 4: No role -> full package exports
-  it("no role -> full package exports with hooks/mcp deferred", () => {
+  // 测试 4：无 role -> 完整 package export
+  it("无 role -> 完整 package export，并延后 hook/mcp", () => {
     const result = resolveExports(FULL_MANIFEST);
     expect(result.skills).toHaveLength(2);
     expect(result.guidance).toHaveLength(1);
     expect(result.agents).toHaveLength(1);
-    expect(result.deferred).toHaveLength(2); // 1 hook + 1 mcp
+    expect(result.deferred).toHaveLength(2); // 1 个 hook + 1 个 mcp
   });
 
-  // Test 5: Deferred items include reason string
-  it("deferred items include reason string", () => {
+  // 测试 5：deferred item 包含 reason string
+  it("deferred item 包含 reason string", () => {
     const result = resolveExports(FULL_MANIFEST);
     const hook = result.deferred.find((d) => d.exportType === "hook");
     expect(hook).toBeDefined();
@@ -99,33 +99,33 @@ roles:
     expect(mcp!.reason).toContain("Phase 5");
   });
 
-  // Test 6: Mixed role -> correct split
-  it("mixed role (skills + guidance + hooks) -> correct actionable/deferred split", () => {
+  // 测试 6：混合 role -> 正确拆分
+  it("混合 role（skill + guidance + hook）-> 正确拆分 actionable/deferred", () => {
     const result = resolveExports(FULL_MANIFEST, "reviewer");
-    // Actionable: 1 skill + 1 guidance + 1 agent (all agents always included)
+    // Actionable：1 个 skill + 1 个 guidance + 1 个 agent（始终包含全部 agent）
     expect(result.skills).toHaveLength(1);
     expect(result.guidance).toHaveLength(1);
     expect(result.agents).toHaveLength(1);
-    // Deferred: hooks + mcp
+    // Deferred：hook + mcp
     expect(result.deferred.length).toBeGreaterThanOrEqual(1);
   });
 
-  // Test 7: Role not found -> throws
-  it("roleName not found -> throws error", () => {
-    expect(() => resolveExports(FULL_MANIFEST, "nonexistent-role")).toThrow(/not found/);
+  // 测试 7：找不到 role -> 抛错
+  it("找不到 roleName -> 抛错", () => {
+    expect(() => resolveExports(FULL_MANIFEST, "nonexistent-role")).toThrow(/未找到/);
   });
 
-  // Test 8: Role filter preserves all agent exports
-  it("role filter preserves all agent exports unchanged", () => {
+  // 测试 8：role filter 保留全部 agent export
+  it("role filter 原样保留全部 agent export", () => {
     const result = resolveExports(FULL_MANIFEST, "reviewer");
     expect(result.agents).toHaveLength(1);
     expect(result.agents[0]!.source).toBe("agents/reviewer.yaml");
   });
 
-  // Test 9: Role with context -> context ignored
-  it("role with context references -> context not in output", () => {
+  // 测试 9：role 包含 context -> 忽略 context
+  it("role 包含 context reference -> 输出中没有 context", () => {
     const result = resolveExports(FULL_MANIFEST, "reviewer");
-    // Context should not appear in skills, guidance, agents, or deferred
+    // context 不应出现在 skill、guidance、agent 或 deferred 中
     const allSources = [
       ...result.skills.map((s) => s.source),
       ...result.guidance.map((g) => g.source),
@@ -135,8 +135,8 @@ roles:
     expect(allSources).not.toContain("docs/workflow-guide.md");
   });
 
-  // Test 10: Role with specific hooks -> only selected hooks deferred
-  it("role-filtered resolve defers only role-selected hooks", () => {
+  // 测试 10：role 指定 hook -> 仅延后选中的 hook
+  it("按 role 过滤的 resolve 仅延后 role 选中的 hook", () => {
     const manifest = makeManifest(`
 schema_version: 1
 name: test

@@ -1,9 +1,8 @@
-// PL-005 Phase B: ntfy.sh adapter (default per planner brief).
+// PL-005 阶段 B：ntfy.sh 适配器（按 planner brief 为默认实现）。
 //
-// ntfy.sh contract: HTTP POST to https://ntfy.sh/<topic> with the body
-// as the notification text. Headers like Title, Click, Tags shape the
-// rendering. Free, self-hostable, simple HTTP POST → push notification
-// on the operator's phone (ntfy mobile app subscribed to the topic).
+// ntfy.sh 契约：向 https://ntfy.sh/<topic> 发出 HTTP POST，以 body 作为通知文本。
+// Title、Click、Tags 等请求头决定渲染形式。它免费、可自托管，通过简单 HTTP POST
+// 即可向操作员手机推送通知（手机上的 ntfy 应用订阅该 topic）。
 
 import type {
   NotificationAdapter,
@@ -13,11 +12,11 @@ import type {
 
 export interface NtfyAdapterOpts {
   /**
-   * Full topic URL, e.g., `https://ntfy.sh/my-private-topic-abc123`
-   * or self-hosted `https://ntfy.example.com/operator-phone`.
+   * 完整 topic URL，例如 `https://ntfy.sh/my-private-topic-abc123`，
+   * 或自托管的 `https://ntfy.example.com/operator-phone`。
    */
   topicUrl: string;
-  /** Optional fetch override for tests. */
+  /** 测试可选的 fetch 覆盖实现。 */
   fetchImpl?: typeof fetch;
 }
 
@@ -58,7 +57,7 @@ export class NtfyNotificationAdapter implements NotificationAdapter {
   }
 }
 
-/** ntfy headers must be ASCII single-line; truncate + strip newlines. */
+/** ntfy 请求头必须是单行 ASCII；移除换行并按长度截断。 */
 function truncateHeader(s: string, max: number): string {
   const cleaned = s.replace(/[\r\n]+/g, " ").trim();
   return cleaned.length > max ? cleaned.slice(0, max - 1) + "…" : cleaned;

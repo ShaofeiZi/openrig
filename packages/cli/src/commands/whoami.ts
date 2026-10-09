@@ -22,7 +22,7 @@ interface WhoamiCliOptions {
 }
 
 export interface WhoamiDeps extends StatusDeps {
-  /** Cross-host hooks; mirrors PsDeps/SendDeps shape. Tests inject mocks. */
+  /** 跨主机钩子；镜像 PsDeps/SendDeps 形状。测试注入 mock。 */
   hostRegistryLoader?: () => ReturnType<typeof loadHostRegistry>;
   crossHostRun?: (
     host: Parameters<typeof runCrossHostCommand>[0],
@@ -70,10 +70,9 @@ interface WhoamiResult {
 }
 
 /**
- * OPR.0.4.0.27 — project the full whoami payload to the identity-recovery
- * ALLOWLIST (not a denylist: a future payload field defaults to --full and
- * cannot silently re-bloat the every-boot path). Carries exactly the fields the
- * boot + compaction-restore recovery contract treats as ground truth.
+ * OPR.0.4.0.27——把完整 whoami payload 投影到身份恢复白名单
+ *（不是黑名单：未来的 payload 字段默认归 --full，不能静默让每次启动路径
+ * 重新膨胀）。只带启动 + 压缩恢复契约视为事实来源的字段。
  */
 function projectCompactWhoami(data: Record<string, unknown>): Record<string, unknown> {
   const id = (data["identity"] ?? {}) as Record<string, unknown>;
@@ -95,9 +94,9 @@ function projectCompactWhoami(data: Record<string, unknown>): Record<string, unk
       const peer = (p ?? {}) as Record<string, unknown>;
       return { logicalId: peer["logicalId"], sessionName: peer["sessionName"], runtime: peer["runtime"] };
     }),
-    // KEEP: openrig-user SKILL.md documents peersNote as a required recovery field.
+    // 保留：openrig-user SKILL.md 把 peersNote 文档化为必需的恢复字段。
     peersNote: data["peersNote"],
-    // edges already carry only kind + to/from {logicalId, sessionName}.
+    // edges 已经只带 kind + to/from {logicalId, sessionName}。
     edges: data["edges"],
     transcript: { path: transcript["path"], tailCommand: transcript["tailCommand"] },
   };
@@ -138,15 +137,15 @@ function buildPartialWhoamiResult(source: { nodeId?: string; sessionName?: strin
 }
 
 /**
- * Resolve the current session identity using the approved resolution chain:
- * 1. --node-id flag
- * 2. --session flag
- * 3. OPENRIG_NODE_ID env
- * 4. OPENRIG_SESSION_NAME env
- * 5. TMUX_PANE → @rigged_node_id tmux metadata
- * 6. TMUX_PANE → @rigged_session_name tmux metadata
- * 7. TMUX_PANE → tmux display-message (raw session name)
- * 8. fail
+ * 用批准的解析链解析当前会话身份：
+ * 1. --node-id 标志
+ * 2. --session 标志
+ * 3. OPENRIG_NODE_ID 环境变量
+ * 4. OPENRIG_SESSION_NAME 环境变量
+ * 5. TMUX_PANE → @rigged_node_id tmux 元数据
+ * 6. TMUX_PANE → @rigged_session_name tmux 元数据
+ * 7. TMUX_PANE → tmux display-message（原始会话名）
+ * 8. 失败
  */
 export function resolveIdentitySource(
   opts: { nodeId?: string; session?: string },
@@ -165,27 +164,27 @@ export function resolveIdentitySource(
   }
   if (envSessionName) return { sessionName: envSessionName };
 
-  // TMUX_PANE fallback — try OpenRig metadata first, then raw session name
+  // TMUX_PANE 兜底——先试 OpenRig 元数据，再试原始会话名
   const tmuxPane = process.env["TMUX_PANE"];
   if (tmuxPane) {
-    // Step 5: @rigged_node_id metadata (strongest adopted-session anchor)
+    // Step 5：@rigged_node_id 元数据（最强的已认领会话锚点）
     try {
       const nodeId = tmuxExec(`tmux show-option -v -t ${JSON.stringify(tmuxPane)} @rigged_node_id`);
       if (nodeId) return { nodeId };
-    } catch { /* metadata not set — continue */ }
+    } catch { /* 元数据未设置——继续 */ }
 
-    // Step 6: @rigged_session_name metadata
+    // Step 6：@rigged_session_name 元数据
     try {
       const sessionName = tmuxExec(`tmux show-option -v -t ${JSON.stringify(tmuxPane)} @rigged_session_name`);
       if (sessionName) return { sessionName };
-    } catch { /* metadata not set — continue */ }
+    } catch { /* 元数据未设置——继续 */ }
 
-    // Step 7: raw tmux session name (weakest fallback)
+    // Step 7：原始 tmux 会话名（最弱兜底）
     try {
       const sessionName = tmuxExec(`tmux display-message -p -t ${JSON.stringify(tmuxPane)} "#{session_name}"`);
       if (sessionName) return { sessionName };
     } catch {
-      // tmux not available or pane not found — skip
+      // tmux 不可用或未找到 pane——跳过
     }
   }
 
@@ -193,32 +192,30 @@ export function resolveIdentitySource(
 }
 
 export function whoamiCommand(depsOverride?: WhoamiDeps): Command {
-  const cmd = new Command("whoami").description("Show current managed identity in an OpenRig topology");
+  const cmd = new Command("whoami").description("展示 zrig 拓扑中当前受管身份");
   const getDeps = (): WhoamiDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
     clientFactory: (url: string) => new DaemonClient(url),
   };
 
   cmd
-    .option("--node-id <id>", "Resolve by node ID")
-    .option("--session <name>", "Resolve by session name")
-    .option("--host <id>", "Run on a remote host declared in ~/.openrig/hosts.yaml")
-    .option("--all-hosts", "Fan out to all registered HTTP hosts")
-    .option("--hosts <ids>", "Fan out to specific hosts (comma-separated)")
-    .option("--json", "JSON output for agents (compact identity-recovery projection by default)")
-    .option("--full", "Show the complete whoami payload (contextUsage, commands, runtimeContext, workspace, all sub-fields)")
-    .option("--verbose", "Alias for --full")
+    .option("--node-id <id>", "按节点 ID 解析")
+    .option("--session <name>", "按会话名解析")
+    .option("--host <id>", "在 ~/.openrig/hosts.yaml 中声明的远程主机上运行")
+    .option("--all-hosts", "扇出到所有已注册 HTTP 主机")
+    .option("--hosts <ids>", "扇出到特定主机（逗号分隔）")
+    .option("--json", "供智能体使用的 JSON 输出（默认紧凑身份恢复投影）")
+    .option("--full", "展示完整 whoami payload（contextUsage、命令、runtimeContext、workspace、所有子字段）")
+    .option("--verbose", "--full 的别名")
     .addHelpText("after", `
-By default rig whoami is COMPACT: identity (rig/pod/member/session/runtime),
-peers (with sessionName for 'rig send'), edges, and the transcript path — the
-boot + compaction-restore recovery essentials. Use --full / --verbose for the
-complete payload (contextUsage, command examples, runtime token detail,
-workspace block). The compact form omits the Context line; use 'rig context' or
-'rig whoami --full' for usage.`)
+默认情况下 rig whoami 是紧凑的：身份（rig/pod/member/session/runtime）、
+peers（带 sessionName 供 'rig send' 用）、edges 和 transcript 路径——
+启动 + 压缩恢复的必需品。用 --full / --verbose 看完整 payload
+（contextUsage、命令示例、runtime token 详情、workspace 块）。
+紧凑形式省略 Context 行；用 'rig context' 或 'rig whoami --full' 看用量。`)
     .action(async (opts: WhoamiCliOptions) => {
-      // OPR.0.4.6.MH1 FR-2: selected-host routing — explicit --host wins;
-      // else the persisted selection feeds the SHIPPED --host path; no
-      // selection = today exactly.
+      // OPR.0.4.6.MH1 FR-2：选定主机路由——显式 --host 优先；
+      // 否则把已保存的选择喂给已交付的 --host 路径；没有选择则与今日一致。
       opts.host = resolveEffectiveHost(opts.host);
       const deps = getDeps();
       const full = Boolean(opts.full || opts.verbose);
@@ -235,7 +232,7 @@ workspace block). The compact form omits the Context line; use 'rig context' or
 
       const source = resolveIdentitySource(opts);
       if (!source) {
-        console.error("Cannot determine identity. Run inside an OpenRig-managed session, or use --session or --node-id.");
+        console.error("无法确定身份。请在 zrig 受管会话内运行，或使用 --session 或 --node-id。");
         process.exitCode = 1;
         return;
       }
@@ -247,10 +244,10 @@ workspace block). The compact form omits the Context line; use 'rig context' or
           return;
         }
         const identity = partial.identity as Record<string, string | null>;
-        console.log("daemon unreachable — topology and peer info unavailable.");
-        console.log(`Node ID:    ${identity.nodeId ?? "—"}`);
-        console.log(`Session:    ${identity.sessionName ?? "—"}`);
-        console.log(`Resolved:   partial via ${String(partial.resolvedBy).replace(/_/g, " ")}`);
+        console.log("后台服务不可达——拓扑与 peer 信息不可用。");
+        console.log(`节点 ID：  ${identity.nodeId ?? "—"}`);
+        console.log(`会话：    ${identity.sessionName ?? "—"}`);
+        console.log(`解析方式：部分 via ${String(partial.resolvedBy).replace(/_/g, " ")}`);
         return;
       }
 
@@ -260,18 +257,18 @@ workspace block). The compact form omits the Context line; use 'rig context' or
       else params.set("sessionName", source.sessionName!);
       const targetRepo = readOpenRigEnv("OPENRIG_TARGET_REPO", "RIGGED_TARGET_REPO");
       if (targetRepo) params.set("targetRepo", targetRepo);
-      // Compact by default (the every-boot recovery call); --full opts out so
-      // the daemon also skips the contextUsage/runtimeContext compute.
+      // 默认紧凑（每次启动的恢复调用）；--full 退出，后台服务也会跳过
+      // contextUsage/runtimeContext 计算。
       if (!full) params.set("compact", "1");
 
       const res = await client.get<Record<string, unknown>>(`/api/whoami?${params.toString()}`);
 
       if (opts.json) {
         if (full || res.status >= 400) {
-          // --full: today's complete payload (parity). Errors: pass through.
+          // --full：今日完整 payload（对等）。错误：原样透传。
           console.log(JSON.stringify(res.data, null, 2));
         } else {
-          // Compact default: the identity-recovery ALLOWLIST projection.
+          // 紧凑默认：身份恢复白名单投影。
           console.log(JSON.stringify(projectCompactWhoami(res.data)));
         }
         if (res.status >= 400) process.exitCode = 1;
@@ -280,58 +277,57 @@ workspace block). The compact form omits the Context line; use 'rig context' or
 
       if (res.status === 404) {
         const error = (res.data as Record<string, unknown>)["error"] as string | undefined;
-        console.error(error ?? "Session not found in any managed rig. Check: rig ps --nodes");
+        console.error(error ?? "在任何受管工作组中都找不到该会话。检查：zrig ps --nodes");
         process.exitCode = 1;
         return;
       }
 
       if (res.status === 409) {
         const error = (res.data as Record<string, unknown>)["error"] as string | undefined;
-        console.error(error ?? "Session is ambiguous. Use --node-id instead.");
+        console.error(error ?? "会话有歧义。请改用 --node-id。");
         process.exitCode = 1;
         return;
       }
 
       if (res.status >= 400) {
         const error = (res.data as Record<string, unknown>)["error"] as string | undefined;
-        console.error(error ?? `Whoami failed (HTTP ${res.status})`);
+        console.error(error ?? `whoami 失败（HTTP ${res.status}）`);
         process.exitCode = 1;
         return;
       }
 
-      // Human-readable output
+      // 人类可读输出
       const data = res.data as unknown as WhoamiResult;
       const id = data.identity;
-      // OPR.0.4.6.MH1 FR-4: the own-host name renders here when RENAMED;
-      // unnamed (default "localhost") keeps today's output byte-identical.
+      // OPR.0.4.6.MH1 FR-4：自己主机名在被改名时在这里渲染；
+      // 未命名（默认 "localhost"）保持今日输出逐字节一致。
       const ownHostName = readOwnHostName();
       if (ownHostName !== "localhost") {
-        console.log(`Host:       ${ownHostName}`);
+        console.log(`主机：      ${ownHostName}`);
       }
-      // Slice 14 §2c — THIS host's own identity, and where it came from. `host.name` above is a
-      // DISPLAY name; the self-host id is what this daemon stamps into every outbound envelope and
-      // what a remote registry must be able to resolve. They are different things, and conflating
-      // them is the defect. A `generated` id means no remote can route a reply hint back here — say
-      // so now, not when a cross-machine message fails.
+      // Slice 14 §2c——本机自己的身份，以及它从哪来。上面的 host.name 是
+      // 显示名；self-host id 才是后台服务盖到每个出站信封上、
+      // 也是远程注册表必须能解析的东西。它们是两回事，混淆就是缺陷。
+      // `generated` id 意味着没有远程能把回复提示路由回这里——
+      // 现在就说，不要等跨机器消息失败时才说。
       const selfIdentity = await fetchSelfHostIdentity(deps.lifecycleDeps, getDaemonUrl(status));
       if (selfIdentity) {
         const src = selfIdentity.selfHostIdSource;
-        console.log(`Self host:  ${selfIdentity.selfHostId}${src ? ` (${src})` : ""}`);
+        console.log(`自身主机：  ${selfIdentity.selfHostId}${src ? `（${src}）` : ""}`);
       }
-      console.log(`Rig:        ${id.rigName}`);
-      console.log(`Logical ID: ${id.logicalId}`);
-      console.log(`Pod:        ${(id.podNamespace ?? id.podId) ?? "—"} / ${id.memberId}`);
-      console.log(`Session:    ${id.sessionName ?? "—"}`);
-      console.log(`Runtime:    ${id.runtime}`);
-      console.log(`Transport:  ${id.attachmentType === "external_cli" ? "external_cli (outbound only)" : id.attachmentType}`);
-      console.log(`Resolved:   via ${data.resolvedBy.replace(/_/g, " ")}`);
+      console.log(`工作组：    ${id.rigName}`);
+      console.log(`逻辑 ID：   ${id.logicalId}`);
+      console.log(`Pod：       ${(id.podNamespace ?? id.podId) ?? "—"} / ${id.memberId}`);
+      console.log(`会话：      ${id.sessionName ?? "—"}`);
+      console.log(`运行时：    ${id.runtime}`);
+      console.log(`传输：      ${id.attachmentType === "external_cli" ? "external_cli（仅出站）" : id.attachmentType}`);
+      console.log(`解析方式：  via ${data.resolvedBy.replace(/_/g, " ")}`);
 
       if (data.peers.length > 0) {
         console.log("");
-        // OPR.99.0.6.1: name the contract on the header so peers cannot be
-        // misread as the edge-subset or as host inventory. Keeps the literal
-        // `Peers:` prefix (existing output greps key on it).
-        console.log("Peers: (this rig's roster, excluding self — directional edges below; `rig ps --nodes` for inventory incl. self + live state)");
+        // OPR.99.0.6.1：在表头写明契约，免得 peers 被误读成 edge 子集
+        // 或主机清单。保留字面 `Peers:` 前缀（已有输出的 grep 依赖它）。
+        console.log("Peers：（本工作组名册，不含自身——下方是有向边；`zrig ps --nodes` 看含自身 + 实时状态的清单）");
         for (const peer of data.peers) {
           console.log(`  ${peer.logicalId.padEnd(20)} ${(peer.sessionName ?? "—").padEnd(30)} ${peer.runtime}`);
         }
@@ -339,7 +335,7 @@ workspace block). The compact form omits the Context line; use 'rig context' or
 
       if (data.edges.outgoing.length > 0 || data.edges.incoming.length > 0) {
         console.log("");
-        console.log("Edges:");
+        console.log("边：");
         for (const edge of data.edges.outgoing) {
           console.log(`  → ${edge.kind}  ${edge.to?.logicalId ?? "?"}`);
         }
@@ -350,18 +346,18 @@ workspace block). The compact form omits the Context line; use 'rig context' or
 
       if (data.transcript.enabled && data.transcript.tailCommand) {
         console.log("");
-        console.log(`Transcript: ${data.transcript.path ?? "enabled"}`);
+        console.log(`Transcript：${data.transcript.path ?? "已启用"}`);
         console.log(`  ${data.transcript.tailCommand}`);
       }
 
-      // Context usage — OPR.0.4.0.27: shown only in --full (compact omits the
-      // contextUsage payload entirely; use 'rig context' or 'rig whoami --full').
+      // 上下文用量——OPR.0.4.0.27：仅在 --full 下显示（紧凑完全省略
+      // contextUsage payload；用 'rig context' 或 'rig whoami --full'）。
       if (full) {
         const ctx = data.contextUsage;
         if (ctx && ctx.availability === "known") {
-          console.log(`Context:    ${ctx.usedPercentage}% used (${ctx.remainingPercentage}% remaining, ${ctx.contextWindowSize} window)`);
+          console.log(`上下文：    已用 ${ctx.usedPercentage}%（剩 ${ctx.remainingPercentage}%，窗口 ${ctx.contextWindowSize}）`);
         } else {
-          console.log("Context:    unknown");
+          console.log("上下文：    未知");
         }
       }
     });
@@ -394,7 +390,7 @@ async function runCrossHostWhoami(
     return;
   }
 
-  // SSH path: reconstruct argv.
+  // SSH 路径：重建 argv。
   const argv: string[] = ["rig", "whoami"];
   if (opts.nodeId !== undefined) argv.push("--node-id", opts.nodeId);
   if (opts.session !== undefined) argv.push("--session", opts.session);
@@ -404,8 +400,8 @@ async function runCrossHostWhoami(
 
   if (opts.json) {
     if (result.ok) {
-      // Verbatim remote stdout passthrough — the remote `rig whoami --json`
-      // already produced the correct JSON envelope; we do NOT double-wrap.
+      // 原样透传远程 stdout——远程 `rig whoami --json` 已经产出正确的
+      // JSON 信封；我们不双层包装。
       if (result.stdout) process.stdout.write(result.stdout);
       if (result.stderr) process.stderr.write(result.stderr);
       return;
@@ -414,7 +410,7 @@ async function runCrossHostWhoami(
     return;
   }
 
-  console.log(`[via host=${host.id} (${hostDisplayTarget(host)})]`);
+  console.log(`[经由主机 ${host.id}（${hostDisplayTarget(host)}）]`);
   if (result.ok) {
     if (result.stdout) process.stdout.write(result.stdout);
     if (result.stderr) process.stderr.write(result.stderr);
@@ -436,7 +432,7 @@ async function runHttpWhoami(
   }
 
   const { classifyHttpFailedStep: classifyStatus } = await import("../host-registry.js");
-  // A4: stamp the origin triple on this remote read (fail-open to 2-part when unavailable).
+  // A4：在这次远程读上盖 origin 三元组（不可用时 fail-open 到 2 部分）。
   const originSelfHostId = await resolveOriginSelfHostId(deps.lifecycleDeps);
   const client = remoteDaemonClient(deps.clientFactory, host.url, originSelfHostId);
   const headers = bearerAuthHeaders(bearerResult.token);
@@ -445,7 +441,7 @@ async function runHttpWhoami(
     const infoRes = await client.get<{ installRoot?: string }>("/api/info", { headers });
     const infoStep = classifyStatus(infoRes.status);
     if (infoStep !== "none") {
-      emitCrossHostError(host.id, infoStep, `Remote /api/info returned HTTP ${infoRes.status}`, opts.json);
+      emitCrossHostError(host.id, infoStep, `远程 /api/info 返回 HTTP ${infoRes.status}`, opts.json);
       process.exitCode = 1;
       return;
     }
@@ -453,7 +449,7 @@ async function runHttpWhoami(
     const psRes = await client.get<Array<{ rigId: string; name: string }>>("/api/ps", { headers });
     const psStep = classifyStatus(psRes.status);
     if (psStep !== "none") {
-      emitCrossHostError(host.id, psStep, `Remote /api/ps returned HTTP ${psRes.status}`, opts.json);
+      emitCrossHostError(host.id, psStep, `远程 /api/ps 返回 HTTP ${psRes.status}`, opts.json);
       process.exitCode = 1;
       return;
     }
@@ -461,16 +457,16 @@ async function runHttpWhoami(
     const identity = {
       host: host.id,
       url: host.url,
-      installRoot: infoRes.data?.installRoot ?? "unknown",
+      installRoot: infoRes.data?.installRoot ?? "未知",
       rigs: Array.isArray(psRes.data) ? psRes.data.map((r) => ({ id: r.rigId, name: r.name })) : [],
     };
 
     if (opts.json) {
       console.log(JSON.stringify(identity));
     } else {
-      console.log(`Host:     ${identity.host} (${identity.url})`);
-      console.log(`Install:  ${identity.installRoot}`);
-      console.log(`Rigs:     ${identity.rigs.length > 0 ? identity.rigs.map((r) => r.name).join(", ") : "(none)"}`);
+      console.log(`主机：    ${identity.host}（${identity.url}）`);
+      console.log(`安装位置：${identity.installRoot}`);
+      console.log(`工作组：  ${identity.rigs.length > 0 ? identity.rigs.map((r) => r.name).join(", ") : "（无）"}`);
     }
   } catch (err) {
     const failedStep = classifyHttpError(err);
@@ -483,7 +479,7 @@ async function runFanOutWhoami(opts: WhoamiCliOptions, deps: WhoamiDeps): Promis
   const loader = deps.hostRegistryLoader ?? loadHostRegistry;
   const registry = loader();
   if (!registry.ok) {
-    console.error(`Error: ${registry.error}`);
+    console.error(`错误：${registry.error}`);
     process.exitCode = 1;
     return;
   }
@@ -494,7 +490,7 @@ async function runFanOutWhoami(opts: WhoamiCliOptions, deps: WhoamiDeps): Promis
     targetIds = opts.hosts.split(",").map((s) => s.trim()).filter(Boolean);
     const unknown = targetIds.filter((id) => !allHosts.some((h) => h.id === id));
     if (unknown.length > 0) {
-      console.error(`Error: unknown host ids: ${unknown.join(", ")}`);
+      console.error(`错误：未知主机 id：${unknown.join(", ")}`);
       process.exitCode = 1;
       return;
     }
@@ -510,15 +506,15 @@ async function runFanOutWhoami(opts: WhoamiCliOptions, deps: WhoamiDeps): Promis
     error?: string;
   }
 
-  // A4: resolve the origin triple ONCE (THIS host's id, identical for every fan-out leg), then stamp
-  // it on each remote client — fail-open to 2-part when the local selfHostId is unavailable.
+  // A4：origin 三元组只解析一次（本机 id，每条扇出腿都一样），然后盖到每个
+  // 远程 client 上——本地 selfHostId 不可用时 fail-open 到 2 部分。
   const originSelfHostId = await resolveOriginSelfHostId(deps.lifecycleDeps);
   const results: HostIdentityResult[] = await Promise.all(
     targetIds.map(async (id): Promise<HostIdentityResult> => {
       const host = allHosts.find((h) => h.id === id);
-      if (!host) return { host: id, ok: false, failedStep: "remote-daemon-unreachable", error: `unknown host ${id}` };
+      if (!host) return { host: id, ok: false, failedStep: "remote-daemon-unreachable", error: `未知主机 ${id}` };
       if (host.transport !== "http") {
-        return { host: id, ok: false, failedStep: "remote-command-failed", error: `host ${id} uses transport ${host.transport}; whoami fan-out requires http` };
+        return { host: id, ok: false, failedStep: "remote-command-failed", error: `主机 ${id} 使用传输 ${host.transport}；whoami 扇出要求 http` };
       }
       const httpHost = host as HttpHostEntry;
       const bearerResult = resolveRemoteBearer(httpHost);
@@ -543,7 +539,7 @@ async function runFanOutWhoami(opts: WhoamiCliOptions, deps: WhoamiDeps): Promis
           failedStep: "none",
           identity: {
             url: httpHost.url,
-            installRoot: infoRes.data?.installRoot ?? "unknown",
+            installRoot: infoRes.data?.installRoot ?? "未知",
             rigs: Array.isArray(psRes.data) ? psRes.data.map((r) => ({ id: r.rigId, name: r.name })) : [],
           },
         };
@@ -561,10 +557,10 @@ async function runFanOutWhoami(opts: WhoamiCliOptions, deps: WhoamiDeps): Promis
     for (const r of results) {
       if (r.ok && r.identity) {
         console.log(`\n[host=${r.host}] ${r.identity.url}`);
-        console.log(`  Install: ${r.identity.installRoot}`);
-        console.log(`  Rigs:    ${r.identity.rigs.length > 0 ? r.identity.rigs.map((g) => g.name).join(", ") : "(none)"}`);
+        console.log(`  安装位置：${r.identity.installRoot}`);
+        console.log(`  工作组：  ${r.identity.rigs.length > 0 ? r.identity.rigs.map((g) => g.name).join(", ") : "（无）"}`);
       } else {
-        console.log(`\n[host=${r.host}] FAILED (${r.failedStep}): ${r.error}`);
+        console.log(`\n[host=${r.host}] 失败（${r.failedStep}）：${r.error}`);
       }
     }
   }

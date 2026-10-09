@@ -6,6 +6,9 @@ files:
   - path: your-world.md
     role: world
     summary: "A minimal fill-in template for describing an agent's world."
+  - path: your-world.zh-CN.md
+    role: world
+    summary: "用于描述智能体世界的最小填空模板（简体中文）。"
 atoms:
   - id: your-world
     address: your-world.md

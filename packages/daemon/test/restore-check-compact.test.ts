@@ -37,8 +37,8 @@ function makeDeps(nodes: NodeInventoryEntry[]): RestoreCheckDeps {
   };
 }
 
-describe("OPR.0.4.0.29 — restore-check compact via service", () => {
-  it("AC-1: compact produces fewer checks than full", () => {
+describe("OPR.0.4.0.29——通过 service 实现 restore-check compact", () => {
+  it("AC-1：compact 产生的检查少于 full", () => {
     const nodes = [
       makeReadyNode("dev.impl"),
       makeReadyNode("dev.qa"),
@@ -54,7 +54,7 @@ describe("OPR.0.4.0.29 — restore-check compact via service", () => {
     expect(compact.rigs.length).toBe(full.rigs.length);
   });
 
-  it("AC-3: compact skips per-seat detail for ready seats (FR-3/AC-4)", () => {
+  it("AC-3：compact 跳过 ready 席位的逐席位详情（FR-3/AC-4）", () => {
     const nodes = [
       makeReadyNode("dev.impl"),
       makeReadyNode("dev.qa"),
@@ -71,10 +71,10 @@ describe("OPR.0.4.0.29 — restore-check compact via service", () => {
 
     const notReadyCheck = compact.checks.find((c) => c.status === "red" && c.check.includes("readiness"));
     expect(notReadyCheck).toBeDefined();
-    expect(notReadyCheck!.evidence).toContain("not running/ready");
+    expect(notReadyCheck!.evidence).toContain("未处于 running/ready");
   });
 
-  it("AC-7: readiness classes derive from real enums", () => {
+  it("AC-7：readiness 类别来自真实 enum", () => {
     const nodes = [makeReadyNode("dev.impl"), makeNotReadyNode("dev.qa")];
     const service = new RestoreCheckService(makeDeps(nodes));
     const result = service.check({});
@@ -86,7 +86,7 @@ describe("OPR.0.4.0.29 — restore-check compact via service", () => {
     }
   });
 
-  it("AC-5: no compact option = full result (back-compat)", () => {
+  it("AC-5：没有 compact 选项 = full 结果（向后兼容）", () => {
     const nodes = [makeReadyNode("dev.impl")];
     const service = new RestoreCheckService(makeDeps(nodes));
     const result = service.check({});
@@ -95,7 +95,7 @@ describe("OPR.0.4.0.29 — restore-check compact via service", () => {
     expect(seatChecks.length).toBeGreaterThan(1);
   });
 
-  it("AC-8: per-rig grouping shows rig rollup", () => {
+  it("AC-8：按 rig 分组显示 rig 汇总", () => {
     const nodes = [makeReadyNode("dev.impl"), makeNotReadyNode("dev.qa")];
     const service = new RestoreCheckService(makeDeps(nodes));
     const result = service.check({});
@@ -105,8 +105,8 @@ describe("OPR.0.4.0.29 — restore-check compact via service", () => {
     expect(result.rigs[0]!.expectedNodes).toBe(2);
   });
 
-  // OPR.0.4.0.29 FR-8 / AC-7 — ready-confidence breakdown by the 5 real-enum classes.
-  it("AC-7: classCounts breaks seats into the 5 real-enum classes (no invented status)", () => {
+  // OPR.0.4.0.29 FR-8 / AC-7——按 5 个真实 enum 类别拆分 ready-confidence。
+  it("AC-7：classCounts 将席位分入 5 个真实 enum 类别（不虚构状态）", () => {
     const makeAttentionNode = (logicalId: string): NodeInventoryEntry => ({
       logicalId,
       canonicalSessionName: `${logicalId.replace(".", "-")}@test-rig`,
@@ -116,12 +116,10 @@ describe("OPR.0.4.0.29 — restore-check compact via service", () => {
       latestError: "Awaiting operator",
     } as NodeInventoryEntry);
 
-    // The two ready seats are GENUINELY clean (nodeId + ok startup context +
-    // present files via exists:true + healthy daemon) so they count as plain
-    // `ready` — keeping real coverage of the ready class. (Caveat detection in
-    // default compact is covered by the two dedicated tests below; a bare
-    // makeReadyNode with a missing startup context is ready_with_caveats, not
-    // ready, and default compact now detects that.)
+    // 两个 ready 席位确实干净（nodeId + ok startup context + exists:true 表示文件存在 +
+    // daemon 健康），因此计为普通 `ready`，真正覆盖 ready 类别。（默认 compact 的 caveat 检测
+    // 由下面两个专门测试覆盖；缺少 startup context 的裸 makeReadyNode 属于 ready_with_caveats，
+    // 而非 ready，且默认 compact 现在能检测到这一点。）
     const nodes = [
       { ...makeReadyNode("dev.impl"), nodeId: "node-impl" } as NodeInventoryEntry,
       { ...makeReadyNode("dev.qa"), nodeId: "node-qa" } as NodeInventoryEntry,
@@ -136,19 +134,19 @@ describe("OPR.0.4.0.29 — restore-check compact via service", () => {
     };
     const result = new RestoreCheckService(deps).check({ compact: true });
 
-    // Exactly the 5 real-enum class keys — no fresh-primed/awaiting-decision invented status.
+    // 恰好为 5 个真实 enum 类别 key——没有 fresh-primed/awaiting-decision 等虚构状态。
     expect(Object.keys(result.classCounts).sort()).toEqual(
       ["attention_required", "not_ready", "ready", "ready_with_caveats", "unknown"],
     );
     expect(result.classCounts.ready).toBe(2);
     expect(result.classCounts.attention_required).toBe(1);
     expect(result.classCounts.not_ready).toBe(1);
-    // The breakdown accounts for every seat.
+    // 拆分结果覆盖每个席位。
     const total = Object.values(result.classCounts).reduce((a, b) => a + b, 0);
     expect(total).toBe(4);
   });
 
-  it("AC-7: per-rig classCounts sum to the fleet-wide classCounts", () => {
+  it("AC-7：各 rig 的 classCounts 总和等于整个机群的 classCounts", () => {
     const result = new RestoreCheckService(
       makeDeps([makeReadyNode("dev.impl"), makeNotReadyNode("dev.qa")]),
     ).check({});
@@ -157,36 +155,33 @@ describe("OPR.0.4.0.29 — restore-check compact via service", () => {
     expect(rigSum).toBe(fleetSum);
   });
 
-  it("AC-7: a no-snapshot rig's running/ready seats count as unknown, not ready (real snapshot primitive)", () => {
+  it("AC-7：无 snapshot rig 的 running/ready 席位计为 unknown，而非 ready（真实 snapshot 原语）", () => {
     const deps: RestoreCheckDeps = { ...makeDeps([makeReadyNode("dev.impl"), makeReadyNode("dev.qa")]), hasSnapshot: () => false };
     const result = new RestoreCheckService(deps).check({ compact: true });
-    // Without a snapshot the rig cannot be restored -> its ready seats are unknown.
+    // 没有 snapshot 就无法恢复 rig -> 其 ready 席位为 unknown。
     expect(result.classCounts.ready).toBe(0);
     expect(result.classCounts.unknown).toBe(2);
   });
 
-  it("AC-7: no-snapshot does NOT hide failed seats (not_ready wins over no-snapshot)", () => {
+  it("AC-7：no-snapshot 不会隐藏失败席位（not_ready 优先于 no-snapshot）", () => {
     const deps: RestoreCheckDeps = { ...makeDeps([makeReadyNode("dev.impl"), makeNotReadyNode("dev.qa")]), hasSnapshot: () => false };
     const result = new RestoreCheckService(deps).check({ compact: true });
-    // The failed seat stays not_ready (surfaced); only the clean seat -> unknown.
+    // 失败席位保持 not_ready（对外呈现）；只有干净席位 -> unknown。
     expect(result.classCounts.not_ready).toBe(1);
     expect(result.classCounts.unknown).toBe(1);
     expect(result.classCounts.ready).toBe(0);
   });
 
-  // OPR.0.4.0.29 QA-blocking forward-fix (qa-blocking-1f7b1282): the
-  // restore-proof-caveat repro. A snapshot-backed, running/ready seat whose
-  // startup context is MISSING is a real yellow caveat. The per-rig status +
-  // caveatNodes already report it; classCounts must follow the caveat too —
-  // ready_with_caveats wins over plain ready (but still loses to
-  // attention/not_ready/no-snapshot, which are asserted above).
-  it("AC-7: a running/ready seat with a real yellow caveat counts as ready_with_caveats, not ready", () => {
-    // makeReadyNode is running+ready; with a missing startup context its
-    // seat.<session>.startup-context check is yellow (buildStartupContextAvailabilityCheck).
-    // includeReady forces the ready-seat detail to assemble (the --ready path the QA proof used).
-    // exists:true + a healthy daemon clears the unrelated rig/host red checks
-    // (spec-present, daemon.reachable, transcript/queue files) so the ONLY
-    // non-green signal is the real startup-context caveat — isolating the bug.
+  // OPR.0.4.0.29 QA-blocking forward-fix（qa-blocking-1f7b1282）：restore-proof-caveat 复现。
+  // 有 snapshot 支撑且处于 running/ready 的席位，如果 startup context 缺失，就存在真实 yellow caveat。
+  // 每 rig status + caveatNodes 已经报告该问题；classCounts 也必须体现 caveat——ready_with_caveats
+  // 优先于普通 ready（但仍低于上文断言的 attention/not_ready/no-snapshot）。
+  it("AC-7：存在真实 yellow caveat 的 running/ready 席位计为 ready_with_caveats，而非 ready", () => {
+    // makeReadyNode 为 running+ready；缺少 startup context 时，其 seat.<session>.startup-context
+    // 检查为 yellow（buildStartupContextAvailabilityCheck）。includeReady 强制组装 ready 席位详情
+    //（QA 证明使用的 --ready 路径）。exists:true + 健康 daemon 会清除无关的 rig/host red 检查
+    //（spec-present、daemon.reachable、transcript/queue 文件），使真实 startup-context caveat
+    // 成为唯一非 green 信号，从而隔离该缺陷。
     const deps: RestoreCheckDeps = {
       ...makeDeps([makeReadyNode("dev.impl")]),
       hasSnapshot: () => true,
@@ -203,15 +198,14 @@ describe("OPR.0.4.0.29 — restore-check compact via service", () => {
     expect(result.classCounts.ready).toBe(0);
   });
 
-  // OPR.0.4.0.29 code-review BLOCKING forward-fix (qitem-...52809188): the DEFAULT
-  // compact path the QA proof actually ran (rig restore-check, NOT --ready). Default
-  // compact omits ready-seat DETAIL from the emitted output (token-safe), but the
-  // summary must STILL detect the caveat -- a snapshot-backed running/ready seat with
-  // a missing startup context is ready_with_caveats, not ready. The includeReady test
-  // above is necessary but insufficient: it masks the default-compact detail skip.
-  it("AC-7: DEFAULT compact (no includeReady) still counts a running/ready seat's yellow caveat as ready_with_caveats", () => {
-    // nodeId set so the real getStartupContext-missing path produces the yellow
-    // startup-context caveat. Clean deps so it is the ONLY non-green seat signal.
+  // OPR.0.4.0.29 code-review BLOCKING forward-fix（qitem-...52809188）：QA 证明实际运行的 DEFAULT
+  // compact 路径（`zrig restore-check`，不是 --ready）。默认 compact 从输出中省略 ready 席位详情
+  //（节省 token），但汇总仍必须检测 caveat——有 snapshot 支撑的 running/ready 席位若缺少
+  // startup context，应为 ready_with_caveats，而非 ready。上面的 includeReady 测试必要但不充分：
+  // 它会掩盖 default-compact 跳过详情的问题。
+  it("AC-7：DEFAULT compact（无 includeReady）仍将 running/ready 席位的 yellow caveat 计为 ready_with_caveats", () => {
+    // 设置 nodeId，使真实 getStartupContext-missing 路径产生 yellow startup-context caveat。
+    // 使用干净依赖，确保它是唯一非 green 的席位信号。
     const caveatNode = { ...makeReadyNode("dev.impl"), nodeId: "node-caveat" } as NodeInventoryEntry;
     const deps: RestoreCheckDeps = {
       ...makeDeps([caveatNode]),
@@ -227,51 +221,46 @@ describe("OPR.0.4.0.29 — restore-check compact via service", () => {
     expect(rig.caveatNodes).toBe(1);
     expect(result.classCounts.ready_with_caveats).toBe(1);
     expect(result.classCounts.ready).toBe(0);
-    // Token-safe: default compact does NOT dump the ready seat's detail rows.
+    // 节省 token：默认 compact 不输出 ready 席位的详情行。
     expect(result.checks.some((c) => c.check.endsWith(".startup-context"))).toBe(false);
   });
 
-  // OPR.0.4.0.29 code-review BLOCKING (qitem-...4f06e820): AC-4/FR-3 require the
-  // daemon to SKIP full ready-seat detail assembly in default compact, not just
-  // hide it after assembling. Default compact computes ONLY the startup-context
-  // caveat signal the FR-8 summary needs; transcript/resume/queue/hooks are NOT
-  // assembled for a green ready seat. Behavioral no-call proof: a green ready
-  // seat with a CLEAN startup context but NO attach command. If default compact
-  // assembled detail it would run checkResumePath -> a yellow resume-path caveat
-  // -> ready_with_caveats. Skipping it keeps the seat plain ready.
-  it("AC-4: default compact does NOT assemble full ready-seat detail (resume/transcript/queue/hooks) for a green ready seat", () => {
+  // OPR.0.4.0.29 code-review BLOCKING（qitem-...4f06e820）：AC-4/FR-3 要求 daemon 在默认 compact
+  // 模式下跳过完整 ready 席位详情组装，而不只是组装后隐藏。默认 compact 只计算 FR-8 汇总所需的
+  // startup-context caveat 信号；不会为 green ready 席位组装 transcript/resume/queue/hooks。
+  // 行为级无调用证明：一个 startup context 干净但没有 attach command 的 green ready 席位。
+  // 如果默认 compact 组装详情，就会运行 checkResumePath -> yellow resume-path caveat ->
+  // ready_with_caveats。跳过详情则使席位保持普通 ready。
+  it("AC-4：默认 compact 不为 green ready 席位组装完整详情（resume/transcript/queue/hooks）", () => {
     const cleanReadyNoAttach = { ...makeReadyNode("dev.impl"), nodeId: "node-clean", tmuxAttachCommand: undefined } as NodeInventoryEntry;
     const deps: RestoreCheckDeps = {
       ...makeDeps([cleanReadyNoAttach]),
       hasSnapshot: () => true,
       exists: () => true,
       probeDaemonHealth: () => ({ healthy: true, evidence: "Daemon running" }),
-      // ok startup context -> startup-context is GREEN, so it is NOT the caveat.
+      // ok startup context -> startup-context 为 GREEN，因此它不是 caveat。
       getStartupContext: () => ({ status: "ok" as const, runtime: null, resolvedStartupFiles: [], projectionEntries: [] }),
     };
 
-    // Default compact: resume-path (and the rest of the detail) is NOT assembled,
-    // so the missing attach command produces no caveat -> plain ready.
+    // 默认 compact：不组装 resume-path（及其余详情），因此缺少 attach command 不会产生 caveat -> 普通 ready。
     const compact = new RestoreCheckService(deps).check({ compact: true });
     expect(compact.classCounts.ready).toBe(1);
     expect(compact.classCounts.ready_with_caveats).toBe(0);
     expect(compact.rigs.find((r) => r.rigName === "test-rig")!.status).toBe("ready");
 
-    // --ready/includeReady DOES assemble detail -> the missing attach command is
-    // a yellow resume-path caveat -> ready_with_caveats. Proves the detail set is
-    // real and only the default-compact path skips it.
+    // --ready/includeReady 会组装详情 -> 缺少 attach command 成为 yellow resume-path caveat ->
+    // ready_with_caveats。这证明详情集合真实存在，只有 default-compact 路径会跳过。
     const ready = new RestoreCheckService(deps).check({ compact: true, includeReady: true });
     expect(ready.classCounts.ready_with_caveats).toBe(1);
     expect(ready.classCounts.ready).toBe(0);
   });
 
-  // OPR.0.4.0.29 rev1-r2 BLOCKING (qitem-...f13fc5b4): no-false-ready. A skipped
-  // (computed-but-not-emitted) ready-seat startup-context caveat must STILL drive
-  // the top-level verdict/readiness/counts, or default compact reports a false
-  // top-level ready/restorable while the same payload admits a ready_with_caveats
-  // rig. Clean host (green daemon + green host-infra declaration) so the ONLY
-  // non-green signal is the hidden startup-context caveat.
-  it("AC-4 / no-false-ready: a hidden ready-seat caveat drives the top-level verdict/readiness in default compact", () => {
+  // OPR.0.4.0.29 rev1-r2 BLOCKING（qitem-...f13fc5b4）：no-false-ready。已跳过
+  //（已计算但未输出）的 ready 席位 startup-context caveat 仍必须驱动顶层 verdict/readiness/counts；
+  // 否则默认 compact 会错误报告顶层 ready/restorable，而同一 payload 又承认存在 ready_with_caveats rig。
+  // 使用干净 host（green daemon + green host-infra 声明），使隐藏的 startup-context caveat
+  // 成为唯一非 green 信号。
+  it("AC-4 / no-false-ready：隐藏的 ready 席位 caveat 在默认 compact 中驱动顶层 verdict/readiness", () => {
     const caveatNode = { ...makeReadyNode("dev.impl"), nodeId: "node-caveat" } as NodeInventoryEntry;
     const hostInfra = JSON.stringify({ schemaVersion: 1, daemonBootstrap: { mechanism: "launchd", declared: true }, supportingInfra: [] });
     const deps: RestoreCheckDeps = {
@@ -284,15 +273,15 @@ describe("OPR.0.4.0.29 — restore-check compact via service", () => {
     };
     const result = new RestoreCheckService(deps).check({ compact: true });
 
-    // Top-level must NOT be a false ready/restorable.
+    // 顶层不得错误报告 ready/restorable。
     expect(result.verdict).toBe("restorable_with_caveats");
     expect(result.readiness.status).toBe("ready_with_caveats");
     expect(result.readiness.caveatRigCount).toBe(1);
     expect(result.counts.yellow).toBeGreaterThanOrEqual(1);
-    // Rollup + classCounts agree.
+    // Rollup 与 classCounts 一致。
     expect(result.classCounts.ready_with_caveats).toBe(1);
     expect(result.classCounts.ready).toBe(0);
-    // AC-4 preserved: the startup-context detail ROW is still not emitted.
+    // 保持 AC-4：仍不输出 startup-context 详情行。
     expect(result.checks.some((c) => c.check.endsWith(".startup-context"))).toBe(false);
   });
 });

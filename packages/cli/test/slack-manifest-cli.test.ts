@@ -1,5 +1,5 @@
-// OPR.0.6.0.5 — `rig slack manifest` is offline: it runs on the real lazily-imported daemon
-// surface with no daemon client, no tokens and no network.
+// OPR.0.6.0.5——`rig slack manifest` 为离线：它在真实懒加载 daemon
+// 表面上运行，无 daemon client、无 token、无网络。
 import { afterEach, describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -52,8 +52,8 @@ describe("rig slack manifest (offline)", () => {
     expect(new Set(out.scopes)).toEqual(new Set(bundle.scopes));
     expect(new Set(out.events)).toEqual(new Set(bundle.events));
     for (const scope of out.scopes) expect(out.why[scope]).not.toBe("unexplained");
-    for (const scope of BASELINE_REQUIRED_SCOPES) expect(out.why[scope]).toContain("checked by `rig slack verify`");
-    for (const f of FEATURE_SCOPES) expect(out.why[f.scope]).toContain("not checked by verify");
+    for (const scope of BASELINE_REQUIRED_SCOPES) expect(out.why[scope]).toContain("`zrig slack verify` 检查");
+    for (const f of FEATURE_SCOPES) expect(out.why[f.scope]).toContain("不由 verify 检查");
   });
 
   it("help routes to the setup doc and states verify checks only the baseline", () => {
@@ -64,7 +64,7 @@ describe("rig slack manifest (offline)", () => {
     manifest.outputHelp();
     expect(help).toContain("docs/reference/slack-app-setup.md");
     expect(help).toContain("$OPENRIG_HOME/reference/slack-app-setup.md");
-    expect(help).toContain("does not prove attachments or mentions");
+    expect(help).toContain("并不能证明附件或");
   });
 });
 
@@ -86,10 +86,10 @@ describe("next-step routing names `rig slack manifest` first", () => {
   it("status, unconfigured: text and JSON both name the manifest step", async () => {
     const text = offline({ surface: surface(false) as SlackDeps["surface"] });
     await run(text.deps, ["status"]);
-    expect(text.logs.join("\n")).toMatch(/First step: `rig slack manifest --url`/);
+    expect(text.logs.join("\n")).toMatch(/第一步：`zrig slack manifest --url`/);
     const json = offline({ surface: surface(false) as SlackDeps["surface"] });
     await run(json.deps, ["status", "--json"]);
-    expect(JSON.parse(json.logs[0]!).next).toContain("rig slack manifest --url");
+    expect(JSON.parse(json.logs[0]!).next).toContain("zrig slack manifest --url");
   });
 
   it("status, configured: no manifest step", async () => {
@@ -101,6 +101,6 @@ describe("next-step routing names `rig slack manifest` first", () => {
   it("setup's next-step hint starts with the manifest", async () => {
     const { deps, logs } = offline();
     await run(deps, ["setup", "--channel", "C123", "--reason", "fixture", "--actor", "fixture-operator"]);
-    expect(logs.find((l) => l.startsWith("Next:"))).toMatch(/^Next: if you have no Slack app yet, start with `rig slack manifest --url`/);
+    expect(logs.find((l) => l.startsWith("下一步："))).toMatch(/^下一步：如果还没有 Slack app/);
   });
 });

@@ -32,7 +32,7 @@ export function handleExportYaml(c: Context): Response {
 
   try {
     const spec = exporter.exportRig(rigId);
-    // Detect format: pod-aware RigSpec has `pods`, legacy has `schemaVersion`
+    // 探测格式：pod 感知的 RigSpec 有 `pods`，旧版有 `schemaVersion`
     const isPodAware = "pods" in spec;
     const yaml = isPodAware
       ? RigSpecCodec.serialize(spec as import("../domain/types.js").RigSpec)
@@ -45,7 +45,7 @@ export function handleExportYaml(c: Context): Response {
     if (err instanceof RigNotFoundError) {
       return c.json({ error: err.message }, 404);
     }
-    return c.json({ error: "Export failed" }, 500);
+    return c.json({ error: "导出失败" }, 500);
   }
 }
 
@@ -61,11 +61,11 @@ export function handleExportJson(c: Context): Response {
     if (err instanceof RigNotFoundError) {
       return c.json({ error: err.message }, 404);
     }
-    return c.json({ error: "Export failed" }, 500);
+    return c.json({ error: "导出失败" }, 500);
   }
 }
 
-// POST /api/rigs/import -> instantiate from YAML
+// POST /api/rigs/import -> 从 YAML 实例化
 rigspecImportRoutes.post("/", async (c) => {
   const { instantiator, podInstantiator } = getDeps(c);
   const body = await c.req.text();
@@ -82,7 +82,7 @@ rigspecImportRoutes.post("/", async (c) => {
 
   if (isPodAware) {
     const rigRoot = c.req.header("X-Rig-Root");
-    if (!rigRoot) return c.json({ error: "X-Rig-Root header required for pod-aware specs", code: "missing_rig_root" }, 400);
+    if (!rigRoot) return c.json({ error: "pod 感知的 spec 需要 X-Rig-Root 头", code: "missing_rig_root" }, 400);
     const cwdOverride = c.req.header("X-Cwd-Override") ?? undefined;
 
     const outcome = await podInstantiator.instantiate(body, rigRoot, { cwdOverride });
@@ -90,8 +90,8 @@ rigspecImportRoutes.post("/", async (c) => {
       const status = outcome.code === "validation_failed" ? 400
         : outcome.code === "preflight_failed" ? 409
         : outcome.code === "cycle_error" ? 400
-        // S5b final-fix F1: the running-name guard refusal is a conflict on the
-        // direct instantiation route too — never a 500 (map consistency).
+        // S5b final-fix F1：running-name 守卫拒绝在直接实例化路由上也是冲突——
+        // 绝不是 500（映射一致性）。
         : outcome.code === "rig_name_running" ? 409
         : 500;
       const body = outcome.code === "rig_name_running"
@@ -102,7 +102,7 @@ rigspecImportRoutes.post("/", async (c) => {
     return c.json(outcome.result, 201);
   }
 
-  // Legacy path
+  // 旧版路径
   let spec;
   try {
     spec = LegacyRigSpecSchema.normalize(raw);
@@ -125,12 +125,12 @@ rigspecImportRoutes.post("/", async (c) => {
   return c.json(outcome.result, 201);
 });
 
-// POST /api/rigs/import/workspace -> apply only a validated workspace declaration
+// POST /api/rigs/import/workspace -> 只应用已校验的 workspace 声明
 rigspecImportRoutes.post("/workspace", async (c) => {
   const { rigRepo } = getDeps(c);
   const targetRigId = c.req.header("X-Target-Rig-Id");
   if (!targetRigId) {
-    return c.json({ ok: false, code: "target_rig_required", error: "X-Target-Rig-Id header required for workspace-only apply" }, 400);
+    return c.json({ ok: false, code: "target_rig_required", error: "仅 workspace 应用需要 X-Target-Rig-Id 头" }, 400);
   }
 
   const body = await c.req.text();
@@ -146,7 +146,7 @@ rigspecImportRoutes.post("/workspace", async (c) => {
     ? (raw as Record<string, unknown>)["workspace"]
     : undefined;
   if (workspace === undefined || workspace === null) {
-    return c.json({ ok: false, code: "workspace_required", errors: ["workspace: required for workspace-only apply"] }, 400);
+    return c.json({ ok: false, code: "workspace_required", errors: ["workspace：仅 workspace 应用时必填"] }, 400);
   }
 
   const validation = RigSpecSchema.validateWorkspace(workspace);
@@ -156,7 +156,7 @@ rigspecImportRoutes.post("/workspace", async (c) => {
 
   const normalizedWorkspace = RigSpecSchema.normalizeWorkspace(workspace)!;
   if (!rigRepo.getRig(targetRigId)) {
-    return c.json({ ok: false, code: "target_rig_not_found", error: `Rig not found: ${targetRigId}` }, 404);
+    return c.json({ ok: false, code: "target_rig_not_found", error: `未找到工作组：${targetRigId}` }, 404);
   }
 
   const current = rigRepo.getRigWorkspace(targetRigId);
@@ -166,7 +166,7 @@ rigspecImportRoutes.post("/workspace", async (c) => {
   return c.json({ rigId: targetRigId, changed, workspace: normalizedWorkspace });
 });
 
-// POST /api/rigs/import/materialize -> create rig topology without launching
+// POST /api/rigs/import/materialize -> 不启动即创建工作组拓扑
 rigspecImportRoutes.post("/materialize", async (c) => {
   const { podInstantiator } = getDeps(c);
   const body = await c.req.text();
@@ -181,11 +181,11 @@ rigspecImportRoutes.post("/materialize", async (c) => {
 
   const isPodAware = raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).pods);
   if (!isPodAware) {
-    return c.json({ error: "materialize-only requires a pod-aware RigSpec", code: "pod_aware_required" }, 400);
+    return c.json({ error: "仅 materialize 需要 pod 感知的 RigSpec", code: "pod_aware_required" }, 400);
   }
 
   const rigRoot = c.req.header("X-Rig-Root");
-  if (!rigRoot) return c.json({ error: "X-Rig-Root header required for pod-aware specs", code: "missing_rig_root" }, 400);
+  if (!rigRoot) return c.json({ error: "pod 感知的 spec 需要 X-Rig-Root 头", code: "missing_rig_root" }, 400);
 
   const targetRigId = c.req.header("X-Target-Rig-Id") ?? undefined;
   const cwdOverride = c.req.header("X-Cwd-Override") ?? undefined;
@@ -205,7 +205,7 @@ rigspecImportRoutes.post("/materialize", async (c) => {
   return c.json(outcome.result, 201);
 });
 
-// POST /api/rigs/import/validate -> validate only (auto-detects format)
+// POST /api/rigs/import/validate -> 仅校验（自动探测格式）
 rigspecImportRoutes.post("/validate", async (c) => {
   const body = await c.req.text();
 
@@ -224,7 +224,7 @@ rigspecImportRoutes.post("/validate", async (c) => {
   return c.json(LegacyRigSpecSchema.validate(raw));
 });
 
-// POST /api/rigs/import/preflight -> validate + preflight (auto-detects format)
+// POST /api/rigs/import/preflight -> 校验 + preflight（自动探测格式）
 rigspecImportRoutes.post("/preflight", async (c) => {
   const { preflight, podInstantiator } = getDeps(c);
   const body = await c.req.text();
@@ -240,7 +240,7 @@ rigspecImportRoutes.post("/preflight", async (c) => {
   const isPodAware = raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).pods);
   if (isPodAware) {
     const rigRoot = c.req.header("X-Rig-Root");
-    if (!rigRoot) return c.json({ ready: false, errors: ["X-Rig-Root header required for pod-aware specs"], warnings: [] }, 400);
+    if (!rigRoot) return c.json({ ready: false, errors: ["pod 感知的 spec 需要 X-Rig-Root 头"], warnings: [] }, 400);
     const cwdOverride = c.req.header("X-Cwd-Override") ?? undefined;
     const fsOps = { readFile: (p: string) => fs.readFileSync(p, "utf-8"), exists: (p: string) => fs.existsSync(p) };
     const { execSync } = await import("node:child_process");
@@ -258,7 +258,7 @@ rigspecImportRoutes.post("/preflight", async (c) => {
     return c.json(result);
   }
 
-  // Legacy
+  // 旧版
   let spec;
   try {
     spec = LegacyRigSpecSchema.normalize(raw);

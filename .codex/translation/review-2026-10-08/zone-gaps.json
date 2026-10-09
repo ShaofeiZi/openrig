@@ -1,0 +1,108 @@
+{
+  "ledger_interface": {
+    "writer": "统一台账写者(本agent)，唯一写者；勿自行state.py claim/done",
+    "workers_send": "发送: owner + source_path + 期望动作(claim|done|fail|skip|set-validation) + 说明/证据",
+    "i_run": "python3 .codex/translation/scripts/state.py <cmd> <owner> <source> [note]",
+    "done_semantics": "整文件指定内容全文完成且已验收；局部修复只能 needs_review/failed；不得把审读等同完成",
+    "no_auto_upgrade": "未经验证的文件不直接升 done/validated"
+  },
+  "new_files_not_in_ledger": {
+    "tui": [
+      "packages/tui/src/text-width.ts"
+    ],
+    "cli_daemon": [
+      "scripts/zrig-entry.test.mjs"
+    ],
+    "web_ui": []
+  },
+  "self_reported_done_to_revalidate": {
+    "cli_daemon": {
+      "count": 247,
+      "top": [
+        {
+          "owner": "daemon-core-h",
+          "source_path": "packages/daemon/test/bundle-routes.test.ts",
+          "eng_comment_lines": 293
+        },
+        {
+          "owner": "cli-a",
+          "source_path": "packages/cli/test/send.test.ts",
+          "eng_comment_lines": 200
+        },
+        {
+          "owner": "daemon-core-h",
+          "source_path": "packages/daemon/test/progress-review-done-coherence.test.ts",
+          "eng_comment_lines": 170
+        },
+        {
+          "owner": "cli-a",
+          "source_path": "packages/cli/test/restore-packet.test.ts",
+          "eng_comment_lines": 166
+        },
+        {
+          "owner": "cli-core-a",
+          "source_path": "packages/cli/test/daemon-lifecycle.test.ts",
+          "eng_comment_lines": 127
+        },
+        {
+          "owner": "cli-b",
+          "source_path": "packages/cli/test/queue.test.ts",
+          "eng_comment_lines": 114
+        },
+        {
+          "owner": "daemon-core-h",
+          "source_path": "packages/daemon/test/helpers/hermetic-env.ts",
+          "eng_comment_lines": 95
+        },
+        {
+          "owner": "daemon-core-h",
+          "source_path": "packages/daemon/test/p34-terminal-closing-writers.test.ts",
+          "eng_comment_lines": 76
+        },
+        {
+          "owner": "cli-a",
+          "source_path": "packages/cli/test/up.test.ts",
+          "eng_comment_lines": 70
+        },
+        {
+          "owner": "cli-core-b",
+          "source_path": "packages/cli/test/scope-commands.test.ts",
+          "eng_comment_lines": 65
+        },
+        {
+          "owner": "cli-core-a",
+          "source_path": "packages/cli/test/config-store-extended.test.ts",
+          "eng_comment_lines": 65
+        },
+        {
+          "owner": "daemon-core-h",
+          "source_path": "packages/daemon/test/activity-motion-fold.test.ts",
+          "eng_comment_lines": 63
+        },
+        {
+          "owner": "cli-a",
+          "source_path": "packages/cli/test/setup.test.ts",
+          "eng_comment_lines": 61
+        },
+        {
+          "owner": "cli-core-b",
+          "source_path": "packages/cli/test/ps-compact.test.ts",
+          "eng_comment_lines": 58
+        },
+        {
+          "owner": "cli-b",
+          "source_path": "packages/cli/test/plugin.test.ts",
+          "eng_comment_lines": 53
+        }
+      ]
+    },
+    "tui": {
+      "count": 0,
+      "top": []
+    },
+    "web_ui": {
+      "count": 0,
+      "top": []
+    }
+  }
+}

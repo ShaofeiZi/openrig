@@ -1,14 +1,13 @@
-// OPR skills-vendoring exec-mode QA-blocker (candidate 4c6d8883): CWD plugin
-// projection dropped executable mode — real default-profile materialization wrote
-// 0755 helper scripts (e.g. claude-compaction-restore/scripts/*.mjs) as 0644 because
-// both adapters project via text readFile -> writeFile (writeFileSync utf-8), which
-// creates dest files with the process default mode and never reapplies the source mode.
+// OPR skills-vendoring exec-mode QA blocker（candidate 4c6d8883）：CWD plugin projection 丢失
+// executable mode——真实 default-profile materialization 将 0755 helper script（例如
+// claude-compaction-restore/scripts/*.mjs）写成 0644，因为两个 adapter 都通过 text
+// readFile -> writeFile（writeFileSync utf-8）投影，使用 process 默认 mode 创建 dest file，
+// 且不重新应用 source mode。
 //
-// These are REAL-fs pins (actual 0755 exec helper + 0644 non-exec neighbor) exercising
-// the same fsOps shape production wires in startup.ts, plus a statMode/chmod pair. They
-// cover the fresh-write path AND the content-identical idempotence-skip path (the QA repro
-// re-materializes an already-present tree, so mode must be reconciled even when content
-// is byte-identical and the write is skipped).
+// 这些 REAL-fs pin（真实 0755 exec helper + 相邻 0644 non-exec 文件）覆盖 production 在
+// startup.ts 接入的同一 fsOps shape，以及 statMode/chmod 对。它们同时覆盖 fresh-write 路径与
+// content-identical idempotence-skip 路径（QA repro 会重新 materialize 已存在的 tree，因此即使
+// content 逐字相同且跳过写入，也必须 reconcile mode）。
 
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
@@ -28,7 +27,7 @@ function mockTmux() {
   } as unknown as ConstructorParameters<typeof ClaudeCodeAdapter>[0]["tmux"];
 }
 
-// Real-fs ops mirroring startup.ts, PLUS statMode/chmod (the mode-preserving primitives).
+// 镜像 startup.ts 的 real-fs ops，并增加 statMode/chmod（保留 mode 的 primitive）。
 function realFsOps() {
   return {
     readFile: (p: string) => fs.readFileSync(p, "utf-8"),
@@ -68,7 +67,7 @@ function makePlan(absolutePath: string): ProjectionPlan {
   return { runtime: "claude-code", cwd: "/cwd", entries: [entry], startup: { files: [], actions: [] }, conflicts: [], noOps: [], diagnostics: [] };
 }
 
-// Build a real plugin source tree: an executable nested helper (0755) + a non-exec neighbor (0644).
+// 构建真实 plugin source tree：可执行 nested helper（0755）+ 相邻 non-exec 文件（0644）。
 function seedPluginTree(root: string) {
   const skillDir = nodePath.join(root, "openrig-core", "skills", "compaction-restore");
   fs.mkdirSync(nodePath.join(skillDir, "scripts"), { recursive: true });
@@ -87,8 +86,8 @@ function seedPluginTree(root: string) {
 
 function perm(p: string): number { return fs.statSync(p).mode & 0o777; }
 
-describe("CWD plugin projection preserves executable mode (skills-vendoring QA blocker)", () => {
-  it("Claude: nested exec helper keeps 0755, non-exec neighbor stays 0644", async () => {
+describe("CWD plugin projection 保留 executable mode（skills-vendoring QA blocker）", () => {
+  it("Claude：nested exec helper 保持 0755，non-exec 相邻文件保持 0644", async () => {
     const base = fs.mkdtempSync(nodePath.join(os.tmpdir(), "execmode-claude-"));
     const src = nodePath.join(base, "src");
     const rel = seedPluginTree(src);
@@ -104,7 +103,7 @@ describe("CWD plugin projection preserves executable mode (skills-vendoring QA b
     expect(perm(outSkill)).toBe(0o644);
   });
 
-  it("Codex: nested exec helper keeps 0755, non-exec neighbor stays 0644", async () => {
+  it("Codex：nested exec helper 保持 0755，non-exec 相邻文件保持 0644", async () => {
     const base = fs.mkdtempSync(nodePath.join(os.tmpdir(), "execmode-codex-"));
     const src = nodePath.join(base, "src");
     const rel = seedPluginTree(src);
@@ -120,14 +119,14 @@ describe("CWD plugin projection preserves executable mode (skills-vendoring QA b
     expect(perm(outSkill)).toBe(0o644);
   });
 
-  it("Claude: re-projection reconciles mode even when content is byte-identical (idempotence-skip path)", async () => {
+  it("Claude：即使 content 逐字相同，重新 projection 也会 reconcile mode（idempotence-skip 路径）", async () => {
     const base = fs.mkdtempSync(nodePath.join(os.tmpdir(), "execmode-claude-idem-"));
     const src = nodePath.join(base, "src");
     const rel = seedPluginTree(src);
     const cwd = nodePath.join(base, "cwd");
     const adapter = new ClaudeCodeAdapter({ tmux: mockTmux(), fsOps: realFsOps() as unknown as ClaudeAdapterFsOps });
 
-    // Pre-place a byte-identical projected helper with the WRONG (0644) mode — the exact QA state.
+    // 预置 content 逐字相同但 mode 错误（0644）的 projected helper——准确复现 QA state。
     const outHook = nodePath.join(cwd, ".claude/plugins/openrig-core", rel.hookRel);
     fs.mkdirSync(nodePath.dirname(outHook), { recursive: true });
     fs.copyFileSync(nodePath.join(src, "openrig-core", rel.hookRel), outHook);
@@ -136,7 +135,7 @@ describe("CWD plugin projection preserves executable mode (skills-vendoring QA b
 
     await adapter.project(makePlan(nodePath.join(src, "openrig-core")), makeBinding(cwd));
 
-    // Content unchanged (write skipped) but mode must be reconciled to the source 0755.
+    // content 未变化（跳过写入），但 mode 必须 reconcile 为 source 的 0755。
     expect(perm(outHook)).toBe(0o755);
   });
 });

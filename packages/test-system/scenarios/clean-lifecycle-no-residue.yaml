@@ -1,18 +1,17 @@
-# Defect class: install/up/down residue.
-# Marathon origin: rigs that came up but left tmux sessions / seat rows behind on
-#   down, so a later `up` collided with residue or `ps` showed ghosts.
-# SEED (class: install-up-down-residue): the seeded regression leaves the worker's
-#   tmux session (or its ps/seat row) alive after `down`. The post-down `expect ps
-#   empty` MUST catch it — the runner diff shows expected {rigs: []} vs an observed
-#   lingering seat, naming the residue class.
-# Deps: none beyond the 51-02 runner + hermetic helper (R-10). Lifecycle only; no emit.
+# 缺陷类别：install/up/down 残留。
+# Marathon 来源：工作组启动后，`down` 时仍残留 tmux 会话 / 席位行，
+#   导致后续 `up` 与残留冲突，或 `ps` 显示幽灵条目。
+# SEED（class: install-up-down-residue）：种子回归会在 `down` 后保留 worker 的
+#   tmux 会话（或其 ps/seat 行）。关闭后的 `expect ps empty` 必须发现它——
+#   runner diff 会展示预期 {rigs: []} 与观察到的残留席位，并标明残留类别。
+# 依赖：除 51-02 runner + hermetic helper（R-10）外无其他依赖。仅涉及生命周期，不使用 emit。
 scenario: clean-lifecycle-no-residue
 topology: ./solo-stub.yaml
 steps:
   - up: {}
-  # Real `rig ps --json` = BARE ARRAY of per-RIG PsEntry {name,rigName,nodeCount,
-  # runningCount,status,...} — NOT the sketch {rigs:[{seats}]} (seats are the separate
-  # `--nodes`/NodeEntry endpoint). Subset match on the bare array.
+  # 真实 `rig ps --json` = 由逐工作组 PsEntry {name,rigName,nodeCount,
+  # runningCount,status,...} 组成的裸数组——不是草图 {rigs:[{seats}]}
+  #（seats 属于独立的 `--nodes`/NodeEntry 端点）。在裸数组上执行子集匹配。
   - expect:
       surface: ps
       within: 30s
@@ -20,10 +19,9 @@ steps:
         - name: solo-stub
           status: running
   - down: {}
-  # DEFERRED (F-#1, ROUTED to 51-02): "settled → NO residue" needs an EMPTINESS assertion.
-  # A subset `match: []` trivially passes (empty subset ⊆ anything) so it does NOT assert
-  # emptiness; the locked format has no negative/count/absent form. Routed for a
-  # `match:[]`-means-exact-empty rule (or an `absent`/`count` verb). NOT faked with a
-  # trivially-green match. Lights up when the emptiness form lands.
-  #   - expect: { surface: ps, within: 30s, match: [] }   # <- would be false-green; held
+  # 已延后（F-#1，路由至 51-02）：“稳定 → 无残留”需要空集断言。
+  # 子集 `match: []` 会无条件通过（空集是任意集合的子集），因此无法断言为空；
+  # 锁定格式没有 negative/count/absent 形式。已路由，等待 `match:[]` 表示精确空集的规则
+  #（或 `absent`/`count` 动词）。不得用无条件通过的匹配伪造绿色结果。空集形式落地后启用。
+  #   - expect: { surface: ps, within: 30s, match: [] }   # <- 会产生假绿，暂不启用
   - seed_regression: {class: install-up-down-residue}

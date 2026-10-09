@@ -1,9 +1,7 @@
-// 0.3.1 slice 06 forward-fix #2 — integration test for the
-// production wire that crosses the client → /api/files/read
-// boundary. Exercises absolute-slicePath → relative-path conversion
-// against /api/files/roots, then asserts /api/files/read is called
-// with the relative path (rejecting absolute would 4xx on the
-// daemon side).
+// 0.3.1 slice 06 forward-fix #2——跨 client → /api/files/read
+// 边界的生产接线集成测试。演练绝对 slicePath → 相对路径转换
+// 对 /api/files/roots，再断言 /api/files/read 以相对路径调用
+//（拒绝绝对会在 daemon 侧 4xx）。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor, cleanup } from "@testing-library/react";
@@ -107,14 +105,14 @@ describe("useSliceTimelineMarkdown — production wire calls /api/files/read wit
       relPath: "missions/release-0.3.1/slices/06-storytelling-primitives",
     });
 
-    // Assert the actual /api/files/read call shape — root + relPath
-    // are properly URL-encoded; the path is RELATIVE not absolute.
+    // 断言实际 /api/files/read 调用形状——root + relPath
+    // 正确 URL 编码；路径是相对而非绝对。
     const readCall = fetchSpy.mock.calls.find((c) => String(c[0]).startsWith("/api/files/read"));
     expect(readCall).toBeDefined();
     const readUrl = new URL(`http://localhost${readCall![0]}`);
     expect(readUrl.searchParams.get("root")).toBe("workspace");
     expect(readUrl.searchParams.get("path")).toBe("missions/release-0.3.1/slices/06-storytelling-primitives/timeline.md");
-    // Negative: must NOT be the absolute path that the daemon would reject.
+    // 负向：不得是 daemon 会拒绝的绝对路径。
     expect(readUrl.searchParams.get("path")).not.toMatch(/^\//);
   });
 
@@ -137,8 +135,8 @@ describe("useSliceTimelineMarkdown — production wire calls /api/files/read wit
     expect(result.current.unavailable).toBe(true);
     expect(result.current.content).toBeNull();
     expect(result.current.resolved).toBeNull();
-    // /api/files/read was NOT called — no relative path could be
-    // computed, so the hook short-circuits before issuing the read.
+    // /api/files/read 未被调用——算不出相对路径，
+    // 故 hook 在发 read 前短路。
     const readCall = fetchSpy.mock.calls.find((c) => String(c[0]).startsWith("/api/files/read"));
     expect(readCall).toBeUndefined();
   });

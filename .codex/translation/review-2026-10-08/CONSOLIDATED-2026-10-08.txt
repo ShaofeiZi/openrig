@@ -1,0 +1,62 @@
+================================================================
+zrig 中文化核查与续修结果
+日期：2026-10-08　范围：/Users/bytedance/openrig（vendored/生成目录已排除）
+================================================================
+
+【分母与零点】
+- 真源：.codex/translation/manifests/<owner>.json 分片（owner 互斥），由 state.py rebuild 统一重建。
+- 零点 = 3062 行（0 漂移 / 0 跨 owner 重复 / 0 源路径不存在）。
+- 期末 = 3068 行：补登 6 条真实增量。
+- 排除（不算目标、不改副本）：packages/cli/daemon/、packages/daemon/context-packs/、
+  dist/、node_modules/、*.zh-CN.md 产出本身。
+
+【四维 status × validation_state 交叉表（期末 3068，算术自洽）】
+                self_reported  validated   passed  needs_review  无标记  行小计
+done                  1962        851       101        6           0    2920
+skipped                 3          0         0        0         142     145
+pending                 0          0         0        0           3       3
+- within-done = 1962+851+101+6 = 2920。
+- 零点历史 validated+passed = 952，属台账自述标记，非本轮逐项独立验收。
+
+【本轮独立验收项（共 5；按全文翻译 vs 仅测试通过区分）】
+A. 全文翻译完成并验证（3）：
+  1. daemon/test/progress-review-done-coherence.test.ts —— 注释/JSDoc/it 标题/expect 消息全文中文化，20 用例绿。
+  2. scripts/zrig-entry.test.mjs —— 入口根测试全文中文审读，5 用例绿。
+  3. tui/test/text-width.test.ts（新增）—— 全文中文，CJK 双宽+SGR 剥离+clipW，5 用例绿。
+B. 定向修复 + 测试通过（2，非全文，不称整文件 done）：
+  4. daemon/src/domain/profile-resolver.ts —— 3 处人可读错误串中文化，34 用例绿。
+  5. daemon/src/domain/mission-control/mission-control-read-layer.ts —— 2 处展示串中文化，8 用例绿。
+- 仅审读或测试通过不等同整文件全文已验收。
+
+【本轮实改文件（19 = CLI4 + UI6 + TUI9，按各区 before 快照比较）】
+- CLI/daemon 4：profile-resolver.ts、mission-control-read-layer.ts、
+  progress-review-done-coherence.test.ts、send.test.ts（部分）。
+- UI 6：MissionStatusBadge.tsx、BundleInspector.tsx、PackageList.tsx + 各自测试。
+- TUI 9：hydrate.ts、render.ts、execution/workflow-model.ts、text-width.ts +
+  hydrate/render-regressions/workflow-journey/execution-view/text-width 五个测试。
+
+【最终定向验证】
+- 21 个定向测试文件 / 301 个测试用例全过，0 失败（复跑不叠加；用例数≠断言数）。
+- npm run build rc=0；daemon/ui/cli/tui 四包 tsc 全 rc=0。
+- rig/openrig/zrig：--version 均 0.6.0；--help 首行"用法： X [选项] [命令]"；
+  未知命令 --json 三者一致（commander.unknownCommand + 中文 message）。
+- TUI 5 文件运行前后 hash 一致；results.json hash 为期末采样，引用以修正版报告为准。
+
+【needs_review（done 内 6，局部增量）】
+- cli-a send.test.ts：作者口径英文注释 153→149（作者特定启发式计数；精确人类残留需逐行审读）。
+- ui-c MissionStatusBadge.tsx；ui-b BundleInspector.tsx、PackageList.tsx（错误框加前缀，非 error.message 全译）。
+- tui hydrate.ts（fixture 已修、36 用例绿；config 标签定向改）。
+- tui text-width.ts（clipW SGR 处理 + 5 用例绿；其余 SGR/Unicode 未验，维持 needs_review）。
+
+【pending（3，过测但只测试未全文，下一轮接续点）】
+- ui-a build-setup-prompt.test.ts、ui-b bundle-inspector.test.ts、ui-b package-list.test.ts
+  —— 均在 301 用例内通过；登记为测试文件补登，仅测试通过、非整文件翻译验收，故留 pending。
+
+【剩余与风险（如实，不称 100%）】
+1. 本轮未执行 UI/TUI 视觉核查；dropW/columnIndex 类 ANSI 潜在点仍在。
+2. 除 21 个定向文件外，其余 vitest 套件与 test:repo 其余 scripts 本轮未跑。
+3. 启发式英文注释≥3 扫描对冻结 247 路径集重扫仍命中，已核验其中 coherence 的 4 条 =
+   tarball 文件名 + SHA256、Proof contract 文档名/哈希，属机器证据行；启发式命中待人工分类，
+   不可当确认未译注释。
+4. self_reported / 历史标记与全项目实际未完成不能单靠 counts 判断；剩余全量验收未确定。
+================================================================

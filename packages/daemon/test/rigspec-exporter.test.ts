@@ -62,12 +62,12 @@ describe("RigSpecExporter", () => {
       cwd: "/repo",
     });
     rigRepo.addEdge(rig.id, n1.id, n2.id, "delegates_to");
-    // Add a binding to n1 (should be excluded from export)
+    // 为 n1 添加绑定（导出时应排除）。
     sessionRegistry.updateBinding(n1.id, { tmuxSession: "r99-orchestrator", cmuxSurface: "s-1" });
     return { rig, n1, n2 };
   }
 
-  it("export rig with nodes and edges -> valid RigSpec", () => {
+  it("导出包含节点和边的工作组 -> 有效 RigSpec", () => {
     const { rig } = seedRig();
     const spec = exporter.exportRig(rig.id);
 
@@ -77,7 +77,7 @@ describe("RigSpecExporter", () => {
     expect(spec.edges).toHaveLength(1);
   });
 
-  it("exported spec passes schema validation", () => {
+  it("导出的 spec 通过 schema 校验", () => {
     const { rig } = seedRig();
     const spec = exporter.exportRig(rig.id);
 
@@ -85,18 +85,18 @@ describe("RigSpecExporter", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("exported node ids are logical_ids (not DB PKs)", () => {
+  it("导出的节点标识为 logical_id（而非数据库主键）", () => {
     const { rig, n1 } = seedRig();
     const spec = exporter.exportRig(rig.id);
 
-    // Node ids should be logical_ids like "orchestrator", not ULIDs
+    // 节点标识应是 "orchestrator" 等 logical_id，而非 ULID。
     expect(spec.nodes[0]!.id).toBe("orchestrator");
     expect(spec.nodes[1]!.id).toBe("worker");
-    // Definitely not DB primary keys
+    // 确认不是数据库主键。
     expect(spec.nodes[0]!.id).not.toBe(n1.id);
   });
 
-  it("exported edges use logical_ids for from/to", () => {
+  it("导出的边在 from/to 中使用 logical_id", () => {
     const { rig } = seedRig();
     const spec = exporter.exportRig(rig.id);
 
@@ -105,9 +105,9 @@ describe("RigSpecExporter", () => {
     expect(spec.edges[0]!.kind).toBe("delegates_to");
   });
 
-  it("export excludes session IDs, resume tokens, binding data", () => {
+  it("导出内容排除会话标识、恢复令牌和绑定数据", () => {
     const { rig, n1 } = seedRig();
-    // Add a session with resume data
+    // 添加包含恢复数据的会话。
     const sess = sessionRegistry.registerSession(n1.id, "r99-orchestrator");
     db.prepare("UPDATE sessions SET resume_type = ?, resume_token = ? WHERE id = ?")
       .run("claude_name", "secret-token", sess.id);
@@ -115,7 +115,7 @@ describe("RigSpecExporter", () => {
     const spec = exporter.exportRig(rig.id);
     const yaml = RigSpecCodec.serialize(spec);
 
-    // None of these should appear in the exported spec
+    // 这些内容都不应出现在导出的 spec 中。
     expect(yaml).not.toContain("secret-token");
     expect(yaml).not.toContain(sess.id);
     expect(yaml).not.toContain("tmux_session");
@@ -123,7 +123,7 @@ describe("RigSpecExporter", () => {
     expect(yaml).not.toContain(n1.id); // DB PK
   });
 
-  it("export includes role, runtime, model, cwd, surfaceHint, packageRefs", () => {
+  it("导出内容包含 role、runtime、model、cwd、surfaceHint、packageRefs", () => {
     const { rig } = seedRig();
     const spec = exporter.exportRig(rig.id);
 
@@ -136,9 +136,9 @@ describe("RigSpecExporter", () => {
     expect(orch.packageRefs).toEqual(["github:example/pkg@v1"]);
   });
 
-  it("export includes restorePolicy from latest session (newest wins)", () => {
+  it("导出内容包含最新会话的 restorePolicy（最新者优先）", () => {
     const { rig, n1 } = seedRig();
-    // Add two sessions with explicit timestamps and different policies
+    // 添加两个时间戳明确、策略不同的会话。
     db.prepare(
       "INSERT INTO sessions (id, node_id, session_name, status, restore_policy, created_at) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("sess-old", n1.id, "r99-orchestrator", "exited", "relaunch_fresh", "2026-03-23 01:00:00");
@@ -148,10 +148,10 @@ describe("RigSpecExporter", () => {
 
     const spec = exporter.exportRig(rig.id);
     const orch = spec.nodes.find((n) => n.id === "orchestrator")!;
-    expect(orch.restorePolicy).toBe("checkpoint_only"); // newest session wins
+    expect(orch.restorePolicy).toBe("checkpoint_only"); // 最新会话优先
   });
 
-  it("export restorePolicy falls back to node.restore_policy when no session", () => {
+  it("无会话时，导出的 restorePolicy 回退到 node.restore_policy", () => {
     const rig = rigRepo.createRig("r98");
     rigRepo.addNode(rig.id, "worker", {
       runtime: "codex",
@@ -162,7 +162,7 @@ describe("RigSpecExporter", () => {
     expect(spec.nodes[0]!.restorePolicy).toBe("relaunch_fresh");
   });
 
-  it("export with multiple sessions: latest by createdAt wins", () => {
+  it("存在多个会话时导出 createdAt 最新者", () => {
     const { rig, n2 } = seedRig();
     db.prepare(
       "INSERT INTO sessions (id, node_id, session_name, status, restore_policy, created_at) VALUES (?, ?, ?, ?, ?, ?)"
@@ -176,13 +176,13 @@ describe("RigSpecExporter", () => {
 
     const spec = exporter.exportRig(rig.id);
     const worker = spec.nodes.find((n) => n.id === "worker")!;
-    expect(worker.restorePolicy).toBe("relaunch_fresh"); // s2 is newest
+    expect(worker.restorePolicy).toBe("relaunch_fresh"); // s2 最新
   });
 
-  it("same-second sessions: tiebreaker by id (ULID) for deterministic result", () => {
+  it("同秒会话按标识（ULID）打破平局，保证结果确定", () => {
     const { rig, n1 } = seedRig();
-    // Two sessions with identical createdAt but different IDs and policies
-    // ULID "B..." sorts after "A..." so sess-b is the "latest"
+    // 两个会话具有相同 createdAt，但标识和策略不同。
+    // ULID "B..." 排在 "A..." 之后，因此 sess-b 为“最新”会话。
     db.prepare(
       "INSERT INTO sessions (id, node_id, session_name, status, restore_policy, created_at) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("AAAA_sess_first", n1.id, "r99-orchestrator", "running", "relaunch_fresh", "2026-03-23 05:00:00");
@@ -192,36 +192,36 @@ describe("RigSpecExporter", () => {
 
     const spec = exporter.exportRig(rig.id);
     const orch = spec.nodes.find((n) => n.id === "orchestrator")!;
-    // ZZZZ sorts after AAAA, so checkpoint_only should win
+    // ZZZZ 排在 AAAA 之后，因此 checkpoint_only 应胜出。
     expect(orch.restorePolicy).toBe("checkpoint_only");
   });
 
-  it("export nonexistent rig -> throws RigNotFoundError", () => {
+  it("导出不存在的工作组 -> 抛出 RigNotFoundError", () => {
     expect(() => exporter.exportRig("nonexistent")).toThrow(RigNotFoundError);
   });
 
-  it("export node with null runtime -> throws explicit error", () => {
+  it("导出 runtime 为 null 的节点 -> 抛出明确错误", () => {
     const rig = rigRepo.createRig("r97");
-    // Insert node with no runtime via raw SQL to bypass addNode defaults
+    // 通过原始 SQL 插入没有 runtime 的节点，以绕过 addNode 默认值。
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id) VALUES (?, ?, ?)")
       .run("node-no-rt", rig.id, "broken-node");
 
-    expect(() => exporter.exportRig(rig.id)).toThrow(/runtime.*required/i);
+    expect(() => exporter.exportRig(rig.id)).toThrow(/缺少必填 runtime/i);
   });
 
-  it("export edge with unmapped sourceId -> throws", () => {
+  it("导出 sourceId 未映射的边 -> 抛错", () => {
     const rig = rigRepo.createRig("r96");
     const n1 = rigRepo.addNode(rig.id, "worker", { runtime: "claude-code" });
-    // Temporarily disable FK to insert corrupted edge
+    // 临时禁用外键以插入损坏的边。
     db.pragma("foreign_keys = OFF");
     db.prepare("INSERT INTO edges (id, rig_id, source_id, target_id, kind) VALUES (?, ?, ?, ?, ?)")
       .run("bad-edge", rig.id, "nonexistent-source", n1.id, "delegates_to");
     db.pragma("foreign_keys = ON");
 
-    expect(() => exporter.exportRig(rig.id)).toThrow(/unmapped.*source/i);
+    expect(() => exporter.exportRig(rig.id)).toThrow(/source node ID.*未映射/i);
   });
 
-  it("export edge with unmapped targetId -> throws", () => {
+  it("导出 targetId 未映射的边 -> 抛错", () => {
     const rig = rigRepo.createRig("r95");
     const n1 = rigRepo.addNode(rig.id, "worker", { runtime: "claude-code" });
     db.pragma("foreign_keys = OFF");
@@ -229,10 +229,10 @@ describe("RigSpecExporter", () => {
       .run("bad-edge", rig.id, n1.id, "nonexistent-target", "delegates_to");
     db.pragma("foreign_keys = ON");
 
-    expect(() => exporter.exportRig(rig.id)).toThrow(/unmapped.*target/i);
+    expect(() => exporter.exportRig(rig.id)).toThrow(/target node ID.*未映射/i);
   });
 
-  it("round-trip: export -> serialize -> parse -> validate all pass", () => {
+  it("往返：导出 -> 序列化 -> 解析 -> 校验全部通过", () => {
     const { rig } = seedRig();
     const spec = exporter.exportRig(rig.id);
     const yaml = RigSpecCodec.serialize(spec);
@@ -241,18 +241,18 @@ describe("RigSpecExporter", () => {
     expect(result.valid).toBe(true);
   });
 
-  it("constructor throws on mismatched db handles", () => {
+  it("数据库 handle 不匹配时构造函数抛错", () => {
     const otherDb = setupDb();
     const otherRepo = new RigRepository(otherDb);
 
     expect(() => new RigSpecExporter({ rigRepo: otherRepo, sessionRegistry }))
-      .toThrow(/same db handle/);
+      .toThrow(/RigSpecExporter：rigRepo 与 sessionRegistry 必须共享同一个数据库句柄/);
 
     otherDb.close();
   });
 });
 
-describe("RigSpecExporter (pod-aware)", () => {
+describe("RigSpecExporter（感知 pod）", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -281,7 +281,7 @@ describe("RigSpecExporter (pod-aware)", () => {
     return { rig, devPod, archPod, n1, n2, n3 };
   }
 
-  it("exports pod-aware rig with pods, members, and edges", () => {
+  it("导出包含 pod、成员和边的 pod 感知工作组", () => {
     const { rig } = seedPodRig();
     const spec = exporter.exportRig(rig.id) as import("../src/domain/types.js").RigSpec;
     expect(spec.version).toBe("0.2");
@@ -294,7 +294,7 @@ describe("RigSpecExporter (pod-aware)", () => {
     expect(devPod.members[0]!.agentRef).toContain("agents/");
   });
 
-  it("exports the persisted workspace declaration", () => {
+  it("导出持久化的 workspace 声明", () => {
     const { rig } = seedPodRig();
     const workspace: import("../src/domain/types.js").WorkspaceSpec = {
       workspaceRoot: "/workspace",
@@ -315,7 +315,7 @@ describe("RigSpecExporter (pod-aware)", () => {
     expect(PodRigSpecSchema.normalize(parsed as Record<string, unknown>).workspace).toEqual(workspace);
   });
 
-  it("pod-local edges use member-local ids", () => {
+  it("pod 内部边使用成员局部标识", () => {
     const { rig } = seedPodRig();
     const spec = exporter.exportRig(rig.id) as import("../src/domain/types.js").RigSpec;
     const devPod = spec.pods.find((p) => p.id === "dev")!;
@@ -324,7 +324,7 @@ describe("RigSpecExporter (pod-aware)", () => {
     expect(devPod.edges[0]!.to).toBe("qa");
   });
 
-  it("cross-pod edges use qualified podId.memberId", () => {
+  it("跨 pod 边使用限定形式 podId.memberId", () => {
     const { rig } = seedPodRig();
     const spec = exporter.exportRig(rig.id) as import("../src/domain/types.js").RigSpec;
     expect(spec.edges).toHaveLength(1);
@@ -332,7 +332,7 @@ describe("RigSpecExporter (pod-aware)", () => {
     expect(spec.edges[0]!.to).toBe("arch.reviewer");
   });
 
-  it("exports empty pods using persisted pod namespace instead of pod ULID", () => {
+  it("导出空 pod 时使用持久化的 pod namespace，而非 pod ULID", () => {
     const rig = rigRepo.createRig("empty-pod-test");
     const pod = podRepo.createPod(rig.id, "research", "Research", { summary: "empty pod" });
 
@@ -342,7 +342,7 @@ describe("RigSpecExporter (pod-aware)", () => {
     expect(spec.pods[0]!.id).not.toBe(pod.id);
   });
 
-  it("round-trip: export -> serialize -> parse -> validate passes", () => {
+  it("往返：导出 -> 序列化 -> 解析 -> 校验通过", () => {
     const { rig } = seedPodRig();
     const spec = exporter.exportRig(rig.id) as import("../src/domain/types.js").RigSpec;
     const yaml = PodRigSpecCodec.serialize(spec);

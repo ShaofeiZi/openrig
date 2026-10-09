@@ -1,7 +1,6 @@
-// Slice-04 (OPR.0.5.0.4) — the ProviderService seam. The routes (seam B) are thin over this
-// interface; the real implementation (collection from rig auth + seat registry + the three lanes,
-// switch composition + action recording) is seams C/D. Keeping this an interface lets the routes
-// register and honestly 503 until the production service is wired.
+// Slice-04（OPR.0.5.0.4）——ProviderService 接缝。路由（接缝 B）是此 interface 上的轻量层；
+// 真实实现（从 rig auth + seat registry + 三条 lane 收集、switch 组合 + action 记录）位于接缝 C/D。
+// 保持 interface 形态，使路由可以注册，并在生产 service 接入前如实返回 503。
 
 import type { FourBlockReadModel, PrecheckResult } from "./provider-types.js";
 
@@ -17,10 +16,10 @@ export interface ProviderSwitchInput {
 }
 
 /**
- * A discriminated union that TYPE-ENFORCES BR-1 fail-visibility: `succeeded`/`rebind_in_progress`
- * carry NO reasons; `failed_safely` REQUIRES a non-empty reason tuple — a failed switch with no
- * explanation cannot compile. Reasons are string[] so seam D can surface OPERATIONAL failures
- * (auth-switch failure, action-record failure), not only PrecheckReason refusals.
+ * 通过类型强制 BR-1 失败可见性的 discriminated union：`succeeded`/`rebind_in_progress` 不携带
+ * reason；`failed_safely` 要求非空 reason tuple——没有解释的 switch failure 无法通过编译。
+ * reason 为 string[]，使接缝 D 除 PrecheckReason 拒绝外，还能呈现操作失败（auth switch failure、
+ * 操作记录失败）。
  */
 export type ProviderSwitchResult =
   | { outcome: "succeeded" }
@@ -28,10 +27,10 @@ export type ProviderSwitchResult =
   | { outcome: "failed_safely"; reasons: [string, ...string[]] };
 
 export interface ProviderService {
-  /** The ONE four-block read model; the filtered block routes are projections of this. */
+  /** 唯一 four-block read model；过滤后的 block 路由是它的 projection。 */
   getReadModel(): Promise<FourBlockReadModel>;
-  /** Resolve the target/seat state at call time (validate-at-use) and return the safety verdict. */
+  /** 调用时解析 target/seat state（使用时校验），并返回 safety verdict。 */
   precheck(input: ProviderPrecheckInput): Promise<PrecheckResult>;
-  /** Precheck-gated switch; returns an explicit business outcome (never a transport error). */
+  /** 受 precheck gate 控制的 switch；返回显式业务 outcome（绝不是 transport error）。 */
   switchAccount(input: ProviderSwitchInput): Promise<ProviderSwitchResult>;
 }

@@ -8,13 +8,12 @@ import { realDeps } from "./daemon.js";
 import type { StatusDeps } from "./status.js";
 
 /**
- * `rig watchdog` — coordination primitive Watchdog (PL-004 Phase C).
+ * `rig watchdog` —— 协调原语 Watchdog（PL-004 Phase C）。
  *
- * Backed by `/api/watchdog`. Operates only via the daemon HTTP API.
+ * 由 `/api/watchdog` 支撑。仅通过后台服务 HTTP API 操作。
  *
- * Per PRD § Watchdog: scheduler is daemon-native and joins the
- * supervision tree. Phase D includes workflow-keepalive alongside the
- * Phase C watchdog policies.
+ * 依据 PRD § Watchdog：调度器为后台服务原生，并入监督树。
+ * Phase D 在 Phase C 看门狗策略之外纳入 workflow-keepalive。
  */
 
 export interface WatchdogDeps extends StatusDeps {}
@@ -61,7 +60,7 @@ function compactWatchdogJob(job: Record<string, unknown>): Record<string, unknow
 
 export function watchdogCommand(depsOverride?: WatchdogDeps): Command {
   const cmd = new Command("watchdog").description(
-    "Coordination Watchdog — daemon-native scheduler for reminders, artifact gates, workflow health, idle gates, and context usage",
+    "协调看门狗——后台服务原生调度器，用于提醒、产物闸门、工作流健康、空闲闸门与上下文用量",
   );
   const getDeps = (): WatchdogDeps =>
     depsOverride ?? {
@@ -72,24 +71,24 @@ export function watchdogCommand(depsOverride?: WatchdogDeps): Command {
   cmd
     .command("register")
     .description(
-      "Register a watchdog; queue block --wake-watchdog attaches its job id. " +
-      "Context transcripts measured 113K–153K tokens/MB. The margin is the protection " +
-      "because prompt-bound consumers act only at turn boundaries",
+      "注册一个看门狗；queue block --wake-watchdog 会挂上其作业 id。" +
+      "上下文会话记录实测 113K–153K tokens/MB。余量即保护，因为绑定提示的消费方" +
+      "只在回合边界行动",
     )
-    .option("--spec <path>", "Path to YAML spec file (optional for context-usage-threshold)")
-    .requiredOption("--policy <policy>", "Policy name (one of: periodic-reminder, artifact-pool-ready, edge-artifact-required, workflow-keepalive, idle-gate-qitem, context-usage-threshold)")
-    .requiredOption("--target-session <session>", "Canonical <member>@<rig> target")
-    .requiredOption("--interval-seconds <n>", "Evaluation interval (positive integer)")
-    .requiredOption("--registered-by <session>", "Registering session (for audit)")
-    .option("--threshold-bytes <n>", "(context-usage-threshold) transcript byte threshold")
-    .option("--threshold-mb <n>", "(context-usage-threshold) transcript threshold in decimal MB")
-    .option("--watched-file <path>", "(context-usage-threshold) explicit transcript file; recorded context path is the fallback")
-    .option("--requires-job <jobId>", "(context-usage-threshold) require this earlier job's receipt for the same occupant")
-    .option("--message <text>", "(context-usage-threshold) message delivered when the threshold fires")
-    .option("--active-wake-interval-seconds <n>", "(pool-ready-specific) wake-up cadence when actionable artifacts exist")
-    .option("--scan-interval-seconds <n>", "(pool-ready-specific) artifact pool scan cadence")
-    .option("--json", "JSON output for agents")
-    .addHelpText("after", "\nTranscript density varies by session shape; do not tune a context threshold near the context wall.\n\nThe returned job id can be attached to a deliberate park with: rig queue block <qitemId> --on <blocker> --continuation <what-resumes> --wake-watchdog <jobId>")
+    .option("--spec <path>", "YAML 规范文件路径（context-usage-threshold 可省略）")
+    .requiredOption("--policy <policy>", "策略名（可选值：periodic-reminder、artifact-pool-ready、edge-artifact-required、workflow-keepalive、idle-gate-qitem、context-usage-threshold）")
+    .requiredOption("--target-session <session>", "规范的 <member>@<rig> 目标")
+    .requiredOption("--interval-seconds <n>", "评估间隔（正整数）")
+    .requiredOption("--registered-by <session>", "注册方会话（供审计）")
+    .option("--threshold-bytes <n>", "（context-usage-threshold）会话记录字节阈值")
+    .option("--threshold-mb <n>", "（context-usage-threshold）会话记录阈值，十进制 MB")
+    .option("--watched-file <path>", "（context-usage-threshold）显式指定会话记录文件；缺省回退到已记录的上下文路径")
+    .option("--requires-job <jobId>", "（context-usage-threshold）要求同占用者此前某作业的回执")
+    .option("--message <text>", "（context-usage-threshold）触发阈值时投递的消息")
+    .option("--active-wake-interval-seconds <n>", "（pool-ready 专用）存在可执行产物时的唤醒节奏")
+    .option("--scan-interval-seconds <n>", "（pool-ready 专用）产物池扫描节奏")
+    .option("--json", "供智能体使用的 JSON 输出")
+    .addHelpText("after", "\n会话记录密度随会话形态变化；不要把上下文阈值调到贴近上下文墙。\n\n返回的作业 id 可挂到一次有意驻留上：zrig queue block <qitemId> --on <blocker> --continuation <what-resumes> --wake-watchdog <jobId>")
     .action(async (opts: {
       spec?: string;
       policy: string;
@@ -109,12 +108,12 @@ export function watchdogCommand(depsOverride?: WatchdogDeps): Command {
       let specYaml: string;
       const isContextUsageThreshold = opts.policy === "context-usage-threshold";
       if (!opts.spec && !isContextUsageThreshold) {
-        console.error("--spec is required unless --policy is context-usage-threshold");
+        console.error("除非 --policy 为 context-usage-threshold，否则必须提供 --spec");
         process.exitCode = 1;
         return;
       }
       if (opts.thresholdBytes !== undefined && opts.thresholdMb !== undefined) {
-        console.error("Use only one of --threshold-bytes or --threshold-mb");
+        console.error("--threshold-bytes 与 --threshold-mb 只能用其一");
         process.exitCode = 1;
         return;
       }
@@ -128,12 +127,12 @@ export function watchdogCommand(depsOverride?: WatchdogDeps): Command {
         thresholdBytes !== undefined &&
         (!Number.isInteger(thresholdBytes) || thresholdBytes <= 0)
       ) {
-        console.error("Context threshold must resolve to a positive whole number of bytes");
+        console.error("上下文阈值必须解析为正整数字节数");
         process.exitCode = 1;
         return;
       }
       if (isContextUsageThreshold && !opts.spec && thresholdBytes === undefined) {
-        console.error("Context threshold requires --threshold-bytes or --threshold-mb when --spec is omitted");
+        console.error("省略 --spec 时，上下文阈值必须提供 --threshold-bytes 或 --threshold-mb");
         process.exitCode = 1;
         return;
       }
@@ -142,7 +141,7 @@ export function watchdogCommand(depsOverride?: WatchdogDeps): Command {
         try {
           specYaml = readFileSync(opts.spec, "utf-8");
         } catch (err) {
-          console.error(`Failed to read spec file ${opts.spec}: ${err instanceof Error ? err.message : err}`);
+          console.error(`读取规范文件 ${opts.spec} 失败：${err instanceof Error ? err.message : err}`);
           process.exitCode = 1;
           return;
         }
@@ -182,15 +181,15 @@ export function watchdogCommand(depsOverride?: WatchdogDeps): Command {
 
   cmd
     .command("list")
-    .description("List watchdog jobs (default: active + compact + at most 100)")
-    .option("-a, --all", "Include stopped and terminal history")
-    .option("--full", "Show complete per-job fields")
-    .option("--limit <n>", "Result limit (default: 100 unless --full)", positiveIntArg)
-    .option("--json", "JSON output for agents (compact unless --full)")
+    .description("列出看门狗作业（默认：active + 紧凑 + 至多 100 条）")
+    .option("-a, --all", "包含已停止与终态历史")
+    .option("--full", "显示每个作业的完整字段")
+    .option("--limit <n>", "结果上限（默认：100，除非 --full）", positiveIntArg)
+    .option("--json", "供智能体使用的 JSON 输出（除非 --full 否则紧凑）")
     .addHelpText("after", `
-Default: active jobs, compact fields, at most 100 records.
-Use --all for stopped/terminal history and --full for complete per-job fields.
-The pre-0.5.8 complete array remains available with: rig watchdog list --all --full`)
+默认：active 作业、紧凑字段、至多 100 条记录。
+用 --all 查看已停止/终态历史，用 --full 查看每个作业的完整字段。
+0.5.8 之前的完整数组仍可通过：zrig watchdog list --all --full 获取`)
     .action(async (opts: { all?: boolean; full?: boolean; limit?: number; json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -205,8 +204,8 @@ The pre-0.5.8 complete array remains available with: rig watchdog list --all --f
         const limit = opts.limit ?? (opts.full ? undefined : 100);
         if (limit !== undefined && byState.length > limit) {
           console.error(
-            `Showing ${limit} of ${byState.length} matching watchdog jobs; ` +
-            "use --full for every active job or --all --full for complete history.",
+            `共 ${byState.length} 个匹配的看门狗作业，仅显示前 ${limit} 条；` +
+            "用 --full 查看全部 active 作业，或 --all --full 查看完整历史。",
           );
         }
         const bounded = limit === undefined
@@ -225,8 +224,8 @@ The pre-0.5.8 complete array remains available with: rig watchdog list --all --f
 
   cmd
     .command("show <jobId>")
-    .description("Show one watchdog job")
-    .option("--json", "JSON output for agents")
+    .description("查看一个看门狗作业")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (jobId: string, opts: { json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -237,8 +236,8 @@ The pre-0.5.8 complete array remains available with: rig watchdog list --all --f
 
   cmd
     .command("status <jobId>")
-    .description("Show one watchdog job + recent evaluation history")
-    .option("--json", "JSON output for agents")
+    .description("查看一个看门狗作业 + 近期评估历史")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (jobId: string, opts: { json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -249,9 +248,9 @@ The pre-0.5.8 complete array remains available with: rig watchdog list --all --f
 
   cmd
     .command("stop <jobId>")
-    .description("Stop a watchdog job (operator-stopped; scheduler skips it)")
-    .option("--reason <text>", "Stop reason (free-form; recorded in terminal_reason)")
-    .option("--json", "JSON output for agents")
+    .description("停止一个看门狗作业（操作者停止；调度器将跳过它）")
+    .option("--reason <text>", "停止原因（自由文本；记入 terminal_reason）")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (jobId: string, opts: { reason?: string; json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {

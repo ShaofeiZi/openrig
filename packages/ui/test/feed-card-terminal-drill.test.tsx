@@ -1,11 +1,11 @@
-// OPR.0.3.3.20 + OPR.0.4.0.24 — card-level drill to LIVE terminal.
+// OPR.0.3.3.20 + OPR.0.4.0.24——卡级钻取到 live 终端。
 //
-// Discriminator A (scope fence): the drill resolves through the session-NAME
-// seam and mounts FocusedTerminal (live xterm/WebSocket) — NO /preview fetch.
-// Discriminator B (honesty): no resolved session -> DISABLED with honest title.
-// AC-3 (degradation): when the live terminal cannot connect, FocusedTerminal
-// surfaces an honest "Terminal unavailable" state — no /preview fallback,
-// no false captured promise.
+// 判别 A（scope 围栏）：钻取经 session 名接缝解析并挂载 FocusedTerminal
+//（live xterm/WebSocket）——不发 /preview fetch。
+// 判别 B（诚实）：无解析 session -> DISABLED 并带诚实 title。
+// AC-3（降级）：live 终端连不上时，FocusedTerminal
+// 如实显示”终端不可用”状态——不回退 /preview，
+// 无伪造 captured promise。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
@@ -90,11 +90,11 @@ describe("FeedCardTerminalDrill (AC-4)", () => {
 
     const drill = getByTestId("feed-card-drill-card-3") as HTMLButtonElement;
     expect(drill.disabled).toBe(true);
-    expect(drill.title).toContain("No session resolved");
+    expect(drill.title).toContain("本卡片未解析到会话");
 
     fireEvent.click(drill);
     expect(queryByTestId("feed-card-drill-card-3-terminal-popover")).toBeNull();
-    // Nothing was fetched — no empty/wrong terminal opened.
+    // 未 fetch 任何东西——未打开空/错终端。
     const previewCalls = mockFetch.mock.calls.map((c) => String(c[0])).filter((u) => u.includes("/api/sessions/"));
     expect(previewCalls).toHaveLength(0);
   });
@@ -105,8 +105,8 @@ describe("FeedCardTerminalDrill (AC-4)", () => {
     );
 
     const drill = getByTestId("feed-card-drill-card-4") as HTMLButtonElement;
-    expect(drill.textContent).toContain("live terminal");
-    expect(drill.title).toContain("live terminal");
+    expect(drill.textContent).toContain("实时终端");
+    expect(drill.title).toContain("实时终端");
     expect(drill.textContent).not.toContain("captured");
     expect(drill.textContent).not.toContain("preview");
     expect(drill.title).not.toContain("captured");
@@ -135,14 +135,14 @@ describe("FeedCardTerminalDrill (AC-4)", () => {
     expect(popoverEl.innerHTML).not.toContain("snapshot");
   });
 
-  it("AC-3 source guard: FocusedTerminal has Terminal unavailable error branch", async () => {
+  it("AC-3 source guard: FocusedTerminal has explicit terminal-unavailable error branch", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const src = fs.readFileSync(
       path.resolve(import.meta.dirname, "../src/components/terminal/FocusedTerminal.tsx"),
       "utf-8",
     );
-    expect(src).toContain("Terminal unavailable");
+    expect(src).toContain("终端不可用");
     expect(src).toContain("setError");
     expect(src).toContain("[disconnected - reconnecting...]");
   });

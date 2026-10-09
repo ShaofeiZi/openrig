@@ -1,6 +1,5 @@
-// OPR.0.4.1.27 — Option-B level control: the 3 named levels <-> the 5
-// feed.subscriptions toggle-state-sets. action_required is floored ON (never
-// part of a level preset); the level reframes ONLY the 4 toggleable kinds.
+// OPR.0.4.1.27——方案 B 级别控制：3 个具名级别与 5 组 feed.subscriptions 开关状态
+// 相互映射。action_required 始终保持开启，绝不属于级别预设；级别只调整其余 4 种可切换类别。
 import { describe, it, expect } from "vitest";
 import type { FeedSubscriptionState } from "../src/hooks/useFeedSubscriptions.js";
 import {

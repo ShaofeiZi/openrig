@@ -1,8 +1,7 @@
-# bug-fix slice deprecation-check-keys-widening — fixture.
-# Reproduces the e3bfc08 scenario: profiles.<name>.uses.hooks: []
-# placeholder. validateAgentSpec must reject this (the strict validator
-# returned invalid in the slice 05 forward-fix path that motivated the
-# 2026-05-11 hotfix). T5: regression coverage for that class.
+# bug-fix 切片 deprecation-check-keys-widening——fixture。
+# 复现 e3bfc08 场景：profiles.<name>.uses.hooks: [] 占位符。
+# validateAgentSpec 必须拒绝它（促成 2026-05-11 热修复的 slice 05 前向修复路径中，
+# 严格验证器返回 invalid）。T5：覆盖这一类别的回归测试。
 name: agent-with-empty-hooks
 version: "1.0"
 

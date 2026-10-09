@@ -1,10 +1,8 @@
-// Slice-03 rig-context ATOM 2 (STORE) — recursive path-addressed discovery
-// consuming the SEALED Atom-1 assertSafePackRef at the DISCOVERY and RESOLVE
-// trust boundaries (spec §2: "Refs are the contract … stable, path-like
-// address (e.g. `packs/compaction-restore`, `as-built/queue-internals`)").
-// PM watch (orch): the matrix asserts the per-segment/traversal REJECT
-// behavior verbatim against §2 + the sealed contract — never merely that the
-// assert was invoked. Colon-id addressing stays intact (strip = LATER atom).
+// Slice-03 rig-context 原子 2（存储）——递归的路径寻址发现，在发现与解析信任边界
+// 使用已封存的原子 1 assertSafePackRef（规范 §2：“引用就是契约……稳定、类似路径的
+// 地址（例如 `packs/compaction-restore`、`as-built/queue-internals`）”）。
+// PM 关注项（编排）：矩阵依据 §2 与封存契约逐字断言逐段/遍历拒绝行为——绝不只是
+// 断言调用发生过。冒号 ID 寻址保持不变（移除属于后续原子）。
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -28,7 +26,7 @@ files:
   writeFileSync(join(dir, "notes.md"), `# ${name}\n`);
 }
 
-describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => {
+describe("原子 2——递归路径寻址发现（规范 §2 引用）", () => {
   let tmp: string;
   let root: string;
 
@@ -43,7 +41,7 @@ describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => 
 
   const lib = () => new ContextPackLibraryService({ roots: [{ path: root, sourceType: "user_file" }] });
 
-  it("discovers the spec's OWN example refs — 2-level `packs/compaction-restore` and `as-built/queue-internals` (RED: one-level scan misses them)", () => {
+  it("发现规范自身的示例引用——两层的 `packs/compaction-restore` 与 `as-built/queue-internals`（红灯：单层扫描会漏掉）", () => {
     writePackAt(root, "packs/compaction-restore", "compaction-restore");
     writePackAt(root, "as-built/queue-internals", "queue-internals");
     const service = lib();
@@ -54,7 +52,7 @@ describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => 
     expect(refs).toEqual(["as-built/queue-internals", "packs/compaction-restore"]);
   });
 
-  it("one-level packs keep their existing shape (ref = the dir name) and deeper nesting works too", () => {
+  it("单层包保持现有形态（ref = 目录名），更深层嵌套也可用", () => {
     writePackAt(root, "flat", "flat");
     writePackAt(root, "a/b/c", "deep");
     const service = lib();
@@ -62,7 +60,7 @@ describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => 
     expect(service.list().map((e) => e.relativePath).sort()).toEqual(["a/b/c", "flat"]);
   });
 
-  it("assigns one identity to a System World pack through the actual overlapping startup roots", () => {
+  it("通过真实重叠启动根目录为 System World 包分配单一身份", () => {
     writePackAt(root, "system/baseline", "system-baseline");
     const service = new ContextPackLibraryService({
       roots: openRigContextLibraryRoots(root).map((path) => ({ path, sourceType: "user_file" })),
@@ -75,7 +73,7 @@ describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => 
     expect(service.getByRef("baseline")).toBeNull();
   });
 
-  it("keeps same-name top-level and System World packs distinct through the actual startup roots", () => {
+  it("通过真实启动根目录保持同名顶层包与 System World 包相互独立", () => {
     writePackAt(root, "baseline", "operator-baseline");
     writePackAt(root, "system/baseline", "system-baseline");
     const service = new ContextPackLibraryService({
@@ -89,29 +87,29 @@ describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => 
     expect(service.getByRef("system/baseline")?.sourcePath).toBe(join(root, "system", "baseline"));
   });
 
-  it("packs are LEAVES: a manifest below a pack dir belongs to that pack's subtree and is not indexed as its own pack", () => {
+  it("包是叶节点：包目录下方的清单属于该包子树，不会被索引为独立包", () => {
     writePackAt(root, "outer", "outer");
-    writePackAt(root, "outer/inner", "inner"); // below a manifest-bearing dir
+    writePackAt(root, "outer/inner", "inner"); // 位于包含清单的目录下方
     const service = lib();
     const result = service.scan();
     expect(result.count).toBe(1);
     expect(service.list()[0]!.relativePath).toBe("outer");
   });
 
-  it("DISCOVERY boundary: an unsafe on-disk ref is a STRUCTURED, FAIL-VISIBLE error and the pack is SKIPPED (never indexed)", () => {
-    writePackAt(root, "bad name", "badpack"); // whitespace segment — unsafe per the sealed contract
+  it("发现边界：不安全的磁盘引用产生结构化、失败可见的错误，且跳过该包（绝不索引）", () => {
+    writePackAt(root, "bad name", "badpack"); // 含空白的段——依据封存契约不安全
     writePackAt(root, "good", "goodpack");
     const service = lib();
     const result = service.scan();
-    expect(result.count).toBe(1); // only the safe pack indexed
+    expect(result.count).toBe(1); // 仅索引安全包
     expect(service.list().map((e) => e.relativePath)).toEqual(["good"]);
-    expect(result.errors).toHaveLength(1); // fail-visible, structured
+    expect(result.errors).toHaveLength(1); // 失败可见且结构化
     expect(result.errors[0]!.source).toContain("bad name");
-    expect(result.errors[0]!.error).toMatch(/unsafe pack ref/);
-    expect(result.errors[0]!.error).toMatch(/'\/'-separated segments/); // the sealed per-segment contract, verbatim
+    expect(result.errors[0]!.error).toMatch(/不安全的 pack ref/);
+    expect(result.errors[0]!.error).toMatch(/'\/' 分隔的路径段/); // 逐字匹配封存的逐段契约
   });
 
-  it("RESOLVE boundary: getByRef returns the entry for a safe ref and null for a safe-but-absent ref", () => {
+  it("解析边界：getByRef 对安全引用返回条目，对安全但不存在的引用返回 null", () => {
     writePackAt(root, "packs/compaction-restore", "compaction-restore");
     const service = lib();
     service.scan();
@@ -122,21 +120,20 @@ describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => 
     expect(service.getByRef("packs/absent")).toBeNull();
   });
 
-  // PM-watch verbatim matrix: each case is a §2/sealed-contract clause and the
-  // pin is the ACTUAL reject behavior — structured ContextPackError, and the
-  // message carries the per-segment contract text from the sealed module.
+  // PM 关注项逐字矩阵：每个案例对应 §2/封存契约中的条款，固定的是实际拒绝行为——
+  // 结构化 ContextPackError，且消息携带封存模块中的逐段契约文本。
   it.each([
-    ["traversal segment", "../escape"],
-    ["interior traversal", "a/../b"],
-    ["dot segment", "packs/./x"],
-    ["absolute path (empty leading segment)", "/abs"],
-    ["empty interior segment", "a//b"],
-    ["trailing slash (empty segment)", "a/"],
-    ["whitespace in segment", "bad name"],
-    ["colon injection in segment", "a:b"],
-    ["empty ref", ""],
-    ["leading dot (dotfile segment)", ".hidden/x"],
-  ])("RESOLVE boundary REJECTS %s (`%s`) with a structured error and no lookup", (_label, ref) => {
+    ["遍历段", "../escape"],
+    ["内部遍历", "a/../b"],
+    ["点号段", "packs/./x"],
+    ["绝对路径（首段为空）", "/abs"],
+    ["内部空段", "a//b"],
+    ["尾部斜杠（空段）", "a/"],
+    ["段内空白", "bad name"],
+    ["段内冒号注入", "a:b"],
+    ["空引用", ""],
+    ["前导点（点文件段）", ".hidden/x"],
+  ])("解析边界以结构化错误拒绝 %s（`%s`），且不执行查找", (_label, ref) => {
     writePackAt(root, "good", "goodpack");
     const service = lib();
     service.scan();
@@ -148,16 +145,16 @@ describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => 
     }
     expect(thrown).toBeInstanceOf(ContextPackError);
     expect((thrown as ContextPackError).code).toBe("unsafe_ref");
-    expect((thrown as ContextPackError).message).toMatch(/unsafe pack ref/);
+    expect((thrown as ContextPackError).message).toMatch(/不安全的 pack ref/);
   });
 
-  it("GUARD PROBE 1 (canonical): distinct refs with IDENTICAL manifest name/version stay independent — each ref resolves to its OWN physical pack", () => {
+  it("护栏探针 1（标准）：清单名称/版本相同的不同引用保持独立——每个引用解析到各自的物理包", () => {
     writePackAt(root, "packs/a", "same", "1");
     writePackAt(root, "packs/b", "same", "1");
     const service = lib();
     const result = service.scan();
     expect(result.errors).toEqual([]);
-    expect(result.count).toBe(2); // ref is the PRIMARY identity — no collapse
+    expect(result.count).toBe(2); // ref 是主要身份——不会合并
     expect(service.list().map((e) => e.relativePath).sort()).toEqual(["packs/a", "packs/b"]);
     const a = service.getByRef("packs/a");
     const b = service.getByRef("packs/b");
@@ -165,7 +162,7 @@ describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => 
     expect(b!.sourcePath.endsWith("packs/b")).toBe(true);
   });
 
-  it("GUARD PROBE 2 (canonical): same ref across roots is last-root-wins EVERYWHERE — one list row, count one, resolve to the last entry", () => {
+  it("护栏探针 2（标准）：跨根目录的同一引用处处遵循后根胜出——列表一行、计数为一，并解析到最后条目", () => {
     const rootB = join(tmp, "storeB2");
     mkdirSync(rootB, { recursive: true });
     writePackAt(root, "packs/dup", "first", "1");
@@ -177,14 +174,14 @@ describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => 
       ],
     });
     const result = service.scan();
-    expect(result.count).toBe(1); // not two — precedence applies to the WHOLE index
+    expect(result.count).toBe(1); // 不是两个——优先级应用于整个索引
     const rows = service.list();
     expect(rows).toHaveLength(1);
     expect(rows[0]!.name).toBe("second");
     expect(service.getByRef("packs/dup")!.version).toBe("2");
   });
 
-  it("last root wins when two roots serve the SAME ref (mirrors the id-index precedence)", () => {
+  it("两个根目录提供同一引用时后根胜出（与 ID 索引优先级一致）", () => {
     const rootB = join(tmp, "storeB");
     mkdirSync(rootB, { recursive: true });
     writePackAt(root, "packs/dup", "dup", "1");
@@ -199,12 +196,11 @@ describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => 
     expect(service.getByRef("packs/dup")!.version).toBe("2");
   });
 
-  it("same-ref override across roots resolves last-root-wins; distinct refs keep DISTINCT ids (Atom 5 — no legacy shared-id collapse)", () => {
-    // packs/a exists in BOTH roots (root-2 override); packs/b only in root-1.
-    // The ref is the identity: packs/a → last root (user_file) wins; packs/b →
-    // builtin. Though all three share manifest same:1, the two surviving refs
-    // keep DISTINCT ids — the legacy name:version id would have collapsed them
-    // into one shared-id resolution (the shadowing this strip removes).
+  it("跨根目录的同引用覆盖按后根胜出解析；不同引用保持不同 ID（原子 5——不再按旧共享 ID 合并）", () => {
+    // packs/a 在两个根目录中都存在（root-2 覆盖）；packs/b 仅在 root-1 中。
+    // ref 就是身份：packs/a → 后根（user_file）胜出；packs/b → builtin。虽然三者都共享
+    // 清单 same:1，但两个保留的引用仍有不同 ID——旧版 name:version ID 会把它们合并为
+    // 一次共享 ID 解析（此切片消除了这种遮蔽）。
     const rootB = join(tmp, "storeB3");
     mkdirSync(rootB, { recursive: true });
     writePackAt(root, "packs/a", "same", "1");
@@ -217,28 +213,28 @@ describe("ATOM 2 — recursive path-addressed discovery (spec §2 refs)", () => 
       ],
     });
     const result = service.scan();
-    expect(result.count).toBe(2); // primary ref semantics unchanged
-    expect(service.getByRef("packs/a")!.sourceType).toBe("user_file"); // root-2 override wins the ref
+    expect(result.count).toBe(2); // 主要 ref 语义不变
+    expect(service.getByRef("packs/a")!.sourceType).toBe("user_file"); // root-2 覆盖值赢得引用
     expect(service.getByRef("packs/b")!.sourceType).toBe("builtin");
     expect(service.getByRef("packs/a")!.id).toBe("context-pack:packs/a");
     expect(service.getByRef("packs/b")!.id).toBe("context-pack:packs/b");
     expect(service.getByRef("packs/a")!.id).not.toBe(service.getByRef("packs/b")!.id);
   });
 
-  it("colon-id addressing is REMOVED (Atom 5): id is context-pack:<ref>, resolution is by-ref only", () => {
+  it("冒号 ID 寻址已移除（原子 5）：ID 为 context-pack:<ref>，仅按 ref 解析", () => {
     writePackAt(root, "packs/compaction-restore", "compaction-restore", "3");
     const service = lib();
     service.scan();
     const entry = service.getByRef("packs/compaction-restore");
     expect(entry).not.toBeNull();
     expect(entry!.id).toBe("context-pack:packs/compaction-restore");
-    // the legacy colon-id accessor no longer exists on the service
+    // 服务上不再存在旧版冒号 ID 访问器
     expect((service as unknown as { get?: unknown }).get).toBeUndefined();
   });
 
-  it("symlinked directories are not traversed during discovery (existing lstat-dirent semantics carried into recursion)", () => {
+  it("发现期间不遍历符号链接目录（现有 lstat-dirent 语义延续到递归）", () => {
     writePackAt(root, "real/target", "target");
-    // a symlink elsewhere in the tree must not create a second discovery path
+    // 树中其他位置的符号链接不得形成第二条发现路径
     const { symlinkSync } = require("node:fs") as typeof import("node:fs");
     symlinkSync(join(root, "real"), join(root, "alias"));
     const service = lib();

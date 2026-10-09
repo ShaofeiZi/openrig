@@ -1,0 +1,65 @@
+batch2 current ledger snapshot (read-only, NOT terminal)
+generated: 2026-10-08T22:59:56
+note: validation cumulative/fail still changing by verifier; do not treat as final.
+
+== total ==
+records: 3068
+status: done=2920, skipped=145, pending=3
+category: code-comment=2536, doc=343, config-template=115, meta=45, manifest=29
+done=2920 validation: self_reported=1648, validated=819, passed=447, needs_review=6
+
+== pending (3) ==
+  code-comment   packages/ui/test/build-setup-prompt.test.ts
+  code-comment   packages/ui/test/bundle-inspector.test.ts
+  code-comment   packages/ui/test/package-list.test.ts
+
+== done & validation != passed (needs real acceptance) by category/owner/validation ==
+  code-comment     cli-a              needs_review   1
+  code-comment     cli-a              self_reported  74
+  code-comment     cli-b              needs_review   1
+  code-comment     cli-b              self_reported  79
+  code-comment     cli-core-a         needs_review   1
+  code-comment     cli-core-a         self_reported  91
+  code-comment     cli-core-a         validated      2
+  code-comment     cli-core-b         self_reported  98
+  code-comment     cli-core-b         validated      1
+  code-comment     daemon-api         self_reported  113
+  code-comment     daemon-api         validated      1
+  code-comment     daemon-content     validated      28
+  code-comment     daemon-core-a      self_reported  92
+  code-comment     daemon-core-a      validated      1
+  code-comment     daemon-core-b      self_reported  97
+  code-comment     daemon-core-c      self_reported  97
+  code-comment     daemon-core-d      self_reported  92
+  code-comment     daemon-core-d      validated      4
+  code-comment     daemon-core-e      self_reported  95
+  code-comment     daemon-core-e      validated      2
+  code-comment     daemon-core-f      validated      97
+  code-comment     daemon-core-g      self_reported  97
+  code-comment     daemon-core-h      needs_review   1
+  code-comment     daemon-core-h      self_reported  93
+  code-comment     daemon-core-h      validated      1
+  code-comment     daemon-core-i      self_reported  92
+  code-comment     daemon-core-i      validated      4
+  code-comment     daemon-core-j      self_reported  97
+  code-comment     daemon-core-k      self_reported  97
+  code-comment     daemon-core-k      validated      1
+  code-comment     daemon-runtime     self_reported  61
+  code-comment     daemon-runtime     validated      113
+  code-comment     entry              self_reported  51
+  code-comment     entry              validated      1
+  code-comment     extras             self_reported  21
+  code-comment     extras             validated      4
+  code-comment     tui                needs_review   2
+  code-comment     tui                self_reported  55
+  code-comment     tui                validated      1
+  code-comment     ui-a               validated      174
+  code-comment     ui-b               validated      176
+  code-comment     ui-c               validated      169
+  config-template  daemon-content     validated      33
+  config-template  daemon-runtime     validated      6
+  config-template  docs-packages-a    self_reported  33
+  config-template  entry              self_reported  4
+  config-template  extras             self_reported  18
+  manifest         entry              self_reported  1
+done-non-passed total: 2473

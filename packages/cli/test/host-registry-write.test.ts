@@ -4,9 +4,9 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { addHostEntry, loadHostRegistry, validateHostRegistry } from "../src/host-registry.js";
 
-// OPR.0.4.4.13 FR-1 — the registry write path: ONE validation source (the
-// loader's rules, verbatim), atomic write, duplicate refusal, and the
-// qa1-guard ROUND-TRIP proof (add → loader reads back the identical entry).
+// OPR.0.4.4.13 FR-1——registry write 路径：唯一验证源（
+// loader 规则，逐字）、原子写、重复拒绝、及
+// qa1-guard 往返证明（add → loader 读回相同 entry）。
 describe("addHostEntry (rig host add write path)", () => {
   let dir: string;
   let regPath: string;
@@ -47,14 +47,14 @@ describe("addHostEntry (rig host add write path)", () => {
     expect(addHostEntry({ id: "dup", transport: "ssh", target: "a" }, regPath).ok).toBe(true);
     const res = addHostEntry({ id: "dup", transport: "ssh", target: "b" }, regPath);
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.error).toContain("duplicate host id 'dup'");
+    if (!res.ok) expect(res.error).toContain("重复的主机 id 'dup'");
   });
 
   it("refuses to modify a present-but-invalid registry (never clobbers operator state)", () => {
     fs.writeFileSync(regPath, "hosts: {not-an-array: true}\n");
     const res = addHostEntry({ id: "h1", transport: "ssh", target: "a" }, regPath);
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.error).toContain("refusing to modify an invalid registry");
+    if (!res.ok) expect(res.error).toContain("拒绝修改无效注册表");
     expect(fs.readFileSync(regPath, "utf-8")).toContain("not-an-array");
   });
 
@@ -68,6 +68,6 @@ describe("addHostEntry (rig host add write path)", () => {
   it("transport-appropriate field validation fires at add-time (ssh without target)", () => {
     const res = addHostEntry({ id: "x", transport: "ssh" }, regPath);
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.error).toContain("target: required");
+    if (!res.ok) expect(res.error).toContain("target：必需的非空字符串");
   });
 });

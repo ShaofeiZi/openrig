@@ -1,0 +1,42 @@
+{
+"packages/tui/test/arrow-autoscroll.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/grammar.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/motion.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/parity-content.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/parity.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/polish-focus.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/presentation-guidance.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/production-composed-system.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/pulse-live.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/pulse-view.test.ts": [
+"tui",
+"passed"
+]
+}

@@ -1,20 +1,16 @@
-// PL-005 Phase B: Mission Control notification dispatcher.
+// PL-005 Phase B：Mission Control 通知 dispatcher。
 //
-// Subscribes to relevant events on the EventBus and POSTs through the
-// configured notification adapter (ntfy default; webhook alternate).
-// Best-effort delivery; failure does NOT interrupt the underlying
-// action being notified about (PRD invariant). Emits `mission_control
-// .notification_sent` / `_failed` for the audit trail.
+// 订阅 EventBus 上的相关 event，并通过配置的通知 adapter POST（默认 ntfy，也可用 webhook）。
+// delivery 尽力而为；失败不会中断被通知的底层 action，这是 PRD 不变量。为审计轨迹发出
+// `mission_control.notification_sent` / `_failed`。
 //
-// Triggers (Phase B v0):
-//   - Mandatory: human-gate qitem arrival. Detected via the
-//     `queue.created` event (Phase A coordination event) where the
-//     created qitem's tier == "human-gate".
-//   - Optional: verb completion. When opts.includeVerbCompletion is
-//     true, `mission_control.action_executed` events also dispatch.
+// 触发条件（Phase B v0）：
+//   - 必选：human-gate qitem 到达。通过 Phase A coordination event `queue.created` 检测，
+//     其中新建 qitem 的 tier == "human-gate"。
+//   - 可选：verb 完成。opts.includeVerbCompletion 为 true 时也派发
+//     `mission_control.action_executed` event。
 //
-// Single notification target (the operator's phone). MVP context:
-// no multi-user routing, no per-user opt-in matrix.
+// 只有一个通知目标，即操作员手机。MVP 不提供多用户路由或逐用户 opt-in matrix。
 
 import type Database from "better-sqlite3";
 import type { EventBus } from "../event-bus.js";
@@ -29,9 +25,8 @@ export interface NotificationDispatcherDeps {
   eventBus: EventBus;
   adapter: NotificationAdapter;
   /**
-   * When true, dispatch on `mission_control.action_executed` events
-   * (verb completion). Default false: only human-gate arrivals
-   * trigger by default (per planner brief mandatory trigger).
+   * 为 true 时，在 `mission_control.action_executed` event（verb 完成）上派发。默认 false：
+   * 按 planner brief 的必选触发条件，默认只响应 human-gate 到达。
    */
   includeVerbCompletion?: boolean;
   missionControlBaseUrl?: string;
@@ -54,7 +49,7 @@ export class MissionControlNotificationDispatcher {
   private readonly missionControlBaseUrl: string | null;
   private readonly now: () => Date;
   private unsubscribe: (() => void) | null = null;
-  /** Per-(qitem_id, mechanism) drop set for once-per-qitem dedup. */
+  /** 按 (qitem_id, mechanism) 保存的 drop set，用于逐 qitem 单次去重。 */
   private readonly dispatchedKeys = new Set<string>();
 
   constructor(deps: NotificationDispatcherDeps) {
@@ -66,7 +61,7 @@ export class MissionControlNotificationDispatcher {
     this.now = deps.now ?? (() => new Date());
   }
 
-  /** Subscribe to relevant EventBus events. Idempotent. */
+  /** 订阅相关 EventBus event。幂等。 */
   start(): void {
     if (this.unsubscribe) return;
     this.unsubscribe = this.eventBus.subscribe((event) => {
@@ -74,7 +69,7 @@ export class MissionControlNotificationDispatcher {
     });
   }
 
-  /** Unsubscribe + clear dedup set. Idempotent. */
+  /** 取消订阅并清空 dedup set。幂等。 */
   stop(): void {
     if (this.unsubscribe) {
       this.unsubscribe();
@@ -84,9 +79,8 @@ export class MissionControlNotificationDispatcher {
   }
 
   /**
-   * Send a synthetic notification through the configured adapter so
-   * the operator can verify their setup. Used by the
-   * `POST /api/mission-control/notifications/test` route.
+   * 通过已配置 adapter 发送一条合成通知，让操作员验证设置。由
+   * `POST /api/mission-control/notifications/test` 路由使用。
    */
   async sendTest(): Promise<{
     mechanism: string;
@@ -96,8 +90,8 @@ export class MissionControlNotificationDispatcher {
     error?: string;
   }> {
     const payload: NotificationPayload = {
-      title: "Mission Control test notification",
-      body: `Synthetic test from OpenRig daemon at ${this.now().toISOString()}`,
+      title: "Mission Control 测试通知",
+      body: `来自 zrig 后台服务的合成测试，时间 ${this.now().toISOString()}`,
       tags: ["openrig", "mission-control", "test"],
     };
     const result = await this.adapter.send(payload);
@@ -119,13 +113,13 @@ export class MissionControlNotificationDispatcher {
     if (event.type === "queue.created") {
       const qitem = this.lookupQitem(event.qitemId);
       if (!qitem || qitem.tier !== "human-gate") return;
-      // Mandatory trigger: human-gate qitem arrival.
+      // 必选触发条件：human-gate qitem 到达。
       await this.dispatch({
         triggerKind: "human-gate-arrival",
         qitemId: qitem.qitem_id,
-        title: "human-gate qitem arrived",
+        title: "human-gate qitem 已到达",
         body:
-          `New human-gate qitem ${qitem.qitem_id} from ${qitem.source_session} → ${qitem.destination_session}\n\n` +
+          `新的 human-gate qitem ${qitem.qitem_id}：${qitem.source_session} → ${qitem.destination_session}\n\n` +
           truncateBody(qitem.body, 280),
         tags: ["openrig", "mission-control", "human-gate"],
       });
@@ -135,8 +129,8 @@ export class MissionControlNotificationDispatcher {
       await this.dispatch({
         triggerKind: "verb-completion",
         qitemId: event.qitemId,
-        title: `verb completed: ${event.actionVerb}`,
-        body: `Mission Control verb ${event.actionVerb} on qitem ${event.qitemId ?? "(none)"} by ${event.actorSession}`,
+        title: `verb 已完成：${event.actionVerb}`,
+        body: `${event.actorSession} 已在 qitem ${event.qitemId ?? "（无）"} 上完成 Mission Control verb ${event.actionVerb}`,
         tags: ["openrig", "mission-control", "verb-complete"],
       });
       return;
@@ -144,9 +138,8 @@ export class MissionControlNotificationDispatcher {
   }
 
   private async dispatch(input: {
-    /** Used as part of the dedup key so different triggers about the
-     * same qitem don't suppress each other (human-gate-arrival and
-     * verb-completion are distinct events). */
+    /** 作为 dedup key 的一部分，避免同一 qitem 的不同 trigger 互相抑制；human-gate-arrival
+     * 与 verb-completion 是不同 event。 */
     triggerKind: string;
     qitemId: string | null;
     title: string;
@@ -209,7 +202,7 @@ export class MissionControlNotificationDispatcher {
     return url.toString();
   }
 
-  /** Test/observability: clear once-per-qitem dedup set. */
+  /** 测试/可观测性：清空逐 qitem 单次去重 set。 */
   resetDedupForTest(): void {
     this.dispatchedKeys.clear();
   }

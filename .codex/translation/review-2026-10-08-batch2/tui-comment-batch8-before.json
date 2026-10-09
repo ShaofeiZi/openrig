@@ -1,0 +1,42 @@
+{
+"packages/tui/test/live-events.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/live-quiet-refresh.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/live.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/navigation-continuity.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/navigator-reskin.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/reading-journey.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/refresh-activity.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/render-regressions.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/round4.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/scopes-view.test.ts": [
+"tui",
+"passed"
+]
+}

@@ -8,13 +8,13 @@ import { parseCommand } from "../src/grammar.js";
 import { pageReadKey } from "../src/page-read.js";
 import { createLiveRefresh } from "../src/live.js";
 
-it("groups the existing views under six entries and preserves direct aliases and Back", () => {
+it("把既有视图归为六项，并保留直接 alias 与 Back", () => {
   const view = createViewState({ instanceId: "s03" });
-  expect(computeExplorerRows(view.get(), emptySnapshot()).filter(r => !r.label.startsWith(" ")).map(r => r.label)).toEqual(["TOPOLOGY", "SPECS", "PROJECTS", "TERMINALS", "FEED", "SYSTEM"]);
+  expect(computeExplorerRows(view.get(), emptySnapshot()).filter(r => !r.label.startsWith(" ")).map(r => r.label)).toEqual(["拓扑", "规范", "项目", "终端", "待关注", "系统"]);
   view.dispatch(parseCommand("system"));
   expect(view.get().section).toBe("system");
   const healthKey = pageReadKey(view.get());
-  expect(computeExplorerRows(view.get(), emptySnapshot()).map(r => r.label)).toEqual(expect.arrayContaining(["  Health", "  Configuration", "  Connections"]));
+  expect(computeExplorerRows(view.get(), emptySnapshot()).map(r => r.label)).toEqual(expect.arrayContaining(["  健康", "  配置", "  连接"]));
   for (const command of ["config", "connections"]) {
     view.dispatch(parseCommand(command)); expect(view.get().section).toBe(command);
     expect(pageReadKey(view.get())).not.toBe(healthKey);
@@ -47,7 +47,7 @@ it.each([80, 140])("joins delivered FYIs without making a decision and retains p
   expect(snap.attentionRead?.items.map(i => i.summary)).toContain("Book proof ready");
   expect(snap.attentionRead?.items.find(i => i.summary === "Book proof ready")?.kind).toBe("update");
   const text = attentionLines(view.get(), snap, width - 25).map(l => l.text).join("\n");
-  expect(text).toContain("All humans"); expect(text).toContain("Human requests"); expect(text).toContain("human-reader@external"); expect(text).toContain("project book"); expect(text).toContain("Existing health episode");
+  expect(text).toContain("全部人类"); expect(text).toContain("人类请求"); expect(text).toContain("human-reader@external"); expect(text).toContain("项目 book"); expect(text).toContain("Existing health episode");
   expect(snap.attentionRead?.sources.find(s => s.source === "delivered updates")?.state).toBe("partial");
   failUpdates = true; now = 2000; await live.refresh();
   expect(live.snapshot().attentionRead?.items.map(i => i.summary)).toContain("Book proof ready");
@@ -56,7 +56,7 @@ it.each([80, 140])("joins delivered FYIs without making a decision and retains p
   snap = live.snapshot();
   expect(snap.attentionRead?.detail?.lines.join("\n")).toContain("Supplemental exact detail");
   expect(snap.attentionRead?.detail?.lines.join("\n")).toContain("1000.0001");
-  expect(attentionLines(view.get(), snap, width).map(l => l.text).join("\n")).toContain("Viewing is not approval");
+  expect(attentionLines(view.get(), snap, width).map(l => l.text).join("\n")).toContain("查看不等于批准");
   failFeed = true; view.dispatch({ type: "back" }); await live.refresh();
   expect(live.snapshot().attentionRead?.items.map(i => i.summary)).toContain("Book proof ready");
   expect(live.load().stale).toBe(true);
@@ -64,12 +64,12 @@ it.each([80, 140])("joins delivered FYIs without making a decision and retains p
   live.close();
 });
 
-it("reads instance Health directly and renders its explicit scope", async () => {
+it("直接读取 instance Health 并渲染其显式 scope", async () => {
   const calls: string[] = [];
   const client = new DaemonClient({ fetchImpl: (async url => { calls.push(new URL(String(url)).pathname); return Response.json({ records: [], evaluatedAt: null, total: 0, truncated: false }); }) as typeof fetch });
   const view = createViewState({ instanceId: "s03" }); view.dispatch(parseCommand("system"));
   const snap = await hydrateSnapshot(client, undefined, null, null, null, view.get());
   expect(calls).toEqual(["/api/health"]);
   expect(snap.health.availability).toBe("loaded");
-  expect(renderScreen(view.get(), snap, { cols: 80, rows: 24 }).lines.join("\n")).toContain("Instance health");
+  expect(renderScreen(view.get(), snap, { cols: 80, rows: 24 }).lines.join("\n")).toContain("系统 · 实例健康");
 });

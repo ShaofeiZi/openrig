@@ -1,7 +1,7 @@
 // Slice-03 Atom 6 (rig walk) — the pacing primitive. Drives the CLI command with
 // an injected client (records /api/transport/send posts) + an injected sleep
-// (records inter-piece delays), so the paced push-sequence is asserted without a
-// real pane or real time.
+// (记录 piece 间延迟），故带节奏的推送序列无需
+// 真实 pane 或真实时间即可被断言。
 
 import { describe, it, expect, vi } from "vitest";
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -121,7 +121,7 @@ describe("rig walk — paced push-delivery (Atom 6)", () => {
     await captureLogs(async () => {
       await makeCmd(testDeps(sends, sleeps)).parseAsync(["node", "rig", "walk", "dev@rig", "--through", a, b, c, "--pace", "500ms"]);
     });
-    // 3 pieces → 2 inter-piece pauses; never a trailing pause after the last.
+    // 3 个 piece → 2 次 piece 间暂停；最后一个之后绝无尾随暂停。
     expect(sleeps).toEqual([500, 500]);
   });
 
@@ -152,7 +152,7 @@ describe("rig walk — paced push-delivery (Atom 6)", () => {
     const sends: RecordedSend[] = []; const sleeps: number[] = []; const gets: string[] = [];
     const deps: WalkDeps = {
       lifecycleDeps: mockLifecycleDeps(),
-      // A non-file --through arg is a context ref → resolved via the daemon.
+      // 非文件 --through 参数是 context 引用 → 经 daemon 解析。
       fileExists: () => false,
       clientFactory: () => ({
         get: async (path: string) => {
@@ -197,15 +197,15 @@ describe("rig walk — paced push-delivery (Atom 6)", () => {
     expect(sends).toEqual([]); // ZERO pieces sent — no partial walk
     expect(sleeps).toEqual([]);
     expect(errLogs.join("\n")).toMatch(/gone\.md/); // names the missing member
-    expect(errLogs.join("\n")).toMatch(/missing|incomplete|partial/i);
+    expect(errLogs.join("\n")).toMatch(/缺失|不可读/);
   });
 });
 
-// Mechanics-gate fix (desk BLOCKING ruling qitem-20260825153441-d9b3989a): walk gains PER-PIECE
-// CONSUMPTION VERIFICATION BY EFFECT — send success means TYPED, not CONSUMED. The effect source is
-// the seat's current-generation record (GET /api/sessions/:session/generation-record); on
-// staged-text-detected exactly ONE submit retry (a bare Enter via submitOnly), then fail loud naming
-// the piece; a client timeout with server-side completion reconciles BY EFFECT, never a re-send.
+// Mechanics-gate 修复（desk BLOCKING 裁定 qitem-20260825153441-d9b3989a）：
+// walk 获得逐片段按效果的消费校验——send 成功只表示已键入，不表示已消费。
+// 效果源是席位的当前代记录（GET /api/sessions/:session/generation-record）；
+// 检测到 staged-text 时恰好做一次 submit 重试（经 submitOnly 的裸 Enter），
+// 然后响亮失败并点名该片段；客户端超时而服务端已完成时按效果对账，绝不重发。
 describe("rig walk — per-piece consumption verification (RED-first, mechanics-gate fix)", () => {
   const userRec = (text: string) =>
     JSON.stringify({ type: "user", uuid: "input", message: { role: "user", content: [{ type: "text", text }] } });
@@ -232,8 +232,8 @@ describe("rig walk — per-piece consumption verification (RED-first, mechanics-
           if (path.includes("/generation-record")) {
             const m = /sinceBytes=(\d+)/.exec(path);
             const since = m ? Number(m[1]) : undefined;
-            // BYTE-consistent like the real route (stat + readSync are both bytes): a char-sliced
-            // suffix desyncs from totalBytes the moment the record carries multibyte characters.
+            // 与真实路由按字节一致（stat + readSync 都是字节）：一旦记录携带
+            // 多字节字符，按字符切片的后缀就会与 totalBytes 失同步。
             const buf = Buffer.from(w.record.content, "utf8");
             return { status: 200, data: {
               generationId: w.record.generationId,
@@ -337,22 +337,22 @@ describe("rig walk — per-piece consumption verification (RED-first, mechanics-
 
   it("PIN W1 — a typed-but-never-consumed piece FAILS LOUD naming the piece; the next piece is never sent [GREEN — consumption verification]", async () => {
     const w: ScriptedWorld = { record: { generationId: "g1", content: "" }, pane: "", sends: [], gets: [] };
-    // send reports ok but the generation record NEVER shows the piece (the coalesced-staged defect).
+    // send 报告 ok，但代记录从不显示该片段（coalesced-staged 缺陷）。
     const { errLogs, exitCode } = await captureLogs(async () => {
       await makeCmd(consumptionDeps(w)).parseAsync(walkArgs);
     });
     expect(exitCode).toBe(1);
     const pieceSends = w.sends.filter((s) => s.path === "/api/transport/send" && s.body["text"] !== undefined);
     expect(pieceSends).toHaveLength(1);                       // piece 2 never sent
-    expect(errLogs.join("\n")).toMatch(/piece 1\/2/);         // names the piece
-    expect(errLogs.join("\n")).toMatch(/consum/i);            // names the failure class
+    expect(errLogs.join("\n")).toMatch(/第 1\/2 片/);         // names the piece
+    expect(errLogs.join("\n")).toMatch(/消费校验/);            // names the failure class
   });
 
   it("PIN W2 — staged text detected -> exactly ONE submit retry (bare Enter, never a piece re-send), then consumed -> walk proceeds [GREEN — the retry path]", async () => {
     const w: ScriptedWorld = { record: { generationId: "g1", content: "" }, pane: "", sends: [], gets: [] };
     w.sendBehavior = (b) => {
       if (b["text"] !== undefined) {
-        // The paste stages but the TUI does not accept the Enter: pane shows the piece, record silent.
+        // paste 进入 staged，但 TUI 不接受 Enter：窗格显示该片段，记录静默。
         w.pane = `❯ ${String(b["text"]).slice(0, 40)}\n  paste again to expand`;
         return { status: 200, data: { ok: true } };
       }
@@ -406,7 +406,7 @@ describe("rig walk — per-piece consumption verification (RED-first, mechanics-
     expect(exitCode).toBeUndefined();
     const pieceSends = w.sends.filter((s) => s.path === "/api/transport/send" && s.body["text"] !== undefined);
     expect(pieceSends).toHaveLength(2); // legacy delivery preserved
-    expect(errLogs.join("\n")).toMatch(/consumption unverified/i); // named, never silent
+    expect(errLogs.join("\n")).toMatch(/消费未验证/); // named, never silent
   });
 
   // ROUND-2 (r2 R1 HIGH-2, row 66e74676, CLI half): on a token-configured daemon the verified
@@ -429,8 +429,8 @@ describe("rig walk — per-piece consumption verification (RED-first, mechanics-
     expect(exitCode).toBe(1);
     const pieceSends = w.sends.filter((s) => s.path === "/api/transport/send" && s.body["text"] !== undefined);
     expect(pieceSends).toHaveLength(1);                    // piece 2 never sent into an open turn
-    expect(errLogs.join("\n")).toMatch(/piece 1\/2/);      // names the piece
-    expect(errLogs.join("\n")).toMatch(/turn/i);           // names the failure class (closure wait)
+    expect(errLogs.join("\n")).toMatch(/第 1\/2 片/);      // names the piece
+    expect(errLogs.join("\n")).toMatch(/回合/);           // names the failure class (closure wait)
   });
 
   it("PACING-B — piece 2 goes only AFTER piece 1's turn closure is visible in the record [GREEN — the turn gate]", async () => {
@@ -442,8 +442,8 @@ describe("rig walk — per-piece consumption verification (RED-first, mechanics-
         if (!piece1Consumed) {
           piece1Consumed = true;
           w.record.content += userRec(String(b["text"])) + "\n";
-          // The turn closes THREE reads later (assistant work then turn_duration) — the reader
-          // below appends it lazily; here we only record the send.
+          // 回合在三次读取后关闭（assistant 工作，然后 turn_duration）——下方
+          // reader 惰性追加；此处只记录 send。
         } else {
           closureServedBeforePiece2 = w.record.content.includes("turn_duration");
           w.record.content += userRec(String(b["text"])) + "\n" + closureRec + "\n";
@@ -452,8 +452,8 @@ describe("rig walk — per-piece consumption verification (RED-first, mechanics-
       }
       return { status: 200, data: { ok: true } };
     };
-    // Lazy closure: after piece 1's user record exists, the next generation-record read appends
-    // the assistant turn + closure (the seat finished reading the piece).
+    // 惰性关闭：片段 1 的 user 记录存在后，下一次代记录读取追加
+    // assistant 回合 + 关闭（席位读完该片段）。
     const baseDeps = consumptionDeps(w);
     const inner = (baseDeps.clientFactory as unknown as () => { get: (p: string) => Promise<unknown>; post: (p: string, b: unknown) => Promise<unknown> })();
     (baseDeps as { clientFactory: unknown }).clientFactory = () => ({
@@ -475,8 +475,8 @@ describe("rig walk — per-piece consumption verification (RED-first, mechanics-
     expect(closureServedBeforePiece2).toBe(true); // the gate held: closure BEFORE the second send
   });
 
-  // FINAL-PIECE CLOSURE (r2 turn-pacing NOT-CLEAR, row b268b89b): the gate must be N-of-N. The
-  // last piece's open turn is exactly where rerun 4's seat-issued GET would be queued.
+  // 末片段关闭（r2 turn-pacing NOT-CLEAR，行 b268b89b）：闸门必须是 N-of-N。
+  // 最后片段的开放回合正是 rerun 4 的席位发出 GET 会被排队之处。
   it("PACING-C — the FINAL piece consumed but never closed fails loud naming it; no success summary [GREEN — N-of-N closure]", async () => {
     const w: ScriptedWorld = { record: { generationId: "g1", content: "" }, pane: "", sends: [], gets: [] };
     let firstPiece = true;
@@ -493,8 +493,8 @@ describe("rig walk — per-piece consumption verification (RED-first, mechanics-
       await makeCmd(consumptionDeps(w)).parseAsync(pacingArgs);
     });
     expect(exitCode).toBe(1);
-    expect(errLogs.join("\n")).toMatch(/piece 2\/2/);          // names the FINAL piece
-    expect(errLogs.join("\n")).toMatch(/turn/i);
+    expect(errLogs.join("\n")).toMatch(/第 2\/2 片/);          // names the FINAL piece
+    expect(errLogs.join("\n")).toMatch(/回合/);
     expect(logs.join("\n")).not.toMatch(/Walked dev@rig/);      // no success summary
   });
 

@@ -1,9 +1,7 @@
-// OPR.0.4.6.WF2 — full-featured spec language: parser strictness for the
-// new fields (FR-6), the gates[]/prefer parse-removals (FR-4/FR-5),
-// conditional-on-outcome branching language + validation + EXECUTION
-// (FR-1 — the one named engine extension), harness pins (FR-2), the
-// host-pin MH-3 boundary (FR-3), gate compilation to the shipped
-// primitives (FR-5), and the zero-regression spine (BR-3).
+// OPR.0.4.6.WF2——全功能规范语言：新字段的解析器严格性（FR-6）、解析时移除
+// gates[]/prefer（FR-4/FR-5）、基于结果的条件分支语言及其校验与执行（FR-1——唯一
+// 具名的引擎扩展）、harness 固定（FR-2）、host 固定的 MH-3 边界（FR-3）、将 gate
+// 编译到发行原语（FR-5），以及零回归主干（BR-3）。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -36,7 +34,7 @@ import { parseWorkflowSpec, WorkflowSpecError } from "../src/domain/workflow-spe
 import { WorkflowValidator } from "../src/domain/workflow-validator.js";
 import { resolveNextStep } from "../src/domain/workflow-projector.js";
 
-// ── spec fixtures ────────────────────────────────────────────────────
+// ── 规范夹具 ────────────────────────────────────────────────────────
 
 const BRANCHED_SPEC = `workflow:
   id: wf2-branched
@@ -68,7 +66,7 @@ const BRANCHED_SPEC = `workflow:
         suggested_roles: [prover]
 `;
 
-// Same shape WITHOUT the branch map — the zero-regression twin.
+// 相同结构但不含分支映射——零回归双生夹具。
 const LINEAR_SPEC = `workflow:
   id: wf2-linear
   version: 1
@@ -121,7 +119,7 @@ const GATED_HUMAN_SPEC = `workflow:
       allowed_exits: [done]
       gate:
         target: human@kernel
-        summary: "Sign off the release"
+        summary: "批准发布"
         evidence_ref: proof/PROOF.md
 `;
 
@@ -142,12 +140,11 @@ const GATED_HANDLER_SPEC = `workflow:
       allowed_exits: [done]
       gate:
         target: checker
-        summary: "Handler check before close"
+        summary: "关闭前由处理者检查"
 `;
 
-// rev1-r2 blocker pin: a step with BOTH a harness pin and a handler-role
-// gate — the pin must bind the handler seat (the packet's actual routed
-// destination), never be silently bypassed.
+// rev1-r2 阻塞项固定：步骤同时带 harness 固定与处理者角色 gate——固定必须绑定处理者
+// 席位（数据包的实际路由目标），绝不能被静默绕过。
 const GATED_HANDLER_PINNED_SPEC = `workflow:
   id: wf2-gated-handler-pinned
   version: 1
@@ -166,7 +163,7 @@ const GATED_HANDLER_PINNED_SPEC = `workflow:
       harness: codex
       gate:
         target: checker
-        summary: "Pinned handler check"
+        summary: "固定处理者检查"
 `;
 
 function writeSpec(dir: string, name: string, body: string): string {
@@ -175,7 +172,7 @@ function writeSpec(dir: string, name: string, body: string): string {
   return p;
 }
 
-describe("OPR.0.4.6.WF2 — spec language", () => {
+describe("OPR.0.4.6.WF2——规范语言", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -203,8 +200,8 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
     bus = new EventBus(db);
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
     queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝失败关闭（MF2）——旨在 nudge 的终态关闭需要同一数据库的意图存储，
+    // 才能使其唤醒持久化。
     queueRepo.attachOutbox(new OutboxHandler(db));
     tmp = mkdtempSync(join(tmpdir(), "wf2-lang-"));
     runtime = new WorkflowRuntime({ exceptionDial: { hostDefault: () => null, humanFallbackSeat: "human@host" }, db, eventBus: bus, queueRepo });
@@ -215,7 +212,7 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  /** Seed a managed node + session so nodeRuntimeOf resolves a runtime. */
+  /** 植入托管节点与会话，使 nodeRuntimeOf 能解析运行时。 */
   function seedSeat(sessionName: string, runtimeName: string, nodeId: string): void {
     db.prepare(
       `INSERT INTO nodes (id, rig_id, logical_id, runtime) VALUES (?, 'r-1', ?, ?)`,
@@ -225,10 +222,10 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
     ).run(`s-${nodeId}`, nodeId, sessionName);
   }
 
-  // ── FR-6: parser strictness on the new surface ─────────────────────
+  // ── FR-6：新表层上的解析器严格性 ──────────────────────────────────
 
-  describe("FR-6 parser strictness (the raw seam)", () => {
-    it("rejects the removed gates[] string list with the what/why/fix migration error", () => {
+  describe("FR-6 解析器严格性（原始数据接缝）", () => {
+    it("拒绝已移除的 gates[] 字符串列表，并给出是什么/为什么/如何修复的迁移错误", () => {
       const yaml = `workflow:
   id: legacy-gates
   version: 1
@@ -250,7 +247,7 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       }
     });
 
-    it("rejects the removed next_hop.mode prefer with the migration error naming the alternatives", () => {
+    it("拒绝已移除的 next_hop.mode prefer，并在迁移错误中指出替代项", () => {
       const yaml = `workflow:
   id: legacy-prefer
   version: 1
@@ -274,7 +271,7 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       }
     });
 
-    it("rejects a branch key outside the closed exit enum, naming the allowed set", () => {
+    it("拒绝封闭退出枚举之外的分支键，并指出允许集合", () => {
       const yaml = `workflow:
   id: bad-branch-key
   version: 1
@@ -291,7 +288,7 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       );
     });
 
-    it("rejects harness: terminal with the teaching error naming the agent set", () => {
+    it("拒绝 harness:terminal，并在说明错误中列出智能体集合", () => {
       const yaml = `workflow:
   id: bad-harness
   version: 1
@@ -304,16 +301,16 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
 `;
       try {
         parseWorkflowSpec(yaml, "bad.yaml");
-        expect.unreachable("should have thrown");
+        expect.unreachable("预期应抛出异常");
       } catch (e) {
         expect((e as WorkflowSpecError).code).toBe("spec_harness_invalid");
         expect((e as WorkflowSpecError).message).toContain("claude-code");
         expect((e as WorkflowSpecError).message).toContain("codex");
-        expect((e as WorkflowSpecError).message).toContain("not an agent harness");
+        expect((e as WorkflowSpecError).message).toContain("不是智能体 harness");
       }
     });
 
-    it("rejects unknown gate keys against the closed gate keyset", () => {
+    it("依据封闭 gate 键集拒绝未知 gate 键", () => {
       const yaml = `workflow:
   id: bad-gate-key
   version: 1
@@ -333,13 +330,13 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       );
     });
 
-    it("accepts every new field and carries it into the parsed spec (spec_json carriage)", () => {
+    it("接受每个新字段并将其带入解析后规范（spec_json 承载）", () => {
       const spec = parseWorkflowSpec(readFixture(BRANCHED_SPEC), "branched.yaml");
       expect(spec.steps[0]!.next_hop?.on).toEqual({ failed: "remediate" });
       const gated = parseWorkflowSpec(readFixture(GATED_HUMAN_SPEC), "gated.yaml");
       expect(gated.steps[1]!.gate).toEqual({
         target: "human@kernel",
-        summary: "Sign off the release",
+        summary: "批准发布",
         evidence_ref: "proof/PROOF.md",
       });
       const harness = parseWorkflowSpec(readFixture(HARNESS_SPEC), "harness.yaml");
@@ -351,10 +348,10 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
     }
   });
 
-  // ── FR-1: branch language validation ───────────────────────────────
+  // ── FR-1：分支语言校验 ─────────────────────────────────────────────
 
-  describe("FR-1 branch validation", () => {
-    it("rejects a branch target that does not exist", () => {
+  describe("FR-1 分支校验", () => {
+    it("拒绝不存在的分支目标", () => {
       const spec = parseWorkflowSpec(
         BRANCHED_SPEC.replace("on: { failed: remediate }", "on: { failed: nowhere }"),
         "x.yaml",
@@ -364,7 +361,7 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       expect(result.issues.some((i) => i.code === "branch_target_not_found")).toBe(true);
     });
 
-    it("rejects an UNGUARDED branch-created cycle naming the max_hops fix", () => {
+    it("拒绝分支创建但无护栏的循环，并指出 max_hops 修复方案", () => {
       const noGuard = BRANCHED_SPEC.replace("  loop_guards:\n    max_hops: 8\n", "");
       const spec = parseWorkflowSpec(noGuard, "x.yaml");
       const result = new WorkflowValidator().validate(spec);
@@ -374,20 +371,20 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       expect(cycleIssue!.message).toContain("max_hops");
     });
 
-    it("validates the SAME cycle when max_hops sanctions it", () => {
+    it("max_hops 允许时，同一个循环校验通过", () => {
       const spec = parseWorkflowSpec(BRANCHED_SPEC, "x.yaml");
       const result = new WorkflowValidator().validate(spec);
       expect(result.issues.filter((i) => i.severity === "error")).toEqual([]);
       expect(result.ok).toBe(true);
     });
 
-    it("counts branch-only-reachable steps as reachable (no false unreachable)", () => {
+    it("将仅经分支可达的步骤计为可达（无不可达假阳性）", () => {
       const spec = parseWorkflowSpec(BRANCHED_SPEC, "x.yaml");
       const result = new WorkflowValidator().validate(spec);
       expect(result.issues.some((i) => i.code === "step_unreachable")).toBe(false);
     });
 
-    it("resolveNextStep: mapped exit wins; no exit / unmapped exit keeps structural semantics", () => {
+    it("resolveNextStep：已映射退出优先；无退出/未映射退出保持结构语义", () => {
       const spec = parseWorkflowSpec(BRANCHED_SPEC, "x.yaml");
       const build = spec.steps[0]!;
       expect(resolveNextStep(spec, build, "failed")?.id).toBe("remediate");
@@ -396,20 +393,20 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
     });
   });
 
-  // ── FR-1: branch EXECUTION (the one engine extension) ──────────────
+  // ── FR-1：分支执行（唯一引擎扩展）──────────────────────────────────
 
-  describe("FR-1 branch execution", () => {
+  describe("FR-1 分支执行", () => {
     async function startBranched(): Promise<{ instanceId: string; entryQitemId: string }> {
       const specPath = writeSpec(tmp, "branched.yaml", BRANCHED_SPEC);
       const result = await runtime.instantiate({
         specPath,
-        rootObjective: "branch walk",
+        rootObjective: "分支遍历",
         createdBySession: "ops@rig",
       });
       return { instanceId: result.instance.instanceId, entryQitemId: result.entryQitemId };
     }
 
-    it("a MAPPED failed exit routes to the branch target in the same txn: next qitem created, instance ACTIVE on the target, trail + decision record the branch", async () => {
+    it("已映射的 failed 退出在同一事务中路由到分支目标：创建下一 qitem，实例在目标上保持活跃，轨迹与决策记录分支", async () => {
       const { instanceId, entryQitemId } = await startBranched();
       const before = runtime.instanceStore.getByIdOrThrow(instanceId);
       const result = await runtime.project({
@@ -417,9 +414,9 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
         currentPacketId: entryQitemId,
         exit: "failed",
         actorSession: "builder@rig",
-        resultNote: "build broke",
+        resultNote: "构建失败",
       });
-      // Routed, not terminal:
+      // 已路由，并非终态：
       expect(result.nextQitemId).not.toBeNull();
       expect(result.nextStepId).toBe("remediate");
       expect(result.nextOwnerSession).toBe("fixer@rig");
@@ -427,14 +424,14 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       expect(instance.status).toBe("active");
       expect(instance.currentStepId).toBe("remediate");
       expect(instance.currentFrontier).toEqual([result.nextQitemId]);
-      // A branch route IS an advance (PIN 2): hop + version bumped.
+      // 分支路由就是推进（固定项 2）：hop 与 version 均递增。
       expect(instance.hopCount).toBe(before.hopCount + 1);
       expect(instance.version).toBeGreaterThan(before.version);
-      // The honest closure shape for failed is preserved on the packet:
+      // 数据包保留 failed 的如实关闭形态：
       const closed = queueRepo.getById(entryQitemId);
       expect(closed?.state).toBe("done");
       expect(closed?.closureReason).toBe("denied");
-      // Decision + trail carry the ADDITIVE branch-taken record (PIN 1):
+      // 决策与轨迹携带增量的已采用分支记录（固定项 1）：
       expect(instance.lastContinuationDecision?.branchTaken).toBe("remediate");
       const trail = runtime.trailLog.listForInstance(instanceId);
       const row = trail.find((t) => t.priorQitemId === entryQitemId);
@@ -443,17 +440,17 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
         branch_taken: { exit: "failed", target: "remediate" },
       });
       expect(row?.nextQitemId).toBe(result.nextQitemId);
-      // The new packet exists, destined to the branch-target owner:
+      // 新数据包存在，并发往分支目标所有者：
       const next = queueRepo.getById(result.nextQitemId!);
       expect(next?.destinationSession).toBe("fixer@rig");
       expect(next?.state).toBe("pending");
     });
 
-    it("an UNMAPPED failed stays terminal exactly as today (zero regression off the branch path)", async () => {
+    it("未映射的 failed 与当前行为完全一致，保持终态（分支路径外零回归）", async () => {
       const specPath = writeSpec(tmp, "linear.yaml", LINEAR_SPEC);
       const { instance, entryQitemId } = await runtime.instantiate({
         specPath,
-        rootObjective: "negative",
+        rootObjective: "反例",
         createdBySession: "ops@rig",
       });
       const result = await runtime.project({
@@ -469,7 +466,7 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       expect(after.lastContinuationDecision?.branchTaken).toBeNull();
     });
 
-    it("same instance state → same branch on replay: a second identical failed-project is rejected by the frontier guard (the packet already routed)", async () => {
+    it("相同实例状态 → 重放时走相同分支：第二次相同 failed 投影被 frontier 护栏拒绝（数据包已路由）", async () => {
       const { instanceId, entryQitemId } = await startBranched();
       await runtime.project({
         instanceId,
@@ -487,30 +484,29 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       ).rejects.toMatchObject({ code: "packet_not_on_frontier" });
     });
 
-    it("the max_hops guard fires ON the branch route (a guarded cycle fails honestly at the guard, never unbounded)", async () => {
+    it("max_hops 护栏在分支路由上触发（受保护循环在护栏处如实失败，绝不无限运行）", async () => {
       const tight = BRANCHED_SPEC.replace("max_hops: 8", "max_hops: 2");
       const specPath = writeSpec(tmp, "tight.yaml", tight);
       const { instance, entryQitemId } = await runtime.instantiate({
         specPath,
-        rootObjective: "guard walk",
+        rootObjective: "护栏遍历",
         createdBySession: "ops@rig",
       });
-      // hop 1: build --failed--> remediate (branch route)
+      // hop 1：build --failed--> remediate（分支路由）
       const r1 = await runtime.project({
         instanceId: instance.instanceId,
         currentPacketId: entryQitemId,
         exit: "failed",
         actorSession: "builder@rig",
       });
-      // hop 2: remediate --handoff--> verify (structural)
+      // hop 2：remediate --handoff--> verify（结构路由）
       const r2 = await runtime.project({
         instanceId: instance.instanceId,
         currentPacketId: r1.nextQitemId!,
         exit: "handoff",
         actorSession: "fixer@rig",
       });
-      // hop 3 would exceed max_hops=2 → engine-authored honest failure,
-      // even though the exit is branch-mapped.
+      // hop 3 会超过 max_hops=2 → 即使退出已映射到分支，也由引擎生成如实失败。
       const r3 = await runtime.project({
         instanceId: instance.instanceId,
         currentPacketId: r2.nextQitemId!,
@@ -529,67 +525,67 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
     });
   });
 
-  // ── FR-2: harness pins ──────────────────────────────────────────────
+  // ── FR-2：harness 固定 ─────────────────────────────────────────────
 
-  describe("FR-2 harness pin", () => {
-    it("routes a pinned step to the first preferred_target whose runtime matches", async () => {
+  describe("FR-2 harness 固定", () => {
+    it("将固定步骤路由到首个运行时匹配的 preferred_target", async () => {
       seedSeat("claude-seat@rig", "claude-code", "n-claude");
       seedSeat("codex-seat@rig", "codex", "n-codex");
       const specPath = writeSpec(tmp, "harness.yaml", HARNESS_SPEC);
       const result = await runtime.instantiate({
         specPath,
-        rootObjective: "harness walk",
+        rootObjective: "harness 遍历",
         createdBySession: "ops@rig",
       });
-      // Entry step pins codex; claude-seat is FIRST in preferred_targets
-      // but codex-seat matches the pin.
+      // 入口步骤固定 codex；claude-seat 在 preferred_targets 中排第一，但 codex-seat
+      // 才匹配固定值。
       expect(result.entryOwnerSession).toBe("codex-seat@rig");
       const entry = queueRepo.getById(result.entryQitemId);
       expect(entry?.destinationSession).toBe("codex-seat@rig");
     });
 
-    it("an unsatisfiable pin fails loud naming the pin and each candidate's runtime", async () => {
+    it("无法满足的固定值明确失败，并指出固定值及每个候选的运行时", async () => {
       seedSeat("claude-seat@rig", "claude-code", "n-claude");
       seedSeat("codex-seat@rig", "claude-code", "n-codex-mislabeled");
       const specPath = writeSpec(tmp, "harness.yaml", HARNESS_SPEC);
       await expect(
         runtime.instantiate({
           specPath,
-          rootObjective: "unsatisfiable",
+        rootObjective: "无法满足",
           createdBySession: "ops@rig",
         }),
       ).rejects.toMatchObject({ code: "harness_pin_unsatisfied" });
     });
 
-    it("an explicit owner override that violates the pin is rejected (never silently defeats a pin)", async () => {
+    it("拒绝违反固定值的显式所有者覆盖（绝不静默绕过固定值）", async () => {
       seedSeat("claude-seat@rig", "claude-code", "n-claude");
       seedSeat("codex-seat@rig", "codex", "n-codex");
       const specPath = writeSpec(tmp, "harness.yaml", HARNESS_SPEC);
       await expect(
         runtime.instantiate({
           specPath,
-          rootObjective: "override",
+        rootObjective: "覆盖",
           createdBySession: "ops@rig",
           entryOwnerSession: "claude-seat@rig",
         }),
       ).rejects.toMatchObject({ code: "harness_pin_unsatisfied" });
     });
 
-    it("steps with no pin resolve preferred_targets[0] unchanged (zero regression)", async () => {
+    it("无固定值步骤仍解析到 preferred_targets[0]（零回归）", async () => {
       const specPath = writeSpec(tmp, "linear.yaml", LINEAR_SPEC);
       const result = await runtime.instantiate({
         specPath,
-        rootObjective: "no pin",
+        rootObjective: "无固定值",
         createdBySession: "ops@rig",
       });
       expect(result.entryOwnerSession).toBe("builder@rig");
     });
   });
 
-  // ── FR-3: host pins ─────────────────────────────────────────────────
+  // ── FR-3：host 固定 ─────────────────────────────────────────────────
 
-  describe("FR-3 host pin", () => {
-    it("host: local instantiates exactly like no pin", async () => {
+  describe("FR-3 host 固定", () => {
+    it("host:local 的实例化与无固定值完全相同", async () => {
       const local = LINEAR_SPEC.replace(
         "      allowed_exits: [handoff, waiting, done, failed]\n    - id: verify",
         "      allowed_exits: [handoff, waiting, done, failed]\n      host: local\n    - id: verify",
@@ -597,13 +593,13 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       const specPath = writeSpec(tmp, "local.yaml", local);
       const result = await runtime.instantiate({
         specPath,
-        rootObjective: "local host",
+        rootObjective: "本地主机",
         createdBySession: "ops@rig",
       });
       expect(result.instance.status).toBe("active");
     });
 
-    it("an unknown host id fails validation naming registered ids", () => {
+    it("未知主机 ID 校验失败，并列出已注册 ID", () => {
       const spec = parseWorkflowSpec(
         LINEAR_SPEC.replace(
           "    - id: verify",
@@ -620,17 +616,15 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       expect(issue!.message).toContain("vps-1");
     });
 
-    it("a REGISTERED remote pin fails loud at instantiate with the MH-3 boundary + workaround, minting NO qitem", async () => {
+    it("已注册远程固定值在实例化时因 MH-3 边界明确失败并给出替代方案，不创建 qitem", async () => {
       const remote = LINEAR_SPEC.replace(
         "      allowed_exits: [handoff, waiting, done, failed]\n    - id: verify",
         "      allowed_exits: [handoff, waiting, done, failed]\n      host: vps-1\n    - id: verify",
       );
       const specPath = writeSpec(tmp, "remote.yaml", remote);
-      // Synthetic OPENRIG_HOME registry (never a real remote): vps-1 IS
-      // registered, so registry-membership validation PASSES and the
-      // MH-3 execution boundary is what fires — proving no qitem is
-      // ever minted into a queue that cannot route it, and no silent
-      // local fallback happens.
+      // 合成 OPENRIG_HOME 注册表（绝非真实远程）：vps-1 确实已注册，因此注册表成员关系
+      // 校验通过，随后触发 MH-3 执行边界——证明不会向无法路由的队列创建 qitem，
+      // 也不会静默回退到本地。
       const prevHome = process.env.OPENRIG_HOME;
       writeFileSync(
         join(tmp, "hosts.yaml"),
@@ -642,15 +636,15 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
         await expect(
           runtime.instantiate({
             specPath,
-            rootObjective: "remote host",
+            rootObjective: "远程主机",
             createdBySession: "ops@rig",
           }),
         ).rejects.toMatchObject({ code: "host_pin_remote_unsupported" });
         const qitemsAfter = db.prepare(`SELECT COUNT(*) as c FROM queue_items`).get() as { c: number };
         expect(qitemsAfter.c).toBe(qitemsBefore.c);
         try {
-          await runtime.instantiate({ specPath, rootObjective: "remote host", createdBySession: "ops@rig" });
-          expect.unreachable("should have thrown");
+          await runtime.instantiate({ specPath, rootObjective: "远程主机", createdBySession: "ops@rig" });
+          expect.unreachable("预期应抛出异常");
         } catch (e) {
           expect((e as Error).message).toContain("MH-3");
           expect((e as Error).message).toContain("local");
@@ -662,14 +656,14 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
     });
   });
 
-  // ── FR-5: gate compile, both target kinds ──────────────────────────
+  // ── FR-5：gate 编译，两种目标类型 ──────────────────────────────────
 
-  describe("FR-5 gate compile", () => {
-    it("HUMAN target: routing into the gated step creates the packet for the STEP OWNER parked blocked_on the human seat (summary + evidence_ref), instance waits, and the SHIPPED resolve verb continues the flow", async () => {
+  describe("FR-5 gate 编译", () => {
+    it("人工目标：路由进入受 gate 保护的步骤时，为步骤所有者创建停放在人工席位 blocked_on 上的数据包（summary + evidence_ref），实例等待，发行版 resolve 动词继续流程", async () => {
       const specPath = writeSpec(tmp, "gated-human.yaml", GATED_HUMAN_SPEC);
       const { instance, entryQitemId } = await runtime.instantiate({
         specPath,
-        rootObjective: "human gate",
+        rootObjective: "人工 gate",
         createdBySession: "ops@rig",
       });
       const result = await runtime.project({
@@ -678,25 +672,23 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
         exit: "handoff",
         actorSession: "builder@rig",
       });
-      // Guard blocker 1: the leg-1 park shape — the packet belongs to the
-      // gated step's ROLE OWNER and parks blocked_on the HUMAN seat (the
-      // exact shape `rig queue resolve` acts on) — never an unresolvable
-      // pending human-destined item.
+      // 护栏阻塞项 1：第 1 段停放形态——数据包属于受 gate 保护步骤的角色所有者，并停放在
+      // 人工席位的 blocked_on 上（`zrig queue resolve` 操作的精确形态）——绝不是无法解析的、
+      // 发往人工的 pending 条目。
       expect(result.nextOwnerSession).toBe("prover@rig");
       const gateItem = queueRepo.getById(result.nextQitemId!)!;
       expect(gateItem.destinationSession).toBe("prover@rig");
       expect(gateItem.state).toBe("blocked");
       expect(gateItem.blockedOn).toBe("human@kernel");
-      expect(gateItem.summary).toBe("Sign off the release");
+      expect(gateItem.summary).toBe("批准发布");
       expect(gateItem.evidenceRef).toBe("proof/PROOF.md");
       const after = runtime.instanceStore.getByIdOrThrow(instance.instanceId);
       expect(after.status).toBe("waiting");
       expect(after.currentStepId).toBe("signoff");
       expect(after.currentFrontier).toEqual([result.nextQitemId]);
 
-      // THE CONTINUATION PROOF: the shipped resolve verb unparks the gate
-      // item; the step owner then projects onward and the flow completes —
-      // no restart, no new machinery.
+      // 连续性证明：发行版 resolve 动词解除 gate 条目的停放；随后步骤所有者继续投影，
+      // 流程完成——无需重启，也无需新机制。
       const writeContract = new MissionControlWriteContract({
         db,
         eventBus: bus,
@@ -707,7 +699,7 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
         verb: "resolve",
         qitemId: result.nextQitemId!,
         actorSession: "human@kernel",
-        decision: "signed off — ship it",
+        decision: "已批准——可以发布",
       });
       const resolved = queueRepo.getById(result.nextQitemId!)!;
       expect(resolved.state).toBe("in-progress");
@@ -722,11 +714,11 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       expect(finished.status).toBe("completed");
     });
 
-    it("HANDLER-ROLE target: routing into the gated step routes an ordinary agent item to the handler's seat and parks waiting with trail evidence", async () => {
+    it("处理者角色目标：路由进入受 gate 保护的步骤时，将普通智能体条目路由到处理者席位，并带轨迹证据进入等待", async () => {
       const specPath = writeSpec(tmp, "gated-handler.yaml", GATED_HANDLER_SPEC);
       const { instance, entryQitemId } = await runtime.instantiate({
         specPath,
-        rootObjective: "handler gate",
+        rootObjective: "处理者 gate",
         createdBySession: "ops@rig",
       });
       const result = await runtime.project({
@@ -738,7 +730,7 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       expect(result.nextOwnerSession).toBe("checker@rig");
       const gateItem = queueRepo.getById(result.nextQitemId!);
       expect(gateItem?.destinationSession).toBe("checker@rig");
-      // Ordinary agent item — NOT forced through the human path:
+      // 普通智能体条目——不强制走人工路径：
       expect(gateItem?.tier).not.toBe("human-gate");
       const after = runtime.instanceStore.getByIdOrThrow(instance.instanceId);
       expect(after.status).toBe("waiting");
@@ -748,13 +740,13 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       );
     });
 
-    it("rev1-r2 blocker: a harness pin on a handler-gated step binds the HANDLER seat — routes to the first runtime-matching target, never preferred_targets[0] blindly", async () => {
+    it("rev1-r2 阻塞项：处理者 gate 步骤上的 harness 固定绑定处理者席位——路由到首个运行时匹配目标，绝不盲选 preferred_targets[0]", async () => {
       seedSeat("claude-check@rig", "claude-code", "n-cc");
       seedSeat("codex-check@rig", "codex", "n-cx");
       const specPath = writeSpec(tmp, "gated-handler-pinned.yaml", GATED_HANDLER_PINNED_SPEC);
       const { instance, entryQitemId } = await runtime.instantiate({
         specPath,
-        rootObjective: "pinned handler gate",
+        rootObjective: "固定处理者 gate",
         createdBySession: "ops@rig",
       });
       const result = await runtime.project({
@@ -763,33 +755,33 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
         exit: "handoff",
         actorSession: "builder@rig",
       });
-      // claude-check@rig is FIRST in preferred_targets, but the step pins
-      // codex — the codex seat must win.
+      // claude-check@rig 在 preferred_targets 中排第一，但步骤固定 codex——必须由 codex
+      // 席位胜出。
       expect(result.nextOwnerSession).toBe("codex-check@rig");
       expect(queueRepo.getById(result.nextQitemId!)?.destinationSession).toBe("codex-check@rig");
     });
 
-    it("rev1-r2 blocker: an unsatisfiable pin on a handler-gated step fails loud at INSTANTIATE naming the pin and candidates (the static loop covers gated steps)", async () => {
+    it("rev1-r2 阻塞项：处理者 gate 步骤上无法满足的固定值在实例化时明确失败，并指出固定值与候选（静态循环覆盖受 gate 保护步骤）", async () => {
       seedSeat("claude-check@rig", "claude-code", "n-cc");
       seedSeat("codex-check@rig", "claude-code", "n-cx-mislabeled");
       const specPath = writeSpec(tmp, "gated-handler-pinned.yaml", GATED_HANDLER_PINNED_SPEC);
       await expect(
         runtime.instantiate({
           specPath,
-          rootObjective: "unsatisfiable pinned handler gate",
+          rootObjective: "无法满足的固定处理者 gate",
           createdBySession: "ops@rig",
         }),
       ).rejects.toMatchObject({ code: "harness_pin_unsatisfied" });
       try {
         await runtime.instantiate({ specPath, rootObjective: "x", createdBySession: "ops@rig" });
-        expect.unreachable("should have thrown");
+        expect.unreachable("预期应抛出异常");
       } catch (e) {
         expect((e as Error).message).toContain("codex");
         expect((e as Error).message).toContain("claude-check@rig");
       }
     });
 
-    it("a gate on a target that is neither a human seat nor a declared role fails validation loud", () => {
+    it("gate 目标既非人工席位也非已声明角色时明确校验失败", () => {
       const spec = parseWorkflowSpec(
         GATED_HANDLER_SPEC.replace("target: checker", "target: nobody-anywhere"),
         "x.yaml",
@@ -798,7 +790,7 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       expect(result.issues.some((i) => i.code === "gate_target_unresolved")).toBe(true);
     });
 
-    it("a HUMAN gate missing summary/evidence_ref fails validation (fail at author time, not mid-run)", () => {
+    it("人工 gate 缺少 summary/evidence_ref 时校验失败（在编写时失败，而非运行中途）", () => {
       const spec = parseWorkflowSpec(
         GATED_HUMAN_SPEC.replace("        evidence_ref: proof/PROOF.md\n", ""),
         "x.yaml",
@@ -808,10 +800,10 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
     });
   });
 
-  // ── FR-4 + zero-regression spine ────────────────────────────────────
+  // ── FR-4 + 零回归主干 ──────────────────────────────────────────────
 
-  describe("FR-4 dispositions + BR-3 zero regression", () => {
-    it("every shipped builtin spec still parses and validates (no false rejections)", () => {
+  describe("FR-4 处置 + BR-3 零回归", () => {
+    it("每个发行版内建规范仍能解析并通过校验（无错误拒绝）", () => {
       const builtinDir = join(__dirname, "..", "src", "builtins", "workflow-specs");
       for (const name of [
         "conveyor.yaml",
@@ -825,12 +817,12 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
         const result = new WorkflowValidator().validate(spec);
         expect(
           result.issues.filter((i) => i.severity === "error"),
-          `${name} should have zero validation errors`,
+          `${name} 应没有校验错误`,
         ).toEqual([]);
       }
     });
 
-    it("skill_refs still produces the fail-open explicitly-v2 advisory (warning, ok=true)", () => {
+    it("skill_refs 仍产生失败开放且明确标注 v2 的建议（warning、ok=true）", () => {
       const raw = readFileSync(
         join(__dirname, "..", "src", "builtins", "workflow-specs", "conveyor.yaml"),
         "utf-8",
@@ -845,11 +837,11 @@ describe("OPR.0.4.6.WF2 — spec language", () => {
       ).toBe(true);
     });
 
-    it("a no-WF-2-feature spec routes byte-identically: same owners, same closure shapes, same states", async () => {
+    it("不含 WF-2 功能的规范以逐字节一致方式路由：所有者、关闭形态和状态均相同", async () => {
       const specPath = writeSpec(tmp, "linear.yaml", LINEAR_SPEC);
       const { instance, entryQitemId } = await runtime.instantiate({
         specPath,
-        rootObjective: "regression spine",
+        rootObjective: "回归主干",
         createdBySession: "ops@rig",
       });
       const r1 = await runtime.project({

@@ -1,21 +1,17 @@
-// PL-004 Phase D: workflow validator.
+// PL-004 阶段 D：工作流校验器。
 //
-// Validates a workflow spec against:
-//   - Role resolution: every step's actor_role must reference a role
-//     declared in `roles`.
-//   - Entry resolution: workflow.entry.role (if present) must reference
-//     a declared role.
-//   - Exit consistency: every step's allowed_exits[] must be a subset of
-//     workflow.invariants.allowed_exits[] (if invariants present).
-//   - Step ID uniqueness.
+// 按以下规则验证 workflow spec：
+//   - role 解析：每个 step 的 actor_role 必须引用 `roles` 中声明的 role。
+//   - entry 解析：workflow.entry.role（若存在）必须引用已声明 role。
+//   - exit 一致性：每个 step 的 allowed_exits[] 必须是 workflow.invariants.allowed_exits[]
+//     的子集（若存在 invariants）。
+//   - step ID 唯一性。
 //
-// Seat-liveness checks are an optional v1 graduation; PRD § L4 calls
-// for them but the v1 minimum can ship without them. The validator
-// exposes a `seatLivenessCheck` callback so callers (CLI / route)
-// can inject a liveness probe; absence skips the check.
+// seat-liveness check 是可选的 v1 graduation；PRD § L4 要求它们，但 v1 最小版本可在没有它们时
+// 交付。validator 暴露 `seatLivenessCheck` callback，使 caller（CLI / route）可注入 liveness
+// probe；缺失时跳过检查。
 //
-// Returns a structured ValidationResult — per PRD § Honest error
-// reporting "what failed + why it matters + what to do".
+// 返回结构化 ValidationResult——按 PRD § 诚实错误报告说明“哪里失败 + 为何重要 + 如何处理”。
 
 import type { WorkflowSpec, WorkflowStepSpec } from "./workflow-types.js";
 import { resolveNextStep } from "./workflow-projector.js";
@@ -23,11 +19,11 @@ import { isHumanSeatSession } from "./human-route-enforcer.js";
 
 export interface ValidationIssue {
   code: string;
-  /** Plain-English what + why + what-to-do. */
+  /** 人类可读的“问题 + 影响 + 处理方式”。 */
   message: string;
-  /** Field path (e.g., "workflow.steps[1].actor_role"). */
+  /** 字段路径（例如 "workflow.steps[1].actor_role"）。 */
   field?: string;
-  /** Severity: error blocks; warning is informational. */
+  /** 严重程度：error 会阻塞；warning 仅提供信息。 */
   severity: "error" | "warning";
 }
 
@@ -47,10 +43,9 @@ export interface SeatLivenessCheckFn {
   (sessionRef: string): { alive: boolean; reason?: string };
 }
 
-/** OPR.0.4.6.WF2 FR-3: host-registry membership probe. Injected by the
- *  runtime (built on the daemon hosts-registry reader) so the validator
- *  stays pure; absent (bare unit tests) skips the membership check —
- *  the production validate/instantiate path always injects it. */
+/** OPR.0.4.6.WF2 FR-3：host-registry membership probe。由 runtime 注入（基于 daemon
+ *  hosts-registry reader 构建），使 validator 保持纯函数；缺失时（裸 unit test）跳过 membership
+ *  check——production validate/instantiate 路径始终注入它。 */
 export interface HostRegistryLookupFn {
   (hostId: string): { registered: boolean; registeredIds: string[] };
 }
@@ -67,19 +62,16 @@ export class WorkflowValidator {
     if (spec.entry?.role && !declaredRoles.has(spec.entry.role)) {
       issues.push({
         code: "entry_role_not_declared",
-        message: `entry role "${spec.entry.role}" is not declared in workflow.roles. Add the role to workflow.roles or change the entry to a declared role.`,
+        message: `entry role "${spec.entry.role}" 未在 workflow.roles 中声明。请将该 role 加入 workflow.roles，或将 entry 改为已声明 role。`,
         field: "workflow.entry.role",
         severity: "error",
       });
     }
 
-    // OPR.0.4.6.WF1 (guard blocker 3): steps[0] is THE authoritative
-    // entry (the ratified WF-2 grounding: entry.role is cross-checked,
-    // not resolved — workflow-runtime.ts instantiates from steps[0]).
-    // A declared entry.role that DISAGREES with steps[0].actor_role
-    // would make validation/graph surfaces claim entry B while the
-    // runtime routes the first packet to A — rejected loud so the
-    // contract can never silently fork.
+    // OPR.0.4.6.WF1（guard blocker 3）：steps[0] 是权威 entry（已批准的 WF-2 grounding：
+    // entry.role 只做 cross-check，不用于解析——workflow-runtime.ts 从 steps[0] 实例化）。若声明的
+    // entry.role 与 steps[0].actor_role 不一致，会让 validation/graph surface 声称 entry 为 B，
+    // 而 runtime 将首个 packet 路由给 A——显著拒绝，确保契约绝不静默分叉。
     if (
       spec.entry?.role &&
       spec.steps[0]?.actor_role &&
@@ -87,7 +79,7 @@ export class WorkflowValidator {
     ) {
       issues.push({
         code: "entry_role_mismatch",
-        message: `workflow.entry.role is "${spec.entry.role}" but the authoritative entry is steps[0] ("${spec.steps[0].id}", actor_role "${spec.steps[0].actor_role}") — the runtime instantiates from steps[0], so a differing entry.role would lie on every surface that reports it. Reorder steps so the intended entry step is first, or fix/remove entry.role.`,
+        message: `workflow.entry.role 为 "${spec.entry.role}"，但权威 entry 是 steps[0]（"${spec.steps[0].id}"，actor_role "${spec.steps[0].actor_role}"）——runtime 从 steps[0] 实例化，因此不同的 entry.role 会让所有报告它的 surface 失真。请重新排序 step，使目标 entry step 位于首位，或修正/移除 entry.role。`,
         field: "workflow.entry.role",
         severity: "error",
       });
@@ -100,7 +92,7 @@ export class WorkflowValidator {
       if (!step.id) {
         issues.push({
           code: "step_id_missing",
-          message: `step at ${fieldBase} is missing an id. Every step must have a stable id used to reference it from next_hop hints and step trails.`,
+          message: `${fieldBase} 处的 step 缺少 id。每个 step 都必须有稳定 id，供 next_hop hint 与 step trail 引用。`,
           field: `${fieldBase}.id`,
           severity: "error",
         });
@@ -109,7 +101,7 @@ export class WorkflowValidator {
       if (seenStepIds.has(step.id)) {
         issues.push({
           code: "step_id_duplicate",
-          message: `duplicate step id "${step.id}" at ${fieldBase}. Step ids must be unique within a workflow.`,
+          message: `${fieldBase} 处存在重复 step id "${step.id}"。workflow 内的 step id 必须唯一。`,
           field: `${fieldBase}.id`,
           severity: "error",
         });
@@ -119,14 +111,14 @@ export class WorkflowValidator {
       if (!step.actor_role) {
         issues.push({
           code: "step_actor_role_missing",
-          message: `step "${step.id}" is missing actor_role. Declare which role drives this step so the projector can derive the next-step owner.`,
+          message: `step "${step.id}" 缺少 actor_role。请声明驱动此 step 的 role，使 projector 能派生 next-step owner。`,
           field: `${fieldBase}.actor_role`,
           severity: "error",
         });
       } else if (!declaredRoles.has(step.actor_role)) {
         issues.push({
           code: "step_actor_role_not_declared",
-          message: `step "${step.id}" references role "${step.actor_role}" which is not declared in workflow.roles. Add the role to workflow.roles or change the step.`,
+          message: `step "${step.id}" 引用了 workflow.roles 中未声明的 role "${step.actor_role}"。请添加该 role 或修改 step。`,
           field: `${fieldBase}.actor_role`,
           severity: "error",
         });
@@ -137,7 +129,7 @@ export class WorkflowValidator {
           if (!allowedExitsInvariant.includes(exit)) {
             issues.push({
               code: "step_exit_not_allowed",
-              message: `step "${step.id}" allows exit "${exit}" which is not in workflow.invariants.allowed_exits. Either remove the exit from the step or extend the invariant.`,
+              message: `step "${step.id}" 允许的 exit "${exit}" 不在 workflow.invariants.allowed_exits 中。请从 step 移除该 exit，或扩展 invariant。`,
               field: `${fieldBase}.allowed_exits`,
               severity: "error",
             });
@@ -151,7 +143,7 @@ export class WorkflowValidator {
       ) {
         issues.push({
           code: "waiting_re_presentation_unreachable",
-          message: `step "${step.id}" declares re_present_after_seconds but does not allow the waiting exit. Add "waiting" to allowed_exits or remove the inert deadline.`,
+          message: `step "${step.id}" 声明了 re_present_after_seconds，但不允许 waiting exit。请将 "waiting" 加入 allowed_exits，或移除无效 deadline。`,
           field: `${fieldBase}.re_present_after_seconds`,
           severity: "error",
         });
@@ -159,44 +151,41 @@ export class WorkflowValidator {
       if (step.re_present_after_seconds !== undefined && step.next_hop?.on?.waiting) {
         issues.push({
           code: "waiting_re_presentation_unreachable",
-          message: `step "${step.id}" maps the waiting exit to "${step.next_hop.on.waiting}", so waiting routes immediately and never parks. Remove re_present_after_seconds or remove the waiting branch.`,
+          message: `step "${step.id}" 将 waiting exit 映射到 "${step.next_hop.on.waiting}"，因此 waiting 会立即路由而不会 park。请移除 re_present_after_seconds 或 waiting branch。`,
           field: `${fieldBase}.re_present_after_seconds`,
           severity: "error",
         });
       }
       for (const dependency of step.depends_on ?? []) {
         if (dependency === step.id) {
-          issues.push({ code: "dependency_self_reference", message: `step "${step.id}" cannot depend on itself.`, field: `${fieldBase}.depends_on`, severity: "error" });
+          issues.push({ code: "dependency_self_reference", message: `step "${step.id}" 不能依赖自身。`, field: `${fieldBase}.depends_on`, severity: "error" });
         } else if (!spec.steps.some((candidate) => candidate.id === dependency)) {
-          issues.push({ code: "dependency_step_not_found", message: `step "${step.id}" depends on missing step "${dependency}". Fix the id or remove the dead prerequisite.`, field: `${fieldBase}.depends_on`, severity: "error" });
+          issues.push({ code: "dependency_step_not_found", message: `step "${step.id}" 依赖缺失的 step "${dependency}"。请修正 id 或移除无效 prerequisite。`, field: `${fieldBase}.depends_on`, severity: "error" });
         }
       }
     });
 
-    // ── OPR.0.4.6.WF1 FR-7 (G7): graph validation over the REAL
-    // resolution semantics — the walk below calls the projector's own
-    // exported resolveNextStep (suggested_roles edges ∪
-    // declaration-order fallback, forbid/require cuts honored), never
-    // a parallel re-implementation. ──────────────────────────────────
+    // ── OPR.0.4.6.WF1 FR-7（G7）：按真实 resolution semantics 验证 graph——下方 walk 调用
+    // projector 自己导出的 resolveNextStep（suggested_roles edge ∪ declaration-order fallback，
+    // 遵守 forbid/require cut），绝不并行重新实现。────────────────────────────────────────────
 
-    // next_hop.suggested_roles target checks: each suggested role must
-    // be declared AND resolvable to at least one step (that is how
-    // resolveNextStep matches — a suggestion no step satisfies is a
-    // dead edge the author almost certainly misspelled).
+    // next_hop.suggested_roles target 检查：每个 suggested role 都必须已声明，且可解析到至少一个
+    // step（resolveNextStep 正是如此匹配——没有任何 step 满足的 suggestion 是 author 几乎肯定拼错的
+    // 死边）。
     spec.steps.forEach((step, idx) => {
       for (const role of step.next_hop?.suggested_roles ?? []) {
         const fieldBase = `workflow.steps[${idx}].next_hop.suggested_roles`;
         if (!declaredRoles.has(role)) {
           issues.push({
             code: "next_hop_role_not_declared",
-            message: `step "${step.id}" suggests next-hop role "${role}" which is not declared in workflow.roles. Declare the role or fix the spelling — the edge can never route.`,
+            message: `step "${step.id}" 建议的 next-hop role "${role}" 未在 workflow.roles 中声明。请声明该 role 或修正拼写——此 edge 永远无法路由。`,
             field: fieldBase,
             severity: "error",
           });
         } else if (!spec.steps.some((s) => s.actor_role === role)) {
           issues.push({
             code: "next_hop_role_has_no_step",
-            message: `step "${step.id}" suggests next-hop role "${role}" but no step declares actor_role "${role}" — resolveNextStep matches suggestions against step actor_roles, so this edge can never route. Add a step for the role or fix the suggestion.`,
+            message: `step "${step.id}" 建议 next-hop role "${role}"，但没有 step 声明 actor_role "${role}"——resolveNextStep 根据 step actor_role 匹配 suggestion，因此此 edge 永远无法路由。请为该 role 添加 step 或修正 suggestion。`,
             field: fieldBase,
             severity: "error",
           });
@@ -204,15 +193,14 @@ export class WorkflowValidator {
       }
     });
 
-    // OPR.0.4.6.WF2 FR-1: branch-edge checks — every next_hop.on target
-    // must be an existing step id (the branch key set itself is closed
-    // at parse). A dead branch edge can never route.
+    // OPR.0.4.6.WF2 FR-1：branch-edge 检查——每个 next_hop.on target 都必须是现有 step id
+    //（branch key set 本身在 parse 时封闭）。dead branch edge 永远无法路由。
     spec.steps.forEach((step, idx) => {
       for (const [exitKey, targetId] of Object.entries(step.next_hop?.on ?? {})) {
         if (targetId && !spec.steps.some((s) => s.id === targetId)) {
           issues.push({
             code: "branch_target_not_found",
-            message: `step "${step.id}" branches exit "${exitKey}" to step "${targetId}" which does not exist. Fix the step id or remove the branch — the edge can never route.`,
+            message: `step "${step.id}" 将 exit "${exitKey}" 分支到不存在的 step "${targetId}"。请修正 step id 或移除 branch——此 edge 永远无法路由。`,
             field: `workflow.steps[${idx}].next_hop.on.${exitKey}`,
             severity: "error",
           });
@@ -220,14 +208,11 @@ export class WorkflowValidator {
       }
     });
 
-    // Reachability + cycle detection over the FULL successor graph:
-    // the structural edge (the projector's own exported resolveNextStep
-    // — never a parallel re-implementation) UNIONED with the WF-2
-    // branch edges (arch composition note: branch edges CREATE cycles —
-    // failed → remediate → verify → failed is the canonical remediation
-    // loop). Routing cycles require an enforceable max_hops. Prerequisite
-    // cycles are unschedulable regardless of a hop guard, so check their
-    // edges separately before applying the routing-loop exception.
+    // 对完整 successor graph 执行 reachability + cycle detection：structural edge（projector 自己
+    // 导出的 resolveNextStep——绝不并行重新实现）与 WF-2 branch edge 的并集（arch composition
+    // note：branch edge 会创建 cycle——failed → remediate → verify → failed 是 canonical
+    // remediation loop）。routing cycle 要求可执行的 max_hops。prerequisite cycle 无论是否有 hop
+    // guard 都不可调度，因此在应用 routing-loop exception 前单独检查其 edge。
     if (spec.steps.length > 0 && spec.steps.every((s) => s.id)) {
       const stepById = new Map(spec.steps.map((s) => [s.id, s]));
       const dependencyGraph = spec.steps.some((step) => step.depends_on !== undefined);
@@ -248,7 +233,7 @@ export class WorkflowValidator {
         }
         return out;
       };
-      // Reachability: BFS from the authoritative entry (steps[0]).
+      // Reachability：从权威 entry（steps[0]）开始 BFS。
       const reachable = new Set<string>();
       const queue: string[] = [spec.steps[0]!.id];
       while (queue.length > 0) {
@@ -288,16 +273,14 @@ export class WorkflowValidator {
       if (dependencyCycle) {
         issues.push({
           code: "dependency_cycle",
-          message: `the prerequisite graph cycles (${dependencyCycle.join(" → ")}). These steps cannot become ready; remove a cyclic depends_on edge. loop_guards.max_hops bounds routing loops, not prerequisite cycles.`,
+          message: `prerequisite graph 存在环（${dependencyCycle.join(" → ")}）。这些 step 无法 ready；请移除形成环的 depends_on edge。loop_guards.max_hops 约束 routing loop，而非 prerequisite cycle。`,
           field: "workflow.steps",
           severity: "error",
         });
       }
       const cyclePath = findCycle(successorsOf, [spec.steps[0]!.id]);
-      // Guard blocker 2: only an ENFORCEABLE guard sanctions a cycle —
-      // a non-integer/non-positive max_hops (possible in pre-fix cached
-      // spec_json blobs; the parser now rejects new ones) can never
-      // trip at projection, so it sanctions nothing.
+      // Guard blocker 2：只有可执行 guard 才允许 cycle——非整数或非正 max_hops（可能存在于修复前
+      // cached spec_json blob；parser 现在会拒绝新值）永远无法在 projection 时触发，因此不构成授权。
       const enforceableMaxHops =
         typeof spec.loop_guards?.max_hops === "number" &&
         Number.isInteger(spec.loop_guards.max_hops) &&
@@ -305,7 +288,7 @@ export class WorkflowValidator {
       if (cyclePath && !dependencyCycle && !enforceableMaxHops) {
         issues.push({
           code: "cycle_without_max_hops",
-          message: `the routing graph cycles (${(cyclePath as string[]).join(" → ")}) and workflow.loop_guards.max_hops is not declared — the instance would hop unbounded. Loops (including branch-created remediation loops) are legitimate only under an enforced guard: declare loop_guards.max_hops to sanction the cycle.`,
+          message: `routing graph 存在环（${(cyclePath as string[]).join(" → ")}），且未声明 workflow.loop_guards.max_hops——instance 将无限 hop。只有受强制 guard 约束时，loop（包括 branch 创建的 remediation loop）才合法：请声明 loop_guards.max_hops 以允许该 cycle。`,
           field: "workflow.loop_guards.max_hops",
           severity: "error",
         });
@@ -314,7 +297,7 @@ export class WorkflowValidator {
         if (step.id && !reachable.has(step.id)) {
           issues.push({
             code: "step_unreachable",
-            message: `step "${step.id}" is unreachable: neither the structural routing walk from the entry step ("${spec.steps[0]!.id}") nor any branch edge reaches it. Fix the next_hop edges/branches or remove the dead step.`,
+            message: `step "${step.id}" 不可达：从 entry step（"${spec.steps[0]!.id}"）开始的 structural routing walk 与任何 branch edge 都无法到达它。请修正 next_hop edge/branch 或移除 dead step。`,
             field: `workflow.steps`,
             severity: "error",
           });
@@ -322,9 +305,8 @@ export class WorkflowValidator {
       }
     }
 
-    // OPR.0.4.6.WF2 FR-3: host-pin membership against the live registry
-    // (when the production lookup is injected). "local" and absent are
-    // always legal; an unknown id can never route.
+    // OPR.0.4.6.WF2 FR-3：对照 live registry 检查 host-pin membership（注入 production lookup
+    // 时）。"local" 与缺失值始终合法；未知 id 永远无法路由。
     if (hostRegistryLookup) {
       spec.steps.forEach((step, idx) => {
         if (step.host && step.host !== "local") {
@@ -332,7 +314,7 @@ export class WorkflowValidator {
           if (!probe.registered) {
             issues.push({
               code: "host_not_registered",
-              message: `step "${step.id}" pins host "${step.host}" which is not in the hosts registry (~/.openrig/hosts.yaml). Registered ids: ${probe.registeredIds.length > 0 ? `[${probe.registeredIds.join(", ")}]` : "(none)"}. Register the host with rig host add, use "local", or remove the pin.`,
+              message: `step "${step.id}" 固定到 hosts registry（~/.openrig/hosts.yaml）中不存在的 host "${step.host}"。已注册 id：${probe.registeredIds.length > 0 ? `[${probe.registeredIds.join(", ")}]` : "（无）"}。请使用 zrig host add 注册 host、改用 "local" 或移除 pin。`,
               field: `workflow.steps[${idx}].host`,
               severity: "error",
             });
@@ -341,12 +323,10 @@ export class WorkflowValidator {
       });
     }
 
-    // OPR.0.4.6.WF2 FR-5: gate target semantics — a HUMAN-seat target
-    // requires summary + evidence_ref (the shipped human-route write
-    // path enforces them at create; failing HERE is the fail-at-author-
-    // time mini-req); any other target must be a declared role. A
-    // handler role with no preferred_targets gets a warning (the gate
-    // compile fails loud at trip time if still unresolvable).
+    // OPR.0.4.6.WF2 FR-5：gate target semantics——HUMAN-seat target 要求 summary +
+    // evidence_ref（已交付 human-route write 路径在 create 时强制；在这里失败就是
+    // fail-at-author-time mini-req）；其他 target 必须是已声明 role。没有 preferred_targets 的
+    // handler role 会得到 warning（若触发时仍无法解析，gate compile 会显著失败）。
     spec.steps.forEach((step, idx) => {
       const gate = step.gate;
       if (!gate) return;
@@ -355,7 +335,7 @@ export class WorkflowValidator {
         if (!gate.summary || !gate.evidence_ref) {
           issues.push({
             code: "gate_human_fields_missing",
-            message: `step "${step.id}" gates on human seat ${gate.target} but is missing ${!gate.summary ? "summary" : "evidence_ref"}. A human-routed gate item must carry a plain-language summary AND a durable evidence pointer (the shipped human-route contract) — add both.`,
+            message: `step "${step.id}" 以 human seat ${gate.target} 为 gate，但缺少 ${!gate.summary ? "summary" : "evidence_ref"}。human-routed gate item 必须同时携带 plain-language summary 与持久 evidence pointer（已交付 human-route contract）——请补齐两者。`,
             field: fieldBase,
             severity: "error",
           });
@@ -363,32 +343,29 @@ export class WorkflowValidator {
       } else if (!declaredRoles.has(gate.target)) {
         issues.push({
           code: "gate_target_unresolved",
-          message: `step "${step.id}" gates on "${gate.target}" which is neither a human seat session (human@kernel form) nor a role declared in workflow.roles. Declare the handler role or use a human seat session.`,
+          message: `step "${step.id}" 以 "${gate.target}" 为 gate，但它既不是 human seat session（human@kernel 形式），也不是 workflow.roles 中声明的 role。请声明 handler role 或使用 human seat session。`,
           field: `${fieldBase}.target`,
           severity: "error",
         });
       } else if ((spec.roles?.[gate.target]?.preferred_targets ?? []).length === 0) {
         issues.push({
           code: "gate_handler_no_targets",
-          message: `step "${step.id}" gates on handler role "${gate.target}" which declares no preferred_targets — the gate item will have no seat to route to when it trips. Add preferred_targets to the role before instantiating.`,
+          message: `step "${step.id}" 以 handler role "${gate.target}" 为 gate，但该 role 未声明 preferred_targets——gate item 触发时没有可路由 seat。请在实例化前为该 role 添加 preferred_targets。`,
           field: `${fieldBase}.target`,
           severity: "warning",
         });
       }
     });
 
-    // ── OPR.0.4.6.WF1 FR-9 (G8): the inert-config sweep — every
-    // declared-but-unenforced key is EXPLICITLY-V2, machine-readably:
-    // using one produces a fail-open advisory (warning, exit 0) naming
-    // the key as declared-but-not-enforced-in-v1. No key may sit in
-    // the silent third state. Consumed keys get no advisory:
-    // invariants.allowed_exits (projector exit enforcement),
-    // loop_guards.max_hops (FR-6), roles.*.preferred_targets
-    // (owner resolution). ──────────────────────────────────────────
+    // ── OPR.0.4.6.WF1 FR-9（G8）：inert-config sweep——每个已声明但未执行的 key 都以 machine-
+    // readable 方式明确标为 V2：使用它会产生 fail-open advisory（warning，exit 0），点明该 key
+    // 已声明但 v1 未执行。任何 key 都不能处于静默第三状态。已使用 key 不发 advisory：
+    // invariants.allowed_exits（投影器出口强制）、loop_guards.max_hops（FR-6）、
+    // roles.*.preferred_targets（所有者解析）。────────────────────────────────────────────
     const v2Advisory = (key: string, field: string, extra?: string) => {
       issues.push({
         code: "declared_not_enforced_v1",
-        message: `"${key}" is declared but not enforced in v1 — the engine records it without acting on it${extra ? ` (${extra})` : ""}. Keep it for forward-compatibility or remove it; it changes nothing today.`,
+        message: `"${key}" 已声明，但 v1 不会执行——engine 会记录它，却不会采取行动${extra ? `（${extra}）` : ""}。可保留以便 forward compatibility，也可移除；它目前不会改变任何行为。`,
         field,
         severity: "warning",
       });
@@ -398,37 +375,35 @@ export class WorkflowValidator {
     }
     if (spec.invariants?.preserve_lineage !== undefined) {
       v2Advisory("invariants.preserve_lineage", "workflow.invariants.preserve_lineage",
-        "lineage IS always preserved via chain_of_record; the flag itself gates nothing");
+        "lineage 始终通过 chain_of_record 保留；flag 本身不控制任何行为");
     }
     if (spec.invariants?.closure_required !== undefined) {
       v2Advisory("invariants.closure_required", "workflow.invariants.closure_required",
-        "closure IS always required by the hot-potato contract; the flag itself gates nothing");
+        "hot-potato contract 始终要求 closure；flag 本身不控制任何行为");
     }
     if (spec.closure) {
       v2Advisory("closure.{success,degraded,failed}", "workflow.closure",
-        "display-only messages; no consumer renders them yet");
+        "仅展示消息；尚无 consumer 渲染它们");
     }
     if (spec.loop_guards?.spawn_budget !== undefined) {
       v2Advisory("loop_guards.spawn_budget", "workflow.loop_guards.spawn_budget",
-        "it guards a SPAWN mechanism and no spawn/fan-out seam exists in the single-frontier model; enforcement is a NAMED acceptance item of the WF-2/WF-6 parallel-frontier fan-out work (arch ruling 2026-07-06)");
+        "它保护 SPAWN 机制，而 single-frontier model 中不存在 spawn/fan-out seam；执行此约束是 WF-2/WF-6 parallel-frontier fan-out 工作的具名 acceptance item（arch ruling 2026-07-06）");
     }
-    // OPR.0.4.6.WF2 FR-4: the `gates[]` and `next_hop.mode: prefer`
-    // advisories are GONE — both forms are now REMOVED at parse with
-    // specific what/why/fix migration errors (spec_gates_removed /
-    // spec_prefer_mode_removed), so a spec carrying them can never
-    // reach this validator. The inert third state died at the parser.
+    // OPR.0.4.6.WF2 FR-4：`gates[]` 与 `next_hop.mode: prefer` advisory 已移除——两种形式
+    // 现在都会在 parse 时以具体 what/why/fix migration error（spec_gates_removed /
+    // spec_prefer_mode_removed）移除，因此携带它们的 spec 永远无法到达此 validator。inert
+    // 第三状态已在 parser 中消失。
     for (const [roleName, role] of Object.entries(spec.roles ?? {})) {
       if (role?.skill_refs && role.skill_refs.length > 0) {
         v2Advisory("skill_refs", `workflow.roles.${roleName}.skill_refs`,
-          "documentation-only; owner resolution uses preferred_targets");
-        break; // one advisory for the whole spec, not per role
+          "仅用于文档；owner resolution 使用 preferred_targets");
+        break; // 整份 spec 一个 advisory，而非每个 role 一个
       }
     }
 
     if (seatLivenessCheck) {
-      // Probe each role's preferred_targets[]. A role with no live
-      // preferred target produces a warning (not an error) — agents
-      // can still be resolved at runtime via runtime-adapter / claim.
+      // probe 每个 role 的 preferred_targets[]。没有 live preferred target 的 role 会产生 warning
+      //（不是 error）——agent 仍可在 runtime 通过 runtime-adapter / claim 解析。
       for (const [roleName, role] of Object.entries(spec.roles ?? {})) {
         const targets = role?.preferred_targets ?? [];
         if (targets.length === 0) continue;
@@ -436,7 +411,7 @@ export class WorkflowValidator {
         if (!liveAny) {
           issues.push({
             code: "role_no_live_preferred_target",
-            message: `role "${roleName}" has preferred_targets ${JSON.stringify(targets)} but none are live. The instance may stall at the first step requiring this role; ensure at least one target is up before instantiating, or rely on dynamic resolution at runtime.`,
+            message: `role "${roleName}" 的 preferred_targets 为 ${JSON.stringify(targets)}，但没有 live target。instance 可能停在首个需要此 role 的 step；请在实例化前确保至少一个 target 已启动，或依赖 runtime 的动态解析。`,
             field: `workflow.roles.${roleName}.preferred_targets`,
             severity: "warning",
           });

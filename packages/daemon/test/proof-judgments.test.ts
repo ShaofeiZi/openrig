@@ -37,12 +37,12 @@ function fixture() {
   return { root, missions, mission, alpha, beta, write, input, judge };
 }
 
-describe("attributed proof judgments and derived readiness", () => {
-  it("lifts one verdict, corrects it, preserves siblings/history, and writes no ancestor status", () => {
+describe("带归属的 proof judgment 与派生 readiness", () => {
+  it("提升一个 verdict、修正它、保留 sibling/history，且不写 ancestor 状态", () => {
     const f = fixture();
     const files = [join(f.root, "project.yaml"), join(f.mission, "mission.yaml"), join(f.alpha, "SPEC.md"), join(f.beta, "SPEC.md")];
     const before = files.map(p => fs.readFileSync(p, "utf8"));
-    expect(readSliceReadiness(f.alpha).items[0]!.state).toBe("pending"); // checked/done is not accepted
+    expect(readSliceReadiness(f.alpha).items[0]!.state).toBe("pending"); // checked/done 并不等于已采纳。
     const a = f.judge();
     expect(a.readiness.items[0]).toMatchObject({ state: "accepted", judgment: { actor: "judge@trial", verdict: "accept" } });
     expect(readMissionReadiness(f.mission).slices[1]!.eligible).toBe(true);
@@ -57,27 +57,27 @@ describe("attributed proof judgments and derived readiness", () => {
     expect(files.map(p => fs.readFileSync(p, "utf8"))).toEqual(before);
     expect(fs.readFileSync(join(f.alpha, "proof/judgments/00000001.md"), "utf8")).toContain(a.judgment.id);
   });
-  it("rejects unauthorized actors, wrong revisions and missing evidence without a receipt", () => {
+  it("拒绝未授权 actor、错误 revision 与缺失 evidence，且不产生 receipt", () => {
     const f = fixture();
-    expect(() => f.judge(f.input(), "other@trial")).toThrow("not a judge");
-    expect(() => f.judge({ ...f.input(), expectedRevision: "old" })).toThrow("Item or correction changed");
-    expect(() => f.judge({ ...f.input(), evidence: ["missing.md"] })).toThrow("unavailable");
+    expect(() => f.judge(f.input(), "other@trial")).toThrow("不是");
+    expect(() => f.judge({ ...f.input(), expectedRevision: "old" })).toThrow("条目或修正已变更");
+    expect(() => f.judge({ ...f.input(), evidence: ["missing.md"] })).toThrow("不可用");
     expect(fs.existsSync(join(f.alpha, "proof/judgments"))).toBe(false);
   });
-  it("replays lost responses exactly, refuses conflicting corrections and retains newer truth", () => {
+  it("精确重放丢失响应、拒绝冲突 correction，并保留更新的事实", () => {
     const f = fixture(), request = f.input();
     const first = f.judge(request);
     expect(f.judge(request).judgment).toEqual(first.judgment);
     const reject = f.input(undefined, "reject"), competing = { ...reject, verdict: "withdraw" as const };
     const rejected = f.judge(reject);
-    expect(() => f.judge(competing)).toThrow("Item or correction changed");
+    expect(() => f.judge(competing)).toThrow("条目或修正已变更");
     const replay = f.judge(request);
     expect(replay.judgment.id).toBe(first.judgment.id);
     expect(replay.readiness.items[0]!.judgment!.id).toBe(rejected.judgment.id);
     expect(replay.readiness.items[0]!.state).toBe("rejected");
-    expect(() => f.judge({ ...f.input(), operationId: rejected.judgment.operationId })).toThrow("different contents");
+    expect(() => f.judge({ ...f.input(), operationId: rejected.judgment.operationId })).toThrow("已记录不同内容");
   });
-  it("withdraws without the lost evidence, invalidates item/policy changes, and allows deliberate reaffirmation", () => {
+  it("在 evidence 丢失时 withdraw，使 item/policy 变更失效，并允许有意 reaffirmation", () => {
     const f = fixture(), first = f.judge();
     fs.unlinkSync(join(f.alpha, "proof/evidence.md"));
     expect(readSliceReadiness(f.alpha).items[0]!.state).toBe("unknown");
@@ -90,28 +90,28 @@ describe("attributed proof judgments and derived readiness", () => {
     expect(readSliceReadiness(f.alpha).items[0]!.state).toBe("pending");
     expect(readSliceReadiness(f.alpha).state).not.toBe("ready");
   });
-  it("rebuilds from retained receipts, ignores incomplete unpublished temp bytes, and fails visibly on damaged receipts", () => {
+  it("从保留 receipt 重建，忽略未发布的不完整临时字节，并对损坏 receipt 显著失败", () => {
     const f = fixture(), accepted = f.judge();
     f.write(join(f.alpha, "proof/judgments/.write-crashed"), "incomplete temp");
     expect(readSliceReadiness(f.alpha).revision).toBe(accepted.readiness.revision);
     const receipt = join(f.alpha, "proof/judgments/00000001.md");
     f.write(receipt, fs.readFileSync(receipt, "utf8").replace("verdict: accept", "verdict: reject"));
     const current = readSliceReadiness(f.alpha);
-    expect(current.state).toBe("unknown"); expect(current.issues.join()).toContain("changed judgment");
+    expect(current.state).toBe("unknown"); expect(current.issues.join()).toContain("判定畸形或已变更");
     expect(() => f.judge()).toThrow();
   });
-  it("adopts non-code and referenced patch equivalence without a synthetic commit or registry", () => {
+  it("无需合成 commit 或 registry 即可采纳非代码和引用 patch 等价性", () => {
     const f = fixture();
     const noncode = f.judge();
     expect(noncode.judgment.subject.kind).toBe("artifact");
     f.write(join(f.beta, "proof/comparison.md"), "The adopted patch has the same observed behavior; paths and actual comparison are retained here.");
     const input = { ...f.input("trial/slices/02-beta"), subject: { kind: "patch-equivalent" as const, ref: "adopted-patch" } };
-    expect(() => f.judge(input)).toThrow("comparison");
+    expect(() => f.judge(input)).toThrow("比较");
     const accepted = f.judge({ ...input, subject: { ...input.subject, comparison: "proof/comparison.md" }, evidence: ["proof/evidence.md"] });
     expect(accepted.readiness.state).toBe("ready");
     expect(accepted.judgment.evidence.map(e => e.ref)).toEqual(["missions/trial/slices/02-beta/proof/evidence.md", "missions/trial/slices/02-beta/proof/comparison.md"]);
   });
-  it("enforces the existing transport identity precedence through the public route", async () => {
+  it("通过公共 route 强制现有 transport identity 优先级", async () => {
     const f = fixture(), app = new Hono();
     app.use("*", async (c, next) => { c.set("sliceIndexer" as never, { isReady: () => true, slicesRoot: f.missions, invalidate: () => {} } as never); await next(); });
     app.route("/api/proof", proofRoutes());
@@ -128,15 +128,15 @@ describe("attributed proof judgments and derived readiness", () => {
 });
 
 
-describe("retained authority negative controls", () => {
-  it("invalidates policy and new children while preserving sibling and publication history", () => {
+describe("保留 authority 的负向控制", () => {
+  it("使 policy 和新 child 失效，同时保留 sibling 与 publication history", () => {
     const f = fixture(); f.judge(); f.judge(f.input("trial/slices/02-beta"));
     const history = join(f.mission, "publication-receipt.md"); f.write(history, "Published historical cut, unchanged.\n");
     const sibling = readSliceReadiness(f.beta);
     f.write(join(f.alpha, "slice.yaml"), { proofPolicy: { judges: ["new-judge@trial"] } });
     expect(readSliceReadiness(f.alpha).items[0]!.state).toBe("unknown");
     expect(readSliceReadiness(f.beta).revision).toBe(sibling.revision);
-    expect(() => f.judge()).toThrow("not a judge");
+    expect(() => f.judge()).toThrow("不是");
     const doc = YAML.parse(fs.readFileSync(join(f.mission, "mission.yaml"), "utf8"));
     doc.composition.slices.push({ ref: "slices/03-new/slice.yaml", order: 3, active: true });
     f.write(join(f.mission, "slices/03-new/slice.yaml"), { metadata: { id: "03-new" } });
@@ -149,7 +149,7 @@ describe("retained authority negative controls", () => {
     f.write(join(f.alpha, "slice.yaml"), { proofPolicy: { judges: "malformed" } });
     expect(readSliceReadiness(f.alpha)).toMatchObject({ configured: true, state: "unknown" });
   });
-  it("propagates transitive eligibility and detects a cycle beyond a pending edge", () => {
+  it("传播传递性 eligibility，并检测 pending edge 之外的 cycle", () => {
     const f = fixture(); f.judge(f.input("trial/slices/02-beta"));
     const doc = YAML.parse(fs.readFileSync(join(f.mission, "mission.yaml"), "utf8"));
     doc.composition.slices.push({ ref: "slices/03-new/slice.yaml", order: 3, active: true });
@@ -159,20 +159,20 @@ describe("retained authority negative controls", () => {
     expect(readMissionReadiness(f.mission).slices.find(s => s.scope === "03-new")!.eligible).toBe(false);
     f.write(join(f.beta, "slice.yaml"), { execution: { depends_on: ["01-alpha", "03-new"] } });
     const cycle = readMissionReadiness(f.mission);
-    expect(cycle.state).toBe("unknown"); expect(cycle.issues.join()).toContain("Cycle");
+    expect(cycle.state).toBe("unknown"); expect(cycle.issues.join()).toContain("环");
   });
-  it("binds binary/addressed bytes and refuses changed preparation or nonexistent sections", () => {
+  it("绑定 binary/addressed 字节，并拒绝已变化 preparation 或不存在 section", () => {
     const f = fixture(); fs.writeFileSync(join(f.alpha, "proof/binary.bin"), Buffer.from([0xff, 0x00, 0x80]));
     const refs = ["proof/binary.bin"], prepared = refs.map(ref => evidenceAt(f.root, f.alpha, ref));
     expect(f.judge({ ...f.input(), evidence: refs, expectedEvidence: prepared }).readiness.state).toBe("ready");
     fs.writeFileSync(join(f.alpha, "proof/binary.bin"), Buffer.from([0xff, 0x01, 0x80]));
-    expect(() => f.judge({ ...f.input(), evidence: refs, expectedEvidence: prepared })).toThrow("changed since preparation");
+    expect(() => f.judge({ ...f.input(), evidence: refs, expectedEvidence: prepared })).toThrow("自准备后已变更");
     expect(readSliceReadiness(f.alpha).state).toBe("unknown");
     f.write(join(f.alpha, "proof/sections.md"), "## Actual\nObserved comparison.\n");
-    expect(() => f.judge({ ...f.input(), evidence: ["proof/sections.md#invented"] })).toThrow("matches no header");
+    expect(() => f.judge({ ...f.input(), evidence: ["proof/sections.md#invented"] })).toThrow("未匹配此文件中的任何标题");
     expect(f.judge({ ...f.input(), evidence: ["proof/sections.md#actual"] }).readiness.state).toBe("ready");
   });
-  it("invalidates the changed addressed evidence without invalidating an unrelated section's acceptance", () => {
+  it("使已变化 addressed evidence 失效，但不使无关 section 的 acceptance 失效", () => {
     const f = fixture(), shared = join(f.root, "shared.md");
     f.write(shared, "## Alpha\nFirst outcome.\n## Beta\nSecond outcome.\n");
     f.judge({ ...f.input(), evidence: [`${shared}#alpha`] });
@@ -181,7 +181,7 @@ describe("retained authority negative controls", () => {
     expect(readSliceReadiness(f.alpha).state).toBe("unknown");
     expect(readSliceReadiness(f.beta).revision).toBe(beta.readiness.revision);
   });
-  it("preserves explicit identity across edits without accepting the changed promise", () => {
+  it("跨编辑保留显式 identity，但不接受已变化的 promise", () => {
     const f = fixture(), spec = join(f.alpha, "SPEC.md");
     f.write(spec, "## Proof contract\n- [ ] First promise. <!-- proof-item: stable -->\n");
     const first = f.judge();
@@ -190,15 +190,15 @@ describe("retained authority negative controls", () => {
     expect(item.id).toBe("stable"); expect(item.state).toBe("unknown"); expect(item.judgment!.id).toBe(first.judgment.id);
     expect(f.judge().judgment.previous).toBe(first.judgment.id);
   });
-  it("refuses escaped scope/evidence paths before publishing a receipt", () => {
+  it("发布 receipt 前拒绝逃逸的 scope/evidence path", () => {
     const f = fixture(), outside = fs.mkdtempSync(join(tmpdir(), "proof-outside-")); fixtures.push(outside);
     fs.writeFileSync(join(outside, "evidence.md"), "outside boundary");
     fs.symlinkSync(outside, join(f.alpha, "proof/outside"));
-    expect(() => f.judge({ ...f.input(), evidence: ["proof/outside/evidence.md"] })).toThrow("escapes");
-    expect(() => f.judge({ ...f.input(), scope: "../../" })).toThrow("within");
+    expect(() => f.judge({ ...f.input(), evidence: ["proof/outside/evidence.md"] })).toThrow("逃出");
+    expect(() => f.judge({ ...f.input(), scope: "../../" })).toThrow("工作区内");
     expect(fs.existsSync(join(f.alpha, "proof/judgments"))).toBe(false);
   });
-  it("does not adopt a copied receipt as judgment on another scope with the same promise", () => {
+  it("不将复制 receipt 采纳为对具有相同 promise 的另一 scope 的 judgment", () => {
     const f = fixture();
     f.write(join(f.beta, "SPEC.md"), fs.readFileSync(join(f.alpha, "SPEC.md"), "utf8"));
     f.judge();
@@ -206,10 +206,10 @@ describe("retained authority negative controls", () => {
     expect(readSliceReadiness(f.beta).items[0]!.state).toBe("unknown");
   });
   /**
-   * Verifies that mission readiness resolves composition slices when metadata is omitted (#72),
-   * while rejecting malformed metadata values.
+   * 验证 metadata 省略时 mission readiness 仍解析 composition slice（#72），同时拒绝畸形
+   * metadata 值。
    */
-  it("tolerates mission without metadata and resolves composition slices (#72)", () => {
+  it("容忍无 metadata 的 mission 并解析 composition slice（#72）", () => {
     const f = fixture();
     const members = ["01-alpha", "02-beta"].map((s, i) => ({ ref: `slices/${s}/slice.yaml`, order: i + 1, active: true }));
     f.write(join(f.mission, "mission.yaml"), { kind: "mission", composition: { slices: members } });
@@ -219,9 +219,9 @@ describe("retained authority negative controls", () => {
     expect(readiness.historicalStatus).toBeNull();
     f.write(join(f.mission, "mission.yaml"), { kind: "mission", metadata: "not-a-mapping", composition: { slices: members } });
     const invalid = readMissionReadiness(f.mission);
-    expect(invalid.issues).toContain("mission metadata: expected a mapping");
+    expect(invalid.issues).toContain("mission metadata：应为映射");
   });
-  it("pushes changed source truth, keeps sibling basis, and ignores unchanged source bytes", async () => {
+  it("推送已变化 source truth，保留 sibling basis，并忽略未变化 source 字节", async () => {
     const f = fixture(); f.judge(); const sibling = readSliceReadiness(f.beta).revision;
     const events: Array<{ type: string; revision: string }> = []; let invalidated = 0;
     const watch = watchProofSources(f.missions, () => { invalidated++; }, { emit: (e: { type: string; revision: string }) => events.push(e) } as unknown as EventBus);
@@ -269,8 +269,8 @@ async function kill(child: ChildProcess) {
   if (child.exitCode !== null || child.signalCode !== null) return;
   const exited = once(child, "exit"); child.kill("SIGKILL"); await exited;
 }
-describe("real process publication and recovery", () => {
-  it("publishes one concurrent correction and replays duplicate acceptance safely", async () => {
+describe("真实进程 publication 与 recovery", () => {
+  it("发布一个并发 correction，并安全重放重复 acceptance", async () => {
     const f = fixture(), first = f.judge(), a = await worker(f, f.input(undefined, "reject")), b = await worker(f, f.input(undefined, "withdraw"));
     try {
       const replies = await Promise.all([request(a), request(b)]), winner = replies.find(r => r.result)!.result;
@@ -286,7 +286,7 @@ describe("real process publication and recovery", () => {
       } finally { await kill(c); await kill(d); }
     } finally { await kill(a); await kill(b); }
   });
-  it("refuses a correction that races between the initial view and the publication scan", async () => {
+  it("拒绝在初始 view 与 publication scan 之间产生竞争的 correction", async () => {
     const f = fixture(); f.judge();
     const child = await worker(f, f.input(undefined, "reject"), "stale-read");
     try {
@@ -298,7 +298,7 @@ describe("real process publication and recovery", () => {
       expect(readSliceReadiness(f.alpha).items[0]!.state).toBe("withdrawn");
     } finally { await kill(child); }
   });
-  for (const crash of ["before", "after"] as const) it(`recovers SIGKILL ${crash} immutable publication in a fresh process`, async () => {
+  for (const crash of ["before", "after"] as const) it(`在新进程中恢复 SIGKILL ${crash} immutable publication`, async () => {
     const f = fixture(), input = f.input(), child = await worker(f, input, crash);
     expect(await request(child)).toEqual({ stopped: crash }); await kill(child);
     const prior = readSliceReadiness(f.alpha);
@@ -313,8 +313,8 @@ describe("real process publication and recovery", () => {
 });
 
 
-describe("selected proof identity across readers", () => {
-  it("keeps same-worded IDs independent through acceptance, correction and reorder", () => {
+describe("跨 reader 的 selected proof identity", () => {
+  it("在 acceptance、correction 与 reorder 过程中保持同文案 ID 相互独立", () => {
     const f = fixture();
     const rows = ["- [ ] Repeated outcome. <!-- proof-item: a -->", "- [ ] Repeated outcome. <!-- proof-item: b -->"];
     f.write(join(f.alpha, "SPEC.md"), "## Proof contract\n" + rows.join("\n") + "\n");

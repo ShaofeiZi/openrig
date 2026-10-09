@@ -101,8 +101,8 @@ describe("PodRigInstantiator", () => {
     return { db, rigRepo, podRepo, sessionRegistry, eventBus, inst, adapter, codexAdapter, tmux };
   }
 
-  // T1: valid rig instantiates pods + nodes + edges
-  it("instantiates pods + nodes correctly", async () => {
+  // T1：有效工作组规范会正确实体化 pod、节点与边。
+  it("正确实体化 pod 和节点", async () => {
     const { db, inst } = setup();
     const yaml = RigSpecCodec.serialize(makeRigSpec());
     const result = await inst.instantiate(yaml, RIG_ROOT);
@@ -114,8 +114,8 @@ describe("PodRigInstantiator", () => {
     db.close();
   });
 
-  // T2: resolved spec identity persisted
-  it("persists resolved spec identity on node", async () => {
+  // T2：在节点上持久化已解析的规范身份。
+  it("在节点上持久化已解析的规范身份", async () => {
     const { db, rigRepo, inst } = setup();
     const yaml = RigSpecCodec.serialize(makeRigSpec());
     const result = await inst.instantiate(yaml, RIG_ROOT);
@@ -130,8 +130,8 @@ describe("PodRigInstantiator", () => {
     db.close();
   });
 
-  // T3: startup orchestrator called
-  it("calls startup orchestrator with adapter", async () => {
+  // T3：调用启动编排器。
+  it("使用适配器调用启动编排器", async () => {
     const { db, inst, adapter } = setup();
     const yaml = RigSpecCodec.serialize(makeRigSpec());
     const result = await inst.instantiate(yaml, RIG_ROOT);
@@ -141,30 +141,30 @@ describe("PodRigInstantiator", () => {
     db.close();
   });
 
-  // Slice 51-01 stub-runtime — TEST-ONLY RED (undisputed mechanical FACT 2): the NORMAL-SEAT
-  // preflight→materialize→instantiate path DISPATCHES to the runtime: stub adapter that is injected into
-  // the instantiator — proven by the injected adapter's REAL lifecycle methods being invoked. RED now
-  // because instantiate() runs rigPreflight first (rigspec-instantiator.ts:1039) and SUPPORTED_RUNTIMES
-  // rejects "stub" (same source gate as FACT1), so dispatch never happens. This is NOT a production-
-  // registry proof — the startup.ts :710/:898 registration is a SEPARATE first-production RED in the
-  // revised packet (composition via createDaemon/assembled instantiator + real restore/successor path);
-  // this test must not be read as satisfying that requirement by direct injection. NO disputed surface.
-  it("FACT2: normal-seat instantiate DISPATCHES to the injected stub adapter (real lifecycle calls) [RED until preflight accepts stub]", async () => {
+  // Slice 51-01 stub-runtime——仅测试 RED（无争议的机械事实 2）：NORMAL-SEAT 的
+  // preflight→materialize→instantiate 路径会分派到注入 instantiator 的 runtime: stub 适配器，
+  // 证据是注入适配器的真实生命周期方法确实被调用。此前为 RED，是因为 instantiate() 先运行
+  // rigPreflight（rigspec-instantiator.ts:1039），而 SUPPORTED_RUNTIMES 拒绝 "stub"（与 FACT1
+  // 使用同一个 source gate），导致分派从未发生。这不是生产 registry 的证明；startup.ts
+  // :710/:898 的注册是修订 packet 中另一个首个生产 RED（通过 createDaemon/组装后的
+  // instantiator + 真实 restore/successor 路径组合）。不能把本测试中的直接注入误读为已经满足
+  // 那项要求；这里没有争议表面。
+  it("FACT2：普通 seat 的 instantiate 会分派到注入的 stub 适配器（真实生命周期调用）", async () => {
     const stubAdapter = mockAdapter("stub");
     const { db, inst } = setup(undefined, { stub: stubAdapter });
     const spec = makeRigSpec({
       pods: [{ id: "dev", label: "Dev", members: [{ id: "impl", agentRef: "local:agents/impl", profile: "default", runtime: "stub", cwd: "." }], edges: [] }],
     });
     const result = await inst.instantiate(RigSpecCodec.serialize(spec), RIG_ROOT);
-    expect(result.ok, `instantiate must succeed for runtime: stub; got: ${JSON.stringify(result)}`).toBe(true);
-    // dispatch proof: the injected stub adapter's REAL lifecycle methods were actually invoked.
-    expect(stubAdapter.project, "instantiate must dispatch project() to the injected stub adapter").toHaveBeenCalled();
-    expect(stubAdapter.checkReady, "instantiate must dispatch checkReady() to the injected stub adapter").toHaveBeenCalled();
+    expect(result.ok, `runtime: stub 的 instantiate 必须成功；实际结果：${JSON.stringify(result)}`).toBe(true);
+    // 分派证明：注入的 stub 适配器真实生命周期方法确实被调用。
+    expect(stubAdapter.project, "instantiate 必须把 project() 分派给注入的 stub 适配器").toHaveBeenCalled();
+    expect(stubAdapter.checkReady, "instantiate 必须把 checkReady() 分派给注入的 stub 适配器").toHaveBeenCalled();
     if (result.ok) expect(result.result.nodes).toHaveLength(1);
     db.close();
   });
 
-  it("passes RigSpec member model into the Codex runtime binding", async () => {
+  it("把 RigSpec 成员模型传入 Codex runtime binding", async () => {
     const { db, inst, codexAdapter } = setup();
     const spec = makeRigSpec({
       pods: [{
@@ -191,7 +191,7 @@ describe("PodRigInstantiator", () => {
     db.close();
   });
 
-  it("uses cwdOverride for launched nodes without changing spec-relative agent resolution", async () => {
+  it("对已启动节点使用 cwdOverride，且不改变相对规范的 agent 解析", async () => {
     const { db, rigRepo, sessionRegistry, inst, adapter } = setup();
     const yaml = RigSpecCodec.serialize(makeRigSpec());
     const result = await inst.instantiate(yaml, RIG_ROOT, { cwdOverride: "/workspace/project" });
@@ -207,7 +207,7 @@ describe("PodRigInstantiator", () => {
     db.close();
   });
 
-  it("refuses to start a harness when managed skill projection fails", async () => {
+  it("受管 Skill 投影失败时拒绝启动运行环境", async () => {
     const skillReconciler = vi.fn(() => ({
       ok: false,
       applied: false,
@@ -230,7 +230,7 @@ describe("PodRigInstantiator", () => {
     db.close();
   });
 
-  it("uses the configured catalog for both preflight and launch resolution", async () => {
+  it("预检与启动解析都使用配置的目录", async () => {
     const root = fs.mkdtempSync(nodePath.join(os.tmpdir(), "openrig-instantiator-skill-catalog-"));
     let db: ReturnType<typeof createFullTestDb> | undefined;
     try {
@@ -298,7 +298,7 @@ profiles:
     }
   });
 
-  it("dedupes role guidance when the same file is referenced by resources.guidance and startup.files", async () => {
+  it("resources.guidance 与 startup.files 引用同一文件时对 role guidance 去重", async () => {
     const db = createFullTestDb();
     const rigRepo = new RigRepository(db);
     const podRepo = new PodRepository(db);
@@ -349,7 +349,7 @@ profiles:
     db.close();
   });
 
-  it("injects rig identity context into launched agent startup actions", async () => {
+  it("向已启动 agent 的启动操作注入工作组身份上下文", async () => {
     const { db, inst, tmux } = setup();
     const yaml = RigSpecCodec.serialize(makeRigSpec());
     const result = await inst.instantiate(yaml, RIG_ROOT);
@@ -358,31 +358,31 @@ profiles:
 
     const sendText = tmux.sendText as ReturnType<typeof vi.fn>;
     const identityCall = sendText.mock.calls.find(([, text]) =>
-      typeof text === "string" && text.includes("OpenRig session identity:"),
+      typeof text === "string" && text.includes("zrig session 身份："),
     );
 
     expect(identityCall).toBeDefined();
     expect(identityCall?.[0]).toBe("dev-impl@test-rig");
-    expect(identityCall?.[1]).toMatch(/^dev-impl@test-rig\nOpenRig session identity:/);
-    // Identity fields preserved
+    expect(identityCall?.[1]).toMatch(/^dev-impl@test-rig\nzrig session 身份：/);
+    // identity 字段保持不变
     expect(identityCall?.[1]).toContain("- rig: test-rig");
     expect(identityCall?.[1]).toContain("- pod: dev");
     expect(identityCall?.[1]).toContain("- member: impl");
     expect(identityCall?.[1]).toContain("- logical_id: dev.impl");
     expect(identityCall?.[1]).toContain("- session: dev-impl@test-rig");
-    // Whoami pointer
-    expect(identityCall?.[1]).toContain("rig whoami --json");
+    // Whoami 指引
+    expect(identityCall?.[1]).toContain("zrig whoami --json");
 
     db.close();
   });
 
-  it("includes openrig-start.md onboarding overlay in resolved startup files", async () => {
+  it("在已解析的启动文件中包含 openrig-start.md 入门 overlay", async () => {
     const { db, inst } = setup();
     const yaml = RigSpecCodec.serialize(makeRigSpec());
     const result = await inst.instantiate(yaml, RIG_ROOT);
     expect(result.ok).toBe(true);
 
-    // Check startup context for openrig-start.md
+    // 检查启动上下文中是否包含 openrig-start.md。
     const ctxRows = db.prepare("SELECT * FROM node_startup_context").all() as Array<{ resolved_files_json: string }>;
     expect(ctxRows.length).toBeGreaterThan(0);
     const allFiles = ctxRows.flatMap((r) => JSON.parse(r.resolved_files_json) as Array<{ path: string }>);
@@ -392,7 +392,7 @@ profiles:
     db.close();
   });
 
-  it("delivers the two-part default onboarding pack on fresh starts", async () => {
+  it("全新启动时交付由两部分组成的默认入门包", async () => {
     const { db, inst } = setup();
     const result = await inst.instantiate(RigSpecCodec.serialize(makeRigSpec()), RIG_ROOT);
     expect(result.ok).toBe(true);
@@ -419,7 +419,7 @@ profiles:
     db.close();
   });
 
-  it("omits the default onboarding pack when the typed setting is off", async () => {
+  it("类型化设置关闭时省略默认入门包", async () => {
     const { db, inst } = setup(undefined, undefined, undefined, () => false);
     const result = await inst.instantiate(RigSpecCodec.serialize(makeRigSpec()), RIG_ROOT);
     expect(result.ok).toBe(true);
@@ -434,7 +434,7 @@ profiles:
     db.close();
   });
 
-  it("does not rewrite an existing rig when onboarding is enabled for future launches", async () => {
+  it("为未来启动启用 onboarding 时不重写已有工作组", async () => {
     let onboardingEnabled = false;
     const { db, inst } = setup(undefined, undefined, undefined, () => onboardingEnabled);
     const existing = await inst.instantiate(
@@ -465,7 +465,7 @@ profiles:
     db.close();
   });
 
-  it("always includes the default culture when the rig has no culture_file", async () => {
+  it("工作组没有 culture_file 时始终包含默认文化文件", async () => {
     const { db, inst } = setup();
     const result = await inst.instantiate(RigSpecCodec.serialize(makeRigSpec()), RIG_ROOT);
     expect(result.ok).toBe(true);
@@ -485,7 +485,7 @@ profiles:
     db.close();
   });
 
-  it("orders the default culture before the rig culture overlay", async () => {
+  it("将默认文化文件排在工作组文化 overlay 之前", async () => {
     const { db, inst } = setup();
     const spec = makeRigSpec({ cultureFile: "CULTURE.md" });
     const result = await inst.instantiate(RigSpecCodec.serialize(spec), RIG_ROOT);
@@ -502,7 +502,7 @@ profiles:
     db.close();
   });
 
-  it("CULTURE-default.md ships the lightweight operating-model floor", () => {
+  it("CULTURE-default.md 提供轻量级 operating-model 基线", () => {
     const { existsSync, readFileSync } = require("node:fs");
     const { resolve } = require("node:path");
     const assetPath = resolve(import.meta.dirname, "../src/domain/../../assets/guidance/CULTURE-default.md");
@@ -515,38 +515,37 @@ profiles:
     expect(content).not.toContain("full stop on new production");
   });
 
-  it("openrig-start.md asset exists on disk and guards the thin-overlay contract", () => {
+  it("openrig-start.md 资源存在于磁盘并守护精简 overlay 契约", () => {
     const { existsSync, readFileSync } = require("node:fs");
     const { resolve } = require("node:path");
     const assetPath = resolve(import.meta.dirname, "../src/domain/../../assets/guidance/openrig-start.md");
     expect(existsSync(assetPath)).toBe(true);
     const content = readFileSync(assetPath, "utf8");
-    // The thin overlay's positive guarantees: identity first, the two peer verbs,
-    // the thin-transcript warning (guards a live per-runtime recording condition),
-    // and an explicit ask-don't-infer close.
+    // 精简 overlay 的正向保证：身份优先、两个 peer 动词、精简 transcript 警告（守护一个
+    // 按 runtime 实时记录的条件），以及明确要求“询问而非推断”的结尾。
     expect(content).toContain("rig whoami --json");
     expect(content).toContain("rig send");
     expect(content).toContain("rig capture");
-    // (wrap-safe fragments: the source is hard-wrapped markdown)
+    // 使用不受换行影响的片段，因为源文件是硬换行 Markdown。
     expect(content).toContain("transcript capture is unreliable");
     expect(content).toContain("mean the session was quiet");
     expect(content).toContain("say so rather than inferring");
-    // The product decision to keep the boot overlay thin, pinned as absences: no operating-model SDLC and
-    // no skill-library routing may ride the default boot overlay (they are opt-in
-    // layers, delivered by profile/startup config, never hardcoded here).
+    // 通过“不应出现的内容”锁定保持启动 overlay 精简的产品决策：默认启动 overlay 不得携带
+    // operating-model SDLC 或 skill-library 路由（它们是由 profile/startup 配置交付的可选层，
+    // 绝不硬编码在这里）。
     expect(content).not.toContain("mission-slice-sop");
     expect(content).not.toContain("plan-lock");
     expect(content).not.toContain("openrig-user");
     expect(content).not.toContain("openrig-skills");
     expect(content).toContain("openrig-onboarding-01.md");
     expect(content).toContain("onboarding.default_pack.enabled");
-    // Thin means thin: a hard ceiling so accretion back toward the 3.6KB pre-trim
-    // overlay fails loudly instead of silently.
+    // 精简就必须真正精简：设置硬上限，使内容重新膨胀到裁剪前 3.6KB 的趋势明确失败，
+    // 而不是静默发生。
     expect(content.length).toBeLessThan(2500);
   });
 
-  // T4: partial failure — one node startup fails, other succeeds
-  it("partial node startup failure does not corrupt other nodes", async () => {
+  // T4：部分失败——一个节点启动失败，另一个成功。
+  it("部分节点启动失败不会破坏其他节点", async () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
       [`${RIG_ROOT}/agents/qa/agent.yaml`]: agentYaml("qa"),
@@ -560,14 +559,14 @@ profiles:
     const tmux = mockTmux();
     const nodeLauncher = new NodeLauncher({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmux });
 
-    // Startup orchestrator that fails for qa
+    // 为 qa 返回失败的启动编排器。
     const startupOrch = new StartupOrchestrator({ db, sessionRegistry, eventBus, tmuxAdapter: tmux });
     const origStartNode = startupOrch.startNode.bind(startupOrch);
     let callCount = 0;
     startupOrch.startNode = async (input) => {
       callCount++;
       if (callCount === 2) {
-        // Fail the second node's startup
+        // 让第二个节点的启动流程失败。
         sessionRegistry.updateStartupStatus(input.sessionId, "failed");
         return { ok: false, startupStatus: "failed", errors: ["simulated failure"] };
       }
@@ -605,8 +604,8 @@ profiles:
     db.close();
   });
 
-  // T5: same DB handle shared
-  it("validates same DB handle", () => {
+  // T5：共享同一个数据库句柄。
+  it("验证各依赖共享同一个数据库句柄", () => {
     const db = createFullTestDb();
     const db2 = createFullTestDb();
     const rigRepo = new RigRepository(db);
@@ -615,13 +614,13 @@ profiles:
       eventBus: new EventBus(db2), nodeLauncher: new NodeLauncher({ db: db2, rigRepo: new RigRepository(db2), sessionRegistry: new SessionRegistry(db2), eventBus: new EventBus(db2), tmuxAdapter: mockTmux() }),
       startupOrchestrator: new StartupOrchestrator({ db: db2, sessionRegistry: new SessionRegistry(db2), eventBus: new EventBus(db2), tmuxAdapter: mockTmux() }),
       fsOps: mockFs({}), adapters: {},
-    })).toThrow(/same db handle/);
+    })).toThrow(/PodRigInstantiator：rigRepo 必须共享同一个数据库句柄/);
     db.close();
     db2.close();
   });
 
-  // T7: emits startup lifecycle events
-  it("emits startup lifecycle events", async () => {
+  // T7：发出启动生命周期事件。
+  it("发出启动生命周期事件", async () => {
     const { db, eventBus, inst } = setup();
     const events: string[] = [];
     eventBus.subscribe((e) => events.push(e.type));
@@ -632,8 +631,8 @@ profiles:
     db.close();
   });
 
-  // T8: pod membership persisted
-  it("persists pod membership on nodes", async () => {
+  // T8：持久化 pod 成员关系。
+  it("在节点上持久化 pod 成员关系", async () => {
     const { db, rigRepo, inst } = setup();
     const yaml = RigSpecCodec.serialize(makeRigSpec());
     const result = await inst.instantiate(yaml, RIG_ROOT);
@@ -645,8 +644,8 @@ profiles:
     db.close();
   });
 
-  // CP2-R1: Two pods with same member name create distinct nodes (qualified logical_id)
-  it("two pods with same member name create distinct nodes", async () => {
+  // CP2-R1：两个 pod 中同名成员会创建不同节点（使用限定 logical_id）。
+  it("两个 pod 中同名成员会创建不同节点", async () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
     };
@@ -669,10 +668,10 @@ profiles:
     db.close();
   });
 
-  // CP2-R2: Narrowed restore-policy persisted to both node and session
-  it("persists narrowed restore-policy to node and session", async () => {
-    // Agent spec has checkpoint_only default, member requests resume_if_possible (broadening — should fail)
-    // Instead: spec has resume_if_possible, member narrows to relaunch_fresh
+  // CP2-R2：把收窄后的 restore-policy 同时持久化到节点和会话。
+  it("把收窄后的 restore-policy 持久化到节点和会话", async () => {
+    // Agent 规范默认 checkpoint_only，成员请求 resume_if_possible 会扩大权限，应失败。
+    // 此处改为规范允许 resume_if_possible，而成员收窄为 relaunch_fresh。
     const narrowingAgent = `name: impl\nversion: "1.0.0"\ndefaults:\n  lifecycle:\n    compaction_strategy: harness_native\n    restore_policy: resume_if_possible\nresources:\n  skills: []\nprofiles:\n  default:\n    uses:\n      skills: []`;
     const files = { [`${RIG_ROOT}/agents/impl/agent.yaml`]: narrowingAgent };
     const { db, rigRepo, sessionRegistry, inst } = setup(files);
@@ -685,14 +684,14 @@ profiles:
     if (result.ok) {
       const rig = rigRepo.getRig(result.result.rigId);
       expect(rig!.nodes[0]!.restorePolicy).toBe("relaunch_fresh");
-      // Check session too
+      // 同时检查会话。
       const sessions = sessionRegistry.getSessionsForRig(result.result.rigId);
       expect(sessions[0]!.restorePolicy).toBe("relaunch_fresh");
     }
     db.close();
   });
 
-  it("threads the three-level resolved mechanic through the real launch path into the cutover registration", async () => {
+  it("经真实启动路径把三级解析后的 mechanic 传递到 cutover 注册", async () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: `
 version: "0.2"
@@ -745,7 +744,7 @@ edges: []
     db.close();
   });
 
-  it("refuses apprentice arming without a mechanic using field, layering, and SOP teaching", async () => {
+  it("缺少 mechanic 时拒绝启用 apprentice，并给出字段、分层与 SOP 指引", async () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: `
 version: "0.2"
@@ -771,13 +770,13 @@ profiles:
     expect(result.ok).toBe(true);
     expect(register).not.toHaveBeenCalled();
     expect(JSON.stringify(result)).toMatch(
-      /mechanic.*spec-default.*profile.*member.*continuity\/apprentice-cutover\.md/i,
+      /mechanic.*spec-default.*profile.*成员.*continuity\/apprentice-cutover\.md/i,
     );
     db.close();
   });
 
-  // CP2-R3: Topological ordering enforced (delegates_to edge)
-  it("launches nodes in topological order based on edges", async () => {
+  // CP2-R3：根据 delegates_to 边强制执行拓扑顺序。
+  it("根据边的拓扑顺序启动节点", async () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
       [`${RIG_ROOT}/agents/orch/agent.yaml`]: agentYaml("orch"),
@@ -797,7 +796,7 @@ profiles:
     const result = await inst.instantiate(yaml, RIG_ROOT);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // lead should be launched before worker (delegates_to: lead -> worker means lead first)
+      // lead 应先于 worker 启动，因为 delegates_to: lead -> worker 表示 lead 优先。
       const leadIdx = result.result.nodes.findIndex((n) => n.logicalId === "dev.lead");
       const workerIdx = result.result.nodes.findIndex((n) => n.logicalId === "dev.worker");
       expect(leadIdx).toBeLessThan(workerIdx);
@@ -805,21 +804,21 @@ profiles:
     db.close();
   });
 
-  // NS-T01: canonical session name {pod}-{member}@{rig}
-  it("launches nodes with canonical session names", async () => {
+  // NS-T01：规范 session 名为 {pod}-{member}@{rig}。
+  it("使用规范 session 名启动节点", async () => {
     const { db, tmux, inst } = setup();
     const yaml = RigSpecCodec.serialize(makeRigSpec());
     const result = await inst.instantiate(yaml, RIG_ROOT);
     expect(result.ok).toBe(true);
-    // tmux createSession was called with canonical name
+    // tmux createSession 使用规范名称调用。
     const createSession = tmux.createSession as ReturnType<typeof vi.fn>;
     expect(createSession).toHaveBeenCalledOnce();
     expect(createSession.mock.calls[0]![0]).toBe("dev-impl@test-rig");
     db.close();
   });
 
-  // NS-T01: invalid session name characters caught at preflight within instantiation
-  it("rejects invalid session name characters with per-component error at preflight", async () => {
+  // NS-T01：实体化预检会捕获无效的 session 名字符。
+  it("预检以逐组件错误拒绝无效 session 名字符", async () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
     };
@@ -836,15 +835,15 @@ profiles:
     const result = await inst.instantiate(yaml, RIG_ROOT);
     expect(result.ok).toBe(false);
     if (!result.ok && "errors" in result) {
-      expect(result.errors.some((e: string) => e.includes("pod name") && e.includes(" "))).toBe(true);
-      expect(result.errors.some((e: string) => e.includes("member name") && e.includes("!"))).toBe(true);
-      expect(result.errors.some((e: string) => e.includes("rig name") && e.includes(" "))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes("pod 名称") && e.includes(" "))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes("member 名称") && e.includes("!"))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes("rig 名称") && e.includes(" "))).toBe(true);
     }
     db.close();
   });
 
-  // NS-T03: terminal member instantiation — skips agent resolution, executes startup
-  it("instantiates terminal member without agent resolution", async () => {
+  // NS-T03：实体化 terminal 成员时跳过 agent 解析并执行启动。
+  it("不解析 agent 即可实体化 terminal 成员", async () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
     };
@@ -870,7 +869,7 @@ profiles:
       expect(result.result.nodes).toHaveLength(2);
       const launched = result.result.nodes.filter((n) => n.status === "launched");
       expect(launched).toHaveLength(2);
-      // Terminal node was launched with canonical name
+      // Terminal 节点使用规范名称启动。
       const createSession = tmux.createSession as ReturnType<typeof vi.fn>;
       const sessionNames = createSession.mock.calls.map((c: string[]) => c[0]);
       expect(sessionNames).toContain("infra-server@test-rig");
@@ -878,8 +877,8 @@ profiles:
     db.close();
   });
 
-  // NS-T03: terminal member restore_policy propagated to session
-  it("terminal member propagates checkpoint_only restore_policy to session row", async () => {
+  // NS-T03：terminal 成员的 restore_policy 传播到 session。
+  it("terminal 成员把 checkpoint_only restore_policy 传播到 session 行", async () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
     };
@@ -895,7 +894,7 @@ profiles:
     const result = await inst.instantiate(yaml, RIG_ROOT);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // Check session has checkpoint_only
+      // 检查 session 是否为 checkpoint_only。
       const sessions = db.prepare("SELECT restore_policy FROM sessions").all() as Array<{ restore_policy: string }>;
       expect(sessions.length).toBeGreaterThan(0);
       expect(sessions[0]!.restore_policy).toBe("checkpoint_only");
@@ -903,8 +902,8 @@ profiles:
     db.close();
   });
 
-  // NS-T03: terminal node visible in node-inventory as infrastructure
-  it("terminal-instantiated node appears in inventory with nodeKind infrastructure", async () => {
+  // NS-T03：terminal 节点在 node-inventory 中显示为 infrastructure。
+  it("通过 terminal 实体化的节点以 nodeKind infrastructure 出现在 inventory 中", async () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
     };
@@ -920,7 +919,7 @@ profiles:
     const result = await inst.instantiate(yaml, RIG_ROOT);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // Verify via node-inventory projection
+      // 通过 node-inventory 投影验证。
       const { getNodeInventory } = await import("../src/domain/node-inventory.js");
       const inventory = getNodeInventory(db, result.result.rigId);
       expect(inventory).toHaveLength(1);
@@ -930,8 +929,8 @@ profiles:
     db.close();
   });
 
-  // CP2-R5: Two-node cycle must fail instantiation
-  it("rejects dependency cycle between two nodes", async () => {
+  // CP2-R5：两个节点之间存在环时必须拒绝实体化。
+  it("拒绝两个节点之间的依赖环", async () => {
     const files = {
       [`${RIG_ROOT}/agents/a/agent.yaml`]: agentYaml("a"),
       [`${RIG_ROOT}/agents/b/agent.yaml`]: agentYaml("b"),
@@ -960,14 +959,12 @@ profiles:
     db.close();
   });
 
-  // OPR.0.3.2.22 Bug 2 — no orphan rig record on cycle_error.
-  // Reorder fix: computePodLaunchOrder must run BEFORE createRig so a
-  // detected cycle returns before any DB write happens. Before the fix,
-  // every failed `rig up <builtin>` attempt left an orphan stopped-state
-  // rig record that made retries report "ambiguous library-spec vs
-  // restore-target" — the second-order UX trap behind the openrig-comms
-  // hero-flow paper-cut.
-  it("cycle_error: no orphan rig record persists (Bug 2 reorder)", async () => {
+  // OPR.0.3.2.22 Bug 2——cycle_error 时不留下孤立工作组记录。重排修复要求
+  // computePodLaunchOrder 必须在 createRig 之前运行，使检测到环时在任何数据库写入前返回。
+  // 修复前，每次失败的 `zrig up <builtin>` 都会留下 stopped 状态的孤立工作组记录，导致重试
+  // 报告 "ambiguous library-spec vs restore-target"；这是 openrig-comms 主流程瑕疵背后的
+  // 二阶 UX 陷阱。
+  it("cycle_error：不持久化孤立工作组记录（Bug 2 重排）", async () => {
     const files = {
       [`${RIG_ROOT}/agents/a/agent.yaml`]: agentYaml("a"),
       [`${RIG_ROOT}/agents/b/agent.yaml`]: agentYaml("b"),
@@ -994,17 +991,16 @@ profiles:
     if (!result.ok && "code" in result) {
       expect(result.code).toBe("cycle_error");
     }
-    // Load-bearing: no rig record persisted under the spec name.
+    // 承重断言：规范名称下没有持久化任何工作组记录。
     const orphans = rigRepo.findRigsByName(specName);
     expect(orphans, `expected no orphan rig records after cycle_error, found ${JSON.stringify(orphans)}`).toHaveLength(0);
     db.close();
   });
 
-  // OPR.0.3.2.22 Bug 2 — rollback on service_boot_failed (prelaunch-hook
-  // failure). Unlike cycle_error, the rig record + pods have been created
-  // by the time the hook runs (the hook needs rigId), so the fix wraps
-  // the failure return with rigRepo.deleteRig(rigId).
-  it("service_boot_failed: rolls back the created rig record (Bug 2 prelaunch-hook rollback)", async () => {
+  // OPR.0.3.2.22 Bug 2——service_boot_failed（prelaunch-hook 失败）时回滚。与
+  // cycle_error 不同，hook 运行时工作组记录与 pod 已创建（hook 需要 rigId），因此修复会在
+  // 返回失败前调用 rigRepo.deleteRig(rigId)。
+  it("service_boot_failed：回滚已创建的工作组记录（Bug 2 prelaunch-hook 回滚）", async () => {
     const { db, rigRepo, inst } = setup();
     const specName = "orphan-prelaunch-test-rig";
     const yaml = RigSpecCodec.serialize(makeRigSpec({ name: specName }));
@@ -1020,12 +1016,12 @@ profiles:
     db.close();
   });
 
-  // NS-T05: orphan tmux sessions killed on total failure
-  it("kills orphan tmux sessions on total failure", async () => {
+  // NS-T05：完全失败时终止孤立的 tmux session。
+  it("完全失败时终止孤立的 tmux session", async () => {
     const files = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
     };
-    // Create a setup where startup always fails after launch
+    // 构造启动后 startup 始终失败的环境。
     const db = createFullTestDb();
     const rigRepo = new RigRepository(db);
     const podRepo = new PodRepository(db);
@@ -1033,7 +1029,7 @@ profiles:
     const eventBus = new EventBus(db);
     const tmux = mockTmux();
     const nodeLauncher = new NodeLauncher({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmux });
-    // Adapter that fails at project (after launch)
+    // 在 project 阶段（启动后）失败的适配器。
     const failAdapter = {
       runtime: "claude-code",
       listInstalled: vi.fn(async () => []),
@@ -1054,34 +1050,26 @@ profiles:
     const result = await inst.instantiate(yaml, RIG_ROOT);
     expect(result.ok).toBe(false);
 
-    // tmux.killSession should have been called for the orphan session
+    // 应为孤立 session 调用 tmux.killSession。
     const killSession = tmux.killSession as ReturnType<typeof vi.fn>;
     expect(killSession).toHaveBeenCalled();
 
     db.close();
   });
 
-  // Agent Starter v1 vertical M1 — forward-compat smoke. A member spec
-  // carrying the new `starter_ref` field (normalized as `starterRef`)
-  // must pass through pod-aware instantiation without breaking the
-  // existing pipeline. M1 only lands schema + resolver scaffolding; M2
-  // wires `starterRef` into the launch path. This test verifies M1 does
-  // not regress existing instantiation when the new field is present.
+  // Agent Starter v1 垂直切片 M1——前向兼容 smoke。携带新 `starter_ref` 字段（规范化为
+  // `starterRef`）的成员规范必须通过 pod-aware 实体化，且不能破坏现有 pipeline。M1 只落地
+  // schema 与 resolver 脚手架；M2 把 `starterRef` 接入启动路径。本测试验证存在新字段时，
+  // M1 不会让现有实体化流程回归。
   //
-  // R2 repair: assert the serialized YAML actually contains
-  // `starter_ref:` before instantiation. The R1 codec dropped the field
-  // (false-proof), so this assertion was added in R2 alongside the codec
-  // emission fix. Without this assertion the smoke would be a hollow
-  // pass — the existing pipeline always handled YAML without
-  // `starter_ref:` already.
-  it("forward-compat: pod with starter_ref on a member instantiates without error AND the codec emits it (R2 repair)", async () => {
-    // M2 update: the resolver now actively reads the registry when
-    // starterRef is set (M2.1/M2.2 wiring). Provide a fixture registry
-    // entry so the resolver succeeds; the smoke proves the field flows
-    // through to launch without breaking the existing pipeline. The
-    // dedicated end-to-end + abort behaviors live in
-    // agent-starter-instantiator.test.ts; this test stays as a
-    // forward-compat regression catch.
+  // R2 修复：实体化前断言序列化 YAML 确实包含 `starter_ref:`。R1 codec 曾丢弃该字段
+  //（伪证明），因此 R2 在修复 codec 输出的同时加入此断言。没有它，smoke 测试会空洞地
+  // 通过，因为现有 pipeline 本来就能处理不含 `starter_ref:` 的 YAML。
+  it("前向兼容：成员带 starter_ref 的 pod 可无错实体化，且 codec 会输出该字段（R2 修复）", async () => {
+    // M2 更新：设置 starterRef 后，resolver 现在会主动读取 registry（M2.1/M2.2 接线）。
+    // 提供一个 fixture registry 条目使 resolver 成功；smoke 测试证明字段能传入启动路径，
+    // 且不破坏现有 pipeline。专门的端到端与 abort 行为位于
+    // agent-starter-instantiator.test.ts；本测试继续作为前向兼容回归防线。
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = await import("node:fs");
     const os = await import("node:os");
@@ -1121,8 +1109,7 @@ state: 2-named
           edges: [],
         }],
       }));
-      // R2: prove the serialized YAML actually carries the new field, then
-      // verify instantiation still succeeds with it present.
+      // R2：先证明序列化 YAML 确实携带新字段，再验证字段存在时实体化仍成功。
       expect(yaml).toContain("starter_ref:");
       expect(yaml).toContain("fixture-starter");
       const result = await inst.instantiate(yaml, RIG_ROOT);
@@ -1139,40 +1126,34 @@ state: 2-named
     }
   });
 
-  // --- Conveyor-Trust Minimal Fix (OPR.0.3.2.CT) ---
+  // --- Conveyor-Trust 最小修复（OPR.0.3.2.CT）---
   //
-  // QA baseline-deep-dogfood found `rig up conveyor --yes` dead-ends on
-  // workspace-trust gate: instantiate_error AND failure tears down to
-  // zero (rigs=0, nodes=0, sessions=0). The operator has nothing to
-  // approve. PRD: missions/release-0.3.2/slices/conveyor-trust-minimal-fix/
-  // IMPLEMENTATION-PRD.md.
+  // QA baseline-deep-dogfood 发现 `zrig up conveyor --yes` 会在 workspace-trust gate
+  // 陷入死路：返回 instantiate_error，且失败会清理为零（rigs=0、nodes=0、sessions=0），
+  // 操作员没有任何可批准对象。PRD：
+  // missions/release-0.3.2/slices/conveyor-trust-minimal-fix/IMPLEMENTATION-PRD.md。
   //
-  // ROOT CAUSE: launchExistingAgentMember collapses
-  // startupResult={ok:false, startupStatus:"attention_required"} to
-  // status:"failed", then allFailed → tear down.
+  // 根因：launchExistingAgentMember 把
+  // startupResult={ok:false, startupStatus:"attention_required"} 折叠为 status:"failed"，
+  // 随后 allFailed → 拆除。
   //
-  // MINIMAL FIX (HG-2, HG-5 gate-zero):
-  //   - propagate attention_required through launchExistingAgentMember
-  //   - allFailed tear-down ONLY when ALL nodes are TERMINALLY failed
-  //     (attention_required nodes are recoverable; preserve rig + sessions)
-  //   - the session's startup_status="attention_required" already exists
-  //     (startupOrchestrator sets it); the rig is now visible via rig ps
-  //     in attention_required state
-  //   - HG-5: no trust-model / new-user UX / auto-trust changes — only
-  //     the failure-handling path is touched
+  // 最小修复（HG-2、HG-5 gate-zero）：
+  //   - 通过 launchExistingAgentMember 传播 attention_required
+  //   - 仅当所有节点都终结性失败时才执行 allFailed 拆除
+  //     （attention_required 节点可恢复，保留工作组与 session）
+  //   - session 的 startup_status="attention_required" 已存在（由 startupOrchestrator 设置）；
+  //     工作组现在可通过 zrig ps 看到，并处于 attention_required 状态
+  //   - HG-5：不改变 trust model、新用户 UX 或 auto-trust，只触及失败处理路径
 
-  it("HG-1 repro (PRE-FIX): all nodes hit trust-gate → instantiate_error + zero-collapse", async () => {
-    // BEFORE the fix this test SHOULD have shown the broken zero-collapse.
-    // Post-fix it documents the OLD behavior so the discriminator is clear.
-    // This test passes post-fix because we now preserve the recoverable
-    // state — it asserts the NEW expected shape (no tear-down).
+  it("HG-1 复现（修复前）：所有节点命中 trust-gate → instantiate_error + 清零", async () => {
+    // 修复前，本测试本应呈现错误的清零行为。修复后，它记录旧行为以明确判别条件；现在
+    // 测试通过，是因为系统会保留可恢复状态，并断言新的预期形状（不拆除）。
     const { db, rigRepo, sessionRegistry, eventBus, podRepo, adapter, codexAdapter, tmux } = setup({
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
       [`${RIG_ROOT}/agents/qa/agent.yaml`]: agentYaml("qa"),
     });
     const nodeLauncher = new NodeLauncher({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: tmux });
-    // Startup orchestrator that returns attention_required for ALL nodes
-    // (simulates trust-gate on a disposable workspace).
+    // 为所有节点返回 attention_required 的启动编排器，用于模拟一次性工作区的 trust-gate。
     const startupOrch = new StartupOrchestrator({ db, sessionRegistry, eventBus, tmuxAdapter: tmux });
     startupOrch.startNode = async (input) => {
       sessionRegistry.updateStartupStatus(input.sessionId, "attention_required");
@@ -1207,26 +1188,24 @@ state: 2-named
     const yaml = RigSpecCodec.serialize(spec);
     const result = await inst.instantiate(yaml, RIG_ROOT);
 
-    // HG-2: NO zero-collapse. The result returns ok:false with the new
-    // attention_required code (not the old instantiate_error), AND the
-    // rig + sessions are preserved on disk so operator can act.
+    // HG-2：不再清零。结果返回 ok:false 与新的 attention_required code（而非旧的
+    // instantiate_error），并在磁盘上保留工作组与 session，供操作员处理。
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe("attention_required");
-      expect(result.message).toMatch(/trust|attention/i);
+      expect(result.message).toMatch(/需要处理|关注/);
     }
-    // Rig + sessions PRESERVED — the operator can list them via rig ps.
+    // 保留工作组与 session，操作员可通过 zrig ps 列出它们。
     expect(rigRepo.listRigs()).toHaveLength(1);
     if (!result.ok && result.code === "attention_required") {
       const fullRig = rigRepo.getRig(result.rigId);
       expect(fullRig).not.toBeNull();
       expect(fullRig!.nodes.length).toBe(2);
     }
-    // Tmux sessions NOT killed (no cleanup pass on attention_required).
+    // 不终止 tmux session（attention_required 不执行清理 pass）。
     expect((tmux.killSession as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
-    // Session rows carry startup_status='attention_required' (already
-    // persisted by startupOrchestrator — pin it here to anchor the
-    // approve-and-resume path).
+    // Session 行携带 startup_status='attention_required'（startupOrchestrator 已持久化）；
+    // 在此锁定该值，作为 approve-and-resume 路径的锚点。
     const sessions = db.prepare("SELECT startup_status FROM sessions").all() as Array<{ startup_status: string }>;
     expect(sessions.length).toBe(2);
     for (const s of sessions) {
@@ -1235,7 +1214,7 @@ state: 2-named
     db.close();
   });
 
-  it("HG-3 attention_required result carries the attentionNodes list (operator approve→resume path)", async () => {
+  it("HG-3 attention_required 结果携带 attentionNodes 列表（操作员 approve→resume 路径）", async () => {
     const { db, rigRepo, sessionRegistry, eventBus, podRepo, adapter, codexAdapter, tmux } = setup({
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
     });
@@ -1262,7 +1241,7 @@ state: 2-named
 
     expect(result.ok).toBe(false);
     if (!result.ok && result.code === "attention_required") {
-      expect(result.message).toMatch(/inspect/i);
+      expect(result.message).toMatch(/检查/);
       expect(result.message).not.toMatch(/approve and resume|NOT failed/);
       expect(result.rigId).toBeDefined();
       expect(result.attentionNodes).toBeInstanceOf(Array);
@@ -1273,7 +1252,7 @@ state: 2-named
     db.close();
   });
 
-  it("HG-2 mixed: one attention_required + one launched → rig preserved (ok:true) with attention warnings", async () => {
+  it("HG-2 混合场景：一个 attention_required + 一个 launched → 保留工作组并返回 attention 警告", async () => {
     const { db, rigRepo, sessionRegistry, eventBus, podRepo, adapter, codexAdapter, tmux } = setup({
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
       [`${RIG_ROOT}/agents/qa/agent.yaml`]: agentYaml("qa"),
@@ -1326,13 +1305,13 @@ state: 2-named
       expect(attention.length).toBe(1);
       expect(attention[0]!.logicalId).toBe("dev.qa");
     }
-    // Rig preserved; sessions intact.
+    // 工作组保留，session 完整。
     expect(rigRepo.listRigs()).toHaveLength(1);
     expect((tmux.killSession as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
     db.close();
   });
 
-  it("HG-2 negative: all-TERMINALLY-failed still tears down (no regression to terminal-failure cleanup)", async () => {
+  it("HG-2 反例：全部终结性失败时仍会拆除（终结失败清理无回归）", async () => {
     const { db, rigRepo, sessionRegistry, eventBus, podRepo, adapter, codexAdapter, tmux } = setup({
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
     });
@@ -1356,8 +1335,7 @@ state: 2-named
     const yaml = RigSpecCodec.serialize(makeRigSpec());
     const result = await inst.instantiate(yaml, RIG_ROOT);
 
-    // Terminal-failure tear-down preserved (no regression to existing
-    // cleanup path).
+    // 保留终结失败的拆除行为，不让现有清理路径回归。
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe("instantiate_error");
@@ -1366,7 +1344,7 @@ state: 2-named
     db.close();
   });
 
-  it("HG-2 negative: at least one terminal failure + at least one attention_required → rig PRESERVED (recoverable wins over tear-down)", async () => {
+  it("HG-2 反例：至少一个终结失败和一个 attention_required 时保留工作组（可恢复优先）", async () => {
     const { db, rigRepo, sessionRegistry, eventBus, podRepo, adapter, codexAdapter, tmux } = setup({
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml("impl"),
       [`${RIG_ROOT}/agents/qa/agent.yaml`]: agentYaml("qa"),
@@ -1410,10 +1388,9 @@ state: 2-named
     }));
     const result = await inst.instantiate(yaml, RIG_ROOT);
 
-    // ANY attention_required means recoverable — preserve rig even if
-    // other nodes terminally failed.
+    // 任意 attention_required 都表示可恢复；即使其他节点终结性失败，也保留工作组。
     expect(rigRepo.listRigs()).toHaveLength(1);
-    // The operator can still see + approve the attention_required node.
+    // 操作员仍能看到并批准 attention_required 节点。
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe("attention_required");
@@ -1421,13 +1398,12 @@ state: 2-named
     db.close();
   });
 
-  // r2-B1 (slice-06 BLOCKING 1): the REAL rig-up door is instantiate(), not
-  // materializeValidatedSpec — the bootstrap apply path calls instantiate()
-  // (bootstrap-orchestrator.ts), so an installer wired only into materialize
-  // ships defaults on import/expand and NOT on `rig up`. This pin drives
-  // instantiate() with a REAL temp spec dir carrying topology/ defaults and
-  // asserts the files land under the resolved topology root on the REAL fs.
-  it("r2-B1: instantiate() — the rig-up door — installs the spec's topology defaults under topology.root", async () => {
+  // r2-B1（slice-06 BLOCKING 1）：真正的 rig-up 入口是 instantiate()，而不是
+  // materializeValidatedSpec；bootstrap apply 路径会调用 instantiate()
+  //（bootstrap-orchestrator.ts），所以只接入 materialize 的 installer 会在 import/expand 时
+  // 安装默认值，却不会在 `zrig up` 时安装。此约束用一个包含 topology/ 默认值的真实临时规范
+  // 目录驱动 instantiate()，并断言文件落到真实文件系统中解析后的 topology root 下。
+  it("r2-B1：instantiate() 作为 rig-up 入口，会在 topology.root 下安装规范的拓扑默认值", async () => {
     const realFs = await import("node:fs");
     const os = await import("node:os");
     const nodePath = await import("node:path");
@@ -1444,7 +1420,7 @@ state: 2-named
       const yaml = RigSpecCodec.serialize(makeRigSpec());
       const result = await inst.instantiate(yaml, specDir);
       expect(result.ok).toBe(true);
-      // The door proof: defaults exist on the REAL filesystem after rig-up.
+      // 入口证明：rig-up 后，默认值存在于真实文件系统。
       expect(realFs.readFileSync(nodePath.join(topoRoot, "rigs", "test-rig", "CRAFT.md"), "utf-8")).toBe("rig default");
       expect(realFs.readFileSync(nodePath.join(topoRoot, "CRAFT.md"), "utf-8")).toBe("instance default");
       db.close();
@@ -1454,7 +1430,7 @@ state: 2-named
     }
   });
 
-  it("r2-B1 control: without a topologyRootResolver, instantiate() installs nothing and still succeeds", async () => {
+  it("r2-B1 对照：没有 topologyRootResolver 时 instantiate() 不安装内容且仍成功", async () => {
     const realFs = await import("node:fs");
     const os = await import("node:os");
     const nodePath = await import("node:path");

@@ -1,12 +1,11 @@
-// Slice 14 §2c — make the binding state LEGIBLE before a cross-machine failure.
+// Slice 14 §2c——在跨机失败之前让绑定状态可读。
 //
-// A registry entry that never learned its peer's self-id cannot resolve that peer's reply hint, and
-// until now nothing said so: the operator found out when a message failed. `rig host ls` now shows
-// the join key, or the word `unbound` where there isn't one.
+// 从未获知对端 self-id 的 registry 条目无法解析该对端的回复提示，而此前没有任何
+// 地方说明这一点：操作员要等一条消息失败才发现。`rig host ls` 现在显示
+// join key，没有时显示 `unbound`。
 //
-// Also pins the write path end-to-end: `hostId` rides through `addHostEntry` because the writer
-// routes through the shared validator. That is a claim about behavior, so it is tested, not asserted
-// in a comment.
+// 还端到端钉住写路径：`hostId` 经 `addHostEntry` 穿过，因为写入方
+// 路由过共享 validator。这是关于行为的断言，故用测试而非注释来钉住。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";

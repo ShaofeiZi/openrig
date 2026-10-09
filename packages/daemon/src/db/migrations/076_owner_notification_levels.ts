@@ -1,9 +1,8 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * S14 — structured owner-notification metadata on the durable queue transition.
- * Nullable is deliberate: historical and unclassified transitions remain RECORD;
- * no existing audit row is rewritten or inferred from prose.
+ * S14——持久 queue transition 上的结构化 owner-notification 元数据。
+ * 有意允许为空：历史和未分类 transition 保持为记录；不重写任何现有审计行，也不从正文推断。
  */
 export const ownerNotificationLevelsSchema: Migration = {
   name: "076_owner_notification_levels.sql",

@@ -1,48 +1,42 @@
-// rig plugin CLI verb family — read-only plugin inspection.
+// rig plugin CLI 动词族——只读插件检视。
 //
-// Per IMPL-PRD §4 plugin-primitive Phase 3a slice 3.4 + DESIGN.md §6
-// (CLI minimalism: 4 read-only inspection commands).
+// 依据 IMPL-PRD §4 plugin-primitive Phase 3a slice 3.4 + DESIGN.md §6
+// （CLI 极简主义：4 个只读检视命令）。
 //
-// Subcommands at slice 3.4 scope (this commit):
-//   list                — aggregated view of discoverable plugins
-//                         flags: --runtime claude|codex
+// slice 3.4 范围内的子命令（本次提交）：
+//   list                —— 可发现插件的聚合视图
+//                         标志：--runtime claude|codex
 //                                --source vendored|claude-cache|codex-cache
 //                                --json
-//   show <id>           — inspect manifest + skills + hooks + mcp servers
-//                         flags: --json
-//   used-by <id>        — agents referencing this plugin
-//                         flags: --json
-//   validate <path>     — local file inspection of a plugin source tree
-//                         (manifest shape + skill frontmatter per agentskills.io)
-//                         flags: --json
+//   show <id>           —— 检视 manifest + skills + hooks + mcp 服务器
+//                         标志：--json
+//   used-by <id>        —— 引用本插件的智能体
+//                         标志：--json
+//   validate <path>     —— 对插件源码树做本地文件检视
+//                         （按 agentskills.io 校验 manifest 形状 + skill frontmatter）
+//                         标志：--json
 //
-// list/show consume slice 3.3 daemon HTTP routes (GET /api/plugins[/...]).
+// list/show 消费 slice 3.3 后台服务 HTTP 路由（GET /api/plugins[/...]）。
 //
-// All commands ship --json output for agent consumption per banked
-// building-agent-software + IMPL-PRD §4.4 HG-4.5.
+// 按既定 building-agent-software + IMPL-PRD §4.4 HG-4.5，所有命令都附带
+// --json 输出供智能体消费。
 //
-// Wire shapes mirror slice 3.3 PluginDiscoveryService exports verbatim
-// (packages/daemon/src/domain/plugin-discovery-service.ts L41-132). Types
-// here are the wire contract; any drift from daemon source means the
-// daemon shape changed and this file must update in lockstep.
+// 线上形状逐字镜像 slice 3.3 PluginDiscoveryService 的导出
+// （packages/daemon/src/domain/plugin-discovery-service.ts L41-132）。这里的类型
+// 是线上契约；一旦与后台服务源码漂移，说明后台服务形状变了，本文件必须同步更新。
 //
-// Flags NOT supported at v0 (deferred per velocity-guard 3.4.A blocker):
-//   --used  — declared in PRD §4.2 but daemon route doesn't expose a
-//             "filter to plugins referenced by an agent" filter; would
-//             require client-side post-filter against /api/plugins +
-//             /api/plugins/:id/used-by N+1 calls. Not in v0 scope.
-//   --tree  — declared in PRD §4.2 but show output already prints the
-//             tree structure (manifests + skills + hooks + mcp).
-//             Distinct tree-only mode is post-v0 polish.
-//   --source rig-cwd — daemon route's parseSourceFilter doesn't accept
-//             rig-cwd; rig-cwd scan is enabled via separate ?cwd=<path>
-//             query (out of scope for v0 since CLI doesn't have a "scan
-//             this rig's cwd" surface yet).
-//   --runtime both — daemon parseRuntimeFilter accepts only claude|codex;
-//             omitting --runtime returns all (the "both" semantic is
-//             default no-filter).
-// Each of these surfaces in a future slice; CLI flag declarations are
-// tightly scoped to what the daemon actually supports.
+// v0 暂不支持的标志（按 velocity-guard 3.4.A blocker 推迟）：
+//   --used  —— PRD §4.2 中有声明，但后台服务路由不暴露"按被某智能体引用过滤插件"
+//             的过滤；需要在客户端对 /api/plugins + /api/plugins/:id/used-by
+//             做 N+1 后过滤。不在 v0 范围。
+//   --tree  —— PRD §4.2 中有声明，但 show 输出已打印树结构
+//             （manifests + skills + hooks + mcp）。独立的纯树模式是 v0 之后的打磨。
+//   --source rig-cwd —— 后台路由的 parseSourceFilter 不接受 rig-cwd；
+//             rig-cwd 扫描通过单独的 ?cwd=<path> 查询启用（v0 不在范围，因为
+//             CLI 还没有"扫描本工作组 cwd"的入口）。
+//   --runtime both —— 后台 parseRuntimeFilter 只接受 claude|codex；省略
+//             --runtime 返回全部（"both"语义即默认不过滤）。
+// 这些入口各自在未来 slice 中出现；CLI 标志声明严格限定在后台服务实际支持的范围。
 
 import { Command } from "commander";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -53,16 +47,15 @@ import { getDaemonStatus, getDaemonUrl , statusGuardMessage} from "../daemon-lif
 import { realDeps } from "./daemon.js";
 import type { StatusDeps } from "./status.js";
 
-// Filter-value enums per slice-3.3 daemon route validation
-// (packages/daemon/src/routes/plugins.ts L37-58). CLI-side validation
-// gives operators clear errors instead of silent pass-through where the
-// daemon ignores unknown values.
+// 按 slice-3.3 后台路由校验的过滤值枚举
+// （packages/daemon/src/routes/plugins.ts L37-58）。CLI 侧校验给操作者清晰的错误，
+// 而不是在后台路由忽略未知值时静默放行。
 const VALID_RUNTIMES = ["claude", "codex"] as const;
 const VALID_SOURCES = ["vendored", "claude-cache", "codex-cache"] as const;
 
 // ============================================================
-// Wire shapes — must mirror PluginDiscoveryService verbatim
-// (packages/daemon/src/domain/plugin-discovery-service.ts L41-132)
+// 线上形状——必须逐字镜像 PluginDiscoveryService
+// （packages/daemon/src/domain/plugin-discovery-service.ts L41-132）
 // ============================================================
 
 type PluginRuntime = "claude" | "codex";
@@ -117,7 +110,7 @@ interface PluginDetailWire {
   mcpServers: PluginMcpServerSummaryWire[];
 }
 
-// AgentReference per PluginDiscoveryService L134-141 verbatim.
+// AgentReference 逐字对应 PluginDiscoveryService L134-141。
 interface AgentReferenceWire {
   agentName: string;
   sourcePath: string;
@@ -126,7 +119,7 @@ interface AgentReferenceWire {
 
 export function pluginCommand(depsOverride?: StatusDeps): Command {
   const cmd = new Command("plugin");
-  cmd.description("Inspect plugins (read-only)");
+  cmd.description("检视插件（只读）");
 
   const getDeps = (): StatusDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
@@ -137,28 +130,27 @@ export function pluginCommand(depsOverride?: StatusDeps): Command {
     const deps = getDeps();
     const status = await getDaemonStatus(deps.lifecycleDeps);
     if (status.state !== "running" || status.healthy === false) {
-      // B8-1b: epistemic-matched language via the one helper (down ≠ busy).
+      // B8-1b：通过同一个助手给出与认知状态匹配的措辞（宕 ≠ 忙）。
       const gm = statusGuardMessage(status); throw new Error(`${gm.fact} ${gm.action}`);
     }
     return deps.clientFactory(getDaemonUrl(status));
   }
 
-  // -- rig plugin list --
+  // -- zrig plugin list --
   cmd.command("list")
-    .description("List discoverable plugins (aggregated across vendored + runtime caches)")
-    .option("--runtime <runtime>", "Filter by runtime support: claude | codex (omit for all)")
-    .option("--source <source>", "Filter by source: vendored | claude-cache | codex-cache")
-    .option("--json", "JSON output")
+    .description("列出可发现插件（跨 vendored + 运行时缓存聚合）")
+    .option("--runtime <runtime>", "按运行时支持过滤：claude | codex（省略则全部）")
+    .option("--source <source>", "按来源过滤：vendored | claude-cache | codex-cache")
+    .option("--json", "JSON 输出")
     .action(async (opts: { runtime?: string; source?: string; json?: boolean }) => {
       try {
-        // CLI-side filter-value validation per pre-close punch from velocity-guard
-        // 3.4.A repair verdict: typos like --source rig-cwd should fail loud,
-        // not silently be ignored by the daemon route.
+        // 按 velocity-guard 3.4.A 修复结论在收尾时加入的 CLI 侧过滤值校验：
+        // 像 --source rig-cwd 这样的拼写错误应大声失败，而不是被后台路由静默忽略。
         if (opts.runtime && !(VALID_RUNTIMES as readonly string[]).includes(opts.runtime)) {
-          throw new Error(`Invalid --runtime value "${opts.runtime}". Valid: ${VALID_RUNTIMES.join(" | ")} (omit flag for all)`);
+          throw new Error(`无效的 --runtime 值 "${opts.runtime}"。合法值：${VALID_RUNTIMES.join(" | ")}（省略标志表示全部）`);
         }
         if (opts.source && !(VALID_SOURCES as readonly string[]).includes(opts.source)) {
-          throw new Error(`Invalid --source value "${opts.source}". Valid: ${VALID_SOURCES.join(" | ")}`);
+          throw new Error(`无效的 --source 值 "${opts.source}"。合法值：${VALID_SOURCES.join(" | ")}`);
         }
 
         const client = await getClient();
@@ -175,13 +167,13 @@ export function pluginCommand(depsOverride?: StatusDeps): Command {
         }
 
         if (entries.length === 0) {
-          console.log("No plugins discovered.");
+          console.log("未发现插件。");
           return;
         }
 
         for (const e of entries) {
           const runtimesStr = e.runtimes.join(",");
-          // Real fields only: id, version, runtimes, sourceLabel, path
+          // 只展示真实字段：id、version、runtimes、sourceLabel、path
           console.log(
             `${e.id.padEnd(28)} v${String(e.version).padEnd(8)} ` +
             `[${runtimesStr.padEnd(13)}] ${e.sourceLabel.padEnd(36)} ` +
@@ -194,20 +186,20 @@ export function pluginCommand(depsOverride?: StatusDeps): Command {
       }
     });
 
-  // -- rig plugin show <id> --
+  // -- zrig plugin show <id> --
   cmd.command("show")
-    .argument("<id>", "Plugin id (e.g., openrig-core)")
-    .description("Show plugin manifest + skills + hooks + mcp servers")
-    .option("--json", "JSON output")
+    .argument("<id>", "插件 id（例如 openrig-core）")
+    .description("展示插件 manifest + skills + hooks + mcp 服务器")
+    .option("--json", "JSON 输出")
     .action(async (id: string, opts: { json?: boolean }) => {
       try {
         const client = await getClient();
         const res = await client.get<PluginDetailWire>(`/api/plugins/${encodeURIComponent(id)}`);
         if (res.status === 404) {
-          throw new Error(`Plugin not found: "${id}"`);
+          throw new Error(`未找到插件："${id}"`);
         }
         if (res.status !== 200 || !res.data) {
-          throw new Error(`Daemon returned HTTP ${res.status}`);
+          throw new Error(`后台服务返回 HTTP ${res.status}`);
         }
         const detail = res.data;
 
@@ -217,20 +209,20 @@ export function pluginCommand(depsOverride?: StatusDeps): Command {
         }
 
         const entry = detail.entry;
-        console.log(`Id:          ${entry.id}`);
-        console.log(`Name:        ${entry.name}`);
-        console.log(`Version:     ${entry.version}`);
-        console.log(`Description: ${entry.description ?? "(none)"}`);
-        console.log(`Source:      ${entry.sourceLabel}`);
-        console.log(`Path:        ${entry.path}`);
-        console.log(`Runtimes:    ${entry.runtimes.join(", ")}`);
+        console.log(`Id：          ${entry.id}`);
+        console.log(`名称：        ${entry.name}`);
+        console.log(`版本：        ${entry.version}`);
+        console.log(`描述：        ${entry.description ?? "（无）"}`);
+        console.log(`来源：        ${entry.sourceLabel}`);
+        console.log(`路径：        ${entry.path}`);
+        console.log(`运行时：      ${entry.runtimes.join(", ")}`);
         if (entry.lastSeenAt) {
-          console.log(`Last seen:   ${entry.lastSeenAt}`);
+          console.log(`最近出现：    ${entry.lastSeenAt}`);
         }
         console.log("");
 
-        // Manifests — real PluginManifestSummary fields
-        console.log("Manifests:");
+        // Manifests——真实的 PluginManifestSummary 字段
+        console.log("Manifests：");
         if (detail.claudeManifest) {
           const m = detail.claudeManifest;
           const parts: string[] = [];
@@ -238,7 +230,7 @@ export function pluginCommand(depsOverride?: StatusDeps): Command {
           if (m.version) parts.push(`version=${m.version}`);
           if (m.license) parts.push(`license=${m.license}`);
           if (m.repository) parts.push(`repo=${m.repository}`);
-          console.log(`  claude:    ${parts.join(" ") || "(present)"}`);
+          console.log(`  claude:    ${parts.join(" ") || "（存在）"}`);
         }
         if (detail.codexManifest) {
           const m = detail.codexManifest;
@@ -247,31 +239,31 @@ export function pluginCommand(depsOverride?: StatusDeps): Command {
           if (m.version) parts.push(`version=${m.version}`);
           if (m.license) parts.push(`license=${m.license}`);
           if (m.repository) parts.push(`repo=${m.repository}`);
-          console.log(`  codex:     ${parts.join(" ") || "(present)"}`);
+          console.log(`  codex:     ${parts.join(" ") || "（存在）"}`);
         }
         if (!detail.claudeManifest && !detail.codexManifest) {
-          console.log("  (none)");
+          console.log("  （无）");
         }
 
-        // Skills — PluginSkillSummary has name + relativePath only
+        // Skills——PluginSkillSummary 只有 name + relativePath
         console.log("");
-        console.log(`Skills (${detail.skills.length}):`);
+        console.log(`Skills（${detail.skills.length}）：`);
         for (const s of detail.skills) {
           console.log(`  ${s.name.padEnd(40)} ${s.relativePath}`);
         }
 
-        // Hooks — PluginHookSummary has runtime + relativePath + events[]
+        // Hooks——PluginHookSummary 有 runtime + relativePath + events[]
         console.log("");
-        console.log(`Hooks (${detail.hooks.length}):`);
+        console.log(`Hooks（${detail.hooks.length}）：`);
         for (const h of detail.hooks) {
-          const eventList = h.events.length > 0 ? h.events.join(",") : "(none)";
+          const eventList = h.events.length > 0 ? h.events.join(",") : "（无）";
           console.log(`  ${h.runtime.padEnd(10)} ${String(h.events.length).padStart(2)} events  [${eventList}]  ${h.relativePath}`);
         }
 
-        // MCP servers
+        // MCP 服务器
         if (detail.mcpServers.length > 0) {
           console.log("");
-          console.log(`MCP servers (${detail.mcpServers.length}):`);
+          console.log(`MCP 服务器（${detail.mcpServers.length}）：`);
           for (const m of detail.mcpServers) {
             const detail2: string[] = [];
             if (m.transport) detail2.push(`transport=${m.transport}`);
@@ -285,17 +277,17 @@ export function pluginCommand(depsOverride?: StatusDeps): Command {
       }
     });
 
-  // -- rig plugin used-by <id> --
+  // -- zrig plugin used-by <id> --
   cmd.command("used-by")
-    .argument("<id>", "Plugin id (e.g., openrig-core)")
-    .description("List agents referencing this plugin in their profile.uses.plugins[]")
-    .option("--json", "JSON output")
+    .argument("<id>", "插件 id（例如 openrig-core）")
+    .description("列出在 profile.uses.plugins[] 中引用本插件的智能体")
+    .option("--json", "JSON 输出")
     .action(async (id: string, opts: { json?: boolean }) => {
       try {
         const client = await getClient();
         const res = await client.get<AgentReferenceWire[]>(`/api/plugins/${encodeURIComponent(id)}/used-by`);
         if (res.status !== 200) {
-          throw new Error(`Daemon returned HTTP ${res.status}`);
+          throw new Error(`后台服务返回 HTTP ${res.status}`);
         }
         const refs = res.data ?? [];
 
@@ -305,12 +297,12 @@ export function pluginCommand(depsOverride?: StatusDeps): Command {
         }
 
         if (refs.length === 0) {
-          console.log(`No agents reference plugin "${id}".`);
+          console.log(`没有智能体引用插件 "${id}"。`);
           return;
         }
 
         for (const r of refs) {
-          const profilesStr = r.profiles.length > 0 ? r.profiles.join(",") : "(none)";
+          const profilesStr = r.profiles.length > 0 ? r.profiles.join(",") : "（无）";
           console.log(`${r.agentName.padEnd(36)} [${profilesStr.padEnd(20)}] ${r.sourcePath}`);
         }
       } catch (err) {
@@ -319,15 +311,14 @@ export function pluginCommand(depsOverride?: StatusDeps): Command {
       }
     });
 
-  // -- rig plugin validate <path> --
-  // Local file inspection — no daemon dependency; useful when authoring
-  // a plugin in a feature branch where the daemon may not yet have
-  // discovered it. Validates manifest shape (per Claude/Codex specs)
-  // + skill frontmatter (per agentskills.io: name + description ≤1024 chars).
+  // -- zrig plugin validate <path> --
+  // 本地文件检视——不依赖后台服务；适用于在 feature 分支编写插件、
+  // 而后台服务可能尚未发现该插件时。校验 manifest 形状（按 Claude/Codex 规范）
+  // + skill frontmatter（按 agentskills.io：name + description ≤1024 字符）。
   cmd.command("validate")
-    .argument("<path>", "Plugin source directory to validate")
-    .description("Validate plugin manifest + skill frontmatter against agentskills.io spec")
-    .option("--json", "JSON output ({ valid: boolean, errors: string[] })")
+    .argument("<path>", "要校验的插件源码目录")
+    .description("按 agentskills.io 规范校验插件 manifest + skill frontmatter")
+    .option("--json", "JSON 输出（{ valid: 布尔, errors: 字符串[] }）")
     .action((path: string, opts: { json?: boolean }) => {
       const errors = validatePluginTree(path);
       const valid = errors.length === 0;
@@ -339,11 +330,11 @@ export function pluginCommand(depsOverride?: StatusDeps): Command {
       }
 
       if (valid) {
-        console.log(`Plugin at ${path}: valid`);
+        console.log(`位于 ${path} 的插件：有效`);
         return;
       }
 
-      console.error(`Plugin at ${path}: INVALID (${errors.length} error${errors.length === 1 ? "" : "s"})`);
+      console.error(`位于 ${path} 的插件：无效（${errors.length} 个错误）`);
       for (const err of errors) {
         console.error(`  - ${err}`);
       }
@@ -354,18 +345,18 @@ export function pluginCommand(depsOverride?: StatusDeps): Command {
 }
 
 // ============================================================
-// validate plumbing — local file inspection
+// 校验管线——本地文件检视
 // ============================================================
 
 function validatePluginTree(pluginPath: string): string[] {
   const errors: string[] = [];
 
   if (!existsSync(pluginPath)) {
-    errors.push(`Plugin path does not exist: ${pluginPath}`);
+    errors.push(`插件路径不存在：${pluginPath}`);
     return errors;
   }
   if (!statSync(pluginPath).isDirectory()) {
-    errors.push(`Plugin path is not a directory: ${pluginPath}`);
+    errors.push(`插件路径不是目录：${pluginPath}`);
     return errors;
   }
 
@@ -375,7 +366,7 @@ function validatePluginTree(pluginPath: string): string[] {
   const hasCodex = existsSync(codexManifestPath);
 
   if (!hasClaude && !hasCodex) {
-    errors.push("No plugin manifest found: expected .claude-plugin/plugin.json and/or .codex-plugin/plugin.json");
+    errors.push("未找到插件 manifest：应有 .claude-plugin/plugin.json 和/或 .codex-plugin/plugin.json");
     return errors;
   }
 
@@ -386,7 +377,7 @@ function validatePluginTree(pluginPath: string): string[] {
     errors.push(...validateManifest(codexManifestPath, "codex"));
   }
 
-  // Validate skill frontmatter
+  // 校验 skill frontmatter
   const skillsDir = join(pluginPath, "skills");
   if (existsSync(skillsDir) && statSync(skillsDir).isDirectory()) {
     for (const skillId of readdirSync(skillsDir)) {
@@ -406,27 +397,27 @@ function validateManifest(manifestPath: string, runtime: "claude" | "codex"): st
   try {
     parsed = JSON.parse(readFileSync(manifestPath, "utf-8"));
   } catch (err) {
-    errors.push(`${runtime} manifest parse error at ${manifestPath}: ${(err as Error).message}`);
+    errors.push(`${runtime} manifest 解析错误，位于 ${manifestPath}：${(err as Error).message}`);
     return errors;
   }
-  // Guard non-object/null parse results — JSON.parse('null') returns null,
-  // JSON.parse('[1,2]') returns an array — both must fail validation, not crash.
+  // 守卫非对象/null 解析结果——JSON.parse('null') 返回 null、
+  // JSON.parse('[1,2]') 返回数组——两者都必须校验失败而非崩溃。
   if (!isPlainObject(parsed)) {
-    errors.push(`${runtime} manifest at ${manifestPath} must be a JSON object (got ${parsed === null ? "null" : Array.isArray(parsed) ? "array" : typeof parsed})`);
+    errors.push(`${runtime} manifest（${manifestPath}）必须是 JSON 对象（实际得到 ${parsed === null ? "null" : Array.isArray(parsed) ? "array" : typeof parsed}）`);
     return errors;
   }
   const raw = parsed;
   if (typeof raw["name"] !== "string" || raw["name"].trim().length === 0) {
-    errors.push(`${runtime} manifest missing required field: name (must be non-empty string)`);
+    errors.push(`${runtime} manifest 缺少必填字段：name（必须为非空字符串）`);
   }
   if (typeof raw["version"] !== "string" || raw["version"].trim().length === 0) {
-    errors.push(`${runtime} manifest missing required field: version (must be non-empty string)`);
+    errors.push(`${runtime} manifest 缺少必填字段：version（必须为非空字符串）`);
   }
-  // Codex spec: description is REQUIRED. Claude spec: description is recommended but
-  // not a hard requirement; we treat missing description as a warning by NOT erroring
-  // on Claude-only-missing-description while erroring on Codex-missing-description.
+  // Codex 规范：description 必填。Claude 规范：description 推荐但非硬性要求；
+  // 我们把缺 description 当作警告——仅 Claude 缺 description 不报错，
+  // 而 Codex 缺 description 报错。
   if (runtime === "codex" && (typeof raw["description"] !== "string" || raw["description"].trim().length === 0)) {
-    errors.push(`codex manifest missing required field: description (Codex spec requires it)`);
+    errors.push(`codex manifest 缺少必填字段：description（Codex 规范要求）`);
   }
   return errors;
 }
@@ -441,43 +432,43 @@ function validateSkillFrontmatter(skillPath: string, skillId: string): string[] 
   try {
     content = readFileSync(skillPath, "utf-8");
   } catch (err) {
-    errors.push(`skill "${skillId}": failed to read SKILL.md: ${(err as Error).message}`);
+    errors.push(`skill "${skillId}"：读取 SKILL.md 失败：${(err as Error).message}`);
     return errors;
   }
-  // Frontmatter: file MUST start with `---\n` and contain a closing `---` line
+  // Frontmatter：文件必须以 `---\n` 开头，并包含一行结束的 `---`
   const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
   if (!fmMatch) {
-    errors.push(`skill "${skillId}": SKILL.md missing frontmatter (must open with --- ... ---)`);
+    errors.push(`skill "${skillId}"：SKILL.md 缺少 frontmatter（必须以 --- ... --- 开头）`);
     return errors;
   }
   const fmBody = fmMatch[1] ?? "";
 
-  // Parse frontmatter as YAML — regex-based validation can pass quoted-empty
-  // values and miss type errors per velocity-guard 3.4.C BLOCKING-CONCERN.
+  // 把 frontmatter 当 YAML 解析——按 velocity-guard 3.4.C BLOCKING-CONCERN，
+  // 基于正则的校验会放过引号包裹的空值、漏掉类型错误。
   let parsed: unknown;
   try {
     parsed = parseYaml(fmBody);
   } catch (err) {
-    errors.push(`skill "${skillId}": invalid YAML frontmatter: ${(err as Error).message}`);
+    errors.push(`skill "${skillId}"：YAML frontmatter 非法：${(err as Error).message}`);
     return errors;
   }
   if (!isPlainObject(parsed)) {
-    errors.push(`skill "${skillId}": frontmatter must be a YAML object/map (got ${parsed === null ? "null" : Array.isArray(parsed) ? "array" : typeof parsed})`);
+    errors.push(`skill "${skillId}"：frontmatter 必须是 YAML 对象/映射（实际得到 ${parsed === null ? "null" : Array.isArray(parsed) ? "array" : typeof parsed}）`);
     return errors;
   }
 
-  // Required: name (non-empty string after trim)
+  // 必填：name（trim 后为非空字符串）
   const name = parsed["name"];
   if (typeof name !== "string" || name.trim().length === 0) {
-    errors.push(`skill "${skillId}": frontmatter missing required field: name (must be non-empty string)`);
+    errors.push(`skill "${skillId}"：frontmatter 缺少必填字段：name（必须为非空字符串）`);
   }
 
-  // Required: description (non-empty string after trim; ≤1024 chars per agentskills.io)
+  // 必填：description（trim 后为非空字符串；按 agentskills.io ≤1024 字符）
   const description = parsed["description"];
   if (typeof description !== "string" || description.trim().length === 0) {
-    errors.push(`skill "${skillId}": frontmatter missing required field: description (must be non-empty string)`);
+    errors.push(`skill "${skillId}"：frontmatter 缺少必填字段：description（必须为非空字符串）`);
   } else if (description.trim().length > 1024) {
-    errors.push(`skill "${skillId}": description length ${description.trim().length} chars exceeds agentskills.io limit of 1024`);
+    errors.push(`skill "${skillId}"：description 长度 ${description.trim().length} 字符超过 agentskills.io 的 1024 上限`);
   }
 
   return errors;

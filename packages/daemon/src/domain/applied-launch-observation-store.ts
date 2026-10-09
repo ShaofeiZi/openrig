@@ -18,10 +18,8 @@ interface ObservationRow {
 }
 
 /**
- * Best-effort, generation-scoped persistence for the exact argument value
- * returned by a successful managed launch. Missing migrations and DB failures
- * degrade to UNKNOWN; they never turn a successful provider launch into a
- * failed launch.
+ * 对成功 managed launch 返回的准确 argument value 进行 best-effort、generation-scoped 持久化。
+ * migration 缺失与 DB failure 降级为 UNKNOWN；绝不会让成功的 provider launch 变为失败。
  */
 export class AppliedLaunchObservationStore {
   constructor(private readonly db: Database.Database) {}

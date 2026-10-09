@@ -74,7 +74,7 @@ function mockFetchSessions(sessions: DiscoveredSession[] = MOCK_SESSIONS) {
     if (typeof url === "string" && url.includes("/api/rigs/summary")) {
       return { ok: true, json: async () => [{ id: "rig-1", name: "r01-test", nodeCount: 3, latestSnapshotAt: null, latestSnapshotId: null }] };
     }
-    // Default: return empty success for any other API call
+    // 默认：对任何其他 API 调用返回空 success
     return { ok: true, json: async () => ({}) };
   });
 }
@@ -90,7 +90,7 @@ describe("DiscoveryOverlay", () => {
     });
   });
 
-  // T1: Discovered nodes render with dashed border
+  // T1：发现的节点以 dashed border 渲染
   it("discovered nodes have dashed border", async () => {
     mockFetchSessions();
     render(createTestRouter({ component: DiscoveryOverlay, path: "/discovery", initialPath: "/discovery" }));
@@ -147,7 +147,7 @@ describe("DiscoveryOverlay", () => {
     await waitFor(() => {
       expect(clipboardWriteMock).toHaveBeenCalledWith("tmux attach -t 'organic:0'");
       const activeSection = screen.getByTestId("discovery-active-section");
-      expect(within(activeSection).getByTestId("copy-tmux-btn").textContent).toContain("copied");
+      expect(within(activeSection).getByTestId("copy-tmux-btn").textContent).toContain("已复制");
     });
   });
 
@@ -230,7 +230,7 @@ describe("DiscoveryOverlay", () => {
     });
   });
 
-  // Blank logicalId no longer triggers claim — bind requires a node target
+  // 空 logicalId 不再触发 claim——bind 需要 node target
   it("adopt confirm is disabled when logical id is blank", async () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (typeof url === "string" && url.includes("/discovery")) {
@@ -249,10 +249,10 @@ describe("DiscoveryOverlay", () => {
     act(() => { fireEvent.click(screen.getByTestId("adopt-btn")); });
     await waitFor(() => expect(screen.getByTestId("adopt-dialog")).toBeTruthy());
     act(() => { fireEvent.change(screen.getByTestId("adopt-rig-input"), { target: { value: "rig-1" } }); });
-    // Do NOT fill logical ID
+    // 不填 logical ID
     act(() => { fireEvent.click(screen.getByTestId("adopt-confirm")); });
 
-    // Dialog should remain open — bind requires a node target
+    // Dialog 应保持打开——bind 需要 node target
     expect(screen.getByTestId("adopt-dialog")).toBeTruthy();
   });
 
@@ -275,7 +275,7 @@ describe("DiscoveryOverlay", () => {
       return { ok: true, json: async () => ({}) };
     });
 
-    // Harness: renders DiscoveryOverlay + subscribes to rig graph query
+    // harness：渲染 DiscoveryOverlay + 订阅 rig graph query
     const { useQuery } = await import("@tanstack/react-query");
     function GraphSubscriber() {
       useQuery({
@@ -301,7 +301,7 @@ describe("DiscoveryOverlay", () => {
 
     render(<RouterProvider router={router} />);
 
-    // Wait for initial graph fetch + discovery render
+    // 等待初始 graph fetch + discovery 渲染
     await waitFor(() => {
       expect(graphFetchCount).toBeGreaterThanOrEqual(1);
       expect(screen.getByTestId("adopt-btn")).toBeTruthy();
@@ -320,14 +320,14 @@ describe("DiscoveryOverlay", () => {
     });
   });
 
-  // T8: Empty state
+  // T8：空状态
   it("empty state when no sessions", async () => {
     mockFetchSessions([]);
     render(createTestRouter({ component: DiscoveryOverlay, path: "/discovery", initialPath: "/discovery" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("discovery-empty")).toBeTruthy();
-      expect(screen.getByText("No running Claude or Codex sessions are currently visible.")).toBeTruthy();
+      expect(screen.getByText(/当前没有可见的运行中/)).toBeTruthy();
     });
   });
 });
@@ -341,34 +341,34 @@ function makeEvent(overrides: { type: string; payload?: Record<string, unknown> 
 }
 
 describe("Discovery activity feed events", () => {
-  // T7a: session.discovered color
+  // T7a：session.discovered 颜色
   it("session.discovered uses bg-accent color", () => {
     expect(eventColor("session.discovered")).toBe("bg-accent");
   });
 
-  // T7b: session.vanished color
+  // T7b：session.vanished 颜色
   it("session.vanished uses bg-destructive color", () => {
     expect(eventColor("session.vanished")).toBe("bg-destructive");
   });
 
-  // T7c: node.claimed color + route
+  // T7c：node.claimed 颜色 + 路由
   it("node.claimed uses bg-primary color and routes to rig", () => {
     expect(eventColor("node.claimed")).toBe("bg-primary");
     expect(eventRoute(makeEvent({ type: "node.claimed", payload: { rigId: "rig-1" } }))).toBe("/rigs/rig-1");
   });
 
-  // T7d: session.discovered route
+  // T7d：session.discovered 路由
   it("session.discovered routes to /discovery", () => {
     expect(eventRoute(makeEvent({ type: "session.discovered" }))).toBe("/discovery");
   });
 
-  // T7e: session.vanished route
+  // T7e：session.vanished 路由
   it("session.vanished routes to /discovery", () => {
     expect(eventRoute(makeEvent({ type: "session.vanished" }))).toBe("/discovery");
   });
 });
 
-// NS-T14: Generate Draft Rig Spec button — runtime regression
+// NS-T14：Generate Draft Rig Spec 按钮——runtime 回归
 import { GenerateDraftSection } from "../src/components/DiscoveryOverlay.js";
 
 describe("Discovery Generate Draft", () => {
@@ -383,28 +383,28 @@ describe("Discovery Generate Draft", () => {
 
     render(<GenerateDraftSection />);
 
-    // Button should be present
+    // 按钮应存在
     const btn = screen.getByTestId("generate-draft-btn");
     expect(btn).toBeDefined();
-    expect(btn.textContent).toContain("GENERATE RIG SPEC");
+    expect(btn.textContent).toContain("生成工作组规格");
 
-    // Click generate
+    // 点 generate
     await act(async () => {
       fireEvent.click(btn);
     });
 
-    // Draft YAML should appear with warnings extracted
+    // Draft YAML 应随提取的 warnings 出现
     await waitFor(() => {
       expect(screen.getByTestId("draft-yaml")).toBeDefined();
       expect(screen.getByTestId("draft-yaml").textContent).toContain("discovered-rig");
-      // Warning should be extracted into separate section
+      // warning 应被提取到单独 section
       expect(screen.getByTestId("draft-warnings")).toBeDefined();
       expect(screen.getByTestId("draft-warnings").textContent).toContain("Excluded session");
-      // YAML body should NOT contain the warning comment
+      // YAML body 不应含 warning 注释
       expect(screen.getByTestId("draft-yaml").textContent).not.toContain("# WARNING");
     });
 
-    // Verify fetch was called with POST
+    // 验证 fetch 以 POST 被调用
     const draftCalls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes("draft-rig"));
     expect(draftCalls.length).toBeGreaterThan(0);
     expect(draftCalls[0]![1]).toEqual(expect.objectContaining({ method: "POST" }));

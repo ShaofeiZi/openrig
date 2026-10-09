@@ -1,6 +1,6 @@
 import type { Migration } from "../migrate.js";
 
-/** Durable state for the transcript-byte watchdog condition. */
+/** transcript 字节数 watchdog 条件的持久状态。 */
 export const contextUsageWatchdogSchema: Migration = {
   name: "074_context_usage_watchdog.sql",
   sql: `

@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch13",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/daemon/test/activity-evidence-ladder.test.ts",
+      "before_sha256_16": "e12b85a797bb6d56",
+      "after_sha256_16": "80052b47841ccd4c",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/workspace-doctor-cli.test.ts",
+      "before_sha256_16": "00c1e2742f8ab33c",
+      "after_sha256_16": "8ec1981b655ba0ad",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/ps-http.test.ts",
+      "before_sha256_16": "c153b4e1c4b3d925",
+      "after_sha256_16": "0c7ccc8805ef81da",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/context-grammar.test.ts",
+      "before_sha256_16": "4225e1df8036a78c",
+      "after_sha256_16": "dfe50f36d1c300b2",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/chatroom.test.ts",
+      "before_sha256_16": "5b716fa08501f2f2",
+      "after_sha256_16": "a6bf0315e1ab8df2",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

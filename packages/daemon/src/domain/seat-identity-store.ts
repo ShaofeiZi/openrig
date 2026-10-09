@@ -32,21 +32,17 @@ function rowToVerdict(row: VerdictRow): SeatIdentityVerdict {
 }
 
 /**
- * OPR.0.4.3.19 — explicit, durable store for the per-node liveness identity
- * verdict (migration 046 `seat_identity_verdicts`). The reconciler writes;
- * node-inventory reads. Kept as a thin, stateless wrapper over the table so
- * the liveness truth lives in the DB, never in transient in-memory state
- * (dev-guard plan-review caveat).
+ * OPR.0.4.3.19——每节点存活身份判决的显式持久化存储（迁移 046
+ * `seat_identity_verdicts`）。reconciler 写入，node-inventory 读取。此类保持为表上的轻量
+ * 无状态包装，确保存活事实保存在数据库而非瞬时内存状态中（dev-guard 计划评审提醒）。
  *
- * Reads are DEFENSIVE: fixtures that bypass the canonical migration list (no
- * `seat_identity_verdicts` table) get an empty map/undefined rather than a
- * crash — the projection degrades to "no verdict" (never down-ranks), matching
- * the fail-open-on-unknown contract.
+ * 读取采用防御策略：绕过规范迁移列表的 fixture（没有 `seat_identity_verdicts` 表）得到
+ * 空 map/undefined，而不是崩溃；投影降级为“无判决”（绝不降级状态），符合未知时失败开放契约。
  */
 export class SeatIdentityStore {
   constructor(private readonly db: Database.Database) {}
 
-  /** Upsert one node's verdict (last-writer-wins per node). */
+  /** upsert 单个节点的判决（每个节点最后写入者获胜）。 */
   upsert(v: SeatIdentityVerdict): void {
     this.db.prepare(`
       INSERT INTO seat_identity_verdicts
@@ -76,7 +72,7 @@ export class SeatIdentityStore {
     });
   }
 
-  /** Read all verdicts for the nodes of a rig, keyed by node_id. Defensive. */
+  /** 读取某工作组全部节点的判决，以 node_id 为键；防御式读取。 */
   getForRig(rigId: string): Map<string, SeatIdentityVerdict> {
     const out = new Map<string, SeatIdentityVerdict>();
     try {
@@ -87,16 +83,16 @@ export class SeatIdentityStore {
       `).all(rigId) as VerdictRow[];
       for (const row of rows) out.set(row.node_id, rowToVerdict(row));
     } catch {
-      // Table absent (partial fixture) — degrade to no verdicts.
+      // 表缺失（不完整 fixture）——降级为无判决。
     }
     return out;
   }
 
   /**
-   * FS-1 W1.2 — all rigs' verdicts in ONE query, keyed rigId → (nodeId →
-   * verdict). Same JOIN + `rowToVerdict` as `getForRig`, minus the per-rig
-   * WHERE — so a per-rig `getForAllRigs().get(rigId)` is equivalent to
-   * `getForRig(rigId)` (empty map when a rig has no verdicts). Defensive.
+   * FS-1 W1.2——用一次查询读取所有工作组的判决，键结构为 rigId →（nodeId → verdict）。
+   * JOIN 与 `rowToVerdict` 和 `getForRig` 相同，只去掉按工作组的 WHERE。因此，对单个
+   * 工作组而言，`getForAllRigs().get(rigId)` 等价于 `getForRig(rigId)`；工作组没有判决时
+   * 返回空 map。防御式读取。
    */
   getForAllRigs(): Map<string, Map<string, SeatIdentityVerdict>> {
     const out = new Map<string, Map<string, SeatIdentityVerdict>>();
@@ -111,12 +107,12 @@ export class SeatIdentityStore {
         m.set(row.node_id, rowToVerdict(row));
       }
     } catch {
-      // Table absent (partial fixture) — degrade to no verdicts.
+      // 表缺失（不完整 fixture）——降级为无判决。
     }
     return out;
   }
 
-  /** Read a single node's verdict, or null. Defensive. */
+  /** 读取单个节点的判决，不存在时返回 null；防御式读取。 */
   getForNode(nodeId: string): SeatIdentityVerdict | null {
     try {
       const row = this.db.prepare(
@@ -128,7 +124,7 @@ export class SeatIdentityStore {
     }
   }
 
-  /** Drop verdicts for nodes no longer in the live set (memory/table hygiene). */
+  /** 删除已不在实时集合中的节点判决，以清理内存/表。 */
   pruneExcept(liveNodeIds: string[]): void {
     try {
       const existing = this.db.prepare(
@@ -140,12 +136,12 @@ export class SeatIdentityStore {
         if (!live.has(r.node_id)) del.run(r.node_id);
       }
     } catch {
-      // Table absent — nothing to prune.
+      // 表缺失——无需清理。
     }
   }
 }
 
-/** 51-09 increment 1 — the durable daemon self-host identity record. */
+/** 51-09 增量 1——后台服务自身主机身份的持久记录。 */
 export interface SelfHostIdentityRecord {
   hostId: string;
   mintedAt: string;
@@ -153,18 +149,16 @@ export interface SelfHostIdentityRecord {
 }
 
 /**
- * 51-09 increment 1 — thin durable store for the daemon's own self-host id
- * (migration 059 `self_host_identity`, singleton row). Co-located with the
- * seat-identity substrate per arch ruling cb19867f (extend, do not invent a
- * parallel identity store). The reconciler mints once + reconciles at boot; this
- * store is the DB access seam only (no policy — mint/reconcile decisions live in
- * seat-identity-reconciler.ts). Reads are DEFENSIVE (table absent → null),
- * matching SeatIdentityStore's fixture-tolerant contract.
+ * 51-09 增量 1——后台服务自身 self-host id 的轻量持久化存储（迁移 059
+ * `self_host_identity`，单例行）。根据架构裁决 cb19867f，它与 seat-identity 基础共址
+ *（扩展既有存储，不创建平行身份存储）。reconciler 只生成一次，并在启动时对账；本类仅是
+ * 数据库访问接缝，不包含策略——生成/对账决策位于 seat-identity-reconciler.ts。读取采用
+ * 防御策略（表缺失 → null），与 SeatIdentityStore 容忍 fixture 的契约一致。
  */
 export class SelfHostIdentityStore {
   constructor(private readonly db: Database.Database) {}
 
-  /** The current self-host record, or null when none has been minted. */
+  /** 当前 self-host 记录；尚未生成时返回 null。 */
   get(): SelfHostIdentityRecord | null {
     try {
       const row = this.db.prepare(
@@ -176,7 +170,7 @@ export class SelfHostIdentityStore {
     }
   }
 
-  /** Insert the singleton self-host record (first boot only). minted_at == reconciled_at at mint. */
+  /** 插入单例 self-host 记录（仅首次启动）。生成时 minted_at == reconciled_at。 */
   mint(hostId: string, nowIso: string): SelfHostIdentityRecord {
     this.db.prepare(
       "INSERT INTO self_host_identity (singleton, host_id, minted_at, reconciled_at) VALUES (1, ?, ?, ?)",
@@ -184,7 +178,7 @@ export class SelfHostIdentityStore {
     return { hostId, mintedAt: nowIso, reconciledAt: nowIso };
   }
 
-  /** Advance reconciled_at on the existing singleton row; host_id + minted_at are never touched. */
+  /** 推进现有单例行的 reconciled_at；永不修改 host_id 和 minted_at。 */
   touchReconciledAt(nowIso: string): void {
     this.db.prepare(
       "UPDATE self_host_identity SET reconciled_at = ? WHERE singleton = 1",

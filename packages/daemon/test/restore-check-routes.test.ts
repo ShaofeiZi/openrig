@@ -11,7 +11,7 @@ import type { SessionRegistry } from "../src/domain/session-registry.js";
 import type { SnapshotRepository } from "../src/domain/snapshot-repository.js";
 import {
   RestoreCheckService,
-  // OPR.0.3.2.14 — imported from source; previously copy-pasted here.
+  // OPR.0.3.2.14——从 source 导入；此前在这里复制。
   CLAUDE_HOOKS_ROOT,
   CLAUDE_SESSION_START_COMPACT_COMMAND as REQUIRED_SESSION_START_COMPACT_COMMAND,
   CLAUDE_USER_PROMPT_SUBMIT_COMMAND as REQUIRED_USER_PROMPT_SUBMIT_COMMAND,
@@ -108,7 +108,7 @@ function insertStartupContextRow(db: Database.Database, nodeId: string, options?
   );
 }
 
-describe("Restore check routes", () => {
+describe("恢复检查路由", () => {
   let db: Database.Database;
   let app: Hono;
   let rigRepo: RigRepository;
@@ -137,7 +137,7 @@ describe("Restore check routes", () => {
     fs.rmSync(openRigHome, { recursive: true, force: true });
   });
 
-  it("GET /api/restore-check returns JSON with verdict + checks + repairPacket", async () => {
+  it("GET /api/restore-check 返回带 verdict + checks + repairPacket 的 JSON", async () => {
     rigRepo.createRig("test-rig");
 
     const res = await app.request("/api/restore-check");
@@ -153,14 +153,14 @@ describe("Restore check routes", () => {
     expect(body.hostInfra).toBeDefined();
     expect(body.counts).toBeDefined();
     expect(body.checks).toBeInstanceOf(Array);
-    // repairPacket is null when restorable, array when caveats/blockers exist
+    // restorable 时 repairPacket 为 null，存在 caveat/blocker 时为数组。
     if (body.verdict === "restorable") {
       expect(body.repairPacket).toBeNull();
     } else {
       expect(body.repairPacket).toBeInstanceOf(Array);
     }
 
-    // Every check has required fields
+    // 每个 check 都包含必需字段。
     for (const check of body.checks) {
       expect(typeof check.check).toBe("string");
       expect(["green", "yellow", "red"]).toContain(check.status);
@@ -169,7 +169,7 @@ describe("Restore check routes", () => {
     }
   });
 
-  it("GET /api/restore-check?rig=test-rig filters to named rig", async () => {
+  it("GET /api/restore-check?rig=test-rig 过滤到具名工作组", async () => {
     rigRepo.createRig("rig-a");
     rigRepo.createRig("rig-b");
 
@@ -180,7 +180,7 @@ describe("Restore check routes", () => {
     expect(rigChecks.every((c: { check: string }) => !c.check.includes("rig-b"))).toBe(true);
   });
 
-  it("GET /api/restore-check?rig=unknown returns not_restorable with red check", async () => {
+  it("GET /api/restore-check?rig=unknown 返回 not_restorable 和 red check", async () => {
     rigRepo.createRig("real-rig");
 
     const res = await app.request("/api/restore-check?rig=nonexistent");
@@ -192,7 +192,7 @@ describe("Restore check routes", () => {
     expect(notFound.status).toBe("red");
   });
 
-  it("GET /api/restore-check?noQueue=true skips queue checks", async () => {
+  it("GET /api/restore-check?noQueue=true 跳过 queue check", async () => {
     const rig = rigRepo.createRig("test-rig");
     rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
 
@@ -203,7 +203,7 @@ describe("Restore check routes", () => {
     expect(queueChecks).toHaveLength(0);
   });
 
-  it("GET /api/restore-check?noHooks=true skips hook checks", async () => {
+  it("GET /api/restore-check?noHooks=true 跳过 hook check", async () => {
     const rig = rigRepo.createRig("test-rig");
     rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
 
@@ -214,7 +214,7 @@ describe("Restore check routes", () => {
     expect(hookChecks).toHaveLength(0);
   });
 
-  it("GET /api/restore-check uses node cwd to inspect project-local Claude hook settings", async () => {
+  it("GET /api/restore-check 使用节点 cwd 检查项目本地 Claude hook settings", async () => {
     const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "restore-check-route-hook-cwd-"));
     const settingsDir = path.join(projectDir, ".claude");
     const settingsPath = path.join(settingsDir, "settings.local.json");
@@ -234,13 +234,13 @@ describe("Restore check routes", () => {
         remediation: "",
       }));
       expect(hook.evidence).toContain(settingsPath);
-      expect(hook.evidence).toContain("configuration present, not hook-execution verified");
+      expect(hook.evidence).toContain("配置已存在，但尚未验证 hook 执行");
     } finally {
       fs.rmSync(projectDir, { recursive: true, force: true });
     }
   });
 
-  it("GET /api/restore-check returns actionable recovery for a snapshot-backed stopped rig", async () => {
+  it("GET /api/restore-check 为有快照支撑的已停止工作组返回可执行 recovery", async () => {
     const rig = rigRepo.createRig("recoverable-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "dev-impl@recoverable-rig");
@@ -255,13 +255,13 @@ describe("Restore check routes", () => {
     const body = await res.json();
     expect(body.recovery).toEqual({
       status: "actionable",
-      summary: expect.stringContaining("1 rig can be recovered"),
+      summary: expect.stringContaining("1 个工作组可用已知 zrig 命令恢复"),
       actions: [
         expect.objectContaining({
           scope: "rig",
           rigId: rig.id,
           rigName: "recoverable-rig",
-          command: "rig up --existing recoverable-rig",
+          command: "zrig up --existing recoverable-rig",
           safe: false,
           blocking: true,
         }),
@@ -271,7 +271,7 @@ describe("Restore check routes", () => {
     });
   });
 
-  it("GET /api/restore-check blocks recovery when a stopped snapshot-backed rig is missing startup context", async () => {
+  it("有快照支撑的已停止工作组缺少 startup context 时，GET /api/restore-check 阻塞 recovery", async () => {
     const rig = rigRepo.createRig("recoverable-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "dev-impl@recoverable-rig");
@@ -288,24 +288,24 @@ describe("Restore check routes", () => {
     expect(startup).toEqual(expect.objectContaining({
       status: "red",
     }));
-    expect(startup.evidence).toContain("startup context");
+    expect(startup.evidence).toContain("启动上下文");
     expect(body.recovery).toEqual({
       status: "blocked",
-      summary: expect.stringContaining("1 rig blocked"),
+      summary: expect.stringContaining("1 个工作组被阻塞"),
       actions: [],
       blocked: [
         expect.objectContaining({
           scope: "rig",
           rigId: rig.id,
           rigName: "recoverable-rig",
-          reason: expect.stringContaining("startup context"),
+          reason: expect.stringContaining("启动上下文"),
         }),
       ],
       unknown: [],
     });
   });
 
-  it("GET /api/restore-check returns structured JSON for malformed startup-context rows", async () => {
+  it("GET /api/restore-check 为 malformed startup-context row 返回结构化 JSON", async () => {
     const rig = rigRepo.createRig("malformed-startup-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "dev-impl@malformed-startup-rig");
@@ -331,7 +331,7 @@ describe("Restore check routes", () => {
     expect(body.checks.some((c: { check: string }) => c.check === "probe.error")).toBe(false);
   });
 
-  it("GET /api/restore-check does not false-green malformed startup_actions_json", async () => {
+  it("GET /api/restore-check 不会把 malformed startup_actions_json 误判为 green", async () => {
     const rig = rigRepo.createRig("malformed-startup-actions-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "dev-impl@malformed-startup-actions-rig");
@@ -358,7 +358,7 @@ describe("Restore check routes", () => {
     expect(body.checks.some((c: { check: string }) => c.check === "probe.error")).toBe(false);
   });
 
-  it("daemon.reachable is green inside daemon route (self-proof)", async () => {
+  it("后台服务路由内 daemon.reachable 为 green（自证明）", async () => {
     rigRepo.createRig("test-rig");
 
     const res = await app.request("/api/restore-check");
@@ -367,12 +367,12 @@ describe("Restore check routes", () => {
     const daemon = body.checks.find((c: { check: string }) => c.check === "daemon.reachable");
     expect(daemon).toBeDefined();
     expect(daemon.status).toBe("green");
-    expect(daemon.evidence).toContain("Daemon running");
+    expect(daemon.evidence).toContain("后台服务运行中");
   });
 
-  it("GET /api/restore-check returns non-null repairPacket with blocking field for broken fixture", async () => {
-    // Create a rig with a node — hooks are yellow by default (Slice 2 unimplemented),
-    // producing restorable_with_caveats and a non-null repairPacket
+  it("GET /api/restore-check 为损坏 fixture 返回非 null repairPacket，并包含 blocking 字段", async () => {
+    // 创建带一个节点的工作组；hook 默认为 yellow（Slice 2 未实现），从而产生
+    // restorable_with_caveats 和非 null repairPacket。
     const rig = rigRepo.createRig("broken-rig");
     rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
 
@@ -396,11 +396,11 @@ describe("Restore check routes", () => {
     expect(body.hostInfra).toEqual(expect.objectContaining({
       status: "not_declared",
     }));
-    // Hooks yellow → restorable_with_caveats → repairPacket populated
+    // Hooks yellow → restorable_with_caveats → 填充 repairPacket。
     expect(body.repairPacket).toBeInstanceOf(Array);
     expect(body.repairPacket.length).toBeGreaterThan(0);
 
-    // Each repair step has the required fields including blocking
+    // 每个 repair step 都包含必需字段，包括 blocking。
     for (const step of body.repairPacket) {
       expect(typeof step.step).toBe("number");
       expect(typeof step.command).toBe("string");
@@ -409,14 +409,14 @@ describe("Restore check routes", () => {
       expect(typeof step.blocking).toBe("boolean");
     }
 
-    // Yellow hooks are non-blocking caveats
+    // Yellow hook 是非阻塞 caveat。
     const hookStep = body.repairPacket.find((s: { rationale: string }) => s.rationale.includes("Hook"));
     if (hookStep) {
       expect(hookStep.blocking).toBe(false);
     }
   });
 
-  it("GET /api/restore-check surfaces declared host-infra state from OPENRIG_HOME", async () => {
+  it("GET /api/restore-check 呈现 OPENRIG_HOME 中已声明的 host-infra state", async () => {
     fs.writeFileSync(path.join(openRigHome, "host-infra.json"), VALID_HOST_INFRA_DECLARATION);
     rigRepo.createRig("declared-rig");
 
@@ -429,14 +429,14 @@ describe("Restore check routes", () => {
       status: "green",
     }));
     expect(check.evidence).toContain(path.join(openRigHome, "host-infra.json"));
-    expect(check.evidence).toContain("declared, not verified");
+    expect(check.evidence).toContain("已声明主机基础设施，但尚未验证");
     expect(body.hostInfra).toEqual(expect.objectContaining({
       status: "declared",
-      evidence: expect.stringContaining("declared, not verified"),
+      evidence: expect.stringContaining("已声明主机基础设施，但尚未验证"),
     }));
   });
 
-  it("GET /api/restore-check surfaces schemaVersion 2 evidence paths present", async () => {
+  it("GET /api/restore-check 呈现 schemaVersion 2 evidence path 已存在", async () => {
     const daemonPath = path.join(openRigHome, "daemon", "launchd.plist");
     const supportPath = path.join(openRigHome, "supervisor-wake", "README.md");
     fs.mkdirSync(path.dirname(daemonPath), { recursive: true });
@@ -454,16 +454,16 @@ describe("Restore check routes", () => {
     expect(check).toEqual(expect.objectContaining({
       status: "green",
     }));
-    expect(check.evidence).toContain("declared, evidence paths present, not autostart verified");
+    expect(check.evidence).toContain("evidence path 已存在，但尚未验证自动启动");
     expect(check.evidence).toContain(daemonPath);
     expect(check.evidence).toContain(supportPath);
     expect(body.hostInfra).toEqual(expect.objectContaining({
       status: "declared",
-      evidence: expect.stringContaining("not autostart verified"),
+      evidence: expect.stringContaining("尚未验证自动启动"),
     }));
   });
 
-  it("GET /api/restore-check surfaces schemaVersion 2 missing evidence path as caveat", async () => {
+  it("GET /api/restore-check 把 schemaVersion 2 缺失 evidence path 呈现为 caveat", async () => {
     const daemonPath = path.join(openRigHome, "daemon", "launchd.plist");
     const supportPath = path.join(openRigHome, "supervisor-wake", "README.md");
     fs.mkdirSync(path.dirname(daemonPath), { recursive: true });
@@ -486,7 +486,7 @@ describe("Restore check routes", () => {
     ))).toBe(true);
   });
 
-  it("GET /api/restore-check?rig=nonexistent preserves missing host-infra state", async () => {
+  it("GET /api/restore-check?rig=nonexistent 保留缺失 host-infra state", async () => {
     rigRepo.createRig("real-rig");
 
     const res = await app.request("/api/restore-check?rig=nonexistent&noQueue=true&noHooks=true");
@@ -505,7 +505,7 @@ describe("Restore check routes", () => {
     }));
   });
 
-  it("GET /api/restore-check?rig=nonexistent preserves declared host-infra state", async () => {
+  it("GET /api/restore-check?rig=nonexistent 保留已声明 host-infra state", async () => {
     fs.writeFileSync(path.join(openRigHome, "host-infra.json"), VALID_HOST_INFRA_DECLARATION);
     rigRepo.createRig("real-rig");
 
@@ -525,7 +525,7 @@ describe("Restore check routes", () => {
     }));
   });
 
-  it("GET /api/restore-check route catch returns actionable repairPacket", async () => {
+  it("GET /api/restore-check 路由 catch 返回可执行 repairPacket", async () => {
     const spy = vi.spyOn(RestoreCheckService.prototype, "check").mockImplementationOnce(() => {
       throw new Error("route boom");
     });
@@ -540,7 +540,7 @@ describe("Restore check routes", () => {
       expect(body.readiness.reason).toBe("unknown_probe_state");
       expect(body.recovery).toEqual({
         status: "unknown",
-        summary: expect.stringContaining("could not be inspected"),
+        summary: expect.stringContaining("无法检视恢复状态"),
         actions: [],
         blocked: [],
         unknown: [
@@ -553,12 +553,12 @@ describe("Restore check routes", () => {
       expect(body.checks[0]).toEqual(expect.objectContaining({
         check: "probe.error",
         status: "red",
-        remediation: "Check daemon logs with: rig daemon logs",
+        remediation: "用 zrig daemon logs 查看后台服务日志",
       }));
       expect(body.checks[0].evidence).toContain("route boom");
       expect(body.repairPacket).toEqual([{
         step: 1,
-        command: "Check daemon logs with: rig daemon logs",
+        command: "用 zrig daemon logs 查看后台服务日志",
         rationale: expect.stringContaining("route boom"),
         safe: true,
         blocking: true,
@@ -568,7 +568,7 @@ describe("Restore check routes", () => {
     }
   });
 
-  it("GET /api/restore-check?rig=nonexistent returns repairPacket with blocking:true entry", async () => {
+  it("GET /api/restore-check?rig=nonexistent 返回含 blocking:true entry 的 repairPacket", async () => {
     rigRepo.createRig("real-rig");
 
     const res = await app.request("/api/restore-check?rig=nonexistent");
@@ -578,12 +578,12 @@ describe("Restore check routes", () => {
     expect(body.repairPacket).toBeInstanceOf(Array);
     const blocker = body.repairPacket.find((s: { blocking: boolean }) => s.blocking);
     expect(blocker).toBeDefined();
-    expect(blocker.command).toContain("rig ps");
+    expect(blocker.command).toContain("zrig ps");
   });
 
-  // --- H62 absence proofs ---
+  // --- H62 absence 证明 ---
 
-  it("GET /api/restore-check response has no fullyBack or assertion fields", async () => {
+  it("GET /api/restore-check 响应没有 fullyBack 或 assertion 字段", async () => {
     rigRepo.createRig("test-rig");
 
     const res = await app.request("/api/restore-check");
@@ -595,7 +595,7 @@ describe("Restore check routes", () => {
     expect(body.continuity).toBeDefined();
   });
 
-  it("route 500 fallback emits readiness + continuity with no legacy fields", async () => {
+  it("路由 500 fallback 发出 readiness + continuity，不含 legacy 字段", async () => {
     const spy = vi.spyOn(RestoreCheckService.prototype, "check").mockImplementationOnce(() => {
       throw new Error("fallback test");
     });
@@ -618,7 +618,7 @@ describe("Restore check routes", () => {
     }
   });
 
-  it("continuity is always not_proven in route responses", async () => {
+  it("路由响应中的 continuity 始终为 not_proven", async () => {
     rigRepo.createRig("test-rig");
 
     const res = await app.request("/api/restore-check");
@@ -629,18 +629,18 @@ describe("Restore check routes", () => {
     expect(body.continuity.unprovenCapabilities).toContain("provider_session_resume");
   });
 
-  // OPR.0.4.0.29 — compact vs --ready (ready=1) at the PRODUCTION route (finding 3:
-  // exercise restoreCheckRoutes, not a duplicate test-only path).
-  it("?compact=1 drops green checks (token win); ?compact=1&ready=1 keeps the ready detail", async () => {
+  // OPR.0.4.0.29——生产路由上的 compact 与 --ready（ready=1）对比。finding 3 要求执行
+  // restoreCheckRoutes，而不是复制仅测试路径。
+  it("?compact=1 丢弃 green check 以节省 token；?compact=1&ready=1 保留 ready detail", async () => {
     rigRepo.createRig("test-rig");
 
     const compact = await (await app.request("/api/restore-check?compact=1")).json();
-    // Green checks (e.g. daemon.reachable) are dropped in compact mode.
+    // compact 模式丢弃 green check，例如 daemon.reachable。
     expect(compact.checks.some((c: { check: string }) => c.check === "daemon.reachable")).toBe(false);
 
     const compactReady = await (await app.request("/api/restore-check?compact=1&ready=1")).json();
-    // --ready (ready=1) keeps the ready-seat (green) detail while staying compact,
-    // NOT dropping to the full firehose (FR-2 corrective).
+    // --ready（ready=1）在保持 compact 的同时保留 ready-seat（green）detail，不退回完整信息流
+    //（FR-2 修正）。
     expect(compactReady.checks.some((c: { check: string }) => c.check === "daemon.reachable")).toBe(true);
     expect(compactReady.checks.length).toBeGreaterThan(compact.checks.length);
   });

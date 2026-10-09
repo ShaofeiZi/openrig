@@ -31,7 +31,7 @@ describe("RigSpecReview", () => {
       expect(screen.getByTestId("rig-spec-review-empty")).toBeDefined();
     });
 
-    expect(screen.getByText("No RigSpec Selected")).toBeDefined();
+    expect(screen.getByText("未选择工作组规格")).toBeDefined();
   });
 
   it("renders a read-only summary and yaml preview for the current rig draft", async () => {
@@ -64,13 +64,13 @@ describe("RigSpecReview", () => {
       expect(screen.getByTestId("rig-spec-review")).toBeDefined();
     });
 
-    // Draft label shows immediately (before daemon review loads)
+    // Draft 标签立即显示（在 daemon 评审加载之前）
     expect(screen.getByText("demo-rig")).toBeDefined();
-    // Tabs should be present
+    // Tabs 应存在
     expect(screen.getByTestId("tab-topology")).toBeDefined();
     expect(screen.getByTestId("tab-configuration")).toBeDefined();
     expect(screen.getByTestId("tab-yaml")).toBeDefined();
-    // YAML tab shows raw content
+    // YAML tab 显示原始内容
     fireEvent.click(screen.getByTestId("tab-yaml"));
     await waitFor(() => {
       expect(screen.getByTestId("rig-spec-yaml").textContent).toContain('agent_ref: "local:agents/lead"');
@@ -106,11 +106,11 @@ describe("RigSpecReview", () => {
       expect(screen.getByTestId("rig-spec-review")).toBeDefined();
     });
 
-    // Standard tabs present
+    // 标准 tabs 存在
     expect(screen.getByTestId("tab-topology")).toBeDefined();
     expect(screen.getByTestId("tab-configuration")).toBeDefined();
     expect(screen.getByTestId("tab-yaml")).toBeDefined();
-    // Environment tab must NOT appear in draft/open-file review
+    // Environment tab 不得出现在 draft/open-file 评审中
     expect(screen.queryByTestId("tab-environment")).toBeNull();
   });
 
@@ -126,10 +126,10 @@ describe("RigSpecReview", () => {
     renderReview();
 
     await waitFor(() => {
-      expect(screen.getByText("Open In Import")).toBeDefined();
+      expect(screen.getByText("在导入中打开")).toBeDefined();
     });
 
-    fireEvent.click(screen.getByText("Open In Import"));
+    fireEvent.click(screen.getByText("在导入中打开"));
 
     await waitFor(() => {
       expect(screen.getByTestId("import-route")).toBeDefined();

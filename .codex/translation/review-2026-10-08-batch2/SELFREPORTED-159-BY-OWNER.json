@@ -1,0 +1,707 @@
+{
+  "total_self_reported": 159,
+  "by_owner": {
+    "daemon-api": [
+      {
+        "path": "packages/daemon/test/helpers/eval-report.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/eval-runner.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/scenario-real-deps.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/scenario-surfaces.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-a": [
+      {
+        "path": "packages/daemon/test/helpers/delegated-posture.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/eval-grader.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/eval-rig-session.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/scenario-expect.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/test-app.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/topology-launcher.test.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-b": [
+      {
+        "path": "packages/daemon/test/helpers/eval-rig-provider.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/migration-subset-guard.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/scenario-daemon.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-c": [
+      {
+        "path": "packages/daemon/test/helpers/scenario-tui.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-d": [
+      {
+        "path": "packages/daemon/test/helpers/scenario-schema.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-e": [
+      {
+        "path": "packages/daemon/test/helpers/eval-ref-resolution.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/scenario-container.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-g": [
+      {
+        "path": "packages/daemon/test/helpers/codex-state.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/eval-provider.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/scenario-container-stage.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/scenario-pipeline.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-h": [
+      {
+        "path": "packages/daemon/test/activity-motion-fold.test.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/fixtures/shutdown-startup.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/hermetic-env.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/scenario-runner.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/review-fixtures.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-i": [
+      {
+        "path": "packages/daemon/test/helpers/eval-rig-runner.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/staging-docker-invoker.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/restore-plan-preview.test.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-j": [
+      {
+        "path": "packages/daemon/test/helpers/scenario-run-record.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/seed-host-shaped.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/testbed-published-daemon.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-core-k": [
+      {
+        "path": "packages/daemon/test/queue-stuck-sweep.test.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "daemon-runtime": [
+      {
+        "path": "packages/daemon/test/helpers/eval-schema.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/daemon/test/helpers/scenario-normalizer.ts",
+        "reason_class": "uncovered"
+      }
+    ],
+    "entry": [
+      {
+        "path": "packages/cli/scripts/check-abi.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/cli/vitest.config.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/bootstrap-product-factory-vps.sh",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/build-package.sh",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/build-testbed-cli-pack.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/build-testbed-image.sh",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/build-testbed-image.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/check-cli-daemon-freshness.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/check-docs-guard.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/check-docs-guard.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/check-packing-policies.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/check-packing.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/cli-license.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-candidate-binding.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-consume.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/gate-lane-hermeticity.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-ledger.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/gate-lane-ledger.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-lock.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-lock.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane-run.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/gate-lane-run.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/gate-lane.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/generate-context-packs.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/generate-context-packs.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/internal-leak-scanner.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/mirror-skills.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/mirror-skills.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/portability-report.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/regen-edge-digests.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/rewrite-daemon-imports.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/rewrite-daemon-imports.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/smoke-fresh-install.sh",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/sync-scope-lineage.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/sync-scope-lineage.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/test-tui-package.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/testbed-build-inputs.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-build-inputs.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-dockerfile.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-emit-manifest.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/testbed-emit-manifest.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-manifest.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-manifest.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/testbed-stub-assets.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/typecheck-order.test.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "scripts/verify-packaged-builtins.mjs",
+        "reason_class": "needs_review"
+      },
+      {
+        "path": "scripts/vm-bootstrap/two-daemon-start.sh",
+        "reason_class": ""
+      },
+      {
+        "path": "vitest.config.ts",
+        "reason_class": ""
+      }
+    ],
+    "extras": [
+      {
+        "path": "demo/run-proof.sh",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "demo/run.sh",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "demo/scripts/check-demo-health.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "demo/scripts/common.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "demo/scripts/resume-probe-lib.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "demo/scripts/seed-resume-baseline.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "demo/scripts/verify-native-resume.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "docker/testbed/Dockerfile",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "docker/testbed/entrypoint.sh",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "packages/test-system/evals/generate-eval-fixtures.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "skills/_canonical/core/openrig-upgrade/scripts/migrate-telemetry-state-0.5.9.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "skills/_canonical/process/systematic-debugging/condition-based-waiting-example.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "spike/tui-drivability/data.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "spike/tui-drivability/grammar.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "spike/tui-drivability/grammar.test.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "spike/tui-drivability/harness.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "spike/tui-drivability/input.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "spike/tui-drivability/parity.test.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "spike/tui-drivability/render.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "spike/tui-drivability/state.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "path": "spike/tui-drivability/state.test.mjs",
+        "reason_class": "uncovered"
+      }
+    ],
+    "tui": [
+      {
+        "path": "packages/tui/scripts/capture-crash-cart.mjs",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/attention/attention-model.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/attention/source-continuity.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/commands/completion.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/commands/help.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/commands/palette.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/commands/registry.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/config/config-model.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/contract.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/crash-cart-model.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/from-emit.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/keys.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/ledger-explorer.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/one-click-gate.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/render-crash-cart.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/restore-input.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/restore-lifecycle.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/restore-scroll.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/start-daemon.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/crash-cart/triage.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/daemon-client.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/demo-data.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/execution/workflow-model.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/grammar.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/index.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/input.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/live-events.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/live.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/local-reading.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/main.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/motion.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/navigator.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/page-read.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/print-for-copy.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/reading.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/refresh.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/sections.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/socket-server.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/startup.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/state.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/terminals/terminal-model.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/theme.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/time.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/topology/canvas.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/topology/fixture.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/topology/glyphs.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/topology/graph-types.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/topology/layout.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/topology/render-graph.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/topology/runtime-marks.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/topology/styles/braille.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/topology/styles/hatchet.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/types.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/src/visual-layout.ts",
+        "reason_class": ""
+      },
+      {
+        "path": "packages/tui/vitest.config.ts",
+        "reason_class": ""
+      }
+    ]
+  },
+  "daemon_breakdown": {
+    "total": 35,
+    "helpers_ts": 29,
+    "non_helper_files": [
+      {
+        "owner": "daemon-core-h",
+        "path": "packages/daemon/test/activity-motion-fold.test.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "owner": "daemon-core-h",
+        "path": "packages/daemon/test/fixtures/shutdown-startup.mjs",
+        "reason_class": "uncovered"
+      },
+      {
+        "owner": "daemon-core-k",
+        "path": "packages/daemon/test/queue-stuck-sweep.test.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "owner": "daemon-core-i",
+        "path": "packages/daemon/test/restore-plan-preview.test.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "owner": "daemon-core-h",
+        "path": "packages/daemon/test/review-fixtures.ts",
+        "reason_class": "uncovered"
+      },
+      {
+        "owner": "daemon-core-a",
+        "path": "packages/daemon/test/topology-launcher.test.ts",
+        "reason_class": "uncovered"
+      }
+    ]
+  }
+}

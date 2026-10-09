@@ -1,6 +1,6 @@
 import type { Migration } from "../migrate.js";
 
-// Explicit future-launch choices; policy provenance and native rules stay separate.
+// 显式记录未来启动选择；策略来源与原生规则保持分离。
 export const nodePermissionSelectionsSchema: Migration = {
   name: "088_node_permission_selections.sql",
   sql: `

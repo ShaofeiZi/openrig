@@ -1,10 +1,9 @@
-// OPR.0.4.1.11.2 (FR-4) — data-medium capture: a deterministic payload before/after artifact.
-// For non-visual / data-shape slices, the highest-bandwidth intent+proof artifact is the data
-// itself: canonical before + canonical after + the set of changed paths. Pure + deterministic
-// (keys sorted, change paths sorted) so the artifact is reproducible and reviewable side by side,
-// the data-medium peer of intent.png.
+// OPR.0.4.1.11.2（FR-4）——数据介质截图：确定性的 before/after 产物。
+// 对非视觉/数据形状类 slice，带宽最高的 intent+proof 产物就是数据本身：
+// 规范 before + 规范 after + 变更路径集合。纯且确定性（键排序、变更路径排序），
+// 使产物可复现、可并排评审，是 intent.png 的数据介质对等物。
 
-/** Recursively sort object keys so JSON serialization is insertion-order-independent. */
+/** 递归排序对象键，使 JSON 序列化与插入顺序无关。 */
 function sortValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sortValue);
   if (value !== null && typeof value === "object") {
@@ -20,14 +19,14 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Stable, indented JSON with recursively-sorted keys. Deterministic. */
+/** 稳定的缩进 JSON，键递归排序。确定性。 */
 export function canonicalJson(value: unknown): string {
   return JSON.stringify(sortValue(value), null, 2);
 }
 
 /**
- * Deep diff of two payloads → sorted leaf-path entries: `added (+)`, `removed (-)`, `changed (~)`.
- * Arrays + scalars are compared as leaves (by canonical JSON); plain objects are recursed.
+ * 两份负载的深度 diff → 排序后的叶子路径条目：`added (+)`、`removed (-)`、`changed (~)`。
+ * 数组与标量作为叶子比较（按规范 JSON）；纯对象递归。
  */
 export function diffPaths(before: unknown, after: unknown, prefix = ""): string[] {
   const results: string[] = [];
@@ -47,18 +46,18 @@ export function diffPaths(before: unknown, after: unknown, prefix = ""): string[
   return results.sort();
 }
 
-/** Assemble the durable data-medium artifact: canonical before/after + the changed-path summary. */
+/** 组装持久的数据介质产物：规范 before/after + 变更路径摘要。 */
 export function buildPayloadDiff(input: { before: unknown; after: unknown }): string {
   const changed = diffPaths(input.before, input.after);
   return [
-    "# BEFORE",
+    "# 之前",
     canonicalJson(input.before),
     "",
-    "# AFTER",
+    "# 之后",
     canonicalJson(input.after),
     "",
-    "# CHANGED",
-    changed.length ? changed.join("\n") : "(no changes)",
+    "# 变更",
+    changed.length ? changed.join("\n") : "（无变更）",
     "",
   ].join("\n");
 }

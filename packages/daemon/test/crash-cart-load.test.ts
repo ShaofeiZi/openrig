@@ -9,8 +9,8 @@ import {
   CrashCartReadError,
 } from "../src/domain/crash-cart-discovery.js";
 
-// Crash-cart C2 — the compose orchestrator: fail-closed guard FIRST, then copy-then-read, read the
-// discovery view, and ALWAYS clean up the scratch copy. All IO injected → hermetic.
+// 故障诊断 C2——组合编排器：先执行失败关闭防护，再复制后读取 discovery 视图，并且始终
+// 清理临时副本。所有 IO 均通过注入提供 → 测试完全隔离。
 
 function seededDb(): BetterSqlite3.Database {
   const db = createDb();
@@ -36,8 +36,8 @@ function baseDeps(over: Record<string, unknown> = {}) {
   };
 }
 
-describe("loadCrashCartDiscovery — fail-closed FIRST, always clean up", () => {
-  it("an empty private instance does not borrow the unrelated default daemon's identity", async () => {
+describe("loadCrashCartDiscovery——优先失败关闭，并始终清理", () => {
+  it("空的私有实例不会借用无关默认后台服务的身份", async () => {
     const probeHealthz = vi.fn(async (url: string) => url.includes(":7433/"));
     const deps = baseDeps({ readDaemonJson: () => undefined, exists: () => false,
       openrigUrl: "http://127.0.0.1:17433", probeHealthz });
@@ -47,27 +47,27 @@ describe("loadCrashCartDiscovery — fail-closed FIRST, always clean up", () => 
     expect(probeHealthz).toHaveBeenCalledExactlyOnceWith("http://127.0.0.1:17433/healthz");
     expect(deps.makeScratchDir).not.toHaveBeenCalled();
   });
-  it("an explicit target does not override a recorded live owner of the local database", async () => {
+  it("显式目标不会覆盖本地数据库中记录的存活所有者", async () => {
     const deps = baseDeps({ openrigUrl: "http://127.0.0.1:17433", isProcessAlive: () => true });
     await expect(loadCrashCartDiscovery(deps)).rejects.toBeInstanceOf(DaemonLiveError);
     expect(deps.makeScratchDir).not.toHaveBeenCalled();
   });
-  it("uses the configured database before the first recorded daemon boot", async () => {
+  it("后台服务首次留下启动记录前使用已配置的数据库", async () => {
     const deps = baseDeps({ readDaemonJson: () => undefined, configuredDbPath: "/private/custom.sqlite" });
     const result = await loadCrashCartDiscovery(deps);
     expect(result.dbPath.path).toBe("/private/custom.sqlite");
     expect(deps.copyFile).toHaveBeenCalledWith("/private/custom.sqlite", "/scratch/tmp/cc-xyz/custom.sqlite");
   });
-  it("does not turn a permission failure into an empty instance", async () => {
+  it("不会把权限失败解释为空实例", async () => {
     const deps = baseDeps({ readDaemonJson: () => undefined, exists: () => { throw new Error("EACCES"); } });
     await expect(loadCrashCartDiscovery(deps)).rejects.toThrow("EACCES");
     expect(deps.makeScratchDir).not.toHaveBeenCalled();
   });
-  it("a missing recorded database remains a read failure, not first setup", async () => {
+  it("记录的数据库缺失时仍视为读取失败，而非首次设置", async () => {
     const deps = baseDeps({ exists: () => false });
     await expect(loadCrashCartDiscovery(deps)).rejects.toBeInstanceOf(CrashCartReadError);
   });
-  it("refuses (DaemonLiveError) before making any scratch dir or copy when the daemon is live", async () => {
+  it("后台服务存活时，在创建临时目录或副本前以 DaemonLiveError 拒绝", async () => {
     const deps = baseDeps({ isProcessAlive: () => true });
     await expect(loadCrashCartDiscovery(deps)).rejects.toBeInstanceOf(DaemonLiveError);
     expect(deps.makeScratchDir).not.toHaveBeenCalled();
@@ -75,7 +75,7 @@ describe("loadCrashCartDiscovery — fail-closed FIRST, always clean up", () => 
     expect(deps.removeScratchDir).not.toHaveBeenCalled();
   });
 
-  it("happy path: returns the discovery view and cleans up the scratch dir", async () => {
+  it("正常路径：返回 discovery 视图并清理临时目录", async () => {
     const deps = baseDeps();
     const { discovery, dbPath } = await loadCrashCartDiscovery(deps);
     expect(dbPath.path).toBe("/scratch/.openrig/openrig.sqlite");
@@ -86,7 +86,7 @@ describe("loadCrashCartDiscovery — fail-closed FIRST, always clean up", () => 
     expect(deps.removeScratchDir).toHaveBeenCalledWith("/scratch/tmp/cc-xyz");
   });
 
-  it("cleans up the scratch dir even when the read throws", async () => {
+  it("即使读取抛出异常也清理临时目录", async () => {
     const deps = baseDeps({
       openDb: () => {
         throw new Error("open failed");
@@ -96,7 +96,7 @@ describe("loadCrashCartDiscovery — fail-closed FIRST, always clean up", () => 
     expect(deps.removeScratchDir).toHaveBeenCalledWith("/scratch/tmp/cc-xyz");
   });
 
-  it("refuses a relative daemon.json db path (cannot locate daemon-down)", async () => {
+  it("拒绝 daemon.json 中的相对数据库路径（无法定位已停止的后台服务）", async () => {
     const deps = baseDeps({ readDaemonJson: () => ({ pid: 9, port: 7433, db: "openrig.sqlite" }) });
     await expect(loadCrashCartDiscovery(deps)).rejects.toBeInstanceOf(CrashCartReadError);
     expect(deps.makeScratchDir).not.toHaveBeenCalled();

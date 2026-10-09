@@ -1,9 +1,9 @@
-// OPR skills-vendoring exec-mode QA blocker — SECOND hop (review50-r1 NOT-CLEAR on ac34ed75).
-// PluginVendorService.ensureVendored stages assets (repo -> ~/.openrig/plugins) via text
-// readFile->writeFile, which drops executable mode — an UPSTREAM hop the adapter preserveMode
-// fix could not reach (the adapters faithfully preserve the already-644 staged copy). These are
-// REAL-fs pins over the same fsOps shape production wires in startup.ts, covering the fresh-write
-// path AND the content-identical hash-skip path (a previously-staged 644 must repair on re-vendor).
+// OPR skills-vendoring exec-mode QA blocker——第二跳（review50-r1 对 ac34ed75 的 NOT-CLEAR）。
+// PluginVendorService.ensureVendored 通过 text readFile->writeFile 将 asset 从 repo staging 到
+// ~/.openrig/plugins，这会丢失 executable mode——这是 adapter preserveMode 修复无法覆盖的上游 hop
+//（adapter 会忠实保留已经是 0644 的 staged copy）。这些 REAL-fs pin 覆盖 production 在 startup.ts
+// 接入的相同 fsOps shape，并同时覆盖 fresh-write 路径与 content-identical hash-skip 路径
+//（此前 staged 的 0644 文件必须在重新 vendor 时修复）。
 
 import { describe, it, expect } from "vitest";
 import { createHash } from "node:crypto";
@@ -80,8 +80,8 @@ function seedAssets(root: string) {
   return { hookRel: "skills/compaction-restore/scripts/precompact-hook.mjs", skillRel: "skills/compaction-restore/SKILL.md" };
 }
 
-describe("PluginVendorService preserves executable mode during vendor staging (QA NOT-CLEAR, 2nd hop)", () => {
-  it("ensureVendored stages the exec helper as 0755, non-exec neighbor as 0644", async () => {
+describe("PluginVendorService 在 vendor staging 期间保留 executable mode（QA NOT-CLEAR，第 2 跳）", () => {
+  it("ensureVendored 将 exec helper 以 0755 staging，并让 non-exec 相邻文件保持 0644", async () => {
     const base = fs.mkdtempSync(nodePath.join(os.tmpdir(), "vendor-execmode-"));
     const assets = nodePath.join(base, "assets", "plugins");
     const rel = seedAssets(assets);
@@ -97,7 +97,7 @@ describe("PluginVendorService preserves executable mode during vendor staging (Q
     expect(perm(outSkill)).toBe(0o644);
   });
 
-  it("re-vendor repairs a previously-staged 0644 exec helper even when content is byte-identical (hash-skip path)", async () => {
+  it("即使 content 逐字相同，重新 vendor 也会修复此前以 0644 staging 的 exec helper（hash-skip 路径）", async () => {
     const base = fs.mkdtempSync(nodePath.join(os.tmpdir(), "vendor-execmode-idem-"));
     const assets = nodePath.join(base, "assets", "plugins");
     const rel = seedAssets(assets);
@@ -106,19 +106,19 @@ describe("PluginVendorService preserves executable mode during vendor staging (Q
 
     await svc.ensureVendored("openrig-core");
 
-    // Leave the equal-version installed bytes intact but reproduce the exact
-    // QA state: a byte-identical executable helper carrying the WRONG mode.
+    // 保持 equal-version installed byte 不变，但准确复现 QA state：逐字相同的 executable helper
+    // 携带错误 mode。
     const outHook = nodePath.join(userPlugins, "openrig-core", rel.hookRel);
     fs.chmodSync(outHook, 0o644);
     expect(perm(outHook)).toBe(0o644);
 
     await svc.ensureVendored("openrig-core");
 
-    // Content unchanged (write skipped) but mode reconciled to the source 0755.
+    // content 未变化（跳过写入），但 mode reconcile 为 source 的 0755。
     expect(perm(outHook)).toBe(0o755);
   });
 
-  it("leaves a symlinked unversioned global canon byte-for-byte unchanged", async () => {
+  it("让 symlinked unversioned global canon 逐字保持不变", async () => {
     const base = fs.mkdtempSync(nodePath.join(os.tmpdir(), "vendor-global-authority-"));
     const assets = nodePath.join(base, "assets", "plugins");
     seedAssets(assets);
@@ -145,10 +145,10 @@ describe("PluginVendorService preserves executable mode during vendor staging (Q
 
     expect(fs.readFileSync(canonSkill, "utf-8")).toBe("# newer shared canon\n");
     expect(fs.existsSync(nodePath.join(canonDir, ".openrig-vendor-version"))).toBe(false);
-    expect(logs.join("\n")).toMatch(/unversioned\/external authority.*unchanged/i);
+    expect(logs.join("\n")).toMatch(/unversioned\/external authority.*保持不变/i);
   });
 
-  it("updates a real marked global projection only when its source version is newer", async () => {
+  it("仅在 source version 更新时更新有真实 marker 的 global projection", async () => {
     const base = fs.mkdtempSync(nodePath.join(os.tmpdir(), "vendor-global-upgrade-"));
     const assets = nodePath.join(base, "assets", "plugins");
     seedAssets(assets);
@@ -173,8 +173,8 @@ describe("PluginVendorService preserves executable mode during vendor staging (Q
   });
 });
 
-describe("PluginVendorService release-version authority", () => {
-  it("replaces the actual 835b700fc refocus hook when the bundled release is newer", async () => {
+describe("PluginVendorService release-version 权威性", () => {
+  it("bundled release 更新时替换实际 835b700fc refocus hook", async () => {
     const base = fs.mkdtempSync(
       nodePath.join(os.tmpdir(), "vendor-release-upgrade-"),
     );
@@ -190,7 +190,7 @@ describe("PluginVendorService release-version authority", () => {
       "09601be0c704da9bf49eb2c8b174f9caa2983fd11fc5df9333b49ab28d4d3bfc",
     );
     expect(sha256(fs.readFileSync(bundledHook))).toBe(
-      "3537a378c3424193fe27e5b95198c0a15f57ec48ce511e1de129a5a63211ff5c",
+      "833f09f9026d69ff8e296e357ac91fa0ad4b24922836af19fb26b578758f5598",
     );
 
     const svc = new PluginVendorService({

@@ -1,20 +1,14 @@
-// OPR.0.4.6.MH3 C2 — cross-host queue HANDOFF choreography (message-passing,
-// arch Q-c order) + the D-1 deterministic successor id. The load-bearing pins:
-//   - no-host / "local" handoff = today's LOCAL transactional close+create,
-//     byte-identical (FR-6);
-//   - cross-host: successor-create is forwarded FIRST (D-1 derived id, chain
-//     continued, provenance tags, nudge forwarded, hostId stripped), the
-//     LOCAL source closes SECOND (closure_target = host-qualified successor id,
-//     handed_off_to stays 2-part — BR-1/R1);
-//   - NEVER-DROP: a failed forward (unreachable/unknown/ssh) leaves the
-//     source UNTOUCHED — the potato stays live;
-//   - re-drive: a source already closed toward the MATCHING closure_target
-//     absorbs idempotently (forward re-fires with the SAME derived id and
-//     absorbs on the target PK); a re-drive naming a DIFFERENT destination
-//     conflicts BEFORE any forward (never manufactures a target-side orphan
-//     for an un-completable re-drive);
-//   - /handoff closes the source `handed-off`; /handoff-and-complete closes
-//     it `done` — same choreography, one mechanism.
+// OPR.0.4.6.MH3 C2——跨主机队列移交编排（消息传递，架构 Q-c 顺序）及 D-1
+// 确定性后继 id。关键固定项：
+//   - 无 host / "local" 移交 = 当前本地事务式关闭 + 创建，字节完全一致（FR-6）；
+//   - 跨主机：先转发后继创建（D-1 派生 id、延续链、来源标签、转发 nudge、移除 hostId），
+//     再关闭本地来源（closure_target = 主机限定后继 id，handed_off_to 保持两段式——BR-1/R1）；
+//   - 绝不丢弃：转发失败（不可达/未知/ssh）时来源保持不变——接力任务仍存活；
+//   - 重驱动：来源已朝匹配的 closure_target 关闭时幂等吸收（使用相同派生 id 再次转发，
+//     并在目标主键上吸收）；重驱动指向不同目标时，在任何转发前冲突（绝不为无法完成的
+//     重驱动制造目标侧孤儿）；
+//   - /handoff 以 `handed-off` 关闭来源；/handoff-and-complete 以 `done` 关闭——
+//     编排相同，机制统一。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -68,7 +62,7 @@ function makeHarness(opts?: { fetchImpl?: typeof fetch }) {
 }
 
 function post(app: Hono, path: string, body: Record<string, unknown>) {
-  // P21 I3: handoff/create derive the sender from the transport header; header==body claim ⇒ tolerated.
+  // P21 I3：handoff/create 从传输头推导发送者；请求头与请求体声明相同则允许。
   const sender = body["fromSession"] ?? body["sourceSession"] ?? body["actorSession"];
   return app.request(path, {
     method: "POST",
@@ -95,11 +89,11 @@ async function seedSource(repo: QueueRepository, over?: Partial<{ qitemId: strin
 
 const HANDOFF = { fromSession: "worker@rig-a", toSession: "dev@rig-b" };
 
-describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
+describe("MH-3 C2——跨主机移交（路由编排）", () => {
   let h: ReturnType<typeof makeHarness>;
   afterEach(() => h?.db.close());
 
-  it("no-host handoff: today's LOCAL transactional path — closed+created both local, no forward (FR-6 zero-regression)", async () => {
+  it("无 host 移交：当前本地事务路径——关闭与创建均在本地，不转发（FR-6 零回归）", async () => {
     let forwarded = false;
     h = makeHarness({ fetchImpl: (async () => { forwarded = true; return jsonResponse({}); }) as unknown as typeof fetch });
     await seedSource(h.repo);
@@ -107,15 +101,15 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
     expect(res.status).toBe(201);
     const out = (await res.json()) as { closed: { state: string; closureTarget: string }; created: { qitemId: string } };
     expect(out.closed.state).toBe("handed-off");
-    // Local close keeps the 2-part closure_target (unchanged local semantics).
+    // 本地关闭保留两段式 closure_target（本地语义不变）。
     expect(out.closed.closureTarget).toBe("dev@rig-b");
-    // Local successor row exists — two rows total, organic id (not xh-derived).
+    // 本地后继行存在——共两行，使用自然 id（非 xh 派生）。
     expect(rowCount(h.db)).toBe(2);
     expect(out.created.qitemId).not.toMatch(/^qitem-xh-/);
     expect(forwarded).toBe(false);
   });
 
-  it('hostId "local": same local path, no forward', async () => {
+  it('hostId 为 "local"：使用相同本地路径，不转发', async () => {
     let forwarded = false;
     h = makeHarness({ fetchImpl: (async () => { forwarded = true; return jsonResponse({}); }) as unknown as typeof fetch });
     await seedSource(h.repo);
@@ -125,7 +119,7 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
     expect(forwarded).toBe(false);
   });
 
-  it("cross-host handoff: successor forwarded FIRST; source closes SECOND with a host-qualified successor key and 2-part handed_off_to", async () => {
+  it("跨主机移交：先转发后继；再以主机限定后继键和两段式 handed_off_to 关闭来源", async () => {
     const capture: { url?: string; body?: Record<string, unknown> } = {};
     h = makeHarness({
       fetchImpl: (async (url: string | URL | Request, init?: RequestInit) => {
@@ -139,26 +133,25 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
     const res = await post(h.app, "/api/queue/qitem-source-1/handoff", { ...HANDOFF, hostId: "vps-b", nudge: true });
     expect(res.status).toBe(201);
 
-    // Forwarded to the origin's CREATE route (the one shared mechanism).
+    // 转发到来源端的 CREATE 路由（唯一共享机制）。
     expect(capture.url).toContain("/api/queue/create");
-    // D-1: the derived, namespaced successor id — deterministic and equal to
-    // the exported derivation.
+    // D-1：派生的命名空间后继 id——具有确定性，且等于导出的派生结果。
     const expectedId = deriveCrossHostSuccessorId("qitem-source-1", "dev@rig-b", "vps-b");
     expect(capture.body?.["qitemId"]).toBe(expectedId);
     expect(String(capture.body?.["qitemId"])).toMatch(/^qitem-xh-[0-9a-f]{16}$/);
-    // Chain continued through the forwarded body (R2b — opaque lineage ids).
+    // 通过转发请求体延续链（R2b——不透明血缘 id）。
     expect(capture.body?.["chainOfRecord"]).toEqual(["qitem-root", "qitem-source-1"]);
-    // D-4 provenance appended; existing tag preserved.
+    // 追加 D-4 来源；保留现有标签。
     expect(capture.body?.["tags"]).toContain(CROSS_HOST_TAG);
     expect(capture.body?.["tags"]).toContain("keep");
-    // Whole-body semantics: nudge forwarded; hostId stripped (BR-1).
+    // 完整请求体语义：转发 nudge；移除 hostId（BR-1）。
     expect(capture.body?.["nudge"]).toBe(true);
     expect("hostId" in (capture.body ?? {})).toBe(false);
-    // Source/destination on the forwarded body stay 2-part session strings.
+    // 转发请求体中的来源/目标保持两段式会话字符串。
     expect(capture.body?.["sourceSession"]).toBe("worker@rig-a");
     expect(capture.body?.["destinationSession"]).toBe("dev@rig-b");
 
-    // Response pairs the LOCAL close with the origin's VERBATIM successor.
+    // 响应将本地关闭与来源端原样返回的后继配对。
     const out = (await res.json()) as {
       closed: { qitemId: string; state: string; closureReason: string; closureTarget: string; handedOffTo: string };
       created: { qitemId: string };
@@ -167,14 +160,14 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
     expect(out.closed.qitemId).toBe("qitem-source-1");
     expect(out.closed.state).toBe("handed-off");
     expect(out.closed.closureReason).toBe("handed_off_to");
-    // Closure target carries the host-qualified successor identity.
+    // 关闭目标携带主机限定的后继身份。
     expect(out.closed.closureTarget).toBe(`${expectedId}@vps-b`);
-    // ...while the session-string carrier stays 2-part (BR-1).
+    // ……而会话字符串载体保持两段式（BR-1）。
     expect(out.closed.handedOffTo).toBe("dev@rig-b");
 
-    // Origin-owns-the-record: NO local successor row — only the closed source.
+    // 来源端拥有记录：不存在本地后继行——只有已关闭的来源。
     expect(rowCount(h.db)).toBe(1);
-    // BR-1 negative at the persisted layer: no @host in any session carrier.
+    // 持久化层的 BR-1 负向用例：任何会话载体中都没有 @host。
     const row = h.db
       .prepare("SELECT source_session s, destination_session d, blocked_on b, handed_off_to ho FROM queue_items WHERE qitem_id = 'qitem-source-1'")
       .get() as { s: string; d: string; b: string | null; ho: string };
@@ -183,7 +176,7 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
     }
   });
 
-  it("handoff-and-complete cross-host: same choreography, source closes `done`", async () => {
+  it("跨主机 handoff-and-complete：编排相同，来源以 `done` 关闭", async () => {
     h = makeHarness({
       fetchImpl: (async (_u: unknown, init?: RequestInit) => {
         const b = JSON.parse(String(init?.body)) as Record<string, unknown>;
@@ -199,7 +192,7 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
     expect(rowCount(h.db)).toBe(1);
   });
 
-  it("NEVER-DROP: forward fails (unreachable) → 502 structured, source UNTOUCHED (still pending, no close transition)", async () => {
+  it("绝不丢弃：转发失败（不可达）→ 结构化 502，来源保持不变（仍 pending，无关闭转换）", async () => {
     h = makeHarness({ fetchImpl: (async () => { throw new Error("ECONNREFUSED"); }) as unknown as typeof fetch });
     await seedSource(h.repo);
     const res = await post(h.app, "/api/queue/qitem-source-1/handoff", { ...HANDOFF, hostId: "vps-b" });
@@ -211,7 +204,7 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
     expect(rowCount(h.db)).toBe(1);
   });
 
-  it("unknown host / ssh host: structured 502, source untouched", async () => {
+  it("未知主机 / ssh 主机：结构化 502，来源保持不变", async () => {
     h = makeHarness();
     await seedSource(h.repo);
     const unknown = await post(h.app, "/api/queue/qitem-source-1/handoff", { ...HANDOFF, hostId: "nope" });
@@ -223,7 +216,7 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
     expect(h.repo.getById("qitem-source-1")!.state).toBe("pending");
   });
 
-  it("re-drive absorb (FR-5, the interrupted-close case): second run re-forwards the SAME derived id and absorbs the already-closed source — one close, 201 converged", async () => {
+  it("重驱动吸收（FR-5，中断关闭用例）：第二次运行以相同派生 id 再转发并吸收已关闭来源——只关闭一次，201 收敛", async () => {
     const forwardedIds: unknown[] = [];
     h = makeHarness({
       fetchImpl: (async (_u: unknown, init?: RequestInit) => {
@@ -239,10 +232,10 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
 
     const redrive = await post(h.app, "/api/queue/qitem-source-1/handoff", { ...HANDOFF, hostId: "vps-b" });
     expect(redrive.status).toBe(201);
-    // Same operation identity on both drives — the target-side PK absorbs.
+    // 两次驱动使用相同操作身份——由目标侧主键吸收。
     expect(forwardedIds).toHaveLength(2);
     expect(forwardedIds[0]).toBe(forwardedIds[1]);
-    // The local source closed exactly once (absorb = no second write).
+    // 本地来源恰好关闭一次（吸收意味着没有第二次写入）。
     const source = h.repo.getById("qitem-source-1")!;
     expect(source.state).toBe("handed-off");
     expect(source.tsUpdated).toBe(tsAfterFirst);
@@ -252,7 +245,7 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
     expect(closeTransitions).toHaveLength(1);
   });
 
-  it("prospective key grandfather: a pre-convention terminal source re-drives against its stored member@rig@host target without rewriting history", async () => {
+  it("前瞻键兼容：约定前的终止来源按已存 member@rig@host 目标重驱动，而不改写历史", async () => {
     h = makeHarness({
       fetchImpl: (async (_u: unknown, init?: RequestInit) => {
         const b = JSON.parse(String(init?.body)) as Record<string, unknown>;
@@ -273,7 +266,7 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
     expect(h.repo.getById("qitem-source-1")!.closureTarget).toBe("dev@rig-b@vps-b");
   });
 
-  it("re-drive naming a DIFFERENT destination: 409 cross_host_close_conflict BEFORE any forward (no target-side orphan minted)", async () => {
+  it("重驱动指向不同目标：任何转发前返回 409 cross_host_close_conflict（不创建目标侧孤儿）", async () => {
     let forwardCount = 0;
     h = makeHarness({
       fetchImpl: (async (_u: unknown, init?: RequestInit) => {
@@ -290,15 +283,15 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
     const conflicted = await post(h.app, "/api/queue/qitem-source-1/handoff", { fromSession: "worker@rig-a", toSession: "SOMEONE@rig-z", hostId: "vps-b" });
     expect(conflicted.status).toBe(409);
     expect((await conflicted.json()) as { error: string }).toMatchObject({ error: "cross_host_close_conflict" });
-    // The pre-flight fired BEFORE the forward — no orphan successor minted.
+    // 预检在转发前触发——未创建孤儿后继。
     expect(forwardCount).toBe(1);
-    // The recorded closure is untouched.
+    // 已记录的关闭保持不变。
     expect(h.repo.getById("qitem-source-1")!.closureTarget).toBe(
       `${deriveCrossHostSuccessorId("qitem-source-1", "dev@rig-b", "vps-b")}@vps-b`,
     );
   });
 
-  it("unknown source qitem: 404, nothing forwarded", async () => {
+  it("来源 qitem 未知：返回 404，不转发任何内容", async () => {
     let forwarded = false;
     h = makeHarness({ fetchImpl: (async () => { forwarded = true; return jsonResponse({}); }) as unknown as typeof fetch });
     const res = await post(h.app, "/api/queue/qitem-ghost/handoff", { ...HANDOFF, hostId: "vps-b" });
@@ -307,8 +300,8 @@ describe("MH-3 C2 — cross-host handoff (route choreography)", () => {
   });
 });
 
-describe("MH-3 C2 — deriveCrossHostSuccessorId (D-1)", () => {
-  it("deterministic + namespaced: same (source,dest,host) → same id; any argument change → different id", () => {
+describe("MH-3 C2——deriveCrossHostSuccessorId（D-1）", () => {
+  it("确定且带命名空间：相同 (source,dest,host) → 相同 id；任一参数变化 → 不同 id", () => {
     const a = deriveCrossHostSuccessorId("qitem-s", "dev@rig-b", "vps-b");
     expect(a).toBe(deriveCrossHostSuccessorId("qitem-s", "dev@rig-b", "vps-b"));
     expect(a).toMatch(/^qitem-xh-[0-9a-f]{16}$/);
@@ -318,12 +311,12 @@ describe("MH-3 C2 — deriveCrossHostSuccessorId (D-1)", () => {
   });
 });
 
-describe("MH-3 C2 — closeCrossHostHandoffSource (repo, re-drive semantics)", () => {
+describe("MH-3 C2——closeCrossHostHandoffSource（仓库、重驱动语义）", () => {
   let h: ReturnType<typeof makeHarness>;
   beforeEach(() => { h = makeHarness(); });
   afterEach(() => h.db.close());
 
-  it("non-terminal source: closes with handed_off_to=2-part, closure_target=host-qualified successor, closure_reason=handed_off_to", async () => {
+  it("非终止来源：以两段式 handed_off_to、主机限定后继 closure_target 和 handed_off_to 原因关闭", async () => {
     await seedSource(h.repo);
     const closureTarget = `${deriveCrossHostSuccessorId("qitem-source-1", "dev@rig-b", "vps-b")}@vps-b`;
     const out = h.repo.closeCrossHostHandoffSource({
@@ -340,7 +333,7 @@ describe("MH-3 C2 — closeCrossHostHandoffSource (repo, re-drive semantics)", (
     expect(out.item.handedOffTo).toBe("dev@rig-b");
   });
 
-  it("already-terminal + MATCHING closure_target: idempotent absorb — stored row returned, no mutation", async () => {
+  it("已终止且 closure_target 匹配：幂等吸收——返回已存行，不产生变更", async () => {
     await seedSource(h.repo);
     const closureTarget = `${deriveCrossHostSuccessorId("qitem-source-1", "dev@rig-b", "vps-b")}@vps-b`;
     h.repo.closeCrossHostHandoffSource({
@@ -356,7 +349,7 @@ describe("MH-3 C2 — closeCrossHostHandoffSource (repo, re-drive semantics)", (
     expect(out.item.tsUpdated).toBe(ts);
   });
 
-  it("already-terminal + MISMATCHED closure_target: structured cross_host_close_conflict, never overwritten", async () => {
+  it("已终止且 closure_target 不匹配：结构化 cross_host_close_conflict，绝不覆盖", async () => {
     await seedSource(h.repo);
     const closureTarget = `${deriveCrossHostSuccessorId("qitem-source-1", "dev@rig-b", "vps-b")}@vps-b`;
     h.repo.closeCrossHostHandoffSource({

@@ -15,7 +15,7 @@ describe("deriveRestoreAttemptReceipt", () => {
 
   afterEach(() => db.close());
 
-  it("preserves the original partial result while deriving operator-completed intended-set truth", () => {
+  it("派生操作者已完成的预期集合事实时保留原始部分结果", () => {
     const started = events.emit({
       type: "restore.started",
       rigId: "rig-1",
@@ -26,7 +26,7 @@ describe("deriveRestoreAttemptReceipt", () => {
         createdAt: "2026-09-04 00:00:00",
         ageMs: 1000,
         mode: "explicit",
-        rationale: "operator selected this exact restore-usable snapshot",
+        rationale: "操作者选择了这个确切且可用于恢复的快照",
         newerUsableAlternative: null,
       },
       intendedRoster: [
@@ -73,7 +73,7 @@ describe("deriveRestoreAttemptReceipt", () => {
     expect(receipt.excludedNodes).toEqual([expect.objectContaining({ logicalId: "historical" })]);
   });
 
-  it("does not let a later attempt supply this attempt's completion", () => {
+  it("不允许后续尝试为本次尝试提供完成结果", () => {
     const first = events.emit({ type: "restore.started", rigId: "rig-1", snapshotId: "s1" });
     events.emit({ type: "restore.started", rigId: "rig-1", snapshotId: "s2" });
     events.emit({
@@ -86,7 +86,7 @@ describe("deriveRestoreAttemptReceipt", () => {
     expect(deriveRestoreAttemptReceipt(db, "rig-1", first.seq)).toMatchObject({ ok: false, code: "attempt_incomplete" });
   });
 
-  it("keeps an intended seat with no node result visible as unresolved", () => {
+  it("让没有节点结果的预期 seat 保持可见并标记为未解决", () => {
     const started = events.emit({
       type: "restore.started",
       rigId: "rig-1",

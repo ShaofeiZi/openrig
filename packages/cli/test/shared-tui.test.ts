@@ -23,14 +23,14 @@ describe("shared kernel TUI", () => {
     expect(c.get.mock.calls.map(([p]) => p)).toEqual(["/api/ps", "/api/rigs/selected-instance-kernel/nodes"]);
   });
   it("distinguishes no kernel, no terminal, and a failed read", async () => {
-    await expect(sharedTuiTarget(client([], []))).rejects.toThrow("No kernel");
-    await expect(sharedTuiTarget(client(kernel, [{ ...terminal, runtime: "codex" }]))).rejects.toThrow("no bound shared terminal");
+    await expect(sharedTuiTarget(client([], []))).rejects.toThrow("未登记任何内核");
+    await expect(sharedTuiTarget(client(kernel, [{ ...terminal, runtime: "codex" }]))).rejects.toThrow("内核尚未绑定共享终端");
     await expect(sharedTuiTarget(client(kernel, [], 503))).rejects.toThrow("HTTP 503");
-    await expect(sharedTuiTarget(client([...kernel, ...kernel], [terminal]))).rejects.toThrow("Multiple kernels");
+    await expect(sharedTuiTarget(client([...kernel, ...kernel], [terminal]))).rejects.toThrow("已登记多个内核");
   });
   it("does not attach a local namesake for a remote daemon", async () => {
     const c = { ...client(kernel, [terminal]), baseUrl: "http://other-machine:7433" };
-    await expect(sharedTuiTarget(c)).rejects.toThrow("local tmux");
+    await expect(sharedTuiTarget(c)).rejects.toThrow("本地 tmux");
     expect(c.get).not.toHaveBeenCalled();
   });
   it("joins the existing terminal instead of launching another TUI", async () => {

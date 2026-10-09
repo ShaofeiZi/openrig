@@ -1,0 +1,21 @@
+{
+  "schema": "openrig.ui-comment-review-batch/v1",
+  "batch": 19,
+  "captured_at": "2026-10-09T00:00:00+08:00",
+  "depth": "full_comment_title_failure_message_reviewed",
+  "natural_residual": 0,
+  "owner": "s_000cae46uuw",
+  "notes": "UI 注释批19。10 文件全部 changed。残留均为机器类：API 端点串、@vitest-environment jsdom、OPR/SC 编号、section marker、Surface 术语、文件路径引用。drawer-primitives 唯一扫描命中已含中文（误报）。",
+  "rows": [
+    {"path": "packages/ui/test/proof-tab.test.tsx", "status": "changed", "after_sha256": "00aae8bb5bb69944b9406f135365645ef985a66389a83100907f763c2d0038ed", "machine_classification": "OPR编号/API端点/qitem哈希/FileReferenceTrigger等技术词保留"},
+    {"path": "packages/ui/test/p5-trigger-sites.test.tsx", "status": "changed", "after_sha256": "16c4894fd2b0f7b3690fe72da814637897a8dc99c680540a6076836718cb9ee9", "machine_classification": "TanStack Router/QueryClientProvider/Surface等技术词保留"},
+    {"path": "packages/ui/test/slice-28-detail-pages.test.tsx", "status": "changed", "after_sha256": "5cc3dfca34a858921afb87b6f38b66bd2a7967f25288bb07c0f8ce36867ba95a", "machine_classification": "API路径/PluginEntry.skillCount/SC-29编号保留"},
+    {"path": "packages/ui/test/package-detail.test.tsx", "status": "changed", "after_sha256": "2d2835e647fdc638a166038771ccb814377c040bfa6b5c2eba9f01164da72f96", "machine_classification": "inst-1/inst-2/R2-M5/R2-M6/R2-M4编号/rollback-btn等testid保留"},
+    {"path": "packages/ui/test/p5-mission-discovery.test.tsx", "status": "changed", "after_sha256": "b0136b5b818b1b8080614030ab9c44ef3827d3d773ff6c0568ebf6af30e972d3", "machine_classification": "API路径/MH-2/qitemCount/matchQitems等保留"},
+    {"path": "packages/ui/test/rig-agents-page.test.tsx", "status": "changed", "after_sha256": "fa85fda72b1bd8053200c7b39c5d845d763d8869da44ee28f40a7541848b56f0", "machine_classification": "@vitest-environment jsdom机器行/OPR编号/AppShell/fleet-band.test.tsx路径保留"},
+    {"path": "packages/ui/test/activity-feed.test.tsx", "status": "changed", "after_sha256": "7840332d62b8b296881059fafe0c69df005100bade16dc99a7f8e2d4a80cf33b", "machine_classification": "SSE/rig.created/seq/bg-accent/API路径保留"},
+    {"path": "packages/ui/test/mission-progress-heatmap.test.tsx", "status": "changed", "after_sha256": "c48ff22d1ff545d4e1ee19fac7d87f62aaf38fc3a441771d982d5689707a3ecb", "machine_classification": "HG-1/HG-2/OPR编号/SliceStatus/scopeAudit/DOCUMENT_POSITION_FOLLOWING保留"},
+    {"path": "packages/ui/test/library-review.test.tsx", "status": "changed", "after_sha256": "70a90cf14063d2ee7d1155b73f7db1480bac3a4842e232366f5e705f08cb7304", "machine_classification": "PL-014 section marker/composePreview/Surface术语保留"},
+    {"path": "packages/ui/test/drawer-primitives.test.tsx", "status": "nochange", "after_sha256": "ca2fc269c8a5477e9358f2700e2baebaef61acaa64dc161a339322e9631fb2c1", "machine_classification": "唯一扫描命中已含中文（误报），无英文残留"}
+  ]
+}

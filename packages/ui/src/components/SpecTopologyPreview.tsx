@@ -30,8 +30,8 @@ function runtimeColor(runtime: string): string {
 }
 
 /**
- * Simple grid layout for spec preview.
- * Groups by pod, lays pods out vertically, members horizontally within each pod.
+ * 规格预览的简单网格布局。
+ * 按 Pod 分组，Pod 之间纵向排列，每个 Pod 内的成员横向排列。
  */
 function layoutNodes(graphNodes: SpecGraphData["nodes"]): Array<{ id: string; x: number; y: number }> {
   const pods = new Map<string, typeof graphNodes>();

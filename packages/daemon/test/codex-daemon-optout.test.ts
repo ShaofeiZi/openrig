@@ -9,10 +9,9 @@ import { codexDaemonSupportProbe, probeCodexDaemonSupport, type CodexDaemonSuppo
 import type { NodeBinding } from "../src/domain/runtime-adapter.js";
 import type { TmuxAdapter } from "../src/adapters/tmux.js";
 
-// #69 — Codex versions using a shared app-server daemon can run tool shells there, so a seat's tools
-// can inherit another seat's OpenRig identity. Supported binaries must launch with
-// --no-daemon on every path; a positively legacy binary keeps its current invocation;
-// an undeterminable binary must not be launched as if it were isolated.
+// #69——使用共享 app-server daemon 的 Codex 版本可以在其中运行 tool shell，因此某个 seat 的 tool
+// 可能继承另一 seat 的 OpenRig identity。受支持 binary 的每条路径都必须带 --no-daemon 启动；
+// 明确为 legacy 的 binary 保持当前 invocation；无法判定的 binary 不得假装隔离而启动。
 
 const SUPPORTED_HELP = [
   "Codex CLI",
@@ -29,9 +28,9 @@ const LEGACY_HELP = SUPPORTED_HELP.split("\n").filter((line) => !line.includes("
 
 const supported: CodexDaemonSupport = { kind: "supported" };
 const legacy: CodexDaemonSupport = { kind: "legacy" };
-const unknown: CodexDaemonSupport = { kind: "unknown", detail: "codex --help failed: spawn codex ENOENT" };
+const unknown: CodexDaemonSupport = { kind: "unknown", detail: "codex --help 执行失败：spawn codex ENOENT" };
 
-// Every process seam is fake. No real Codex, shell, tmux, startup or database runs here.
+// 所有 process 接缝均为 fake。这里不运行真实 Codex、shell、tmux、startup 或 database。
 const processMocks = vi.hoisted(() => ({
   execFile: vi.fn(),
   execSync: vi.fn<() => string>(() => { throw new Error("Unexpected synchronous process execution"); }),
@@ -90,7 +89,7 @@ async function launch(kind: LaunchKind, support: CodexDaemonSupport | undefined)
 }
 
 describe("#69 probeCodexDaemonSupport", () => {
-  it("classifies one help run: flag listed, flag absent, failure, non-Codex output", async () => {
+  it("对一次 help 运行分类：列出 flag、缺少 flag、失败、非 Codex 输出", async () => {
     const runHelp = vi.fn(async () => SUPPORTED_HELP);
     expect(await probeCodexDaemonSupport(runHelp)).toEqual({ kind: "supported" });
     expect(runHelp).toHaveBeenCalledTimes(1);
@@ -105,13 +104,13 @@ describe("#69 probeCodexDaemonSupport", () => {
     expect(odd.kind).toBe("unknown");
   });
 
-  it("another CLI's help that lists --no-daemon is unknown, not supported", async () => {
+  it("其他 CLI 的 help 即使列出 --no-daemon，也属于 unknown 而非 supported", async () => {
     const other = "Other CLI\n\nUsage: other [OPTIONS]\n\nOptions:\n      --no-daemon  Run in the foreground\n";
     expect((await probeCodexDaemonSupport(async () => other)).kind).toBe("unknown");
     expect((await probeCodexDaemonSupport(async () => other.replace("Usage: other", "Usage: codex-other"))).kind).toBe("unknown");
   });
 
-  it("does not mistake --no-daemon inside other text for the option", async () => {
+  it("不会把其他文本中的 --no-daemon 误认为 option", async () => {
     const mention = `${LEGACY_HELP}\n  agents  Browse sessions (use codex --no-daemon-free mode)\n`;
     expect(await probeCodexDaemonSupport(async () => mention)).toEqual({ kind: "legacy" });
     expect(await probeCodexDaemonSupport(async () => `${LEGACY_HELP}\n --no-daemon-free`)).toEqual({ kind: "legacy" });
@@ -119,9 +118,9 @@ describe("#69 probeCodexDaemonSupport", () => {
   });
 });
 
-describe("#69 CodexRuntimeAdapter.launchHarness opts out of the shared daemon when supported", () => {
+describe("#69 CodexRuntimeAdapter.launchHarness 在支持时退出共享 daemon", () => {
   for (const kind of ["fresh", "fork", "resume"] as const) {
-    it(`${kind}: supported adds --no-daemon right after codex; legacy is unchanged; one probe per launch`, async () => {
+    it(`${kind}：supported 在 codex 后紧接 --no-daemon；legacy 不变；每次 launch 探测一次`, async () => {
       const baseline = await launch(kind, undefined);
       const legacyRun = await launch(kind, legacy);
       const supportedRun = await launch(kind, supported);
@@ -135,7 +134,7 @@ describe("#69 CodexRuntimeAdapter.launchHarness opts out of the shared daemon wh
       expect(legacyRun.detectDaemonSupport).toHaveBeenCalledTimes(1);
     });
 
-    it(`${kind}: unknown support fails with an actionable message and sends nothing`, async () => {
+    it(`${kind}：support unknown 时以 actionable message 失败，且不发送任何内容`, async () => {
       const run = await launch(kind, unknown);
       expect(run.result.ok).toBe(false);
       expect(!run.result.ok && run.result.error).toMatch(/--no-daemon/);
@@ -145,7 +144,7 @@ describe("#69 CodexRuntimeAdapter.launchHarness opts out of the shared daemon wh
   }
 });
 
-describe("#69 CodexResumeAdapter (legacy restore path)", () => {
+describe("#69 CodexResumeAdapter（旧版 restore 路径）", () => {
   async function resume(support: CodexDaemonSupport | undefined) {
     const tmux = mockTmux();
     const detectDaemonSupport = vi.fn<CodexDaemonSupportDetector>(async () => support!);
@@ -154,7 +153,7 @@ describe("#69 CodexResumeAdapter (legacy restore path)", () => {
     return { result, commands: sentCommands(tmux), detectDaemonSupport };
   }
 
-  it("supported adds --no-daemon, legacy is unchanged, unknown fails without sending", async () => {
+  it("supported 增加 --no-daemon，legacy 不变，unknown 不发送并失败", async () => {
     const baseline = await resume(undefined);
     const legacyRun = await resume(legacy);
     const supportedRun = await resume(supported);
@@ -172,7 +171,7 @@ describe("#69 CodexResumeAdapter (legacy restore path)", () => {
 });
 
 describe("#69 buildCodexResumeCore", () => {
-  it("adds the opt-out only when asked; the default (display commands) is byte-identical", () => {
+  it("只在要求时增加 opt-out；默认值（展示命令）字节级一致", () => {
     const plain = buildCodexResumeCore("tok", null);
     expect(plain).toBe("codex -s workspace-write resume 'tok'");
     expect(buildCodexResumeCore("tok", null, false, undefined, undefined, undefined, undefined, true))
@@ -180,8 +179,8 @@ describe("#69 buildCodexResumeCore", () => {
   });
 });
 
-describe("#69 production wiring", () => {
-  it("startup wires the real daemon-support probe into both Codex launch adapters", () => {
+describe("#69 生产接线", () => {
+  it("startup 将真实 daemon-support probe 接入两个 Codex launch adapter", () => {
     const source = fs.readFileSync(new URL("../src/startup.ts", import.meta.url), "utf8");
     const resumeLine = source.split("\n").find((line) => line.includes("new CodexResumeAdapter("))!;
     const runtimeLine = source.split("\n").find((line) => line.includes("new CodexRuntimeAdapter("))!;
@@ -190,7 +189,7 @@ describe("#69 production wiring", () => {
   });
 });
 
-describe("#69 production detector with a fake executor", () => {
+describe("#69 使用 fake executor 的生产 detector", () => {
   type HelpCallback = (error: Error | null, stdout: string) => void;
   const launchPath = "./bin:/usr/bin:/bin";
   const cwd = "/seat space's";
@@ -219,7 +218,7 @@ describe("#69 production detector with a fake executor", () => {
 
   for (const kind of kinds) {
     for (const posture of ["floor", "full_bypass"] as const) {
-      it(`${kind}/${posture}: cwd/PATH parity, one probe, legacy bytes, model and profile survive`, async () => {
+      it(`${kind}/${posture}：cwd/PATH parity、一次 probe、legacy byte、model 与 profile 均保留`, async () => {
         let help = LEGACY_HELP;
         processMocks.execFile.mockImplementation((file, args, options, callback: HelpCallback) => {
           expect(file).toBe("codex");
@@ -238,7 +237,7 @@ describe("#69 production detector with a fake executor", () => {
         expect(actual.commands()).toEqual(baseline.commands());
         expect(processMocks.execFile).toHaveBeenCalledTimes(1);
         help = SUPPORTED_HELP;
-        await actual.run(); // Same adapter, same PATH: an upgrade is evaluated afresh.
+        await actual.run(); // 相同 adapter、相同 PATH：重新评估 upgrade。
         expect(processMocks.execFile).toHaveBeenCalledTimes(2);
         expect(actual.commands()[1]).toBe(baseline.commands()[0]!.replace(" codex ", " codex --no-daemon "));
         expect(actual.commands()[1]).toContain("env PATH='./bin:/usr/bin:/bin'");
@@ -246,7 +245,7 @@ describe("#69 production detector with a fake executor", () => {
       });
     }
 
-    it(`${kind}: production timeout refuses before any launch send`, async () => {
+    it(`${kind}：生产 timeout 在任何 launch send 前拒绝`, async () => {
       processMocks.execFile.mockImplementation((_file, _args, options, callback: HelpCallback) => {
         expect(options.timeout).toBe(200);
         callback(Object.assign(new Error("killed"), { killed: true }), "");
@@ -254,16 +253,16 @@ describe("#69 production detector with a fake executor", () => {
       const actual = fixture(kind, codexDaemonSupportProbe(launchPath, 200));
       const result = await actual.run();
       expect(result.ok).toBe(false);
-      expect(JSON.stringify(result)).toContain("timed out after 200 ms");
+      expect(JSON.stringify(result)).toContain("200 ms 后超时");
       expect(actual.commands()).toEqual([]);
       expect(processMocks.execFile).toHaveBeenCalledTimes(1);
     });
   }
 
-  it("lets an unrelated timer run while the help executor is still pending", async () => {
+  it("help executor 仍 pending 时允许无关 timer 运行", async () => {
     let complete: HelpCallback | undefined;
     let settled = false;
-    // A red run against the old implementation returns only after this controlled stall.
+    // 针对旧实现的 RED 运行只会在此受控停顿后返回。
     processMocks.execSync.mockImplementationOnce(() => {
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40);
       return LEGACY_HELP;
@@ -278,7 +277,7 @@ describe("#69 production detector with a fake executor", () => {
     expect(processMocks.execSync).not.toHaveBeenCalled();
   });
 
-  it("refuses at the deadline without waiting for the callback or accepting late help", async () => {
+  it("在 deadline 时拒绝，不等待 callback，也不接受迟到 help", async () => {
     vi.useFakeTimers();
     try {
       let complete: HelpCallback | undefined;
@@ -289,7 +288,7 @@ describe("#69 production detector with a fake executor", () => {
       expect(complete).toBeTypeOf("function");
       expect(observed).toBeUndefined();
       await vi.advanceTimersByTimeAsync(1);
-      expect(observed).toEqual({ kind: "unknown", detail: "codex --help failed: timed out after 200 ms" });
+      expect(observed).toEqual({ kind: "unknown", detail: "codex --help 执行失败：200 ms 后超时" });
       complete!(null, SUPPORTED_HELP);
       expect(await pending).toEqual(observed);
       expect(vi.getTimerCount()).toBe(0);
@@ -298,7 +297,7 @@ describe("#69 production detector with a fake executor", () => {
     }
   });
 
-  it.each(["success", "error", "throw"])("clears its deadline after early %s", async (outcome) => {
+  it.each(["success", "error", "throw"])("提前 %s 后清除 deadline", async (outcome) => {
     vi.useFakeTimers();
     try {
       processMocks.execFile.mockImplementation((_file, _args, _options, callback: HelpCallback) => {
@@ -313,10 +312,10 @@ describe("#69 production detector with a fake executor", () => {
     }
   });
 
-  it("reports missing executable errors as unknown", async () => {
+  it("将 executable 缺失错误报告为 unknown", async () => {
     processMocks.execFile.mockImplementation((_file, _args, _options, callback: HelpCallback) => {
       callback(new Error("spawn codex ENOENT"), "");
     });
-    expect(await codexDaemonSupportProbe(launchPath)(cwd)).toEqual({ kind: "unknown", detail: "codex --help failed: spawn codex ENOENT" });
+    expect(await codexDaemonSupportProbe(launchPath)(cwd)).toEqual({ kind: "unknown", detail: "codex --help 执行失败：spawn codex ENOENT" });
   });
 });

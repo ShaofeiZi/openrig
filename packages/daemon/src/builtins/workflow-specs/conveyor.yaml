@@ -1,12 +1,10 @@
-# OpenRig 0.3.0 starter workflow.
-# Generic station pipeline. Multiple workflow instances may run at once; queue
-# depth at each station is the backpressure signal.
+# OpenRig 0.3.0 入门 workflow。
+# 通用工位流水线。多个 workflow 实例可同时运行；每个工位的队列深度就是背压信号。
 workflow:
   id: conveyor
   version: 1
   objective: >
-    Move a work packet through intake, planning, build, review, and close on
-    the generic conveyor starter rig.
+    在通用 conveyor 入门 rig 中，让一个工作包依次经过接收、规划、构建、评审和关闭。
   target:
     rig: conveyor
   entry:
@@ -31,21 +29,21 @@ workflow:
   steps:
     - id: intake
       actor_role: intake
-      objective: Clarify the request, create a small packet, and hand it to planning.
+      objective: 澄清请求，创建一个小工作包并交给规划环节。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [planner]
     - id: plan
       actor_role: planner
-      objective: Turn the packet into an executable plan with verification.
+      objective: 将工作包转化为带验证方案的可执行计划。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [builder]
     - id: build
       actor_role: builder
-      objective: Execute the plan and produce proof for review.
+      objective: 执行计划并产出供评审使用的证据。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
@@ -53,16 +51,15 @@ workflow:
     - id: review
       actor_role: reviewer
       objective: >
-        Check the build output. Use ordinary queue handoff to send targeted
-        rework back to build when needed; use the workflow handoff path when
-        the packet is ready to close.
+        检查构建输出。需要时使用普通 queue handoff 将针对性返工送回构建环节；
+        工作包可以关闭时使用 workflow handoff 路径。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [closer, builder]
     - id: close
       actor_role: closer
-      objective: Close the packet with evidence and any follow-up notes.
+      objective: 带证据和必要的后续说明关闭工作包。
       allowed_exits: [done, failed]
       next_hop:
         mode: forbid
@@ -75,6 +72,6 @@ workflow:
     max_hops: 20
     spawn_budget: 0
   closure:
-    success: Packet closed with evidence.
-    degraded: Packet stopped with a named blocker or follow-up.
-    failed: Packet failed; preserve the review finding and owner.
+    success: 工作包已带证据关闭。
+    degraded: 工作包因明确的阻塞项或后续事项而停止。
+    failed: 工作包失败；保留评审发现和负责人。

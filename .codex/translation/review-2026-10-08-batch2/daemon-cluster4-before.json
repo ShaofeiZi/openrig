@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/install-engine.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/instance-initialization.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/lifecycle-manifest.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/install-planner.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/install-repository.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/human-route-enforcer.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/install-verifier.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/inbox-handler.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/history-query.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/native-permission-selection.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/health-projection.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/kernel-boot.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/managed-blocks.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/health-policy.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/hot-potato-enforcer.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/markdown-address.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/lifecycle-obligations.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/native-permission-store.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/install-policy.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/kernel-boot-tracker.ts": [
+"daemon-core-c",
+"self_reported"
+]
+}

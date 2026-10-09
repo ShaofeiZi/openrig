@@ -10,7 +10,7 @@ function getEvents(database: Database.Database): Array<{ type: string; payload: 
   return database.prepare("SELECT type, payload FROM events ORDER BY seq").all() as Array<{ type: string; payload: string }>;
 }
 
-describe("Discovery API routes", () => {
+describe("发现 API 路由", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
   let app: ReturnType<typeof createTestApp>["app"];
@@ -36,18 +36,18 @@ describe("Discovery API routes", () => {
     return rig;
   }
 
-  // T1: POST /scan returns discovered sessions
-  it("POST /api/discovery/scan returns sessions", async () => {
-    // Scanner will find nothing (mock adapter returns empty), but route should work
+  // T1：POST /scan 返回发现的会话。
+  it("POST /api/discovery/scan 返回会话", async () => {
+    // 扫描器不会发现任何内容（mock adapter 返回空），但路由应正常工作。
     const res = await app.request("/api/discovery/scan", { method: "POST" });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.sessions)).toBe(true);
   });
 
-  // T1b: POST /scan with scanner failure -> 500 with structured error
-  it("POST /api/discovery/scan with scanner failure returns 500 with error", async () => {
-    // Override scanner to throw
+  // T1b：扫描器失败时 POST /scan 返回带结构化错误的 500。
+  it("扫描器失败时 POST /api/discovery/scan 返回 500 和错误", async () => {
+    // 覆盖扫描器，使其抛错。
     (setup.tmuxScanner as unknown as { scan: unknown }).scan = async () => {
       throw new Error("tmux boom");
     };
@@ -58,8 +58,8 @@ describe("Discovery API routes", () => {
     expect(body.error).toContain("tmux boom");
   });
 
-  // T2: GET /discovery lists with status filter
-  it("GET /api/discovery?status=active lists active sessions", async () => {
+  // T2：GET /discovery 按状态过滤列表。
+  it("GET /api/discovery?status=active 列出活动会话", async () => {
     seedDiscovery("s1", "%0");
     seedDiscovery("s2", "%0");
 
@@ -69,7 +69,7 @@ describe("Discovery API routes", () => {
     expect(body).toHaveLength(2);
   });
 
-  it("GET /api/discovery filters by runtime hint and minimum confidence", async () => {
+  it("GET /api/discovery 按 runtime 提示和最低置信度过滤", async () => {
     db.prepare(
       "INSERT INTO discovered_sessions (id, tmux_session, tmux_pane, runtime_hint, confidence) VALUES (?, ?, ?, ?, ?)"
     ).run("ds-claude", "claude-team", "%0", "claude-code", "high");
@@ -89,8 +89,8 @@ describe("Discovery API routes", () => {
     expect(body.map((row: { id: string }) => row.id)).toEqual(["ds-claude", "ds-codex"]);
   });
 
-  // T3: GET /:id returns detail
-  it("GET /api/discovery/:id returns session detail", async () => {
+  // T3：GET /:id 返回详情。
+  it("GET /api/discovery/:id 返回会话详情", async () => {
     const id = seedDiscovery();
 
     const res = await app.request(`/api/discovery/${id}`);
@@ -100,8 +100,8 @@ describe("Discovery API routes", () => {
     expect(body.runtimeHint).toBe("claude-code");
   });
 
-  // T4: POST /:id/bind success -> 201 (bind to existing node)
-  it("POST /api/discovery/:id/bind attaches to existing node", async () => {
+  // T4：POST /:id/bind 成功返回 201（绑定到现有节点）。
+  it("POST /api/discovery/:id/bind 绑定到现有节点", async () => {
     const id = seedDiscovery();
     const rig = seedRig();
     setup.rigRepo.addNode(rig.id, "orch.lead", { runtime: "claude-code", cwd: "/workspace" });
@@ -118,7 +118,7 @@ describe("Discovery API routes", () => {
     expect(body.nodeId).toBeTruthy();
   });
 
-  it("POST /api/discovery/:id/bind binds into an existing managed node", async () => {
+  it("POST /api/discovery/:id/bind 绑定到现有受管节点", async () => {
     const id = seedDiscovery();
     const rig = seedRig();
     setup.rigRepo.addNode(rig.id, "orch.lead", { runtime: "claude-code", cwd: "/workspace" });
@@ -135,7 +135,7 @@ describe("Discovery API routes", () => {
     expect(body.nodeId).toBeTruthy();
   });
 
-  it("POST /api/discovery/:id/adopt binds into an existing managed node target", async () => {
+  it("POST /api/discovery/:id/adopt 绑定到现有受管节点目标", async () => {
     const id = seedDiscovery();
     const rig = seedRig();
     setup.rigRepo.addNode(rig.id, "orch.lead", { runtime: "claude-code", cwd: "/workspace" });
@@ -156,7 +156,7 @@ describe("Discovery API routes", () => {
     expect(body.logicalId).toBe("orch.lead");
   });
 
-  it("POST /api/discovery/:id/adopt creates a new node inside a pod target and binds it", async () => {
+  it("POST /api/discovery/:id/adopt 在 pod 目标内创建并绑定新节点", async () => {
     const id = seedDiscovery("research-scout", "%2");
     const rig = seedRig();
     db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)").run("pod-research", rig.id, "research", "Research");
@@ -182,8 +182,8 @@ describe("Discovery API routes", () => {
     expect(claimedNode?.binding?.tmuxSession).toBe("research-scout");
   });
 
-  // T5a: Bind nonexistent discovery -> 404
-  it("bind nonexistent discovery returns 404", async () => {
+  // T5a：绑定不存在的发现记录返回 404。
+  it("绑定不存在的发现记录时返回 404", async () => {
     const rig = seedRig();
     setup.rigRepo.addNode(rig.id, "orch.lead", { runtime: "claude-code" });
     const res = await app.request("/api/discovery/nonexistent/bind", {
@@ -194,8 +194,8 @@ describe("Discovery API routes", () => {
     expect(res.status).toBe(404);
   });
 
-  // T5b: Bind into nonexistent rig -> 404
-  it("bind into nonexistent rig returns 404", async () => {
+  // T5b：绑定到不存在的工作组返回 404。
+  it("绑定到不存在的工作组时返回 404", async () => {
     const id = seedDiscovery();
     const res = await app.request(`/api/discovery/${id}/bind`, {
       method: "POST",
@@ -205,8 +205,8 @@ describe("Discovery API routes", () => {
     expect(res.status).toBe(404);
   });
 
-  // T5c: Missing rigId -> 400
-  it("claim with missing rigId returns 400", async () => {
+  // T5c：缺少 rigId 返回 400。
+  it("claim 缺少 rigId 时返回 400", async () => {
     const id = seedDiscovery();
     const res = await app.request(`/api/discovery/${id}/bind`, {
       method: "POST",
@@ -216,7 +216,7 @@ describe("Discovery API routes", () => {
     expect(res.status).toBe(400);
   });
 
-  it("bind with missing logicalId returns 400", async () => {
+  it("bind 缺少 logicalId 时返回 400", async () => {
     const id = seedDiscovery();
     const rig = seedRig();
     const res = await app.request(`/api/discovery/${id}/bind`, {
@@ -227,21 +227,21 @@ describe("Discovery API routes", () => {
     expect(res.status).toBe(400);
   });
 
-  // T6a: Already bound -> 409
-  it("bind already-bound session returns 409", async () => {
+  // T6a：已绑定返回 409。
+  it("绑定已绑定会话时返回 409", async () => {
     const id = seedDiscovery();
     const rig = seedRig();
     setup.rigRepo.addNode(rig.id, "node-a", { runtime: "claude-code" });
     setup.rigRepo.addNode(rig.id, "node-b", { runtime: "claude-code" });
 
-    // Bind once
+    // 首次绑定。
     await app.request(`/api/discovery/${id}/bind`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rigId: rig.id, logicalId: "node-a" }),
     });
 
-    // Bind same discovery again -> session is already claimed
+    // 再次绑定同一发现记录——会话已被认领。
     const res = await app.request(`/api/discovery/${id}/bind`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -250,21 +250,21 @@ describe("Discovery API routes", () => {
     expect(res.status).toBe(409);
   });
 
-  // T6b: Bind to already-bound node -> 409
-  it("bind to already-bound node returns 409", async () => {
+  // T6b：绑定到已绑定节点返回 409。
+  it("绑定到已绑定节点时返回 409", async () => {
     const id1 = seedDiscovery("s1", "%0");
     const id2 = seedDiscovery("s2", "%0");
     const rig = seedRig();
     setup.rigRepo.addNode(rig.id, "dev", { runtime: "claude-code" });
 
-    // Bind first session to dev
+    // 将第一个会话绑定到 dev。
     await app.request(`/api/discovery/${id1}/bind`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rigId: rig.id, logicalId: "dev" }),
     });
 
-    // Bind second session to same node -> 409 (already bound)
+    // 将第二个会话绑定到同一节点，返回 409（已绑定）。
     const res = await app.request(`/api/discovery/${id2}/bind`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -273,7 +273,7 @@ describe("Discovery API routes", () => {
     expect(res.status).toBe(409);
   });
 
-  // T7: createDaemon wires discovery (GET /discovery -> 200)
+  // T7：createDaemon 接入发现路由（GET /discovery 返回 200）。
   it("createDaemon wires discovery routes", async () => {
     db.close();
     const { createDaemon } = await import("../src/startup.js");
@@ -287,28 +287,28 @@ describe("Discovery API routes", () => {
     }
   });
 
-  // T11: Same-db-handle assertion for discovery deps (via createApp import)
-  it("createApp rejects mismatched discoveryRepo db handle", async () => {
+  // T11：断言发现依赖使用相同数据库句柄（通过 createApp 导入）。
+  it("createApp 拒绝数据库句柄不匹配的 discoveryRepo", async () => {
     const db2 = createDb();
     migrate(db2, ALL_MIGRATIONS);
 
     const { createApp } = await import("../src/server.js");
     const { DiscoveryRepository } = await import("../src/domain/discovery-repository.js");
 
-    // Build good deps from existing test app, then swap discoveryRepo with wrong db
+    // 从现有测试应用构建正确依赖，再把 discoveryRepo 换成错误数据库。
     const goodSetup = createTestApp(db);
     const mismatchedRepo = new DiscoveryRepository(db2);
 
     expect(() => {
       createApp({ ...goodSetup, discoveryRepo: mismatchedRepo });
-    }).toThrow(/discoveryRepo.*same db handle/);
+    }).toThrow(/discoveryRepo.*必须共享同一个数据库句柄/);
 
     db2.close();
   });
 
-  // T12a: POST /scan -> session.discovered event via route
-  it("POST /scan emits session.discovered event through route/coordinator", async () => {
-    // Override the mock scanner to return a pane
+  // T12a：POST /scan 通过路由发出 session.discovered 事件。
+  it("POST /scan 通过路由和协调器发出 session.discovered 事件", async () => {
+    // 覆盖 mock 扫描器，使其返回一个 pane。
     (setup.tmuxScanner as unknown as { scan: unknown }).scan = async () => ({
       panes: [{ tmuxSession: "organic", tmuxWindow: "0", tmuxPane: "%0", pid: 1234, cwd: "/tmp", activeCommand: "claude" }],
       scannedAt: new Date().toISOString(),
@@ -322,16 +322,16 @@ describe("Discovery API routes", () => {
     expect(payload.tmuxSession).toBe("organic");
   });
 
-  // T12b: POST /scan (rescan after disappear) -> session.vanished via route
-  it("POST /scan emits session.vanished when session disappears", async () => {
-    // First scan: session present
+  // T12b：会话消失后重新 POST /scan，通过路由发出 session.vanished。
+  it("会话消失时 POST /scan 发出 session.vanished", async () => {
+    // 第一次扫描：会话存在。
     (setup.tmuxScanner as unknown as { scan: unknown }).scan = async () => ({
       panes: [{ tmuxSession: "ephemeral", tmuxWindow: "0", tmuxPane: "%5", pid: 999, cwd: "/tmp", activeCommand: "bash" }],
       scannedAt: new Date().toISOString(),
     });
     await app.request("/api/discovery/scan", { method: "POST" });
 
-    // Second scan: session gone
+    // 第二次扫描：会话消失。
     (setup.tmuxScanner as unknown as { scan: unknown }).scan = async () => ({
       panes: [],
       scannedAt: new Date().toISOString(),
@@ -344,7 +344,7 @@ describe("Discovery API routes", () => {
     expect(payload.tmuxSession).toBe("ephemeral");
   });
 
-  // T12c: POST /:id/bind -> node.claimed event
+  // T12c：POST /:id/bind 发出 node.claimed 事件。
   it("POST /:id/bind emits node.claimed event", async () => {
     const id = seedDiscovery();
     const rig = seedRig();
@@ -362,8 +362,8 @@ describe("Discovery API routes", () => {
     expect(payload.rigId).toBe(rig.id);
   });
 
-  // T13: POST /:id/bind sets @rigged_* tmux metadata through the async HTTP path
-  it("POST /:id/bind sets tmux metadata on the adopted session", async () => {
+  // T13：POST /:id/bind 通过异步 HTTP 路径设置 @rigged_* tmux 元数据。
+  it("POST /:id/bind 在已采纳会话上设置 tmux 元数据", async () => {
     const id = seedDiscovery("claimed-target", "%0");
     const rig = seedRig();
     setup.rigRepo.addNode(rig.id, "orch.lead", { runtime: "claude-code" });
@@ -381,7 +381,7 @@ describe("Discovery API routes", () => {
     const setOpt = setup.tmuxAdapter.setSessionOption as ReturnType<typeof import("vitest").vi.fn>;
     expect(setOpt).toHaveBeenCalled();
     const calls = setOpt.mock.calls as [string, string, string][];
-    // All metadata writes target the discovered tmux session
+    // 所有元数据写入都以发现的 tmux 会话为目标。
     for (const call of calls) {
       expect(call[0]).toBe("claimed-target");
     }

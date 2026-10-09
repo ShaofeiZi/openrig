@@ -7,9 +7,8 @@ import { LOCAL_HOST_ID, getSelfHostId } from "../domain/hosts/fanout-contract.js
 import { loadHostRegistry, resolveHost } from "../domain/hosts/hosts-registry-reader.js";
 import { remoteJsonRequest } from "../domain/hosts/remote-daemon-http.js";
 
-/** OPR.0.4.4.15 FR-4 — the remote-action deadline class (a transactional
- *  write, not a bootstrap; named at this call-site per the arch
- *  required-argument sharpening). */
+/** OPR.0.4.4.15 FR-4——remote-action 超时类（事务性写，不是 bootstrap；
+ *  按 arch required-argument 锐化在本 call-site 命名）。 */
 const REMOTE_ACTION_TIMEOUT_MS = 10_000;
 import {
   MissionControlActionLogError,
@@ -31,27 +30,26 @@ import type { MissionControlNotificationDispatcher } from "../domain/mission-con
 import { resolveActorWithDeferral, resolveRecordedProvenance } from "./require-sender-identity.js";
 
 /**
- * Mission Control HTTP routes (PL-005 Phase A). Backs the integrated
- * Mission Control product UI inside the existing shell.
+ * Mission Control HTTP 路由（PL-005 Phase A）。支撑既有 shell 内集成的
+ * Mission Control 产品 UI。
  *
- * Per Phase A R1 (PL-004) SSE route-order lesson: SSE/literal paths
- * mounted BEFORE bare-param /:view-name catchall.
+ * 按 Phase A R1（PL-004）SSE 路由顺序教训：SSE/字面路径挂载在
+ * 裸参数 /:view-name catchall 之前。
  *
- * Endpoints:
- *   GET  /api/mission-control/views/:view-name   read one of 7 views
- *   POST /api/mission-control/action              execute one of 7 verbs
- *   GET  /api/mission-control/sse                 SSE stream of mission_control.* events
- *   GET  /api/mission-control/watch               alias of /sse
- *   GET  /api/mission-control/cli-capabilities    per-rig CLI capability cache
- *   GET  /api/mission-control/destinations         handoff/route destination candidates
- *   GET  /api/mission-control/views               list view names
+ * 端点：
+ *   GET  /api/mission-control/views/:view-name   读 7 视图之一
+ *   POST /api/mission-control/action              执行 7 verb 之一
+ *   GET  /api/mission-control/sse                 mission_control.* 事件的 SSE 流
+ *   GET  /api/mission-control/watch              /sse 的别名
+ *   GET  /api/mission-control/cli-capabilities   每 rig CLI capability 缓存
+ *   GET  /api/mission-control/destinations       handoff/route 目标候选
+ *   GET  /api/mission-control/views             列出视图名
  */
 export interface MissionControlRoutesOpts {
   /**
-   * PL-005 Phase B: bearer token enforced on write verbs (POST /action,
-   * POST /notifications/test) when set. When null, the daemon is
-   * loopback-bound and no auth is enforced (the index.ts startup
-   * check guarantees this).
+   * PL-005 Phase B：设置后在写 verb（POST /action、POST /notifications/test）上
+   * 强制 bearer token。为 null 时后台服务绑定 loopback、不强制鉴权
+   * （index.ts 启动检查保证这一点）。
    */
   bearerToken?: string | null;
 }
@@ -69,12 +67,10 @@ export interface MissionControlDestination {
 export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
   const app = new Hono();
   const bearerToken = opts?.bearerToken ?? null;
-  // PL-005 Phase B: bearer-token middleware mounted on write verbs.
-  // Reads remain open behind tailnet bind for the headed-browser-from-
-  // phone case where the operator hasn't typed the token into mobile
-  // yet — the bearer is for write integrity, not view confidentiality.
-  // (Operator may extend gating to reads by mounting on read paths in
-  // a future revision; v0 default per planner brief is gate-writes-only.)
+  // PL-005 Phase B：bearer-token middleware 挂载在写 verb 上。
+  // 读在 tailnet 绑定后保持开放，覆盖"手机端带浏览器"场景——operator 还没在
+  // 移动端输入 token——bearer 是为了写完整性，不是视图机密性。
+  // （operator 可在未来修订中把 gating 扩到读路径；按 planner brief，v0 默认只门控写。）
   const requireAuth = authBearerTokenMiddleware({ expectedToken: bearerToken });
 
   function getReadLayer(c: { get: (key: string) => unknown }): MissionControlReadLayer {
@@ -196,13 +192,10 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
       }
     }
 
-    // V0.3.1 slice 05 — belt-and-suspenders for kernel-down state: if
-    // the configured operator seat isn't in the topology + queue
-    // history yet (fresh install, kernel hasn't booted, or kernel
-    // crashed), still include it so the picker can route to the
-    // seat the rest of the daemon's mission-control read layer will
-    // resolve. Source label intentionally stays "queue" so the picker
-    // sort order keeps live topology entries on top.
+    // V0.3.1 slice 05——kernel 宕机状态的双保险：若配置的 operator seat
+    // 还不在 topology + 队列历史里（全新安装、kernel 尚未启动、或 kernel 崩溃），
+    // 仍把它纳入，使 picker 能路由到后台服务其余 mission-control 读层将解析的席位。
+    // source 标签刻意保持 "queue"，使 picker 排序把 live topology 条目留在顶部。
     if (operatorSeatFallback) {
       const trimmed = operatorSeatFallback.trim();
       if (trimmed && !destinations.has(trimmed)) {
@@ -248,28 +241,26 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
         status as 200,
       );
     }
-    const message = err instanceof Error ? err.message : "internal error";
+    const message = err instanceof Error ? err.message : "内部错误";
     return c.json({ error: "internal_error", message }, 500);
   }
 
-  // GET /views — list view names. MUST precede /views/:view-name catchall.
+  // GET /views——列出视图名。必须在 /views/:view-name catchall 之前。
   app.get("/views", (c) => {
     return c.json({ views: [...MISSION_CONTROL_VIEWS] });
   });
 
-  // GET /cli-capabilities — fleet roll-up + drift indicator.
+  // GET /cli-capabilities——fleet 汇总 + 漂移指示。
   app.get("/cli-capabilities", async (c) => {
     const fleet = await getCliCapability(c).rollupFleet();
     return c.json(fleet);
   });
 
-  // GET /destinations — phone-friendly route/handoff candidates. MUST precede
-  // /views/:view-name catchall with the other Mission Control literal routes.
-  // V0.3.1 slice 05 — resolve the operator-seat fallback from the
-  // mission-control read layer's defaultOperatorSession (which itself
-  // tracks the workspace.operator_seat_name setting) so the picker
-  // always offers the configured operator seat even when the kernel
-  // hasn't booted yet.
+  // GET /destinations——手机友好的 route/handoff 候选。必须与其他 Mission Control
+  // 字面路由一起在 /views/:view-name catchall 之前。
+  // V0.3.1 slice 05——从 mission-control 读层的 defaultOperatorSession
+  // 解析 operator-seat fallback（它自己跟踪 workspace.operator_seat_name 设置），
+  // 使 picker 即使在 kernel 尚未启动时也始终提供已配置的 operator seat。
   app.get("/destinations", (c) => {
     const db = getDb(c);
     if (!db) return c.json({ destinations: [] });
@@ -277,8 +268,8 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
     return c.json({ destinations: listDestinations(db, operatorSeat) });
   });
 
-  // SSE for mission_control.* events. MUST precede /views/:view-name
-  // (per PL-004 Phase A R1 SSE route-order lesson).
+  // mission_control.* 事件的 SSE。必须在 /views/:view-name 之前
+  // （按 PL-004 Phase A R1 SSE 路由顺序教训）。
   const sseHandler = (c: Parameters<typeof streamSSE>[0]) => {
     const eventBus = getEventBus(c);
     return streamSSE(c, async (stream) => {
@@ -301,14 +292,13 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
   app.get("/sse", sseHandler);
   app.get("/watch", sseHandler);
 
-  // PL-005 Phase B: bearer-token gate on write verbs.
+  // PL-005 Phase B：写 verb 上的 bearer-token 门。
   app.post("/action", requireAuth);
   app.post("/notifications/test", requireAuth);
 
-  // POST /action — execute one of 7 verbs through the atomic write contract.
-  // OPR.0.4.4.15 FR-4: an OPTIONAL hostId routes the SAME verb to the
-  // ORIGIN host's daemon server-side (the item's verbs execute where the
-  // qitem lives). hostId absent or 'local' = today's path byte-for-byte.
+  // POST /action——经原子写契约执行 7 verb 之一。
+  // OPR.0.4.4.15 FR-4：可选 hostId 把同一 verb 路由到 ORIGIN host 的后台服务服务端
+  // （item 的 verb 在 qitem 所在处执行）。hostId 缺失或 'local' = 今日路径逐字节不变。
   app.post("/action", async (c) => {
     const body = await c.req
       .json<{
@@ -325,34 +315,34 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
         hostId?: string;
       }>()
       .catch(() => ({} as never));
-    if (!body.verb) return c.json({ error: "verb is required" }, 400);
+    if (!body.verb) return c.json({ error: "verb 为必填项" }, 400);
     if (!MISSION_CONTROL_VERBS.includes(body.verb)) {
       return c.json(
         {
           error: "verb_unknown",
-          message: `unknown verb '${body.verb}'; supported: ${MISSION_CONTROL_VERBS.join(", ")}`,
+          message: `未知 verb '${body.verb}'；支持：${MISSION_CONTROL_VERBS.join(", ")}`,
           supported: [...MISSION_CONTROL_VERBS],
         },
         400,
       );
     }
-    if (!body.qitemId) return c.json({ error: "qitemId is required" }, 400);
-    // P21 I2 + review-actions deferral: mission-control /action is a FOUNDER-VISIBLE surface — the browser
-    // UI fires approve/deny/etc HEADERLESS (bearer only, body actorSession). resolveActorWithDeferral,
-    // P18 deliver-and-label: CLI header ⇒ transport:v1, the wire SUPERSEDES a mismatched body (the 409 is
-    // retired, ruling A); UI headerless ⇒ the body actor recorded claimed:v1 (declared-but-unverified),
-    // never refused, never laundered. Runs BEFORE the local write AND the cross-host forward.
+    if (!body.qitemId) return c.json({ error: "qitemId 为必填项" }, 400);
+    // P21 I2 + review-actions deferral：mission-control /action 是 FOUNDER 可见表面——
+    // 浏览器 UI HEADERLESS 触发 approve/deny 等（仅 bearer，body actorSession）。
+    // resolveActorWithDeferral、P18 deliver-and-label：CLI 头 ⇒ transport:v1，
+    // wire 取代不匹配的 body（409 已退役，裁定 A）；UI headerless ⇒ body actor
+    // 记为 claimed:v1（已声明但未核实），绝不拒绝、绝不洗白。
+    // 在本地写与跨 host forward 之前运行。
     const identity = resolveActorWithDeferral(c, { verb: `mission-control ${body.verb}`, bodyClaim: body.actorSession });
     if (!identity.ok) return identity.response;
-    // The SOLE provenance decider (rail 2): transport:v1 ONLY when transport proved it at THIS hop; relay:v1
-    // one hop away; claimed:v1 for the UI deferral OR an unpropagatable/legacy marker (degrade-down default).
+    // 唯一 provenance 决定者（rail 2）：仅当 transport 在本跳证明时才 transport:v1；
+    // 一跳之外 relay:v1；UI deferral 或不可传播/遗留标记时 claimed:v1（降级默认）。
     const recordedProvenance = resolveRecordedProvenance(c, identity);
     if (typeof body.hostId === "string" && body.hostId !== "" && body.hostId !== LOCAL_HOST_ID) {
-      // Remote forward (arch ruling 4: ONE write-path, ONE verb allowlist —
-      // the checks above already ran; the origin daemon re-validates on its
-      // own route). NOTHING is written to the LOCAL mission_control_actions
-      // here — the origin host's audit row + this structured passthrough
-      // are THE record (R15-3; local outbound audit log DROPPED by arch).
+      // 远程 forward（arch 裁定 4：一条写路径、一份 verb allowlist——
+      // 上面的检查已跑；origin 后台服务在自己路由上重新校验）。
+      // 此处不向 LOCAL mission_control_actions 写任何东西——
+      // origin host 的审计行 + 此结构化透传即记录本身（R15-3；本地出站审计 log 按 arch 丢弃）。
       const registryLoader = (c.get("hostRegistryLoader" as never) as (() => ReturnType<typeof loadHostRegistry>) | undefined) ?? loadHostRegistry;
       const fetchImpl = c.get("remoteFetchImpl" as never) as typeof fetch | undefined;
       const hostId = body.hostId;
@@ -363,12 +353,12 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
       const resolved = resolveHost(reg.registry, hostId);
       if (!resolved.ok) return fail(resolved.error, "unknown-host");
       if (resolved.host.transport !== "http") {
-        return fail(`host '${hostId}' is SSH-declared; remote actions require an http-transport registry entry (url; bearer optional)`, "unsupported-transport");
+        return fail(`host '${hostId}' 声明为 SSH；远程 action 需要 http-transport registry 条目（url；bearer 可选）`, "unsupported-transport");
       }
-      // P21 I2 cross-host re-stamp: strip the inbound identity claim (hostId AND actorSession) and
-      // RE-STAMP X-OpenRig-Session from THIS daemon's derived actor (`identity.session`, from the
-      // chokepoint above) + mark relay provenance — the origin derives the RE-STAMPED actor, never the
-      // forwarded body claim (the census's #5/#17 forward sites).
+      // P21 I2 跨 host 重盖章：剥离入站身份声明（hostId 与 actorSession），
+      // 并从本后台服务的派生 actor（`identity.session`，来自上面 chokepoint）
+      // 重盖 X-OpenRig-Session + 标记 relay provenance——origin 派生重盖章后的 actor，
+      // 绝不取转发的 body 声明（census 的 #5/#17 forward 站点）。
       const { hostId: _dropped, actorSession: _claim, ...forwardBody } = body as Record<string, unknown>;
       const res = await remoteJsonRequest(resolved.host, "/api/mission-control/action", {
         method: "POST",
@@ -378,17 +368,16 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
         headers: {
           "X-OpenRig-Session": identity.session,
           "X-OpenRig-Relay": getSelfHostId() ?? "unknown",
-          // Carry the provenance THIS hop resolved so the origin NEVER launders a claimed-era actor into a
-          // verified one: identity.provenance is transport:v1 (CLI) or claimed:v1 (UI deferral). The origin's
-          // resolveRecordedProvenance degrades — a transport:v1 marker ⇒ relay:v1, everything else ⇒ claimed:v1.
-          // (Literal capitalized key, matching the sibling X-OpenRig-Session/Relay send convention; the
-          // receive side reads it case-insensitively via IDENTITY_PROVENANCE_HEADER.)
+          // 携带本跳解析出的 provenance，使 origin 绝不把 claimed 时代 actor 洗白成已验证：
+          // identity.provenance 是 transport:v1（CLI）或 claimed:v1（UI deferral）。
+          // origin 的 resolveRecordedProvenance 降级——transport:v1 标记 ⇒ relay:v1，
+          // 其他全部 ⇒ claimed:v1。（字面大写 key，与兄弟 X-OpenRig-Session/Relay 发送约定一致；
+          // 接收侧经 IDENTITY_PROVENANCE_HEADER 大小写不敏感读取。）
           "X-OpenRig-Provenance": identity.provenance,
         },
       });
       if (res.ok) {
-        // The origin's structured success response, verbatim — no
-        // optimistic local re-shaping, no local audit write.
+        // origin 的结构化成功响应，逐字——不做乐观的本地重塑形，不做本地审计写。
         return c.json(res.payload as Record<string, unknown>);
       }
       switch (res.kind) {
@@ -397,16 +386,15 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
         case "timeout":
           return fail(
             res.phase === "body"
-              ? `remote action timed out: response headers arrived (HTTP ${res.status}) but the body never completed`
-              : `remote action timed out after ${REMOTE_ACTION_TIMEOUT_MS}ms`,
+              ? `远程 action 超时：响应头已到（HTTP ${res.status}）但 body 一直未完成`
+              : `远程 action 在 ${REMOTE_ACTION_TIMEOUT_MS}ms 后超时`,
             "unreachable",
             res.status,
           );
         case "network":
           return fail(res.detail, "unreachable");
         case "http":
-          // The origin refused (its own validation/auth/conflict) — its
-          // structured error rides through; NO fake success.
+          // origin 拒绝（它自己的校验/鉴权/冲突）——其结构化错误透传；不造假成功。
           return fail(res.detail || `HTTP ${res.status}`, res.status === 401 || res.status === 403 ? "auth-failed" : "remote-error", res.status);
       }
     }
@@ -414,9 +402,9 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
       const result = await getWriteContract(c).act({
         verb: body.verb,
         qitemId: body.qitemId,
-        actorSession: identity.session, // derived (CLI) or the declared claimed-era actor (UI deferral)
-        // P21 era-stamp — the resolver is the SOLE source (rail 2), never hardcoded: transport:v1 (proven
-        // here) | relay:v1 (one hop away) | claimed:v1 (UI deferral, or a degraded/legacy relay marker).
+        actorSession: identity.session, // 派生（CLI）或已声明的 claimed 时代 actor（UI deferral）
+        // P21 era 戳——resolver 是唯一来源（rail 2），绝不硬编码：
+        // transport:v1（此处已证明）| relay:v1（一跳之外）| claimed:v1（UI deferral，或降级/遗留 relay 标记）。
         identityProvenance: recordedProvenance,
 
         destinationSession: body.destinationSession,
@@ -433,9 +421,8 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
     }
   });
 
-  // PL-005 Phase B: GET /audit — read-only browse over mission_control_actions.
-  // MUST come BEFORE /views/:view-name catchall (route-order discipline
-  // per PL-004 Phase A R1 lesson).
+  // PL-005 Phase B：GET /audit——对 mission_control_actions 的只读浏览。
+  // 必须在 /views/:view-name catchall 之前（按 PL-004 Phase A R1 教训的路由顺序纪律）。
   app.get("/audit", async (c) => {
     const audit = getAuditBrowse(c);
     if (!audit) return c.json({ error: "audit_browse_unavailable" }, 500);
@@ -446,8 +433,8 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
     const until = c.req.query("until") || undefined;
     const limit = c.req.query("limit") ? Number.parseInt(c.req.query("limit")!, 10) : undefined;
     const beforeId = c.req.query("before_id") || undefined;
-    // OPR.0.4.4.19 FR-9 — scope-approval target filters (pinned
-    // audit_notes_json read path).
+    // OPR.0.4.4.19 FR-9——scope-approval 目标过滤（固定的
+    // audit_notes_json 读路径）。
     const scopeTier = c.req.query("scope_tier") || undefined;
     const scopeId = c.req.query("scope_id") || undefined;
     const scopePath = c.req.query("scope_path") || undefined;
@@ -459,16 +446,15 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
       return c.json(
         {
           error: "audit_query_failed",
-          message: err instanceof Error ? err.message : "internal error",
+          message: err instanceof Error ? err.message : "内部错误",
         },
         500,
       );
     }
   });
 
-  // PL-005 Phase B: POST /notifications/test — synthetic notification
-  // through the configured mechanism so the operator can verify before
-  // relying on it. Bearer-token gated (registered above).
+  // PL-005 Phase B：POST /notifications/test——经配置机制发送合成通知，
+  // 使 operator 在依赖前能验证。bearer-token 门控（上面已注册）。
   app.post("/notifications/test", async (c) => {
     const dispatcher = getNotificationDispatcher(c);
     if (!dispatcher) {
@@ -476,7 +462,7 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
         {
           error: "notifications_unconfigured",
           message:
-            "notifications dispatcher is not wired; configure notifications.mechanism (ntfy|webhook) in daemon config and restart",
+            "notifications dispatcher 未接入；请在后台服务配置中设置 notifications.mechanism (ntfy|webhook) 后重启",
         },
         503,
       );
@@ -488,22 +474,22 @@ export function missionControlRoutes(opts?: MissionControlRoutesOpts): Hono {
       return c.json(
         {
           error: "notification_test_failed",
-          message: err instanceof Error ? err.message : "internal error",
+          message: err instanceof Error ? err.message : "内部错误",
         },
         500,
       );
     }
   });
 
-  // GET /views/:view-name — read one of 7 views. MUST come AFTER /views,
-  // /cli-capabilities, /sse, /watch, /audit literal paths.
+  // GET /views/:view-name——读 7 视图之一。必须在 /views、
+  // /cli-capabilities、/sse、/watch、/audit 字面路径之后。
   app.get("/views/:view-name", async (c) => {
     const viewName = c.req.param("view-name") as MissionControlViewName;
     if (!MISSION_CONTROL_VIEWS.includes(viewName)) {
       return c.json(
         {
           error: "view_unknown",
-          message: `unknown view '${viewName}'; supported: ${MISSION_CONTROL_VIEWS.join(", ")}`,
+          message: `未知视图 '${viewName}'；支持：${MISSION_CONTROL_VIEWS.join(", ")}`,
           supported: [...MISSION_CONTROL_VIEWS],
         },
         404,

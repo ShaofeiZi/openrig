@@ -1,15 +1,13 @@
-// OPR.0.3.3.13.2 - Skill <-> CLI-surface binding-index lookup tests.
+// OPR.0.3.3.13.2——Skill <-> CLI 表面绑定索引查找测试。
 //
-// AC-3 is TWO-PART:
-//   (3a) NORMALIZATION - expandChangedSurface validated against 13.1's REAL
-//        shipped sample diff (the INPUT grammar), not an assumed one.
-//   (3b) AFFECTED-SKILL OUTPUT - computeAffectedSkills validated against an
-//        expected set. Here with inline skill fixtures (deterministic,
-//        decoupled from corpus churn); the corpus-derived
-//        v0.3.2-affected-skills regression fixture is asserted in
-//        affected-skills-corpus.test.ts once the backfill lands.
-// Plus the advisor-sharpened match rule discriminators (component-wise prefix,
-// up-vs-update) and AC-4 determinism.
+// AC-3 分两部分：
+//   (3a) 归一化——expandChangedSurface 对照 13.1 真实随附的样例 diff
+//        （输入语法）校验，而非假设的语法。
+//   (3b) affected-skill 输出——computeAffectedSkills 对照期望集校验。
+//        此处用内联 skill fixture（确定性，与 corpus 变动解耦）；
+//        corpus 派生的 v0.3.2-affected-skills 回归 fixture 在
+//        affected-skills-corpus.test.ts 中待 backfill 落地后断言。
+// 另加顾问打磨的匹配规则判别项（逐组件前缀、up-vs-update）与 AC-4 确定性。
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -44,7 +42,7 @@ describe("affected-skills - toSegments / pathsMatch (the ratified match rule)", 
   });
 
   it("component-wise prefix matches in EITHER direction (equal or path-prefix)", () => {
-    // shorter is a component-prefix of longer (both directions)
+    // 较短者是较长者的组件前缀（双向）
     expect(pathsMatch(["scope"], ["scope", "slice", "create"])).toBe(true);
     expect(pathsMatch(["scope", "slice", "create"], ["scope"])).toBe(true);
     // exact equality

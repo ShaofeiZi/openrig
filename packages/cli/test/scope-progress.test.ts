@@ -1,5 +1,5 @@
 // OPR.0.4.0.33 — `rig scope ... progress` update verb + `... repair`
-// backfill, driven end-to-end through the commander tree against a tmp
+// backfill，经 commander 树端到端驱动，对 tmp
 // substrate fixture.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -60,28 +60,28 @@ async function run(args: string[], workspace: string): Promise<CaptureResult> {
   return { exitCode, stdout: stdoutBuf.join(""), stderr: stderrBuf.join("") };
 }
 
-/** Create a slice via the CLI and return its absolute path. */
+/** 通过 CLI 创建切片并返回其绝对路径。 */
 async function createSlice(env: { missionsRoot: string }, slug: string, extra: string[] = []): Promise<string> {
   const r = await run(["slice", "create", "release-0.4.0", slug, ...extra, "--json"], env.missionsRoot);
   return JSON.parse(r.stdout).slice.path as string;
 }
 
-describe("rig scope slice progress (FR-3 add/set)", () => {
+describe("zrig scope slice progress（FR-3 add/set）", () => {
   let env: { root: string; missionsRoot: string };
   beforeEach(() => { env = seedSubstrate(); });
   afterEach(() => { fs.rmSync(env.root, { recursive: true, force: true }); });
 
-  it("--add appends a UI-valid checkbox row into the default Rail section", async () => {
+  it("--add 向默认 Rail 章节追加 UI 可解析的复选框行", async () => {
     const slicePath = await createSlice(env, "verb-add");
     const r = await run(["slice", "progress", slicePath, "--add", "Guard approved", "--json"], env.missionsRoot);
     expect(r.exitCode).toBe(0);
     const progress = fs.readFileSync(path.join(slicePath, "PROGRESS.md"), "utf8");
     expect(progress).toMatch(/## Rail\n\n- \[ \] Guard approved/);
-    // H1 title source preserved.
-    expect(progress).toMatch(/^# Progress —/m);
+    // 保留 H1 标题来源。
+    expect(progress).toMatch(/^# 进度 —/m);
   });
 
-  it("--add --section targets an existing section; --status sets the indicator", async () => {
+  it("--add --section 定位既有章节；--status 设置状态标记", async () => {
     const slicePath = await createSlice(env, "verb-section");
     const r = await run([
       "slice", "progress", slicePath,
@@ -89,27 +89,27 @@ describe("rig scope slice progress (FR-3 add/set)", () => {
     ], env.missionsRoot);
     expect(r.exitCode).toBe(0);
     const progress = fs.readFileSync(path.join(slicePath, "PROGRESS.md"), "utf8");
-    expect(progress).toMatch(/## Acceptance[\s\S]*- \[x\] QA passed/);
-    expect(progress).not.toMatch(/## Acceptance[\s\S]*## Acceptance/); // no duplicate section
+    expect(progress).toMatch(/## 验收[\s\S]*- \[x\] QA passed/);
+    expect(progress).not.toMatch(/## Acceptance/); // 将英文别名定位到既有中文章节，不创建重复章节。
   });
 
-  it("--set rewrites an existing row's status; idempotent re-run is a no-op", async () => {
+  it("--set 重写既有行状态；幂等重跑不做修改", async () => {
     const slicePath = await createSlice(env, "verb-set");
     const first = await run([
-      "slice", "progress", slicePath, "--set", "Implementation complete", "--status", "done", "--json",
+      "slice", "progress", slicePath, "--set", "实现完成", "--status", "done", "--json",
     ], env.missionsRoot);
     expect(first.exitCode).toBe(0);
     expect(JSON.parse(first.stdout).progress.changed).toBe(true);
     const progress = fs.readFileSync(path.join(slicePath, "PROGRESS.md"), "utf8");
-    expect(progress).toContain("- [x] Implementation complete");
+    expect(progress).toContain("- [x] 实现完成");
 
     const again = await run([
-      "slice", "progress", slicePath, "--set", "Implementation complete", "--status", "done", "--json",
+      "slice", "progress", slicePath, "--set", "实现完成", "--status", "done", "--json",
     ], env.missionsRoot);
     expect(JSON.parse(again.stdout).progress.changed).toBe(false);
   });
 
-  it("--add is idempotent: the same row twice does not duplicate", async () => {
+  it("--add 保持幂等：同一行添加两次不会重复", async () => {
     const slicePath = await createSlice(env, "verb-idem");
     await run(["slice", "progress", slicePath, "--add", "Once", "--json"], env.missionsRoot);
     await run(["slice", "progress", slicePath, "--add", "Once", "--json"], env.missionsRoot);
@@ -118,14 +118,14 @@ describe("rig scope slice progress (FR-3 add/set)", () => {
     expect(occurrences).toBe(1);
   });
 
-  it("errors when neither --add nor --set is given", async () => {
+  it("未提供 --add 或 --set 时返回错误", async () => {
     const slicePath = await createSlice(env, "verb-neither");
     const r = await run(["slice", "progress", slicePath, "--json"], env.missionsRoot);
     expect(r.exitCode).toBe(1);
     expect(JSON.parse(r.stdout).ok).toBe(false);
   });
 
-  it("errors when BOTH --add and --set are given", async () => {
+  it("同时提供 --add 和 --set 时返回错误", async () => {
     const slicePath = await createSlice(env, "verb-both");
     const r = await run([
       "slice", "progress", slicePath, "--add", "x", "--set", "y", "--json",
@@ -134,7 +134,7 @@ describe("rig scope slice progress (FR-3 add/set)", () => {
     expect(JSON.parse(r.stdout).ok).toBe(false);
   });
 
-  it("rejects an unknown --status value", async () => {
+  it("拒绝未知 --status 值", async () => {
     const slicePath = await createSlice(env, "verb-badstatus");
     const r = await run([
       "slice", "progress", slicePath, "--add", "x", "--status", "wip", "--json",
@@ -143,7 +143,7 @@ describe("rig scope slice progress (FR-3 add/set)", () => {
     expect(JSON.parse(r.stdout).ok).toBe(false);
   });
 
-  it("edits the README rail for a readme-only slice (not a PROGRESS.md)", async () => {
+  it("为仅 README 的切片编辑 README rail（而不是 PROGRESS.md）", async () => {
     const slicePath = await createSlice(env, "verb-readme-only", ["--readme-only"]);
     expect(fs.existsSync(path.join(slicePath, "PROGRESS.md"))).toBe(false);
     const r = await run(["slice", "progress", slicePath, "--add", "Rail item", "--json"], env.missionsRoot);
@@ -154,9 +154,9 @@ describe("rig scope slice progress (FR-3 add/set)", () => {
     expect(readme).toMatch(/progress_rail:\s*readme-only/); // frontmatter preserved
   });
 
-  it("errors when the scope has no progress surface (stale-host ghost)", async () => {
-    // A slice dir with a README but no PROGRESS.md and no readme-only
-    // marker — the founder-reported stale-host artifact shape.
+  it("工作范围没有进度界面时返回错误（stale-host ghost）", async () => {
+    // 一个 slice 目录，有 README 但无 PROGRESS.md 且无 readme-only
+    // marker——创始人报告的 stale-host artifact 形状。
     const ghost = path.join(env.missionsRoot, "release-0.4.0", "slices", "02-ghost");
     writeFile(path.join(ghost, "README.md"), "---\nid: OPR.0.4.0.2\n---\n# ghost\n");
     const r = await run(["slice", "progress", ghost, "--add", "x", "--json"], env.missionsRoot);
@@ -167,13 +167,13 @@ describe("rig scope slice progress (FR-3 add/set)", () => {
   });
 });
 
-describe("rig scope mission progress (FR-3)", () => {
+describe("zrig scope mission progress（FR-3）", () => {
   let env: { root: string; missionsRoot: string };
   beforeEach(() => { env = seedSubstrate(); });
   afterEach(() => { fs.rmSync(env.root, { recursive: true, force: true }); });
 
-  it("--add updates the mission PROGRESS.md", async () => {
-    // Backfill the mission PROGRESS.md first (the seed mission has none).
+  it("--add 更新任务目标 PROGRESS.md", async () => {
+    // 先 backfill mission PROGRESS.md（seed mission 无）。
     await run(["mission", "repair", "release-0.4.0", "--json"], env.missionsRoot);
     const r = await run([
       "mission", "progress", "release-0.4.0", "--add", "Mission milestone", "--section", "Milestones", "--json",
@@ -184,44 +184,44 @@ describe("rig scope mission progress (FR-3)", () => {
   });
 });
 
-describe("rig scope repair (FR-6 backfill)", () => {
+describe("zrig scope repair（FR-6 回填）", () => {
   let env: { root: string; missionsRoot: string };
   beforeEach(() => { env = seedSubstrate(); });
   afterEach(() => { fs.rmSync(env.root, { recursive: true, force: true }); });
 
-  it("mission repair backfills a missing PROGRESS.md; re-run is a no-op", async () => {
+  it("mission repair 回填缺失的 PROGRESS.md；重跑不做修改", async () => {
     const progressPath = path.join(env.missionsRoot, "release-0.4.0", "PROGRESS.md");
     expect(fs.existsSync(progressPath)).toBe(false);
     const first = await run(["mission", "repair", "release-0.4.0", "--json"], env.missionsRoot);
     expect(first.exitCode).toBe(0);
     expect(fs.existsSync(progressPath)).toBe(true);
     const content = fs.readFileSync(progressPath, "utf8");
-    expect(content).toMatch(/^# Progress —/m);
+    expect(content).toMatch(/^# 进度 —/m);
 
     const second = await run(["mission", "repair", "release-0.4.0", "--json"], env.missionsRoot);
     const parsed = JSON.parse(second.stdout);
-    expect(parsed.created.length).toBe(0); // nothing new
-    expect(fs.readFileSync(progressPath, "utf8")).toBe(content); // unchanged
+    expect(parsed.created.length).toBe(0); // 没有新增内容。
+    expect(fs.readFileSync(progressPath, "utf8")).toBe(content); // 保持不变。
   });
 
-  it("mission repair backfills PROGRESS-less slices but skips readme-only ones", async () => {
-    // A stale-host ghost slice (README, no PROGRESS, no marker).
+  it("mission repair 回填缺少 PROGRESS 的切片，但跳过仅 README 的切片", async () => {
+    // stale-host 幽灵切片（有 README、无 PROGRESS、无标记）。
     const ghost = path.join(env.missionsRoot, "release-0.4.0", "slices", "02-ghost");
     writeFile(path.join(ghost, "README.md"), "---\nid: OPR.0.4.0.2\n---\n# ghost\n");
-    // An intentional readme-only slice.
+    // 有意创建的仅 README 切片。
     await createSlice(env, "small-one", ["--readme-only"]);
 
     const r = await run(["mission", "repair", "release-0.4.0", "--json"], env.missionsRoot);
     expect(r.exitCode).toBe(0);
-    // Ghost slice got a PROGRESS.md.
+    // 幽灵切片获得 PROGRESS.md。
     expect(fs.existsSync(path.join(ghost, "PROGRESS.md"))).toBe(true);
-    // readme-only slice was NOT forced a PROGRESS.md.
+    // 不强制为仅 README 切片创建 PROGRESS.md。
     const readmeOnlySlice = path.join(env.missionsRoot, "release-0.4.0", "slices");
     const roDir = fs.readdirSync(readmeOnlySlice).find((d) => d.includes("small-one"))!;
     expect(fs.existsSync(path.join(readmeOnlySlice, roDir, "PROGRESS.md"))).toBe(false);
   });
 
-  it("slice repair backfills a single PROGRESS-less slice", async () => {
+  it("slice repair 回填单个缺少 PROGRESS 的切片", async () => {
     const ghost = path.join(env.missionsRoot, "release-0.4.0", "slices", "03-lonely");
     writeFile(path.join(ghost, "README.md"), "---\nid: OPR.0.4.0.3\n---\n# lonely\n");
     const r = await run(["slice", "repair", ghost, "--json"], env.missionsRoot);

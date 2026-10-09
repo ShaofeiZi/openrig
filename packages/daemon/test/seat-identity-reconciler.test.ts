@@ -1,10 +1,8 @@
-// OPR.0.4.3.19 — SeatIdentityReconciler unit tests.
+// OPR.0.4.3.19——SeatIdentityReconciler 单元测试。
 //
-// The reconciler owns the liveness identity verdict (the THIRD axis, orthogonal
-// to slice-15's terminalActive/hasAssignedWork). It reconciles each running
-// tmux-bound seat's pane PID/command against the registered binding and
-// persists a durable verdict to `seat_identity_verdicts`. It reads ONLY tmux
-// pane process identity — NEVER queue/classifier/hook heartbeats.
+// 协调器负责存活身份判定（第三个轴，与 slice-15 的 terminalActive/hasAssignedWork 正交）。
+// 它将每个运行中、绑定 tmux 的席位 pane PID/命令与已注册绑定协调，并将持久判定写入
+// `seat_identity_verdicts`。它只读取 tmux pane 进程身份——绝不读取队列/分类器/hook 心跳。
 
 import { describe, it, expect, vi } from "vitest";
 import type Database from "better-sqlite3";
@@ -17,13 +15,13 @@ import { SeatIdentityStore } from "../src/domain/seat-identity-store.js";
 import type { TmuxAdapter } from "../src/adapters/tmux.js";
 
 interface TmuxState {
-  /** session names tmux reports as live via listSessions(). */
+  /** tmux 通过 listSessions() 报告为存活的会话名。 */
   sessions?: string[];
-  /** pane id -> pid (null = pane gone). */
+  /** pane id → pid（null = pane 已消失）。 */
   panePid?: Record<string, number | null>;
-  /** pane id -> foreground command. */
+  /** pane id → 前台命令。 */
   paneCommand?: Record<string, string | null>;
-  /** make listSessions throw (tmux entirely unreachable). */
+  /** 使 listSessions 抛出异常（tmux 完全不可达）。 */
   throwListSessions?: boolean;
 }
 
@@ -76,36 +74,36 @@ function seedSeat(
 const NOW = () => new Date("2026-07-02T12:00:00.000Z");
 
 describe("classifyPaneRuntimeMatch", () => {
-  it("no command signal is never a mismatch (present pane, unknown command)", () => {
+  it("没有命令信号时绝不判为不匹配（pane 存在，命令未知）", () => {
     expect(classifyPaneRuntimeMatch(null, "claude-code")).toBe("match");
   });
 
-  it("host process `node` for a live claude seat is a MATCH (no false-mismatch)", () => {
+  it("存活 Claude 席位的宿主进程 `node` 判为匹配（不误报不匹配）", () => {
     expect(classifyPaneRuntimeMatch("node", "claude-code")).toBe("match");
   });
 
-  it("positive same-runtime command matches", () => {
+  it("同运行时的确证命令匹配", () => {
     expect(classifyPaneRuntimeMatch("claude", "claude-code")).toBe("match");
     expect(classifyPaneRuntimeMatch("codex", "codex")).toBe("match");
   });
 
-  it("a different agent runtime occupying the pane is a MISMATCH", () => {
+  it("pane 被不同智能体运行时占用时判为不匹配", () => {
     expect(classifyPaneRuntimeMatch("codex", "claude-code")).toBe("mismatch");
     expect(classifyPaneRuntimeMatch("claude", "codex")).toBe("mismatch");
   });
 
-  it("a bare shell where an agent was expected is a MISMATCH (dead process / orphan squat)", () => {
+  it("应运行智能体的位置只有裸 shell 时判为不匹配（进程已终止 / 孤儿占位）", () => {
     expect(classifyPaneRuntimeMatch("zsh", "claude-code")).toBe("mismatch");
     expect(classifyPaneRuntimeMatch("-bash", "codex")).toBe("mismatch");
   });
 
-  it("a shell for a terminal (infrastructure) node is expected — MATCH", () => {
+  it("terminal（基础设施）节点运行 shell 符合预期——匹配", () => {
     expect(classifyPaneRuntimeMatch("zsh", "terminal")).toBe("match");
   });
 });
 
 describe("SeatIdentityReconciler.reconcileAll", () => {
-  it("shares two native observations across wrapped Codex seats and rejects later stale or missing proof", async () => {
+  it("在封装的 Codex 席位间共享两次原生观察，并拒绝后续过期或缺失的证明", async () => {
     const db = createFullTestDb();
     for (const n of [1, 2]) {
       seedSeat(db, { nodeId: `c${n}`, sessionName: `c${n}@rig`, pane: `%${n}`, runtime: "codex" });
@@ -123,7 +121,7 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     expect(listProcesses).toHaveBeenCalledTimes(2);
     for (const n of [1, 2]) expect(store.getForNode(`c${n}`)).toMatchObject({ verdict: "verified", evidence: { observedPid: n * 10 + 1 } });
 
-    // A reused native PID during the next sweep cannot retain the old green.
+    // 下一轮清查中复用的原生 PID 不能保留旧 green。
     listProcesses.mockResolvedValueOnce(rows).mockResolvedValueOnce(rows.map(r => r.pid === 11 ? { ...r, startedAt: "Sat Jan  1 12:00:01 2000" } : r));
     await rec.reconcileAll();
     expect(store.getForNode("c1")?.verdict).toBe("mismatch");
@@ -138,7 +136,7 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     db.close();
   });
 
-  it("keeps fresh Codex distinct from resume, and cannot verify an unavailable pane", async () => {
+  it("区分全新 Codex 与 resume，且无法验证不可用 pane", async () => {
     const db = createFullTestDb();
     seedSeat(db, { nodeId: "c1", sessionName: "c1@rig", pane: "%1", runtime: "codex" });
     const tmux = makeTmux({ sessions: ["c1@rig"], panePid: { "%1": 10 }, paneCommand: { "%1": "codex" } });
@@ -152,7 +150,7 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     db.close();
   });
 
-  it("VERIFIED — matching pane pid + command persists a verified verdict", async () => {
+  it("VERIFIED——pane pid 与命令匹配时持久化 verified 判定", async () => {
     const db = createFullTestDb();
     seedSeat(db, { nodeId: "n1", sessionName: "s1@rig", pane: "%1", runtime: "claude-code" });
     const tmux = makeTmux({ sessions: ["s1@rig"], panePid: { "%1": 4242 }, paneCommand: { "%1": "node" } });
@@ -168,10 +166,10 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     db.close();
   });
 
-  it("MISMATCH — orphan/squat process (shell) persists a process_identity_mismatch verdict", async () => {
+  it("MISMATCH——孤儿/占位进程（shell）持久化 process_identity_mismatch 判定", async () => {
     const db = createFullTestDb();
     seedSeat(db, { nodeId: "n1", sessionName: "s1@rig", pane: "%1", runtime: "claude-code" });
-    // Same session name still live (squat), but the pane now runs a bare shell.
+    // 同名会话仍存活（占位），但 pane 现在运行裸 shell。
     const tmux = makeTmux({ sessions: ["s1@rig"], panePid: { "%1": 9999 }, paneCommand: { "%1": "zsh" } });
     const rec = new SeatIdentityReconciler({ db, tmux, now: NOW });
 
@@ -185,10 +183,10 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     db.close();
   });
 
-  it("PANE_MISSING (pane gone, session alive) → pane_pid_gone", async () => {
+  it("PANE_MISSING（pane 消失、会话存活）→ pane_pid_gone", async () => {
     const db = createFullTestDb();
     seedSeat(db, { nodeId: "n1", sessionName: "s1@rig", pane: "%1", runtime: "claude-code" });
-    // session listed live, but the registered pane no longer resolves.
+    // 会话列为存活，但已注册 pane 无法再解析。
     const tmux = makeTmux({ sessions: ["s1@rig"], panePid: { "%1": null } });
     const rec = new SeatIdentityReconciler({ db, tmux, now: NOW });
 
@@ -201,10 +199,10 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     db.close();
   });
 
-  it("PANE_MISSING (session gone entirely) → session_missing", async () => {
+  it("PANE_MISSING（会话完全消失）→ session_missing", async () => {
     const db = createFullTestDb();
     seedSeat(db, { nodeId: "n1", sessionName: "s1@rig", pane: "%1", runtime: "claude-code" });
-    // Another session is live (tmux is up), but s1@rig is gone.
+    // 另一个会话存活（tmux 正常），但 s1@rig 已消失。
     const tmux = makeTmux({ sessions: ["other@rig"], panePid: { "%1": null } });
     const rec = new SeatIdentityReconciler({ db, tmux, now: NOW });
 
@@ -217,7 +215,7 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     db.close();
   });
 
-  it("NULL pane + live target → named binding_absent, not tmux_unavailable", async () => {
+  it("NULL pane + 存活目标 → 具名 binding_absent，而非 tmux_unavailable", async () => {
     const db = createFullTestDb();
     seedSeat(db, { nodeId: "n1", sessionName: "s1@rig", pane: null, runtime: "claude-code" });
     const tmux = makeTmux({ sessions: ["s1@rig"] });
@@ -232,7 +230,7 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     db.close();
   });
 
-  it("NULL pane + absent target while tmux has another session → down-ranking session_missing", async () => {
+  it("NULL pane + 目标缺失但 tmux 有另一会话 → 降级为 session_missing", async () => {
     const db = createFullTestDb();
     seedSeat(db, { nodeId: "n1", sessionName: "s1@rig", pane: null, runtime: "claude-code" });
     const tmux = makeTmux({ sessions: ["other@rig"] });
@@ -247,7 +245,7 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     db.close();
   });
 
-  it("TMUX BLIP GUARD — listSessions throws → tmux_unavailable, never down-ranks", async () => {
+  it("TMUX 抖动防护——listSessions 抛出异常 → tmux_unavailable，绝不降级", async () => {
     const db = createFullTestDb();
     seedSeat(db, { nodeId: "n1", sessionName: "s1@rig", pane: "%1", runtime: "claude-code" });
     const tmux = makeTmux({ throwListSessions: true });
@@ -261,7 +259,7 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     db.close();
   });
 
-  it("TMUX BLIP GUARD — zero live sessions while seats exist → tmux_unavailable (not session_missing for all)", async () => {
+  it("TMUX 抖动防护——存在席位但存活会话为零 → tmux_unavailable（而非全部 session_missing）", async () => {
     const db = createFullTestDb();
     seedSeat(db, { nodeId: "n1", sessionName: "s1@rig", pane: "%1", runtime: "claude-code" });
     const tmux = makeTmux({ sessions: [], panePid: { "%1": null } });
@@ -274,7 +272,7 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     db.close();
   });
 
-  it("non-running seats are pruned; only running tmux-bound seats get verdicts", async () => {
+  it("剪除非运行中席位；仅运行中且绑定 tmux 的席位获得判定", async () => {
     const db = createFullTestDb();
     seedSeat(db, { nodeId: "n1", sessionName: "s1@rig", pane: "%1", runtime: "claude-code" });
     seedSeat(db, { nodeId: "n2", sessionName: "s2@rig", pane: "%2", runtime: "claude-code", status: "exited" });
@@ -289,12 +287,12 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
     db.close();
   });
 
-  it("liveness is NOT derived from heartbeats — a dead pane stays non-green regardless of any heartbeat", async () => {
-    // The reconciler never reads queue/classifier/hook state; a seat whose pane
-    // is gone yields pane_missing even if (hypothetically) work/heartbeats exist.
+  it("存活性不从心跳推导——无论是否有心跳，已消失 pane 始终不为 green", async () => {
+    // 协调器从不读取队列/分类器/hook 状态；pane 消失的席位即使假设仍有工作/心跳，
+    // 也会产生 pane_missing。
     const db = createFullTestDb();
     seedSeat(db, { nodeId: "n1", sessionName: "s1@rig", pane: "%1", runtime: "claude-code" });
-    // Simulate an active queue heartbeat for the seat (must not upgrade liveness).
+    // 模拟该席位的活跃队列心跳（不得升级存活性）。
     db.prepare(
       "INSERT INTO queue_items (qitem_id, ts_created, ts_updated, source_session, destination_session, state, body) VALUES (?, ?, ?, ?, ?, ?, ?)",
     ).run("q1", "2026-07-02T12:00:00Z", "2026-07-02T12:00:00Z", "op@rig", "s1@rig", "pending", "do work");
@@ -308,8 +306,8 @@ describe("SeatIdentityReconciler.reconcileAll", () => {
   });
 });
 
-describe("seat_identity_verdicts schema (migration 046)", () => {
-  it("the table exists with the expected columns", () => {
+describe("seat_identity_verdicts schema（迁移 046）", () => {
+  it("表存在且包含预期列", () => {
     const db = createFullTestDb();
     const cols = (db.pragma("table_info(seat_identity_verdicts)") as Array<{ name: string }>).map((c) => c.name);
     expect(cols).toEqual(
@@ -321,7 +319,7 @@ describe("seat_identity_verdicts schema (migration 046)", () => {
     db.close();
   });
 
-  it("upsert is last-writer-wins per node_id", () => {
+  it("upsert 按 node_id 采用最后写入者胜出", () => {
     const db = createFullTestDb();
     db.prepare("INSERT INTO rigs (id, name) VALUES ('rig-1','r')").run();
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id, runtime, cwd) VALUES ('n1','rig-1','p.n1','claude-code','/tmp')").run();

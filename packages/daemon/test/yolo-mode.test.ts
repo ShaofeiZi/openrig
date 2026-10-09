@@ -8,8 +8,8 @@ import { CodexRuntimeAdapter } from "../src/adapters/codex-runtime-adapter.js";
 import type { NodeBinding } from "../src/domain/runtime-adapter.js";
 import type { TmuxAdapter } from "../src/adapters/tmux.js";
 
-// OPR.0.4.8.2 seam 3 — OpenRig YOLO mode (opt-in, default OFF; launch-flag surface only, zero
-// config writes). RED-first: on f81018fb yoloEnabled/the bypass flags don't exist yet.
+// OPR.0.4.8.2 接缝 3——OpenRig YOLO 模式（可选启用，默认关闭；仅影响启动标志，不写配置）。
+// RED 优先：在 f81018fb 上，yoloEnabled/绕过标志尚不存在。
 
 afterEach(() => {
   delete process.env.OPENRIG_YOLO;
@@ -34,7 +34,7 @@ function mockFs(): ClaudeAdapterFsOps {
   return {
     readFile: (p: string) => {
       if (p in store) return store[p]!;
-      throw new Error(`Not found: ${p}`);
+      throw new Error(`未找到：${p}`);
     },
     writeFile: (p: string, c: string) => {
       store[p] = c;
@@ -55,8 +55,8 @@ async function claudeLaunchCmd(): Promise<string> {
   return (tmux.sendText as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
 }
 
-describe("OPR.0.4.8.2 YOLO mode — opt-in, default OFF, launch-flag surface only", () => {
-  it("yoloEnabled: OFF unless OPENRIG_YOLO is explicitly 1/true", () => {
+describe("OPR.0.4.8.2 YOLO 模式——可选启用、默认关闭、仅影响启动标志", () => {
+  it("yoloEnabled：除非 OPENRIG_YOLO 显式为 1/true，否则关闭", () => {
     expect(yoloEnabled({} as NodeJS.ProcessEnv)).toBe(false);
     expect(yoloEnabled({ OPENRIG_YOLO: "1" } as NodeJS.ProcessEnv)).toBe(true);
     expect(yoloEnabled({ OPENRIG_YOLO: "true" } as NodeJS.ProcessEnv)).toBe(true);
@@ -64,7 +64,7 @@ describe("OPR.0.4.8.2 YOLO mode — opt-in, default OFF, launch-flag surface onl
     expect(yoloEnabled({ OPENRIG_YOLO: "yes" } as NodeJS.ProcessEnv)).toBe(false);
   });
 
-  it("Claude: OFF -> floor --permission-mode acceptEdits; ON -> --dangerously-skip-permissions", async () => {
+  it("Claude：关闭 -> floor --permission-mode acceptEdits；开启 -> --dangerously-skip-permissions", async () => {
     delete process.env.OPENRIG_YOLO;
     const off = await claudeLaunchCmd();
     expect(off).toContain("--permission-mode acceptEdits");
@@ -76,7 +76,7 @@ describe("OPR.0.4.8.2 YOLO mode — opt-in, default OFF, launch-flag surface onl
     expect(on).not.toContain("--permission-mode acceptEdits");
   });
 
-  it("Codex resume: OFF -> explicit -s workspace-write floor flag; ON -> -s danger-full-access", () => {
+  it("Codex resume：关闭 -> 显式 -s workspace-write floor 标志；开启 -> -s danger-full-access", () => {
     delete process.env.OPENRIG_YOLO;
     const off = buildCodexResumeCore("tok-1", null, false);
     expect(off).toBe("codex -s workspace-write resume 'tok-1'");
@@ -86,16 +86,16 @@ describe("OPR.0.4.8.2 YOLO mode — opt-in, default OFF, launch-flag surface onl
     expect(on).toContain("-s danger-full-access");
   });
 
-  it("Codex resume ON overrides even a named config profile (every seat -s danger-full-access)", () => {
+  it("Codex resume 开启时连命名配置 profile 也会被覆盖（每个 seat 均为 -s danger-full-access）", () => {
     process.env.OPENRIG_YOLO = "1";
     const on = buildCodexResumeCore("tok-1", "my-profile", false);
     expect(on).toContain("-s danger-full-access");
     expect(on).not.toContain("-p 'my-profile'");
   });
 
-  // ── The three managed launch paths the fresh-only wiring missed (guard finding) ──
+  // ── 仅接线 fresh 时遗漏的三条托管启动路径（守卫发现）──
 
-  it("Claude RESTORE (ClaudeResumeAdapter) carries the posture flag: OFF floor / ON bypass", async () => {
+  it("Claude RESTORE（ClaudeResumeAdapter）携带姿态标志：关闭为 floor / 开启为 bypass", async () => {
     delete process.env.OPENRIG_YOLO;
     const tmuxOff = mockTmux();
     await new ClaudeResumeAdapter(tmuxOff).resume("r01-impl", "claude_name", "my-session", "/repo");
@@ -111,7 +111,7 @@ describe("OPR.0.4.8.2 YOLO mode — opt-in, default OFF, launch-flag surface onl
     expect(on).not.toContain("--permission-mode acceptEdits");
   });
 
-  it("Codex native FORK carries the posture: OFF -s workspace-write / ON -s danger-full-access", async () => {
+  it("Codex 原生 FORK 携带姿态：关闭为 -s workspace-write / 开启为 -s danger-full-access", async () => {
     const codexFs = {
       readFile: () => { throw new Error("nf"); },
       writeFile: () => {},
@@ -138,13 +138,13 @@ describe("OPR.0.4.8.2 YOLO mode — opt-in, default OFF, launch-flag surface onl
     expect(on).toContain("fork");
   });
 
-  it("codexPostureArg: OFF no-profile -> explicit -s workspace-write floor; OFF profile passes through; ON -> -s danger-full-access", () => {
+  it("codexPostureArg：关闭且无 profile -> 显式 -s workspace-write floor；关闭且有 profile -> 原样传递；开启 -> -s danger-full-access", () => {
     expect(codexPostureArg(" -p 'x'", {} as NodeJS.ProcessEnv)).toBe(" -p 'x'");
     expect(codexPostureArg("", {} as NodeJS.ProcessEnv)).toBe(" -s workspace-write");
     expect(codexPostureArg(" -p 'x'", { OPENRIG_YOLO: "1" } as NodeJS.ProcessEnv)).toBe(" -s danger-full-access");
   });
 
-  it("piTrust (RESOURCE TRUST, not permission policy): OFF keeps configured/no-approve; ON forces approve", () => {
+  it("piTrust（资源信任，而非权限策略）：关闭时保留配置值/no-approve；开启时强制 approve", () => {
     expect(piTrust("no-approve", {} as NodeJS.ProcessEnv)).toBe("no-approve");
     expect(piTrust(undefined, {} as NodeJS.ProcessEnv)).toBe("no-approve");
     expect(piTrust("approve", {} as NodeJS.ProcessEnv)).toBe("approve");

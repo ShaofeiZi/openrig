@@ -1,7 +1,7 @@
-// Keyboard + mouse byte decoding. Mouse uses xterm SGR (1006) reporting:
-// ESC [ < b ; x ; y M/m — the standard tmux/iTerm/Terminal.app mouse encoding.
-// Mouse events are resolved against the renderer's hit-map by the caller and
-// then dispatched through the SAME dispatch as commands and keys (PIN 1).
+// 键盘 + 鼠标字节解码。鼠标使用 xterm SGR（1006）报告：
+// ESC [ < b ; x ; y M/m —— 标准 tmux/iTerm/Terminal.app 鼠标编码。
+// 鼠标事件由调用方对照渲染器的命中图解析，
+// 然后通过与命令和按键相同的 dispatch 派发（PIN 1）。
 import type { Action, InputEvent, Screen, ViewState } from "./types.js";
 import { specDetailArrowsScroll } from "./state.js";
 import { StringDecoder } from "node:string_decoder";
@@ -32,8 +32,8 @@ function parseText(text: string, final: boolean): { events: InputEvent[]; remain
             const button = Number(match[1]);
             if (match[4] === "M" && (button & 3) !== 3 && button < 32)
               events.push({ type: "mouse", button: button & 3, x: Number(match[2]), y: Number(match[3]) });
-            // Preserve wheel coordinates. The renderer owns the actual pane boundary,
-            // so routing before this point would make pointer-local scrolling impossible.
+            // 保留滚轮坐标。渲染器拥有实际窗格边界，
+            // 因此在此之前路由会使指针本地滚动不可能。
             else if (match[4] === "M" && (button & 64) !== 0) {
               events.push({ type: "mouse", button, x: Number(match[2]), y: Number(match[3]) });
             }
@@ -63,8 +63,8 @@ function parseText(text: string, final: boolean): { events: InputEvent[]; remain
           i += 3;
           continue;
         }
-        // A complete unsupported terminal key (Home/End/Delete, modifiers, etc.)
-        // is one event, never a bare Escape followed by command text.
+        // 完整的不支持终端键（Home/End/Delete、修饰键等）
+        // 是一个事件，绝不裸 Escape 后跟命令文本。
         const sequence = tail.match(/^\x1b\[[0-?]*[ -/]*[@-~]/);
         if (sequence) { i += sequence[0].length; continue; }
         if (!final && /^\x1b\[[0-?]*[ -/]*$/.test(tail)) break;
@@ -96,13 +96,13 @@ function parseText(text: string, final: boolean): { events: InputEvent[]; remain
 export interface InputDecoder {
   write(bytes: string | Buffer): InputEvent[];
   flush(): InputEvent[];
-  /** true while a split escape sequence (or a lone Esc) is being held for more bytes —
-   * the caller flushes after a short quiet gap so a bare Esc keypress is delivered. */
+  /** 当拆分转义序列（或单独 Esc）被持有等待更多字节时为 true——
+   *  调用方在短安静间隔后 flush，以便裸 Esc 按键被递送。 */
   hasPending(): boolean;
 }
 
-/** Stateful terminal-stream decoder: retains split escape sequences and uses
- * Node's StringDecoder so UTF-8 code points survive arbitrary Buffer chunks. */
+/** 有状态终端流解码器：保留拆分转义序列并使用
+ *  Node 的 StringDecoder，使 UTF-8 码点在任意 Buffer 块中存活。 */
 export function createInputDecoder(): InputDecoder {
   const utf8 = new StringDecoder("utf8");
   let pending = "";
@@ -119,24 +119,24 @@ export function createInputDecoder(): InputDecoder {
       return parsed.events;
     },
     hasPending() {
-      // Bracketed paste may pause across chunks; only an escape prefix needs the short key timer.
+      // 括号粘贴可能跨块暂停；仅转义前缀需要短键定时器。
       return pending.length > 0 && !pending.startsWith("\x1b[200~");
     },
   };
 }
 
-/** Whole-buffer convenience used by tests and synthetic adapters. */
+/** 测试和合成适配器使用的整批便捷函数。 */
 export function decodeInput(bytes: string | Buffer): InputEvent[] {
   const decoder = createInputDecoder();
   return [...decoder.write(bytes), ...decoder.flush()];
 }
 
-/** Test/automation helper: the SGR bytes a terminal emits for a left click at (x, y). */
+/** 测试/自动化辅助：终端在 (x, y) 左键点击发出的 SGR 字节。 */
 export function sgrClick(x: number, y: number): string {
   return `\x1b[<0;${x};${y}M\x1b[<0;${x};${y}m`;
 }
 
-/** Resolve the back control advertised by SCOPES detail pages. */
+/** 解析 SCOPES 详情页宣传的返回控件。 */
 export function resolveEscapeAction(
   event: Extract<InputEvent, { type: "key" }>,
   state: ViewState,
@@ -154,30 +154,30 @@ export function resolveEscapeAction(
     : null;
 }
 
-/** Resolve directional/Enter keys against the currently rendered pane. */
+/** 对照当前渲染窗格解析方向/回车键。 */
 export function resolveKeyAction(
   event: Extract<InputEvent, { type: "key" }>,
   state: ViewState,
   screen: Screen,
   explorerCount: number,
 ): Action | null {
-  // PULSE (founder Option-B) is a content-pane view inside the normal chrome, so
-  // it uses the SAME input as every other view: ←→ switch panes (the sidebar is
-  // the founder's action path), ↑↓ move the focused pane, Enter drills. No pulse
-  // special-case — the lane cells are the content pane's selection targets.
+  // PULSE（创建者 Option-B）是正常铬内的内容面板视图，因此
+  // 它使用与其他视图相同的输入：←→ 切换窗格（侧边栏是
+  // 创建者的操作路径），↑↓ 移动聚焦窗格，回车钻取。无 pulse
+  // 特例——泳道单元格是内容面板的选择目标。
   if (event.key === "left") return screen.explorerWidth === 0 ? { type: "back" } : { type: "focus", pane: "explorer" };
   if (event.key === "right") return screen.contentTargets.length > 0 ? { type: "focus", pane: "content" } : null;
   if (event.key === "up" || event.key === "down") {
     const delta = event.key === "down" ? 1 : -1;
-    // Founder fix: on a scrollable spec detail the body is the meaningful
-    // surface — reflexive ↑↓ scroll it while explorer-focused. Right explicitly
-    // enters its links. Non-scrolling spec details and every other view fall through
-    // to the unchanged explorer-move / content-select behavior.
+    // 创建者修复：在可滚动规格详情上，主体是有意义的
+    // 表面——资源管理器聚焦时反射式 ↑↓ 滚动它。右键显式
+    // 进入其链接。非滚动规格详情和每个其他视图落入
+    // 未改变的资源管理器移动/内容选择行为。
     if (specDetailArrowsScroll(state)) return { type: "content-scroll", delta };
     if (state.focusedPane === "content" || screen.explorerWidth === 0) {
-      // k9s selection-driven auto-scroll: at the viewport EDGE with more content beyond, the arrow
-      // SCROLLS the viewport (reveal) instead of clamping — so ↑↓ reach every row without PgUp/PgDn
-      // (most keyboards lack them — the founder fix). Away from the edge it moves the selection.
+      // k9s 选择驱动自动滚动：在视口边缘且后面有更多内容时，箭头
+      // 滚动视口（reveal）而非钳制——因此 ↑↓ 到达每行而无需 PgUp/PgDn
+      // （大多数键盘没有——创建者修复）。远离边缘时移动选择。
       const atBottom = state.contentSelection >= screen.contentTargets.length - 1;
       const atTop = state.contentSelection <= 0;
       if (delta === 1 && atBottom && state.contentOffset < state.contentMaxOffset) return { type: "content-scroll", delta: 1 };
@@ -188,14 +188,14 @@ export function resolveKeyAction(
   }
   if (event.key === "enter") {
     return state.focusedPane === "content" || screen.explorerWidth === 0
-      ? (screen.contentTargets[state.contentSelection]?.action ?? { type: "error", message: "nothing selected in content" })
+      ? (screen.contentTargets[state.contentSelection]?.action ?? { type: "error", message: "内容中未选择任何项" })
       : { type: "activate" };
   }
   return "action" in event ? event.action : null;
 }
 
-/** Route a wheel notch using the pane actually under the pointer. Clicks keep
- * using the renderer hit-map in the caller; this function only owns wheels. */
+/** 使用指针实际下方的窗格路由滚轮 notch。点击保持
+ * 使用调用方中的渲染器命中图；此函数仅拥有滚轮。 */
 export function resolveMouseAction(
   event: Extract<InputEvent, { type: "mouse" }>,
   state: ViewState,

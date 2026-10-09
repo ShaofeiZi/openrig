@@ -47,15 +47,15 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-describe("canonical OpenRig instance initialization", () => {
-  it("declares the canonical addressable and System World library roots together", () => {
+describe("canonical OpenRig instance 初始化", () => {
+  it("同时声明 canonical addressable 与 System World library root", () => {
     expect(openRigContextLibraryRoots("/instance/context")).toEqual([
       "/instance/context",
       "/instance/context/system",
     ]);
   });
 
-  it("creates the canonical roots plus the S01 workspace through one idempotent owner", () => {
+  it("通过一个幂等 owner 创建 canonical root 与 S01 workspace", () => {
     const parent = freshRoot();
     const home = join(parent, "home");
 
@@ -88,7 +88,7 @@ describe("canonical OpenRig instance initialization", () => {
     ]));
   });
 
-  it("preserves user-owned files byte-for-byte", () => {
+  it("逐字节保留用户拥有的文件", () => {
     const home = join(freshRoot(), "home");
     mkdirSync(join(home, "workspace"), { recursive: true });
     writeFileSync(join(home, "config.json"), "{\"operator\":true}\n");
@@ -101,7 +101,7 @@ describe("canonical OpenRig instance initialization", () => {
     expect(readFileSync(join(home, "workspace", "SPEC.md"), "utf8")).toBe("# Mine\n");
   });
 
-  it("reports exact type conflicts and performs no partial writes", () => {
+  it("准确报告类型冲突，且不执行部分写入", () => {
     const home = join(freshRoot(), "home");
     mkdirSync(home, { recursive: true });
     writeFileSync(join(home, "context"), "owned file\n");
@@ -116,7 +116,7 @@ describe("canonical OpenRig instance initialization", () => {
     expect(readFileSync(join(home, "context"), "utf8")).toBe("owned file\n");
   });
 
-  it("treats a user-owned symlink as a conflict instead of writing through it", () => {
+  it("把用户拥有的 symlink 视为冲突，而不是穿透写入", () => {
     const parent = freshRoot();
     const home = join(parent, "home");
     const outside = join(parent, "outside");

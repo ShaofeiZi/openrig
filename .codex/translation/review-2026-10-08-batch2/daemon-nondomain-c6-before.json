@@ -1,0 +1,102 @@
+{
+"packages/daemon/src/adapters/pi-runner-protocol.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/pi-runner.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/pi-runtime-adapter.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/shell-quote.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/stub-compaction.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/stub-restore.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/stub-runner-protocol.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/stub-runner.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/stub-runtime-adapter.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/stub-script.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/terminal-adapter.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/tmux-exec.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/tmux.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/yolo-mode.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/all-migrations.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/connection.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrate.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/lib/pane-envelope.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/middleware/auth-bearer-token.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/terminal/TerminalSessionBroker.ts": [
+"daemon-runtime",
+"validated",
+"done"
+]
+}

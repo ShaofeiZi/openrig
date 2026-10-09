@@ -11,16 +11,16 @@ import { migrate } from "../src/db/migrate.js";
 import { ALL_MIGRATIONS } from "../src/db/all-migrations.js";
 import { createDb } from "../src/db/connection.js";
 
-// P14 — the committed money-proof e2e for the seat-handover CUTOVER (r1's LOW-optional; guards the
-// tmux-version regression class that bit us: respawn-pane -k CLEARS scrollback, and tabs sanitize to "_"
-// under env -i). Drives the REAL handover (createSuccessor → terminateRetiree → respawn-no-k → commit)
-// against an ISOLATED tmux server, proving predecessor scrollback SURVIVES in the SAME pane on BOTH the
-// graceful and forced retiree-exit paths.
+// P14——seat-handover 切换已提交的关键证明 e2e（r1 的低优先级可选项；防范曾遇到的 tmux
+// 版本回归：respawn-pane -k 会清除回滚内容，且在 env -i 下制表符会被净化为 "_"）。
+// 针对隔离的 tmux server 驱动真实 handover（createSuccessor → terminateRetiree →
+// respawn-no-k → commit），证明无论退役者优雅退出还是强制退出，前任回滚内容都会保留在
+// 同一个 pane 中。
 //
-// D15 isolation ([[real-run-e2e-daemon-isolation-doctrine]], [[tmux-kill-server-from-seat-reaps-fleet]]):
-// a per-run `-L` socket on EVERY tmux command (overrides $TMUX), full env MINUS $TMUX (env -i strips the
-// locale and breaks tab-delimited formats), verify-isolation-first, and teardown by SESSION NAME — NEVER
-// kill-server. Guarded: skips when tmux is unavailable.
+// D15 隔离（[[real-run-e2e-daemon-isolation-doctrine]]、[[tmux-kill-server-from-seat-reaps-fleet]]）：
+// 每条 tmux 命令都使用逐运行 `-L` socket（覆盖 $TMUX），保留除 $TMUX 外的完整环境
+//（env -i 会移除 locale 并破坏制表符分隔格式），先验证隔离，并按会话名称拆除——绝不
+// kill-server。有守卫：tmux 不可用时跳过。
 
 const pexec = promisify(execFile);
 const SOCK = `openrig-e2e-${process.pid}`;
@@ -42,14 +42,14 @@ function tmuxAvailableSync(): boolean {
 
 const seats: string[] = [];
 afterAll(async () => {
-  for (const s of seats) await tmux(`kill-session -t ${q(s)}`).catch(() => {}); // BY NAME, never kill-server
+  for (const s of seats) await tmux(`kill-session -t ${q(s)}`).catch(() => {}); // 按名称处理，绝不 kill-server
 });
 
-describe("seat-handover cutover money-proof (isolated tmux, both retiree-exit paths)", () => {
+describe("seat-handover 切换关键证明（隔离 tmux，两种退役者退出路径）", () => {
   it.runIf(tmuxAvailableSync())(
-    "predecessor scrollback SURVIVES in the SAME pane on graceful + forced paths",
+    "在优雅和强制路径上，前任回滚内容都保留在同一 pane 中",
     async () => {
-      // Verify isolation FIRST: the -L socket must never show fleet seats.
+      // 首先验证隔离：-L socket 绝不能显示 fleet seat。
       const sessions = await tmux("list-sessions -F '#{session_name}'").catch(() => "");
       expect(sessions).not.toMatch(/dev-guard@|dev-planner@|orch-|review-/);
 
@@ -60,9 +60,9 @@ describe("seat-handover cutover money-proof (isolated tmux, both retiree-exit pa
         await tmux(`new-session -d -s ${q(SEAT)} -x 110 -y 24`);
         await sleep(200);
         const pane = (await tmux(`list-panes -t ${q(SEAT)} -F '#{pane_id}'`)).trim();
-        // GRACEFUL: arm a SIGTERM trap so the retiree shell exits cleanly; FORCED: no trap → SIGKILL fallback.
+        // 优雅退出：设置 SIGTERM trap，使退役 shell 正常退出；强制退出：无 trap → 回退到 SIGKILL。
         if (graceful) { await tmux(`send-keys -t ${q(pane)} -l -- ${q("trap 'exit 0' TERM")}`); await tmux(`send-keys -t ${q(pane)} Enter`); }
-        // ~28 predecessor lines → real DEEP scrollback (past the 24-row pane).
+        // 约 28 行前任内容 → 真实深度回滚（超过 24 行 pane）。
         for (let i = 1; i <= 28; i++) {
           await tmux(`send-keys -t ${q(pane)} -l -- ${q(`echo v1_line_${i}_atom_A5`)}`);
           await tmux(`send-keys -t ${q(pane)} Enter`);
@@ -91,14 +91,13 @@ describe("seat-handover cutover money-proof (isolated tmux, both retiree-exit pa
         const service = new SeatHandoverService({
           db, rigRepo, sessionRegistry, discoveryRepo, eventBus,
           tmuxAdapter: new TmuxAdapter(exec) as any, runtimeAdapters: { codex: marker as any },
-          predecessorRecapResolver: () => ({ recap: [{ role: "user", content: "finish A5" }, { role: "assistant", content: "A5 landed; handing to v2" }], recordPath: "/tmp/pred-record.jsonl" }),
+          predecessorRecapResolver: () => ({ recap: [{ role: "user", content: "完成 A5" }, { role: "assistant", content: "A5 已落地；移交给 v2" }], recordPath: "/tmp/pred-record.jsonl" }),
           readinessTimeoutMs: 3000, sleep,
         });
 
-        // (i-a) capture the retiree PROCESS (the pane's shell PID) BEFORE cutover — the
-        // ghost-wake source (specimen 5) was gen-1's SESSION-LOCAL memory-only cron, which
-        // lives and dies INSIDE this process. Proving the retiree is dead post-handover is
-        // the class-closing pin: a session-local automation cannot fire once its process is gone.
+        // (i-a) 切换前捕获退役进程（pane 的 shell PID）——幽灵唤醒源（样本 5）是 gen-1
+        // 的会话本地纯内存 cron，与此进程共生共灭。证明 handover 后退役者已终止，
+        // 即可关闭该缺陷类别：进程消失后，会话本地自动化无法再触发。
         const retireePid = (await tmux(`list-panes -t ${q(SEAT)} -F '#{pane_pid}'`)).trim();
 
         const result: any = await service.handover({ seatRef: SEAT, reason: "context ~85%", source: "fresh", operator: "orch@seat" });
@@ -107,21 +106,20 @@ describe("seat-handover cutover money-proof (isolated tmux, both retiree-exit pa
         const cap = await tmux(`capture-pane -p -t ${q(pane)} -S -400`);
         const predLines = cap.split("\n").filter((l) => l.includes("v1_line_")).length;
 
-        // The money proof, both paths:
-        expect(result.ok, `${graceful ? "graceful" : "forced"} handover`).toBe(true);
-        expect(paneAfter, "SAME pane id (scrollback context)").toBe(pane);
-        expect(predLines, "predecessor deep history PRESERVED in native scrollback").toBeGreaterThan(0);
-        expect(cap, "successor booted in the same pane").toContain("SUCCESSOR v2");
-        expect(cap, "stopgap from-record recap fired").toContain("from record");
+        // 两条路径的关键证明：
+        expect(result.ok, `${graceful ? "优雅" : "强制"} handover`).toBe(true);
+        expect(paneAfter, "pane id 相同（回滚上下文）").toBe(pane);
+        expect(predLines, "前任深层历史保留在原生回滚中").toBeGreaterThan(0);
+        expect(cap, "后继在同一 pane 中启动").toContain("SUCCESSOR v2");
+        expect(cap, "临时的记录回顾已触发").toContain("从记录重放");
 
-        // (i-a) THE CLASS-CLOSING PIN: the retiree process is DEAD post-handover, so its
-        // session-local memory-only automations (crons/timers registered in-process — the
-        // ghost-wake source) died with it. A regression that let the retiree survive the
-        // cutover (or respawned WITHOUT terminating it first) flips this red.
+        // (i-a) 关闭缺陷类别的固定点：handover 后退役进程已终止，因此其会话本地纯内存自动化
+        //（进程内注册的 cron/timer——幽灵唤醒源）也随之终止。若回归导致退役者在切换后仍存活
+        //（或未先终止便 respawn），此测试会变红。
         let retireeAlive = true;
         try { execFileSync("sh", ["-c", `kill -0 ${retireePid}`], { env: cleanEnv, stdio: "ignore" }); }
         catch { retireeAlive = false; }
-        expect(retireeAlive, `${graceful ? "graceful" : "forced"} retiree process (pid ${retireePid}) DEAD post-handover — session-local automations die with it`).toBe(false);
+        expect(retireeAlive, `${graceful ? "优雅" : "强制"}退出的退役进程（pid ${retireePid}）在 handover 后已终止——会话本地自动化随之终止`).toBe(false);
         db.close();
       }
     },

@@ -1,38 +1,31 @@
-// UI Enhancement Pack v0 — file allowlist + path-safety helpers.
+// UI Enhancement Pack v0——文件白名单与路径安全辅助函数。
 //
-// Daemon-enforced fail-closed path-safety for the operator-allowlisted
-// file browser surface (item 3 + item 4). Reused by all four
-// /api/files/* routes.
+// 后台服务对操作者白名单文件浏览面执行失败关闭的路径安全策略（条目 3 + 条目 4）。
+// 四个 /api/files/* 路由共用此实现。
 //
-// Allowlist source (driver pivot from PRD's suggested ConfigStore key
-// family — see handoff): OPENRIG_FILES_ALLOWLIST env var, comma-
-// separated `<name>:<absolute-path>` pairs. Operator sets via shell
-// (or via `~/.openrig` env file). Empty / unset → no allowlist roots
-// → routes return empty roots list with a structured "configure
-// OPENRIG_FILES_ALLOWLIST" hint. Default after fresh install: nothing
-// (the safe default per PRD § Item 3).
+// 白名单来源（driver 根据 PRD 建议的 ConfigStore 键族调整，见交接说明）：环境变量
+// OPENRIG_FILES_ALLOWLIST，其中用逗号分隔 `<name>:<absolute-path>` 对。操作者可通过 shell
+// 或 `~/.openrig` 环境文件设置。为空或未设置时没有白名单根目录，路由返回空根目录列表，
+// 并附带结构化“配置 OPENRIG_FILES_ALLOWLIST”提示。全新安装默认不开放任何目录，符合
+// PRD § 条目 3 的安全默认值。
 //
-// Path-safety contract:
-//   - Each request resolves <relativePath> against <rootName>'s
-//     canonical absolute path.
-//   - Any escape attempt (.., absolute-path passed as relativePath,
-//     symlink whose realpath escapes the root) is rejected with a
-//     structured error.
-//   - Symlinks INSIDE the allowlisted tree resolve normally; symlinks
-//     pointing OUTSIDE the tree are treated as escape attempts.
-//   - Reads/lists never return content from outside the resolved root.
+// 路径安全契约：
+//   - 每个请求都相对于 <rootName> 的规范绝对路径解析 <relativePath>。
+//   - 任何逃逸尝试（..、把绝对路径作为 relativePath、realpath 越出根目录的符号链接）
+//     都以结构化错误拒绝。
+//   - 白名单目录树内部的符号链接正常解析；指向树外的符号链接视为逃逸尝试。
+//   - 读取/列出操作永不返回解析后根目录之外的内容。
 //
-// MVP single-host context: no per-rig overrides, no remote allowlist
-// management, no audit at allowlist-resolution time (allowlist
-// resolution is read-only). Audit applies to writes only (item 4).
+// MVP 单主机场景：不支持按工作组覆盖，不支持远程管理白名单，解析白名单时不做审计
+//（解析为只读操作）。审计只适用于写入（条目 4）。
 
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 export interface AllowlistRoot {
-  /** Operator-supplied display name (e.g., "workspace"). */
+  /** 操作者提供的显示名称（例如 "workspace"）。 */
   name: string;
-  /** Canonical absolute path on disk. */
+  /** 磁盘上的规范绝对路径。 */
   canonicalPath: string;
 }
 
@@ -51,11 +44,9 @@ const ENV_VAR = "OPENRIG_FILES_ALLOWLIST";
 const LEGACY_ENV_VAR = "RIGGED_FILES_ALLOWLIST";
 
 /**
- * Decodes a raw `name:/abs/path,name:/abs/path` allowlist string into
- * canonical AllowlistRoot[]. Whitespace around delimiters trimmed.
- * Invalid pairs (no colon, empty name, non-absolute path) silently
- * skipped. Duplicate names: last wins. Same shape both env-var and
- * settings-file-resolved values produce.
+ * 将原始 `name:/abs/path,name:/abs/path` 白名单字符串解码为规范 AllowlistRoot[]。去除
+ * 分隔符周围空白；静默跳过无效条目（无冒号、名称为空、路径非绝对路径）。名称重复时最后
+ * 一个生效。环境变量和设置文件解析值都生成相同结构。
  */
 export function decodeAllowlist(raw: string): AllowlistRoot[] {
   if (!raw.trim()) return [];
@@ -81,32 +72,27 @@ export function decodeAllowlist(raw: string): AllowlistRoot[] {
 }
 
 /**
- * Reads the allowlist env var directly and returns the parsed root list.
- * Preserved for backward-compat callers; v0 callers prefer the resolved
- * settings-store path which honors env > settings-file > empty.
+ * 直接读取白名单环境变量并返回解析后的根目录列表。为向后兼容调用方而保留；v0 调用方
+ * 优先使用已解析的设置存储路径，其优先级为 env > settings-file > empty。
  */
 export function readAllowlistFromEnv(env: NodeJS.ProcessEnv = process.env): AllowlistRoot[] {
-  // Use || (not ??) so an empty-string OPENRIG_FILES_ALLOWLIST falls
-  // back to the legacy var. ?? only handles null/undefined.
+  // 使用 || 而不是 ??，使空字符串 OPENRIG_FILES_ALLOWLIST 回退到旧变量；?? 只处理
+  // null/undefined。
   const raw = (env[ENV_VAR] || env[LEGACY_ENV_VAR] || "").toString();
   return decodeAllowlist(raw);
 }
 
 /**
- * Resolves a relative path against an allowlist root. Throws
- * FilePathSafetyError on any unsafe condition. Returns the
- * canonical absolute path on success. Caller is expected to stat
- * the result to distinguish file/directory.
+ * 相对于白名单根目录解析相对路径。遇到任何不安全条件时抛出 FilePathSafetyError；成功时
+ * 返回规范绝对路径。调用方应对结果执行 stat，以区分文件和目录。
  *
- * Path-safety algorithm:
- *   1. Validate the root exists in the allowlist (reject "root_unknown").
- *   2. Reject relative paths that look absolute or contain `..`
- *      segments (reject "path_invalid" / "path_escape").
- *   3. Resolve the relative path against the canonical root.
- *   4. Resolve symlinks: if the realpath does not start with the
- *      canonical root + path separator, reject "path_escape".
- *   5. The base case `path = ""` resolves to the root itself (allowed
- *      so callers can list the root directory).
+ * 路径安全算法：
+ *   1. 校验根目录存在于白名单中，否则拒绝并返回 "root_unknown"。
+ *   2. 拒绝形似绝对路径或包含 `..` 分段的相对路径，返回 "path_invalid" / "path_escape"。
+ *   3. 相对于规范根目录解析相对路径。
+ *   4. 解析符号链接；若 realpath 不以规范根目录 + 路径分隔符开头，则拒绝并返回
+ *      "path_escape"。
+ *   5. 基础情况 `path = ""` 解析为根目录本身，以允许调用方列出根目录。
  */
 export function resolveAllowedPath(
   allowlist: AllowlistRoot[],
@@ -117,22 +103,20 @@ export function resolveAllowedPath(
   if (!root) {
     throw new FilePathSafetyError(
       "root_unknown",
-      `allowlist root '${rootName}' is not configured. Allowlist configured roots: ${allowlist.map((r) => r.name).join(", ") || "(none)"}.`,
+      `未配置白名单根目录 '${rootName}'。当前白名单根目录：${allowlist.map((r) => r.name).join(", ") || "（无）"}。`,
       { rootName, configuredRoots: allowlist.map((r) => r.name) },
     );
   }
-  // Reject ../ escape attempts BEFORE filesystem resolution. Even
-  // though step 4 catches realpath escapes, this rejects the
-  // expressed-intent-to-escape with a clearer error code.
+  // 在文件系统解析前拒绝 ../ 逃逸尝试。虽然步骤 4 能捕获 realpath 逃逸，但这里可用更明确
+  // 的错误码拒绝已经表达出的逃逸意图。
   if (relativePath.includes("..")) {
-    // Distinguish a literal ".." segment from a filename like "foo..bar"
-    // — split on path.sep and `/` and inspect each segment.
+    // 区分字面量 ".." 分段和 "foo..bar" 这类文件名：按 path.sep 和 `/` 拆分后逐段检查。
     const segments = relativePath.split(/[\\/]/).filter((s) => s.length > 0);
     for (const seg of segments) {
       if (seg === "..") {
         throw new FilePathSafetyError(
           "path_escape",
-          `relative path '${relativePath}' contains a '..' segment; reject.`,
+          `相对路径 '${relativePath}' 包含 '..' 分段；已拒绝。`,
           { rootName, relativePath },
         );
       }
@@ -141,7 +125,7 @@ export function resolveAllowedPath(
   if (path.isAbsolute(relativePath)) {
     throw new FilePathSafetyError(
       "path_invalid",
-      `relative path '${relativePath}' must not be absolute (reject).`,
+      `相对路径 '${relativePath}' 不能是绝对路径；已拒绝。`,
       { rootName, relativePath },
     );
   }
@@ -150,27 +134,24 @@ export function resolveAllowedPath(
   try {
     realpath = fs.realpathSync(candidate);
   } catch {
-    // If the candidate doesn't exist on disk yet, fall back to the
-    // unresolved candidate. Subsequent stat will surface the absence
-    // with a more specific error code.
+    // 若候选路径尚不存在，则回退到未解析候选；后续 stat 会用更具体的错误码指出缺失。
     realpath = candidate;
   }
-  // Containment check with path.sep boundary to avoid the
-  // /foo/bar matching /foo/bar-other false-positive.
+  // 以 path.sep 为边界检查包含关系，避免 /foo/bar 错误匹配 /foo/bar-other。
   const rootWithSep = root.canonicalPath.endsWith(path.sep)
     ? root.canonicalPath
     : `${root.canonicalPath}${path.sep}`;
   if (realpath !== root.canonicalPath && !realpath.startsWith(rootWithSep)) {
     throw new FilePathSafetyError(
       "path_escape",
-      `resolved path '${realpath}' falls outside allowlist root '${rootName}' (${root.canonicalPath}).`,
+      `解析后的路径 '${realpath}' 位于白名单根目录 '${rootName}'（${root.canonicalPath}）之外。`,
       { rootName, relativePath, resolved: realpath, rootCanonical: root.canonicalPath },
     );
   }
   return realpath;
 }
 
-/** Convenience: resolve + assert the result is an existing regular file. */
+/** 便捷函数：解析路径并断言结果是现有普通文件。 */
 export function resolveAllowedFile(
   allowlist: AllowlistRoot[],
   rootName: string,
@@ -183,21 +164,21 @@ export function resolveAllowedFile(
   } catch (err) {
     throw new FilePathSafetyError(
       "stat_failed",
-      `failed to stat '${resolved}': ${err instanceof Error ? err.message : String(err)}`,
+      `stat '${resolved}' 失败：${err instanceof Error ? err.message : String(err)}`,
       { rootName, relativePath, resolved },
     );
   }
   if (!stat.isFile()) {
     throw new FilePathSafetyError(
       "not_a_file",
-      `resolved path '${resolved}' is not a regular file.`,
+      `解析后的路径 '${resolved}' 不是普通文件。`,
       { rootName, relativePath, resolved },
     );
   }
   return resolved;
 }
 
-/** Convenience: resolve + assert the result is an existing directory. */
+/** 便捷函数：解析路径并断言结果是现有目录。 */
 export function resolveAllowedDirectory(
   allowlist: AllowlistRoot[],
   rootName: string,
@@ -210,14 +191,14 @@ export function resolveAllowedDirectory(
   } catch (err) {
     throw new FilePathSafetyError(
       "stat_failed",
-      `failed to stat '${resolved}': ${err instanceof Error ? err.message : String(err)}`,
+      `stat '${resolved}' 失败：${err instanceof Error ? err.message : String(err)}`,
       { rootName, relativePath, resolved },
     );
   }
   if (!stat.isDirectory()) {
     throw new FilePathSafetyError(
       "not_a_directory",
-      `resolved path '${resolved}' is not a directory.`,
+      `解析后的路径 '${resolved}' 不是目录。`,
       { rootName, relativePath, resolved },
     );
   }

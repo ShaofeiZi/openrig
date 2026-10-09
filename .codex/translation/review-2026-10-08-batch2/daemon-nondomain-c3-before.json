@@ -1,0 +1,102 @@
+{
+"packages/daemon/src/routes/env.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/events.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/files.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/gateway.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/health-diagnosis.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/health-summary.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/health.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/hosts.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/info.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/kernel-status.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/mission-control.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/missions.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/packages.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/plugins.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/progress.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/projects.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/proof.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/provider.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/ps.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/queue.ts": [
+"daemon-api",
+"self_reported",
+"done"
+]
+}

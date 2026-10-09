@@ -1,19 +1,18 @@
-// P34 — TERMINAL-CLOSING WRITERS ONTO THE W1 PRIMITIVES.
+// P34——把终端关闭 writer 构建到 W1 原语之上。
 //
 // Lock: qitem-20260809110825-be056197 · SHAPE artifact 4f2b04c161a8da959c…f49f453a
 // Pre-edit rev-2: 2f4710b1512baa41c0c4ed0de09af8fc39e6386378f28941d6d10e4cccd73345
 // Guard CLEAR: qitem-20260809180349-634de805 (verdict 5ba491d7c31cf98b…d085f8)
 //
-// THE ATOM: W1 made executed-but-unwoken impossible to WRITE *via the queue's own
-// terminal verbs*. Mission Control, workflow-runtime and workflow-projector close
-// and create OUTSIDE those verbs, so today the wave's premise holds for one writer
-// and is merely detected for the rest. This suite pins the extension.
+// 核心点：W1 让"已执行但未唤醒"无法再*经队列自己的
+// 终端动词*被写出。Mission Control、workflow-runtime 与 workflow-projector 的
+// 关闭与创建发生在这些动词之外，故今日该波的前提只对一个 writer 成立，
+// 对其余仅为检测。本测试集钉住这个扩展。
 //
-// ── RED 1 (this file, first increment): THE CURRENT MISS ──────────────────────
-// Each ruled site drives a REAL terminal close + successor create through the real
-// writer, with an intent store attached, and asserts the successor's wake intent
-// is durable. Today every one of these FAILS with the intent absent (intents=0) —
-// that failure IS the captured miss. They flip GREEN when the wiring lands.
+// ── RED 1（本文件首个增量）：当前缺口 ──────────────────────
+// 每个受规约点都经真实 writer 驱动一次真实终端关闭 + 继任创建，挂上 intent
+// 存储，并断言继任的唤醒 intent 是持久的。今日这些全部失败（intent 缺失，
+// intents=0）——这个失败即捕获的缺口。装配落地后它们转绿。
 //
 // THE FIVE RULED SUCCESSOR SITES (planner ruling 17:57Z; guard CLEAR 18:03Z):
 //   mission-control-write-contract.ts:174   (route / handoff)
@@ -152,7 +151,7 @@ function makeHarness(): Harness {
   return { db, bus, repo, outbox, runtime, mc, specPath, tmp };
 }
 
-describe("P34 RED 1 — the CURRENT MISS: terminal close + successor create stages NO wake intent", () => {
+describe("P34 红色 1 — 当前未命中：终端关闭 + 后续创建阶段 无唤醒意图", () => {
   let h: Harness;
 
   beforeEach(() => {
@@ -164,7 +163,7 @@ describe("P34 RED 1 — the CURRENT MISS: terminal close + successor create stag
     rmSync(h.tmp, { recursive: true, force: true });
   });
 
-  it("mission-control-write-contract.ts:174 — handoff closes the source and creates the successor with a DURABLE wake intent", async () => {
+  it("Mission-control-write-contract.ts:174 — 切换关闭源并创建具有持久唤醒意图的后继者", async () => {
     const source = await h.repo.create({
       sourceSession: "src@rig",
       destinationSession: "dst@rig",
@@ -185,7 +184,7 @@ describe("P34 RED 1 — the CURRENT MISS: terminal close + successor create stag
     expect(intentFor(h, result.createdQitemId!)).not.toBeNull();
   });
 
-  it("workflow-projector.ts:466 — project(handoff) ROUTES branch stages the next-step packet's wake intent", async () => {
+  it("workflow-projector.ts:466 — 项目（切换）ROUTES 分支暂存下一步数据包的唤醒意图", async () => {
     const inst = await h.runtime.instantiate({
       specPath: h.specPath,
       rootObjective: "x",
@@ -205,7 +204,7 @@ describe("P34 RED 1 — the CURRENT MISS: terminal close + successor create stag
     expect(intentFor(h, projected.nextQitemId!)).not.toBeNull();
   });
 
-  it("workflow-projector.ts:729 — project(failed) FAILED branch stages the exception item's wake intent", async () => {
+  it("workflow-projector.ts:729 — 项目（失败）FAILED 分支暂存异常项的唤醒意图", async () => {
     const inst = await h.runtime.instantiate({
       specPath: h.specPath,
       rootObjective: "x",
@@ -219,9 +218,9 @@ describe("P34 RED 1 — the CURRENT MISS: terminal close + successor create stag
       resultNote: "blew up",
     });
 
-    // EXCLUSIVITY, pinned: nextStatus==="failed" requires routes===false
-    // (workflow-projector.ts:571-585), so the failed branch NEVER also produces a
-    // next-step packet. :466 and :729 are alternatives, never two successors.
+    // 互斥性，钉住：nextStatus==="failed" 要求 routes===false
+    //（workflow-projector.ts:571-585），故 failed 分支绝不也产出
+    // next-step 包。:466 与 :729 是二选一，永不为两个继任。
     expect(projected.nextQitemId).toBeNull();
 
     // The exception item is the successor here. Asserting EXACTLY ONE match keeps
@@ -235,7 +234,7 @@ describe("P34 RED 1 — the CURRENT MISS: terminal close + successor create stag
     expect(intentFor(h, exceptionItems[0]!.qitem_id)).not.toBeNull();
   });
 
-  it("workflow-runtime.ts:992 — route closes the old frontier packet and stages the re-routed packet's wake intent", async () => {
+  it("workflow-runtime.ts:992 — 路由关闭旧的边界数据包并暂存重新路由的数据包的唤醒意图", async () => {
     const inst = await h.runtime.instantiate({
       specPath: h.specPath,
       rootObjective: "x",
@@ -253,7 +252,7 @@ describe("P34 RED 1 — the CURRENT MISS: terminal close + successor create stag
     expect(intentFor(h, routed.newPacketId)).not.toBeNull();
   });
 
-  it("workflow-runtime.ts:791 — resume redrive stages the NEW packet's wake intent (never the exception closes')", async () => {
+  it("workflow-runtime.ts:791 — 恢复重新驱动阶段新数据包的唤醒意图（永远不会关闭异常）", async () => {
     const inst = await h.runtime.instantiate({
       specPath: h.specPath,
       rootObjective: "x",
@@ -281,17 +280,16 @@ describe("P34 RED 1 — the CURRENT MISS: terminal close + successor create stag
 });
 
 // ── THE CONTROLS ──────────────────────────────────────────────────────────────
-// RED 1 proves the wiring WORKS. These prove it FAILS CORRECTLY — which is the
-// half that decides whether the atom is honest or merely green. A guard that
-// condemns correct callers gets reverted within the hour; a guard that examines
-// nothing reports the same green as one that examines everything.
+// RED 1 证明装配工作。这些证明它正确地失败——这是决定原子诚实还是仅变绿的
+// 另一半。一个谴责正确调用方的守卫一小时内就会被回滚；一个什么都不检查的守卫
+// 和检查一切的守卫报同样的绿。
 
-describe("P34 RED 4 — NO-FALSE-POSITIVE: a PARK is not a closure and requires no intent", () => {
+describe("P34 RED 4 — 无假阳性：PARK 不是封闭且不需要任何意图", () => {
   let h: Harness;
   beforeEach(() => { h = makeHarness(); });
   afterEach(() => { h.db.close(); rmSync(h.tmp, { recursive: true, force: true }); });
 
-  it("mission-control `hold` parks the item and stages NO intent — the park path is untouched", async () => {
+  it("任务控制“保持”停放物品并表现出无意图 - 停放路径未受影响", async () => {
     const source = await h.repo.create({
       sourceSession: "src@rig",
       destinationSession: "dst@rig",
@@ -306,13 +304,12 @@ describe("P34 RED 4 — NO-FALSE-POSITIVE: a PARK is not a closure and requires 
 
     const parked = h.repo.getById(source.qitemId);
     expect(parked?.state).toBe("blocked");
-    // Non-terminal ⇒ nothing to wake. This falls out of the PRIMITIVE (it returns
-    // early on a non-terminal txn-visible source), not out of a condition written
-    // at the call site — which is why no park site needed an edit.
+    // 非终态 ⇒ 无物可唤醒。这从原语本身推出（它在非终态、事务可见的源上
+    // 提前返回），而非从调用点写的条件推出——这就是没有 park 点需要改动的原因。
     expect(intentFor(h, source.qitemId)).toBeNull();
   });
 
-  it("a human-gated workflow entry PARKS in-txn without tripping the seam", async () => {
+  it("人为门控的工作流程入口 PARKS in-txn 不会绊倒接缝", async () => {
     // The gate park is an in-transaction update on a freshly created packet — the
     // shape most likely to be mistaken for a closure by an update-keyed guard.
     const inst = await h.runtime.instantiate({
@@ -325,12 +322,12 @@ describe("P34 RED 4 — NO-FALSE-POSITIVE: a PARK is not a closure and requires 
   });
 });
 
-describe("P34 RED 4b — NO-FALSE-POSITIVE: a TERMINAL CLOSE with NO SUCCESSOR requires no intent", () => {
+describe("P34 红色 4b — 无误报：无后继者的终端关闭不需要任何意图", () => {
   let h: Harness;
   beforeEach(() => { h = makeHarness(); });
   afterEach(() => { h.db.close(); rmSync(h.tmp, { recursive: true, force: true }); });
 
-  it("mission-control `approve` closes done/no-follow-on with no successor — no intent, no throw", async () => {
+  it("任务控制“批准”关闭完成/无后续，没有后继者 - 没有意图，没有抛出", async () => {
     const source = await h.repo.create({
       sourceSession: "src@rig",
       destinationSession: "dst@rig",
@@ -352,7 +349,7 @@ describe("P34 RED 4b — NO-FALSE-POSITIVE: a TERMINAL CLOSE with NO SUCCESSOR r
     expect(intentFor(h, source.qitemId)).toBeNull();
   });
 
-  it("the resume path's exception closes carry no intents of their own", async () => {
+  it("恢复路径的异常关闭没有自己的意图", async () => {
     const inst = await h.runtime.instantiate({
       specPath: h.specPath,
       rootObjective: "x",
@@ -401,12 +398,12 @@ describe("P34 RED 4b — NO-FALSE-POSITIVE: a TERMINAL CLOSE with NO SUCCESSOR r
   });
 });
 
-describe("P34 — NO DOUBLE SEND: the staged intent is finalized, so recovery cannot re-send it", () => {
+describe("P34 — NO DOUBLE SEND：暂存意图已最终确定，因此恢复无法重新发送它", () => {
   let h: Harness;
   beforeEach(() => { h = makeHarness(); });
   afterEach(() => { h.db.close(); rmSync(h.tmp, { recursive: true, force: true }); });
 
-  it("after a wired close+create, the intent row is FINALIZED and a recovery drain delivers nothing", async () => {
+  it("在连线关闭+创建之后，意图行已完成并且恢复耗尽不会提供任何内容", async () => {
     const source = await h.repo.create({
       sourceSession: "src@rig",
       destinationSession: "dst@rig",
@@ -433,12 +430,11 @@ describe("P34 — NO DOUBLE SEND: the staged intent is finalized, so recovery ca
   });
 });
 
-describe("P34 — THE FALLBACK CONTROL: no intent store ⇒ the wake still happens", () => {
-  it("a writer with NO outbox attached still nudges, and does not silently skip", async () => {
-    // The docstring promised this fallback; the code did not implement it
-    // (deliverWakeIntent returns "skipped" with no store, and a skip is not an
-    // error, so the vanished nudge surfaced nowhere). This is the control that
-    // would have caught it.
+describe("P34 — 后备控制：无意图存储 ⇒ 唤醒仍然发生", () => {
+  it("没有附加发件箱的作家仍然会轻推，并且不会默默地跳过", async () => {
+    // docstring 承诺了这个回退；代码并未实现它（deliverWakeIntent 在无存储时
+    // 返回 "skipped"，而 skip 不是错误，故消失的 nudge 无处浮现）。这就是本可
+    // 捕获它的对照。
     const h = makeHarness();
     try {
       const sends: string[] = [];

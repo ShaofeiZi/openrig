@@ -1,12 +1,10 @@
-# Defect class: the fail-OPEN Locked→full-bypass inversion.
-# Marathon origin: a restart/restore path re-applied a pre-lock (permissive) posture,
-#   so a seat pinned Locked came back full-bypass — a security inversion that
-#   fails OPEN exactly when it must fail closed.
-# SEED (class: fail-open-restore): the seeded regression makes the restore path
-#   re-apply the seat's pre-lock posture instead of the persisted Locked one. The
-#   post-restore `expect policy_provenance` (still Locked) MUST catch it — the diff
-#   shows expected policy=Locked vs an observed full_bypass, naming the inversion.
-# Deps: policy attach + restore + policy_provenance surface (R-10). No emit.
+# 缺陷类别：fail-OPEN 的 Locked→full-bypass 反转。
+# Marathon 来源：restart/restore 路径重新应用锁定前的宽松姿态，导致固定为 Locked 的席位
+#   恢复为 full-bypass——恰恰在必须 fail closed 时发生 fail OPEN 的安全反转。
+# SEED（class: fail-open-restore）：种子回归使 restore 路径重新应用席位锁定前的姿态，
+#   而不是持久化的 Locked 姿态。恢复后的 `expect policy_provenance`（仍应为 Locked）
+#   必须发现它——diff 会显示预期 policy=Locked 与观察到的 full_bypass，并标明反转。
+# 依赖：policy attach + restore + policy_provenance 界面（R-10）。不使用 emit。
 scenario: locked-restore-never-permissive
 topology: ./policy-seat-stub.yaml
 steps:
@@ -19,7 +17,7 @@ steps:
       match:
         policy: Locked
   - restore: lead
-  # Fail-CLOSED: restore must never widen posture. Locked stays Locked.
+  # Fail-CLOSED：restore 绝不能放宽姿态。Locked 必须保持 Locked。
   - expect:
       surface: policy_provenance
       seat: lead

@@ -1,19 +1,17 @@
 import { selectedProject, projectMission, workSource, projectReadResponse } from "../domain/workspace/project-read.js";
-// Slice Story View v0 — HTTP routes.
+// Slice Story View v0——HTTP 路由。
 //
-// Endpoints:
-//   GET /api/slices?filter=all|active|done|blocked  — list (default: all)
-//   GET /api/slices/:name                            — full per-tab payload
-//   GET /api/slices/:name/proof-asset/:relPath{.+}   — serves screenshots /
-//                                                       videos / traces from
-//                                                       the slice's matched
-//                                                       dogfood-evidence dir
-//                                                       (path-traversal guarded)
+// 端点：
+//   GET /api/slices?filter=all|active|done|blocked  — 列表（默认：all）
+//   GET /api/slices/:name                            — 每标签页的完整负载
+//   GET /api/slices/:name/proof-asset/:relPath{.+}   — 提供该 slice 匹配的
+//                                                       dogfood-evidence 目录中的
+//                                                       截图 / 视频 / 追踪
+//                                                       （防路径穿越）
 //
-// Route-order discipline (per Phase A R1 lesson): static `/api/slices`
-// must be registered BEFORE dynamic `/:name` so the bare-list endpoint
-// isn't shadowed. The proof-asset route similarly goes BEFORE :name to
-// avoid `/proof-asset` being parsed as a slice-name.
+// 路由顺序纪律（按 Phase A R1 教训）：静态 `/api/slices` 必须在动态 `/:name`
+// 之前注册，免得裸列表端点被遮蔽。proof-asset 路由同理在 :name 之前，
+// 避免 `/proof-asset` 被解析成 slice 名。
 
 import { Hono } from "hono";
 import { readSliceReadiness, readProjectReadiness } from "../domain/proof/judgments.js";
@@ -33,37 +31,35 @@ const VALID_FILTERS = new Set<SliceStatus | "all">(["all", "active", "done", "bl
 export function slicesRoutes(): Hono {
   const app = new Hono();
 
-  // 1) Static literal `/` BEFORE dynamic `/:name` so the list isn't
-  //    shadowed by a slice named "list" or similar.
+  // 1) 静态字面量 `/` 在动态 `/:name` 之前，免得列表被一个叫 "list" 之类的 slice 遮蔽。
   app.get("/", (c) => {
     const deps = getDeps(c);
     if (!deps) return c.json({ error: "slices_indexer_unavailable" }, 503);
     if (!deps.indexer.isReady()) {
       return c.json({
         error: "slices_root_not_configured",
-        hint: "Run rig config init-workspace, or set workspace.slices_root to workspace/missions. Supported shape: missions/<mission>/slices/<slice>.",
+        hint: "运行 zrig config init-workspace，或把 workspace.slices_root 设为 workspace/missions。支持的形状：missions/<mission>/slices/<slice>。",
       }, 503);
     }
     const filter = (c.req.query("filter") ?? "all").toLowerCase();
     if (!VALID_FILTERS.has(filter as SliceStatus | "all")) {
       return c.json({
         error: "filter_invalid",
-        hint: `Unknown filter '${filter}'. Allowed: ${[...VALID_FILTERS].sort().join(", ")}.`,
+        hint: `未知 filter '${filter}'。允许值：${[...VALID_FILTERS].sort().join(", ")}。`,
       }, 400);
     }
     const refresh = c.req.query("refresh");
     if (refresh === "1" || refresh === "true") {
       deps.indexer.invalidate();
     }
-    // qitem-ccf87c0d corrective — ONE HTTP request is ONE composite
-    // operation: the list rebuild, the boundToWorkflow per-slice get loop,
-    // and the mission sidecar share ONE membership batch (pre-scope, each
-    // uncached get built its own 2-scan batch: 2+2N total queue scans).
+    // qitem-ccf87c0d 修正——一次 HTTP 请求是一个复合操作：列表重建、按 slice 的
+    // boundToWorkflow get 循环、以及 mission sidecar 共享同一个 membership 批次
+    // （改前，每个未缓存的 get 自建 2 扫描批次：总共 2+2N 次队列扫描）。
     return deps.indexer.withMembershipBatch(() => {
       const all = deps.indexer.list();
       let filtered = filter === "all" ? all : all.filter((s) => s.status === filter);
-      // Workflows in Spec Library v0: optional lens filter — narrow to
-      // slices bound to a workflow_instance of <name>:<version>.
+      // Spec Library v0 中的 Workflow：可选 lens 过滤——收窄到绑定了
+      // <name>:<version> 的 workflow_instance 的 slice。
       const boundToWorkflow = c.req.query("boundToWorkflow");
       let boundDiagnostic: { specName: string; specVersion: string; matched: number; total: number } | null = null;
       if (boundToWorkflow) {
@@ -71,7 +67,7 @@ export function slicesRoutes(): Hono {
         if (colonIdx === -1) {
           return c.json({
             error: "boundToWorkflow_invalid",
-            hint: "Format is boundToWorkflow=<specName>:<specVersion>",
+            hint: "格式为 boundToWorkflow=<specName>:<specVersion>",
           }, 400);
         }
         const specName = boundToWorkflow.slice(0, colonIdx);
@@ -79,10 +75,9 @@ export function slicesRoutes(): Hono {
         const db = deps.indexer.db;
         const before = filtered.length;
         filtered = filtered.filter((slice) => {
-          // Re-resolve binding per slice. The indexer's list payload
-          // doesn't carry workflowName so we do the join here. v0 cost
-          // is bounded by the slice count + a small SQL per slice (the
-          // membership batch is shared across the whole request).
+          // 按 slice 重新解析 binding。indexer 的列表负载不带 workflowName，
+          // 所以在这里做 join。v0 开销受 slice 数 + 每 slice 一条小 SQL 约束
+          // （membership 批次在整个请求间共享）。
           const sliceRecord = deps.indexer.get(slice.name);
           if (!sliceRecord || sliceRecord.qitemIds.length === 0) return false;
           const binding = findSliceWorkflowBinding(db, sliceRecord.qitemIds);
@@ -91,8 +86,7 @@ export function slicesRoutes(): Hono {
         });
         boundDiagnostic = { specName, specVersion, matched: filtered.length, total: before };
       }
-      // Sort by lastActivityAt DESC (most recently touched first); slices
-      // without activity sort to the end.
+      // 按 lastActivityAt 降序排序（最近动过的在前）；无活动的 slice 排到末尾。
       filtered.sort(compareByActivityDesc);
       const authored = deps.indexer.missionAuthoredStatuses();
       return c.json({
@@ -100,9 +94,8 @@ export function slicesRoutes(): Hono {
         totalCount: filtered.length,
         filter,
         boundToWorkflow: boundDiagnostic,
-        // VM-005 (release-0.4.7): additive authored mission-status sidecar so
-        // chip surfaces can honor authored-wins precedence without a second
-        // round-trip. The `slices` array itself is byte-untouched.
+        // VM-005 (release-0.4.7)：叠加 authored mission-status sidecar，使 chip 表面
+        // 无需第二次往返就能遵守 authored-wins 优先。`slices` 数组本身字节不动。
         missions: { ...authored, ...Object.fromEntries(readProjectReadiness(deps.indexer.slicesRoot).missions.map(m => [m.name, {
           ...authored[m.name],
           authoredStatus: m.historicalStatus ?? authored[m.name]?.authoredStatus ?? null,
@@ -112,10 +105,10 @@ export function slicesRoutes(): Hono {
     });
   });
 
-  // V0.3.1 slice 17 founder-walk-workspace-state-correctness (walk item 8 — Explorer auto-show): explicit cache invalidation surface.
-  // POST /api/slices/refresh drops both indexer caches so newly-created
-  // slice / mission folders are picked up without a daemon restart.
-  // Registered BEFORE the dynamic /:name routes so it isn't shadowed.
+  // V0.3.1 slice 17 founder-walk-workspace-state-correctness（walk item 8——Explorer 自动展示）：
+  // 显式缓存失效表面。POST /api/slices/refresh 清空两个 indexer 缓存，
+  // 使新建的 slice / mission 目录无需重启后台服务即可被拾取。
+  // 注册在动态 /:name 路由之前，免得被遮蔽。
   app.post("/refresh", (c) => {
     const deps = getDeps(c);
     if (!deps) return c.json({ error: "slices_indexer_unavailable" }, 503);
@@ -123,11 +116,10 @@ export function slicesRoutes(): Hono {
     return c.json({ ok: true });
   });
 
-  // 2) Proof asset serving — registered BEFORE /:name to keep /:name from
-  //    eating /proof-asset paths. Hono's :wildcard matches a single
-  //    segment; we parse the rest of the path manually for nested
-  //    relative paths like "screenshots/foo.png" or
-  //    "headed-browser/screenshots/bar.png".
+  // 2) proof 资产服务——注册在 /:name 之前，免得 /:name 吞掉 /proof-asset 路径。
+  //    Hono 的 :wildcard 只匹配单段；我们手动解析路径其余部分，
+  //    以支持 "screenshots/foo.png" 或 "headed-browser/screenshots/bar.png" 这类
+  //    嵌套相对路径。
   app.get("/:name/proof-asset/*", (c) => {
     const deps = getDeps(c);
     if (!deps) return c.json({ error: "slices_indexer_unavailable" }, 503);
@@ -136,8 +128,8 @@ export function slicesRoutes(): Hono {
     if (!slice || !slice.proofPacket) {
       return c.json({ error: "proof_packet_not_found" }, 404);
     }
-    // Hono path: c.req.path = "/api/slices/<name>/proof-asset/<rest>".
-    // Pull everything after "/proof-asset/".
+    // Hono 路径：c.req.path = "/api/slices/<name>/proof-asset/<rest>"。
+    // 取 "/proof-asset/" 之后的全部内容。
     const fullPath = c.req.path;
     const marker = `/proof-asset/`;
     const idx = fullPath.indexOf(marker);
@@ -153,8 +145,8 @@ export function slicesRoutes(): Hono {
     return fileAssetResponse(abs, contentType, c.req.header("Range"));
   });
 
-  // 3) Doc serving for the Docs tab — markdown content of a single file
-  //    inside the slice folder. Path-traversal guarded by the projector.
+  // 3) Docs 标签页的文档服务——slice 文件夹内单个文件的 markdown 内容。
+  //    由 projector 防路径穿越。
   app.get("/:name/doc/*", (c) => {
     const deps = getDeps(c);
     if (!deps) return c.json({ error: "slices_indexer_unavailable" }, 503);
@@ -172,7 +164,7 @@ export function slicesRoutes(): Hono {
     return c.json({ relPath, content });
   });
 
-  // 4) Dynamic `/:name` LAST so the literal routes above are not shadowed.
+  // 4) 动态 `/:name` 最后，免得上面的字面量路由被遮蔽。
   app.get("/:name", (c) => {
     let deps = getDeps(c);
     if (!deps) return c.json({ error: "slices_indexer_unavailable" }, 503);

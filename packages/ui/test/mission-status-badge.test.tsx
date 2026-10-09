@@ -1,4 +1,4 @@
-// V1 attempt-3 Phase 3 — MissionStatusBadge tests (SC-26).
+// V1 attempt-3 Phase 3——MissionStatusBadge 测试（SC-26）。
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -11,12 +11,17 @@ describe("MissionStatusBadge", () => {
   it("renders with status label", () => {
     render(<MissionStatusBadge status="active" />);
     expect(screen.getByTestId("mission-status-active")).toBeTruthy();
-    expect(screen.getByText("active")).toBeTruthy();
+    expect(screen.getByText("进行中")).toBeTruthy();
   });
 
   it("supports custom label", () => {
     render(<MissionStatusBadge status="shipped" label="DELIVERED" />);
     expect(screen.getByText("DELIVERED")).toBeTruthy();
+  });
+
+  it("aria-label defaults to the Chinese status label matching visible text", () => {
+    render(<MissionStatusBadge status="active" />);
+    expect(screen.getByTestId("mission-status-active").getAttribute("aria-label")).toBe("进行中");
   });
 
   it("status=blocked applies warning border", () => {

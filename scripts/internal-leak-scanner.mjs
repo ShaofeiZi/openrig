@@ -1,5 +1,5 @@
 export const INTERNAL_LEAK_REMEDY =
-  "Move the detail to an internal sidecar, fence it, genericize it, or keep the whole file host-only.";
+  "把该细节移到内部 sidecar 并加围栏、泛化处理，或让整个文件仅在宿主侧可见。";
 
 export function scanInternalLeaks({ path, bytes, rules }) {
   const normalizedPath = path.replaceAll("\\", "/");
@@ -51,11 +51,11 @@ export function scanInternalLeaks({ path, bytes, rules }) {
 
 export function buildInternalLeakMessage(findings) {
   return [
-    "Internal content leak detected:",
+    "检测到内部内容泄漏：",
     ...findings.map(
-      ({ file, token, line }) => `  ${file}: line ${line}: ${token}`,
+      ({ file, token, line }) => `  ${file}：第 ${line} 行：${token}`,
     ),
-    `Remedy: ${INTERNAL_LEAK_REMEDY}`,
+    `修复建议：${INTERNAL_LEAK_REMEDY}`,
   ].join("\n");
 }
 

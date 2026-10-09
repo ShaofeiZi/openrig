@@ -1,11 +1,10 @@
-// OPR.0.4.2.17 — topology graph "collapse to one coordinate" regression.
+// OPR.0.4.2.17——拓扑图"塌陷到单一坐标"回归。
 //
-// Bug: on the 30s refetch the multi-rig graph collapsed every pod+agent node
-// onto a single coordinate. Root: hybrid-layout.ts layoutWithDagre fell back to
-// a blanket `{x:0,y:0}` for any node dagre returned missing/degenerate, so a
-// degenerate refetch tick stacked everything on the origin. Fix: never collapse
-// — on degenerate dagre output lay a deterministic NON-overlapping fallback so
-// positions stay DISTINCT. These assert that invariant at the layout layer.
+// Bug：30s 重取时多 rig 图把每个 pod+agent 节点
+// 塌到单一坐标。根因：hybrid-layout.ts layoutWithDagre 对 dagre 返回
+// 缺失/退化的任何节点一律回退 `{x:0,y:0}`，故退化重取 tick
+// 把一切堆叠到原点。修复：绝不塌陷——对退化 dagre 输出铺确定性的
+// 非重叠 fallback，使位置保持互异。这些在布局层断言该不变量。
 
 import { describe, expect, it } from "vitest";
 import { __test_internals, layoutHybridRig } from "../src/lib/hybrid-layout.js";

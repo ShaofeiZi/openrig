@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/scope/dot-id.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/scope/scaffold-placeholder.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/scope/scope-approve.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/scope/node-file.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/scope/plan-lock-artifacts.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/scope/scope-audit.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/steering/health-summary.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/scope/logical-checkbox.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/slices/qitem-membership.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/terminal/cmux-provider-adapter.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/terminal/herdr-adapter.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/steering/steering-composer.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/scope/scope-view-projection.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/scope/types.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/terminal/terminal-service.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/slices/slice-indexer.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/terminal/terminal-views-store.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/terminal/terminal-provider.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/slices/slice-detail-projector.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/terminal/herdr-transport.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

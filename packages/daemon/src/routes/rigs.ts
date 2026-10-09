@@ -40,11 +40,10 @@ import type { SelfAttachService } from "../domain/self-attach-service.js";
 
 export const rigsRoutes = new Hono();
 
-// PL-019 item 5: read-side join helper. Returns map of
-// destination_session → in-progress qitems (capped at MAX_QITEMS_PER_NODE
-// per node), keyed by canonicalSessionName so the route can stitch into
-// the InventoryOverlay. Body is excerpted to stay phone-friendly in
-// tooltip / drawer surfaces (item 5's UI consumers).
+// PL-019 第 5 项：读取侧联结辅助函数。返回 destination_session → in-progress
+// qitem 的映射（每个节点最多 MAX_QITEMS_PER_NODE 条），并以
+// canonicalSessionName 为键，便于路由将结果拼入 InventoryOverlay。正文会截断，
+// 以便第 5 项的 UI 使用方在手机端的工具提示和抽屉中展示。
 const MAX_QITEMS_PER_NODE = 3;
 const BODY_EXCERPT_MAX_CHARS = 80;
 
@@ -90,11 +89,10 @@ function normalizeExpansionPodFragment(raw: Record<string, unknown>): ExpansionP
     summary: typeof raw["summary"] === "string" ? raw["summary"] : undefined,
     members: members.map((member) => {
       const m = (member ?? {}) as Record<string, unknown>;
-      // OPR.0.5.6.3 presence invariant: track KEY PRESENCE, not value shape —
-      // any present sessionSource/session_source (null, primitive, mode-only,
-      // ref:null, unknown mode, malformed ref fields) must reach the ONE
-      // canonical validator; only a truly absent key stays absent (the
-      // permission_policy R2 precedent, applied to session_source).
+      // OPR.0.5.6.3 存在性不变量：跟踪键是否存在，而非值的形态。只要出现了
+      // sessionSource/session_source（包括 null、原始值、仅有 mode、ref:null、
+      // 未知 mode 或畸形 ref 字段），就必须交给唯一的规范校验器；只有真正不存在的键
+      // 才保持缺省（沿用 permission_policy R2 的先例，并应用到 session_source）。
       const hasSessionSource = "sessionSource" in m || "session_source" in m;
       const rawSessionSource: unknown = "sessionSource" in m ? m["sessionSource"] : m["session_source"];
       let sessionSource: import("../domain/types.js").SessionSourceSpec | undefined;
@@ -117,11 +115,11 @@ function normalizeExpansionPodFragment(raw: Record<string, unknown>): ExpansionP
               sessionSource = { mode: "rebuild", ref: { kind: "artifact_set", value: paths } };
             }
           } else if (mode === "agent_image") {
-            // OPR.0.5.6.3 repair: agent_image rides the ingress like fork/rebuild.
-            // Valid v0 shape (image_name kind, non-empty string value, string|number
-            // version) constructs typed with SCHEMA-PARITY String() coercion, exactly
-            // like rigspec-schema.ts normalize (YAML `version: 3` arrives as a JSON
-            // number; omitting it would recreate the silent-default defect).
+            // OPR.0.5.6.3 修复：agent_image 与 fork/rebuild 一样通过该入口。
+            // 合法的 v0 形态（kind 为 image_name、value 为非空字符串、version 为
+            // string|number）会按 SCHEMA-PARITY 规则用 String() 转换并构造类型值，
+            // 与 rigspec-schema.ts 的 normalize 完全一致（YAML 中的 `version: 3`
+            // 会以 JSON 数字进入；若忽略它，就会重现静默采用默认值的缺陷）。
             const versionRaw = refRec["version"];
             const validValue = kind === "image_name"
               && typeof refRec["value"] === "string" && refRec["value"].trim() !== "";
@@ -137,9 +135,8 @@ function normalizeExpansionPodFragment(raw: Record<string, unknown>): ExpansionP
           }
         }
       }
-      // Presence fallthrough: a present value that did not normalize to a valid
-      // typed shape carries RAW so the canonical validator rejects it structurally
-      // — never converted to absence.
+      // 存在性兜底：若已有值无法规范化为合法的类型形态，就原样携带 RAW 值，
+      // 让规范校验器按结构拒绝；绝不能把它转换为缺省。
       if (hasSessionSource && sessionSource === undefined) {
         sessionSource = rawSessionSource as import("../domain/types.js").SessionSourceSpec;
       }
@@ -161,9 +158,9 @@ function normalizeExpansionPodFragment(raw: Record<string, unknown>): ExpansionP
               : undefined,
         cwd: typeof m["cwd"] === "string" ? m["cwd"] : undefined,
         model: typeof m["model"] === "string" ? m["model"] : undefined,
-        // R2 (4ac243c3): PRESERVE raw presence — a present-invalid value (null, number,
-        // object, …) must reach the canonical RigSpec validator as-is and reject there;
-        // only a truly ABSENT key stays absent. No route-local validation, no coercion.
+        // R2 (4ac243c3)：保留原始存在性。已存在但无效的值（null、number、
+        // object 等）必须原样交给规范 RigSpec 校验器并由其拒绝；只有真正不存在的键
+        // 才保持缺省。这里不做路由级校验，也不做类型转换。
         ...("permissionPolicy" in m
           ? { permissionPolicy: m["permissionPolicy"] }
           : "permission_policy" in m
@@ -176,8 +173,8 @@ function normalizeExpansionPodFragment(raw: Record<string, unknown>): ExpansionP
               ? m["restore_policy"]
               : undefined,
         label: typeof m["label"] === "string" ? m["label"] : undefined,
-        // Presence-governed, never truthiness: null/false/primitive raw values
-        // must survive to canonical validation, not vanish at a truthy check.
+        // 以存在性而非真值判断：null、false 或原始类型的原值必须保留到规范校验，
+        // 不能因真值检查而消失。
         ...(hasSessionSource ? { sessionSource } : {}),
       };
     }),
@@ -210,20 +207,19 @@ function getSelfAttachService(c: { get: (key: string) => unknown }): SelfAttachS
   return c.get("selfAttachService" as never) as SelfAttachService | undefined;
 }
 
-// GET /api/rigs/summary — MUST be registered before /:id to avoid Hono resolving "summary" as a rig ID
+// GET /api/rigs/summary — 必须在 /:id 之前注册，避免 Hono 将 "summary" 解析为工作组 ID。
 rigsRoutes.get("/summary", (c) => {
   const repo = getRepo(c);
-  // OPR.0.3.3.19 - default excludes archived; ?includeArchived=true / ?archived=only opt in.
+  // OPR.0.3.3.19——默认排除已归档项；通过 ?includeArchived=true / ?archived=only 显式启用。
   const includeArchived = c.req.query("includeArchived") === "true";
   const archivedOnly = c.req.query("archived") === "only";
-  // slice-04: the WHOLE response (summaries + scoped inventory fold + enrichment +
-  // c.json) runs as ONE cooperative lane job shared with /api/ps, so a concurrent
-  // burst yields the event loop between jobs and /healthz stays responsive. Only the
-  // query flags are parsed before the lane.
-  //   - The inventory fold is SCOPED to the rigs THIS request returns (default
-  //     active-only; archived variants pass their archived rig-ids), so the per-node
-  //     fold never widens to excluded rigs — one fleet startup + one restore scan.
-  //   - Live per request; NO cache/staleness (getRigSummaries + fold read live db).
+  // slice-04：整个响应（摘要、限定范围的清单折叠、充实数据以及 c.json）会作为
+  // 一个协作式通道任务运行，并与 /api/ps 共享通道。这样并发突发时，每个任务之间
+  // 都会让出事件循环，使 /healthz 保持可响应。进入通道前只解析查询标志。
+  //   - 清单折叠范围仅限本次请求返回的工作组（默认仅活跃项；归档变体会传入其
+  //     已归档工作组 ID），因此逐节点折叠绝不会扩展到被排除的工作组；全舰队只需
+  //     一次启动扫描和一次恢复扫描。
+  //   - 每次请求都读取实时数据；没有缓存或陈旧数据（getRigSummaries 与折叠均读实时 DB）。
   return projectionLane.run(() => {
     const summaries = repo.getRigSummaries({ includeArchived, archivedOnly });
     const invByRig = getNodeInventoryForRigs(repo.db, new Set(summaries.map((s) => s.id)));
@@ -231,7 +227,7 @@ rigsRoutes.get("/summary", (c) => {
       const inventory = invByRig.get(s.id) ?? [];
       const lifecycleState = deriveRigLifecycleState(inventory.map((e) => e.lifecycleState));
       const agents = inventory.filter((e) => e.nodeKind === "agent");
-      // Presence is separate from lifecycle/attention, and uses this same inventory fold.
+      // 存活性与生命周期/注意项相互独立，并复用同一次清单折叠。
       const hasLiveAgents = agents.some((e) => e.sessionStatus === "running" || e.sessionStatus === "idle")
         ? true : agents.every((e) => e.sessionStatus === null || e.sessionStatus === "stopped" || e.sessionStatus === "exited") ? false : null;
       return { ...s, lifecycleState, hasLiveAgents };
@@ -240,31 +236,31 @@ rigsRoutes.get("/summary", (c) => {
   });
 });
 
-// OPR.0.4.3.22 — GET /api/rigs/:id/status — the composed rig-status object.
-// A pure FOLD (composeRigStatus) of four SHIPPED signals: ps-lifecycle +
-// restore-plan (read-only forecast) + restore-check readiness + kernel-status
-// (kernel rig only). Status is NEVER inferred from pane text or daemon /healthz;
-// `src[]` carries the composed provenance (the non-inference contract). The fold
-// preserves per-seat truth — a rig never globally flips to fresh (the LOCK).
+// OPR.0.4.3.22 — GET /api/rigs/:id/status — 组合后的工作组状态对象。
+// 它通过纯折叠（composeRigStatus）组合四个已交付信号：ps-lifecycle、
+// restore-plan（只读预测）、restore-check 就绪状态，以及 kernel-status
+//（仅 kernel 工作组）。状态绝不根据窗格文本或后台服务 /healthz 推断；`src[]`
+// 携带组合后的来源信息（即禁止推断契约）。折叠保留逐席位事实，工作组绝不会
+// 整体切换为 fresh（锁定规则）。
 rigsRoutes.get("/:id/status", (c) => {
   const repo = getRepo(c);
   const rig = repo.getRig(c.req.param("id"));
-  if (!rig) return c.json({ error: `Rig "${c.req.param("id")}" not found` }, 404);
+  if (!rig) return c.json({ error: `未找到工作组 "${c.req.param("id")}"` }, 404);
 
   const snapshotRepo = c.get("snapshotRepo" as never) as SnapshotRepository;
   const snapshot = snapshotRepo.findLatestRestoreUsable(rig.rig.id) ?? null;
-  // Read-only per-seat forecast (mutated:false) — the restore-plan signal.
+  // 逐席位只读预测（mutated:false），即 restore-plan 信号。
   const plan = buildRestorePlanPreview(rig, snapshot, collectPreviewSessionRows(repo.db, rig, snapshot), undefined, Date.now(), readFreshOccupantRelations(repo.db, rig.rig.id));
 
-  // ps-lifecycle — per-node lifecycleState (never from pane text).
+  // ps-lifecycle：逐节点 lifecycleState（绝不来自窗格文本）。
   const nodes: SeatLifecycleInput[] = getNodeInventory(repo.db, rig.rig.id).map((e) => ({
     logicalId: e.logicalId,
     runtime: e.runtime,
     lifecycleState: e.lifecycleState,
   }));
 
-  // restore-check readiness — the RecoveryPlan status. Defensive: a probe throw
-  // contributes nothing (fold still reads plan + lifecycle) rather than 500-ing.
+  // restore-check 就绪状态，即 RecoveryPlan 状态。防御性处理：探测抛错时不提供该信号，
+  // 折叠仍读取 plan 与 lifecycle，而不是返回 500。
   let recovery: RecoveryPlan | null = null;
   try {
     recovery = createRestoreCheckService(repo, snapshotRepo)
@@ -274,8 +270,8 @@ rigsRoutes.get("/:id/status", (c) => {
     recovery = null;
   }
 
-  // kernel-status — folded ONLY for the kernel rig, from the boot tracker.
-  // NEVER inferred from daemon /healthz (guard 4).
+  // kernel-status：仅为 kernel 工作组折叠，来源是启动跟踪器。
+  // 绝不根据后台服务 /healthz 推断（守卫 4）。
   const isKernel = rig.rig.name === "kernel";
   let kernelState: KernelState | null = null;
   if (isKernel) {
@@ -288,16 +284,15 @@ rigsRoutes.get("/:id/status", (c) => {
   );
 });
 
-// OPR.0.4.3.22 — POST /api/rigs/:id/launch-plan — the READ-ONLY per-seat plan.
-// The launch/recovery modal fetches this BEFORE any mutation. This route NEVER
-// restores, creates/kills/replaces/resumes a session, writes a projection, or
-// captures a snapshot — it only forecasts (buildRestorePlanPreview, mutated:false).
-// Optional freshLogicalIds forecasts the fresh-primed plan for an explicit fresh
-// choice (the LOCK: fresh is only ever a per-seat list, never a global flip).
+// OPR.0.4.3.22 — POST /api/rigs/:id/launch-plan — 逐席位只读计划。
+// 启动/恢复弹窗会在任何变更之前获取该计划。此路由绝不会恢复、创建/终止/替换/
+// 续接会话，也不会写投影或捕获快照；它只做预测
+//（buildRestorePlanPreview，mutated:false）。可选的 freshLogicalIds 会针对显式
+// fresh 选择预测 fresh-primed 计划（锁定规则：fresh 始终只是逐席位列表，绝非全局切换）。
 rigsRoutes.post("/:id/launch-plan", async (c) => {
   const repo = getRepo(c);
   const rig = repo.getRig(c.req.param("id"));
-  if (!rig) return c.json({ error: `Rig "${c.req.param("id")}" not found` }, 404);
+  if (!rig) return c.json({ error: `未找到工作组 "${c.req.param("id")}"` }, 404);
 
   const body: Record<string, unknown> = await c.req.json().catch(() => ({}));
   const freshLogicalIds = Array.isArray(body["freshLogicalIds"])
@@ -316,14 +311,14 @@ rigsRoutes.post("/", async (c) => {
   const body: Record<string, unknown> = await c.req.json().catch(() => ({}));
   const name = body["name"];
   if (!name || typeof name !== "string") {
-    return c.json({ error: "name is required" }, 400);
+    return c.json({ error: "name 为必填项" }, 400);
   }
   const rig = getRepo(c).createRig(name);
   return c.json(rig, 201);
 });
 
 rigsRoutes.get("/", (c) => {
-  // OPR.0.3.3.19 - default excludes archived; ?includeArchived=true / ?archived=only opt in.
+  // OPR.0.3.3.19——默认排除已归档项；通过 ?includeArchived=true / ?archived=only 显式启用。
   const includeArchived = c.req.query("includeArchived") === "true";
   const archivedOnly = c.req.query("archived") === "only";
   const rigs = getRepo(c).listRigs({ includeArchived, archivedOnly });
@@ -333,7 +328,7 @@ rigsRoutes.get("/", (c) => {
 rigsRoutes.get("/:id", (c) => {
   const rig = getRepo(c).getRig(c.req.param("id"));
   if (!rig) {
-    return c.json({ error: "rig not found" }, 404);
+    return c.json({ error: "未找到工作组" }, 404);
   }
   return c.json(rig);
 });
@@ -341,35 +336,33 @@ rigsRoutes.get("/:id", (c) => {
 rigsRoutes.get("/:id/graph", async (c) => {
   const rig = getRepo(c).getRig(c.req.param("id"));
   if (!rig) {
-    return c.json({ error: "rig not found" }, 404);
+    return c.json({ error: "未找到工作组" }, 404);
   }
   const rigId = c.req.param("id");
   const sessions = getSessionRegistry(c).getSessionsForRig(rigId);
-  // Overlay inventory data for enriched graph fields.
+  // 叠加清单数据，以填充图中的扩展字段。
   const ctxStore = c.get("contextUsageStore" as never) as ContextUsageStore | undefined;
   const transcriptStore = c.get("transcriptStore" as never) as TranscriptStore | undefined;
   const inventory = ctxStore
     ? getNodeInventoryWithContext(getRepo(c).db, rigId, ctxStore, transcriptStore)
     : getNodeInventory(getRepo(c).db, rigId);
 
-  // PL-019 item 4: enrich inventory with agentActivity at graph-payload time
-  // so UI consumers receive activity in a single fetch (no separate
-  // /api/rigs/:id/nodes round-trip just to color the topology dots).
+  // PL-019 第 4 项：生成图载荷时，用 agentActivity 充实清单，使 UI 使用方一次请求
+  // 就能获得活动数据，无须仅为拓扑圆点着色再往返请求 /api/rigs/:id/nodes。
   const tmuxAdapter = c.get("tmuxAdapter" as never) as TmuxAdapter | undefined;
   const agentActivityStore = c.get("agentActivityStore" as never) as AgentActivityStore | undefined;
-  // OPR.0.4.3 healthz-wedge amplification fix: cheap by default (no per-node tmux
-  // capture) — the 30s topology poll colors dots from the snapshot (running/idle) +
-  // hook activity; ?full=true opts into the per-node needs_input capture.
+  // OPR.0.4.3 healthz 阻塞放大修复：默认采用低成本路径（不逐节点捕获 tmux）。
+  // 30 秒一次的拓扑轮询根据快照（running/idle）和 hook 活动为圆点着色；
+  // ?full=true 才会启用逐节点 needs_input 捕获。
   const graphFull = c.req.query("full") === "true";
   const seatStructuralActivityService = c.get("seatStructuralActivityService" as never) as SeatStructuralActivityService | undefined;
-  // ACTIVITY D1+D2 — resolved BEFORE attachAgentActivity now, because the ACTIVITY ladder reads the
-  // same motion observation the TERMINAL column reads. Order matters only for this declaration.
+  // ACTIVITY D1+D2：现在先于 attachAgentActivity 解析，因为 ACTIVITY 判定阶梯读取的
+  // 动态观测与 TERMINAL 列相同；顺序只影响此处声明。
   //
-  // Sharing that observation does NOT collapse the slice-15 non-inference contract, which is between
-  // `terminalActive` and `hasAssignedWork` — ACTIVITY still reads no queue/assignment state. And the
-  // two surfaces can legitimately disagree: ACTIVITY re-ages the raw timestamp at read time while
-  // TERMINAL projects the poll-time boolean (see the sessions route for why that gap is the
-  // stale-cache protection rather than an inconsistency).
+  // 共享该观测不会破坏 slice-15 中 `terminalActive` 与 `hasAssignedWork` 之间的
+  // 禁止推断契约；ACTIVITY 仍不读取队列或分配状态。两个界面出现差异是合法的：
+  // ACTIVITY 会在读取时按原始时间戳重新计算时效，而 TERMINAL 投影轮询时的布尔值。
+  // 此差异是防止陈旧缓存的保护，而非不一致，原因详见 sessions 路由。
   const seatActivityService = c.get("seatActivityService" as never) as SeatActivityService | undefined;
   const inventoryWithActivityOnly = tmuxAdapter
     ? await attachAgentActivity(inventory, { ...inventoryCaptureOptions(getRepo(c).db, c.get("shadowCapture" as never) as ShadowCapture | undefined), tmuxAdapter, activityStore: agentActivityStore, structuralActivity: seatStructuralActivityService, seatActivity: seatActivityService, captureFallback: graphFull })
@@ -379,10 +372,9 @@ rigsRoutes.get("/:id/graph", async (c) => {
     seatActivity: seatActivityService,
   });
 
-  // PL-019 item 5: read-side join for active-qitem enrichment. Cheap by
-  // virtue of the existing idx_queue_items_destination_state index. The
-  // helper is exported so it can be unit-tested without spinning up the
-  // full route stack.
+  // PL-019 第 5 项：通过读取侧联结补充 active qitem。现有索引
+  // idx_queue_items_destination_state 使该操作成本很低。辅助函数会导出，
+  // 因而无须启动完整路由栈即可做单元测试。
   const currentQitemsBySession = loadCurrentQitemsForSessions(
     getRepo(c).db,
     inventoryWithActivity
@@ -433,14 +425,14 @@ rigsRoutes.delete("/:id", async (c) => {
   const repo = getRepo(c);
   const eventBus = c.get("eventBus" as never) as EventBus;
 
-  // Only emit event + delete if rig exists
+  // 仅在工作组存在时发送事件并删除。
   const rig = repo.getRig(rigId);
   if (!rig) {
     return c.body(null, 204);
   }
 
-  // Atomic: event persist + rig delete in one transaction
-  // Uses eventBus.db (same handle as rigRepo.db — enforced by shared AppDeps)
+  // 原子操作：在同一事务中持久化事件并删除工作组。
+  // 使用 eventBus.db（与 rigRepo.db 是同一句柄，由共享 AppDeps 保证）。
   const txn = eventBus.db.transaction(() => {
     const persisted = eventBus.persistWithinTransaction({
       type: "rig.deleted",
@@ -460,33 +452,33 @@ rigsRoutes.delete("/:id", async (c) => {
     return guard ? await guard.lifecycle(rig.nodes.map(node => node.id), remove) : await remove();
   } catch (err) {
     if (err instanceof DeliveryGuardError) throw err;
-    return c.json({ error: "delete failed" }, 500);
+    return c.json({ error: "删除失败" }, 500);
   }
 });
 
-// OPR.0.3.3.19 - POST /api/rigs/:id/archive - soft, reversible archive (NOT delete).
-// The rigs row + topology rows + snapshots are RETAINED; only `archived_at` is set.
+// OPR.0.3.3.19 - POST /api/rigs/:id/archive——软归档且可逆（不是删除）。
+// 保留工作组行、拓扑行和快照，只设置 `archived_at`。
 rigsRoutes.post("/:id/archive", async (c) => {
   const rigId = c.req.param("id");
   const repo = getRepo(c);
   const eventBus = c.get("eventBus" as never) as EventBus;
   const rig = repo.getRig(rigId);
   if (!rig) {
-    return c.json({ error: "rig not found" }, 404);
+    return c.json({ error: "未找到工作组" }, 404);
   }
   const body: Record<string, unknown> = await c.req.json().catch(() => ({}));
   const force = body["force"] === true;
 
-  // AC-6 running-rig guard (daemon-layer, so every client inherits it): a
-  // running/degraded rig requires --force, with a 3-part honest error.
+  // AC-6 运行中工作组守卫（位于后台服务层，因此所有客户端都会继承）：
+  // running/degraded 工作组需要 --force，否则返回包含三部分事实的明确错误。
   const inventory = getNodeInventory(repo.db, rigId);
   const lifecycleState = deriveRigLifecycleState(inventory.map((e) => e.lifecycleState));
   if ((lifecycleState === "running" || lifecycleState === "degraded") && !force) {
     return c.json({
       error: {
-        fact: `Rig '${rig.rig.name}' is ${lifecycleState} (it has live sessions).`,
-        consequence: "Archiving it would hide a rig with running seats from the default view.",
-        action: `Stop it first ('rig down ${rigId}'), or re-run with --force to archive anyway.`,
+        fact: `工作组 '${rig.rig.name}' 处于 ${lifecycleState}（有存活会话）。`,
+        consequence: "归档会把有运行中席位的工作组从默认视图隐藏。",
+        action: `先停掉它（'zrig down ${rigId}'），或带 --force 重跑以强制归档。`,
       },
     }, 409);
   }
@@ -503,18 +495,18 @@ rigsRoutes.post("/:id/archive", async (c) => {
     if (result.persisted) eventBus.notifySubscribers(result.persisted);
     return c.json({ ok: true, rigId, archived: result.changed });
   } catch {
-    return c.json({ error: "archive failed" }, 500);
+    return c.json({ error: "归档失败" }, 500);
   }
 });
 
-// OPR.0.3.3.19 - POST /api/rigs/:id/unarchive - reverse the archive flag.
+// OPR.0.3.3.19 - POST /api/rigs/:id/unarchive——撤销归档标志。
 rigsRoutes.post("/:id/unarchive", (c) => {
   const rigId = c.req.param("id");
   const repo = getRepo(c);
   const eventBus = c.get("eventBus" as never) as EventBus;
   const rig = repo.getRig(rigId);
   if (!rig) {
-    return c.json({ error: "rig not found" }, 404);
+    return c.json({ error: "未找到工作组" }, 404);
   }
   const result = eventBus.db.transaction(() => {
     const changed = repo.unarchiveRig(rigId);
@@ -527,12 +519,12 @@ rigsRoutes.post("/:id/unarchive", (c) => {
   return c.json({ ok: true, rigId, unarchived: result.changed });
 });
 
-// POST /api/rigs/:id/release — non-destructive release of claimed sessions
+// POST /api/rigs/:id/release——无损释放已认领的会话。
 rigsRoutes.post("/:id/release", async (c) => {
   const rigId = c.req.param("id")!;
   const rigLifecycleService = getRigLifecycleService(c);
   if (!rigLifecycleService) {
-    return c.json({ error: "Rig lifecycle service not available" }, 500);
+    return c.json({ error: "工作组生命周期服务不可用" }, 500);
   }
 
   const body: Record<string, unknown> = await c.req.json().catch(() => ({}));
@@ -554,12 +546,12 @@ rigsRoutes.post("/:id/release", async (c) => {
   }
 });
 
-// POST /api/rigs/:id/attach-self — attach the current shell/agent, tmux-backed or external
+// POST /api/rigs/:id/attach-self——挂接当前 shell/智能体，支持 tmux 和外部进程。
 rigsRoutes.post("/:id/attach-self", async (c) => {
   const rigId = c.req.param("id")!;
   const selfAttachService = getSelfAttachService(c);
   if (!selfAttachService) {
-    return c.json({ error: "Self-attach service not available" }, 500);
+    return c.json({ error: "自 attach 服务不可用" }, 500);
   }
 
   const body: Record<string, unknown> = await c.req.json().catch(() => ({}));
@@ -578,19 +570,19 @@ rigsRoutes.post("/:id/attach-self", async (c) => {
   const hasPodFields = podNamespace.length > 0 || memberName.length > 0 || runtime.length > 0;
 
   if (hasNodeTarget && hasPodFields) {
-    return c.json({ error: "Specify either logicalId or podNamespace + memberName + runtime" }, 400);
+    return c.json({ error: "请指定 logicalId，或指定 podNamespace + memberName + runtime" }, 400);
   }
   if (!hasNodeTarget && !hasPodFields) {
-    return c.json({ error: "Specify either logicalId or podNamespace + memberName + runtime" }, 400);
+    return c.json({ error: "请指定 logicalId，或指定 podNamespace + memberName + runtime" }, 400);
   }
   if (!hasNodeTarget && (!podNamespace || !memberName)) {
-    return c.json({ error: "podNamespace and memberName are required when attaching into a pod" }, 400);
+    return c.json({ error: "attach 进 pod 时 podNamespace 和 memberName 为必填项" }, 400);
   }
   if (attachmentType && attachmentType !== "tmux" && attachmentType !== "external_cli") {
-    return c.json({ error: "attachmentType must be 'tmux' or 'external_cli'" }, 400);
+    return c.json({ error: "attachmentType 必须是 'tmux' 或 'external_cli'" }, 400);
   }
   if (attachmentType === "tmux" && !tmuxSession) {
-    return c.json({ error: "tmuxSession is required when attachmentType is 'tmux'" }, 400);
+    return c.json({ error: "attachmentType 为 'tmux' 时 tmuxSession 为必填项" }, 400);
   }
 
   const context = attachmentType === "tmux" || tmuxSession
@@ -627,22 +619,21 @@ rigsRoutes.post("/:id/attach-self", async (c) => {
   }
 });
 
-// POST /api/rigs/:id/up — power-on an existing rig from its latest restore-usable snapshot
-// L3b: prefers `auto-pre-down` when present but falls back to the latest manual
-// snapshot whose structural metadata satisfies pre-validation. Echoes
-// `snapshotKind` so operators see which snapshot was used.
+// POST /api/rigs/:id/up——从最新的可恢复快照启动现有工作组。
+// L3b：存在 `auto-pre-down` 时优先使用，否则回退到结构元数据通过预校验的
+// 最新手动快照。响应会回显 `snapshotKind`，让操作人员知道实际使用了哪个快照。
 rigsRoutes.post("/:id/up", async (c) => {
   const rigId = c.req.param("id")!;
   const repo = getRepo(c);
   const rig = repo.getRig(rigId);
-  if (!rig) return c.json({ error: `Rig "${rigId}" not found. List rigs with: rig ps` }, 404);
+  if (!rig) return c.json({ error: `未找到工作组 "${rigId}"。用 zrig ps 列出工作组` }, 404);
 
-  // OPR.0.3.4.4 — this independent Explorer restore route previously parsed
-  // NO body, so plan:true was silently ignored and the route always mutated.
+  // OPR.0.3.4.4：此独立的 Explorer 恢复路由过去完全不解析请求体，导致
+  // plan:true 被静默忽略，路由总会执行变更。
   const body: Record<string, unknown> = await c.req.json().catch(() => ({}));
   const plan = body["plan"] === true;
-  // OPR.0.3.4.1 — thread freshLogicalIds so the id-based route supports
-  // the awaiting-decision fresh-prime retry (operation B).
+  // OPR.0.3.4.1：传递 freshLogicalIds，使基于 ID 的路由支持
+  // awaiting-decision 状态下的 fresh-prime 重试（操作 B）。
   const freshLogicalIds = Array.isArray(body["freshLogicalIds"])
     ? (body["freshLogicalIds"] as unknown[]).filter((v): v is string => typeof v === "string")
     : undefined;
@@ -663,15 +654,15 @@ rigsRoutes.post("/:id/up", async (c) => {
     const eligibility = assessCurrentStateRehydrateEligibility(repo.db, rig);
     if (!eligibility.ok) {
       return c.json({
-        error: `Rig "${rig.rig.name}" exists but ${staleSnapshot ? "its restore snapshots name an older occupant" : "has no restore-usable snapshot"} and current DB state is insufficient for rehydrate. Start fresh with: rig up <spec-path>`,
+        error: `工作组 "${rig.rig.name}" 存在，但 ${staleSnapshot ? "其恢复快照命名的是更早的占用者" : "没有可用恢复快照"}，且当前 DB 状态不足以 rehydrate。用 zrig up <spec-path> 全新启动`,
         code: "no_snapshot",
         blockers: eligibility.blockers,
       }, 404);
     }
   }
 
-  // OPR.0.3.4.4 — read-only plan gate BEFORE the auto-rehydrate capture
-  // (the capture is itself a mutation) and before restoreOrch.restore().
+  // OPR.0.3.4.4：只读计划守卫必须位于 auto-rehydrate 捕获之前
+  //（捕获本身会产生变更），也必须位于 restoreOrch.restore() 之前。
   if (plan) {
     return c.json(buildRestorePlanPreview(rig, snapshot ?? null, collectPreviewSessionRows(repo.db, rig, snapshot ?? null), undefined, Date.now(), readFreshOccupantRelations(repo.db, rig.rig.id)), 200);
   }
@@ -681,7 +672,7 @@ rigsRoutes.post("/:id/up", async (c) => {
     snapshotSelection = {
       ...summarizeSnapshot(snapshot),
       mode: "automatic",
-      rationale: "automatic rehydrate captured current eligible state because no current-occupant snapshot was usable",
+      rationale: "因无可用当前占用者快照，自动 rehydrate 捕获了当前合格状态",
       newerUsableAlternative: null,
     };
     capturedCurrentState = true;
@@ -689,7 +680,7 @@ rigsRoutes.post("/:id/up", async (c) => {
 
   const restoreOrch = c.get("restoreOrchestrator" as never) as RestoreOrchestrator | undefined;
   if (!restoreOrch) {
-    return c.json({ error: "Restore orchestrator not available" }, 500);
+    return c.json({ error: "恢复编排器不可用" }, 500);
   }
 
   const adapters = c.get("runtimeAdapters" as never) as Record<string, import("../domain/runtime-adapter.js").RuntimeAdapter> | undefined;
@@ -716,7 +707,7 @@ rigsRoutes.post("/:id/up", async (c) => {
     return c.json({ error: result.message, code: result.code }, result.code === "rig_not_stopped" ? 409 : 400);
   }
 
-  // Compute attach command from first running/resumed node (same logic as /api/up)
+  // 根据第一个 running/resumed 节点计算挂接命令（与 /api/up 逻辑相同）。
   const { getNodeInventory } = await import("../domain/node-inventory.js");
   const inventory = getNodeInventory(repo.db, rigId);
   const firstRunning = inventory.find((n) => n.canonicalSessionName && n.sessionStatus === "running");
@@ -732,25 +723,25 @@ rigsRoutes.post("/:id/up", async (c) => {
     nodes: result.result.nodes,
     warnings: capturedCurrentState
       ? [staleSnapshot
-          ? "Existing restore snapshots named an older occupant; captured current DB state as auto-rehydrate snapshot for reboot recovery."
-          : "No restore-usable snapshot existed; captured current DB state as auto-rehydrate snapshot for reboot recovery.", ...result.result.warnings]
+          ? "既有恢复快照命名的是更早占用者；已捕获当前 DB 状态作为 auto-rehydrate 快照用于重启恢复。"
+          : "无可用恢复快照；已捕获当前 DB 状态作为 auto-rehydrate 快照用于重启恢复。", ...result.result.warnings]
       : result.result.warnings,
     attachCommand,
   }, 200);
 });
 
-// POST /api/rigs/:rigId/expand — dynamic rig expansion
+// POST /api/rigs/:rigId/expand——动态扩容工作组。
 rigsRoutes.post("/:rigId/expand", async (c) => {
   const rigId = c.req.param("rigId")!;
   const expansionService = c.get("rigExpansionService" as never) as RigExpansionService | undefined;
   if (!expansionService) {
-    return c.json({ error: "Expansion service not available" }, 500);
+    return c.json({ error: "扩容服务不可用" }, 500);
   }
 
   const body: Record<string, unknown> = await c.req.json().catch(() => ({}));
   const pod = normalizeExpansionPodFragment((body["pod"] ?? {}) as Record<string, unknown>);
   if (!pod) {
-    return c.json({ error: "pod is required with id and members[]" }, 400);
+    return c.json({ error: "pod 为必填项，需带 id 和 members[]" }, 400);
   }
 
   const crossPodEdges = Array.isArray(body["crossPodEdges"]) ? body["crossPodEdges"] as Array<{ from: string; to: string; kind: string }> : undefined;
@@ -777,32 +768,31 @@ rigsRoutes.post("/:rigId/expand", async (c) => {
   return c.json(result, httpStatus);
 });
 
-// POST /api/rigs/:rigId/pods/:podNamespace/members — add a single member to an
-// EXISTING pod (OPR.0.3.3.24, the add_member converge op). Imperative sugar over
-// the converge interface; identity-migration-free. The member fragment uses the
-// spec snake_case field names (id, runtime, agent_ref, profile, cwd, ...).
+// POST /api/rigs/:rigId/pods/:podNamespace/members——向现有 Pod 添加单个成员
+//（OPR.0.3.3.24，即 add_member converge 操作）。这是 converge 接口的命令式语法糖，
+// 不涉及身份迁移。member 片段使用规格中的 snake_case 字段名
+//（id、runtime、agent_ref、profile、cwd 等）。
 rigsRoutes.post("/:rigId/pods/:podNamespace/members", async (c) => {
   const rigId = c.req.param("rigId")!;
   const podNamespace = decodeURIComponent(c.req.param("podNamespace")!);
   const podInstantiator = c.get("podInstantiator" as never) as PodRigInstantiator | undefined;
   if (!podInstantiator) {
-    return c.json({ error: "Pod instantiator not available" }, 500);
+    return c.json({ error: "Pod 实例化器不可用" }, 500);
   }
 
   const body: Record<string, unknown> = await c.req.json().catch(() => ({}));
   const member = body["member"];
   if (!member || typeof member !== "object" || Array.isArray(member)) {
-    return c.json({ error: "member is required (a member fragment with id, runtime, agent_ref)" }, 400);
+    return c.json({ error: "member 为必填项（带 id、runtime、agent_ref 的 member 片段）" }, 400);
   }
   const rigRoot = typeof body["rigRoot"] === "string" ? body["rigRoot"] : ".";
-  // Optional pod-local edges (from/to are member ids within the pod). Carried
-  // through to the converge op so declared topology intent is not dropped; the
-  // domain validates kinds + resolves endpoints + persists them (no edge-runtime
-  // behavior yet). A PRESENT-but-non-array edges field is rejected honestly,
-  // never silently treated as absent (governance FM2 no-silent-drop).
+  // 可选的 Pod 内部边（from/to 是 Pod 中的成员 ID）。这些边会传递给 converge 操作，
+  // 避免丢弃已声明的拓扑意图；领域层会校验 kind、解析端点并将其持久化
+  //（目前还没有边的运行时行为）。若 edges 字段已存在但不是数组，则明确拒绝，
+  // 绝不静默视为缺省（治理规则 FM2：不得静默丢弃）。
   const rawEdges = body["edges"];
   if (rawEdges !== undefined && rawEdges !== null && !Array.isArray(rawEdges)) {
-    return c.json({ ok: false, code: "validation_failed", errors: ["edges: must be an array of { from, to, kind }"] }, 400);
+    return c.json({ ok: false, code: "validation_failed", errors: ["edges：必须是 { from, to, kind } 数组"] }, 400);
   }
   const edges = Array.isArray(rawEdges)
     ? (rawEdges as Array<{ from: string; to: string; kind: string }>)
@@ -814,9 +804,9 @@ rigsRoutes.post("/:rigId/pods/:podNamespace/members", async (c) => {
     { kind: "add_member", pod: podNamespace, member: member as Record<string, unknown>, edges },
     rigRoot,
   );
-  // This route is the add_member sugar over the converge interface.
+  // 此路由是 converge 接口上 add_member 操作的语法糖。
   if (converged.kind !== "add_member" || !converged.supported) {
-    return c.json({ error: "Unexpected converge result for add_member" }, 500);
+    return c.json({ error: "add_member 返回了意外的 converge 结果" }, 500);
   }
   const outcome = converged.outcome;
 
@@ -836,8 +826,8 @@ rigsRoutes.post("/:rigId/pods/:podNamespace/members", async (c) => {
     }
   }
 
-  // 201 created. The node may still be failed/attention_required at launch; that
-  // is carried in outcome.result.node.status (mirrors expand's per-node status).
+  // 返回 201 created。节点在启动时仍可能处于 failed/attention_required；
+  // 该状态由 outcome.result.node.status 携带（与 expand 的逐节点状态一致）。
   return c.json(outcome, 201);
 });
 
@@ -848,7 +838,7 @@ rigsRoutes.delete("/:rigId/pods/:podRef", async (c) => {
   const fallbackDestination = c.req.query("fallback");
   const lifecycleService = c.get("rigLifecycleService" as never) as RigLifecycleService | undefined;
   if (!lifecycleService) {
-    return c.json({ error: "Lifecycle service not available" }, 500);
+    return c.json({ error: "生命周期服务不可用" }, 500);
   }
 
   const result = await lifecycleService.shrinkPod(rigId, podRef, { fallbackDestination });

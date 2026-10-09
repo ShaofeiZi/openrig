@@ -16,7 +16,7 @@ describe("001_core_schema", () => {
     db.close();
   });
 
-  it("creates rigs, nodes, and edges tables", () => {
+  it("创建 rigs、nodes 和 edges 表", () => {
     const tables = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
@@ -28,7 +28,7 @@ describe("001_core_schema", () => {
     expect(names).toContain("edges");
   });
 
-  it("can insert a rig", () => {
+  it("可以插入工作组", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run(
       "rig-1",
       "test-rig"
@@ -40,7 +40,7 @@ describe("001_core_schema", () => {
     expect(rig.name).toBe("test-rig");
   });
 
-  it("can insert nodes referencing a rig", () => {
+  it("可以插入引用工作组的节点", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run(
       "rig-1",
       "test-rig"
@@ -56,7 +56,7 @@ describe("001_core_schema", () => {
     expect(node.role).toBe("orchestrator");
   });
 
-  it("enforces FK: node must reference valid rig", () => {
+  it("强制执行外键：节点必须引用有效工作组", () => {
     expect(() =>
       db
         .prepare(
@@ -66,7 +66,7 @@ describe("001_core_schema", () => {
     ).toThrow();
   });
 
-  it("enforces unique (rig_id, logical_id)", () => {
+  it("强制 (rig_id, logical_id) 唯一", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run(
       "rig-1",
       "test-rig"
@@ -84,7 +84,7 @@ describe("001_core_schema", () => {
     ).toThrow();
   });
 
-  it("can insert edges referencing valid nodes", () => {
+  it("可以插入引用有效节点的边", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run(
       "rig-1",
       "test-rig"
@@ -106,7 +106,7 @@ describe("001_core_schema", () => {
     expect(edge.kind).toBe("delegates_to");
   });
 
-  it("enforces FK: edge must reference valid nodes", () => {
+  it("强制执行外键：边必须引用有效节点", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run(
       "rig-1",
       "test-rig"
@@ -124,7 +124,7 @@ describe("001_core_schema", () => {
     ).toThrow();
   });
 
-  it("rejects edges where source and target belong to different rigs", () => {
+  it("拒绝源节点和目标节点分属不同工作组的边", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run(
       "rig-1",
       "rig-one"
@@ -146,10 +146,10 @@ describe("001_core_schema", () => {
           "INSERT INTO edges (id, rig_id, source_id, target_id, kind) VALUES (?, ?, ?, ?, ?)"
         )
         .run("edge-1", "rig-1", "node-1", "node-2", "delegates_to")
-    ).toThrow(/same rig/);
+    ).toThrow(/同一个 rig/);
   });
 
-  it("rejects edges where rig_id does not match source node rig_id", () => {
+  it("拒绝 rig_id 与源节点 rig_id 不匹配的边", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run(
       "rig-1",
       "rig-one"
@@ -165,17 +165,17 @@ describe("001_core_schema", () => {
       "INSERT INTO nodes (id, rig_id, logical_id) VALUES (?, ?, ?)"
     ).run("node-2", "rig-1", "worker-b");
 
-    // Nodes are in rig-1 but edge claims rig-2
+    // 节点属于 rig-1，但边声明自己属于 rig-2。
     expect(() =>
       db
         .prepare(
           "INSERT INTO edges (id, rig_id, source_id, target_id, kind) VALUES (?, ?, ?, ?, ?)"
         )
         .run("edge-1", "rig-2", "node-1", "node-2", "delegates_to")
-    ).toThrow(/rig_id must match/);
+    ).toThrow(/rig_id 必须与源节点的 rig_id 匹配/);
   });
 
-  it("cascade deletes: deleting a rig removes its nodes and edges", () => {
+  it("级联删除：删除工作组时移除其节点和边", () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?)").run(
       "rig-1",
       "test-rig"

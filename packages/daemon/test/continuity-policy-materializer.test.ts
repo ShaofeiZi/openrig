@@ -25,8 +25,8 @@ const CLAUDE_SEAT = {
   mechanic: "operator-agent@kernel",
 };
 
-describe("continuity policy materializer (S20 P4)", () => {
-  it("materializes the apprentice strategy as exactly two calibrated watchdog registrations", () => {
+describe("连续性策略实现器 (S20 P4)", () => {
+  it("将学徒策略具体化为两个经过校准的看门狗注册", () => {
     const plan = materializeContinuityPolicy(CLAUDE_SEAT);
 
     expect(plan.jobs).toHaveLength(2);
@@ -35,11 +35,11 @@ describe("continuity policy materializer (S20 P4)", () => {
     expect(plan.jobs[1]?.requiresKey).toBe("prepare");
     expect(plan.jobs[0]!.thresholdBytes).toBeLessThan(plan.jobs[1]!.thresholdBytes);
     expect(plan.jobs[0]!.thresholdBytes).toBeGreaterThan(0);
-    expect(plan.docText).toMatch(/113K–153K tokens\/MB/);
-    expect(plan.docText).toMatch(/margin is the protection/i);
+    expect(plan.docText).toMatch(/每 MB 113K–153K token/);
+    expect(plan.docText).toMatch(/余量就是保护/i);
   });
 
-  it("turns the symbolic requires rung into the first durable job id", () => {
+  it("将符号 requires 层级转换为首个持久任务 ID", () => {
     const register = vi
       .fn()
       .mockReturnValueOnce({ jobId: "prepare-job" })
@@ -59,7 +59,7 @@ describe("continuity policy materializer (S20 P4)", () => {
     });
   });
 
-  it("reuses one complete nonterminal materialized pair instead of duplicating it on relaunch", () => {
+  it("重新启动时复用完整的非终态实体化组合而不重复创建", () => {
     const register = vi.fn();
     const plan = materializeContinuityPolicy(CLAUDE_SEAT);
     const existing = [
@@ -98,7 +98,7 @@ describe("continuity policy materializer (S20 P4)", () => {
     expect(register).not.toHaveBeenCalled();
   });
 
-  it("reconciles durable generated jobs to the current policy without reactivating an exact stopped shape", () => {
+  it("将持久产生的就业机会与当前政策相协调，而无需重新激活确切停止的形状", () => {
     const db = new Database(":memory:");
     try {
       migrate(db, ALL_MIGRATIONS);
@@ -171,7 +171,7 @@ describe("continuity policy materializer (S20 P4)", () => {
     }
   });
 
-  it("reconciles zero-job transitions through the product materializer across restart", () => {
+  it("跨重启通过产品实体化器对账零任务转换", () => {
     const db = new Database(":memory:");
     const { watchedFilePath, ...claudeSeat } = CLAUDE_SEAT;
     try {
@@ -207,7 +207,7 @@ describe("continuity policy materializer (S20 P4)", () => {
     }
   });
 
-  it("serializes both fire notices through the watchdog engine's actual spec parser", () => {
+  it("通过看门狗引擎的真实规范解析器序列化两条触发通知", () => {
     const parsed = materializeContinuityPolicy(CLAUDE_SEAT).jobs.map(
       (job) => parseWatchdogSpec(job.specYaml),
     );
@@ -225,7 +225,7 @@ describe("continuity policy materializer (S20 P4)", () => {
     });
   });
 
-  it("arms managed compaction as exactly one real prep-nudge registration", () => {
+  it("武器管理压实正是一种真正的预助推登记", () => {
     const plan = materializeContinuityPolicy({
       ...CLAUDE_SEAT,
       compactionStrategy: "managed-compaction",
@@ -241,11 +241,11 @@ describe("continuity policy materializer (S20 P4)", () => {
     const parsed = parseWatchdogSpec(plan.jobs[0]!.specYaml);
     expect(parsed.message).toMatch(/deposit-before-compaction|recap-write/i);
     expect(parsed.context).not.toHaveProperty("continuity_action");
-    expect(plan.docText).toMatch(/113K–153K tokens\/MB/);
-    expect(plan.docText).toMatch(/retun/i);
+    expect(plan.docText).toMatch(/每 MB 113K–153K token/);
+    expect(plan.docText).toMatch(/重新调整/i);
   });
 
-  it("registers generated jobs as pending when the first transcript sample has not arrived", () => {
+  it("首个 transcript 样本尚未到达时，将生成任务登记为 pending", () => {
     const apprentice = materializeContinuityPolicy({
       ...CLAUDE_SEAT,
       watchedFilePath: null,
@@ -262,7 +262,7 @@ describe("continuity policy materializer (S20 P4)", () => {
     expect([...apprentice.jobs, ...managed.jobs].every((job) => job.watchedFilePath === null)).toBe(true);
   });
 
-  it("creates one generation-keyed QueueRepository baton across a delivery retry", async () => {
+  it("在一次交付重试中创建一个一代键控的 QueueRepository 接力棒", async () => {
     const db = new Database(":memory:");
     try {
       migrate(db, ALL_MIGRATIONS);
@@ -292,7 +292,7 @@ describe("continuity policy materializer (S20 P4)", () => {
     }
   });
 
-  it("writes a saturation-honest managed width receipt on its S06 job and target generation", () => {
+  it("在 S06 任务及目标代际上写入如实反映饱和度的托管宽度回执", () => {
     const db = new Database(":memory:");
     try {
       migrate(db, ALL_MIGRATIONS);
@@ -345,7 +345,7 @@ describe("continuity policy materializer (S20 P4)", () => {
     }
   });
 
-  it("leaves non-managed compaction alone when no S06 receipt key exists", () => {
+  it("当不存在 S06 接收密钥时，单独保留非托管压缩", () => {
     const record = vi.fn();
     expect(recordManagedWidthReceipt({
       sessionName: "default-seat@rig",
@@ -359,21 +359,21 @@ describe("continuity policy materializer (S20 P4)", () => {
     expect(record).not.toHaveBeenCalled();
   });
 
-  it("refuses apprentice arming without a declared mechanic and teaches the exact repair", () => {
+  it("未声明 mechanic 时拒绝启用 apprentice，并提示精确修复方式", () => {
     expect(() => materializeContinuityPolicy({
       ...CLAUDE_SEAT,
       mechanic: undefined,
-    })).toThrow(/mechanic.*spec-default.*profile.*member.*continuity\/apprentice-cutover\.md/i);
+    })).toThrow(/mechanic.*spec-default.*profile.*成员.*continuity\/apprentice-cutover\.md/i);
   });
 
-  it("positive-matches Claude only and leaves native/default modes unarmed", () => {
+  it("仅正向匹配 Claude，并保留本机/默认模式未武装", () => {
     expect(materializeContinuityPolicy({ ...CLAUDE_SEAT, runtime: "codex" }).jobs).toEqual([]);
     expect(materializeContinuityPolicy({ ...CLAUDE_SEAT, compactionStrategy: "default-compaction" }).jobs).toEqual([]);
     expect(materializeContinuityPolicy({ ...CLAUDE_SEAT, compactionStrategy: "handover" }).jobs).toEqual([]);
     expect(materializeContinuityPolicy({ ...CLAUDE_SEAT, compactionStrategy: "managed-compaction" }).jobs).toHaveLength(1);
   });
 
-  it("adds registration glue only, never a second timer, scheduler, or engine", () => {
+  it("只添加登记接线，绝不增加第二套计时器、调度器或引擎", () => {
     const source = readFileSync(
       resolve(import.meta.dirname, "../src/domain/continuity-policy-materializer.ts"),
       "utf8",

@@ -2,7 +2,7 @@
   "name": "@openrig/cli",
   "version": "0.6.0",
   "type": "module",
-  "description": "Local control plane for multi-agent coding topologies",
+  "description": "多智能体编码拓扑的本地控制平面",
   "keywords": [
     "ai",
     "agents",
@@ -27,6 +27,8 @@
   },
   "bin": {
     "rig": "dist/bin-wrapper.js",
+    "zrig": "dist/bin-wrapper.js",
+    "openrig": "dist/bin-wrapper.js",
     "openrig-tui": "tui/dist/main.js"
   },
   "files": [

@@ -17,21 +17,20 @@ interface ThreePartErrorBody {
 }
 
 /**
- * `rig archive <rigId>` - OPR.0.3.3.19. Soft, REVERSIBLE archive: hides a rig
- * from the default explorer + `rig ps`, while RETAINING the rigs row, topology,
- * and snapshots. This is NOT `rig down --delete` (which is destructive). Reverse
- * with `rig unarchive <rigId>`. Running/degraded rigs require `--force`.
+ * `zrig archive <rigId>` - OPR.0.3.3.19。软归档、可逆：把工作组从默认资源浏览器
+ * 与 `zrig ps` 中隐藏，同时保留工作组记录、拓扑与快照。这**不是** `zrig down --delete`
+ * （后者是破坏性的）。用 `zrig unarchive <rigId>` 撤销。运行中或降级的工作组需要 `--force`。
  */
 export function archiveCommand(depsOverride?: StatusDeps): Command {
   const cmd = new Command("archive").description(
-    "Archive a rig (soft + reversible: hides it from the default view, retains all data). NOT a delete; reverse with 'rig unarchive'.",
+    "归档工作组（软归档、可逆：从默认视图隐藏，保留全部数据）。不是删除；用 'zrig unarchive' 撤销。",
   );
   const getDepsF = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   cmd
-    .argument("<rigId>", "Rig identifier to archive")
-    .option("--force", "Archive even if the rig is running or degraded")
-    .option("--json", "JSON output for agents")
+    .argument("<rigId>", "要归档的工作组标识")
+    .option("--force", "即使工作组正在运行或已降级也归档")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (rigId: string, opts: { force?: boolean; json?: boolean }) => {
       const deps = getDepsF();
       const status = await getDaemonStatus(deps.lifecycleDeps);
@@ -49,34 +48,34 @@ export function archiveCommand(depsOverride?: StatusDeps): Command {
       }
 
       if (res.status === 404) {
-        console.error(`Rig not found: ${rigId}. Check the id with: rig ps`);
+        console.error(`未找到工作组：${rigId}。用以下命令查看 ID：zrig ps`);
         process.exitCode = 1;
         return;
       }
-      // AC-6: running/degraded without --force returns a 3-part honest error.
+      // AC-6：未带 --force 且工作组运行中/降级时，返回三段式如实错误。
       if (res.status === 409) {
         const err = (res.data as ThreePartErrorBody).error;
         if (err && typeof err === "object") {
-          process.stderr.write(`Error: ${err.fact}\n${err.consequence}\n${err.action}\n`);
+          process.stderr.write(`错误：${err.fact}\n${err.consequence}\n${err.action}\n`);
         } else {
-          process.stderr.write(`Error: ${String(err)}\n`);
+          process.stderr.write(`错误：${String(err)}\n`);
         }
         process.exitCode = 2;
         return;
       }
       if (res.status >= 400) {
-        console.error(`Archive failed (HTTP ${res.status}).`);
+        console.error(`归档失败（HTTP ${res.status}）。`);
         process.exitCode = 2;
         return;
       }
 
       const r = res.data as ArchiveResult;
       if (r.archived) {
-        console.log(`Rig ${rigId} archived (reversible). It is hidden from the default view.`);
-        console.log(`  See it with:   rig ps --include-archived`);
-        console.log(`  Bring it back: rig unarchive ${rigId}`);
+        console.log(`工作组 ${rigId} 已归档（可逆）。它已从默认视图隐藏。`);
+        console.log(`  查看它：  zrig ps --include-archived`);
+        console.log(`  恢复它：  zrig unarchive ${rigId}`);
       } else {
-        console.log(`Rig ${rigId} was already archived.`);
+        console.log(`工作组 ${rigId} 此前已归档。`);
       }
     });
 

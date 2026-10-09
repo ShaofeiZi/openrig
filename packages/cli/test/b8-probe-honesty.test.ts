@@ -1,5 +1,5 @@
-// B8 PROBE-HONESTY (shape 73ee4b25, floor-A ruled) — the CLI tells the truth about what
-// it KNOWS vs what it INFERS. RED-first against current main.
+// B8 PROBE-HONESTY（shape 73ee4b25，floor-A 裁定）——CLI 如实说明它
+// 知道什么 vs 推断什么。对当前 main 先 RED。
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { statusGuardMessage, daemonStatusGuard } from "../src/daemon-lifecycle.js";
 import type { DaemonStatus } from "../src/daemon-lifecycle.js";
@@ -13,8 +13,8 @@ describe("B8-1b — epistemic-matched precheck language (the ONE helper)", () =>
     const ok = daemonStatusGuard({ state: "unverified" } as DaemonStatus);
     expect(ok).toBe(false);
     const out = errSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(out).toMatch(/did not respond|may be busy or stopped/i);
-    expect(out).not.toMatch(/not running/i);
+    expect(out).toMatch(/未响应|繁忙或已停止/);
+    expect(out).not.toMatch(/未运行/);
     expect(process.exitCode).toBe(1);
   });
 
@@ -22,7 +22,7 @@ describe("B8-1b — epistemic-matched precheck language (the ONE helper)", () =>
     const ok = daemonStatusGuard({ state: "stopped" } as DaemonStatus);
     expect(ok).toBe(false);
     const out = errSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(out).toMatch(/not running/i);
+    expect(out).toMatch(/未运行/);
   });
 
   it("RUNNING+healthy passes silently; RUNNING+unhealthy renders unhealthy — not 'not running'", () => {
@@ -30,8 +30,8 @@ describe("B8-1b — epistemic-matched precheck language (the ONE helper)", () =>
     expect(errSpy.mock.calls.length).toBe(0);
     expect(daemonStatusGuard({ state: "running", healthy: false } as DaemonStatus)).toBe(false);
     const out = errSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(out).toMatch(/unhealthy|did not respond/i);
-    expect(out).not.toMatch(/not running/i);
+    expect(out).toMatch(/未响应|未经确认/);
+    expect(out).not.toMatch(/未运行/);
   });
 
   it("sibling hint renders when present (the wrong-home teaching line rides the guard)", () => {
@@ -41,8 +41,8 @@ describe("B8-1b — epistemic-matched precheck language (the ONE helper)", () =>
   });
 
   it("statusGuardMessage is pure (language derives from the epistemic state)", () => {
-    expect(statusGuardMessage({ state: "unverified" } as DaemonStatus).fact).toMatch(/did not respond/i);
-    expect(statusGuardMessage({ state: "stopped" } as DaemonStatus).fact).toMatch(/not running/i);
+    expect(statusGuardMessage({ state: "unverified" } as DaemonStatus).fact).toMatch(/未响应/);
+    expect(statusGuardMessage({ state: "stopped" } as DaemonStatus).fact).toMatch(/未运行/);
   });
 });
 
@@ -54,8 +54,8 @@ describe("B8-1b — chokepoint adoption census (the grep-guard pin)", () => {
     let out = "";
     try {
       // RENDER forms only: console prints, thrown Errors, and structured facts. The
-      // detection regex (cross-host-executor), help-text exit-code docs, and comments
-      // legitimately carry the phrase and are NOT render sites.
+      // detection regex（cross-host-executor）、help-text 退出码文档与注释
+      // 合法地携带该短语，且非渲染位点。
       out = execFileSync("grep", ["-rnE", "(console\\.(error|log)\\(|new Error\\(|fact:)[^\\n]*\"Daemon not running", root, "--include=*.ts"], { encoding: "utf-8" });
     } catch { out = ""; } // grep exit 1 = no matches
     const offenders = out.split("\n").filter((l) => l && !l.includes("daemon-lifecycle.ts"));
@@ -63,7 +63,7 @@ describe("B8-1b — chokepoint adoption census (the grep-guard pin)", () => {
   });
 });
 
-// ── B8-2: send timeout = delivery-UNCONFIRMED, never "not sent" ─────────────────
+// ── B8-2：send 超时 = 投递 UNCONFIRMED，绝不 "not sent" ─────────────────
 import { printTransportFailureForTest } from "../src/commands/send.js";
 import { DaemonTimeoutError, DaemonConnectionError } from "../src/client.js";
 
@@ -75,14 +75,14 @@ describe("B8-2 — send transport honesty (indeterminate ≠ failed)", () => {
   it("a TIMEOUT renders delivery-unconfirmed + reconcile-by-effect — NEVER 'was not sent'", () => {
     printTransportFailureForTest(new DaemonTimeoutError("Request to /api/transport/send timed out after 5000ms"));
     const out = errSpy2.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(out).toMatch(/delivery unconfirmed|may have received/i);
-    expect(out).toMatch(/check the (pane|target)|reconcile/i);
+    expect(out).toMatch(/交付未确认|可能已收到/);
+    expect(out).toMatch(/检查 (pane|target)|对账/);
     expect(out).not.toMatch(/was not sent/i);
   });
 
   it("a connection REFUSAL keeps the hard 'not sent' truth", () => {
     printTransportFailureForTest(new DaemonConnectionError("fetch failed: ECONNREFUSED"));
     const out = errSpy2.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(out).toMatch(/was not sent/i);
+    expect(out).toMatch(/消息未发送/);
   });
 });

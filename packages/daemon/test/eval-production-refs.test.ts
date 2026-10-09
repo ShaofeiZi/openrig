@@ -8,30 +8,29 @@ import {
   buildProductionPackage,
 } from "./helpers/eval-ref-resolution.js";
 
-// slice-07 Repairs 1+2 re-review (HIGH-1) — HERMETIC: build the EXACT production package into a temp
-// dir (never read the gitignored packages/daemon/context-packs residue), and assert PER CASE that
-// every case yields a canonical ref that resolves in the built package. Fixture-vs-production drift —
-// or a case with no canonical ref — fails structurally, by name. (Requires the daemon built: the
-// generator validates through the compiled manifest parser.)
+// slice-07 修复 1+2 复审（HIGH-1）——密闭：把精确生产 package 构建到临时目录（绝不读取被
+// gitignore 的 packages/daemon/context-packs 残留），并逐 case 断言每个 case 都产生可在已构建
+// package 中解析的 canonical ref。Fixture 与生产漂移或 case 没有 canonical ref 时，会按名称发生
+// 结构性失败。（需要先构建后台服务：generator 通过已编译 manifest parser 验证。）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "..", "..", "..");
 const CASES_DIR = resolve(HERE, "..", "..", "test-system", "evals", "cases");
 
-describe("REPAIR (re-review HIGH-1) — refs resolve in a freshly-built production package", () => {
+describe("修复（复审 HIGH-1）——ref 可在新构建的生产 package 中解析", () => {
   const { cases } = loadEvalCasesFromDir(CASES_DIR);
   const built = buildProductionPackage(REPO);
   afterAll(built.cleanup);
   const resolutions = resolveCaseRefs(cases, built.dir);
 
-  it("yields a canonical ref for EVERY ref-bearing case (per-case, not a suite-wide count)", () => {
+  it("为每个带 ref 的 case 产生 canonical ref（逐 case，而非整套计数）", () => {
     expect(resolutions).toHaveLength(cases.length);
-    // Only selection/loading cases contract to pull context; a behavior case (slice-05 Q3) carries
-    // no ref and is exempt — enforce canonicality exactly where the contract requires it.
+    // 只有 selection/loading case 的契约要求拉取 context；behavior case（slice-05 Q3）不携带 ref，
+    // 因此豁免。只在契约要求的位置强制 canonicality。
     const bad = resolutions.filter((r) => r.requiresRef && (r.ref === null || !r.canonical)).map((r) => r.caseId);
     expect(bad).toEqual([]);
   });
 
-  it("every case ref resolves in the built production package", () => {
+  it("每个 case ref 都能在已构建生产 package 中解析", () => {
     const missing = unresolvedCases(resolutions).map((r) => `${r.caseId}:${r.ref ?? "<none>"}`);
     expect(missing).toEqual([]);
   });

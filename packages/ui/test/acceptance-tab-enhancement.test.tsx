@@ -1,14 +1,14 @@
-// UI Enhancement Pack v0 — AcceptanceTab item-1A extension tests.
+// UI Enhancement Pack v0——AcceptanceTab item-1A 扩展测试。
 //
-// Pins the v0 → v0-enhanced behavior:
-//   - checkbox pills with status icon + label (not raw [ ]/[x])
-//   - 4-filter row (All / Active / Done / Blocked) with default All
-//   - clicking a row expands an inline detail panel
-//   - filter narrows the visible rows; empty-after-filter has its own
-//     message; filter unchanged when items array is empty
+// 锁定 v0 → v0-enhanced 行为：
+//   - 带状态图标 + 标签的 checkbox pill（非原始 [ ]/[x]）
+//   - 4 过滤行（All / Active / Done / Blocked），默认 All
+//   - 点击行展开内联详情面板
+//   - 过滤收窄可见行；过滤后空有自己的
+//     消息；items 数组空时过滤不变
 //
-// Slice Story View v0 baseline behavior preserved (progress bar +
-// closure callout + source citation + per-row data-done attribute).
+// Slice Story View v0 基线行为保留（进度条 +
+// closure callout + 来源引用 + 每行 data-done 属性）。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
@@ -34,9 +34,9 @@ describe("UI Enhancement Pack v0 — AcceptanceTab", () => {
       { text: "Item 1", done: true, source: { file: "README.md", line: 10 } },
       { text: "Item 2", done: false, source: { file: "README.md", line: 11 } },
     ])} />);
-    expect(screen.getByTestId("acceptance-pill-0").textContent).toContain("done");
+    expect(screen.getByTestId("acceptance-pill-0").textContent).toContain("已完成");
     expect(screen.getByTestId("acceptance-pill-0").textContent).toContain("✓");
-    expect(screen.getByTestId("acceptance-pill-1").textContent).toContain("active");
+    expect(screen.getByTestId("acceptance-pill-1").textContent).toContain("进行中");
     expect(screen.getByTestId("acceptance-pill-1").textContent).toContain("◯");
   });
 
@@ -66,7 +66,7 @@ describe("UI Enhancement Pack v0 — AcceptanceTab", () => {
       { text: "done item", done: true, source: { file: "x.md", line: 1 } },
     ])} />);
     fireEvent.click(screen.getByTestId("acceptance-filter-active"));
-    expect(screen.getByTestId("acceptance-filter-empty").textContent).toContain("active");
+    expect(screen.getByTestId("acceptance-filter-empty").textContent).toContain("进行中");
   });
 
   it("clicking a row expands the detail panel + clicking again collapses it", () => {

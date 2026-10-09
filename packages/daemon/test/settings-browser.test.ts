@@ -29,13 +29,13 @@ beforeEach(() => {
   for (const key of Object.keys(process.env).filter((k) => /^(OPENRIG_|RIGGED_|SLACK_)/.test(k))) vi.stubEnv(key, "");
   vi.stubEnv("OPENRIG_HOME", home);
   vi.stubEnv("OPENRIG_WORKSPACE_ROOT", join(home, "workspace"));
-  external = vi.fn(() => { throw new Error("Unexpected external call"); });
+  external = vi.fn(() => { throw new Error("发生非预期的外部调用"); });
   vi.stubGlobal("fetch", external);
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); rmSync(home, { recursive: true, force: true }); });
 
-describe("passive CONFIG read view", () => {
-  it("enumerates actual registry and dynamic entries, while missing structured sources stay distinct", () => {
+describe("被动 CONFIG 读取 view", () => {
+  it("枚举实际 registry 与动态 entry，同时保持缺失的结构化 source 可区分", () => {
     const first = read();
     expect(first.entries.filter((e) => e.group === "general").map((e) => e.key)).toEqual([...SETTINGS_VALID_KEYS]);
     expect(first.sources.map((s) => [s.id, s.state])).toEqual([
@@ -45,12 +45,12 @@ describe("passive CONFIG read view", () => {
     store.set("feed.subscriptions.fixture-host.enabled", "true");
     expect(entry("feed.subscriptions.fixture-host.enabled")).toMatchObject({ value: true, defaultValue: false, source: "file" });
     expect(entry("retention.usage_samples_days")).toMatchObject({ value: 14, source: "default" });
-    expect(entry("ui.terminal.max_live_terminals")).toMatchObject({ value: "", scope: "Legacy web client" });
-    // The preparation's CLI/daemon parity failure is retained, not "fixed" here.
+    expect(entry("ui.terminal.max_live_terminals")).toMatchObject({ value: "", scope: "旧版 Web 客户端" });
+    // 保留准备阶段的 CLI/daemon parity 失败，不在这里“修复”。
     expect(entry("workflow.exception_routing")).toMatchObject({ value: "", defaultValue: "", source: "default" });
   });
 
-  it("uses resolver provenance and keeps full safe values; unexpected values and instruction bodies stay withheld", () => {
+  it("使用 resolver provenance 并保留完整安全值，同时隐藏非预期值和指令 body", () => {
     const longPath = join(home, "one very long folder", "detail".repeat(50));
     writeFileSync(store.configPath, JSON.stringify({ workspace: { projectsRoot: longPath },
       host: { name: { innocent: credential } }, policies: { claudeCompaction: { messageInline: credential } } }));
@@ -62,7 +62,7 @@ describe("passive CONFIG read view", () => {
     expect(JSON.stringify(read())).not.toContain(credential);
   });
 
-  it.each(["{ broken", "null", "[]"])("keeps malformed general source %s separate from readable health and Slack", (bytes) => {
+  it.each(["{ broken", "null", "[]"])("保持畸形 general source %s 与可读 health 和 Slack 分离", (bytes) => {
     writeFileSync(store.configPath, bytes);
     const result = read();
     expect(result.sources.find((s) => s.id === "general")?.state).toBe("malformed");
@@ -72,13 +72,13 @@ describe("passive CONFIG read view", () => {
     expect(result.entries.find((e) => e.key === "slack.enabled")?.value).toBe(false);
   });
 
-  it("keeps a removed configuration unavailable without claiming fallback defaults", () => {
+  it("让已删除配置保持 unavailable，不宣称使用 fallback 默认值", () => {
     writeFileSync(store.configPath, JSON.stringify({ context: { packsRoot: "/obsolete" } }));
     expect(read().sources.find((s) => s.id === "general")?.state).toBe("unavailable");
     expect(entry("workspace.root").visibility).toBe("unavailable");
   });
 
-  it.each(["malformed", "unavailable", "disabled"])("keeps %s Slack from hiding general settings", (state) => {
+  it.each(["malformed", "unavailable", "disabled"])("防止 %s Slack 隐藏通用设置", (state) => {
     if (state === "malformed") writeFileSync(configPathFor(home), "{ " + credential);
     if (state === "unavailable") mkdirSync(configPathFor(home));
     if (state === "disabled") saveConfig({ ...DEFAULT_CONFIG, enabled: false }, home);
@@ -90,7 +90,7 @@ describe("passive CONFIG read view", () => {
     expect(JSON.stringify(result)).not.toContain(credential);
   });
 
-  it("covers structured owners safely and does not repair, write or contact a target during repeated route reads", async () => {
+  it("安全覆盖结构化 owner，重复读取 route 时不修复、不写入、也不联系 target", async () => {
     const envFile = join(home, "credentials.env");
     writeFileSync(envFile, "SLACK_BOT_TOKEN=" + credential + "\n", { mode: 0o600 });
     saveConfig({ ...DEFAULT_CONFIG, sourceLabel: credential, secretsEnvFile: envFile }, home);
@@ -122,11 +122,11 @@ describe("passive CONFIG read view", () => {
     }
     expect(snapshot(home)).toEqual(before);
     expect(external).not.toHaveBeenCalled();
-    // Existing route contract remains a general settings map, not the browser payload.
+    // 现有 route 契约仍是通用 settings map，而非 browser payload。
     expect(await (await http.request("/api/config")).json()).toHaveProperty(["settings", "workspace.projects_root"]);
   });
 
-  it("masks environment credentials even when Slack cannot load", () => {
+  it("即使 Slack 无法加载也遮蔽环境凭据", () => {
     vi.stubEnv("SLACK_BOT_TOKEN", credential);
     writeFileSync(configPathFor(home), "malformed");
     store.set("host.name", credential);
@@ -134,7 +134,7 @@ describe("passive CONFIG read view", () => {
     expect(entry("host.name").visibility).toBe("withheld");
   });
 
-  it("retains target selection keys when registry order changes", () => {
+  it("registry 顺序变化时保留 target 选择 key", () => {
     const a = { id: "first", transport: "ssh", target: "first.example" };
     const b = { id: "second", transport: "ssh", target: "second.example" };
     const file = join(home, "hosts.yaml");
@@ -144,7 +144,7 @@ describe("passive CONFIG read view", () => {
     expect(read().entries.find((e) => e.key === key)?.value).toBe("first.example");
   });
 
-  it("isolates malformed host, health and human sources and refreshes away old values", () => {
+  it("隔离畸形 host、health 与 human source，并在刷新时移除旧值", () => {
     writeFileSync(join(home, "hosts.yaml"), "hosts: invalid");
     mkdirSync(join(home, "health"));
     writeFileSync(join(home, "health", "policy.json"), "{ " + credential);
@@ -157,13 +157,13 @@ describe("passive CONFIG read view", () => {
     expect(JSON.stringify(result)).not.toContain(credential);
   });
 
-  it("separates configured enablement from matching/changed and missing running observations", () => {
+  it("区分已配置的启用状态、matching/changed 与缺失的运行观测", () => {
     const cfg = { ...DEFAULT_CONFIG, enabled: false };
     saveConfig(cfg, home);
     const matching = settingsBrowser(store, { state: "active", connector: { configurationDigest: channelStateDigest(cfg) } }, home);
-    expect(matching.sources.find((s) => s.id === "slack")?.detail).toContain("Disabled; applied matching");
+    expect(matching.sources.find((s) => s.id === "slack")?.detail).toContain("已禁用；已应用 matching");
     const changed = settingsBrowser(store, { state: "active", connector: { configurationDigest: "old" } }, home);
-    expect(changed.sources.find((s) => s.id === "slack")?.detail).toContain("applied changed");
-    expect(read().sources.find((s) => s.id === "slack")?.detail).toContain("applied unverified");
+    expect(changed.sources.find((s) => s.id === "slack")?.detail).toContain("已应用 changed");
+    expect(read().sources.find((s) => s.id === "slack")?.detail).toContain("已应用 unverified");
   });
 });

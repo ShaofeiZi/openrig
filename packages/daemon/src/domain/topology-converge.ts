@@ -2,30 +2,26 @@ import type { PodRigInstantiator, AddMemberOutcome } from "./rigspec-instantiato
 import type { ClaimService, ReconcileSessionOutcome } from "./claim-service.js";
 
 /**
- * Topology-mutation converge spine (OPR.0.3.3.24, AC-6 scaffold).
+ * Topology-mutation converge 主干（OPR.0.3.3.24，AC-6 scaffold）。
  *
- * The reconciler model is: diff(declaredSpec, liveTopology) -> Op[]; converge(op)
- * applies each supported op. This release IMPLEMENTS one op — `add_member` —
- * built on the extracted create-node + launch-binding primitives. The Op union
- * is COMPLETE-shaped (all reshape kinds typed) and the differ CLASSIFIES the
- * full set, but the identity-migrating kinds (remove/move/fork/change_runtime)
- * are CLASSIFIED-deferred to the 0.4.0 identity theme: they migrate or clone an
- * existing seat's identity (logical-id re-key + continuity_state migration +
- * queue re-route), which add_member deliberately does not.
+ * reconciler model 为：diff(declaredSpec, liveTopology) -> Op[]；converge(op) 应用每个受支持 op。
+ * 此 release 实现一个 op——`add_member`——基于提取出的 create-node + launch-binding primitive。
+ * Op union shape 完整（所有 reshape kind 都有类型），differ 也会分类完整集合；但涉及 identity
+ * migration 的 kind（remove/move/fork/change_runtime）被分类后延至 0.4.0 identity 主题：它们会
+ * 迁移或克隆现有 seat identity（logical-id re-key + continuity_state migration + queue re-route），
+ * 而 add_member 刻意不做这些。
  *
- * This is a SCAFFOLD, not a reconciler build: there is no `rig apply` loop here
- * (that is a design sketch this release). converge() never silently skips an
- * unsupported op — it reports it honestly as "detected, not yet supported".
+ * 这是 scaffold，而非完整 reconciler：此处没有 `zrig apply` loop（在此 release 中只是设计草图）。
+ * converge() 绝不静默跳过不支持的 op——会如实报告“已检测到，但此版本尚不支持”。
  */
 
-/** The complete topology-mutation op-kind set. */
+/** 完整的 topology-mutation op-kind 集合。 */
 export type TopologyOp =
   | { kind: "add_member"; pod: string; member: Record<string, unknown>; edges?: Array<{ from: string; to: string; kind: string }> }
-  // OPR.0.3.4.3 — adopt a live hand-resumed canonical session back into its
-  // persisted node WITHOUT launch/kill/input (the no-launch reconcile path).
-  // An imperative REPAIR op: not derivable from a declarative membership diff
-  // (the node already exists; only the live-binding projection is stale), so
-  // diffTopology does not classify it — convergeOp applies it directly.
+  // OPR.0.3.4.3——将 live、手动恢复的 canonical session 重新纳入其持久化 node，
+  // 不执行 launch/kill/input（no-launch reconcile 路径）。这是 imperative repair op，
+  // 无法从 declarative membership diff 推导（node 已存在，只有 live-binding projection stale），
+  // 因此 diffTopology 不对它分类——由 convergeOp 直接应用。
   | { kind: "reconcile_session"; sessionName: string; rigId?: string; logicalId?: string }
   | { kind: "remove_member"; logicalId: string }
   | { kind: "move_member"; logicalId: string; toPod: string }
@@ -34,22 +30,22 @@ export type TopologyOp =
 
 export type TopologyOpKind = TopologyOp["kind"];
 
-/** The op-kinds converge() implements this release. The rest are classified-deferred. */
+/** 此 release 中 converge() 实现的 op kind。其余项分类后延。 */
 export const SUPPORTED_OP_KINDS: readonly TopologyOpKind[] = ["add_member", "reconcile_session"];
 
 export function isSupportedOpKind(kind: TopologyOpKind): boolean {
   return SUPPORTED_OP_KINDS.includes(kind);
 }
 
-/** Honest message for a classified-but-unsupported op-kind (never silently skipped). */
-export const DEFERRED_OP_REASON = "detected, not yet supported in this release";
+/** 已分类但不支持的 op kind 所用诚实消息（绝不静默跳过）。 */
+export const DEFERRED_OP_REASON = "已检测到，但此版本尚不支持";
 
 export type ConvergeResult =
   | { kind: "add_member"; supported: true; outcome: AddMemberOutcome }
   | { kind: "reconcile_session"; supported: true; outcome: ReconcileSessionOutcome }
   | { kind: TopologyOpKind; detected: true; supported: false; reason: string };
 
-/** A member as DECLARED in the desired spec (one pod-scoped member fragment). */
+/** desired spec 中已声明的 member（一个 pod-scoped member fragment）。 */
 export interface DeclaredMember {
   pod: string;
   id: string;
@@ -57,25 +53,22 @@ export interface DeclaredMember {
   fragment: Record<string, unknown>;
 }
 
-/** A member as it exists LIVE in the rig today. */
+/** 工作组中当前实际存在的 member。 */
 export interface LiveMember {
   logicalId: string;
   runtime: string;
 }
 
 /**
- * Classify the difference between the declared members and the live topology
- * into the complete op-kind set. Scaffold semantics:
- *   - declared but not live              -> add_member        (IMPLEMENTED)
- *   - live but not declared              -> remove_member     (classified-deferred)
- *   - present in both, runtime differs   -> change_runtime    (classified-deferred)
+ * 将 declared member 与 live topology 之间的差异分类到完整 op-kind 集合。scaffold 语义：
+ *   - 已声明但不在 live 中              -> add_member        （已实现）
+ *   - 在 live 中但未声明                -> remove_member     （分类后延）
+ *   - 两边都存在但 runtime 不同         -> change_runtime    （分类后延）
  *
- * move_member and fork_member are part of the Op union (complete-shaped) but are
- * NOT auto-derivable from a flat declarative membership diff: a move is
- * indistinguishable from remove+add without stable-identity tracking, and a fork
- * is imperative-only (no declarative trigger). Detecting them needs the 0.4.0
- * identity model (durable state keyed on the stable node-id). convergeOp still
- * classifies them honestly when handed one directly.
+ * move_member 与 fork_member 属于完整 shape 的 Op union，但无法从扁平 declarative membership
+ * diff 自动推导：没有 stable-identity tracking 时，move 与 remove+add 无法区分；fork 仅为
+ * imperative（无 declarative trigger）。检测它们需要 0.4.0 identity model（以 stable node-id
+ * 为 key 的 durable state）。直接收到这些 op 时，convergeOp 仍会如实分类。
  */
 export function diffTopology(declared: DeclaredMember[], live: LiveMember[]): TopologyOp[] {
   const ops: TopologyOp[] = [];
@@ -101,25 +94,22 @@ export function diffTopology(declared: DeclaredMember[], live: LiveMember[]): To
   return ops;
 }
 
-/** The domain services the converge boundary composes per op kind (OPR.0.3.4.3:
- *  the spine grew a second implemented op, so convergeOp takes a deps object —
- *  add_member runs on the instantiator, reconcile_session on the claim service's
- *  no-input reconcile binding). */
+/** converge boundary 按 op kind 组合的 domain service（OPR.0.3.4.3：主干新增第二个已实现 op，
+ *  因此 convergeOp 接受 deps object——add_member 在 instantiator 上运行，reconcile_session
+ *  在 claim service 的 no-input reconcile binding 上运行）。 */
 export interface ConvergeDeps {
   instantiator: PodRigInstantiator;
-  /** Required for reconcile_session ops; add_member-only callers may omit it. */
+  /** reconcile_session op 必需；仅调用 add_member 的 caller 可省略。 */
   claimService?: ClaimService;
 }
 
 /**
- * Apply a single topology op. `add_member` runs the extracted create-node +
- * launch-binding seam via PodRigInstantiator.addMemberToPod; `reconcile_session`
- * runs ClaimService.reconcileSession — the NO-LAUNCH, NO-INPUT adopt of a live
- * hand-resumed session into its persisted node (never reaches NodeLauncher.
- * launchNode or any pane-input primitive). Every other kind is reported honestly
- * as detected-but-unsupported (NEVER silently skipped). The agent-ergonomics
- * (json + honest 3-part errors) the CLI and MCP expose live ON this converge
- * boundary, so future verbs inherit human/agent parity.
+ * 应用单个 topology op。`add_member` 通过 PodRigInstantiator.addMemberToPod 运行提取出的
+ * create-node + launch-binding seam；`reconcile_session` 运行 ClaimService.reconcileSession——
+ * 将 live、手动恢复的 session 纳入其持久化 node，不执行 launch 或 input（绝不抵达
+ * NodeLauncher.launchNode 或任何 pane-input primitive）。其他 kind 都会如实报告为 detected-but-
+ * unsupported，绝不静默跳过。CLI 与 MCP 在此 converge boundary 上公开 agent ergonomics
+ *（JSON + 诚实的三段式 error），使未来 verb 继承 human/agent parity。
  */
 export async function convergeOp(
   deps: ConvergeDeps,
@@ -141,7 +131,7 @@ export async function convergeOp(
         return {
           kind: "reconcile_session",
           supported: true,
-          outcome: { ok: false, code: "reconcile_error", message: "Claim service unavailable; cannot reconcile." },
+          outcome: { ok: false, code: "reconcile_error", message: "Claim service 不可用，无法 reconcile。" },
         };
       }
       const outcome = await deps.claimService.reconcileSession({
@@ -158,7 +148,7 @@ export async function convergeOp(
       return { kind: op.kind, detected: true, supported: false, reason: DEFERRED_OP_REASON };
     default: {
       const _exhaustive: never = op;
-      throw new Error(`Unknown topology op kind: ${(_exhaustive as TopologyOp).kind}`);
+      throw new Error(`未知 topology op kind：${(_exhaustive as TopologyOp).kind}`);
     }
   }
 }

@@ -1,13 +1,11 @@
-# Example workflow for the populated VM preview.
-# Its distinct ID avoids colliding with the built-in basic-loop specification
-# when copied into the populated daemon's configured workflows directory.
-# The daemon discovers it on the next workflow-library listing.
+# 已填充 VM 预览使用的示例工作流。
+# 它使用独立 ID，复制到已填充后台服务的工作流配置目录后，
+# 不会与内置 basic-loop 规范冲突。后台服务会在下次列出工作流库时发现它。
 workflow:
   id: vm-preview-basic-loop
   version: 1
   objective: >
-    Walk one work packet through the conveyor rig slowly enough for a new user
-    to inspect each handoff.
+    让一个工作包缓慢经过 conveyor 工作组，使新用户有足够时间检查每次交接。
   target:
     rig: conveyor
   entry:
@@ -32,35 +30,35 @@ workflow:
   steps:
     - id: intake
       actor_role: intake
-      objective: Restate the objective and hand off one packet.
+      objective: 重新陈述目标，并交接一个工作包。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [planner]
     - id: plan
       actor_role: planner
-      objective: Produce a short plan for one build turn.
+      objective: 为一轮构建产出简短计划。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [builder]
     - id: build
       actor_role: builder
-      objective: Build or draft the planned output.
+      objective: 构建或起草计划中的产物。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [reviewer]
     - id: review
       actor_role: reviewer
-      objective: Check the output and clear it for close.
+      objective: 检查产物并确认可以收尾。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [closer]
     - id: close
       actor_role: closer
-      objective: Close the walkthrough packet.
+      objective: 完成本次演示工作包。
       allowed_exits: [done, failed]
       next_hop:
         mode: forbid
@@ -73,6 +71,6 @@ workflow:
     max_hops: 10
     spawn_budget: 0
   closure:
-    success: Walkthrough packet closed.
-    degraded: Walkthrough stopped with a named blocker.
-    failed: Walkthrough failed with evidence.
+    success: 演示工作包已完成。
+    degraded: 演示因已明确说明的阻塞项而停止。
+    failed: 演示失败，并有证据记录。

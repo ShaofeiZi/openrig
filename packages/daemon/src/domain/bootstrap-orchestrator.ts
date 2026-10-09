@@ -1,8 +1,8 @@
 import nodePath from "node:path";
 import type Database from "better-sqlite3";
-import type { LegacyRigSpec as RigSpec } from "./types.js"; // TODO: AS-T08b — migrate to pod-aware RigSpec
-import { LegacyRigSpecCodec as RigSpecCodec } from "./rigspec-codec.js"; // TODO: AS-T08b — migrate to pod-aware RigSpec
-import { LegacyRigSpecSchema as RigSpecSchema } from "./rigspec-schema.js"; // TODO: AS-T08b — migrate to pod-aware RigSpec
+import type { LegacyRigSpec as RigSpec } from "./types.js"; // TODO: AS-T08b — 迁移到支持 pod 的 RigSpec
+import { LegacyRigSpecCodec as RigSpecCodec } from "./rigspec-codec.js"; // TODO: AS-T08b — 迁移到支持 pod 的 RigSpec
+import { LegacyRigSpecSchema as RigSpecSchema } from "./rigspec-schema.js"; // TODO: AS-T08b — 迁移到支持 pod 的 RigSpec
 import type { BootstrapRepository } from "./bootstrap-repository.js";
 import type { RuntimeVerifier } from "./runtime-verifier.js";
 import type { RequirementsProbeRegistry, RequirementSpec } from "./requirements-probe.js";
@@ -13,7 +13,7 @@ import type { RigInstantiator } from "./rigspec-instantiator.js";
 import type { FsOps, ResolvedPackage } from "./package-resolver.js";
 import { resolvePackage, type ResolveResult } from "./package-resolve-helper.js";
 import type { BootstrapStatus } from "./bootstrap-types.js";
-// TODO: AS-T12 — migrate to pod-aware bundle source resolver
+// TODO: AS-T12 — 迁移到支持 pod 的 bundle 源解析器
 import type { LegacyBundleSourceResolver as BundleSourceResolver, BundleResolvedSource } from "./bundle-source-resolver.js";
 import type { PodBundleSourceResolver } from "./bundle-source-resolver.js";
 import { unpack } from "./bundle-archive.js";
@@ -23,10 +23,10 @@ import fs from "node:fs";
 import { getOpenRigInstallCwdError, resolveLaunchCwd } from "./cwd-resolution.js";
 import { runSyncSite } from "./sync-site-wrap.js";
 
-/** Bootstrap mode */
+/** 引导模式 */
 export type BootstrapMode = "plan" | "apply";
 
-/** Bootstrap options */
+/** 引导选项 */
 export interface BootstrapOptions {
   mode: BootstrapMode;
   sourceRef: string;
@@ -34,20 +34,20 @@ export interface BootstrapOptions {
   cwdOverride?: string;
   autoApprove?: boolean;
   approvedActionKeys?: string[];
-  /** Pre-created run ID (route creates run for real-time started event) */
+  /** 预创建的运行 ID（路由为实时 started 事件创建运行记录） */
   runId?: string;
-  /** Override install target root (required for bundle install apply) */
+  /** 覆盖安装目标根目录（应用 bundle 安装时必需） */
   targetRoot?: string;
 }
 
-/** Stage result */
+/** 阶段结果 */
 export interface BootstrapStageResult {
   stage: string;
   status: "ok" | "blocked" | "skipped" | "failed";
   detail: unknown;
 }
 
-/** Full bootstrap result */
+/** 完整的引导结果 */
 export interface BootstrapResult {
   runId: string;
   status: BootstrapStatus;
@@ -55,7 +55,7 @@ export interface BootstrapResult {
   rigId?: string;
   errors: string[];
   warnings: string[];
-  /** Plan-mode action keys for reviewed approval */
+  /** 计划模式下供审核批准的操作键 */
   actionKeys?: string[];
 }
 
@@ -78,20 +78,20 @@ interface BootstrapOrchestratorDeps {
   rigRepo?: import("./rig-repository.js").RigRepository;
 }
 
-/** Generates a deterministic action key for plan->apply identity */
+/** 生成确定性的操作键，用于保持 plan->apply 身份一致 */
 function actionKey(actionKind: string, subjectType: string | null, subjectName: string): string {
   return `${actionKind}:${subjectType ?? ""}:${subjectName}`;
 }
 
 /**
- * Top-level bootstrap workflow. Composes all Phase 5 services into a staged pipeline.
- * Transactional by stage, not globally atomic.
+ * 顶层引导工作流。将所有第 5 阶段服务组合成分阶段流水线。
+ * 每个阶段各自具有事务性，而非全局原子操作。
  */
 export class BootstrapOrchestrator {
   private deps: BootstrapOrchestratorDeps;
   private activeLocks = new Set<string>();
 
-  /** Try to acquire the lock for a sourceRef. Returns false if already locked. */
+  /** 尝试获取 sourceRef 的锁。若已锁定，则返回 false。 */
   tryAcquire(sourceRef: string): boolean {
     const key = nodePath.resolve(sourceRef);
     if (this.activeLocks.has(key)) return false;
@@ -99,17 +99,17 @@ export class BootstrapOrchestrator {
     return true;
   }
 
-  /** Release the lock for a sourceRef. */
+  /** 释放 sourceRef 的锁。 */
   release(sourceRef: string): void {
     this.activeLocks.delete(nodePath.resolve(sourceRef));
   }
 
   constructor(deps: BootstrapOrchestratorDeps) {
-    // Same-db-handle checks
-    if (deps.bootstrapRepo.db !== deps.db) throw new Error("BootstrapOrchestrator: bootstrapRepo must share the same db handle");
-    if (deps.runtimeVerifier.db !== deps.db) throw new Error("BootstrapOrchestrator: runtimeVerifier must share the same db handle");
-    if (deps.installExecutor.db !== deps.db) throw new Error("BootstrapOrchestrator: installExecutor must share the same db handle");
-    if (deps.packageInstallService.db !== deps.db) throw new Error("BootstrapOrchestrator: packageInstallService must share the same db handle");
+    // 检查是否使用同一个数据库句柄
+    if (deps.bootstrapRepo.db !== deps.db) throw new Error("BootstrapOrchestrator：bootstrapRepo 必须共享同一个数据库句柄");
+    if (deps.runtimeVerifier.db !== deps.db) throw new Error("BootstrapOrchestrator：runtimeVerifier 必须共享同一个数据库句柄");
+    if (deps.installExecutor.db !== deps.db) throw new Error("BootstrapOrchestrator：installExecutor 必须共享同一个数据库句柄");
+    if (deps.packageInstallService.db !== deps.db) throw new Error("BootstrapOrchestrator：packageInstallService 必须共享同一个数据库句柄");
     this.deps = deps;
   }
 
@@ -120,20 +120,20 @@ export class BootstrapOrchestrator {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // Use pre-created run or create new one
+    // 使用预创建的运行记录，或新建一条记录
     const run = opts.runId
       ? this.deps.bootstrapRepo.getRun(opts.runId)!
       : this.deps.bootstrapRepo.createRun(sourceKind, sourceRef);
     let seqCounter = 1;
 
-    // --- Stage 1: RESOLVE_SPEC ---
+    // --- 阶段 1：RESOLVE_SPEC ---
     let spec: RigSpec;
     let specDir: string;
     let bundleSource: BundleResolvedSource | null = null;
     let bundleTempDir: string | null = null;
 
     if (sourceKind === "rig_bundle") {
-      // Peek at bundle manifest to detect schema version
+      // 预览 bundle 清单以检测 schema 版本
       let bundleSchemaVersion = 1;
       const peekDir = fs.mkdtempSync(nodePath.join(os.tmpdir(), "bundle-peek-"));
       try {
@@ -146,7 +146,7 @@ export class BootstrapOrchestrator {
             bundleSchemaVersion = 2;
           }
         }
-      } catch { /* peek failed — fall through to legacy */ }
+      } catch { /* 预览失败——回退到旧版流程 */ }
       finally { try { fs.rmSync(peekDir, { recursive: true, force: true }); } catch {} }
 
       if (bundleSchemaVersion === 2 && this.deps.podBundleSourceResolver) {
@@ -159,17 +159,17 @@ export class BootstrapOrchestrator {
           stages.push({ stage: "resolve_spec", status: "ok", detail: { specName: podSource.manifest.name, source: "pod_bundle" } });
 
           try {
-            // Reject service-backed bundles — services require a stable source directory
+            // 拒绝由服务支持的 bundle——服务需要稳定的源目录
             try {
               const parsed = parsePodBundleManifest(rawYaml) as Record<string, unknown>;
               if (parsed && typeof parsed === "object" && parsed["services"] && typeof parsed["services"] === "object") {
-                const msg = "Service-backed rigs cannot be launched from .rigbundle archives. The services block requires a stable source directory. Use the source directory path instead: rig up <path/to/rig.yaml>";
+                const msg = "无法从 .rigbundle 归档启动由服务支持的 rig。services 块需要稳定的源目录。请改用源目录路径：zrig up <path/to/rig.yaml>";
                 stages.push({ stage: "resolve_spec", status: "failed", detail: { code: "services_unsupported", error: msg } });
                 errors.push(msg);
                 this.deps.bootstrapRepo.updateRunStatus(run.id, "failed");
                 return { runId: run.id, status: "failed" as BootstrapStatus, stages, errors, warnings };
               }
-            } catch { /* YAML parse failure — let handlePodAwareSpec deal with it */ }
+            } catch { /* YAML 解析失败——交由 handlePodAwareSpec 处理 */ }
 
             return await this.handlePodAwareSpec(opts, run, rawYaml, specDir, stages, errors, warnings);
           } finally {
@@ -184,9 +184,9 @@ export class BootstrapOrchestrator {
         }
       }
 
-      // Legacy v1 bundle path
+      // 旧版 v1 bundle 路径
       if (!this.deps.bundleSourceResolver) {
-        throw new Error("BundleSourceResolver required for rig_bundle source kind");
+        throw new Error("rig_bundle 源类型需要 BundleSourceResolver");
       }
       try {
         bundleSource = await this.deps.bundleSourceResolver.resolve(sourceRef);
@@ -210,18 +210,18 @@ export class BootstrapOrchestrator {
         return { runId: run.id, status: "failed", stages, errors, warnings };
       }
     } else {
-      // Direct rig_spec path — detect format BEFORE legacy validation
+      // 直接使用 rig_spec 路径——在旧版校验之前检测格式
       try {
         specDir = nodePath.dirname(nodePath.resolve(sourceRef));
         const rawYaml = this.deps.fsOps.readFile(nodePath.resolve(sourceRef));
         const raw = RigSpecCodec.parse(rawYaml) as Record<string, unknown> | null;
 
-        // Pod-aware format detection: if has pods[], delegate to PodRigInstantiator
+        // 检测支持 pod 的格式：若含有 pods[]，则委托给 PodRigInstantiator
         if (raw && Array.isArray(raw["pods"]) && this.deps.podInstantiator) {
           return this.handlePodAwareSpec(opts, run, rawYaml, specDir, stages, errors, warnings);
         }
 
-        // Legacy path: validate as flat-node spec
+        // 旧版路径：按扁平节点规范校验
         const validation = RigSpecSchema.validate(raw);
         if (!validation.valid) {
           stages.push({ stage: "resolve_spec", status: "failed", detail: { code: "validation_failed", errors: validation.errors } });
@@ -250,7 +250,7 @@ export class BootstrapOrchestrator {
       }
     }
 
-    // Wrap remaining stages in try/finally for bundle temp cleanup (legacy path)
+    // 用 try/finally 包裹剩余阶段，以清理 bundle 临时目录（旧版路径）
     try { return await this.executeStages(opts, run, spec, specDir, bundleSource, stages, errors, warnings, seqCounter); }
     finally { if (bundleTempDir && this.deps.bundleSourceResolver) this.deps.bundleSourceResolver.cleanup(bundleTempDir); }
   }
@@ -268,7 +268,7 @@ export class BootstrapOrchestrator {
   ): Promise<BootstrapResult> {
     const { mode, autoApprove, approvedActionKeys } = opts;
 
-    // --- Stage 2: RESOLVE_PACKAGES ---
+    // --- 阶段 2：RESOLVE_PACKAGES ---
     const packageRefs = new Set<string>();
     for (const node of spec.nodes) {
       if (node.packageRefs) {
@@ -282,31 +282,31 @@ export class BootstrapOrchestrator {
     const unresolvedRefs: string[] = [];
 
     for (const ref of packageRefs) {
-      // Bundle path: lookup in packageRefMap
+      // Bundle 路径：在 packageRefMap 中查找
       if (bundleSource) {
         const bundleResolved = bundleSource.packageRefMap[ref];
         if (bundleResolved) {
           resolvedPackages.set(ref, { ok: true, resolved: bundleResolved });
           continue;
         }
-        // Ref not in bundle map — try local resolution as fallback
+        // bundle 映射中没有该引用——尝试回退到本地解析
       }
 
-      // Check for unsupported schemes
+      // 检查不支持的 scheme
       if (ref.includes("github:") || ref.includes("://")) {
-        errors.push(`Unsupported package ref scheme: '${ref}'`);
+        errors.push(`不支持的软件包引用 scheme：'${ref}'`);
         unresolvedRefs.push(ref);
         continue;
       }
 
-      // Strip local: prefix if present
+      // 若存在 local: 前缀，则将其移除
       const cleanRef = ref.startsWith("local:") ? ref.slice(6) : ref;
       const result = resolvePackage(cleanRef, specDir, this.deps.fsOps);
       if (result.ok) {
         resolvedPackages.set(ref, result);
       } else {
         const errMsg = result.kind === "validation" ? result.errors.join("; ") : result.error;
-        errors.push(`Failed to resolve package '${ref}': ${errMsg}`);
+        errors.push(`解析软件包 '${ref}' 失败：${errMsg}`);
         unresolvedRefs.push(ref);
       }
     }
@@ -318,7 +318,7 @@ export class BootstrapOrchestrator {
     }
     stages.push({ stage: "resolve_packages", status: "ok", detail: { resolved: [...resolvedPackages.keys()] } });
 
-    // --- Stage 3: VERIFY_RUNTIMES ---
+    // --- 阶段 3：VERIFY_RUNTIMES ---
     const runtimes = new Set<string>(["tmux"]);
     for (const node of spec.nodes) {
       if (node.runtime) runtimes.add(node.runtime);
@@ -338,13 +338,13 @@ export class BootstrapOrchestrator {
         runtimeBlocked.push(v.runtime);
       }
       if (v.status === "degraded") {
-        warnings.push(`${v.runtime} is degraded but not blocking`);
+        warnings.push(`${v.runtime} 已降级，但不会阻塞流程`);
       }
     }
 
     if (runtimeBlocked.length > 0 && mode === "apply") {
       stages.push({ stage: "verify_runtimes", status: "blocked", detail: { blocked: runtimeBlocked } });
-      errors.push(`Required runtimes not found: ${runtimeBlocked.join(", ")}`);
+      errors.push(`未找到必需的运行时：${runtimeBlocked.join(", ")}`);
       this.deps.bootstrapRepo.updateRunStatus(run.id, "failed");
       return { runId: run.id, status: "failed", stages, errors, warnings };
     }
@@ -354,7 +354,7 @@ export class BootstrapOrchestrator {
       detail: { verifications: verifications.map((v) => ({ runtime: v.runtime, status: v.status })) },
     });
 
-    // --- Stage 4: PROBE_REQUIREMENTS ---
+    // --- 阶段 4：PROBE_REQUIREMENTS ---
     const requirementMap = new Map<string, RequirementSpec>();
     for (const [, resolved] of resolvedPackages) {
       const manifest = resolved.resolved.manifest;
@@ -402,13 +402,13 @@ export class BootstrapOrchestrator {
       },
     });
 
-    // --- Stage 5: BUILD_INSTALL_PLAN ---
+    // --- 阶段 5：BUILD_INSTALL_PLAN ---
     const installPlan = this.deps.installPlanner.planInstalls(probeResults);
 
-    // Check for manual_only blocking
+    // 检查 manual_only 是否造成阻塞
     const hasManualOnly = installPlan.manualOnly.length > 0;
 
-    // Build action keys for plan output
+    // 为计划输出构建操作键
     const allActionKeys: string[] = installPlan.actions.map((a) =>
       actionKey("external_install", a.kind, a.requirementName)
     );
@@ -430,19 +430,19 @@ export class BootstrapOrchestrator {
       },
     });
 
-    // *** PLAN MODE STOPS HERE ***
+    // *** 计划模式到此为止 ***
     if (mode === "plan") {
       return { runId: run.id, status: "planned", stages, errors, warnings, actionKeys: allActionKeys };
     }
 
-    // --- APPLY MODE: Check manual_only blocks ---
+    // --- 应用模式：检查 manual_only 阻塞项 ---
     if (hasManualOnly) {
-      errors.push(`${installPlan.manualOnly.length} manual-only requirements cannot be auto-installed: ${installPlan.manualOnly.map((a) => a.requirementName).join(", ")}`);
+      errors.push(`${installPlan.manualOnly.length} 个仅允许手动处理的依赖无法自动安装：${installPlan.manualOnly.map((a) => a.requirementName).join(", ")}`);
       this.deps.bootstrapRepo.updateRunStatus(run.id, "failed");
       return { runId: run.id, status: "failed", stages, errors, warnings };
     }
 
-    // --- Stage 6: EXECUTE_EXTERNAL_INSTALLS ---
+    // --- 阶段 6：EXECUTE_EXTERNAL_INSTALLS ---
     const taggedActions: TaggedAction[] = installPlan.actions.map((a) => {
       const key = actionKey("external_install", a.kind, a.requirementName);
       let approved = false;
@@ -454,22 +454,22 @@ export class BootstrapOrchestrator {
       return { action: a, approved };
     });
 
-    // Warn for unknown approved keys
+    // 对未知的已批准操作键发出警告
     if (approvedActionKeys) {
       const validKeys = new Set(taggedActions.map((t) => actionKey("external_install", t.action.kind, t.action.requirementName)));
       for (const key of approvedActionKeys) {
         if (!validKeys.has(key)) {
-          warnings.push(`Unknown approved action key ignored: '${key}'`);
+          warnings.push(`已忽略未知的已批准操作键：'${key}'`);
         }
       }
     }
 
-    // Block if external installs exist but none are approved
+    // 若存在外部安装操作但均未获批准，则阻塞流程
     const anyApproved = taggedActions.some((t) => t.approved);
     const hasActionableInstalls = taggedActions.some((t) => t.action.classification !== "manual_only" && t.action.commandPreview);
     if (hasActionableInstalls && !anyApproved) {
-      errors.push("External installs require approval. Use --yes for auto-approvable actions, or provide approvedActionKeys.");
-      stages.push({ stage: "execute_external_installs", status: "blocked", detail: { reason: "no approval provided" } });
+      errors.push("外部安装需要批准。对可自动批准的操作使用 --yes，或提供 approvedActionKeys。");
+      stages.push({ stage: "execute_external_installs", status: "blocked", detail: { reason: "未提供批准信息" } });
       this.deps.bootstrapRepo.updateRunStatus(run.id, "failed");
       return { runId: run.id, status: "failed", stages, errors, warnings };
     }
@@ -484,7 +484,7 @@ export class BootstrapOrchestrator {
       detail: { completed: execSummary.completed.length, failed: execSummary.failed.length, skipped: execSummary.skipped.length },
     });
 
-    // --- Stage 7: INSTALL_PACKAGES ---
+    // --- 阶段 7：INSTALL_PACKAGES ---
     let packageInstallFailed = false;
     for (const [ref, resolved] of resolvedPackages) {
       const runtimesForRef = new Set<string>();
@@ -493,7 +493,7 @@ export class BootstrapOrchestrator {
           runtimesForRef.add(node.runtime);
         }
       }
-      // Install once per runtime that references this package
+      // 针对引用此软件包的每个运行时各安装一次
       const runtimes = runtimesForRef.size > 0 ? [...runtimesForRef] : ["claude-code"];
       for (const rt of runtimes) {
         const runtime = rt as "claude-code" | "codex";
@@ -511,7 +511,7 @@ export class BootstrapOrchestrator {
         });
 
         if (!outcome.ok) {
-          errors.push(`Package install failed for '${ref}' (${runtime}): ${outcome.message}`);
+          errors.push(`为 '${ref}' (${runtime}) 安装软件包失败：${outcome.message}`);
           packageInstallFailed = true;
         }
       }
@@ -523,11 +523,11 @@ export class BootstrapOrchestrator {
       detail: { installed: resolvedPackages.size },
     });
 
-    // --- Stage 8: IMPORT_RIG ---
-    // Skip rig import if package installs failed — a rig without its packages is broken
+    // --- 阶段 8：IMPORT_RIG ---
+    // 若软件包安装失败，则跳过 rig 导入——缺少软件包的 rig 无法正常工作
     if (packageInstallFailed) {
-      errors.push("Rig import skipped due to package install failures");
-      stages.push({ stage: "import_rig", status: "skipped", detail: { reason: "package install failures" } });
+      errors.push("因软件包安装失败，已跳过 rig 导入");
+      stages.push({ stage: "import_rig", status: "skipped", detail: { reason: "软件包安装失败" } });
       this.deps.bootstrapRepo.updateRunStatus(run.id, "failed");
       return { runId: run.id, status: "failed", stages, errors, warnings };
     }
@@ -539,7 +539,7 @@ export class BootstrapOrchestrator {
     });
 
     if (!instantiateOutcome.ok) {
-      errors.push(`Rig import failed: ${instantiateOutcome.code}`);
+      errors.push(`Rig 导入失败：${instantiateOutcome.code}`);
       stages.push({ stage: "import_rig", status: "failed", detail: instantiateOutcome });
       const finalStatus: BootstrapStatus = hasExecFailures || packageInstallFailed ? "partial" : "failed";
       this.deps.bootstrapRepo.updateRunStatus(run.id, finalStatus);
@@ -551,7 +551,7 @@ export class BootstrapOrchestrator {
       warnings.push(...instantiateOutcome.result.warnings);
     }
 
-    // --- DONE ---
+    // --- 完成 ---
     const finalStatus: BootstrapStatus = hasExecFailures || packageInstallFailed ? "partial" : "completed";
     this.deps.bootstrapRepo.updateRunStatus(run.id, finalStatus, { rigId: instantiateOutcome.result.rigId });
 
@@ -565,7 +565,7 @@ export class BootstrapOrchestrator {
     };
   }
 
-  // -- Pod-aware bootstrap path --
+  // -- 支持 pod 的引导路径 --
 
   private async handlePodAwareSpec(
     opts: BootstrapOptions,
@@ -581,7 +581,7 @@ export class BootstrapOrchestrator {
     const rigRoot = specDir;
 
     if (mode === "plan") {
-      // Plan mode: validate + preflight only
+      // 计划模式：仅执行校验和预检
       const { rigPreflight } = await import("./rigspec-preflight.js");
       const { RigSpecCodec: PodCodec } = await import("./rigspec-codec.js");
       const { RigSpecSchema: PodSchema } = await import("./rigspec-schema.js");
@@ -631,18 +631,17 @@ export class BootstrapOrchestrator {
       }
     }
 
-    // Apply mode: full instantiation via PodRigInstantiator
-    // If services exist, the prelaunch hook boots them between topology creation and node launch
+    // 应用模式：通过 PodRigInstantiator 完整实例化
+    // 若存在服务，则预启动钩子会在创建拓扑与启动节点之间引导这些服务
     const prelaunchHook = await this.buildServicePrelaunchHook(rigSpecYaml, rigRoot, stages, errors);
     const outcome = await podInstantiator.instantiate(rigSpecYaml, rigRoot, { cwdOverride: opts.cwdOverride, prelaunchHook });
 
     if (!outcome.ok) {
-      // OPR.0.3.2.CT — attention_required is a recoverable outcome
-      // (rig + sessions preserved). Surface it distinctly from terminal
-      // failure so the route can return a 3-part error pointing the
-      // operator at the approve→resume path. The bootstrap run status
-      // is `partial` (not `failed`) because the rig exists and is
-      // operator-actionable.
+      // OPR.0.3.2.CT — attention_required 是可恢复的结果
+      //（rig 和会话均会保留）。需要将它与终止性故障明确区分，
+      // 以便路由返回三段式错误，引导操作者走 approve→resume 路径。
+      // 引导运行状态为 `partial`（而非 `failed`），因为 rig 仍然存在，
+      // 且操作者可以对其采取操作。
       if (outcome.code === "attention_required") {
         const attentionMsg = (outcome as { message: string }).message;
         const attentionNodes = (outcome as { attentionNodes: import("./types.js").AttentionNode[] }).attentionNodes;
@@ -678,16 +677,14 @@ export class BootstrapOrchestrator {
     const anyFailed = result.nodes.some((n) => n.status === "failed");
     const anyAttention = result.nodes.some((n) => n.status === "attention_required");
 
-    // OPR.0.3.2.CT (guard verdict qitem-20260518082933 BLOCKER 1):
-    // attention_required nodes are recoverable but NOT done — the
-    // launch is partial and the operator needs the same inspection
-    // surface the all-attention path already gets. Treating mixed
-    // launched+attention as "completed" would hide the parked seat
-    // behind a 201 success response. finalStatus is partial whenever
-    // any node is failed OR attention_required; the import_rig stage
-    // is "blocked" (not "ok") with attentionNodes detail so the route
-    // can build the 3-part error from the same path the all-attention
-    // case uses.
+    // OPR.0.3.2.CT（守卫裁决 qitem-20260518082933 BLOCKER 1）：
+    // attention_required 节点可恢复，但尚未完成——启动结果为 partial，
+    // 操作者需要与全 attention 路径相同的检查入口。若将混合的
+    // launched+attention 状态视为 "completed"，会让已停放的 seat
+    // 隐藏在 201 成功响应之后。只要有任一节点 failed 或
+    // attention_required，finalStatus 就应为 partial；import_rig 阶段
+    // 应为 "blocked"（而非 "ok"），并携带 attentionNodes 详情，
+    // 让路由能够通过与全 attention 场景相同的路径构建三段式错误。
     const finalStatus: BootstrapStatus = anyFailed || anyAttention ? "partial" : "completed";
 
     if (anyAttention) {
@@ -697,9 +694,9 @@ export class BootstrapOrchestrator {
           logicalId: n.logicalId,
           sessionName: n.sessionName ?? "",
           evidence: n.evidence,
-          reason: n.error ?? "node awaiting attention",
+          reason: n.error ?? "节点正在等待处理",
         }));
-      const message = `${attentionNodes.length} node${attentionNodes.length === 1 ? " requires" : "s require"} attention before becoming interactive. Inspect the affected sessions and reasons before choosing recovery.`;
+      const message = `${attentionNodes.length} 个节点需要先处理才能进入可交互状态。请选择恢复方式前，先检查受影响的会话及其原因。`;
       stages.push({
         stage: "import_rig",
         status: "blocked",
@@ -735,8 +732,8 @@ export class BootstrapOrchestrator {
   }
 
   /**
-   * Build a prelaunch hook for the service gate. Returns undefined if no services
-   * are configured or no ServiceOrchestrator is available.
+   * 为服务门禁构建预启动钩子。若未配置服务或没有可用的
+   * ServiceOrchestrator，则返回 undefined。
    */
   private async buildServicePrelaunchHook(
     rigSpecYaml: string,
@@ -746,7 +743,7 @@ export class BootstrapOrchestrator {
   ): Promise<((rigId: string) => Promise<{ ok: true } | { ok: false; code: string; message: string }>) | undefined> {
     if (!this.deps.serviceOrchestrator || !this.deps.rigRepo) return undefined;
 
-    // Parse and normalize via the canonical pod-aware codec/schema path
+    // 通过规范的 pod 感知 codec/schema 路径解析并规范化
     let normalizedSpec: import("./types.js").RigSpec;
     try {
       const { RigSpecCodec: PodCodec } = await import("./rigspec-codec.js");
@@ -767,7 +764,7 @@ export class BootstrapOrchestrator {
     const rigName = normalizedSpec.name;
 
     return async (rigId: string) => {
-      // Persist services record for the now-created rig
+      // 为刚创建的 rig 持久化服务记录
       const { deriveComposeProjectName } = await import("./compose-project-name.js");
       const composeFile = nodePath.resolve(rigRoot, services.composeFile);
       const projectName = services.projectName ?? deriveComposeProjectName(rigName);
@@ -780,32 +777,29 @@ export class BootstrapOrchestrator {
         projectName,
       });
 
-      // Boot services — strict health gate before any agent launch
+      // 引导服务——在启动任何 agent 前执行严格的健康门禁
       const bootResult = await serviceOrch.boot(rigId);
 
       if (!bootResult.ok) {
-        errors.push(`Service boot failed: ${bootResult.error}`);
+        errors.push(`服务引导失败：${bootResult.error}`);
         stages.push({
           stage: "service_boot",
           status: "failed",
           detail: { code: bootResult.code, error: bootResult.error, receipt: bootResult.receipt },
         });
-        // OPR.0.3.2.22 Bug 2 follow-up — serviceOrch.boot can already have
-        // started compose resources before failing during status/wait. The
-        // PodRigInstantiator will delete the rig record next, which cascades
-        // away rig_services and the normal teardown handle — so any
-        // already-started compose containers would orphan. Tear them down
-        // here best-effort while the rig handle still exists. Teardown
-        // errors are swallowed so they cannot mask the boot failure that
-        // is the load-bearing return.
+        // OPR.0.3.2.22 Bug 2 后续修复——serviceOrch.boot 可能已经启动
+        // compose 资源，随后才在 status/wait 阶段失败。接下来
+        // PodRigInstantiator 会删除 rig 记录，并级联删除 rig_services
+        // 和常规拆除句柄，从而导致已启动的 compose 容器成为孤儿。
+        // 趁 rig 句柄仍然存在，在此尽力拆除这些资源。吞掉拆除错误，
+        // 避免它们掩盖作为关键返回结果的引导失败。
         try {
           await serviceOrch.teardown(rigId);
         } catch {
-          // Best-effort. If teardown also fails, the boot-failure error
-          // is what the operator needs; manual `docker compose down`
-          // remains available with the compose file path from the spec.
+          // 尽力而为。若拆除也失败，操作者真正需要的是引导失败错误；
+          // 仍可使用规范中的 compose 文件路径手动执行 `docker compose down`。
         }
-        return { ok: false, code: "service_boot_failed", message: `Service boot failed: ${bootResult.error}` };
+        return { ok: false, code: "service_boot_failed", message: `服务引导失败：${bootResult.error}` };
       }
 
       stages.push({

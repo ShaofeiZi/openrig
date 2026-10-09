@@ -1,13 +1,12 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * Outbox entries (PL-004 Phase A; symmetric to inbox).
+ * Outbox 条目（PL-004 阶段 A；与 inbox 对称）。
  *
- * Sender-side audit of dispatched items. Useful for senders that want a
- * record of sent items independent of receiver behavior. Daemon-managed
- * write; idempotent on outbox_id.
+ * 对已派发条目的发送方侧审计。适用于发送方希望独立于接收方行为记录已发送条目的场景。
+ * 由后台服务管理写入；以 outbox_id 保证幂等。
  *
- * delivery_state enum: pending | delivered | failed
+ * delivery_state 枚举：pending | delivered | failed
  */
 export const outboxEntriesSchema: Migration = {
   name: "027_outbox_entries.sql",

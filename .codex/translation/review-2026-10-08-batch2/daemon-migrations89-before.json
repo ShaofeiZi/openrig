@@ -1,0 +1,447 @@
+{
+"packages/daemon/src/db/migrations/001_core_schema.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/002_bindings_sessions.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/003_events.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/004_snapshots.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/005_checkpoints.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/006_resume_metadata.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/007_node_spec_fields.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/008_packages.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/009_install_journal.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/010_journal_seq.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/011_bootstrap.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/012_discovery.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/013_discovery_fk_fix.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/014_agentspec_reboot.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/015_startup_context.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/016_chat_messages.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/017_pod_namespace.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/018_context_usage.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/019_external_cli_attachment.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/020_rig_services.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/021_seat_handover_observability.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/022_node_codex_config_profile.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/023_stream_items.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/024_queue_items.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/025_queue_transitions.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/026_inbox_entries.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/027_outbox_entries.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/028_project_classifications.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/029_classifier_leases.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/030_views_custom.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/031_watchdog_jobs.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/032_watchdog_history.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/033_workflow_specs.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/034_workflow_instances.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/035_workflow_step_trails.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/036_watchdog_policy_enum_extension.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/037_mission_control_actions.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/038_workspace_primitive.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/039_queue_target_repo.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/040_workflow_specs_diagnostic.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/041_rig_policy.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/042_rig_archive.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/043_resume_provenance.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/044_queue_item_summary.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/045_resume_verification.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/046_seat_identity_verdicts.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/047_events_node_type_index.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/048_queue_item_evidence_ref.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/049_workflow_instance_version.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/050_workflow_spec_json.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/051_workflow_resume.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/052_workflow_instance_bound_rig.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/053_sessions_node_id_index.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/054_queue_transitions_archive.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/055_node_permission_policy.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/056_rig_permission_policy.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/057_node_policy_provenance.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/058_rig_policy_provenance.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/059_self_host_identity.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/060_occupant_tenures.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/061_daemon_lifecycle.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/062_usage_samples.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/063_occupant_generation_stamps.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/064_projection_manifest.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/065_identity_provenance.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/066_watchdog_target_generation.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/067_i3_identity_provenance.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/068_enforcer_decisions.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/069_applied_launch_observations.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/070_applied_launch_observation_invalidations.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/071_drop_enforcer_decisions.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/072_thread_seat_map.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/073_queue_transition_wakes.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/074_context_usage_watchdog.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/075_context_usage_watchdog_generation.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/076_owner_notification_levels.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/077_node_session_source.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/078_idle_gate_fired_condition.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/079_workflow_lifecycle_parallel.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/080_scoped_operating_posture.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/081_human_notification_intent.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/082_archive_identity_provenance.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/083_review_read_indexes.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/084_inventory_event_indexes.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/085_rig_claude_managed_block_file.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/086_classification_fields_and_attempts.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/087_seat_delivery_guard.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/db/migrations/088_node_permission_selections.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/db/migrations/089_classification_identity_provenance.ts": [
+"daemon-runtime",
+"validated",
+"done"
+]
+}

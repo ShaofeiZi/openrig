@@ -1,7 +1,7 @@
-// OPR.0.4.0.39 FR-1 - the shared static-terminal component. The preview internals
-// are mocked; this asserts the plate/button structure, the smoke plate, and the
-// testid passthrough that the two callers (grid thumbnail + ProgressiveTerminal
-// static) depend on.
+// OPR.0.4.0.39 FR-1——共享 static-terminal 组件。预览内部
+// 被 mock；此断言 plate/按钮结构、smoke plate，以及
+// 两个调用方（grid 缩略图 + ProgressiveTerminal
+// static）所依赖的 testid 透传。
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import {

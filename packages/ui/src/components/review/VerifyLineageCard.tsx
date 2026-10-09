@@ -1,10 +1,9 @@
-// Living Notes Packet 2 — the verify-lineage CARD (OPR.0.4.4.20 FR-2 / SS14).
+// Living Notes Packet 2 —— 校验血缘卡片（OPR.0.4.4.20 FR-2 / SS14）。
 //
-// Promoted from an inline strip to its own bounded card. N1 rule: the three
-// view-time facts (proven-at SHA · merged-at-or-UNMERGED · current tip) always
-// render; the fresh/stale label is a DERIVATION of the shown facts and never
-// appears alone. G1 rule: each gate chip renders the RECORDED token verbatim
-// (a CONCERNING never renders as FAIL) with a separately derived tone.
+// 从内联条提升为独立的有界卡片。N1 规则：三个渲染时事实
+// （验证于 SHA · 合并于或未合并 · 当前尖端）始终渲染；新鲜/过期标签是已展示事实的
+// 推导，绝不单独出现。G1 规则：每个门控 chip 逐字渲染记录的 token
+// （CONCERNING 绝不渲染成 FAIL），色调单独推导。
 
 import type { VerifyLineage } from "../../hooks/useReview.js";
 import { cn } from "../../lib/utils.js";
@@ -16,20 +15,26 @@ const TONE_CLASS: Record<string, string> = {
   unknown: "bg-surface-variant text-on-surface-variant border-outline-variant",
 };
 
-// CORRECTIVE §11 — the separate green readout is REMOVED; recorded-verdict
-// rigor now feeds per-deliverable `verified` in DELIVERED.
+const FRESHNESS_LABEL: Record<string, string> = {
+  fresh: "新鲜",
+  stale: "过期",
+  unknown: "未知",
+};
+
+// CORRECTIVE §11 —— 单独的绿色读数已移除；记录判定的严谨度现在喂给
+// DELIVERED 中逐交付物的 `verified`。
 export function VerifyLineageCard({ lineage }: { lineage: VerifyLineage }) {
   return (
     <section data-testid="verify-lineage-card" className={cn(VELLUM_CARD, "p-3 space-y-2")}>
-      <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">Verify lineage</h3>
+      <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">校验血缘</h3>
       <p className="font-mono text-[11px] break-all">
-        proven-at <code>{lineage.candidateSha ?? "unknown"}</code>
-        {" · "}merged-at <code>{lineage.mergeSha ?? "UNMERGED"}</code>
-        {" · "}main tip <code>{lineage.mainTip}</code>
+        验证于 <code>{lineage.candidateSha ?? "未知"}</code>
+        {" · "}合并于 <code>{lineage.mergeSha ?? "未合并"}</code>
+        {" · "}main 尖端 <code>{lineage.mainTip}</code>
         {" · "}
         <span data-testid="lineage-freshness">
-          freshness {lineage.freshness}
-          {lineage.staleBehind !== null ? ` (${lineage.staleBehind} behind)` : ""}
+          新鲜度 {FRESHNESS_LABEL[lineage.freshness] ?? lineage.freshness}
+          {lineage.staleBehind !== null ? `（落后 ${lineage.staleBehind}）` : ""}
         </span>
       </p>
       <div className="flex flex-wrap gap-1" data-testid="lineage-gate-cells">
@@ -37,10 +42,10 @@ export function VerifyLineageCard({ lineage }: { lineage: VerifyLineage }) {
           <span
             key={cell.role}
             data-testid={`gate-cell-${cell.role}`}
-            title={cell.source ?? "no artifact"}
+            title={cell.source ?? "无制品"}
             className={`border px-1.5 py-0.5 font-mono text-[10px] ${TONE_CLASS[cell.tone]}`}
           >
-            {cell.role}: {cell.recordedToken ?? "missing"}
+            {cell.role}: {cell.recordedToken ?? "缺失"}
           </span>
         ))}
       </div>

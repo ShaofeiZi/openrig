@@ -1,7 +1,7 @@
-// OPR.0.4.4.18 — `rig file copy` CLI wiring: rejection surfaces render the
-// core's structured errors verbatim (fail-closed, spawn NEVER invoked on any
-// rejection — the spawn-spy negative), dry-run reports the planned transfer,
-// JSON mode is agent-consumable and exposes the closed builder's argv.
+// OPR.0.4.4.18——`rig file copy` CLI 接线：拒绝表面逐字渲染
+// core 的结构化错误（fail-closed，任何拒绝绝不起 spawn——
+// spawn-spy 负向），dry-run 报告计划传输，
+// JSON 模式 agent 可消费并暴露已关闭 builder 的 argv。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { fileCommand } from "../src/commands/file.js";
@@ -51,14 +51,14 @@ async function runCopy(args: string[], run?: (plan: unknown) => Promise<FileCopy
 describe("rig file copy — rejection surfaces (spawn NEVER invoked)", () => {
   it("remote:remote rejects with the pull-then-push text; exit 1; no run", async () => {
     const { runs } = await runCopy(["vps-a:/a.md", "vps-a:/b.md"]);
-    expect(errs.join("\n")).toContain("remote-to-remote is not in v0; pull then push");
+    expect(errs.join("\n")).toContain("先拉取再推送");
     expect(process.exitCode).toBe(1);
     expect(runs).toHaveLength(0);
   });
 
   it("unknown host (the N18-1 colon-file case) fails loudly; no run", async () => {
     const { runs } = await runCopy(["notes:v2.md", "./out.md"]);
-    expect(errs.join("\n")).toContain("unknown host id 'notes'");
+    expect(errs.join("\n")).toContain("未知主机 id 'notes'");
     expect(runs).toHaveLength(0);
     expect(process.exitCode).toBe(1);
   });
@@ -74,7 +74,7 @@ describe("rig file copy — rejection surfaces (spawn NEVER invoked)", () => {
     const { runs } = await runCopy(["--json", "./a.md", "vps-a:/srv/a b.md"]);
     const payload2 = JSON.parse(logs[0]!) as Record<string, unknown>;
     expect(payload2["code"]).toBe("denied_path");
-    expect(String(payload2["error"])).toContain("a space");
+    expect(String(payload2["error"])).toContain("空格");
     expect(runs).toHaveLength(0);
   });
 
@@ -88,7 +88,7 @@ describe("rig file copy — rejection surfaces (spawn NEVER invoked)", () => {
 describe("rig file copy — success + dry-run rendering", () => {
   it("success prints src → dst + bytes", async () => {
     await runCopy(["./a.md", "vps-a:/srv/briefs/a.md"]);
-    expect(logs.join("\n")).toMatch(/Copied .*a\.md → vps-a:\/srv\/briefs\/a\.md \(128 bytes\)/);
+    expect(logs.join("\n")).toMatch(/已复制 .*a\.md →/);
     expect(process.exitCode).toBe(0);
   });
 
@@ -99,9 +99,9 @@ describe("rig file copy — success + dry-run rendering", () => {
     );
     expect((runs[0] as { dryRun: boolean }).dryRun).toBe(true);
     const out = logs.join("\n");
-    expect(out).toContain("DRY RUN — nothing moved");
+    expect(out).toContain("试运行——未传输任何内容");
     expect(out).toContain("→ vps-a:/srv/a.md");
-    expect(out).toContain("files: 1, bytes: 128");
+    expect(out).toContain("文件数：1，字节数：128");
   });
 
   it("JSON success exposes the closed builder's argv (transparency; '--' pin visible)", async () => {
@@ -119,7 +119,7 @@ describe("rig file copy — success + dry-run rendering", () => {
     const err = errs.join("\n");
     expect(err).toContain("[permission-gate]");
     expect(err).toContain("Permission denied");
-    expect(err).toContain("Hint:");
+    expect(err).toContain("提示：");
     expect(process.exitCode).toBe(1);
   });
 });

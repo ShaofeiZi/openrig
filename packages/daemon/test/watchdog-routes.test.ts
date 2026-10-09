@@ -28,7 +28,7 @@ function buildApp(opts: {
   return app;
 }
 
-describe("watchdog routes (PL-004 Phase C)", () => {
+describe("watchdog 路由（PL-004 Phase C）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let jobsRepo: WatchdogJobsRepository;
@@ -55,7 +55,7 @@ describe("watchdog routes (PL-004 Phase C)", () => {
 
   afterEach(() => db.close());
 
-  it("POST /register returns 201 + persists job + emits watchdog.job_registered", async () => {
+  it("POST /register 返回 201、持久化 job 并发出 watchdog.job_registered", async () => {
     const captured: Array<{ type: string }> = [];
     bus.subscribe((e) => captured.push(e));
     const res = await app.request("/api/watchdog/register", {
@@ -71,9 +71,8 @@ describe("watchdog routes (PL-004 Phase C)", () => {
     expect(captured.some((e) => e.type === "watchdog.job_registered")).toBe(true);
   });
 
-  // PL-004 Phase D: registration-rejection for workflow-keepalive REPLACED
-  // with positive registration-accept.
-  it("POST /register accepts workflow-keepalive (Phase D enum extension)", async () => {
+  // PL-004 Phase D：workflow-keepalive 的 registration-rejection 已替换为正向 registration-accept。
+  it("POST /register 接受 workflow-keepalive（Phase D enum 扩展）", async () => {
     const res = await app.request("/api/watchdog/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -85,7 +84,7 @@ describe("watchdog routes (PL-004 Phase C)", () => {
     expect(body.state).toBe("active");
   });
 
-  it("POST /register rejects unknown policy with 400 + policy_unknown", async () => {
+  it("POST /register 以 400 + policy_unknown 拒绝未知 policy", async () => {
     const res = await app.request("/api/watchdog/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -96,7 +95,7 @@ describe("watchdog routes (PL-004 Phase C)", () => {
     expect(body.error).toBe("policy_unknown");
   });
 
-  it("POST /register rejects missing required field with 400", async () => {
+  it("POST /register 以 400 拒绝缺少必填字段的请求", async () => {
     const res = await app.request("/api/watchdog/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -106,11 +105,11 @@ describe("watchdog routes (PL-004 Phase C)", () => {
   });
 
   it.each([
-    ["malformed YAML", "message: [unterminated", "invalid YAML"],
+    ["malformed YAML", "message: [unterminated", "无效 YAML"],
     ["non-string message", "message: 42\n", "message"],
     ["non-mapping context", "context: nope\n", "context"],
     ["non-string target", "target: 42\nmessage: ping\n", "target"],
-  ])("POST /register rejects %s before storing a job", async (_case, specYaml, messagePart) => {
+  ])("POST /register 在存储 job 前拒绝 %s", async (_case, specYaml, messagePart) => {
     const res = await app.request("/api/watchdog/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -124,7 +123,7 @@ describe("watchdog routes (PL-004 Phase C)", () => {
     expect(jobsRepo.listAll()).toHaveLength(0);
   });
 
-  it("GET /list lists all jobs", async () => {
+  it("GET /list 列出所有 job", async () => {
     jobsRepo.register({ ...validRegisterBody, targetSession: "a@rig" });
     jobsRepo.register({ ...validRegisterBody, targetSession: "b@rig" });
     const res = await app.request("/api/watchdog/list");
@@ -133,7 +132,7 @@ describe("watchdog routes (PL-004 Phase C)", () => {
     expect(list).toHaveLength(2);
   });
 
-  it("GET /:job_id returns job by id", async () => {
+  it("GET /:job_id 按 id 返回 job", async () => {
     const job = jobsRepo.register(validRegisterBody);
     const res = await app.request(`/api/watchdog/${job.jobId}`);
     expect(res.status).toBe(200);
@@ -141,14 +140,14 @@ describe("watchdog routes (PL-004 Phase C)", () => {
     expect(body.jobId).toBe(job.jobId);
   });
 
-  it("GET /:job_id returns 404 for unknown id", async () => {
+  it("GET /:job_id 对未知 id 返回 404", async () => {
     const res = await app.request("/api/watchdog/unknown-id");
     expect(res.status).toBe(404);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("job_not_found");
   });
 
-  it("GET /:job_id/status returns job + recent history", async () => {
+  it("GET /:job_id/status 返回 job + 最近 history", async () => {
     const job = jobsRepo.register(validRegisterBody);
     log.record({
       jobId: job.jobId,
@@ -166,7 +165,7 @@ describe("watchdog routes (PL-004 Phase C)", () => {
     expect(body.recentHistory[0]?.outcome).toBe("sent");
   });
 
-  it("POST /:job_id/stop stops job + emits watchdog.job_stopped", async () => {
+  it("POST /:job_id/stop 停止 job 并发出 watchdog.job_stopped", async () => {
     const captured: Array<{ type: string }> = [];
     bus.subscribe((e) => captured.push(e));
     const job = jobsRepo.register(validRegisterBody);
@@ -181,7 +180,7 @@ describe("watchdog routes (PL-004 Phase C)", () => {
     expect(captured.some((e) => e.type === "watchdog.job_stopped")).toBe(true);
   });
 
-  it("POST /:job_id/stop on terminal job returns 409 + job_terminal", async () => {
+  it("对 terminal job 调用 POST /:job_id/stop 时返回 409 + job_terminal", async () => {
     const job = jobsRepo.register(validRegisterBody);
     jobsRepo.markTerminal(job.jobId, "done");
     const res = await app.request(`/api/watchdog/${job.jobId}/stop`, {
@@ -194,7 +193,7 @@ describe("watchdog routes (PL-004 Phase C)", () => {
     expect(body.error).toBe("job_terminal");
   });
 
-  it("R1 SSE pattern: GET /api/watchdog/sse returns 200 + content-type text/event-stream", async () => {
+  it("R1 SSE 模式：GET /api/watchdog/sse 返回 200 + content-type text/event-stream", async () => {
     const res = await app.request("/api/watchdog/sse");
     try {
       expect(res.status).toBe(200);
@@ -204,7 +203,7 @@ describe("watchdog routes (PL-004 Phase C)", () => {
     }
   });
 
-  it("R1 SSE pattern: GET /api/watchdog/watch returns 200 + content-type text/event-stream", async () => {
+  it("R1 SSE 模式：GET /api/watchdog/watch 返回 200 + content-type text/event-stream", async () => {
     const res = await app.request("/api/watchdog/watch");
     try {
       expect(res.status).toBe(200);
@@ -214,7 +213,7 @@ describe("watchdog routes (PL-004 Phase C)", () => {
     }
   });
 
-  it("R1 SSE pattern: GET /api/watchdog/sse does NOT return job_not_found (route-order regression guard)", async () => {
+  it("R1 SSE 模式：GET /api/watchdog/sse 不返回 job_not_found（route-order 回归 guard）", async () => {
     const res = await app.request("/api/watchdog/sse");
     try {
       expect(res.status).not.toBe(404);

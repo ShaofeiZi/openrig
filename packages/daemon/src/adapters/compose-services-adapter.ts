@@ -1,6 +1,6 @@
 import type { ExecFn } from "./tmux.js";
 
-// -- Result types --
+// -- 结果类型 --
 
 export type ComposeResult =
   | { ok: true }
@@ -25,7 +25,7 @@ export interface ComposeLogsResult {
   error?: string;
 }
 
-/** Shell-quote a string using single quotes (POSIX-safe). */
+/** 使用单引号为字符串添加 shell 引号（POSIX 安全）。 */
 function sq(s: string): string {
   return "'" + s.replace(/'/g, "'\"'\"'") + "'";
 }
@@ -48,11 +48,11 @@ function formatExecError(err: unknown): string {
   return String(err);
 }
 
-// -- Adapter --
+// -- 适配器 --
 
 /**
- * I/O adapter for Docker Compose. Shells out to `docker compose`.
- * Lives in adapters/ alongside tmux.ts — infrastructure I/O, not domain logic.
+ * Docker Compose 的 I/O 适配器。通过 shell 调用 `docker compose`。与 tmux.ts 一同位于
+ * adapters/——这是基础设施 I/O，不是领域逻辑。
  */
 export class ComposeServicesAdapter {
   private exec: ExecFn;
@@ -61,7 +61,7 @@ export class ComposeServicesAdapter {
     this.exec = exec;
   }
 
-  /** Start services with docker compose up -d. Readiness is handled by services-readiness, not --wait. */
+  /** 使用 docker compose up -d 启动服务。就绪性由 services-readiness 处理，而非 --wait。 */
   async up(opts: {
     composeFile: string;
     projectName: string;
@@ -77,7 +77,7 @@ export class ComposeServicesAdapter {
     }
   }
 
-  /** Stop services according to down policy. */
+  /** 根据 down 策略停止服务。 */
   async down(opts: {
     composeFile: string;
     projectName: string;
@@ -85,7 +85,7 @@ export class ComposeServicesAdapter {
     policy: "leave_running" | "down" | "down_and_volumes";
   }): Promise<ComposeResult> {
     if (opts.policy === "leave_running") {
-      return { ok: true }; // intentional no-op
+      return { ok: true }; // 有意为空操作。
     }
 
     const args = this.baseArgs(opts.composeFile, opts.projectName, opts.profiles);
@@ -99,7 +99,7 @@ export class ComposeServicesAdapter {
     }
   }
 
-  /** Get service statuses via docker compose ps --format json. */
+  /** 通过 docker compose ps --format json 获取服务状态。 */
   async status(opts: {
     composeFile: string;
     projectName: string;
@@ -112,7 +112,7 @@ export class ComposeServicesAdapter {
       const parseInput = this.extractComposePsPayload(output);
       const services = this.parseComposePs(parseInput);
       if (parseInput !== "" && services.length === 0) {
-        return { ok: false, services: [], error: "docker compose ps returned unparseable JSON output" };
+        return { ok: false, services: [], error: "docker compose ps 返回了无法解析的 JSON 输出" };
       }
       return { ok: true, services };
     } catch (err) {
@@ -120,7 +120,7 @@ export class ComposeServicesAdapter {
     }
   }
 
-  /** Get logs for a specific service or all services. */
+  /** 获取指定服务或全部服务的日志。 */
   async logs(opts: {
     composeFile: string;
     projectName: string;
@@ -140,7 +140,7 @@ export class ComposeServicesAdapter {
     }
   }
 
-  /** Run a checkpoint export command. */
+  /** 运行 checkpoint 导出命令。 */
   async runCheckpointExport(command: string): Promise<ComposeResult> {
     try {
       await this.exec(command);
@@ -150,7 +150,7 @@ export class ComposeServicesAdapter {
     }
   }
 
-  /** Run a checkpoint import command. */
+  /** 运行 checkpoint 导入命令。 */
   async runCheckpointImport(command: string): Promise<ComposeResult> {
     try {
       await this.exec(command);
@@ -160,7 +160,7 @@ export class ComposeServicesAdapter {
     }
   }
 
-  /** Probe an HTTP wait target. Returns true if the URL responds with 2xx. */
+  /** 探测 HTTP 等待目标。URL 返回 2xx 时为 true。 */
   async probeHttp(url: string, timeoutMs: number = 5000): Promise<boolean> {
     try {
       const cmd = `curl -sf -o /dev/null -w '%{http_code}' --max-time ${Math.ceil(timeoutMs / 1000)} ${sq(url)} 2>/dev/null`;
@@ -172,7 +172,7 @@ export class ComposeServicesAdapter {
     }
   }
 
-  /** Probe a TCP wait target. Returns true if the port is open. */
+  /** 探测 TCP 等待目标。端口开放时为 true。 */
   async probeTcp(target: string, timeoutMs: number = 5000): Promise<boolean> {
     try {
       const [host, portStr] = target.split(":");
@@ -185,7 +185,7 @@ export class ComposeServicesAdapter {
     }
   }
 
-  // -- Private helpers --
+  // -- 私有辅助函数 --
 
   private baseArgs(composeFile: string, projectName: string, profiles?: string[]): string {
     const parts = [`-f ${sq(composeFile)}`, `-p ${sq(projectName)}`];
@@ -210,20 +210,20 @@ export class ComposeServicesAdapter {
     return jsonLines.join("\n");
   }
 
-  /** Parse docker compose ps --format json. Handles both one-object-per-line and JSON array formats. */
+  /** 解析 docker compose ps --format json；同时支持逐行单对象和 JSON 数组格式。 */
   private parseComposePs(output: string): ComposeServiceStatus[] {
     const trimmed = output.trim();
     if (!trimmed) return [];
 
-    // Try JSON array first
+    // 先尝试 JSON 数组。
     if (trimmed.startsWith("[")) {
       try {
         const arr = JSON.parse(trimmed) as Array<Record<string, unknown>>;
         return arr.map((obj) => this.mapServiceStatus(obj));
-      } catch { /* fall through to line-by-line */ }
+      } catch { /* 回退到逐行解析。 */ }
     }
 
-    // One JSON object per line
+    // 每行一个 JSON 对象。
     const results: ComposeServiceStatus[] = [];
     for (const line of trimmed.split("\n")) {
       const l = line.trim();
@@ -231,7 +231,7 @@ export class ComposeServicesAdapter {
       try {
         const obj = JSON.parse(l) as Record<string, unknown>;
         results.push(this.mapServiceStatus(obj));
-      } catch { /* skip malformed lines */ }
+      } catch { /* 跳过格式错误的行。 */ }
     }
     return results;
   }

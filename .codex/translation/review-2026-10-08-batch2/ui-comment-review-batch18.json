@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T02:06:24",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch18",
+ "files": 10,
+ "changed": 8,
+ "reviewed_no_change": 2,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/p5-topology-terminal.test.tsx",
+   "status": "changed",
+   "after_sha256": "a21b87cbeaa3d2b1a8a29a9ba0b335eba6d10c70636bc1e57722c5a965e79463",
+   "natural_language_residual": 0,
+   "machine_classification": "globals.css @keyframes terminal-card-active-frames、prefers-reduced-motion: reduce、vellum-scroll-x、OPR.0.4.0.39/FR-6、TerminalPreviewPopover、a11y、RigStatusCard/useStartRig、kernel_state=auth_blocked、/healthz、freshLogicalIds、OPR.0.4.7.1、SnapshotPanel testid、xterm renderer、OPR.0.4.0.1/FR-4/rev1-r2、TERMINAL_PREVIEW_EVENT、qitem-20260722121455-3f43040c、composeDelivered、data.plan.concise.text、SliceReviewTab、plan-mini-reqs-noncompliant、source:rootName:skillName、.openrig/skills/、Slice 29 HG-3、docs-browser、OPR.0.4.4.19 FR-2、actor_role、workflow_instance 保留"
+  },
+  {
+   "path": "packages/ui/test/rig-status-launch-control.test.tsx",
+   "status": "changed",
+   "after_sha256": "c434722d2074faff4d354f50bbe93c4bacf2e0865a936feb5548e036cf73bdd2",
+   "natural_language_residual": 0,
+   "machine_classification": "globals.css @keyframes terminal-card-active-frames、prefers-reduced-motion: reduce、vellum-scroll-x、OPR.0.4.0.39/FR-6、TerminalPreviewPopover、a11y、RigStatusCard/useStartRig、kernel_state=auth_blocked、/healthz、freshLogicalIds、OPR.0.4.7.1、SnapshotPanel testid、xterm renderer、OPR.0.4.0.1/FR-4/rev1-r2、TERMINAL_PREVIEW_EVENT、qitem-20260722121455-3f43040c、composeDelivered、data.plan.concise.text、SliceReviewTab、plan-mini-reqs-noncompliant、source:rootName:skillName、.openrig/skills/、Slice 29 HG-3、docs-browser、OPR.0.4.4.19 FR-2、actor_role、workflow_instance 保留"
+  },
+  {
+   "path": "packages/ui/test/snapshot-panel.test.tsx",
+   "status": "changed",
+   "after_sha256": "8f26844b17e05bc2dcea8ddfb0accd0dca1375e33162cb0648ab72e82d9250d7",
+   "natural_language_residual": 0,
+   "machine_classification": "globals.css @keyframes terminal-card-active-frames、prefers-reduced-motion: reduce、vellum-scroll-x、OPR.0.4.0.39/FR-6、TerminalPreviewPopover、a11y、RigStatusCard/useStartRig、kernel_state=auth_blocked、/healthz、freshLogicalIds、OPR.0.4.7.1、SnapshotPanel testid、xterm renderer、OPR.0.4.0.1/FR-4/rev1-r2、TERMINAL_PREVIEW_EVENT、qitem-20260722121455-3f43040c、composeDelivered、data.plan.concise.text、SliceReviewTab、plan-mini-reqs-noncompliant、source:rootName:skillName、.openrig/skills/、Slice 29 HG-3、docs-browser、OPR.0.4.4.19 FR-2、actor_role、workflow_instance 保留"
+  },
+  {
+   "path": "packages/ui/test/p5-3-activity-ring-hot-potato.test.tsx",
+   "status": "changed",
+   "after_sha256": "c29f1789a1b802a4c72f042b1b435553cb57785dc1338e961324dc7f64ccd937",
+   "natural_language_residual": 0,
+   "machine_classification": "globals.css @keyframes terminal-card-active-frames、prefers-reduced-motion: reduce、vellum-scroll-x、OPR.0.4.0.39/FR-6、TerminalPreviewPopover、a11y、RigStatusCard/useStartRig、kernel_state=auth_blocked、/healthz、freshLogicalIds、OPR.0.4.7.1、SnapshotPanel testid、xterm renderer、OPR.0.4.0.1/FR-4/rev1-r2、TERMINAL_PREVIEW_EVENT、qitem-20260722121455-3f43040c、composeDelivered、data.plan.concise.text、SliceReviewTab、plan-mini-reqs-noncompliant、source:rootName:skillName、.openrig/skills/、Slice 29 HG-3、docs-browser、OPR.0.4.4.19 FR-2、actor_role、workflow_instance 保留"
+  },
+  {
+   "path": "packages/ui/test/flagship-review-polish.test.tsx",
+   "status": "changed",
+   "after_sha256": "30b7adcf598e39aad349a57dbe6c5642d94433e31436f9b8a89f6284900ae5c7",
+   "natural_language_residual": 0,
+   "machine_classification": "globals.css @keyframes terminal-card-active-frames、prefers-reduced-motion: reduce、vellum-scroll-x、OPR.0.4.0.39/FR-6、TerminalPreviewPopover、a11y、RigStatusCard/useStartRig、kernel_state=auth_blocked、/healthz、freshLogicalIds、OPR.0.4.7.1、SnapshotPanel testid、xterm renderer、OPR.0.4.0.1/FR-4/rev1-r2、TERMINAL_PREVIEW_EVENT、qitem-20260722121455-3f43040c、composeDelivered、data.plan.concise.text、SliceReviewTab、plan-mini-reqs-noncompliant、source:rootName:skillName、.openrig/skills/、Slice 29 HG-3、docs-browser、OPR.0.4.4.19 FR-2、actor_role、workflow_instance 保留"
+  },
+  {
+   "path": "packages/ui/test/p5-2-host-multi-rig-graph.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "fb220a053515f67143194748fc57742feb509d54285aa0264ec8b9fa96490511",
+   "natural_language_residual": 0,
+   "machine_classification": "globals.css @keyframes terminal-card-active-frames、prefers-reduced-motion: reduce、vellum-scroll-x、OPR.0.4.0.39/FR-6、TerminalPreviewPopover、a11y、RigStatusCard/useStartRig、kernel_state=auth_blocked、/healthz、freshLogicalIds、OPR.0.4.7.1、SnapshotPanel testid、xterm renderer、OPR.0.4.0.1/FR-4/rev1-r2、TERMINAL_PREVIEW_EVENT、qitem-20260722121455-3f43040c、composeDelivered、data.plan.concise.text、SliceReviewTab、plan-mini-reqs-noncompliant、source:rootName:skillName、.openrig/skills/、Slice 29 HG-3、docs-browser、OPR.0.4.4.19 FR-2、actor_role、workflow_instance 保留"
+  },
+  {
+   "path": "packages/ui/test/storytelling-feed-adapter.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "ac1c8c465960b0c77e311bf6dd791c0ba8bafc3f6e3bf844aba9a6d3bb62796e",
+   "natural_language_residual": 0,
+   "machine_classification": "globals.css @keyframes terminal-card-active-frames、prefers-reduced-motion: reduce、vellum-scroll-x、OPR.0.4.0.39/FR-6、TerminalPreviewPopover、a11y、RigStatusCard/useStartRig、kernel_state=auth_blocked、/healthz、freshLogicalIds、OPR.0.4.7.1、SnapshotPanel testid、xterm renderer、OPR.0.4.0.1/FR-4/rev1-r2、TERMINAL_PREVIEW_EVENT、qitem-20260722121455-3f43040c、composeDelivered、data.plan.concise.text、SliceReviewTab、plan-mini-reqs-noncompliant、source:rootName:skillName、.openrig/skills/、Slice 29 HG-3、docs-browser、OPR.0.4.4.19 FR-2、actor_role、workflow_instance 保留"
+  },
+  {
+   "path": "packages/ui/test/discovery-overlay.test.tsx",
+   "status": "changed",
+   "after_sha256": "0f98ece7be79fe8fee2e81c6c9181745eedb25da7898834be6b40eafd94d78d0",
+   "natural_language_residual": 0,
+   "machine_classification": "globals.css @keyframes terminal-card-active-frames、prefers-reduced-motion: reduce、vellum-scroll-x、OPR.0.4.0.39/FR-6、TerminalPreviewPopover、a11y、RigStatusCard/useStartRig、kernel_state=auth_blocked、/healthz、freshLogicalIds、OPR.0.4.7.1、SnapshotPanel testid、xterm renderer、OPR.0.4.0.1/FR-4/rev1-r2、TERMINAL_PREVIEW_EVENT、qitem-20260722121455-3f43040c、composeDelivered、data.plan.concise.text、SliceReviewTab、plan-mini-reqs-noncompliant、source:rootName:skillName、.openrig/skills/、Slice 29 HG-3、docs-browser、OPR.0.4.4.19 FR-2、actor_role、workflow_instance 保留"
+  },
+  {
+   "path": "packages/ui/test/library-page.test.tsx",
+   "status": "changed",
+   "after_sha256": "4b1f28b6f091297dbdd0ef72f3473268cfbd8c795272d6b6caf59fbfed851aa4",
+   "natural_language_residual": 0,
+   "machine_classification": "globals.css @keyframes terminal-card-active-frames、prefers-reduced-motion: reduce、vellum-scroll-x、OPR.0.4.0.39/FR-6、TerminalPreviewPopover、a11y、RigStatusCard/useStartRig、kernel_state=auth_blocked、/healthz、freshLogicalIds、OPR.0.4.7.1、SnapshotPanel testid、xterm renderer、OPR.0.4.0.1/FR-4/rev1-r2、TERMINAL_PREVIEW_EVENT、qitem-20260722121455-3f43040c、composeDelivered、data.plan.concise.text、SliceReviewTab、plan-mini-reqs-noncompliant、source:rootName:skillName、.openrig/skills/、Slice 29 HG-3、docs-browser、OPR.0.4.4.19 FR-2、actor_role、workflow_instance 保留"
+  },
+  {
+   "path": "packages/ui/test/slice-tabs-v1.test.tsx",
+   "status": "changed",
+   "after_sha256": "fcf708561727d751a11088820ecbebc19f6107c086e1e297b348acd1a18b15a4",
+   "natural_language_residual": 0,
+   "machine_classification": "globals.css @keyframes terminal-card-active-frames、prefers-reduced-motion: reduce、vellum-scroll-x、OPR.0.4.0.39/FR-6、TerminalPreviewPopover、a11y、RigStatusCard/useStartRig、kernel_state=auth_blocked、/healthz、freshLogicalIds、OPR.0.4.7.1、SnapshotPanel testid、xterm renderer、OPR.0.4.0.1/FR-4/rev1-r2、TERMINAL_PREVIEW_EVENT、qitem-20260722121455-3f43040c、composeDelivered、data.plan.concise.text、SliceReviewTab、plan-mini-reqs-noncompliant、source:rootName:skillName、.openrig/skills/、Slice 29 HG-3、docs-browser、OPR.0.4.4.19 FR-2、actor_role、workflow_instance 保留"
+  }
+ ]
+}

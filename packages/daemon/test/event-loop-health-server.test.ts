@@ -17,8 +17,8 @@ function seedRigWithNodes(db: Database.Database, name: string, nodeCount: number
   return rigId;
 }
 
-describe("OPR.0.4.3.21 — /healthz enrichment", () => {
-  it("reports process identity without requiring the event-loop monitor", async () => {
+describe("OPR.0.4.3.21——丰富 /healthz 信息", () => {
+  it("无需事件循环监控器即可报告进程身份", async () => {
     const db = createFullTestDb();
     const { app } = createTestApp(db);
     const res = await app.request("/healthz");
@@ -27,7 +27,7 @@ describe("OPR.0.4.3.21 — /healthz enrichment", () => {
     db.close();
   });
 
-  it("surfaces event-loop evidence + route timings when the monitor is wired", async () => {
+  it("接入监控器时公开事件循环证据与路由计时", async () => {
     const db = createFullTestDb();
     const monitor = new EventLoopMonitor();
     const routeTimingRecorder = new RouteTimingRecorder();
@@ -53,9 +53,9 @@ describe("OPR.0.4.3.21 — /healthz enrichment", () => {
   });
 });
 
-describe("OPR.0.4.3.21 — backend stress proof (the gate)", () => {
+describe("OPR.0.4.3.21——后端压力证明（门禁）", () => {
   it(
-    "keeps /healthz within the proven responsiveness budget under topology route load, and captures route + event-loop evidence",
+    "在拓扑路由负载下使 /healthz 保持在已证明的响应预算内，并捕获路由与事件循环证据",
     async () => {
       const db = createFullTestDb();
       const monitor = new EventLoopMonitor();
@@ -65,9 +65,8 @@ describe("OPR.0.4.3.21 — backend stress proof (the gate)", () => {
       const rigIds: string[] = [];
       for (let r = 0; r < 6; r++) rigIds.push(seedRigWithNodes(db, `stress-${r}`, 4));
 
-      // Fire a broad load across the expensive topology surfaces + repeatedly
-      // probe /healthz. Assert EVERY healthz probe answered within the proven
-      // budget while the hot paths were being hammered.
+      // 对高成本拓扑接口施加广泛负载并反复探测 /healthz。断言热点路径承受压力期间，
+      // 每次 healthz 探测都在已证明的预算内响应。
       const ROUNDS = 15;
       const healthLatenciesMs: number[] = [];
       for (let round = 0; round < ROUNDS; round++) {
@@ -85,11 +84,11 @@ describe("OPR.0.4.3.21 — backend stress proof (the gate)", () => {
         await Promise.all(load);
       }
 
-      // /healthz stayed responsive within the PROVEN threshold throughout.
+      // /healthz 始终在已证明的阈值内保持响应。
       const worst = Math.max(...healthLatenciesMs);
       expect(worst).toBeLessThan(HEALTHZ_RESPONSIVENESS_BUDGET_MS);
 
-      // Event-loop evidence is captured and the loop was NOT starved by the load.
+      // 已捕获事件循环证据，且事件循环未因负载而饥饿。
       const finalHealth = (await app.request("/healthz")).clone();
       const body = (await finalHealth.json()) as {
         eventLoop: { healthy: boolean };
@@ -97,7 +96,7 @@ describe("OPR.0.4.3.21 — backend stress proof (the gate)", () => {
       };
       expect(body.eventLoop.healthy).toBe(true);
 
-      // Route-duration evidence was captured for the expensive routes the proof drove.
+      // 已为证明过程触发的高成本路由捕获持续时间证据。
       const labels = Object.keys(body.routeTimings);
       expect(labels).toContain("GET /api/ps");
       expect(labels).toContain("GET /api/rigs/summary");

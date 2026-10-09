@@ -1,8 +1,7 @@
-// OPR.0.4.1.11.1 (FR-5) — dev-only twin build target. Builds the REAL @openrig/ui App
-// (twin/ entry) into ONE self-contained, double-clickable `intent.html`. Separate config so
-// it never disturbs the product build. The single-file inline plugin below is the same
-// generateBundle technique vite-plugin-singlefile uses, kept dependency-free (the worktree
-// shares node_modules with main; this target adds no installed dependency).
+// OPR.0.4.1.11.1（FR-5）——仅开发用的 twin 构建目标。把真实的 @openrig/ui App
+// （twin/ 入口）构建成一个自包含、可双击打开的 `intent.html`。独立配置，
+// 以免打扰产品构建。下面这个单文件内联插件用的是 vite-plugin-singlefile 相同的
+// generateBundle 技术，保持无依赖（worktree 与主分支共享 node_modules；本目标不新增安装依赖）。
 
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
@@ -12,9 +11,9 @@ function escapeRe(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Inline the single JS chunk + the CSS asset into the HTML, then emit it as intent.html.
-// Binary assets (fonts) are already inlined as base64 data: URLs via assetsInlineLimit, so
-// the emitted HTML is fully self-contained — no sibling asset folder needed to open it.
+// 把单个 JS chunk 与 CSS 资源内联进 HTML，再作为 intent.html 发出。
+// 二进制资源（字体）已通过 assetsInlineLimit 内联为 base64 data: URL，
+// 因此发出的 HTML 完全自包含——无需同级资源目录即可打开。
 function singleFileInline(): Plugin {
   return {
     name: "twin-single-file-inline",
@@ -32,9 +31,9 @@ function singleFileInline(): Plugin {
             `<script[^>]*\\ssrc="[^"]*${escapeRe(item.fileName)}"[^>]*></script>`,
             "g",
           );
-          // Function replacer (NOT a string) — the bundled JS contains `$&`/`$1` patterns
-          // (e.g. React's key-escaping `.replace(B,"$&/")`) that String.replace would
-          // expand into the matched tag, corrupting the inlined code.
+          // 函数替换器（不是字符串）——打包后的 JS 含 `$&`/`$1` 模式
+          // （例如 React 的转义键 `.replace(B,"$&/")`），String.replace 会把它们展开
+          // 进匹配到的标签，从而损坏内联代码。
           html = html.replace(scriptTag, () => `<script type="module">\n${item.code}\n</script>`);
           delete bundle[item.fileName];
         } else if (item.fileName.endsWith(".css")) {
@@ -48,24 +47,37 @@ function singleFileInline(): Plugin {
       }
 
       delete bundle[htmlEntry.fileName];
-      this.emitFile({ type: "asset", fileName: "intent.html", source: html });
+      this.emitFile({ type: "asset", fileName: `${twinOut}.html`, source: html });
     },
   };
 }
 
-// The surface this build's intent.html lands on. Per-slice authoring sets it, e.g.
-// `TWIN_ROUTE=/topology/rig/rig_delivery npm run twin:build`. Default = Dashboard.
+// 本构建的 intent.html 落点界面。逐 slice 创作时设置，例如
+// `TWIN_ROUTE=/topology/rig/rig_delivery npm run twin:build`。默认 = 仪表盘。
 const twinRoute = process.env.TWIN_ROUTE && process.env.TWIN_ROUTE.length > 0 ? process.env.TWIN_ROUTE : "/";
 
-// 0.4.3.29 theming — optional palette seed for the built twin (dark|light|system).
+// 0.4.3.29 主题——为构建出的 twin 可选指定调色板种子（dark|light|system）。
 const twinTheme =
   process.env.TWIN_THEME && /^(dark|light|system)$/.test(process.env.TWIN_THEME) ? process.env.TWIN_THEME : "";
+
+// 本批截图专用（s_000cae46wD0，2026-10-08）：可选强制失败模式，默认空串=行为与旧样机一致。
+//   TWIN_FAIL_MODE=packages → GET /api/packages/summary 返回 500
+//   TWIN_FAIL_MODE=inspect  → POST /api/bundles/inspect 返回 500
+// 仅截图构建设置；未设置时 fetch-stub 维持原温和 fixture。
+const twinFailMode =
+  process.env.TWIN_FAIL_MODE && process.env.TWIN_FAIL_MODE.length > 0 ? process.env.TWIN_FAIL_MODE : "";
+
+// 输出文件名（不含扩展名），默认 intent。两个错误表面需独立产物避免互相覆盖：
+//   TWIN_OUT=packages-error → twin-out/packages-error.html
+const twinOut =
+  process.env.TWIN_OUT && process.env.TWIN_OUT.length > 0 ? process.env.TWIN_OUT : "intent";
 
 export default defineConfig({
   root: path.resolve(__dirname, "twin"),
   define: {
     __TWIN_ROUTE__: JSON.stringify(twinRoute),
     __TWIN_THEME__: JSON.stringify(twinTheme),
+    __TWIN_FAIL_MODE__: JSON.stringify(twinFailMode),
   },
   plugins: [react(), singleFileInline()],
   resolve: {
@@ -74,12 +86,12 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "twin-out"),
     emptyOutDir: true,
-    assetsInlineLimit: 100_000_000, // inline all binary assets (fonts) as base64 data: URLs
+    assetsInlineLimit: 100_000_000, // 把所有二进制资源（字体）内联为 base64 data: URL
     cssCodeSplit: false,
-    chunkSizeWarningLimit: 100_000, // heavy single file is acceptable per founder
+    chunkSizeWarningLimit: 100_000, // 按创始人意见，沉重的单文件可接受
     rollupOptions: {
       output: {
-        inlineDynamicImports: true, // collapse to ONE JS chunk for clean single-file inline
+        inlineDynamicImports: true, // 折叠成单一 JS chunk，便于干净地单文件内联
         entryFileNames: "twin.js",
         assetFileNames: "twin.[ext]",
       },

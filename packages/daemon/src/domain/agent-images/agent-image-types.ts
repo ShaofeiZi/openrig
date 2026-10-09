@@ -1,16 +1,14 @@
-// Fork Primitive + Starter Agent Images v0 (PL-016) — typed primitive
-// parallel to skills + workflow_specs + context_packs (PL-014).
+// Fork 原语 + Starter 智能体镜像 v0（PL-016）——与 skills、workflow_specs、
+// context_packs（PL-014）并列的类型化原语。
 //
-// An agent_image is a snapshot bundle of a productive seat's
-// resumable state — runtime-specific resume token (Claude resume_token
-// / Codex thread_id), source-seat lineage, optional cwd-deltas + notes
-// — surfaced in the Specs library and consumable by AgentSpec
+// agent_image 是生产性席位可恢复状态的快照包——包含运行时专用恢复 token
+//（Claude resume_token / Codex thread_id）、源席位谱系以及可选 cwd 增量与说明。
+// 它会展示在 Specs 库中，并可由 AgentSpec 使用：
 // `session_source: mode: agent_image, ref: { kind: image_name, ... }`.
-// Storage at ~/.openrig/agent-images/<name>/ + workspace-local
-// .openrig/agent-images/<name>/.
+// 存储位置为 ~/.openrig/agent-images/<name>/ 与工作区本地的
+// .openrig/agent-images/<name>/。
 //
-// MVP single-host context: filesystem-canonical; NO new SQLite tables;
-// library cache is in-memory at the daemon scope.
+// MVP 单主机场景以文件系统为规范来源，不新增 SQLite 表；库缓存在后台服务范围内存中。
 
 export type AgentImageRuntime = "claude-code" | "codex";
 
@@ -18,41 +16,31 @@ export interface AgentImageManifest {
   name: string;
   version: string;
   runtime: AgentImageRuntime;
-  /** Source seat's canonical session name, e.g. "velocity-driver@openrig-velocity". */
+  /** 源席位的规范会话名，例如 "velocity-driver@openrig-velocity"。 */
   sourceSeat: string;
-  /** Native conversation id captured at snapshot time. Claude: the
-   *  resume_token from the sessions table. Codex: the thread_id from
-   *  codex-thread-id.ts. */
+  /** 创建快照时捕获的原生对话 ID。Claude 使用 sessions 表中的 resume_token；
+   *  Codex 使用 codex-thread-id.ts 提供的 thread_id。 */
   sourceSessionId: string;
-  /** Same value as sourceSessionId for v0 — kept as a separate field
-   *  in the manifest so future versions can split runtime conversation
-   *  identity from a runtime-resume token without breaking older
-   *  manifests. */
+  /** v0 中与 sourceSessionId 相同。清单仍保留独立字段，使未来版本可拆分
+   *  运行时对话身份与运行时恢复 token，同时不破坏旧清单。 */
   sourceResumeToken: string;
-  /** PL-016 source-cwd behavior: the
-   *  source seat's resolved cwd at snapshot time. Captured so the
-   *  Use-as-starter snippet can emit `cwd: <source_cwd>` and the fork
-   *  starts in the SAME directory the parent session was created in
-   *  — Claude's project-dir-scoped session storage works because the
-   *  jsonl file lives there. The daemon does NOT override cwd at fork
-   *  dispatch — if operator manually changes the rig.yaml cwd, fork
-   *  fails honestly with "no conversation found". Optional: manifests
-   *  authored before source_cwd support omit this field; snippet renders
-   *  without cwd line for back-compat. */
+  /** PL-016 source-cwd 行为：创建快照时解析出的源席位 cwd。记录该值后，
+   *  “用作 starter”片段可输出 `cwd: <source_cwd>`，使派生会话从父会话创建时的
+   *  同一目录启动；Claude 按项目目录限定的会话存储因此能够找到其中的 jsonl 文件。
+   *  后台服务在派生调度时不会覆盖 cwd；如果操作员手动修改 rig.yaml 中的 cwd，
+   *  派生会如实失败并提示 "no conversation found"。该字段可选：在支持 source_cwd
+   *  之前生成的清单会省略它，片段也会为向后兼容而不渲染 cwd 行。 */
   sourceCwd?: string;
   createdAt: string;
   notes?: string;
-  /** Optional supplementary files (analogous to context_pack files).
-   *  v0 ships no consumers for this surface beyond passthrough; the
-   *  startup orchestrator will compose them into the seat's cwd at
-   *  launch time when the v0+1 trigger names them. */
+  /** 可选补充文件（类似 context_pack 文件）。v0 除透传外没有此表面的消费者；
+   *  v0+1 触发器具名引用后，启动编排器会在启动时将其组合进席位 cwd。 */
   files: AgentImageManifestFile[];
-  /** Operator-supplied or capturer-derived estimate. Used for at-a-
-   *  glance display in the library; the library service ALSO computes
-   *  a derivedEstimatedTokens from the actual on-disk content size. */
+  /** 操作员提供或捕获器推导的估算值，用于库中的概览展示；库服务还会根据
+   *  磁盘实际内容大小计算 derivedEstimatedTokens。 */
   estimatedTokens?: number;
-  /** Lineage chain populated when the image is forked from another
-   *  image (image creation can record `lineage: [<parent>, ...]`). */
+  /** 镜像从另一个镜像派生时填充的谱系链；创建镜像时可记录
+   *  `lineage: [<parent>, ...]`。 */
   lineage?: string[];
 }
 
@@ -63,25 +51,22 @@ export interface AgentImageManifestFile {
 }
 
 export interface AgentImageStats {
-  /** Incremented atomically when the image is consumed (either by
-   *  rig fork / agent-image fork or by a session_source: mode:
-   *  agent_image consumer at instantiation time). */
+  /** 镜像被消费时原子递增；消费来源可以是 rig fork / agent-image fork，
+   *  也可以是实例化阶段的 `session_source: mode: agent_image` 消费者。 */
   forkCount: number;
-  /** ISO timestamp of the most-recent consumption. */
+  /** 最近一次消费的 ISO 时间戳。 */
   lastUsedAt: string | null;
-  /** Daemon-derived estimate of total bytes under the image dir
-   *  (manifest + supplementary files). */
+  /** 后台服务推导的镜像目录总字节数估算（清单 + 补充文件）。 */
   estimatedSizeBytes: number;
-  /** Fully-resolved lineage chain (mirrors manifest.lineage; kept on
-   *  stats so it's mutable independently when a parent image is
-   *  renamed). */
+  /** 完整解析的谱系链（镜像 manifest.lineage）。该值保留在 stats 中，
+   *  使父镜像重命名时能够独立更新。 */
   lineage: string[];
 }
 
 export type AgentImageSourceType = "user_file" | "workspace" | "builtin";
 
 export interface AgentImageEntry {
-  /** Stable id `agent-image:<name>:<version>` parallel to context-pack:. */
+  /** 与 context-pack: 并列的稳定 ID：`agent-image:<name>:<version>`。 */
   id: string;
   kind: "agent-image";
   name: string;
@@ -89,31 +74,28 @@ export interface AgentImageEntry {
   runtime: AgentImageRuntime;
   sourceSeat: string;
   sourceSessionId: string;
-  /** Source seat's cwd at snapshot time. null when the manifest predates
-   *  source_cwd support (back-compat surface). Consumed
-   *  by the Use-as-starter snippet generator. */
+  /** 创建快照时源席位的 cwd。清单早于 source_cwd 支持时为 null
+   *  （向后兼容表面）；由“用作 starter”片段生成器消费。 */
   sourceCwd: string | null;
   notes: string | null;
   createdAt: string;
   sourceType: AgentImageSourceType;
-  /** Absolute path to the image directory. */
+  /** 镜像目录的绝对路径。 */
   sourcePath: string;
-  /** Path relative to the discovery root that found this image. */
+  /** 相对于发现该镜像之根目录的路径。 */
   relativePath: string;
-  /** Most-recent mtime under the image dir. */
+  /** 镜像目录下最新的 mtime。 */
   updatedAt: string;
   manifestEstimatedTokens: number | null;
   derivedEstimatedTokens: number;
   files: AgentImageEntryFile[];
-  /** Resume-token surface kept separate from manifest data so the
-   *  library/list/get routes can omit it when the operator is browsing
-   *  but include it when the consumer is the instantiator. */
+  /** 恢复 token 表面与清单数据分开保存，使 library/list/get 路由在操作员浏览时
+   *  可以省略它，而在实例化器消费时可以包含它。 */
   sourceResumeToken: string;
   stats: AgentImageStats;
   lineage: string[];
-  /** True when an explicit `pin` file exists at <sourcePath>/.pinned.
-   *  Pinned images are protected from `prune` regardless of active-
-   *  reference scan results. */
+  /** <sourcePath>/.pinned 中存在显式 `pin` 文件时为 true。无论活动引用扫描结果如何，
+   *  已固定镜像都不会被 `prune`。 */
   pinned: boolean;
 }
 

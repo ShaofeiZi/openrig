@@ -1,9 +1,8 @@
-// OPR.0.4.1.09 — the post-compaction restore prompt must NEVER inject another seat's
-// extra ("post-compact-extra"). The 2026-06-20 defect: the SINGLE global
-// post-compact-extra.md held advisor-lead@kernel state and BOTH a delivery seat and a
-// pm seat were told to read it. Fix: resolve the extra FOR THIS SEAT — prefer a per-seat
-// file; refuse a global that declares a DIFFERENT seat. A generic/undeclared extra is
-// still allowed (valid for any seat); only an explicit seat MISMATCH is refused.
+// OPR.0.4.1.09——压缩后恢复 prompt 绝不能注入其他席位的补充内容（post-compact-extra）。
+// 2026-06-20 缺陷：唯一的全局 post-compact-extra.md 保存 advisor-lead@kernel 状态，
+// delivery 席位和 pm 席位却都被要求读取它。修复：为当前席位解析补充内容，优先逐席位文件；
+// 拒绝明确声明其他席位的全局文件。仍允许通用或未声明席位的补充内容（适用于任意席位）；
+// 仅拒绝明确的席位不匹配。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as fs from "node:fs";
@@ -37,7 +36,7 @@ let home: string;
 beforeEach(() => { home = fs.mkdtempSync(path.join(os.tmpdir(), "opr0419-")); });
 afterEach(() => { vi.restoreAllMocks(); try { fs.rmSync(home, { recursive: true, force: true }); } catch { /* best-effort */ } });
 
-// Drive prep -> /compact -> turn_boundary -> restore_prompt; return the restore prompt text.
+// 驱动 prep → /compact → turn_boundary → restore_prompt，并返回恢复 prompt 文本。
 async function restorePromptFor(messageFilePath: string, seat: string): Promise<string> {
   const settings = makeSettingsStore(policyWithExtra(messageFilePath));
   const { transport, send } = makeSessionTransport();
@@ -54,20 +53,20 @@ async function restorePromptFor(messageFilePath: string, seat: string): Promise<
   return send.mock.calls[send.mock.calls.length - 1]![1] as string;
 }
 
-describe("OPR.0.4.1.09 — seat-scoped post-compaction extra (never inject wrong-seat state)", () => {
-  it("REFUSES a global extra that declares a DIFFERENT seat (the 2026-06-20 defect)", async () => {
+describe("OPR.0.4.1.09——席位作用域的压缩后补充内容（绝不注入错误席位状态）", () => {
+  it("拒绝声明其他席位的全局补充内容（2026-06-20 缺陷）", async () => {
     const globalPath = path.join(home, "compaction", "post-compact-extra.md");
     writeFile(globalPath, "---\nseat: advisor-lead@kernel\n---\nAdvisor restore map: read X, Y, Z.");
     const prompt = await restorePromptFor(globalPath, "dev2-driver@openrig-delivery");
-    // The wrong-seat file path is NOT injected ...
+    // 不注入错误席位的文件路径……
     expect(prompt).not.toContain(globalPath);
-    expect(prompt).not.toContain("Additional post-compaction instruction file");
-    // ... and the seat is told it was ignored.
-    expect(prompt).toContain("declaring a DIFFERENT seat");
-    expect(prompt).toContain("IGNORED");
+    expect(prompt).not.toContain("附加压缩后指令文件");
+    // ……并告知席位该文件已被忽略。
+    expect(prompt).toContain("声明不同席位");
+    expect(prompt).toContain("现已忽略");
   });
 
-  it("INJECTS a per-seat extra (compaction/post-compact-extra/<seat>.md) over the global", async () => {
+  it("优先注入逐席位补充内容 compaction/post-compact-extra/<seat>.md，而非全局内容", async () => {
     const globalPath = path.join(home, "compaction", "post-compact-extra.md");
     writeFile(globalPath, "---\nseat: someone-else@rig\n---\nnot mine");
     const seat = "dev2-driver@openrig-delivery";
@@ -78,15 +77,15 @@ describe("OPR.0.4.1.09 — seat-scoped post-compaction extra (never inject wrong
     expect(prompt).not.toContain(globalPath); // the wrong-seat global is not used
   });
 
-  it("ALLOWS a generic global extra that declares NO seat (valid for any seat)", async () => {
+  it("允许未声明席位的通用全局补充内容（适用于任意席位）", async () => {
     const globalPath = path.join(home, "compaction", "post-compact-extra.md");
     writeFile(globalPath, "Generic operator note for all seats: prefer rig queue list --as you.");
     const prompt = await restorePromptFor(globalPath, "dev2-driver@openrig-delivery");
     expect(prompt).toContain(globalPath);
-    expect(prompt).toContain("Additional post-compaction instruction file");
+    expect(prompt).toContain("附加压缩后指令文件");
   });
 
-  it("ALLOWS a global extra that declares THIS seat", async () => {
+  it("允许声明当前席位的全局补充内容", async () => {
     const seat = "dev2-driver@openrig-delivery";
     const globalPath = path.join(home, "compaction", "post-compact-extra.md");
     writeFile(globalPath, `---\ntarget_seat: ${seat}\n---\nmine`);
@@ -95,51 +94,50 @@ describe("OPR.0.4.1.09 — seat-scoped post-compaction extra (never inject wrong
   });
 });
 
-// rev1-r2 (42654c58 blocker): a seat is authoritative ONLY inside a WELL-FORMED leading
-// frontmatter fence (opened AND closed `---`). The body is never scanned, so a GENERIC
-// operator extra whose `---` fence is broken, or which mentions a "seat:" in prose, must
-// still INJECT — not be misclassified as a foreign-seat declaration and silently
-// suppressed in the recovery path. Well-formed foreign-seat refusal is preserved.
-describe("OPR.0.4.1.09 — rev1-r2 regression: only well-formed frontmatter declares a seat", () => {
+// rev1-r2（42654c58 blocker）：只有格式正确、以 `---` 开启并闭合的前置 frontmatter
+// 中的席位声明才具权威性。正文绝不扫描，因此 `---` fence 损坏或只在正文提及 "seat:"
+// 的通用操作人员补充内容仍必须注入，不能误判为其他席位声明并在恢复路径中静默抑制。
+// 对格式正确的其他席位声明仍保持拒绝。
+describe("OPR.0.4.1.09——rev1-r2 回归：仅格式正确的 frontmatter 可声明席位", () => {
   const SEAT = "dev2-driver@openrig-delivery";
 
-  it("(1) INJECTS a MALFORMED-frontmatter extra (opened `---`, no close) with a foreign-looking seat: line", async () => {
+  it("(1) 注入 frontmatter 畸形（以 `---` 开头但未闭合）且正文含疑似其他席位 seat: 行的补充内容", async () => {
     const globalPath = path.join(home, "compaction", "post-compact-extra.md");
-    // Opened frontmatter, NO closing `---` => not well-formed => generic => inject.
+    // frontmatter 已开启但没有闭合 `---`，因此格式不正确，按通用内容注入。
     writeFile(globalPath, "---\nseat: advisor-lead@kernel\n# missing closing delimiter\nGeneric restore instructions for any seat.");
     const prompt = await restorePromptFor(globalPath, SEAT);
     expect(prompt).toContain(globalPath);
-    expect(prompt).toContain("Additional post-compaction instruction file");
-    expect(prompt).not.toContain("IGNORED");
-    expect(prompt).not.toContain("declaring a DIFFERENT seat");
+    expect(prompt).toContain("附加压缩后指令文件");
+    expect(prompt).not.toContain("现已忽略");
+    expect(prompt).not.toContain("声明不同席位");
   });
 
-  it("(2) INJECTS a generic extra with a prose 'seat:' line and NO frontmatter (body is never scanned)", async () => {
+  it("(2) 注入正文含 'seat:' 行但无 frontmatter 的通用补充内容（绝不扫描正文）", async () => {
     const globalPath = path.join(home, "compaction", "post-compact-extra.md");
     writeFile(globalPath, "Operator note for all seats: ask the seat: advisor-lead@kernel for the dashboard link.\nGeneric guidance.");
     const prompt = await restorePromptFor(globalPath, SEAT);
     expect(prompt).toContain(globalPath);
-    expect(prompt).toContain("Additional post-compaction instruction file");
-    expect(prompt).not.toContain("IGNORED");
-    expect(prompt).not.toContain("declaring a DIFFERENT seat");
+    expect(prompt).toContain("附加压缩后指令文件");
+    expect(prompt).not.toContain("现已忽略");
+    expect(prompt).not.toContain("声明不同席位");
   });
 
-  it("(3) REFUSES a WELL-FORMED frontmatter declaring a DIFFERENT seat (preserved anti-contamination)", async () => {
+  it("(3) 拒绝格式正确但声明其他席位的 frontmatter（保留防污染约束）", async () => {
     const globalPath = path.join(home, "compaction", "post-compact-extra.md");
     writeFile(globalPath, "---\nseat: advisor-lead@kernel\n---\nNot this seat's state.");
     const prompt = await restorePromptFor(globalPath, SEAT);
     expect(prompt).not.toContain(globalPath);
-    expect(prompt).not.toContain("Additional post-compaction instruction file");
-    expect(prompt).toContain("declaring a DIFFERENT seat");
-    expect(prompt).toContain("IGNORED");
+    expect(prompt).not.toContain("附加压缩后指令文件");
+    expect(prompt).toContain("声明不同席位");
+    expect(prompt).toContain("现已忽略");
   });
 
-  it("(4) INJECTS a WELL-FORMED frontmatter declaring THIS seat", async () => {
+  it("(4) 注入格式正确且声明当前席位的 frontmatter", async () => {
     const globalPath = path.join(home, "compaction", "post-compact-extra.md");
     writeFile(globalPath, `---\ntarget_seat: ${SEAT}\n---\nmine`);
     const prompt = await restorePromptFor(globalPath, SEAT);
     expect(prompt).toContain(globalPath);
-    expect(prompt).toContain("Additional post-compaction instruction file");
-    expect(prompt).not.toContain("IGNORED");
+    expect(prompt).toContain("附加压缩后指令文件");
+    expect(prompt).not.toContain("现已忽略");
   });
 });

@@ -22,33 +22,33 @@ describe("006_resume_metadata", () => {
     db.close();
   });
 
-  it("migration adds resume_type column to sessions", () => {
+  it("迁移向 sessions 添加 resume_type 列", () => {
     migrate(db, [coreSchema, bindingsSessionsSchema, resumeMetadataSchema]);
     const cols = db.prepare("PRAGMA table_info(sessions)").all() as { name: string }[];
     expect(cols.map((c) => c.name)).toContain("resume_type");
   });
 
-  it("migration adds resume_token column to sessions", () => {
+  it("迁移向 sessions 添加 resume_token 列", () => {
     migrate(db, [coreSchema, bindingsSessionsSchema, resumeMetadataSchema]);
     const cols = db.prepare("PRAGMA table_info(sessions)").all() as { name: string }[];
     expect(cols.map((c) => c.name)).toContain("resume_token");
   });
 
-  it("migration adds restore_policy column to sessions", () => {
+  it("迁移向 sessions 添加 restore_policy 列", () => {
     migrate(db, [coreSchema, bindingsSessionsSchema, resumeMetadataSchema]);
     const cols = db.prepare("PRAGMA table_info(sessions)").all() as { name: string }[];
     expect(cols.map((c) => c.name)).toContain("restore_policy");
   });
 
-  it("existing sessions get NULL resume_type/resume_token after migration", () => {
-    // Apply base schema, seed a session, THEN apply resume migration
+  it("迁移后已有 session 的 resume_type/resume_token 为 NULL", () => {
+    // 应用基础 schema 并写入 session，然后再应用 resume 迁移。
     migrate(db, [coreSchema, bindingsSessionsSchema]);
     seedNode(db);
     db.prepare(
       "INSERT INTO sessions (id, node_id, session_name, status) VALUES (?, ?, ?, ?)"
     ).run("sess-pre", "node-1", "r01-worker", "running");
 
-    // Now apply the resume migration
+    // 此时应用 resume 迁移。
     migrate(db, [coreSchema, bindingsSessionsSchema, resumeMetadataSchema]);
 
     const sess = db.prepare("SELECT resume_type, resume_token FROM sessions WHERE id = ?").get("sess-pre") as {
@@ -59,7 +59,7 @@ describe("006_resume_metadata", () => {
     expect(sess.resume_token).toBeNull();
   });
 
-  it("existing sessions get 'resume_if_possible' restore_policy after migration", () => {
+  it("迁移后已有 session 的 restore_policy 为 'resume_if_possible'", () => {
     migrate(db, [coreSchema, bindingsSessionsSchema]);
     seedNode(db);
     db.prepare(
@@ -74,7 +74,7 @@ describe("006_resume_metadata", () => {
     expect(sess.restore_policy).toBe("resume_if_possible");
   });
 
-  it("restore_policy defaults to 'resume_if_possible' for new inserts", () => {
+  it("新插入记录的 restore_policy 默认为 'resume_if_possible'", () => {
     migrate(db, [coreSchema, bindingsSessionsSchema, resumeMetadataSchema]);
     seedNode(db);
     db.prepare(
@@ -87,7 +87,7 @@ describe("006_resume_metadata", () => {
     expect(sess.restore_policy).toBe("resume_if_possible");
   });
 
-  it("insert session with all three fields, query returns them", () => {
+  it("插入包含全部三个字段的 session 后，查询返回这些字段", () => {
     migrate(db, [coreSchema, bindingsSessionsSchema, resumeMetadataSchema]);
     seedNode(db);
     db.prepare(

@@ -57,7 +57,7 @@ function expectRuntimeConfigDisclosure(result: SetupResult): void {
       scope: "global",
       runtime: "claude-code",
       path: "~/.claude.json",
-      purpose: "Pre-trust managed workspaces and mark Claude onboarding complete.",
+      purpose: "预信任受管工作区，并标记 Claude onboarding 完成。",
     },
     {
       scope: "project",
@@ -69,19 +69,19 @@ function expectRuntimeConfigDisclosure(result: SetupResult): void {
       scope: "project",
       runtime: "claude-code",
       path: ".mcp.json",
-      purpose: "Apply selected Claude MCP runtime-resource fragments.",
+      purpose: "应用选定的 Claude MCP 运行时资源片段。",
     },
     {
       scope: "global",
       runtime: "codex",
       path: "~/.codex/config.toml",
-      purpose: "Pre-trust managed workspaces and apply selected Codex config runtime-resource fragments.",
+      purpose: "预信任受管工作区，并应用选定的 Codex 配置运行时资源片段。",
     },
     {
       scope: "global",
       runtime: "cmux",
       path: "~/.config/cmux/settings.json",
-      purpose: "Set cmux socket control to an OpenRig-compatible automation mode.",
+      purpose: "把 cmux socket 控制设为 zrig 兼容的自动化模式。",
     },
   ]));
 }
@@ -205,8 +205,8 @@ describe("rig setup", () => {
     expect(verify?.status).toBe("pass");
   });
 
-  // OPR.0.3.3.04.2 (AC-1): the ONE canonical ordered golden path over EXISTING
-  // verbs (no mega-command), in sequence, with the durable doc reference.
+  // OPR.0.3.3.04.2（AC-1）：在既有动词之上唯一的 canonical 有序黄金路径
+  //（无 mega-command），按序，并带持久文档引用。
   it("AC-1: goldenPathNextSteps is the ordered sequence over existing verbs, with the durable doc", () => {
     const out = goldenPathNextSteps().join("\n");
     const upIdx = out.indexOf("rig up");
@@ -252,9 +252,9 @@ describe("rig setup", () => {
 
     const tmux = result.steps.find((s) => s.id === "tmux_install");
     expect(tmux?.status).toBe("fail");
-    expect(tmux?.message).toContain("control socket");
+    expect(tmux?.message).toContain("控制套接字");
     expect(tmux?.reason).toContain("server exited unexpectedly");
-    expect(tmux?.fixHint).toContain("restart the default tmux server");
+    expect(tmux?.fixHint).toContain("重启默认 tmux 服务");
     expect(result.ready).toBe(false);
   });
 
@@ -415,11 +415,11 @@ describe("rig setup", () => {
     // Must include async doctor check (cmux_daemon resolved)
     expect(checkNames).toContain("cmux_daemon");
 
-    // cmux_daemon should be skipped (daemon not reachable)
+    // cmux_daemon 应被跳过（daemon 不可达）
     const cmuxDaemon = result.verification!.checks.find((c) => c.name === "cmux_daemon");
     expect(cmuxDaemon?.status).toBe("skipped");
 
-    // Doctor statuses used as-is, not renamed
+    // Doctor 状态原样使用，不重命名
     const nodeCheck = result.verification!.checks.find((c) => c.name === "node_version");
     expect(["pass", "warn", "fail", "skipped"]).toContain(nodeCheck?.status);
   });
@@ -433,7 +433,7 @@ describe("rig setup", () => {
   });
 
   it("ready is false only when setup steps or verification checks have fail status", async () => {
-    // All tools present, all doctor checks pass
+    // 所有工具齐备，所有 doctor 检查通过
     const deps = makeDeps();
     const doctorDeps: DoctorDeps = {
       exists: () => true,
@@ -523,7 +523,7 @@ describe("rig setup", () => {
 
     const cmux = result.steps.find((s) => s.id === "cmux_install");
     expect(cmux?.status).toBe("applied");
-    expect(cmux?.message).toContain("Enabled cmux socket control");
+    expect(cmux?.message).toContain("已在 ~/.config/cmux/settings.json 中启用 cmux socket 控制");
     expect(seen).toContain("open -a /Applications/cmux.app");
     expect(writeSpy).toHaveBeenCalledWith(
       CMUX_SETTINGS_PATH,
@@ -608,7 +608,7 @@ describe("rig setup", () => {
 
     const cmux = result.steps.find((s) => s.id === "cmux_install");
     expect(cmux?.status).toBe("fail");
-    expect(cmux?.message).toContain("cmux installed but control unavailable");
+    expect(cmux?.message).toContain("cmux 已安装，但控制不可用");
     expect(result.ready).toBe(false);
   });
 
@@ -672,7 +672,7 @@ describe("rig setup", () => {
 
     const cmux = result.steps.find((s) => s.id === "cmux_install");
     expect(cmux?.status).toBe("fail");
-    expect(cmux?.message).toContain("running daemon still cannot control cmux");
+    expect(cmux?.message).toContain("运行中的后台服务仍无法控制 cmux");
     expect(result.ready).toBe(false);
   });
 
@@ -748,11 +748,12 @@ describe("rig setup", () => {
   });
 });
 
-// Slice-03 Lane B (0.4.8) onboarding RECORD path. RULING-C b4913ed4: the v1 menu EDITS/RECORDS into
-// an EXISTING spec only (chosen -> permission_policy: builtin:<name>; deliberate-none ->
-// permission_policy: none); NEW INSTALL = no spec = NOTHING WRITTEN = floor by absence. Persistence =
-// the RigSpec permission_policy ONLY (P6 fence). Invariants: P3 write-on-explicit-selection-ONLY,
-// P1 no absent->deliberate_none upgrade, P2 honest render.
+// Slice-03 Lane B（0.4.8）onboarding 记录路径。RULING-C b4913ed4：v1 菜单仅
+// 编辑/记录进既有 spec（chosen -> permission_policy: builtin:<name>；
+// deliberate-none -> permission_policy: none）；全新安装 = 无 spec = 什么都不写
+// = 以缺失兜底。持久化仅到 RigSpec permission_policy（P6 围栏）。
+// 不变量：P3 仅在显式选择时写入、P1 不做 absent->deliberate_none 升级、
+// P2 诚实渲染。
 describe("rig setup --policy (onboarding record)", () => {
   const SPEC = "/tmp/onboard-demo/rig.yaml";
   const BASE_SPEC = 'version: "1"\nname: demo-rig\npods: []\nedges: []\n';
@@ -776,7 +777,7 @@ describe("rig setup --policy (onboarding record)", () => {
     expect(sink[SPEC]).toBeDefined();
     const parsed = parseYaml(sink[SPEC]!) as Record<string, unknown>;
     expect(parsed["permission_policy"]).toBe("builtin:standard");
-    // least-destructive: all other keys survive the record.
+    // 最小破坏：所有其他键在记录后保留。
     expect(parsed["name"]).toBe("demo-rig");
     expect(parsed["version"]).toBe("1");
     expect(parsed["pods"]).toEqual([]);
@@ -784,13 +785,13 @@ describe("rig setup --policy (onboarding record)", () => {
 
   it("least-destructive record: preserves comment text/order/quoting/structure, appending ONLY the permission_policy line", async () => {
     const sink: Record<string, string> = {};
-    // DISCRIMINATING fixture — a commented, hand-authored-style spec. A parse+serialize round-trip
-    // (the pre-revision impl) DROPS every comment here, so this pin is RED against that impl BY
-    // CONSTRUCTION; a comment-preserving edit reproduces the file byte-for-byte plus the one new line.
-    // SCOPE (honest API limit, probed at the lib): parseDocument preserves comment TEXT, key ORDER,
-    // QUOTING, and STRUCTURE — but pre-`#` padding may NORMALIZE (e.g. multiple spaces -> one). This
-    // fixture uses single-space padding (parseDocument's fixed point) so the byte-equality is exact;
-    // the claim is scoped accordingly, not "every byte of arbitrary formatting survives".
+    // 判别性 fixture——带注释、手写风格的 spec。parse+serialize 往返
+    //（修订前实现）会丢弃这里的每条注释，故此 pin 在该实现上按构造为红；
+    // 保留注释的编辑则逐字节复现文件，仅多一行新行。
+    // 范围（诚实 API 上限，在 lib 处探测）：parseDocument 保留注释文本、键
+    // 顺序、引号与结构——但 `#` 前的前导空白可能归一化（如多空格 -> 一个）。
+    // 本 fixture 用单空格前导（parseDocument 的不动点），使字节相等精确；
+    // 主张据此限定，而非"任意格式的每个字节都存活"。
     const commented =
       "# hand-authored: do not clobber\n" +
       'version: "1"\n' +
@@ -850,7 +851,7 @@ describe("rig setup --policy (onboarding record)", () => {
     const step = result.steps.find((s) => s.id === "policy_record");
     expect(step?.status).toBe("fail");
     expect(sink[SPEC]).toBeUndefined();
-    // A record failure must not silently pass as ready.
+    // 记录失败绝不能静默通过为 ready。
     expect(result.ready).toBe(false);
   });
 
@@ -862,7 +863,7 @@ describe("rig setup --policy (onboarding record)", () => {
 
     const step = result.steps.find((s) => s.id === "policy_record");
     expect(step?.status).toBe("fail");
-    // The rejection surfaces the valid set to the operator (message + reason are what they see).
+    // 拒绝向操作者露出合法集合（message + reason 是他们看到的内容）。
     expect(`${step?.message ?? ""} ${step?.reason ?? ""}`).toMatch(/locked, standard, open, yolo, none/);
     expect(sink[SPEC]).toBeUndefined();
   });
@@ -887,14 +888,14 @@ describe("rig setup --policy (onboarding record)", () => {
     expect(longs).toContain("--spec");
   });
 
-  // CONVERGED @tip 909c33e2 — Lane A's amendment (05931d33, ruled form 5f37e40f) activated
-  // `permission_policy: none` as the recorded deliberate_none choice. The cross-lane round-trip is
-  // realized at the SANCTIONED ALTITUDE SPLIT (pre-approved by acting-orch), keeping the P6 fence the
-  // QA verified — the CLI never imports the daemon:
-  //   - CLI WRITE half (asserted here): `--policy none` emits the ruled deliberate_none token
-  //     `permission_policy: none` (not a builtin: ref, not an absent field).
-  //   - daemon PARSE half: that exact form resolves to origin=deliberate_none, floor==absent, and
-  //     NEVER reads a file — proven in packages/daemon/test/deliberate-none-amendment.test.ts.
+  // 已收敛 @tip 909c33e2——Lane A 的修订（05931d33，裁定形式 5f37e40f）激活
+  // `permission_policy: none` 作为记录的 deliberate_none 选择。跨 lane 往返在
+  // 经批准的高度切分处实现（经 acting-orch 预批准），保持 QA 已验证的 P6 围栏——
+  // CLI 从不 import daemon：
+  //   - CLI WRITE 半（此处断言）：`--policy none` 发出裁定的 deliberate_none 令牌
+  //     `permission_policy: none`（非 builtin: 引用，非缺失字段）。
+  //   - daemon PARSE 半：该确切形式解析为 origin=deliberate_none、floor==absent，
+  //     且从不读文件——在 packages/daemon/test/deliberate-none-amendment.test.ts 证明。
   // Forcing the parse assertion into this CLI file would require a daemon import — exactly the P6
   // breach the split avoids.
   it("cross-lane round-trip WRITE half: --policy none emits the ruled deliberate_none token (parse half proven daemon-side)", async () => {
@@ -922,8 +923,8 @@ describe("rig setup permission-policy menu copy (frozen)", () => {
 
   it("renders the exact frozen deliberate-none and skip-line copy", () => {
     const out = permissionPolicyMenuLines().join("\n");
-    expect(out).toContain("No policy — deliberate choice (recorded)");
-    expect(out).toContain("If you skip: OpenRig sets nothing — the usability floor only");
+    expect(out).toContain("无策略——刻意选择（已记录）");
+    expect(out).toContain("如果你跳过：zrig 什么都不设");
   });
 
   it("marks Standard with the ⭐ recommendation marker and pre-selects nothing", () => {

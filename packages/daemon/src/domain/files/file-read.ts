@@ -1,4 +1,4 @@
-// The HTTP reader and explicit local TUI reader share the same containment and bytes.
+// HTTP reader 与显式本地 TUI reader 共用相同的路径范围和字节内容。
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { isUtf8 } from "node:buffer";

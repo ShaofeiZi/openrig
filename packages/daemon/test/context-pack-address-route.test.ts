@@ -1,10 +1,8 @@
-// OPR.0.5.3.5 Atom 4c — the ADDRESS-serving route: `name#H2/H3` through the rig
-// context ref grammar (mini-req 6 / Q4). The daemon owns the WHOLE resolution —
-// longest-prefix pack match, file within the pack, span within the file — so the
-// CLI get verb and any future consumer share one resolver home. The addressable
-// unit is the FILE per the locked grammar ("the file has an address, each H2
-// under it"); the assembled bundle is NOT an address target (its `## File:`
-// frame lines are themselves H2s — addressing it would collide by construction).
+// OPR.0.5.3.5 原子 4c——通过工作组上下文引用语法（小需求 6 / Q4）提供 ADDRESS
+// 的路由：`name#H2/H3`。后台服务拥有完整解析过程——最长前缀包匹配、包内文件、
+// 文件内片段——因此 CLI get 动词与未来的任何消费者共享同一个解析器入口。根据锁定
+// 的语法（“文件有地址，其下每个 H2 也有地址”），可寻址单元是文件；组装后的 bundle
+// 不是地址目标（它的 `## File:` 框架行本身就是 H2——对其寻址必然产生冲突）。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -26,7 +24,7 @@ const WALK = [
   "ref body",
 ].join("\n");
 
-describe("GET /library/resolve-address — file-level span serving (Atom 4c)", () => {
+describe("GET /library/resolve-address——提供文件级片段（原子 4c）", () => {
   let tmp: string;
   let app: Hono;
 
@@ -54,7 +52,7 @@ describe("GET /library/resolve-address — file-level span serving (Atom 4c)", (
   const resolve = (address: string) =>
     app.request(`/api/context-packs/library/resolve-address?address=${encodeURIComponent(address)}`);
 
-  it("resolves pack/file#H2 to the correct span (the mini-req 6 door shape)", async () => {
+  it("将 pack/file#H2 解析到正确片段（小需求 6 的入口形态）", async () => {
     const res = await resolve("packs/world/walk.md#welcome");
     expect(res.status).toBe(200);
     const body = await res.json() as { packRef: string; filePath: string; text: string };
@@ -65,7 +63,7 @@ describe("GET /library/resolve-address — file-level span serving (Atom 4c)", (
     expect(body.text).not.toContain("## Reference");
   });
 
-  it("resolves a nested file and an H2/H3 depth address", async () => {
+  it("解析嵌套文件和 H2/H3 深度地址", async () => {
     const notes = await resolve("packs/world/sub/notes.md#notes");
     expect(notes.status).toBe(200);
     expect(((await notes.json()) as { text: string }).text).toContain("note body");
@@ -76,13 +74,13 @@ describe("GET /library/resolve-address — file-level span serving (Atom 4c)", (
     expect(deepBody.text).not.toContain("hello world");
   });
 
-  it("a bare pack/file address (no #) serves the WHOLE file", async () => {
+  it("裸 pack/file 地址（无 #）提供完整文件", async () => {
     const res = await resolve("packs/world/walk.md");
     expect(res.status).toBe(200);
     expect(((await res.json()) as { text: string }).text).toBe(WALK);
   });
 
-  it("an address inside a code fence does NOT resolve, and a no-match FAILS LOUD with candidates", async () => {
+  it("代码围栏内的地址不会解析，且无匹配时会明确失败并列出候选项", async () => {
     const fenced = await resolve("packs/world/walk.md#fenced-fake");
     expect(fenced.status).toBe(422);
     const missing = await resolve("packs/world/walk.md#nope");
@@ -92,11 +90,10 @@ describe("GET /library/resolve-address — file-level span serving (Atom 4c)", (
     expect(msg).toContain("welcome"); // names the real candidates
   });
 
-  it("r1 4c rec (1): the NO-NESTED-PACKS invariant the longest-prefix split borrows — a pack inside a pack dir is NOT indexed", async () => {
-    // r1's A1 finding: the split is safe ONLY because the scanner never
-    // recurses into a pack directory, so no pack ref can prefix another. That
-    // invariant was enforced 200 lines away and asserted nowhere — this pin
-    // converts the silent future break (sub-pack support) into a red test.
+  it("r1 4c 建议 (1)：最长前缀拆分依赖的“禁止嵌套包”不变量——包目录内的包不会被索引", async () => {
+    // r1 的 A1 发现：只有因为扫描器从不递归进入包目录，拆分才是安全的，所以不会有
+    // 一个包引用成为另一个包引用的前缀。该不变量在相距 200 行处实施，却从未被断言；
+    // 此处固定它，将未来对子包支持造成的静默破坏转化为失败测试。
     const libRoot = join(tmp, "lib");
     const inner = join(libRoot, "packs", "world", "nested-pack");
     mkdirSync(inner, { recursive: true });
@@ -109,7 +106,7 @@ describe("GET /library/resolve-address — file-level span serving (Atom 4c)", (
     expect(refs.some((r) => r.includes("nested-pack"))).toBe(false);
   });
 
-  it("an unknown pack prefix and a file outside the pack both FAIL LOUD naming what was tried", async () => {
+  it("未知包前缀和包外文件都会明确失败，并指出尝试解析的内容", async () => {
     const noPack = await resolve("packs/ghost/walk.md#welcome");
     expect(noPack.status).toBe(404);
     const noFile = await resolve("packs/world/ghost.md#welcome");

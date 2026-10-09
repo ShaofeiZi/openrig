@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { buildDaemonEnv, resolveBindIntent, verifyRequiredListeners } from "../src/daemon-lifecycle.js";
 
-// OPR.0.5.5.20 — injected routing environment must never silently become daemon bind
-// policy. Three seams pinned here: the env-construction passthrough (the incident's
-// route B), the config-resolver intent seam (route A: ENV_MAP maps daemon.host ←
-// OPENRIG_HOST, so injected env read as source="env"), and the restored listener gate.
+// OPR.0.5.5.20——注入的路由环境绝不得静默变成 daemon bind 策略。此处钉住三处接缝：
+// env 构造透传（事故的 route B）、config-resolver 意图接缝（route A：ENV_MAP 把
+// daemon.host ← OPENRIG_HOST，故注入 env 读作 source="env"），以及恢复的 listener 门。
 
 describe("S20 — buildDaemonEnv: routing env never crosses into the daemon", () => {
   it("INCIDENT (route B): inherited OPENRIG_HOST/RIGGED_HOST from a managed environment are SCRUBBED when no intent is declared", () => {
@@ -61,9 +60,8 @@ describe("S20 — resolveBindIntent (route A): the config resolver's env source 
 });
 
 describe("S20 — the restored listener gate: adoption fails loudly on a dropped listener", () => {
-  // r2 re-review repair: the probe is TRI-STATE — "healthy" | "unhealthy" |
-  // "indeterminate". Positive bad-bind evidence (refused connection / explicit
-  // unhealthy answer) may kill; a transient probe exception (timeout etc.) is
+  // r2 复审修复：探测是三态——"healthy" | "unhealthy" | "indeterminate"。
+  // 确凿的坏绑定证据（拒绝连接 / 明确的不健康应答）可杀掉；瞬时探测异常（超时等）
   // INDETERMINATE and must never be promoted to missing-listener evidence.
   const probeUp = (up: Set<string>) => async (url: string) =>
     [...up].some((h) => url.includes(h)) ? ("healthy" as const) : ("unhealthy" as const);
@@ -76,7 +74,7 @@ describe("S20 — the restored listener gate: adoption fails loudly on a dropped
     });
     expect(r.ok).toBe(false);
     if (r.ok) return;
-    expect(r.reason).toMatch(/listener/i);
+    expect(r.reason).toMatch(/监听器/);
     expect(r.reason).toMatch(/tailscale/i);
   });
 
@@ -115,7 +113,7 @@ describe("S20 — the restored listener gate: adoption fails loudly on a dropped
     });
     expect(tailAttempts).toBe(1);
     expect(r.ok).toBe("indeterminate"); // NOT false — no SIGTERM evidence exists
-    if (r.ok === "indeterminate") expect(r.reason).toMatch(/indeterminate|could not be checked/i);
+    if (r.ok === "indeterminate") expect(r.reason).toMatch(/无法检查/);
   });
 
   it("explicit mode requires exactly the declared host", async () => {
@@ -186,7 +184,7 @@ describe("S20 r2 repair — startDaemon gate: transient probe failure never kill
 
   it("positive evidence still kills: a REFUSED tailscale listener SIGTERMs and fails loudly", async () => {
     const { deps, kill } = gateDeps(() => "throw-refused");
-    await expect(startDaemon({ port: 7433, db: "/tmp/t.db" }, deps)).rejects.toThrow(/listener adoption gate/);
+    await expect(startDaemon({ port: 7433, db: "/tmp/t.db" }, deps)).rejects.toThrow(/监听者接纳闸门/);
     expect(kill).toHaveBeenCalled();
   });
 });

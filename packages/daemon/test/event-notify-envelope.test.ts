@@ -24,7 +24,7 @@ describe("W2b exact-set notify envelope", () => {
     });
   }
 
-  it("registers inertly while the transaction is open, then delivers after commit in seq order", () => {
+  it("事务打开期间惰性注册，commit 后按 seq 顺序投递", () => {
     const received: PersistedEvent[] = [];
     bus.subscribe((event) => {
       expect(db.inTransaction).toBe(false);
@@ -50,7 +50,7 @@ describe("W2b exact-set notify envelope", () => {
 
   it.each([
     [
-      "overwritten result",
+      "被覆盖的结果数",
       () => {
         let token = persisted("overwritten-a");
         token = persisted("overwritten-b");
@@ -58,7 +58,7 @@ describe("W2b exact-set notify envelope", () => {
       },
     ],
     [
-      "switch-gated collection",
+      "switch 门控收集",
       () => {
         const token = persisted("switch");
         const registered: ReturnType<typeof persisted>[] = [];
@@ -71,7 +71,7 @@ describe("W2b exact-set notify envelope", () => {
       },
     ],
     [
-      "loop continue bypass",
+      "循环 continue 旁路",
       () => {
         const registered: ReturnType<typeof persisted>[] = [];
         for (const label of ["skip", "keep"]) {
@@ -83,7 +83,7 @@ describe("W2b exact-set notify envelope", () => {
       },
     ],
     [
-      "wider initializer transform",
+      "更宽的 initializer 变换",
       () => {
         const registered = [persisted("initializer-a"), persisted("initializer-b")]
           .filter((token) => token.type === "view.changed")
@@ -91,17 +91,17 @@ describe("W2b exact-set notify envelope", () => {
         return registered;
       },
     ],
-  ])("rejects the %s discriminator by effect", (_name, build) => {
+  ])("按效果拒绝 %s 判别器", (_name, build) => {
     expect(() =>
       bus.withNotifyEnvelope((register) => {
         for (const token of build()) register(token);
       }),
-    ).toThrow(/notify envelope.*persisted.*registered/i);
+    ).toThrow(/notify envelope.*持久化.*注册/i);
 
     expect(db.prepare("SELECT COUNT(*) AS count FROM events").get()).toEqual({ count: 0 });
   });
 
-  it("compares exact token identity, not cardinality", () => {
+  it("比较精确 token 同一性，而非基数", () => {
     expect(() =>
       bus.withNotifyEnvelope((register) => {
         const dropped = persisted("dropped");
@@ -110,12 +110,12 @@ describe("W2b exact-set notify envelope", () => {
         register(duplicated);
         register(duplicated);
       }),
-    ).toThrow(/notify envelope.*persisted.*registered/i);
+    ).toThrow(/notify envelope.*持久化.*注册/i);
 
     expect(db.prepare("SELECT COUNT(*) AS count FROM events").get()).toEqual({ count: 0 });
   });
 
-  it("preserves the current miss as a rollback-producing validation failure", async () => {
+  it("把当前 miss 保留为产生回滚的校验失败", async () => {
     const queueRepo = new QueueRepository(db, bus);
     const item = await queueRepo.create({
       sourceSession: "source@w2b-rig",
@@ -133,12 +133,12 @@ describe("W2b exact-set notify envelope", () => {
           transitionNote: "intentionally omitted registration",
         });
       }),
-    ).toThrow(/notify envelope.*persisted.*registered/i);
+    ).toThrow(/notify envelope.*持久化.*注册/i);
 
     expect(queueRepo.getById(item.qitemId)?.state).toBe("pending");
   });
 
-  it("accepts a canonical registration loop and a zero-event transaction", () => {
+  it("接受规范注册循环和零事件事务", () => {
     expect(() => bus.withNotifyEnvelope(() => undefined)).not.toThrow();
 
     const received: PersistedEvent[] = [];
@@ -151,13 +151,13 @@ describe("W2b exact-set notify envelope", () => {
     expect(received.map((event) => (event as { viewName?: string }).viewName)).toEqual(["a", "b"]);
   });
 
-  it("fails a validation that examined zero envelope transactions", () => {
-    expect(() => bus.assertNotifyEnvelopeExercised()).toThrow(/zero notify envelope transactions/i);
+  it("对检查了零 envelope 事务的校验失败", () => {
+    expect(() => bus.assertNotifyEnvelopeExercised()).toThrow(/未检查任何 notify envelope 事务/i);
     bus.withNotifyEnvelope(() => undefined);
     expect(() => bus.assertNotifyEnvelopeExercised()).not.toThrow();
   });
 
-  it("records malformed rows durably, advances the watermark, and reports unparseable", () => {
+  it("持久记录畸形行，推进 watermark，并报告 unparseable", () => {
     const received: PersistedEvent[] = [];
     bus.subscribe((event) => received.push(event));
     let malformedSeq = 0;
@@ -175,7 +175,7 @@ describe("W2b exact-set notify envelope", () => {
     expect(status.watermark).toBeGreaterThanOrEqual(malformedSeq);
     expect(status.lastPoison).toMatchObject({ seq: malformedSeq });
     expect(status.lastPoison?.payloadSha).toMatch(/^[a-f0-9]{64}$/);
-    expect(status.lastPoison?.error).toBe("invalid event payload JSON");
+    expect(status.lastPoison?.error).toBe("事件 payload JSON 无效");
     expect(received.some((event) => event.type === "malformed.fixture")).toBe(false);
     expect(received.filter((event) => event.type === "event.delivery_poisoned")).toHaveLength(1);
 
@@ -194,7 +194,7 @@ describe("W2b exact-set notify envelope", () => {
     ["array", "[]"],
     ["missing type", "{}"],
     ["non-string type", '{"type":17}'],
-  ])("treats parseable-but-malformed %s payload as the unparseable third state", (_label, payload) => {
+  ])("把可解析但畸形的 %s payload 视为 unparseable 第三态", (_label, payload) => {
     const received: PersistedEvent[] = [];
     bus.subscribe((event) => received.push(event));
 
@@ -205,13 +205,13 @@ describe("W2b exact-set notify envelope", () => {
 
     expect(bus.getNotifyDrainStatus()).toMatchObject({
       state: "unparseable",
-      lastPoison: { error: "invalid event payload shape" },
+      lastPoison: { error: "事件 payload 结构无效" },
     });
     expect(received.filter((event) => event.type === "event.delivery_poisoned")).toHaveLength(1);
     expect(received.some((event) => (event as { type?: unknown }).type === 17)).toBe(false);
   });
 
-  it("starts at MAX(seq) so legacy malformed rows remain replay-only", () => {
+  it("从 MAX(seq) 起步，使 legacy 畸形行保持 replay-only", () => {
     db.prepare("INSERT INTO events (rig_id, node_id, type, payload) VALUES (?, ?, ?, ?)")
       .run(null, null, "legacy.malformed", "{not-json");
     const freshBus = new EventBus(db);
@@ -230,7 +230,7 @@ describe("W2b exact-set notify envelope", () => {
     expect(received.map((event) => event.type)).toEqual(["view.changed"]);
   });
 
-  it("delivers the row-derived value so live and replay payloads are identical", () => {
+  it("投递从行派生的值，使 live 与 replay payload 完全一致", () => {
     const received: PersistedEvent[] = [];
     bus.subscribe((event) => received.push(event));
 
@@ -247,7 +247,7 @@ describe("W2b exact-set notify envelope", () => {
     expect(received[0]).not.toHaveProperty("transient");
   });
 
-  it("delivers an orphan row normally without consulting live topology", () => {
+  it("正常投递孤儿行，不咨询 live 拓扑", () => {
     const received: PersistedEvent[] = [];
     bus.subscribe((event) => received.push(event));
 

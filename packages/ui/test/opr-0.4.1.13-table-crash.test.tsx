@@ -1,18 +1,17 @@
-// OPR.0.4.1.13 — topology table-view intermittent page-crash repro + fix.
+// OPR.0.4.1.13——拓扑 table-view 间歇性页面崩溃复现 + 修复。
 //
-// REPRO-FIRST (the crash is intermittent, so reproduce + root-cause before fixing):
-// the topology TABLE view (unlike the GRID, which drops infrastructure nodes) builds
-// a row for EVERY node and does NOT default `rigName` (rig.name) or `logicalId`
-// (n.logicalId) at build time. The `globalFilterFn` then calls `.toLowerCase()` on
-// `r.rigName` and `r.logicalId` UNGUARDED. With a malformed node (null logicalId) or
-// rig (null name) in the inventory JSON — a real edge data shape — typing in the
-// filter throws `Cannot read properties of null (reading 'toLowerCase')` during the
-// filtered-row-model build, and with NO error boundary around the table the WHOLE
-// /topology page white-screens. That intermittence (only on filter + malformed row)
-// matches the founder report.
+// REPRO-FIRST（崩溃间歇，故先复现 + 根因再修）：拓扑 TABLE 视图
+//（不同于丢弃基础设施节点的 GRID）为每个节点建行，且构建时不对
+// `rigName`（rig.name）或 `logicalId`（n.logicalId）设默认。
+// `globalFilterFn` 随后无守卫地对 `r.rigName` 和 `r.logicalId` 调
+// `.toLowerCase()`。当 inventory JSON 中有畸形节点（null logicalId）或
+// rig（null name）——真实边缘数据形状——在过滤框输入会抛
+// `Cannot read properties of null (reading 'toLowerCase')`，
+// 发生在 filtered-row-model 构建期间；table 无 error boundary 时整个
+// /topology 页白屏。该间歇性（仅在过滤 + 畸形行时）吻合 founder 报告。
 //
-// These tests reproduce that exact trigger; they go GREEN once the filter guards the
-// fields (and an error boundary contains any residual render throw).
+// 这些测试复现该精确触发；一旦过滤器守卫字段（且 error boundary 容纳
+// 任何残留渲染 throw）即转 GREEN。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, waitFor, screen, fireEvent } from "@testing-library/react";
@@ -31,9 +30,9 @@ import { TopologyTableView } from "../src/components/topology/TopologyTableView.
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch as unknown as typeof fetch;
 
-// A MALFORMED inventory: rig-bad has name=null, and its single node has
-// logicalId=null + runtime=null (violating the declared types, as real JSON can).
-// rig-ok is well-formed so the table mounts a normal row alongside the bad one.
+// 一个畸形 inventory：rig-bad name=null，其唯一节点
+// logicalId=null + runtime=null（如真实 JSON 那样违反声明类型）。
+// rig-ok 正常，使 table 在坏行旁挂一个正常行。
 beforeEach(() => {
   navigateSpy.mockClear();
   mockFetch.mockReset();
@@ -81,7 +80,7 @@ describe("OPR.0.4.1.13 — table-view crash repro (malformed row + filter)", () 
 
     for (const mountIndex of tableMounts) {
       const beforeMount = src.slice(0, mountIndex);
-      const lastTableBoundaryOpen = beforeMount.lastIndexOf('<ErrorBoundary label="Table view">');
+      const lastTableBoundaryOpen = beforeMount.lastIndexOf('<ErrorBoundary label="表格视图">');
       const lastBoundaryClose = beforeMount.lastIndexOf("</ErrorBoundary>");
       expect(lastTableBoundaryOpen).toBeGreaterThan(lastBoundaryClose);
 
@@ -95,7 +94,7 @@ describe("OPR.0.4.1.13 — table-view crash repro (malformed row + filter)", () 
     await waitFor(() => {
       expect(screen.getAllByTestId(/^topology-table-row-/).length).toBeGreaterThanOrEqual(2);
     });
-    // baseline: the page is up with the bad row present (pre-filter is fine).
+    // baseline：页面起来且坏行在场（过滤前正常）。
     expect(screen.getByTestId("topology-table-view")).toBeTruthy();
   });
 
@@ -105,18 +104,18 @@ describe("OPR.0.4.1.13 — table-view crash repro (malformed row + filter)", () 
       expect(screen.getAllByTestId(/^topology-table-row-/).length).toBeGreaterThanOrEqual(2);
     });
     const search = screen.getByTestId("topology-table-search");
-    // Typing runs globalFilterFn over EVERY row incl. the null-field one.
-    // Pre-fix: r.rigName.toLowerCase() / r.logicalId.toLowerCase() throws -> page crash.
+    // 输入对每个行（含 null 字段行）跑 globalFilterFn。
+    // 修复前：r.rigName.toLowerCase() / r.logicalId.toLowerCase() 抛错 -> 页面崩溃。
     expect(() => {
       fireEvent.change(search, { target: { value: "ok" } });
     }).not.toThrow();
-    // The table survives + filters to the matching well-formed row.
+    // table 存活 + 过滤到匹配的正常行。
     expect(screen.getByTestId("topology-table-view")).toBeTruthy();
   });
 
   it("STRESS: many rows with mixed malformed shapes survive filter + sort (no-recur)", async () => {
-    // A large, deliberately-ugly inventory: null name, null/missing logicalId,
-    // null runtime/status, missing contextUsage - across many rigs/nodes.
+    // 一个大而故意难看的 inventory：null name、null/缺 logicalId、
+    // null runtime/status、缺 contextUsage——跨多 rigs/nodes。
     mockFetch.mockReset();
     mockFetch.mockImplementation(async (url: string) => {
       if (url.includes("/api/rigs/summary")) {
@@ -144,13 +143,13 @@ describe("OPR.0.4.1.13 — table-view crash repro (malformed row + filter)", () 
       expect(screen.getAllByTestId(/^topology-table-row-/).length).toBeGreaterThan(10);
     });
     const search = screen.getByTestId("topology-table-search");
-    // Hammer the filter with several queries (each re-runs globalFilterFn over all rows).
+    // 用多个 query 猛击过滤器（每个对所有行重跑 globalFilterFn）。
     expect(() => {
       for (const q of ["seat", "rig", "codex", "running", "zzz", ""]) {
         fireEvent.change(search, { target: { value: q } });
       }
     }).not.toThrow();
-    // Sort by clicking each sortable header (re-runs the sorted-row-model over null fields).
+    // 点每个可排序头排序（对 null 字段重跑 sorted-row-model）。
     expect(() => {
       for (const th of Array.from(document.querySelectorAll("thead th"))) {
         fireEvent.click(th);

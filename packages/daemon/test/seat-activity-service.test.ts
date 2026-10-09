@@ -1,20 +1,16 @@
-// Slice 15 — SeatActivityService unit tests (TDD).
+// 切片 15——SeatActivityService 单元测试（TDD）。
 //
-// The service is the daemon's owner of the `terminal-active` primitive.
-// It polls tmux's per-pane silence flag at a configurable cadence and
-// keeps the latest observation in memory keyed by canonical session
-// name. Downstream consumers (ps-projection, node-inventory, UI hooks
-// via the event stream) read through the service. The service does NOT
-// touch queue/assignment state — that's the non-inference contract.
+// 该服务是 daemon 中 `terminal-active` 原语的所有者。它以可配置周期轮询 tmux 的逐 pane
+// 静默标志，并以规范会话名称为键在内存中保存最新观察。下游消费者（ps-projection、
+// node-inventory，以及通过事件流接入的 UI hook）通过该服务读取。该服务不触碰
+// queue/assignment 状态——这是非推断契约。
 
 import { describe, it, expect, vi } from "vitest";
 import { SeatActivityService } from "../src/domain/seat-activity-service.js";
 import type { TmuxAdapter } from "../src/adapters/tmux.js";
 
-// Slice 15 — tmux adapter mock keyed by canonical session name.
-// Map value: Unix epoch seconds of last activity (number), or null to
-// simulate "no signal" (target missing or blank tmux output, e.g.
-// tmux 3.6a behavior observed by velocity-qa).
+// 切片 15——以规范会话名称为键的 tmux 适配器 mock。映射值为最后活动的 Unix epoch 秒数，
+// 或用 null 模拟“无信号”（目标缺失或 tmux 输出为空，例如 velocity-qa 观察到的 tmux 3.6a 行为）。
 function makeTmuxAdapter(
   lastActivityBySession: Record<string, number | null>,
 ): TmuxAdapter {
@@ -31,8 +27,8 @@ const FIXED_NOW = new Date("2026-05-16T10:00:00.000Z");
 const FIXED_NOW_EPOCH = FIXED_NOW.getTime() / 1000;
 
 describe("SeatActivityService", () => {
-  it("pollSeat records ACTIVE observation when window_activity is within the silence window", async () => {
-    // Activity 1s ago, window 3s → active
+  it("window_activity 位于静默窗口内时，pollSeat 记录 ACTIVE 观察", async () => {
+    // 1 秒前有活动，窗口 3 秒 → active
     const tmux = makeTmuxAdapter({ "claude@rig": FIXED_NOW_EPOCH - 1 });
     const svc = new SeatActivityService({ tmux, defaultWindowSeconds: 3, now: () => FIXED_NOW });
 
@@ -45,8 +41,8 @@ describe("SeatActivityService", () => {
     expect(observed!.lastObservedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  it("pollSeat records IDLE observation when window_activity is older than the silence window", async () => {
-    // Activity 10s ago, window 5s → idle (10s ≥ 5s)
+  it("window_activity 早于静默窗口时，pollSeat 记录 IDLE 观察", async () => {
+    // 10 秒前有活动，窗口 5 秒 → idle（10 秒 ≥ 5 秒）
     const tmux = makeTmuxAdapter({ "claude@rig": FIXED_NOW_EPOCH - 10 });
     const svc = new SeatActivityService({ tmux, defaultWindowSeconds: 5, now: () => FIXED_NOW });
 
@@ -56,8 +52,8 @@ describe("SeatActivityService", () => {
     expect(observed!.silenceWindowSeconds).toBe(5);
   });
 
-  it("HG-7 DISCRIMINATOR — same activity timestamp, different window: window=3 → idle; window=20 → active", async () => {
-    // Last activity 10s ago. With a 3s window: idle. With a 20s window: active.
+  it("HG-7 判别项——活动时间戳相同而窗口不同：window=3 → idle；window=20 → active", async () => {
+    // 最后活动在 10 秒前。窗口 3 秒时为 idle；窗口 20 秒时为 active。
     const tmux = makeTmuxAdapter({ "claude@rig": FIXED_NOW_EPOCH - 10 });
     const tight = new SeatActivityService({ tmux, defaultWindowSeconds: 3, now: () => FIXED_NOW });
     const loose = new SeatActivityService({ tmux, defaultWindowSeconds: 20, now: () => FIXED_NOW });
@@ -69,14 +65,14 @@ describe("SeatActivityService", () => {
     expect(looseObs!.isActiveWithinWindow).toBe(true);  // 10s < 20s
   });
 
-  it("pollSeat returns null when tmux read returns null (no observation; consumer treats as 'unknown')", async () => {
+  it("tmux 读取返回 null 时 pollSeat 返回 null（无观察；消费者视为 'unknown'）", async () => {
     const tmux = makeTmuxAdapter({ "claude@rig": null });
     const svc = new SeatActivityService({ tmux, defaultWindowSeconds: 3 });
 
     expect(await svc.pollSeat("claude@rig")).toBeNull();
   });
 
-  it("getSeatActivity returns the latest stored observation for a seat", async () => {
+  it("getSeatActivity 返回 seat 最新的存储观察", async () => {
     const tmux = makeTmuxAdapter({ "claude@rig": FIXED_NOW_EPOCH });
     const svc = new SeatActivityService({ tmux, defaultWindowSeconds: 3, now: () => FIXED_NOW });
 
@@ -88,8 +84,8 @@ describe("SeatActivityService", () => {
     expect(stored!.isActiveWithinWindow).toBe(true);
   });
 
-  it("getSeatActivity is keyed per-seat; observations don't leak across seats", async () => {
-    // a is idle (60s old), b is active (current)
+  it("getSeatActivity 逐 seat 定键；观察不会在 seat 之间泄漏", async () => {
+    // a 为 idle（60 秒前），b 为 active（当前）
     const tmux = makeTmuxAdapter({
       "a@rig": FIXED_NOW_EPOCH - 60,
       "b@rig": FIXED_NOW_EPOCH,
@@ -103,8 +99,8 @@ describe("SeatActivityService", () => {
     expect(svc.getSeatActivity("b@rig")!.isActiveWithinWindow).toBe(true);
   });
 
-  it("pollSeat with a per-seat override honors the override; default is the fallback", async () => {
-    // Activity 5s ago. Default window 3s → idle. Override 10s → active.
+  it("pollSeat 会遵循逐 seat 覆盖值；默认值作为回退", async () => {
+    // 5 秒前有活动。默认窗口 3 秒 → idle；覆盖为 10 秒 → active。
     const tmux = makeTmuxAdapter({ "claude@rig": FIXED_NOW_EPOCH - 5 });
     const svc = new SeatActivityService({ tmux, defaultWindowSeconds: 3, now: () => FIXED_NOW });
 
@@ -117,7 +113,7 @@ describe("SeatActivityService", () => {
     expect(observed2!.isActiveWithinWindow).toBe(false); // 5s > 3s
   });
 
-  it("absorbs tmux errors so polling failures never crash the daemon loop", async () => {
+  it("吸收 tmux 错误，使轮询失败绝不会让 daemon 循环崩溃", async () => {
     const tmux = {
       readPaneLastActivity: vi.fn(async () => {
         throw new Error("tmux gone");
@@ -128,52 +124,48 @@ describe("SeatActivityService", () => {
     await expect(svc.pollSeat("claude@rig")).resolves.toBeNull();
   });
 
-  // Slice 15 non-inference contract (HG-4 partial): the service has no
-  // input port for queue/assignment state. Even at the type level, the
-  // constructor must NOT accept a queue repo / projection. If a future
-  // contributor reaches for queue data here, this constructor-shape
-  // test fails compile, surfacing the regression.
-  it("HG-4 partial — constructor surface depends only on tmux + cadence (no queue/assignment input)", () => {
+  // 切片 15 非推断契约（HG-4 部分）：服务没有 queue/assignment 状态输入端口。即使在类型层，
+  // 构造函数也不得接受 queue repo / projection。若未来贡献者在此读取队列数据，
+  // 此构造函数结构测试会编译失败，从而暴露回归。
+  it("HG-4 部分——构造函数表面仅依赖 tmux + 周期（无 queue/assignment 输入）", () => {
     const tmux = makeTmuxAdapter({});
-    // The constructor only accepts `tmux` + `defaultWindowSeconds` (+ optional bus).
-    // If we tried to pass any queue/assignment-shaped dep the compile fails.
+    // 构造函数只接受 `tmux` + `defaultWindowSeconds`（以及可选 bus）。
+    // 若尝试传入任何 queue/assignment 形态的依赖，编译会失败。
     const svc = new SeatActivityService({ tmux, defaultWindowSeconds: 3 });
     expect(svc).toBeDefined();
   });
 
-  // ── ARCH RULING 3a947fb1 (pulse PARKED-WITH-BATON owner idle-age): pollSeat
-  // ── already reads the RAW window_activity epoch to derive active/idle, then
-  // ── discards it. FR-7 additive — surface it as `lastActivityAt` (ISO) on the
-  // ── record. RAW fact, never clamped (C2); ONE field, no ageSeconds sibling
-  // ── (C3 — age is a renderer-side VIEW = f(fact, reader-clock)).
-  describe("lastActivityAt — raw window_activity fact (arch 3a947fb1)", () => {
-    it("stamps the RAW activity epoch as ISO — distinct from lastObservedAt (observation time)", async () => {
-      // Activity 10s before the observation clock.
+  // ── 架构裁定 3a947fb1（pulse PARKED-WITH-BATON owner 空闲时长）：pollSeat 已读取原始
+  // ── window_activity epoch 来派生 active/idle，随后将其丢弃。FR-7 以加法方式将其作为
+  // ── `lastActivityAt`（ISO）显示在记录上。原始事实绝不截断（C2）；只增加一个字段，不增加
+  // ── ageSeconds 同级字段（C3——age 是渲染器侧视图 = f(fact, reader-clock)）。
+  describe("lastActivityAt——原始 window_activity 事实（架构 3a947fb1）", () => {
+    it("将原始活动 epoch 记录为 ISO——与 lastObservedAt（观察时间）不同", async () => {
+      // 活动发生在观察时钟之前 10 秒。
       const tmux = makeTmuxAdapter({ "claude@rig": FIXED_NOW_EPOCH - 10 });
       const svc = new SeatActivityService({ tmux, defaultWindowSeconds: 3, now: () => FIXED_NOW });
 
       const observed = await svc.pollSeat("claude@rig");
 
-      // The fact is the tmux activity TIME, not when we observed it.
+      // 该事实是 tmux 活动时间，而非我们观察它的时间。
       expect(observed!.lastActivityAt).toBe(new Date((FIXED_NOW_EPOCH - 10) * 1000).toISOString());
       expect(observed!.lastObservedAt).toBe(FIXED_NOW.toISOString());
       expect(observed!.lastActivityAt).not.toBe(observed!.lastObservedAt);
     });
 
-    it("C2 raw fact, NO clamping — skew putting activity AHEAD of the observation clock is preserved, not floored", async () => {
-      // Clock skew: tmux reports activity 5s in the (near) future vs our clock.
+    it("C2 原始事实，不截断——时钟偏差使活动时间领先观察时钟时保留原值，不向下修正", async () => {
+      // 时钟偏差：tmux 报告的活动时间比本地时钟早到未来 5 秒。
       const tmux = makeTmuxAdapter({ "claude@rig": FIXED_NOW_EPOCH + 5 });
       const svc = new SeatActivityService({ tmux, defaultWindowSeconds: 3, now: () => FIXED_NOW });
 
       const observed = await svc.pollSeat("claude@rig");
 
-      // Surfaced verbatim — AHEAD of lastObservedAt. The projection never
-      // clamps/floors; renderers clamp for display only.
+      // 原样呈现——领先 lastObservedAt。投影绝不截断/向下修正；渲染器仅为显示而截断。
       expect(observed!.lastActivityAt).toBe(new Date((FIXED_NOW_EPOCH + 5) * 1000).toISOString());
       expect(Date.parse(observed!.lastActivityAt)).toBeGreaterThan(Date.parse(observed!.lastObservedAt));
     });
 
-    it("C1 absent-when-no-signal — a null tmux read yields NO record (the fact is absent, never fabricated)", async () => {
+    it("C1 无信号则缺失——tmux 读取为 null 时不生成记录（事实缺失，绝不伪造）", async () => {
       const tmux = makeTmuxAdapter({ "claude@rig": null });
       const svc = new SeatActivityService({ tmux, defaultWindowSeconds: 3, now: () => FIXED_NOW });
 
@@ -183,14 +175,13 @@ describe("SeatActivityService", () => {
   });
 
   describe("pollAllRunningTmuxSeats", () => {
-    // Uses the same DB schema the daemon uses — pick up the test-app
-    // helper that provisions an in-memory daemon DB with all migrations.
+    // 使用与 daemon 相同的数据库 schema——采用 test-app 辅助函数创建包含全部迁移的内存数据库。
     async function makeDb() {
       const { createFullTestDb } = await import("./helpers/test-app.js");
       return createFullTestDb();
     }
 
-    it("SINGLE-FLIGHT: a whole sweep started while another is in flight adds NO overlapping reads (mirrors seat-structural-activity-service MUST-FIX 2)", async () => {
+    it("单次并发：前一轮仍在进行时启动完整扫描，不会增加重叠读取（对应 seat-structural-activity-service 必修项 2）", async () => {
       const db = await makeDb();
       try {
         db.prepare("INSERT INTO rigs (id, name) VALUES ('r1', 'rig-a')").run();
@@ -200,7 +191,7 @@ describe("SeatActivityService", () => {
         db.prepare("INSERT INTO sessions (id, node_id, session_name, status, created_at) VALUES (?, ?, ?, ?, ?)").run("s1", "n1", "dev@rig", "running", ts);
         db.prepare("INSERT INTO sessions (id, node_id, session_name, status, created_at) VALUES (?, ?, ?, ?, ?)").run("s2", "n2", "qa@rig", "running", ts);
 
-        // Gate the per-seat read so the FIRST sweep stays in flight while we fire a second.
+        // 阻塞逐 seat 读取，使第一轮扫描在第二轮触发时仍在进行。
         let release!: () => void;
         const gate = new Promise<void>((r) => { release = r; });
         let reads = 0;
@@ -221,7 +212,7 @@ describe("SeatActivityService", () => {
         await Promise.all([sweep1, sweep2]);
         expect(reads).toBe(2);
 
-        // guard resets in finally: a fresh sweep after settle runs normally
+        // 守卫在 finally 中重置：稳定后的新一轮扫描正常运行
         await svc.pollAllRunningTmuxSeats(db);
         expect(reads).toBe(4);
       } finally {
@@ -229,7 +220,7 @@ describe("SeatActivityService", () => {
       }
     });
 
-    it("polls every running tmux-bound seat once; stores observations keyed by canonical session name", async () => {
+    it("对每个运行中的 tmux 绑定 seat 轮询一次；以规范会话名称为键存储观察", async () => {
       const db = await makeDb();
       try {
         db.prepare("INSERT INTO rigs (id, name) VALUES ('r1', 'rig-a')").run();
@@ -257,7 +248,7 @@ describe("SeatActivityService", () => {
       }
     });
 
-    it("skips detached / stopped seats — only `running` status is polled", async () => {
+    it("跳过 detached / stopped seat——只轮询 `running` 状态", async () => {
       const db = await makeDb();
       try {
         db.prepare("INSERT INTO rigs (id, name) VALUES ('r1', 'rig-a')").run();
@@ -284,7 +275,7 @@ describe("SeatActivityService", () => {
       }
     });
 
-    it("drops cached observations for seats no longer in the running set (memory hygiene)", async () => {
+    it("丢弃已不在运行集合中的 seat 缓存观察（内存卫生）", async () => {
       const db = await makeDb();
       try {
         db.prepare("INSERT INTO rigs (id, name) VALUES ('r1', 'rig-a')").run();
@@ -298,7 +289,7 @@ describe("SeatActivityService", () => {
         await svc.pollAllRunningTmuxSeats(db);
         expect(svc.getSeatActivity("dev@rig")).not.toBeNull();
 
-        // Stop the seat; expect the observation to drop on next sweep.
+        // 停止 seat；预期下一轮扫描会丢弃该观察。
         db.prepare("UPDATE sessions SET status = 'detached' WHERE id = 's1'").run();
         await svc.pollAllRunningTmuxSeats(db);
         expect(svc.getSeatActivity("dev@rig")).toBeNull();

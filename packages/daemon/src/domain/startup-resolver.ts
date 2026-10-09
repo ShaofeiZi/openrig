@@ -12,34 +12,33 @@ export interface StartupLayerInputs {
 }
 
 /**
- * Build effective startup in fixed additive order:
- * 1. Agent base startup
- * 2. Profile startup
- * 3. Rig culture file (synthetic StartupFile)
- * 4. Rig startup overlays
- * 5. Pod shared startup
- * 6. Member startup overlays
- * 7. Operator debug append (always last)
+ * 按固定的叠加顺序构建有效启动内容：
+ * 1. 智能体基础启动内容
+ * 2. Profile 启动内容
+ * 3. 工作组 culture 文件（合成 StartupFile）
+ * 4. 工作组启动 overlay
+ * 5. Pod 共享启动内容
+ * 6. Member 启动 overlay
+ * 7. 操作者调试追加内容（始终最后）
  *
- * Files and actions are concatenated in order. No deduplication —
- * adapters handle replay tolerance per the startup contract.
+ * 文件与 action 按顺序连接，不做去重；adapter 按启动契约处理重放容忍。
  *
- * @param inputs - all startup sources
- * @returns merged StartupBlock
+ * @param inputs - 全部启动来源
+ * @returns 合并后的 StartupBlock
  */
 export function resolveStartup(inputs: StartupLayerInputs): StartupBlock {
   const files: StartupFile[] = [];
   const actions: StartupAction[] = [];
 
-  // 1. Agent base startup
+  // 1. 智能体基础启动内容
   appendBlock(inputs.specStartup, files, actions);
 
-  // 2. Profile startup
+  // 2. Profile 启动内容
   if (inputs.profileStartup) {
     appendBlock(inputs.profileStartup, files, actions);
   }
 
-  // 3. Rig culture file (synthetic file entry)
+  // 3. 工作组 culture 文件（合成文件项）
   if (inputs.rigCultureFile) {
     files.push({
       path: inputs.rigCultureFile,
@@ -49,22 +48,22 @@ export function resolveStartup(inputs: StartupLayerInputs): StartupBlock {
     });
   }
 
-  // 4. Rig startup overlays
+  // 4. 工作组启动 overlay
   if (inputs.rigStartup) {
     appendBlock(inputs.rigStartup, files, actions);
   }
 
-  // 5. Pod shared startup
+  // 5. Pod 共享启动内容
   if (inputs.podStartup) {
     appendBlock(inputs.podStartup, files, actions);
   }
 
-  // 6. Member startup overlays
+  // 6. Member 启动 overlay
   if (inputs.memberStartup) {
     appendBlock(inputs.memberStartup, files, actions);
   }
 
-  // 7. Operator debug append (always last)
+  // 7. 操作者调试追加内容（始终最后）
   if (inputs.operatorStartup) {
     appendBlock(inputs.operatorStartup, files, actions);
   }
@@ -77,7 +76,7 @@ function appendBlock(block: StartupBlock, files: StartupFile[], actions: Startup
   actions.push(...block.actions);
 }
 
-/** Last applicable authored selection wins; omission adds no exercise. */
+/** 最后一个适用的作者声明选择生效；省略时不增加练习。 */
 export function resolveStartupProof(
   actions: StartupAction[],
   context: "fresh_start" | "restore",
@@ -85,8 +84,7 @@ export function resolveStartupProof(
   let selection: StartupProofSelection = { mode: "none", source: "default" };
   for (const [actionIndex, action] of actions.entries()) {
     if (action.type !== "startup_proof") continue;
-    // Persisted/direct inputs must obey the same contract as authored YAML,
-    // including overridden and inapplicable declarations.
+    // 持久化/直接输入必须遵循与作者 YAML 相同的契约，包括被覆盖和不适用的声明。
     const errors = validateStartupAction({ ...action, applies_on: action.appliesOn }, actionIndex, "startup.");
     if (errors.length) throw new Error(errors.join("; "));
     if (action.appliesOn.includes(context)) {

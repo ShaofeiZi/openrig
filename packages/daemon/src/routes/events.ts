@@ -10,7 +10,7 @@ function getEventBus(c: { get: (key: string) => unknown }): EventBus {
 }
 
 eventsRoute.get("/", (c) => {
-  const rigId = c.req.query("rigId"); // Optional — omit for global stream
+  const rigId = c.req.query("rigId"); // 可选——省略则为全局流
 
   const lastEventIdRaw = c.req.header("Last-Event-ID") ?? "0";
   const lastEventId = parseInt(lastEventIdRaw, 10);
@@ -19,14 +19,14 @@ eventsRoute.get("/", (c) => {
   const eventBus = getEventBus(c);
 
   return streamSSE(c, async (stream) => {
-    // Buffer for live events arriving during replay
+    // 缓冲重放期间到达的活动事件
     const buffer: PersistedEvent[] = [];
     let replaying = true;
     let maxReplayedSeq = lastSeq;
 
-    // 1. Subscribe to live bus BEFORE replay query (no gap)
+    // 1. 在重放查询之前先订阅活动总线（不丢事件）
     const unsubscribe = eventBus.subscribe((event) => {
-      // Rig-scoped: filter by rigId. Global: accept all events.
+      // 工作组范围：按 rigId 过滤。全局：接受所有事件。
       if (rigId) {
         const eventRigId = "rigId" in event ? (event as { rigId: string }).rigId : null;
         if (eventRigId !== rigId) return;
@@ -34,14 +34,14 @@ eventsRoute.get("/", (c) => {
       if (replaying) {
         buffer.push(event);
       } else {
-        // Stream directly — skip if already sent during replay
+        // 直接流式下发——若重放期间已发送则跳过
         if (event.seq <= maxReplayedSeq) return;
         stream.writeSSE({ id: String(event.seq), data: JSON.stringify(event) }).catch(() => {});
       }
     });
 
     try {
-      // 2. Replay missed events from DB
+      // 2. 从 DB 重放错过的事件
       const missed = rigId
         ? eventBus.replaySince(lastSeq, rigId)
         : eventBus.replayAll(lastSeq);
@@ -50,22 +50,21 @@ eventsRoute.get("/", (c) => {
         if (event.seq > maxReplayedSeq) maxReplayedSeq = event.seq;
       }
 
-      // 3. Drain buffer while still in replaying mode (new live events
-      //    continue to buffer, preserving monotonic ordering)
-      //    Drain in a loop since new events may arrive during drain.
+      // 3. 仍在重放模式下冲刷缓冲（新的活动事件继续缓冲，保持单调顺序）
+      //    循环冲刷，因为冲刷期间可能有新事件到达。
       while (buffer.length > 0) {
         const snapshot = buffer.splice(0);
         for (const event of snapshot) {
-          if (event.seq <= maxReplayedSeq) continue; // dedup
+          if (event.seq <= maxReplayedSeq) continue; // 去重
           await stream.writeSSE({ id: String(event.seq), data: JSON.stringify(event) });
           if (event.seq > maxReplayedSeq) maxReplayedSeq = event.seq;
         }
       }
 
-      // 4. Switch to live mode — new events go directly to stream
+      // 4. 切换到活动模式——新事件直接进入流
       replaying = false;
 
-      // 4. Keep stream alive until client disconnects
+      // 4. 保持流存活直到客户端断开
       await new Promise<void>((resolve) => {
         stream.onAbort(() => resolve());
       });

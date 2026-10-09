@@ -21,7 +21,7 @@ describe("WorkflowInstanceStore (PL-004 Phase D)", () => {
 
   afterEach(() => db.close());
 
-  it("create stores a new instance with status=active + empty frontier + ULID id", () => {
+  it("create 保存 status=active、空 frontier 和 ULID id 的新 instance", () => {
     const inst = store.create({
       workflowName: "test",
       workflowVersion: "1",
@@ -33,17 +33,17 @@ describe("WorkflowInstanceStore (PL-004 Phase D)", () => {
     expect(inst.hopCount).toBe(0);
   });
 
-  it("getByIdOrThrow throws instance_not_found for unknown id", () => {
+  it("getByIdOrThrow 对未知 id 抛出 instance_not_found", () => {
     try {
       store.getByIdOrThrow("nope");
-      throw new Error("should have thrown");
+      throw new Error("预期应抛错");
     } catch (err) {
       expect(err).toBeInstanceOf(WorkflowInstanceError);
       expect((err as WorkflowInstanceError).code).toBe("instance_not_found");
     }
   });
 
-  it("updateFrontier mutates the JSON array AND status", () => {
+  it("updateFrontier 同时修改 JSON array 和 status", () => {
     const inst = store.create({ workflowName: "t", workflowVersion: "1", createdBySession: "a@r" });
     store.updateFrontier(inst.instanceId, ["q-1", "q-2"], "active");
     const after = store.getByIdOrThrow(inst.instanceId);
@@ -51,14 +51,14 @@ describe("WorkflowInstanceStore (PL-004 Phase D)", () => {
     expect(after.status).toBe("active");
   });
 
-  it("updateFrontier with bumpHopCount=true increments hop_count atomically", () => {
+  it("updateFrontier 带 bumpHopCount=true 时原子递增 hop_count", () => {
     const inst = store.create({ workflowName: "t", workflowVersion: "1", createdBySession: "a@r" });
     store.updateFrontier(inst.instanceId, ["q-1"], "active", { bumpHopCount: true });
     store.updateFrontier(inst.instanceId, ["q-2"], "active", { bumpHopCount: true });
     expect(store.getByIdOrThrow(inst.instanceId).hopCount).toBe(2);
   });
 
-  it("updateFrontier records lastContinuationDecision JSON-serialized", () => {
+  it("updateFrontier 以 JSON 序列化形式记录 lastContinuationDecision", () => {
     const inst = store.create({ workflowName: "t", workflowVersion: "1", createdBySession: "a@r" });
     store.updateFrontier(inst.instanceId, [], "completed", {
       lastContinuationDecision: { exit: "done", actor: "a@r" },
@@ -69,7 +69,7 @@ describe("WorkflowInstanceStore (PL-004 Phase D)", () => {
     expect(after.completedAt).toBe("2026-05-03T08:00:00.000Z");
   });
 
-  it("listByStatus filters; listAll returns all", () => {
+  it("listByStatus 负责筛选，listAll 返回全部", () => {
     const a = store.create({ workflowName: "t", workflowVersion: "1", createdBySession: "a@r" });
     const b = store.create({ workflowName: "t", workflowVersion: "1", createdBySession: "b@r" });
     store.updateFrontier(b.instanceId, [], "completed");
@@ -78,7 +78,7 @@ describe("WorkflowInstanceStore (PL-004 Phase D)", () => {
     expect(store.listAll()).toHaveLength(2);
   });
 
-  it("survives restart via SQLite (new store instance reads same data)", () => {
+  it("通过 SQLite 跨重启保留数据，新 store instance 可读到相同内容", () => {
     const inst = store.create({ workflowName: "t", workflowVersion: "1", createdBySession: "a@r" });
     store.updateFrontier(inst.instanceId, ["q-x"], "active");
     const store2 = new WorkflowInstanceStore(db);

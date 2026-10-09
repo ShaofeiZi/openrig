@@ -1,10 +1,9 @@
-// OPR.0.3.4.3 — no-launch reconcile (adopt a hand-resumed canonical session).
+// OPR.0.3.4.3 — 无启动协调（接入手动恢复的规范会话）。
 //
-// THE NO-INPUT DISCRIMINATOR (guard rev1, load-bearing): a spy tmux adapter
-// proves reconcile_session calls NONE of launchNode / createSession /
-// killSession / sendText / sendKeys on the target — the input-injection that a
-// PID-unchanged proof cannot see. deliverClaimHint is implemented via
-// sendText+sendKeys, so zero calls to those subsumes it.
+// “无输入”判别条件（guard rev1，关键约束）：spy tmux 适配器证明 reconcile_session
+// 不会对目标调用 launchNode / createSession / killSession / sendText / sendKeys；
+// 仅凭 PID 未变化无法发现这类输入注入。deliverClaimHint 由 sendText+sendKeys 实现，
+// 因此确认这两个方法调用次数为零，也就覆盖了它。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
@@ -15,7 +14,7 @@ import { convergeOp, SUPPORTED_OP_KINDS, isSupportedOpKind } from "../src/domain
 import { SeatIdentityReconciler } from "../src/domain/seat-identity-reconciler.js";
 import { SeatIdentityStore } from "../src/domain/seat-identity-store.js";
 
-/** Fully-instrumented tmux adapter: records every call by method name. */
+/** 完整插桩的 tmux 适配器：按方法名称记录每次调用。 */
 function spyTmux(overrides?: Partial<Record<string, unknown>>) {
   const calls: Record<string, unknown[][]> = {};
   const record = (name: string, impl: (...args: unknown[]) => unknown) =>
@@ -66,9 +65,8 @@ describe("ClaimService.reconcileSession (OPR.0.3.4.3)", () => {
 
   afterEach(() => { db.close(); });
 
-  /** Seed a managed seat then simulate the outage: the daemon's latest session
-   *  row goes non-running while a live tmux session keeps the canonical name
-   *  (the operator hand-resumed inside it). */
+  /** 创建一个受管席位后模拟故障：后台服务的最新会话行变为非运行状态，但实时 tmux
+   *  会话仍保留规范名称（操作员已在其中手动恢复）。 */
   async function seedDetachedSeat(podId = "infra", memberId = "server") {
     const rig = setup.rigRepo.createRig("test-rig");
     const expanded = await setup.rigExpansionService.expand({ rigId: rig.id, pod: terminalPodFragment(podId, memberId) });
@@ -86,7 +84,7 @@ describe("ClaimService.reconcileSession (OPR.0.3.4.3)", () => {
     return row?.status;
   }
 
-  it("adopts the live session back into its persisted node: same node id, projection flips to running", async () => {
+  it("将实时会话重新接入持久化节点：节点 ID 不变，投影切换为 running", async () => {
     const { rig, node, sessionName } = await seedDetachedSeat();
     expect(latestSessionStatus(node.id)).toBe("detached");
 
@@ -94,21 +92,21 @@ describe("ClaimService.reconcileSession (OPR.0.3.4.3)", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // No re-key: SAME node id, same logical id, same rig.
+    // 不重新分配标识：保持同一个节点 ID、逻辑 ID 和工作组。
     expect(result.result.nodeId).toBe(node.id);
     expect(result.result.logicalId).toBe("infra.server");
     expect(result.result.rigId).toBe(rig.id);
-    // Projection flipped: latest session row is running (ps liveness source).
+    // 投影已翻转：最新会话行状态为 running（ps 存活性来源）。
     expect(latestSessionStatus(node.id)).toBe("running");
-    // Binding points at the live canonical session.
+    // 绑定指向实时规范会话。
     expect(setup.sessionRegistry.getBindingForNode(node.id)?.tmuxSession).toBe(sessionName);
-    // Node table unchanged: no new node minted.
+    // 节点表不变：没有创建新节点。
     const nodes = setup.rigRepo.getRig(rig.id)!.nodes;
     expect(nodes).toHaveLength(1);
     expect(nodes[0]!.id).toBe(node.id);
   });
 
-  it("reconcileSession replaces a NULL binding pane with the live pane and the next identity pass verifies it", async () => {
+  it("reconcileSession 用实时窗格替换 NULL 绑定窗格，下一次身份检查可验证该绑定", async () => {
     const localDb = createFullTestDb();
     const panes = [{ id: "%refreshed", index: 0, cwd: "/tmp", width: 80, height: 24, active: true }];
     const spy = spyTmux({
@@ -137,11 +135,11 @@ describe("ClaimService.reconcileSession (OPR.0.3.4.3)", () => {
     localDb.close();
   });
 
-  it("NO-INPUT DISCRIMINATOR: reconcile calls no launch/kill/create/sendText/sendKeys on the target", async () => {
+  it("无输入判别条件：协调不会对目标调用 launch/kill/create/sendText/sendKeys", async () => {
     const { sessionName } = await seedDetachedSeat();
     const launchSpy = vi.spyOn(setup.nodeLauncher, "launchNode");
 
-    // Reset the call log AFTER seeding (expand legitimately creates sessions).
+    // 在准备数据后重置调用日志，因为 expand 会合理地创建会话。
     for (const key of Object.keys(tmuxCalls)) delete tmuxCalls[key];
 
     const result = await setup.claimService.reconcileSession({ sessionName });
@@ -150,14 +148,14 @@ describe("ClaimService.reconcileSession (OPR.0.3.4.3)", () => {
     expect(launchSpy).not.toHaveBeenCalled();
     expect(tmuxCalls["createSession"] ?? []).toHaveLength(0);
     expect(tmuxCalls["killSession"] ?? []).toHaveLength(0);
-    // Zero keystrokes/text into the pane — subsumes deliverClaimHint.
+    // 不向窗格注入任何按键或文本，因此也覆盖了 deliverClaimHint。
     expect(tmuxCalls["sendText"] ?? []).toHaveLength(0);
     expect(tmuxCalls["sendKeys"] ?? []).toHaveLength(0);
-    // The allowed ops are read/metadata only.
+    // 只允许读取和元数据操作。
     expect((tmuxCalls["hasSession"] ?? []).length).toBeGreaterThan(0);
   });
 
-  it("emits node.reconciled (not node.claimed) so the operator knows which op happened", async () => {
+  it("发出 node.reconciled 而非 node.claimed，使操作员知道执行了哪项操作", async () => {
     const { node, sessionName } = await seedDetachedSeat();
     await setup.claimService.reconcileSession({ sessionName });
 
@@ -169,8 +167,8 @@ describe("ClaimService.reconcileSession (OPR.0.3.4.3)", () => {
     expect(db.prepare("SELECT 1 FROM events WHERE type = 'node.claimed'").all()).toHaveLength(0);
   });
 
-  it("HONEST DRIFT: reports unproven metadata separately and never claims continuity", async () => {
-    // A claude-code node whose live pane command reads "zsh" cannot be proven.
+  it("如实报告漂移：单独报告无法证实的元数据，且绝不声称会话连续", async () => {
+    // 实时窗格命令为 "zsh" 时，无法证实 claude-code 节点的运行时。
     const rig = setup.rigRepo.createRig("drift-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code", cwd: "/work/repo", podId: null });
     const sess = setup.sessionRegistry.registerSession(node.id, "dev-impl@drift-rig");
@@ -180,13 +178,13 @@ describe("ClaimService.reconcileSession (OPR.0.3.4.3)", () => {
     const result = await setup.claimService.reconcileSession({ sessionName: "dev-impl@drift-rig" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.result.projectionDrift.join(" ")).toContain("runtime unverified");
-    expect(result.result.projectionDrift.join(" ")).toContain("cwd unverified");
-    // Continuity is NEVER asserted.
+    expect(result.result.projectionDrift.join(" ")).toContain("运行时未经验证");
+    expect(result.result.projectionDrift.join(" ")).toContain("cwd 未经验证");
+    // 绝不声称连续性已得到验证。
     expect(result.result.continuity).toBe("unverified");
   });
 
-  it("session_not_found when no live tmux session has the canonical name (never adopts a ghost)", async () => {
+  it("没有使用规范名称的实时 tmux 会话时返回 session_not_found（绝不接入幽灵会话）", async () => {
     const spy = spyTmux({ hasSession: vi.fn(async () => false) });
     const localDb = createFullTestDb();
     const local = createTestApp(localDb, { tmux: spy.adapter });
@@ -201,18 +199,17 @@ describe("ClaimService.reconcileSession (OPR.0.3.4.3)", () => {
     localDb.close();
   });
 
-  it("node_not_found for a session name the daemon never managed (points at discover/bind)", async () => {
+  it("后台服务从未管理该会话名称时返回 node_not_found，并指向 discover/bind", async () => {
     const result = await setup.claimService.reconcileSession({ sessionName: "stranger@nowhere" });
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe("node_not_found");
-    expect(result.message).toContain("rig discover");
+    expect(result.message).toContain("zrig discover");
   });
 
-  it("IDENTITY BOUNDARY: explicit --rig/--node cannot bind an arbitrary never-managed session (re-key bypass)", async () => {
-    // Guard re-review finding: a live session named outside the node's
-    // canonical/managed name, with NO daemon-history mapping, must be refused
-    // even with explicit --rig/--node. tmux hasSession is true (spy default).
+  it("身份边界：显式 --rig/--node 不能绑定任意从未受管的会话（绕过重新分配标识）", async () => {
+    // Guard 复审发现：实时会话名称不属于节点的规范/受管名称，且不存在后台服务历史
+    // 映射时，即使显式提供 --rig/--node 也必须拒绝。tmux hasSession 默认为 true。
     const rig = setup.rigRepo.createRig("bypass-rig");
     const podId = "pod-bypass";
     db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)").run(podId, rig.id, "dev", "Dev");
@@ -227,17 +224,16 @@ describe("ClaimService.reconcileSession (OPR.0.3.4.3)", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe("node_mismatch");
-    expect(result.message).toContain("dev-impl@bypass-rig"); // points at the canonical name
-    expect(result.message).toContain("rig discover");
-    // NOTHING mutated: no binding, no session row, no event.
+    expect(result.message).toContain("dev-impl@bypass-rig"); // 指向规范名称
+    expect(result.message).toContain("zrig discover");
+    // 不得发生任何变更：没有绑定、会话行或事件。
     expect(setup.sessionRegistry.getBindingForNode(node.id)).toBeNull();
     expect(db.prepare("SELECT 1 FROM sessions WHERE node_id = ?").all(node.id)).toHaveLength(0);
     expect(db.prepare("SELECT 1 FROM events WHERE type = 'node.reconciled'").all()).toHaveLength(0);
   });
 
-  it("explicit --rig/--node WITH no history mapping still works for the node's OWN canonical name", async () => {
-    // Positive: history purged but the operator names the node's exact
-    // canonical session - explicit disambiguation is allowed.
+  it("没有历史映射时，显式 --rig/--node 仍可用于节点自己的规范名称", async () => {
+    // 正向场景：历史记录已清除，但操作员给出了节点的准确规范会话名称，允许显式消歧。
     const rig = setup.rigRepo.createRig("canon-rig");
     const podId = "pod-canon";
     db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)").run(podId, rig.id, "dev", "Dev");
@@ -255,20 +251,20 @@ describe("ClaimService.reconcileSession (OPR.0.3.4.3)", () => {
     expect(setup.sessionRegistry.getBindingForNode(node.id)?.tmuxSession).toBe("dev-impl@canon-rig");
   });
 
-  it("node_mismatch when explicit --rig/--node disagrees with the daemon's session mapping", async () => {
+  it("显式 --rig/--node 与后台服务的会话映射不一致时返回 node_mismatch", async () => {
     const { rig, sessionName } = await seedDetachedSeat();
-    // A second node in the same rig that does NOT map to this session.
+    // 同一工作组内另一个未映射到此会话的节点。
     const other = setup.rigRepo.addNode(rig.id, "infra.other", { runtime: "terminal", podId: null });
 
     const result = await setup.claimService.reconcileSession({ sessionName, rigId: rig.id, logicalId: "infra.other" });
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe("node_mismatch");
-    // Nothing mutated for the mismatched node.
+    // 不得更改不匹配的节点。
     expect(setup.sessionRegistry.getBindingForNode(other.id)).toBeNull();
   });
 
-  it("cross-runtime: claude-code, codex, and terminal nodes each reconcile", async () => {
+  it("跨运行时：claude-code、codex 和 terminal 节点均可协调", async () => {
     for (const runtime of ["claude-code", "codex", "terminal"] as const) {
       const rig = setup.rigRepo.createRig(`rt-${runtime}`);
       const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime, podId: null });
@@ -284,7 +280,7 @@ describe("ClaimService.reconcileSession (OPR.0.3.4.3)", () => {
   });
 });
 
-describe("reconcile_session on the converge spine (OPR.0.3.4.3)", () => {
+describe("converge 主干上的 reconcile_session（OPR.0.3.4.3）", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
 
@@ -294,12 +290,12 @@ describe("reconcile_session on the converge spine (OPR.0.3.4.3)", () => {
   });
   afterEach(() => { db.close(); });
 
-  it("reconcile_session is a SUPPORTED op kind on the spine", () => {
+  it("reconcile_session 是主干支持的操作类型", () => {
     expect(SUPPORTED_OP_KINDS).toContain("reconcile_session");
     expect(isSupportedOpKind("reconcile_session")).toBe(true);
   });
 
-  it("convergeOp dispatches reconcile_session to the claim service (on-spine, not a one-off)", async () => {
+  it("convergeOp 将 reconcile_session 分派给认领服务（位于主干而非一次性旁路）", async () => {
     const rig = setup.rigRepo.createRig("spine-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "terminal", podId: null });
     const sess = setup.sessionRegistry.registerSession(node.id, "dev-impl@spine-rig");
@@ -320,7 +316,7 @@ describe("reconcile_session on the converge spine (OPR.0.3.4.3)", () => {
     expect(result.outcome.result.nodeId).toBe(node.id);
   });
 
-  it("convergeOp without a claim service reports an honest error (no silent skip)", async () => {
+  it("缺少认领服务的 convergeOp 会如实报告错误，而不是静默跳过", async () => {
     const result = await convergeOp(
       { instantiator: setup.podInstantiator },
       "",
@@ -351,7 +347,7 @@ describe("POST /api/sessions/:sessionName/reconcile (OPR.0.3.4.3)", () => {
     });
   }
 
-  it("returns 200 with the reconcile result for a live detached seat", async () => {
+  it("实时但已脱离的席位协调成功时返回 200 和协调结果", async () => {
     const rig = setup.rigRepo.createRig("route-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "terminal", podId: null });
     const sess = setup.sessionRegistry.registerSession(node.id, "dev-impl@route-rig");
@@ -365,14 +361,14 @@ describe("POST /api/sessions/:sessionName/reconcile (OPR.0.3.4.3)", () => {
     expect(body.result.continuity).toBe("unverified");
   });
 
-  it("returns 404 for an unmapped session name", async () => {
+  it("会话名称未映射时返回 404", async () => {
     const res = await post("stranger@nowhere");
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.code).toBe("node_not_found");
   });
 
-  it("returns 409 for a node_mismatch", async () => {
+  it("发生 node_mismatch 时返回 409", async () => {
     const rig = setup.rigRepo.createRig("route-rig2");
     const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "terminal", podId: null });
     setup.rigRepo.addNode(rig.id, "dev.other", { runtime: "terminal", podId: null });
@@ -384,12 +380,12 @@ describe("POST /api/sessions/:sessionName/reconcile (OPR.0.3.4.3)", () => {
     expect(body.code).toBe("node_mismatch");
   });
 
-  it("returns 400 when only one of rigId/logicalId is given", async () => {
+  it("只提供 rigId/logicalId 其中一项时返回 400", async () => {
     const res = await post("dev-impl@route-rig3", { rigId: "some-rig" });
     expect(res.status).toBe(400);
   });
 
-  it("returns 409 for the explicit-rig/node arbitrary-session re-key bypass (nothing mutated)", async () => {
+  it("显式工作组/节点尝试绕过限制为任意会话重新分配标识时返回 409，且不产生变更", async () => {
     const rig = setup.rigRepo.createRig("route-bypass");
     const podId = "pod-rb";
     db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)").run(podId, rig.id, "dev", "Dev");

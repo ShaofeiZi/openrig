@@ -84,4 +84,14 @@ describe("Capture CLI", () => {
     expect(parsed.ok).toBe(true);
     expect(parsed.content).toContain("line1");
   });
+
+  // 中文行为：扇出多会话时每个会话仍以 `--- <session> ---` 分隔（协议头保留英文）
+  it("capture --rig 扇出输出保留会话分隔头", async () => {
+    const { logs } = await captureLogs(async () => {
+      await makeCmd().parseAsync(["node", "rig", "capture", "--rig", "my-rig"]);
+    });
+    const output = logs.join("\n");
+    expect(output).toContain("--- dev-impl@my-rig ---");
+    expect(output).toContain("--- dev-qa@my-rig ---");
+  });
 });

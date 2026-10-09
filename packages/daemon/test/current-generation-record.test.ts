@@ -1,5 +1,5 @@
-// OPR.0.5.9.13 — no name-keyed pointer or transcript recency signal is occupant identity. Resolve
-// the canonical current generation through its binding and verified pane/process instead.
+// OPR.0.5.9.13——任何按名称索引的指针或转录新旧信号都不是占用者身份。应通过绑定
+// 以及已验证的 pane/进程解析规范的当前代。
 
 import { describe, it, expect } from "vitest";
 import { mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
@@ -12,7 +12,7 @@ import {
   type ProcessRow,
 } from "../src/domain/model-divergence/current-generation-record.js";
 
-describe("resolveIdentityVerifiedClaudeRecord — canonical occupant identity", () => {
+describe("resolveIdentityVerifiedClaudeRecord——规范的占用者身份", () => {
   const canonicalId = "f16594c5-179a-4be7-bf5e-fd759b2b87a3";
   const reserveId = "9e1ac0df-505a-4050-857b-a494b46dabc6";
   const bootAt = "2026-09-04T02:00:00.000Z";
@@ -45,7 +45,7 @@ describe("resolveIdentityVerifiedClaudeRecord — canonical occupant identity", 
     } as const;
   }
 
-  it("the verified canonical pane wins while the retained alias reserve advances", async () => {
+  it("保留的别名候选继续推进时，以已验证的规范 pane 为准", async () => {
     const dir = mkdtempSync(join(tmpdir(), "openrig-current-occupant-"));
     try {
       const canonicalPath = join(dir, `${canonicalId}.jsonl`);
@@ -85,14 +85,14 @@ describe("resolveIdentityVerifiedClaudeRecord — canonical occupant identity", 
     }
   });
 
-  it("missing, stale, changed, or ambiguous pane identity is explicit and never transcript-recency-selected", async () => {
+  it("pane 身份缺失、过期、变化或有歧义时给出明确结果，绝不按转录新旧选择", async () => {
     const readable = () => true;
     const base = input(`/tmp/${canonicalId}.jsonl`);
     const cases = [
-      { value: { ...base, generation: null }, reason: "occupant generation is unknown" },
-      { value: { ...base, identity: null }, reason: "no verified pane identity" },
-      { value: { ...base, identity: { ...base.identity, observedAt: "2026-09-04T01:59:59.000Z" } }, reason: "predates occupant generation" },
-      { value: { ...base, identity: { ...base.identity, evidence: { ...base.identity.evidence, registeredPane: "%6" } } }, reason: "registered pane does not match" },
+      { value: { ...base, generation: null }, reason: "当前占用者代次未知" },
+      { value: { ...base, identity: null }, reason: "没有已验证窗格身份" },
+      { value: { ...base, identity: { ...base.identity, observedAt: "2026-09-04T01:59:59.000Z" } }, reason: "早于占用者代次" },
+      { value: { ...base, identity: { ...base.identity, evidence: { ...base.identity.evidence, registeredPane: "%6" } } }, reason: "登记的窗格与绑定" },
     ];
     for (const testCase of cases) {
       const out = await resolveIdentityVerifiedClaudeRecord(testCase.value, {
@@ -109,7 +109,7 @@ describe("resolveIdentityVerifiedClaudeRecord — canonical occupant identity", 
       listProcesses: async () => processes,
       readThreadIdByPid: () => undefined,
     }, readable);
-    expect(!changed.ok && changed.reason).toContain("changed since identity verification");
+    expect(!changed.ok && changed.reason).toContain("身份验证后");
 
     const ambiguous = await resolveIdentityVerifiedClaudeRecord(base, {
       getPanePid: async () => 10,
@@ -120,10 +120,10 @@ describe("resolveIdentityVerifiedClaudeRecord — canonical occupant identity", 
       }],
       readThreadIdByPid: () => undefined,
     }, readable);
-    expect(!ambiguous.ok && ambiguous.reason).toContain("multiple claude session ids");
+    expect(!ambiguous.ok && ambiguous.reason).toContain("多个 Claude 会话 ID");
   });
 
-  it("a generation-stamped sidecar may name a provider rollover inside the verified occupant", async () => {
+  it("带代标记的 sidecar 可指明已验证占用者内的 provider rollover", async () => {
     const rolledId = "22222222-2222-4222-8222-222222222222";
     const base = input(`/tmp/${rolledId}.jsonl`);
     const out = await resolveIdentityVerifiedClaudeRecord({
@@ -151,30 +151,30 @@ const deps = {
   readThreadIdByPid: (pid: number) => (pid === 30 ? "thread-live-123" : undefined),
 };
 
-describe("paneClaudeSessionIdArgument (a CANDIDATE source, never the answer alone)", () => {
-  it("reads the launch-argument session uuid (the specimen shape)", async () => {
+describe("paneClaudeSessionIdArgument（候选来源，绝不能单独作为答案）", () => {
+  it("读取启动参数中的会话 uuid（样本形态）", async () => {
     const out = await paneClaudeSessionIdArgument("dev-planner@r", deps);
     expect(out).toEqual({ ok: true, id: "daaeb7b4-841b-45cb-8a33-b062e0ce8296" });
   });
 
-  it("no pane pid / no claude process / no id argument each yield a NAMED reason, never a silent null", async () => {
+  it("没有 pane pid、Claude 进程或 id 参数时均给出具名原因，绝不静默返回 null", async () => {
     const none = await paneClaudeSessionIdArgument("s", { ...deps, getPanePid: async () => null });
-    expect(!none.ok && none.reason).toContain("no live pane pid");
+    expect(!none.ok && none.reason).toContain("没有存活的窗格 PID");
     const noClaude = await paneClaudeSessionIdArgument("s", { ...deps, listProcesses: async () => [{ pid: 10, ppid: 1, command: "-zsh" }] });
-    expect(!noClaude.ok && noClaude.reason).toContain("no claude process");
+    expect(!noClaude.ok && noClaude.reason).toContain("没有 Claude 进程");
     const noArg = await paneClaudeSessionIdArgument("s", { ...deps, listProcesses: async () => [{ pid: 20, ppid: 10, command: "claude --name x" }, { pid: 10, ppid: 1, command: "-zsh" }] });
-    expect(!noArg.ok && noArg.reason).toContain("no --session-id/--resume argument");
+    expect(!noArg.ok && noArg.reason).toContain("没有 --session-id/--resume 参数");
   });
 });
 
 describe("resolveLiveCodexThreadId", () => {
-  it("joins through the live codex pid's logs, bypassing any stored token", async () => {
+  it("通过存活 Codex pid 的日志联接，并绕过所有已存储 token", async () => {
     const out = await resolveLiveCodexThreadId("s", deps);
     expect(out).toEqual({ ok: true, id: "thread-live-123" });
   });
 
-  it("a codex process whose logs yield nothing is a NAMED reason", async () => {
+  it("Codex 进程的日志没有产出时给出具名原因", async () => {
     const out = await resolveLiveCodexThreadId("s", { ...deps, readThreadIdByPid: () => undefined });
-    expect(!out.ok && out.reason).toContain("yielded no thread id");
+    expect(!out.ok && out.reason).toContain("未解析出线程 ID");
   });
 });

@@ -9,10 +9,10 @@ export interface UiDeps {
 }
 
 export const UI_MAINTENANCE_NOTICE =
-  "The OpenRig UI is experimental and in maintenance mode. It is not under active development; support is best-effort. The CLI is the primary supported interface. Contributions welcome.";
+  "zrig Web UI 仍为实验性且处于维护模式。它不在积极开发中，支持为尽力而为。CLI 是主要受支持的界面。欢迎贡献。";
 
 export function uiCommand(depsOverride?: UiDeps): Command {
-  const cmd = new Command("ui").description("UI commands");
+  const cmd = new Command("ui").description("UI 相关命令");
   const getDeps = (): UiDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
     exec: async (cmd, args) => {
@@ -24,25 +24,25 @@ export function uiCommand(depsOverride?: UiDeps): Command {
 
   cmd
     .command("open")
-    .description("Open the OpenRig UI in the default browser")
+    .description("在默认浏览器中打开 zrig Web UI")
     .action(async () => {
       console.error(UI_MAINTENANCE_NOTICE);
       const deps = getDeps();
 
-      // Explicit override skips daemon status entirely (dev workflow with Vite)
+      // 显式覆盖时完全跳过后台服务状态检查（配合 Vite 的开发流程）
       const overrideUrl = readOpenRigEnv("OPENRIG_UI_URL", "RIGGED_UI_URL")?.trim();
       if (overrideUrl) {
         console.log(overrideUrl);
         try {
           await deps.exec("open", [overrideUrl]);
         } catch {
-          console.error("Failed to open browser — open the URL manually");
+          console.error("无法打开浏览器 —— 请手动打开该 URL");
           process.exitCode = 1;
         }
         return;
       }
 
-      // Default: derive UI URL from daemon status (daemon serves the UI)
+      // 默认：从后台服务状态推导 UI URL（后台服务同时托管 UI）
       const status = await getDaemonStatus(deps.lifecycleDeps);
       if (!daemonStatusGuard(status)) return;
 
@@ -52,7 +52,7 @@ export function uiCommand(depsOverride?: UiDeps): Command {
       try {
         await deps.exec("open", [url]);
       } catch {
-        console.error("Failed to open browser — open the URL manually");
+        console.error("无法打开浏览器 —— 请手动打开该 URL");
         process.exitCode = 1;
       }
     });

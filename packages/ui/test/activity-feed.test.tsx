@@ -34,7 +34,7 @@ function makeEvent(overrides: Partial<ActivityEvent> & { type: string }): Activi
   };
 }
 
-/** Renders ActivityFeed inside a router that has a /rigs/$rigId route */
+/** 在含 /rigs/$rigId 路由的 router 内渲染 ActivityFeed */
 function renderFeedWithRouter(props: {
   events: ActivityEvent[];
   open: boolean;
@@ -78,7 +78,7 @@ function renderFeedWithRouter(props: {
   return render(<RouterProvider router={router} />);
 }
 
-/** Hook test harness */
+/** Hook 测试 harness */
 function HookHarness() {
   const { events, connected, feedOpen, setFeedOpen } = useActivityFeed();
   return (
@@ -146,7 +146,7 @@ function getLastInstance(): MockEventSourceInstance {
 }
 
 describe("Activity Feed", () => {
-  // Test 1: Renders events in reverse chronological order
+  // 测试 1：事件按逆时间顺序渲染
   it("renders events newest first", async () => {
     const events = [
       makeEvent({ type: "package.installed", seq: 3, payload: { packageName: "pkg-c", packageVersion: "1.0.0", applied: 1, deferred: 0 }, receivedAt: Date.now() }),
@@ -159,12 +159,12 @@ describe("Activity Feed", () => {
     await waitFor(() => {
       const entries = screen.getAllByTestId("feed-entry");
       expect(entries).toHaveLength(3);
-      // First entry should be the newest (seq 3)
+      // 首条应为最新（seq 3）
       expect(entries[0]!.querySelector("[data-testid='feed-summary']")!.textContent).toContain("pkg-c");
     });
   });
 
-  // Test 2: SSE message renders correct summary text
+  // 测试 2：SSE 消息渲染正确摘要文本
   it("package.installed renders correct summary", async () => {
     const events = [
       makeEvent({
@@ -177,11 +177,11 @@ describe("Activity Feed", () => {
 
     await waitFor(() => {
       const summary = screen.getByTestId("feed-summary");
-      expect(summary.textContent).toBe("package acme-tools@2.0.0 3 applied 1 deferred");
+      expect(summary.textContent).toBe("包 acme-tools@2.0.0：3 项已应用，1 项延后");
     });
   });
 
-  // Test 3: Status dot uses correct color
+  // 测试 3：status dot 颜色正确
   it("status dot uses correct color for event type", async () => {
     const events = [
       makeEvent({ type: "package.installed", payload: { packageName: "p", packageVersion: "1", applied: 0, deferred: 0 } }),
@@ -200,7 +200,7 @@ describe("Activity Feed", () => {
     });
   });
 
-  // Test 4: Click rig.created entry navigates to /rigs/{rigId}
+  // 测试 4：点 rig.created 条目导航到 /rigs/{rigId}
   it("click rig.created navigates to /rigs/{rigId}", async () => {
     const events = [
       makeEvent({ type: "rig.created", payload: { rigId: "rig-abc" } }),
@@ -222,14 +222,14 @@ describe("Activity Feed", () => {
     });
   });
 
-  // Test 5: Feed bounded at 100 entries
+  // 测试 5：feed 上限 100 条
   it("feed bounded at 100 entries", async () => {
     renderHookHarness();
 
     await waitFor(() => expect(instances).toHaveLength(1));
     const es = getLastInstance();
 
-    // Send 105 events
+    // 发 105 个事件
     act(() => {
       for (let i = 0; i < 105; i++) {
         es.simulateMessage(JSON.stringify({ type: "rig.created", rigId: `r-${i}`, seq: i, createdAt: new Date().toISOString() }));
@@ -249,19 +249,19 @@ describe("Activity Feed", () => {
     renderFeedWithRouter({ events, open: true });
 
     await waitFor(() => {
-      expect(screen.getByText("RECENT LOG")).toBeTruthy();
-      expect(screen.getByTestId("feed-disclosure").textContent).toContain("Showing last 100 live events");
+      expect(screen.getByText("最近日志")).toBeTruthy();
+      expect(screen.getByTestId("feed-disclosure").textContent).toContain("本面板仅显示最近 100 条实时事件");
       expect(screen.getByTestId("feed-scroll-region").className).toContain("overflow-y-auto");
-      expect(screen.getByTestId("feed-end-of-history").textContent).toContain("Older events are not loaded in this panel yet");
+      expect(screen.getByTestId("feed-end-of-history").textContent).toContain("更早的事件尚未在本面板加载。");
     });
   });
 
-  // Test 6: Collapsed state hides feed, toggle reopens
+  // 测试 6：折叠状态隐藏 feed，toggle 重开
   it("collapsed hides feed, toggle reopens", async () => {
     const onClose = vi.fn();
     const events = [makeEvent({ type: "rig.created", payload: { rigId: "r1" } })];
 
-    // Render closed
+    // 渲染关闭态
     const { rerender } = render(
       <div>
         <ActivityFeed events={events} open={false} onClose={onClose} />
@@ -270,7 +270,7 @@ describe("Activity Feed", () => {
 
     expect(screen.queryByTestId("activity-feed")).toBeNull();
 
-    // Render open
+    // 渲染打开态
     rerender(
       <div>
         <ActivityFeed events={events} open={true} onClose={onClose} />
@@ -286,14 +286,14 @@ describe("Activity Feed", () => {
     expect(screen.getAllByTestId("feed-entry")).toHaveLength(1);
   });
 
-  // Test 7a: terminal log time format
+  // 测试 7a：terminal 日志时间格式
   it("formatLogTime produces HH:MM:SS", () => {
     expect(formatLogTime("2026-04-01T16:48:20")).toBe("16:48:20");
   });
 
-  // Test 7b: rendered timestamp uses compact wall-clock time
+  // 测试 7b：渲染时间戳用紧凑 wall-clock 时间
   it("rendered timestamp uses compact wall-clock time", async () => {
-    // Harness that uses the real hook and renders ActivityFeed
+    // 使用真实 hook 并渲染 ActivityFeed 的 harness
     function LiveFeedHarness() {
       const feed = useActivityFeed();
       return (
@@ -315,11 +315,11 @@ describe("Activity Feed", () => {
     const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: ["/"] }) });
     render(<RouterProvider router={router} />);
 
-    // Wait for SSE connection
+    // 等 SSE 连接
     await waitFor(() => expect(instances).toHaveLength(1));
     const es = getLastInstance();
 
-    // Send an event with a fixed local timestamp
+    // 发一条带固定本地时间戳的事件
     act(() => {
       es.simulateMessage(JSON.stringify({ type: "rig.created", rigId: "r1", seq: 1, createdAt: "2026-04-01T16:48:20" }));
     });
@@ -329,16 +329,16 @@ describe("Activity Feed", () => {
     });
   });
 
-  // Test 8: Empty state
-  it("empty state shows 'No recent log entries'", async () => {
+  // 测试 8：空状态
+  it("empty state shows '暂无最近日志条目'", async () => {
     renderFeedWithRouter({ events: [], open: true });
 
     await waitFor(() => {
-      expect(screen.getByTestId("feed-empty").textContent).toContain("No recent log entries");
+      expect(screen.getByTestId("feed-empty").textContent).toContain("暂无最近日志条目");
     });
   });
 
-  // Test 9: Connects to /api/events without rigId
+  // 测试 9：无 rigId 时连接 /api/events
   it("connects to /api/events (global stream)", async () => {
     renderHookHarness();
 
@@ -384,7 +384,7 @@ describe("Activity Feed", () => {
     });
   });
 
-  // Test 10: Package entries navigate to /bootstrap because package installs are bootstrap-adjacent legacy tools
+  // 测试 10：Package 条目导航到 /bootstrap，因 package install 是 bootstrap 邻近的旧工具
   it("package.installed entry navigates to /bootstrap on click", async () => {
     const events = [
       makeEvent({ type: "package.installed", payload: { packageName: "p", packageVersion: "1", applied: 1, deferred: 0 } }),
@@ -475,7 +475,7 @@ describe("eventRoute", () => {
     expect(eventRoute(makeEvent({ type: "snapshot.created", payload: { rigId: "r2", kind: "manual" } }))).toBe("/rigs/r2");
   });
 
-  // T11: bootstrap event color = bg-accent
+  // T11：bootstrap 事件颜色 = bg-accent
   it("returns bg-accent for bootstrap events", () => {
     expect(eventColor("bootstrap.planned")).toBe("bg-accent");
     expect(eventColor("bootstrap.started")).toBe("bg-accent");
@@ -484,7 +484,7 @@ describe("eventRoute", () => {
     expect(eventColor("bootstrap.failed")).toBe("bg-accent");
   });
 
-  // T12: bootstrap event route -> /bootstrap
+  // T12：bootstrap 事件路由 -> /bootstrap
   it("returns /bootstrap for bootstrap events", () => {
     expect(eventRoute(makeEvent({ type: "bootstrap.planned", payload: {} }))).toBe("/bootstrap");
     expect(eventRoute(makeEvent({ type: "bootstrap.completed", payload: {} }))).toBe("/bootstrap");
@@ -500,7 +500,7 @@ describe("eventRoute", () => {
           payload: { nodeId: "dev", sessionName: "r00-dogfood-dev" },
         })
       )
-    ).toBe("startup dev launched");
+    ).toBe("节点 dev 已启动");
   });
 
   it("tails rig and snapshot IDs in restore and snapshot summaries", () => {
@@ -515,7 +515,7 @@ describe("eventRoute", () => {
           },
         })
       )
-    ).toBe("restore rig#RGT7NK 3 nodes restored");
+    ).toBe("工作组#RGT7NK 已恢复 3 个节点");
 
     expect(
       eventSummary(
@@ -528,7 +528,7 @@ describe("eventRoute", () => {
           },
         })
       )
-    ).toBe("snapshot rig#RGT7NK pre_restore snap#58RWDP");
+    ).toBe("工作组#RGT7NK 已创建 pre_restore 快照#58RWDP");
   });
 
   it("formats chat messages as compact operator log lines", () => {
@@ -542,20 +542,20 @@ describe("eventRoute", () => {
           },
         })
       )
-    ).toBe("chat orch.lead: review the restore path");
+    ).toBe("聊天 orch.lead：review the restore path");
   });
 
-  // Bundle event
+  // Bundle 事件
   it("bundle.created uses bg-accent color, correct summary, and null route", () => {
     expect(eventColor("bundle.created")).toBe("bg-accent");
     const evt = makeEvent({ type: "bundle.created", payload: { bundleName: "my-bundle", bundleVersion: "2.0" } });
     expect(eventSummary(evt)).toContain("my-bundle");
     expect(eventSummary(evt)).toContain("v2.0");
-    expect(eventSummary(evt)).toContain("bundled");
+    expect(eventSummary(evt)).toContain("已生成");
     expect(eventRoute(evt)).toBeNull();
   });
 
-  // Discovery event feed tests
+  // Discovery 事件 feed 测试
   it("session.discovered uses bg-accent color and /discovery route", () => {
     expect(eventColor("session.discovered")).toBe("bg-accent");
     expect(eventRoute(makeEvent({ type: "session.discovered", payload: {} }))).toBe("/discovery");

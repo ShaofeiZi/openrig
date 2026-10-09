@@ -26,19 +26,19 @@ export function slugifyHeader(title) {
 export function parseAddress(address) {
   const hashCount = (address.match(/#/g) ?? []).length;
   if (hashCount > 1) {
-    throw new AddressResolutionError(`address '${address}' must contain at most one '#' separator`);
+    throw new AddressResolutionError(`地址 '${address}' 最多只能包含一个 '#' 分隔符`);
   }
 
   const [ref, headerPart] = hashCount === 1 ? address.split("#") : [address, undefined];
-  if (!ref) throw new AddressResolutionError(`address '${address}' has no file before '#'`);
+  if (!ref) throw new AddressResolutionError(`地址 '${address}' 在 '#' 前没有文件`);
   if (headerPart === undefined) return { ref, headerPath: [] };
 
   const headerPath = headerPart.split("/");
   if (headerPath.some((segment) => segment.length === 0)) {
-    throw new AddressResolutionError(`address '${address}' has an empty header segment`);
+    throw new AddressResolutionError(`地址 '${address}' 包含空标题段`);
   }
   if (headerPath.length > MAX_LEVEL - MIN_LEVEL + 1) {
-    throw new AddressResolutionError(`address '${address}' is too deep; addresses target H2 and H3 only`);
+    throw new AddressResolutionError(`地址 '${address}' 层级过深；地址只能指向 H2 或 H3`);
   }
   return { ref, headerPath };
 }
@@ -102,7 +102,7 @@ export function parseMarkdownSections(text) {
 
 export function resolveAddress(text, headerPath) {
   if (headerPath.length === 0) {
-    throw new AddressResolutionError("a bare file resolves without section lookup");
+    throw new AddressResolutionError("裸文件无需查找章节即可解析");
   }
 
   const sections = parseMarkdownSections(text);
@@ -110,7 +110,7 @@ export function resolveAddress(text, headerPath) {
   const hits = sections.filter((section) => section.headerPath.join("/") === wanted);
   if (hits.length > 1) {
     throw new AddressResolutionError(
-      `address '#${wanted}' is AMBIGUOUS: ${hits.length} sections match at lines ${hits.map((hit) => hit.headerLine + 1).join(", ")}`,
+      `地址 '#${wanted}' 存在歧义：${hits.length} 个章节匹配，位于第 ${hits.map((hit) => hit.headerLine + 1).join(", ")} 行`,
     );
   }
   if (hits.length === 1) return hits[0];
@@ -120,15 +120,15 @@ export function resolveAddress(text, headerPath) {
     .filter((section) => section.headerPath.slice(0, -1).join("/") === parentPath)
     .map((section) => section.headerPath.join("/"));
   throw new AddressResolutionError(
-    `address '#${wanted}' matches no header. ` +
+    `地址 '#${wanted}' 未匹配任何标题。` +
       (candidates.length > 0
-        ? `Addressable sections under '${parentPath || "(top)"}': ${candidates.join(", ")}.`
-        : `Addressable sections: ${sections.map((section) => section.headerPath.join("/")).join(", ") || "(none)"}.`),
+        ? `'${parentPath || "（顶层）"}' 下可寻址的章节：${candidates.join(", ")}。`
+        : `可寻址章节：${sections.map((section) => section.headerPath.join("/")).join(", ") || "（无）"}。`),
   );
 }
 
 function usage() {
-  return "Usage: resolve-markdown.mjs [--root DIR] FILE[#h2-slug[/h3-slug]]\n";
+  return "用法：resolve-markdown.mjs [--root DIR] FILE[#h2-slug[/h3-slug]]\n";
 }
 
 async function main(argv) {
@@ -140,7 +140,7 @@ async function main(argv) {
     return;
   }
   if (args[0] === "--root") {
-    if (!args[1]) throw new AddressResolutionError("--root needs a directory");
+    if (!args[1]) throw new AddressResolutionError("--root 需要目录参数");
     root = path.resolve(args[1]);
     args.splice(0, 2);
   }

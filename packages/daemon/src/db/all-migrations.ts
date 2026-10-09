@@ -1,7 +1,6 @@
-// The canonical ordered migration list (001 → 089). SINGLE SOURCE: the daemon boot path
-// (startup.ts) and any test/tool that needs a schema-faithful DB both migrate from THIS array,
-// so a reader DB is never seeded from a stale hand-copied subset (the perf-fixture-migration-parity
-// trap). Append new migrations to the END, in order.
+// canonical 有序迁移列表（001 → 089）。唯一来源：后台服务启动路径（startup.ts）及任何需要
+// schema 保真数据库的测试/工具都从此数组迁移，避免读取器数据库从陈旧的手工复制子集初始化
+//（perf-fixture-migration-parity 陷阱）。新迁移必须按顺序追加到末尾。
 
 import { coreSchema } from "./migrations/001_core_schema.js";
 import { bindingsSessionsSchema } from "./migrations/002_bindings_sessions.js";
@@ -94,7 +93,7 @@ import { nodePermissionSelectionsSchema } from "./migrations/088_node_permission
 import { classificationIdentityProvenanceSchema } from "./migrations/089_classification_identity_provenance.js";
 import type { Migration } from "./migrate.js";
 
-/** Ordered 001→089 (S02 086/089, S09 087, S03 088). */
+/** 顺序为 001→089（S02 为 086/089，S09 为 087，S03 为 088）。 */
 export const ALL_MIGRATIONS: Migration[] = [
   coreSchema,
   bindingsSessionsSchema,

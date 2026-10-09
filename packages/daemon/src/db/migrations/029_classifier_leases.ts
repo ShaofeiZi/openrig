@@ -1,23 +1,21 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * Classifier leases (PL-004 Phase B; single-writer lease).
+ * Classifier 租约（PL-004 阶段 B；单写入者租约）。
  *
- * Per PRD § L2: agent-backed classifier with daemon-enforced single-writer
- * lease (TTL-based) + deadness detection (via whoami-service / node-inventory)
- * + operator-verb reclaim. Single-writer enforced via partial UNIQUE index
- * on state='active' (SQLite >= 3.8 supports partial indexes; OpenRig's
- * better-sqlite3 ships SQLite 3.45+ so this is safe).
+ * 根据 PRD § L2：由智能体支持的 classifier，使用后台服务强制执行的单写入者租约（基于 TTL）、
+ * 死亡检测（通过 whoami-service/node-inventory）和操作员动词回收。单写入者通过
+ * state='active' 上的部分 UNIQUE 索引强制执行（SQLite >= 3.8 支持部分索引；OpenRig 的
+ * better-sqlite3 携带 SQLite 3.45+，因此安全）。
  *
- * State enum: active | expired | reclaimed
- *   active    — lease is current; classifier_session may project
- *   expired   — TTL passed AND heartbeat went stale; lease no longer valid
- *   reclaimed — operator-verb reclaim took the lease away from the previous holder
+ * 状态枚举：active | expired | reclaimed
+ *   active    ——租约当前有效；classifier_session 可以投影
+ *   expired   ——TTL 已过且心跳已陈旧；租约不再有效
+ *   reclaimed ——操作员动词回收已从上一持有者手中收回租约
  *
- * Reclaim is OPERATOR-VERB ONLY: rig project --reclaim-classifier [--if-dead].
- * Daemon does NOT auto-reclaim on its own evaluation. expired→active requires
- * an explicit acquire call from a NEW classifier session (which gets a new
- * lease_id row).
+ * 回收只能通过操作员动词：rig project --reclaim-classifier [--if-dead]。后台服务不会依据
+ * 自身评估自动回收。expired→active 需要新的 classifier session 显式调用 acquire，后者会获得
+ * 新的 lease_id 行。
  */
 export const classifierLeasesSchema: Migration = {
   name: "029_classifier_leases.sql",

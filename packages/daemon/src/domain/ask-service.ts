@@ -52,9 +52,9 @@ export interface AskResult {
     excerpts: string[];
     chatExcerpts?: string[];
   };
-  /** L1 seat-scoped evidence — present only when a seat was addressed. */
+  /** L1 seat-scoped evidence——仅在指定 seat 时存在。 */
   seat?: AskSeatEvidence;
-  /** L2 session-scoped evidence — present only when a session token was addressed. */
+  /** L2 session-scoped evidence——仅在指定 session token 时存在。 */
   session?: AskSessionEvidence;
   insufficient: boolean;
   guidance?: string;
@@ -74,7 +74,7 @@ export class AskService {
   }
 
   async ask(rigName: string, question: string, context?: { nodeId?: string; sessionName?: string; seat?: string; session?: string }): Promise<AskResult> {
-    // Resolve rig
+    // 解析工作组
     const rigs = this.deps.rigRepo.findRigsByName(rigName);
 
     if (rigs.length === 0) {
@@ -83,7 +83,7 @@ export class AskService {
         rig: null,
         evidence: { backend: "rg", excerpts: [] },
         insufficient: true,
-        guidance: `Rig '${rigName}' not found. List rigs with: rig ps`,
+        guidance: `未找到工作组 '${rigName}'。请使用 zrig ps 列出工作组。`,
       };
     }
 
@@ -93,27 +93,27 @@ export class AskService {
         rig: null,
         evidence: { backend: "rg", excerpts: [] },
         insufficient: true,
-        guidance: `Rig '${rigName}' is ambiguous — ${rigs.length} rigs share that name. Remove duplicates or use a unique name.`,
+        guidance: `工作组 '${rigName}' 有歧义——${rigs.length} 个工作组使用该名称。请移除重复项或使用唯一名称。`,
       };
     }
 
-    // Get topology info
+    // 获取 topology 信息
     const entries = this.deps.psProjectionService.getEntries();
     const psEntry = entries.find((e) => e.name === rigName);
     const rigInfo: AskRigInfo = psEntry
       ? { name: psEntry.name, status: psEntry.status, nodeCount: psEntry.nodeCount, runningCount: psEntry.runningCount, uptime: psEntry.uptime }
       : { name: rigName, status: "unknown", nodeCount: 0, runningCount: 0, uptime: null };
 
-    // L2 — session-scoped archaeology: an explicit session TOKEN searches that
-    // one session's provider JSONL (read-only, not the OpenRig transcripts, so
-    // transcriptsEnabled does not gate it). Honest-degraded surfaces as guidance.
+    // L2——session-scoped archaeology：显式 session token 会搜索该 session 的 provider JSONL
+    //（只读，不是 zrig transcript，因此不受 transcriptsEnabled 限制）。honest-degraded
+    // 通过 guidance 呈现。
     if (context?.session) {
       const r = await this.deps.historyQuery.searchSession(context.session, question);
       let guidance: string | undefined;
       if (r.degraded) {
         guidance = r.degraded.message;
       } else if (r.found && r.insufficient) {
-        guidance = `No matching content in session '${context.session}'. Try different search terms.`;
+        guidance = `session '${context.session}' 中没有匹配内容。请尝试其他搜索词。`;
       }
       if (r.advisory) {
         guidance = guidance ? `${r.advisory}\n${guidance}` : r.advisory;
@@ -135,9 +135,9 @@ export class AskService {
       };
     }
 
-    // L1 — seat-scoped archaeology: an explicit seat address searches ONE seat's
-    // transcript across every generation (never the whole-rig grep, never the
-    // structured peer path). Honest-degraded surfaces as guidance.
+    // L1——seat-scoped archaeology：显式 seat address 会跨所有 generation 搜索一个 seat 的
+    // transcript（绝不执行 whole-rig grep，也不走 structured peer 路径）。honest-degraded
+    // 通过 guidance 呈现。
     if (context?.seat) {
       if (!this.deps.transcriptsEnabled) {
         return {
@@ -145,7 +145,7 @@ export class AskService {
           rig: rigInfo,
           evidence: { backend: "read", excerpts: [] },
           insufficient: true,
-          guidance: "Transcripts are disabled. Enable with: rig config set transcripts.enabled true",
+          guidance: "Transcript 已禁用。请使用 zrig config set transcripts.enabled true 启用。",
         };
       }
       const seatResult = await this.deps.historyQuery.searchSeat(rigName, context.seat, question);
@@ -154,7 +154,7 @@ export class AskService {
       if (seatResult.degraded) {
         guidance = seatResult.degraded.message;
       } else if (seatResult.insufficient) {
-        guidance = `No matching evidence in seat '${context.seat}' across ${seatResult.generations} generation(s). Try different search terms.`;
+        guidance = `seat '${context.seat}' 的 ${seatResult.generations} 个 generation 中没有匹配 evidence。请尝试其他搜索词。`;
       }
       if (seatResult.advisory) {
         guidance = guidance ? `${seatResult.advisory}\n${guidance}` : seatResult.advisory;
@@ -189,21 +189,21 @@ export class AskService {
       };
     }
 
-    // Check transcripts enabled
+    // 检查 transcript 是否启用
     if (!this.deps.transcriptsEnabled) {
       return {
         question,
         rig: rigInfo,
         evidence: { backend: "rg", excerpts: [] },
         insufficient: true,
-        guidance: "Transcripts are disabled. Enable with: rig config set transcripts.enabled true",
+        guidance: "Transcript 已禁用。请使用 zrig config set transcripts.enabled true 启用。",
       };
     }
 
-    // Search transcripts
+    // 搜索 transcript
     const searchResult = await this.deps.historyQuery.search(rigName, question);
 
-    // Search chat messages via the shared history-query seam
+    // 通过共享 history-query seam 搜索 chat message
     let chatExcerpts: string[] | undefined;
     const rig = rigs[0]!;
     const chatResults = this.deps.historyQuery.searchChat(rig.id, question);
@@ -217,16 +217,16 @@ export class AskService {
 
     if (isInsufficient) {
       if (searchResult.noTranscriptDir) {
-        guidance = `No transcript directory for rig '${rigName}'. Transcripts start automatically on next rig up.`;
+        guidance = `工作组 '${rigName}' 没有 transcript 目录。下次执行 zrig up 时会自动开始记录 transcript。`;
       } else if (searchResult.error) {
-        // Backend failure
+        // backend 失败
         guidance = searchResult.error;
       } else if (searchResult.backend === "none") {
-        // No backend was used (empty keywords)
-        guidance = "No useful keywords could be extracted from the question. Try a more specific question.";
+        // 未使用 backend（keyword 为空）
+        guidance = "无法从问题中提取有用的关键词。请尝试更具体的问题。";
       } else {
-        // Search ran but found no matches
-        guidance = "No matching transcript evidence found. Try different search terms.";
+        // 已执行搜索但未找到匹配项
+        guidance = "未找到匹配的 transcript evidence。请尝试其他搜索词。";
       }
     }
 
@@ -263,7 +263,7 @@ export class AskService {
       return {
         excerpts: [],
         insufficient: true,
-        guidance: "Cannot determine the current node identity for a peer-relative question. Run rig whoami --json from the target session or retry from an attached managed node.",
+        guidance: "无法为 peer-relative 问题确定当前 node identity。请从目标 session 运行 zrig whoami --json，或从已附加的 managed node 重试。",
       };
     }
 
@@ -285,6 +285,6 @@ export class AskService {
     runtime: string,
     podNamespace: string | null,
   ): string {
-    return `${logicalId}  session=${sessionName ?? "unbound"}  runtime=${runtime}  pod=${podNamespace ?? "—"}`;
+    return `${logicalId}  会话=${sessionName ?? "未绑定"}  运行时=${runtime}  Pod=${podNamespace ?? "—"}`;
   }
 }

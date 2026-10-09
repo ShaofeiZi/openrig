@@ -1,7 +1,6 @@
-// Slice Story View v0 — TestsVerificationTab focused tests.
+// Slice Story View v0——TestsVerificationTab 聚焦测试。
 //
-// This is a load-bearing tab. These tests pin inline screenshot rendering
-// and the video player as regression gates.
+// 这是承重 tab。这些测试把内联截图渲染和 video player 锁为回归门禁。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { fireEvent, render, screen, cleanup } from "@testing-library/react";
@@ -43,20 +42,20 @@ describe("PL-slice-story-view-v0 TestsVerificationTab", () => {
     );
     expect(screen.getByTestId("tests-empty")).toBeDefined();
     expect(screen.getByTestId("tests-empty-reason").textContent).toContain(
-      "proof matcher",
+      "校验匹配器",
     );
     expect(screen.getByTestId("tests-empty-diagnostics").textContent).toContain("3");
     expect(screen.getByTestId("tests-empty-diagnostics").textContent).toContain("2");
     expect(screen.getByTestId("tests-empty-next-steps").textContent).toContain(
-      "Check Artifacts",
+      "在“产物”中查看",
     );
   });
 
   it("renders header aggregate '<pass> pass, <fail> fail · N packets'", () => {
     render(<TestsVerificationTab sliceName="x" tests={makeTests([makePacket(), makePacket({ dirName: "second", passFailBadge: "fail" })], { passCount: 1, failCount: 1 })} />);
     const aggregate = screen.getByTestId("tests-aggregate");
-    expect(aggregate.textContent).toContain("1 pass, 1 fail");
-    expect(aggregate.textContent).toContain("2 packets");
+    expect(aggregate.textContent).toContain("1 通过，1 失败");
+    expect(aggregate.textContent).toContain("2 个校验包");
   });
 
   it("renders the primary markdown body inline (not just a file-path link)", () => {
@@ -128,10 +127,10 @@ describe("PL-slice-story-view-v0 TestsVerificationTab", () => {
       makePacket({ dirName: "p4", passFailBadge: "unknown" }),
     ]);
     render(<TestsVerificationTab sliceName="x" tests={tests} />);
-    expect(screen.getByTestId("tests-packet-badge-p1").textContent).toContain("pass");
-    expect(screen.getByTestId("tests-packet-badge-p2").textContent).toContain("fail");
-    expect(screen.getByTestId("tests-packet-badge-p3").textContent).toContain("partial");
-    expect(screen.getByTestId("tests-packet-badge-p4").textContent).toContain("unknown");
+    expect(screen.getByTestId("tests-packet-badge-p1").textContent).toContain("通过");
+    expect(screen.getByTestId("tests-packet-badge-p2").textContent).toContain("失败");
+    expect(screen.getByTestId("tests-packet-badge-p3").textContent).toContain("部分通过");
+    expect(screen.getByTestId("tests-packet-badge-p4").textContent).toContain("未知");
     expect(screen.getByTestId("tests-packet-badge-p1").className).toContain("emerald");
     expect(screen.getByTestId("tests-packet-badge-p2").className).toContain("red");
     expect(screen.getByTestId("tests-packet-badge-p3").className).toContain("amber");

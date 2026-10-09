@@ -1,4 +1,4 @@
-// OPR.0.3.4.11 — launchNodeSubset tests: managed partial restore for held seats.
+// OPR.0.3.4.11——launchNodeSubset 测试：受管的暂缓席位局部恢复。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -95,20 +95,20 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     return snap.id;
   }
 
-  it("returns rig_not_found for unknown rig", async () => {
+  it("未知工作组返回 rig_not_found", async () => {
     const result = await orchestrator.launchNodeSubset("nonexistent", ["dev.driver"]);
     expect(result.ok).toBe(false);
     expect(result.code).toBe("rig_not_found");
   });
 
-  it("returns no_usable_snapshot when no snapshot exists", async () => {
+  it("没有 snapshot 时返回 no_usable_snapshot", async () => {
     const { rigId } = seedPodAwareRig();
     const result = await orchestrator.launchNodeSubset(rigId, ["dev.driver"]);
     expect(result.ok).toBe(false);
     expect(result.code).toBe("no_usable_snapshot");
   });
 
-  it("returns no_matching_nodes for unknown logical id", async () => {
+  it("未知 logical id 返回 no_matching_nodes", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
     const result = await orchestrator.launchNodeSubset(rigId, ["nonexistent.node"]);
@@ -116,7 +116,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(result.code).toBe("no_matching_nodes");
   });
 
-  it("launches target and holds non-target with default reason", async () => {
+  it("启动目标，并以默认原因暂缓非目标", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
 
@@ -131,7 +131,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(result.nonTargetEffects).toMatchObject({ mode: "detach_and_hold", reason: "excluded_from_subset" });
   });
 
-  it("single-node launch leaves non-target rows, bindings, startup state, and events unchanged", async () => {
+  it("单节点启动不改变非目标记录、绑定、启动状态和事件", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
     const nonTarget = sessionRegistry.registerSession(nodeIds[1]!, "dev-guard@test-rig");
@@ -156,7 +156,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect((db.prepare("SELECT COUNT(*) AS n FROM events WHERE node_id = ?").get(nodeIds[1]) as { n: number }).n).toBe(before.events.n);
   });
 
-  it("failed single-node launch also leaves non-target state unchanged", async () => {
+  it("单节点启动失败也不改变非目标状态", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
     const nonTarget = sessionRegistry.registerSession(nodeIds[1]!, "dev-guard@test-rig");
@@ -182,7 +182,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect((db.prepare("SELECT COUNT(*) AS n FROM events WHERE node_id = ?").get(nodeIds[1]) as { n: number }).n).toBe(before.events.n);
   });
 
-  it("exact snapshot selection overrides automatic ranking before a narrow launch", async () => {
+  it("精确 snapshot 选择在窄启动前覆盖自动排序", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     const manualId = seedSnapshot(rigId, nodeIds);
     db.prepare("UPDATE snapshots SET created_at = ? WHERE id = ?").run("2026-04-28 10:00:00", manualId);
@@ -195,7 +195,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(result.snapshotSelection).toMatchObject({ snapshotId: manualId, mode: "explicit", kind: "manual" });
   });
 
-  it("rejects an exact snapshot from another rig before any launch mutation", async () => {
+  it("在任何启动修改前拒绝来自其他工作组的精确 snapshot", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
     const otherRig = rigRepo.createRig("other-rig");
@@ -219,7 +219,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM events").get()).toEqual(before.events);
   });
 
-  it("does not launch a current node excluded from the selected snapshot's intended roster", async () => {
+  it("不会启动被所选 snapshot 预期成员名单排除的当前节点", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     const snapshotId = seedSnapshot(rigId, nodeIds);
     const snapshot = snapshotRepo.getSnapshot(snapshotId)!;
@@ -235,7 +235,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect((db.prepare("SELECT COUNT(*) AS n FROM events").get() as { n: number }).n).toBe(beforeEvents.n);
   });
 
-  it("plans multi-seat non-target effects without mutating sessions or events", () => {
+  it("规划多个非目标席位的影响，但不修改会话或事件", () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
     const before = {
@@ -259,7 +259,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM events").get()).toEqual(before.events);
   });
 
-  it("emits restore.subset_completed for launched targets only", async () => {
+  it("仅为已启动目标发出 restore.subset_completed", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
 
@@ -285,7 +285,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(payload.reason).toBe("excluded_from_subset");
   });
 
-  it("uses operator hold reason when provided", async () => {
+  it("提供时使用操作人员的暂缓原因", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
 
@@ -311,7 +311,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(result.launched).toHaveLength(0);
   });
 
-  it("does not emit node.held for running non-targets", async () => {
+  it("不会为运行中的非目标发出 node.held", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
     const session = sessionRegistry.registerSession(nodeIds[1]!, "dev-guard@test-rig");
@@ -324,7 +324,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(events).toHaveLength(0);
   });
 
-  it("does not emit restore.subset_completed when no targets launched", async () => {
+  it("没有目标启动时不发出 restore.subset_completed", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
     const session = sessionRegistry.registerSession(nodeIds[0]!, "dev-driver@test-rig");
@@ -337,11 +337,10 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(events).toHaveLength(0);
   });
 
-  // OPR.0.4.3.28 correction — INVERT fail-closed-on-unknown for launch liveness. A tmux
-  // probe error is NOT positive evidence of a live seat (only a TRUE hasSession is). Was:
-  // failedTargets + hard 503. Now: PROCEED to launch + surface a non-blocking
-  // liveness_probe_unknown warning so an operator can verify no live seat was squatted.
-  it("proceed-on-unknown: tmux probe error LAUNCHES the node with a liveness warning (not failedTargets)", async () => {
+  // OPR.0.4.3.28 修正——反转启动存活性的“未知即失败关闭”策略。tmux 探针错误不是席位
+  // 存活的正向证据（只有 hasSession 为 TRUE 才是）。旧行为：failedTargets + 硬 503。
+  // 新行为：继续启动并给出非阻塞 liveness_probe_unknown 警告，让操作人员确认未占用存活席位。
+  it("未知时继续：tmux 探针错误仍启动节点并附存活性警告（不计入 failedTargets）", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
     const session = sessionRegistry.registerSession(nodeIds[0]!, "dev-driver@test-rig");
@@ -357,9 +356,9 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(result.warnings?.some((w) => w.includes("liveness_probe_unknown") && w.includes("dev.driver"))).toBe(true);
   });
 
-  // B1 regression: non-target with tmux probe error does NOT get node.held
-  // Multi-target success: both targets launched, restore.subset_completed contains both
-  it("launches multiple targets in one call with restore.subset_completed containing both", async () => {
+  // B1 回归：tmux 探针错误的非目标不会收到 node.held。
+  // 多目标成功：两个目标都启动，restore.subset_completed 包含两者。
+  it("一次调用启动多个目标，并在 restore.subset_completed 中包含两者", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
 
@@ -378,7 +377,7 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(eventNodeIds).toEqual(["dev.driver", "dev.guard"]);
   });
 
-  it("does not emit node.held for non-target with tmux probe error (fail-closed)", async () => {
+  it("tmux 探针错误时不为非目标发出 node.held（失败关闭）", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
     const session = sessionRegistry.registerSession(nodeIds[1]!, "dev-guard@test-rig");
@@ -394,8 +393,8 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(events).toHaveLength(0);
   });
 
-  // B1 regression: mixed valid/invalid seats reports unmatchedIds
-  it("reports unmatchedIds for seats that do not match any node", async () => {
+  // B1 回归：合法与非法席位混合时报告 unmatchedIds。
+  it("为不匹配任何节点的席位报告 unmatchedIds", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
 
@@ -407,21 +406,21 @@ describe("RestoreOrchestrator.launchNodeSubset", () => {
     expect(result.unmatchedIds).toEqual(["typo.seat"]);
   });
 
-  // B4 regression: stale non-target DB-running sessions marked detached so inventory projects heldReason
-  it("marks stale non-target DB-running sessions detached before emitting node.held", async () => {
+  // B4 回归：将数据库中陈旧的非目标运行会话标记为 detached，使 inventory 投影 heldReason。
+  it("发出 node.held 前将数据库中陈旧的非目标运行会话标记为 detached", async () => {
     const { rigId, nodeIds } = seedPodAwareRig();
     seedSnapshot(rigId, nodeIds);
     const session = sessionRegistry.registerSession(nodeIds[1]!, "dev-guard@test-rig");
     sessionRegistry.updateStatus(session.id, "running");
-    // tmux says guard is dead
+    // tmux 表明 guard 已死亡。
     tmux.hasSession.mockResolvedValue(false);
 
     await orchestrator.launchNodeSubset(rigId, ["dev.driver"]);
 
-    // Session should now be detached, not running
+    // 会话现在应为 detached，而非 running。
     const row = db.prepare("SELECT status FROM sessions WHERE id = ?").get(session.id) as { status: string };
     expect(row.status).toBe("detached");
-    // And node.held should be emitted
+    // 同时应发出 node.held。
     const events = db.prepare("SELECT payload FROM events WHERE type = 'node.held'").all() as { payload: string }[];
     expect(events).toHaveLength(1);
     expect(JSON.parse(events[0]!.payload).logicalId).toBe("dev.guard");

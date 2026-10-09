@@ -1,9 +1,8 @@
-// OPR.0.3.3.19 - rig archive affordance.
+// OPR.0.3.3.19——工作组归档能力。
 //
-// THE load-bearing test is AC-8: archive is non-destructive (retains the rigs
-// row + topology + snapshots, restore stays reachable) and is explicitly
-// contrasted against `down --delete`, which removes the rigs row and makes
-// RestoreOrchestrator return `rig_not_found`. Archive MUST NOT take the delete path.
+// 关键测试是 AC-8：archive 是非破坏性的（保留工作组记录、拓扑和 snapshot，restore 仍可达），
+// 并与 `down --delete` 明确对比；后者移除工作组记录，使 RestoreOrchestrator 返回
+// `rig_not_found`。archive 绝不能走删除路径。
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
 import { createFullTestDb } from "./helpers/test-app.js";
@@ -74,7 +73,7 @@ describe("rig archive affordance (OPR.0.3.3.19)", () => {
     });
   }
 
-  /** Build a rig with two nodes + one edge so retention is observable. */
+  /** 构建含两个节点和一条边的工作组，使保留行为可观察。 */
   function seedRigWithTopology(name: string): string {
     const rig = rigRepo.createRig(name);
     const a = rigRepo.addNode(rig.id, "orchestrator", { role: "orchestrator", runtime: "claude-code" });
@@ -87,33 +86,33 @@ describe("rig archive affordance (OPR.0.3.3.19)", () => {
     return (db.prepare(`SELECT COUNT(*) AS c FROM ${table} WHERE ${rigCol} = ?`).get(rigId) as { c: number }).c;
   }
 
-  it("AC-8 (load-bearing): archive RETAINS row + topology + snapshots and keeps restore reachable; down --delete REMOVES the row and breaks restore (rig_not_found)", async () => {
+  it("AC-8（关键）：archive 保留记录、拓扑和 snapshot，使 restore 仍可达；down --delete 移除记录并使 restore 以 rig_not_found 失败", async () => {
     const orch = createOrchestrator();
     const archiveRig = seedRigWithTopology("archive-me");
     const deleteRig = seedRigWithTopology("delete-me");
     const snapA = snapshotCapture.captureSnapshot(archiveRig, "manual");
     const snapB = snapshotCapture.captureSnapshot(deleteRig, "manual");
 
-    // --- ARCHIVE PATH: non-destructive ---
+    // ——归档路径：非破坏性——
     expect(rigRepo.archiveRig(archiveRig)).toBe(true);
-    // rigs row + topology rows + snapshot all retained on disk.
+    // 工作组记录、拓扑记录和 snapshot 全部保留在磁盘。
     expect(rigRepo.getRig(archiveRig)).not.toBeNull();
     expect(rowCount("rigs", "id", archiveRig)).toBe(1);
     expect(rowCount("nodes", "rig_id", archiveRig)).toBe(2);
     expect(rowCount("edges", "rig_id", archiveRig)).toBe(1);
     expect(rowCount("snapshots", "rig_id", archiveRig)).toBeGreaterThan(0);
-    // restore is REACHABLE - it does NOT return rig_not_found, because the row exists.
+    // restore 仍可达：记录存在，因此不会返回 rig_not_found。
     const restoreArchived = await orch.restore(snapA.id);
     expect(restoreArchived.ok === false && restoreArchived.code === "rig_not_found").toBe(false);
-    // unarchive returns it to the default view; still non-destructive.
+    // unarchive 将其恢复到默认视图，仍为非破坏性。
     expect(rigRepo.unarchiveRig(archiveRig)).toBe(true);
     expect(rigRepo.getRig(archiveRig)).not.toBeNull();
 
-    // --- DELETE PATH (the contrast): destructive ---
+    // ——删除路径（对照）：破坏性——
     rigRepo.deleteRig(deleteRig);
     expect(rigRepo.getRig(deleteRig)).toBeNull();
     expect(rowCount("rigs", "id", deleteRig)).toBe(0);
-    // restore now breaks with rig_not_found - the row is gone.
+    // 记录已消失，restore 此时以 rig_not_found 失败。
     const restoreDeleted = await orch.restore(snapB.id);
     expect(restoreDeleted.ok).toBe(false);
     if (restoreDeleted.ok === false) {
@@ -122,7 +121,7 @@ describe("rig archive affordance (OPR.0.3.3.19)", () => {
   });
 
   describe("repository archive methods + filters", () => {
-    it("archiveRig/unarchiveRig flip the flag and are idempotent", () => {
+    it("archiveRig/unarchiveRig 切换标志且保持幂等", () => {
       const rigId = rigRepo.createRig("r1").id;
       expect(rigRepo.archiveRig(rigId)).toBe(true);
       expect(rigRepo.archiveRig(rigId)).toBe(false); // already archived
@@ -130,17 +129,17 @@ describe("rig archive affordance (OPR.0.3.3.19)", () => {
       expect(rigRepo.unarchiveRig(rigId)).toBe(false); // already active
     });
 
-    it("listRigs / getRigSummaries default-exclude archived; includeArchived / archivedOnly opt in", () => {
+    it("listRigs/getRigSummaries 默认排除已归档项；includeArchived/archivedOnly 可显式包含", () => {
       const active = rigRepo.createRig("active").id;
       const archived = rigRepo.createRig("archived").id;
       rigRepo.archiveRig(archived);
 
-      // default excludes archived
+      // 默认排除已归档项。
       expect(rigRepo.listRigs().map((r) => r.id)).toEqual([active]);
       expect(rigRepo.getRigSummaries().map((s) => s.id)).toEqual([active]);
-      // includeArchived returns both
+      // includeArchived 返回两者。
       expect(rigRepo.listRigs({ includeArchived: true }).map((r) => r.id).sort()).toEqual([active, archived].sort());
-      // archivedOnly returns only archived
+      // archivedOnly 仅返回已归档项。
       expect(rigRepo.listRigs({ archivedOnly: true }).map((r) => r.id)).toEqual([archived]);
       const onlyArchived = rigRepo.getRigSummaries({ archivedOnly: true });
       expect(onlyArchived.map((s) => s.id)).toEqual([archived]);
@@ -149,7 +148,7 @@ describe("rig archive affordance (OPR.0.3.3.19)", () => {
   });
 
   describe("ps-projection archive filter", () => {
-    it("getEntries default-excludes archived; includeArchived / archivedOnly opt in; carries isArchived", () => {
+    it("getEntries 默认排除已归档项；includeArchived/archivedOnly 可显式包含，并携带 isArchived", () => {
       const active = rigRepo.createRig("active").id;
       const archived = rigRepo.createRig("archived").id;
       rigRepo.archiveRig(archived);
@@ -165,13 +164,10 @@ describe("rig archive affordance (OPR.0.3.3.19)", () => {
   });
 
   describe("AC-4 host-scoped (no cross-host leak)", () => {
-    it("archive is local to the host that owns the rigs row; a 2nd host node is unaffected and needs no rework", () => {
-      // Two independent daemon DBs == two host nodes. V0.4 multi-host nests each
-      // rig set under its own host node; today there is one localhost, but the
-      // archive flag lives on the LOCAL rigs row, so it is keyed by host by
-      // construction and can never cross the host boundary. We do NOT build any
-      // multi-host table/registry here (out of scope) - two repositories suffice
-      // to simulate two hosts and prove no cross-host leak.
+    it("归档仅作用于拥有工作组记录的主机；第二台主机的节点不受影响，也无需返工", () => {
+      // 两个独立后台服务数据库等同于两个主机节点。V0.4 多主机将各工作组集合嵌套在所属主机节点下；
+      // 当前只有 localhost，但归档标志位于本地工作组记录上，构造上按主机区分，绝不跨越主机边界。
+      // 此处不构建任何多主机表或 registry（超出范围）；两个 repository 足以模拟两台主机并证明无跨主机泄漏。
       const dbHostA = db; // host A (from beforeEach)
       const repoA = rigRepo;
       const dbHostB = createFullTestDb(); // host B
@@ -182,19 +178,19 @@ describe("rig archive affordance (OPR.0.3.3.19)", () => {
         const b1 = repoB.createRig("shared-name").id;
         repoB.createRig("b-active");
 
-        // Archive a rig under host A only.
+        // 仅归档主机 A 下的工作组。
         expect(repoA.archiveRig(a1)).toBe(true);
 
-        // Host A: default hides it; archivedOnly shows only it.
+        // 主机 A：默认隐藏它，archivedOnly 只显示它。
         expect(repoA.getRigSummaries().some((s) => s.id === a1)).toBe(false);
         expect(repoA.getRigSummaries({ archivedOnly: true }).map((s) => s.id)).toEqual([a1]);
 
-        // Host B is UNAFFECTED: the same-named rig stays active + visible, and
-        // host B has NO archived rigs at all - the flag never crossed hosts.
+        // 主机 B 不受影响：同名工作组保持活动且可见，主机 B 完全没有已归档工作组；
+        // 标志从未跨主机。
         expect(repoB.getRigSummaries().some((s) => s.id === b1)).toBe(true);
         expect(repoB.getRigSummaries({ archivedOnly: true })).toEqual([]);
 
-        // Same guarantee at the ps-projection seam (the CLI/UI default read).
+        // ps 投影接缝（CLI/UI 默认读取）具有相同保证。
         const psA = new PsProjectionService({ db: dbHostA });
         const psB = new PsProjectionService({ db: dbHostB });
         expect(psA.getEntries().some((e) => e.rigId === a1)).toBe(false);

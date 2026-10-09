@@ -1,10 +1,8 @@
-// OPR.0.4.4.15 S15-3 — GET /api/queue/attention-aggregate (FR-1 route leg).
+// OPR.0.4.4.15 S15-3 — GET /api/queue/attention-aggregate（FR-1 路由支路）。
 //
-// The zero-config negative is the load-bearing pin here (arch ruling 3):
-// the aggregate lives on a NEW sibling endpoint and the existing
-// /list?attention=1 wire is byte-preserved — same repo query, same bare
-// array, no hostId, no hosts[]. Fan-out depth is owned by the aggregator
-// unit tests; this file pins the route wiring + payload contract shape.
+// 零配置负例是这里的关键固定点（架构裁定 3）：聚合功能位于新的同级端点，现有
+// /list?attention=1 线路保持逐字节不变——使用相同 repo 查询、相同裸数组，不含 hostId，
+// 也不含 hosts[]。扇出深度由聚合器单元测试负责；本文件固定路由接线和载荷契约结构。
 
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
@@ -13,7 +11,7 @@ import { LOCAL_HOST_ID } from "../src/domain/hosts/fanout-contract.js";
 import type { HostRegistry } from "../src/domain/hosts/hosts-registry-reader.js";
 
 const REGISTRY: HostRegistry = {
-  hosts: [{ id: "vps-b", transport: "ssh", target: "b.local" }], // ssh → unsupported-transport, no network needed
+  hosts: [{ id: "vps-b", transport: "ssh", target: "b.local" }], // ssh → unsupported-transport，无需网络
 };
 
 const LOCAL_ATTENTION_ROW = { qitemId: "q-1", priority: "urgent", tier: "human-gate", destinationSession: "human-founder@external" };
@@ -42,7 +40,7 @@ function makeApp(opts: { subscriptions?: Array<{ hostId: string; enabled: boolea
 }
 
 describe("GET /api/queue/attention-aggregate", () => {
-  it("zero-config: local items stamped + [local ok] hosts row; the SAME repo query + open-state default as /list", async () => {
+  it("零配置：本地条目带标记并包含 [local ok] 主机行；使用与 /list 相同的 repo 查询和开放状态默认值", async () => {
     const { app, attentionCalls } = makeApp({ subscriptions: [] });
     const res = await app.request("/api/queue/attention-aggregate");
     expect(res.status).toBe(200);
@@ -53,7 +51,7 @@ describe("GET /api/queue/attention-aggregate", () => {
     expect(attentionCalls).toEqual([{ state: ["pending", "in-progress", "blocked"] }]);
   });
 
-  it("missing settings store degrades to zero-config (no throw, local-only payload)", async () => {
+  it("缺少设置存储时降级为零配置（不抛错，仅返回本地载荷）", async () => {
     const { app } = makeApp({ withStore: false });
     const res = await app.request("/api/queue/attention-aggregate");
     expect(res.status).toBe(200);
@@ -61,7 +59,7 @@ describe("GET /api/queue/attention-aggregate", () => {
     expect(data.hosts).toEqual([{ hostId: LOCAL_HOST_ID, status: "ok" }]);
   });
 
-  it("a subscribed host flows through the aggregator (ssh entry → structured unsupported-transport, local intact)", async () => {
+  it("已订阅主机流经聚合器（ssh 条目 → 结构化 unsupported-transport，本地数据保持完整）", async () => {
     const { app } = makeApp({ subscriptions: [{ hostId: "vps-b", enabled: true }] });
     const res = await app.request("/api/queue/attention-aggregate");
     const data = (await res.json()) as { items: Array<Record<string, unknown>>; hosts: Array<Record<string, unknown>> };
@@ -70,11 +68,11 @@ describe("GET /api/queue/attention-aggregate", () => {
     expect(data.hosts[1]).toMatchObject({ hostId: "vps-b", status: "unsupported-transport" });
   });
 
-  it("ZERO-CONFIG WIRE PARITY: /list?attention=1 stays the bare array — no hostId, no hosts[] (byte-preserved route)", async () => {
+  it("零配置线路一致性：/list?attention=1 保持裸数组——无 hostId、无 hosts[]（路由逐字节保持）", async () => {
     const { app } = makeApp({ subscriptions: [] });
     const res = await app.request("/api/queue/list?attention=1");
     expect(res.status).toBe(200);
     const data = (await res.json()) as unknown;
-    expect(data).toEqual([LOCAL_ATTENTION_ROW]); // exactly the repo rows, unwrapped, unstamped
+    expect(data).toEqual([LOCAL_ATTENTION_ROW]); // 与 repo 行完全一致，未包装、未添加标记
   });
 });

@@ -1,7 +1,7 @@
 name: topology-mutation-and-seat-management
 version: "1"
 taxonomy: skills
-purpose: "(eval fixture) replace a seat's occupant without losing the address"
+purpose: "（评估夹具）在不丢失地址的情况下更换席位任职者"
 files:
   - path: content.md
     role: source

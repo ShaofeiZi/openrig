@@ -1,56 +1,50 @@
-# Defect class: lost-execution-closure / executed-unclosed (A1 scenario #11).
-# Wild incident (2026-08-05, pm-lead ruling 6eb9166a): a gated, guard-cleared branch
-#   cleanup EXECUTED correctly and was receipted on disk, but the daemon died before the
-#   queue closure landed — so a later reader misread completed work as an out-of-band
-#   incident for ~5 hours. The divergence between completed EXECUTION and queue STATE
-#   must become VISIBLE on a shipped surface, never silently misread as unexecuted.
+# 缺陷类别：lost-execution-closure / executed-unclosed（A1 场景 #11）。
+# 线上事件（2026-08-05，pm-lead 裁定 6eb9166a）：一个已通过门禁和 guard 的分支清理操作
+#   已正确执行，并在磁盘上留下凭据，但后台服务在队列关闭写入前死亡——导致后续读取者
+#   将已完成工作误判为带外事件，持续约 5 小时。已完成的执行状态与队列状态之间的分歧
+#   必须在已发布界面上可见，绝不能被静默误判为未执行。
 #
-# *** RED-FIRST ***  Unlike the ten, this scenario is RED-first: its GREEN gates on the
-#   51-06 transactional execution-closure + executed-unclosed reconcile (R-20). Until
-#   that lands, its runs are recorded as EXPECTED-RED (the class demonstrably caught),
-#   NEVER massaged to green. It flips GREEN when 51-06 lands.
+# *** RED-FIRST *** 与另外十个场景不同，本场景采用 RED-first：其 GREEN 受 51-06
+#   事务性 execution-closure + executed-unclosed reconcile（R-20）门禁约束。该能力落地前，
+#   运行结果记录为 EXPECTED-RED（已证明捕获此缺陷类别），绝不能修饰成绿色。51-06 落地后转为 GREEN。
 #
-# SEED (class: lost-execution-closure): the kill window itself IS the seed — the daemon
-#   is SIGTERMed after the handoff executes but before the closure write commits. The
-#   `expect` legs below (queue honest post-restart + divergence visible on stream) MUST
-#   catch the executed-unclosed state; pre-51-06 they fail (the work is misread as
-#   unexecuted/pending) — that failure IS the class, recorded as expected-RED.
+# SEED（class: lost-execution-closure）：kill 窗口本身就是种子——handoff 执行后、
+#   closure 写入提交前，后台服务收到 SIGTERM。下方 `expect` 步骤（restart 后 queue 如实，
+#   且分歧在 stream 上可见）必须捕获 executed-unclosed 状态；51-06 之前它们会失败
+#   （工作被误判为 unexecuted/pending）——该失败本身就是目标类别，记录为 expected-RED。
 #
-# Deps (BLOCKING, routed — never shimmed here):
-#   R-11: `daemon: {op: sigterm|restart}` step verb (arch-ruled ARCH-RULING-51-09, on
-#         the shared env-helper lifecycle surface). Not yet in the locked 51-02 verb
-#         list — rides the 51-02 build gate. #11 BLOCKS on it.
-#   R-20: the 51-06 transactional-closure fix (the GREEN gate). The scenario-local
-#         daemon restart rides the 51elv2 acknowledged-write-failure latch already in
-#         main (4cd2c313).
-#   R-17: (minor) whether faithfully reproducing the handoff-and-complete closure needs
-#         a distinct queue-completion action beyond `send` — routed to 51-02.
-#   #11 may NOT assert on the on-disk receipt (not a shipped surface): its assertions
-#   ride queue/stream, where the 51-06 fix must surface the divergence.
+# 依赖（阻塞，已路由——绝不在此添加 shim）：
+#   R-11：`daemon: {op: sigterm|restart}` 步骤动词（架构裁定 ARCH-RULING-51-09，位于共享
+#         env-helper 生命周期界面）。它尚未进入锁定的 51-02 动词列表——随 51-02 构建门禁落地。
+#         #11 受此阻塞。
+#   R-20：51-06 transactional-closure 修复（GREEN 门禁）。场景本地后台服务 restart 使用
+#         main（4cd2c313）中已有的 51elv2 acknowledged-write-failure latch。
+#   R-17：（次要）如实复现 handoff-and-complete closure 是否需要 `send` 之外的独立
+#         queue-completion 操作——已路由到 51-02。
+#   #11 不得断言磁盘上的 receipt（它不是已发布界面）：断言必须基于 queue/stream，
+#   51-06 修复也必须在这些界面上呈现分歧。
 scenario: kill-daemon-mid-handoff
 topology: ./dev-pair-stub.yaml
 steps:
   - up: {}
-  # Drive an executed handoff: impl hands work to qa; qa claims and executes it.
-  - send: {to: dev-qa@dev-pair-stub, text: "execute cleanup task (receipt on disk)"}
-  # Real queue = BARE ARRAY QueueItem[] {qitemId,state,destinationSession,…}. NOTE (R-17,
-  # routed): a `send` creates a STREAM item, not a queue item — faithfully establishing an
-  # in-progress handoff needs an `env.queue` precondition + claim (as #2 does) or a queue
-  # action verb. Until R-17 resolves, this leg observes [] (expected-RED, consistent with
-  # the scenario's 51-06 RED-first posture). Shape shown shipped-correct for the flip.
+  # 驱动已执行的 handoff：impl 将工作交给 qa；qa 认领并执行。
+  - send: {to: dev-qa@dev-pair-stub, text: "执行清理任务（凭据位于磁盘）"}
+  # 真实 queue = 裸数组 QueueItem[] {qitemId,state,destinationSession,…}。注意（R-17，已路由）：
+  # `send` 创建的是 STREAM 项，不是 queue 项——要如实建立 in-progress handoff，需要
+  # `env.queue` 前置条件 + claim（如 #2），或 queue 操作动词。R-17 解决前，此步骤观察到 []
+  #（expected-RED，与场景 51-06 RED-first 姿态一致）。所示形态在转绿后与发布契约一致。
   - expect:
       surface: queue
       within: 20s
       match:
         - state: in-progress
           destinationSession: dev-qa@dev-pair-stub
-  # Kill the scenario-local daemon in the window AFTER execution, BEFORE the closure
-  # write commits — the exact incident shape.
+  # 在执行之后、closure 写入提交之前的窗口终止场景本地后台服务——与真实事件形态完全一致。
   - daemon: {op: sigterm}
   - daemon: {op: restart}
-  # Post-restart the queue must be HONEST about the executed-but-unclosed item, and the
-  # divergence must be VISIBLE on stream. Pre-51-06 these FAIL (executed work misread as
-  # unexecuted) → recorded EXPECTED-RED. Post-51-06 they hold → GREEN.
+  # restart 后，queue 必须如实呈现已执行但未关闭的项目，且分歧必须在 stream 上可见。
+  # 51-06 之前这些断言会失败（已执行工作被误判为未执行）→ 记录为 EXPECTED-RED；
+  # 51-06 之后断言成立 → GREEN。
   - expect:
       surface: queue
       within: 30s

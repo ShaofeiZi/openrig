@@ -1,6 +1,5 @@
-// Fork Primitive + Starter Agent Images v0 (PL-016) — UI hooks for the
-// agent_images library + preview + lifecycle verbs. Mirrors
-// useContextPackLibrary (PL-014) shape.
+// Fork 原语 + Starter 智能体镜像 v0（PL-016）—— agent_images 库 + 预览 + 生命周期动词的 UI hooks。
+// 形状对齐 useContextPackLibrary（PL-014）。
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -12,9 +11,8 @@ export interface AgentImageEntry {
   runtime: "claude-code" | "codex";
   sourceSeat: string;
   sourceSessionId: string;
-  /** Source seat's cwd at snapshot time. null when the manifest predates
-   *  source_cwd support (back-compat). The Use-as-starter
-   *  snippet emits `cwd: <sourceCwd>` when this is non-null. */
+  /** 快照时刻源席位的 cwd。manifest 早于 source_cwd 支持时为 null（向后兼容）。
+   *  “用作 starter”片段在该值非空时输出 `cwd: <sourceCwd>`。 */
   sourceCwd: string | null;
   notes: string | null;
   createdAt: string;
@@ -32,7 +30,7 @@ export interface AgentImageEntry {
     bytes: number | null;
     estimatedTokens: number | null;
   }>;
-  /** Always "(redacted)" over the wire — UI never sees real tokens. */
+  /** 线上始终为 "(redacted)"——UI 从不见真实令牌。 */
   sourceResumeToken: string;
   stats: {
     forkCount: number;

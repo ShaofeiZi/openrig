@@ -23,10 +23,8 @@ import { WorkflowRuntime } from "../src/domain/workflow-runtime.js";
 import { createWorkflowFrontierPredicate } from "../src/domain/workflow-frontier-guard.js";
 
 /**
- * OPR.0.4.6.WF3 FR-6 — the frontier close-path guard (pm ruling:
- * prevention over detection). Injected-predicate shape (arch pin):
- * the queue never imports the workflow domain — pinned at the
- * import-graph level in the last test.
+ * OPR.0.4.6.WF3 FR-6——frontier close-path guard（PM 裁定：预防优先于检测）。注入 predicate
+ * 的形态（架构锁定）：queue 绝不导入 workflow domain——最后一个测试在 import graph 层锁定。
  */
 
 const SPEC = `workflow:
@@ -61,7 +59,7 @@ const SPEC = `workflow:
       - failed
 `;
 
-describe("workflow frontier close-path guard (WF3 FR-6)", () => {
+describe("workflow frontier close-path guard（WF3 FR-6）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -80,14 +78,13 @@ describe("workflow frontier close-path guard (WF3 FR-6)", () => {
     ]);
     bus = new EventBus(db);
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
-    // The PRODUCTION wiring shape: predicate INJECTED at construction
-    // (startup.ts does exactly this).
+    // 生产环境的接线形态：在构造时注入 predicate（startup.ts 正是这样做的）。
     queueRepo = new QueueRepository(db, bus, {
       validateRig: () => true,
       workflowFrontierPredicate: createWorkflowFrontierPredicate(db),
     });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用 fail-closed（MF2）——旨在 nudge 的 terminal close 需要同数据库 intent
+    // store，才能使其 wake 持久可靠。
     queueRepo.attachOutbox(new OutboxHandler(db));
     runtime = new WorkflowRuntime({ exceptionDial: { hostDefault: () => null, humanFallbackSeat: "human@host" }, db, eventBus: bus, queueRepo });
     tmp = mkdtempSync(join(tmpdir(), "wf-guard-"));
@@ -109,7 +106,7 @@ describe("workflow frontier close-path guard (WF3 FR-6)", () => {
     return { instanceId: r.instance.instanceId, entryPacket: r.entryQitemId };
   }
 
-  it("out-of-band terminal closure of a LIVE frontier packet is REJECTED loud, naming the workflow verbs (what/why/fix)", async () => {
+  it("带外关闭 live frontier packet 会被显著拒绝，并点名 workflow verb（what/why/fix）", async () => {
     const { entryPacket } = await instantiate();
     let caught: QueueRepositoryError | null = null;
     try {
@@ -124,17 +121,17 @@ describe("workflow frontier close-path guard (WF3 FR-6)", () => {
     }
     expect(caught).toBeInstanceOf(QueueRepositoryError);
     expect(caught?.code).toBe("workflow_frontier_packet");
-    // what/why/fix: names the binding AND the correct verbs.
+    // what/why/fix：点名 binding 与正确 verb。
     expect(caught?.message).toContain("frontier packet");
-    expect(caught?.message).toContain("strand");
-    expect(caught?.message).toContain("rig workflow project");
-    expect(caught?.message).toContain("rig workflow route");
-    // The packet is UNTOUCHED (prevention, not detection).
+    expect(caught?.message).toContain("搁浅");
+    expect(caught?.message).toContain("zrig workflow project");
+    expect(caught?.message).toContain("zrig workflow route");
+    // packet 保持不变（预防，而非检测）。
     const row = db.prepare(`SELECT state FROM queue_items WHERE qitem_id = ?`).get(entryPacket) as { state: string };
     expect(row.state).toBe("pending");
   });
 
-  it("MC-route-shaped closure (handed-off via the in-txn primitive) is equally guarded", async () => {
+  it("MC-route 形态的闭合（经 transaction 内 primitive 执行 handed-off）受到同等保护", async () => {
     const { entryPacket } = await instantiate();
     expect(() =>
       db.transaction(() => {
@@ -150,9 +147,9 @@ describe("workflow frontier close-path guard (WF3 FR-6)", () => {
     ).toThrowError(/workflow instance/);
   });
 
-  it("the workflow verbs themselves are UNAFFECTED (they hold the invariant)", async () => {
+  it("workflow verb 本身不受影响（它们维持不变量）", async () => {
     const { instanceId, entryPacket } = await instantiate();
-    // project (advance) works…
+    // project（推进）正常工作……
     const advanced = await runtime.project({
       instanceId,
       currentPacketId: entryPacket,
@@ -160,7 +157,7 @@ describe("workflow frontier close-path guard (WF3 FR-6)", () => {
       actorSession: "producer@rig",
     });
     expect(advanced.nextStepId).toBe("review");
-    // …and route works on the new frontier.
+    // ……route 也可在新 frontier 上工作。
     const routed = await runtime.route({
       instanceId,
       toSession: "reviewer2@rig",
@@ -169,8 +166,8 @@ describe("workflow frontier close-path guard (WF3 FR-6)", () => {
     expect(routed.toSession).toBe("reviewer2@rig");
   });
 
-  it("ZERO-FRICTION NEGATIVE: a non-workflow qitem's closure is byte-identical with and without the predicate wired", async () => {
-    // Repo WITH the predicate (production shape).
+  it("零摩擦负向控制：接入与未接入 predicate 时，非 workflow qitem 的闭合字节级一致", async () => {
+    // 接入 predicate 的 repo（生产形态）。
     const created = await queueRepo.create({
       sourceSession: "a@rig",
       destinationSession: "b@rig",
@@ -184,10 +181,10 @@ describe("workflow frontier close-path guard (WF3 FR-6)", () => {
     });
     expect(closed.state).toBe("done");
 
-    // Repo WITHOUT any predicate (legacy shape) — same fields, same result.
+    // 未接入任何 predicate 的 repo（旧版形态）——字段相同，结果相同。
     const bareRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用 fail-closed（MF2）——旨在 nudge 的 terminal close 需要同数据库 intent
+    // store，才能使其 wake 持久可靠。
     bareRepo.attachOutbox(new OutboxHandler(db));
     const created2 = await bareRepo.create({
       sourceSession: "a@rig",
@@ -204,15 +201,14 @@ describe("workflow frontier close-path guard (WF3 FR-6)", () => {
     expect(closed2.closureReason).toBe(closed.closureReason);
   });
 
-  it("a TERMINAL instance's packets are not guarded (the predicate is scoped to LIVE frontiers)", async () => {
+  it("terminal instance 的 packet 不受 guard 约束（predicate 仅作用于 live frontier）", async () => {
     const { instanceId, entryPacket } = await instantiate();
     await runtime.project({ instanceId, currentPacketId: entryPacket, exit: "failed", actorSession: "producer@rig" });
-    // The instance failed; its (already-closed) packet is off the live
-    // frontier — no guard interference with any later queue hygiene.
+    // instance 已失败；其已关闭 packet 不在 live frontier 上——guard 不干扰任何后续 queue 清理。
     expect(createWorkflowFrontierPredicate(db)(entryPacket)).toBeNull();
   });
 
-  it("THE IMPORT-GRAPH PIN (arch layering rule): queue-repository.ts imports NOTHING from the workflow domain", () => {
+  it("IMPORT-GRAPH 锁定（架构分层规则）：queue-repository.ts 不从 workflow domain 导入任何内容", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const src = readFileSync(join(here, "../src/domain/queue-repository.ts"), "utf-8");
     const importLines = src.split("\n").filter((l) => l.trimStart().startsWith("import "));

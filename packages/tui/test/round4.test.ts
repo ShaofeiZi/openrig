@@ -4,8 +4,8 @@ import { parseCommand } from "../src/grammar.js";
 import { demoSnapshot } from "../src/demo-data.js";
 import type { FleetSnapshot } from "../src/types.js";
 
-// Founder round-4 pins: explorer selection sync + cursor stability (item 2),
-// default expansion for topology (item 4) and specs (item 3).
+// Founder round-4 锚点：explorer 选择同步 + 光标稳定（item 2）、
+// topology（item 4）与 specs（item 3）默认展开。
 
 const snap = demoSnapshot();
 
@@ -13,8 +13,8 @@ function fresh() {
   return createViewState({ instanceId: "t", getSnapshot: () => snap });
 }
 
-describe("topology default expansion (item 4): rigs+pods visible, agents on demand", () => {
-  it("hides agents until their pod is expanded", () => {
+describe("topology 默认展开（item 4）：rigs+pods 可见，agent 按需", () => {
+  it("隐藏 agent 直到其 pod 展开", () => {
     const s = fresh();
     const labels = computeExplorerRows(s.get(), snap).map((r) => r.label);
     expect(labels.some((l) => l.includes("dev50 ("))).toBe(true);
@@ -22,7 +22,7 @@ describe("topology default expansion (item 4): rigs+pods visible, agents on dema
     expect(labels.find((l) => l.includes("dev50 ("))).toContain("▸");
   });
 
-  it("drilling a pod expands it and the cursor lands ON the pod row", () => {
+  it("drill pod 展开它且光标落在 pod 行上", () => {
     const s = fresh();
     s.dispatch(parseCommand("pod dev50"));
     const rows = computeExplorerRows(s.get(), snap);
@@ -31,29 +31,29 @@ describe("topology default expansion (item 4): rigs+pods visible, agents on dema
   });
 });
 
-describe("selection sync + cursor stability (item 2)", () => {
-  it("a content-pane drill highlights the agent in the explorer (auto-expanding its pod)", () => {
+describe("选择同步 + 光标稳定（item 2）", () => {
+  it("content 窗格 drill 在 explorer 高亮 agent（auto-expand 其 pod）", () => {
     const s = fresh();
     s.dispatch(parseCommand("rig openrig-build"));
-    // simulate the table-row click action shape
+    // 模拟 table 行点击动作形状
     s.dispatch({ type: "drill", resource: "agent", name: "dev50.guard", target: { host: "vm-host", rig: "openrig-build", pod: "dev50" } });
     const rows = computeExplorerRows(s.get(), snap);
     expect(rows[s.get().selection]?.key).toBe("agent:vm-host/openrig-build/dev50/dev50.guard");
   });
 
-  it("the cursor never resets to the top across a navigation chain", () => {
+  it("导航链中光标绝不重置到顶", () => {
     const s = fresh();
     const positions: number[] = [];
     for (const cmd of ["rig openrig-build", "pod dev50", "agent dev50.qa", "spec-of dev50.qa"]) {
       s.dispatch(parseCommand(cmd));
       positions.push(s.get().selection);
     }
-    // every nav step lands on a real row (not the top) and matches the location
+    // 每步导航落在真实行（非顶部）并匹配位置
     for (const pos of positions) expect(pos).toBeGreaterThan(0);
     expect(computeExplorerRows(s.get(), snap)[s.get().selection]?.key).toBe(locationKey(s.get()));
   });
 
-  it("cross-nav spec-of lands the cursor on the spec row (folder auto-expanded)", () => {
+  it("跨导航 spec-of 把光标落到 spec 行（文件夹 auto-expand）", () => {
     const s = fresh();
     s.dispatch(parseCommand("spec-of dev50.driver"));
     const rows = computeExplorerRows(s.get(), snap);
@@ -61,8 +61,8 @@ describe("selection sync + cursor stability (item 2)", () => {
   });
 });
 
-describe("filters are view-scoped (founder direct-drive catch)", () => {
-  it("a specs filter never leaks into the topology table across a cross-section drill", () => {
+describe("过滤器按视图作用域（founder direct-drive catch）", () => {
+  it("specs 过滤器绝不跨区段 drill 漏进 topology 表", () => {
     const s = fresh();
     s.dispatch(parseCommand(":specs"));
     s.dispatch(parseCommand("/independent-reviewer"));
@@ -71,7 +71,7 @@ describe("filters are view-scoped (founder direct-drive catch)", () => {
     expect(s.get().filter).toBe("");
   });
 
-  it("a same-section drill keeps the filter (topology rig → pod)", () => {
+  it("同区段 drill 保留过滤器（topology rig → pod）", () => {
     const s = fresh();
     s.dispatch(parseCommand("rig openrig-build"));
     s.dispatch(parseCommand("/dev50"));
@@ -79,7 +79,7 @@ describe("filters are view-scoped (founder direct-drive catch)", () => {
     expect(s.get().filter).toBe("dev50");
   });
 
-  it("cross-nav across sections clears the filter too (spec-of)", () => {
+  it("跨区段 cross-nav 也清过滤器（spec-of）", () => {
     const s = fresh();
     s.dispatch(parseCommand("rig openrig-build"));
     s.dispatch(parseCommand("/dev50"));
@@ -89,7 +89,7 @@ describe("filters are view-scoped (founder direct-drive catch)", () => {
   });
 });
 
-describe("Specs kind disclosure with nested agent folders", () => {
+describe("带嵌套 agent 文件夹的 Specs kind 展示", () => {
   const nsSnap: FleetSnapshot = {
     ...snap,
     specs: [
@@ -101,7 +101,7 @@ describe("Specs kind disclosure with nested agent folders", () => {
     ],
   };
 
-  it("shows the kind groups first, then every rig spec and collapsed agent folders when opened", () => {
+  it("先显示 kind 组，再显示每个 rig spec，打开时折叠 agent 文件夹", () => {
     const s = createViewState({ instanceId: "t", getSnapshot: () => nsSnap });
     s.dispatch(parseCommand(":specs"));
     expect(computeExplorerRows(s.get(), nsSnap).some(r => r.key?.startsWith("spec:"))).toBe(false);
@@ -114,7 +114,7 @@ describe("Specs kind disclosure with nested agent folders", () => {
     expect(labels.some((l) => l.includes("rev-1"))).toBe(false);
   });
 
-  it("toggling a folder shows its specs; toggling again collapses", () => {
+  it("切换文件夹显示其 specs；再切换折叠", () => {
     const s = createViewState({ instanceId: "t", getSnapshot: () => nsSnap });
     s.dispatch(parseCommand(":specs"));
     s.dispatch({ type: "toggle-expand", key: "specs-kind:agent" });
@@ -126,7 +126,7 @@ describe("Specs kind disclosure with nested agent folders", () => {
     expect(labels.some((l) => l.includes("rev-1"))).toBe(false);
   });
 
-  it("a live filter overrides collapse so matches are always visible", () => {
+  it("live 过滤器覆盖折叠，使匹配始终可见", () => {
     const s = createViewState({ instanceId: "t", getSnapshot: () => nsSnap });
     s.dispatch(parseCommand(":specs"));
     s.dispatch(parseCommand("/rev"));

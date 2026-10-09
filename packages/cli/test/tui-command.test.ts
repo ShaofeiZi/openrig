@@ -1,8 +1,7 @@
-// 0.5.0 — `rig tui` is a NAMED ALIAS of the bare-`rig` front-door mission-control
-// path. Zero new behavior: it delegates to the SAME openMissionControl (probe →
-// friendly degrade → resolveTuiPath + launch) that bare `rig` uses, with the same
-// TTY-awareness on stdout and the same daemon-down degrade. These pins assert the
-// shared code path (via injected FrontDoorIo spies), not a mirror.
+// 0.5.0——`rig tui` 是裸 `rig` front-door mission-control 路径的命名别名。
+// 零新行为：它委托给裸 `rig` 使用的同一 openMissionControl（probe →
+// 友好降级 → resolveTuiPath + launch），stdout 同样 TTY 感知，daemon 宕机同样降级。
+// 这些 pin 断言共享代码路径（经注入 FrontDoorIo spy），而非镜像。
 import { describe, it, expect, vi } from "vitest";
 import { Command } from "commander";
 import { tuiCommand } from "../src/commands/tui.js";

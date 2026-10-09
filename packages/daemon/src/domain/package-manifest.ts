@@ -1,6 +1,6 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
-// --- Types ---
+// ——类型——
 
 export interface PackageManifest {
   schemaVersion: number;
@@ -95,7 +95,7 @@ export interface ValidationResult {
   errors: string[];
 }
 
-// --- Constants ---
+// ——常量——
 
 const KNOWN_RUNTIMES = new Set(["claude-code", "codex"]);
 const KNOWN_SCOPES = new Set(["project_shared", "project_local", "user_global", "system_managed", "session_ephemeral"]);
@@ -103,13 +103,13 @@ const KNOWN_GUIDANCE_KINDS = new Set(["agents_md", "claude_md", "generic_rules_o
 const KNOWN_MERGE_STRATEGIES = new Set(["managed_block", "append", "prepend", "replace", "manual"]);
 const SEMVER_LIKE = /^\d+\.\d+\.\d+/;
 
-// --- Parse ---
+// ——解析——
 
 export function parseManifest(yamlString: string): unknown {
   return parseYaml(yamlString);
 }
 
-// --- Validate ---
+// ——校验——
 
 function hasPathTraversal(source: string): boolean {
   return source.includes("../") || source === ".." || source.endsWith("/..");
@@ -121,182 +121,182 @@ export function validateManifest(raw: unknown): ValidationResult {
   const errors: string[] = [];
 
   if (!raw || typeof raw !== "object") {
-    return { valid: false, errors: ["Manifest must be an object"] };
+    return { valid: false, errors: ["Manifest 必须是对象"] };
   }
 
   const m = raw as Record<string, unknown>;
 
-  // schema_version
+  // schema_version。
   if (m["schema_version"] !== undefined && m["schema_version"] !== 1) {
-    errors.push("schema_version must be 1");
+    errors.push("schema_version 必须为 1");
   }
 
-  // name
+  // name。
   if (!m["name"] || typeof m["name"] !== "string") {
-    errors.push("name is required and must be a string");
+    errors.push("name 必填且必须是字符串");
   } else if (!PACKAGE_NAME_PATTERN.test(m["name"] as string)) {
-    errors.push("name must match [a-zA-Z0-9][a-zA-Z0-9._-]* (alphanumeric, dots, hyphens, underscores)");
+    errors.push("name 必须匹配 [a-zA-Z0-9][a-zA-Z0-9._-]*（字母数字、点、连字符、下划线）");
   }
 
-  // version
+  // version。
   if (!m["version"] || typeof m["version"] !== "string") {
-    errors.push("version is required and must be a string");
+    errors.push("version 必填且必须是字符串");
   } else if (!SEMVER_LIKE.test(m["version"] as string)) {
-    errors.push("version must be semver-like (e.g., 1.0.0)");
+    errors.push("version 必须类似 semver（例如 1.0.0）");
   }
 
-  // summary
+  // summary。
   if (!m["summary"] || typeof m["summary"] !== "string") {
-    errors.push("summary is required and must be a string");
+    errors.push("summary 必填且必须是字符串");
   }
 
-  // compatibility.runtimes
+  // compatibility.runtimes。
   const compat = m["compatibility"] as Record<string, unknown> | undefined;
   if (!compat || !Array.isArray(compat["runtimes"]) || compat["runtimes"].length === 0) {
-    errors.push("compatibility.runtimes is required and must be a non-empty array");
+    errors.push("compatibility.runtimes 必填且必须是非空数组");
   } else {
     for (const rt of compat["runtimes"] as string[]) {
       if (!KNOWN_RUNTIMES.has(rt)) {
-        errors.push(`Unknown runtime: '${rt}'`);
+        errors.push(`未知 runtime：'${rt}'`);
       }
     }
   }
 
-  // exports
+  // exports。
   const exports = m["exports"] as Record<string, unknown> | undefined;
   if (!exports || typeof exports !== "object") {
-    errors.push("exports is required and must be an object");
+    errors.push("exports 必填且必须是对象");
   } else {
-    // Collect export names for role validation
+    // 收集 export 名称用于 role 校验。
     const skillNames = new Set<string>();
     const guidanceNames = new Set<string>();
 
-    // skills
+    // skills。
     if (Array.isArray(exports["skills"])) {
       for (const skill of exports["skills"] as Record<string, unknown>[]) {
         if (!skill["source"] || typeof skill["source"] !== "string") {
-          errors.push("Skill export: source is required");
+          errors.push("Skill export：source 必填");
         } else if (hasPathTraversal(skill["source"] as string)) {
-          errors.push(`Skill export source must not contain path traversal: '${skill["source"]}'`);
+          errors.push(`Skill export source 不得包含路径穿越：'${skill["source"]}'`);
         }
         if (!skill["name"] || typeof skill["name"] !== "string") {
-          errors.push("Skill export: name is required");
+          errors.push("Skill export：name 必填");
         } else {
           const name = skill["name"] as string;
           if (skillNames.has(name)) {
-            errors.push(`Duplicate skill name: '${name}'`);
+            errors.push(`Skill 名称重复：'${name}'`);
           }
           skillNames.add(name);
         }
-        // Validate scopes
+        // 校验 scope。
         if (Array.isArray(skill["supported_scopes"])) {
           for (const scope of skill["supported_scopes"] as string[]) {
             if (!KNOWN_SCOPES.has(scope)) {
-              errors.push(`Skill '${skill["name"] ?? "?"}': unknown scope '${scope}'`);
+              errors.push(`Skill '${skill["name"] ?? "?"}'：未知 scope '${scope}'`);
             }
           }
         }
         if (skill["default_scope"] && !KNOWN_SCOPES.has(skill["default_scope"] as string)) {
-          errors.push(`Skill '${skill["name"] ?? "?"}': unknown default_scope '${skill["default_scope"]}'`);
+          errors.push(`Skill '${skill["name"] ?? "?"}'：未知 default_scope '${skill["default_scope"]}'`);
         }
       }
     }
 
-    // guidance
+    // guidance。
     if (Array.isArray(exports["guidance"])) {
       for (const g of exports["guidance"] as Record<string, unknown>[]) {
         if (!g["source"] || typeof g["source"] !== "string") {
-          errors.push("Guidance export: source is required");
+          errors.push("Guidance export：source 必填");
         } else if (hasPathTraversal(g["source"] as string)) {
-          errors.push(`Guidance export source must not contain path traversal: '${g["source"]}'`);
+          errors.push(`Guidance export source 不得包含路径穿越：'${g["source"]}'`);
         }
         if (g["kind"] && !KNOWN_GUIDANCE_KINDS.has(g["kind"] as string)) {
-          errors.push(`Unknown guidance kind: '${g["kind"]}'`);
+          errors.push(`未知 guidance kind：'${g["kind"]}'`);
         }
         if (!g["kind"]) {
-          errors.push("Guidance export: kind is required");
+          errors.push("Guidance export：kind 必填");
         }
         if (g["merge_strategy"] && !KNOWN_MERGE_STRATEGIES.has(g["merge_strategy"] as string)) {
-          errors.push(`Unknown merge strategy: '${g["merge_strategy"]}'`);
+          errors.push(`未知 merge strategy：'${g["merge_strategy"]}'`);
         }
         if (!g["merge_strategy"]) {
-          errors.push("Guidance export: merge_strategy is required");
+          errors.push("Guidance export：merge_strategy 必填");
         }
 
-        // Derive name for uniqueness check
+        // 派生名称用于唯一性检查。
         const name = (g["name"] as string | undefined) ??
           (g["source"] ? (g["source"] as string).split("/").pop()! : "");
         if (name && guidanceNames.has(name)) {
-          errors.push(`Duplicate guidance name: '${name}'`);
+          errors.push(`Guidance 名称重复：'${name}'`);
         }
-        // Validate scopes
+        // 校验 scope。
         if (Array.isArray(g["supported_scopes"])) {
           for (const scope of g["supported_scopes"] as string[]) {
             if (!KNOWN_SCOPES.has(scope)) {
-              errors.push(`Guidance '${name}': unknown scope '${scope}'`);
+              errors.push(`Guidance '${name}'：未知 scope '${scope}'`);
             }
           }
         }
         if (g["default_scope"] && !KNOWN_SCOPES.has(g["default_scope"] as string)) {
-          errors.push(`Guidance '${name}': unknown default_scope '${g["default_scope"]}'`);
+          errors.push(`Guidance '${name}'：未知 default_scope '${g["default_scope"]}'`);
         }
         if (name) guidanceNames.add(name);
       }
     }
 
-    // agents
+    // agents。
     const agentNames = new Set<string>();
     if (Array.isArray(exports["agents"])) {
       for (const a of exports["agents"] as Record<string, unknown>[]) {
         if (!a["source"] || typeof a["source"] !== "string") {
-          errors.push("Agent export: source is required");
+          errors.push("Agent export：source 必填");
         } else if (hasPathTraversal(a["source"] as string)) {
-          errors.push(`Agent export source must not contain path traversal: '${a["source"]}'`);
+          errors.push(`Agent export source 不得包含路径穿越：'${a["source"]}'`);
         }
         const agentName = (a["name"] as string | undefined) ??
           (a["source"] ? (a["source"] as string).replace(/\.[^.]+$/, "").split("/").pop()! : "");
         if (agentName && agentNames.has(agentName)) {
-          errors.push(`Duplicate agent name: '${agentName}'`);
+          errors.push(`Agent 名称重复：'${agentName}'`);
         }
         if (agentName) agentNames.add(agentName);
       }
     }
 
-    // hooks
+    // hooks。
     if (Array.isArray(exports["hooks"])) {
       for (const h of exports["hooks"] as Record<string, unknown>[]) {
         if (!h["source"] || typeof h["source"] !== "string") {
-          errors.push("Hook export: source is required");
+          errors.push("Hook export：source 必填");
         } else if (hasPathTraversal(h["source"] as string)) {
-          errors.push(`Hook export source must not contain path traversal: '${h["source"]}'`);
+          errors.push(`Hook export source 不得包含路径穿越：'${h["source"]}'`);
         }
       }
     }
-    // mcp
+    // mcp。
     if (Array.isArray(exports["mcp"])) {
       for (const mc of exports["mcp"] as Record<string, unknown>[]) {
         if (!mc["source"] || typeof mc["source"] !== "string") {
-          errors.push("MCP export: source is required");
+          errors.push("MCP export：source 必填");
         } else if (hasPathTraversal(mc["source"] as string)) {
-          errors.push(`MCP export source must not contain path traversal: '${mc["source"]}'`);
+          errors.push(`MCP export source 不得包含路径穿越：'${mc["source"]}'`);
         }
       }
     }
 
-    // roles
+    // roles。
     if (Array.isArray(m["roles"])) {
       for (const role of m["roles"] as Record<string, unknown>[]) {
         if (Array.isArray(role["skills"])) {
           for (const skillRef of role["skills"] as string[]) {
             if (!skillNames.has(skillRef)) {
-              errors.push(`Role '${role["name"]}' references nonexistent skill: '${skillRef}'`);
+              errors.push(`Role '${role["name"]}' 引用了不存在的 skill：'${skillRef}'`);
             }
           }
         }
         if (Array.isArray(role["guidance"])) {
           for (const guidanceRef of role["guidance"] as string[]) {
             if (!guidanceNames.has(guidanceRef)) {
-              errors.push(`Role '${role["name"]}' references nonexistent guidance: '${guidanceRef}'`);
+              errors.push(`Role '${role["name"]}' 引用了不存在的 guidance：'${guidanceRef}'`);
             }
           }
         }
@@ -307,7 +307,7 @@ export function validateManifest(raw: unknown): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-// --- Normalize helpers ---
+// ——规范化 helper——
 
 function normalizeRequirements(raw: unknown): PackageRequirements | undefined {
   if (!raw || typeof raw !== "object") return undefined;
@@ -351,7 +351,7 @@ function normalizeVerification(raw: unknown): VerificationConfig | undefined {
   };
 }
 
-// --- Normalize ---
+// ——规范化——
 
 export function normalizeManifest(raw: unknown): PackageManifest {
   const m = raw as Record<string, unknown>;
@@ -419,7 +419,7 @@ export function normalizeManifest(raw: unknown): PackageManifest {
   };
 }
 
-// --- Serialize ---
+// ——序列化——
 
 export function serializeManifest(manifest: PackageManifest): string {
   const doc: Record<string, unknown> = {

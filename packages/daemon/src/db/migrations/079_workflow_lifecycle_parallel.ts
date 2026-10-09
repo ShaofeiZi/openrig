@@ -1,9 +1,8 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * S06 Waves 1-3: additive lifecycle replay identity plus packet-addressed
- * frontier and failure state.  Every new instance column is nullable so a
- * pre-lifecycle row remains byte-for-byte meaningful to the legacy reader.
+ * S06 第 1–3 波：增量添加生命周期重放身份，以及按 packet 寻址的 frontier 与失败状态。
+ * 每个新实例列均可为空，使生命周期功能之前的行对 legacy 读取器仍逐字节有意义。
  */
 export const workflowLifecycleParallelSchema: Migration = {
   name: "079_workflow_lifecycle_parallel.sql",

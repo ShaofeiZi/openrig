@@ -1,15 +1,13 @@
-// V1 attempt-3 Phase 3 — For You feed surface per for-you-feed.md.
+// V1 attempt-3 Phase 3——按 for-you-feed.md 的“为你推荐”feed 界面。
 //
-// PRIMARY UX = the feed itself. Subscriptions are NOT dominating
-// (per for-you-feed.md L134-L140 LOAD-BEARING SC-16) — the explore
-// sidebar holds subscription affordances; the feed is the centerpiece.
+// 首要 UX = feed 本身。订阅不喧宾夺主
+// （按 for-you-feed.md L134-L140 的承载性 SC-16）——浏览侧栏放订阅提示；
+// feed 是核心。
 //
-// V1 attempt-3 Phase 5 P5-3: feed cards are filtered by the live
-// subscription state from /api/config (5 feed.subscriptions.* keys).
-// action_required cards are always visible (forced ON per L145);
-// observation cards visible only when audit_log is ON (default OFF).
-// Lens chips remain a transient ad-hoc filter on top of subscription-
-// filtered cards.
+// V1 attempt-3 Phase 5 P5-3：feed 卡片按 /api/config 的实时订阅状态筛选
+// （5 个 feed.subscriptions.* 键）。action_required 卡片始终可见（按 L145 强制开）；
+// observation 卡片仅在 audit_log 开时可见（默认关）。镜头 chip 在订阅筛选后的卡片上
+// 叠加为临时的临时筛选。
 
 import { useCallback, useMemo, useState } from "react";
 import { cn } from "../../lib/utils.js";
@@ -58,43 +56,43 @@ import {
 import type { MissionControlVerb } from "../mission-control/hooks/useMissionControlAction.js";
 
 const LENS_CHIPS: Array<{ id: FeedCardKind | "all"; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "action-required", label: "Action req" },
-  { id: "approval", label: "Approvals" },
-  { id: "shipped", label: "Shipped" },
-  { id: "progress", label: "Progress" },
-  { id: "observation", label: "Audit" },
+  { id: "all", label: "全部" },
+  { id: "action-required", label: "待处理动作" },
+  { id: "approval", label: "审批" },
+  { id: "shipped", label: "已交付" },
+  { id: "progress", label: "进展" },
+  { id: "observation", label: "审计" },
 ];
 
-const HISTORY_LIMIT = 50; // per for-you-feed.md L182
+const HISTORY_LIMIT = 50; // 按 for-you-feed.md L182
 
 const EMPTY_COPY: Record<FeedCardKind | "all", { label: string; description: string }> = {
   all: {
-    label: "All caught up",
-    description: "Nothing needs you right now. New human tasks, approvals, shipped proof, and progress updates will appear here.",
+    label: "全部处理完毕",
+    description: "当前没有需要你处理的事项。新的人工任务、审批、已交付校验包与进展更新会出现在这里。",
   },
   "action-required": {
-    label: "No actions waiting",
-    // CORRECTIVE §7.1 rev1-r2 fixback (B1, 2026-07-06): the empty-state copy
-    // must not leak the retired deny/route schema — the surface is one-tap
-    // APPROVE + CHAT only (founder N-1).
-    description: "When a queue item needs your response, it will appear here with one-tap approve and chat with the owning agent.",
+    label: "没有待处理动作",
+    // 纠正 §7.1 rev1-r2 修复回退（B1，2026-07-06）：空态文案
+    // 不得泄露已退役的 deny/route schema——界面仅支持一键
+    // 批准 + 聊天（创始人 N-1）。
+    description: "当某个队列条目需要你回应时，会在这里出现，并可一键批准或与所属智能体聊天。",
   },
   approval: {
-    label: "No approvals waiting",
-    description: "Closeout and ratification requests will collect here when work needs an explicit decision.",
+    label: "没有待处理审批",
+    description: "当工作需要明确决策时，收尾与批准请求会汇集到这里。",
   },
   shipped: {
-    label: "No shipped proof yet",
-    description: "Completed work with proof packets and screenshots will appear here when slices close.",
+    label: "尚无已交付校验包",
+    description: "切片关闭时，带校验包与截图的已完成工作会出现在这里。",
   },
   progress: {
-    label: "No progress cards",
-    description: "Fresh queue movement and project updates will appear here as work advances.",
+    label: "暂无进展卡片",
+    description: "随着工作推进，新的队列动态与项目更新会出现在这里。",
   },
   observation: {
-    label: "No audit cards",
-    description: "Observation events are quiet right now. Turn the audit subscription on to watch more verbose activity.",
+    label: "暂无审计卡片",
+    description: "观察事件目前很安静。打开审计订阅可查看更详尽的活动。",
   },
 };
 
@@ -162,8 +160,7 @@ function queueTags(card: FeedCardModel, item: QueueItemDetail | undefined): stri
   ];
 }
 
-// Exported for tests (OPR.0.4.4.19 FR-3 — the structured-signal contract is
-// pinned by unit tests; the component render path is unchanged).
+// 导出供测试（OPR.0.4.4.19 FR-3——结构化信号契约由单元测试钉住；组件渲染路径不变）。
 export function hydratedCardKind(
   card: FeedCardModel,
   item: QueueItemDetail | undefined,
@@ -173,11 +170,11 @@ export function hydratedCardKind(
     return "approval";
   }
   if (!item) return card.kind;
-  // OPR.0.4.4.19 FR-3: card-kind promotion reads STRUCTURED signals only —
-  // the human-gate tier (C6) and the strict human-seat destination predicate.
-  // The prior body-text ("approval requested") / tag-guess ("approval",
-  // "ratify") / state-substring sniffing is retired, a deletion: once the
-  // signals are enforced at the write path, guessing is worse than reading.
+  // OPR.0.4.4.19 FR-3：卡片类别提升只读结构化信号——
+  // human-gate 层（C6）与严格的 human-seat 目标判定。
+  // 此前的正文文本（"approval requested"）/标签猜测（"approval"、
+  // "ratify"）/状态子串嗅探已退役，是删除：一旦信号在写路径强制执行，
+  // 猜测不如读取。
   if (item.tier === "human-gate") return "approval";
   const state = item.state.toLowerCase();
   if (state === "done" || state === "closed" || state === "completed") return "shipped";
@@ -222,11 +219,10 @@ export function Feed() {
   const { events } = useActivityFeed();
   const [lens, setLens] = useState<FeedCardKind | "all">("all");
   const subs = useFeedSubscriptions();
-  // Demo-bug fix #1 — optimistic action outcomes keyed by qitemId.
-  // VerbActions fires onOptimisticOutcome on mutation success; the
-  // ActionOutcomePanel reads from here first, falling back to the
-  // audit-derived map below. Audit re-fetch eventually surfaces the
-  // same shape, but the user-visible state is instant.
+  // Demo-bug 修复 #1——按 qitemId 键控的乐观动作结果。
+  // VerbActions 在 mutation 成功时触发 onOptimisticOutcome；
+  // ActionOutcomePanel 先从此读取，回退到下方 audit 派生的映射。
+  // audit 重取最终会呈现同样形态，但用户可见状态是即时的。
   const [optimisticOutcomes, setOptimisticOutcomes] = useState<Map<string, FeedActionOutcome>>(
     () => new Map(),
   );
@@ -241,17 +237,14 @@ export function Feed() {
     [],
   );
 
-  // OPR.0.3.2.20 — For You priority windowing.
-  // Action-required + Approval lenses source from the daemon's
-  // durable open-attention query (window-independent), then merge
-  // with event-derived cards. Queue-derived attention cards
-  // SUPERSEDE event-derived cards with the same qitemId. Other
-  // kinds (shipped/progress/observation) stay event-derived
-  // (HG-6 no regression).
-  // OPR.0.4.4.15 — consolidated multi-host feed: with ≥1 enabled remote
-  // host subscription the attention poll switches to the aggregated
-  // endpoint (daemon-side fan-out; the browser still only talks to the
-  // local daemon). Zero-config keeps today's endpoint + rendering exactly.
+  // OPR.0.3.2.20——为你推荐优先级窗口。
+  // action-required + approval 镜头来自后台服务持久的 open-attention 查询
+  // （与窗口无关），再与事件派生卡片合并。队列派生的关注卡片
+  // 以相同 qitemId 取代事件派生卡片。其他类别
+  // （shipped/progress/observation）保持事件派生（HG-6 无回归）。
+  // OPR.0.4.4.15——合并的多主机 feed：当 ≥1 个已启用远程主机订阅时，
+  // 关注轮询切到聚合端点（后台服务侧扇出；浏览器仍只与本地后台服务通信）。
+  // 零配置保持今天的端点 + 渲染完全一致。
   const remoteFeedActive = subs.anyRemoteEnabled;
   const [hostFilter, setHostFilter] = useState<string | null>(null);
   const attentionQuery = useAttentionItems(50, remoteFeedActive);
@@ -274,30 +267,25 @@ export function Feed() {
     () => sortFeedByDecisionBand(mergeAttentionIntoFeed(eventDerivedCards, allAttention)),
     [eventDerivedCards, allAttention],
   );
-  // OPR.0.3.2.20 — useDismissedSeqs auto-prunes by min-seq across
-  // currentSeqs. Queue-derived synthetic cards carry seq=-1, which
-  // would pin min-seq at -1 and prevent the auto-prune for
-  // event-derived dismissals (guard re-verify-2
-  // qitem-20260518192210 CLEANUP-1). eventDerivedSeqsForPrune
-  // filters them OUT — their dismissal lives in useDismissedCardIds.
+  // OPR.0.3.2.20——useDismissedSeqs 按 currentSeqs 的 min-seq 自动修剪。
+  // 队列派生的合成卡片带 seq=-1，会把 min-seq 钉在 -1，从而阻止
+  // 事件派生忽略的自动修剪（guard re-verify-2
+  // qitem-20260518192210 CLEANUP-1）。eventDerivedSeqsForPrune
+  // 把它们滤除——它们的忽略存在 useDismissedCardIds。
   const rawCardSeqs = useMemo(() => eventDerivedSeqsForPrune(rawCards), [rawCards]);
   const rawCardIds = useMemo(() => rawCards.map((c) => c.id), [rawCards]);
   const { dismissedSeqs, dismiss: dismissSeq, undismiss: undismissSeq } = useDismissedSeqs(rawCardSeqs);
-  // OPR.0.3.2.20 — string-keyed dismissal parallel to event-seq
-  // dismissal. Queue-derived attention cards share synthetic
-  // ActivityEvent.seq = -1 (no real event), so seq-keyed dismissal
-  // collides across them; routing those dismissals to a string-id
-  // set (FeedCard.id is stable + unique) keeps each queue-derived
-  // card's dismissal independent. Auto-prune is membership-based:
-  // when the qitem closes the card disappears from rawCardIds and
-  // the dismissal is dropped.
+  // OPR.0.3.2.20——与事件-seq 忽略并行的字符串键忽略。队列派生的关注卡片
+  // 共享合成 ActivityEvent.seq = -1（无真实事件），故 seq 键忽略会在它们之间碰撞；
+  // 把这些忽略路由到字符串-id 集合（FeedCard.id 稳定 + 唯一），使每个队列派生卡片
+  // 的忽略独立。自动修剪基于成员关系：当 qitem 关闭，卡片从 rawCardIds 消失，
+  // 忽略即被丢弃。
   const { dismissedIds, dismiss: dismissId, undismiss: undismissId } = useDismissedCardIds(rawCardIds);
   const [pendingUndo, setPendingUndo] = useState<{ kind: "seq"; seq: number } | { kind: "id"; id: string } | null>(null);
 
-  // Routes a dismiss call: synthetic cards (queue-attention-* and
-  // activity-needs-input-*) use the string-keyed dismissedIds set;
-  // event-derived cards continue using the seq-keyed dismissedSeqs
-  // set. Avoids collision on the synthetic seq=-1.
+  // 路由忽略调用：合成卡片（queue-attention-* 与 activity-needs-input-*）
+  // 用字符串键的 dismissedIds 集合；事件派生卡片继续用 seq 键的
+  // dismissedSeqs 集合。避免在合成 seq=-1 上碰撞。
   const handleDismiss = useCallback(
     (card: FeedCardModel) => {
       if (isSyntheticFeedCard(card)) {
@@ -339,15 +327,14 @@ export function Feed() {
       const kind = hydratedCardKind(card, item, outcome);
       return kind === card.kind ? card : { ...card, kind };
     });
-    // Filter by subscription state FIRST so the feed honors operator
-    // configuration, then apply the transient lens filter, then drop
-    // anything the operator has soft-dismissed via per-event-seq.
+    // 先按订阅状态筛选，使 feed 尊重操作手配置，再应用临时镜头筛选，再丢弃
+    // 操作手按事件-seq 软忽略的内容。
     const subscribed = hydrated.filter((c) =>
       isCardKindSubscribed(c.kind, subs.state),
     );
     const lensFiltered = lens === "all" ? subscribed : subscribed.filter((c) => c.kind === lens);
-    // OPR.0.4.4.15 — per-host filter (cards without a hostId are local by
-    // definition: event-derived + needs-input cards never leave this host).
+    // OPR.0.4.4.15——按主机筛选（无 hostId 的卡片按定义是本地的：
+    // 事件派生 + needs-input 卡片永不出本机）。
     const hostFiltered = hostFilter === null ? lensFiltered : lensFiltered.filter((c) => (c.hostId ?? "local") === hostFilter);
     return hostFiltered.filter((c) => {
       if (isSyntheticFeedCard(c)) return !dismissedIds.has(c.id);
@@ -372,36 +359,34 @@ export function Feed() {
   }, [cards, queueItems.itemsById, sliceRows]);
   const proofSlices = useSliceDetails(proofSliceNames);
 
-  // OPR.0.4.1.27-foryou (founder-picked option a) — the vestigial 0.3.1
-  // storytelling-preview band was removed. For You is now the slice-27
-  // restyled, subscription/lens-filtering FeedCard list below; the mission/
-  // slice rollups it duplicated stay on Dashboard/Project. The shared
-  // storytelling-cards.tsx primitives remain (the /lab/card-previews gallery
-  // still imports them) — only this band's wiring was dropped.
+  // OPR.0.4.1.27-foryou（创始人选的选项 a）——已删除残留的 0.3.1
+  // 叙事预览带。为你推荐现在是下方 slice-27 重排、按订阅/镜头筛选的 FeedCard 列表；
+  // 它曾重复的 mission/slice 汇总留在 Dashboard/Project。共享的
+  // storytelling-cards.tsx 原语保留（/lab/card-previews 画廊仍导入它们）——
+  // 只删了这个带的接线。
 
   return (
     <div data-testid="for-you-feed" className="mx-auto w-full max-w-[720px] px-6 py-8">
       <header className="border-b border-outline-variant pb-4 mb-4">
-        <SectionHeader tone="muted">Attention</SectionHeader>
+        <SectionHeader tone="muted">待关注</SectionHeader>
         <h1 className="font-headline text-headline-md font-bold tracking-tight uppercase text-on-surface mt-1">
-          For You
+          为你推荐
         </h1>
       </header>
 
-      {/* OPR.0.4.1.27 — the PRIMARY subscription control at the top of the
-          (phone) feed: a plain-language level (All activity / Highlights /
-          Needs you) over the same toggle model; action items always on. The 5
-          individual toggles remain the advanced view in the Explorer sidebar. */}
+      {/* OPR.0.4.1.27——（手机端）feed 顶部的首要订阅控制：通俗层级
+          （全部活动 / 重点 / 需要你），复用同一开关模型；动作项始终开。5 个
+          独立开关保留在 Explorer 侧栏的高级视图。 */}
       <div data-testid="feed-level-control" className="mb-4">
         <LevelControl />
       </div>
 
-      {/* Lens chips — transient filter, doesn't persist (per L156+). Div not
-          nav so SC-1 left-chrome count stays at exactly 2. */}
+      {/* 镜头 chip——临时筛选，不持久化（按 L156+）。用 Div 而非
+          nav，使 SC-1 左侧 chrome 计数恰为 2。 */}
       <div
         data-testid="feed-lens-chips"
         role="toolbar"
-        aria-label="Feed filters"
+        aria-label="动态筛选"
         className="flex flex-wrap gap-1 mb-4"
       >
         {LENS_CHIPS.map((c) => (
@@ -423,16 +408,15 @@ export function Feed() {
         ))}
       </div>
 
-      {/* OPR.0.4.4.15 — host chips + per-host status rows, rendered ONLY
-          when aggregation is active (hostStatuses is empty on the legacy
-          path — zero-config DOM is byte-identical to today). Same
-          lens-chip visual pattern; failed hosts render muted + a status
-          row (never a silently thinner feed). */}
+      {/* OPR.0.4.4.15——主机 chip + 逐主机状态行，仅在聚合激活时渲染
+          （旧路径 hostStatuses 为空——零配置 DOM 与今天字节一致）。同样的
+          镜头 chip 视觉；失败主机渲染为弱化 + 状态行
+          （绝不静默地让 feed 变窄）。 */}
       {hostStatuses.length > 0 && (
         <div
           data-testid="feed-host-chips"
           role="toolbar"
-          aria-label="Host filter"
+          aria-label="主机筛选"
           className="flex flex-wrap gap-1 mb-2"
         >
           <button
@@ -447,7 +431,7 @@ export function Feed() {
                 : "border-outline-variant text-on-surface-variant hover:bg-surface-low",
             )}
           >
-            ALL HOSTS
+            所有主机
           </button>
           {hostStatuses.map((h) => (
             <button
@@ -480,7 +464,7 @@ export function Feed() {
             className="mb-2 border border-outline-variant px-2 py-1 font-mono text-[9px] text-on-surface-variant"
           >
             {h.hostId}: {h.status}
-            {h.error ? ` — ${h.error}` : ""} (other hosts&apos; items unaffected)
+            {h.error ? ` — ${h.error}` : ""}（其他主机的条目不受影响）
           </div>
         ))}
 
@@ -518,7 +502,7 @@ export function Feed() {
       {pendingUndo !== null ? (
         <UndoToast
           key={pendingUndo.kind === "seq" ? `seq-${pendingUndo.seq}` : `id-${pendingUndo.id}`}
-          label="Card dismissed"
+          label="卡片已忽略"
           onUndo={handleUndo}
           onExpire={handleUndoExpire}
           durationMs={5000}

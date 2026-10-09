@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-// TODO: AS-T12 — migrate to pod-aware bundle assembler
+// TODO: AS-T12——迁移到感知 pod 的 bundle assembler
 import { LegacyBundleAssembler as BundleAssembler, type AssemblerFsOps } from "../src/domain/bundle-assembler.js";
 import { computeIntegrity, writeIntegrity, type IntegrityFsOps } from "../src/domain/bundle-integrity.js";
 import { pack } from "../src/domain/bundle-archive.js";
-// TODO: AS-T12 — migrate to pod-aware bundle source resolver
+// TODO: AS-T12——迁移到感知 pod 的 bundle source resolver
 import { LegacyBundleSourceResolver as BundleSourceResolver } from "../src/domain/bundle-source-resolver.js";
 import type { FsOps } from "../src/domain/package-resolver.js";
 
@@ -98,19 +98,19 @@ describe("BundleSourceResolver", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  /** Create a complete .rigbundle from scratch */
+  /** 从头创建完整的 .rigbundle */
   async function createBundle(opts?: { specYaml?: string; pkgManifest?: string; originalSource?: string; originalSources?: string[] }): Promise<string> {
-    // Write source package
+    // 写入源 package
     const pkgDir = path.join(tmpDir, "src-pkg");
     fs.mkdirSync(path.join(pkgDir, "skills/deep"), { recursive: true });
     fs.writeFileSync(path.join(pkgDir, "package.yaml"), opts?.pkgManifest ?? VALID_PKG_MANIFEST);
     fs.writeFileSync(path.join(pkgDir, "skills/deep/SKILL.md"), "# Deep Review");
 
-    // Write rig spec
+    // 写入 rig spec
     const specPath = path.join(tmpDir, "rig.yaml");
     fs.writeFileSync(specPath, opts?.specYaml ?? VALID_SPEC);
 
-    // Assemble
+    // 组装
     const staging = path.join(tmpDir, "staging");
     const assembler = new BundleAssembler({ fsOps: realAssemblerFsOps() });
     const manifestHash = "test-hash";
@@ -119,7 +119,7 @@ describe("BundleSourceResolver", () => {
       { name: "review-kit", version: "1.0.0", sourcePath: pkgDir, originalSource: opts?.originalSource ?? "github:example/review-kit@v1", manifestHash },
     ];
     if (opts?.originalSources) {
-      // Add duplicate entries for dedupe testing
+      // 添加重复条目，用于测试去重
       for (const src of opts.originalSources.slice(1)) {
         packages.push({ name: "review-kit", version: "1.0.0", sourcePath: pkgDir, originalSource: src, manifestHash });
       }
@@ -127,19 +127,19 @@ describe("BundleSourceResolver", () => {
 
     assembler.assemble({ specPath, packages, outputDir: staging, bundleName: "test-bundle", bundleVersion: "0.1.0" });
 
-    // Add integrity
+    // 添加完整性信息
     const integrity = computeIntegrity(staging, realIntegrityFsOps());
     writeIntegrity(staging, integrity, realIntegrityFsOps());
 
-    // Pack
+    // 打包
     const bundlePath = path.join(tmpDir, "test.rigbundle");
     await pack(staging, bundlePath);
 
     return bundlePath;
   }
 
-  // T1: Resolves rig spec from extracted bundle
-  it("resolves rig spec from extracted bundle", async () => {
+  // T1：从解压后的 bundle 解析 rig spec
+  it("从解压后的 bundle 解析 rig spec", async () => {
     const bundlePath = await createBundle();
     const resolver = new BundleSourceResolver({ fsOps: realFsOps() });
 
@@ -151,8 +151,8 @@ describe("BundleSourceResolver", () => {
     resolver.cleanup(result.tempDir);
   });
 
-  // T2: Maps vendored packages with sourceKind='local_path'
-  it("maps vendored packages to local_path resolver format", async () => {
+  // T2：将 vendored package 映射为 sourceKind='local_path'
+  it("将 vendored package 映射为 local_path resolver 格式", async () => {
     const bundlePath = await createBundle();
     const resolver = new BundleSourceResolver({ fsOps: realFsOps() });
 
@@ -165,33 +165,33 @@ describe("BundleSourceResolver", () => {
     resolver.cleanup(result.tempDir);
   });
 
-  // T3: Invalid bundle.yaml (bad schema) -> error on resolve
-  it("invalid bundle.yaml with missing required fields throws on resolve", async () => {
-    // Create a raw archive with a bad bundle.yaml (missing name, version, etc.)
+  // T3：无效 bundle.yaml（错误 schema）→ 解析时报错
+  it("缺少必填字段的无效 bundle.yaml 在解析时抛出异常", async () => {
+    // 创建包含错误 bundle.yaml（缺少 name、version 等）的原始归档
     const rawDir = path.join(tmpDir, "raw-bad");
     fs.mkdirSync(rawDir, { recursive: true });
     fs.writeFileSync(path.join(rawDir, "bundle.yaml"), "schema_version: 1\n# missing everything else");
     fs.writeFileSync(path.join(rawDir, "rig.yaml"), VALID_SPEC);
 
-    // Pack directly (skip assembler/integrity — this is a pathological bundle)
+    // 直接打包（跳过 assembler/integrity——这是一个病态 bundle）
     const badBundle = path.join(tmpDir, "bad.rigbundle");
     await pack(rawDir, badBundle);
 
     const resolver = new BundleSourceResolver({ fsOps: realFsOps() });
-    // Should fail — either integrity (no section) or validation (bad manifest) or extraction error
+    // 应失败——可能是完整性问题（缺少对应部分）、校验失败（错误 manifest）或解压错误
     await expect(resolver.resolve(badBundle)).rejects.toThrow();
   });
 
-  // T5: Bundle with missing rig.yaml referenced by manifest -> error
-  it("bundle missing rig.yaml referenced by manifest throws on resolve", async () => {
-    // Create a valid bundle, then rebuild without rig.yaml
+  // T5：bundle 缺少 manifest 引用的 rig.yaml → 报错
+  it("bundle 缺少 manifest 引用的 rig.yaml 时解析抛出异常", async () => {
+    // 创建有效 bundle，然后在没有 rig.yaml 的情况下重新构建
     const rawDir = path.join(tmpDir, "raw-no-spec");
     fs.mkdirSync(path.join(rawDir, "packages/pkg"), { recursive: true });
     fs.writeFileSync(path.join(rawDir, "packages/pkg/package.yaml"), VALID_PKG_MANIFEST);
     fs.mkdirSync(path.join(rawDir, "packages/pkg/skills/deep"), { recursive: true });
     fs.writeFileSync(path.join(rawDir, "packages/pkg/skills/deep/SKILL.md"), "# Skill");
-    // bundle.yaml references rig.yaml but we don't create it
-    // TODO: AS-T12 — migrate to pod-aware bundle types
+    // bundle.yaml 引用了 rig.yaml，但这里不创建它
+    // TODO: AS-T12——迁移到感知 pod 的 bundle 类型
     const { serializeLegacyBundleManifest: serializeBundleManifest } = await import("../src/domain/bundle-types.js");
     const manifest = {
       schemaVersion: 1, name: "no-spec", version: "0.1.0",
@@ -200,7 +200,7 @@ describe("BundleSourceResolver", () => {
     };
     fs.writeFileSync(path.join(rawDir, "bundle.yaml"), serializeBundleManifest(manifest));
 
-    // Add integrity (which will NOT include rig.yaml since it doesn't exist)
+    // 添加完整性信息（rig.yaml 不存在，因此不会包含它）
     const integrity = computeIntegrity(rawDir, realIntegrityFsOps());
     writeIntegrity(rawDir, integrity, realIntegrityFsOps());
 
@@ -208,11 +208,11 @@ describe("BundleSourceResolver", () => {
     await pack(rawDir, badBundle);
 
     const resolver = new BundleSourceResolver({ fsOps: realFsOps() });
-    await expect(resolver.resolve(badBundle)).rejects.toThrow(/not found in bundle|missing/i);
+    await expect(resolver.resolve(badBundle)).rejects.toThrow(/bundle 中未找到|缺失/i);
   });
 
-  // T6: Package refs map to vendored content (including deduped refs)
-  it("packageRefMap includes all original refs for deduped packages", async () => {
+  // T6：package ref 映射到 vendored 内容（包括已去重的 ref）
+  it("packageRefMap 包含已去重 package 的所有原始 ref", async () => {
     const bundlePath = await createBundle({
       originalSource: "local:./a",
       originalSources: ["local:./a", "local:./b"],
@@ -221,19 +221,19 @@ describe("BundleSourceResolver", () => {
 
     const result = await resolver.resolve(bundlePath);
 
-    // Both original sources should map to the same resolved package
+    // 两个原始 source 都应映射到同一个已解析 package
     expect(result.packageRefMap["local:./a"]).toBeDefined();
     expect(result.packageRefMap["local:./b"]).toBeDefined();
     expect(result.packageRefMap["local:./a"]!.manifest.name).toBe("review-kit");
     expect(result.packageRefMap["local:./b"]!.manifest.name).toBe("review-kit");
-    // Same resolved package object
+    // 同一个已解析 package 对象
     expect(result.packageRefMap["local:./a"]).toBe(result.packageRefMap["local:./b"]);
 
     resolver.cleanup(result.tempDir);
   });
 
-  // T7: Original source refs in metadata
-  it("original source refs available in bundle manifest", async () => {
+  // T7：metadata 中的原始 source ref
+  it("可从 bundle manifest 获取原始 source ref", async () => {
     const bundlePath = await createBundle({ originalSource: "github:example/review-kit@v1" });
     const resolver = new BundleSourceResolver({ fsOps: realFsOps() });
 
@@ -244,8 +244,8 @@ describe("BundleSourceResolver", () => {
     resolver.cleanup(result.tempDir);
   });
 
-  // T8: Temp workspace created
-  it("temp workspace created and usable", async () => {
+  // T8：创建临时工作区
+  it("临时工作区已创建且可用", async () => {
     const bundlePath = await createBundle();
     const resolver = new BundleSourceResolver({ fsOps: realFsOps() });
 
@@ -258,30 +258,30 @@ describe("BundleSourceResolver", () => {
     expect(fs.existsSync(result.tempDir)).toBe(false);
   });
 
-  // T9: Failed resolution cleans up temp dir
-  it("failed resolution cleans up temp dir", async () => {
+  // T9：解析失败时清理临时目录
+  it("解析失败时清理临时目录", async () => {
     const resolver = new BundleSourceResolver({ fsOps: realFsOps() });
 
-    // Count temp dirs before
+    // 统计操作前的临时目录数量
     const tmpBase = os.tmpdir();
     const before = fs.readdirSync(tmpBase).filter((d) => d.startsWith("rigbundle-")).length;
 
     try {
       await resolver.resolve("/nonexistent.rigbundle");
     } catch {
-      // Expected to throw
+      // 预期抛出异常
     }
 
-    // No new temp dirs should remain
+    // 不应残留新的临时目录
     const after = fs.readdirSync(tmpBase).filter((d) => d.startsWith("rigbundle-")).length;
     expect(after).toBeLessThanOrEqual(before);
   });
 });
 
-// -- Pod-aware bundle source resolver (schemaVersion 2) --
+// ——感知 pod 的 bundle source resolver（schemaVersion 2）——
 
 describe("PodBundleSourceResolver", () => {
-  it("resolves schemaVersion 2 archive via resolve(): unpack, parse, validate, specPath", async () => {
+  it("通过 resolve() 解析 schemaVersion 2 归档：解包、解析、校验和 specPath", async () => {
     const { createHash } = await import("node:crypto");
     const { PodBundleSourceResolver } = await import("../src/domain/bundle-source-resolver.js");
     const { serializePodBundleManifest } = await import("../src/domain/bundle-types.js");
@@ -292,7 +292,7 @@ describe("PodBundleSourceResolver", () => {
       const stagingDir = path.join(tmpDir, "staging");
       fs.mkdirSync(stagingDir, { recursive: true });
 
-      // Write rig.yaml
+      // 写入 rig.yaml
       const rigYaml = RigSpecCodec.serialize({
         version: "0.2", name: "resolver-rig",
         pods: [{ id: "dev", label: "Dev", members: [{ id: "impl", agentRef: "local:agents/impl", profile: "default", runtime: "claude-code", cwd: "." }], edges: [] }],
@@ -300,11 +300,11 @@ describe("PodBundleSourceResolver", () => {
       });
       fs.writeFileSync(path.join(stagingDir, "rig.yaml"), rigYaml);
 
-      // Write agent
+      // 写入 agent
       fs.mkdirSync(path.join(stagingDir, "agents", "impl"), { recursive: true });
       fs.writeFileSync(path.join(stagingDir, "agents", "impl", "agent.yaml"), 'name: impl\nversion: "1.0"\nprofiles: {}');
 
-      // Compute file hashes for integrity section (excluding bundle.yaml per convention)
+      // 计算完整性部分的文件哈希（按约定排除 bundle.yaml）
       const fileHashes: Record<string, string> = {};
       function hashFilesInDir(dir: string, prefix: string) {
         for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -315,7 +315,7 @@ describe("PodBundleSourceResolver", () => {
       }
       hashFilesInDir(stagingDir, "");
 
-      // Write manifest with integrity
+      // 写入带完整性信息的 manifest
       const manifestYaml = serializePodBundleManifest({
         schemaVersion: 2, name: "resolver-test", version: "1.0.0",
         createdAt: new Date().toISOString(), rigSpec: "rig.yaml",
@@ -324,15 +324,15 @@ describe("PodBundleSourceResolver", () => {
       });
       fs.writeFileSync(path.join(stagingDir, "bundle.yaml"), manifestYaml);
 
-      // Pack archive
+      // 打包归档
       const archivePath = path.join(tmpDir, "test.rigbundle");
       await pack(stagingDir, archivePath);
 
-      // Create .sha256 digest
+      // 创建 .sha256 摘要
       const archiveDigest = createHash("sha256").update(fs.readFileSync(archivePath)).digest("hex");
       fs.writeFileSync(`${archivePath}.sha256`, archiveDigest);
 
-      // Resolve via PodBundleSourceResolver.resolve()
+      // 通过 PodBundleSourceResolver.resolve() 解析
       const resolver = new PodBundleSourceResolver();
       const result = await resolver.resolve(archivePath);
 

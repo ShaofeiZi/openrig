@@ -1,9 +1,9 @@
-// Slice-04 (OPR.0.5.0.4) seam C1 — a DAEMON-LOCAL, secret-safe reader of the codex-auth on-disk
-// contract. The daemon cannot import packages/cli (no @openrig/cli dep); this re-reads the same
-// documented format: $CODEX_HOME||~/.codex with auth-profiles/*.json (profile NAMES) and
-// auth-seat-registry.tsv (6 tab columns: seat/rig/runtime/cwd/auth_profile/updated_ts — NO token
-// column). It reads profile NAMES and the TSV ONLY — never the profile *.json contents, which hold
-// token-class material (BR-6: no secret ever surfaces).
+// Slice-04（OPR.0.5.0.4）接缝 C1——后台服务本地、机密安全的 codex-auth 磁盘契约读取器。
+// 后台服务不能导入 packages/cli（无 @openrig/cli 依赖），因此在此按同一文档格式重新读取：
+// $CODEX_HOME||~/.codex 下的 auth-profiles/*.json（仅档案名称）及 auth-seat-registry.tsv
+//（6 个制表符分隔列：seat/rig/runtime/cwd/auth_profile/updated_ts，不含 token 列）。
+// 这里只读取档案名称和 TSV，绝不读取包含 token 类材料的档案 *.json 内容
+//（BR-6：任何机密都不得暴露）。
 
 import fs from "node:fs";
 import path from "node:path";
@@ -13,13 +13,13 @@ export interface CodexSeatRow {
   rig: string;
   runtime: string;
   cwd: string;
-  /** The codex-auth profile name this seat is registered against (opaque, non-secret). */
+  /** 此席位登记到的 codex-auth 档案名（不透明、非机密）。 */
   authProfile: string;
   updatedTs: string;
 }
 
 export interface CodexAuthMetadata {
-  /** Profile NAMES (opaque, non-secret refs) — never file contents. */
+  /** 档案名称（不透明、非机密引用）——绝不包含文件内容。 */
   profiles: string[];
   seats: CodexSeatRow[];
 }
@@ -37,7 +37,7 @@ function resolveCodexHome(env: NodeJS.ProcessEnv): { profileDir: string; registr
   };
 }
 
-// Profile NAMES only — the *.json file contents (token-class) are never opened.
+// 只读取档案名称——绝不打开包含 token 类材料的 *.json 文件内容。
 function listProfiles(profileDir: string): string[] {
   try {
     return fs
@@ -61,17 +61,17 @@ function readSeats(registryPath: string): CodexSeatRow[] {
   for (const line of raw.split("\n")) {
     if (line.length === 0) continue;
     const cols = line.split("\t");
-    if (cols.length !== SEAT_COLUMN_COUNT) continue; // skip malformed rows — never fabricate fields
-    // Length is exactly 6 above, so the tuple destructure is total (satisfies noUncheckedIndexedAccess).
+    if (cols.length !== SEAT_COLUMN_COUNT) continue; // 跳过畸形行——绝不臆造字段
+    // 上方已确认长度恰为 6，因此元组解构是完备的，满足 noUncheckedIndexedAccess。
     const [seat, rig, runtime, cwd, authProfile, updatedTs] = cols as [string, string, string, string, string, string];
-    if (seat === "seat") continue; // the header row
+    if (seat === "seat") continue; // 表头行
     rows.push({ seat, rig, runtime, cwd, authProfile, updatedTs });
   }
   return rows;
 }
 
-/** Read the codex-auth on-disk METADATA (profile names + seat registry). Never throws; never
- *  surfaces token-class content. Absent home/files yield empty arrays. */
+/** 读取 codex-auth 磁盘元数据（档案名 + 席位注册表）。绝不抛错，也绝不暴露
+ *  token 类内容；home 或文件缺失时返回空数组。 */
 export function readCodexAuthMetadata(env: NodeJS.ProcessEnv = process.env): CodexAuthMetadata {
   const { profileDir, registryPath } = resolveCodexHome(env);
   return {

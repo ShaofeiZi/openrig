@@ -231,7 +231,7 @@ describe("Lifecycle CLI commands", () => {
     });
 
     expect(exitCode).toBeUndefined();
-    expect(logs.join("\n")).toContain("Released claimed session manual-helper");
+    expect(logs.join("\n")).toContain("已释放工作组 rig-1 中 external.helper 的已认领会话 manual-helper");
     expect(logs.join("\n")).toContain("external.helper");
   });
 
@@ -245,7 +245,7 @@ describe("Lifecycle CLI commands", () => {
     });
 
     expect(exitCode).toBeUndefined();
-    expect(logs.join("\n")).toContain("Removed node dev.impl from rig rig-1");
+    expect(logs.join("\n")).toContain("已从工作组 rig-1 移除节点 dev.impl（结束 1 个会话）");
   });
 
   it("remove sends an explicit fallback and names rerouted qitems in human output", async () => {
@@ -259,8 +259,8 @@ describe("Lifecycle CLI commands", () => {
 
     expect(exitCode).toBeUndefined();
     const output = logs.join("\n");
-    expect(output).toContain("Rerouted qitem-remove-1 to ops-fallback@rig-1");
-    expect(output).toContain("Removed node dev.impl from rig rig-1");
+    expect(output).toContain("已将 qitem-remove-1 改路由到 ops-fallback@rig-1");
+    expect(output).toContain("已从工作组 rig-1 移除节点 dev.impl");
   });
 
   it("remove preserves explicit fallback details in JSON output", async () => {
@@ -290,9 +290,9 @@ describe("Lifecycle CLI commands", () => {
 
     expect(exitCode).toBeUndefined();
     const output = logs.join("\n");
-    expect(output).toContain("Released 2 claimed session(s) from rig rig-1");
+    expect(output).toContain("已从工作组 rig-1 释放 2 个已认领会话");
     expect(output).toContain("manual-helper");
-    expect(output).toContain("deleted the rig record");
+    expect(output).toContain("删除了工作组记录");
   });
 
   it("shrink prints removed pod summary", async () => {
@@ -305,8 +305,8 @@ describe("Lifecycle CLI commands", () => {
     });
 
     expect(exitCode).toBeUndefined();
-    expect(logs.join("\n")).toContain("Removed pod dev from rig rig-1");
-    expect(logs.join("\n")).toContain("2 node(s)");
+    expect(logs.join("\n")).toContain("已从工作组 rig-1 移除 Pod dev（2 个节点，结束 2 个会话）");
+    expect(logs.join("\n")).toContain("2 个节点");
   });
 
   it("shrink sends an explicit fallback and preserves reroute details in JSON output", async () => {
@@ -336,8 +336,8 @@ describe("Lifecycle CLI commands", () => {
 
     expect(exitCode).toBeUndefined();
     const output = logs.join("\n");
-    expect(output).toContain("Rerouted qitem-shrink-1, qitem-shrink-2 to ops-fallback@rig-1");
-    expect(output).toContain("Removed pod dev from rig rig-1");
+    expect(output).toContain("已将 qitem-shrink-1, qitem-shrink-2 改路由到 ops-fallback@rig-1");
+    expect(output).toContain("已从工作组 rig-1 移除 Pod dev");
   });
 
   it("shrink prints partial pod removal honestly and exits non-zero", async () => {
@@ -350,7 +350,7 @@ describe("Lifecycle CLI commands", () => {
     });
 
     const output = logs.join("\n");
-    expect(output).toContain("Partially removed pod dev");
+    expect(output).toContain("已从工作组 rig-1 部分移除 Pod dev");
     expect(output).toContain("dev.impl");
     expect(output).toContain("dev.qa");
     expect(output).toContain("tmux timeout");
@@ -367,7 +367,7 @@ describe("Lifecycle CLI commands", () => {
     });
 
     expect(exitCode).toBeUndefined();
-    expect(logs.join("\n")).toContain("Launched node dev.qa in rig rig-1");
+    expect(logs.join("\n")).toContain("已在工作组 rig-1 中启动节点 dev.qa");
     expect(logs.join("\n")).toContain("dev-qa@test");
   });
 

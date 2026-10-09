@@ -5,55 +5,55 @@ import { tmpdir } from "node:os";
 import { DispatchBuffer, dispatchBufferPath } from "../src/domain/gateway/dispatch-buffer.js";
 import type { OutboundDecision } from "../src/domain/gateway/protocol.js";
 
-// M1 A4a — the durable dispatch buffer (proof-9 no-loss/ack-gated-drain mechanism).
+// M1 A4a——durable dispatch buffer（proof-9 无丢失/ack-gated-drain 机制）。
 
 const dec = (id: string): OutboundDecision => ({
   kind: "outbound_decision", decisionId: id, op: "post_message", entityBindingRef: "mike#slack-1", payload: { text: id },
 });
 
-describe("A4a DispatchBuffer (durable, ack-gated drain)", () => {
+describe("A4a DispatchBuffer（durable、ack-gated drain）", () => {
   let home: string;
   beforeEach(() => { home = mkdtempSync(join(tmpdir(), "a4a-buf-")); });
   afterEach(() => { rmSync(home, { recursive: true, force: true }); });
 
-  it("enqueue persists a decision (durable-first) + pending() reads it back across a fresh instance (restart-survival)", () => {
+  it("enqueue 持久化 decision（durable-first），pending() 可跨新 instance 读回（重启后存留）", () => {
     new DispatchBuffer(home).enqueue(dec("d1"));
     expect(existsSync(dispatchBufferPath(home))).toBe(true);
-    // a FRESH instance (simulates restart) sees the pending decision
+    // 全新 instance（模拟重启）可以看到 pending decision
     expect(new DispatchBuffer(home).pending().map((d) => d.decisionId)).toEqual(["d1"]);
   });
 
-  it("ack DRAINS a decision (and only that one); no ack -> stays (connector outage = no loss)", () => {
+  it("ack 排空一个 decision（且仅此一个）；无 ack -> 保留（connector 中断时不丢失）", () => {
     const b = new DispatchBuffer(home);
     b.enqueue(dec("d1")); b.enqueue(dec("d2"));
     b.ack("d1");
-    expect(b.pending().map((d) => d.decisionId)).toEqual(["d2"]); // d2 un-Acked -> retained
+    expect(b.pending().map((d) => d.decisionId)).toEqual(["d2"]); // d2 未 ack -> 保留
   });
 
-  it("enqueue is IDEMPOTENT on decisionId (a re-dispatch keeps ONE record — byte-identical dup, not two)", () => {
+  it("enqueue 对 decisionId 幂等（重新分派只保留一条记录——逐字节相同的副本不会重复）", () => {
     const b = new DispatchBuffer(home);
     b.enqueue(dec("d1")); b.enqueue(dec("d1"));
     expect(b.pending()).toHaveLength(1);
   });
 
-  it("ack of an unknown decisionId is a no-op (idempotent drain)", () => {
+  it("对未知 decisionId 执行 ack 是 no-op（幂等排空）", () => {
     const b = new DispatchBuffer(home);
     b.enqueue(dec("d1"));
     b.ack("nope");
     expect(b.pending().map((d) => d.decisionId)).toEqual(["d1"]);
   });
 
-  it("A5b: a MEDIA-bearing decision retains + replays byte-identical (media survives like text — no-loss)", () => {
-    // The buffer is payload-agnostic: an image attachment on the decision is retained + replayed
-    // exactly like text (proof-4's screenshot must not be lost on a failed delivery).
+  it("A5b：带 media 的 decision 会逐字节一致地保留并 replay（media 与 text 一样不会丢失）", () => {
+    // buffer 与 payload 无关：decision 上的 image attachment 与 text 一样保留并 replay
+    //（proof-4 的 screenshot 不得因 delivery 失败而丢失）。
     const media: OutboundDecision = {
       kind: "outbound_decision", decisionId: "m1", op: "post_message", entityBindingRef: "mike#slack-1",
       payload: { qitemId: "q9", summary: "chart", body: "see attached", media: [{ imageUrl: "https://ok.example.com/shot.png", altText: "the screenshot" }] },
     };
     new DispatchBuffer(home).enqueue(media);
-    // restart-surviving read: the media payload comes back byte-identical (retained for replay).
+    // 重启后仍可读取：media payload 逐字节一致地返回（保留用于 replay）。
     const pending = new DispatchBuffer(home).pending();
     expect(pending).toHaveLength(1);
-    expect(pending[0]).toEqual(media); // full payload incl. media — nothing dropped or special-cased
+    expect(pending[0]).toEqual(media); // 完整 payload（包括 media）——无丢弃或特殊处理
   });
 });

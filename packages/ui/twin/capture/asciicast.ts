@@ -1,16 +1,15 @@
-// OPR.0.4.1.11.2 (FR-3) — CLI-medium capture, zero-dep asciicast v2.
-// asciinema is not guaranteed on the host (it is absent on this one), so instead of faking a
-// capture we emit the documented asciicast v2 format directly: a JSON header line then
-// [time, "o", data] output-event lines (https://docs.asciinema.org/manual/asciicast/v2/). The pure
-// builder is deterministic (no wall-clock unless a timestamp is passed); captureCommandCast wraps a
-// non-interactive command's output into a valid cast everywhere. Real interactive `asciinema rec`
-// remains available where the binary is installed — see the FR-5 convention doc for that path.
+// OPR.0.4.1.11.2（FR-3）——CLI 媒介捕获，零依赖 asciicast v2。
+// 主机不保证安装 asciinema（本机即未安装），因此不伪造捕获，而是直接输出文档规定的
+// asciicast v2 格式：一行 JSON 头，随后是 [time, "o", data] 输出事件行
+//（https://docs.asciinema.org/manual/asciicast/v2/）。纯构建器具有确定性；除非显式传入
+// 时间戳，否则不读取墙上时钟。captureCommandCast 可在各环境中把非交互命令输出包装为
+// 有效 cast。已安装二进制的环境仍可使用真实交互式 `asciinema rec`；路径见 FR-5 约定文档。
 import { spawnSync } from "node:child_process";
 
 export interface AsciicastEvent {
-  /** Seconds since cast start. */
+  /** 自 cast 开始后的秒数。 */
   time: number;
-  /** Output chunk. */
+  /** 输出片段。 */
   data: string;
 }
 
@@ -18,11 +17,11 @@ export interface AsciicastInput {
   width: number;
   height: number;
   events: AsciicastEvent[];
-  /** Optional unix timestamp; omitted from the header when absent so output stays deterministic. */
+  /** 可选 Unix 时间戳；缺失时不写入头部，以保持输出确定性。 */
   timestamp?: number;
 }
 
-/** Build a valid asciicast v2 document (header line + output-event lines). Pure + deterministic. */
+/** 构建有效的 asciicast v2 文档（头行 + 输出事件行）；纯函数且具确定性。 */
 export function buildAsciicast(input: AsciicastInput): string {
   const header: Record<string, unknown> = { version: 2, width: input.width, height: input.height };
   if (input.timestamp !== undefined) header.timestamp = input.timestamp;
@@ -39,9 +38,9 @@ export interface CommandCastInput {
 }
 
 /**
- * Zero-dep CLI capture: run a non-interactive command and wrap its combined output into a single
- * output event in a valid asciicast. Deterministic given deterministic command output. For an
- * interactive/timed recording, install asciinema and use `asciinema rec` (the cast format is identical).
+ * 零依赖 CLI 捕获：运行非交互命令，并把合并输出包装为有效 asciicast 中的单个输出事件。
+ * 只要命令输出确定，结果就确定。若需交互式/计时录制，请安装 asciinema 并使用
+ * `asciinema rec`；cast 格式相同。
  */
 export function captureCommandCast(input: CommandCastInput): string {
   const r = spawnSync(input.command, input.args ?? [], { encoding: "utf8" });

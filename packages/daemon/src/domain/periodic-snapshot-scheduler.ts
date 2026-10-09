@@ -1,6 +1,6 @@
-// OPR.0.3.4.9 — periodic snapshot scheduler (crash-insurance floor).
-// Mirrors seat-activity-service timer pattern: idempotent start/stop,
-// setInterval().unref(), per-rig error isolation.
+// OPR.0.3.4.9——周期快照调度器（崩溃保险底线）。
+// 与 seat-activity-service 的定时器模式一致：幂等 start/stop、
+// setInterval().unref()，以及按工作组隔离错误。
 
 import type Database from "better-sqlite3";
 import type { SnapshotCapture } from "./snapshot-capture.js";
@@ -13,12 +13,12 @@ export interface PeriodicSnapshotSchedulerDeps {
   db: Database.Database;
   snapshotCapture: SnapshotCapture;
   snapshotRepo: SnapshotRepository;
-  // OPR.0.4.3.20 FR-4 — refresh the live per-seat resume ledger before each
-  // periodic snapshot serializes it (optional: absent → no refresh, as before).
+  // OPR.0.4.3.20 FR-4——每次周期快照序列化前刷新实时的逐席位恢复台账。
+  // 可选；缺失时与此前一样不刷新。
   sessionRegistry?: SessionRegistry;
   resumeMetadataRefresher?: ResumeMetadataRefresher;
-  /** OPR.0.5.3.10 mini-req 2 — ONE process census per tick for ALL rigs and
-   *  seats (absent → the refresher's own lister, the pre-slice behavior). */
+  /** OPR.0.5.3.10 mini-req 2——每个 tick 只为所有工作组和席位做一次进程清点。
+   *  缺失时使用 refresher 自己的 lister，即 slice 前行为。 */
   processCensus?: ProcessCensus;
 }
 
@@ -58,29 +58,28 @@ export class PeriodicSnapshotScheduler {
     this.running = true;
     try {
       const runningRigs = this.getRunningNonArchivedRigs();
-      // OPR.0.5.3.10 mini-req 2 — one CYCLE-SCOPED census for the whole tick:
-      // every rig's refresh shares it, lazily (a tick with no codex discovery
-      // spawns no `ps` at all).
+      // OPR.0.5.3.10 mini-req 2——整个 tick 共享一次周期作用域的清点；
+      // 各工作组延迟共享它，没有 Codex 发现的 tick 完全不会启动 `ps`。
       const tickListProcesses = this.deps.processCensus?.cycleLister();
       for (const rigId of runningRigs) {
         try {
-          // OPR.0.4.3.20 FR-4 — refresh live tokens before serialize, in its OWN
-          // try/catch so a refresh throw NEVER skips the snapshot (guard caveat:
-          // do not wrap refresh + capture in a single try/catch).
+          // OPR.0.4.3.20 FR-4——序列化前刷新实时 token，并使用独立 try/catch，
+          // 保证刷新抛错绝不会跳过快照（守卫注意事项：不要把 refresh + capture
+          // 包进同一个 try/catch）。
           if (this.deps.resumeMetadataRefresher && this.deps.sessionRegistry) {
             try {
-              // fillNullOnly: a routine snapshot refresh fills null tokens but NEVER
-              // clears a present one (rev1-r2 fix — keep stale-present for FR-6).
+              // fillNullOnly：常规快照刷新只填充 null token，绝不清除已有 token
+              //（rev1-r2 修复——为 FR-6 保留 stale-present）。
               await this.deps.resumeMetadataRefresher.refresh(
                 this.deps.sessionRegistry.getLatestLiveSessions(rigId),
                 { fillNullOnly: true, ...(tickListProcesses ? { listProcesses: tickListProcesses } : {}) },
               );
-            } catch { /* best-effort — the snapshot still writes below */ }
+            } catch { /* 尽力刷新——下方仍会写入快照 */ }
           }
           this.deps.snapshotCapture.captureSnapshot(rigId, "auto-periodic");
           this.deps.snapshotRepo.pruneSnapshotsByKind(rigId, "auto-periodic", this.retentionKeep);
         } catch {
-          // Per-rig error isolation: one rig's failure never aborts the tick.
+          // 按工作组隔离错误：单个工作组失败绝不中止整个 tick。
         }
       }
     } finally {
@@ -89,10 +88,9 @@ export class PeriodicSnapshotScheduler {
   }
 
   private getRunningNonArchivedRigs(): string[] {
-    // Latest-session-per-node semantics: a node is running only when its
-    // NEWEST session (by created_at DESC, id DESC) has status='running'.
-    // Mirrors ps-projection.ts:116-118. An older running + newer exited
-    // session means the node is NOT running.
+    // 每节点最新会话语义：仅当按 created_at DESC、id DESC 排序的最新会话
+    // status='running' 时，节点才算运行中。与 ps-projection.ts:116-118 一致；
+    // 较旧 running + 较新 exited 表示节点并未运行。
     const rows = this.deps.db.prepare(
       `SELECT DISTINCT r.id FROM rigs r
        JOIN nodes n ON n.rig_id = r.id

@@ -1,5 +1,5 @@
-// The TUI's selection/consent boundary. State comes from existing repositories;
-// effects remain owned by kernel materialization, restore, and seat lifecycle.
+// TUI 的选择/同意边界。状态来自既有 repository；
+// 副作用仍由 kernel 物化、restore 与 seat 生命周期持有。
 import { Hono, type Context } from "hono";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -34,7 +34,7 @@ startupRoutes.use("*", async (c, next) => {
     expectedToken: dep<string | null>(c, "terminalBearerToken") ?? null,
   })(c, next);
   if (response?.status === 401) return c.json({ ok: false, code: "terminal_auth_unavailable", freshAllowed: false,
-    message: "This TUI cannot authenticate to the selected daemon. Check the instance and its terminal-token access, then refresh. No seat was started." }, 401);
+    message: "此 TUI 无法对所选后台服务完成鉴权。请检查该实例及其 terminal-token 访问权限，然后刷新。未启动任何席位。" }, 401);
   return response;
 });
 const active = new WeakMap<Database.Database, Set<string>>();
@@ -43,7 +43,7 @@ function repo(c: Context) { return dep<RigRepository>(c, "rigRepo"); }
 function sessions(c: Context) { return dep<SessionRegistry>(c, "sessionRegistry"); }
 function tmux(c: Context) { return dep<TmuxAdapter>(c, "tmuxAdapter"); }
 
-/** A consent version derived from consumed state, never a second owner ledger. */
+/** 由已消费状态派生的同意版本，绝不是第二份 owner 台账。 */
 export function startupRevision(db: Database.Database, node: Node): string {
   const currentNode = db.prepare("SELECT * FROM nodes WHERE id = ?").get(node.id);
   const history = db.prepare("SELECT id, status, resume_type, resume_token FROM sessions WHERE node_id = ? ORDER BY id").all(node.id);
@@ -55,7 +55,7 @@ async function exclusive(c: Context, key: string, action: () => Promise<Response
   const db = repo(c).db;
   let locks = active.get(db);
   if (!locks) { locks = new Set(); active.set(db, locks); }
-  if (locks.has(key)) return c.json({ ok: false, code: "operation_in_progress", message: "This operation is already running. Refresh to reconcile its result." }, 409);
+  if (locks.has(key)) return c.json({ ok: false, code: "operation_in_progress", message: "该操作已在运行。请刷新以对账其结果。" }, 409);
   locks.add(key);
   try { return await action(); } finally { locks.delete(key); }
 }
@@ -72,12 +72,12 @@ async function observeSeat(c: Context, rig: RigWithRelations, node: Node) {
     : deriveSessionName(rig.rig.name, node.logicalId));
   try {
     const presence = await tmux(c).probeSession(name);
-    if (presence.state === "absent") return { state: "stopped", detail: "No live terminal", sessionName: name };
+    if (presence.state === "absent") return { state: "stopped", detail: "无活动终端", sessionName: name };
     if (presence.state === "transport_unavailable") return { state: "transport_unavailable",
-      detail: "The terminal server is unavailable. Start/resume can attempt atomic creation; it cannot overwrite an existing terminal.", sessionName: name };
+      detail: "terminal 服务器不可用。start/resume 可尝试原子创建，但不能覆盖已存在的终端。", sessionName: name };
     const pane = await observeSolePane(tmux(c), name);
     if (!pane.ok) return { state: "unverified", detail: pane.detail, sessionName: name };
-    if (node.runtime === "terminal") return { state: "running", detail: "Terminal is available", sessionName: name };
+    if (node.runtime === "terminal") return { state: "running", detail: "终端可用", sessionName: name };
     const probe = assessNativeResumeProbe({ runtime: node.runtime,
       paneCommand: await tmux(c).getPaneCommand(pane.pane),
       paneContent: (tmux(c).capturePaneScreen ? await tmux(c).capturePaneScreen(pane.pane) : await tmux(c).capturePaneContent(pane.pane, 40)) ?? "" });
@@ -98,28 +98,28 @@ startupRoutes.post("/terminal", (c) => exclusive(c, "terminal", async () => {
   return c.json(result, result.ok ? 200 : 409);
 }));
 
-// First setup materializes the builtin topology only. No occupant is launched.
+// 首次设置只物化内置 topology，不启动任何占用者。
 startupRoutes.post("/kernel", (c) => exclusive(c, "kernel", async () => {
   const body = await c.req.json().catch(() => ({}));
-  if (body.runtime !== "codex" && body.runtime !== "claude-code") return c.json({ ok: false, message: "Choose an authenticated runtime for the new kernel." }, 400);
+  if (body.runtime !== "codex" && body.runtime !== "claude-code") return c.json({ ok: false, message: "请为新 kernel 选择一个已鉴权的运行时。" }, 400);
   const existing = repo(c).findRigsByName("kernel");
-  if (existing.length > 1) return c.json({ ok: false, message: "More than one kernel exists; select an exact rig before continuing." }, 409);
+  if (existing.length > 1) return c.json({ ok: false, message: "存在多个 kernel；继续前请精确选择一个工作组。" }, 409);
   if (existing.length === 1) return c.json({ ok: true, rigId: existing[0]!.id, reused: true });
   const auth = await defaultProbeRuntimes();
-  if ((body.runtime === "codex" ? auth.codex : auth.claudeCode) !== "ok") return c.json({ ok: false, code: "provider_prerequisite", message: "The selected runtime is unavailable or unauthenticated. Repair that prerequisite and retry; fresh history will not fix it." }, 409);
+  if ((body.runtime === "codex" ? auth.codex : auth.claudeCode) !== "ok") return c.json({ ok: false, code: "provider_prerequisite", message: "所选运行时不可用或未鉴权。请先修复该前置条件再重试；全新历史无法解决它。" }, 409);
   const root = kernelRoot();
   const source = readFileSync(root + (body.runtime === "codex" ? "rig-codex-only.yaml" : "rig-claude-only.yaml"), "utf8");
   const result = await dep<PodRigInstantiator>(c, "podInstantiator").materialize(source, root, {
     cwdOverride: new SettingsStore().resolveConfig().workspaceRoot,
   });
-  return c.json(result.ok ? { ok: true, rigId: result.result.rigId, message: "Kernel prepared. Choose the seats to start." } : result, result.ok ? 200 : 409);
+  return c.json(result.ok ? { ok: true, rigId: result.result.rigId, message: "Kernel 已就绪。请选择要启动的席位。" } : result, result.ok ? 200 : 409);
 }));
 
 function kernelRoot() { return fileURLToPath(new URL("../../specs/rigs/launch/kernel/", import.meta.url)); }
 
 startupRoutes.get("/:rigId", async (c) => {
   const rig = repo(c).getRig(c.req.param("rigId"));
-  if (!rig) return c.json({ ok: false, message: "Rig is no longer available." }, 404);
+  if (!rig) return c.json({ ok: false, message: "该工作组已不可用。" }, 404);
   const snapshot = currentSnapshot(c, rig);
   const plan = buildRestorePlanPreview(rig, snapshot, collectPreviewSessionRows(repo(c).db, rig, snapshot), undefined, Date.now(), readFreshOccupantRelations(repo(c).db, rig.rig.id));
   const auth = await defaultProbeRuntimes();
@@ -134,7 +134,7 @@ startupRoutes.get("/:rigId", async (c) => {
       revision: startupRevision(repo(c).db, node), observed,
       contextPending: history.some((session) => session.nodeId === node.id && dep<import("../domain/startup-orchestrator.js").StartupOrchestrator>(c, "startupOrchestrator")?.canContinueFresh(node.id, session.id)),
       freshAllowed: available && observed.state === "stopped",
-      ...(!available ? { prerequisite: `${node.runtime} is unavailable or unauthenticated. Repair it and retry; fresh history cannot repair this prerequisite.` } : {}) });
+      ...(!available ? { prerequisite: `${node.runtime} 不可用或未鉴权。请修复后重试；全新历史无法修复此前置条件。` } : {}) });
   }
   return c.json({ rigId: rig.rig.id, rigName: rig.rig.name, seats });
 });
@@ -142,44 +142,44 @@ startupRoutes.get("/:rigId", async (c) => {
 startupRoutes.post("/:rigId/:logicalId", async (c) => {
   const rig = repo(c).getRig(c.req.param("rigId"));
   const node = rig?.nodes.find((entry) => entry.logicalId === c.req.param("logicalId"));
-  if (!rig || !node) return c.json({ ok: false, message: "Selected seat is no longer available." }, 404);
+  if (!rig || !node) return c.json({ ok: false, message: "所选席位已不可用。" }, 404);
   return exclusive(c, node.id, async () => {
     const body = await c.req.json().catch(() => ({}));
-    if (!["resume", "start", "fresh", "continue"].includes(body.action) || typeof body.revision !== "string") return c.json({ ok: false, message: "A named action and current seat revision are required." }, 400);
-    if (body.revision !== startupRevision(repo(c).db, node)) return c.json({ ok: false, code: "selection_changed", message: "The seat changed since this choice was displayed. Refresh and make a new decision." }, 409);
+    if (!["resume", "start", "fresh", "continue"].includes(body.action) || typeof body.revision !== "string") return c.json({ ok: false, message: "需要指定具名 action 与当前席位 revision。" }, 400);
+    if (body.revision !== startupRevision(repo(c).db, node)) return c.json({ ok: false, code: "selection_changed", message: "自本次选择展示以来席位已变化。请刷新后重新决策。" }, 409);
     const observed = await observeSeat(c, rig, node);
     if (body.action === "continue") {
       const result = await seatLifecycleService(c).continueFreshStartup(observed.sessionName);
       await refreshNativeMetadata(c, rig.rig.id);
       return c.json(result, result.ok ? 200 : 409);
     }
-    // A present or unprobeable pane is never overwritten, even on explicit fresh.
+    // 已有内容或无法探测的 pane 绝不被覆盖，即使显式 fresh 也不行。
     if (observed.state !== "stopped" && !(observed.state === "transport_unavailable" && body.action !== "fresh")) return c.json({ ok: observed.state === "running", code: observed.state,
       message: observed.detail, sessionName: observed.sessionName }, observed.state === "running" ? 200 : 409);
     if (node.runtime === "codex" || node.runtime === "claude-code") {
       const auth = await defaultProbeRuntimes();
       if ((node.runtime === "codex" ? auth.codex : auth.claudeCode) !== "ok") return c.json({ ok: false, code: "provider_prerequisite", freshAllowed: false,
-        message: `${node.runtime} is unavailable or unauthenticated. Repair it and retry. Starting a fresh conversation cannot repair authentication.` }, 409);
+        message: `${node.runtime} 不可用或未鉴权。请修复后重试。开启全新对话无法修复鉴权。` }, 409);
     }
     if (body.revision !== startupRevision(repo(c).db, node)) return c.json({ ok: false, code: "selection_changed",
-      message: "The seat changed while prerequisites were checked. Refresh before making a new decision." }, 409);
+      message: "检查前置条件期间席位已变化。请刷新后再做新决策。" }, 409);
     const history = sessions(c).getSessionsForRig(rig.rig.id).filter((session) => session.nodeId === node.id);
-    if (body.action === "start" && history.length > 0) return c.json({ ok: false, code: "history_present", message: "This seat has prior history. Choose resume, or explicitly confirm a fresh conversation." }, 409);
+    if (body.action === "start" && history.length > 0) return c.json({ ok: false, code: "history_present", message: "该席位有历史记录。请选择 resume，或显式确认开启全新对话。" }, 409);
     if (body.action === "fresh") {
       const result = await seatLifecycleService(c).launchFresh({ seatRef: observed.sessionName, fresh: true,
-        reason: `TUI explicit fresh consent for ${node.logicalId}, observed revision ${body.revision}`, stop: false });
+        reason: `TUI 对 ${node.logicalId} 显式同意 fresh，观测 revision ${body.revision}`, stop: false });
       await refreshNativeMetadata(c, rig.rig.id);
       if (result.ok) dep<SnapshotCapture>(c, "snapshotCapture").captureSnapshot(rig.rig.id, "auto-rehydrate");
       return c.json(result, result.ok ? 200 : 409);
     }
-    // Never-occupied builtin seats reuse materialization's existing launch effect.
+    // 从未占用的内置席位复用物化已有的 launch 副作用。
     if (history.length === 0 && rig.rig.name === "kernel") {
       const root = kernelRoot();
       const raw = RigSpecCodec.parse(readFileSync(root + (node.runtime === "codex" ? "rig-codex-only.yaml" : "rig-claude-only.yaml"), "utf8"));
       const spec = RigSpecSchema.normalize(raw as Record<string, unknown>);
       const pod = spec.pods.find((entry) => entry.id === node.logicalId.split(".")[0]);
       const member = pod?.members.find((entry) => `${pod.id}.${entry.id}` === node.logicalId);
-      if (!pod || !member || member.agentRef !== node.agentRef || member.runtime !== node.runtime) return c.json({ ok: false, message: "This kernel seat differs from the installed definition; its owner must repair the startup source." }, 409);
+      if (!pod || !member || member.agentRef !== node.agentRef || member.runtime !== node.runtime) return c.json({ ok: false, message: "此 kernel 席位与已安装定义不一致；其 owner 必须修复 startup 来源。" }, 409);
       const result = await dep<PodRigInstantiator>(c, "podInstantiator").launchBinding({ rigId: rig.rig.id, rigSpec: spec, rigRoot: root, pod,
         member: { ...member, ...(node.model ? { model: node.model } : {}) }, qualifiedId: node.logicalId, nodeId: node.id, cwdOverride: node.cwd ?? undefined });
       await refreshNativeMetadata(c, rig.rig.id);
@@ -197,7 +197,7 @@ startupRoutes.post("/:rigId/:logicalId", async (c) => {
     }
     const forecast = buildRestorePlanPreview(selectedRig, snapshot, collectPreviewSessionRows(repo(c).db, selectedRig, snapshot)).nodes[0]!;
     if (history.length > 0 && forecast.intendedAction !== "resume-original") return c.json({ ok: false, code: "resume_unavailable", freshAllowed: forecast.freshRequired,
-      message: forecast.reason ?? "The prior conversation cannot be resumed under this seat's configured policy. A fresh conversation needs a separate decision." }, 409);
+      message: forecast.reason ?? "按此席位的配置策略无法恢复先前对话。全新对话需要单独决策。" }, 409);
     const result = await dep<RestoreOrchestrator>(c, "restoreOrchestrator").launchSingleNode(rig.rig.id, node.logicalId, {
       snapshotId: snapshot.id, adapters: dep<Record<string, RuntimeAdapter>>(c, "runtimeAdapters"), fsOps: { exists: existsSync },
     });
@@ -205,6 +205,6 @@ startupRoutes.post("/:rigId/:logicalId", async (c) => {
     const ok = result.ok && (!outcome || ["resumed", "fresh-primed"].includes(outcome.status));
     await refreshNativeMetadata(c, rig.rig.id);
     return c.json({ ...result, ok, code: outcome?.status ?? result.code,
-      message: outcome?.error ?? result.message ?? (outcome?.status === "resumed" ? "Previous conversation resumed." : "Seat launch reconciled.") }, ok ? 200 : 409);
+      message: outcome?.error ?? result.message ?? (outcome?.status === "resumed" ? "已恢复先前对话。" : "席位启动已对账。") }, ok ? 200 : 409);
   });
 });

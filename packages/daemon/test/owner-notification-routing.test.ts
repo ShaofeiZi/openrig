@@ -28,7 +28,7 @@ const registry = {
   entities: [{
     entityId: "human-founder",
     class: "human" as const,
-    displayName: "Founder",
+    displayName: "创始人",
     address: "human-founder@external",
     connectorBindings: [{
       kind: "slack" as const,
@@ -53,7 +53,7 @@ function levels(): readonly string[] | undefined {
   return (transitionModule as unknown as { OWNER_NOTIFICATION_LEVELS?: readonly string[] }).OWNER_NOTIFICATION_LEVELS;
 }
 
-describe("S14 owner notifications — system notices, not remembered tags", () => {
+describe("S14 owner notification——系统通知，而非记忆中的 tag", () => {
   let db: Database.Database;
   let bus: EventBus;
   let repo: QueueRepository;
@@ -62,7 +62,7 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
   beforeEach(() => {
     db = createDb();
     migrate(db, ALL_MIGRATIONS);
-    ensureFinalColumns(db); // final test bytes can run against the pristine pre-076 base
+    ensureFinalColumns(db); // 最终测试代码可在原始 076 前基线上运行
     bus = new EventBus(db);
     repo = new QueueRepository(db, bus, { loadHumanRegistry: () => registry } as never);
     home = mkdtempSync(join(tmpdir(), "s14-owner-notify-"));
@@ -73,7 +73,7 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     rmSync(home, { recursive: true, force: true });
   });
 
-  it("defines one ordered OWNER vocabulary, archive parity, and the ordinary/direct-human matrix", async () => {
+  it("定义一套有序 OWNER 词汇、archive 一致性及普通/直接面向人类矩阵", async () => {
     expect(levels()).toEqual(["RECORD", "NOTICE", "ALERT"]);
     expect(ALL_MIGRATIONS.map(({ name }) => name)).toContain("076_owner_notification_levels.sql");
     for (const table of ["queue_transitions", "queue_transitions_archive"]) {
@@ -82,7 +82,7 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
       expect(columns).toContain("owner_notification_level");
     }
 
-    const ordinary = await repo.create({ sourceSession: "a@rig", destinationSession: "b@rig", body: "ordinary", nudge: false });
+    const ordinary = await repo.create({ sourceSession: "a@rig", destinationSession: "b@rig", body: "普通请求", nudge: false });
     expect(db.prepare(
       "SELECT owner_notification_kind, owner_notification_level FROM queue_transitions WHERE qitem_id=? ORDER BY transition_id DESC LIMIT 1",
     ).get(ordinary.qitemId)).toEqual({ owner_notification_kind: null, owner_notification_level: null });
@@ -90,8 +90,8 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     const direct = await repo.create({
       sourceSession: "orch-lead@v-openrig-build",
       destinationSession: "human-founder@kernel",
-      body: "direct decision",
-      summary: "Direct founder decision",
+      body: "直接决策",
+      summary: "创始人直接决策",
       evidenceRef: "/proof/direct.md",
       nudge: false,
     });
@@ -103,8 +103,8 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
       qitemId: ordinary.qitemId,
       fromSession: "b@rig",
       toSession: "human-founder@kernel",
-      body: "handoff decision",
-      summary: "Handoff founder decision",
+      body: "交接决策",
+      summary: "交接给创始人的决策",
       evidenceRef: "/proof/handoff.md",
       nudge: false,
     });
@@ -113,7 +113,7 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     ).get(handed.created.qitemId)).toEqual({ owner_notification_kind: "human-required", owner_notification_level: "ALERT" });
   });
 
-  it("defaults to posting NOTICE and interrupting ALERT, refuses an unknown level, and has no tag classifier", () => {
+  it("默认发布 NOTICE 并以 ALERT 中断，拒绝未知 level，且没有 tag classifier", () => {
     const cfg = loadConfig(home) as Record<string, unknown>;
     expect(cfg.minimumLevelThatPosts).toBe("NOTICE");
     expect(cfg.minimumLevelThatInterrupts).toBe("ALERT");
@@ -129,11 +129,11 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     expect(() => saveConfig({ ...DEFAULT_CONFIG, minimumLevelThatPosts: "LOUD" } as never, home)).toThrow(/minimumLevelThatPosts.*RECORD.*NOTICE.*ALERT/i);
   });
 
-  it("routes the live human-blocker shape once, resolves aliases, and returns replies to the row owner", async () => {
+  it("只路由一次实时 human-blocker 形态，解析别名，并把回复返回给行 owner", async () => {
     const row = await repo.create({
       sourceSession: "dev-qa@v-openrig-build",
       destinationSession: "orch-lead@v-openrig-build",
-      body: "two founder decisions remain",
+      body: "还剩两项创始人决策",
       priority: "critical",
       tier: "deep",
       tags: ["founder-gated"],
@@ -144,9 +144,9 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
       actorSession: "orch-lead@v-openrig-build",
       state: "blocked",
       blockedOn: "human-founder@kernel",
-      summary: "Founder decision required",
+      summary: "需要创始人决策",
       evidenceRef: "/proof/SPEC.md",
-      transitionNote: "parked with exact continuation",
+      transitionNote: "已 park，并附精确继续方式",
     });
 
     const parked = db.prepare(
@@ -167,7 +167,7 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
 
     const seen = new SeenStore(join(home, "seen.jsonl"));
     seen.mark(first[0]!.notificationKey!, "posted");
-    repo.update({ qitemId: row.qitemId, actorSession: "watchdog@system", transitionNote: "unchanged 15m park wake" });
+    repo.update({ qitemId: row.qitemId, actorSession: "watchdog@system", transitionNote: "15 分钟 park 唤醒，无变化" });
     const unchanged = await ports.listHumanAlerts({ minimumLevel: "NOTICE" });
     expect(unchanged[0]!.notificationKey).toBe(first[0]!.notificationKey);
     const quiet = new SlackOutboundDriver({
@@ -179,13 +179,13 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     });
     expect((await quiet.sweepOnce()).fresh).toBe(0);
 
-    repo.update({ qitemId: row.qitemId, actorSession: "orch-lead@v-openrig-build", state: "in-progress", transitionNote: "decision consumed" });
+    repo.update({ qitemId: row.qitemId, actorSession: "orch-lead@v-openrig-build", state: "in-progress", transitionNote: "决策已消费" });
     repo.update({
       qitemId: row.qitemId,
       actorSession: "orch-lead@v-openrig-build",
       state: "blocked",
       blockedOn: "human-founder@kernel",
-      transitionNote: "a distinct later founder decision",
+      transitionNote: "后续另一项创始人决策",
     });
     const reparks = await ports.listHumanAlerts({ minimumLevel: "NOTICE" });
     expect(reparks[0]!.notificationKey).not.toBe(first[0]!.notificationKey);
@@ -199,11 +199,11 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     expect((await next.sweepOnce()).fresh).toBe(1);
   });
 
-  it("classifies the dedicated queue resolve act as NOTICE without re-reading its prose", async () => {
+  it("无需重读 prose，即把专用 queue resolve 操作分类为 NOTICE", async () => {
     const row = await repo.create({
       sourceSession: "dev-qa@v-openrig-build",
       destinationSession: "orch-lead@v-openrig-build",
-      body: "await decision",
+      body: "等待决策",
       nudge: false,
     });
     repo.update({
@@ -211,9 +211,9 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
       actorSession: "orch-lead@v-openrig-build",
       state: "blocked",
       blockedOn: "human-founder@kernel",
-      summary: "Choose A or B",
+      summary: "选择 A 或 B",
       evidenceRef: "/proof/decision.md",
-      transitionNote: "parked",
+      transitionNote: "已 park",
     });
     const contract = new MissionControlWriteContract({
       db,
@@ -225,7 +225,7 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
       verb: "resolve",
       qitemId: row.qitemId,
       actorSession: "human-founder@kernel",
-      decision: "Choose A",
+      decision: "选择 A",
       notify: false,
     });
 
@@ -246,11 +246,11 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     ] satisfies QueueItem[]);
   });
 
-  it("writes a same-row receipt for root and threaded posts; ALERT interrupts while NOTICE stays quiet", async () => {
+  it("为 root 与 threaded post 写入同行 receipt；ALERT 会中断，NOTICE 保持安静", async () => {
     const row = await repo.create({
       sourceSession: "dev-qa@v-openrig-build",
       destinationSession: "orch-lead@v-openrig-build",
-      body: "await decision",
+      body: "等待决策",
       nudge: false,
     });
     repo.update({
@@ -258,9 +258,9 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
       actorSession: "orch-lead@v-openrig-build",
       state: "blocked",
       blockedOn: "human-founder@kernel",
-      summary: "Choose A or B",
+      summary: "选择 A 或 B",
       evidenceRef: "/proof/decision.md",
-      transitionNote: "parked",
+      transitionNote: "已 park",
     });
     const ports = makeQueuePorts(repo, { loadHumanRegistry: () => registry } as never);
     const [alert] = await ports.listHumanAlerts({ minimumLevel: "NOTICE" });
@@ -300,7 +300,7 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
         verb: "resolve",
         qitemId: row.qitemId,
         actorSession: "human-founder@kernel",
-        decision: "Choose A",
+        decision: "选择 A",
         notify: false,
       });
       const [notice] = await ports.listHumanAlerts({ minimumLevel: "NOTICE" });
@@ -321,11 +321,11 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     }
   });
 
-  it("retains and replays an ok response without a message timestamp before writing the row receipt", async () => {
+  it("在写入行 receipt 前保留并重放缺少消息时间戳的 ok 响应", async () => {
     const row = await repo.create({
       sourceSession: "dev-qa@v-openrig-build",
       destinationSession: "orch-lead@v-openrig-build",
-      body: "await decision",
+      body: "等待决策",
       nudge: false,
     });
     repo.update({
@@ -333,9 +333,9 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
       actorSession: "orch-lead@v-openrig-build",
       state: "blocked",
       blockedOn: "human-founder@kernel",
-      summary: "Choose A or B",
+      summary: "选择 A 或 B",
       evidenceRef: "/proof/decision.md",
-      transitionNote: "parked",
+      transitionNote: "已 park",
     });
     const ports = makeQueuePorts(repo, { loadHumanRegistry: () => registry } as never);
     const [alert] = await ports.listHumanAlerts({ minimumLevel: "NOTICE" });
@@ -398,11 +398,11 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     }
   });
 
-  it("reconciles an already-landed root with its real Slack timestamp before routing the reply", async () => {
+  it("路由回复前，使用真实 Slack 时间戳校准已送达的 root", async () => {
     const row = await repo.create({
       sourceSession: "dev-qa@v-openrig-build",
       destinationSession: "orch-lead@v-openrig-build",
-      body: "await decision",
+      body: "等待决策",
       nudge: false,
     });
     repo.update({
@@ -410,9 +410,9 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
       actorSession: "orch-lead@v-openrig-build",
       state: "blocked",
       blockedOn: "human-founder@kernel",
-      summary: "Choose A or B",
+      summary: "选择 A 或 B",
       evidenceRef: "/proof/decision.md",
-      transitionNote: "parked",
+      transitionNote: "已 park",
     });
     const ports = makeQueuePorts(repo, { loadHumanRegistry: () => registry } as never);
     const [alert] = await ports.listHumanAlerts({ minimumLevel: "NOTICE" });
@@ -484,7 +484,7 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
       const reply: SlackEvent = {
         type: "message",
         user: "UFOUNDER",
-        text: "Choose A",
+        text: "选择 A",
         ts: "1724.9101",
         thread_ts: "1724.9100",
         channel: "C-OWNER",
@@ -528,7 +528,7 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     }
   });
 
-  it("resolves a direct human-owned request and wakes its originating seat exactly once", async () => {
+  it("解决直接由人类持有的请求，并恰好唤醒一次来源席位", async () => {
     let nudges = 0;
     const directRepo = new QueueRepository(db, bus, {
       validateRig: () => true,
@@ -543,8 +543,8 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     const direct = await directRepo.create({
       sourceSession: "driver@rig",
       destinationSession: "human-founder@external",
-      body: "Choose the release option.",
-      summary: "Release choice",
+      body: "请选择发布方案。",
+      summary: "发布方案选择",
       evidenceRef: "proof/release-choice.md",
       tier: "human-gate",
       nudge: false,
@@ -575,7 +575,7 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     const reply: SlackEvent = {
       type: "message",
       user: "UFOUNDER",
-      text: "Use option A.",
+      text: "采用方案 A。",
       ts: "200.2",
       thread_ts: "T-DIRECT",
       channel: "C-OWNER",
@@ -610,21 +610,21 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     const ordinary = await directRepo.create({
       sourceSession: "requester@rig",
       destinationSession: "driver@rig",
-      body: "ordinary",
+      body: "普通请求",
       nudge: false,
     });
     expect(await resolver({
       qitemId: ordinary.qitemId,
       actorSession: "human-founder@external",
-      decision: "not this row",
+      decision: "不是这一行",
     })).toBe("not-applicable");
     expect(directRepo.getById(ordinary.qitemId)?.state).toBe("pending");
 
     const mismatched = await directRepo.create({
       sourceSession: "driver@rig",
       destinationSession: "human-founder@external",
-      body: "another choice",
-      summary: "Another choice",
+      body: "另一项选择",
+      summary: "另一项选择",
       evidenceRef: "proof/another-choice.md",
       tier: "human-gate",
       nudge: false,
@@ -632,7 +632,7 @@ describe("S14 owner notifications — system notices, not remembered tags", () =
     expect(await resolver({
       qitemId: mismatched.qitemId,
       actorSession: "human-other@external",
-      decision: "not this human",
+      decision: "不是此人",
     })).toBe("not-applicable");
     expect(directRepo.getById(mismatched.qitemId)?.state).toBe("pending");
   });

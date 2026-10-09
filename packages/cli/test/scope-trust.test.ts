@@ -1,6 +1,6 @@
-// OPR.0.4.1.6 — read-time-trust derivation for rig scope (FR-5).
-// Mirrors the scope-and-versioning §2 keystone: trust is DERIVED at read time
-// from (stage x verified), never stored. 90-day freshness window mirrors
+// OPR.0.4.1.6——rig scope 的读时信任推导（FR-5）。
+// 镜像 scope-and-versioning §2 拱心石：信任在读时
+// 由（stage x verified）推导，绝不存储。90 天新鲜窗口镜像
 // packages/daemon/src/domain/skill-audit.ts:34.
 
 import { describe, expect, it } from "vitest";

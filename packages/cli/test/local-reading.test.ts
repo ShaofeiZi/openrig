@@ -21,7 +21,7 @@ it("reads configured local sources with the HTTP reader's containment, binary an
   vi.stubEnv("OPENRIG_WORKSPACE_ROOT", workspace);
   vi.stubEnv("OPENRIG_FILES_ALLOWLIST", `workspace:${workspace}`);
   const roots = localRead({ op: "roots" }) as any;
-  expect(roots.entries.map((e: any) => e.label)).toEqual(["Project intent", "Specs", "Projects", "Missions and slices"]);
+  expect(roots.entries.map((e: any) => e.label)).toEqual(["项目意图", "规格", "项目", "任务目标与切片"]);
   expect(roots.entries[3]).toMatchObject({ root: "workspace", path: "missions" });
   const read = (name: string) => localRead({ op: "read", root: "workspace", path: name }) as any;
   expect(read("alias.md")).toMatchObject({ resolvedPath: "SPEC.md", binary: false, truncated: false });
@@ -30,5 +30,5 @@ it("reads configured local sources with the HTTP reader's containment, binary an
   for (const name of ["escape.md", "../outside.md", "absent.md"]) expect(() => read(name)).toThrow();
   expect(() => localRead({ op: "list", root: "workspace", path: "../" })).toThrow();
   vi.stubEnv("OPENRIG_FILES_ALLOWLIST", `other:${path.join(home, "elsewhere")}`);
-  expect((localRead({ op: "roots" }) as any).entries[0].error).toContain("outside files.allowlist");
+  expect((localRead({ op: "roots" }) as any).entries[0].error).toContain("不允许本地读取");
 });

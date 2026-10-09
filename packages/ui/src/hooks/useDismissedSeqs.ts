@@ -1,10 +1,8 @@
-// Slice 18 — For You per-card dismiss state, soft-keyed by event seq.
+// Slice 18——“为你推荐”的逐卡片忽略状态，以事件 seq 作为软键。
 //
-// Dismissed seqs persist in localStorage so the same operator session
-// stays clean across reloads. Entries auto-prune as soon as their seq
-// falls below the minimum seq currently in the activity buffer — at
-// that point the source event has aged out and the dismissed entry
-// can never re-surface, so storing it would only grow the set forever.
+// 被忽略的 seq 持久化到 localStorage，使同一操作员会话在重新加载后仍保持整洁。
+// 一旦某条目的 seq 小于当前活动缓冲区中的最小 seq，就会自动清理；此时来源事件已过期，
+// 被忽略条目不会再次出现，继续保存只会让集合无限增长。
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -27,7 +25,7 @@ function writeDismissedToStorage(seqs: Set<number>): void {
   try {
     localStorage.setItem(DISMISSED_SEQS_STORAGE_KEY, JSON.stringify(Array.from(seqs)));
   } catch {
-    // localStorage may be unavailable (private mode, quota, etc.) — swallow.
+    // localStorage 可能因隐私模式、配额等原因不可用；忽略异常。
   }
 }
 

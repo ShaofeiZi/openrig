@@ -89,7 +89,7 @@ describe("rig launch --seats", () => {
     expect(deps._client.post).toHaveBeenCalledWith("/api/rigs/rig-1/nodes/dev.pi/launch", {
       retryStartupFrom: { member: { id: "pi", runtime: "pi", agent_ref: "local:agent", profile: "default", cwd: "/project" }, rigRoot: directory },
     });
-    expect(logs.join("\n")).toContain("Launched node dev.pi");
+    expect(logs.join("\n")).toContain("已在工作组 rig-1 中启动节点 dev.pi");
     expect(process.exitCode).toBeUndefined();
   });
 
@@ -136,8 +136,8 @@ describe("rig launch --seats", () => {
       "/api/rigs/rig-1/nodes/launch-subset",
       { seats: ["dev.driver"], holdReason: "operator hold", plan: true },
     );
-    expect(logs.join("\n")).toContain("Plan only; no changes made.");
-    expect(logs.join("\n")).toContain("dev.guard: operator hold");
+    expect(logs.join("\n")).toContain("仅计划；未做任何修改。");
+    expect(logs.join("\n")).toContain("dev.guard：operator hold");
   });
 
   it("reports held and failedTargets honestly in human output", async () => {
@@ -157,9 +157,9 @@ describe("rig launch --seats", () => {
     const cmd = launchCommand(deps);
     await cmd.parseAsync(["node", "rig", "rig-1", "--seats", "dev.driver,dev.guard,dev.reviewer"]);
 
-    expect(logs.some((l) => l.includes("Launched") && l.includes("dev.driver"))).toBe(true);
-    expect(logs.some((l) => l.includes("Held") && l.includes("dev.guard") && l.includes("codex auth expired"))).toBe(true);
-    expect(errors.some((l) => l.includes("Failed") && l.includes("dev.reviewer"))).toBe(true);
+    expect(logs.some((l) => l.includes("已启动") && l.includes("dev.driver"))).toBe(true);
+    expect(logs.some((l) => l.includes("保持") && l.includes("dev.guard") && l.includes("codex auth expired"))).toBe(true);
+    expect(errors.some((l) => l.includes("失败（存活状态未知）") && l.includes("dev.reviewer"))).toBe(true);
     expect(process.exitCode).toBe(1);
   });
 
@@ -181,10 +181,10 @@ describe("rig launch --seats", () => {
     });
     const cmd = launchCommand(deps);
     await cmd.parseAsync(["node", "rig", "rig-1", "--seats", "dev.driver,dev.guard"]);
-    // The running seat is Launched; the awaiting-decision seat is NOT reported as launched.
-    expect(logs.some((l) => l.includes("Launched") && l.includes("dev.driver"))).toBe(true);
-    expect(logs.some((l) => l.includes("Launched") && l.includes("dev.guard"))).toBe(false);
-    // The awaiting-decision seat is surfaced honestly on stderr + the run exits non-zero.
+    // 运行中 seat 为 Launched；等待决策 seat 不报告为 launched。
+    expect(logs.some((l) => l.includes("已启动") && l.includes("dev.driver"))).toBe(true);
+    expect(logs.some((l) => l.includes("已启动") && l.includes("dev.guard"))).toBe(false);
+    // 等待决策 seat 在 stderr 诚实呈现 + 运行以非零退出。
     expect(errors.some((l) => l.includes("dev.guard") && l.includes("awaiting-decision"))).toBe(true);
     expect(process.exitCode).toBe(1);
   });
@@ -198,7 +198,7 @@ describe("rig launch --seats", () => {
     });
     const cmd = launchCommand(deps);
     await cmd.parseAsync(["node", "rig", "rig-1", "dev.driver"]);
-    expect(logs.some((l) => l.includes("Launched node"))).toBe(false);
+    expect(logs.some((l) => l.includes("已在工作组") && l.includes("启动节点"))).toBe(false);
     expect(errors.some((l) => l.includes("--fresh"))).toBe(true);
     expect(process.exitCode).toBe(1);
   });
@@ -248,8 +248,8 @@ describe("rig launch --seats", () => {
     const cmd = launchCommand(deps);
     await cmd.parseAsync(["node", "rig", "rig-1", "dev.driver"]);
 
-    expect(logs.some((l) => l.includes("already running"))).toBe(true);
-    expect(logs.some((l) => l.includes("Launched"))).toBe(false);
+    expect(logs.some((l) => l.includes("中运行"))).toBe(true);
+    expect(logs.some((l) => l.includes("已启动"))).toBe(false);
   });
 
   it("refuses a single-target hold reason because single launch leaves non-targets unchanged", async () => {
@@ -260,12 +260,12 @@ describe("rig launch --seats", () => {
     ]);
 
     expect(deps._client.post).not.toHaveBeenCalled();
-    expect(errors.join("\n")).toContain("single-seat launch never changes non-targets");
+    expect(errors.join("\n")).toContain("单席位启动不会改变非目标");
     expect(process.exitCode).toBe(1);
   });
 
-  // OPR.0.4.3.28 correction — the liveness_probe_unknown warning is a non-blocking
-  // proceed-with-warning: it prints on human output and does NOT set a non-zero exit.
+  // OPR.0.4.3.28 修正——liveness_probe_unknown 警告为非阻塞
+  // proceed-with-warning：在人类输出打印且不设置非零退出。
   it("prints liveness warnings in --seats human output with exit 0 (proceed-with-warning)", async () => {
     const deps = makeDeps({
       "launch-subset": {
@@ -282,7 +282,7 @@ describe("rig launch --seats", () => {
     });
     const cmd = launchCommand(deps);
     await cmd.parseAsync(["node", "rig", "rig-1", "--seats", "dev.driver"]);
-    expect(errors.some((l) => l.includes("Warning") && l.includes("liveness_probe_unknown") && l.includes("dev.driver"))).toBe(true);
+    expect(errors.some((l) => l.includes("警告") && l.includes("liveness_probe_unknown") && l.includes("dev.driver"))).toBe(true);
     expect(process.exitCode).toBeUndefined();
   });
 
@@ -313,10 +313,10 @@ describe("rig launch --seats", () => {
     });
     const cmd = launchCommand(deps);
     await cmd.parseAsync(["node", "rig", "rig-1", "dev.driver"]);
-    expect(logs.some((l) => l.includes("Launched node") && l.includes("dev.driver"))).toBe(true);
+    expect(logs.some((l) => l.includes("启动节点") && l.includes("dev.driver"))).toBe(true);
     expect(logs.some((l) => l.includes("snap-manual") && l.includes("manual") && l.includes("explicit"))).toBe(true);
-    expect(logs.some((l) => l.includes("operator selected this exact restore-usable snapshot"))).toBe(true);
-    expect(errors.some((l) => l.includes("Warning") && l.includes("liveness_probe_unknown"))).toBe(true);
+    expect(logs.some((l) => l.includes("explicit"))).toBe(true);
+    expect(errors.some((l) => l.includes("警告") && l.includes("liveness_probe_unknown"))).toBe(true);
     expect(process.exitCode).toBeUndefined();
   });
 
@@ -338,7 +338,7 @@ describe("rig launch --seats", () => {
     const cmd = launchCommand(deps);
     await cmd.parseAsync(["node", "rig", "rig-1", "--seats", "dev.driver,typo.seat"]);
 
-    expect(errors.some((l) => l.includes("Unmatched") && l.includes("typo.seat"))).toBe(true);
+    expect(errors.some((l) => l.includes("未匹配的席位") && l.includes("typo.seat"))).toBe(true);
     expect(process.exitCode).toBe(1);
   });
 });

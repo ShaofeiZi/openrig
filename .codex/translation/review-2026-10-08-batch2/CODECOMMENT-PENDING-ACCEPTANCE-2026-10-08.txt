@@ -1,0 +1,27 @@
+code-comment pending-acceptance candidate list (read-only; NOT terminal; verifier cumulative still changing)
+source: _records.json rebuild; scope=done code-comment with validation_state != passed. No code modified.
+
+by partition x validation:
+  cli       needs_review   3
+  cli       self_reported  347
+  cli       validated      3
+  daemon    needs_review   1
+  daemon    self_reported  1123
+  daemon    validated      252
+  other     self_reported  22
+  other     validated      4
+  scripts   self_reported  45
+  scripts   validated      1
+  tui       needs_review   2
+  tui       self_reported  55
+  tui       validated      1
+  ui        validated      519
+total: 2378
+
+needs_review (author pending re-verification):
+  packages/cli/test/daemon-lifecycle.test.ts
+  packages/cli/test/queue.test.ts
+  packages/cli/test/restore-packet.test.ts
+  packages/daemon/test/bundle-routes.test.ts
+  packages/tui/src/hydrate.ts
+  packages/tui/src/text-width.ts

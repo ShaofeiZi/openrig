@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { join } from "node:path";
 
-/** Native logs identify processes; retained CLI rows identify resumable conversations. */
+/** 原生日志标识进程；保留的 CLI 记录标识可恢复的对话。 */
 export function seedCodexThreads(home: string, ids: string[]): void {
   const db = new Database(join(home, ".codex", "state_5.sqlite"));
   try {

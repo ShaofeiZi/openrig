@@ -30,8 +30,8 @@ function fixture() {
 }
 async function chooseOperator(f: ReturnType<typeof fixture>) { await f.controller.refresh(); await f.controller.key("enter"); }
 
-describe("TUI startup choices", () => {
-  it("opens the existing native terminal and refreshes without a launch, then explicitly continues context", async () => {
+describe("TUI 启动选择", () => {
+  it("打开已有原生终端并刷新不启动，随后显式继续上下文", async () => {
     const f = fixture(); f.seat.observed.state = "attention_required"; f.seat.contextPending = true;
     await chooseOperator(f); await f.controller.key("o");
     expect(f.onNative).toHaveBeenCalledWith(expect.objectContaining({ nodeId: "n1" }));
@@ -40,13 +40,13 @@ describe("TUI startup choices", () => {
     await f.controller.key("c");
     expect(f.posts).toEqual([{ route: "/api/startup/r1/operator.agent", body: { action: "continue", revision: "rev1" } }]);
   });
-  it("offers an explicit fresh choice for ambiguous history after positive absence", async () => {
+  it("正向缺席后对歧义历史给出显式 fresh 选择", async () => {
     const f = fixture(); f.seat.intendedAction = "blocked"; f.seat.freshRequired = false; f.seat.freshAllowed = true;
     await chooseOperator(f); await f.controller.key("f");
     expect(f.controller.state.page).toBe("confirm");
     await f.controller.key("escape"); expect(f.posts).toEqual([]);
   });
-  it("shows the current native gate and opens that existing seat without another launch", async () => {
+  it("显示当前原生 gate 并打开已有席，不再启动", async () => {
     const f = fixture();
     f.seat.observed.state = "attention_required";
     f.seat.observed.detail = "Codex is waiting for hook trust approval";
@@ -60,7 +60,7 @@ describe("TUI startup choices", () => {
     expect(f.posts).toEqual([]);
     expect(f.onWork).toHaveBeenCalledWith(expect.objectContaining({ rigId: "r1" }), expect.objectContaining({ nodeId: "n1" }));
   });
-  it("makes terminal transport repair a separate action with no seat launch", async () => {
+  it("把终端传输修复做成单独动作，不启动席", async () => {
     const f = fixture();
     f.seat.observed.state = "transport_unavailable"; f.seat.freshAllowed = false;
     f.response(async () => {
@@ -74,7 +74,7 @@ describe("TUI startup choices", () => {
     await f.controller.key("f"); expect(f.controller.state.page).toBe("confirm");
     await f.controller.key("escape"); expect(f.posts).toHaveLength(1);
   });
-  it("first setup starts only the daemon, then presents deliberate rig choices", async () => {
+  it("首次设置仅启动 daemon，随后给出审慎 rig 选择", async () => {
     const f = fixture(); f.down(); await f.controller.refresh();
     expect(f.controller.state.page).toBe("down");
     await f.controller.key("enter");
@@ -82,7 +82,7 @@ describe("TUI startup choices", () => {
     expect(f.posts).toEqual([]);
     expect(f.controller.state.page).toBe("rigs");
   });
-  it("decline and refresh invalidate fresh consent with no launch effect", async () => {
+  it("拒绝与刷新使 fresh 同意失效，无启动效果", async () => {
     const f = fixture(); await chooseOperator(f);
     await f.controller.key("f"); expect(f.controller.state.page).toBe("confirm");
     await f.controller.key("escape"); await f.controller.key("y");
@@ -90,14 +90,14 @@ describe("TUI startup choices", () => {
     await f.controller.key("f"); await f.controller.key("r"); await f.controller.key("y");
     expect(f.posts).toEqual([]);
   });
-  it("shows fresh confirmation and decline on an 80x24 screen even with a long instance path", async () => {
+  it("即使实例路径很长，80x24 屏幕也显示 fresh 确认与拒绝", async () => {
     const f = fixture(); await chooseOperator(f); await f.controller.key("f");
     f.controller.state.home = "/long-instance".repeat(20);
     const screen = renderScreen(createViewState({ instanceId: "test" }).get(), emptySnapshot(), { cols: 80, rows: 24, startup: f.controller.state });
-    expect(screen.lines.join("\n")).toContain("Confirm this fresh start");
-    expect(screen.lines.join("\n")).toContain("Decline; leave stopped");
+    expect(screen.lines.join("\n")).toContain("确认此全新启动");
+    expect(screen.lines.join("\n")).toContain("拒绝；保持停止");
   });
-  it("one confirmation sends the exact seat/revision once despite repeated input", async () => {
+  it("一次确认恰好发送该 seat/revision 一次，尽管重复输入", async () => {
     const f = fixture(); await chooseOperator(f);
     let finish!: (value: Response) => void;
     f.response(() => new Promise((resolve) => { finish = resolve; }));
@@ -109,9 +109,9 @@ describe("TUI startup choices", () => {
     finish(new Response(JSON.stringify({ ok: true })));
     await first;
     expect(f.controller.state.consent).toBeUndefined();
-    expect(f.controller.state.notice).toContain("new conversation");
+    expect(f.controller.state.notice).toContain("新会话");
   });
-  it("reports a gate observed after a successful producer return instead of repeating its success claim", async () => {
+  it("报告 producer 成功返回后观察到的 gate，而非重复其成功声明", async () => {
     const f = fixture();
     f.response(async () => {
       f.seat.observed = { ...f.seat.observed, state: "attention_required", detail: "Hook review needs a decision" };
@@ -122,7 +122,7 @@ describe("TUI startup choices", () => {
     expect(f.controller.state.notice).toBe("Hook review needs a decision");
     expect(f.posts).toHaveLength(1);
   });
-  it("a lost launch response reads the actual effect and never repeats the POST", async () => {
+  it("丢失启动响应时读实际效果，绝不重复 POST", async () => {
     const f = fixture(); f.seat.intendedAction = "resume-original";
     f.response(async () => { f.seat.observed.state = "running"; f.seat.revision = "rev2"; throw new Error("response lost"); });
     await chooseOperator(f); await f.controller.key("enter");
@@ -131,7 +131,7 @@ describe("TUI startup choices", () => {
     expect(f.posts).toHaveLength(1);
     expect(f.onWork).toHaveBeenCalledTimes(1);
   });
-  it("provider failure is visible and does not offer fresh as its cure", async () => {
+  it("provider 失败可见，且不以 fresh 作其解药", async () => {
     const f = fixture();
     f.response(async () => {
       f.seat.freshAllowed = false;
@@ -148,7 +148,7 @@ describe("TUI startup choices", () => {
     await f.controller.key("r"); await f.controller.key("f");
     expect(f.controller.state.page).toBe("confirm");
   });
-  it("renders the actual selected seat and a mouse action in the ordinary shell", async () => {
+  it("在常规 shell 中渲染实际选中的席与鼠标动作", async () => {
     const f = fixture(); await chooseOperator(f);
     const snap = emptySnapshot(); const view = createViewState({ instanceId: "test", getSnapshot: () => snap });
     const screen = renderScreen(view.get(), snap, { cols: 100, rows: 32, startup: f.controller.state });

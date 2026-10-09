@@ -1,7 +1,7 @@
-// S10 CUTOVER, CLI side — the relay runners are RETIRED and must refuse with teaching (never
-// silently no-op, never run a second delivery path): successor replaces predecessor. The admin
-// verbs (enable/disable) route to the daemon, where the seeding rule executes before the wire
-// goes live. setup/status ride the daemon-homed config surface unchanged.
+// S10 CUTOVER，CLI 侧——relay runner 已退役，必须以教学拒绝（绝
+// 静默 no-op，绝不起第二条投递路径）：successor 取代 predecessor。admin
+// 动词（enable/disable）路由至 daemon，seeding 规则在 wire
+// 上线前执行。setup/status 经 daemon-home config 表面不变。
 import { afterEach, describe, it, expect } from "vitest";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -54,8 +54,8 @@ describe("S10 CLI cutover — retired relay runners refuse with teaching", () =>
     await run(slackCommand(deps), ["outbound"]);
     expect(process.exitCode).toBe(1);
     const out = logs.join("\n");
-    expect(out).toContain("retired");
-    expect(out).toContain("IN-DAEMON");
+    expect(out).toContain("已退役");
+    expect(out).toContain("后台服务内");
     expect(out).toContain("rig slack status");
     process.exitCode = 0;
   });
@@ -65,7 +65,7 @@ describe("S10 CLI cutover — retired relay runners refuse with teaching", () =>
     process.exitCode = 0;
     await run(slackCommand(deps), ["inbound"]);
     expect(process.exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("retired");
+    expect(logs.join("\n")).toContain("已退役");
     process.exitCode = 0;
   });
 });
@@ -114,7 +114,7 @@ describe("S10 CLI cutover — admin verbs route to the daemon", () => {
     process.exitCode = 0;
     await run(slackCommand(deps), ["enable"]);
     expect(process.exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("enable failed");
+    expect(logs.join("\n")).toContain("enable 失败");
     process.exitCode = 0;
   });
 });
@@ -129,6 +129,6 @@ describe("S10 CLI cutover — config surfaces survive on the daemon-homed module
   it("`rig slack status` renders readiness from the surface (and names the in-daemon path)", async () => {
     const { deps, logs } = makeDeps();
     await run(slackCommand(deps), ["status"]);
-    expect(logs.join("\n")).toContain("IN-DAEMON");
+    expect(logs.join("\n")).toContain("后台服务内运行");
   });
 });

@@ -1,0 +1,332 @@
+{
+  "batch": "daemon-helpers-comment-review-batch45",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "scope": "daemon test/helpers (33) + fixtures (3) = 36 files",
+  "files": [
+    {
+      "path": "packages/daemon/test/helpers/hermetic-env.ts",
+      "before_sha256_16": "5ec37afd2fb89afa",
+      "after_sha256_16": "60bd6e910d9ad379",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-daemon.ts",
+      "before_sha256_16": "10f1a5756bae1185",
+      "after_sha256_16": "96d748cc9458683d",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-runner.ts",
+      "before_sha256_16": "af38ec0aaf5c7073",
+      "after_sha256_16": "3a8600e68a1e9017",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-real-deps.ts",
+      "before_sha256_16": "7515867b84255a47",
+      "after_sha256_16": "7515867b84255a47",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/codex-state.ts",
+      "before_sha256_16": "0e940f1df798df80",
+      "after_sha256_16": "0e940f1df798df80",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/delegated-posture.ts",
+      "before_sha256_16": "936de3784a95eab6",
+      "after_sha256_16": "936de3784a95eab6",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/eval-cases.ts",
+      "before_sha256_16": "5aa4d8ee7b3701b5",
+      "after_sha256_16": "5aa4d8ee7b3701b5",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/eval-grader.ts",
+      "before_sha256_16": "cf48d5c87078758a",
+      "after_sha256_16": "cf48d5c87078758a",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/eval-provider.ts",
+      "before_sha256_16": "ec50de511136f955",
+      "after_sha256_16": "ec50de511136f955",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/eval-ref-resolution.ts",
+      "before_sha256_16": "4c9b9f67e9144a58",
+      "after_sha256_16": "4c9b9f67e9144a58",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/eval-report.ts",
+      "before_sha256_16": "505b8b229b5e6560",
+      "after_sha256_16": "505b8b229b5e6560",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/eval-rig-provider.ts",
+      "before_sha256_16": "a4c86e1490805d90",
+      "after_sha256_16": "a4c86e1490805d90",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/eval-rig-runner.ts",
+      "before_sha256_16": "95e14a91900c2025",
+      "after_sha256_16": "95e14a91900c2025",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/eval-rig-session.ts",
+      "before_sha256_16": "bea03656b63df4c1",
+      "after_sha256_16": "bea03656b63df4c1",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/eval-runner.ts",
+      "before_sha256_16": "4e5e73f1b5ee2361",
+      "after_sha256_16": "4e5e73f1b5ee2361",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/eval-schema.ts",
+      "before_sha256_16": "fe87ea07598cf17b",
+      "after_sha256_16": "fe87ea07598cf17b",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/migration-subset-guard.ts",
+      "before_sha256_16": "32b1dea3f8160364",
+      "after_sha256_16": "32b1dea3f8160364",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/s02-worker-world.ts",
+      "before_sha256_16": "54d43489fde10730",
+      "after_sha256_16": "54d43489fde10730",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-container-stage.ts",
+      "before_sha256_16": "760ae4734e27fd51",
+      "after_sha256_16": "760ae4734e27fd51",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-container.ts",
+      "before_sha256_16": "3596526b623f8c3c",
+      "after_sha256_16": "3596526b623f8c3c",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-expect.ts",
+      "before_sha256_16": "a4bb3e4a5adcc040",
+      "after_sha256_16": "a4bb3e4a5adcc040",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-normalizer.ts",
+      "before_sha256_16": "b18c41aa8208dfab",
+      "after_sha256_16": "b18c41aa8208dfab",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-pipeline.ts",
+      "before_sha256_16": "66d2252ad0d7df33",
+      "after_sha256_16": "66d2252ad0d7df33",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-run-record.ts",
+      "before_sha256_16": "6b09293649d5d000",
+      "after_sha256_16": "6b09293649d5d000",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-schema.ts",
+      "before_sha256_16": "8ef6201a26f82c50",
+      "after_sha256_16": "8ef6201a26f82c50",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-stage.ts",
+      "before_sha256_16": "6b399a3fda4f4f4a",
+      "after_sha256_16": "6b399a3fda4f4f4a",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-surfaces.ts",
+      "before_sha256_16": "279cd9ce579272da",
+      "after_sha256_16": "279cd9ce579272da",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/scenario-tui.ts",
+      "before_sha256_16": "40d60fa3875ca891",
+      "after_sha256_16": "40d60fa3875ca891",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/seed-host-shaped.ts",
+      "before_sha256_16": "09da5ce79c1575b6",
+      "after_sha256_16": "09da5ce79c1575b6",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/shell-command-mock.ts",
+      "before_sha256_16": "b1e117b3be7dfe41",
+      "after_sha256_16": "b1e117b3be7dfe41",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/staging-docker-invoker.ts",
+      "before_sha256_16": "5849fbaa656a6dd5",
+      "after_sha256_16": "5849fbaa656a6dd5",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/test-app.ts",
+      "before_sha256_16": "2e64967d6f145506",
+      "after_sha256_16": "2e64967d6f145506",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/helpers/testbed-published-daemon.ts",
+      "before_sha256_16": "7d812d82ae989a68",
+      "after_sha256_16": "7d812d82ae989a68",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/fixtures/shutdown-child.mjs",
+      "before_sha256_16": "56872505d4994a8b",
+      "after_sha256_16": "56872505d4994a8b",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/fixtures/shutdown-loader.mjs",
+      "before_sha256_16": "492af16fa6fa3354",
+      "after_sha256_16": "492af16fa6fa3354",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/fixtures/shutdown-startup.mjs",
+      "before_sha256_16": "133d873e0bd8f3b7",
+      "after_sha256_16": "133d873e0bd8f3b7",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

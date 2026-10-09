@@ -1,46 +1,45 @@
-// OPR.0.4.1.27 — Option-B level control.
+// OPR.0.4.1.27 —— 选项 B 的层级控制。
 //
-// The founder-approved control reframes the 5 feed.subscriptions toggles as ONE
-// plain-language level (segmented: "All activity / Highlights / Needs you").
-// It is a CONTROL-PRESENTATION over the existing toggle model — NO model change.
+// 经创始人批准的控制方案把 feed.subscriptions 的 5 个开关重组为一个
+// 自然语言层级（分段控件：「全部活动 / 重点 / 需要你处理」）。
+// 它是在既有开关模型之上的展示层——不改变模型。
 //
-// action_required is FORCED ON (the floor; see useFeedSubscriptions) and is NOT
-// part of any level preset. A level reframes only the 4 toggleable kinds. The
-// underlying 5 independent toggles are preserved (advanced view); a toggle combo
-// that matches no preset derives "custom".
+// action_required 被强制开启（下限；见 useFeedSubscriptions），不属于任何层级预设。
+// 一个层级只重组 4 个可开关种类。底层 5 个独立开关保留（高级视图）；
+// 不匹配任何预设的开关组合派生为「自定义」。
 import type { FeedSubscriptionState } from "../hooks/useFeedSubscriptions.js";
 
 export type FeedLevel = "needs-you" | "highlights" | "all-activity";
 export type DerivedLevel = FeedLevel | "custom";
 
-// Ordered from the tightest (action items only) to the broadest (everything).
+// 从最窄（仅行动项）到最宽（全部）排序。
 export const FEED_LEVELS: readonly FeedLevel[] = [
   "needs-you",
   "highlights",
   "all-activity",
 ] as const;
 
-// The 4 toggleable kinds (action_required is floored ON, never here).
+// 4 个可开关种类（action_required 被下限开启，永不出现在此）。
 export type LevelToggles = Pick<
   FeedSubscriptionState,
   "approvals" | "shipped" | "progress" | "auditLog"
 >;
 
 const PRESETS: Record<FeedLevel, LevelToggles> = {
-  // Just what needs you — action items only.
+  // 只保留需要你处理的内容——仅行动项。
   "needs-you": { approvals: false, shipped: false, progress: false, auditLog: false },
-  // Highlights (default) — + approvals + shipped + progress; audit noise hidden.
+  // 重点（默认）——加上 批准/已交付/进展；隐藏审计日志噪声。
   "highlights": { approvals: true, shipped: true, progress: true, auditLog: false },
-  // All activity — everything, incl. audit-log (observation).
+  // 全部活动——一切，含审计日志（观察）。
   "all-activity": { approvals: true, shipped: true, progress: true, auditLog: true },
 };
 
-/** The toggle-state-set for a named level (action_required excluded — it is floored on). */
+/** 指定层级对应的开关集合（排除 action_required——它被下限开启）。 */
 export function levelToToggles(level: FeedLevel): LevelToggles {
   return { ...PRESETS[level] };
 }
 
-/** Inverse: which named level (if any) the current toggle state matches; else "custom". */
+/** 反向：当前开关状态匹配哪个命名层级（若有）；否则为 "custom"。 */
 export function deriveLevel(state: FeedSubscriptionState): DerivedLevel {
   for (const level of FEED_LEVELS) {
     const p = PRESETS[level];
@@ -56,9 +55,9 @@ export function deriveLevel(state: FeedSubscriptionState): DerivedLevel {
   return "custom";
 }
 
-/** Human-readable level labels for the Option-B segmented control. */
+/** 选项 B 分段控件的人类可读层级标签。 */
 export const FEED_LEVEL_LABELS: Record<FeedLevel, string> = {
-  "all-activity": "All activity",
-  "highlights": "Highlights",
-  "needs-you": "Needs you",
+  "all-activity": "全部活动",
+  "highlights": "重点",
+  "needs-you": "需要你处理",
 };

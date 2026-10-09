@@ -1,18 +1,16 @@
-// S10 — the OUTBOUND driver: the gateway subsystem owns the outbound decision (the shape the
-// M1 reconciliation named — queue poll + admission — now in-process). Each sweep selects the
-// FRESH human alerts (slice-11 semantics preserved verbatim: qitemId-keyed durable seen-state,
-// marked ONLY after delivered) and dispatches each through the subsystem wire, which persists
-// the decision durably BEFORE delivery and retains it on failure (replay owns the retry).
+// S10——OUTBOUND driver：gateway 子系统负责 outbound decision（M1 reconciliation 命名的
+// queue poll + admission 形态，现在位于进程内）。每轮 sweep 选择新的人类 alert；逐字保留
+// slice-11 语义：以 qitemId 为 key 的持久 seen-state 只在 delivered 后标记。每条 alert 经
+// 子系统 wire 派发；wire 在 delivery 前持久化 decision，失败时保留，由 replay 负责重试。
 //
-// Duplicate-absence design (proof item: durability through failure):
-//   - seen(qitemId): marked only after delivered-ok — the slice-11 at-least-once contract.
-//   - inflight(qitemId), in-memory: a dispatched-but-unresolved qitem is not re-dispatched by
-//     a later sweep — the durable buffer owns its retry (replay), never a second decision.
-//   - at start(), inflight SEEDS from the durable buffer's pending decisions (payload carries
-//     qitemId): after a daemon restart the replay path owns those qitems, so a sweep cannot
-//     mint a second decisionId for the same alert — the restart double-dispatch window is
-//     closed by construction. The only remaining duplicate is the locked contract's accepted
-//     rare crash window (delivered but crashed before seen-mark/ack): byte-identical, never a drop.
+// 消除重复的设计（证明项：失败期间仍持久）：
+//   - seen(qitemId)：只在 delivered-ok 后标记，满足 slice-11 的 at-least-once 契约。
+//   - 内存 inflight(qitemId)：已派发但未解决的 qitem 不会被后续 sweep 再次派发；重试由持久
+//     buffer 的 replay 负责，绝不会创建第二个 decision。
+//   - start() 时从持久 buffer 的 pending decision 为 inflight 填种（payload 携带 qitemId）。
+//     后台服务重启后，这些 qitem 归 replay 路径负责，因此 sweep 无法为同一 alert 再生成一个
+//     decisionId，从构造上关闭重启双重派发窗口。唯一剩余重复是锁定契约接受的罕见崩溃窗口：
+//     delivery 已完成，但在 seen-mark/ack 前崩溃；重放逐字节相同，绝不丢失。
 
 import type { SeenStore } from "./state-store.js";
 import type { AlertFilterOpts, OutboundQueuePort, QueueItem } from "./queue-access.js";
@@ -21,8 +19,8 @@ import { DispatchBuffer } from "../dispatch-buffer.js";
 
 export const OUTBOUND_OP = "post_message";
 
-/** The decision payload for op=post_message: the queue content the delivery layer renders.
- *  qitemId rides along as the idempotency anchor (seen-state key + the H reconcile marker). */
+/** op=post_message 的 decision payload：delivery 层要渲染的队列内容。qitemId 同时作为幂等
+ *  锚点（seen-state key + H reconcile marker）传递。 */
 export interface OutboundPostPayload {
   qitemId: string;
   notificationKey?: string | null;
@@ -35,7 +33,7 @@ export interface OutboundPostPayload {
   destinationSession?: string | null;
   sourceSession?: string | null;
   evidenceRef?: string | null;
-  /** F: the loudness discriminators (interim rule: escalations mention, all else quiet). */
+  /** F：响度判别项；临时规则为 escalation 要 mention，其他全部静默。 */
   tier?: string | null;
   tags?: string[] | null;
 }
@@ -45,10 +43,10 @@ export interface OutboundDriverDeps {
   queue: OutboundQueuePort;
   seen: SeenStore;
   filter: AlertFilterOpts;
-  /** Dispatch into the subsystem wire (durable-first). Injected: the driver never posts itself. */
+  /** 派发到子系统 wire（durable-first）。通过注入提供；driver 自身绝不 post。 */
   dispatch: (op: string, entityBindingRef: string, payload: unknown) => DispatchResult;
-  /** Called by the delivery layer's ack path? No — the WIRE acks; the driver learns success by
-   *  the seen-store the delivery layer marks. This callback seam is for tests observing sweeps. */
+  /** 不由 delivery 层 ack 路径调用——WIRE 负责 ack；driver 通过 delivery 层标记的 seen-store
+   *  获知成功。此 callback seam 供测试观察 sweep。 */
   onSweep?: (result: SweepResult) => void;
   intervalMs?: number;
   log?: (msg: string) => void;
@@ -68,7 +66,7 @@ export class SlackOutboundDriver {
 
   constructor(private readonly deps: OutboundDriverDeps) {}
 
-  /** Seed inflight from the durable buffer (restart no-double-dispatch), then start the poll. */
+  /** 从持久 buffer 为 inflight 填种（重启不重复派发），再启动轮询。 */
   start(): void {
     try {
       for (const d of new DispatchBuffer(this.deps.home).pending()) {
@@ -76,7 +74,7 @@ export class SlackOutboundDriver {
         const key = payload?.notificationKey ?? payload?.qitemId;
         if (key) this.inflight.add(key);
       }
-    } catch { /* unreadable buffer: replay still dedups by decisionId at delivery */ }
+    } catch { /* buffer 不可读时，replay 仍会在 delivery 处按 decisionId 去重。 */ }
     const interval = this.deps.intervalMs ?? 30000;
     this.timer = setInterval(() => void this.sweepOnce(), interval);
     if (typeof (this.timer as unknown as { unref?: () => void }).unref === "function") {
@@ -84,7 +82,7 @@ export class SlackOutboundDriver {
     }
   }
 
-  /** One sweep: fresh = active human alerts minus seen minus inflight. Dispatch each. */
+  /** 单轮 sweep：fresh = 活跃人类 alert 减去 seen 与 inflight；逐条派发。 */
   async sweepOnce(): Promise<SweepResult> {
     if (this.sweeping) return { alerts: 0, fresh: 0, dispatched: [], refused: [] };
     this.sweeping = true;
@@ -100,10 +98,10 @@ export class SlackOutboundDriver {
           this.inflight.add(notificationKey(alert));
           dispatched.push(alert.qitemId);
         } else {
-          // Refused (e.g. delivery layer unconfigured → op unadvertised): honest, retried next
-          // sweep — nothing durable was minted, so this is not a retained decision.
+          // 被拒绝（例如 delivery 层未配置，导致 op 未声明）时如实记录并在下一轮重试。
+          // 由于没有生成任何持久记录，这不是 retained decision。
           refused.push({ qitemId: alert.qitemId, error: res.error });
-          this.deps.log?.(`outbound dispatch refused for ${alert.qitemId}: ${res.error}`);
+          this.deps.log?.(`拒绝为 ${alert.qitemId} 派发 outbound 消息：${res.error}`);
         }
       }
       const result = { alerts: alerts.length, fresh: fresh.length, dispatched, refused };
@@ -114,7 +112,7 @@ export class SlackOutboundDriver {
     }
   }
 
-  /** The delivery layer marked a qitem seen (delivered) — release the in-memory guard. */
+  /** delivery 层将 qitem 标为 seen（已送达）后，释放内存 guard。 */
   release(qitemId: string): void {
     this.inflight.delete(qitemId);
   }

@@ -9,8 +9,8 @@ export type ResolveResult =
   | { ok: false; kind: "validation"; errors: string[] };
 
 /**
- * Two-step resolve: find manifest file, then parse+validate separately.
- * Keeps resolution errors (missing file) distinct from validation errors (bad schema).
+ * 两阶段解析：先查找 manifest file，再单独 parse + validate。
+ * 将 resolution error（文件缺失）与 validation error（schema 错误）区分开。
  */
 export function resolvePackage(sourceRef: string, cwd: string | undefined, fsOps: FsOps): ResolveResult {
   const absoluteRef = nodePath.isAbsolute(sourceRef)
@@ -19,7 +19,7 @@ export function resolvePackage(sourceRef: string, cwd: string | undefined, fsOps
   const manifestPath = nodePath.join(absoluteRef, "package.yaml");
 
   if (!fsOps.exists(manifestPath)) {
-    return { ok: false, kind: "resolution", error: `No package.yaml found at ${manifestPath}` };
+    return { ok: false, kind: "resolution", error: `在 ${manifestPath} 未找到 package.yaml` };
   }
 
   let rawYaml: string;

@@ -75,15 +75,15 @@ function writtenState(deps: LifecycleDeps): DaemonState {
 }
 
 describe("Daemon Lifecycle", () => {
-  // Test 1: start resolves absolute daemon path (not cwd-relative)
-  it("getDaemonPath resolves absolute path ending with daemon", () => {
+  // Test 1：start 解析绝对 daemon 路径（非 cwd 相对）
+  it("getDaemonPath 解析以 daemon 结尾的绝对路径", () => {
     const daemonPath = getDaemonPath();
     expect(path.isAbsolute(daemonPath)).toBe(true);
     expect(daemonPath).toMatch(/daemon$/);
   });
 
-  // Test 2: start constructs exact spawn command with correct env/redirect
-  it("start: constructs spawn with node, daemon entry, env, and log redirect", async () => {
+  // Test 2：start 构造精确 spawn 命令与正确 env/redirect
+  it("start：以 node、daemon entry、env、日志重定向构造 spawn", async () => {
     const deps = startableDeps();
     await startDaemon({ port: 7433, db: "openrig.sqlite" }, deps);
 
@@ -101,7 +101,7 @@ describe("Daemon Lifecycle", () => {
     expect(opts.detached).toBe(true);
   });
 
-  it("start: initializes the canonical instance and configured workspace before spawning", async () => {
+  it("start：spawn 前初始化 canonical 实例与已配置的 workspace", async () => {
     const created = new Set<string>();
     const written = new Map<string, string>();
     const deps = startableDeps({
@@ -138,28 +138,28 @@ describe("Daemon Lifecycle", () => {
     expect(created.has("/tmp/openrig-workspace")).toBe(true);
     expect(created.has(path.join("/tmp/openrig-workspace", "missions"))).toBe(true);
     expect(created.has(path.join("/tmp/openrig-workspace", "exhaust"))).toBe(true);
-    expect(written.get(path.join("/tmp/openrig-workspace", "SPEC.md"))).toContain("intent: Organize this project's durable work");
+    expect(written.get(path.join("/tmp/openrig-workspace", "SPEC.md"))).toContain("intent: 将此项目的持久工作组织为 mission 和 slice");
     expect(written.get(path.join("/tmp/openrig-workspace", "project.yaml"))).toContain("schema: openrig.project/v0alpha1");
     expect(written.get(path.join("/tmp/openrig-workspace", "workspace.yaml"))).toContain("schema: openrig.workspace/v0alpha1");
     expect(written.get(path.join("/tmp/openrig-workspace", ".gitignore"))).toContain("/exhaust/");
   });
 
-  it("start: refuses an exact user-owned type conflict before any write or spawn", async () => {
+  it("start：任何写入或 spawn 前拒绝精确的用户自有类型冲突", async () => {
     const conflict = "/tmp/openrig-context";
     const deps = startableDeps({
       pathKind: vi.fn((candidate: string) => candidate === conflict ? "file" : "missing"),
     });
 
     await expect(startDaemon({ contextRoot: conflict }, deps)).rejects.toThrow(
-      `${conflict}: expected directory, found file`,
+      `${conflict}：预期 directory，实际为 file`,
     );
     expect(deps.mkdirp).not.toHaveBeenCalled();
     expect(deps.writeFile).not.toHaveBeenCalled();
     expect(deps.spawn).not.toHaveBeenCalled();
   });
 
-  // Test 3: start waits for healthz, writes daemon.json with pid+port+db+startedAt
-  it("start: writes daemon.json with pid, port, db, startedAt after healthz", async () => {
+  // Test 3：start 等待 healthz，写入 daemon.json（pid+port+db+startedAt）
+  it("start：healthz 后把 pid、port、db、startedAt 写入 daemon.json", async () => {
     const deps = startableDeps();
     const result = await startDaemon({ port: 8000, db: "test.sqlite" }, deps);
 
@@ -175,8 +175,8 @@ describe("Daemon Lifecycle", () => {
     expect(state.startedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  // Test 4: start already running -> error
-  it("start: already running -> throws error", async () => {
+  // Test 4：start 已在运行 -> 报错
+  it("start：已在运行 -> 抛错", async () => {
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
       readFile: vi.fn((p: string) => {
@@ -186,10 +186,10 @@ describe("Daemon Lifecycle", () => {
       isProcessAlive: vi.fn(() => true),
     });
 
-    await expect(startDaemon({}, deps)).rejects.toThrow(/already running/i);
+    await expect(startDaemon({}, deps)).rejects.toThrow(/已在运行|已在端口/);
   });
 
-  it("start: recovered running daemon without daemon.json -> throws instead of spawning duplicate", async () => {
+  it("start：无 daemon.json 但恢复出运行中的 daemon -> 抛错而非 spawn 重复实例", async () => {
     const deps = mockDeps({
       exists: vi.fn(() => false),
       fetch: vi.fn(async (url: string) => {
@@ -198,12 +198,12 @@ describe("Daemon Lifecycle", () => {
       }),
     });
 
-    await expect(startDaemon({}, deps)).rejects.toThrow(/already running/i);
+    await expect(startDaemon({}, deps)).rejects.toThrow(/已在运行|已在端口/);
     expect(deps.spawn).not.toHaveBeenCalled();
   });
 
-  // Test 5: stop reads pid from daemon.json, sends SIGTERM, removes daemon.json
-  it("stop: reads pid, sends SIGTERM, removes daemon.json", async () => {
+  // Test 5：stop 从 daemon.json 读 pid，发 SIGTERM，删除 daemon.json
+  it("stop：读 pid、发 SIGTERM、删除 daemon.json", async () => {
     const state: DaemonState = { pid: 555, port: 7433, db: "openrig.sqlite", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
@@ -223,18 +223,18 @@ describe("Daemon Lifecycle", () => {
     expect(deps.removeFile).toHaveBeenCalledWith(STATE_FILE);
   });
 
-  // Test 6: stop not running -> clean message (no throw)
-  it("stop: not running -> does not throw", async () => {
+  // Test 6：stop 未运行 -> 干净消息（不抛错）
+  it("stop：未运行 -> 不抛错", async () => {
     const deps = mockDeps({
       exists: vi.fn(() => false),
       fetch: vi.fn(async () => { throw new Error("refused"); }),
     });
 
-    // Should not throw
+    // 不应抛错
     await expect(stopDaemon(deps)).resolves.toBe("no-target");
   });
 
-  it("stop: recovered running daemon without daemon.json -> throws honest error", async () => {
+  it("stop：无 daemon.json 但恢复出运行中的 daemon -> 抛诚实错误", async () => {
     const deps = mockDeps({
       exists: vi.fn(() => false),
       fetch: vi.fn(async (url: string) => {
@@ -243,12 +243,12 @@ describe("Daemon Lifecycle", () => {
       }),
     });
 
-    await expect(stopDaemon(deps)).rejects.toThrow(/state is missing|cannot stop safely/i);
+    await expect(stopDaemon(deps)).rejects.toThrow(/状态缺失|无法安全停止/);
     expect(deps.kill).not.toHaveBeenCalled();
   });
 
-  // Test 7: status reads port from daemon.json, reports running with port
-  it("status: running daemon (pid alive + healthz ok) -> { state: 'running', port, pid }", async () => {
+  // Test 7：status 从 daemon.json 读 port，报 running 带 port
+  it("status：运行中的 daemon（pid 存活 + healthz ok）-> { state: 'running', port, pid }", async () => {
     const state: DaemonState = { pid: 777, port: 9000, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
@@ -264,12 +264,12 @@ describe("Daemon Lifecycle", () => {
     expect(status.state).toBe("running");
     expect(status.port).toBe(9000);
     expect(status.pid).toBe(777);
-    // Must have checked healthz
+    // 必然已检查 healthz
     expect(deps.fetch).toHaveBeenCalledWith("http://127.0.0.1:9000/healthz");
   });
 
   // Test 8: status stopped (no daemon.json) -> reports stopped
-  it("status: no daemon.json -> { state: 'stopped' }", async () => {
+  it("status：无 daemon.json -> { state: 'stopped' }", async () => {
     const deps = mockDeps({
       exists: vi.fn(() => false),
       fetch: vi.fn(async () => { throw new Error("refused"); }),
@@ -279,10 +279,10 @@ describe("Daemon Lifecycle", () => {
     expect(status.state).toBe("stopped");
   });
 
-  // OPR.0.4.2.1 — the daemon-status probe must settle a transient /healthz failure across the
-  // post-restart listener bind window (bounded retry) and report the ACTUAL /healthz answer,
-  // not a false 'down'/'unhealthy'. Repro (RED) + regression guards (must not mask a genuine down).
-  it("OPR.0.4.2.1 status: pid alive, probe fails once then /healthz answers -> running + healthy (bind window settles)", async () => {
+  // OPR.0.4.2.1 —— daemon-status 探测必须在重启后监听器绑定窗口内
+  // 收敛一次瞬时的 /healthz 失败（有界重试），并如实报告 /healthz 的真实应答，
+  // 而非误报 'down'/'unhealthy'。复现（RED）+ 回归守卫（不得掩盖真实宕机）。
+  it("OPR.0.4.2.1 status：pid 存活、探测失败一次后 /healthz 应答 -> running + healthy（绑定窗口稳定）", async () => {
     const state: DaemonState = { pid: 777, port: 9000, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     let calls = 0;
     const deps = mockDeps({
@@ -302,7 +302,7 @@ describe("Daemon Lifecycle", () => {
     expect((deps.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThanOrEqual(2); // retried
   });
 
-  it("OPR.0.4.2.1 status: no daemon.json, probe fails once then /healthz answers -> running, not stopped", async () => {
+  it("OPR.0.4.2.1 status：无 daemon.json、探测失败一次后 /healthz 应答 -> running，而非 stopped", async () => {
     let calls = 0;
     const deps = mockDeps({
       exists: vi.fn(() => false),
@@ -313,7 +313,7 @@ describe("Daemon Lifecycle", () => {
     expect(status.state).toBe("running"); // NOT a false "stopped"
   });
 
-  it("OPR.0.4.2.1 regression: genuine down (probe always fails, no state) -> stopped after HARD-BOUNDED retries", async () => {
+  it("OPR.0.4.2.1 回归：真实宕机（探测恒失败、无状态）-> HARD-BOUNDED 重试后 stopped", async () => {
     let calls = 0;
     const deps = mockDeps({
       exists: vi.fn(() => false),
@@ -325,7 +325,7 @@ describe("Daemon Lifecycle", () => {
     expect(calls).toBeLessThanOrEqual(8); // hard cap — no unbounded hammering / hang
   });
 
-  it("OPR.0.4.2.1 regression: pid alive but healthz never answers -> running + healthy:false (no false healthy)", async () => {
+  it("OPR.0.4.2.1 回归：pid 存活但 healthz 不应答 -> running + healthy:false（不误报 healthy）", async () => {
     const state: DaemonState = { pid: 777, port: 9000, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
@@ -339,7 +339,7 @@ describe("Daemon Lifecycle", () => {
     expect(status.healthy).toBe(false); // never answered -> honestly unhealthy, not falsely healthy
   });
 
-  it("status: no daemon.json but configured healthz responds -> running without pid", async () => {
+  it("status：无 daemon.json 但已配置的 healthz 应答 -> running 但无 pid", async () => {
     const savedPort = process.env["OPENRIG_PORT"];
     const savedHost = process.env["OPENRIG_HOST"];
     process.env["OPENRIG_PORT"] = "7555";
@@ -368,8 +368,8 @@ describe("Daemon Lifecycle", () => {
     }
   });
 
-  // A status read must preserve target identity when its shutdown is unverified.
-  it("status: stale with no shutdown receipt -> preserves unverified target", async () => {
+  // 当 status 读取对应的 shutdown 未被确认时，必须保留目标身份。
+  it("status：陈旧且无 shutdown 回执 -> 保留未核实目标", async () => {
     const state: DaemonState = { pid: 888, port: 7433, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
@@ -385,8 +385,8 @@ describe("Daemon Lifecycle", () => {
     expect(deps.removeFile).not.toHaveBeenCalled();
   });
 
-  // Test 10: start --port flag stored in daemon.json and forwarded to env
-  it("start: custom port stored in daemon.json and forwarded to spawn env", async () => {
+  // Test 10：start --port flag 存入 daemon.json 并转发到 env
+  it("start：自定义 port 存入 daemon.json 并转发到 spawn env", async () => {
     const deps = startableDeps();
     await startDaemon({ port: 9999 }, deps);
 
@@ -398,17 +398,17 @@ describe("Daemon Lifecycle", () => {
     expect(env.OPENRIG_PORT).toBe("9999");
   });
 
-  // Test 11: start invoked from different cwd -> still resolves correct daemon path
-  it("getDaemonPath is stable regardless of cwd", () => {
+  // Test 11：从不同 cwd 调用 start -> 仍解析正确 daemon 路径
+  it("getDaemonPath 与 cwd 无关，保持稳定", () => {
     const path1 = getDaemonPath();
-    // Simulate different cwd by just proving the path is absolute and based on import.meta
-    // (cwd doesn't affect path.resolve from import.meta.dirname)
+    // 模拟不同 cwd：只需证明路径是绝对的且基于 import.meta
+    //（cwd 不影响 import.meta.dirname 的 path.resolve）
     expect(path.isAbsolute(path1)).toBe(true);
     expect(path1).toContain("daemon");
   });
 
   // Test 12: logs reads daemon.log content
-  it("readLogs: returns daemon.log content when file exists", () => {
+  it("readLogs：文件存在时返回 daemon.log 内容", () => {
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === LOG_FILE),
       readFile: vi.fn((p: string) => {
@@ -422,7 +422,7 @@ describe("Daemon Lifecycle", () => {
   });
 
   // Test 13: logs no log file -> returns null
-  it("readLogs: no log file -> returns null", () => {
+  it("readLogs：无日志文件 -> 返回 null", () => {
     const deps = mockDeps({
       exists: vi.fn(() => false),
     });
@@ -431,8 +431,8 @@ describe("Daemon Lifecycle", () => {
     expect(content).toBeNull();
   });
 
-  // Test 14: CLI delegation: daemon status command uses injected deps
-  it("daemonCommand(deps) status calls getDaemonStatus with injected deps", async () => {
+  // Test 14：CLI 委派：daemon status 命令使用注入的依赖
+  it("daemonCommand(deps) status 以注入的 deps 调用 getDaemonStatus", async () => {
     const { daemonCommand } = await import("../src/commands/daemon.js");
     const { Command } = await import("commander");
 
@@ -455,13 +455,13 @@ describe("Daemon Lifecycle", () => {
       console.log = origLog;
     }
 
-    // deps.exists was called (proving delegation happened through injected deps)
+    // deps.exists 已被调用（证明委派经注入的 deps 发生）
     expect(deps.exists).toHaveBeenCalled();
-    // Output should reflect stopped status
-    expect(logs.join("\n")).toMatch(/stopped/i);
+    // 输出应反映已停止状态
+    expect(logs.join("\n")).toMatch(/已停止/);
   });
 
-  it("daemonCommand status omits pid when daemon is recovered without state", async () => {
+  it("daemonCommand status：daemon 恢复时无状态则省略 pid", async () => {
     const savedPort = process.env["OPENRIG_PORT"];
     const savedHost = process.env["OPENRIG_HOST"];
     process.env["OPENRIG_PORT"] = "7555";
@@ -488,7 +488,7 @@ describe("Daemon Lifecycle", () => {
       }
 
       const output = logs.join("\n");
-      expect(output).toContain("Daemon running on port 7555");
+      expect(output).toContain("后台服务运行于端口 7555");
       expect(output).not.toContain("pid undefined");
     } finally {
       if (savedPort === undefined) delete process.env["OPENRIG_PORT"];
@@ -498,7 +498,7 @@ describe("Daemon Lifecycle", () => {
     }
   });
 
-  it("daemonCommand stop surfaces missing-state recovery error instead of claiming success", async () => {
+  it("daemonCommand stop 暴露 missing-state 恢复错误，而非声称成功", async () => {
     const { daemonCommand } = await import("../src/commands/daemon.js");
     const { Command } = await import("commander");
     const deps = mockDeps({
@@ -521,12 +521,12 @@ describe("Daemon Lifecycle", () => {
       console.error = origErr;
     }
 
-    expect(logs.join("\n")).toMatch(/state is missing|cannot stop safely/i);
+    expect(logs.join("\n")).toMatch(/状态缺失|无法安全停止/);
     expect(process.exitCode).toBe(1);
     process.exitCode = savedExitCode;
   });
 
-  it("S4b RED: daemon stop refuses success when the addressed OPENRIG_URL listener is still up", async () => {
+  it("S4b RED：被寻址的 OPENRIG_URL 监听器仍在时 daemon stop 拒绝报成功", async () => {
     const { daemonCommand } = await import("../src/commands/daemon.js");
     const { Command } = await import("commander");
     const savedUrl = process.env.OPENRIG_URL;
@@ -551,10 +551,10 @@ describe("Daemon Lifecycle", () => {
     try {
       await program.parseAsync(["node", "rig", "daemon", "stop"]);
       expect(process.exitCode).toBe(1);
-      expect(out.join("\n")).not.toContain("Daemon stopped");
+      expect(out.join("\n")).not.toContain("后台服务已停止");
       expect(err.join("\n")).toContain("http://127.0.0.1:7555");
       expect(err.join("\n")).toMatch(/healthz|health check/i);
-      expect(err.join("\n")).toMatch(/does not match.*no signal sent/i);
+      expect(err.join("\n")).toMatch(/无法安全停止|未发送任何信号/);
       expect(deps.kill).not.toHaveBeenCalled();
     } finally {
       console.log = origLog;
@@ -565,7 +565,7 @@ describe("Daemon Lifecycle", () => {
     }
   });
 
-  it("S4b RED: a daemon that ignores SIGTERM reports the target, health check, and still-listening effect", async () => {
+  it("S4b RED：忽略 SIGTERM 的 daemon 报告 target、health check 与仍在监听的效果", async () => {
     vi.useFakeTimers();
     const { daemonCommand } = await import("../src/commands/daemon.js");
     const { Command } = await import("commander");
@@ -593,10 +593,10 @@ describe("Daemon Lifecycle", () => {
       await vi.runAllTimersAsync();
       await stop;
       expect(process.exitCode).toBe(1);
-      expect(out.join("\n")).not.toContain("Daemon stopped");
+      expect(out.join("\n")).not.toContain("后台服务已停止");
       expect(err.join("\n")).toContain("http://127.0.0.1:7555");
       expect(err.join("\n")).toMatch(/healthz|health check/i);
-      expect(err.join("\n")).toMatch(/still listening/i);
+      expect(err.join("\n")).toMatch(/仍在监听/);
     } finally {
       console.log = origLog;
       console.error = origErr;
@@ -607,7 +607,7 @@ describe("Daemon Lifecycle", () => {
     }
   });
 
-  it("S4b RED: daemon stop prints success only after the addressed target verifies down", async () => {
+  it("S4b RED：daemon stop 仅在被寻址 target 验证为 down 后才打印成功", async () => {
     const { daemonCommand } = await import("../src/commands/daemon.js");
     const { Command } = await import("commander");
     const savedUrl = process.env.OPENRIG_URL;
@@ -632,7 +632,7 @@ describe("Daemon Lifecycle", () => {
     try {
       await program.parseAsync(["node", "rig", "daemon", "stop"]);
       expect(process.exitCode).toBeUndefined();
-      expect(out.join("\n")).toContain("Daemon stopped");
+      expect(out.join("\n")).toContain("后台服务已停止");
       expect(fetch.mock.calls.length).toBeGreaterThan(1);
       expect(fetch).toHaveBeenLastCalledWith("http://127.0.0.1:7555/healthz");
     } finally {
@@ -643,16 +643,16 @@ describe("Daemon Lifecycle", () => {
     }
   });
 
-  // Test 15: start creates ~/.openrig directory if missing
-  it("start: creates OPENRIG_DIR if missing", async () => {
+  // Test 15：start 在缺失时创建 ~/.openrig 目录
+  it("start：缺失时创建 OPENRIG_DIR", async () => {
     const deps = startableDeps();
     await startDaemon({ port: 7433 }, deps);
 
     expect(deps.mkdirp).toHaveBeenCalledWith(OPENRIG_DIR);
   });
 
-  // Test 16: logs --follow passes follow flag to tailLogs
-  it("tailLogs: called with follow=true invokes follow behavior", () => {
+  // Test 16：logs --follow 把 follow flag 传给 tailLogs
+  it("tailLogs：以 follow=true 调用时触发 follow 行为", () => {
     const spawnFn = vi.fn(() => ({ pid: 1, unref: vi.fn(), on: vi.fn() }) as unknown as ChildProcess);
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === LOG_FILE),
@@ -661,7 +661,7 @@ describe("Daemon Lifecycle", () => {
 
     tailLogs(deps, { follow: true });
 
-    // Should spawn tail -f on the log file
+    // 应在日志文件上 spawn tail -f
     expect(spawnFn).toHaveBeenCalledOnce();
     const [cmd, args] = spawnFn.mock.calls[0]!;
     expect(cmd).toBe("tail");
@@ -669,8 +669,8 @@ describe("Daemon Lifecycle", () => {
     expect(args).toContain(LOG_FILE);
   });
 
-  // Test 17: pid alive + healthz failure -> running with healthy=false, daemon.json preserved
-  it("status: pid alive but healthz fails -> running, healthy=false, state preserved", async () => {
+  // Test 17：pid 存活 + healthz 失败 -> running 且 healthy=false，daemon.json 保留
+  it("status：pid 存活但 healthz 失败 -> running、healthy=false、状态保留", async () => {
     const state: DaemonState = { pid: 999, port: 7433, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
@@ -687,11 +687,11 @@ describe("Daemon Lifecycle", () => {
     expect(status.healthy).toBe(false);
     expect(status.pid).toBe(999);
     expect(status.port).toBe(7433);
-    // daemon.json must NOT be deleted — stop still needs the pid
+    // daemon.json 绝不能删除——stop 仍需要 pid
     expect(deps.removeFile).not.toHaveBeenCalled();
   });
 
-  it("status: hanging healthz probe resolves boundedly as unhealthy instead of hanging forever", async () => {
+  it("status：挂起的 healthz 探测有界地判定为 unhealthy，而非永久挂起", async () => {
     vi.useFakeTimers();
     const state: DaemonState = { pid: 999, port: 7433, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
@@ -713,8 +713,8 @@ describe("Daemon Lifecycle", () => {
     vi.useRealTimers();
   });
 
-  // Test 18: stop with process that won't die -> throws, daemon.json preserved
-  it("stop: process survives SIGTERM -> throws, daemon.json NOT removed", async () => {
+  // Test 18：stop 一个不会死的进程 -> 抛错，daemon.json 保留
+  it("stop：进程熬过 SIGTERM -> 抛错，daemon.json 不删除", async () => {
     const state: DaemonState = { pid: 111, port: 7433, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
@@ -725,14 +725,14 @@ describe("Daemon Lifecycle", () => {
       isProcessAlive: vi.fn(() => true), // never dies
     });
 
-    await expect(stopDaemon(deps)).rejects.toThrow(/did not exit/i);
+    await expect(stopDaemon(deps)).rejects.toThrow(/未退出/);
     expect(deps.kill).toHaveBeenCalledWith(111, "SIGTERM");
-    // daemon.json must NOT be deleted — process is still running
+    // daemon.json 绝不能删除——进程仍在运行
     expect(deps.removeFile).not.toHaveBeenCalled();
   });
 
-  // Test 19: start with stale PID (pid alive but healthz fails) -> allows start (PID reuse safety)
-  it("start: stale PID (alive but not rig) -> proceeds to start new daemon", async () => {
+  // Test 19：start 遇到陈旧 PID（pid 存活但 healthz 失败）-> 允许启动（PID 复用安全）
+  it("start：陈旧 PID（存活但非 rig）-> 继续启动新 daemon", async () => {
     const state: DaemonState = { pid: 999, port: 7433, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     let fetchCount = 0;
     const deps = mockDeps({
@@ -742,8 +742,8 @@ describe("Daemon Lifecycle", () => {
         return null;
       }),
       isProcessAlive: vi.fn(() => true),
-      // First fetch (verify existing PID): fails -> stale PID
-      // Subsequent fetches (healthz poll for new daemon): succeed
+      // 首次 fetch（校验已有 PID）：失败 -> 陈旧 PID
+      // 后续 fetch（轮询新 daemon 的 healthz）：成功
       fetch: vi.fn(async () => {
         fetchCount++;
         if (fetchCount === 1) throw new Error("connection refused");
@@ -755,7 +755,7 @@ describe("Daemon Lifecycle", () => {
     expect(result.pid).toBe(12345); // new daemon spawned
   });
 
-  it("start: hanging healthz probe on existing pid throws unresponsive error instead of spawning a second daemon", async () => {
+  it("start：既有 pid 上 healthz 探测挂起时抛 unresponsive 错误，而非 spawn 第二个 daemon", async () => {
     vi.useFakeTimers();
     const state: DaemonState = { pid: 999, port: 7433, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
@@ -773,13 +773,13 @@ describe("Daemon Lifecycle", () => {
     const error = await startPromise;
 
     expect(error).toBeInstanceOf(Error);
-    expect(error.message).toMatch(/unresponsive/i);
+    expect(error.message).toMatch(/无响应/);
     expect(deps.spawn).not.toHaveBeenCalled();
     vi.useRealTimers();
   });
 
-  // A reused PID must receive no signal and must not erase unresolved stop identity.
-  it("stop: stale PID (alive but not rig) -> preserves state, does not kill", async () => {
+  // 被复用的 PID 绝不能收到信号，也不能擦除未决的 stop 身份。
+  it("stop：陈旧 PID（存活但非 rig）-> 保留状态，不杀死", async () => {
     const state: DaemonState = { pid: 999, port: 7433, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
@@ -791,12 +791,12 @@ describe("Daemon Lifecycle", () => {
       fetch: vi.fn(async () => { throw new Error("connection refused"); }),
     });
 
-    await expect(stopDaemon(deps)).rejects.toThrow(/identity is not confirmed/);
+    await expect(stopDaemon(deps)).rejects.toThrow(/身份未确认/);
     expect(deps.kill).not.toHaveBeenCalled();
     expect(deps.removeFile).not.toHaveBeenCalled();
   });
 
-  it("stop: hanging healthz probe still issues SIGTERM and reports the unavailable final probe", async () => {
+  it("stop：healthz 探测挂起时仍发 SIGTERM 并报告不可用的最终探测", async () => {
     vi.useFakeTimers();
     const state: DaemonState = { pid: 999, port: 7433, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
@@ -811,7 +811,7 @@ describe("Daemon Lifecycle", () => {
       fetch: vi.fn(() => neverFetch()),
     });
 
-    const stopPromise = expect(stopDaemon(deps)).rejects.toThrow(/unverified.*listener unavailable/i);
+    const stopPromise = expect(stopDaemon(deps)).rejects.toThrow(/未获核实.*监听者 unavailable/);
     await vi.runAllTimersAsync();
     await stopPromise;
 
@@ -820,8 +820,8 @@ describe("Daemon Lifecycle", () => {
     vi.useRealTimers();
   });
 
-  // Test 21: malformed daemon.json -> treated as stopped, no crash
-  it("malformed daemon.json -> getDaemonStatus returns stopped", async () => {
+  // Test 21：畸形 daemon.json -> 视为 stopped，不崩溃
+  it("畸形 daemon.json -> getDaemonStatus 返回 stopped", async () => {
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
       readFile: vi.fn((p: string) => {
@@ -835,8 +835,8 @@ describe("Daemon Lifecycle", () => {
     expect(status.state).toBe("stopped");
   });
 
-  // Test 22: malformed daemon.json -> startDaemon proceeds (treats as no state)
-  it("malformed daemon.json -> startDaemon proceeds normally", async () => {
+  // Test 22：畸形 daemon.json -> startDaemon 继续（视为无状态）
+  it("畸形 daemon.json -> startDaemon 正常继续", async () => {
     const deps = startableDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
       readFile: vi.fn((p: string) => {
@@ -849,8 +849,8 @@ describe("Daemon Lifecycle", () => {
     expect(result.pid).toBe(12345);
   });
 
-  // Test 23: start with unhealthy rig daemon (healthz responds non-ok) -> blocks start
-  it("start: unhealthy rig daemon (healthz responds) -> throws already running", async () => {
+  // Test 23：start 遇到 unhealthy rig daemon（healthz 非 ok 应答）-> 阻断启动
+  it("start：unhealthy 的 rig daemon（healthz 应答）-> 抛 already running", async () => {
     const state: DaemonState = { pid: 999, port: 7433, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
@@ -859,15 +859,15 @@ describe("Daemon Lifecycle", () => {
         return null;
       }),
       isProcessAlive: vi.fn(() => true),
-      // healthz responds (even if not ok) → port is ours → rig
+      // healthz 应答（即便非 ok）→ port 归我们 → rig
       fetch: vi.fn(async () => ({ ok: false })),
     });
 
-    await expect(startDaemon({ port: 7433 }, deps)).rejects.toThrow(/already running/i);
+    await expect(startDaemon({ port: 7433 }, deps)).rejects.toThrow(/已在运行|已在端口/);
   });
 
-  // Test 24: stop with unhealthy rig daemon -> still sends SIGTERM (it's our process)
-  it("stop: unhealthy rig daemon -> sends SIGTERM", async () => {
+  // Test 24：stop 遇到 unhealthy rig daemon -> 仍发 SIGTERM（那是我们的进程）
+  it("stop：unhealthy 的 rig daemon -> 发 SIGTERM", async () => {
     const state: DaemonState = { pid: 999, port: 7433, db: "x.db", startedAt: "2026-01-01T00:00:00Z" };
     const deps = mockDeps({
       exists: vi.fn((p: string) => p === STATE_FILE),
@@ -887,8 +887,8 @@ describe("Daemon Lifecycle", () => {
     expect(deps.removeFile).toHaveBeenCalledWith(STATE_FILE);
   });
 
-  // Test 25: start spawns process.execPath, not bare "node"
-  it("start: spawns process.execPath as the Node binary", async () => {
+  // Test 25：start 用 process.execPath spawn，而非裸 "node"
+  it("start：以 process.execPath 作为 Node 二进制 spawn", async () => {
     const deps = startableDeps();
     await startDaemon({ port: 7433, db: "openrig.sqlite" }, deps);
 
@@ -897,7 +897,7 @@ describe("Daemon Lifecycle", () => {
     expect(cmd).toBe(process.execPath);
   });
 
-  it("start: surfaces native module runtime mismatch inline when healthz never comes up", async () => {
+  it("start：healthz 始终不应答时内联呈现 native 模块运行时不匹配", async () => {
     vi.useFakeTimers();
     const deps = mockDeps({
       fetch: vi.fn(async () => { throw new Error("connection refused"); }),
@@ -927,7 +927,7 @@ describe("Daemon Lifecycle", () => {
     vi.useRealTimers();
   });
 
-  it("start: surfaces the recent daemon log line when startup crashes for another reason", async () => {
+  it("start：因其他原因启动崩溃时呈现最近一行 daemon 日志", async () => {
     vi.useFakeTimers();
     const deps = mockDeps({
       fetch: vi.fn(async () => { throw new Error("connection refused"); }),
@@ -952,7 +952,7 @@ describe("Daemon Lifecycle", () => {
   });
 
   // Test 26: OPENRIG_URL set → getDaemonStatus bypasses daemon.json
-  it("status: OPENRIG_URL set → probes URL directly, ignores daemon.json", async () => {
+  it("status：设置 OPENRIG_URL -> 直接探测 URL，忽略 daemon.json", async () => {
     const prev = process.env["OPENRIG_URL"];
     process.env["OPENRIG_URL"] = "http://127.0.0.1:7455";
     try {
@@ -966,7 +966,7 @@ describe("Daemon Lifecycle", () => {
       expect(status.state).toBe("running");
       expect(status.port).toBe(7455);
       expect(status.healthy).toBe(true);
-      // daemon.json was never read
+      // 从未读取 daemon.json
       expect(deps.readFile).not.toHaveBeenCalled();
     } finally {
       if (prev === undefined) delete process.env["OPENRIG_URL"];
@@ -975,7 +975,7 @@ describe("Daemon Lifecycle", () => {
   });
 
   // Test 27: OPENRIG_URL set but unreachable → stopped
-  it("status: OPENRIG_URL set but unreachable → stopped", async () => {
+  it("status：设置 OPENRIG_URL 但不可达 -> stopped", async () => {
     const prev = process.env["OPENRIG_URL"];
     process.env["OPENRIG_URL"] = "http://127.0.0.1:9999";
     try {
@@ -993,7 +993,7 @@ describe("Daemon Lifecycle", () => {
     }
   });
 
-  it("createIsProcessAlive treats zombie processes as dead", async () => {
+  it("createIsProcessAlive 把 zombie 进程视为已死", async () => {
     const { createIsProcessAlive } = await import("../src/commands/daemon.js");
     const isAlive = createIsProcessAlive({
       signalCheck: () => true,
@@ -1003,7 +1003,7 @@ describe("Daemon Lifecycle", () => {
     expect(isAlive(123)).toBe(false);
   });
 
-  it("createIsProcessAlive keeps non-zombie processes alive", async () => {
+  it("createIsProcessAlive 保持非 zombie 进程存活", async () => {
     const { createIsProcessAlive } = await import("../src/commands/daemon.js");
     const isAlive = createIsProcessAlive({
       signalCheck: () => true,
@@ -1015,24 +1015,22 @@ describe("Daemon Lifecycle", () => {
 });
 
 describe("resolveDaemonPath", () => {
-  // QA BLOCKING qitem-20260518054224 — the resolver previously preferred
-  // the bundled (vendored) copy, so monorepo dev workflows ran a stale
-  // packaged daemon when packages/cli/daemon hadn't been re-assembled
-  // via scripts/build-package.sh. After the fix the resolver prefers
-  // the monorepo source (packages/daemon) when present, ensuring
-  // `node packages/cli/dist/bin-wrapper.js daemon start` always
-  // launches the daemon source-of-truth in development.
+  // QA BLOCKING qitem-20260518054224——resolver 此前偏好打包（vendored）副本，
+  // 导致 monorepo 开发流程在 packages/cli/daemon 未经 scripts/build-package.sh 重新组装时，
+  // 跑的是陈旧的打包 daemon。修复后 resolver 在存在时优先选 monorepo 源码（packages/daemon），
+  // 确保 `node packages/cli/dist/bin-wrapper.js daemon start` 在开发中始终启动 daemon 的
+  // 真实来源。
 
-  it("returns monorepo source path when packages/daemon/dist/index.js exists (DEV — both paths present)", () => {
-    // Simulates a monorepo checkout: BOTH paths have dist/index.js
-    // (vendored bundle assembled via scripts/build-package.sh + source
-    // daemon built via @openrig/daemon). The resolver picks source.
+  it("packages/daemon/dist/index.js 存在时返回 monorepo 源码路径（DEV——两路径并存）", () => {
+    // 模拟 monorepo checkout：两条路径都有 dist/index.js
+    //（vendored bundle 经 scripts/build-package.sh 装配 + 源码
+    // daemon 经 @openrig/daemon 构建）。解析器选源码。
     const exists = (p: string) => p.endsWith("daemon/dist/index.js");
     const result = resolveDaemonPath("/repo/packages/cli/dist", exists);
     expect(result).toBe(path.resolve("/repo/packages/cli/dist", "../../daemon"));
   });
 
-  it("falls back to bundled path when only ../daemon/dist exists (NPM-INSTALL — single path)", () => {
+  it("仅 ../daemon/dist 存在时回退到打包路径（NPM-INSTALL——单路径）", () => {
     // Simulates `npm install -g @openrig/cli` layout:
     //   node_modules/@openrig/cli/{dist,daemon,ui}
     // Only ../daemon (sibling to cli/dist) exists; ../../daemon doesn't.
@@ -1046,7 +1044,7 @@ describe("resolveDaemonPath", () => {
     expect(result).toBe(path.resolve("/install/cli/dist", "../daemon"));
   });
 
-  it("returns the monorepo path even when nothing exists, so callers can surface a clear error", () => {
+  it("即使什么都不存在也返回 monorepo 路径，便于调用方呈现清晰错误", () => {
     const exists = () => false;
     const result = resolveDaemonPath("/repo/packages/cli/dist", exists);
     expect(result).toBe(path.resolve("/repo/packages/cli/dist", "../../daemon"));
@@ -1054,7 +1052,7 @@ describe("resolveDaemonPath", () => {
 });
 
 describe("startDaemon env sanitization", () => {
-  it("startDaemon preserves the Codex config root while excluding transient CODEX runtime/session vars", async () => {
+  it("startDaemon 保留 Codex config root，但剔除瞬态 CODEX runtime/session 变量", async () => {
     // Pollute process.env temporarily
     const saved: Record<string, string | undefined> = {};
     const pollutants: Record<string, string> = {
@@ -1090,11 +1088,11 @@ describe("startDaemon env sanitization", () => {
       expect(spawnEnv["COMMAND_MODE"]).toBeUndefined();
       expect(spawnEnv["__CFBundleIdentifier"]).toBeUndefined();
 
-      // cmux context needed for workspace-bound commands should survive
+      // workspace 绑定命令所需的 cmux 上下文应保留
       expect(spawnEnv["CMUX_PANEL_ID"]).toBe("panel:7");
       expect(spawnEnv["CMUX_BUNDLED_CLI_PATH"]).toBe("/Applications/cmux.app/Contents/Resources/bin/cmux");
 
-      // Core vars must be present
+      // 核心变量必须存在
       expect(spawnEnv["HOME"]).toBeDefined();
       // CODEX_HOME is topology/config-root state consumed by the daemon; unlike
       // every other CODEX_* runtime/auth/session value, it must cross this boundary.
@@ -1111,7 +1109,7 @@ describe("startDaemon env sanitization", () => {
 });
 
 describe("buildDaemonEnv", () => {
-  it("preserves only CODEX_HOME because it is topology/config-root state", () => {
+  it("仅保留 CODEX_HOME，因为它是 topology/config-root 状态", () => {
     const result = buildDaemonEnv({
       CODEX_HOME: "/Users/tester/.codex-custom",
       CODEX_CI: "1",
@@ -1127,7 +1125,7 @@ describe("buildDaemonEnv", () => {
     expect(result["CODEX_AUTH_TOKEN"]).toBeUndefined();
   });
 
-  it("strips terminal/GUI vars and preserves core vars", () => {
+  it("剔除 terminal/GUI 变量并保留核心变量", () => {
     const baseEnv: Record<string, string> = {
       HOME: "/Users/tester",
       PATH: "/opt/homebrew/bin:/usr/bin:/bin",
@@ -1191,7 +1189,7 @@ describe("buildDaemonEnv", () => {
     expect(result["CMUX_WORKSPACE"]).toBeUndefined();
     expect(result["CMUX_SURFACE_ID"]).toBeUndefined();
 
-    // cmux context needed for workspace-bound commands is preserved
+    // workspace 绑定命令所需的 cmux 上下文已保留
     expect(result["CMUX_BUNDLE_ID"]).toBe("com.cmuxterm.app");
     expect(result["CMUX_BUNDLED_CLI_PATH"]).toBe("/Applications/cmux.app/Contents/Resources/bin/cmux");
     expect(result["CMUX_PANEL_ID"]).toBe("panel:1");
@@ -1199,7 +1197,7 @@ describe("buildDaemonEnv", () => {
     expect(result["CMUX_WORKSPACE_ID"]).toBe("workspace:1");
   });
 
-  it("explicit opts override inherited OPENRIG_* from base env", () => {
+  it("显式 opts 覆盖 base env 中继承的 OPENRIG_*", () => {
     const baseEnv: Record<string, string> = {
       HOME: "/Users/tester",
       PATH: "/usr/bin",
@@ -1217,7 +1215,7 @@ describe("buildDaemonEnv", () => {
   // Default-product-launch must NOT export OPENRIG_HOST so daemon's
   // index.ts falls through to the loopback+tailscale multi-bind path.
   describe("auth-bearer-tailscale-trust: explicit-vs-default host signal", () => {
-    it("omits OPENRIG_HOST when opts.host is undefined (default-product-launch)", () => {
+    it("opts.host 未定义时省略 OPENRIG_HOST（default-product-launch）", () => {
       const baseEnv: Record<string, string> = { HOME: "/Users/tester", PATH: "/usr/bin" };
       const result = buildDaemonEnv(baseEnv, {
         port: 7433,
@@ -1230,7 +1228,7 @@ describe("buildDaemonEnv", () => {
       expect(result["OPENRIG_DB"]).toBe("/tmp/test.db");
     });
 
-    it("sets OPENRIG_HOST when opts.host is explicit (user opt-in)", () => {
+    it("opts.host 显式时设置 OPENRIG_HOST（用户显式选择）", () => {
       const baseEnv: Record<string, string> = { HOME: "/Users/tester", PATH: "/usr/bin" };
       const result = buildDaemonEnv(baseEnv, {
         port: 7433,
@@ -1240,7 +1238,7 @@ describe("buildDaemonEnv", () => {
       expect(result["OPENRIG_HOST"]).toBe("0.0.0.0");
     });
 
-    it("S20: inherited OPENRIG_HOST is SCRUBBED — the shell-env-wins premise died (routing env is byte-indistinguishable from opt-in; operator baton qitem-20260827070400). Opt-in rides OPENRIG_BIND_HOST", () => {
+    it("S20：继承的 OPENRIG_HOST 被清除——shell-env-wins 前提已死（路由 env 与 opt-in 字节不可区分；operator baton qitem-20260827070400）。Opt-in 走 OPENRIG_BIND_HOST", () => {
       // The old pin encoded the dead-premise design this slice re-grounds: an
       // inherited OPENRIG_HOST was treated as operator opt-in, and a managed
       // environment's injected routing value silently became single-bind policy
@@ -1258,21 +1256,15 @@ describe("buildDaemonEnv", () => {
     });
   });
 
-  // Slice 22 founder-walk-vm-populated-env forward-fix #1: the slice
-  // intentionally drops a `--openrig-home` CLI flag in favor of using
-  // the process-env-pattern (each `rig` invocation gets its own
-  // OPENRIG_HOME via the shell). The slice's "fully isolated state"
-  // claim depends on the env contract being honored at module load
-  // time — specifically that getOpenRigHome() returns the current
-  // env value (not a hardcoded default) and that getDefaultOpenRigPath
-  // threads it into derived paths. The module-level constants
-  // (OPENRIG_DIR / STATE_FILE / LOG_FILE) are a single snapshot of
-  // these functions at load.
+  // Slice 22 founder-walk-vm-populated-env 前向修复 #1：该 slice 刻意放弃 `--openrig-home`
+  // CLI flag，改用 process-env 模式（每次 `rig` 调用经 shell 获得自己的 OPENRIG_HOME）。
+  // slice 的"完全隔离状态"主张依赖模块加载时遵守 env 契约——具体即 getOpenRigHome() 返回
+  // 当前 env 值（而非硬编码默认），且 getDefaultOpenRigPath 把它串入派生路径。模块级常量
+  //（OPENRIG_DIR / STATE_FILE / LOG_FILE）只是这些函数在加载时的单次快照。
   //
-  // These regression tests prove the function contract with distinct-
-  // value discriminators per banked feedback_poc_regression_must_discriminate.
+  // 这些回归测试按留存的 feedback_poc_regression_must_discriminate，用区分值判别子证明函数契约。
   describe("slice 22: OPENRIG_HOME env contract for per-process state isolation", () => {
-    it("getOpenRigHome respects process.env.OPENRIG_HOME (distinct values yield distinct paths)", async () => {
+    it("getOpenRigHome 尊重 process.env.OPENRIG_HOME（不同值产出不同路径）", async () => {
       const { getOpenRigHome } = await import("../src/openrig-compat.js");
       const saved = process.env["OPENRIG_HOME"];
       try {
@@ -1289,7 +1281,7 @@ describe("buildDaemonEnv", () => {
       }
     });
 
-    it("getDefaultOpenRigPath threads env-resolved OPENRIG_HOME into derived paths (daemon.json + log)", async () => {
+    it("getDefaultOpenRigPath 把 env 解析出的 OPENRIG_HOME 串入派生路径（daemon.json + log）", async () => {
       const { getDefaultOpenRigPath } = await import("../src/openrig-compat.js");
       const saved = process.env["OPENRIG_HOME"];
       try {
@@ -1311,7 +1303,7 @@ describe("buildDaemonEnv", () => {
       }
     });
 
-    it("empty OPENRIG_HOME falls back to homedir default (not the literal empty string)", async () => {
+    it("空 OPENRIG_HOME 回退到 homedir 默认值（而非字面空串）", async () => {
       const { getOpenRigHome } = await import("../src/openrig-compat.js");
       const { homedir } = await import("node:os");
       const saved = process.env["OPENRIG_HOME"];
@@ -1339,7 +1331,7 @@ describe("buildDaemonEnv", () => {
     // load reflects the env that was set at that moment. Will fail
     // if a future contributor hardcodes a literal path or otherwise
     // bypasses openrig-compat helpers at module level.
-    it("daemon-lifecycle module-level constants reflect OPENRIG_HOME at import time (slice 22 FF2)", async () => {
+    it("daemon-lifecycle 模块级常量在 import 时反映 OPENRIG_HOME（slice 22 FF2）", async () => {
       const saved = process.env["OPENRIG_HOME"];
       try {
         // First import — OPENRIG_HOME = blank-slate value
@@ -1347,10 +1339,8 @@ describe("buildDaemonEnv", () => {
         vi.resetModules();
         const blank = await import("../src/daemon-lifecycle.js");
 
-        // Second import — OPENRIG_HOME = populated value (distinct dir;
-        // not equal, not a symlink prefix). vi.resetModules clears the
-        // module cache so the second import re-evaluates module-level
-        // constants under the new env.
+        // 第二次 import——OPENRIG_HOME = 填充值（不同目录；不等，也不是符号链接前缀）。
+        // vi.resetModules 清空模块缓存，使第二次 import 在新 env 下重新求值模块级常量。
         process.env["OPENRIG_HOME"] = "/Users/example/.openrig-vm-populated-fresh";
         vi.resetModules();
         const populated = await import("../src/daemon-lifecycle.js");
@@ -1380,7 +1370,7 @@ describe("buildDaemonEnv", () => {
   });
 
   describe("V1 pre-release CLI/daemon Item 1 — transcript rotation tunables projection", () => {
-    it("projects transcriptsLines + transcriptsPollIntervalSeconds into OPENRIG_* env vars when provided", () => {
+    it("提供时把 transcriptsLines + transcriptsPollIntervalSeconds 投影进 OPENRIG_* env 变量", () => {
       const baseEnv: Record<string, string> = { HOME: "/Users/tester", PATH: "/usr/bin" };
       const result = buildDaemonEnv(baseEnv, {
         port: 7433,
@@ -1393,7 +1383,7 @@ describe("buildDaemonEnv", () => {
       expect(result["OPENRIG_TRANSCRIPTS_POLL_INTERVAL_SECONDS"]).toBe("5");
     });
 
-    it("omits the transcript rotation env vars when the opts are undefined so the rotation hook falls back to its own defaults", () => {
+    it("opts 未定义时省略 transcript 轮转 env 变量，使轮转钩子回退自身默认值", () => {
       const baseEnv: Record<string, string> = { HOME: "/Users/tester", PATH: "/usr/bin" };
       const result = buildDaemonEnv(baseEnv, {
         port: 7433,
@@ -1404,7 +1394,7 @@ describe("buildDaemonEnv", () => {
       expect(result["OPENRIG_TRANSCRIPTS_POLL_INTERVAL_SECONDS"]).toBeUndefined();
     });
 
-    it("scrubs inherited OPENRIG_TRANSCRIPTS_* from the base env when opts override is set, so the daemon honors the file-stored ConfigStore value", () => {
+    it("设置 opts override 时从 base env 清除继承的 OPENRIG_TRANSCRIPTS_*，使 daemon 采纳文件存储的 ConfigStore 值", () => {
       const baseEnv: Record<string, string> = {
         HOME: "/Users/tester",
         PATH: "/usr/bin",
@@ -1425,7 +1415,7 @@ describe("buildDaemonEnv", () => {
 });
 
 describe("ensureWorkspaceScaffold", () => {
-  it("does not overwrite existing workspace files", () => {
+  it("不覆盖已有 workspace 文件", () => {
     const existing = new Set<string>([
       "/tmp/ws",
       path.join("/tmp/ws", "SPEC.md"),
@@ -1452,15 +1442,15 @@ describe("ensureWorkspaceScaffold", () => {
 // OPR.0.3.3.04.2 (AC-4): the ONE shared daemon-not-running honest error used by
 // the daemon-dependent journey verbs (bootstrap/discover/workspace/workflow).
 describe("daemonNotRunningError / printDaemonNotRunning (AC-4 shared honest error)", () => {
-  it("daemonNotRunningError is the 3-part fact/consequence/action shape pointing to rig up / rig daemon start", () => {
+  it("daemonNotRunningError 为三段 fact/consequence/action 形状，指向 rig up / rig daemon start", () => {
     const err = daemonNotRunningError();
-    expect(err.fact).toContain("Daemon not running");
-    expect(err.consequence).toContain("needs a running daemon");
-    expect(err.action).toContain("rig up");
-    expect(err.action).toContain("rig daemon start");
+    expect(err.fact).toContain("后台服务未运行");
+    expect(err.consequence).toContain("需要一个正在运行的后台服务");
+    expect(err.action).toContain("zrig up");
+    expect(err.action).toContain("zrig daemon start");
   });
 
-  it("printDaemonNotRunning (human) emits all three parts on stderr and sets exit code 1", () => {
+  it("printDaemonNotRunning（人类）在 stderr 输出全部三段并设退出码 1", () => {
     const lines: string[] = [];
     const origErr = console.error;
     const origExit = process.exitCode;
@@ -1474,13 +1464,13 @@ describe("daemonNotRunningError / printDaemonNotRunning (AC-4 shared honest erro
     const exit = process.exitCode;
     process.exitCode = origExit;
     const out = lines.join("\n");
-    expect(out).toContain("Daemon not running");
-    expect(out).toContain("needs a running daemon");
-    expect(out).toContain("rig up");
+    expect(out).toContain("后台服务未运行");
+    expect(out).toContain("需要一个正在运行的后台服务");
+    expect(out).toContain("zrig up");
     expect(exit).toBe(1);
   });
 
-  it("printDaemonNotRunning({ json: true }) emits the { error: { fact, consequence, action } } envelope", () => {
+  it("printDaemonNotRunning({ json: true }) 输出 { error: { fact, consequence, action } } 信封", () => {
     const lines: string[] = [];
     const origLog = console.log;
     const origExit = process.exitCode;
@@ -1493,9 +1483,9 @@ describe("daemonNotRunningError / printDaemonNotRunning (AC-4 shared honest erro
     }
     process.exitCode = origExit;
     const parsed = JSON.parse(lines.join("")) as { error: { fact: string; consequence: string; action: string } };
-    expect(parsed.error.fact).toContain("Daemon not running");
-    expect(parsed.error.consequence).toContain("needs a running daemon");
-    expect(parsed.error.action).toContain("rig up");
+    expect(parsed.error.fact).toContain("后台服务未运行");
+    expect(parsed.error.consequence).toContain("需要一个正在运行的后台服务");
+    expect(parsed.error.action).toContain("zrig up");
   });
 
   // ===================================================================
@@ -1508,7 +1498,7 @@ describe("daemonNotRunningError / printDaemonNotRunning (AC-4 shared honest erro
   // must not be "stopped"); fix-agnostic (widened budget OR timeout-vs-conn-error).
   // Genuine-down (connection error) stays "stopped" (control preserved).
   // ===================================================================
-  it("Slice-05 D4 RED: a slow-but-answering /healthz on the no-daemon.json branch must NOT report stopped", async () => {
+  it("Slice-05 D4 RED：无 daemon.json 分支上慢但有应答的 /healthz 绝不能报 stopped", async () => {
     const savedUrl = process.env["OPENRIG_URL"];
     delete process.env["OPENRIG_URL"]; // force the no-state (config) branch, not the OPENRIG_URL branch
     vi.useFakeTimers();
@@ -1528,7 +1518,7 @@ describe("daemonNotRunningError / printDaemonNotRunning (AC-4 shared honest erro
     }
   });
 
-  it("Slice-05 D4 preserve (GREEN): genuine-down (connection error, no daemon.json) still reports stopped", async () => {
+  it("Slice-05 D4 保留（GREEN）：真实宕机（连接错误、无 daemon.json）仍报 stopped", async () => {
     const savedUrl = process.env["OPENRIG_URL"];
     delete process.env["OPENRIG_URL"];
     try {
@@ -1547,7 +1537,7 @@ describe("daemonNotRunningError / printDaemonNotRunning (AC-4 shared honest erro
   // The OTHER independent stateless catch->stopped branch: OPENRIG_URL set (the
   // firsthand D4a repro path). Same false-negative: a slow-but-answering /healthz
   // there is also reported stopped.
-  it("Slice-05 D4 RED (OPENRIG_URL branch): a slow-but-answering /healthz must NOT report stopped", async () => {
+  it("Slice-05 D4 RED（OPENRIG_URL 分支）：慢但有应答的 /healthz 绝不能报 stopped", async () => {
     const savedUrl = process.env["OPENRIG_URL"];
     process.env["OPENRIG_URL"] = "http://127.0.0.1:9999"; // force the OPENRIG_URL branch
     vi.useFakeTimers();
@@ -1566,7 +1556,7 @@ describe("daemonNotRunningError / printDaemonNotRunning (AC-4 shared honest erro
     }
   });
 
-  it("Slice-05 D4 preserve (GREEN, OPENRIG_URL branch): genuine-down (connection error) still reports stopped", async () => {
+  it("Slice-05 D4 保留（GREEN，OPENRIG_URL 分支）：真实宕机（连接错误）仍报 stopped", async () => {
     const savedUrl = process.env["OPENRIG_URL"];
     process.env["OPENRIG_URL"] = "http://127.0.0.1:9999";
     try {

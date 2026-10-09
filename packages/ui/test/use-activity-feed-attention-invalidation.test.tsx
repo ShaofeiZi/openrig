@@ -1,8 +1,7 @@
-// OPR.0.3.2.20 — QA BLOCKING-A (qitem-20260518195533) regression
-// test. The For You attention surface MUST refetch when queue
-// events arrive over SSE; without invalidation, useAttentionItems
-// keeps its react-query cache and the open lens shows stale data
-// until hard reload or window-focus refetch.
+// OPR.0.3.2.20——QA BLOCKING-A（qitem-20260518195533）回归
+// 测试。For You 注意表面在 queue 事件经 SSE 到达时必须重取；
+// 若无失效，useAttentionItems 保留其 react-query 缓存，
+// 打开的 lens 显示陈旧数据，直到硬刷新或 window-focus 重取。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
@@ -20,7 +19,7 @@ function createTestQueryClient() {
 
 beforeEach(() => {
   OriginalEventSource = globalThis.EventSource;
-  // @ts-expect-error — replacing the global for the test
+  // @ts-expect-error——为测试替换全局
   globalThis.EventSource = createMockEventSourceClass();
 });
 
@@ -44,12 +43,12 @@ describe("useActivityFeed — attention-items invalidation on queue events (QA B
     const spy = vi.spyOn(client, "invalidateQueries");
     renderHook(() => useActivityFeed(), { wrapper: wrapper(client) });
 
-    // Wait for the EventSource subscription to be created.
+    // 等 EventSource 订阅创建。
     await act(() => Promise.resolve());
     const source = instances[0];
     expect(source).toBeDefined();
 
-    // Simulate the daemon emitting a queue.created event.
+    // 模拟 daemon 发出 queue.created 事件。
     act(() => {
       source!.simulateMessage(JSON.stringify({
         seq: 1,
@@ -60,9 +59,9 @@ describe("useActivityFeed — attention-items invalidation on queue events (QA B
       }));
     });
 
-    // The cache key for useAttentionItems is ["attention-items", <limit>].
-    // invalidateQueries with key ["attention-items"] is a prefix match in
-    // react-query — verify we called it with that exact prefix.
+    // useAttentionItems 的缓存键是 ["attention-items", <limit>]。
+    // react-query 中键 ["attention-items"] 的 invalidateQueries 是前缀匹配——
+    // 验证我们用该精确前缀调用。
     expect(spy).toHaveBeenCalledWith({ queryKey: ["attention-items"] });
   });
 
@@ -85,7 +84,7 @@ describe("useActivityFeed — attention-items invalidation on queue events (QA B
       });
     }
 
-    // attention-items invalidated for each of the 4 event types.
+    // 4 种事件类型各自都失效 attention-items。
     const attentionCalls = spy.mock.calls.filter(
       ([arg]) => arg && (arg as { queryKey?: unknown[] }).queryKey?.[0] === "attention-items",
     );

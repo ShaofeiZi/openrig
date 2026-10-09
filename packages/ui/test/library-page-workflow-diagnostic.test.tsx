@@ -1,8 +1,7 @@
-// Slice 11 (workflow-spec-folder-discovery) — UI Library renders diagnostic
-// workflow rows when the daemon surfaces status='error' + errorMessage from
-// the folder-scan walk. Diagnostic rows are NOT navigable (no review payload
-// exists for unparseable YAML); the error message is surfaced inline so the
-// operator can fix the file in place.
+// Slice 11（workflow-spec-folder-discovery）——当 daemon 从 folder-scan walk
+// 呈现 status='error' + errorMessage 时，UI Library 渲染诊断 workflow 行。
+// 诊断行不可导航（不可解析 YAML 无 review payload）；错误消息内联呈现，
+// 使 operator 就地修文件。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
@@ -85,15 +84,15 @@ describe("Library workflow diagnostic rows (slice 11)", () => {
     const section = await waitFor(() =>
       screen.getByTestId("library-section-workflow-specs"),
     );
-    // Valid row is clickable (rendered as a Link).
+    // 有效行可点击（渲染为 Link）。
     const goodRow = await within(section).findByTestId("library-row-workflow-specs-workflow:good:1");
     expect(goodRow.tagName.toLowerCase()).toBe("a");
-    // Router URL-encodes `:` as %3A.
+    // Router 把 `:` URL 编码为 %3A。
     expect(goodRow.getAttribute("href")).toContain("workflow%3Agood%3A1");
 
-    // Diagnostic row uses a distinct testid pattern and renders the
-    // errorMessage inline, NOT as a navigable link (there is no review
-    // payload for an unparseable spec).
+    // 诊断行用不同 testid 模式并内联渲染
+    // errorMessage，而非可导航链接（不可解析 spec 无 review
+    // payload）。
     const diagRow = await within(section).findByTestId(
       "library-row-workflow-specs-workflow:error:/ws/specs/workflows/broken.yaml",
     );

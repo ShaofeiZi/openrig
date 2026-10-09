@@ -1,5 +1,5 @@
-// B7 — `rig policy`, the reintroduced permission-policy verb (ruling RULING-rig-mode-rig-policy-naming).
-// The honesty pin must ride every teaching surface; apply reuses the setup recording flow verbatim.
+// B7——`rig policy`，重新引入的 permission-policy 动词（裁定 RULING-rig-mode-rig-policy-naming）。
+// 诚实 pin 必须经每个教学表面；apply 逐字复用 setup 记录流。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
@@ -8,7 +8,7 @@ import path from "node:path";
 import { Command } from "commander";
 import { policyCommand } from "../src/commands/policy.js";
 
-const PIN = "OpenRig bakes NO allow/ask/deny permission policy — the harness-native permissions are the control surface.";
+const PIN = "zrig 不内置任何 allow/ask/deny 权限策略——harness 原生权限才是控制面。";
 
 function runCapture(argv: string[]): Promise<{ logs: string[]; errs: string[]; exitCode: number | undefined }> {
   return new Promise(async (resolve) => {
@@ -54,13 +54,13 @@ describe("rig policy — the permission-policy verb", () => {
 
   it("show on an unknown bare name treats it as a custom ref and refuses loudly when it does not resolve", async () => {
     const { errs, exitCode } = await runCapture(["policy", "show", "mystery"]);
-    expect(errs.join(" ")).toContain("Custom policy 'mystery' does not resolve");
+    expect(errs.join(" ")).toContain("自定义策略 'mystery' 无法解析");
     expect(exitCode).toBe(1);
   });
 
   it("show rejects a bare BUILT-IN name used as a custom ref with the anti-shadowing teaching", async () => {
     const { errs, exitCode } = await runCapture(["policy", "show", "builtin:mystery"]);
-    expect(errs.join(" ")).toContain("unknown built-in policy 'mystery'");
+    expect(errs.join(" ")).toContain("未知内置策略 'mystery'");
     expect(exitCode).toBe(1);
   });
 
@@ -70,7 +70,7 @@ describe("rig policy — the permission-policy verb", () => {
     const { logs } = await runCapture(["policy", "current", "--spec", spec, "--json"]);
     const out = JSON.parse(logs.join("")) as { sites: Array<{ effective: unknown; applies?: string }> };
     expect(out.sites[0]!.effective).toBeNull();
-    expect(String(out.sites[0]!.applies)).toContain("floor");
+    expect(String(out.sites[0]!.applies)).toContain("地板");
   });
 
   it("apply records builtin:standard into an existing spec and current reads it back classified", async () => {
@@ -79,7 +79,7 @@ describe("rig policy — the permission-policy verb", () => {
     const applied = await runCapture(["policy", "apply", "standard", "--spec", spec, "--json"]);
     const step = JSON.parse(applied.logs.join("")) as { status: string };
     expect(step.status).toBe("applied");
-    // The write is the setup flow's comment-preserving edit.
+    // 写是 setup 流的保注释编辑。
     const raw = fs.readFileSync(spec, "utf-8");
     expect(raw).toContain("permission_policy: builtin:standard");
     expect(raw).toContain("# operator comment stays");
@@ -139,8 +139,8 @@ body
     fs.writeFileSync(path.join(dir, "rig.yaml"), "name: r\n");
     const { errs, exitCode } = await runCapture(["policy", "show", "policies/nope.policy.md", "--spec", path.join(dir, "rig.yaml")]);
     expect(exitCode).toBe(1);
-    expect(errs.join(" ")).toContain("does not resolve");
-    expect(errs.join(" ")).toContain("FLOOR");
+    expect(errs.join(" ")).toContain("无法解析");
+    expect(errs.join(" ")).toContain("建议地板");
   });
 
   it("r2 HIGH-2: current REFUSES a traversal ref with the AUTHORITATIVE error (exit 1, never blessed as custom)", async () => {
@@ -148,7 +148,7 @@ body
     const { logs, exitCode } = await runCapture(["policy", "current", "--spec", path.join(dir, "rig.yaml"), "--json"]);
     expect(exitCode).toBe(1);
     const out = JSON.parse(logs.join("")) as { sites: Array<Record<string, unknown>> };
-    expect(String(out.sites[0]!.invalid)).toContain("path traversal (..) is not allowed");
+    expect(String(out.sites[0]!.invalid)).toContain("不允许路径穿越（..）");
   });
 
   it("r2 HIGH-2: current on a VALID full-bypass custom shows WHAT WOULD APPLY (target, surface, posture, content-resolution)", async () => {
@@ -169,7 +169,7 @@ body
     expect(exitCode).toBeUndefined();
     const out = JSON.parse(logs.join("")) as { sites: Array<{ applies?: string; attachment?: Record<string, unknown> }> };
     expect(out.sites[0]!.attachment).toMatchObject({ contentResolved: false, launchPosture: "floor" });
-    expect(String(out.sites[0]!.applies)).toContain("advisory FLOOR");
+    expect(String(out.sites[0]!.applies)).toContain("建议地板");
   });
 
   it("r2 round 3: a PRESENT non-string rig value is INVALID (exit 1), never reported as absent/floor", async () => {
@@ -177,7 +177,7 @@ body
     const { logs, exitCode } = await runCapture(["policy", "current", "--spec", path.join(dir, "rig.yaml"), "--json"]);
     expect(exitCode).toBe(1);
     const out = JSON.parse(logs.join("")) as { sites: Array<Record<string, unknown>> };
-    expect(String(out.sites[0]!.invalid)).toContain("must be a non-empty string ref");
+    expect(String(out.sites[0]!.invalid)).toContain("必须是非空字符串 ref");
   });
 
   it("r2 round 3: a PRESENT non-string member value surfaces as ITS OWN site defect, never silently omitted", async () => {
@@ -187,7 +187,7 @@ body
     const out = JSON.parse(logs.join("")) as { sites: Array<Record<string, unknown>> };
     expect(out.sites).toHaveLength(2);
     expect(String(out.sites[1]!.site)).toContain("dev.qa");
-    expect(String(out.sites[1]!.invalid)).toContain("must be a non-empty string ref");
+    expect(String(out.sites[1]!.invalid)).toContain("必须是非空字符串 ref");
   });
 
   it("r2 round 3: list --spec surfaces a present non-string as INVALID in the custom set", async () => {
@@ -195,7 +195,7 @@ body
     const { logs } = await runCapture(["policy", "list", "--spec", path.join(dir, "rig.yaml"), "--json"]);
     const out = JSON.parse(logs.join("")) as { custom: Array<Record<string, unknown>> };
     expect(out.custom).toHaveLength(1);
-    expect(String(out.custom[0]!.invalid)).toContain("must be a non-empty string ref");
+    expect(String(out.custom[0]!.invalid)).toContain("必须是非空字符串 ref");
   });
 
   it("current reports member-level overrides per site (member > rig)", async () => {

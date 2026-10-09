@@ -1,54 +1,45 @@
 import type { EvalProvider, EvalRunResult } from "./eval-provider.js";
 
-/** A live seat session backing the persistent provider mode (Test-A). The
- *  implementation is the non-author's live wiring (spawn via the rig CLI,
- *  capture via the transport); this interface is the seam the orchestration
- *  is proven against. */
+/** 支撑持久 provider 模式（Test-A）的 live seat session。实现由非作者负责 live 接线（通过 rig CLI
+ *  spawn、通过 transport capture）；此 interface 是 orchestration 的证明接缝。 */
 export interface RigSeatSession {
-  /** Stable identity of the live seat GENERATION backing this session — the
-   *  persistence proof compares it across phases. */
+  /** 支撑此 session 的 live seat generation 稳定 identity——persistence proof 会跨 phase 比较它。 */
   generation: string;
   sendPrompt(prompt: string): Promise<void>;
-  /** Capture the pane/transcript content produced since `prompt` was sent.
-   *  Implementations return RAW capture; the provider owns the input-echo
-   *  contamination control. */
+  /** 捕获发送 `prompt` 后产生的 pane/transcript 内容。实现返回 raw capture；provider 负责
+   *  input-echo contamination control。 */
   captureSince(prompt: string): Promise<string>;
   retire(): Promise<void>;
 }
 
 export interface RigSeatProviderOptions {
   /**
-   * REPAIR 2: the EXACT production package the spawned seat resolves refs against (the packaged
-   * builtin library) — NOT a hand-seeded fixture root — so fixture-vs-production drift fails
-   * structurally. The seat pulls via the production `rig context get skills/<ns>/<name>`.
+   * 修复 2：已启动 seat 用于解析 ref 的准确生产 package（packaged builtin library）——不是手工
+   * seed 的 fixture root——使 fixture-vs-production drift 从结构上失败。seat 通过生产
+   * `rig context get skills/<ns>/<name>` 拉取。
    */
   productionPackage: string;
-  /** Seat spec / model to fork for the eval, when the non-author wires this live. */
+  /** 非作者接入 live 时，供 eval fork 的 seat spec / model。 */
   seatSpec?: string;
-  /** Test-A (row 782b467a): SESSION-PERSISTENT mode — one seat/generation
-   *  across baseline -> WALK -> GET -> post. Spawn is called lazily ONCE; every
-   *  run() reuses the same session until dispose(). */
+  /** Test-A（row 782b467a）：SESSION-PERSISTENT 模式——baseline -> WALK -> GET -> post 全程使用
+   *  同一 seat/generation。惰性调用 spawn 一次；dispose() 前每次 run() 都复用同一 session。 */
   session?: { spawn: () => Promise<RigSeatSession> };
 }
 
 /**
- * slice-07 R6 — the LIVE-SEAT provider: the proof-contract PULL-WORKS / AGENT-DRIVEN door.
+ * slice-07 R6——LIVE-SEAT provider：proof-contract PULL-WORKS / AGENT-DRIVEN 门。
  *
- * Two modes behind the ONE EvalProvider seam (Test-A completes the deferred live leg, it does
- * not redesign the harness):
+ * 唯一 EvalProvider 接缝背后的两种模式（Test-A 完成延后的 live 环节，不重新设计 harness）：
  *
- * - SESSION-PERSISTENT (Test-A): `session.spawn` provides a live RigSeatSession; the provider
- *   spawns lazily once, reuses the same seat/generation for every run() (the baseline -> WALK ->
- *   GET -> post phases are successive run() calls from the driver), and owns the INPUT-ECHO
- *   contamination control: the LEADING echo of the prompt (the pane's echoed input) is stripped
- *   from the returned transcript so the deterministic door can never pass by matching the
- *   prompt's own text — while a genuine later quotation by the seat is kept (stripping every
- *   occurrence would falsify real output). dispose() retires the seat exactly once; run() after
- *   dispose refuses loud.
+ * - SESSION-PERSISTENT（Test-A）：`session.spawn` 提供 live RigSeatSession；provider 惰性启动一次，
+ *   每次 run() 都复用同一 seat/generation（baseline -> WALK -> GET -> post phase 是 driver 连续的
+ *   run() 调用），并负责 INPUT-ECHO contamination control：从返回 transcript 中剥离 prompt 的
+ *   leading echo（pane 回显输入），使确定性 door 绝不能只匹配 prompt 自身文本而通过；seat 稍后的
+ *   真实引用会保留（剥离每次出现会伪造真实输出）。dispose() 只退役 seat 一次；dispose 后 run()
+ *   会显著拒绝。
  *
- * - LEGACY (no session deps): THROWS — rather than returning a plausible empty transcript — so a
- *   live run can never read as a false green before the wiring exists. Run the harness with
- *   --provider fake instead.
+ * - LEGACY（无 session 依赖）：抛错——而不是返回貌似合理的空 transcript——使 live 接线存在前，
+ *   live run 绝不会显示为 false green。改用 `--provider fake` 运行 harness。
  */
 export class RigSeatProvider implements EvalProvider {
   readonly name = "rig-seat";
@@ -61,20 +52,20 @@ export class RigSeatProvider implements EvalProvider {
   async run(prompt: string): Promise<EvalRunResult> {
     if (!this.opts.session) {
       throw new Error(
-        "RigSeatProvider is the live proof-contract door and is not yet driven. The non-author wires " +
-          "seat spawn — resolving canonical refs (skills/<ns>/<name>) against the PRODUCTION package, " +
-          "NOT a fixture override, so fixture-vs-production drift fails structurally — natural-prompt " +
-          "send, and transcript capture here, then verifies live. Until then, run --provider fake. See " +
+        "RigSeatProvider 是 live proof-contract 门，目前尚未驱动。非作者负责接入 seat spawn——针对生产 " +
+          "package 解析 canonical ref（skills/<ns>/<name>），而不是使用 fixture override，使 " +
+          "fixture-vs-production drift 从结构上失败——随后在此执行 natural-prompt send 与 transcript " +
+          "capture，并进行 live 验证。在此之前，请使用 --provider fake。参见 " +
           "packages/test-system/evals/README.md.",
       );
     }
     if (this.disposed) {
-      throw new Error("RigSeatProvider session is retired/disposed — a new provider (and seat) is required for further runs.");
+      throw new Error("RigSeatProvider session 已 retired/disposed——后续运行需要新的 provider（及 seat）。");
     }
     if (this.spawnError !== null) {
-      // A failed spawn poisons the RUN: re-spawning per case would churn one
-      // scratch rig per remaining case (measured live: six leaked rigs).
-      throw new Error(`RigSeatProvider: seat spawn already failed for this run — ${this.spawnError}`);
+      // spawn 失败会使本次运行失效：按用例重新 spawn 会为每个剩余用例反复创建一个 scratch rig
+      //（live 实测：泄漏六个 rig）。
+      throw new Error(`RigSeatProvider：本次运行中的 seat spawn 已失败——${this.spawnError}`);
     }
     if (!this.session) {
       try {
@@ -90,7 +81,7 @@ export class RigSeatProvider implements EvalProvider {
     return { transcript: stripLeadingEcho(raw, prompt), durationMs: Date.now() - started };
   }
 
-  /** Retire the persistent seat. Idempotent; only the first call retires. */
+  /** 退役 persistent seat。幂等；只有首次调用会执行退役。 */
   async dispose(): Promise<void> {
     if (this.disposed) return;
     this.disposed = true;
@@ -101,10 +92,9 @@ export class RigSeatProvider implements EvalProvider {
   }
 }
 
-/** The input-echo contamination control: remove the LEADING occurrence of the
- *  prompt (the pane's echoed input line(s)) from a raw capture. Only the
- *  leading echo — a seat that later QUOTES the prompt produced that text
- *  itself, and stripping it would falsify genuine output. */
+/** input-echo contamination control：从 raw capture 中删除 prompt 的 leading occurrence
+ *（pane 回显的输入行）。只删除 leading echo——seat 稍后引用 prompt 时，该文本由 seat 自身产生；
+ * 删除它会伪造真实输出。 */
 function stripLeadingEcho(raw: string, prompt: string): string {
   let out = raw;
   if (out.startsWith(prompt)) {

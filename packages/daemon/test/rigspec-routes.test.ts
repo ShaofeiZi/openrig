@@ -3,7 +3,7 @@ import type Database from "better-sqlite3";
 import type { Hono } from "hono";
 import type { RigRepository } from "../src/domain/rig-repository.js";
 import type { RigSpecExporter } from "../src/domain/rigspec-exporter.js";
-import { LegacyRigSpecCodec as RigSpecCodec } from "../src/domain/rigspec-codec.js"; // TODO: AS-T08b — migrate to pod-aware RigSpec
+import { LegacyRigSpecCodec as RigSpecCodec } from "../src/domain/rigspec-codec.js"; // TODO：AS-T08b——迁移至支持 pod 的 RigSpec
 import { RigSpecCodec as PodRigSpecCodec } from "../src/domain/rigspec-codec.js";
 import { RigSpecSchema as PodRigSpecSchema } from "../src/domain/rigspec-schema.js";
 import { PodRepository } from "../src/domain/pod-repository.js";
@@ -37,7 +37,7 @@ version: ""
 nodes: bad
 `;
 
-describe("Rigspec export routes", () => {
+describe("Rigspec 导出路由", () => {
   let db: Database.Database;
   let app: Hono;
   let rigRepo: RigRepository;
@@ -76,7 +76,7 @@ describe("Rigspec export routes", () => {
     expect(body.nodes).toHaveLength(1);
   });
 
-  it("GET /api/rigs/:rigId/spec preserves a persisted pod-aware workspace", async () => {
+  it("GET /api/rigs/:rigId/spec 保留已持久化且支持 pod 的 workspace", async () => {
     const rig = rigRepo.createRig("workspace-rig");
     const pod = new PodRepository(db).createPod(rig.id, "dev", "Dev");
     rigRepo.addNode(rig.id, "dev.worker", {
@@ -104,14 +104,14 @@ describe("Rigspec export routes", () => {
     expect(PodRigSpecSchema.normalize(parsed as Record<string, unknown>).workspace).toEqual(workspace);
   });
 
-  it("GET nonexistent rig -> 404", async () => {
+  it("GET 不存在的工作组 -> 404", async () => {
     const res = await app.request("/api/rigs/nonexistent/spec");
     expect(res.status).toBe(404);
   });
 
-  it("export internal error for corrupted rig -> 500", async () => {
+  it("导出损坏工作组时发生内部错误 -> 500", async () => {
     const rig = rigRepo.createRig("r99");
-    // Insert node with no runtime via raw SQL
+    // 通过 raw SQL 插入没有 runtime 的 node
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id) VALUES (?, ?, ?)")
       .run("bad-node", rig.id, "broken");
 
@@ -120,7 +120,7 @@ describe("Rigspec export routes", () => {
   });
 });
 
-describe("Rigspec import routes", () => {
+describe("Rigspec 导入路由", () => {
   let db: Database.Database;
   let app: Hono;
 
@@ -134,7 +134,7 @@ describe("Rigspec import routes", () => {
     db.close();
   });
 
-  it("POST /api/rigs/import valid YAML -> 201 + InstantiateResult", async () => {
+  it("POST /api/rigs/import 有效 YAML -> 201 + InstantiateResult", async () => {
     const res = await app.request("/api/rigs/import", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -147,7 +147,7 @@ describe("Rigspec import routes", () => {
     expect(body.nodes).toHaveLength(1);
   });
 
-  it("POST /api/rigs/import invalid YAML -> 400", async () => {
+  it("POST /api/rigs/import 无效 YAML -> 400", async () => {
     const res = await app.request("/api/rigs/import", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -156,8 +156,8 @@ describe("Rigspec import routes", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /api/rigs/import preflight failure -> 409", async () => {
-    // Create name collision
+  it("POST /api/rigs/import preflight 失败 -> 409", async () => {
+    // 创建名称冲突
     const setup = createTestApp(db);
     setup.rigRepo.createRig("r99");
 
@@ -180,7 +180,7 @@ describe("Rigspec import routes", () => {
     expect(body.valid).toBe(true);
   });
 
-  it("POST /api/rigs/import/validate invalid YAML -> 400", async () => {
+  it("POST /api/rigs/import/validate 无效 YAML -> 400", async () => {
     const res = await app.request("/api/rigs/import/validate", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -202,7 +202,7 @@ describe("Rigspec import routes", () => {
     expect(body).toHaveProperty("warnings");
   });
 
-  it("POST /api/rigs/import/preflight invalid YAML -> 400", async () => {
+  it("POST /api/rigs/import/preflight 无效 YAML -> 400", async () => {
     const res = await app.request("/api/rigs/import/preflight", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -212,8 +212,8 @@ describe("Rigspec import routes", () => {
   });
 });
 
-describe("Rigspec wiring", () => {
-  it("startup mounts rigspec routes (createDaemon regression)", async () => {
+describe("Rigspec 接线", () => {
+  it("startup 挂载 rigspec 路由（createDaemon 回归）", async () => {
     const tmuxExec: ExecFn = async () => "";
     const cmuxExec: ExecFn = async () => { throw Object.assign(new Error(""), { code: "ENOENT" }); };
     const { app, db, deps } = await createDaemon({ tmuxExec, cmuxExec });
@@ -225,7 +225,7 @@ describe("Rigspec wiring", () => {
     db.close();
   });
 
-  it("createApp throws on mismatched exporter db handle", () => {
+  it("exporter db handle 不匹配时 createApp 抛错", () => {
     const db1 = createFullTestDb();
     const db2 = createFullTestDb();
     const goodDeps = createTestApp(db1);
@@ -236,41 +236,41 @@ describe("Rigspec wiring", () => {
     expect(() => createApp({
       ...extractDeps(goodDeps),
       rigSpecExporter: badExporter,
-    })).toThrow(/rigSpecExporter.*same db handle/);
+    })).toThrow(/rigSpecExporter.*同一个数据库句柄/);
     db1.close();
     db2.close();
   });
 
-  it("createApp throws on mismatched instantiator db handle", () => {
+  it("instantiator db handle 不匹配时 createApp 抛错", () => {
     const db1 = createFullTestDb();
     const db2 = createFullTestDb();
     const goodDeps = createTestApp(db1);
     expect(() => createApp({
       ...extractDeps(goodDeps),
       rigInstantiator: { db: db2 } as any,
-    })).toThrow(/rigInstantiator.*same db handle/);
+    })).toThrow(/rigInstantiator.*同一个数据库句柄/);
     db1.close();
     db2.close();
   });
 
-  it("createApp throws on mismatched preflight db handle", () => {
+  it("preflight db handle 不匹配时 createApp 抛错", () => {
     const db1 = createFullTestDb();
     const db2 = createFullTestDb();
     const goodDeps = createTestApp(db1);
     expect(() => createApp({
       ...extractDeps(goodDeps),
       rigSpecPreflight: { db: db2 } as any,
-    })).toThrow(/rigSpecPreflight.*same db handle/);
+    })).toThrow(/rigSpecPreflight.*同一个数据库句柄/);
     db1.close();
     db2.close();
   });
 
-  it("startup constructs all Phase 3 deps", async () => {
+  it("startup 构造全部 Phase 3 依赖", async () => {
     const tmuxExec: ExecFn = async () => "";
     const cmuxExec: ExecFn = async () => { throw Object.assign(new Error(""), { code: "ENOENT" }); };
     const { app, db } = await createDaemon({ tmuxExec, cmuxExec });
 
-    // Import route is mounted (proves instantiator + preflight wired)
+    // import 路由已挂载（证明 instantiator + preflight 已接线）
     const res = await app.request("/api/rigs/import/validate", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -280,17 +280,17 @@ describe("Rigspec wiring", () => {
     db.close();
   });
 
-  it("round-trip: export then import produces equivalent rig", async () => {
+  it("往返：导出再导入会产生等价工作组", async () => {
     const db1 = createFullTestDb();
     const setup = createTestApp(db1);
     const rig = setup.rigRepo.createRig("r99");
     setup.rigRepo.addNode(rig.id, "worker", { runtime: "claude-code", role: "worker" });
 
-    // Export
+    // 导出
     const exportRes = await setup.app.request(`/api/rigs/${rig.id}/spec`);
     const yaml = await exportRes.text();
 
-    // Import into fresh app
+    // 导入全新 app
     const db2 = createFullTestDb();
     const setup2 = createTestApp(db2);
     const importRes = await setup2.app.request("/api/rigs/import", {
@@ -417,7 +417,7 @@ edges:
     to: research.scout
 `;
 
-describe("Rigspec import routes (pod-aware dual-stack)", () => {
+describe("Rigspec 导入路由（支持 pod 的双栈）", () => {
   let db: Database.Database;
   let app: Hono;
   let rigRepo: RigRepository;
@@ -436,8 +436,8 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
     db.close();
   });
 
-  // T3: validate endpoint auto-detects pod-aware format
-  it("POST /api/rigs/import/validate with pod-aware YAML returns valid:true", async () => {
+  // T3：validate endpoint 自动检测支持 pod 的格式
+  it("POST /api/rigs/import/validate 收到支持 pod 的 YAML 时返回 valid:true", async () => {
     const res = await app.request("/api/rigs/import/validate", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -448,7 +448,7 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
     expect(body.valid).toBe(true);
   });
 
-  it("POST /api/rigs/import/validate rejects an unknown topology key with its exact path and consequence", async () => {
+  it("POST /api/rigs/import/validate 拒绝未知 topology key，并给出精确 path 与后果", async () => {
     const res = await app.request("/api/rigs/import/validate", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -458,12 +458,12 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
     const body = await res.json();
     expect(body.valid).toBe(false);
     expect(body.errors).toContain(
-      'operating_mod: unknown key "operating_mod"; refusing the spec because normalization would otherwise discard it and alter the requested topology',
+      'operating_mod：未知键 "operating_mod"；拒绝该规范，因为规范化会丢弃此键并改变请求的拓扑',
     );
   });
 
-  // T4: validate endpoint with invalid pod-aware YAML returns errors
-  it("POST /api/rigs/import/validate with invalid pod-aware YAML returns errors", async () => {
+  // T4：validate endpoint 收到无效的 pod-aware YAML 时返回 error
+  it("POST /api/rigs/import/validate 收到无效的 pod-aware YAML 时返回 error", async () => {
     const res = await app.request("/api/rigs/import/validate", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -475,8 +475,8 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
     expect(body.errors.length).toBeGreaterThan(0);
   });
 
-  // T5: validate still works for legacy YAML
-  it("POST /api/rigs/import/validate still works for legacy YAML", async () => {
+  // T5：validate 对 legacy YAML 仍有效
+  it("POST /api/rigs/import/validate 对 legacy YAML 仍有效", async () => {
     const res = await app.request("/api/rigs/import/validate", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -487,8 +487,8 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
     expect(body.valid).toBe(true);
   });
 
-  // T7: import pod-aware spec without X-Rig-Root returns 400
-  it("POST /api/rigs/import with pod-aware YAML but no X-Rig-Root returns 400", async () => {
+  // T7：导入支持 pod 的 spec 但缺少 X-Rig-Root 时返回 400
+  it("POST /api/rigs/import 收到支持 pod 的 YAML 但缺少 X-Rig-Root 时返回 400", async () => {
     const res = await app.request("/api/rigs/import", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -499,8 +499,8 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
     expect(body.code).toBe("missing_rig_root");
   });
 
-  // T8: preflight pod-aware spec without X-Rig-Root returns 400
-  it("POST /api/rigs/import/preflight with pod-aware YAML but no X-Rig-Root returns 400", async () => {
+  // T8：preflight 支持 pod 的 spec 但缺少 X-Rig-Root 时返回 400
+  it("POST /api/rigs/import/preflight 收到支持 pod 的 YAML 但缺少 X-Rig-Root 时返回 400", async () => {
     const res = await app.request("/api/rigs/import/preflight", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -509,11 +509,11 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.ready).toBe(false);
-    expect(body.errors).toContain("X-Rig-Root header required for pod-aware specs");
+    expect(body.errors).toContain("pod 感知的 spec 需要 X-Rig-Root 头");
   });
 
-  // T9: legacy import still works through dual-stack
-  it("POST /api/rigs/import with legacy YAML still creates rig", async () => {
+  // T9：legacy import 仍可通过双栈工作
+  it("POST /api/rigs/import 收到 legacy YAML 时仍创建工作组", async () => {
     const res = await app.request("/api/rigs/import", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -525,7 +525,7 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
     expect(body.specName).toBe("r99");
   });
 
-  it("POST /api/rigs/import/workspace changes only workspace_json and is idempotent", async () => {
+  it("POST /api/rigs/import/workspace 只更改 workspace_json 且具有幂等性", async () => {
     const rig = rigRepo.createRig("host-rig");
     const pod = new PodRepository(db).createPod(rig.id, "dev", "Dev");
     const node = rigRepo.addNode(rig.id, "dev.impl", {
@@ -582,7 +582,7 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
       .toEqual(rigRepo.getRigWorkspace(rig.id));
   });
 
-  it("POST /api/rigs/import/workspace fails before mutation for invalid input or target", async () => {
+  it("POST /api/rigs/import/workspace 对无效 input 或 target 在修改前失败", async () => {
     const rig = rigRepo.createRig("host-rig");
     const original = {
       workspaceRoot: "/original",
@@ -636,7 +636,7 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
     expect(rigRepo.listRigs()).toHaveLength(1);
   });
 
-  it("POST /api/rigs/import/materialize creates rig structure without launching", async () => {
+  it("POST /api/rigs/import/materialize 创建工作组结构但不启动", async () => {
     const res = await app.request("/api/rigs/import/materialize", {
       method: "POST",
       headers: { "Content-Type": "text/plain", "X-Rig-Root": "/tmp" },
@@ -648,7 +648,7 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
     expect(body.nodes).toEqual([{ logicalId: "research.scout", status: "materialized" }]);
   });
 
-  it("POST /api/rigs/import/materialize honors X-Cwd-Override", async () => {
+  it("POST /api/rigs/import/materialize 遵循 X-Cwd-Override", async () => {
     const setup = createTestApp(db);
     const res = await setup.app.request("/api/rigs/import/materialize", {
       method: "POST",
@@ -661,7 +661,7 @@ describe("Rigspec import routes (pod-aware dual-stack)", () => {
     expect(rig?.nodes.find((node) => node.logicalId === "research.scout")?.cwd).toBe("/tmp");
   });
 
-  it("POST /api/rigs/import/materialize can target an existing rig", async () => {
+  it("POST /api/rigs/import/materialize 可以指定现有工作组", async () => {
     const setup = createTestApp(db);
     const rig = setup.rigRepo.createRig("host-rig");
     setup.rigRepo.addNode(rig.id, "orch.lead", { runtime: "claude-code", cwd: "/tmp" });

@@ -1,8 +1,7 @@
-// Slice 11 (release-0.3.1 workflow-spec-folder-discovery) — TDD for
-// scanWorkflowSpecFolder. Walks workspace.specs_root/workflows/, parses
-// + validates each YAML, populates the cache. Invalid YAML produces a
-// diagnostic row via cache.writeDiagnostic. Deletions remove the cache
-// row via cache.removeBySourcePath.
+// Slice 11（release-0.3.1 workflow-spec-folder-discovery）——scanWorkflowSpecFolder 的 TDD。
+// 遍历 workspace.specs_root/workflows/，解析并验证每个 YAML，再填充 cache。无效 YAML 通过
+// cache.writeDiagnostic 生成 diagnostic row；删除文件时通过 cache.removeBySourcePath 移除
+// cache row。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, utimesSync } from "node:fs";
@@ -87,13 +86,13 @@ describe("scanWorkflowSpecFolder (slice 11)", () => {
     rmSync(folder, { recursive: true, force: true });
   });
 
-  it("returns empty array when folder does not exist", () => {
+  it("文件夹不存在时返回空数组", () => {
     rmSync(folder, { recursive: true, force: true });
     const result = scanWorkflowSpecFolder({ db, cache, folder, builtinDir: null });
     expect(result).toEqual({ scanned: 0, valid: 0, errors: 0, removed: 0, skipped: 0 });
   });
 
-  it("scans a valid YAML file → row in cache + scan summary 1/1/0/0", () => {
+  it("扫描有效 YAML 文件 → cache row + 扫描摘要 1/1/0/0", () => {
     writeFileSync(join(folder, "wf.yaml"), VALID_YAML);
     const result = scanWorkflowSpecFolder({ db, cache, folder, builtinDir: null });
     expect(result).toEqual({ scanned: 1, valid: 1, errors: 0, removed: 0, skipped: 0 });
@@ -103,7 +102,7 @@ describe("scanWorkflowSpecFolder (slice 11)", () => {
     expect(row?.sourcePath).toBe(join(folder, "wf.yaml"));
   });
 
-  it("scans invalid YAML → diagnostic row + scan summary 1/0/1/0", () => {
+  it("扫描无效 YAML → diagnostic row + 扫描摘要 1/0/1/0", () => {
     writeFileSync(join(folder, "bad.yaml"), INVALID_YAML);
     const result = scanWorkflowSpecFolder({ db, cache, folder, builtinDir: null });
     expect(result).toEqual({ scanned: 1, valid: 0, errors: 1, removed: 0, skipped: 0 });
@@ -121,18 +120,18 @@ describe("scanWorkflowSpecFolder (slice 11)", () => {
     expect(row.name).toBe("bad.yaml");
   });
 
-  it("skips unchanged files on second scan via mtime check (OQ-3)", () => {
+  it("第二次扫描通过 mtime 检查跳过未变化文件（OQ-3）", () => {
     writeFileSync(join(folder, "wf.yaml"), VALID_YAML);
     scanWorkflowSpecFolder({ db, cache, folder, builtinDir: null });
-    // Capture original cached_at then second scan; cached_at should not change.
+    // 记录原始 cached_at 后再次扫描；cached_at 不应变化。
     const before = db
       .prepare(`SELECT cached_at FROM workflow_specs WHERE name = ?`)
       .get("folder-test") as { cached_at: string };
-    // Second scan should be a no-op for unchanged files.
+    // 第二次扫描对未变化文件应为 no-op。
     const result = scanWorkflowSpecFolder({ db, cache, folder, builtinDir: null });
     expect(result.scanned).toBe(1);
-    // Skipped files don't count as valid (re-parse) or errors — they're
-    // counted via a separate `skipped` field for observability.
+    // skipped 文件不计入 valid（重新 parse）或 errors，而是由单独的 `skipped` 字段计数，
+    // 便于观测。
     expect(result.skipped).toBe(1);
     expect(result.valid).toBe(0);
     const after = db
@@ -141,10 +140,10 @@ describe("scanWorkflowSpecFolder (slice 11)", () => {
     expect(after.cached_at).toBe(before.cached_at);
   });
 
-  it("re-parses when file mtime advances past cached_at", () => {
+  it("文件 mtime 晚于 cached_at 时重新解析", () => {
     writeFileSync(join(folder, "wf.yaml"), VALID_YAML);
     scanWorkflowSpecFolder({ db, cache, folder, builtinDir: null });
-    // Advance mtime so the file looks newer than the cache.
+    // 推进 mtime，使文件看起来比 cache 更新。
     const future = new Date(Date.now() + 60_000);
     utimesSync(join(folder, "wf.yaml"), future, future);
     const result = scanWorkflowSpecFolder({ db, cache, folder, builtinDir: null });
@@ -153,12 +152,12 @@ describe("scanWorkflowSpecFolder (slice 11)", () => {
     expect(result.skipped).toBe(0);
   });
 
-  it("removes cache row when file disappears (OQ-4)", () => {
+  it("文件消失时移除 cache row（OQ-4）", () => {
     writeFileSync(join(folder, "wf.yaml"), VALID_YAML);
     writeFileSync(join(folder, "wf2.yaml"), VALID_YAML_TWO);
     scanWorkflowSpecFolder({ db, cache, folder, builtinDir: null });
     expect(cache.listAll().filter((r) => r.sourcePath.startsWith(folder))).toHaveLength(2);
-    // Delete wf.yaml; wf2.yaml stays.
+    // 删除 wf.yaml，保留 wf2.yaml。
     rmSync(join(folder, "wf.yaml"));
     const result = scanWorkflowSpecFolder({ db, cache, folder, builtinDir: null });
     expect(result.removed).toBe(1);
@@ -167,23 +166,21 @@ describe("scanWorkflowSpecFolder (slice 11)", () => {
     expect(remaining[0]?.name).toBe("folder-test-2");
   });
 
-  it("does NOT remove cache rows whose source_path is outside the scanned folder", () => {
-    // Pre-seed a row from a different source root (e.g., built-in starter)
-    // to confirm the scanner only acts on its own folder boundary.
+  it("不移除 source_path 位于扫描文件夹外的 cache row", () => {
+    // 从不同 source root（例如 built-in starter）预填种 row，确认 scanner 只操作自身文件夹边界。
     const externalPath = join(tmpdir(), "external-wf.yaml");
     writeFileSync(externalPath, VALID_YAML.replace("folder-test", "external-spec"));
     cache.readThrough(externalPath);
-    // Now scan an empty folder — should NOT touch the external row.
+    // 现在扫描空文件夹，不应触碰外部 row。
     const result = scanWorkflowSpecFolder({ db, cache, folder, builtinDir: null });
     expect(result.removed).toBe(0);
     expect(cache.listAll().some((r) => r.name === "external-spec")).toBe(true);
     rmSync(externalPath);
   });
 
-  it("emits workflow_spec.removed audit event for each deleted file (HG-3)", () => {
-    // OQ-4 acceptance criterion: deletion produces BOTH cache row removal
-    // AND audit-log entry. Without the event emission, the Library shows a
-    // clean state but operators can't trace WHICH spec disappeared WHEN.
+  it("为每个已删除文件发出 workflow_spec.removed audit event（HG-3）", () => {
+    // OQ-4 acceptance criterion：删除必须同时产生 cache row removal 与 audit-log entry。
+    // 没有 event emission 时，Library 虽显示 clean 状态，操作员却无法追踪哪个 spec 何时消失。
     writeFileSync(join(folder, "wf.yaml"), VALID_YAML);
     writeFileSync(join(folder, "wf2.yaml"), VALID_YAML_TWO);
     const eventBus = new EventBus(db);
@@ -204,10 +201,9 @@ describe("scanWorkflowSpecFolder (slice 11)", () => {
     expect(payload.reason).toBe("file_disappeared");
   });
 
-  it("emits one workflow_spec.removed event per file when multiple disappear", () => {
-    // Drift-discriminator for the emission loop: two distinct deletions must
-    // produce two distinct events with distinct sourcePaths (not one batched
-    // event nor one repeated).
+  it("多个文件消失时，每个文件各发出一个 workflow_spec.removed event", () => {
+    // emission loop 的漂移判别器：两个不同删除必须产生两个 sourcePath 各异的 event，不能合并
+    // 成一个 batch event，也不能重复同一 event。
     writeFileSync(join(folder, "a.yaml"), VALID_YAML);
     writeFileSync(join(folder, "b.yaml"), VALID_YAML_TWO);
     const eventBus = new EventBus(db);
@@ -226,7 +222,7 @@ describe("scanWorkflowSpecFolder (slice 11)", () => {
     expect(paths).toEqual([join(folder, "a.yaml"), join(folder, "b.yaml")]);
   });
 
-  it("does NOT emit workflow_spec.removed when eventBus is omitted (back-compat)", () => {
+  it("省略 eventBus 时不发出 workflow_spec.removed，以保持向后兼容", () => {
     writeFileSync(join(folder, "wf.yaml"), VALID_YAML);
     scanWorkflowSpecFolder({ db, cache, folder, builtinDir: null });
     rmSync(join(folder, "wf.yaml"));
@@ -238,14 +234,12 @@ describe("scanWorkflowSpecFolder (slice 11)", () => {
     expect(events.n).toBe(0);
   });
 
-  it("drift-discriminator: same scan emits 3 distinct outcomes for 3 distinct files", () => {
-    // Per banked feedback_poc_regression_must_discriminate — fixtures
-    // distinct enough that the scanner's per-file decision branches are
-    // observable.
+  it("漂移判别器：同次扫描为 3 个不同文件产生 3 种不同 outcome", () => {
+    // 按已记录 feedback_poc_regression_must_discriminate，fixture 必须足够不同，使 scanner
+    // 的逐文件决策分支可观测。
     writeFileSync(join(folder, "valid.yaml"), VALID_YAML);
     writeFileSync(join(folder, "bad.yaml"), INVALID_YAML);
-    // Pre-cache one row with a different name (simulates "previously
-    // scanned but now removed") so the removal branch fires too.
+    // 预缓存一条不同名称的 row，模拟“之前扫描过但现在已删除”，使 removal 分支也触发。
     cache.writeDiagnostic({
       sourcePath: join(folder, "previously-here.yaml"),
       sourceHash: "h",

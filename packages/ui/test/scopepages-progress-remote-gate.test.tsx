@@ -1,8 +1,7 @@
-// R1 (release-0.4.7) — C4c req-5 (+ v1.2 gate fix): the mission PROGRESS panel's
-// remote-gate. A KNOWN-remote selection shows the honest "LOCAL FILES NOT SHOWN"
-// notice instead of masquerading as a local absence; an UNKNOWN selection (the
-// local cold-start window) must NOT flash that notice — it falls through to the
-// loading/absence treatment. Gate = `hostSelectionKnown && !hostIsLocal`.
+// R1 (release-0.4.7) —— C4c req-5（含 v1.2 闸门修复）：任务 PROGRESS 面板的
+// 远程闸门。已知为远程的选择会如实显示“未显示本地文件”提示，而不是伪装成本地缺失；
+// 未知选择（本地冷启动窗口）绝不可闪现该提示——它应回落到加载/缺失处理。
+// 闸门条件 = `hostSelectionKnown && !hostIsLocal`。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor, fireEvent } from "@testing-library/react";
@@ -24,8 +23,8 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status });
 }
 
-// hosts: "local" | "remote-host" | "unknown" (unknown ⇒ /api/hosts errors ⇒
-// useHosts data undefined ⇒ hostSelectionKnown=false).
+// hosts："local" | "remote-host" | "unknown"（unknown ⇒ /api/hosts 报错 ⇒
+// useHosts 数据为 undefined ⇒ hostSelectionKnown=false）。
 function install(hostMode: "local" | "remote-host" | "unknown") {
   mockFetch.mockImplementation(async (input: unknown) => {
     const url = String(input);
@@ -37,8 +36,8 @@ function install(hostMode: "local" | "remote-host" | "unknown") {
     const m = url.match(/\/api\/missions\/([^/?]+)/);
     if (m) return json({ missionId: decodeURIComponent(m[1]!), missionPath: "/ws/missions/m", slices: [], workflow_spec: null, topology: null });
     if (url.includes("/api/files/roots")) return json({ roots: [{ name: "work", path: "/ws" }] });
-    if (url.includes("/api/files/read")) return json({ error: "not found" }, 404); // genuine local absence
-    return json({}, 404); // scope-audit + everything else ⇒ data undefined (skips rail branch)
+    if (url.includes("/api/files/read")) return json({ error: "not found" }, 404); // 真实的本地缺失
+    return json({}, 404); // scope-audit 及其余 ⇒ 数据为 undefined（跳过侧栏分支）
   });
 }
 
@@ -67,33 +66,33 @@ async function openProgressTab() {
 beforeEach(() => mockFetch.mockReset());
 afterEach(() => cleanup());
 
-describe("R1 C4c — mission PROGRESS remote-gate (req-5, v1.2 known-remote-only)", () => {
-  it("KNOWN-remote → LOCAL FILES NOT SHOWN, NOT 'NO PROGRESS YET', and zero /api/files/read", async () => {
+describe("R1 C4c —— 任务 PROGRESS 远程闸门（req-5，v1.2 仅已知远程）", () => {
+  it("已知远程 → 不显示本地文件，而非“尚无进展”，且零次 /api/files/read", async () => {
     install("remote-host");
     await openProgressTab();
     const el = await screen.findByTestId("mission-progress-remote-gated");
-    expect(el.textContent).toContain("Local files not shown");
+    expect(el.textContent).toContain("不显示本地文件");
     expect(screen.queryByTestId("mission-progress-empty")).toBeNull();
-    // remote gates the local read at the data level (null path) ⇒ no read fires
+    // 远程在数据层闸门本地读（null 路径）⇒ 不发起读
     const reads = mockFetch.mock.calls.filter(([u]) => String(u).includes("/api/files/read"));
     expect(reads).toEqual([]);
   });
 
-  it("UNKNOWN selection (cold-start) → does NOT flash the gated notice (v1.2 fix)", async () => {
+  it("未知选择（冷启动）→ 不闪现闸门提示（v1.2 修复）", async () => {
     install("unknown");
     await openProgressTab();
-    // the misleading gated flash must never appear during the unknown window
+    // 误导性的闸门闪现绝不能在未知窗口出现
     await waitFor(() =>
       expect(screen.queryByTestId("mission-progress-empty") ?? screen.queryByTestId("mission-progress-panel")).toBeTruthy(),
     );
     expect(screen.queryByTestId("mission-progress-remote-gated")).toBeNull();
   });
 
-  it("LOCAL + genuinely-absent PROGRESS.md → NO PROGRESS YET, never the gated notice", async () => {
+  it("本地 + 真实缺失的 PROGRESS.md → 尚无进展，绝不是闸门提示", async () => {
     install("local");
     await openProgressTab();
     const el = await screen.findByTestId("mission-progress-empty");
-    expect(el.textContent).toContain("NO PROGRESS YET");
+    expect(el.textContent).toContain("尚无进展");
     expect(screen.queryByTestId("mission-progress-remote-gated")).toBeNull();
   });
 });

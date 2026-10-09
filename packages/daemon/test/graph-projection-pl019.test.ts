@@ -1,6 +1,5 @@
-// PL-019 items 4 + 5: graph projection carries agentActivity + currentQitems
-// through InventoryOverlay so UI consumers (RigGraph, Explorer) see activity
-// state and in-progress qitem ownership in a single payload.
+// PL-019 第 4 + 5 项：graph projection 通过 InventoryOverlay 携带 agentActivity + currentQitems，
+// 使 UI 消费者（RigGraph、Explorer）在一个 payload 中看到 activity 状态和进行中 qitem 的归属。
 
 import { describe, it, expect } from "vitest";
 import { projectRigToGraph } from "../src/domain/graph-projection.js";
@@ -57,8 +56,8 @@ const RUNNING_ACTIVITY: AgentActivity = {
   evidence: "implementing PL-019",
 };
 
-describe("PL-019 projectRigToGraph: agentActivity + currentQitems", () => {
-  it("projects agentActivity onto the RFNodeData when overlay carries it", () => {
+describe("PL-019 projectRigToGraph：agentActivity + currentQitems", () => {
+  it("overlay 携带 agentActivity 时将其投影到 RFNodeData", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "alpha", role: "worker" }],
       [],
@@ -78,7 +77,7 @@ describe("PL-019 projectRigToGraph: agentActivity + currentQitems", () => {
     expect(result.nodes[0].data.agentActivity).toEqual(RUNNING_ACTIVITY);
   });
 
-  it("projects context token totals onto RFNodeData when overlay carries them", () => {
+  it("overlay 携带 context token 总量时将其投影到 RFNodeData", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "alpha", role: "worker" }],
       [],
@@ -99,7 +98,7 @@ describe("PL-019 projectRigToGraph: agentActivity + currentQitems", () => {
     expect(result.nodes[0].data.contextTotalOutputTokens).toBe(14_000);
   });
 
-  it("defaults agentActivity to null when overlay omits it", () => {
+  it("overlay 省略 agentActivity 时默认为 null", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "alpha", role: "worker" }],
       [],
@@ -112,7 +111,7 @@ describe("PL-019 projectRigToGraph: agentActivity + currentQitems", () => {
     expect(result.nodes[0].data.agentActivity).toBeNull();
   });
 
-  it("projects currentQitems onto running nodes when overlay carries them", () => {
+  it("overlay 携带 currentQitems 时将其投影到运行中节点", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "alpha", role: "worker" }],
       [],
@@ -138,7 +137,7 @@ describe("PL-019 projectRigToGraph: agentActivity + currentQitems", () => {
     expect(data.currentQitems?.[0].tier).toBe("mode2");
   });
 
-  it("projects slice 15 terminal/work primitives onto running nodes when overlay carries them", () => {
+  it("overlay 携带 slice 15 terminal/work 原语时将其投影到运行中节点", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "alpha", role: "worker" }],
       [],
@@ -168,7 +167,7 @@ describe("PL-019 projectRigToGraph: agentActivity + currentQitems", () => {
     expect(data.blockedWorkCount).toBe(1);
   });
 
-  it("defaults currentQitems to [] when overlay omits them", () => {
+  it("overlay 省略 currentQitems 时默认为 []", () => {
     const input = makeRig(
       [{ id: "n1", logicalId: "alpha", role: "worker" }],
       [],
@@ -181,7 +180,7 @@ describe("PL-019 projectRigToGraph: agentActivity + currentQitems", () => {
     expect(result.nodes[0].data.currentQitems).toEqual([]);
   });
 
-  it("pod group nodes carry null/empty defaults (no inventory mapping)", () => {
+  it("pod group 节点携带 null/empty 默认值（无 inventory mapping）", () => {
     const pod: Pod = {
       id: "pod-1",
       rigId: "rig-1",
@@ -197,7 +196,7 @@ describe("PL-019 projectRigToGraph: agentActivity + currentQitems", () => {
         [],
         [makeRunningSession("n1")]
       ),
-      // Attach pod by mutating the synthesized node:
+      // 通过修改合成节点附加 pod：
     };
     input.nodes[0].podId = pod.id;
     input.pods = [pod];
@@ -210,7 +209,7 @@ describe("PL-019 projectRigToGraph: agentActivity + currentQitems", () => {
     expect(podNode!.data.contextTotalOutputTokens).toBeNull();
   });
 
-  it("multiple nodes with mixed activity states project independently", () => {
+  it("具有混合 activity 状态的多个节点独立投影", () => {
     const input = makeRig(
       [
         { id: "n1", logicalId: "alpha" },

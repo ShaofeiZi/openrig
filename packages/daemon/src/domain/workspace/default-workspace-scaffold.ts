@@ -1,5 +1,5 @@
-// Canonical project-workspace scaffold. S01 owns these bytes; S05's instance
-// initializer calls this owner rather than copying its behavior.
+// Canonical project-workspace scaffold。S01 拥有这些字节；S05 的 instance initializer 调用此 owner，
+// 而不是复制其行为。
 
 import { lstatSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -7,14 +7,13 @@ import { join } from "node:path";
 const WORKSPACE_DIRS = ["missions", "exhaust"] as const;
 
 const PROJECT_SPEC = `---
-intent: Organize this project's durable work as missions and slices, then move it through queue-backed agent collaboration.
+intent: 将此项目的持久工作组织为 mission 和 slice，再通过 queue 支持的 agent 协作推进。
 ---
 
-# Project
+# 项目
 
-This is the project-level context for the default OpenRig workspace. It gives
-agents a stable project intent before they descend into the active mission and
-slice. Edit it to describe what your project is for and who benefits from it.
+这是默认 zrig workspace 的项目级上下文。它让 agent 在进入活动 mission 和 slice 前获得稳定的
+项目意图。请编辑此文件，说明项目用途及其受益对象。
 `;
 
 const PROJECT_MANIFEST = `schema: openrig.project/v0alpha1
@@ -25,8 +24,8 @@ install:
   skills: []
 missions:
   root: missions
-# Add ordered project Markdown addresses and stable catalog skill IDs above.
-# Skill source and the System World remain outside the project workspace.
+# 在上方添加有序的项目 Markdown 地址和稳定的 catalog skill ID。
+# Skill 来源和 System World 保持在 project workspace 之外。
 `;
 
 const WORKSPACE_CATALOG = `schema: openrig.workspace/v0alpha1
@@ -35,7 +34,7 @@ projects:
     root: .
 `;
 
-const WORKSPACE_GITIGNORE = `# OpenRig disposable work and local runtime projection state.
+const WORKSPACE_GITIGNORE = `# zrig 临时工作和本地 runtime 投影状态。
 /exhaust/
 /.openrig/
 `;
@@ -94,9 +93,8 @@ export function nodeInitializationFs(): InitializationFsOps {
   };
 }
 
-/** Additively reconcile the S01 project workspace. All collisions are found
- * before the first write, so a malformed user-owned path never leaves a
- * half-created scaffold. */
+/** 以增量方式协调 S01 project workspace。所有冲突都在首次写入前发现，因此格式错误的用户所有路径
+ * 绝不会留下半成品 scaffold。 */
 export function ensureDefaultWorkspace(options: {
   root: string;
   dryRun?: boolean;

@@ -1,8 +1,7 @@
-// User Settings v0 — UI hooks for the daemon /api/config route.
+// User Settings v0——后台服务 /api/config 路由的 UI 钩子。
 //
-// Consumed by the System drawer Settings tab. Bypasses CLI shell-out
-// because the CLI remains the canonical agent-edit path while UI reads
-// and writes settings through the daemon HTTP route directly.
+// 由系统抽屉的“设置”标签页使用。它不经 CLI shell 调用，因为 CLI 仍是智能体编辑的
+// 规范路径，而 UI 直接通过后台服务 HTTP 路由读写设置。
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -20,24 +19,23 @@ export type SettingsKey =
   | "workspace.root" | "workspace.slices_root" | "workspace.steering_path"
   | "workspace.specs_root" | "workspace.projects_root" | "workspace.catalog_path"
   | "files.allowlist" | "progress.scan_roots"
-  // Preview Terminal v0 (PL-018) keys.
+  // Preview Terminal v0（PL-018）键。
   | "ui.preview.refresh_interval_seconds"
   | "ui.preview.max_pins"
   | "ui.preview.default_lines"
-  // OPR.0.4.0.1 — global cap on simultaneously-live terminals (default 2).
+  // OPR.0.4.0.1——同时在线终端的全局上限（默认 2）。
   | "ui.terminal.max_live_terminals"
-  // V1 Phase 4 ConfigStore allowlist exception (advisor/operator seats).
+  // V1 阶段 4 ConfigStore 白名单例外（顾问/操作员席位）。
   | "agents.advisor_session" | "agents.operator_session"
-  // V1 Phase 5 P5-3 ConfigStore allowlist exception (For You feed
-  // subscription toggles per for-you-feed.md L144-L151). Same SC-29
-  // exception scope as Phase 4 (allowlist-only; no schema migrations
-  // / new endpoints / event types).
+  // V1 阶段 5 P5-3 ConfigStore 白名单例外（“为你推荐”feed 订阅开关，见
+  // for-you-feed.md 第 144–151 行）。与阶段 4 使用同一 SC-29 例外范围：只扩充白名单，
+  // 不新增 schema 迁移、端点或事件类型。
   | "feed.subscriptions.action_required"
   | "feed.subscriptions.approvals"
   | "feed.subscriptions.shipped"
   | "feed.subscriptions.progress"
   | "feed.subscriptions.audit_log"
-  // Slice 27 — Claude auto-compaction policy keys (SC-29 EXCEPTION #10).
+  // Slice 27——Claude 自动压缩策略键（SC-29 EXCEPTION #10）。
   | "policies.claude_compaction.enabled"
   | "policies.claude_compaction.threshold_percent"
   | "policies.claude_compaction.pre_compact_instruction"
@@ -45,16 +43,14 @@ export type SettingsKey =
   | "policies.claude_compaction.message_inline"
   | "policies.claude_compaction.message_file_path"
   | "policies.claude_compaction.post_restore_audit_instruction"
-  // OPR.0.4.4.15 (G15-P1) — the ONE registered dynamic key class:
-  // per-host feed subscriptions. v1 per-host key set is CLOSED to
-  // {enabled}; hostId segment [A-Za-z0-9_-]+, reserved toggle names
-  // excluded daemon-side.
+  // OPR.0.4.4.15（G15-P1）——唯一注册的动态键类别：逐主机 feed 订阅。v1 的逐主机键集合
+  // 封闭为 {enabled}；hostId 段为 [A-Za-z0-9_-]+，保留开关名由后台服务侧排除。
   | `feed.subscriptions.${string}.enabled`;
 
 export interface SettingsResponse {
   settings: Record<SettingsKey, ResolvedSetting>;
-  /** OPR.0.4.4.15 — additive dynamic-class enumeration: persisted per-host
-   *  feed subscriptions. Absent on pre-slice daemons (defensive-optional). */
+  /** OPR.0.4.4.15——增量动态类别枚举：持久化的逐主机 feed 订阅。旧于此 slice 的后台服务
+   *  不提供该字段，因此按防御性可选字段处理。 */
   feedHostSubscriptions?: Array<{ hostId: string; enabled: boolean }>;
 }
 

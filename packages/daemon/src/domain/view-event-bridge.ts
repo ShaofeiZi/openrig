@@ -4,19 +4,16 @@ import type { PersistedEvent } from "./types.js";
 import { BUILT_IN_VIEW_NAMES } from "./view-projector.js";
 
 /**
- * View event bridge (PL-004 Phase B R1; closes guard BLOCKER 2).
+ * 视图事件桥（PL-004 阶段 B R1；关闭 guard BLOCKER 2）。
  *
- * Subscribes to coordination state-mutation events on the event-bus and
- * emits `view.changed` for the affected built-in views via
- * ViewProjector.notifyViewChanged. Without this bridge, SSE consumers
- * connecting to /api/views/:name/sse never receive change notifications
- * because nothing in production wires queue/project mutations to the
- * view.changed event source.
+ * 订阅 event-bus 上的协作状态变更事件，并通过 ViewProjector.notifyViewChanged
+ * 为受影响的内置视图发出 `view.changed`。若没有此桥，连接
+ * /api/views/:name/sse 的 SSE 消费者永远收不到变更通知，因为生产接线中没有其他组件
+ * 将队列/项目变更连接到 view.changed 事件源。
  *
- * PRD § L5 acceptance criterion: "view-projector emits view.changed
- * when underlying state changes".
+ * PRD § L5 验收标准：“底层状态变更时，view-projector 发出 view.changed”。
  *
- * Mapping (event type → affected built-in views):
+ * 映射（事件类型 → 受影响的内置视图）：
  * - queue.created            → recently-active, founder, pod-load, activity
  * - queue.handed_off         → recently-active, pod-load, activity
  * - queue.claimed            → recently-active, pod-load, activity
@@ -25,21 +22,17 @@ import { BUILT_IN_VIEW_NAMES } from "./view-projector.js";
  * - qitem.closure_overdue    → recently-active, escalations, activity
  * - inbox.absorbed           → recently-active, pod-load, activity
  * - inbox.denied             → activity
- * - project.classified       → activity (downstream views may consume project_classifications)
+ * - project.classified       → activity（下游视图可消费 project_classifications）
  *
- * Conservative principle: when in doubt, emit. SSE consumers can filter
- * by view name. Over-emission is correct (no missed events); the slight
- * SSE traffic increase is acceptable for Phase B.
+ * 保守原则：有疑问就发出。SSE 消费者可按视图名称过滤。多发是正确的，因为不会漏掉
+ * 事件；阶段 B 可以接受少量额外 SSE 流量。
  *
- * The bridge does NOT emit view.changed for `view.changed` itself
- * (avoid feedback loops) or for `classifier.lease_*` events (lease state
- * is exposed via the project SSE, not the view SSE).
+ * 此桥不会为 `view.changed` 自身再次发出 view.changed（避免反馈循环），也不会处理
+ * `classifier.lease_*` 事件（租约状态通过项目 SSE 暴露，而非视图 SSE）。
  *
- * Custom views: this bridge does NOT emit per-custom-view events. Custom
- * view consumers can subscribe to /api/views/sse (the generic stream)
- * and filter by viewName. A future enhancement could parse custom view
- * SQL to determine which built-in event types it depends on; v0 keeps
- * the bridge built-in-only.
+ * 自定义视图：此桥不会为每个自定义视图单独发出事件。自定义视图消费者可订阅通用流
+ * /api/views/sse，并按 viewName 过滤。后续可解析自定义视图 SQL，判断其依赖哪些内置
+ * 事件类型；v0 仅处理内置视图。
  */
 
 const EVENT_TO_VIEWS: Record<string, readonly string[]> = {
@@ -49,13 +42,12 @@ const EVENT_TO_VIEWS: Record<string, readonly string[]> = {
   "queue.handed_off":       ["recently-active", "pod-load", "activity"],
   "queue.claimed":          ["recently-active", "pod-load", "activity"],
   "queue.unclaimed":        ["recently-active", "pod-load", "activity"],
-  // R2 fix (closes guard BLOCKER on queue.updated coverage): general state
-  // mutator (POST /api/queue/:qitemId/update) emits queue.updated for any
-  // pending → blocked / in-progress → done / closure / escalation transition.
-  // Maps to ALL state-derived views because the projection result-set may
-  // change for any of them (e.g., done removes from recently-active +
-  // pod-load; blocked adds to held; closure_reason='escalation' adds to
-  // escalations; ts_updated change reorders activity).
+  // R2 修复（关闭 queue.updated 覆盖的 guard BLOCKER）：通用状态变更接口
+  //（POST /api/queue/:qitemId/update）会为任意 pending → blocked、
+  // in-progress → done、关闭或升级转换发出 queue.updated。它映射到所有状态派生视图，
+  // 因为任何视图的投影结果集都可能变化（例如 done 会从 recently-active 和 pod-load
+  // 移除；blocked 会加入 held；closure_reason='escalation' 会加入 escalations；
+  // ts_updated 变化会重新排序 activity）。
   "queue.updated":          ["recently-active", "founder", "pod-load", "escalations", "held", "activity"],
   "qitem.fallback_routed":  ["recently-active", "pod-load", "activity"],
   "qitem.closure_overdue":  ["recently-active", "escalations", "activity"],
@@ -69,22 +61,21 @@ export interface ViewEventBridgeStop {
 }
 
 /**
- * Wire the bridge. Returns a function that unsubscribes (used in tests +
- * for graceful daemon shutdown). The bridge subscribes to event-bus and
- * only fires for known coordination event types.
+ * 接入事件桥，并返回取消订阅函数（供测试和后台服务优雅关闭使用）。事件桥订阅 event-bus，
+ * 只响应已知的协作事件类型。
  */
 export function wireViewEventBridge(
   eventBus: EventBus,
   viewProjector: ViewProjector,
 ): ViewEventBridgeStop {
-  // Validate the mapping references built-in view names. If a built-in is
-  // renamed/removed without updating EVENT_TO_VIEWS, fail fast at startup.
+  // 校验映射只引用内置视图名。若重命名或删除内置视图时未同步 EVENT_TO_VIEWS，
+  // 则在启动阶段快速失败。
   const builtInSet = new Set<string>(BUILT_IN_VIEW_NAMES as readonly string[]);
   for (const [evt, views] of Object.entries(EVENT_TO_VIEWS)) {
     for (const v of views) {
       if (!builtInSet.has(v)) {
         throw new Error(
-          `view-event-bridge: EVENT_TO_VIEWS maps event '${evt}' to unknown built-in view '${v}'; update mapping or built-in list`,
+          `view-event-bridge：EVENT_TO_VIEWS 将事件 '${evt}' 映射到未知内置视图 '${v}'；请更新映射或内置视图列表`,
         );
       }
     }
@@ -97,9 +88,8 @@ export function wireViewEventBridge(
       try {
         viewProjector.notifyViewChanged(viewName, event.type);
       } catch {
-        // Best-effort: bridge errors must not unwind the underlying state
-        // mutation. Drop silently; SSE consumers' worst case is a missed
-        // wake-up, not state corruption.
+        // 尽力而为：事件桥错误不能回滚底层状态变更。静默丢弃即可；对 SSE 消费者而言，
+        // 最坏结果是漏掉一次唤醒，而不是状态损坏。
       }
     }
   });

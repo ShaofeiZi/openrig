@@ -20,8 +20,8 @@ interface DiscoveryCoordinatorDeps {
 }
 
 /**
- * Orchestrates the full discovery pipeline:
- * scan → filter managed → fingerprint → enrich → persist → vanish detection → events
+ * 编排完整 discovery pipeline：
+ * scan → 筛除 managed → fingerprint → enrich → persist → vanish detection → events
  */
 export class DiscoveryCoordinator {
   private deps: DiscoveryCoordinatorDeps;
@@ -30,12 +30,12 @@ export class DiscoveryCoordinator {
     this.deps = deps;
   }
 
-  /** Run a single discovery scan cycle. */
+  /** 运行一次 discovery 扫描周期。 */
   async scanOnce(): Promise<DiscoveredSession[]> {
-    // 1. Scan tmux
+    // 1. 扫描 tmux。
     const scanResult = await this.deps.scanner.scan();
 
-    // 2. Build managed session filter (two-level)
+    // 2. 构建 managed session 筛选器（两级）。
     const managedBindings = this.getManagedBindings();
     const managedSessions = new Set<string>();    // session-level: all panes managed
     const managedPanes = new Set<string>();        // pane-level: specific pane managed
@@ -49,36 +49,36 @@ export class DiscoveryCoordinator {
       }
     }
 
-    // Also filter out already-claimed sessions
+    // 同时筛除已 claim 的 session。
     const claimedSessions = this.deps.discoveryRepo.listDiscovered("claimed");
     const claimedPanes = new Set(claimedSessions.map((s) => `${s.tmuxSession}:${s.tmuxPane}`));
 
-    // 3. Refresh cmux signals for batch fingerprinting
+    // 3. 为批量 fingerprint 刷新 cmux signal。
     await this.deps.fingerprinter.refreshCmuxSignals();
 
-    // 4. Process each scanned pane
+    // 4. 处理每个扫描到的 pane。
     const seenIds = new Set<string>();
     const newDiscoveries: DiscoveredSession[] = [];
 
     for (const pane of scanResult.panes) {
-      // Filter: session-level managed
+      // 筛选：session 级 managed。
       if (managedSessions.has(pane.tmuxSession)) continue;
-      // Filter: pane-level managed
+      // 筛选：pane 级 managed。
       if (managedPanes.has(`${pane.tmuxSession}:${pane.tmuxPane}`)) continue;
-      // Filter: already claimed
+      // 筛选：已 claim。
       if (claimedPanes.has(`${pane.tmuxSession}:${pane.tmuxPane}`)) continue;
 
-      // Fingerprint
+      // 生成 fingerprint。
       const fp = await this.deps.fingerprinter.fingerprint(pane);
 
-      // Enrich
+      // 增强。
       const enrichment = this.deps.enricher.enrich(pane.cwd);
 
-      // Check if this is a new discovery or rescan
+      // 检查是新发现还是重新扫描。
       const existing = this.deps.discoveryRepo.getByTmuxIdentity(pane.tmuxSession, pane.tmuxPane);
       const isNew = !existing;
 
-      // Upsert
+      // Upsert。
       const session = this.deps.discoveryRepo.upsertDiscoveredSession({
         tmuxSession: pane.tmuxSession,
         tmuxPane: pane.tmuxPane,
@@ -107,12 +107,12 @@ export class DiscoveryCoordinator {
       }
     }
 
-    // 5. Vanish detection: active sessions not in current scan
+    // 5. 消失检测：当前扫描中不存在的 active session。
     const previousActiveIds = this.deps.discoveryRepo.getActiveIds();
     const vanishedIds = previousActiveIds.filter((id) => !seenIds.has(id));
 
     if (vanishedIds.length > 0) {
-      // Get session details before marking vanished (for events)
+      // 标记 vanished 前获取 session 详情（供 event 使用）。
       for (const id of vanishedIds) {
         const session = this.deps.discoveryRepo.getDiscoveredSession(id);
         if (session) {
@@ -126,7 +126,7 @@ export class DiscoveryCoordinator {
       this.deps.discoveryRepo.markVanished(vanishedIds);
     }
 
-    // 6. Return all currently active discovered sessions
+    // 6. 返回当前所有 active discovered session。
     return this.deps.discoveryRepo.listDiscovered("active");
   }
 

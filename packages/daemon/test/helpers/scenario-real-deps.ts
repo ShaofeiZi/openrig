@@ -1,29 +1,28 @@
 /**
- * Slice 51-02 (L2 test-system) — the REAL-DEPS adapter.
+ * Slice 51-02（L2 测试系统）——真实依赖适配器。
  *
- * Binds the dumb runner core (scenario-runner.ts) to a LIVE scenario-local daemon:
- *   • runAction — maps each action verb to the SHIPPED `rig … --json` invocation
- *     (product-is-truth transport), run as a real subprocess against the daemon.
- *   • observe   — reads a shipped surface via readSurface (bound to the daemon).
- *   • the `daemon` verb drives the scenario-local daemon LIFECYCLE (sigterm/restart)
- *     directly — it is the test harness's own daemon, not a rig subprocess.
+ * 把哑运行器核心（scenario-runner.ts）绑到一个 LIVE 的 scenario 本地 daemon：
+ *   • runAction——把每个 action verb 映射到 SHIPPED `rig … --json` 调用
+ *     （product-is-truth 传输），作为真实子进程对 daemon 运行。
+ *   • observe——经 readSurface 读 shipped surface（绑到 daemon）。
+ *   • `daemon` verb 直接驱动 scenario 本地 daemon 生命周期（sigterm/restart）——
+ *     它是测试工具自己的 daemon，不是 rig 子进程。
  *
- * Verb → shipped `rig` command (traced at 13e26355):
- *   up            → rig up <topology> --json --yes         (captures rigId/rigName)
+ * Verb → shipped `rig` 命令（traced at 13e26355）：
+ *   up            → rig up <topology> --json --yes        （捕获 rigId/rigName）
  *   send          → rig send <to> <text> --json
- *   restart <seat>→ rig launch <rigId> <seat> --json       (seat relaunch/resume;
- *                                                            there is no top-level
- *                                                            `restart` command)
+ *   restart <seat>→ rig launch <rigId> <seat> --json      （席位 relaunch/resume；
+ *                                                            无顶层
+ *                                                            `restart` 命令）
  *   down          → rig down <rigName|rigId> --json --force
- *   daemon {op}   → the ScenarioDaemon lifecycle (sigterm | restart)
+ *   daemon {op}   → ScenarioDaemon 生命周期（sigterm | restart）
  *
- * restore/emit/mutate/policy/seed_regression have NO shipped runtime binding at v1
- * (they ride 51-03 / A5 items 6-8) — the adapter FAILS LOUD with a named
- * UnboundActionError rather than fabricating a call (same floor as the FLAG-1
- * `proof` surface: unbound is never silently-skipped).
+ * restore/emit/mutate/policy/seed_regression 在 v1 无 shipped 运行时绑定
+ * （它们随 51-03 / A5 items 6-8）——适配器 FAILS LOUD，抛具名 UnboundActionError，
+ * 而不是编造调用（与 FLAG-1 `proof` surface 同下限：unbound 绝不被静默跳过）。
  *
- * `rigBin` is injected (the single 51-04 container-mode seam); `runRig` is injected
- * so the verb→argv MAPPING is unit-testable without a live daemon.
+ * `rigBin` 注入（单一 51-04 container-mode seam）；`runRig` 注入，使 verb→argv 映射
+ * 无需 live daemon 即可单测。
  */
 
 import { runRig as realRunRig, type RigResult, type ScenarioDaemon } from "./scenario-daemon.js";
@@ -32,21 +31,20 @@ import type { ExpectSurface } from "./scenario-schema.js";
 import type { ScenarioRunnerDeps, ActionResult } from "./scenario-runner.js";
 import type { RunRecord } from "./scenario-run-record.js";
 
-/** Thrown when an action verb has no shipped runtime binding in v1 (FLAG-1-style floor). */
+/** 当 action verb 在 v1 无 shipped 运行时绑定（FLAG-1 风格下限）时抛出。 */
 export class UnboundActionError extends Error {
   readonly verb: string;
   constructor(verb: string) {
     super(
-      `action verb "${verb}" is UNBOUND in v1: it has no shipped runtime binding, so the ` +
-        `runner FAILS LOUD here rather than fabricating a call (its binding rides 51-03 / A5 ` +
-        `items 6-8). This is not a silently-skipped action.` +
+      `action verb "${verb}" 在 v1 未绑定：它无 shipped 运行时绑定，因此运行器在此 ` +
+        `FAILS LOUD，而非编造调用（其绑定随 51-03 / A5 items 6-8）。这不是被静默跳过的 ` +
+        `action。` +
         (verb === "emit"
-          ? ` WHY (measured at source): the stub runner has NO input channel — no stdin reader, ` +
-            `no socket, no CLI/daemon route triggers a behavior; behaviors execute only from the ` +
-            `LAUNCH script it reads at boot. A step-time emit therefore cannot be honestly bound ` +
-            `without 51-01 source work (routed to the 51-01 backlog), and simulating one would be ` +
-            `a green that means nothing. THE V1 PATH: declare env.stub_scripts to deliver a ` +
-            `per-seat launch script whose steps carry the behaviors you need.`
+          ? ` 原因（在源码处实测）：stub 运行器无输入通道——无 stdin reader、无 socket、` +
+            `无 CLI/daemon 路由触发行为；行为只从它启动时读的 LAUNCH 脚本执行。因此 step-time ` +
+            `emit 无法在不做 51-01 源码工作的情况下被诚实地绑定（已路由到 51-01 backlog），` +
+            `模拟一个将是毫无意义的绿。v1 路径：声明 env.stub_scripts 以交付 per-seat ` +
+            `launch 脚本，其 steps 携带你需要的行为。`
           : ""),
     );
     this.name = "UnboundActionError";
@@ -54,57 +52,55 @@ export class UnboundActionError extends Error {
   }
 }
 
-/** The subset of a live ScenarioDaemon the adapter needs (readEnv + lifecycle). */
+/** 适配器所需的 live ScenarioDaemon 子集（readEnv + 生命周期）。 */
 export type RealDepsDaemon = Pick<ScenarioDaemon, "readEnv" | "baseUrl" | "sigterm" | "restart">;
 
 export interface RealDepsOptions {
   daemon: RealDepsDaemon;
-  /** Path to the shipped `rig` bin (the single 51-04 injectable invocation seam). */
+  /** shipped `rig` bin 路径（单一 51-04 可注入调用 seam）。 */
   rigBin: string;
-  /** Resolved rig-spec path for the `up` verb (the scenario's `topology`). */
+  /** `up` verb 的已解析 rig-spec 路径（scenario 的 `topology`）。 */
   topologyPath: string;
   /**
-   * Scratch working directory passed to `rig up --cwd` so a seat's `cwd: "."`
-   * resolves under the hermetic scaffold (its managed-file writes — AGENTS.md,
-   * the stub readiness sidecar — never pollute the launch cwd). Omitted → the
-   * shipped default (the daemon's cwd).
+   * 传给 `rig up --cwd` 的临时工作目录，使席位的 `cwd: "."` 在 hermetic scaffold 下解析
+   * （其托管文件写——AGENTS.md、stub readiness sidecar——绝不污染启动 cwd）。省略 →
+   * shipped 默认（daemon 的 cwd）。
    */
   seatCwd?: string;
-  /** Injected `rig` runner (defaults to the real subprocess runner; tests inject a spy). */
+  /** 注入的 `rig` 运行器（默认真实子进程运行器；测试注入 spy）。 */
   runRig?: (
     args: string[],
     env: Record<string, string | undefined>,
     rigBin: string,
     timeoutMs?: number,
   ) => Promise<RigResult>;
-  /** Injected scenario-local clock (ms) for the poll bound. Defaults to Date.now. */
+  /** 为 poll 绑定注入的 scenario 本地时钟（ms）。默认 Date.now。 */
   now?: () => number;
-  /** Injected sleep between polls. Defaults to a real timer. */
+  /** poll 之间注入的 sleep。默认真实定时器。 */
   sleep?: (ms: number) => Promise<void>;
-  /** Optional run-record sink. */
+  /** 可选 run-record sink。 */
   appendRecord?: (rec: RunRecord) => void;
-  /** The single default within/poll pair. */
+  /** 单一默认 within/poll 对。 */
   defaults?: { withinMs: number; pollIntervalMs: number };
-  /** The v1 runner-internal normalizer seam for the `equals` mode (lock amendment
-   *  A-N1: runner-internal interface of record; the DECLARATIVE artifact remains
-   *  the only scenario-facing form, rides 51-03, and lowers to this seam). */
+  /** `equals` 模式的 v1 运行器内部 normalizer seam（lock 修订 A-N1：runner 内部记录接口；
+   *  DECLARATIVE artifact 仍是唯一面向 scenario 的形式，随 51-03，并降低到此 seam）。 */
   normalizer?: (surface: ExpectSurface, value: unknown) => unknown;
-  /** The mission scope reads audit (D3) — threaded from the scenario's
-   *  env.scope_mission into `rig scope audit --mission <name> --json`. */
+  /** mission scope 读 audit（D3）——从 scenario 的 env.scope_mission 穿到
+   *  `rig scope audit --mission <name> --json`。 */
   scopeMission?: string;
 }
 
-/** `rig up` is heavy (real tmux seat launch) — give it a generous ceiling. */
+/** `rig up` 重（真实 tmux 席位启动）——给它宽裕上限。 */
 const UP_TIMEOUT_MS = 120_000;
 
 const fail = (stderr: string): ActionResult => ({ code: 1, stdout: "", stderr });
 
-/** Build the live ScenarioRunnerDeps for the dumb runner core. */
+/** 为哑运行器核心构建 live ScenarioRunnerDeps。 */
 export function buildRealDeps(opts: RealDepsOptions): ScenarioRunnerDeps {
   const { daemon, rigBin, topologyPath } = opts;
   const runRig = opts.runRig ?? realRunRig;
 
-  // Captured from the `up` result so down/restart target the real rig (never fabricated).
+  // 从 `up` 结果捕获，使 down/restart 瞄准真实 rig（绝不编造）。
   let rigId: string | undefined;
   let rigName: string | undefined;
 
@@ -121,7 +117,7 @@ export function buildRealDeps(opts: RealDepsOptions): ScenarioRunnerDeps {
             rigId = (j.rigId as string) ?? (rig?.id as string) ?? rigId;
             rigName = (j.rigName as string) ?? (rig?.name as string) ?? rigName;
           } catch {
-            /* non-JSON up output — leave the rig ids uncaptured; down/restart will fail loud */
+            /* 非 JSON up 输出——留 rig id 不捕获；down/restart 会 fail loud */
           }
         }
         return r;
@@ -130,31 +126,31 @@ export function buildRealDeps(opts: RealDepsOptions): ScenarioRunnerDeps {
         const p = (payload && typeof payload === "object" ? payload : {}) as { to?: string; text?: string };
         const to = p.to ?? seat;
         const text = p.text ?? "";
-        if (!to) return fail("send: no recipient (payload.to or a seat is required)");
+        if (!to) return fail("send：无收件人（需要 payload.to 或 seat）");
         return runRig(["send", to, text, "--json"], daemon.readEnv, rigBin);
       }
       case "restart": {
-        // Seat relaunch/resume — rig launch <rigId> <seat>. Distinct from the
-        // `daemon` verb (which restarts the scenario-local DAEMON, not a seat).
+        // 席位 relaunch/resume——rig launch <rigId> <seat>。与 `daemon` verb 不同
+        // （后者重启 scenario 本地 DAEMON，不是席位）。
         const node = typeof payload === "string" ? payload : seat;
         const target = rigId ?? rigName;
-        if (!target) return fail("restart: no rig brought up yet (no rigId/rigName captured from `up`)");
-        if (!node) return fail("restart: no seat named (restart <seat>)");
+        if (!target) return fail("restart：尚未启动 rig（未从 `up` 捕获 rigId/rigName）");
+        if (!node) return fail("restart：未指定席位（restart <seat>）");
         return runRig(["launch", target, node, "--json"], daemon.readEnv, rigBin);
       }
       case "down": {
         const target = rigName ?? rigId;
-        if (!target) return fail("down: no rig brought up yet (no rigId/rigName captured from `up`)");
+        if (!target) return fail("down：尚未启动 rig（未从 `up` 捕获 rigId/rigName）");
         return runRig(["down", target, "--json", "--force"], daemon.readEnv, rigBin);
       }
       case "daemon": {
         const op = (payload && typeof payload === "object" ? (payload as { op?: string }).op : undefined);
         if (op === "sigterm") { await daemon.sigterm(); return { code: 0, stdout: "", stderr: "" }; }
         if (op === "restart") { await daemon.restart(); return { code: 0, stdout: "", stderr: "" }; }
-        return fail(`daemon: unknown op ${JSON.stringify(op)} (allowed: sigterm, restart)`);
+        return fail(`daemon：未知 op ${JSON.stringify(op)}（允许：sigterm、restart）`);
       }
       default:
-        // restore / emit / mutate / policy / seed_regression — no shipped binding at v1.
+        // restore / emit / mutate / policy / seed_regression——v1 无 shipped 绑定。
         throw new UnboundActionError(verb);
     }
   };

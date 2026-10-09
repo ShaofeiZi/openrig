@@ -18,15 +18,14 @@ import { InboxHandler } from "../src/domain/inbox-handler.js";
 import { OutboxHandler } from "../src/domain/outbox-handler.js";
 import { queueRoutes } from "../src/routes/queue.js";
 
-// ── P18 SWEEP — the provenance-laundering RED (dev50-driver's sealed finding).
+// ── P18 扫描——来源洗白的红灯测试（dev50-driver 已封存的发现）。
 //
-// Deleting the requireSenderIdentity refusal MANUFACTURES a header-absent delivery path that
-// could not previously exist: a caller with no X-OpenRig-Session but a body-declared actor is now
-// delivered under that actor labelled `claimed:v1`. The route sites then hardcode
-// `identityProvenance: "transport:v1"` — stamping the row as wire-CERTIFIED when it was only
-// body-CLAIMED. That is unverified laundered into verified, which resolveRecordedProvenance's own
-// contract forbids. tsc is 0 with the defect present and every header-present test passes; only THIS
-// path exposes it. The fix threads resolveRecordedProvenance(c, identity) at each site.
+// 删除 requireSenderIdentity 的拒绝逻辑会制造一条此前不存在的无请求头投递路径：调用方没有
+// X-OpenRig-Session，却可以用正文声明的执行者身份完成投递，并标记为 `claimed:v1`。若路由位置
+// 硬编码 `identityProvenance: "transport:v1"`，就会把仅由正文声明的记录错误盖章为线路认证。
+// 这会把未验证来源洗白为已验证来源，违反 resolveRecordedProvenance 自身的契约。缺陷存在时
+// tsc 仍为 0，所有携带请求头的测试也都会通过；只有此路径能暴露问题。修复要求各调用点传递
+// resolveRecordedProvenance(c, identity)。
 function buildApp(opts: {
   eventBus: EventBus;
   queueRepo: QueueRepository;
@@ -45,7 +44,7 @@ function buildApp(opts: {
   return app;
 }
 
-describe("P18 provenance thread — header-absent delivery must not launder claimed:v1 → transport:v1", () => {
+describe("P18 来源链路——缺少请求头的投递不得将 claimed:v1 洗白为 transport:v1", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -76,14 +75,14 @@ describe("P18 provenance thread — header-absent delivery must not launder clai
 
   afterEach(() => db.close());
 
-  // outbox_entries table — outbox record (queue.ts:1021)
-  it("outbox record: header ABSENT + body senderSession → delivers, records claimed:v1 (NOT transport:v1)", async () => {
+  // outbox_entries 表——发件箱记录（queue.ts:1021）。
+  it("发件箱记录：缺少请求头且正文含 senderSession 时可投递，并记录 claimed:v1（而非 transport:v1）", async () => {
     const res = await app.request("/api/queue/outbox/record", {
       method: "POST",
-      headers: { "Content-Type": "application/json" }, // NO X-OpenRig-Session — the manufactured path
+      headers: { "Content-Type": "application/json" }, // 不含 X-OpenRig-Session——用于覆盖被制造出的路径
       body: JSON.stringify({ senderSession: "claimant@rig", destinationSession: "dest@rig", body: "hi" }),
     });
-    expect(res.status).toBe(201); // deliver-and-label, not refuse
+    expect(res.status).toBe(201); // 投递并标注来源，而不是拒绝
     const { outboxId } = (await res.json()) as { outboxId: string };
     const row = db
       .prepare("SELECT identity_provenance FROM outbox_entries WHERE outbox_id = ?")
@@ -91,8 +90,8 @@ describe("P18 provenance thread — header-absent delivery must not launder clai
     expect(row?.identity_provenance).toBe("claimed:v1");
   });
 
-  // POSITIVE CONTROL — the header-present path is byte-unchanged (still transport:v1).
-  it("outbox record: header PRESENT → records transport:v1 (certified path unchanged)", async () => {
+  // 阳性对照——携带请求头的路径逐字节不变（仍为 transport:v1）。
+  it("发件箱记录：携带请求头时记录 transport:v1（认证路径不变）", async () => {
     const res = await app.request("/api/queue/outbox/record", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "me@rig" },
@@ -106,7 +105,7 @@ describe("P18 provenance thread — header-absent delivery must not launder clai
     expect(row?.identity_provenance).toBe("transport:v1");
   });
 
-  it.each([{ "x-openrig-origin-unknown": "true" }, { "x-openrig-relay": "true", "x-openrig-provenance": "origin-unknown:v1" }])("queue create preserves unknown origin durably across direct and relayed delivery: %j", async (relayHeaders) => {
+  it.each([{ "x-openrig-origin-unknown": "true" }, { "x-openrig-relay": "true", "x-openrig-provenance": "origin-unknown:v1" }])("队列创建在直接和中继投递中持久保留未知来源：%j", async (relayHeaders) => {
     const res = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "me@rig", ...relayHeaders },
@@ -118,11 +117,11 @@ describe("P18 provenance thread — header-absent delivery must not launder clai
     expect(db.prepare("SELECT identity_provenance FROM queue_transitions WHERE qitem_id = ? ORDER BY rowid LIMIT 1").get(qitemId)).toEqual({ identity_provenance: "origin-unknown:v1" });
   });
 
-  // queue_transitions table — create (queue.ts:470)
-  it("queue create: header ABSENT + body sourceSession → delivers, transition records claimed:v1 (NOT transport:v1)", async () => {
+  // queue_transitions 表——创建操作（queue.ts:470）。
+  it("队列创建：缺少请求头且正文含 sourceSession 时可投递，转换记录 claimed:v1（而非 transport:v1）", async () => {
     const res = await app.request("/api/queue/create", {
       method: "POST",
-      headers: { "Content-Type": "application/json" }, // NO X-OpenRig-Session
+      headers: { "Content-Type": "application/json" }, // 不含 X-OpenRig-Session
       body: JSON.stringify({ destinationSession: "dest@rig", body: "hi", sourceSession: "claimant@rig" }),
     });
     expect(res.status).toBe(201);
@@ -133,7 +132,7 @@ describe("P18 provenance thread — header-absent delivery must not launder clai
     expect(row?.identity_provenance).toBe("claimed:v1");
   });
 
-  it("queue create: header PRESENT → transition records transport:v1 (certified path unchanged)", async () => {
+  it("队列创建：携带请求头时转换记录 transport:v1（认证路径不变）", async () => {
     const res = await app.request("/api/queue/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "me@rig" },

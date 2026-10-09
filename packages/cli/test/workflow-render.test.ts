@@ -19,10 +19,9 @@ vi.mock("../src/daemon-lifecycle.js", async () => {
 });
 
 /**
- * OPR.0.4.6.WF3 FR-2 — renderer pins (commit 2). Render-side only:
- * the BYTE-STABILITY of --json is additionally pinned here at the
- * unit level (raw body verbatim through the json branch); the
- * before/after diff harness (commit 8) is the binding proof.
+ * OPR.0.4.6.WF3 FR-2——renderer pin（commit 2）。仅渲染侧：
+ * --json 的字节稳定性在此单元级额外 pin（经 json 分支原始 body 逐字）；
+ * before/after diff harness（commit 8）是约束性证明。
  */
 
 const NOW = "2026-07-06T21:10:00.000Z";
@@ -65,21 +64,21 @@ describe("workflow-render (WF3 FR-2)", () => {
     const text = lines.join("\n");
     expect(text).toContain("WF01ABC");
     expect(text).toContain("conveyor v2");
-    expect(text).toContain("STEP");
-    expect(text).toContain("ACTOR");
+    expect(text).toContain("步骤");
+    expect(text).toContain("执行者");
     expect(text).toContain("plan");
     expect(text).toContain("planner@rig");
     expect(text).toContain("2m"); // plan duration from createdAt→closedAt
     expect(text).toContain("6m"); // build duration from prior close
     expect(text).toContain("▸ review"); // where it is now
     expect(text).toContain("frontier=[Q3]");
-    // No raw JSON leakage — the whole point of FR-2.
+    // 无原始 JSON 泄漏——FR-2 的全部要点。
     expect(text).not.toContain("{");
   });
 
   it("branch-taken renders when the trail carries it, leaves no residue when absent (present-tolerant)", () => {
     const withBranch = renderTraceTree(INSTANCE, TRAIL, NOW).join("\n");
-    expect(withBranch).toContain("↳ branch: remediate");
+    expect(withBranch).toContain("↳ 分支：remediate");
     const noBranch = renderTraceTree(INSTANCE, [TRAIL[0]], NOW).join("\n");
     expect(noBranch).not.toContain("branch:");
   });
@@ -96,7 +95,7 @@ describe("workflow-render (WF3 FR-2)", () => {
 
   it("list table: columns + one row per instance + age", () => {
     const lines = renderInstanceList([INSTANCE, { ...INSTANCE, instanceId: "WF02", status: "waiting", currentStepId: null }], NOW);
-    expect(lines[0]).toMatch(/INSTANCE\s+WORKFLOW\s+STATUS\s+STEP\s+AGE\s+ATTN/);
+    expect(lines[0]).toMatch(/实例\s+工作流\s+状态\s+步骤\s+年龄\s+关注/);
     expect(lines).toHaveLength(3);
     expect(lines[1]).toContain("WF01ABC");
     expect(lines[1]).toContain("10m");
@@ -113,14 +112,14 @@ describe("workflow-render (WF3 FR-2)", () => {
       ],
       NOW,
     );
-    expect(lines.find((l) => l.includes("WF-F"))).toContain("▲ failed");
-    expect(lines.find((l) => l.includes("WF-W"))).toContain("▲ waiting");
+    expect(lines.find((l) => l.includes("WF-F"))).toContain("▲ 失败");
+    expect(lines.find((l) => l.includes("WF-W"))).toContain("▲ 等待");
     expect(lines.find((l) => l.includes("WF01ABC"))).not.toContain("▲");
     expect(lines.find((l) => l.includes("WF-C"))).not.toContain("▲");
   });
 
   it("empty list renders the explicit empty statement, never a blank", () => {
-    expect(renderInstanceList([], NOW)).toEqual(["No workflow instances."]);
+    expect(renderInstanceList([], NOW)).toEqual(["没有工作流实例。"]);
   });
 
   it("show: status-line-headed summary with a next pointer at trace", () => {
@@ -149,12 +148,12 @@ describe("workflow-render (WF3 FR-2)", () => {
     expect(show).toContain("project --instance WF01ABC --current-packet Q-LEFT --exit <handoff|waiting|done|failed> --actor-session left@rig");
     expect(show).toContain("project --instance WF01ABC --current-packet Q-RIGHT --exit <handoff|waiting|done|failed> --actor-session right@rig");
     expect(show).toContain("--occurrence Q-FAILED");
-    expect(show).toContain("unknown:  frontier packet Q-GHOST has no queue row");
+    expect(show).toContain("unknown： frontier packet Q-GHOST has no queue row");
 
     const trace = renderTraceTree(lifecycle, TRAIL, NOW).join("\n");
     expect(trace).toContain("packet=Q-LEFT");
     expect(trace).toContain("packet=Q-RIGHT");
-    expect(trace).toContain("failure Q-FAILED");
+    expect(trace).toContain("失败 Q-FAILED");
   });
 
   it("shows required boundary obligations and missing receipts separately from queue state", () => {
@@ -165,10 +164,10 @@ describe("workflow-render (WF3 FR-2)", () => {
         { stepId: "record-shipped", required: true, state: "closed", receiptState: "recorded", receipt: { evidenceRef: "proof/ship.md", actorSession: "orch@rig", closedAt: NOW } },
       ],
     }, NOW).join("\n");
-    expect(body).toContain("boundary: project-profile");
-    expect(body).toContain("exact-cut-substance · required · pending · receipt missing");
-    expect(body).toContain("record-shipped · required · closed · receipt recorded");
-    expect(body).toContain("proof/ship.md · recorded by orch@rig");
+    expect(body).toContain("边界：project-profile");
+    expect(body).toContain("exact-cut-substance · required · pending · 收据 missing");
+    expect(body).toContain("record-shipped · required · closed · 收据 recorded");
+    expect(body).toContain("proof/ship.md · 由 orch@rig 记录于");
   });
 
   it("renders the typed acceptance command shape on an acceptance frontier", () => {
@@ -214,10 +213,10 @@ describe("workflow-render (WF3 FR-2)", () => {
       renderTraceTree(aborted, TRAIL, NOW).join("\n"),
     ]) {
       expect(text).toContain("Q-HISTORY");
-      expect(text).toContain("action: none — terminal history");
+      expect(text).toContain("动作：无——终态历史");
       expect(text).not.toContain("rig workflow resume");
     }
-    expect(renderInstanceList([aborted], NOW)[1]).not.toContain("▲ failed-branch");
+    expect(renderInstanceList([aborted], NOW)[1]).not.toContain("▲ 失败分支");
   });
 
   it("humanDuration compacts sanely", () => {
@@ -271,8 +270,8 @@ it("shows the exception selection, unavailable evidence and owning obligation wi
       nextAction: "Inspect rig workflow revise WF01ABC; existing obligations keep their owners." },
     exceptionObligations: [{ qitemId: "qitem-existing", ownerSession: "prior@rig", state: "pending", evidenceRef: "rig workflow trace WF01ABC", inspectCommand: "rig queue show qitem-existing --full --json" }],
   }, NOW).join("\n");
-  expect(lines).toContain("exception owner: selected · orch (ordinary entry: owner)");
-  expect(lines).toContain("unavailable · orchestrator via engine-default · no verified destination");
+  expect(lines).toContain("异常所有者：selected · orch（普通入口：owner）");
+  expect(lines).toContain("unavailable · orchestrator，经 engine-default · 无已验证目标");
   expect(lines).toContain("inventory read failed");
   expect(lines).toContain("qitem-existing · owner=prior@rig · state=pending");
   expect(lines).toContain("rig workflow revise WF01ABC");

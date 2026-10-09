@@ -14,29 +14,26 @@ import type { AggregatedPayload, PerHostStatus } from "../lib/hosts/fanout-contr
 interface PsEntry {
   rigId: string;
   name: string;
-  /** L3-followup: alias of `name`. Always populated and equal to `name`. */
+  /** L3-followup：`name` 的别名。始终填充且等于 `name`。 */
   rigName?: string;
   nodeCount: number;
   runningCount: number;
-  /** Slice 15 — subset of nodes producing tmux output within the silence
-   *  window. Sourced from the daemon's SeatActivityService; NEVER derived
-   *  from queue/assignment state. */
+  /** Slice 15——静默窗口内产生 tmux 输出的节点子集。
+   *  来自后台服务 SeatActivityService；绝不从队列/分派状态推导。 */
   activeCount?: number;
-  /** Slice 17 — subset of nodes with at least one pending, in-progress,
-   *  or blocked qitem assigned. Sourced from queue_items; NEVER derived
-   *  from tmux output. */
+  /** Slice 17——至少有一个 pending/in-progress/blocked qitem 被分派的节点子集。
+   *  来自 queue_items；绝不从 tmux 输出推导。 */
   hasWorkCount?: number;
   status: "running" | "partial" | "stopped";
-  /** OPR.0.4.4.21 — additive: seats needing attention (lifecycle/startup
-   *  attention, needs_input, held, startup error) folded daemon-side. */
+  /** OPR.0.4.4.21——追加：需要关注的席位（生命周期/启动关注、needs_input、
+   *  held、启动错误）在后台服务侧折叠。 */
   attentionCount?: number;
   lifecycleState?: "running" | "recoverable" | "stopped" | "degraded" | "attention_required";
   uptime: string | null;
   latestSnapshot: string | null;
-  /** OPR.0.3.3.19 - ISO timestamp when archived, or null if active. Present
-   *  only when the daemon supports archive; optional for back-compat. */
+  /** OPR.0.3.3.19——归档时的 ISO 时间戳，活动时为 null。仅在后台服务支持归档时出现；为向后兼容可选。 */
   archivedAt?: string | null;
-  /** OPR.0.3.3.19 - convenience flag; true iff the rig is archived. */
+  /** OPR.0.3.3.19——便利标志；当且仅当 rig 已归档时为 true。 */
   isArchived?: boolean;
 }
 
@@ -46,9 +43,9 @@ interface NodeEntry {
   logicalId: string;
   podId: string | null;
   podNamespace?: string | null;
-  /** Slice 13 fix 2 — the serving daemon's boot-reconciled self-id, stamped per row at the source
-   *  (null before the daemon reconciles). Distinct from the -A fan-out's `hostId`, which is the
-   *  CALLER'S registry alias for the host it queried. */
+  /** Slice 13 fix 2——被服务后台服务经启动对账后的 self-id，在源处逐行盖章
+   *  （后台服务对账前为 null）。区别于 -A fan-out 的 `hostId`，后者是
+   *  调用方对其所查询主机的注册表别名。 */
   hostSelfId?: string | null;
   canonicalSessionName: string | null;
   nodeKind: "agent" | "infrastructure";
@@ -57,33 +54,32 @@ interface NodeEntry {
   sessionStatus: string | null;
   startupStatus: "pending" | "ready" | "attention_required" | "failed" | null;
   restoreOutcome: string;
-  // OPR.0.4.3.06 — challenge-verified orientation, distinct from startupStatus.
+  // OPR.0.4.3.06——经挑战验证的 orientation，区别于 startupStatus。
   oriented?: string;
   lifecycleState?: "running" | "detached" | "recoverable" | "attention_required";
   tmuxAttachCommand: string | null;
   resumeCommand: string | null;
   latestError: string | null;
-  /** Slice 15 — `terminal-active` primitive. true=producing output,
-   *  false=silent past threshold, null=no signal. NEVER derived from
-   *  hasAssignedWork (non-inference contract). */
+  /** Slice 15——`terminal-active` 原语。true=正在产出输出，
+   *  false=超过阈值静默，null=无信号。绝不从 hasAssignedWork 推导（非推断契约）。 */
   terminalActive?: boolean | null;
-  /** S19 — the served taxonomy state (display pre-derived by the daemon's one bridge). */
+  /** S19——被服务的 taxonomy 状态（由后台服务唯一 bridge 预推导展示）。 */
   activityState?: {
     activity: string;
     display: string;
     needsInput: { count: number; reason: string | null };
     decidedBy: string | null;
   } | null;
-  /** Slice 15 — `has-work-to-do` primitive. Derived from queue_items;
-   *  NEVER derived from terminalActive. */
+  /** Slice 15——`has-work-to-do` 原语。来自 queue_items 推导；
+   *  绝不从 terminalActive 推导。 */
   hasAssignedWork?: boolean;
-  /** Total active assignments (pending + in-progress + blocked). */
+  /** 活动分派总数（pending + in-progress + blocked）。 */
   assignedWorkCount?: number;
-  /** Slice 15 — pending qitem count for this seat (cheap aggregate). */
+  /** Slice 15——本席位的 pending qitem 数（轻量聚合）。 */
   pendingWorkCount?: number;
   inProgressWorkCount?: number;
   blockedWorkCount?: number;
-  /** OPR.0.3.4.11 — held reason from node.held event. */
+  /** OPR.0.3.4.11——来自 node.held 事件的 held 原因。 */
   heldReason?: string | null;
   agentActivity?: {
     state: "running" | "needs_input" | "idle" | "unknown";
@@ -92,9 +88,8 @@ interface NodeEntry {
     sampledAt: string;
     evidence: string | null;
   };
-  // PL-012: context-usage block surfaced from the daemon's
-  // /api/rigs/:id/nodes route (already populated). Optional because
-  // older daemons may not emit it.
+  // PL-012：从后台服务 /api/rigs/:id/nodes 路由浮出的 context 用量块
+  // （已填充）。可选，因为老后台服务可能不发出。
   contextUsage?: {
     availability: "known" | "unknown";
     usedPercentage: number | null;
@@ -102,28 +97,26 @@ interface NodeEntry {
     state?: "critical" | "warning" | "low" | "unknown";
     sampledAt: string | null;
   };
-  /** OPR.0.4.0.34 — resume summary from the daemon node-inventory. resumeToken
-   *  is the SECRET: surfaced as a present-boolean in compact, value only in --full. */
+  /** OPR.0.4.0.34——来自后台服务 node-inventory 的恢复摘要。resumeToken
+   *  是密钥：紧凑模式只显示是否存在，值仅在 --full 下显示。 */
   resumeType?: string | null;
   resumeToken?: string | null;
-  /** OPR.0.4.0.34 — startup-completion timestamp; the compact `lastActivity`
-   *  fallback when no agentActivity sample exists. */
+  /** OPR.0.4.0.34——启动完成时间戳；无 agentActivity 采样时
+   *  紧凑 `lastActivity` 的回退。 */
   startupCompletedAt?: string | null;
   [key: string]: unknown;
 }
 
-// L3-followup: human-output budgets bound default terminal output for hosts
-// with realistic agent counts. `--full` opts out. JSON output remains
-// unbounded by default for back-compat (Decision C hybrid).
+// L3-followup：人读输出预算，为主机上有真实数量级智能体时的默认终端输出设界。
+// `--full` 退出此限制。JSON 输出为向后兼容默认仍不设界（Decision C 混合方案）。
 function extractRigName(sessionName: string): string | undefined {
-  // OPR.0.4.6.MH1 FR-8: the shared parse contract (greedy first-@ rig).
+  // OPR.0.4.6.MH1 FR-8：共享解析契约（贪婪的第一个 @ 前的 rig）。
   return sessionRigOf(sessionName);
 }
 
-/** The ONE active-rig predicate (LEG-7 extraction, fold-wave qitem 79159e6f): a rig is active unless
- *  its lifecycle status is exactly "stopped". Shared by the bare-default table projection and the
- *  rigsOnHost scope count so the "1 of N" label and the shown rows can never diverge (the
- *  derived-label-must-carry-liveness class the LEG-2 QA flagged). */
+/** 唯一的 active-rig 判定（LEG-7 抽取，fold-wave qitem 79159e6f）：一个 rig 是 active，
+ *  除非其生命周期状态恰好为 "stopped"。被裸默认表格投影和 rigsOnHost 作用域计数共享，
+ *  让 "1 of N" 标签与展示行永不分歧（LEG-2 QA 标记的"派生标签必须携带活性"那一类问题）。 */
 export function isActiveRig(entry: { status?: string | null }): boolean {
   return entry.status !== "stopped";
 }
@@ -131,48 +124,44 @@ export function isActiveRig(entry: { status?: string | null }): boolean {
 const HUMAN_RIG_BUDGET = 50;
 const HUMAN_NODE_BUDGET = 100;
 
-// L3-followup: --filter accepts only this allow-list. Unknown keys produce a
-// clear error with the supported list (Guard Review Checklist: filter-parser
-// security).
+// L3-followup：--filter 只接受这个白名单。未知 key 报错并列出支持列表
+// （护栏评审清单：filter 解析器安全）。
 //
-// PL-019 item 1: extends the allow-list with the nested key `agentActivity.state`.
-// This is the only nested filter key v0 supports; the parser checks for the
-// dotted form explicitly. Bare `agentActivity` is intentionally NOT a filter
-// key — it's an object, not a scalar; project it via --fields if you need it.
+// PL-019 item 1：用嵌套 key `agentActivity.state` 扩展白名单。
+// 这是 v0 支持的唯二嵌套 filter key 之一；解析器显式检查点号形式。裸 `agentActivity`
+// 刻意不是 filter key——它是对象不是标量；需要的话用 --fields 投影。
 const ALLOWED_FILTER_KEYS = new Set([
   "status",
   "lifecycleState",
   "name-prefix",
   "name",
   "agentActivity.state",
-  // PL-012: context-usage filters. percent is numeric (>=, >, <=, <, =);
-  // state is enum (critical / warning / low / unknown — lockstep with
-  // computeContextHealthSummary tier vocabulary).
+  // PL-012：context 用量过滤器。percent 是数值（>=, >, <=, <, =）；
+  // state 是枚举（critical / warning / low / unknown——与
+  // computeContextHealthSummary 分层词表锁步）。
   "contextUsage.percent",
   "contextUsage.state",
 ]);
 
-// PL-019 item 1: when filter key is `agentActivity.state`, the value is
-// validated against the AgentActivityState enum. Invalid values produce a
-// three-part error (what failed / what's allowed / what to do).
+// PL-019 item 1：当 filter key 是 `agentActivity.state` 时，值按
+// AgentActivityState 枚举校验。非法值给出三段式错误
+// （哪里错了 / 允许什么 / 该怎么办）。
 const ALLOWED_AGENT_ACTIVITY_STATES = new Set(["running", "needs_input", "idle", "unknown"]);
 
-// PL-012: ALLOWED_CONTEXT_USAGE_STATES — must stay lockstep with the
-// daemon's computeContextHealthSummary urgency vocab.
+// PL-012：ALLOWED_CONTEXT_USAGE_STATES——必须与后台服务
+// computeContextHealthSummary 的紧急词表锁步。
 const ALLOWED_CONTEXT_USAGE_STATES = new Set(["critical", "warning", "low", "unknown"]);
 
 const NUMERIC_FILTER_KEYS = new Set(["contextUsage.percent"]);
 type NumericComparator = ">=" | ">" | "<=" | "<" | "=";
 const NUMERIC_OPERATORS: NumericComparator[] = [">=", "<=", ">", "<", "="];
 
-// C9a: --fields accepts a per-level allow-list. Unknown keys produce a clear
-// error with the supported list, mirroring the --filter rejection pattern.
-// Per-level because rig and node entries have different schemas (PsEntry
-// rig-level vs NodeEntry node-level).
+// C9a：--fields 接受每级一个白名单。未知 key 报错并列出支持列表，
+// 镜像 --filter 的拒绝模式。按级区分是因为 rig 与 node 条目 schema 不同
+// （接口 PsEntry rig 级 vs NodeEntry node 级）。
 //
-// Source of truth: PsEntry / NodeEntry interfaces above. `name` exists at
-// rig-level only; `rigName` is the alias and exists at both levels (per the
-// closed `rig ps trust and scale-safety` slice at openrig 0a9fb43).
+// 真源：上方 PsEntry / NodeEntry 接口。`name` 只在 rig 级存在；`rigName`
+// 是别名，两级都有（据 openrig 0a9fb43 那个闭合的 `rig ps trust and scale-safety` slice）。
 const ALLOWED_RIG_FIELDS = new Set([
   "attentionCount",
   "rigId",
@@ -233,17 +222,15 @@ interface PsCliOptions {
   allRigs?: boolean;
   rig?: string;
   session?: string;
-  /** OPR.0.3.3.19 - include archived rigs (default excludes them). Parity
-   *  with `rig stream list --include-archived`. */
+  /** OPR.0.3.3.19——包含已归档 rig（默认排除）。与 `rig stream list --include-archived` 对齐。 */
   includeArchived?: boolean;
 }
 
 export interface PsDeps extends StatusDeps {
   /**
-   * Cross-host hooks. Both default to the production loaders/executors; tests
-   * inject in-package mocks so no real ssh / no real ~/.ssh / no real network
-   * is touched. Mirrors the SendDeps/CaptureDeps shape from the closed
-   * cross-host-rig-commands slice (cdce3a6).
+   * 跨主机钩子。二者默认都是生产加载器/执行器；测试注入包内 mock，
+   * 因此不触碰真实 ssh、真实 ~/.ssh 或真实网络。
+   * 镜像闭合的 cross-host-rig-commands slice（cdce3a6）里 SendDeps/CaptureDeps 的形状。
    */
   hostRegistryLoader?: () => ReturnType<typeof loadHostRegistry>;
   crossHostRun?: (
@@ -256,23 +243,23 @@ export interface PsDeps extends StatusDeps {
 interface ParsedFilter {
   key: string;
   value: string;
-  /** PL-012: numeric comparator for keys in NUMERIC_FILTER_KEYS;
-   *  defaults to "=" (equality) for all other keys. */
+  /** PL-012：NUMERIC_FILTER_KEYS 中 key 的数值比较符；
+   *  其他 key 默认 "="（相等）。 */
   op: NumericComparator;
-  /** PL-012: parsed numeric value when op is a numeric comparator. */
+  /** PL-012：op 为数值比较符时解析出的数值。 */
   numericValue?: number;
 }
 
 function parseFilter(filter: string): ParsedFilter | { error: string } {
-  // PL-012: pre-detect numeric comparators (>=, <=, >, <, =) so callers
-  // can write `contextUsage.percent>=80`. Order matters: check >= and
-  // <= before > and < so the longer prefix wins.
+  // PL-012：预检测数值比较符（>=, <=, >, <, =），让调用方可以写
+  // `contextUsage.percent>=80`。顺序重要：先查 >= 和 <= 再查 > 和 <，
+  // 让较长前缀胜出。
   let op: NumericComparator = "=";
   let opIdx = -1;
   for (const candidate of NUMERIC_OPERATORS) {
     const i = filter.indexOf(candidate);
     if (i !== -1) {
-      // Prefer the leftmost match; on tie, prefer the longest comparator.
+      // 取最左匹配；并列时取最长比较符。
       if (opIdx === -1 || i < opIdx || (i === opIdx && candidate.length > op.length)) {
         opIdx = i;
         op = candidate;
@@ -280,67 +267,65 @@ function parseFilter(filter: string): ParsedFilter | { error: string } {
     }
   }
   if (opIdx === -1) {
-    return { error: `--filter must be key<op>value (op = ${NUMERIC_OPERATORS.join(", ")}); got: '${filter}'` };
+    return { error: `--filter 必须是 key<op>value（op = ${NUMERIC_OPERATORS.join(", ")}），实际：'${filter}'` };
   }
   const key = filter.slice(0, opIdx);
   const value = filter.slice(opIdx + op.length);
   if (!ALLOWED_FILTER_KEYS.has(key)) {
     return {
-      error: `Unknown --filter key '${key}'. Supported: ${[...ALLOWED_FILTER_KEYS].sort().join(", ")}`,
+      error: `未知 --filter key '${key}'。支持：${[...ALLOWED_FILTER_KEYS].sort().join(", ")}`,
     };
   }
   if (!value) {
-    return { error: `--filter value is empty for key '${key}'` };
+    return { error: `--filter 在 key '${key}' 上的值为空` };
   }
 
-  // PL-012: numeric-keyed filters validate the value parses as a finite
-  // number. Three-part error per the existing convention.
+  // PL-012：数值 key 的 filter 校验值能解析成有限数。按既有约定三段式错误。
   if (NUMERIC_FILTER_KEYS.has(key)) {
     const numericValue = Number(value);
     if (!Number.isFinite(numericValue)) {
       return {
-        error: `--filter ${key}${op}'${value}' is not a numeric value. ` +
-          `Allowed: a finite number (e.g., ${key}>=80). ` +
-          `Use 'rig ps --nodes --fields contextUsage --json' to see what daemon is reporting.`,
+        error: `--filter ${key}${op}'${value}' 不是数值。` +
+          `允许：一个有限数（例如 ${key}>=80）。` +
+          `用 'zrig ps --nodes --fields contextUsage --json' 查看后台服务在报告什么。`,
       };
     }
     return { key, value, op, numericValue };
   }
 
-  // PL-012: contextUsage.state enum guard — same shape as agentActivity.state.
+  // PL-012：contextUsage.state 枚举闸门——形状同 agentActivity.state。
   if (key === "contextUsage.state" && !ALLOWED_CONTEXT_USAGE_STATES.has(value)) {
     return {
-      error: `--filter contextUsage.state='${value}' is not a valid context state. ` +
-        `Allowed: ${[...ALLOWED_CONTEXT_USAGE_STATES].sort().join(", ")}. ` +
-        `Use 'rig ps --nodes --fields contextUsage --json' to see what daemon is reporting.`,
+      error: `--filter contextUsage.state='${value}' 不是有效的 context 状态。` +
+        `允许：${[...ALLOWED_CONTEXT_USAGE_STATES].sort().join(", ")}。` +
+        `用 'zrig ps --nodes --fields contextUsage --json' 查看后台服务在报告什么。`,
     };
   }
 
-  // PL-019 item 1: agentActivity.state is enum-valued; reject invalid values
-  // up-front so operators don't get a silent empty result on a typo. Three-part
-  // shape per `feedback_smart_agents_no_bureaucracy.md`: what failed / what's
-  // allowed / what to do.
+  // PL-019 item 1：agentActivity.state 是枚举值；提前拒绝非法值，
+  // 免得操作者打错字时静默得到空结果。按 `feedback_smart_agents_no_bureaucracy.md`
+  // 的三段式：哪里错了 / 允许什么 / 该怎么办。
   if (key === "agentActivity.state" && !ALLOWED_AGENT_ACTIVITY_STATES.has(value)) {
     return {
-      error: `--filter agentActivity.state='${value}' is not a valid activity state. ` +
-        `Allowed: ${[...ALLOWED_AGENT_ACTIVITY_STATES].sort().join(", ")}. ` +
-        `Use 'rig ps --nodes --fields agentActivity --json' to see what daemon is reporting.`,
+      error: `--filter agentActivity.state='${value}' 不是有效的活动状态。` +
+        `允许：${[...ALLOWED_AGENT_ACTIVITY_STATES].sort().join(", ")}。` +
+        `用 'zrig ps --nodes --fields agentActivity --json' 查看后台服务在报告什么。`,
     };
   }
 
-  // Non-numeric keys must use op = "=".
+  // 非数值 key 必须用 op = "="。
   if (op !== "=") {
     return {
-      error: `--filter ${key}${op}... uses a numeric comparator on a non-numeric key. ` +
-        `Allowed numeric keys: ${[...NUMERIC_FILTER_KEYS].sort().join(", ")}. ` +
-        `Use ${key}=<value> for equality.`,
+      error: `--filter ${key}${op}... 在非数值 key 上用了数值比较符。` +
+        `允许的数值 key：${[...NUMERIC_FILTER_KEYS].sort().join(", ")}。` +
+        `相等比较请用 ${key}=<value>。`,
     };
   }
   return { key, value, op };
 }
 
-// PL-012: derive a context-usage tier from a numeric percent. Lockstep
-// with daemon-side computeContextHealthSummary thresholds.
+// PL-012：从数值百分比推导 context 用量分层。与后台服务
+// computeContextHealthSummary 的阈值锁步。
 function deriveContextUsageState(percent: number | null | undefined): "critical" | "warning" | "low" | "unknown" {
   if (typeof percent !== "number") return "unknown";
   if (percent >= 80) return "critical";
@@ -348,25 +333,24 @@ function deriveContextUsageState(percent: number | null | undefined): "critical"
   return "low";
 }
 
-// C9a: validate --fields against a per-level allow-list. Mirrors parseFilter's
-// shape: rejects with a sorted-supported-list error message including the
-// unknown key(s) quoted. The level-aware "Hint" fires when an operator types
-// `--fields name` against a node query (the most likely confusion case
-// preserved by the rigName/name aliasing at rig-level only).
+// C9a：按每级白名单校验 --fields。镜像 parseFilter 的形状：报错时给出
+// 排序后的支持列表，并把未知 key 加引号。当操作者对 node 查询敲
+// `--fields name` 时会触发"按级提示"（rigName/name 别名只在 rig 级保留
+// 的那个最常见混淆情形）。
 function parseFields(input: string, allowed: Set<string>, level: "rig" | "nodes"): string[] | { error: string } {
   const fields = input.split(",").map((f) => f.trim()).filter((f) => f.length > 0);
   if (fields.length === 0) {
-    return { error: `--fields cannot be empty` };
+    return { error: `--fields 不能为空` };
   }
   const unknown = fields.filter((f) => !allowed.has(f));
   if (unknown.length > 0) {
     const sorted = [...allowed].sort().join(", ");
     const hint = level === "nodes" && unknown.includes("name")
-      ? ` Hint: 'name' is a rig-level field; use 'rigName' for node entries.`
+      ? ` 提示：'name' 是 rig 级字段；node 条目请用 'rigName'。`
       : "";
     const keyWord = unknown.length > 1 ? "keys" : "key";
     return {
-      error: `Unknown --fields ${keyWord} ${unknown.map((u) => `'${u}'`).join(", ")}. Supported: ${sorted}.${hint}`,
+      error: `未知 --fields ${keyWord} ${unknown.map((u) => `'${u}'`).join(", ")}。支持：${sorted}。${hint}`,
     };
   }
   return fields;
@@ -382,26 +366,25 @@ interface ParsedPsControls {
 function parsePsControls(opts: PsCliOptions): ParsedPsControls | { error: string } {
   let effectiveFilter = opts.filter;
   if (opts.active) {
-    // Slice 15 (finding 5): agent activity is a per-NODE signal; the LOCAL
-    // rig-summary tier carries only an activeCount aggregate and cannot honestly
-    // filter on it. A bare local `rig ps --active` used to be a silent no-op that
-    // looked like it worked — fail loudly and state the node-only scope. Remote
-    // paths (--host/--all-hosts/--hosts) FORWARD --active to the remote, which
-    // applies (and re-validates) it there, so they are exempt from the local gate.
+    // Slice 15（发现 5）：智能体活动是逐节点信号；本地 rig 汇总层只带一个
+    // activeCount 聚合，无法诚实地按它过滤。裸的本地 `rig ps --active`
+    // 过去是个看起来像成功的静默空操作——现在大声失败并说明仅节点级作用域。
+    // 远程路径（--host/--all-hosts/--hosts）把 --active 转发到远端，
+    // 由远端应用（并重新校验），因此不受本地闸门约束。
     const isRemote = !!(opts.host || opts.allHosts || opts.hosts);
     if (!opts.nodes && !isRemote) {
       return {
         error:
-          `--active/--running filters agentActivity.state, a per-node signal available only at the node tier. ` +
-          `Add --nodes (rig-summary rows carry no per-node activity) — nothing was filtered.`,
+          `--active/--running 过滤 agentActivity.state，这是只在节点层可得的逐节点信号。` +
+          `加 --nodes（rig 汇总行不带逐节点活动）——未做任何过滤。`,
       };
     }
     if (effectiveFilter) {
       return {
         error:
-          `--active and --filter cannot be combined. ` +
-          `--active is sugar for --filter agentActivity.state=running. ` +
-          `Pick one form, or compose by upgrading to --filter directly.`,
+          `--active 与 --filter 不能同时用。` +
+          `--active 等价于 --filter agentActivity.state=running。` +
+          `二选一，或直接升级到 --filter 来组合。`,
       };
     }
     effectiveFilter = "agentActivity.state=running";
@@ -416,7 +399,7 @@ function parsePsControls(opts: PsCliOptions): ParsedPsControls | { error: string
 
   const limit = opts.limit !== undefined ? Number(opts.limit) : null;
   if (limit !== null && (!Number.isInteger(limit) || limit < 0)) {
-    return { error: `--limit must be a non-negative integer; got '${opts.limit}'` };
+    return { error: `--limit 必须是非负整数，实际 '${opts.limit}'` };
   }
 
   let fields: string[] | null = null;
@@ -442,11 +425,10 @@ function applyRigFilter(entries: PsEntry[], filter: ParsedFilter): PsEntry[] {
     if (filter.key === "lifecycleState") return e.lifecycleState === filter.value;
     if (filter.key === "name-prefix") return (e.rigName ?? e.name).startsWith(filter.value);
     if (filter.key === "name") return (e.rigName ?? e.name) === filter.value;
-    // PL-019 item 1: agentActivity.state is node-level only; at the rig
-    // level it has no meaning, so the filter passes everything through and
-    // the user gets all rigs (the operator can `--nodes` to scope it).
+    // PL-019 item 1：agentActivity.state 只在节点级；在 rig 级没有意义，
+    // 所以过滤器放行一切，用户看到全部 rig（操作者可加 `--nodes` 收窄）。
     if (filter.key === "agentActivity.state") return true;
-    // PL-012: contextUsage.* filters are node-level only.
+    // PL-012：contextUsage.* 过滤器只在节点级。
     if (filter.key === "contextUsage.percent" || filter.key === "contextUsage.state") return true;
     return true;
   });
@@ -454,19 +436,17 @@ function applyRigFilter(entries: PsEntry[], filter: ParsedFilter): PsEntry[] {
 
 function applyNodeFilter(entries: NodeEntry[], filter: ParsedFilter): NodeEntry[] {
   return entries.filter((n) => {
-    // status maps to sessionStatus for nodes; lifecycleState applies directly.
-    if (filter.key === "status") return n.sessionStatus === filter.value;
-    if (filter.key === "lifecycleState") return n.lifecycleState === filter.value;
-    if (filter.key === "name-prefix") return n.rigName.startsWith(filter.value);
-    if (filter.key === "name") return n.rigName === filter.value;
-    // PL-019 item 1: nested-key traversal for agentActivity.state. Nodes
-    // without an agentActivity attachment never match a non-unknown filter
-    // value (the daemon reports `unknown` when it has no signal — explicit).
-    if (filter.key === "agentActivity.state") return n.agentActivity?.state === filter.value;
-    // PL-012: contextUsage.percent — numeric comparison. Nodes with no
-    // sample fail every comparator (operator can filter on
-    // contextUsage.state=unknown to find them).
-    if (filter.key === "contextUsage.percent") {
+  // status 对节点映射到 sessionStatus；lifecycleState 直接套用。
+  if (filter.key === "status") return n.sessionStatus === filter.value;
+  if (filter.key === "lifecycleState") return n.lifecycleState === filter.value;
+  if (filter.key === "name-prefix") return n.rigName.startsWith(filter.value);
+  if (filter.key === "name") return n.rigName === filter.value;
+    // PL-019 item 1：agentActivity.state 的嵌套 key 遍历。没有 agentActivity
+    // 附着的节点永不匹配非 unknown 的过滤值（后台服务无信号时报 `unknown`——显式）。
+  if (filter.key === "agentActivity.state") return n.agentActivity?.state === filter.value;
+    // PL-012：contextUsage.percent——数值比较。无采样的节点通不过任何比较符
+    // （操作者可用 contextUsage.state=unknown 把它们找出来）。
+  if (filter.key === "contextUsage.percent") {
       const pct = n.contextUsage?.usedPercentage;
       if (typeof pct !== "number" || filter.numericValue === undefined) return false;
       switch (filter.op) {
@@ -485,76 +465,72 @@ function applyNodeFilter(entries: NodeEntry[], filter: ParsedFilter): NodeEntry[
   });
 }
 
-// OPR.0.3.3.19 - build the /api/ps path, opting archived rigs back in when
-// --include-archived is set. Default (no flag) leaves the daemon's
-// archived-excluding default in force.
+// OPR.0.3.3.19——构建 /api/ps 路径，在设了 --include-archived 时把已归档 rig
+// 重新纳入。默认（不带标志）保持后台服务排除归档的默认行为。
 function fanOutNodesError(): string {
   return [
-    "rig ps --all-hosts/--hosts --nodes: per-node fan-out requires the FULL explicit ladder.",
-    "  rig ps --all-hosts --nodes -A             (fleet nodes per host, projected rows)",
-    "  rig ps --all-hosts --nodes -A --full      (complete per-node records — the last rung)",
-    "One rig's seats on one host: rig ps --host <id> --nodes --rig <name>.",
+    "zrig ps --all-hosts/--hosts --nodes：逐节点 fan-out 需要完整的显式阶梯。",
+    "  zrig ps --all-hosts --nodes -A             （每主机的 fleet 节点，投影行）",
+    "  zrig ps --all-hosts --nodes -A --full      （完整逐节点记录——最后一级）",
+    "某主机上某 rig 的席位：zrig ps --host <id> --nodes --rig <name>。",
   ].join("\n");
 }
 
 /**
- * OPR.0.4.4.21 FR-2/FR-3 — THE centralized disclosure-ladder validator.
- * Runs BEFORE the local/HTTP-host/SSH/fan-out dispatch split so every path
- * obeys one grammar (qa1 plan-review: remote mode bypassed the session-rig
- * injection and fanned wide). Principle (arch-ratified): IMPLICIT SCOPE
- * DEFAULTS DON'T CROSS HOST BOUNDARIES — the session-rig default has no
- * stable referent on a remote host (a same-named rig there would silently
- * misresolve), so remote per-node views are explicit-or-error.
- * Returns the teaching error text, or null when the invocation is valid.
+ * OPR.0.4.4.21 FR-2/FR-3——集中的披露阶梯校验器。
+ * 在本地/HTTP-host/SSH/fan-out 分派分裂之前运行，让每条路径都遵守同一套语法
+ * （qa1 plan-review：远程模式绕过了 session-rig 注入并扇出太宽）。
+ * 原则（架构批准）：隐式作用域默认值不跨主机边界——session-rig 默认值在远程主机上
+ * 没有稳定指代（那里同名的 rig 会静默错解析），所以远程逐节点视图要么显式要么报错。
+ * 返回教学错误文本；调用合法时返回 null。
  */
 export function validatePsLadder(opts: PsCliOptions, callerRig: string | undefined): string | null {
   const isFanOut = !!(opts.allHosts || opts.hosts);
   const isSingleRemote = !!opts.host;
 
-  // SWEEP-b (shape f2576102) — `--session` is a --nodes filter; on the rig tier it was
-  // accepted-and-dropped (silent all-rigs listing). Reject with the valid form taught.
+  // SWEEP-b（shape f2576102）——`--session` 是 --nodes 过滤器；在 rig 层它过去是
+  // 接受即丢弃（静默列出全部 rig）。改为报错并教正确写法。
   if (opts.session !== undefined && !opts.nodes) {
     return [
-      "rig ps --session: '--session' filters NODES, so it needs the --nodes tier.",
-      "Valid form: rig ps --nodes --session <member@rig> (add --rig/-A for scope).",
+      "zrig ps --session：'--session' 过滤的是节点，所以需要 --nodes 层。",
+      "正确写法：zrig ps --nodes --session <member@rig>（加 --rig/-A 限定作用域）。",
     ].join("\n");
   }
 
-  // FR-3: -A/--all-rigs has exactly ONE meaning — the --nodes fleet widener.
+  // FR-3：-A/--all-rigs 只有一个含义——--nodes 的 fleet 加宽器。
   if (opts.allRigs && !opts.nodes) {
     return [
-      "rig ps -A: '-A/--all-rigs' now has exactly one meaning — the --nodes fleet widener.",
-      "The consolidated all-rigs view IS the default: just run 'rig ps'.",
-      "Fleet nodes: rig ps --nodes -A (add --full for complete per-node records).",
-      "Archived history: rig ps --include-archived.",
+      "zrig ps -A：'-A/--all-rigs' 现在只有一个含义——--nodes 的 fleet 加宽器。",
+      "合并后的全 rig 视图就是默认：直接运行 'zrig ps'。",
+      "fleet 节点：zrig ps --nodes -A（加 --full 看完整逐节点记录）。",
+      "归档历史：zrig ps --include-archived。",
     ].join("\n");
   }
 
-  // FR-5: multi-host fan-out is rollup-only UNLESS the full explicit
-  // ladder is requested — `--nodes -A` per host (`--full` for complete
-  // records), exactly as the PRD writes it. Anything less explicit under
-  // --nodes errors; never silent rig-tier data under a --nodes flag.
+  // FR-5：多主机 fan-out 只做汇总，除非请求完整显式阶梯——
+  // 每主机 `--nodes -A`（`--full` 看完整记录），正如 PRD 所写。--nodes 下
+  // 任何不够显式的写法都报错；绝不在 --nodes 标志下静默给 rig 层数据。
   if (opts.nodes && isFanOut && !opts.allRigs) {
     return fanOutNodesError();
   }
 
-  // FR-2: --nodes always names its scope — session default locally,
-  // explicit --rig / -A everywhere else. Never an implicit fan-out.
+  // FR-2：--nodes 总是点名其作用域——本地用 session 默认，其他地方显式 --rig / -A。
+  // 绝不隐式 fan-out。
   if (opts.nodes && !opts.rig && !opts.allRigs) {
     if (isFanOut) {
       return fanOutNodesError();
     }
     if (isSingleRemote) {
       return [
-        `rig ps --host ${opts.host} --nodes: no target — the local session's rig is not a remote scope`,
-        "(implicit scope defaults don't cross host boundaries; a same-named remote rig would silently misresolve).",
-        `Name one: rig ps --host ${opts.host} --nodes --rig <name>, or that host's fleet explicitly: rig ps --host ${opts.host} --nodes -A.`,
+        `zrig ps --host ${opts.host} --nodes：没有目标——本地会话的 rig 不是远程作用域`,
+        "（隐式作用域默认值不跨主机边界；远程同名 rig 会静默错解析）。",
+        `指定一个：zrig ps --host ${opts.host} --nodes --rig <name>，或显式列该主机 fleet：zrig ps --host ${opts.host} --nodes -A。`,
       ].join("\n");
     }
     if (!callerRig) {
       return [
-        "rig ps --nodes: no target — outside a managed session there is no current rig to default to.",
-        "Name one: rig ps --nodes --rig <name>, or go fleet-wide explicitly: rig ps --nodes -A.",
+        "zrig ps --nodes：没有目标——在受管会话之外，没有可默认的当前 rig。",
+        "指定一个：zrig ps --nodes --rig <name>，或显式全 fleet：zrig ps --nodes -A。",
       ].join("\n");
     }
   }
@@ -588,21 +564,18 @@ function needsAttention(node: NodeEntry): boolean {
     || node.agentActivity?.state === "needs_input";
 }
 
-// OPR.0.4.0.34 — the compact orch field set (PRD FR-4). Carries the
-// source-available identity + state + resume-summary fields an orchestrator
-// needs at a glance, WITHOUT leaking the resume token value or resumeCommand
-// (security). recoveryGuidance/currentUsage stay on the node detail (slice 26).
+// OPR.0.4.0.34——紧凑的 orch 字段集（PRD FR-4）。携带编排者一眼所需的、
+// 来源可用的身份 + 状态 + 恢复摘要字段，但绝不泄漏 resume token 值或 resumeCommand
+// （安全）。recoveryGuidance/currentUsage 留在节点详情（slice 26）。
 
-// 0.5.1 rig ps telemetry (founder-directed): render the DECLARED model.
+// 0.5.1 rig ps 遥测（创始人指定）：渲染声明的 model。
 //
-// A blank here must NOT join the em-dash family every other empty cell uses.
-// 13 of 15 claude-code seats carry no declared model, and a reader seeing "—"
-// would reasonably conclude the seat HAS no model rather than that none was
-// declared. "not-declared" is the honest word for an absent declaration.
+// 这里留空绝不能并入其他空单元格所用的 em-dash 家族。15 个 claude-code 席位里有
+// 13 个不带声明 model，读者看到 "—" 会合理地以为该席位没有 model，而不是没有声明。
+// "not-declared" 是对"未声明"的诚实措辞。
 //
-// SCOPE, stated because the column invites a wider reading: this is the
-// SPEC-DECLARED model (nodes.model), NOT the model the seat is running. The
-// running model has no producer today — it is the ACTIVITY-umbrella rider.
+// 作用域在此声明，因为这一列容易被读得更宽：这是 SPEC 声明的 model（nodes.model），
+// 不是席位正在跑的 model。正在跑的 model 今天没有生产者——它是 ACTIVITY 伞下的附带项。
 export function formatDeclaredModel(model: string | null | undefined): string {
   const m = (model ?? "").trim();
   return m.length > 0 ? m : "not-declared";
@@ -612,46 +585,44 @@ export function compactNodeProjection(nodes: NodeEntry[]): Array<Record<string, 
   return nodes.map((n) => {
     const attention = needsAttention(n);
     const compact: Record<string, unknown> = {
-      // identity (rigId/rigName + logicalId + session) — disambiguates under -A.
+      // 身份（rigId/rigName + logicalId + session）——在 -A 下消除歧义。
       rigId: n.rigId,
       rigName: n.rigName,
       logicalId: n.logicalId,
       canonicalSessionName: n.canonicalSessionName,
-      // Slice 13 fix 2 — host attribution rides the compact projection too; a
-      // projected roster must stay attributable or partial reads as authoritative.
+      // Slice 13 fix 2——主机归属也随紧凑投影带出；投影名单必须可归属，
+      // 否则部分读取会被当成权威全貌。
       hostSelfId: n.hostSelfId ?? null,
-      // 0.5.1 founder-directed telemetry: runtime + DECLARED model.
-      // node-inventory carries both; this projection dropped them, which is why
-      // an orchestrator could not tell a rate-limited seat from a stalled one.
-      // runtime is complete fleet-wide; model is a DECLARATION, absent on 13 of
-      // 15 claude-code seats — see formatDeclaredModel for the render rule.
+      // 0.5.1 创始人指定遥测：runtime + 声明的 model。
+      // node-inventory 两者都带；这个投影过去把它们丢了，所以编排者无法区分
+      // 限流的席位和卡住的席位。runtime 全 fleet 完整；model 是一项声明，
+      // 15 个 claude-code 席位里 13 个缺失——渲染规则见 formatDeclaredModel。
       runtime: n.runtime ?? null,
       model: n.model ?? null,
-      // lifecycle + session/startup state.
+      // 生命周期 + 会话/启动状态。
       sessionStatus: n.sessionStatus,
       startupStatus: n.startupStatus,
-      // OPR.0.4.3.06 — challenge-verified orientation, distinct from ready.
+      // OPR.0.4.3.06——经挑战验证的 orientation，区别于 ready。
       oriented: n.oriented ?? "n-a",
       lifecycleState: n.lifecycleState,
-      // activity (state always; short reason only when attention — keep it lean).
+      // 活动（状态总有；仅在需要关注时带简短 reason——保持精简）。
       agentActivity: attention
         ? { state: n.agentActivity?.state ?? "unknown", reason: n.agentActivity?.reason }
         : { state: n.agentActivity?.state ?? "unknown" },
-      // Work counts. Compact keeps the base pending-only key plus the active
-      // total needed for honest rendering; exact state siblings remain on
-      // --full and explicit --fields.
+      // 工作量计数。紧凑模式保留基础的 pending-only 键，加上诚实渲染所需的活动总数；
+      // 精确的各状态兄弟键仍在 --full 和显式 --fields 上。
       hasAssignedWork: n.hasAssignedWork,
       assignedWorkCount: n.assignedWorkCount,
       pendingWorkCount: n.pendingWorkCount,
-      // resume summary — type + PRESENT boolean only (never the token value).
+      // 恢复摘要——仅类型 + 是否存在的布尔（绝不给 token 值）。
       resumeType: n.resumeType ?? null,
       resumeTokenPresent: Boolean(n.resumeToken),
-      // updated/age proxy. The node-list emits no dedicated `updatedAt`; the
-      // freshest signal is agentActivity.sampledAt, then startupCompletedAt,
-      // else null (documented FR-4 fallback — not a fabricated timestamp).
+      // 更新时间/年龄代理。节点列表不发专门的 `updatedAt`；最新信号是
+      // agentActivity.sampledAt，其次 startupCompletedAt，否则 null
+      // （文档化的 FR-4 回退——不是编造的时间戳）。
       lastActivity: n.agentActivity?.sampledAt ?? n.startupCompletedAt ?? null,
     };
-    // held/attention reason (short) when present.
+    // held/关注原因（简短）存在时带上。
     if (n.heldReason) compact.heldReason = n.heldReason;
     if (attention && n.latestError) {
       compact.latestError = n.latestError;
@@ -694,7 +665,7 @@ function summarizeNodes(entries: NodeEntry[]): {
   return { totalNodes: entries.length, byLifecycle, bySessionStatus };
 }
 
-// Compact rig-level lifecycle codes for the rig table header (3-char fixed width).
+// rig 表头用的紧凑 rig 级生命周期码（3 字符定宽）。
 function abbrevRigLifecycle(state: PsEntry["lifecycleState"] | undefined): string {
   if (!state) return "—";
   if (state === "running") return "run";
@@ -705,7 +676,7 @@ function abbrevRigLifecycle(state: PsEntry["lifecycleState"] | undefined): strin
   return "—";
 }
 
-// Compact per-node lifecycle codes for the nodes table.
+// 节点表用的紧凑逐节点生命周期码。
 function abbrevNodeLifecycle(state: NodeEntry["lifecycleState"] | undefined): string {
   if (!state) return "—";
   if (state === "running") return "run";
@@ -716,144 +687,133 @@ function abbrevNodeLifecycle(state: NodeEntry["lifecycleState"] | undefined): st
 }
 
 /**
- * `rig ps` — the consolidated fleet map + explicit disclosure ladder.
+ * `rig ps`——合并的 fleet 地图 + 显式披露阶梯。
  *
- * OPR.0.4.4.21: the default is ALL active rigs, one compact O(rigs) row each
- * (the current-rig-only default is retired). The token-safety invariant: no
- * invocation returns per-node detail across all rigs unless explicitly
- * flagged (--nodes -A), and even then rows are projected unless --full.
- * Default `rig ps --json` keeps the bare-array shape for back-compat; the
- * truncation/envelope shape only applies when at least one of
- * `--limit`/`--summary`/`--fields`/`--filter` is specified.
+ * OPR.0.4.4.21：默认是所有 active rig，每个一行紧凑 O(rigs)
+ * （只看当前 rig 的旧默认已退役）。token 安全不变量：除非显式加标志
+ * （--nodes -A），任何调用都不返回跨所有 rig 的逐节点明细；即便那样，
+ * 行也是投影过的，除非 --full。默认 `rig ps --json` 为向后兼容保持裸数组形状；
+ * 截断/envelope 形状只在指定了 `--limit`/`--summary`/`--fields`/`--filter`
+ * 至少其一时才出现。
  */
 export function psCommand(depsOverride?: PsDeps): Command {
   const cmd = new Command("ps")
-    .description("List rigs and their status")
+    .description("列出 rig 及其状态")
     .addHelpText("after", `
-Default (OPR.0.4.4.21): ALL active rigs, ONE compact row each — O(rigs), never
-a fleet node fan-out — plus the host rollup line ("N rigs · M seats · K need
-attention"), the archived/stopped count line, and the drill-ladder footer.
-STATED contract: default --json is a bare array of ALL non-archived rigs
-INCLUDING stopped ones (existing keys preserved; additive attentionCount);
-only the HUMAN table folds stopped rigs into the count line.
+默认（OPR.0.4.4.21）：所有 active rig，每个一行紧凑——O(rigs)，绝不做 fleet 节点 fan-out——
+外加主机汇总行（"N rigs · M seats · K need attention"）、归档/停止计数行，以及下钻阶梯页脚。
+明示契约：默认 --json 是所有未归档 rig 的裸数组，含已停止的（保留既有键；追加 attentionCount）；
+只有人读表格把停止的 rig 折进计数行。
 
-The disclosure ladder (each heavier view is an explicit step):
-  rig ps                      the consolidated map (this default)
-  rig ps --rig <name>         one rig's detail
-  rig ps --nodes              per-node, CURRENT rig (session default, local only)
-  rig ps --nodes --rig <name> per-node, named rig
-  rig ps --nodes -A           fleet nodes, projected rows
-  rig ps --nodes -A --full    complete per-node records (the only full fan-out)
+披露阶梯（每一档更重的视图都是显式一步）：
+  zrig ps                      合并地图（本默认）
+  zrig ps --rig <name>         一个 rig 的明细
+  zrig ps --nodes              逐节点，当前 rig（会话默认，仅本地）
+  zrig ps --nodes --rig <name> 逐节点，指定 rig
+  zrig ps --nodes -A           fleet 节点，投影行
+  zrig ps --nodes -A --full    完整逐节点记录（唯一的全 fan-out）
 
--A/--all-rigs has exactly ONE meaning: the --nodes fleet widener. Bare -A
-errors (all-rigs IS the default; archived history stays behind
---include-archived). The session-rig default never crosses host boundaries:
-remote --nodes requires an explicit --rig or -A.
+-A/--all-rigs 只有一个含义：--nodes 的 fleet 加宽器。裸 -A 报错
+（全 rig 就是默认；归档历史在 --include-archived 之后）。会话 rig 默认绝不跨主机边界：
+远程 --nodes 需要显式 --rig 或 -A。
 
-Compact defaults: 'rig ps --nodes' shows a compact summary per node
-(rig, session, lifecycle, activity state, reason when attention, queue counts,
-resume type + present indicator). Resume token values and resumeCommand are
-excluded from compact output (security); use --full to see them.
+紧凑默认：'zrig ps --nodes' 每节点显示紧凑摘要
+（rig、会话、生命周期、活动状态、关注时的原因、队列计数、恢复类型 + 是否存在指示）。
+resume token 值与 resumeCommand 不进紧凑输出（安全）；用 --full 查看。
 
-Use '--full' (or '--verbose') for the uncompacted per-node payload (contextUsage
-scalars, resume commands/tokens, agent references). Note (OPR.0.4.0.26): the
-node-list payload carries recoveryGuidance: null and contextUsage.currentUsage:
-null even with --full; fetch the full recovery guidance + currentUsage from the
-single-node detail (/api/rigs/:rigId/nodes/:logicalId) or 'rig whoami'.
+用 '--full'（或 '--verbose'）看未压缩的逐节点负载（contextUsage 标量、恢复命令/token、智能体引用）。
+注意（OPR.0.4.0.26）：即便 --full，节点列表负载也带 recoveryGuidance: null 与
+contextUsage.currentUsage: null；完整恢复指导 + currentUsage 请到单节点详情
+（/api/rigs/:rigId/nodes/:logicalId）或 'rig whoami' 取。
 
-Examples:
-  rig ps                                          All active rigs, one row each + rollup
-  rig ps --rig <name>                             One rig's detail
-  rig ps --full                                   All rigs, no table truncation
-  rig ps --json                                   All non-archived rigs, bare JSON array
-  rig ps --json --limit 20                        Bounded JSON envelope
-  rig ps --json --summary                         Aggregate-only JSON
-  rig ps --json --fields rigName,status,lifecycleState
-                                                  Project JSON to named fields
-  rig ps --filter lifecycleState=attention_required
-                                                  Show only rigs needing attention
-  rig ps --filter status=running                  Show only running rigs
-  rig ps --filter name-prefix=demo                Filter by rig-name prefix
-  rig ps --nodes                                  Current rig per-node compact summary
-  rig ps --nodes -A                               All rigs per-node compact summary
-  rig ps --nodes --json                           Current rig per-node compact JSON
-  rig ps --nodes --json --full                    Complete per-node LIST payload (guidance/currentUsage relocated to node detail)
-  rig ps --nodes --json --rig openrig-build       Compact nodes for a specific rig
-  rig ps --nodes --json --session dev1-impl@myrig Filter to a single session (within current rig; use -A for cross-rig)
-  rig ps --nodes --json --limit 50                Bounded per-node JSON envelope
-  rig ps --nodes --active                         Only nodes with agentActivity.state=running
-  rig ps --nodes --running                        Same as --active
-  rig ps --nodes --filter agentActivity.state=running
-                                                  Same as --active (the explicit form)
-  rig ps --host vm-1 --nodes --rig <name> --json  Remote host per-node (explicit target required)
-  rig ps --all-hosts                              Per-host O(rigs) rollups (AggregatedPayload JSON)
-  rig ps --include-archived                       Include archived rigs (marked with *); hidden by default
+示例：
+  zrig ps                                          所有 active rig，每行一个 + 汇总
+  zrig ps --rig <name>                             一个 rig 的明细
+  zrig ps --full                                   所有 rig，不做表格截断
+  zrig ps --json                                   所有未归档 rig，裸 JSON 数组
+  zrig ps --json --limit 20                        有界 JSON envelope
+  zrig ps --json --summary                         仅聚合的 JSON
+  zrig ps --json --fields rigName,status,lifecycleState
+                                                  把 JSON 投影到指定字段
+  zrig ps --filter lifecycleState=attention_required
+                                                  只看需要关注的 rig
+  zrig ps --filter status=running                  只看 running rig
+  zrig ps --filter name-prefix=demo                按 rig 名前缀过滤
+  zrig ps --nodes                                  当前 rig 逐节点紧凑摘要
+  zrig ps --nodes -A                               所有 rig 逐节点紧凑摘要
+  zrig ps --nodes --json                           当前 rig 逐节点紧凑 JSON
+  zrig ps --nodes --json --full                    完整逐节点 LIST 负载（guidance/currentUsage 已迁到节点详情）
+  zrig ps --nodes --json --rig openrig-build      指定 rig 的紧凑节点
+  zrig ps --nodes --json --session dev1-impl@myrig 过滤到单个会话（在当前 rig 内；跨 rig 用 -A）
+  zrig ps --nodes --json --limit 50                有界逐节点 JSON envelope
+  zrig ps --nodes --active                         只看 agentActivity.state=running 的节点
+  zrig ps --nodes --running                        同 --active
+  zrig ps --nodes --filter agentActivity.state=running
+                                                  同 --active（显式写法）
+  zrig ps --host vm-1 --nodes --rig <name> --json  远程主机逐节点（需显式目标）
+  zrig ps --all-hosts                              逐主机 O(rigs) 汇总（AggregatedPayload JSON）
+  zrig ps --include-archived                       包含已归档 rig（标 *）；默认隐藏
 
---rig <name> scopes to one rig. -A/--all-rigs is ONLY the --nodes fleet widener.
---session <name> filters within the effective rig scope; use --nodes -A if the
-target session is in a different rig.
-Multi-host fan-out (--all-hosts/--hosts) is rollup-only by default; the full
-explicit ladder (--all-hosts --nodes -A, --full for complete records) fans out
-per-node with hostId-stamped projected rows.
+--rig <name> 限定到一个 rig。-A/--all-rigs 只是 --nodes 的 fleet 加宽器。
+--session <name> 在有效 rig 作用域内过滤；若目标会话在别的 rig，用 --nodes -A。
+多主机 fan-out（--all-hosts/--hosts）默认只做汇总；完整显式阶梯
+（--all-hosts --nodes -A，--full 看完整记录）才逐节点 fan-out，并给投影行盖 hostId。
 
---active/--running narrow to agentActivity.state=running. NODE-TIER ONLY: requires --nodes
-(rig-summary rows carry no per-node activity). Cannot combine with --filter.
+--active/--running 收窄到 agentActivity.state=running。仅节点级：需要 --nodes
+（rig 汇总行不带逐节点活动）。不能与 --filter 同用。
 
---filter accepts: status, lifecycleState, name-prefix, name, agentActivity.state,
-contextUsage.percent, contextUsage.state. Other keys are rejected.
+--filter 接受：status, lifecycleState, name-prefix, name, agentActivity.state,
+contextUsage.percent, contextUsage.state。其他 key 被拒绝。
 
---fields accepts (rig-level): rigId, name, rigName, nodeCount, runningCount,
+--fields 接受（rig 级）：rigId, name, rigName, nodeCount, runningCount,
 activeCount, hasWorkCount, attentionCount, status, lifecycleState, uptime,
-latestSnapshot.
---fields accepts (node-level, with --nodes): rigId, rigName, logicalId, podId,
+latestSnapshot。
+--fields 接受（节点级，配合 --nodes）：rigId, rigName, logicalId, podId,
 podNamespace, canonicalSessionName, nodeKind, runtime, sessionStatus,
 startupStatus, restoreOutcome, lifecycleState, tmuxAttachCommand,
 resumeCommand, latestError, terminalActive, hasAssignedWork,
 assignedWorkCount, pendingWorkCount, inProgressWorkCount, blockedWorkCount,
-agentActivity, contextUsage, heldReason.
+agentActivity, contextUsage, heldReason。
 
---host runs on a remote host declared in ~/.openrig/hosts.yaml (no current-rig
-default applied; the remote host's rigs are shown).
+--host 在 ~/.openrig/hosts.yaml 里声明的远程主机上运行（不套当前 rig 默认；
+显示该远程主机的 rig）。
 
-Exit codes:
-  0  Success
-  1  Daemon not running, or invalid --filter / --limit / --fields
-  2  Failed to fetch data from daemon`);
+退出码：
+  0  成功
+  1  后台服务未运行，或 --filter / --limit / --fields 非法
+  2  从后台服务取数失败`);
   const getDepsF = (): PsDeps => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   cmd
-    .option("--json", "JSON output for agents")
-    .option("--nodes", "Show per-node detail (current rig; -A for all rigs)")
-    .option("--full", "Show all node-list fields per node (uncompacted rows; node-list recoveryGuidance/currentUsage live on the node detail, not the list)")
-    .option("--verbose", "Alias for --full")
-    .option("--limit <n>", "Limit number of entries (rigs or nodes)")
-    .option("--fields <list>", "Comma-separated field list to project (JSON only)")
-    .option("--summary", "Emit aggregate-only output (counts by status/lifecycle)")
-    .option("--filter <key=value>", "Filter entries; supported keys: status, lifecycleState, name-prefix, name, agentActivity.state")
-    .option("--active", "Shortcut for --filter agentActivity.state=running (PL-019)")
-    .option("--running", "Alias for --active")
-    .option("-A, --all-rigs", "Show all rigs (default is current rig only)")
-    .option("--rig <name>", "Show only nodes belonging to the named rig")
-    .option("--session <name>", "Show only the node matching this canonical session name")
-    .option("--include-archived", "Include archived rigs (default hides them); parity with 'rig stream list --include-archived'")
-    .option("--host <id>", "Run on a remote host declared in ~/.openrig/hosts.yaml")
-    .option("--all-hosts", "Fan out to all registered HTTP hosts (observation-only)")
-    .option("--hosts <ids>", "Fan out to specific hosts (comma-separated)")
+    .option("--json", "供智能体使用的 JSON 输出")
+    .option("--nodes", "显示逐节点明细（当前 rig；-A 看所有 rig）")
+    .option("--full", "每节点显示全部 node-list 字段（未压缩行；node-list 的 recoveryGuidance/currentUsage 在节点详情而非列表上）")
+    .option("--verbose", "--full 的别名")
+    .option("--limit <n>", "限制条目数（rig 或节点）")
+    .option("--fields <list>", "逗号分隔的字段列表做投影（仅 JSON）")
+    .option("--summary", "只输出聚合（按 status/lifecycle 的计数）")
+    .option("--filter <key=value>", "过滤条目；支持 key：status, lifecycleState, name-prefix, name, agentActivity.state")
+    .option("--active", "--filter agentActivity.state=running 的快捷方式（PL-019）")
+    .option("--running", "--active 的别名")
+    .option("-A, --all-rigs", "显示所有 rig（默认仅当前 rig）")
+    .option("--rig <name>", "只显示属于指定 rig 的节点")
+    .option("--session <name>", "只显示匹配此规范会话名的节点")
+    .option("--include-archived", "包含已归档 rig（默认隐藏）；与 'rig stream list --include-archived' 对齐")
+    .option("--host <id>", "在 ~/.openrig/hosts.yaml 里声明的远程主机上运行")
+    .option("--all-hosts", "扇出到所有已登记 HTTP 主机（仅观察）")
+    .option("--hosts <ids>", "扇出到指定主机（逗号分隔）")
     .action(async (opts: PsCliOptions) => {
-      // OPR.0.4.6.MH1 FR-2: selected-host routing — explicit --host wins;
-      // else the persisted selection feeds the SHIPPED --host path; no
-      // selection = today exactly. Fan-out
-      // flags are their OWN explicit scope — never mixed with selection.
+      // OPR.0.4.6.MH1 FR-2：所选主机路由——显式 --host 优先；
+      // 否则持久化的选择喂给交付的 --host 路径；无选择 = 今天的行为完全一致。
+      // fan-out 标志是它自己的显式作用域——绝不与选择混用。
       if (!opts.allHosts && !opts.hosts) opts.host = resolveEffectiveHost(opts.host);
       if (opts.verbose) opts.full = true;
       if (opts.running) opts.active = true;
       const isRemote = !!(opts.host || opts.allHosts || opts.hosts);
-      // OPR.0.4.4.21 FR-1: the rig tier is consolidated ALL-ACTIVE-RIGS by
-      // default (the current-rig-only default is RETIRED — it hid running
-      // rigs from the operator's field of view). The session-rig default
-      // now applies ONLY to the node tier (FR-2's scoped --nodes), and
-      // ONLY locally (the ladder validator enforces explicit-or-error on
-      // every remote path).
+      // OPR.0.4.4.21 FR-1：rig 层默认是合并的全 active rig（只看当前 rig 的
+      // 旧默认已退役——它把 running rig 藏在操作者视野之外）。会话 rig 默认现在
+      // 只应用于节点层（FR-2 的作用域 --nodes），且只在本地（阶梯校验器在每条
+      // 远程路径上强制显式或报错）。
       const sessionName = readOpenRigEnv("OPENRIG_SESSION_NAME", "RIGGED_SESSION_NAME");
       const callerRig = sessionName ? extractRigName(sessionName) : undefined;
       const ladderError = validatePsLadder(opts, callerRig);
@@ -862,9 +822,9 @@ Exit codes:
         process.exitCode = 1;
         return;
       }
-      // OPR.0.5.0 scope-honesty: capture WHEN --nodes defaulted to the session rig, so the
-      // (correct) current-rig-only scope is DECLARED in the output — silent completeness is
-      // silent loss (a restoring agent must not read a scoped list as the whole host).
+      // OPR.0.5.0 作用域诚实：捕获 --nodes 何时回退到会话 rig，从而在输出中
+      // 声明（正确的）仅当前 rig 作用域——静默的完整性就是静默的丢失
+      // （正在恢复的智能体不得把一个收窄的列表当成整台主机）。
       let scopedToSessionRig = false;
       if (opts.nodes && !opts.allRigs && !opts.rig && !isRemote && callerRig) {
         opts.rig = callerRig;
@@ -872,14 +832,12 @@ Exit codes:
       }
       const deps = getDepsF();
 
-      // OPR.0.4.4.21 rev1-r2 fixback: the shared shaping controls
-      // (--active/--filter/--limit/--fields/--summary) parse + validate
-      // BEFORE any dispatch — local, single-host, or fan-out — so every
-      // path honors the same composition contract and rejections stay
-      // pre-HTTP on remote paths too.
-      // Parse shared composition controls once up front so local, single-host,
-      // and fan-out paths reject malformed --filter/--limit/--fields before
-      // any HTTP call and apply the same shaping semantics.
+      // OPR.0.4.4.21 rev1-r2 回补：共享的塑形控制
+      // （--active/--filter/--limit/--fields/--summary）在任何分派之前
+      // （本地、单主机或 fan-out）就解析 + 校验，让每条路径遵守同一套组合契约，
+      // 远程路径上的拒绝也保持在 HTTP 之前。
+      // 一次性前置解析共享组合控制，让本地、单主机和 fan-out 路径都在任何 HTTP 调用
+      // 之前拒绝畸形的 --filter/--limit/--fields，并套用相同的塑形语义。
       const controls = parsePsControls(opts);
       if ("error" in controls) {
         console.error(controls.error);
@@ -889,12 +847,12 @@ Exit codes:
       const { parsedFilter, limit, fields, useEnvelope } = controls;
 
       if (opts.allHosts || opts.hosts) {
-        // AggregatedPayload is the closed fan-out contract (items + hosts).
-        // Do not add an ad-hoc summary member here; teach the per-host form.
+        // AggregatedPayload 是闭合的 fan-out 契约（items + hosts）。
+        // 不要在这里加临时的 summary 成员；请教逐主机写法。
         if (opts.summary) {
           console.error(
-            "rig ps --all-hosts/--hosts --summary: summary does not compose with the merged fan-out payload.\n" +
-            "Summarize one host: rig ps --host <id> --summary; or drop --summary for the merged AggregatedPayload.",
+            "zrig ps --all-hosts/--hosts --summary：summary 不能与合并后的 fan-out 负载组合。\n" +
+            "汇总某一台主机：zrig ps --host <id> --summary；或去掉 --summary 看合并的 AggregatedPayload。",
           );
           process.exitCode = 1;
           return;
@@ -918,24 +876,21 @@ Exit codes:
         return;
       }
 
-      // OPR.0.4.4.21 FR-1: ONE O(rigs) fetch including archived so the
-      // count line can be computed; visibility is split client-side below
-      // (JSON keeps today's default of excluding archived — parity).
+      // OPR.0.4.4.21 FR-1：一次 O(rigs) 抓取，含归档，以便算出计数行；
+      // 可见性在下面客户端侧拆分（JSON 保持今天排除归档的默认——对齐）。
       const res = await client.get<PsEntry[]>("/api/ps?includeArchived=true");
 
       if (res.status >= 400) {
-        console.error(`Failed to fetch rig list from daemon (HTTP ${res.status}). Check daemon status with: rig status`);
+        console.error(`从后台服务取 rig 列表失败（HTTP ${res.status}）。用它查看后台服务状态：zrig status`);
         process.exitCode = 2;
         return;
       }
 
       const all = res.data;
 
-      // OPR.0.4.4.21 — archived visibility parity: the daemon call above
-      // always includes archived (for the count line); without
-      // --include-archived they are dropped from BOTH renders here, exactly
-      // as the daemon default used to do. archivedCount feeds the FR-1
-      // count line only.
+      // OPR.0.4.4.21——归档可见性对齐：上面的后台服务调用总是含归档（为了计数行）；
+      // 不带 --include-archived 时它们从这里的两种渲染中都被丢弃，正如后台服务默认过去做的。
+      // archivedCount 只喂给 FR-1 计数行。
       const archivedCount = all.filter((e) => e.isArchived === true).length;
       const visible = opts.includeArchived ? all : all.filter((e) => e.isArchived !== true);
 
@@ -943,39 +898,39 @@ Exit codes:
         ? visible.filter((e) => (e.rigName ?? e.name) === opts.rig)
         : visible;
 
-      // Apply CLI-side filter (Amendment A: prefer CLI shaping).
+      // 应用 CLI 侧过滤（Amendment A：优先 CLI 塑形）。
       const filtered = parsedFilter ? applyRigFilter(rigScoped, parsedFilter) : rigScoped;
 
-      // Summary mode short-circuits per-entry output.
+      // summary 模式短路逐条目输出。
       if (opts.summary) {
         const summary = summarizeRigs(filtered);
         if (opts.json) {
           console.log(JSON.stringify(summary));
         } else {
-          console.log(`totalRigs: ${summary.totalRigs}`);
-          console.log(`totalRunning: ${summary.totalRunning}`);
-          console.log(`byStatus: ${JSON.stringify(summary.byStatus)}`);
-          console.log(`byLifecycle: ${JSON.stringify(summary.byLifecycle)}`);
+          console.log(`rig 总数：${summary.totalRigs}`);
+          console.log(`running 总数：${summary.totalRunning}`);
+          console.log(`按状态：${JSON.stringify(summary.byStatus)}`);
+          console.log(`按生命周期：${JSON.stringify(summary.byLifecycle)}`);
         }
         return;
       }
 
-      // Apply --limit on top of filter (CLI side; daemon stays bare-array).
+      // 在过滤之上再套 --limit（CLI 侧；后台服务保持裸数组）。
       const limited = limit !== null ? filtered.slice(0, limit) : filtered;
       const truncated = limit !== null && filtered.length > limit;
 
-      // Field projection runs last so requested fields apply to the limited set.
+      // 字段投影最后跑，让所请求字段作用于受限后的集合。
       const projected = fields ? selectFields(limited as unknown as Array<Record<string, unknown>>, fields) : limited;
 
       if (opts.json) {
         if (useEnvelope) {
-          // Envelope only on flag use; default JSON stays a bare array for compat.
+          // 只在用标志时才 envelope；默认 JSON 为兼容保持裸数组。
           const envelope: Record<string, unknown> = {
             entries: projected,
             totalRigs: filtered.length,
             truncated,
           };
-          if (truncated) envelope.hint = "rig ps --full --json";
+          if (truncated) envelope.hint = "zrig ps --full --json";
           console.log(JSON.stringify(envelope));
         } else {
           console.log(JSON.stringify(projected));
@@ -985,32 +940,30 @@ Exit codes:
 
       if (limited.length === 0) {
         if (parsedFilter) {
-          console.log(`No rigs match --filter ${parsedFilter.key}=${parsedFilter.value}`);
+          console.log(`没有 rig 匹配 --filter ${parsedFilter.key}=${parsedFilter.value}`);
         } else if (archivedCount > 0 && !opts.includeArchived) {
-          // Proven-empty with the history pointer, never a bare "No rigs"
-          // while archived history exists.
-          console.log(`No active rigs · ${archivedCount} archived (rig ps --include-archived)`);
+          // 确实为空时给历史指针；只要还有归档历史，就绝不只输出裸的 "No rigs"。
+          console.log(`没有 active rig · ${archivedCount} 个已归档（zrig ps --include-archived）`);
         } else {
-          console.log("No rigs");
+          console.log("没有 rig");
         }
         return;
       }
 
-      // OPR.0.4.4.21 FR-1 (human table ONLY — JSON keeps ALL non-archived
-      // entries including stopped; this scope split is a STATED contract
-      // sentence in the help text): on the BARE default (no filter, no
-      // --rig, no --include-archived) stopped rigs fold into the count
-      // line — history is what the default drops, not field of view.
+      // OPR.0.4.4.21 FR-1（仅人读表格——JSON 保留所有未归档条目含已停止；
+      // 这个作用域切分是帮助文本里一句明示契约）：在裸默认下
+      // （无 filter、无 --rig、无 --include-archived），已停止 rig 折进计数行——
+      // 默认丢弃的是历史，不是视野。
       const bareDefault = !parsedFilter && !opts.rig && !opts.includeArchived;
       const tableRows = bareDefault ? limited.filter(isActiveRig) : limited;
       const stoppedCount = bareDefault ? limited.length - tableRows.length : 0;
 
-      // FR-1 display element 1: the host rollup line.
+      // FR-1 展示元素 1：主机汇总行。
       const rollupSeats = tableRows.reduce((n, e) => n + e.nodeCount, 0);
       const rollupAttention = tableRows.reduce((n, e) => n + (e.attentionCount ?? 0), 0);
-      console.log(`${tableRows.length} rig${tableRows.length === 1 ? "" : "s"} · ${rollupSeats} seat${rollupSeats === 1 ? "" : "s"} · ${rollupAttention} need${rollupAttention === 1 ? "s" : ""} attention`);
+      console.log(`${tableRows.length} 个rig · ${rollupSeats} 个席位 · ${rollupAttention} 需关注`);
 
-      // Human output: apply default truncation budget unless --full.
+      // 人读输出：除非 --full，套用默认截断预算。
       const humanList = (opts.full || limit !== null) ? tableRows : tableRows.slice(0, HUMAN_RIG_BUDGET);
       const humanTruncated = !opts.full && limit === null && tableRows.length > HUMAN_RIG_BUDGET;
 
@@ -1018,19 +971,18 @@ Exit codes:
       console.log(header);
       let anyArchivedShown = false;
       for (const e of humanList as PsEntry[]) {
-        // OPR.0.3.3.19 - archived rigs only appear under --include-archived;
-        // mark them with a trailing "*" (legend footer below) so the operator
-        // can tell archived from active at a glance.
+        // OPR.0.3.3.19——已归档 rig 只在 --include-archived 下出现；用尾随 "*"
+        // 标记（图例页脚见下），让操作者一眼区分归档与活动。
         if (e.isArchived) anyArchivedShown = true;
         console.log(padRigRow(
           e.isArchived ? `${e.rigName ?? e.name} *` : (e.rigName ?? e.name),
           String(e.nodeCount),
           String(e.runningCount),
-          // Slice 15 — "—" when daemon predates the field; honest absence.
+          // Slice 15——后台服务早于该字段时 "—"；诚实地缺失。
           e.activeCount !== undefined ? String(e.activeCount) : "—",
           e.hasWorkCount !== undefined ? String(e.hasWorkCount) : "—",
-          // OPR.0.4.4.21 — the founder's field-of-view anchor: where is
-          // something that might concern me. "—" = daemon predates the field.
+          // OPR.0.4.4.21——创始人的视野锚点：可能让我担心的东西在哪。
+          // "—" = 后台服务早于该字段。
           e.attentionCount !== undefined ? (e.attentionCount > 0 ? `▲${e.attentionCount}` : "0") : "—",
           e.status,
           abbrevRigLifecycle(e.lifecycleState),
@@ -1039,26 +991,26 @@ Exit codes:
         ));
       }
       if (anyArchivedShown) {
-        console.log("* = archived (hidden from the default view; shown via --include-archived). Reverse with: rig unarchive <rig>");
+        console.log("* = 已归档（默认视图隐藏；经 --include-archived 显示）。反向操作：zrig unarchive <rig>");
       }
-      // FR-1 display element 2: history as ONE count line, never rows.
+      // FR-1 展示元素 2：历史作为一行计数，绝不成行。
       if (stoppedCount > 0 || (!opts.includeArchived && archivedCount > 0)) {
         const parts: string[] = [];
-        if (stoppedCount > 0) parts.push(`${stoppedCount} stopped (rig ps --filter status=stopped)`);
-        if (!opts.includeArchived && archivedCount > 0) parts.push(`${archivedCount} archived (rig ps --include-archived)`);
-        console.log(`not shown: ${parts.join(" · ")}`);
+        if (stoppedCount > 0) parts.push(`${stoppedCount} 个已停止（zrig ps --filter status=stopped）`);
+        if (!opts.includeArchived && archivedCount > 0) parts.push(`${archivedCount} 个已归档（zrig ps --include-archived）`);
+        console.log(`未显示：${parts.join(" · ")}`);
       }
-      // FR-1 display element 3: the affordance footer — the drill ladder.
+      // FR-1 展示元素 3： affordance 页脚——下钻阶梯。
       if (bareDefault) {
-        console.log("drill: rig ps --rig <name> (one rig) · rig ps --nodes --rig <name> (its seats) · --full (everything)");
+        console.log("下钻：zrig ps --rig <name>（一个 rig）· zrig ps --nodes --rig <name>（它的席位）· --full（全部）");
       }
       if (humanTruncated) {
         const remaining = filtered.length - HUMAN_RIG_BUDGET;
-        console.log(`... and ${remaining} more rig${remaining === 1 ? "" : "s"} (truncated at ${HUMAN_RIG_BUDGET}).`);
-        console.log("Run 'rig ps --full' to see all, or 'rig ps --filter lifecycleState=attention_required' to narrow.");
+        console.log(`…还有 ${remaining} 个 rig（截断于 ${HUMAN_RIG_BUDGET}）。`);
+        console.log("运行 'zrig ps --full' 看全部，或 'zrig ps --filter lifecycleState=attention_required' 收窄。");
       } else if (truncated) {
         const remaining = filtered.length - (limit ?? 0);
-        console.log(`... and ${remaining} more rig${remaining === 1 ? "" : "s"} (--limit ${limit}).`);
+        console.log(`…还有 ${remaining} 个 rig（--limit ${limit}）。`);
       }
     });
 
@@ -1077,7 +1029,7 @@ async function handleNodes(
 ): Promise<void> {
   const rigRes = await client.get<PsEntry[]>(psApiPath(opts), requestHeaders ? { headers: requestHeaders } : undefined);
   if (rigRes.status >= 400) {
-    console.error(`Failed to fetch rig list from daemon (HTTP ${rigRes.status}). Check daemon status with: rig status`);
+    console.error(`从后台服务取 rig 列表失败（HTTP ${rigRes.status}）。用它查看后台服务状态：zrig status`);
     process.exitCode = 2;
     return;
   }
@@ -1086,16 +1038,15 @@ async function handleNodes(
     ? rigRes.data.filter((r) => (r.rigName ?? r.name) === opts.rig)
     : rigRes.data;
 
-  // OPR.0.4.3 healthz-wedge: the daemon nodes route is CHEAP by default (no
-  // per-node tmux capture) — `rig ps --nodes` gets snapshot-based activity. Pass
-  // ?full=true only when the operator asks for --full, which opts into the
-  // per-node pane-heuristic (freshest needs_input) at the fan-out's cost.
+  // OPR.0.4.3 healthz-wedge：后台服务 nodes 路由默认很便宜（无逐节点 tmux 抓取）——
+  // `rig ps --nodes` 拿到基于快照的活动。只有操作者要 --full 时才传 ?full=true，
+  // 即选择逐节点 pane 启发式（最新 needs_input），代价是 fan-out 的开销。
   const nodesQuery = opts.full ? "?full=true" : "";
   const allNodes: NodeEntry[] = [];
   for (const rig of effectiveRigs) {
     const nodesRes = await client.get<NodeEntry[]>(`/api/rigs/${encodeURIComponent(rig.rigId)}/nodes${nodesQuery}`, requestHeaders ? { headers: requestHeaders } : undefined);
     if (nodesRes.status >= 400) {
-      console.error(`Warning: failed to fetch nodes for rig "${rig.rigName ?? rig.name}" (HTTP ${nodesRes.status}). List rigs with: rig ps`);
+      console.error(`警告：取 rig "${rig.rigName ?? rig.name}" 的节点失败（HTTP ${nodesRes.status}）。列 rig：zrig ps`);
       continue;
     }
     const parentRigName = rig.rigName ?? rig.name;
@@ -1117,9 +1068,9 @@ async function handleNodes(
     if (opts.json) {
       console.log(JSON.stringify(summary));
     } else {
-      console.log(`totalNodes: ${summary.totalNodes}`);
-      console.log(`bySessionStatus: ${JSON.stringify(summary.bySessionStatus)}`);
-      console.log(`byLifecycle: ${JSON.stringify(summary.byLifecycle)}`);
+      console.log(`节点总数：${summary.totalNodes}`);
+      console.log(`按会话状态：${JSON.stringify(summary.bySessionStatus)}`);
+      console.log(`按生命周期：${JSON.stringify(summary.byLifecycle)}`);
     }
     return;
   }
@@ -1133,17 +1084,16 @@ async function handleNodes(
       ? compactNodeProjection(limited)
       : limited;
 
-  // OPR.0.5.0 scope-honesty: when --nodes defaulted to the session rig AND other rigs exist on the
-  // host, DECLARE the scope so a scoped list is never read as the whole host. Single-rig hosts and
-  // explicit --rig/-A paths stay byte-stable (nothing hidden -> no scope envelope, no stderr hint).
-  // The count MUST match the surface the hint cites: `rig ps`'s bare-default header renders the
-  // ACTIVE-rig projection — stopped rigs fold into a count line, not the field of view (the FR-1
-  // contract at ~L942). So rigsOnHost counts that SAME active set; counting every non-archived
-  // entry (stopped included) would make "1 of N" disagree with what the operator sees when they
-  // follow the hint (the derived-label-must-carry-liveness / width-clip-honesty class).
+  // OPR.0.5.0 作用域诚实：当 --nodes 回退到会话 rig 且主机上还有其他 rig 时，
+  // 声明作用域，免得一个收窄的列表被当成整台主机。单 rig 主机和显式 --rig/-A 路径
+  // 保持逐字节稳定（无隐藏 → 无作用域 envelope、无 stderr 提示）。
+  // 计数必须与提示所引用的表面一致：`rig ps` 裸默认表头渲染的是
+  // active rig 投影——已停止 rig 折进计数行，不是视野（~L942 的 FR-1 契约）。
+  // 所以 rigsOnHost 数的是同一组 active 集合；若把每个未归档条目（含已停止）都算上，
+  // 会让 "1 of N" 与操作者照提示看到的不一致（派生标签必须携带活性 / 宽度截断诚实那一类）。
   const rigsOnHost = rigRes.data.filter(isActiveRig).length;
   const scope = scopedToSessionRig && rigsOnHost > 1
-    ? { rig: opts.rig as string, rigsOnHost, hint: `1 of ${rigsOnHost} rigs shown; rig ps lists all; --rig NAME or -A for others` }
+    ? { rig: opts.rig as string, rigsOnHost, hint: `仅显示 ${rigsOnHost} 个工作组中的 1 个；zrig ps 可列出全部，使用 --rig NAME 或 -A 查看其他工作组` }
     : null;
 
   if (opts.json) {
@@ -1153,7 +1103,7 @@ async function handleNodes(
         totalNodes: filtered.length,
         truncated: limitTruncated,
       };
-      if (limitTruncated) envelope.hint = "rig ps --nodes --full --json";
+      if (limitTruncated) envelope.hint = "zrig ps --nodes --full --json";
       if (scope) envelope.scope = scope;
       console.log(JSON.stringify(envelope));
     } else {
@@ -1162,16 +1112,16 @@ async function handleNodes(
     return;
   }
 
-  // The matching human-path line (stderr, so it never pollutes piped stdout).
+  // 对应的人读路径行（走 stderr，绝不污染管道里的 stdout）。
   if (scope) {
-    console.error(`1 of ${rigsOnHost} rigs shown (scoped to ${opts.rig}); rig ps lists all — use --rig NAME or -A for others`);
+    console.error(`仅显示 ${rigsOnHost} 个rig中的 1 个（作用域限定在 ${opts.rig}）；zrig ps 列出全部——其他 rig 用 --rig NAME 或 -A`);
   }
 
   if (limited.length === 0) {
     if (parsedFilter) {
-      console.log(`No nodes match --filter ${parsedFilter.key}=${parsedFilter.value}`);
+      console.log(`没有节点匹配 --filter ${parsedFilter.key}=${parsedFilter.value}`);
     } else {
-      console.log("No nodes");
+      console.log("没有节点");
     }
     return;
   }
@@ -1225,24 +1175,23 @@ async function handleNodes(
   }
   if (humanTruncated) {
     const remaining = filtered.length - HUMAN_NODE_BUDGET;
-    console.log(`... and ${remaining} more node${remaining === 1 ? "" : "s"} (truncated at ${HUMAN_NODE_BUDGET}).`);
-    console.log("Run 'rig ps --nodes --full' to see all, or '--filter lifecycleState=attention_required' to narrow.");
+    console.log(`…还有 ${remaining} 个节点（截断于 ${HUMAN_NODE_BUDGET}）。`);
+    console.log("运行 'zrig ps --nodes --full' 看全部，或 '--filter lifecycleState=attention_required' 收窄。");
   } else if (limitTruncated) {
     const remaining = filtered.length - (limit ?? 0);
-    console.log(`... and ${remaining} more node${remaining === 1 ? "" : "s"} (--limit ${limit}).`);
+    console.log(`…还有 ${remaining} 个节点（--limit ${limit}）。`);
   }
 }
 
 function formatActivity(n: Pick<NodeEntry, "agentActivity" | "activityState">): string {
-  // S19 — render from the served taxonomy state when present: needs-input as
-  // count(+reason), otherwise the bridge's display value. No local arbitration.
+  // S19——有被服务的 taxonomy 状态时从它渲染：needs-input 显示成 count(+reason)，
+  // 否则用 bridge 的 display 值。不做本地仲裁。
   const tax = n.activityState;
   if (tax) {
-    if (tax.needsInput.count > 0) return `needs-input x${tax.needsInput.count}`;
+    if (tax.needsInput.count > 0) return `需要输入 ×${tax.needsInput.count}`;
     return tax.display;
   }
-  // Legacy fallback (a daemon without the S19 enrichment) — retires with the
-  // pre-taxonomy surfaces per the ladder-as-migration rule.
+  // 遗留回退（没有 S19 富化的后台服务）——按"阶梯即迁移"规则随前 taxonomy 表面一起退役。
   const activity = n.agentActivity;
   if (!activity) return "unknown";
   if (activity.state === "running") return "running";
@@ -1264,13 +1213,13 @@ function padRigRow(rig: string, nodes: string, running: string, active: string, 
     fitCell(rig, 24),
     fitCell(nodes, 7),
     fitCell(running, 9),
-    // Slice 15 — distinct columns for the three orthogonal primitives.
-    // RUNNING = process-alive (legacy); ACTIVE = terminal-active (tmux);
-    // WORK = has-assigned-work (queue). UI/CLI render them separately so
-    // operators see which dimension differs at a glance.
+    // Slice 15——三个正交原语各自一列。
+    // RUNNING = 进程存活（遗留）；ACTIVE = terminal-active（tmux）；
+    // WORK = has-assigned-work（队列）。UI/CLI 分开渲染，让操作者一眼看出
+    // 是哪个维度不同。
     fitCell(active, 8),
     fitCell(work, 6),
-    // OPR.0.4.4.21 — ATTN: seats needing attention (the field-of-view anchor).
+    // OPR.0.4.4.21——ATTN：需要关注的席位（视野锚点）。
     fitCell(attn, 6),
     fitCell(status, 10),
     fitCell(lifecycle, 11),
@@ -1289,10 +1238,10 @@ export function padNodeRow(rig: string, pod: string, member: string, session: st
     fitCell(model, 17),
     fitCell(status, 10),
     fitCell(startup, 10),
-    // OPR.0.4.3.06 — challenge-verified orientation, distinct from STARTUP.
+    // OPR.0.4.3.06——经挑战验证的 orientation，区别于 STARTUP。
     fitCell(oriented, 9),
     fitCell(lifecycle, 11),
-    // Slice 15 — distinct TERMINAL + WORK columns.
+    // Slice 15——TERMINAL 与 WORK 各自一列。
     fitCell(terminal, 9),
     fitCell(work, 6),
     fitCell(activity, 12),
@@ -1313,20 +1262,18 @@ export function padCompactNodeRow(rig: string, session: string, lifecycle: strin
   ].join("");
 }
 
-// Slice 15 — render the terminal-active primitive honestly.
-// `null` (no signal) is rendered distinctly from `false` (silent past
-// threshold) so an operator can see whether the daemon hasn't observed
-// the seat yet vs has observed and seen no output.
+// Slice 15——诚实渲染 terminal-active 原语。
+// `null`（无信号）与 `false`（超过阈值静默）渲染得不同，让操作者能看出
+// 是后台服务还没观察到该席位，还是观察了但没看到输出。
 function formatTerminalActive(t: boolean | null | undefined): string {
   if (t === true) return "active";
   if (t === false) return "idle";
-  return "—"; // null / undefined → no signal
+  return "—"; // null / undefined → 无信号
 }
 
-// Slice 17 — render the total active assignment count. pendingWorkCount remains
-// pending-only and is never substituted here because claimed/blocked work must
-// stay visible after it leaves pending. pendingWorkCount is only a compatibility
-// fallback for an older daemon that predates assignedWorkCount.
+// Slice 17——渲染活动分派总数。pendingWorkCount 仍只表示 pending，绝不在此被替换，
+// 因为被认领/阻塞的工作离开 pending 后仍须可见。pendingWorkCount 只是
+// 早于 assignedWorkCount 的老后台服务的兼容回退。
 function formatHasWork(has: boolean | undefined, count: number | undefined): string {
   if (has === undefined) return "—";
   if (!has) return "no";
@@ -1334,10 +1281,9 @@ function formatHasWork(has: boolean | undefined, count: number | undefined): str
   return "yes";
 }
 
-// PL-012: render context-usage as a 5-char cell — "<percent>%" when
-// known + fresh, "<percent>%*" when known but stale, "??" when unknown.
-// 4-char width keeps the table compact without truncating two-digit
-// percentages (e.g., "98%*" or "5%").
+// PL-012：context 用量渲染成一个 5 字符单元格——
+// 已知且新鲜时 "<percent>%"，已知但过期时 "<percent>%*"，未知时 "??"。
+// 4 字符宽保持表格紧凑，又不截断两位百分比（如 "98%*" 或 "5%"）。
 function formatContextUsage(ctx: NodeEntry["contextUsage"]): string {
   if (!ctx || ctx.availability !== "known" || typeof ctx.usedPercentage !== "number") {
     return "??";
@@ -1372,23 +1318,21 @@ async function runCrossHostPs(
     return;
   }
 
-  // SSH path — reconstruct argv
+  // SSH 路径——重建 argv
   const argv: string[] = ["rig", "ps"];
   if (opts.nodes) argv.push("--nodes");
   if (opts.full) argv.push("--full");
-  // OPR.0.4.0.34: forward the breadth flag so `--host h -A` keeps all-rigs
-  // breadth across the hop (the current-rig default is local-only and never
-  // applied to a remote call, but an explicit -A must still reach the remote).
-  // OPR.0.4.4.21 FR-3: -A is legal only alongside --nodes (the validator
-  // already rejected the bare form before any dispatch; this guard keeps
-  // the reconstructed remote argv obeying the same grammar).
+  // OPR.0.4.0.34：转发宽度标志，让 `--host h -A` 跨一跳仍保持全 rig 宽度
+  // （当前 rig 默认是本地的，绝不应用于远程调用，但显式 -A 仍须到达远端）。
+  // OPR.0.4.4.21 FR-3：-A 只在配合 --nodes 时合法（校验器已在任何分派前拒绝裸形式；
+  // 本闸门让重建出的远程 argv 遵守同一语法）。
   if (opts.allRigs && opts.nodes) argv.push("--all-rigs");
   if (opts.limit !== undefined) argv.push("--limit", opts.limit);
   if (opts.fields !== undefined) argv.push("--fields", opts.fields);
   if (opts.summary) argv.push("--summary");
   if (opts.filter !== undefined) argv.push("--filter", opts.filter);
-  // OPR.0.4.0.34: opts.active is the normalized form (set by --active OR
-  // --running). Forward it so the state filter survives the hop.
+  // OPR.0.4.0.34：opts.active 是归一化形式（由 --active 或 --running 设置）。
+  // 转发它，让状态过滤跨跳存活。
   if (opts.active) argv.push("--active");
   if (opts.rig !== undefined) argv.push("--rig", opts.rig);
   if (opts.session !== undefined) argv.push("--session", opts.session);
@@ -1407,7 +1351,7 @@ async function runCrossHostPs(
     return;
   }
 
-  console.log(`[via host=${host.id} (${hostDisplayTarget(host)})]`);
+  console.log(`[经 host=${host.id} (${hostDisplayTarget(host)})]`);
   if (result.ok) {
     if (result.stdout) process.stdout.write(result.stdout);
     if (result.stderr) process.stderr.write(result.stderr);
@@ -1440,7 +1384,7 @@ async function runHttpPs(
   }
   const { parsedFilter, limit, fields, useEnvelope } = controls;
 
-  // A4: stamp the origin triple on this remote read (fail-open to 2-part when unavailable).
+  // A4：在这次远程读上盖 origin 三元组（不可用时 fail-open 退化为两段）。
   const originSelfHostId = await resolveOriginSelfHostId(deps.lifecycleDeps);
   const client = remoteDaemonClient(deps.clientFactory, host.url, originSelfHostId);
   const headers = buildRemoteHeaders(bearerResult.token);
@@ -1467,7 +1411,7 @@ async function runHttpPs(
       if (opts.json) {
         console.log(JSON.stringify(summary));
       } else {
-        console.log(`[via host=${host.id} (${host.url})]`);
+        console.log(`[经 host=${host.id} (${host.url})]`);
         console.log(JSON.stringify(summary, null, 2));
       }
       return;
@@ -1485,7 +1429,7 @@ async function runHttpPs(
         console.log(JSON.stringify(projected));
       }
     } else {
-      console.log(`[via host=${host.id} (${host.url})]`);
+      console.log(`[经 host=${host.id} (${host.url})]`);
       console.log(JSON.stringify(projected, null, 2));
     }
   } catch (err) {
@@ -1495,10 +1439,9 @@ async function runHttpPs(
   }
 }
 
-/** INTERNAL transport result of one fan-out leg (arch adjudication: the
- *  shared P4 contract is fanout-contract's AggregatedPayload/PerHostStatus;
- *  this shape survives only as the fan-out's internal carriage, adapted
- *  below before anything is emitted). */
+/** 一段 fan-out 的内部传输结果（架构裁定：共享的 P4 契约是 fanout-contract 的
+ *  AggregatedPayload/PerHostStatus；这个形状只作为 fan-out 的内部载体存活，
+ *  在下面发出任何东西之前会被适配）。 */
 interface FanOutHostResult {
   host: string;
   ok: boolean;
@@ -1507,9 +1450,9 @@ interface FanOutHostResult {
   error?: string;
 }
 
-/** OPR.0.4.4.21 FR-5 — adapter to the intra-P4 shared contract
- *  (fanout-contract.ts, slice 15 first-lander at 0ecd329b; the closed
- *  status enum is THE contract, failedStep rides as additive detail). */
+/** OPR.0.4.4.21 FR-5——适配到 P4 内共享契约的适配器
+ *  （fanout-contract.ts，slice 15 首着陆于 0ecd329b；闭合的
+ *  status 枚举才是契约，failedStep 作为追加细节携带）。 */
 function toPerHostStatus(r: FanOutHostResult): PerHostStatus {
   const status: PerHostStatus["status"] =
     r.ok ? "ok"
@@ -1530,7 +1473,7 @@ async function runFanOutPs(
   const loader = deps.hostRegistryLoader ?? loadHostRegistry;
   const registry = loader();
   if (!registry.ok) {
-    console.error(`Error: ${registry.error}`);
+    console.error(`错误：${registry.error}`);
     process.exitCode = 1;
     return;
   }
@@ -1541,29 +1484,28 @@ async function runFanOutPs(
     targetIds = opts.hosts.split(",").map((s) => s.trim()).filter(Boolean);
     const unknown = targetIds.filter((id) => !allHosts.some((h) => h.id === id));
     if (unknown.length > 0) {
-      console.error(`Error: unknown host ids: ${unknown.join(", ")}`);
+      console.error(`错误：未知主机 id：${unknown.join(", ")}`);
       process.exitCode = 1;
       return;
     }
   } else {
-    // OPR.0.4.4.21 fixback (qa1 F1): target EVERY declared host — non-HTTP
-    // hosts must appear in hosts[] as unsupported-transport (R15-2), never
-    // be silently absent. The per-host leg classifies transport.
+    // OPR.0.4.4.21 回补（qa1 F1）：目标是每一台已声明主机——非 HTTP 主机必须以
+    // unsupported-transport 出现在 hosts[] 里（R15-2），绝不静默缺席。
+    // 逐主机段负责分类传输。
     targetIds = allHosts.map((h) => h.id);
   }
 
-  // A4: resolve the origin triple ONCE (it is THIS host's id, identical for every fan-out leg), then
-  // stamp it on each remote client — fail-open to 2-part when the local selfHostId is unavailable.
+  // A4：origin 三元组只解析一次（它是本机 id，对每段 fan-out 都相同），再盖到每个远程客户端——
+  // 本地 selfHostId 不可用时 fail-open 退化为两段。
   const originSelfHostId = await resolveOriginSelfHostId(deps.lifecycleDeps);
   const results: FanOutHostResult[] = await Promise.all(
     targetIds.map(async (id): Promise<FanOutHostResult> => {
       const host = allHosts.find((h) => h.id === id);
-      if (!host) return { host: id, ok: false, failedStep: "remote-daemon-unreachable", error: `unknown host ${id}` };
+      if (!host) return { host: id, ok: false, failedStep: "remote-daemon-unreachable", error: `未知主机 ${id}` };
       if (host.transport !== "http") {
-        // R15-2 (shared contract): an SSH-declared host is a STRUCTURED
-        // unsupported-transport status — never prose-only, never silently
-        // thinner output.
-        return { host: id, ok: false, failedStep: "unsupported-transport", error: `host ${id} uses transport ${host.transport}; HTTP fan-out requires transport: http` };
+        // R15-2（共享契约）：SSH 声明的主机是一个结构化的
+        // unsupported-transport 状态——绝不只有文字、绝不静默变瘦输出。
+        return { host: id, ok: false, failedStep: "unsupported-transport", error: `主机 ${id} 使用传输 ${host.transport}；HTTP fan-out 要求 transport: http` };
       }
       const httpHost = host as HttpHostEntry;
       const bearerResult = resolveRemoteBearer(httpHost);
@@ -1582,15 +1524,15 @@ async function runFanOutPs(
         if (!opts.nodes) {
           return { host: id, ok: true, failedStep: "none", data: res.data };
         }
-        // OPR.0.4.4.21 FR-5 — the full explicit ladder (--nodes -A, --full
-        // for complete records): per-host node fan-out, projected unless
-        // --full (the invariant's last rung; validated as -A-only upstream).
+        // OPR.0.4.4.21 FR-5——完整显式阶梯（--nodes -A，--full 看完整记录）：
+        // 逐主机节点 fan-out，除非 --full 否则投影（不变量的最后一级；
+        // 上游已校验为仅 -A）。
         const rigs = Array.isArray(res.data) ? (res.data as PsEntry[]) : [];
         const nodes: NodeEntry[] = [];
         for (const rig of rigs) {
           const nodesRes = await client.get<NodeEntry[]>(`/api/rigs/${encodeURIComponent(rig.rigId)}/nodes`, { headers });
           if (nodesRes.status >= 400) {
-            return { host: id, ok: false, failedStep: classifyHttpFailedStep(nodesRes.status), error: `HTTP ${nodesRes.status} fetching nodes for rig ${rig.rigName ?? rig.name}` };
+            return { host: id, ok: false, failedStep: classifyHttpFailedStep(nodesRes.status), error: `取 rig ${rig.rigName ?? rig.name} 的节点时 HTTP ${nodesRes.status}` };
           }
           const parentRigName = rig.rigName ?? rig.name;
           nodes.push(...nodesRes.data.map((n) => ({
@@ -1609,11 +1551,10 @@ async function runFanOutPs(
   const hasFailure = results.some((r) => !r.ok);
 
   if (opts.json) {
-    // OPR.0.4.4.21 FR-5 — the intra-P4 shared payload (ONE contract with
-    // slice 15): items = each host's rows stamped with their origin hostId
-    // (flat-mergeable; origin never positional), hosts = the per-host
-    // structured status array. EVERY targeted host appears in hosts[] —
-    // ok or not (no silent thinning).
+    // OPR.0.4.4.21 FR-5——P4 内共享负载（与 slice 15 同一份契约）：
+    // items = 每台主机的行盖上其来源 hostId（可平铺合并；来源绝不靠位置），
+    // hosts = 逐主机结构化状态数组。每一台目标主机都出现在 hosts[] 里——
+    // 成功或失败（不静默变瘦）。
     const rawItems: Array<Record<string, unknown>> = results.flatMap((r) =>
       r.ok && Array.isArray(r.data)
         ? (r.data as Array<Record<string, unknown>>).map((row) => ({ ...row, hostId: r.host }))
@@ -1660,7 +1601,7 @@ async function runFanOutPs(
         console.log(`\n[host=${r.host}]`);
         console.log(JSON.stringify(r.data, null, 2));
       } else {
-        console.log(`\n[host=${r.host}] FAILED (${r.failedStep}): ${r.error}`);
+        console.log(`\n[host=${r.host}] 失败 (${r.failedStep})：${r.error}`);
       }
     }
   }

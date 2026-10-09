@@ -1,17 +1,17 @@
-// OPR.0.6.0.5 — the Slack app manifest OpenRig ships, so a user can create their own private
-// Socket Mode app from it. One pure constructor (no I/O) shared by `rig slack manifest` and the
-// daemon's read-only route, so the CLI and the TUI render the same object.
+// OPR.0.6.0.5——OpenRig 随附的 Slack app manifest，用户可据此创建自己的私有
+// Socket Mode app。`zrig slack manifest` 与后台服务只读路由共享一个无 I/O 的纯构造器，
+// 因而 CLI 与 TUI 渲染相同对象。
 //
-// Scopes and events are DERIVED from the connector's canonical sources, never listed here:
-//   bot scopes  = BASELINE_REQUIRED_SCOPES + FEATURE_SCOPES (capabilities.ts)
-//   bot events  = ADMITTED_EVENT_TYPES via EVENT_SUBSCRIPTIONS (capabilities.ts).
-// A Slack subscription name is not always the payload type (subscribing to `message.channels`
-// delivers payloads of type `message`), so the mapping is explicit and checked.
-// The constructor imports no configuration: it cannot load files or read the environment.
+// scope 和 event 从连接器权威源派生，绝不在此重复列举：
+//   机器人权限范围 = BASELINE_REQUIRED_SCOPES + FEATURE_SCOPES（capabilities.ts）
+//   bot events = 通过 EVENT_SUBSCRIPTIONS 得到 ADMITTED_EVENT_TYPES（capabilities.ts）。
+// Slack subscription 名不总等于 payload type（订阅 `message.channels` 会收到 type 为
+// `message` 的 payload），所以映射是显式且受检查的。构造器不导入配置，
+// 因而无法加载文件或读取环境。
 import { stringify } from "yaml";
 import { ADMITTED_EVENT_TYPES, BASELINE_REQUIRED_SCOPES, EVENT_SUBSCRIPTIONS, FEATURE_SCOPES } from "./capabilities.js";
 
-export const MANIFEST_DISPLAY_NAME = "OpenRig";
+export const MANIFEST_DISPLAY_NAME = "zrig";
 export const SLACK_CREATE_APP_URL = "https://api.slack.com/apps?new_app=1&manifest_yaml=";
 
 export interface SlackAppManifest {
@@ -29,9 +29,9 @@ export interface SlackAppManifest {
 
 export interface SlackManifestBundle {
   manifest: SlackAppManifest;
-  /** The manifest as YAML, exactly what the prefill link carries. */
+  /** YAML 形式的 manifest，与预填链接携带的内容完全一致。 */
   yaml: string;
-  /** Slack's create-app-from-manifest link with the YAML URL-encoded. */
+  /** Slack 的“从 manifest 创建 app”链接，其中 YAML 已做 URL 编码。 */
   url: string;
   scopes: string[];
   events: string[];
@@ -51,17 +51,17 @@ export const CANONICAL_MANIFEST_SOURCES: ManifestSources = {
   eventSubscriptions: EVENT_SUBSCRIPTIONS,
 };
 
-/** Build the manifest from its sources. Throws if an admitted event type has no subscription
- *  mapping, or if a subscribed event's scope is not requested — a manifest Slack would reject
- *  or that silently loses inbound traffic is a construction error, not a runtime surprise. */
+/** 从权威源构建 manifest。若允许的 event type 没有 subscription 映射，或订阅事件所需
+ *  scope 未申请，则抛错——会被 Slack 拒绝或静默丢失入站流量的 manifest 属于构造错误，
+ *  不应成为运行时意外。 */
 export function buildSlackAppManifest(sources: ManifestSources = CANONICAL_MANIFEST_SOURCES): SlackManifestBundle {
   const scopes = [...new Set([...sources.requiredScopes, ...sources.featureScopes])].sort();
   const events: string[] = [];
   for (const type of sources.admittedEventTypes) {
     const mapped = sources.eventSubscriptions[type];
-    if (!mapped) throw new Error(`slack manifest: admitted event type "${type}" has no subscription mapping`);
+    if (!mapped) throw new Error(`Slack manifest：允许的 event type "${type}" 没有 subscription 映射`);
     if (!scopes.includes(mapped.scope)) {
-      throw new Error(`slack manifest: event "${mapped.subscription}" needs scope "${mapped.scope}", which is not requested`);
+      throw new Error(`Slack manifest：event "${mapped.subscription}" 需要尚未申请的 scope "${mapped.scope}"`);
     }
     events.push(mapped.subscription);
   }
@@ -69,7 +69,7 @@ export function buildSlackAppManifest(sources: ManifestSources = CANONICAL_MANIF
   const manifest: SlackAppManifest = {
     display_information: {
       name: MANIFEST_DISPLAY_NAME,
-      description: "Connects an OpenRig instance to Slack over Socket Mode.",
+      description: "通过 Socket Mode 将 zrig 实例连接到 Slack。",
     },
     features: { bot_user: { display_name: MANIFEST_DISPLAY_NAME, always_online: false } },
     oauth_config: { scopes: { bot: scopes } },

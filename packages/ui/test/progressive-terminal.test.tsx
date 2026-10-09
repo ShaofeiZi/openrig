@@ -1,7 +1,7 @@
-// OPR.0.4.0.1 — ProgressiveTerminal behavior: default-static, click-to-live, and
-// the GLOBAL cap with oldest-eviction-to-static. The heavy children
-// (FocusedTerminal -> xterm+WS, SessionPreviewPane -> polling) are stubbed so the
-// test exercises the interaction model + cap, not xterm/WebSocket internals.
+// OPR.0.4.0.1——ProgressiveTerminal 行为：default-static、click-to-live，及
+// 带最旧逐出回 static 的全局 cap。重子
+//（FocusedTerminal -> xterm+WS，SessionPreviewPane -> 轮询）被 stub，使
+// 测试走交互模型 + cap，而非 xterm/WebSocket 内部。
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
@@ -62,7 +62,7 @@ describe("ProgressiveTerminal (OPR.0.4.0.1 interaction model)", () => {
     fireEvent.click(screen.getByTestId("pt-b-static")); // b -> live
     fireEvent.click(screen.getByTestId("pt-c-static")); // c -> live, evicts a
 
-    // a reverted to static; b + c remain live; total live == cap.
+    // a 回 static；b + c 保持 live；live 总数 == cap。
     expect(screen.getByTestId("pt-a-static")).toBeTruthy();
     expect(screen.queryByTestId("live-a@r")).toBeNull();
     expect(screen.getByTestId("live-b@r")).toBeTruthy();
@@ -80,7 +80,7 @@ describe("ProgressiveTerminal (OPR.0.4.0.1 interaction model)", () => {
     fireEvent.click(screen.getByTestId("pt-a-static"));
     fireEvent.click(screen.getByTestId("pt-b-static"));
     fireEvent.click(screen.getByTestId("pt-c-static"));
-    // cap=3 -> all three live, none evicted.
+    // cap=3 -> 三者全 live，无一逐出。
     expect(screen.getByTestId("live-a@r")).toBeTruthy();
     expect(screen.getByTestId("live-b@r")).toBeTruthy();
     expect(screen.getByTestId("live-c@r")).toBeTruthy();

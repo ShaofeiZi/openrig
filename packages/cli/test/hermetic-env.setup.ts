@@ -1,49 +1,45 @@
-// D12 base-health + WRITE-leak containment (broadcast-leak atom).
+// D12 基础健康 + 写入泄漏遏制（broadcast 泄漏原子）。
 //
-// The cli test suite MUST NOT inherit the seat's live-daemon connection. Two holes:
+// CLI 测试套件绝不能继承席位的 live-daemon 连接。两个漏洞：
 //
-// 1. Connection-redirect env (OPENRIG_URL / OPENRIG_PORT / OPENRIG_HOST + RIGGED_*
-//    aliases) — honored as a real operator override in production, but ambient inside
-//    a seat it bypasses each test's injected mock daemon (up.test.ts: 29 fails ambient
-//    vs 1 hermetic). Scrubbed below. Production behavior is untouched.
+// 1. 连接重定向 env（OPENRIG_URL / OPENRIG_PORT / OPENRIG_HOST + RIGGED_*
+//    别名）——在生产中作为真实操作者覆盖被采纳，但在席位内是环境变量，
+//    它会绕过每个测试注入的 mock daemon（up.test.ts：环境下 29 失败 vs
+//    封闭下 1 失败）。在下方清除。生产行为不受影响。
 //
-// 2. The DEFAULT STATE_FILE discovery — `OPENRIG_HOME/daemon.json` (daemon-lifecycle
-//    `OPENRIG_DIR = OPENRIG_HOME`). Scrubbing the env is NOT enough: with URL/PORT
-//    unset, the CLI falls back to the live daemon's state file. This is exactly how
-//    `broadcast.test.ts` emitted REAL 'System maintenance' broadcasts to 14 seats.
-//    The READ direction (results pollution) was known; the WRITE direction (emitting
-//    into the live topology) is strictly worse.
+// 2. 默认 STATE_FILE 发现——`OPENRIG_HOME/daemon.json`（daemon-lifecycle
+//    `OPENRIG_DIR = OPENRIG_HOME`）。仅清除 env 不够：URL/PORT 未设置时，
+//    CLI 会回落 live daemon 的状态文件。这正是 `broadcast.test.ts` 向 14 个席位
+//    发出真实 'System maintenance' broadcast 的方式。读方向（结果污染）已知；
+//    写方向（向 live topology 发出）严格更糟。
 //
-// FORCE + ASSERT (unwritable-by-omission — the guarantee lives where it cannot be
-// skipped, so a new test file inherits safety from the setup that runs first, not
-// from a runner or a per-file convention that 145/164 files already omit):
-//   FORCE  — establish a fixture-scoped OPENRIG_HOME (a fresh temp dir carrying the
-//            `.openrig-fixture` marker) BEFORE any daemon-resolving module loads and
-//            captures the eager `OPENRIG_HOME` const, so default discovery finds no
-//            live daemon.
-//   ASSERT — `assertFixtureScopedHome` throws LOUD if the home is NOT fixture-scoped
-//            (mkdtemp failure, or OPENRIG_HOME captured before this ran via an
-//            import-order regression). Forcing alone silently fixes and proves
-//            nothing; the assert makes it evidence. Its known-negative lives in
-//            live-daemon-guard.test.ts.
+// FORCE + ASSERT（按缺失不可写——保证存在于无法被跳过之处，使新测试文件
+// 从先运行的 setup 继承安全，而非从 runner 或 145/164 文件已省略的按文件约定）：
+//   FORCE  ——在任何 daemon 解析模块加载并捕获 eager `OPENRIG_HOME` 常量之前，
+//            建立 fixture 作用域的 OPENRIG_HOME（一个带 `.openrig-fixture` 标记的
+//            全新临时目录），使默认发现找不到 live daemon。
+//   ASSERT ——`assertFixtureScopedHome` 在家非 fixture 作用域时响亮抛错
+//            （mkdtemp 失败，或 OPENRIG_HOME 经 import 顺序回归在本 setup 运行前
+//            被捕获）。仅 FORCE 是静默修复、什么都不证明；ASSERT 使其成为证据。
+//            其已知负例位于 live-daemon-guard.test.ts。
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-// (1) Scrub the connection-redirect vars (desk-authoritative set).
+// (1) 清除连接重定向变量（desk 权威集合）。
 for (const key of ["OPENRIG_URL", "OPENRIG_PORT", "RIGGED_URL", "RIGGED_PORT", "OPENRIG_HOST_SELECTED", "OPENRIG_HOST", "OPENRIG_BIND_HOST"]) {
   delete process.env[key];
 }
 
-// (2) FORCE a fixture-scoped home — BEFORE importing openrig-compat (whose
-// OPENRIG_HOME const is eager). Node builtins above do not load it; the dynamic
-// imports below run only AFTER this assignment, so the const captures the fixture.
-// ONE stable fixture home per worker. setupFiles runs per test FILE, but
-// openrig-compat's OPENRIG_HOME const is captured ONCE per worker — a fresh per-file
-// home would diverge from that captured const (env says home N, the const holds home
-// 1), which flakes any test reading one vs the other under suite ordering. So reuse a
-// fixture home already established in this worker. Named as a realistic `.openrig`-style
-// home (still fixture-scoped via the marker) so path-shape assertions hold against it.
+// (2) FORCE 一个 fixture 作用域 home——在 import openrig-compat（其
+// OPENRIG_HOME 常量是 eager 的）之前。上方 Node 内建不加载它；下方动态
+// import 只在此赋值后运行，故常量捕获的是 fixture。
+// 每个 worker 一个稳定 fixture home。setupFiles 按测试文件运行，但
+// openrig-compat 的 OPENRIG_HOME 常量每个 worker 只捕获一次——按文件新建的
+// home 会与该捕获常量分叉（env 说 home N，常量持有 home 1），使任何在套件
+// 顺序下读两者之一的测试 flake。故复用本 worker 中已建立的 fixture home。
+// 命名为现实的 `.openrig` 风格 home（仍经 marker 为 fixture 作用域），使路径形状
+// 断言对其成立。
 const existingHome = process.env["OPENRIG_HOME"];
 const fixtureHome =
   existingHome && fs.existsSync(path.join(existingHome, ".openrig-fixture"))

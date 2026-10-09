@@ -52,15 +52,15 @@ async function setup() {
   return { home, workspace, db, queue, policy, source, projection, cp, tick: (ms: number) => { now = new Date(Date.parse(now) + ms).toISOString(); return now; } };
 }
 
-it("follows real handoffs: the root alone is below threshold while the exact family exposes ceremony", async () => {
+it("跟随真实 handoff：仅 root 低于 threshold，精确 family 会暴露 ceremony", async () => {
   const t = await setup();
   expect(t.queue.listTransitions(t.cp.lineageQitemId)).toHaveLength(1);
   t.source.submit(t.cp, "author@rig");
   const changes = t.db.prepare("SELECT total_changes() AS n").get();
   const first = t.projection.list().records[0]!;
   expect(first).toMatchObject({ status: "active", detector: "process.ceremony-amplification", confidence: "medium" });
-  expect(first.explanation).toContain("25 coordination transitions for 1 product-state change");
-  expect(first.explanation).toContain("9 qitems");
+  expect(first.explanation).toContain("25 个 transition、1 个已列出的 product outcome");
+  expect(first.explanation).toContain("9 个 qitem");
   expect(first.explanation).toContain("gate:qa=12");
   expect(first.explanation).toContain("gate:r2=12");
   expect(first.explanation).toContain(t.cp.sdlc.expectation);
@@ -69,7 +69,7 @@ it("follows real handoffs: the root alone is below threshold while the exact fam
   expect(t.db.prepare("SELECT total_changes() AS n").get()).toEqual(changes);
 });
 
-it("refuses omitted descendants and does not infer a family from similar names", async () => {
+it("拒绝遗漏 descendant，且不根据相似名称推断 family", async () => {
   const t = await setup();
   await t.queue.create({ qitemId: "product-root-lookalike", sourceSession: "author@rig", destinationSession: "builder@rig", body: "Unrelated", nudge: false });
   expect(() => t.source.submit({ ...t.cp, transitionIds: t.cp.transitionIds.slice(0, 1) }, "author@rig")).toThrow("census");
@@ -77,17 +77,17 @@ it("refuses omitted descendants and does not infer a family from similar names",
   expect(t.projection.list().records[0]!.evidence.some((e) => e.type === "queue-transition" && e.qitemId.endsWith("lookalike"))).toBe(false);
 });
 
-it("missing SDLC expectation is indeterminate, including legacy single-row checkpoints", async () => {
+it("缺失 SDLC expectation 时为 indeterminate，包括 legacy 单行 checkpoint", async () => {
   const t = await setup();
   const { sdlc: _sdlc, ...without } = t.cp;
   t.source.submit(without, "author@rig");
   expect(t.projection.list().records[0]!.status).toBe("indeterminate");
-  expect(t.projection.list().records[0]!.explanation).toContain("SDLC expectation unavailable");
+  expect(t.projection.list().records[0]!.explanation).toContain("SDLC 预期不可用");
   t.source.submit({ ...t.cp, observedAt: t.tick(1), sdlc: { ...t.cp.sdlc, evidenceRef: "missing.md" } }, "author@rig");
   expect(t.projection.list().records[0]!.status).toBe("indeterminate");
 });
 
-it("preserves one episode across refresh, bounded authority clears it, and recurrence starts a new one", async () => {
+it("跨 refresh 保留同一 episode；bounded authority 清除它，recurrence 启动新 episode", async () => {
   const t = await setup(); t.source.submit(t.cp, "author@rig");
   const id = t.projection.list().records[0]!.id;
   t.source.submit({ ...t.cp, observedAt: t.tick(1) }, "author@rig");
@@ -99,7 +99,7 @@ it("preserves one episode across refresh, bounded authority clears it, and recur
   expect(t.projection.list().records[0]!.id).not.toBe(id);
 });
 
-it("resolves diagnosis authority by episode when the root has no transition inside the window", async () => {
+it("root 在 window 内没有 transition 时，按 episode 解析 diagnosis authority", async () => {
   const t = await setup();
   t.db.prepare("UPDATE queue_transitions SET ts = ? WHERE qitem_id = ?").run("2026-01-01T00:00:00.000Z", t.cp.lineageQitemId);
   const dir = join(t.workspace, "missions", "mission", "slices", "work"); mkdirSync(dir, { recursive: true });
@@ -111,14 +111,14 @@ it("resolves diagnosis authority by episode when the root has no transition insi
   expect(healthAuthority(t.workspace, t.source, finding)).toContainEqual(expect.objectContaining({ level: "slice", state: "available" }));
 });
 
-it("bounds recursive traversal even when the handoff family exceeds the admitted size", async () => {
+it("即使 handoff family 超过允许大小，也限制 recursive traversal", async () => {
   const t = await setup();
   const insert = t.db.prepare("INSERT INTO queue_items(qitem_id,ts_created,ts_updated,source_session,destination_session,state,handed_off_from,body) VALUES(?,?,?,'a@r','b@r','done',?,'fixture')");
   t.db.transaction(() => { for (let i = 0; i < 1001; i++) insert.run(`large-${i}`, t.cp.startedAt, t.cp.startedAt, t.cp.lineageQitemId); })();
   expect(() => t.queue.transitionLog.listForHandoffWindow(t.cp.lineageQitemId, t.cp.startedAt, t.cp.observedAt, 10001)).toThrow("health_checkpoint_lineage_limit");
 });
 
-it("100 live-source context seats remain quiet below 95, clear naturally, and never compete with delegated ceremony admission", async () => {
+it("100 个 live-source context seat 在 95 以下保持安静、自然清除，且不与 delegated ceremony admission 竞争", async () => {
   const t = await setup(); const rigs = new RigRepository(t.db); const sessions = new SessionRegistry(t.db);
   const rig = rigs.createRig("context-scale"); const samples = new UsageSamplesStore(t.db);
   const base = Date.now() - 60000;
@@ -159,23 +159,23 @@ it("100 live-source context seats remain quiet below 95, clear naturally, and ne
   await service.evaluate("author@rig", true); expect(service.list()).toHaveLength(1);
 });
 
-it("does not present an unknown denominator as zero or compute a ratio from it", async () => {
+it("不将未知 denominator 显示为零，也不据此计算 ratio", async () => {
   const t = await setup();
   t.source.submit({ ...t.cp, productCensusRef: "missing.md" }, "author@rig");
   const finding = t.projection.list().records[0]!;
   expect(finding.status).toBe("indeterminate");
-  expect(finding.explanation).toContain("no ratio is computed");
+  expect(finding.explanation).toContain("不计算比例");
   expect(finding.explanation).not.toContain("25.0:1");
-  expect(finding.summary).toContain("indeterminate");
+  expect(finding.summary).toContain("无法确定");
 });
 
-it("unavailable suppression evidence cannot hide a potential condition", async () => {
+it("不可用的 suppression evidence 不能隐藏潜在 condition", async () => {
   const t = await setup();
   t.source.submit({ ...t.cp, boundedAuthority: { applies: true, evidenceRef: "missing-authority.md" } }, "author@rig");
   expect(t.projection.list().records[0]!.status).toBe("indeterminate");
 });
 
-it("derives and retains the complete census once without making the author enumerate handoffs", async () => {
+it("一次推导并保留完整 census，无需 author 枚举 handoff", async () => {
   const t = await setup(); const input = { ...t.cp, transitionIds: "derive" };
   const first = t.source.submit(input, "author@rig");
   expect(first.checkpoint.transitionIds).toEqual(t.cp.transitionIds);
@@ -184,8 +184,8 @@ it("derives and retains the complete census once without making the author enume
   expect(t.source.entries()[0]!.checkpoint.transitionIds).toEqual(t.cp.transitionIds);
 });
 
-it("refuses an explicitly different slice in a handoff census rather than mixing its product scope", async () => {
+it("拒绝 handoff census 中显式不同的 slice，而非混合其 product scope", async () => {
   const t = await setup();
   t.db.prepare("UPDATE queue_items SET tags = ? WHERE qitem_id = ?").run(JSON.stringify(["slice:another-slice"]), "review-7");
-  expect(() => t.source.submit({ ...t.cp, scope: { type: "slice", projectId: "project", missionId: "mission", sliceId: "slice-1" } }, "author@rig")).toThrow("crosses the declared checkpoint scope");
+  expect(() => t.source.submit({ ...t.cp, scope: { type: "slice", projectId: "project", missionId: "mission", sliceId: "slice-1" } }, "author@rig")).toThrow("超出声明的 checkpoint scope");
 });

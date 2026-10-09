@@ -16,9 +16,8 @@ interface ReconcilerDeps {
   tmuxAdapter: TmuxAdapter;
 }
 
-// Only an active/non-terminal session can become detached. In particular,
-// superseded rows are occupant history: rewriting one to detached resurrects
-// it as a restore candidate and makes the next reboot ambiguous.
+// 只有活跃且尚未进入终态的会话才能变为 detached。尤其要注意，superseded 行属于占用者
+// 历史；若将其改写为 detached，就会错误地复活为恢复候选，并使下次重启产生歧义。
 const SKIP_STATUSES = new Set(["detached", "exited", "superseded"]);
 
 export class Reconciler {
@@ -29,10 +28,10 @@ export class Reconciler {
 
   constructor(deps: ReconcilerDeps) {
     if (deps.db !== deps.sessionRegistry.db) {
-      throw new Error("Reconciler: sessionRegistry must share the same db handle");
+      throw new Error("Reconciler：sessionRegistry 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.eventBus.db) {
-      throw new Error("Reconciler: eventBus must share the same db handle");
+      throw new Error("Reconciler：eventBus 必须共享同一个数据库句柄");
     }
 
     this.db = deps.db;
@@ -55,10 +54,8 @@ export class Reconciler {
 
       let alive: boolean;
       try {
-        // Boot-time reconciliation against a dead tmux server must still
-        // detach stale rows: transport-absence is treated as detachable HERE,
-        // by explicit choice at this call site (OPR.0.5.4.2 mini-req 2 — the
-        // adapter no longer collapses that decision for its callers).
+        // 启动时即使 tmux 服务不可用，对账仍必须将过期行标记为 detached：此调用点明确选择
+        // 将传输层缺失视为可分离状态（OPR.0.5.4.2 mini-req 2——适配器不再替调用方折叠该决策）。
         const probe = await this.tmuxAdapter.probeSession(session.sessionName);
         alive = probe.state === "present";
         checked++;

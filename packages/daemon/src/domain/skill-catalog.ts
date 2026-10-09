@@ -39,8 +39,8 @@ export interface SkillLoadout {
   catalogRoot: string;
   catalogRevision: string | null;
   catalogDigest: string | null;
-  /** Distinguishes an explicitly installed empty project loadout from a
-   *  startup that has no project-world input and must retain the installed one. */
+  /** 区分显式安装的空项目 loadout 与没有 project-world 输入、
+   *  必须保留已安装 loadout 的启动。 */
   projectSelectionDeclared: boolean;
   projectSelection: string[];
   entries: CatalogSkill[];
@@ -147,16 +147,16 @@ function readYamlObject(path: string): Record<string, unknown> {
   try {
     parsed = parseYaml(readFileSync(path, "utf8"));
   } catch (err) {
-    throw new Error(`${path} is not valid YAML: ${(err as Error).message}`);
+    throw new Error(`${path} 不是合法 YAML：${(err as Error).message}`);
   }
-  if (!isRecord(parsed)) throw new Error(`${path} must contain a YAML object`);
+  if (!isRecord(parsed)) throw new Error(`${path} 必须包含 YAML 对象`);
   return parsed;
 }
 
 function readStringList(value: unknown, label: string): string[] {
   if (value === undefined || value === null) return [];
   if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string" && SAFE_ID.test(entry))) {
-    throw new Error(`${label} must be a list of bounded skill identities`);
+    throw new Error(`${label} 必须是有界 skill 身份列表`);
   }
   return value as string[];
 }
@@ -166,7 +166,7 @@ export function readSystemSkillSelection(catalogRoot: string): string[] {
   if (!existsSync(manifestPath)) return [];
   const manifest = readYamlObject(manifestPath);
   if (manifest["schema"] !== CATALOG_SCHEMA) {
-    throw new Error(`${manifestPath} must declare schema: ${CATALOG_SCHEMA}`);
+    throw new Error(`${manifestPath} 必须声明 schema: ${CATALOG_SCHEMA}`);
   }
   return readStringList(manifest["system"], `${manifestPath} system`);
 }
@@ -177,14 +177,14 @@ export function readProjectSkillSelection(projectRoot: string): string[] {
   const manifest = readYamlObject(manifestPath);
   const install = manifest["install"];
   if (install === undefined || install === null) return [];
-  if (!isRecord(install)) throw new Error(`${manifestPath} install must be a YAML object`);
+  if (!isRecord(install)) throw new Error(`${manifestPath} 的 install 必须是 YAML 对象`);
   return readStringList(install["skills"], `${manifestPath} install.skills`);
 }
 
 export function inspectSkillDirectory(root: string): { digest: string; files: Record<string, string> } {
   const rootStat = lstatSync(root);
   if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
-    throw new Error(`managed skill target must be a real directory, not a symlink or file: ${root}`);
+    throw new Error(`受管 skill 目标必须是真实目录，不能是符号链接或文件：${root}`);
   }
   const files: Record<string, string> = {};
   const fileModes: Record<string, number> = {};
@@ -193,13 +193,13 @@ export function inspectSkillDirectory(root: string): { digest: string; files: Re
       const absolute = nodePath.join(dir, entry.name);
       const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
       const stat = lstatSync(absolute);
-      if (stat.isSymbolicLink()) throw new Error(`symlink is not allowed in a managed skill: ${absolute}`);
+      if (stat.isSymbolicLink()) throw new Error(`受管 skill 中不允许符号链接：${absolute}`);
       if (stat.isDirectory()) walk(absolute, relative);
       else if (stat.isFile()) {
         files[relative] = sha256(readFileSync(absolute));
         fileModes[relative] = stat.mode & 0o777;
       }
-      else throw new Error(`unsupported filesystem entry in a managed skill: ${absolute}`);
+      else throw new Error(`受管 skill 中存在不支持的文件系统条目：${absolute}`);
     }
   };
   walk(root, "");
@@ -214,7 +214,7 @@ function gitRevision(catalogRoot: string): string {
   try {
     repoRoot = execFileSync("git", ["-C", catalogRoot, "rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
   } catch {
-    throw new Error(`managed skill catalog is not inside a readable Git repository: ${catalogRoot}`);
+    throw new Error(`受管 skill 目录不在可读 Git 仓库中：${catalogRoot}`);
   }
   const rel = nodePath.relative(realpathSync(repoRoot), realpathSync(catalogRoot)) || ".";
   const dirty = execFileSync(
@@ -223,7 +223,7 @@ function gitRevision(catalogRoot: string): string {
     { encoding: "utf8" },
   ).trim();
   if (dirty) {
-    throw new Error(`managed skill catalog has uncommitted content at ${catalogRoot}; commit or restore it before projection`);
+    throw new Error(`受管 skill 目录在 ${catalogRoot} 有未提交内容；投影前请提交或恢复`);
   }
   return execFileSync("git", ["-C", repoRoot, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 }
@@ -233,10 +233,10 @@ function scanCatalog(catalogRoot: string): {
   digest: string;
   skills: Map<string, Omit<CatalogSkill, "selectedBy">>;
 } {
-  if (!existsSync(catalogRoot)) throw new Error(`managed skill catalog root does not exist: ${catalogRoot}`);
+  if (!existsSync(catalogRoot)) throw new Error(`受管 skill 目录根不存在：${catalogRoot}`);
   const rootStat = lstatSync(catalogRoot);
   if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
-    throw new Error(`managed skill catalog root must be a real directory, not a symlink: ${catalogRoot}`);
+    throw new Error(`受管 skill 目录根必须是真实目录，不能是符号链接：${catalogRoot}`);
   }
   const revision = gitRevision(catalogRoot);
   const skills = new Map<string, Omit<CatalogSkill, "selectedBy">>();
@@ -244,17 +244,17 @@ function scanCatalog(catalogRoot: string): {
     if (!entry.isDirectory()) continue;
     const sourceDir = nodePath.join(catalogRoot, entry.name);
     if (lstatSync(sourceDir).isSymbolicLink()) {
-      throw new Error(`symlinked skill directories are not allowed: ${sourceDir}`);
+      throw new Error(`不允许使用符号链接 skill 目录：${sourceDir}`);
     }
     const skillFile = nodePath.join(sourceDir, "SKILL.md");
     if (!existsSync(skillFile)) continue;
     const parsed = parseSkillFrontmatter(readFileSync(skillFile, "utf8"));
-    if (!parsed.ok) throw new Error(`${skillFile}: ${parsed.reason}`);
+    if (!parsed.ok) throw new Error(`${skillFile}：${parsed.reason}`);
     const id = parsed.frontmatter.name;
-    if (!SAFE_ID.test(id)) throw new Error(`${skillFile}: frontmatter name '${id}' is not a bounded skill identity`);
+    if (!SAFE_ID.test(id)) throw new Error(`${skillFile}：frontmatter name '${id}' 不是有界 skill 身份`);
     const prior = skills.get(id);
     if (prior) {
-      throw new Error(`duplicate managed skill identity '${id}' at ${prior.sourceDir} and ${sourceDir}`);
+      throw new Error(`受管 skill 身份 '${id}' 重复，位于 ${prior.sourceDir} 与 ${sourceDir}`);
     }
     const tree = inspectSkillDirectory(sourceDir);
     skills.set(id, {
@@ -335,7 +335,7 @@ export function resolveSkillLoadout(input: {
       if (input.allowMissingTopology && selectedBy.every((source) => source === "topology")) continue;
       errors.push({
         code: "selected_skill_missing",
-        message: `selected skill '${id}' is missing from managed catalog ${input.catalogRoot}`,
+        message: `所选 skill '${id}' 不在受管目录 ${input.catalogRoot} 中`,
         path: input.catalogRoot,
       });
       continue;
@@ -372,10 +372,10 @@ function readOwnershipManifest(path: string, runtime: SkillRuntime, targetRoot: 
   try {
     value = JSON.parse(readFileSync(path, "utf8"));
   } catch (err) {
-    throw new Error(`skill ownership manifest is unreadable at ${path}: ${(err as Error).message}`);
+    throw new Error(`${path} 处的 skill ownership manifest 不可读：${(err as Error).message}`);
   }
   if (!isRecord(value) || value["schema"] !== MANIFEST_SCHEMA || value["runtime"] !== runtime || value["targetRoot"] !== targetRoot || !Array.isArray(value["skills"])) {
-    throw new Error(`skill ownership manifest has an incompatible shape at ${path}; move it aside and re-run inspection`);
+    throw new Error(`${path} 处的 skill ownership manifest 形状不兼容；请将其移开后重新检查`);
   }
   const skills = value["skills"] as unknown[];
   if (!skills.every((entry) => {
@@ -399,10 +399,10 @@ function readOwnershipManifest(path: string, runtime: SkillRuntime, targetRoot: 
     const sourceDir = entry["sourceDir"] ?? nodePath.join(entry["sourceRoot"], entry["id"]);
     return nodePath.isAbsolute(sourceDir) && isWithin(entry["sourceRoot"], sourceDir);
   })) {
-    throw new Error(`skill ownership manifest contains an invalid skill record at ${path}; move it aside and re-run inspection`);
+    throw new Error(`${path} 处的 skill ownership manifest 含无效 skill 记录；请将其移开后重新检查`);
   }
   if (new Set(skills.map((entry) => (entry as Record<string, unknown>)["id"])).size !== skills.length) {
-    throw new Error(`skill ownership manifest contains duplicate skill identities at ${path}; move it aside and re-run inspection`);
+    throw new Error(`${path} 处的 skill ownership manifest 含重复 skill 身份；请将其移开后重新检查`);
   }
   const rawTopology = value["topologySelections"];
   if (
@@ -417,14 +417,14 @@ function readOwnershipManifest(path: string, runtime: SkillRuntime, targetRoot: 
       ))
     )
   ) {
-    throw new Error(`skill ownership manifest contains invalid topology selections at ${path}; move it aside and re-run inspection`);
+    throw new Error(`${path} 处的 skill ownership manifest 含无效拓扑选择；请将其移开后重新检查`);
   }
   const rawProject = value["projectSelection"];
   if (
     rawProject !== undefined
     && (!Array.isArray(rawProject) || !rawProject.every((id) => typeof id === "string" && SAFE_ID.test(id)) || new Set(rawProject).size !== rawProject.length)
   ) {
-    throw new Error(`skill ownership manifest contains an invalid project selection at ${path}; move it aside and re-run inspection`);
+    throw new Error(`${path} 处的 skill ownership manifest 含无效项目选择；请将其移开后重新检查`);
   }
   const parsed = value as unknown as Omit<OwnershipManifest, "topologySelections" | "projectSelection"> & {
     topologySelections?: Record<string, string[]>;
@@ -449,19 +449,19 @@ function copyDirectoryExact(source: string, target: string): void {
     const src = nodePath.join(source, entry.name);
     const dest = nodePath.join(target, entry.name);
     const stat = lstatSync(src);
-    if (stat.isSymbolicLink()) throw new Error(`symlink is not allowed in a managed skill: ${src}`);
+    if (stat.isSymbolicLink()) throw new Error(`受管 skill 中不允许符号链接：${src}`);
     if (stat.isDirectory()) copyDirectoryExact(src, dest);
     else if (stat.isFile()) {
       writeFileSync(dest, readFileSync(src));
       chmodSync(dest, stat.mode & 0o777);
-    } else throw new Error(`unsupported filesystem entry in a managed skill: ${src}`);
+    } else throw new Error(`受管 skill 中存在不支持的文件系统条目：${src}`);
   }
 }
 
 function gitIgnorePattern(base: string, path: string, directory: boolean): string {
   const relative = nodePath.relative(base, path);
   if (!relative || relative === ".." || relative.startsWith(`..${nodePath.sep}`) || nodePath.isAbsolute(relative)) {
-    throw new Error(`managed skill projection path is outside its Git working tree: ${path}`);
+    throw new Error(`受管 skill 投影路径位于其 Git 工作树之外：${path}`);
   }
   const escaped = relative
     .split(nodePath.sep)
@@ -474,7 +474,7 @@ function replaceGitIgnoreBlock(original: string, begin: string, end: string, pat
   const beginAt = original.indexOf(begin);
   const endAt = original.indexOf(end);
   if ((beginAt === -1) !== (endAt === -1)) {
-    throw new Error(`managed Git exclusion block is incomplete (${begin})`);
+    throw new Error(`受管 Git 排除块不完整（${begin}）`);
   }
   if (beginAt !== -1) {
     if (
@@ -484,7 +484,7 @@ function replaceGitIgnoreBlock(original: string, begin: string, end: string, pat
       || endAt < beginAt
       || (original[endAt + end.length] !== undefined && original[endAt + end.length] !== "\n")
     ) {
-      throw new Error(`managed Git exclusion block is ambiguous (${begin})`);
+      throw new Error(`受管 Git 排除块有歧义（${begin}）`);
     }
     const after = original[endAt + end.length] === "\n" ? endAt + end.length + 1 : endAt + end.length;
     const block = patterns === null ? "" : `${begin}\n${patterns.join("\n")}\n${end}\n`;
@@ -533,7 +533,7 @@ function planGitIgnoreFile(input: {
   if (!hasManagedBlock && !hasOtherManagedBlock) {
     if (input.coveragePaths.every((path) => isGitIgnored(input.repoRoot, path))) return null;
     if (originalExists) {
-      throw new Error(`refusing to modify an existing unmanaged Git ignore file at ${input.path}`);
+      throw new Error(`拒绝修改 ${input.path} 处现有的非受管 Git ignore 文件`);
     }
   }
   const patterns = input.targets.length === 0
@@ -543,7 +543,7 @@ function planGitIgnoreFile(input: {
       .sort(compareBytes)];
   const nextContent = replaceGitIgnoreBlock(originalContent, input.begin, input.end, patterns);
   if (nextContent !== originalContent && isGitTracked(input.repoRoot, input.path)) {
-    throw new Error(`refusing to modify a tracked Git ignore file at ${input.path}`);
+    throw new Error(`拒绝修改 ${input.path} 处已跟踪的 Git ignore 文件`);
   }
   return { path: input.path, originalExists, originalContent, nextContent, changed: nextContent !== originalContent };
 }
@@ -569,7 +569,7 @@ function planGitIgnores(input: {
   const fromCanonicalCwd = (path: string): string => {
     const relative = nodePath.relative(input.cwd, path);
     if (!relative || relative === ".." || relative.startsWith(`..${nodePath.sep}`) || nodePath.isAbsolute(relative)) {
-      throw new Error(`managed skill projection path is outside its working directory: ${path}`);
+      throw new Error(`受管 skill 投影路径位于其工作目录之外：${path}`);
     }
     return nodePath.join(canonicalCwd, relative);
   };
@@ -631,23 +631,23 @@ function classifySkillProjectionTarget(
   target: string,
 ): Pick<SkillProjectionReceipt, "status" | "detail"> {
   if (!pathEntryExists(target)) {
-    return { status: "missing", detail: "selected skill is not projected" };
+    return { status: "missing", detail: "所选 skill 尚未投影" };
   }
   try {
     const actual = inspectSkillDirectory(target);
     if (actual.digest === skill.digest) {
       return prior
-        ? { status: "current", detail: "owned target matches catalog bytes" }
-        : { status: "shadowed", detail: "equal unowned target already supplies these bytes" };
+        ? { status: "current", detail: "自有目标与目录字节一致" }
+        : { status: "shadowed", detail: "已有内容相同的非自有目标提供这些字节" };
     }
     if (prior && actual.digest === prior.digest) {
-      return { status: "stale", detail: "owned target still matches the prior projection and can be refreshed safely" };
+      return { status: "stale", detail: "自有目标仍与上次投影一致，可安全刷新" };
     }
     return {
       status: "conflicting",
       detail: prior
-        ? "target differs from both the catalog and OpenRig's last owned projection; refusing to overwrite an operator edit"
-        : "unowned target differs from the selected catalog skill; move it aside or reconcile its bytes explicitly",
+        ? "目标与目录和 zrig 上次自有投影均不同；拒绝覆盖操作人员的编辑"
+        : "非自有目标与所选目录 skill 不同；请将其移开或显式对账其字节",
     };
   } catch (err) {
     return { status: "conflicting", detail: (err as Error).message };
@@ -659,10 +659,8 @@ export function reconcileSkillLoadout(input: {
   runtime: SkillRuntime;
   cwd: string;
   apply?: boolean;
-  /** Stable seat/session identity whose topology selector is being reconciled.
-   *  Different seats may share one cwd; their role selections compose as a
-   *  union instead of deleting one another. CLI-only reconciliation uses the
-   *  workspace owner. */
+  /** 正在对账其拓扑选择器的稳定席位/会话身份。不同席位可能共享同一 cwd；
+   *  它们的角色选择按并集合并，而不是互相删除。仅 CLI 的对账使用 workspace owner。 */
   topologyOwner?: string;
 }): ReconcileSkillLoadoutResult {
   const cwd = nodePath.resolve(input.cwd);
@@ -699,7 +697,7 @@ export function reconcileSkillLoadout(input: {
       manifestPath,
       receipts,
       removed: [],
-      errors: [{ code: "topology_owner_invalid", message: `topology owner '${topologyOwner}' is not a bounded seat identity` }],
+      errors: [{ code: "topology_owner_invalid", message: `topology owner '${topologyOwner}' 不是有界席位身份` }],
     };
   }
   const topologySelections: Record<string, string[]> = Object.create(null) as Record<string, string[]>;
@@ -729,7 +727,7 @@ export function reconcileSkillLoadout(input: {
     if (!prior) {
       errors.push({
         code: "topology_selection_unavailable",
-        message: `topology owner still selects '${id}', but its owned source record is absent; relaunch that owner or clear its selection explicitly`,
+        message: `topology owner 仍选择 '${id}'，但其自有来源记录缺失；请重新启动该 owner 或显式清除其选择`,
         path: manifestPath,
       });
       continue;
@@ -758,7 +756,7 @@ export function reconcileSkillLoadout(input: {
     if (!prior) {
       errors.push({
         code: "project_selection_unavailable",
-        message: `installed project still selects '${id}', but its owned source record is absent; run an explicit project install to repair or clear it`,
+        message: `已安装项目仍选择 '${id}'，但其自有来源记录缺失；请显式运行 project install 以修复或清除它`,
         path: manifestPath,
       });
       continue;
@@ -794,13 +792,13 @@ export function reconcileSkillLoadout(input: {
         const source = inspectSkillDirectory(skill.sourceDir);
         if (source.digest !== skill.digest) {
           status = "conflicting";
-          detail = "catalog source bytes no longer match the resolved loadout; resolve a fresh loadout before applying";
+          detail = "目录来源字节已不再匹配解析出的 loadout；应用前请重新解析 loadout";
           receipts[receipts.length - 1]!.status = status;
           receipts[receipts.length - 1]!.detail = detail;
         }
       } catch (err) {
         status = "conflicting";
-        detail = `catalog source cannot be projected safely: ${(err as Error).message}`;
+        detail = `无法安全投影目录来源：${(err as Error).message}`;
         receipts[receipts.length - 1]!.status = status;
         receipts[receipts.length - 1]!.detail = detail;
       }
@@ -818,11 +816,11 @@ export function reconcileSkillLoadout(input: {
       if (actual.digest === prior.digest) safeRemovals.push(prior);
       else errors.push({
         code: "stale_target_modified",
-        message: `${prior.id}: deselected owned target was modified after projection; refusing to remove it`,
+        message: `${prior.id}：取消选择后的自有目标在投影后被修改；拒绝移除`,
         path: prior.target,
       });
     } catch (err) {
-      errors.push({ code: "stale_target_unreadable", message: `${prior.id}: ${(err as Error).message}`, path: prior.target });
+      errors.push({ code: "stale_target_unreadable", message: `${prior.id}：${(err as Error).message}`, path: prior.target });
     }
   }
 
@@ -857,7 +855,7 @@ export function reconcileSkillLoadout(input: {
       manifestPath,
       receipts,
       removed: [],
-      errors: [{ code: "git_exclusion_failed", message: `skill projection could not preserve clean Git state: ${(err as Error).message}` }],
+      errors: [{ code: "git_exclusion_failed", message: `skill 投影无法保持干净 Git 状态：${(err as Error).message}` }],
     };
   }
   if (
@@ -898,7 +896,7 @@ export function reconcileSkillLoadout(input: {
       renameSync(nodePath.join(staged, receipt.id), receipt.target);
       rollback.push({ target: receipt.target, backup });
       receipt.status = "current";
-      receipt.detail = "projected exact catalog bytes";
+      receipt.detail = "已精确投影目录字节";
     }
     for (const prior of safeRemovals) {
       const backup = nodePath.join(backups, `removed-${prior.id}`);
@@ -958,7 +956,7 @@ export function reconcileSkillLoadout(input: {
       manifestPath,
       receipts,
       removed: [],
-      errors: [{ code: "projection_failed", message: `skill projection failed and was rolled back: ${(err as Error).message}` }],
+      errors: [{ code: "projection_failed", message: `skill 投影失败并已回滚：${(err as Error).message}` }],
     };
   }
 }

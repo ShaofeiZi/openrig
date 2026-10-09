@@ -1,12 +1,11 @@
-// PL-016 Item 6 — evidence-preservation guard tests. CATASTROPHIC
-// BOUNCE if dropped per PRD; this file pins the load-bearing
-// behaviors:
-//   - pinned image protected
-//   - image referenced by an agent.yaml protected
-//   - image referenced by a rig.yaml protected
-//   - lineage descendants of protected images transitively protected
-//   - non-referenced + non-pinned + non-descendant images are evictable
-//   - the YAML scanner tolerates unrelated/large files
+// PL-016 第 6 项——证据保留守卫测试。按 PRD，若遗漏将导致灾难性回退；
+// 本文件固定以下关键行为：
+//   - 保护已固定镜像
+//   - 保护 agent.yaml 引用的镜像
+//   - 保护 rig.yaml 引用的镜像
+//   - 沿谱系传递保护受保护镜像的后代
+//   - 未引用、未固定且不是后代的镜像可驱逐
+//   - YAML 扫描器可容忍无关文件和大文件
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -51,7 +50,7 @@ function makeImage(opts: {
   };
 }
 
-describe("evaluateProtection (PL-016 Item 6)", () => {
+describe("evaluateProtection（PL-016 第 6 项）", () => {
   let tmp: string;
   let specRoot: string;
 
@@ -62,7 +61,7 @@ describe("evaluateProtection (PL-016 Item 6)", () => {
   });
   afterEach(() => rmSync(tmp, { recursive: true, force: true }));
 
-  it("protects pinned images", () => {
+  it("保护已固定的镜像", () => {
     const result = evaluateProtection({
       images: [makeImage({ name: "pinned", pinned: true })],
       specRoots: [],
@@ -71,7 +70,7 @@ describe("evaluateProtection (PL-016 Item 6)", () => {
     expect(result[0]!.reasons).toContain("pinned");
   });
 
-  it("protects images referenced by an agent.yaml", () => {
+  it("保护 agent.yaml 引用的镜像", () => {
     mkdirSync(join(specRoot, "agents", "x"), { recursive: true });
     writeFileSync(join(specRoot, "agents", "x", "agent.yaml"), `
 name: x
@@ -93,7 +92,7 @@ session_source:
     expect(evictable.protected).toBe(false);
   });
 
-  it("protects images referenced by a rig.yaml", () => {
+  it("保护 rig.yaml 引用的镜像", () => {
     writeFileSync(join(specRoot, "rig.yaml"), `
 name: my-rig
 pods:
@@ -115,7 +114,7 @@ pods:
     expect(result[0]!.reasons).toContain("referenced_by_rig_spec");
   });
 
-  it("transitively protects lineage descendants of protected images", () => {
+  it("沿谱系传递保护受保护镜像的后代", () => {
     const result = evaluateProtection({
       images: [
         makeImage({ name: "ancestor", pinned: true }),
@@ -134,7 +133,7 @@ pods:
     expect(unrelated.protected).toBe(false);
   });
 
-  it("handles missing/inaccessible spec roots gracefully (returns no references)", () => {
+  it("妥善处理缺失或不可访问的 spec 根目录（返回空引用）", () => {
     const result = evaluateProtection({
       images: [makeImage({ name: "x" })],
       specRoots: ["/nonexistent/path"],
@@ -142,7 +141,7 @@ pods:
     expect(result[0]!.protected).toBe(false);
   });
 
-  it("ignores YAML that doesn't reference agent_image", () => {
+  it("忽略未引用 agent_image 的 YAML", () => {
     writeFileSync(join(specRoot, "rig.yaml"), `
 name: my-rig
 pods:
@@ -158,7 +157,7 @@ pods:
     expect(result[0]!.protected).toBe(false);
   });
 
-  it("evictable image surfaces no reasons + empty references", () => {
+  it("可驱逐镜像不返回保护原因，且引用为空", () => {
     const result = evaluateProtection({
       images: [makeImage({ name: "lonely" })],
       specRoots: [specRoot],

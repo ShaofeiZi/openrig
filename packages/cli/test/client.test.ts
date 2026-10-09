@@ -2,26 +2,26 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import http from "node:http";
 import { DaemonClient, DaemonConnectionError } from "../src/client.js";
 
-// Lightweight test server that echoes request info as JSON
+// 轻量测试服务器，以 JSON 回显请求信息。
 function createEchoServer(): { server: http.Server; port: number; close: () => Promise<void> } {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url!, `http://localhost`);
 
-    // POST /api/conflict -> 409 (for non-2xx test)
+    // POST /api/conflict -> 409（用于非 2xx 测试）
     if (req.method === "POST" && url.pathname === "/api/conflict") {
       res.writeHead(409, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "already exists" }));
       return;
     }
 
-    // GET /api/rigs/:id/spec -> text/yaml (for getText test)
+    // GET /api/rigs/:id/spec -> text/yaml（用于 getText 测试）
     if (req.method === "GET" && url.pathname.endsWith("/spec")) {
       res.writeHead(200, { "Content-Type": "text/yaml" });
       res.end("schema_version: 1\nname: test-rig\n");
       return;
     }
 
-    // POST /api/echo-raw -> echoes content-type and raw body (for postText test)
+    // POST /api/echo-raw -> 回显 content-type 和原始正文（用于 postText 测试）
     if (req.method === "POST" && url.pathname === "/api/echo-raw") {
       let body = "";
       req.on("data", (chunk: Buffer) => { body += chunk.toString(); });
@@ -32,7 +32,7 @@ function createEchoServer(): { server: http.Server; port: number; close: () => P
       return;
     }
 
-    // Collect body for POST
+    // 收集 POST 正文。
     let body = "";
     req.on("data", (chunk: Buffer) => { body += chunk.toString(); });
     req.on("end", () => {
@@ -74,14 +74,14 @@ describe("DaemonClient", () => {
     await echoServer.close();
   });
 
-  // Test 1: Client constructs correct URLs from base
-  it("constructs correct URLs from base", () => {
+  // 测试 1：客户端根据 base 构造正确 URL。
+  it("根据 base 构造正确 URL", () => {
     const client = new DaemonClient("http://localhost:9999");
     expect(client.baseUrl).toBe("http://localhost:9999");
   });
 
-  // Test 2: Client GET returns { status, data } with parsed JSON
-  it("GET returns { status, data } with parsed JSON", async () => {
+  // 测试 2：客户端 GET 返回包含已解析 JSON 的 { status, data }。
+  it("GET 返回包含已解析 JSON 的 { status, data }", async () => {
     const client = new DaemonClient(baseUrl);
     const res = await client.get("/api/rigs");
 
@@ -93,8 +93,8 @@ describe("DaemonClient", () => {
     });
   });
 
-  // Test 3: Client POST sends body, returns { status, data }
-  it("POST sends body and returns { status, data }", async () => {
+  // 测试 3：客户端 POST 发送正文并返回 { status, data }。
+  it("POST 发送正文并返回 { status, data }", async () => {
     const client = new DaemonClient(baseUrl);
     const res = await client.post("/api/rigs", { name: "test-rig" });
 
@@ -106,13 +106,13 @@ describe("DaemonClient", () => {
     });
   });
 
-  // Test 4: Client handles connection refused -> throws DaemonConnectionError
-  it("connection refused throws DaemonConnectionError", async () => {
+  // 测试 4：客户端在连接被拒绝时抛出 DaemonConnectionError。
+  it("连接被拒绝时抛出 DaemonConnectionError", async () => {
     const client = new DaemonClient("http://localhost:1");
     await expect(client.get("/api/rigs")).rejects.toThrow(DaemonConnectionError);
   });
 
-  it("bounded timeout throws DaemonConnectionError instead of hanging forever", async () => {
+  it("有界超时会抛出 DaemonConnectionError，而不是永久挂起", async () => {
     const neverFetch: typeof fetch = ((_url: string | URL | Request, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
       init?.signal?.addEventListener("abort", () => {
         reject(init.signal?.reason ?? new Error("aborted"));
@@ -121,10 +121,10 @@ describe("DaemonClient", () => {
     const client = new DaemonClient("http://localhost:9999", { fetchImpl: neverFetch, timeoutMs: 20 });
 
     await expect(client.get("/api/rigs")).rejects.toThrow(DaemonConnectionError);
-    await expect(client.get("/api/rigs")).rejects.toThrow(/timed out/i);
+    await expect(client.get("/api/rigs")).rejects.toThrow(/超时/);
   });
 
-  it("per-request timeout override can extend a long-running call", async () => {
+  it("逐请求超时覆盖可以延长耗时调用的等待时间", async () => {
     const delayedFetch: typeof fetch = ((url: string | URL | Request, init?: RequestInit) => new Promise<Response>((resolve, reject) => {
       const timer = setTimeout(() => {
         resolve(new Response(JSON.stringify({ ok: true, url: String(url) }), {
@@ -139,7 +139,7 @@ describe("DaemonClient", () => {
     })) as typeof fetch;
     const client = new DaemonClient("http://localhost:9999", { fetchImpl: delayedFetch, timeoutMs: 20 });
 
-    await expect(client.get("/api/rigs")).rejects.toThrow(/timed out/i);
+    await expect(client.get("/api/rigs")).rejects.toThrow(/超时/);
 
     const res = await client.get<{ ok: boolean; url: string }>("/api/rigs", { timeoutMs: 100 });
     expect(res.status).toBe(200);
@@ -147,20 +147,20 @@ describe("DaemonClient", () => {
     expect(res.data.url).toContain("/api/rigs");
   });
 
-  // Test 5: Client uses OPENRIG_URL env, falls back to http://127.0.0.1:7433
-  it("uses OPENRIG_URL env when set, falls back to http://127.0.0.1:7433", () => {
-    // Default (no env)
+  // 测试 5：设置时使用 OPENRIG_URL，否则回退到 http://127.0.0.1:7433。
+  it("设置时使用 OPENRIG_URL，否则回退到 http://127.0.0.1:7433", () => {
+    // 默认情况（无环境变量）
     const saved = process.env["OPENRIG_URL"];
     delete process.env["OPENRIG_URL"];
     const defaultClient = new DaemonClient();
     expect(defaultClient.baseUrl).toBe("http://127.0.0.1:7433");
 
-    // With env
+    // 设置环境变量。
     process.env["OPENRIG_URL"] = "http://custom:9000";
     const envClient = new DaemonClient();
     expect(envClient.baseUrl).toBe("http://custom:9000");
 
-    // Cleanup
+    // 清理。
     if (saved !== undefined) {
       process.env["OPENRIG_URL"] = saved;
     } else {
@@ -168,8 +168,8 @@ describe("DaemonClient", () => {
     }
   });
 
-  // Test 6: CLI --version prints version string
-  it("CLI --version prints version string", async () => {
+  // 测试 6：CLI --version 输出版本字符串。
+  it("CLI --version 输出版本字符串", async () => {
     const { execFile } = await import("node:child_process");
     const { promisify } = await import("node:util");
     const execFileAsync = promisify(execFile);
@@ -183,8 +183,8 @@ describe("DaemonClient", () => {
     expect(result.stdout.trim()).toMatch(/^\d+\.\d+\.\d+(?: \([0-9a-f]{8}(?:, dirty)?\))?$/);
   });
 
-  // Test 7: Client non-2xx (409) -> returns { status: 409, data: errorBody }
-  it("non-2xx response returns { status, data } without throwing", async () => {
+  // 测试 7：客户端收到非 2xx（409）时返回 { status: 409, data: errorBody }。
+  it("非 2xx 响应返回 { status, data }，且不抛出异常", async () => {
     const client = new DaemonClient(baseUrl);
     const res = await client.post("/api/conflict", {});
 
@@ -192,19 +192,19 @@ describe("DaemonClient", () => {
     expect(res.data).toEqual({ error: "already exists" });
   });
 
-  // Test 8: postText sends raw text body with correct Content-Type
-  it("postText sends raw text body with text/yaml Content-Type", async () => {
+  // 测试 8：postText 使用正确 Content-Type 发送原始文本正文。
+  it("postText 以 text/yaml Content-Type 发送原始文本正文", async () => {
     const client = new DaemonClient(baseUrl);
     const yaml = "schema_version: 1\nname: test\n";
     const res = await client.postText<{ contentType: string; body: string }>("/api/echo-raw", yaml);
 
     expect(res.status).toBe(200);
     expect(res.data.contentType).toBe("text/yaml");
-    expect(res.data.body).toBe(yaml); // Raw text, NOT JSON-stringified
+    expect(res.data.body).toBe(yaml); // 原始文本，不做 JSON 字符串化。
   });
 
-  // Test 9: getText returns raw text body for non-JSON content (YAML export)
-  it("getText returns raw text body for text/yaml response", async () => {
+  // 测试 9：getText 对非 JSON 内容（YAML 导出）返回原始文本正文。
+  it("getText 对 text/yaml 响应返回原始文本正文", async () => {
     const client = new DaemonClient(baseUrl);
     const res = await client.getText("/api/rigs/r1/spec");
 

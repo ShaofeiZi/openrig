@@ -16,7 +16,7 @@ import {
   makeLocalCliCapabilityProbe,
 } from "../src/domain/mission-control/mission-control-fleet-cli-capability.js";
 
-describe("MissionControlFleetCliCapability (PL-005 Phase A; 4 sub-clauses of graceful degradation)", () => {
+describe("MissionControlFleetCliCapability（PL-005 Phase A；graceful degradation 的 4 个子条款）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let rigRepo: RigRepository;
@@ -32,13 +32,13 @@ describe("MissionControlFleetCliCapability (PL-005 Phase A; 4 sub-clauses of gra
 
   afterEach(() => db.close());
 
-  it("rollupFleet returns one row per registered rig", async () => {
+  it("rollupFleet 为每个已注册 rig 返回一行", async () => {
     const cli = new MissionControlFleetCliCapability({ db, eventBus: bus, rigRepo });
     const fleet = await cli.rollupFleet();
     expect(fleet.rows).toHaveLength(2);
   });
 
-  it("SUB-CLAUSE 1+4: probe-reported missing fields surface as drift + bump staleCliCount", async () => {
+  it("子条款 1+4：probe 上报的缺失字段浮现为 drift + 抬升 staleCliCount", async () => {
     const cli = new MissionControlFleetCliCapability({
       db,
       eventBus: bus,
@@ -57,7 +57,7 @@ describe("MissionControlFleetCliCapability (PL-005 Phase A; 4 sub-clauses of gra
     expect(fleet.degradedFields).toContain("recoveryGuidance");
   });
 
-  it("SUB-CLAUSE 3: once-per-session-per-rig logging — drift event emitted only once per (rig, field)", async () => {
+  it("子条款 3：once-per-session-per-rig 日志——drift 事件每个（rig, field）只发一次", async () => {
     const events: Array<{ type: string }> = [];
     bus.subscribe((e) => events.push(e));
     const cli = new MissionControlFleetCliCapability({
@@ -69,15 +69,15 @@ describe("MissionControlFleetCliCapability (PL-005 Phase A; 4 sub-clauses of gra
         unsupportedFields: ["recoveryGuidance"],
       }),
     });
-    // 5 rollup calls = 10 (rig, field) observations, but only 2 drift events (one per rig).
+    // 5 次 rollup 调用 = 10 个（rig, field）观测，但只有 2 个 drift 事件（每 rig 一个）。
     for (let i = 0; i < 5; i++) {
       await cli.rollupFleet();
     }
     const driftEvents = events.filter((e) => e.type === "mission_control.cli_drift_detected");
-    expect(driftEvents).toHaveLength(2); // 2 rigs × 1 missing field × ONCE
+    expect(driftEvents).toHaveLength(2); // 2 rig × 1 缺失字段 × ONCE
   });
 
-  it("SUB-CLAUSE 3: resetDriftLogForTest re-arms once-per-session log", async () => {
+  it("子条款 3：resetDriftLogForTest 重新武装 once-per-session 日志", async () => {
     const events: Array<{ type: string }> = [];
     bus.subscribe((e) => events.push(e));
     const cli = new MissionControlFleetCliCapability({
@@ -96,7 +96,7 @@ describe("MissionControlFleetCliCapability (PL-005 Phase A; 4 sub-clauses of gra
     expect(events.filter((e) => e.type === "mission_control.cli_drift_detected")).toHaveLength(4);
   });
 
-  it("SUB-CLAUSE 2: per-rig honesty — different rigs report different capabilities", async () => {
+  it("子条款 2：per-rig 诚实——不同 rig 上报不同能力", async () => {
     const cli = new MissionControlFleetCliCapability({
       db,
       eventBus: bus,
@@ -113,7 +113,7 @@ describe("MissionControlFleetCliCapability (PL-005 Phase A; 4 sub-clauses of gra
     expect(beta?.cliVersionLabel).toBe("head");
   });
 
-  it("rig with active in-progress queue item summarizes activityState=active", async () => {
+  it("带 active in-progress queue item 的 rig 汇总 activityState=active", async () => {
     db.prepare(
       `INSERT INTO queue_items (qitem_id, ts_created, ts_updated, source_session, destination_session, state, priority, body)
        VALUES ('q-1', '2026-05-04T01:00:00Z', '2026-05-04T01:00:00Z', 'a@rig-alpha', 'b@rig-alpha', 'in-progress', 'routine', 'x')`,
@@ -124,7 +124,7 @@ describe("MissionControlFleetCliCapability (PL-005 Phase A; 4 sub-clauses of gra
     expect(alpha?.activityState).toBe("active");
   });
 
-  it("rig with blocked queue item summarizes activityState=blocked + attentionReason", async () => {
+  it("带 blocked queue item 的 rig 汇总 activityState=blocked + attentionReason", async () => {
     db.prepare(
       `INSERT INTO queue_items (qitem_id, ts_created, ts_updated, source_session, destination_session, state, priority, body, blocked_on)
        VALUES ('q-1', '2026-05-04T01:00:00Z', '2026-05-04T01:00:00Z', 'a@rig-alpha', 'b@rig-alpha', 'blocked', 'routine', 'x', 'gate-x')`,
@@ -136,12 +136,11 @@ describe("MissionControlFleetCliCapability (PL-005 Phase A; 4 sub-clauses of gra
     expect(alpha?.attentionReason).toContain("gate-x");
   });
 
-  // R1 fix per PL-005 Phase A guard review (2026-05-04). Production
-  // probe (makeLocalCliCapabilityProbe + LOCAL_CLI_NODE_FIELDS_AT_0_2_0)
-  // honestly reports drift WITHOUT a fake probeRig injection. This is
-  // the production-wired path: the same factory startup.ts uses to
-  // construct the daemon-level fleet capability service.
-  it("R1 PRODUCTION-WIRED probe (makeLocalCliCapabilityProbe): recoveryGuidance NOT in CLI allow-list → reports drift on every rig", async () => {
+  // R1 修复，依 PL-005 Phase A guard review（2026-05-04）。生产 probe
+  //（makeLocalCliCapabilityProbe + LOCAL_CLI_NODE_FIELDS_AT_0_2_0）诚实上报 drift，
+  // 无需 fake probeRig 注入。这是 production-wired 路径：startup.ts 用同一工厂构造
+  // daemon 级 fleet capability service。
+  it("R1 production-wired probe（makeLocalCliCapabilityProbe）：recoveryGuidance 不在 CLI allow-list → 每个 rig 上报 drift", async () => {
     const cli = new MissionControlFleetCliCapability({
       db,
       eventBus: bus,
@@ -158,12 +157,12 @@ describe("MissionControlFleetCliCapability (PL-005 Phase A; 4 sub-clauses of gra
     }
   });
 
-  it("R1: agentActivity IS in LOCAL_CLI_NODE_FIELDS_AT_0_2_0 (audit row 5 ground truth)", () => {
+  it("R1：agentActivity 在 LOCAL_CLI_NODE_FIELDS_AT_0_2_0 中（audit 行 5 ground truth）", () => {
     expect(LOCAL_CLI_NODE_FIELDS_AT_0_2_0.has("agentActivity")).toBe(true);
     expect(LOCAL_CLI_NODE_FIELDS_AT_0_2_0.has("recoveryGuidance")).toBe(false);
   });
 
-  it("R1 production probe: an extended (hypothetical future) CLI allow-list with recoveryGuidance reports zero drift", async () => {
+  it("R1 production probe：扩展（假想未来）CLI allow-list 含 recoveryGuidance 时上报零 drift", async () => {
     const futureFields = new Set([
       ...LOCAL_CLI_NODE_FIELDS_AT_0_2_0,
       "recoveryGuidance",

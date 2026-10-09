@@ -1,28 +1,24 @@
-// PL-019: shared activity-state visual mapping. Used by both RigNode (graph
-// dot) and Explorer (tree-row icon) so the operator sees one consistent
-// palette across surfaces. Design guidance from orch (2026-05-04):
+// PL-019：共享的活动状态视觉映射。RigNode（图上圆点）与 Explorer（树行图标）共用，
+// 让操作者在各界面看到一致的配色。设计指导来自 orch（2026-05-04）：
 //
-//   running     warm green/teal static + very subtle slow pulse
-//   needs_input amber, the one state that catches the eye
-//   idle        calm cool static (blue-gray), no motion
-//   unknown     desaturated gray, no motion
+//   running     温暖的绿/青色静态 + 极轻微的缓慢呼吸
+//   needs_input 琥珀色，唯一需要抢眼的状态
+//   idle        平静冷色静态（蓝灰），无动画
+//   unknown     去饱和灰，无动画
 //
-// startupStatus (failed / attention_required) is a separate signal and stays
-// surfaced via the existing ATTN/FAILED badges on RigNode — activity color
-// answers "is this agent working?", startup color answers "did this agent
-// boot?". They are not the same question.
+// startupStatus（failed / attention_required）是另一条信号，仍由 RigNode 上既有的
+// ATTN/FAILED 角标呈现——活动色回答“这个智能体在工作吗？”，启动色回答“这个智能体启动了吗？”。
+// 二者不是同一个问题。
 
 import type { AgentActivitySummary, SeatIdentityVerdictSummary } from "../hooks/useNodeInventory.js";
 
 export type ActivityState = "running" | "needs_input" | "idle" | "unknown";
 
 /**
- * OPR.0.4.3.19 — a liveness identity verdict of `mismatch`/`pane_missing`
- * down-ranks the seat away from any active/running rendering (the process in
- * the pane is not the registered seat: dead, orphaned, or squatted).
- * `verified`, `tmux_unavailable`, and an absent verdict leave the projection
- * unchanged. Mirrors the daemon `identityVerdictDownranksRunning` gate so the
- * backend and the UI agree on what "no false-green" means.
+ * OPR.0.4.3.19 —— 存活身份判定为 `mismatch`/`pane_missing` 时，把该席位从任何
+ * active/running 渲染中降级（窗格内的进程并非注册席位：已死、孤儿或被抢占）。
+ * `verified`、`tmux_unavailable` 以及缺失判定均不改变投影。与后台服务
+ * identityVerdictDownranksRunning 闸门保持一致，使前后端对“不出现假绿色”口径统一。
  */
 export function identityVerdictDownranksRunning(
   verdict: SeatIdentityVerdictSummary | null | undefined,
@@ -30,18 +26,17 @@ export function identityVerdictDownranksRunning(
   return verdict?.verdict === "mismatch" || verdict?.verdict === "pane_missing";
 }
 
+// 展示用活动标签：状态枚举值保持英文，这里仅映射为面向操作者的中文标签。
 const ACTIVITY_LABELS: Record<ActivityState, string> = {
-  running: "running",
-  needs_input: "needs input",
-  idle: "idle",
-  unknown: "unknown",
+  running: "运行中",
+  needs_input: "待输入",
+  idle: "空闲",
+  unknown: "未知",
 };
 
-// Tailwind utility classes — chosen to fit the existing stone/emerald
-// palette already in use across RigNode and Explorer rather than adding a
-// new brand. running uses emerald-500 (warm green); needs_input uses
-// amber-500 (the eye-catcher); idle uses slate-400 (cool blue-gray); unknown
-// uses stone-300 (desaturated, ignorable).
+// Tailwind 工具类——刻意沿用 RigNode 与 Explorer 既有的 stone/emerald 配色，
+// 不另立品牌色。running 用 emerald-500（暖绿）；needs_input 用 amber-500（抢眼色）；
+// idle 用 slate-400（冷蓝灰）；unknown 用 stone-300（去饱和、可忽略）。
 const ACTIVITY_BG_CLASSES: Record<ActivityState, string> = {
   running: "bg-emerald-500",
   needs_input: "bg-amber-500",
@@ -76,10 +71,9 @@ export function getActivityStateWithSource(
   terminalActive?: boolean | null,
   identityVerdict?: SeatIdentityVerdictSummary | null,
 ): ActivityStateResult {
-  // OPR.0.4.3.19 — the identity verdict overrides output-derived activity. A
-  // mismatched/dead pane must NEVER render active/running, even when the
-  // (orphan's) tmux output makes terminalActive true — that was the visible
-  // false-green. Checked FIRST, before hook/terminal-activity signals.
+  // OPR.0.4.3.19 —— 身份判定优先于输出来源的活动。窗格失配/已死时绝不能渲染为
+  // active/running，哪怕（孤儿进程的）tmux 输出让 terminalActive 为真——那就是此前
+  // 肉眼可见的假绿色。因此在 hook/终端活动信号之前最先检查。
   if (identityVerdictDownranksRunning(identityVerdict)) {
     return { state: "needs_input", source: "none" };
   }
@@ -119,24 +113,20 @@ export function getActivityTextClass(state: ActivityState): string {
   return ACTIVITY_TEXT_CLASSES[state];
 }
 
-// Subtle slow pulse for running (~2s cycle, low-amplitude opacity). Only
-// running animates; needs_input gets a static stronger color (the brief is
-// explicit that needs_input is the one that catches the eye, but we keep it
-// non-flashing so it doesn't compete with itself).
+// 仅 running 做轻微缓慢呼吸（约 2 秒周期、低透明度幅度）；needs_input 用静态更强色
+// （需求里明确 needs_input 要抢眼，但保持不闪烁，避免自相干扰）。
 export function getActivityAnimationClass(state: ActivityState): string {
   if (state === "running") return "activity-pulse-running";
   return "";
 }
 
-// Staleness badge threshold: anything beyond ~30s of staleness gets a small
-// muted indicator, since stale activity samples can mislead. Driver picks
-// the threshold; PL-019 plans for ~30s as the operator-perceptible boundary.
+// 过期角标阈值：超过约 30 秒未更新的活动样本会显示一个小的弱化指示，
+// 因为陈旧的活动样本可能误导判断。阈值由驱动方决定；PL-019 规划约 30 秒作为操作者可感知的边界。
 const STALENESS_THRESHOLD_SECONDS = 30;
 
 export function isActivityStale(activity: AgentActivitySummary | null | undefined): boolean {
   if (!activity) return false;
-  // staleness may not be wired by every probe path; fall back to delta from
-  // sampledAt if it is missing.
+  // 并非每条探测路径都接入了 staleness 字段；缺失时退化为按 sampledAt 计算时间差。
   if (typeof activity.staleness === "number") {
     return activity.staleness > STALENESS_THRESHOLD_SECONDS;
   }
@@ -147,7 +137,7 @@ export function isActivityStale(activity: AgentActivitySummary | null | undefine
   return ageSeconds > STALENESS_THRESHOLD_SECONDS;
 }
 
-// Short ULID tail for hover hints. Full id stays available in the drawer.
+// 用于悬浮提示的 ULID 短尾；完整 id 仍可在抽屉里查看。
 export function shortQitemTail(qitemId: string): string {
   if (qitemId.length <= 8) return qitemId;
   return qitemId.slice(-8);
@@ -164,14 +154,14 @@ export function getTimeInState(activity: AgentActivitySummary | null | undefined
 }
 
 function formatDuration(totalSeconds: number): string {
-  if (totalSeconds < 60) return `${totalSeconds}s`;
+  if (totalSeconds < 60) return `${totalSeconds}秒`;
   const minutes = Math.floor(totalSeconds / 60);
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 60) return `${minutes}分`;
   const hours = Math.floor(minutes / 60);
   const remainMins = minutes % 60;
-  if (hours < 24) return remainMins > 0 ? `${hours}h ${remainMins}m` : `${hours}h`;
+  if (hours < 24) return remainMins > 0 ? `${hours}时${remainMins}分` : `${hours}时`;
   const days = Math.floor(hours / 24);
-  return `${days}d`;
+  return `${days}天`;
 }
 
 export function isHookGradeNeedsInput(result: ActivityStateResult): boolean {
@@ -208,11 +198,11 @@ export function computeActivityRollup(
 
 export function formatRollupLabel(rollup: ActivityRollup): string {
   const parts: string[] = [];
-  if (rollup.working > 0) parts.push(`${rollup.working} working`);
-  if (rollup.idle > 0) parts.push(`${rollup.idle} idle`);
-  if (rollup.needsInputHookGrade > 0) parts.push(`${rollup.needsInputHookGrade} needs you`);
+  if (rollup.working > 0) parts.push(`${rollup.working} 运行中`);
+  if (rollup.idle > 0) parts.push(`${rollup.idle} 空闲`);
+  if (rollup.needsInputHookGrade > 0) parts.push(`${rollup.needsInputHookGrade} 需要你处理`);
   const paneNeedsInput = rollup.needsInput - rollup.needsInputHookGrade;
-  if (paneNeedsInput > 0) parts.push(`${paneNeedsInput} needs input (activity-grade)`);
-  if (rollup.unknown > 0) parts.push(`${rollup.unknown} unknown`);
-  return parts.join(" · ") || "no seats";
+  if (paneNeedsInput > 0) parts.push(`${paneNeedsInput} 待输入（活动级）`);
+  if (rollup.unknown > 0) parts.push(`${rollup.unknown} 未知`);
+  return parts.join(" · ") || "无席位";
 }

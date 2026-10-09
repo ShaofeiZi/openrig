@@ -1,22 +1,19 @@
-// UI Enhancement Pack v0 + Operator Surface Reconciliation v0 — file browser routes.
+// UI 增强包 v0 + 操作员表面对账 v0——文件浏览路由。
 //
-// Endpoints (item 3 + item 4):
-//   GET  /api/files/roots                          allowlist root list
-//   GET  /api/files/list?root=<name>&path=<rel>    directory entries
-//   GET  /api/files/read?root=<name>&path=<rel>    file content + metadata
-//   GET  /api/files/asset?root=<name>&path=<rel>   raw bytes for embedded images
-//   POST /api/files/write                          atomic write (item 4)
+// 端点（item 3 + item 4）：
+//   GET  /api/files/roots                          白名单 root 列表
+//   GET  /api/files/list?root=<name>&path=<rel>    目录条目
+//   GET  /api/files/read?root=<name>&path=<rel>    文件内容 + 元数据
+//   GET  /api/files/asset?root=<name>&path=<rel>   内嵌图片的原始字节
+//   POST /api/files/write                          原子写（item 4）
 //
-// Operator Surface Reconciliation v0 item 5: GET /read caps returned
-// content at FILE_READ_TRUNCATION_BYTES (1 MB; PRD § Item 5;
-// dashboard precedent). Response includes `truncated`, `truncatedAtBytes`,
-// `totalBytes` so the UI can render a truncation marker. The hash is
-// still computed over the FULL file content so atomic-write conflict
-// detection stays honest even when the read was truncated.
+// 操作员表面对账 v0 item 5：GET /read 把返回内容截断到
+// FILE_READ_TRUNCATION_BYTES（1 MB；PRD § Item 5；dashboard 先例）。
+// 响应包含 `truncated`、`truncatedAtBytes`、`totalBytes`，以便 UI 渲染截断标记。
+// 哈希仍基于完整文件内容计算，这样即使读取被截断，原子写冲突检测依然诚实。
 //
-// Route-order discipline (per Phase A R1 SSE lesson): all routes are
-// literal — no `/:param` catchalls — so order doesn't matter for
-// shadowing. Kept sequential for readability.
+// 路由顺序纪律（按 Phase A R1 SSE 教训）：所有路由都是字面量——无 `/:param`
+// 通配——因此顺序对遮蔽无影响。按可读性保持顺序排列。
 
 import { Hono } from "hono";
 import * as fs from "node:fs";
@@ -36,16 +33,14 @@ import {
 } from "../domain/files/file-write-service.js";
 
 export interface FilesRoutesDeps {
-  /** Allowlist resolved at startup; empty array = no roots configured. */
+  /** 启动时解析的白名单；空数组 = 未配置任何 root。 */
   allowlist: AllowlistRoot[];
-  /** Atomic-write service; absent → POST /write returns 503 unconfigured. */
+  /** 原子写服务；缺失 → POST /write 返回 503 未配置。 */
   writeService: FileWriteService | null;
 }
 
-/** Operator Surface Reconciliation v0 item 5: file-read truncation
- *  cap. PRD § Item 5 picks 1 MB. The dashboard
- *  precedent was 200 KB; the v0 ceiling is 1 MB so the operator can
- *  read most workspace canon files in full. */
+/** 操作员表面对账 v0 item 5：文件读取截断上限。PRD § Item 5 取 1 MB。
+ *  dashboard 先例是 200 KB；v0 上限取 1 MB，以便操作员能完整读取大多数工作区 canon 文件。 */
 export { FILE_READ_TRUNCATION_BYTES } from "../domain/files/file-read.js";
 import { readAllowedFile } from "../domain/files/file-read.js";
 
@@ -75,7 +70,7 @@ export function filesRoutes(): Hono {
     if (deps.allowlist.length === 0) {
       return c.json({
         roots: [],
-        hint: "No allowlist roots configured. Set OPENRIG_FILES_ALLOWLIST=name1:/abs/path,name2:/abs/path and restart the daemon.",
+        hint: "未配置白名单 root。请设置 OPENRIG_FILES_ALLOWLIST=name1:/abs/path,name2:/abs/path 并重启后台服务。",
       });
     }
     return c.json({
@@ -97,15 +92,12 @@ export function filesRoutes(): Hono {
         path: relativePath,
         entries: entries
           .map((entry) => {
-            // Skip dotfiles by default unless they're inside an
-            // allowlisted root that's a dot-directory itself (e.g.,
-            // operator allowlists ~/.openrig — the operator clearly
-            // wants to inspect dotfiles in that case). Implementation:
-            // include dotfiles always at v0; the operator has already
-            // expressed inspection intent by allowlisting the root.
+            // 默认跳过 dotfile，除非它们位于一个本身就是点目录的白名单 root 内
+            // （例如操作员把 ~/.openrig 加入白名单——此时操作员显然想检视 dotfile）。
+            // 实现：v0 始终包含 dotfile；操作员通过把该 root 加入白名单已经表达了检视意图。
             const fullPath = path.join(resolved, entry.name);
             let stat: fs.Stats | null = null;
-            try { stat = fs.statSync(fullPath); } catch { /* skip stat-failed */ }
+            try { stat = fs.statSync(fullPath); } catch { /* 跳过 stat 失败 */ }
             return {
               name: entry.name,
               type: entry.isDirectory() ? "dir" as const : entry.isFile() ? "file" as const : "other" as const,
@@ -148,17 +140,15 @@ export function filesRoutes(): Hono {
       const resolved = resolveAllowedFile(deps.allowlist, rootName, relativePath);
       const size = fs.statSync(resolved).size;
       let contentType = inferContentType(resolved);
-      // OPR.0.4.4.20 FR-11: .html renders as text/html ONLY under the explicit
-      // ?render=1 opt-in (text/plain stays the default for every other read).
-      // First-party operator mockups open in a new tab; CSP here is a
-      // documented advisory posture, deliberately NOT a deny-by-default gate.
+      // OPR.0.4.4.20 FR-11：.html 仅在显式 ?render=1 时渲染为 text/html
+      // （其他所有读取仍默认 text/plain）。一方操作员 mockup 在新标签页打开；此处 CSP 是
+      // 文档化的建议姿态，刻意不作为默认拒绝门。
       if (c.req.query("render") === "1" && path.extname(resolved).toLowerCase() === ".html") {
         contentType = "text/html; charset=utf-8";
       }
 
-      // OPR.0.4.4.20 FR-5: byte-range support on THIS route only (iOS Safari
-      // requires 206 + Accept-Ranges for media playback; 200-with-whole-file
-      // is the documented iOS failure mode). Single-range form only.
+      // OPR.0.4.4.20 FR-5：仅在本路由支持 byte-range（iOS Safari 媒体播放需要
+      // 206 + Accept-Ranges；整文件 200 是文档化的 iOS 失败模式）。仅支持单 range 形式。
       const rangeHeader = c.req.header("Range");
       if (rangeHeader) {
         const m = rangeHeader.match(/^bytes=(\d*)-(\d*)$/);
@@ -212,7 +202,7 @@ export function filesRoutes(): Hono {
     if (!deps.writeService) {
       return c.json({
         error: "file_write_service_unavailable",
-        hint: "OPENRIG_FILES_ALLOWLIST is empty or unset; configure at least one root and restart.",
+        hint: "OPENRIG_FILES_ALLOWLIST 为空或未设置；请至少配置一个根目录并重启。",
       }, 503);
     }
     const body = await c.req.json<{
@@ -228,10 +218,10 @@ export function filesRoutes(): Hono {
     if (typeof body.content !== "string") return c.json({ error: "content_required" }, 400);
     if (!body.expectedMtime) return c.json({ error: "expectedMtime_required" }, 400);
     if (!body.expectedContentHash) return c.json({ error: "expectedContentHash_required" }, 400);
-    // P21 I5: files write is a founder-visible surface — the transport header rules when present
-    // (transport:v1); when absent (the browser UI path) the body actor is recorded CLAIMED-era
-    // (identity_provenance null) rather than refused — the named deferral (owner=dev50, d00c468d).
-    const identity = resolveActorWithDeferral(c, { verb: "files write", bodyClaim: body.actor });
+    // P21 I5：files 写是创始人可见表面——transport 头存在时以其为准（transport:v1）；
+    // 缺失时（浏览器 UI 路径）body actor 按 CLAIMED 时代记录（identity_provenance null），
+    // 而非拒绝——这是具名 deferral（owner=dev50，d00c468d）。
+    const identity = resolveActorWithDeferral(c, { verb: "文件写入", bodyClaim: body.actor });
     if (!identity.ok) return identity.response;
     try {
       const result = deps.writeService.writeAtomic({
@@ -299,5 +289,5 @@ function inferContentType(absPath: string): string {
   }
 }
 
-// Re-export for the route-order discipline test in workflow-routes.
+// 为 workflow-routes 中的路由顺序纪律测试而重新导出。
 export { resolveAllowedPath };

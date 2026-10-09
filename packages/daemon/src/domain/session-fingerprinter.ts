@@ -3,7 +3,7 @@ import type { TmuxAdapter } from "../adapters/tmux.js";
 import type { ScannedPane } from "./tmux-discovery-scanner.js";
 import type { RuntimeHint, Confidence } from "./discovery-types.js";
 
-/** Evidence collected during fingerprinting */
+/** 指纹识别期间收集的证据。 */
 export interface FingerprintEvidence {
   layerUsed: number;
   cmuxSignal?: { runtime: string; pid: number };
@@ -12,7 +12,7 @@ export interface FingerprintEvidence {
   configSignal?: { claudeDir: boolean; agentsDir: boolean };
 }
 
-/** Result of fingerprinting a single pane */
+/** 单个 pane 的指纹识别结果。 */
 export interface FingerprintResult {
   runtimeHint: RuntimeHint;
   confidence: Confidence;
@@ -37,11 +37,11 @@ const CODEX_PANE_PATTERNS = [
 ];
 
 /**
- * Four-layer runtime detection pipeline.
- * Layer 0: cmux agent PID (highest confidence)
- * Layer 1: Process tree / active command (high)
- * Layer 2: Pane content heuristics (medium)
- * Layer 3: CWD/config context (low-medium, boost only)
+ * 四层运行时检测流水线。
+ * 第 0 层：cmux 智能体 PID（最高置信度）
+ * 第 1 层：进程树/活动命令（高）
+ * 第 2 层：pane 内容启发式判断（中）
+ * 第 3 层：CWD/配置上下文（中低，仅用于增强）
  */
 export class SessionFingerprinter {
   private cmux: CmuxAdapter;
@@ -55,17 +55,17 @@ export class SessionFingerprinter {
     this.fsExists = deps.fsExists;
   }
 
-  /** Pre-fetch cmux agent PIDs for batch use. Call before fingerprinting multiple panes. */
+  /** 预取 cmux 智能体 PID 供批量使用；识别多个 pane 前调用。 */
   async refreshCmuxSignals(): Promise<void> {
     const result = await this.cmux.queryAgentPIDs();
     this.cachedAgentPIDs = result.ok ? result.data : null;
   }
 
-  /** Fingerprint a single scanned pane. */
+  /** 识别一个已扫描 pane 的运行时指纹。 */
   async fingerprint(pane: ScannedPane): Promise<FingerprintResult> {
     const evidence: FingerprintEvidence = { layerUsed: -1 };
 
-    // --- Layer 0: cmux agent PID ---
+    // --- 第 0 层：cmux 智能体 PID ---
     if (this.cachedAgentPIDs === null) {
       await this.refreshCmuxSignals();
     }
@@ -82,7 +82,7 @@ export class SessionFingerprinter {
       }
     }
 
-    // --- Layer 1: Process tree / active command ---
+    // --- 第 1 层：进程树/活动命令 ---
     if (pane.activeCommand) {
       const cmd = pane.activeCommand.toLowerCase();
 
@@ -109,7 +109,7 @@ export class SessionFingerprinter {
       }
     }
 
-    // --- Layer 2: Pane content heuristics ---
+    // --- 第 2 层：pane 内容启发式判断 ---
     const content = await this.tmux.capturePaneContent(pane.tmuxPane);
     if (content) {
       const lines = content.split("\n");
@@ -133,7 +133,7 @@ export class SessionFingerprinter {
       }
     }
 
-    // --- Layer 3: CWD/config context (boost only) ---
+    // --- 第 3 层：CWD/配置上下文（仅增强）---
     let configBoost: RuntimeHint = "unknown";
     if (pane.cwd) {
       const hasClaudeDir = this.fsExists(`${pane.cwd}/.claude`);
@@ -149,7 +149,7 @@ export class SessionFingerprinter {
       return { runtimeHint: configBoost, confidence: "low", evidence };
     }
 
-    // --- No signal ---
+    // --- 没有信号 ---
     evidence.layerUsed = -1;
     return { runtimeHint: "unknown", confidence: "low", evidence };
   }

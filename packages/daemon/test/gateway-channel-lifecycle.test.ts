@@ -33,8 +33,8 @@ function fixture() {
   return { home, app, restart, list, post, receipts };
 }
 
-describe("human channel lifecycle at the daemon door", () => {
-  it("preserves disabled state when the existing backlog cannot be resolved", async () => {
+describe("后台服务入口处的人类通道生命周期", () => {
+  it("现有 backlog 无法解决时保持 disabled 状态", async () => {
     const f = fixture();
     writeFileSync(join(f.home, "gateway", "humans.generated.yaml"), "invalid projection");
     const response = await f.post("enable");
@@ -43,7 +43,7 @@ describe("human channel lifecycle at the daemon door", () => {
     expect(f.restart).not.toHaveBeenCalled();
     expect(f.receipts().at(-1)).toMatchObject({ effect: "failed", after: null });
   });
-  it("serializes concurrent enables so a repeat cannot reseed newly pending work", async () => {
+  it("串行化并发启用，使重复调用无法重新播种新产生的待处理工作", async () => {
     const f = fixture();
     const responses = await Promise.all([f.post("enable"), f.post("enable")]);
     expect(responses.map((response) => response.status)).toEqual([200, 200]);
@@ -51,7 +51,7 @@ describe("human channel lifecycle at the daemon door", () => {
     expect(f.list).toHaveBeenCalledTimes(1);
     expect(f.receipts().filter((row) => row.effect !== "started").map((row) => row.effect)).toEqual(["applied", "no-op"]);
   });
-  it("attributes changes, distinguishes repeats, and requires a shutdown reason before changing state", async () => {
+  it("记录变更归属、区分重复操作，并在改变状态前要求关闭原因", async () => {
     const f = fixture();
     expect((await f.post("enable", { actor: "other@rig", reason: "resume delivery" })).status).toBe(200);
     expect(loadConfig(f.home).enabled).toBe(true);
@@ -70,7 +70,7 @@ describe("human channel lifecycle at the daemon door", () => {
     expect(JSON.stringify(rows)).not.toMatch(/private-pointer|C-private|other@rig/);
   });
 
-  it("requires a recordable actor without inventing an identity", async () => {
+  it("要求可记录的 actor，且不臆造身份", async () => {
     const f = fixture();
     const response = await f.app.request("/slack/enable", { method: "POST", body: "{}", headers: { "content-type": "application/json" } });
     expect(response.status).toBe(400);

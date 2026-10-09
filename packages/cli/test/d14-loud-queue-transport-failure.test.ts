@@ -1,5 +1,5 @@
-// D14 (INTAKE 5674431c; accept-and-drop family #6) — a queue write whose transport
-// THROWS must fail LOUD (classified stderr + nonzero exit), never exit 1 silently.
+// D14（INTAKE 5674431c；accept-and-drop 家族 #6）——一次 transport 抛错的
+// queue 写入必须大声失败（分类 stderr + 非零退出），绝不静默退出 1。
 // Live specimen: `rig queue create --host <down-host>` exited 1 with ZERO output.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { queueCommand, type QueueDeps } from "../src/commands/queue.js";
@@ -18,7 +18,7 @@ describe("D14 — queue transport failures are LOUD", () => {
   let errSpy: ReturnType<typeof vi.spyOn>;
   beforeEach(() => {
     // P21 HERMETIC: the queue verb under test derives the actor from the seat env; stub a deterministic
-    // seat so an env-less harness reaches the transport-failure path instead of aborting pre-POST.
+    // seat，使无 env harness 走到 transport 失败路径，而非 POST 前中止。
     vi.stubEnv("OPENRIG_SESSION_NAME", "seat@rig");
     errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     process.exitCode = undefined;
@@ -36,8 +36,8 @@ describe("D14 — queue transport failures are LOUD", () => {
         post: vi.fn(async () => { throw new DaemonTimeoutError("POST /api/queue/create timed out after 5000ms"); }),
       }) as unknown as ReturnType<QueueDeps["clientFactory"]>,
     };
-    // B8 supersession (reconciles D14 with the response-integrity render authority):
-    // withClient prints the D14 context lines then RETHROWS; the shared runProgram
+    // B8 取代（调和 D14 与 response-integrity 渲染权威）：
+    // withClient 打印 D14 上下文行后重新抛出；共享 runProgram
     // render owns the 3-part + exit. This test now drives the full layered path.
     const { runProgram } = await import("../src/cli-error.js");
     const { Command } = await import("commander");

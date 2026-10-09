@@ -5,10 +5,10 @@ import { join } from "node:path";
 import { HistoryQuery } from "../src/domain/history-query.js";
 
 const throwExec = async () => {
-  throw new Error("must not shell out when the session file is absent");
+  throw new Error("会话文件缺失时不得调用 shell");
 };
 
-describe("HistoryQuery.searchSession — per-session JSONL by token (L2)", () => {
+describe("HistoryQuery.searchSession——按令牌查询逐会话 JSONL（L2）", () => {
   let projectsRoot: string;
   beforeEach(() => {
     projectsRoot = mkdtempSync(join(tmpdir(), "rigask-proj-"));
@@ -23,17 +23,16 @@ describe("HistoryQuery.searchSession — per-session JSONL by token (L2)", () =>
     writeFileSync(join(dir, `${token}.jsonl`), lines.join("\n") + "\n", "utf-8");
   }
 
-  it("locates the session JSONL by token (under any encoded-cwd dir) and returns content hits", async () => {
+  it("按令牌定位任意编码 cwd 目录下的会话 JSONL，并返回内容命中", async () => {
     const token = "abc-123-session";
     writeSessionJsonl("-Users-me-proj", token, [
-      JSON.stringify({ type: "user", text: "deploy the gateway" }),
-      JSON.stringify({ type: "assistant", text: "the SECRET_MARKER lives here" }),
+      JSON.stringify({ type: "user", text: "部署网关" }),
+      JSON.stringify({ type: "assistant", text: "SECRET_MARKER 位于此处" }),
     ]);
 
-    // exec stands in for rg/grep — assert it is invoked against the LOCATED file,
-    // and that its output is parsed into excerpts.
+    // exec 代替 rg/grep——断言它针对已定位文件调用，且其输出被解析为摘录。
     const execSpy = vi.fn(async () => ({
-      stdout: '{"type":"assistant","text":"the SECRET_MARKER lives here"}\n',
+      stdout: '{"type":"assistant","text":"SECRET_MARKER 位于此处"}\n',
       exitCode: 0,
     }));
 
@@ -44,13 +43,13 @@ describe("HistoryQuery.searchSession — per-session JSONL by token (L2)", () =>
     expect(res.token).toBe(token);
     expect(res.excerpts.some((e) => e.includes("SECRET_MARKER"))).toBe(true);
     expect(res.insufficient).toBe(false);
-    // exec ran against the located <token>.jsonl file
+    // exec 针对已定位的 <token>.jsonl 文件运行
     expect(execSpy).toHaveBeenCalled();
     const argv = execSpy.mock.calls[0]![1] as string[];
     expect(argv.some((a) => a.endsWith(`${token}.jsonl`))).toBe(true);
   });
 
-  it("honest not-found (session_not_found) when the token has no session file", async () => {
+  it("令牌没有会话文件时如实返回未找到（session_not_found）", async () => {
     const hq = new HistoryQuery({ transcriptsRoot: "/unused", exec: throwExec, claudeProjectsRoot: projectsRoot });
     const res = await hq.searchSession("nonexistent-token", "anything");
 

@@ -59,7 +59,7 @@ function seedItem(db: Database.Database, id: string, opts: {
   );
 }
 
-describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
+describe("OPR.0.4.0.28 — 队列列表紧凑 + 范围默认", () => {
   let db: Database.Database;
   let repo: QueueRepository;
 
@@ -72,7 +72,7 @@ describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
     db.close();
   });
 
-  it("AC-1: compact list is materially smaller than full list", () => {
+  it("AC-1：紧凑列表比完整列表小得多", () => {
     for (let i = 0; i < 20; i++) {
       seedItem(db, `q-${i}`, {
         source: `seat-${i % 3}@rig-a`,
@@ -92,7 +92,7 @@ describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
     expect(compactSize).toBeLessThan(fullSize / 3);
   });
 
-  it("AC-2: --all parity — full unscoped list matches today's default", () => {
+  it("AC-2: --all parity — 完整的无范围列表匹配今天的默认值", () => {
     for (let i = 0; i < 5; i++) {
       seedItem(db, `q-${i}`, {
         source: `seat-${i}@rig-${i}`,
@@ -106,10 +106,10 @@ describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
     expect(allItems[0]!.chainOfRecord).toBeDefined();
   });
 
-  it("AC-3: caller-scoped default surfaces caller items even when older than fleet LIMIT", () => {
+  it("AC-3：呼叫者范围内的默认显示呼叫者项目，即使早于队列 LIMIT", () => {
     const callerSession = "dev1-driver@openrig-delivery";
 
-    // Caller's OLD item (created first, would be beyond LIMIT if unscoped)
+    // 调用方 OLD item（先创建，若不 scoped 会超出 LIMIT）
     seedItem(db, "q-caller-old", {
       source: "orch-lead@openrig-delivery",
       destination: callerSession,
@@ -117,7 +117,7 @@ describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
       tsCreated: "2026-06-01T00:00:00.000Z",
     });
 
-    // 10 NEWER fleet items from other rigs (would push caller item beyond LIMIT 5)
+    // 来自其他 rig 的 10 个更新 fleet item（会把调用方 item 推出 LIMIT 5）
     for (let i = 0; i < 10; i++) {
       seedItem(db, `q-fleet-${i}`, {
         source: `seat-${i}@other-rig`,
@@ -127,18 +127,18 @@ describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
       });
     }
 
-    // Unscoped with small limit — caller item is dropped
+    // 小 limit 不 scoped——调用方 item 被丢弃
     const unscoped = repo.list({ limit: 5 });
     const unscopedIds = unscoped.map((item) => item.qitemId);
     expect(unscopedIds).not.toContain("q-caller-old");
 
-    // Scoped with same small limit — caller item appears (WHERE before LIMIT)
+    // 同样小 limit scoped——调用方 item 出现（WHERE 先于 LIMIT）
     const scoped = repo.list({ asSession: callerSession, limit: 5 });
     const scopedIds = scoped.map((item) => item.qitemId);
     expect(scopedIds).toContain("q-caller-old");
   });
 
-  it("AC-3 / S4b: destination-only counts obligations while asSession keeps the authored union", () => {
+  it("AC-3 / S4b：仅目的地计算义务，而 asSession 保留编写的联合", () => {
     const callerSession = "dev1-driver@openrig-delivery";
 
     seedItem(db, "q-to-me", {
@@ -169,7 +169,7 @@ describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
     expect(owned.map((item) => item.qitemId)).toEqual(["q-to-me"]);
   });
 
-  it("AC-4: compact marks content fields as elided instead of posing as empty content", () => {
+  it("AC-4：紧凑将内容字段标记为已删除而不是冒充空内容", () => {
     seedItem(db, "q-1", {
       source: "a@rig",
       destination: "b@rig",
@@ -197,7 +197,7 @@ describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
     expect(item.fieldsElided).toEqual(["body", "summary", "evidenceRef", "humanDetail", "waiting"]);
   });
 
-  it("distinguishes a genuinely empty full item from an elided compact item", () => {
+  it("区分真正空的完整项目和省略的紧凑项目", () => {
     seedItem(db, "q-empty", {
       source: "a@rig",
       destination: "b@rig",
@@ -216,7 +216,7 @@ describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
     expect(full.fieldsElided).toBeUndefined();
   });
 
-  it("AC-5: existing filters compose with asSession", () => {
+  it("AC-5：现有过滤器与 asSession 组合", () => {
     const callerSession = "dev1-driver@openrig-delivery";
 
     seedItem(db, "q-pending", {
@@ -238,7 +238,7 @@ describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
     expect(scopedPending[0]!.qitemId).toBe("q-pending");
   });
 
-  it("active-first ordering: pending/in-progress before done items", () => {
+  it("主动优先排序：在已完成的项目之前待处理/正在进行中", () => {
     seedItem(db, "q-done-old", {
       source: "a@rig",
       destination: "b@rig",
@@ -257,7 +257,7 @@ describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
     expect(items[1]!.qitemId).toBe("q-done-old");
   });
 
-  it("daemon API back-compat: no new params = full unscoped (today's behavior)", () => {
+  it("后台服务 API 向后兼容：没有新参数 = 完全无作用域（今天的行为）", () => {
     seedItem(db, "q-1", {
       source: "a@rig",
       destination: "b@rig",
@@ -274,7 +274,7 @@ describe("OPR.0.4.0.28 — queue list compact + scope-default", () => {
   });
 });
 
-describe("Slice 15 — findOverdue rig-scoped + bounded + compact (finding 2)", () => {
+describe("切片 15 — findOverdue rig-scoped + 有界 + 紧凑（发现 2）", () => {
   let db: Database.Database;
   let repo: QueueRepository;
   const PAST = "2020-01-01T00:00:00.000Z";
@@ -291,7 +291,7 @@ describe("Slice 15 — findOverdue rig-scoped + bounded + compact (finding 2)", 
   beforeEach(() => { db = createTestDb(); repo = new QueueRepository(db); });
   afterEach(() => { db.close(); });
 
-  it("unscoped returns all overdue in-progress items (watchdog behavior preserved)", () => {
+  it("unscoped 返回所有过期的正在进行的项目（保留看门狗行为）", () => {
     seedOverdue("q1", "rig-a");
     seedOverdue("q2", "rig-b");
     seedOverdue("q3", "rig-a", { due: FUTURE }); // not past deadline
@@ -299,18 +299,18 @@ describe("Slice 15 — findOverdue rig-scoped + bounded + compact (finding 2)", 
     expect(repo.findOverdue({ now: NOW }).map((i) => i.qitemId).sort()).toEqual(["q1", "q2"]);
   });
 
-  it("rig scope filters to a single rig", () => {
+  it("工作组范围过滤到单个工作组", () => {
     seedOverdue("q1", "rig-a");
     seedOverdue("q2", "rig-b");
     expect(repo.findOverdue({ now: NOW, rig: "rig-a" }).map((i) => i.qitemId)).toEqual(["q1"]);
   });
 
-  it("limit bounds the result set", () => {
+  it("limit 限制结果集", () => {
     for (let i = 0; i < 5; i++) seedOverdue(`q${i}`, "rig-a");
     expect(repo.findOverdue({ now: NOW, limit: 2 })).toHaveLength(2);
   });
 
-  it("compact omits body/summary/evidenceRef; full retains the body", () => {
+  it("紧凑省略正文/摘要/证据参考；完整保留身体", () => {
     seedOverdue("q1", "rig-a", { body: "SECRET-LONG-BODY-CONTENT" });
     const compact = repo.findOverdue({ now: NOW, compact: true })[0]!;
     expect(compact.body).toBe("");

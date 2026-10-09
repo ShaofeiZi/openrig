@@ -1,12 +1,11 @@
-// PL-005 Phase A: Mission Control action log (append-only).
+// PL-005 阶段 A：Mission Control 操作日志（只追加）。
 //
-// Owns inserts into mission_control_actions. Append-only at the API
-// surface: only `record()` is exposed. UPDATE/DELETE/remove are not
-// methods — direct SQL could mutate but is a contract violation
-// enforced at this domain boundary (per PRD § Q5 + slice IMPL).
+// 负责向 mission_control_actions 插入记录。API 表面只允许追加：只暴露 `record()`，
+// 不提供 UPDATE/DELETE/remove 方法。直接 SQL 虽可修改数据，但违反此领域边界强制执行的
+// 契约（依据 PRD § Q5 + slice IMPL）。
 //
-// Pattern mirrors PL-004 Phase C's WatchdogHistoryLog and Phase A's
-// QueueTransitionLog and Phase D's WorkflowStepTrailLog.
+// 该模式镜像 PL-004 阶段 C 的 WatchdogHistoryLog、阶段 A 的 QueueTransitionLog
+// 以及阶段 D 的 WorkflowStepTrailLog。
 
 import type Database from "better-sqlite3";
 import { ulid } from "ulid";
@@ -19,9 +18,9 @@ export const MISSION_CONTROL_VERBS = [
   "hold",
   "drop",
   "handoff",
-  // OPR.0.4.4.19 FR-7 — resolve: the human's on-surface answer to a leg-1
-  // parked qitem (state=blocked on a human seat). NON-CLOSURE: blocked →
-  // in-progress only; the decision text lands in queue_transitions.
+  // OPR.0.4.4.19 FR-7——resolve：人工在表面上对 leg-1 停放 qitem 的回答
+  //（人工席位上的 state=blocked）。非关闭操作：只能从 blocked → in-progress；
+  // 决策文本写入 queue_transitions。
   "resolve",
 ] as const;
 
@@ -39,8 +38,8 @@ export interface MissionControlActionRecordInput {
   notifyAttempted?: boolean;
   notifyResult?: string | null;
   auditNotes?: Record<string, unknown> | null;
-  /** P21 era-stamp: the identity provenance of `actorSession`. The transport chokepoint writes
-   *  `transport:v1`; absent/null = claimed-era (pre-verification), never re-labeled. */
+  /** P21 时代戳：`actorSession` 的身份来源。传输关口写入 `transport:v1`；
+   *  缺失/null 表示 claimed 时代（验证前），绝不重新标注。 */
   identityProvenance?: string | null;
 }
 
@@ -87,8 +86,8 @@ export class MissionControlActionLogError extends Error {
   }
 }
 
-/** Defensive additive-column detect: a harness whose db predates migration 065 lacks
- *  identity_provenance, so the writer degrades (omits it) instead of throwing. */
+/** 防御性检测增量列：早于迁移 065 的测试工具数据库没有 identity_provenance，
+ *  因此写入器会降级为省略该字段，而不是抛错。 */
 function hasIdentityProvenanceColumn(db: Database.Database): boolean {
   try {
     return db.prepare("PRAGMA table_info(mission_control_actions)").all()
@@ -105,16 +104,15 @@ export class MissionControlActionLog {
   }
 
   /**
-   * Append an action record. Validates verb-specific required fields
-   * (annotate → annotation; hold/drop → reason). Designed to compose
-   * inside an outer caller-managed transaction (used by the
-   * write-contract for the atomic 4-step handoff).
+   * 追加一条操作记录。校验动词专属必填字段
+   *（annotate → annotation；hold/drop → reason）。设计为可在调用方管理的外层事务中组合，
+   * 原子四步移交的写入契约会使用此能力。
    */
   record(input: MissionControlActionRecordInput): MissionControlActionEntry {
     if (!MISSION_CONTROL_VERBS.includes(input.actionVerb)) {
       throw new MissionControlActionLogError(
         "verb_unknown",
-        `unknown action_verb '${input.actionVerb}'; Phase A v1 supports: ${MISSION_CONTROL_VERBS.join(", ")}`,
+        `未知 action_verb '${input.actionVerb}'；阶段 A v1 支持：${MISSION_CONTROL_VERBS.join(", ")}`,
         { actionVerb: input.actionVerb, supported: [...MISSION_CONTROL_VERBS] },
       );
     }

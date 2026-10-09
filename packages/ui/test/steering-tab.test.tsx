@@ -1,6 +1,6 @@
-// OPR.0.4.1.17 — Mission Steering tab. Panel 1 = STEERING.md projection via /api/steering;
-// Panel 2 = MISSION_BRIEF.md projection (slice-16 pinned schema). Read-only. TDD against the
-// 8 ACs incl. the projection rules (exact-header match, unknown-after-known, missing→dash).
+// OPR.0.4.1.17——Mission Steering tab。Panel 1 = 经 /api/steering 的 STEERING.md 投影；
+// Panel 2 = MISSION_BRIEF.md 投影（slice-16 锁定 schema）。只读。按
+// 8 个 AC（含投影规则：精确 header 匹配、unknown-after-known、missing→dash）TDD。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
@@ -26,8 +26,8 @@ const STEERING_PAYLOAD = {
   unavailableSources: [],
 };
 
-// Populated brief: 5 of 6 canonical sections (omits "## Pointers" → missing→dash) + an
-// unknown "## Risks" (→ render AFTER the known sections, never dropped).
+// 已填 brief：6 个规范段中 5 个（缺 "## Pointers" → missing→dash）+ 一个
+// 未知 "## Risks"（→ 渲染在已知段之后，绝不丢弃）。
 const BRIEF_MD = [
   "# release-0.4.1 — Brief",
   "_The workspace observability overhaul._",
@@ -60,7 +60,7 @@ function routeFetch(opts: RouteOpts = {}) {
   const { steering = STEERING_PAYLOAD, steeringStatus = 200, briefContent = BRIEF_MD } = opts;
   return (input: unknown) => {
     const url = String(input);
-    // MH-2: the selection-known files gate needs the hosts payload (local).
+    // MH-2：selection-known files 门禁需要 hosts payload（local）。
     if (url.includes("/api/hosts")) {
       return Promise.resolve(jsonResponse({ ownName: "localhost", selected: "local", hosts: [] }));
     }
@@ -99,7 +99,7 @@ describe("OPR.0.4.1.17 — Steering tab", () => {
   beforeEach(() => mockFetch.mockReset());
   afterEach(() => cleanup());
 
-  // --- Panel 1: STEERING.md ---
+  // --- Panel 1：STEERING.md ---
   it("AC-1: Panel 1 renders the STEERING.md content from /api/steering", async () => {
     mockFetch.mockImplementation(routeFetch());
     renderTab();
@@ -127,7 +127,7 @@ describe("OPR.0.4.1.17 — Steering tab", () => {
     await waitFor(() => expect(screen.getByTestId("steering-panel-empty")).toBeTruthy());
   });
 
-  // --- Panel 2: MISSION_BRIEF.md (slice-16 contract) ---
+  // --- Panel 2：MISSION_BRIEF.md（slice-16 契约）---
   it("AC-4: Panel 2 renders the canonical brief sections with content", async () => {
     mockFetch.mockImplementation(routeFetch());
     renderTab();
@@ -162,7 +162,7 @@ describe("OPR.0.4.1.17 — Steering tab", () => {
     await waitFor(() => expect(screen.getByTestId("brief-panel-empty")).toBeTruthy());
   });
 
-  // --- layout ---
+  // --- 布局 ---
   it("AC-6: panels stack Steering ABOVE Brief", async () => {
     mockFetch.mockImplementation(routeFetch());
     renderTab();

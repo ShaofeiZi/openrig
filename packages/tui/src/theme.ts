@@ -1,9 +1,9 @@
-// Theme layer — the LOCKED mockup's visual treatment (baseline tarball
-// d3f3bf9c, artifact e99e3b32 .tui CSS) mapped to terminal color, with sane
-// degradation: truecolor renders the exact mockup palette, 256-color the
-// nearest xterm cubes, 16-color the classic SGR set, and none (NO_COLOR /
-// --no-color / dumb term) renders plain text. Presentation only — nothing
-// here touches layout, state, or the resolver.
+// 主题层——锁定 mockup 的视觉处理（基线 tarball
+// d3f3bf9c，artifact e99e3b32 .tui CSS）映射到终端颜色，带有合理
+// 降级：真彩色渲染精确 mockup 调色板，256 色最近
+// xterm 立方体，16 色经典 SGR 集，none（NO_COLOR /
+// --no-color / dumb term）渲染纯文本。仅展示——
+// 此处不触及布局、状态或解析器。
 
 export type ColorMode = "truecolor" | "256" | "16" | "none";
 
@@ -17,45 +17,45 @@ export function detectColorMode(env: NodeJS.ProcessEnv = process.env): ColorMode
   return "16";
 }
 
-/** Semantic tokens — named for meaning, not color, so views stay honest. */
+/** 语义 token——按意义命名而非颜色，使视图保持诚实。 */
 export type Token =
-  | "accent" // G2 selection/links/active blue
-  | "accentBright" // G2 tree/link emphasis
-  | "warn" // blocked/needs-you/alerts (mockup amber #e6b56e)
-  | "error" // failed/error states
-  | "ok" // healthy/running states
-  | "info" // informational/blocked-class accent (51-09 pulse mock #8fb8d8 — info-class, reusable)
-  | "dim" // secondary text (mockup #6d7480)
-  | "bright" // primary emphasis
-  | "chrome" // borders/rules
-  | "selection" // G2 selected-row wash
-  // S19 MR2 — web-identical runtime-mark colors (RuntimeMark.tsx values);
-  // 16-color values are the SHIPPED degrade set verified through QA at the
-  // round-7 seal (superseded-comment cleanup per QA LOCKED-SCOPE-CLEAR at
-  // 5348bb66 INFO — behavior and pins were already on these locked values)
-  // S19 MR3 — activity ROLES (values = PLACEHOLDERS pending the founder
-  // palette pick; the roles are the contract, pins are value-agnostic)
+  | "accent" // G2 选择/链接/激活蓝色
+  | "accentBright" // G2 树/链接强调
+  | "warn" // 阻塞/待关注/警报（mockup 琥珀色 #e6b56e）
+  | "error" // 失败/错误状态
+  | "ok" // 健康/运行中状态
+  | "info" // 信息/阻塞类强调（51-09 pulse mock #8fb8d8 —— 信息类，可复用）
+  | "dim" // 次要文本（mockup #6d7480）
+  | "bright" // 主要强调
+  | "chrome" // 边框/规则线
+  | "selection" // G2 选中行洗涤
+  // S19 MR2——web 相同的运行时标记颜色（RuntimeMark.tsx 值）；
+  // 16 色值是已发布降级集，在
+  // round-7 封印时通过 QA 验证（根据 QA LOCKED-SCOPE-CLEAR 在
+  // 5348bb66 INFO 的废弃注释清理——行为和引脚已在这些锁定值上）
+  // S19 MR3——活动角色（值 = 占位符，等待创建者
+  // 调色板选择；角色是契约，引脚与值无关）
   | "actActive"
   | "actIdle"
   | "actDetached"
   | "actAttention"
-  | "clawd" // clawd body #ad6755
-  | "clawdEye" // clawd eyes #181818
-  | "markInk" // codex `>_` ink (light)
-  | "markBg" // terminal mark dark cell
-  | "codexBlue"; // OFFICIAL sampled #6867aa (picks-of-record provenance)
+  | "clawd" // clawd 主体 #ad6755
+  | "clawdEye" // clawd 眼睛 #181818
+  | "markInk" // codex `>_` 墨色（浅色）
+  | "markBg" // 终端标记暗色单元格
+  | "codexBlue"; // 官方采样 #6867aa（记录选择的来源）
 
-// [truecolor rgb, 256 index, 16-color SGR]
+// [truecolor rgb, 256 索引, 16 色 SGR]
 const PALETTE: Record<Token, [[number, number, number], number, number]> = {
   accent: [[111, 168, 255], 111, 94],
   accentBright: [[154, 194, 255], 153, 96],
   warn: [[244, 190, 92], 221, 33],
   error: [[224, 108, 117], 167, 31],
   ok: [[152, 195, 121], 108, 32],
-  info: [[143, 184, 216], 110, 94], // #8fb8d8 exact; xterm256 110, 16-color bright-blue
+  info: [[143, 184, 216], 110, 94], // #8fb8d8 精确；xterm256 110, 16 色亮蓝
   dim: [[109, 116, 128], 243, 90],
   bright: [[232, 234, 240], 254, 97],
-  // S19 MR5b: one-step contrast bump (founder: 'a little more noticeable')
+  // S19 MR5b：一步对比度提升（创建者：'更显眼一点'）
   chrome: [[78, 105, 145], 60, 90],
   selection: [[34, 52, 82], 236, 40],
   actActive: [[152, 195, 121], 108, 32],
@@ -70,7 +70,7 @@ const PALETTE: Record<Token, [[number, number, number], number, number]> = {
 };
 
 export interface Style {
-  /** wrap text in the token's SGR (plus bold/inverse); identity in "none" mode */
+  /** 用 token 的 SGR 包装文本（加粗/反色）；"none" 模式下为恒等 */
   paint(token: Token, text: string, opts?: { bold?: boolean; inverse?: boolean; bg?: Token; blink?: boolean }): string;
   readonly mode: ColorMode;
 }
@@ -90,7 +90,7 @@ export function createStyle(mode: ColorMode = detectColorMode()): Style {
       const [brgb, b256, bBasic] = PALETTE[opts.bg];
       if (mode === "truecolor") parts.push(`48;2;${brgb[0]};${brgb[1]};${brgb[2]}`);
       else if (mode === "256") parts.push(`48;5;${b256}`);
-      // 16-color: fg code + 10 = the matching bg code (30-37→40-47, 90-97→100-107)
+      // 16 色：fg 代码 + 10 = 匹配的 bg 代码（30-37→40-47, 90-97→100-107）
       else parts.push(String(bBasic + 10));
     }
     return `\x1b[${parts.join(";")}m`;
@@ -106,8 +106,8 @@ export function createStyle(mode: ColorMode = detectColorMode()): Style {
 
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
 
-/** The stylize invariant: stripping a styled line returns the plain line —
- * styling can never change layout, widths, or hit coordinates. */
+/** stylize 不变量：剥离样式行返回纯行——
+ *  样式绝不改变布局、宽度或命中坐标。 */
 export function stripAnsi(text: string): string {
   return text.replace(ANSI_RE, "");
 }

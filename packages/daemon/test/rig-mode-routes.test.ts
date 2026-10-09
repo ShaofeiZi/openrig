@@ -1,23 +1,20 @@
-// Slice 09 — rig-mode HTTP route tests.
+// Slice 09——rig-mode HTTP route 测试。
 //
-// HG-4 + HG-SAFE anchored at the route layer:
-//   - PUT/DELETE require operator bearer when configured (HG-4 — agent
-//     path cannot mutate).
-//   - PUT validates the record through the same store validator; an
-//     auto-accept posture is rejected (HG-SAFE runtime defense).
-//   - GET endpoints are open (within the daemon's existing posture).
-//   - resolveEffective returns more-specific binding (HG-3).
-//   - source grep: route file contains no permission-allowlist / auth
-//     / tmux / lifecycle identifier (HG-SAFE source-level).
+// 在 route 层锁定 HG-4 + HG-SAFE：
+//   - 配置 bearer 后，PUT/DELETE 要求 operator bearer（HG-4，agent 路径不能修改）。
+//   - PUT 通过同一个 store validator 验证 record；拒绝 auto-accept posture
+//     （HG-SAFE runtime 防御）。
+//   - GET 端点在 daemon 现有 posture 内保持开放。
+//   - resolveEffective 返回更具体的 binding（HG-3）。
+//   - 源码 grep：route 文件不含 permission-allowlist / auth / tmux / lifecycle 标识符
+//     （HG-SAFE 源码级约束）。
 //
-// BLOCKING-1 fix (guard verdict qitem-20260518043346): PUT body shape
-// is `{ mode, record }`; record itself is the 10-field schema with no
-// `mode` inside.
+// BLOCKING-1 修复（guard 裁定 qitem-20260518043346）：PUT body 形状为
+// `{ mode, record }`；record 自身是 10 字段 schema，内部没有 `mode`。
 //
-// BLOCKING-2 fix (guard verdict qitem-20260518043346): the route
-// REJECTS `global_host` with a non-empty qualifier as
-// `qualifier_forbidden` on GET / PUT / DELETE. No hidden scope
-// inference; no global-host mutation via a stray path segment.
+// BLOCKING-2 修复（guard 裁定 qitem-20260518043346）：GET / PUT / DELETE 均将带非空
+// qualifier 的 `global_host` 拒绝为 `qualifier_forbidden`。不做隐藏 scope 推断，也不能因
+// 路径中误加 segment 而修改 global-host。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -58,7 +55,7 @@ function buildApp(db: Database.Database, bearer: string | null): { app: Hono; st
   return { app, store };
 }
 
-describe("rig-mode HTTP routes — slice 09", () => {
+describe("rig-mode HTTP route——slice 09", () => {
   let db: Database.Database;
 
   beforeEach(() => {
@@ -69,7 +66,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     db.close();
   });
 
-  it("GET /defaults returns the 6×7 + default-scope + DEFAULT_STALE_RULE", async () => {
+  it("GET /defaults 返回 6×7 配置、default-scope 与 DEFAULT_STALE_RULE", async () => {
     const { app } = buildApp(db, null);
     const res = await app.request("/api/rig-mode/defaults");
     expect(res.status).toBe(200);
@@ -83,7 +80,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(body.defaultStaleRule).toBe("re_confirm_on_long_gap");
   });
 
-  it("HG-4: PUT requires the operator bearer when configured", async () => {
+  it("HG-4：配置后 PUT 要求 operator bearer", async () => {
     const { app } = buildApp(db, "operator-token");
     const res = await app.request("/api/rig-mode/bindings/qitem/q-1", {
       method: "PUT",
@@ -93,7 +90,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(res.status).toBe(401);
   });
 
-  it("HG-4 (BLOCKING-1): PUT accepts { mode, record } and round-trips via GET", async () => {
+  it("HG-4（BLOCKING-1）：PUT 接受 { mode, record } 并可通过 GET 往返读取", async () => {
     const { app } = buildApp(db, "operator-token");
     const put = await app.request("/api/rig-mode/bindings/qitem/q-1", {
       method: "PUT",
@@ -107,7 +104,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     const putBodyResp = (await put.json()) as { binding: { mode: string; setBy: string; record: Record<string, unknown> } };
     expect(putBodyResp.binding.setBy).toBe("operator");
     expect(putBodyResp.binding.mode).toBe("debug");
-    // The record itself does NOT carry `mode`.
+    // record 自身不携带 `mode`。
     expect(putBodyResp.binding.record.mode).toBeUndefined();
 
     const get = await app.request("/api/rig-mode/bindings/qitem/q-1");
@@ -117,7 +114,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(getBody.binding.record.mode).toBeUndefined();
   });
 
-  it("BLOCKING-1: PUT body missing `mode` is rejected with body_shape_invalid", async () => {
+  it("BLOCKING-1：缺少 `mode` 的 PUT body 以 body_shape_invalid 拒绝", async () => {
     const { app } = buildApp(db, null);
     const res = await app.request("/api/rig-mode/bindings/qitem/q-1", {
       method: "PUT",
@@ -129,7 +126,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(body.error).toBe("body_shape_invalid");
   });
 
-  it("BLOCKING-1: PUT body that smuggles `mode` inside record is rejected as Unknown field", async () => {
+  it("BLOCKING-1：在 record 中夹带 `mode` 的 PUT body 以未知字段拒绝", async () => {
     const { app } = buildApp(db, null);
     const res = await app.request("/api/rig-mode/bindings/qitem/q-1", {
       method: "PUT",
@@ -139,10 +136,10 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string; errors?: string[] };
     expect(body.error).toBe("validation_failed");
-    expect(body.errors?.some((e) => e.includes(`Unknown field "mode"`))).toBe(true);
+    expect(body.errors?.some((e) => e.includes(`未知字段 "mode"`))).toBe(true);
   });
 
-  it("HG-SAFE: PUT with permission_prompt_posture='auto_accept' is rejected (runtime defense)", async () => {
+  it("HG-SAFE：拒绝 permission_prompt_posture='auto_accept' 的 PUT（runtime 防御）", async () => {
     const { app } = buildApp(db, null);
     const res = await app.request("/api/rig-mode/bindings/qitem/q-1", {
       method: "PUT",
@@ -158,7 +155,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(body.errors?.some((e) => e.includes("permission_prompt_posture"))).toBe(true);
   });
 
-  it("HG-3 effective-resolution: qitem wins over global_host", async () => {
+  it("HG-3 有效解析：qitem 优先于 global_host", async () => {
     const { app, store } = buildApp(db, null);
     store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
     store.setBinding("qitem", "q-1", "debug", makeRecord({ scope: "qitem" }));
@@ -176,7 +173,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(r2body.effective.binding.mode).toBe("sleep");
   });
 
-  it("Q6 unknown_posture: GET /effective with no matching binding returns null + unknown_posture", async () => {
+  it("Q6 unknown_posture：GET /effective 无匹配 binding 时返回 null + unknown_posture", async () => {
     const { app } = buildApp(db, null);
     const res = await app.request("/api/rig-mode/effective?qitem=q-1");
     expect(res.status).toBe(200);
@@ -185,7 +182,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(body.posture).toBe("unknown_posture");
   });
 
-  it("GET /bindings returns all bindings", async () => {
+  it("GET /bindings 返回全部 binding", async () => {
     const { app, store } = buildApp(db, null);
     store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
     store.setBinding("rig", "rig-a", "focus", makeRecord({ scope: "rig" }));
@@ -195,7 +192,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(body.bindings.map((b) => b.id).sort()).toEqual(["global_host:host", "rig:rig-a"]);
   });
 
-  it("HG-4: DELETE requires operator bearer when configured", async () => {
+  it("HG-4：配置后 DELETE 要求 operator bearer", async () => {
     const { app, store } = buildApp(db, "operator-token");
     store.setBinding("rig", "rig-a", "focus", makeRecord({ scope: "rig" }));
     const noAuth = await app.request("/api/rig-mode/bindings/rig/rig-a", { method: "DELETE" });
@@ -209,7 +206,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(body.removed).toBe(true);
   });
 
-  it("scope_invalid rejects unknown scope at the route layer", async () => {
+  it("route 层以 scope_invalid 拒绝未知 scope", async () => {
     const { app } = buildApp(db, null);
     const res = await app.request("/api/rig-mode/bindings/banana/x", {
       method: "PUT",
@@ -221,7 +218,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(body.error).toBe("scope_invalid");
   });
 
-  it("qualifier_required: GET /bindings/rig (no qualifier) returns 400", async () => {
+  it("qualifier_required：GET /bindings/rig 缺少 qualifier 时返回 400", async () => {
     const { app } = buildApp(db, null);
     const res = await app.request("/api/rig-mode/bindings/rig");
     expect(res.status).toBe(400);
@@ -229,7 +226,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(body.error).toBe("qualifier_required");
   });
 
-  it("GET /bindings/global_host (no qualifier) reads the host binding", async () => {
+  it("GET /bindings/global_host 不带 qualifier 时读取 host binding", async () => {
     const { app, store } = buildApp(db, null);
     store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
     const res = await app.request("/api/rig-mode/bindings/global_host");
@@ -238,17 +235,15 @@ describe("rig-mode HTTP routes — slice 09", () => {
     expect(body.binding.mode).toBe("sleep");
   });
 
-  it("404 on a missing binding", async () => {
+  it("binding 不存在时返回 404", async () => {
     const { app } = buildApp(db, null);
     const res = await app.request("/api/rig-mode/bindings/rig/rig-not-there");
     expect(res.status).toBe(404);
   });
 
-  // BLOCKING-2 — global_host with a non-empty qualifier MUST be
-  // rejected at every verb. The route does NOT silently drop the
-  // qualifier into null (that would be hidden scope inference + a
-  // write/delete path against the host binding via a typo'd URL).
-  describe("BLOCKING-2: global_host + non-empty qualifier rejected (no hidden inference)", () => {
+  // BLOCKING-2——所有动词都必须拒绝带非空 qualifier 的 global_host。route 不会静默把
+  // qualifier 丢弃为 null，否则会形成隐藏 scope 推断，并允许拼错的 URL 写入/删除 host binding。
+  describe("BLOCKING-2：拒绝 global_host + 非空 qualifier（无隐藏推断）", () => {
     it("GET /bindings/global_host/unexpected → 400 qualifier_forbidden", async () => {
       const { app } = buildApp(db, null);
       const res = await app.request("/api/rig-mode/bindings/global_host/unexpected");
@@ -257,7 +252,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
       expect(body.error).toBe("qualifier_forbidden");
     });
 
-    it("PUT /bindings/global_host/unexpected → 400 qualifier_forbidden; the global-host row does NOT mutate", async () => {
+    it("PUT /bindings/global_host/unexpected → 400 qualifier_forbidden，且 global-host 行不变", async () => {
       const { app, store } = buildApp(db, null);
       store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
       const before = store.getBinding("global_host", null)!;
@@ -274,7 +269,7 @@ describe("rig-mode HTTP routes — slice 09", () => {
       expect(after.setAt).toBe(before.setAt);
     });
 
-    it("DELETE /bindings/global_host/unexpected → 400 qualifier_forbidden; the global-host row is NOT removed", async () => {
+    it("DELETE /bindings/global_host/unexpected → 400 qualifier_forbidden，且不删除 global-host 行", async () => {
       const { app, store } = buildApp(db, null);
       store.setBinding("global_host", null, "sleep", makeRecord({ scope: "global_host" }));
       const res = await app.request("/api/rig-mode/bindings/global_host/unexpected", {
@@ -287,10 +282,9 @@ describe("rig-mode HTTP routes — slice 09", () => {
     });
   });
 
-  // HG-SAFE source-level — the route file does NOT reference permission
-  // allowlist / runtime config / tmux / lifecycle identifiers. The route
-  // is purely a binding-related surface (HG-SAFE).
-  it("HG-SAFE: rig-mode route source contains no permission / auth-token / tmux / lifecycle identifiers", async () => {
+  // HG-SAFE 源码级约束——route 文件不引用 permission allowlist / runtime config / tmux /
+  // lifecycle 标识符；该 route 是纯粹与 binding 相关的表面（HG-SAFE）。
+  it("HG-SAFE：rig-mode route 源码不含 permission / auth-token / tmux / lifecycle 标识符", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const url = await import("node:url");

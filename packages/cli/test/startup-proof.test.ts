@@ -108,8 +108,32 @@ describe("rig startup-proof", () => {
 
     const output = logs.join("\n");
     expect(exitCode).toBeUndefined();
-    expect(output).toContain("startup_proof: verified");
-    expect(output).toContain("node_id: node-1");
+    expect(output).toContain("启动证明：verified");
+    expect(output).toContain("节点 ID：node-1");
     expect(output).not.toContain("tok-secret");
+  });
+
+  // 中文行为：拒绝路径输出含"被拒绝"中文提示
+  it("CLI submit 拒绝时输出中文错误提示", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ ok: false, error: "bad challenge" }), {
+      status: 401, headers: { "content-type": "application/json" },
+    })) as unknown as typeof fetch;
+    const program = new Command();
+    program.exitOverride();
+    program.addCommand(startupProofCommand({
+      fetchImpl,
+      env: {
+        OPENRIG_URL: "http://127.0.0.1:7433",
+        OPENRIG_ACTIVITY_HOOK_TOKEN: "tok-secret",
+        OPENRIG_NODE_ID: "node-1",
+        OPENRIG_RUNTIME: "claude-code",
+      },
+    }));
+    const { errors, exitCode } = await captureLogs(async () => {
+      await program.parseAsync(["node", "rig", "startup-proof", "submit", "--challenge-id", "challenge-1", "--answer", "answer-1"]);
+    });
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("startup_proof 被拒绝");
+    expect(errors.join("\n")).not.toContain("tok-secret");
   });
 });

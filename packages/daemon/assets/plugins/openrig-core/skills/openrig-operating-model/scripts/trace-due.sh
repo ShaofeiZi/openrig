@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
 # trace-due.sh <seat-dir> [work-dir ...]
-# Deterministic due-check for the alignment trace. Exit 0 + reason when DUE;
-# exit 1 SILENTLY when not (the no-op path is the point: schedulers may fire
-# this on cadence; the ACTION stays evidence-gated — fixed-cadence traces were
-# empirically falsified; see SKILL.md §4).
+# 对齐追踪的确定性到期检查。到期时以退出码 0 并附原因返回；未到期时以退出码 1 静默返回。
+# 空操作路径正是设计重点：调度器可按节奏触发此脚本，但实际操作仍由证据门控；固定节奏追踪
+# 已被实证推翻，见 SKILL.md §4。
 set -euo pipefail
 SEAT_DIR="${1:?usage: trace-due.sh <seat-dir> [work-dir ...]}"; shift || true
 STAMP="$SEAT_DIR/.last-trace"
-MIN_HOURS="${TRACE_MIN_HOURS:-6}"      # never due more often than this
-FORCE_HOURS="${TRACE_FORCE_HOURS:-72}" # due regardless of activity after this
+MIN_HOURS="${TRACE_MIN_HOURS:-6}"      # 触发频率绝不高于此值。
+FORCE_HOURS="${TRACE_FORCE_HOURS:-72}" # 超过此值后，无论活动情况都到期。
 now=$(date +%s)
 if [[ ! -f "$STAMP" ]]; then
-  # never traced: due only if the seat shows any life at all
+  # 从未追踪：只有席位出现任何活动时才到期。
   if [[ -n "$(find "$SEAT_DIR" "$@" -type f -newermt '-7 days' -print -quit 2>/dev/null)" ]]; then
-    echo "DUE: no trace on record and recent activity exists"; exit 0
+    echo "已到期：没有追踪记录，且存在近期活动"; exit 0
   fi
   exit 1
 fi
@@ -21,12 +20,12 @@ last=$(stat -f %m "$STAMP" 2>/dev/null || stat -c %Y "$STAMP")  # BSD then GNU; 
 age_h=$(( (now - last) / 3600 ))
 (( age_h < MIN_HOURS )) && exit 1
 if (( age_h >= FORCE_HOURS )); then
-  echo "DUE: ${age_h}h since last trace (force threshold ${FORCE_HOURS}h)"; exit 0
+  echo "已到期：距上次追踪 ${age_h} 小时（强制阈值 ${FORCE_HOURS} 小时）"; exit 0
 fi
-# due only if meaningful work accumulated since the stamp
+# 只有标记后累积了有意义的工作才到期。
 for d in "$SEAT_DIR" "$@"; do
   if [[ -n "$(find "$d" -type f -newer "$STAMP" ! -name '.last-trace' -print -quit 2>/dev/null)" ]]; then
-    echo "DUE: ${age_h}h since last trace and new activity under $d"; exit 0
+    echo "已到期：距上次追踪 ${age_h} 小时，且 $d 下有新活动"; exit 0
   fi
 done
 exit 1

@@ -1,18 +1,14 @@
-// S04 (OPR.0.5.5.4) — PICKUP RECEIPTS: derivation only. "A durable row nobody woke is
-// indistinguishable from work in progress" — this module derives the distinction from facts
-// the system already records (claimed_at, the transition log, last_heartbeat) against a
-// config-keyed threshold. NO claimant-written receipt exists anywhere (a receipt a seat must
-// remember to send would recreate the attention gap this kills), and NO sweep loop lives here
-// (S02 owns the standing sweep; this module exports the INPUT contract it consumes).
+// S04（OPR.0.5.5.4）——PICKUP RECEIPT：仅派生。“无人唤醒的持久 row 与正在进行的工作无法区分”——
+// 本模块只根据系统已有事实（claimed_at、transition log、last_heartbeat）与 config 指定 threshold
+// 派生差异。任何位置都不存在 claimant 编写的 receipt（要求 seat 记得发送 receipt 会重现这里要消除的
+// attention gap），这里也没有 sweep loop（S02 拥有常驻 sweep；本模块导出它所消费的 INPUT 契约）。
 //
-// Working activity is positive liveness evidence, not proof of task progress.
-// Otherwise the grace follows the latest meaningful queue change; an old note
-// cannot keep the row working forever. Stalled-after-claim names this evidence
-// without inferring idle/dead from age. Blocked remains parked; wake health is
-// derived separately. Legacy callers without timestamps retain count semantics.
-// Queue-row last_heartbeat is formally superseded (2026-08-30, S24 F-14); readers remain
-// null-tolerant. Wiring reopens only for the 0.5.7 mechanized-pull turn-end hook that knows the in-flight row,
-// the first honest row-scoped writer. daemon-lifecycle-store.recordHeartbeat remains live and distinct.
+// working activity 是正向 liveness evidence，不是 task progress 证明。否则 grace 依据最近一次有意义的
+// queue change；旧 note 不能让 row 永久维持 working。Stalled-after-claim 点名该 evidence，但不根据
+// age 推断 idle/dead。Blocked 保持 parked；wake health 单独派生。没有 timestamp 的 legacy caller 保留
+// count 语义。Queue row 的 last_heartbeat 已正式 supersede（2026-08-30，S24 F-14）；reader 仍容忍
+// null。只有知道 in-flight row 的 0.5.7 mechanized-pull turn-end hook 会重新开启接线，它是首个诚实的
+// row-scoped writer。daemon-lifecycle-store.recordHeartbeat 保持 live 且独立。
 
 import { SettingsStore } from "./user-settings/settings-store.js";
 
@@ -21,12 +17,12 @@ export const DEFAULT_PICKUP_STALL_THRESHOLD_MINUTES = 3;
 
 export interface PickupReceipt {
   state: "unclaimed" | "working" | "stalled-after-claim" | "parked";
-  /** Present iff stalled: the named evidence replacing the manual cross-surface join. */
+  /** 仅 stalled 时存在：取代手工跨 surface join 的具名 evidence。 */
   evidence?: string;
 }
 
-/** Threshold, FRESH-READ per call (the terminal.status_bar precedent: a config flip applies
- *  to the next read, no restart). Fail-open to the default on any resolution error. */
+/** Threshold，每次调用都 fresh read（遵循 terminal.status_bar 先例：config flip 在下一次读取生效，
+ *  无需 restart）。任何解析错误都 fail-open 到默认值。 */
 export function resolvePickupThresholdMinutes(): number {
   try {
     const v = new SettingsStore().resolveOne(PICKUP_STALL_THRESHOLD_KEY).value;
@@ -41,7 +37,7 @@ export interface PickupFacts {
   state: string;
   claimedAt: string | null | undefined;
   lastHeartbeat: string | null | undefined;
-  /** Count of transitions strictly after the claim, excluding the claim's own transition. */
+  /** 严格晚于 claim 的 transition 数，不含 claim 自身的 transition。 */
   postClaimMotionCount: number;
   lastMeaningfulAt?: string;
   activity?: string;
@@ -50,19 +46,19 @@ export interface PickupFacts {
   thresholdMinutes?: number;
 }
 
-/** The ONE derivation rule — every projection surface (rowToItem, the pickup view lens, the
- *  S02 finding input) calls this same function, so the rule cannot drift between surfaces. */
+/** 唯一派生规则——每个 projection surface（rowToItem、pickup view lens、S02 finding input）都调用
+ *  同一 function，因此规则不会在 surface 间 drift。 */
 export function derivePickup(facts: PickupFacts): PickupReceipt {
   if (facts.state === "blocked") return { state: "parked" };
   if (!facts.claimedAt) return { state: "unclaimed" };
   const now = facts.now ?? new Date();
   const claimedMs = Date.parse(facts.claimedAt);
-  // Keep this null arm for the 0.5.7 mechanized-pull turn-end hook that knows the in-flight row;
-  // it is the first honest row-scoped writer, and wiring reopens only in that slice.
+  // 为知道 in-flight row 的 0.5.7 mechanized-pull turn-end hook 保留此 null 分支；它是首个诚实的
+  // row-scoped writer，且只有该 slice 会重新开启接线。
   const heartbeatAfterClaim =
     !!facts.lastHeartbeat && Date.parse(facts.lastHeartbeat) > claimedMs;
   if (facts.activity === "working" && !facts.needsInput) return { state: "working" };
-  // Legacy callers without a timestamp retain their historical count contract.
+  // 没有 timestamp 的 legacy caller 保留历史 count 契约。
   if (facts.lastMeaningfulAt === undefined && (facts.postClaimMotionCount > 0 || heartbeatAfterClaim)) return { state: "working" };
   const thresholdMs = (facts.thresholdMinutes ?? resolvePickupThresholdMinutes()) * 60_000;
   const anchor = Math.max(claimedMs, Date.parse(facts.lastMeaningfulAt ?? facts.claimedAt), heartbeatAfterClaim ? Date.parse(facts.lastHeartbeat!) : claimedMs);
@@ -72,17 +68,16 @@ export function derivePickup(facts: PickupFacts): PickupReceipt {
   return {
     state: "stalled-after-claim",
     evidence: facts.lastMeaningfulAt === undefined
-      ? `claimed ${minutes} min ago, zero substantive transitions since`
-      : `no meaningful queue change for ${minutes} min; owner activity ${facts.activity ?? "unknown"} (queue age does not prove idle)`,
+      ? `${minutes} 分钟前已领取，此后没有实质 transition`
+      : `${minutes} 分钟内没有有意义的 queue change；owner activity 为 ${facts.activity ?? "unknown"}（queue age 不能证明 idle）`,
   };
 }
 
-/** S02 INPUT CONTRACT — the finding shape the standing sweep consumes (routed to the claimant
- *  first, then its orchestrator — the ROUTING is S02's; this is a pure library shape, no loop,
- *  no scheduler). Returns null for anything not stalled. */
+/** S02 INPUT 契约——常驻 sweep 消费的 finding 形态（先路由到 claimant，再到其 orchestrator——routing
+ *  属于 S02；这里只是纯 library 形态，无 loop、无 scheduler）。非 stalled 时返回 null。 */
 export interface StalledPickupFinding {
   kind: "stalled-after-claim";
-  /** The claimant (the row's destination — the seat that claimed and went quiet). */
+  /** claimant（row 的 destination——领取后沉默的 seat）。 */
   target: string;
   qitemId: string;
   evidence: string;

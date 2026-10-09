@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
-// OPR.0.4.4.15 — guard G15-CF6-1 regression: acting on a REMOTE card must
-// carry the item's origin hostId into POST /api/mission-control/action so
-// the daemon forwards the verb to where the qitem lives (FR-4). Local /
-// absent hostId adds NOTHING to the mutation body (byte-parity with
-// today's local path — the zero-config negative at the verb layer).
+// OPR.0.4.4.15——guard G15-CF6-1 回归：对 REMOTE 卡片动作必须
+// 携带项的来源 hostId 进 POST /api/mission-control/action，使
+// daemon 把 verb 转发到 qitem 所在处（FR-4）。本地 /
+// 缺失 hostId 不给 mutation body 加任何东西（与今日本地路径字节对等——
+// verb 层的零配置负向）。
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup, waitFor } from "@testing-library/react";

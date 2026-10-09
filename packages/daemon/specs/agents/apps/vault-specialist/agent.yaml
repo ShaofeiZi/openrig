@@ -1,6 +1,6 @@
 name: vault-specialist
 version: "1.0"
-description: Vault specialist agent — manages HashiCorp Vault for this managed app
+description: Vault 专家智能体——为此托管应用管理 HashiCorp Vault
 
 defaults:
   runtime: claude-code

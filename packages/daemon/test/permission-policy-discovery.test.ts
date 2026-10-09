@@ -97,7 +97,7 @@ edges: []
 
 const policyLines = (warnings: string[]) => warnings.filter((warning) => warning.includes("permission_policy"));
 
-describe("Seam C permission-policy discovery", () => {
+describe("接缝 C permission-policy 发现", () => {
   const tempDirs: string[] = [];
 
   afterEach(() => {
@@ -105,7 +105,7 @@ describe("Seam C permission-policy discovery", () => {
     for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
   });
 
-  it("surfaces an attached builtin ref with honest origin and bound posture", async () => {
+  it("如实呈现已附加内置 ref 的 origin 与绑定 posture", async () => {
     const result = await rigPreflight({
       rigSpecYaml: rigYaml({ rigPolicy: "builtin:yolo" }),
       rigRoot: RIG_ROOT,
@@ -115,11 +115,11 @@ describe("Seam C permission-policy discovery", () => {
     expect(result.ready).toBe(true);
     expect(result.errors).toEqual([]);
     expect(policyLines(result.warnings)).toEqual([
-      'dev.impl: permission_policy ref="builtin:yolo" origin=builtin launch_posture=full_bypass',
+      'dev.impl：permission_policy ref="builtin:yolo" origin=builtin launch_posture=full_bypass',
     ]);
   });
 
-  it("surfaces the per-member custom override instead of the rig-level policy", async () => {
+  it("呈现每个 member 的自定义 override，而非 rig 级 policy", async () => {
     const result = await rigPreflight({
       rigSpecYaml: rigYaml({ rigPolicy: "builtin:standard", memberPolicy: "policies/operator-full.md" }),
       rigRoot: RIG_ROOT,
@@ -128,22 +128,22 @@ describe("Seam C permission-policy discovery", () => {
 
     expect(result.ready).toBe(true);
     expect(policyLines(result.warnings)).toEqual([
-      'dev.impl: permission_policy ref="policies/operator-full.md" origin=custom launch_posture=full_bypass',
+      'dev.impl：permission_policy ref="policies/operator-full.md" origin=custom launch_posture=full_bypass',
     ]);
     expect(result.warnings.join("\n")).not.toContain("builtin:standard");
   });
 
-  it("surfaces honest absence as the floor without errors or blocking", async () => {
+  it("将真实缺失呈现为 floor，且不报错、不阻塞", async () => {
     const result = await rigPreflight({ rigSpecYaml: rigYaml(), rigRoot: RIG_ROOT, fsOps: fsOps() });
 
     expect(result.ready).toBe(true);
     expect(result.errors).toEqual([]);
     expect(policyLines(result.warnings)).toEqual([
-      "dev.impl: permission_policy absent; launch_posture=floor",
+      "dev.impl：缺少 permission_policy；launch_posture=floor",
     ]);
   });
 
-  it("carries policy discovery and existing preflight advisories through materialize in order", async () => {
+  it("按顺序通过 materialize 传递 policy 发现与现有 preflight 提示", async () => {
     const db = createFullTestDb();
     try {
       const setup = createTestApp(db, { podInstantiatorFsOps: collisionFsOps() });
@@ -155,18 +155,18 @@ describe("Seam C permission-policy discovery", () => {
       expect(outcome.ok).toBe(true);
       if (!outcome.ok) return;
       expect(outcome.result.warnings).toEqual([
-        // §6 reconciliation (PM ruling 2026-08-05, fold-wave qitem 79159e6f): main's already-folded
-        // preflight advisories (collision) are the FLOOR (first); the restacked permission-policy
-        // discovery warning is APPENDED after. Supersedes the 4.8 lineage's original policy-first order.
-        'dev.impl: base/import collision in skills on "shared"',
-        'dev.impl: permission_policy ref="builtin:yolo" origin=builtin launch_posture=full_bypass',
+        // §6 对账（PM 裁定 2026-08-05，fold-wave qitem 79159e6f）：main 已折叠的 preflight 提示
+        //（collision）是 FLOOR（排在最前）；restack 后的 permission-policy 发现 warning 追加在后。
+        // 此顺序取代 4.8 lineage 原有的 policy-first 顺序。
+        'dev.impl：skills 中的 "shared" 存在 base/import 冲突',
+        'dev.impl：permission_policy ref="builtin:yolo" origin=builtin launch_posture=full_bypass',
       ]);
     } finally {
       db.close();
     }
   });
 
-  it("carries policy discovery and existing preflight advisories through instantiate in order", async () => {
+  it("按顺序通过 instantiate 传递 policy 发现与现有 preflight 提示", async () => {
     const adapter: RuntimeAdapter = {
       runtime: "claude-code",
       listInstalled: async () => [],
@@ -189,18 +189,18 @@ describe("Seam C permission-policy discovery", () => {
       expect(outcome.ok).toBe(true);
       if (!outcome.ok) return;
       expect(outcome.result.warnings).toEqual([
-        // §6 reconciliation (PM ruling 2026-08-05, fold-wave qitem 79159e6f): main's already-folded
-        // preflight advisories (collision) are the FLOOR (first); the restacked permission-policy
-        // discovery warning is APPENDED after. Supersedes the 4.8 lineage's original policy-first order.
-        'dev.impl: base/import collision in skills on "shared"',
-        'dev.impl: permission_policy ref="builtin:yolo" origin=builtin launch_posture=full_bypass',
+        // §6 对账（PM 裁定 2026-08-05，fold-wave qitem 79159e6f）：main 已折叠的 preflight 提示
+        //（collision）是 FLOOR（排在最前）；restack 后的 permission-policy 发现 warning 追加在后。
+        // 此顺序取代 4.8 lineage 原有的 policy-first 顺序。
+        'dev.impl：skills 中的 "shared" 存在 base/import 冲突',
+        'dev.impl：permission_policy ref="builtin:yolo" origin=builtin launch_posture=full_bypass',
       ]);
     } finally {
       db.close();
     }
   });
 
-  it("carries structured materialize warnings through the public expansion response in order", async () => {
+  it("按顺序通过公开 expansion 响应传递结构化 materialize warning", async () => {
     const db = createFullTestDb();
     try {
       const setup = createTestApp(db, { podInstantiatorFsOps: collisionFsOps() });
@@ -229,18 +229,18 @@ describe("Seam C permission-policy discovery", () => {
       expect(response.status).toBe(201);
       const body = await response.json() as { warnings: string[] };
       expect(body.warnings).toEqual([
-        // §6 reconciliation (PM ruling 2026-08-05, fold-wave qitem 79159e6f): main's already-folded
-        // preflight advisories (collision) are the FLOOR (first); the restacked permission-policy
-        // discovery warning is APPENDED after. Supersedes the 4.8 lineage's original policy-first order.
-        'dev.impl: base/import collision in skills on "shared"',
-        'dev.impl: permission_policy ref="builtin:yolo" origin=builtin launch_posture=full_bypass',
+        // §6 对账（PM 裁定 2026-08-05，fold-wave qitem 79159e6f）：main 已折叠的 preflight 提示
+        //（collision）是 FLOOR（排在最前）；restack 后的 permission-policy 发现 warning 追加在后。
+        // 此顺序取代 4.8 lineage 原有的 policy-first 顺序。
+        'dev.impl：skills 中的 "shared" 存在 base/import 冲突',
+        'dev.impl：permission_policy ref="builtin:yolo" origin=builtin launch_posture=full_bypass',
       ]);
     } finally {
       db.close();
     }
   });
 
-  it("discovers persisted target-rig policy provenance and matches the launch binding", async () => {
+  it("发现已持久化的目标 rig policy provenance，并与 launch binding 匹配", async () => {
     const bindings: NodeBinding[] = [];
     const adapter: RuntimeAdapter = {
       runtime: "claude-code",
@@ -304,8 +304,8 @@ describe("Seam C permission-policy discovery", () => {
       expect(materialized.ok).toBe(true);
       if (!materialized.ok) return;
       expect(materialized.result.warnings).toEqual([
-        'dev.impl: permission_policy ref="policies/operator-full.md" origin=custom launch_posture=full_bypass',
-        'dev.override: permission_policy ref="builtin:standard" origin=builtin launch_posture=floor',
+        'dev.impl：permission_policy ref="policies/operator-full.md" origin=custom launch_posture=full_bypass',
+        'dev.override：permission_policy ref="builtin:standard" origin=builtin launch_posture=floor',
       ]);
 
       const launched = await setup.podInstantiator.launchValidatedSpec(
@@ -320,7 +320,7 @@ describe("Seam C permission-policy discovery", () => {
     }
   });
 
-  it("carries persisted target policy discovery through the public YAML materialize route", async () => {
+  it("通过公开 YAML materialize 路由传递已持久化的目标 policy 发现结果", async () => {
     const policyReads: string[] = [];
     const agentOnlyFsOps: AgentResolverFsOps = {
       exists: (path) => path.includes("agents/impl"),
@@ -363,16 +363,16 @@ describe("Seam C permission-policy discovery", () => {
         nodeRef: null,
       });
       expect(body.warnings).toEqual([
-        'dev.impl: permission_policy ref="policies/operator-full.md" origin=custom launch_posture=full_bypass',
+        'dev.impl：permission_policy ref="policies/operator-full.md" origin=custom launch_posture=full_bypass',
       ]);
-      expect(body.warnings?.join("\n")).not.toContain("permission_policy absent");
+      expect(body.warnings?.join("\n")).not.toContain("缺少 permission_policy");
       expect(policyReads).not.toContain(`${OTHER_OPERATION_ROOT}/${CUSTOM_POLICY_REF}`);
     } finally {
       db.close();
     }
   });
 
-  it("carries inherited discovery before launch warnings through the public add-member route", async () => {
+  it("通过公开 add-member 路由，在 launch warning 之前传递继承的发现结果", async () => {
     const bindings: NodeBinding[] = [];
     const adapter: RuntimeAdapter = {
       runtime: "claude-code",
@@ -447,7 +447,7 @@ describe("Seam C permission-policy discovery", () => {
 
       expect(inheritedResponse.status).toBe(201);
       expect(inheritedBody.result.warnings).toEqual([
-        'dev.late: permission_policy ref="policies/operator-full.md" origin=custom launch_posture=full_bypass',
+        'dev.late：permission_policy ref="policies/operator-full.md" origin=custom launch_posture=full_bypass',
         "later launch warning",
       ]);
       expect(bindings[0]?.launchPosture).toBe("full_bypass");
@@ -471,7 +471,7 @@ describe("Seam C permission-policy discovery", () => {
 
       expect(overrideResponse.status).toBe(201);
       expect(overrideBody.result.warnings).toEqual([
-        'dev.override: permission_policy ref="builtin:standard" origin=builtin launch_posture=floor',
+        'dev.override：permission_policy ref="builtin:standard" origin=builtin launch_posture=floor',
         "later launch warning",
       ]);
       expect(bindings[1]?.launchPosture).toBe("floor");
@@ -480,7 +480,7 @@ describe("Seam C permission-policy discovery", () => {
     }
   });
 
-  it("keeps launch outcomes identical while carrying discovery on the rig-up result", async () => {
+  it("在 rig-up 结果中传递发现信息，同时保持 launch 结果一致", async () => {
     const bindings: NodeBinding[] = [];
     const adapter: RuntimeAdapter = {
       runtime: "claude-code",
@@ -509,17 +509,17 @@ describe("Seam C permission-policy discovery", () => {
         .toEqual(attached.result.nodes.map(({ logicalId, status }) => ({ logicalId, status })));
       expect(bindings).toHaveLength(2);
       expect(policyLines(absent.result.warnings ?? [])).toEqual([
-        "dev.impl: permission_policy absent; launch_posture=floor",
+        "dev.impl：缺少 permission_policy；launch_posture=floor",
       ]);
       expect(policyLines(attached.result.warnings ?? [])).toEqual([
-        'dev.impl: permission_policy ref="builtin:locked" origin=builtin launch_posture=floor',
+        'dev.impl：permission_policy ref="builtin:locked" origin=builtin launch_posture=floor',
       ]);
     } finally {
       db.close();
     }
   });
 
-  it("keeps SYSTEM setup preflight policy-blind while rig lifecycle preflight discovers policy", async () => {
+  it("SYSTEM setup preflight 保持不感知 policy，而 rig 生命周期 preflight 会发现 policy", async () => {
     const home = mkdtempSync(join(tmpdir(), "seam-c-system-preflight-"));
     tempDirs.push(home);
     const system = new SystemPreflight({
@@ -546,7 +546,7 @@ describe("Seam C permission-policy discovery", () => {
     expect(policyLines(lifecycleResult.warnings)).toHaveLength(1);
   });
 
-  it("rejects an invalid ref upstream and never misreports it as floor discovery", async () => {
+  it("在上游拒绝无效 ref，绝不将其误报为 floor 发现结果", async () => {
     const invalid = await rigPreflight({
       rigSpecYaml: rigYaml({ rigPolicy: "builtin:missing" }),
       rigRoot: RIG_ROOT,
@@ -554,7 +554,7 @@ describe("Seam C permission-policy discovery", () => {
     });
 
     expect(invalid.ready).toBe(false);
-    expect(invalid.errors.join("\n")).toContain("unknown built-in policy 'missing'");
+    expect(invalid.errors.join("\n")).toContain("未知内置策略 'missing'");
     expect(policyLines(invalid.warnings)).toEqual([]);
 
     const valid = await rigPreflight({
@@ -564,7 +564,7 @@ describe("Seam C permission-policy discovery", () => {
     });
     expect(valid.ready).toBe(true);
     expect(policyLines(valid.warnings)).toEqual([
-      'dev.impl: permission_policy ref="builtin:standard" origin=builtin launch_posture=floor',
+      'dev.impl：permission_policy ref="builtin:standard" origin=builtin launch_posture=floor',
     ]);
   });
 });

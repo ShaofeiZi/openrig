@@ -1,11 +1,10 @@
-# OpenRig 0.4.6 spec-language example — the GATED STAGE shape.
-# A human sign-off gate on the final step (compiles to the shipped
-# human-route machinery: tier human-gate + summary + evidence_ref,
-# resolved by `rig queue resolve`), plus per-step harness pins.
+# OpenRig 0.4.6 spec 语言示例——带 gate 的阶段形态。
+# 最后一步设人工签核 gate（编译为已发布的 human-route 机制：tier human-gate + summary +
+# evidence_ref，由 `rig queue resolve` 解决），并附逐步骤 harness 固定值。
 workflow:
   id: gated-release
   version: 1
-  objective: Build, prove, then hold the ship decision at a human gate.
+  objective: 构建、验证，然后在人工 gate 挂起发布决策。
   roles:
     builder:
       preferred_targets: [flow-builder@acme-flow]
@@ -22,5 +21,5 @@ workflow:
       actor_role: prover
       gate:
         target: human@kernel
-        summary: "Release candidate proven; sign off to ship"
+        summary: "发布候选项已验证；请批准发布"
         evidence_ref: proof/PROOF.md

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import nodePath from "node:path";
-// TODO: AS-T12 — migrate to pod-aware bundle types
+// TODO：AS-T12——迁移至支持 pod 的 bundle type
 import type { LegacyBundleManifest as BundleManifest, BundleIntegrity } from "./bundle-types.js";
 import { parseLegacyBundleManifest as parseBundleManifest, normalizeLegacyBundleManifest as normalizeBundleManifest, serializeLegacyBundleManifest as serializeBundleManifest } from "./bundle-types.js";
 
@@ -12,13 +12,13 @@ export interface IntegrityFsOps {
   walkFiles: (dir: string) => string[];
 }
 
-/** Files to ignore during integrity operations */
+/** integrity 操作期间忽略的文件 */
 const IGNORE_FILES = new Set([".DS_Store", "Thumbs.db", ".gitkeep"]);
 
-/** Reserved control files — not content, not extras */
+/** 保留 control file——不是 content，也不是 extra */
 const CONTROL_FILES = new Set(["bundle.yaml"]);
 
-/** Sensitive path patterns that block bundle creation */
+/** 会阻止创建 bundle 的敏感 path pattern */
 const SENSITIVE_PATTERNS = [
   /^\.env$/,
   /^\.env\..+$/,
@@ -42,8 +42,8 @@ function hashContent(content: Buffer): string {
 }
 
 /**
- * Compute integrity hashes for all content files in a bundle directory.
- * Throws on sensitive paths. Excludes control files and OS junk.
+ * 计算 bundle 目录中所有内容文件的 integrity hash。遇到敏感 path 时抛错。
+ * 排除 control file 与 OS 杂项。
  */
 export function computeIntegrity(dir: string, fsOps: IntegrityFsOps): BundleIntegrity {
   const allFiles = fsOps.walkFiles(dir);
@@ -66,14 +66,14 @@ export function computeIntegrity(dir: string, fsOps: IntegrityFsOps): BundleInte
   }
 
   if (sensitive.length > 0) {
-    throw new Error(`Sensitive paths detected in bundle: ${sensitive.join(", ")}`);
+    throw new Error(`bundle 中检测到敏感路径：${sensitive.join(", ")}`);
   }
 
   return { algorithm: "sha256", files };
 }
 
 /**
- * Write integrity section into bundle.yaml, then write bundle.yaml.sha256 digest.
+ * 将 integrity section 写入 bundle.yaml，再写入 bundle.yaml.sha256 digest。
  */
 export function writeIntegrity(dir: string, integrity: BundleIntegrity, fsOps: IntegrityFsOps): void {
   const manifestPath = nodePath.join(dir, "bundle.yaml");
@@ -85,7 +85,7 @@ export function writeIntegrity(dir: string, integrity: BundleIntegrity, fsOps: I
   fsOps.writeFile(manifestPath, updatedYaml);
 }
 
-/** Verification result */
+/** 校验结果 */
 export interface VerifyResult {
   passed: boolean;
   mismatches: string[];
@@ -95,7 +95,7 @@ export interface VerifyResult {
 }
 
 /**
- * Verify bundle integrity. Checks manifest digest first, then per-file hashes.
+ * 校验 bundle integrity。先检查 manifest digest，再检查逐文件 hash。
  */
 export function verifyIntegrity(dir: string, manifest: BundleManifest, fsOps: IntegrityFsOps): VerifyResult {
   const result: VerifyResult = {
@@ -106,16 +106,16 @@ export function verifyIntegrity(dir: string, manifest: BundleManifest, fsOps: In
     errors: [],
   };
 
-  // Verify content file integrity (manifest trust is P7-T03's archive-level responsibility)
+  // 校验 content file integrity（manifest trust 属于 P7-T03 的 archive-level 责任）
   if (!manifest.integrity) {
     result.passed = false;
-    result.errors.push("manifest has no integrity section");
+    result.errors.push("manifest 没有 integrity section");
     return result;
   }
 
   const expectedFiles = manifest.integrity.files;
 
-  // Check expected files
+  // 检查预期文件
   for (const [relPath, expectedHash] of Object.entries(expectedFiles)) {
     const fullPath = nodePath.join(dir, relPath);
     if (!fsOps.exists(fullPath)) {
@@ -130,7 +130,7 @@ export function verifyIntegrity(dir: string, manifest: BundleManifest, fsOps: In
     }
   }
 
-  // Check for extra files + sensitive paths
+  // 检查额外文件 + 敏感路径
   const allFiles = fsOps.walkFiles(dir);
   const expectedSet = new Set(Object.keys(expectedFiles));
   for (const relPath of allFiles) {
@@ -141,9 +141,9 @@ export function verifyIntegrity(dir: string, manifest: BundleManifest, fsOps: In
       result.extra.push(relPath);
       result.passed = false;
     }
-    // Check for sensitive paths on install/verify path (not just create)
+    // 在 install/verify 路径上检查敏感 path（不只在 create 时检查）
     if (isSensitivePath(relPath)) {
-      result.errors.push(`Sensitive file detected: ${relPath}`);
+      result.errors.push(`检测到敏感文件：${relPath}`);
       result.passed = false;
     }
   }

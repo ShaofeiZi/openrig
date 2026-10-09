@@ -1,9 +1,9 @@
-// OPR.0.4.0.1 TopologyTab progressive-terminal forward-fix. The project/scope
-// Topology-tab seat terminal (TopologyTab SeatRow) must use the shared
-// ProgressiveTerminal -- default-static -> click-to-go-live -- AND join the SAME
-// global live-terminal registry/cap as the other surfaces (FR-2), instead of a
-// raw static SessionPreviewPane on a split fallback registry. Heavy leaves
-// (FocusedTerminal xterm+WS, SessionPreviewPane polling) are stubbed.
+// OPR.0.4.0.1 TopologyTab progressive-terminal 前瞻修复。project/scope
+// Topology-tab seat 终端（TopologyTab SeatRow）必须用共享
+// ProgressiveTerminal——default-static -> 点击 go-live——并加入与其他表面相同
+// 的全局 live-terminal 注册表/上限（FR-2），而非在分裂 fallback 注册表上的
+// 原始静态 SessionPreviewPane。重叶子
+//（FocusedTerminal xterm+WS、SessionPreviewPane 轮询）被 stub。
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
@@ -56,12 +56,12 @@ describe("TopologyTab progressive terminal (OPR.0.4.0.1 forward-fix)", () => {
       }),
     );
 
-    // expand the seat row (the router mounts asynchronously)
+    // 展开 seat 行（router 异步挂载）
     fireEvent.click(await screen.findByTestId("topology-seat-a@r-toggle"));
-    // default-static: the ProgressiveTerminal static trigger is present, no live yet
+    // default-static：ProgressiveTerminal 静态 trigger 存在，尚无 live
     expect(screen.getByTestId("topology-preview-a@r-static")).toBeTruthy();
     expect(screen.queryByTestId("live-a@r")).toBeNull();
-    // click inside -> go live
+    // 内部点击 -> go live
     fireEvent.click(screen.getByTestId("topology-preview-a@r-static"));
     expect(screen.getByTestId("topology-preview-a@r-live")).toBeTruthy();
     expect(screen.getByTestId("live-a@r")).toBeTruthy();
@@ -82,18 +82,18 @@ describe("TopologyTab progressive terminal (OPR.0.4.0.1 forward-fix)", () => {
       }),
     );
 
-    // take the topology-tab terminal live first (oldest); router mounts async
+    // 先把 topology-tab 终端置为 live（最旧）；router 异步挂载
     fireEvent.click(await screen.findByTestId("topology-seat-t@r-toggle"));
     fireEvent.click(screen.getByTestId("topology-preview-t@r-static"));
     expect(screen.getByTestId("topology-preview-t@r-live")).toBeTruthy();
 
-    // take the two other-surface terminals live -> the 3rd exceeds cap=2 ->
-    // the OLDEST (the topology-tab one) evicts back to static.
+    // 把另外两个表面终端置 live -> 第 3 个超 cap=2 ->
+    // 最旧者（topology-tab 那个）驱逐回 static。
     fireEvent.click(screen.getByTestId("other-n1-static"));
     fireEvent.click(screen.getByTestId("other-n2-static"));
 
-    // PROOF the topology-tab terminal joined the SAME registry: it was evicted by
-    // OTHER surfaces going live -> reverted to static, not still live.
+    // 证明 topology-tab 终端加入同一注册表：它被
+    // 其他表面置 live 驱逐 -> 回退 static，而非仍 live。
     expect(screen.queryByTestId("topology-preview-t@r-live")).toBeNull();
     expect(screen.getByTestId("topology-preview-t@r-static")).toBeTruthy();
     expect(screen.getByTestId("live-n1@r")).toBeTruthy();
@@ -101,10 +101,10 @@ describe("TopologyTab progressive terminal (OPR.0.4.0.1 forward-fix)", () => {
   });
 
   it("FR-2: project ScopePages mounts an explicit shared LiveTerminalProvider (not the fallback)", () => {
-    // Source guard: the project scope shell wraps its pages in an explicit
-    // LiveTerminalProvider (cap from useTerminalCap) so the Topology-tab terminal
-    // + the page's other terminals (e.g. HostMultiRigGraph) share ONE registry,
-    // instead of TopologyTab landing on the module-singleton fallback.
+    // 源码守卫：project scope shell 用显式
+    // LiveTerminalProvider（cap 来自 useTerminalCap）包裹其页面，使 Topology-tab 终端
+    // + 页面其他终端（如 HostMultiRigGraph）共享一个注册表，
+    // 而非 TopologyTab 落到模块单例 fallback。
     const src = readFileSync(path.join(import.meta.dirname, "../src/components/project/ScopePages.tsx"), "utf8");
     expect(src).toContain("LiveTerminalProvider");
     expect(src).toContain("useTerminalCap");

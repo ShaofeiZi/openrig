@@ -17,11 +17,10 @@ interface Row {
 }
 
 /**
- * P20 — accessors for the projection_manifest. `record` is called ON WRITE (the
- * projector actually wrote content to targetPath); `get` is consulted at
- * classify-time to discriminate stale-projection (target == last_hash → safe
- * overwrite) from operator-modified (target diverges from BOTH last_hash and the
- * new source → protect). Upsert on target_path keeps exactly the LAST write.
+ * P20——projection_manifest 访问器。`record` 在真正写入时调用（projector 确实向 targetPath
+ * 写了内容）；分类时查询 `get`，用于区分 stale-projection（target == last_hash，可安全覆盖）
+ * 与 operator-modified（target 同时偏离 last_hash 和新 source，必须保护）。按 target_path
+ * upsert，只保留最后一次写入。
  */
 export class ProjectionManifestStore {
   constructor(private readonly db: Database.Database) {}
@@ -60,18 +59,18 @@ export class ProjectionManifestStore {
     };
   }
 
-  /** Convenience for the discrimination rule: the last-written hash, or null. */
+  /** 判别规则的便捷接口：返回最后写入的 hash，不存在时返回 null。 */
   lastHash(targetPath: string): string | null {
     return this.get(targetPath)?.lastHash ?? null;
   }
 
   /**
-   * atom-4b — a BOOT-time whole-table readability probe, DISTINCT from a per-lookup throw. When the
-   * projection_manifest is unreadable (missing / migration-failed / corrupt), EVERY `lastHash` lookup
-   * throws → `classifyResourceProjection` returns `operator_conflict` for EVERY divergent projection →
-   * a SILENT protect-ALL degrade in which no projection ever applies. That systemic case is a safe
-   * degrade (no data loss) but must be VISIBLE: boot calls this probe to warn loudly, so an operator
-   * knows projections are held rather than silently discovering none apply. Cheap + NEVER throws.
+   * atom-4b——启动时探测整表可读性，这与单次 lookup 抛错不同。projection_manifest 不可读
+   *（缺失、迁移失败或损坏）时，每次 `lastHash` 查询都会抛错，导致
+   * `classifyResourceProjection` 把每个有差异的 projection 都判为 `operator_conflict`，最终
+   * 静默退化成 protect-ALL，任何 projection 都无法应用。此系统性退化不会丢数据，因此安全，
+   * 但必须可见：启动时调用本探针并明确告警，让操作员知道 projection 被暂扣，而不是无声发现
+   * 所有应用都未生效。本探针开销低且绝不抛错。
    */
   isReadable(): boolean {
     try {

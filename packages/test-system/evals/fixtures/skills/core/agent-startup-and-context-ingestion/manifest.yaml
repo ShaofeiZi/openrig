@@ -1,7 +1,7 @@
 name: agent-startup-and-context-ingestion
 version: "1"
 taxonomy: skills
-purpose: "(eval fixture) orient a freshly-woken seat"
+purpose: "（评估夹具）为刚唤醒的席位提供定向"
 files:
   - path: content.md
     role: source

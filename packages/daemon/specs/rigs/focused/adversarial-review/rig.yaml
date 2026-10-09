@@ -1,13 +1,12 @@
 version: "0.2"
 name: adversarial-review
 summary: >
-  Dual independent reviewers with an orchestrator. Each reviewer
-  analyzes the code independently, then the orchestrator synthesizes
-  their findings. Disagreements surface real issues.
+  两名独立评审智能体与一名编排智能体。每名评审者独立分析代码，随后由编排智能体
+  综合他们的发现。分歧用于暴露真实问题。
 
 pods:
   - id: orch
-    label: Orchestration
+    label: 编排
     members:
       - id: lead
         agent_ref: "local:../../../agents/orchestration/orchestrator"
@@ -17,7 +16,7 @@ pods:
     edges: []
 
   - id: review
-    label: Review Team
+    label: 评审团队
     members:
       - id: r1
         agent_ref: "local:../../../agents/review/independent-reviewer"

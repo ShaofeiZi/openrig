@@ -1,28 +1,21 @@
-// Slice 09 — Rig Policy Primitive (OPR.0.3.2.9).
+// Slice 09——工作组策略原语（OPR.0.3.2.9）。
 //
-// Typed graduation of the operator-context-mode-system v0 doctrine. The
-// convention at conventions/operator-context-mode-system/README.md is
-// the legacy spec; S07 adds deliberate operating posture and project/mission scopes.
-// Types remain closed enums + a 10-field
-// schema. None of these fields may be silently merged or dropped — the
-// validator enforces field-set integrity.
+// operator-context-mode-system v0 原则的类型化升级。
+// conventions/operator-context-mode-system/README.md 中的约定是旧规格；S07 新增显式运行姿态
+// 与项目/任务目标范围。类型仍保持为封闭枚举 + 10 字段 schema。任何字段都不得静默合并或丢弃，
+// 校验器会强制字段集合完整性。
 //
-// GATE-ZERO (HG-SAFE): this primitive is permission-ADJACENT but NEVER
-// permission-modifying. `permission_prompt_posture` is a descriptive
-// operator-set ergonomic hint. The enum below is STRUCTURALLY
-// incapable of expressing auto-accept: there is no auto-accept member
-// in the union, and the validator further rejects unknown values. Any
-// future contributor who tries to add an auto-accept value here MUST
-// also amend the permission-posture convention + safety policy in the
-// FROZEN contract — review will reject otherwise.
+// GATE-ZERO（HG-SAFE）：此原语与权限相邻，但绝不修改权限。
+// `permission_prompt_posture` 是由操作员设置的描述性易用性提示。下方枚举从结构上无法表达
+// auto-accept：联合类型中没有 auto-accept 成员，校验器还会拒绝未知值。未来若有人尝试在此
+// 添加 auto-accept 值，必须同时修订 FROZEN 契约中的 permission-posture 约定与安全策略，
+// 否则评审应予拒绝。
 
 /**
- * Component 2 — six legacy modes plus human-led/delegated operating posture.
- * Legacy modes are lowercase single English
- * words; synonyms and numeric aliases (`L0`–`L3`, `operator:L<n>`)
- * are explicitly forbidden by the convention. The L0–L3 collision
- * warning at `conventions/operator-context-mode-system/README.md`
- * §"L0–L3 Collision Warning" is load-bearing.
+ * 组件 2——六种旧模式，加上 human-led/delegated 运行姿态。旧模式是小写单个英文词；
+ * 约定明确禁止同义词和数字别名（`L0`–`L3`、`operator:L<n>`）。
+ * `conventions/operator-context-mode-system/README.md` 中
+ * §"L0–L3 Collision Warning" 的冲突警告是承重约束。
  */
 export type OperatorContextMode = "sleep" | "desk" | "mobile" | "away" | "focus" | "debug" | "human-led" | "delegated";
 
@@ -38,9 +31,8 @@ export const OPERATOR_CONTEXT_MODES = [
 ] as const satisfies readonly OperatorContextMode[];
 
 /**
- * Component 4 — six scopes. More-specific overrides less-specific
- * when multiple modes coexist (Scope hierarchy: qitem > workstream >
- * mission > project > rig > global_host).
+ * 组件 4——六种范围。多个模式共存时，更具体的范围覆盖较不具体的范围
+ *（层级：qitem > workstream > mission > project > rig > global_host）。
  */
 export type OperatorContextScope = "global_host" | "rig" | "project" | "mission" | "workstream" | "qitem";
 
@@ -54,8 +46,7 @@ export const OPERATOR_CONTEXT_SCOPES = [
 ] as const satisfies readonly OperatorContextScope[];
 
 /**
- * Scope specificity ranks; higher number = more specific. Used by the
- * store's effective-mode resolver. NOT operator-facing.
+ * 范围具体性等级；数值越高越具体。供存储的有效模式解析器使用，不面向操作员。
  */
 export const SCOPE_SPECIFICITY: Record<OperatorContextScope, number> = {
   global_host: 0,
@@ -66,7 +57,7 @@ export const SCOPE_SPECIFICITY: Record<OperatorContextScope, number> = {
   qitem: 5,
 };
 
-// --- 10-field schema enums ---
+// --- 10 字段 schema 枚举 ---
 
 export type AutonomyScope =
   | "pre_approved_only"
@@ -83,30 +74,24 @@ export type UpdateDetail = "compact" | "normal" | "verbose";
 export type EscalationThreshold = "low" | "normal" | "high" | "blocker_only";
 
 /**
- * Component 3 — concurrency_limit. Suggested values include the enum
- * forms below + structured integer values (1..N). v0 ships the enum
- * subset for simplicity; an integer specialization can graduate via
- * Mode 1.5 amendment when fixture-backed evidence appears.
+ * 组件 3——concurrency_limit。建议值包含下方枚举形式与结构化整数（1..N）。
+ * v0 为简化只交付枚举子集；出现 fixture 支撑的证据后，可通过 Mode 1.5 修订升级整数特化。
  */
 export type ConcurrencyLimit = "serial" | "2" | "4" | "unlimited";
 
 /**
- * Component 6 — Safety Policy load-bearing rule:
- *   `permission_prompt_posture` MUST NOT include auto-accept in v0 or
- *   any descendant. The safe values are exactly these three.
+ * 组件 6——安全策略承重规则：
+ *   v0 及其任何后代中的 `permission_prompt_posture` 都不得包含 auto-accept。
+ *   安全值严格限定为以下三个。
  *
- * The enum is STRUCTURALLY closed: no auto-accept literal exists in
- * the union. A contributor cannot "set permissionPromptPosture =
- * 'auto_accept'" because the literal isn't a member; TypeScript
- * rejects at compile time. The validator additionally rejects any
- * non-member string at runtime (defense-in-depth for inputs that
- * bypass typing — JSON file, env var, etc).
+ * 该枚举从结构上封闭：联合类型中不存在 auto-accept 字面量。贡献者无法设置
+ * `permissionPromptPosture = 'auto_accept'`，因为该字面量不是成员，TypeScript 会在编译时拒绝。
+ * 校验器还会在运行时拒绝任何非成员字符串，对绕过类型系统的输入（JSON 文件、环境变量等）
+ * 实施纵深防御。
  *
- * If a future amendment proposes auto-accept, it MUST first amend
- * the permission-posture canon at
- * `conventions/permission-posture/README.md` AND the FROZEN
- * operator-context-mode safety policy. This slice and its
- * descendants reject auto-accept independently of any caller intent.
+ * 若未来修订提议 auto-accept，必须先修订 `conventions/permission-posture/README.md`
+ * 中的 permission-posture 规范以及 FROZEN operator-context-mode 安全策略。
+ * 无论调用方意图如何，本 slice 及其后代都会独立拒绝 auto-accept。
  */
 export type PermissionPromptPosture =
   | "normal"
@@ -120,20 +105,15 @@ export const SAFE_PERMISSION_PROMPT_POSTURES = [
 ] as const satisfies readonly PermissionPromptPosture[];
 
 /**
- * Component 4 — citation source. Free-text in v0 (operator may cite
- * `current-mode.md`, a qitem id, a chatroom topic, or a convention-only
- * declaration). Structured citations are a Mode 1.5 amendment per
- * the convention.
+ * 组件 4——引用来源。v0 使用自由文本；操作员可引用 `current-mode.md`、qitem ID、
+ * 聊天室主题或仅约定声明。按约定，结构化引用属于 Mode 1.5 修订。
  */
 export type EvidenceCitation = string;
 
 /**
- * Component 4 — expiry_or_stale_rule. v0 declares the field with a
- * conservative default ("re_confirm_on_long_gap"); the numeric
- * threshold is deferred per convention Q3 to a Mode 2 helper slice.
- * The rule values below enumerate the supported re-confirmation
- * triggers. NO silent-switch value exists — drift is always a
- * question, never an auto-mode-change.
+ * 组件 4——expiry_or_stale_rule。v0 使用保守默认值 "re_confirm_on_long_gap" 声明该字段；
+ * 按约定 Q3，数值阈值延后到 Mode 2 辅助 slice。下方规则值枚举受支持的重新确认触发器。
+ * 不存在静默切换值——漂移始终需要询问，绝不自动更改模式。
  */
 export type ExpiryOrStaleRule =
   | "none"
@@ -149,16 +129,13 @@ export const STALE_RULES = [
 ] as const satisfies readonly ExpiryOrStaleRule[];
 
 /**
- * Component 3 — the 10-field SETTINGS schema. ALL fields are required
- * by the validator; none may be merged or dropped. Reviewer field-set
- * integrity check (HG-2).
+ * 组件 3——10 字段 SETTINGS schema。校验器要求全部字段，任何字段都不得合并或丢弃。
+ * 评审方字段集合完整性检查（HG-2）。
  *
- * **`mode` is NOT in this record.** Mode is the binding's identity
- * (Component 2 — the name of the named bundle); the record parameterizes
- * how that named mode shapes ergonomics. The binding wrapper
- * (OperatorContextModeBinding) carries `mode` at the top level so the
- * frozen 10-field settings record stays exactly 10 fields, as declared
- * by the convention's §Component 3 table.
+ * **此记录不含 `mode`。** Mode 是绑定的身份（组件 2——具名 bundle 的名称）；
+ * 此记录参数化该具名模式如何塑造易用性。绑定包装器 OperatorContextModeBinding
+ * 在顶层携带 `mode`，使冻结的 10 字段设置记录严格保持 10 个字段，
+ * 与约定 §Component 3 表声明一致。
  */
 export interface OperatorContextModeRecord {
   autonomy_scope: AutonomyScope;
@@ -174,51 +151,45 @@ export interface OperatorContextModeRecord {
 }
 
 /**
- * A scoped binding of a mode to a target context. The store keys rows
- * by (scope, qualifier) so the same scope can hold many bindings
- * (e.g., multiple rig-scoped modes), and the effective-mode resolver
- * picks the right one for the (rig, workstream, qitem) read context.
+ * 模式到目标上下文的范围化绑定。存储按 (scope, qualifier) 为行建键，因此同一 scope
+ * 可包含多个绑定（例如多个工作组范围模式）；有效模式解析器会为
+ * (rig, workstream, qitem) 读取上下文选择正确绑定。
  *
- * - `global_host` bindings have a null qualifier.
- * - `rig` bindings carry the rig id as qualifier.
- * - `workstream` bindings carry the workstream id as qualifier.
- * - `qitem` bindings carry the qitem id as qualifier.
+ * - `global_host` 绑定的 qualifier 为 null。
+ * - `rig` 绑定以工作组 ID 作为 qualifier。
+ * - `workstream` 绑定以 workstream ID 作为 qualifier。
+ * - `qitem` 绑定以 qitem ID 作为 qualifier。
  */
 export interface OperatorContextModeBinding {
-  /** Stable identifier — `${scope}:${qualifier ?? "host"}` v0. */
+  /** 稳定标识符——v0 使用 `${scope}:${qualifier ?? "host"}`。 */
   id: string;
-  /** Component 2 — the named mode this binding selects. Lives at the
-   *  binding (not in the 10-field settings record) so the frozen
-   *  Component-3 record stays exactly 10 fields. */
+  /** 组件 2——此绑定选择的具名模式。该值位于绑定层而不是 10 字段设置记录中，
+   *  使冻结的组件 3 记录严格保持 10 个字段。 */
   mode: OperatorContextMode;
   record: OperatorContextModeRecord;
-  /** Qualifier value (rigId, workstreamId, qitemId) — null when scope is global_host. */
+  /** qualifier 值（rigId、workstreamId、qitemId）；scope 为 global_host 时是 null。 */
   qualifier: string | null;
-  /** ISO timestamp of last set. Used by drift-rule consumers. */
+  /** 最近设置时间的 ISO 时间戳，供漂移规则消费者使用。 */
   setAt: string;
-  /** Who set it. Operator-only by contract — see update authority. */
+  /** 设置者。契约规定仅限操作员，见更新权限。 */
   setBy: "operator";
 }
 
 /**
- * The effective-mode read result. The resolver returns the most
- * specific binding for a (rig?, workstream?, qitem?) context, or
- * `null` when no binding exists at any matching scope.
+ * 有效模式读取结果。解析器返回 (rig?, workstream?, qitem?) 上下文中最具体的绑定；
+ * 所有匹配范围都没有绑定时返回 `null`。
  *
- * Per convention §"Q6 — Absent mode is unknown_posture, NOT desk":
- * callers MUST treat a null effective mode as `unknown_posture` and
- * re-confirm to a real mode explicitly. The resolver does NOT default
- * to `desk` and never invents a binding.
+ * 按约定 §"Q6 — Absent mode is unknown_posture, NOT desk"：调用方必须把 null 有效模式
+ * 视为 `unknown_posture`，并显式重新确认真实模式。解析器不会默认为 `desk`，也绝不虚构绑定。
  */
 export interface EffectiveOperatorContextMode {
   binding: OperatorContextModeBinding;
-  /** Why this binding won (which scope; for debug + UI surfacing). */
+  /** 此绑定胜出的原因（具体 scope；用于调试与 UI 展示）。 */
   resolvedScope: OperatorContextScope;
 }
 
 /**
- * Read context for the resolver. All fields optional; the resolver
- * picks the most-specific applicable binding.
+ * 解析器的读取上下文。所有字段都可选；解析器选择最具体的适用绑定。
  */
 export interface OperatorContextReadContext {
   rigId?: string;
@@ -228,7 +199,7 @@ export interface OperatorContextReadContext {
   qitemId?: string;
 }
 
-/** Mission IDs are project-qualified; identical mission names never share a binding. */
+/** 任务目标 ID 带项目限定；同名任务目标绝不共享绑定。 */
 export function missionModeQualifier(projectId: string, missionId: string): string {
   return `${projectId}/${missionId}`;
 }

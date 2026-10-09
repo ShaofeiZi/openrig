@@ -9,7 +9,7 @@ import { workflowStepTrailsSchema } from "../src/db/migrations/035_workflow_step
 import { WorkflowInstanceStore } from "../src/domain/workflow-instance-store.js";
 import { WorkflowStepTrailLog } from "../src/domain/workflow-step-trail-log.js";
 
-describe("WorkflowStepTrailLog (PL-004 Phase D; append-only)", () => {
+describe("WorkflowStepTrailLog（PL-004 Phase D；仅追加）", () => {
   let db: Database.Database;
   let log: WorkflowStepTrailLog;
   let store: WorkflowInstanceStore;
@@ -37,7 +37,7 @@ describe("WorkflowStepTrailLog (PL-004 Phase D; append-only)", () => {
 
   afterEach(() => db.close());
 
-  it("record returns persisted entry with ULID id + correct fields", () => {
+  it("record 返回带 ULID ID 和正确字段的持久化条目", () => {
     const e = log.record({
       instanceId,
       stepId: "produce",
@@ -54,7 +54,7 @@ describe("WorkflowStepTrailLog (PL-004 Phase D; append-only)", () => {
     expect(e.nextQitemId).toBe("q-next");
   });
 
-  it("record(closureEvidence) JSON-encodes and decodes on read", () => {
+  it("record(closureEvidence) 以 JSON 编码，并在读取时解码", () => {
     log.record({
       instanceId,
       stepId: "x",
@@ -69,7 +69,7 @@ describe("WorkflowStepTrailLog (PL-004 Phase D; append-only)", () => {
     expect(list[0]?.closureEvidence).toEqual({ result: "shipped", artifact: "/path/to/thing" });
   });
 
-  it("nextQitemId nullable for terminal closures (done/waiting/failed)", () => {
+  it("终态 closure（done/waiting/failed）的 nextQitemId 可为 null", () => {
     log.record({
       instanceId,
       stepId: "x",
@@ -83,7 +83,7 @@ describe("WorkflowStepTrailLog (PL-004 Phase D; append-only)", () => {
     expect(log.listForInstance(instanceId)[0]?.nextQitemId).toBeNull();
   });
 
-  it("listForInstance returns DESC by closed_at", () => {
+  it("listForInstance 按 closed_at 降序返回", () => {
     log.record({ instanceId, stepId: "a", stepRole: "r", closedAt: "2026-05-03T08:00:00.000Z", closureReason: "handoff", actorSession: "a@r", priorQitemId: "q-prior" });
     log.record({ instanceId, stepId: "b", stepRole: "r", closedAt: "2026-05-03T08:01:00.000Z", closureReason: "handoff", actorSession: "a@r", priorQitemId: "q-prior" });
     const list = log.listForInstance(instanceId);
@@ -91,7 +91,7 @@ describe("WorkflowStepTrailLog (PL-004 Phase D; append-only)", () => {
     expect(list[1]?.stepId).toBe("a");
   });
 
-  it("FK violation: record() against unknown instance_id throws SQLite FK error", () => {
+  it("违反 FK：对未知 instance_id 调用 record() 时抛出 SQLite FK 错误", () => {
     expect(() =>
       log.record({
         instanceId: "no-such-instance",
@@ -105,7 +105,7 @@ describe("WorkflowStepTrailLog (PL-004 Phase D; append-only)", () => {
     ).toThrow();
   });
 
-  it("API surface has no update/delete (append-only contract)", () => {
+  it("API 接口不含 update/delete（仅追加契约）", () => {
     const proto = Object.getPrototypeOf(log) as Record<string, unknown>;
     const names = Object.getOwnPropertyNames(proto);
     expect(names).not.toContain("update");
@@ -113,7 +113,7 @@ describe("WorkflowStepTrailLog (PL-004 Phase D; append-only)", () => {
     expect(names).not.toContain("remove");
   });
 
-  it("countForInstance returns row count for one instance", () => {
+  it("countForInstance 返回单个 instance 的行数", () => {
     expect(log.countForInstance(instanceId)).toBe(0);
     log.record({ instanceId, stepId: "x", stepRole: "r", closedAt: "2026-05-03T08:00:00.000Z", closureReason: "done", actorSession: "a@r", priorQitemId: "q-prior" });
     expect(log.countForInstance(instanceId)).toBe(1);

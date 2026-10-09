@@ -1,27 +1,25 @@
-// Phase 3a slice 3.3 — plugin-discovery-service tests (TDD red→green).
+// Phase 3a slice 3.3——plugin-discovery-service 测试（TDD red→green）。
 //
-// SC-29 EXCEPTION #8 declared verbatim:
-// "Slice 3.3 (UI plugin surface) requires daemon-side plugin-discovery-service
-// + 3 HTTP routes (GET /api/plugins, GET /api/plugins/:id, GET /api/plugins/:id/used-by)
-// as backing API. No additional state, no SQL migration, no mutation routes.
-// Read-only discovery surface aggregating filesystem-scan unions per
-// DESIGN.md §5.4. Per IMPL-PRD §3.3 'Code touches' this allocation is explicit;
-// documenting in compliance with banked SC-29 verbatim-declaration rule."
+// SC-29 EXCEPTION #8 原文声明：
+// "Slice 3.3（UI plugin surface）需要后台服务侧 plugin-discovery-service
+// + 3 条 HTTP 路由（GET /api/plugins、GET /api/plugins/:id、GET /api/plugins/:id/used-by）
+// 作为后端 API。不新增 state、不迁移 SQL、不增加 mutation route。按 DESIGN.md §5.4，
+// 只读 discovery surface 聚合文件系统扫描并集。按 IMPL-PRD §3.3 'Code touches'，此分配是
+// 显式的；这里按已记录 SC-29 逐字声明规则进行说明。"
 //
-// Discovery service contract:
+// Discovery service 契约：
 //   - listPlugins({ runtimeFilter?, sourceFilter?, agentRefFilter? })
-//     → PluginEntry[] union of:
+//     → PluginEntry[] 并集：
 //       * ~/.openrig/plugins/* (vendored)
 //       * ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/ (claude-cache)
 //       * ~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/ (codex-cache)
-//       * agent-ref discoveries (plugins referenced inline in agent.yaml resources.plugins[])
-//   - getPlugin(id) → PluginManifest with full manifest content + tree summary
-//   - findUsedBy(id) → AgentReference[] (which agent.yamls reference this plugin id)
+//       * agent-ref discovery（agent.yaml resources.plugins[] 内联引用的 plugin）
+//   - getPlugin(id) → 包含完整 manifest 内容 + tree summary 的 PluginManifest
+//   - findUsedBy(id) → AgentReference[]（引用该 plugin id 的 agent.yaml）
 //
-// Branch-merge-friendly: this service operates on filesystem reads + raw YAML
-// string matching for used-by; doesn't depend on batch 1's PluginResource type
-// from plugin-primitive-v0 branch. After convergence into plugin-primitive-v0,
-// the service continues to work with the shipped PluginResource types.
+// 易于 branch merge：本 service 通过文件系统读取 + 原始 YAML 字符串匹配实现 used-by；不依赖
+// plugin-primitive-v0 branch 中 batch 1 的 PluginResource type。合入 plugin-primitive-v0 后，
+// 本 service 仍可配合正式 PluginResource type 工作。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, rmSync } from "node:fs";
@@ -96,7 +94,7 @@ describe("PluginDiscoveryService", () => {
   });
 
   describe("listPlugins", () => {
-    it("returns empty list when no plugin sources contain plugins", () => {
+    it("没有 plugin source 包含 plugin 时返回空列表", () => {
       const service = new PluginDiscoveryService({
         openrigPluginsDir: dirs.openrigPluginsDir,
         claudeCacheDir: dirs.claudeCacheDir,
@@ -106,7 +104,7 @@ describe("PluginDiscoveryService", () => {
       expect(service.listPlugins()).toEqual([]);
     });
 
-    it("retires historical openrig-lab refocus registrations before duplicate validation", () => {
+    it("在重复校验前退役历史 openrig-lab refocus 注册", () => {
       const core = join(dirs.openrigPluginsDir, "openrig-core");
       const lab = join(dirs.openrigPluginsDir, "openrig-lab");
       writeClaudePluginManifest(core, { name: "openrig-core", version: "0.1.0", hooks: "./hooks/claude.json" });
@@ -125,7 +123,7 @@ describe("PluginDiscoveryService", () => {
           [{ hooks: [{ type: "command", command: 'node "${PLUGIN_ROOT}/hooks/scripts/refocus.cjs"' }] }],
         ]),
       ));
-      // Exact obsolete event sets preserved in the release-boundary ops archive.
+      // 在 release-boundary ops archive 中保留精确的 obsolete event set。
       writeHookRegistry(lab, "claude", Object.fromEntries(
         ["SessionStart", "UserPromptSubmit", "Stop", "PostCompact"].map((event) => [
           event,
@@ -155,7 +153,7 @@ describe("PluginDiscoveryService", () => {
       expect(readJson(join(core, ".codex-plugin", "plugin.json"))).toHaveProperty("hooks", "./hooks/codex.json");
     });
 
-    it("removes only obsolete refocus commands from openrig-lab", () => {
+    it("只从 openrig-lab 移除 obsolete refocus 命令", () => {
       const core = join(dirs.openrigPluginsDir, "openrig-core");
       const lab = join(dirs.openrigPluginsDir, "openrig-lab");
       writeClaudePluginManifest(core, { name: "openrig-core", version: "0.1.0", hooks: "./hooks/claude.json" });
@@ -185,7 +183,7 @@ describe("PluginDiscoveryService", () => {
       });
     });
 
-    it("fails loud with both Claude manifest paths when unknown vendored plugins duplicate a hook identity", () => {
+    it("未知 vendored plugin 重复 hook identity 时明确失败并列出两个 Claude manifest 路径", () => {
       const core = join(dirs.openrigPluginsDir, "openrig-core");
       const rogue = join(dirs.openrigPluginsDir, "openrig-rogue");
       writeClaudePluginManifest(core, { name: "openrig-core", version: "0.1.0", hooks: "./hooks/claude.json" });
@@ -201,7 +199,7 @@ describe("PluginDiscoveryService", () => {
       })).toThrow(new RegExp(`${core}/hooks/claude\\.json.*${rogue}/hooks/claude\\.json`));
     });
 
-    it("fails loud with both Codex manifest paths when unknown vendored plugins duplicate a hook identity", () => {
+    it("未知 vendored plugin 重复 hook identity 时明确失败并列出两个 Codex manifest 路径", () => {
       const core = join(dirs.openrigPluginsDir, "openrig-core");
       const rogue = join(dirs.openrigPluginsDir, "openrig-rogue");
       writeCodexPluginManifest(core, { name: "openrig-core", version: "0.1.0", hooks: "./hooks/codex.json" });
@@ -217,7 +215,7 @@ describe("PluginDiscoveryService", () => {
       })).toThrow(new RegExp(`${core}/hooks/codex\\.json.*${rogue}/hooks/codex\\.json`));
     });
 
-    it("discovers a vendored OpenRig plugin (dual-manifest)", () => {
+    it("发现 vendored OpenRig plugin（dual-manifest）", () => {
       const corePluginDir = join(dirs.openrigPluginsDir, "openrig-core");
       writeClaudePluginManifest(corePluginDir, {
         name: "openrig-core",
@@ -248,7 +246,7 @@ describe("PluginDiscoveryService", () => {
       });
     });
 
-    it("discovers a Claude cache plugin (claude-only manifest)", () => {
+    it("发现 Claude cache plugin（仅 Claude manifest）", () => {
       const claudePluginPath = join(dirs.claudeCacheDir, "anthropics", "github", "1.0.0");
       writeClaudePluginManifest(claudePluginPath, {
         name: "github",
@@ -273,7 +271,7 @@ describe("PluginDiscoveryService", () => {
       });
     });
 
-    it("discovers a Codex cache plugin (codex-only manifest)", () => {
+    it("发现 Codex cache plugin（仅 Codex manifest）", () => {
       const codexPluginPath = join(dirs.codexCacheDir, "openai", "tools", "0.5.0");
       writeCodexPluginManifest(codexPluginPath, {
         name: "tools",
@@ -298,10 +296,9 @@ describe("PluginDiscoveryService", () => {
       });
     });
 
-    it("aggregates discoveries across all 3 source roots with distinct source labels", () => {
-      // Drift-discriminator regression check per banked feedback_poc_regression_must_discriminate.
-      // Three sources × distinct values per source so layer discrimination is
-      // observable.
+    it("聚合全部 3 个 source root 的 discovery，并使用不同 source label", () => {
+      // 按已记录 feedback_poc_regression_must_discriminate 做 drift-discriminator 回归检查。
+      // 三个 source 各用不同值，使 layer discrimination 可观测。
       writeClaudePluginManifest(join(dirs.openrigPluginsDir, "openrig-core"), {
         name: "openrig-core",
         version: "0.1.0",
@@ -326,12 +323,12 @@ describe("PluginDiscoveryService", () => {
       });
       const plugins = service.listPlugins();
       expect(plugins).toHaveLength(3);
-      // Distinct source labels per layer.
+      // 每层使用不同 source label。
       const sources = plugins.map((p) => p.source).sort();
       expect(sources).toEqual(["claude-cache", "codex-cache", "vendored"]);
     });
 
-    it("ignores directories without plugin manifests", () => {
+    it("忽略没有 plugin manifest 的目录", () => {
       mkdirSync(join(dirs.openrigPluginsDir, "not-a-plugin"), { recursive: true });
       writeFileSync(
         join(dirs.openrigPluginsDir, "not-a-plugin", "README.md"),
@@ -347,13 +344,11 @@ describe("PluginDiscoveryService", () => {
       expect(service.listPlugins()).toEqual([]);
     });
 
-    it("slice 3.3 fix-C — scans rig-bundled cwd plugin roots when cwdScanRoots provided", () => {
-      // velocity-qa VM verify failure #3 — DESIGN §5.4 union-of-sources
-      // must include rig-bundled <cwd>/.claude/plugins/* and
-      // <cwd>/.codex/plugins/* (the projection target from IMPL-PRD §1.2).
-      // Implementation: PluginDiscoveryService accepts optional
-      // cwdScanRoots (constructor + per-call); each scanned cwd contributes
-      // discoveries with `rig-cwd:` source label.
+    it("slice 3.3 fix-C——提供 cwdScanRoots 时扫描工作组随附的 cwd plugin root", () => {
+      // velocity-qa VM verify failure #3——DESIGN §5.4 的 source 并集必须包含工作组随附的
+      // <cwd>/.claude/plugins/* 与 <cwd>/.codex/plugins/*（IMPL-PRD §1.2 的 projection target）。
+      // 实现：PluginDiscoveryService 接受可选 cwdScanRoots（构造器 + 逐调用）；每个已扫描 cwd
+      // 以 `rig-cwd:` source label 提供 discovery。
       const rigCwd = join(dirs.root, "rig-cwd-1");
       const claudeBundleDir = join(rigCwd, ".claude", "plugins");
       const codexBundleDir = join(rigCwd, ".codex", "plugins");
@@ -378,21 +373,19 @@ describe("PluginDiscoveryService", () => {
         cwdScanRoots: [rigCwd],
       });
       const plugins = service.listPlugins();
-      // Two plugins: one claude-side, one codex-side; both labeled rig-cwd.
+      // 两个 plugin：一个在 Claude 侧，一个在 Codex 侧；两者都标为 rig-cwd。
       const cwdPlugins = plugins.filter((p) => p.source === "rig-cwd");
       expect(cwdPlugins).toHaveLength(2);
       const names = cwdPlugins.map((p) => p.name).sort();
       expect(names).toEqual(["rig-codex-tool", "rig-tool"]);
-      // Source labels embed the rig cwd tail for disambiguation;
-      // each plugin's label contains its name (order-independent).
+      // Source label 嵌入工作组 cwd 尾部用于消歧；每个 plugin label 包含其名称，与顺序无关。
       const labels = cwdPlugins.map((p) => p.sourceLabel);
       expect(labels.some((l) => /^rig-cwd:.*rig-tool$/.test(l))).toBe(true);
       expect(labels.some((l) => /^rig-cwd:.*rig-codex-tool$/.test(l))).toBe(true);
     });
 
-    it("slice 3.3 fix-C — per-call cwdScanRoots overrides constructor option", () => {
-      // Allows the API layer to pass ?cwd=<path> dynamically without
-      // mutating the service singleton.
+    it("slice 3.3 fix-C——逐调用 cwdScanRoots 覆盖构造器 option", () => {
+      // 允许 API 层动态传递 ?cwd=<path>，而不修改 service singleton。
       const rigCwd = join(dirs.root, "rig-cwd-dyn");
       const claudeBundleDir = join(rigCwd, ".claude", "plugins");
       mkdirSync(claudeBundleDir, { recursive: true });
@@ -408,15 +401,15 @@ describe("PluginDiscoveryService", () => {
         codexCacheDir: dirs.codexCacheDir,
         specLibraryDir: dirs.specLibraryDir,
       });
-      // No cwds at construction.
+      // 构造时不提供 cwd。
       expect(service.listPlugins().filter((p) => p.source === "rig-cwd")).toEqual([]);
-      // Per-call cwd surfaces the bundled plugin.
+      // 逐调用 cwd 呈现随附 plugin。
       const withCwd = service.listPlugins({ cwdScanRoots: [rigCwd] });
       expect(withCwd.filter((p) => p.source === "rig-cwd")).toHaveLength(1);
       expect(withCwd.find((p) => p.name === "ephemeral-tool")).toBeDefined();
     });
 
-    it("filters by runtime when requested", () => {
+    it("请求时按 runtime 过滤", () => {
       writeClaudePluginManifest(join(dirs.openrigPluginsDir, "claude-only"), {
         name: "claude-only",
         version: "1.0.0",
@@ -444,7 +437,7 @@ describe("PluginDiscoveryService", () => {
   });
 
   describe("getPlugin", () => {
-    it("returns null when plugin not found", () => {
+    it("未找到 plugin 时返回 null", () => {
       const service = new PluginDiscoveryService({
         openrigPluginsDir: dirs.openrigPluginsDir,
         claudeCacheDir: dirs.claudeCacheDir,
@@ -454,12 +447,11 @@ describe("PluginDiscoveryService", () => {
       expect(service.getPlugin("nonexistent")).toBeNull();
     });
 
-    it("returns MCP server summaries from manifest mcpServers field (slice 3.3 fix-A)", () => {
-      // velocity-qa VM verify failure #1: PluginViewer needs an MCP section
-      // per DESIGN §5.7 + IMPL-PRD §3.2. Manifest's mcpServers field is
-      // an object keyed by server-name → server-config. Discovery returns
-      // one PluginMcpServerSummary per key (best-effort; we surface name +
-      // declared command/transport metadata if present).
+    it("从 manifest mcpServers 字段返回 MCP server summary（slice 3.3 fix-A）", () => {
+      // velocity-qa VM verify failure #1：按 DESIGN §5.7 + IMPL-PRD §3.2，PluginViewer 需要
+      // MCP section。Manifest 的 mcpServers 字段是以 server-name → server-config 为 key 的
+      // object。Discovery 每个 key 返回一个 PluginMcpServerSummary；尽力呈现 name 以及已声明的
+      // command/transport metadata。
       const corePluginDir = join(dirs.openrigPluginsDir, "openrig-mcp");
       writeClaudePluginManifest(corePluginDir, {
         name: "openrig-mcp",
@@ -484,7 +476,7 @@ describe("PluginDiscoveryService", () => {
       expect(result?.mcpServers.find((s) => s.name === "github-mcp")?.runtime).toBe("claude");
     });
 
-    it("returns empty mcpServers when manifest has no mcpServers field", () => {
+    it("manifest 没有 mcpServers 字段时返回空 mcpServers", () => {
       const corePluginDir = join(dirs.openrigPluginsDir, "openrig-no-mcp");
       writeClaudePluginManifest(corePluginDir, {
         name: "openrig-no-mcp",
@@ -500,12 +492,11 @@ describe("PluginDiscoveryService", () => {
       expect(service.getPlugin("openrig-no-mcp")?.mcpServers).toEqual([]);
     });
 
-    it("slice 3.3 fix-iteration — getPlugin self-resolves rig-cwd: IDs (claude side) without external cwd state", () => {
-      // redo-guard-2 BLOCK item 1: /api/plugins?cwd=... lists rig-cwd
-      // plugins but /api/plugins/:id detail call 404s because listPlugins()
-      // without cwdScanRoots doesn't re-scan the cwd, so getPlugin can't
-      // find the entry by id. Fix: parse the cwd out of the rig-cwd: id
-      // prefix, re-scan that cwd, resolve the entry. ID format:
+    it("slice 3.3 fix-iteration——getPlugin 无需外部 cwd state 即可自行解析 Claude 侧 rig-cwd: ID", () => {
+      // redo-guard-2 BLOCK item 1：/api/plugins?cwd=... 可列出 rig-cwd plugin，但
+      // /api/plugins/:id detail 调用返回 404，因为没有 cwdScanRoots 的 listPlugins() 不会重新
+      // 扫描 cwd，getPlugin 无法按 id 找到 entry。修复：从 rig-cwd: id prefix 解析 cwd，重新
+      // 扫描该 cwd 并解析 entry。ID 格式：
       //   rig-cwd:<cwd>/.claude/plugins/<plugin>
       //   rig-cwd:<cwd>/.codex/plugins/<plugin>
       const rigCwd = join(dirs.root, "rig-cwd-self-resolve");
@@ -526,14 +517,14 @@ describe("PluginDiscoveryService", () => {
       const rigToolEntry = listed.find((p) => p.source === "rig-cwd");
       expect(rigToolEntry).toBeDefined();
       const rigToolId = rigToolEntry!.id;
-      // Call getPlugin with that id directly (no cwd opts) — must resolve.
+      // 直接用该 id 调用 getPlugin，不提供 cwd option；必须能解析。
       const detail = service.getPlugin(rigToolId);
       expect(detail).not.toBeNull();
       expect(detail?.entry.name).toBe("rig-tool");
       expect(detail?.entry.source).toBe("rig-cwd");
     });
 
-    it("slice 3.3 fix-iteration — getPlugin self-resolves rig-cwd: codex IDs too", () => {
+    it("slice 3.3 fix-iteration——getPlugin 同样自行解析 Codex 侧 rig-cwd: ID", () => {
       const rigCwd = join(dirs.root, "rig-cwd-self-resolve-codex");
       const codexBundleDir = join(rigCwd, ".codex", "plugins");
       mkdirSync(codexBundleDir, { recursive: true });
@@ -556,8 +547,8 @@ describe("PluginDiscoveryService", () => {
       expect(detail?.entry.name).toBe("codex-tool");
     });
 
-    it("slice 3.3 fix-iteration — getPlugin returns null for malformed rig-cwd: ids", () => {
-      // Negative: garbled prefix or unresolvable cwd → null (not throw).
+    it("slice 3.3 fix-iteration——getPlugin 对 malformed rig-cwd: id 返回 null", () => {
+      // 负向：乱码 prefix 或无法解析的 cwd → null，而不是抛错。
       const service = new PluginDiscoveryService({
         openrigPluginsDir: dirs.openrigPluginsDir,
         claudeCacheDir: dirs.claudeCacheDir,
@@ -568,7 +559,7 @@ describe("PluginDiscoveryService", () => {
       expect(service.getPlugin("rig-cwd:/nonexistent/.claude/plugins/x")).toBeNull();
     });
 
-    it("returns full manifest + tree summary for a discovered plugin", () => {
+    it("为已发现 plugin 返回完整 manifest + tree summary", () => {
       const corePluginDir = join(dirs.openrigPluginsDir, "openrig-core");
       writeClaudePluginManifest(corePluginDir, {
         name: "openrig-core",
@@ -578,7 +569,7 @@ describe("PluginDiscoveryService", () => {
         skills: "./skills",
         hooks: "./hooks/claude.json",
       });
-      // Add a skill folder + hook config so tree summary has content.
+      // 添加 skill 文件夹 + hook config，使 tree summary 有内容。
       mkdirSync(join(corePluginDir, "skills", "openrig-user"), { recursive: true });
       writeFileSync(
         join(corePluginDir, "skills", "openrig-user", "SKILL.md"),
@@ -613,7 +604,7 @@ describe("PluginDiscoveryService", () => {
   });
 
   describe("findUsedBy", () => {
-    it("returns empty list when no agent specs reference the plugin", () => {
+    it("没有 agent spec 引用 plugin 时返回空列表", () => {
       const service = new PluginDiscoveryService({
         openrigPluginsDir: dirs.openrigPluginsDir,
         claudeCacheDir: dirs.claudeCacheDir,
@@ -623,7 +614,7 @@ describe("PluginDiscoveryService", () => {
       expect(service.findUsedBy("openrig-core")).toEqual([]);
     });
 
-    it("finds agents whose resources.plugins[] references the plugin id", () => {
+    it("找到 resources.plugins[] 引用该 plugin id 的智能体", () => {
       const advisorDir = join(dirs.specLibraryDir, "advisor");
       mkdirSync(advisorDir, { recursive: true });
       writeFileSync(
@@ -694,7 +685,7 @@ startup:
       expect(superpowersUsedBy[0]?.agentName).toBe("advisor-lead");
     });
 
-    it("does NOT match plugin ids that appear only in comments or non-resource fields", () => {
+    it("不匹配只出现在注释或非 resource 字段中的 plugin id", () => {
       const agentDir = join(dirs.specLibraryDir, "false-positive-test");
       mkdirSync(agentDir, { recursive: true });
       writeFileSync(
@@ -726,9 +717,8 @@ startup:
         codexCacheDir: dirs.codexCacheDir,
         specLibraryDir: dirs.specLibraryDir,
       });
-      // Comment + skill description mention openrig-core but resources.plugins is empty.
-      // The implementation parses YAML and walks resources.plugins[].id — comments
-      // and unrelated string positions are ignored.
+      // 注释 + skill description 提到 openrig-core，但 resources.plugins 为空。实现解析 YAML 并
+      // 遍历 resources.plugins[].id；忽略注释和无关字符串位置。
       expect(service.findUsedBy("openrig-core")).toEqual([]);
     });
   });

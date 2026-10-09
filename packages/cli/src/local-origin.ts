@@ -5,18 +5,18 @@ import { ConfigStore } from "./config-store.js";
 import { getOpenRigHome } from "./openrig-compat.js";
 import { validateHostRegistry } from "./host-registry.js";
 
-/** Read the boot-minted identity without requiring the local daemon or minting a replacement. */
+/** 读取启动时铸造的身份，不需要本地后台服务，也不重新铸造替代值。 */
 export function readLocalOrigin(): string | undefined {
   let db: Database.Database | undefined;
   try {
     const configured = new ConfigStore().resolveWithSource("db.path");
     let dbPath = configured.value as string;
-    // An explicit configured DB wins. Otherwise retain the last launch's --db selection.
+    // 显式配置的 DB 优先。否则保留上次启动时的 --db 选择。
     if (configured.source === "default") {
       try {
         const state = JSON.parse(readFileSync(join(getOpenRigHome(), "daemon.json"), "utf8"));
         if (typeof state.db === "string" && state.db.length > 0) dbPath = state.db;
-      } catch { /* No launch record: use the configured default, never search other homes. */ }
+      } catch { /* 无启动记录：使用配置的默认值，绝不搜索其他 home。 */ }
     }
     db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: 100 });
     const row = db.prepare("SELECT host_id FROM self_host_identity WHERE singleton = 1").get() as { host_id?: unknown } | undefined;

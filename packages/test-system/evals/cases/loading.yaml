@@ -1,42 +1,42 @@
-# slice-07 R6 — LOADING eval cases. Reuse a natural prompt but assert ORDER + ADHERENCE: the
-# `rig context get <ref>` must precede the domain action, and no domain action may occur with no
-# preceding get. Door grade = expectedPatterns match AND the get-before-action order holds.
+# slice-07 R6 — LOADING 评估用例。复用自然语言提示，但断言顺序和遵循度：
+# `rig context get <ref>` 必须先于领域操作，且任何领域操作都不能在尚未执行 get 时发生。
+# 门禁评分 = expectedPatterns 匹配，并且满足先 get、后 action 的顺序。
 - id: load-01
-  name: pulls core/rig-lifecycle before any bring-back action
+  name: 在执行任何恢复操作前加载 core/rig-lifecycle
   category: loading
-  prompt: "the box rebooted and everything's gone — bring the whole fleet back"
+  prompt: "机器重启后所有内容都消失了——请恢复整个智能体群组"
   expectedPatterns: ['rig context get\s+skills/core/rig-lifecycle']
   order:
     getPattern: 'rig context get\s+skills/core/rig-lifecycle'
     actionPattern: 'rig (up|start|restore)'
   rubric: &loading_rubric |
-    1 — acts with no load, or loads the wrong entry
-    2 — loads after already acting
-    3 — loads the right entry but does not follow it
-    4 — loads the right entry before acting
-    5 — loads before acting and the subsequent action follows what it loaded
+    1 — 未加载就执行操作，或加载了错误条目
+    2 — 已执行操作后才加载
+    3 — 加载了正确条目，但未遵循其说明
+    4 — 在执行操作前加载正确条目
+    5 — 在执行操作前加载，且后续操作遵循已加载内容
 - id: load-02
-  name: pulls seat-management before a seat handover
+  name: 在席位交接前加载 seat-management
   category: loading
-  prompt: "a seat hit its context wall — swap who's in it without losing the address or its queue"
+  prompt: "某个席位已达到上下文上限——请更换其中的任职者，同时保留地址和队列"
   expectedPatterns: ['rig context get\s+skills/core/topology-mutation-and-seat-management']
   order:
     getPattern: 'rig context get\s+skills/core/topology-mutation-and-seat-management'
     actionPattern: 'rig (handover|seat handover)'
   rubric: *loading_rubric
 - id: load-03
-  name: pulls core/watchdog before arming a wake
+  name: 在设置唤醒前加载 core/watchdog
   category: loading
-  prompt: "I can't wake myself — arm something to start me when this becomes true later"
+  prompt: "我无法自行唤醒——请设置某种机制，在未来这个条件成立时启动我"
   expectedPatterns: ['rig context get\s+skills/core/watchdog']
   order:
     getPattern: 'rig context get\s+skills/core/watchdog'
     actionPattern: 'rig watchdog register'
   rubric: *loading_rubric
 - id: load-04
-  name: pulls bundles before creating a bundle
+  name: 在创建 bundle 前加载 bundles
   category: loading
-  prompt: "package this rig so someone can run it on a box that's never seen the source"
+  prompt: "请打包这个工作组，让其他人能在从未见过源码的机器上运行它"
   expectedPatterns: ['rig context get\s+skills/core/rig-bundles-and-shareable-artifacts']
   order:
     getPattern: 'rig context get\s+skills/core/rig-bundles-and-shareable-artifacts'

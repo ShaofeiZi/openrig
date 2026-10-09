@@ -92,26 +92,26 @@ describe("Restore CLI (L3)", () => {
     });
 
     const out = logs.join("\n");
-    expect(out).toContain("Restore attempt id: 42");
-    expect(out).toContain("Status: started");
+    expect(out).toContain("恢复尝试 id：42");
+    expect(out).toContain("状态：started");
     expect(exitCode).toBeUndefined(); // 0
   });
 
-  // L3 closeout checklist: SIGINT message must NOT reference non-existent commands
+  // L3 收尾清单：SIGINT 消息不得引用不存在的命令
   // (e.g., a hypothetical `rig events`). It should point at existing surfaces only.
   it("CLI's SIGINT/SIGTERM honest message references only existing surfaces", async () => {
-    // Reach into the source to verify the message constant doesn't reference
+    // 钻到源码验证消息常量不引用
     // non-existent `rig events`. Inspect the compiled CLI behavior by reading
-    // restore.ts directly is heavy; the simpler check is that the bundled
+    // 直接引 restore.ts 很重；更简单的检查是打包后
     // command file includes the existing-surface guidance. Use require on the
-    // compiled module's signal handler text via a lightweight regex.
+    // 编译模块的信号处理文本经轻量正则。
     const fs = await import("node:fs");
     const path = await import("node:path");
     const here = path.dirname(new URL(import.meta.url).pathname);
     const restoreSrc = fs.readFileSync(path.resolve(here, "../src/commands/restore.ts"), "utf-8");
 
-    // Must include the honest interrupt message mentioning daemon-side work
-    expect(restoreSrc).toMatch(/daemon-side restore may continue/i);
+    // 必须包含诚实的中断消息，提及 daemon 侧工作
+    expect(restoreSrc).toMatch(/后台服务侧的恢复可能仍在继续/);
     // Must reference existing surfaces (rig ps --nodes or rig restore-check)
     expect(restoreSrc).toMatch(/rig ps --nodes|rig restore-check/);
     // Must NOT reference a fake `rig events` command (Decision 1 amendment)
@@ -125,7 +125,7 @@ describe("Restore CLI (L3)", () => {
       await makeCmd().parseAsync(["node", "rig", "restore", "missing", "--rig", "rig-1"]);
     });
 
-    expect(errLogs.join("\n")).toMatch(/not found/i);
+    expect(errLogs.join("\n")).toMatch(/未找到/);
     expect(exitCode).toBe(1);
   });
 
@@ -149,8 +149,8 @@ describe("Restore CLI (L3)", () => {
     });
 
     expect(lastRoutePath).toBe("/api/rigs/rig-1/restore/status/42");
-    expect(logs.join("\n")).toContain("Original verdict: partially_restored");
-    expect(logs.join("\n")).toContain("Current intended-set verdict: fully_restored");
+    expect(logs.join("\n")).toContain("原始判定：partially_restored");
+    expect(logs.join("\n")).toContain("当前预期集合判定：fully_restored");
     expect(exitCode).toBeUndefined();
   });
 
@@ -172,7 +172,7 @@ describe("Restore CLI (L3)", () => {
     });
 
     const errOut = errLogs.join("\n");
-    expect(errOut).toMatch(/Restore blocked/i);
+    expect(errOut).toMatch(/恢复被阻止/);
     expect(errOut).toMatch(/required_startup_file_missing|restore the file|missing\.md/);
     expect(exitCode).toBe(1);
   });

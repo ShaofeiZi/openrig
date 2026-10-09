@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { isAbsolute, join, relative } from "node:path";
 import { getCompatibleOpenRigPath } from "../openrig-compat.js";
 
-// --- Types ---
+// --- 类型 ---
 
 export type CheckStatus = "green" | "yellow" | "red";
 export type Verdict = "restorable" | "restorable_with_caveats" | "not_restorable" | "unknown";
@@ -15,11 +15,9 @@ export interface CheckEntry {
   status: CheckStatus;
   evidence: string;
   remediation: string;
-  /** Whether the remediation action is execution-safe (read-only / manual
-   *  inspection). false for mutating actions (daemon start, chmod, create
-   *  files, snapshot). Defaults to false (unsafe) if omitted — conservative
-   *  so new checks without explicit classification don't invite agents to
-   *  auto-execute mutating commands. */
+  /** remediation action 是否可安全执行（只读或人工检查）。会修改状态的 action（启动后台服务、
+   *  chmod、创建文件、快照）为 false。省略时保守地默认为 false（不安全），防止没有显式分类的
+   *  新 check 诱导智能体自动执行修改命令。 */
   remediationSafe?: boolean;
 }
 
@@ -46,12 +44,11 @@ export interface ContinuityAssertion {
   unprovenCapabilities: string[];
 }
 
-// OPR.0.4.0.29 FR-8 — ready-confidence breakdown by the 5 REAL-enum seat
-// classes. Each derives from a real primitive (no invented status): ready /
-// ready_with_caveats / not_ready come from the seat readiness checks;
-// attention_required from node.startupStatus; unknown is the indeterminate
-// remainder. (The fresh-primed/awaiting-decision SPLIT of ready_with_caveats is
-// the deferred/escalated follow-on — NOT emitted here.)
+// OPR.0.4.0.29 FR-8——按 5 个真实 enum 席位 class 拆分 ready-confidence。每项均从真实
+// primitive 派生，不发明 status：ready / ready_with_caveats / not_ready 来自席位 readiness
+// check；attention_required 来自 node.startupStatus；unknown 是无法确定的剩余项。
+// ready_with_caveats 中 fresh-primed/awaiting-decision 的拆分属于延后/escalated 后续工作，
+// 本处不发出。
 export interface ReadinessClassCounts {
   ready: number;
   ready_with_caveats: number;
@@ -140,7 +137,7 @@ export interface RestoreCheckResult {
   hostInfra: HostInfraAssertion;
   recovery: RecoveryPlan;
   counts: { red: number; yellow: number; green: number };
-  /** OPR.0.4.0.29 FR-8 — fleet-wide ready-confidence breakdown by class. */
+  /** OPR.0.4.0.29 FR-8——全机队按 class 拆分的 ready-confidence。 */
   classCounts: ReadinessClassCounts;
   checks: CheckEntry[];
   repairPacket: RepairStep[] | null;
@@ -151,12 +148,12 @@ export interface RestoreCheckOpts {
   noQueue?: boolean;
   noHooks?: boolean;
   compact?: boolean;
-  /** OPR.0.4.0.29 FR-2: in compact mode, still assemble ready-seat detail so
-   *  `--ready` shows ready seats without dropping to the full firehose. */
+  /** OPR.0.4.0.29 FR-2：compact 模式下仍组合 ready-seat detail，使 `--ready` 可显示
+   *  ready 席位，而无需退回完整信息流。 */
   includeReady?: boolean;
 }
 
-// --- Deps (framework-free per ADR-0001; reads from existing projections per ADR-0002) ---
+// --- 依赖（按 ADR-0001 不依赖框架；按 ADR-0002 读取现有 projection）---
 
 export interface NodeInventoryEntry {
   nodeId?: string | null;
@@ -176,23 +173,23 @@ export interface NodeInventoryEntry {
 }
 
 export interface RestoreCheckDeps {
-  /** Get all rigs as summaries */
+  /** 获取所有工作组摘要。 */
   listRigs: () => Array<{ rigId: string; name: string; hasServices?: boolean }>;
-  /** Get node inventory for a rig (ADR-0002: NodeInventory projection) */
+  /** 获取工作组的节点 inventory（ADR-0002：NodeInventory projection）。 */
   getNodeInventory: (rigId: string) => NodeInventoryEntry[];
-  /** Get persisted startup context for a node */
+  /** 获取节点持久化的 startup context。 */
   getStartupContext: (nodeId: string) => StartupContextProbeResult;
-  /** Check if a snapshot exists for a rig */
+  /** 检查工作组是否存在快照。 */
   hasSnapshot: (rigId: string) => boolean;
-  /** Get the newest snapshot for exact restore planning when available */
+  /** 可用时获取最新快照，用于精确恢复规划。 */
   getLatestSnapshot?: (rigId: string) => { id: string; kind: string } | null;
-  /** Probe daemon health: returns { healthy: boolean; evidence: string } */
+  /** 探测后台服务健康状态，返回 { healthy: boolean; evidence: string }。 */
   probeDaemonHealth: () => { healthy: boolean; evidence: string };
-  /** Filesystem probes */
+  /** 文件系统探测。 */
   exists: (path: string) => boolean;
-  /** Read a declaration/config file. Kept injectable so restore-check remains testable and source-safe. */
+  /** 读取声明/配置文件。保持可注入，使 restore-check 可测试且 source-safe。 */
   readFile: (path: string) => string;
-  /** Substrate root for queue file path resolution */
+  /** 解析 queue 文件路径所用的 substrate root。 */
   substrateRoot?: string;
 }
 
@@ -217,18 +214,16 @@ interface HostInfraCheckResult {
   hostInfra: HostInfraAssertion;
 }
 
-// --- Service ---
+// --- 服务 ---
 
-const DAEMON_HEALTHY_PATTERN = /^Daemon running\b/m;
-// OPR.0.3.2.14 — fallback subpath uses a generic .openrig placeholder
-// rather than an internal-team layout, to close the source-side
-// privacy leak. Fallback preserved per slice README §"Architecture
-// note" (option-A removal cascaded 36 test yellows in 0.3.1 cleanup).
+const DAEMON_HEALTHY_PATTERN = /^(?:Daemon running\b|后台服务运行中)/m;
+// OPR.0.3.2.14——fallback 子路径使用通用 .openrig 占位，而不是内部团队布局，以消除 source
+// 侧隐私泄漏。按 slice README §“Architecture note”保留 fallback；在 0.3.1 清理中移除 option-A
+// 曾连锁产生 36 个测试 yellow。
 const SUBSTRATE_SHARED_DOCS_ROOT = process.env["OPENRIG_SUBSTRATE_SHARED_DOCS"]
   ?? join(homedir(), ".openrig", "shared-docs");
-// OPR.0.3.2.14 — these four constants used to be copy-pasted in 7+
-// test files. Exporting from source + importing in tests eliminates
-// the divergence class that broke 17 tests during 0.3.1 cleanup.
+// OPR.0.3.2.14——这四个常量曾被复制到 7 个以上测试文件。改为从 source 导出并由测试导入，
+// 消除 0.3.1 清理期间导致 17 个测试损坏的漂移类别。
 export const CLAUDE_HOOKS_ROOT = join(
   SUBSTRATE_SHARED_DOCS_ROOT,
   "control-plane",
@@ -271,22 +266,20 @@ export class RestoreCheckService {
 
   check(opts: RestoreCheckOpts): RestoreCheckResult {
     const checks: CheckEntry[] = [];
-    // rev1-r2 no-false-ready: ready-seat caveat signals that default compact
-    // COMPUTES but does NOT emit (AC-4 token-safe) still count toward the
-    // top-level verdict/readiness/counts, so the headline never reports a false
-    // ready while a rig rollup is ready_with_caveats.
+    // rev1-r2 no-false-ready：默认 compact 会计算但不发出的 ready-seat caveat signal
+    //（AC-4 token-safe）仍计入顶层 verdict/readiness/counts，避免工作组 rollup 已为
+    // ready_with_caveats 时 headline 错报 ready。
     const deferredAssessmentChecks: CheckEntry[] = [];
     const rigRollupInputs: RigRollupInput[] = [];
     const recoveryRigInputs: RecoveryRigInput[] = [];
 
-    // Host-level checks — daemon probe throw produces unknown (not not_restorable).
-    // Daemon definitely-down (healthy=false, negative text) is red/not_restorable.
-    // Daemon probe exception (socket unavailable, etc.) is unknown.
+    // 主机级检查：后台服务探测抛错得到 unknown，而非 not_restorable；明确离线
+    //（healthy=false，负向文本）得到 red/not_restorable；socket 不可用等探测异常得到 unknown。
     const daemonCheck = this.checkDaemonReachable();
     if (daemonCheck === null) {
-      // Probe threw — state is uninspectable
+      // 探测抛错，状态无法检查。
       return this.buildUnknown([
-        { check: "daemon.reachable", status: "red", evidence: "Daemon health probe failed (unable to determine state)", remediation: "Start the daemon with: rig daemon start",
+        { check: "daemon.reachable", status: "red", evidence: "后台服务健康探测失败，无法确定状态", remediation: "启动后台服务：zrig daemon start",
       remediationSafe: false },
       ]);
     }
@@ -295,14 +288,14 @@ export class RestoreCheckService {
     const hostInfraCheck = this.checkHostInfraDeclaration();
     checks.push(hostInfraCheck.check);
 
-    // Get rigs — probe error produces unknown, not not_restorable
+    // 获取工作组；探测错误得到 unknown，而非 not_restorable。
     let rigs: Array<{ rigId: string; name: string; hasServices?: boolean }>;
     try {
       rigs = this.deps.listRigs();
     } catch (err) {
       return this.buildUnknown([
         ...checks,
-        { check: "probe.error", status: "red", evidence: `Failed to list rigs: ${err instanceof Error ? err.message : String(err)}`, remediation: "Check daemon status with: rig daemon status", remediationSafe: true },
+        { check: "probe.error", status: "red", evidence: `列出工作组失败：${err instanceof Error ? err.message : String(err)}`, remediation: "检查后台服务状态：zrig daemon status", remediationSafe: true },
       ]);
     }
 
@@ -311,12 +304,12 @@ export class RestoreCheckService {
       if (rigs.length === 0) {
         return this.buildResult([
           ...checks,
-          { check: `rig.${opts.rig}.exists`, status: "red", evidence: `Rig "${opts.rig}" not found`, remediation: "List rigs with: rig ps", remediationSafe: true },
+          { check: `rig.${opts.rig}.exists`, status: "red", evidence: `未找到工作组 "${opts.rig}"`, remediation: "列出工作组：zrig ps", remediationSafe: true },
         ], [], hostInfraCheck.hostInfra);
       }
     }
 
-    // Per-rig checks
+    // 逐工作组检查。
     for (const rig of rigs) {
       const rigChecks: CheckEntry[] = [];
 
@@ -324,19 +317,19 @@ export class RestoreCheckService {
       checks.push(snapshotCheck);
       rigChecks.push(snapshotCheck);
 
-      // Rig spec/root check
+      // 检查工作组 spec/root。
       const specCheck = this.checkSpecPresent(rig);
       checks.push(specCheck);
       rigChecks.push(specCheck);
 
-      // Per-seat checks — probe error produces unknown, not not_restorable
+      // 逐席位检查；探测错误得到 unknown，而非 not_restorable。
       let nodes: NodeInventoryEntry[];
       try {
         nodes = this.deps.getNodeInventory(rig.rigId);
       } catch (err) {
         return this.buildUnknown([
           ...checks,
-          { check: "probe.error", status: "red", evidence: `Failed to get node inventory for ${rig.name}: ${err instanceof Error ? err.message : String(err)}`, remediation: "Check daemon status" },
+          { check: "probe.error", status: "red", evidence: `获取工作组 ${rig.name} 的节点 inventory 失败：${err instanceof Error ? err.message : String(err)}`, remediation: "检查后台服务状态" },
         ]);
       }
 
@@ -345,14 +338,12 @@ export class RestoreCheckService {
         checks.push(readinessCheck);
         rigChecks.push(readinessCheck);
 
-        // OPR.0.4.0.29: in default compact, ready (green) seats SKIP full per-seat
-        // detail assembly — the FR-3/AC-4 compute "look-above" win (transcript,
-        // resume, queue, hooks are NOT probed). But the FR-8 summary still needs
-        // the restore-readiness caveat signal: a running/ready seat whose startup
-        // context is missing/unrestorable is ready_with_caveats, not ready. So we
-        // compute ONLY checkStartupContext for every seat and feed it to the rig
-        // rollup (rigChecks); it is emitted to the top-level `checks` only when we
-        // are not skipping (full, --ready/includeReady, or a non-ready seat).
+        // OPR.0.4.0.29：默认 compact 下，ready（green）席位跳过完整逐席位 detail 组合，即
+        // FR-3/AC-4 的 compute “look-above” 优化；不探测 transcript、resume、queue、hook。
+        // 但 FR-8 summary 仍需 restore-readiness caveat signal：running/ready 席位若 startup
+        // context 缺失或无法恢复，应为 ready_with_caveats，而非 ready。因此每个席位只计算
+        // checkStartupContext 并传给工作组 rollup（rigChecks）；只有不跳过时（full、
+        // --ready/includeReady 或非 ready 席位）才发到顶层 `checks`。
         const omitReadyDetail = opts.compact && !opts.includeReady && readinessCheck.status === "green";
 
         const startupContextCheck = this.checkStartupContext(node);
@@ -364,15 +355,15 @@ export class RestoreCheckService {
         }
         rigChecks.push(startupContextCheck.check);
         if (omitReadyDetail) {
-          // Not emitted (AC-4 token-safe), but counts toward the top-level
-          // verdict/readiness/counts (rev1-r2 no-false-ready).
+          // 不发出（AC-4 token-safe），但计入顶层 verdict/readiness/counts
+          //（rev1-r2 no-false-ready）。
           deferredAssessmentChecks.push(startupContextCheck.check);
         } else {
           checks.push(startupContextCheck.check);
         }
 
-        // AC-4 / FR-3: default compact does NOT assemble the rest of the
-        // ready-seat detail (the genuine compute skip, not a post-assembly hide).
+        // AC-4 / FR-3：默认 compact 不组合其余 ready-seat detail；这是真正跳过计算，不是
+        // 组合完成后再隐藏。
         if (omitReadyDetail) {
           continue;
         }
@@ -417,26 +408,25 @@ export class RestoreCheckService {
     return this.buildResult(checks, rigRollups, hostInfraCheck.hostInfra, recoveryRigInputs, deferredAssessmentChecks);
   }
 
-  /** Returns CheckEntry on success/definite-down; null on probe exception
-   *  (uninspectable state → caller should produce verdict: unknown). */
+  /** 成功或明确离线时返回 CheckEntry；探测异常时返回 null（状态不可检查，调用方应生成
+   *  verdict: unknown）。 */
   private checkDaemonReachable(): CheckEntry | null {
     try {
       const probe = this.deps.probeDaemonHealth();
-      // Anchored positive match: only "Daemon running" at line start is green.
-      // Anything else (including "Daemon not running", empty output, or text
-      // that contains "running" non-anchored) is red. This preserves the
-      // reviewer fix from prototype 0e2af8d.
+      // 锚定正向匹配：只有行首的中英文明确成功文本才是 green。其他内容均为 red，包括
+      // 否定文本、空输出，或在非锚定位置包含成功词的文本。这保留了 prototype 0e2af8d
+      // 的 review 修复，同时允许中文化后的健康探针输出。
       if (probe.healthy && DAEMON_HEALTHY_PATTERN.test(probe.evidence)) {
         return { check: "daemon.reachable", status: "green", evidence: probe.evidence, remediation: "" };
       }
       return {
         check: "daemon.reachable", status: "red",
-        evidence: probe.evidence || "Daemon health probe returned non-positive result",
-        remediation: "Start the daemon with: rig daemon start",
+        evidence: probe.evidence || "后台服务健康探测返回非正向结果",
+        remediation: "启动后台服务：zrig daemon start",
       remediationSafe: false,
       };
     } catch {
-      // Probe threw — return null to signal uninspectable state
+      // 探测抛错，返回 null 表示状态不可检查。
       return null;
     }
   }
@@ -444,15 +434,14 @@ export class RestoreCheckService {
   private checkStateDirWritable(): CheckEntry {
     const stateDir = getCompatibleOpenRigPath("");
     try {
-      // Non-mutating permission probe — no file creation/deletion.
-      // accessSync throws if the directory is not writable.
+      // 不修改状态的权限探测，不创建或删除文件。目录不可写时 accessSync 抛错。
       accessSync(stateDir, constants.W_OK);
-      return { check: "host.state-dir-writable", status: "green", evidence: `${stateDir} is writable`, remediation: "" };
+      return { check: "host.state-dir-writable", status: "green", evidence: `${stateDir} 可写`, remediation: "" };
     } catch {
       return {
         check: "host.state-dir-writable", status: "red",
-        evidence: `${stateDir} is not writable`,
-        remediation: `Fix permissions: chmod u+w ${stateDir}`,
+        evidence: `${stateDir} 不可写`,
+        remediation: `修复权限：chmod u+w ${stateDir}`,
       remediationSafe: false,
       };
     }
@@ -464,13 +453,13 @@ export class RestoreCheckService {
 
     try {
       if (!this.deps.exists(declarationPath)) {
-        const evidence = `Host infra declaration missing at ${declarationPath}`;
+        const evidence = `${declarationPath} 中缺少主机基础设施声明`;
         return {
           check: {
             check,
             status: "yellow",
             evidence,
-            remediation: `Create host infra declaration at ${declarationPath}`,
+            remediation: `在 ${declarationPath} 创建主机基础设施声明`,
             remediationSafe: false,
           },
           hostInfra: {
@@ -484,13 +473,13 @@ export class RestoreCheckService {
       try {
         raw = this.deps.readFile(declarationPath);
       } catch (err) {
-        const evidence = `Host infra declaration inspection failed at ${declarationPath}: ${err instanceof Error ? err.message : String(err)}`;
+        const evidence = `检查 ${declarationPath} 中的主机基础设施声明失败：${err instanceof Error ? err.message : String(err)}`;
         return {
           check: {
             check,
             status: "yellow",
             evidence,
-            remediation: `Inspect or fix host infra declaration at ${declarationPath}`,
+            remediation: `检查或修复 ${declarationPath} 中的主机基础设施声明`,
             remediationSafe: false,
           },
           hostInfra: {
@@ -504,13 +493,13 @@ export class RestoreCheckService {
       try {
         parsed = JSON.parse(raw);
       } catch (err) {
-        const evidence = `Host infra declaration JSON parse failed at ${declarationPath}: ${err instanceof Error ? err.message : String(err)}`;
+        const evidence = `解析 ${declarationPath} 中的主机基础设施声明 JSON 失败：${err instanceof Error ? err.message : String(err)}`;
         return {
           check: {
             check,
             status: "yellow",
             evidence,
-            remediation: `Fix host infra declaration JSON at ${declarationPath}`,
+            remediation: `修复 ${declarationPath} 中的主机基础设施声明 JSON`,
             remediationSafe: false,
           },
           hostInfra: {
@@ -522,13 +511,13 @@ export class RestoreCheckService {
 
       const validation = this.validateHostInfraDeclaration(parsed);
       if (validation.errors.length > 0) {
-        const evidence = `Invalid host infra declaration at ${declarationPath}: missing/invalid ${validation.errors.join(", ")}`;
+        const evidence = `${declarationPath} 中的主机基础设施声明无效：缺失或无效字段 ${validation.errors.join(", ")}`;
         return {
           check: {
             check,
             status: "yellow",
             evidence,
-            remediation: `Fix host infra declaration shape at ${declarationPath}`,
+            remediation: `修复 ${declarationPath} 中主机基础设施声明的结构`,
             remediationSafe: false,
           },
           hostInfra: {
@@ -539,13 +528,13 @@ export class RestoreCheckService {
       }
 
       if (validation.schemaVersion === 2 && validation.evidenceProblems.length > 0) {
-        const evidence = `Host infra declaration at ${declarationPath} declared with insufficient evidence paths; ${validation.evidenceProblems.join("; ")}`;
+        const evidence = `${declarationPath} 中的主机基础设施声明缺少充分的 evidence path；${validation.evidenceProblems.join("; ")}`;
         return {
           check: {
             check,
             status: "yellow",
             evidence,
-            remediation: `Add or repair host infra evidence path(s): ${validation.evidenceProblems.join("; ")}`,
+            remediation: `添加或修复主机基础设施 evidence path：${validation.evidenceProblems.join("; ")}`,
             remediationSafe: false,
           },
           hostInfra: {
@@ -556,8 +545,8 @@ export class RestoreCheckService {
       }
 
       const evidence = validation.schemaVersion === 2
-        ? `Host infra declaration at ${declarationPath} declared, evidence paths present, not autostart verified; daemonBootstrap mechanism=${validation.mechanism}; requiredSupportingInfra=${validation.requiredSupportingInfra}; evidencePaths=${validation.evidencePaths.join(", ")}`
-        : `Host infra declaration at ${declarationPath} declared, not verified; daemonBootstrap mechanism=${validation.mechanism}; requiredSupportingInfra=${validation.requiredSupportingInfra}`;
+        ? `${declarationPath} 中已声明主机基础设施，evidence path 已存在，但尚未验证自动启动；daemonBootstrap mechanism=${validation.mechanism}；requiredSupportingInfra=${validation.requiredSupportingInfra}；evidencePaths=${validation.evidencePaths.join(", ")}`
+        : `${declarationPath} 中已声明主机基础设施，但尚未验证；daemonBootstrap mechanism=${validation.mechanism}；requiredSupportingInfra=${validation.requiredSupportingInfra}`;
       return {
         check: {
           check,
@@ -571,13 +560,13 @@ export class RestoreCheckService {
         },
       };
     } catch (err) {
-      const evidence = `Host infra declaration inspection failed at ${declarationPath}: ${err instanceof Error ? err.message : String(err)}`;
+      const evidence = `检查 ${declarationPath} 中的主机基础设施声明失败：${err instanceof Error ? err.message : String(err)}`;
       return {
         check: {
           check,
           status: "yellow",
           evidence,
-          remediation: `Inspect or fix host infra declaration at ${declarationPath}`,
+          remediation: `检查或修复 ${declarationPath} 中的主机基础设施声明`,
           remediationSafe: false,
         },
         hostInfra: {
@@ -676,26 +665,26 @@ export class RestoreCheckService {
     evidenceProblems: string[],
   ): void {
     if (!Array.isArray(value) || value.length === 0) {
-      evidenceProblems.push(`${label} missing or empty`);
+      evidenceProblems.push(`${label} 缺失或为空`);
       return;
     }
 
     for (const candidate of value) {
       if (typeof candidate !== "string" || candidate.trim() === "") {
-        evidenceProblems.push(`${label} contains invalid evidence path ${String(candidate)}`);
+        evidenceProblems.push(`${label} 包含无效 evidence path ${String(candidate)}`);
         continue;
       }
 
       const resolved = this.resolveHostInfraEvidencePath(candidate.trim());
       if ("error" in resolved) {
-        evidenceProblems.push(`${label} invalid evidence path ${candidate}: ${resolved.error}`);
+        evidenceProblems.push(`${label} 的 evidence path ${candidate} 无效：${resolved.error}`);
         continue;
       }
 
       const resolvedPath = resolved.path;
       evidencePaths.push(resolvedPath);
       if (!this.deps.exists(resolvedPath)) {
-        evidenceProblems.push(`${label} missing evidence path ${resolvedPath}`);
+        evidenceProblems.push(`${label} 缺少 evidence path ${resolvedPath}`);
       }
     }
   }
@@ -707,22 +696,22 @@ export class RestoreCheckService {
     if (rawPath.startsWith(openRigPrefix)) {
       const relativePath = rawPath.slice(openRigPrefix.length);
       if (!relativePath || isAbsolute(relativePath) || hasTraversal) {
-        return { error: "path traversal or empty OPENRIG_HOME-relative path rejected" };
+        return { error: "已拒绝路径穿越或空的 OPENRIG_HOME 相对路径" };
       }
       const openRigHome = getCompatibleOpenRigPath("");
       const resolved = join(openRigHome, relativePath);
       const relativeToHome = relative(openRigHome, resolved);
       if (relativeToHome.startsWith("..") || isAbsolute(relativeToHome)) {
-        return { error: "path traversal outside OPENRIG_HOME rejected" };
+        return { error: "已拒绝穿越到 OPENRIG_HOME 外的路径" };
       }
       return { path: resolved };
     }
 
     if (!isAbsolute(rawPath)) {
-      return { error: "plain relative evidence paths are rejected; use absolute or ${OPENRIG_HOME}/..." };
+      return { error: "已拒绝普通相对 evidence path；请使用绝对路径或 ${OPENRIG_HOME}/..." };
     }
     if (hasTraversal) {
-      return { error: "path traversal evidence paths are rejected" };
+      return { error: "已拒绝包含路径穿越的 evidence path" };
     }
     return { path: rawPath };
   }
@@ -731,16 +720,16 @@ export class RestoreCheckService {
     try {
       const has = this.deps.hasSnapshot(rig.rigId);
       if (has) {
-        return { check: `rig.${rig.name}.snapshot`, status: "green", evidence: "Snapshot available", remediation: "" };
+        return { check: `rig.${rig.name}.snapshot`, status: "green", evidence: "快照可用", remediation: "" };
       }
       return {
         check: `rig.${rig.name}.snapshot`, status: "yellow",
-        evidence: "No snapshot found (first-boot or adopted rig)",
-        remediation: "Create a snapshot with: rig snapshot <rigId>",
+        evidence: "未找到快照（首次启动或已接管的工作组）",
+        remediation: "创建快照：zrig snapshot <rigId>",
       remediationSafe: false,
       };
     } catch {
-      return { check: `rig.${rig.name}.snapshot`, status: "yellow", evidence: "Could not check snapshots", remediation: "" };
+      return { check: `rig.${rig.name}.snapshot`, status: "yellow", evidence: "无法检查快照", remediation: "" };
     }
   }
 
@@ -748,9 +737,9 @@ export class RestoreCheckService {
     const session = node.canonicalSessionName ?? node.logicalId;
     const check = `seat.${session}.transcript`;
 
-    // Terminal/infrastructure nodes are exempt from transcript checks
+    // Terminal/infrastructure 节点免于 transcript 检查。
     if (node.nodeKind === "infrastructure") {
-      return { check, status: "green", evidence: "Terminal/infrastructure node — transcript exempt", remediation: "" };
+      return { check, status: "green", evidence: "Terminal/infrastructure 节点无需检查 transcript", remediation: "" };
     }
 
     const transcriptPath = join(
@@ -759,12 +748,12 @@ export class RestoreCheckService {
       `${session}.log`
     );
     if (this.deps.exists(transcriptPath)) {
-      return { check, status: "green", evidence: `Transcript exists at ${transcriptPath}`, remediation: "" };
+      return { check, status: "green", evidence: `Transcript 存在于 ${transcriptPath}`, remediation: "" };
     }
     return {
       check, status: "yellow",
-      evidence: `Transcript missing: ${transcriptPath}`,
-      remediation: "Transcript will be created on next session launch",
+      evidence: `缺少 transcript：${transcriptPath}`,
+      remediation: "下次启动会话时将创建 transcript",
       remediationSafe: true,
     };
   }
@@ -777,8 +766,8 @@ export class RestoreCheckService {
       return {
         check,
         status: "red",
-        evidence: "Missing canonical session identity",
-        remediation: "Restore or relaunch the seat so it has a canonical session identity",
+        evidence: "缺少 canonical session identity",
+        remediation: "恢复或重新启动席位，使其获得 canonical session identity",
         remediationSafe: false,
       };
     }
@@ -788,8 +777,8 @@ export class RestoreCheckService {
       return {
         check,
         status: "red",
-        evidence: `Seat not running/ready: sessionStatus=${node.sessionStatus ?? "unknown"} startupStatus=${node.startupStatus ?? "unknown"}${latestError}`,
-        remediation: "Restore or relaunch the seat, then rerun rig restore-check",
+        evidence: `席位未处于 running/ready：sessionStatus=${node.sessionStatus ?? "unknown"} startupStatus=${node.startupStatus ?? "unknown"}${latestError}`,
+        remediation: "恢复或重新启动席位，然后重新运行 zrig restore-check",
         remediationSafe: false,
       };
     }
@@ -797,7 +786,7 @@ export class RestoreCheckService {
     return {
       check,
       status: "green",
-      evidence: `Seat running and ready: ${node.canonicalSessionName}`,
+      evidence: `席位已运行且就绪：${node.canonicalSessionName}`,
       remediation: "",
     };
   }
@@ -809,8 +798,8 @@ export class RestoreCheckService {
     }
     return {
       check: `seat.${session}.resume-path`, status: "yellow",
-      evidence: "No attach command available",
-      remediation: "Session will be created fresh on restore",
+      evidence: "没有可用的 attach 命令",
+      remediation: "恢复时将全新创建会话",
       remediationSafe: true,
     };
   }
@@ -825,7 +814,7 @@ export class RestoreCheckService {
         check: this.buildStartupContextAvailabilityCheck(
           check,
           runningReady,
-          `Startup context cannot be inspected because node id is missing for ${session}`,
+          `无法检查 startup context，因为 ${session} 缺少 node id`,
         ),
       };
     }
@@ -837,8 +826,8 @@ export class RestoreCheckService {
           unknownChecks: [{
             check: "probe.error",
             status: "red",
-            evidence: `Failed to inspect startup context for ${session}: ${probe.evidence}`,
-            remediation: "Check daemon logs with: rig daemon logs",
+            evidence: `检查 ${session} 的 startup context 失败：${probe.evidence}`,
+            remediation: "检查后台服务日志：zrig daemon logs",
             remediationSafe: true,
           }],
         };
@@ -860,22 +849,22 @@ export class RestoreCheckService {
       const detailParts: string[] = [];
       if (startupContext.resolvedStartupFiles.length > 0) {
         detailParts.push(
-          `resolved startup files present: ${startupContext.resolvedStartupFiles.map((file) => file.absolutePath).join(", ")}`
+          `已解析的 startup file 存在：${startupContext.resolvedStartupFiles.map((file) => file.absolutePath).join(", ")}`
         );
       }
       if (startupContext.projectionEntries.length > 0) {
         detailParts.push(
-          `projection source paths present: ${startupContext.projectionEntries.map((entry) => entry.absolutePath).join(", ")}`
+          `projection source path 存在：${startupContext.projectionEntries.map((entry) => entry.absolutePath).join(", ")}`
         );
       }
       if (detailParts.length === 0) {
-        detailParts.push("no persisted startup files or projection source paths declared");
+        detailParts.push("未声明持久化 startup file 或 projection source path");
       }
       return {
         check: {
           check,
           status: "green",
-          evidence: `Startup context present for node ${node.nodeId}; ${detailParts.join("; ")}`,
+          evidence: `节点 ${node.nodeId} 的 startup context 已存在；${detailParts.join("; ")}`,
           remediation: "",
         },
       };
@@ -883,13 +872,13 @@ export class RestoreCheckService {
 
     const evidenceParts: string[] = [];
     if (missingRequired.length > 0) {
-      evidenceParts.push(`missing required startup file(s): ${missingRequired.map((file) => file.absolutePath).join(", ")}`);
+      evidenceParts.push(`缺少必需 startup file：${missingRequired.map((file) => file.absolutePath).join(", ")}`);
     }
     if (missingOptional.length > 0) {
-      evidenceParts.push(`missing optional startup file(s): ${missingOptional.map((file) => file.absolutePath).join(", ")}`);
+      evidenceParts.push(`缺少可选 startup file：${missingOptional.map((file) => file.absolutePath).join(", ")}`);
     }
     if (missingProjectionEntries.length > 0) {
-      evidenceParts.push(`missing projection source path(s): ${missingProjectionEntries.map((entry) => entry.absolutePath).join(", ")}`);
+      evidenceParts.push(`缺少 projection source path：${missingProjectionEntries.map((entry) => entry.absolutePath).join(", ")}`);
     }
 
     const status: CheckStatus = missingRequired.length > 0 && !runningReady ? "red" : "yellow";
@@ -897,8 +886,8 @@ export class RestoreCheckService {
       check: {
         check,
         status,
-        evidence: `Startup context present for node ${node.nodeId}, but replay inputs are incomplete: ${evidenceParts.join("; ")}`,
-        remediation: `Restore or recreate the missing startup inputs from the rig or agent spec before trusting replay: ${[
+        evidence: `节点 ${node.nodeId} 的 startup context 已存在，但 replay 输入不完整：${evidenceParts.join("; ")}`,
+        remediation: `信任 replay 前，请从工作组或智能体 spec 恢复或重建缺失的 startup 输入：${[
           ...missingRequired.map((file) => file.absolutePath),
           ...missingOptional.map((file) => file.absolutePath),
           ...missingProjectionEntries.map((entry) => entry.absolutePath),
@@ -917,7 +906,7 @@ export class RestoreCheckService {
       check,
       status: runningReady ? "yellow" : "red",
       evidence,
-      remediation: "Recreate the seat startup context from the rig or agent spec before trusting replay inputs",
+      remediation: "信任 replay 输入前，请从工作组或智能体 spec 重建席位 startup context",
       remediationSafe: false,
     };
   }
@@ -926,25 +915,25 @@ export class RestoreCheckService {
     const session = node.canonicalSessionName ?? node.logicalId;
     const check = `seat.${session}.queue-file`;
 
-    // Derive queue file path from pod/member
+    // 从 pod/member 派生 queue 文件路径。
     const podName = node.podNamespace ?? (node.logicalId.includes(".") ? node.logicalId.split(".")[0] : null);
     const memberName = node.logicalId.includes(".") ? node.logicalId.split(".").slice(1).join(".") : node.logicalId;
 
     if (!podName) {
-      return { check, status: "yellow", evidence: "Cannot derive queue path (no pod namespace)", remediation: "" };
+      return { check, status: "yellow", evidence: "无法派生 queue 路径（没有 pod namespace）", remediation: "" };
     }
 
-    // OPR.0.3.2.14 — subpath scrubbed (internal-team layout → generic placeholder).
+    // OPR.0.3.2.14——子路径已清理（内部团队布局 → 通用占位符）。
     const substrateRoot = this.deps.substrateRoot ?? join(process.env["HOME"] ?? "~", ".openrig", "shared-docs");
     const queuePath = join(substrateRoot, "rigs", rigName, "state", podName, `${memberName}.queue.md`);
 
     if (this.deps.exists(queuePath)) {
-      return { check, status: "green", evidence: `Queue file exists at ${queuePath}`, remediation: "" };
+      return { check, status: "green", evidence: `Queue 文件存在于 ${queuePath}`, remediation: "" };
     }
     return {
       check, status: "yellow",
-      evidence: `Queue file missing: ${queuePath}`,
-      remediation: "Create the missing durable queue file before relying on restored queue continuity",
+      evidence: `缺少 queue 文件：${queuePath}`,
+      remediation: "依赖恢复后的 queue continuity 前，请创建缺失的持久 queue 文件",
       remediationSafe: false,
     };
   }
@@ -955,7 +944,7 @@ export class RestoreCheckService {
     if (node.nodeKind !== "agent") {
       return {
         check: `seat.${session}.hooks`, status: "green",
-        evidence: "Infrastructure/terminal node; Claude Code hook inspection not applicable",
+        evidence: "Infrastructure/terminal 节点不适用 Claude Code hook 检查",
         remediation: "",
       };
     }
@@ -963,7 +952,7 @@ export class RestoreCheckService {
     if (node.runtime !== "claude-code") {
       return {
         check: `seat.${session}.hooks`, status: "green",
-        evidence: `${node.runtime ?? "non-Claude"} seat; Claude Code hook inspection not applicable`,
+        evidence: `${node.runtime ?? "non-Claude"} 席位不适用 Claude Code hook 检查`,
         remediation: "",
       };
     }
@@ -981,7 +970,7 @@ export class RestoreCheckService {
       try {
         parsed = JSON.parse(this.deps.readFile(candidate.path));
       } catch (err) {
-        malformed.push(`${candidate.path}: ${err instanceof Error ? err.message : String(err)}`);
+        malformed.push(`${candidate.path}：${err instanceof Error ? err.message : String(err)}`);
         continue;
       }
 
@@ -995,8 +984,8 @@ export class RestoreCheckService {
     if (malformed.length > 0) {
       return {
         check: `seat.${session}.hooks`, status: "yellow",
-        evidence: `Malformed applicable Claude settings file(s): ${malformed.join("; ")}. Claude hook configuration could not be trusted until the malformed applicable settings file is fixed. Searched settings paths: ${searchedPaths.join(", ")}`,
-        remediation: `Fix Claude settings JSON before trusting hook readiness: ${malformed.map((entry) => entry.split(":")[0]).join(", ")}`,
+        evidence: `适用的 Claude settings 文件格式错误：${malformed.join("; ")}。修复格式错误的适用 settings 文件前，不能信任 Claude hook 配置。已搜索 settings 路径：${searchedPaths.join(", ")}`,
+        remediation: `信任 hook readiness 前，请修复 Claude settings JSON：${malformed.map((entry) => entry.split("：")[0]).join(", ")}`,
         remediationSafe: false,
       };
     }
@@ -1013,30 +1002,30 @@ export class RestoreCheckService {
     if (hasSessionStart && hasUserPromptSubmit) {
       return {
         check: `seat.${session}.hooks`, status: "green",
-        evidence: `Claude Code hook configuration present, not hook-execution verified; SessionStart matcher compact command found in ${sessionStartPaths.join(", ")}; UserPromptSubmit command found in ${userPromptSubmitPaths.join(", ")}. Searched settings paths: ${searchedPaths.join(", ")}`,
+        evidence: `Claude Code hook 配置已存在，但尚未验证 hook 执行；在 ${sessionStartPaths.join(", ")} 找到 SessionStart matcher compact 命令；在 ${userPromptSubmitPaths.join(", ")} 找到 UserPromptSubmit 命令。已搜索 settings 路径：${searchedPaths.join(", ")}`,
         remediation: "",
       };
     }
 
     const missing = [];
     if (!hasSessionStart) {
-      missing.push(`SessionStart matcher compact command ${CLAUDE_SESSION_START_COMPACT_COMMAND}`);
+      missing.push(`SessionStart matcher compact 命令 ${CLAUDE_SESSION_START_COMPACT_COMMAND}`);
     }
     if (!hasUserPromptSubmit) {
-      missing.push(`UserPromptSubmit command ${CLAUDE_USER_PROMPT_SUBMIT_COMMAND}`);
+      missing.push(`UserPromptSubmit 命令 ${CLAUDE_USER_PROMPT_SUBMIT_COMMAND}`);
     }
 
     const inspected = inspections.length > 0
-      ? `Existing settings inspected: ${inspections.map((inspection) => inspection.path).join(", ")}.`
-      : "No existing Claude settings files were found.";
+      ? `已检查现有 settings：${inspections.map((inspection) => inspection.path).join(", ")}。`
+      : "未找到现有 Claude settings 文件。";
     const cwdEvidence = cwdUnavailable
-      ? " project settings were not inspected because cwd is unavailable."
+      ? " cwd 不可用，因此未检查项目 settings。"
       : "";
 
     return {
       check: `seat.${session}.hooks`, status: "yellow",
-      evidence: `Claude Code hook configuration missing required entries: ${missing.join("; ")}. Searched settings paths: ${searchedPaths.join(", ")}. ${inspected}${cwdEvidence}`,
-      remediation: `Merge required Claude hook entries from ${CLAUDE_HOOK_FRAGMENT_PATH} into host-global or project Claude settings`,
+      evidence: `Claude Code hook 配置缺少必需 entry：${missing.join("; ")}。已搜索 settings 路径：${searchedPaths.join(", ")}。${inspected}${cwdEvidence}`,
+      remediation: `把 ${CLAUDE_HOOK_FRAGMENT_PATH} 中必需的 Claude hook entry 合并到 host-global 或项目 Claude settings`,
       remediationSafe: false,
     };
   }
@@ -1077,7 +1066,7 @@ export class RestoreCheckService {
   }
 
   private checkSpecPresent(rig: { rigId: string; name: string }): CheckEntry {
-    // OPR.0.3.2.14 — subpath scrubbed (internal-team layout → generic placeholder).
+    // OPR.0.3.2.14——子路径已清理（内部团队布局 → 通用占位符）。
     const substrateRoot = this.deps.substrateRoot ?? join(process.env["HOME"] ?? "~", ".openrig", "shared-docs");
     const rigRoot = join(substrateRoot, "rigs", rig.name);
     const rigYaml = join(rigRoot, "rig.yaml");
@@ -1085,20 +1074,20 @@ export class RestoreCheckService {
     if (!this.deps.exists(rigRoot)) {
       return {
         check: `rig.${rig.name}.spec-present`, status: "red",
-        evidence: `Rig root missing: ${rigRoot}`,
-        remediation: `Create the rig root directory at ${rigRoot} with a rig.yaml spec`,
+        evidence: `缺少工作组根目录：${rigRoot}`,
+        remediation: `在 ${rigRoot} 创建工作组根目录，并添加 rig.yaml spec`,
       remediationSafe: false,
       };
     }
     if (!this.deps.exists(rigYaml)) {
       return {
         check: `rig.${rig.name}.spec-present`, status: "yellow",
-        evidence: `Rig root exists but rig.yaml missing: ${rigYaml}`,
-        remediation: `Add a rig.yaml spec to ${rigRoot}`,
+        evidence: `工作组根目录存在，但缺少 rig.yaml：${rigYaml}`,
+        remediation: `向 ${rigRoot} 添加 rig.yaml spec`,
       remediationSafe: false,
       };
     }
-    return { check: `rig.${rig.name}.spec-present`, status: "green", evidence: `Spec present at ${rigYaml}`, remediation: "" };
+    return { check: `rig.${rig.name}.spec-present`, status: "green", evidence: `Spec 存在于 ${rigYaml}`, remediation: "" };
   }
 
   private inspectLatestSnapshot(rigId: string): { snapshot: { id: string; kind: string } | null; error?: string } {
@@ -1113,7 +1102,7 @@ export class RestoreCheckService {
     } catch (err) {
       return {
         snapshot: null,
-        error: `Latest snapshot lookup failed: ${err instanceof Error ? err.message : String(err)}`,
+        error: `查询最新快照失败：${err instanceof Error ? err.message : String(err)}`,
       };
     }
   }
@@ -1125,9 +1114,8 @@ export class RestoreCheckService {
     recoveryInputs: RecoveryRigInput[] = [],
     assessmentExtra: CheckEntry[] = [],
   ): RestoreCheckResult {
-    // counts + verdict assess the FULL signal (emitted checks + any computed-but-
-    // omitted ready-seat caveats) so default compact never reports a false ready;
-    // repairPacket/recovery still operate on the EMITTED checks (token-safe).
+    // counts + verdict 评估完整 signal（已发出的 check + 已计算但省略的 ready-seat caveat），
+    // 因此默认 compact 不会误报 ready；repairPacket/recovery 仍只处理已发出 check（token-safe）。
     const assessed = assessmentExtra.length > 0 ? [...checks, ...assessmentExtra] : checks;
     const red = assessed.filter((c) => c.status === "red").length;
     const yellow = assessed.filter((c) => c.status === "yellow").length;
@@ -1147,15 +1135,15 @@ export class RestoreCheckService {
     return this.withAssertion({ verdict, counts: { red, yellow, green }, checks, repairPacket, recovery }, rigs, hostInfra);
   }
 
-  /** Probe error produces verdict=unknown (not not_restorable) so operators
-   *  can distinguish "definitely broken" from "checker couldn't inspect." */
+  /** 探测错误产生 verdict=unknown，而非 not_restorable，使操作员能区分“确定损坏”和“检查器
+   *  无法检查”。 */
   private buildUnknown(checks: CheckEntry[]): RestoreCheckResult {
     const red = checks.filter((c) => c.status === "red").length;
     const yellow = checks.filter((c) => c.status === "yellow").length;
     const green = checks.filter((c) => c.status === "green").length;
     const repairPacket = this.buildRepairPacket(checks, "unknown");
     const evidence = checks.find((check) => check.status === "red")?.evidence
-      ?? "Restore-check state could not be inspected";
+      ?? "无法检查 restore-check 状态";
     return this.withAssertion({
       verdict: "unknown",
       counts: { red, yellow, green },
@@ -1163,7 +1151,7 @@ export class RestoreCheckService {
       repairPacket,
       recovery: {
         status: "unknown",
-        summary: "Recovery status could not be inspected because restore-check state is unknown.",
+        summary: "restore-check 状态未知，因此无法检查恢复状态。",
         actions: [],
         blocked: [],
         unknown: [{ scope: "host", reason: evidence }],
@@ -1198,10 +1186,10 @@ export class RestoreCheckService {
         : "all_observable_checks_green";
     }
 
-    // Continuity is always not_proven in v1 — no code path can produce "proven"
+    // v1 中 continuity 始终为 not_proven，没有任何代码路径能产生 "proven"。
     const continuity: ContinuityAssertion = {
       status: "not_proven",
-      evidence: "Strict same-session/provider-context resume is not verified by restore-check v1. Observable readiness is verified.",
+      evidence: "restore-check v1 尚未验证严格的同 session/provider-context resume；已验证可观测 readiness。",
       provenCapabilities: this.computeProvenCapabilities(result.checks),
       unprovenCapabilities: [
         "provider_session_resume",
@@ -1221,7 +1209,7 @@ export class RestoreCheckService {
       },
       continuity,
       rigs,
-      // FR-8: fleet-wide ready-confidence breakdown = sum of the per-rig class counts.
+      // FR-8：全机队 ready-confidence 拆分 = 各工作组 class count 之和。
       classCounts: rigs.reduce<ReadinessClassCounts>((acc, r) => ({
         ready: acc.ready + r.classCounts.ready,
         ready_with_caveats: acc.ready_with_caveats + r.classCounts.ready_with_caveats,
@@ -1232,17 +1220,17 @@ export class RestoreCheckService {
       hostInfra: result.verdict === "unknown"
         ? {
             status: "unknown",
-            evidence: "Host bootstrap/autostart source could not be inspected because restore-check state is unknown",
+            evidence: "restore-check 状态未知，因此无法检查主机 bootstrap/autostart source",
           }
         : (hostInfra ?? {
             status: "not_inspected",
-            evidence: "No host bootstrap/autostart source inspected by v0; readiness only covers observable daemon, rig, and seat checks",
+            evidence: "v0 未检查主机 bootstrap/autostart source；readiness 只覆盖可观测的后台服务、工作组与席位检查",
           }),
       recovery: result.recovery,
     };
   }
 
-  /** Derive proven capabilities from green checks for the continuity block. */
+  /** 从 green check 派生 continuity block 的 proven capability。 */
   private computeProvenCapabilities(checks: CheckEntry[]): string[] {
     const proven: string[] = [];
     if (checks.some((c) => c.check === "daemon.reachable" && c.status === "green")) proven.push("daemon_reachable");
@@ -1260,10 +1248,10 @@ export class RestoreCheckService {
   ): RecoveryPlan {
     if (verdict === "unknown") {
       const evidence = checks.find((check) => check.status === "red")?.evidence
-        ?? "Restore-check state could not be inspected";
+        ?? "无法检查 restore-check 状态";
       return {
         status: "unknown",
-        summary: "Recovery status could not be inspected because restore-check state is unknown.",
+        summary: "restore-check 状态未知，因此无法检查恢复状态。",
         actions: [],
         blocked: [],
         unknown: [{ scope: "host", reason: evidence }],
@@ -1275,7 +1263,7 @@ export class RestoreCheckService {
       if (firstRed) {
         return {
           status: "blocked",
-          summary: "No exact recovery action is known in v0 because restore-check found blockers outside runnable rig inventory.",
+          summary: "restore-check 在可运行工作组 inventory 之外发现 blocker，因此 v0 无法确定精确恢复 action。",
           actions: [],
           blocked: [{ scope: "host", reason: firstRed.evidence }],
           unknown: [],
@@ -1283,7 +1271,7 @@ export class RestoreCheckService {
       }
       return {
         status: "not_needed",
-        summary: "All observable rigs are already running/ready; no recovery action needed.",
+        summary: "所有可观测工作组均已 running/ready，无需恢复 action。",
         actions: [],
         blocked: [],
         unknown: [],
@@ -1294,7 +1282,7 @@ export class RestoreCheckService {
     if (allReady) {
       return {
         status: "not_needed",
-        summary: "All observable rigs are already running/ready; no recovery action needed.",
+        summary: "所有可观测工作组均已 running/ready，无需恢复 action。",
         actions: [],
         blocked: [],
         unknown: [],
@@ -1326,7 +1314,7 @@ export class RestoreCheckService {
           scope: "rig",
           rigId: input.rigId,
           rigName: input.rigName,
-          reason: `No exact recovery action is known in v0 because restore-input blockers remain: ${restoreInputBlockers.map((check) => check.evidence).join("; ")}`,
+          reason: `仍存在 restore-input blocker，因此 v0 无法确定精确恢复 action：${restoreInputBlockers.map((check) => check.evidence).join("; ")}`,
         });
         continue;
       }
@@ -1337,8 +1325,8 @@ export class RestoreCheckService {
           rigId: input.rigId,
           rigName: input.rigName,
           action: "restore_from_latest_snapshot",
-          command: `rig up --existing ${shellQuote(input.rigName)}`,
-          reason: "Rig has a latest snapshot and one or more seats are not running/ready.",
+          command: `zrig up --existing ${shellQuote(input.rigName)}`,
+          reason: "工作组有最新快照，且至少一个席位未处于 running/ready。",
           safe: false,
           blocking: true,
         });
@@ -1350,8 +1338,8 @@ export class RestoreCheckService {
         rigId: input.rigId,
         rigName: input.rigName,
         action: "restore_from_latest_snapshot",
-        command: `rig up --existing ${shellQuote(input.rigName)}`,
-        reason: "Rig has persisted current DB state but no latest snapshot; rig up will capture an auto-rehydrate snapshot and restore.",
+        command: `zrig up --existing ${shellQuote(input.rigName)}`,
+        reason: "工作组已持久化当前 DB 状态，但没有最新快照；zrig up 会捕获 auto-rehydrate 快照并恢复。",
         safe: false,
         blocking: true,
       });
@@ -1378,7 +1366,7 @@ export class RestoreCheckService {
     if (check.status !== "red") return "other";
 
     if (check.check.startsWith("seat.") && check.check.endsWith(".readiness")) {
-      if (check.evidence.includes("Missing canonical session identity")) {
+      if (check.evidence.includes("缺少 canonical session identity")) {
         return "restore_input";
       }
       return "runtime";
@@ -1398,15 +1386,15 @@ export class RestoreCheckService {
     unknown: RecoveryIssue[],
   ): string {
     if (status === "not_needed") {
-      return "All observable rigs are already running/ready; no recovery action needed.";
+      return "所有可观测工作组均已 running/ready，无需恢复 action。";
     }
     if (status === "unknown") {
-      return `Recovery status could not be inspected completely; ${actions.length} actionable, ${blocked.length} blocked, ${unknown.length} unknown.`;
+      return `无法完整检查恢复状态；${actions.length} 个可执行，${blocked.length} 个被阻塞，${unknown.length} 个未知。`;
     }
     if (status === "actionable") {
-      return `${actions.length} ${pluralize(actions.length, "rig")} can be recovered by known OpenRig command; ${blocked.length} ${pluralize(blocked.length, "rig")} blocked; ${unknown.length} unknown.`;
+      return `${actions.length} 个工作组可用已知 zrig 命令恢复；${blocked.length} 个工作组被阻塞；${unknown.length} 个未知。`;
     }
-    return `${blocked.length} ${pluralize(blocked.length, "rig")} blocked; ${actions.length} actionable; ${unknown.length} unknown.`;
+    return `${blocked.length} 个工作组被阻塞；${actions.length} 个可执行；${unknown.length} 个未知。`;
   }
 
   private buildRigRollup(input: RigRollupInput): RigRestoreRollup {
@@ -1416,12 +1404,11 @@ export class RestoreCheckService {
     let runningReadyNodes = 0;
     let blockedNodes = 0;
     let caveatNodes = 0;
-    // FR-8: per-seat class breakdown (each seat counts toward exactly one class).
+    // FR-8：逐席位 class 拆分，每个席位恰好计入一个 class。
     const classCounts: ReadinessClassCounts = { ready: 0, ready_with_caveats: 0, not_ready: 0, attention_required: 0, unknown: 0 };
-    // unknown/no-snapshot derives from the REAL snapshot primitive: the
-    // rig-level `rig.<name>.snapshot` yellow check (no snapshot found / could
-    // not check). A rig with no snapshot cannot be restored, so its seats'
-    // restore-readiness is unknown (not "ready"), per FR-8/AC-7.
+    // unknown/no-snapshot 从真实 snapshot primitive 派生：工作组级 `rig.<name>.snapshot`
+    // yellow check（未找到快照或无法检查）。没有快照的工作组无法恢复，因此按 FR-8/AC-7，
+    // 其中席位的 restore-readiness 为 unknown，而不是 "ready"。
     const rigNoSnapshot = input.checks.some(
       (check) => check.check === `rig.${input.rig.name}.snapshot` && check.status === "yellow",
     );
@@ -1436,18 +1423,17 @@ export class RestoreCheckService {
       if (hasBlocking) blockedNodes += 1;
       else if (hasCaveat) caveatNodes += 1;
 
-      // FR-8 class derivation (precedence; each from a real primitive).
-      // attention/not_ready WIN FIRST (a failed/attention seat is surfaced even
-      // in a no-snapshot rig); no-snapshot then overrides ONLY ready/caveat (a
-      // clean seat in an unrestorable rig is unknown); a real yellow caveat then
-      // wins over plain ready so the class count matches the per-rig status +
-      // caveatNodes (a running/ready seat with a yellow check is NOT plain ready):
+      // FR-8 class 派生（按优先级，每项来自真实 primitive）。attention/not_ready 最优先，
+      // 即使工作组没有快照，也会呈现 failed/attention 席位；no-snapshot 随后只覆盖 ready/caveat，
+      // 不可恢复工作组中的 clean 席位为 unknown；真实 yellow caveat 再优先于普通 ready，使
+      // class count 与逐工作组 status + caveatNodes 一致。带 yellow check 的 running/ready 席位
+      // 不是普通 ready：
       //   attention_required ← node.startupStatus
-      //   not_ready          ← a red seat check (failed/down)
-      //   unknown            ← no-snapshot (rig can't restore)
-      //   ready_with_caveats ← a yellow seat check
+      //   not_ready          ← 红色席位检查（failed/down）
+      //   unknown            ← 无快照（工作组无法恢复）
+      //   ready_with_caveats ← 黄色席位检查
       //   ready              ← running/ready, no caveat
-      //   unknown            ← indeterminate remainder
+      //   unknown            ← 无法确定的其余情况
       if (node.startupStatus === "attention_required") classCounts.attention_required += 1;
       else if (hasBlocking) classCounts.not_ready += 1;
       else if (rigNoSnapshot) classCounts.unknown += 1;
@@ -1484,13 +1470,12 @@ export class RestoreCheckService {
     };
   }
 
-  /** Generate ordered repair steps from non-green checks with remediation.
-   *  null when all green (restorable — nothing to repair).
-   *  Blockers (red) first in check order, then caveats (yellow). */
+  /** 从带 remediation 的非 green check 生成有序 repair step。全部 green 时返回 null，即
+   *  restorable 且无需修复。先按原 check 顺序放 blocker（red），再放 caveat（yellow）。 */
   private buildRepairPacket(checks: CheckEntry[], verdict: Verdict): RepairStep[] | null {
     if (verdict === "restorable") return null;
 
-    // Blockers first, then caveats, preserving original check order within each group
+    // 先 blocker，后 caveat；每组内保留原 check 顺序。
     const blockers = checks.filter((c) => c.status === "red" && c.remediation);
     const caveats = checks.filter((c) => c.status === "yellow" && c.remediation);
     const ordered = [...blockers, ...caveats];
@@ -1502,7 +1487,7 @@ export class RestoreCheckService {
       step: ++step,
       command: c.remediation,
       rationale: c.evidence,
-      safe: c.remediationSafe === true,  // conservative: default false unless explicitly marked safe
+      safe: c.remediationSafe === true,  // 保守处理：除非明确标为 safe，否则默认 false。
       blocking: c.status === "red",
     }));
   }

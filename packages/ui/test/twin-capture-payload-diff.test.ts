@@ -1,6 +1,6 @@
-// OPR.0.4.1.11.2 (FR-4) — data-medium capture: a deterministic payload before/after artifact for
-// non-visual / data-shape slices (the data-medium equivalent of intent.png). Pure + deterministic
-// (stable key ordering, sorted change paths) so the same before/after always yields the same artifact.
+// OPR.0.4.1.11.2（FR-4）——data-medium 捕获：非视觉/data-shape slice 的确定性 payload before/after 产物
+//（intent.png 的 data-medium 等价物）。纯函数 + 确定性
+//（稳定键序、已排序变更路径），使同一 before/after 总产出同一产物。
 import { describe, it, expect } from "vitest";
 import { canonicalJson, diffPaths, buildPayloadDiff } from "../twin/capture/payload-diff.js";
 
@@ -23,9 +23,9 @@ describe("payload-diff (OPR.0.4.1.11.2 FR-4: data-medium before/after artifact)"
 
   it("buildPayloadDiff assembles BEFORE / AFTER canonical + CHANGED sections", () => {
     const art = buildPayloadDiff({ before: { a: 1 }, after: { a: 2 } });
-    expect(art).toContain("# BEFORE");
-    expect(art).toContain("# AFTER");
-    expect(art).toContain("# CHANGED");
+    expect(art).toContain("# 之前");
+    expect(art).toContain("# 之后");
+    expect(art).toContain("# 变更");
     expect(art).toContain("changed (~): a");
   });
 });

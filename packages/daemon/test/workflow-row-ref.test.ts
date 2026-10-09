@@ -1,8 +1,7 @@
-// OPR.0.4.6.WF4 Q6 — the ● (agent-leg) workflow-identity stamp is derived from
-// the item's OWN STRUCTURED TAGS (the WF-5-ratified queryable identity), never
-// from summary/identity/evidenceRef prose. This pins that derivation:
-// both required keys → a pointer; a missing key or a non-workflow row →
-// undefined (so the AttentionInput stays byte-identical, omit-when-absent).
+// OPR.0.4.6.WF4 Q6——●（智能体阶段）工作流身份标记从条目自身的结构化标签派生
+//（WF-5 批准的可查询身份），绝不从 summary/identity/evidenceRef 文本派生。此处固定
+// 派生规则：两个必需键齐全 → 指针；缺少任一键或不是工作流行 → undefined
+//（因此 AttentionInput 字节完全一致，缺失时省略）。
 
 import { describe, expect, it } from "vitest";
 
@@ -10,8 +9,8 @@ import { workflowRefFromTags } from "../src/domain/review/gather.js";
 
 const tags = (...t: string[]) => JSON.stringify(t);
 
-describe("WF-4 Q6: workflowRefFromTags", () => {
-  it("derives the full pointer from workflow: + instance: + step: tags", () => {
+describe("WF-4 Q6：workflowRefFromTags", () => {
+  it("从 workflow: + instance: + step: 标签派生完整指针", () => {
     expect(
       workflowRefFromTags(
         tags("workflow-exception", "workflow:branched-remediation", "instance:01WFX", "step:verify", "exception:failed"),
@@ -19,32 +18,32 @@ describe("WF-4 Q6: workflowRefFromTags", () => {
     ).toEqual({ instanceId: "01WFX", workflowName: "branched-remediation", stepId: "verify" });
   });
 
-  it("omits stepId when no step: tag is present", () => {
+  it("没有 step: 标签时省略 stepId", () => {
     const ref = workflowRefFromTags(tags("workflow-exception", "workflow:conveyor", "instance:01WFY"));
     expect(ref).toEqual({ instanceId: "01WFY", workflowName: "conveyor" });
     expect("stepId" in ref!).toBe(false);
   });
 
-  it("is POINTER-ONLY — exactly the identity keys, no exception/occurrence leakage", () => {
+  it("仅含指针——严格只保留身份键，不泄漏 exception/occurrence", () => {
     const ref = workflowRefFromTags(
       tags("workflow:gated-release", "instance:01WFZ", "step:gate", "exception:blocked", "occurrence:qitem-9"),
     );
     expect(Object.keys(ref!).sort()).toEqual(["instanceId", "stepId", "workflowName"]);
   });
 
-  it("returns undefined when the instance: key is absent (incomplete pointer, never partial)", () => {
+  it("缺少 instance: 键时返回 undefined（指针不完整，绝不返回部分结果）", () => {
     expect(workflowRefFromTags(tags("workflow:conveyor", "step:build"))).toBeUndefined();
   });
 
-  it("returns undefined when the workflow: key is absent", () => {
+  it("缺少 workflow: 键时返回 undefined", () => {
     expect(workflowRefFromTags(tags("instance:01WFX", "step:build"))).toBeUndefined();
   });
 
-  it("returns undefined for a non-workflow row (byte-identity-by-omission)", () => {
+  it("非工作流行返回 undefined（通过省略保持字节一致）", () => {
     expect(workflowRefFromTags(tags("slice:mh-2", "mission:release-0.4.6"))).toBeUndefined();
   });
 
-  it("returns undefined for null / empty / malformed tags", () => {
+  it("标签为 null、空值或格式错误时返回 undefined", () => {
     expect(workflowRefFromTags(null)).toBeUndefined();
     expect(workflowRefFromTags("[]")).toBeUndefined();
     expect(workflowRefFromTags("not json")).toBeUndefined();

@@ -30,7 +30,7 @@ describe("AgentSpecReview", () => {
       expect(screen.getByTestId("agent-spec-review-empty")).toBeDefined();
     });
 
-    expect(screen.getByText("No AgentSpec Selected")).toBeDefined();
+    expect(screen.getByText("未选择 AgentSpec")).toBeDefined();
   });
 
   it("renders a read-only summary and yaml preview for the current agent draft", async () => {
@@ -60,9 +60,9 @@ describe("AgentSpecReview", () => {
       expect(screen.getByTestId("agent-spec-review")).toBeDefined();
     });
 
-    // Draft label shows immediately
+    // Draft 标签立即显示
     expect(screen.getByText("qa")).toBeDefined();
-    // YAML preview always visible
+    // YAML 预览恒可见
     expect(screen.getByTestId("agent-spec-yaml").textContent).toContain('version: "1.0.0"');
   });
 
@@ -78,10 +78,10 @@ describe("AgentSpecReview", () => {
     renderReview();
 
     await waitFor(() => {
-      expect(screen.getByText("Open In Validate")).toBeDefined();
+      expect(screen.getByText("在验证中打开")).toBeDefined();
     });
 
-    fireEvent.click(screen.getByText("Open In Validate"));
+    fireEvent.click(screen.getByText("在验证中打开"));
 
     await waitFor(() => {
       expect(screen.getByTestId("agent-validate-route")).toBeDefined();

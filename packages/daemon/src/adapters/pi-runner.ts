@@ -1,22 +1,19 @@
-// OPR.0.4.6.PI1 — the pane-hosted pi-runner (compiled entry in the daemon dist).
+// OPR.0.4.6.PI1——pane 承载的 pi-runner（daemon dist 中的已编译入口）。
 //
-// The runner is what makes a Pi seat behave like a normal OpenRig tmux seat
-// while everything underneath stays structured RPC:
+// runner 让 Pi 席位表现得像普通 OpenRig tmux 席位，同时底层全部保持结构化 RPC：
 //
-//   pane stdin (rig send / human typing)  ──▶ RPC prompt / steer / follow_up
-//   pi RPC events (typed JSONL)           ──▶ (a) human-readable pane mirror
-//                                             (b) activity + session_identity
-//                                                 POSTs to the daemon
-//                                             (c) runner-state.json sidecar
+//   pane stdin（rig send/人工输入）        ──▶ RPC prompt/steer/follow_up
+//   pi RPC 事件（类型化 JSONL）            ──▶ (a) 人类可读的 pane 镜像
+//                                             (b) 向后台服务 POST activity +
+//                                                 session_identity
+//                                             (c) runner-state.json 伴随文件
 //
-// BR-1: activity/session identity derive ONLY from Pi's typed events +
-// get_state — never pane scraping. BR-3: the pi child gets a deny-by-default
-// env allowlist. BR-5: the trust flag is always explicit. Honest failure:
-// a dead pi process prints the EXIT/ERROR marker and records `exited` in the
-// sidecar — never a silently frozen pane.
+// BR-1：activity/session 身份只从 Pi 的类型化事件 + get_state 派生，绝不抓取 pane。
+// BR-3：pi 子进程使用默认拒绝的环境 allowlist。BR-5：trust 标志始终显式。诚实失败：
+// 已终止 pi 进程会输出 EXIT/ERROR 标记，并在 sidecar 中记录 `exited`，绝不静默冻结 pane。
 //
-// Only node builtins + pi-runner-protocol are imported so the compiled entry
-// stays runnable as `node <dist>/adapters/pi-runner.js` with no daemon deps.
+// 只导入 Node 内置模块 + pi-runner-protocol，使编译入口无需后台服务依赖也能以
+// `node <dist>/adapters/pi-runner.js` 运行。
 
 import fs from "node:fs";
 import nodePath from "node:path";
@@ -32,9 +29,9 @@ import {
   type PiRunnerState,
 } from "./pi-runner-protocol.js";
 
-// ── Submitted input boundaries ─────────────────────────────────────────────
-// Canonical TTY buffers can overflow before Node sees even the paste terminator.
-// Use Node's line editor in raw mode, with only paste framing handled here.
+// ── 已提交输入边界 ───────────────────────────────────────────────────────────
+// canonical TTY 缓冲区可能在 Node 看到粘贴结束符前溢出。使用 Node 的 raw mode 行编辑器，
+// 此处只处理粘贴 framing。
 export const MAX_PI_INPUT_BYTES = 1024 * 1024;
 
 export function createRunnerInput(
@@ -43,13 +40,13 @@ export function createRunnerInput(
   onSubmit: (block: string) => void,
 ): readline.Interface {
   const reject = () => output.write(
-    "[pi-runner] input rejected: maximum 1048576 UTF-8 bytes; send a smaller message. Ctrl-C clears unfinished input.\n",
+    "[pi-runner] 输入被拒绝：最多 1048576 个 UTF-8 字节；请发送更短的消息。Ctrl-C 可清除未完成输入。\n",
   );
   const submit = (block: string) => {
     if (Buffer.byteLength(block) > MAX_PI_INPUT_BYTES) reject();
     else if (block.trim()) onSubmit(block);
   };
-  // A pipe has no kernel line limit or terminal editing; each line is a message.
+  // pipe 没有内核行长度限制或终端编辑；每一行就是一条消息。
   if (!input.isTTY || !output.isTTY) {
     return readline.createInterface({ input, crlfDelay: Infinity }).on("line", submit);
   }
@@ -64,15 +61,54 @@ export function createRunnerInput(
   let pasteBytes = 0;
   let discarded = false;
   const setLine = (line: string, cursor: number) => {
-    // Node documents changing rl.line together with rl.cursor. The installed
-    // typings mark them readonly, so assign this pair through one explicit seam.
+    // Node 文档要求同时修改 rl.line 与 rl.cursor。已安装类型定义将其标为 readonly，因此通过
+    // 一个显式接缝为两者赋值。
     Object.assign(editor, { line, cursor });
     editor.prompt(true);
   };
   const clear = () => setLine("", 0);
+  const submitLine = () => {
+    const line = editor.line;
+    clear();
+    submit(line);
+  };
+  const writeEditingText = (text: string) => {
+    for (let index = 0; index < text.length; index++) {
+      const rest = text.slice(index);
+      if (rest.startsWith("\u001b[D")) {
+        setLine(editor.line, Math.max(0, editor.cursor - 1));
+        index += 2;
+      } else if (rest.startsWith("\u001b[C")) {
+        setLine(editor.line, Math.min(editor.line.length, editor.cursor + 1));
+        index += 2;
+      } else if (text[index] === "\u007f" || text[index] === "\b") {
+        if (editor.cursor > 0) {
+          setLine(
+            editor.line.slice(0, editor.cursor - 1) + editor.line.slice(editor.cursor),
+            editor.cursor - 1,
+          );
+        }
+      } else if (text[index] === "\u0015") {
+        setLine(editor.line.slice(editor.cursor), 0);
+      } else if (text[index] === "\r" || text[index] === "\n") {
+        if (text[index] === "\r" && text[index + 1] === "\n") index += 1;
+        submitLine();
+      } else if (text[index] === "\u0004") {
+        editor.close();
+      } else {
+        const character = text[index]!;
+        setLine(
+          editor.line.slice(0, editor.cursor) + character + editor.line.slice(editor.cursor),
+          editor.cursor + character.length,
+        );
+      }
+    }
+  };
   const consume = (text: string) => {
     if (paste === null) {
-      keys.write(text);
+      // Node 24 不再为合成 TTY 流解释部分编辑控制序列；在 framing 层同步应用最小的
+      // 光标、删除、提交与 EOF 语义，使真实终端与隔离测试行为一致。
+      writeEditingText(text);
     } else if (!discarded) {
       pasteBytes += Buffer.byteLength(text);
       if (pasteBytes > MAX_PI_INPUT_BYTES) {
@@ -91,7 +127,7 @@ export function createRunnerInput(
       const interrupt = pending.indexOf("\u0003");
       const at = boundary < 0 ? interrupt : interrupt < 0 ? boundary : Math.min(boundary, interrupt);
       if (at < 0) {
-        // Retain only a possible split marker; normal editing keys go to Node.
+        // 只保留可能被拆分的 marker；普通编辑按键交给 Node。
         let tail = Math.min(marker.length - 1, pending.length);
         while (tail && !marker.startsWith(pending.slice(-tail))) tail--;
         consume(pending.slice(0, pending.length - tail));
@@ -104,7 +140,7 @@ export function createRunnerInput(
         paste = null;
         discarded = false;
         clear();
-        output.write("\n[pi-runner] input cleared\n");
+        output.write("\n[pi-runner] 输入已清除\n");
         onSubmit("/abort");
       } else if (paste === null) {
         paste = "";
@@ -115,8 +151,8 @@ export function createRunnerInput(
           const line = editor.line.slice(0, editor.cursor) + paste + editor.line.slice(editor.cursor);
           if (Buffer.byteLength(line) > MAX_PI_INPUT_BYTES) { clear(); reject(); }
           else {
-            // rl.write(text) treats pasted newlines as submits. These public
-            // editing fields insert the whole literal paste without submitting.
+            // rl.write(text) 会把粘贴内容中的换行当作提交。通过这些公开编辑字段插入完整字面
+            // 粘贴内容，而不提交。
             setLine(line, editor.cursor + paste.length);
           }
         }
@@ -142,18 +178,18 @@ export function createRunnerInput(
   return editor;
 }
 
-// ── Pi event → mirror + activity mapping (pure, hermetically testable) ──────
+// ── Pi event → mirror + activity 映射（纯逻辑、可隔离测试）──────────────────
 
 export interface MirrorAndActivity {
-  /** Lines to print to the pane (already human-readable). */
+  /** 要输出到 pane 的行（已是人类可读文本）。 */
   mirrorLines: string[];
-  /** Raw text to append to the current mirror line (streamed deltas). */
+  /** 追加到当前镜像行的原始文本（流式增量）。 */
   mirrorAppend?: string;
-  /** Activity POST payload (hookEvent/subtype), when the event maps to one. */
+  /** 事件可映射时对应的 Activity POST payload（hookEvent/subtype）。 */
   activity?: { hookEvent: string; subtype: string | null };
-  /** Streaming-state transition, when the event carries one. */
+  /** 事件携带时对应的流式状态转换。 */
   streaming?: boolean;
-  /** A typed terminal failure; the core coalesces its exhausted-retry notice. */
+  /** 类型化终端失败；core 会合并其重试耗尽通知。 */
   errorNotice?: string;
 }
 
@@ -161,7 +197,7 @@ function errorNotice(detail: unknown): string {
   const text = typeof detail === "string"
     ? stripVTControlCharacters(detail).replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, " ").replace(/\s+/g, " ").trim()
     : "";
-  return `${PI_RUNNER_ERROR_MARKER} ${text.slice(0, 400) || "request failed"}`;
+  return `${PI_RUNNER_ERROR_MARKER} ${text.slice(0, 400) || "请求失败"}`;
 }
 
 export function mapPiEvent(event: Record<string, unknown>): MirrorAndActivity {
@@ -176,21 +212,17 @@ export function mapPiEvent(event: Record<string, unknown>): MirrorAndActivity {
     case "message_start":
       return { mirrorLines: [] };
     case "message_update": {
-      // Pi streams assistant text as `assistantMessageEvent` text_delta
-      // records. Only the delta is mirrored: Pi 0.84.0 dropped the cumulative
-      // `message` from RPC message_update, and older Pi sent it alongside the
-      // same deltas, so appending it repeated the growing text. Thinking and
-      // tool-call argument deltas stay out of the pane; tool calls get their
-      // own one-line summaries from tool_execution_*.
+      // Pi 把助手文本流式输出为 `assistantMessageEvent` text_delta 记录。只镜像 delta：Pi 0.84.0
+      // 从 RPC message_update 中移除了累积 `message`，而旧版 Pi 会将它与同一 delta 一起发送，
+      // 追加它会重复不断增长的文本。Thinking 与工具调用参数 delta 不进入 pane；工具调用从
+      // tool_execution_* 获取自己的单行摘要。
       const update = event.assistantMessageEvent as Record<string, unknown> | undefined;
       const delta = update?.type === "text_delta" && typeof update.delta === "string" ? update.delta : "";
       return delta ? { mirrorLines: [], mirrorAppend: delta } : { mirrorLines: [] };
     }
     case "message_end": {
-      // The message text already streamed via message_update appends; this
-      // terminates the line. (mapPiEvent is stateless, so a hypothetical
-      // updates-carried-nothing case is a VM-calibration follow-up, not
-      // silently guessed here.)
+      // 消息文本已通过 message_update 追加流式传输；此处结束该行。（mapPiEvent 无状态，
+      // 因此假设的 update 未携带内容情形属于 VM 校准后续项，不在此静默猜测。）
       const message = event.message as Record<string, unknown> | undefined;
       return {
         mirrorLines: [""],
@@ -205,41 +237,41 @@ export function mapPiEvent(event: Record<string, unknown>): MirrorAndActivity {
     case "tool_execution_end": {
       const tool = typeof event.toolName === "string" ? event.toolName : (typeof event.name === "string" ? event.name : "tool");
       const failed = event.isError === true || event.error != null;
-      return { mirrorLines: [`  ⚙ ${tool} ${failed ? "FAILED" : "done"}`] };
+      return { mirrorLines: [`  ⚙ ${tool} ${failed ? "失败" : "完成"}`] };
     }
     case "queue_update":
       return { mirrorLines: [] };
     case "compaction_start":
-      return { mirrorLines: ["[pi] compacting context…"], activity: { hookEvent: "active", subtype: "compaction" } };
+      return { mirrorLines: ["[pi] 正在压缩上下文…"], activity: { hookEvent: "active", subtype: "compaction" } };
     case "compaction_end":
-      return { mirrorLines: ["[pi] compaction done"] };
+      return { mirrorLines: ["[pi] 上下文压缩完成"] };
     case "auto_retry_start":
-      return { mirrorLines: ["[pi] transient error — retrying"], activity: { hookEvent: "active", subtype: "auto_retry" } };
+      return { mirrorLines: ["[pi] 瞬态错误——正在重试"], activity: { hookEvent: "active", subtype: "auto_retry" } };
     case "auto_retry_end":
       return event.success === false
         ? { mirrorLines: [""], errorNotice: errorNotice(event.finalError) }
         : { mirrorLines: [] };
     case "extension_error": {
-      const message = typeof event.message === "string" ? event.message : "extension error";
-      return { mirrorLines: [`${PI_RUNNER_ERROR_MARKER} extension: ${message}`] };
+      const message = typeof event.message === "string" ? event.message : "扩展错误";
+      return { mirrorLines: [`${PI_RUNNER_ERROR_MARKER} 扩展：${message}`] };
     }
     default:
       return { mirrorLines: [] };
   }
 }
 
-// ── The runner core (injected effects; owns protocol state) ─────────────────
+// ── Runner core（注入 effect；拥有协议状态）─────────────────────────────────
 
 export interface RunnerIo {
-  /** Write one JSONL command to pi stdin. */
+  /** 向 pi stdin 写入一条 JSONL 命令。 */
   sendRpc(cmd: Record<string, unknown>): void;
-  /** Print a full line to the pane. */
+  /** 向 pane 输出完整一行。 */
   mirrorLine(line: string): void;
-  /** Append raw text to the current pane line (streamed deltas). */
+  /** 向当前 pane 行追加原始文本（流式增量）。 */
   mirrorAppend(text: string): void;
-  /** Fire-and-forget POST to the daemon activity endpoint. */
+  /** 向后台服务 activity endpoint 发出无需等待响应的 POST。 */
   postActivity(payload: Record<string, unknown>): void;
-  /** Persist the runner-state sidecar. */
+  /** 持久化 runner-state sidecar。 */
   writeSidecar(state: PiRunnerState): void;
   now(): string;
 }
@@ -261,24 +293,22 @@ export class RunnerCore {
     private identity: { sessionName: string; nodeId?: string; launchId?: string; generation?: string },
     private opts: { catchUpSince?: string } = {},
   ) {
-    // The durable cursor seeds from the carried-over value (FR-5) so this
-    // instance's own sidecar writes never regress it to undefined before a
-    // newer entry supersedes it.
+    // 持久游标从继承值初始化（FR-5），使当前实例自己的 sidecar 写入在较新条目取代它之前，
+    // 绝不会将其退化为 undefined。
     this.lastEntryId = opts.catchUpSince;
   }
 
-  /** Kick off identity capture. Called once pi's RPC stream is up. */
+  /** 启动身份捕获；pi RPC 流建立后调用一次。 */
   start(): void {
     this.io.sendRpc({ type: "get_state", id: GET_STATE_ID });
     if (this.opts.catchUpSince) {
-      // Durable catch-up cursor (FR-5): replay session entries the previous
-      // runner instance had not yet projected. Mirror-only; activity states
-      // are live-only signals.
+      // 持久追赶游标（FR-5）：重放上一 runner 实例尚未投影的 session 条目。只做 mirror；
+      // activity 状态仅为实时信号。
       this.io.sendRpc({ type: "get_entries", since: this.opts.catchUpSince, id: CATCH_UP_ID });
     }
   }
 
-  /** One LF-delimited JSONL record from pi stdout. */
+  /** 来自 pi stdout 的一条 LF 分隔 JSONL 记录。 */
   handlePiLine(rawLine: string): void {
     const line = rawLine.trim();
     if (!line) return;
@@ -288,7 +318,7 @@ export class RunnerCore {
       if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return;
       record = parsed as Record<string, unknown>;
     } catch {
-      // Non-JSON noise on pi stdout — mirror it verbatim so nothing hides.
+      // pi stdout 上的非 JSON 噪声——原样镜像，避免隐藏信息。
       this.io.mirrorLine(line);
       return;
     }
@@ -300,34 +330,33 @@ export class RunnerCore {
     this.handleEvent(record);
   }
 
-  /** One aggregated paste block from pane stdin. */
+  /** 来自 pane stdin 的一个聚合粘贴块。 */
   handleUserBlock(block: string): void {
     if (block === "/abort") {
       this.io.sendRpc({ type: "abort" });
-      this.io.mirrorLine("[pi-runner] abort sent");
+      this.io.mirrorLine("[pi-runner] 已发送 abort");
       return;
     }
     if (block.startsWith("/followup ")) {
       const message = block.slice("/followup ".length);
       this.io.sendRpc({ type: "follow_up", message });
-      this.io.mirrorLine(`you (follow-up) ▸ ${message}`);
+      this.io.mirrorLine(`你（后续）▸ ${message}`);
       return;
     }
     if (this.streaming) {
-      // Mid-stream: steer delivers after the current turn's tool calls,
-      // before the next model call (Pi's documented semantics).
+      // 流中：steer 在当前轮次工具调用后、下一次模型调用前投递（Pi 的文档语义）。
       this.io.sendRpc({ type: "steer", message: block });
-      this.io.mirrorLine(`you (steer) ▸ ${block}`);
+      this.io.mirrorLine(`你（引导）▸ ${block}`);
       return;
     }
     this.io.sendRpc({ type: "prompt", message: block });
-    this.io.mirrorLine(`you ▸ ${block}`);
+    this.io.mirrorLine(`你 ▸ ${block}`);
   }
 
-  /** Pi process exit — honest, loud, durable. */
+  /** Pi 进程退出——如实、明确、持久。 */
   handlePiExit(code: number | null): void {
     this.ready = false;
-    this.io.mirrorLine(`${PI_RUNNER_EXIT_MARKER} pi exited (code ${code ?? "unknown"})`);
+    this.io.mirrorLine(`${PI_RUNNER_EXIT_MARKER} pi 已退出（退出码 ${code ?? "未知"}）`);
     this.writeSidecar({ exited: { code, at: this.io.now() } });
     this.io.postActivity(this.activityPayload("Stop", "pi_exited"));
   }
@@ -341,7 +370,7 @@ export class RunnerCore {
       this.sessionId = sessionId ?? this.sessionId;
       this.ready = true;
       this.writeSidecar({});
-      this.io.mirrorLine(`${PI_RUNNER_READY_MARKER} session=${this.sessionFile ?? "unknown"}`);
+      this.io.mirrorLine(`${PI_RUNNER_READY_MARKER} session=${this.sessionFile ?? "未知"}`);
       this.io.postActivity({
         eventFamily: "session_identity",
         sessionName: this.identity.sessionName,
@@ -368,9 +397,9 @@ export class RunnerCore {
       }
       return;
     }
-    // Other responses (prompt accepted, …) — surface errors.
+    // 其他响应（prompt 已接受等）——展示错误。
     if (record.success === false || record.error != null) {
-      const message = typeof record.error === "string" ? record.error : "request failed";
+      const message = typeof record.error === "string" ? record.error : "请求失败";
       this.io.mirrorLine(`${PI_RUNNER_ERROR_MARKER} rpc: ${message}`);
     }
   }
@@ -380,7 +409,7 @@ export class RunnerCore {
     if (event.type === "agent_start" || (event.type === "message_start" && message?.role === "assistant")) {
       this.assistantErrorShown = false;
     }
-    // Durable cursor: any event carrying a session-entry id advances it.
+    // 持久游标：任何携带 session-entry id 的事件都会推进它。
     const entryId = typeof event.entryId === "string" ? event.entryId : (typeof event.id === "string" ? event.id : undefined);
     if (entryId) {
       this.lastEntryId = entryId;
@@ -390,19 +419,16 @@ export class RunnerCore {
     const mapped = mapPiEvent(event);
     if (mapped.streaming !== undefined) this.streaming = mapped.streaming;
     if (event.type === "agent_end") {
-      // QA RED fold (qitem-20260707020922): live events do not reliably carry
-      // session-entry ids, so the durable cursor starved (lastEntryId stayed
-      // null in real runs). Refresh it from the source of truth after every
-      // completed turn — get_entries returns append-order entries with stable
-      // ids; the response handler advances the cursor from the tail.
+      // QA RED fold（qitem-20260707020922）：实时事件不可靠地携带 session-entry id，导致持久
+      // 游标断粮（真实运行中 lastEntryId 一直为 null）。每个完成轮次后从事实源刷新：get_entries
+      // 返回带稳定 id 的追加顺序条目；响应处理器从尾部推进游标。
       this.io.sendRpc({ type: "get_entries", id: CURSOR_REFRESH_ID });
     }
     if (mapped.mirrorAppend) this.io.mirrorAppend(mapped.mirrorAppend);
     for (const line of mapped.mirrorLines) this.io.mirrorLine(line);
     if (mapped.errorNotice) {
-      // Pi can announce the same failed message again when retries exhaust.
-      // Keep the first useful detail even if finalError is absent, then reset
-      // at the next assistant message/agent turn, not at agent_end.
+      // Pi 在重试耗尽时可能再次报告同一失败消息。即使 finalError 缺失也保留第一条有效细节；
+      // 在下一条 assistant 消息/智能体轮次重置，而不是在 agent_end 重置。
       if (event.type !== "auto_retry_end" || !this.assistantErrorShown) {
         this.io.mirrorLine(mapped.errorNotice);
       }
@@ -428,8 +454,7 @@ export class RunnerCore {
   private writeSidecar(patch: Partial<PiRunnerState>): void {
     this.io.writeSidecar({
       ready: this.ready,
-      // Launch-attempt scope: every write is stamped so the daemon can
-      // distinguish THIS runner instance's truth from stale artifacts.
+      // 启动尝试范围：每次写入都盖章，使后台服务能区分当前 runner 实例的事实与陈旧产物。
       launchId: this.identity.launchId,
       sessionFile: this.sessionFile,
       sessionId: this.sessionId,
@@ -440,7 +465,7 @@ export class RunnerCore {
   }
 }
 
-// ── CLI entry ────────────────────────────────────────────────────────────────
+// ── CLI 入口 ─────────────────────────────────────────────────────────────────
 
 interface RunnerArgs {
   sessionName: string;
@@ -459,7 +484,7 @@ export function parseRunnerArgs(argv: string[]): RunnerArgs {
     const flag = argv[i]!;
     const next = () => {
       const value = argv[++i];
-      if (value === undefined) throw new Error(`${flag} requires a value`);
+      if (value === undefined) throw new Error(`${flag} 需要一个值`);
       return value;
     };
     switch (flag) {
@@ -472,15 +497,15 @@ export function parseRunnerArgs(argv: string[]): RunnerArgs {
       case "--fork": args.forkRef = next(); break;
       case "--approve": args.trust = "approve"; break;
       case "--no-approve": args.trust = "no-approve"; break;
-      default: throw new Error(`unknown flag: ${flag}`);
+      default: throw new Error(`未知标志：${flag}`);
     }
   }
-  if (!args.sessionName) throw new Error("--session-name is required");
-  if (!args.stateRoot) throw new Error("--state-root is required");
-  if (!args.cwd) throw new Error("--cwd is required");
-  if (!args.launchId) throw new Error("--launch-id is required (launch-attempt scoping)");
-  if (!args.trust) throw new Error("an explicit trust flag is required: --approve or --no-approve");
-  if (args.sessionFile && args.forkRef) throw new Error("--session and --fork are mutually exclusive");
+  if (!args.sessionName) throw new Error("必须提供 --session-name");
+  if (!args.stateRoot) throw new Error("必须提供 --state-root");
+  if (!args.cwd) throw new Error("必须提供 --cwd");
+  if (!args.launchId) throw new Error("必须提供 --launch-id（启动尝试范围）");
+  if (!args.trust) throw new Error("必须显式提供 trust 标志：--approve 或 --no-approve");
+  if (args.sessionFile && args.forkRef) throw new Error("--session 与 --fork 互斥");
   return args as RunnerArgs;
 }
 
@@ -497,18 +522,15 @@ function resolveActivityEndpoint(env: NodeJS.ProcessEnv): { baseUrl: string; tok
       if (!baseUrl && typeof parsed.baseUrl === "string") baseUrl = parsed.baseUrl;
       if (!token && typeof parsed.token === "string") token = parsed.token;
     } catch {
-      // absent/malformed — activity POSTs no-op; the sidecar + mirror still work.
+      // 缺失/格式错误——activity POST 为空操作；sidecar + mirror 仍可工作。
     }
   }
   return baseUrl && token ? { baseUrl, token } : null;
 }
 
-/** The runner-side sidecar handshake, extracted for hermetic testing (guard
- *  re-verdict, qitem-20260707013815): read the PRIOR record's durable cursor
- *  FIRST, then stamp the launch-scoped pending record — the write carries the
- *  cursor forward so no reset in the chain can erase it. `catchUpSince` is
- *  only surfaced when resuming: a fresh/fork session has no prior projection
- *  to catch up. */
+/** runner 侧 sidecar 握手，为隔离测试抽出（守卫重新裁定，qitem-20260707013815）：先读取
+ * 旧记录的持久游标，再盖启动范围 pending 记录；写入会向前携带游标，使链中任何重置都无法清除。
+ * `catchUpSince` 只在 resuming 时公开：fresh/fork session 没有需要追赶的先前投影。 */
 export function prepareRunnerSidecar(
   fsOps: { readFile(p: string): string; writeFile(p: string, c: string): void; exists(p: string): boolean },
   runnerStatePath: string,
@@ -519,10 +541,10 @@ export function prepareRunnerSidecar(
   let prior: PiRunnerState | null = null;
   try {
     prior = fsOps.exists(runnerStatePath) ? parsePiRunnerState(fsOps.readFile(runnerStatePath)) : null;
-  } catch { /* unreadable prior sidecar — treated as absent */ }
+  } catch { /* 旧 sidecar 不可读——视为缺失。 */ }
   try {
     fsOps.writeFile(runnerStatePath, JSON.stringify(buildPendingRunnerState(launchId, now(), prior)));
-  } catch { /* best-effort; the adapter pre-writes an equivalent pending record */ }
+  } catch { /* 尽力而为；adapter 会预写等价的 pending 记录。 */ }
   return { catchUpSince: resuming ? prior?.lastEntryId : undefined };
 }
 
@@ -567,8 +589,8 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     forkRef: args.forkRef,
   });
 
-  console.log(`[pi-runner] starting pi --mode rpc (seat ${args.sessionName})`);
-  console.log(`[pi-runner] send text normally; prefixes: "/followup <text>" queues after the turn, "/abort" cancels`);
+  console.log(`[pi-runner] 正在启动 pi --mode rpc（席位 ${args.sessionName}）`);
+  console.log(`[pi-runner] 请正常发送文本；前缀："/followup <text>" 在当前轮次后排队，"/abort" 取消`);
 
   const child = spawn("pi", childArgs, {
     cwd: args.cwd,
@@ -578,7 +600,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
 
   const io: RunnerIo = {
     sendRpc: (cmd) => {
-      try { child.stdin.write(`${JSON.stringify(cmd)}\n`); } catch { /* exit handler reports */ }
+      try { child.stdin.write(`${JSON.stringify(cmd)}\n`); } catch { /* 由退出处理器报告。 */ }
     },
     mirrorLine: (line) => process.stdout.write(`${line}\n`),
     mirrorAppend: (text) => process.stdout.write(text),
@@ -591,19 +613,19 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         headers: { "content-type": "application/json", authorization: `Bearer ${endpoint.token}` },
         body: JSON.stringify(payload),
         signal: controller.signal,
-      }).catch(() => { /* best-effort — never blocks the loop */ }).finally(() => clearTimeout(timeout));
+      }).catch(() => { /* 尽力而为——绝不阻塞循环。 */ }).finally(() => clearTimeout(timeout));
     },
     writeSidecar: (state) => {
       try {
         fs.writeFileSync(paths.runnerStatePath, JSON.stringify(state));
-      } catch { /* best-effort; adapter falls back to pane markers */ }
+      } catch { /* 尽力而为；adapter 回退到 pane 标记。 */ }
     },
     now: () => new Date().toISOString(),
   };
 
   const core = new RunnerCore(io, {
     sessionName: args.sessionName, nodeId: process.env.OPENRIG_NODE_ID, launchId: args.launchId,
-    // Carry the emitting tenure; never infer it from a later daemon read or Pi event.
+    // 携带发出事件的 tenure；绝不从后续后台服务读取或 Pi 事件推断。
     generation: process.env.OPENRIG_OCCUPANT_GENERATION,
   }, { catchUpSince });
 
@@ -614,7 +636,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   const input = createRunnerInput(process.stdin, process.stdout, (block) => core.handleUserBlock(block));
 
   child.on("error", (err) => {
-    console.error(`${PI_RUNNER_ERROR_MARKER} failed to spawn pi: ${err.message}`);
+    console.error(`${PI_RUNNER_ERROR_MARKER} 启动 pi 失败：${err.message}`);
     core.handlePiExit(null);
     input.close();
     process.exitCode = 1;
@@ -628,14 +650,14 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   core.start();
 }
 
-// Compiled-entry guard: run main() only when executed directly (not imported
-// by tests). import.meta.url === file URL of process.argv[1] when direct.
+// 已编译入口守卫：仅在直接执行时运行 main()，测试导入时不运行。直接执行时，import.meta.url
+// 等于 process.argv[1] 的文件 URL。
 const invokedDirectly = (() => {
   try {
     const entry = process.argv[1];
     if (!entry) return false;
-    // pathToFileURL handles percent-encoding (spaces etc.) the way
-    // import.meta.url does — a hand-built `file://${path}` string does not.
+    // pathToFileURL 处理百分号编码（空格等）的方式与 import.meta.url 一致；手工构造的
+    // `file://${path}` 字符串做不到。
     return import.meta.url === pathToFileURL(nodePath.resolve(entry)).href;
   } catch {
     return false;

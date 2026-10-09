@@ -1,19 +1,16 @@
-// PL-019 item 6: subscribe to the shared topology event hub and track recent
-// inter-seat traffic so the topology graph can emphasize edges that
-// just fired (one-shot ~1.2s pulse) and edges that have seen traffic
-// in the last ~30s (1.5x weight + brighter, decays back to neutral).
+// PL-019 第 6 项：订阅共享的拓扑事件中枢，跟踪近期的席位间流量，
+// 使拓扑图能突出“刚刚触发”的边（一次性约 1.2 秒脉冲），以及“近约 30 秒内有流量”
+// 的边（权重 1.5 倍 + 更亮，随后衰减回中性）。
 //
-// Visual contract:
-//   - use short pulse emphasis instead of constant blinking
-//   - one-shot ~1.2s per event; direction matters (source -> dest)
-//   - edges with traffic in last ~30s stay 1.5x weight + brighter
-//   - distinct event-type cues optional; v0 unifies all four event
-//     types under the same "traffic" treatment to keep this restrained
+// 视觉约定：
+//   - 用短促脉冲强调，而非常亮闪烁
+//   - 每个事件一次性约 1.2 秒；方向有意义（源 → 目标）
+//   - 近约 30 秒内有流量的边保持 1.5 倍权重 + 更亮
+//   - 按事件类型区分提示为可选项；v0 把四种事件类型统一纳入同一种“流量”处理，保持克制
 //
-// We track edge state by `${sourceSession}::${destinationSession}` and
-// expose a stable lookup function the RigGraph edge-mapping memo can
-// call. Resolution to actual graph-edge-ids happens at render time
-// because the graph nodes know their canonicalSessionName.
+// 我们按 `${sourceSession}::${destinationSession}` 跟踪边状态，并暴露一个稳定的
+// 查询函数供 RigGraph 的边映射 memo 调用。到真正 graph-edge-id 的解析发生在渲染时，
+// 因为图节点知道自己的 canonicalSessionName。
 
 import { useEffect, useRef, useState } from "react";
 import { subscribeTopologyEvents } from "../lib/topology-events.js";
@@ -23,28 +20,27 @@ const JUST_FIRED_WINDOW_MS = 1_200;
 const PRUNE_INTERVAL_MS = 1_000;
 
 export interface EdgeActivityEntry {
-  // Most-recent firing timestamp (ms since epoch) for this directed pair.
+  // 该有向对最近一次触发的时间戳（自纪元起的毫秒）。
   lastFiredAt: number;
-  // The four PL-019-tracked event types we currently emphasize. v0 treats
-  // them uniformly; future iterations may differentiate cues per-type.
+  // 我们当前强调的四种 PL-019 跟踪事件类型。v0 对它们一视同仁；
+  // 后续迭代可按类型区分提示。
   lastEventType: string;
 }
 
 export interface EdgeActivityLookup {
-  /** Returns the activity entry for a directed (source -> dest) pair, or null. */
+  /** 返回某个有向（源 → 目标）对的活动条目，若无则返回 null。 */
   get(sourceSession: string, destSession: string): EdgeActivityEntry | null;
-  /** True when the pair fired within the just-fired window (one-shot pulse). */
+  /** 该对是否在“刚触发”窗口内触发过（一次性脉冲）。 */
   justFired(sourceSession: string, destSession: string, nowMs?: number): boolean;
-  /** True when the pair fired within the recent-traffic window (sustained emphasis). */
+  /** 该对是否在“近期流量”窗口内触发过（持续强调）。 */
   recentTraffic(sourceSession: string, destSession: string, nowMs?: number): boolean;
-  /** Internal: snapshot used by the React render path for stable equality. */
+  /** 内部：React 渲染路径用于稳定相等比较的快照。 */
   version: number;
 }
 
 interface ParsedEvent {
   type?: string;
-  // Each tracked event type uses a different field name for source/dest
-  // sessions; we normalize on parse.
+  // 每种被跟踪的事件类型用不同字段名表示源/目标会话；我们在解析时归一化。
   source?: string;
   dest?: string;
 }
@@ -54,17 +50,14 @@ function normalizeEvent(raw: unknown): ParsedEvent | null {
   const e = raw as Record<string, unknown>;
   const type = typeof e.type === "string" ? e.type : undefined;
   if (!type) return null;
-  // queue.created             -> sourceSession + destinationSession
-  // queue.handed_off          -> fromSession + toSession
-  // qitem.fallback_routed     -> originalDestination + rerouteDestination
-  //                             (treats reroute as the destination so the
-  //                             edge that lights up shows the new owner)
-  // mission_control.action_executed -> actorSession + (qitem dest if known)
-  //                             v0 only animates source->dest pairs we
-  //                             can construct from a single event payload;
-  //                             action_executed lacks a dest, so we skip it
-  //                             until a future iteration carries the qitem
-  //                             dest forward into the event itself.
+  // queue.created             → sourceSession + destinationSession
+  // queue.handed_off          → fromSession + toSession
+  // qitem.fallback_routed     → originalDestination + rerouteDestination
+  //                             （把 reroute 视为目标，使亮起的边指向新的归属方）
+  // mission_control.action_executed → actorSession +（若已知则为 qitem 目标）
+  //                             v0 只对能从单个事件负载构造出的 源→目标 对做动画；
+  //                             action_executed 缺少目标，因此跳过它，
+  //                             直到后续迭代把 qitem 目标带进事件本身。
   if (type === "queue.created") {
     const source = typeof e.sourceSession === "string" ? e.sourceSession : undefined;
     const dest = typeof e.destinationSession === "string" ? e.destinationSession : undefined;
@@ -91,9 +84,8 @@ function makeKey(sourceSession: string, destSession: string): string {
 }
 
 export function useTopologyEdgeActivity(): EdgeActivityLookup {
-  // Map keyed by directed pair. We keep the map in a ref so the EventSource
-  // handler can mutate without retriggering subscription teardown; render
-  // pulls a `version` counter that increments on prune/firing.
+  // 以有向对为键的 Map。我们把它放在 ref 里，使 EventSource 处理器可以直接修改，
+  // 而不触发订阅的拆除；渲染时读取一个 `version` 计数器，它在裁剪/触发时递增。
   const mapRef = useRef<Map<string, EdgeActivityEntry>>(new Map());
   const [version, setVersion] = useState(0);
 
@@ -112,8 +104,7 @@ export function useTopologyEdgeActivity(): EdgeActivityLookup {
       setVersion((v) => v + 1);
     });
 
-    // Periodic prune. Even if no new events arrive, an edge that just dropped
-    // out of the recent-traffic window should re-render to lose its emphasis.
+    // 定期裁剪。即使没有新事件到达，一条刚掉出“近期流量”窗口的边也应重新渲染以失去强调。
     const pruneTimer = setInterval(() => {
       if (cancelled) return;
       const cutoff = Date.now() - RECENT_TRAFFIC_WINDOW_MS;
@@ -134,9 +125,8 @@ export function useTopologyEdgeActivity(): EdgeActivityLookup {
     };
   }, []);
 
-  // Return a stable interface bound to the latest version. Callers should
-  // include `version` in their useMemo dependency lists so they refresh
-  // when activity changes; this avoids exposing the raw mutable map.
+  // 返回绑定到最新 version 的稳定接口。调用方应把 `version` 放进 useMemo 依赖列表，
+  // 以便活动变化时刷新；这样也避免暴露原始可变 Map。
   return {
     version,
     get(sourceSession: string, destSession: string): EdgeActivityEntry | null {
@@ -157,9 +147,8 @@ export function useTopologyEdgeActivity(): EdgeActivityLookup {
   };
 }
 
-// Test-only helpers exported as named so vitest can drive the lookup
-// without spinning up an EventSource. Mirrors how Phase A tests treat
-// MissionControlReadLayer constructors.
+// 仅供测试的辅助函数，按命名导出，使 vitest 无需启动 EventSource 即可驱动查询。
+// 与 Phase A 测试对待 MissionControlReadLayer 构造函数的方式一致。
 export const __test_internals = {
   RECENT_TRAFFIC_WINDOW_MS,
   JUST_FIRED_WINDOW_MS,

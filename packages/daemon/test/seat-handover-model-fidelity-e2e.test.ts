@@ -15,17 +15,16 @@ import { migrate } from "../src/db/migrate.js";
 import { ALL_MIGRATIONS } from "../src/db/all-migrations.js";
 import { createDb } from "../src/db/connection.js";
 
-// 0.5.2-07 — THE MONEY PROOF (the EFFECT leg, PM gate). Boot a codex seat PINNED to a CHEAP model,
-// HAND IT OVER through the REAL SeatHandoverService + the REAL CodexRuntimeAdapter, then read the
-// SUCCESSOR'S EFFECTIVE model off its live TUI. The seat runs on the SPEC model (gpt-5.1-codex-mini),
-// NOT the runtime default (gpt-5.6-sol). Spec != default is the DISCRIMINATOR: a successor footer
-// showing the cheap model can only arise from -m being threaded through the successor binding (A2-1) —
-// on main the handover reverts and the footer shows the default. This is the effect, not the indicator:
-// a real codex process, launched by the real adapter, reporting the model it is actually running.
+// 0.5.2-07——关键证明（EFFECT 环节，PM gate）。启动固定到低成本模型的 codex 席位，通过真实
+// SeatHandoverService + 真实 CodexRuntimeAdapter 完成交接，再从实时 TUI 读取继任者的有效模型。
+// 席位运行 SPEC 模型（gpt-5.1-codex-mini），而非 runtime 默认值（gpt-5.6-sol）。spec != default
+// 是判别条件：继任者 footer 显示低成本模型，只可能来自 -m 经继任者 binding 传递（A2-1）；在 main
+// 上交接会回退，footer 显示默认模型。这是效果而非指示器：真实 adapter 启动的真实 codex 进程报告
+// 自身实际运行的模型。
 //
-// D15 isolation ([[real-run-e2e-daemon-isolation-doctrine]], [[tmux-kill-server-from-seat-reaps-fleet]]):
-// a per-run `-L` socket on EVERY tmux command (overrides $TMUX), full env MINUS $TMUX/$TMUX_TMPDIR,
-// verify-isolation-first, teardown by SESSION NAME — never kill-server. Skips when tmux/codex/auth absent.
+// D15 隔离（[[real-run-e2e-daemon-isolation-doctrine]]、[[tmux-kill-server-from-seat-reaps-fleet]]）：
+// 每条 tmux 命令使用本次运行专属的 `-L` socket（覆盖 $TMUX），完整环境减去 $TMUX/$TMUX_TMPDIR；
+// 先验证隔离，按 session 名拆除，绝不 kill-server。tmux/codex/auth 缺失时跳过。
 
 const pexec = promisify(execFile);
 const SOCK = `openrig-mf-e2e-${process.pid}`;
@@ -41,11 +40,10 @@ const exec = async (cmd: string): Promise<string> => {
 const tmux = (a: string) => exec(`tmux ${a}`);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// SPEC_MODEL is a VALID non-default model that codex renders VERBATIM in its effective-model footer
-// (no 400 / no silent fallback). DEFAULT_MODEL is the codex runtime default (fleet) that a REVERTED
-// handover would show. The proof reads the EFFECTIVE model off the persistent footer ("gpt-X <tier> ·
-// <cwd>"), NOT the banner echo ("model: X /model to change") — a banner can show a requested model that
-// the API then rejects and falls back from, which is exactly the indicator-vs-effect trap.
+// SPEC_MODEL 是有效的非默认模型，codex 会在 effective-model footer 中逐字渲染它（无 400、无
+// 静默回退）。DEFAULT_MODEL 是回退交接会显示的 codex runtime 默认值（fleet）。证明从持久 footer
+//（"gpt-X <tier> · <cwd>"）读取有效模型，而非 banner 回显（"model: X /model to change"）；
+// banner 可能显示 API 随后拒绝并回退的请求模型，这正是 indicator-vs-effect 陷阱。
 const SPEC_MODEL = "gpt-5.6-luna"; // valid, distinct from the default; footer shows it verbatim
 const DEFAULT_MODEL = "gpt-5.6-sol"; // the no-flag runtime default — the reverted-handover failure mode
 
@@ -75,24 +73,23 @@ afterAll(async () => {
   for (const s of seats) await tmux(`kill-session -t ${q(s)}`).catch(() => {}); // BY NAME, never kill-server
 });
 
-describe("seat-handover model-fidelity money-proof (real codex, isolated tmux)", () => {
+describe("席位交接模型保真关键证明（真实 codex、隔离 tmux）", () => {
   it.runIf(preflightOk())(
     "the successor runs on the SPEC-pinned model, not the runtime default",
     async () => {
-      // isolation FIRST: the -L socket must never show fleet seats.
+      // 隔离优先：-L socket 绝不能显示 fleet 席位。
       const sessions = await tmux("list-sessions -F '#{session_name}'").catch(() => "");
       expect(sessions).not.toMatch(/dev-guard@|dev-planner@|orch-|review-/);
 
       const SEAT = "dev-impl@mf-rig";
       seats.push(SEAT);
-      // A real cwd with a .git so the adapter's `--add-dir <cwd>/.git` is a real path.
+      // 使用包含 .git 的真实 cwd，使 adapter 的 `--add-dir <cwd>/.git` 指向真实路径。
       const cwd = fs.mkdtempSync(nodePath.join(os.tmpdir(), "mf-e2e-"));
       execFileSync("sh", ["-c", `cd ${q(cwd)} && git init -q`], { env: cleanEnv });
 
-      // The codex adapter appends `--add-dir <queue-state-root>` derived from the seat name. If that
-      // directory does not exist, codex silently degrades its -m to a fallback tier (a real quirk worth
-      // its own note — a missing queue dir drops the pin). Production ensures it; create it here so -m
-      // takes effect and the successor renders the EXACT pinned model.
+      // codex adapter 会追加从席位名派生的 `--add-dir <queue-state-root>`。若该目录不存在，codex 会
+      // 静默把 -m 降级到回退 tier（值得单独记录的真实特性：缺失 queue 目录会丢失 pin）。生产环境会
+      // 保证该目录存在；此处创建它，使 -m 生效且继任者准确渲染固定模型。
       const queueRoot = nodePath.join(os.homedir(), ".openrig", "shared-docs", "rigs", "mf-rig", "state", "dev");
       fs.mkdirSync(queueRoot, { recursive: true });
 
@@ -105,7 +102,7 @@ describe("seat-handover model-fidelity money-proof (real codex, isolated tmux)",
       const rigRepo = new RigRepository(db), sessionRegistry = new SessionRegistry(db);
       const discoveryRepo = new DiscoveryRepository(db), eventBus = new EventBus(db);
       const rig = rigRepo.createRig("mf-rig");
-      // THE PIN: the seat is spec-pinned to the cheap model.
+      // 固定项：席位由 spec 固定到低成本模型。
       const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "codex", cwd, model: SPEC_MODEL });
       const session = sessionRegistry.registerSession(node.id, SEAT);
       sessionRegistry.updateStatus(session.id, "running");
@@ -113,39 +110,34 @@ describe("seat-handover model-fidelity money-proof (real codex, isolated tmux)",
       sessionRegistry.updateBinding(node.id, { tmuxSession: SEAT, tmuxPane: pane });
 
       const realTmux = new TmuxAdapter(exec) as any;
-      // The REAL adapter — createSuccessor's binding (carrying the spec model via A2-1) flows through
-      // its real fresh-launch command construction, which emits -m.
+      // 真实 adapter：createSuccessor 的 binding（经 A2-1 携带 spec model）流经真实 fresh-launch
+      // 命令构造，该命令会输出 -m。
       const codexAdapter = new CodexRuntimeAdapter({ tmux: realTmux, fsOps: realFsOps(), listProcesses: () => [] }) as any;
 
       const service = new SeatHandoverService({
         db, rigRepo, sessionRegistry, discoveryRepo, eventBus,
         tmuxAdapter: realTmux, runtimeAdapters: { codex: codexAdapter },
         predecessorRecapResolver: () => null, // no recap typed — keep the successor TUI clean for the footer read
-        // The readiness verify polls the real successor until it is an interactive agent. Codex boots in
-        // ~8s and then shows the workspace-trust gate; a trusted workspace (production) or an operator
-        // approves it. We simulate that approval CONCURRENTLY (below) so the readiness window observes a
-        // genuinely-ready agent — the handover's not-ready signal is HONEST, not a false-negative, so we
-        // must make the successor actually ready rather than assert around it.
+        // readiness 验证轮询真实继任者，直到它成为可交互 agent。Codex 约 8 秒启动后显示
+        // workspace-trust gate；生产中的可信 workspace 或操作员会批准它。下方并发模拟该批准，使
+        // readiness 窗口观察到真正就绪的 agent；交接的 not-ready 信号是真实的而非假阴性，因此必须
+        // 让继任者真正就绪，不能绕过它断言。
         //
-        // 90s, NOT 30s (post-5.2-cut root-cause, 2026-08-22): under FULL-SUITE conditions on this
-        // 4-core box the successor becomes ready at ~30s (measured: an in-suite pass at 29,997ms —
-        // 3ms under the old ceiling) versus ~8s on a quiet box, so 30s sat exactly ON the loaded
-        // boot time and the test failed by timing, not by product (each failure showed the service's
-        // HONEST not-ready, and every green run renders the pinned model verbatim). Synthetic
-        // loadavg 29 alone does NOT reproduce it — the mechanism is the suite's process/API
-        // contention, not CPU. Headroom belongs in the TEST; the service default is untouched.
+        // 使用 90 秒而非 30 秒（5.2-cut 后根因，2026-08-22）：在这台 4 核机器的全套测试条件下，
+        // 继任者约 30 秒才就绪（实测套件内通过点为 29,997ms，仅比旧上限少 3ms），安静机器上则约
+        // 8 秒，因此 30 秒恰好落在负载下启动时间上，测试因时序而非产品失败（每次失败都显示 service
+        // 真实的 not-ready，每次绿色运行都逐字渲染固定模型）。单独合成 loadavg 29 无法复现；机制是
+        // 套件的进程/API 争用，而非 CPU。余量应放在测试中，service 默认值保持不变。
         readinessTimeoutMs: 90000, sleep,
       });
 
-      // Approve the codex workspace-trust gate DURING the readiness window (what a trusted workspace /
-      // operator provides in production). Spaced Enters cover boot-timing variance.
-      // Approve the trust gate CONDITIONALLY: poll for the prompt, send EXACTLY ONE Enter when it
-      // appears, then stop. (Unconditional/repeated Enters over-navigate codex mid-resolution and can
-      // flip the effective model — a real trap this proof must not fall into.)
+      // 在 readiness 窗口期间批准 codex workspace-trust gate（生产中由可信 workspace/操作员提供）。
+      // 间隔发送 Enter 可覆盖启动时序差异。仅在条件满足时批准 trust gate：轮询提示，出现时恰好发送
+      // 一次 Enter，然后停止。（无条件或重复 Enter 会在 codex 解析中途过度导航，并可能切换有效模型；
+      // 这是本证明必须避免的真实陷阱。）
       const trustApprover = (async () => {
-        // 85 polls, matching the 90s readiness window: under loaded-suite conditions the trust
-        // gate itself can appear late, and an approver that gives up at 25s makes the readiness
-        // headroom above unreachable in exactly the case it exists for.
+        // 85 次轮询，对齐 90 秒 readiness 窗口：在套件高负载下，trust gate 本身可能很晚出现；若
+        // 批准器在 25 秒放弃，会恰好在最需要上述 readiness 余量的情况下让其无法触达。
         for (let i = 0; i < 85; i++) {
           await sleep(1000);
           const c = await tmux(`capture-pane -p -t ${q(pane)}`).catch(() => "");
@@ -161,9 +153,9 @@ describe("seat-handover model-fidelity money-proof (real codex, isolated tmux)",
       await sleep(3000);
       const cap = await tmux(`capture-pane -p -t ${q(pane)} -S -400`);
 
-      // The EFFECTIVE-model line is the persistent footer "gpt-<name> <tier> · <cwd>", NOT the banner
-      // "model: X /model to change" (the banner echoes the REQUESTED model even when the API rejects it
-      // and codex falls back — the indicator-vs-effect trap). Read the footer for this run's cwd.
+      // EFFECTIVE-model 行是持久 footer "gpt-<name> <tier> · <cwd>"，而非 banner
+      // "model: X /model to change"（即使 API 拒绝请求模型且 codex 回退，banner 仍会回显请求模型；
+      // 这是 indicator-vs-effect 陷阱）。读取本次运行 cwd 对应的 footer。
       const footer = cap.split("\n").reverse().find((l) => /gpt-[\w.-]+ \S+ · \//.test(l) && l.includes(nodePath.basename(cwd)))
         ?? cap.split("\n").reverse().find((l) => /gpt-[\w.-]+ \S+ · \//.test(l));
       // eslint-disable-next-line no-console
@@ -172,12 +164,12 @@ describe("seat-handover model-fidelity money-proof (real codex, isolated tmux)",
       console.log("[mf-e2e] EFFECTIVE footer: " + JSON.stringify(footer));
 
       expect(result.ok, "handover completed (successor became a ready agent)").toBe(true);
-      // No silent fallback: the pin must be VALID for this proof — a rejected model is the A3 case, not this one.
+      // 不允许静默回退：此证明中的 pin 必须有效；被拒模型属于 A3 情况，不属于本测试。
       expect(cap, "no invalid-model rejection / fallback in the successor").not.toMatch(/invalid_request_error|model is not|Model metadata for .* not found/);
       expect(footer, "successor rendered an effective-model footer").toBeTruthy();
-      // THE EFFECT: the successor's EFFECTIVE model (footer) is the SPEC pin...
+      // 效果：继任者的有效模型（footer）是 SPEC pin……
       expect(footer, "successor EFFECTIVE model is the SPEC pin").toContain(SPEC_MODEL);
-      // ...and NOT the runtime default (the reverted-handover failure mode on main).
+      // ……而不是 runtime 默认值（main 上交接回退的失败模式）。
       expect(footer, "successor did NOT revert to the runtime default").not.toContain(DEFAULT_MODEL);
 
       db.close();

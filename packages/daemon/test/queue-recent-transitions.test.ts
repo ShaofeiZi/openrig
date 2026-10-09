@@ -13,7 +13,7 @@ import { EventBus } from "../src/domain/event-bus.js";
 import { QueueRepository } from "../src/domain/queue-repository.js";
 import { queueRoutes } from "../src/routes/queue.js";
 
-describe("RECENT queue transition projection", () => {
+describe("RECENT queue transition 投影", () => {
   let db: Database.Database;
   let repo: QueueRepository;
   let app: Hono;
@@ -77,7 +77,7 @@ describe("RECENT queue transition projection", () => {
     );
   }
 
-  it("normalizes only the typed allowlist, stays current-rig scoped, de-duplicates handoff, and orders newest last", async () => {
+  it("仅规范化类型化 allowlist、保持 current-rig 范围、对 handoff 去重，并将最新项排在最后", async () => {
     item("q-claim", "rig-a", "in-progress", ["mission:release-0.5.9", "slice:OPR.0.5.9.11"], {
       summary: "Canceled wording is presentation context, not a typed outcome",
     });
@@ -153,7 +153,7 @@ describe("RECENT queue transition projection", () => {
     expect(await response.json()).toEqual(rows);
   });
 
-  it("returns only the newest 20 qualifying transitions and refuses an unscoped read", async () => {
+  it("只返回最新 20 条符合条件的 transition，并拒绝无范围读取", async () => {
     for (let index = 0; index < 24; index += 1) {
       const id = `q-${String(index).padStart(2, "0")}`;
       item(id, "rig-a", "in-progress");
@@ -171,7 +171,7 @@ describe("RECENT queue transition projection", () => {
     expect(await response.json()).toMatchObject({ error: "rig_required" });
   });
 
-  it("serves one bounded instance chronology across active local rigs", async () => {
+  it("跨 active 本地 rig 提供一份有界 instance 时间线", async () => {
     db.prepare("INSERT INTO rigs (id, name) VALUES (?, ?), (?, ?)")
       .run("r-a", "rig-a", "r-b", "rig-b");
     db.prepare("INSERT INTO rigs (id, name, archived_at) VALUES (?, ?, ?)")

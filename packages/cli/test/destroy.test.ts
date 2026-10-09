@@ -366,7 +366,7 @@ describe("destroy command", () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("Specify exactly one destroy scope");
+    expect(logs.join("\n")).toContain("只能指定一个销毁范围");
   });
 
   it("requires explicit confirmation token", async () => {
@@ -382,7 +382,7 @@ describe("destroy command", () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(logs.join("\n")).toContain(`Destroy requires: --confirm ${DESTROY_CONFIRM_TOKEN}`);
+    expect(logs.join("\n")).toContain(`销毁操作需要：--confirm ${DESTROY_CONFIRM_TOKEN}`);
   });
 
   it("requires --yes", async () => {
@@ -398,7 +398,7 @@ describe("destroy command", () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("Destroy requires --yes");
+    expect(logs.join("\n")).toContain("销毁操作需要 --yes");
   });
 
   it("runs destroy with backup mode and prints plan/result", async () => {
@@ -419,10 +419,10 @@ describe("destroy command", () => {
 
     expect(exitCode).toBeUndefined();
     const output = logs.join("\n");
-    expect(output).toContain("DESTROY PLAN");
-    expect(output).toContain("scope: state");
-    expect(output).toContain("DESTROY RESULT");
-    expect(output).toContain("fresh state root:");
+    expect(output).toContain("销毁计划");
+    expect(output).toContain("范围：state");
+    expect(output).toContain("销毁结果");
+    expect(output).toContain("新状态根目录：");
   });
 
   it("falls back to compatibility defaults when config resolution is malformed", async () => {
@@ -442,7 +442,7 @@ describe("destroy command", () => {
     });
 
     expect(exitCode).toBeUndefined();
-    expect(logs.join("\n")).toContain("DESTROY PLAN");
+    expect(logs.join("\n")).toContain("销毁计划");
     expect(logs.join("\n")).toContain("bad config json");
   });
 });

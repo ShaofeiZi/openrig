@@ -1,17 +1,16 @@
-// 5b82324b — make `rig ps` ACTIVITY mean something. RED-first.
+// 5b82324b — 让 `zrig ps` 的 ACTIVITY 真正表达信息。RED 优先。
 //
-// Today attachAgentActivity's cheap default emits unknown/no_runtime_hook for a hook-less seat
-// (node-inventory.ts:1100-1107), so a LIVE seat producing pane motion shows ACTIVITY=unknown while
-// the control plane says nothing — the founder stall (8 seats at empty prompts, nothing surfaced).
+// 当前 attachAgentActivity 的低成本默认逻辑会为没有 hook 的席位生成 unknown/no_runtime_hook
+//（node-inventory.ts:1100-1107），因此，即使 LIVE 席位的 pane 正在变化，ACTIVITY 仍显示为 unknown，
+// 控制平面也不给出任何信息——这正是最初的停滞场景（8 个席位停在空提示符处，却没有任何提示）。
 //
-// The fix lifts STRUCTURAL capture-marker discrimination into the ACTIVITY signal via a CACHED
-// structural observation (populated by a background 1Hz service, so the request path stays CAPTURE-FREE
-// — the healthz-wedge storm fix is preserved). attachAgentActivity gains a `structuralActivity` dep it
-// READS (never captures). Precedence: a fresh POSITIVE hook wins; else the cached structural verdict
-// (agent_active→running / agent_idle→idle / attention→needs_input, evidenceSource pane_heuristic);
-// else the honest unknown/no_runtime_hook. Structural OVERRIDES an absent OR stale/unknown hook —
-// liveness beats hook-arrival age (constraint 2). NEVER a verb allowlist (structural markers catch a
-// "Drizzling"-style spinner that an allowlist misses).
+// 修复通过缓存的结构观察，将 STRUCTURAL 捕获标记判别提升为 ACTIVITY 信号。该缓存由后台 1Hz 服务填充，
+// 因而请求路径仍保持 CAPTURE-FREE，也保留了 healthz 卡死风暴修复。attachAgentActivity 新增一个只读取、
+// 从不执行捕获的 `structuralActivity` 依赖。优先级为：新鲜的 POSITIVE hook 优先；否则采用缓存的结构结论
+//（agent_active→running / agent_idle→idle / attention→needs_input，evidenceSource 为 pane_heuristic）；
+// 再否则如实返回 unknown/no_runtime_hook。结构信号会覆盖缺失或 stale/unknown 的 hook——
+// 活跃性优先于 hook 到达时间（约束 2）。绝不使用动词允许列表，因为结构标记能识别允许列表会漏掉的
+// "Drizzling" 类旋转指示器。
 
 import { describe, it, expect } from "vitest";
 import { attachAgentActivity } from "../src/domain/node-inventory.js";
@@ -33,8 +32,7 @@ function entries(sessionName: string) {
   return [{ canonicalSessionName: sessionName, runtime: "claude-code", attachmentType: "tmux", logicalId: "dev.impl" }] as never;
 }
 
-// A cached structural observation reader (what the background service exposes). Reading it does NOT
-// capture tmux — the capture already happened on the service cadence.
+// 缓存结构观察读取器（即后台服务暴露的接口）。读取时不会捕获 tmux——捕获已按服务周期完成。
 function mkStructural(
   state: "agent_active" | "agent_idle" | "attention" | "unknown" | null,
   observedAt = "2026-08-10T20:00:00.000Z",
@@ -54,20 +52,20 @@ const staleHook: AgentActivity = {
   stale: true,
 };
 
-describe("5b — structural ACTIVITY signal (lifted into the default derivation, capture-free)", () => {
-  it("hook-less + cached structural agent_active → ACTIVITY running, NO capture (cache read, not probe)", async () => {
+describe("5b — 结构化 ACTIVITY 信号（提升到默认推导逻辑，无捕获）", () => {
+  it("无 hook + 缓存结构状态 agent_active → ACTIVITY running，且不捕获（读取缓存而非探测）", async () => {
     const counter = { captures: 0 };
     const out = (await attachAgentActivity(entries("s@rig"), {
       tmuxAdapter: mkTmux(counter),
       activityStore: { getLatestForNode: () => null } as never,
       structuralActivity: mkStructural("agent_active"),
     } as never)) as Array<{ agentActivity: AgentActivity }>;
-    expect(counter.captures).toBe(0); // storm-free: the structural read is a CACHE read
+    expect(counter.captures).toBe(0); // 不会引发风暴：结构读取只是读取缓存
     expect(out[0]!.agentActivity.state).toBe("running");
     expect(out[0]!.agentActivity.evidenceSource).toBe("pane_heuristic");
   });
 
-  it("hook-less + cached structural agent_idle → idle; attention → needs_input", async () => {
+  it("无 hook + 缓存结构状态 agent_idle → idle；attention → needs_input", async () => {
     const idle = (await attachAgentActivity(entries("s@rig"), {
       tmuxAdapter: mkTmux({ captures: 0 }),
       activityStore: { getLatestForNode: () => null } as never,
@@ -82,7 +80,7 @@ describe("5b — structural ACTIVITY signal (lifted into the default derivation,
     expect(attn[0]!.agentActivity.state).toBe("needs_input");
   });
 
-  it("STALE hook + fresh structural agent_active → running (liveness beats hook-arrival age; constraint 2)", async () => {
+  it("STALE hook + 新鲜结构状态 agent_active → running（活跃性优先于 hook 到达时间；约束 2）", async () => {
     const out = (await attachAgentActivity(entries("s@rig"), {
       tmuxAdapter: mkTmux({ captures: 0 }),
       activityStore: { getLatestForNode: () => staleHook } as never,
@@ -92,18 +90,18 @@ describe("5b — structural ACTIVITY signal (lifted into the default derivation,
     expect(out[0]!.agentActivity.evidenceSource).toBe("pane_heuristic");
   });
 
-  it("a fresh POSITIVE hook wins over structural (hook precedence preserved)", async () => {
+  it("新鲜的 POSITIVE hook 优先于结构信号（保留 hook 优先级）", async () => {
     const hook: AgentActivity = { state: "running", reason: "hook", evidenceSource: "runtime_hook", sampledAt: "2026-08-10T20:00:00.000Z", evidence: null };
     const out = (await attachAgentActivity(entries("s@rig"), {
       tmuxAdapter: mkTmux({ captures: 0 }),
       activityStore: { getLatestForNode: () => hook } as never,
-      structuralActivity: mkStructural("agent_idle"), // disagrees; hook must win
+      structuralActivity: mkStructural("agent_idle"), // 两者不一致；必须以 hook 为准
     } as never)) as Array<{ agentActivity: AgentActivity }>;
     expect(out[0]!.agentActivity.state).toBe("running");
     expect(out[0]!.agentActivity.evidenceSource).toBe("runtime_hook");
   });
 
-  it("NO structural cache (empty) → honest unknown/no_runtime_hook preserved, still NO capture (healthz-wedge default)", async () => {
+  it("没有结构缓存（为空）→ 如实保留 unknown/no_runtime_hook，仍不捕获（healthz 卡死修复的默认行为）", async () => {
     const counter = { captures: 0 };
     const out = (await attachAgentActivity(entries("s@rig"), {
       tmuxAdapter: mkTmux(counter),
@@ -115,10 +113,10 @@ describe("5b — structural ACTIVITY signal (lifted into the default derivation,
     expect(out[0]!.agentActivity.reason).toBe("no_runtime_hook");
   });
 
-  it("MF1 fold-fallback: once the REAL service invalidates the obs (capture outage), attachAgentActivity falls back to the honest stale hook — no false-live", async () => {
+  it("MF1 聚合回退：真实服务因捕获中断使观察失效后，attachAgentActivity 回退到如实的 stale hook——不误报存活", async () => {
     let content: string | null = "⠋ Working… esc to interrupt";
     const svc = new SeatStructuralActivityService({ capturePaneContent: async () => content } as never);
-    await svc.pollSeat("s@rig"); // agent_active cached
+    await svc.pollSeat("s@rig"); // 已缓存 agent_active
     const call = async () =>
       (await attachAgentActivity(entries("s@rig"), {
         tmuxAdapter: mkTmux({ captures: 0 }),
@@ -126,11 +124,11 @@ describe("5b — structural ACTIVITY signal (lifted into the default derivation,
         structuralActivity: svc,
       } as never)) as Array<{ agentActivity: AgentActivity }>;
     const before = await call();
-    expect(before[0]!.agentActivity.state).toBe("running"); // structural overrides the stale hook
-    content = null; // capture outage
-    await svc.pollSeat("s@rig"); // invalidates the row
+    expect(before[0]!.agentActivity.state).toBe("running"); // 结构信号覆盖 stale hook
+    content = null; // 捕获中断
+    await svc.pollSeat("s@rig"); // 使该行失效
     const after = await call();
-    expect(after[0]!.agentActivity.state).toBe("unknown"); // fell back to the honest stale hook
+    expect(after[0]!.agentActivity.state).toBe("unknown"); // 回退到如实的 stale hook
     expect(after[0]!.agentActivity.reason).toBe("stale_runtime_hook");
   });
 });

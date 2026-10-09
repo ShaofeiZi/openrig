@@ -64,20 +64,18 @@ const VERIFICATION_REASONS = new Set<ReactiveVerificationReason>([
 ]);
 
 /**
- * Map the current structured activity for each honestly identified Codex seat into reactive
- * provider rows. Generic needs-input activity is deliberately insufficient: permission prompts
- * are blocked seats too, but are not provider interruptions. Only the exact typed vocabulary above
- * is accepted, with raw subtype taking precedence over raw event and normalized reason.
+ * 将每个已诚实识别的 Codex 席位当前结构化 activity 映射为 reactive provider 行。通用
+ * needs-input activity 有意不足以触发：权限提示同样会阻塞席位，但并不属于 provider interruption。
+ * 仅接受上方精确的类型化词表，raw subtype 优先于 raw event 和 normalized reason。
  */
 export function collectReactiveEventSignals(deps: ReactiveTapDeps): ReactiveTapResult {
   const empty = (): ReactiveTapResult => ({ signals: [], triggers: [], discards: [] });
   const nowMs = Date.parse(deps.now);
   if (!Number.isFinite(nowMs) || !Number.isFinite(deps.freshnessMs) || deps.freshnessMs <= 0) return empty();
 
-  // Honest reactive eligibility, centralized. The account ref must name a KNOWN auth
-  // profile (a file in auth-profiles/), not merely a nonempty registry token: a registry
-  // row that points at an absent profile has no account identity and must produce NO
-  // actionable row (explicit-unknown honesty, never a fabricated account).
+  // 集中式诚实 reactive eligibility。account ref 必须指向已知 auth profile
+  //（auth-profiles/ 中的文件），不能只是非空 registry token。指向缺失 profile 的 registry 行没有
+  // account identity，绝不能生成 actionable 行（显式 unknown，绝不虚构 account）。
   const knownProfiles = new Set(deps.auth.profiles);
   const accountBySeat = new Map(
     deps.auth.seats
@@ -98,9 +96,9 @@ export function collectReactiveEventSignals(deps: ReactiveTapDeps): ReactiveTapR
       now: new Date(nowMs),
     });
     if (!event) continue;
-    // The PERSISTED activity runtime must itself be Codex. A claude-code activity attached
-    // to a Codex inventory/registry seat is NOT Codex provider evidence and must never be
-    // relabeled as one — eligibility follows the event, not just the seat.
+    // 已持久化 activity 的 runtime 自身必须是 Codex。附着在 Codex inventory/registry 席位上的
+    // claude-code activity 不是 Codex provider evidence，绝不能重新标记为 Codex；eligibility
+    // 以 event 为准，而不只看席位。
     if (event.runtime !== "codex") continue;
 
     const kind = eventKind(event);
@@ -109,8 +107,8 @@ export function collectReactiveEventSignals(deps: ReactiveTapDeps): ReactiveTapR
     const eventAtMs = Date.parse(eventAt);
     if (!Number.isFinite(eventAtMs)) continue;
 
-    // W2a tap — generation routing happens only after all existing provider-event eligibility
-    // gates, but BEFORE generic staleness: unresolved and mismatch rows are intentionally stale.
+    // W2a tap——generation routing 位于所有既有 provider-event eligibility gate 之后，
+    // 但在通用 staleness 检查之前；unresolved 和 mismatch 行有意保持 stale。
     if (event.generationProvenance === "unresolved") {
       if (isVerificationReason(event.reason)) {
         triggers.push({
@@ -143,7 +141,7 @@ export function collectReactiveEventSignals(deps: ReactiveTapDeps): ReactiveTapR
     if (event.stale) continue;
 
     const staleAfterMs = eventAtMs + deps.freshnessMs;
-    // BR-2 expiry is inclusive: at the bound, the event is already stale.
+    // BR-2 过期边界为包含关系：到达边界时 event 已经 stale。
     if (nowMs >= staleAfterMs) continue;
 
     signals.push(reactiveEventSignal({
@@ -170,13 +168,12 @@ function discard(
   return { kind: "discarded", provider: "codex", seatSession, accountRef, reason };
 }
 
-// Classification binds to the structured provider-interruption PRODUCER CLASS — the
-// event class itself (`rawEvent`), matched exactly against the declared interruption
-// vocabulary. The managed hook relay maps a tool_name into `rawSubtype`, so a generic
-// lifecycle event (e.g. a `PermissionRequest` with a `rate_limit` tool-name subtype) is a
-// permission block, never exhaustion; and a normalized `reason` is a derived field, not a
-// producer. Only an event whose class is an explicit interruption producer is actionable —
-// an unproven producer yields no row (fail-visible, never fabricated).
+// Classification 绑定到结构化 provider-interruption PRODUCER CLASS，即 event class 本身
+//（`rawEvent`），并与已声明 interruption 词表精确匹配。managed hook relay 会把 tool_name 映射到
+// `rawSubtype`，因此通用 lifecycle event（例如 tool-name subtype 为 `rate_limit` 的
+// `PermissionRequest`）属于权限阻塞，绝不是额度耗尽；normalized `reason` 是派生字段，不是 producer。
+// 只有 class 明确属于 interruption producer 的 event 才可执行；未经证明的 producer 不生成任何行
+//（失败可见，绝不虚构）。
 function eventKind(activity: AgentActivity): ReactiveEventKind | null {
   const eventClass = activity.rawEvent;
   if (typeof eventClass !== "string") return null;

@@ -1,8 +1,8 @@
-// 51-06 D2 — REAL CLI acceptance boundary (Guard implementation-verdict correction). A genuine
-// `queueCommand` invocation talks over LOOPBACK HTTP to the real candidate queueRoutes +
-// QueueRepository, backed by a migration-faithful test DB (incl. 044 summary + 048 evidence_ref).
-// No pre-baked response: if the daemon route/repo stopped rejecting (or mutated before responding),
-// these tests would fail. Proves normal + --json reject, UNCHANGED item/transition/event state after
+// 51-06 D2——真实 CLI 验收边界（Guard 实现裁定修正）。一次真正的
+// `queueCommand` 调用经 LOOPBACK HTTP 连到真实候选 queueRoutes +
+// QueueRepository，后端为忠实迁移的测试 DB（含 044 summary + 048 evidence_ref）。
+// 无预制响应：若 daemon route/repo 停止拒绝（或在响应前变异），这些测试会失败。
+// 证明 normal + --json 拒绝后 item/transition/event 状态不变
 // the HTTP call, and the successful human-park control — all end to end.
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
 import { serve } from "@hono/node-server";
@@ -33,12 +33,12 @@ let repo: QueueRepository;
 let server: any;
 let port = 0;
 
-// HERMETIC ISOLATION (Guard test-isolation binding): getDaemonStatus() resolves ambient
-// OPENRIG_URL / RIGGED_URL (and OPENRIG_PORT) BEFORE the injected state file. The managed seat
-// exports OPENRIG_URL=http://127.0.0.1:7433 (the canonical daemon), so without neutralizing these
-// the CLI would talk to the real daemon, not this test's loopback repo. Save the originals, delete
-// them so the injected state file supplies the fresh loopback port, and restore them in teardown
-// even on failure. The env is neutralized only for the CLI-invocation window (runCli).
+// 密封隔离（Guard test-isolation 绑定）：getDaemonStatus() 在注入的 state file
+// 之前解析环境 OPENRIG_URL / RIGGED_URL（及 OPENRIG_PORT）。受管 seat
+// 导出 OPENRIG_URL=http://127.0.0.1:7433（canonical daemon），故不中和这些
+// 的话 CLI 会连真实 daemon，而非本测试的 loopback repo。保存原值、删除它们，
+// 使注入的 state file 提供新的 loopback port，并在 teardown 中恢复（即便失败）。
+// env 仅在 CLI 调用窗口（runCli）内被中和。
 const AMBIENT_KEYS = ["OPENRIG_URL", "RIGGED_URL", "OPENRIG_PORT"] as const;
 const savedEnv: Record<string, string | undefined> = {};
 function neutralizeAmbient(): void { for (const k of AMBIENT_KEYS) { savedEnv[k] = process.env[k]; delete process.env[k]; } }

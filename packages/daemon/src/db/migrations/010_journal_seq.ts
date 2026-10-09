@@ -3,8 +3,8 @@ import type { Migration } from "../migrate.js";
 export const journalSeqSchema: Migration = {
   name: "010_journal_seq.sql",
   sql: `
-    -- Rebuild install_journal with seq column for deterministic rollback ordering.
-    -- Existing rows get seq = ROW_NUMBER() OVER (PARTITION BY install_id ORDER BY rowid).
+    -- 重建 install_journal，加入 seq 列以获得确定性的回滚顺序。
+    -- 现有行使用 seq = ROW_NUMBER() OVER (PARTITION BY install_id ORDER BY rowid)。
 
     ALTER TABLE install_journal RENAME TO install_journal_old;
 

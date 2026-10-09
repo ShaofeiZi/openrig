@@ -1,13 +1,10 @@
-// OPR.0.5.7.1 — D1 ORDERING HOLE (R2 bought blocker, baton 0efd154d):
-// restoreNodeWithCompensation consults continuity_state BEFORE the D1
-// active-occupant resolution. A pod node with continuity_state=restoring
-// short-circuits to status "fresh" with a skip warning, so a PRESENT
-// authoritative relation in null/missing/dangling state is never resolved —
-// and launchStatusIsRunning classifies "fresh" as running. That silently
-// bypasses A1's loud-failure semantics: the seat reads healthy while the
-// occupant truth is ambiguous. This fixture pins the required order: the
-// A1 ambiguity failure fires FIRST — shared wording, zero resume, zero
-// NodeLauncher, zero replacement occupant.
+// OPR.0.5.7.1——D1 顺序漏洞（R2 bought blocker，baton 0efd154d）：
+// restoreNodeWithCompensation 在 D1 active-occupant 解析前查询 continuity_state。
+// continuity_state=restoring 的 pod 节点会短路成 status "fresh" 并附带 skip warning，导致
+// null/missing/dangling 状态中已存在的 authoritative relation 永不解析；launchStatusIsRunning
+// 又把 "fresh" 分类为 running。这会静默绕过 A1 的明确失败语义：occupant truth 仍有歧义，
+// 席位却显示健康。本 fixture 固定所需顺序：A1 ambiguity failure 必须最先触发，使用共享措辞，
+// 不 resume、不调用 NodeLauncher，也不创建 replacement occupant。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
@@ -56,7 +53,7 @@ function mockCodexResume(): CodexResumeAdapter {
   } as unknown as CodexResumeAdapter;
 }
 
-describe("OPR.0.5.7.1 — D1 ambiguity precedes the continuity_state=restoring skip", () => {
+describe("OPR.0.5.7.1——D1 ambiguity 先于 continuity_state=restoring skip", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -79,7 +76,7 @@ describe("OPR.0.5.7.1 — D1 ambiguity precedes the continuity_state=restoring s
     db.close();
   });
 
-  it("pod node with continuity_state=restoring AND a present ambiguous relation fails LOUDLY — never a silent 'fresh' skip", async () => {
+  it("continuity_state=restoring 且存在 ambiguous relation 的 pod 节点明确失败，绝不静默 'fresh' skip", async () => {
     const rig = rigRepo.createRig("r77");
     db.prepare("INSERT INTO pods (id, rig_id, namespace, label) VALUES (?, ?, ?, ?)")
       .run("pod-r77", rig.id, "dev", "Dev");
@@ -91,12 +88,12 @@ describe("OPR.0.5.7.1 — D1 ambiguity precedes the continuity_state=restoring s
     sessionRegistry.updateStatus(sess.id, "exited");
     db.prepare("DELETE FROM bindings WHERE node_id = ?").run(node.id);
 
-    // The live continuity state that triggers the bypass under repair.
+    // 会触发待修复旁路的 live continuity state。
     db.prepare("INSERT INTO continuity_state (pod_id, node_id, status) VALUES (?, ?, 'restoring')")
       .run("pod-r77", node.id);
 
-    // A PRESENT authoritative relation in an ambiguous state: two running
-    // rows, explicit null (the A1 loud case).
+    // ambiguous 状态下已存在的 authoritative relation：两个 running row，显式 null
+    //（A1 明确失败场景）。
     const data = JSON.parse(JSON.stringify(snap.data));
     const template = data.sessions.find((s: { nodeId: string }) => s.nodeId === node.id);
     data.sessions = [
@@ -120,15 +117,15 @@ describe("OPR.0.5.7.1 — D1 ambiguity precedes the continuity_state=restoring s
     expect(result.ok).toBe(true);
     if (result.ok) {
       const seat = result.result.nodes.find((n) => n.logicalId === "seat");
-      // base: the restoring short-circuit returns status "fresh" + a skip
-      // warning before the resolver ever runs (candidate ~:796-816).
+      // base：restoring 短路会在 resolver 运行前返回 status "fresh" + skip warning
+      //（candidate 约第 796–816 行）。
       expect(seat?.status).toBe("failed");
       const err = seat && "error" in seat ? String(seat.error) : "";
-      expect(err).toMatch(/Active-occupant ambiguity/); // the SHARED wording
+      expect(err).toMatch(/活动占用者有歧义/); // 共享措辞
       expect(err).toContain(ULID_OLD);
       expect(err).toContain(ULID_NEW);
     }
-    // Zero resume, zero NodeLauncher, zero replacement occupant.
+    // 不 resume、不调用 NodeLauncher，也不创建 replacement occupant。
     expect(claude.resume).not.toHaveBeenCalled();
     expect(tmux.createSession).not.toHaveBeenCalled();
   });

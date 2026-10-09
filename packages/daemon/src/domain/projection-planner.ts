@@ -7,16 +7,16 @@ import type { ResourceCollision } from "./agent-resolver.js";
 import type { ResolvedStartupFile } from "./runtime-adapter.js";
 import { DEFAULT_CLAUDE_MANAGED_BLOCK_FILE, type ClaudeManagedBlockFile } from "./managed-blocks.js";
 
-// -- Types --
+// ——类型——
 
 export type ProjectionClassification =
   | "safe_projection"
   | "managed_merge"
   | "hash_conflict"
   | "no_op"
-  // P20 — manifest-discriminated splits of the old "target ≠ source" conflict:
-  | "stale_overwrite" // target == what WE last wrote; source advanced → safe to overwrite
-  | "operator_conflict"; // target diverged from BOTH our last write and the source → protect
+  // P20——根据 manifest 区分旧版“target ≠ source”冲突：
+  | "stale_overwrite" // target == 我们上次写入的内容；source 已前进 → 可安全覆盖。
+  | "operator_conflict"; // target 同时偏离上次写入和 source → 保护。
 
 export interface ProjectionEntry {
   category: "skill" | "guidance" | "subagent" | "plugin" | "runtime_resource";
@@ -30,10 +30,10 @@ export interface ProjectionEntry {
   conflictDetail?: { reason: string; existingHash?: string; sourceHash?: string };
   mergeStrategy?: "managed_block" | "append";
   target?: string;
-  /** Plugin runtime applicability hint. Only meaningful for category=plugin.
-   *  - "claude" / "codex": explicit operator override; only the named runtime adapter projects
-   *  - "auto" or undefined: adapter detects manifest dirs (.claude-plugin/ vs .codex-plugin/)
-   *    and projects only when its runtime-specific manifest is present
+  /** Plugin runtime 适用性提示。仅对 category=plugin 有意义。
+   *  - "claude" / "codex"：操作员显式覆盖；仅具名 runtime adapter 执行投影
+   *  - "auto" 或 undefined：adapter 检测 manifest 目录（.claude-plugin/ 与 .codex-plugin/），
+   *    仅在对应 runtime manifest 存在时投影
    */
   pluginType?: "claude" | "codex" | "auto";
 }
@@ -57,13 +57,13 @@ export interface ProjectionInput {
   config: ResolvedNodeConfig;
   collisions: ResourceCollision[];
   fsOps: ProjectionFsOps;
-  /** Optional: resolve target path for conflict detection. If absent, all entries are safe_projection.
-   *  P17: the source absolutePath rides as the 4th arg so file-shaped targets
-   *  (subagent basenames) can be derived; existing 3-arg callers unaffected. */
+  /** 可选：解析用于冲突检测的 target path。缺席时所有 entry 都是 safe_projection。
+   *  P17：source absolutePath 作为第 4 个参数传递，以便派生 file-shaped target（subagent
+   *  basename）；现有 3 参数调用方不受影响。 */
   resolveTargetPath?: (category: string, effectiveId: string, cwd: string, sourcePath?: string) => string | null;
-  /** P20 — the projector's LAST-written hash for a target (from the projection
-   *  manifest), or null. Absent → classify falls back to P17 (hash_conflict).
-   *  Consulted fail-closed inside classify (a throw → no-manifest fallback). */
+  /** P20——projector 对 target 上次写入的 hash（来自 projection manifest），或 null。缺席时
+   * classify 回退到 P17（hash_conflict）。在 classify 内以 fail-closed 方式查询（抛错 → 无 manifest
+   * fallback）。 */
   lastHashLookup?: (targetPath: string) => string | null;
 }
 
@@ -71,7 +71,7 @@ export type PlanResult =
   | { ok: true; plan: ProjectionPlan }
   | { ok: false; errors: string[] };
 
-// -- Category mapping --
+// ——类别映射——
 
 const CATEGORY_MAP: Record<string, ProjectionEntry["category"]> = {
   skills: "skill",
@@ -81,12 +81,12 @@ const CATEGORY_MAP: Record<string, ProjectionEntry["category"]> = {
   runtimeResources: "runtime_resource",
 };
 
-// -- Public API --
+// ——公共 API——
 
 /**
- * Plan the effective runtime projection for one resolved node.
- * @param input - resolved config, collision diagnostics, and filesystem ops
- * @returns projection plan or errors
+ * 为一个已解析 node 规划有效 runtime 投影。
+ * @param input - 已解析 config、冲突诊断和文件系统操作
+ * @returns 投影计划或错误
  */
 export function planProjection(input: ProjectionInput): PlanResult {
   const { config, collisions, fsOps } = input;
@@ -94,37 +94,36 @@ export function planProjection(input: ProjectionInput): PlanResult {
   const diagnostics: string[] = [];
   const entries: ProjectionEntry[] = [];
 
-  // Check for import/import ambiguity in selected resources
+  // 检查所选资源的 import/import 歧义。
   const ambiguityErrors = checkAmbiguity(config.selectedResources, collisions);
   if (ambiguityErrors.length > 0) {
     return { ok: false, errors: ambiguityErrors };
   }
 
-  // Record collision diagnostics
+  // 记录冲突诊断。
   for (const col of collisions) {
     if (col.sources.length >= 2) {
-      diagnostics.push(`Collision in ${col.category}: "${col.resourceId}" declared by ${col.sources.map((s) => s.specName).join(", ")}`);
+      diagnostics.push(`${col.category} 中存在冲突："${col.resourceId}" 由 ${col.sources.map((s) => s.specName).join(", ")} 声明`);
     }
   }
 
-  // Plan each resource category
+  // 规划每个资源类别。
   for (const [catKey, catSingular] of Object.entries(CATEGORY_MAP)) {
     const resources = config.selectedResources[catKey as keyof ResolvedResources] as QualifiedResource[];
     for (const qr of resources) {
-      // Runtime resource filtering
+      // Runtime 资源过滤。
       if (catKey === "runtimeResources") {
         const rr = qr.resource as { runtime: string; type?: string };
         if (rr.runtime !== config.runtime) continue;
       }
 
-      // Plugins use a different shape: { id, source: { kind, path } } — extract path from source.
-      // Plugin paths support three forms (per DESIGN.md §5.2):
-      //   1. absolute system path → preserved exactly
-      //   2. tilde-home-prefixed (~/... or bare ~) → expanded to os.homedir()
-      //   3. relative to spec dir → resolved against qr.sourcePath
-      // ~user (with username) is NOT expanded — treated as a literal relative segment
-      // per Node's nodePath convention to avoid surprising operators with implicit
-      // username lookups.
+      // Plugin 使用不同结构：{ id, source: { kind, path } }——从 source 提取 path。
+      // 按 DESIGN.md §5.2，plugin path 支持三种形式：
+      //   1. 绝对系统路径 → 精确保留
+      //   2. 以 home 波浪号开头（~/... 或单独 ~）→ 展开为 os.homedir()
+      //   3. 相对于 spec 目录 → 基于 qr.sourcePath 解析
+      // 不展开带用户名的 ~user，而是按 Node 的 nodePath 约定视为字面相对 segment，避免隐式
+      // username 查询给操作员带来意外。
       let resourcePath: string;
       let absolutePath: string;
       if (catKey === "plugins") {
@@ -155,20 +154,19 @@ export function planProjection(input: ProjectionInput): PlanResult {
         entry.pluginType = pluginRes.pluginType ?? "auto";
       }
 
-      // Guidance-specific
+      // Guidance 专用字段。
       if (catKey === "guidance") {
         const g = qr.resource as { target?: string; merge?: string };
         entry.target = g.target;
         entry.mergeStrategy = g.merge as "managed_block" | "append" | undefined;
       }
 
-      // Classify using hash-based conflict detection
+      // 使用基于 hash 的冲突检测进行分类。
       if (input.resolveTargetPath) {
         const targetPath = input.resolveTargetPath(catSingular, qr.effectiveId, config.cwd, entry.absolutePath);
         if (targetPath) {
-          // P17 dir-shaped realism: a skill source is a DIRECTORY — compare the
-          // representative SKILL.md (readFile on a dir would throw the classifier
-          // into a false hash_conflict). File-shaped sources compare as-is.
+          // P17 目录结构真实性：skill source 是目录，应比较代表文件 SKILL.md（对目录 readFile 会让
+          // classifier 误判为 hash_conflict）。file-shaped source 则直接比较。
           const skillRep = `${entry.absolutePath}/SKILL.md`;
           const compareSource =
             catSingular === "skill" && fsOps.exists(skillRep) ? skillRep : entry.absolutePath;
@@ -182,31 +180,30 @@ export function planProjection(input: ProjectionInput): PlanResult {
           );
           if (entry.classification === "hash_conflict") {
             entry.conflictDetail = {
-              reason: `${catSingular} "${qr.effectiveId}" exists at target with different content`,
+              reason: `${catSingular} "${qr.effectiveId}" 已存在于 target，且内容不同`,
             };
           } else if (entry.classification === "operator_conflict") {
-            // P20 — the target diverges from BOTH our last projection AND the new
-            // source → operator edit. Protect it (a conflict, not an overwrite).
+            // P20——target 同时偏离上次投影和新 source → 操作员编辑。保护它（冲突，而非覆盖）。
             entry.conflictDetail = {
-              reason: `${catSingular} "${qr.effectiveId}" was modified after OpenRig last projected it (operator edit?) — not overwriting; move it aside or fold it into the spec, then re-project`,
+              reason: `${catSingular} "${qr.effectiveId}" 在 zrig 上次投影后被修改（操作员编辑？）——不会覆盖；请将其移开或合并进 spec，然后重新投影`,
             };
           }
         }
       }
-      // Without resolveTargetPath, classification stays safe_projection (deferred to adapter)
+      // 缺少 resolveTargetPath 时，分类保持 safe_projection（推迟到 adapter）。
 
       entries.push(entry);
     }
   }
 
-  // Sort deterministically: by category then effectiveId
+  // 确定性排序：先按 category，再按 effectiveId。
   entries.sort((a, b) => {
     const catCmp = a.category.localeCompare(b.category);
     return catCmp !== 0 ? catCmp : a.effectiveId.localeCompare(b.effectiveId);
   });
 
-  // P20 — operator_conflict PROTECTS (a real conflict); stale_overwrite is SAFE
-  // (falls through to applied, silently — it's our own old output being refreshed).
+  // P20——operator_conflict 受保护（真实冲突）；stale_overwrite 安全（静默进入 applied，因为只是刷新
+  // 我们自己的旧输出）。
   const conflicts = entries.filter(
     (e) => e.classification === "hash_conflict" || e.classification === "operator_conflict",
   );
@@ -226,12 +223,12 @@ export function planProjection(input: ProjectionInput): PlanResult {
   };
 }
 
-// -- Ambiguity guard --
+// ——歧义守卫——
 
 function checkAmbiguity(selected: ResolvedResources, collisions: ResourceCollision[]): string[] {
   const errors: string[] = [];
 
-  // Check each category separately — collisions are category-scoped
+  // 分别检查每个类别——冲突以 category 为范围。
   const categoryEntries: Array<{ category: string; resources: QualifiedResource[] }> = [
     { category: "skills", resources: selected.skills },
     { category: "guidance", resources: selected.guidance },
@@ -242,20 +239,20 @@ function checkAmbiguity(selected: ResolvedResources, collisions: ResourceCollisi
 
   for (const { category, resources } of categoryEntries) {
     for (const qr of resources) {
-      // Only check unqualified ids (no colon)
+      // 只检查不带限定符的 id（无冒号）。
       if (qr.effectiveId.includes(":")) continue;
 
-      // Find matching collision IN THE SAME CATEGORY
+      // 在同一类别中查找匹配冲突。
       const collision = collisions.find((c) => c.category === category && c.resourceId === qr.effectiveId);
       if (!collision || collision.sources.length < 2) continue;
 
-      // Check if base owns the unqualified id
+      // 检查 base 是否拥有不带限定符的 id。
       const baseOwner = collision.sources.find((s) => s.qualifiedId === collision.resourceId);
-      if (baseOwner) continue; // base owns it — not ambiguous
+      if (baseOwner) continue; // base 拥有它，因此没有歧义。
 
-      // No base owner — import/import ambiguity
+      // 无 base owner——import/import 歧义。
       errors.push(
-        `Ambiguous resource "${qr.effectiveId}" in selected resources: declared by ${collision.sources.map((s) => s.specName).join(", ")}. Use a qualified id like "${collision.sources[0]!.qualifiedId}"`
+        `所选资源中的 "${qr.effectiveId}" 存在歧义：由 ${collision.sources.map((s) => s.specName).join(", ")} 声明。请使用类似 "${collision.sources[0]!.qualifiedId}" 的限定 id`
       );
     }
   }
@@ -263,17 +260,15 @@ function checkAmbiguity(selected: ResolvedResources, collisions: ResourceCollisi
   return errors;
 }
 
-// Classification is now handled via classifyResourceProjection from conflict-detector.ts
-// when resolveTargetPath is provided. Without it, entries default to safe_projection.
+// 提供 resolveTargetPath 时，分类由 conflict-detector.ts 的 classifyResourceProjection 处理；
+// 否则 entry 默认为 safe_projection。
 
 /**
- * Resolve a plugin source.path to a concrete absolute path.
- * Three forms supported:
- *   - absolute (`/abs/...`)        → preserved exactly
- *   - tilde-home (`~/...` or `~`)  → expanded to os.homedir()
- *   - relative (`plugins/...`)     → resolved against specSourcePath
- * `~user/...` (with explicit username) is NOT expanded; treated as a
- * literal relative segment per Node's nodePath convention.
+ * 将 plugin source.path 解析为具体绝对路径。支持三种形式：
+ *   - 绝对路径（`/abs/...`）        → 精确保留
+ *   - home 波浪号（`~/...` 或 `~`） → 展开为 os.homedir()
+ *   - 相对路径（`plugins/...`）      → 基于 specSourcePath 解析
+ * 不展开带显式用户名的 `~user/...`；按 Node 的 nodePath 约定视为字面相对 segment。
  */
 function resolvePluginPath(rawPath: string, specSourcePath: string): string {
   if (rawPath === "~") return os.homedir();
@@ -282,12 +277,11 @@ function resolvePluginPath(rawPath: string, specSourcePath: string): string {
   return nodePath.resolve(specSourcePath, rawPath);
 }
 
-// ── P17 (finding A2): the PRODUCTION conflict-target resolver + loud surfacing ──
+// ── P17（发现 A2）：生产 conflict-target resolver + 显著展示 ──
 
-/** Map a projection entry to the concrete FILE the claude adapter would write,
- *  for hash-conflict detection. Mirrors claude-code-adapter.resolveTargetDir:
- *  categories whose write is a merge or a whole directory return null —
- *  their classification stays deferred to the adapter, exactly as before. */
+/** 将 projection entry 映射到 claude adapter 将写入的具体文件，用于 hash 冲突检测。与
+ * claude-code-adapter.resolveTargetDir 对应：写入方式为 merge 或整个目录的类别返回 null，其分类
+ * 与此前一样推迟到 adapter。 */
 export function claudeConflictTargetPath(
   category: string,
   effectiveId: string,
@@ -303,39 +297,32 @@ export function claudeConflictTargetPath(
     case "guidance":
       return nodePath.join(cwd, managedBlockFile);
     default:
-      return null; // plugin / runtime_resource: merged or dir-shaped — deferred
+      return null; // plugin / runtime_resource：merge 或 dir-shaped——推迟处理。
   }
 }
 
-/** Render plan conflicts as LOUD instantiate warnings: the file, the reason,
- *  and the consequence stated plainly. Restores the warnings-site threading the
- *  4.8 restack dropped — a divergent target is never silently overwritten again
- *  (it is overwritten WITH a named warning; manifest-based operator-vs-stale
- *  discrimination is the routed follow-on). */
+/** 将计划冲突渲染为显著的 instantiate 警告，直白说明文件、原因和后果。恢复 4.8 restack 丢失的
+ * warnings-site 串接——偏离的 target 不再被静默覆盖（会在明确警告下覆盖；基于 manifest 区分
+ * operator 与 stale 是已规划的后续项）。 */
 export function projectionConflictWarnings(plan: Pick<ProjectionPlan, "conflicts">): string[] {
   return plan.conflicts.map((c) => {
-    const reason = c.conflictDetail?.reason ?? `${c.category} "${c.effectiveId}" diverges from the projection source`;
+    const reason = c.conflictDetail?.reason ?? `${c.category} "${c.effectiveId}" 与投影 source 不一致`;
     if (c.classification === "operator_conflict") {
-      // P20 PROTECT: the manifest tells us the target diverged from BOTH our last
-      // write and the source — an operator edited it. filterProtectedProjections
-      // holds the file back, so "not overwritten" is now TRUE (not just a warning).
-      return `projection conflict: ${reason} — PROTECTED: the target is NOT overwritten; re-run projection with --force to overwrite it, or fold the operator edit into the spec source`;
+      // P20 保护：manifest 表明 target 同时偏离上次写入和 source，即操作员编辑过它。
+      // filterProtectedProjections 会阻止该文件投递，因此“不会覆盖”确实成立，而不只是一条警告。
+      return `投影冲突：${reason}——已保护：不会覆盖 target；如需覆盖，请使用 --force 重新运行投影，或将操作员编辑合并进 spec source`;
     }
-    // hash_conflict — the P17 fallback: no projection manifest for this target yet,
-    // so an operator edit can't be told apart from a stale projection. We overwrite
-    // WITH a warning (softened, transitional): the write records the manifest, and a
-    // future divergence then classifies operator_conflict and becomes protectable.
-    return `projection conflict: ${reason} — no projection manifest for this target yet, so an operator edit can't be told apart from a stale projection; the target will be overwritten by re-projection (the write records the manifest, making future edits protectable). If this is an operator edit, move it aside or fold it into the spec source`;
+    // hash_conflict——P17 fallback：target 尚无 projection manifest，无法区分操作员编辑与陈旧投影。
+    // 在警告下覆盖（缓和的过渡行为）：本次写入记录 manifest，之后的偏离会分类为
+    // operator_conflict 并可受保护。
+    return `投影冲突：${reason}——此 target 尚无 projection manifest，无法区分操作员编辑与陈旧投影；重新投影会覆盖 target（本次写入会记录 manifest，使未来编辑可受保护）。若这是操作员编辑，请将其移开或合并进 spec source`;
   });
 }
 
-/** P20 atom-4 — PROTECT. An operator_conflict means the target diverged from BOTH
- *  our last recorded write and the current source: an operator edited a projected
- *  file. Hold those files back from delivery so the adapter never overwrites the
- *  edit — unless the operator explicitly forces re-projection. hash_conflict (no
- *  manifest yet) is NOT protected: it stays the P17 overwrite-with-warning fallback,
- *  since operator-vs-stale can't be told apart without a recorded last hash.
- *  Returns the files to deliver and the files held back (for reporting). */
+/** P20 atom-4——保护。operator_conflict 表示 target 同时偏离上次记录的写入与当前 source，即操作员
+ * 编辑过投影文件。阻止这些文件进入投递，使 adapter 永不覆盖编辑，除非操作员显式强制重新投影。
+ * hash_conflict（尚无 manifest）不受保护：继续采用 P17 的“警告后覆盖”fallback，因为没有记录的
+ * 上次 hash 就无法区分 operator 与 stale。返回待投递文件和被阻止文件（用于报告）。 */
 export function filterProtectedProjections(
   files: ResolvedStartupFile[],
   plan: Pick<ProjectionPlan, "conflicts">,
@@ -351,9 +338,8 @@ export function filterProtectedProjections(
   const delivered: ResolvedStartupFile[] = [];
   const held: ResolvedStartupFile[] = [];
   for (const f of files) {
-    // skill targets live at <entry.absolutePath>/SKILL.md; file-shaped targets
-    // match the entry path directly. Match either shape so a held-back skill's
-    // SKILL.md is caught by its parent-dir entry.
+    // skill target 位于 <entry.absolutePath>/SKILL.md；file-shaped target 直接匹配 entry path。
+    // 同时匹配两种结构，使被阻止 skill 的 SKILL.md 能由其父目录 entry 捕获。
     const matches = protectedRoots.has(f.absolutePath) || protectedRoots.has(nodePath.dirname(f.absolutePath));
     (matches ? held : delivered).push(f);
   }

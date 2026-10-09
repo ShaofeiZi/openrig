@@ -1,38 +1,32 @@
-// OPR.0.4.4.22 — the AGENTS altitude: the rig-scope standalone coordination
-// panel (the fourth altitude of the blessed spine HOST — MISSION — SLICE —
-// AGENTS; the ZOOM target of the slice page's AGENTS region and the board/
-// host agent-count chips).
+// OPR.0.4.4.22——AGENTS 高度：工作组范围的独立协调面板
+// （受祝福脊柱的第四个高度 HOST — MISSION — SLICE — AGENTS；
+// 也是 slice 页 AGENTS 区域与面板/主机智能体计数 chips 的 ZOOM 目标）。
 //
-// PURE PROJECTION rendered: NEEDS YOU + AGENTS (health line) + SETTLED from
-// the composed rig read root. Agents author nothing for it; nothing polls
-// them; a ▲ is information for the human only. Plain language first (BR-10);
-// raw ids live in the drill-in tier.
+// 纯投影渲染：从组合后的工作组读取根投影出 NEEDS YOU + AGENTS（健康行）+ SETTLED。
+// 智能体不为它创作任何东西；也不轮询它们；▲ 只是给人看的信息。平实语言优先（BR-10）；
+// 原始 id 位于钻取层。
 //
-// Route discipline (arch plan-review ruling, drift-killer 4): this route
-// exists for ADDRESSING, not nav chrome — reached by ZOOM only (board/host
-// chips, slice-region anchored zoom, breadcrumb up); it is NEVER a top-level
-// nav entry. Anchored/filter state = query params (?slice=<name>,
-// ?group=agent|slice), so every state is deep-link addressable.
+// 路由纪律（arch 计划评审裁定，drift-killer 4）：本路由为“寻址”而存在，而非导航 chrome——
+// 只经 ZOOM 到达（面板/主机 chips、slice 区域锚定缩放、面包屑上翻）；它绝不是顶层导航项。
+// 锚定/过滤状态 = 查询参数（?slice=<name>、?group=agent|slice），使每个状态都可深链接寻址。
 
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useRigAgents } from "../../hooks/useReview.js";
 import { NeedsYouAccordion } from "./NeedsYouAccordion.js";
 import { AgentsBandView } from "./AgentsBandView.js";
-// OPR.0.4.6.MH5 (C4) — the FLEET band, placement option B of the founder
-// LOCK (= BOTH). v1 MOUNT ENUMERATION (the LOCK's "wherever the per-host
-// surfaces render" read as ALLOWING a single mount; the pm coherence leg
-// confirms): this /agents rig-altitude root is the ONE v1 mount. The band
-// renders NOTHING for a single-host operator, so this page stays
-// byte-identical pre-fleet (the leg-7 zero-regression pin).
+// OPR.0.4.6.MH5（C4）——FLEET 条带，创始人锁定 placement 选项 B（= BOTH）。
+// v1 挂载枚举（锁定的“每个主机界面渲染处”读作允许单一挂载；pm 一致性腿确认）：
+// 本 /agents 工作组高度根是唯一的 v1 挂载点。对单主机操作者，条带什么都不渲染，
+// 因此本页在 fleet 之前保持字节一致（leg-7 零回归锚点）。
 import { FleetBand } from "./FleetBand.js";
 import type { EvidenceContext } from "./EvidenceOpener.js";
 import { sessionMemberLabel } from "../../lib/session-name.js";
 
 const SURFACE_ACTOR = "human@host";
 
-/** Rig altitude has no single slice dir; evidence refs render as honest
- *  non-openable pointers here and open fully at the slice drill. */
+/** 工作组高度没有单一 slice 目录；证据引用在此渲染为诚实的不可打开指针，
+ *  在 slice 钻取处才完整打开。 */
 const RIG_EVIDENCE_CTX: EvidenceContext = { root: null, relPath: null, slicePath: null };
 
 function readSearchParam(key: string): string | null {
@@ -42,7 +36,7 @@ function readSearchParam(key: string): string | null {
 
 function ageLabel(iso: string): string {
   const mins = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 60_000));
-  return mins < 60 ? `${mins}m` : mins < 1440 ? `${Math.floor(mins / 60)}h` : `${Math.floor(mins / 1440)}d`;
+  return mins < 60 ? `${mins}分` : mins < 1440 ? `${Math.floor(mins / 60)}时` : `${Math.floor(mins / 1440)}天`;
 }
 
 export function RigAgentsPage() {
@@ -58,9 +52,8 @@ export function RigAgentsPage() {
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
   };
 
-  // FR-5 anchored zoom: the slice page's AGENTS region opens this page
-  // FILTERED to that slice's agents, with the full rig context one clear
-  // step away. The filter is display-level; membership stays work-on-scope.
+  // FR-5 锚定缩放：slice 页的 AGENTS 区域打开本页时过滤为该 slice 的智能体，
+  // 完整工作组上下文一步之遥。过滤是展示层的；归属仍按工作范围。
   const band = useMemo(() => {
     if (!data) return null;
     if (!anchoredSlice) return data.agents;
@@ -70,48 +63,48 @@ export function RigAgentsPage() {
       rows,
       provenance:
         rows.length === 0
-          ? `no agents holding or recently holding work on ${anchoredSlice} — ${data.agents.provenance}`
-          : `anchored to ${anchoredSlice} — ${data.agents.provenance}`,
+          ? `没有智能体在 ${anchoredSlice} 上持有或最近持有工作——${data.agents.provenance}`
+          : `锚定到 ${anchoredSlice}——${data.agents.provenance}`,
     };
   }, [data, anchoredSlice]);
 
   if (isLoading) {
-    return <p className="p-4 font-mono text-[11px] text-on-surface-variant">composing the rig coordination story…</p>;
+    return <p className="p-4 font-mono text-[11px] text-on-surface-variant">正在汇聚工作组协作视图…</p>;
   }
   if (error || !data || !band) {
     return (
       <p data-testid="rig-agents-error" className="p-4 font-mono text-[11px] text-red-700">
-        rig agents panel unavailable: {error instanceof Error ? error.message : "composer unreachable"}
+        工作组智能体面板不可用：{error instanceof Error ? error.message : "汇聚器不可达"}
       </p>
     );
   }
 
   return (
     <div data-testid="rig-agents-page" className="mx-auto max-w-4xl space-y-5 p-4">
-      {/* MH-5: the fleet altitude's ambient band above the rig altitude. */}
+      {/* MH-5：fleet 高度的环境条，位于工作组高度上方。 */}
       <FleetBand />
-      {/* Breadcrumb up the spine — one unbroken gesture both directions. */}
+      {/* 沿脊柱向上的面包屑——两个方向都是一个不断开的手势。 */}
       <nav className="flex items-center gap-2 font-mono text-[10px] uppercase text-on-surface-variant">
         <Link to="/project" className="hover:underline">
-          project
+          项目
         </Link>
         <span>/</span>
-        <span data-testid="rig-agents-crumb">agents (rig)</span>
+        <span data-testid="rig-agents-crumb">智能体（工作组）</span>
         {anchoredSlice ? (
           <>
             <span>·</span>
-            <span data-testid="rig-agents-anchor">anchored: {anchoredSlice}</span>
+            <span data-testid="rig-agents-anchor">锚定：{anchoredSlice}</span>
             <a href="/agents" className="hover:underline" data-testid="rig-agents-unanchor">
-              [full rig]
+              [完整工作组]
             </a>
           </>
         ) : null}
       </nav>
 
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[14px] font-semibold">AGENTS — the coordination story</h2>
+        <h2 className="text-[14px] font-semibold">智能体——协作视图</h2>
         <div className="flex items-center gap-1 font-mono text-[10px] uppercase">
-          <span className="text-on-surface-variant">group by</span>
+          <span className="text-on-surface-variant">分组方式</span>
           {(["agent", "slice"] as const).map((g) => (
             <button
               key={g}
@@ -120,14 +113,14 @@ export function RigAgentsPage() {
               onClick={() => setAddressableGrouping(g)}
               className={`border px-2 py-0.5 ${grouping === g ? "border-outline bg-surface-variant" : "border-outline-variant hover:bg-surface-variant/50"}`}
             >
-              {g}
+              {g === "agent" ? "按智能体" : "按切片"}
             </button>
           ))}
         </div>
       </header>
 
-      {/* Band 1: NEEDS YOU — the attention band at rig scope. APPROVE is a
-          slice-terminal act and is hidden here (zoom into the slice). */}
+      {/* 条带 1：NEEDS YOU——工作组范围的待关注条带。APPROVE 是 slice 终态动作，
+          在此隐藏（请缩放到 slice）。 */}
       <NeedsYouAccordion
         band={data.needsYou}
         slice="rig"
@@ -137,13 +130,13 @@ export function RigAgentsPage() {
         showApprove={false}
       />
 
-      {/* Band 2: AGENTS — the field band (the shared P2 FR-4 anatomy at rig
-          scope; grouping is page-level arrangement in the one home). */}
+      {/* 条带 2：AGENTS——现场条带（工作组范围共享的 P2 FR-4 解剖；
+          分组是这个唯一主界面里的页面级排列）。 */}
       <AgentsBandView band={band} itemRef="rig" grouping={grouping} />
 
-      {/* Band 3: SETTLED — the record band (today's closed handoffs). */}
+      {/* 条带 3：SETTLED——记录条带（今日已关闭的移交）。 */}
       <section data-testid="settled-band" className="space-y-1">
-        <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">SETTLED</h3>
+        <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">已了结</h3>
         {data.settled.length === 0 ? (
           <p data-testid="settled-empty" className="font-mono text-[11px] text-on-surface-variant">
             {data.settledProvenance}
@@ -168,7 +161,7 @@ export function RigAgentsPage() {
         )}
       </section>
 
-      <p className="font-mono text-[10px] text-on-surface-variant">composed {data.composedAt}</p>
+      <p className="font-mono text-[10px] text-on-surface-variant">汇聚于 {data.composedAt}</p>
     </div>
   );
 }

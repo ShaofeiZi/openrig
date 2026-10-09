@@ -45,7 +45,7 @@ function buildApp(opts: {
   return app;
 }
 
-describe("mission-control routes (PL-005 Phase A)", () => {
+describe("mission-control 路由（PL-005 Phase A）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -76,7 +76,7 @@ describe("mission-control routes (PL-005 Phase A)", () => {
 
   afterEach(() => db.close());
 
-  it("GET /views returns the 7 view names", async () => {
+  it("GET /views 返回 7 个视图名称", async () => {
     const res = await app.request("/api/mission-control/views");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { views: string[] };
@@ -86,7 +86,7 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     ]);
   });
 
-  it("GET /views/:view-name returns view rows for valid view", async () => {
+  it("GET /views/:view-name 为合法视图返回视图记录", async () => {
     const res = await app.request("/api/mission-control/views/active-work");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { viewName: string; rows: unknown[] };
@@ -94,14 +94,14 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     expect(Array.isArray(body.rows)).toBe(true);
   });
 
-  it("GET /views/:view-name returns 404 for unknown view", async () => {
+  it("GET /views/:view-name 对未知视图返回 404", async () => {
     const res = await app.request("/api/mission-control/views/totally-bogus");
     expect(res.status).toBe(404);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("view_unknown");
   });
 
-  it("POST /action with valid approve verb returns 200 + structured result", async () => {
+  it("POST /action 使用合法 approve 动词时返回 200 和结构化结果", async () => {
     const created = await queueRepo.create({
       sourceSession: "src@rig",
       destinationSession: "dst@rig",
@@ -109,7 +109,7 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     });
     const res = await app.request("/api/mission-control/action", {
       method: "POST",
-      // P21: the actor is the transport header (X-OpenRig-Session), not a body claim.
+      // P21：actor 来自传输 header（X-OpenRig-Session），而非请求体声明。
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "human@r" },
       body: JSON.stringify({
         verb: "approve",
@@ -122,7 +122,7 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     expect(body.verb).toBe("approve");
   });
 
-  it("POST /action with unknown verb returns 400 + verb_unknown", async () => {
+  it("POST /action 使用未知动词时返回 400 和 verb_unknown", async () => {
     const res = await app.request("/api/mission-control/action", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -133,7 +133,7 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     expect(body.error).toBe("verb_unknown");
   });
 
-  it("POST /action on terminal qitem returns 409 + qitem_already_terminal", async () => {
+  it("对终态 qitem 执行 POST /action 时返回 409 和 qitem_already_terminal", async () => {
     const created = await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body: "x" });
     await app.request("/api/mission-control/action", {
       method: "POST",
@@ -150,7 +150,7 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     expect(body.error).toBe("qitem_already_terminal");
   });
 
-  it("POST /action annotate on missing qitem returns 404 + qitem_not_found", async () => {
+  it("对缺失 qitem 执行 annotate 时返回 404 和 qitem_not_found", async () => {
     const res = await app.request("/api/mission-control/action", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-OpenRig-Session": "human@r" },
@@ -165,12 +165,12 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     expect(body.error).toBe("qitem_not_found");
   });
 
-  // P21 REVISED (was "forged/absent identity refuses LOUD"). Contract change, deliberate: mission-control
-  // /action is a FOUNDER-VISIBLE review-actions surface (d00c468d) — the browser UI fires approve/deny/etc
-  // HEADERLESS (bearer only + body actorSession). Refuse-loud would break the founder's one-tap review, so
-  // an absent header now DEFERS (records the body actor as the declared claimed-era variant `claimed:v1`),
-  // never 401. The CLI forgery guard (header present, differing body claim → 409) is UNCHANGED.
-  it("P21 review-actions deferral: UI headerless records claimed:v1 (never refused, never null); CLI header ⇒ transport:v1; body≠header ⇒ wire supersedes (transport:v1, 409 retired)", async () => {
+  // P21 修订（原为“伪造或缺失身份时响亮拒绝”）。这是有意的契约变更：mission-control
+  // /action 是创始人可见的 review-actions 表面（d00c468d），浏览器 UI 发出 approve/deny 等操作时
+  // 不带该 header（只有 bearer 和请求体 actorSession）。响亮拒绝会破坏一键评审，因此缺少 header
+  // 时改为延后处理（把请求体 actor 记录为 declared 的 claimed 时代变体 `claimed:v1`），绝不返回 401。
+  // CLI 伪造守卫保持不变：header 存在但请求体声明不同则由线上值覆盖。
+  it("P21 review-actions 延后：UI 无 header 时记录 claimed:v1（绝不拒绝或记为 null）；CLI header 记为 transport:v1；body 与 header 不同时以线上值为准（transport:v1，不再返回 409）", async () => {
     const mk = async (body: string) => (await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body })).qitemId;
     const [qUi, qCli, qMm] = [await mk("u"), await mk("c"), await mk("m")];
     const req = (qitemId: string, headers: Record<string, string>, extra: Record<string, unknown> = {}) =>
@@ -182,26 +182,26 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     const provenanceOf = (qitemId: string) =>
       (db.prepare("SELECT identity_provenance FROM mission_control_actions WHERE qitem_id = ? ORDER BY rowid DESC LIMIT 1").get(qitemId) as { identity_provenance: string | null } | undefined)?.identity_provenance ?? null;
 
-    // UI path: headerless + body actorSession → NOT refused; recorded claimed-era (declared variant).
+    // UI 路径：无 header + 请求体 actorSession，不拒绝；记录 claimed 时代的 declared 变体。
     const ui = await req(qUi, {}, { actorSession: "founder@r" });
     expect(ui.status).toBe(200);
     expect(provenanceOf(qUi)).toBe("claimed:v1");
 
-    // CLI path: transport header present → derived, era-stamped transport:v1.
+    // CLI 路径：传输 header 存在，推导并盖戳 transport:v1。
     const cli = await req(qCli, { "X-OpenRig-Session": "human@r" });
     expect(cli.status).toBe(200);
     expect(provenanceOf(qCli)).toBe("transport:v1");
 
-    // P18 SWEEP: header present + differing body claim → the wire SUPERSEDES (200), recorded transport:v1.
-    // The 409 is retired here too, so this deferral helper and its requireSenderIdentity sibling agree.
+    // P18 扫描：header 存在且请求体声明不同，线上值覆盖（200），记录 transport:v1。
+    // 此处也退役 409，使本延后辅助函数与 requireSenderIdentity 同级逻辑一致。
     const mismatch = await req(qMm, { "X-OpenRig-Session": "human@r" }, { actorSession: "mallory@r" });
     expect(mismatch.status).toBe(200);
     expect(provenanceOf(qMm)).toBe("transport:v1"); // wire wins; mallory@r superseded
   });
 
-  // P21 NEGATIVE CONTROL (rail 4) — the anti-laundering pin. Without this a future refactor could silently
-  // re-upgrade a relayed claimed-era actor to transport:v1 and the audit trail would lie again.
-  it("P21: a RELAYED claimed-era action records claimed:v1 (never transport:v1 — no laundering); transport marker ⇒ relay:v1; MISSING marker ⇒ claimed:v1 (degrade-down)", async () => {
+  // P21 反向对照（轨道 4）——防洗白固定测试。没有它，未来重构可能把转发的 claimed 时代 actor
+  // 静默升级回 transport:v1，使审计轨迹再次失真。
+  it("P21：转发的 claimed 时代 action 记录 claimed:v1（绝不是 transport:v1，禁止洗白）；有 transport 标记时记为 relay:v1，缺少标记时降级为 claimed:v1", async () => {
     const mk = async (body: string) => (await queueRepo.create({ sourceSession: "s@r", destinationSession: "d@r", body })).qitemId;
     const [qClaimed, qTransport, qMissing] = [await mk("a"), await mk("b"), await mk("c")];
     const req = (qitemId: string, headers: Record<string, string>) =>
@@ -213,23 +213,23 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     const provenanceOf = (qitemId: string) =>
       (db.prepare("SELECT identity_provenance FROM mission_control_actions WHERE qitem_id = ? ORDER BY rowid DESC LIMIT 1").get(qitemId) as { identity_provenance: string | null } | undefined)?.identity_provenance ?? null;
 
-    // Relayed CLAIMED-era origin actor (marker says claimed:v1): the origin records claimed:v1, NEVER
-    // transport:v1 — an unverified actor cannot be laundered into a verified one by crossing a hop.
+    // 转发的 CLAIMED 时代源 actor（标记为 claimed:v1）：来源记录 claimed:v1，绝不是 transport:v1；
+    // 未验证 actor 不能仅因跨过一跳就洗白为已验证。
     await req(qClaimed, { "X-OpenRig-Relay": "host-a", "X-OpenRig-Provenance": "claimed:v1" });
     expect(provenanceOf(qClaimed)).toBe("claimed:v1");
 
-    // Relayed TRANSPORT-verified actor: relay:v1 (verified one hop away — honest about distance), never
-    // transport:v1 (which would falsely claim THIS hop verified it).
+    // 转发的 TRANSPORT 已验证 actor：记录 relay:v1（在一跳之外已验证，如实表达距离），
+    // 绝不记录 transport:v1（否则会谎称本跳完成验证）。
     await req(qTransport, { "X-OpenRig-Relay": "host-a", "X-OpenRig-Provenance": "transport:v1" });
     expect(provenanceOf(qTransport)).toBe("relay:v1");
 
-    // Rail 1 default-weaker: a relayed request with NO marker (old forwarder) degrades DOWN to claimed:v1,
-    // never transport:v1 — a missing marker is indistinguishable from claimed-era and both are unverified.
+    // 轨道 1 默认从弱：没有标记的转发请求（旧转发方）降级到 claimed:v1，绝不是 transport:v1；
+    // 缺少标记与 claimed 时代不可区分，二者均未验证。
     await req(qMissing, { "X-OpenRig-Relay": "host-a" });
     expect(provenanceOf(qMissing)).toBe("claimed:v1");
   });
 
-  it("GET /cli-capabilities returns fleet roll-up", async () => {
+  it("GET /cli-capabilities 返回机群汇总", async () => {
     const res = await app.request("/api/mission-control/cli-capabilities");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { rows: unknown[]; staleCliCount: number };
@@ -237,15 +237,11 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     expect(typeof body.staleCliCount).toBe("number");
   });
 
-  // R1 fix per PL-005 Phase A guard review (2026-05-04). End-to-end
-  // proof through the production-wired ROUTE PATH (not just an injected
-  // unit seam): when the fleet capability is constructed with the
-  // production probe (the same factory startup.ts wires in), the
-  // /api/mission-control/cli-capabilities route payload exposes
-  // recoveryGuidance drift to UI consumers.
+  // 按 PL-005 Phase A 守卫评审（2026-05-04）的 R1 修复。通过生产接线的路由路径做端到端证明，
+  // 而不只测试注入式单元接缝：当机群能力用生产探针（startup.ts 接线的同一工厂）构建时，
+  // /api/mission-control/cli-capabilities 路由 payload 会向 UI 使用方暴露 recoveryGuidance 漂移。
   it("R1 PRODUCTION-WIRED ROUTE: /cli-capabilities reports recoveryGuidance drift in JSON payload + per-row cliDriftDetected", async () => {
-    // Build a fresh app with the production probe wired (the no-op
-    // default from earlier tests is replaced by the canonical factory).
+    // 构建接入生产探针的新应用（用权威工厂替换早期测试中的空操作默认值）。
     const productionFleetCli = new MissionControlFleetCliCapability({
       db,
       eventBus: bus,
@@ -279,9 +275,9 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     }
   });
 
-  // SSE route-order discipline (per PL-004 Phase A R1 lesson; literal
-  // /views, /sse, /watch, /cli-capabilities mounted BEFORE /views/:view-name).
-  it("R1 SSE pattern: GET /api/mission-control/sse returns 200 + content-type text/event-stream", async () => {
+  // SSE 路由顺序纪律（沿用 PL-004 Phase A R1 经验）：字面路径 /views、/sse、/watch、
+  // /cli-capabilities 必须先于 /views/:view-name 挂载。
+  it("R1 SSE 模式：GET /api/mission-control/sse 返回 200 和 content-type text/event-stream", async () => {
     const res = await app.request("/api/mission-control/sse");
     try {
       expect(res.status).toBe(200);
@@ -291,7 +287,7 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     }
   });
 
-  it("R1 SSE pattern: GET /api/mission-control/watch returns 200 + content-type text/event-stream", async () => {
+  it("R1 SSE 模式：GET /api/mission-control/watch 返回 200 和 content-type text/event-stream", async () => {
     const res = await app.request("/api/mission-control/watch");
     try {
       expect(res.status).toBe(200);
@@ -301,7 +297,7 @@ describe("mission-control routes (PL-005 Phase A)", () => {
     }
   });
 
-  it("R1 SSE pattern: literal /views returns array (not shadowed by /views/:view-name)", async () => {
+  it("R1 SSE 模式：字面路径 /views 返回数组，不被 /views/:view-name 遮蔽", async () => {
     const res = await app.request("/api/mission-control/views");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { views: string[] };

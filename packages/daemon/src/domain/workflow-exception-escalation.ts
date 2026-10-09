@@ -1,23 +1,16 @@
 import { findQueueRecovery, recoveryId, recoveryTag } from "./queue-recovery.js";
-// OPR.0.4.6.WF5 FR-2 class (b): detection-time exception items for
-// STUCK/OVERDUE instances.
+// OPR.0.4.6.WF5 FR-2 类别 (b)：为 STUCK/OVERDUE instance 生成 detection-time exception item。
 //
-// Class (b) has NO state-change transaction to ride — the item is created
-// AT DETECTION TIME by the sweep/keepalive evaluation, and its never-lost
-// guarantee is WF-1's crash-surviving sweep: re-detection re-creates a
-// missed item on the next pass (P2 cleanup honored: no same-txn claim is
-// made or implemented here).
+// 类别 (b) 没有可依附的 state-change transaction；item 在检测时由 sweep/keepalive evaluation
+// 创建。其不丢失保证来自 WF-1 可跨崩溃存活的 sweep：重新检测会在下一轮重建遗漏 item
+//（遵循 P2 cleanup：此处不声明也不实现 same-transaction 保证）。
 //
-// The existing diagnostic row carries the underlying obligation tag. Timer,
-// ladder and sweep converge on that same recovery. Unchanged redetection neither
-// sends nor appends a transition; a closed disposition stands until a new
-// meaningful source transition or actual failed delivery creates a new episode.
-// Legacy occurrence tags remain readable without rewriting historical rows.
+// 既有 diagnostic 行携带底层 obligation tag。timer、ladder 与 sweep 收敛到同一 recovery。
+// 未变化的重新检测既不发送，也不追加 transition；closed disposition 保持成立，直到新的 meaningful
+// source transition 或真实投递失败创建新 episode。旧版 occurrence tag 仍可读取，无需重写历史行。
 //
-// The policy shape is untouched (X5 stands: PolicyEvaluation remains
-// send|skip|terminal) — the keepalive calls this injected helper as a
-// side effect of its EXISTING evaluation; the sweep likewise. Injection
-// at startup per the validateRig precedent.
+// policy shape 保持不变（X5 成立：PolicyEvaluation 仍为 send|skip|terminal）。keepalive 将此注入
+// helper 作为既有 evaluation 的副作用调用，sweep 同理；按 validateRig 先例在启动时注入。
 
 import type Database from "better-sqlite3";
 import { QueueRepositoryError, type QueueRepository } from "./queue-repository.js";
@@ -33,8 +26,8 @@ import { workflowHumanDestination, type WorkflowHumanDestination } from "./workf
 export interface EnsureStuckExceptionInput {
   workflowName: string;
   workflowVersion: string;
-  /** The session recorded as the item's source (the instance creator —
-   *  a real, validated session; the detector is machinery, not a seat). */
+  /** 记录为 item source 的会话，即 instance creator；它是真实且已校验的会话，detector 是机制，
+   *  不是席位。 */
   createdBySession: string;
   verdict: WorkflowDeadlineVerdict;
 }
@@ -51,12 +44,10 @@ export type EnsureStuckExceptionItem = (
 export interface StuckExceptionDeps {
   db: Database.Database;
   queueRepo: QueueRepository;
-  /** The maturity-dial resolution for a cached spec (runtime-owned —
-   *  spec lookup + the shipped role resolution live there). null =
-   *  spec not cached; registered-human selection applies.
-   *  OPR.0.4.6.FAC1 (arch Q3): boundRig = the stuck instance's bound
-   *  rig (read from workflow_instances at detection time) so the
-   *  orchestrator-role dial position resolves capability-aware. */
+  /** cached spec 的 maturity-dial 解析，由 runtime 拥有；spec lookup 与已交付 role resolution
+   *  均位于该处。null 表示 spec 未缓存，此时应用 registered-human selection。
+   *  OPR.0.4.6.FAC1（arch Q3）：boundRig 是 stuck instance 绑定的工作组，在检测时从
+   *  workflow_instances 读取，使 orchestrator-role dial position 能按 capability 解析。 */
   resolveRoute: (
     workflowName: string,
     workflowVersion: string,
@@ -76,8 +67,7 @@ export function makeEnsureStuckExceptionItem(deps: StuckExceptionDeps): EnsureSt
     const previous = findQueueRecovery(deps.db, exception.deadlineEvidence!.packetId);
     if (previous) return { outcome: "deduped", qitemId: previous.qitemId };
 
-    // Honor historical occurrence rows, including their closed disposition.
-    // Modern rows were already resolved through the current source episode above.
+    // 保留历史 occurrence 行及其 closed disposition。现代行已通过上方当前 source episode 解析。
     const open = deps.db
       .prepare(
         `SELECT qitem_id, destination_session FROM queue_items
@@ -96,15 +86,13 @@ export function makeEnsureStuckExceptionItem(deps: StuckExceptionDeps): EnsureSt
         recoveryTag(exception.deadlineEvidence!.packetId),
       ) as { qitem_id: string; destination_session: string } | undefined;
     if (open) {
-      // Re-detection of the same unresolved episode: re-nudge the ONE
-      // item (best-effort — the durable item is the guarantee).
+      // 同一 unresolved episode 被重新检测时，只重新 nudge 唯一 item；尽力而为，持久 item 才是保证。
       return { outcome: "deduped", qitemId: open.qitem_id };
     }
 
-    // OPR.0.4.6.FAC1 (arch Q3): each exception item is a FRESH routing
-    // decision at its own detection moment — read the stuck instance's
-    // bound rig NOW. A failed read cannot establish an unbound instance:
-    // propagate it before any routing or queue write.
+    // OPR.0.4.6.FAC1（arch Q3）：每个 exception item 都是在自身检测时刻作出的全新 routing decision，
+    // 因此现在读取 stuck instance 的 bound rig。读取失败不能证明 instance 未绑定；在任何 routing
+    // 或队列写入前传播错误。
     let detectionBoundRig: string | null = null;
     const stuckInstanceId = exception.deadlineEvidence?.instanceId;
     if (stuckInstanceId) {
@@ -122,16 +110,16 @@ export function makeEnsureStuckExceptionItem(deps: StuckExceptionDeps): EnsureSt
         resolvedVia: "engine-default" as const,
       };
     const e = exception.deadlineEvidence!;
-    const evidenceRef = `rig workflow trace ${e.instanceId}`;
+    const evidenceRef = `zrig workflow trace ${e.instanceId}`;
     const body =
-      `WORKFLOW EXCEPTION (stuck_overdue)\n` +
+      `工作流异常（stuck_overdue）\n` +
       `workflow: ${input.workflowName} v${input.workflowVersion}\n` +
       `instance: ${e.instanceId}\n` +
-      `step: ${e.stepId ?? "(unbound)"} — packet ${e.packetId} held by ${e.ownerSession} (${e.packetState})\n` +
-      `deadline: ${e.overdueBySeconds}s past the ${e.anchor} anchor (${e.anchorAt}); packet age ${e.ageSeconds}s\n` +
+      `step: ${e.stepId ?? "（未绑定）"}——packet ${e.packetId} 由 ${e.ownerSession} 持有（${e.packetState}）\n` +
+      `deadline: 已超过 ${e.anchor} 锚点 ${e.overdueBySeconds}s（${e.anchorAt}）；packet age ${e.ageSeconds}s\n` +
       `reason: ${exception.reason}\n` +
       `evidence: ${evidenceRef}\n` +
-      `resolve: inspect the current owner and deadline; packet age alone does not establish idle. This item clears when the instance leaves the exception state.`;
+      `resolve: 检查当前 owner 与 deadline；仅凭 packet age 不能证明 idle。instance 离开 exception 状态后，此 item 会清除。`;
     const createItem = (destination: string, tier: string) =>
       deps.queueRepo.create({
         qitemId: recoveryId(deps.db, e.packetId),
@@ -149,12 +137,11 @@ export function makeEnsureStuckExceptionItem(deps: StuckExceptionDeps): EnsureSt
       created = await createItem(route.destinationSession, route.tier);
     } catch (error) {
       if (!(error instanceof QueueRepositoryError) || error.code !== "unknown_destination_rig" || route.humanRouted) throw error;
-      // An unavailable agent rig may use the registered human fallback.
-      // Other admission/storage failures retain their original diagnosis.
+      // 智能体工作组不可用时，可使用已注册人员 fallback。其他 admission/storage 失败保留原始诊断。
       created = await createItem(workflowHumanDestination(deps.humanFallbackSeat), "human-gate");
     }
     log(
-      `workflow exception: stuck_overdue item ${created.qitemId} created for instance ${e.instanceId} (step ${e.stepId ?? "?"}, ${route.position})`,
+      `工作流异常：已为 instance ${e.instanceId} 创建 stuck_overdue item ${created.qitemId}（step ${e.stepId ?? "?"}，${route.position}）`,
     );
     return { outcome: "created", qitemId: created.qitemId };
   };

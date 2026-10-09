@@ -52,7 +52,7 @@ describe("readDaemonLifecycle — crash-surviving SQLite read (real db)", () => 
     expect(rec!.bootEpoch).toBe("ep");
     expect(rec!.lastHeartbeatAt).toBe("2026-08-07T00:05:00Z");
     expect(rec!.stoppedAt).toBeNull();
-    // and the money classification
+    // 及关键分类
     expect(describeLifecycle(rec).kind).toBe("no-clean-shutdown");
   });
 

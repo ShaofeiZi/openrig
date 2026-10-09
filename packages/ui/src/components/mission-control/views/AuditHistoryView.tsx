@@ -1,8 +1,8 @@
-// PL-005 Phase B: read-only audit-history browse view.
+// PL-005 阶段 B：只读审计历史浏览视图。
 //
 // Filter UI for 4 dimensions (qitem_id, action_verb, actor_session,
-// time range) + paginated result table. Calls GET /api/mission-control/audit.
-// Read-only — no verb actions on rows.
+// 时间范围）和分页结果表。调用 GET /api/mission-control/audit。
+// 只读；行上没有动作操作。
 
 import { useState } from "react";
 import {
@@ -53,16 +53,15 @@ export function AuditHistoryView() {
     <div data-testid="mc-view-audit-history" className="space-y-3 p-3">
       <header className="space-y-0.5">
         <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
-          audit-history
+          审计历史
         </div>
-        <h2 className="font-headline text-lg text-on-surface">Audit history</h2>
+        <h2 className="font-headline text-lg text-on-surface">审计历史</h2>
         <p className="text-xs text-on-surface-variant">
-          Browse <code>mission_control_actions</code> by qitem, verb, actor,
-          and time range. Read-only.
+          按队列项、动作、操作者和时间范围浏览 <code>mission_control_actions</code>。只读。
         </p>
       </header>
 
-      {/* Filters */}
+      {/* 筛选条件 */}
       <div
         data-testid="mc-audit-filters"
         className="grid grid-cols-1 gap-2 border border-outline-variant bg-background p-2 sm:grid-cols-2"
@@ -70,7 +69,7 @@ export function AuditHistoryView() {
         <input
           type="text"
           data-testid="mc-audit-filter-qitem-id"
-          placeholder="qitem_id (exact)"
+          placeholder="qitem_id（精确匹配）"
           value={qitemId}
           onChange={(e) => setQitemId(e.target.value)}
           className="border border-outline-variant px-2 py-1 font-mono text-xs"
@@ -81,7 +80,7 @@ export function AuditHistoryView() {
           onChange={(e) => setActionVerb(e.target.value)}
           className="border border-outline-variant px-2 py-1 font-mono text-xs"
         >
-          <option value="">all verbs</option>
+          <option value="">全部动作</option>
           {MISSION_CONTROL_VERBS.map((v) => (
             <option key={v} value={v}>
               {v}
@@ -91,7 +90,7 @@ export function AuditHistoryView() {
         <input
           type="text"
           data-testid="mc-audit-filter-actor-session"
-          placeholder="actor_session (e.g., operator-alex@kernel)"
+          placeholder="actor_session（例如 operator-alex@kernel）"
           value={actorSession}
           onChange={(e) => setActorSession(e.target.value)}
           className="border border-outline-variant px-2 py-1 font-mono text-xs"
@@ -103,7 +102,7 @@ export function AuditHistoryView() {
             value={since}
             onChange={(e) => setSince(e.target.value)}
             className="flex-1 border border-outline-variant px-2 py-1 font-mono text-[11px]"
-            title="since"
+            title="起始"
           />
           <input
             type="datetime-local"
@@ -111,7 +110,7 @@ export function AuditHistoryView() {
             value={until}
             onChange={(e) => setUntil(e.target.value)}
             className="flex-1 border border-outline-variant px-2 py-1 font-mono text-[11px]"
-            title="until"
+            title="截止"
           />
         </div>
         <button
@@ -120,22 +119,22 @@ export function AuditHistoryView() {
           onClick={applyFilters}
           className="border border-on-surface bg-inverse-surface px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-background"
         >
-          Apply filters
+          应用筛选
         </button>
       </div>
 
       {/* Results */}
       {query.isLoading ? (
         <div data-testid="mc-audit-loading" className="font-mono text-[10px] text-on-surface-variant">
-          loading...
+          加载中…
         </div>
       ) : query.isError ? (
         <div data-testid="mc-audit-error" className="font-mono text-[11px] text-red-700">
-          error: {query.error.message}
+          错误：{query.error.message}
         </div>
       ) : query.data?.rows.length === 0 ? (
         <div data-testid="mc-audit-empty" className="font-mono text-[11px] text-on-surface-variant">
-          No audit entries match these filters.
+          没有符合这些筛选条件的审计记录。
         </div>
       ) : (
         <ul data-testid="mc-audit-rows" className="space-y-1">
@@ -155,19 +154,19 @@ export function AuditHistoryView() {
                 </span>
               </div>
               <div className="mt-1 text-on-surface">
-                qitem: <span className="font-mono">{row.qitemId ?? "—"}</span>
+                队列项：<span className="font-mono">{row.qitemId ?? "—"}</span>
               </div>
               <div className="text-on-surface">
-                actor: <span className="font-mono">{row.actorSession}</span>
+                操作者：<span className="font-mono">{row.actorSession}</span>
               </div>
               {row.reason ? (
                 <div className="text-on-surface">
-                  reason: <span className="italic">{row.reason}</span>
+                  原因：<span className="italic">{row.reason}</span>
                 </div>
               ) : null}
               {row.annotation ? (
                 <div className="text-on-surface">
-                  annotation: <span className="italic">{row.annotation}</span>
+                  备注：<span className="italic">{row.annotation}</span>
                 </div>
               ) : null}
             </li>
@@ -187,9 +186,9 @@ export function AuditHistoryView() {
           disabled={beforeIdStack.length === 0}
           className="border border-outline-variant px-2 py-0.5 disabled:opacity-50"
         >
-          ← prev
+          ← 上一页
         </button>
-        <span>rows: {query.data?.rows.length ?? 0}</span>
+        <span>行数：{query.data?.rows.length ?? 0}</span>
         <button
           type="button"
           data-testid="mc-audit-next-page"
@@ -197,7 +196,7 @@ export function AuditHistoryView() {
           disabled={!query.data?.hasMore}
           className="border border-outline-variant px-2 py-0.5 disabled:opacity-50"
         >
-          next →
+          下一页 →
         </button>
       </footer>
     </div>

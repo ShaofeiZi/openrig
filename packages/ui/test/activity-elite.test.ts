@@ -28,7 +28,7 @@ describe("getTimeInState (FR-2)", () => {
     const result = getTimeInState(activity);
     expect(result).not.toBeNull();
     expect(result!.seconds).toBe(240);
-    expect(result!.label).toBe("4m");
+    expect(result!.label).toBe("4分");
   });
 
   it("eventAt 4m-old + sampledAt=now shows 4m (does NOT reset on refetch)", () => {
@@ -54,7 +54,7 @@ describe("getTimeInState (FR-2)", () => {
     const result = getTimeInState(activity);
     expect(result).not.toBeNull();
     expect(result!.seconds).toBe(120);
-    expect(result!.label).toBe("2m");
+    expect(result!.label).toBe("2分");
   });
 
   it("returns null for null activity", () => {
@@ -70,7 +70,7 @@ describe("getTimeInState (FR-2)", () => {
       sampledAt: "2026-06-19T03:00:00Z",
       eventAt: "2026-06-19T01:30:00Z",
     };
-    expect(getTimeInState(activity)!.label).toBe("1h 30m");
+    expect(getTimeInState(activity)!.label).toBe("1时30分");
   });
 });
 
@@ -95,7 +95,7 @@ describe("computeActivityRollup (FR-3)", () => {
 
   it("formats rollup label with hook-grade needs_input as 'needs you'", () => {
     const rollup = { working: 3, idle: 2, needsInput: 1, needsInputHookGrade: 1, unknown: 0, total: 6 };
-    expect(formatRollupLabel(rollup)).toBe("3 working · 2 idle · 1 needs you");
+    expect(formatRollupLabel(rollup)).toBe("3 运行中 · 2 空闲 · 1 需要你处理");
   });
 
   it("pane-grade needs_input labeled activity-grade in rollup (AC-4)", () => {
@@ -108,8 +108,8 @@ describe("computeActivityRollup (FR-3)", () => {
     expect(rollup.needsInput).toBe(2);
     expect(rollup.needsInputHookGrade).toBe(1);
     const label = formatRollupLabel(rollup);
-    expect(label).toContain("1 needs you");
-    expect(label).toContain("1 needs input (activity-grade)");
+    expect(label).toContain("1 需要你处理");
+    expect(label).toContain("1 待输入（活动级）");
     expect(label).not.toMatch(/2 needs you/);
   });
 });

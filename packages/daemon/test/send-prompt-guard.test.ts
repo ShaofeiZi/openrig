@@ -1,9 +1,9 @@
-// OPR.0.4.1.10 — rig send interactive-prompt / permission-block guard: KEYSTONE regression.
-// Reproduces the 2026-06-20 footgun (a peer rig-send submitted an open AskUserQuestion default and
-// shipped a release) and proves it is impossible by default. K-1..K-6 from the impl-prd plus the
-// guard-required amendment tests (audit all-or-nothing, danger+wait rejection, send-readiness
-// freshness fallback). Detector covered on BOTH the fresh-runtime-hook path and the capture-pane
-// fallback (Codex's sole prompt guard — exact render from qa-codex-approval-render-research-20260627).
+// OPR.0.4.1.10——zrig send 交互提示/权限阻塞防护：关键回归。复现 2026-06-20 的隐患
+//（同级 rig-send 提交了开放 AskUserQuestion 的默认选项并发布版本），并证明默认情况下
+// 不可能再发生。覆盖 impl-prd 的 K-1..K-6 及防护要求的修订测试（审计全有或全无、
+// danger+wait 拒绝、发送就绪新鲜度回退）。检测器同时覆盖新鲜运行时 hook 路径和
+// capture-pane 回退（Codex 唯一的提示防护——精确渲染来自
+// qa-codex-approval-render-research-20260627）。
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
 import { RigRepository } from "../src/domain/rig-repository.js";
@@ -14,7 +14,7 @@ import { EventBus } from "../src/domain/event-bus.js";
 import type { TmuxAdapter, TmuxResult } from "../src/adapters/tmux.js";
 import { createFullTestDb } from "./helpers/test-app.js";
 
-// The open ship-authorizing AskUserQuestion from the 2026-06-20 incident (highlighted default first).
+// 2026-06-20 事故中开放的发布授权 AskUserQuestion（高亮默认项在前）。
 const SHIP_PROMPT = [
   "Authorize the 0.4.0 release?",
   "",
@@ -23,8 +23,8 @@ const SHIP_PROMPT = [
   "  3. Hold",
 ].join("\n");
 
-// Exact Codex v0.139.0 command-approval render (qa research). Codex does NOT emit a needs_input hook,
-// so the capture-pane fallback is its only guard.
+// Codex v0.139.0 命令审批的精确渲染（QA 调研）。Codex 不发出 needs_input hook，
+// 因此 capture-pane 回退是它唯一的防护。
 const CODEX_APPROVAL = [
   "  Would you like to run the following command?",
   "",
@@ -67,7 +67,7 @@ function mockTmux(overrides?: Partial<{
   } as unknown as TmuxAdapter;
 }
 
-describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
+describe("OPR.0.4.1.10 zrig send 提示/权限防护（关键）", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -89,8 +89,8 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     sessionRegistry.updateBinding(node.id, { tmuxSession: "dev-impl@my-rig" });
   });
 
-  // Seed a Codex seat (Codex emits no needs_input Notification — its guard is the PermissionRequest
-  // hook (hook-primary) + the capture-pane fallback).
+  // 预置 Codex 席位（Codex 不发出 needs_input Notification——它的防护由 PermissionRequest
+  // hook（hook 优先）和 capture-pane 回退组成）。
   function seedCodexSeat(name = "dev-qa@my-rig") {
     const node = rigRepo.addNode(rigId, "dev.qa", { role: "worker", runtime: "codex" });
     const session = sessionRegistry.registerSession(node.id, name);
@@ -124,8 +124,8 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     return rows.map((r) => JSON.parse(r.payload) as Record<string, unknown>);
   }
 
-  // K-1: default send to a pane at an interactive prompt → refused, nothing typed/submitted.
-  it("K-1: default send to an AskUserQuestion refuses (target_needs_input) and never types or submits", async () => {
+  // K-1：默认发送到停留在交互提示的 pane → 拒绝，不输入也不提交。
+  it("K-1：默认发送到 AskUserQuestion 时拒绝（target_needs_input），且绝不输入或提交", async () => {
     const { sendText, sendKeys } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => SHIP_PROMPT, sendText, sendKeys }));
     const r = await t.send("dev-impl@my-rig", "STAND DOWN, do not ship");
@@ -136,11 +136,11 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  // K-1 via fresh runtime hook (Claude permission_prompt) — primary detector path.
-  it("K-1(hook): default send refuses on a fresh permission_prompt hook, no type/submit", async () => {
+  // K-1 通过新鲜运行时 hook（Claude permission_prompt）——主要检测路径。
+  it("K-1（hook）：新鲜 permission_prompt hook 使默认发送拒绝，不输入/提交", async () => {
     agentActivityStore.recordHookEvent({ runtime: "claude-code", sessionName: "dev-impl@my-rig", hookEvent: "Notification", subtype: "permission_prompt" });
     const { sendText, sendKeys } = spies();
-    // Pane looks idle, but the fresh hook is authoritative → still refuses.
+    // pane 看似空闲，但新鲜 hook 是权威依据 → 仍拒绝。
     const t = makeTransport(mockTmux({ capturePaneContent: async () => "❯ \n  ⏵⏵ accept edits on", sendText, sendKeys }));
     const r = await t.send("dev-impl@my-rig", "hi");
     expect(r.ok).toBe(false);
@@ -149,8 +149,8 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendText).not.toHaveBeenCalled();
   });
 
-  // K-3 (footgun separation): --force does NOT bypass the prompt guard.
-  it("K-3: --force to an interactive prompt is STILL refused (force does not bypass the prompt guard)", async () => {
+  // K-3（隔离隐患）：--force 不绕过提示防护。
+  it("K-3：对交互提示使用 --force 仍被拒绝（force 不绕过提示防护）", async () => {
     const { sendText, sendKeys } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => SHIP_PROMPT, sendText, sendKeys }));
     const r = await t.send("dev-impl@my-rig", "STAND DOWN", { force: true });
@@ -160,8 +160,8 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  // K-4: only --dangerously-interact --reason drives the prompt, and it writes the audit record.
-  it("K-4: --dangerously-interact --reason drives the prompt AND writes a transport.prompt_override audit", async () => {
+  // K-4：只有 --dangerously-interact --reason 会驱动提示，并写入审计记录。
+  it("K-4：--dangerously-interact --reason 驱动提示并写入 transport.prompt_override 审计", async () => {
     const { sendText, sendKeys } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => SHIP_PROMPT, sendText, sendKeys }));
     const r = await t.send("dev-impl@my-rig", "1", {
@@ -179,13 +179,13 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
       detectedState: "needs_input",
       overrideReason: "unblock stuck release prompt",
     });
-    // overrideReason (caller) is distinct from detectedReason (classifier) — not overloaded.
+    // overrideReason（调用方）与 detectedReason（分类器）不同——不得混用。
     expect(typeof events[0]!.detectedReason).toBe("string");
     expect(events[0]!.detectedReason).not.toBe(events[0]!.overrideReason);
   });
 
-  // K-5: Codex approval prompt via the capture-pane fallback (Codex has no needs_input hook).
-  it("K-5: a Codex command-approval render is detected via the capture-pane fallback and blocks default/force", async () => {
+  // K-5：通过 capture-pane 回退检测 Codex 审批提示（Codex 没有 needs_input hook）。
+  it("K-5：通过 capture-pane 回退检测 Codex 命令审批渲染，并阻止 default/force", async () => {
     const { sendText } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => CODEX_APPROVAL, sendText }));
     const def = await t.send("dev-impl@my-rig", "hi");
@@ -198,14 +198,14 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendText).not.toHaveBeenCalled();
   });
 
-  // K-5 HOOK-PRIMARY (founder expansion): a fresh Codex PermissionRequest hook is the PRIMARY signal —
-  // it blocks default/raw/force even when the pane looks idle (a high-stakes guard must not depend on
-  // screen-scraping). Only --dangerously-interact --reason drives it (+ audit).
-  it("K-5(hook): a Codex PermissionRequest hook is HOOK-PRIMARY — default/raw/force refused, only --dangerously-interact drives + audits", async () => {
+  // K-5 HOOK 优先（创始人扩展）：新鲜 Codex PermissionRequest hook 是主要信号——即使 pane
+  // 看似空闲，也会阻止 default/raw/force（高风险防护不能依赖屏幕抓取）。只有
+  // --dangerously-interact --reason 会驱动并审计。
+  it("K-5（hook）：Codex PermissionRequest hook 优先——拒绝 default/raw/force，仅 --dangerously-interact 驱动并审计", async () => {
     const seat = seedCodexSeat();
     agentActivityStore.recordHookEvent({ runtime: "codex", sessionName: seat, hookEvent: "PermissionRequest", subtype: "Bash" });
     const { sendText, sendKeys } = spies();
-    // Pane looks idle, but the fresh hook is authoritative.
+    // pane 看似空闲，但新鲜 hook 是权威依据。
     const t = makeTransport(mockTmux({ capturePaneContent: async () => "› ready\n\n  gpt-5.5 xhigh fast · Context [████ ] · ~/code", sendText, sendKeys }));
 
     const def = await t.send(seat, "hi");
@@ -232,9 +232,9 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(ev[0]).toMatchObject({ detectedState: "needs_input", detectedReason: "permission_request", overrideReason: "approve the blocked command" });
   });
 
-  // BOTH PATHS: when the hook is ABSENT (or stale), the capture-pane fallback still catches a Codex
-  // approval render — so the guard holds via EITHER path.
-  it("K-5(both-paths): with NO hook, a Codex approval render is still caught by the capture-pane fallback", async () => {
+  // 两条路径：hook 缺失（或过期）时，capture-pane 回退仍可捕获 Codex 审批渲染——
+  // 因此任一路径都能维持防护。
+  it("K-5（双路径）：没有 hook 时，capture-pane 回退仍可捕获 Codex 审批渲染", async () => {
     const seat = seedCodexSeat("dev-qa2@my-rig");
     const { sendText } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => CODEX_APPROVAL, sendText }));
@@ -245,20 +245,20 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendText).not.toHaveBeenCalled();
   });
 
-  // K-6 (the headline): a stand-down peer message to a ship-authorizing prompt cannot ship the release.
-  it("K-6: a stand-down message to a ship-authorizing AskUserQuestion does NOT submit it", async () => {
+  // K-6（核心结论）：发送给发布授权提示的停止消息不能发布版本。
+  it("K-6：发送给发布授权 AskUserQuestion 的停止消息不会提交该提示", async () => {
     const { sendText, sendKeys } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => SHIP_PROMPT, sendText, sendKeys }));
     const r = await t.send("advisor@my-rig".replace("advisor@my-rig", "dev-impl@my-rig"), "STAND DOWN, brief-gated, do not ship");
     expect(r.ok).toBe(false);
     expect(r.reason).toBe("target_needs_input");
-    // The release-authorizing default was NEVER selected/submitted.
+    // 发布授权默认项从未被选中或提交。
     expect(sendText).not.toHaveBeenCalled();
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  // Amendment 1: audit all-or-nothing — no eventBus → dangerous override refuses without sending.
-  it("AMEND: --dangerously-interact with no audit sink refuses (prompt_override_audit_unavailable), no send", async () => {
+  // 修订 1：审计必须全有或全无——没有 eventBus → 危险覆盖拒绝且不发送。
+  it("修订：--dangerously-interact 没有审计 sink 时拒绝（prompt_override_audit_unavailable），不发送", async () => {
     const { sendText, sendKeys } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => SHIP_PROMPT, sendText, sendKeys }), { withBus: false });
     const r = await t.send("dev-impl@my-rig", "1", { dangerouslyInteract: true, reason: "x" });
@@ -268,8 +268,8 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  // Amendment: --dangerously-interact without a reason refuses (domain belt; route/CLI also reject).
-  it("AMEND: --dangerously-interact without --reason refuses, no send", async () => {
+  // 修订：--dangerously-interact 没有 reason 时拒绝（domain 防线；路由/CLI 也拒绝）。
+  it("修订：--dangerously-interact 没有 --reason 时拒绝，不发送", async () => {
     const { sendText } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => SHIP_PROMPT, sendText }));
     const r = await t.send("dev-impl@my-rig", "1", { dangerouslyInteract: true });
@@ -278,25 +278,22 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendText).not.toHaveBeenCalled();
   });
 
-  // OPR.0.4.3.28 Part A — REVERSES the pre-slice-28 behavior: a stale-but-latest
-  // `idle` hook (display-fresh <5min, but >15s send window) is now SENDABLE. The
-  // latest-by-seq idle proves no newer activity exists (had the seat started
-  // work, the newest hook would be UserPromptSubmit/PermissionRequest, not idle),
-  // so the send trusts the hook ordering over the flaky real-time pane that Codex
-  // cannot reliably parse (the original no_activity_signal regression). Ratified:
-  // IMPL-SPEC §2.1 + orch-advisor checkpoint 4 (residual hook-didn't-fire risk is
-  // bounded/recoverable — a text paste to a working seat, not prompt-driving —
-  // and Part B makes the hook reliable). Fresh non-idle hooks + fresh
-  // PermissionRequest still block (K-5 tests :178-237, unchanged).
+  // OPR.0.4.3.28 A 部分——反转 slice-28 前行为：过期但最新的 `idle` hook
+  //（展示仍新鲜 <5 分钟，但超过 15 秒发送窗口）现在可以发送。按 seq 最新的 idle 证明没有
+  // 更新活动（若席位开始工作，最新 hook 会是 UserPromptSubmit/PermissionRequest，而非 idle），
+  // 因此发送相信 hook 顺序，而非 Codex 无法可靠解析的易抖动实时 pane（最初的
+  // no_activity_signal 回归）。经 IMPL-SPEC §2.1 + orch-advisor 检查点 4 批准：hook 未触发的
+  // 剩余风险有界且可恢复——只是向工作中席位粘贴文本，而非驱动提示——B 部分还会提升 hook
+  // 可靠性。新鲜的非 idle hook 和 PermissionRequest 仍会阻塞（K-5 测试 :178-237 不变）。
   function seedStaleIdleHook(fixedNow: Date) {
-    // Hook says idle, recorded 90s ago: display-fresh (<5min) but send-stale (>15s).
+    // Hook 报告 idle，记录于 90 秒前：展示仍新鲜（<5 分钟），但发送已过期（>15 秒）。
     agentActivityStore.recordHookEvent({
       runtime: "claude-code", sessionName: "dev-impl@my-rig", hookEvent: "Stop",
       occurredAt: new Date(fixedNow.getTime() - 90_000).toISOString(),
     });
   }
 
-  it("Part A: a send-stale IDLE hook + a CLEAN pane sends (the unblock)", async () => {
+  it("A 部分：发送已过期的 IDLE hook + 干净 pane 可以发送（解除阻塞）", async () => {
     const fixedNow = new Date("2026-06-27T12:00:00.000Z");
     seedStaleIdleHook(fixedNow);
     const { sendText } = spies();
@@ -306,7 +303,7 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendText).toHaveBeenCalled();
   });
 
-  it("Part A: a send-stale IDLE hook + an UNPARSEABLE pane still sends (flaky-Codex case)", async () => {
+  it("A 部分：发送已过期的 IDLE hook + 无法解析的 pane 仍可发送（Codex 易抖动用例）", async () => {
     const fixedNow = new Date("2026-06-27T12:00:00.000Z");
     seedStaleIdleHook(fixedNow);
     const { sendText } = spies();
@@ -316,9 +313,9 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendText).toHaveBeenCalled();
   });
 
-  // Guard code-review Blocker 1: the narrow picker/permission veto — a stale-idle
-  // hook must NOT paste+Enter onto an actually-visible picker/permission prompt.
-  it("Part A: a send-stale IDLE hook is VETOED by a visible AskUserQuestion picker (refused, nothing typed)", async () => {
+  // 防护代码审查阻断项 1：窄范围选择器/权限否决——过期 idle hook 不得在实际可见的
+  // 选择器/权限提示上执行粘贴并回车。
+  it("A 部分：发送已过期的 IDLE hook 被可见 AskUserQuestion 选择器否决（拒绝且不输入）", async () => {
     const fixedNow = new Date("2026-06-27T12:00:00.000Z");
     seedStaleIdleHook(fixedNow);
     const { sendText, sendKeys } = spies();
@@ -330,7 +327,7 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  it("Part A: a send-stale IDLE hook is VETOED by a visible Codex approval prompt (refused)", async () => {
+  it("A 部分：发送已过期的 IDLE hook 被可见 Codex 审批提示否决（拒绝）", async () => {
     const fixedNow = new Date("2026-06-27T12:00:00.000Z");
     seedStaleIdleHook(fixedNow);
     const { sendText, sendKeys } = spies();
@@ -341,55 +338,53 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendText).not.toHaveBeenCalled();
   });
 
-  // OPR.0.4.3.28 Part A — a stale NON-idle (running) hook is NOT trusted; it
-  // falls through to the real-time pane probe (unchanged; only stale-idle is new).
-  it("Part A: a stale NON-idle (running) hook falls through to the pane probe", async () => {
+  // OPR.0.4.3.28 A 部分——不信任过期的非 idle（running）hook；它回退到实时 pane
+  // 探针（保持不变；只有 stale-idle 是新行为）。
+  it("A 部分：过期的非 idle（running）hook 回退到 pane 探针", async () => {
     const fixedNow = new Date("2026-06-27T12:00:00.000Z");
     agentActivityStore.recordHookEvent({
       runtime: "claude-code", sessionName: "dev-impl@my-rig", hookEvent: "UserPromptSubmit",
       occurredAt: new Date(fixedNow.getTime() - 90_000).toISOString(), // stale + running
     });
     const { sendText } = spies();
-    // Pane is idle: the stale running hook did NOT block; the send proceeds via the pane.
+    // pane 为空闲：过期 running hook 未阻塞；发送通过 pane 继续。
     const t = makeTransport(mockTmux({ capturePaneContent: async () => "idle\n❯ ", sendText }), { now: () => fixedNow });
     const r = await t.send("dev-impl@my-rig", "hi");
-    // Had the stale running hook been trusted, the send would refuse (mid_work).
-    // It proceeded → the stale non-idle hook fell through to the pane (not trusted).
+    // 若信任过期 running hook，发送会以 mid_work 拒绝。现已继续 → 过期非 idle hook
+    // 回退到 pane（不受信任）。
     expect(r.ok).toBe(true);
     expect(r.activity?.evidenceSource).not.toBe("runtime_hook");
     expect(sendText).toHaveBeenCalled();
   });
 
-  // OPR.0.4.3.28 correction — INVERT fail-closed-on-unknown. `unknown` telemetry
-  // (absent/failed, NOT positive picker evidence) now PROCEEDS with a non-blocking
-  // advisory that still NAMES the failed producer link. Was: refused
-  // target_activity_unknown. Hooks are advisory telemetry, not send authority.
-  it("Part C (inverted): unknown PROCEEDS with an advisory naming the daemon-ingest producer link (no token leak)", async () => {
+  // OPR.0.4.3.28 修正——反转“未知时失败关闭”。`unknown` 遥测（缺失/失败，而非选择器确证）
+  // 现在携带非阻塞提示继续，并仍指明失败的 producer 链路。过去会以
+  // target_activity_unknown 拒绝。Hook 是建议性遥测，不是发送授权。
+  it("C 部分（反转）：unknown 携带指明后台服务摄取 producer 链路的提示继续（不泄漏 token）", async () => {
     const { sendText } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => "xyzzy no prompt here", sendText }));
     const r = await t.send("dev-impl@my-rig", "hi");
     expect(r.ok).toBe(true);
-    expect(r.warning).toContain("producer-link:");
-    expect(r.warning).toContain("daemon-ingest link DOWN");
+    expect(r.warning).toContain("producer-link：");
+    expect(r.warning).toContain("daemon-ingest 链路中断");
     expect(sendText).toHaveBeenCalled();
   });
 
-  // OPR.0.4.3.28 correction — when the seat env lacks the activity vars, the
-  // advisory names the SEAT-ENV link (presence-only, never the token value), and
-  // the send still PROCEEDS (was: refused).
-  it("Part C (inverted): unknown PROCEEDS with an advisory naming the seat-env link when url/token are missing", async () => {
+  // OPR.0.4.3.28 修正——席位环境缺少活动变量时，提示指明 SEAT-ENV 链路（只说明是否
+  // 存在，绝不包含 token 值），发送仍继续（过去会拒绝）。
+  it("C 部分（反转）：url/token 缺失时 unknown 携带指明 seat-env 链路的提示继续", async () => {
     const { sendText } = spies();
     const base = mockTmux({ capturePaneContent: async () => "xyzzy no prompt here", sendText });
     const tmux = Object.assign({}, base, { hasSessionEnv: async () => false }) as unknown as TmuxAdapter;
     const t = makeTransport(tmux);
     const r = await t.send("dev-impl@my-rig", "hi");
     expect(r.ok).toBe(true);
-    expect(r.warning).toContain("seat-env link DOWN");
-    expect(r.warning).toContain("MISSING"); // names the missing var, not its value
+    expect(r.warning).toContain("seat-env 链路中断");
+    expect(r.warning).toContain("MISSING"); // 指明缺失变量，而非其值。
     expect(sendText).toHaveBeenCalled();
   });
 
-  it("uses a valid activity-endpoint file when tmux env lookup cannot prove the relay vars", async () => {
+  it("tmux 环境查找无法证明 relay 变量时使用有效 activity-endpoint 文件", async () => {
     const { sendText } = spies();
     const base = mockTmux({ capturePaneContent: async () => "xyzzy no prompt here", sendText });
     const tmux = Object.assign({}, base, { hasSessionEnv: async () => false }) as unknown as TmuxAdapter;
@@ -398,27 +393,27 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     });
     const r = await t.send("dev-impl@my-rig", "hi");
     expect(r.ok).toBe(true);
-    expect(r.warning).toContain("daemon-ingest link DOWN");
+    expect(r.warning).toContain("daemon-ingest 链路中断");
     expect(r.warning).not.toContain("MISSING");
-    expect(r.warning).not.toContain("Relaunch");
+    expect(r.warning).not.toContain("重新启动");
     expect(r.warning).not.toContain("present-but-never-rendered");
     expect(sendText).toHaveBeenCalled();
   });
 
-  it("reports tmux session-env lookup failure as unknown when no endpoint-file fallback is confirmed", async () => {
+  it("没有确认 endpoint 文件回退时，将 tmux session-env 查找失败报告为 unknown", async () => {
     const { sendText } = spies();
     const base = mockTmux({ capturePaneContent: async () => "xyzzy no prompt here", sendText });
     const tmux = Object.assign({}, base, { hasSessionEnv: async () => null }) as unknown as TmuxAdapter;
     const t = makeTransport(tmux);
     const r = await t.send("dev-impl@my-rig", "hi");
     expect(r.ok).toBe(true);
-    expect(r.warning).toContain("seat-env link UNKNOWN");
+    expect(r.warning).toContain("seat-env 链路未知");
     expect(r.warning).not.toContain("MISSING");
-    expect(r.warning).not.toContain("Relaunch");
+    expect(r.warning).not.toContain("重新启动");
     expect(sendText).toHaveBeenCalled();
   });
 
-  it("recognizes the relay's supported port plus legacy-token env route", async () => {
+  it("识别 relay 支持的端口与旧 token 环境路由", async () => {
     const { sendText } = spies();
     const base = mockTmux({ capturePaneContent: async () => "xyzzy no prompt here", sendText });
     const tmux = Object.assign({}, base, {
@@ -428,48 +423,45 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     const t = makeTransport(tmux);
     const r = await t.send("dev-impl@my-rig", "hi");
     expect(r.ok).toBe(true);
-    expect(r.warning).toContain("daemon-ingest link DOWN");
-    expect(r.warning).not.toContain("seat-env link DOWN");
-    expect(r.warning).not.toContain("Relaunch");
+    expect(r.warning).toContain("daemon-ingest 链路中断");
+    expect(r.warning).not.toContain("seat-env 链路中断");
+    expect(r.warning).not.toContain("重新启动");
     expect(sendText).toHaveBeenCalled();
   });
 
-  // OPR.0.4.3.28 correction — --dangerously-interact no longer REQUIRES --reason for
-  // `unknown` telemetry (it proceeds normally now); the reason gate scopes to the
-  // positive-picker needs_input case only.
-  it("correction: --dangerously-interact WITHOUT --reason PROCEEDS on unknown telemetry (no picker) AND still carries the advisory", async () => {
+  // OPR.0.4.3.28 修正——`unknown` 遥测不再要求 --dangerously-interact 携带 --reason
+  //（现在正常继续）；reason 门禁仅适用于选择器确证的 needs_input 用例。
+  it("修正：--dangerously-interact 没有 --reason 时在 unknown 遥测（无选择器）上继续，且仍携带提示", async () => {
     const { sendText } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => "xyzzy no prompt here", sendText }));
     const r = await t.send("dev-impl@my-rig", "hi", { dangerouslyInteract: true });
     expect(r.ok).toBe(true);
-    // B1 code-review fix: the advisory attaches on unknown telemetry REGARDLESS of
-    // --dangerously-interact — the override branch no longer bypasses unknown handling.
-    expect(r.warning).toContain("producer-link:");
+    // B1 代码审查修复：无论是否使用 --dangerously-interact，unknown 遥测都附带提示——
+    // 覆盖分支不再绕过 unknown 处理。
+    expect(r.warning).toContain("producer-link：");
     expect(sendText).toHaveBeenCalled();
   });
 
-  // OPR.0.4.3.28 B1 code-review regression — the exact bypass the reviewer caught:
-  // --dangerously-interact WITH --reason on an actually-unknown pane must STILL return
-  // ok:true WITH the advisory warning (previously the dangerouslyInteract branch skipped
-  // the unknown handling and returned no warning).
-  it("B1: --dangerously-interact + --reason on unknown telemetry returns ok:true WITH the advisory", async () => {
+  // OPR.0.4.3.28 B1 代码审查回归——审查者捕获的精确绕过：对实际 unknown 的 pane 使用
+  // --dangerously-interact 和 --reason 时，仍必须返回 ok:true 并携带提示警告（过去
+  // dangerouslyInteract 分支跳过 unknown 处理且不返回警告）。
+  it("B1：对 unknown 遥测使用 --dangerously-interact + --reason 时返回 ok:true 并携带提示", async () => {
     const { sendText } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => "xyzzy no prompt here", sendText }));
     const r = await t.send("dev-impl@my-rig", "hi", { dangerouslyInteract: true, reason: "driving anyway", actorSession: "orch-lead@my-rig" });
     expect(r.ok).toBe(true);
-    expect(r.warning).toContain("producer-link:");
+    expect(r.warning).toContain("producer-link：");
     expect(sendText).toHaveBeenCalled();
   });
 
-  // W2a-1 round-3 — the producer-link advisory must NOT collapse a FRESH generation verdict into a
-  // false clock-stale/seat-quiet warning. A resolver-backed store + a hook that carried NO generation
-  // ⇒ generation_unverifiable (state unknown, stale:true, but age ~0). The advisory must name the
-  // generation cause honestly (UNVERIFIABLE — this emitting path carried none), never "beyond the
-  // store window / seat quiet". This is the inert-visible differentiation at the SessionTransport seam.
-  it("W2a-1: a FRESH generation_unverifiable read yields a generation-distinct advisory, NOT clock-stale/seat-quiet", async () => {
+  // W2a-1 第 3 轮——producer 链路提示不得把新鲜代判定折叠为错误的时钟过期/席位安静警告。
+  // 由解析器支持的 store + 未携带代的 hook ⇒ generation_unverifiable（状态 unknown、
+  // stale:true，但 age 约为 0）。提示必须如实指明代原因（UNVERIFIABLE——该发出路径未携带），
+  // 绝不能说“超出 store 窗口 / 席位安静”。这是 SessionTransport 接缝的惰性可见区分。
+  it("W2a-1：新鲜 generation_unverifiable 读取产生代特定提示，而非时钟过期/席位安静", async () => {
     const now = new Date("2026-06-27T12:00:00.000Z");
-    // The seat HAS a tenure (registerSession minted one), so the live generation resolves; the hook
-    // carries NO generation ⇒ generation_unverifiable (fresh, age ~0).
+    // 席位有 tenure（registerSession 已创建），因此存活代可解析；hook 未携带代
+    // ⇒ generation_unverifiable（新鲜，age 约为 0）。
     const genStore = new AgentActivityStore({
       db,
       eventBus,
@@ -481,7 +473,7 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
       sessionName: "dev-impl@my-rig",
       hookEvent: "UserPromptSubmit",
       occurredAt: now.toISOString(),
-      // deliberately NO generation carried ⇒ recorded null ⇒ unverifiable
+      // 有意不携带 generation ⇒ 记录 null ⇒ 无法验证。
     });
     const { sendText } = spies();
     const t = new SessionTransport({
@@ -495,17 +487,17 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     });
     const r = await t.send("dev-impl@my-rig", "hi");
     expect(r.ok).toBe(true);
-    expect(r.warning).toContain("producer-link:");
-    expect(r.warning).toContain("carried NO occupant generation"); // generation-distinct, not clock-stale
-    expect(r.warning).toContain("the emitting launch path supplied NO occupant generation");
-    expect(r.warning).toContain("UNVERIFIABLE, not a quiet seat");
+    expect(r.warning).toContain("producer-link：");
+    expect(r.warning).toContain("未携带 occupant generation"); // 区分 generation，而非时钟过期。
+    expect(r.warning).toContain("发射方 launch 路径未提供 generation");
+    expect(r.warning).toContain("Generation 无法验证，不表示席位安静");
     expect(r.warning).not.toContain("not yet wired");
-    expect(r.warning).not.toContain("beyond the store window");
-    expect(r.warning).not.toContain("gone quiet");
+    expect(r.warning).not.toContain("超出 store 窗口");
+    expect(r.warning).not.toContain("席位已安静");
     expect(sendText).toHaveBeenCalled();
   });
 
-  it("AMEND: a hook fresh within the send window (idle) is authoritative and the send proceeds", async () => {
+  it("修订：发送窗口内的新鲜 hook（idle）是权威依据，发送继续", async () => {
     const fixedNow = new Date("2026-06-27T12:00:00.000Z");
     agentActivityStore.recordHookEvent({
       runtime: "claude-code", sessionName: "dev-impl@my-rig", hookEvent: "Stop",
@@ -519,8 +511,8 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendText).toHaveBeenCalled();
   });
 
-  // FR-1c: a permission question with no visible selector is still detected (Codex/Claude robustness).
-  it("FR-1c: a permission question line with no selector in view is classified needs_input", async () => {
+  // FR-1c：没有可见选择器的权限问题仍可被检测（Codex/Claude 稳健性）。
+  it("FR-1c：视图中没有选择器的权限问题行被分类为 needs_input", async () => {
     const { sendText } = spies();
     const t = makeTransport(mockTmux({
       capturePaneContent: async () => ["Do you want to proceed with this deploy?", "", "  gpt-5.5 · Context [████ ] · ~/code"].join("\n"),
@@ -532,11 +524,10 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendText).not.toHaveBeenCalled();
   });
 
-  // FORWARD-FIX 1 (research: ntm e28763e / AgentDeck) — a real prompt whose selector is pushed past
-  // the bottom 8 lines by Claude Code's tall footer (status bar + permission hint + separators + input
-  // box) must still be detected. With the old 8-line scan the selector here (9th non-blank from the
-  // bottom) is missed and the ⏵⏵ idle bar on the last line FALSE-IDLES it → a send lands on the prompt.
-  // The widened 12-line prompt scan catches it.
+  // 前向修复 1（调研：ntm e28763e / AgentDeck）——Claude Code 的高页脚（状态栏 + 权限提示
+  // + 分隔线 + 输入框）将真实提示的选择器推到末尾 8 行之外时，仍必须检测。旧的 8 行扫描
+  // 会漏掉此处距底部第 9 个非空行的选择器，并被最后一行 ⏵⏵ idle 栏误判为空闲 → 发送
+  // 落到提示上。扩大到 12 行的提示扫描可以捕获它。
   const FOOTER_PUSHED_PROMPT = [
     "Allow this edit to session-transport.ts?",
     "",
@@ -553,13 +544,13 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     "  ⏵⏵ accept edits on (shift+tab to cycle)",
   ].join("\n");
 
-  it("FORWARD-FIX 1: a prompt pushed past the bottom 8 lines by a tall footer is still needs_input (not false-idle)", () => {
+  it("前向修复 1：被高页脚推到末尾 8 行之外的提示仍为 needs_input（不误判空闲）", () => {
     const c = classifyPaneActivity(FOOTER_PUSHED_PROMPT);
     expect(c.state).toBe("attention");
     expect(c.reason).toBe("selection_prompt");
   });
 
-  it("FORWARD-FIX 1: a default send to a footer-pushed prompt is refused (no false-idle send)", async () => {
+  it("前向修复 1：默认发送到被页脚推高的提示时被拒绝（不因误判空闲而发送）", async () => {
     const { sendText, sendKeys } = spies();
     const t = makeTransport(mockTmux({ capturePaneContent: async () => FOOTER_PUSHED_PROMPT, sendText, sendKeys }));
     const r = await t.send("dev-impl@my-rig", "looks good");
@@ -569,8 +560,8 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
     expect(sendKeys).not.toHaveBeenCalled();
   });
 
-  // No-regression: idle default still delivers; running + force still delivers.
-  it("idle target sends by default; running target now DELIVERS WITH ADVISORY (OPR.0.4.3.28 fast-follow — mid_work downgraded, busy is not a block)", async () => {
+  // 无回归：idle 默认仍交付；running + force 仍交付。
+  it("idle 目标默认发送；running 目标现在携带提示交付（OPR.0.4.3.28 快速跟进——mid_work 降级，忙碌不阻塞）", async () => {
     const idleSpy = vi.fn(async () => ({ ok: true as const }));
     const idle = makeTransport(mockTmux({ capturePaneContent: async () => "Done.\n❯ \n  ⏵⏵ accept edits on (shift+tab to cycle)", sendText: idleSpy }));
     const idleRes = await idle.send("dev-impl@my-rig", "hi");
@@ -580,13 +571,13 @@ describe("OPR.0.4.1.10 rig send prompt/permission guard (keystone)", () => {
 
     const runSpy = vi.fn(async () => ({ ok: true as const }));
     const running = makeTransport(mockTmux({ capturePaneContent: async () => "Working on task...\n⠋ Processing\nesc to interrupt", sendText: runSpy }));
-    // Default (non-force) send on a running/busy pane now PROCEEDS with a non-blocking advisory
-    // (was: ok:false mid_work). needs_input remains the ONLY hard refuse.
+    // 对 running/busy pane 的默认（非 force）发送现在携带非阻塞提示继续
+    //（过去为 ok:false mid_work）。needs_input 仍是唯一强制拒绝。
     const def = await running.send("dev-impl@my-rig", "hi");
     expect(def.ok).toBe(true);
-    expect(def.warning).toContain("mid-task");
-    expect(def.warning).toContain("busy is advisory");
-    // --force is now a no-op on this path (kept for back-compat) — still delivers.
+    expect(def.warning).toContain("正在任务中");
+    expect(def.warning).toContain("繁忙只是提示");
+    // --force 现在在此路径上不执行额外操作（为向后兼容保留）——仍会交付。
     const forced = await running.send("dev-impl@my-rig", "hi", { force: true });
     expect(forced.ok).toBe(true);
     expect(runSpy).toHaveBeenCalled();

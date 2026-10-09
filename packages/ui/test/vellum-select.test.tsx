@@ -1,4 +1,4 @@
-// V1 Shell Redesign — Phase 1 — VellumSelect primitive.
+// V1 Shell 重设计——Phase 1——VellumSelect 原语。
 
 import { describe, it, expect } from "vitest";
 import { render, fireEvent } from "@testing-library/react";

@@ -35,7 +35,7 @@ function fixture(open: string | null = null) {
     sibling: (next: string) => { sibling = next; }, open: (next: string | null) => { state = { ...state, attentionOpen: next }; } };
 }
 
-describe("declared Feed source failures", () => {
+describe("已声明的 Feed 源失败", () => {
   it.each(sources)("retains only failed %s data while siblings advance, then accepts successful removal", async source => {
     const f = fixture();
     try {
@@ -49,7 +49,7 @@ describe("declared Feed source failures", () => {
       expect(f.live.snapshot().attentionRead?.items.find(i => i.id === "human-update:update")?.summary).toBe("FYI two");
       expect(f.live.load()).toMatchObject({ stale: true, lastSuccessAt: 1000, retainedAt: 1000 });
       expect(f.live.snapshot().readErrors.join()).toContain(source);
-      // A following transport failure must retain the already merged source data.
+      // 后续传输失败必须保留已合并的源数据。
       f.status(503); f.advance(); await f.live.refresh();
       expect(f.live.snapshot().attentionRead?.items.some(i => i.id === failedId)).toBe(true);
       expect(f.live.load().lastSuccessAt).toBe(1000);
@@ -61,7 +61,7 @@ describe("declared Feed source failures", () => {
     } finally { f.live.close(); }
   });
 
-  it("retains open detail only on a declared failure, not successful removal or another scope", async () => {
+  it("仅在声明失败时保留打开详情，不在成功移除或其他 scope 时", async () => {
     const f = fixture("queue:request");
     try {
       await f.live.refresh();
@@ -81,7 +81,7 @@ describe("declared Feed source failures", () => {
     } finally { f.live.close(); }
   });
 
-  it("keeps a successful bounded partial window authoritative", async () => {
+  it("保持成功的有界部分窗口为权威", async () => {
     const f = fixture();
     try {
       await f.live.refresh();
@@ -107,7 +107,7 @@ describe("declared Feed source failures", () => {
     } finally { f.live.close(); }
   });
 
-  it("clears a definitively removed detail within the same page", async () => {
+  it("在同页内清除已确定移除的详情", async () => {
     const f = fixture("queue:request");
     try {
       await f.live.refresh();

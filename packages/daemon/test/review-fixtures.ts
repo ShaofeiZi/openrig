@@ -1,11 +1,9 @@
-// Living Notes Packet 2 — hand-authored fixture builders (OPR.0.4.4.20).
+// Living Notes Packet 2 —— 手工编写的 fixture 构建器（OPR.0.4.4.20）。
 //
-// Builds real on-disk slice fixtures conforming to the ratified convention
-// contracts: C1 proof-artifact headers (closed sets), C7 pinned spec name
-// (IMPLEMENTATION-PRD.md), the D2 `## Proof contract` section, and the
-// approval frontmatter stamps (Packet 1 FR-9 shape). Used by the composer
-// unit tests and by the proof-walk fixtures (two-regime walk, ledger
-// tracking-gap replay).
+// 构建符合已批准约定契约的真实磁盘切片 fixture：C1 proof-artifact 头（闭集）、
+// C7 固定规范名（IMPLEMENTATION-PRD.md）、D2 `## Proof contract` 章节，以及审批
+// frontmatter 标记（Packet 1 FR-9 结构）。供 composer 单元测试和 proof-walk
+// fixture（双阶段遍历、台账跟踪缺口重放）使用。
 
 import { mkdtempSync, writeFileSync, mkdirSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,7 +11,7 @@ import { join } from "node:path";
 import type { C1ArtifactType, C1Verdict } from "../src/domain/review/types.js";
 
 export interface FixtureWorkspace {
-  /** missions root (contains missions/<mission>/slices/<slice>). */
+  /** missions 根目录（包含 missions/<mission>/slices/<slice>）。 */
   root: string;
   missionDir(mission: string): string;
   sliceDir(mission: string, slice: string): string;
@@ -29,28 +27,28 @@ export function makeFixtureWorkspace(): FixtureWorkspace {
 }
 
 export interface SliceFixtureOpts {
-  /** Frontmatter id (dot-ID). */
+  /** Frontmatter ID（点分 ID）。 */
   id?: string;
   title?: string;
   status?: string;
-  /** Adds `ux-change: true`. */
+  /** 添加 `ux-change: true`。 */
   uxChange?: boolean;
-  /** Approval stamps (Packet 1 FR-9 frontmatter shape). */
+  /** 审批标记（Packet 1 FR-9 frontmatter 结构）。 */
   approvedBy?: string;
   approvedAt?: string;
   specApprovedBy?: string;
   specApprovedAt?: string;
   /** Corrective §3.1 — the pinned plan set (`locked-artifacts:` frontmatter list). */
   lockedArtifacts?: Array<{ name: string; path: string; kind: string }>;
-  /** README intent section body (verbatim-projected by FR-1). Omit to skip README. */
+  /** README 意图章节正文（由 FR-1 逐字投影）；省略则跳过 README。 */
   intent?: string;
   /**
-   * IMPLEMENTATION-PRD.md content controls:
-   *  - miniReqs: the pinned concise tier lines at the PRD top
-   *  - proofContract: `## Proof contract` checkbox items (D2)
-   *  - prdBody: extra body markdown
-   *  - prdCheckboxes: acceptance checkbox lines inside the PRD
-   * Omit `prd` entirely (prd: false) for a not-specced slice.
+   * IMPLEMENTATION-PRD.md 内容控制：
+   *  - miniReqs：PRD 顶部的固定简明层级行
+   *  - proofContract：`## Proof contract` 复选框项（D2）
+   *  - prdBody：额外正文 markdown
+   *  - prdCheckboxes：PRD 内的验收复选框行
+   * 对未规格化 slice 完全省略 `prd`（prd: false）。
    */
   prd?: false | {
     miniReqs?: string[];
@@ -58,9 +56,9 @@ export interface SliceFixtureOpts {
     prdCheckboxes?: Array<{ text: string; done?: boolean }>;
     prdBody?: string;
   };
-  /** PROGRESS.md checkbox lines (the conflicting-source fixture). */
+  /** PROGRESS.md 复选框行（冲突来源 fixture）。 */
   progressCheckboxes?: Array<{ text: string; done?: boolean }>;
-  /** README checkbox lines. */
+  /** README 复选框行。 */
   readmeCheckboxes?: Array<{ text: string; done?: boolean }>;
 }
 
@@ -69,7 +67,7 @@ function checkboxLines(items: Array<{ text: string; done?: boolean }> | undefine
   return items.map((i) => `- [${i.done ? "x" : " "}] ${i.text}`).join("\n") + "\n";
 }
 
-/** Writes a fixture slice dir; returns its absolute path. */
+/** 写入 fixture 切片目录并返回其绝对路径。 */
 export function writeFixtureSlice(
   ws: FixtureWorkspace,
   mission: string,
@@ -101,7 +99,7 @@ export function writeFixtureSlice(
       `---\n${fm.join("\n")}\n---\n\n# ${opts.title ?? slice}\n\n## Intent\n\n${opts.intent ?? ""}\n\n${checkboxLines(opts.readmeCheckboxes)}`,
     );
   } else {
-    // Frontmatter still needs a home for status/stamps even without intent.
+    // 即使没有意图内容，frontmatter 的状态/标记仍需承载文件。
     writeFileSync(join(dir, "README.md"), `---\n${fm.join("\n")}\n---\n\n# ${opts.title ?? slice}\n`);
   }
 
@@ -131,19 +129,19 @@ export interface ProofArtifactOpts {
   slice: string;
   candidateSha: string;
   artifactType: C1ArtifactType;
-  /** Pass an out-of-set string to fixture an invalid verdict; omit for a missing one. */
+  /** 传入集合外字符串以构造无效判定 fixture；省略则表示缺失。 */
   verdict?: C1Verdict | string;
   moneyEvidence?: string;
   evidences?: string[];
   selfCheck?: string;
-  /** Filename under proof/ (defaults to <artifactType>.md). */
+  /** proof/ 下的文件名（默认为 <artifactType>.md）。 */
   fileName?: string;
-  /** mtime for latest-wins ordering. */
+  /** 用于“最新优先”排序的 mtime。 */
   mtime?: Date;
   body?: string;
 }
 
-/** Drops a C1-headed proof artifact into <sliceDir>/proof/. */
+/** 将带 C1 头的证明产物写入 <sliceDir>/proof/。 */
 export function writeProofArtifact(sliceDir: string, opts: ProofArtifactOpts): string {
   const fm: string[] = [
     `slice: ${opts.slice}`,
@@ -161,7 +159,7 @@ export function writeProofArtifact(sliceDir: string, opts: ProofArtifactOpts): s
   return file;
 }
 
-/** The regime-1 fixture: all four independent gate verdicts passing for one candidate SHA. */
+/** 阶段 1 fixture：一个候选 SHA 的四项独立门禁判定全部通过。 */
 export function writeFullGateSet(
   sliceDir: string,
   slice: string,

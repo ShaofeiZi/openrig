@@ -18,21 +18,21 @@ export interface StatusDeps {
 }
 
 function formatSnapshotAge(snapshotAt: string | null): string {
-  if (!snapshotAt) return "none";
+  if (!snapshotAt) return "无";
   const now = Date.now();
   const then = new Date(snapshotAt).getTime();
   const diffMs = now - then;
   const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 1) return "刚刚";
+  if (diffMin < 60) return `${diffMin} 分钟前`;
   const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffHr < 24) return `${diffHr} 小时前`;
   const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
+  return `${diffDay} 天前`;
 }
 
 export function statusCommand(depsOverride?: StatusDeps): Command {
-  const cmd = new Command("status").description("Show rig status");
+  const cmd = new Command("status").description("显示工作组状态");
 
   cmd.action(async () => {
     const deps = depsOverride ?? {
@@ -43,86 +43,84 @@ export function statusCommand(depsOverride?: StatusDeps): Command {
     const status = await getDaemonStatus(deps.lifecycleDeps);
 
     if (status.state === "stopped" || status.state === "stale") {
-      console.log(statusGuardMessage(status).fact); // B8-1b: one language source
-      // P7 — crash-surviving lifecycle read: a clean stop recorded stopped_at; its
-      // ABSENCE (with a boot record) is a crash/kill-9/power-loss. SQLite survives a
-      // dead pid; daemon.json does not — so this reads the db, never daemon.json.
+      console.log(statusGuardMessage(status).fact); // B8-1b：单一语言来源
+      // P7 — 崩溃后仍可读取的生命周期信息：正常停止会记录 stopped_at；
+      // 若没有该记录但存在启动记录，则说明是崩溃/kill-9/断电。SQLite 在 pid
+      // 失效后仍可读取，daemon.json 不行——因此这里只读 db，绝不读 daemon.json。
       const life = readLifecycleDescription();
       if (life.kind === "clean-shutdown") {
-        console.log(`  cleanly shut down at ${life.stoppedAt}`);
+        console.log(`  已于 ${life.stoppedAt} 正常关闭`);
       } else if (life.kind === "no-clean-shutdown") {
-        console.log(`  ⚠ no clean shutdown recorded — last seen ${life.lastSeen}`);
+        console.log(`  ⚠ 未记录正常关闭——最后活动时间 ${life.lastSeen}`);
       }
       return;
     }
 
     // state === "running"
     if (status.healthy === false) {
-      console.log(`Daemon running (pid ${status.pid}) but unhealthy — healthz failed`);
+      console.log(`后台服务正在运行（pid ${status.pid}）但健康状态异常——healthz 检查失败`);
       return;
     }
 
     const client = deps.clientFactory(getDaemonUrl(status));
 
-    // Fetch summary + cmux + kernel readiness
+    // 拉取摘要 + cmux + 内核就绪状态
     const [summaryRes, cmuxRes, kernelRes] = await Promise.all([
       client.get<Array<{ id: string; name: string; nodeCount: number; latestSnapshotAt: string | null; latestSnapshotId: string | null }>>("/api/rigs/summary"),
       client.get<{ available: boolean }>("/api/adapters/cmux/status").catch(() => null),
       client.get<{ kernel_state?: string; error?: string }>("/api/kernel/status").catch(() => null),
     ]);
 
-    console.log(`Daemon running on port ${status.port}`);
+    console.log(`后台服务运行于端口 ${status.port}`);
 
-    // OPR.0.3.3.04.2 (AC-2): kernel readiness is a DISTINCT signal from daemon
-    // health - the kernel rig auto-boots on daemon-start, and a daemon can be up
-    // while the kernel is not yet ready (or a kernel agent is unhealthy). Surface
-    // it as "here's what's currently true," never as a guarantee that downstream
-    // agents are healthy.
+    // OPR.0.3.3.04.2 (AC-2)：内核就绪状态是与后台服务健康状态不同的信号——
+    // 内核工作组在后台服务启动时自动引导，后台服务已起来时内核可能尚未就绪
+    // （或内核内的智能体不健康）。这里只展示"当前真实状态"，绝不保证下游
+    // 智能体一定健康。
     if (kernelRes && kernelRes.status === 200 && kernelRes.data?.kernel_state) {
-      console.log(`Kernel: ${kernelRes.data.kernel_state} (boots on daemon-start; distinct from daemon health)`);
+      console.log(`内核：${kernelRes.data.kernel_state}（随后台服务启动自动引导；与后台服务健康状态是两个信号）`);
     } else if (kernelRes && kernelRes.status === 503) {
-      console.log("Kernel: not tracked (no kernel-boot tracker wired)");
+      console.log("内核：未跟踪（未接入内核引导跟踪器）");
     } else {
-      console.log("Kernel: unknown (status unavailable)");
+      console.log("内核：未知（状态不可用）");
     }
 
-    // OPR.0.3.3.04.2 (AC-2 / gap #7): surface WHICH workspace root is effective
-    // and whether it is the default or an override - the operator never guesses.
-    // This reports what is currently live, NOT that any root is the right one.
+    // OPR.0.3.3.04.2 (AC-2 / gap #7)：展示当前生效的工作区根目录，以及它
+    // 是默认值还是被覆盖——操作人员无需猜测。这里只报告当前生效的值，
+    // 不代表某个根目录就是"正确"的。
     try {
       const resolved = new ConfigStore().resolveWithSource("workspace.root");
-      const origin = resolved.source === "default" ? "default" : `override via ${resolved.source}`;
-      console.log(`Workspace root: ${resolved.value} (${origin})`);
+      const origin = resolved.source === "default" ? "默认值" : `来自 ${resolved.source} 的覆盖`;
+      console.log(`工作区根目录：${resolved.value}（${origin}）`);
     } catch {
-      // config resolution unavailable - omit rather than guess.
+      // 配置解析不可用——宁可省略也不猜测。
     }
 
     if (summaryRes.status !== 200) {
-      console.error(`Failed to fetch rig summary (HTTP ${summaryRes.status})`);
+      console.error(`工作组摘要获取失败（HTTP ${summaryRes.status}）`);
       process.exitCode = 1;
       return;
     }
 
     const rigs = summaryRes.data;
     if (rigs.length === 0) {
-      console.log("No rigs");
+      console.log("暂无工作组");
     } else {
-      console.log(`${rigs.length} rig(s):`);
+      console.log(`${rigs.length} 个工作组：`);
       for (const rig of rigs) {
         const snap = formatSnapshotAge(rig.latestSnapshotAt);
-        console.log(`  ${rig.name}  ${rig.nodeCount} node(s)  snapshot: ${snap}`);
+        console.log(`  ${rig.name}  ${rig.nodeCount} 个节点  快照：${snap}`);
       }
     }
 
-    // cmux status
+    // cmux 状态
     const cmuxAvailable = cmuxRes?.data?.available ?? false;
-    console.log(`cmux: ${cmuxAvailable ? "available" : "unavailable"}`);
+    console.log(`cmux：${cmuxAvailable ? "可用" : "不可用"}`);
 
-    // OPR.0.3.3.04.2 (AC-1): reinforcing HINT back to the one canonical ordered
-    // path - status does not re-author the sequence (that lives in `rig setup`
-    // next-steps + docs/reference/getting-started.md).
+    // OPR.0.3.3.04.2 (AC-1)：提示回到唯一的标准有序路径——status 不重新编排
+    // 流程顺序（顺序见 `zrig setup` 的后续步骤与 docs/reference/getting-started.md）。
     if (rigs.length === 0) {
-      console.log("\nNext: launch a rig with `rig up <rig-spec>`. Guided path: `rig setup` output or docs/reference/getting-started.md");
+      console.log(`\n下一步：用 \`zrig up <rig-spec>\` 启动工作组。引导路径：\`zrig setup\` 输出或 docs/reference/getting-started.md`);
     }
   });
 

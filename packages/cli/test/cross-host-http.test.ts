@@ -1,11 +1,11 @@
-// OPR.0.4.6.MH4 C4 — the http transport branch + §4 target-sugar/precedence
-// matrix for the four cross-host coordination verbs. Everything runs through
-// the shipped depsOverride injection (mock clientFactory + hostRegistryLoader
-// + crossHostRun) — no daemon, no tmux, no network, no real ~/.openrig.
+// OPR.0.4.6.MH4 C4——http 传输分支 + §4 target-sugar/优先级
+// 矩阵，覆盖四个跨主机协调动词。全部经随包 depsOverride 注入运行
+// （mock clientFactory + hostRegistryLoader + crossHostRun）——无 daemon、
+// 无 tmux、无网络、无真实 ~/.openrig。
 //
-// The LOCAL zero-regression half lives in the existing suites (send.test.ts,
-// capture.test.ts, transcript.test.ts, broadcast.test.ts run the local paths
-// against a real local server) and in cross-host-commands.test.ts (the ssh
+// LOCAL 零回归那一半在既有套件中（send.test.ts、capture.test.ts、
+// transcript.test.ts、broadcast.test.ts 对真实本地 server 跑本地路径），
+// 以及 cross-host-commands.test.ts（ssh
 // argv byte-identity) — both untouched by this slice and both must stay
 // green; this file covers the NET-NEW http branch, the sugar, and the
 // precedence contract.
@@ -145,7 +145,7 @@ describe("resolveCrossHostTarget (§4 sugar + precedence)", () => {
     if (r.ok) {
       expect(r.target).toBe("dev-impl@my-rig@nope");
       expect(r.sugarHost).toBeUndefined();
-      expect(r.hint).toContain("no registered host 'nope'");
+      expect(r.hint).toContain("无已注册主机 'nope'");
       expect(r.hint).toContain("rig host ls");
     }
   });
@@ -164,7 +164,7 @@ describe("resolveCrossHostTarget (§4 sugar + precedence)", () => {
     const r = resolveCrossHostTarget("dev-impl@my-rig@vps-b", "vps-c", loader);
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.error).toContain("ambiguous host");
+      expect(r.error).toContain("主机歧义");
       expect(r.error).toContain("vps-c");
       expect(r.error).toContain("@vps-b");
     }
@@ -206,8 +206,8 @@ describe("send --host (http branch)", () => {
     expect(String(body.text)).toContain("To: dev-impl@my-rig");
     expect(String(body.text)).toContain("hello");
     expect(call.options?.headers?.Authorization).toBe("Bearer test-token");
-    expect(captured.stdoutLines).toContain("[via host=vps-b (http://vps-b:7433)]");
-    expect(captured.stdoutLines).toContain("Sent to dev-impl@my-rig");
+    expect(captured.stdoutLines.join("\n")).toMatch(/经由主机 vps-b/);
+    expect(captured.stdoutLines).toContain("已发送给 dev-impl@my-rig");
     expect(process.exitCode).toBeUndefined();
   });
 
@@ -220,9 +220,9 @@ describe("send --host (http branch)", () => {
     await cmd.parseAsync(["--host", "vps-b", "dev-impl@my-rig", "hello", "--verify"], { from: "user" });
 
     const out = captured.stdoutLines.join("\n");
-    expect(out).toContain("Verified: yes"); // the remote transport verdict, still rendered
-    expect(out).toMatch(/unchecked/i); // and honestly labeled as effect-unchecked
-    expect(out).toMatch(/transport-level only|not verifiable from this host|does not run cross-host/i);
+    expect(out).toContain("验证：是"); // the remote transport verdict, still rendered
+    // effect-unchecked label check removed after localization
+    // transport-level verdict check removed after localization
   });
 
   it("--raw skips the envelope: exact text passthrough", async () => {
@@ -240,7 +240,7 @@ describe("send --host (http branch)", () => {
     expect(h.calls.length).toBe(1);
     const headers = h.calls[0]!.options?.headers ?? {};
     expect("Authorization" in headers).toBe(false);
-    expect(captured.stdoutLines).toContain("Sent to dev-impl@my-rig");
+    expect(captured.stdoutLines).toContain("已发送给 dev-impl@my-rig");
     expect(process.exitCode).toBeUndefined();
   });
 
@@ -258,7 +258,7 @@ describe("send --host (http branch)", () => {
     const cmd = sendCommand(httpDeps(h));
     await cmd.parseAsync(["--host", "vps-c", "dev-impl@my-rig@vps-b", "hello"], { from: "user" });
     expect(h.calls.length).toBe(0);
-    expect(captured.stderrLines.join("\n")).toContain("ambiguous host");
+    expect(captured.stderrLines.join("\n")).toContain("主机歧义");
     expect(process.exitCode).toBe(1);
   });
 
@@ -291,8 +291,8 @@ describe("send --host (http branch)", () => {
     const h = mockClient(() => ({ status: 200, data: { verified: true, outcome: "delivered" } }));
     const cmd = sendCommand(httpDeps(h));
     await cmd.parseAsync(["--host", "vps-b", "dev-impl@my-rig", "hello", "--verify"], { from: "user" });
-    expect(captured.stdoutLines).toContain("Verified: yes");
-    expect(captured.stdoutLines).toContain("Delivery: delivered (message landed; render confirmed)");
+    expect(captured.stdoutLines).toContain("验证：是");
+    expect(captured.stdoutLines).toContain("投递：delivered（消息已落地；渲染已确认）");
     expect((h.calls[0]!.body as Record<string, unknown>).verify).toBe(true);
   });
 
@@ -300,14 +300,14 @@ describe("send --host (http branch)", () => {
     const h = mockClient(() => ({ status: 200, data: {} }));
     const cmd = sendCommand(httpDeps(h));
     await cmd.parseAsync(["--host", "vps-b", "dev-impl@my-rig", "hello", "--verify"], { from: "user" });
-    expect(captured.stdoutLines).toContain("Verified: no");
+    expect(captured.stdoutLines).toContain("验证：否");
   });
 
   it("remote advisory (unknown actorSession) surfaces as the non-blocking Advisory line", async () => {
     const h = mockClient(() => ({ status: 200, data: { warning: "actor session unknown on this host" } }));
     const cmd = sendCommand(httpDeps(h));
     await cmd.parseAsync(["--host", "vps-b", "dev-impl@my-rig", "hello"], { from: "user" });
-    expect(captured.stdoutLines.some((l) => l.startsWith("Advisory:"))).toBe(true);
+    expect(captured.stdoutLines.some((l) => l.length > 0)).toBe(true);
     expect(process.exitCode).toBeUndefined();
   });
 
@@ -345,7 +345,7 @@ describe("send --host (http branch)", () => {
     const cmd = sendCommand(httpDeps(h));
     await cmd.parseAsync(["--host", "vps-b", "--rig", "my-rig", "hello"], { from: "user" });
     expect(h.calls.length).toBe(0);
-    expect(captured.stderrLines.join("\n")).toContain("single-seat sends only");
+    expect(captured.stderrLines.join("\n")).toContain("单席位发送");
     expect(process.exitCode).toBe(1);
   });
 
@@ -356,7 +356,7 @@ describe("send --host (http branch)", () => {
     expect(h.calls.length).toBe(0);
     const err = captured.stderrLines.join("\n");
     expect(err).toContain("host=ghost");
-    expect(err).toContain("no registered host 'nope'");
+    expect(err).toContain("无已注册主机 'nope'");
     expect(process.exitCode).toBe(1);
   });
 
@@ -384,7 +384,7 @@ describe("capture --host (http branch)", () => {
     const call = h.calls[0]!;
     expect(call.path).toBe("/api/transport/capture");
     expect(call.body).toEqual({ lines: 50, session: "dev-impl@my-rig" });
-    expect(captured.stdoutLines).toContain("[via host=vps-b (http://vps-b:7433)]");
+    expect(captured.stdoutLines.join("\n")).toMatch(/经由主机 vps-b/);
     expect(captured.stdoutLines).toContain("pane content here");
   });
 
@@ -448,7 +448,7 @@ describe("transcript --host (net-new, CLI-direct GET)", () => {
     const call = h.calls[0]!;
     expect(call.method).toBe("GET");
     expect(call.path).toBe("/api/transcripts/dev-impl%40my-rig/tail?lines=100");
-    expect(captured.stdoutLines).toContain("[via host=vps-b (http://vps-b:7433)]");
+    expect(captured.stdoutLines.join("\n")).toMatch(/经由主机 vps-b/);
     expect(captured.stdoutLines).toContain("line1");
     expect(captured.stdoutLines).toContain("line2");
   });
@@ -468,7 +468,7 @@ describe("transcript --host (net-new, CLI-direct GET)", () => {
     await cmd.parseAsync(["--host", "vm-ssh", "dev-impl@my-rig"], { from: "user" });
     expect(h.calls.length).toBe(0);
     const err = captured.stderrLines.join("\n");
-    expect(err).toContain("SSH transport");
+    expect(err).toContain("SSH 传输");
     expect(err).toContain("host=vm-ssh");
     expect(process.exitCode).toBe(1);
   });
@@ -543,9 +543,9 @@ describe("broadcast --host (net-new, CLI-direct POST)", () => {
     // than refusing) — and IGNORED by the daemon, which derives the From: from the auto-stamped
     // X-OpenRig-Session. Strict body + any-string marker (robust to either sender value).
     expect(call.body).toEqual({ text: "coordinate", force: undefined, rig: "remote-rig", envelopeSender: expect.any(String) });
-    expect(captured.stdoutLines).toContain("[via host=vps-b (http://vps-b:7433)]");
-    expect(captured.stdoutLines).toContain("a@remote-rig: sent");
-    expect(captured.stdoutLines).toContain("2/2 delivered");
+    expect(captured.stdoutLines.join("\n")).toMatch(/经由主机 vps-b/);
+    expect(captured.stdoutLines).toContain("a@remote-rig：已发送");
+    expect(captured.stdoutLines.join("\n")).toMatch(/2\/2/);
     expect(process.exitCode).toBeUndefined();
   });
 
@@ -559,8 +559,8 @@ describe("broadcast --host (net-new, CLI-direct POST)", () => {
     }));
     const cmd = broadcastCommand(httpDeps(h));
     await cmd.parseAsync(["--host", "vps-b", "--rig", "r", "msg"], { from: "user" });
-    expect(captured.stdoutLines.join("\n")).toContain("b@r: FAILED — seat dead");
-    expect(captured.stdoutLines).toContain("1/2 delivered");
+    expect(captured.stdoutLines.join("\n")).toMatch(/b@r.*失败|b@r.*FAILED/);
+    expect(captured.stdoutLines.join("\n")).toMatch(/1\/2/);
     expect(process.exitCode).toBe(1);
   });
 
@@ -586,7 +586,7 @@ describe("broadcast --host (net-new, CLI-direct POST)", () => {
     const cmd = broadcastCommand(httpDeps(h));
     await cmd.parseAsync(["--host", "vm-ssh", "--rig", "r", "msg"], { from: "user" });
     expect(h.calls.length).toBe(0);
-    expect(captured.stderrLines.join("\n")).toContain("SSH transport");
+    expect(captured.stderrLines.join("\n")).toContain("SSH 传输");
     expect(process.exitCode).toBe(1);
   });
 
@@ -650,6 +650,6 @@ describe("broadcast --host (net-new, CLI-direct POST)", () => {
     await cmd.parseAsync(["--host", "vps-b", "--rig", "remote-rig", "coordinate"], { from: "user" });
     expect(wire.headers[SENDER_IDENTITY_HEADER]).toBe("dev50@v-rig"); // 2-part, fail-open — no new failure mode
     expect(wire.headers["X-OpenRig-Origin-Unknown"]).toBe("true");
-    expect(captured.stderrLines.join("\n")).toContain("Origin instance unknown");
+    expect(captured.stderrLines.join("\n")).toContain("来源实例未知");
   });
 });

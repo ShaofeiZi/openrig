@@ -9,7 +9,7 @@ export class WorkflowHumanDestinationError extends Error {
   }
 }
 
-/** The existing operator selection, resolved afresh only when a human is needed. */
+/** 现有操作员选择，仅在需要人工时重新解析。 */
 export function resolveWorkflowHumanDestination(
   configured: () => unknown = () => new SettingsStore().resolveOne("workspace.operator_seat_name").value,
   registry: () => LoadResult = loadHumanRegistry,
@@ -21,7 +21,7 @@ export function resolveWorkflowHumanDestination(
     loaded = registry();
   } catch (error) {
     throw new WorkflowHumanDestinationError({ state: "unavailable" },
-      `Workflow human selection is unavailable: ${error instanceof Error ? error.message : String(error)}`);
+      `Workflow 人工选择不可用：${error instanceof Error ? error.message : String(error)}`);
   }
   if (!loaded.ok) {
     throw new WorkflowHumanDestinationError({ state: "registry-unavailable" }, loaded.error);
@@ -31,14 +31,14 @@ export function resolveWorkflowHumanDestination(
     const address = resolveRegisteredHumanAddress(selected.trim(), loaded.entities);
     if (address) return address;
     throw new WorkflowHumanDestinationError({ state: "unregistered", selected, addresses },
-      "workspace.operator_seat_name does not select a registered human. Inspect rig gateway human list --json and select the intended registered address.");
+      "workspace.operator_seat_name 未选择已注册 human。请检查 zrig gateway human list --json，并选择目标注册地址。");
   }
   if (addresses.length === 1) return addresses[0]!;
   throw new WorkflowHumanDestinationError({ state: addresses.length ? "ambiguous" : "missing", addresses },
-    "Workflow human fallback needs one registered human. Inspect rig gateway human list --json; when several exist, explicitly select workspace.operator_seat_name. No human destination was invented.");
+    "Workflow 人工 fallback 需要一名已注册 human。请检查 zrig gateway human list --json；存在多名时显式选择 workspace.operator_seat_name。未虚构任何人工目标。");
 }
 
-/** Explicit injected destinations remain available to embedders and isolated fixtures. */
+/** 显式注入的目标仍可供嵌入方和隔离 fixture 使用。 */
 export type WorkflowHumanDestination = string | (() => string);
 export function workflowHumanDestination(selection: WorkflowHumanDestination = resolveWorkflowHumanDestination): string {
   return typeof selection === "function" ? selection() : selection;

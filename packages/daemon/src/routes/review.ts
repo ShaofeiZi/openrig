@@ -1,16 +1,16 @@
-// Living Notes Packet 2 — the composed-review route family (OPR.0.4.4.20).
+// Living Notes Packet 2——composed-review 路由族（OPR.0.4.4.20）。
 //
-// Endpoints (ONE contract, all consumers — slice Review tab, U5 mission-board
-// expansion, For-You expansion):
+// 端点（单一契约，服务所有消费方——slice Review 标签页、U5 mission-board
+// 扩展、For-You 扩展）：
 //   GET /api/review/slice/:name        — ComposedSliceReview
 //   GET /api/review/mission/:name      — ComposedMissionReview
-//   GET /api/review/agents?scope=...   — AgentsBand; scope is the THREE-VALUED
-//                                        parameter slice:<id> | mission:<id> | rig
-//                                        (never a second endpoint per consumer).
+//   GET /api/review/agents?scope=...   — AgentsBand；scope 是三值参数
+//                                        slice:<id> | mission:<id> | rig
+//                                        （绝不为每个消费方单独加端点）。
 //
-// Git lineage facts come from the repo at OPENRIG_REVIEW_GIT_REPO when set;
-// otherwise lineage degrades honestly to "unknown" (the composer renders the
-// three N1 facts with what it has — never a remembered claim).
+// Git 谱系事实在设置 OPENRIG_REVIEW_GIT_REPO 时来自该 repo；
+// 否则谱系诚实地降级为 "unknown"（composer 用它手头的东西渲染三个 N1
+// 事实——绝不凭记忆下断言）。
 
 import { Hono } from "hono";
 import { proofSourceObservation } from "../domain/proof/source-watch.js";
@@ -50,7 +50,7 @@ export function reviewRoutes(): Hono {
       return c.json(
         {
           error: "scope_invalid",
-          hint: "scope must be one of: slice:<id> | mission:<id> | rig",
+          hint: "scope 必须为以下之一：slice:<id> | mission:<id> | rig",
         },
         400,
       );
@@ -60,26 +60,23 @@ export function reviewRoutes(): Hono {
     return c.json(band);
   });
 
-  // OPR.0.4.4.22 — the rig-scope standalone altitude root (FR-1..FR-4):
-  // NEEDS YOU + AGENTS (health line) + SETTLED, same contract family as
-  // /slice/:name and /mission/:name. Read-only pure projection; the panel's
-  // standing cost is queue+ps only (drill-in rides the SHIPPED transcript
-  // routes — zero new routes for reading panes, per FR-6).
+  // OPR.0.4.4.22——rig 范围的独立 altitude 根（FR-1..FR-4）：
+  // NEEDS YOU + AGENTS（health 行）+ SETTLED，与 /slice/:name、/mission/:name
+  // 同属一个契约族。只读纯投影；面板的常驻开销仅 queue+ps
+  // （下钻走已交付的 transcript 路由——按 FR-6，读取面板零新增路由）。
   app.get("/rig", (c) => {
     const gatherer = getGatherer(c);
     if (!gatherer) return c.json({ error: "review_composer_unavailable" }, 503);
     return c.json(gatherer.composeRig());
   });
 
-  // OPR.0.4.6.MH5 — the FLEET aggregate root (arch Q2: a SIBLING aggregate
-  // beside this family, never a fourth AgentsScope value). Fans out each
-  // registered host's OWN composed rig root and unions + host-dimensions +
-  // counts (arch Q1 — exception truth is never recomputed here); the LOCAL
-  // host joins in-process via the same gatherer this family uses (D-1).
-  // Read + surface only (FR-5); bearers stay server-side (the fan-out is
-  // daemon-side like the shipped feed aggregate). Registry access rides the
-  // same DI style as /api/queue/attention-aggregate — tests inject a
-  // loader/probe; production falls back to the shared S11 reader.
+  // OPR.0.4.6.MH5——FLEET 聚合根（arch Q2：与本族并列的兄弟聚合，
+  // 绝不是第四个 AgentsScope 值）。扇出每个已注册 host 自己的 composed rig 根，
+  // 做并集 + host 维度 + 计数（arch Q1——异常真相绝不在此重算）；本地 host
+  // 通过本族使用的同一个 gatherer 进程内加入（D-1）。
+  // 只读 + 只展示（FR-5）；bearer 留在服务端（扇出在后台服务侧，
+  // 与已交付的 feed 聚合一致）。Registry 访问走与 /api/queue/attention-aggregate
+  // 相同的 DI 风格——测试注入 loader/probe；生产回退到共享的 S11 reader。
   app.get("/fleet", async (c) => {
     const gatherer = getGatherer(c);
     if (!gatherer) return c.json({ error: "review_composer_unavailable" }, 503);
@@ -89,7 +86,7 @@ export function reviewRoutes(): Hono {
       composeLocalRig: () => gatherer.composeRig(),
       loadRegistry: registryLoader,
       registryExists: registryProbe,
-      // View time enters at the edge; the union never derives host time state.
+      // 视图时间在边缘进入；并集从不派生 host 时间状态。
       nowIso: new Date().toISOString(),
     });
     return c.json(fleet);
@@ -111,10 +108,9 @@ export function reviewRoutes(): Hono {
     return c.json({ ...composed, sourceObservation: proofSourceObservation(c) });
   });
 
-  // FR-6 — the ONE synchronous compose-and-freeze endpoint (the P1/P2
-  // interface cell). Invoked by the approve flow AFTER the stamp + audit
-  // row commit; a failed render never un-approves and re-invocation is
-  // idempotent. No watcher loop, no polling — deliberate, low-frequency.
+  // FR-6——唯一的同步 compose-and-freeze 端点（P1/P2 接口单元）。
+  // 由 approve 流程在 stamp + audit 行提交之后调用；渲染失败绝不取消批准，
+  // 重复调用幂等。无 watcher 循环、无轮询——刻意低频。
   app.post("/freeze", async (c) => {
     const gatherer = getGatherer(c);
     if (!gatherer) return c.json({ error: "review_composer_unavailable" }, 503);
@@ -124,7 +120,7 @@ export function reviewRoutes(): Hono {
       return c.json(
         {
           error: "file_write_service_unavailable",
-          hint: "the freeze write path is allowlist-governed; set OPENRIG_FILES_ALLOWLIST=name:/abs/path and restart the daemon",
+          hint: "freeze 写路径受白名单管控；请设置 OPENRIG_FILES_ALLOWLIST=name:/abs/path 并重启后台服务",
         },
         503,
       );
@@ -136,14 +132,14 @@ export function reviewRoutes(): Hono {
       return c.json({ error: "body_invalid", hint: 'POST JSON {"scope":"slice","name":"<slice>","actor":"<session>"}' }, 400);
     }
     if (body.scope !== "slice" || !body.name) {
-      // Mission-tier freeze rides the same path once mission approval ships
-      // end-to-end (Packet 1 FR-9 mission semantics); slice is the v1 surface.
-      return c.json({ error: "freeze_request_invalid", hint: 'required: {"scope":"slice","name":"<slice>","actor":"<session>"}' }, 400);
+      // 一旦 mission 审批端到端交付（Packet 1 FR-9 mission 语义），mission 级 freeze 走同一路径；
+      // slice 是 v1 表面。
+      return c.json({ error: "freeze_request_invalid", hint: '必填: {"scope":"slice","name":"<slice>","actor":"<session>"}' }, 400);
     }
-    // P21 I5: review freeze is a founder-visible surface — resolveActorWithDeferral, P18 deliver-and-label:
-    // header present ⇒ derive + transport:v1, the wire SUPERSEDES a mismatched body (409 retired, ruling A);
-    // header absent (browser UI) ⇒ claimed:v1, never-break.
-    const identity = resolveActorWithDeferral(c, { verb: "review freeze", bodyClaim: body.actor });
+    // P21 I5：review freeze 是创始人可见表面——resolveActorWithDeferral，P18 deliver-and-label：
+    // 头存在 ⇒ 推导 + transport:v1，线路优先于不匹配的 body（409 已退役，裁决 A）；
+    // 头缺失（浏览器 UI）⇒ claimed:v1，不中断。
+    const identity = resolveActorWithDeferral(c, { verb: "review 冻结", bodyClaim: body.actor });
     if (!identity.ok) return identity.response;
     const ctx = gatherer.composeSliceWithContext(body.name);
     if (!ctx) return c.json({ error: "slice_not_found", name: body.name }, 404);
@@ -161,10 +157,9 @@ export function reviewRoutes(): Hono {
       return c.json({ error: outcome.error, message: outcome.message, hint: outcome.hint }, status);
     }
 
-    // FR-8: the freeze IS one of the two deliberate brief-write moments —
-    // fold the generated status spine into MISSION_BRIEF.md, section-scoped,
-    // schema-order-preserving. Best-effort: a brief-write failure never
-    // un-freezes (the export + stamp already stand); it surfaces as a warning.
+    // FR-8：freeze 本就是两个刻意的 brief 写入时刻之一——
+    // 把生成的 status spine 折进 MISSION_BRIEF.md，按 section 范围、保持 schema 顺序。
+    // 尽力而为：brief 写失败绝不取消 freeze（export + stamp 已成立）；它以 warning 形式显现。
     let briefWrite: string | null = null;
     if (!outcome.alreadyFrozen && ctx.composed.missionId) {
       try {
@@ -173,12 +168,12 @@ export function reviewRoutes(): Hono {
         if (mission && target) {
           const applied = applyBriefSpine(target.content, mission.briefSpine);
           if (applied === null) {
-            briefWrite = "skipped: MISSION_BRIEF.md does not carry the pinned exact-order schema (generation never guess-rewrites a malformed brief)";
+            briefWrite = "已跳过：MISSION_BRIEF.md 不含被锁定的精确顺序 schema（生成绝不猜测重写格式错误的 brief）";
           } else if (applied !== target.content) {
             const stat = fs.statSync(target.briefPath);
             const mapped = resolveAllowlisted(allowlist, path.dirname(target.briefPath));
             if (!mapped) {
-              briefWrite = "skipped: mission folder not under OPENRIG_FILES_ALLOWLIST";
+              briefWrite = "已跳过：mission 文件夹不在 OPENRIG_FILES_ALLOWLIST 之下";
             } else {
               writeService.writeAtomic({
                 rootName: mapped.root,
@@ -189,14 +184,14 @@ export function reviewRoutes(): Hono {
                 actor: identity.session,
                 identityProvenance: identity.provenance,
               });
-              briefWrite = "spine updated";
+              briefWrite = "spine 已更新";
             }
           } else {
-            briefWrite = "spine unchanged";
+            briefWrite = "spine 无变化";
           }
         }
       } catch (err) {
-        briefWrite = `failed (freeze unaffected): ${err instanceof Error ? err.message : String(err)}`;
+        briefWrite = `失败（freeze 不受影响）：${err instanceof Error ? err.message : String(err)}`;
       }
     }
 

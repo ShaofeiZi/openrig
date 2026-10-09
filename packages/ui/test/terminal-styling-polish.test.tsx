@@ -1,7 +1,7 @@
-// OPR.0.4.0.1 terminal STYLING polish: the smoked-glass CONTENT (live + static) +
-// borderless + measured LIVE width + FR-5 grid expand-out. The bare-surface smoke
-// must come from the SHARED layer (ProgressiveTerminal static plate + FocusedTerminal
-// bg), not only the popover/shell plate -- so it reaches the truly-bare surfaces.
+// OPR.0.4.0.1 终端 STYLING 打磨：烟熏玻璃 CONTENT（live + static）+
+// 无边框 + 实测 LIVE 宽度 + FR-5 网格展开。裸表面烟熏
+// 必须来自共享层（ProgressiveTerminal static plate + FocusedTerminal
+// bg），而非仅 popover/shell plate——使其到达真裸表面。
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
@@ -40,20 +40,20 @@ describe("OPR.0.4.0.1 terminal styling polish", () => {
       </LiveTerminalProvider>,
     );
     const staticBtn = screen.getByTestId("t-static");
-    // the bare-surface static view carries its OWN smoked-glass plate (FR-4) ...
+    // 裸表面 static 视图自带其烟熏玻璃板（FR-4）……
     expect(staticBtn.className).toContain("bg-stone-950/85");
     expect(staticBtn.className).toContain("backdrop-blur-sm");
-    // ... and is BORDERLESS (FR-2 floating plate, not a bordered box)
+    // ……且无边框（FR-2 浮动板，非带边框盒子）
     expect(staticBtn.className).not.toContain("border");
-    // the borderless + transparent compact-terminal variant is used (FR-1/FR-2)
+    // 用无边框 + 透明 compact-terminal 变体（FR-1/FR-2）
     expect(screen.getByTestId("preview-a@r").getAttribute("data-variant")).toBe("compact-terminal");
   });
 
   it("FR-1: the LIVE terminal keeps an opaque xterm render surface so erase/redraw is cursor-safe", () => {
     const s = src("../src/components/terminal/FocusedTerminal.tsx");
-    // OPR.0.4.0.39: the geometry constants moved to terminal-geometry.ts (the single
-    // source of truth shared by the static<->live mirror). FocusedTerminal imports +
-    // uses them; the opaque / 90x27 / lineHeight-1 contract is unchanged.
+    // OPR.0.4.0.39：几何常量迁到 terminal-geometry.ts（static<->live 镜像共享的
+    // 单一真相源）。FocusedTerminal import + 使用它们；不透明 / 90x27 /
+    // lineHeight-1 契约不变。
     const geo = src("../src/components/terminal/terminal-geometry.ts");
     expect(geo).toContain('export const LIVE_TERMINAL_RENDER_BACKGROUND = "#0c0a09"');
     expect(geo).toContain("export const LIVE_TERMINAL_COLS = 90");
@@ -80,9 +80,8 @@ describe("OPR.0.4.0.1 terminal styling polish", () => {
 
   it("OPR.0.4.0.39 (founder spec): the popover sizes to the canonical geometry (w-max shell, LIVE_TERMINAL_COLS-ch inner), no hardcoded plate width, no redundant opaque bg", () => {
     const s = src("../src/components/topology/TerminalPreviewPopover.tsx");
-    // The shell sizes to its content (w-max) and the inner is the canonical geometry
-    // width (LIVE_TERMINAL_COLS ch) - tracks the column count, no reshape, no loose
-    // empty width, no hardcoded 880/904 plate.
+    // shell 按内容定尺寸（w-max），内部是规范几何宽度
+    //（LIVE_TERMINAL_COLS ch）——追踪列数，无 reshape、无松空宽度、无硬编码 880/904 板。
     expect(s).toContain("w-max");
     expect(s).toContain("LIVE_TERMINAL_COLS");
     expect(s).not.toContain("w-[880px]");
@@ -92,8 +91,8 @@ describe("OPR.0.4.0.1 terminal styling polish", () => {
   });
 
   it("OPR.0.4.0.39 (founder spec, REVERSES slice-01 FR-5): the topology grid card mounts the in-place ProgressiveTerminal, NOT the TerminalPreviewPopover trigger", () => {
-    // Founder live-review reversed the popover-expand-out for the grid (and all
-    // surfaces): the static IS the in-place click-to-live target.
+    // Founder live-review 反转了网格（及所有表面）的 popover 展开：
+    // static 就是原位 click-to-live 目标。
     const s = src("../src/components/topology/TopologyTerminalView.tsx");
     expect(s).toContain("import { ProgressiveTerminal }");
     expect(s).not.toContain("TerminalPreviewPopover");
@@ -101,38 +100,38 @@ describe("OPR.0.4.0.1 terminal styling polish", () => {
 
   it("OPR.0.4.0.39 (node-detail fit): ScaleToFitTerminal has a 'contain' mode (fill both axes, capped upscale, centered) that the node-detail panel opts into; the grid keeps fit-width", () => {
     const scaler = src("../src/components/terminal/ScaleToFitTerminal.tsx");
-    // contain fits BOTH axes (min of width/height ratios), allows a CAPPED upscale,
-    // and centers - so a big dedicated panel is filled, not left small top-left.
+    // contain 双轴适配（宽/高比的 min），允许有上限放大，
+    // 且居中——使大专用面板被填满，而非小留左上。
     expect(scaler).toContain('fit?: "width" | "contain"');
     expect(scaler).toContain("MAX_CONTAIN_SCALE");
     expect(scaler).toContain("availableHeight / naturalHeight");
     expect(scaler).toContain("items-center justify-center");
-    // ProgressiveTerminal forwards `fit` to BOTH the static + live scalers (mirror).
+    // ProgressiveTerminal 把 `fit` 转发给 static + live 两个 scaler（镜像）。
     const prog = src("../src/components/terminal/ProgressiveTerminal.tsx");
     expect(prog).toContain('fit?: "width" | "contain"');
     expect((prog.match(/fit=\{fit\}/g) ?? []).length).toBeGreaterThanOrEqual(2);
-    // The node-detail panel (big 500px area) opts into contain; the grid does NOT
-    // (it keeps the default fit-width so cells never upscale).
+    // node-detail 面板（大 500px 区域）选用 contain；grid 不选
+    //（保持默认 fit-width，使 cell 永不上放大）。
     expect(src("../src/components/LiveNodeDetails.tsx")).toContain('fit="contain"');
     expect(src("../src/components/topology/TopologyTerminalView.tsx")).not.toContain('fit="contain"');
   });
 
   it("OPR.0.4.0.39 (selection fix #6023): the LIVE xterm scales via fontSize, NOT a CSS transform, so xterm selection/click hit-testing stays native-correct", () => {
     const focused = src("../src/components/terminal/FocusedTerminal.tsx");
-    // FocusedTerminal sizes the live xterm by SETTING term fontSize to fit its
-    // container (no CSS transform on the xterm) - the maintainer-blessed fix for #6023.
+    // FocusedTerminal 通过设置 term fontSize 以适配其容器来定 live xterm 尺寸
+    //（xterm 上无 CSS transform）——#6023 的 maintainer 认可修复。
     expect(focused).toContain('fit?: "natural" | "width" | "contain"');
     expect(focused).toContain("options.fontSize");
     expect(focused).toContain("MAX_FIT_UPSCALE");
     expect(focused).toContain("#6023");
-    // The live xterm must NOT be CSS-transform-scaled (that's what breaks selection).
+    // live xterm 不得被 CSS transform 缩放（那会破坏 selection）。
     expect(focused).not.toContain("transform: `scale");
     expect(focused).not.toContain("transformOrigin");
-    // ProgressiveTerminal's LIVE branch renders FocusedTerminal with fit (fontSize),
-    // NOT wrapped in the transform-based ScaleToFitTerminal (static plate only).
+    // ProgressiveTerminal 的 LIVE 分支渲染带 fit（fontSize）的 FocusedTerminal，
+    // 不包在基于 transform 的 ScaleToFitTerminal 里（仅 static plate）。
     const prog = src("../src/components/terminal/ProgressiveTerminal.tsx");
     expect(prog).toContain("<FocusedTerminal sessionName={sessionName} fit={fit}");
-    // ScaleToFitTerminal (CSS transform) is still imported + used - for the STATIC plate.
+    // ScaleToFitTerminal（CSS transform）仍被 import + 使用——用于 STATIC plate。
     expect(prog).toContain("ScaleToFitTerminal");
   });
 });

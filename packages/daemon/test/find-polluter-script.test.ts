@@ -20,11 +20,11 @@ function fixture(files: string[], mode = "clean", prior = false) {
  return { ...result, calls };
 }
 describe("polluter search reports observed execution", () => {
- it("does not certify an empty selection", () => { const r=fixture([]); expect(r.status).toBe(2); expect(r.stdout).toContain("no tests ran"); expect(r.calls).toEqual([]); });
- it("does not hide a discovery command failure", () => { const r=fixture(["one.test.ts"],"find-fail"); expect(r.status).toBe(2); expect(r.stdout).toContain("selection failed"); expect(r.calls).toEqual([]); });
- it("counts and executes one matching file", () => { const r=fixture(["one.test.ts"]); expect(r.status).toBe(0); expect(r.stdout).toContain("Found 1 test files"); expect(r.calls).toEqual(["./src/one.test.ts"]); });
- it("keeps spaces in filenames and counts two files", () => { const r=fixture(["one test.test.ts","two.test.ts"]); expect(r.status).toBe(0); expect(r.stdout).toContain("Found 2 test files"); expect(r.calls).toEqual(["./src/one test.test.ts","./src/two.test.ts"]); });
- it("reports the causal polluter and stops", () => { const r=fixture(["one.test.ts","two.test.ts"],"dirty"); expect(r.status).toBe(1); expect(r.stdout).toContain("FOUND POLLUTER"); expect(r.calls).toEqual(["./src/one.test.ts"]); });
- it("does not treat a failing test as a clean pass", () => { const r=fixture(["one.test.ts"],"fail"); expect(r.status).toBe(2); expect(r.stdout).toContain("1 test runs failed"); expect(r.stdout).not.toContain("all tests clean"); });
- it("refuses preexisting pollution without running tests", () => { const r=fixture(["one.test.ts"],"clean",true); expect(r.status).toBe(2); expect(r.stdout).toContain("before"); expect(r.calls).toEqual([]); });
+ it("空选择不能被认证为成功", () => { const r=fixture([]); expect(r.status).toBe(2); expect(r.stdout).toContain("未运行任何测试"); expect(r.calls).toEqual([]); });
+ it("不会隐藏发现命令失败", () => { const r=fixture(["one.test.ts"],"find-fail"); expect(r.status).toBe(2); expect(r.stdout).toContain("测试选择失败"); expect(r.calls).toEqual([]); });
+ it("统计并执行一个匹配文件", () => { const r=fixture(["one.test.ts"]); expect(r.status).toBe(0); expect(r.stdout).toContain("找到 1 个测试文件"); expect(r.calls).toEqual(["./src/one.test.ts"]); });
+ it("保留文件名中的空格并统计两个文件", () => { const r=fixture(["one test.test.ts","two.test.ts"]); expect(r.status).toBe(0); expect(r.stdout).toContain("找到 2 个测试文件"); expect(r.calls).toEqual(["./src/one test.test.ts","./src/two.test.ts"]); });
+ it("报告真正的污染源并停止", () => { const r=fixture(["one.test.ts","two.test.ts"],"dirty"); expect(r.status).toBe(1); expect(r.stdout).toContain("找到污染源"); expect(r.calls).toEqual(["./src/one.test.ts"]); });
+ it("不会把失败测试视为干净通过", () => { const r=fixture(["one.test.ts"],"fail"); expect(r.status).toBe(2); expect(r.stdout).toContain("1 次测试运行失败"); expect(r.stdout).not.toContain("所有测试均干净"); });
+ it("存在预先污染时拒绝运行测试", () => { const r=fixture(["one.test.ts"],"clean",true); expect(r.status).toBe(2); expect(r.stdout).toContain("测试前污染目标已存在"); expect(r.calls).toEqual([]); });
 });

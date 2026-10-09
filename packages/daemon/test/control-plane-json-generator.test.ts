@@ -22,8 +22,8 @@ afterEach(() => {
   }
 });
 
-describe("control-plane JSON generator", () => {
-  it("exposes the daemon-workspace generation command without a root YAML dependency", () => {
+describe("控制平面 JSON 生成器", () => {
+  it("公开守护进程工作区生成命令，且不依赖根级 YAML", () => {
     const daemonPackage = JSON.parse(
       readFileSync(join(REPO_ROOT, "packages/daemon/package.json"), "utf8"),
     );
@@ -39,7 +39,7 @@ describe("control-plane JSON generator", () => {
     expect(rootPackage.devDependencies?.yaml).toBeUndefined();
   });
 
-  it("parses canon YAML and emits deterministic JSON plus edge digests", async () => {
+  it("解析标准 YAML，并生成确定性 JSON 与边摘要", async () => {
     const generator = await loadGenerator();
     const root = tempRoot();
     const conventions = join(root, "conventions");
@@ -121,11 +121,11 @@ describe("control-plane JSON generator", () => {
       category: null,
     });
     expect(first.digests.edges.plugin["alpha/SKILL.md"]).toBe(
-      sha256("# Plugin alpha\n"),
+      sha256("# 插件 alpha\n"),
     );
   });
 
-  it("exact-tree extraction ignores illustrative layout and applies only forward_overrides", async () => {
+  it("精确目录树提取会忽略示意布局，仅应用 forward_overrides", async () => {
     const generator = await loadGenerator();
     const root = tempRoot();
     seedEdges(root);
@@ -173,7 +173,7 @@ describe("control-plane JSON generator", () => {
     });
   });
 
-  it("projects spec overrides onto the canonical mirror edge", async () => {
+  it("将规范覆盖投影到标准镜像边", async () => {
     const generator = await loadGenerator();
     const root = tempRoot();
     seedEdges(root);
@@ -197,7 +197,7 @@ describe("control-plane JSON generator", () => {
     });
   });
 
-  it("removes an empty-edge override from the generated product layout", async () => {
+  it("从生成的产品布局中移除空边覆盖", async () => {
     const generator = await loadGenerator();
     const root = tempRoot();
     seedEdges(root);
@@ -218,7 +218,7 @@ describe("control-plane JSON generator", () => {
     expect(layout.skills.alpha).toBeUndefined();
   });
 
-  it("rejects malformed forward overrides with the source path and reason", async () => {
+  it("拒绝格式错误的前向覆盖，并给出源路径和原因", async () => {
     const generator = await loadGenerator();
     const root = tempRoot();
     seedEdges(root);
@@ -241,7 +241,7 @@ describe("control-plane JSON generator", () => {
     );
   });
 
-  it("fails closed on malformed membership and denylist schemas with source paths", async () => {
+  it("成员关系与拒绝列表模式格式错误时失败关闭，并给出源路径", async () => {
     const generator = await loadGenerator();
     const root = tempRoot();
     const conventions = join(root, "conventions");
@@ -283,13 +283,13 @@ describe("control-plane JSON generator", () => {
     ).rejects.toThrow(/internal-tokens\.yaml.*charged_terms|charged_terms.*internal-tokens\.yaml/i);
   });
 
-  it("rejects edge file symlinks before digesting outside-root bytes", async () => {
+  it("计算根目录外字节摘要前拒绝边文件符号链接", async () => {
     const generator = await loadGenerator();
     const root = tempRoot();
     const input = seedGeneratorInput(root);
     seedEdges(root);
     const outside = join(root, "outside-file.txt");
-    write(outside, "outside edge bytes\n");
+    write(outside, "边界外字节\n");
     const link = join(
       root,
       "packages/daemon/assets/plugins/openrig-core/skills/alpha/references/linked.txt",
@@ -305,13 +305,13 @@ describe("control-plane JSON generator", () => {
     ).toBe(false);
   });
 
-  it("rejects edge directory symlinks before traversal or digesting outside-root bytes", async () => {
+  it("遍历或计算根目录外字节摘要前拒绝边目录符号链接", async () => {
     const generator = await loadGenerator();
     const root = tempRoot();
     const input = seedGeneratorInput(root);
     seedEdges(root);
     const outside = join(root, "outside-directory");
-    write(join(outside, "secret.txt"), "outside directory bytes\n");
+    write(join(outside, "secret.txt"), "目录外字节\n");
     const link = join(
       root,
       "skills/_canonical/core/alpha/references/linked-directory",
@@ -333,7 +333,7 @@ async function loadGenerator(): Promise<Record<string, any>> {
     join(REPO_ROOT, "packages/daemon/scripts/gen-control-plane-json.mjs"),
   ).href;
   const loaded = await import(url).catch(() => null);
-  expect(loaded, "daemon control-plane JSON generator must exist").not.toBeNull();
+  expect(loaded, "守护进程控制平面 JSON 生成器必须存在").not.toBeNull();
   expect(typeof loaded?.generateControlPlaneJson).toBe("function");
   expect(typeof loaded?.extractSkillEdgeLayout).toBe("function");
   return loaded as Record<string, any>;
@@ -351,25 +351,25 @@ function seedEdges(root: string): void {
       root,
       "packages/daemon/specs/agents/shared/skills/core/alpha/SKILL.md",
     ),
-    "# Spec alpha\n",
+    "# 规范 alpha\n",
   );
   write(
     join(root, "skills/_canonical/core/alpha/SKILL.md"),
-    "# Spec alpha\n",
+    "# 规范 alpha\n",
   );
   write(
     join(
       root,
       "packages/daemon/assets/plugins/openrig-core/skills/alpha/SKILL.md",
     ),
-    "# Plugin alpha\n",
+    "# 插件 alpha\n",
   );
   write(
     join(
       root,
       "packages/daemon/assets/plugins/openrig-core/skills/pluginOnly/SKILL.md",
     ),
-    "# Plugin only\n",
+    "# 仅插件\n",
   );
 }
 
@@ -453,7 +453,7 @@ function readGenerated(output: string): Record<string, any> {
   };
 }
 
-it("the committed internal-token mirror covers the whole substrate shared-docs class", () => {
+it("已提交的内部令牌镜像覆盖整个 substrate shared-docs 类别", () => {
   const generated = readJson(join(REPO_ROOT, "scripts/internal-tokens.generated.json"));
   const legacyPrefix = ["code", "substrate", "shared-docs", ""].join("/");
   expect(generated.path_prefixes).toContain("substrate/shared-docs/");

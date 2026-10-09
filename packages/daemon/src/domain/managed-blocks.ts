@@ -1,16 +1,15 @@
 import nodePath from "node:path";
 
-// Pre-release: projection markers that land in user-managed files
-// (CLAUDE.md / AGENTS.md) carry the canonical product name. New writes
-// emit the OpenRig form; legacy "RIGGED" markers from prior installs
-// are still recognized by stripManagedBlocks below for clean uninstall.
+// 发布前约束：写入用户管理文件（CLAUDE.md / AGENTS.md）的投影标记采用规范产品名。
+// 新写入使用 OpenRig 形式；下方 stripManagedBlocks 仍识别旧版安装留下的 "RIGGED" 标记，
+// 以便干净卸载。
 export const MANAGED_BLOCK_START = (id: string) => `<!-- BEGIN OpenRig MANAGED BLOCK: ${id} -->`;
 export const MANAGED_BLOCK_END = (id: string) => `<!-- END OpenRig MANAGED BLOCK: ${id} -->`;
 const LEGACY_BLOCK_START = (id: string) => `<!-- BEGIN RIGGED MANAGED BLOCK: ${id} -->`;
 
-// #25 — the file a rig's Claude Code seats receive managed blocks in
-// (`managed_blocks: { claude-code: <file> }`). This is the set supported in
-// this release, not every file Claude Code can load.
+// #25——工作组的 Claude Code 席位接收托管块的文件
+//（`managed_blocks: { claude-code: <file> }`）。这是当前版本支持的集合，
+// 并非 Claude Code 能加载的所有文件。
 export const CLAUDE_MANAGED_BLOCK_FILES = ["CLAUDE.md", "CLAUDE.local.md"] as const;
 export type ClaudeManagedBlockFile = (typeof CLAUDE_MANAGED_BLOCK_FILES)[number];
 export const DEFAULT_CLAUDE_MANAGED_BLOCK_FILE: ClaudeManagedBlockFile = "CLAUDE.md";
@@ -68,8 +67,7 @@ export function mergeManagedBlock(
       const candidateEnd = MANAGED_BLOCK_END(id);
       const regex = new RegExp(`${escapeRegex(candidateBegin)}[\\s\\S]*?${escapeRegex(candidateEnd)}`, "g");
       updated = updated.replace(regex, id === blockId ? block : "");
-      // Legacy marker variant from prior installs — replace with the
-      // OpenRig form (or strip when not the active block id).
+      // 旧版安装留下的标记变体：替换为 OpenRig 形式；若不是活跃块 id，则移除。
       const legacyBegin = LEGACY_BLOCK_START(id);
       const legacyEnd = LEGACY_BLOCK_END(id);
       const legacyRegex = new RegExp(`${escapeRegex(legacyBegin)}[\\s\\S]*?${escapeRegex(legacyEnd)}`, "g");
@@ -106,9 +104,8 @@ export function removeManagedBlocksFromFile(fs: ManagedBlockCleanupFsOps, target
 }
 
 export function stripManagedBlocks(content: string): string {
-  // Recognize both the OpenRig form (current writes) and the legacy
-  // RIGGED form (existing user files written by prior installs) so
-  // uninstall + cleanup paths handle both transitional states.
+  // 同时识别当前写入的 OpenRig 形式与旧版安装写入现有用户文件的 RIGGED 形式，
+  // 使卸载与清理路径都能处理这两种过渡状态。
   return content
     .replace(/(?:\n|^)\s*<!-- BEGIN OpenRig MANAGED BLOCK: [\s\S]*?<!-- END OpenRig MANAGED BLOCK: [^>]+ -->\s*(?=\n|$)/g, "\n")
     .replace(/(?:\n|^)\s*<!-- BEGIN RIGGED MANAGED BLOCK: [\s\S]*?<!-- END RIGGED MANAGED BLOCK: [^>]+ -->\s*(?=\n|$)/g, "\n")

@@ -4,7 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { createHash } from "node:crypto";
 import { computeIntegrity, writeIntegrity, verifyIntegrity, type IntegrityFsOps } from "../src/domain/bundle-integrity.js";
-// TODO: AS-T12 — migrate to pod-aware bundle types
+// TODO：AS-T12——迁移至支持 pod 的 bundle type
 import { serializeLegacyBundleManifest as serializeBundleManifest, type LegacyBundleManifest as BundleManifest } from "../src/domain/bundle-types.js";
 
 function realFsOps(): IntegrityFsOps {
@@ -56,8 +56,8 @@ describe("Bundle integrity", () => {
     };
   }
 
-  // T1: Computes correct SHA-256
-  it("computes correct SHA-256 for each file", () => {
+  // T1：计算正确的 SHA-256
+  it("为每个文件计算正确的 SHA-256", () => {
     writeFile("rig.yaml", "spec content");
     writeFile("packages/pkg/SKILL.md", "skill content");
 
@@ -68,8 +68,8 @@ describe("Bundle integrity", () => {
     expect(integrity.files["packages/pkg/SKILL.md"]).toBe(sha256("skill content"));
   });
 
-  // T2: Integrity section written to bundle.yaml
-  it("writes integrity section to existing bundle.yaml", () => {
+  // T2：将 integrity section 写入 bundle.yaml
+  it("将 integrity section 写入现有 bundle.yaml", () => {
     const manifest = makeManifest();
     writeFile("bundle.yaml", serializeBundleManifest(manifest));
     writeFile("rig.yaml", "spec");
@@ -82,8 +82,8 @@ describe("Bundle integrity", () => {
     expect(updated).toContain("sha256");
   });
 
-  // T3: Verifier passes on clean bundle
-  it("verifier passes on clean bundle", () => {
+  // T3：verifier 对干净 bundle 校验通过
+  it("verifier 对干净 bundle 校验通过", () => {
     writeFile("rig.yaml", "spec");
     writeFile("packages/pkg/package.yaml", "name: pkg");
     const manifest = makeManifest();
@@ -99,8 +99,8 @@ describe("Bundle integrity", () => {
     expect(result.mismatches).toHaveLength(0);
   });
 
-  // T4: Verifier fails on tampered file
-  it("verifier fails on tampered file (hash mismatch)", () => {
+  // T4：verifier 对已篡改文件校验失败
+  it("verifier 对已篡改文件校验失败（hash 不匹配）", () => {
     writeFile("rig.yaml", "original");
     const manifest = makeManifest();
     writeFile("bundle.yaml", serializeBundleManifest(manifest));
@@ -108,7 +108,7 @@ describe("Bundle integrity", () => {
     const integrity = computeIntegrity(tmpDir, realFsOps());
     writeIntegrity(tmpDir, integrity, realFsOps());
 
-    // Tamper the file
+    // 篡改文件
     fs.writeFileSync(path.join(tmpDir, "rig.yaml"), "tampered!");
 
     const result = verifyIntegrity(tmpDir, { ...manifest, integrity }, realFsOps());
@@ -117,8 +117,8 @@ describe("Bundle integrity", () => {
     expect(result.mismatches).toContain("rig.yaml");
   });
 
-  // T5: Verifier fails on missing file
-  it("verifier fails on missing file", () => {
+  // T5：verifier 对缺失文件校验失败
+  it("verifier 对缺失文件校验失败", () => {
     writeFile("rig.yaml", "spec");
     const manifest = makeManifest();
     writeFile("bundle.yaml", serializeBundleManifest(manifest));
@@ -126,7 +126,7 @@ describe("Bundle integrity", () => {
     const integrity = computeIntegrity(tmpDir, realFsOps());
     writeIntegrity(tmpDir, integrity, realFsOps());
 
-    // Delete a file
+    // 删除文件
     fs.unlinkSync(path.join(tmpDir, "rig.yaml"));
 
     const result = verifyIntegrity(tmpDir, { ...manifest, integrity }, realFsOps());
@@ -135,8 +135,8 @@ describe("Bundle integrity", () => {
     expect(result.missing).toContain("rig.yaml");
   });
 
-  // T6: Extra unexpected file -> passed=false
-  it("verifier fails on extra unexpected file", () => {
+  // T6：额外非预期文件 -> passed=false
+  it("verifier 对额外非预期文件校验失败", () => {
     writeFile("rig.yaml", "spec");
     const manifest = makeManifest();
     writeFile("bundle.yaml", serializeBundleManifest(manifest));
@@ -144,7 +144,7 @@ describe("Bundle integrity", () => {
     const integrity = computeIntegrity(tmpDir, realFsOps());
     writeIntegrity(tmpDir, integrity, realFsOps());
 
-    // Add an extra file after integrity was computed
+    // 计算 integrity 后添加额外文件
     writeFile("extra-file.txt", "unexpected");
 
     const result = verifyIntegrity(tmpDir, { ...manifest, integrity }, realFsOps());
@@ -153,8 +153,8 @@ describe("Bundle integrity", () => {
     expect(result.extra).toContain("extra-file.txt");
   });
 
-  // T6b: .DS_Store ignored
-  it(".DS_Store is ignored during compute and verify", () => {
+  // T6b：忽略 .DS_Store
+  it("compute 与 verify 期间忽略 .DS_Store", () => {
     writeFile("rig.yaml", "spec");
     writeFile(".DS_Store", "junk");
     const manifest = makeManifest();
@@ -168,16 +168,16 @@ describe("Bundle integrity", () => {
     expect(result.passed).toBe(true);
   });
 
-  // T7: .env -> throws (hard fail)
-  it("sensitive .env file throws during compute", () => {
+  // T7：.env -> 抛错（hard fail）
+  it("compute 期间遇到敏感 .env 文件会抛错", () => {
     writeFile("rig.yaml", "spec");
     writeFile(".env", "SECRET=bad");
 
-    expect(() => computeIntegrity(tmpDir, realFsOps())).toThrow(/Sensitive paths/);
+    expect(() => computeIntegrity(tmpDir, realFsOps())).toThrow(/检测到敏感路径/);
   });
 
-  // T8: Empty directory -> empty integrity
-  it("empty directory produces empty integrity", () => {
+  // T8：空目录 -> 空 integrity
+  it("空目录产生空 integrity", () => {
     const integrity = computeIntegrity(tmpDir, realFsOps());
     expect(Object.keys(integrity.files)).toHaveLength(0);
   });

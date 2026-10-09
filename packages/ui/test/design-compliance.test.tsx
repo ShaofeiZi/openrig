@@ -19,13 +19,13 @@ function readAllTsx(dir: string): string[] {
 }
 
 describe("Design System Compliance", () => {
-  // Test 1: No rounded corners — no rounded-* classes except rounded-md (which is 0px)
+  // 测试 1：无圆角——除值为 0px 的 rounded-md 外，不允许 rounded-* 类。
   it("no non-zero border-radius in any component", () => {
     const config = readFileSync(resolve(__dirname, "../tailwind.config.ts"), "utf-8");
     const radiusMatch = config.match(/borderRadius:\s*\{([^}]+)\}/);
     expect(radiusMatch).not.toBeNull();
 
-    // All radius values are 0px (except `full: "9999px"` for stamp circles)
+    // 除印章圆形使用的 `full: "9999px"` 外，所有圆角值均为 0px。
     const pairs = [...radiusMatch![1]!.matchAll(/(\w+):\s*"([^"]+)"/g)];
     for (const [, key, value] of pairs) {
       if (key === "full") {
@@ -35,10 +35,10 @@ describe("Design System Compliance", () => {
       }
     }
 
-    // No inline borderRadius in source files
+    // 源文件中不使用内联 borderRadius。
     const allSource = readAllTsx(COMPONENTS_DIR);
     for (const src of allSource) {
-      // Allow borderRadius: 0 or 0px, but not any positive value
+      // 允许 borderRadius: 0 或 0px，不允许任何正值。
       const inlineRadius = src.match(/borderRadius:\s*(\d+)/g) ?? [];
       for (const match of inlineRadius) {
         const value = parseInt(match.replace(/borderRadius:\s*/, ""), 10);
@@ -47,7 +47,7 @@ describe("Design System Compliance", () => {
     }
   });
 
-  // Test 2: All node status colors match design system mapping
+  // 测试 2：所有节点状态颜色符合设计系统映射。
   it("status color mapping matches design-system.md", async () => {
     const { getStatusColorClass } = await import("../src/lib/status-colors.js");
 
@@ -59,9 +59,9 @@ describe("Design System Compliance", () => {
     expect(getStatusColorClass("unknown")).toBe("bg-foreground-muted/50");
   });
 
-  // Test 3: Data displays use monospace font classes
+  // 测试 3：数据显示使用等宽字体类。
   it("data display components use font-mono for IDs and values", () => {
-    // Check key components that display data
+    // 检查展示数据的关键组件。
     const rigCard = readFileSync(resolve(SRC_DIR, "components/RigCard.tsx"), "utf-8");
     expect(rigCard).toContain("font-mono");
 
@@ -71,9 +71,8 @@ describe("Design System Compliance", () => {
     const rigNode = readFileSync(resolve(SRC_DIR, "components/RigNode.tsx"), "utf-8");
     expect(rigNode).toContain("font-mono");
 
-    // V1 polish slice Phase 5.1 P5.1-1: NodeDetailPanel.tsx RETIRED;
-    // canonical agent-detail surface is LiveNodeDetails.tsx now (which
-    // also uses font-mono per the tactical aesthetic).
+    // V1 润色 slice 阶段 5.1 P5.1-1：NodeDetailPanel.tsx 已退役；当前规范智能体详情表面为
+    // LiveNodeDetails.tsx，并按战术美学同样使用 font-mono。
     const liveNodeDetails = readFileSync(resolve(SRC_DIR, "components/LiveNodeDetails.tsx"), "utf-8");
     expect(liveNodeDetails).toContain("font-mono");
 

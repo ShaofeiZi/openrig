@@ -27,8 +27,8 @@ function makeDeps(seatResult: SeatSearchResult, overrides?: Partial<AskDeps>): A
   };
 }
 
-describe("AskService — seat-scoped (L1)", () => {
-  it("routes to searchSeat (not whole-rig) and returns generation-labeled hits spanning tenures", async () => {
+describe("AskService——seat-scoped（L1）", () => {
+  it("路由到 searchSeat（而非整个 rig），并返回跨 tenure 且标注 generation 的 hit", async () => {
     const deps = makeDeps({
       backend: "read",
       seat: "dev-planner@my-rig",
@@ -43,7 +43,7 @@ describe("AskService — seat-scoped (L1)", () => {
     const result = await svc.ask("my-rig", "deployment?", { seat: "dev-planner@my-rig" });
 
     expect(deps.historyQuery.searchSeat).toHaveBeenCalledWith("my-rig", "dev-planner@my-rig", "deployment?");
-    expect(deps.historyQuery.search).not.toHaveBeenCalled(); // seat path, not the whole-rig grep
+    expect(deps.historyQuery.search).not.toHaveBeenCalled(); // seat path，而非整个 rig grep。
     expect(result.seat).toBeDefined();
     expect(result.seat!.name).toBe("dev-planner@my-rig");
     expect(result.seat!.generations).toBe(2);
@@ -52,7 +52,7 @@ describe("AskService — seat-scoped (L1)", () => {
     expect(result.evidence.backend).toBe("read");
   });
 
-  it("surfaces honest-degraded as guidance — never a silent empty", async () => {
+  it("将 honest-degraded 呈现为 guidance——绝不静默为空", async () => {
     const deps = makeDeps({
       backend: "read",
       seat: "dev-guard@my-rig",

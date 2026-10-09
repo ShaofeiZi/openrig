@@ -1,24 +1,21 @@
-// V1 polish slice: multi-rig hybrid /topology graph.
+// V1 润色切片：多工作组混合 /topology 图。
 //
-// Uses shared dagre helpers to lay out each expanded rig as a soft frame
-// containing pod sub-frames and compact agent leaves, then lays out rig
-// frames on the host canvas. V1 contracts remain load-bearing: lazy
-// per-rig graph fetches, cross-rig node ID prefixing, collapse persistence,
-// URL auto-expand, and graph/tree/table navigate parity.
+// 使用共享 dagre 辅助函数将每个展开的工作组布局为软框，
+// 包含 Pod 子框和紧凑智能体叶节点，然后在主机画布上布局工作组框。
+// V1 契约保持承重：惰性按工作组图抓取、跨工作组节点 ID 前缀、折叠持久化、
+// URL 自动展开、图/树/表导航对等。
 //
-// Default state: rigs expanded so the topology opens as the full fleet
-// canvas. Explicit collapse state is still persisted in TopologyOverlayProvider,
-// and the operator can collapse / expand every rig from the canvas controls.
-// Auto-expand rule (parity with Phase 5.1 TopologyTreeView):
-// when route is /topology/rig/$rigId or /topology/seat/$rigId/* or
-// /topology/pod/$rigId/*, the matching rig is auto-expanded on mount /
-// route change. Click rig card body -> toggle collapse. Click arrow Link
-// on rig card name -> navigate to /topology/rig/$rigId (drill-in).
+// 默认状态：工作组展开，使拓扑打开为完整舰队画布。显式折叠状态仍持久化在
+// TopologyOverlayProvider，操作者可从画布控件折叠/展开每个工作组。
+// 自动展开规则（与第 5.1 阶段 TopologyTreeView 对等）：
+// 当路由为 /topology/rig/$rigId 或 /topology/seat/$rigId/* 或
+// /topology/pod/$rigId/* 时，匹配工作组在挂载/路由变更时自动展开。
+// 点击工作组卡片主体 → 切换折叠。点击工作组卡片名称上的箭头链接 →
+// 导航到 /topology/rig/$rigId（下钻）。
 //
-// Performance: per-rig graph data is lazy-fetched (useQueries enabled
-// only when rig is expanded). The V1 operator default now intentionally
-// fetches expanded rigs up front; explicit Collapse All restores the prior
-// low-fan-out behavior.
+// 性能：按工作组图数据惰性抓取（useQueries 仅在工作组展开时启用）。
+// V1 操作者默认现在有意前置抓取展开的工作组；显式"全部折叠"恢复先前的
+// 低扇出行为。
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -90,13 +87,12 @@ export function HostMultiRigGraph() {
   const hostId = useSelectedHostId();
   const reducedMotion = usePrefersReducedMotion();
 
-  // V1 polish slice Phase 5.2 bounce-fix: rig-expanded state lifted to
-  // TopologyOverlayProvider scope. Direct-URL entry to /topology/rig/$id
-  // (which mounts RigScopePage, NOT HostMultiRigGraph because topology
-  // routes are SIBLING) still updates the context's expandedRigs map
-  // via the provider's auto-expand useEffect; when the operator returns
-  // to /topology, this component reads the persisted state via
-  // useTopologyOverlay() and renders the matching rig expanded.
+  // V1 润色切片第 5.2 阶段反弹修复：工作组展开状态提升到
+  // TopologyOverlayProvider 范围。直接 URL 进入 /topology/rig/$id
+  //（挂载 RigScopePage，不是 HostMultiRigGraph，因为拓扑路由是兄弟节点）
+  // 仍通过 provider 的自动展开 useEffect 更新 context 的 expandedRigs 映射；
+  // 当操作者返回 /topology 时，此组件通过 useTopologyOverlay() 读取持久化状态
+  // 并渲染匹配工作组为展开。
   const { expandedRigs: expanded, setRigExpanded } = useTopologyOverlay();
   const isRigExpanded = useCallback(
     (rigId: string) => expanded.get(rigId) ?? DEFAULT_RIG_EXPANDED,
@@ -106,10 +102,9 @@ export function HostMultiRigGraph() {
     setRigExpanded(rigId, !isRigExpanded(rigId));
   }, [isRigExpanded, setRigExpanded]);
 
-  // P5.2-2 + P5.2-3: useQueries for per-rig graph data; enabled only
-  // when the rig is expanded. Stable hook-call count (single useQueries
-  // call) regardless of how psEntries grows from undefined to [N], so
-  // no rules-of-hooks regression (P0-1 pattern preserved).
+  // P5.2-2 + P5.2-3：useQueries 用于按工作组图数据；仅在工作组展开时启用。
+  // 稳定 hook 调用数（单个 useQueries 调用），无论 psEntries 从 undefined 增长到 [N]，
+  // 因此无 rules-of-hooks 回归（P0-1 模式保留）。
   const rigList = psEntries ?? [];
   const graphQueries = useQueries({
     queries: rigList.map((rig) => ({
@@ -130,7 +125,7 @@ export function HostMultiRigGraph() {
     for (const rig of rigList) setRigExpanded(rig.rigId, false);
   }, [rigList, setRigExpanded]);
 
-  // Build per-rig nested subgraphs and lay out rig frames on the host canvas.
+  // 构建逐工作组嵌套子图，并在主机画布上布局工作组边框。
   const { mergedNodes, mergedEdges } = useMemo(() => {
     type RawN = Node & { data?: Record<string, unknown>; initialWidth?: number; initialHeight?: number };
     type RawE = Edge & { source: string; target: string; data?: Record<string, unknown>; label?: unknown };
@@ -141,7 +136,7 @@ export function HostMultiRigGraph() {
       status: "running" | "partial" | "stopped";
       nodeCount: number;
       runningCount: number;
-      /** Slice 15 — terminal-active count piped through from PsEntry. */
+      /** 切片 15 —— 从 PsEntry 传入的终端活跃计数。 */
       activeCount?: number;
       podCount?: number;
       isExpanded: boolean;
@@ -231,8 +226,8 @@ export function HostMultiRigGraph() {
     }
 
     return { mergedNodes: nodes, mergedEdges: edges };
-    // toggleRig is stable per-render but useMemo doesn't know; safe to
-    // include rigList + expanded + graphQueries as deps.
+    // toggleRig 每次渲染稳定，但 useMemo 不知道；安全地
+    // 包含 rigList + expanded + graphQueries 作为依赖。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rigList, isRigExpanded, graphQueries]);
 
@@ -310,14 +305,14 @@ export function HostMultiRigGraph() {
     ].join(":");
   }).join("|"), [mergedNodes]);
 
-  // P5.2-7 click handlers: agent -> seat URL; pod group -> pod URL;
-  // rig group -> toggle (handled inside RigGroupNode onClick; this
-  // handler is a no-op for rigGroup type to avoid double-fire).
+  // P5.2-7 点击处理器：智能体 → 席位 URL；Pod 组 → Pod URL；
+  // 工作组组 → 切换（在 RigGroupNode onClick 内处理；此
+  // 处理器对 rigGroup 类型是空操作以避免双击触发）。
   const onNodeClick: NodeMouseHandler = (_evt, node) => {
     const data = node.data as { rigId?: string; logicalId?: string; podId?: string | null; podNamespace?: string | null } | undefined;
     const rigId = data?.rigId;
     if (!rigId) return;
-    if (node.type === "rigGroup") return; // body click handled by RigGroupNode
+    if (node.type === "rigGroup") return; // 主体点击由 RigGroupNode 处理
     if (node.type === "podGroup" || node.type === "group") {
       const podName = data?.podNamespace ?? data?.podId;
       if (!podName) return;
@@ -341,7 +336,7 @@ export function HostMultiRigGraph() {
         data-testid="host-multi-rig-graph-empty"
         className="flex flex-col items-center justify-center h-full font-mono text-[10px] text-on-surface-variant"
       >
-        No rigs registered. Run <code className="ml-1 text-on-surface">rig up</code> to start one.
+        无已注册工作组。运行 <code className="ml-1 text-on-surface">zrig up</code> 启动一个。
       </div>
     );
   }
@@ -372,22 +367,22 @@ export function HostMultiRigGraph() {
               data-testid="topology-expand-all-rigs"
               onClick={expandAllRigs}
               disabled={expandedCount === rigList.length}
-              title="Expand all rigs"
+              title="展开全部工作组"
               className="inline-flex h-7 items-center gap-1 border border-transparent px-2 font-mono text-[9px] uppercase tracking-[0.08em] text-on-surface hover:border-outline-variant hover:bg-surface-lowest/70 hover:text-on-surface disabled:pointer-events-none disabled:opacity-35"
             >
               <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
-              Expand all
+              全部展开
             </button>
             <button
               type="button"
               data-testid="topology-collapse-all-rigs"
               onClick={collapseAllRigs}
               disabled={expandedCount === 0}
-              title="Collapse all rigs"
+              title="折叠全部工作组"
               className="inline-flex h-7 items-center gap-1 border border-transparent px-2 font-mono text-[9px] uppercase tracking-[0.08em] text-on-surface hover:border-outline-variant hover:bg-surface-lowest/70 hover:text-on-surface disabled:pointer-events-none disabled:opacity-35"
             >
               <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />
-              Collapse all
+              全部折叠
             </button>
           </div>
         </Panel>
@@ -407,11 +402,10 @@ function HostGraphAutoFit({ layoutSignature }: { layoutSignature: string }) {
   const lastSignatureRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // OPR.0.4.2.17 — gate fitView on nodesInitialized (xyflow has MEASURED the
-    // nodes), not a fixed 50ms timeout. On the 30s refetch the nodes re-measure;
-    // the old 50ms fired before re-measurement and faithfully fit a
-    // collapsed/unmeasured layout. When measurement completes nodesInitialized
-    // flips true and this effect re-runs, fitting the real (distinct) layout.
+    // OPR.0.4.2.17 —— 将 fitView 门控在 nodesInitialized（xyflow 已测量节点），
+    // 而非固定 50ms 超时。30s 重新抓取时节点重新测量；旧的 50ms 在重新测量前
+    // 触发，忠实地适配了折叠/未测量布局。测量完成时 nodesInitialized
+    // 翻转为 true，此 effect 重新运行，适配真实（不同）布局。
     if (!layoutSignature || !nodesInitialized) return;
     if (lastSignatureRef.current === layoutSignature) return;
     lastSignatureRef.current = layoutSignature;

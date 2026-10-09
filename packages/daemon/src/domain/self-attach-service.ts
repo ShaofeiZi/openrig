@@ -18,7 +18,7 @@ export type SelfAttachSuccess = {
   env: {
     OPENRIG_NODE_ID: string;
     OPENRIG_SESSION_NAME: string;
-    // OPR.0.4.3.28 B3 — activity env echoed for the caller's shell to export.
+    // OPR.0.4.3.28 B3——回显 activity env，供调用方 shell 导出。
     OPENRIG_RUNTIME?: string;
     OPENRIG_URL?: string;
     OPENRIG_ACTIVITY_HOOK_TOKEN?: string;
@@ -50,10 +50,9 @@ interface SelfAttachServiceDeps {
   claudeContextProvisioner?: {
     ensureContextCollector(binding: { cwd?: string | null; tmuxSession?: string | null }): void;
   };
-  // OPR.0.4.3.28 B3 — the daemon's resolved activity url+token, echoed into the
-  // self-attach RESPONSE env so the caller's shell (and any agent it starts)
-  // can reach the ingest endpoint. This is a returned env for the caller to
-  // export — NOT a mutation of an already-running process.
+  // OPR.0.4.3.28 B3——后台服务解析后的 activity URL + token 会回显到 self-attach RESPONSE env，
+  // 使调用方 shell 及其启动的任意智能体能够访问 ingest endpoint。这是返回给调用方导出的 env，
+  // 不是对已运行进程的修改。
   activityEnv?: { url?: string; token?: string };
 }
 
@@ -102,10 +101,10 @@ export class SelfAttachService {
   private activityEnv: { url?: string; token?: string };
 
   constructor(deps: SelfAttachServiceDeps) {
-    if (deps.db !== deps.rigRepo.db) throw new Error("SelfAttachService: rigRepo must share the same db handle");
-    if (deps.db !== deps.podRepo.db) throw new Error("SelfAttachService: podRepo must share the same db handle");
-    if (deps.db !== deps.sessionRegistry.db) throw new Error("SelfAttachService: sessionRegistry must share the same db handle");
-    if (deps.db !== deps.eventBus.db) throw new Error("SelfAttachService: eventBus must share the same db handle");
+    if (deps.db !== deps.rigRepo.db) throw new Error("SelfAttachService：rigRepo 必须共享同一个数据库句柄");
+    if (deps.db !== deps.podRepo.db) throw new Error("SelfAttachService：podRepo 必须共享同一个数据库句柄");
+    if (deps.db !== deps.sessionRegistry.db) throw new Error("SelfAttachService：sessionRegistry 必须共享同一个数据库句柄");
+    if (deps.db !== deps.eventBus.db) throw new Error("SelfAttachService：eventBus 必须共享同一个数据库句柄");
     this.db = deps.db;
     this.rigRepo = deps.rigRepo;
     this.podRepo = deps.podRepo;
@@ -120,24 +119,24 @@ export class SelfAttachService {
   async attachToNode(opts: AttachToNodeOptions): Promise<SelfAttachResult> {
     const rig = this.rigRepo.getRig(opts.rigId);
     if (!rig) {
-      return { ok: false, code: "rig_not_found", error: "Target rig not found" };
+      return { ok: false, code: "rig_not_found", error: "未找到目标工作组" };
     }
 
     const node = rig.nodes.find((candidate) => candidate.logicalId === opts.logicalId);
     if (!node) {
-      return { ok: false, code: "node_not_found", error: `Logical ID '${opts.logicalId}' does not exist in rig` };
+      return { ok: false, code: "node_not_found", error: `工作组中不存在 Logical ID '${opts.logicalId}'` };
     }
 
     const existingBinding = this.sessionRegistry.getBindingForNode(node.id);
     if (existingBinding) {
-      return { ok: false, code: "already_bound", error: `Logical ID '${opts.logicalId}' is already bound` };
+      return { ok: false, code: "already_bound", error: `Logical ID '${opts.logicalId}' 已绑定` };
     }
 
     if (opts.runtime && node.runtime && opts.runtime !== node.runtime) {
       return {
         ok: false,
         code: "runtime_mismatch",
-        error: `Logical ID '${opts.logicalId}' expects runtime '${node.runtime}', but attach-self declared '${opts.runtime}'`,
+        error: `Logical ID '${opts.logicalId}' 要求 runtime '${node.runtime}'，但 attach-self 声明为 '${opts.runtime}'`,
       };
     }
 
@@ -155,27 +154,27 @@ export class SelfAttachService {
   async attachToPod(opts: AttachToPodOptions): Promise<SelfAttachResult> {
     const rig = this.rigRepo.getRig(opts.rigId);
     if (!rig) {
-      return { ok: false, code: "rig_not_found", error: "Target rig not found" };
+      return { ok: false, code: "rig_not_found", error: "未找到目标工作组" };
     }
 
     const pod = this.podRepo.getPodByNamespace(opts.rigId, opts.podNamespace);
     if (!pod) {
-      return { ok: false, code: "pod_not_found", error: `Pod namespace '${opts.podNamespace}' not found in rig` };
+      return { ok: false, code: "pod_not_found", error: `工作组中未找到 Pod namespace '${opts.podNamespace}'` };
     }
 
     const memberName = opts.memberName.trim();
     if (!memberName) {
-      return { ok: false, code: "invalid_member_name", error: "memberName is required" };
+      return { ok: false, code: "invalid_member_name", error: "memberName 为必填项" };
     }
 
     const runtime = opts.runtime.trim();
     if (!runtime) {
-      return { ok: false, code: "runtime_required", error: "runtime is required when creating a new pod member" };
+      return { ok: false, code: "runtime_required", error: "创建新 pod member 时必须提供 runtime" };
     }
 
     const logicalId = `${pod.namespace}.${memberName}`;
     if (rig.nodes.some((candidate) => candidate.logicalId === logicalId)) {
-      return { ok: false, code: "duplicate_logical_id", error: `Logical ID '${logicalId}' already exists in rig` };
+      return { ok: false, code: "duplicate_logical_id", error: `工作组中已存在 Logical ID '${logicalId}'` };
     }
 
     const attachTx = this.db.transaction(() => {
@@ -335,7 +334,7 @@ export class SelfAttachService {
         cwd: cwd ?? undefined,
         tmuxSession: sessionName,
       });
-    } catch { /* best-effort */ }
+    } catch { /* 尽力而为。 */ }
   }
 
   private toSuccess(
@@ -346,10 +345,9 @@ export class SelfAttachService {
     attachmentType: "tmux" | "external_cli",
     runtime?: string | null,
   ): SelfAttachSuccess {
-    // OPR.0.4.3.28 B3 — echo the activity env so the caller's shell (and any
-    // agent it starts) produces activity signal: OPENRIG_RUNTIME is required by
-    // the relay to build a payload; url+token let it reach the ingest endpoint
-    // directly (file-discovery is the fallback when they are absent).
+    // OPR.0.4.3.28 B3——回显 activity env，使调用方 shell 及其启动的任意智能体能够产生
+    // activity signal。relay 构建 payload 时需要 OPENRIG_RUNTIME；URL + token 让它直接访问
+    // ingest endpoint，缺失时回退到文件发现。
     const env: SelfAttachSuccess["env"] = {
       OPENRIG_NODE_ID: nodeId,
       OPENRIG_SESSION_NAME: sessionName,

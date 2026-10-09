@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/provider/provider-read-model.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/rig-mode/rig-mode-types.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/review/freeze.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/review/proof-io.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/rig-mode/rig-mode-store.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/provider/provider-service-impl.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/provider/provider-signals.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/review/compose.ts": [
+"daemon-core-i",
+"validated"
+],
+"packages/daemon/src/domain/provider/provider-collect.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/provider/reactive-tap.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/review/fleet-compose.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/provider/provider-policy.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/rig-mode/operating-posture.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/rig-mode/rig-mode-defaults.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/review/gather.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/review/types.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/rig-mode/rig-mode-validator.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/provider/provider-service.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/provider/provider-types.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/review/brief-spine.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

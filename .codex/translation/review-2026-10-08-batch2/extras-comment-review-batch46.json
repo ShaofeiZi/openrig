@@ -1,0 +1,206 @@
+{
+  "batch": "extras-comment-review-batch46",
+  "agent": "s_000cae46UNk",
+  "rules": "translate comments only; keep machine tokens/enums/keys/refs/command examples; do not touch code behavior",
+  "scope": "SELFREPORTED-159 extras (21) + review-fixtures.ts = 22 files",
+  "files": [
+    {
+      "path": "demo/run-proof.sh",
+      "before_sha256_16": "c598be51f0e246e6",
+      "after_sha256_16": "c598be51f0e246e6",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "demo/run.sh",
+      "before_sha256_16": "951197e62942521d",
+      "after_sha256_16": "951197e62942521d",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "demo/scripts/check-demo-health.ts",
+      "before_sha256_16": "2200c4bf16160740",
+      "after_sha256_16": "2200c4bf16160740",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "demo/scripts/common.ts",
+      "before_sha256_16": "b0b8669cf51dfd4f",
+      "after_sha256_16": "b0b8669cf51dfd4f",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "demo/scripts/resume-probe-lib.ts",
+      "before_sha256_16": "4df0bdef92825754",
+      "after_sha256_16": "4df0bdef92825754",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "demo/scripts/seed-resume-baseline.ts",
+      "before_sha256_16": "5cc22faeab531e85",
+      "after_sha256_16": "5cc22faeab531e85",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "demo/scripts/verify-native-resume.ts",
+      "before_sha256_16": "fd28b5d757f9145b",
+      "after_sha256_16": "fd28b5d757f9145b",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "docker/testbed/Dockerfile",
+      "before_sha256_16": "9e8194c764284e40",
+      "after_sha256_16": "9e8194c764284e40",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "docker/testbed/entrypoint.sh",
+      "before_sha256_16": "7b37d8f6cb85d4c8",
+      "after_sha256_16": "7b37d8f6cb85d4c8",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/test-system/evals/generate-eval-fixtures.mjs",
+      "before_sha256_16": "a94fa89007f0e210",
+      "after_sha256_16": "a94fa89007f0e210",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "skills/_canonical/core/openrig-upgrade/scripts/migrate-telemetry-state-0.5.9.mjs",
+      "before_sha256_16": "091c0ca260278022",
+      "after_sha256_16": "091c0ca260278022",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "skills/_canonical/process/systematic-debugging/condition-based-waiting-example.ts",
+      "before_sha256_16": "add8741a9bfe7436",
+      "after_sha256_16": "add8741a9bfe7436",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "spike/tui-drivability/data.mjs",
+      "before_sha256_16": "cc2f2cb66f951847",
+      "after_sha256_16": "cc2f2cb66f951847",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "spike/tui-drivability/grammar.mjs",
+      "before_sha256_16": "4e361b54472011f5",
+      "after_sha256_16": "4e361b54472011f5",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "spike/tui-drivability/grammar.test.mjs",
+      "before_sha256_16": "af83a63ae80c68ba",
+      "after_sha256_16": "af83a63ae80c68ba",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "spike/tui-drivability/harness.mjs",
+      "before_sha256_16": "f79f45eeffa3df29",
+      "after_sha256_16": "f79f45eeffa3df29",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "spike/tui-drivability/input.mjs",
+      "before_sha256_16": "bf9b4fd5b4876018",
+      "after_sha256_16": "bf9b4fd5b4876018",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "spike/tui-drivability/parity.test.mjs",
+      "before_sha256_16": "a0106e503ace0d7f",
+      "after_sha256_16": "a0106e503ace0d7f",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "spike/tui-drivability/render.mjs",
+      "before_sha256_16": "7b9bcda0f5aef55f",
+      "after_sha256_16": "7b9bcda0f5aef55f",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "spike/tui-drivability/state.mjs",
+      "before_sha256_16": "6a0f8919c4894cd2",
+      "after_sha256_16": "6a0f8919c4894cd2",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "spike/tui-drivability/state.test.mjs",
+      "before_sha256_16": "631df038c0e2eeb7",
+      "after_sha256_16": "631df038c0e2eeb7",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/review-fixtures.ts",
+      "before_sha256_16": "535f515167ee6099",
+      "after_sha256_16": "895bccd6ef36635a",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

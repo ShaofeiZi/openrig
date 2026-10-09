@@ -1,5 +1,5 @@
-// SWEEP-b (shape f2576102) — `--session` on the rig tier is accept-and-drop today:
-// accepted at the option, never read by the rig-tier render → silent all-rigs listing.
+// SWEEP-b（shape f2576102）——rig 层 `--session` 今日为接受即丢弃：
+// 在 option 处接受，rig 层渲染绝不读取 → 静默列出全部 rig。
 import { describe, it, expect } from "vitest";
 import { validatePsLadder } from "../src/commands/ps.js";
 

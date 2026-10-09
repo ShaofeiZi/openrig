@@ -1,16 +1,15 @@
-// TUI scroll-focus fix (class-(b) focus-model defect, diagnosis 360e37d3).
+// TUI scroll-focus 修复（class-(b) focus-model 缺陷，诊断 360e37d3）。
 //
-// Founder defect: on a spec detail page, reflexive Down keys produce ZERO
-// visible change — arrows drive the (hidden) explorer tree; body scroll lived
-// only on undiscoverable PageUp/Down + content-focus, the scroll hint was gated
-// behind the very state it teaches (catch-22), and the visible "content ↑/↓"
-// indicator named mouse zones at keyboard users.
+// Founder 缺陷：在 spec 详情页，反射性 Down 键产生零可见变化——
+// 箭头驱动（隐藏的）explorer 树；body 滚动只活于不可发现的 PageUp/Down + content-focus，
+// 滚动提示被门控在它所教的状态之后（catch-22），且可见的 "content ↑/↓"
+// 指示向键盘用户点名鼠标区。
 //
-// Fix shape (honest minimal, focus-model-preserving): on a SCROLLABLE spec
-// detail the reflexive ↑↓ scroll the body regardless of which pane holds focus;
-// the scroll affordance surfaces whenever the body is actually scrollable (not
-// gated behind already-being-focused); the overflow indicator names a scroll
-// control, not the wrong keys. Routing + hint stay in lockstep via one helper.
+// 修复形状（诚实最小，保 focus 模型）：在可滚 spec
+// 详情上，反射性 ↑↓ 滚动 body，不论哪个窗格持焦；
+// 滚动 affordance 在 body 真可滚时呈现（不
+// 门控在已聚焦之后）；溢出指示命名滚动
+// 控件，非错误的键。路由 + 提示经一个 helper 保持同步。
 
 import { describe, it, expect } from "vitest";
 import { createViewState, emptySnapshot, computeExplorerRows } from "../src/state.js";
@@ -50,14 +49,14 @@ function scrollableSpecSnapshot(): FleetSnapshot {
   };
 }
 
-describe("TUI scroll-focus fix — founder scenario + affordances", () => {
-  it("FOUNDER PIN: Down on a scrollable spec detail scrolls the body, leaving the explorer put", () => {
+describe("TUI scroll-focus 修复——founder 场景 + 可操作项", () => {
+  it("founder 关键：可滚 spec 详情上 Down 滚正文，explorer 不动", () => {
     const snap = scrollableSpecSnapshot();
     const s = createViewState({ instanceId: "t", getSnapshot: () => snap });
     s.dispatch({ type: "drill", resource: "spec", name: "driver-agent" });
     const screen = syncLayout(s, snap, 100, 12);
 
-    // precondition: we are on a scrollable spec detail
+    // 前置：我们在可滚 spec 详情上
     expect(s.get().section).toBe("specs");
     expect(s.get().drill.length).toBeGreaterThan(0);
     expect(s.get().contentMaxOffset).toBeGreaterThan(0);
@@ -67,41 +66,41 @@ describe("TUI scroll-focus fix — founder scenario + affordances", () => {
 
     pressKey(s, snap, DOWN, screen);
 
-    // the body scrolled (visible change) and the explorer cursor did NOT move
+    // body 滚动了（可见变化）且 explorer 光标未动
     expect(s.get().contentOffset).toBeGreaterThan(0);
     expect(s.get().selection).toBe(selectionBefore);
   });
 
-  it("CATCH-22 PIN: a scrollable body surfaces a scroll hint even when explorer-focused and not on the yaml tab", () => {
+  it("catch-22 关键：可滚正文即使 explorer 聚焦且不在 yaml tab 也浮现滚动提示", () => {
     const snap = demoSnapshot();
     const s = createViewState({ instanceId: "t", getSnapshot: () => snap });
     const screen = syncLayout(s, snap, 100, 8);
 
-    // precondition: scrollable, but explorer-focused and NOT the yaml tab
-    // (exactly the state the old hint gate suppressed the affordance in)
+    // 前置：可滚，但 explorer 聚焦且非 yaml 标签
+    //（正是旧提示门压制 affordance 的状态）
     expect(s.get().contentMaxOffset).toBeGreaterThan(0);
     expect(s.get().focusedPane).toBe("explorer");
     expect(s.get().viewTab).not.toBe("yaml");
 
-    // The footer is width-clipped; quit is a later hint beyond this viewport.
-    const hint = screen.lines.find((l) => l.includes("↑↓ move"));
+    // footer 被宽度裁剪；quit 是此视口之外的后续提示。
+    const hint = screen.lines.find((l) => l.includes("↑↓ 移动"));
     expect(hint).toBeDefined();
-    expect(hint).toContain("⇞⇟ scroll");
+    expect(hint).toContain("⇞⇟ 滚动");
   });
 
-  it("INDICATOR PIN: the overflow indicator names a scroll control, not the keys that used to not scroll", () => {
+  it("指示器关键：溢出指示器点名滚动控件，而非过去不滚的键", () => {
     const snap = scrollableSpecSnapshot();
     const s = createViewState({ instanceId: "t", getSnapshot: () => snap });
     s.dispatch({ type: "drill", resource: "spec", name: "driver-agent" });
     const screen = syncLayout(s, snap, 100, 12);
 
-    const indicator = screen.lines.find((l) => /\d+-\d+ of \d+/.test(l));
+    const indicator = screen.lines.find((l) => /\d+-\d+ \/ \d+/.test(l));
     expect(indicator).toBeDefined();
-    expect(indicator).not.toContain("content ↑/↓");
-    expect(indicator).toMatch(/scroll/);
+    expect(indicator).not.toContain("内容 ↑/↓");
+    expect(indicator).toMatch(/滚动/);
   });
 
-  it("REGRESSION GUARD: Down still moves the explorer tree on the topology root (not a spec detail)", () => {
+  it("回归守卫：topology 根上 Down 仍移动 explorer 树（非 spec 详情）", () => {
     const snap = demoSnapshot();
     const s = createViewState({ instanceId: "t", getSnapshot: () => snap });
     const screen = syncLayout(s, snap, 120, 32);
@@ -110,7 +109,7 @@ describe("TUI scroll-focus fix — founder scenario + affordances", () => {
 
     pressKey(s, snap, DOWN, screen);
 
-    // topology root: arrows navigate the explorer, body does not scroll
+    // topology 根：箭头导航 explorer，body 不滚动
     expect(s.get().selection).not.toBe(selectionBefore);
     expect(s.get().contentOffset).toBe(offsetBefore);
   });

@@ -13,11 +13,11 @@ import { WorkflowRuntime } from "../src/domain/workflow-runtime.js";
 import { buildExecutionView } from "../src/domain/execution-view.js";
 
 const example = parse(readFileSync(new URL("../../../docs/reference/project-release-profile.yaml", import.meta.url), "utf8"));
-// Authored outcome inventory: do not derive the expected set from the fixture under test.
+// 人工编写的 outcome 清单：不要从被测 fixture 推导期望集合。
 const ids = ["mission-outcome", "exact-release-candidate", "capability-delta", "exact-cut-substance",
   "release-verification", "git-canonicalization", "public-release", "parent-adoption", "record-shipped", "release-boundary"];
 
-describe("project-owned boundary profile", () => {
+describe("项目自有的 boundary profile", () => {
   let root: string;
   let missionPath: string;
   let project: typeof example;
@@ -37,7 +37,7 @@ describe("project-owned boundary profile", () => {
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-  it("inherits every named obligation with digest, source binding and stable absolute addresses", () => {
+  it("继承每一条具名 obligation，附带 digest、source 绑定与稳定的绝对地址", () => {
     const first = compile();
     expect(first.eligible).toBe(true);
     expect(first.workflowSpec?.steps.map((s) => s.id)).toEqual(ids);
@@ -45,12 +45,12 @@ describe("project-owned boundary profile", () => {
     expect(first.sources.map((s) => s.kind)).toEqual(["project", "mission"]);
     expect(first.workflowSpec?.steps[0]).toMatchObject({ re_present_after_seconds: 300, re_present_max_seconds: 3600 });
     expect(compileProjectLifecycle({ missionPath: resolve(missionPath, "./mission.yaml"), operationKey: "different" }).compiledInputDigest).toBe(first.compiledInputDigest);
-    project.lifecycle.profiles["release-boundary-v0"].workflow.steps[0].objective = "Revised policy";
+    project.lifecycle.profiles["release-boundary-v0"].workflow.steps[0].objective = "修订后的策略";
     save();
     expect(compile().compiledInputDigest).not.toBe(first.compiledInputDigest);
   });
 
-  it("binds directory aliases to the same source/digest without accepting symlink manifests", () => {
+  it("把目录别名绑定到同一 source/digest，且不接受 symlink manifest", () => {
     const alias = join(root, "alias");
     symlinkSync(root, alias, "dir");
     expect(compileProjectLifecycle({ missionPath: join(alias, "missions", "release-0.5.11"), operationKey: "release" })).toEqual(compile());
@@ -59,16 +59,16 @@ describe("project-owned boundary profile", () => {
     expect(() => compileProjectLifecycle({ missionPath: link, operationKey: "release" })).toThrow(expect.objectContaining({ code: "lifecycle_manifest_symlink" }));
   });
 
-  it.each(ids)("refuses missing required step %s", (id) => {
+  it.each(ids)("拒绝缺失的 required step %s", (id) => {
     const profile = project.lifecycle.profiles["release-boundary-v0"];
     profile.workflow.steps = profile.workflow.steps.filter((s: { id: string }) => s.id !== id);
     save();
     expect(compile).toThrow(expect.objectContaining({ code: "lifecycle_required_step_missing", details: { missing: [id] } }));
   });
 
-  it("extends with a ready successor without copying the release graph", () => {
+  it("以就绪的后继扩展，而不复制 release graph", () => {
     mission.lifecycle = { profile: "release-boundary-v0", mode: "extend", workflow: {
-      context_refs: ["SPEC.md"], steps: [{ id: "activate-successor", actor_role: "orchestrator", depends_on: ["release-boundary"], objective: "Judge the authored ready successor and explicitly activate it", allowed_exits: ["done", "waiting", "failed"] }],
+      context_refs: ["SPEC.md"], steps: [{ id: "activate-successor", actor_role: "orchestrator", depends_on: ["release-boundary"], objective: "评判人工编写且已就绪的后继并显式激活它", allowed_exits: ["done", "waiting", "failed"] }],
     } };
     save();
     expect(compile()).toMatchObject({ eligible: true, graphSource: { mode: "mission-extend" } });
@@ -76,7 +76,7 @@ describe("project-owned boundary profile", () => {
     expect(compile().workflowSpec?.context_refs).toContain(join(missionPath, "SPEC.md"));
   });
 
-  it("permits an explicit override but preserves required IDs and prerequisite order", () => {
+  it("允许显式 override，但保留 required ID 与前置顺序", () => {
     const workflow = structuredClone(project.lifecycle.profiles["release-boundary-v0"].workflow);
     workflow.roles.orchestrator.preferred_targets = ["other@example"];
     mission.lifecycle = { profile: "release-boundary-v0", mode: "override", workflow };
@@ -90,7 +90,7 @@ describe("project-owned boundary profile", () => {
     expect(compile).toThrow(expect.objectContaining({ code: "lifecycle_required_step_missing" }));
   });
 
-  it.each([undefined, 100])("refuses an override retaining required ancestry but adding a prerequisite cycle, max_hops=%s", (maxHops) => {
+  it.each([undefined, 100])("拒绝保留 required 祖先关系却新增前置环路的 override，max_hops=%s", (maxHops) => {
     const workflow = structuredClone(project.lifecycle.profiles["release-boundary-v0"].workflow);
     workflow.steps.find((step: { id: string }) => step.id === "record-shipped").depends_on.push("release-boundary");
     if (maxHops !== undefined) workflow.loop_guards = { max_hops: maxHops };
@@ -102,18 +102,18 @@ describe("project-owned boundary profile", () => {
   });
 
   it.each([
-    ["ambiguous", { workflow: example.lifecycle.profiles["release-boundary-v0"].workflow }, "lifecycle_override_ambiguous"],
-    ["unknown mode", { mode: "merge", workflow: {} }, "lifecycle_override_ambiguous"],
-    ["empty mode", { mode: "extend" }, "lifecycle_manifest_shape_invalid"],
-    ["unknown key", { workflow_ref: "ignored.yaml" }, "lifecycle_boundary_unknown_key"],
-    ["step collision", { mode: "extend", workflow: { steps: [{ id: "exact-cut-substance" }] } }, "lifecycle_extension_collision"],
-  ])("refuses %s without silently falling back", (_name, settings, code) => {
+    ["歧义", { workflow: example.lifecycle.profiles["release-boundary-v0"].workflow }, "lifecycle_override_ambiguous"],
+    ["未知 mode", { mode: "merge", workflow: {} }, "lifecycle_override_ambiguous"],
+    ["空 mode", { mode: "extend" }, "lifecycle_manifest_shape_invalid"],
+    ["未知 key", { workflow_ref: "ignored.yaml" }, "lifecycle_boundary_unknown_key"],
+    ["step 冲突", { mode: "extend", workflow: { steps: [{ id: "exact-cut-substance" }] } }, "lifecycle_extension_collision"],
+  ])("拒绝 %s 且不静默回退", (_name, settings, code) => {
     mission.lifecycle = { profile: "release-boundary-v0", ...settings as object };
     save();
     expect(compile).toThrow(expect.objectContaining({ code }));
   });
 
-  it("refuses inert project workflow fields and a selected missing profile", () => {
+  it("拒绝无作用的 project workflow 字段与被选中的缺失 profile", () => {
     project.lifecycle.workflow = {};
     save();
     expect(compile).toThrow(expect.objectContaining({ code: "lifecycle_boundary_unknown_key" }));
@@ -123,7 +123,7 @@ describe("project-owned boundary profile", () => {
     expect(compile).toThrow(expect.objectContaining({ code: "lifecycle_profile_not_found" }));
   });
 
-  it("preserves legacy mission precedence explicitly until a project graph is installed", () => {
+  it("在安装 project graph 之前，显式保留 legacy mission 优先级", () => {
     const workflow = project.lifecycle.profiles["release-boundary-v0"].workflow;
     delete project.lifecycle.profiles;
     mission.lifecycle = { profile: "release-boundary-v0", workflow };
@@ -134,7 +134,7 @@ describe("project-owned boundary profile", () => {
     expect(compile).toThrow(expect.objectContaining({ code: "lifecycle_override_ambiguous" }));
   });
 
-  it.each([false, true])("executes the full boundary, receipts and optional successor=%s", async (successor) => {
+  it.each([false, true])("执行完整 boundary、receipts 与可选后继 successor=%s", async (successor) => {
     if (successor) mission.lifecycle = { profile: "release-boundary-v0", mode: "extend", workflow: {
       steps: [{ id: "activate-successor", actor_role: "orchestrator", depends_on: ["release-boundary"], allowed_exits: ["done", "waiting", "failed"] }],
     } };
@@ -145,7 +145,7 @@ describe("project-owned boundary profile", () => {
       const bus = new EventBus(db);
       const queue = new QueueRepository(db, bus, { validateRig: () => true });
       const runtime = new WorkflowRuntime({ db, eventBus: bus, queueRepo: queue });
-      const created = await runtime.instantiateLifecycle({ missionPath, operationKey: "release", rootObjective: "Ship release", createdBySession: "orch@example" });
+      const created = await runtime.instantiateLifecycle({ missionPath, operationKey: "release", rootObjective: "发布 release", createdBySession: "orch@example" });
       const instanceId = created.instance.instanceId;
       expect(runtime.inspect(instanceId).boundaryObligations.map((s) => s.stepId)).toEqual(successor ? [...ids, "activate-successor"] : ids);
       expect(runtime.inspect(instanceId).boundaryObligations.every((s) => s.receipt === null)).toBe(true);
@@ -154,19 +154,19 @@ describe("project-owned boundary profile", () => {
       const before = mutationCount();
       await expect(runtime.project({ instanceId, currentPacketId: start.packetId, exit: "handoff", actorSession: "orch@example" })).rejects.toMatchObject({ code: "lifecycle_receipt_required" });
       expect(mutationCount()).toEqual(before);
-      // Wait is a continuation, not acceptance, and needs no success receipt.
-      await runtime.project({ instanceId, currentPacketId: start.packetId, exit: "waiting", actorSession: "orch@example", blockedOn: "await exact evidence" });
+      // wait 是续行而非验收，因此不需要 success receipt。
+      await runtime.project({ instanceId, currentPacketId: start.packetId, exit: "waiting", actorSession: "orch@example", blockedOn: "等待确凿证据" });
       expect(runtime.inspect(instanceId).boundaryObligations[0]).toMatchObject({ state: "waiting", receiptState: "missing" });
       for (const id of ids) {
         const packet = runtime.inspect(instanceId).frontier[0]!;
         expect(packet.stepId).toBe(id);
         if (id === "release-boundary") {
           const body = queue.getByIdOrThrow(packet.packetId).body;
-          for (const area of ["seat renewal and re-prime", "memory distillation", "destination queue sweep",
-            "substrate teardown or retention", "board freeze and clean-box baseline", "capability-delta absorption and expiry", "packaged-product discoverability"]) {
+          for (const area of ["席位续期与重新初始化", "记忆提炼", "目标队列清理",
+            "substrate 拆除或保留", "看板冻结与 clean-box 基线", "capability-delta 吸收与过期", "打包产品的可发现性"]) {
             expect(body).toContain(area);
           }
-          expect(body).toContain("not seven daemon gates");
+          expect(body).toContain("不是七个后台服务门禁");
           expect(runtime.inspect(instanceId).instance.status).toBe("active");
         }
         await runtime.project({ instanceId, currentPacketId: packet.packetId, exit: id === "release-boundary" ? "done" : "handoff", actorSession: "orch@example", closureEvidence: { evidence_ref: `proof/${id}.md` } });
@@ -182,7 +182,7 @@ describe("project-owned boundary profile", () => {
       expect(view.instance.status).toBe("completed");
       const projected = buildExecutionView({ db, slicesRoot: () => join(root, "missions"), buildInfo: { semver: null, commit: null, dirty: null, builtAt: null } }, { mission: "release-0.5.11" }) as { lifecycle_instances: Array<{ boundary_obligations: unknown }> };
       expect(projected.lifecycle_instances[0]?.boundary_obligations).toEqual(view.boundaryObligations);
-      const replay = await runtime.instantiateLifecycle({ missionPath, operationKey: "release", rootObjective: "Ship release", createdBySession: "orch@example" });
+      const replay = await runtime.instantiateLifecycle({ missionPath, operationKey: "release", rootObjective: "发布 release", createdBySession: "orch@example" });
       expect(replay.replayed).toBe(true);
       expect(replay.instance.instanceId).toBe(instanceId);
     } finally { db.close(); }

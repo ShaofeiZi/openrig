@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T01:10:31",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch12",
+ "files": 10,
+ "changed": 5,
+ "reviewed_no_change": 5,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/storytelling-primitives.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "335820f0fbbef28db50f0093c177b81297e4bf579b7965178cd8b05cbe421f6a",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.2.20/0.3.3.20/0.4.0.24/0.4.0.39、P0-1/P0-2/P5.1-D2、useQueries/useNodeInventory、SMOKED_STATIC_PLATE_CLASS、#0c0a09、qitem-20260518195533、MissionReviewTab/compose.ts:行号、/api/files/roots|read、@vitest、eslint-disable 保留"
+  },
+  {
+   "path": "packages/ui/test/rig-chat-panel.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "b57b6bed63a0cb3c0e75a932c160f135fae3ec06a0f5a5b5022a736392b9e7d3",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.2.20/0.3.3.20/0.4.0.24/0.4.0.39、P0-1/P0-2/P5.1-D2、useQueries/useNodeInventory、SMOKED_STATIC_PLATE_CLASS、#0c0a09、qitem-20260518195533、MissionReviewTab/compose.ts:行号、/api/files/roots|read、@vitest、eslint-disable 保留"
+  },
+  {
+   "path": "packages/ui/test/session-preview-pane.test.tsx",
+   "status": "changed",
+   "after_sha256": "841b19407b382f67a1aa79811bca1b59df12e3692a5045a5132066353a7ddb4c",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.2.20/0.3.3.20/0.4.0.24/0.4.0.39、P0-1/P0-2/P5.1-D2、useQueries/useNodeInventory、SMOKED_STATIC_PLATE_CLASS、#0c0a09、qitem-20260518195533、MissionReviewTab/compose.ts:行号、/api/files/roots|read、@vitest、eslint-disable 保留"
+  },
+  {
+   "path": "packages/ui/test/p5-3-topology-activity.test.ts",
+   "status": "reviewed_no_change",
+   "after_sha256": "06292dd01d52f6078e8998587016ba10a9e8c6cd02d5ca63df93c3f626ee2f8c",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.2.20/0.3.3.20/0.4.0.24/0.4.0.39、P0-1/P0-2/P5.1-D2、useQueries/useNodeInventory、SMOKED_STATIC_PLATE_CLASS、#0c0a09、qitem-20260518195533、MissionReviewTab/compose.ts:行号、/api/files/roots|read、@vitest、eslint-disable 保留"
+  },
+  {
+   "path": "packages/ui/test/fork-now-action.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "dc48e783b39462f5ec35b263d54644c399fe992a60127fd6413bc3688191a144",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.2.20/0.3.3.20/0.4.0.24/0.4.0.39、P0-1/P0-2/P5.1-D2、useQueries/useNodeInventory、SMOKED_STATIC_PLATE_CLASS、#0c0a09、qitem-20260518195533、MissionReviewTab/compose.ts:行号、/api/files/roots|read、@vitest、eslint-disable 保留"
+  },
+  {
+   "path": "packages/ui/test/p5-ship-gate-bounce.test.tsx",
+   "status": "changed",
+   "after_sha256": "449175697d37f8a0e156cdfb67963f7c3d1f1ee555520281effe4ab2e7a110fb",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.2.20/0.3.3.20/0.4.0.24/0.4.0.39、P0-1/P0-2/P5.1-D2、useQueries/useNodeInventory、SMOKED_STATIC_PLATE_CLASS、#0c0a09、qitem-20260518195533、MissionReviewTab/compose.ts:行号、/api/files/roots|read、@vitest、eslint-disable 保留"
+  },
+  {
+   "path": "packages/ui/test/review-needs-you-slice-ref.test.tsx",
+   "status": "changed",
+   "after_sha256": "9eb3c6b1ec5fc62336e9702ae16b2464d8051841ef534337c784f258bd63c147",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.2.20/0.3.3.20/0.4.0.24/0.4.0.39、P0-1/P0-2/P5.1-D2、useQueries/useNodeInventory、SMOKED_STATIC_PLATE_CLASS、#0c0a09、qitem-20260518195533、MissionReviewTab/compose.ts:行号、/api/files/roots|read、@vitest、eslint-disable 保留"
+  },
+  {
+   "path": "packages/ui/test/use-scope-markdown.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "feda5ae9b37e9a5edb8dc19dc7d990e3aec85b745b3e39274261e987d07248f8",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.2.20/0.3.3.20/0.4.0.24/0.4.0.39、P0-1/P0-2/P5.1-D2、useQueries/useNodeInventory、SMOKED_STATIC_PLATE_CLASS、#0c0a09、qitem-20260518195533、MissionReviewTab/compose.ts:行号、/api/files/roots|read、@vitest、eslint-disable 保留"
+  },
+  {
+   "path": "packages/ui/test/use-activity-feed-attention-invalidation.test.tsx",
+   "status": "changed",
+   "after_sha256": "c7e757544e7513e9d7aa81478d2f67a274801f87fde021ac96c7c924b11fe8a2",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.2.20/0.3.3.20/0.4.0.24/0.4.0.39、P0-1/P0-2/P5.1-D2、useQueries/useNodeInventory、SMOKED_STATIC_PLATE_CLASS、#0c0a09、qitem-20260518195533、MissionReviewTab/compose.ts:行号、/api/files/roots|read、@vitest、eslint-disable 保留"
+  },
+  {
+   "path": "packages/ui/test/use-slice-timeline-markdown.test.tsx",
+   "status": "changed",
+   "after_sha256": "179b801d9ab5c1812fae462d237795804bfdacf419ea29cfd2b4fffff305c967",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.3.2.20/0.3.3.20/0.4.0.24/0.4.0.39、P0-1/P0-2/P5.1-D2、useQueries/useNodeInventory、SMOKED_STATIC_PLATE_CLASS、#0c0a09、qitem-20260518195533、MissionReviewTab/compose.ts:行号、/api/files/roots|read、@vitest、eslint-disable 保留"
+  }
+ ]
+}

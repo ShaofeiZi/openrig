@@ -1,0 +1,102 @@
+{
+"packages/daemon/src/seat-recap-store-surface.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/skill-loadout-surface.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/spec-conformance-surface.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/stream-classifier-surface.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/system-world-surface.ts": [
+"daemon-runtime",
+null,
+"skipped"
+],
+"packages/daemon/src/routes/activity.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/adapters.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/agent-images.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/agents.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/ask.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/attention.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/bootstrap.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/bundles.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/chat.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/compaction.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/config.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/context-packs.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/crash-cart.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/discovery.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/down.ts": [
+"daemon-api",
+"self_reported",
+"done"
+]
+}

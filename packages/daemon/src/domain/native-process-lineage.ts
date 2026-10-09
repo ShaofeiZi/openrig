@@ -42,7 +42,7 @@ function commandUsesExpectedToken(command: string, runtime: NativeRuntime, expec
   return codexResumeToken(args) === expectedToken;
 }
 
-// undefined is a fresh command; null is a resume command without an exact token.
+// undefined 表示 fresh command；null 表示没有精确 token 的 resume command。
 function codexResumeToken(args: string[]): string | null | undefined {
   const topLevelOptionsWithValues = new Set([
     "-a", "--ask-for-approval", "-c", "--config", "-m", "--model",
@@ -68,8 +68,8 @@ function codexResumeToken(args: string[]): string | null | undefined {
   return null;
 }
 
-/** Require a live process in the pane's own lineage whose argv names both the
- * declared runtime and the exact native resume identity. */
+/** 要求 pane 自身 lineage 中存在 live process，且其 argv 同时指明声明的 runtime 与精确的
+ *  原生续接身份。 */
 export function findExactNativeResumeProcess(
   processes: NativeProcessRow[],
   panePid: number,
@@ -98,8 +98,8 @@ export function findExactNativeResumeProcess(
   return null;
 }
 
-/** The same OS observation serves menu input, restore proof and periodic identity.
- * Older callers may carry only pid/ppid/command; that is insufficient positive Codex proof. */
+/** 同一 OS observation 服务于 menu input、restore proof 与周期性 identity。旧 caller 可能只携带
+ *  pid/ppid/command；这不足以构成肯定的 Codex proof。 */
 export async function listNativeProcesses(): Promise<NativeProcessRow[]> {
   try {
     const output = await runAsyncSite("codex.runtime.list_processes", async () => {

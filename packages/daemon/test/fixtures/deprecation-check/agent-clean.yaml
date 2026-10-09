@@ -1,7 +1,6 @@
-# bug-fix slice deprecation-check-keys-widening — fixture.
-# Minimal valid agent.yaml shape with NO deprecated keys + NO empty-array
-# placeholders that the strict validator rejects. T7 baseline: must pass
-# both the DEPRECATED_KEY_PATHS check AND validateAgentSpec.
+# bug-fix 切片 deprecation-check-keys-widening——fixture。
+# 最小有效 agent.yaml 结构，不含已弃用 key，也不含严格验证器会拒绝的空数组
+# 占位符。T7 基线：DEPRECATED_KEY_PATHS 检查和 validateAgentSpec 都必须通过。
 name: agent-clean
 version: "1.0"
 

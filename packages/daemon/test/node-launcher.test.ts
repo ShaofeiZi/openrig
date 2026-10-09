@@ -80,7 +80,7 @@ describe("NodeLauncher", () => {
     return { rig, node };
   }
 
-  it("happy path: derives name, creates tmux, persists session+binding+event in one txn, notifies", async () => {
+  it("成功路径：派生名称、创建 tmux、在单一事务中持久化 session+binding+event，并通知", async () => {
     const { rig, node } = seedRigWithNode();
     const notifications: PersistedEvent[] = [];
     eventBus.subscribe((e) => notifications.push(e));
@@ -94,28 +94,28 @@ describe("NodeLauncher", () => {
     expect(result.ok).toBe(true);
     expect(createSpy).toHaveBeenCalledOnce();
 
-    // DB: session exists
+    // 数据库：session 存在
     const sessions = sessionRegistry.getSessionsForRig(rig.id);
     expect(sessions).toHaveLength(1);
     expect(sessions[0]!.status).toBe("running");
 
-    // DB: binding exists
+    // 数据库：binding 存在
     const fullRig = rigRepo.getRig(rig.id);
     const launchedNode = fullRig!.nodes.find((n) => n.logicalId === "dev1-impl");
     expect(launchedNode!.binding).not.toBeNull();
 
-    // DB: event exists
+    // 数据库：event 存在
     const events = db
       .prepare("SELECT * FROM events WHERE type = 'node.launched'")
       .all();
     expect(events).toHaveLength(1);
 
-    // Subscriber notified
+    // 已通知订阅者
     expect(notifications).toHaveLength(1);
     expect(notifications[0]!.type).toBe("node.launched");
   });
 
-  it("launchNode commits the created session's sole live pane with its session and binding", async () => {
+  it("launchNode 将已创建会话唯一的实时 pane 连同 session 和 binding 一起提交", async () => {
     const { rig, node } = seedRigWithNode();
     const listPanes = vi.fn(async () => [{ id: "%fresh" }]);
     const launcher = createLauncher(mockTmuxAdapter({ listPanes }));
@@ -128,7 +128,7 @@ describe("NodeLauncher", () => {
     expect(sessionRegistry.currentOccupantTenure(node.id)?.kind).toBe("fresh");
   });
 
-  it("derived session name is correct (rig.name + '-' + logicalId)", async () => {
+  it("派生的会话名称正确（rig.name + '-' + logicalId）", async () => {
     const { rig } = seedRigWithNode();
     const createSpy = vi.fn<(name: string, cwd?: string) => Promise<TmuxResult>>()
       .mockResolvedValue({ ok: true });
@@ -139,7 +139,7 @@ describe("NodeLauncher", () => {
     expect(createSpy.mock.calls[0]![0]).toBe("r01-dev1-impl");
   });
 
-  it("passes runtime hook env to tmux session creation without putting it in provider config", async () => {
+  it("将运行时 hook 环境变量传给 tmux 会话创建，但不写入 provider 配置", async () => {
     const rig = rigRepo.createRig("test-rig");
     rigRepo.addNode(rig.id, "dev-qa", {
       role: "worker",
@@ -164,7 +164,7 @@ describe("NodeLauncher", () => {
     });
   });
 
-  it("carries the exact prelaunch reservation into tmux and registers that same generation", async () => {
+  it("将精确的启动前预留值传入 tmux，并注册同一 generation", async () => {
     const { rig, node } = seedRigWithNode();
     let launchEnv: Record<string, string> | undefined;
     const launcher = createLauncher(
@@ -186,7 +186,7 @@ describe("NodeLauncher", () => {
       .toBe(launchEnv?.OPENRIG_OCCUPANT_GENERATION);
   });
 
-  it("keeps launch fail-open and omits generation when the tenure ledger is unavailable", async () => {
+  it("任期 ledger 不可用时保持启动开放失败，并省略 generation", async () => {
     const { rig } = seedRigWithNode();
     db.exec("DROP TABLE occupant_tenures");
     let launchEnv: Record<string, string> | undefined;
@@ -204,7 +204,7 @@ describe("NodeLauncher", () => {
     expect(sessionRegistry.getSessionsForRig(rig.id)).toHaveLength(1);
   });
 
-  it("explicit sessionName override used when provided", async () => {
+  it("提供显式 sessionName 覆盖值时使用该值", async () => {
     const { rig } = seedRigWithNode();
     const createSpy = vi.fn<(name: string, cwd?: string) => Promise<TmuxResult>>()
       .mockResolvedValue({ ok: true });
@@ -215,7 +215,7 @@ describe("NodeLauncher", () => {
     expect(createSpy.mock.calls[0]![0]).toBe("r99-custom1-worker");
   });
 
-  it("valid logical IDs 'orchestrator' and 'worker' produce launchable names", async () => {
+  it("有效逻辑 ID 'orchestrator' 和 'worker' 会产生可启动名称", async () => {
     const rig = rigRepo.createRig("r01");
     rigRepo.addNode(rig.id, "orchestrator", { role: "orchestrator" });
     rigRepo.addNode(rig.id, "worker", { role: "worker" });
@@ -232,7 +232,7 @@ describe("NodeLauncher", () => {
     expect(createSpy.mock.calls[1]![0]).toBe("r01-worker");
   });
 
-  it("non-managed rig name is normalized to a managed session name", async () => {
+  it("非托管 rig 名称会规范化为托管会话名称", async () => {
     const rig = rigRepo.createRig("badname");
     rigRepo.addNode(rig.id, "worker");
     const createSpy = vi.fn<(name: string, cwd?: string) => Promise<TmuxResult>>()
@@ -245,7 +245,7 @@ describe("NodeLauncher", () => {
     expect(createSpy.mock.calls[0]![0]).toBe("r00-badname-worker");
   });
 
-  it("node not found -> error", async () => {
+  it("未找到节点时返回错误", async () => {
     const rig = rigRepo.createRig("r01");
     const launcher = createLauncher();
 
@@ -257,9 +257,9 @@ describe("NodeLauncher", () => {
     }
   });
 
-  it("node already bound -> error", async () => {
+  it("节点已绑定时返回错误", async () => {
     const { rig, node } = seedRigWithNode();
-    // Pre-bind the node
+    // 预先绑定节点
     sessionRegistry.updateBinding(node.id, { tmuxSession: "r01-dev1-impl" });
     const launcher = createLauncher();
 
@@ -271,7 +271,7 @@ describe("NodeLauncher", () => {
     }
   });
 
-  it("tmux createSession fails -> no DB rows", async () => {
+  it("tmux createSession 失败时不产生数据库行", async () => {
     const { rig } = seedRigWithNode();
     const killSpy = vi.fn(async () => ({ ok: true as const }));
     const launcher = createLauncher(
@@ -279,7 +279,7 @@ describe("NodeLauncher", () => {
         createSession: async () => ({
           ok: false as const,
           code: "duplicate_session",
-          message: "duplicate session",
+          message: "会话重复",
         }),
         killSession: killSpy,
       })
@@ -289,7 +289,7 @@ describe("NodeLauncher", () => {
 
     expect(result.ok).toBe(false);
 
-    // No session/binding/event rows
+    // 不产生 session/binding/event 行
     const sessions = sessionRegistry.getSessionsForRig(rig.id);
     expect(sessions).toHaveLength(0);
     const fullRig = rigRepo.getRig(rig.id);
@@ -302,14 +302,13 @@ describe("NodeLauncher", () => {
     expect(killSpy).not.toHaveBeenCalled();
   });
 
-  it("DB transaction fails after session+binding but before event -> rollback all, killSession attempted", async () => {
+  it("数据库事务在 session+binding 之后、event 之前失败时全部回滚，并尝试 killSession", async () => {
     const { rig } = seedRigWithNode();
     const killSpy = vi.fn<(name: string) => Promise<TmuxResult>>()
       .mockResolvedValue({ ok: true });
 
-    // Sabotage the events table so persistWithinTransaction fails AFTER
-    // session + binding inserts have already executed within the transaction.
-    // This proves rollback removes the session and binding rows too.
+    // 破坏 events 表，使 persistWithinTransaction 在事务内已插入 session + binding 后失败。
+    // 这证明回滚也会移除 session 和 binding 行。
     db.exec("DROP TABLE events");
     db.exec(
       "CREATE TABLE events (seq INTEGER PRIMARY KEY AUTOINCREMENT, rig_id TEXT, node_id TEXT, type TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), CONSTRAINT force_fail CHECK(length(type) < 1))"
@@ -325,20 +324,20 @@ describe("NodeLauncher", () => {
     const result = await launcher.launchNode(rig.id, "dev1-impl");
 
     expect(result.ok).toBe(false);
-    // killSession was attempted (tmux cleanup)
+    // 已尝试 killSession（tmux 清理）
     expect(killSpy).toHaveBeenCalledOnce();
-    // No partial session rows (rolled back)
+    // 没有部分 session 行（已回滚）
     const sessions = db.prepare("SELECT * FROM sessions").all();
     expect(sessions).toHaveLength(0);
-    // No partial binding rows (rolled back)
+    // 没有部分 binding 行（已回滚）
     const bindings = db.prepare("SELECT * FROM bindings").all();
     expect(bindings).toHaveLength(0);
-    // No event rows (insert failed)
+    // 没有 event 行（插入失败）
     const events = db.prepare("SELECT * FROM events").all();
     expect(events).toHaveLength(0);
   });
 
-  it("event row exists in DB after launch (atomic with session+binding)", async () => {
+  it("启动后 event 行存在于数据库中（与 session+binding 原子提交）", async () => {
     const { rig } = seedRigWithNode();
     const launcher = createLauncher();
 
@@ -354,7 +353,7 @@ describe("NodeLauncher", () => {
     expect(payload.logicalId).toBe("dev1-impl");
   });
 
-  it("emitted event has correct rigId, nodeId, logicalId, sessionName", async () => {
+  it("发出的事件具有正确的 rigId、nodeId、logicalId、sessionName", async () => {
     const { rig, node } = seedRigWithNode();
     const notifications: PersistedEvent[] = [];
     eventBus.subscribe((e) => notifications.push(e));
@@ -373,7 +372,7 @@ describe("NodeLauncher", () => {
     }
   });
 
-  it("after launch, getRig shows binding for node", async () => {
+  it("启动后 getRig 显示节点 binding", async () => {
     const { rig } = seedRigWithNode();
     const launcher = createLauncher();
 
@@ -385,7 +384,7 @@ describe("NodeLauncher", () => {
     expect(node!.binding!.tmuxSession).toBe("r01-dev1-impl");
   });
 
-  it("after launch, getSessionsForRig shows session with correct name", async () => {
+  it("启动后 getSessionsForRig 显示名称正确的会话", async () => {
     const { rig } = seedRigWithNode();
     const launcher = createLauncher();
 
@@ -396,7 +395,7 @@ describe("NodeLauncher", () => {
     expect(sessions[0]!.sessionName).toBe("r01-dev1-impl");
   });
 
-  it("returns the newly created session when older sessions already exist for the node", async () => {
+  it("节点已有旧会话时返回新创建的会话", async () => {
     const { rig, node } = seedRigWithNode();
     const older = sessionRegistry.registerSession(node.id, "r01-dev1-impl");
     sessionRegistry.updateStatus(older.id, "exited");
@@ -415,7 +414,7 @@ describe("NodeLauncher", () => {
     expect(result.session.id).toBe(newest.id);
   });
 
-  it("exactly 1 event row and exactly 1 subscriber notification (no duplication)", async () => {
+  it("恰好生成 1 行 event 和 1 次订阅者通知（不重复）", async () => {
     const { rig } = seedRigWithNode();
     const notifications: PersistedEvent[] = [];
     eventBus.subscribe((e) => notifications.push(e));
@@ -423,17 +422,17 @@ describe("NodeLauncher", () => {
 
     await launcher.launchNode(rig.id, "dev1-impl");
 
-    // Exactly 1 DB row
+    // 恰好 1 行数据库记录
     const eventRows = db
       .prepare("SELECT * FROM events WHERE type = 'node.launched'")
       .all();
     expect(eventRows).toHaveLength(1);
 
-    // Exactly 1 subscriber notification
+    // 恰好 1 次订阅者通知
     expect(notifications).toHaveLength(1);
   });
 
-  it("canonical session name with @ accepted when passed as opts.sessionName", async () => {
+  it("通过 opts.sessionName 传入时接受带 @ 的规范会话名称", async () => {
     const rig = rigRepo.createRig("auth-feats");
     rigRepo.addNode(rig.id, "dev.impl", { runtime: "claude-code" });
     const createSpy = vi.fn<(name: string, cwd?: string) => Promise<TmuxResult>>()
@@ -447,13 +446,13 @@ describe("NodeLauncher", () => {
     expect(result.ok).toBe(true);
     expect(createSpy.mock.calls[0]![0]).toBe("dev-impl@auth-feats");
 
-    // Session persisted with canonical name
+    // 以规范名称持久化会话
     const sessions = sessionRegistry.getSessionsForRig(rig.id);
     expect(sessions).toHaveLength(1);
     expect(sessions[0]!.sessionName).toBe("dev-impl@auth-feats");
   });
 
-  it("constructor throws if services use mismatched db handles", () => {
+  it("服务使用不匹配的数据库句柄时构造函数抛错", () => {
     const otherDb = createDb();
     migrate(otherDb, [coreSchema, bindingsSessionsSchema, eventsSchema]);
     const otherRepo = new RigRepository(otherDb);
@@ -462,18 +461,18 @@ describe("NodeLauncher", () => {
       () =>
         new NodeLauncher({
           db,
-          rigRepo: otherRepo, // different handle
+          rigRepo: otherRepo, // 不同句柄
           sessionRegistry,
           eventBus,
           tmuxAdapter: mockTmuxAdapter(),
         })
-    ).toThrow(/same db handle/);
+    ).toThrow(/同一个数据库句柄/);
 
     otherDb.close();
   });
 
-  describe("transcript integration", () => {
-    it("starts the transcript rotation timer on successful launch when TranscriptStore is enabled", async () => {
+  describe("transcript 集成", () => {
+    it("启用 TranscriptStore 时，启动成功后开启 transcript 轮换定时器", async () => {
       const {
         getActiveRotationCount,
         clearAllTranscriptRotationsForTest,
@@ -494,7 +493,7 @@ describe("NodeLauncher", () => {
 
       const result = await launcher.launchNode(rig.id, "dev1-impl");
       expect(result.ok).toBe(true);
-      // Rotation timer registered for the launched session.
+      // 已为启动的会话注册轮换定时器。
       expect(getActiveRotationCount()).toBeGreaterThan(0);
       if (result.ok) {
         expect(result.warnings).toBeUndefined();
@@ -502,7 +501,7 @@ describe("NodeLauncher", () => {
       clearAllTranscriptRotationsForTest();
     });
 
-    it("warns and still succeeds when the transcript directory cannot be created", async () => {
+    it("无法创建 transcript 目录时发出警告但仍成功", async () => {
       const { rig } = seedRigWithNode();
       const tmux = mockTmuxAdapter({
         createSession: async () => ({ ok: true as const }),
@@ -521,13 +520,13 @@ describe("NodeLauncher", () => {
       if (result.ok) {
         expect(result.warnings).toBeDefined();
         expect(result.warnings!.length).toBe(1);
-        expect(result.warnings![0]).toContain("Transcript directory creation failed");
+        expect(result.warnings![0]).toContain("无法为工作组");
       }
     });
   });
 
-  describe("env var projection", () => {
-    it("passes OPENRIG_NODE_ID and OPENRIG_SESSION_NAME to createSession", async () => {
+  describe("环境变量投影", () => {
+    it("将 OPENRIG_NODE_ID 和 OPENRIG_SESSION_NAME 传给 createSession", async () => {
       const { rig, node } = seedRigWithNode();
       const createSpy = vi.fn<(name: string, cwd?: string, env?: Record<string, string>) => Promise<TmuxResult>>()
         .mockResolvedValue({ ok: true });
@@ -545,30 +544,29 @@ describe("NodeLauncher", () => {
     });
   });
 
-  // OPR.0.4.6.02 S1 — the shared tmux option-defaults applier is invoked on the
-  // JUST-CREATED session, and its warnings fold into the launch result.
-  describe("tmux option defaults (OPR.0.4.6.02 S1)", () => {
-    it("applies option defaults to the created session and folds applier warnings", async () => {
+  // OPR.0.4.6.02 S1——对刚创建的会话调用共享 tmux 默认选项应用器，并将其警告合入启动结果。
+  describe("tmux 默认选项（OPR.0.4.6.02 S1）", () => {
+    it("将默认选项应用到已创建会话，并合入应用器警告", async () => {
       const { rig } = seedRigWithNode();
-      const applyToFreshSession = vi.fn(async () => ['tmux "mouse" option not set for r01-dev1-impl: boom']);
+      const applyToFreshSession = vi.fn(async () => ['未能为 r01-dev1-impl 设置 tmux "mouse" 选项：boom']);
       const applier = { applyToFreshSession } as unknown as TmuxOptionDefaultsApplier;
 
       const result = await createLauncher(undefined, undefined, applier).launchNode(rig.id, "dev1-impl");
 
       expect(result.ok).toBe(true);
-      if (!result.ok) throw new Error("expected ok");
-      // Applied exactly once, to the just-created session name (never a pre-existing one).
+      if (!result.ok) throw new Error("预期为 ok");
+      // 恰好应用一次，目标为刚创建的会话名称（绝不是预先存在的会话）。
       expect(applyToFreshSession).toHaveBeenCalledTimes(1);
       expect(applyToFreshSession).toHaveBeenCalledWith(result.sessionName);
-      // The applier's non-fatal warnings ride the launch result.
-      expect(result.warnings).toContain('tmux "mouse" option not set for r01-dev1-impl: boom');
+      // 应用器的非致命警告会随启动结果返回。
+      expect(result.warnings).toContain('未能为 r01-dev1-impl 设置 tmux "mouse" 选项：boom');
     });
 
-    it("without an applier injected, launch succeeds and applies nothing (existing-behavior safety)", async () => {
+    it("未注入应用器时启动成功且不应用任何内容（保持现有行为安全）", async () => {
       const { rig } = seedRigWithNode();
       const result = await createLauncher().launchNode(rig.id, "dev1-impl");
       expect(result.ok).toBe(true);
-      if (!result.ok) throw new Error("expected ok");
+      if (!result.ok) throw new Error("预期为 ok");
       expect(result.warnings).toBeUndefined();
     });
   });

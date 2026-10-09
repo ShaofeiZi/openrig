@@ -1,15 +1,14 @@
-// 90840bcb — CLI response-integrity hardening (D-family light atom).
+// 90840bcb——CLI response-integrity 加固（D 族轻量原子）。
 //
-// Falsification context: the reported "structured 400 renders as only `}`"
-// did NOT reproduce post-saturation; the render path (printResult + errorResponse)
-// is correct. The GENUINE gap is response-integrity: a truncated / unparseable /
-// transport-failed daemon response bubbles raw (json → cryptic SyntaxError; non-json
-// → silent), and slow/no-connect/bad-response are conflated. Under saturation a
-// truncated body (e.g. "}") makes res.json() throw with no honest render.
+// 证伪背景：所报“结构化 400 只渲染为 `}`”在饱和后并未复现；渲染路径
+// （printResult + errorResponse）是正确的。真正缺口在 response-integrity：
+// 截断/不可解析/传输失败的 daemon 响应原样上冒（json → 费解的 SyntaxError；
+// 非 json → 静默），且慢/连不上/坏响应被混为一谈。饱和下截断 body
+// （如 "}"）使 res.json() 抛出，却无诚实渲染。
 //
-// Contract pinned here:
-//  (1) client layer distinguishes THREE failure classes with typed errors:
-//      - bad-response (unparseable/truncated body) → DaemonResponseError(status)
+// 此处钉住的契约：
+//  (1) client 层用带类型错误区分三类失败：
+//      - bad-response（不可解析/截断 body）→ DaemonResponseError(status)
 //      - slow-response (timeout)                   → DaemonTimeoutError
 //      - no-connect (refused)                      → DaemonConnectionError (not a timeout)
 //      well-formed non-2xx still returns {status,data} WITHOUT throwing (regression guard).
@@ -160,8 +159,8 @@ describe("render response integrity — 3-part error + honest exit, never daemon
     );
     expect(exitCode).toBe(1);
     for (const p of DAEMON_DOWN_PHRASES) expect(stderr).not.toMatch(p);
-    expect(stderr).toMatch(/timed out|slow|unresponsive/i);
-    expect(stderr).toMatch(/check the command's effect before any retry/i);
+    expect(stderr).toMatch(/超时|缓慢|未响应/);
+    expect(stderr).toMatch(/重试前先确认.*实际效果/);
     expect(stderr).not.toMatch(/retry once conditions ease/i);
   });
 

@@ -19,8 +19,8 @@ import { OutboxHandler } from "../src/domain/outbox-handler.js";
 import { QueueRepository } from "../src/domain/queue-repository.js";
 import { WorkflowRuntime } from "../src/domain/workflow-runtime.js";
 import { workflowRoutes } from "../src/routes/workflow.js";
-// OPR.0.4.6.FAC1 (guard code-review blocker at 6e991a9d): route-level
-// regressions for the new bound-rig HTTP status mapping.
+// OPR.0.4.6.FAC1（6e991a9d 的 guard 代码审查阻断项）：新绑定工作组 HTTP 状态映射的
+// 路由级回归测试。
 import { createFullTestDb } from "./helpers/test-app.js";
 import { RigRepository } from "../src/domain/rig-repository.js";
 import { PodRepository } from "../src/domain/pod-repository.js";
@@ -69,7 +69,7 @@ function buildApp(opts: { eventBus: EventBus; runtime: WorkflowRuntime }): Hono 
   return app;
 }
 
-describe("workflow routes (PL-004 Phase D)", () => {
+describe("工作流路由（PL-004 阶段 D）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let runtime: WorkflowRuntime;
@@ -88,8 +88,8 @@ describe("workflow routes (PL-004 Phase D)", () => {
     bus = new EventBus(db);
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
     const queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用失败关闭（MF2）——意图唤醒的终止关闭需要同一数据库中的意图
+    // 存储，才能让唤醒持久化。
     queueRepo.attachOutbox(new OutboxHandler(db));
     runtime = new WorkflowRuntime({ db, eventBus: bus, queueRepo });
     app = buildApp({ eventBus: bus, runtime });
@@ -103,7 +103,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("POST /validate returns ok=true for a valid spec", async () => {
+  it("POST /validate 对有效规范返回 ok=true", async () => {
     const res = await app.request("/api/workflow/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -115,7 +115,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(body.summary.entryRole).toBe("producer");
   });
 
-  it("POST /validate returns 404 for missing file", async () => {
+  it("POST /validate 对缺失文件返回 404", async () => {
     const res = await app.request("/api/workflow/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -124,7 +124,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(res.status).toBe(404);
   });
 
-  it("POST /instantiate returns 201 with instance + entry qitem", async () => {
+  it("POST /instantiate 返回 201、实例和入口 qitem", async () => {
     const res = await app.request("/api/workflow/instantiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -136,20 +136,19 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(body.entryQitemId).toBeDefined();
   });
 
-  // OPR.0.3.3.04.1 (AC-3) discriminator-flip: a discovered spec must be
-  // instantiable BY NAME (no hidden file path). Pre-fix, instantiate fed the
-  // bare name to readThrough -> spec_file_missing (404); post-fix it resolves
-  // the name against the seeded cache to the stored sourcePath -> 201.
-  it("POST /instantiate resolves a seeded spec BY NAME (AC-3 reachability), not just a literal path", async () => {
-    // Seed the spec into the cache the way the starter-spec-loader does at seed
-    // time: a readThrough caches `routes-fixture` by name with its sourcePath.
+  // OPR.0.3.3.04.1（AC-3）判别翻转：发现的规范必须能按名称实例化（无隐藏文件路径）。
+  // 修复前，instantiate 将裸名称传给 readThrough → spec_file_missing（404）；修复后，
+  // 它根据预置缓存将名称解析为已存 sourcePath → 201。
+  it("POST /instantiate 按名称解析预置规范（AC-3 可达性），而不只接受字面路径", async () => {
+    // 按 starter-spec-loader 预置时的方式将规范写入缓存：readThrough 按名称缓存
+    // `routes-fixture` 及其 sourcePath。
     const seed = await app.request("/api/workflow/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ specPath }),
     });
     expect(seed.status).toBe(200);
-    // Instantiate by the discovered NAME (no path).
+    // 按发现的名称实例化（不使用路径）。
     const res = await app.request("/api/workflow/instantiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -161,11 +160,9 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(body.entryQitemId).toBeDefined();
   });
 
-  // OPR.0.3.3.04.1: literal-sourcePath fallback preserved. An identifier that is
-  // neither a cached name nor an existing file resolves as a literal path and
-  // 404s honestly (spec_file_missing) - name-resolution does not mask real
-  // missing-path errors.
-  it("POST /instantiate falls back to literal sourcePath for an unmatched name (honest 404)", async () => {
+  // OPR.0.3.3.04.1：保留字面 sourcePath 回退。既不是缓存名称也不是现有文件的标识符
+  // 会按字面路径解析，并如实返回 404（spec_file_missing）；名称解析不掩盖真正的路径缺失错误。
+  it("POST /instantiate 对未匹配名称回退到字面 sourcePath（如实返回 404）", async () => {
     const res = await app.request("/api/workflow/instantiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -174,10 +171,10 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(res.status).toBe(404);
   });
 
-  it("POST /instantiate surfaces queue destination validation as 400", async () => {
+  it("POST /instantiate 将队列目标校验错误公开为 400", async () => {
     const rejectingQueueRepo = new QueueRepository(db, bus, { validateRig: () => false });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用失败关闭（MF2）——意图唤醒的终止关闭需要同一数据库中的意图
+    // 存储，才能让唤醒持久化。
     rejectingQueueRepo.attachOutbox(new OutboxHandler(db));
     const rejectingRuntime = new WorkflowRuntime({
       db,
@@ -199,7 +196,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(body.message).toContain("producer@rig");
   });
 
-  it("POST /project closes packet + creates next packet", async () => {
+  it("POST /project 关闭数据包并创建下一数据包", async () => {
     const create = await app.request("/api/workflow/instantiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -222,11 +219,9 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(body.nextOwnerSession).toBe("reviewer@rig");
   });
 
-  // R3 fix (guard blocker): exit_not_allowed must surface as HTTP 400
-  // (not 500 internal-server-error) with structured details preserved.
-  // Asserts no side effects on the public path: queue still pending,
-  // instance state unchanged.
-  it("POST /project surfaces exit_not_allowed as 400 with structured details + no side effects", async () => {
+  // R3 修复（guard 阻断项）：exit_not_allowed 必须以 HTTP 400 而非 500 内部服务错误公开，
+  // 并保留结构化详情。断言公开路径无副作用：队列仍为 pending，实例状态不变。
+  it("POST /project 将 exit_not_allowed 公开为带结构化详情的 400，且无副作用", async () => {
     const create = await app.request("/api/workflow/instantiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -234,7 +229,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
     });
     const created = (await create.json()) as { instance: { instanceId: string }; entryQitemId: string };
 
-    // Capture pre-rejection state via the public surface.
+    // 通过公开接口捕获拒绝前状态。
     const beforeShow = await app.request(`/api/workflow/${created.instance.instanceId}`);
     const beforeInstance = (await beforeShow.json()) as {
       currentFrontier: string[];
@@ -242,7 +237,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
       status: string;
     };
 
-    // Attempt exit=done on the produce step (which only allows handoff).
+    // 在只允许 handoff 的 produce 步骤尝试 exit=done。
     const res = await app.request("/api/workflow/project", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -254,7 +249,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
       }),
     });
 
-    // R3 critical: 400 (NOT 500), structured error code + details preserved.
+    // R3 关键点：返回 400（而非 500），保留结构化错误码和详情。
     expect(res.status).toBe(400);
     expect(res.status).not.toBe(500);
     const body = (await res.json()) as {
@@ -271,7 +266,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(body.attemptedExit).toBe("done");
     expect(body.allowedExits).toEqual(["handoff"]);
 
-    // No side effects through the public path: instance unchanged.
+    // 公开路径无副作用：实例不变。
     const afterShow = await app.request(`/api/workflow/${created.instance.instanceId}`);
     const afterInstance = (await afterShow.json()) as {
       currentFrontier: string[];
@@ -281,13 +276,13 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(afterInstance.currentFrontier).toEqual(beforeInstance.currentFrontier);
     expect(afterInstance.currentStepId).toBe(beforeInstance.currentStepId);
     expect(afterInstance.status).toBe(beforeInstance.status);
-    // Trail still empty (no projected step closure recorded).
+    // trail 仍为空（未记录投射的步骤关闭）。
     const traceRes = await app.request(`/api/workflow/${created.instance.instanceId}/trace`);
     const trace = (await traceRes.json()) as { trail: Array<unknown> };
     expect(trace.trail).toEqual([]);
   });
 
-  it("GET /list returns all instances", async () => {
+  it("GET /list 返回全部实例", async () => {
     await app.request("/api/workflow/instantiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -299,7 +294,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(body).toHaveLength(1);
   });
 
-  it("GET /list?status=active filters by status", async () => {
+  it("GET /list?status=active 按状态过滤", async () => {
     await app.request("/api/workflow/instantiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -311,12 +306,12 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(body).toHaveLength(0);
   });
 
-  it("GET /:instance_id returns 404 for unknown id", async () => {
+  it("GET /:instance_id 对未知 id 返回 404", async () => {
     const res = await app.request("/api/workflow/unknown-id");
     expect(res.status).toBe(404);
   });
 
-  it("GET /:instance_id returns instance for known id", async () => {
+  it("GET /:instance_id 对已知 id 返回实例", async () => {
     const create = await app.request("/api/workflow/instantiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -327,7 +322,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(res.status).toBe(200);
   });
 
-  it("GET /:instance_id/trace returns instance + trail", async () => {
+  it("GET /:instance_id/trace 返回实例和 trail", async () => {
     const create = await app.request("/api/workflow/instantiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -340,8 +335,8 @@ describe("workflow routes (PL-004 Phase D)", () => {
     expect(body.trail).toEqual([]);
   });
 
-  // Phase A R1 SSE route-order discipline tests.
-  it("R1 SSE pattern: GET /api/workflow/sse returns 200 + content-type text/event-stream", async () => {
+  // 阶段 A R1 SSE 路由顺序约束测试。
+  it("R1 SSE 模式：GET /api/workflow/sse 返回 200 和 content-type text/event-stream", async () => {
     const res = await app.request("/api/workflow/sse");
     try {
       expect(res.status).toBe(200);
@@ -351,7 +346,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
     }
   });
 
-  it("R1 SSE pattern: GET /api/workflow/watch returns 200 + content-type text/event-stream", async () => {
+  it("R1 SSE 模式：GET /api/workflow/watch 返回 200 和 content-type text/event-stream", async () => {
     const res = await app.request("/api/workflow/watch");
     try {
       expect(res.status).toBe(200);
@@ -361,7 +356,7 @@ describe("workflow routes (PL-004 Phase D)", () => {
     }
   });
 
-  it("R1 SSE pattern: GET /api/workflow/sse does NOT return instance_not_found (route-order regression guard)", async () => {
+  it("R1 SSE 模式：GET /api/workflow/sse 不返回 instance_not_found（路由顺序回归防护）", async () => {
     const res = await app.request("/api/workflow/sse");
     try {
       expect(res.status).not.toBe(404);
@@ -372,14 +367,14 @@ describe("workflow routes (PL-004 Phase D)", () => {
   });
 });
 
-// ── OPR.0.4.6.WF1 guard blocker 1 regression ─────────────────────────
+// ── OPR.0.4.6.WF1 guard 阻断项 1 回归 ─────────────────────────────────
 
 import { vi } from "vitest";
 import { workflowInstanceVersionSchema } from "../src/db/migrations/049_workflow_instance_version.js";
 import { workflowSpecJsonSchema } from "../src/db/migrations/050_workflow_spec_json.js";
 
-describe("FR-5 route contract: instance_version_conflict is HTTP 409 with expected/actual in the body (guard blocker 1)", () => {
-  it("POST /project as the stale concurrent loser returns 409, never 500", async () => {
+describe("FR-5 路由契约：instance_version_conflict 为 HTTP 409，正文含 expected/actual（guard 阻断项 1）", () => {
+  it("POST /project 作为过期并发失败方时返回 409，绝不返回 500", async () => {
     const db2 = createDb();
     migrate(db2, [
       outboxEntriesSchema,
@@ -396,8 +391,8 @@ describe("FR-5 route contract: instance_version_conflict is HTTP 409 with expect
     const bus2 = new EventBus(db2);
     db2.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
     const queueRepo2 = new QueueRepository(db2, bus2, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用失败关闭（MF2）——意图唤醒的终止关闭需要同一数据库中的意图
+    // 存储，才能让唤醒持久化。
     queueRepo2.attachOutbox(new OutboxHandler(db2));
     const runtime2 = new WorkflowRuntime({ db: db2, eventBus: bus2, queueRepo: queueRepo2 });
     const app2 = buildApp({ eventBus: bus2, runtime: runtime2 });
@@ -410,9 +405,8 @@ describe("FR-5 route contract: instance_version_conflict is HTTP 409 with expect
         rootObjective: "route 409 pin",
         createdBySession: "ops@rig",
       });
-      // Simulate the race exactly as the unit pin does: the route's
-      // project() reads the instance, then a concurrent writer bumps
-      // the version before the transaction body runs.
+      // 严格按单元固定项模拟竞态：路由的 project() 读取实例，随后并发 writer 在事务体
+      // 运行前提升版本。
       const realGet = runtime2.instanceStore.getByIdOrThrow.bind(runtime2.instanceStore);
       vi.spyOn(runtime2.instanceStore, "getByIdOrThrow").mockImplementationOnce(
         (id: string) => {
@@ -440,7 +434,7 @@ describe("FR-5 route contract: instance_version_conflict is HTTP 409 with expect
       expect(typeof body.actualVersion).toBe("number");
       expect(body.actualVersion).toBe((body.expectedVersion as number) + 1);
       vi.restoreAllMocks();
-      // Whole-txn rollback: the packet is untouched; a clean retry works.
+      // 整个事务回滚：数据包保持不变；干净重试可成功。
       const retry = await app2.request("/api/workflow/project", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -459,9 +453,9 @@ describe("FR-5 route contract: instance_version_conflict is HTTP 409 with expect
   });
 });
 
-// ── OPR.0.4.6.WF1 guard round-2 blocker regression ───────────────────
+// ── OPR.0.4.6.WF1 guard 第 2 轮阻断项回归 ───────────────────────────
 
-describe("FR-7 route contract: strict-validation rejections are structured 400s, never 500s (guard round-2 blocker)", () => {
+describe("FR-7 路由契约：严格校验拒绝是结构化 400，绝不是 500（guard 第 2 轮阻断项）", () => {
   let db3: Database.Database;
   let app3: Hono;
   let tmp3: string;
@@ -483,8 +477,8 @@ describe("FR-7 route contract: strict-validation rejections are structured 400s,
     const bus3 = new EventBus(db3);
     db3.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
     const queueRepo3 = new QueueRepository(db3, bus3, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用失败关闭（MF2）——意图唤醒的终止关闭需要同一数据库中的意图
+    // 存储，才能让唤醒持久化。
     queueRepo3.attachOutbox(new OutboxHandler(db3));
     const runtime3 = new WorkflowRuntime({ db: db3, eventBus: bus3, queueRepo: queueRepo3 });
     app3 = buildApp({ eventBus: bus3, runtime: runtime3 });
@@ -496,7 +490,7 @@ describe("FR-7 route contract: strict-validation rejections are structured 400s,
     rmSync(tmp3, { recursive: true, force: true });
   });
 
-  it("POST /validate on a spec with a root sibling of workflow: returns 400 + spec_unknown_key + details", async () => {
+  it("POST /validate 遇到 workflow: 的根级同级字段时返回 400、spec_unknown_key 和详情", async () => {
     const p = join(tmp3, "root-sibling.yaml");
     writeFileSync(p, SPEC + "extra_root_key: true\n");
     const res = await app3.request("/api/workflow/validate", {
@@ -511,7 +505,7 @@ describe("FR-7 route contract: strict-validation rejections are structured 400s,
     expect(body.path).toBe("(document root)");
   });
 
-  it("POST /validate on an invalid loop_guards.max_hops returns 400 + spec_field_invalid + field details", async () => {
+  it("POST /validate 遇到无效 loop_guards.max_hops 时返回 400、spec_field_invalid 和字段详情", async () => {
     const p = join(tmp3, "bad-maxhops.yaml");
     writeFileSync(p, SPEC + "  loop_guards:\n    max_hops: nope\n");
     const res = await app3.request("/api/workflow/validate", {
@@ -525,7 +519,7 @@ describe("FR-7 route contract: strict-validation rejections are structured 400s,
     expect(body.field).toBe("workflow.loop_guards.max_hops");
   });
 
-  it("POST /instantiate hits the same mapper: a strict-validation rejection is 400, never 500", async () => {
+  it("POST /instantiate 使用同一映射器：严格校验拒绝返回 400，绝不是 500", async () => {
     const p = join(tmp3, "bad-instantiate.yaml");
     writeFileSync(p, SPEC + "  loop_guards:\n    max_hops: nope\n");
     const res = await app3.request("/api/workflow/instantiate", {
@@ -543,10 +537,10 @@ describe("FR-7 route contract: strict-validation rejections are structured 400s,
   });
 });
 
-// ── OPR.0.4.6.WF2 (guard blocker 2): the new language/routing failures are
-// STRUCTURED 400/409s on the public route surface, never 500s. ──────────────
+// ── OPR.0.4.6.WF2（guard 阻断项 2）：新的语言/路由失败在公开路由接口上是
+// 结构化 400/409，绝不是 500。────────────────────────────────────────────
 
-describe("workflow routes — WF-2 structured error boundaries", () => {
+describe("工作流路由——WF-2 结构化错误边界", () => {
   let db: Database.Database;
   let bus: EventBus;
   let queueRepo: QueueRepository;
@@ -572,8 +566,8 @@ describe("workflow routes — WF-2 structured error boundaries", () => {
     bus = new EventBus(db);
     db.prepare(`INSERT INTO rigs (id, name) VALUES ('r-1', 'rig')`).run();
     queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用失败关闭（MF2）——意图唤醒的终止关闭需要同一数据库中的意图
+    // 存储，才能让唤醒持久化。
     queueRepo.attachOutbox(new OutboxHandler(db));
     runtime = new WorkflowRuntime({ db, eventBus: bus, queueRepo });
     app = buildApp({ eventBus: bus, runtime });
@@ -596,7 +590,7 @@ describe("workflow routes — WF-2 structured error boundaries", () => {
     });
   }
 
-  it("a registered REMOTE host pin instantiates to 400 host_pin_remote_unsupported naming MH-3 (never 500)", async () => {
+  it("已注册远程主机固定项实例化为 400 host_pin_remote_unsupported 并指明 MH-3（绝非 500）", async () => {
     writeFileSync(
       join(tmp, "hosts.yaml"),
       "hosts:\n  - id: vps-1\n    transport: ssh\n    target: vps-1.invalid\n",
@@ -620,7 +614,7 @@ describe("workflow routes — WF-2 structured error boundaries", () => {
     expect(body.message).toContain("MH-3");
   });
 
-  it("an unsatisfiable harness pin instantiates to 409 harness_pin_unsatisfied (never 500)", async () => {
+  it("无法满足的 harness 固定项实例化为 409 harness_pin_unsatisfied（绝非 500）", async () => {
     const specPath = join(tmp, "harness.yaml");
     writeFileSync(specPath, `workflow:
   id: rb-harness
@@ -632,14 +626,14 @@ describe("workflow routes — WF-2 structured error boundaries", () => {
       actor_role: a
       harness: codex
 `);
-    // No seeded seat runs codex → structured routing conflict.
+    // 没有预置席位运行 codex → 结构化路由冲突。
     const res = await instantiate(specPath);
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("harness_pin_unsatisfied");
   });
 
-  it("gate field/target failures surface as 400 spec_invalid with the named validator issues (never 500)", async () => {
+  it("gate 字段/目标失败以 400 spec_invalid 公开并携带具名校验问题（绝非 500）", async () => {
     const specPath = join(tmp, "gate.yaml");
     writeFileSync(specPath, `workflow:
   id: rb-gate
@@ -660,15 +654,12 @@ describe("workflow routes — WF-2 structured error boundaries", () => {
   });
 });
 
-// OPR.0.4.6.FAC1 — guard code-review blocker at 6e991a9d: the new bound-rig
-// errors are thrown correctly in-domain but were MISSING from the route
-// errorResponse mapper, so the public HTTP/CLI surface fell through to 500.
-// These route-level regressions drive the REAL public surface (the domain
-// tests in workflow-bound-rig / workflow-role-resolution do not) and pin the
-// honest status: instantiate authoring-boundary → 400, project live-state
-// conflict → 409. (The WF-1/WF-2 "new structured error needs a route-mapper
-// entry the moment it exists" class, a third time.)
-describe("workflow routes — FAC-1 bound-rig HTTP status mapping (guard blocker 6e991a9d)", () => {
+// OPR.0.4.6.FAC1——6e991a9d 的 guard 代码审查阻断项：新的 bound-rig 错误在 domain
+// 中正确抛出，却缺少 route errorResponse 映射，因此公开 HTTP/CLI 接口落入 500。这些
+// 路由级回归驱动真实公开接口（workflow-bound-rig / workflow-role-resolution 的 domain
+// 测试不会），并固定诚实状态：instantiate 作者边界 → 400，project 实时状态冲突 → 409。
+//（这是第三次出现 WF-1/WF-2“新结构化错误一旦存在就需要 route-mapper 条目”类型。）
+describe("工作流路由——FAC-1 bound-rig HTTP 状态映射（guard 阻断项 6e991a9d）", () => {
   let db: Database.Database;
   let bus: EventBus;
   let runtime: WorkflowRuntime;
@@ -678,8 +669,7 @@ describe("workflow routes — FAC-1 bound-rig HTTP status mapping (guard blocker
   let tmp: string;
   let sessionSeq = 0;
 
-  // Role-only spec (ZERO preferred_targets) so the capability resolver + the
-  // structural role-coverage check engage on the bound rig.
+  // 仅角色规范（零 preferred_targets），使能力解析器和结构化角色覆盖检查作用于绑定工作组。
   const ROLE_ONLY = `workflow:
   id: fac1-route-roleonly
   version: 1
@@ -710,8 +700,8 @@ describe("workflow routes — FAC-1 bound-rig HTTP status mapping (guard blocker
     ]);
     bus = new EventBus(db);
     const queueRepo = new QueueRepository(db, bus, { validateRig: () => true });
-    // P34: the W1 seam is fail-closed (MF2) — a nudge-intended terminal
-    // close needs a SAME-DB intent store to make its wake durable.
+    // P34：W1 接缝采用失败关闭（MF2）——意图唤醒的终止关闭需要同一数据库中的意图
+    // 存储，才能让唤醒持久化。
     queueRepo.attachOutbox(new OutboxHandler(db));
     runtime = new WorkflowRuntime({ db, eventBus: bus, queueRepo });
     app = buildApp({ eventBus: bus, runtime });
@@ -745,7 +735,7 @@ describe("workflow routes — FAC-1 bound-rig HTTP status mapping (guard blocker
     return app.request(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   }
 
-  it("POST /instantiate: explicit --rig unknown → 400 bound_rig_unknown + structured details, no instance row (arch-ruling public contract)", async () => {
+  it("POST /instantiate：显式 --rig 未知 → 400 bound_rig_unknown 和结构化详情，无实例行（架构裁定公开契约）", async () => {
     const before = db.prepare(`SELECT COUNT(*) c FROM workflow_instances`).get() as { c: number };
     const specPath = writeSpec("ro-unknown.yaml", ROLE_ONLY);
     const res = await post("/api/workflow/instantiate", {
@@ -759,7 +749,7 @@ describe("workflow routes — FAC-1 bound-rig HTTP status mapping (guard blocker
     expect(after.c).toBe(before.c);
   });
 
-  it("POST /instantiate: known bound rig structurally lacks a required role → 400 bound_rig_role_uncovered", async () => {
+  it("POST /instantiate：已知绑定工作组在结构上缺少必需角色 → 400 bound_rig_role_uncovered", async () => {
     const rig = rigRepo.createRig("factory-min");
     seedSeat(rig.id, "factory-min", "dev", "lead", "lead"); // covers entry 'lead', NOT 'worker'
     const specPath = writeSpec("ro-uncovered.yaml", ROLE_ONLY);
@@ -770,7 +760,7 @@ describe("workflow routes — FAC-1 bound-rig HTTP status mapping (guard blocker
     expect(((await res.json()) as { error: string }).error).toBe("bound_rig_role_uncovered");
   });
 
-  it("POST /project: persisted bound rig vanished mid-run → 409 bound_rig_not_found", async () => {
+  it("POST /project：已持久化绑定工作组在运行途中消失 → 409 bound_rig_not_found", async () => {
     const rig = rigRepo.createRig("factory-gone");
     seedSeat(rig.id, "factory-gone", "dev", "lead", "lead");
     seedSeat(rig.id, "factory-gone", "dev", "worker", "worker"); // both roles covered → instantiate succeeds bound
@@ -780,9 +770,9 @@ describe("workflow routes — FAC-1 bound-rig HTTP status mapping (guard blocker
     });
     expect(inst.status).toBe(201);
     const ib = (await inst.json()) as { instance: { instanceId: string }; entryQitemId: string; entryOwnerSession: string };
-    // The bound rig is torn down mid-run.
+    // 绑定工作组在运行途中被拆除。
     db.prepare(`DELETE FROM rigs WHERE name = 'factory-gone'`).run();
-    // Projecting the entry resolves the role-only 'build' step on the vanished bound rig.
+    // 投射入口时，在已消失的绑定工作组上解析仅角色的 'build' 步骤。
     const proj = await post("/api/workflow/project", {
       instanceId: ib.instance.instanceId, currentPacketId: ib.entryQitemId, exit: "handoff", actorSession: ib.entryOwnerSession,
     });

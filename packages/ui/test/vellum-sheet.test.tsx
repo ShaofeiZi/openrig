@@ -1,6 +1,6 @@
-// V1 Shell Redesign — Phase 1 — VellumSheet primitive.
+// V1 Shell 重设计——Phase 1——VellumSheet 原语。
 //
-// API surface tests: edge, width, onClose, testId, registration marks.
+// API 表面测试：edge、width、onClose、testId、注册标记。
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
@@ -54,7 +54,7 @@ describe("VellumSheet (Phase 1 primitive)", () => {
     render(
       <VellumSheet onClose={onClose} testId="vs-c">x</VellumSheet>,
     );
-    const closeBtn = screen.getByLabelText("Close sheet");
+    const closeBtn = screen.getByLabelText("关闭面板");
     expect(closeBtn).toBeTruthy();
     fireEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalledOnce();
@@ -62,7 +62,7 @@ describe("VellumSheet (Phase 1 primitive)", () => {
 
   it("omits close button when onClose not provided", () => {
     const { container } = render(<VellumSheet>x</VellumSheet>);
-    expect(container.querySelector("button[aria-label='Close sheet']")).toBeNull();
+    expect(container.querySelector("button[aria-label='关闭面板']")).toBeNull();
   });
 
   it("renders 4 registration marks", () => {

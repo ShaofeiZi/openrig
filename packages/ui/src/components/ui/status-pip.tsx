@@ -16,11 +16,9 @@ export interface StatusPipProps {
   label?: string;
   variant?: StatusPipVariant;
   className?: string;
-  /** V0.3.1 slice 14 walk-item 15 — optional class applied to the
-   *  label text only (NOT the dot). Used by TopologyTableView to add
-   *  a shimmer animation to active rows while keeping the green dot
-   *  static. Mounting in StatusPip (rather than wrapping externally)
-   *  keeps the label markup consistent across variants. */
+  /** V0.3.1 slice 14 walk-item 15 —— 仅作用于标签文本（不作用于圆点）的可选类名。
+   *  TopologyTableView 用它给活动行加微光动画，同时保持绿点静止。
+   *  把它挂在 StatusPip 内部（而非外部包裹），可让各变体的标签标记保持一致。 */
   labelClassName?: string;
   testId?: string;
 }

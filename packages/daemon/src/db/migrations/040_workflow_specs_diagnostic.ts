@@ -1,33 +1,23 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * Slice 11 (release-0.3.1 workflow-spec-folder-discovery) —
- * workflow_specs diagnostic columns.
+ * Slice 11（release-0.3.1 workflow-spec-folder-discovery）——workflow_specs 诊断列。
  *
- * SC-29 #10 (verbatim, declared in commit body):
- *   "Slice 11 (workflow-spec-folder-discovery) requires schema
- *   migration 040_workflow_specs_diagnostic.ts adding
- *   status TEXT DEFAULT 'valid' + error_message TEXT columns to the
- *   workflow_specs cache. No new table, no constraint changes beyond
- *   default; ALTER TABLE ADD COLUMN preserves existing rows (default
- *   'valid' fills retroactively for already-cached rows). Read-only
- *   diagnostic surface — the cache stores parser/validator errors
- *   so the Library UI can render them; daemon does not act on the
- *   diagnostic state. Per IMPL-PRD §HG-8 'unless provenance / status
- *   columns require migration — declare upfront if so': declared
- *   upfront in slice 11 ACK + commit body."
+ * SC-29 #10（原义，声明于提交正文）：Slice 11 要求 schema 迁移
+ * 040_workflow_specs_diagnostic.ts 向 workflow_specs 缓存添加 status TEXT DEFAULT
+ * 'valid' 和 error_message TEXT 列。不新增表；除默认值外不改约束；ALTER TABLE ADD COLUMN
+ * 保留现有行（默认 'valid' 会回填已有缓存行）。这是只读诊断界面——缓存保存解析器/验证器错误，
+ * 供 Library UI 渲染；后台服务不依据诊断状态执行操作。根据 IMPL-PRD §HG-8“若 provenance/
+ * status 列需要迁移，须提前声明”：已在 slice 11 ACK 和提交正文中提前声明。
  *
- * Columns:
- *   - status TEXT NOT NULL DEFAULT 'valid' — one of 'valid' | 'error'.
- *     Existing rows pre-040 retroactively gain 'valid' via the
- *     DEFAULT clause when ALTER TABLE ADD COLUMN populates them.
- *   - error_message TEXT NULL — populated only when status='error';
- *     carries the parse/validation diagnostic for the UI to render.
+ * 列：
+ *   - status TEXT NOT NULL DEFAULT 'valid'——'valid' | 'error' 之一。ALTER TABLE ADD
+ *     COLUMN 填充时，040 之前的现有行通过 DEFAULT 子句回填 'valid'。
+ *   - error_message TEXT NULL——仅在 status='error' 时填充；携带供 UI 渲染的解析/验证诊断。
  *
- * Provenance is NOT a new column — derived at scan time from
- * source_path relative to the daemon's bundled-builtin starter dir
- * (existing scanner logic at spec-library-workflow-scanner.ts
- * already does isUnderDir(source_path, workflowBuiltinSpecsDir)).
+ * Provenance 不是新列——扫描时根据 source_path 相对于后台服务内置 starter 目录的位置派生
+ *（spec-library-workflow-scanner.ts 中的现有扫描逻辑已执行
+ * isUnderDir(source_path, workflowBuiltinSpecsDir)）。
  */
 export const workflowSpecsDiagnosticSchema: Migration = {
   name: "040_workflow_specs_diagnostic.sql",

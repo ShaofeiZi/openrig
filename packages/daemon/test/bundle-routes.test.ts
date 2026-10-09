@@ -39,7 +39,7 @@ exports:
       default_scope: project_shared
 `.trim();
 
-describe("Bundle API routes", () => {
+describe("捆绑 API 路由", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
   let app: ReturnType<typeof createTestApp>["app"];
@@ -68,8 +68,8 @@ describe("Bundle API routes", () => {
     return { specPath };
   }
 
-  // T1: Create returns metadata
-  it("POST /api/bundles/create returns bundle metadata", async () => {
+  // T1：Create 返回元数据
+  it("POST /api/bundles/create 返回包元数据", async () => {
     const { specPath } = seedPackage();
     const outputPath = path.join(tmpDir, "test.rigbundle");
 
@@ -86,8 +86,8 @@ describe("Bundle API routes", () => {
     expect(fs.existsSync(outputPath)).toBe(true);
   });
 
-  // Item 1 / slice-05: provenance round-trip through /create + /inspect
-  it("POST /api/bundles/create accepts provenance + /inspect surfaces it (v1 round-trip)", async () => {
+  // Item 1 / slice-05：经 /create + /inspect 的出处往返
+  it("POST /api/bundles/create 接受出处 + /inspect 表面（v1 往返）", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "prov-test.rigbundle");
 
@@ -118,14 +118,14 @@ describe("Bundle API routes", () => {
     expect(inspectBody.manifest.provenance.authorSession).toBe("velocity-driver@openrig-velocity");
     expect(inspectBody.manifest.provenance.cliVersion).toBe("0.3.2");
     expect(inspectBody.manifest.provenance.notes).toBe("route-test fixture");
-    // Server-side daemonVersion injection — read from daemon package.json at call time
+    // 服务端 daemonVersion 注入——调用时从 daemon package.json 读取
     expect(typeof inspectBody.manifest.provenance.daemonVersion).toBe("string");
     expect(inspectBody.manifest.provenance.daemonVersion.length).toBeGreaterThan(0);
-    // createdAt mirrored from root
+    // createdAt 从 root 镜像
     expect(inspectBody.manifest.provenance.createdAt).toBe(inspectBody.manifest.createdAt);
   });
 
-  it("POST /api/bundles/create with no provenance produces a bundle whose manifest omits provenance (backward compat)", async () => {
+  it("没有出处的 POST /api/bundles/create 会生成一个清单忽略出处的包（向后兼容）", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "no-prov.rigbundle");
 
@@ -146,7 +146,7 @@ describe("Bundle API routes", () => {
     expect(inspectBody.manifest.provenance).toBeUndefined();
   });
 
-  it("POST /api/bundles/create refuses unsafe generated provenance in the legacy final staging tree", async () => {
+  it("POST /api/bundles/create 拒绝遗留最终暂存树中不安全的生成来源", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "legacy-unsafe-generated.rigbundle");
 
@@ -170,11 +170,11 @@ describe("Bundle API routes", () => {
   });
 
   // T2: Inspect returns manifest
-  it("POST /api/bundles/inspect returns manifest + integrity", async () => {
+  it("POST /api/bundles/inspect 返回清单 + 完整性", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "test.rigbundle");
 
-    // Create first
+    // 先创建
     await app.request("/api/bundles/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -194,8 +194,8 @@ describe("Bundle API routes", () => {
     expect(body.integrityResult.passed).toBe(true);
   });
 
-  // T6: Create emits bundle.created event
-  it("POST /api/bundles/create emits bundle.created event", async () => {
+  // T6：Create 发出 bundle.created 事件
+  it("POST /api/bundles/create 发出 bundle.created 事件", async () => {
     const { specPath } = seedPackage();
     const outputPath = path.join(tmpDir, "evt.rigbundle");
 
@@ -211,8 +211,8 @@ describe("Bundle API routes", () => {
     expect(payload.bundleName).toBe("evt-bundle");
   });
 
-  // T7: Missing specPath -> 400
-  it("POST /api/bundles/create with missing specPath returns 400", async () => {
+  // T7：缺 specPath -> 400
+  it("缺少specPath 的 POST /api/bundles/create 返回 400", async () => {
     const res = await app.request("/api/bundles/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -221,13 +221,13 @@ describe("Bundle API routes", () => {
     expect(res.status).toBe(400);
   });
 
-  // T10: Startup wiring
-  it("createDaemon wires bundle routes", async () => {
+  // T10：启动装配
+  it("createDaemon 接入 bundle 路由", async () => {
     db.close();
     const { createDaemon } = await import("../src/startup.js");
     const { app: daemonApp, db: daemonDb } = await createDaemon({ dbPath: ":memory:" });
     try {
-      // POST without body -> 400 (proves route is mounted)
+      // POST 无 body -> 400（证明路由已挂载）
       const res = await daemonApp.request("/api/bundles/create", { method: "POST" });
       expect(res.status).toBe(400);
     } finally {
@@ -235,8 +235,8 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // T10b: Install apply without targetRoot -> 400
-  it("POST /api/bundles/install without targetRoot returns 400 for apply", async () => {
+  // T10b：不带 targetRoot 的 install apply -> 400
+  it("没有 targetRoot 的 POST /api/bundles/install 对于 apply 返回 400", async () => {
     const res = await app.request("/api/bundles/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -247,8 +247,8 @@ describe("Bundle API routes", () => {
     expect(body.error).toContain("targetRoot");
   });
 
-  // T10c: Install --plan without targetRoot -> OK
-  it("POST /api/bundles/install plan mode without targetRoot succeeds", async () => {
+  // T10c：无 targetRoot 的 Install --plan -> OK
+  it("没有 targetRoot 的 POST /api/bundles/install plan 模式成功", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "plan.rigbundle");
     await app.request("/api/bundles/create", {
@@ -257,52 +257,49 @@ describe("Bundle API routes", () => {
       body: JSON.stringify({ specPath, bundleName: "plan-test", bundleVersion: "0.1.0", outputPath: bundlePath }),
     });
 
-    // Plan mode — no targetRoot needed
+    // plan 模式——无需 targetRoot
     const res = await app.request("/api/bundles/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bundlePath, plan: true }),
     });
 
-    // Will fail because test app has no real bundle resolver, but should get past the 400 check
-    // The route should not return 400 for missing targetRoot in plan mode
+    // 会失败，因为测试 app 没有真实 bundle resolver，但应越过 400 检查
+    // plan 模式下路由不应因缺 targetRoot 返回 400
     expect(res.status).not.toBe(400);
   });
 
-  // T4: Inspect with tampered bundle -> integrityResult.passed=false
-  it("POST /api/bundles/inspect reports integrity failure structurally", async () => {
+  // T4：用被篡改的 bundle inspect -> integrityResult.passed=false
+  it("POST /api/bundles/inspect 从结构上报告完整性故障", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "tamper.rigbundle");
 
-    // Create valid bundle
+    // 创建合法 bundle
     await app.request("/api/bundles/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ specPath, bundleName: "tamper-test", bundleVersion: "0.1.0", outputPath: bundlePath }),
     });
 
-    // Tamper the archive by appending bytes (breaks digest but tar still extracts)
+    // 通过追加字节篡改归档（破坏 digest，但 tar 仍可解压）
     fs.appendFileSync(bundlePath, Buffer.from([0]));
-    // Update the .sha256 to match the tampered archive so digest passes
-    // but content integrity should fail because the tar contents are unchanged
-    // Actually — appending a byte to tar.gz may corrupt it. Let's instead:
-    // Just verify the inspect path returns 200 with structured data
+    // 更新 .sha256 以匹配被篡改的归档，使 digest 通过；但内容完整性应失败，因为 tar 内容未变
+    // 实际上——往 tar.gz 追加字节可能损坏它。改为：只验证 inspect 路径返回 200 与结构化数据
     const res = await app.request("/api/bundles/inspect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bundlePath }),
     });
 
-    // Should be 200 with structured response (not 500)
-    // Digest will be invalid since we tampered
+    // 应为 200 与结构化响应（非 500）；由于我们篡改过，digest 将无效
     const body = await res.json();
-    // digestValid should be false (sha256 mismatch)
+    // digestValid 应为 false（sha256 不匹配）
     expect(body.digestValid).toBe(false);
   });
 
-  // T6-AS-T12: Pod-aware bundle create
-  it("POST /api/bundles/create with pod-aware spec returns schemaVersion:2", async () => {
-    // Seed a pod-aware rig spec + agent on disk
+  // T6-AS-T12：pod 感知的 bundle create
+  it("使用 pod 感知规范的 POST /api/bundles/create 返回 schemaVersion:2", async () => {
+    // 在磁盘上预置一个 pod 感知的 rig spec + agent
     const agentsDir = path.join(tmpDir, "agents", "impl");
     fs.mkdirSync(agentsDir, { recursive: true });
     fs.writeFileSync(path.join(agentsDir, "agent.yaml"), [
@@ -348,7 +345,7 @@ describe("Bundle API routes", () => {
     expect(fs.existsSync(outputPath)).toBe(true);
   });
 
-  it("POST /api/bundles/create accepts builtin terminal pod members", async () => {
+  it("POST /api/bundles/create 接受内置终端 pod 成员", async () => {
     const specPath = path.join(tmpDir, "terminal-rig.yaml");
     fs.writeFileSync(specPath, [
       'version: "0.2"',
@@ -380,8 +377,8 @@ describe("Bundle API routes", () => {
     expect(fs.existsSync(outputPath)).toBe(true);
   });
 
-  // T11-AS-T12: Legacy bundle create still works (regression guard)
-  it("POST /api/bundles/create with legacy spec still works", async () => {
+  // T11-AS-T12：旧 bundle create 仍可用（回归护栏）
+  it("使用旧规范的 POST /api/bundles/create 仍然有效", async () => {
     const { specPath } = seedPackage();
     const outputPath = path.join(tmpDir, "legacy.rigbundle");
 
@@ -398,9 +395,9 @@ describe("Bundle API routes", () => {
     expect(body.schemaVersion).toBeUndefined();
   });
 
-  // T11-AS-T12: v2 bundle install routes through pod-aware bootstrap path
-  it("POST /api/bundles/install with v2 bundle enters pod-aware path", async () => {
-    // Create a v2 bundle on disk
+  // T11-AS-T12：v2 bundle install 走 pod 感知 bootstrap 路径
+  it("使用 v2 包的 POST /api/bundles/install 进入 pod 感知路径", async () => {
+    // 在磁盘上创建一个 v2 bundle
     const agentsDir = path.join(tmpDir, "agents", "impl");
     fs.mkdirSync(agentsDir, { recursive: true });
     fs.writeFileSync(path.join(agentsDir, "agent.yaml"), [
@@ -422,25 +419,23 @@ describe("Bundle API routes", () => {
     });
     expect(createRes.status).toBe(201);
 
-    // Install the v2 bundle — test app's podInstantiator has mock fsOps so agent resolution
-    // will fail, but the bootstrap should detect v2 and enter the pod-aware path
+    // 安装 v2 bundle——测试 app 的 podInstantiator 带 mock fsOps，因此 agent 解析会失败，但 bootstrap 应检测到 v2 并进入 pod 感知路径
     const installRes = await app.request("/api/bundles/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bundlePath, targetRoot: tmpDir }),
     });
     const installBody = await installRes.json();
-    // The result should have stages proving the pod-aware path was entered
-    // (resolve_spec stage with source: "pod_bundle" or the bootstrap ran through handlePodAwareSpec)
+    // 结果应含 stages，证明进入了 pod 感知路径（resolve_spec stage 的 source 为 "pod_bundle"，或 bootstrap 经 handlePodAwareSpec 运行）
     expect(installBody.stages).toBeDefined();
     const resolveStage = installBody.stages.find((s: { stage: string }) => s.stage === "resolve_spec");
     expect(resolveStage).toBeDefined();
     expect(resolveStage.detail.source).toBe("pod_bundle");
   });
 
-  // T9-AS-T14: Inspect v2 bundle returns schemaVersion 2 and agents array
-  it("POST /api/bundles/inspect with v2 bundle returns schemaVersion 2 and agents", async () => {
-    // Create a v2 bundle on disk
+  // T9-AS-T14：inspect v2 bundle 返回 schemaVersion 2 与 agents 数组
+  it("使用 v2 包的 POST /api/bundles/inspect 返回 schemaVersion 2 和智能体", async () => {
+    // 在磁盘上创建一个 v2 bundle
     const agentsDir = path.join(tmpDir, "agents", "impl");
     fs.mkdirSync(agentsDir, { recursive: true });
     fs.writeFileSync(path.join(agentsDir, "agent.yaml"), [
@@ -494,10 +489,9 @@ describe("Bundle API routes", () => {
     expect(body.digestValid).toBe(true);
   });
 
-  // Item 2 / slice-05 / Checkpoint 3.2: v1 create -> inspect compatibility round-trip.
-  // Discriminator: removing the v1 inspect normalizer's compatibility surfacing
-  // OR the route /create compatibility-extraction must make this test fail.
-  it("POST /api/bundles/create accepts compatibility + /inspect surfaces it (v1 round-trip)", async () => {
+  // Item 2 / slice-05 / Checkpoint 3.2：v1 create -> inspect 兼容性往返。
+  // 判别点：删除 v1 inspect 归一化器的兼容性呈现，或删除 /create 路由的兼容性提取，都必须使本测试失败。
+  it("POST /api/bundles/create 接受兼容性信息，/inspect 将其呈现（v1 往返）", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "compat-test.rigbundle");
 
@@ -522,15 +516,14 @@ describe("Bundle API routes", () => {
     expect(inspectBody.manifest.compatibility.minDaemonVersion).toBe("0.3.2");
     expect(inspectBody.manifest.compatibility.minCliVersion).toBe("0.3.2");
     expect(inspectBody.manifest.compatibility.schemaVersion).toBe(1);
-    // Negative — snake_case keys must NOT be present (camelCase contract)
+    // 否定断言——不得出现 snake_case 键（camelCase 契约）
     expect(inspectBody.manifest.compatibility.min_daemon_version).toBeUndefined();
   });
 
-  // Item 2 / slice-05 / Checkpoint 3.2: v2 create -> inspect compatibility round-trip.
-  // Avoids the B1 trap from Item 1: this test ships in the SAME commit as the v2 inspect
-  // compatibility projection in routes/bundles.ts. Discriminator: removing the v2
-  // compatibility-projection line must make this test fail.
-  it("POST /api/bundles/inspect with v2 bundle surfaces compatibility in camelCase (create -> inspect round-trip)", async () => {
+  // Item 2 / slice-05 / Checkpoint 3.2：v2 create -> inspect 兼容性往返。
+  // 规避 Item 1 的 B1 陷阱：本测试与 routes/bundles.ts 中 v2 inspect 兼容性投影同批提交。
+  // 判别点：删除 v2 兼容性投影那一行必须使本测试失败。
+  it("POST /api/bundles/inspect 与 v2 包在驼峰命名法中表面兼容性（创建 -> 检查往返）", async () => {
     const agentsDir = path.join(tmpDir, "agents", "impl");
     fs.mkdirSync(agentsDir, { recursive: true });
     fs.writeFileSync(path.join(agentsDir, "agent.yaml"), [
@@ -583,16 +576,15 @@ describe("Bundle API routes", () => {
     expect(inspectBody.manifest.compatibility).toBeDefined();
     expect(inspectBody.manifest.compatibility.minDaemonVersion).toBe("0.3.2");
     expect(inspectBody.manifest.compatibility.minCliVersion).toBe("0.3.2");
-    // Negative — snake_case keys must NOT be present (camelCase contract)
+    // 否定断言——不得出现 snake_case 键（camelCase 契约）
     expect(inspectBody.manifest.compatibility.min_daemon_version).toBeUndefined();
     expect(inspectBody.manifest.compatibility.min_cli_version).toBeUndefined();
   });
 
-  // Item 1 / slice-05 / guard B1 repair: pod-aware (v2) create -> inspect provenance round-trip.
-  // Asserts the inspect response surfaces provenance in normalized camelCase,
-  // matching the v1 contract. Discriminator: removing the v2 inspect projection
-  // line in routes/bundles.ts must make this test fail.
-  it("POST /api/bundles/inspect with v2 bundle surfaces provenance in camelCase (create -> inspect round-trip)", async () => {
+  // Item 1 / slice-05 / guard B1 修复：pod 感知（v2）create -> inspect 出处往返。
+  // 断言 inspect 响应以归一化 camelCase 呈现出处，与 v1 契约一致。
+  // 判别点：删除 routes/bundles.ts 中 v2 inspect 投影那一行必须使本测试失败。
+  it("POST /api/bundles/inspect v2 包以驼峰命名法显示出处（创建 -> 检查往返）", async () => {
     const agentsDir = path.join(tmpDir, "agents", "impl");
     fs.mkdirSync(agentsDir, { recursive: true });
     fs.writeFileSync(path.join(agentsDir, "agent.yaml"), [
@@ -647,7 +639,7 @@ describe("Bundle API routes", () => {
     expect(inspectRes.status).toBe(200);
     const inspectBody = await inspectRes.json();
     expect(inspectBody.manifest.schemaVersion).toBe(2);
-    // The contract: provenance returned in normalized camelCase (matches v1)
+    // 契约：出处以归一化 camelCase 返回（与 v1 一致）
     expect(inspectBody.manifest.provenance).toBeDefined();
     expect(inspectBody.manifest.provenance.sourceHost).toBe("v2-route-test-host");
     expect(inspectBody.manifest.provenance.authorSession).toBe("velocity-driver@openrig-velocity");
@@ -655,12 +647,12 @@ describe("Bundle API routes", () => {
     expect(inspectBody.manifest.provenance.notes).toBe("v2 route round-trip fixture");
     expect(typeof inspectBody.manifest.provenance.daemonVersion).toBe("string");
     expect(inspectBody.manifest.provenance.daemonVersion.length).toBeGreaterThan(0);
-    // Negative — snake_case keys must NOT be present (camelCase contract)
+    // 否定断言——不得出现 snake_case 键（camelCase 契约）
     expect(inspectBody.manifest.provenance.source_host).toBeUndefined();
     expect(inspectBody.manifest.provenance.author_session).toBeUndefined();
   });
 
-  it("POST /api/bundles/create refuses unsafe generated provenance in the pod-aware final staging tree", async () => {
+  it("POST /api/bundles/create 拒绝 pod 感知的最终暂存树中不安全的生成来源", async () => {
     const agentsDir = path.join(tmpDir, "agents", "impl");
     fs.mkdirSync(agentsDir, { recursive: true });
     fs.writeFileSync(path.join(agentsDir, "agent.yaml"), [
@@ -711,12 +703,12 @@ describe("Bundle API routes", () => {
     expect(fs.existsSync(bundlePath)).toBe(false);
   });
 
-  // Item 2 / slice-05 Checkpoint 3.3: install-time version check
-  it("POST /api/bundles/install fails with 3-part error when min_daemon_version exceeds running daemon", async () => {
+  // Item 2 / slice-05 Checkpoint 3.3：install 时版本检查
+  it("当 min_daemon_version 超过正在运行的后台服务时，POST /api/bundles/install 失败并出现 3 部分错误", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "incompat.rigbundle");
 
-    // Create bundle with min_daemon_version way above current
+    // 创建 min_daemon_version 远高于当前版本的 bundle
     const createRes = await app.request("/api/bundles/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -734,7 +726,7 @@ describe("Bundle API routes", () => {
     });
     expect(installRes.status).toBe(400);
     const body = await installRes.json();
-    expect(body.error).toBe("Bundle compatibility check failed");
+    expect(body.error).toBe("bundle 兼容性检查失败");
     expect(Array.isArray(body.failures)).toBe(true);
     expect(body.failures.length).toBeGreaterThan(0);
     const daemonFailure = body.failures.find((f: { reason: string }) => f.reason === "daemon_version_mismatch");
@@ -746,7 +738,7 @@ describe("Bundle API routes", () => {
     expect(body.resolutions.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("POST /api/bundles/install with skipVersionCheck=true bypasses incompatible bundle's compat check", async () => {
+  it("POST /api/bundles/install 并使用skipVersionCheck=true绕过不兼容的bundle的兼容性检查", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "incompat-skip.rigbundle");
 
@@ -764,16 +756,14 @@ describe("Bundle API routes", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bundlePath, plan: true, skipVersionCheck: true }),
     });
-    // Compat check was skipped; we just need NOT to see the "Bundle compatibility
-    // check failed" error. Bootstrap may still return any other status; what we
-    // assert is the absence of the compat-check failure shape.
+    // 兼容性检查已跳过；我们只需不看到 "Bundle compatibility check failed" 错误。bootstrap 仍可返回任何其他状态；我们断言的是不存在 compat-check 失败形状。
     if (installRes.status === 400) {
       const body = await installRes.json();
       expect(body.error).not.toBe("Bundle compatibility check failed");
     }
   });
 
-  it("POST /api/bundles/install fails with 3-part error when min_cli_version exceeds the CLI version sent in body", async () => {
+  it("当 min_cli_version 超过正文中发送的 CLI 版本时，POST /api/bundles/install 失败并出现 3 部分错误", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "cli-incompat.rigbundle");
 
@@ -793,14 +783,14 @@ describe("Bundle API routes", () => {
     });
     expect(installRes.status).toBe(400);
     const body = await installRes.json();
-    expect(body.error).toBe("Bundle compatibility check failed");
+    expect(body.error).toBe("bundle 兼容性检查失败");
     const cliFailure = body.failures.find((f: { reason: string }) => f.reason === "cli_version_mismatch");
     expect(cliFailure).toBeDefined();
     expect(cliFailure.required).toBe("99.0.0");
     expect(cliFailure.actual).toBe("0.3.1");
   });
 
-  it("POST /api/bundles/install passes the compat check when bundle requires versions <= current", async () => {
+  it("当捆绑包需要版本 <= 当前版本时，POST /api/bundles/install 通过兼容性检查", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "compat.rigbundle");
 
@@ -818,25 +808,22 @@ describe("Bundle API routes", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bundlePath, plan: true, cliVersion: "0.3.1" }),
     });
-    // Must NOT be the compat-fail shape. Bootstrap may return any status.
+    // 绝不能是 compat-fail 形状。bootstrap 可返回任意状态。
     if (installRes.status === 400) {
       const body = await installRes.json();
       expect(body.error).not.toBe("Bundle compatibility check failed");
     }
   });
 
-  // Item 2 / slice-05 Checkpoint 3.3 / guard B1 repair: install rejects unsafe
-  // archives through the safe error path BEFORE bootstrap delegation.
-  // Discriminator: reverting extractManifestForCompatCheck to a raw tar.extract
-  // (without unpack's verifyArchiveDigest + tar.list unsafe-entry prescan) must
-  // make this test fail — the unsafe symlink would be silently extracted and
-  // bootstrap would see an attacker-controlled link target.
-  it("POST /api/bundles/install rejects an archive containing a symlink entry via the safe path (B1 repair)", async () => {
+  // Item 2 / slice-05 Checkpoint 3.3 / guard B1 修复：install 在 bootstrap 委派之前，
+  // 通过安全错误路径拒绝不安全归档。判别点：把 extractManifestForCompatCheck 回退为裸 tar.extract
+  //（不带 unpack 的 verifyArchiveDigest + tar.list 不安全条目预扫）必须使本测试失败——
+  // 不安全符号链接会被静默解压，bootstrap 会看到攻击者可控的链接目标。
+  it("POST /api/bundles/install 通过安全路径拒绝包含符号链接条目的存档（B1 修复）", async () => {
     const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-unsafe-staging-"));
     const bundlePath = path.join(tmpDir, "unsafe-symlink.rigbundle");
     try {
-      // Minimal valid manifest contents (bundle.yaml present) plus the unsafe
-      // symlink that the safety prescan must reject.
+      // 最小合法 manifest 内容（含 bundle.yaml），外加安全预扫必须拒绝的不安全符号链接。
       fs.writeFileSync(path.join(stagingDir, "bundle.yaml"), [
         'schema_version: 1',
         'name: unsafe-test',
@@ -854,8 +841,7 @@ describe("Bundle API routes", () => {
         ["bundle.yaml", "rig.yaml", "evil-symlink"],
       );
 
-      // Write a valid sibling .sha256 so digest verification PASSES — proving
-      // the prescan is what catches the symlink, not the digest check.
+      // 写一个合法的兄弟 .sha256，使 digest 校验通过——证明是预扫捕获符号链接，而非 digest 检查。
       const { createHash } = await import("node:crypto");
       const archiveHash = createHash("sha256").update(fs.readFileSync(bundlePath)).digest("hex");
       fs.writeFileSync(`${bundlePath}.sha256`, archiveHash, "utf-8");
@@ -867,10 +853,8 @@ describe("Bundle API routes", () => {
       });
       expect(installRes.status).toBe(400);
       const body = await installRes.json();
-      // Either explicit-extraction-failed shape (safe rejection happened inside
-      // unpack) OR the compat-check-failed shape with the safety message in
-      // detail. Either way, the symlink string must appear and bootstrap must
-      // NOT have been entered.
+      // 无论显式 extraction-failed 形状（安全拒绝发生在 unpack 内），还是 compat-check-failed 形状（detail 里带安全信息）。
+      // 无论哪种，符号链接串必须出现，且 bootstrap 绝不能已进入。
       const text = JSON.stringify(body);
       expect(text).toMatch(/Unsafe archive entries|SymbolicLink|symlink/i);
     } finally {
@@ -878,16 +862,14 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 3 / slice-05 Checkpoint 4.2: install conflict gate. Conflict path:
-  // a running rig with the same name as the bundle's rig must produce a
-  // 3-part error response from /install BEFORE bootstrap delegation.
-  // Force-bypass path: same bundle with force=true must skip the conflict
-  // check.
-  it("POST /api/bundles/install fails with 3-part conflict error when bundle rig name collides with a running rig", async () => {
+  // Item 3 / slice-05 Checkpoint 4.2：install 冲突闸门。冲突路径：
+  // 与 bundle 的 rig 同名的运行中 rig，必须在 bootstrap 委派之前由 /install 产出三段式错误响应。
+  // 强制绕过路径：同一 bundle 带 force=true 必须跳过冲突检查。
+  it("bundle 工作组名称与运行中工作组冲突时，POST /api/bundles/install 返回三段式冲突错误", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "conflict-test.rigbundle");
 
-    // Create bundle whose rig.yaml declares name 'test-rig' (matches VALID_SPEC)
+    // 创建一个 rig.yaml 声明 name 为 'test-rig'（匹配 VALID_SPEC）的 bundle
     const createRes = await app.request("/api/bundles/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -895,7 +877,7 @@ describe("Bundle API routes", () => {
     });
     expect(createRes.status).toBe(201);
 
-    // Seed a running rig with the same name as the bundle's rig
+    // 种下一个与 bundle 的 rig 同名的运行中 rig
     setup.rigRepo.createRig("test-rig");
 
     const installRes = await app.request("/api/bundles/install", {
@@ -905,7 +887,7 @@ describe("Bundle API routes", () => {
     });
     expect(installRes.status).toBe(400);
     const body = await installRes.json();
-    expect(body.error).toBe("Bundle install conflict check failed");
+    expect(body.error).toBe("bundle 安装冲突检查失败");
     expect(Array.isArray(body.conflicts)).toBe(true);
     expect(body.conflicts.length).toBeGreaterThan(0);
     const rigConflict = body.conflicts.find((c: { kind: string }) => c.kind === "rig_name_collision");
@@ -917,7 +899,7 @@ describe("Bundle API routes", () => {
     expect(body.resolutions.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("POST /api/bundles/install with force=true bypasses the conflict check on a name collision", async () => {
+  it("POST /api/bundles/install 并使用 force=true 绕过名称冲突的冲突检查", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "conflict-force.rigbundle");
 
@@ -934,15 +916,14 @@ describe("Bundle API routes", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bundlePath, plan: true, force: true }),
     });
-    // Conflict check was bypassed. Bootstrap may return any status; what we
-    // assert is the absence of the conflict-check failure shape.
+    // 冲突检查已绕过。bootstrap 可返回任何状态；我们断言的是不存在冲突检查失败形状。
     if (installRes.status === 400) {
       const body = await installRes.json();
       expect(body.error).not.toBe("Bundle install conflict check failed");
     }
   });
 
-  it("POST /api/bundles/install passes the conflict check when no running rig matches the bundle's rig name", async () => {
+  it("当没有正在运行的装备与捆绑包的装备名称匹配时，POST /api/bundles/install 通过冲突检查", async () => {
     const { specPath } = seedPackage();
     const bundlePath = path.join(tmpDir, "no-conflict.rigbundle");
 
@@ -952,32 +933,29 @@ describe("Bundle API routes", () => {
       body: JSON.stringify({ specPath, bundleName: "no-conflict", bundleVersion: "0.1.0", outputPath: bundlePath }),
     });
 
-    // No rigs created — running set is empty
+    // 未创建任何 rig——运行集为空
 
     const installRes = await app.request("/api/bundles/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bundlePath, plan: true }),
     });
-    // Must NOT be the conflict-fail shape. Bootstrap may return any status.
+    // 绝不能是冲突失败形状。bootstrap 可返回任何状态。
     if (installRes.status === 400) {
       const body = await installRes.json();
       expect(body.error).not.toBe("Bundle install conflict check failed");
     }
   });
 
-  // Item 3 / slice-05 Checkpoint 4.2 / guard B1 repair: install rejects bundle
-  // whose bundle.yaml carries an unsafe rig_spec value (../traversal) via the
-  // manifest validator at extractInstallTimeMetadata. Discriminator: removing
-  // the validator block makes the test fail (no validation error; path
-  // containment still triggers but with a different error string than the
-  // validator-rejection assertion).
-  it("POST /api/bundles/install rejects bundle whose rig_spec is unsafe via the manifest validator (B1 repair)", async () => {
+  // Item 3 / slice-05 Checkpoint 4.2 / guard B1 修复：install 通过 extractInstallTimeMetadata 的
+  // manifest 验证器，拒绝 bundle.yaml 携带不安全 rig_spec 值（../traversal）的 bundle。
+  // 判别点：删除验证器块会使测试失败（无校验错误；路径包含检查仍触发，但错误串与验证器拒绝断言不同）。
+  it("POST /api/bundles/install 通过清单验证器拒绝 rig_spec 不安全的包（B1 修复）", async () => {
     const { specPath } = seedPackage();
     const goodBundlePath = path.join(tmpDir, "good.rigbundle");
     const tamperedBundlePath = path.join(tmpDir, "tampered.rigbundle");
 
-    // Build a normal valid bundle via /create (gives us valid integrity + digest)
+    // 经 /create 构建一个普通合法 bundle（得到合法 integrity + digest）
     const createRes = await app.request("/api/bundles/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -985,25 +963,26 @@ describe("Bundle API routes", () => {
     });
     expect(createRes.status).toBe(201);
 
-    // Unpack, modify bundle.yaml to inject unsafe rig_spec (bundle.yaml itself
-    // isn't in integrity.files — its hash can't reference itself — so editing
-    // it doesn't break verifyIntegrity).
+    // 解压，修改 bundle.yaml 注入不安全 rig_spec（bundle.yaml 本身不在 integrity.files 中——
+    // 其哈希不能引用自身——因此编辑它不破坏 verifyIntegrity）。
     const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-tamper-staging-"));
     try {
       const tar = await import("tar");
       await tar.extract({ file: goodBundlePath, cwd: stagingDir });
       const bundleYamlPath = path.join(stagingDir, "bundle.yaml");
       const original = fs.readFileSync(bundleYamlPath, "utf-8");
-      // Replace rig_spec line. Original is `rig_spec: rig.yaml` (from /create).
+      // 替换 rig_spec 行。原值为 `rig_spec: rig.yaml`（来自 /create）。
       const tampered = original.replace(/^rig_spec:.*$/m, 'rig_spec: "../escape.yaml"');
       expect(tampered).toContain('rig_spec: "../escape.yaml"');
       fs.writeFileSync(bundleYamlPath, tampered);
 
-      // Re-pack via pack() which writes valid sibling .sha256
+      // 经 pack() 重新打包，它会写入合法的兄弟 .sha256
+
+      // 尝试安装
       const { pack } = await import("../src/domain/bundle-archive.js");
       await pack(stagingDir, tamperedBundlePath);
 
-      // Install attempt
+      // 尝试 install
       const installRes = await app.request("/api/bundles/install", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1011,25 +990,21 @@ describe("Bundle API routes", () => {
       });
       expect(installRes.status).toBe(400);
       const body = await installRes.json();
-      // The validator runs inside extractInstallTimeMetadata which is called
-      // from the route's try/catch. The error path wraps it as the
-      // "could not run (extraction failed)" shape with the validator message
-      // in detail.
+      // 验证器运行在 extractInstallTimeMetadata 内，后者由路由的 try/catch 调用。
+      // 错误路径把它包成 "could not run (extraction failed)" 形状，验证器信息在 detail 里。
       const text = JSON.stringify(body);
-      expect(text).toMatch(/Invalid v1 bundle manifest|Invalid v2 bundle manifest|rig_spec.*not.*safe|escapes bundle workspace/i);
-      // Negative — bootstrap must NOT have entered. The conflict-check error
-      // shape would mean we got past the validator into conflict detection;
-      // assert it didn't.
+      expect(text).toMatch(/非法 v1 bundle manifest|非法 v2 bundle manifest|rig_spec.*不安全|逃出 bundle 工作区/i);
+      // 否定断言——bootstrap 绝不能已进入。冲突检查错误形状意味着我们越过了验证器进入冲突检测；断言它没有。
       expect(body.error).not.toBe("Bundle install conflict check failed");
     } finally {
       fs.rmSync(stagingDir, { recursive: true, force: true });
     }
   });
 
-  // Item 4 / slice-05 Checkpoint 5.2: GET /api/bundles/history surfaces the
-  // bundle-audit JSONL records (optionally filtered). Empty file -> []; rig
-  // filter scopes; since filter scopes.
-  it("GET /api/bundles/history returns empty list when no audit records exist", async () => {
+  // Item 4 / slice-05 Checkpoint 5.2：GET /api/bundles/history 呈现
+  // bundle-audit JSONL 记录（可过滤）。空文件 -> []；rig 过滤限定范围；
+  // since 过滤限定范围。
+  it("当不存在审计记录时 GET /api/bundles/history 返回空列表", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-history-test-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -1046,12 +1021,12 @@ describe("Bundle API routes", () => {
     }
   });
 
-  it("GET /api/bundles/history returns records from the audit file with filters honored", async () => {
+  it("GET /api/bundles/history 返回审计文件中的记录并遵循过滤器", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-history-test-"));
     process.env.OPENRIG_HOME = auditHome;
     try {
-      // Seed the audit JSONL directly (bypasses any writer; tests the reader path)
+      // 直接预置 audit JSONL（绕过任何 writer；测试 reader 路径）
       const auditPath = path.join(auditHome, "bundle-audit.jsonl");
       const recs = [
         { installedAt: "2026-05-18T10:00:00Z", bundlePath: "/tmp/a.rigbundle", targetRigName: "alpha", outcome: "success" },
@@ -1060,7 +1035,7 @@ describe("Bundle API routes", () => {
       ];
       fs.writeFileSync(auditPath, recs.map((r) => JSON.stringify(r)).join("\n") + "\n", "utf-8");
 
-      // Unfiltered: all 3
+      // 未过滤：全部 3 条
       const all = await app.request("/api/bundles/history");
       expect(all.status).toBe(200);
       const allBody = await all.json();
@@ -1073,7 +1048,7 @@ describe("Bundle API routes", () => {
       expect(alphaBody.total).toBe(2);
       expect(alphaBody.records.every((r: { targetRigName: string }) => r.targetRigName === "alpha")).toBe(true);
 
-      // Filter since=11:00: 2 records (the 11:00 and 12:00 ones)
+      // 过滤 since=11:00：2 条（11:00 与 12:00 那两条）
       const since = await app.request("/api/bundles/history?since=2026-05-18T11:00:00Z");
       const sinceBody = await since.json();
       expect(sinceBody.total).toBe(2);
@@ -1082,7 +1057,7 @@ describe("Bundle API routes", () => {
         "2026-05-18T12:00:00Z",
       ]);
 
-      // Combined rig=alpha + since=11:00: 1 record (the 12:00 alpha one)
+      // 组合 rig=alpha + since=11:00：1 条（12:00 那条 alpha）
       const combo = await app.request("/api/bundles/history?rig=alpha&since=2026-05-18T11:00:00Z");
       const comboBody = await combo.json();
       expect(comboBody.total).toBe(1);
@@ -1094,11 +1069,10 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 4 / slice-05 Checkpoint 5.3: /install writes audit record on apply
-  // completion paths; plan mode does NOT write (planning doesn't change
-  // state). End-to-end: install -> GET /api/bundles/history reflects the
-  // record. Test isolation via OPENRIG_HOME env override to per-test tmpDir.
-  it("POST /api/bundles/install plan mode does NOT write an audit record (planning doesn't change state)", async () => {
+  // Item 4 / slice-05 Checkpoint 5.3：/install 在 apply 完成路径写 audit 记录；
+  // plan 模式不写（计划不改变状态）。端到端：install -> GET /api/bundles/history 反映该记录。
+  // 测试隔离通过 OPENRIG_HOME env 覆盖到逐用例 tmpDir。
+  it("POST /api/bundles/install 计划模式不会写入审核记录（计划不会更改状态）", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-audit-plan-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -1128,11 +1102,10 @@ describe("Bundle API routes", () => {
   });
 
   /**
-   * Item 4 Checkpoint 5.3 B1 repair: deterministic per-branch audit-write tests.
-   * Each test stubs setup.bootstrapOrchestrator.bootstrap with vi.fn() to force
-   * a specific outcome, then asserts the exact outcome ends up in
-   * /api/bundles/history. Discriminator: disabling each branch's
-   * writeInstallAudit call must fail its paired test specifically.
+   * Item 4 Checkpoint 5.3 B1 修复：逐分支确定性 audit-write 测试。
+   * 每个用例用 vi.fn() stub setup.bootstrapOrchestrator.bootstrap 以强制特定结果，
+   * 然后断言该结果精确落到 /api/bundles/history。
+   * 判别点：禁用每个分支的 writeInstallAudit 调用必须使其配对用例专门失败。
    */
   async function runApplyAuditTest(opts: {
     bundleName: string;
@@ -1165,10 +1138,8 @@ describe("Bundle API routes", () => {
 
       const history = await app.request("/api/bundles/history");
       const body = await history.json();
-      // Item 4 close-out / guard B2 repair: helper-level bundlePath assertion
-      // applies to all 4 branch tests (DRY). Discriminator: setting
-      // record.bundlePath to a wrong path in routes/bundles.ts must fail
-      // every apply-mode branch test.
+      // Item 4 收尾 / guard B2 修复：helper 级 bundlePath 断言适用于全部 4 个分支测试（DRY）。
+      // 判别点：在 routes/bundles.ts 里把 record.bundlePath 设错路径必须使每个 apply 模式分支测试失败。
       expect(body.total).toBe(1);
       expect(body.records[0].bundlePath).toBe(bundlePath);
       return body;
@@ -1178,7 +1149,7 @@ describe("Bundle API routes", () => {
     }
   }
 
-  it("POST /api/bundles/install apply / completed branch writes audit record with outcome=success", async () => {
+  it("POST /api/bundles/install apply/completed 分支写入审核记录，结果=成功", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-audit-completed-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -1205,7 +1176,7 @@ describe("Bundle API routes", () => {
     }
   });
 
-  it("POST /api/bundles/install apply / partial branch writes audit record with outcome=partial", async () => {
+  it("POST /api/bundles/install apply/partial 分支写入结果=partial 的审核记录", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-audit-partial-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -1234,7 +1205,7 @@ describe("Bundle API routes", () => {
     }
   });
 
-  it("POST /api/bundles/install apply / failed-result branch writes audit record with outcome=failed", async () => {
+  it("POST /api/bundles/install apply / failed-result 分支写入结果=失败的审核记录", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-audit-failed-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -1258,7 +1229,7 @@ describe("Bundle API routes", () => {
     }
   });
 
-  it("POST /api/bundles/install apply / thrown-error branch writes audit record with outcome=failed", async () => {
+  it("POST /api/bundles/install apply / throwed-error 分支写入结果 = 失败的审核记录", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-audit-thrown-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -1277,11 +1248,9 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 6 / slice-05 Checkpoint 7.3: /install routes declared skills to
-  // operator skills library after successful bootstrap. Uses bootstrap stub
-  // to force completed outcome; bundle manifest has skills[]; verifies the
-  // skills land at OPENRIG_HOME/skills/.
-  it("POST /api/bundles/install routes declared skills after successful bootstrap (completed branch)", async () => {
+  // Item 6 / slice-05 Checkpoint 7.3：bootstrap 成功后，/install 把声明的 skills 路由到 operator skills 库。
+  // 用 bootstrap stub 强制 completed 结果；bundle manifest 带 skills[]；验证 skills 落到 OPENRIG_HOME/skills/。
+  it("成功引导后 POST /api/bundles/install 路由声明技能（已完成分支）", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-skills-route-test-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -1291,8 +1260,7 @@ describe("Bundle API routes", () => {
       const bundlePath = path.join(tmpDir, "with-skills.rigbundle");
       const targetRoot = fs.mkdtempSync(path.join(os.tmpdir(), "skills-target-"));
       try {
-        // Build a bundle with skills[] declared. Add a skill file to the
-        // package dir so it lands in the bundle archive when packed.
+        // 构建一个声明 skills[] 的 bundle。往 package 目录加一个 skill 文件，使其打包时落入 bundle 归档。
         const skillSourceDir = path.join(tmpDir, "test-pkg", "skills");
         fs.mkdirSync(skillSourceDir, { recursive: true });
         fs.writeFileSync(path.join(skillSourceDir, "FOO.md"), "# foo skill body");
@@ -1303,16 +1271,14 @@ describe("Bundle API routes", () => {
           body: JSON.stringify({ specPath, bundleName: "with-skills", bundleVersion: "0.1.0", outputPath: bundlePath }),
         });
 
-        // Tamper the created bundle's bundle.yaml to inject skills[] field.
-        // bundle.yaml's own hash is excluded from integrity.files so editing
-        // it doesn't break verifyIntegrity.
+        // 篡改已创建 bundle 的 bundle.yaml 注入 skills[] 字段。bundle.yaml 自身哈希被排除在 integrity.files 之外，因此编辑它不破坏 verifyIntegrity。
         const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), "skills-stage-"));
         try {
           const tar = await import("tar");
           await tar.extract({ file: bundlePath, cwd: stagingDir });
           const bundleYamlPath = path.join(stagingDir, "bundle.yaml");
           const original = fs.readFileSync(bundleYamlPath, "utf-8");
-          // Append skills field referencing the file we put inside the bundled package
+          // 追加 skills 字段，引用我们放进 bundled package 的文件
           const tampered = `${original}\nskills:\n  - packages/test-pkg/skills/FOO.md\n`;
           fs.writeFileSync(bundleYamlPath, tampered);
           const { pack } = await import("../src/domain/bundle-archive.js");
@@ -1321,7 +1287,7 @@ describe("Bundle API routes", () => {
           fs.rmSync(stagingDir, { recursive: true, force: true });
         }
 
-        // Stub bootstrap to return completed so audit-write + skills routing fire
+        // stub bootstrap 返回 completed，使 audit-write + skills 路由触发
         const stub = vi.fn().mockResolvedValue({
           status: "completed",
           runId: "test-run-skills",
@@ -1337,12 +1303,12 @@ describe("Bundle API routes", () => {
           body: JSON.stringify({ bundlePath, targetRoot, autoApprove: true }),
         });
         const body = await installRes.json();
-        // Response carries skillsRouting block
+        // 响应携带 skillsRouting 块
         expect(body.skillsRouting).toBeDefined();
         expect(body.skillsRouting.routedCount).toBe(1);
         expect(body.skillsRouting.records).toHaveLength(1);
         expect(body.skillsRouting.records[0].status).toBe("routed");
-        // Package-shaped legacy skill payload stays out of the managed catalog.
+        // package 形状的 legacy skill payload 不进入受管 catalog。
         const expectedTarget = path.join(auditHome, "packages", "test-pkg", "skills", "FOO.md");
         expect(fs.existsSync(expectedTarget)).toBe(true);
         expect(fs.readFileSync(expectedTarget, "utf-8")).toBe("# foo skill body");
@@ -1357,13 +1323,9 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 6 / Checkpoint 7.3a / guard B1 repair (qitem-20260518220247): skills
-  // routing must fire even when operator uses BOTH --skip-version-check and
-  // --force pre-check overrides. The routing is independent of the pre-check
-  // extraction gate. Discriminator: re-coupling routeSkillsAfterBootstrap to
-  // installMeta would make this test fail (skillsRouting undefined when both
-  // override flags are set).
-  it("POST /api/bundles/install routes declared skills even when both --skip-version-check and --force are set (B1 repair)", async () => {
+  // Item 6 / Checkpoint 7.3a / guard B1 修复（qitem-20260518220247）：即使 operator 同时用 --skip-version-check 与 --force 预检覆盖，skills 路由也必须触发。
+  // 路由独立于预检提取闸门。判别点：把 routeSkillsAfterBootstrap 重新耦合到 installMeta 会使本测试失败（两个覆盖 flag 都设时 skillsRouting 为 undefined）。
+  it("即使同时设置了 --skip-version-check 和 --force，POST /api/bundles/install 也会路由声明的技能（B1 修复）", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-skills-dual-override-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -1406,7 +1368,7 @@ describe("Bundle API routes", () => {
         });
         (setup.bootstrapOrchestrator as unknown as { bootstrap: typeof stub }).bootstrap = stub;
 
-        // Critical: both override flags set — this triggered the B1 bug
+        // 关键：两个覆盖 flag 都设——这曾触发 B1 bug
         const installRes = await app.request("/api/bundles/install", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1433,11 +1395,10 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 6 / Checkpoint 7.3d: /install routes declared plugins after
-  // successful bootstrap. Mirrors skills-routing test; bundle has plugins[]
-  // with source pointing to a directory in the bundle tree. Verifies the
-  // plugin dir lands at OPENRIG_HOME/plugins/<id>/.
-  it("POST /api/bundles/install routes declared plugins after successful bootstrap (completed branch)", async () => {
+  // Item 6 / Checkpoint 7.3d：bootstrap 成功后，/install 路由声明的 plugins。
+  // 仿 skills 路由测试；bundle 带 plugins[]，source 指向 bundle 树中的一个目录。
+  // 验证 plugin 目录落到 OPENRIG_HOME/plugins/<id>/。
+  it("成功引导后 POST /api/bundles/install 路由声明插件（已完成分支）", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-plugins-route-test-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -1447,7 +1408,7 @@ describe("Bundle API routes", () => {
       const bundlePath = path.join(tmpDir, "with-plugins.rigbundle");
       const targetRoot = fs.mkdtempSync(path.join(os.tmpdir(), "plugins-target-"));
       try {
-        // Put a plugin tree inside the bundle's package source so it lands in the archive
+        // 把 plugin 树放进 bundle 的 package 源，使其落入归档
         const pluginSrc = path.join(tmpDir, "test-pkg", "plugins", "myplugin");
         fs.mkdirSync(pluginSrc, { recursive: true });
         fs.writeFileSync(path.join(pluginSrc, "plugin.json"), '{"name":"myplugin","version":"1.0"}');
@@ -1459,7 +1420,7 @@ describe("Bundle API routes", () => {
           body: JSON.stringify({ specPath, bundleName: "with-plugins", bundleVersion: "0.1.0", outputPath: bundlePath }),
         });
 
-        // Tamper bundle.yaml to inject plugins[] referencing the path in the bundle
+        // 篡改 bundle.yaml 注入引用 bundle 内路径的 plugins[]
         const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), "plugins-stage-"));
         try {
           const tar = await import("tar");
@@ -1493,7 +1454,7 @@ describe("Bundle API routes", () => {
         expect(body.pluginsRouting.routedCount).toBe(1);
         expect(body.pluginsRouting.records[0].id).toBe("myplugin");
         expect(body.pluginsRouting.records[0].status).toBe("routed");
-        // Plugin directory landed at OPENRIG_HOME/plugins/myplugin
+        // Plugin 目录落在 OPENRIG_HOME/plugins/myplugin
         const expectedPluginDir = path.join(auditHome, "plugins", "myplugin");
         expect(fs.existsSync(expectedPluginDir)).toBe(true);
         expect(fs.existsSync(path.join(expectedPluginDir, "plugin.json"))).toBe(true);
@@ -1509,15 +1470,10 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 6 / Checkpoint 7.3d / guard B1 mirror of the 5f410eee skills lesson:
-  // plugins routing must fire even when operator uses BOTH --skip-version-check
-  // and --force pre-check overrides. routePluginsAfterBootstrap takes
-  // bundlePath only (decoupled from installMeta) so that the dual-override
-  // path — which leaves installMeta null at the pre-check site — still routes
-  // declared plugins. Discriminator: re-coupling routePluginsAfterBootstrap
-  // to installMeta would make this test fail (pluginsRouting undefined when
-  // both override flags are set on a bundle that declares plugins[]).
-  it("POST /api/bundles/install routes declared plugins even when both --skip-version-check and --force are set (B1 mirror)", async () => {
+  // Item 6 / Checkpoint 7.3d / guard B1：5f410eee skills 教训的镜像：即使 operator 同时用 --skip-version-check 与 --force 预检覆盖，plugins 路由也必须触发。
+  // routePluginsAfterBootstrap 只取 bundlePath（与 installMeta 解耦），使双覆盖路径——它在预检点留下 installMeta 为 null——仍路由声明的 plugins。
+  // 判别点：把 routePluginsAfterBootstrap 重新耦合到 installMeta 会使本测试失败（声明 plugins[] 的 bundle 上两个覆盖 flag 都设时 pluginsRouting 为 undefined）。
+  it("即使同时设置了 --skip-version-check 和 --force，POST /api/bundles/install 也会路由声明的插件（B1 镜像）", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-plugins-dual-override-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -1561,8 +1517,7 @@ describe("Bundle API routes", () => {
         });
         (setup.bootstrapOrchestrator as unknown as { bootstrap: typeof stub }).bootstrap = stub;
 
-        // Critical: both override flags set — installMeta is null at the pre-check
-        // site in this path; the plugins-routing wrapper must STILL fire
+        // 关键：两个覆盖 flag 都设——此路径下预检点 installMeta 为 null；plugins-routing 包装器仍必须触发
         const installRes = await app.request("/api/bundles/install", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1591,13 +1546,10 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 6 / Checkpoint 7.5 (QA-20260601 A2 repair): /create auto-detects
-  // author bundle.yaml + vendors declared cross-primitive content into
-  // the archive + carries the cross-primitive fields onto the built
-  // bundle.yaml. End-to-end proof that an author can declare all 5 kinds
-  // and the create CLI produces a bundle that the install side will route.
-  it("POST /api/bundles/create auto-detects author bundle.yaml + vendors all 5 cross-primitive kinds (pod-aware)", async () => {
-    // 1. Build a pod-aware rig.yaml + agents/impl/agent.yaml at sourceRoot
+  // Item 6 / Checkpoint 7.5（QA-20260601 A2 修复）：/create 自动检测作者 bundle.yaml + 把声明的跨原语内容 vendor 进归档 + 把跨原语字段带到构建出的 bundle.yaml。
+  // 端到端证明：作者可声明全部 5 种类型，create CLI 产出一个 install 侧会路由的 bundle。
+  it("POST /api/bundles/create 自动检测作者 bundle.yaml + 供应商所有 5 种跨基元类型（pod 感知）", async () => {
+    // 1. 在 sourceRoot 构建 pod 感知的 rig.yaml + agents/impl/agent.yaml
     const sourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "create-author-bundle-src-"));
     const outputPath = path.join(tmpDir, "create-author-test.rigbundle");
     try {
@@ -1621,26 +1573,26 @@ describe("Bundle API routes", () => {
         '    edges: []', 'edges: []',
       ].join("\n"));
 
-      // 2. Author content for all 5 cross-primitive kinds
-      // skills: file
+      // 2. 为全部 5 种跨原语类型撰写内容
+      // skills：文件
       fs.mkdirSync(path.join(sourceRoot, "skills/author-skill"), { recursive: true });
       fs.writeFileSync(path.join(sourceRoot, "skills/author-skill/SKILL.md"), "# Author skill body");
-      // plugins: dir
+      // plugins：目录
       fs.mkdirSync(path.join(sourceRoot, "plugins/author-plugin"), { recursive: true });
       fs.writeFileSync(path.join(sourceRoot, "plugins/author-plugin/plugin.json"), '{"name":"author-plugin","version":"1.0"}');
       fs.writeFileSync(path.join(sourceRoot, "plugins/author-plugin/README.md"), "plugin readme");
-      // workflow_specs: file (YAML)
+      // workflow_specs：文件（YAML）
       fs.mkdirSync(path.join(sourceRoot, "workflows"), { recursive: true });
       fs.writeFileSync(path.join(sourceRoot, "workflows/author-flow.yaml"), "workflow:\n  id: author-flow\n  version: '1'\n  roles: { producer: {} }\n  steps:\n    - id: produce\n      actor_role: producer\n");
-      // context_packs: manifest.yaml inside a dir (vendor copies parent dir)
+      // context_packs：目录内的 manifest.yaml（vendor 拷贝父目录）
       fs.mkdirSync(path.join(sourceRoot, "context-packs/author-pack"), { recursive: true });
       fs.writeFileSync(path.join(sourceRoot, "context-packs/author-pack/manifest.yaml"), "name: author-pack\nversion: '1'\ntaxonomy: mission\nfiles:\n  - path: brief.md\n    role: brief\n");
       fs.writeFileSync(path.join(sourceRoot, "context-packs/author-pack/brief.md"), "# brief");
-      // agent_images: dir
+      // agent_images：目录
       fs.mkdirSync(path.join(sourceRoot, "agent-images/author-image"), { recursive: true });
       fs.writeFileSync(path.join(sourceRoot, "agent-images/author-image/manifest.yaml"), "name: author-image\nversion: '1'\nruntime: claude-code\nsource_seat: x@y\nsource_session_id: aaa\nsource_resume_token: aaa\ncreated_at: '2026-05-31T00:00:00Z'\nfiles: []\n");
 
-      // 3. Author bundle.yaml at sourceRoot declares all 5 kinds
+      // 3. 在 sourceRoot 撰写 bundle.yaml，声明全部 5 种类型
       fs.writeFileSync(path.join(sourceRoot, "bundle.yaml"), [
         'skills:',
         '  - skills/author-skill/SKILL.md',
@@ -1657,7 +1609,7 @@ describe("Bundle API routes", () => {
         '  - agent-images/author-image',
       ].join("\n"));
 
-      // 4. /api/bundles/create — pod-aware path
+      // 4. /api/bundles/create —— pod 感知路径
       const createRes = await app.request("/api/bundles/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1670,13 +1622,13 @@ describe("Bundle API routes", () => {
       const createBody = await createRes.json();
       expect(createBody.archiveHash).toMatch(/^[a-f0-9]{64}$/);
 
-      // 5. Unpack the archive + verify ALL 5 kinds' content + manifest fields
+      // 5. 解压归档，校验全部 5 种类型的内容 + manifest 字段
       const unpackDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-author-bundle-unpack-"));
       try {
         const tar = await import("tar");
         await tar.extract({ file: outputPath, cwd: unpackDir });
 
-        // Built bundle.yaml has all 5 cross-primitive fields
+        // 构建出的 bundle.yaml 含全部 5 个跨原语字段
         const builtYaml = fs.readFileSync(path.join(unpackDir, "bundle.yaml"), "utf-8");
         expect(builtYaml).toContain("skills:");
         expect(builtYaml).toContain("skills/author-skill/SKILL.md");
@@ -1689,7 +1641,7 @@ describe("Bundle API routes", () => {
         expect(builtYaml).toContain("agent_images:");
         expect(builtYaml).toContain("agent-images/author-image");
 
-        // Vendored content actually landed in staging tree (now archive)
+        // vendored 内容确实落到 staging 树（即归档）
         expect(fs.existsSync(path.join(unpackDir, "skills/author-skill/SKILL.md"))).toBe(true);
         expect(fs.existsSync(path.join(unpackDir, "plugins/author-plugin/plugin.json"))).toBe(true);
         expect(fs.existsSync(path.join(unpackDir, "plugins/author-plugin/README.md"))).toBe(true);
@@ -1706,7 +1658,7 @@ describe("Bundle API routes", () => {
     }
   });
 
-  it("LP-3 refuses internal substance in an author-declared directory before archive creation", async () => {
+  it("LP-3 在创建档案之前拒绝作者声明的目录中的内部内容", async () => {
     const sourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "s12-lp3-internal-src-"));
     const outputPath = path.join(tmpDir, "s12-lp3-internal.rigbundle");
     try {
@@ -1736,7 +1688,7 @@ describe("Bundle API routes", () => {
       });
       expect(response.status).toBe(500);
       const body = await response.json();
-      expect(body.error).toMatch(/internal-path[\s\S]*(genericize|public home|re-home)/i);
+      expect(body.error).toMatch(/internal-path[\s\S]*(通用化|公开来源|内部内容包)/i);
       expect(fs.existsSync(outputPath)).toBe(false);
     } finally {
       fs.rmSync(sourceRoot, { recursive: true, force: true });
@@ -1744,7 +1696,7 @@ describe("Bundle API routes", () => {
     }
   });
 
-  it("LP-3 refuses an author-declared lore pack before archive creation", async () => {
+  it("LP-3 在创建档案之前拒绝作者声明的知识包", async () => {
     const sourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "s12-lp3-lore-src-"));
     const outputPath = path.join(tmpDir, "s12-lp3-lore.rigbundle");
     try {
@@ -1777,7 +1729,7 @@ describe("Bundle API routes", () => {
       expect(response.status).toBe(500);
       const body = await response.json();
       expect(body.error).toMatch(/lore-class|taxonomy:\s*lore/i);
-      expect(body.error).toMatch(/genericize|public home|re-home/i);
+      expect(body.error).toMatch(/通用化|公开来源|内部内容包/i);
       expect(fs.existsSync(outputPath)).toBe(false);
     } finally {
       fs.rmSync(sourceRoot, { recursive: true, force: true });
@@ -1785,13 +1737,10 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 6 / QA-20260601 C1 repair: /api/bundles/inspect normalized
-  // response on a v2 archive containing cross-primitive blocks must
-  // surface skills + plugins + workflowSpecs + contextPacks +
-  // agentImages alongside provenance + compatibility. Built bundle.yaml
-  // contains the snake_case fields (Checkpoint 7.5); inspect's response
-  // now mirrors them as camelCase per the v2 normalized-manifest contract.
-  it("POST /api/bundles/inspect surfaces cross-primitive fields for a v2 archive built from author bundle.yaml", async () => {
+  // Item 6 / QA-20260601 C1 修复：/api/bundles/inspect 对含跨原语块的 v2 归档的归一化响应，
+  // 必须在 provenance + compatibility 之外呈现 skills + plugins + workflowSpecs + contextPacks + agentImages。
+  // 构建出的 bundle.yaml 含 snake_case 字段（Checkpoint 7.5）；inspect 响应按 v2 归一化 manifest 契约把它们镜像为 camelCase。
+  it("POST /api/bundles/inspect 为从作者 bundle.yaml 构建的 v2 存档显示跨原始字段", async () => {
     const sourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "inspect-crossprim-src-"));
     const outputPath = path.join(tmpDir, "inspect-crossprim.rigbundle");
     try {
@@ -1808,10 +1757,7 @@ describe("Bundle API routes", () => {
         '        profile: default', '        runtime: claude-code', '        cwd: .',
         '    edges: []', 'edges: []',
       ].join("\n"));
-      // All 5 cross-primitive kinds — per banked guard catch on dc4df12f:
-      // testing only 2 leaves the workflow_specs/context_packs/agent_images
-      // snake_case→camelCase mappings unproven. Each kind's content + author
-      // declaration + response assertion below.
+      // 全部 5 种跨原语类型——据 dc4df12f 留存的护栏捕获：只测 2 种会让 workflow_specs/context_packs/agent_images 的 snake_case→camelCase 映射未被证明。下面逐一给出每种类型的内容 + 作者声明 + 响应断言。
       fs.mkdirSync(path.join(sourceRoot, "skills/inspect-skill"), { recursive: true });
       fs.writeFileSync(path.join(sourceRoot, "skills/inspect-skill/SKILL.md"), "# inspect skill");
       fs.mkdirSync(path.join(sourceRoot, "plugins/inspect-plugin"), { recursive: true });
@@ -1856,10 +1802,8 @@ describe("Bundle API routes", () => {
       });
       expect(inspectRes.status).toBe(200);
       const inspectBody = await inspectRes.json();
-      // QA-C1 repair: ALL 5 cross-primitive fields surfaced in the normalized
-      // manifest. v2 archive → response.manifest carries camelCase keys.
-      // Per banked guard catch on dc4df12f: each snake_case→camelCase
-      // mapping individually proven, not just skills+plugins.
+      // QA-C1 修复：归一化 manifest 中呈现全部 5 个跨原语字段。v2 归档 -> response.manifest 携带 camelCase 键。
+      // 据 dc4df12f 留存的护栏捕获：每个 snake_case→camelCase 映射单独被证明，而非只证明 skills+plugins。
       expect(inspectBody.manifest.skills).toEqual(["skills/inspect-skill/SKILL.md"]);
       expect(inspectBody.manifest.plugins).toHaveLength(1);
       expect(inspectBody.manifest.plugins[0].id).toBe("inspect-plugin");
@@ -1872,21 +1816,18 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 6 / Checkpoint 7.5 B1 repair (banked 79a89d40 guard catch):
-  // symlink escape via author bundle.yaml — FILE shape. A skill path
-  // that looks lexically contained but symlinks to an outside file must
-  // be rejected. Without realpath validation, dereference at vendor
-  // time would copy outside content into the archive as a regular file.
-  it("POST /api/bundles/create rejects author bundle.yaml skill that is a symlink targeting outside sourceRoot", async () => {
+  // Item 6 / Checkpoint 7.5 B1 修复（留存的 79a89d40 护栏捕获）：经作者 bundle.yaml 的 symlink 逃逸——FILE 形状。
+  // 词面上看似受限、实则符号链接到外部文件的 skill 路径必须被拒绝。没有 realpath 校验时，vendor 时的解引用会把外部内容当普通文件拷进归档。
+  it("POST /api/bundles/create 拒绝作者的 bundle.yaml 技能，该技能是针对 sourceRoot 外部的符号链接", async () => {
     const sourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "create-symlink-escape-file-src-"));
     const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-symlink-escape-file-outside-"));
     const outputPath = path.join(tmpDir, "symlink-escape-file.rigbundle");
     try {
-      // Outside content (private/secret file the bundle should NEVER contain)
+      // 外部内容（bundle 绝不该包含的私有/机密文件）
       const outsideFile = path.join(outsideDir, "secret.md");
       fs.writeFileSync(outsideFile, "SECRET CONTENT");
 
-      // Pod-aware sourceRoot fixture
+      // pod 感知的 sourceRoot fixture
       fs.mkdirSync(path.join(sourceRoot, "agents/impl"), { recursive: true });
       fs.writeFileSync(path.join(sourceRoot, "agents/impl/agent.yaml"), [
         'name: impl-agent', 'version: "1.0.0"', 'resources:', '  skills: []',
@@ -1901,7 +1842,7 @@ describe("Bundle API routes", () => {
         '    edges: []', 'edges: []',
       ].join("\n"));
 
-      // Symlink inside sourceRoot → outside file
+      // sourceRoot 内的符号链接 -> 外部文件
       fs.mkdirSync(path.join(sourceRoot, "skills/escape"), { recursive: true });
       fs.symlinkSync(outsideFile, path.join(sourceRoot, "skills/escape/SKILL.md"));
 
@@ -1918,12 +1859,11 @@ describe("Bundle API routes", () => {
           bundleName: "symlink-escape-file-test", bundleVersion: "0.1.0", outputPath,
         }),
       });
-      // /create catch returns 500 with the message (per banked 79a89d40
-      // comment-honesty update). Body.error names the symlink escape.
+      // /create catch 返回 500 与信息（据留存的 79a89d40 comment-honesty 更新）。body.error 点名该 symlink 逃逸。
       expect(createRes.status).toBe(500);
       const body = await createRes.json();
-      expect(body.error).toMatch(/symlink escape|outside bundle source root/i);
-      // CRUCIAL: no archive at outputPath (create failed before pack)
+      expect(body.error).toMatch(/symlink 逃逸|bundle 源根外/i);
+      // 关键：outputPath 处无归档（create 在 pack 之前失败）
       expect(fs.existsSync(outputPath)).toBe(false);
     } finally {
       fs.rmSync(sourceRoot, { recursive: true, force: true });
@@ -1932,17 +1872,14 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 6 / Checkpoint 7.5 B1 repair (banked 79a89d40 guard catch):
-  // symlink escape via author bundle.yaml — DIR shape. A plugin path
-  // that looks lexically contained but symlinks to an outside dir must
-  // be rejected. Without realpath validation, cpSync dereference would
-  // copy the outside dir tree into the archive.
-  it("POST /api/bundles/create rejects author bundle.yaml plugin that is a symlink targeting outside sourceRoot", async () => {
+  // Item 6 / Checkpoint 7.5 B1 修复（留存的 79a89d40 护栏捕获）：经作者 bundle.yaml 的 symlink 逃逸——DIR 形状。
+  // 词面上看似受限、实则符号链接到外部目录的 plugin 路径必须被拒绝。没有 realpath 校验时，cpSync 解引用会把外部目录树拷进归档。
+  it("POST /api/bundles/create 拒绝作者的 bundle.yaml 插件，该插件是针对 sourceRoot 外部的符号链接", async () => {
     const sourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "create-symlink-escape-dir-src-"));
     const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), "create-symlink-escape-dir-outside-"));
     const outputPath = path.join(tmpDir, "symlink-escape-dir.rigbundle");
     try {
-      // Outside dir tree (private content the bundle should NEVER contain)
+      // 外部目录树（bundle 绝不该包含的私有内容）
       fs.writeFileSync(path.join(outsideDir, "private.json"), '{"secret":"data"}');
 
       fs.mkdirSync(path.join(sourceRoot, "agents/impl"), { recursive: true });
@@ -1959,7 +1896,7 @@ describe("Bundle API routes", () => {
         '    edges: []', 'edges: []',
       ].join("\n"));
 
-      // Symlink inside sourceRoot/plugins → outside dir
+      // sourceRoot/plugins 内的符号链接 -> 外部目录
       fs.mkdirSync(path.join(sourceRoot, "plugins"), { recursive: true });
       fs.symlinkSync(outsideDir, path.join(sourceRoot, "plugins/escape"));
 
@@ -1981,7 +1918,7 @@ describe("Bundle API routes", () => {
       });
       expect(createRes.status).toBe(500);
       const body = await createRes.json();
-      expect(body.error).toMatch(/symlink escape|outside bundle source root/i);
+      expect(body.error).toMatch(/symlink 逃逸|bundle 源根外/i);
       expect(fs.existsSync(outputPath)).toBe(false);
     } finally {
       fs.rmSync(sourceRoot, { recursive: true, force: true });
@@ -1992,12 +1929,12 @@ describe("Bundle API routes", () => {
 
   // Item 6 / Checkpoint 7.3e step 3: /install routes declared workflow_specs
   // after successful bootstrap. Target = SettingsStore-resolved
-  // <workspaceSpecsRoot>/workflows. Bundle has workflow_specs[] with a path
-  // pointing to a workflow YAML file in the bundle tree. Router lands the
-  // file at top-level basename under <specsRoot>/workflows. Scanner-
-  // reachability proven via a real scanWorkflowSpecFolder call against the
+  // <workspaceSpecsRoot>/workflows。Bundle 含 workflow_specs[]，其 path
+  // 指向 bundle 树中的 workflow YAML 文件。Router 将
+  // 文件落在 <specsRoot>/workflows 下顶层 basename。扫描器
+  // 可达性经对真实 scanWorkflowSpecFolder 调用证明
   // target dir (guard d43b7729 + 9f9ebe0a scanner-reachability lesson).
-  it("POST /api/bundles/install routes declared workflow_specs after successful bootstrap (completed branch) — proves scanner-reachability", async () => {
+  it("POST /api/bundles/install 成功引导后声明的workflow_specs路由（已完成的分支） - 证明扫描仪的可达性", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const origSpecsRoot = process.env.OPENRIG_WORKSPACE_SPECS_ROOT;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-workflow-specs-route-test-"));
@@ -2010,10 +1947,9 @@ describe("Bundle API routes", () => {
       const bundlePath = path.join(tmpDir, "with-workflow-specs.rigbundle");
       const targetRoot = fs.mkdtempSync(path.join(os.tmpdir(), "wflow-target-"));
       try {
-        // Valid workflow YAML fixture mirroring workflow-spec-folder-scanner.test.ts:22-43
-        // (workflow.id + workflow.version + workflow.roles + workflow.steps non-empty).
-        // Without these the spec-library-workflow-scanner records it as an error
-        // diagnostic row, not a valid workflow — defeating the scanner-reachability proof.
+        // 合法 workflow YAML fixture，仿 workflow-spec-folder-scanner.test.ts:22-43
+        //（workflow.id + workflow.version + workflow.roles + workflow.steps 非空）。
+        // 缺这些，spec-library-workflow-scanner 会把它记为错误诊断行而非合法 workflow——破坏 scanner-reachability 证明。
         const validWorkflowYaml = `workflow:
   id: bundle-routed-test
   version: '1'
@@ -2036,7 +1972,7 @@ describe("Bundle API routes", () => {
     allowed_exits:
       - done
 `;
-        // Put the valid YAML inside the bundle's package source
+        // 把合法 YAML 放进 bundle 的 package 源
         const workflowSrcDir = path.join(tmpDir, "test-pkg", "workflows");
         fs.mkdirSync(workflowSrcDir, { recursive: true });
         fs.writeFileSync(path.join(workflowSrcDir, "onboarding.yaml"), validWorkflowYaml);
@@ -2053,8 +1989,7 @@ describe("Bundle API routes", () => {
           await tar.extract({ file: bundlePath, cwd: stagingDir });
           const bundleYamlPath = path.join(stagingDir, "bundle.yaml");
           const original = fs.readFileSync(bundleYamlPath, "utf-8");
-          // Declared path can be the verbatim package path; the router uses
-          // basename() to land it at top-level (scanner-reachability contract).
+          // 声明路径可为逐字 package 路径；router 用 basename() 落到顶层（scanner-reachability 契约）。
           const tampered = `${original}\nworkflow_specs:\n  - packages/test-pkg/workflows/onboarding.yaml\n`;
           fs.writeFileSync(bundleYamlPath, tampered);
           const { pack } = await import("../src/domain/bundle-archive.js");
@@ -2081,17 +2016,14 @@ describe("Bundle API routes", () => {
         expect(body.workflowSpecsRouting).toBeDefined();
         expect(body.workflowSpecsRouting.routedCount).toBe(1);
         expect(body.workflowSpecsRouting.records[0].status).toBe("routed");
-        // Router uses basename(): declared "packages/test-pkg/workflows/onboarding.yaml"
-        // → lands at <specsRoot>/workflows/onboarding.yaml (top-level only).
+        // router 用 basename()：声明的 "packages/test-pkg/workflows/onboarding.yaml" -> 落到 <specsRoot>/workflows/onboarding.yaml（仅顶层）。
         const expectedTarget = path.join(specsRoot, "workflows", "onboarding.yaml");
         expect(fs.existsSync(expectedTarget)).toBe(true);
         expect(fs.readFileSync(expectedTarget, "utf-8")).toBe(validWorkflowYaml);
 
-        // Scanner-reachability PROOF: invoke the real scanWorkflowSpecFolder
-        // against the target dir with a fresh WorkflowSpecCache; assert at
-        // least one valid (non-diagnostic) cached spec matching the fixture
-        // id+version. This proves the routed file is operator-visible via
-        // the live Library scan path (the d43b7729 / 9f9ebe0a contract).
+        // Scanner-reachability 证明：用全新 WorkflowSpecCache 对 target 目录调用真实 scanWorkflowSpecFolder；
+        // 断言至少有一条合法（非诊断）缓存 spec 匹配 fixture 的 id+version。
+        // 这证明路由出的文件经实时 Library 扫描路径对 operator 可见（d43b7729 / 9f9ebe0a 契约）。
         const { createDb } = await import("../src/db/connection.js");
         const { migrate } = await import("../src/db/migrate.js");
         const { coreSchema } = await import("../src/db/migrations/001_core_schema.js");
@@ -2110,12 +2042,11 @@ describe("Bundle API routes", () => {
             folder: path.join(specsRoot, "workflows"),
             builtinDir: null,
           });
-          // The fixture is a VALID workflow spec (workflow.id + version + roles +
-          // steps); scanner caches it as `valid`, not `errors`.
+          // 该 fixture 是合法 workflow spec（workflow.id + version + roles + steps）；scanner 把它缓存为 `valid`，而非 `errors`。
           expect(scanResult.scanned).toBe(1);
           expect(scanResult.valid).toBe(1);
           expect(scanResult.errors).toBe(0);
-          // Confirm the cached row matches the fixture's workflow.id + version.
+          // 确认缓存行匹配 fixture 的 workflow.id + version。
           const cached = scanDb.prepare(`SELECT name, version FROM workflow_specs ORDER BY name, version`).all() as Array<{ name: string; version: string }>;
           expect(cached.length).toBeGreaterThanOrEqual(1);
           const found = cached.find((r) => r.name === "bundle-routed-test");
@@ -2138,14 +2069,9 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 6 / Checkpoint 7.3e step 3 / B1-mirror discipline (banked 5f410eee
-  // decoupling lesson): workflow_specs routing must fire even when operator
-  // uses BOTH --skip-version-check and --force pre-check overrides. The
-  // routing is independent of the pre-check extraction gate. Discriminator:
-  // re-coupling routeWorkflowSpecsAfterBootstrap to installMeta would make
-  // this test fail (workflowSpecsRouting undefined when both flags set on a
-  // bundle that declares workflow_specs[]).
-  it("POST /api/bundles/install routes declared workflow_specs even when both --skip-version-check and --force are set (B1 mirror)", async () => {
+  // Item 6 / Checkpoint 7.3e step 3 / B1 镜像纪律（留存的 5f410eee 解耦教训）：即使 operator 同时用 --skip-version-check 与 --force 预检覆盖，workflow_specs 路由也必须触发。
+  // 路由独立于预检提取闸门。判别点：把 routeWorkflowSpecsAfterBootstrap 重新耦合到 installMeta 会使本测试失败（声明 workflow_specs[] 的 bundle 上两个 flag 都设时 workflowSpecsRouting 为 undefined）。
+  it("即使同时设置了 --skip-version-check 和 --force （B1 镜像），POST /api/bundles/install 路由也会声明工作流规范", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const origSpecsRoot = process.env.OPENRIG_WORKSPACE_SPECS_ROOT;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-wflow-dual-override-"));
@@ -2191,8 +2117,7 @@ describe("Bundle API routes", () => {
         });
         (setup.bootstrapOrchestrator as unknown as { bootstrap: typeof stub }).bootstrap = stub;
 
-        // Critical: both override flags set — installMeta is null at the pre-check
-        // site in this path; the workflow_specs-routing wrapper must STILL fire
+        // 关键：两个覆盖 flag 都设——此路径下预检点 installMeta 为 null；workflow_specs-routing 包装器仍必须触发
         const installRes = await app.request("/api/bundles/install", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2205,7 +2130,7 @@ describe("Bundle API routes", () => {
         expect(body.workflowSpecsRouting).toBeDefined();
         expect(body.workflowSpecsRouting.routedCount).toBe(1);
         expect(body.workflowSpecsRouting.records[0].status).toBe("routed");
-        // Router uses basename() → top-level under <specsRoot>/workflows
+        // router 用 basename() -> 落到 <specsRoot>/workflows 顶层
         const expectedTarget = path.join(specsRoot, "workflows", "dualflow.yaml");
         expect(fs.existsSync(expectedTarget)).toBe(true);
         expect(fs.readFileSync(expectedTarget, "utf-8")).toBe("name: dualflow\nversion: '2.0'\nsteps: []\n");
@@ -2223,11 +2148,10 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 6 / Checkpoint 7.3e step 3 / guard B1 mirror at integration boundary:
-  // duplicate-basename declared paths must produce routedCount=1 + 1 conflict
-  // record, NOT 2 routed records claiming the same installedAt (the false-
-  // positive class guard caught on d81456dc).
-  it("POST /api/bundles/install duplicate-basename workflow_specs: routedCount=1, second flagged conflict (truthful routedCount)", async () => {
+  // Item 6 / Checkpoint 7.3e step 3 / guard B1 在集成边界的镜像：
+  // 重复 basename 的声明路径必须产出 routedCount=1 + 1 条 conflict 记录，
+  // 而非 2 条 claim 同一 installedAt 的 routed 记录（d81456dc 捕获的误报类护栏）。
+  it("POST /api/bundles/install 重复基名工作流规范：routedCount=1，第二个标记的冲突（真实的routedCount）", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const origSpecsRoot = process.env.OPENRIG_WORKSPACE_SPECS_ROOT;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-wflow-dup-basename-"));
@@ -2259,7 +2183,7 @@ describe("Bundle API routes", () => {
           await tar.extract({ file: bundlePath, cwd: stagingDir });
           const bundleYamlPath = path.join(stagingDir, "bundle.yaml");
           const original = fs.readFileSync(bundleYamlPath, "utf-8");
-          // Both declared paths share basename "shared.yaml"
+          // 两个声明路径共享 basename "shared.yaml"
           const tampered = `${original}\nworkflow_specs:\n  - packages/test-pkg/workflows-a/shared.yaml\n  - packages/test-pkg/workflows-b/shared.yaml\n`;
           fs.writeFileSync(bundleYamlPath, tampered);
           const { pack } = await import("../src/domain/bundle-archive.js");
@@ -2284,14 +2208,13 @@ describe("Bundle API routes", () => {
         });
         const body = await installRes.json();
         expect(body.workflowSpecsRouting).toBeDefined();
-        // Truthful routedCount: only the first declared path was actually
-        // written. The second is flagged conflict, not silently overwritten.
+        // 如实的 routedCount：只有第一个声明路径真正被写入。第二个被标记 conflict，而非被静默覆盖。
         expect(body.workflowSpecsRouting.routedCount).toBe(1);
         expect(body.workflowSpecsRouting.rejectedCount).toBe(1);
         expect(body.workflowSpecsRouting.records).toHaveLength(2);
         expect(body.workflowSpecsRouting.records[0].status).toBe("routed");
         expect(body.workflowSpecsRouting.records[1].status).toBe("conflict");
-        // Confirm the first content survived (no silent overwrite by 2nd)
+        // 确认第一份内容存活（未被第二份静默覆盖）
         const expectedTarget = path.join(specsRoot, "workflows", "shared.yaml");
         expect(fs.existsSync(expectedTarget)).toBe(true);
         expect(fs.readFileSync(expectedTarget, "utf-8")).toBe("content-A");
@@ -2309,14 +2232,10 @@ describe("Bundle API routes", () => {
     }
   });
 
-  // Item 6 / Checkpoint 7.3f step 3: /install routes declared context_packs
-  // after successful bootstrap. Target = the configured context.root
-  // (startup.ts:496 user-file root). Bundle has context_packs[] with paths
-  // to context-pack manifest.yaml files; router copies the parent dir to
-  // <context.root>/<dirname>/. Consumer-scan reachability
-  // proven via real ContextPackLibraryService.scan() against the routed
-  // root (guard d491eca9 + 3cd581e3 file-vs-dir discrimination lessons).
-  it("POST /api/bundles/install routes declared context_packs after successful bootstrap (completed branch) — proves consumer-scan reachability", async () => {
+  // Item 6 / Checkpoint 7.3f step 3：bootstrap 成功后，/install 路由声明的 context_packs。
+  // target = 配置的 context.root（startup.ts:496 user-file root）。bundle 带 context_packs[]，路径指向 context-pack manifest.yaml；
+  // router 把父目录拷到 <context.root>/<dirname>/。经对路由根调用真实 ContextPackLibraryService.scan() 证明消费者扫描可达（d491eca9 + 3cd581e3 file-vs-dir 判别的教训）。
+  it("成功引导后声明 context_packs 的 POST /api/bundles/install 路由（已完成分支） — 证明消费者扫描可达性", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const origContextRoot = process.env.OPENRIG_CONTEXT_ROOT;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-context-packs-route-test-"));
@@ -2329,10 +2248,8 @@ describe("Bundle API routes", () => {
       const bundlePath = path.join(tmpDir, "with-context-packs.rigbundle");
       const targetRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cpacks-target-"));
       try {
-        // Build a VALID context-pack: dir w/ manifest.yaml (name + version +
-        // files[]) + the file referenced in files[]. Per
-        // packages/daemon/src/domain/context-packs/manifest-parser.ts:
-        // manifest needs name, version, files[{path, role}].
+        // 构建一个合法 context-pack：含 manifest.yaml（name + version + files[]）的目录 + files[] 引用的文件。
+        // 据 packages/daemon/src/domain/context-packs/manifest-parser.ts：manifest 需要 name、version、files[{path, role}]。
         const packDir = path.join(tmpDir, "test-pkg", "context-packs", "intent");
         fs.mkdirSync(packDir, { recursive: true });
         const validManifest = `name: bundle-routed-intent
@@ -2385,16 +2302,13 @@ files:
         expect(body.contextPacksRouting).toBeDefined();
         expect(body.contextPacksRouting.routedCount).toBe(1);
         expect(body.contextPacksRouting.records[0].status).toBe("routed");
-        // Router copies the PARENT DIR of manifest.yaml: declared
-        // "packages/test-pkg/context-packs/intent/manifest.yaml" → parent
-        // basename "intent" → target/intent/
+        // router 拷贝 manifest.yaml 的父目录：声明的 "packages/test-pkg/context-packs/intent/manifest.yaml" -> 父 basename "intent" -> target/intent/
         const expectedPackDir = path.join(configuredContextRoot, "intent");
         expect(fs.existsSync(expectedPackDir)).toBe(true);
         expect(fs.existsSync(path.join(expectedPackDir, "manifest.yaml"))).toBe(true);
         expect(fs.existsSync(path.join(expectedPackDir, "brief.md"))).toBe(true);
 
-        // CONSUMER-SCAN REACHABILITY PROOF: instantiate the real consumer
-        // against the routed target root + assert the pack is visible.
+        // 消费者扫描可达性证明：对路由出的 target 根实例化真实 consumer + 断言该 pack 可见。
         const { ContextPackLibraryService } = await import("../src/domain/context-packs/context-pack-library-service.js");
         const consumer = new ContextPackLibraryService({
           roots: [{ path: configuredContextRoot, sourceType: "user_file" }],
@@ -2402,8 +2316,7 @@ files:
         const scanResult = consumer.scan();
         expect(scanResult.count).toBeGreaterThanOrEqual(1);
         expect(scanResult.errors).toEqual([]);
-        // Confirm the consumer indexed our routed pack by id (name+version
-        // come from inside the manifest, not the dirname).
+        // 确认 consumer 按 id 索引了我们路由出的 pack（name+version 来自 manifest 内部，而非目录名）。
         const entries = consumer.list();
         const found = entries.find((e) => e.name === "bundle-routed-intent");
         expect(found).toBeDefined();
@@ -2422,10 +2335,8 @@ files:
     }
   });
 
-  // B1-mirror: context_packs routing must fire even when operator uses
-  // BOTH --skip-version-check and --force pre-check overrides (banked
-  // 5f410eee decoupling lesson; PROACTIVELY shipped).
-  it("POST /api/bundles/install routes declared context_packs even when both --skip-version-check and --force are set (B1 mirror)", async () => {
+  // B1 镜像：即使 operator 同时用 --skip-version-check 与 --force 预检覆盖，context_packs 路由也必须触发（留存的 5f410eee 解耦教训；主动发货）。
+  it("POST /api/bundles/install 路由声明 context_packs 即使同时设置了 --skip-version-check 和 --force (B1 镜像)", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const origContextRoot = process.env.OPENRIG_CONTEXT_ROOT;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-cpacks-dual-override-"));
@@ -2476,8 +2387,7 @@ files:
         });
         (setup.bootstrapOrchestrator as unknown as { bootstrap: typeof stub }).bootstrap = stub;
 
-        // Both override flags set — installMeta null at pre-check; the
-        // context-packs router must STILL fire.
+        // 两个覆盖 flag 都设——预检点 installMeta 为 null；context-packs router 仍必须触发。
         const installRes = await app.request("/api/bundles/install", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2504,11 +2414,9 @@ files:
     }
   });
 
-  // Degenerate-input dogfood (per guard 3cd581e3 carry-forward "include
-  // malformed pack rejection if cheap"): bundle declares a context_pack
-  // whose manifest.yaml file is NOT in the bundle tree. routedCount=0,
-  // status=missing, NO pack copied to target.
-  it("POST /api/bundles/install context_packs degenerate-input: declared manifest absent → status=missing, no false routedCount", async () => {
+  // 退化输入 dogfood（据 guard 3cd581e3 沿用"若廉价则纳入畸形 pack 拒绝"）：bundle 声明一个 context_pack，
+  // 其 manifest.yaml 文件不在 bundle 树中。routedCount=0、status=missing、不拷任何 pack 到 target。
+  it("POST /api/bundles/install 的 context_packs 退化输入：声明清单缺失时 status=missing，routedCount 不误报", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const origContextRoot = process.env.OPENRIG_CONTEXT_ROOT;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-cpacks-degenerate-"));
@@ -2532,7 +2440,7 @@ files:
           await tar.extract({ file: bundlePath, cwd: stagingDir });
           const bundleYamlPath = path.join(stagingDir, "bundle.yaml");
           const original = fs.readFileSync(bundleYamlPath, "utf-8");
-          // Manifest declares a pack path that does NOT exist in the bundle
+          // manifest 声明了一个 bundle 中不存在的 pack 路径
           const tampered = `${original}\ncontext_packs:\n  - packages/test-pkg/context-packs/nonexistent/manifest.yaml\n`;
           fs.writeFileSync(bundleYamlPath, tampered);
           const { pack } = await import("../src/domain/bundle-archive.js");
@@ -2557,11 +2465,11 @@ files:
         });
         const body = await installRes.json();
         expect(body.contextPacksRouting).toBeDefined();
-        // Truthful routedCount: 0 (manifest absent — consumer would skip)
+        // 如实的 routedCount：0（manifest 缺失——consumer 会跳过）
         expect(body.contextPacksRouting.routedCount).toBe(0);
         expect(body.contextPacksRouting.rejectedCount).toBe(1);
         expect(body.contextPacksRouting.records[0].status).toBe("missing");
-        // CRUCIAL: nothing landed at target
+        // 关键：没有任何东西落到 target
         expect(fs.existsSync(path.join(auditHome, "context", "nonexistent"))).toBe(false);
       } finally {
         fs.rmSync(targetRoot, { recursive: true, force: true });
@@ -2576,14 +2484,11 @@ files:
     }
   });
 
-  // Item 6 / Checkpoint 7.3g step 3: /install routes declared agent_images
-  // after successful bootstrap. Per PRD line 197 + e7a0b253 contract:
-  // declared paths are image DIRECTORIES (not manifest paths). Target =
-  // <openrigHome>/agent-images (startup.ts:523 user-file root). Router
-  // copies whole image dir to <openrigHome>/agent-images/<basename>/.
-  // Consumer-scan reachability proven via real AgentImageLibraryService.scan
-  // against the routed root (mirror of cb0bf7b9 context_packs proof).
-  it("POST /api/bundles/install routes declared agent_images after successful bootstrap (completed branch) — proves consumer-scan reachability", async () => {
+  // Item 6 / Checkpoint 7.3g step 3：bootstrap 成功后，/install 路由声明的 agent_images。
+  // 据 PRD 第 197 行 + e7a0b253 契约：声明路径是图像目录（非 manifest 路径）。
+  // target = <openrigHome>/agent-images（startup.ts:523 user-file root）。router 把整个图像目录拷到 <openrigHome>/agent-images/<basename>/。
+  // 经对路由根调用真实 AgentImageLibraryService.scan 证明消费者扫描可达（cb0bf7b9 context_packs 证明的镜像）。
+  it("POST /api/bundles/install 在成功引导后路由声明的 agent_images（completed 分支），证明消费者扫描可达", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-agent-images-route-test-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -2593,9 +2498,7 @@ files:
       const bundlePath = path.join(tmpDir, "with-agent-images.rigbundle");
       const targetRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aimgs-target-"));
       try {
-        // Build a VALID agent_image: dir w/ manifest.yaml (name + version +
-        // runtime + sourceSeat + sourceSessionId + sourceResumeToken +
-        // createdAt + files[]) per agent-image-types.ts schema.
+        // 构建一个合法 agent_image：含 manifest.yaml（name + version + runtime + sourceSeat + sourceSessionId + sourceResumeToken + createdAt + files[]）的目录，据 agent-image-types.ts schema。
         const imageDir = path.join(tmpDir, "test-pkg", "agent-images", "seat-a");
         fs.mkdirSync(imageDir, { recursive: true });
         const validManifest = `name: bundle-routed-seat-a
@@ -2621,7 +2524,7 @@ files: []
           await tar.extract({ file: bundlePath, cwd: stagingDir });
           const bundleYamlPath = path.join(stagingDir, "bundle.yaml");
           const original = fs.readFileSync(bundleYamlPath, "utf-8");
-          // PRD-coherent: declared path is the image DIR, not the manifest
+          // 与 PRD 一致：声明路径是图像目录，而非 manifest
           const tampered = `${original}\nagent_images:\n  - packages/test-pkg/agent-images/seat-a\n`;
           fs.writeFileSync(bundleYamlPath, tampered);
           const { pack } = await import("../src/domain/bundle-archive.js");
@@ -2648,15 +2551,12 @@ files: []
         expect(body.agentImagesRouting).toBeDefined();
         expect(body.agentImagesRouting.routedCount).toBe(1);
         expect(body.agentImagesRouting.records[0].status).toBe("routed");
-        // Router copies WHOLE image dir: declared "packages/test-pkg/agent-
-        // images/seat-a" → basename "seat-a" → target/seat-a/
+        // router 拷贝整个图像目录：声明的 "packages/test-pkg/agent-images/seat-a" -> basename "seat-a" -> target/seat-a/
         const expectedImageDir = path.join(auditHome, "agent-images", "seat-a");
         expect(fs.existsSync(expectedImageDir)).toBe(true);
         expect(fs.existsSync(path.join(expectedImageDir, "manifest.yaml"))).toBe(true);
 
-        // CONSUMER-SCAN REACHABILITY PROOF: instantiate the real
-        // AgentImageLibraryService against the routed root + assert the
-        // image is visible by name+version.
+        // 消费者扫描可达性证明：对路由根实例化真实 AgentImageLibraryService + 断言该图像按 name+version 可见。
         const { AgentImageLibraryService } = await import("../src/domain/agent-images/agent-image-library-service.js");
         const consumer = new AgentImageLibraryService({
           roots: [{ path: path.join(auditHome, "agent-images"), sourceType: "user_file" }],
@@ -2680,9 +2580,8 @@ files: []
     }
   });
 
-  // B1-mirror: agent_images routing must fire even when operator uses
-  // BOTH --skip-version-check and --force pre-check overrides.
-  it("POST /api/bundles/install routes declared agent_images even when both --skip-version-check and --force are set (B1 mirror)", async () => {
+  // B1 镜像：即使 operator 同时用 --skip-version-check 与 --force 预检覆盖，agent_images 路由也必须触发。
+  it("即使同时设置 --skip-version-check 和 --force，POST /api/bundles/install 仍路由声明的 agent_images（B1 镜像）", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-aimgs-dual-override-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -2757,9 +2656,8 @@ files: []
     }
   });
 
-  // Degenerate-input: declared image dir absent. routedCount=0,
-  // status=missing, NO image at target.
-  it("POST /api/bundles/install agent_images degenerate-input: declared image absent → status=missing, no false routedCount", async () => {
+  // 退化输入：声明的图像目录缺失。routedCount=0、status=missing、target 处无图像。
+  it("POST /api/bundles/install 的 agent_images 退化输入：声明镜像缺失时 status=missing，routedCount 不误报", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-aimgs-degenerate-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -2820,7 +2718,7 @@ files: []
     }
   });
 
-  it("POST /api/bundles/install does NOT include agentImagesRouting when bundle has no agent_images[]", async () => {
+  it("bundle 没有 agent_images[] 时 POST /api/bundles/install 不包含 agentImagesRouting", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-no-aimgs-test-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -2861,7 +2759,7 @@ files: []
     }
   });
 
-  it("POST /api/bundles/install does NOT include contextPacksRouting when bundle has no context_packs[]", async () => {
+  it("bundle 没有 context_packs[] 时 POST /api/bundles/install 不包含 contextPacksRouting", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-no-cpacks-test-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -2902,7 +2800,7 @@ files: []
     }
   });
 
-  it("POST /api/bundles/install does NOT include workflowSpecsRouting when bundle has no workflow_specs[]", async () => {
+  it("bundle 没有 workflow_specs[] 时 POST /api/bundles/install 不包含 workflowSpecsRouting", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const origSpecsRoot = process.env.OPENRIG_WORKSPACE_SPECS_ROOT;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-no-wflow-test-"));
@@ -2949,7 +2847,7 @@ files: []
     }
   });
 
-  it("POST /api/bundles/install does NOT include pluginsRouting when bundle has no plugins[]", async () => {
+  it("bundle 没有 plugins[] 时 POST /api/bundles/install 不包含 pluginsRouting", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-no-plugins-test-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -2990,7 +2888,7 @@ files: []
     }
   });
 
-  it("POST /api/bundles/install does NOT include skillsRouting when bundle has no skills[]", async () => {
+  it("bundle 没有 skills[] 时 POST /api/bundles/install 不包含 skillsRouting", async () => {
     const origHome = process.env.OPENRIG_HOME;
     const auditHome = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-skills-no-test-"));
     process.env.OPENRIG_HOME = auditHome;
@@ -3032,7 +2930,7 @@ files: []
   });
 
   // T11: Install concurrency lock
-  it("concurrent bundle install returns 409", async () => {
+  it("并发安装 bundle 时返回 409", async () => {
     // Acquire lock manually
     setup.bootstrapOrchestrator.tryAcquire("/tmp/locked.rigbundle");
 

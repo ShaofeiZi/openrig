@@ -1,26 +1,24 @@
-# Known v0.3.2 CLI surface additions - AC-2 self-validation fixture (OPR.0.3.3.13.1).
+# 已知的 v0.3.2 CLI 新增入口——AC-2 自验证 fixture（OPR.0.3.3.13.1）。
 #
-# Each entry is INDEPENDENTLY derived from the release notes + corroborating
-# sources, then cross-checked against the parser output. It is the no-false-
-# negative floor AND (by construction here) the exact expected added-flags set,
-# so the test also asserts no parser over/under-reporting at command granularity.
+# 每一项都根据发布说明和旁证来源独立推导，再与解析器输出交叉核对。它既是无假阴性的
+# 最低要求，也是这里通过构造得到的准确新增 flag 集合，因此测试还会断言解析器在命令
+# 粒度上既没有多报，也没有漏报。
 #
-# Sources (cited; all at main@8b2cb181):
-#   - PRIMARY:       docs/releases/v0.3.2.md
-#   - CORROBORATING: CHANGELOG.md v0.3.2 section
-#   - GROUND TRUTH:  git diff --name-status v0.3.1 v0.3.2 -- packages/cli/src/commands/
+# 来源（均引用 main@8b2cb181）：
+#   - 主要来源：docs/releases/v0.3.2.md
+#   - 旁证：CHANGELOG.md 的 v0.3.2 章节
+#   - 事实来源：git diff --name-status v0.3.1 v0.3.2 -- packages/cli/src/commands/
 #       (ADDED: scope.ts, rig-policy.ts; MODIFIED: bundle/config-init-workspace/ps/queue/up/workflow/workspace)
 #
-# Registration-name-not-filename: `policy` is `new Command("policy")` at
-# rig-policy.ts:150 - the FILENAME is rig-policy, the command name is policy.
+# 注册名不是文件名：`policy` 是 rig-policy.ts:150 的 `new Command("policy")`；
+# 文件名是 rig-policy，命令名是 policy。
 #
-# AC-2 RECONCILIATION NOTE (parser vs release-doc prose):
-#   `rig up --existing` is NOT listed here. The release doc narrates `--existing`
-#   under the "up paper-cut fixes" story (line 219), but the flag already existed
-#   at v0.3.1 (up.ts:32) and is unchanged at v0.3.2 (up.ts:40), so it is NOT a
-#   v0.3.1->v0.3.2 surface addition. The parser (source-grounded) correctly omits
-#   it; an earlier fixture draft that included it was a prose over-read, caught by
-#   this self-validation. Source/tag-diff is authoritative over release prose.
+# AC-2 对齐说明（解析器与发布文档叙述）：
+#   此处不列 `zrig up --existing`。发布文档在“up paper-cut fixes”故事下提到
+#   `--existing`（第 219 行），但该 flag 在 v0.3.1 中已经存在（up.ts:32），且在
+#   v0.3.2 中未变化（up.ts:40），因此它不是 v0.3.1->v0.3.2 的新增入口。基于源码的
+#   解析器正确地将其省略；更早的 fixture 草稿因过度解读叙述而包含它，本次自验证发现了
+#   这个问题。源码/tag diff 的权威性高于发布文档叙述。
 added_commands:
   - name: policy   # rig-policy.ts:150 new Command("policy"); doc L79-86, 166-189
   - name: scope    # scope.ts:690 new Command("scope"); doc L87-93, 190-205

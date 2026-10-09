@@ -1,47 +1,40 @@
-// KI-5.3-2 — the ONE logical-checkbox item grammar: parse an authored
-// `## Proof contract` (or acceptance) checkbox block into logical items.
+// KI-5.3-2——唯一的 logical-checkbox 条目语法：把编写的 `## Proof contract`
+//（或 acceptance）复选框区块解析为逻辑条目。
 //
-// PARITY CONTRACT (arch ruling 2026-07-11 twin-plus-parity, extended KI-5.3-2):
-// this file is a BYTE-EQUIVALENT TWIN — it exists identically at
+// 对等契约（2026-07-11 架构裁定 twin-plus-parity，由 KI-5.3-2 扩展）：
+// 本文件是字节完全相同的 twin，在以下两个位置保持一致：
 //   packages/cli/src/lib/scope/logical-checkbox.ts
 //   packages/daemon/src/domain/scope/logical-checkbox.ts
-// and byte-equivalence is CI-enforced by scope-audit-parity CLASSIFIER_FILES.
-// Do NOT diverge the copies, and do NOT "deduplicate" them into one file — a
-// true shared module importable by both packages does not exist in this layout,
-// so the twin-plus-parity arrangement IS the single-grammar guarantee. The
-// review composer, the slice-detail acceptance projector, and the CLI
-// `rig proof add` evidence-index validator ALL parse through this one grammar,
-// so a 1-based byIndex evidence ref names the SAME promised item on every side
-// (no silent one-position mispair). If the layout ever gains a real shared
-// package, the twins collapse into it then — not before.
+// scope-audit-parity 的 CLASSIFIER_FILES 会在 CI 中强制字节等价。不要让副本产生差异，
+// 也不要把它们“去重”为单个文件：当前布局不存在两个 package 都能导入的真正共享模块，因此
+// twin-plus-parity 布局就是单一语法保证。review composer、slice-detail acceptance
+// projector 和 CLI `zrig proof add` evidence-index validator 全部通过这一语法解析，
+// 因而以 1 为基准的 byIndex evidence ref 在每一侧都指向同一个约定条目，不会静默错位。
+// 如果未来布局中加入真正的共享 package，再把 twin 合并进去；不能提前合并。
 
-/** qitem-render-driver B — the ONE logical-checkbox record, shared by every
- *  reader of an authored checkbox list (Review's proof contract, the
- *  slice-detail projector's acceptance rows, and the CLI proof-add index).
+/** qitem-render-driver B——唯一的 logical-checkbox 记录，由所有编写型复选框列表 reader 共用，
+ *  包括 Review 的 proof contract、slice-detail projector 的 acceptance 行和 CLI proof-add
+ *  索引。
  *
- *  `rawText` is the COMPLETE logical item — a checkbox line plus any eligible
- *  indented continuation, joined with exactly one U+0020 — and it IS the
- *  VM-006 join key (textKey = trim + casefold over these bytes). Every reader
- *  MUST consume this record so promise, acceptance, dedup and the QA-verdict
- *  lift key off identical bytes by construction; a second parser would silently
- *  desynchronize the join. */
+ *  `rawText` 是完整的逻辑条目：复选框行加上所有符合条件的缩进续行，并以恰好一个 U+0020
+ *  连接；它也是 VM-006 join key（textKey = 对这些字节执行 trim + casefold）。每个 reader
+ *  都必须消费该记录，使 promise、acceptance、dedup 和 QA-verdict 从构造上基于相同字节关联；
+ *  第二套解析器会让关联关系悄然失去同步。 */
 export interface LogicalCheckboxItem {
-  /** The author's tick state (`- [x]`). */
+  /** 作者设置的勾选状态（`- [x]`）。 */
   checked: boolean;
-  /** The complete logical item text (continuations joined), trim-only. */
+  /** 完整逻辑条目文本（续行已连接），仅做 trim。 */
   rawText: string;
-  /** 1-based line of the CHECKBOX itself — never a continuation line. */
+  /** 复选框自身所在的 1-based 行号，绝不会指向续行。 */
   sourceLine: number;
 }
 
 const CHECKBOX_LINE = /^(\s*)-?\s*\[(\s|x|X)\]\s+(.+)$/;
 
-/** Parse an authored checkbox block into logical items.
+/** 把编写的复选框区块解析为逻辑条目。
  *
- *  Continuation eligibility (pinned by test): a line is a continuation of the
- *  preceding checkbox when it is NONBLANK, NOT itself a checkbox, and its
- *  indentation is STRICTLY DEEPER than the checkbox line's. A next checkbox, a
- *  blank line, or same/shallower prose terminates the item. */
+ *  续行资格（由测试锁定）：一行必须非空、本身不是复选框，且缩进严格深于复选框行，才算前一
+ *  复选框的续行。下一个复选框、空行或缩进相同/更浅的正文都会终止当前条目。 */
 export function parseLogicalCheckboxes(block: string | null): LogicalCheckboxItem[] {
   if (!block) return [];
   const lines = block.split("\n");

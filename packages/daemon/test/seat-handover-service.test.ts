@@ -59,12 +59,12 @@ describe("SeatHandoverService", () => {
     respawnPane = vi.fn(async () => ({ ok: true }));
     setRemainOnExit = vi.fn(async () => ({ ok: true }));
     signalPaneProcess = vi.fn(async () => ({ ok: true }));
-    isPaneDead = vi.fn(async () => true); // cutover: retiree exits gracefully on SIGTERM
+    isPaneDead = vi.fn(async () => true); // 切换时，退役者收到 SIGTERM 后正常退出
     sendText = vi.fn(async () => ({ ok: true }));
     sendKeys = vi.fn(async () => ({ ok: true }));
     capturePaneScreen = vi.fn(async () => "predecessor screen tail");
-    // B1 — a fresh successor is launched into a live agent (launchHarness +
-    // readiness) with a scraped resume token (B2 launched-mode).
+    // B1 —— 使用抓取到的恢复令牌（B2 launched 模式），将全新后继者启动为实时智能体
+    //（launchHarness + 就绪检查）。
     launchHarness = vi.fn(async () => ({
       ok: true,
       resumeToken: "codex-launch-tok",
@@ -72,13 +72,13 @@ describe("SeatHandoverService", () => {
       appliedLaunch: observeCodexSandbox(" -s workspace-write"),
     }));
     checkReady = vi.fn(async () => ({ ready: true }));
-    // B2 — discovered-mode derive-helper deps (Codex thread-id capturer by default).
+    // B2 —— discovered 模式的推导辅助依赖，默认使用 Codex 线程 ID 捕获器。
     readSidecar = vi.fn(() => ({ ok: true, data: { session_id: "claude-sid-123" } }));
     captureCodexThreadId = vi.fn(async () => "codex-discovered-tok");
     invalidateRetiringOccupant = vi.fn();
     declareOccupantSwap = vi.fn();
     resolvePredecessorRecap = vi.fn(() => ({ unavailableReason: "test default: no record" }));
-    // KI-14: healthy default — the respawned pane comes up as a blank shell.
+    // KI-14：健康默认值——重生后的窗格以空白 shell 启动。
     getDefaultShell = vi.fn(async () => "/bin/zsh");
     getPaneCommand = vi.fn(async () => "zsh");
     service = newService();
@@ -155,7 +155,7 @@ describe("SeatHandoverService", () => {
     ])));
   }
 
-  it("binds an active seat to an already-created discovered successor", async () => {
+  it("将活动席位绑定到已创建且被发现的后继者", async () => {
     const { rig, node, sessionId } = seedSeat();
     const discovered = seedDiscovery();
 
@@ -167,7 +167,7 @@ describe("SeatHandoverService", () => {
     });
 
     expect(result.ok).toBe(true);
-    if (!result.ok || !("result" in result)) throw new Error("expected handover result");
+    if (!result.ok || !("result" in result)) throw new Error("应返回交接结果");
     expect(result.result).toMatchObject({
       ok: true,
       dryRun: false,
@@ -227,7 +227,7 @@ describe("SeatHandoverService", () => {
   });
 
   it.each(["active", "stopped"] as const)(
-    "keeps the role-bound watchdog baton on a distinct discovered successor when %s",
+    "初始状态为 %s 时，将角色绑定的 watchdog 接力棒交给不同的已发现后继者",
     async (initialState) => {
       const now = new Date("2026-04-24T18:30:00.000Z");
       const jobsRepo = new WatchdogJobsRepository(db, () => now);
@@ -236,7 +236,7 @@ describe("SeatHandoverService", () => {
         jobsRepo,
         settingsStore: {
           resolveOne(key: string) {
-            // B6 — these baton tests PREMISE an existing job, so the fake opts the fleet in.
+            // B6 —— 这些接力棒测试以前提已有作业，因此 fake 会为 fleet 选择加入。
             if (key.endsWith("auto_register")) return { value: "all" };
             if (key.endsWith("opt_in_sessions")) return { value: "" };
             return { value: key.endsWith("active_wake_interval_seconds") ? 900 : 60 };
@@ -304,14 +304,14 @@ describe("SeatHandoverService", () => {
 
         const evaluation = await engine.evaluate(jobsRepo.getByIdOrThrow(held[0].jobId));
         expect(evaluation.outcome).toEqual({ action: "skip", reason: "no_pending_gate" });
-        expect(deliveries, "the retired session no longer holds a deliverable watchdog").toEqual([]);
+        expect(deliveries, "退役会话不再持有可交付的 watchdog").toEqual([]);
       } else {
         expect(jobsRepo.listActive()).toEqual([]);
       }
     },
   );
 
-  it("neutralizes the retired watchdog when a real handover admits a noncanonical discovered successor", async () => {
+  it("真实交接接纳非规范的已发现后继者时停用退役 watchdog", async () => {
     const now = new Date("2026-04-24T18:30:00.000Z");
     db.exec(watchdogHistorySchema.sql);
     const jobsRepo = new WatchdogJobsRepository(db, () => now);
@@ -320,7 +320,7 @@ describe("SeatHandoverService", () => {
       jobsRepo,
       settingsStore: {
         resolveOne(key: string) {
-          // B6 — this test premises an existing job; the fake opts the fleet in.
+          // B6 —— 本测试以前提已有作业，因此 fake 会为 fleet 选择加入。
           if (key.endsWith("auto_register")) return { value: "all" };
           if (key.endsWith("opt_in_sessions")) return { value: "" };
           return { value: key.endsWith("active_wake_interval_seconds") ? 900 : 60 };
@@ -374,7 +374,7 @@ describe("SeatHandoverService", () => {
     expect.soft(deliveries.filter((delivery) => delivery.targetSession === retiredSession)).toEqual([]);
   });
 
-  it("keeps dry-run side-effect free", async () => {
+  it("保持 dry-run 无副作用", async () => {
     seedSeat();
     const discovered = seedDiscovery();
     const before = durableRows();
@@ -392,12 +392,12 @@ describe("SeatHandoverService", () => {
   });
 
   it.each([
-    ["default source", undefined],
-    ["fresh source", "fresh"],
-    ["rebuild source", "rebuild"],
-    ["fork source", "fork:abc123"],
-    ["discovered source", "discovered:some-id"],
-  ])("keeps dry-run mutation-free across %s (AC-1)", async (_label, source) => {
+    ["默认来源", undefined],
+    ["全新来源", "fresh"],
+    ["重建来源", "rebuild"],
+    ["分叉来源", "fork:abc123"],
+    ["已发现来源", "discovered:some-id"],
+  ])("对%s保持 dry-run 无变更（AC-1）", async (_label, source) => {
     seedSeat();
     const before = durableRows();
 
@@ -415,13 +415,13 @@ describe("SeatHandoverService", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("Seam B (R2/Guard): a fresh handover for a NO-policy seat launches the REAL successor at EXPLICIT floor, even under ambient OPENRIG_YOLO", async () => {
-    // Production altitude: the pin drives SeatHandoverService.handover() end-to-end and
-    // asserts the binding the REAL launchHarness call received — never a re-computed
-    // fallback chain (the helper-only false-green Guard rejected at c203812f).
+  it("接缝 B（R2/Guard）：无策略席位的全新交接即使存在 OPENRIG_YOLO，也以显式 floor 启动真实后继者", async () => {
+    // 生产层级：固定项端到端驱动 SeatHandoverService.handover()，并断言真实
+    // launchHarness 调用收到的绑定，绝不使用重新计算的回退链；这正是 c203812f 中 Guard
+    // 拒绝的仅辅助函数假绿。
     vi.stubEnv("OPENRIG_YOLO", "1");
     try {
-      seedSeat({ runtime: "codex" }); // no node/rig policy provenance anywhere
+      seedSeat({ runtime: "codex" }); // 任何位置都没有节点/工作组策略溯源
       const result = await service.handover({
         seatRef: "dev-impl@seat-rig",
         reason: "context-wall",
@@ -431,13 +431,12 @@ describe("SeatHandoverService", () => {
       expect(result.ok).toBe(true);
       expect(launchHarness).toHaveBeenCalledTimes(1);
       const successorBinding = launchHarness.mock.calls[0]![0] as { launchPosture?: string };
-      // locked absence contract: the continuity edge binds the minimum floor explicitly —
-      // ambient YOLO must not widen an attachment-less successor.
+      // 锁定的缺失契约：连续性边显式绑定最低 floor；环境 YOLO 不得放宽无附件后继者。
       expect(successorBinding.launchPosture).toBe("floor");
     } finally { vi.unstubAllEnvs(); }
   });
 
-  it("persists the successor's applied effect only after the handover generation is minted", async () => {
+  it("仅在生成交接代际后持久化后继者的已应用效果", async () => {
     const { node } = seedSeat({ runtime: "codex" });
     const predecessor = sessionRegistry.currentOccupantTenure(node.id)!;
     const result = await service.handover({
@@ -457,11 +456,10 @@ describe("SeatHandoverService", () => {
     });
   });
 
-  it("MONEY PROOF (0.5.2-07): a SPEC-pinned model seat's handover launches the successor on the SPEC model — the REAL lookupNode→createSuccessor→launchHarness path, not an injected node", async () => {
-    // Same shape as Seam B: asserts the binding the REAL launchHarness received, driven end-to-end by
-    // service.handover(). The launcher-level money proof injects node.model directly and cannot catch
-    // lookupNode dropping the column — this one does. RED on main: lookupNode SELECTs only id/runtime/cwd,
-    // so the spec-pinned model is lost before the successor binding is ever built (the handover-reverts gap).
+  it("关键证明（0.5.2-07）：spec 固定模型的席位交接使用该模型启动后继者，走真实 lookupNode→createSuccessor→launchHarness 路径", async () => {
+    // 与接缝 B 形态相同：由 service.handover() 端到端驱动，断言真实 launchHarness 收到
+    // 的绑定。launcher 层关键证明直接注入 node.model，无法捕获 lookupNode 丢列，本测试可以。
+    // main 上为红：lookupNode 只查询 id/runtime/cwd，导致 spec 固定模型在构建后继绑定前丢失。
     seedSeat({ runtime: "codex", model: "gpt-5.4-cheap" });
     const result = await service.handover({
       seatRef: "dev-impl@seat-rig",
@@ -475,13 +473,12 @@ describe("SeatHandoverService", () => {
     expect(successorBinding.model).toBe("gpt-5.4-cheap");
   });
 
-  it("MONEY PROOF (0.5.2-07 A4-profile): a codex_config_profile-pinned seat's handover launches the successor with that profile — the REAL lookupNode→createSuccessor→launchHarness path", async () => {
-    // A4-profile mirrors A2-1 for the codex_config_profile column. The codex adapter already emits
-    // `-p <profile>` from binding.codexConfigProfile; the gap is the HANDOVER threading — lookupNode
-    // must SELECT codex_config_profile and createSuccessor must carry it onto the successor binding.
-    // RED on this base: lookupNode SELECTs only id/runtime/cwd/model, so the pinned profile is lost
-    // before the successor binding is ever built — the same handover-reverts gap as the model, one
-    // field over. The restore path already threads it (restore-orchestrator.ts); handover did not.
+  it("关键证明（0.5.2-07 A4-profile）：codex_config_profile 固定席位的交接使用该 profile 启动后继者", async () => {
+    // A4-profile 针对 codex_config_profile 列复现 A2-1。Codex 适配器已从
+    // binding.codexConfigProfile 输出 `-p <profile>`；缺口在交接传递：lookupNode 必须查询
+    // codex_config_profile，createSuccessor 必须将其传入后继绑定。该基线上为红：lookupNode
+    // 只查询 id/runtime/cwd/model，导致固定 profile 在构建后继绑定前丢失。恢复路径已经
+    // 传递该值（restore-orchestrator.ts），交接路径此前没有。
     seedSeat({ runtime: "codex", codexConfigProfile: "prod-sandboxed" });
     const result = await service.handover({
       seatRef: "dev-impl@seat-rig",
@@ -495,7 +492,7 @@ describe("SeatHandoverService", () => {
     expect(successorBinding.codexConfigProfile).toBe("prod-sandboxed");
   });
 
-  it("composes the full cycle for a fresh source: create -> deliver -> verify -> rebind", async () => {
+  it("为全新来源组合完整周期：创建 → 交付 → 验证 → 重新绑定", async () => {
     const { node } = seedSeat({ runtime: "codex" });
 
     const result = await service.handover({
@@ -506,25 +503,25 @@ describe("SeatHandoverService", () => {
     });
 
     expect(result.ok).toBe(true);
-    if (!result.ok || !("result" in result)) throw new Error("expected handover result");
+    if (!result.ok || !("result" in result)) throw new Error("应返回交接结果");
     expect(result.result).toMatchObject({
       ok: true,
       mutated: true,
       previousOccupant: "dev-impl@seat-rig",
-      // Cutover: the seat keeps its canonical name; the OCCUPANT changed (new agent), the NAME did not.
+      // 切换后席位保留规范名称；使用者变为新智能体，但名称不变。
       currentOccupant: "dev-impl@seat-rig",
       source: { mode: "fresh" },
       sideEffects: { startupContextDelivered: true },
     });
 
-    // Cutover: no fresh session — the successor respawns into the DEPARTING pane in place, carrying the
-    // PRESERVED canonical session name in its identity env (never a -h successor name).
+    // 切换不会创建新会话；后继者在即将离开的窗格中原地重生，其身份环境变量携带保留的
+    // 规范会话名称，绝不使用带 -h 的后继者名称。
     expect(createSession).not.toHaveBeenCalled();
     expect(listPanes).toHaveBeenCalledWith("dev-impl@seat-rig");
     expect(respawnPane).toHaveBeenCalledTimes(1);
     const [paneTarget, command, opts] = respawnPane.mock.calls[0]!;
-    expect(paneTarget).toBe("%9"); // the departing pane resolved from listPanes
-    // KI-14: EXPLICIT blank shell (undefined would re-run the pane's baked-in creation command).
+    expect(paneTarget).toBe("%9"); // 从 listPanes 解析出的离开窗格
+    // KI-14：显式使用空白 shell；undefined 会重新运行窗格内置的创建命令。
     expect(command).toBe("/bin/zsh");
     expect(opts).toMatchObject({ cwd: "/project" });
     expect(opts.env).toMatchObject({
@@ -534,36 +531,34 @@ describe("SeatHandoverService", () => {
       OPENRIG_OCCUPANT_GENERATION: expect.any(String),
     });
 
-    // The departing pane is resolved BEFORE the in-place respawn; the discovery candidate carries it on
-    // the PRESERVED name (commit rebinds to it).
+    // 在原地重生前先解析离开窗格；发现候选项在保留名称下携带该窗格，提交会重新绑定到它。
     expect(listPanes.mock.invocationCallOrder[0]!).toBeLessThan(respawnPane.mock.invocationCallOrder[0]!);
     expect(result.result.discovery.tmuxPane).toBe("%9");
     const successorRow = db.prepare("SELECT tmux_pane FROM discovered_sessions WHERE tmux_session = ?").get("dev-impl@seat-rig") as { tmux_pane: string };
     expect(successorRow.tmux_pane).toBe("%9");
 
-    // Driver note 3: the restore packet (boot recap) is delivered to the successor in the PRESERVED
-    // pane BEFORE the continuity-verify presence probe (never verify an un-restored seat).
+    // Driver 备注 3：在连续性存在性探测前，把恢复包（启动回顾）交付给保留窗格中的后继者；
+    // 绝不验证尚未恢复的席位。
     expect(sendText).toHaveBeenCalledTimes(1);
     const [target, packet] = sendText.mock.calls[0]!;
     expect(target).toBe("dev-impl@seat-rig");
-    expect(packet).toContain("OpenRig seat handover");
+    expect(packet).toContain("zrig seat handover——恢复上下文");
     expect(packet).toContain("predecessor screen tail");
     expect(sendKeys).toHaveBeenCalledWith("dev-impl@seat-rig", ["C-m"]);
     expect(sendText.mock.invocationCallOrder[0]!).toBeLessThan(hasSession.mock.invocationCallOrder[0]!);
 
-    // B1: the successor was launched into a LIVE agent (launchHarness +
-    // readiness) BEFORE commit — not a bare shell that only received text.
+    // B1：提交前已通过 launchHarness + 就绪检查把后继者启动为实时智能体，而不是只接收
+    // 文本的裸 shell。
     expect(launchHarness).toHaveBeenCalledTimes(1);
     expect(checkReady).toHaveBeenCalled();
-    // Rebind landed on the PRESERVED seat name.
+    // 重新绑定落在保留的席位名称上。
     expect(sessionRegistry.getBindingForNode(node.id)?.tmuxSession).toBe("dev-impl@seat-rig");
     const nodeRow = db.prepare("SELECT occupant_lifecycle, handover_result, previous_occupant FROM nodes WHERE id = ?").get(node.id) as Record<string, string | null>;
     expect(nodeRow).toMatchObject({ occupant_lifecycle: "active", handover_result: "complete", previous_occupant: "dev-impl@seat-rig" });
 
-    // B2 (launched/fresh): the launch-scraped resume token is persisted on the new claimed session
-    // atomically with the commit (provenance scrape). The cutover preserves the seat name, so two rows
-    // now share it (the superseded retiree + the active successor); take the NEWEST (the claimed one),
-    // exactly as the production latest-session lookup does (ORDER BY id DESC).
+    // B2（launched/fresh）：启动时抓取的恢复令牌与提交原子地持久化到新认领会话，
+    // provenance 为 scrape。切换保留席位名称，因此现在两行共享该名称：已被取代的退役者
+    // 和活动后继者；应取最新的已认领行，与生产 latest-session 查询的 ORDER BY id DESC 一致。
     const newSession = db.prepare(
       "SELECT resume_type, resume_token, resume_provenance FROM sessions WHERE node_id = ? AND session_name = ? ORDER BY id DESC LIMIT 1"
     ).get(node.id, "dev-impl@seat-rig") as Record<string, string | null>;
@@ -572,11 +567,11 @@ describe("SeatHandoverService", () => {
       .toBe(opts.env.OPENRIG_OCCUPANT_GENERATION);
   });
 
-  it("KI-14 (5.3 wave-1): a fresh handover commit stamps continuity_outcome='fresh' — NEVER NULL, which lets a STALE restore_outcome impersonate the new occupant's continuity", async () => {
-    // The live defect's label half (2026-08-22 wave): commit wrote continuity_outcome=NULL and
-    // node-inventory then DERIVED the seat's continuity from restore_outcome — a stamp from a
-    // restore days earlier — so dev-qa/dev-guard reported fresh/fresh-primed while their panes ran
-    // `codex resume <14-day-old-token>`. The recorded label must describe THIS launch.
+  it("KI-14（5.3 wave-1）：全新交接提交把 continuity_outcome 标记为 fresh，绝不能为 null", async () => {
+    // 线上缺陷的标签侧（2026-08-22 wave）：提交写入 continuity_outcome=NULL，随后
+    // node-inventory 从数日前恢复留下的 restore_outcome 推导席位连续性，使 dev-qa/dev-guard
+    // 在窗格运行 `codex resume <14-day-old-token>` 时仍报告 fresh/fresh-primed。记录标签必须
+    // 描述本次启动。
     const { node } = seedSeat({ runtime: "codex" });
 
     const result = await service.handover({
@@ -592,7 +587,7 @@ describe("SeatHandoverService", () => {
     expect(row.continuity_outcome).toBe("fresh");
   });
 
-  it("a failed handover commit leaves its carried reservation unregistered and non-mismatch", async () => {
+  it("交接提交失败后，携带的预留代际保持未注册且不误匹配", async () => {
     const { node } = seedSeat({ runtime: "codex" });
     vi.spyOn(eventBus, "persistWithinTransaction").mockImplementationOnce(() => {
       throw new Error("injected commit failure");
@@ -631,16 +626,16 @@ describe("SeatHandoverService", () => {
     });
   });
 
-  it("ghost-stage re-key seam: calls invalidateRetiringOccupant at commit with the retiring + successor names + the RETIRING generation", async () => {
-    // The cutover invalidates the RETIRING occupant's seat-name-keyed stores so the successor never
-    // inherits a ghost (ghost-stage contract, dev50 slice). This seat OWNS the mechanical call at
-    // commit(); dev50 owns the per-store impls behind the OccupantInvalidator interface. In the cutover
-    // the successor REUSES the seat name, so retiring === successor by NAME — Class-A is safe by TIMING
-    // and Class-B gen-scopes via retiringGeneration (atom-B): the RETIRING occupant's generation,
-    // captured BEFORE registerClaimedSession mints the successor's tenure under the reused name.
+  it("幽灵阶段重新分配标识接缝：提交时用退役/后继名称及退役代际调用 invalidateRetiringOccupant", async () => {
+    // 切换会使退役使用者按席位名称索引的存储失效，避免后继者继承幽灵状态（dev50 切片的
+    // ghost-stage 契约）。本席位负责 commit() 时的机械调用；dev50 负责
+    // OccupantInvalidator 接口后的逐存储实现。切换中后继者复用席位名称，因此按名称看
+    // retiring === successor；Class-A 依靠时序保证安全，Class-B 则通过 retiringGeneration
+    //（atom-B）限定代际。该值是 registerClaimedSession 在复用名称下创建后继任期前捕获的
+    // 退役使用者代际。
     seedSeat({ runtime: "codex" });
     const retiringGen = sessionRegistry.currentOccupantGenerationForSession("dev-impl@seat-rig");
-    expect(retiringGen, "the retiree has an atom-B tenure to gen-scope by").toBeTruthy();
+    expect(retiringGen, "退役者具有可用于限定代际的 atom-B 任期").toBeTruthy();
 
     const result = await service.handover({ seatRef: "dev-impl@seat-rig", reason: "context-wall", source: "fresh" });
 
@@ -649,15 +644,15 @@ describe("SeatHandoverService", () => {
     expect(invalidateRetiringOccupant).toHaveBeenCalledWith({
       retiringSessionName: "dev-impl@seat-rig",
       successorSessionName: "dev-impl@seat-rig",
-      retiringGeneration: retiringGen, // captured pre-mint = the RETIREE's gen, not the successor's
+      retiringGeneration: retiringGen, // 创建前捕获的是退役者代际，而不是后继者代际
     });
-    // Proof it captured the RETIRING generation: the handover minted a fresh successor tenure under
-    // the reused name, so the node's live generation now DIFFERS from what the invalidator received.
+    // 证明捕获的是退役者代际：交接已在复用名称下创建新的后继任期，因此节点当前代际与
+    // invalidator 收到的值不同。
     const successorGen = sessionRegistry.currentOccupantGenerationForSession("dev-impl@seat-rig");
     expect(successorGen).not.toBe(retiringGen);
   });
 
-  it("does NOT invalidate the retiring occupant when the handover fails before commit (no re-key on a non-committed handover)", async () => {
+  it("交接在提交前失败时不使退役使用者失效，未提交的交接不重新分配标识", async () => {
     seedSeat({ runtime: "codex" });
     respawnPane.mockResolvedValue({ ok: false, code: "no_server", message: "no server running" });
 
@@ -667,7 +662,7 @@ describe("SeatHandoverService", () => {
     expect(invalidateRetiringOccupant).not.toHaveBeenCalled();
   });
 
-  it("S19 (territory ruling 01530): the commit declares the occupant swap to the activity oracle — seat-keyed rungs re-declare, no bleed", async () => {
+  it("S19（territory 裁定 01530）：提交向活动事实源声明使用者切换，席位键控层级重新声明且不串扰", async () => {
     const { node } = seedSeat({ runtime: "codex" });
     const retiringGen = sessionRegistry.currentOccupantGenerationForSession("dev-impl@seat-rig");
 
@@ -676,13 +671,13 @@ describe("SeatHandoverService", () => {
     expect(result.ok).toBe(true);
     expect(declareOccupantSwap).toHaveBeenCalledTimes(1);
     const [seatNodeId, generation] = declareOccupantSwap.mock.calls[0]! as [string, string];
-    expect(seatNodeId).toBe(node.id); // seat-keyed: the durable node id, never the session name
+    expect(seatNodeId).toBe(node.id); // 席位键控使用持久节点 ID，绝不使用会话名称
     expect(typeof generation).toBe("string");
     expect(generation.length).toBeGreaterThan(0);
-    expect(generation).not.toBe(retiringGen); // the SWAP identity is the successor tenure, not the retiree
+    expect(generation).not.toBe(retiringGen); // 切换身份是后继任期，而不是退役者
   });
 
-  it("S19: a handover that fails before commit never declares a swap (no phantom swap events)", async () => {
+  it("S19：提交前失败的交接绝不声明切换，不产生幽灵切换事件", async () => {
     seedSeat({ runtime: "codex" });
     respawnPane.mockResolvedValue({ ok: false, code: "no_server", message: "no server running" });
 
@@ -692,9 +687,9 @@ describe("SeatHandoverService", () => {
     expect(declareOccupantSwap).not.toHaveBeenCalled();
   });
 
-  it("recap leg: threads the predecessor recap + record path into the delivered restore packet when a record resolves", async () => {
-    // The recap leg fires: resolve the predecessor's provider record → a bounded labeled-from-record recap
-    // → threaded into the packet delivered to the successor (honest-degraded, never called "scrollback").
+  it("回顾环节：记录解析成功时把前任回顾与记录路径写入交付的恢复包", async () => {
+    // 回顾环节执行：解析前任的提供方记录 → 生成有界且标明来自记录的回顾 → 写入交付给
+    // 后继者的包。降级会如实标明，绝不称作“回滚缓冲区”。
     seedSeat({ runtime: "codex" });
     resolvePredecessorRecap.mockReturnValue({
       recap: [
@@ -710,13 +705,13 @@ describe("SeatHandoverService", () => {
     expect(resolvePredecessorRecap).toHaveBeenCalledTimes(1);
     const [target, packet] = sendText.mock.calls[0]!;
     expect(target).toBe("dev-impl@seat-rig");
-    expect(packet).toContain("Predecessor recap (replayed from record, not the live terminal)");
+    expect(packet).toContain("前任回顾（从记录重放，并非实时终端）");
     expect(packet).toContain("user: finish the atom");
     expect(packet).toContain("/home/.claude/projects/x/abc.jsonl");
-    expect(packet.toLowerCase()).toContain("honest-degraded");
+    expect(packet).toContain("如实降级");
   });
 
-  it("recap leg (B16): an unresolved recap rides the packet as a NAMED unavailable line, never a silent omission", async () => {
+  it("回顾环节（B16）：无法解析的回顾作为具名不可用行进入包，绝不静默省略", async () => {
     seedSeat({ runtime: "codex" });
     resolvePredecessorRecap.mockReturnValue({ unavailableReason: "no resume token recorded for the departing codex session" });
 
@@ -724,13 +719,13 @@ describe("SeatHandoverService", () => {
 
     expect(result.ok).toBe(true);
     const [, packet] = sendText.mock.calls[0]!;
-    expect(packet).not.toContain("Predecessor recap (replayed from record");
-    expect(packet).toContain("--- Predecessor recap unavailable: no resume token recorded for the departing codex session ---");
-    // the base packet still delivers the captured predecessor terminal.
+    expect(packet).not.toContain("前任回顾（从记录重放");
+    expect(packet).toContain("--- 前任回顾不可用：no resume token recorded for the departing codex session ---");
+    // 基础包仍交付捕获到的前任终端内容。
     expect(packet).toContain("predecessor screen tail");
   });
 
-  it("B16 rework: packet delivery uses the shared paste-then-submit sequencing — a settle sleep BETWEEN send_text and C-m (r2 live: without it the packet sat staged-unsent 46s)", async () => {
+  it("B16 重做：包交付使用共享的先粘贴后提交顺序，在 send_text 与 C-m 之间等待稳定", async () => {
     seedSeat({ runtime: "codex" });
     const sleeps: number[] = [];
     const orderedCalls: string[] = [];
@@ -755,7 +750,7 @@ describe("SeatHandoverService", () => {
     const result = await service.handover({ seatRef: "dev-impl@seat-rig", reason: "context-wall", source: "fresh" });
 
     expect(result.ok).toBe(true);
-    // The settle sleep sits BETWEEN the paste and the submit — the transport's proven contract.
+    // 稳定等待位于粘贴和提交之间，这是传输层已证明的契约。
     const sendIdx = orderedCalls.indexOf("send_text");
     const settleIdx = orderedCalls.indexOf("sleep(200)");
     const submitIdx = orderedCalls.indexOf("submit");
@@ -765,7 +760,7 @@ describe("SeatHandoverService", () => {
     expect(sleeps).toContain(200);
   });
 
-  it("recap leg (B16): the resolver runs BEFORE the successor launches (the successor overwrites the name-keyed sidecar)", async () => {
+  it("回顾环节（B16）：解析器在后继者启动前运行，避免后继者覆盖按名称索引的 sidecar", async () => {
     seedSeat({ runtime: "codex" });
     resolvePredecessorRecap.mockReturnValue({ recap: [{ role: "user", content: "pre-launch read" }], recordPath: "/p/a.jsonl" });
 
@@ -777,11 +772,10 @@ describe("SeatHandoverService", () => {
     expect(resolveOrder).toBeLessThan(launchOrder);
   });
 
-  // OPR.0.5.5.5 (05-handover-sources-real) INVERTED the former B3 pin: fork and
-  // rebuild now EXECUTE (full coverage in seat-handover-sources.test.ts). What
-  // survives of B3 is its safety core: a source that cannot proceed refuses
-  // HONESTLY and pre-mutation — never a blank successor reported complete.
-  it("OPR.0.5.5.5: fork without a discoverable native id refuses honestly pre-mutation — source_not_supported is gone, the seat is untouched", async () => {
+  // OPR.0.5.5.5（05-handover-sources-real）翻转了旧 B3 固定项：fork 和 rebuild 现在
+  // 会真正执行，完整覆盖位于 seat-handover-sources.test.ts。B3 保留的是安全核心：无法继续
+  // 的来源会在变更前如实拒绝，绝不把空白后继者报告为完成。
+  it("OPR.0.5.5.5：fork 缺少可发现的原生 ID 时在变更前如实拒绝，席位保持不变", async () => {
     const { node } = seedSeat({ runtime: "codex" });
     const before = durableRows();
 
@@ -791,14 +785,14 @@ describe("SeatHandoverService", () => {
     expect(createSession).not.toHaveBeenCalled();
     expect(launchHarness).not.toHaveBeenCalled();
     expect(sendText).not.toHaveBeenCalled();
-    // Original seat/binding untouched; no node marked handover complete.
+    // 原席位与绑定保持不变，没有节点被标记为交接完成。
     expect(sessionRegistry.getBindingForNode(node.id)?.tmuxSession).toBe("dev-impl@seat-rig");
     const nodeRow = db.prepare("SELECT handover_result FROM nodes WHERE id = ?").get(node.id) as Record<string, string | null>;
     expect(nodeRow.handover_result).not.toBe("complete");
     expect(durableRows()).toBe(before);
   });
 
-  it("B3: still returns a dry-run PLAN for fork/rebuild (planning is not blocked)", async () => {
+  it("B3：仍为 fork/rebuild 返回 dry-run 计划，不阻塞规划", async () => {
     seedSeat({ runtime: "codex" });
     const before = durableRows();
 
@@ -809,7 +803,7 @@ describe("SeatHandoverService", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("B2: captures the discovered successor's live resume token at commit (codex)", async () => {
+  it("B2：提交时捕获已发现后继者的实时恢复令牌（codex）", async () => {
     const { node } = seedSeat({ runtime: "codex" });
     const discovered = seedDiscovery();
 
@@ -820,9 +814,9 @@ describe("SeatHandoverService", () => {
     });
 
     expect(result.ok).toBe(true);
-    if (!result.ok || !("result" in result)) throw new Error("expected handover result");
-    // The FR-3 derive-helper was reused; the token is persisted with provenance
-    // "adoption" on the new claimed session, and never appears in the event log.
+    if (!result.ok || !("result" in result)) throw new Error("应返回交接结果");
+    // 复用 FR-3 推导辅助逻辑；令牌以 provenance "adoption" 持久化到新认领会话，
+    // 且绝不会出现在事件日志中。
     expect(captureCodexThreadId).toHaveBeenCalledWith("successor-session");
     const newSession = db.prepare(
       "SELECT resume_type, resume_token, resume_provenance FROM sessions WHERE node_id = ? AND session_name = ?"
@@ -835,10 +829,10 @@ describe("SeatHandoverService", () => {
     expect(JSON.stringify(payload)).not.toContain("codex-discovered-tok");
   });
 
-  it("B2: honest redacted skip when the discovered token cannot be derived", async () => {
+  it("B2：无法推导已发现令牌时如实进行脱敏跳过", async () => {
     const { node } = seedSeat({ runtime: "codex" });
     const discovered = seedDiscovery();
-    captureCodexThreadId.mockResolvedValue(undefined); // probe found nothing
+    captureCodexThreadId.mockResolvedValue(undefined); // 探测未找到结果
 
     const result = await service.handover({
       seatRef: "dev-impl@seat-rig",
@@ -846,7 +840,7 @@ describe("SeatHandoverService", () => {
       source: `discovered:${discovered.id}`,
     });
 
-    // Handover still succeeds; token stays NULL; a redacted skip event is emitted.
+    // 交接仍成功；令牌保持 NULL，并发出脱敏的跳过事件。
     expect(result.ok).toBe(true);
     const newSession = db.prepare(
       "SELECT resume_token FROM sessions WHERE node_id = ? AND session_name = ?"
@@ -856,7 +850,7 @@ describe("SeatHandoverService", () => {
     expect(JSON.parse(skipEvent.payload)).toMatchObject({ outcome: "skipped", reason: "probe_timeout", redacted: true });
   });
 
-  it("fails loudly and leaves the binding when the in-place respawn fails", async () => {
+  it("原地重生失败时醒目失败并保留绑定", async () => {
     const { node } = seedSeat();
     respawnPane.mockResolvedValue({ ok: false, code: "no_server", message: "no server running" });
     const before = durableRows();
@@ -868,14 +862,14 @@ describe("SeatHandoverService", () => {
     expect(launchHarness).not.toHaveBeenCalled();
     expect(sendText).not.toHaveBeenCalled();
     expect(hasSession).not.toHaveBeenCalled();
-    // The seat's binding is unchanged — commit never ran.
+    // 席位绑定保持不变，因为提交从未执行。
     expect(sessionRegistry.getBindingForNode(node.id)?.tmuxSession).toBe("dev-impl@seat-rig");
     expect(durableRows()).toBe(before);
   });
 
-  it("maps a listPanes THROW resolving the departing pane to a loud successor_create_failed (no rejection, seat untouched)", async () => {
+  it("解析离开窗格时 listPanes 抛出异常会映射为醒目的 successor_create_failed，且席位不变", async () => {
     const { node } = seedSeat();
-    // The departing-pane probe rethrows BEFORE any respawn — the live retiree is wholly untouched.
+    // 离开窗格探测在任何重生前重新抛出异常，因此实时退役者完全不受影响。
     listPanes.mockRejectedValue(new Error("socket permission denied"));
     const before = durableRows();
 
@@ -883,7 +877,7 @@ describe("SeatHandoverService", () => {
 
     expect(result).toMatchObject({ ok: false, code: "successor_create_failed" });
     expect((result as { message: string }).message).toContain("resolve_pane");
-    // CUTOVER INVARIANT: the preserved seat is NEVER killed on unwind; verify + delivery never ran.
+    // 切换不变量：回退时绝不终止保留席位；验证与交付都未运行。
     expect(respawnPane).not.toHaveBeenCalled();
     expect(killSession).not.toHaveBeenCalled();
     expect(sendText).not.toHaveBeenCalled();
@@ -892,7 +886,7 @@ describe("SeatHandoverService", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("preserves predecessor posture truth when handover fails before physical replacement", async () => {
+  it("交接在物理替换前失败时保留前任姿态事实", async () => {
     const { node } = seedSeat();
     const store = new AppliedLaunchObservationStore(db);
     const generation = sessionRegistry.currentOccupantTenure(node.id)!.generationUuid;
@@ -904,7 +898,7 @@ describe("SeatHandoverService", () => {
   });
 
   it.each(["launch", "readiness", "context-delivery"] as const)(
-    "invalidates predecessor posture truth when %s fails after physical replacement",
+    "物理替换后 %s 失败时使前任姿态事实失效",
     async (failure) => {
       const { node } = seedSeat();
       const store = new AppliedLaunchObservationStore(db);
@@ -920,7 +914,7 @@ describe("SeatHandoverService", () => {
     },
   );
 
-  it("invalidates predecessor posture at physical cutover before successor readiness", async () => {
+  it("物理切换后、后继者就绪前使前任姿态失效", async () => {
     const { node } = seedSeat();
     const store = new AppliedLaunchObservationStore(db);
     const generation = sessionRegistry.currentOccupantTenure(node.id)!.generationUuid;
@@ -940,7 +934,7 @@ describe("SeatHandoverService", () => {
     await pending;
   });
 
-  it("invalidates predecessor posture before a failed respawn when sole-pane exit removes the tmux server", async () => {
+  it("唯一窗格退出移除 tmux server 导致重生失败前，使前任姿态失效", async () => {
     const { node } = seedSeat();
     const store = new AppliedLaunchObservationStore(db);
     const generation = sessionRegistry.currentOccupantTenure(node.id)!.generationUuid;
@@ -968,7 +962,7 @@ describe("SeatHandoverService", () => {
     expect(store.readCurrent(node.id)).toBeNull();
   });
 
-  it("unwinds when context delivery fails WITHOUT killing the preserved seat (no false-green)", async () => {
+  it("上下文交付失败时回退且不终止保留席位，避免假绿", async () => {
     const { node } = seedSeat();
     sendText.mockResolvedValue({ ok: false, code: "session_not_found", message: "can't find session" });
 
@@ -976,24 +970,24 @@ describe("SeatHandoverService", () => {
 
     expect(result).toMatchObject({ ok: false, code: "context_delivery_failed" });
     expect((result as { message: string }).message).toContain("deliver-restore-packet");
-    // Continuity verify never ran; the successor candidate is unwound (vanished) — but the preserved
-    // seat is NEVER killed (it stays re-wakeable from its session file).
+    // 连续性验证未运行；后继候选项被回退为 vanished，但保留席位绝不被终止，仍可从会话
+    // 文件再次唤醒。
     expect(hasSession).not.toHaveBeenCalled();
     expect(killSession).not.toHaveBeenCalled();
     const successorRow = db.prepare("SELECT status FROM discovered_sessions WHERE tmux_session = ?").get("dev-impl@seat-rig") as { status: string };
     expect(successorRow.status).toBe("vanished");
-    // The seat's binding is unchanged — commit never ran.
+    // 席位绑定保持不变，因为提交从未执行。
     expect(sessionRegistry.getBindingForNode(node.id)?.tmuxSession).toBe("dev-impl@seat-rig");
   });
 
-  it("unwinds when continuity verify fails after delivery WITHOUT killing the preserved seat", async () => {
+  it("交付后连续性验证失败时回退，且不终止保留席位", async () => {
     const { node } = seedSeat();
     hasSession.mockResolvedValue(false);
 
     const result = await service.handover({ seatRef: "dev-impl@seat-rig", reason: "context-wall", source: "fresh" });
 
     expect(result).toMatchObject({ ok: false, code: "successor_tmux_absent" });
-    // Delivery happened, THEN verify failed, THEN unwind — candidate vanished, preserved seat NOT killed.
+    // 先完成交付，随后验证失败并回退；候选项变为 vanished，但不终止保留席位。
     expect(sendText).toHaveBeenCalledTimes(1);
     expect(killSession).not.toHaveBeenCalled();
     const successorRow = db.prepare("SELECT status FROM discovered_sessions WHERE tmux_session = ?").get("dev-impl@seat-rig") as { status: string };
@@ -1001,7 +995,7 @@ describe("SeatHandoverService", () => {
     expect(sessionRegistry.getBindingForNode(node.id)?.tmuxSession).toBe("dev-impl@seat-rig");
   });
 
-  it("fails before mutation when discovered id is missing", async () => {
+  it("发现 ID 缺失时在变更前失败", async () => {
     seedSeat();
     const before = durableRows();
 
@@ -1015,7 +1009,7 @@ describe("SeatHandoverService", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("fails before mutation when discovered successor vanished", async () => {
+  it("已发现后继者消失时在变更前失败", async () => {
     seedSeat();
     const discovered = seedDiscovery();
     discoveryRepo.markVanished([discovered.id]);
@@ -1032,7 +1026,7 @@ describe("SeatHandoverService", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("fails before mutation when discovered successor is already claimed", async () => {
+  it("已发现后继者已被认领时在变更前失败", async () => {
     const { node } = seedSeat();
     const discovered = seedDiscovery();
     discoveryRepo.markClaimed(discovered.id, node.id);
@@ -1049,7 +1043,7 @@ describe("SeatHandoverService", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("fails before mutation when successor tmux session is absent", async () => {
+  it("后继 tmux 会话不存在时在变更前失败", async () => {
     seedSeat();
     const discovered = seedDiscovery();
     hasSession.mockResolvedValue(false);
@@ -1065,7 +1059,7 @@ describe("SeatHandoverService", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("fails closed when tmux probe throws", async () => {
+  it("tmux 探测抛出异常时封闭失败", async () => {
     seedSeat();
     const discovered = seedDiscovery();
     hasSession.mockRejectedValue(new Error("socket permission denied"));
@@ -1081,7 +1075,7 @@ describe("SeatHandoverService", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("fails before mutation on runtime mismatch", async () => {
+  it("运行时不匹配时在变更前失败", async () => {
     seedSeat({ runtime: "codex" });
     const discovered = seedDiscovery({ runtimeHint: "claude-code" });
     const before = durableRows();
@@ -1097,7 +1091,7 @@ describe("SeatHandoverService", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("fails before mutation when successor is already managed elsewhere", async () => {
+  it("后继者已在其他位置受管时在变更前失败", async () => {
     seedSeat();
     const discovered = seedDiscovery();
     const otherRig = rigRepo.createRig("other-rig");
@@ -1115,7 +1109,7 @@ describe("SeatHandoverService", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("fails before mutation when the seat has no current occupant", async () => {
+  it("席位没有当前使用者时在变更前失败", async () => {
     seedSeat({ withSession: false });
     const discovered = seedDiscovery();
     const before = durableRows();
@@ -1130,7 +1124,7 @@ describe("SeatHandoverService", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("wires the daemon route for discovered live mutation", async () => {
+  it("为已发现实时变更装配后台服务路由", async () => {
     const routeTmux = { hasSession: vi.fn(async () => true) } as unknown as TmuxAdapter;
     const setup = createTestApp(db, { tmux: routeTmux });
     const rig = setup.rigRepo.createRig("seat-rig");

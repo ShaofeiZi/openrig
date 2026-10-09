@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch5",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/daemon/test/spec-library-starters.test.ts",
+      "before_sha256_16": "5cac517ec0cdb593",
+      "after_sha256_16": "74546120f0976aa0",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/up.test.ts",
+      "before_sha256_16": "7e14438bfc3d0099",
+      "after_sha256_16": "6a439649cd5e3c91",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/p34-terminal-closing-writers.test.ts",
+      "before_sha256_16": "b97bc317b458dffc",
+      "after_sha256_16": "3c359508bacd1c95",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/cross-host-commands.test.ts",
+      "before_sha256_16": "57799149adeb89f1",
+      "after_sha256_16": "4700c2e9391cb78d",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/codex-auth-leakhunt.test.ts",
+      "before_sha256_16": "4ae0ece75c4d681e",
+      "after_sha256_16": "77d0ed4c56107979",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

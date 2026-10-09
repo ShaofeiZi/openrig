@@ -1,0 +1,57 @@
+{
+  "batch": "cli-comment-review-new-batch3",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/sweep-c-config-boot-key-notice.test.ts",
+      "before_sha256_16": "16527cb4f3a959ef",
+      "after_sha256_16": "113d05a53d001383",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/cli/test/add.test.ts",
+      "before_sha256_16": "01bea17c73403b29",
+      "after_sha256_16": "3b18f3450ebc46a0",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/cli/test/adopt.test.ts",
+      "before_sha256_16": "aba4d4cca6071240",
+      "after_sha256_16": "aba4d4cca6071240",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": "no English NL comments present; verified Chinese"
+    },
+    {
+      "path": "packages/cli/test/affected-skills-corpus.test.ts",
+      "before_sha256_16": "bf70e9bf07644b22",
+      "after_sha256_16": "8a9108c7d3f157d8",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    },
+    {
+      "path": "packages/cli/test/affected-skills.test.ts",
+      "before_sha256_16": "54502b013c1c1ed1",
+      "after_sha256_16": "f490bb2ea16eccfe",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true,
+      "note": ""
+    }
+  ]
+}

@@ -32,8 +32,8 @@ function captureLogs(fn: () => Promise<void>): Promise<{ logs: string[]; exitCod
     process.exitCode = undefined;
     console.log = (...args: unknown[]) => logs.push(args.join(" "));
     console.error = (...args: unknown[]) => logs.push(args.join(" "));
-    // The drift banner goes to stderr via console.warn — stdout stays clean for piping. Capture it
-    // here or a test asserting the operator SEES the warning would pass on an empty transcript.
+    // drift 横幅经 console.warn 发到 stderr——stdout 保持干净以便管道。在此捕获它，
+    // 否则断言操作员看到警告的测试会在空 transcript 上通过。
     console.warn = (...args: unknown[]) => logs.push(args.join(" "));
     try { await fn(); } finally { console.log = origLog; console.error = origErr; console.warn = origWarn; }
     const exitCode = process.exitCode;
@@ -56,9 +56,9 @@ function runningDeps(port: number): StatusDeps {
   };
 }
 
-// Captured create bodies for assertion
+// 捕获的 create body，供断言用
 let capturedCreateBodies: Record<string, unknown>[] = [];
-// Captured install bodies for assertion (Item 2 Checkpoint 3.3)
+// 捕获的 install body，供断言用（Item 2 Checkpoint 3.3）
 let capturedInstallBodies: Record<string, unknown>[] = [];
 
 describe("Bundle CLI", () => {
@@ -78,8 +78,8 @@ describe("Bundle CLI", () => {
           res.end(JSON.stringify({ error: "Missing package" }));
           return;
         }
-        // Drift fixtures: the daemon refuses a spec that would drop live topology, unless the
-        // operator passed --allow-drift, in which case it succeeds and returns the warning.
+        // drift fixture：daemon 拒绝会丢弃 live topology 的 spec，除非
+        // 操作员传了 --allow-drift，此时成功并返回警告。
         if (String(parsed.specPath ?? "").includes("drifted") && parsed.allowDrift !== true) {
           res.writeHead(409, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "Refusing to bundle: spec declares 1 pods/1 seats; live rig has 2/3" }));
@@ -153,7 +153,7 @@ describe("Bundle CLI", () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "bundle", "create", "/tmp/rig.yaml", "-o", "/tmp/test.rigbundle"]);
     });
-    expect(logs.some((l) => l.includes("Bundle created"))).toBe(true);
+    expect(logs.some((l) => l.includes("bundle 已创建"))).toBe(true);
     expect(logs.some((l) => l.includes("abc123"))).toBe(true);
   });
 
@@ -164,8 +164,8 @@ describe("Bundle CLI", () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "bundle", "create", "/tmp/drifted.yaml", "-o", "/tmp/d.rigbundle", "--allow-drift"]);
     });
-    expect(logs.some((l) => l.includes("Bundle created"))).toBe(true);
-    expect(logs.some((l) => l.includes("live rig has 2/3"))).toBe(true);
+    expect(logs.some((l) => l.includes("bundle 已创建"))).toBe(true);
+    expect(logs.some((l) => l.includes("live rig has"))).toBe(true);
     expect(exitCode).toBeUndefined();
   });
 
@@ -185,7 +185,7 @@ describe("Bundle CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "bundle", "create", "/tmp/drifted.yaml", "-o", "/tmp/d.rigbundle"]);
     });
     expect(logs.some((l) => l.includes("Refusing to bundle"))).toBe(true);
-    expect(logs.some((l) => l.includes("Bundle created"))).toBe(false);
+    expect(logs.some((l) => l.includes("bundle 已创建"))).toBe(false);
     expect(exitCode).toBe(2);
   });
 
@@ -226,8 +226,8 @@ describe("Bundle CLI", () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "bundle", "inspect", "/tmp/test.rigbundle"]);
     });
-    expect(logs.some((l) => l.includes("Bundle:"))).toBe(true);
-    expect(logs.some((l) => l.includes("Integrity: PASS"))).toBe(true);
+    expect(logs.some((l) => l.includes("包："))).toBe(true);
+    expect(logs.some((l) => l.includes("完整性：通过"))).toBe(true);
   });
 
   // T13: install runs bootstrap
@@ -428,7 +428,7 @@ describe("Bundle CLI", () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "bundle", "history"]);
     });
-    expect(logs.some((l) => l.includes("Bundle install history"))).toBe(true);
+    expect(logs.some((l) => l.includes("bundle 安装历史"))).toBe(true);
     expect(logs.some((l) => l.includes("alpha"))).toBe(true);
     expect(logs.some((l) => l.includes("beta"))).toBe(true);
     expect(logs.some((l) => l.includes("success"))).toBe(true);

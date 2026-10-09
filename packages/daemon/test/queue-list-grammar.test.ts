@@ -50,7 +50,7 @@ function seed(db: Database.Database, id: string, opts: {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
     id, ts, ts, opts.source, opts.destination,
     opts.state ?? "pending",
-    opts.body ?? `Body of ${id}. `.repeat(20),
+    opts.body ?? `${id} 的正文。`.repeat(20),
     opts.tags ? JSON.stringify(opts.tags) : null,
     JSON.stringify([`chain-${id}`]),
     opts.closureReason ?? null,
@@ -59,7 +59,7 @@ function seed(db: Database.Database, id: string, opts: {
   );
 }
 
-describe("OPR.0.4.0.32 — queue list grammar revision", () => {
+describe("OPR.0.4.0.32——queue list 语法修订", () => {
   let db: Database.Database;
   let repo: QueueRepository;
 
@@ -69,8 +69,8 @@ describe("OPR.0.4.0.32 — queue list grammar revision", () => {
   });
   afterEach(() => { db.close(); });
 
-  // -- AC-2: current-rig scope covers source OR destination --
-  it("AC-2: rig scope surfaces items where rig is source OR destination", () => {
+  // -- AC-2：current-rig scope 覆盖来源或目的地 --
+  it("AC-2：rig scope 会显示来源或目的地属于该 rig 的 item", () => {
     seed(db, "q-dest", { source: "seat-a@other-rig", destination: "seat-b@demo-rig", state: "pending" });
     seed(db, "q-src", { source: "seat-c@demo-rig", destination: "seat-d@other-rig", state: "in-progress" });
     seed(db, "q-unrelated", { source: "seat-e@unrelated", destination: "seat-f@unrelated", state: "pending" });
@@ -82,7 +82,7 @@ describe("OPR.0.4.0.32 — queue list grammar revision", () => {
     expect(ids).not.toContain("q-unrelated");
   });
 
-  it("AC-2: rig suffix match is end-anchored (no over-match on prefix)", () => {
+  it("AC-2：rig 后缀匹配锚定末尾（不误匹配前缀）", () => {
     seed(db, "q-demo", { source: "a@demo", destination: "b@demo", state: "pending" });
     seed(db, "q-demo-2", { source: "a@demo-2", destination: "b@demo-2", state: "pending" });
 
@@ -92,8 +92,8 @@ describe("OPR.0.4.0.32 — queue list grammar revision", () => {
     expect(ids).not.toContain("q-demo-2");
   });
 
-  // -- AC-2b: active set + handoff discriminator --
-  it("AC-2b: default active set = pending/in-progress/blocked only", () => {
+  // -- AC-2b：活动集合 + handoff 判别器 --
+  it("AC-2b：默认活动集合仅包含 pending/in-progress/blocked", () => {
     seed(db, "q-pending", { source: "a@rig", destination: "b@rig", state: "pending" });
     seed(db, "q-inprog", { source: "a@rig", destination: "b@rig", state: "in-progress" });
     seed(db, "q-blocked", { source: "a@rig", destination: "b@rig", state: "blocked" });
@@ -115,7 +115,7 @@ describe("OPR.0.4.0.32 — queue list grammar revision", () => {
     expect(ids).not.toContain("q-denied");
   });
 
-  it("AC-2b: handoff discriminator — bare list shows pending child, not handed-off source", () => {
+  it("AC-2b：handoff 判别器——裸 list 显示 pending 子项，不显示 handed-off 来源项", () => {
     seed(db, "q-source-handedoff", {
       source: "driver@demo-rig",
       destination: "guard@demo-rig",
@@ -143,16 +143,16 @@ describe("OPR.0.4.0.32 — queue list grammar revision", () => {
     expect(historyIds).toContain("q-source-handedoff");
   });
 
-  // -- AC-3: compact json excludes body/chain --
-  it("AC-3: compact excludes body and chainOfRecord", () => {
-    seed(db, "q-1", { source: "a@rig", destination: "b@rig", body: "Big body here" });
+  // -- AC-3：compact JSON 排除 body/chain --
+  it("AC-3：compact 排除 body 和 chainOfRecord", () => {
+    seed(db, "q-1", { source: "a@rig", destination: "b@rig", body: "这里是很长的正文" });
     const compact = repo.list({ compact: true });
     expect(compact[0]!.body).toBe("");
     expect(compact[0]!.chainOfRecord).toBeNull();
   });
 
-  // -- AC-4: axes compose --
-  it("AC-4: rig + activeOnly=false includes history within rig", () => {
+  // -- AC-4：各筛选轴可组合 --
+  it("AC-4：rig + activeOnly=false 包含该 rig 内的历史记录", () => {
     seed(db, "q-active", { source: "a@demo-rig", destination: "b@demo-rig", state: "pending" });
     seed(db, "q-done", { source: "a@demo-rig", destination: "b@demo-rig", state: "done" });
     seed(db, "q-other", { source: "a@other", destination: "b@other", state: "done" });
@@ -164,7 +164,7 @@ describe("OPR.0.4.0.32 — queue list grammar revision", () => {
     expect(ids).not.toContain("q-other");
   });
 
-  it("AC-4: no rig + activeOnly = cross-rig active", () => {
+  it("AC-4：无 rig + activeOnly 返回跨 rig 活动项", () => {
     seed(db, "q-a", { source: "a@rig-1", destination: "b@rig-1", state: "pending" });
     seed(db, "q-b", { source: "a@rig-2", destination: "b@rig-2", state: "in-progress" });
     seed(db, "q-done", { source: "a@rig-1", destination: "b@rig-1", state: "done" });
@@ -176,16 +176,16 @@ describe("OPR.0.4.0.32 — queue list grammar revision", () => {
     expect(ids).not.toContain("q-done");
   });
 
-  // -- AC-5: daemon back-compat (no new params = today's full behavior) --
-  it("AC-5: no new params = full unscoped list (back-compat)", () => {
-    seed(db, "q-1", { source: "a@rig", destination: "b@rig", state: "done", body: "Full body" });
+  // -- AC-5：daemon 向后兼容（无新参数 = 当前完整行为）--
+  it("AC-5：无新参数 = 完整且无 scope 限制的 list（向后兼容）", () => {
+    seed(db, "q-1", { source: "a@rig", destination: "b@rig", state: "done", body: "完整正文" });
     const items = repo.list({});
-    expect(items[0]!.body).toBe("Full body");
+    expect(items[0]!.body).toBe("完整正文");
     expect(items[0]!.chainOfRecord).toBeDefined();
   });
 
-  // -- asSession (--mine) still works --
-  it("asSession (--mine) scopes to caller's items", () => {
+  // -- asSession（--mine）仍可工作 --
+  it("asSession（--mine）把 scope 限定为调用方的 item", () => {
     seed(db, "q-mine", { source: "me@rig", destination: "other@rig", state: "pending" });
     seed(db, "q-not-mine", { source: "x@rig", destination: "y@rig", state: "pending" });
 

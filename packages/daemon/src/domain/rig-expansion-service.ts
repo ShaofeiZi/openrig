@@ -17,8 +17,8 @@ interface RigExpansionServiceDeps {
 }
 
 /**
- * Orchestrates live rig expansion by composing PodRigInstantiator.materialize()
- * for topology persistence and NodeLauncher for launching new nodes.
+ * 组合 PodRigInstantiator.materialize() 的拓扑持久化能力与 NodeLauncher 的新节点启动能力，
+ * 编排实时工作组扩展。
  */
 export class RigExpansionService {
   private deps: RigExpansionServiceDeps;
@@ -28,20 +28,18 @@ export class RigExpansionService {
   }
 
   async expand(request: ExpansionRequest): Promise<ExpansionResult> {
-    // 1. Validate rig exists
+    // 1. 校验工作组存在。
     const rig = this.deps.rigRepo.getRig(request.rigId);
     if (!rig) {
-      return { ok: false, code: "rig_not_found", error: `Rig "${request.rigId}" not found` };
+      return { ok: false, code: "rig_not_found", error: `未找到工作组 "${request.rigId}"` };
     }
 
-    // 2. Build the one-pod spec as a structured OBJECT (OPR.0.3.3.24: no
-    // synthetic-spec YAML round-trip). It flows through the materialize
-    // structured-front (validate + preflight + persistence core) and the launch
-    // core directly.
+    // 2. 以结构化对象构造单 Pod 规格（OPR.0.3.3.24：不进行合成规格 YAML 往返）。
+    // 它会直接经过 materialize 的结构化前端（校验 + 预检 + 持久化核心）和启动核心。
     const pod = request.pod;
     const specObject = this.buildExpansionSpecObject(rig.rig.name, pod, request.crossPodEdges);
 
-    // 3. Materialize topology (suppress rig.imported event)
+    // 3. 物化拓扑（抑制 rig.imported 事件）。
     const materializeResult = await this.deps.podInstantiator.materializeStructured(
       specObject,
       request.rigRoot ?? ".",
@@ -58,7 +56,7 @@ export class RigExpansionService {
       return { ok: false, code, error: message };
     }
 
-    // 4. Find the newly created pod and nodes
+    // 4. 查找新创建的 Pod 与节点。
     const updatedRig = this.deps.rigRepo.getRig(request.rigId)!;
     const newNodes = materializeResult.result.nodes;
     const newPod = updatedRig.nodes
@@ -69,8 +67,7 @@ export class RigExpansionService {
     const podId = newPod ?? "";
     const podNamespace = pod.id;
 
-    // 5. Launch and fully start the newly created nodes via the launch core on
-    // the structured spec (no YAML round-trip; normalize is pure).
+    // 5. 使用结构化规格经启动核心启动并完全拉起新节点；不进行 YAML 往返，normalize 为纯函数。
     const launchOutcome = await this.deps.podInstantiator.launchValidatedSpec(
       PodRigSpecSchema.normalize(specObject as Record<string, unknown>),
       request.rigRoot ?? ".",
@@ -100,12 +97,12 @@ export class RigExpansionService {
       .filter((node) => node.status === "failed")
       .map((node) => node.logicalId);
 
-    // 6. Determine overall status
+    // 6. 判定整体状态。
     const launched = nodeOutcomes.filter((n) => n.status === "launched").length;
     const failed = nodeOutcomes.filter((n) => n.status === "failed").length;
     const status: "ok" | "partial" | "failed" = failed === 0 ? "ok" : launched > 0 ? "partial" : "failed";
 
-    // 7. Emit rig.expanded event
+    // 7. 发出 rig.expanded 事件。
     this.deps.eventBus.emit({
       type: "rig.expanded",
       rigId: request.rigId,
@@ -145,28 +142,24 @@ export class RigExpansionService {
             ...(member.agentRef ? { agent_ref: member.agentRef } : {}),
             ...(member.profile ? { profile: member.profile } : {}),
             ...(member.codexConfigProfile ? { codex_config_profile: member.codexConfigProfile } : {}),
-            // OPR.0.4.8.3 Seam B: permission_policy rides the fragment→spec map like role.
-            // R2 (4ac243c3): PRESENCE-preserving — present-invalid values (null, …) flow
-            // to the canonical validator; only a truly absent key is omitted.
+            // OPR.0.4.8.3 接缝 B：permission_policy 与 role 一样经过 fragment→spec 映射。
+            // R2（4ac243c3）：保留存在性——已存在但无效的值（null 等）会流向规范校验器；
+            // 只有真正缺失的键才省略。
             ...("permissionPolicy" in member && member.permissionPolicy !== undefined
               ? { permission_policy: member.permissionPolicy }
               : {}),
             ...(member.cwd ? { cwd: member.cwd } : {}),
             ...(member.model ? { model: member.model } : {}),
-            // OPR.0.4.6.FAC1: role rides the fragment→spec map (a
-            // provided role must never be silently dropped here).
+            // OPR.0.4.6.FAC1：role 经过 fragment→spec 映射；已提供的 role 绝不能在此静默丢弃。
             ...(member.role ? { role: member.role } : {}),
             ...(member.restorePolicy ? { restore_policy: member.restorePolicy } : {}),
             ...(member.label ? { label: member.label } : {}),
-            // OPR.0.5.6.3 repair amendment: session_source is carried FAITHFULLY —
-            // the route already normalizes valid shapes to the typed spec (whose
-            // field names are identical in snake_case form), and a present-INVALID
-            // value rides through RAW so the ONE canonical RigSpec validator
-            // rejects it structurally. A field-by-field re-map here was the
-            // original drop site (ref.version, wave-1 R2) and would crash on
-            // preserved-raw input; a faithful carry has no field list to forget.
-            // KEY PRESENCE, never truthiness, governs emission: null/false/
-            // primitive raw values must not vanish before canonical validation.
+            // OPR.0.5.6.3 修复修订：忠实携带 session_source。路由已把有效形状规范化为
+            // 类型化 spec（字段名同为 snake_case）；已存在但无效的值则以原始形式继续流转，
+            // 由唯一规范 RigSpec 校验器从结构上拒绝。在此逐字段重映射正是原始丢失点
+            //（ref.version，wave-1 R2），也会在保留原始输入时崩溃；忠实携带无需维护可能遗漏的
+            // 字段列表。是否输出由键是否存在决定，绝不能按 truthiness；null/false/原始值
+            // 在规范校验前都不得消失。
             ...("sessionSource" in member ? { session_source: member.sessionSource } : {}),
             ...(member.starterRef ? {
               starter_ref: { name: member.starterRef.name },

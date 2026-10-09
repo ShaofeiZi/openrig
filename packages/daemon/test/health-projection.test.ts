@@ -69,21 +69,21 @@ function draft(source: BoundedHealthEvidence = freshSource()): HealthRecordDraft
     status: "active",
     startedAt: "2026-09-03T00:10:00Z",
     lastObservedAt: "2026-09-03T00:30:00Z",
-    summary: "Repeated handoffs continued inside one episode.",
-    threshold: "At least three qualifying handoffs in the bounded interval.",
-    explanation: "The evidence met the detector's literal rule.",
-    suggestedInspection: "Inspect the listed queue transitions.",
+    summary: "同一事件中持续发生重复交接。",
+    threshold: "有界区间内至少发生三次符合条件的交接。",
+    explanation: "证据符合检测器的字面规则。",
+    suggestedInspection: "检查列出的队列转换。",
     source,
   };
 }
 
-describe("health projection contract", () => {
-  it("keeps an episode identity stable until a later qualifying interval starts", () => {
+describe("健康投影契约", () => {
+  it("在后续符合条件的区间开始前保持事件身份稳定", () => {
     const active = projectHealthRecord(draft());
     const refreshed = projectHealthRecord({
       ...draft(),
       lastObservedAt: "2026-09-03T00:45:00Z",
-      summary: "The same episode remains active.",
+      summary: "同一事件仍处于活跃状态。",
     });
     const cleared = projectHealthRecord({ ...draft(), status: "cleared" });
     const later = projectHealthRecord({
@@ -101,10 +101,10 @@ describe("health projection contract", () => {
   });
 
   it.each([
-    ["stale", { state: "stale" as const, newestSourceAt: "2026-09-02T00:00:00Z", ageSeconds: 90_000 }],
-    ["unavailable", { state: "unavailable" as const, newestSourceAt: null, ageSeconds: null }],
-    ["contradictory", { state: "contradictory" as const, newestSourceAt: "2026-09-03T00:30:00Z", ageSeconds: 1_800 }],
-  ])("never renders %s source evidence as active", (_name, freshness) => {
+    ["过期", { state: "stale" as const, newestSourceAt: "2026-09-02T00:00:00Z", ageSeconds: 90_000 }],
+    ["不可用", { state: "unavailable" as const, newestSourceAt: null, ageSeconds: null }],
+    ["矛盾", { state: "contradictory" as const, newestSourceAt: "2026-09-03T00:30:00Z", ageSeconds: 1_800 }],
+  ])("绝不将%s来源证据呈现为活跃", (_name, freshness) => {
     const source = freshSource();
     source.freshness = {
       ...source.freshness,
@@ -112,10 +112,10 @@ describe("health projection contract", () => {
     };
     const record = projectHealthRecord(draft(source));
     expect(record.status).toBe("indeterminate");
-    expect(record.indeterminateReason).toContain(`source freshness is ${freshness.state}`);
+    expect(record.indeterminateReason).toContain(`来源新鲜度为 ${freshness.state}`);
   });
 
-  it("treats a future source timestamp as contradictory rather than fresh", () => {
+  it("将未来的来源时间戳视为矛盾，而不是新鲜", () => {
     expect(deriveHealthSourceFreshness({
       evaluatedAt: "2026-09-03T00:30:00Z",
       newestSourceAt: "2026-09-03T00:31:00Z",
@@ -124,9 +124,9 @@ describe("health projection contract", () => {
   });
 
   it.each([
-    ["missing timestamps", freshSource([queueEvidence(0, null)]), "missing an observation timestamp"],
-    ["out-of-window evidence", freshSource([queueEvidence(0, "2026-09-02T23:59:59Z")]), "no source evidence"],
-    ["a result limit", boundHealthEvidence(
+    ["缺少时间戳", freshSource([queueEvidence(0, null)]), "缺少观测时间戳"],
+    ["窗口外证据", freshSource([queueEvidence(0, "2026-09-02T23:59:59Z")]), "没有来源证据"],
+    ["结果限制", boundHealthEvidence(
       [queueEvidence(0), queueEvidence(1, "2026-09-03T00:31:00Z")],
       { ...QUERY, limit: 1 },
       deriveHealthSourceFreshness({
@@ -134,15 +134,15 @@ describe("health projection contract", () => {
         newestSourceAt: "2026-09-03T00:31:00Z",
         maxAgeSeconds: 3_600,
       }),
-    ), "result limit"],
-    ["a source mismatch", freshSource([adaptLifecycleReceiptEvidence({
+    ), "结果上限"],
+    ["来源不匹配", freshSource([adaptLifecycleReceiptEvidence({
       sourceOrder: 0,
       observedAt: "2026-09-03T00:30:00Z",
       receiptId: "receipt-a",
       operation: "handover",
       outcome: "complete",
-    })]), "requested adapter"],
-    ["a retention gap", boundHealthEvidence(
+    })]), "请求的适配器"],
+    ["保留期缺口", boundHealthEvidence(
       [queueEvidence()],
       { ...QUERY, retentionSeconds: 60 },
       deriveHealthSourceFreshness({
@@ -150,14 +150,14 @@ describe("health projection contract", () => {
         newestSourceAt: "2026-09-03T00:30:00Z",
         maxAgeSeconds: 3_600,
       }),
-    ), "retention does not cover"],
-  ])("renders %s indeterminate", (_name, source, reason) => {
+    ), "保留期未覆盖"],
+  ])("将%s呈现为不确定", (_name, source, reason) => {
     const record = projectHealthRecord(draft(source));
     expect(record.status).toBe("indeterminate");
     expect(record.indeterminateReason).toContain(reason);
   });
 
-  it("normalizes every accepted source without writes or reordering", () => {
+  it("规范化每个已接受来源，且不写入、不重排", () => {
     const workDependencies = Object.freeze(["slice-a"]);
     const evidence = [
       queueEvidence(0),
@@ -251,26 +251,26 @@ describe("health projection contract", () => {
     expect(workDependencies).toEqual(["slice-a"]);
   });
 
-  it("rejects invalid bounds before projecting a finding", () => {
+  it("投影发现前拒绝无效边界", () => {
     const freshness = deriveHealthSourceFreshness({
       evaluatedAt: QUERY.endedAt,
       newestSourceAt: "2026-09-03T00:30:00Z",
       maxAgeSeconds: 3_600,
     });
-    expect(() => boundHealthEvidence([queueEvidence()], { ...QUERY, limit: 0 }, freshness)).toThrow(/positive integer/);
+    expect(() => boundHealthEvidence([queueEvidence()], { ...QUERY, limit: 0 }, freshness)).toThrow(/正整数/);
     expect(() => boundHealthEvidence([queueEvidence()], {
       ...QUERY,
       startedAt: "2026-09-03T02:00:00Z",
-    }, freshness)).toThrow(/must not be after/);
+    }, freshness)).toThrow(/不得晚于/);
   });
 
-  it("does not project a qualifying interval beyond the source window", () => {
+  it("不投影超出来源窗口的符合条件区间", () => {
     const record = projectHealthRecord({
       ...draft(),
       startedAt: "2026-09-02T23:59:59Z",
     });
     expect(record.status).toBe("indeterminate");
-    expect(record.indeterminateReason).toContain("outside the observation window");
+    expect(record.indeterminateReason).toContain("超出观测窗口");
   });
 });
 
@@ -311,20 +311,20 @@ interface ReplayCorpus {
   };
 }
 
-describe("release 0.5.9 replay corpus", () => {
+describe("0.5.9 版本重放语料库", () => {
   const raw = readFileSync(
     new URL("./fixtures/health-projection/release-0.5.9.json", import.meta.url),
     "utf8",
   );
   const corpus = JSON.parse(raw) as ReplayCorpus;
 
-  it("pins facts to the exact public source cut without expected detector answers", () => {
+  it("将事实固定到精确的公开来源切点，且不包含预期检测器答案", () => {
     expect(corpus.schema).toBe("openrig.health-replay/v0alpha1");
     expect(corpus.sourceCut).toBe("dbf05f9d59ef3b0ae14fc00174c643df4858d45a");
     expect(raw).not.toContain("expectedFindings");
   });
 
-  it("carries the full conductor interval and its explicit clearing transition", () => {
+  it("携带完整的指挥者区间及其显式清除转换", () => {
     const subject = corpus.cases.staleConductor;
     expect(subject.transitionIds).toHaveLength(257);
     expect(subject.transitionIds.slice(0, -1)).toHaveLength(256);
@@ -339,7 +339,7 @@ describe("release 0.5.9 replay corpus", () => {
     expect(subject.autoUnparks.every(({ transitionId }) => transitionId < subject.clearingTransition.transitionId)).toBe(true);
   });
 
-  it("keeps the signed quiescence and source-bound S13 case distinct", () => {
+  it("保持已签名静默与来源绑定的 S13 案例相互独立", () => {
     const clear = corpus.cases.signedQuiescence;
     expect(clear.authority).toMatchObject({ effectCount: 1, stopOnMismatch: true });
     expect(clear.protectedSeats).toHaveLength(16);
@@ -365,7 +365,7 @@ describe("release 0.5.9 replay corpus", () => {
     expect(s13.governingAuthorityEvidence.availability).toBe("unavailable");
   });
 
-  it("represents native context clearing as a stable identity with no intervention", () => {
+  it("将原生上下文清除表示为无需干预的稳定身份", () => {
     const subject = corpus.cases.naturalContextClear;
     expect(subject.nativeResumeIdentity).toBeTruthy();
     expect(subject.observations).toEqual([
@@ -377,7 +377,7 @@ describe("release 0.5.9 replay corpus", () => {
     expect(subject.intervention).toBeNull();
   });
 
-  it("includes ordinary healthy, stale, and unavailable controls", () => {
+  it("包含普通健康、过期和不可用对照项", () => {
     expect(corpus.cases.ordinaryControls.map(({ id }) => id)).toEqual(expect.arrayContaining([
       "single-proportional-review",
       "one-recovery-wake",

@@ -45,10 +45,10 @@ const OBSOLETE_OBRA_SKILLS = [
 ];
 
 // V0.3.1 slice 05 kernel-rig-as-default + bug-fix slice
-// deprecation-check-keys-widening: kernel agents are built-in product
-// surface and pass through the same deprecation regression gates as
-// starter agents. Hoisted from the prior inline declaration so the
-// new key-path check (below) can walk both lists from a single source.
+// deprecation-check-keys-widening：kernel agent 是内置产品表面，
+// 与其他表面通过同一批弃用回归门：
+// starter agent。从先前内联声明上提，使新的 key-path 检查（下方）
+// 能从单一来源遍历两个列表。
 const KERNEL_AGENT_SPECS = [
   "rigs/launch/kernel/agents/advisor/lead/agent.yaml",
   "rigs/launch/kernel/agents/operator/agent/agent.yaml",
@@ -63,19 +63,15 @@ const RUNNABLE_SHIPPED_AGENT_SPECS = [
   ...KERNEL_AGENT_SPECS,
 ];
 
-// bug-fix slice deprecation-check-keys-widening — IMPL-PRD §1.2 + §3.
-// Allowlist of removed/deprecated KEY paths the spec library MUST NOT
-// carry. Each entry uses dot-path notation with `*` as a profile-name
-// wildcard. New deprecations append; commit message references this
-// slice's IMPL-PRD as the authoritative taxonomy.
+// bug-fix slice deprecation-check-keys-widening——IMPL-PRD §1.2 + §3。
+// spec 库绝不能携带的已删除/已弃用 KEY 路径白名单。每条用点路径记法，
+// `*` 作 profile 名通配符。新增弃用向后追加；提交信息以本切片的
+// IMPL-PRD 作为权威分类法。
 //
-// v0 seed: the two keys the strict validator (agent-manifest.ts
-// validateAgentSpec lines 191 + 240) already rejects with explicit
-// plugin-primitive Phase 3a migration errors. The widening here is
-// the regression gate — the validator's rejection is the runtime fix;
-// this allowlist guarantees a static fail if a future contributor
-// reintroduces the placeholder pattern that the e3bfc08 hotfix had
-// to scrub from kernel agent.yaml files.
+// v0 种子：严格 validator（agent-manifest.ts validateAgentSpec 第 191 + 240 行）
+// 已用显式 plugin-primitive Phase 3a 迁移错误拒绝的两个 key。此处的扩宽是
+// 回归闸门——validator 的拒绝即运行时修复；若未来贡献者把 e3bfc08 热修复
+// 曾从内核 agent.yaml 文件中清除的占位符模式重新带回，本白名单保证静态失败。
 const DEPRECATED_KEY_PATHS: string[] = [
   "resources.hooks",
   "profiles.*.uses.hooks",
@@ -237,9 +233,9 @@ describe("Starter specs", () => {
     expect(members[0]!["id"]).toBe("specialist");
     expect(members[0]!["agent_ref"]).toContain("vault-specialist");
 
-    // Summary must explicitly mention the specialist
+    // 摘要必须明确提及专家。
     const summary = (parsed["summary"] as string).toLowerCase();
-    expect(summary).toContain("specialist");
+    expect(summary).toContain("专家");
   });
 
   it("starter summaries position conveyor as the generic starter and product-team as the advanced product lane", () => {
@@ -255,17 +251,17 @@ describe("Starter specs", () => {
     const demo = rigs.find((entry) => entry.name === "demo");
     const productTeam = rigs.find((entry) => entry.name === "product-team");
 
-    expect(conveyor?.summary?.toLowerCase()).toContain("station pipeline");
+    expect(conveyor?.summary?.toLowerCase()).toContain("工位流水线");
     expect(conveyor?.summary?.toLowerCase()).toContain("starter");
-    expect(implementationPair?.summary?.toLowerCase()).toMatch(/implementation and qa capabilities/);
-    expect(implementationPair?.summary?.toLowerCase()).toMatch(/components choose the work/);
-    expect(implementationPair?.summary?.toLowerCase()).toMatch(/no composition means light part a/);
-    expect(demo?.summary?.toLowerCase()).toContain("launch-grade");
-    expect(demo?.summary?.toLowerCase()).not.toContain("advanced preview");
-    expect(productTeam?.summary?.toLowerCase()).toContain("advanced product-development starter");
+    expect(implementationPair?.summary?.toLowerCase()).toMatch(/实现与 qa 能力/);
+    expect(implementationPair?.summary?.toLowerCase()).toMatch(/组件选择工作/);
+    expect(implementationPair?.summary?.toLowerCase()).toMatch(/轻量 part a/);
+    expect(demo?.summary?.toLowerCase()).toContain("可投产 starter");
+    expect(demo?.summary?.toLowerCase()).not.toContain("高级预览");
+    expect(productTeam?.summary?.toLowerCase()).toContain("高级产品开发 starter");
     expect(productTeam?.summary?.toLowerCase()).not.toContain("demo");
-    expect(productTeam?.summary?.toLowerCase()).not.toContain("advanced preview");
-    expect(productTeam?.summary?.toLowerCase()).not.toContain("happy-path starter");
+    expect(productTeam?.summary?.toLowerCase()).not.toContain("高级预览");
+    expect(productTeam?.summary?.toLowerCase()).not.toContain("顺利路径 starter");
   });
 
   it("all rig specs pass canonical rigPreflight with explicit cwdOverride", async () => {
@@ -338,7 +334,7 @@ describe("Starter specs", () => {
       const roleEntry = guidance!.find((g) => g.path.includes("role.md"));
       expect(roleEntry).toBeDefined();
 
-      // Check the file exists on disk
+      // 检查文件在磁盘上存在
       const rolePath = join(agentDir, roleEntry!.path);
       expect(existsSync(rolePath)).toBe(true);
 
@@ -564,8 +560,8 @@ describe("Starter specs", () => {
       expect(content).toMatch(/Explicit rigor and authored wave boundaries retain their named checks/);
     }
 
-    // Check the address actually leads to the authority it promises. Selection
-    // preserves explicit exceptions and does not silently downgrade missing refs.
+    // 检查该地址确实指向它所承诺的权威。选择保留显式例外，
+    // 不静默降级缺失的引用。
     const authority = readFileSync(resolve(SPECS_ROOT, "../../../docs/reference/product-journey-sdlc.md"), "utf8")
       .split("## Resolve the selected path\n")[1]?.split("\n## ")[0]?.replace(/\s+/g, " ");
     expect(authority).toBeDefined();
@@ -627,18 +623,16 @@ describe("Starter specs", () => {
     }
 
     it("DEPRECATED_KEY_PATHS is non-empty + references the IMPL-PRD", () => {
-      // T1: documentation gate — the allowlist must be discoverable
-      // (greppable) and must point at this slice's IMPL-PRD so future
-      // contributors know where to append.
+      // T1：文档闸门——白名单必须可发现（可 grep），并指向本切片的
+      // IMPL-PRD，使未来贡献者知道往哪里追加。
       expect(DEPRECATED_KEY_PATHS.length).toBeGreaterThan(0);
       const fileText = readFileSync(__filename, "utf-8");
       expect(fileText).toContain("deprecation-check-keys-widening");
     });
 
     it("AGENT_SPECS + kernel agent.yaml carry no deprecated KEY paths", () => {
-      // T2 + T3: every shipped agent spec is scanned against the
-      // DEPRECATED_KEY_PATHS allowlist. A hit fails the test with the
-      // file + path so the operator can locate and remove it.
+      // T2 + T3：每个出厂 agent spec 都对照 DEPRECATED_KEY_PATHS 白名单扫描。
+      // 命中即以文件 + 路径使测试失败，便于操作者定位并删除。
       const offenders: string[] = [];
       for (const file of [...AGENT_SPECS, ...KERNEL_AGENT_SPECS]) {
         const yaml = readFileSync(join(SPECS_ROOT, file), "utf-8");
@@ -658,12 +652,10 @@ describe("Starter specs", () => {
     });
 
     it("AGENT_SPECS + kernel agent.yaml pass validateAgentSpec strict validator", () => {
-      // T4: the strict validator is the authoritative runtime gate.
-      // Running it inline at test time catches empty-array
-      // placeholders (e.g., resources.hooks: [] / profiles.*.uses.hooks: [])
-      // the moment they appear in a shipped spec — without waiting
-      // for kernel auto-boot to surface them via daemon start failure
-      // (which is exactly how e3bfc08 was discovered).
+      // T4：严格 validator 是权威运行时闸门。在测试时内联运行它，
+      // 一出现空数组占位符（如 resources.hooks: [] / profiles.*.uses.hooks: []）
+      // 就在出厂 spec 中捕获——不必等内核自动启动经 daemon start 失败
+      // 才暴露（e3bfc08 正是这样被发现的）。
       const offenders: string[] = [];
       for (const file of [...AGENT_SPECS, ...KERNEL_AGENT_SPECS]) {
         const yaml = readFileSync(join(SPECS_ROOT, file), "utf-8");
@@ -681,16 +673,13 @@ describe("Starter specs", () => {
     const FIXTURE_DIR = join(__dirname, "fixtures", "deprecation-check");
 
     it("regression fixture with empty-hooks placeholder is rejected by strict validator (T5: e3bfc08 coverage)", () => {
-      // T5: discriminator for the empty-array-placeholder failure
-      // class. If this fixture starts passing the validator (e.g.,
-      // someone loosens the strict check), the regression coverage
-      // for the hotfix scenario is gone — the test will flag it.
+      // T5：空数组占位符失败类的判别点。若此 fixture 开始通过 validator
+      //（例如有人放宽了严格检查），热修复场景的回归覆盖即消失——测试会标记它。
       const yaml = readFileSync(join(FIXTURE_DIR, "agent-with-empty-hooks.yaml"), "utf-8");
       const result = validateAgentSpec(parseAgentSpec(yaml));
       expect(result.valid).toBe(false);
-      // Specifically the profiles.<name>.uses.hooks error message
-      // from agent-manifest.ts line 240 — anchors the discrimination
-      // to the same code path that the runtime invokes.
+      // 特指 agent-manifest.ts 第 240 行的 profiles.<name>.uses.hooks 错误消息
+      // ——把判别锚定到运行时调用的同一条代码路径。
       expect(result.errors.some((e) => /uses\.hooks/.test(e))).toBe(true);
     });
 

@@ -1,7 +1,6 @@
-// PL-019 item 1: --filter agentActivity.state=<state> + --active sugar.
-// Focused tests; the existing ps.test.ts covers the broader filter
-// machinery surface. We mirror its mock-daemon harness so this stays
-// independent of any other slice in flight.
+// PL-019 第 1 项：--filter agentActivity.state=<state> + --active 语法糖。
+// 这里是聚焦测试；现有 ps.test.ts 覆盖更广的过滤机制界面。
+// 本文件镜像其 mock 后台服务 harness，以保持独立于其他进行中的切片。
 
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import http from "node:http";
@@ -191,7 +190,7 @@ describe("PL-019 ps --filter agentActivity.state + --active", () => {
     return prog;
   }
 
-  it("--filter agentActivity.state=running narrows to the running node", async () => {
+  it("--filter agentActivity.state=running 只保留运行中节点", async () => {
     nodesByRig["rig-1"] = [NODE_RUNNING, NODE_IDLE, NODE_NEEDS_INPUT, NODE_UNKNOWN];
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--filter", "agentActivity.state=running"]);
@@ -204,7 +203,7 @@ describe("PL-019 ps --filter agentActivity.state + --active", () => {
     expect(entries[0].agentActivity.state).toBe("running");
   });
 
-  it("--active is identical to --filter agentActivity.state=running on same fixture", async () => {
+  it("在同一夹具上 --active 等同于 --filter agentActivity.state=running", async () => {
     nodesByRig["rig-1"] = [NODE_RUNNING, NODE_IDLE, NODE_NEEDS_INPUT, NODE_UNKNOWN];
     const a = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--filter", "agentActivity.state=running"]);
@@ -217,7 +216,7 @@ describe("PL-019 ps --filter agentActivity.state + --active", () => {
     expect(a.logs.join("")).toBe(b.logs.join(""));
   });
 
-  it("--filter agentActivity.state=needs_input picks the amber-state node", async () => {
+  it("--filter agentActivity.state=needs_input 选择琥珀色状态节点", async () => {
     nodesByRig["rig-1"] = [NODE_RUNNING, NODE_IDLE, NODE_NEEDS_INPUT, NODE_UNKNOWN];
     const { logs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--filter", "agentActivity.state=needs_input"]);
@@ -229,31 +228,31 @@ describe("PL-019 ps --filter agentActivity.state + --active", () => {
     expect(entries[0].canonicalSessionName).toBe("demo-gamma");
   });
 
-  it("--filter agentActivity.state=invalid fails fast with three-part error and exit 1", async () => {
+  it("--filter agentActivity.state=invalid 以三段式错误和退出码 1 快速失败", async () => {
     nodesByRig["rig-1"] = [NODE_RUNNING];
     const { errLogs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--filter", "agentActivity.state=lol-no"]);
     });
     expect(exitCode).toBe(1);
     const errOutput = errLogs.join("\n");
-    // What failed
+    // 失败内容。
     expect(errOutput).toContain("agentActivity.state='lol-no'");
-    // What's allowed (sorted enum)
+    // 允许值（已排序 enum）。
     expect(errOutput).toContain("idle, needs_input, running, unknown");
-    // What to do (next-step pointer)
-    expect(errOutput).toContain("rig ps --nodes --fields agentActivity --json");
+    // 后续操作（下一步指针）。
+    expect(errOutput).toContain("zrig ps --nodes --fields agentActivity --json");
   });
 
-  it("--active combined with --filter is rejected explicitly with exit 1", async () => {
+  it("--active 与 --filter 组合时被明确拒绝并返回退出码 1", async () => {
     nodesByRig["rig-1"] = [NODE_RUNNING];
     const { errLogs, exitCode } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "ps", "--nodes", "-A", "--json", "--active", "--filter", "status=running"]);
     });
     expect(exitCode).toBe(1);
-    expect(errLogs.join("\n")).toContain("--active and --filter cannot be combined");
+    expect(errLogs.join("\n")).toContain("--active 与 --filter 不能同时用");
   });
 
-  it("--filter agentActivity.state=running excludes nodes whose agentActivity is missing", async () => {
+  it("--filter agentActivity.state=running 排除缺少 agentActivity 的节点", async () => {
     const NODE_NO_ACTIVITY = {
       ...NODE_RUNNING,
       logicalId: "epsilon",

@@ -13,11 +13,10 @@ import {
 
 afterEach(() => cleanup());
 
-// Slice-03 Atom 5 — the context-pack entry id is `context-pack:<ref>` and a ref
-// can contain '/'. This proves the shared `/specs/library/$entryId` route
-// round-trips such an id: build a link with it → URL → read the param back →
-// byte-identical id (so LibraryReview's startsWith dispatch + p.id===entryId
-// find keep working with the new id form).
+// Slice-03 Atom 5——上下文包条目 id 为 `context-pack:<ref>`，且 ref 可以包含 `/`。
+// 此测试证明共享路由 `/specs/library/$entryId` 能让该 id 往返：用它构建链接 → URL →
+// 读回参数 → 得到逐字节相同的 id，从而确保 LibraryReview 的 startsWith 分派与
+// p.id===entryId 查找可继续支持新 id 形式。
 describe("context-pack id route round-trip (Atom 5)", () => {
   const ID = "context-pack:packs/compaction-restore";
 

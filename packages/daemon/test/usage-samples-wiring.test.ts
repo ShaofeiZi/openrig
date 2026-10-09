@@ -1,7 +1,6 @@
-// 51-08 A1 — the WIRING pin: the series accrues from the REAL 30s tick
-// (ContextMonitor.pollOnce), not from a store call a test makes directly.
-// PM-ruled decision 1: piggyback the existing tick — no parallel sampler.
-// RED-first: written before ContextMonitor accepted a UsageSamplesStore.
+// 51-08 A1——接线固定项：序列由真实的 30 秒 tick（ContextMonitor.pollOnce）累积，而非测试直接
+// 调用 store。PM 裁定 1：复用现有 tick，不增加并行 sampler。RED-first：在 ContextMonitor 接受
+// UsageSamplesStore 之前编写。
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Database } from "better-sqlite3";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -44,7 +43,7 @@ const ALL_MIGRATIONS = [
   usageSamplesSchema,
 ];
 
-describe("51-08 A1 wiring — the series accrues from the real poll tick", () => {
+describe("51-08 A1 接线——序列从真实 poll tick 累积", () => {
   let db: Database;
   let store: ContextUsageStore;
   let samples: UsageSamplesStore;
@@ -112,7 +111,7 @@ describe("51-08 A1 wiring — the series accrues from the real poll tick", () =>
   const seriesCount = (lane: string) =>
     (db.prepare("SELECT COUNT(*) AS n FROM usage_samples WHERE lane = ?").get(lane) as { n: number }).n;
 
-  it("two polls over an UNCHANGED sidecar append ONE context row; an advanced sidecar appends the second", async () => {
+  it("对未变化 sidecar 轮询两次只追加一条 context 行；sidecar 前进后追加第二条", async () => {
     writeSidecar();
     await monitor.pollOnce();
     await monitor.pollOnce();
@@ -129,12 +128,12 @@ describe("51-08 A1 wiring — the series accrues from the real poll tick", () =>
     });
     await monitor.pollOnce();
     expect(seriesCount("context")).toBe(2);
-    // and the point-in-time lane REGRESSION PIN: context_usage stays a single upserted row
+    // 时间点通道回归固定项：context_usage 保持为单条 upsert 行。
     const cu = db.prepare("SELECT COUNT(*) AS n FROM context_usage").get() as { n: number };
     expect(cu.n).toBe(1);
   });
 
-  it("the provider-window supplier is drained on the same tick, advance-only", async () => {
+  it("provider-window supplier 在同一 tick 中排空，且仅在前进时写入", async () => {
     writeSidecar();
     providerRows = [
       { seatSession: sessionName, window: "five_hour", usedPercent: 41, resetsAt: "2026-08-07T12:00:00.000Z", asOf: "2026-08-07T09:00:00.000Z" },
@@ -151,7 +150,7 @@ describe("51-08 A1 wiring — the series accrues from the real poll tick", () =>
     expect(seriesCount("provider_window")).toBe(3);
   });
 
-  it("a throwing provider supplier never breaks the poll (defensive parity with the enforcer seam)", async () => {
+  it("抛错的 provider supplier 不会中断轮询（与 enforcer 接缝保持防御性一致）", async () => {
     writeSidecar();
     const boom = () => {
       throw new Error("supplier down");

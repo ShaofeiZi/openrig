@@ -1,0 +1,48 @@
+{
+  "summary": {
+    "passed_cases": 10989,
+    "failed_cases": 0,
+    "skipped_cases": 6
+  },
+  "failed": [],
+  "skipped": [
+    {
+      "file": "packages/daemon/test/seat-handover-model-fidelity-e2e.test.ts",
+      "case": "1 e2e",
+      "category": "external_paid_blocked",
+      "reason": "依赖真实付费席位",
+      "evidence": "b2-16a-daemon-seat.log"
+    },
+    {
+      "file": "packages/daemon/test/seat-lifecycle-set-model-resume-e2e.test.ts",
+      "case": "1 e2e",
+      "category": "external_paid_blocked",
+      "reason": "依赖真实付费席位",
+      "evidence": "b2-16a-daemon-seat.log"
+    },
+    {
+      "file": "packages/daemon/test/claude-code-adapter-fork-poll.test.ts",
+      "case": "ClaudeCodeAdapter fork 分支 > 轮询直到真实 Claude 二进制写入新的 fork session 文件",
+      "category": "external_paid_blocked",
+      "reason": "需 OPENRIG_REAL_CLAUDE_INTEGRATION=1 真实 Claude",
+      "evidence": "b2-98-skip-verbose.log"
+    },
+    {
+      "file": "packages/cli/test/up.test.ts",
+      "case": "Up CLI > up surfaces the real daemon auto-start failure instead of a generic hint",
+      "category": "blocked_no_real_daemon",
+      "reason": "需真实 daemon 启动失败场景，用户禁止启动真 daemon",
+      "evidence": "b2-98-skip-verbose.log"
+    },
+    {
+      "file": "packages/ui/test/topology-view-mode.test.tsx",
+      "case": "SC-10: seat scope at /topology/seat/$rigId/$logicalId",
+      "category": "waived_by_alternate_evidence",
+      "reason": "由 source-assertion + scope-page 直接测试覆盖",
+      "evidence": "b2-98-skip-verbose.log; 替代覆盖见 topology-view.test.ts (b2-91) + source-assertion 测试"
+    }
+  ],
+  "remaining_files": [
+    "packages/ui/test/live-node-details.test.tsx"
+  ]
+}

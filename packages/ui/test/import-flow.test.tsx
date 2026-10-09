@@ -35,14 +35,14 @@ async function renderImportFlow() {
 }
 
 describe("ImportFlow", () => {
-  it("renders inside the shared workspace page shell", async () => {
+  it("渲染在共享工作区页壳内", async () => {
     await renderImportFlow();
 
     expect(screen.getByTestId("workspace-page")).toBeDefined();
     expect(screen.getByTestId("workspace-page-inner")).toBeDefined();
   });
 
-  it("hydrates the yaml editor from the current Specs rig draft", async () => {
+  it("用当前 Specs rig 草稿填充 yaml 编辑器", async () => {
     window.localStorage.setItem(SPECS_WORKSPACE_STORAGE_KEYS.currentRigDraft, JSON.stringify({
       id: "rig-current",
       kind: "rig",
@@ -62,8 +62,8 @@ describe("ImportFlow", () => {
     });
   });
 
-  // Test 1: Step indicator shows step 1 active on validate screen
-  it("step indicator shows step 1 active on input screen", async () => {
+  // 测试 1：输入界面上步骤指示器显示第 1 步激活
+  it("输入界面上步骤指示器显示第 1 步激活", async () => {
     await renderImportFlow();
     const step1 = screen.getByTestId("step-1");
     expect(step1.getAttribute("data-step-state")).toBe("active");
@@ -71,8 +71,8 @@ describe("ImportFlow", () => {
     expect(step2.getAttribute("data-step-state")).toBe("upcoming");
   });
 
-  // Test 2: Validate sends to daemon, shows Alert
-  it("validate sends to daemon and shows valid Alert", async () => {
+  // 测试 2：校验发给后台，显示通过 Alert
+  it("校验发给后台并显示通过 Alert", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ valid: true, errors: [] }) });
     await renderImportFlow();
 
@@ -86,8 +86,8 @@ describe("ImportFlow", () => {
     });
   });
 
-  // Test 3: Invalid YAML shows error Alert, blocks proceed
-  it("invalid YAML shows error Alert, blocks proceed", async () => {
+  // 测试 3：非法 YAML 显示错误 Alert，阻止继续
+  it("非法 YAML 显示错误 Alert，阻止继续", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ valid: false, errors: ["missing name", "no nodes"] }),
@@ -101,15 +101,15 @@ describe("ImportFlow", () => {
       const errEl = screen.getByTestId("import-errors");
       expect(errEl.textContent).toContain("missing name");
       expect(errEl.textContent).toContain("no nodes");
-      // Step 1 should still be active (error occurred at step 1)
+      // 第 1 步应仍为激活（错误发生在第 1 步）
       const step1 = screen.getByTestId("step-1");
       expect(step1.getAttribute("data-step-state")).toBe("active");
     });
     expect(screen.queryByTestId("preflight-btn")).toBeNull();
   });
 
-  // Test 4: Preflight shows warnings (text-warning) + errors (text-destructive)
-  it("preflight shows warnings and errors with correct colors", async () => {
+  // 测试 4：预检显示警告（text-warning）+ 错误（text-destructive）
+  it("预检以正确颜色显示警告与错误", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ valid: true, errors: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ready: true, errors: [], warnings: ["cmux unavailable", "cwd not found"] }) });
@@ -124,13 +124,13 @@ describe("ImportFlow", () => {
       const warningsEl = screen.getByTestId("preflight-warnings");
       expect(warningsEl.textContent).toContain("cmux unavailable");
       expect(warningsEl.textContent).toContain("cwd not found");
-      // Warnings should use text-warning class
+      // 警告应使用 text-warning 类
       expect(warningsEl.querySelector(".text-warning")).toBeDefined();
     });
   });
 
-  // Test 5: Instantiate shows per-node Table with status colors
-  it("instantiate shows per-node Table with status colors", async () => {
+  // 测试 5：实例化显示逐节点表格及状态色
+  it("实例化显示逐节点表格及状态色", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ valid: true, errors: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ready: true, errors: [], warnings: [] }) })
@@ -159,8 +159,8 @@ describe("ImportFlow", () => {
     });
   });
 
-  // Test 6: Error with TRY AGAIN resets to input
-  it("error state TRY AGAIN resets to input", async () => {
+  // 测试 6：错误态的“重试”回到输入
+  it("错误态“重试”回到输入", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ valid: false, errors: ["bad"] }),
@@ -172,8 +172,8 @@ describe("ImportFlow", () => {
 
     await waitFor(() => expect(screen.getByTestId("import-errors")).toBeDefined());
 
-    // Find TRY AGAIN button
-    const tryAgainBtns = screen.getAllByText(/TRY AGAIN/);
+    // 找到“重试”按钮
+    const tryAgainBtns = screen.getAllByText(/重试/);
     const btn = tryAgainBtns.find((el) => el.closest("button"));
     fireEvent.click(btn!);
 
@@ -182,14 +182,14 @@ describe("ImportFlow", () => {
     });
   });
 
-  it("does not render a page-local Specs back button", async () => {
+  it("不渲染页面级的 Specs 返回按钮", async () => {
     await renderImportFlow();
 
     expect(screen.queryByText("← Specs")).toBeNull();
   });
 
-  // Test 8: After validation succeeds, step 1 completed (checkmark), step 2 active
-  it("after validation, step 1 shows checkmark and step 2 is active", async () => {
+  // 测试 8：校验通过后第 1 步完成（对勾），第 2 步激活
+  it("校验后第 1 步显示对勾、第 2 步激活", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ valid: true, errors: [] }) });
     await renderImportFlow();
 
@@ -205,8 +205,8 @@ describe("ImportFlow", () => {
     });
   });
 
-  // Test 9: Raw YAML body sent with text/yaml (preserved)
-  it("validate sends raw YAML body with text/yaml Content-Type", async () => {
+  // 测试 9：原始 YAML body 以 text/yaml 发送（保留）
+  it("校验以 text/yaml Content-Type 发送原始 YAML body", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ valid: true, errors: [] }) });
     await renderImportFlow();
 
@@ -222,8 +222,8 @@ describe("ImportFlow", () => {
     });
   });
 
-  // Test 10: Preflight warnings displayed (preserved)
-  it("preflight warnings are displayed to user", async () => {
+  // 测试 10：预检警告展示给用户（保留）
+  it("预检警告展示给用户", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ valid: true, errors: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ready: true, errors: [], warnings: ["cmux unavailable"] }) });
@@ -239,8 +239,8 @@ describe("ImportFlow", () => {
     });
   });
 
-  // Test 11: Import view renders via router (preserved)
-  it("import view renders via router", async () => {
+  // 测试 11：导入视图经路由渲染（保留）
+  it("导入视图经路由渲染", async () => {
     mockFetch.mockImplementation((url: string) => {
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -259,8 +259,8 @@ describe("ImportFlow", () => {
     });
   });
 
-  // Test 12: Instantiate failure shows errors (preserved)
-  it("instantiate failure shows error Alert", async () => {
+  // 测试 12：实例化失败显示错误 Alert（保留）
+  it("实例化失败显示错误 Alert", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ valid: true, errors: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ready: true, errors: [], warnings: [] }) })
@@ -280,8 +280,8 @@ describe("ImportFlow", () => {
     expect(screen.queryByTestId("import-result")).toBeNull();
   });
 
-  // Test 13: Preflight errors block instantiate
-  it("preflight errors block instantiate", async () => {
+  // 测试 13：预检错误阻止实例化
+  it("预检错误阻止实例化", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ valid: true, errors: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ready: false, errors: ["rig name exists"], warnings: [] }) });
@@ -298,8 +298,8 @@ describe("ImportFlow", () => {
     expect(screen.queryByTestId("instantiate-btn")).toBeNull();
   });
 
-  // Test 14b: Preflight with BOTH warnings and errors shows both in error state
-  it("preflight with both warnings and errors shows warnings above errors", async () => {
+  // 测试 14b：预检同时有警告与错误时，错误态两者都显示
+  it("预检同时有警告与错误时，警告显示在错误之上", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ valid: true, errors: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ready: false, errors: ["rig name exists"], warnings: ["cmux unavailable"] }) });
@@ -311,24 +311,24 @@ describe("ImportFlow", () => {
     fireEvent.click(screen.getByTestId("preflight-btn"));
 
     await waitFor(() => {
-      // Errors should be shown
+      // 应显示错误
       const errEl = screen.getByTestId("import-errors");
       expect(errEl.textContent).toContain("rig name exists");
-      // Warnings should also be shown (above errors)
+      // 警告也应显示（在错误之上）
       const warnEl = screen.getByTestId("error-warnings");
       expect(warnEl.textContent).toContain("cmux unavailable");
     });
   });
 
-  // T1-AS-T14: Step indicator shows "VALIDATE RIGSPEC" label
-  it("step indicator shows VALIDATE RIGSPEC label", async () => {
+  // T1-AS-T14：步骤指示器显示“校验 RigSpec”标签
+  it("步骤指示器显示“校验 RigSpec”标签", async () => {
     await renderImportFlow();
     const step1 = screen.getByTestId("step-1");
-    expect(step1.textContent).toContain("VALIDATE RIGSPEC");
+    expect(step1.textContent).toContain("校验 RigSpec");
   });
 
-  // T2-AS-T14: Validation errors render as structured list
-  it("validation errors render as structured list", async () => {
+  // T2-AS-T14：校验错误渲染为结构化列表
+  it("校验错误渲染为结构化列表", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ valid: false, errors: ["missing name", "no nodes", "bad version"] }),
@@ -346,8 +346,8 @@ describe("ImportFlow", () => {
     });
   });
 
-  // T3-AS-T14: Preflight warnings in warning color, errors in destructive color
-  it("preflight warnings in warning color, errors in destructive color", async () => {
+  // T3-AS-T14：预检警告用警告色，错误用 destructive 色
+  it("预检警告用警告色，错误用 destructive 色", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ valid: true, errors: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ready: false, errors: ["port conflict"], warnings: ["stale sessions"] }) });
@@ -359,11 +359,11 @@ describe("ImportFlow", () => {
     fireEvent.click(screen.getByTestId("preflight-btn"));
 
     await waitFor(() => {
-      // Warnings in text-warning
+      // 警告用 text-warning
       const warnEl = screen.getByTestId("error-warnings");
       expect(warnEl.querySelector(".text-warning")).toBeDefined();
       expect(warnEl.textContent).toContain("stale sessions");
-      // Errors in text-destructive
+      // 错误用 text-destructive
       const errEl = screen.getByTestId("import-errors");
       const destructiveEls = errEl.querySelectorAll(".text-destructive");
       expect(destructiveEls.length).toBeGreaterThan(0);
@@ -371,8 +371,8 @@ describe("ImportFlow", () => {
     });
   });
 
-  // T4-AS-T14: Preflight collision/ambiguity warnings rendered
-  it("preflight collision/ambiguity warnings rendered", async () => {
+  // T4-AS-T14：渲染预检冲突/歧义警告
+  it("渲染预检冲突/歧义警告", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ valid: true, errors: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ready: true, errors: [], warnings: ["rig name collision detected", "ambiguous node ref"] }) });
@@ -390,8 +390,8 @@ describe("ImportFlow", () => {
     });
   });
 
-  // T7-AS-T14: Cache invalidation after successful import
-  it("cache invalidation after successful import", async () => {
+  // T7-AS-T14：成功导入后缓存失效
+  it("成功导入后缓存失效", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ valid: true, errors: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ready: true, errors: [], warnings: [] }) })
@@ -411,13 +411,13 @@ describe("ImportFlow", () => {
     await waitFor(() => {
       expect(screen.getByTestId("import-result")).toBeDefined();
     });
-    // The mutation succeeds, meaning onSuccess fired (queryClient.invalidateQueries is called internally)
-    // We verify the import completed successfully which proves the mutation hook ran its onSuccess path
+    // mutation 成功即 onSuccess 触发（内部调用 queryClient.invalidateQueries）
+    // 我们验证导入成功，即证明 mutation hook 走过了 onSuccess 路径
     expect(screen.getByTestId("import-result").textContent).toContain("test");
   });
 
-  // T8-AS-T14: Error state for cycle_error shows "Cycle" message
-  it("cycle_error shows Cycle message", async () => {
+  // T8-AS-T14：cycle_error 错误态显示“环路”消息
+  it("cycle_error 显示“环路”消息", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ valid: true, errors: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ready: true, errors: [], warnings: [] }) })
@@ -433,12 +433,12 @@ describe("ImportFlow", () => {
 
     await waitFor(() => {
       const errEl = screen.getByTestId("import-errors");
-      expect(errEl.textContent).toContain("Cycle");
+      expect(errEl.textContent).toContain("环路");
     });
   });
 
-  // Test 15: Preflight warnings allow instantiate
-  it("preflight warnings allow instantiate", async () => {
+  // 测试 15：预检警告允许实例化
+  it("预检警告允许实例化", async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ valid: true, errors: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ready: true, errors: [], warnings: ["cmux unavailable"] }) });

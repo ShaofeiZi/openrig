@@ -2,9 +2,9 @@ import type Database from "better-sqlite3";
 import type { TmuxAdapter } from "../adapters/tmux.js";
 import { classifyPaneActivity, type PaneActivityClassification } from "./session-transport.js";
 
-/** A cached STRUCTURAL pane observation: the classifyPaneActivity verdict plus WHEN the pane was read
- *  as motion. observedAt is a LIVENESS timestamp (last time we saw the pane), NOT a hook-arrival age —
- *  that distinction is the whole point of constraint 2 (a real counter is not a real liveness verdict). */
+/** 缓存的结构化窗格观测：包含 classifyPaneActivity 裁决，以及窗格何时被读取为有活动。
+ * observedAt 是存活时间戳（最后一次看到窗格），不是 hook 到达时长——这种区分正是
+ * 约束 2 的核心：真实计数器并不等于真实存活裁决。 */
 export interface StructuralObservation {
   state: PaneActivityClassification["state"];
   reason: string;
@@ -13,36 +13,31 @@ export interface StructuralObservation {
 }
 
 export const DEFAULT_STRUCTURAL_POLL_INTERVAL_MS = 1000;
-// A cached observation is authoritative only while CURRENT. Past this window with no fresh capture — a
-// tmux/capture outage, a stalled poller, or a same-name occupant transition — the READ refuses it and
-// evicts it, so a stale positive verdict can never masquerade as liveness (MUST-FIX 1). 5× the poll
-// tolerates a few missed ticks; a persistently failing/stuck poller ages the row out and the ACTIVITY
-// projection falls back to the honest hook/unknown state.
+// 缓存观测仅在当前窗口内具有权威性。超过窗口仍无新捕获——无论是 tmux/capture 中断、
+// 轮询器卡住，还是同名占用者切换——读取都会拒绝并逐出它，使陈旧的肯定裁决无法冒充存活
+//（MUST-FIX 1）。5 倍轮询间隔可容忍少量漏 tick；持续失败或卡住的轮询器会让该行过期，
+// ACTIVITY 投影随后回退到诚实的 hook/unknown 状态。
 export const DEFAULT_STRUCTURAL_STALE_MS = 5000;
 
 /**
- * 5b82324b — the STRUCTURAL activity cache. Sibling of SeatActivityService (which reads ONLY the tmux
- * window_activity TIMESTAMP and is deliberately text-blind): this service captures pane TEXT once per
- * running tmux seat per tick and classifies it STRUCTURALLY via classifyPaneActivity (spinner shapes,
- * `esc to interrupt`, idle-prompt / status-bar signatures — never a verb allowlist, so a "Drizzling"-
- * style spinner reads as motion instead of a false park). The cache is READ (capture-FREE) by
- * attachAgentActivity so the `rig ps` ACTIVITY column reflects real pane motion for hook-less / stale-
- * hook / turn-boundary seats WITHOUT reintroducing the per-request capture storm the healthz-wedge
- * cheap-default removed. Two safety rules make the BACKGROUND path itself safe:
- *   (MF1) a read refuses a stale observation and a failed capture invalidates the prior row — a stale
- *         positive verdict never survives a capture outage or a same-name occupant transition; and
- *   (MF2) sweeps are SINGLE-FLIGHT and HELD until the real captures settle — a slow/stuck tmux can
- *         never accumulate overlapping whole-fleet captures (only one sweep's captures are ever in
- *         flight). We deliberately do NOT time-out a capture to release the guard: execCommand has no
- *         AbortSignal, so a wrapper timeout would release single-flight while the child process lives,
- *         letting a later sweep spawn MORE children — the storm at the process level. A permanently
- *         stuck tmux therefore degrades to "no structural signal" (honest, via MF1 age-expiry), never
- *         a storm. A kill-backed capture primitive (bounded abort) is a tmux-adapter follow-on.
+ * 5b82324b——结构化活动缓存。它与 SeatActivityService 并列；后者只读取 tmux
+ * window_activity 时间戳，并刻意不看文本。本服务每个 tick 为每个运行中的 tmux 席位捕获一次
+ * 窗格文本，再通过 classifyPaneActivity 做结构分类（spinner 形状、`esc to interrupt`、
+ * 空闲提示/status bar 特征；绝不用动词白名单，因此 "Drizzling" 一类 spinner 会识别为活动，
+ * 而不是误判停驻）。attachAgentActivity 只读缓存且不再捕获，使 `zrig ps` 的 ACTIVITY 列能反映
+ * 无 hook、陈旧 hook 或回合边界席位的真实窗格活动，同时不会重新引入 healthz-wedge 的廉价默认
+ * 所消除的逐请求捕获风暴。后台路径靠两条安全规则自保：
+ *   (MF1) 读取拒绝陈旧观测，捕获失败使前一行失效——陈旧肯定裁决不能穿越捕获中断或同名占用者切换；
+ *   (MF2) sweep 单飞，并一直持有到实际捕获完成——缓慢/卡死的 tmux 无法累积重叠的全舰队捕获，
+ *         任一时刻最多只有一次 sweep 的 N 个席位捕获在途。
+ * 我们刻意不靠 capture 超时释放守卫：execCommand 没有 AbortSignal，包装层超时会在子进程仍存活时
+ * 释放单飞，使后续 sweep 启动更多子进程，形成进程级风暴。因此永久卡住的 tmux 只会通过 MF1
+ * 时效过期诚实降级为“无结构信号”，绝不会形成风暴。带 kill 的有界中止捕获原语留待 tmux-adapter 后续实现。
  */
 export class SeatStructuralActivityService {
   private readonly latestBySession = new Map<string, StructuralObservation>();
   private timer: ReturnType<typeof setInterval> | null = null;
-  private sweeping = false; // single-flight guard: one whole-fleet sweep at a time (MUST-FIX 2)
+  private sweeping = false; // 单飞守卫：同一时刻只允许一次全舰队 sweep（MUST-FIX 2）
 
   constructor(
     private readonly tmuxAdapter: Pick<TmuxAdapter, "capturePaneContent">,
@@ -51,9 +46,8 @@ export class SeatStructuralActivityService {
     private readonly staleAfterMs: number = DEFAULT_STRUCTURAL_STALE_MS,
   ) {}
 
-  /** The cached structural observation — ONLY while current (capture-FREE read). Returns null AND evicts
-   *  once the observation is older than the freshness window, so a stalled/failed poller never leaves a
-   *  stale positive verdict authoritative over an honest stale hook (MUST-FIX 1). */
+  /** 缓存的结构观测仅在新鲜时有效（读取不触发 capture）。观测超过新鲜窗口后返回 null 并逐出，
+   *  确保卡住或失败的轮询器不会留下一个陈旧肯定裁决，压过诚实的陈旧 hook（MUST-FIX 1）。 */
   getStructuralActivity(sessionName: string): StructuralObservation | null {
     const obs = this.latestBySession.get(sessionName);
     if (!obs) return null;
@@ -64,9 +58,8 @@ export class SeatStructuralActivityService {
     return obs;
   }
 
-  /** Capture + structurally classify one seat's pane, caching the observation keyed by session name. A
-   *  null or failed capture INVALIDATES the prior row (never leaves a stale positive verdict) and
-   *  returns null (MUST-FIX 1). */
+  /** 捕获并结构化分类一个席位窗格，以会话名为键缓存观测。null 或失败的捕获会使前一行失效，
+   *  绝不留下陈旧肯定裁决，并返回 null（MUST-FIX 1）。 */
   async pollSeat(sessionName: string): Promise<StructuralObservation | null> {
     let content: string | null;
     try {
@@ -90,9 +83,9 @@ export class SeatStructuralActivityService {
     return obs;
   }
 
-  /** Refresh every running tmux-bound seat once. SINGLE-FLIGHT and HELD until the captures settle: a new
-   *  sweep never starts while one is in flight (MUST-FIX 2), so a slow/stuck tmux can never accumulate
-   *  overlapping whole-fleet captures — at most one sweep's worth (N seats) is ever in flight. */
+  /** 刷新每个运行中且绑定 tmux 的席位一次。单飞并持有到所有捕获完成：已有 sweep 在途时
+   *  绝不启动新 sweep（MUST-FIX 2），因此缓慢/卡住的 tmux 无法累积重叠的全舰队捕获；
+   *  任一时刻最多只有一次 sweep 的 N 个席位捕获在途。 */
   async pollAllRunningTmuxSeats(db: Database.Database): Promise<void> {
     if (this.sweeping) return;
     this.sweeping = true;
@@ -109,10 +102,10 @@ export class SeatStructuralActivityService {
       `).all() as Array<{ session_name: string }>;
       const live = new Set(rows.map((r) => r.session_name));
       for (const s of Array.from(this.latestBySession.keys())) {
-        if (!live.has(s)) this.latestBySession.delete(s); // release memory + never serve a stale read
+        if (!live.has(s)) this.latestBySession.delete(s); // 释放内存，也绝不提供陈旧读取
       }
       await Promise.all(rows.map(async (r) => {
-        try { await this.pollSeat(r.session_name); } catch { /* isolate: one seat's failure never crashes the sweep */ }
+        try { await this.pollSeat(r.session_name); } catch { /* 隔离错误：单个席位失败绝不击穿 sweep */ }
       }));
     } finally {
       this.sweeping = false;
@@ -120,7 +113,7 @@ export class SeatStructuralActivityService {
   }
 
   start(db: Database.Database, intervalMs: number = DEFAULT_STRUCTURAL_POLL_INTERVAL_MS): void {
-    if (this.timer) return; // idempotent
+    if (this.timer) return; // 幂等
     this.timer = setInterval(() => { void this.pollAllRunningTmuxSeats(db); }, intervalMs);
     if (this.timer && typeof this.timer === "object" && "unref" in this.timer) {
       (this.timer as NodeJS.Timeout).unref();

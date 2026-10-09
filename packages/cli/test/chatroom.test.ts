@@ -61,14 +61,14 @@ describe("Chatroom CLI", () => {
     { id: "rig-1", name: "my-rig", nodeCount: 2 },
   ];
 
-  // Use ULID-like IDs (time-ordered, all starting with 01KN — well before any current ULID)
+  // 使用类 ULID id（时间有序，均以 01KN 开头——远早于任何当前 ULID）
   const chatMessages = [
     { id: "01KN000000AA00000000000001", rigId: "rig-1", sender: "alice", kind: "message", body: "hello", topic: null, createdAt: "2026-03-31T10:00:00Z" },
     { id: "01KN000000AA00000000000002", rigId: "rig-1", sender: "bob", kind: "message", body: "world", topic: null, createdAt: "2026-03-31T10:01:00Z" },
   ];
 
   const capturedUrls: string[] = [];
-  // Mutable list for dynamic injection during wait tests
+  // 可变列表，用于 wait 测试期间动态注入
   const dynamicMessages: Array<typeof chatMessages[0]> = [];
 
   beforeAll(async () => {
@@ -182,7 +182,7 @@ describe("Chatroom CLI", () => {
     const { logs } = await captureLogs(async () => {
       await makeCmd().parseAsync(["node", "rig", "chatroom", "topic", "my-rig", "standup"]);
     });
-    expect(logs.join("\n")).toContain("--- topic: standup ---");
+    expect(logs.join("\n")).toContain("--- 主题：standup ---");
   });
 
   it("chatroom watch prints streamed messages", async () => {
@@ -193,7 +193,7 @@ describe("Chatroom CLI", () => {
   });
 
   it("chatroom send with ambiguous rig name shows error with guidance", async () => {
-    // Override to return ambiguous rigs
+    // 覆写以返回歧义 rigs
     const ambiguousSummary = [
       { id: "rig-1", name: "my-rig", nodeCount: 2 },
       { id: "rig-2", name: "my-rig", nodeCount: 1 },
@@ -227,17 +227,17 @@ describe("Chatroom CLI", () => {
     });
 
     ambiguousServer.close();
-    expect(logs.join("\n")).toContain("ambiguous");
+    expect(logs.join("\n")).toContain("有歧义");
     expect(exitCode).toBe(1);
   });
 
   it("chatroom watch --tmux spawns rig chatroom watch as the session command", async () => {
-    // Mock execSync to verify the tmux command
+    // mock execSync 以验证 tmux 命令
     const origExecSync = (await import("node:child_process")).execSync;
     let capturedCmd = "";
     const { execSync } = await import("node:child_process");
 
-    // We can't easily mock execSync in this test setup, so verify the --tmux
+    // 此测试设置中不易 mock execSync，故验证 --tmux
     // option prints the expected output when the tmux command fails (which it will
     // in CI since there's no tmux server)
     const { logs, exitCode } = await captureLogs(async () => {
@@ -310,7 +310,7 @@ describe("Chatroom CLI", () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("Timed out");
+    expect(logs.join("\n")).toContain("超时");
   });
 
   it("chatroom wait detects a newly arriving post-start message", { timeout: 15000 }, async () => {
@@ -351,7 +351,7 @@ describe("Chatroom CLI", () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("Timed out");
+    expect(logs.join("\n")).toContain("超时");
   });
 
   it("chatroom wait --json returns messages as JSON", async () => {
@@ -370,6 +370,6 @@ describe("Chatroom CLI", () => {
     });
 
     const output = logs.join("\n");
-    expect(output).toContain("Cleared 2 messages from my-rig chatroom.");
+    expect(output).toContain("已从 my-rig 聊天室清空 2 条消息。");
   });
 });

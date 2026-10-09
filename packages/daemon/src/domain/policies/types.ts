@@ -1,26 +1,23 @@
-// PL-004 Phase C: shared policy contract types.
+// PL-004 阶段 C：共享策略契约类型。
 //
-// Each watchdog policy implements `evaluate(job)` returning a
-// PolicyEvaluation. Pure: no side-effects, no event-bus, no DB.
-// The watchdog-policy-engine maps `action: send` to a delivery call,
-// records meaningful outcomes via watchdog-history-log, and emits
-// the corresponding RigEvent.
+// 每个 watchdog 策略实现 `evaluate(job)` 并返回 PolicyEvaluation。该过程为纯逻辑：
+// 无副作用、不访问事件总线和 DB。watchdog-policy-engine 将 `action: send` 映射为
+// 投递调用，通过 watchdog-history-log 记录有意义的结果，并发出对应 RigEvent。
 
 export interface PolicyJob {
   jobId: string;
   policy: string;
   /**
-   * POC-shape target object. Built from spec_yaml top-level `target:`
-   * block when present; otherwise falls back to `{session: registered
-   * targetSession}`. Policies access `job.target.session` per POC.
+   * POC 形状的目标对象。有 spec_yaml 顶层 `target:` 块时由其构造；否则回退为
+   * `{session: registered targetSession}`。策略按 POC 约定访问 `job.target.session`。
    */
   target: { session: string };
-  /** Optional top-level message override (POC pattern: `job.message`). */
+  /** 可选的顶层消息覆盖（POC 模式：`job.message`）。 */
   message?: string;
   intervalSeconds: number;
   activeWakeIntervalSeconds: number | null;
   scanIntervalSeconds: number | null;
-  /** Parsed `context:` block from the operator-supplied spec_yaml. */
+  /** 从操作员提供的 spec_yaml 中解析出的 `context:` 块。 */
   context: Record<string, unknown>;
   lastEvaluationAt: string | null;
   lastFireAt: string | null;
@@ -43,15 +40,13 @@ export type PolicyEvaluation =
       message: string;
       notes?: Record<string, unknown>;
       /**
-       * OPR.0.5.8.1 S2 — an opaque receipt for the CONDITION this send is about,
-       * persisted by the engine ONLY when delivery actually succeeded.
+       * OPR.0.5.8.1 S2——本次发送所对应条件的不透明回执，仅在投递真正成功时
+       * 才由引擎持久化。
        *
-       * A policy that suppresses on "already told them" must record that against
-       * evidence the telling happened. The first cut of this wrote the receipt
-       * inside evaluate(), before delivery was attempted, so one transient
-       * transport failure suppressed the wake until the watched condition
-       * changed — silence instead of noise, which is the worse failure. Policies
-       * that do not set this are unaffected.
+       * 以“已经通知过”为由抑制发送的策略，必须在确有投递证据时记录该事实。初版在
+       * 尝试投递前就在 evaluate() 内写入回执，导致一次瞬时传输失败就会抑制唤醒，
+       * 直到被观察条件变化；这会用静默替代噪声，是更严重的失败。未设置此字段的策略
+       * 不受影响。
        */
       conditionReceipt?: string;
     }
@@ -59,13 +54,12 @@ export type PolicyEvaluation =
   | { action: "terminal"; reason: string; notes?: Record<string, unknown> };
 
 export interface Policy {
-  /** Stable identifier matching watchdog_jobs.policy enum. */
+  /** 与 watchdog_jobs.policy 枚举匹配的稳定标识符。 */
   readonly name: string;
   /**
-   * Pure evaluation. No I/O beyond filesystem reads (artifact-pool
-   * scans). Throws only for hard contract violations (missing required
-   * spec fields); recoverable conditions (no actionable artifacts,
-   * recent successful run) MUST return action=skip.
+   * 纯评估。除文件系统读取（artifact-pool 扫描）外不执行 I/O。仅在硬契约违规
+   *（缺失必填 spec 字段）时抛错；可恢复条件（无可操作产物、近期已成功运行）
+   * 必须返回 action=skip。
    */
   evaluate(job: PolicyJob): Promise<PolicyEvaluation>;
 }

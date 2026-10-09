@@ -1,8 +1,7 @@
-// OPR.0.5.3.5 recap-write atom — the outgoing occupant's write verb (the Q2
-// boundary requirement the store alone does not satisfy). Daemon-independent
-// like trace: seat dir resolves from topology.root CONFIG (slice-06 D1 layout),
-// the write flows through the ONE store (supersession + addressability gate),
-// advisory contract findings ride stderr, and the gate refuses loud.
+// OPR.0.5.3.5 recap-write 原子——出向 occupant 的 write 动词（store 单独
+// 不满足的 Q2 边界要求）。与 trace 一样独立于 daemon：seat 目录从
+// topology.root CONFIG 解析（slice-06 D1 布局），写入流经唯一 store
+//（取代 + 可寻址门），提示契约发现走 stderr，门大声拒绝。
 
 import { describe, it, expect } from "vitest";
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync, existsSync } from "node:fs";
@@ -48,8 +47,8 @@ describe("rig context recap-write — the boundary write verb", () => {
       expect(first.exitCode ?? 0).toBe(0);
       const seatDir = join(tmp, "topology", "rigs", "r1", "seats", "s1");
       expect(readFileSync(join(seatDir, "RECAP.md"), "utf-8")).toContain("chose X because Y");
-      // Second write supersedes; content missing a decisions section draws the
-      // ADVISORY finding on stderr but still lands (never gated on prose).
+      // 第二次写入取代；缺 decisions section 的内容在 stderr 引出
+      // ADVISORY 发现但仍落盘（绝不因 prose 拦截）。
       const f2 = join(tmp, "era2.md");
       writeFileSync(f2, "## Status\nall done");
       const second = await runRecapWrite(["recap-write", "--rig", "r1", "--seat", "s1", "--file", f2]);
@@ -124,7 +123,7 @@ describe("rig context recap-write — the boundary write verb", () => {
       const res = await runRecapWrite(["recap-write", "--rig", "r1", "--seat", "../escape", "--file", recap]);
 
       expect(res.exitCode).toBe(1);
-      expect(res.errLogs.join("\n")).toMatch(/unsafe|segment/i);
+      expect(res.errLogs.join("\n")).toMatch(/不安全.*段/);
       expect(existsSync(join(tmp, "topology", "rigs", "r1", "escape"))).toBe(false);
     } finally {
       if (saved === undefined) delete process.env["OPENRIG_TOPOLOGY_ROOT"];

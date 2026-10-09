@@ -1,6 +1,6 @@
-// Build daemon, CLI and TUI first. Replay input is a sealed read-only export;
-// every product write below targets a new disposable home/database/listener.
-// Usage: node scripts/probe-health-calibration.mjs <replay.json> [output-directory]
+// 请先构建后台服务、CLI 和 TUI。重放输入是密封的只读导出；下方所有产品写入都指向
+// 新建的一次性 home、数据库和监听器。
+// 用法：node scripts/probe-health-calibration.mjs <replay.json> [output-directory]
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -119,7 +119,7 @@ for (const test of replay.cases) {
       for (const level of ['project', 'mission', 'slice']) assert.ok(occurrence.authority.some((a) => a.level === level && a.state === 'available'), level);
       assert.ok(occurrence.packet.finding.explanation.includes(test.checkpoint.sdlc.expectation));
       writeFileSync(join(output, `${test.name}-diagnosis.json`), JSON.stringify(occurrence, null, 2));
-      // An unrefreshed source ages to indeterminate; reading never refreshes its clock.
+      // 未刷新的来源会随时间变为不确定；读取绝不会刷新其时钟。
       now = new Date(Date.parse(now) + 601000).toISOString();
       assert.equal(projection.get(result.records[0].id).status, 'indeterminate');
       assert.deepEqual((await diagnosis.evaluate('author@fixture', true)).actions.map((a) => a.action), ['observe']);

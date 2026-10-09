@@ -1,8 +1,7 @@
-// OPR.0.4.6.02 S1 — unit coverage for the SHARED tmux option-defaults applier
-// (used by NodeLauncher + SuccessorSessionLauncher) and the pure per-platform
-// copy-command table. Scope-discipline teeth (guard b2): mouse/status are
-// SESSION-scope (setSessionOption); set-clipboard/copy-command are SERVER-scope
-// (setServerOption) — the two are never crossed.
+// OPR.0.4.6.02 S1——共享 tmux option-defaults applier（由 NodeLauncher 与
+// SuccessorSessionLauncher 使用）及纯逐平台 copy-command 表的单元覆盖。工作范围纪律约束
+//（guard b2）：mouse/status 属于 SESSION scope（setSessionOption）；set-clipboard/copy-command
+// 属于 SERVER scope（setServerOption），两者绝不交叉。
 import { describe, it, expect, vi } from "vitest";
 import type { TmuxAdapter, TmuxResult } from "../src/adapters/tmux.js";
 import {
@@ -23,24 +22,24 @@ function mockAdapter(overrides?: {
 }
 
 describe("TmuxOptionDefaultsApplier", () => {
-  it("sets mouse on + status off (default) on the given session via SESSION scope only", async () => {
+  it("只通过 SESSION scope 为指定会话设置 mouse on + 默认 status off", async () => {
     const { adapter, setSessionOption, setServerOption } = mockAdapter();
-    // default reader (omitted) → statusBar false.
+    // 默认 reader（省略）→ statusBar false。
     const warnings = await new TmuxOptionDefaultsApplier({ tmuxAdapter: adapter, platform: "darwin", hasCommand: () => true })
       .applyToFreshSession("r01-dev1@rig");
 
     expect(warnings).toEqual([]);
-    // mouse + status are SESSION-scope on the exact session name.
+    // mouse + status 以精确会话名应用于 SESSION scope。
     expect(setSessionOption).toHaveBeenCalledWith("r01-dev1@rig", "mouse", "on");
     expect(setSessionOption).toHaveBeenCalledWith("r01-dev1@rig", "status", "off");
-    // set-clipboard + copy-command are SERVER-scope — never via setSessionOption.
+    // set-clipboard + copy-command 属于 SERVER scope，绝不通过 setSessionOption。
     const sessionKeys = setSessionOption.mock.calls.map((c) => c[1]);
     expect(sessionKeys).not.toContain("set-clipboard");
     expect(sessionKeys).not.toContain("copy-command");
     expect(setServerOption).toHaveBeenCalledWith("set-clipboard", "on");
   });
 
-  it("sets status on when the config reader returns statusBar=true (future-launches read at apply)", async () => {
+  it("配置 reader 返回 statusBar=true 时开启 status（未来启动在应用时读取）", async () => {
     const { adapter, setSessionOption } = mockAdapter();
     const applier = new TmuxOptionDefaultsApplier({
       tmuxAdapter: adapter,
@@ -52,7 +51,7 @@ describe("TmuxOptionDefaultsApplier", () => {
     expect(setSessionOption).toHaveBeenCalledWith("r01-dev1@rig", "status", "on");
   });
 
-  it("falls back to status off when the reader throws", async () => {
+  it("reader 抛错时回退为 status off", async () => {
     const { adapter, setSessionOption } = mockAdapter();
     const applier = new TmuxOptionDefaultsApplier({
       tmuxAdapter: adapter,
@@ -64,37 +63,37 @@ describe("TmuxOptionDefaultsApplier", () => {
     expect(setSessionOption).toHaveBeenCalledWith("r01-dev1@rig", "status", "off");
   });
 
-  it("asserts server defaults ONCE per applier (memoized) but re-applies session opts every call", async () => {
+  it("每个 applier 只断言一次 server 默认值（memoized），但每次调用都重新应用 session options", async () => {
     const { adapter, setSessionOption, setServerOption } = mockAdapter();
     const applier = new TmuxOptionDefaultsApplier({ tmuxAdapter: adapter, platform: "darwin", hasCommand: () => true });
 
     await applier.applyToFreshSession("sess-a");
     await applier.applyToFreshSession("sess-b");
 
-    // set-clipboard asserted exactly once across both launches (shared memo).
+    // 两次 launch 中 set-clipboard 恰好断言一次（共享 memo）。
     const clipCalls = setServerOption.mock.calls.filter((c) => c[0] === "set-clipboard");
     expect(clipCalls).toHaveLength(1);
-    // but each fresh session still gets its own mouse+status.
+    // 但每个新会话仍获得自己的 mouse+status。
     expect(setSessionOption).toHaveBeenCalledWith("sess-a", "mouse", "on");
     expect(setSessionOption).toHaveBeenCalledWith("sess-b", "mouse", "on");
   });
 
-  it("darwin sets copy-command=pbcopy via SERVER scope", async () => {
+  it("darwin 通过 SERVER scope 设置 copy-command=pbcopy", async () => {
     const { adapter, setServerOption } = mockAdapter();
     await new TmuxOptionDefaultsApplier({ tmuxAdapter: adapter, platform: "darwin" }).applyToFreshSession("s");
     expect(setServerOption).toHaveBeenCalledWith("copy-command", "pbcopy");
   });
 
-  it("linux without wl-copy/xclip skips copy-command (falls back to set-clipboard OSC 52)", async () => {
+  it("linux 缺少 wl-copy/xclip 时跳过 copy-command（回退到 set-clipboard OSC 52）", async () => {
     const { adapter, setServerOption } = mockAdapter();
     await new TmuxOptionDefaultsApplier({ tmuxAdapter: adapter, platform: "linux", hasCommand: () => false }).applyToFreshSession("s");
     const copyCalls = setServerOption.mock.calls.filter((c) => c[0] === "copy-command");
     expect(copyCalls).toHaveLength(0);
-    // set-clipboard is still asserted.
+    // set-clipboard 仍会断言。
     expect(setServerOption).toHaveBeenCalledWith("set-clipboard", "on");
   });
 
-  it("collects non-fatal warnings when an option-set fails and never throws", async () => {
+  it("option set 失败时收集非致命 warning，绝不抛错", async () => {
     const { adapter } = mockAdapter({
       setSessionOption: async (_s, k) =>
         k === "mouse" ? { ok: false, code: "unknown", message: "boom" } : OK,
@@ -108,20 +107,20 @@ describe("TmuxOptionDefaultsApplier", () => {
   });
 });
 
-describe("resolveCopyCommand (pure per-platform table)", () => {
+describe("resolveCopyCommand（纯逐平台表）", () => {
   it("darwin → pbcopy", () => {
     expect(resolveCopyCommand("darwin", () => false)).toBe("pbcopy");
   });
-  it("linux → wl-copy when present", () => {
+  it("linux 存在 wl-copy 时 → wl-copy", () => {
     expect(resolveCopyCommand("linux", (b) => b === "wl-copy")).toBe("wl-copy");
   });
-  it("linux → xclip when wl-copy absent but xclip present", () => {
+  it("linux 缺少 wl-copy 但存在 xclip 时 → xclip", () => {
     expect(resolveCopyCommand("linux", (b) => b === "xclip")).toBe("xclip -selection clipboard -i");
   });
-  it("linux → null when neither present (OSC 52 fallback)", () => {
+  it("linux 两者都缺失时 → null（OSC 52 回退）", () => {
     expect(resolveCopyCommand("linux", () => false)).toBeNull();
   });
-  it("other platforms → null", () => {
+  it("其他平台 → null", () => {
     expect(resolveCopyCommand("win32", () => true)).toBeNull();
   });
 });

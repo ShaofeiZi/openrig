@@ -10,15 +10,13 @@ import * as parkedQuery from "../domain/parked-query.js";
 import { runtimeRungInventory } from "../domain/activity-taxonomy.js";
 import { validateResumeToken } from "../domain/resume-token-validation.js";
 
-// ── S19 A4 — the ingest half of the adapter seam: hook events reach the ONE oracle ──
-// (SeatActivityService) through this translation, so AgentActivityStore is reduced to a
-// raw-event consumer/recorder and arbitration happens in exactly one place. The store's
-// ALREADY-NORMALIZED state is the input (one event-name parser, no twin).
+// ── S19 A4——adapter 接缝的摄入半侧：hook 事件经此翻译到达唯一 oracle ──
+// （SeatActivityService），使 AgentActivityStore 退化为原始事件的消费者/记录器，
+// 仲裁只在一处发生。输入是 store 已经归一化的状态（一个事件名 parser，无孪生）。
 
-/** Translate a recorded hook activity into oracle evidence. Returns null for states the
- *  oracle should not consume (unknown = noise, never evidence). needs_input becomes
- *  COUNT+reason on the hooks rung — never an activity value (the taxonomy's binding
- *  exclusion); the turn's working/idle stays whatever other evidence says. */
+/** 把已记录的 hook 活动翻译为 oracle 证据。oracle 不应消费的状态返回 null
+ *  （unknown = 噪声，绝非证据）。needs_input 在 hooks rung 上变为 COUNT+reason——
+ *  绝不是 activity 值（分类法的绑定排除）；turn 的 working/idle 由其他证据决定。 */
 export function evidenceFromHookActivity(input: {
   seatNodeId: string;
   sessionName: string;
@@ -40,13 +38,13 @@ export function evidenceFromHookActivity(input: {
     case "idle":
       return { ...base, activity: "idle-at-prompt", needsInput: { count: 0, reason: null } };
     case "needs_input":
-      return { ...base, needsInput: { count: 1, reason: input.activity.reason || "needs input" } };
+      return { ...base, needsInput: { count: 1, reason: input.activity.reason || "需要输入" } };
     default:
-      return null; // unknown = noise, never evidence
+      return null; // unknown = 噪声，绝非证据
   }
 }
 
-// Per-source monotonic seq for ingested hook evidence (the relay does not mint one).
+// 摄入的 hook 证据按源单调递增的 seq（relay 不生成）。
 const hookEvidenceSeq = new Map<string, number>();
 function nextHookSeq(key: string): number {
   const next = (hookEvidenceSeq.get(key) ?? 0) + 1;
@@ -64,7 +62,7 @@ activityRoutes.post("/hooks", async (c) => {
     return c.json({
       ok: false,
       code: "activity_hook_unconfigured",
-      error: "Agent activity hook ingestion is not configured for this daemon.",
+      error: "本后台服务未配置智能体活动 hook 摄入。",
     }, 503);
   }
 
@@ -75,7 +73,7 @@ activityRoutes.post("/hooks", async (c) => {
     return c.json({
       ok: false,
       code: "activity_hook_unauthorized",
-      error: "Agent activity hook ingestion requires the configured local hook token.",
+      error: "智能体活动 hook 摄入需要已配置的本地 hook token。",
     }, 401);
   }
 
@@ -83,7 +81,7 @@ activityRoutes.post("/hooks", async (c) => {
   try {
     body = await c.req.json() as Record<string, unknown>;
   } catch {
-    return c.json({ ok: false, code: "invalid_json", error: "Request body must be JSON." }, 400);
+    return c.json({ ok: false, code: "invalid_json", error: "请求 body 必须是 JSON。" }, 400);
   }
 
   if (body.eventFamily === "session_identity") {
@@ -91,29 +89,28 @@ activityRoutes.post("/hooks", async (c) => {
     const sessionName = stringOrNull(body.sessionName);
     const runtime = stringOrNull(body.runtime);
     if (!sessionId || !sessionName) {
-      return c.json({ ok: false, code: "missing_session_identity", error: "session_identity requires sessionId and sessionName" }, 400);
+      return c.json({ ok: false, code: "missing_session_identity", error: "session_identity 需要 sessionId 和 sessionName" }, 400);
     }
 
     const sessionRegistry = c.get("sessionRegistry" as never) as SessionRegistry | undefined;
     const eventBus = c.get("eventBus" as never) as EventBus | undefined;
     if (!sessionRegistry || !eventBus) {
-      return c.json({ ok: false, code: "identity_hook_unconfigured", error: "Session registry not available" }, 503);
+      return c.json({ ok: false, code: "identity_hook_unconfigured", error: "会话 registry 不可用" }, 503);
     }
 
     const nodeId = stringOrNull(body.nodeId);
     const resolved = store.resolveSession({ sessionName, nodeId, runtime });
     if (!resolved) {
-      return c.json({ ok: false, code: "session_not_found", error: `No session found for ${sessionName}` }, 404);
+      return c.json({ ok: false, code: "session_not_found", error: `未找到会话 ${sessionName}` }, 404);
     }
 
-    // OPR.0.4.6.PI1 FR-5 — Pi session identity arrives from the pi-runner's
-    // RPC get_state (provenance "rpc" on the bus, never scrape). The resume
-    // TOKEN for Pi is the session FILE (body.sessionFile), not the session id;
-    // it is format-validated before the persist and never echoed on failure.
+    // OPR.0.4.6.PI1 FR-5——Pi 会话身份来自 pi-runner 的 RPC get_state
+    // （总线上 provenance 为 "rpc"，绝不抓取）。Pi 的 resume TOKEN 是会话文件
+    // （body.sessionFile），不是会话 id；在持久化前做格式校验，失败时绝不回显。
     if (runtime === "pi") {
-      // A delayed get_state from a retired runner must not replace the successor's
-      // resume token or publish a current identity. Keep resolution, this check
-      // and both effects synchronous so renewal cannot interleave at an await.
+      // 来自已退役 runner 的迟到 get_state 绝不能替换继任者的 resume token，
+      // 也不能发布当前身份。保持解析、此检查与两个副作用同步，
+      // 使续期不能在 await 处交错。
       const generation = stringOrNull(body.generation);
       let reason: string | null = null;
       try {
@@ -125,13 +122,13 @@ activityRoutes.post("/hooks", async (c) => {
       } catch {
         return c.json({
           ok: false, code: "generation_resolver_error", tokenPersisted: false,
-          error: "Pi session identity ignored: occupant generation is unavailable.",
+          error: "Pi 会话身份已忽略：占用者 generation 不可用。",
         }, 503);
       }
       if (reason) {
         return c.json({
           ok: false, code: reason, tokenPersisted: false,
-          error: "Pi session identity ignored: emitter is not the registered current occupant.",
+          error: "Pi 会话身份已忽略：发射方不是已登记的当前占用者。",
         }, 409);
       }
       const sessionFile = stringOrNull(body.sessionFile);
@@ -151,11 +148,11 @@ activityRoutes.post("/hooks", async (c) => {
       return c.json({ ok: true, sessionId, provenance: "rpc", tokenPersisted: validation.ok });
     }
 
-    // The resume-type label derives from the RUNTIME, never a fixed default: this line used to stamp
-    // "codex_id" for every non-pi runtime, so claude-code seats carried a codex-typed label over a
-    // correct token value — and a restore path selecting its resume MECHANISM by label would pick the
-    // wrong one while looking healthy. The relay only posts session_identity with a runtime present;
-    // an unmapped runtime skips the persist (tokenPersisted: false) rather than guessing a label.
+    // resume-type 标签派生自运行时，绝不是固定默认值：这行曾对每个非 pi 运行时都盖
+    // "codex_id"，导致 claude-code 席位在正确的 token 值上带着 codex 类型标签——
+    // 而按标签选择 resume MECHANISM 的 restore 路径会在看似健康时选错。
+    // relay 只在有 runtime 时才发 session_identity；未映射的运行时跳过持久化
+    // （tokenPersisted: false），而不是猜一个标签。
     const validation = validateResumeToken(runtime, sessionId);
     if (validation.ok) {
       sessionRegistry.updateResumeToken(resolved.sessionId, validation.resumeType, validation.token, "hook");
@@ -173,15 +170,14 @@ activityRoutes.post("/hooks", async (c) => {
     return c.json({ ok: true, sessionId, provenance: "hook", tokenPersisted: validation.ok });
   }
 
-  // OPR.0.4.3.06 — startup proof ingestion. Mirrors session_identity: reuses
-  // the Bearer auth + relay transport above. Identity-bound + anti-replay +
-  // contract-verified; only a verified proof projects `oriented` (never
-  // `ready`). A bare ACK / wrong / replayed / identity-mismatched proof is an
-  // append-only rejection.
+  // OPR.0.4.3.06——startup proof 摄入。镜像 session_identity：复用上面的
+  // Bearer 鉴权 + relay 传输。绑定身份 + 防重放 + 契约校验；只有校验通过的 proof
+  // 才投影 `oriented`（绝不 `ready`）。裸 ACK / 错误 / 重放 / 身份不匹配的 proof
+  // 一律只追加拒绝。
   if (body.eventFamily === "startup_proof") {
     const eventBus = c.get("eventBus" as never) as EventBus | undefined;
     if (!eventBus) {
-      return c.json({ ok: false, code: "startup_proof_unconfigured", error: "Event bus not available" }, 503);
+      return c.json({ ok: false, code: "startup_proof_unconfigured", error: "事件总线不可用" }, 503);
     }
     const result = verifyStartupProof({ store, eventBus }, {
       sessionName: stringOrNull(body.sessionName),
@@ -191,8 +187,8 @@ activityRoutes.post("/hooks", async (c) => {
       answer: typeof body.answer === "string" ? body.answer : null,
     });
     if (!result.ok) {
-      // Identity failures (unknown identity, or a nodeId/sessionName that
-      // resolve to different seats) → 404; verification failures → 422.
+      // 身份失败（未知身份，或 nodeId/sessionName 解析到不同席位）→ 404；
+      // 校验失败 → 422。
       const status = result.code === "identity_unbound" || result.code === "identity_mismatch" ? 404 : 422;
       return c.json({ ok: false, code: result.code, error: result.error }, status);
     }
@@ -206,9 +202,9 @@ activityRoutes.post("/hooks", async (c) => {
     hookEvent: typeof body.hookEvent === "string" ? body.hookEvent : "",
     subtype: stringOrNull(body.subtype),
     occurredAt: stringOrNull(body.occurredAt),
-    // W2a-1 — source-bound emitting generation, carried by managed launch/fresh-handover producers.
-    // Legacy, excluded, or no-tenure emitting paths may omit it ⇒ stamped null ⇒ unresolved at read
-    // (sound per-path absence; never false-fresh).
+    // W2a-1——源绑定的发射 generation，由托管 launch/fresh-handover 生产者携带。
+    // 遗留、被排除或无 tenure 的发射路径可省略它 ⇒ 盖 null ⇒ 读取时未解析
+    // （按路径合理缺失；绝不 false-fresh）。
     generation: stringOrNull(body.generation),
   });
 
@@ -217,19 +213,18 @@ activityRoutes.post("/hooks", async (c) => {
     return c.json({ ok: false, code: result.code, error: result.error }, status);
   }
 
-  // S19 A4 — feed the ONE oracle through the adapter seam: the recorded (store-
-  // normalized) event becomes ladder evidence on the lifecycle-hooks rung. The store
-  // remains the raw-event recorder (startup-proof, delivery verification); arbitration
-  // happens only in SeatActivityService.
+  // S19 A4——经 adapter 接缝喂给唯一 oracle：已记录（store 归一化）的事件变为
+  // lifecycle-hooks rung 上的阶梯证据。store 仍是原始事件记录器
+  // （startup-proof、投递校验）；仲裁只在 SeatActivityService 发生。
   const oracle = c.get("seatActivityService" as never) as
     | import("../domain/seat-activity-service.js").SeatActivityService
     | undefined;
   const emitted = result.event as { nodeId?: string; sessionName?: string; runtime?: string } | undefined;
   if (oracle && emitted?.nodeId && emitted.sessionName) {
     const runtime = emitted.runtime ?? stringOrNull(body.runtime);
-    // Auto-declare on first hook evidence (and after a swap cleared the inventory):
-    // the runtime's inventory sets each rung's INITIAL trust (claude standing, codex
-    // hooks-at-trial per AM-2) — a successor's rungs always start unpromoted.
+    // 首次 hook 证据时自动声明（以及 swap 清空 inventory 后）：
+    // 运行时的 inventory 设定每个 rung 的初始信任（claude 常驻、codex 按 AM-2
+    // hooks-at-trial）——继任者的 rung 始终从不带提升开始。
     if (!oracle.hasRungInventory(emitted.nodeId)) {
       oracle.declareRungInventory(
         { seatNodeId: emitted.nodeId, sessionName: emitted.sessionName },
@@ -249,12 +244,11 @@ activityRoutes.post("/hooks", async (c) => {
   return c.json({ ok: true, activity: result.activity });
 });
 
-// ── S19 AM-R18 — the push substrate: GET /api/activity/events (SSE) ──
-// Desk-accepted shape (ruling row qitem-20260827001530): CHANGE NOTIFICATIONS ONLY —
-// seat.activity_changed (identity + seq) and seat.rung_health stream to the open view;
-// the view REHYDRATES from /api/ps. The push never carries derived vocabulary, so "no
-// second activity mechanism" holds by construction. No timers: pure bus relay;
-// disconnect unsubscribes.
+// ── S19 AM-R18——推送基底：GET /api/activity/events (SSE) ──
+// Desk 接受的形状（裁定行 qitem-20260827001530）：仅变更通知——
+// seat.activity_changed（身份 + seq）与 seat.rung_health 流式发给打开的视图；
+// 视图从 /api/ps 重新水合。推送绝不携带派生词汇，因此「无第二个活动机制」
+// 按构造成立。无定时器：纯总线中继；断开即退订。
 activityRoutes.get("/events", (c) => {
   const eventBus = c.get("eventBus" as never) as
     | { subscribe: (cb: (event: unknown) => void) => () => void }
@@ -263,7 +257,7 @@ activityRoutes.get("/events", (c) => {
     return c.json({
       ok: false,
       code: "activity_events_unconfigured",
-      error: "The activity event stream needs the event bus — not configured on this daemon.",
+      error: "活动事件流需要事件总线——本后台服务未配置。",
     }, 503);
   }
   return streamSSE(c, async (stream) => {
@@ -281,11 +275,10 @@ activityRoutes.get("/events", (c) => {
   });
 });
 
-// ── S19 A7 — the parked query surface: GET /api/activity/parked[?seat=] ──
-// Mounted under the existing activity route group (no new top-level mount): the parked
-// diagnosis is activity-domain — the JOIN of the oracle with the queue's obligation
-// face, derived at read time, never stored. Read-only: this route performs NO queue
-// writes and the oracle keeps its non-inference contract.
+// ── S19 A7——parked 查询表面：GET /api/activity/parked[?seat=] ──
+// 挂载在既有 activity 路由组下（不新增顶层挂载）：parked 诊断属于活动域——
+// oracle 与队列义务面的 JOIN，读取时派生、绝不存储。只读：本路由不做任何队列写，
+// oracle 保持其非推断契约。
 activityRoutes.get("/parked", (c) => {
   const oracle = c.get("seatActivityService" as never) as
     | import("../domain/seat-activity-service.js").SeatActivityService
@@ -301,7 +294,7 @@ activityRoutes.get("/parked", (c) => {
     return c.json({
       ok: false,
       code: "parked_query_unconfigured",
-      error: "The parked query needs the activity oracle, queue repository and rig repository — one is not configured on this daemon.",
+      error: "parked 查询需要活动 oracle、队列 repository 与 rig repository——本后台服务未配置其中之一。",
     }, 503);
   }
 
@@ -317,11 +310,10 @@ activityRoutes.get("/parked", (c) => {
     getParkWake: (qitemId: string) => queueRepo.getParkWakeStatus(qitemId),
   };
 
-  // WAVE-O B2 (R2 508e383d): the diagnosis is RIG-SCOPED, never fleet-wide. Resolve ONE
-  // declared scope — an explicit seat coordinate carrying its @rig, the explicit ?rig=
-  // parameter, or the caller's own session identity — and NAME it in the response
-  // (AM-3: the scope that ran is part of the answer). No resolvable scope is an honest
-  // refusal, never a silent fold of every rig on the daemon.
+  // WAVE-O B2 (R2 508e383d)：诊断是 rig 范围的，绝不是全 fleet。解析一个声明的
+  // scope——携带 @rig 的显式 seat 坐标、显式 ?rig= 参数，或调用方自己的会话身份——
+  // 并在响应中具名（AM-3：运行的 scope 是答案的一部分）。无可解析 scope 即诚实拒绝，
+  // 绝不静默折叠后台服务上的每个 rig。
   const seatParam = c.req.query("seat") || undefined;
   const rigParam = c.req.query("rig") || undefined;
   const callerSession = c.req.header("x-openrig-session") || undefined;
@@ -331,14 +323,14 @@ activityRoutes.get("/parked", (c) => {
   } else if (rigParam) {
     scope = { rig: rigParam, resolvedFrom: "query-param" };
   } else if (callerSession?.includes("@")) {
-    // Canonical local form name@rig; a cross-host stamp name@rig@host parses the same.
+    // 规范本地形式 name@rig；跨 host 戳 name@rig@host 解析方式相同。
     scope = { rig: callerSession.split("@")[1]!, resolvedFrom: "caller-session" };
   }
   if (!scope) {
     return c.json({
       ok: false,
       code: "rig_scope_unresolvable",
-      error: "The parked diagnosis is rig-scoped and no rig coordinate could be resolved — pass ?rig=<name> (CLI: --rig), target a seat by its canonical session name (?seat=name@rig), or call from a seat shell so the session identity carries the rig.",
+      error: "parked 诊断是 rig 范围的，但无法解析出 rig 坐标——请传 ?rig=<name>（CLI：--rig）、用规范会话名指定席位（?seat=name@rig），或从席位 shell 调用使会话身份携带 rig。",
     }, 400);
   }
   const rigRow = rigRepo.db.prepare("SELECT id, name FROM rigs WHERE name = ?").get(scope.rig) as { id: string; name: string } | undefined;
@@ -347,7 +339,7 @@ activityRoutes.get("/parked", (c) => {
     return c.json({
       ok: false,
       code: "rig_not_found",
-      error: `No rig named "${scope.rig}" on this daemon — known rigs: ${known.join(", ") || "(none)"}.`,
+      error: `本后台服务没有名为 "${scope.rig}" 的 rig——已知 rig：${known.join(", ") || "（无）"}。`,
     }, 404);
   }
 
@@ -366,7 +358,7 @@ activityRoutes.get("/parked", (c) => {
       return c.json({
         ok: false,
         code: "seat_not_found",
-        error: `No running seat in rig "${scope.rig}" matches "${seatParam}" — pass a node id or canonical session name (known in scope: ${seats.map((s) => s.session_name).join(", ") || "(none running)"}).`,
+        error: `rig "${scope.rig}" 中没有运行中的席位匹配 "${seatParam}"——请传 node id 或规范会话名（范围内已知：${seats.map((s) => s.session_name).join(", ") || "（无运行中）"}）。`,
       }, 404);
     }
     return c.json({

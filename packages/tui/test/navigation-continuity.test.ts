@@ -6,7 +6,7 @@ import { createViewState, emptySnapshot } from "../src/state.js";
 import { renderScreen } from "../src/render.js";
 import { demoSnapshot } from "../src/demo-data.js";
 
-it("a newly selected page completes before an old transport releases, and Back keeps its own reads", async () => {
+it("新选页在旧传输释放前完成，Back 保留自身读取", async () => {
   let scope = "a";
   let release!: () => void;
   let slow = false;
@@ -31,14 +31,14 @@ it.each([[140, 42], [80, 24]])("first-visit navigation keeps scope-labelled prio
   view.dispatch({ type: "jump", section: "terminals" });
   const screen = renderScreen(view.get(), snap, { cols, rows, load: { inFlight: true, settled: false }, previousPage: { state: previous, snapshot: snap } });
   const text = screen.lines.join("\n");
-  expect(text).toContain("Previous: topology");
-  expect(text).toContain("Choose a rig");
+  expect(text).toContain("先前: 拓扑");
+  expect(text).toContain("选择一个工作组");
   expect(screen.explorerRows.some(r => r.key === "section:specs")).toBe(true);
   expect(screen.contentTargets).toEqual([]);
   expect(screen.hitMap.some(hit => hit.action.type === "act")).toBe(false);
 });
 
-it("a 24-rig landing fetches names only; a selected rig never reads unrelated inventory, missions or reviews", async () => {
+it("24-rig landing 只取名字；选中 rig 绝不读无关 inventory、mission 或 review", async () => {
   const calls: string[] = [];
   const rigs = Array.from({ length: 24 }, (_, n) => ({ id: `r${n}`, name: `rig${n}`, lifecycleState: "running" }));
   const client = new DaemonClient({ baseUrl: "http://fixture", fetchImpl: (async input => {
@@ -53,7 +53,7 @@ it("a 24-rig landing fetches names only; a selected rig never reads unrelated in
   snap = await hydrateSnapshot(client, undefined, null, null, null, view.get());
   expect(calls.sort()).toEqual(["/api/rigs/summary", "/healthz"]);
   expect(snap.hosts[0]?.rigs).toHaveLength(24);
-  expect(renderScreen(view.get(), snap).lines.join("\n")).toContain("Choose a rig");
+  expect(renderScreen(view.get(), snap).lines.join("\n")).toContain("选择一个工作组");
   view.dispatch({ type: "drill", resource: "rig", name: "rig17", target: { host: "fixture" } }); calls.length = 0;
   snap = await hydrateSnapshot(client, undefined, null, null, "rig17", view.get());
   expect(snap.readErrors).toEqual([]);
@@ -61,7 +61,7 @@ it("a 24-rig landing fetches names only; a selected rig never reads unrelated in
   expect(calls).toHaveLength(4);
 });
 
-it("terminal names never wait for all-rig liveness or any provider preview", async () => {
+it("terminal 名绝不等待全 rig 活性或任何 provider 预览", async () => {
   const calls: string[] = [];
   const client = new DaemonClient({ baseUrl: "http://fixture", fetchImpl: (async input => {
     calls.push(String(input));
@@ -75,7 +75,7 @@ it("terminal names never wait for all-rig liveness or any provider preview", asy
   expect(calls).toHaveLength(1);
 });
 
-it("a denial invalidates older views of the same file, while other page reads survive", async () => {
+it("拒绝使同文件旧视图失效，其他页读取存活", async () => {
   let scope = "a"; let status = 200;
   const client = new DaemonClient({ baseUrl: "http://fixture", fetchImpl: (async input => String(input).includes("/roots")
     ? Response.json({ roots: [] })

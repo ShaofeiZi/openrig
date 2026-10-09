@@ -47,9 +47,8 @@ export interface LifecycleCompilation {
 type Mapping = Record<string, unknown>;
 
 /**
- * Read and compile project/mission/slice manifests without writing a file,
- * cache row, workflow instance, or qitem.  The generated spec is an output,
- * never a second authored source.
+ * 读取并编译 project/mission/slice manifest，不写文件、cache row、workflow instance 或
+ * qitem。生成的 spec 是输出，绝不是第二份 authored source。
  */
 export function compileProjectLifecycle(input: {
   missionPath: string;
@@ -83,7 +82,7 @@ export function compileProjectLifecycle(input: {
   if (boundary) {
     knownKeys(boundary, ["profile", "mode", "workflow"], `${missionPath}: lifecycle`);
     if (requiredString(boundary.profile, `${missionPath}: lifecycle.profile`) !== lifecycleProfile) {
-      throw manifestError("lifecycle_profile_mismatch", "Mission lifecycle.profile must match the profile selected by project.yaml");
+      throw manifestError("lifecycle_profile_mismatch", "任务目标的 lifecycle.profile 必须与 project.yaml 选择的 profile 一致");
     }
   }
   const projectRefs = stringList(asMapping(project.install, `${projectPath}: install`, true)?.context, `${projectPath}: install.context`, true);
@@ -106,29 +105,29 @@ export function compileProjectLifecycle(input: {
   if (lifecycle && Object.hasOwn(lifecycle, "profiles")) {
     const profiles = asMapping(lifecycle.profiles, `${projectPath}: lifecycle.profiles`);
     if (!lifecycleProfile || !Object.hasOwn(profiles, lifecycleProfile)) {
-      throw manifestError("lifecycle_profile_not_found", "project.lifecycle.profile must select an existing lifecycle.profiles entry");
+      throw manifestError("lifecycle_profile_not_found", "project.lifecycle.profile 必须选择现有的 lifecycle.profiles entry");
     }
     const source = `${projectPath}#lifecycle.profiles.${lifecycleProfile}`;
     const profile = asMapping(profiles[lifecycleProfile], source);
     knownKeys(profile, ["required_steps", "workflow"], source);
     const required = stringList(profile.required_steps, `${source}.required_steps`);
-    if (required.length === 0) throw manifestError("lifecycle_required_steps_empty", `${source}: required_steps must name the boundary obligations`);
+    if (required.length === 0) throw manifestError("lifecycle_required_steps_empty", `${source}：required_steps 必须点名 boundary obligation`);
     const base = parseBoundary(asMapping(profile.workflow, `${source}.workflow`), `${source}.workflow`, workspaceRoot);
     validateObligations(base, required);
     authoredBoundary = base;
     Object.assign(graphSource, { mode: "project-profile", profileSource: source, requiredSteps: required });
     if (boundary && (Object.hasOwn(boundary, "workflow") || Object.hasOwn(boundary, "mode"))) {
       if (boundary.mode !== "extend" && boundary.mode !== "override") {
-        throw manifestError("lifecycle_override_ambiguous", "Mission lifecycle.workflow over a project profile requires mode: extend or override");
+        throw manifestError("lifecycle_override_ambiguous", "任务目标在项目 profile 上声明 lifecycle.workflow 时，必须指定 mode: extend 或 override");
       }
       const addition = asMapping(boundary.workflow, `${missionPath}: lifecycle.workflow`);
       const missionSource = `${missionPath}#lifecycle.workflow`;
       if (boundary.mode === "extend") {
         knownKeys(addition, ["steps", "roles", "context_refs"], missionSource);
-        if (!Array.isArray(addition.steps)) throw manifestError("lifecycle_extension_invalid", "An extension must declare a steps list");
+        if (!Array.isArray(addition.steps)) throw manifestError("lifecycle_extension_invalid", "extension 必须声明 steps 列表");
         const ids = new Set(base.steps.map((step) => step.id));
         if (addition.steps.some((step) => ids.has(asMapping(step, missionSource).id as string))) {
-          throw manifestError("lifecycle_extension_collision", "An extension cannot replace an inherited step; use explicit mode: override");
+          throw manifestError("lifecycle_extension_collision", "extension 不能替换继承的 step；请显式使用 mode: override");
         }
         authoredBoundary = parseBoundary({ ...base, ...addition,
           roles: { ...base.roles, ...asMapping(addition.roles, `${missionSource}.roles`, true) },
@@ -144,11 +143,11 @@ export function compileProjectLifecycle(input: {
       Object.assign(graphSource, { mode: `mission-${boundary.mode}`, missionSource });
     }
   } else if (boundary) {
-    if (Object.hasOwn(boundary, "mode")) throw manifestError("lifecycle_override_without_profile", "Mission mode requires a project-owned profile graph");
+    if (Object.hasOwn(boundary, "mode")) throw manifestError("lifecycle_override_without_profile", "任务目标 mode 需要项目拥有的 profile graph");
     authoredBoundary = parseBoundary(asMapping(boundary.workflow, `${missionPath}: lifecycle.workflow`), `${missionPath}#lifecycle.workflow`, missionDir);
     Object.assign(graphSource, { mode: "legacy-mission", missionSource: `${missionPath}#lifecycle.workflow` });
   }
-  if (!graphSource.profileSource) advisories.push("Legacy lifecycle: no project-owned profile graph is selected; only the authored mission or slice graph applies.");
+  if (!graphSource.profileSource) advisories.push("Legacy lifecycle：未选择项目拥有的 profile graph；只应用用户编写的任务目标或 slice graph。");
 
   members.forEach((member) => {
     const { ref, normalizedRef, path: slicePath } = member;
@@ -157,18 +156,18 @@ export function compileProjectLifecycle(input: {
     const sliceComposition = asMapping(slice.composition, `${slicePath}: composition`);
     const missionRef = requiredString(sliceComposition.mission, `${slicePath}: composition.mission`);
     if (isAbsolute(missionRef)) {
-      throw manifestError("lifecycle_path_escape", `${slicePath}: composition.mission must be relative`, { slicePath, missionRef });
+      throw manifestError("lifecycle_path_escape", `${slicePath}：composition.mission 必须使用相对路径`, { slicePath, missionRef });
     }
     const resolvedMissionRef = resolve(dirname(slicePath), missionRef);
     if (!existsSync(resolvedMissionRef) || realpathSync(resolvedMissionRef) !== realpathSync(missionPath)) {
-      throw manifestError("lifecycle_slice_mission_mismatch", `${slicePath}: composition.mission does not resolve to ${missionPath}`, { slicePath, missionRef, missionPath });
+      throw manifestError("lifecycle_slice_mission_mismatch", `${slicePath}：composition.mission 无法解析到 ${missionPath}`, { slicePath, missionRef, missionPath });
     }
 
-    // A mission boundary is explicitly authored; slice SDLC never manufactures its steps.
+    // 任务目标 boundary 已由用户显式编写；slice SDLC 绝不凭空生成其中的 step。
     if (authoredBoundary || !member.active) return;
     const execution = asMapping(slice.execution, `${slicePath}: execution`, true);
     if (!execution) {
-      unknowns.push(`${normalizedRef}: execution contract missing`);
+      unknowns.push(`${normalizedRef}：缺少 execution contract`);
       return;
     }
     const stepId = optionalString(asMapping(slice.metadata, `${slicePath}: metadata`, true)?.id, `${slicePath}: metadata.id`) ?? basename(dirname(slicePath));
@@ -191,18 +190,18 @@ export function compileProjectLifecycle(input: {
     steps.push(step);
   });
 
-  if (!input.operationKey) unknowns.push("opaque lifecycle operation key not supplied");
-  if (!lifecycleProfile) unknowns.push("project lifecycle profile missing");
+  if (!input.operationKey) unknowns.push("未提供 opaque lifecycle operation key");
+  if (!lifecycleProfile) unknowns.push("缺少项目 lifecycle profile");
   if (authoredBoundary) steps.push(...authoredBoundary.steps);
-  if (steps.length === 0) unknowns.push("no active slice declares an execution contract; author mission.lifecycle for an independent mission boundary");
+  if (steps.length === 0) unknowns.push("没有 active slice 声明 execution contract；请为独立任务目标 boundary 编写 mission.lifecycle");
   if (steps.length > 0 && steps.every((step) => (step.depends_on ?? []).length > 0)) {
-    unknowns.push("execution graph has no root step");
+    unknowns.push("execution graph 没有 root step");
   }
   const draftWorkflowSpec: WorkflowSpec | null = authoredBoundary ?? (steps.length > 0
     ? {
         id: `lifecycle-${projectId}-${missionName}`,
         version: "1",
-        objective: `Compiled lifecycle for ${projectId}/${missionName}`,
+        objective: `${projectId}/${missionName} 的已编译 lifecycle`,
         entry: { role: steps.find((step) => (step.depends_on ?? []).length === 0)?.actor_role },
         roles,
         steps,
@@ -220,12 +219,12 @@ export function compileProjectLifecycle(input: {
   if (workflowSpec) {
     const validation = new WorkflowValidator().validate(workflowSpec);
     for (const issue of validation.issues) {
-      const rendered = `compiled workflow [${issue.code}]: ${issue.message}`;
+      const rendered = `已编译工作流 [${issue.code}]：${issue.message}`;
       if (issue.severity === "error") unknowns.push(rendered);
       else advisories.push(rendered);
     }
   }
-  if (unknowns.length > 0) advisories.push("Compilation is inspectable but ineligible for instantiation until every named unknown is resolved.");
+  if (unknowns.length > 0) advisories.push("编译结果可供检查，但在解决每个已点名的 unknown 之前不能实例化。");
   return {
     readiness: readMissionReadiness(missionDir),
     version: 1,
@@ -248,19 +247,19 @@ function address(root: string, ref: string): string {
 
 function knownKeys(mapping: Mapping, allowed: string[], source: string): void {
   for (const key of Object.keys(mapping)) {
-    if (!allowed.includes(key)) throw manifestError("lifecycle_boundary_unknown_key", `${source}: unknown key ${key}`);
+    if (!allowed.includes(key)) throw manifestError("lifecycle_boundary_unknown_key", `${source}：未知 key ${key}`);
   }
 }
 
-/** Required IDs and their ordering are authored policy, not daemon receipt interpretation. */
+/** 必需 ID 及其顺序属于 authored policy，不由后台服务解释 receipt。 */
 function validateObligations(spec: WorkflowSpec, required: string[], base?: WorkflowSpec): void {
   const byId = new Map(spec.steps.map((step) => [step.id, step]));
   const missing = required.filter((id) => !byId.has(id));
-  if (missing.length) throw manifestError("lifecycle_required_step_missing", `Missing required boundary steps: ${missing.join(", ")}`, { missing });
-  // A dependency graph cannot take a conditional jump around its required obligations.
+  if (missing.length) throw manifestError("lifecycle_required_step_missing", `缺少必需的 boundary step：${missing.join(", ")}`, { missing });
+  // dependency graph 不能通过条件跳转绕过必需 obligation。
   for (const step of spec.steps) {
     if (step.depends_on === undefined || step.next_hop?.on) {
-      throw manifestError("lifecycle_boundary_graph_invalid", `Boundary step ${step.id} must use depends_on, without conditional next_hop.on edges`);
+      throw manifestError("lifecycle_boundary_graph_invalid", `Boundary step ${step.id} 必须使用 depends_on，不能带条件 next_hop.on edge`);
     }
   }
   const ancestors = (steps: WorkflowStepSpec[], id: string, seen = new Set<string>()): Set<string> => {
@@ -273,26 +272,26 @@ function validateObligations(spec: WorkflowSpec, required: string[], base?: Work
     const before = ancestors(base.steps, id);
     const after = ancestors(spec.steps, id);
     const lost = required.filter((parent) => before.has(parent) && !after.has(parent));
-    if (lost.length) throw manifestError("lifecycle_required_order_changed", `Required step ${id} lost prerequisites: ${lost.join(", ")}`, { stepId: id, missing: lost });
+    if (lost.length) throw manifestError("lifecycle_required_order_changed", `必需 step ${id} 丢失 prerequisite：${lost.join(", ")}`, { stepId: id, missing: lost });
   }
 }
 
 function resolveManifest(input: string, file: string): string {
   const candidate = resolve(input);
   const path = existsSync(candidate) && lstatSync(candidate).isDirectory() ? join(candidate, file) : candidate;
-  // Canonicalize parent aliases (e.g. macOS /var -> /private/var) without
-  // erasing the existing refusal for a manifest that is itself a symlink.
+  // 规范化 parent alias（例如 macOS /var -> /private/var），但不能抹掉对 manifest 本身为
+  // symlink 的现有拒绝。
   return existsSync(path) && !lstatSync(path).isSymbolicLink() ? realpathSync(path) : path;
 }
 
 function readManifest(path: string, kind: string): Mapping {
-  if (!existsSync(path)) throw manifestError("lifecycle_manifest_missing", `${kind} manifest not found at ${path}`, { path, kind });
-  if (lstatSync(path).isSymbolicLink()) throw manifestError("lifecycle_manifest_symlink", `${kind} manifest may not be a symlink: ${path}`, { path, kind });
+  if (!existsSync(path)) throw manifestError("lifecycle_manifest_missing", `${path} 中未找到 ${kind} manifest`, { path, kind });
+  if (lstatSync(path).isSymbolicLink()) throw manifestError("lifecycle_manifest_symlink", `${kind} manifest 不能是 symlink：${path}`, { path, kind });
   let parsed: unknown;
   try { parsed = parseYaml(readFileSync(path, "utf8")); }
-  catch (error) { throw manifestError("lifecycle_manifest_invalid", `${kind} manifest at ${path} is invalid YAML: ${error instanceof Error ? error.message : String(error)}`, { path, kind }); }
+  catch (error) { throw manifestError("lifecycle_manifest_invalid", `${path} 中的 ${kind} manifest 不是有效 YAML：${error instanceof Error ? error.message : String(error)}`, { path, kind }); }
   const mapping = asMapping(parsed, path);
-  if (mapping.kind !== kind) throw manifestError("lifecycle_manifest_kind_mismatch", `${path}: expected kind ${kind}, got ${JSON.stringify(mapping.kind)}`, { path, expected: kind, actual: mapping.kind });
+  if (mapping.kind !== kind) throw manifestError("lifecycle_manifest_kind_mismatch", `${path}：预期 kind ${kind}，实际 ${JSON.stringify(mapping.kind)}`, { path, expected: kind, actual: mapping.kind });
   return mapping;
 }
 
@@ -300,12 +299,12 @@ function asMapping(value: unknown, label: string, optional?: false): Mapping;
 function asMapping(value: unknown, label: string, optional: true): Mapping | null;
 function asMapping(value: unknown, label: string, optional = false): Mapping | null {
   if ((value === undefined || value === null) && optional) return null;
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw manifestError("lifecycle_manifest_shape_invalid", `${label} must be a mapping`, { label, value });
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw manifestError("lifecycle_manifest_shape_invalid", `${label} 必须是 mapping`, { label, value });
   return value as Mapping;
 }
 
 function requiredString(value: unknown, label: string): string {
-  if (typeof value !== "string" || value.trim() === "") throw manifestError("lifecycle_field_missing", `${label} must be a non-empty string`, { label, value });
+  if (typeof value !== "string" || value.trim() === "") throw manifestError("lifecycle_field_missing", `${label} 必须是非空字符串`, { label, value });
   return value;
 }
 
@@ -316,8 +315,8 @@ function optionalString(value: unknown, label: string): string | null {
 
 function stringList(value: unknown, label: string, optional = false): string[] {
   if ((value === undefined || value === null) && optional) return [];
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.length === 0)) throw manifestError("lifecycle_field_invalid", `${label} must be a list of non-empty strings`, { label, value });
-  if (new Set(value).size !== value.length) throw manifestError("lifecycle_field_duplicate", `${label} contains a duplicate`, { label, value });
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.length === 0)) throw manifestError("lifecycle_field_invalid", `${label} 必须是非空字符串列表`, { label, value });
+  if (new Set(value).size !== value.length) throw manifestError("lifecycle_field_duplicate", `${label} 包含重复项`, { label, value });
   return value as string[];
 }
 

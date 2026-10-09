@@ -12,7 +12,7 @@ import { RigTeardownOrchestrator } from "../src/domain/rig-teardown.js";
 import { SessionTransport } from "../src/domain/session-transport.js";
 import { OutboxHandler } from "../src/domain/outbox-handler.js";
 
-// Real services and private SQLite; terminal/file effects are injected, never executed.
+// 真实 service 与私有 SQLite；terminal/file 效果为注入，绝不执行。
 function fixture(hooks: { file?: () => Promise<void>; exec?: (command: string) => Promise<string>; realPanes?: boolean } = {}) {
   const db = new Database(":memory:"); migrate(db, ALL_MIGRATIONS);
   db.exec(`INSERT INTO rigs(id,name) VALUES ('r','fixture');
@@ -90,11 +90,11 @@ describe("occupant fencing through payload preparation", () => {
         f = fixture({ file: boundary === "file" ? reconcile : undefined, exec: async c => { if (boundary === "load" && c.includes("load-buffer")) await reconcile(); return ""; } });
         const before = f.guard.target("a");
         const result = fullTransport ? await f.transport.send("worker@fixture", "message", { force: true }) : await f.tmux.sendText("worker@fixture", "message");
-        expect(reconciled).toMatchObject({ ok: false, code: "reconcile_error", message: expect.stringContaining("operation in progress") });
+        expect(reconciled).toMatchObject({ ok: false, code: "reconcile_error", message: expect.stringContaining("operation 正在进行") });
         expect(f.guard.target("a")).toEqual(before); expect(result.ok).toBe(true);
         expect(f.commands.filter(c => c.includes("paste-buffer"))).toHaveLength(1);
         expect(f.commands.filter(c => c.includes("send-keys"))).toHaveLength(fullTransport ? 1 : 0);
-        // After the operation finishes the same supported reconcile route succeeds.
+        // 操作完成后，同一支持的 reconcile 路由成功。
         expect((await f.claim.reconcileSession({ sessionName: "worker@fixture" })).ok).toBe(true);
         expect(f.guard.target("a").occupant).not.toBe(before.occupant); f.db.close();
       });
@@ -129,7 +129,7 @@ describe("occupant fencing through payload preparation", () => {
     expect(f.guard.preference("a").effective).toBe(true);
     const count = f.commands.length;
     expect(await f.transport.send("worker@fixture", "held", { deliveryId: "held", force: true })).toMatchObject({ outcome: "retained", sent: false });
-    expect(await f.claim.reconcileSession({ sessionName: "worker@fixture" })).toMatchObject({ ok: false, message: expect.stringContaining("protection is enabled") });
+    expect(await f.claim.reconcileSession({ sessionName: "worker@fixture" })).toMatchObject({ ok: false, message: expect.stringContaining("protection 启用") });
     expect(f.commands).toHaveLength(count); expect(f.outbox.getById("held")?.deliveryState).toBe("retained");
     expect(f.guard.target("a")).toEqual(before); f.db.close();
   });
@@ -139,7 +139,7 @@ describe("occupant fencing through payload preparation", () => {
     const pending = f.claim.reconcileSession({ sessionName: "worker@fixture" }); await entered.ready;
     expect((await f.claim.reconcileSession({ sessionName: "worker@fixture" })).ok).toBe(true);
     const current = f.guard.target("a"); finish.release();
-    expect(await pending).toMatchObject({ ok: false, message: expect.stringContaining("changed during observation") });
+    expect(await pending).toMatchObject({ ok: false, message: expect.stringContaining("observation 期间 reconciliation target 已变化") });
     expect(f.guard.target("a")).toEqual(current); f.db.close();
   });
 });

@@ -1,31 +1,24 @@
-// OPR.0.5.6.24 F-14 — the parked-owner consumer.
+// OPR.0.5.6.24 F-14——停放所有者消费者。
 //
-// A diagnosis with zero consumers is a gate beside an open door. This policy is
-// the ONE bounded consumer of the shipped parked derivation: ONE rig-level
-// supervisor job per rig (anchor `parked-owner-consumer@<rigName>`), diagnosing
-// the WHOLE rig through the same derivation `rig parked` serves and sending ONE
-// wake to the first eligible parked owner per evaluation. The S01 ladder owns
-// retries/escalation; the watchdog engine owns scheduling.
+// 没有消费者的诊断就像开着门却在旁边设闸。此策略是已发布 parked 推导的唯一有界消费者：
+// 每个工作组一个工作组级 supervisor job（锚点 `parked-owner-consumer@<rigName>`），
+// 通过 `zrig parked` 服务的同一推导诊断整个工作组，并在每次评估时只向首个符合条件的
+// 已停放所有者发送一次唤醒。S01 阶梯负责重试/升级，watchdog 引擎负责调度。
 //
-// RECEIPTS ARE ROW-SIDE (R2 repair, advisor-approved): the episode receipt is a
-// queue TRANSITION on the episode's primary obligation row, written BEFORE the
-// engine delivers (reserve-before-deliver — the at-most-once contract: a crash
-// between reserve and delivery loses that wake recoverably, never duplicates;
-// exactly-once is not claimed without an idempotent transport). Durability comes
-// from queue-retention's binding active-frontier invariant — transitions of any
-// non-terminal qitem are never touched, at any age — so an open park's receipt
-// outlives watchdog telemetry pruning by construction, and once the row is
-// terminal the obligation is gone and the episode is moot.
+// 回执保存在行侧（R2 修复，advisor 批准）：episode 回执是其主要义务行上的队列 TRANSITION，
+// 在引擎投递前写入（先保留后投递——至多一次契约：保留与投递之间崩溃会以可恢复方式丢失
+// 该次唤醒，但绝不重复；没有幂等传输时不声称恰好一次）。持久性来自 queue-retention 的
+// 活动前沿承重不变量：任何非终态 qitem 的 transition 无论多旧都不会被触碰，因此开放停放的
+// 回执在结构上比 watchdog 遥测裁剪存活更久；行进入终态后义务消失，episode 也失去意义。
 //
-// One-oracle law (mini-req 2): the parked verdict, held-health classification,
-// indeterminate arm, and obligation join all come from diagnoseRigParked — this
-// module re-derives nothing and never reads raw per-runtime evidence.
+// 单一判定源法则（mini-req 2）：parked 判定、held 健康分类、indeterminate 分支与义务关联
+// 全部来自 diagnoseRigParked；本模块不重新推导任何内容，也绝不读取逐运行时原始证据。
 
 import { createHash } from "node:crypto";
 import type { Policy, PolicyJob, PolicyEvaluation } from "./types.js";
 import type { WatchdogHistoryEntry } from "../watchdog-history-log.js";
 
-/** Structural view of the shipped SeatParkedDiagnosis (parked-query.ts). */
+/** 已发布 SeatParkedDiagnosis（parked-query.ts）的结构视图。 */
 export interface ParkedSeatDiagnosisView {
   sessionName: string;
   parked: boolean | "indeterminate";
@@ -42,32 +35,30 @@ export interface RowTransitionView {
 }
 
 export interface ParkedOwnerConsumerDeps {
-  /** The shipped rig-scoped diagnosis (diagnoseRigParked), adapter-constructed. */
+  /** 已发布的工作组范围诊断（diagnoseRigParked），由适配器构造。 */
   diagnoseRig: (rigName: string) => { seats: ParkedSeatDiagnosisView[] } | null;
-  /** Telemetry — used ONLY to reconcile recent delivery outcomes onto rows
-   *  (immediate horizon); NEVER as episode state. */
+  /** 遥测——仅用于把近期投递结果对账到行（即时窗口），绝不作为 episode 状态。 */
   history: {
     listForJob: (jobId: string, limit: number) => WatchdogHistoryEntry[];
     countForJob: (jobId: string) => number;
   };
-  /** The durable row-side surfaces (queue repository, adapter-wired). */
+  /** 持久行侧表面（队列仓库，由适配器接线）。 */
   rows: {
     listTransitions: (qitemId: string) => RowTransitionView[];
-    /** State-preserving note append; ok:false when the row is terminal or missing
-     *  (the last guard of the delivery boundary). */
+    /** 保持状态的说明追加；行已终态或缺失时返回 ok:false（投递边界最后一道守卫）。 */
     appendNote: (qitemId: string, note: string) => { ok: boolean };
-    /** Lands a failed wake in the ladder's native vocabulary (last_nudge_result). */
+    /** 使用阶梯原生词汇把失败唤醒落到 last_nudge_result。 */
     recordNudgeResult: (qitemId: string, result: string) => void;
-    /** FRESH open-obligation ids for a seat at the send boundary (B1 recheck). */
+    /** 发送边界上席位最新的开放义务 ID（B1 复查）。 */
     listOpenIds: (destinationSession: string) => string[];
-    /** Existing delivery/recovery ownership; does not change the parked diagnosis. */
+    /** 既有投递/恢复所有权；不改变 parked 诊断。 */
     recoveryOwnsWake?: (qitemId: string) => boolean;
   };
 }
 
 export const PARKED_OWNER_POLICY_NAME = "parked-owner-consumer";
 
-/** Stable per-rig registration anchor: member@rig shape, policy name as slug. */
+/** 稳定的逐工作组注册锚点：member@rig 形状，以策略名为 slug。 */
 export function makeRigAnchor(rigName: string): string {
   return `${PARKED_OWNER_POLICY_NAME}@${rigName}`;
 }
@@ -78,16 +69,15 @@ export function rigFromAnchor(targetSession: string): string {
     : targetSession;
 }
 
-// ── The row-note contract (stable prefixes; parsed here and queried by the S01
-//    ladder arm via the NUDGE_FAIL prefix on last_nudge_result) ──
+// ── 行说明契约（稳定前缀；在此解析，S01 阶梯分支通过 last_nudge_result 上的
+//    NUDGE_FAIL 前缀查询）──
 export const RESERVE_PREFIX = "parked-owner wake reserved:";
 export const CLOSE_PREFIX = "parked-owner episode closed:";
 export const REFUSED_PREFIX = "parked-owner wake delivery refused:";
 export const FAILED_PREFIX = "parked-owner wake delivery failed:";
 export const NUDGE_FAIL_PREFIX = "failed: parked-owner wake delivery";
 
-/** Only the transport's interactive-prompt refusal counts — a generic failed
- *  delivery is never mislabeled refused. Literal source:
+/** 只有传输层的交互式提示拒绝才计入；普通投递失败绝不能被误标为 refused。字面来源：
  *  session-transport.ts:1045 `Refused: '<name>' is at an interactive prompt`. */
 function isRefusedInteractive(deliveryReason: unknown): boolean {
   return (
@@ -101,8 +91,7 @@ function idsHashOf(sortedIds: string[]): string {
   return createHash("sha256").update(sortedIds.join(",")).digest("hex").slice(0, 16);
 }
 
-/** The key sits immediately after the prefix, delimited by ';', ' (' or EOL —
- *  anchored on the prefix so body words can never masquerade as the key. */
+/** key 紧跟在前缀后，以 ';'、' (' 或行尾分隔。解析锚定前缀，使正文词语绝不能伪装成 key。 */
 function keyOfNote(note: string): string | null {
   for (const prefix of [RESERVE_PREFIX, CLOSE_PREFIX, REFUSED_PREFIX, FAILED_PREFIX]) {
     if (!note.startsWith(prefix)) continue;
@@ -119,16 +108,15 @@ interface RowEpisodeState {
   nextOrdinal: number;
 }
 
-/** Derive the episode state for one idsHash from the primary row's transitions.
- *  Open = a reserve note whose key has no later close note. FAILED annotates but
- *  does not close (the ladder owns the failure; the consumer never re-attempts).
- *  REFUSED marks the refusal cell for as long as the episode stays open. */
+/** 从主要行的 transition 推导一个 idsHash 的 episode 状态。Open 表示某 reserve 说明的 key
+ *  后续没有 close 说明。FAILED 只批注不关闭（失败归阶梯所有，消费者从不重试）。
+ *  episode 保持开放期间，REFUSED 持续标记拒绝单元格。 */
 function rowEpisode(transitions: RowTransitionView[], idsHash: string): RowEpisodeState {
   const closed = new Set<string>();
   const refusedKeys = new Set<string>();
   let openKey: string | null = null;
   let reserves = 0;
-  // listTransitions returns oldest-first; walk newest-first.
+  // listTransitions 按最旧优先返回；这里按最新优先遍历。
   for (let i = transitions.length - 1; i >= 0; i--) {
     const note = transitions[i]!.transitionNote ?? "";
     const key = keyOfNote(note);
@@ -143,8 +131,7 @@ function rowEpisode(transitions: RowTransitionView[], idsHash: string): RowEpiso
   return { openKey, refused: openKey !== null && refusedKeys.has(openKey), nextOrdinal: reserves + 1 };
 }
 
-/** Every open reserve key on a row, across all obligation-set hashes — the set a
- *  not-parked observation must close. */
+/** 一行上跨所有义务集合 hash 的全部开放 reserve key；not-parked 观测必须关闭这些 key。 */
 function openKeysOnRow(transitions: RowTransitionView[]): string[] {
   const closed = new Set<string>();
   const open: string[] = [];
@@ -168,10 +155,9 @@ export function makeParkedOwnerConsumerPolicy(deps: ParkedOwnerConsumerDeps): Po
         return { action: "skip", reason: "indeterminate-not-parked", notes: { rig: rigName } };
       }
 
-      // B2 reconciliation (bounded, immediate horizon): land recent delivery
-      // outcomes onto the reserved rows. Refusals mark the refusal cell; generic
-      // failures enter the ladder's native vocabulary via last_nudge_result.
-      // The episode stays OPEN either way — the consumer never re-attempts.
+      // B2 对账（有界、即时窗口）：把近期投递结果落到已保留行。拒绝会标记拒绝单元格；
+      // 普通失败通过 last_nudge_result 进入阶梯原生词汇。无论哪种情况 episode 都保持开放，
+      // 消费者绝不重试。
       const recent = deps.history.listForJob(job.jobId, Math.min(deps.history.countForJob(job.jobId), 25));
       for (const e of recent) {
         if (e.outcome !== "sent" || !e.deliveryStatus || e.deliveryStatus === "ok") continue;
@@ -209,9 +195,8 @@ export function makeParkedOwnerConsumerPolicy(deps: ParkedOwnerConsumerDeps): Po
         ].filter((v, i, a) => a.indexOf(v) === i);
 
         if (seat.parked === false) {
-          // The episode ends when the seat reads not-parked: close every open
-          // reserve key on the seat's rows, durably, on this pass (bounded —
-          // one close note per open key, never a write per clean scan).
+          // 席位读为 not-parked 时 episode 结束：本轮持久关闭席位行上的每个开放 reserve key
+          //（有界——每个开放 key 一条 close 说明，绝不在每次干净扫描时写入）。
           for (const qitemId of knownRows) {
             for (const key of openKeysOnRow(deps.rows.listTransitions(qitemId))) {
               deps.rows.appendNote(qitemId, `${CLOSE_PREFIX} ${key} (seat resumed)`);
@@ -221,7 +206,7 @@ export function makeParkedOwnerConsumerPolicy(deps: ParkedOwnerConsumerDeps): Po
           continue;
         }
 
-        // Whole diagnosis inherited: open items PLUS unhealthy HELD rows.
+        // 继承完整诊断：开放事项加上不健康的 HELD 行。
         const ids = [
           ...seat.obligations.items.map((r) => r.qitemId),
           ...seat.obligations.held.filter((h) => h.healthy === false).map((h) => h.qitemId),
@@ -233,15 +218,14 @@ export function makeParkedOwnerConsumerPolicy(deps: ParkedOwnerConsumerDeps): Po
           continue;
         }
 
-        // S16 composition: usage-limit parks belong to S16's timed wake.
+        // S16 组合：usage-limit 停放归 S16 定时唤醒所有。
         const niReason = seat.activity.needsInput.reason ?? "";
         if (/usage.?limit/i.test(niReason)) {
           skipped.push({ seat: seat.sessionName, why: "usage-limit-defer-s16" });
           continue;
         }
 
-        // B1 — the delivery-boundary recheck: re-read the seat's open rows NOW;
-        // an obligation closed after diagnosis must not be named or woken.
+        // B1——投递边界复查：此刻重新读取席位开放行；诊断后关闭的义务不得再被点名或唤醒。
         const fresh = new Set(deps.rows.listOpenIds(seat.sessionName));
         const namedIds = ids.filter((id) => fresh.has(id) && !deps.rows.recoveryOwnsWake?.(id));
         if (namedIds.length === 0) {
@@ -260,8 +244,7 @@ export function makeParkedOwnerConsumerPolicy(deps: ParkedOwnerConsumerDeps): Po
           continue;
         }
 
-        // B4 — reserve BEFORE the engine delivers: the durable receipt is this
-        // transition; a terminal race at the row is the final honest guard.
+        // B4——引擎投递前先 reserve：此 transition 即持久回执；行上的终态竞态是最后一道诚实守卫。
         const episodeKey = `${seat.sessionName}|${idsHash}#${ep.nextOrdinal}`;
         const reserved = deps.rows.appendNote(
           primaryRow,
@@ -273,10 +256,9 @@ export function makeParkedOwnerConsumerPolicy(deps: ParkedOwnerConsumerDeps): Po
         }
 
         const message =
-          `You are parked (arbitrated: idle at prompt) while holding ${namedIds.length} open ` +
-          `obligation${namedIds.length === 1 ? "" : "s"}: ${namedIds.join(", ")}. ` +
-          `Resume the work or update each row honestly (close, park-with-wake, or hand off). ` +
-          `This is the one wake for this park episode; the wake-or-escalate ladder owns anything further.`;
+          `你在持有 ${namedIds.length} 个开放义务时处于停放状态（裁定结果：停在提示符）：` +
+          `${namedIds.join(", ")}。请恢复工作，或如实更新每一行（关闭、带唤醒停放或移交）。` +
+          `这是本次停放 episode 的唯一一次唤醒；后续由“唤醒或升级”阶梯负责。`;
         return {
           action: "send",
           target: { session: seat.sessionName },

@@ -25,7 +25,7 @@ function setup() {
   const home = mkdtempSync(join(tmpdir(), "health-diagnosis-"));
   cleanup.push(() => rmSync(home, { recursive: true, force: true }));
   const db = createDb();
-  // Receipt tests need migration 076; the shared "full" fixture intentionally omits it.
+  // Receipt 测试需要 migration 076；共享的 "full" fixture 有意省略了它。
   migrate(db, ALL_MIGRATIONS);
   cleanup.push(() => db.close());
   const queue = new QueueRepository(db, new EventBus(db), { loadHumanRegistry: () => ({ ok: true, entities: [
@@ -46,7 +46,7 @@ function setup() {
   return { home, db, queue, policy, projection, service, observation, tick: (value: string) => { now = value; } };
 }
 
-it("previews without writes, then persists one non-exhaustive occurrence across repeat/concurrent evaluation", async () => {
+it("预览时不写入，随后在重复/并发评估中持久化一个非穷尽 occurrence", async () => {
   const t = setup();
   const policy = t.policy.read().policy;
   t.policy.apply({ ...policy, diagnosis: { ...policy.diagnosis, enabled: true, owner: "owner@rig" } }, "actor@rig");
@@ -57,13 +57,13 @@ it("previews without writes, then persists one non-exhaustive occurrence across 
   await Promise.all([t.service.evaluate("actor@rig", true), t.service.evaluate("actor@rig", true)]);
   const rows = t.queue.list({ destinationSession: "owner@rig", limit: 1000 });
   expect(rows).toHaveLength(1);
-  expect(rows[0]!.body).toContain("not the whole story");
-  expect(rows[0]!.body).toContain("your own contribution");
+  expect(rows[0]!.body).toContain("并非事情的全貌");
+  expect(rows[0]!.body).toContain("检查自己的影响");
   expect(rows[0]!.body).toContain(t.projection.list().records[0]!.id);
   expect(t.service.show(rows[0]!.qitemId).disposition).toBeNull();
 });
 
-it("ignores a canceled topical Markdown receipt in the census and scheduled evaluation without changing it", async () => {
+it("在 census 和定时评估中忽略已取消的专题 Markdown receipt，且不修改它", async () => {
   vi.useFakeTimers(); vi.setSystemTime(new Date("2026-09-05T21:00:00Z"));
   const t = setup(); const p = t.policy.read().policy;
   const foreignId = "qitem-xh-1d22fe73dfa8f0e1";
@@ -95,7 +95,7 @@ it("ignores a canceled topical Markdown receipt in the census and scheduled eval
   expect(t.queue.listTransitions(foreignId)).toEqual(transitions);
 });
 
-it.each(["markdown", "null", "schema", "finding-id", "authority", "presentedAt"])("refuses corrupt owned occurrence state (%s) instead of hiding or certifying it", async (defect) => {
+it.each(["markdown", "null", "schema", "finding-id", "authority", "presentedAt"])("拒绝损坏的自有 occurrence 状态（%s），而不是隐藏或认证它", async (defect) => {
   const t = setup(); const p = t.policy.read().policy;
   t.policy.apply({ ...p, diagnosis: { ...p.diagnosis, enabled: true, owner: "owner@rig" } }, "actor@rig");
   const id = (await t.service.evaluate("actor@rig", true)).actions[0]!.qitemId;
@@ -113,7 +113,7 @@ it.each(["markdown", "null", "schema", "finding-id", "authority", "presentedAt"]
   expect(t.db.prepare("SELECT total_changes() AS n").get()).toEqual(before);
 });
 
-it("preserves honest dispositions and never edits the source work or manufactures a resolution", async () => {
+it("保留如实的 disposition，绝不编辑源工作或虚构 resolution", async () => {
   const t = setup();
   const p = t.policy.read().policy;
   t.policy.apply({ ...p, diagnosis: { ...p.diagnosis, enabled: true, owner: "owner@rig" } }, "actor@rig");
@@ -128,7 +128,7 @@ it("preserves honest dispositions and never edits the source work or manufacture
   expect(t.service.show(id).disposition?.verdict).toBe("insufficient evidence");
 });
 
-it("re-presents the same occurrence once after cooldown, survives service restart, and stops after disposition", async () => {
+it("冷却后重新呈现同一 occurrence 一次，可跨 service 重启，并在 disposition 后停止", async () => {
   const t = setup(); const p = t.policy.read().policy;
   const send = vi.fn(async () => ({ ok: true, verified: false }));
   t.queue.attachTransport({ send });
@@ -145,7 +145,7 @@ it("re-presents the same occurrence once after cooldown, survives service restar
   expect(t.queue.getById(first.actions[0]!.qitemId)!.lastNudgeResult).toBe("delivered-ack-pending");
 });
 
-it("policy changes are versioned and audited, invalid or replayed changes write nothing", () => {
+it("policy 变更有版本记录和审计，无效或重放的变更不写入任何内容", () => {
   const t = setup(); const original = t.policy.read();
   const next = { ...original.policy, thresholds: { ...original.policy.thresholds, ceremonyRatio: 1000 } };
   const changed = t.policy.apply(next, "editor@rig");
@@ -161,12 +161,12 @@ it("policy changes are versioned and audited, invalid or replayed changes write 
 
 async function checkpointSetup() {
   const t = setup(); let now = "2026-09-04T04:51:31.138Z";
-  // Synthetic lifecycle mechanics, not a historical product-outcome calibration.
+  // 合成的生命周期机制，而非历史产品结果校准。
   const subject = { lineage: "synthetic-reminder-lineage", scope: { type: "rig" as const, rigId: "fixture" },
     window: { startedAt: "2026-09-04T04:00:00.000Z" },
     autoUnparks: Array.from({ length: 52 }, (_, i) => ({ transitionId: 100000 + i, observedAt: new Date(Date.parse("2026-09-04T04:00:00.000Z") + i * 60000).toISOString() })) };
   const row = await t.queue.create({ qitemId: subject.lineage, sourceSession: "actor@rig", destinationSession: "owner@rig", body: "synthetic replay lineage", nudge: false });
-  // Each transition is explicit; the source must verify the complete census.
+  // 每个 transition 都显式存在；source 必须验证完整 census。
   const insert = t.db.prepare("INSERT INTO queue_transitions(transition_id,qitem_id,ts,state,actor_session) VALUES(?,?,?,?,?)");
   for (const event of subject.autoUnparks) insert.run(event.transitionId, row.qitemId, event.observedAt, "pending", "watchdog");
   const workspace = join(t.home, "workspace"); mkdirSync(workspace);
@@ -183,13 +183,13 @@ async function checkpointSetup() {
   return { ...t, source, projection, service, cp, time: (value: string) => { now = value; } };
 }
 
-it("drives synthetic checkpoint ingestion, clear and recurrence without a wake storm", async () => {
+it("驱动合成 checkpoint 的摄取、清除和复发，且不引发 wake 风暴", async () => {
   const t = await checkpointSetup(); const p = t.policy.read().policy;
   t.policy.apply({ ...p, diagnosis: { ...p.diagnosis, enabled: true, owner: "owner@rig", cooldownSeconds: 60 } }, "actor@rig");
   t.source.submit(t.cp, "author@rig");
   const first = t.projection.list().records[0]!;
   expect(first.status).toBe("active");
-  expect(first.explanation).toContain("52 coordination transitions for 1 product-state change");
+  expect(first.explanation).toContain("1 次产品状态变化对应 52 次协调转换");
   const changes = t.db.prepare("SELECT total_changes() AS n").get();
   t.projection.list(); t.projection.get(first.id);
   expect(t.db.prepare("SELECT total_changes() AS n").get()).toEqual(changes);
@@ -212,7 +212,7 @@ it("drives synthetic checkpoint ingestion, clear and recurrence without a wake s
   expect(t.service.list()).toHaveLength(2);
 });
 
-it("rejects partial/mixed-lineage censuses; unknown authority and stale evidence cannot admit diagnosis", async () => {
+it("拒绝部分/混合 lineage census；未知 authority 和 stale 证据不能准入 diagnosis", async () => {
   const t = await checkpointSetup();
   expect(() => t.source.submit({ ...t.cp, transitionIds: t.cp.transitionIds.slice(1) }, "author@rig")).toThrow("census");
   expect(t.source.entries()).toHaveLength(0);
@@ -223,7 +223,7 @@ it("rejects partial/mixed-lineage censuses; unknown authority and stale evidence
   expect((await t.service.evaluate("actor@rig", true)).actions).toHaveLength(0);
 });
 
-it("serves the real routes with no GET writes and rejects incomplete dispositions", async () => {
+it("提供真实路由，GET 不写入，并拒绝不完整的 disposition", async () => {
   const t = await checkpointSetup();
   const app = new Hono();
   app.use("*", async (c, next) => {
@@ -245,7 +245,7 @@ it("serves the real routes with no GET writes and rejects incomplete disposition
   expect(t.service.list()).toHaveLength(1);
 });
 
-it("a hundred context episodes remain low-priority and opt-in admission is still bounded per owner", async () => {
+it("一百个 context episode 仍保持低优先级，选择启用的准入仍按 owner 限定", async () => {
   const t = setup(); let cleared = false; const at = "2026-09-05T21:00:00.000Z";
   const source = { read: (): HealthDetectorObservation[] => Array.from({ length: 100 }, (_, i) => {
     const sample = { type: "context-usage" as const, nodeId: `seat-${i}`, sessionId: `occupant-${i}`, observedAt: at, sourceOrder: 0, usedPercentage: 96, available: true, fresh: true };
@@ -269,7 +269,7 @@ it("a hundred context episodes remain low-priority and opt-in admission is still
   expect(service.list()[0]!.finding.status).toBe("cleared");
 });
 
-it("human escalation requires both an admitted agent disposition and ready delivery, with one durable request", async () => {
+it("人工升级同时要求已准入的 agent disposition 和就绪的 delivery，并只产生一个持久请求", async () => {
   const t = setup(); const p = t.policy.read().policy;
   t.policy.apply({ ...p, diagnosis: { ...p.diagnosis, enabled: true, owner: "owner@rig" }, human: { address: "operator@external", conditions: ["established pathology"] } }, "actor@rig");
   const id = (await t.service.evaluate("actor@rig", true)).actions[0]!.qitemId;
@@ -294,7 +294,7 @@ it("human escalation requires both an admitted agent disposition and ready deliv
   expect(service.show(id).humanDelivery?.outcome).toBe("posted");
 });
 
-it("automatically evaluates enabled policy, never sends a human notification, and stops cleanly", async () => {
+it("自动评估已启用 policy，绝不发送人工通知，并可干净停止", async () => {
   vi.useFakeTimers(); vi.setSystemTime(new Date("2026-09-05T21:00:00Z"));
   const t = setup(); const p = t.policy.read().policy;
   t.service.start();
@@ -310,7 +310,7 @@ it("automatically evaluates enabled policy, never sends a human notification, an
   expect(t.queue.list()).toHaveLength(1);
 });
 
-it("policy threshold changes immediately reevaluate the structured source with the displayed version", async () => {
+it("policy 阈值变化会使用所显示的版本立即重新评估结构化 source", async () => {
   const t = await checkpointSetup(); const p = t.policy.read().policy;
   t.source.submit(t.cp, "author@rig");
   const id = t.projection.list().records[0]!.id;
@@ -322,7 +322,7 @@ it("policy threshold changes immediately reevaluate the structured source with t
 });
 
 
-it("requires occurrence custody before disposition or human effects and retains route identity provenance", async () => {
+it("执行 disposition 或人工效果前要求 occurrence custody，并保留路由身份 provenance", async () => {
   const t = setup(); const p = t.policy.read().policy;
   t.policy.apply({ ...p, freshnessSeconds: 86400, diagnosis: { ...p.diagnosis, enabled: true, owner: "owner@rig", cooldownSeconds: 60 }, human: { address: "operator@external", conditions: ["established pathology"] } }, "actor@rig");
   const readiness = vi.fn(async () => ({ ready: true, reason: "fixture" }));
@@ -342,7 +342,7 @@ it("requires occurrence custody before disposition or human effects and retains 
   expect((await post("disposition", "owner@rig")).status).toBe(200);
   expect(t.queue.listTransitions(id).at(-1)).toMatchObject({ actorSession: "owner@rig", identityProvenance: "transport:v1" });
   const unchanged = t.db.prepare("SELECT total_changes() AS n").get();
-  expect((await post("disposition", "peer@rig")).status).toBe(400); // identical replay is still an owner action
+  expect((await post("disposition", "peer@rig")).status).toBe(400); // 相同重放仍属于 owner 操作
   expect((await post("notify", "peer@rig")).status).toBe(400);
   expect(t.db.prepare("SELECT total_changes() AS n").get()).toEqual(unchanged);
   expect((await post("notify", "owner@rig")).status).toBe(200);
@@ -351,7 +351,7 @@ it("requires occurrence custody before disposition or human effects and retains 
   expect(t.queue.listTransitions(human.qitemId)[0]).toMatchObject({ actorSession: "owner@rig", identityProvenance: "transport:v1" });
 });
 
-it("keeps unresolved checkpoint evidence indeterminate and never admits a diagnostic row", async () => {
+it("将未解析的 checkpoint 证据保持为 indeterminate，且绝不准入 diagnostic 行", async () => {
   for (const field of ["census", "authority", "outcome"]) {
     const t = await checkpointSetup(); const cp = structuredClone(t.cp);
     const p = t.policy.read().policy;
@@ -367,7 +367,7 @@ it("keeps unresolved checkpoint evidence indeterminate and never admits a diagno
   }
 });
 
-it("embeds only canonical authority files with contained real paths", async () => {
+it("只嵌入真实路径受限于范围内的规范 authority 文件", async () => {
   const t = await checkpointSetup(); const workspace = join(t.home, "workspace");
   mkdirSync(workspace, { recursive: true });
   const outside = join(t.home, "outside.yaml"); writeFileSync(outside, "outside-marker");
@@ -388,7 +388,7 @@ it("embeds only canonical authority files with contained real paths", async () =
 });
 
 
-it("rechecks evidence availability after submission and refuses empty, non-file and escaped evidence", async () => {
+it("提交后重新检查证据可用性，并拒绝空内容、非文件和逃逸范围的证据", async () => {
   const t = await checkpointSetup(); const p = t.policy.read().policy;
   t.policy.apply({ ...p, diagnosis: { ...p.diagnosis, enabled: true, owner: "owner@rig" } }, "actor@rig");
   t.source.submit(t.cp, "author@rig");
@@ -406,7 +406,7 @@ it("rechecks evidence availability after submission and refuses empty, non-file 
 });
 
 
-it("binds authority categories and slice IDs to the finding scope", async () => {
+it("将 authority 类别和 slice ID 绑定到 finding 范围", async () => {
   const t = await checkpointSetup(); const workspace = join(t.home, "workspace");
   const write = (path: string, content: string) => { mkdirSync(join(path, ".."), { recursive: true }); writeFileSync(path, content); return path; };
   const project = write(join(workspace, "SPEC.md"), "# Current project");
@@ -424,7 +424,7 @@ it("binds authority categories and slice IDs to the finding scope", async () => 
   const finding = t.projection.list().records[0]!;
   const results = healthAuthority(workspace, t.source, finding);
   expect(results.find((a) => a.path === otherMission)).toMatchObject({ state: "unavailable" });
-  // Scope category stays observable when a path is submitted at two different levels.
+  // 同一路径在两个不同层级提交时，scope 类别仍保持可观察。
   const entry = (level: string, path: string) => results.find((a) => (a as { level?: string }).level === level && a.path === path);
   for (const [level, path] of [["project", project], ["mission", mission], ["mission", missionYaml], ["slice", spec], ["slice", yaml]]) expect(entry(level!, path!)).toMatchObject({ state: "available" });
   for (const [level, path] of [["project", mission], ["mission", spec], ["mission", otherMission], ["slice", mission], ["slice", otherMission], ["slice", sibling], ["slice", missingId], ["slice", malformed]]) expect(entry(level!, path!)).toMatchObject({ state: "unavailable" });

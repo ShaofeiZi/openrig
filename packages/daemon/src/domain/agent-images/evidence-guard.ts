@@ -1,19 +1,16 @@
-// Fork Primitive + Starter Agent Images v0 (PL-016) — evidence-
-// preservation guard for `rig agent-image prune` / DELETE
+// 分叉原语 + Starter 智能体镜像 v0（PL-016）——`zrig agent-image prune` / DELETE
+// 的 evidence-preservation guard
 // /api/agent-images/library/:id.
 //
-// PRD § Item 6 — CATASTROPHIC BOUNCE if dropped. An image is protected
-// from deletion if ANY:
+// PRD 第 6 项——若遗漏会造成灾难性反弹。满足以下任一条件时，image 受删除保护：
 //
-//   - Pinned (operator placed `.pinned` sentinel via `rig agent-image pin`)
-//   - Referenced by an active agent.yaml (session_source: mode:
-//     agent_image, ref.value: <name>) — scanned across discovery roots
-//     for spec library files
-//   - Referenced by a rig spec in the spec library (members[].session_source)
-//   - Lineage descendant of another protected image (transitive
-//     protection up the chain)
+//   - 已 pin（用户通过 `zrig agent-image pin` 放置 `.pinned` sentinel）
+//   - 被 active agent.yaml 引用（session_source: mode: agent_image，ref.value: <name>）——
+//     跨 discovery root 扫描 spec library file
+//   - 被 spec library 中的 rig spec 引用（members[].session_source）
+//   - 是另一个受保护 image 的 lineage descendant（沿 chain 传递保护）
 //
-// The guard fails CLOSED. Operator may pass --force to override.
+// guard 会 fail closed。用户可传入 --force 覆盖。
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -32,38 +29,35 @@ export interface ImageProtectionStatus {
   imageVersion: string;
   protected: boolean;
   reasons: ProtectionReason[];
-  /** Specific filesystem paths that hold the protective references. */
+  /** 持有保护性 reference 的具体 filesystem path。 */
   references: string[];
 }
 
 export interface EvidenceGuardOpts {
-  /** All images in the library (so lineage-based protection can
-   *  traverse the chain without re-walking discovery roots). */
+  /** library 中的全部 image（使基于 lineage 的保护无需重新遍历 discovery root 即可遍历 chain）。 */
   images: readonly AgentImageEntry[];
-  /** Spec-library directories to walk for active references. Each is
-   *  walked recursively for `*.yaml` / `*.yml` files. */
+  /** 为查找 active reference 而遍历的 spec-library directory。每个目录都会递归遍历
+   *  `*.yaml` / `*.yml` 文件。 */
   specRoots: readonly string[];
 }
 
 /**
- * Compute protection status for every image. The result is parallel to
- * the input array order; the protected image set is what `prune` MUST
- * skip unless --force is supplied.
+ * 计算每个 image 的 protection status。结果顺序与 input array 一致；除非提供 --force，
+ * `prune` 必须跳过受保护 image set。
  */
 export function evaluateProtection(opts: EvidenceGuardOpts): ImageProtectionStatus[] {
   const referencedNames = scanSpecRootsForReferences(opts.specRoots);
 
-  // Pass 1: compute direct protection (pinned + referenced).
+  // 第 1 遍：计算直接保护（pinned + referenced）。
   const statuses = new Map<string, ImageProtectionStatus>();
   const protectedNameSet = new Set<string>();
   for (const img of opts.images) {
     const refs = referencedNames.get(img.name) ?? [];
     const reasons: ProtectionReason[] = [];
     if (img.pinned) reasons.push("pinned");
-    // Distinguish agent.yaml-shaped vs rig.yaml-shaped references when
-    // both surface; but the scanner returns paths, and the path-based
-    // tag is stored alongside. Simplification at v0: any file whose
-    // basename is `agent.yaml` is agent-spec; otherwise rig-spec.
+    // 两种 reference 同时出现时，区分 agent.yaml shape 与 rig.yaml shape；scanner 返回 path，
+    // 同时存储基于 path 的 tag。v0 简化规则：basename 为 `agent.yaml` 的文件视为 agent-spec，
+    // 其他文件视为 rig-spec。
     const seenReason = new Set<ProtectionReason>();
     for (const ref of refs) {
       const reason: ProtectionReason = ref.endsWith("/agent.yaml")
@@ -86,18 +80,16 @@ export function evaluateProtection(opts: EvidenceGuardOpts): ImageProtectionStat
     if (status.protected) protectedNameSet.add(img.name);
   }
 
-  // Pass 2: transitive lineage protection. An image whose lineage
-  // includes a protected image becomes protected too. Iterate to a
-  // fixed point so multi-hop chains converge.
+  // 第 2 遍：传递 lineage protection。lineage 中包含受保护 image 的 image 也会受保护。
+  // 迭代至 fixed point，使 multi-hop chain 收敛。
   let changed = true;
   while (changed) {
     changed = false;
     for (const img of opts.images) {
       const status = statuses.get(img.name)!;
       if (status.protected) continue;
-      // img's lineage lists ANCESTORS. We protect a DESCENDANT of a
-      // protected image — meaning if any ancestor of `img` is
-      // protected, `img` itself becomes protected by transit.
+      // img lineage 列出 ancestor。我们保护受保护 image 的 descendant——也就是说，
+      // 若 `img` 的任意 ancestor 受保护，`img` 自身也会通过传递关系受到保护。
       for (const ancestor of img.lineage) {
         if (protectedNameSet.has(ancestor)) {
           status.protected = true;
@@ -114,12 +106,9 @@ export function evaluateProtection(opts: EvidenceGuardOpts): ImageProtectionStat
   return opts.images.map((img) => statuses.get(img.name)!);
 }
 
-/** Walk spec-library roots for YAML files and collect file paths that
- *  reference any agent_image by name. The match is conservative: any
- *  YAML that contains a `mode: agent_image` directive WITH a
- *  `value: <name>` field is treated as a reference. False positives are
- *  acceptable (over-protection); false negatives would cause
- *  catastrophic data loss. */
+/** 遍历 spec-library root 中的 YAML 文件，收集按名称引用任意 agent_image 的文件 path。
+ *  匹配是保守的：任何同时包含 `mode: agent_image` directive 与 `value: <name>` field 的 YAML
+ *  都视为 reference。允许 false positive（过度保护）；false negative 会导致灾难性数据丢失。 */
 function scanSpecRootsForReferences(roots: readonly string[]): Map<string, string[]> {
   const out = new Map<string, string[]>();
   for (const root of roots) {
@@ -157,7 +146,7 @@ function walkYaml(root: string, visit: (absPath: string) => void): void {
         stack.push(abs);
       } else if (entry.isFile() && (entry.name.endsWith(".yaml") || entry.name.endsWith(".yml"))) {
         try {
-          if (statSync(abs).size > 5_000_000) continue; // skip suspiciously large YAML files
+          if (statSync(abs).size > 5_000_000) continue; // 跳过可疑的大型 YAML 文件
         } catch {
           continue;
         }
@@ -167,8 +156,8 @@ function walkYaml(root: string, visit: (absPath: string) => void): void {
   }
 }
 
-/** Recursively walk a parsed YAML tree and collect the `value` of any
- *  `session_source: { mode: agent_image, ref: { kind: image_name, value: <name> } }`. */
+/** 递归遍历已解析 YAML tree，收集所有
+ *  `session_source: { mode: agent_image, ref: { kind: image_name, value: <name> } }` 的 `value`。 */
 function collectImageRefs(node: unknown, acc: Set<string> = new Set()): Set<string> {
   if (!node || typeof node !== "object") return acc;
   if (Array.isArray(node)) {
@@ -176,7 +165,7 @@ function collectImageRefs(node: unknown, acc: Set<string> = new Set()): Set<stri
     return acc;
   }
   const obj = node as Record<string, unknown>;
-  // Match shape: session_source: { mode: agent_image, ref: { value: <name> } }
+  // 匹配 shape：session_source: { mode: agent_image, ref: { value: <name> } }
   const ss = obj["session_source"] ?? obj["sessionSource"];
   if (ss && typeof ss === "object" && !Array.isArray(ss)) {
     const ssObj = ss as Record<string, unknown>;
@@ -188,8 +177,7 @@ function collectImageRefs(node: unknown, acc: Set<string> = new Set()): Set<stri
       }
     }
   }
-  // Recurse into all values regardless — a rig.yaml has session_source
-  // nested inside members[].
+  // 无条件递归所有 value——rig.yaml 的 session_source 嵌套于 members[]。
   for (const v of Object.values(obj)) collectImageRefs(v, acc);
   return acc;
 }

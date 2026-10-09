@@ -1,25 +1,23 @@
-// V1 polish slice Phase 5.2 bounce-fix — rig-expanded state persistence.
+// V1 polish slice Phase 5.2 bounce-fix——rig 展开状态持久化。
 //
-// Closes the dead-code auto-expand bug surfaced in design-reviewer's
-// 5-point evidence chain on abb154e:
-//   1. routes.tsx topology routes are SIBLING (not nested) → direct
-//      entry to /topology/rig/$id mounts RigScopePage, NOT
-//      HostMultiRigGraph. The prior in-component auto-expand useEffect
-//      could not run for direct-URL navigation.
-//   2. expanded Map was local useState in HostMultiRigGraph → reset on
-//      every mount when operator returned to /topology.
-//   3. topology-overlay-context only carried ExplorerMode previously.
+// 关闭 design-reviewer 在 abb154e 上 5 点证据链揭示的死代码 auto-expand bug：
+//   1. routes.tsx topology 路由是兄弟（非嵌套）-> 直接进入
+//      /topology/rig/$id 挂载 RigScopePage，而非 HostMultiRigGraph。先前组件内
+//      auto-expand useEffect 对直接 URL 导航无法运行。
+//   2. expanded Map 是 HostMultiRigGraph 局部 useState -> operator 返回
+//      /topology 时每次挂载重置。
+//   3. topology-overlay-context 先前仅带 ExplorerMode。
 //
-// Fix: lifted expandedRigs Map into TopologyOverlayProvider with a
-// pathname-driven useEffect that fires regardless of which scope page
-// is mounted. HostMultiRigGraph consumes via useTopologyOverlay().
+// 修复：把 expandedRigs Map 提升到 TopologyOverlayProvider，配 pathname 驱动
+// useEffect，无论挂载哪个 scope 页都触发。HostMultiRigGraph 经
+// useTopologyOverlay() 消费。
 //
-// Tests below cover:
-//  - parseActiveRigId pure-fn (matches all 3 rig-scoped URL shapes)
-//  - Provider auto-expand useEffect fires on rig-scoped pathname
-//  - HostMultiRigGraph renders rig as expanded when context's
-//    expandedRigs has rigId=true (the cross-mount-cycle persistence)
-//  - Direct unmount-remount preserves state (provider scope holds)
+// 下面测试覆盖：
+//  - parseActiveRigId 纯函数（匹配全部 3 种 rig-scoped URL 形状）
+//  - Provider auto-expand useEffect 在 rig-scoped pathname 触发
+//  - HostMultiRigGraph 在 context 的 expandedRigs 含 rigId=true 时把 rig 渲染为
+//    展开（跨挂载周期持久化）
+//  - 直接卸载-重挂载保留状态（provider scope 持有）
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, waitFor } from "@testing-library/react";
@@ -91,7 +89,7 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------
-// parseActiveRigId — pure-fn
+// parseActiveRigId——纯函数
 // ---------------------------------------------------------------------
 
 describe("parseActiveRigId (P5.2 bounce-fix pure-fn)", () => {
@@ -118,7 +116,7 @@ describe("parseActiveRigId (P5.2 bounce-fix pure-fn)", () => {
 });
 
 // ---------------------------------------------------------------------
-// Helpers — render with router on a specific initial path
+// 辅助——在特定初始路径用 router 渲染
 // ---------------------------------------------------------------------
 
 function renderAt(initialPath: string, ui: React.ReactNode) {
@@ -170,13 +168,12 @@ function renderAt(initialPath: string, ui: React.ReactNode) {
 }
 
 // ---------------------------------------------------------------------
-// Provider auto-expand useEffect — fires regardless of mount state of
-// HostMultiRigGraph (the design-reviewer dead-code bug fix).
+// Provider auto-expand useEffect——无论 HostMultiRigGraph 挂载状态都触发
+//（design-reviewer 死代码 bug 修复）。
 // ---------------------------------------------------------------------
 
 function ContextProbe() {
-  // Tiny consumer that exposes the context's expandedRigs as testid
-  // attributes the test can inspect.
+  // 小消费者，把 context 的 expandedRigs 暴露为 testid 属性供测试检视。
   const ctx = useTopologyOverlay();
   return (
     <div
@@ -191,9 +188,8 @@ function ContextProbe() {
 
 describe("TopologyOverlayProvider auto-expand on URL (P5.2 bounce-fix)", () => {
   it("/topology/rig/$rigId direct-URL entry sets expandedRigs in provider state (HostMultiRigGraph NOT mounted)", async () => {
-    // Probe-only render — HostMultiRigGraph is NOT mounted on this path,
-    // proving the provider effect fires regardless of which scope page
-    // is currently the center component.
+    // 仅探针渲染——此路径不挂载 HostMultiRigGraph，证明 provider effect
+    // 无论哪个 scope 页是中心组件都触发。
     const { findByTestId } = renderAt("/topology/rig/rig-1", <ContextProbe />);
     const probe = await findByTestId("topology-context-probe");
     await waitFor(() => {
@@ -226,27 +222,26 @@ describe("TopologyOverlayProvider auto-expand on URL (P5.2 bounce-fix)", () => {
   it("/topology root pathname does NOT write explicit expansion overrides", async () => {
     const { findByTestId } = renderAt("/topology", <ContextProbe />);
     const probe = await findByTestId("topology-context-probe");
-    // Allow the render to settle.
+    // 让渲染落定。
     await new Promise((r) => setTimeout(r, 10));
     expect(probe.getAttribute("data-expanded-rigs")).toBe("");
   });
 });
 
 // ---------------------------------------------------------------------
-// HostMultiRigGraph reads from context — cross-mount persistence
+// HostMultiRigGraph 从 context 读取——跨挂载持久化
 // ---------------------------------------------------------------------
 
 describe("HostMultiRigGraph reads expandedRigs from context (P5.2 bounce-fix persistence)", () => {
   it("when context has rigId=false on mount, only that rig renders collapsed", async () => {
-    // Custom probe that pre-sets an explicit collapse then mounts the graph.
+    // 自定义探针，预设显式 collapse 后挂载 graph。
     function PreCollapsedHarness() {
       const { setRigExpanded } = useTopologyOverlay();
-      // Fire the pre-collapse once on mount (simulates the operator
-      // collapsing a rig, navigating away, then returning to /topology).
-      // useEffect intentionally not used here — the test just calls in
-      // an effect via setTimeout so React batches commit before render.
+      // 挂载时触发一次 pre-collapse（模拟 operator 折叠 rig、导航离开、
+      // 再返回 /topology）。此处故意不用 useEffect——测试仅经 setTimeout
+      // 在 effect 中调用，使 React 在渲染前批量提交。
       if (typeof window !== "undefined") {
-        // Idempotent: subsequent renders won't double-set.
+        // 幂等：后续渲染不会重复设置。
         queueMicrotask(() => setRigExpanded("rig-2", false));
       }
       return <HostMultiRigGraph />;
@@ -257,7 +252,7 @@ describe("HostMultiRigGraph reads expandedRigs from context (P5.2 bounce-fix per
     await waitFor(() => {
       expect(node.getAttribute("data-collapsed")).toBe("true");
     });
-    // Other rig remains expanded by default.
+    // 其他 rig 默认保持展开。
     const otherRig = await findByTestId("rig-group-node-rig-1");
     expect(otherRig.getAttribute("data-collapsed")).toBe("false");
   });
@@ -272,7 +267,7 @@ describe("HostMultiRigGraph reads expandedRigs from context (P5.2 bounce-fix per
 });
 
 // ---------------------------------------------------------------------
-// Source-assertion guards — ensure dead-code path doesn't reappear
+// source-assertion 守卫——确保死代码路径不重现
 // ---------------------------------------------------------------------
 
 describe("source-assertion guards (P5.2 bounce-fix coupled-literal scan)", () => {
@@ -286,11 +281,10 @@ describe("source-assertion guards (P5.2 bounce-fix coupled-literal scan)", () =>
       ),
       "utf8",
     );
-    // Positive: consumes the context.
+    // 正面：消费 context。
     expect(src).toContain("useTopologyOverlay");
     expect(src).toMatch(/useTopologyOverlay\(\s*\)/);
-    // Negative: no local useState for expanded Map. The dead-code bug
-    // returning if this regresses.
+    // 负面：expanded Map 无局部 useState。若回归则死代码 bug 重现。
     expect(src).not.toMatch(/useState<Map<string,\s*boolean>>/);
   });
 
@@ -308,7 +302,7 @@ describe("source-assertion guards (P5.2 bounce-fix coupled-literal scan)", () =>
     expect(src).toContain("setRigExpanded");
     expect(src).toContain("toggleRig");
     expect(src).toContain("export function parseActiveRigId");
-    // Provider auto-expand useEffect on pathname.
+    // Provider auto-expand useEffect 在 pathname 上。
     expect(src).toMatch(/useRouterState/);
     expect(src).toMatch(/parseActiveRigId\s*\(/);
   });

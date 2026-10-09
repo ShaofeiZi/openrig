@@ -1,21 +1,20 @@
-// twin:capture wrapper.
+// twin:capture 包装器。
 //
-// One command turns a twin surface into the durable per-slice artifact set:
-//   twin:build (TWIN_ROUTE passthrough) -> headless-Chrome screenshot -> place under
-//   digital-twin/<slice-id>/ via the FR-5 resolver -> capture the change.diff -> enforce D-1.
+// 一条命令把 twin 表面转换为持久的逐 slice 产物集：
+//   twin:build（透传 TWIN_ROUTE）→ headless-Chrome 截图 → 通过 FR-5 解析器放入
+//   digital-twin/<slice-id>/ → 捕获 change.diff → 强制执行 D-1。
 //
-// Composes the tested pure helpers (resolveArtifactPaths, buildChromeScreenshotArgs); this file is
-// the thin IO orchestration. Zero net-new dependency: reuses the repo's headless Google Chrome and
-// the existing twin:build. Determinism (D-1) is ENFORCED at runtime: the surface is shot twice and
-// the PNGs are byte-compared; a mismatch fails loudly (never a silently-flaky artifact). The
-// emptyOutDir gotcha is handled by copying artifacts OUT of twin-out into the per-slice folder
-// within this single invocation (one surface per run).
+// 组合已经过测试的纯辅助函数（resolveArtifactPaths、buildChromeScreenshotArgs）；本文件只做
+// 轻量 I/O 编排。不新增依赖，复用仓库已有的无头 Google Chrome 与 twin:build。运行时强制
+// 执行确定性要求（D-1）：同一表面截图两次并逐字节比较 PNG；不一致会明确失败，绝不留下
+// 静默不稳定的产物。为规避 emptyOutDir 陷阱，本次调用会在下一次构建清空 twin-out 前，
+// 把产物复制到逐 slice 文件夹；每次运行只处理一个表面。
 //
-// Usage:
+// 用法：
 //   tsx twin/capture/twin-capture.ts --slice example-slice --surface "Topology Graph" \
 //     --route /topology/rig/rig_alpha --out-root /abs/path/to/digital-twin
-// Flags: --slice (req) --surface (req) --route (default "/") --out-root (req)
-//        --chrome (optional Chrome binary override)
+// 参数：--slice（必需）--surface（必需）--route（默认 "/"）--out-root（必需）
+//       --chrome（可选，用于覆盖 Chrome 二进制路径）
 import { spawnSync } from "node:child_process";
 import { mkdirSync, copyFileSync, existsSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
@@ -24,9 +23,9 @@ import { resolveArtifactPaths } from "./artifact-paths.js";
 import { buildChromeScreenshotArgs, classifyCaptureResult, fileUrl, type CaptureVerdict } from "./headless-chrome.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-/** packages/ui (this file lives at packages/ui/twin/capture/). */
+/** packages/ui（本文件位于 packages/ui/twin/capture/）。 */
 const UI_DIR = path.resolve(__dirname, "..", "..");
-/** repo/worktree root (for git diff of the fixture/variant edit). */
+/** 仓库/工作树根目录，用于获取 fixture/variant 编辑的 git diff。 */
 const REPO_ROOT = path.resolve(UI_DIR, "..", "..");
 
 interface Args {
@@ -35,7 +34,7 @@ interface Args {
   route: string;
   outRoot: string;
   chrome?: string;
-  /** FR-6: optional real shipped-UI URL to capture as the paired PROOF (post-build, daemon-backed). */
+  /** FR-6：可选的真实已交付 UI URL；作为配对证明捕获（构建后、由后台服务支撑）。 */
   proofUrl?: string;
 }
 
@@ -72,7 +71,7 @@ function fail(msg: string): never {
   process.exit(1);
 }
 
-/** Resolve a usable headless-Chrome binary or fail honestly (never silently skip). */
+/** 解析可用的无头 Chrome 二进制；无法解析时如实失败，绝不静默跳过。 */
 function resolveChrome(override?: string): string {
   const candidates = [
     override,
@@ -91,11 +90,11 @@ function resolveChrome(override?: string): string {
   return fail("no headless Chrome found (set --chrome or CHROME_BIN; macOS default is Google Chrome.app)");
 }
 
-/** vtb settles the static file:// twin deterministically (intent + D-1). */
+/** vtb 让静态 file:// twin 确定性稳定（意图 + D-1）。 */
 const INTENT_VTB_MS = 9000;
-/** Generous bound for the fast file:// capture. */
+/** 为快速 file:// 捕获设置的宽裕上限。 */
 const INTENT_TIMEOUT_MS = 30_000;
-/** Bounded ceiling for the live http:// proof capture (no vtb) so a non-completing route fails loud. */
+/** 实时 http:// 证明捕获的有界上限（无 vtb），使无法完成的路由明确失败。 */
 const PROOF_TIMEOUT_MS = 20_000;
 
 interface CaptureOpts {
@@ -106,9 +105,9 @@ interface CaptureOpts {
 }
 
 /**
- * Screenshot a URL with a BOUNDED process timeout, interpret the result honestly, and remove a partial
- * PNG on failure. Never hangs — a non-completing capture is a loud, bounded failure (qa repro 7a578b32:
- * the prior unbounded + always-vtb path hung on live UI routes).
+ * 使用有界进程超时截取 URL，如实解释结果，并在失败时移除不完整 PNG。绝不挂起；未完成的捕获
+ * 会在限定时间内明确失败（QA 复现 7a578b32：旧版无界且始终启用 vtb 的路径会在实时 UI
+ * 路由上挂起）。
  */
 function captureScreenshot(chrome: string, opts: CaptureOpts): CaptureVerdict {
   const r = spawnSync(
@@ -132,7 +131,7 @@ function main(): void {
   const chrome = resolveChrome(args.chrome);
   const paths = resolveArtifactPaths({ slice: args.slice, surface: args.surface, outRoot: args.outRoot });
 
-  // 1. Build the twin for the target surface (TWIN_ROUTE passthrough — the proven mechanism).
+  // 1. 为目标表面构建 twin（透传 TWIN_ROUTE——已经验证的机制）。
   const build = spawnSync("npm", ["run", "twin:build"], {
     cwd: UI_DIR,
     env: { ...process.env, TWIN_ROUTE: args.route },
@@ -143,11 +142,11 @@ function main(): void {
   const builtHtml = path.join(UI_DIR, "twin-out", "intent.html");
   if (!existsSync(builtHtml)) fail(`expected build output not found: ${builtHtml}`);
 
-  // 2. Place artifacts under digital-twin/<slice-id>/ BEFORE any next build wipes twin-out.
+  // 2. 在后续构建清空 twin-out 前，把产物放入 digital-twin/<slice-id>/。
   mkdirSync(paths.dir, { recursive: true });
   copyFileSync(builtHtml, paths.intentHtml); // regenerable, but emitted for convenience
 
-  // 3. Screenshot the surface (file:// twin) -> the durable intent.png. vtb settles the static page.
+  // 3. 截取表面（file:// twin）→ 持久 intent.png；vtb 让静态页面稳定。
   const builtUrl = fileUrl(builtHtml);
   const iv = captureScreenshot(chrome, {
     url: builtUrl,
@@ -157,7 +156,7 @@ function main(): void {
   });
   if (!iv.ok) fail(`intent capture failed — ${iv.reason}`);
 
-  // 4. D-1 determinism: shoot again to a scratch png and byte-compare; mismatch = loud failure.
+  // 4. D-1 确定性：再次截到临时 PNG 并逐字节比较；不匹配即明确失败。
   const scratch = path.join(paths.dir, ".determinism-check.png");
   const dv = captureScreenshot(chrome, {
     url: builtUrl,
@@ -170,18 +169,18 @@ function main(): void {
   rmSync(scratch, { force: true });
   if (!identical) fail("D-1 determinism check FAILED — two captures of the same surface differ (flake)");
 
-  // 5. change.diff — the durable essence: the uncommitted fixture/variant edit that produced this.
+  // 5. change.diff——持久核心：产生本次结果的未提交 fixture/variant 编辑。
   const diff = spawnSync("git", ["-C", REPO_ROOT, "diff", "--", "packages/ui/twin", "packages/ui/src"], {
     encoding: "utf8",
   });
   writeFileSync(paths.changeDiff, diff.stdout ?? "");
 
-  // 6. FR-6 proof-side (optional): capture the REAL shipped UI at --proof-url in the IDENTICAL format
-  //    (same chrome mechanism, paired <surface>.proof.png) for side-by-side intent-vs-proof. Needs a
-  //    running build/daemon, so it is a post-build step — OFF by default to keep the intent path daemon-free.
+  // 6. FR-6 证明侧（可选）：以完全相同的格式捕获 --proof-url 指向的真实已交付 UI
+  //    （同一 Chrome 机制，配对输出 <surface>.proof.png），用于并排比较意图与证明。
+  //    它需要已运行的构建/后台服务，因此是构建后步骤；默认关闭，以保持意图路径不依赖后台服务。
   let proofLine = "  proof   : (skipped — pass --proof-url <real-ui-url> post-build to capture)\n";
   if (args.proofUrl) {
-    // Live http:// route: NO virtual-time-budget (it hangs on never-idle live UIs); bounded timeout.
+    // 实时 http:// 路由不使用 virtual-time-budget（永不空闲的实时 UI 会让它挂起），仅设有界超时。
     const pv = captureScreenshot(chrome, {
       url: args.proofUrl,
       pngPath: paths.proofPng,

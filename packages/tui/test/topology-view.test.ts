@@ -1,7 +1,7 @@
-// Slice-17 TOPOLOGY LEG Phase 1 — the hatchet graph view ported onto the
-// SHIPPED shell: one view-state, one reducer, the shipped renderScreen/
-// stylize/hit-map (PIN-1 on the real path, not the spike store). New file;
-// shipped floors untouched.
+// Slice-17 TOPOLOGY 腿 Phase 1——hatchet graph 视图移植到
+// 已发布 shell：一个 view-state、一个 reducer、已发布 renderScreen/
+// stylize/hit-map（PIN-1 在真实路径，非 spike store）。新文件；
+// 已发布底线不动。
 import { describe, it, expect } from "vitest";
 import { createViewState } from "../src/state.js";
 import { parseCommand } from "../src/grammar.js";
@@ -13,14 +13,15 @@ import { spikeFixtureGraph, FIXTURE_RIG_NAME } from "../src/topology/fixture.js"
 import { hydrateSnapshot } from "../src/hydrate.js";
 import { DaemonClient } from "../src/daemon-client.js";
 import type { FleetSnapshot } from "../src/types.js";
+import { dropW, strWidth } from "../src/text-width.js";
 
-/** demo shell snapshot with the full-vocabulary graph attached to the rig —
- * the graph rides RigNode.graph, hydrated from the EXISTING /graph read */
+/** 带全词汇 graph 挂到 rig 的 demo shell snapshot——
+ * graph 骑 RigNode.graph，从既有 /graph 读水合 */
 function graphSnap(): FleetSnapshot {
   const snap = demoSnapshot();
   const graph = spikeFixtureGraph();
-  // the snapshot pod tree mirrors the graph's agents so drill targets resolve
-  // (PIN-1 dispatches validate against the SAME snapshot the renderer draws)
+  // snapshot pod 树镜像 graph 的 agents，使 drill 目标可解析
+  //（PIN-1 dispatch 对渲染器所绘的同一 snapshot 校验）
   const agentRow = (name: string, runtime: string, context: number | null) =>
     ({ name, runtime, spec: "", context, tokens: null, status: "active", live: true });
   return {
@@ -48,8 +49,8 @@ function makeStore(snap: FleetSnapshot) {
   return view;
 }
 
-describe("graph view reachability (the existing navigation, extended additively)", () => {
-  it("`tab graph` parses and the topology section accepts it", () => {
+describe("graph 视图可达性（既有导航，增量扩展）", () => {
+  it("`tab graph` 可解析且 topology 区段接受它", () => {
     expect(parseCommand("tab graph")).toEqual({ type: "tab", tab: "graph" });
     const s = makeStore(graphSnap());
     const state = s.dispatch({ type: "tab", tab: "graph" });
@@ -57,34 +58,34 @@ describe("graph view reachability (the existing navigation, extended additively)
     expect(state.lastError).toBeNull();
   });
 
-  it("the DEFAULT graph style is HATCHET (founder flip 2026-08-04: font-dependence = brittleness) with braille one command away", () => {
+  it("默认 graph 样式为 HATCHET（founder flip 2026-08-04：字体依赖=脆弱），braille 一键可达", () => {
     const s = makeStore(graphSnap());
     expect(s.get().graphStyle).toBe("hatchet");
-    // both directions stay live: braille reachable, and back
+    // 双向都活：braille 可达，且返回
     expect(s.dispatch(parseCommand("style braille")).graphStyle).toBe("braille");
     expect(s.dispatch(parseCommand("style hatchet")).graphStyle).toBe("hatchet");
   });
 
-  it("`style braille` rides the command bar; unknown styles are named errors", () => {
+  it("`style braille` 走命令栏；未知样式是命名错误", () => {
     expect(parseCommand("style braille")).toEqual({ type: "style", name: "braille" });
     const s = makeStore(graphSnap());
     expect(s.dispatch({ type: "style", name: "braille" }).graphStyle).toBe("braille");
     expect(s.dispatch({ type: "style", name: "hatchet" }).graphStyle).toBe("hatchet");
     const err = s.dispatch(parseCommand("style cubist"));
-    expect(err.lastError).toMatch(/unknown style/);
+    expect(err.lastError).toMatch(/未知样式/);
     expect(err.graphStyle).toBe("hatchet"); // unchanged on error
   });
 
-  it("the graph tab renders in the topology tab bar and is click-reachable", () => {
+  it("graph tab 渲染在 topology tab 条且可点击到达", () => {
     const s = makeStore(graphSnap());
     const screen = renderScreen(s.get(), graphSnap(), { cols: 150, rows: 40 });
-    expect(screen.lines.join("\n")).toContain("GRAPH");
+    expect(screen.lines.join("\n")).toContain("图");
     const tabTarget = screen.hitMap.find((t) => t.action.type === "tab" && t.action.tab === "graph");
     expect(tabTarget).toBeDefined();
   });
 });
 
-describe("hatchet mainline in the SHIPPED content pane (frame-01 visual contract)", () => {
+describe("发布 content 窗格中的 hatchet 主线（frame-01 视觉契约）", () => {
   function graphScreen(style?: string) {
     const snap = graphSnap();
     const s = makeStore(snap);
@@ -93,27 +94,26 @@ describe("hatchet mainline in the SHIPPED content pane (frame-01 visual contract
     return { s, snap, screen: renderScreen(s.get(), snap, { cols: 150, rows: 40 }) };
   }
 
-  it("renders boxed nodes with info-in-node over the rig's graph projection", () => {
+  it("在 rig 的 graph 投影上渲染带 node 内信息的方框节点", () => {
     const { screen } = graphScreen();
     const body = screen.lines.join("\n");
     expect(body).toMatch(/┌─+┐/);
     expect(body).toContain("● lead"); // member-only title (S19 MR1)
     expect(body).toContain(">< 18%"); // picks v4 (14afeb74): inward squinty eyes + adjacent ctx
-    // straight connector runs + arrowhead; under the LOCKED containment an
-    // edge may legitimately cross a pod-container wall (─ becomes ┼ at the
-    // crossing) before its arrowhead
+    // 直线连接线 + 箭头；在锁定 containment 下，边可合法
+    // 穿过 pod 容器墙（─ 在交叉处变 ┼），在其箭头之前
     expect(body).toMatch(/[─┼]+▸/);
     expect(body).not.toMatch(/delegates_to|collaborates_with|escalates_to/); // NO edge labels
   });
 
-  it("honest-unknown ○ renders in the shipped graph view (never a fabricated ●)", () => {
+  it("诚实未知 ○ 在发布 graph 视图渲染（绝不伪造 ●）", () => {
     const { screen } = graphScreen();
     expect(screen.lines.join("\n")).toContain("○ r1"); // member-only (S19 MR1)
     expect(screen.lines.join("\n")).toContain("✕ validator");
     expect(screen.lines.join("\n")).toMatch(/◐ qa/);
   });
 
-  it("braille style renders sub-cell edges; braille-fallback degrades to box-drawing", () => {
+  it("braille 样式渲染子格边；braille 回退降级为 box-drawing", () => {
     const braille = graphScreen("braille").screen.lines.join("\n");
     expect(braille).toMatch(/[⠁-⣿]/);
     const fallback = graphScreen("braille-fallback").screen.lines.join("\n");
@@ -121,17 +121,17 @@ describe("hatchet mainline in the SHIPPED content pane (frame-01 visual contract
     expect(fallback).toMatch(/[─┼]+▸/);
   });
 
-  it("a rig without a hydrated graph renders honest-empty, never fabricated boxes", () => {
+  it("无 hydrated graph 的 rig 渲染诚实空，绝不伪造方框", () => {
     const snap = graphSnap();
     delete (snap.hosts[0]!.rigs[0]! as { graph?: unknown }).graph;
     const s = makeStore(snap);
     s.dispatch({ type: "tab", tab: "graph" });
     const body = renderScreen(s.get(), snap, { cols: 150, rows: 40 }).lines.join("\n");
-    expect(body).toMatch(/graph read pending|honest-empty/);
+    expect(body).toMatch(/拓扑图读取挂起|诚实空/);
     expect(body).not.toMatch(/┌─+┐/);
   });
 
-  it("edge kinds paint by line COLOR through the shipped stylize (strip-invariant intact)", () => {
+  it("edge 种类经发布 stylize 按线色绘（strip 不变量完整）", () => {
     const { screen } = graphScreen();
     const styled = stylizeLines(screen, createStyle("truecolor"));
     const joined = styled.join("\n");
@@ -141,8 +141,8 @@ describe("hatchet mainline in the SHIPPED content pane (frame-01 visual contract
   });
 });
 
-describe("PIN-1 on the SHIPPED path — click === keyboard, one store, one reducer", () => {
-  it("clicking an agent node box drills to that agent; the command path lands the IDENTICAL state and screen", () => {
+describe("发布路径上的 PIN-1——点击 === 键盘，单 store、单 reducer", () => {
+  it("点 agent 节点框 drill 到该 agent；命令路径落到相同状态与屏幕", () => {
     const snap = graphSnap();
     const s1 = makeStore(snap);
     s1.dispatch({ type: "tab", tab: "graph" });
@@ -163,15 +163,15 @@ describe("PIN-1 on the SHIPPED path — click === keyboard, one store, one reduc
     s2.dispatch({ type: "tab", tab: "graph" });
     const byCommand = s2.dispatch(parseCommand("agent vm-host/openrig-build/dev/dev.qa"));
     expect(byCommand.drill).toEqual(clicked.drill);
-    // byte-identical rendered screens — parity on the SHIPPED renderer
+    // 字节相同的渲染屏——在已发布渲染器上对等
     const a = renderScreen(clicked, snap, { cols: 150, rows: 40 }).lines;
     const b = renderScreen(byCommand, snap, { cols: 150, rows: 40 }).lines;
     expect(a).toEqual(b);
   });
 });
 
-describe("hydrate consumes the DECLARED /graph read (R7 — no new data)", () => {
-  it("populates RigNode.graph from client.rigGraph; a failed graph read is a NAMED error, honest-empty view", async () => {
+describe("hydrate 消费已声明的 /graph 读取（R7——无新数据）", () => {
+  it("从 client.rigGraph 填充 RigNode.graph；graph 读取失败是命名错误，视图诚实空", async () => {
     const graph = spikeFixtureGraph();
     const routes: Record<string, unknown> = {
       "/api/rigs/summary": [{ id: "r1", name: "openrig-build" }],
@@ -199,8 +199,8 @@ describe("hydrate consumes the DECLARED /graph read (R7 — no new data)", () =>
   });
 });
 
-describe("fixture gating (the --demo rule)", () => {
-  it("no live module imports the fixture — only tests and spike tooling reach it", async () => {
+describe("fixture 门控（--demo 规则）", () => {
+  it("无 live 模块 import fixture——仅测试与 spike 工具触达它", async () => {
     const { readFileSync, readdirSync } = await import("node:fs");
     const { join } = await import("node:path");
     const src = join(__dirname, "..", "src");
@@ -218,11 +218,10 @@ describe("fixture gating (the --demo rule)", () => {
   });
 });
 
-describe("box opacity is a CLASS invariant, not a draw-order artifact (pm kickback, planner-refined)", () => {
-  // three ranks on ONE row: a → b → c by delegation; a-collaborates-c gives a
-  // straight same-row corridor that must CROSS b's box — the box renders
-  // byte-clean in BOTH styles (the braille regression pm falsified was
-  // order-dependent: hatchet edges-first masked it, braille boxes-first bled)
+describe("方框不透明度是类不变量，非绘制顺序产物（pm 驳回，planner 精化）", () => {
+  // 三个 rank 在一行：a → b → c 经委派；a-collaborates-c 给出一条
+  // 直的同行走廊，必须穿过 b 的框——框在两种风格下都字节干净
+  //（pm 证伪的 braille 回归是顺序依赖：hatchet 先画边遮蔽它，braille 先画框渗色）
   function crossingGraph() {
     const node = (id: string, name: string) => ({
       id,
@@ -248,7 +247,7 @@ describe("box opacity is a CLASS invariant, not a draw-order artifact (pm kickba
     };
   }
 
-  it("an edge corridor crossing an intermediate box never paints inside it — hatchet AND braille", async () => {
+  it("穿过中间框的 edge 走廊绝不绘入其内——hatchet 与 braille", async () => {
     const { renderGraphStyle } = await import("../src/topology/render-graph.js");
     for (const style of ["hatchet", "braille", "braille-fallback"] as const) {
       const plain = renderGraphStyle(style, crossingGraph(), { host: "h", rig: "r", selected: null }, 140).plainLines();
@@ -256,8 +255,8 @@ describe("box opacity is a CLASS invariant, not a draw-order artifact (pm kickba
       expect(nameIdx, `${style}: bb.mid renders`).toBeGreaterThanOrEqual(0);
       const nameRow = plain[nameIdx]!;
       const metaRow = plain[nameIdx + 1]!; // box rows: border/name/meta/border
-      // the box's OWN borders must be intact │ (a pierced border shows ┼)
-      // and the interior between them must carry ONLY the box's content
+      // 框自己的边框必须完整 │（被刺穿的边框会显示 ┼）
+      // 且其间内部只带框的内容
       const nameInner = nameRow.match(/│([^│]*● bb\.mid[^│]*)│/);
       expect(nameInner, `${style}: name-row borders intact — got: ${nameRow}`).not.toBeNull();
       expect(nameInner![1]!, `${style}: name interior clean`).not.toMatch(/[─┼⠁-⣿]/);
@@ -268,8 +267,8 @@ describe("box opacity is a CLASS invariant, not a draw-order artifact (pm kickba
   });
 });
 
-describe("Phase-3 live-glyph honesty (the states the fleet GENUINELY serves)", () => {
-  it("a detached seat (status 'detached', no startupStatus) renders ○ — the live-observed shape, never a fabricated ●", async () => {
+describe("Phase-3 live 字形诚实（fleet 真正服务的状态）", () => {
+  it("分离席（status 'detached'，无 startupStatus）渲染 ○——live 观察形状，绝不伪造 ●", async () => {
     const { statusGlyph } = await import("../src/topology/glyphs.js");
     const detached = statusGlyph({
       logicalId: "dev.impl", podNamespace: "dev", runtime: "claude-code", model: null,
@@ -278,7 +277,7 @@ describe("Phase-3 live-glyph honesty (the states the fleet GENUINELY serves)", (
     });
     expect(detached.glyph).toBe("○");
     expect(detached.token).toBe("actDetached"); // S19 MR3 role (glyph honesty unchanged)
-    // and the ● bucket is EXCLUSIVE to ready+running — nothing else qualifies
+    // 且 ● 桶专属 ready+running——无其他合格
     for (const status of [null, "detached", "stopped", "pending"]) {
       const g = statusGlyph({
         logicalId: "x", podNamespace: "p", runtime: "codex", model: null,
@@ -289,8 +288,8 @@ describe("Phase-3 live-glyph honesty (the states the fleet GENUINELY serves)", (
   });
 });
 
-describe("R2 HIGH-3 — keyboard content focus stays VISIBLE under truecolor (segs path)", () => {
-  it("the › marker survives seg stylization: visible in the styled row, strip-invariant intact, action unchanged", () => {
+describe("R2 HIGH-3——truecolor 下键盘内容焦点保持可见（segs 路径）", () => {
+  it("› 标记经 seg 样式化存活：样式行可见、strip 不变量完整、动作不变", () => {
     const snap = graphSnap();
     const s = makeStore(snap);
     s.dispatch({ type: "style", name: "hatchet" });
@@ -298,7 +297,7 @@ describe("R2 HIGH-3 — keyboard content focus stays VISIBLE under truecolor (se
     let screen = renderScreen(s.get(), snap, { cols: 150, rows: 40 });
     s.dispatch({ type: "layout", contentMaxOffset: screen.contentMaxOffset, contentTargetCount: screen.contentTargets.length });
     s.dispatch({ type: "focus", pane: "content" });
-    // pick a node-box zone that does NOT start at content col 0 (the splice path)
+    // 选一个不从 content 列 0 开始的 node-box 区（拼接路径）
     const zoneIdx = screen.contentTargets.findIndex(
       (t) => t.action.type === "drill" && t.action.resource === "agent" && t.x1 > 33,
     );
@@ -309,31 +308,33 @@ describe("R2 HIGH-3 — keyboard content focus stays VISIBLE under truecolor (se
     const rowIdx = screen.lines.findIndex((l, i) => i > 1 && l.slice(31).includes("›"));
     expect(rowIdx, "plain screen carries the marker").toBeGreaterThan(0);
     const styled = stylizeLines(screen, createStyle("truecolor"));
-    // VISIBLE: the styled row still contains the marker glyph
+    // 可见：styled 行仍含标记字形
     expect(styled[rowIdx]!, "marker visible after truecolor stylization").toContain("›");
-    // TRUTHFUL: the strip-invariant holds on the marker row too
+    // 诚实：strip 不变量在标记行上也成立
     expect(stripAnsi(styled[rowIdx]!)).toBe(screen.lines[rowIdx]!);
-    // PIN-1: Enter would dispatch the SAME action the click zone carries
+    // PIN-1：Enter 会 dispatch 与点击区相同的动作
     expect(screen.contentTargets[zoneIdx]!.action).toEqual(zoneAction);
   });
 });
 
-describe("MR8 — width-clip honesty indicator (founder GO; indicator ONLY)", () => {
-  it("a graph wider than the viewport renders the visible clipped-content indicator at the right edge", async () => {
+describe("MR8——宽度裁剪诚实指示（founder GO；仅指示）", () => {
+  it("宽于视口的 graph 在右缘渲染可见裁剪内容指示", async () => {
     const { renderGraphStyle } = await import("../src/topology/render-graph.js");
-    // 40 cols cannot hold the fixture's three ranked columns
-    const plain = renderGraphStyle("hatchet", spikeFixtureGraph(), { host: "h", rig: "r", selected: null }, 40).plainLines().join("\n");
-    expect(plain).toMatch(/content clipped ▸/);
+    // 40 列容不下 fixture 的三个排名列
+    const rows = renderGraphStyle("hatchet", spikeFixtureGraph(), { host: "h", rig: "r", selected: null }, 40).plainLines();
+    const plain = rows.join("\n");
+    expect(plain).toMatch(/内容已裁剪 ▸/);
+    expect(rows.every((line) => strWidth(line) <= 40)).toBe(true);
   });
 
-  it("a graph that fits renders WITHOUT the indicator (no false alarm)", async () => {
+  it("刚好放下的 graph 不渲染指示（无误报）", async () => {
     const { renderGraphStyle } = await import("../src/topology/render-graph.js");
     const plain = renderGraphStyle("hatchet", spikeFixtureGraph(), { host: "h", rig: "r", selected: null }, 200).plainLines().join("\n");
     expect(plain).not.toMatch(/content clipped/);
   });
 });
 
-describe("R2 HIGH-1 — the locked agent-in-pod-in-rig containment is VISIBLE", () => {
+describe("R2 HIGH-1——锁定的 agent-in-pod-in-rig 包含关系可见", () => {
   function containScreen() {
     const snap = graphSnap();
     const s = makeStore(snap);
@@ -341,21 +342,21 @@ describe("R2 HIGH-1 — the locked agent-in-pod-in-rig containment is VISIBLE", 
     return { s, snap, screen: renderScreen(s.get(), snap, { cols: 160, rows: 44 }) };
   }
 
-  it("pod containers wrap their member agent boxes and the rig container wraps all (nesting fingerprint on every agent row)", () => {
+  it("pod 容器包裹其成员 agent 框，rig 容器包裹全部（每个 agent 行上的嵌套指纹）", () => {
     const { screen } = containScreen();
     const body = screen.lines.join("\n");
-    expect(body).toMatch(/▦ RIG openrig-build/); // rig container tab (round-3 glyph)
+    expect(body).toMatch(/▦ 工作组 openrig-build/); // rig container tab (round-3 glyph)
     for (const pod of ["orch", "dev", "review"]) expect(body, `pod ${pod} header`).toMatch(new RegExp(`≡ ${pod}`)); // round-3 pod glyph
-    // the fingerprint: rig double-border ║, then a pod border │, then the
-    // agent's OWN box border │ — three nested walls left of every agent glyph
-    // S19 MR1: titles are member-only — the fingerprint (three nested walls
-    // before glyph+member) is unchanged in intent
+    // 指纹：rig 双边框 ║，然后 pod 边框 │，然后
+    // agent 自己的框边框 │——每个 agent 字形左侧三道嵌套墙
+    // S19 MR1：标题仅成员——指纹（字形+成员前三道嵌套墙）
+    // 意图不变
     for (const agent of ["lead", "driver", "qa", "r1"]) {
       expect(body, `agent ${agent} nested`).toMatch(new RegExp(`║[^║╗\\n]*│[^│\\n]*│ [●◐○✕] ${agent}`));
     }
   });
 
-  it("nested hit zones DISCRIMINATE: rig tab → rig drill, pod header → pod drill, agent cell → agent drill", () => {
+  it("嵌套命中区区分：rig tab → rig drill，pod 头 → pod drill，agent 格 → agent drill", () => {
     const { s, screen } = containScreen();
     const podZone = screen.contentTargets.find((t) => t.action.type === "drill" && t.action.resource === "pod" && t.action.name === "dev");
     expect(podZone, "pod-header hit zone").toBeDefined();
@@ -368,19 +369,19 @@ describe("R2 HIGH-1 — the locked agent-in-pod-in-rig containment is VISIBLE", 
     expect(agentState.drill.at(-1)).toEqual({ kind: "agent", name: "dev.qa" });
   });
 
-  it("keyboard navigation reaches the SAME nested targets (content-select indices exist for pod AND agent zones)", () => {
+  it("键盘导航到达相同嵌套目标（pod 与 agent 区都存在 content-select 索引）", () => {
     const { screen } = containScreen();
     const podIdx = screen.contentTargets.findIndex((t) => t.action.type === "drill" && t.action.resource === "pod" && t.action.name === "dev");
     const agentIdx = screen.contentTargets.findIndex((t) => t.action.type === "drill" && t.action.resource === "agent" && t.action.name === "dev.qa");
     expect(podIdx).toBeGreaterThanOrEqual(0);
     expect(agentIdx).toBeGreaterThanOrEqual(0);
-    // Enter on the selected index dispatches EXACTLY the zone's action — the
-    // same object the mouse path uses (PIN-1, keyboard leg)
+    // 在选中索引上 Enter 精确 dispatch 该区动作——
+    // 鼠标路径用的同一对象（PIN-1，键盘腿）
     expect(screen.contentTargets[podIdx]!.action).toEqual({ type: "drill", resource: "pod", name: "dev", target: { host: "vm-host", rig: FIXTURE_RIG_NAME } });
   });
 });
 
-describe("R2 c47219f1 — offscreen nodes are neither keyboard-selectable nor actionable", () => {
+describe("R2 c47219f1——屏外节点既不可键盘选也不可动作", () => {
   function screenAt(cols: number) {
     const snap = graphSnap();
     const s = makeStore(snap);
@@ -389,7 +390,7 @@ describe("R2 c47219f1 — offscreen nodes are neither keyboard-selectable nor ac
     return { s, snap, screen };
   }
 
-  it("every content target's hit region intersects the VISIBLE pane at 140x34 AND 80x34 (zones derive from the clipped truth)", () => {
+  it("每个内容目标命中区在 140x34 与 80x34 都与可见窗格相交（区派生自裁剪真相）", () => {
     for (const cols of [140, 80]) {
       const { screen } = screenAt(cols);
       for (const t of screen.contentTargets) {
@@ -398,12 +399,12 @@ describe("R2 c47219f1 — offscreen nodes are neither keyboard-selectable nor ac
     }
   });
 
-  it("keyboard walking the FULL target list always shows a visible marker whose Enter action matches (plain + truecolor)", () => {
+  it("键盘走完整目标列表始终显示可见标记，其 Enter 动作匹配（plain + truecolor）", () => {
     for (const cols of [140, 80]) {
       const { s, snap, screen } = screenAt(cols);
       s.dispatch({ type: "layout", contentMaxOffset: screen.contentMaxOffset, contentTargetCount: screen.contentTargets.length });
       s.dispatch({ type: "focus", pane: "content" });
-      // walk to the LAST selectable target — the class R2 hit (12×Down at 140)
+      // 走到最后一个可选目标——class R2 命中（140 处 12×Down）
       const last = screen.contentTargets.length - 1;
       s.dispatch({ type: "content-select", index: last });
       const sel = renderScreen(s.get(), snap, { cols, rows: 34 });
@@ -412,35 +413,35 @@ describe("R2 c47219f1 — offscreen nodes are neither keyboard-selectable nor ac
       const styled = stylizeLines(sel, createStyle("truecolor"));
       expect(styled[markerRow]!, `cols=${cols}: marker visible in truecolor`).toContain("›");
       expect(stripAnsi(styled[markerRow]!)).toBe(sel.lines[markerRow]!);
-      // Enter dispatches a real, visible-target action
+      // Enter dispatch 一个真实、可见目标的动作
       expect(sel.contentTargets[Math.min(last, sel.contentTargets.length - 1)]!.action).toBeDefined();
     }
   });
 
-  it("selection normalizes honestly when a narrower re-render shrinks the target list (resize class)", () => {
+  it("更窄重渲染收缩目标列表时选择诚实归一（resize 类）", () => {
     const { s, snap, screen } = screenAt(150);
     s.dispatch({ type: "layout", contentMaxOffset: screen.contentMaxOffset, contentTargetCount: screen.contentTargets.length });
     s.dispatch({ type: "focus", pane: "content" });
     s.dispatch({ type: "content-select", index: screen.contentTargets.length - 1 });
-    // resize narrower: fewer targets — the layout action clamps the selection
+    // 收窄 resize：目标变少——layout 动作钳制选择
     const narrow = renderScreen(s.get(), snap, { cols: 80, rows: 34 });
     const after = s.dispatch({ type: "layout", contentMaxOffset: narrow.contentMaxOffset, contentTargetCount: narrow.contentTargets.length });
     expect(after.contentSelection).toBeLessThan(Math.max(narrow.contentTargets.length, 1));
   });
 });
 
-describe("PER-VIEW eligibility (PM concurrence on b7f95c4b): visibility truth re-evaluates per view", () => {
-  it("an agent fully clipped at rig level becomes eligible when its pod is drilled, and ineligible again at rig level", () => {
+describe("逐视图资格（PM 同意 b7f95c4b）：可见真相按视图重估", () => {
+  it("rig 级全裁剪的 agent 在其 pod 被 drill 后变为有资格，rig 级再无资格", () => {
     const snap = graphSnap();
     const s = makeStore(snap);
     s.dispatch({ type: "tab", tab: "graph" });
-    // S19 density shrank the cards, so the old 80-col premise no longer
-    // clips anything — 56 cols (24-col content pane) restores a genuinely
-    // fully-clipped last pod for this eligibility pin
+    // S19 密度缩小了卡片，故旧 80 列前提不再裁剪任何东西——
+    // 56 列（24 列 content 窗格）为此资格锚点恢复一个真
+    // 正全裁剪的末 pod
     const rigLevel = renderScreen(s.get(), snap, { cols: 56, rows: 34 });
     const atRig = rigLevel.contentTargets.some((t) => t.action.type === "drill" && t.action.resource === "agent" && t.action.name === "dev.qa");
     expect(atRig, "dev.qa ineligible while fully clipped at rig level").toBe(false);
-    // drill the dev pod → the pod-scoped view fits → dev.qa is visible AND eligible
+    // drill dev pod → pod 范围视图容纳 → dev.qa 可见且合格
     s.dispatch({ type: "drill", resource: "pod", name: "dev", target: { host: "vm-host", rig: FIXTURE_RIG_NAME } });
     s.dispatch({ type: "tab", tab: "graph" });
     const podLevel = renderScreen(s.get(), snap, { cols: 80, rows: 34 });
@@ -450,51 +451,51 @@ describe("PER-VIEW eligibility (PM concurrence on b7f95c4b): visibility truth re
   });
 });
 
-describe("S19 MR1 — kill the triple name (§A1)", () => {
-  it("each graph card names its pod ONCE: node titles are MEMBER-only, no pod token in card meta", () => {
+describe("S19 MR1——消除三重名字（§A1）", () => {
+  it("每张 graph 卡只命名其 pod 一次：节点标题仅成员，卡 meta 无 pod 令牌", () => {
     const snap = graphSnap();
     const s = makeStore(snap);
     s.dispatch({ type: "tab", tab: "graph" });
     const body = renderScreen(s.get(), snap, { cols: 160, rows: 44 }).lines.join("\n");
-    // pod named once — the container tab
+    // pod 只命名一次——容器标签
     expect(body).toMatch(/≡ dev/);
-    // titles are member-only: the qa card reads "◐ qa", never "◐ dev.qa"
+    // 标题仅成员：qa 卡读作 "◐ qa"，绝不 "◐ dev.qa"
     expect(body).toMatch(/[◐] qa/);
     expect(body).not.toMatch(/[◐] dev\.qa/);
     expect(body).toMatch(/● driver/);
     expect(body).not.toMatch(/● dev\.driver/);
-    // meta drops the pod suffix: no "· dev" tail inside a card meta row
+    // meta 去掉 pod 后缀：卡 meta 行内无 "· dev" 尾
     expect(body).not.toMatch(/· dev │/);
     expect(body).not.toMatch(/· orch │/);
-    // non-pod-prefixed names display unchanged (honest fallback mirrors the
-    // navigator's confirmed-prefix rule)
+    // 非 pod 前缀名显示不变（诚实回退镜像
+    // navigator 的确认前缀规则）
   });
 });
 
-describe("S19 MR3 — activity design language (role-level, palette-value-agnostic)", () => {
-  it("active / idle / detached / attention map to FOUR DISTINCT color roles; glyph honesty unchanged", async () => {
+describe("S19 MR3——活动设计语言（角色级、与调色板值无关）", () => {
+  it("active / idle / detached / attention 映射到四种不同颜色角色；字形诚实不变", async () => {
     const { statusGlyph } = await import("../src/topology/glyphs.js");
     const base = { logicalId: "x", podNamespace: "p", runtime: "codex", model: null, nodeKind: "agent" as const, contextUsedPercentage: null };
     const active = statusGlyph({ ...base, status: "running", startupStatus: "ready", agentActivity: { state: "running" } });
     const idle = statusGlyph({ ...base, status: "running", startupStatus: "ready", agentActivity: { state: "idle" } });
     const detached = statusGlyph({ ...base, status: "detached", startupStatus: null, agentActivity: null });
     const attention = statusGlyph({ ...base, status: "running", startupStatus: "attention_required", agentActivity: null });
-    // glyphs stay the honest 4-vocab
+    // 字形保持诚实的 4 词汇
     expect(active.glyph).toBe("●");
     expect(idle.glyph).toBe("●");
     expect(detached.glyph).toBe("○");
     expect(attention.glyph).toBe("◐");
-    // roles are DISTINCT (values = founder pick later; roles are the contract)
+    // 角色是不同的（值 = founder 后选；角色是契约）
     const roles = [active.token, idle.token, detached.token, attention.token];
     expect(new Set(roles).size).toBe(4);
-    // honest-unknown unchanged: no session/no activity → ○, never ●
+    // 诚实 unknown 不变：无 session/无 activity → ○，绝不 ●
     const unknown = statusGlyph({ ...base, status: null, startupStatus: null });
     expect(unknown.glyph).toBe("○");
   });
 });
 
-describe("S19 MR4 — detail pane shows the full absolute working directory", () => {
-  it("an agent with a served cwd renders it verbatim; absent cwd renders honest —", () => {
+describe("S19 MR4——详情窗格显示完整绝对工作目录", () => {
+  it("有已服务 cwd 的 agent 逐字渲染；缺失 cwd 渲染诚实 —", () => {
     const snap = graphSnap();
     (snap.hosts[0]!.rigs[0]!.pods[1]!.agents[0]! as { cwd?: string | null }).cwd = "/Users/admin/code/openrig-build-source";
     const s = makeStore(snap);
@@ -504,22 +505,22 @@ describe("S19 MR4 — detail pane shows the full absolute working directory", ()
     const s2 = makeStore(graphSnap());
     s2.dispatch({ type: "drill", resource: "agent", name: "dev.qa", target: { host: "vm-host", rig: FIXTURE_RIG_NAME, pod: "dev" } });
     const body2 = renderScreen(s2.get(), graphSnap(), { cols: 150, rows: 40 }).lines.join("\n");
-    expect(body2).toContain("— (not served)"); // the literal honest absent value (guard strengthening)
+    expect(body2).toContain("— (未服务)"); // the literal honest absent value (guard strengthening)
   });
 });
 
-describe("Command focus + guide contrast", () => {
-  it("the command bar's insertion cell is visible for EMPTY and non-empty input (guard MR5a: pre-typing discoverability)", () => {
+describe("命令焦点 + 引导线对比", () => {
+  it("命令栏插入格在空与非空输入下都可见（守卫 MR5a：输入前可发现性）", () => {
     const snap = graphSnap();
     const s = makeStore(snap);
-    // EMPTY buffer: the cursor shows the bar is ready BEFORE the first key
+    // 空 buffer：光标在首键前显示栏已就绪
     const empty = renderScreen(s.get(), snap, { cols: 120, rows: 30 }, "");
     expect(empty.lines[0]).toContain("cmd ▸ ▊");
     const styledE = stylizeLines(empty, createStyle("truecolor"));
     expect(styledE[0]).toContain("▊");
     expect(empty.commandMotionActive).toBe(true);
     styledE.forEach((l, i) => expect(stripAnsi(l)).toBe(empty.lines[i]));
-    // NON-EMPTY: the cursor rides the end of the text
+    // 非空：光标骑在文本末端
     const composing = renderScreen(s.get(), snap, { cols: 120, rows: 30 }, "rig ope");
     expect(composing.lines[0]).toContain("rig ope▊");
     const styledC = stylizeLines(composing, createStyle("truecolor"));
@@ -528,7 +529,7 @@ describe("Command focus + guide contrast", () => {
     styledC.forEach((l, i) => expect(stripAnsi(l)).toBe(composing.lines[i]));
   });
 
-  it("tree guides paint the BUMPED chrome contrast (one step up; text-only-highlight pin is the regression guard)", () => {
+  it("tree 引导线绘制提升后的 chrome 对比（升一档；纯文本高亮 pin 为回归守卫）", () => {
     const s = makeStore(graphSnap());
     const screen = renderScreen(s.get(), graphSnap(), { cols: 120, rows: 30 });
     const styled = stylizeLines(screen, createStyle("truecolor"));
@@ -538,8 +539,8 @@ describe("Command focus + guide contrast", () => {
   });
 });
 
-describe("ROUND-3 LOCKED SET (orch locked-scope GO; pins 02259adb/29a10b62)", () => {
-  it("runtime marks are OFF explorer rows: agent meta is ctx% only; marks live on detail + topology cards", () => {
+describe("ROUND-3 锁定集（orch 锁定范围 GO；pins 02259adb/29a10b62）", () => {
+  it("runtime 标记不在 explorer 行：agent meta 仅 ctx%；标记活在详情 + topology 卡上", () => {
     const snap = graphSnap();
     const s = makeStore(snap);
     s.dispatch({ type: "drill", resource: "pod", name: "dev", target: { host: "vm-host", rig: FIXTURE_RIG_NAME } });
@@ -547,22 +548,22 @@ describe("ROUND-3 LOCKED SET (orch locked-scope GO; pins 02259adb/29a10b62)", ()
     const pane = explorer.lines.map((l) => l.slice(0, explorer.explorerWidth)).join("\n");
     expect(pane).not.toMatch(/▐▌|>_|▝▘|▘▝|></); // no marks in the explorer (quadrant orders AND the picks-v4 eyes)
     expect(pane).toMatch(/driver\s+24%/); // name-first untruncated + bare ctx%
-    // cards still carry the mark
+    // 卡仍带标记
     s.dispatch({ type: "tab", tab: "graph" });
     const body = renderScreen(s.get(), snap, { cols: 150, rows: 40 }).lines.join("\n");
     expect(body).toMatch(/>< 24%|>< 63%/); // picks-v4 clawd mark in card meta
-    // detail page shows the mark as the runtime field — spelled runtime is dead
+    // 详情页把标记显示为 runtime 字段——拼写 runtime 已死
     s.dispatch({ type: "drill", resource: "agent", name: "dev.driver", target: { host: "vm-host", rig: FIXTURE_RIG_NAME, pod: "dev" } });
     const detail = renderScreen(s.get(), snap, { cols: 150, rows: 40 }).lines.join("\n");
-    // a4c9548a (S19 follow-on founder ruling, bounds the marks ruling): on the detail
-    // page there is room, so the runtime NAME is the VALUE; the mark only accompanies
-    // decoratively, never substitutes. (Supersedes the earlier "the mark IS the value /
-    // spelled runtime is dead" pin — topology cards above stay mark-only, bounded not reversed.)
-    expect(detail).toMatch(/runtime:\s+claude-code/); // the NAME is the runtime value
+    // a4c9548a（S19 后续 founder 裁决，界定 marks 裁决）：在详情
+    // 页有空间，故 runtime NAME 是 VALUE；标记只装饰性伴随，
+    // 绝不替代。（取代早先 "标记即值 /
+    // 拼写 runtime 已死" 锚点——上方 topology 卡保持仅标记，界定而非反转。）
+    expect(detail).toMatch(/运行时:\s+claude-code/); // the NAME is the runtime value
     expect(detail).toMatch(/claude-code\s+></); // the clawd mark still accompanies decoratively
   });
 
-  it("the clawd eyes are the picks-v4 INWARD SQUINTY pair `><` (founder amendment 14afeb74, supersedes the round-4 quadrant geometry)", async () => {
+  it("clawd 眼睛是 picks-v4 向内眯眼对 `><`（founder 修正 14afeb74，取代 round-4 象限几何）", async () => {
     const { clawdSquareMark, runtimeMarkSegs, markText } = await import("../src/topology/runtime-marks.js");
     const sq = clawdSquareMark();
     expect(sq).toHaveLength(2); // 2-cell form: literally the characters >< per the amendment
@@ -573,7 +574,7 @@ describe("ROUND-3 LOCKED SET (orch locked-scope GO; pins 02259adb/29a10b62)", ()
     expect(markText(runtimeMarkSegs("claude-code"))).toBe("><"); // shipped claude mark = the refined face
   });
 
-  it("agent-detail runtime NAME is the value AND the mark keeps its OWN styling in compiled output (a4c9548a + guard round-4 finding 2)", () => {
+  it("agent-detail runtime NAME 是值，且标记在编译输出中保留自有样式（a4c9548a + guard round-4 finding 2）", () => {
     const node = (id: string, name: string, runtime: string) => ({
       id, type: "rigNode", parentId: "pod-D",
       data: { logicalId: name, podNamespace: "d", runtime, model: null, status: "running",
@@ -600,30 +601,30 @@ describe("ROUND-3 LOCKED SET (orch locked-scope GO; pins 02259adb/29a10b62)", ()
       s.dispatch({ type: "drill", resource: "agent", name: agent, target: { host: "h", rig: "r", pod: "d" } });
       const screen = renderScreen(s.get(), trioSnap, { cols: 150, rows: 40 });
       const styled = stylizeLines(screen, createStyle("truecolor"));
-      const idx = screen.lines.findIndex((l) => l.slice(31).includes("runtime:"));
+      const idx = screen.lines.findIndex((l) => dropW(l, screen.explorerWidth + 1).includes("运行时:"));
       expect(idx, `runtime field row for ${agent}`).toBeGreaterThan(0);
       styled.forEach((l, j) => expect(stripAnsi(l), `${agent} line ${j}`).toBe(screen.lines[j]));
       return { plain: screen.lines[idx]!, styled: styled[idx]! };
     };
-    // clawd: dark #181818 eyes ON the #ad6755 terracotta field, in compiled SGR
+    // clawd：深色 #181818 眼睛在 #ad6755 赤陶字段上，编译后 SGR
     const cl = drillDetail("d.cl");
     expect(cl.styled).toMatch(/38;2;24;24;24;48;2;173;103;85m[^\x1b]*>/);
     expect(cl.styled).toMatch(/38;2;24;24;24;48;2;173;103;85m[^\x1b]*</); // both inward eyes carry the eye-on-terracotta SGR
-    expect(cl.plain).toMatch(/runtime:\s+claude-code/); // a4c9548a: the NAME is the value (the mark's SGR above proves it still accompanies decoratively)
-    // terminal: the dark-cell background survives to the compiled detail line
+    expect(cl.plain).toMatch(/运行时:\s+claude-code/); // a4c9548a: the NAME is the value (the mark's SGR above proves it still accompanies decoratively)
+    // terminal：深色 cell 背景存活到编译后详情行
     const tty = drillDetail("d.tty");
     expect(tty.styled).toMatch(/48;2;12;10;9m?[^\x1b]*>/);
-    expect(tty.plain.slice(31)).toMatch(/runtime:\s+terminal/); // a4c9548a: the NAME is the value; the >_ mark still trails (SGR above)
-    // codex: the NAME `codex` is the value (a4c9548a), with the picks-v4 CHEVRON-ONLY
-    // blue hint accompanying — the `>` carries the OFFICIAL sampled #6867aa
-    // (38;2;104;103;170) on detail; the `_` stays light ink; no ❯, no outline.
+    expect(tty.plain).toMatch(/运行时:\s+terminal/); // a4c9548a: the NAME is the value; the >_ mark still trails (SGR above)
+    // codex：NAME `codex` 即值（a4c9548a），配 picks-v4 仅 V 形
+    // 蓝色提示——`>` 在详情携带官方采样 #6867aa
+    //（38;2;104;103;170）；`_` 保持淡墨；无 ❯，无 outline。
     const cx = drillDetail("d.cx");
-    expect(cx.plain.slice(31)).toMatch(/runtime:\s+codex/); // a4c9548a: the NAME is the value
+    expect(cx.plain).toMatch(/运行时:\s+codex/); // a4c9548a: the NAME is the value
     expect(cx.styled).toMatch(/38;2;104;103;170m[^\x1b]*>/); // chevron pick (picks v4 item a) still accompanies
     expect(cx.plain).not.toMatch(/❯/); // no ❯ outline (the codex name renders as the value, not an icon substitute)
   });
 
-  it("rig glyph is ▦ and pod glyph is ≡ (founder picks of record)", () => {
+  it("rig 字形为 ▦，pod 字形为 ≡（founder 记录 picks）", () => {
     const snap = graphSnap();
     const s = makeStore(snap);
     const pane = renderScreen(s.get(), snap, { cols: 150, rows: 40 }).lines.map((l) => l.slice(0, 30)).join("\n");
@@ -631,11 +632,11 @@ describe("ROUND-3 LOCKED SET (orch locked-scope GO; pins 02259adb/29a10b62)", ()
     expect(pane).not.toMatch(/▚ /);
     s.dispatch({ type: "tab", tab: "graph" });
     const body = renderScreen(s.get(), snap, { cols: 150, rows: 40 }).lines.join("\n");
-    expect(body).toMatch(/▦ RIG openrig-build/);
+    expect(body).toMatch(/▦ 工作组 openrig-build/);
     expect(body).toMatch(/≡ dev/); // pod container tab carries the pod glyph
   });
 
-  it("live rig icons are bright monochrome (color is for status only)", () => {
+  it("live rig 图标为明亮单色（颜色仅用于状态）", () => {
     const snap = graphSnap();
     const s = makeStore(snap);
     s.dispatch({ type: "select", index: 0 }); // inspect an unselected icon, not selection paint
@@ -646,7 +647,7 @@ describe("ROUND-3 LOCKED SET (orch locked-scope GO; pins 02259adb/29a10b62)", ()
     expect(rigLine).toContain(createStyle("truecolor").paint("bright", "▦"));
   });
 
-  it("the official codex blue token is #6867aa and the three hint CANDIDATES exist unpicked", async () => {
+  it("官方 codex 蓝令牌为 #6867aa，三个 hint 候选存在未选", async () => {
     const { codexHintVariants } = await import("../src/topology/runtime-marks.js");
     const { createStyle: cs } = await import("../src/theme.js");
     const t = cs("truecolor");

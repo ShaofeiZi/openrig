@@ -2,8 +2,8 @@
 //
 // Covers AC-6 (running-rig --force guard surfaces a 3-part honest error),
 // the happy archive/unarchive paths, the --force flag wiring, and JSON output.
-// The daemon-layer guard is proven in the daemon suite (rig-archive.test.ts);
-// here we prove the CLI faithfully surfaces the route's contract.
+// daemon 层守卫已在 daemon 套件（rig-archive.test.ts）中证明；
+// 此处证明 CLI 忠实地呈现该路由的契约。
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import http from "node:http";
 import { Command } from "commander";
@@ -39,7 +39,7 @@ function captureLogs(fn: () => Promise<void>): Promise<{ logs: string[]; exitCod
     console.log = (...args: unknown[]) => logs.push(args.join(" "));
     console.error = (...args: unknown[]) => logs.push(args.join(" "));
     const origWrite = process.stderr.write.bind(process.stderr);
-    // archive.ts writes the 3-part error via process.stderr.write
+    // archive.ts 经 process.stderr.write 写出三段式错误
     (process.stderr as { write: unknown }).write = (chunk: string) => { logs.push(String(chunk)); return true; };
     try { await fn(); } finally {
       console.log = origLog;
@@ -157,7 +157,7 @@ describe("Archive / Unarchive CLI (OPR.0.3.3.19)", () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await archiveCmd().parseAsync(["node", "rig", "archive", "missing"]);
     });
-    expect(logs.join("\n")).toContain("Rig not found: missing");
+    expect(logs.join("\n")).toContain("未找到工作组：missing");
     expect(exitCode).toBe(1);
   });
 
@@ -180,7 +180,7 @@ describe("Archive / Unarchive CLI (OPR.0.3.3.19)", () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await archiveCmd().parseAsync(["node", "rig", "archive", "rig-1"]);
     });
-    expect(logs.join("\n")).toContain("already archived");
+    expect(logs.join("\n")).toContain("此前已归档");
     expect(exitCode).toBeUndefined();
   });
 
@@ -189,7 +189,7 @@ describe("Archive / Unarchive CLI (OPR.0.3.3.19)", () => {
     const { logs, exitCode } = await captureLogs(async () => {
       await unarchiveCmd().parseAsync(["node", "rig", "unarchive", "rig-1"]);
     });
-    expect(logs.join("\n")).toContain("back in the default view");
+    expect(logs.join("\n")).toContain("回到默认视图");
     expect(exitCode).toBeUndefined();
   });
 
@@ -198,7 +198,7 @@ describe("Archive / Unarchive CLI (OPR.0.3.3.19)", () => {
     const { logs } = await captureLogs(async () => {
       await unarchiveCmd().parseAsync(["node", "rig", "unarchive", "rig-1"]);
     });
-    expect(logs.join("\n")).toContain("was not archived");
+    expect(logs.join("\n")).toContain("此前未归档");
   });
 
   it("unarchive 404 exits 1", async () => {

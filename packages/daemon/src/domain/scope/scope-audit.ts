@@ -14,23 +14,20 @@ export type FindingKind =
   | "malformed_mission_brief"
   | "missing_mission_notes"
   | "missing_proof"
-  // OPR.0.4.4.19 FR-10 — the belt-and-suspenders BACKSTOPS (never the
-  // primary enforcement; the primary is the drop path / write path):
+  // OPR.0.4.4.19 FR-10——双重保险式兜底（绝非主要强制措施；主要措施位于投放/写入路径）：
   | "proof_artifact_c1_invalid"
   | "missing_impl_prd"
-  // OPR.0.4.4.23 — SDLC convention-section advisories (fail-open by
-  // construction: low/info severities never flip the audit exit code;
-  // conventions SSOT: docs/reference/sdlc-conventions.md):
+  // OPR.0.4.4.23——SDLC 约定章节建议（结构上失败开放：low/info 严重度绝不会改变
+  // 审计退出码；约定的唯一事实来源为 docs/reference/sdlc-conventions.md）：
   | "missing_intent_section"
   | "mini_requirements_missing_or_malformed"
   | "proof_contract_missing_or_malformed"
   | "ui_slice_missing_mockup"
-  // Release-boundary capability deltas stay citable only until canon names the
-  // exact delta and a successor exists. Medium severity keeps this advisory.
+  // 发布边界能力差异仅在规范尚未准确命名该差异且已有后继版本时可继续引用。
+  // 使用 medium 严重度保留这条建议。
   | "expired_capability_delta"
-  // SPEC.md compatibility — a node carrying BOTH authored files. Advisory by
-  // construction (low severity never flips the exit code): SPEC.md wins, and the
-  // shadowed README.md is a state to notice, never a failure to gate on.
+  // SPEC.md 兼容性：节点同时携带两份已编写文件。该检查结构上仅为建议（low 严重度绝不
+  // 改变退出码）：以 SPEC.md 为准，被遮蔽的 README.md 是需要留意的状态，而非门控失败。
   | "shadowed_node_file";
 
 export interface AuditFinding {
@@ -64,19 +61,16 @@ export interface ScopeAuditInput {
   proofDirHasEntries?: boolean;
   hasProofPacket?: boolean;
   sliceStatus?: string | null;
-  // OPR.0.4.4.19 FR-10 (C1 backstop) — the slice's proof/ dir markdown
-  // artifacts with their raw frontmatter, caller-listed. Undefined = the
-  // caller has no proof-dir context; the check is inert (no false findings).
-  // Media files (video/screenshot) are exempt by construction — callers list
-  // .md artifacts only.
+  // OPR.0.4.4.19 FR-10（C1 兜底）：调用方列出的切片 proof/ 目录 Markdown 产物及其
+  // 原始 frontmatter。undefined 表示调用方没有 proof 目录上下文，此检查不生效，避免误报。
+  // 媒体文件（视频/截图）在结构上豁免，调用方只列出 .md 产物。
   proofArtifacts?: Array<{ path: string; frontmatterRaw: string | null }>;
-  // OPR.0.4.4.19 FR-10 (C7 backstop) — whether IMPLEMENTATION-PRD.md exists
-  // at the slice root. Undefined = inert (caller has no fs context).
+  // OPR.0.4.4.19 FR-10（C7 兜底）：切片根目录是否存在 IMPLEMENTATION-PRD.md。
+  // undefined 表示不生效（调用方没有文件系统上下文）。
   implementationPrdExists?: boolean;
-  // OPR.0.4.4.23 — convention-section advisory inputs: full file contents,
-  // caller-read. Undefined = the caller has no content context and every
-  // section check is inert (no false findings). null = the file does not
-  // exist (the proof-contract check falls back to the README on a null PRD).
+  // OPR.0.4.4.23——约定章节建议的输入：由调用方读取的完整文件内容。undefined 表示调用方
+  // 没有内容上下文，所有章节检查均不生效（避免误报）；null 表示文件不存在（PRD 为 null 时，
+  // proof-contract 检查回退到 README）。
   nodeFileName?: "SPEC.md" | "README.md";
   readmeContent?: string | null;
   implementationPrdContent?: string | null;
@@ -106,9 +100,8 @@ export interface MissionDependencyGraphInput {
   slices: Array<{ id: string | null; name: string; dependsOn: unknown; active: boolean }>;
 }
 
-/** Pure advisory graph derivation shared by mission graph and both audit surfaces.
- * Unknown, stale, malformed, and cross-parent edges are reported and ignored:
- * dependency data can steer build order but never gate execution. */
+/** 由 mission graph 与两个审计面共用的纯建议图推导。
+ *  未知、过期、畸形、跨父级的边会被报告并忽略：依赖数据可以引导构建顺序，但绝不卡执行。 */
 export function deriveMissionDependencyGraph(input: MissionDependencyGraphInput): MissionDependencyGraph {
   const active = input.slices.filter((slice) => slice.active);
   const allIds = new Set(input.slices.flatMap((slice) => slice.id ? [slice.id] : []));
@@ -120,24 +113,24 @@ export function deriveMissionDependencyGraph(input: MissionDependencyGraphInput)
 
   for (const slice of active) {
     if (!slice.id) {
-      advisories.push({ id: slice.name, kind: "missing_id", message: "Slice has no dot-ID; it cannot participate in the dependency graph." });
+      advisories.push({ id: slice.name, kind: "missing_id", message: "Slice 没有 dot-ID，无法参与依赖图。" });
       continue;
     }
     const dependencies: string[] = [];
     if (slice.dependsOn !== undefined && !Array.isArray(slice.dependsOn)) {
-      advisories.push({ id: slice.id, kind: "invalid_field", message: "depends_on must be a list of sibling dot-IDs; the value was ignored." });
+      advisories.push({ id: slice.id, kind: "invalid_field", message: "depends_on 必须是同级 dot-ID 的列表；该值已被忽略。" });
     }
     for (const value of Array.isArray(slice.dependsOn) ? slice.dependsOn : []) {
       if (typeof value !== "string" || !isSliceDotId(value)) {
-        advisories.push({ id: slice.id, dependency: String(value), kind: "invalid_dependency", message: "Dependency is not a slice dot-ID and was ignored." });
+        advisories.push({ id: slice.id, dependency: String(value), kind: "invalid_dependency", message: "依赖不是 slice dot-ID，已被忽略。" });
         continue;
       }
       if (input.mission.id && !value.startsWith(`${input.mission.id}.`)) {
-        advisories.push({ id: slice.id, dependency: value, kind: "outside_parent", message: "Dependency is outside this mission and was ignored." });
+        advisories.push({ id: slice.id, dependency: value, kind: "outside_parent", message: "依赖不在本 mission 内，已被忽略。" });
         continue;
       }
       if (!allIds.has(value)) {
-        advisories.push({ id: slice.id, dependency: value, kind: "missing_sibling", message: "Dependency does not resolve to a sibling and was ignored." });
+        advisories.push({ id: slice.id, dependency: value, kind: "missing_sibling", message: "依赖无法解析为同级 slice，已被忽略。" });
         continue;
       }
       dependencies.push(value);
@@ -160,10 +153,9 @@ export function deriveMissionDependencyGraph(input: MissionDependencyGraphInput)
   };
 }
 
-// OPR.0.4.4.20 FR-8: exported so the review brief-spine writer conforms to
-// the SAME pinned exact-order schema this audit enforces (parity by
-// construction — the generated output can never trip malformed_mission_brief
-// without this file changing too).
+// OPR.0.4.4.20 FR-8：导出该值，使评审简报主干写入器遵循本审计强制执行的同一套固定精确
+// 顺序规范。由结构保证一致性：除非此文件也发生变化，否则生成的输出绝不可能触发
+// malformed_mission_brief。
 export const MISSION_BRIEF_HEADERS = ["What & why", "Building", "Progress", "Proven", "Needs you", "Pointers"];
 
 function childPath(parent: string, child: string): string {
@@ -194,62 +186,68 @@ function statusRequiresProof(status: string | null | undefined): boolean {
     || normalized.includes("promoted");
 }
 
-// OPR.0.4.4.19 FR-10 (C1) — the ratified closed sets (BR-4; source of truth
-// for the drop path lives in the CLI proof command; this mirrored file
-// carries its own copy because both scope-audit copies must stay
-// self-contained + byte-identical. Extending the sets is a pm-lead
-// convention change, made in BOTH places).
+// OPR.0.4.4.19 FR-10（C1）：已批准的闭合集合（BR-4）。投放路径的事实来源位于 CLI proof
+// 命令中；此镜像文件自带一份副本，因为两份 scope-audit 必须各自完整且字节一致。
+// 扩展集合属于 pm-lead 约定变更，必须在两处同时完成。
 const C1_REQUIRED_FIELDS = ["slice", "candidate_sha", "artifact_type", "verdict", "money_evidence"] as const;
 const C1_ARTIFACT_TYPES = ["guard", "qa", "rev1-r1", "rev1-r2", "adjudication"] as const;
 const C1_VERDICTS = ["CLEAR", "BLOCKING", "CONCERNING", "PASS", "NOT-CLEAR"] as const;
 
-/** Validate one proof artifact's raw frontmatter against the C1 contract.
- *  Returns null when valid; else the human-readable problem list. */
+/** 按 C1 契约校验一份 proof artifact 的原始 frontmatter。
+ *  合法时返回 null；否则返回人类可读的问题列表。 */
 function c1ArtifactProblems(frontmatterRaw: string | null): string[] | null {
   if (frontmatterRaw === null) {
-    return [`no frontmatter header at all (required C1 fields: ${C1_REQUIRED_FIELDS.join(", ")})`];
+    return [`完全没有 frontmatter 头（C1 必含字段：${C1_REQUIRED_FIELDS.join(", ")}）`];
   }
   let parsed: unknown = null;
   try {
     parsed = YAML.parse(frontmatterRaw);
   } catch (err) {
-    return [`frontmatter fails to parse: ${err instanceof Error ? err.message : String(err)}`];
+    return [`frontmatter 无法解析：${err instanceof Error ? err.message : String(err)}`];
   }
   const fm = parsed && typeof parsed === "object" && !Array.isArray(parsed)
     ? parsed as Record<string, unknown>
     : {};
   const problems: string[] = [];
   const missing = C1_REQUIRED_FIELDS.filter((f) => typeof fm[f] !== "string" || (fm[f] as string).trim().length === 0);
-  if (missing.length > 0) problems.push(`missing field(s): ${missing.join(", ")}`);
+  if (missing.length > 0) problems.push(`缺少字段：${missing.join(", ")}`);
   if (typeof fm.artifact_type === "string" && !(C1_ARTIFACT_TYPES as readonly string[]).includes(fm.artifact_type)) {
-    problems.push(`artifact_type '${fm.artifact_type}' not in closed set (${C1_ARTIFACT_TYPES.join(" | ")})`);
+    problems.push(`artifact_type '${fm.artifact_type}' 不在封闭集内（${C1_ARTIFACT_TYPES.join(" | ")}）`);
   }
   if (typeof fm.verdict === "string" && !(C1_VERDICTS as readonly string[]).includes(fm.verdict)) {
-    problems.push(`verdict '${fm.verdict}' not in closed set (${C1_VERDICTS.join(" | ")})`);
+    problems.push(`verdict '${fm.verdict}' 不在封闭集内（${C1_VERDICTS.join(" | ")}）`);
   }
   return problems.length > 0 ? problems : null;
 }
 
-// OPR.0.4.4.23 — markdown H2-section helpers for the convention-section
-// advisories. Headings are literals owned by this file ("Intent",
-// "Proof contract", "Intent visual") — no user input reaches the regex.
+// OPR.0.4.4.23——用于约定章节建议的 Markdown H2 章节辅助函数。标题是本文件拥有的字面量
+//（"Intent"、"Proof contract"、"Intent visual"），没有用户输入会进入正则。
+const H2_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  Intent: ["Intent", "意图"],
+  "Mini-requirements": ["Mini-requirements", "最小需求", "小型需求"],
+  "Proof contract": ["Proof contract", "证明契约", "证据约定"],
+  "Intent visual": ["Intent visual", "意图视觉稿", "意图视觉"],
+};
+
+function h2Pattern(heading: string): string {
+  return (H2_ALIASES[heading] ?? [heading]).join("|");
+}
+
 function hasH2(content: string, heading: string): boolean {
-  return new RegExp(`^##\\s+${heading}\\s*$`, "m").test(content);
+  return new RegExp(`^##\\s+(?:${h2Pattern(heading)})\\s*$`, "mi").test(content);
 }
 
 function h2Body(content: string, heading: string): string | null {
-  const match = new RegExp(`^##\\s+${heading}\\s*$`, "m").exec(content);
+  const match = new RegExp(`^##\\s+(?:${h2Pattern(heading)})\\s*$`, "mi").exec(content);
   if (!match) return null;
   const rest = content.slice(match.index + match[0].length);
   const next = rest.search(/^##\s+/m);
   return next === -1 ? rest : rest.slice(0, next);
 }
 
-// A mission is ACTIVE unless its status names a terminal / archived state.
-// The SOP wants missing_mission_notes to fire for an ACTIVE mission only — a
-// shipped/archived mission no longer needs a live continuity file. No status
-// => treat as active (still flag), which preserves the pre-tighten behavior for
-// the common status-less mission.
+// 除非任务状态指向终态或归档态，否则视为活跃。SOP 要求 missing_mission_notes 只对活跃任务
+// 触发；已交付/已归档任务不再需要实时连续性文件。没有状态时按活跃处理并继续标记，保留收紧
+// 规则前对常见无状态任务的行为。
 function missionIsActive(status: string | null | undefined): boolean {
   if (!status) return true;
   const normalized = status.toLowerCase();
@@ -263,7 +261,7 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
   let parsedFrontmatter: Record<string, unknown> = {};
   let railStatus: RailStatus;
 
-  // Rail status
+  // 主线状态
   if (input.readmeOnlyMarker) {
     railStatus = "readme-only";
   } else if (input.progressFileExists) {
@@ -274,19 +272,19 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
       kind: "missing_progress",
       severity: input.isActiveRelease ? "high" : "low",
       path: input.path,
-      message: `${input.level} has no PROGRESS.md and no readme-only marker`,
-      remediation: `Run: rig scope ${input.level} create (scaffolds PROGRESS.md) or add progress_rail: readme-only to README frontmatter`,
+      message: `${input.level} 既没有 PROGRESS.md，也没有 readme-only 标记`,
+      remediation: `运行：zrig scope ${input.level} create（脚手架生成 PROGRESS.md），或在 README frontmatter 中加 progress_rail: readme-only`,
     });
   }
 
-  // Frontmatter classification (strict parse, NOT parseYamlSafely)
+  // Frontmatter 分类（严格解析，不使用 parseYamlSafely）
   if (input.readmeFrontmatterRaw === null) {
     findings.push({
       kind: "missing_id",
       severity: input.isActiveRelease ? "high" : "low",
       path: input.path,
-      message: `README has no frontmatter (no id can be extracted)`,
-      remediation: "Add YAML frontmatter with an id: field to the README",
+      message: `README 没有 frontmatter（无法提取 id）`,
+      remediation: "给 README 加上带 id: 字段的 YAML frontmatter",
     });
   } else {
     let parsed: unknown = null;
@@ -307,16 +305,16 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
           kind: "registration_ghost",
           severity: input.isActiveRelease ? "high" : "low",
           path: input.path,
-          message: `README has an id: line but frontmatter fails to parse (registration ghost): ${parseError}`,
-          remediation: "Fix the YAML frontmatter syntax error so the id can be read",
+          message: `README 有 id: 行，但 frontmatter 无法解析（注册幽灵）：${parseError}`,
+          remediation: "修复 YAML frontmatter 语法错误，以便读取 id",
         });
       } else {
         findings.push({
           kind: "registration_ghost",
           severity: input.isActiveRelease ? "high" : "low",
           path: input.path,
-          message: `README frontmatter fails to parse: ${parseError}`,
-          remediation: "Fix the YAML frontmatter syntax error",
+          message: `README frontmatter 无法解析：${parseError}`,
+          remediation: "修复 YAML frontmatter 语法错误",
         });
       }
     } else {
@@ -331,8 +329,8 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
           kind: "missing_id",
           severity: input.isActiveRelease ? "high" : "low",
           path: input.path,
-          message: `README frontmatter has no id field`,
-          remediation: "Add an id: field to the README frontmatter matching the scope dot-ID convention",
+          message: `README frontmatter 没有 id 字段`,
+          remediation: "在 README frontmatter 中加一个符合 scope dot-ID 约定的 id: 字段",
         });
       } else {
         const validator = input.level === "mission" ? isMissionDotId : isSliceDotId;
@@ -341,8 +339,8 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
             kind: "id_convention_violation",
             severity: input.isActiveRelease ? "high" : "info",
             path: input.path,
-            message: `id "${id}" does not match the ${input.level} dot-ID convention`,
-            remediation: `Use a valid ${input.level} dot-ID format`,
+            message: `id "${id}" 不符合 ${input.level} 的 dot-ID 约定`,
+            remediation: `使用合法的 ${input.level} dot-ID 格式`,
           });
         }
       }
@@ -359,8 +357,8 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
         kind: "missing_mission_notes",
         severity: "low",
         path: notesPath,
-        message: "Mission has no NOTES.md or readable legacy MISSION_NOTES.md context file.",
-        remediation: "Add NOTES.md at the mission root. Existing MISSION_NOTES.md remains a readable legacy fallback.",
+        message: "Mission 没有 NOTES.md，也没有可读的旧版 MISSION_NOTES.md 上下文文件。",
+        remediation: "在 mission 根目录加 NOTES.md。既有 MISSION_NOTES.md 仍作为可读的旧版回退。",
       });
     }
   }
@@ -378,15 +376,13 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
         kind: "missing_proof",
         severity: "medium",
         path: proofPath,
-        message: "Slice is done/proven but does not have complete root PROOF.md plus populated proof/ artifacts.",
-        remediation: "Add PROOF.md at the slice root and put verification artifacts under proof/ per the slice-closeout SOP.",
+        message: "Slice 已 done/proven，但没有完整的根 PROOF.md 加上有内容的 proof/ artifacts。",
+        remediation: "在 slice 根目录加 PROOF.md，并按 slice 收尾 SOP 把验证 artifacts 放到 proof/ 下。",
       });
     }
 
-    // OPR.0.4.4.19 FR-10 (C1 backstop) — flag proof/ artifacts missing the
-    // C1 header or carrying out-of-set values. The backstop catches what
-    // bypassed the drop path (raw file writes are never gated at write
-    // time; this is where they surface).
+    // OPR.0.4.4.19 FR-10（C1 兜底）：标记缺少 C1 头部或携带集合外值的 proof/ 产物。
+    // 该兜底会捕获绕过投放路径的内容；原始文件写入不会在写入时受门控，而会在此暴露。
     for (const artifact of input.proofArtifacts ?? []) {
       const problems = c1ArtifactProblems(artifact.frontmatterRaw);
       if (problems) {
@@ -394,17 +390,16 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
           kind: "proof_artifact_c1_invalid",
           severity: "medium",
           path: artifact.path,
-          message: `Proof artifact violates the C1 header contract: ${problems.join("; ")}.`,
-          remediation: `Re-drop via: rig proof add <slice> --artifact-type <${C1_ARTIFACT_TYPES.join("|")}> --verdict <${C1_VERDICTS.join("|")}> --candidate-sha <sha> --money-evidence "<line>" — or add the missing frontmatter fields in place.`,
+          message: `Proof artifact 违反 C1 头契约：${problems.join("; ")}。`,
+          remediation: `重新投递：zrig proof add <slice> --artifact-type <${C1_ARTIFACT_TYPES.join("|")}> --verdict <${C1_VERDICTS.join("|")}> --candidate-sha <sha> --money-evidence "<一句话>"——或就地补齐缺失的 frontmatter 字段。`,
         });
       }
     }
 
-    // OPR.0.4.4.23 — SDLC convention-section advisories (SSOT:
-    // docs/reference/sdlc-conventions.md). Structurally fail-open: the
-    // audit command flips its exit code on HIGH findings only, and these
-    // are low/info by construction — they record and advise, never gate.
-    // Inert when the caller provided no content context (undefined inputs).
+    // OPR.0.4.4.23——SDLC 约定章节建议（唯一事实来源：
+    // docs/reference/sdlc-conventions.md）。结构上失败开放：审计命令只会因 HIGH 发现改变退出码，
+    // 而这些发现按结构为 low/info，只做记录和建议，绝不门控。调用方未提供内容上下文
+    //（输入为 undefined）时不生效。
     const frontmatterIntent = typeof parsedFrontmatter.intent === "string"
       && parsedFrontmatter.intent.trim().length > 0;
     const currentSpec = input.nodeFileName === "SPEC.md"
@@ -415,21 +410,18 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
         kind: "missing_intent_section",
         severity: "low",
         path: childPath(input.path, nodeFileName),
-        message: `${nodeFileName} has no frontmatter \`intent:\` or legacy \`## Intent\` section.`,
+        message: `${nodeFileName} 既没有 frontmatter \`intent:\`，也没有旧版 \`## Intent\` 章节。`,
         remediation: currentSpec
-          ? "Add a non-empty `intent:` to SPEC.md frontmatter."
-          : "Add a non-empty `intent:` or retain a legacy `## Intent` section in README.md.",
+          ? "在 SPEC.md frontmatter 中加一个非空的 `intent:`。"
+          : "在 README.md 中加一个非空的 `intent:`，或保留一个旧版 `## Intent` 章节。",
       });
     }
 
-    // PM dogfood #1 (qitem-20260720015700-630eef64) — per-SECTION source
-    // selection, decided independently for `## Mini-requirements` and
-    // `## Proof contract`: an authored PRD section is canonical, but a
-    // PRESENT-and-PRISTINE scaffold-only PRD section yields to an authored
-    // (non-pristine) README section. Missing / prose-malformed / mixed-
-    // authored PRD sections stay PRD-canonical and visible. Status-blind by
-    // construction (lifecycle status is never read here). PRD absent keeps
-    // the file-level README fallback byte-identically.
+    // PM 自用验证 #1（qitem-20260720015700-630eef64）：按章节选择来源，分别独立决定
+    // `## Mini-requirements` 和 `## Proof contract`。已编写的 PRD 章节是规范来源；但仅有
+    // 脚手架且仍保持初始状态的 PRD 章节，会让位给已编写（非初始状态）的 README 章节。缺失、
+    // 纯文本畸形或混合编写的 PRD 章节仍以 PRD 为规范来源并保持可见。该逻辑结构上不感知状态，
+    // 此处绝不读取生命周期状态。PRD 不存在时，文件级 README 回退保持字节一致。
     const prdContentStr = typeof input.implementationPrdContent === "string" ? input.implementationPrdContent : null;
     const readmeContentStr = typeof input.readmeContent === "string" ? input.readmeContent : null;
     const pickSectionSource = (heading: string): { body: string | null; path: string } | null => {
@@ -454,17 +446,13 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
     const miniSource = pickSectionSource("Mini-requirements");
     const contractSource = pickSectionSource("Proof contract");
     if (miniSource) {
-      // OPR.0.4.4.23 rev1-r2 B1 (PRD L34 guard F-3): well-formed
-      // `## Mini-requirements` — the PLAN leg of the Living Notes
-      // projection, checked on this section's SELECTED source. Well-formed =
-      // the heading plus at least one numbered list item; a heading over
-      // prose-only is malformed (no usable requirements projection).
+      // OPR.0.4.4.23 rev1-r2 B1（PRD L34 守卫 F-3）：格式正确的
+      // `## Mini-requirements` 是 Living Notes 投影中的计划支柱，并在本章节选中的来源上检查。
+      // 格式正确表示有标题且至少有一个编号列表项；标题下只有散文属于畸形，因为没有可用的需求投影。
       const miniBody = miniSource.body;
-      // release-0.4.7 micro-bundle A: an AUTHORED numbered item — the twin
-      // module's ONE authored-numbered-item grammar, shared with review
-      // compose (heals the dot/paren grammar split AND the placeholder
-      // blindness in one predicate; the finding message below already reads
-      // honestly for both and stays unchanged).
+      // release-0.4.7 微型包 A：已编写的编号项。它是镜像模块唯一的已编写编号项语法，
+      // 并与 review compose 共享；一个判定函数同时修复句点/括号语法分裂和无法识别占位符的问题。
+      // 下方发现消息已能如实涵盖两种情况，因此保持不变。
       const hasNumberedItem = hasAuthoredNumberedItem(miniBody);
       if (!hasNumberedItem) {
         findings.push({
@@ -472,21 +460,19 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
           severity: "low",
           path: miniSource.path,
           message: miniBody === null
-            ? "No `## Mini-requirements` section — the scope plan has no concise requirements tier."
-            : "`## Mini-requirements` carries no numbered items (`1. …`) — the one-glance requirement tier is where approval starts.",
-          remediation: `Add \`## Mini-requirements\` to ${nodeFileName} with a numbered list of observable outcomes (for a small slice this may be the whole specification).`,
+            ? "没有 `## Mini-requirements` 章节——范围计划缺少简明的需求层。"
+            : "`## Mini-requirements` 没有编号项（`1. …`）——一眼可读的需求层正是审批的起点。",
+          remediation: `在 ${nodeFileName} 中加 \`## Mini-requirements\`，写一份可观察结果的编号列表（对小 slice 而言，这可以就是整份规格）。`,
         });
       }
     }
 
     if (contractSource) {
       const contractBody = contractSource.body;
-      // release-0.4.7 intent-stage: an AUTHORED checkbox item — a scaffold
-      // placeholder row is not a contract (shared grammar:
-      // ./scaffold-placeholder.js — the same helper review compose and the
-      // slice-detail projector consume; the R3 pin). A text-less checkbox row
-      // still counts, exactly as before. Checked on this section's SELECTED
-      // source (independent of the mini-reqs decision).
+      // release-0.4.7 意图阶段：已编写的复选框项。脚手架占位行不构成契约；共享语法位于
+      // ./scaffold-placeholder.js，review compose 和切片详情投影器也使用同一辅助函数，即 R3 固定点。
+      // 无文本的复选框行与以前完全一样，仍计入有效项。检查基于本章节选中的来源，独立于
+      // mini-reqs 的选择结果。
       const hasAuthoredCheckboxItem =
         contractBody !== null &&
         [...contractBody.matchAll(/^\s*-\s*\[[ xX]\]\s*(.*)$/gm)].some(
@@ -498,20 +484,18 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
           severity: "low",
           path: contractSource.path,
           message: contractBody === null
-            ? "No `## Proof contract` section — proof has no promised-deliverables source to pair against."
-            : "`## Proof contract` carries no checkbox deliverables (`- [ ] …`) for proof to pair against.",
-          remediation: `Add \`## Proof contract\` to ${nodeFileName} with one checkbox line per promised deliverable, written as an observable outcome (conventions SSOT: docs/reference/sdlc-conventions.md (installed: $OPENRIG_HOME/reference/sdlc-conventions.md)).`,
+            ? "没有 `## Proof contract` 章节——proof 没有可配对的“承诺交付物”来源。"
+            : "`## Proof contract` 没有可配对 proof 的复选框交付物（`- [ ] …`）。",
+          remediation: `在 ${nodeFileName} 中加 \`## Proof contract\`，每个承诺交付物写一行复选框，写成可观察结果（约定 SSOT：docs/reference/sdlc-conventions.md（安装位置：$OPENRIG_HOME/reference/sdlc-conventions.md））。`,
         });
       }
 
       if (typeof input.readmeContent === "string") {
         const visualBody = h2Body(input.readmeContent, "Intent visual");
         const isUiSlice = visualBody !== null && !/\bN\/A\b/i.test(visualBody);
-        // rev1-r2 B2: a mockup is PRESENT only via a real markdown
-        // image/media ref in `## Intent visual` or an explicit plannedRef
-        // token in the proof contract. Generic prose containing the word
-        // "mockup" (the scaffold placeholder says "name their planned
-        // mockup") is NOT a reference and must not suppress the advisory.
+        // rev1-r2 B2：只有 `## Intent visual` 中真实的 Markdown 图片/媒体引用，或 proof contract
+        // 中显式的 plannedRef 标记，才表示 mockup 确实存在。仅在普通文本中出现 "mockup"
+        //（脚手架占位符写着 "name their planned mockup"）不构成引用，不得抑制该建议。
         const hasMockupRef = /!\[/.test(visualBody ?? "")
           || /plannedRef/i.test(contractBody ?? "")
           || /!\[/.test(contractBody ?? "");
@@ -520,8 +504,8 @@ export function classifyScopeItem(input: ScopeAuditInput): ScopeAuditResult {
             kind: "ui_slice_missing_mockup",
             severity: "info",
             path: childPath(input.path, nodeFileName),
-            message: "Slice declares an Intent visual (UI slice) but no mockup reference is present — a UI slice with no mockup in its locked set is an incomplete plan.",
-            remediation: "Attach the planned mockup: an image ref in `## Intent visual` or a plannedRef on the proof-contract deliverable (conventions SSOT: docs/reference/sdlc-conventions.md §3 (installed: $OPENRIG_HOME/reference/sdlc-conventions.md §3)).",
+            message: "Slice 声明了 Intent visual（UI slice），但没有任何 mockup 引用——在其锁定集合里没有 mockup 的 UI slice 是不完整的计划。",
+            remediation: "附上计划的 mockup：在 `## Intent visual` 里放一个图片引用，或在 proof-contract 交付物上放一个 plannedRef（约定 SSOT：docs/reference/sdlc-conventions.md §3（安装位置：$OPENRIG_HOME/reference/sdlc-conventions.md §3））。",
           });
         }
       }

@@ -35,11 +35,11 @@ function statusBadgeColor(status: string): string {
 function statusLabel(status: string): string {
   switch (status) {
     case "applied":
-      return "APPLIED";
+      return "已应用";
     case "rolled_back":
-      return "ROLLED BACK";
+      return "已回滚";
     case "failed":
-      return "FAILED";
+      return "失败";
     default:
       return status.toUpperCase();
   }
@@ -51,7 +51,7 @@ function JournalSubList({ installId }: { installId: string }) {
   if (isPending) {
     return (
       <div className="pl-spacing-6 py-spacing-2 text-label-sm text-foreground-muted">
-        Loading journal...
+        正在加载日志…
       </div>
     );
   }
@@ -59,7 +59,7 @@ function JournalSubList({ installId }: { installId: string }) {
   if (isError) {
     return (
       <div className="pl-spacing-6 py-spacing-2 text-label-sm text-destructive" data-testid="journal-error">
-        Failed to load journal entries
+        加载日志条目失败
       </div>
     );
   }
@@ -67,7 +67,7 @@ function JournalSubList({ installId }: { installId: string }) {
   if (!entries || entries.length === 0) {
     return (
       <div className="pl-spacing-6 py-spacing-2 text-label-sm text-foreground-muted">
-        No journal entries
+        无日志条目
       </div>
     );
   }
@@ -123,10 +123,10 @@ function InstallRow({
           </div>
           <div className="flex items-center gap-spacing-3 mt-spacing-1 text-label-sm">
             <span data-testid="applied-count">
-              <span className="font-mono">{install.appliedCount}</span> applied
+              <span className="font-mono">{install.appliedCount}</span> 已应用
             </span>
             <span data-testid="deferred-placeholder" className="text-foreground-muted">
-              &mdash; deferred
+              &mdash; 已延迟
             </span>
           </div>
         </div>
@@ -138,7 +138,7 @@ function InstallRow({
             data-testid="expand-btn"
             onClick={() => setExpanded(!expanded)}
           >
-            {expanded ? "COLLAPSE" : "EXPAND"}
+            {expanded ? "折叠" : "展开"}
           </Button>
           {install.status === "applied" && (
             <Button
@@ -147,7 +147,7 @@ function InstallRow({
               data-testid="rollback-btn"
               onClick={() => onRollback(install.id)}
             >
-              ROLLBACK
+              回滚
             </Button>
           )}
         </div>
@@ -213,13 +213,13 @@ export function PackageDetail() {
     return (
       <WorkspacePage>
       <div data-testid="installs-error">
-        <p className="text-destructive">Failed to load install history</p>
+        <p className="text-destructive">加载安装历史失败</p>
       </div>
       </WorkspacePage>
     );
   }
 
-  // API returns installs newest-first with deterministic tiebreaker
+  // API returns installs newest-first with deterministic tiebreaker（API 按最新在前返回安装记录，含确定性决胜）
   const sortedInstalls = installs ?? [];
 
   return (
@@ -229,13 +229,13 @@ export function PackageDetail() {
       {pkg && (
         <div className="card-dark p-spacing-6 mb-spacing-6" data-testid="package-header">
           <div className="flex items-baseline justify-between mb-spacing-2">
-            <h2 className="text-headline-lg uppercase">{pkg.name} (Legacy)</h2>
+            <h2 className="text-headline-lg uppercase">{pkg.name}（旧版）</h2>
             <span className="text-label-md font-mono text-foreground-muted-on-dark">
               v{pkg.version}
             </span>
           </div>
           <div className="text-label-sm text-foreground-muted-on-dark mb-spacing-2">
-            SOURCE{" "}
+            来源{" "}
             <span className="font-mono text-foreground-on-dark" data-testid="package-source">
               {pkg.sourceRef}
             </span>
@@ -247,11 +247,11 @@ export function PackageDetail() {
       )}
 
       {/* Install history */}
-      <h3 className="text-headline-md uppercase mb-spacing-4">INSTALL HISTORY</h3>
+      <h3 className="text-headline-md uppercase mb-spacing-4">安装历史</h3>
 
       {sortedInstalls.length === 0 ? (
         <div data-testid="empty-installs" className="text-body-md text-foreground-muted">
-          No installs yet
+          暂无安装记录
         </div>
       ) : (
         <div data-testid="install-list">
@@ -269,15 +269,14 @@ export function PackageDetail() {
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!rollbackMutation.isPending) { setDialogOpen(open); if (!open) rollbackMutation.reset(); } }}>
         <DialogContent data-testid="rollback-dialog" onPointerDownOutside={(e) => { if (rollbackMutation.isPending) e.preventDefault(); }} onEscapeKeyDown={(e) => { if (rollbackMutation.isPending) e.preventDefault(); }} hideCloseButton={rollbackMutation.isPending}>
           <DialogHeader>
-            <DialogTitle className="text-headline-md uppercase">CONFIRM ROLLBACK</DialogTitle>
+            <DialogTitle className="text-headline-md uppercase">确认回滚</DialogTitle>
             <DialogDescription>
-              This will roll back the install and restore previous file states. This action cannot
-              be undone.
+              这将回滚安装并恢复先前的文件状态。此操作无法撤销。
             </DialogDescription>
           </DialogHeader>
           {rollbackMutation.isError && (
             <p className="text-destructive text-label-sm" data-testid="rollback-error">
-              Rollback failed: {rollbackMutation.error?.message ?? "Unknown error"}
+              回滚失败：{rollbackMutation.error?.message ?? "未知错误"}
             </p>
           )}
           <DialogFooter>
@@ -287,7 +286,7 @@ export function PackageDetail() {
               data-testid="rollback-cancel"
               disabled={rollbackMutation.isPending}
             >
-              CANCEL
+              取消
             </Button>
             <Button
               variant="destructive"
@@ -295,7 +294,7 @@ export function PackageDetail() {
               data-testid="rollback-confirm"
               disabled={rollbackMutation.isPending}
             >
-              {rollbackMutation.isPending ? "ROLLING BACK..." : "ROLLBACK"}
+              {rollbackMutation.isPending ? "正在回滚…" : "回滚"}
             </Button>
           </DialogFooter>
         </DialogContent>

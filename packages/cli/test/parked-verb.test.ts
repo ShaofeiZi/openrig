@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createServer, type Server } from "node:http";
 import { createProgram } from "../src/index.js";
 
-// OPR.0.5.5.19 A7 — `rig parked [seat]` verb wiring. RED at base: no command answers
-// "are we parked?" at all. The diagnosis itself is pinned daemon-side; these pins cover
-// the verb, its JSON passthrough, and the unreachable-daemon honesty.
+// OPR.0.5.5.19 A7——`rig parked [seat]` 动词接线。基线 RED：无命令回答
+// "我们 parked 吗？"。诊断本身 pin 于 daemon 侧；这些 pin 覆盖
+// 动词、其 JSON passthrough、及不可达 daemon 诚实。
 
 function stubParkedDaemon(payload: unknown): Promise<{ server: Server; url: string; urls: string[] }> {
   const urls: string[] = [];
@@ -74,11 +74,11 @@ describe("rig parked (S19 A7)", () => {
       await p.parseAsync(["node", "rig", "parked"]);
       expect(process.exitCode).toBeUndefined();
       const out = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
-      expect(out).toContain("rig: PARKED");
-      expect(out).toContain("dev50-qa@v-openrig-build: PARKED");
+      expect(out).toContain("工作组：已驻留");
+      expect(out).toContain("dev50-qa@v-openrig-build：已驻留");
       expect(out).toContain("qitem-1");
       expect(out).toContain("qitem-held");
-      expect(out).toMatch(/watchdog id|timer|live blocker/i);
+      expect(out).toMatch(/watchdog id|seat\(s\) parked|已驻留/);
       expect(out).not.toContain("busy@rig:"); // not-parked seats stay quiet
     } finally {
       server.close();
@@ -115,7 +115,7 @@ describe("rig parked (S19 A7)", () => {
       await p2.parseAsync(["node", "rig", "parked", "--rig", "other-rig"]);
       expect(urls.at(-1)).toContain("rig=other-rig"); // explicit flag wins
       const out = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
-      expect(out).toContain("scope: rig other-rig (from query-param)"); // AM-3 scope rendered
+      expect(out).toContain("范围：工作组 other-rig"); // AM-3 scope rendered
     } finally {
       if (prevSession === undefined) delete process.env.OPENRIG_SESSION_NAME; else process.env.OPENRIG_SESSION_NAME = prevSession;
       server.close();
@@ -129,6 +129,6 @@ describe("rig parked (S19 A7)", () => {
     try { await p.parseAsync(["node", "rig", "parked"]); } catch { /* exitCode path */ }
     expect(process.exitCode).toBe(1);
     const err = errSpy.mock.calls.map((c) => String(c[0])).join("\n");
-    expect(err).toMatch(/reachable daemon/i);
+    expect(err).toMatch(/可达的后台服务/);
   });
 });

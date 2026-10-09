@@ -1,8 +1,8 @@
-// R1 (release-0.4.7) — C3: useMissionProgressStatus absent-vs-read_error split.
+// R1（release-0.4.7）——C3：useMissionProgressStatus absent 与 read_error 拆分。
 //
-// The direct useFilesRead consumer used to conflate "404 / unreadable" into one
-// quiet-degrade path. It now carries a `reason` (absent | read_error | null)
-// derived from FilesReadError.code, while `unavailable` stays exactly as today.
+// 直接 useFilesRead 消费者曾把"404 / 不可读"混为一条
+// 静默降级路径。现在它携带 `reason`（absent | read_error | null），
+// 派生自 FilesReadError.code，而 `unavailable` 保持今日原样。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor, cleanup } from "@testing-library/react";

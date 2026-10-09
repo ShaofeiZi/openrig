@@ -29,29 +29,28 @@ async function readRecords(logPath: string): Promise<Array<Record<string, unknow
 }
 
 describe("drainSlowOpRecorderOnShutdown — bounded shutdown drain", () => {
-  it("returns exit 0 and persists queued records when a real recorder drains cleanly", async () => {
+  it("真实记录器干净排空时返回退出码 0 并持久化排队记录", async () => {
     const { drainSlowOpRecorderOnShutdown } = await loadIndex();
     const { SlowOpRecorder } = await loadRecorder();
     const logPath = path.join(tempDir(), "drain.jsonl");
     const recorder = new SlowOpRecorder({ logPath });
     recorder.recordMeasurement("test.drain.a", 300);
     recorder.recordMeasurement("test.drain.b", 300);
-    // Generous explicit bound: the drain is clean, but the recorder's Worker
-    // round-trip can be starved under heavy vitest parallelism; this asserts
-    // clean-drain success, not a wall-clock budget (production keeps the 5s
-    // default). The hanging-close pin below proves the bound itself fires.
+  // 宽松的显式边界：排空本身干净，但在 vitest 高并发下记录器 Worker 往返可能得不到调度；
+  // 此处断言干净排空成功，而非墙上时间预算（生产仍使用 5 秒默认值）。下方 close 挂起测试
+  // 证明边界本身会触发。
     const code = await drainSlowOpRecorderOnShutdown(recorder, { timeoutMs: 20_000 });
     expect(code).toBe(0);
     const records = await readRecords(logPath);
     expect(records.map((r) => r.site)).toEqual(["test.drain.a", "test.drain.b"]);
   }, 30_000);
 
-  it("returns 0 when no recorder is wired", async () => {
+  it("未接入记录器时返回 0", async () => {
     const { drainSlowOpRecorderOnShutdown } = await loadIndex();
     expect(await drainSlowOpRecorderOnShutdown(undefined)).toBe(0);
   });
 
-  it("returns nonzero and logs when the drain rejects (unproven durability)", async () => {
+  it("排空被拒绝（持久性未证明）时返回非零并记录日志", async () => {
     const { drainSlowOpRecorderOnShutdown } = await loadIndex();
     const logs: string[] = [];
     const recorder = { close: async () => { throw new Error("terminal drain failure"); } };
@@ -60,10 +59,10 @@ describe("drainSlowOpRecorderOnShutdown — bounded shutdown drain", () => {
     expect(logs.join(" ")).toMatch(/slow-operation/);
   });
 
-  it("returns nonzero and logs when the recorder acknowledged a lost write (durability not clean)", async () => {
+  it("记录器确认写入丢失（持久性不干净）时返回非零并记录日志", async () => {
     const { drainSlowOpRecorderOnShutdown } = await loadIndex();
     const { SlowOpRecorder } = await loadRecorder();
-    // Deterministic real Worker ok:false — log parent is a regular file (ENOTDIR).
+  // 确定性的真实 Worker ok:false——日志父路径是普通文件（ENOTDIR）。
     const dir = tempDir();
     const notADir = path.join(dir, "regular-file");
     fs.writeFileSync(notADir, "x");
@@ -75,7 +74,7 @@ describe("drainSlowOpRecorderOnShutdown — bounded shutdown drain", () => {
     expect(logs.join(" ")).toMatch(/slow-operation/);
   }, 30_000);
 
-  it("treats a FALSEY promise rejection as a failure (logs + nonzero), not a silent success", async () => {
+  it("将假值 Promise rejection 视为失败（记录日志并返回非零），不静默成功", async () => {
     const { drainSlowOpRecorderOnShutdown } = await loadIndex();
     for (const value of [undefined, null, false, 0, ""]) {
       const logs: string[] = [];
@@ -86,7 +85,7 @@ describe("drainSlowOpRecorderOnShutdown — bounded shutdown drain", () => {
     }
   });
 
-  it("is bounded: returns nonzero within the timeout when the drain hangs", async () => {
+  it("保持有界：排空挂起时在超时内返回非零", async () => {
     const { drainSlowOpRecorderOnShutdown } = await loadIndex();
     const logs: string[] = [];
     const recorder = { close: () => new Promise<void>(() => {}) }; // never resolves
@@ -98,11 +97,9 @@ describe("drainSlowOpRecorderOnShutdown — bounded shutdown drain", () => {
     expect(logs.join(" ")).toMatch(/slow-operation/);
   });
 
-  it("a real SIGINT crosses the actual startServer shutdown handler and drains to exit 0", async () => {
-    // Runs the production entrypoint directly (isDirectRun -> startServer()),
-    // which registers the real SIGINT handler at index.ts and builds a real
-    // file-backed recorder. A real signal crosses THAT handler — not a test
-    // handler — and the clean drain must yield exit 0.
+  it("真实 SIGINT 经过实际 startServer 关闭处理器，排空后以 0 退出", async () => {
+  // 直接运行生产入口（isDirectRun → startServer()）；它在 index.ts 注册真实 SIGINT 处理器，
+  // 并构建真实文件记录器。真实信号经过该处理器而非测试处理器，干净排空必须以 0 退出。
     const home = tempDir();
     const port = await getFreePort();
     const indexPath = path.resolve(import.meta.dirname, "../src/index.ts");
@@ -130,10 +127,9 @@ describe("drainSlowOpRecorderOnShutdown — bounded shutdown drain", () => {
     }
   }, 30_000);
 
-  it("is bounded with no other referenced handles: a hanging close logs and exits nonzero", async () => {
-    // No setInterval, no server — the ONLY thing that may keep the process
-    // alive to enforce the bound is the drain's own referenced timeout timer.
-    // With an unref'd timer the process would exit 0 before the bound fires.
+  it("无其他引用句柄时仍保持有界：close 挂起会记录日志并以非零退出", async () => {
+  // 没有 setInterval，也没有 server；唯一可让进程保持存活并执行边界的是排空自身的已引用
+  // 超时计时器。若计时器被 unref，进程会在边界触发前以 0 退出。
     const indexUrl = pathToFileURL(path.resolve(import.meta.dirname, "../src/index.ts")).href;
     const childSource = `
       const { drainSlowOpRecorderOnShutdown } = await import(process.env.INDEX_URL);
@@ -184,7 +180,7 @@ async function waitForHealthz(port: number, child: ReturnType<typeof spawn>, std
       const res = await fetch(`http://127.0.0.1:${port}/healthz`);
       if (res.status === 200) return;
     } catch {
-      // not up yet
+    // 尚未启动。
     }
     await new Promise((r) => setTimeout(r, 150));
   }

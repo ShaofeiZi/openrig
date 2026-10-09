@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:59:10",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch9",
+ "files": 10,
+ "changed": 5,
+ "reviewed_no_change": 5,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/rig-spec-review.test.tsx",
+   "status": "changed",
+   "after_sha256": "be8995b6d8e3ea49e8502e6c84be438137d9fc01f49a270c21620e7ac8474712",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.3.21、STATION/RIGS/AGENTS/OPERATOR/VERSION、/lab/vellum-lab、fidelity-glyphs.js、useRigSummary、YAML tab、item-1A 保留"
+  },
+  {
+   "path": "packages/ui/test/terminal-popover-multilive.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "8a978b40fbb5777b9d3996b797e7112e5fe4197962176609c676ddc520cc62f0",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.3.21、STATION/RIGS/AGENTS/OPERATOR/VERSION、/lab/vellum-lab、fidelity-glyphs.js、useRigSummary、YAML tab、item-1A 保留"
+  },
+  {
+   "path": "packages/ui/test/live-terminal-registry.test.ts",
+   "status": "changed",
+   "after_sha256": "2e9e6be7bf6fd872473047496aa5586d84196ea8d8f54291600712b8e2f7cb1b",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.3.21、STATION/RIGS/AGENTS/OPERATOR/VERSION、/lab/vellum-lab、fidelity-glyphs.js、useRigSummary、YAML tab、item-1A 保留"
+  },
+  {
+   "path": "packages/ui/test/dashboard-card-vellum.test.tsx",
+   "status": "changed",
+   "after_sha256": "51137c8fc25bcb8dbe19c70f54204a6db51ee5a3b7b4963e430649e565be262c",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.3.21、STATION/RIGS/AGENTS/OPERATOR/VERSION、/lab/vellum-lab、fidelity-glyphs.js、useRigSummary、YAML tab、item-1A 保留"
+  },
+  {
+   "path": "packages/ui/test/workflow-topology-graph.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "33754a5d80308c22a400c55eecbf04abe0dc5995fe33d19e42eaa06f02f0b989",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.3.21、STATION/RIGS/AGENTS/OPERATOR/VERSION、/lab/vellum-lab、fidelity-glyphs.js、useRigSummary、YAML tab、item-1A 保留"
+  },
+  {
+   "path": "packages/ui/test/scopepages-progress-remote-gate.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "672d08ded093c6d263f30bf8a8574d6331a9bf40c5247709b6222d5449707cc4",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.3.21、STATION/RIGS/AGENTS/OPERATOR/VERSION、/lab/vellum-lab、fidelity-glyphs.js、useRigSummary、YAML tab、item-1A 保留"
+  },
+  {
+   "path": "packages/ui/test/daemon-health-terminal.test.tsx",
+   "status": "changed",
+   "after_sha256": "1206cc9866e50720a40ce9e43da41d17182471ed06e1fb4ae5c9b4fdf6ccc7d3",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.3.21、STATION/RIGS/AGENTS/OPERATOR/VERSION、/lab/vellum-lab、fidelity-glyphs.js、useRigSummary、YAML tab、item-1A 保留"
+  },
+  {
+   "path": "packages/ui/test/vellum-card.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "5fc918ce7219956bd09dfa14f81c04b90fd270dfbe9c42480b941c12c2d873e8",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.3.21、STATION/RIGS/AGENTS/OPERATOR/VERSION、/lab/vellum-lab、fidelity-glyphs.js、useRigSummary、YAML tab、item-1A 保留"
+  },
+  {
+   "path": "packages/ui/test/slice-20-mobile-density.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "f20658866d1ad68a9bb6b2e86b10a5060923eb8fec6d9502b4244457459c1d21",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.3.21、STATION/RIGS/AGENTS/OPERATOR/VERSION、/lab/vellum-lab、fidelity-glyphs.js、useRigSummary、YAML tab、item-1A 保留"
+  },
+  {
+   "path": "packages/ui/test/acceptance-tab-enhancement.test.tsx",
+   "status": "changed",
+   "after_sha256": "eda2a2469d793d6a40f030ccb14c94e6b067493fe3bd5b934d321ee5e628d469",
+   "natural_language_residual": 0,
+   "machine_classification": "OPR.0.4.0.1/0.4.1.14/0.4.3.21、STATION/RIGS/AGENTS/OPERATOR/VERSION、/lab/vellum-lab、fidelity-glyphs.js、useRigSummary、YAML tab、item-1A 保留"
+  }
+ ]
+}

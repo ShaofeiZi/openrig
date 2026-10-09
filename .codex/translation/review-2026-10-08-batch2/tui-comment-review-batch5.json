@@ -1,0 +1,94 @@
+{
+ "schema": "openrig.tui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:06:50",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "comment-review-batch5",
+ "files": 10,
+ "changed": 8,
+ "reviewed_no_change": 2,
+ "complete": true,
+ "runner_note": "socket.test.ts 需短 HOME 隔离策略运行",
+ "rows": [
+  {
+   "path": "packages/tui/test/scroll-per-view-proof.test.ts",
+   "status": "changed",
+   "before_sha256": "459a4297b1c3b79c51b385859f2d0d287427c69eab628eee91d65bd2b914f915",
+   "after_sha256": "4537eeb1606d79b16aacb09530849764dcad8d7c69469c60a18ec9445cd1338e",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling cfec754f、SGR、命令 terminal <view>、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/socket-commands-query.test.ts",
+   "status": "changed",
+   "before_sha256": "732ff3f5552c2927c33a3f8e72643ea070ea943cf490a957b0dbdde88b71438b",
+   "after_sha256": "c75b69f8de959c209648f5219d00c0457e9e5026686b41369b38b23cc08522d4",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling cfec754f、SGR、命令 terminal <view>、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/s08-rig-terminal-link.test.ts",
+   "status": "changed",
+   "before_sha256": "d971e49f8aae068b817049635f413035588c63780ef4b334403cf7785e7a17ca",
+   "after_sha256": "1f1c76a78e041f8a442c1ac4a1f4105050888fcac9a95aa66d697e877d0448cd",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling cfec754f、SGR、命令 terminal <view>、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/rig-presence.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "97b35d4ffce85427d13b8b5e232c3ca375223f1e85709b2f756fdf15382c0f9e",
+   "after_sha256": "9840eec3904487ba3764a935ad3fa2b66b96cd901728f591728c44cdd025f653",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling cfec754f、SGR、命令 terminal <view>、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/startup-availability.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "823ea11affaf818818964fda2135b58dac34e7263940e93a7cdf210d17aa2656",
+   "after_sha256": "cd3cfe85eeb8ce0dfb2634f4a2197acda2bb32d8052671151af8ea350231796a",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling cfec754f、SGR、命令 terminal <view>、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/stylize.test.ts",
+   "status": "changed",
+   "before_sha256": "e8e774b9cd354be7d86925709da8d9e5d544bfa64f8b0e59375b62eb7044823b",
+   "after_sha256": "297c81c9139e7e61d078b2bf81670787a30707cea41e014e1addfb768e106f83",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling cfec754f、SGR、命令 terminal <view>、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/crash-cart-states.test.ts",
+   "status": "changed",
+   "before_sha256": "49be0d0ee9609a7e447ab445c310d184b6ad227caed8897f5c8e22e0bdddf03f",
+   "after_sha256": "dc68bf9a9ffa7306eb089324b668494a5b17f339aa1743d8d0dbe7b8e37bce3e",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling cfec754f、SGR、命令 terminal <view>、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/crash-cart-keys.test.ts",
+   "status": "changed",
+   "before_sha256": "28ebfe51994435796968a927884807cf750ea616dd47bcc699d9e66bcd245cf8",
+   "after_sha256": "a5757fcbc4984fed305ca51fa042dc52b1d48b732d5ec555cedfc6d477196d80",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling cfec754f、SGR、命令 terminal <view>、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/socket.test.ts",
+   "status": "changed",
+   "before_sha256": "63e688fa8836243a0b11c3e0930a0f8d6962f126c8a89bd76dd90b8c9d92bad2",
+   "after_sha256": "48b3db265c4077404bbf131ccb408e19c9dda6b26d327dd6d2867c8db532a540",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling cfec754f、SGR、命令 terminal <view>、协议令牌保留"
+  },
+  {
+   "path": "packages/tui/test/input-stream.test.ts",
+   "status": "changed",
+   "before_sha256": "bdd6192a5e3d3c990f53bd2b7f769c89149e2dcc8defae72b18bf2a28ff30320",
+   "after_sha256": "33a72ce2950e3870aaf04f27d51469ebcfc1bb3620dd40be005dedaaf8a45e4e",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling cfec754f、SGR、命令 terminal <view>、协议令牌保留"
+  }
+ ]
+}

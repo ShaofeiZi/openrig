@@ -1,32 +1,31 @@
-// OPR.0.3.3.13.1 - CLI surface-detection parser (Component 1 of slice 13).
+// OPR.0.3.3.13.1 - CLI 表面检测解析器（slice 13 的组件 1）。
 //
-// Extracts the Commander command surface from `packages/cli/src/commands/*.ts`
-// source text via the TypeScript compiler API (already a devDependency; no new
-// dep per the slice governance ruling). The surface is the set of command paths
-// (e.g. `scope slice create`) and option name-tokens (e.g. `--body-file`) per
-// command, taken from the Commander registration chain - NOT from the filename
-// and NOT from option descriptions (which are frequently template literals).
+// 通过 TypeScript 编译器 API（已是 devDependency；根据 slice 治理裁定
+// 无新依赖）从 `packages/cli/src/commands/*.ts` 源码文本中提取
+// Commander 命令表面。表面是命令路径集（例如 `scope slice create`）
+// 和每个命令的选项名 token（例如 `--body-file`），取自 Commander
+// 注册链——不是文件名，也不是选项描述（后者经常是模板字面量）。
 //
-// Two registration idioms are resolved:
-//   - chained inline subcommands: `cmd.command("create").requiredOption(...)`,
-//   - factory indirection: `parent.addCommand(buildChildCommand())` where the
-//     builder returns `new Command("child")...`.
-// The registration NAME wins over the filename (the `rig-mode.ts` file's
-// `new Command("policy")` surfaces as `policy`, never `rig-policy`).
+// 两种注册惯用法被解析：
+//   - 链式内联子命令：`cmd.command("create").requiredOption(...)`，
+//   - 工厂间接：`parent.addCommand(buildChildCommand())`，
+//     其中 builder 返回 `new Command("child")...`。
+// 注册名优先于文件名（`rig-mode.ts` 文件的
+// `new Command("policy")` 表面为 `policy`，绝不是 `rig-policy`）。
 
 import ts from "typescript";
 
 export interface Surface {
-  /** Full command paths, space-joined (e.g. "queue create", "scope slice create"). */
+  /** 完整命令路径，空格连接（例如 "queue create"、"scope slice create"）。 */
   commands: Set<string>;
-  /** "<command-path> <--flag>" entries, split on FLAG_SEP. */
+  /** "<command-path> <--flag>" 条目，按 FLAG_SEP 分割。 */
   flags: Set<string>;
 }
 
-// NUL separator between a command path and a flag. Command paths are
-// space-joined, so a space cannot unambiguously split a "<path> <flag>" entry
-// (the path itself contains spaces). NUL never occurs in a path or flag token,
-// so it splits cleanly. It lives only inside Set keys and never reaches output.
+// 命令路径和 flag 之间的 NUL 分隔符。命令路径是空格连接的，
+// 因此空格不能无歧义地分割 "<path> <flag>" 条目（路径本身含空格）。
+// NUL 从不出现在路径或 flag token 中，因此分割干净。
+// 它只存在于 Set 键内部，绝不到达输出。
 export const FLAG_SEP = "\u0000";
 
 interface CmdNode {
@@ -46,13 +45,13 @@ function stringLiteralText(node: ts.Node | undefined): string | null {
 }
 
 /**
- * Reduce an option's first argument (the flags string) to its canonical long
- * flag, ignoring the value placeholder. Examples:
+ * 将选项的第一个参数（flags 字符串）缩减为规范长 flag，
+ * 忽略值占位符。示例：
  *   "--body-file <path>"  -> "--body-file"
  *   "-l, --literal"       -> "--literal"
  *   "--no-mission-notes"  -> "--no-mission-notes"
  *   "-y"                  -> "-y"
- * Returns null when no flag token is present.
+ * 没有 flag token 时返回 null。
  */
 export function normalizeFlag(flagsArg: string): string | null {
   const tokens = flagsArg.split(/[\s,]+/).filter(Boolean);
@@ -72,7 +71,7 @@ function freshNode(rawName: string): CmdNode {
   return { name: firstToken(rawName), flags: new Set(), children: [] };
 }
 
-/** Extract the root command node(s) for a single source file. */
+/** 从单个源文件提取根命令节点。 */
 function extractFile(fileName: string, text: string): CmdNode[] {
   const sf = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true);
 
@@ -91,7 +90,7 @@ function extractFile(fileName: string, text: string): CmdNode[] {
 
   function rootOfFunction(name: string): CmdNode | null {
     if (fnRoots.has(name)) return fnRoots.get(name)!;
-    if (inProgress.has(name)) return null; // cycle guard
+    if (inProgress.has(name)) return null; // 循环守卫
     const decl = fnDecls.get(name);
     if (!decl || !decl.body) {
       fnRoots.set(name, null);
@@ -116,7 +115,7 @@ function extractFile(fileName: string, text: string): CmdNode[] {
           }
         }
       } else if (ts.isExpressionStatement(stmt)) {
-        evalExpr(stmt.expression, vars); // side effects: .command / .addCommand / .option
+        evalExpr(stmt.expression, vars); // 副作用：.command / .addCommand / .option
       } else if (ts.isReturnStatement(stmt) && stmt.expression) {
         root = evalExpr(stmt.expression, vars);
       }
@@ -124,9 +123,9 @@ function extractFile(fileName: string, text: string): CmdNode[] {
     return root;
   }
 
-  // Resolve an expression that evaluates to (or mutates) a command node.
-  // `.command()` returns the freshly-created CHILD (Commander semantics);
-  // every other builder method returns the receiver (`this`).
+  // 解析求值为（或变异）命令节点的表达式。
+  // `.command()` 返回新创建的子节点（Commander 语义）；
+  // 其他 builder 方法都返回接收者（`this`）。
   function evalExpr(input: ts.Expression, vars: Map<string, CmdNode>): CmdNode | null {
     const expr = unwrap(input);
 
@@ -142,7 +141,7 @@ function extractFile(fileName: string, text: string): CmdNode[] {
     if (ts.isCallExpression(expr)) {
       const callee = expr.expression;
 
-      // builderFn() -> the root command that function returns
+      // builderFn() -> 该函数返回的根命令
       if (ts.isIdentifier(callee) && fnDecls.has(callee.text)) {
         return rootOfFunction(callee.text);
       }
@@ -156,7 +155,7 @@ function extractFile(fileName: string, text: string): CmdNode[] {
           if (nameLit == null) return recv;
           const child = freshNode(nameLit);
           if (recv) recv.children.push(child);
-          return child; // chained calls attach to the child
+          return child; // 链式调用附加到子节点
         }
         if (method === "option" || method === "requiredOption") {
           const flagLit = stringLiteralText(expr.arguments[0]);
@@ -172,7 +171,7 @@ function extractFile(fileName: string, text: string): CmdNode[] {
           if (recv && child) recv.children.push(child);
           return recv;
         }
-        // description / action / argument / alias / addHelpText / etc. -> receiver
+        // description / action / argument / alias / addHelpText / 等 → 接收者
         return recv;
       }
     }
@@ -200,7 +199,7 @@ function walk(node: CmdNode, prefix: string[], surface: Surface): void {
   for (const child of node.children) walk(child, path, surface);
 }
 
-/** Build the combined command surface from a set of `{name, text}` sources. */
+/** 从一组 `{name, text}` 源构建组合命令表面。 */
 export function extractSurfaceFromSources(files: { name: string; text: string }[]): Surface {
   const surface: Surface = { commands: new Set(), flags: new Set() };
   for (const file of files) {

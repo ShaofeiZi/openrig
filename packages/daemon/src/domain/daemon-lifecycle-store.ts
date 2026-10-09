@@ -1,7 +1,7 @@
 import type Database from "better-sqlite3";
 
-/** The daemon's lifecycle record (mig-061 singleton) — started / last-seen /
- *  stopped for the current boot epoch. Distinct from the identity record (059). */
+/** 后台服务生命周期记录（mig-061 单例）——当前启动 epoch 的 started / last-seen / stopped。
+ *  与身份记录（059）相互独立。 */
 export interface DaemonLifecycleRecord {
   bootEpoch: string;
   startedAt: string;
@@ -17,16 +17,15 @@ interface Row {
 }
 
 /**
- * P7 — accessors for the daemon_lifecycle singleton. Each write is a single
- * statement = its own implicit SQLite transaction (arch: "own tiny transaction").
- * The heartbeat guards not-stopped and the stop is terminal-per-epoch, so a stray
- * post-stop tick can never advance last-seen (the binding write-order pin).
+ * P7——daemon_lifecycle 单例的访问器。每次写入都是单条语句，即各自独立的隐式 SQLite
+ * 事务（架构要求：“独立的小事务”）。心跳只允许未停止记录，且 stop 对每个 epoch 都是终态，
+ * 因此停止后的游离 tick 绝不会推进 last-seen（写入顺序锁定项）。
  */
 export class DaemonLifecycleStore {
   constructor(private readonly db: Database.Database) {}
 
-  /** A new boot: mint a new epoch, set started_at, and CLEAR the prior run's
-   *  heartbeat + stopped_at (a fresh epoch never shows the previous run's stop). */
+  /** 新启动：创建新 epoch、设置 started_at，并清除上次运行的 heartbeat 与 stopped_at；
+   *  新 epoch 绝不能显示上次运行的停止状态。 */
   recordBoot(bootEpoch: string, nowIso: string): void {
     this.db
       .prepare(
@@ -41,16 +40,16 @@ export class DaemonLifecycleStore {
       .run(bootEpoch, nowIso);
   }
 
-  /** Advance last-seen — ONLY while not stopped (a stray tick after stopped_at
-   *  must never move last-seen; stopped_at is terminal per epoch). */
+  /** 仅在未停止时推进 last-seen；stopped_at 之后的游离 tick 绝不能移动 last-seen，
+   *  因为 stopped_at 对每个 epoch 都是终态。 */
   recordHeartbeat(nowIso: string): void {
     this.db
       .prepare(`UPDATE daemon_lifecycle SET last_heartbeat_at = ? WHERE singleton = 1 AND stopped_at IS NULL`)
       .run(nowIso);
   }
 
-  /** Clean-shutdown mark — set stopped_at ONLY for the matching epoch and only if
-   *  not already stopped (terminal per epoch). */
+  /** 干净关闭标记——只为匹配的 epoch 且尚未停止的记录设置 stopped_at；
+   *  每个 epoch 只能进入一次停止终态。 */
   recordStop(bootEpoch: string, nowIso: string): void {
     this.db
       .prepare(`UPDATE daemon_lifecycle SET stopped_at = ? WHERE singleton = 1 AND boot_epoch = ? AND stopped_at IS NULL`)

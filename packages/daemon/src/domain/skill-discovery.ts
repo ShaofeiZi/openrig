@@ -1,14 +1,11 @@
-// V0.3.0 daemon-skill-discovery — filesystem skill scan + structural
-// validation. Closes the gap where profile-resolver only saw skills
-// declared in `agent.yaml`'s `resources.skills` + imports, not skills
-// dropped at user-library or rig-bundled paths.
+// V0.3.0 daemon-skill-discovery——文件系统技能扫描与结构校验。它补齐了 profile-resolver
+// 只能看到 `agent.yaml` 的 `resources.skills` 和 imports、却看不到用户库或工作组随附路径中
+// 技能的缺口。
 //
-// The validator's question is now "would Claude Code or Codex actually
-// load this when it sees the directory?" — i.e., is there a SKILL.md
-// with a name + description + body. The daemon's hardcoded shared
-// bundle is no longer the gate.
+// Validator 现在判断的是“Claude Code 或 Codex 看到这个目录时是否会实际加载”，即是否存在
+// 含 name、description 和正文的 SKILL.md。后台服务硬编码的共享 bundle 不再充当门禁。
 //
-// SC-29 EXCEPTION #7 declared in slice ACK §5.
+// SC-29 例外 #7 已在 slice ACK §5 声明。
 
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -19,27 +16,22 @@ export type SkillRuntime = "claude-code" | "codex";
 
 export interface SkillDiscoveryPaths {
   runtime: SkillRuntime;
-  /** Operator home dir (resolved by the daemon at startup, NOT read
-   *  here via os.homedir() so tests can inject a fixture root). */
+  /** 操作者主目录；由后台服务启动时解析，不在此通过 os.homedir() 读取，便于测试注入 fixture 根。 */
   homedir: string;
-  /** The agent's resolved working directory — rig-bundled skills live
-   *  under <cwd>/.claude/skills/ or <cwd>/.agents/skills/. */
+  /** 智能体已解析的工作目录；工作组随附技能位于 <cwd>/.claude/skills/ 或 <cwd>/.agents/skills/。 */
   cwd: string;
-  /** The rig-spec install dir — bundled domain skills live under
-   *  <specInstallDir>/skills/<name>/. Optional: undefined means the
-   *  rig was installed in-place and no separate install-dir applies. */
+  /** 工作组 spec 安装目录；随附领域技能位于 <specInstallDir>/skills/<name>/。可选：
+   * undefined 表示工作组原地安装，不适用独立安装目录。 */
   specInstallDir?: string;
-  /** Config-resolved managed catalog root. Defaults to the legacy
-   *  <homedir>/.openrig/skills path when omitted for compatibility. */
+  /** 配置解析出的受管 catalog 根目录。为兼容旧版，省略时默认为 <homedir>/.openrig/skills。 */
   skillsRoot?: string;
 }
 
 export interface SkillFrontmatter {
   name: string;
   description: string;
-  /** Any other fields the runtime may consume (allowed-tools, model,
-   *  etc.) pass through unchecked — they are not load-bearing for
-   *  daemon resource validation. */
+  /** 运行时可能消费的其他字段（allowed-tools、model 等）不经校验直接透传；
+   * 它们不承载后台服务资源校验。 */
   [key: string]: unknown;
 }
 
@@ -76,14 +68,12 @@ export interface SkillProvenanceResult {
 
 const FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/;
 
-/** Parse a SKILL.md document into frontmatter + body, validating the
- *  shape Claude Code and Codex both require: a YAML frontmatter block
- *  delimited by `---` lines, with at minimum `name` + `description`
- *  fields, plus a non-empty body. */
+/** 将 SKILL.md 解析为 frontmatter + 正文，并校验 Claude Code 与 Codex 共同要求的形状：
+ * 由 `---` 行定界的 YAML frontmatter，至少包含 `name` 与 `description`，且正文非空。 */
 export function parseSkillFrontmatter(content: string): ParseResult {
   const match = FRONTMATTER_RE.exec(content);
   if (!match) {
-    return { ok: false, reason: "no YAML frontmatter delimited by --- lines" };
+    return { ok: false, reason: "缺少由 --- 行定界的 YAML frontmatter" };
   }
   const [, fmText, body] = match;
 
@@ -92,23 +82,23 @@ export function parseSkillFrontmatter(content: string): ParseResult {
     parsed = parseYaml(fmText!);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, reason: `frontmatter YAML parse error: ${msg}` };
+    return { ok: false, reason: `frontmatter YAML 解析错误：${msg}` };
   }
 
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return { ok: false, reason: "frontmatter is not a YAML mapping" };
+    return { ok: false, reason: "frontmatter 不是 YAML mapping" };
   }
   const fm = parsed as Record<string, unknown>;
 
   if (typeof fm.name !== "string" || fm.name.trim().length === 0) {
-    return { ok: false, reason: "frontmatter missing required `name` field" };
+    return { ok: false, reason: "frontmatter 缺少必填 `name` 字段" };
   }
   if (typeof fm.description !== "string" || fm.description.trim().length === 0) {
-    return { ok: false, reason: "frontmatter missing required `description` field" };
+    return { ok: false, reason: "frontmatter 缺少必填 `description` 字段" };
   }
 
   if (!body || body.trim().length === 0) {
-    return { ok: false, reason: "SKILL.md body is empty (the runtime would have nothing to load)" };
+    return { ok: false, reason: "SKILL.md 正文为空（运行时将无内容可加载）" };
   }
 
   return {
@@ -118,11 +108,9 @@ export function parseSkillFrontmatter(content: string): ParseResult {
   };
 }
 
-/** Discover skills for a runtime by scanning the canonical filesystem
- *  paths and structurally validating each candidate. Returns the
- *  accepted skills as SkillResource records (id from frontmatter; path
- *  pointing at the skill directory) plus a list of rejections so the
- *  caller can surface clear errors when validation fails. */
+/** 通过扫描规范文件系统路径并逐个做结构校验，发现指定运行时的技能。返回已接受技能的
+ * SkillResource 记录（id 来自 frontmatter，path 指向技能目录）以及拒绝列表，使调用方能在
+ * 校验失败时显示明确错误。 */
 export function discoverSkillsForRuntime(paths: SkillDiscoveryPaths): SkillDiscoveryResult {
   const scanRoots = listScanRoots(paths);
   const skills: SkillResource[] = [];
@@ -135,7 +123,7 @@ export function discoverSkillsForRuntime(paths: SkillDiscoveryPaths): SkillDisco
     try {
       entries = readdirSync(root);
     } catch {
-      // Permission / IO error — silent skip; this is best-effort.
+      // 权限/I/O 错误时静默跳过；本扫描为尽力而为。
       continue;
     }
 
@@ -147,9 +135,7 @@ export function discoverSkillsForRuntime(paths: SkillDiscoveryPaths): SkillDisco
 
       const skillFile = join(skillDir, "SKILL.md");
       if (!existsSync(skillFile)) {
-        // Not a skill — silently skip (a directory without SKILL.md is
-        // either unrelated content or a partially-set-up skill the
-        // operator hasn't finished).
+        // 不是技能时静默跳过；不含 SKILL.md 的目录可能是无关内容，也可能是操作者尚未完成的技能。
         continue;
       }
 
@@ -158,7 +144,7 @@ export function discoverSkillsForRuntime(paths: SkillDiscoveryPaths): SkillDisco
         content = readFileSync(skillFile, "utf-8");
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        rejected.push({ path: skillDir, reason: `SKILL.md read error: ${msg}` });
+        rejected.push({ path: skillDir, reason: `SKILL.md 读取错误：${msg}` });
         continue;
       }
 
@@ -170,9 +156,8 @@ export function discoverSkillsForRuntime(paths: SkillDiscoveryPaths): SkillDisco
 
       const id = parsed.frontmatter.name;
       if (seenIds.has(id)) {
-        // Earlier root in the precedence list already provided this
-        // id; later occurrences are shadowed by the most-specific-wins
-        // rule encoded in listScanRoots ordering.
+        // 优先级列表中更早的根已经提供该 id；后续同名项会被 listScanRoots 顺序编码的
+        // “最具体者优先”规则遮蔽。
         continue;
       }
       seenIds.add(id);
@@ -183,31 +168,24 @@ export function discoverSkillsForRuntime(paths: SkillDiscoveryPaths): SkillDisco
   return { skills, rejected };
 }
 
-/** Build the precedence-ordered list of scan roots for a runtime.
- *  Earlier entries win on collision (most-specific-wins): rig-bundled
- *  at cwd > spec-install-dir > user libraries. Within user libraries,
- *  the runtime-specific dir is preferred over the shared
- *  ~/.openrig/skills/ pool so an operator who explicitly installed a
- *  Claude-only or Codex-only version takes precedence over the
- *  cross-runtime one. */
+/** 构建指定运行时按优先级排序的扫描根列表。冲突时前项胜出（最具体者优先）：cwd 中工作组随附
+ * > spec-install-dir > 用户库。用户库内部，运行时专属目录优先于共享 ~/.openrig/skills/ 池，
+ * 使操作者显式安装的 Claude-only 或 Codex-only 版本优先于跨运行时版本。 */
 function listScanRoots(paths: SkillDiscoveryPaths): string[] {
   const { runtime, homedir, cwd, specInstallDir } = paths;
   const runtimeDir = runtime === "claude-code" ? ".claude" : ".agents";
   const roots: string[] = [];
 
-  // 1. Rig-bundled at cwd (most-specific; ships with the rig source).
+  // 1. cwd 中工作组随附的技能（最具体，与工作组源码一起提供）。
   roots.push(join(cwd, runtimeDir, "skills"));
 
-  // 2. Spec-install-dir bundled (bundled-with-rig but installed at a
-  // separate path; e.g., from `rig up <bundle>` extraction).
+  // 2. spec-install-dir 随附技能（随工作组打包但安装在独立路径，例如从 `zrig up <bundle>` 解压）。
   if (specInstallDir) roots.push(join(specInstallDir, "skills"));
 
-  // 3. Runtime-specific user library (Claude-only or Codex-only
-  // operator install).
+  // 3. 运行时专属用户库（操作者安装的 Claude-only 或 Codex-only 技能）。
   roots.push(join(homedir, runtimeDir, "skills"));
 
-  // 4. Shared user-spec library (cross-runtime operator install via
-  // `rig specs add`).
+  // 4. 共享用户 spec 库（通过 `zrig specs add` 安装的跨运行时技能）。
   roots.push(paths.skillsRoot ?? join(homedir, ".openrig", "skills"));
 
   return roots;
@@ -245,7 +223,7 @@ export function discoverSkillsWithProvenance(paths: SkillDiscoveryPaths): SkillP
 
       let content: string;
       try { content = readFileSync(skillFile, "utf-8"); } catch (err) {
-        rejected.push({ path: skillDir, reason: `SKILL.md read error: ${err instanceof Error ? err.message : String(err)}` });
+        rejected.push({ path: skillDir, reason: `SKILL.md 读取错误：${err instanceof Error ? err.message : String(err)}` });
         continue;
       }
 

@@ -16,8 +16,8 @@ function extractExecOutput(err: unknown): string {
 }
 
 /**
- * Production ExecFn for TmuxAdapter.
- * Wraps child_process.exec (shell command string) and returns stdout.
+ * TmuxAdapter 的生产 ExecFn。
+ * 包装 child_process.exec（shell 命令字符串）并返回 stdout。
  */
 export const execCommand: ExecFn = async (cmd: string): Promise<string> => {
   try {

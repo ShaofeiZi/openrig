@@ -1,26 +1,26 @@
-// B7 (0.5.2, RULING-rig-mode-rig-policy-naming) — `rig policy`: the top-level PERMISSION-POLICY
-// verb, introduced after the context-mode verb took its natural name (`rig mode`).
+// B7 (0.5.2, RULING-rig-mode-rig-policy-naming) —— `rig policy`：顶层的权限策略
+// 动词，在 context-mode 动词占用其自然名（`rig mode`）之后引入。
 //
-// BINDING HONESTY PIN (carried VERBATIM from setup.ts, per the ruling): OpenRig bakes NO
-// allow/ask/deny permission policy — the harness-native permissions are the control surface.
-// `rig policy` TEACHES and RECORDS into RigSpec (`permission_policy: builtin:<name> | none`); it
-// never enforces at runtime. OpenRig records posture into RigSpec, harness-native permissions
-// enforce — never runtime enforcement.
+// 绑定诚实钉（按裁决逐字从 setup.ts 沿用）：OpenRig 不内置任何
+// allow/ask/deny 权限策略——harness 原生权限才是控制面。
+// `rig policy` 只教学并把选择记录进 RigSpec（`permission_policy: builtin:<name> | none`）；
+// 绝不在运行时强制执行。OpenRig 把姿态记录进 RigSpec，由 harness 原生权限
+// 强制执行——绝不运行时强制。
 //
-// v1 scope per the ruling (read-heavy + one write path):
-//   rig policy list [--spec]              — built-ins + the reserved deliberate-none + CUSTOM
-//                                           policies visible in the given spec context
-//   rig policy show <name-or-ref> [--spec]— one built-in OR a custom policy spec (validated)
-//   rig policy current --spec <path>      — the effective recorded policy + WHAT WOULD APPLY,
-//                                           through the AUTHORITATIVE validator/resolver
-//   rig policy apply <name> --spec <path> — record the choice (same flow as `rig setup --policy`,
-//                                           which STAYS as the setup-flow composition, not an alias)
+// 按裁决的 v1 范围（读多 + 一条写路径）：
+//   rig policy list [--spec]              —— 内置项 + 保留的 deliberate-none + 在给定
+//                                           spec 上下文中可见的自定义策略
+//   rig policy show <name-or-ref> [--spec]—— 一个内置项或一个自定义策略 spec（已校验）
+//   rig policy current --spec <path>      —— 生效的已记录策略 + 实际会应用什么，
+//                                           经权威校验器/解析器
+//   rig policy apply <name> --spec <path> —— 记录选择（与 `rig setup --policy` 同一流程，
+//                                           后者保留为 setup 流程组合，而非别名）
 //
-// AUTHORITATIVE SEMANTICS, NOT A PRIVATE CLASSIFIER (r2 HIGH-2): every ref this verb reports runs
-// through validatePermissionPolicyRef + resolvePermissionPolicyAttachment — byte-equivalent CLI
-// twins of the daemon's permission-policy modules (lib/permission-policy/*, lib/path-safety.ts;
-// pinned by permission-policy-parity.test.ts). An invalid ref exits 1 with the authoritative error
-// — this surface must never bless a spec defect the daemon's own validation refuses.
+// 权威语义，而非私有分类器（r2 HIGH-2）：本动词报告的每个引用都经过
+// validatePermissionPolicyRef + resolvePermissionPolicyAttachment——它们是后台服务
+// 权限策略模块（lib/permission-policy/*、lib/path-safety.ts）的字节级 CLI 孪生
+// （由 permission-policy-parity.test.ts 钉住）。非法引用以权威错误退出 1——
+// 本接口绝不能放行后台服务自身校验拒绝的 spec 缺陷。
 
 import { Command } from "commander";
 import { parse as parseYaml } from "yaml";
@@ -41,15 +41,15 @@ import {
 import { parsePolicySpec, validatePolicySpec } from "../lib/permission-policy/policy-spec.js";
 
 const HONESTY_PIN =
-  "OpenRig bakes NO allow/ask/deny permission policy — the harness-native permissions are the control surface. " +
-  "OpenRig records posture into RigSpec; harness-native permissions enforce — never runtime enforcement.";
+  "zrig 不内置任何 allow/ask/deny 权限策略——harness 原生权限才是控制面。" +
+  "zrig 把姿态记录进 RigSpec；由 harness 原生权限强制执行——绝不运行时强制。";
 
 const BUILTIN_DESCRIPTIONS: Record<string, string> = {
-  locked: "the most restrictive packaged posture — for seats that must not touch anything unattended",
-  standard: "the packaged default posture for managed working seats",
-  open: "a permissive packaged posture for trusted, high-autonomy seats",
-  yolo: "the operator/no-guardrails posture — everything the harness allows (launch posture: full_bypass)",
-  none: "the RESERVED deliberate-none choice: recorded as permission_policy: none — posture identical to absent (the floor), but the absence is chosen and visible",
+  locked: "最严格的打包姿态——用于任何时候都不能无人值守触碰任何东西的席位",
+  standard: "受管工作席位的打包默认姿态",
+  open: "面向受信任、高自主席位的宽松打包姿态",
+  yolo: "操作者/无护栏姿态——harness 允许的一切都放行（启动姿态：full_bypass）",
+  none: "保留的 deliberate-none 选择：记录为 permission_policy: none——姿态等同于缺失（地板），但缺失是被主动选择且可见的",
 };
 
 function refFor(name: string): string {
@@ -59,15 +59,15 @@ function refFor(name: string): string {
 const readFileDep = { readFile: (p: string) => fs.readFileSync(p, "utf-8") };
 
 interface SpecRefSite {
-  site: string; // "rig" | "pods[i].members[j] (<logical id>)"
-  /** The RAW declared value: undefined = the key is truly absent; anything else (including a
-   *  non-string YAML value) is PRESENT and goes to the authoritative validator — a present
-   *  non-string must surface as INVALID, never quietly become "absent → floor" (r2 round 3). */
+  site: string; // "rig" | "pods[i].members[j]（<逻辑 id>）"
+  /** 原始声明值：undefined = 该键真正缺失；其他任何值（包括非字符串 YAML 值）都算
+   *  存在并送交权威校验器——存在的非字符串必须显示为 INVALID，绝不能悄悄变成
+   *  "缺失 → 地板"（r2 round 3）。 */
   ref: unknown;
 }
 
-/** Collect every permission_policy declaration site in a parsed rig spec (rig level + members).
- *  Presence is keyed on the KEY existing, not on the value being a string. */
+/** 收集一个已解析 rig spec 中所有 permission_policy 声明点（rig 级 + 各成员）。
+ *  存在性以"键是否存在"为准，而非值是否为字符串。 */
 function collectRefSites(doc: Record<string, unknown>): SpecRefSite[] {
   const sites: SpecRefSite[] = [{
     site: "rig",
@@ -89,17 +89,17 @@ function collectRefSites(doc: Record<string, unknown>): SpecRefSite[] {
 function loadSpec(specPath: string): { resolved: string; doc: Record<string, unknown> } | { error: string } {
   const resolved = resolveExistingSpecPath(defaultDeps(), specPath);
   if (!resolved) {
-    return { error: `No rig spec found at ${specPath} (looked for a file, then rig.yaml/rig.yml/agent.yaml/agent.yml inside it).` };
+    return { error: `在 ${specPath} 未找到工作组规范（先查找该文件，再查找其中的 rig.yaml/rig.yml/agent.yaml/agent.yml）。` };
   }
   try {
     const doc = (parseYaml(fs.readFileSync(resolved, "utf-8")) ?? {}) as Record<string, unknown>;
     return { resolved, doc };
   } catch (err) {
-    return { error: `Could not parse ${resolved}: ${(err as Error).message}` };
+    return { error: `无法解析 ${resolved}：${(err as Error).message}` };
   }
 }
 
-/** Render "what would apply" for one resolved attachment. */
+/** 为一个已解析的挂载渲染"实际会应用什么"。 */
 function describeAttachment(a: ResolvedPolicyAttachment): string {
   const parts = [
     `origin=${a.origin}`,
@@ -110,22 +110,22 @@ function describeAttachment(a: ResolvedPolicyAttachment): string {
     `content_resolved=${a.contentResolved}`,
   ].filter(Boolean);
   const advisory = a.origin === "custom" && !a.contentResolved
-    ? " — UNRESOLVED custom content: the advisory FLOOR applies until the policy spec reads + validates"
+    ? " —— 未解析的自定义内容：在策略 spec 可读并校验前，应用建议地板"
     : "";
   return parts.join(" · ") + advisory;
 }
 
 export function policyCommand(): Command {
   const cmd = new Command("policy").description(
-    `Teach and record the rig-level permission policy. ${HONESTY_PIN} (The context-mode verb formerly at this name is now: rig mode.)`,
+    `教学并记录工作组级权限策略。${HONESTY_PIN}（原先占用此名的 context-mode 动词现为：rig mode。）`,
   );
 
   const permissions = new Command("permissions").description(
-    "Native permission policy: list, show, current and apply. Work posture is separate; this does not relaunch seats.",
+    "原生权限策略：list、show、current 与 apply。工作姿态是另一回事；本命令不会重启席位。",
   );
   registerPermissionCommands(permissions);
   cmd.addCommand(permissions);
-  // Compatibility aliases share the exact actions and output, including JSON and exit codes.
+  // 兼容别名共享完全相同的动作与输出，包括 JSON 与退出码。
   registerPermissionCommands(cmd);
   return cmd;
 }
@@ -134,9 +134,9 @@ function registerPermissionCommands(cmd: Command): void {
 
   cmd
     .command("list")
-    .description(`List the built-in permission-policy templates, plus the custom policies visible in a spec context. ${HONESTY_PIN}`)
-    .option("--spec <path>", "Rig spec (file or directory) defining the custom-policy context")
-    .option("--json", "Machine-readable output")
+    .description(`列出内置权限策略模板，以及在某 spec 上下文中可见的自定义策略。${HONESTY_PIN}`)
+    .option("--spec <path>", "定义自定义策略上下文的工作组规范（文件或目录）")
+    .option("--json", "机器可读输出")
     .action((opts: { spec?: string; json?: boolean }) => {
       const builtins = POLICY_CHOICES.map((name) => ({ name, ref: refFor(name), origin: name === "none" ? "deliberate_none" : "builtin", description: BUILTIN_DESCRIPTIONS[name] ?? "" }));
       const custom: Array<Record<string, unknown>> = [];
@@ -165,11 +165,11 @@ function registerPermissionCommands(cmd: Command): void {
       } else {
         for (const r of builtins) console.log(`${r.name.padEnd(10)} ${r.ref.padEnd(18)} ${r.description}`);
         if (opts.spec && !specError) {
-          console.log(custom.length > 0 ? "\nCustom policies in the spec set:" : "\n(no custom policies referenced in the spec set)");
+          console.log(custom.length > 0 ? "\n规范集中的自定义策略：" : "\n（规范集中未引用自定义策略）");
           for (const c of custom) {
             console.log(c.invalid
-              ? `  ${String(c.site).padEnd(28)} ${c.ref} — INVALID: ${c.invalid}`
-              : `  ${String(c.site).padEnd(28)} ${c.ref} → ${c.resolvedTarget} (surface=${c.surface ?? "?"}, launch_posture=${c.launchPosture}, content_resolved=${c.contentResolved})`);
+              ? `  ${String(c.site).padEnd(28)} ${c.ref} —— 无效：${c.invalid}`
+              : `  ${String(c.site).padEnd(28)} ${c.ref} → ${c.resolvedTarget}（surface=${c.surface ?? "?"}, launch_posture=${c.launchPosture}, content_resolved=${c.contentResolved}）`);
           }
         }
         if (specError) console.error(specError);
@@ -180,9 +180,9 @@ function registerPermissionCommands(cmd: Command): void {
 
   cmd
     .command("show <nameOrRef>")
-    .description("Show one built-in policy choice, or validate + open a CUSTOM policy spec by ref (relative to --spec's directory, else cwd).")
-    .option("--spec <path>", "Rig spec (file or directory) whose directory anchors a custom ref")
-    .option("--json", "Machine-readable output")
+    .description("查看一个内置策略选择，或按引用校验并打开一个自定义策略 spec（相对 --spec 所在目录，否则 cwd）。")
+    .option("--spec <path>", "其目录用于锚定自定义引用的工作组规范（文件或目录）")
+    .option("--json", "机器可读输出")
     .action((nameOrRef: string, opts: { spec?: string; json?: boolean }) => {
       if ((POLICY_CHOICES as readonly string[]).includes(nameOrRef)) {
         const out = {
@@ -197,17 +197,17 @@ function registerPermissionCommands(cmd: Command): void {
         if (opts.json) console.log(JSON.stringify(out));
         else {
           console.log(`${out.name} — ${out.description}`);
-          console.log(`Recorded as: ${out.recordedAs} (launch_posture: ${out.launchPosture})`);
+          console.log(`记录为：${out.recordedAs}（launch_posture: ${out.launchPosture}）`);
           console.log(out.enforcement);
         }
         return;
       }
-      // Custom ref path — AUTHORITATIVE validation first; an invalid ref is a loud refusal.
+      // 自定义引用路径——先做权威校验；非法引用是显式拒绝。
       const ref = nameOrRef.startsWith("builtin:") ? nameOrRef : nameOrRef;
       const invalid = validatePermissionPolicyRef(ref, "policy ref");
       if (invalid) {
         console.error(invalid);
-        console.error(`Known built-ins: ${POLICY_CHOICES.join(", ")}.`);
+        console.error(`已知内置项：${POLICY_CHOICES.join(", ")}。`);
         process.exitCode = 1;
         return;
       }
@@ -228,13 +228,13 @@ function registerPermissionCommands(cmd: Command): void {
       try {
         raw = fs.readFileSync(resolvedTarget, "utf-8");
       } catch {
-        console.error(`Custom policy '${ref}' does not resolve: ${resolvedTarget} is missing or unreadable (anchored at ${anchor}). The advisory FLOOR would apply.`);
+        console.error(`自定义策略 '${ref}' 无法解析：${resolvedTarget} 缺失或不可读（锚定于 ${anchor}）。将应用建议地板。`);
         process.exitCode = 1;
         return;
       }
       const parsed = parsePolicySpec(raw);
       if ("error" in parsed) {
-        console.error(`Custom policy '${ref}' at ${resolvedTarget} is INVALID: ${parsed.error}`);
+        console.error(`位于 ${resolvedTarget} 的自定义策略 '${ref}' 无效：${parsed.error}`);
         process.exitCode = 1;
         return;
       }
@@ -256,7 +256,7 @@ function registerPermissionCommands(cmd: Command): void {
       else {
         console.log(`${ref} → ${resolvedTarget}`);
         console.log(describeAttachment(attachment));
-        if (!contract.ok) for (const e of contract.errors) console.log(`  contract: ${e}`);
+        if (!contract.ok) for (const e of contract.errors) console.log(`  契约：${e}`);
         console.log(HONESTY_PIN);
       }
       if (!contract.ok) process.exitCode = 1;
@@ -264,9 +264,9 @@ function registerPermissionCommands(cmd: Command): void {
 
   cmd
     .command("current")
-    .description("Show the EFFECTIVE permission policy for a rig spec and what would apply, per site (rig + member overrides), through the authoritative validator/resolver.")
-    .requiredOption("--spec <path>", "Rig spec file, or a directory containing rig.yaml/agent.yaml")
-    .option("--json", "Machine-readable output")
+    .description("展示一个工作组规范的生效权限策略、以及逐站点（rig + 成员覆盖）实际会应用什么，经权威校验器/解析器。")
+    .requiredOption("--spec <path>", "工作组规范文件，或包含 rig.yaml/agent.yaml 的目录")
+    .option("--json", "机器可读输出")
     .action((opts: { spec: string; json?: boolean }) => {
       const loaded = loadSpec(opts.spec);
       if ("error" in loaded) {
@@ -279,11 +279,11 @@ function registerPermissionCommands(cmd: Command): void {
       const rigRef = sites[0]!.ref;
       let anyInvalid = false;
       const report = sites.map(({ site, ref }) => {
-        // member > rig precedence on PRESENCE (a present member value overrides, even an invalid one —
-        // it must surface as ITS OWN defect, never silently disappear behind the rig ref).
+        // 成员 > rig 的存在性优先级（存在的成员值覆盖，即使它非法——
+        // 它必须作为自身的缺陷浮现，绝不能悄悄消失在 rig 引用背后）。
         const effective = site === "rig" ? ref : (ref !== undefined ? ref : rigRef);
         if (effective === undefined) {
-          return { site, ref: null, effective: null, applies: "absent — the floor (honest absence; nothing recorded)" };
+          return { site, ref: null, effective: null, applies: "缺失——地板（诚实的缺失；未记录任何内容）" };
         }
         const invalid = validatePermissionPolicyRef(effective, `${site}.permission_policy`);
         if (invalid) {
@@ -296,22 +296,22 @@ function registerPermissionCommands(cmd: Command): void {
       const out = { spec: loaded.resolved, sites: report, enforcement: HONESTY_PIN };
       if (opts.json) console.log(JSON.stringify(out));
       else {
-        console.log(`Spec: ${loaded.resolved}`);
+        console.log(`规范：${loaded.resolved}`);
         for (const r of report) {
-          if ("invalid" in r && r.invalid) console.log(`${r.site}: ${r.effective} — INVALID: ${r.invalid}`);
-          else console.log(`${r.site}: ${r.effective ?? "(absent)"} — ${String((r as { applies?: string }).applies)}`);
+          if ("invalid" in r && r.invalid) console.log(`${r.site}：${r.effective} —— 无效：${r.invalid}`);
+          else console.log(`${r.site}：${r.effective ?? "（缺失）"} —— ${String((r as { applies?: string }).applies)}`);
         }
         console.log(HONESTY_PIN);
       }
-      // An invalid ref is a spec DEFECT (the daemon's own validation refuses it) — never exit 0.
+      // 非法引用是 spec 缺陷（后台服务自身校验会拒绝）——绝不退出 0。
       if (anyInvalid) process.exitCode = 1;
     });
 
   cmd
     .command("apply <name>")
-    .description(`Record a policy choice into an EXISTING rig spec (the same recording flow as \`rig setup --policy\`, which stays as the setup-step composition). ${HONESTY_PIN}`)
-    .requiredOption("--spec <path>", "Rig spec file, or a directory containing rig.yaml/agent.yaml")
-    .option("--json", "Machine-readable output")
+    .description(`把一个策略选择记录进已存在的工作组规范（与 \`zrig setup --policy\` 同一记录流程，后者保留为 setup 步骤组合）。${HONESTY_PIN}`)
+    .requiredOption("--spec <path>", "工作组规范文件，或包含 rig.yaml/agent.yaml 的目录")
+    .option("--json", "机器可读输出")
     .action((name: string, opts: { spec: string; json?: boolean }) => {
       const step = recordPermissionPolicyStep(defaultDeps(), name, opts.spec);
       if (opts.json) console.log(JSON.stringify(step));
@@ -319,7 +319,7 @@ function registerPermissionCommands(cmd: Command): void {
         console.log(step.message);
         if (step.status === "fail") {
           if (step.reason) console.log(step.reason);
-          if (step.fixHint) console.log(`Fix: ${step.fixHint}`);
+          if (step.fixHint) console.log(`修复：${step.fixHint}`);
         }
       }
       if (step.status === "fail") process.exitCode = 1;
@@ -327,5 +327,5 @@ function registerPermissionCommands(cmd: Command): void {
 
 }
 
-// Re-exported so the parity test can assert the twin surface without deep-importing.
+// 重新导出，使对等测试无须深层导入即可断言孪生界面。
 export { BUILTIN_POLICY_NAMES };

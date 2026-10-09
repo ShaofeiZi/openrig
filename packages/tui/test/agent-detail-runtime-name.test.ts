@@ -1,10 +1,9 @@
-// a4c9548a — S19 FOLLOW-ON FOUNDER RULING (binding, bounds the S19 marks ruling):
-// icons are DECORATIVE or for no-room contexts; where there is ROOM, WRITE THE NAME —
-// an icon NEVER replaces text as the value. The agent-DETAIL page has room, so its
-// runtime field must render the runtime NAME as text (claude-code / codex / ...); a
-// mark MAY accompany decoratively but never substitutes for the value. Topology cards
-// (space-constrained) KEEP their marks — the ruling is BOUNDED, not reversed (see
-// topology-view / navigator-reskin suites, untouched by this fix). (qitem a4c9548a)
+// a4c9548a——S19 后续 founder 裁决（绑定，界定 S19 marks 裁决）：
+// 图标是装饰或用于无空间场景；有空间处则写出名字——
+// 图标绝不替代文本作为值。agent-DETAIL 页有空间，故其
+// runtime 字段须把 runtime 名字渲染为文本（claude-code / codex / ...）；
+// 标记可装饰性伴随，但绝不替代值。topology 卡（空间受限）保留其标记——
+// 裁决是界定而非反转（见 topology-view / navigator-reskin 套件，本修复未触及）。(qitem a4c9548a)
 import { describe, expect, it } from "vitest";
 import { demoSnapshot } from "../src/demo-data.js";
 import { renderScreen } from "../src/render.js";
@@ -22,14 +21,14 @@ function renderAgentDetail(name: string): string {
   return renderScreen(view.get(), snap, { cols: 140, rows: 34 }).lines.join("\n");
 }
 
-describe("agent-detail runtime field renders the NAME as the value (founder rule a4c9548a)", () => {
-  it("a claude-code agent's runtime field shows `claude-code` as TEXT — the name is the value, not only the mark", () => {
+describe("agent-detail runtime 字段把 NAME 渲染为值（founder 规则 a4c9548a）", () => {
+  it("claude-code agent 的 runtime 字段把 `claude-code` 显示为 TEXT——名称即值，不只是标记", () => {
     const out = renderAgentDetail("dev50.driver");
-    expect(out).toMatch(/runtime:\s+claude-code/);
+    expect(out).toMatch(/运行时:\s+claude-code/);
   });
 
-  it("a codex agent's runtime field shows `codex` as TEXT", () => {
+  it("codex agent 的 runtime 字段把 `codex` 显示为 TEXT", () => {
     const out = renderAgentDetail("dev50.guard");
-    expect(out).toMatch(/runtime:\s+codex/);
+    expect(out).toMatch(/运行时:\s+codex/);
   });
 });

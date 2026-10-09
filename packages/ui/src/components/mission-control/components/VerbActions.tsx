@@ -1,8 +1,7 @@
-// PL-005 Phase A: 7-verb action sub-component.
+// PL-005 A 阶段：7 动词操作子组件。
 //
-// Per PRD § Acceptance Criteria item 2: each of 7 verbs is one atomic
-// transaction. The 4-step `handoff` shape is daemon-internal (not visible
-// here); UI just submits the verb + required fields.
+// 按 PRD § 验收标准第 2 项：7 个动词各为一个原子事务。
+// 4 步 `handoff` 形状是后台服务内部的（此处不可见）；UI 仅提交动词 + 必填字段。
 
 import { useState } from "react";
 import {
@@ -18,57 +17,51 @@ import type { FeedActionOutcome } from "../../for-you/FeedCard.js";
 export interface VerbActionsProps {
   qitemId: string;
   actorSession: string;
-  /** CORRECTIVE §7.1 (founder 2026-07-05): render ONLY the verb button(s) —
-   *  no "Choose response" header/explainer chrome; buttons are self-evident.
-   *  The mutation + receipt + error paths are identical. */
+  /** CORRECTIVE §7.1（创始者 2026-07-05）：仅渲染动词按钮——
+   *  无"选择响应"头部/说明装饰；按钮自解释。变更 + 回执 + 错误路径完全相同。 */
   bare?: boolean;
-  /** OPR.0.4.4.15 FR-4 — the item's ORIGIN host (from the aggregated feed
-   *  card). Remote ids ride the mutation so the daemon forwards the verb to
-   *  where the qitem lives; absent/'local' changes nothing. */
+  /** OPR.0.4.4.15 FR-4 —— 事项的来源主机（来自聚合 feed 卡片）。
+   *  远端 id 随变更提交，后台服务将动词转发到 qitem 所在位置；
+   *  缺省/'local' 不改变任何内容。 */
   hostId?: string;
-  /** Restrict the verbs offered (e.g., my-queue may only show approve/deny). */
+  /** 限制提供的动词（例如 my-queue 可能只显示 approve/deny）。 */
   enabledVerbs?: MissionControlVerb[];
   /**
-   * OPR.0.3.3.20 — verbs that submit DIRECTLY on click (no select+confirm
-   * step), firing the same mutation + optimistic-receipt + held-error paths.
-   * APPROVE-ONLY by contract (PRD scope + section S): the type narrows the
-   * prop to "approve", and ONE_CLICK_SAFE_VERBS enforces the same allowlist
-   * at runtime — a verb outside it (including input-free verbs like deny)
-   * is NEVER one-clicked even if a caller forces it in; it falls back to the
-   * controlled select+confirm flow. For-You passes ["approve"].
+   * OPR.0.3.3.20 —— 点击直接提交的动词（无选择+确认步骤），
+   * 触发相同的变更 + 乐观回执 + 持有错误路径。
+   * 按契约仅 APPROVE（PRD 范围 + S 节）：类型将 prop 收窄为 "approve"，
+   * ONE_CLICK_SAFE_VERBS 在运行时强制同一白名单——
+   * 不在其中的动词（包括无输入动词如 deny）永不一键提交，即使调用者强制传入；
+   * 它回退到受控选择+确认流程。For-You 传 ["approve"]。
    */
   oneClickVerbs?: Array<Extract<MissionControlVerb, "approve">>;
   onSettled?: () => void;
   /**
-   * 0.3.1 demo-bug fix — optimistic outcome callback. Fires on
-   * mutation success with a FeedActionOutcome built from the input
-   * verb + destination + actor. Parent (Feed.tsx) stashes this in a
-   * local Map so the ActionOutcomePanel renders instantly without
-   * waiting for the audit-log roundtrip. The audit query re-fetch
-   * reconciles to the same shape later.
+   * 0.3.1 demo-bug 修复 —— 乐观结果回调。变更成功时触发，
+   * 用输入动词 + 目标 + 操作者构建 FeedActionOutcome。
+   * 父组件（Feed.tsx）将其存入本地 Map，使 ActionOutcomePanel
+   * 无需等待审计日志往返即可立即渲染。审计查询重新获取后
+   * 后续对账为相同形状。
    */
   onOptimisticOutcome?: (outcome: FeedActionOutcome) => void;
 }
 
-/** The one-click ALLOWLIST (OPR.0.3.3.20, approve-only by scope ruling).
- *  Being input-free is necessary but NOT sufficient — deny needs no input yet
- *  stays in the controlled select+confirm flow. A verb one-clicks only if the
- *  caller lists it AND it is in this set. */
+/** 一键白名单（OPR.0.3.3.20，按范围裁定仅 approve）。
+ *  无输入是必要但不充分条件——deny 无需输入但仍走受控选择+确认流程。
+ *  动词仅在调用者列出它且它在此集合中时才一键提交。 */
 const ONE_CLICK_SAFE_VERBS: ReadonlySet<MissionControlVerb> = new Set(["approve"]);
 
 function extractMutationErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === "string") return err;
-  return "Action failed.";
+  return "操作失败。";
 }
 
-// Vellum-coherent verb buttons: bordered-no-fill at rest; hover inverts
-// to filled. Active state stays filled to signal the operator's
-// selection while filling out the verb's required fields.
+// 羊皮纸一致的动词按钮：静止时无边框无填充；悬停反转为填充。
+// 激活状态保持填充以在填写动词必填字段时标识操作者选择。
 //
-// Tone classes are mapped to design tokens (success / warning / tertiary
-// / secondary / stone-900) — never off-brand emerald/rose/sky/amber
-// utilities.
+// 色调类映射到设计令牌（success / warning / tertiary / secondary /
+// stone-900）——绝不使用非品牌 emerald/rose/sky/amber 工具类。
 const verbToneClass: Record<MissionControlVerb, { idle: string; active: string }> = {
   approve: {
     idle: "border-success text-success hover:bg-success hover:text-white",
@@ -116,9 +109,8 @@ export function VerbActions({
   const [manualDestination, setManualDestination] = useState(false);
   const [annotation, setAnnotation] = useState("");
   const [reason, setReason] = useState("");
-  // Demo-bug fix #2 — inline error state. Cleared on verb selection +
-  // explicit reset; held across mutation state transitions so the
-  // operator sees what failed instead of a silent revert.
+  // Demo-bug 修复 #2 —— 内联错误状态。动词选择 + 显式重置时清除；
+  // 跨变更状态转换保持，使操作者看到什么失败了，而非静默回退。
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const needsDestination = activeVerb === "route" || activeVerb === "handoff";
@@ -143,8 +135,7 @@ export function VerbActions({
     setErrorMessage(null);
   }
 
-  // Shared by the select+confirm submit AND the one-click path so both fire
-  // the identical mutation + optimistic-receipt + held-error behavior.
+  // 选择+确认提交与一键路径共享，使两者触发相同的变更 + 乐观回执 + 持有错误行为。
   function performSubmit(verb: MissionControlVerb, inputs: { dest?: string; annotationText?: string; reasonText?: string }) {
     const { dest, annotationText, reasonText } = inputs;
     mutation.mutate(
@@ -155,15 +146,14 @@ export function VerbActions({
         destinationSession: dest,
         annotation: annotationText,
         reason: reasonText,
-        // G15-CF6-1: remote cards carry their origin so the daemon
-        // forwards; local/absent adds NOTHING to the body (byte-parity).
+        // G15-CF6-1：远端卡片携带其来源，后台服务转发；
+        // local/缺省不向 body 添加任何内容（字节一致）。
         ...(hostId && hostId !== "local" ? { hostId } : {}),
       },
       {
-        // Demo-bug fix #1 — split onSuccess / onError so the error
-        // path doesn't reset the selection (silent-revert symptom).
-        // Optimistic outcome fires on success so ActionOutcomePanel
-        // renders without waiting for the audit-log roundtrip.
+        // Demo-bug 修复 #1 —— 拆分 onSuccess / onError，使错误路径
+        // 不重置选择（静默回退症状）。乐观结果在成功时触发，
+        // ActionOutcomePanel 无需等待审计日志往返即可渲染。
         onSuccess: () => {
           onOptimisticOutcome?.({
             verb,
@@ -191,9 +181,8 @@ export function VerbActions({
     });
   }
 
-  // OPR.0.3.3.20 — one-click submit, approve-only: both the caller's list AND
-  // the ONE_CLICK_SAFE_VERBS allowlist must contain the verb. Act-driven:
-  // fires on the operator's click, never on a timer.
+  // OPR.0.3.3.20 —— 一键提交，仅 approve：调用者列表和 ONE_CLICK_SAFE_VERBS
+  // 白名单都必须包含该动词。操作驱动：在操作者点击时触发，绝不在定时器上。
   function isOneClick(verb: MissionControlVerb): boolean {
     return Boolean((oneClickVerbs as MissionControlVerb[] | undefined)?.includes(verb)) && ONE_CLICK_SAFE_VERBS.has(verb);
   }
@@ -208,20 +197,19 @@ export function VerbActions({
 
   return (
     <div data-testid="mc-verb-actions" className="space-y-2">
-      {/* CORRECTIVE §7.1 (founder 2026-07-05): `bare` renders ONLY the verb
-          button(s) — buttons are self-evident, no explainer chrome. The
-          mutation + receipt + error paths are byte-identical. */}
+      {/* CORRECTIVE §7.1（创始者 2026-07-05）：`bare` 仅渲染动词按钮——
+          按钮自解释，无说明装饰。变更 + 回执 + 错误路径字节一致。 */}
       {!bare ? (
       <div className="flex flex-wrap items-start justify-between gap-2 border border-outline-variant bg-surface-lowest/40 px-2 py-1.5 backdrop-blur-sm">
         <div>
-          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface">Choose response</div>
+          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface">选择响应</div>
           <div className="mt-0.5 font-mono text-[10px] leading-relaxed text-on-surface-variant">
-            Pick the next move for this queue item.
+            为此队列项选择下一步操作。
           </div>
         </div>
         {activeVerb ? (
           <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">
-            Selected: <span className="text-on-surface">{ACTION_VERB_META[activeVerb].label}</span>
+            已选：<span className="text-on-surface">{ACTION_VERB_META[activeVerb].label}</span>
           </div>
         ) : null}
       </div>
@@ -238,9 +226,8 @@ export function VerbActions({
               data-testid={`mc-verb-${verb}`}
               data-one-click={oneClick ? "true" : undefined}
               onClick={() => {
-                // OPR.0.3.3.20 — one-click verbs record immediately (no
-                // select+confirm step); input-needing verbs always go
-                // through the controlled flow.
+                // OPR.0.3.3.20 —— 一键动词立即记录（无选择+确认步骤）；
+                // 需要输入的动词始终走受控流程。
                 if (oneClick) {
                   setErrorMessage(null);
                   performSubmit(verb, {});
@@ -249,7 +236,7 @@ export function VerbActions({
                 selectVerb(verb);
               }}
               disabled={mutation.isPending}
-              title={oneClick ? `${meta.description} (records immediately)` : meta.description}
+              title={oneClick ? `${meta.description}（立即记录）` : meta.description}
               className={cn(
                 "inline-flex min-h-[44px] items-center gap-1 border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors disabled:opacity-50",
                 activeVerb === verb ? verbToneClass[verb].active : verbToneClass[verb].idle,
@@ -271,7 +258,7 @@ export function VerbActions({
               {showDestinationSelect ? (
                 <select
                   data-testid="mc-verb-destination-select"
-                  aria-label="Destination session"
+                  aria-label="目标会话"
                   value={manualDestination ? "__manual__" : destinationSession}
                   disabled={destinationListLoading}
                   onChange={(e) => {
@@ -286,14 +273,14 @@ export function VerbActions({
                   className="w-full border border-outline-variant bg-surface-lowest px-2 py-1 font-mono text-xs"
                 >
                   <option value="">
-                    {destinationListLoading ? "loading destinations..." : "choose destination"}
+                    {destinationListLoading ? "正在加载目标会话…" : "选择目标会话"}
                   </option>
                   {destinationOptions.map((destination) => (
                     <option key={destination.sessionName} value={destination.sessionName}>
                       {destination.label}
                     </option>
                   ))}
-                  <option value="__manual__">manual entry</option>
+                  <option value="__manual__">手动输入</option>
                 </select>
               ) : null}
               {showManualDestinationInput ? (
@@ -302,12 +289,12 @@ export function VerbActions({
                   data-testid="mc-verb-destination-input"
                   value={destinationSession}
                   onChange={(e) => setDestinationSession(e.target.value)}
-                  placeholder="destination session (member@rig)"
+                  placeholder="目标会话 (member@rig)"
                   className="w-full border border-outline-variant px-2 py-1 font-mono text-xs"
                 />
               ) : null}
               {destinationsQuery.isError ? (
-                <div className="font-mono text-[10px] text-amber-700">destination list unavailable</div>
+                <div className="font-mono text-[10px] text-amber-700">目标会话列表不可用</div>
               ) : null}
             </div>
           )}
@@ -316,7 +303,7 @@ export function VerbActions({
               data-testid="mc-verb-annotation-input"
               value={annotation}
               onChange={(e) => setAnnotation(e.target.value)}
-              placeholder="annotation"
+              placeholder="批注"
               rows={2}
               className="w-full border border-outline-variant px-2 py-1 font-mono text-xs"
             />
@@ -327,7 +314,7 @@ export function VerbActions({
               data-testid="mc-verb-reason-input"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder={`${activeVerb} reason`}
+              placeholder={`${activeVerb} 原因`}
               className="w-full border border-outline-variant px-2 py-1 font-mono text-xs"
             />
           )}
@@ -338,7 +325,7 @@ export function VerbActions({
               data-testid="mc-verb-cancel"
               className="border border-outline-variant px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant"
             >
-              Cancel
+              取消
             </button>
             <button
               type="button"
@@ -352,7 +339,7 @@ export function VerbActions({
               }
               className="border border-on-surface bg-inverse-surface px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-background disabled:opacity-50"
             >
-              {mutation.isPending ? "..." : `Confirm ${ACTION_VERB_META[activeVerb].label}`}
+              {mutation.isPending ? "…" : `确认 ${ACTION_VERB_META[activeVerb].label}`}
             </button>
           </div>
         </div>

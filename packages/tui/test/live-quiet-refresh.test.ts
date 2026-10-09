@@ -18,8 +18,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("S17 bounded quiet refresh", () => {
-  it("a completed hydrate passively rehydrates after 30 seconds, never in a 5-second series", async () => {
+describe("S17 有界安静刷新", () => {
+  it("完成的 hydrate 30 秒后被动重新 hydration，绝不 5 秒连串", async () => {
     vi.useFakeTimers();
     const hydrate = vi.fn(async () => emptySnapshot());
     const live = createLiveRefresh({ hydrate, onFrame: () => {}, now: () => 0 });
@@ -35,7 +35,7 @@ describe("S17 bounded quiet refresh", () => {
     live.close();
   });
 
-  it("arms exactly one timeout only after hydrate completion and clears it on close", async () => {
+  it("仅在 hydrate 完成后武装恰好一个超时，并在关闭时清除", async () => {
     vi.useFakeTimers();
     const first = deferred<FleetSnapshot>();
     const hydrate = vi.fn(() => first.promise);
@@ -52,7 +52,7 @@ describe("S17 bounded quiet refresh", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("never schedules a fallback while hydrate is in flight, then re-arms from completion", async () => {
+  it("hydrate in-flight 时绝不安排回退，完成后重新武装", async () => {
     vi.useFakeTimers();
     const second = deferred<FleetSnapshot>();
     let calls = 0;
@@ -81,7 +81,7 @@ describe("S17 bounded quiet refresh", () => {
     live.close();
   });
 
-  it("an event/operator refresh clears the old timeout and earns a full new quiet window", async () => {
+  it("事件/操作者刷新清除旧超时并赢得全新安静窗口", async () => {
     vi.useFakeTimers();
     const hydrate = vi.fn(async () => emptySnapshot());
     const live = createLiveRefresh({ hydrate, onFrame: () => {}, now: () => 0 });
@@ -99,7 +99,7 @@ describe("S17 bounded quiet refresh", () => {
     live.close();
   });
 
-  it("keeps two open clients independent when only one receives an early refresh", async () => {
+  it("仅一个收到提前刷新时保持两个打开 client 独立", async () => {
     vi.useFakeTimers();
     const hydrateA = vi.fn(async () => emptySnapshot());
     const hydrateB = vi.fn(async () => emptySnapshot());
@@ -123,7 +123,7 @@ describe("S17 bounded quiet refresh", () => {
     liveB.close();
   });
 
-  it("unrefs the production timeout handle and cancels that exact handle on close", async () => {
+  it("unref 生产超时句柄，并在关闭时取消该确切句柄", async () => {
     const unref = vi.fn();
     const handle = { unref };
     const setTimeout = vi.fn(() => handle);
@@ -144,7 +144,7 @@ describe("S17 bounded quiet refresh", () => {
     expect(clearTimeout).toHaveBeenCalledWith(handle);
   });
 
-  it("wires refresh-owner cleanup into the TUI shutdown path", () => {
+  it("把 refresh-owner 清理接入 TUI 关闭路径", () => {
     const main = readFileSync(join(repoRoot, "packages", "tui", "src", "main.ts"), "utf8");
     const shutdown = main.slice(main.indexOf("async function shutdown"), main.indexOf("process.on(\"SIGINT\""));
     expect(shutdown).toContain("live?.close()");
@@ -152,8 +152,8 @@ describe("S17 bounded quiet refresh", () => {
 });
 
 
-describe("proof basis freshness", () => {
-  it("repairs a missed change in the existing 30s window without treating quiet time as stale", async () => {
+describe("proof 基准新鲜度", () => {
+  it("在既有 30 秒窗口内修复错过的变更，不把安静时间当陈旧", async () => {
     vi.useFakeTimers();
     let revision = "before";
     const live = createLiveRefresh({ hydrate: async () => ({ ...emptySnapshot(), instanceId: revision }), onFrame() {}, now: () => Date.now() });
@@ -164,7 +164,7 @@ describe("proof basis freshness", () => {
     expect(live.snapshot().instanceId).toBe("committed"); expect(live.load().stale).toBe(false);
     live.close();
   });
-  it("marks known invalidation and overdue reconciliation, then reconciles a trailing change", async () => {
+  it("标记已知失效与逾期对账，随后对账一个尾随变更", async () => {
     vi.useFakeTimers();
     const delayed = deferred<FleetSnapshot>(); let calls = 0;
     const live = createLiveRefresh({ hydrate: () => ++calls === 2 ? delayed.promise : Promise.resolve({ ...emptySnapshot(), instanceId: String(calls) }), onFrame() {}, now: () => Date.now() });

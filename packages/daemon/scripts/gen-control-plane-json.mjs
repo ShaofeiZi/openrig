@@ -58,7 +58,7 @@ export async function generateControlPlaneJson({
   writeJson(join(outputDir, "skill-edge-digests.generated.json"), digests);
 }
 
-// Ownership belongs to the private authoring source, not its public projection.
+// 所有权属于私有创作源，而不是其公开投影。
 export function publicProjection({ owner, ...value }) {
   return value;
 }
@@ -89,7 +89,7 @@ export async function extractSkillEdgeLayout({
         current.category !== category
       ) {
         throw new Error(
-          `${sourcePath}: ${skill} has conflicting categories ${current.category} and ${category}`,
+          `${sourcePath}：${skill} 的类别冲突：${current.category} 与 ${category}`,
         );
       }
       current.category ??= category;
@@ -136,11 +136,11 @@ export async function extractSkillEdgeLayout({
   };
 }
 
-// Exported for the disk-truth digest regen (scripts/regen-edge-digests.mjs): digests derive purely
-// from the on-disk edge files + the (already-correct) in-repo layout — no external-canon YAMLs. This
-// refreshes file-integrity hashes to match folded reality WITHOUT re-deriving membership/denylist/layout
-// (those require the explicit canon-root path). It hashes PRESENT files only; a layout-demanded file missing from disk is
-// never given a digest here, so the staleness check stays loud about it (layout=authority, disk=reality).
+// 导出供磁盘事实摘要重建器（scripts/regen-edge-digests.mjs）使用：摘要仅来自磁盘上的边文件
+// 与仓库中已经正确的 layout，不读取外部 canonical YAML。它会刷新文件完整性哈希，使其与合并后的
+// 现实一致，但不会重新推导 membership/denylist/layout（后者需要显式 canon-root 路径）。这里只哈希
+// 当前存在的文件；layout 要求但磁盘缺失的文件不会获得摘要，因此过期检查仍会明确报错
+//（layout = 权威，磁盘 = 现实）。
 export function buildEdgeDigests({ repoRoot, layout }) {
   return {
     version: 1,
@@ -165,39 +165,39 @@ export function buildEdgeDigests({ repoRoot, layout }) {
 
 function validateMembership(value, sourcePath) {
   if (!isObject(value?.product_public)) {
-    invalid(sourcePath, "product_public must be an object");
+    invalid(sourcePath, "product_public 必须是对象");
   }
   for (const category of REQUIRED_MEMBERSHIP_CATEGORIES) {
     if (!isStringArray(value.product_public[category])) {
-      invalid(sourcePath, `product_public.${category} must be an array`);
+      invalid(sourcePath, `product_public.${category} 必须是数组`);
     }
   }
   if (!isStringArray(value.vendored_ship_with_provenance)) {
-    invalid(sourcePath, "vendored_ship_with_provenance must be an array");
+    invalid(sourcePath, "vendored_ship_with_provenance 必须是数组");
   }
   if (!isObject(value.not_public)) {
-    invalid(sourcePath, "not_public must be an object");
+    invalid(sourcePath, "not_public 必须是对象");
   }
   for (const [category, skills] of Object.entries(value.not_public)) {
     if (!isStringArray(skills)) {
-      invalid(sourcePath, `not_public.${category} must be an array`);
+      invalid(sourcePath, `not_public.${category} 必须是数组`);
     }
   }
   if (!isStringArray(value.pending_author_public)) {
-    invalid(sourcePath, "pending_author_public must be an array");
+    invalid(sourcePath, "pending_author_public 必须是数组");
   }
 }
 
 function validateDenylist(value, sourcePath) {
-  if (!isObject(value)) invalid(sourcePath, "denylist must be an object");
+  if (!isObject(value)) invalid(sourcePath, "denylist 必须是对象");
   for (const field of REQUIRED_DENYLIST_ARRAYS) {
     if (Object.hasOwn(value, field) && !isStringArray(value[field])) {
-      invalid(sourcePath, `${field} must be an array`);
+      invalid(sourcePath, `${field} 必须是数组`);
     }
   }
   for (const field of REQUIRED_DENYLIST_ARRAYS) {
     if (!isStringArray(value[field])) {
-      invalid(sourcePath, `${field} must be an array`);
+      invalid(sourcePath, `${field} 必须是数组`);
     }
   }
   if (
@@ -205,18 +205,18 @@ function validateDenylist(value, sourcePath) {
     typeof value.section_fence.begin !== "string" ||
     typeof value.section_fence.end !== "string"
   ) {
-    invalid(sourcePath, "section_fence.begin and section_fence.end are required");
+    invalid(sourcePath, "必须提供 section_fence.begin 和 section_fence.end");
   }
 }
 
 function validateLayout(value, sourcePath) {
-  if (!isObject(value?.edges)) invalid(sourcePath, "edges must be an object");
+  if (!isObject(value?.edges)) invalid(sourcePath, "edges 必须是对象");
   const edgeNames = Object.keys(value.edges).sort();
   if (
     edgeNames.length !== EDGE_NAMES.length ||
     edgeNames.some((edge, index) => edge !== EDGE_NAMES[index])
   ) {
-    invalid(sourcePath, "edges must contain exactly canonical, plugin, and spec");
+    invalid(sourcePath, "edges 必须且只能包含 canonical、plugin 和 spec");
   }
   for (const edge of EDGE_NAMES) {
     const config = value.edges[edge];
@@ -225,14 +225,14 @@ function validateLayout(value, sourcePath) {
       typeof config.path !== "string" ||
       !["categorized", "mirror-of-spec", "flat"].includes(config.layout)
     ) {
-      invalid(sourcePath, `${edge} edge path/layout is invalid`);
+      invalid(sourcePath, `${edge} 边的 path/layout 无效`);
     }
   }
   if (value.extract_from_committed_trees !== true) {
-    invalid(sourcePath, "extract_from_committed_trees must be true");
+    invalid(sourcePath, "extract_from_committed_trees 必须为 true");
   }
   if (!isObject(value.forward_overrides)) {
-    invalid(sourcePath, "forward_overrides must be an object");
+    invalid(sourcePath, "forward_overrides 必须是对象");
   }
   for (const [skill, override] of Object.entries(value.forward_overrides)) {
     validateOverride(skill, override, value.edges, sourcePath);
@@ -248,10 +248,10 @@ function validateOverride(skill, override, edges, sourcePath) {
         !Object.hasOwn(edges, edge) || !["plugin", "spec"].includes(edge),
     )
   ) {
-    invalid(sourcePath, `${skill} edges are invalid`);
+    invalid(sourcePath, `${skill} 的 edges 无效`);
   }
   if (!CATEGORIES.has(override.category ?? null)) {
-    invalid(sourcePath, `${skill} category is invalid`);
+    invalid(sourcePath, `${skill} 的 category 无效`);
   }
 }
 
@@ -271,11 +271,11 @@ function walkFiles(root) {
   const stat = lstatSync(root, { throwIfNoEntry: false });
   if (!stat) return [];
   if (stat.isSymbolicLink()) {
-    throw new Error(`${root}: symlink entries are not allowed`);
+    throw new Error(`${root}：不允许 symlink（符号链接）条目`);
   }
   if (stat.isFile()) return [root];
   if (!stat.isDirectory()) {
-    throw new Error(`${root}: unsupported filesystem entry`);
+    throw new Error(`${root}：不支持的文件系统条目`);
   }
   return readdirSync(root)
     .sort()
@@ -312,13 +312,13 @@ function cliOptions(argv) {
     const key = argv[index];
     const value = argv[index + 1];
     if (!key?.startsWith("--") || value === undefined) {
-      throw new Error(`Invalid argument near ${key ?? "<end>"}`);
+      throw new Error(`${key ?? "<结尾>"} 附近的参数无效`);
     }
     values[key.slice(2)] = resolve(value);
   }
   const required = ["repo-root", "membership", "denylist", "layout", "output"];
   for (const key of required) {
-    if (!values[key]) throw new Error(`--${key} is required`);
+    if (!values[key]) throw new Error(`必须提供 --${key}`);
   }
   return {
     repoRoot: values["repo-root"],

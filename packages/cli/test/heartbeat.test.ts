@@ -304,8 +304,8 @@ describe("rig heartbeat", () => {
     });
 
     expect(sends.map((send) => send.session)).toEqual(["dev-impl@alpha", "dev-impl@alpha"]);
-    expect(sends.map((send) => send.text).join("\n")).toContain("add a task-specific proof note");
-    expect(sends.map((send) => send.text).join("\n")).toContain("If blocked, transition to blocked");
+    expect(sends.map((send) => send.text).join("\n")).toContain("补充一条针对该任务的证明笔记");
+    expect(sends.map((send) => send.text).join("\n")).toContain("若受阻，请带原因转为 blocked");
     const parsed = JSON.parse(logs.join("\n"));
     expect(parsed.nudgeResults).toHaveLength(2);
     expect(parsed.nudgeResults.map((result: { id: string }) => result.id).sort()).toEqual(["stalled", "unproven"]);

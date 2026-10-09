@@ -1,40 +1,39 @@
-// The COMMITTED real StagingDocker invoker (founder-ruled 2026-08-21, the engine-independent leg
-// of the container-runner scoping — workspace/artifacts/qitem-20260821183159-9b5b5117/).
+// 已提交的真实 StagingDocker 调用器（创始人于 2026-08-21 裁定，是 container-runner
+// 范围界定中与引擎无关的部分——workspace/artifacts/qitem-20260821183159-9b5b5117/）。
 //
-// WHY THIS EXISTS AS CODE AND NOT AS RUNBOOK PROSE: the L6 runbook's inline invoker
-// (`const docker = (args) => execFile("docker", args, …)`) was authored 08-06 and never learned
-// the stdinFrom tar-pipe contract added 08-07 (scenario-container-stage.ts:20-28) — execFile left
-// the child a pipe stdin that was held open and never fed, so the in-container `tar -xf -` blocked
-// on read(stdin) forever (row 42576855: child stuck 7+ minutes, parent alive, zero output). An
-// invoker inlined in a document drifts behind the code contract with nothing to fail; a committed
-// helper the runbook IMPORTS is covered by the contract's own tests.
+// 为何以代码而非 runbook 文字存在：L6 runbook 的内联调用器
+//（`const docker = (args) => execFile("docker", args, …)`）写于 08-06，并未包含 08-07
+// 新增的 stdinFrom tar 管道契约（scenario-container-stage.ts:20-28）——execFile 为子进程
+// 留下持续打开却没有数据输入的管道 stdin，导致容器内 `tar -xf -` 永久阻塞在 read(stdin)
+//（第 42576855 行：子进程卡住 7 分钟以上，父进程存活且无输出）。内联在文档中的调用器
+// 会落后于代码契约且没有测试失败信号；runbook 导入的已提交辅助模块则受契约自身测试覆盖。
 //
-// The contract implemented (StagingDocker, scenario-container-stage.ts):
-// - no stdinFrom → plain spawn with stdin IGNORED (closed): a stdin-reading child terminates on
-//   EOF instead of blocking — the hang class dies even on a misused step.
-// - stdinFrom   → two processes: `tar <stdinFrom>` piped into `docker <argv>`'s stdin, EOF
-//   propagated when the producer exits. BOTH exits checked — a shell pipeline reports only the
-//   last command's status, so a failing tar into a succeeding exec would mask an empty stage
-//   (the false-green class the fence exists to catch late; this catches it AT the step).
-// - every step is bounded by a TIMEOUT that kills both processes and returns a NAMED failure —
-//   the 08-12 hang was unbounded and ended only by operator judgement at seven minutes.
-// - never rejects (mirrors runRig): every outcome is a DockerResult with a non-zero code on
-//   failure and the cause in stderr.
+// 实施的契约（StagingDocker，scenario-container-stage.ts）：
+// - 没有 stdinFrom → 普通 spawn，忽略 stdin（生成时关闭）：读取 stdin 的子进程遇到 EOF
+//   后终止，而不是阻塞——即使步骤误用，也可消除此类卡死。
+// - 有 stdinFrom → 两个进程：`tar <stdinFrom>` 管道接入 `docker <argv>` 的 stdin，
+//   producer 退出时传播 EOF。检查两个进程的退出状态——shell 管道只报告最后一个命令的
+//   状态，因此 tar 失败而 exec 成功会掩盖空 stage（防护在后期要捕获的假绿类型；此处
+//   在步骤发生时立即捕获）。
+// - 每一步均受超时限制；超时会终止两个进程并返回具名失败——08-12 的卡死没有边界，
+//   直到七分钟时由操作者判断才结束。
+// - 从不 reject（与 runRig 一致）：每个结果都是 DockerResult，失败时 code 非零，
+//   stderr 中包含原因。
 //
-// SCOPE: this proves the INVOKER, hermetically. It claims nothing about live containment — the
-// real-engine proof (docker vs Apple container, whose exec-stdin semantics are untested for this
-// pipe) explicitly waits on the 5.3 engine-substrate ruling.
+// 范围：本文件以隔离方式证明调用器，不对真实容器隔离作任何声明——真实引擎证明
+//（docker 与 Apple container；后者对该管道的 exec-stdin 语义尚未测试）明确等待 5.3
+// 引擎底座裁定。
 
 import { spawn } from "node:child_process";
 import type { StagingDocker } from "./scenario-container-stage.js";
 
 export interface RealStagingDockerOptions {
-  /** The engine binary (default "docker"). Tests substitute "sh" to stay hermetic. */
+  /** 引擎二进制文件（默认 "docker"）。测试以 "sh" 替代，以保持隔离。 */
   command?: string;
-  /** The tar-side binary for stdinFrom steps (default "tar"). */
+  /** stdinFrom 步骤的 tar 侧二进制文件（默认 "tar"）。 */
   tarCommand?: string;
-  /** Per-step bound. Default 120s — sized for a topology-dir extract, not a build. A step that
-   *  outlives it is KILLED and reported as a named timeout, never left to hang. */
+  /** 每步时限。默认 120 秒——按拓扑目录解压规模设置，而非构建规模。超过时限的步骤会
+   *  被终止并报告具名超时，绝不会继续卡住。 */
   stepTimeoutMs?: number;
 }
 
@@ -48,7 +47,7 @@ interface ProcExit {
   spawnError?: string;
 }
 
-/** Build the real two-process invoker satisfying the StagingDocker contract. */
+/** 构建满足 StagingDocker 契约的真实双进程调用器。 */
 export function makeRealStagingDocker(opts: RealStagingDockerOptions = {}): StagingDocker {
   const command = opts.command ?? "docker";
   const tarCommand = opts.tarCommand ?? "tar";
@@ -63,8 +62,8 @@ export function makeRealStagingDocker(opts: RealStagingDockerOptions = {}): Stag
     }, stepTimeoutMs);
 
     try {
-      // Consumer side. Without a producer its stdin is IGNORED (closed at spawn): a child that
-      // reads stdin sees EOF immediately — the exact hole the inline invoker left open.
+      // consumer 侧。没有 producer 时忽略 stdin（生成时关闭）：读取 stdin 的子进程立即看到
+      // EOF——这正是内联调用器留下的缺口。
       const consumer = spawn(command, args, {
         stdio: [stdinFrom ? "pipe" : "ignore", "pipe", "pipe"],
       });
@@ -78,18 +77,17 @@ export function makeRealStagingDocker(opts: RealStagingDockerOptions = {}): Stag
         const producer = spawn(tarCommand, stdinFrom, { stdio: ["ignore", "pipe", "pipe"] });
         killProducer = () => producer.kill("SIGKILL");
         kills.push(killProducer);
-        // EPIPE on the wiring (consumer exited early) must not crash the invoker — the producer's
-        // own SIGPIPE death is the loud signal, reported through the dual-exit check below.
+        // 接线上的 EPIPE（consumer 提前退出）不得使调用器崩溃——producer 自身因 SIGPIPE
+        // 终止才是明确信号，并通过下方的双退出检查报告。
         consumer.stdin!.on("error", () => {});
-        producer.stdout!.pipe(consumer.stdin!); // pipe() forwards EOF when the producer exits
+        producer.stdout!.pipe(consumer.stdin!); // producer 退出时 pipe() 转发 EOF。
         producerDone = waitExit(producer).then((exit) => { producerClosed = true; return exit; });
       }
 
       const consumerExit = await waitExit(consumer);
-      // Consumer gone while the producer still runs: the producer's stdout now backs up against a
-      // pipe nobody drains, so it would block FOREVER (measured — this invoker's own first cut
-      // hung here). Kill it and report the anomaly: a consumer that exited before its feed
-      // finished did not stage what the feed carried, whatever its exit code said.
+      // consumer 已退出但 producer 仍在运行：producer 的 stdout 此时积压在无人读取的
+      // 管道中，会永久阻塞（已实测——此调用器的第一版就在此卡住）。终止 producer 并报告
+      // 异常：无论退出码如何，在输入完成前退出的 consumer 都未暂存输入携带的全部内容。
       if (producerDone && !producerClosed) {
         producerKilledEarly = true;
         killProducer!();
@@ -107,9 +105,9 @@ export function makeRealStagingDocker(opts: RealStagingDockerOptions = {}): Stag
         };
       }
 
-      // DUAL-EXIT: the consumer's failure wins the code; otherwise a producer failure (including
-      // death by signal — SIGPIPE from an early-exiting consumer means content did NOT arrive)
-      // fails the step and NAMES the tar side, whatever the consumer's exit said.
+      // 双退出：consumer 失败时以其 code 为准；否则 producer 失败（包括被信号终止——
+      // consumer 提前退出引发 SIGPIPE，意味着内容未到达）会使步骤失败并指明 tar 侧，
+      // 不受 consumer 退出结果影响。
       if (consumerExit.code !== 0 || consumerExit.spawnError) {
         return {
           stdout: consumerExit.stdout,
@@ -144,8 +142,8 @@ export function makeRealStagingDocker(opts: RealStagingDockerOptions = {}): Stag
   };
 }
 
-/** Settle a child into a ProcExit — spawn errors and signal deaths both map to non-zero codes,
- *  so the invoker never rejects and never reports a signaled child as success. */
+/** 将子进程归结为 ProcExit——spawn 错误和信号终止均映射为非零 code，因此调用器从不
+ *  reject，也绝不会把被信号终止的子进程报告为成功。 */
 function waitExit(child: ReturnType<typeof spawn>): Promise<ProcExit> {
   return new Promise((resolveExit) => {
     let stdout = "";

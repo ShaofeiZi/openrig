@@ -1,7 +1,7 @@
 // OPR.0.4.0.33 FR-5 — create writes convention-correct README
-// frontmatter. scope-and-versioning §2 makes BOTH `stage` and `verified`
-// mandatory (a bare `created:` is explicitly NOT an epistemic signal).
-// Pre-slice-33 templates carried `stage` but omitted `verified`.
+// frontmatter。scope-and-versioning §2 使 `stage` 与 `verified`
+// 均强制（裸 `created:` 明确非认知信号）。
+// slice-33 前模板携带 `stage` 但省略 `verified`。
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs";

@@ -2,17 +2,16 @@ import { describe, it, expect } from "vitest";
 import { migrationsForFullTestDb, migrationsForFullTestDbExclusions } from "./helpers/test-app.js";
 import { assertExplicitSubsetOfAllMigrations } from "./helpers/migration-subset-guard.js";
 
-// P24 — the curated fixture lists must be DECLARED subsets of ALL_MIGRATIONS, not accidental ones.
-// A migration added to ALL_MIGRATIONS but forgotten in a curated list now FAILS LOUD with its name +
-// the fix, instead of surfacing as a mystery missing column/table deep in an unrelated suite (the
-// 064/066/067 tax). Deliberate minimalism is fine — it just has to be declared with a re-evaluable
-// reason (the exclusions map lives beside its list in test-app.ts, so an editor of the list sees it).
+// P24——精选 fixture 列表必须是 ALL_MIGRATIONS 的已声明子集，而非偶然子集。若 migration 已加入
+// ALL_MIGRATIONS 却遗漏在精选列表中，现在会明确失败并点名 migration 与修复方式，而不是在无关
+// suite 深处表现为神秘缺列/缺表（064/066/067 成本）。可以刻意保持最小集合，但必须附可重新评估的
+// 声明理由；exclusions map 与列表同在 test-app.ts，编辑列表时即可看到。
 
-// A fake Migration is just its `name` for the guard's purposes (it compares by name).
+// 对 guard 而言，fake Migration 只需 `name`，因为它按名称比较。
 const fake = (name: string) => ({ name } as unknown as import("../src/db/migrate.js").Migration);
 
-describe("P24 — migration-fixture parity (curated lists are DECLARED subsets of ALL_MIGRATIONS)", () => {
-  it("migrationsForFullTestDb: every shipped migration is listed or declared-excluded", () => {
+describe("P24——migration fixture 一致性（精选列表是 ALL_MIGRATIONS 的已声明子集）", () => {
+  it("migrationsForFullTestDb：每个已交付 migration 都已列出或声明排除", () => {
     assertExplicitSubsetOfAllMigrations({
       listName: "migrationsForFullTestDb (test/helpers/test-app.ts)",
       curatedList: migrationsForFullTestDb,
@@ -20,9 +19,9 @@ describe("P24 — migration-fixture parity (curated lists are DECLARED subsets o
     });
   });
 
-  // The load-bearing proof: the guard FIRES on a future migration added to ALL_MIGRATIONS but forgotten
-  // in the curated list (neither listed nor declared) — and its message names the migration + the fix.
-  it("FIRES (named) when a newly-added migration is neither listed nor declared", () => {
+  // 承重证明：未来 migration 加入 ALL_MIGRATIONS 却遗漏于精选列表（既未列出也未声明）时，
+  // guard 会触发并在消息中点名 migration 与修复方式。
+  it("新增 migration 既未列出也未声明时，guard 会点名触发", () => {
     expect(() =>
       assertExplicitSubsetOfAllMigrations({
         listName: "fixtureX",
@@ -33,15 +32,15 @@ describe("P24 — migration-fixture parity (curated lists are DECLARED subsets o
     ).toThrowError(/068_brand_new\.sql[\s\S]*ADD it to fixtureX[\s\S]*DECLARE it/);
   });
 
-  it("passes when the new migration is LISTED, and (separately) when it is DECLARED-excluded", () => {
-    // listed → fine
+  it("新 migration 被列出或单独声明排除时均通过", () => {
+    // 已列出 → 通过。
     assertExplicitSubsetOfAllMigrations({
       listName: "fixtureX",
       curatedList: [fake("001_a.sql"), fake("068_brand_new.sql")],
       exclusions: {},
       allMigrations: [fake("001_a.sql"), fake("068_brand_new.sql")],
     });
-    // declared-excluded → fine
+    // 已声明排除 → 通过。
     assertExplicitSubsetOfAllMigrations({
       listName: "fixtureX",
       curatedList: [fake("001_a.sql")],
@@ -50,7 +49,7 @@ describe("P24 — migration-fixture parity (curated lists are DECLARED subsets o
     });
   });
 
-  it("FIRES on a STALE exclusion (names a migration absent from ALL_MIGRATIONS)", () => {
+  it("陈旧 exclusion（指向 ALL_MIGRATIONS 中不存在的 migration）会触发", () => {
     expect(() =>
       assertExplicitSubsetOfAllMigrations({
         listName: "fixtureX",
@@ -61,7 +60,7 @@ describe("P24 — migration-fixture parity (curated lists are DECLARED subsets o
     ).toThrowError(/stale[\s\S]*999_ghost\.sql/);
   });
 
-  it("FIRES on a REDUNDANT exclusion (a migration both listed AND excluded)", () => {
+  it("冗余 exclusion（migration 同时列出且排除）会触发", () => {
     expect(() =>
       assertExplicitSubsetOfAllMigrations({
         listName: "fixtureX",

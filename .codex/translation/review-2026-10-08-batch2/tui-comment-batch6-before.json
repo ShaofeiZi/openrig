@@ -1,0 +1,42 @@
+{
+"packages/tui/test/actions.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/blocker-enrichment.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/config-journey.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-in-shell.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-restore-input.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-restore-lifecycle.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-restore-render.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/crash-cart-view.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/daemon-client.test.ts": [
+"tui",
+"passed"
+],
+"packages/tui/test/entry-loading.test.ts": [
+"tui",
+"passed"
+]
+}

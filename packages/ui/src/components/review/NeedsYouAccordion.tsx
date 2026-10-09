@@ -1,13 +1,10 @@
-// Living Notes Packet 2 — NEEDS YOU (OPR.0.4.4.20 FR-4, blessed U3/U3a).
+// Living Notes 包 2——“需要你处理”（OPR.0.4.4.20 FR-4，已批准 U3/U3a）。
 //
-// A priority-ordered ACCORDION: one-line rows {summary, leg, where, age,
-// priority} with the two-source glyphs — ● agent-initiated (incl. regime-2
-// confirm-faithful) and ▲ machine-derived (every ▲ row renders ITS EVIDENCE
-// + crossed threshold inline; no evidence, no exception). Exactly ONE row
-// expands in place to the full card (evidence + the TWO founder affordances:
-// APPROVE and CHAT — SS14; deny/route/decision-box are retired as buttons,
-// their write paths ride CHAT-then-agent-records). Proven-empty renders the
-// U4 provenance line, never a blank band.
+// 按优先级排序的手风琴：单行包含 {summary, leg, where, age, priority}，并使用两类来源图标：
+// ● 表示智能体发起（包括制度 2 的忠实确认），▲ 表示机器派生。每条 ▲ 行都会行内展示自身证据和
+// 越过的阈值；没有证据就没有例外。严格只有一行可原地展开为完整卡片，其中包含证据以及创始人
+// 指定的两个操作：批准和聊天（SS14）。拒绝、路由、决策框已不再作为按钮，其写入路径改走
+// 聊天后由智能体记录。经证明为空时渲染 U4 来源行，绝不留下空白信息带。
 
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -19,6 +16,7 @@ import { approveSlice, sliceScopePath, type ActionOutcome } from "./review-actio
 import { buildChatPreamble } from "./chat.js";
 import { ProgressiveTerminal } from "../terminal/ProgressiveTerminal.js";
 import { useInvalidateReview } from "../../hooks/useReview.js";
+import { reviewLegLabel, reviewPriorityLabel } from "../project/ProjectMetaPrimitives.js";
 
 function ageLabel(iso: string | null): string {
   if (!iso) return "—";
@@ -51,10 +49,9 @@ function ExpandedCard({
   const itemRef = item.qitemId ? `${slice} ${item.qitemId}` : slice;
 
   const onApprove = async () => {
-    // APPROVE maps to FAITHFUL (the slice-terminal approve verb / adjudication
-    // semantics — the FR-2 write paths, unchanged; never a synthetic qitem).
-    // slice-04 REV6: shared derivation — send the missions-root-relative
-    // <mission>/slices/<slice> (bare only for a legacy root slice, missionId null).
+    // 批准映射到 FAITHFUL，即切片终态批准动作/裁定语义；FR-2 写路径不变，绝不生成合成 qitem。
+    // slice-04 REV6：共享推导——发送相对于 missions 根的 <mission>/slices/<slice>；
+    // 只有 missionId 为 null 的旧版根切片才发送裸名称。
     const result = await approveSlice(sliceScopePath(missionId, slice), actorSession);
     setOutcome(result);
     if (result.ok) invalidate(); // rows must actually LEAVE the band (FR-4)
@@ -64,7 +61,7 @@ function ExpandedCard({
     <div data-testid={`needs-you-expanded-${item.identity}`} className="space-y-2 border-t border-outline-variant/50 p-2">
       {item.derived ? (
         <p data-testid="derived-evidence" className="font-mono text-[10px] text-amber-800">
-          ▲ {item.derived.evidence} · threshold: {item.derived.threshold}
+          ▲ {item.derived.evidence} · 阈值：{item.derived.threshold}
         </p>
       ) : null}
       {/* OPR.0.4.6.WF4 FR-3 — the WEB DESTINATION for workflow-sourced rows. The
@@ -80,17 +77,17 @@ function ExpandedCard({
           data-testid={`needs-you-workflow-link-${item.identity}`}
           className="inline-block border border-outline px-3 py-1 font-mono text-[11px] uppercase hover:bg-surface-variant"
         >
-          View Instance →
+          查看实例 →
         </Link>
       ) : null}
       {item.evidenceRef ? (
         <div>
-          <span className="font-mono text-[10px] uppercase text-on-surface-variant">evidence: </span>
+          <span className="font-mono text-[10px] uppercase text-on-surface-variant">证据：</span>
           <EvidenceOpener evidenceRef={item.evidenceRef} ctx={ctx} testId={`needs-you-evidence-${item.identity}`} />
         </div>
       ) : null}
       {item.unblocks ? (
-        <p className="font-mono text-[10px] text-on-surface-variant">unblocks: {item.unblocks}</p>
+        <p className="font-mono text-[10px] text-on-surface-variant">解除阻塞：{item.unblocks}</p>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
         {showApprove ? (
@@ -100,18 +97,18 @@ function ExpandedCard({
             onClick={() => void onApprove()}
             className="border border-outline px-3 py-1 font-mono text-[11px] uppercase hover:bg-surface-variant"
           >
-            Approve
+            批准
           </button>
         ) : null}
         <button
           type="button"
           data-testid="needs-you-chat"
           disabled={!chatSession}
-          title={chatSession ? `Talk to ${chatSession} in the terminal` : "No owning agent session resolved for this item"}
+          title={chatSession ? `在终端与 ${chatSession} 对话` : "未为此项解析到归属智能体会话"}
           onClick={() => setChatOpen((v) => !v)}
           className="border border-outline px-3 py-1 font-mono text-[11px] uppercase hover:bg-surface-variant disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Chat
+          聊天
         </button>
         {outcome ? (
           <span data-testid="action-outcome" className={`font-mono text-[10px] ${outcome.ok ? "text-emerald-800" : "text-red-700"}`}>
@@ -120,8 +117,8 @@ function ExpandedCard({
         ) : null}
       </div>
       {chatOpen && chatSession ? (
-        // BR-12: CHAT IS the existing terminal family — straight-to-interactive
-        // with the one pre-populated no-Enter frame. No chat panel exists.
+        // BR-12：聊天就是现有终端组件族，直接进入交互，并预填一个不含 Enter 的文本帧。
+        // 不存在聊天面板。
         <div className="border border-outline-variant" data-testid="needs-you-chat-terminal">
           <ProgressiveTerminal
             sessionName={chatSession}
@@ -145,23 +142,22 @@ export function NeedsYouAccordion({
 }: {
   band: NeedsYouBand;
   slice: string;
-  /** slice-04 REV6 — the slice's mission (null for a legacy root slice), used to
-   *  compose the missions-root-relative approve scopePath via sliceScopePath. */
+  /** slice-04 REV6——切片所属任务；旧版根切片为 null。用于通过 sliceScopePath 组合相对于
+   * missions 根的批准 scopePath。 */
   missionId: string | null;
   actorSession: string;
   ctx: EvidenceContext;
-  /** FR-9 deep link: auto-expand this identity on load. */
+  /** FR-9 深链接：加载时自动展开此身份。 */
   anchorIdentity?: string | null;
-  /** OPR.0.4.4.22 — APPROVE is a slice-terminal act; the rig altitude hides
-   *  it (zoom into the slice to approve — zoom, don't inline). Extension in
-   *  this one home; P2 pages keep the default true. */
+  /** OPR.0.4.4.22——批准是切片终态操作；工作组层级会隐藏它，需放大进入切片后批准，
+   * 不在当前层级行内处理。扩展只位于这一归属位置；P2 页面保持默认 true。 */
   showApprove?: boolean;
 }) {
   const [expanded, setExpanded] = useState<string | null>(anchorIdentity ?? null);
 
   return (
     <section data-testid="needs-you-band" className={cn(VELLUM_CARD, "space-y-1 p-2")}>
-      <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">NEEDS YOU</h3>
+      <h3 className="font-mono text-[10px] uppercase tracking-wide text-on-surface-variant">需要你处理</h3>
       {band.items.length === 0 ? (
         <p data-testid="needs-you-empty" className="font-mono text-[11px] text-on-surface-variant">
           {band.provenance}
@@ -180,10 +176,10 @@ export function NeedsYouAccordion({
                   {item.source === "derived" ? "▲" : "●"}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-[12px]">{item.summary}</span>
-                <span className="hidden font-mono text-[10px] text-on-surface-variant sm:inline">{item.leg}</span>
+                <span className="hidden font-mono text-[10px] text-on-surface-variant sm:inline">{reviewLegLabel(item.leg)}</span>
                 <span className="hidden font-mono text-[10px] text-on-surface-variant md:inline truncate max-w-32">{item.where}</span>
                 <span className="font-mono text-[10px] text-on-surface-variant">{ageLabel(item.ageIso)}</span>
-                {item.priority ? <span className="font-mono text-[10px] uppercase">{item.priority}</span> : null}
+                {item.priority ? <span className="font-mono text-[10px] uppercase">{reviewPriorityLabel(item.priority)}</span> : null}
               </button>
               {expanded === item.identity ? (
                 <ExpandedCard item={item} slice={slice} missionId={missionId} actorSession={actorSession} ctx={ctx} showApprove={showApprove} />

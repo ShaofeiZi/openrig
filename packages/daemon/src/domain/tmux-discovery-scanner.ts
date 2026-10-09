@@ -1,6 +1,6 @@
 import type { TmuxAdapter } from "../adapters/tmux.js";
 
-/** A single pane observed during a scan */
+/** 扫描期间观测到的单个 pane。 */
 export interface ScannedPane {
   tmuxSession: string;
   tmuxWindow: string;
@@ -10,16 +10,15 @@ export interface ScannedPane {
   activeCommand: string | null;
 }
 
-/** Result of a full tmux scan */
+/** 完整 tmux 扫描的结果。 */
 export interface ScanResult {
   panes: ScannedPane[];
   scannedAt: string;
 }
 
 /**
- * Enumerates all tmux sessions/windows/panes and resolves PID, cwd,
- * and active foreground command per pane. Uses TmuxAdapter — no raw
- * tmux CLI strings in domain code.
+ * 枚举全部 tmux 会话、window 与 pane，并解析每个 pane 的 PID、cwd 和活动前台命令。
+ * 通过 TmuxAdapter 执行，领域代码中不出现原始 tmux CLI 字符串。
  */
 export class TmuxDiscoveryScanner {
   private tmux: TmuxAdapter;
@@ -28,7 +27,7 @@ export class TmuxDiscoveryScanner {
     this.tmux = deps.tmuxAdapter;
   }
 
-  /** Scan all tmux panes and resolve metadata. */
+  /** 扫描全部 tmux pane 并解析 metadata。 */
   async scan(): Promise<ScanResult> {
     const panes: ScannedPane[] = [];
     const scannedAt = new Date().toISOString();
@@ -49,13 +48,13 @@ export class TmuxDiscoveryScanner {
           try {
             pid = await this.tmux.getPanePid(pane.id);
           } catch {
-            // Pane metadata lookup failed — continue with null
+            // pane metadata 查询失败，保留 null 后继续。
           }
 
           try {
             activeCommand = await this.tmux.getPaneCommand(pane.id);
           } catch {
-            // Pane metadata lookup failed — continue with null
+            // pane metadata 查询失败，保留 null 后继续。
           }
 
           panes.push({

@@ -21,10 +21,10 @@ const MANAGED_BLOCK_END = (packageName: string) =>
   `<!-- END OpenRig MANAGED BLOCK: ${packageName} -->`;
 
 /**
- * Refines an InstallPlan with content-aware conflict detection.
- * - Skills/agents: same content = no-op, different content = conflict with hashes
- * - Guidance: detects existing managed blocks for this specific package
- * - Deferred entries (hooks/mcp/requirements) pass through unchanged
+ * 用内容感知冲突检测细化 InstallPlan。
+ * - skill/agent：内容相同为 no-op，内容不同为带哈希的冲突
+ * - guidance：检测此特定包已有的受管块
+ * - 延迟条目（hooks/mcp/requirements）原样透传
  */
 export function detectConflicts(
   plan: InstallPlan,
@@ -37,14 +37,14 @@ export function detectConflicts(
   const allEntries: InstallPlanEntry[] = [];
 
   for (const entry of plan.entries) {
-    // Deferred entries pass through
+    // 延迟条目原样透传。
     if (entry.deferred) {
       deferred.push(entry);
       allEntries.push(entry);
       continue;
     }
 
-    // No sourcePath (e.g., requirements already deferred, but just in case)
+    // 没有 sourcePath（例如 requirements 已延迟；此处仍做兜底）。
     if (!entry.sourcePath) {
       actionable.push(entry);
       allEntries.push(entry);
@@ -53,13 +53,13 @@ export function detectConflicts(
 
     if (entry.exportType === "skill" || entry.exportType === "agent") {
       if (!entry.conflict) {
-        // Target doesn't exist — safe_projection
+        // 目标不存在——safe_projection。
         actionable.push(entry);
         allEntries.push(entry);
         continue;
       }
 
-      // Target exists — compare content
+      // 目标存在——比较内容。
       try {
         const sourceContent = fs.readFile(entry.sourcePath);
         const targetContent = fs.readFile(entry.targetPath);
@@ -67,30 +67,30 @@ export function detectConflicts(
         const existingHash = hashContent(targetContent);
 
         if (sourceHash === existingHash) {
-          // Same content — no-op
+          // 内容相同——no-op。
           noOps.push({ ...entry, conflict: undefined });
           allEntries.push({ ...entry, conflict: undefined });
         } else {
-          // Different content — enriched conflict
+          // 内容不同——补充冲突信息。
           const enriched: InstallPlanEntry = {
             ...entry,
             conflict: {
               existingPath: entry.targetPath,
               existingHash,
               sourceHash,
-              reason: `${entry.exportType} '${entry.exportName}' exists with different content`,
+              reason: `${entry.exportType} '${entry.exportName}' 已存在但内容不同`,
             } as ConflictInfo & { existingHash: string; sourceHash: string },
           };
           conflicts.push(enriched);
           allEntries.push(enriched);
         }
       } catch {
-        // Can't read files — treat as conflict
+        // 文件不可读——按冲突处理。
         conflicts.push(entry);
         allEntries.push(entry);
       }
     } else if (entry.exportType === "guidance") {
-      // Check for existing managed block
+      // 检查已有受管块。
       if (entry.classification === "managed_merge" && fs.exists(entry.targetPath)) {
         const targetContent = fs.readFile(entry.targetPath);
         const beginMarker = MANAGED_BLOCK_START(plan.packageName);
@@ -128,7 +128,7 @@ export function detectConflicts(
   };
 }
 
-// -- Projection-specific conflict classification (AgentSpec reboot) --
+// ——投影专用冲突分类（AgentSpec 重启）——
 
 interface ProjectionFsOps {
   readFile(path: string): string;
@@ -136,14 +136,14 @@ interface ProjectionFsOps {
 }
 
 /**
- * Classify a resource projection using hash-based comparison.
- * Returns projection-specific classification states (not legacy ActionClassification).
- * @param sourcePath - absolute path to source resource
- * @param targetPath - absolute path to target location
- * @param category - resource category
- * @param mergeStrategy - guidance merge strategy if applicable
- * @param fsOps - filesystem operations
- * @returns ProjectionClassification
+ * 使用基于哈希的比较对资源投影分类。返回投影专用分类状态，
+ * 而不是旧版 ActionClassification。
+ * @param sourcePath - 源资源绝对路径
+ * @param targetPath - 目标位置绝对路径
+ * @param category - 资源类别
+ * @param mergeStrategy - 适用时的 guidance 合并策略
+ * @param fsOps - 文件系统操作
+ * @returns 投影分类结果
  */
 export function classifyResourceProjection(
   sourcePath: string,
@@ -151,24 +151,23 @@ export function classifyResourceProjection(
   category: string,
   mergeStrategy: string | undefined,
   fsOps: ProjectionFsOps,
-  /** P20 — the projector's LAST-written hash for targetPath (manifest), or null.
-   *  Optional so legacy 5-arg callers keep P17 behavior (no manifest → hash_conflict).
-   *  Consulted fail-closed, BROKEN≠ABSENT: a returned null (no entry) → hash_conflict
-   *  (P17 fallback); a THROW (broken read) → operator_conflict (PROTECT — a read
-   *  error must never overwrite what might be an operator edit). */
+  /** P20——projector 上次写入 targetPath 的哈希（manifest），或 null。
+   *  此参数可选，使旧版五参数调用方保持 P17 行为（无 manifest → hash_conflict）。
+   *  查询采用失败关闭，BROKEN≠ABSENT：返回 null（无条目）→ hash_conflict（P17 回退）；
+   *  抛错（读取损坏）→ operator_conflict（保护——读取错误绝不能覆盖可能由操作人员编辑的内容）。 */
   lastHashLookup?: (targetPath: string) => string | null,
 ): ProjectionClassification {
-  // Guidance with managed_block: always managed_merge
+  // 带 managed_block 的 guidance 始终为 managed_merge。
   if (category === "guidance" && mergeStrategy === "managed_block") {
     return "managed_merge";
   }
 
-  // Target doesn't exist: safe projection
+  // 目标不存在：安全投影。
   if (!fsOps.exists(targetPath)) {
     return "safe_projection";
   }
 
-  // Target exists: compare hashes
+  // 目标存在：比较哈希。
   try {
     const sourceContent = fsOps.readFile(sourcePath);
     const targetContent = fsOps.readFile(targetPath);
@@ -179,20 +178,19 @@ export function classifyResourceProjection(
       return "no_op";
     }
 
-    // P20 — target ≠ source. Consult the manifest to discriminate:
-    //  - target == what WE last wrote → STALE projection (source advanced) → safe overwrite
-    //  - target ≠ our last write (and ≠ source) → OPERATOR-modified → protect
-    //  - manifest read ERROR (throw) → BROKEN, not ABSENT → operator_conflict (PROTECT)
-    //  - no manifest entry (null) → ABSENT → P17 fallback (hash_conflict, overwrite-with-warning)
+    // P20——target ≠ source。查询 manifest 以区分：
+    //  - target == 我们上次写入的内容 → 陈旧投影（source 已前进）→ 可安全覆盖
+    //  - target ≠ 我们上次写入的内容（且 ≠ source）→ 操作人员已修改 → 保护
+    //  - 读取 manifest 抛错 → 损坏而非缺失 → operator_conflict（保护）
+    //  - 无 manifest 条目（null）→ 缺失 → P17 回退（hash_conflict，带警告覆盖）
     let lastHash: string | null = null;
     if (lastHashLookup) {
       try {
         lastHash = lastHashLookup(targetPath);
       } catch {
-        // BROKEN vs ABSENT: a read that THREW is broken — we cannot rule out an
-        // operator edit, and hash_conflict WOULD overwrite it. True fail-closed is
-        // to PROTECT (operator_conflict), distinct from a returned null (no entry)
-        // which is the benign P17 hash_conflict fallback below.
+        // 损坏与缺失不同：抛错的读取属于损坏——无法排除操作人员编辑，而 hash_conflict
+        // 会覆盖它。真正的失败关闭应当保护（operator_conflict）；这与返回 null（无条目）
+        // 后采用下方良性 P17 hash_conflict 回退不同。
         return "operator_conflict";
       }
     }

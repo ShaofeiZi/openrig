@@ -1,17 +1,12 @@
-// 0.3.1 slice 06 — TimelineTab (rename + augmentation of the prior
-// StoryTab). Shows the slice lifecycle as a newest-first connected
-// step tree. The dot column is colored per derived event status so
-// the thread reads at a glance. When the parent passes a
-// `timelineMarkdown` blob (typically loaded from `<slice-dir>/timeline.md`
-// via /api/files/read), it renders above the event feed via
-// MarkdownViewer so the curated narrative augments — never replaces —
-// the auto-captured event trail.
+// 0.3.1 slice 06——TimelineTab（对先前 StoryTab 的重命名 + 增强）。
+// 把 slice 生命周期展示为最新在前的连通步骤树。圆点列按派生的事件状态着色，
+// 使这条线一眼可读。当父级传入 `timelineMarkdown` 块（通常经 /api/files/read 从
+// `<slice-dir>/timeline.md` 加载）时，它经 MarkdownViewer 渲染在事件流上方——
+// 策展叙事增强（绝不取代）自动捕获的事件轨迹。
 //
-// Internal data-testid prefixes (`story-row-*`, `story-step-*`,
-// `story-tab`, etc.) are preserved to keep the existing test surface
-// backward-compatible; the exported symbol + filename + dot accents
-// + optional markdown header are what changed at the slice-06
-// boundary.
+// 内部 data-testid 前缀（`story-row-*`、`story-step-*`、`story-tab` 等）予以保留，
+// 以保持既有测试面向后兼容；slice-06 边界处改变的只是导出符号 + 文件名 + 圆点强调色
+// + 可选 markdown 头部。
 
 import { useMemo, useState } from "react";
 import type {
@@ -31,10 +26,8 @@ import {
 } from "../../project/ProjectMetaPrimitives.js";
 import { MarkdownViewer } from "../../markdown/MarkdownViewer.js";
 
-/** Derive a visual status from an event kind so the dot column reads
- *  at a glance. Conservative mapping: only kinds that clearly signal
- *  success/failure/warning get a strong color; everything else stays
- *  neutral info-blue or muted. */
+/** 从事件种类派生视觉状态，使圆点列一眼可读。保守映射：只有明显表示
+ *  成功/失败/警告的种类才上强色；其余保持中性信息蓝或柔和色。 */
 export type TimelineDotStatus = "success" | "warning" | "danger" | "info" | "muted";
 export function statusFromEventKind(kind: string): TimelineDotStatus {
   const k = kind.toLowerCase();
@@ -75,9 +68,8 @@ export function TimelineTab({
   events: StoryEvent[];
   phaseDefinitions: PhaseDefinition[] | null;
   queueItemsById?: Map<string, QueueItemDetail>;
-  /** Optional `<slice-dir>/timeline.md` content; rendered above the
-   *  event feed when present. Parent owns the fetch via
-   *  /api/files/read. */
+  /** 可选的 `<slice-dir>/timeline.md` 内容；存在时渲染在事件流上方。
+   *  父级经 /api/files/read 负责拉取。 */
   timelineMarkdown?: string;
 }) {
   const [page, setPage] = useState(0);
@@ -112,13 +104,12 @@ export function TimelineTab({
         data-testid="story-empty"
         className="border border-dashed border-outline-variant bg-surface-lowest/35 p-4 font-body text-[11px] leading-relaxed text-on-surface-variant"
       >
-        {/* Slice 16: empty-state copy is prose; the file-path / frontmatter /
-            fence-block markers stay font-mono as code identifiers per
-            DESIGN §Typography. */}
-        <div className="mb-1 font-mono uppercase tracking-[0.12em] text-on-surface-variant">No timeline yet</div>
+        {/* Slice 16：空态文案是正文；按 DESIGN §Typography，文件路径 / frontmatter /
+            围栏块标记作为代码标识符保持等宽字体。 */}
+        <div className="mb-1 font-mono uppercase tracking-[0.12em] text-on-surface-variant">暂无时间线</div>
         <div className="text-on-surface">
-          Author one at <span className="font-mono text-on-surface">&lt;slice-dir&gt;/timeline.md</span> with frontmatter
-          <span className="font-mono text-on-surface"> kind: incident-timeline</span> and a <span className="font-mono text-on-surface">```timeline```</span> fenced block.
+          在 <span className="font-mono text-on-surface">&lt;slice-dir&gt;/timeline.md</span> 中编写，带前置元数据
+          <span className="font-mono text-on-surface"> kind: incident-timeline</span> 和一个 <span className="font-mono text-on-surface">```timeline```</span> 围栏块。
         </div>
       </div>
     );
@@ -156,10 +147,10 @@ export function TimelineTab({
             onClick={() => setPage((current) => Math.max(0, current - 1))}
             className="border border-outline-variant px-2 py-1 disabled:opacity-40"
           >
-            Newer
+            较新
           </button>
           <span data-testid="story-page-status">
-            Page {safePage + 1} / {totalPages}
+            第 {safePage + 1} / {totalPages} 页
           </span>
           <button
             type="button"
@@ -168,7 +159,7 @@ export function TimelineTab({
             onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
             className="border border-outline-variant px-2 py-1 disabled:opacity-40"
           >
-            Older
+            较早
           </button>
         </div>
       ) : null}
@@ -199,8 +190,7 @@ function flowLabel(event: StoryEvent): { source: string | null; target: string |
 }
 
 function eventBody(event: StoryEvent, queueItem: QueueItemDetail | undefined): string {
-  // OPR.0.4.4.19 FR-2: labels read summary-first (plain language for the
-  // human); body remains available on drill-in via qitemViewerData.
+  // OPR.0.4.4.19 FR-2：标签先读摘要（给人看的平实语言）；正文经 qitemViewerData 在钻取时仍可取。
   const detailBody = detailString(event.detail, ["body", "content", "message"]);
   return queueItem?.summary ?? queueItem?.body ?? detailBody ?? event.summary;
 }
@@ -220,7 +210,7 @@ function qitemViewerData(event: StoryEvent, queueItem: QueueItemDetail | undefin
 function previewText(text: string, maxLines = 12): string {
   const lines = text.split("\n");
   if (lines.length <= maxLines) return text;
-  return `${lines.slice(0, maxLines).join("\n")}\n... ${lines.length - maxLines} more lines`;
+  return `${lines.slice(0, maxLines).join("\n")}\n…还有 ${lines.length - maxLines} 行`;
 }
 
 function StoryStepCard({
@@ -235,7 +225,7 @@ function StoryStepCard({
   queueItem?: QueueItemDetail;
 }) {
   const meta = event.phase ? phaseMeta.get(event.phase) : undefined;
-  const phaseLabel = meta?.label ?? event.phase ?? "untagged";
+  const phaseLabel = meta?.label ?? event.phase ?? "未标记";
   const phaseClass = meta?.colorClass ?? UNTAGGED_CLASS;
   const phaseToken = meta?.token ?? { label: phaseLabel, tone: "neutral" as const };
   const flow = flowLabel(event);
@@ -259,10 +249,9 @@ function StoryStepCard({
         <EventBadge kind={event.kind} compact />
         <DateChip value={event.ts} />
       </div>
-      {/* Slice 16: event body is prose (qitem body OR event summary).
-          Per DESIGN §Typography: prose stays in font-body Inter; the
-          `<pre>` element is retained so newlines in the source are
-          preserved via whitespace-pre-wrap, but the font is body. */}
+        {/* Slice 16：事件正文是 prose（qitem 正文或事件摘要）。
+            按 DESIGN §Typography：prose 用 font-body Inter；保留 `<pre>` 元素，
+            经 whitespace-pre-wrap 保留源中的换行，但字体用正文。 */}
       <pre
         data-testid={`story-row-body-${event.kind}`}
         data-source={bodyIsQitem ? "qitem" : "event"}
@@ -321,7 +310,7 @@ function StoryStepCard({
       {event.detail && (
         <details className="mt-1">
           <summary className="cursor-pointer font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">
-            Event detail
+            事件详情
           </summary>
           <pre data-testid={`story-row-detail-${event.kind}`} className="mt-1 overflow-x-auto bg-background p-2 font-mono text-[9px] text-on-surface">
             {JSON.stringify(event.detail, null, 2)}

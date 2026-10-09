@@ -1,13 +1,12 @@
-# OPR.0.3.3.13.2 - AC-3b expected affected-skills set for the v0.3.1->v0.3.2 release diff.
+# OPR.0.3.3.13.2——v0.3.1->v0.3.2 发布差异的 AC-3b 预期 affected-skills 集合。
 #
-# Self-contained FROZEN snapshot so the lookup test is deterministic + portable
-# (no dependency on the substrate skills-corpus path). `skills` is the v0.3.2-era
-# metadata.cli_surfaces_referenced backfill across the 45 CLI-referencing canonical
-# skills; `affected_skills` is the expected output of
-# computeAffectedSkills(release-surface-diff.v0.3.1-v0.3.2.yaml, skills). The test
-# recomputes from `skills` and asserts it equals `affected_skills` - so it proves
-# BOTH zero false-negatives (all 11 affected present) AND zero false-positives (the
-# other 34 absent). Regenerate when the v0.3.2 backfill changes.
+# 自包含的冻结快照，使查找测试具有确定性且可移植
+#（不依赖 substrate skills-corpus 路径）。`skills` 是 v0.3.2 时期对 45 个引用 CLI 的
+# canonical skill 补录的 metadata.cli_surfaces_referenced；`affected_skills` 是
+# computeAffectedSkills(release-surface-diff.v0.3.1-v0.3.2.yaml, skills) 的预期输出。
+# 测试会根据 `skills` 重新计算并断言它等于 `affected_skills`，从而同时证明：
+# 没有假阴性（11 个受影响项全部存在），也没有假阳性（其余 34 个均不存在）。
+# v0.3.2 补录内容变化时应重新生成。
 release_from: v0.3.1
 release_to: v0.3.2
 affected_skills:

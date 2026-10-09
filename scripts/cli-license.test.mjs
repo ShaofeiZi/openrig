@@ -15,8 +15,8 @@ test("the CLI build carries the unchanged repository LICENSE into npm pack", () 
     copyFileSync("packages/cli/package.json", join(cli, "package.json"));
     writeFileSync(join(cli, "src/schemas/fixture.json"), "{}\n");
     writeFileSync(join(cli, "src/lib/scope-templates/fixture.md"), "fixture\n");
-    // Compilation is outside this packaging regression. Run the actual build
-    // script with its expected compiler output, then npm's real file selection.
+    // 编译不在这个打包回归测试范围内。这里跑的是真实的构建脚本（带上它预期的编译器输出），
+    // 再接 npm 真实的文件选择。
     writeFileSync(join(bin, "tsc"), "#!/bin/sh\nmkdir -p dist\nprintf '%s\\n' '// compiler fixture' > dist/bin-wrapper.js\n");
     chmodSync(join(bin, "tsc"), 0o755);
     const env = { ...process.env, PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` };

@@ -1,0 +1,102 @@
+{
+"packages/daemon/src/domain/services-readiness.ts": [
+"daemon-core-a",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/shell-classifier.ts": [
+"daemon-core-a",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/restore-topology.ts": [
+"daemon-core-k",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/rig-expansion-service.ts": [
+"daemon-core-k",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/rig-lifecycle-service.ts": [
+"daemon-core-g",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/running-name-guard.ts": [
+"daemon-core-i",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/service-orchestrator.ts": [
+"daemon-core-i",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/resume-token-validation.ts": [
+"daemon-core-e",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/rigspec-exporter.ts": [
+"daemon-core-e",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/self-attach-service.ts": [
+"daemon-core-e",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/rig-teardown.ts": [
+"daemon-core-d",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/runtime-verifier.ts": [
+"daemon-core-d",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/slow-op-recorder.ts": [
+"daemon-core-d",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/restore-plan-preview.ts": [
+"daemon-core-h",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/resume-metadata-refresher.ts": [
+"daemon-core-h",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/resume-token-capture.ts": [
+"daemon-core-h",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/rig-status-compose.ts": [
+"daemon-core-b",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/rigspec-instantiator.ts": [
+"daemon-core-b",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/route-timing-recorder.ts": [
+"daemon-core-b",
+"self_reported",
+"done"
+],
+"packages/daemon/src/domain/shadow-capture.ts": [
+"daemon-core-b",
+"self_reported",
+"done"
+]
+}

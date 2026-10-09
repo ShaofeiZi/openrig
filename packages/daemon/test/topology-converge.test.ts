@@ -13,9 +13,9 @@ import {
   type TopologyOp,
 } from "../src/domain/topology-converge.js";
 
-// OPR.0.3.3.24 Chunk 2b — the converge spine (AC-6 scaffold).
-// Covers the complete-shaped Op classification (differ) and the converge
-// boundary: add_member implemented, every other kind honestly detected-deferred.
+// OPR.0.3.3.24 Chunk 2b——converge 主干（AC-6 脚手架）。
+// 覆盖完整形状的 Op 分类（differ）与 converge 边界：add_member 已实现，
+// 其他每种都诚实检测后延迟。
 describe("topology-converge", () => {
   function declared(pod: string, id: string, runtime = "terminal"): DeclaredMember {
     return {
@@ -31,7 +31,7 @@ describe("topology-converge", () => {
 
   describe("diffTopology classification", () => {
     it("classifies a declared-but-not-live member as add_member (implemented)", () => {
-      // Declare the existing member too so the only delta is the new one.
+      // 也声明既有 member，使唯一 delta 是新那个。
       const ops = diffTopology(
         [declared("infra", "server"), declared("infra", "server2")],
         [live("infra.server")],
@@ -56,7 +56,7 @@ describe("topology-converge", () => {
 
     it("does not synthesize move_member / fork_member from a flat membership diff", () => {
       // A member removed from one pod + added to another reads as remove + add,
-      // not a move — move/fork need the 0.4.0 stable-identity model.
+      // 不是 move——move/fork 需要 0.4.0 stable-identity 模型。
       const ops = diffTopology([declared("dev", "impl")], [live("infra.impl")]);
       const kinds = ops.map((o) => o.kind).sort();
       expect(kinds).toEqual(["add_member", "remove_member"]);

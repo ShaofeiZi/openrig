@@ -424,12 +424,10 @@ function layoutWithDagre(
   );
 }
 
-// OPR.0.4.2.17 — resolve dagre's per-node coords into a position map WITHOUT
-// ever collapsing to one coordinate. dagre can return missing or degenerate
-// (all-equal) coords on a refetch tick; the old blanket `?? {x:0,y:0}` fallback
-// then stacked every node on the origin (the "all collapsed onto r2" demo bug).
-// On any degenerate signal, lay a deterministic non-overlapping fallback so
-// distinct items keep distinct positions.
+// OPR.0.4.2.17——把 dagre 的逐节点坐标解析为位置映射，绝不坍缩到同一个坐标。
+// dagre 在重新获取的某个 tick 中可能返回缺失或退化（全部相同）的坐标；旧版统一
+// `?? {x:0,y:0}` 回退会把所有节点堆到原点（演示中的“全坍缩到 r2”缺陷）。
+// 出现任何退化信号时，采用确定性且不重叠的回退布局，让不同条目保持不同位置。
 function resolveDagrePositions(
   items: LayoutItem[],
   lookup: (id: string) => { x: number; y: number } | undefined,
@@ -457,9 +455,8 @@ function resolveDagrePositions(
   return positions;
 }
 
-// Lay items along the rank axis with cumulative spacing. Returns CENTER coords
-// to match dagre's contract (normalizeLayout reads centers). Guarantees every
-// distinct item a distinct, non-overlapping coordinate.
+// 沿 rank 轴以累积间距布置条目。返回中心坐标以符合 dagre 契约
+//（normalizeLayout 读取中心点），并保证每个不同条目都有互不重叠的独立坐标。
 function deterministicFallbackPositions(
   items: LayoutItem[],
   rankdir: "TB" | "LR",

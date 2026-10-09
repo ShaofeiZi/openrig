@@ -1,0 +1,130 @@
+{
+"packages/daemon/src/domain/agent-images/agent-image-library-service.ts": [
+"daemon-core-a",
+"validated"
+],
+"packages/daemon/src/domain/permission-policy/policy-ref.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/policies/workflow-keepalive.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/agent-images/agent-image-types.ts": [
+"daemon-core-k",
+"validated"
+],
+"packages/daemon/src/domain/context-packs/ref-safety.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/context-packs/token-estimate.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/policies/context-usage-threshold.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/policies/parked-owner-consumer.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/policies/types.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/context-packs/profile-composer.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/policies/edge-artifact-required.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/agent-images/manifest-parser.ts": [
+"daemon-core-j",
+"validated"
+],
+"packages/daemon/src/domain/agent-images/resume-token-discovery.ts": [
+"daemon-core-j",
+"validated"
+],
+"packages/daemon/src/domain/model-divergence/effective-model-readers.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/policies/artifact-pool-ready.ts": [
+"daemon-core-j",
+"self_reported"
+],
+"packages/daemon/src/domain/context-packs/bundle-assembler.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/permission-policy/policy-spec.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/policies/artifact-pool-helpers.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/policies/periodic-reminder.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/context-packs/context-pack-types.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/model-divergence/model-divergence-monitor.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/policies/delivery-deferral.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/policies/delivery-digest-flush.ts": [
+"daemon-core-e",
+"self_reported"
+],
+"packages/daemon/src/domain/context-packs/context-pack-library-service.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/context-packs/manifest-parser.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/context-packs/probe-eval-bridge.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/context-packs/profile-source-resolver.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/model-divergence/current-generation-record.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/agent-images/evidence-guard.ts": [
+"daemon-core-c",
+"validated"
+],
+"packages/daemon/src/domain/agent-images/snapshot-capturer.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/context-packs/seat-recap-store.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/policies/idle-gate-qitem.ts": [
+"daemon-core-c",
+"self_reported"
+]
+}

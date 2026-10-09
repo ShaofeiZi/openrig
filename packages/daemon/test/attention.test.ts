@@ -55,7 +55,7 @@ function fixture() {
   return { root, db, queue, read, row, judge, health, service, write, unavailable: () => { healthAvailable = false; } };
 }
 
-it("uses real human obligations, source summaries and dependents; excludes agent-only and terminal queue rows", async () => {
+it("使用真实 human obligation、source summary 与 dependent；排除仅 agent 与 terminal queue row", async () => {
   const f = fixture();
   try {
     f.row("decision", "human-founder@external"); f.row("blocker", "agent@fixture", "blocked", "human-reader@external");
@@ -69,19 +69,19 @@ it("uses real human obligations, source summaries and dependents; excludes agent
     expect(read.detail?.item).toMatchObject({ recipient: "human-founder@external", summary: "Choose decision", unblocks: "Choose dependent", project: { id: "a" } });
     expect(read.detail?.lines.join("\n")).toContain("Real request for decision");
     expect(read.detail?.lines.join("\n")).toContain("Full supplemental human detail");
-    expect(read.detail?.lines.join("\n")).toContain("Decision route:");
+    expect(read.detail?.lines.join("\n")).toContain("决策路径：");
     expect(read.items.find(i => i.id === "queue:blocker")?.recipient).toBe("human-reader@external");
     expect(read.detail?.files[0]?.path).toBe(realpathSync(join(f.root, "a/SPEC.md")) + "#decision");
     expect(read.items.filter(i => i.id.startsWith("health:"))).toHaveLength(1);
     expect(read.items.some(i => i.summary.includes("done"))).toBe(false);
     expect(f.db.serialize()).toEqual(before);
     f.db.prepare("UPDATE queue_items SET state='done' WHERE qitem_id='decision'").run();
-    expect((await f.read("queue:decision")).detail?.lines).toContain("State: done");
+    expect((await f.read("queue:decision")).detail?.lines).toContain("状态：done");
     expect((await f.read()).items.some(i => i.id === "queue:decision")).toBe(false);
   } finally { f.db.close(); }
 });
 
-it("keeps current proof corrections and exact project sources, retained health clears and unavailable states", async () => {
+it("保留当前 proof correction 与精确 project source，并保留 health clear 与 unavailable state", async () => {
   const f = fixture();
   try {
     f.judge("a", "accept"); f.judge("b", "accept");
@@ -99,7 +99,7 @@ it("keeps current proof corrections and exact project sources, retained health c
     const episode = next.items.find(i => i.id.startsWith("health:"))!;
     f.health.source.evidence.push({ type: "context-usage", sourceOrder: 2, observedAt: new Date(Date.parse(f.health.lastObservedAt) + 1000).toISOString(), nodeId: "fixture", sessionId: "fixture", usedPercentage: 20, available: true, fresh: true });
     const cleared = (await f.read()).items.find(i => i.id === episode.id);
-    expect(cleared?.summary).toContain("cleared");
+    expect(cleared?.summary).toContain("自然解除");
     f.unavailable(); f.write(join(f.root, "workspace.yaml"), "projects: [invalid");
     const unavailable = await f.read();
     expect(unavailable.sources.filter(s => s.state === "unavailable").map(s => s.source)).toEqual(expect.arrayContaining(["health", "project catalog"]));
@@ -107,7 +107,7 @@ it("keeps current proof corrections and exact project sources, retained health c
   } finally { f.db.close(); }
 });
 
-it("reports a saturated source query instead of claiming an empty complete feed", async () => {
+it("报告已饱和的 source query，而非声称 feed 完整但为空", async () => {
   const f = fixture();
   try {
     f.row("agent-gate", "agent@fixture", "pending", null, "human-gate");
@@ -119,7 +119,7 @@ it("reports a saturated source query instead of claiming an empty complete feed"
   } finally { f.db.close(); }
 });
 
-it("maps attributed mission outcomes to their exact bound project and keeps current workflow state", async () => {
+it("将有归因的 mission outcome 映射到精确绑定 project，并保留当前 workflow state", async () => {
   const f = fixture();
   try {
     const p = realpathSync(join(f.root, "a"));

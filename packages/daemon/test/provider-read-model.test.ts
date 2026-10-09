@@ -2,14 +2,14 @@ import { describe, it, expect } from "vitest";
 import { assembleFourBlock } from "../src/domain/provider/provider-read-model.js";
 import type { ProviderAccount, ProviderSignal } from "../src/domain/provider/provider-types.js";
 
-// Slice-04 (OPR.0.5.0.4) — the four-block ASSEMBLY (proof item 4, unit shape). A PURE assembler
-// over already-collected accounts/rawBindings/signals: it emits real bound rows + explicit
-// unbound rows (seat_with_no_account), computes same_account_on_n_seats ONLY from repeated real
-// account IDs, preserves signals unchanged, and invents nothing.
+// 切片 04（OPR.0.5.0.4）——四块组装（证明项 4，单元结构）。这是针对已收集
+// accounts/rawBindings/signals 的纯组装器：发出真实绑定行与显式未绑定行
+//（seat_with_no_account），仅根据重复的真实 account ID 计算 same_account_on_n_seats，
+// 原样保留 signals，不虚构任何内容。
 
 const ASOF = "2026-08-03T12:00:00.000Z";
 
-// A mixed-provider account set: 2 codex (managed, profileRef set) + 1 claude (unmanaged, null).
+// 混合 provider 账户集：2 个 codex（托管，已设置 profileRef）+ 1 个 claude（未托管，null）。
 const ACCOUNTS: ProviderAccount[] = [
   { accountId: "cdx-a", label: "Codex A", provider: "codex", authState: "active", profileRef: "prof-a", asOf: ASOF },
   { accountId: "cdx-b", label: "Codex B", provider: "codex", authState: "needs_reauth", profileRef: "prof-b", asOf: ASOF },
@@ -31,17 +31,17 @@ const SIGNALS: ProviderSignal[] = [
   },
 ];
 
-describe("assembleFourBlock — proof-4 mixed-provider shape", () => {
-  it("preserves the mixed-provider accounts (incl unmanaged claude profileRef=null) and signals unchanged", () => {
+describe("assembleFourBlock——proof-4 混合 provider 结构", () => {
+  it("原样保留混合 provider 账户（包括未托管 claude 的 profileRef=null）和 signals", () => {
     const m = assembleFourBlock({ accounts: ACCOUNTS, rawBindings: [], signals: SIGNALS, asOf: ASOF });
     expect(m.accounts).toEqual(ACCOUNTS);
-    expect(m.signals).toEqual(SIGNALS); // preserved unchanged
+    expect(m.signals).toEqual(SIGNALS); // 原样保留
     expect(m.asOf).toBe(ASOF);
     const claude = m.accounts.find((a) => a.provider === "claude");
     expect(claude!.profileRef).toBeNull();
   });
 
-  it("flags same_account_on_n_seats on each bound row sharing one real account (count + sorted seats)", () => {
+  it("在共享同一真实账户的每个绑定行上标记 same_account_on_n_seats（数量 + 已排序 seat）", () => {
     const m = assembleFourBlock({
       accounts: ACCOUNTS,
       rawBindings: [
@@ -52,7 +52,7 @@ describe("assembleFourBlock — proof-4 mixed-provider shape", () => {
       signals: [],
       asOf: ASOF,
     });
-    // The two cdx-a rows each carry the same_account anomaly; cdx-b (single seat) does not.
+    // 两个 cdx-a 行各自携带 same_account 异常；cdx-b（单个 seat）则没有。
     const shared = m.bindings.filter((b) => b.accountId === "cdx-a");
     expect(shared).toHaveLength(2);
     for (const row of shared) {
@@ -60,7 +60,7 @@ describe("assembleFourBlock — proof-4 mixed-provider shape", () => {
       expect(anomaly).toBeDefined();
       if (anomaly && anomaly.kind === "same_account_on_n_seats") {
         expect(anomaly.count).toBe(2);
-        expect(anomaly.seats).toEqual(["seat-1", "seat-2"]); // deterministic sorted
+        expect(anomaly.seats).toEqual(["seat-1", "seat-2"]); // 确定性排序
         expect(anomaly.asOf).toBe(ASOF);
       }
     }
@@ -68,7 +68,7 @@ describe("assembleFourBlock — proof-4 mixed-provider shape", () => {
     expect(solo!.anomalies.some((a) => a.kind === "same_account_on_n_seats")).toBe(false);
   });
 
-  it("emits an explicit unbound row for a seat with no account, carrying seat_with_no_account", () => {
+  it("为没有账户的 seat 发出显式未绑定行，并携带 seat_with_no_account", () => {
     const m = assembleFourBlock({
       accounts: ACCOUNTS,
       rawBindings: [
@@ -89,7 +89,7 @@ describe("assembleFourBlock — proof-4 mixed-provider shape", () => {
     }
   });
 
-  it("does NOT flag same_account_on_n_seats when ONE seat appears in duplicate identical bound rows", () => {
+  it("同一个 seat 出现在重复且相同的绑定行中时，不标记 same_account_on_n_seats", () => {
     const m = assembleFourBlock({
       accounts: ACCOUNTS,
       rawBindings: [
@@ -99,13 +99,13 @@ describe("assembleFourBlock — proof-4 mixed-provider shape", () => {
       signals: [],
       asOf: ASOF,
     });
-    // Two rows, but ONE distinct seat → not a real cross-seat share.
+    // 虽有两行，但只有一个不同 seat → 并非真实的跨 seat 共享。
     for (const b of m.bindings) {
       expect(b.anomalies.some((a) => a.kind === "same_account_on_n_seats")).toBe(false);
     }
   });
 
-  it("does NOT invent same_account_on_n_seats from unbound (null-account) seats", () => {
+  it("不会根据未绑定（账户为 null）的 seat 虚构 same_account_on_n_seats", () => {
     const m = assembleFourBlock({
       accounts: ACCOUNTS,
       rawBindings: [

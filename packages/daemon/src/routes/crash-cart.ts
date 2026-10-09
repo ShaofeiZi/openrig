@@ -1,10 +1,9 @@
-// B1 — the crash-cart RESTORE CONDUCTOR route (daemon-side batch verb). Plan-locked
-// (B1-CRASH-CART-CONDUCTOR-PLAN-2026-08-21, content-hash 84401cd4). ASYNC on-commit
-// shape (the locked rollup-stream / onAttemptStarted design): the route starts the
-// conductor in the BACKGROUND and answers immediately with a fleet-attempt handle —
-// it NEVER blocks to fleet completion (a real fleet restore is seconds-per-seat and
-// would exceed any request timeout). The client polls the status endpoint for the
-// rollup + triage as rigs complete. A cancel endpoint sets stop-before-next-rig.
+// B1 —— crash-cart 恢复指挥路由（后台服务侧批量动词）。计划已锁定
+// （B1-CRASH-CART-CONDUCTOR-PLAN-2026-08-21，content-hash 84401cd4）。异步 on-commit
+// 形态（锁定的 rollup-stream / onAttemptStarted 设计）：本路由在后台启动指挥器，
+// 并立即返回一个 fleet-attempt 句柄——它绝不阻塞到 fleet 完成（真实 fleet 恢复每个席位数秒，
+// 会超过任何请求超时）。客户端轮询状态端点，随各工作组完成获取 rollup + 分诊。
+// 取消端点设置「在下一个工作组前停止」。
 import { Hono } from "hono";
 import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -28,10 +27,9 @@ import {
 
 export const crashCartRoutes = new Hono();
 
-/** A live fleet-restore attempt — the pollable progress/rollup state, updated by the
- *  background conductor as each rig completes. In-memory per daemon process (v1).
- *  NO verdict field: per ARCH-RULING Q2 / plan R6 the fleet verdict is a DERIVED
- *  f(counts), never a stored second truth — it is computed in the GET handler. */
+/** 一次活动的 fleet 恢复尝试——可轮询的进度/rollup 状态，由后台指挥器在每个工作组完成时更新。
+ *  每个后台服务进程内存态（v1）。无 verdict 字段：按 ARCH-RULING Q2 / plan R6，fleet 判定是
+ *  由 counts 派生的 f(counts)，绝不是存储的第二事实——它在 GET 处理器中计算。 */
 interface FleetAttempt {
   sequence: ConductorRigResult[];
   rollup: FleetRollup;
@@ -40,7 +38,7 @@ interface FleetAttempt {
 }
 const fleetAttempts = new Map<string, FleetAttempt>();
 
-// Exported ONLY for tests — reset the in-memory store between cases.
+// 仅导出供测试用——在各用例之间重置内存存储。
 export function __resetFleetAttempts(): void {
   fleetAttempts.clear();
 }
@@ -50,26 +48,25 @@ function getDeps(c: { get: (key: string) => unknown }) {
     rigRepo: c.get("rigRepo" as never) as RigRepository,
     snapshotRepo: c.get("snapshotRepo" as never) as SnapshotRepository,
     restoreOrchestrator: c.get("restoreOrchestrator" as never) as RestoreOrchestrator,
-    // H1 — the app's runtime adapters + fs, WITHOUT which the orchestrator fail-closes
-    // a pod-aware resume to awaiting-decision (seats can't return in their panes).
+    // H1——应用的 runtime 适配器 + fs；缺了它们，编排器会把 pod 感知恢复失败关闭为
+    // awaiting-decision（席位无法在其窗格中返回）。
     runtimeAdapters: c.get("runtimeAdapters" as never) as Record<string, RuntimeAdapter> | undefined,
-    // AMENDMENT 2 — the shipped machinery the adopt branch composes.
+    // AMENDMENT 2——adopt 分支所组装的已交付机制。
     sessionRegistry: c.get("sessionRegistry" as never) as SessionRegistry | undefined,
     tmuxAdapter: c.get("tmuxAdapter" as never) as TmuxAdapter | undefined,
     claimService: c.get("claimService" as never) as ClaimService | undefined,
   };
 }
 
-/** AMENDMENT 2 — build the adopt deps from the SHIPPED machinery, or undefined when a
- *  degraded daemon lacks any of it (the conductor then behaves exactly pre-amendment:
- *  a live-panes rig fail-closes through restore's own 409 — no clobber, no new path). */
+/** AMENDMENT 2——用已交付机制构建 adopt 依赖；当降级后台服务缺少其中任何一项时返回
+ *  undefined（指挥器随后表现得与修订前完全一致：活动窗格的工作组通过 restore 自己的 409
+ *  失败关闭——不覆盖、无新路径）。 */
 function buildAdoptDeps(deps: ReturnType<typeof getDeps>): AdoptRigDeps | undefined {
   const { rigRepo, sessionRegistry, tmuxAdapter, claimService, restoreOrchestrator, runtimeAdapters } = deps;
   if (!sessionRegistry || !tmuxAdapter || !claimService) return undefined;
   return {
-    // The same classification restore's 409 guard runs: DB-running sessions × tmux
-    // reality. A tmux error is NOT live (fail-closed both ways: an unprobeable pane
-    // never adopts here, and restore's own unknown-blocks guard still refuses).
+    // 与 restore 的 409 守卫相同的分类：DB 中 running 的会话 × tmux 现实。tmux 错误不算活动
+    // （双向失败关闭：不可探测的窗格在此绝不 adopt，restore 自己的 unknown-blocks 守卫仍会拒绝）。
     probeLiveSessions: async (rigId) => {
       const rig = rigRepo.getRig(rigId);
       if (!rig) return [];
@@ -83,7 +80,7 @@ function buildAdoptDeps(deps: ReturnType<typeof getDeps>): AdoptRigDeps | undefi
           if (await tmuxAdapter.hasSession(session.sessionName)) {
             live.push({ sessionName: session.sessionName, logicalId });
           }
-        } catch { /* fail-closed: unprobeable ≠ live */ }
+        } catch { /* 失败关闭：不可探测 ≠ 活动 */ }
       }
       return live;
     },
@@ -101,7 +98,7 @@ function recompute(attempt: FleetAttempt): void {
   attempt.rollup = aggregateFleetRollup(attempt.sequence);
 }
 
-// POST /api/crash-cart/restore-fleet — start the fleet restore, answer ON-COMMIT.
+// POST /api/crash-cart/restore-fleet——启动 fleet 恢复，on-commit 即应答。
 crashCartRoutes.post("/restore-fleet", (c) => {
   const deps = getDeps(c);
   const { rigRepo, snapshotRepo, restoreOrchestrator, runtimeAdapters } = deps;
@@ -122,7 +119,7 @@ crashCartRoutes.post("/restore-fleet", (c) => {
         ...(typeof snapshotRepo.selectRestoreUsable === "function"
           ? { selectRestoreUsable: (rigId: string) => snapshotRepo.selectRestoreUsable(rigId) }
           : {}),
-        // H1 — thread the app's adapters + fsOps into the shipped restore.
+        // H1——把应用的适配器 + fsOps 穿入已交付的 restore。
         restore: (snapshotId, opts) =>
           restoreOrchestrator.restore(snapshotId, {
             ...opts,
@@ -130,15 +127,14 @@ crashCartRoutes.post("/restore-fleet", (c) => {
             fsOps: { exists: (p: string) => existsSync(p) },
           }),
       },
-      // AMENDMENT 2 — LIVE panes adopt via the shipped machinery; DEAD panes unchanged.
+      // AMENDMENT 2——活动窗格通过已交付机制 adopt；死窗格不变。
       buildAdoptDeps(deps),
     ),
-    // H3 — the running attempt's cancel flag, polled stop-before-next-rig.
+    // H3——运行中尝试的取消标志，被轮询以实现「在下一个工作组前停止」。
     isCancelled: () => attempt.cancelled,
   });
 
-  // Run the fleet restore in the BACKGROUND — the response has already been sent.
-  // Each rig updates the pollable rollup (the progress stream) as it completes.
+  // 在后台运行 fleet 恢复——响应早已发出。每个工作组完成时更新可轮询的 rollup（进度流）。
   void conductor
     .restoreFleet({
       onRigDone: (r) => {
@@ -150,20 +146,20 @@ crashCartRoutes.post("/restore-fleet", (c) => {
       attempt.done = true;
     })
     .catch(() => {
-      // Best-effort: the fleet loop itself is guarded per rig; mark done so the
-      // client stops polling. Per-rig failures are already in the rollup.
+      // 尽力而为：fleet 循环本身按工作组守卫；标记 done 使客户端停止轮询。
+      // 各工作组的失败已在 rollup 中。
       attempt.done = true;
     });
 
-  // Answer ON-COMMIT (immediately) — never block to fleet completion (r1 root).
+  // on-commit 应答（立即）——绝不阻塞到 fleet 完成（r1 根）。
   return c.json({ fleetAttemptId, status: "started" }, 202);
 });
 
-// GET /api/crash-cart/restore-fleet/:fleetAttemptId — poll progress + the rollup/triage.
+// GET /api/crash-cart/restore-fleet/:fleetAttemptId——轮询进度 + rollup/分诊。
 crashCartRoutes.get("/restore-fleet/:fleetAttemptId", (c) => {
   const attempt = fleetAttempts.get(c.req.param("fleetAttemptId"));
-  if (!attempt) return c.json({ error: "unknown fleet restore attempt" }, 404);
-  // Verdict DERIVED at read from the current counts (R6 / ARCH-RULING Q2) — never a stored field.
+  if (!attempt) return c.json({ error: "未知的 fleet 恢复尝试" }, 404);
+  // verdict 在读取时从当前 counts 派生（R6 / ARCH-RULING Q2）——绝不是存储字段。
   return c.json({
     done: attempt.done,
     cancelled: attempt.cancelled,
@@ -172,10 +168,10 @@ crashCartRoutes.get("/restore-fleet/:fleetAttemptId", (c) => {
   });
 });
 
-// POST /api/crash-cart/restore-fleet/:fleetAttemptId/cancel — stop-before-next-rig.
+// POST /api/crash-cart/restore-fleet/:fleetAttemptId/cancel——在下一个工作组前停止。
 crashCartRoutes.post("/restore-fleet/:fleetAttemptId/cancel", (c) => {
   const attempt = fleetAttempts.get(c.req.param("fleetAttemptId"));
-  if (!attempt) return c.json({ error: "unknown fleet restore attempt" }, 404);
+  if (!attempt) return c.json({ error: "未知的 fleet 恢复尝试" }, 404);
   attempt.cancelled = true;
   return c.json({ ok: true, cancelled: true });
 });

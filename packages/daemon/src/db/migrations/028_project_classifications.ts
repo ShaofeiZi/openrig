@@ -1,27 +1,24 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * Project classifications (PL-004 Phase B; L2 Project / Classifier).
+ * 项目分类（PL-004 阶段 B；L2 Project/Classifier）。
  *
- * Per PRD § L2 (`product-specs/coordination-primitive-system/README.md:113,118,136`)
- * + slice IMPL § Write Set:118 + R1 guard (BLOCKER 1): agent-backed
- * classification of stream items. Daemon owns:
+ * 根据 PRD § L2（`product-specs/coordination-primitive-system/README.md:113,118,136`）、
+ * slice IMPL § Write Set:118 和 R1 守卫（BLOCKER 1）：由智能体支持的 stream item 分类。
+ * 后台服务负责：
  *
- * - Idempotency on stream_item_id (UNIQUE).
- * - Lease validation (delegated to classifier-lease-manager).
- * - L1→L2 referential integrity (FK to stream_items.stream_item_id).
+ * - stream_item_id 的幂等性（UNIQUE）。
+ * - 租约验证（委托给 classifier-lease-manager）。
+ * - L1→L2 引用完整性（外键指向 stream_items.stream_item_id）。
  *
- * Classification fields are agent judgment — daemon does NOT enforce
- * taxonomies on them.
+ * 分类字段属于智能体判断——后台服务不对其强制执行 taxonomy。
  *
- * Idempotency contract: re-projection of the same stream_item_id MUST
- * fail with structured 409. The first row wins; the second attempt's
- * classification is rejected.
+ * 幂等契约：重复投影同一个 stream_item_id 必须以结构化 409 失败。首行胜出，第二次尝试的
+ * 分类被拒绝。
  *
- * Existence contract (R1): classification of a nonexistent stream_item_id
- * MUST fail with structured 400-class `unknown_stream_item` error. Domain
- * layer pre-checks for clean error rendering; FK constraint is a
- * defense-in-depth safety net (PRAGMA foreign_keys = ON in connection.ts).
+ * 存在性契约（R1）：对不存在的 stream_item_id 分类必须以结构化 400 类
+ * `unknown_stream_item` 错误失败。领域层预先检查以清晰呈现错误；外键约束是纵深防御安全网
+ *（connection.ts 中设置 PRAGMA foreign_keys = ON）。
  */
 export const projectClassificationsSchema: Migration = {
   name: "028_project_classifications.sql",

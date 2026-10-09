@@ -1,6 +1,6 @@
 name: queue.worker
 version: "1.0"
-description: Queue worker — classifies stream-to-queue substrate; turns raw stream items into durable queue items with destinations, priorities, tags
+description: 队列 worker——对流转队列基础数据分类，把原始流条目转为带目标、优先级和标签的持久队列事项
 
 defaults:
   runtime: codex

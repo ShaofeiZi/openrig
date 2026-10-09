@@ -1,0 +1,51 @@
+zrig 中文化 · 批次2 综合报告（中期草稿，实时引用，未结束）
+更新时点：2026-10-08
+
+== 分母定义 ==
+总记录 3068 = done 2921 + skipped 145 + pending 2。
+done 2921 validation 交叉：passed 510 · self_reported 1593 · validated 816 · needs_review 2。
+
+== 本轮（batch2）已批转（before 快照 + owner fcntl 锁 + note + rebuild）==
+1. 文档 343 篇：self_reported 307 + validated 36 → passed 343。
+2. big4：cli queue/restore-packet/daemon-lifecycle.test.ts + daemon bundle-routes.test.ts，needs_review→passed。
+3. UI build-setup-prompt.test.ts：pending→done+passed。
+4. UI bundle-inspector / package-list.test.tsx：注释+标题全译、21/21 通过 → validated→passed。
+5. UI live-node-details.test.tsx：29/29 复验、NL 0 残留 → validated→passed。
+6. config-template：self_reported 55 全部清零 → passed（分 8+10+10+10+10+7 六批）。
+   config-template done 94 = passed 55 + validated 39；另 21 skipped（agent.yaml/fragment 机器配置）。
+
+== 保持未升（等证据/视觉）==
+- TUI hydrate.ts / text-width.ts：needs_review（桌面视觉阻塞）。
+- TUI 标题批：作者 72/80 changed，待 86 全 test reviewed manifest 后按精确路径 validated。
+- UI 第二批 16 文件：display-surface reviewed，待 manifest。
+- CLI 作者 batch5 进行中。
+- packages/cli/package.json description：作者已修简中，待 test 验证（reviewed-pending）。
+
+== skip145（脚本互斥分类，sum=145，全合法）==
+other-machine 45 / history-evidence 23 / machine-manifest 14 / db-migration 14 /
+internal-read-layer 12 / gate-script 9 / binary 7 / ui-primitive 7 / legal 5 /
+cli-type-contract 5（已全审合法）/ scm 3 / lockfile 1。
+
+== 候选与缺口 ==
+- daemon self_reported code-comment 992（剔除 CLI 当前主题后）；候选 20 见 DAEMON-CANDIDATES-20。
+- coverage 待验证：not 8 需真实跑、unknown 42 需证据归因、fail ps-scope 1。
+
+== 口径纪律 ==
+测试通过 ≠ 全文翻译；标题翻译+测试过 ≠ 整文件 code-comment passed（只到 validated+note）。
+done = 整文件全文完成且已验收。近似路径匹配禁止，须原样 source_path 对齐验证 log。
+
+## Coverage Audit（2026-10-09 实时）
+- 分母：1243（测试注释总分母，含 CLI/daemon/TUI/UI）
+- latest_pass: 1228
+- legal skip: 7
+- fail: 0
+- not executed: 0
+- needs_rerun: 8（当前队列：CLI/daemon batch16 5 changed + UI batch5 5 changed，共 8 受变文件待复跑；另 2 为 TUI hydrate/text-width 视觉阻塞不计）
+- 状态：等 batch16 + UI batch5 复跑过后重建 coverage；当前不动台账 validation_state。
+
+## CLI/daemon comment 集合审计（2026-10-09）
+- disk=929 / manifests union=140（batch1~28 exact） / classification remaining=784
+- manifests-disk extra=0；disk-manifests missing=789；cls∩manifests=5（即 batch28 queue/host-selection/ps-is-active-rig/seat/session-admin-auth-headers）
+- 正确闭合：manifests 140 + classification remaining 784 = 929，交集 0。
+- classification 原 english 84 含 batch28 五，剔除→79；116+589+79=784。
+- 作者重写报告中；未闭合前不批量 qualified 705。

@@ -1,9 +1,8 @@
-// OPR.0.3.3.13.2 AC-3b - affected-skill OUTPUT validated against the NEW
-// checked-in v0.3.2-affected-skills expected-set fixture (a frozen snapshot of
-// the backfill + the expected lookup output). Self-contained: recomputes from
-// the fixture's `skills` map, so it is deterministic + portable and does NOT
-// read the live substrate corpus. Proves zero false-negatives (all affected
-// present) AND zero false-positives (the rest absent).
+// OPR.0.3.3.13.2 AC-3b——affected-skill 输出对照新签入的
+// v0.3.2-affected-skills 期望集 fixture 校验（backfill + 期望查找输出的冻结快照）。
+// 自包含：从 fixture 的 `skills` map 重算，故确定性 + 可移植，且不读取
+// 线上 substrate corpus。证明零漏报（所有 affected 都在）且零误报
+//（其余都不在）。
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -45,15 +44,15 @@ describe("affected-skills AC-3b - v0.3.2 expected affected-skills fixture", () =
     expect(skills.length).toBe(45);
     expect(fixture.affected_skills.length).toBe(11);
     expect(notAffected.length).toBe(34);
-    // representative not-affected skills (no queue-create / bundle / workspace token)
+    // 代表性未受影响 skill（无 queue-create / bundle / workspace token）
     for (const n of ["openrig-upgrade", "rig-lifecycle", "feature-rollout", "openrig-architect"]) {
       expect(fixture.affected_skills).not.toContain(n);
     }
   });
 
   it("every affected skill is explained by a v0.3.2 added surface (queue create / bundle* / workspace)", () => {
-    // each affected skill must carry at least one token whose first segment is
-    // one of v0.3.2's actually-added command roots - no unexplained inclusion.
+    // 每个 affected skill 必须至少携带一个 token，其首段是 v0.3.2 实际新增的
+    // 命令根之一——无无理由的纳入。
     const roots = new Set(["queue", "bundle", "workspace", "scope", "policy"]);
     for (const name of fixture.affected_skills) {
       const tokens = fixture.skills[name] ?? [];

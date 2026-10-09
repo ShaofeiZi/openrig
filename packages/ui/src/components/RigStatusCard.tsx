@@ -1,13 +1,11 @@
-// OPR.0.4.3.22 — the reusable rig-status card. Renders the COMPOSED backend
-// aggregate (up / partial / down / blocked / unknown), NOT inferred from pane
-// text. Used in two places: the dashboard kernel-status card and the topology
-// rig control. The card exposes ONE primary recovery/launch action (opens the
-// launch/recovery modal); terminal-surface actions (Open topology / CMUX) live
-// SEPARATELY, never on this card (guard 5).
+// OPR.0.4.3.22 —— 可复用的工作组状态卡片。渲染后端组合出的聚合状态
+// （up / partial / down / blocked / unknown），不从面板文本推断。用于两处：
+// 仪表盘内核状态卡与拓扑工作组控制。卡片只暴露一个主要的恢复/启动动作
+// （打开启动/恢复弹窗）；终端面的动作（打开拓扑 / CMUX）单独放置，
+// 绝不在本卡片上（guard 5）。
 //
-// The status badge CONSUMES the backend verdict in its rendered tone — a
-// non-`up` status renders non-green (the 19/21 lesson: render the verdict, don't
-// default to green while carrying it in data).
+// 状态徽章在渲染色调上直接消费后端判定——非 `up` 状态渲染为非绿色
+// （19/21 教训：渲染真实判定，不要一边在数据里带着非 up、一边默认渲染成绿色）。
 
 import { Hexagon, Server } from "lucide-react";
 import { StatusPip, type StatusPipStatus } from "./ui/status-pip.js";
@@ -15,8 +13,8 @@ import { Button } from "./ui/button.js";
 import { cn } from "../lib/utils.js";
 import type { RigAggStatus } from "../hooks/useRigStatus.js";
 
-// Shared status vocabulary — also consumed by the compact topology
-// RigStatusControl (OPR.0.4.7.1) so both surfaces render one verdict language.
+// 共享状态词表——紧凑拓扑工作组状态控制（OPR.0.4.7.1）也消费它，
+// 让两个界面用同一套判定语言。
 export const statusToPip: Record<RigAggStatus, StatusPipStatus> = {
   up: "running",
   partial: "warning",
@@ -33,12 +31,21 @@ export const statusBadgeTone: Record<RigAggStatus, string> = {
   unknown: "border-stone-300 text-stone-400",
 };
 
+// 徽章中展示的状态中文标签（data-status 属性仍保留原始枚举）。
+export const statusBadgeLabel: Record<RigAggStatus, string> = {
+  up: "运行中",
+  partial: "部分",
+  down: "已停止",
+  blocked: "已阻塞",
+  unknown: "未知",
+};
+
 export const statusHelp: Record<RigAggStatus, string> = {
-  up: "All managed seats are running.",
-  partial: "Some seats running, some stopped / detached / attention-required.",
-  down: "No seats running — recoverable from snapshot.",
-  blocked: "Restore cannot proceed without operator action (missing token / auth / spec).",
-  unknown: "Daemon/API cannot confidently compute the state.",
+  up: "所有受管席位均在运行。",
+  partial: "部分席位运行中，部分已停止 / 已脱离 / 待关注。",
+  down: "无席位运行——可从快照恢复。",
+  blocked: "缺少操作员操作无法继续恢复（缺失 token / 鉴权 / 规格）。",
+  unknown: "后台服务/API 无法可靠判定状态。",
 };
 
 export interface RigStatusCardProps {
@@ -49,13 +56,12 @@ export interface RigStatusCardProps {
   seatsRunning: number;
   seatsTotal: number;
   recoverable: boolean;
-  /** The composed provenance line(s) — visible so the state is legible, not just a color. */
+  /** 组合出的来源行——展示出来让状态可读，而不只是一个颜色。 */
   src: string[];
   primaryLabel: string;
   onPrimary?: () => void;
-  /** Override the enablement (e.g. the kernel card disables restore when no
-   *  kernel rig exists — the double-instantiation guard). Defaults to disabled
-   *  only when the rig is already `up`. */
+  /** 覆盖启用状态（例如内核卡片在没有内核工作组时禁用恢复——防重复实例化守卫）。
+   *  默认仅在工作组已 `up` 时禁用。 */
   primaryDisabled?: boolean;
   testId?: string;
 }
@@ -83,14 +89,14 @@ export function RigStatusCard({
       data-status={status}
       className="bg-white border border-stone-900 hard-shadow relative"
     >
-      {/* Dark header stripe — vellum grammar (matches RigCard). */}
+      {/* 深色头部条——羊皮纸语法（与 RigCard 一致）。 */}
       <div className="bg-stone-900 text-white px-4 py-1.5 font-mono text-[10px] flex justify-between items-center">
-        <span>{isKernel ? "KERNEL RIG" : `RIG: ${rigName.toUpperCase()}`}</span>
+        <span>{isKernel ? "内核工作组" : `工作组：${rigName.toUpperCase()}`}</span>
         {isKernel ? <Hexagon className="h-3 w-3" /> : <Server className="h-3 w-3" />}
       </div>
 
       <div className="p-4 space-y-3">
-        {/* Name + aggregate status badge (the badge tone CONSUMES the verdict). */}
+        {/* 名称 + 聚合状态徽章（徽章色调消费真实判定）。 */}
         <div className="flex justify-between items-end border-b border-stone-100 pb-2">
           <span className="font-headline font-bold text-lg tracking-tight uppercase">{rigName}</span>
           <span
@@ -101,28 +107,28 @@ export function RigStatusCard({
             )}
           >
             <StatusPip status={pip} />
-            {status}
+            {statusBadgeLabel[status]}
           </span>
         </div>
 
-        {/* One-line meaning of the status. */}
+        {/* 状态的单行含义。 */}
         <p className="font-mono text-[9px] leading-relaxed text-secondary">{statusHelp[status]}</p>
 
-        {/* Telemetry grid. */}
+        {/* 遥测网格。 */}
         <div className="space-y-1">
           <div className="flex justify-between font-mono text-[9px] text-secondary">
-            <span>SEATS RUNNING</span>
+            <span>运行中席位</span>
             <span data-testid={`seats-${rigId}`}>
               {seatsRunning}/{seatsTotal}
             </span>
           </div>
           <div className="flex justify-between font-mono text-[9px] text-secondary">
-            <span>RECOVERABLE</span>
-            <span>{recoverable ? "yes" : "no — needs operator"}</span>
+            <span>可恢复</span>
+            <span>{recoverable ? "是" : "否——需要操作员"}</span>
           </div>
         </div>
 
-        {/* Primary recovery/launch action — the ONE thing this card does. */}
+        {/* 主要恢复/启动动作——本卡片唯一的动作。 */}
         <div className="pt-1">
           <Button
             variant={status === "blocked" ? "destructive" : "default"}
@@ -132,16 +138,16 @@ export function RigStatusCard({
             data-testid={`rig-primary-action-${rigId}`}
             className="w-full font-mono text-[10px] tracking-widest"
           >
-            {status === "up" ? "RUNNING" : primaryLabel}
+            {status === "up" ? "运行中" : primaryLabel}
           </Button>
         </div>
 
-        {/* Provenance — the composed source signals (composed, not inferred). */}
+        {/* 来源——组合出的信号（组合得到，非推断）。 */}
         <p
           data-testid={`rig-status-src-${rigId}`}
           className="font-mono text-[8px] leading-snug text-stone-400 border-t border-stone-100 pt-2"
         >
-          src: {src.join(" · ")}
+          来源：{src.join(" · ")}
         </p>
       </div>
     </div>

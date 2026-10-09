@@ -31,7 +31,7 @@ function makeDeps(overrides?: Partial<AskDeps>): AskDeps {
 }
 
 describe("AskService", () => {
-  it("assembles evidence pack with question, topology, and excerpts", async () => {
+  it("组合包含 question、topology 与 excerpt 的 evidence pack", async () => {
     const deps = makeDeps();
     const svc = new AskService(deps);
     const result = await svc.ask("my-rig", "what about deployment?");
@@ -45,7 +45,7 @@ describe("AskService", () => {
     expect(result.insufficient).toBe(false);
   });
 
-  it("returns guidance when rig is not found", async () => {
+  it("找不到工作组时返回 guidance", async () => {
     const deps = makeDeps({
       rigRepo: {
         findRigsByName: vi.fn(() => []),
@@ -58,10 +58,10 @@ describe("AskService", () => {
     const result = await svc.ask("nonexistent", "any question");
 
     expect(result.rig).toBeNull();
-    expect(result.guidance).toContain("not found");
+    expect(result.guidance).toContain("未找到");
   });
 
-  it("returns guidance when rig is ambiguous", async () => {
+  it("工作组有歧义时返回 guidance", async () => {
     const deps = makeDeps({
       rigRepo: {
         findRigsByName: vi.fn(() => [
@@ -73,19 +73,19 @@ describe("AskService", () => {
     const svc = new AskService(deps);
     const result = await svc.ask("my-rig", "any question");
 
-    expect(result.guidance).toContain("ambiguous");
+    expect(result.guidance).toContain("有歧义");
   });
 
-  it("returns guidance when transcripts are disabled", async () => {
+  it("transcript 被禁用时返回 guidance", async () => {
     const deps = makeDeps({ transcriptsEnabled: false });
     const svc = new AskService(deps);
     const result = await svc.ask("my-rig", "any question");
 
     expect(result.insufficient).toBe(true);
-    expect(result.guidance).toContain("disabled");
+    expect(result.guidance).toContain("已禁用");
   });
 
-  it("surfaces insufficient flag from history query", async () => {
+  it("呈现 history query 的 insufficient flag", async () => {
     const deps = makeDeps({
       historyQuery: {
         search: vi.fn(async (): Promise<SearchResult> => ({
@@ -102,7 +102,7 @@ describe("AskService", () => {
     expect(result.insufficient).toBe(true);
   });
 
-  it("merges chat evidence into result via shared history-query seam", async () => {
+  it("通过共享 history-query seam 将 chat evidence 合并到结果中", async () => {
     const deps = makeDeps({
       historyQuery: {
         search: vi.fn(async (): Promise<SearchResult> => ({
@@ -121,11 +121,11 @@ describe("AskService", () => {
     expect(result.evidence.chatExcerpts).toBeDefined();
     expect(result.evidence.chatExcerpts!.length).toBe(1);
     expect(result.evidence.chatExcerpts![0]).toContain("[alice] deployment started in chat");
-    // When chat has evidence, insufficient should be false even if transcript has results
+    // chat 有 evidence 时，即使 transcript 有结果，insufficient 也应为 false
     expect(result.insufficient).toBe(false);
   });
 
-  it("chat evidence prevents insufficient when transcripts have no matches", async () => {
+  it("transcript 无匹配时，chat evidence 会阻止 insufficient", async () => {
     const deps = makeDeps({
       historyQuery: {
         search: vi.fn(async (): Promise<SearchResult> => ({
@@ -145,7 +145,7 @@ describe("AskService", () => {
     expect(result.evidence.chatExcerpts!.length).toBe(1);
   });
 
-  it("handles no transcript directory", async () => {
+  it("处理 transcript directory 不存在的情况", async () => {
     const deps = makeDeps({
       historyQuery: {
         search: vi.fn(async (): Promise<SearchResult> => ({
@@ -164,7 +164,7 @@ describe("AskService", () => {
     expect(result.guidance).toContain("transcript");
   });
 
-  it("answers peer questions from structured whoami context without transcript search", async () => {
+  it("无需搜索 transcript，直接从 structured whoami context 回答 peer 问题", async () => {
     const searchSpy = vi.fn(async (): Promise<SearchResult> => ({
       backend: "rg",
       excerpts: [],
@@ -225,7 +225,7 @@ describe("AskService", () => {
     expect(searchSpy).not.toHaveBeenCalled();
   });
 
-  it("returns insufficient guidance for peer questions when current identity is unknown", async () => {
+  it("当前 identity 未知时，为 peer 问题返回 insufficient guidance", async () => {
     const searchSpy = vi.fn(async (): Promise<SearchResult> => ({
       backend: "rg",
       excerpts: [],

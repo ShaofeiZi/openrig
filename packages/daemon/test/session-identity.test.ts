@@ -9,7 +9,7 @@ import { isCodex013xOrLater } from "../src/adapters/codex-runtime-adapter.js";
 
 const require = createRequire(import.meta.url);
 
-describe("resume provenance + precedence", () => {
+describe("resume provenance + 优先级", () => {
   let db: Database.Database;
   let sessionRegistry: SessionRegistry;
 
@@ -39,19 +39,19 @@ describe("resume provenance + precedence", () => {
     return row.resume_token;
   }
 
-  it("hook write sets provenance=hook", () => {
+  it("hook 写入设置 provenance=hook", () => {
     sessionRegistry.updateResumeToken(getSessionId(), "codex_id", "thread-123", "hook");
     expect(getProvenance()).toBe("hook");
     expect(getToken()).toBe("thread-123");
   });
 
-  it("scrape write sets provenance=scrape when no existing token", () => {
+  it("没有现有 token 时，scrape 写入设置 provenance=scrape", () => {
     sessionRegistry.updateResumeToken(getSessionId(), "codex_id", "thread-456", "scrape");
     expect(getProvenance()).toBe("scrape");
     expect(getToken()).toBe("thread-456");
   });
 
-  it("scrape write does NOT overwrite hook-provenance token", () => {
+  it("scrape 写入不覆盖 hook-provenance token", () => {
     const id = getSessionId();
     sessionRegistry.updateResumeToken(id, "codex_id", "hook-thread", "hook");
     sessionRegistry.updateResumeToken(id, "codex_id", "scrape-thread", "scrape");
@@ -59,7 +59,7 @@ describe("resume provenance + precedence", () => {
     expect(getProvenance()).toBe("hook");
   });
 
-  it("hook write CAN overwrite scrape-provenance token", () => {
+  it("hook 写入可以覆盖 scrape-provenance token", () => {
     const id = getSessionId();
     sessionRegistry.updateResumeToken(id, "codex_id", "scrape-thread", "scrape");
     sessionRegistry.updateResumeToken(id, "codex_id", "hook-thread", "hook");
@@ -67,7 +67,7 @@ describe("resume provenance + precedence", () => {
     expect(getProvenance()).toBe("hook");
   });
 
-  it("same hook token re-applied is idempotent", () => {
+  it("重复应用相同 hook token 时幂等", () => {
     const id = getSessionId();
     sessionRegistry.updateResumeToken(id, "codex_id", "thread-123", "hook");
     sessionRegistry.updateResumeToken(id, "codex_id", "thread-123", "hook");
@@ -75,7 +75,7 @@ describe("resume provenance + precedence", () => {
     expect(getProvenance()).toBe("hook");
   });
 
-  it("startup-orchestrator scrape does NOT overwrite hook", () => {
+  it("startup-orchestrator scrape 不覆盖 hook", () => {
     const id = getSessionId();
     sessionRegistry.updateResumeToken(id, "codex_id", "hook-thread", "hook");
     sessionRegistry.updateResumeToken(id, "codex_id", "launch-scrape-thread", "scrape");
@@ -85,16 +85,16 @@ describe("resume provenance + precedence", () => {
 });
 
 describe("isCodex013xOrLater", () => {
-  it("0.139.0 is 013x+", () => expect(isCodex013xOrLater("0.139.0")).toBe(true));
-  it("0.130.0 is 013x+", () => expect(isCodex013xOrLater("0.130.0")).toBe(true));
-  it("0.120.0 is NOT 013x+", () => expect(isCodex013xOrLater("0.120.0")).toBe(false));
-  it("0.125.0 is NOT 013x+", () => expect(isCodex013xOrLater("0.125.0")).toBe(false));
-  it("1.0.0 is 013x+", () => expect(isCodex013xOrLater("1.0.0")).toBe(true));
-  it("empty string is NOT 013x+", () => expect(isCodex013xOrLater("")).toBe(false));
+  it("0.139.0 属于 013x+", () => expect(isCodex013xOrLater("0.139.0")).toBe(true));
+  it("0.130.0 属于 013x+", () => expect(isCodex013xOrLater("0.130.0")).toBe(true));
+  it("0.120.0 不属于 013x+", () => expect(isCodex013xOrLater("0.120.0")).toBe(false));
+  it("0.125.0 不属于 013x+", () => expect(isCodex013xOrLater("0.125.0")).toBe(false));
+  it("1.0.0 属于 013x+", () => expect(isCodex013xOrLater("1.0.0")).toBe(true));
+  it("空字符串不属于 013x+", () => expect(isCodex013xOrLater("")).toBe(false));
 });
 
-describe("activity-relay session identity", () => {
-  it("buildSessionIdentityPayload reads OpenRig identity from env, session_id from stdin", () => {
+describe("activity-relay 会话 identity", () => {
+  it("buildSessionIdentityPayload 从 env 读取 OpenRig identity，从 stdin 读取 session_id", () => {
     const { buildSessionIdentityPayload } = require("../assets/plugins/openrig-core/hooks/scripts/activity-relay.cjs");
     const env = { OPENRIG_SESSION_NAME: "dev-worker@test-rig", OPENRIG_NODE_ID: "node-1", OPENRIG_RUNTIME: "codex" };
     const payload = buildSessionIdentityPayload(
@@ -108,21 +108,21 @@ describe("activity-relay session identity", () => {
     expect(payload.runtime).toBe("codex");
   });
 
-  it("buildSessionIdentityPayload returns null for non-SessionStart", () => {
+  it("buildSessionIdentityPayload 对非 SessionStart 返回 null", () => {
     const { buildSessionIdentityPayload } = require("../assets/plugins/openrig-core/hooks/scripts/activity-relay.cjs");
     const env = { OPENRIG_SESSION_NAME: "dev-worker@test-rig", OPENRIG_RUNTIME: "codex" };
     const payload = buildSessionIdentityPayload({ hookEvent: "UserPromptSubmit", session_id: "thread-abc-123" }, env);
     expect(payload).toBeNull();
   });
 
-  it("buildSessionIdentityPayload returns null when no session_id", () => {
+  it("缺少 session_id 时 buildSessionIdentityPayload 返回 null", () => {
     const { buildSessionIdentityPayload } = require("../assets/plugins/openrig-core/hooks/scripts/activity-relay.cjs");
     const env = { OPENRIG_SESSION_NAME: "dev-worker@test-rig", OPENRIG_RUNTIME: "codex" };
     const payload = buildSessionIdentityPayload({ hookEvent: "SessionStart" }, env);
     expect(payload).toBeNull();
   });
 
-  it("returns null when provider payload has identity but env does not", () => {
+  it("provider payload 有 identity 但 env 没有时返回 null", () => {
     const { buildSessionIdentityPayload } = require("../assets/plugins/openrig-core/hooks/scripts/activity-relay.cjs");
     const payload = buildSessionIdentityPayload(
       { hookEvent: "SessionStart", session_id: "thread-123", sessionName: "foo", runtime: "codex" },
@@ -132,7 +132,7 @@ describe("activity-relay session identity", () => {
   });
 });
 
-describe("clearResumeToken clears provenance", () => {
+describe("clearResumeToken 清除 provenance", () => {
   let db: Database.Database;
   let sessionRegistry: SessionRegistry;
 
@@ -151,7 +151,7 @@ describe("clearResumeToken clears provenance", () => {
     return (db.prepare("SELECT id FROM sessions LIMIT 1").get() as { id: string }).id;
   }
 
-  it("clearResumeToken clears provenance so scrape can write after", () => {
+  it("clearResumeToken 清除 provenance，使 scrape 可随后写入", () => {
     const id = getSessionId();
     sessionRegistry.updateResumeToken(id, "codex_id", "hook-thread", "hook");
     sessionRegistry.clearResumeToken(id);
@@ -166,4 +166,4 @@ describe("clearResumeToken clears provenance", () => {
   });
 });
 
-// F3 version-aware tests moved to codex-hooks-feature-flag.test.ts using real CodexRuntimeAdapter.
+// F3 version-aware 测试已移至 codex-hooks-feature-flag.test.ts，并使用真实 CodexRuntimeAdapter。

@@ -1,17 +1,13 @@
 #!/usr/bin/env node
-// Packaging step (build-package.sh): point the CLI's and TUI's compiled imports of
-// `@openrig/daemon/<subpath>` at the daemon copy the CLI package already ships in
-// `daemon/dist`, so the published package has no dependency on the unpublished
-// `@openrig/daemon` and any package manager can install it (#66).
+// 打包步骤（build-package.sh）：把 CLI 与 TUI 里对 `@openrig/daemon/<子路径>` 的编译后 import，
+// 指向 CLI 包已随包附带的 `daemon/dist` 那份 daemon，使发布包对未发布的
+// `@openrig/daemon` 没有运行时依赖，任何包管理器都能装它（#66）。
 //
-// Files are parsed with the TypeScript compiler the build already uses, and only real
-// module specifiers are rewritten: import and export declarations, and `import()` or
-// `require()` calls with a literal argument. Comments and strings are left alone.
-// Targets come from packages/daemon/package.json `exports`. The step fails on a parse
-// error, on a specifier with no exports entry, on a target that was not staged, on a
-// non-literal `import()`/`require()` argument naming the package, and on any daemon
-// import left afterwards. Running it twice is a no-op. Source imports and development
-// resolution are unchanged.
+// 文件用构建已在用的 TypeScript 编译器解析，只重写真正的模块说明符：import/export 声明，
+// 以及参数为字面量的 `import()` / `require()` 调用。注释与字符串原样保留。
+// 目标来自 packages/daemon/package.json 的 `exports`。本步骤在以下情况失败：解析错误、
+// 说明符在 exports 里没有条目、目标未被暂存、以非字面量 `import()`/`require()` 指名该包、
+// 以及重写后仍残留 daemon import。连跑两次是 no-op。源码 import 与开发态解析不变。
 
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, realpathSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -21,7 +17,7 @@ import ts from "typescript";
 const PACKAGE = "@openrig/daemon";
 const isDaemonSpecifier = (value) => value === PACKAGE || value.startsWith(`${PACKAGE}/`);
 
-// The daemon module specifiers in one file, from its syntax tree.
+// 从一个文件的语法树里取出其中的 daemon 模块说明符。
 function daemonSpecifiers(text, file) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
   if (source.parseDiagnostics.length > 0) {
@@ -60,11 +56,11 @@ export function loadSubpathTargets(daemonPackageJsonPath) {
   return targets;
 }
 
-// Rewrites one file's text. `targetFor(subpath)` returns the absolute target path or throws.
+// 重写一个文件的文本。`targetFor(subpath)` 返回绝对目标路径，否则抛错。
 export function rewriteSource(text, file, targetFor) {
   const found = daemonSpecifiers(text, file);
   let output = text;
-  // Replace from the end so earlier offsets stay valid; keep each literal's own quotes.
+  // 从后往前替换，使前面的偏移保持有效；保留每个字面量自己的引号。
   for (const { value, start, end } of [...found].reverse()) {
     const target = targetFor(value.slice(PACKAGE.length), file);
     let specifier = relative(dirname(file), target).split(sep).join("/");
@@ -122,13 +118,13 @@ export function rewriteDaemonImports({ cliDir, daemonPackageJsonPath }) {
   return { rewritten, files };
 }
 
-// Run only when executed directly. Compare real file paths, not a hand-built URL:
-// import.meta.url is percent-encoded (spaces, "#") and names the symlink-resolved file.
+// 仅在直接执行时运行。比较真实文件路径，而非手拼 URL：import.meta.url 会做百分号转义
+// （空格、"#"），且指向软链解析后的文件。
 function invokedDirectly() {
   try {
     return Boolean(process.argv[1]) && fileURLToPath(import.meta.url) === realpathSync(process.argv[1]);
   } catch {
-    return false; // argv[1] is not an existing file, so this module was imported, not run
+    return false; // argv[1] 不是已存在文件，说明本模块是被 import 而非直接运行
   }
 }
 

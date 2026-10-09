@@ -5,10 +5,10 @@ import { realDeps } from "./daemon.js";
 import type { StatusDeps } from "./status.js";
 
 /**
- * `rig stream` — coordination primitive L1 commands (PL-004 Phase A).
+ * `rig stream` —— 协作原语 L1 命令（PL-004 A 阶段）。
  *
- * Backed by `/api/stream`. Operates only via the daemon HTTP API.
- * Does NOT touch the POC `rigx-stream-proto` filesystem state.
+ * 后端为 `/api/stream`。只通过后台服务 HTTP API 操作。
+ * 不触碰 POC 的 `rigx-stream-proto` 文件系统状态。
  */
 
 export interface StreamDeps extends StatusDeps {
@@ -56,7 +56,7 @@ function printWatchData(data: string, json: boolean): void {
     if (json) console.log(JSON.stringify(item));
     else console.log(`[${item.tsEmitted} ${item.sourceSession}] ${item.body}`);
   } catch {
-    // The daemon emits one JSON item per data line. Ignore malformed frames.
+    // 后台服务每行 data 发出一个 JSON 项。忽略畸形帧。
   }
 }
 
@@ -92,7 +92,7 @@ async function consumeWatch(body: ReadableStream<Uint8Array>, json: boolean): Pr
 }
 
 export function streamCommand(depsOverride?: StreamDeps): Command {
-  const cmd = new Command("stream").description("Coordination L1 — append-only intake stream");
+  const cmd = new Command("stream").description("协作 L1 —— 只追加的 intake 流");
   const getDeps = (): StreamDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
     clientFactory: (url: string) => new DaemonClient(url),
@@ -100,17 +100,17 @@ export function streamCommand(depsOverride?: StreamDeps): Command {
 
   cmd
     .command("emit")
-    .description("Append a stream item")
-    .requiredOption("--source <session>", "Source session (e.g. velocity-driver@openrig-velocity-claude)")
-    .requiredOption("--body <text>", "Stream item body")
-    .option("--hint-destination <session>", "Hint at intended destination seat")
-    .option("--hint-type <type>", "Hint type (e.g. review, handoff, idea)")
-    .option("--hint-urgency <urgency>", "Hint urgency (routine, urgent, critical)")
-    .option("--hint-tags <tags>", "Comma-separated hint tags")
-    .option("--format <fmt>", "Observation body format")
-    .option("--interrupt", "Mark item as interrupting")
-    .option("--id <streamItemId>", "Idempotent stream_item_id (skip if not provided)")
-    .option("--json", "JSON output for agents")
+    .description("追加一个流条目")
+    .requiredOption("--source <session>", "源会话（例如 velocity-driver@openrig-velocity-claude）")
+    .requiredOption("--body <text>", "流条目正文")
+    .option("--hint-destination <session>", "提示预期的目标席位")
+    .option("--hint-type <type>", "提示类型（例如 review、handoff、idea）")
+    .option("--hint-urgency <urgency>", "提示紧急度（routine、urgent、critical）")
+    .option("--hint-tags <tags>", "逗号分隔的提示标签")
+    .option("--format <fmt>", "观察正文格式")
+    .option("--interrupt", "把条目标记为可打断")
+    .option("--id <streamItemId>", "幂等的 stream_item_id（未提供则跳过）")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: {
       source: string;
       body: string;
@@ -143,16 +143,16 @@ export function streamCommand(depsOverride?: StreamDeps): Command {
 
   cmd
     .command("list")
-    .description("List stream items chronologically")
-    .option("--source <session>", "Filter by source session")
-    .option("--hint-destination <session>", "Filter by hint destination")
-    .option("--tag <tag>", "Filter by exact hint tag")
-    .option("--since <iso>", "Include items emitted at or after this ISO timestamp")
-    .option("--until <iso>", "Include items emitted at or before this ISO timestamp")
-    .option("--limit <n>", "Result limit", "100")
-    .option("--after <sortKey>", "Cursor pagination — return items after this sort key")
-    .option("--include-archived", "Include archived items")
-    .option("--json", "JSON output for agents")
+    .description("按时间顺序列出流条目")
+    .option("--source <session>", "按源会话过滤")
+    .option("--hint-destination <session>", "按提示目标过滤")
+    .option("--tag <tag>", "按精确提示标签过滤")
+    .option("--since <iso>", "包含此 ISO 时间戳及之后发出的条目")
+    .option("--until <iso>", "包含此 ISO 时间戳及之前发出的条目")
+    .option("--limit <n>", "结果上限", "100")
+    .option("--after <sortKey>", "游标分页——返回此排序键之后的条目")
+    .option("--include-archived", "包含已归档条目")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (opts: {
       source?: string;
       hintDestination?: string;
@@ -182,8 +182,8 @@ export function streamCommand(depsOverride?: StreamDeps): Command {
 
   cmd
     .command("watch")
-    .description("Watch the stream (initial replay + live items)")
-    .option("--json", "Emit one StreamItem JSON object per line")
+    .description("监视流（初始回放 + 实时条目）")
+    .option("--json", "每行输出一个 StreamItem JSON 对象")
     .action(async (opts: { json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -192,18 +192,18 @@ export function streamCommand(depsOverride?: StreamDeps): Command {
             headers: { Accept: "text/event-stream" },
           });
           if (!res.ok) {
-            console.error(`Watch failed (HTTP ${res.status})`);
+            console.error(`监视失败（HTTP ${res.status}）`);
             process.exitCode = res.status >= 500 ? 2 : 1;
             return;
           }
           if (!res.body) {
-            console.error("Watch failed: response body missing");
+            console.error("监视失败：缺少响应体");
             process.exitCode = 2;
             return;
           }
           await consumeWatch(res.body, opts.json ?? false);
         } catch (err) {
-          console.error(`Watch error: ${err instanceof Error ? err.message : String(err)}`);
+          console.error(`监视出错：${err instanceof Error ? err.message : String(err)}`);
           process.exitCode = 2;
         }
       });
@@ -211,8 +211,8 @@ export function streamCommand(depsOverride?: StreamDeps): Command {
 
   cmd
     .command("show <streamItemId>")
-    .description("Fetch one stream item by id")
-    .option("--json", "JSON output for agents")
+    .description("按 id 取单个流条目")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (streamItemId: string, opts: { json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {
@@ -223,8 +223,8 @@ export function streamCommand(depsOverride?: StreamDeps): Command {
 
   cmd
     .command("archive <streamItemId>")
-    .description("Soft-archive a stream item (audit row preserved)")
-    .option("--json", "JSON output for agents")
+    .description("软归档一个流条目（审计行保留）")
+    .option("--json", "供智能体使用的 JSON 输出")
     .action(async (streamItemId: string, opts: { json?: boolean }) => {
       const deps = getDeps();
       await withClient(deps, async (client) => {

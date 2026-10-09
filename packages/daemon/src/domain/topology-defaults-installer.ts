@@ -2,30 +2,28 @@ import * as fs from "node:fs";
 import * as nodePath from "node:path";
 
 /**
- * OPR.0.5.3.6 — shipped topology chain-file defaults (CE-v2 as product).
+ * OPR.0.5.3.6——随产品交付的拓扑 chain-file 默认值（CE-v2 产品化）。
  *
- * A rig spec may carry a `topology/` folder of sensible-default chain files.
- * At rig-up they install under the typed `topology.root` (see
- * docs/reference/chain-file-convention.md — the SSOT), at four altitudes:
+ * 工作组 spec 可携带包含合理默认 chain file 的 `topology/` 文件夹。
+ * 工作组启动时，它们安装到类型化 `topology.root` 下
+ *（见单一事实来源 docs/reference/chain-file-convention.md），分为四个层级：
  *
  *   <spec>/topology/instance/<NAME>.md      -> <topology.root>/<NAME>.md
  *   <spec>/topology/rig/<NAME>.md           -> <topology.root>/rigs/<rig>/<NAME>.md
  *   <spec>/topology/pods/<pod>/<NAME>.md    -> <topology.root>/rigs/<rig>/pods/<pod>/<NAME>.md
  *   <spec>/topology/seats/<seat>/<NAME>.md  -> <topology.root>/rigs/<rig>/seats/<seat>/<NAME>.md
  *
- * COPY-IF-ABSENT, never overwrite: a shipped default is a starting point the
- * occupying team appends to — a later rig-up must never clobber earned
- * context. Installation is best-effort per file (a rig launch never fails on
- * a defaults copy) but every skip/install is reported so the caller can log
- * honestly rather than silently.
+ * 仅在不存在时复制，绝不覆盖：随产品交付的默认值是入驻团队继续追加的起点，
+ * 后续工作组启动绝不能覆盖已经积累的上下文。安装按文件尽力而为（工作组启动绝不因
+ * 默认文件复制失败而失败），但每次跳过/安装都会报告，使调用方如实记录而不静默处理。
  */
 export interface TopologyDefaultsResult {
   installed: string[];
-  /** Destination existed — the shipped default did not overwrite it. */
+  /** 目标已存在；随产品交付的默认值未覆盖它。 */
   preserved: string[];
-  /** Read/write failures, named (best-effort contract: never throws). */
+  /** 明确记录的读写失败（尽力而为契约：绝不抛错）。 */
   failed: Array<{ path: string; error: string }>;
-  /** True when the spec ships no topology/ folder at all (a normal case). */
+  /** spec 完全未携带 topology/ 文件夹时为 true；这是正常情况。 */
   none: boolean;
 }
 
@@ -50,10 +48,10 @@ const realFsOps: TopologyDefaultsFsOps = {
 };
 
 export function installTopologyDefaults(input: {
-  /** The rig spec's directory (rigRoot) — `topology/` is resolved beneath it. */
+  /** 工作组 spec 的目录（rigRoot）；`topology/` 在其下解析。 */
   specDir: string;
   rigName: string;
-  /** Declared pod namespaces. Their canonical directories exist even when no default file ships. */
+  /** 已声明的 pod 命名空间；即使没有默认文件，其规范目录也会存在。 */
   podIds?: string[];
   topologyRoot: string;
   fsOps?: TopologyDefaultsFsOps;
@@ -70,17 +68,16 @@ export function installTopologyDefaults(input: {
     }
   };
 
-  // S7: these directories are the engine's projection of live topology, not
-  // authored defaults. Create them on every materialization, including specs
-  // with no topology/ source folder at all.
+  // S7：这些目录是引擎对实时拓扑的投影，不是编写的默认值。每次物化都创建它们，
+  // 包括完全没有 topology/ 源文件夹的 spec。
   ensureDir(input.topologyRoot);
   ensureDir(nodePath.join(input.topologyRoot, "rigs", input.rigName));
   for (const podId of input.podIds ?? []) {
     ensureDir(nodePath.join(input.topologyRoot, "rigs", input.rigName, "pods", podId));
   }
 
-  // r2 residual: the total never-throw contract has no first-line exception —
-  // even the root probe failing is a NAMED failure, not a throw and not `none`.
+  // r2 遗留项：整体绝不抛错契约没有首行例外；即使根探测失败，也必须明确记录为失败，
+  // 不能抛错，也不能标为 `none`。
   try {
     if (!ops.isDirectory(topologyDir)) {
       result.none = true;
@@ -106,12 +103,10 @@ export function installTopologyDefaults(input: {
     }
   };
 
-  // r2-B2: the best-effort contract is TOTAL — enumeration failures (listFiles/
-  // listDirs EACCES/EIO) are NAMED failures on the section directory, never a
-  // throw, and one section's denial never starves the others. The original had
-  // the for-headers outside the catch, so a directory-permission failure
-  // escaped AFTER the persistence tx and turned a committed materialize into
-  // materialize_error.
+  // r2-B2：尽力而为契约覆盖全部路径。枚举失败（listFiles/listDirs 的 EACCES/EIO）
+  // 会作为 section 目录上的明确失败记录，绝不抛错；一个 section 被拒绝也不会阻断其他 section。
+  // 原实现把 for 头放在 catch 外，导致目录权限失败在持久化事务之后逸出，
+  // 把已提交的物化变成 materialize_error。
   const section = (dir: string, body: () => void): void => {
     try {
       body();

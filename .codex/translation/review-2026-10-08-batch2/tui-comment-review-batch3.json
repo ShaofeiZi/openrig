@@ -1,0 +1,93 @@
+{
+ "schema": "openrig.tui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:01:25",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "comment-review-batch3",
+ "files": 10,
+ "changed": 8,
+ "reviewed_no_change": 2,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/tui/test/reading-regressions.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "20a1472ec1c94e50ef77a8eb1c528b3ac2bd0278eb2e567683e4e6a9567e5c1e",
+   "after_sha256": "3bcd84b8e35c36d74abb52d5e72d54ed7f6705c39d0c79ee0895d5658826173e",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(a4c9548a/79159e6f)、SGR、命令名(graph/:top)、逻辑ID 保留"
+  },
+  {
+   "path": "packages/tui/test/crash-cart-start-daemon.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "ae3a4870980a4984ec030cc3000e2c9ae476e721e1d83973cfc45eaf936278b3",
+   "after_sha256": "93dfac8c2374ef22b756d9cc6117160a55ae0689f486e65bfa7d203b8dbdd214",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(a4c9548a/79159e6f)、SGR、命令名(graph/:top)、逻辑ID 保留"
+  },
+  {
+   "path": "packages/tui/test/demo-gate.test.ts",
+   "status": "changed",
+   "before_sha256": "0bb02446e45a3aebad0cb2236e8d9deb52262716867fd9b8810cedf958c3a839",
+   "after_sha256": "8d0b81eb44cee57720100e32a05f2eea3452a95ff7b3acfadedc4d84a851f2ef",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(a4c9548a/79159e6f)、SGR、命令名(graph/:top)、逻辑ID 保留"
+  },
+  {
+   "path": "packages/tui/test/refresh.test.ts",
+   "status": "changed",
+   "before_sha256": "60f480ca4a53b716033f5981bbdfe52acab595b259528e653bbde982d4e4b108",
+   "after_sha256": "3d6a42b7e0ef2283e92e03c386392dfe0d054ad47561c9479217f075ebffd6d9",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(a4c9548a/79159e6f)、SGR、命令名(graph/:top)、逻辑ID 保留"
+  },
+  {
+   "path": "packages/tui/test/agent-detail-runtime-name.test.ts",
+   "status": "changed",
+   "before_sha256": "8410d328dafd03f12a710a8c7dc6dc9ce8ca79a506a48d7e03f6e00cb740bea3",
+   "after_sha256": "8537f346a17607c51d8f258fddf9815ea26ea267c08465cdbb3548e5793130c7",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(a4c9548a/79159e6f)、SGR、命令名(graph/:top)、逻辑ID 保留"
+  },
+  {
+   "path": "packages/tui/test/command-context-composition.test.ts",
+   "status": "changed",
+   "before_sha256": "31cdeb5addc0874502fbb87e75dcfb043d452b11d14bbc86a7f033b2876201b3",
+   "after_sha256": "e393039fcd6ec0a01e253baf0aaf83c7ddf6996b53c7083be215a62d940009f4",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(a4c9548a/79159e6f)、SGR、命令名(graph/:top)、逻辑ID 保留"
+  },
+  {
+   "path": "packages/tui/test/graph-command.test.ts",
+   "status": "changed",
+   "before_sha256": "9fd35adc43f8ce2467b37a477ad45358d2548c6ccbf51ac596f5ba2e7b58802d",
+   "after_sha256": "11dcb024f8d8869e4daa945e9e97da5be355f1a2112451345bd2d0ca72f52397",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(a4c9548a/79159e6f)、SGR、命令名(graph/:top)、逻辑ID 保留"
+  },
+  {
+   "path": "packages/tui/test/crash-cart-dispatch.test.ts",
+   "status": "changed",
+   "before_sha256": "e324233ce5b371627df721ad9b39f2241020cd0b60a57817e306b32727fd9e15",
+   "after_sha256": "a488224f01422223c0e81854ecad4f655908260ee5a956b36641619223e08ba7",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(a4c9548a/79159e6f)、SGR、命令名(graph/:top)、逻辑ID 保留"
+  },
+  {
+   "path": "packages/tui/test/scroll-commands.test.ts",
+   "status": "changed",
+   "before_sha256": "429217eaa4708abf9cbc051e8a8fdd83a15402ae26318d20e08c824817a16c88",
+   "after_sha256": "f2a6c0e89af77bc47f577b045de25aefafa6b54183ea46e64735c37d66c70535",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(a4c9548a/79159e6f)、SGR、命令名(graph/:top)、逻辑ID 保留"
+  },
+  {
+   "path": "packages/tui/test/agent-detail-runtime-unknown.test.ts",
+   "status": "changed",
+   "before_sha256": "b3c1d9e98ecc59ab97d7aaca547effa155276ea200dc63f0d1d8be0f8459c0ac",
+   "after_sha256": "c523d00df262e03edbc7c9172b53cfb38fb73b8c10a4b2b56877f324394e92b4",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希(a4c9548a/79159e6f)、SGR、命令名(graph/:top)、逻辑ID 保留"
+  }
+ ]
+}

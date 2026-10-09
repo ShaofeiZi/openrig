@@ -19,9 +19,9 @@ export function isTmuxNoServerMessage(message: string): boolean {
 
 export function buildTmuxControlFailure(message: string): { message: string; reason: string; fix: string } {
   return {
-    message: "tmux installed, but the default control socket is unhealthy.",
-    reason: `OpenRig uses tmux control commands to launch, inspect, and manage agent sessions. The default tmux socket is returning: ${message}`,
-    fix: "Capture any needed state from visible tmux panes, then restart the default tmux server before retrying OpenRig. If this happened after a machine restore, treat it as attention required rather than a healthy running state.",
+    message: "tmux 已安装，但默认控制套接字不健康。",
+    reason: `zrig 使用 tmux 控制命令来启动、查看和管理智能体会话。默认 tmux 套接字当前返回：${message}`,
+    fix: "先从可见的 tmux 窗格中保存好所需状态，再重启默认 tmux 服务后重试 zrig。若这是在机器恢复后出现的，应将其视为“待关注”，而非健康运行状态。",
   };
 }
 

@@ -1,16 +1,15 @@
-// 51-08 A4 — `rig usage`: the CLI face of the ONE telemetry projection
-// (PM decision 4; the daemon's /api/telemetry/usage/* routes). Facts only:
-// tokens/hour, window velocities, honest-unknown rail — thresholds and
-// judgments belong to the consumer (the oversight detector). --json is
-// verbatim route payload for the scripted detector.
+// 51-08 A4 — `rig usage`：唯一遥测投影的 CLI 入口
+// （PM 决策 4；对应后台服务的 /api/telemetry/usage/* 路由）。只摆事实：
+// 每小时 token 数、窗口速率、诚实的未知项护栏——阈值与判断归消费方
+// （监督检测器）。--json 原样输出路由载荷，供脚本化检测器使用。
 import { Command } from "commander";
 import { DaemonClient } from "../client.js";
 import { getDaemonStatus, getDaemonUrl, daemonStatusGuard } from "../daemon-lifecycle.js";
 import { realDeps } from "./daemon.js";
 import type { StatusDeps } from "./status.js";
 
-/** Parse a human duration (`90m`, `1h`, `2d`, bare hours `1.5`) into hours.
- *  Returns null on anything unparseable — the caller renders the teaching error. */
+/** 把人类可读时长（`90m`、`1h`、`2d`、纯小时 `1.5`）解析为小时数。
+ *  无法解析时返回 null——由调用方渲染提示错误。 */
 export function parseWindowToHours(raw: string): number | null {
   const m = /^(\d+(?:\.\d+)?)([mhd])?$/.exec(raw.trim());
   if (!m) return null;
@@ -39,7 +38,7 @@ interface TopPayload {
 
 export function usageCommand(depsOverride?: StatusDeps): Command {
   const cmd = new Command("usage").description(
-    "Per-seat token telemetry over time (series + top-N burn) — facts for the oversight detector",
+    "按席位展示一段时间内的 token 遥测（序列 + top-N 消耗）——供监督检测器使用的事实数据",
   );
   const getDeps = (): StatusDeps =>
     depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
@@ -53,22 +52,22 @@ export function usageCommand(depsOverride?: StatusDeps): Command {
   function handleHttpError(res: { status: number; data: unknown }, label: string): boolean {
     if (res.status < 400) return false;
     const p = (res.data ?? {}) as { error?: unknown };
-    console.error(p.error ?? `${label} failed (HTTP ${res.status})`);
+    console.error(p.error ?? `${label} 失败（HTTP ${res.status}）`);
     process.exitCode = res.status >= 500 ? 2 : 1;
     return true;
   }
 
   cmd
     .command("top")
-    .description("top-N seats by token burn over the window")
-    .option("--window <duration>", "look-back window (90m, 1h, 2d, or bare hours)", "1h")
-    .option("--top <n>", "cap the ranking to N seats")
-    .option("--json", "machine-readable (verbatim route payload)")
+    .description("按窗口内 token 消耗排序的 top-N 席位")
+    .option("--window <duration>", "回看窗口（90m、1h、2d 或纯小时数）", "1h")
+    .option("--top <n>", "排名最多取 N 个席位")
+    .option("--json", "机器可读（原样路由载荷）")
     .action(async (opts: { window: string; top?: string; json?: boolean }) => {
       const hours = parseWindowToHours(opts.window);
       if (hours === null) {
         console.error(
-          `invalid --window "${opts.window}" — accepted forms: 90m, 1h, 2d, or bare hours like 1.5`,
+          `--window "${opts.window}" 无效——可接受的形式：90m、1h、2d，或纯小时数如 1.5`,
         );
         process.exitCode = 1;
         return;
@@ -86,33 +85,33 @@ export function usageCommand(depsOverride?: StatusDeps): Command {
       }
       const body = res.data;
       if (body.ranked.length === 0 && body.unknown.length === 0) {
-        console.log(`no usage samples in the last ${opts.window} — the series is empty`);
+        console.log(`最近 ${opts.window} 没有用量采样——序列为空`);
         return;
       }
-      console.log(`TOP TOKEN BURN — last ${opts.window} (${body.totalRankedSeats} seats ranked)`);
+      console.log(`token 消耗排行——最近 ${opts.window}（已排名 ${body.totalRankedSeats} 个席位）`);
       for (const [i, r] of body.ranked.entries()) {
         const winPart = r.windows
-          .map((w) => `${w.window}: ${w.usedPercentLast ?? "?"}%${w.percentPerHour !== null ? ` (${w.percentPerHour >= 0 ? "+" : ""}${w.percentPerHour.toFixed(1)}%/h)` : ""}`)
+          .map((w) => `${w.window}：${w.usedPercentLast ?? "?"}%${w.percentPerHour !== null ? `（${w.percentPerHour >= 0 ? "+" : ""}${w.percentPerHour.toFixed(1)}%/h）` : ""}`)
           .join("  ");
-        const resetPart = r.resets > 0 ? `  resets:${r.resets}` : "";
+        const resetPart = r.resets > 0 ? `  重置:${r.resets}` : "";
         console.log(
-          `${i + 1}. ${r.seatSession}  ${Math.round(r.tokensPerHour).toLocaleString()} tok/h  (${r.tokensDelta.toLocaleString()} over ${r.spanHours.toFixed(1)}h, ${r.samples} samples)${resetPart}${winPart ? `  ${winPart}` : ""}`,
+          `${i + 1}. ${r.seatSession}  ${Math.round(r.tokensPerHour).toLocaleString()} token/小时（${r.spanHours.toFixed(1)} 小时内 ${r.tokensDelta.toLocaleString()} token，${r.samples} 个样本）${resetPart}${winPart ? `  ${winPart}` : ""}`,
         );
       }
       for (const u of body.unknown) {
-        console.log(`?  ${u.seatSession}  unknown (${u.reason})`); // honest rail — never a 0 row
+        console.log(`?  ${u.seatSession}  未知（${u.reason}）`); // 诚实护栏——绝不渲染成 0 行
       }
     });
 
   cmd
     .command("series")
-    .description("raw per-seat usage samples, oldest first")
-    .option("--seat <session>", "filter to one seat session")
+    .description("每个席位的原始用量采样，按时间从早到晚")
+    .option("--seat <session>", "只看指定席位会话")
     .option("--lane <lane>", "context | provider_window")
-    .option("--since <iso>", "absolute lower bound on captured_at (inclusive)")
-    .option("--until <iso>", "absolute upper bound on captured_at (exclusive)")
-    .option("--limit <n>", "max rows")
-    .option("--json", "machine-readable (verbatim route payload)")
+    .option("--since <iso>", "captured_at 的绝对下界（含）")
+    .option("--until <iso>", "captured_at 的绝对上界（不含）")
+    .option("--limit <n>", "最大行数")
+    .option("--json", "机器可读（原样路由载荷）")
     .action(async (opts: { seat?: string; lane?: string; since?: string; until?: string; limit?: string; json?: boolean }) => {
       const deps = getDeps();
       const client = await getClient(deps);
@@ -134,13 +133,13 @@ export function usageCommand(depsOverride?: StatusDeps): Command {
       }
       const rows = res.data.rows;
       if (rows.length === 0) {
-        console.log("no samples match — the series is empty for this filter");
+        console.log("没有匹配的采样——当前过滤条件下序列为空");
         return;
       }
       for (const r of rows) {
         const lane = r.lane === "provider_window"
           ? `${r.window} ${r.windowUsedPercent ?? "?"}%`
-          : `tokens ${(r.totalInputTokens as number | null) ?? "?"}/${(r.totalOutputTokens as number | null) ?? "?"} used ${(r.usedPercentage as number | null) ?? "?"}%`;
+          : `tokens ${(r.totalInputTokens as number | null) ?? "?"}/${(r.totalOutputTokens as number | null) ?? "?"}，已用 ${(r.usedPercentage as number | null) ?? "?"}%`;
         console.log(`${r.capturedAt}  ${r.seatSession}  [${r.lane}] ${lane}`);
       }
     });

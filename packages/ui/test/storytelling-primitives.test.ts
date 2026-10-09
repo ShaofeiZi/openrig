@@ -1,6 +1,5 @@
-// 0.3.1 slice 06 — pure-logic tests for the storytelling-primitives
-// foundation: kind extraction, fenced-block parsing, kind dispatch
-// table. React rendering tests live alongside in storytelling-*.test.tsx.
+// 0.3.1 slice 06——storytelling-primitives 基础的纯逻辑测试：类型提取、围栏块解析与
+// 类型分发表。React 渲染测试位于同级 storytelling-*.test.tsx。
 
 import { describe, it, expect } from "vitest";
 import {
@@ -104,7 +103,7 @@ describe("parseStatsBlock", () => {
       expect(result.entries[0]!.label).toBe("Slices in 0.3.1");
       expect(result.entries[0]!.value).toBe("10");
       expect(result.entries[0]!.trend).toBe("up");
-      // trend omitted on second entry → undefined
+      // 第二个条目省略 trend，因此为 undefined。
       expect(result.entries[1]!.trend).toBeUndefined();
     }
   });

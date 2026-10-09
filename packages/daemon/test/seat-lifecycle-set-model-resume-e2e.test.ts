@@ -1,18 +1,15 @@
-// S5 fix round 1, r2-F4 (row 30045f39) — proof item 1's REAL-resume leg: after
-// `set-model`, a REAL managed successor (SeatHandoverService + real CodexRuntimeAdapter,
-// real codex TUI) runs the CANONICAL (post-set-model) model, with session lineage
-// preserved. Modeled on seat-handover-model-fidelity-e2e (D15 isolation: per-run -L
-// socket, env minus $TMUX, teardown by session name, never kill-server; skips when
-// tmux/codex/auth absent).
+// S5 修复第 1 轮，r2-F4（行 30045f39）——证明项 1 的真实 resume 分支：`set-model` 后，真实托管
+// 继任者（SeatHandoverService + 真实 CodexRuntimeAdapter + 真实 codex TUI）在保留 session lineage
+// 的情况下运行 canonical（set-model 后）模型。以 seat-handover-model-fidelity-e2e 为蓝本
+//（D15 隔离：每次运行专属 -L socket、env 去掉 $TMUX、按 session 名拆除、绝不 kill-server；
+// tmux/codex/auth 缺失时跳过）。
 //
-// DISCRIMINATOR: the node is CREATED pinned to the runtime default (gpt-5.6-sol) and
-// set-model moves it to a valid NON-default (gpt-5.6-luna). A successor footer showing
-// luna can only arise from the UPDATED nodes.model threading through the real launcher
-// at call time — a reverted or stale read shows sol.
+// 判别项：节点创建时固定到 runtime 默认值（gpt-5.6-sol），set-model 将其切换到有效的非默认值
+//（gpt-5.6-luna）。继任者 footer 显示 luna，只可能来自更新后的 nodes.model 在调用时经真实 launcher
+// 传递；回退或陈旧读取会显示 sol。
 //
-// Evidence-class note (honest): this is an EVIDENCE leg, not a defect fix — the
-// mechanism was already correct, so there is no RED for it; it strengthens proof
-// item 1 from citation+persistence to a driven real resume.
+// 证据等级说明（真实）：这是 EVIDENCE 分支，不是缺陷修复；机制原本正确，所以没有对应 RED。它把
+// 证明项 1 从引用+持久化加强为实际驱动的真实 resume。
 import { describe, it, expect, afterAll } from "vitest";
 import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
@@ -75,7 +72,7 @@ afterAll(async () => {
   for (const s of seats) await tmux(`kill-session -t ${q(s)}`).catch(() => {}); // BY NAME, never kill-server
 });
 
-describe("S5 F4: set-model then a REAL managed successor runs the canonical model (real codex, isolated tmux)", () => {
+describe("S5 F4：set-model 后真实托管继任者运行 canonical 模型（真实 codex、隔离 tmux）", () => {
   it.runIf(preflightOk())(
     "the successor's EFFECTIVE model is the post-set-model canonical pin, and lineage survives",
     async () => {
@@ -98,7 +95,7 @@ describe("S5 F4: set-model then a REAL managed successor runs the canonical mode
       const rigRepo = new RigRepository(db), sessionRegistry = new SessionRegistry(db);
       const discoveryRepo = new DiscoveryRepository(db), eventBus = new EventBus(db);
       const rig = rigRepo.createRig("s5f4-rig");
-      // Created pinned to the DEFAULT — the value a stale read would thread.
+      // 创建时固定到 DEFAULT，即陈旧读取会传递的值。
       const node = rigRepo.addNode(rig.id, "dev.impl", { runtime: "codex", cwd, model: CREATED_MODEL });
       const session = sessionRegistry.registerSession(node.id, SEAT);
       sessionRegistry.updateStatus(session.id, "running");
@@ -107,7 +104,7 @@ describe("S5 F4: set-model then a REAL managed successor runs the canonical mode
 
       const realTmux = new TmuxAdapter(exec);
 
-      // THE VERB UNDER PROOF: set-model AFTER creation, BEFORE the managed successor.
+      // 被证明的动作：创建之后、托管继任者之前执行 set-model。
       const lifecycle = new SeatLifecycleService({ db, rigRepo, sessionRegistry, eventBus, tmuxAdapter: realTmux });
       const setResult = await lifecycle.setModel({
         seatRef: SEAT, model: CANONICAL_MODEL,
@@ -141,7 +138,7 @@ describe("S5 F4: set-model then a REAL managed successor runs the canonical mode
         }
       })();
 
-      // THE REAL MANAGED SUCCESSOR — the launch path reads nodes.model at call time.
+      // 真实托管继任者：launch 路径在调用时读取 nodes.model。
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result: any = await service.handover({ seatRef: SEAT, reason: "F4 real-resume proof", source: "fresh", operator: "dev50-driver@test" });
       await trustApprover.catch(() => {});
@@ -155,19 +152,19 @@ describe("S5 F4: set-model then a REAL managed successor runs the canonical mode
       expect(result.ok, "handover completed (successor became a ready agent)").toBe(true);
       expect(cap, "no invalid-model rejection / fallback in the successor").not.toMatch(/invalid_request_error|model is not|Model metadata for .* not found/);
       expect(footer, "successor rendered an effective-model footer").toBeTruthy();
-      // THE EFFECT (F4): the real successor's EFFECTIVE model is the POST-set-model canonical value...
+      // 效果（F4）：真实继任者的有效模型是 set-model 后的 canonical 值……
       expect(footer, "successor EFFECTIVE model is the post-set-model canonical pin").toContain(CANONICAL_MODEL);
-      // ...not the creation-time value a stale/reverted read would thread.
+      // ……而不是陈旧/回退读取会传递的创建时值。
       expect(footer, "successor did NOT run the creation-time model").not.toContain(CREATED_MODEL);
 
-      // LINEAGE PRESERVED: predecessor session row intact (superseded, not deleted);
-      // the tenure ledger GREW by the handover generation with prior rows untouched.
+      // LINEAGE 保留：前任 session 行完整（superseded 而未删除）；tenure ledger 增加 handover
+      // generation，先前行不受影响。
       const rows = db.prepare("SELECT id, session_name, status FROM sessions WHERE node_id = ? ORDER BY id").all(node.id) as Array<{ id: string; status: string }>;
       expect(rows.length).toBeGreaterThanOrEqual(2);
       expect(rows.some((r) => r.id === session.id)).toBe(true);
       const tenuresAfter = (db.prepare("SELECT COUNT(*) AS c FROM occupant_tenures WHERE node_id = ?").get(node.id) as { c: number }).c;
       expect(tenuresAfter).toBe(tenuresBefore + 1);
-      // The audit event from set-model is durable beside the handover's records.
+      // set-model 的 audit event 与 handover record 一起持久保留。
       const audit = db.prepare("SELECT COUNT(*) AS c FROM events WHERE type='node.model_changed'").get() as { c: number };
       expect(audit.c).toBe(1);
 

@@ -40,34 +40,34 @@ function tableExists(db: ReturnType<typeof createDb>, table: string): boolean {
   return row.cnt > 0;
 }
 
-describe("AgentSpec reboot schema migration (014)", () => {
-  // T1: pods table created with expected columns
-  it("creates pods table with expected columns", () => {
+describe("AgentSpec 重启 schema 迁移（014）", () => {
+  // T1：创建包含预期列的 pods 表
+  it("创建包含预期列的 pods 表", () => {
     const db = freshDb();
     const cols = getColumnNames(db, "pods");
     expect(cols).toEqual(expect.arrayContaining(["id", "rig_id", "label", "summary", "continuity_policy_json", "created_at"]));
   });
 
-  // T2: continuity_state table with composite PK
-  it("creates continuity_state table with expected columns and composite PK", () => {
+  // T2：带复合主键的 continuity_state 表
+  it("创建包含预期列与复合主键的 continuity_state 表", () => {
     const db = freshDb();
     const cols = getColumnNames(db, "continuity_state");
     expect(cols).toEqual(expect.arrayContaining(["pod_id", "node_id", "status", "artifacts_json", "last_sync_at", "updated_at"]));
 
-    // Verify composite PK by inserting a rig, pod, node, and two continuity_state rows with different pod/node combos
+    // 插入装备、工作组、节点及两条工作组/节点组合不同的 continuity_state 行，验证复合主键
     db.prepare("INSERT INTO rigs (id, name) VALUES ('r1', 'test')").run();
     db.prepare("INSERT INTO pods (id, rig_id, label) VALUES ('p1', 'r1', 'Dev')").run();
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id) VALUES ('n1', 'r1', 'impl')").run();
     db.prepare("INSERT INTO continuity_state (pod_id, node_id) VALUES ('p1', 'n1')").run();
 
-    // Duplicate should fail
+    // 重复项应失败
     expect(() => {
       db.prepare("INSERT INTO continuity_state (pod_id, node_id) VALUES ('p1', 'n1')").run();
     }).toThrow();
   });
 
-  // T3: nodes table gains all 7 reboot fields
-  it("nodes table has 7 new reboot fields", () => {
+  // T3：nodes 表增加全部 7 个重启字段
+  it("nodes 表包含 7 个新增重启字段", () => {
     const db = freshDb();
     const cols = getColumnNames(db, "nodes");
     for (const col of ["pod_id", "agent_ref", "profile", "label", "resolved_spec_name", "resolved_spec_version", "resolved_spec_hash"]) {
@@ -75,16 +75,16 @@ describe("AgentSpec reboot schema migration (014)", () => {
     }
   });
 
-  // T4: sessions table gains startup fields
-  it("sessions table has startup_status and startup_completed_at", () => {
+  // T4：sessions 表增加启动字段
+  it("sessions 表包含 startup_status 与 startup_completed_at", () => {
     const db = freshDb();
     const cols = getColumnNames(db, "sessions");
     expect(cols).toContain("startup_status");
     expect(cols).toContain("startup_completed_at");
   });
 
-  // T5: checkpoints gains pod_id, continuity_source, continuity_artifacts_json
-  it("checkpoints table has pod/continuity fields", () => {
+  // T5：checkpoints 增加 pod_id、continuity_source、continuity_artifacts_json
+  it("checkpoints 表包含工作组/连续性字段", () => {
     const db = freshDb();
     const cols = getColumnNames(db, "checkpoints");
     expect(cols).toContain("pod_id");
@@ -92,16 +92,16 @@ describe("AgentSpec reboot schema migration (014)", () => {
     expect(cols).toContain("continuity_artifacts_json");
   });
 
-  // T6: idempotent migration (apply twice)
-  it("migration is idempotent on a fresh database", () => {
+  // T6：迁移幂等（应用两次）
+  it("迁移在全新数据库上幂等", () => {
     const db = createDb();
     migrate(db, allMigrations);
-    // Second apply should be a no-op (already applied)
+    // 第二次应用应不执行操作（已应用）
     expect(() => migrate(db, allMigrations)).not.toThrow();
   });
 
-  // T7: FK insert succeeds for full chain
-  it("FK inserts succeed for pod + node with pod_id + continuity_state + checkpoint with pod_id", () => {
+  // T7：完整链路的外键插入成功
+  it("工作组、带 pod_id 的节点、continuity_state 及带 pod_id 的 checkpoint 外键插入成功", () => {
     const db = freshDb();
     db.prepare("INSERT INTO rigs (id, name) VALUES ('r1', 'test')").run();
     db.prepare("INSERT INTO pods (id, rig_id, label, summary) VALUES ('p1', 'r1', 'Dev', 'dev pod')").run();
@@ -124,30 +124,30 @@ describe("AgentSpec reboot schema migration (014)", () => {
     expect(cp.continuity_source).toBe("pre_shutdown");
   });
 
-  // T8: cascade/SET NULL behavior
-  it("deleting rig cascades to pods; deleting pod sets node.pod_id to NULL", () => {
+  // T8：级联/SET NULL 行为
+  it("删除装备会级联到工作组；删除工作组会将 node.pod_id 设为 NULL", () => {
     const db = freshDb();
     db.prepare("INSERT INTO rigs (id, name) VALUES ('r1', 'test')").run();
     db.prepare("INSERT INTO pods (id, rig_id, label) VALUES ('p1', 'r1', 'Dev')").run();
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id, pod_id) VALUES ('n1', 'r1', 'impl', 'p1')").run();
     db.prepare("INSERT INTO checkpoints (id, node_id, summary, pod_id) VALUES ('c1', 'n1', 'cp', 'p1')").run();
 
-    // Delete pod -> node.pod_id and checkpoint.pod_id become NULL
+    // 删除工作组 -> node.pod_id 与 checkpoint.pod_id 变为 NULL
     db.prepare("DELETE FROM pods WHERE id = 'p1'").run();
     const node = db.prepare("SELECT pod_id FROM nodes WHERE id = 'n1'").get() as { pod_id: string | null };
     expect(node.pod_id).toBeNull();
     const cp = db.prepare("SELECT pod_id FROM checkpoints WHERE id = 'c1'").get() as { pod_id: string | null };
     expect(cp.pod_id).toBeNull();
 
-    // Delete rig -> cascades nodes (which cascades checkpoints)
+    // 删除装备 -> 级联删除节点（进而级联删除 checkpoints）
     db.prepare("INSERT INTO pods (id, rig_id, label) VALUES ('p2', 'r1', 'Arch')").run();
     db.prepare("DELETE FROM rigs WHERE id = 'r1'").run();
     const pods = db.prepare("SELECT count(*) as cnt FROM pods WHERE rig_id = 'r1'").get() as { cnt: number };
     expect(pods.cnt).toBe(0);
   });
 
-  // T9: resolved spec fields round-trip
-  it("resolved spec fields round-trip through the DB", () => {
+  // T9：解析后规范字段往返
+  it("解析后规范字段可经数据库往返", () => {
     const db = freshDb();
     db.prepare("INSERT INTO rigs (id, name) VALUES ('r1', 'test')").run();
     db.prepare(`INSERT INTO nodes (id, rig_id, logical_id, resolved_spec_name, resolved_spec_version, resolved_spec_hash)
@@ -159,20 +159,20 @@ describe("AgentSpec reboot schema migration (014)", () => {
     expect(row.resolved_spec_hash).toBe("sha256:abc123");
   });
 
-  // T10: no session_artifacts table exists
-  it("no session_artifacts table exists after migration", () => {
+  // T10：不存在 session_artifacts 表
+  it("迁移后不存在 session_artifacts 表", () => {
     const db = freshDb();
     expect(tableExists(db, "session_artifacts")).toBe(false);
   });
 
-  // T11: populated DB: all existing sessions get startup_status=ready, new session gets pending
-  it("populated DB: existing sessions backfilled to ready, new sessions default to pending", () => {
+  // T11：已有数据的数据库：所有现有会话回填 startup_status=ready，新会话为 pending
+  it("已有数据的数据库：现有会话回填为 ready，新会话默认为 pending", () => {
     const db = createDb();
-    // Apply pre-reboot migrations
+    // 应用重启前迁移
     const preMigrations = allMigrations.slice(0, -1); // all except 014
     migrate(db, preMigrations);
 
-    // Create rig + node + sessions with various statuses
+    // 创建装备、节点及不同状态的会话
     db.prepare("INSERT INTO rigs (id, name) VALUES ('r1', 'test')").run();
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id) VALUES ('n1', 'r1', 'impl')").run();
     db.prepare("INSERT INTO sessions (id, node_id, session_name, status) VALUES ('s-running', 'n1', 'r01-run', 'running')").run();
@@ -181,23 +181,23 @@ describe("AgentSpec reboot schema migration (014)", () => {
     db.prepare("INSERT INTO sessions (id, node_id, session_name, status) VALUES ('s-exited', 'n1', 'r01-exit', 'exited')").run();
     db.prepare("INSERT INTO sessions (id, node_id, session_name, status) VALUES ('s-detach', 'n1', 'r01-det', 'detached')").run();
 
-    // Now apply 014
+    // 现在应用 014
     migrate(db, [agentspecRebootSchema]);
 
-    // All existing sessions should be ready
+    // 所有现有会话都应为 ready
     const rows = db.prepare("SELECT id, startup_status FROM sessions ORDER BY id").all() as { id: string; startup_status: string }[];
     for (const row of rows) {
       expect(row.startup_status).toBe("ready");
     }
 
-    // New session inserted post-migration should default to pending
+    // 迁移后插入的新会话应默认为 pending
     db.prepare("INSERT INTO sessions (id, node_id, session_name, status) VALUES ('s-new', 'n1', 'r01-new', 'running')").run();
     const newRow = db.prepare("SELECT startup_status FROM sessions WHERE id = 's-new'").get() as { startup_status: string };
     expect(newRow.startup_status).toBe("pending");
   });
 
-  // T11b: claimed sessions get startup_status=ready via registerClaimedSession()
-  it("registerClaimedSession sets startup_status=ready", () => {
+  // T11b：已认领会话通过 registerClaimedSession() 获得 startup_status=ready
+  it("registerClaimedSession 设置 startup_status=ready", () => {
     const db = freshDb();
     db.prepare("INSERT INTO rigs (id, name) VALUES ('r1', 'test')").run();
     db.prepare("INSERT INTO nodes (id, rig_id, logical_id) VALUES ('n1', 'r1', 'impl')").run();

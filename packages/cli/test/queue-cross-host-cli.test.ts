@@ -1,15 +1,14 @@
-// OPR.0.4.6.MH3 C3 — the CLI edge of cross-host queue routing (D-2/D-3).
-// Pins:
-//   - resolveQueueHostDestination: human-seat classifier FIRST; <2 `@` =
-//     passthrough; >=2 `@` = split on the LAST `@`, trailing segment stripped
-//     into hostId (unconditional — queue destinations are canonical-only, so
-//     a typo dies loud as an unknown HOST, not a rig-shaped error);
-//     --host + a DIFFERENT qualifier = structured ambiguity error;
-//     empty trailing segment = structured error;
-//   - the 3-part string NEVER leaves the CLI edge: the request body carries
-//     the 2-part destination + the out-of-band hostId envelope (BR-1);
-//   - D-2 explicit-only: no persisted-selection lookup anywhere on this path
-//     (the resolver is pure; the commands add no selection fallback);
+// OPR.0.4.6.MH3 C3——跨主机 queue 路由的 CLI 边缘（D-2/D-3）。
+// 锁定：
+//   - resolveQueueHostDestination：先做人 seat 分类；<2 个 `@` =
+//     直通；>=2 个 `@` = 在最后一个 `@` 处切分，末段剥离为 hostId
+//     （无条件——queue 目的地仅 canonical，故拼写错误响亮地以未知 HOST
+//     报错，而非 rig 形态错误）；--host + 不同限定词 = 结构化歧义错误；
+//     空末段 = 结构化错误；
+//   - 三段串绝不离开 CLI 边缘：请求体携带两段 destination +
+//     带外 hostId 信封（BR-1）；
+//   - D-2 仅显式：此路径上任何位置都不做持久化选择查找
+//     （resolver 是纯函数；命令不添加选择回退）；
 //   - local invocations post byte-identical bodies (no hostId key at all).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";

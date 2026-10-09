@@ -9,7 +9,7 @@ import { watchdogHistorySchema } from "../src/db/migrations/032_watchdog_history
 import { WatchdogJobsRepository } from "../src/domain/watchdog-jobs-repository.js";
 import { WatchdogHistoryLog } from "../src/domain/watchdog-history-log.js";
 
-describe("WatchdogHistoryLog (PL-004 Phase C; append-only audit)", () => {
+describe("WatchdogHistoryLog（PL-004 Phase C；仅追加审计）", () => {
   let db: Database.Database;
   let jobsRepo: WatchdogJobsRepository;
   let log: WatchdogHistoryLog;
@@ -31,7 +31,7 @@ describe("WatchdogHistoryLog (PL-004 Phase C; append-only audit)", () => {
 
   afterEach(() => db.close());
 
-  it("record(sent) persists delivery target/status/message + ULID id", () => {
+  it("记录 sent 时持久化交付目标、状态、消息和 ULID id", () => {
     const e = log.record({
       jobId,
       evaluatedAt: "2026-05-03T07:00:00.000Z",
@@ -47,7 +47,7 @@ describe("WatchdogHistoryLog (PL-004 Phase C; append-only audit)", () => {
     expect(e.deliveryMessage).toBe("hello");
   });
 
-  it("record(skipped) persists reason + null delivery fields", () => {
+  it("记录 skipped 时持久化原因和 null 交付字段", () => {
     const e = log.record({
       jobId,
       evaluatedAt: "2026-05-03T07:00:00.000Z",
@@ -59,7 +59,7 @@ describe("WatchdogHistoryLog (PL-004 Phase C; append-only audit)", () => {
     expect(e.deliveryTargetSession).toBeNull();
   });
 
-  it("record(terminal) persists reason", () => {
+  it("记录 terminal 时持久化原因", () => {
     const e = log.record({
       jobId,
       evaluatedAt: "2026-05-03T07:00:00.000Z",
@@ -70,7 +70,7 @@ describe("WatchdogHistoryLog (PL-004 Phase C; append-only audit)", () => {
     expect(e.skipReason).toBe("policy_done");
   });
 
-  it("record JSON-encodes evaluation_notes and decodes on read", () => {
+  it("记录时将 evaluation_notes 编码为 JSON，读取时再解码", () => {
     log.record({
       jobId,
       evaluatedAt: "2026-05-03T07:00:00.000Z",
@@ -84,7 +84,7 @@ describe("WatchdogHistoryLog (PL-004 Phase C; append-only audit)", () => {
     expect(list[0]?.evaluationNotes).toEqual({ artifact_count: 7, label: "foo" });
   });
 
-  it("listForJob returns DESC by evaluated_at", () => {
+  it("listForJob 按 evaluated_at 降序返回", () => {
     log.record({ jobId, evaluatedAt: "2026-05-03T07:00:00.000Z", outcome: "sent", deliveryTargetSession: "a@rig", deliveryStatus: "ok", deliveryMessage: "first" });
     log.record({ jobId, evaluatedAt: "2026-05-03T07:01:00.000Z", outcome: "sent", deliveryTargetSession: "a@rig", deliveryStatus: "ok", deliveryMessage: "second" });
     const list = log.listForJob(jobId);
@@ -92,14 +92,14 @@ describe("WatchdogHistoryLog (PL-004 Phase C; append-only audit)", () => {
     expect(list[1]?.deliveryMessage).toBe("first");
   });
 
-  it("countForJob returns the number of recorded entries", () => {
+  it("countForJob 返回已记录条目数", () => {
     expect(log.countForJob(jobId)).toBe(0);
     log.record({ jobId, evaluatedAt: "2026-05-03T07:00:00.000Z", outcome: "skipped", skipReason: "x" });
     log.record({ jobId, evaluatedAt: "2026-05-03T07:00:00.000Z", outcome: "skipped", skipReason: "x" });
     expect(log.countForJob(jobId)).toBe(2);
   });
 
-  it("FK violation: record() against unknown job_id throws SQLite FK error", () => {
+  it("外键违规：对未知 job_id 调用 record() 会抛出 SQLite 外键错误", () => {
     expect(() =>
       log.record({
         jobId: "unknown-job-id",
@@ -110,7 +110,7 @@ describe("WatchdogHistoryLog (PL-004 Phase C; append-only audit)", () => {
     ).toThrow();
   });
 
-  it("API surface does NOT expose update or delete (append-only contract)", () => {
+  it("API 表面不暴露 update 或 delete（仅追加契约）", () => {
     const proto = Object.getPrototypeOf(log) as Record<string, unknown>;
     const names = Object.getOwnPropertyNames(proto);
     expect(names).not.toContain("update");

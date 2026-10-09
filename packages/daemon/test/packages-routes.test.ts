@@ -73,7 +73,7 @@ exports:
       merge_strategy: managed_block
 `.trim();
 
-describe("Package API routes", () => {
+describe("Package API 路由", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
   let app: ReturnType<typeof createTestApp>["app"];
@@ -111,8 +111,8 @@ describe("Package API routes", () => {
     }
   }
 
-  // --- Test 1: POST /validate valid manifest → 200 ---
-  it("POST /api/packages/validate valid manifest → 200 with manifest summary", async () => {
+  // --- 测试 1：POST /validate 有效 manifest → 200 ---
+  it("POST /api/packages/validate 有效 manifest → 200，并返回 manifest 摘要", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, {
       "skills/helper/SKILL.md": SKILL_CONTENT,
     });
@@ -133,8 +133,8 @@ describe("Package API routes", () => {
     expect(body.manifest.exportCounts.skills).toBe(1);
   });
 
-  // --- Test 2: POST /validate invalid manifest → 400 with errors[] ---
-  it("POST /api/packages/validate invalid manifest → 400 with errors array", async () => {
+  // --- 测试 2：POST /validate 无效 manifest → 400，并返回 errors[] ---
+  it("POST /api/packages/validate 无效 manifest → 400，并返回 errors 数组", async () => {
     writePkg(pkgDir, "schema_version: 1\n# missing name, version, etc.");
 
     const res = await app.request("/api/packages/validate", {
@@ -148,12 +148,12 @@ describe("Package API routes", () => {
     expect(body.valid).toBe(false);
     expect(Array.isArray(body.errors)).toBe(true);
     expect(body.errors.length).toBeGreaterThan(0);
-    // No singular "error" field for validation failures
+    // validation failure 不使用单数 "error" 字段。
     expect(body.error).toBeUndefined();
   });
 
-  // --- Test 3: POST /validate missing package.yaml → 400 with error string ---
-  it("POST /api/packages/validate missing package.yaml → 400 with error string", async () => {
+  // --- 测试 3：POST /validate 缺少 package.yaml → 400，并返回 error 字符串 ---
+  it("POST /api/packages/validate 缺少 package.yaml → 400，并返回 error 字符串", async () => {
     const emptyDir = path.join(tmpDir, "empty");
     fs.mkdirSync(emptyDir, { recursive: true });
 
@@ -167,12 +167,12 @@ describe("Package API routes", () => {
     const body = await res.json();
     expect(body.valid).toBe(false);
     expect(typeof body.error).toBe("string");
-    // No errors array for resolution failures
+    // resolution failure 不使用 errors 数组。
     expect(body.errors).toBeUndefined();
   });
 
-  // --- Test 4: POST /plan → 200 with classified entries ---
-  it("POST /api/packages/plan → 200 with classified entries", async () => {
+  // --- 测试 4：POST /plan → 200，并返回已分类 entry ---
+  it("POST /api/packages/plan → 200，并返回已分类 entry", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, {
       "skills/helper/SKILL.md": SKILL_CONTENT,
     });
@@ -199,8 +199,8 @@ describe("Package API routes", () => {
     expect(typeof body.noOps).toBe("number");
   });
 
-  // --- Test 5: POST /install clean repo → 201 with applied + verification ---
-  it("POST /api/packages/install clean repo → 201 with install result", async () => {
+  // --- 测试 5：POST /install 干净 repo → 201，并返回 applied + verification ---
+  it("POST /api/packages/install 干净 repo → 201，并返回 install 结果", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, {
       "skills/helper/SKILL.md": SKILL_CONTENT,
     });
@@ -225,19 +225,19 @@ describe("Package API routes", () => {
     expect(body.verification).toBeTruthy();
     expect(body.verification.passed).toBe(true);
 
-    // Verify file was actually written
+    // 验证文件确实已写入。
     const skillPath = path.join(targetDir, ".claude", "skills", "helper", "SKILL.md");
     expect(fs.existsSync(skillPath)).toBe(true);
     expect(fs.readFileSync(skillPath, "utf-8")).toBe(SKILL_CONTENT);
   });
 
-  // --- Test 6: POST /install with conflicts → 409 ---
-  it("POST /api/packages/install with conflicts → 409 conflict_blocked", async () => {
+  // --- 测试 6：POST /install 存在 conflict → 409 ---
+  it("POST /api/packages/install 存在 conflict → 409 conflict_blocked", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, {
       "skills/helper/SKILL.md": SKILL_CONTENT,
     });
 
-    // Pre-create conflicting skill with different content
+    // 预先创建内容不同且发生冲突的 skill。
     const conflictPath = path.join(targetDir, ".claude", "skills", "helper", "SKILL.md");
     fs.mkdirSync(path.dirname(conflictPath), { recursive: true });
     fs.writeFileSync(conflictPath, "# Different content");
@@ -259,13 +259,13 @@ describe("Package API routes", () => {
     expect(body.conflicts.length).toBeGreaterThan(0);
   });
 
-  // --- Test 7: POST /install with allowMerge → 201 merged guidance ---
-  it("POST /api/packages/install with allowMerge → 201 merged guidance", async () => {
+  // --- 测试 7：POST /install 使用 allowMerge → 201 merged guidance ---
+  it("POST /api/packages/install 使用 allowMerge → 201 merged guidance", async () => {
     writePkg(pkgDir, GUIDANCE_MANIFEST_YAML, {
       "guidance/rules.md": "Follow these rules.",
     });
 
-    // Pre-create CLAUDE.md so guidance is classified as managed_merge
+    // 预先创建 CLAUDE.md，使 guidance 分类为 managed_merge。
     fs.writeFileSync(path.join(targetDir, "CLAUDE.md"), "# Existing content\n");
 
     const res = await app.request("/api/packages/install", {
@@ -283,24 +283,24 @@ describe("Package API routes", () => {
     const body = await res.json();
     expect(body.applied.length).toBeGreaterThan(0);
 
-    // Verify managed block was inserted
+    // 验证 managed block 已插入。
     const claudeMd = fs.readFileSync(path.join(targetDir, "CLAUDE.md"), "utf-8");
     expect(claudeMd).toContain("<!-- BEGIN OpenRig MANAGED BLOCK: guidance-pkg -->");
     expect(claudeMd).toContain("<!-- END OpenRig MANAGED BLOCK: guidance-pkg -->");
     expect(claudeMd).toContain("# Existing content");
   });
 
-  // --- Test 8: POST /install mixed policy: skills approved, guidance rejected ---
-  it("POST /api/packages/install mixed policy → 201 with applied + policyRejected", async () => {
+  // --- 测试 8：POST /install 混合 policy：skill 获批，guidance 被拒绝 ---
+  it("POST /api/packages/install 混合 policy → 201，并返回 applied + policyRejected", async () => {
     writePkg(pkgDir, MIXED_MANIFEST_YAML, {
       "skills/tool/SKILL.md": "# Tool skill",
       "guidance/rules.md": "Follow these rules.",
     });
 
-    // Pre-create CLAUDE.md so guidance is classified as managed_merge
+    // 预先创建 CLAUDE.md，使 guidance 分类为 managed_merge。
     fs.writeFileSync(path.join(targetDir, "CLAUDE.md"), "# Existing\n");
 
-    // Do NOT set allowMerge — skills are safe_projection (approved), guidance is managed_merge (rejected)
+    // 不设置 allowMerge——skill 属于 safe_projection（获批），guidance 属于 managed_merge（被拒绝）。
     const res = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -313,22 +313,22 @@ describe("Package API routes", () => {
 
     expect(res.status).toBe(201);
     const body = await res.json();
-    // Skills were applied
+    // skill 已应用。
     expect(body.applied.length).toBeGreaterThan(0);
     expect(body.applied.some((e: { exportType: string }) => e.exportType === "skill")).toBe(true);
-    // Guidance was rejected by policy
+    // guidance 被 policy 拒绝。
     expect(Array.isArray(body.policyRejected)).toBe(true);
     expect(body.policyRejected.length).toBeGreaterThan(0);
     expect(body.policyRejected.some((r: { entry: { exportType: string } }) => r.entry.exportType === "guidance")).toBe(true);
   });
 
-  // --- Test 9: POST /install guidance-only without allowMerge → 422 ---
-  it("POST /api/packages/install guidance-only without allowMerge → 422 policy_rejected", async () => {
+  // --- 测试 9：POST /install 只有 guidance 且无 allowMerge → 422 ---
+  it("POST /api/packages/install 只有 guidance 且无 allowMerge → 422 policy_rejected", async () => {
     writePkg(pkgDir, GUIDANCE_MANIFEST_YAML, {
       "guidance/rules.md": "Follow these rules.",
     });
 
-    // Pre-create CLAUDE.md so guidance is classified as managed_merge
+    // 预先创建 CLAUDE.md，使 guidance 分类为 managed_merge。
     fs.writeFileSync(path.join(targetDir, "CLAUDE.md"), "# Existing\n");
 
     const res = await app.request("/api/packages/install", {
@@ -338,7 +338,7 @@ describe("Package API routes", () => {
         sourceRef: pkgDir,
         targetRoot: targetDir,
         runtime: "claude-code",
-        // allowMerge NOT set
+        // 未设置 allowMerge。
       }),
     });
 
@@ -349,13 +349,13 @@ describe("Package API routes", () => {
     expect(body.rejected.length).toBeGreaterThan(0);
   });
 
-  // --- Test 10: POST /rollback → 200 ---
-  it("POST /api/packages/:installId/rollback → 200 rollback result", async () => {
+  // --- 测试 10：POST /rollback → 200 ---
+  it("POST /api/packages/:installId/rollback → 200 rollback 结果", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, {
       "skills/helper/SKILL.md": SKILL_CONTENT,
     });
 
-    // First install
+    // 首次 install。
     const installRes = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -363,7 +363,7 @@ describe("Package API routes", () => {
     });
     const { installId } = await installRes.json();
 
-    // Now rollback
+    // 现在 rollback。
     const res = await app.request(`/api/packages/${installId}/rollback`, {
       method: "POST",
     });
@@ -374,24 +374,24 @@ describe("Package API routes", () => {
     expect(Array.isArray(body.restored)).toBe(true);
     expect(Array.isArray(body.deleted)).toBe(true);
 
-    // Skill file should be gone (was new, no backup → deleted)
+    // skill 文件应已消失（它是新文件，无 backup → 删除）。
     const skillPath = path.join(targetDir, ".claude", "skills", "helper", "SKILL.md");
     expect(fs.existsSync(skillPath)).toBe(false);
   });
 
-  // --- Test 11: POST /rollback not found → 404 ---
-  it("POST /api/packages/:installId/rollback not found → 404", async () => {
+  // --- 测试 11：POST /rollback 未找到 → 404 ---
+  it("POST /api/packages/:installId/rollback 未找到 → 404", async () => {
     const res = await app.request("/api/packages/nonexistent-id/rollback", {
       method: "POST",
     });
 
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toBe("Install not found");
+    expect(body.error).toBe("未找到安装记录");
   });
 
-  // --- Test 12: GET /packages → 200 list ---
-  it("GET /api/packages → 200 package list", async () => {
+  // --- 测试 12：GET /packages → 200 列表 ---
+  it("GET /api/packages → 200 package 列表", async () => {
     const res = await app.request("/api/packages");
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -399,13 +399,13 @@ describe("Package API routes", () => {
     expect(body.length).toBe(0);
   });
 
-  // --- Test 13: GET /:packageId/installs → 200 list ---
-  it("GET /api/packages/:packageId/installs → 200 install list", async () => {
+  // --- 测试 13：GET /:packageId/installs → 200 列表 ---
+  it("GET /api/packages/:packageId/installs → 200 install 列表", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, {
       "skills/helper/SKILL.md": SKILL_CONTENT,
     });
 
-    // Install first
+    // 先 install。
     const installRes = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -420,8 +420,8 @@ describe("Package API routes", () => {
     expect(body.length).toBe(1);
   });
 
-  // --- Test 14: GET /installs/:installId/journal → 200 entries ---
-  it("GET /api/packages/installs/:installId/journal → 200 journal entries", async () => {
+  // --- 测试 14：GET /installs/:installId/journal → 200 entry ---
+  it("GET /api/packages/installs/:installId/journal → 200 journal 条目", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, {
       "skills/helper/SKILL.md": SKILL_CONTENT,
     });
@@ -440,21 +440,21 @@ describe("Package API routes", () => {
     expect(body.length).toBeGreaterThan(0);
   });
 
-  // --- Test 15: GET /installs/:installId/journal not found → 404 ---
-  it("GET /api/packages/installs/:installId/journal not found → 404", async () => {
+  // --- 测试 15：GET /installs/:installId/journal 未找到 → 404 ---
+  it("GET /api/packages/installs/:installId/journal 未找到 → 404", async () => {
     const res = await app.request("/api/packages/installs/nonexistent/journal");
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toBe("Install not found");
+    expect(body.error).toBe("未找到安装记录");
   });
 
-  // --- Test 16: Dedup — install same name+version twice → 1 package, 2 installs ---
-  it("install same package twice → 1 package row, 2 install rows", async () => {
+  // --- 测试 16：去重——install 相同 name+version 两次 → 1 个 package、2 个 install ---
+  it("install 相同 package 两次 → 1 个 package row、2 个 install row", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, {
       "skills/helper/SKILL.md": SKILL_CONTENT,
     });
 
-    // First install
+    // 第一次 install。
     const res1 = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -464,10 +464,10 @@ describe("Package API routes", () => {
     const body1 = await res1.json();
     const packageId = body1.packageId;
 
-    // Rollback first install so target is clean for second
+    // rollback 第一次 install，使第二次的 target 保持干净。
     await app.request(`/api/packages/${body1.installId}/rollback`, { method: "POST" });
 
-    // Second install — same package
+    // 第二次 install——相同 package。
     const res2 = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -476,22 +476,22 @@ describe("Package API routes", () => {
     expect(res2.status).toBe(201);
     const body2 = await res2.json();
 
-    // Same package ID reused
+    // 复用相同 package ID。
     expect(body2.packageId).toBe(packageId);
 
-    // GET /packages → 1 package
+    // GET /packages → 1 个 package。
     const pkgRes = await app.request("/api/packages");
     const pkgs = await pkgRes.json();
     expect(pkgs.length).toBe(1);
 
-    // GET /:packageId/installs → 2 installs
+    // GET /:packageId/installs → 2 个 install。
     const installsRes = await app.request(`/api/packages/${packageId}/installs`);
     const installs = await installsRes.json();
     expect(installs.length).toBe(2);
   });
 
-  // --- Test 17: POST /plan with invalid manifest → 400 with errors[] ---
-  it("POST /api/packages/plan invalid manifest → 400 with errors array", async () => {
+  // --- 测试 17：POST /plan 使用无效 manifest → 400，并返回 errors[] ---
+  it("POST /api/packages/plan 使用无效 manifest → 400，并返回 errors 数组", async () => {
     writePkg(pkgDir, "schema_version: 1\n# missing name, version, etc.");
 
     const res = await app.request("/api/packages/plan", {
@@ -507,8 +507,8 @@ describe("Package API routes", () => {
     expect(body.errors.length).toBeGreaterThan(0);
   });
 
-  // --- Test 18: POST /install with invalid manifest → 400 with errors[] ---
-  it("POST /api/packages/install invalid manifest → 400 with errors array", async () => {
+  // --- 测试 18：POST /install 使用无效 manifest → 400，并返回 errors[] ---
+  it("POST /api/packages/install 使用无效 manifest → 400，并返回 errors 数组", async () => {
     writePkg(pkgDir, "schema_version: 1\n# missing name, version, etc.");
 
     const res = await app.request("/api/packages/install", {
@@ -524,13 +524,13 @@ describe("Package API routes", () => {
     expect(body.errors.length).toBeGreaterThan(0);
   });
 
-  // --- Test 19: POST /install verification failure → 500 verification_failed ---
-  it("POST /api/packages/install verification failure → 500 verification_failed", async () => {
+  // --- 测试 19：POST /install verification 失败 → 500 verification_failed ---
+  it("POST /api/packages/install verification 失败 → 500 verification_failed", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, {
       "skills/helper/SKILL.md": SKILL_CONTENT,
     });
 
-    // Spy on verifier to force a failure
+    // spy verifier 以强制失败。
     vi.spyOn(setup.installVerifier, "verify").mockReturnValueOnce({
       passed: false,
       installId: "will-be-overridden",
@@ -547,7 +547,7 @@ describe("Package API routes", () => {
     expect(res.status).toBe(500);
     const body = await res.json();
     expect(body.code).toBe("verification_failed");
-    expect(body.error).toBe("Post-apply verification failed");
+    expect(body.error).toBe("应用后校验失败");
     expect(typeof body.installId).toBe("string");
     expect(body.verification).toBeTruthy();
     expect(body.verification.passed).toBe(false);
@@ -555,13 +555,13 @@ describe("Package API routes", () => {
     vi.restoreAllMocks();
   });
 
-  // === PUX-T02: Summary endpoint ===
+  // === PUX-T02：Summary endpoint ===
 
-  // --- Test: GET /api/packages/summary returns install count + latest status ---
-  it("GET /api/packages/summary returns packages with installCount and latestInstallStatus", async () => {
+  // --- 测试：GET /api/packages/summary 返回 install count 与最新 status ---
+  it("GET /api/packages/summary 返回包含 installCount 与 latestInstallStatus 的 package", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
-    // Install a package
+    // install 一个 package。
     const installRes = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -579,11 +579,11 @@ describe("Package API routes", () => {
     expect(body[0].latestInstallStatus).toBe("applied");
   });
 
-  // --- Test: GET /api/packages/summary latestInstallStatus follows actual latest install ---
-  it("GET /api/packages/summary latestInstallStatus reflects latest install deterministically", async () => {
+  // --- 测试：GET /api/packages/summary 的 latestInstallStatus 遵循实际最新 install ---
+  it("GET /api/packages/summary 的 latestInstallStatus 确定性反映最新 install", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
-    // First install — succeeds (applied)
+    // 第一次 install——成功（applied）。
     const res1 = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -592,10 +592,10 @@ describe("Package API routes", () => {
     expect(res1.status).toBe(201);
     const { installId } = await res1.json();
 
-    // Rollback first install (status -> rolled_back)
+    // rollback 第一次 install（status -> rolled_back）。
     await app.request(`/api/packages/${installId}/rollback`, { method: "POST" });
 
-    // Second install — succeeds (applied)
+    // 第二次 install——成功（applied）。
     const res2 = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -603,7 +603,7 @@ describe("Package API routes", () => {
     });
     expect(res2.status).toBe(201);
 
-    // Summary should show 2 installs and latest status = applied (not rolled_back)
+    // summary 应显示 2 个 install，且最新 status = applied（不是 rolled_back）。
     const summaryRes = await app.request("/api/packages/summary");
     const summary = await summaryRes.json();
     expect(summary.length).toBe(1);
@@ -611,10 +611,10 @@ describe("Package API routes", () => {
     expect(summary[0].latestInstallStatus).toBe("applied");
   });
 
-  // === PUX-T03: Widened API endpoint tests ===
+  // === PUX-T03：扩展的 API endpoint 测试 ===
 
-  // --- Test: POST /validate returns roles + requirements ---
-  it("POST /api/packages/validate returns roles and requirements", async () => {
+  // --- 测试：POST /validate 返回 roles + requirements ---
+  it("POST /api/packages/validate 返回 roles 与 requirements", async () => {
     const richManifest = `
 schema_version: 1
 name: rich-pkg
@@ -656,13 +656,13 @@ requirements:
     const body = await res.json();
     expect(body.valid).toBe(true);
 
-    // Roles
+    // 角色。
     expect(Array.isArray(body.manifest.roles)).toBe(true);
     expect(body.manifest.roles.length).toBe(1);
     expect(body.manifest.roles[0].name).toBe("dev");
     expect(body.manifest.roles[0].description).toBe("Developer role");
 
-    // Requirements
+    // 要求。
     expect(Array.isArray(body.manifest.requirements.cliTools)).toBe(true);
     expect(body.manifest.requirements.cliTools.length).toBe(1);
     expect(body.manifest.requirements.cliTools[0].name).toBe("jq");
@@ -672,16 +672,16 @@ requirements:
     expect(body.manifest.requirements.systemPackages[0].name).toBe("git");
   });
 
-  // --- Test: POST /plan with allowMerge returns policy-annotated entries ---
-  it("POST /api/packages/plan with allowMerge returns policy-annotated entries", async () => {
+  // --- 测试：POST /plan 使用 allowMerge 返回带 policy annotation 的 entry ---
+  it("POST /api/packages/plan 使用 allowMerge 返回带 policy annotation 的 entry", async () => {
     writePkg(pkgDir, GUIDANCE_MANIFEST_YAML, {
       "guidance/rules.md": "Follow these rules.",
     });
 
-    // Pre-create CLAUDE.md so guidance is classified as managed_merge
+    // 预先创建 CLAUDE.md，使 guidance 分类为 managed_merge。
     fs.writeFileSync(path.join(targetDir, "CLAUDE.md"), "# Existing content\n");
 
-    // Without allowMerge — guidance should be rejected
+    // 不使用 allowMerge——guidance 应被拒绝。
     const resRejected = await app.request("/api/packages/plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -702,7 +702,7 @@ requirements:
     expect(rejectedEntry.policyStatus).toBe("rejected");
     expect(bodyRejected.rejected).toBeGreaterThan(0);
 
-    // With allowMerge — guidance should be approved
+    // 使用 allowMerge——guidance 应获批。
     const resApproved = await app.request("/api/packages/plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -724,13 +724,13 @@ requirements:
     expect(bodyApproved.actionable).toBeGreaterThan(0);
   });
 
-  // === PUX-T04: Package detail + install history ===
+  // === PUX-T04：Package detail + install history ===
 
-  // --- Test: GET /api/packages/:packageId returns package or 404 ---
-  it("GET /api/packages/:packageId returns package or 404", async () => {
+  // --- 测试：GET /api/packages/:packageId 返回 package 或 404 ---
+  it("GET /api/packages/:packageId 返回 package 或 404", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
-    // Install a package to create the package record
+    // install package 以创建 package record。
     const installRes = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -739,23 +739,23 @@ requirements:
     expect(installRes.status).toBe(201);
     const { packageId } = await installRes.json();
 
-    // GET existing package → 200
+    // GET 已有 package → 200。
     const res = await app.request(`/api/packages/${packageId}`);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.name).toBe("test-pkg");
     expect(body.version).toBe("1.0.0");
 
-    // GET nonexistent package → 404
+    // GET 不存在 package → 404。
     const res404 = await app.request("/api/packages/nonexistent");
     expect(res404.status).toBe(404);
   });
 
-  // --- Test: GET /api/packages/:packageId/installs returns InstallSummary with appliedCount and deferredCount ---
-  it("GET /api/packages/:packageId/installs returns InstallSummary with appliedCount and deferredCount", async () => {
+  // --- 测试：GET /api/packages/:packageId/installs 返回带 appliedCount 与 deferredCount 的 InstallSummary ---
+  it("GET /api/packages/:packageId/installs 返回带 appliedCount 与 deferredCount 的 InstallSummary", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
-    // Install a package
+    // install 一个 package。
     const installRes = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -764,26 +764,26 @@ requirements:
     expect(installRes.status).toBe(201);
     const { packageId } = await installRes.json();
 
-    // GET installs for this package → 200 array
+    // GET 此 package 的 install → 200 数组。
     const res = await app.request(`/api/packages/${packageId}/installs`);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
     expect(body.length).toBe(1);
 
-    // Assert appliedCount is a number > 0
+    // 断言 appliedCount 是大于 0 的数字。
     expect(typeof body[0].appliedCount).toBe("number");
     expect(body[0].appliedCount).toBeGreaterThan(0);
 
-    // Assert deferredCount === null (explicitly)
+    // 显式断言 deferredCount === null。
     expect(body[0].deferredCount).toBe(null);
   });
 
-  // --- Test: install history orders same-second installs deterministically ---
-  it("GET /api/packages/:packageId/installs orders same-second installs by rowid DESC", async () => {
+  // --- 测试：install history 确定性排序同一秒内的 install ---
+  it("GET /api/packages/:packageId/installs 按 rowid DESC 排序同一秒的 install", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
-    // First install
+    // 第一次 install。
     const res1 = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -792,10 +792,10 @@ requirements:
     expect(res1.status).toBe(201);
     const { installId: id1, packageId } = await res1.json();
 
-    // Rollback so target is clean for second install
+    // rollback，使第二次 install 的 target 保持干净。
     await app.request(`/api/packages/${id1}/rollback`, { method: "POST" });
 
-    // Second install — same second (in-memory DB, both get same datetime('now'))
+    // 第二次 install——同一秒（内存 DB 中二者获得相同 datetime('now')）。
     const res2 = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -804,7 +804,7 @@ requirements:
     expect(res2.status).toBe(201);
     const { installId: id2 } = await res2.json();
 
-    // Newest first (id2 before id1)
+    // 最新项在前（id2 先于 id1）。
     const listRes = await app.request(`/api/packages/${packageId}/installs`);
     const installs = await listRes.json();
     expect(installs.length).toBe(2);
@@ -812,14 +812,14 @@ requirements:
     expect(installs[1].id).toBe(id1);
   });
 
-  // === PUX-T00: Event emission tests ===
+  // === PUX-T00：Event 发出测试 ===
 
   function getEvents(database: Database.Database): Array<{ type: string; payload: string }> {
     return database.prepare("SELECT type, payload FROM events ORDER BY seq").all() as Array<{ type: string; payload: string }>;
   }
 
-  // --- Test 20: Install emits package.installed event ---
-  it("POST /api/packages/install emits package.installed event", async () => {
+  // --- 测试 20：Install 发出 package.installed event ---
+  it("POST /api/packages/install 发出 package.installed event", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
     await app.request("/api/packages/install", {
@@ -839,8 +839,8 @@ requirements:
     expect(typeof payload.deferred).toBe("number");
   });
 
-  // --- Test 21: Rollback emits package.rolledback event ---
-  it("POST /api/packages/:installId/rollback emits package.rolledback event", async () => {
+  // --- 测试 21：Rollback 发出 package.rolledback event ---
+  it("POST /api/packages/:installId/rollback 发出 package.rolledback event", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
     const installRes = await app.request("/api/packages/install", {
@@ -859,11 +859,11 @@ requirements:
     expect(typeof payload.restored).toBe("number");
   });
 
-  // --- Test 22: Install conflict emits package.install_failed ---
-  it("POST /api/packages/install with conflict emits package.install_failed", async () => {
+  // --- 测试 22：Install conflict 发出 package.install_failed ---
+  it("POST /api/packages/install 存在 conflict 时发出 package.install_failed", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
-    // Create conflicting skill
+    // 创建发生冲突的 skill。
     const conflictPath = path.join(targetDir, ".claude", "skills", "helper", "SKILL.md");
     fs.mkdirSync(path.dirname(conflictPath), { recursive: true });
     fs.writeFileSync(conflictPath, "# Different");
@@ -881,24 +881,24 @@ requirements:
     expect(payload.packageName).toBe("test-pkg");
   });
 
-  // --- Test 23: SSE global stream receives package.installed event ---
-  it("GET /api/events (global) receives package.installed via SSE", async () => {
+  // --- 测试 23：SSE 全局 stream 收到 package.installed event ---
+  it("GET /api/events（全局）通过 SSE 收到 package.installed", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
-    // Start SSE stream (no rigId = global)
+    // 启动 SSE stream（无 rigId = 全局）。
     const ssePromise = app.request("/api/events");
 
-    // Small delay to let SSE subscribe
+    // 短暂等待 SSE 完成订阅。
     await new Promise((r) => setTimeout(r, 50));
 
-    // Trigger install
+    // 触发 install。
     await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sourceRef: pkgDir, targetRoot: targetDir, runtime: "claude-code" }),
     });
 
-    // Read SSE events
+    // 读取 SSE event。
     const sseRes = await ssePromise;
     const reader = sseRes.body!.getReader();
     const decoder = new TextDecoder();
@@ -931,7 +931,7 @@ requirements:
     }
     reader.cancel().catch(() => {});
 
-    // Find the package.installed event in the SSE stream
+    // 在 SSE stream 中查找 package.installed event。
     const installedEvents = sseEvents.filter((e) => {
       const parsed = JSON.parse(e.data);
       return parsed.type === "package.installed";
@@ -941,8 +941,8 @@ requirements:
     expect(parsed.packageName).toBe("test-pkg");
   });
 
-  // --- Test 24: Validate emits package.validated event ---
-  it("POST /api/packages/validate emits package.validated event", async () => {
+  // --- 测试 24：Validate 发出 package.validated event ---
+  it("POST /api/packages/validate 发出 package.validated event", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
     await app.request("/api/packages/validate", {
@@ -958,8 +958,8 @@ requirements:
     expect(payload.valid).toBe(true);
   });
 
-  // --- Test 25: Plan emits package.planned event ---
-  it("POST /api/packages/plan emits package.planned event", async () => {
+  // --- 测试 25：Plan 发出 package.planned event ---
+  it("POST /api/packages/plan 发出 package.planned event", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
     await app.request("/api/packages/plan", {
@@ -977,21 +977,21 @@ requirements:
     expect(typeof payload.conflicts).toBe("number");
   });
 
-  // --- Test 26: SSE with rigId still works (backward compat) ---
-  it("GET /api/events?rigId=X returns only rig-scoped events, not package events", async () => {
+  // --- 测试 26：带 rigId 的 SSE 仍有效（向后兼容）---
+  it("GET /api/events?rigId=X 只返回 rig-scoped event，不返回 package event", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
-    // Emit a rig event first
+    // 先发出 rig event。
     setup.eventBus.emit({ type: "rig.created", rigId: "test-rig" });
 
-    // Trigger a package event
+    // 触发 package event。
     await app.request("/api/packages/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sourceRef: pkgDir }),
     });
 
-    // SSE with rigId should only get rig events
+    // 带 rigId 的 SSE 应只收到 rig event。
     const sseRes = await app.request("/api/events?rigId=test-rig");
     const reader = sseRes.body!.getReader();
     const decoder = new TextDecoder();
@@ -1022,15 +1022,15 @@ requirements:
     }
     reader.cancel().catch(() => {});
 
-    // Should have rig.created, but NOT package.validated
+    // 应有 rig.created，但无 package.validated。
     const types = sseEvents.map((e) => JSON.parse(e.data).type);
     expect(types).toContain("rig.created");
     expect(types).not.toContain("package.validated");
   });
 
-  // --- Test 27: manifest_hash_mismatch emits package.install_failed ---
-  it("POST /api/packages/install manifest_hash_mismatch emits package.install_failed", async () => {
-    // First install with original manifest
+  // --- 测试 27：manifest_hash_mismatch 发出 package.install_failed ---
+  it("POST /api/packages/install 遇到 manifest_hash_mismatch 时发出 package.install_failed", async () => {
+    // 使用原始 manifest 首次 install。
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
     const res1 = await app.request("/api/packages/install", {
       method: "POST",
@@ -1039,11 +1039,11 @@ requirements:
     });
     expect(res1.status).toBe(201);
 
-    // Modify the manifest (different content, same name+version)
+    // 修改 manifest（内容不同，name+version 相同）。
     const altManifest = VALID_MANIFEST_YAML.replace("A test package", "A DIFFERENT test package");
     writePkg(pkgDir, altManifest, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
-    // Second install — same name+version, different manifest hash
+    // 第二次 install——name+version 相同，manifest hash 不同。
     const altTargetDir = path.join(tmpDir, "target2");
     fs.mkdirSync(altTargetDir, { recursive: true });
     const res2 = await app.request("/api/packages/install", {
@@ -1056,7 +1056,7 @@ requirements:
     const body = await res2.json();
     expect(body.code).toBe("manifest_hash_mismatch");
 
-    // Verify event was emitted
+    // 验证已发出 event。
     const events = getEvents(db).filter((e) => e.type === "package.install_failed");
     const hashMismatchEvents = events.filter((e) => JSON.parse(e.payload).code === "manifest_hash_mismatch");
     expect(hashMismatchEvents.length).toBe(1);
@@ -1065,12 +1065,12 @@ requirements:
     expect(payload.code).toBe("manifest_hash_mismatch");
   });
 
-  // --- Test 28: package.planned event actionable count matches response (R2-M1) ---
-  it("POST /api/packages/plan event actionable count matches response after policy", async () => {
-    // Guidance-only package: with allowMerge:false, policy rejects managed_merge entries
-    // so response actionable=0 but pre-policy actionable=1
+  // --- 测试 28：package.planned event actionable count 与响应匹配（R2-M1）---
+  it("POST /api/packages/plan event 的 actionable count 与应用 policy 后的响应匹配", async () => {
+    // 只有 guidance 的 package：allowMerge:false 时，policy 拒绝 managed_merge entry，因此响应
+    // actionable=0，但 policy 前 actionable=1。
     writePkg(pkgDir, GUIDANCE_MANIFEST_YAML, { "guidance/rules.md": "# Rules" });
-    // Create existing CLAUDE.md so guidance classifies as managed_merge
+    // 创建已有 CLAUDE.md，使 guidance 分类为 managed_merge。
     fs.writeFileSync(path.join(targetDir, "CLAUDE.md"), "# Existing");
 
     const res = await app.request("/api/packages/plan", {
@@ -1081,19 +1081,19 @@ requirements:
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    // Response says 0 actionable because policy rejected managed_merge without allowMerge
+    // 响应为 0 actionable，因为没有 allowMerge 时 policy 拒绝 managed_merge。
     expect(body.actionable).toBe(0);
     expect(body.rejected).toBe(1);
 
-    // Event must match response — actionable:0, not pre-policy 1
+    // event 必须与响应匹配——actionable:0，而非 policy 前的 1。
     const events = getEvents(db).filter((e) => e.type === "package.planned");
     expect(events.length).toBe(1);
     const eventPayload = JSON.parse(events[0]!.payload);
     expect(eventPayload.actionable).toBe(body.actionable);
   });
 
-  // --- Test 29: /plan returns 400 on nonexistent role (R2-M2) ---
-  it("POST /api/packages/plan with nonexistent role returns 400", async () => {
+  // --- 测试 29：/plan 遇到不存在 role 时返回 400（R2-M2）---
+  it("POST /api/packages/plan 使用不存在 role 时返回 400", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
     const res = await app.request("/api/packages/plan", {
@@ -1108,8 +1108,8 @@ requirements:
     expect(body.error).toContain("nonexistent");
   });
 
-  // --- Test 30: /install returns 400 on nonexistent role (R2-M2) ---
-  it("POST /api/packages/install with nonexistent role returns 400", async () => {
+  // --- 测试 30：/install 遇到不存在 role 时返回 400（R2-M2）---
+  it("POST /api/packages/install 使用不存在 role 时返回 400", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
     const res = await app.request("/api/packages/install", {
@@ -1124,11 +1124,11 @@ requirements:
     expect(body.error).toContain("nonexistent");
   });
 
-  // --- Test 31: Double rollback returns 409 with no journal/event growth (R2-M3) ---
-  it("POST rollback on already rolled-back install returns 409, no journal/event growth", async () => {
+  // --- 测试 31：重复 rollback 返回 409，journal/event 不增长（R2-M3）---
+  it("对已 rollback 的 install 再次 POST rollback 返回 409，journal/event 不增长", async () => {
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": SKILL_CONTENT });
 
-    // Install
+    // 安装。
     const installRes = await app.request("/api/packages/install", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1137,32 +1137,32 @@ requirements:
     expect(installRes.status).toBe(201);
     const { installId } = await installRes.json();
 
-    // First rollback — should succeed
+    // 第一次 rollback——应成功。
     const rollback1 = await app.request(`/api/packages/${installId}/rollback`, { method: "POST" });
     expect(rollback1.status).toBe(200);
 
-    // Capture journal and event counts after first rollback
+    // 捕获第一次 rollback 后的 journal 与 event 数量。
     const journalAfterFirst = db.prepare("SELECT COUNT(*) AS cnt FROM install_journal WHERE install_id = ?").get(installId) as { cnt: number };
     const eventsAfterFirst = getEvents(db).filter((e) => e.type === "package.rolledback").length;
 
-    // Second rollback — should be rejected
+    // 第二次 rollback——应被拒绝。
     const rollback2 = await app.request(`/api/packages/${installId}/rollback`, { method: "POST" });
     expect(rollback2.status).toBe(409);
     const body = await rollback2.json();
     expect(body.code).toBe("not_applied");
     expect(body.status).toBe("rolled_back");
 
-    // Journal count must NOT have grown
+    // journal 数量不得增长。
     const journalAfterSecond = db.prepare("SELECT COUNT(*) AS cnt FROM install_journal WHERE install_id = ?").get(installId) as { cnt: number };
     expect(journalAfterSecond.cnt).toBe(journalAfterFirst.cnt);
 
-    // Event count must NOT have grown
+    // event 数量不得增长。
     const eventsAfterSecond = getEvents(db).filter((e) => e.type === "package.rolledback").length;
     expect(eventsAfterSecond).toBe(eventsAfterFirst);
   });
 });
 
-describe("AgentSpec validation route", () => {
+describe("AgentSpec 校验路由", () => {
   let db: ReturnType<typeof createDb>;
   let app: ReturnType<typeof createTestApp>["app"];
 
@@ -1177,7 +1177,7 @@ describe("AgentSpec validation route", () => {
     db.close();
   });
 
-  it("POST /api/agents/validate with valid YAML returns valid:true", async () => {
+  it("POST /api/agents/validate 使用有效 YAML 时返回 valid:true", async () => {
     const yaml = 'name: test-agent\nversion: "1.0"\nprofiles: {}';
     const res = await app.request("/api/agents/validate", {
       method: "POST",
@@ -1190,7 +1190,7 @@ describe("AgentSpec validation route", () => {
     expect(body.errors).toEqual([]);
   });
 
-  it("POST /api/agents/validate with empty body returns 400", async () => {
+  it("POST /api/agents/validate 使用空 body 时返回 400", async () => {
     const res = await app.request("/api/agents/validate", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -1199,10 +1199,10 @@ describe("AgentSpec validation route", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.valid).toBe(false);
-    expect(body.errors).toContain("Empty YAML body");
+    expect(body.errors).toContain("空的 YAML 请求体");
   });
 
-  it("POST /api/agents/validate with invalid spec returns errors", async () => {
+  it("POST /api/agents/validate 使用无效 spec 时返回错误", async () => {
     const yaml = "summary: missing name and version";
     const res = await app.request("/api/agents/validate", {
       method: "POST",

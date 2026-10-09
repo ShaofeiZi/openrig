@@ -1,25 +1,18 @@
-// UI Enhancement Pack v0 — lightweight syntax highlighter (no deps).
+// UI 增强包 v0——轻量语法高亮（零依赖）。
 //
-// Per the audit: no markdown / highlighting libs are installed in the
-// UI package, and the PRD's mermaid carve-out hints at bundle-weight
-// concerns. We ship a small per-language tokenizer (~200 lines total)
-// that handles the common cases the operator hits in canon docs:
-// bash, ts/tsx/js/jsx, py, yaml, json, sql, md, sh, plain text.
+// 据审计：UI 包未安装任何 markdown / 高亮库，而 PRD 对 mermaid 的豁免暗示了对包体积的顾虑。
+// 我们交付一个每语言约 200 行的小分词器，处理操作者在 canon 文档里常见的情况：
+// bash、ts/tsx/js/jsx、py、yaml、json、sql、md、sh、纯文本。
 //
-// Tokenizer style: emit React spans with semantic class names
-// (token-keyword, token-string, token-comment, token-number,
-// token-tag) styled in globals.css. Each language has a small set of
-// regex matchers applied in order; the longest match wins per
-// position. Greedy matching for strings + comments handles the
-// "multi-line" cases for fenced code (inputs are individual blocks,
-// so newlines inside string/comment tokens are uncommon — we still
-// scan past them).
+// 分词器风格：发出带语义类名的 React span
+// （token-keyword、token-string、token-comment、token-number、token-tag），
+// 在 globals.css 中定色。每种语言有一小组按序应用的正则匹配器；每个位置取最长匹配。
+// 字符串 + 注释用贪婪匹配来处理围栏代码的“多行”情况（输入是独立块，因此字符串/注释
+// 令牌内的换行不常见——我们仍会扫过它们）。
 //
-// This is intentionally not a full highlighter. Edge cases (template
-// literals with embedded expressions, regex literals, JSX braces)
-// degrade gracefully to "no highlighting on that token". The visual
-// goal is "this is clearly code" + "keywords/strings/comments are
-// distinguishable" — not pixel-perfect editor parity.
+// 这刻意不是完整高亮器。边界情况（带嵌入表达式的模板字面量、正则字面量、JSX 花括号）
+// 优雅降级为“该令牌不高亮”。视觉目标是“这明显是代码” + “关键字/字符串/注释可区分”，
+// 而非与编辑器像素级对齐。
 
 import { useMemo } from "react";
 
@@ -123,7 +116,7 @@ function tokenizeWithKeywordsAndComments(
   let i = 0;
   while (i < code.length) {
     const remaining = code.slice(i);
-    // Block comment.
+    // 块注释。
     if (blockCommentOpen && remaining.startsWith(blockCommentOpen)) {
       const closeIdx = blockCommentClose ? remaining.indexOf(blockCommentClose, blockCommentOpen.length) : -1;
       const end = closeIdx === -1 ? remaining.length : closeIdx + (blockCommentClose?.length ?? 0);
@@ -131,7 +124,7 @@ function tokenizeWithKeywordsAndComments(
       i += end;
       continue;
     }
-    // Line comment.
+    // 行注释。
     if (remaining.startsWith(lineCommentPrefix)) {
       const newline = remaining.indexOf("\n");
       const end = newline === -1 ? remaining.length : newline;
@@ -139,7 +132,7 @@ function tokenizeWithKeywordsAndComments(
       i += end;
       continue;
     }
-    // String literals (single, double, backtick).
+    // 字符串字面量（单引号、双引号、反引号）。
     const quote = remaining[0];
     if (quote === '"' || quote === "'" || quote === "`") {
       let j = 1;
@@ -152,14 +145,14 @@ function tokenizeWithKeywordsAndComments(
       i += end;
       continue;
     }
-    // Number.
+    // 数字。
     const numMatch = remaining.match(/^-?\d+(\.\d+)?/);
     if (numMatch && (i === 0 || !/[a-zA-Z_]/.test(code[i - 1] ?? ""))) {
       out.push(token("number", numMatch[0]));
       i += numMatch[0].length;
       continue;
     }
-    // Identifier — check keyword set.
+    // 标识符——查关键字集。
     const idMatch = remaining.match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
     if (idMatch) {
       if (keywords.has(idMatch[0])) out.push(token("keyword", idMatch[0]));
@@ -167,7 +160,7 @@ function tokenizeWithKeywordsAndComments(
       i += idMatch[0].length;
       continue;
     }
-    // Plain character.
+    // 普通字符。
     out.push(token("plain", code[i] ?? ""));
     i++;
   }
@@ -178,7 +171,7 @@ function tokenizeYaml(code: string): Token[] {
   const out: Token[] = [];
   for (const line of code.split(/(\n)/)) {
     if (line === "\n") { out.push(token("plain", "\n")); continue; }
-    // Comment to EOL
+    // 注释到行尾
     const commentIdx = line.indexOf("#");
     if (commentIdx !== -1) {
       const before = line.slice(0, commentIdx);
@@ -192,7 +185,7 @@ function tokenizeYaml(code: string): Token[] {
 }
 
 function tokenizeYamlLineBody(line: string): Token[] {
-  // Match leading indent + key + ": " + value.
+  // 匹配前导缩进 + 键 + ": " + 值。
   const m = line.match(/^(\s*)([\w.-]+)(:)(\s*)(.*)$/);
   if (m) {
     const out: Token[] = [];
@@ -251,10 +244,9 @@ function tokenizeJson(code: string): Token[] {
 }
 
 function tokenizeMarkdown(code: string): Token[] {
-  // Light markdown highlighting inside fenced code blocks: heading
-  // markers + list bullets + emphasis tokens. Mostly plain — operators
-  // typically prose-read inline `code` segments, not full markdown
-  // documents inside fenced code.
+  // 围栏代码块内的轻量 markdown 高亮：标题
+  // 标记 + 列表符 + 强调令牌。大多是普通文本——操作者通常按正文读行内 `code` 段，
+  // 而不是在围栏代码里读整篇 markdown 文档。
   return [token("plain", code)];
 }
 

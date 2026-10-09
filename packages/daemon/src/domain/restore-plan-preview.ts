@@ -1,50 +1,47 @@
-// OPR.0.3.4.4 — read-only restore plan preview.
+// OPR.0.3.4.4 —— 只读恢复计划预览。
 //
-// `rig up --existing <rig> --plan` advertised "preview without executing" but
-// the rig_name path bypassed the plan gate and MUTATED (recreated sessions,
-// flipped detached->running, replaced manually-resumed panes). This module is
-// the shared read-only preview both restore routes (`/api/up` rig_name and the
-// Explorer `/api/rigs/:id/up`) return when plan=true: it computes the INTENDED
-// per-seat restore action from snapshot/session data and touches NOTHING — no
-// restoreOrchestrator.restore(), no session create/kill/replace/resume, no
-// snapshot capture (the auto-rehydrate capture is itself a mutation and is
-// only reported as would-happen), no projection writes.
+// `zrig up --existing <rig> --plan` 宣称“仅预览、不执行”，但 rig_name 路径曾绕过
+// 计划门禁并产生修改（重建会话、把 detached 改为 running、替换人工恢复的 pane）。
+// 本模块是两个恢复路由（`/api/up` 的 rig_name 与 Explorer 的 `/api/rigs/:id/up`）
+// 在 plan=true 时共用的只读预览：它根据快照/会话数据计算每个席位的预期恢复动作，
+// 不触碰任何状态——不调用 restoreOrchestrator.restore()，不创建、终止、替换或恢复
+// 会话，也不捕获快照（自动 rehydrate 捕获本身是修改，此处仅报告“将会发生”），
+// 同时不写入投影。
 
 import type Database from "better-sqlite3";
 import { resolveActiveOccupantRow, resolveActiveSnapshotSession, deriveRehydrateSessionIdByNode, activeOccupantAmbiguityError, type ActiveOccupantResolution } from "./active-occupant.js";
 import type { RigWithRelations, Snapshot } from "./types.js";
 
-/** OPR.0.4.3.20 FR-6 — a present token whose last verification is older than this
- *  is surfaced as `stale` (age-based staleness — the "stale while running" signal
- *  that needs no probe). DELIVERY DEFAULT; pm confirms the exact value. */
+  /** OPR.0.4.3.20 FR-6 —— 当前令牌的最近验证时间早于该阈值时显示为 `stale`
+   * （基于时长的陈旧判断，无需探测即可得到“运行中变陈旧”信号）。这是交付默认值；
+   * 精确数值由 PM 确认。 */
 export const RESUME_FRESHNESS_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
 
-/** OPR.0.4.3.20 FR-6 — per-seat token truth in the restore plan. */
+  /** OPR.0.4.3.20 FR-6 —— 恢复计划中逐席位的令牌真实状态。 */
 export type ResumeTokenState = "present" | "missing" | "stale" | "unverified";
 
 export interface RestorePlanPreviewNode {
   logicalId: string;
-  /** Consent version, not a guessed native conversation id. */
+  /** 同意版本，而不是猜测的原生对话 ID。 */
   occupantSessionId?: string | null;
   hasHistory?: boolean;
-  /** The slice-02 vocabulary, as a forecast: what apply mode WOULD do. */
+  /** slice-02 词汇，用作预测：应用模式将会执行什么。 */
   intendedAction: "resume-original" | "fresh-primed" | "awaiting-decision";
   reason?: string;
-  // OPR.0.4.3.20 FR-6 — per-seat token state + freshness (read-only forecast).
-  /** present = verified + fresh; missing = no token; stale = probe failed OR
-   *  last-verified past the freshness threshold; unverified = present but never
-   *  verified. A stale/unverified token is NEVER a silent restore failure —
-   *  the operator sees it here and can re-verify before restore. */
+  // OPR.0.4.3.20 FR-6——逐席位令牌状态和新鲜度（只读预测）。
+  /** present = 已验证且新鲜；missing = 无令牌；stale = 探测失败或最近验证时间已超过
+   * 新鲜度阈值；unverified = 令牌存在但从未验证。stale/unverified 令牌绝不会造成静默恢复失败；
+   * 操作人员会在此看到状态，并可在恢复前重新验证。 */
   tokenState: ResumeTokenState;
-  /** The token's source: adoption / hook / operator / scrape (null when none). */
+  /** 令牌来源：adoption / hook / operator / scrape（没有时为 null）。 */
   provenance?: string | null;
-  /** When the token was last confirmed current (SQLite UTC ts; null = never). */
+  /** 最近确认令牌仍有效的时间（SQLite UTC 时间戳；null 表示从未确认）。 */
   lastVerified?: string | null;
-  /** True when the seat has no resumable token → restore would require an
-   *  explicit `--fresh` (surfaced here; never presented as a silent fresh-prime). */
+  /** 席位没有可续接令牌时为 true，此时恢复需要显式 `--fresh`。该事实会在此呈现，
+   * 绝不会伪装成静默 fresh-prime。 */
   freshRequired: boolean;
-  /** A runtime prompt the operator should expect at restore (Claude session
-   *  picker, Codex auth/update) — a forecast, not an incidental surprise. */
+  /** 操作人员在恢复时应预期的运行时提示（Claude 会话选择器、Codex 认证/更新）；
+   * 这是预测，而非意外插曲。 */
   runtimePrompt?: string;
 }
 
@@ -53,14 +50,12 @@ export interface RestorePlanPreview {
   mode: "restore";
   rigId: string;
   rigName: string;
-  /** The snapshot apply mode would restore from (null when it would capture
-   *  a current-state auto-rehydrate snapshot instead). */
+  /** 应用模式将从中恢复的快照；若会改为捕获当前状态的 auto-rehydrate 快照，则为 null。 */
   snapshot: { id: string; kind: string; createdAt: string } | null;
-  /** True when apply mode would first CAPTURE an auto-rehydrate snapshot —
-   *  reported, not performed (plan mode performs zero writes). */
+  /** 应用模式会先捕获 auto-rehydrate 快照时为 true；这里只报告而不执行，计划模式零写入。 */
   wouldCaptureCurrentState: boolean;
   nodes: RestorePlanPreviewNode[];
-  /** Always false — the contract this preview exists to keep. */
+  /** 始终为 false，这是此预览存在的契约。 */
   mutated: false;
 }
 
@@ -69,23 +64,21 @@ export interface PreviewSessionRow {
   restorePolicy: string | null;
   resumeType: string | null;
   resumeToken: string | null;
-  // OPR.0.4.3.20 FR-6 — provenance + verification freshness (nullable/degrading
-  // for pre-45 rows and old snapshots → rendered as unverified, never a crash).
+  // OPR.0.4.3.20 FR-6——来源和验证新鲜度。版本 45 之前的行与旧快照允许为 null/降级，
+  // 显示为 unverified，绝不导致崩溃。
   resumeProvenance?: string | null;
   resumeLastVerified?: string | null;
   resumeLastProbeStatus?: string | null;
-  /** Row id (ULID). Selection is by the shared ACTIVE-OCCUPANT resolution
-   *  (active-occupant.ts) — the same truth the restore execution consumes —
-   *  never by newest-id inference. */
+  /** 行 ID（ULID）。选择由共享的活跃占用者解析（active-occupant.ts）完成，与恢复执行
+   * 使用同一事实来源，绝不通过最新 ID 推断。 */
   id: string;
-  /** Session status — the occupant ladder's legacy/uniquely-running input and
-   *  the live would-capture derivation's input. */
+  /** 会话状态：占用者判定阶梯的 legacy/uniquely-running 输入，也是实时拟捕获推导的输入。 */
   status: string | null;
 }
 
-/** OPR.0.4.3.20 FR-6 — compute a seat's token state (read-only). A present token
- *  whose probe failed (`not_resumable`/`inconclusive`) OR whose last-verified age
- *  is past the freshness threshold is `stale` — surfaced, never silently nulled. */
+/** OPR.0.4.3.20 FR-6——计算席位令牌状态（只读）。令牌存在但探测失败
+ *（`not_resumable`/`inconclusive`），或最近验证时间超过新鲜度阈值时，状态为 `stale`；
+ * 必须呈现该状态，绝不能静默置为 null。 */
 function tokenStateFor(
   latest: PreviewSessionRow | null,
   nowMs: number,
@@ -111,31 +104,27 @@ function tokenStateFor(
   return { tokenState: "present", provenance, lastVerified };
 }
 
-/** Parse a SQLite `datetime('now')` value ("YYYY-MM-DD HH:MM:SS", UTC, no zone
- *  marker) to epoch ms. Returns NaN on an unparseable value (age check is then
- *  skipped — an unparseable stamp is never treated as stale-by-age). */
+/** 将 SQLite `datetime('now')` 值（"YYYY-MM-DD HH:MM:SS"，UTC，无时区标记）解析为
+ * epoch 毫秒。无法解析时返回 NaN 并跳过时间检查；不可解析的时间戳绝不按时长判为 stale。 */
 function parseSqliteUtcMs(value: string): number {
   return new Date(value.replace(" ", "T") + "Z").getTime();
 }
 
-/** OPR.0.4.3.20 FR-6 — forecast the runtime prompt a resume WOULD hit, so it is
- *  an expected operator step, not a terminal surprise. Only meaningful when the
- *  seat would attempt a resume (has a token). */
+/** OPR.0.4.3.20 FR-6——预测续接将遇到的运行时提示，使其成为操作人员预期步骤，
+ * 而不是终端中的意外。仅当席位会尝试续接（有令牌）时有意义。 */
 function runtimePromptFor(runtime: string | null, tokenState: ResumeTokenState): string | undefined {
   if (tokenState === "missing") return undefined;
-  if (runtime === "claude-code") return "expect the Claude session picker (full-session resume)";
-  if (runtime === "codex") return "expect a Codex auth/update check before resume";
+  if (runtime === "claude-code") return "预计会出现 Claude 会话选择器（完整会话续接）";
+  if (runtime === "codex") return "预计续接前会进行 Codex 认证/更新检查";
   return undefined;
 }
 
-/** Forecast one seat's restore action — mirrors the orchestrator's pre-launch
- *  classification (OPR.0.3.4.2) without touching anything. A fresh-listed
- *  seat (operation B, `--fresh <seat>`) forecasts `fresh-primed` BEFORE any
- *  resume-token logic, exactly as apply mode deliberately skips the resume. */
+/** 预测单个席位的恢复动作：镜像编排器的启动前分类（OPR.0.3.4.2），但不触碰任何状态。
+ * 列入 fresh 的席位（操作 B，`--fresh <seat>`）会在任何续接令牌逻辑之前预测为
+ * `fresh-primed`，与应用模式有意跳过续接完全一致。 */
 function intendedActionFor(resolution: ActiveOccupantResolution<PreviewSessionRow>, freshRequested: boolean): { intendedAction: RestorePlanPreviewNode["intendedAction"]; reason?: string } {
-  // OPR.0.5.7.1 — a broken authoritative relation beats --fresh, exactly as
-  // execution fails loudly before its fresh check: --fresh cannot override
-  // A1 ambiguity.
+  // OPR.0.5.7.1——权威关系损坏的优先级高于 --fresh，与执行流程在 fresh 检查前明确失败
+  // 完全一致：--fresh 无法覆盖 A1 歧义。
   if (resolution.kind === "ambiguous") {
     return {
       intendedAction: "awaiting-decision",
@@ -145,7 +134,7 @@ function intendedActionFor(resolution: ActiveOccupantResolution<PreviewSessionRo
   if (freshRequested) {
     return {
       intendedAction: "fresh-primed",
-      reason: "listed in --fresh — apply would deliberately skip the resume (operation B)",
+      reason: "已列入 --fresh；应用时会有意跳过恢复（操作 B）",
     };
   }
   const occupant = resolution.kind === "resolved" ? resolution.session : null;
@@ -157,16 +146,14 @@ function intendedActionFor(resolution: ActiveOccupantResolution<PreviewSessionRo
   if (policy === "resume_if_possible" && occupant && (!sourceRecorded || !occupant.resumeToken)) {
     return {
       intendedAction: "awaiting-decision",
-      reason: "Prior occupant has no usable native resume identity. No session will be started without a fresh-start decision.",
+      reason: "前任占用者没有可用的原生恢复身份；未明确选择全新启动前不会启动会话。",
     };
   }
   return { intendedAction: "fresh-primed" };
 }
 
-/** Gather the session rows the preview forecasts from — the snapshot's
- *  captured sessions when one exists, otherwise the live rows an
- *  auto-rehydrate capture WOULD snapshot (read-only SELECT; the capture
- *  itself is a mutation and is never performed here). */
+/** 收集预览用于预测的会话行：存在快照时使用其中捕获的会话，否则使用 auto-rehydrate
+ * 捕获本应快照的实时行。这里只执行只读 SELECT；捕获本身会产生变更，绝不在此执行。 */
 export function collectPreviewSessionRows(
   db: Database.Database,
   rig: RigWithRelations,
@@ -178,7 +165,7 @@ export function collectPreviewSessionRows(
       restorePolicy: s.restorePolicy ?? null,
       resumeType: s.resumeType ?? null,
       resumeToken: s.resumeToken ?? null,
-      // OPR.0.4.3.20 FR-6 — degrade to null for snapshots serialized pre-45.
+      // OPR.0.4.3.20 FR-6——对版本 45 之前序列化的快照降级为 null。
       resumeProvenance: s.resumeProvenance ?? null,
       resumeLastVerified: s.resumeLastVerified ?? null,
       resumeLastProbeStatus: s.resumeLastProbeStatus ?? null,
@@ -213,10 +200,8 @@ export function buildRestorePlanPreview(
   nowMs: number = Date.now(),
   recorded: Record<string, string | null> = {},
 ): RestorePlanPreview {
-  // OPR.0.5.7.1 — the relation the resolution consumes: the snapshot's own
-  // when previewing a snapshot; for the live no-snapshot case, the SAME
-  // would-capture derivation SnapshotCapture uses (shared helper — the
-  // sibling paths cannot drift).
+  // OPR.0.5.7.1——解析所使用的关系：预览快照时使用快照自身关系；实时无快照时，
+  // 使用 SnapshotCapture 所用的同一套拟捕获推导（共享辅助函数，两个相邻路径不会漂移）。
   const relationMap = snapshot
     ? snapshot.data.activeSessionIdByNode
     : deriveRehydrateSessionIdByNode(sessionRows, rig.nodes.map((n) => n.id), recorded);
@@ -228,8 +213,7 @@ export function buildRestorePlanPreview(
         ? resolveActiveOccupantRow(sessionRows, relationMap, node.id)
         : { kind: "none" as const };
     const { intendedAction, reason } = intendedActionFor(resolution, freshRequested);
-    // OPR.0.4.3.20 FR-6 — per-seat token state (read-only), derived from the
-    // RESOLVED occupant only — never from a historical row.
+    // OPR.0.4.3.20 FR-6——逐席位只读令牌状态，仅从已解析的占用者推导，绝不读取历史行。
     const occupant = resolution.kind === "resolved" ? resolution.session : null;
     const { tokenState, provenance, lastVerified } = tokenStateFor(occupant, nowMs);
     const runtimePrompt = runtimePromptFor(node.runtime, tokenState);
@@ -242,9 +226,8 @@ export function buildRestorePlanPreview(
       tokenState,
       ...(provenance ? { provenance } : {}),
       ...(lastVerified ? { lastVerified } : {}),
-      // no resumable token → restore needs an explicit --fresh (never
-      // silent); a broken relation is NOT fresh-able — A1 ambiguity is
-      // unrecoverable-until-resolved, so --fresh cannot be the remedy.
+      // 没有可续接令牌时，恢复需要显式 --fresh，绝不静默处理。关系损坏时不能 fresh；
+      // A1 歧义在解决前不可恢复，因此 --fresh 不能作为补救手段。
       freshRequired: resolution.kind === "ambiguous" ? false : tokenState === "missing",
       ...(runtimePrompt ? { runtimePrompt } : {}),
     };

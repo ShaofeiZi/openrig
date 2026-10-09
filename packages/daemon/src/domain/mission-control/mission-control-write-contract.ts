@@ -1,43 +1,34 @@
-// PL-005 Phase A: Mission Control write-contract — atomic 7-verb actions.
+// PL-005 Phase A：Mission Control 写契约——7 个原子动词动作。
 //
-// LOAD-BEARING. Per PRD § Acceptance Criteria + slice IMPL § Guard
-// Checkpoint Focus item 2: each of 7 verbs is one atomic transaction.
-// The 4-step `handoff` shape (source-update + destination-create +
-// opt-in best-effort notify + audit-record append) is the canonical
-// proof case; other 6 verbs follow the same atomic-update + audit
-// shape with verb-specific metadata.
+// 承重。按 PRD 验收标准及 slice IMPL 的 Guard Checkpoint Focus 第 2 项，7 个动词各自都是
+// 一次原子事务。四步 `handoff` 形状（更新来源 + 创建目标 + 可选尽力通知 + 追加审计记录）
+// 是规范证明案例；其余 6 个动词遵循相同的原子更新 + 审计形状，并携带各自动词的 metadata。
 //
-// Composition (one db.transaction per verb call):
-//   1. Verify the target qitem exists and isn't already terminal.
-//   2. Compute the verb-specific queue mutation via Phase D's
-//      QueueRepository.updateWithinTransaction (preserves Phase A
-//      hot-potato closure validation; emits queue.updated event).
-//   3. For handoff: also call QueueRepository.createWithinTransaction
-//      to make the destination packet (the same outer txn).
-//   4. Append the mission_control_actions audit record with before +
-//      after state snapshots.
-//   5. Persist the mission_control.action_executed event.
+// 组合方式（每次动词调用使用一个 db.transaction）：
+//   1. 验证目标 qitem 存在且尚未终结。
+//   2. 通过 Phase D 的 QueueRepository.updateWithinTransaction 计算该动词对应的队列变更，
+//      保留 Phase A hot-potato 闭合校验，并发出 queue.updated 事件。
+//   3. 对 handoff：在同一外层事务中调用 QueueRepository.createWithinTransaction 创建目标 packet。
+//   4. 追加 mission_control_actions 审计记录，包含变更前后状态快照。
+//   5. 持久化 mission_control.action_executed 事件。
 //
-// Post-commit (outside the transaction): the event envelope drains to
-// subscribers, then opt-in best-effort transport notify runs. Notify failure
-// does NOT roll back durable mutations (PRD invariant: "notify failure does
-// NOT roll back durable mutations").
+// 提交后（事务外）：先向 subscriber 排空事件 envelope，再执行可选的尽力传输通知。
+// 通知失败不会回滚持久变更（PRD 不变量："notify failure does NOT roll back durable mutations"）。
 //
-// Verb mappings:
+// 动词映射：
 //   approve   → state="done",        closure_reason="no-follow-on"
 //   deny      → state="done",        closure_reason="denied"
 //   route     → state="done",        closure_reason="handed_off_to",
-//                closure_target+handed_off_to=<route target>;
-//                creates new qitem at the route target (1-hop)
-//   annotate  → no queue mutation; audit record only (annotation field
-//                attached to mission_control_actions)
+//                closure_target+handed_off_to=<路由目标>;
+//                在 route 目标创建新 qitem（单跳）
+//   annotate  → 不修改队列；只写审计记录（annotation 字段附在 mission_control_actions）
 //   hold      → state="blocked",     closure_reason="blocked_on",
-//                closure_target+blocked_on=<reason text>
+//                closure_target+blocked_on=<原因文本>
 //   drop      → state="done",        closure_reason="canceled",
 //                closure_target=<reason>
 //   handoff   → state="handed-off",  closure_reason="handed_off_to",
 //                closure_target+handed_off_to=<destination>;
-//                creates new qitem at destination (4-step canonical)
+//                在目标处创建新 qitem（规范四步流程）
 
 import type Database from "better-sqlite3";
 import type { EventBus } from "../event-bus.js";
@@ -65,26 +56,25 @@ export interface MissionControlActionInput {
   verb: MissionControlVerb;
   qitemId: string;
   actorSession: string;
-  /** P21 era-stamp: how actorSession was established. The route passes `transport:v1` (derived from
-   *  the transport chokepoint); omitted/null ⇒ claimed-era, never re-labeled. Recorded on the audit row. */
+  /** P21 纪元戳：说明 actorSession 如何建立。路由传入从传输瓶颈点派生的 `transport:v1`；
+   * 省略/null 表示 claimed 纪元，绝不重新标记。该值记录在审计行上。 */
   identityProvenance?: string | null;
-  /** Required for `route` and `handoff`. */
+  /** `route` 与 `handoff` 必填。 */
   destinationSession?: string;
-  /** Body for the new packet on `route`/`handoff`; defaults to source body. */
+  /** `route`/`handoff` 新 packet 的正文；默认使用来源正文。 */
   body?: string;
-  /** Required for `annotate`. */
+  /** `annotate` 必填。 */
   annotation?: string;
-  /** Required for `hold` and `drop`; optional advisory text otherwise. */
+  /** `hold` 与 `drop` 必填；其他动词中为可选提示文本。 */
   reason?: string;
-  /** OPR.0.4.4.19 FR-7 — required for `resolve`: the human's non-empty
-   *  decision text. Lands durably in queue_transitions.transition_note. */
+  /** OPR.0.4.4.19 FR-7——`resolve` 必填：人工给出的非空决策文本，
+   * 持久写入 queue_transitions.transition_note。 */
   decision?: string;
-  /** Operator-supplied audit context. */
+  /** 操作者提供的审计上下文。 */
   auditNotes?: Record<string, unknown>;
   /**
-   * For handoff: opt-in best-effort wake. Default true (PL-004 Phase A R1
-   * pattern: durable + waking by default; operators opt out for cold queues).
-   * notify failure does NOT roll back durable state.
+   * handoff 可选择执行尽力唤醒，默认为 true（PL-004 Phase A R1 模式：默认持久化并唤醒；
+   * 操作者可为冷队列关闭）。notify 失败不会回滚持久状态。
    */
   notify?: boolean;
 }
@@ -124,9 +114,8 @@ export class MissionControlWriteContract {
   }
 
   /**
-   * Execute one verb. Atomic at the durable layer: queue mutation +
-   * audit record + event persistence in one transaction. Post-commit:
-   * notify subscribers + opt-in transport wake (handoff only).
+   * 执行一个动词。持久层保持原子性：队列变更、审计记录与事件持久化位于同一事务。
+   * 提交后通知 subscriber，并按需执行传输唤醒（仅 handoff）。
    */
   async act(input: MissionControlActionInput): Promise<MissionControlActionResult> {
     if (input.verb === "annotate") {
@@ -141,7 +130,7 @@ export class MissionControlWriteContract {
     if ((input.verb === "route" || input.verb === "handoff") && !input.destinationSession) {
       throw new MissionControlWriteContractError(
         "destination_required",
-        `verb=${input.verb} requires destinationSession`,
+        `verb=${input.verb} 需要 destinationSession`,
         { verb: input.verb },
       );
     }
@@ -155,7 +144,7 @@ export class MissionControlWriteContract {
     let actionEntry: ReturnType<MissionControlActionLog["record"]> | null = null;
     try {
       this.eventBus.withNotifyEnvelope((register) => {
-        // 1. Close/transition the source via Phase A's queue closure primitive.
+        // 1. 通过 Phase A 队列闭合原语关闭/迁移来源。
         const closeResult = this.queueRepo.updateWithinTransaction({
           qitemId: input.qitemId,
           actorSession: input.actorSession,
@@ -168,7 +157,7 @@ export class MissionControlWriteContract {
         });
         register(closeResult.persistedEvent);
 
-        // 2. For route/handoff: create the destination packet in same txn.
+        // 2. 对 route/handoff：在同一事务中创建目标 packet。
         if ((input.verb === "route" || input.verb === "handoff") && input.destinationSession) {
           const created = this.queueRepo.createWithinTransaction({
             sourceSession: input.actorSession,
@@ -182,16 +171,15 @@ export class MissionControlWriteContract {
               ? [...source.tags, `mission-control:${input.verb}`]
               : [`mission-control:${input.verb}`],
             chainOfRecord: [...(source.chainOfRecord ?? []), input.qitemId],
-            // Default nudge handled post-commit per Phase D pattern.
+            // 默认 nudge 按 Phase D 模式在提交后处理。
             nudge: input.notify,
           });
           createdQitemId = created.qitemId;
           createdDestination = created.destinationSession;
           createdNudge = created.nudge;
           register(created.persistedEvent);
-          // P34: stage the successor's WAKE INTENT inside this transaction, so the
-          // close and the durable wake commit as ONE act or NONE. The pane write
-          // itself stays post-commit (reversed-never).
+          // P34：在本事务中暂存继任者的 WAKE INTENT，使 close 与持久 wake 要么作为一个动作
+          // 一起提交，要么都不提交。pane 写入本身仍在提交后执行（绝不反序）。
           this.queueRepo.stageWakeIntent(
             created.qitemId,
             input.actorSession,
@@ -201,7 +189,7 @@ export class MissionControlWriteContract {
           );
         }
 
-        // 3. Append the audit record. Snapshot the closed qitem state.
+        // 3. 追加审计记录，并快照已关闭 qitem 的状态。
         const closedQitem = this.queueRepo.getById(input.qitemId);
         const afterSnapshot = closedQitem ? snapshotQitem(closedQitem) : null;
         actionEntry = this.actionLog.record({
@@ -216,10 +204,10 @@ export class MissionControlWriteContract {
           notifyAttempted: false,
           notifyResult: null,
           auditNotes: input.auditNotes ?? null,
-          identityProvenance: input.identityProvenance ?? null, // P21 era-stamp on the audit row
+          identityProvenance: input.identityProvenance ?? null, // 审计行上的 P21 纪元戳。
         });
 
-        // 4. Persist the mission_control.action_executed event in same txn.
+        // 4. 在同一事务中持久化 mission_control.action_executed 事件。
         register(
           this.eventBus.persistWithinTransaction({
             type: "mission_control.action_executed",
@@ -230,14 +218,11 @@ export class MissionControlWriteContract {
           }),
         );
 
-        // P34: the W1 seam, run as the LAST statement of this transaction. If this
-        // act terminally closed the source AND created a successor, the successor's
-        // wake intent must be durable in the SAME transaction — otherwise the whole
-        // act rolls back here rather than committing an executed-but-unwoken item.
-        // A non-terminal transition (the `hold` park) returns early inside the
-        // primitive itself (queue-repository.ts, isTerminalState), so park callers
-        // are untouched by construction; a terminal close with NO successor has
-        // nothing to wake and is not paired here.
+        // P34：W1 接缝，作为本事务最后一条语句执行。若此动作终结来源并创建继任者，继任者的
+        // wake intent 必须在同一事务内持久化；否则在此回滚整个动作，而不是提交一个已执行但未唤醒的
+        // 条目。非终结迁移（`hold` park）会在原语内部提前返回（queue-repository.ts 的
+        // isTerminalState），因此 park 调用方按构造不受影响；没有继任者的终结 close 无需唤醒，
+        // 也不会在此配对。
         if (createdQitemId && createdDestination) {
           this.queueRepo.assertTerminalClosureHasIntent(input.qitemId, createdQitemId, createdNudge);
         }
@@ -249,18 +234,15 @@ export class MissionControlWriteContract {
       throw err;
     }
 
-    // Post-commit best-effort notify on handoff/route. Default true per
-    // PL-004 R1 pattern; failure does NOT roll back durable mutations.
+    // handoff/route 提交后执行尽力通知。按 PL-004 R1 模式默认为 true；失败不会回滚持久变更。
     let notifyAttempted = false;
     let notifyResult: string | null = null;
     if (createdQitemId && createdDestination && (input.verb === "route" || input.verb === "handoff")) {
       try {
-        // V0.3.1 slice 23: thread actorSession as the source so the
-        // nudge envelope shows where the route/handoff came from.
-        // P34: deliver through the SHARED staged-intent path, not maybeNudge —
-        // it claims and finalizes the intent row this txn staged, so the startup
-        // recovery sweep cannot send the same wake a second time. With no intent
-        // store attached it falls back to the pre-W1 best-effort nudge.
+        // V0.3.1 slice 23：将 actorSession 作为来源贯穿传递，使 nudge envelope 显示
+        // route/handoff 的来源。P34：通过共享 staged-intent 路径投递，而非 maybeNudge；
+        // 它认领并终结本事务暂存的 intent 行，使启动恢复扫描无法重复发送同一 wake。
+        // 未挂载 intent store 时，回退到 W1 前的尽力 nudge。
         await this.queueRepo.deliverWakeForSuccessor(
           createdQitemId,
           createdDestination,
@@ -288,14 +270,13 @@ export class MissionControlWriteContract {
   }
 
   /**
-   * Annotate has no queue mutation — only an audit record + event.
-   * Still wrapped in a transaction so the audit + event are atomic.
+   * Annotate 不修改队列，只记录审计与事件；仍包在事务内，以保证审计与事件原子提交。
    */
   private async annotateOnly(input: MissionControlActionInput): Promise<MissionControlActionResult> {
     if (!input.annotation) {
       throw new MissionControlWriteContractError(
         "annotation_required",
-        `verb=annotate requires annotation`,
+        `verb=annotate 需要 annotation`,
         { verb: input.verb },
       );
     }
@@ -315,7 +296,7 @@ export class MissionControlWriteContract {
         afterState: snapshot,
         annotation: input.annotation!,
         auditNotes: input.auditNotes ?? null,
-        identityProvenance: input.identityProvenance ?? null, // P21 era-stamp on the audit row
+        identityProvenance: input.identityProvenance ?? null, // 审计行上的 P21 纪元戳。
       });
       persistedEvents.push(
         this.eventBus.persistWithinTransaction({
@@ -343,35 +324,28 @@ export class MissionControlWriteContract {
   }
 
   /**
-   * OPR.0.4.4.19 FR-7 — resolve + unpark (all six arch rails encoded):
+   * OPR.0.4.4.19 FR-7——resolve + unpark（编码全部六条架构约束）：
    *
-   *   1. A verb in the mission-control family (this method), NOT an overload
-   *      of annotate/route.
-   *   2. The decision text lands durably + queryably in
-   *      queue_transitions.transition_note with actor_session = the
-   *      resolving session (the composer reads it there forever).
-   *   3. Unpark = blocked → in-progress via the Phase-A enum-validated
-   *      update (no state-machine change) + the existing nudge machinery.
-   *   4. Resolution routes BACK to the parked owner — the qitem keeps its
-   *      destination; no new potato owner is ever created here.
-   *   5. Enforcement symmetry: park required summary + evidence_ref;
-   *      resolve requires NON-EMPTY decision text, daemon-enforced.
-   *   6. The human acts on the surface/feed card; this is the ONE write
-   *      path (POST /api/mission-control/action verb=resolve) — the CLI
-   *      wrapper is a thin client of the same endpoint.
+   *   1. 它是 mission-control 家族的独立动词（本方法），不是 annotate/route 的重载。
+   *   2. 决策文本以可查询形式持久写入 queue_transitions.transition_note，且 actor_session
+   *      等于执行 resolve 的会话；composer 此后始终从这里读取。
+   *   3. Unpark 通过 Phase A 枚举校验的 update 将 blocked 变为 in-progress，不修改状态机，
+   *      并复用现有 nudge 机制。
+   *   4. Resolution 路由回停驻 owner；qitem 保持原 destination，此处绝不创建新的传递 owner。
+   *   5. 强制对称：park 需要 summary + evidence_ref；resolve 需要非空决策文本，由后台服务强制。
+   *   6. 人工在 surface/feed 卡片上操作；唯一写路径是
+   *      POST /api/mission-control/action verb=resolve，CLI 包装器只是同一端点的薄客户端。
    *
-   * NON-CLOSURE by contract: verbToClosure has NO resolve mapping — a
-   * resolved qitem is state=in-progress with closure_reason still null.
-   * One transaction: transition + decision note + audit row + events.
-   * The owner nudge (carrying the decision text) is post-commit
-   * best-effort — the unpark is never lost to a transport failure (BR-8).
+   * 按契约不闭合：verbToClosure 不提供 resolve 映射；已 resolve 的 qitem 为 state=in-progress，
+   * closure_reason 仍为 null。单个事务包含 transition + 决策备注 + 审计行 + 事件。携带决策文本的
+   * owner nudge 在提交后尽力执行；unpark 绝不会因传输失败丢失（BR-8）。
    */
   private async resolveParked(input: MissionControlActionInput): Promise<MissionControlActionResult> {
     const decision = input.decision?.trim();
     if (!decision) {
       throw new MissionControlWriteContractError(
         "decision_required",
-        "verb=resolve requires non-empty decision text — a park without a recorded decision is exactly what this primitive exists to kill",
+        "verb=resolve 需要非空决策文本；本原语正是为了消除未记录决策的 park",
         { verb: input.verb },
       );
     }
@@ -379,16 +353,16 @@ export class MissionControlWriteContract {
     if (!source) {
       throw new MissionControlWriteContractError(
         "qitem_not_found",
-        `qitem ${input.qitemId} not found`,
+        `未找到 qitem ${input.qitemId}`,
         { qitemId: input.qitemId },
       );
     }
     if (source.state !== "blocked" || !isHumanSeatSession(source.blockedOn)) {
       throw new MissionControlWriteContractError(
         "qitem_not_leg1_parked",
-        `verb=resolve requires a leg-1 parked qitem (state=blocked with a human-seat blocked_on); ` +
-          `qitem ${input.qitemId} is state=${source.state}, blocked_on=${source.blockedOn ?? "null"}. ` +
-          `Re-resolving an already-resolved item is a no-op error, not a double transition.`,
+        `verb=resolve 需要 leg-1 parked qitem（state=blocked 且 blocked_on 为人工席位）；` +
+          `qitem ${input.qitemId} 当前 state=${source.state}、blocked_on=${source.blockedOn ?? "null"}。` +
+          `再次 resolve 已解决条目会返回无操作错误，而不会产生双重 transition。`,
         { qitemId: input.qitemId, state: source.state, blockedOn: source.blockedOn },
       );
     }
@@ -398,12 +372,10 @@ export class MissionControlWriteContract {
     let actionEntry: ReturnType<MissionControlActionLog["record"]> | null = null;
     try {
       this.eventBus.withNotifyEnvelope((register) => {
-        // Rail 2+3: blocked → in-progress; decision text = transition_note;
-        // actor_session = the resolving human/relay session. Emits
-        // queue.updated (the P2 refresh-after-action contract). blocked_on is
-        // deliberately retained as provenance of whom it was parked on — the
-        // attention query keys on state='blocked', so the resolved item drops
-        // out of attention regardless.
+        // 约束 2+3：blocked → in-progress；决策文本写入 transition_note，actor_session 等于
+        // 执行 resolve 的人工/relay 会话。发出 queue.updated（P2 动作后刷新契约）。刻意保留
+        // blocked_on 作为原停驻对象的溯源；attention 查询以 state='blocked' 为条件，
+        // 所以条目解决后仍会退出 attention。
         const updateResult = this.queueRepo.updateWithinTransaction({
           qitemId: input.qitemId,
           actorSession: input.actorSession,
@@ -423,7 +395,7 @@ export class MissionControlWriteContract {
           afterState: resolvedQitem ? snapshotQitem(resolvedQitem) : null,
           reason: decision,
           auditNotes: input.auditNotes ?? null,
-          identityProvenance: input.identityProvenance ?? null, // P21 era-stamp on the audit row
+          identityProvenance: input.identityProvenance ?? null, // 审计行上的 P21 纪元戳。
         });
 
         register(
@@ -443,10 +415,8 @@ export class MissionControlWriteContract {
       throw err;
     }
 
-    // Rail 3 + BR-8: best-effort nudge to the PARKED OWNER carrying the
-    // decision text, after the commit — nudge outcome recorded via the
-    // existing last_nudge_* mechanics; a failed nudge never unwinds the
-    // unpark.
+    // 约束 3 + BR-8：提交后向停驻 owner 尽力发送携带决策文本的 nudge。Nudge 结果经现有
+    // last_nudge_* 机制记录；失败绝不会撤销 unpark。
     let notifyAttempted = false;
     let notifyResult: string | null = null;
     if (input.notify !== false) {
@@ -456,7 +426,7 @@ export class MissionControlWriteContract {
           source.destinationSession,
           input.notify,
           input.actorSession,
-          `Decision resolved on ${input.qitemId}: ${decision} — unparked (blocked → in-progress); you still own it. Check your queue.`,
+          `${input.qitemId} 的决策已解决：${decision}——已解除停驻（blocked → in-progress）；该事项仍归你负责，请检查队列。`,
         );
         notifyAttempted = true;
         notifyResult = "attempted-best-effort";
@@ -483,14 +453,14 @@ export class MissionControlWriteContract {
     if (!source) {
       throw new MissionControlWriteContractError(
         "qitem_not_found",
-        `qitem ${qitemId} not found`,
+        `未找到 qitem ${qitemId}`,
         { qitemId },
       );
     }
     if (source.state === "done" || source.state === "handed-off") {
       throw new MissionControlWriteContractError(
         "qitem_already_terminal",
-        `qitem ${qitemId} is already terminal (state=${source.state}); Mission Control cannot mutate terminal items`,
+        `qitem ${qitemId} 已处于终态（state=${source.state}）；Mission Control 不能修改终态条目`,
         { qitemId, state: source.state },
       );
     }
@@ -518,7 +488,7 @@ function verbToClosure(input: MissionControlActionInput): ClosureMapping {
       return {
         state: "done",
         closureReason: "denied",
-        closureTarget: input.reason ?? "operator denied",
+        closureTarget: input.reason ?? "操作者已拒绝",
       };
     case "route":
       return {
@@ -548,18 +518,18 @@ function verbToClosure(input: MissionControlActionInput): ClosureMapping {
         handedOffTo: input.destinationSession!,
       };
     case "annotate":
-      // Should never reach here — annotate is handled by annotateOnly().
+      // 不应到达此处；annotate 由 annotateOnly() 处理。
       throw new MissionControlWriteContractError(
         "internal_invariant",
-        "annotate verb should have been routed to annotateOnly",
+        "annotate 动词本应路由到 annotateOnly",
       );
     case "resolve":
-      // OPR.0.4.4.19 FR-7 — resolve deliberately has NO closure mapping
-      // (a resolved qitem is state=in-progress, closure_reason null).
-      // Handled by resolveParked(); reaching here is a contract violation.
+      // OPR.0.4.4.19 FR-7——resolve 刻意没有 closure 映射；已 resolve 的 qitem 为
+      // state=in-progress 且 closure_reason 为 null。该动词由 resolveParked() 处理；
+      // 到达此处表示违反契约。
       throw new MissionControlWriteContractError(
         "internal_invariant",
-        "resolve verb is non-closure and should have been routed to resolveParked",
+        "resolve 是非闭合动词，本应路由到 resolveParked",
       );
   }
 }

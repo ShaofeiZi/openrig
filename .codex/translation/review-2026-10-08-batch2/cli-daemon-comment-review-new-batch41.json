@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch41",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/cli/test/transcript.test.ts",
+      "before_sha256_16": "3bde2b417aa3a646",
+      "after_sha256_16": "007e9a7d2837ad5b",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/view.test.ts",
+      "before_sha256_16": "4007df2b708c06e6",
+      "after_sha256_16": "df2af71455e680bb",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/agent-image-fork-count-gate.test.ts",
+      "before_sha256_16": "8986ef2d6411f00d",
+      "after_sha256_16": "8986ef2d6411f00d",
+      "change_scope": "already-chinese-no-change",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/factory-rsi-rig.test.ts",
+      "before_sha256_16": "b7b960418f14352d",
+      "after_sha256_16": "7b432a94363c1181",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/plugin-discovery-service.test.ts",
+      "before_sha256_16": "d487b26e1ebe384a",
+      "after_sha256_16": "d8bb79cf4ffdf945",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

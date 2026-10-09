@@ -37,36 +37,36 @@ it.each([[140, 42], [80, 24]])("native judgments drive outcomes, queue drives wo
   };
   try {
     execution.q2_sequencing[0]!.next_up = true;
-    expect(body()).toContain("OUTCOMES OPEN"); expect(body()).toContain("Planned: planned");
-    expect(body()).toContain("NEXT      one · ready to start");
-    expect(body()).not.toContain("OUTCOMES COMPLETE"); // checked evidence + folded code do not accept an outcome
+    expect(body()).toContain("结果开放"); expect(body()).toContain("计划: planned");
+    expect(body()).toContain("下一个    one · 准备开始");
+    expect(body()).not.toContain("trial · 结果完成"); // checked evidence + folded code do not accept an outcome
     execution.q1_lanes = [{ slice: "one", seat: "actual@fixture", qitem_id: "q1", activity: { activity: "working" } }];
     execution.q2_sequencing[0]!.work_rows = [{ qitem_id: "q1", seat: "actual@fixture", state: "in-progress", summary: "Build readable mission overview" }];
-    expect(body()).toContain("Owner: actual"); expect(body()).toContain("working");
+    expect(body()).toContain("归属: actual"); expect(body()).toContain("工作中");
     execution.q1_lanes[0]!.activity = { activity: "idle-at-prompt" };
-    expect(body()).toContain("assigned"); expect(body()).not.toContain("1 working");
+    expect(body()).toContain("已分派"); expect(body()).not.toContain("1 工作中");
     execution.q2_sequencing[0]!.blocked_on_rows = [{ qitem_id: "q1", blocked_on: "review@fixture" }];
-    expect(body()).toContain("blocked"); expect(body()).toContain("waits on review@fixture");
+    expect(body()).toContain("已阻塞"); expect(body()).toContain("等待 review@fixture");
     execution.q1_lanes = []; execution.q2_sequencing[0]!.work_rows = []; execution.q2_sequencing[0]!.blocked_on_rows = [];
-    expect(body()).not.toContain("OUTCOMES COMPLETE"); // handoff alone is not outcome acceptance
+    expect(body()).not.toContain("trial · 结果完成"); // handoff alone is not outcome acceptance
     judge("one", "accept"); judge("two", "accept");
-    expect(body()).toContain("OUTCOMES COMPLETE"); expect(body()).toContain("active · separate from outcomes");
-    expect(body()).toContain("NEXT      outcomes complete; release");
-    expect(body()).toContain("PROGRESS  2/2 outcomes complete");
-    judge("one", "withdraw"); expect(body()).toContain("OUTCOMES OPEN"); expect(body()).toContain("reopened");
+    expect(body()).toContain("trial · 结果完成"); expect(body()).toContain("active · 独立于结果");
+    expect(body()).toContain("下一个    结果已完成；发布决策独立");
+    expect(body()).toContain("进度      2/2 结果完成");
+    judge("one", "withdraw"); expect(body()).toContain("结果开放"); expect(body()).toContain("已重开");
     execution.q2_sequencing[0]!.work_rows = [{ qitem_id: "reopened", seat: "actual@fixture", state: "in-progress", summary: "Correct reopened outcome" }];
-    expect(body()).toContain("NOW       one · actual · assigned");
-    expect(body()).toContain("NEXT      await current work; outcomes remain");
-    expect(body()).toContain("PROGRESS  1/2 outcomes complete");
-    expect(body()).toContain("OUTCOMES OPEN");
+    expect(body()).toContain("现在      one · actual · 已分派");
+    expect(body()).toContain("下一个    等待当前工作；结果仍开放");
+    expect(body()).toContain("进度      1/2 结果完成");
+    expect(body()).toContain("结果开放");
     execution.q2_sequencing[0]!.blocked_on_rows = [{ qitem_id: "reopened", blocked_on: "review@fixture" }];
-    expect(body()).toContain("NOW       one · actual · blocked");
-    expect(body()).toContain("waits on review@fixture");
-    expect(body()).toContain("NEXT      await current work; outcomes remain");
+    expect(body()).toContain("现在      one · actual · 已阻塞");
+    expect(body()).toContain("等待 review@fixture");
+    expect(body()).toContain("下一个    等待当前工作；结果仍开放");
     execution.q2_sequencing[0]!.blocked_on_rows = [];
     const screen = renderScreen(view.get(), snap, { cols, rows });
     const text = screen.lines.join("\n");
-    expect(text).toContain("┌"); expect(text).toContain("└"); expect(text).toContain("After:");
+    expect(text).toContain("┌"); expect(text).toContain("└"); expect(text).toContain("之后:");
     const prose = text.indexOf("LONG PROCESS PROSE");
     if (prose >= 0) expect(text.indexOf("└")).toBeLessThan(prose);
     expect(screen.contentTargets.some(t => t.action.type === "execution-open" && t.action.key === "slice:one")).toBe(true);
@@ -82,10 +82,10 @@ it.each(["empty", "unknown-assigned", "unknown-unassigned"])("does not infer com
     q4_ladder: empty ? [] : [{ slice_id: "one" }],
   };
   const text = executionContentLines(execution, undefined, [], null, 120).map(line => line.text).join("\n");
-  expect(text).toContain("OUTCOMES OPEN");
-  expect(text).toContain(`PROGRESS  0/${empty ? 0 : 1} outcomes complete`);
-  expect(text).toContain("LIFECYCLE unknown · separate from outcomes");
-  expect(text).toContain(assigned ? "NOW       one · actual · assigned" : "NOW       no open slice work in this read");
-  expect(text).toContain(empty ? "NEXT      next eligibility unknown" : assigned ? "NEXT      await current work; outcomes remain open" : "NEXT      one · dependency eligibility unknown");
-  if (!empty) expect(text).toContain("1 proof unknown");
+  expect(text).toContain("结果开放");
+  expect(text).toContain(`进度      0/${empty ? 0 : 1} 结果完成`);
+  expect(text).toContain("生命周期  未知 · 独立于结果");
+  expect(text).toContain(assigned ? "现在      one · actual · 已分派" : "现在      此读取中无开放切片工作");
+  expect(text).toContain(empty ? "下一个    下一项资格未知" : assigned ? "下一个    等待当前工作；结果仍开放" : "下一个    one · 依赖资格未知");
+  if (!empty) expect(text).toContain("1 证明未知");
 });

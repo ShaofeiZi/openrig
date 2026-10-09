@@ -1,6 +1,6 @@
-// OPR.0.5.6.11 — the public world is authored prose with a derivation seam:
-// real atoms, a claim-to-check ledger, a verifier that can fail or skip loudly,
-// and a worked stranger exercise rather than a private-world copy.
+// OPR.0.5.6.11——public world 是带派生接缝的人工编写正文：包含真实 atom、
+// claim-to-check 台账、可明确失败或跳过的 verifier，以及为陌生用户设计的完整练习，
+// 而不是 private-world 副本。
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,
@@ -82,8 +82,11 @@ const EXPECTED_COVERAGE_MAP_ROWS = [
 const EXPECTED_MANIFEST_CLAIMS = [
   { id: "public-manifest-purpose", value: "A portable operating-world primer that derives volatile facts and teaches agents to author their own world." },
   { id: "public-manifest-summary-start-here", value: "Derive where you are, what to trust, and which context belongs in a world." },
+  { id: "public-manifest-summary-start-here.zh-CN", value: "推导自己身在何处、应信任什么，以及哪些上下文属于世界（简体中文）。" },
   { id: "public-manifest-summary-build-your-world", value: "The minimal authoring convention and a book-world exercise." },
+  { id: "public-manifest-summary-build-your-world.zh-CN", value: "最小编写约定与书籍世界练习（简体中文）。" },
   { id: "public-manifest-summary-boundaries", value: "What this public world covers, excludes, and cannot decide." },
+  { id: "public-manifest-summary-boundaries.zh-CN", value: "这个公开世界涵盖、排除以及无法决定的内容（简体中文）。" },
   { id: "public-manifest-summary-claims", value: "Every authored claim mapped to a failing check or an explicit honesty flag." },
   { id: "public-manifest-summary-verify-world", value: "Portable named checks with loud failures and skips." },
   { id: "public-manifest-probe-enter-the-world-prompt", value: "You just arrived in an unfamiliar OpenRig environment. What do you derive before acting?" },
@@ -94,6 +97,7 @@ const EXPECTED_MANIFEST_CLAIMS = [
   { id: "public-manifest-probe-know-the-edges-expect", value: "The agent distinguishes public structure from rig-local facts, current state, mission context, and irreversible judgment." },
   { id: "example-manifest-purpose", value: "A fill-in template showing the anatomy of an OpenRig world pack." },
   { id: "example-manifest-summary-your-world", value: "A minimal fill-in template for describing an agent's world." },
+  { id: "example-manifest-summary-your-world.zh-CN", value: "用于描述智能体世界的最小填空模板（简体中文）。" },
   { id: "example-manifest-probe-your-world-prompt", value: "Describe the operating world for a book-writing project." },
   { id: "example-manifest-probe-your-world-expect", value: "The agent fills one coherent world file and derives volatile state instead of creating a folder per region." },
 ] as const;
@@ -269,8 +273,8 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-describe("public world pack", () => {
-  it("ships one real world-classed atom graph spanning all eight regions", () => {
+describe("公开 world pack", () => {
+  it("交付一张覆盖全部八个区域的真实 world 类 atom 图", () => {
     const packDir = publicWorldDir();
     const manifest = manifestAt(packDir);
     const files = manifest.files.map((file) => file.path).sort();
@@ -288,9 +292,12 @@ describe("public world pack", () => {
     ]);
     expect(files).toEqual([
       "boundaries.md",
+      "boundaries.zh-CN.md",
       "build-your-world.md",
+      "build-your-world.zh-CN.md",
       "claims.yaml",
       "start-here.md",
+      "start-here.zh-CN.md",
       "verify-world.sh",
     ]);
 
@@ -318,14 +325,14 @@ describe("public world pack", () => {
     expect(profile.pieces).toHaveLength(manifest.atoms?.filter((atom) => !atom.profileOnly).length ?? 0);
   });
 
-  it("keeps the Codex coverage map bound to the ten exact authoritative addresses", () => {
+  it("让 Codex 覆盖映射绑定到十个精确权威地址", () => {
     const prose = readFileSync(join(publicWorldDir(), "build-your-world.md"), "utf8");
     for (const row of EXPECTED_COVERAGE_MAP_ROWS) expect(prose).toContain(row);
     expect(prose).not.toContain("project-world/");
     expect(prose.match(/^\| (?:product|topology|context|skill|queue\/custody|source\/worktree|proof\/review|lifecycle\/release|continuity\/recovery|host-boundary) \|/gm)).toHaveLength(10);
   });
 
-  it("keeps the complete judgment-owned authored claim census checked or explicitly flagged", () => {
+  it("确保由判断负责的完整人工 claim 清单均已检查或明确标记", () => {
     const packDir = publicWorldDir();
     const claims = parseYaml(readFileSync(join(packDir, "claims.yaml"), "utf8")) as {
       claims: Array<{ id: string; statement: string; kind: string; check?: string; flagged?: string }>;
@@ -390,7 +397,7 @@ describe("public world pack", () => {
     }
   });
 
-  it("keeps both shipped manifests free of uncensused authored prose comments", () => {
+  it("确保两个已发布 manifest 不含未纳入清单的人工正文注释", () => {
     const comments = [
       ["world-public", join(publicWorldDir(), "manifest.yaml")],
       ["world-example", join(STATIC_ROOT, "world-example", "manifest.yaml")],
@@ -405,7 +412,7 @@ describe("public world pack", () => {
   });
 
   it.each(["world-public", "world-example"] as const)(
-    "fails when an uncensused authored prose comment appears in %s",
+    "%s 出现未纳入清单的人工正文注释时失败",
     (pack) => {
       const sourcePack = publicWorldDir();
       const redRoot = mkdtempSync(join(tmpdir(), "public-world-manifest-comment-red-"));
@@ -436,7 +443,7 @@ describe("public world pack", () => {
     },
   );
 
-  it("fails when authored manifest purpose or probe semantics materially drift", () => {
+  it("人工编写的 manifest purpose 或 probe 语义发生实质漂移时失败", () => {
     const sourcePack = publicWorldDir();
     const redRoot = mkdtempSync(join(tmpdir(), "public-world-manifest-claims-red-"));
     temporaryRoots.push(redRoot);
@@ -490,7 +497,7 @@ describe("public world pack", () => {
       "The manifest may name files. The prose can say whatever is convenient.",
       /FAIL.*authoring-convention/i,
     ],
-  ] as const)("fails when an authored %s claim materially drifts", (_label, file, before, after, failure) => {
+  ] as const)("人工编写的 %s claim 发生实质漂移时失败", (_label, file, before, after, failure) => {
     const sourcePack = publicWorldDir();
     const redRoot = mkdtempSync(join(tmpdir(), "public-world-claim-census-red-"));
     temporaryRoots.push(redRoot);
@@ -515,7 +522,7 @@ describe("public world pack", () => {
     expect(result.stdout).toMatch(failure);
   });
 
-  it("passes on the shipped bytes, fails on a falsified claim, and skips loudly when rig is absent", () => {
+  it("已发布字节可通过、伪造 claim 会失败，缺少 rig 时会明确跳过", () => {
     const packDir = publicWorldDir();
     const rigPath = writeRigFixture();
     const fixtureEnv = {
@@ -527,7 +534,7 @@ describe("public world pack", () => {
     };
     const green = runVerifier(packDir, fixtureEnv);
     expect(green.status, green.stdout + green.stderr).toBe(0);
-    expect(green.stdout).toMatch(/passed · 0 failed · 0 skipped/i);
+    expect(green.stdout).toMatch(/通过 · 0 失败 · 0 跳过/);
     expect(green.stdout).toMatch(/ok.*run-public-verifier/i);
 
     const redRoot = mkdtempSync(join(tmpdir(), "public-world-red-"));
@@ -573,10 +580,10 @@ describe("public world pack", () => {
     const skip = runVerifier(packDir, { ...process.env, PATH: missingPath });
     expect(skip.status, skip.stdout + skip.stderr).toBe(0);
     expect(skip.stdout).toMatch(/skip.*rig-command-surface/i);
-    expect(skip.stdout).toMatch(/1 skipped/i);
+    expect(skip.stdout).toMatch(/1 跳过/);
   });
 
-  it("fails when world-public is absent from the serving and namespace projections", () => {
+  it("serving 与 namespace 投影中缺少 world-public 时失败", () => {
     const rigPath = writeRigFixture({
       showStatus: 73,
       listJson: JSON.stringify([
@@ -596,7 +603,7 @@ describe("public world pack", () => {
     expect(result.stdout).toMatch(/FAIL.*private-ref-boundary/i);
   });
 
-  it("fails when the context store projection ignores its typed override", () => {
+  it("context store 投影忽略类型化覆盖值时失败", () => {
     const rigPath = writeRigFixture({ configRoot: "/fixture/wrong-context" });
     const result = runVerifier(publicWorldDir(), {
       ...process.env,
@@ -610,7 +617,7 @@ describe("public world pack", () => {
     expect(result.stdout).toMatch(/FAIL.*world-example-install/i);
   });
 
-  it("fails when context add is broken despite healthy help and config projections", () => {
+  it("help 与 config 投影正常但 context add 损坏时失败", () => {
     const rigPath = writeRigFixture({ addStatus: 71 });
     const result = runVerifier(publicWorldDir(), {
       ...process.env,
@@ -628,7 +635,7 @@ describe("public world pack", () => {
     ["public pack retrieval", { publicGet: "# unrelated content" }, /FAIL.*retrieve-public-pack/i],
     ["fresh profile composition", { profileJson: '{"pieces":[],"totalEstimatedTokens":0}' }, /FAIL.*compose-fresh-profile/i],
     ["worked example retrieval", { exampleGet: "# unrelated content" }, /FAIL.*retrieve-world-example/i],
-  ] as const)("fails when %s returns the wrong bytes", (_label, fixtureOptions, expectedFailure) => {
+  ] as const)("%s 返回错误字节时失败", (_label, fixtureOptions, expectedFailure) => {
     const rigPath = writeRigFixture(fixtureOptions);
     const result = runVerifier(publicWorldDir(), {
       ...process.env,
@@ -642,7 +649,7 @@ describe("public world pack", () => {
     expect(result.stdout).toMatch(expectedFailure);
   });
 
-  it("removes a copied pack when daemon sync never indexes it", () => {
+  it("daemon sync 始终未建立索引时移除复制的 pack", () => {
     const contextRoot = mkdtempSync(join(tmpdir(), "public-world-context-root-"));
     temporaryRoots.push(contextRoot);
     const rigPath = writeRigFixture({ configRoot: contextRoot, partialSync: true });
@@ -659,7 +666,7 @@ describe("public world pack", () => {
     expect(readdirSync(contextRoot)).toEqual([]);
   });
 
-  it("lets a stranger in an empty OPENRIG_HOME follow the taught world journey and observe real content", () => {
+  it("让陌生用户在空 OPENRIG_HOME 中按教学完成 world 流程并观察真实内容", () => {
     const strangerRoot = mkdtempSync(join(tmpdir(), "public-world-stranger-"));
     temporaryRoots.push(strangerRoot);
     const openrigHome = join(strangerRoot, "openrig-home");
@@ -713,7 +720,7 @@ describe("public world pack", () => {
     expect(existsSync(join(contextRoot, "stranger-example"))).toBe(false);
   });
 
-  it("fails loudly when the pack path returned by context show has no verifier", () => {
+  it("context show 返回的 pack 路径中没有 verifier 时明确失败", () => {
     const strangerRoot = mkdtempSync(join(tmpdir(), "public-world-missing-verifier-"));
     temporaryRoots.push(strangerRoot);
     const missingVerifierRoot = join(strangerRoot, "world-public");
@@ -737,7 +744,7 @@ describe("public world pack", () => {
     expect(verification.stderr).toMatch(/verify-world\.sh.*(?:cannot open|no such file)/i);
   });
 
-  it("graduates world-example into the same convention and a book-writer exercise", () => {
+  it("把 world-example 提升到相同约定与 book-writer 练习", () => {
     const exampleDir = join(STATIC_ROOT, "world-example");
     const example = manifestAt(exampleDir);
     const exercise = readFileSync(join(exampleDir, "your-world.md"), "utf8");
@@ -764,7 +771,7 @@ describe("public world pack", () => {
     expect(convention).toContain("world-building supplies the information architecture while software-shaping supplies buildability");
   });
 
-  it("stays portable and teaches only commands present on the live CLI surface", () => {
+  it("保持可移植性，并且只教授 live CLI 表面存在的命令", () => {
     const packDir = publicWorldDir();
     const text = readdirSync(packDir)
       .filter((file) => !file.endsWith(".json"))

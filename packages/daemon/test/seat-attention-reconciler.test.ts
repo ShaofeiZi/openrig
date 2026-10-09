@@ -1,4 +1,4 @@
-// OPR.0.3.4.10 — seat attention reconciler tests.
+// OPR.0.3.4.10——席位 attention reconciler 测试。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -58,8 +58,8 @@ describe("SeatAttentionReconciler", () => {
     });
   }
 
-  // AC#1: evidence-gated clear works for fresh running
-  it("clears attention on fresh running activity", async () => {
+  // AC#1：由证据把关的 clear 适用于 fresh running
+  it("fresh running activity 时清除 attention", async () => {
     const { rigId, nodeId } = seedAttentionSeat("r1", "worker@r1");
     emitActivity(rigId, nodeId, "worker@r1", "running");
 
@@ -73,8 +73,8 @@ describe("SeatAttentionReconciler", () => {
     expect(result.evidence?.state).toBe("running");
   });
 
-  // AC#1: evidence-gated clear works for fresh idle
-  it("clears attention on fresh idle activity", async () => {
+  // AC#1：由证据把关的 clear 适用于 fresh idle
+  it("fresh idle activity 时清除 attention", async () => {
     const { rigId, nodeId } = seedAttentionSeat("r2", "worker@r2");
     emitActivity(rigId, nodeId, "worker@r2", "idle");
 
@@ -84,8 +84,8 @@ describe("SeatAttentionReconciler", () => {
     expect(result.evidence?.state).toBe("idle");
   });
 
-  // needs_input does NOT clear
-  it("does NOT clear on needs_input activity", async () => {
+  // needs_input 不会清除
+  it("needs_input activity 时不清除", async () => {
     const { rigId, nodeId } = seedAttentionSeat("r3", "worker@r3");
     emitActivity(rigId, nodeId, "worker@r3", "needs_input");
 
@@ -95,8 +95,8 @@ describe("SeatAttentionReconciler", () => {
     expect(result.code).toBe("not_demonstrably_responsive");
   });
 
-  // unknown does NOT clear
-  it("does NOT clear on unknown activity", async () => {
+  // unknown 不会清除
+  it("unknown activity 时不清除", async () => {
     const { rigId, nodeId } = seedAttentionSeat("r4", "worker@r4");
     emitActivity(rigId, nodeId, "worker@r4", "unknown");
 
@@ -106,8 +106,8 @@ describe("SeatAttentionReconciler", () => {
     expect(result.code).toBe("not_demonstrably_responsive");
   });
 
-  // STALE activity does NOT clear (the production-reachable trap)
-  it("does NOT clear on stale running activity (stale_runtime_hook)", async () => {
+  // STALE activity 不会清除（生产环境可达陷阱）
+  it("stale running activity（stale_runtime_hook）时不清除", async () => {
     const { rigId, nodeId } = seedAttentionSeat("r5", "worker@r5");
     emitActivity(rigId, nodeId, "worker@r5", "running", { stale: true });
 
@@ -117,19 +117,19 @@ describe("SeatAttentionReconciler", () => {
     expect(result.code).toBe("not_demonstrably_responsive");
   });
 
-  // No activity at all does NOT clear
-  it("does NOT clear with no activity", async () => {
+  // 完全没有 activity 时不会清除
+  it("没有 activity 时不清除", async () => {
     seedAttentionSeat("r6", "worker@r6");
 
     const result = await reconciler.clearAttention("worker@r6");
 
     expect(result.ok).toBe(false);
     expect(result.code).toBe("not_demonstrably_responsive");
-    expect(result.detail).toContain("No recent agent activity");
+    expect(result.detail).toContain("未找到近期智能体 activity");
   });
 
   // Operator attestation override
-  it("clears with --reason (operator attestation, no evidence gate)", async () => {
+  it("带 --reason 时清除（operator attestation，无证据门禁）", async () => {
     seedAttentionSeat("r7", "worker@r7");
 
     const result = await reconciler.clearAttention("worker@r7", { reason: "founder re-authed" });
@@ -139,8 +139,8 @@ describe("SeatAttentionReconciler", () => {
     expect(result.reason).toBe("founder re-authed");
   });
 
-  // Honest no-op: already ready
-  it("returns not_in_attention for already-ready seat", async () => {
+  // 如实 no-op：已经 ready
+  it("对已 ready 席位返回 not_in_attention", async () => {
     const rig = rigRepo.createRig("r8");
     const node = rigRepo.addNode(rig.id, "worker", { role: "worker" });
     const session = sessionRegistry.registerSession(node.id, "worker@r8");
@@ -152,7 +152,7 @@ describe("SeatAttentionReconciler", () => {
     expect(result.code).toBe("not_in_attention");
   });
 
-  it("rebinds a healthy replacement pane and clears the pane-identity attention class", async () => {
+  it("重新绑定健康替代 pane，并清除 pane-identity attention 类别", async () => {
     const rig = rigRepo.createRig("r-pane-rebind");
     const node = rigRepo.addNode(rig.id, "worker", { role: "worker", runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "worker@r-pane-rebind");
@@ -190,7 +190,7 @@ describe("SeatAttentionReconciler", () => {
     expect(getNodeInventory(db, rig.id)[0]!.lifecycleState).toBe("running");
   });
 
-  it("names pane_identity when the replacement terminal cannot be resolved exactly", async () => {
+  it("无法精确解析替代 terminal 时指明 pane_identity", async () => {
     const rig = rigRepo.createRig("r-pane-ambiguous");
     const node = rigRepo.addNode(rig.id, "worker", { role: "worker", runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "worker@r-pane-ambiguous");
@@ -220,13 +220,13 @@ describe("SeatAttentionReconciler", () => {
     const result = await paneReconciler.clearAttention(session.sessionName, { reason: "reattached" });
 
     expect(result.ok).toBe(false);
-    expect(result.detail).toContain("Uncleared attention class pane_identity");
+    expect(result.detail).toContain("未清除待关注类别 pane_identity");
     expect(sessionRegistry.getBindingForNode(node.id)?.tmuxPane).toBe("%old");
     expect(getNodeInventory(db, rig.id)[0]!.lifecycleState).toBe("attention_required");
   });
 
-  // Audit event emitted with distinct clearedBy
-  it("emits seat.attention_cleared event on evidence-gated clear", async () => {
+  // 发出带不同 clearedBy 的审计事件
+  it("由证据把关的 clear 发出 seat.attention_cleared 事件", async () => {
     const { rigId, nodeId } = seedAttentionSeat("r9", "worker@r9");
     emitActivity(rigId, nodeId, "worker@r9", "running");
 
@@ -240,7 +240,7 @@ describe("SeatAttentionReconciler", () => {
     expect(payload.to).toBe("ready");
   });
 
-  it("emits seat.attention_cleared event on operator attestation with distinct clearedBy", async () => {
+  it("operator attestation 发出具有独立 clearedBy 的 seat.attention_cleared 事件", async () => {
     seedAttentionSeat("r10", "worker@r10");
 
     await reconciler.clearAttention("worker@r10", { reason: "manual check" });
@@ -252,8 +252,8 @@ describe("SeatAttentionReconciler", () => {
     expect(payload.reason).toBe("manual check");
   });
 
-  // Send-verify evidence branch
-  it("clears on positive send-verify (outcome:delivered) when no fresh activity", async () => {
+  // Send-verify 证据分支
+  it("没有 fresh activity 时，正向 send-verify（outcome:delivered）可清除", async () => {
     const { rigId, nodeId, sessionId } = seedAttentionSeat("r-send", "worker@r-send");
     const sendVerify = vi.fn(async () => ({ ok: true, outcome: "delivered" as const, verified: true }));
     const sendReconciler = new SeatAttentionReconciler({
@@ -268,7 +268,7 @@ describe("SeatAttentionReconciler", () => {
     expect(sendVerify).toHaveBeenCalledWith("worker@r-send", expect.stringContaining("liveness probe"), { verify: true });
   });
 
-  it("does NOT clear on send-verify rendered-unconfirmed (without capture confirmation)", async () => {
+  it("send-verify 为 rendered-unconfirmed（无 capture 确认）时不清除", async () => {
     seedAttentionSeat("r-unconf", "worker@r-unconf");
     const sendVerify = vi.fn(async () => ({ ok: true, outcome: "rendered-unconfirmed" as const, verified: false }));
     const sendReconciler = new SeatAttentionReconciler({
@@ -281,7 +281,7 @@ describe("SeatAttentionReconciler", () => {
     expect(result.code).toBe("not_demonstrably_responsive");
   });
 
-  it("does NOT clear on send-verify failure", async () => {
+  it("send-verify 失败时不清除", async () => {
     seedAttentionSeat("r-fail", "worker@r-fail");
     const sendVerify = vi.fn(async () => ({ ok: false, outcome: "failed" as const }));
     const sendReconciler = new SeatAttentionReconciler({
@@ -294,7 +294,7 @@ describe("SeatAttentionReconciler", () => {
     expect(result.code).toBe("not_demonstrably_responsive");
   });
 
-  it("send-verify audit event has distinct evidence kind", async () => {
+  it("send-verify 审计事件具有独立 evidence kind", async () => {
     seedAttentionSeat("r-audit-send", "worker@r-audit-send");
     const sendVerify = vi.fn(async () => ({ ok: true, outcome: "delivered" as const, verified: true }));
     const sendReconciler = new SeatAttentionReconciler({
@@ -310,8 +310,8 @@ describe("SeatAttentionReconciler", () => {
     expect(payload.evidence.kind).toBe("send_verify_roundtrip");
   });
 
-  // Capture-confirmed branch: rendered-unconfirmed + capture confirms exact probe text → clears
-  it("clears on rendered-unconfirmed when capture confirms exact probe text", async () => {
+  // Capture-confirmed 分支：rendered-unconfirmed + capture 确认精确 probe 文本 → 清除
+  it("rendered-unconfirmed 时，若 capture 确认精确 probe 文本则清除", async () => {
     seedAttentionSeat("r-cap-ok", "worker@r-cap-ok");
     let sentProbe = "";
     const sendVerify = vi.fn(async (_session: string, text: string) => {
@@ -333,8 +333,8 @@ describe("SeatAttentionReconciler", () => {
     expect(capture).toHaveBeenCalledWith("worker@r-cap-ok", expect.objectContaining({ lines: expect.any(Number) }));
   });
 
-  // Capture-confirmed branch: rendered-unconfirmed + capture does NOT contain probe text → does not clear
-  it("does NOT clear on rendered-unconfirmed when capture lacks probe text", async () => {
+  // Capture-confirmed 分支：rendered-unconfirmed + capture 不含 probe 文本 → 不清除
+  it("rendered-unconfirmed 时，若 capture 缺少 probe 文本则不清除", async () => {
     seedAttentionSeat("r-cap-miss", "worker@r-cap-miss");
     const sendVerify = vi.fn(async () => ({ ok: true, outcome: "rendered-unconfirmed" as const, verified: false }));
     const capture = vi.fn(async (session: string) => ({
@@ -350,8 +350,8 @@ describe("SeatAttentionReconciler", () => {
     expect(result.code).toBe("not_demonstrably_responsive");
   });
 
-  // Capture-confirmed branch: rendered-unconfirmed + capture fails → does not clear
-  it("does NOT clear on rendered-unconfirmed when capture fails", async () => {
+  // Capture-confirmed 分支：rendered-unconfirmed + capture 失败 → 不清除
+  it("rendered-unconfirmed 时，若 capture 失败则不清除", async () => {
     seedAttentionSeat("r-cap-fail", "worker@r-cap-fail");
     const sendVerify = vi.fn(async () => ({ ok: true, outcome: "rendered-unconfirmed" as const, verified: false }));
     const capture = vi.fn(async (session: string) => ({
@@ -367,8 +367,8 @@ describe("SeatAttentionReconciler", () => {
     expect(result.code).toBe("not_demonstrably_responsive");
   });
 
-  // Discriminator: stale probe in capture from a prior attempt does NOT clear
-  it("does NOT clear when capture contains a stale probe from a prior attempt", async () => {
+  // 判别条件：capture 中来自先前 attempt 的 stale probe 不会清除
+  it("capture 包含先前 attempt 的 stale probe 时不清除", async () => {
     seedAttentionSeat("r-cap-stale", "worker@r-cap-stale");
     const sendVerify = vi.fn(async () => ({ ok: true, outcome: "rendered-unconfirmed" as const, verified: false }));
     const capture = vi.fn(async (session: string) => ({
@@ -386,8 +386,8 @@ describe("SeatAttentionReconciler", () => {
     expect(events).toHaveLength(0);
   });
 
-  // Capture-confirmed audit event has distinct evidence kind
-  it("capture-confirmed audit event has kind send_verify_capture_confirmed", async () => {
+  // Capture-confirmed 审计事件具有独立 evidence kind
+  it("capture-confirmed 审计事件的 kind 为 send_verify_capture_confirmed", async () => {
     seedAttentionSeat("r-cap-audit", "worker@r-cap-audit");
     let sentProbe = "";
     const sendVerify = vi.fn(async (_session: string, text: string) => {
@@ -410,8 +410,8 @@ describe("SeatAttentionReconciler", () => {
     expect(payload.evidence.kind).toBe("send_verify_capture_confirmed");
   });
 
-  // No event on no-op
-  it("does NOT emit event when not clearing", async () => {
+  // no-op 时不发出事件
+  it("未清除时不发出事件", async () => {
     seedAttentionSeat("r11", "worker@r11");
 
     await reconciler.clearAttention("worker@r11");
@@ -420,7 +420,7 @@ describe("SeatAttentionReconciler", () => {
     expect(events).toHaveLength(0);
   });
 
-  // OPR.0.4.0.16 — derived-class tests
+  // OPR.0.4.0.16——derived-class 测试
   function seedDerivedAttentionSeat(rigName: string, sessionName: string): { rigId: string; nodeId: string; sessionId: string; attemptId: number } {
     const rig = rigRepo.createRig(rigName);
     const node = rigRepo.addNode(rig.id, "worker", { role: "worker", runtime: "claude-code" });
@@ -428,7 +428,7 @@ describe("SeatAttentionReconciler", () => {
     sessionRegistry.updateStartupStatus(session.id, "ready");
     sessionRegistry.updateStatus(session.id, "running");
     const started = eventBus.emit({ type: "restore.started", rigId: rig.id, snapshotId: "snap-1" });
-    // Seed a failed restore outcome
+    // 播种失败的 restore outcome
     eventBus.emit({
       type: "restore.completed",
       rigId: rig.id,
@@ -468,7 +468,7 @@ describe("SeatAttentionReconciler", () => {
     });
   }
 
-  it("OPR.0.5.9.14: scopes a derived clear to the real restore attempt", async () => {
+  it("OPR.0.5.9.14：将 derived clear 限定到真实 restore attempt", async () => {
     const { rigId, nodeId, attemptId } = seedDerivedAttentionSeat("r-attempt-scoped", "worker@r-attempt-scoped");
     emitActivity(rigId, nodeId, "worker@r-attempt-scoped", "running");
     const derivedReconciler = strictDerivedReconciler();
@@ -481,7 +481,7 @@ describe("SeatAttentionReconciler", () => {
     expect(JSON.parse(events[0]!.payload).attemptId).toBe(attemptId);
   });
 
-  it("OPR.0.5.9.14: preserves generic reconciliation for a subset restore with no attempt receipt", async () => {
+  it("OPR.0.5.9.14：为没有 attempt receipt 的 subset restore 保留通用 reconciliation", async () => {
     const rig = rigRepo.createRig("r-subset-derived");
     const node = rigRepo.addNode(rig.id, "worker", { role: "worker", runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "worker@r-subset-derived");
@@ -523,7 +523,7 @@ describe("SeatAttentionReconciler", () => {
     expect(db.prepare("SELECT payload FROM events WHERE type = 'restore.outcome_reconciled'").all()).toHaveLength(1);
   });
 
-  it("OPR.0.4.0.16: clears derived-only class (startupStatus=ready + restoreOutcome=failed+running)", async () => {
+  it("OPR.0.4.0.16：清除仅 derived 类别（startupStatus=ready + restoreOutcome=failed+running）", async () => {
     const { rigId, nodeId } = seedDerivedAttentionSeat("r-derived", "worker@r-derived");
     emitActivity(rigId, nodeId, "worker@r-derived", "running");
     const derivedReconciler = strictDerivedReconciler();
@@ -542,7 +542,7 @@ describe("SeatAttentionReconciler", () => {
     expect(payload.nodeId).toBe(nodeId);
   });
 
-  it("OPR.0.5.9.14: refuses derived-class clear without strict evidence even with operator attestation", async () => {
+  it("OPR.0.5.9.14：即使有 operator attestation，缺少严格证据时仍拒绝 derived-class clear", async () => {
     seedDerivedAttentionSeat("r-derived-refuse", "worker@r-derived-refuse");
     const derivedReconciler = new SeatAttentionReconciler({
       sessionRegistry, eventBus, agentActivityStore: activityStore, db,
@@ -556,7 +556,7 @@ describe("SeatAttentionReconciler", () => {
     expect(events).toHaveLength(0);
   });
 
-  it("OPR.0.4.0.16: clears both classes when startupStatus + restoreOutcome both in attention", async () => {
+  it("OPR.0.4.0.16：startupStatus + restoreOutcome 均处于 attention 时清除两个类别", async () => {
     const rig = rigRepo.createRig("r-both");
     const node = rigRepo.addNode(rig.id, "worker", { role: "worker", runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "worker@r-both");
@@ -578,7 +578,7 @@ describe("SeatAttentionReconciler", () => {
     expect(result.clearedClasses).toContain("restore_outcome");
   });
 
-  it("OPR.0.5.9.14: operator attestation cannot bypass strict restore lineage", async () => {
+  it("OPR.0.5.9.14：operator attestation 不能绕过严格 restore lineage", async () => {
     const { attemptId } = seedDerivedAttentionSeat("r-derived-attest", "worker@r-derived-attest");
     const derivedReconciler = strictDerivedReconciler();
 
@@ -595,7 +595,7 @@ describe("SeatAttentionReconciler", () => {
     expect(payload.evidence.resumeTokenUsed).toBe(true);
   });
 
-  it("OPR.0.5.9.14: clearAttention returns the strict attempt evidence on its JSON surface", async () => {
+  it("OPR.0.5.9.14：clearAttention 在 JSON 接口返回严格的 attempt 证据", async () => {
     const { rigId, nodeId, attemptId } = seedDerivedAttentionSeat("r-derived-surface", "worker@r-derived-surface");
     emitActivity(rigId, nodeId, "worker@r-derived-surface", "running");
     const surfaceReconciler = strictDerivedReconciler();
@@ -616,7 +616,7 @@ describe("SeatAttentionReconciler", () => {
     expect(result.derivedEvidence!.runtimeCwdVerified).toBeUndefined();
   });
 
-  it("OPR.0.5.9.14: operator attestation still returns strict attempt evidence", async () => {
+  it("OPR.0.5.9.14：operator attestation 仍返回严格的 attempt 证据", async () => {
     const { attemptId } = seedDerivedAttentionSeat("r-derived-attest-surface", "worker@r-derived-attest-surface");
     const surfaceReconciler = strictDerivedReconciler();
 
@@ -627,14 +627,14 @@ describe("SeatAttentionReconciler", () => {
     expect(result.derivedEvidence).toMatchObject({ source: "restore_runtime_truth", attemptId });
   });
 
-  it("OPR.0.5.9.14: refuses a non-running derived outcome when strict live lineage is absent", async () => {
+  it("OPR.0.5.9.14：缺少严格 live lineage 时拒绝非 running 的 derived outcome", async () => {
     const rig = rigRepo.createRig("r-nonrun-attn");
     const node = rigRepo.addNode(rig.id, "worker", { role: "worker", runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "worker@r-nonrun-attn");
     sessionRegistry.updateStartupStatus(session.id, "ready");
-    // Session is exited, not running
+    // Session 已 exited，并非 running
     sessionRegistry.updateStatus(session.id, "exited");
-    // Seed restoreOutcome=attention_required
+    // 播种 restoreOutcome=attention_required
     eventBus.emit({
       type: "restore.completed",
       rigId: rig.id, snapshotId: "snap-1",
@@ -661,8 +661,8 @@ describe("SeatAttentionReconciler", () => {
     expect(events).toHaveLength(0);
   });
 
-  // REV1 REGRESSION: non-running restoreOutcome=failed does NOT trigger derived class
-  it("OPR.0.4.0.16: non-running restoreOutcome=failed does NOT clear derived class (mirrors deriveNodeLifecycleState)", async () => {
+  // REV1 REGRESSION：非 running 的 restoreOutcome=failed 不触发 derived class
+  it("OPR.0.4.0.16：非 running 的 restoreOutcome=failed 不清除 derived class（镜像 deriveNodeLifecycleState）", async () => {
     const rig = rigRepo.createRig("r-nonrun-failed");
     const node = rigRepo.addNode(rig.id, "worker", { role: "worker", runtime: "claude-code" });
     const session = sessionRegistry.registerSession(node.id, "worker@r-nonrun-failed");

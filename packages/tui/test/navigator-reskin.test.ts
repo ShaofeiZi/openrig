@@ -1,9 +1,9 @@
-// Slice-17 mini-req 1 — explorer navigator RE-SKIN to the file-tree
-// aesthetic. PURE re-skin: computeExplorerRows (the ONE row model) is
-// untouched; the renderer displays branch guides + right-aligned meta while
-// every action, key, and hit target stays identical (PIN-1). Collapse glyphs
-// render ONLY where collapse genuinely exists today (pods, missions, and spec
-// folders) — hosts, rigs, and non-collapsible section rows lose false glyphs.
+// Slice-17 mini-req 1——explorer navigator 重皮肤为文件树
+// 美学。纯重皮肤：computeExplorerRows（唯一行模型）
+// 不动；渲染器显示分支引导 + 右对齐 meta，而每个动作、键、命中目标
+// 保持相同（PIN-1）。折叠字形
+// 仅在今日真有折叠处渲染（pods、missions、spec
+// 文件夹）——hosts、rigs、不可折叠 section 行去除虚假字形。
 import { describe, it, expect } from "vitest";
 import { createViewState, computeExplorerRows } from "../src/state.js";
 import { renderScreen } from "../src/render.js";
@@ -13,7 +13,7 @@ import { stylizeLines } from "../src/stylize.js";
 
 const snap = demoSnapshot();
 
-// minimal graph-carrying snapshot for the relocated card pins
+// 重定位卡锚点用的最小带 graph snapshot
 function graphSnapLocal() {
   const graph = {
     nodes: [
@@ -35,12 +35,12 @@ function makeStore() {
 }
 
 function explorerPane(lines: string[]): string[] {
-  // rows 3.. of the screen, left of the │ pane border (EXPL_W = 30)
+  // 屏的第3行起，│ 窗格边框左侧（EXPL_W = 30）
   return lines.slice(2).map((l) => l.slice(0, 30));
 }
 
-describe("file-tree re-skin (Direction B navigator)", () => {
-  it("renders continuous branch guides in the explorer pane", () => {
+describe("file-tree 重皮肤（Direction B navigator）", () => {
+  it("在 explorer 窗格渲染连续分支引导线", () => {
     const s = makeStore();
     const screen = renderScreen(s.get(), snap, { cols: 120, rows: 32 });
     const pane = explorerPane(screen.lines).join("\n");
@@ -48,7 +48,7 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     expect(pane).toMatch(/┗━/);
   });
 
-  it("hosts and rigs carry NO collapse glyph (no false affordances — no collapse exists there today)", () => {
+  it("host 与 rig 不带折叠字形（无虚假可操作项——那里今天无折叠）", () => {
     const s = makeStore();
     const screen = renderScreen(s.get(), snap, { cols: 120, rows: 32 });
     const hostRow = explorerPane(screen.lines).find((l) => l.includes("vm-host"))!;
@@ -57,36 +57,36 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     expect(rigRow).not.toMatch(/[▾▸]/);
   });
 
-  it("pods KEEP their genuine collapse glyph (› collapsed, ⌄ expanded via drill/auto-expand)", () => {
+  it("pod 保留其真实折叠字形（› 折叠，⌄ 展开经 drill/auto-expand）", () => {
     const s = makeStore();
     let screen = renderScreen(s.get(), snap, { cols: 120, rows: 32 });
     const collapsed = explorerPane(screen.lines).find((l) => l.includes("dev50"))!;
     expect(collapsed).toContain("›");
-    // drilling the pod auto-expands it — unchanged function, re-skinned look
+    // drill pod 自动展开——功能不变，外观重皮肤
     s.dispatch({ type: "drill", resource: "pod", name: "dev50", target: { host: "vm-host", rig: "openrig-build" } });
     screen = renderScreen(s.get(), snap, { cols: 120, rows: 32 });
     const pane = explorerPane(screen.lines);
     expect(pane.find((l) => l.includes("dev50") && !l.includes("●"))).toContain("⌄");
-    // the agent rows appear (identity by ROW MODEL key — display names may
-    // truncate under the locked meta-always policy)
+    // agent 行出现（身份按行模型键——显示名可能
+    // 在锁定的 meta-恒在策略下截断）
     expect(screen.explorerRows.some((r) => r.key === "agent:vm-host/openrig-build/dev50/dev50.driver")).toBe(true);
   });
 
-  it("agent meta is ALWAYS the locked `runtime · ctx%` form and names render POD-RELATIVE (guard rulings)", () => {
+  it("agent meta 恒为锁定 `runtime · ctx%` 形式，名字按 pod 相对渲染（guard 裁决）", () => {
     const s = makeStore();
     s.dispatch({ type: "drill", resource: "pod", name: "dev50", target: { host: "vm-host", rig: "openrig-build" } });
     const pane = explorerPane(renderScreen(s.get(), snap, { cols: 120, rows: 32 }).lines);
-    // dev50.driver under pod dev50 displays pod-relative "driver" (the
-    // nav-flow mockup's convention); the meta stays complete
+    // pod dev50 下的 dev50.driver 显示 pod 相对名 "driver"（
+    // nav-flow 模型约定）；meta 保持完整
     const driver = pane.find((l) => l.trimEnd().endsWith(" 62%"))!;
     expect(driver).toBeDefined();
-    // pod-relative "driver" may still truncate at depth-4 geometry, but its
-    // visible stem is the AGENT's own name, never the shared pod prefix
+    // pod 相对名 "driver" 在 depth-4 几何下仍可能截断，但其
+    // 可见词干是 agent 自己的名字，绝非共享 pod 前缀
     expect(driver).toMatch(/● driver/); // untruncated under the S19 mark meta
     expect(driver).not.toMatch(/dev50\.driver/); // full identity lives in the row model, not the display
   });
 
-  it("same-pod agents with IDENTICAL runtime+context stay visibly distinct (guard collision repro)", () => {
+  it("同 pod 内 runtime+context 完全相同的 agent 仍可视觉区分（guard 碰撞复现）", () => {
     const twinSnap = {
       ...snap,
       hosts: [{ name: "h", reachable: true, rigs: [{ name: "r", pods: [{ name: "dev50", agents: [
@@ -104,7 +104,7 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     expect(agentRows.some((l) => l.includes("guar"))).toBe(true);
   });
 
-  it("a name NOT prefixed by its pod displays unchanged (honest fallback — only a confirmed prefix strips)", () => {
+  it("未带 pod 前缀的名字显示不变（诚实回退——仅确认前缀才剥离）", () => {
     const soloSnap = {
       ...snap,
       hosts: [{ name: "h", reachable: true, rigs: [{ name: "r", pods: [{ name: "dev50", agents: [
@@ -117,14 +117,14 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     expect(row.trimEnd()).toMatch(/● solo\s+7%$/); // round-3: bare ctx meta
   });
 
-  it("null context renders the honest bare — (round-3 explorer meta)", () => {
+  it("null context 渲染诚实裸 —（round-3 explorer meta）", () => {
     const s = makeStore();
     s.dispatch({ type: "drill", resource: "pod", name: "dev50", target: { host: "vm-host", rig: "openrig-build" } });
     const pane = explorerPane(renderScreen(s.get(), snap, { cols: 120, rows: 32 }).lines);
     expect(pane.some((l) => /qa/.test(l) && l.trimEnd().endsWith("—"))).toBe(true); // demo: dev50.qa ctx null → honest —
   });
 
-  it("a short name renders untruncated beside the ctx meta (round-3 form)", () => {
+  it("短名在 ctx meta 旁不截断渲染（round-3 形式）", () => {
     const shortSnap = {
       ...snap,
       hosts: [{ name: "h", reachable: true, rigs: [{ name: "r", pods: [{ name: "p", agents: [
@@ -138,7 +138,7 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     expect(row.trimEnd()).toMatch(/● ok\s+5%$/);
   });
 
-  it("an extreme name renders FULL — the meta yields entirely, the identity NEVER ellipsises (guard NOT-CLEAR finding 1)", () => {
+  it("极端名字完整渲染——meta 全让步，身份绝不省略（guard NOT-CLEAR finding 1）", () => {
     const longSnap = {
       ...snap,
       hosts: [{ name: "h", reachable: true, rigs: [{ name: "r", pods: [{ name: "p", agents: [
@@ -148,16 +148,15 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     const s = createViewState({ instanceId: "nav-long", getSnapshot: () => longSnap });
     s.dispatch({ type: "drill", resource: "pod", name: "p", target: { host: "h", rig: "r" } });
     const row = explorerPane(renderScreen(s.get(), longSnap, { cols: 120, rows: 32 }).lines).find((l) => l.includes("● an-"))!;
-    // the LAYOUT never truncates: the name gets every available cell and the
-    // meta yields entirely; only the PHYSICAL pane edge may clip (pad()'s
-    // honest boundary ellipsis at the last column — same class as the
-    // width-clip indicator, not a layout choice)
+    // 布局绝不截断：名字拿到每个可用格，
+    // meta 完全让出；仅物理窗格边缘可裁剪（pad() 在最后列的
+    // 诚实边界省略号——与宽度裁剪指示同类，非布局选择）
     expect(row).toContain("an-extremely-lon"); // every cell the pane physically offers
     expect(row).not.toMatch(/9%/); // the meta yielded — name-first
     expect(row.indexOf("…") === -1 || row.indexOf("…") === 29, "ellipsis only at the physical pane edge").toBe(true);
   });
 
-  it("the TERMINAL mark keeps its dark-cell background on TOPOLOGY CARDS (round-3: marks live on cards; the bg-channel discriminator relocates with them)", () => {
+  it("TERMINAL 标记在 topology 卡片上保留暗格背景（round-3：标记活在卡片上；bg 通道区分器随其迁移）", () => {
     const node = (id: string, name: string, runtime: string) => ({
       id, type: "rigNode", parentId: "pod-T",
       data: { logicalId: name, podNamespace: "t", runtime, model: null, status: "running",
@@ -188,7 +187,7 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     styled.forEach((line, j) => expect(stripAnsi(line), `line ${j}`).toBe(screen.lines[j]));
   });
 
-  it("the clawd card mark paints eye-on-terracotta (fg #181818 on bg #ad6755) through the seg channel", () => {
+  it("clawd 卡片标记经 seg 通道绘为 eye-on-terracotta（fg #181818 在 bg #ad6755）", () => {
     const s = createViewState({ instanceId: "card-clawd", getSnapshot: () => graphSnapLocal() });
     const host = graphSnapLocal().hosts[0]!;
     s.dispatch({ type: "drill", resource: "rig", name: host.rigs[0]!.name, target: { host: host.name } });
@@ -201,7 +200,7 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     styled.forEach((line, j) => expect(stripAnsi(line), `line ${j}`).toBe(screen.lines[j]));
   });
 
-  it("an expanded namespaced spec folder renders its child ONE level deeper, never a sibling (guard finding 2)", () => {
+  it("展开的命名空间 spec 文件夹把子级渲染在更深一层，绝不同级（guard finding 2）", () => {
     const nsSnap = {
       ...snap,
       specs: [
@@ -221,20 +220,20 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     const branchCol = (l: string) => l.search(/┣━|┗━/);
     expect(branchCol(child)).toBeGreaterThan(branchCol(folder)); // child branch sits deeper
     void indentOf;
-    // PIN-1 untouched: the child's action is still the spec drill from the row model
+    // PIN-1 不动：子项动作仍是行模型的 spec drill
     const rows = computeExplorerRows(s.get(), nsSnap);
     const childRow = rows.find((r) => r.key === "spec:vault-specialist")!;
     expect(childRow.action).toEqual({ type: "drill", resource: "spec", name: "vault-specialist" });
   });
 
-  it("pod rows carry their agent count right-aligned (moved out of the inline label)", () => {
+  it("pod 行把 agent 数右对齐（移出内联 label）", () => {
     const s = makeStore();
     const screen = renderScreen(s.get(), snap, { cols: 120, rows: 32 });
     const pod = explorerPane(screen.lines).find((l) => l.includes("dev50"))!;
     expect(pod.trimEnd()).toMatch(/3$/); // dev50 pod has 3 agents in the demo fixture
   });
 
-  it("PURE re-skin: the hit-map's explorer actions are EXACTLY the row model's actions (PIN-1 untouched)", () => {
+  it("纯重皮肤：hit-map 的 explorer 动作恰为行模型动作（PIN-1 不动）", () => {
     const s = makeStore();
     const screen = renderScreen(s.get(), snap, { cols: 120, rows: 32 });
     const rows = computeExplorerRows(s.get(), snap);
@@ -242,30 +241,30 @@ describe("file-tree re-skin (Direction B navigator)", () => {
       expect(rendered.action).toEqual(rows[i]!.action);
       expect(rendered.key).toBe(rows[i]!.key);
     });
-    // clicking the rig row still drills the rig — same action, same reducer
+    // 点 rig 行仍 drill rig——同动作，同 reducer
     const rigTarget = screen.hitMap.find((h) => h.action.type === "drill" && h.action.resource === "rig");
     expect(rigTarget).toBeDefined();
     const after = s.dispatch(rigTarget!.action);
     expect(after.drill.map((d) => d.name)).toEqual(["vm-host", "openrig-build"]);
   });
 
-  it("selection sync still lands ON the drilled agent (auto-expand preserved through the re-skin)", () => {
+  it("选择同步仍落在 drilled agent 上（重皮肤保留 auto-expand）", () => {
     const s = makeStore();
     s.dispatch({ type: "drill", resource: "agent", name: "dev50.guard", target: { host: "vm-host", rig: "openrig-build", pod: "dev50" } });
     const rows = computeExplorerRows(s.get(), snap);
     expect(rows[s.get().selection]?.key).toBe("agent:vm-host/openrig-build/dev50/dev50.guard");
     const screen = renderScreen(s.get(), snap, { cols: 120, rows: 32 });
-    // the selected ROW is the drilled agent (row-model identity)…
+    // 选中行是被 drill 的 agent（行模型身份）…
     const selectedRow = screen.explorerRows.find((r) => r.y === screen.lines.findIndex((l) => l.startsWith("▶")) + 1);
     expect(selectedRow?.key).toBe("agent:vm-host/openrig-build/dev50/dev50.guard");
-    // …AND the line shows the agent's VISIBLE identity (pod-relative "guard")
-    // plus its own locked meta at the edge (guard: visible-identity restore)
+    // …且该行显示 agent 的可见身份（pod 相对 "guard"）
+    // 加其在边缘的锁定 meta（guard：可见身份恢复）
     const selectedLine = screen.lines.find((l) => l.startsWith("▶"))!;
     expect(selectedLine.slice(0, 30)).toMatch(/● guard/);
     expect(selectedLine.slice(0, 30).trimEnd()).toMatch(/31%$/); // demo: guard ctx 31 (round-3 bare meta)
   });
 
-  it("G2 selection gives the whole selected Explorer row a bright wash", () => {
+  it("G2 选择给整行选中 explorer 行明亮洗色", () => {
     const s = makeStore();
     s.dispatch({ type: "drill", resource: "agent", name: "dev50.guard", target: { host: "vm-host", rig: "openrig-build", pod: "dev50" } });
     const screen = renderScreen(s.get(), snap, { cols: 120, rows: 32 });
@@ -277,9 +276,9 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     styled.forEach((l, j) => expect(stripAnsi(l), `line ${j}`).toBe(screen.lines[j]));
   });
 
-  it("explorer agent status derives from SERVED truth — all four states visibly distinct in compiled output (guard round-4 finding 4)", () => {
-    // demo fixture serves all four: driver active · guard idle · qa unknown
-    // (live:false) · orch.lead needs-attention — none may fabricate liveness
+  it("explorer agent 状态派生自 served 真相——编译输出中四态视觉区分（guard round-4 finding 4）", () => {
+    // demo fixture 提供全部四个：driver active · guard idle · qa unknown
+    //（live:false）· orch.lead needs-attention——无一可伪造活性
     const s = makeStore();
     s.dispatch({ type: "drill", resource: "pod", name: "dev50", target: { host: "vm-host", rig: "openrig-build" } });
     s.dispatch({ type: "drill", resource: "pod", name: "orch", target: { host: "vm-host", rig: "openrig-build" } });
@@ -287,13 +286,13 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     const styled = stylizeLines(screen, createStyle("truecolor"));
     const styledRow = (needle: string) => styled.find((l) => stripAnsi(l).slice(0, 30).includes(needle))!;
     const plainRow = (needle: string) => screen.lines.find((l) => l.slice(0, 30).includes(needle))!;
-    // honest glyphs first: unknown/offline qa is ○ (never a fabricated ●),
-    // needs-attention lead is ◐ — served truth, not a hardcoded ●
+    // 诚实字形优先：unknown/offline qa 是 ○（绝不伪造 ●），
+    // needs-attention lead 是 ◐——服务真值，非硬编码 ●
     expect(plainRow("driver").slice(0, 30)).toMatch(/● driver/);
     expect(plainRow("guard").slice(0, 30)).toMatch(/● guard/);
     expect(plainRow("qa").slice(0, 30)).toMatch(/○ qa/);
     expect(plainRow("lead").slice(0, 30)).toMatch(/◐ lead/);
-    // the four activity ROLES paint distinctly (Substrate values, truecolor)
+    // 四个活动角色不同绘制（Substrate 值，truecolor）
     expect(styledRow("driver"), "active → actActive").toMatch(/38;2;152;195;121m●/);
     expect(styledRow("guard"), "idle → actIdle").toMatch(/38;2;110;142;170m●/);
     expect(styledRow("qa"), "unknown → actDetached (honest)").toMatch(/38;2;109;116;128m○/);
@@ -301,7 +300,7 @@ describe("file-tree re-skin (Direction B navigator)", () => {
     styled.forEach((l, i) => expect(stripAnsi(l), `line ${i}`).toBe(screen.lines[i]));
   });
 
-  it("stylize keeps the strip-invariant over the re-skinned labels", () => {
+  it("stylize 在重皮肤标签上保持 strip 不变量", () => {
     const s = makeStore();
     s.dispatch({ type: "drill", resource: "pod", name: "dev50", target: { host: "vm-host", rig: "openrig-build" } });
     const screen = renderScreen(s.get(), snap, { cols: 120, rows: 32 });

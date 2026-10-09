@@ -1,11 +1,10 @@
-// R1 (release-0.4.7) — C1: fetchRead surfaces a typed, discriminated failure.
+// R1（release-0.4.7）——C1：fetchRead 呈现类型化、可区分的失败。
 //
-// The shared file reader stops throwing an opaque `new Error("HTTP <status>")`
-// and instead throws a `FilesReadError` that carries the daemon's status
-// distinction as a `code` (absent | read_error | bad_path) while keeping the
-// SAME `message` text ("HTTP <status>") — the message-compat pin (arch). We
-// exercise it through the public `useFilesRead` hook (react-query surfaces the
-// thrown error on `query.error`), so no internal export is added.
+// 共享文件读取器不再抛出不透明的 `new Error("HTTP <status>")`，而是抛出
+// `FilesReadError`，以 `code` 携带后台服务的状态区分（absent | read_error | bad_path），
+// 同时保持完全相同的 `message` 文本（"HTTP <status>"），这是架构要求的消息兼容锁定项。
+// 通过公共 `useFilesRead` 钩子执行验证；react-query 在 `query.error` 上呈现抛出的错误，
+// 因此无需新增内部导出。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor, cleanup } from "@testing-library/react";
@@ -48,9 +47,9 @@ describe("fetchRead typed failure (FilesReadError)", () => {
     expect(err).toBeInstanceOf(FilesReadError);
     expect((err as FilesReadError).code).toBe("absent");
     expect((err as FilesReadError).status).toBe(404);
-    // message-compat pin: identical text to the pre-split `new Error("HTTP 404")`
+    // 消息兼容锁定项：文本与拆分前的 `new Error("HTTP 404")` 完全一致。
     expect((err as Error).message).toBe("HTTP 404");
-    // name kept "Error" so any `${err}` / err.name render stays byte-identical
+    // name 保持为 "Error"，使任何 `${err}` / err.name 渲染逐字节不变。
     expect((err as Error).name).toBe("Error");
   });
 

@@ -28,7 +28,7 @@ const COMPOSE_PS_HEALTHY = JSON.stringify({
   Health: "healthy",
 });
 
-describe("Services snapshot/restore/teardown (T04)", () => {
+describe("服务快照/恢复/拆除（T04）", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
 
@@ -59,7 +59,7 @@ describe("Services snapshot/restore/teardown (T04)", () => {
     return rig;
   }
 
-  it("snapshot captures env receipt from services record", () => {
+  it("快照从服务记录捕获环境回执", () => {
     const spec: RigServicesSpec = { kind: "compose", composeFile: "docker-compose.yml" };
     const rig = seedRigWithServices(spec);
 
@@ -71,7 +71,7 @@ describe("Services snapshot/restore/teardown (T04)", () => {
     expect(snapshot.data.envReceipt!.services[0]!.name).toBe("vault");
   });
 
-  it("snapshot without services has null envReceipt", () => {
+  it("没有服务的快照其 envReceipt 为 null", () => {
     const rig = setup.rigRepo.createRig("plain-rig");
 
     const snapshot = setup.snapshotCapture.captureSnapshot(rig.id, "test");
@@ -79,7 +79,7 @@ describe("Services snapshot/restore/teardown (T04)", () => {
     expect(snapshot.data.envReceipt).toBeNull();
   });
 
-  it("teardown calls service teardown for services-enabled rig", async () => {
+  it("拆除为启用服务的工作组调用服务拆除", async () => {
     const spec: RigServicesSpec = { kind: "compose", composeFile: "docker-compose.yml", downPolicy: "down" };
     const rig = seedRigWithServices(spec);
 
@@ -87,18 +87,18 @@ describe("Services snapshot/restore/teardown (T04)", () => {
     const composeAdapter = new ComposeServicesAdapter(exec);
     const serviceOrch = new ServiceOrchestrator({ rigRepo: setup.rigRepo, composeAdapter });
 
-    // Inject service orchestrator into teardown
+    // 将 service orchestrator 注入 teardown
     (setup.teardownOrchestrator as any).deps.serviceOrchestrator = serviceOrch;
 
     const result = await setup.teardownOrchestrator.teardown(rig.id);
 
     expect(result.errors).toHaveLength(0);
-    // Service teardown should have called docker compose down
+    // Service teardown 应已调用 docker compose down
     const downCalls = exec.mock.calls.filter((c) => (c[0] as string).includes("down"));
     expect(downCalls.length).toBeGreaterThan(0);
   });
 
-  it("teardown with leave_running policy does not call compose down", async () => {
+  it("采用 leave_running 策略拆除时不调用 compose down", async () => {
     const spec: RigServicesSpec = { kind: "compose", composeFile: "docker-compose.yml", downPolicy: "leave_running" };
     const rig = seedRigWithServices(spec);
 
@@ -116,7 +116,7 @@ describe("Services snapshot/restore/teardown (T04)", () => {
     expect(downCalls).toHaveLength(0);
   });
 
-  it("teardown without services does not attempt service teardown", async () => {
+  it("没有服务时拆除不尝试服务拆除", async () => {
     const rig = setup.rigRepo.createRig("plain-rig");
 
     const exec = vi.fn<ExecFn>().mockResolvedValue("");
@@ -131,15 +131,15 @@ describe("Services snapshot/restore/teardown (T04)", () => {
     expect(exec).not.toHaveBeenCalled();
   });
 
-  it("snapshot continuity is receipt_only without checkpoint hooks", () => {
+  it("没有检查点 hook 时快照连续性为 receipt_only", () => {
     const spec: RigServicesSpec = { kind: "compose", composeFile: "docker-compose.yml" };
     const rig = seedRigWithServices(spec);
 
     const snapshot = setup.snapshotCapture.captureSnapshot(rig.id, "test");
 
-    // envReceipt is present but there are no checkpoint artifacts
+    // envReceipt 存在但无 checkpoint artifact
     expect(snapshot.data.envReceipt).toBeDefined();
-    // No envCheckpoint field — receipt-only honesty
+    // 无 envCheckpoint 字段——仅 receipt 诚实
     expect((snapshot.data as Record<string, unknown>)["envCheckpoint"]).toBeUndefined();
   });
 });

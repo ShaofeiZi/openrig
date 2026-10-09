@@ -41,7 +41,7 @@ beforeEach(() => {
   const settings = new SettingsStore(join(home, "settings.json"));
   settings.set("host.name", "fixture-host");
   gateway = { state: "active", connector: { outboundReady: true, inboundReady: true, inbound: { state: "connected" }, configurationDigest: channelStateDigest(config) } };
-  external = vi.fn(() => { throw new Error("No external calls in passive journey"); });
+  external = vi.fn(() => { throw new Error("被动流程不得发起外部调用"); });
   vi.stubGlobal("fetch", external);
   http = new Hono();
   http.use("*", async (c, next) => { c.set("gatewaySubsystem" as never, { status: () => gateway, restart: external } as never); c.set("settingsStore" as never, settings as never); await next(); });
@@ -50,7 +50,7 @@ beforeEach(() => {
   client = new DaemonClient({ baseUrl: "http://fixture", fetchImpl: (async (url, init) => {
     const path = new URL(String(url)).pathname;
     observed.push({ path, method: init?.method ?? "GET" });
-    if (humanBlocker && path === "/api/queue/list" && new URL(String(url)).searchParams.get("state") === "blocked") return Response.json([{ qitemId: "blocked", sourceSession: "author@demo", destinationSession: "worker@demo", state: "blocked", blockedOn: "alex@external", tags: [], body: "Needs a human", summary: "Choose a cover" }]);
+    if (humanBlocker && path === "/api/queue/list" && new URL(String(url)).searchParams.get("state") === "blocked") return Response.json([{ qitemId: "blocked-1", sourceSession: "author@demo", destinationSession: "worker@demo", state: "blocked", blockedOn: "alex@external", tags: [], body: "Needs a human", summary: "Choose a cover" }]);
     if (path === "/api/queue/alex%40external") return Response.json({ error: "not_found" }, { status: 404 });
     if (path.startsWith("/api/gateway")) return http.request(path, init);
     const fixtures: Record<string, unknown> = {
@@ -74,8 +74,8 @@ async function verify(ready: boolean | null) {
   }, home);
 }
 
-describe("passive Connections journey", () => {
-  it("reads real sources, preserves attribution, navigates to route and spec then returns to work without writes or external calls", async () => {
+describe("被动连接流程", () => {
+  it("读取真实来源并保留归属，可导航到路由和 spec 后返回工作，且不写入或发起外部调用", async () => {
     await verify(true);
     const before = [configPathFor(home), projectionPath(home), join(home, "state/human-channel-operations.jsonl")].map((p) => readFileSync(p, "utf8"));
     let snap: FleetSnapshot = emptySnapshot();
@@ -89,11 +89,11 @@ describe("passive Connections journey", () => {
     expect(snap.connections).toMatchObject({ state: "unverified", running: { applied: "matching" }, verification: { state: "ready-at-check", actor: "tester@fixture" } });
     const content = connectionsLines(snap, 75);
     const rendered = renderScreen(view.get(), snap, { cols: 110, rows: 40 }).lines.join("\n");
-    expect(rendered).toContain("CONNECTIONS");
+    expect(rendered).toContain("连接");
     expect(rendered).toContain("fixture-cli");
     expect(content.map((l) => l.text).join("\n")).toContain("ready-at-check");
     snap.pending.push({ qitemId: "request-1", sourceSession: "orch@demo", destinationSession: "alex@external", state: "pending", blockedOn: null, handedOffTo: null, tier: null, tags: null, summary: "fixture decision", body: "", claimedAt: null, tsUpdated: "2026-09-07T00:00:00Z" });
-    expect(connectionsLines(snap, 100).map((l) => l.text).join("\n")).toContain("request-1 · from orch@demo");
+    expect(connectionsLines(snap, 100).map((l) => l.text).join("\n")).toContain("request-1 · 来自 orch@demo");
     const response = JSON.stringify(snap.connections);
     for (const value of [secret, appSecret, "HIDDEN-REF", "secretsRef", "secretsEnvFile"]) expect(response + rendered).not.toContain(value);
     const route = content.find((line) => line.action?.type === "drill" && line.action.resource === "agent")!.action!;
@@ -110,7 +110,7 @@ describe("passive Connections journey", () => {
     expect([configPathFor(home), projectionPath(home), join(home, "state/human-channel-operations.jsonl")].map((p) => readFileSync(p, "utf8"))).toEqual(before);
   });
 
-  it.each(["disabled", "incomplete", "failed", "unavailable", "unapplied", "indeterminate"])("keeps %s distinct with an action", async (mode) => {
+  it.each(["disabled", "incomplete", "failed", "unavailable", "unapplied", "indeterminate"])("保留不同的 %s 状态及对应动作", async (mode) => {
     if (mode === "disabled") config.enabled = false;
     if (mode === "incomplete") config.channel = null;
     if (mode === "failed") gateway.state = "failed";
@@ -123,27 +123,27 @@ describe("passive Connections journey", () => {
     }
     const snap = await hydrate();
     expect(snap.connections?.state).toBe(mode);
-    expect(snap.connections?.nextAction).toMatch(/^rig /);
+    expect(snap.connections?.nextAction).toMatch(/^zrig /);
     const lines = connectionsLines(snap, 70).map((l) => l.text).join("\n");
     expect(lines).toContain(mode);
     expect(external).not.toHaveBeenCalled();
   });
 
-  it.each([false, true])("distinguishes requested enabled=%s from application, then reflects adoption", async (enabled) => {
+  it.each([false, true])("区分请求的 enabled=%s 与实际应用状态，然后反映采纳结果", async (enabled) => {
     gateway.connector = { outboundReady: !enabled, configurationDigest: channelStateDigest({ ...config, enabled: !enabled }) };
     config.enabled = enabled; saveConfig(config, home);
     const before = [configPathFor(home), projectionPath(home)].map((p) => readFileSync(p, "utf8"));
     const pending = await hydrate();
-    expect(pending.connections).toMatchObject({ state: "unapplied", nextAction: "rig daemon logs",
+    expect(pending.connections).toMatchObject({ state: "unapplied", nextAction: "zrig daemon logs",
       configuration: { enabled }, running: { applied: "changed", outboundReady: !enabled } });
     const lines = connectionsLines(pending, 140).map((l) => l.text).join("\n");
-    expect(lines).toContain("Slack: unapplied");
-    expect(lines).toMatch(/delivery.*unapplied/);
-    expect(lines).toContain("current external reach is unverified");
-    expect(lines).not.toContain("rig slack enable");
+    expect(lines).toContain("Slack：未应用");
+    expect(lines).toMatch(/路由使用实例 Slack · 未应用/);
+    expect(lines).toContain("当前外部可达性未验证");
+    expect(lines).not.toContain("zrig slack enable");
     gateway.connector = { outboundReady: enabled, configurationDigest: channelStateDigest(config) };
     expect((await hydrate()).connections).toMatchObject({ state: enabled ? "unverified" : "disabled",
-      nextAction: enabled ? "rig slack verify --json" : "rig slack enable",
+      nextAction: enabled ? "zrig slack verify --json" : "zrig slack enable",
       running: { applied: "matching", outboundReady: enabled } });
     expect([configPathFor(home), projectionPath(home)].map((p) => readFileSync(p, "utf8"))).toEqual(before);
     expect(external).not.toHaveBeenCalled();
@@ -151,7 +151,7 @@ describe("passive Connections journey", () => {
   });
 
   it.each([false, true].flatMap((enabled) => ["digest", "connector", "status", "stopped", "failed"].map((missing) => ({ enabled, missing }))))(
-    "does not infer application from enabled=$enabled with $missing evidence missing or unavailable", async ({ enabled, missing }) => {
+    "enabled=$enabled 且 $missing 证据缺失或不可用时不推断实际应用状态", async ({ enabled, missing }) => {
       config.enabled = enabled; saveConfig(config, home);
       if (missing === "digest") gateway.connector = { outboundReady: true };
       if (missing === "connector") delete gateway.connector;
@@ -159,16 +159,17 @@ describe("passive Connections journey", () => {
       if (missing === "stopped" || missing === "failed") gateway.state = missing;
       const snap = await hydrate();
       const state = missing === "failed" ? "failed" : missing === "status" || missing === "stopped" ? "unavailable" : "unverified";
-      expect(snap.connections).toMatchObject({ state, nextAction: "rig daemon logs", configuration: { enabled } });
+      expect(snap.connections).toMatchObject({ state, nextAction: "zrig daemon logs", configuration: { enabled } });
       const lines = connectionsLines(snap, 140).map((l) => l.text).join("\n");
-      expect(lines).toContain(`Slack: ${state}`);
+      const stateLabel = { failed: "失败", unavailable: "不可用", unverified: "未验证" }[state] ?? state;
+      expect(lines).toContain(`Slack：${stateLabel}`);
       expect(lines).not.toMatch(/delivery.*disabled/);
-      expect(lines).not.toContain("rig slack enable");
+      expect(lines).not.toContain("zrig slack enable");
       expect(external).not.toHaveBeenCalled();
     },
   );
 
-  it("does not turn malformed config or registry into disabled/empty success or leak parser errors", async () => {
+  it("不把格式错误的配置或注册表解释为 disabled/空成功，也不泄露 parser 错误", async () => {
     writeFileSync(configPathFor(home), `broken ${secret}`);
     writeFileSync(projectionPath(home), `broken ${appSecret}`);
     const snap = await hydrate();
@@ -177,7 +178,7 @@ describe("passive Connections journey", () => {
     expect(body).not.toContain(secret); expect(body).not.toContain(appSecret);
   });
 
-  it("a changed, failed, interrupted or corrupt verification cannot inherit old green", async () => {
+  it("已变更、失败、中断或损坏的验证不能沿用旧的成功状态", async () => {
     await verify(true);
     config.channel = "C-CHANGED"; saveConfig(config, home);
     expect((await hydrate()).connections?.verification.state).toBe("changed");
@@ -189,25 +190,25 @@ describe("passive Connections journey", () => {
     expect((await hydrate()).connections?.verification.state).toBe("indeterminate");
   });
 
-  it("route exclusion is distinct from connector readiness", async () => {
+  it("区分路由排除与 connector 就绪状态", async () => {
     config.outboundDestinations = ["someone-else@external"]; saveConfig(config, home);
     const snap = await hydrate();
     expect(snap.connections?.humans[0]?.excluded).toBe(true);
-    expect(connectionsLines(snap, 80).map((l) => l.text).join("\n")).toContain("excluded by outbound policy");
+    expect(connectionsLines(snap, 80).map((l) => l.text).join("\n")).toContain("被出站策略排除");
   });
 
-  it("failed endpoint on refresh clears old evidence and older daemons stay unavailable", async () => {
+  it("刷新时 endpoint 失败会清除旧证据，旧版 daemon 保持不可用", async () => {
     const old = await hydrate(); expect(old.connections).not.toBeNull();
     client.connections = async () => { throw new Error("HTTP 404"); };
     const snap = await hydrate(); expect(snap.connections).toBeNull();
     expect(snap.readErrors).toContain("connections: HTTP 404");
-    expect(connectionsLines(snap, 80).map((l) => l.text).join("\n")).toContain("Connections unavailable");
+    expect(connectionsLines(snap, 80).map((l) => l.text).join("\n")).toContain("连接不可用");
     expect(external).not.toHaveBeenCalled();
   });
 });
 
 
-it("never resolves an external human blocker as a queue-item ID or poisons the page read", async () => {
+it("绝不把外部人工 blocker 解析为 queue-item ID，也不污染页面读取", async () => {
   humanBlocker = true;
   const page = new PageRead(Date.now); page.begin();
   await hydrateSnapshot(client.forPage(page, new AbortController().signal), undefined, null, null, "demo", { section: "connections", viewTab: "table", drill: [] });

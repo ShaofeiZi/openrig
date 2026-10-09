@@ -1,0 +1,1009 @@
+{
+  "owner": "docs-packages-a",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": "packages/cli/src/lib/scope-templates/backlog-deprecation.md",
+      "target_path": "packages/cli/src/lib/scope-templates/backlog-deprecation.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 45,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；保留 frontmatter、占位符、路径与标识符；顶层用户命令采用 zrig；轻量结构检查与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope-templates/bug-fix.md",
+      "target_path": "packages/cli/src/lib/scope-templates/bug-fix.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 49,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；保留 frontmatter、占位符、路径与标识符；顶层用户命令采用 zrig；轻量结构检查与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope-templates/mission-placeholder.md",
+      "target_path": "packages/cli/src/lib/scope-templates/mission-placeholder.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 31,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；保留 frontmatter、占位符、路径与标识符；顶层用户命令采用 zrig；轻量结构检查与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/cli/src/lib/scope-templates/release-feature.md",
+      "target_path": "packages/cli/src/lib/scope-templates/release-feature.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 37,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；保留 frontmatter、占位符、路径与标识符；顶层用户命令采用 zrig；轻量结构检查与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/guidance/CULTURE-default.md",
+      "target_path": "packages/daemon/assets/guidance/CULTURE-default.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 19,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；保留 frontmatter、占位符、路径与标识符；顶层用户命令采用 zrig；轻量结构检查与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/README.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/README.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 64,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；保留 frontmatter、占位符、路径与标识符；顶层用户命令采用 zrig；轻量结构检查与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 158,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、状态枚举、结果字段、命令参数、路径和 skill 标识保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/templates/compact-instruction.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/templates/compact-instruction.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 1,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/templates/post-compact-restore-instruction.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/templates/post-compact-restore-instruction.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 1,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/messaging-the-human/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/messaging-the-human/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 120,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、CLI 参数、qitem/状态值、地址、路径和 skill 标识保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/mission-slice-sop/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/mission-slice-sop/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 108,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、CLI 参数、qitem/状态值、地址、路径和 skill 标识保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/LEARNED.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/LEARNED.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 42,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；机器字段、枚举、模板占位符、policy 键及路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/PLAYBOOK.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/PLAYBOOK.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 4,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/SPEC.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/SPEC.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 54,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；机器字段、枚举、模板占位符、policy 键及路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/retiring-and-inheriting-a-seat/CHANGELOG.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/retiring-and-inheriting-a-seat/CHANGELOG.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 22,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；机器字段、枚举、模板占位符、policy 键及路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 157,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、状态枚举、结果字段、命令参数、路径和 skill 标识保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/references/apprentice-evidence-toolkit.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/references/apprentice-evidence-toolkit.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 32,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；机器字段、枚举、模板占位符、policy 键及路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/plugins/openrig-core/skills/software-for-agents/SKILL.md",
+      "target_path": "packages/daemon/assets/plugins/openrig-core/skills/software-for-agents/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 19,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；机器字段、枚举、模板占位符、policy 键及路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/assets/vm-preview-fixtures/README.md",
+      "target_path": "packages/daemon/assets/vm-preview-fixtures/README.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 26,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；机器字段、枚举、模板占位符、policy 键及路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/context-packs-src/onboarding-width/public-what-you-can-do.md",
+      "target_path": "packages/daemon/context-packs-src/onboarding-width/public-what-you-can-do.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 687,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；章节/列表数量与原文一致；命令、JSON 字段、状态、commit/verdict、R/F 编号、路径和契约形态保持不变；用户命令采用 zrig；段落级英文残留与格式检查通过 | 已生成完整中文伴随文档；源文件未改；14/14 章节与 142/142 列表项覆盖一致；命令、JSON 字段、状态、路径、model IDs 与协议值保持不变；用户命令采用 zrig；段落级残留检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/context-packs-src/world-example/your-world.md",
+      "target_path": "packages/daemon/context-packs-src/world-example/your-world.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 54,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；机器字段、枚举、模板占位符、policy 键及路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/policies/builtin/open.policy.md",
+      "target_path": "packages/daemon/policies/builtin/open.policy.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 24,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；机器字段、枚举、模板占位符、policy 键及路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/policies/examples/my-cautious-dev.policy.md",
+      "target_path": "packages/daemon/policies/examples/my-cautious-dev.policy.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 40,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；机器字段、枚举、模板占位符、policy 键及路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/apps/vault-specialist/skills/vault-user/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/apps/vault-specialist/skills/vault-user/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 64,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；命令、地址、角色 ID、skill 名称和流程字段保持不变；用户入口命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/conveyor/builder/guidance/role.md",
+      "target_path": "packages/daemon/specs/agents/conveyor/builder/guidance/role.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 31,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；命令、地址、角色 ID、skill 名称和流程字段保持不变；用户入口命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/conveyor/builder/startup/context.md",
+      "target_path": "packages/daemon/specs/agents/conveyor/builder/startup/context.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 9,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；命令、地址、角色 ID、skill 名称和流程字段保持不变；用户入口命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/conveyor/lead/guidance/role.md",
+      "target_path": "packages/daemon/specs/agents/conveyor/lead/guidance/role.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 32,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；命令、地址、角色 ID、skill 名称和流程字段保持不变；用户入口命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/conveyor/planner/startup/context.md",
+      "target_path": "packages/daemon/specs/agents/conveyor/planner/startup/context.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 21,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；命令、地址、角色 ID、skill 名称和流程字段保持不变；用户入口命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/conveyor/reviewer/guidance/role.md",
+      "target_path": "packages/daemon/specs/agents/conveyor/reviewer/guidance/role.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 30,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；命令、地址、角色 ID、skill 名称和流程字段保持不变；用户入口命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/factory-rsi/dogfood/guidance/role.md",
+      "target_path": "packages/daemon/specs/agents/factory-rsi/dogfood/guidance/role.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 37,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；命令、地址、角色 ID、skill 名称和流程字段保持不变；用户入口命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/factory-rsi/release-manager/guidance/role.md",
+      "target_path": "packages/daemon/specs/agents/factory-rsi/release-manager/guidance/role.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 40,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；命令、地址、角色 ID、skill 名称和流程字段保持不变；用户入口命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/review/independent-reviewer/guidance/role.md",
+      "target_path": "packages/daemon/specs/agents/review/independent-reviewer/guidance/role.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 22,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；命令、地址、角色 ID、skill 名称和流程字段保持不变；用户入口命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/messaging-the-human/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/messaging-the-human/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 120,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、CLI 参数、qitem/状态值、地址、路径和 skill 标识保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/openrig-architect/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/openrig-architect/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 371,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；RigSpec/AgentSpec、edge/runtime、路径解析、YAML 示例和机器字段保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/openrig-cmux/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/openrig-cmux/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 81,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、命令参数、provider/skill 标识、模板占位符、枚举与路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/openrig-skills/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/openrig-skills/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 118,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、命令参数、provider/skill 标识、模板占位符、枚举与路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/openrig-software-factory/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/openrig-software-factory/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 138,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、流程字段、地址、命令参数、路径及契约语义保持不变；用户命令采用 zrig，讲解旧入口行为处保留 rig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/core/rig-bundles-and-shareable-artifacts/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/core/rig-bundles-and-shareable-artifacts/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 101,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、命令参数、provider/skill 标识、模板占位符、枚举与路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/pm/ui-mockup/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/pm/ui-mockup/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 76,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、命令参数、provider/skill 标识、模板占位符、枚举与路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/pods/orchestration-team/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/pods/orchestration-team/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 269,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；队列状态、命令参数、地址、职责边界、工作流步骤和机器标识保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/agent-browser/LOCAL-INSIGHTS.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/process/agent-browser/LOCAL-INSIGHTS.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 160,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；命令、selectors、refs、代码示例、schema 字段和测试标识保持不变；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/dogfood/templates/dogfood-report-template.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/process/dogfood/templates/dogfood-report-template.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 53,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、命令参数、provider/skill 标识、模板占位符、枚举与路径保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/defense-in-depth.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/defense-in-depth.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 122,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；代码块、命令、标识符、测试计数、日期及 frontmatter 保持不变；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/root-cause-tracing.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/root-cause-tracing.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 169,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；代码块、命令、标识符、测试计数、日期及 frontmatter 保持不变；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/test-driven-development/testing-anti-patterns.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/process/test-driven-development/testing-anti-patterns.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 299,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；命令、selectors、refs、代码示例、schema 字段和测试标识保持不变；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/agents/shared/skills/process/verification-before-completion/SKILL.md",
+      "target_path": "packages/daemon/specs/agents/shared/skills/process/verification-before-completion/SKILL.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 155,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；代码块、命令、标识符、测试计数、日期及 frontmatter 保持不变；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/focused/pm-team/CULTURE.md",
+      "target_path": "packages/daemon/specs/rigs/focused/pm-team/CULTURE.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 21,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；角色、地址、状态、路径及协议名保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/conveyor/README.md",
+      "target_path": "packages/daemon/specs/rigs/launch/conveyor/README.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 33,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；角色、地址、状态、路径及协议名保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/demo/CULTURE.md",
+      "target_path": "packages/daemon/specs/rigs/launch/demo/CULTURE.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 83,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；角色、地址、状态、路径及协议名保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/first-project/CULTURE.md",
+      "target_path": "packages/daemon/specs/rigs/launch/first-project/CULTURE.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 39,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；角色、地址、状态、路径及协议名保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/launch/kernel/culture/CULTURE.md",
+      "target_path": "packages/daemon/specs/rigs/launch/kernel/culture/CULTURE.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 75,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；角色、地址、状态、路径及协议名保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/specs/rigs/preview/product-team/topology/rig/ORCHESTRATION-CRAFT.md",
+      "target_path": "packages/daemon/specs/rigs/preview/product-team/topology/rig/ORCHESTRATION-CRAFT.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 50,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；SHA、计数、契约字段、路由形状、路径及代码字面值保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/PROGRESS.md",
+      "target_path": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/PROGRESS.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 34,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；SHA、计数、契约字段、路由形状、路径及代码字面值保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/PROOF.md",
+      "target_path": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/PROOF.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 27,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；SHA、计数、契约字段、路由形状、路径及代码字面值保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/self-host-live-legs/topologies/culture.md",
+      "target_path": "packages/daemon/test/fixtures/self-host-live-legs/topologies/culture.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 6,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/daemon/test/fixtures/walk-staged-specimen/piece-02-permission-self-sleep.md",
+      "target_path": "packages/daemon/test/fixtures/walk-staged-specimen/piece-02-permission-self-sleep.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 141,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec; test file: do not delete assertions; update display-text expectations only, keep behavior checks | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；frontmatter、流程字段、地址、命令参数、路径及契约语义保持不变；用户命令采用 zrig，讲解旧入口行为处保留 rig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/FORMAT-CONFORMANCE-NOTES.md",
+      "target_path": "packages/test-system/FORMAT-CONFORMANCE-NOTES.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 186,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；章节/列表数量与原文一致；命令、JSON 字段、状态、commit/verdict、R/F 编号、路径和契约形态保持不变；用户命令采用 zrig；段落级英文残留与格式检查通过 | 已生成完整中文伴随文档；源文件未改；11/11 章节与 35/35 列表项覆盖一致；commit/verdict、R/F 编号、字段形态、状态与契约值保持不变；用户命令采用 zrig；段落级残留检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/ROUTING.md",
+      "target_path": "packages/test-system/ROUTING.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 80,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；SHA、计数、契约字段、路由形状、路径及代码字面值保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/cases/loading.yaml",
+      "target_path": "packages/test-system/evals/cases/loading.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 44,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/cases/selection.yaml",
+      "target_path": "packages/test-system/evals/cases/selection.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 70,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/agent-startup-and-context-ingestion/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/agent-startup-and-context-ingestion/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/cross-host-rig-commands/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/cross-host-rig-commands/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/human-in-the-loop/content.md",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/human-in-the-loop/content.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 5,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/human-in-the-loop/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/human-in-the-loop/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/openrig-upgrade/content.md",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/openrig-upgrade/content.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 5,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/openrig-upgrade/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/openrig-upgrade/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/rig-bundles-and-shareable-artifacts/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/rig-bundles-and-shareable-artifacts/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/rig-lifecycle/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/rig-lifecycle/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/topology-mutation-and-seat-management/content.md",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/topology-mutation-and-seat-management/content.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 5,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/topology-mutation-and-seat-management/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/topology-mutation-and-seat-management/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/core/watchdog/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/core/watchdog/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/openrig-operating-model/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/openrig-operating-model/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/pm/requirements-writer/content.md",
+      "target_path": "packages/test-system/evals/fixtures/skills/pm/requirements-writer/content.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 5,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已新增详细中文伴随文档；保留原文、路径、协议标识和代码字面值；结构与 git diff --check 通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/pm/requirements-writer/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/pm/requirements-writer/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/process/systematic-debugging/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/process/systematic-debugging/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/process/test-driven-development/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/process/test-driven-development/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/fixtures/skills/queue-handoff/manifest.yaml",
+      "target_path": "packages/test-system/evals/fixtures/skills/queue-handoff/manifest.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 7,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/evals/rig-seat/example-scratch-rig.yaml",
+      "target_path": "packages/test-system/evals/rig-seat/example-scratch-rig.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 16,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译注释及人类可读名称、提示、purpose、rubric；YAML 可解析；key、ID、enum、路径、正则、步骤动词及 fixture 契约保持不变 | batch2 config-template fixture审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/agents/impl/agent.yaml",
+      "target_path": "packages/test-system/scenarios/agents/impl/agent.yaml",
+      "category": "config-template",
+      "status": "skipped",
+      "lines": 8,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 文件仅含机器消费的 name/version/resources/profiles/uses/skills 字段及标识符，无自然语言值或注释可翻译；为保持 fixture 契约原样，未修改",
+      "reason_class": "uncovered"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/agents/lead/agent.yaml",
+      "target_path": "packages/test-system/scenarios/agents/lead/agent.yaml",
+      "category": "config-template",
+      "status": "skipped",
+      "lines": 8,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 文件仅含机器消费的 name/version/resources/profiles/uses/skills 字段及标识符，无自然语言值或注释可翻译；为保持 fixture 契约原样，未修改",
+      "reason_class": "uncovered"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/agents/qa/agent.yaml",
+      "target_path": "packages/test-system/scenarios/agents/qa/agent.yaml",
+      "category": "config-template",
+      "status": "skipped",
+      "lines": 8,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 文件仅含机器消费的 name/version/resources/profiles/uses/skills 字段及标识符，无自然语言值或注释可翻译；为保持 fixture 契约原样，未修改",
+      "reason_class": "uncovered"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/agents/worker/agent.yaml",
+      "target_path": "packages/test-system/scenarios/agents/worker/agent.yaml",
+      "category": "config-template",
+      "status": "skipped",
+      "lines": 8,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 文件仅含机器消费的 name/version/resources/profiles/uses/skills 字段及标识符，无自然语言值或注释可翻译；为保持 fixture 契约原样，未修改",
+      "reason_class": "uncovered"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/clean-lifecycle-no-residue.yaml",
+      "target_path": "packages/test-system/scenarios/clean-lifecycle-no-residue.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 29,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/compaction-restore-resumes-role.yaml",
+      "target_path": "packages/test-system/scenarios/compaction-restore-resumes-role.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 28,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/dev-pair-stub.yaml",
+      "target_path": "packages/test-system/scenarios/dev-pair-stub.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 11,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/home-divergence-preseed-visible.yaml",
+      "target_path": "packages/test-system/scenarios/home-divergence-preseed-visible.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 36,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/kill-daemon-mid-handoff.yaml",
+      "target_path": "packages/test-system/scenarios/kill-daemon-mid-handoff.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 69,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/locked-restore-never-permissive.yaml",
+      "target_path": "packages/test-system/scenarios/locked-restore-never-permissive.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 29,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/mutation-pod-stub.yaml",
+      "target_path": "packages/test-system/scenarios/mutation-pod-stub.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 11,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/one-view-state-after-mutation-storm.yaml",
+      "target_path": "packages/test-system/scenarios/one-view-state-after-mutation-storm.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 40,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/policy-posture-survives-structural-edit.yaml",
+      "target_path": "packages/test-system/scenarios/policy-posture-survives-structural-edit.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 30,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/policy-seat-stub.yaml",
+      "target_path": "packages/test-system/scenarios/policy-seat-stub.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 9,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/ps-scope-honesty.yaml",
+      "target_path": "packages/test-system/scenarios/ps-scope-honesty.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 38,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/queue-baton-survives-restart.yaml",
+      "target_path": "packages/test-system/scenarios/queue-baton-survives-restart.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 50,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/rig-alpha-stub.yaml",
+      "target_path": "packages/test-system/scenarios/rig-alpha-stub.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 9,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/rig-beta-stub.yaml",
+      "target_path": "packages/test-system/scenarios/rig-beta-stub.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 9,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/send-verify-means-rendered.yaml",
+      "target_path": "packages/test-system/scenarios/send-verify-means-rendered.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 21,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/solo-stub.yaml",
+      "target_path": "packages/test-system/scenarios/solo-stub.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 9,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/test-system/scenarios/stream-emit-durable-replay-live.yaml",
+      "target_path": "packages/test-system/scenarios/stream-emit-durable-replay-live.yaml",
+      "category": "config-template",
+      "status": "done",
+      "lines": 35,
+      "notes": "preserve YAML keys/values/commands; translate comments and human descriptions only | 本轮未覆盖，仍需翻译 | 已原地翻译自然语言注释及明确的人类展示 label/summary/text；YAML 可解析；机器 key、ID、enum、路径、步骤动词、状态、断言协议和其余值保持不变；已按字段 allowlist 对比备份 | batch2 config-template scenario审读:中文present,机器结构保留",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "packages/ui/twin/README.md",
+      "target_path": "packages/ui/twin/README.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 83,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随文档；源文件未改；SHA、计数、契约字段、路由形状、路径及代码字面值保持不变；用户命令采用 zrig；结构检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    }
+  ]
+}

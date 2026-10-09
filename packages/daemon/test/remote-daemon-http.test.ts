@@ -1,9 +1,8 @@
-// OPR.0.4.4.15 — the shared daemon→daemon transport core (arch cell 1).
+// OPR.0.4.4.15——共享 daemon→daemon transport core（arch cell 1）。
 //
-// The bounded-abort discipline lives HERE now (one deadline through request
-// AND body — the G-R2B1-1 class closed structurally for every consumer);
-// remote-up-leaf's own tests keep pinning its shipped error strings, which
-// proves the consumer formatting; these tests pin the structured result.
+// bounded-abort 纪律现在位于此处（一个 deadline 贯穿 request 与 body——为每个 consumer 从结构上
+// 封闭 G-R2B1-1 类）；remote-up-leaf 自身测试继续固定其已交付 error string，证明 consumer
+// formatting；这些测试固定 structured result。
 
 import { describe, it, expect } from "vitest";
 import { remoteJsonRequest, remoteRawRequest } from "../src/domain/hosts/remote-daemon-http.js";
@@ -27,8 +26,8 @@ function fetchStub(status: number, payload?: unknown, capture?: { url?: string; 
   }) as typeof fetch;
 }
 
-describe("remoteJsonRequest — structured outcomes (never hangs, never throws)", () => {
-  it("bearer failure short-circuits with kind=bearer; no request is sent", async () => {
+describe("remoteJsonRequest——结构化 outcome（永不挂起、永不抛错）", () => {
+  it("bearer 失败以 kind=bearer 短路；不发送 request", async () => {
     let called = false;
     const res = await remoteJsonRequest(HOST, "/api/x", {
       method: "GET",
@@ -40,11 +39,11 @@ describe("remoteJsonRequest — structured outcomes (never hangs, never throws)"
       }) as typeof fetch,
     });
     expect(res).toMatchObject({ ok: false, kind: "bearer" });
-    if (!res.ok) expect(res.detail).toContain("bearer env var T");
+    if (!res.ok) expect(res.detail).toContain("bearer 环境变量 T");
     expect(called).toBe(false);
   });
 
-  it("GET carries the bearer, no Content-Type/body; trailing-slash url joins cleanly; 2xx returns the parsed payload", async () => {
+  it("GET 携带 bearer，不带 Content-Type/body；尾部斜杠 URL 正确拼接；2xx 返回已解析 payload", async () => {
     const capture: { url?: string; init?: RequestInit } = {};
     const res = await remoteJsonRequest(HOST, "/api/queue/list?attention=1", {
       method: "GET",
@@ -59,10 +58,10 @@ describe("remoteJsonRequest — structured outcomes (never hangs, never throws)"
     expect(headers["Authorization"]).toBe("Bearer tok-1");
     expect(headers["Content-Type"]).toBeUndefined();
     expect(capture.init?.body).toBeUndefined();
-    expect(capture.init?.signal).toBeInstanceOf(AbortSignal); // deadline wired to the request
+    expect(capture.init?.signal).toBeInstanceOf(AbortSignal); // deadline 已接入 request
   });
 
-  it("POST serializes the body with Content-Type", async () => {
+  it("POST 序列化 body 并携带 Content-Type", async () => {
     const capture: { url?: string; init?: RequestInit } = {};
     await remoteJsonRequest(HOST, "/api/up", {
       method: "POST",
@@ -75,7 +74,7 @@ describe("remoteJsonRequest — structured outcomes (never hangs, never throws)"
     expect(JSON.parse(String(capture.init?.body))).toEqual({ sourceRef: "r" });
   });
 
-  it("never-settling request → kind=timeout phase=request within the caller's deadline", async () => {
+  it("永不 settle 的 request → 在 caller deadline 内返回 kind=timeout phase=request", async () => {
     const neverSettling = ((_u: string | URL | Request, init?: RequestInit) =>
       new Promise<Response>((_res, reject) => {
         init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
@@ -84,21 +83,21 @@ describe("remoteJsonRequest — structured outcomes (never hangs, never throws)"
     expect(res).toMatchObject({ ok: false, kind: "timeout", phase: "request" });
   });
 
-  it("headers-then-stalled-body → kind=timeout phase=body carrying the status (the G-R2B1-1 class, now structural)", async () => {
+  it("收到 header 后 body 停滞 → 返回携带 status 的 kind=timeout phase=body（G-R2B1-1 类现由结构保证）", async () => {
     const stalled = (async () =>
       new Response(new ReadableStream({ start() {} }), { status: 500, headers: { "Content-Type": "application/json" } })) as typeof fetch;
     const res = await remoteJsonRequest(HOST, "/api/x", { method: "GET", timeoutMs: 20, env: ENV, fetchImpl: stalled });
     expect(res).toMatchObject({ ok: false, kind: "timeout", phase: "body", status: 500 });
   });
 
-  it("non-2xx with a JSON error body → kind=http with the remote text; non-JSON body → empty detail (status is the honest fact)", async () => {
+  it("带 JSON error body 的非 2xx → kind=http 并带 remote text；非 JSON body → 空 detail（status 是诚实事实）", async () => {
     const withText = await remoteJsonRequest(HOST, "/api/x", { method: "GET", timeoutMs: 1000, env: ENV, fetchImpl: fetchStub(409, { error: "conflict!" }) });
     expect(withText).toMatchObject({ ok: false, kind: "http", status: 409, detail: "conflict!" });
     const nonJson = await remoteJsonRequest(HOST, "/api/x", { method: "GET", timeoutMs: 1000, env: ENV, fetchImpl: fetchStub(500) });
     expect(nonJson).toMatchObject({ ok: false, kind: "http", status: 500, detail: "" });
   });
 
-  it("network failure → kind=network with the error message", async () => {
+  it("network failure → kind=network 并携带 error message", async () => {
     const res = await remoteJsonRequest(HOST, "/api/x", {
       method: "GET",
       timeoutMs: 1000,
@@ -111,12 +110,12 @@ describe("remoteJsonRequest — structured outcomes (never hangs, never throws)"
   });
 });
 
-describe("fanout-contract — the shared intra-P4 payload (arch adjudication: 15 defines, 21 imports)", () => {
-  it("LOCAL_HOST_ID is the S11-matching literal, defined once", () => {
+describe("fanout-contract——共享 intra-P4 payload（arch adjudication：15 定义，21 import）", () => {
+  it("LOCAL_HOST_ID 是与 S11 匹配且只定义一次的 literal", () => {
     expect(LOCAL_HOST_ID).toBe("local");
   });
 
-  it("hostsCovered: true only when EVERY expected host appears exactly once (omission-proof, near the contract per arch pin B)", () => {
+  it("hostsCovered：仅当每个预期 host 恰好出现一次时为 true（防遗漏，按 arch pin B 靠近契约）", () => {
     const payload: AggregatedPayload<number> = {
       items: [1],
       hosts: [
@@ -126,15 +125,15 @@ describe("fanout-contract — the shared intra-P4 payload (arch adjudication: 15
       ],
     };
     expect(hostsCovered(payload, [LOCAL_HOST_ID, "vps-b", "ssh-1"])).toBe(true);
-    expect(hostsCovered(payload, [LOCAL_HOST_ID, "vps-b", "ssh-1", "missing"])).toBe(false); // silent thinning caught
-    expect(hostsCovered({ items: [], hosts: [...payload.hosts, { hostId: "vps-b", status: "ok" }] }, [LOCAL_HOST_ID, "vps-b", "ssh-1"])).toBe(false); // duplicates caught
+    expect(hostsCovered(payload, [LOCAL_HOST_ID, "vps-b", "ssh-1", "missing"])).toBe(false); // 捕获静默删减
+    expect(hostsCovered({ items: [], hosts: [...payload.hosts, { hostId: "vps-b", status: "ok" }] }, [LOCAL_HOST_ID, "vps-b", "ssh-1"])).toBe(false); // 捕获重复项
   });
 });
 
-describe("anonymous (URL-only) http host — no Authorization header, no request short-circuit", () => {
+describe("anonymous（仅 URL）HTTP host——无 Authorization header，不短路 request", () => {
   const ANON: HttpHostEntry = { id: "anon-b", transport: "http", url: "http://anon-b:7433/" };
 
-  it("remoteJsonRequest: URL-only host sends NO Authorization header; 2xx still returns payload", async () => {
+  it("remoteJsonRequest：仅 URL host 不发送 Authorization header；2xx 仍返回 payload", async () => {
     const capture: { url?: string; init?: RequestInit } = {};
     const res = await remoteJsonRequest(ANON, "/api/queue/list", {
       method: "GET",
@@ -147,7 +146,7 @@ describe("anonymous (URL-only) http host — no Authorization header, no request
     expect("Authorization" in headers).toBe(false);
   });
 
-  it("remoteRawRequest: URL-only host sends NO Authorization header; origin answer is ok:true", async () => {
+  it("remoteRawRequest：仅 URL host 不发送 Authorization header；origin answer 为 ok:true", async () => {
     const capture: { url?: string; init?: RequestInit } = {};
     const res = await remoteRawRequest(ANON, "/api/ps", {
       timeoutMs: 1000,
@@ -159,7 +158,7 @@ describe("anonymous (URL-only) http host — no Authorization header, no request
     expect("Authorization" in headers).toBe(false);
   });
 
-  it("configured bearer_env host still carries Authorization (fail-closed path unchanged)", async () => {
+  it("已配置 bearer_env 的 host 仍携带 Authorization（fail-closed 路径不变）", async () => {
     const capture: { url?: string; init?: RequestInit } = {};
     await remoteJsonRequest(HOST, "/api/x", {
       method: "GET",

@@ -1,9 +1,7 @@
-// Test-A pre-drive (row 782b467a) — the SESSION-PERSISTENT RigSeatProvider mode:
-// one seat/generation across baseline -> WALK -> GET -> post, completing R6's
-// deferred live-provider leg behind the SAME EvalProvider seam (not a harness
-// redesign). The live drive stays the non-author's; these pins prove the
-// ORCHESTRATION: persistence, the input-echo contamination control, retirement,
-// and the preserved not-wired refusal on the legacy path.
+// Test-A 预驱动（row 782b467a）——SESSION-PERSISTENT RigSeatProvider 模式：baseline -> WALK ->
+// GET -> post 全程使用同一 seat/generation，在相同 EvalProvider 接缝后完成 R6 延后的 live-provider
+// 环节（不是重新设计 harness）。live drive 仍由非作者负责；这些锁定证明 orchestration：持久性、
+// input-echo contamination control、retirement，以及 legacy 路径上保留的 not-wired 拒绝。
 
 import { describe, it, expect, vi } from "vitest";
 import { RigSeatProvider, type RigSeatSession } from "./helpers/eval-rig-provider.js";
@@ -21,8 +19,8 @@ function fakeSession(overrides?: Partial<RigSeatSession> & { paneEcho?: boolean 
   return { session, sent, retired };
 }
 
-describe("RigSeatProvider — session-persistent mode (Test-A)", () => {
-  it("PERSISTENCE: four phases run against ONE spawned seat/generation", async () => {
+describe("RigSeatProvider——session-persistent 模式（Test-A）", () => {
+  it("PERSISTENCE：四个 phase 在同一个已启动 seat/generation 上运行", async () => {
     const { session, sent } = fakeSession();
     const spawn = vi.fn(async () => session);
     const provider = new RigSeatProvider({ productionPackage: "/packs", session: { spawn } });
@@ -34,7 +32,7 @@ describe("RigSeatProvider — session-persistent mode (Test-A)", () => {
     expect(sent).toEqual(["baseline probe", "WALK ack", "GET pull", "post probe"]);
   });
 
-  it("INPUT-ECHO NEGATIVE: the leading prompt echo is stripped — a grader pattern matching only the prompt text cannot pass", async () => {
+  it("INPUT-ECHO 负向控制：剥离 leading prompt echo——只匹配 prompt 文本的 grader pattern 无法通过", async () => {
     const { session } = fakeSession();
     const provider = new RigSeatProvider({ productionPackage: "/packs", session: { spawn: async () => session } });
     const res = await provider.run("magic-prompt-xyz nobody else says this");
@@ -42,7 +40,7 @@ describe("RigSeatProvider — session-persistent mode (Test-A)", () => {
     expect(res.transcript).toContain("seat output for: magic-prompt");
   });
 
-  it("the echo strip removes only the LEADING echo — a genuine later quotation by the seat is kept", async () => {
+  it("echo strip 只删除 leading echo——保留 seat 稍后的真实引用", async () => {
     const session: RigSeatSession = {
       generation: "gen-A",
       sendPrompt: async () => {},
@@ -55,27 +53,27 @@ describe("RigSeatProvider — session-persistent mode (Test-A)", () => {
     expect(res.transcript).toContain('what "pull the lifecycle entry" asked');
   });
 
-  it("RETIREMENT: dispose retires exactly once; run() after dispose refuses loud", async () => {
+  it("RETIREMENT：dispose 恰好退役一次；dispose 后 run() 显著拒绝", async () => {
     const { session, retired } = fakeSession();
     const provider = new RigSeatProvider({ productionPackage: "/packs", session: { spawn: async () => session } });
     await provider.run("one");
     await provider.dispose();
-    await provider.dispose(); // idempotent
+    await provider.dispose(); // 幂等。
     expect(retired.count).toBe(1);
-    await expect(provider.run("two")).rejects.toThrow(/retired|disposed/i);
+    await expect(provider.run("two")).rejects.toThrow(/已 retired\/disposed/i);
   });
 
-  it("LEGACY PATH PRESERVED: without session deps, run() still throws the R6 not-wired refusal (no false green)", async () => {
+  it("保留 LEGACY PATH：无 session 依赖时，run() 仍抛出 R6 not-wired 拒绝（无 false green）", async () => {
     const provider = new RigSeatProvider({ productionPackage: "/packs" });
-    await expect(provider.run("anything")).rejects.toThrow(/not yet driven|provider fake/i);
+    await expect(provider.run("anything")).rejects.toThrow(/尚未驱动|provider fake/i);
   });
 
-  it("SPAWN FAIL-FAST: a failed spawn poisons the run — later cases error WITHOUT re-spawning (the six-leaked-rigs class)", async () => {
+  it("SPAWN FAIL-FAST：spawn 失败会使本次运行失效——后续用例报错且不重新 spawn（六个 rig 泄漏类别）", async () => {
     const spawn = vi.fn(async () => { throw new Error("rig up failed: port conflict"); });
     const provider = new RigSeatProvider({ productionPackage: "/packs", session: { spawn } });
     await expect(provider.run("case one")).rejects.toThrow(/port conflict/);
-    await expect(provider.run("case two")).rejects.toThrow(/already failed/);
-    await expect(provider.run("case three")).rejects.toThrow(/already failed/);
+    await expect(provider.run("case two")).rejects.toThrow(/已失败/);
+    await expect(provider.run("case three")).rejects.toThrow(/已失败/);
     expect(spawn).toHaveBeenCalledTimes(1);
   });
 });

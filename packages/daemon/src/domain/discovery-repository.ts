@@ -40,7 +40,7 @@ export class DiscoveryRepository {
     this.db = db;
   }
 
-  /** Upsert: preserve id + first_seen_at on rescan, update mutable fields. */
+  /** Upsert：重新扫描时保留 id 与 first_seen_at，并更新可变字段。 */
   upsertDiscoveredSession(data: UpsertData): DiscoveredSession {
     const existing = this.db.prepare(
       "SELECT id, first_seen_at FROM discovered_sessions WHERE tmux_session = ? AND tmux_pane = ?"
@@ -105,13 +105,13 @@ export class DiscoveryRepository {
     return row ? this.rowToSession(row) : null;
   }
 
-  /** Get IDs of all active discovered sessions */
+  /** 获取所有活跃发现会话的 ID。 */
   getActiveIds(): string[] {
     const rows = this.db.prepare("SELECT id FROM discovered_sessions WHERE status = 'active'").all() as Array<{ id: string }>;
     return rows.map((r) => r.id);
   }
 
-  /** Get active session by tmux identity */
+  /** 按 tmux 身份获取活跃会话。 */
   getByTmuxIdentity(tmuxSession: string, tmuxPane: string): DiscoveredSession | null {
     const row = this.db.prepare(
       "SELECT * FROM discovered_sessions WHERE tmux_session = ? AND tmux_pane = ? AND status != 'vanished'"

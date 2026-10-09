@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import nodePath from "node:path";
 import { routeSkills, type SkillsRouterFsOps, type RouteSkillsInput } from "../src/domain/bundle-skills-router.js";
 
-// Item 6 / slice-05 Checkpoint 7.2: bundle-skills-router pure-function tests.
+// 第 6 项 / slice-05 Checkpoint 7.2：bundle-skills-router 纯函数测试。
 
 function mockFs(initialFiles: Record<string, string> = {}): SkillsRouterFsOps & { _written: Map<string, string>; _mkdirpCalls: string[] } {
   const written = new Map<string, string>(Object.entries(initialFiles));
@@ -13,7 +13,7 @@ function mockFs(initialFiles: Record<string, string> = {}): SkillsRouterFsOps & 
     exists: (p: string) => written.has(p),
     readFile: (p: string) => {
       const v = written.get(p);
-      if (v === undefined) throw new Error(`File not found in mock: ${p}`);
+      if (v === undefined) throw new Error(`mock 中未找到文件：${p}`);
       return v;
     },
     writeFile: (p: string, c: string) => { written.set(p, c); },
@@ -34,8 +34,8 @@ function makeInput(overrides?: Partial<RouteSkillsInput>): RouteSkillsInput {
 }
 
 describe("routeSkills", () => {
-  // R1: empty skills list → empty records + target dir mkdirp'd
-  it("empty declaredSkills produces empty records but still mkdirp's target", () => {
+  // R1：空 skills list 产生空 records，并仍会创建目标目录。
+  it("空 declaredSkills 产生空 records，但仍创建目标目录", () => {
     const fs = mockFs();
     const result = routeSkills(makeInput(), fs);
     expect(result.records).toEqual([]);
@@ -44,8 +44,8 @@ describe("routeSkills", () => {
     expect(fs._mkdirpCalls).toContain(TARGET);
   });
 
-  // R2: routes one skill end-to-end
-  it("routes one skill: source file copied to target with installedAt populated", () => {
+  // R2：端到端路由一个 skill。
+  it("路由一个 skill：源文件复制到目标且填充 installedAt", () => {
     const fs = mockFs({
       [`${BUNDLE_ROOT}/skills/foo/SKILL.md`]: "# foo skill body",
     });
@@ -57,8 +57,8 @@ describe("routeSkills", () => {
     expect(fs._written.get(`${TARGET}/foo/SKILL.md`)).toBe("# foo skill body");
   });
 
-  // R3: routes multiple skills; preserves directory layout
-  it("routes multiple skills preserving the per-skill directory layout under target", () => {
+  // R3：路由多个 skill，并保留目录布局。
+  it("路由多个 skill，并在目标下保留各 skill 的目录布局", () => {
     const fs = mockFs({
       [`${BUNDLE_ROOT}/skills/foo/SKILL.md`]: "foo",
       [`${BUNDLE_ROOT}/skills/bar/SKILL.md`]: "bar",
@@ -74,8 +74,8 @@ describe("routeSkills", () => {
     expect(fs._written.get(`${TARGET}/bar/helper.md`)).toBe("bar-helper");
   });
 
-  // R4: missing source file produces "missing" record (skipped, not error)
-  it("missing source file is skipped with status=missing (honest-scoping)", () => {
+  // R4：源文件缺失时产生 "missing" record（跳过而非错误）。
+  it("源文件缺失时以 status=missing 跳过（真实作用域）", () => {
     const fs = mockFs(); // empty — no skill files
     const result = routeSkills(
       makeInput({ declaredSkills: ["skills/absent/SKILL.md"] }),
@@ -84,11 +84,11 @@ describe("routeSkills", () => {
     expect(result.routedCount).toBe(0);
     expect(result.rejectedCount).toBe(1);
     expect(result.records[0]!.status).toBe("missing");
-    expect(result.records[0]!.detail).toContain("not present");
+    expect(result.records[0]!.detail).toContain("不存在");
   });
 
-  // R5: unsafe path escaping bundle workspace is rejected
-  it("unsafe declared path (../traversal) escapes bundle workspace and is rejected", () => {
+  // R5：拒绝逃逸 bundle workspace 的不安全路径。
+  it("拒绝逃逸 bundle workspace 的不安全声明路径（../traversal）", () => {
     const fs = mockFs();
     const result = routeSkills(
       makeInput({ declaredSkills: ["../escape/SKILL.md"] }),
@@ -97,11 +97,11 @@ describe("routeSkills", () => {
     expect(result.routedCount).toBe(0);
     expect(result.rejectedCount).toBe(1);
     expect(result.records[0]!.status).toBe("unsafe");
-    expect(result.records[0]!.detail).toContain("escapes bundle workspace");
+    expect(result.records[0]!.detail).toContain("逃逸 bundle workspace");
   });
 
-  // R6: mixed list — routed + missing + unsafe in one call
-  it("mixed declared list aggregates correctly across routed/missing/unsafe", () => {
+  // R6：混合列表，一次调用同时包含 routed、missing 和 unsafe。
+  it("混合声明列表正确汇总 routed/missing/unsafe", () => {
     const fs = mockFs({
       [`${BUNDLE_ROOT}/skills/ok/SKILL.md`]: "ok",
     });
@@ -117,18 +117,15 @@ describe("routeSkills", () => {
     expect(result.records[2]!.status).toBe("unsafe");
   });
 
-  // R7-B1: target-side path containment (B1 repair on
-  // qitem-20260518215234-f84fff45). Declared path "skills/../outside/SKILL.md"
-  // passes SOURCE containment (resolves under bundleRoot since the leading
-  // "skills/" segment is consumed before ../) but after the leading "skills/"
-  // strip becomes "../outside/SKILL.md" which would escape targetSkillsDir.
-  // Must be rejected.
-  it("declared path that would escape target skills dir after prefix strip is rejected", () => {
-    // Source file exists under bundleRoot (passes source containment) but the
-    // resolved target after strip escapes target dir.
+  // R7-B1：目标端路径包含性（qitem-20260518215234-f84fff45 的 B1 修复）。声明路径
+  // "skills/../outside/SKILL.md" 可通过源端包含性（前导 "skills/" 在 ../ 之前被消费，因此解析后
+  // 位于 bundleRoot 下），但移除前导 "skills/" 后变为 "../outside/SKILL.md"，会逃逸
+  // targetSkillsDir，必须拒绝。
+  it("拒绝移除前缀后会逃逸目标 skills 目录的声明路径", () => {
+    // 源文件位于 bundleRoot 下（通过源端包含性），但移除前缀后解析出的目标会逃逸目标目录。
     const fs = mockFs({
-      // Source is reachable from bundleRoot via "skills/../outside/SKILL.md"
-      // which resolves to "<bundleRoot>/outside/SKILL.md".
+      // 源文件可通过 "skills/../outside/SKILL.md" 从 bundleRoot 访问，解析为
+      // "<bundleRoot>/outside/SKILL.md"。
       [`${BUNDLE_ROOT}/outside/SKILL.md`]: "would-escape-target",
     });
     const result = routeSkills(
@@ -138,14 +135,14 @@ describe("routeSkills", () => {
     expect(result.routedCount).toBe(0);
     expect(result.rejectedCount).toBe(1);
     expect(result.records[0]!.status).toBe("unsafe");
-    expect(result.records[0]!.detail).toContain("escapes target skills library");
-    // Crucially: no write happened outside target.
+    expect(result.records[0]!.detail).toContain("逃逸 target skill library");
+    // 关键点：目标之外没有发生写入。
     expect(fs._written.has(`${TARGET}/../outside/SKILL.md`)).toBe(false);
     expect(fs._written.has(nodePath.resolve(`${TARGET}/../outside/SKILL.md`))).toBe(false);
   });
 
-  // R8: non-"skills/" prefixed declared path is honored as-is (no leading strip)
-  it("declared path without leading skills/ prefix routes verbatim", () => {
+  // R8：不以 "skills/" 开头的声明路径按原样处理（不移除前缀）。
+  it("不含前导 skills/ 前缀的声明路径按原样路由", () => {
     const fs = mockFs({
       [`${BUNDLE_ROOT}/custom/path/X.md`]: "x",
     });
@@ -157,7 +154,7 @@ describe("routeSkills", () => {
     expect(result.records[0]!.installedAt).toBe(`${TARGET}/custom/path/X.md`);
   });
 
-  it("can keep package-shaped bundle payloads outside the managed catalog without changing source lookup", () => {
+  it("可将 package 形态的 bundle payload 保留在托管 catalog 之外，而不改变源查找", () => {
     const packageRoot = "/operator/.openrig/packages";
     const source = `${BUNDLE_ROOT}/packages/test-pkg/skills/DUAL.md`;
     const fs = mockFs({ [source]: "dual" });

@@ -1,14 +1,10 @@
-// 0.3.1 slice 06 — KindFrame.
+// 0.3.1 slice 06——KindFrame。
 //
-// When a markdown file declares a known `kind:` in its frontmatter,
-// MarkdownViewer wraps the body in a KindFrame: a slim header chrome
-// (kind badge + title + meta row) plus optional TL;DR slate composed
-// from a `tldr:` frontmatter field. The body itself is rendered by
-// the existing block flow, with fenced-block grammars (timeline /
-// stats / risk-table / compare / slate) intercepted into spatial
-// primitives. The other 4 kinds beyond the 3 fully-realized layouts
-// share this chrome — the visual difference is the accent color and
-// the kind label.
+// Markdown 文件在 frontmatter 中声明已知 `kind:` 时，MarkdownViewer 会用 KindFrame 包裹正文：
+// 包含紧凑标题外观（类型徽标、标题、元数据行），以及由 `tldr:` frontmatter 字段组成的可选摘要板。
+// 正文仍由现有块流程渲染，其中围栏块语法（timeline / stats / risk-table / compare / slate）
+// 会被拦截并转换为空间原语。除三种完整实现布局外，其余四种类型共享该外观；视觉差异只在强调色
+// 和类型标签。
 
 import { TLDRSlate, SummaryStrip } from "./primitives.js";
 import type { KindName } from "./storytelling-primitives.js";
@@ -20,13 +16,13 @@ interface KindFrameProps {
 }
 
 const KIND_ACCENTS: Record<KindName, { ink: string; pill: string; label: string }> = {
-  "incident-timeline":   { ink: "text-red-800",     pill: "bg-red-50 border-red-300",       label: "INCIDENT TIMELINE" },
-  "progress":            { ink: "text-sky-800",     pill: "bg-sky-50 border-sky-300",       label: "PROGRESS" },
-  "feature-shipped":     { ink: "text-emerald-800", pill: "bg-emerald-50 border-emerald-300", label: "FEATURE SHIPPED" },
-  "implementation-plan": { ink: "text-violet-800",  pill: "bg-violet-50 border-violet-300", label: "IMPLEMENTATION PLAN" },
-  "concept-explainer":   { ink: "text-amber-800",   pill: "bg-amber-50 border-amber-300",   label: "CONCEPT EXPLAINER" },
-  "pr-writeup":          { ink: "text-on-surface",   pill: "bg-background border-outline-variant",   label: "PR WRITEUP" },
-  "post-mortem":         { ink: "text-on-surface",   pill: "bg-surface-low border-outline",  label: "POST-MORTEM" },
+  "incident-timeline":   { ink: "text-red-800",     pill: "bg-red-50 border-red-300",       label: "事件时间线" },
+  "progress":            { ink: "text-sky-800",     pill: "bg-sky-50 border-sky-300",       label: "进展" },
+  "feature-shipped":     { ink: "text-emerald-800", pill: "bg-emerald-50 border-emerald-300", label: "功能已交付" },
+  "implementation-plan": { ink: "text-violet-800",  pill: "bg-violet-50 border-violet-300", label: "实现计划" },
+  "concept-explainer":   { ink: "text-amber-800",   pill: "bg-amber-50 border-amber-300",   label: "概念讲解" },
+  "pr-writeup":          { ink: "text-on-surface",   pill: "bg-background border-outline-variant",   label: "PR 说明" },
+  "post-mortem":         { ink: "text-on-surface",   pill: "bg-surface-low border-outline",  label: "复盘" },
 };
 
 export function KindFrame({ kind, frontmatter, children }: KindFrameProps): React.ReactElement {
@@ -54,7 +50,7 @@ export function KindFrame({ kind, frontmatter, children }: KindFrameProps): Reac
         )}
         {(status || author || date) && (
           <div data-testid="kind-frame-meta" className="mt-1 flex flex-wrap items-center gap-3 font-mono text-[9px] uppercase tracking-[0.10em] text-on-surface-variant">
-            {status && <span data-testid="kind-frame-meta-status">status: {status}</span>}
+            {status && <span data-testid="kind-frame-meta-status">状态：{status}</span>}
             {author && <span data-testid="kind-frame-meta-author">{author}</span>}
             {date && <span data-testid="kind-frame-meta-date">{date}</span>}
           </div>
@@ -62,7 +58,7 @@ export function KindFrame({ kind, frontmatter, children }: KindFrameProps): Reac
       </header>
       {tldr && <TLDRSlate testId="kind-frame-tldr">{tldr}</TLDRSlate>}
       {kind === "feature-shipped" && summary && (
-        <SummaryStrip label="SHIPPED" body={summary} testId="kind-frame-summary" />
+        <SummaryStrip label="已交付" body={summary} testId="kind-frame-summary" />
       )}
       <div data-testid="kind-frame-body">{children}</div>
     </section>

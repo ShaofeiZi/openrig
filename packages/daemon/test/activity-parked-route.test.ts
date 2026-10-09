@@ -3,8 +3,8 @@ import { Hono } from "hono";
 import { activityRoutes } from "../src/routes/activity.js";
 import { SeatActivityService } from "../src/domain/seat-activity-service.js";
 
-// OPR.0.5.5.19 A7 — the /api/activity/parked surface: read-only join of the oracle and
-// the queue's obligation face, with the honest 503/404 refusals.
+// OPR.0.5.5.19 A7——/api/activity/parked surface：只读 join oracle 与 queue obligation 界面，
+// 并如实返回 503/404 拒绝。
 
 const SEAT = "node-p1";
 const SESSION = "dev50-qa@v-openrig-build";
@@ -42,8 +42,8 @@ function makeApp(opts: { withDeps: boolean; rows?: Array<{ qitemId: string; stat
   return app;
 }
 
-describe("S19 A7 — GET /api/activity/parked", () => {
-  it("rig-level: joins the oracle with the obligation face and returns the derived diagnosis", async () => {
+describe("S19 A7——GET /api/activity/parked", () => {
+  it("rig 层：join oracle 与 obligation 界面并返回派生诊断", async () => {
     const app = makeApp({ withDeps: true, rows: [{ qitemId: "qitem-9", state: "pending", summary: "owed" }] });
     const res = await app.request("/api/activity/parked", { headers: { "x-openrig-session": SESSION } });
     expect(res.status).toBe(200);
@@ -53,17 +53,17 @@ describe("S19 A7 — GET /api/activity/parked", () => {
     expect(body.rig.seats[0]!.parked).toBe(true);
   });
 
-  it("seat-level resolves node id OR session name; an unknown seat teaches with the known set", async () => {
+  it("seat 层解析 node id 或 session 名；未知席位会通过已知集合提供指引", async () => {
     const app = makeApp({ withDeps: true, rows: [] });
     const byName = await app.request(`/api/activity/parked?seat=${encodeURIComponent(SESSION)}`);
     expect(byName.status).toBe(200);
     const ghost = await app.request("/api/activity/parked?seat=ghost", { headers: { "x-openrig-session": SESSION } });
     expect(ghost.status).toBe(404);
     const body = await ghost.json() as { error: string };
-    expect(body.error).toContain(SESSION); // teaching names the known seats
+    expect(body.error).toContain(SESSION); // 指引点名已知席位。
   });
 
-  it("missing deps refuse 503 with the unconfigured surface named — never a fabricated empty diagnosis", async () => {
+  it("缺少依赖时以 503 拒绝并点名未配置 surface，绝不伪造空诊断", async () => {
     const app = makeApp({ withDeps: false });
     const res = await app.request("/api/activity/parked");
     expect(res.status).toBe(503);

@@ -1,7 +1,7 @@
-// OPR.0.4.4.19 FR-3 — card-kind promotion reads STRUCTURED signals only.
-// The body-text ("approval requested") / tag-guess ("approval", "ratify") /
-// state-substring heuristics are retired; tier + strict human-seat
-// destination are the only promotion inputs.
+// OPR.0.4.4.19 FR-3——card-kind 提升只读结构化信号。
+// body-text（"approval requested"）/ tag 猜测（"approval"、"ratify"）/
+// state 子串启发式已退役；tier + 严格 human-seat
+// 目标是唯一提升输入。
 
 import { describe, it, expect } from "vitest";
 import { hydratedCardKind } from "../src/components/for-you/Feed.js";
@@ -61,7 +61,7 @@ describe("hydratedCardKind — FR-3 structured signals only", () => {
 
   it("strict human-seat destination → action-required; sloppy prefix match retired", () => {
     expect(hydratedCardKind(card(), item({ destinationSession: "human-review@kernel" }), undefined)).toBe("action-required");
-    // Previously destination.startsWith("human-") promoted this non-seat:
+    // 先前 destination.startsWith("human-") 会提升此非 seat：
     expect(hydratedCardKind(card(), item({ destinationSession: "human-ish@other-rig" }), undefined)).toBe("progress");
   });
 

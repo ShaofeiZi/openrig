@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe("openrig-compat", () => {
-  it("getOpenRigHome prefers OPENRIG_HOME when set", async () => {
+  it("设置 OPENRIG_HOME 时 getOpenRigHome 优先使用它", async () => {
     process.env.OPENRIG_HOME = "/tmp/custom-openrig-home";
     delete process.env.RIGGED_HOME;
 
@@ -28,7 +28,7 @@ describe("openrig-compat", () => {
     expect(mod.getDefaultOpenRigPath("daemon.json")).toBe("/tmp/custom-openrig-home/daemon.json");
   });
 
-  it("getOpenRigHome falls back to RIGGED_HOME with warning", async () => {
+  it("getOpenRigHome 回退到 RIGGED_HOME 时发出警告", async () => {
     delete process.env.OPENRIG_HOME;
     process.env.RIGGED_HOME = "/tmp/legacy-rigged-home";
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -37,12 +37,12 @@ describe("openrig-compat", () => {
 
     expect(mod.getOpenRigHome()).toBe("/tmp/legacy-rigged-home");
     expect(warnSpy).toHaveBeenCalledWith(
-      "Warning: RIGGED_HOME is deprecated; use OPENRIG_HOME instead.",
+      "警告：RIGGED_HOME 已弃用；请改用 OPENRIG_HOME。",
     );
   });
 });
 
-describe("OPR.0.4.3.12 — isFixtureScopedHome (path-only predicate)", () => {
+describe("OPR.0.4.3.12 — isFixtureScopedHome（仅路径谓词）", () => {
   const created: string[] = [];
   afterEach(() => {
     while (created.length) {
@@ -51,42 +51,42 @@ describe("OPR.0.4.3.12 — isFixtureScopedHome (path-only predicate)", () => {
     }
   });
 
-  it("true for a home containing the .openrig-fixture sentinel marker", async () => {
+  it("包含 .openrig-fixture 哨兵标记的 home 返回 true", async () => {
     const { isFixtureScopedHome, FIXTURE_HOME_MARKER } = await import("../src/openrig-compat.js");
-    // A marker in an ARBITRARY (non-temp-convention) dir still counts — the
-    // explicit sentinel is the most-honest signal and is location-independent.
+    // 任意目录（不符合临时目录约定）中的标记仍然有效——
+    // 显式哨兵是最诚实且与位置无关的信号。
     const dir = mkdtempSync(join(homedir(), ".openrig-compat-test-"));
     created.push(dir);
     writeFileSync(join(dir, FIXTURE_HOME_MARKER), "");
     expect(isFixtureScopedHome(dir)).toBe(true);
   });
 
-  it("true for an openrig-qa* home under a temp root (no marker needed)", async () => {
+  it("临时根目录下的 openrig-qa* home 返回 true（无需标记）", async () => {
     const { isFixtureScopedHome } = await import("../src/openrig-compat.js");
     expect(isFixtureScopedHome(join(tmpdir(), "openrig-qa-abc123-home"))).toBe(true);
     expect(isFixtureScopedHome("/tmp/openrig-qa-run-xyz")).toBe(true);
   });
 
-  it("false for the real default home (~/.openrig)", async () => {
+  it("真实默认 home（~/.openrig）返回 false", async () => {
     const { isFixtureScopedHome } = await import("../src/openrig-compat.js");
     expect(isFixtureScopedHome(join(homedir(), ".openrig"))).toBe(false);
   });
 
-  it("false for a plain temp home that is not an openrig-qa fixture and has no marker", async () => {
+  it("不属于 openrig-qa 夹具且无标记的普通临时 home 返回 false", async () => {
     const { isFixtureScopedHome } = await import("../src/openrig-compat.js");
     const dir = mkdtempSync(join(tmpdir(), "plain-home-"));
     created.push(dir);
     expect(isFixtureScopedHome(dir)).toBe(false);
   });
 
-  it("false for an openrig-qa-named path OUTSIDE any temp root (no marker)", async () => {
+  it("任意临时根之外以 openrig-qa 命名且无标记的路径返回 false", async () => {
     const { isFixtureScopedHome } = await import("../src/openrig-compat.js");
-    // Name alone is not enough — must be under a temp root OR carry the marker.
-    // HOME may itself be an isolated temp directory; this negative path must not be.
+    // 只有名称并不足够——必须位于临时根目录下或携带标记。
+    // HOME 本身可能是隔离临时目录；此负向路径不能位于其中。
     expect(isFixtureScopedHome("/home/test-user/openrig-qa-not-a-fixture")).toBe(false);
   });
 
-  it("false for an empty string", async () => {
+  it("空字符串返回 false", async () => {
     const { isFixtureScopedHome } = await import("../src/openrig-compat.js");
     expect(isFixtureScopedHome("")).toBe(false);
   });

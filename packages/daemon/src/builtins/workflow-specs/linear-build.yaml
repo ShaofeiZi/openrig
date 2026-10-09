@@ -1,10 +1,9 @@
-# OpenRig 0.4.6 spec-language example — the LINEAR PIPELINE shape.
-# Zero WF-2 features: declaration-order routing, byte-identical to the
-# WF-1 engine's behavior (the zero-regression reference shape).
+# OpenRig 0.4.6 spec 语言示例——线性流水线形态。
+# 不使用任何 WF-2 功能：按声明顺序路由，与 WF-1 引擎行为逐字节一致（零回归参考形态）。
 workflow:
   id: linear-build
   version: 1
-  objective: Move one packet through plan, build, prove in declaration order.
+  objective: 让一个工作包按声明顺序依次经过 plan、build 和 prove。
   roles:
     planner:
       preferred_targets: [flow-planner@acme-flow]

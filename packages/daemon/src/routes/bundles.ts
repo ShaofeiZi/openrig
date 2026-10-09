@@ -34,10 +34,9 @@ import { getDaemonVersion } from "../domain/daemon-version.js";
 import { assertShippableSubstance } from "../domain/agent-resolver.js";
 
 /**
- * Compare two dotted numeric version strings (semver-ish). Returns -1 if
- * a < b, 0 if equal, 1 if a > b. Non-numeric segments coerce to 0. Adequate
- * for the 0.x.y / 1.x.y range; pre-release / build metadata not interpreted.
- * Item-2 install-time version check (Checkpoint 3.3).
+ * 比较两个点分数字版本串（semver 风格）。a < b 返回 -1，相等返回 0，a > b 返回 1。
+ * 非数字段强制为 0。对 0.x.y / 1.x.y 范围足够；不解释 pre-release / build metadata。
+ * Item-2 安装时版本检查（Checkpoint 3.3）。
  */
 function compareVersions(a: string, b: string): number {
   const partsA = a.split(".").map((p) => parseInt(p, 10) || 0);
@@ -51,7 +50,7 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-/** A single compatibility check failure surfaced in the 3-part error response. */
+/** 三段式错误响应中呈现的单条兼容性检查失败。 */
 interface CompatibilityFailure {
   reason: "daemon_version_mismatch" | "cli_version_mismatch";
   required: string;
@@ -60,11 +59,10 @@ interface CompatibilityFailure {
 }
 
 /**
- * Run the install-time compatibility check (Item 2 Checkpoint 3.3). Returns
- * an array of failures (one per kind), or null if all checks pass. Missing
- * fields in compat are no-ops (daemon-only check when min_cli_version absent;
- * full pass when both absent). cliVersion undefined skips the CLI check
- * silently (pre-Item-2 CLIs don't send it; honest backward compat).
+ * 运行安装时兼容性检查（Item 2 Checkpoint 3.3）。返回失败数组（每类一条），全部通过
+ * 则返回 null。compat 中缺字段是 no-op（缺 min_cli_version 时只查 daemon；两者都缺则
+ * 全通过）。cliVersion undefined 时静默跳过 CLI 检查（pre-Item-2 CLI 不发它；诚实的
+ * 向后兼容）。
  */
 function checkBundleCompatibility(
   compat: BundleCompatibility | undefined,
@@ -78,7 +76,7 @@ function checkBundleCompatibility(
       reason: "daemon_version_mismatch",
       required: compat.minDaemonVersion,
       actual: daemonVersion,
-      description: `bundle requires daemon >= ${compat.minDaemonVersion}, current daemon is ${daemonVersion}`,
+      description: `bundle 要求 daemon >= ${compat.minDaemonVersion}，当前 daemon 是 ${daemonVersion}`,
     });
   }
   if (compat.minCliVersion && cliVersion && compareVersions(cliVersion, compat.minCliVersion) < 0) {
@@ -86,21 +84,19 @@ function checkBundleCompatibility(
       reason: "cli_version_mismatch",
       required: compat.minCliVersion,
       actual: cliVersion,
-      description: `bundle requires CLI >= ${compat.minCliVersion}, current CLI is ${cliVersion}`,
+      description: `bundle 要求 CLI >= ${compat.minCliVersion}，当前 CLI 是 ${cliVersion}`,
     });
   }
   return failures.length > 0 ? failures : null;
 }
 
 /**
- * Extract bundle.yaml manifest from a .rigbundle archive via the canonical
- * safe-extraction path (unpack from domain/bundle-archive). unpack performs
- * verifyArchiveDigest, then tar.list pre-scan rejecting symlinks / hardlinks
- * / absolute paths / dot-dot traversal, then extracts, then verifies content
- * integrity. Using unpack here keeps the install-time compat check inside the
- * existing trust boundary — raw tar.extract on an untrusted archive would
- * bypass the safety prescan (B1 regression fixed). Throws on archive / safety
- * / parse failures; the caller converts these into a 3-part 400 response.
+ * 经规范安全解压路径（domain/bundle-archive 的 unpack）从 .rigbundle 归档抽取
+ * bundle.yaml manifest。unpack 先 verifyArchiveDigest，再 tar.list 预扫描拒绝
+ * symlink / hardlink / 绝对路径 / dot-dot 穿越，然后解压，再验证内容完整性。这里用
+ * unpack 把安装时兼容检查保留在既有信任边界内——对不可信归档裸 tar.extract 会绕过
+ * 安全预扫描（B1 回归已修）。归档 / 安全 / 解析失败时 throw；调用方把这些转成三段式
+ * 400 响应。
  */
 async function extractManifestForCompatCheck(bundlePath: string): Promise<Record<string, unknown>> {
   const meta = await extractInstallTimeMetadata(bundlePath);
@@ -108,10 +104,9 @@ async function extractManifestForCompatCheck(bundlePath: string): Promise<Record
 }
 
 /**
- * Extract both the bundle.yaml manifest AND the rig name from the bundle's
- * rig.yaml in one safe pass (Item 3 / slice-05 Checkpoint 4.2). The /install
- * handler uses bundleManifest for the compat check (Item 2) and rigName for
- * the conflict check (Item 3). Reuses unpack — single trust boundary.
+ * 一次安全 pass 同时抽 bundle.yaml manifest 和 bundle rig.yaml 中的 rig 名
+ * （Item 3 / slice-05 Checkpoint 4.2）。/install handler 用 bundleManifest 做兼容检查
+ * （Item 2），用 rigName 做冲突检查（Item 3）。复用 unpack——单一信任边界。
  */
 async function extractInstallTimeMetadata(bundlePath: string): Promise<{
   bundleManifest: Record<string, unknown>;
@@ -121,44 +116,40 @@ async function extractInstallTimeMetadata(bundlePath: string): Promise<{
   try {
     await unpack(bundlePath, tmpDir);
     const manifestPath = nodePath.join(tmpDir, "bundle.yaml");
-    if (!fs.existsSync(manifestPath)) throw new Error("Bundle missing bundle.yaml");
+    if (!fs.existsSync(manifestPath)) throw new Error("bundle 缺 bundle.yaml");
     const manifestYaml = fs.readFileSync(manifestPath, "utf-8");
     const bundleManifest = parsePodBundleManifest(manifestYaml) as Record<string, unknown>;
 
-    // B1 safety repair (slice-05 Checkpoint 4.2 / qitem-20260518204906): validate
-    // the parsed manifest BEFORE trusting any of its fields. The validators
-    // reject unsafe rig_spec values (isRelativeSafePath: no absolute, no ../,
-    // no backslash, no empty segments). Schema-version-aware: v2 uses pod-aware
-    // validator; everything else falls back to the v1 legacy validator. This is
-    // the same trust-boundary reuse as the unpack/B1 fix in Item 2.
+    // B1 安全修复（slice-05 Checkpoint 4.2 / qitem-20260518204906）：在信任任何字段前
+    // 校验解析后的 manifest。validator 拒绝不安全 rig_spec 值（isRelativeSafePath：
+    // 无绝对、无 ../、无反斜杠、无空段）。schema 版本感知：v2 用 pod-aware validator；
+    // 其他回退到 v1 legacy validator。这与 Item 2 的 unpack/B1 修复是同一信任边界复用。
     const schemaVersion = bundleManifest["schema_version"];
     if (schemaVersion === 2) {
       const v2Validation = validatePodBundleManifest(bundleManifest);
       if (!v2Validation.valid) {
-        throw new Error(`Invalid v2 bundle manifest: ${v2Validation.errors.join("; ")}`);
+        throw new Error(`非法 v2 bundle manifest：${v2Validation.errors.join("; ")}`);
       }
     } else {
       const v1Validation = validateLegacyBundleManifest(bundleManifest, { requireIntegrity: false });
       if (!v1Validation.valid) {
-        throw new Error(`Invalid v1 bundle manifest: ${v1Validation.errors.join("; ")}`);
+        throw new Error(`非法 v1 bundle manifest：${v1Validation.errors.join("; ")}`);
       }
     }
 
-    // Rig name lives in the bundle's rig.yaml (path referenced by bundle.yaml's
-    // rig_spec field; defaults to rig.yaml for legacy bundles). Read + parse;
-    // missing-or-malformed rig name leaves rigName undefined which the detector
-    // fail-opens on (no rig name to compare).
+    // rig 名住在 bundle 的 rig.yaml 中（路径由 bundle.yaml 的 rig_spec 字段引用；
+    // legacy bundle 默认 rig.yaml）。读 + 解析；缺或畸形的 rig 名使 rigName undefined，
+    // detector 对此 fail-open（无 rig 名可比）。
     //
-    // B1 safety repair (defense-in-depth alongside the validator above): resolve
-    // rig_spec inside tmpDir and require the result to stay inside tmpDir
-    // before reading, mirroring bundle-source-resolver.ts:60-63. The validator
-    // should have already rejected unsafe rig_spec; this is the second line.
+    // B1 安全修复（与上面 validator 并列的纵深防御）：在 tmpDir 内解析 rig_spec 并要求
+    // 结果在读之前留在 tmpDir 内，镜像 bundle-source-resolver.ts:60-63。validator 本应
+    // 已拒绝不安全 rig_spec；这是第二道线。
     let rigName: string | undefined;
     const rigSpecRel = typeof bundleManifest["rig_spec"] === "string" ? bundleManifest["rig_spec"] : "rig.yaml";
     const rigSpecPath = nodePath.resolve(tmpDir, rigSpecRel);
     const tmpDirResolved = nodePath.resolve(tmpDir);
     if (rigSpecPath !== tmpDirResolved && !rigSpecPath.startsWith(tmpDirResolved + nodePath.sep)) {
-      throw new Error(`Rig spec path '${rigSpecRel}' escapes bundle workspace`);
+      throw new Error(`rig spec 路径 '${rigSpecRel}' 逃出 bundle 工作区`);
     }
     if (fs.existsSync(rigSpecPath)) {
       try {
@@ -168,7 +159,7 @@ async function extractInstallTimeMetadata(bundlePath: string): Promise<{
           rigName = rigParsed["name"];
         }
       } catch {
-        // rig.yaml malformed — leave rigName undefined; conflict check skips
+        // rig.yaml 畸形——留 rigName undefined；冲突检查跳过
       }
     }
     return { bundleManifest, rigName };
@@ -178,9 +169,8 @@ async function extractInstallTimeMetadata(bundlePath: string): Promise<{
 }
 
 /**
- * Sanitize raw compatibility from request body into a BundleCompatibility
- * object. Only known typed fields accepted; unknown fields dropped silently.
- * Returns undefined if input is missing or has no usable fields.
+ * 把请求 body 中的原始 compatibility 清洗成 BundleCompatibility 对象。只接受已知
+ * 类型化字段；未知字段静默丢弃。输入缺或无可用字时返回 undefined。
  */
 function compatibilityFromRequestBody(raw: unknown): BundleCompatibility | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
@@ -193,10 +183,9 @@ function compatibilityFromRequestBody(raw: unknown): BundleCompatibility | undef
 }
 
 /**
- * Normalize raw provenance from request body into a BundleProvenance object.
- * Only string fields are accepted; unknown/non-string fields are dropped
- * silently. Returns undefined if the input is missing or has no usable
- * fields. Daemon-side daemonVersion injection is the caller's responsibility.
+ * 把请求 body 中的原始 provenance 规范化成 BundleProvenance 对象。只接受字符串字段；
+ * 未知/非字符串字段静默丢弃。输入缺或无可用字时返回 undefined。daemon 侧
+ * daemonVersion 注入是调用方责任。
  */
 function provenanceFromRequestBody(raw: unknown): BundleProvenance | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
@@ -242,47 +231,43 @@ function realFsOps(): FsOps {
 }
 
 /**
- * Build B — compare the spec about to be exported against the RUNNING rig of the same name.
+ * Build B——把即将导出的 spec 与同名 RUNNING 工作组比较。
  *
- * The assembler copies the spec text VERBATIM into the bundle and never reads the live DB, so a rig
- * expanded at runtime (nothing writes the spec back) exports as the smaller, stale topology in
- * complete silence. This says the delta out loud.
+ * assembler 把 spec 文本逐字拷进 bundle，从不读 live DB，所以运行时扩容的工作组
+ * （无东西把 spec 写回）会静默地导出成更小、更旧的拓扑。这个函数把 delta 大声说出来。
  *
- * Returns null — and the caller then says nothing at all — when there is genuinely nothing to
- * report: no repo, a spec whose rig is not running (authoring a NEW rig is not drift), or agreement.
- * Reporting only: never mutates, never blocks, never throws into the export path.
+ * 真正无可报告时返回 null——调用方随后什么也不说：无 repo、spec 的工作组未运行
+ * （编写新工作组不是 drift）、或一致。只报告：绝不 mutation、绝不 block、绝不 throw
+ * 进导出路径。
  */
 export function describeSpecLiveDrift(rawParsed: unknown, rigRepo: RigRepository | undefined): string | null {
   try {
     const result = assessSpecLiveDrift(rawParsed, rigRepo);
     return result ? bundleExportWarning(result) : null;
   } catch {
-    // REPORTING contract, deliberately different from the enforcement one below: a banner must never
-    // be the reason an export fails. Enforcement cannot afford this and does not share it.
+    // REPORTING 契约，刻意与下面的 enforcement 不同：banner 绝不能成为导出失败的理由。
+    // Enforcement 承担不起这个，也不共享它。
     return null;
   }
 }
 
 /**
- * The same comparison as `describeSpecLiveDrift`, returned STRUCTURED rather than as a sentence.
+ * 与 `describeSpecLiveDrift` 相同的比较，但结构化返回而非句子。
  *
- * Null means there is genuinely nothing to compare: no repository, a spec with no `name:`, a shape
- * that is neither pod-aware nor legacy, or no rig of that name on record. Those are all honest
- * absences of a comparison.
+ * null 表示真正无可比较：无 repository、spec 无 `name:`、既非 pod-aware 也非 legacy 的形状、
+ * 或无该名工作组记录。这些都是诚实的"无比较"。
  *
- * A REPOSITORY OR QUERY FAILURE IS NOT ONE OF THEM AND PROPAGATES. The reporting helper above may
- * swallow it, because the worst case there is a missing banner. Enforcement may not: translating a
- * failed DB read into "no drift" would let the export proceed on the strength of a comparison that
- * never happened, which is the fail-open this guard exists to remove. Callers fail closed.
+ * repository 或查询失败不在其中，会传播。上面的报告助手可以吞掉它，因为那里最坏只是
+ * 缺 banner。Enforcement 不能：把 DB 读失败翻译成"无 drift"会让导出凭一次从未发生的
+ * 比较继续，那正是本守卫存在要移除的 fail-open。调用方 fail closed。
  */
 export function assessSpecLiveDrift(rawParsed: unknown, rigRepo: RigRepository | undefined): ConformanceResult | null {
   if (!rigRepo) return null;
   const spec = rawParsed as { name?: unknown; pods?: unknown; nodes?: unknown } | null;
   const rigName = typeof spec?.name === "string" ? spec.name : "";
   if (!rigName) return null;
-  // Pod-aware and legacy specs both reach this endpoint and both ship the same wrong artifact.
-  // One comparator, two readers — the format only decides how ids are read, never what "drift"
-  // means.
+  // Pod-aware 和 legacy spec 都到达此端点，都会 ship 同一错误 artifact。一个比较器、两个
+  // reader——格式只决定 id 怎么读，绝不决定 "drift" 是什么意思。
   const isPodAware = Array.isArray(spec?.pods);
   const isLegacy = !isPodAware && Array.isArray(spec?.nodes);
   if (!isPodAware && !isLegacy) return null;
@@ -298,27 +283,25 @@ export function assessSpecLiveDrift(rawParsed: unknown, rigRepo: RigRepository |
 }
 
 /**
- * Does this spec describe a different rig than the one on record — in EITHER direction?
+ * 这个 spec 描述的工作组与记录中的不同——无论哪个方向？
  *
- * An earlier revision refused only the drop direction, on the reasoning that a spec declaring MORE
- * than is live is a bundle whose job is to bring the rest up. That was wrong, and the reason is what
- * the DB rows actually are: `nodes` is the rig's PERSISTED topology, not a list of currently-running
- * sessions. A restore that brings up seats the spec never declared produces a different rig just as
- * surely as one that drops them. Direction is not the test; disagreement is. `--allow-drift` is the
- * honest way through for an operator who means it.
+ * 早先版本只拒绝 drop 方向，理由是声明比 live 更多的 spec 是一个把其余带起来的 bundle。
+ * 那是错的，原因是 DB 行实际是什么：`nodes` 是工作组的持久拓扑，不是当前运行 session 列表。
+ * 把 spec 从未声明的席位带起来的 restore，与丢弃它们一样确定地产生不同工作组。方向不是
+ * 判据；不一致才是。`--allow-drift` 是操作员认真要做时诚实通过的方式。
  */
 export function specDivergesFromLive(result: ConformanceResult | null): boolean {
   return result ? !result.conforms : false;
 }
 
-/** The refusal an operator can act on: what disagrees, and the way through. */
+/** 操作员可据此行动的拒绝：哪里不一致，以及通过的路。 */
 export function bundleExportRefusal(result: ConformanceResult): string {
   return [
-    `Refusing to bundle: this spec does not describe the rig it names — ${result.message}.`,
-    `The bundle would instantiate ${result.spec.pods} pods/${result.spec.seats} seats, which is not`,
-    `the topology on record for this rig.`,
-    `Update the spec to match, or pass --allow-drift to bundle it as-is (the divergence is then`,
-    `stamped into the bundle's provenance so the artifact carries its own caveat).`,
+    `拒绝打包：此 spec 描述的工作组与它命名的不符——${result.message}。`,
+    `该 bundle 会实例化 ${result.spec.pods} pod/${result.spec.seats} 席位，不是`,
+    `本工作组记录中的拓扑。`,
+    `更新 spec 使其匹配，或带 --allow-drift 原样打包（分歧随后`,
+    `盖进 bundle provenance，使 artifact 自带警示）。`,
   ].join(" ");
 }
 
@@ -351,7 +334,7 @@ function podAssemblerFsOps(): PodAssemblerFsOps {
   };
 }
 
-/** Item 6 / slice-05 Checkpoint 7.3d: real PluginsRouterFsOps backed by node:fs. */
+/** 第 6 项 / slice-05 检查点 7.3d：由 node:fs 支撑的真实 PluginsRouterFsOps。 */
 function pluginsRouterFsOps(): PluginsRouterFsOps {
   return {
     exists: (p) => fs.existsSync(p),
@@ -361,7 +344,7 @@ function pluginsRouterFsOps(): PluginsRouterFsOps {
   };
 }
 
-/** Item 6 / slice-05 Checkpoint 7.3e step 3: real WorkflowSpecsRouterFsOps backed by node:fs. */
+/** 第 6 项 / slice-05 检查点 7.3e 第 3 步：由 node:fs 支撑的真实 WorkflowSpecsRouterFsOps。 */
 function workflowSpecsRouterFsOps(): WorkflowSpecsRouterFsOps {
   return {
     exists: (p) => fs.existsSync(p),
@@ -371,7 +354,7 @@ function workflowSpecsRouterFsOps(): WorkflowSpecsRouterFsOps {
   };
 }
 
-/** Item 6 / slice-05 Checkpoint 7.3f step 3: real ContextPacksRouterFsOps backed by node:fs. */
+/** 第 6 项 / slice-05 检查点 7.3f 第 3 步：由 node:fs 支撑的真实 ContextPacksRouterFsOps。 */
 function contextPacksRouterFsOps(): ContextPacksRouterFsOps {
   return {
     exists: (p) => fs.existsSync(p),
@@ -395,7 +378,7 @@ function contextPacksRouterFsOps(): ContextPacksRouterFsOps {
   };
 }
 
-/** Item 6 / slice-05 Checkpoint 7.3g step 3: real AgentImagesRouterFsOps backed by node:fs. */
+/** 第 6 项 / slice-05 检查点 7.3g 第 3 步：由 node:fs 支撑的真实 AgentImagesRouterFsOps。 */
 function agentImagesRouterFsOps(): AgentImagesRouterFsOps {
   return {
     exists: (p) => fs.existsSync(p),
@@ -406,23 +389,20 @@ function agentImagesRouterFsOps(): AgentImagesRouterFsOps {
 }
 
 /**
- * Item 6 / slice-05 Checkpoint 7.3g step 3: extract the bundle safely
- * (banked unpack trust boundary) and route any declared agent_images to
- * the operator agent-images library. Returns null when bundle has no
- * agent_images[] (no-op).
+ * Item 6 / slice-05 Checkpoint 7.3g step 3：安全解压 bundle（复用 unpack 信任边界）
+ * 并把任何声明的 agent_images 路由到 operator agent-images 库。bundle 无
+ * agent_images[] 时返回 null（no-op）。
  *
- * Target resolution: <openrigHome>/agent-images — per startup.ts:523
- * (the user-file root the live AgentImageLibraryService is constructed
- * against). No SettingsStore complexity; canonical path is OPENRIG_HOME-
- * rooted per agent-image-types.ts:9-10.
+ * 目标解析：<openrigHome>/agent-images——见 startup.ts:523（live
+ * AgentImageLibraryService 构造所对的用户文件根）。无 SettingsStore 复杂性；规范
+ * 路径按 agent-image-types.ts:9-10 以 OPENRIG_HOME 为根。
  *
- * Per the e7a0b253 PRD-coherent contract: agent_images entries are paths
- * to image DIRECTORIES (not manifest paths — distinct shape from
- * context_packs). The router enforces sourceAbs isDirectory + manifest.yaml
- * inside the dir is a file before copying the whole image dir.
+ * 按 e7a0b253 PRD 一致契约：agent_images 条目是 image 目录路径（不是 manifest 路径——
+ * 与 context_packs 形状不同）。router 在拷整个 image 目录前强制 sourceAbs isDirectory
+ * + dir 内 manifest.yaml 是文件。
  *
- * Mirror of routeContextPacksAfterBootstrap pattern with the dir-path
- * contract adaptation. bundlePath-only signature per 5f410eee B1 lesson.
+ * routeContextPacksAfterBootstrap 模式的镜像，适配 dir-path 契约。按 5f410eee B1 教训
+ * 只用 bundlePath 签名。
  */
 async function routeAgentImagesAfterBootstrap(bundlePath: string): Promise<RouteAgentImagesResult | null> {
   const targetAgentImagesDir = getDefaultOpenRigPath("agent-images");
@@ -451,19 +431,16 @@ async function routeAgentImagesAfterBootstrap(bundlePath: string): Promise<Route
 }
 
 /**
- * Item 6 / slice-05 Checkpoint 7.3f step 3: extract the bundle safely
- * (banked unpack trust boundary) and route any declared context_packs to
- * the operator context-packs library. Returns null when bundle has no
- * context_packs[] (no-op).
+ * Item 6 / slice-05 Checkpoint 7.3f step 3：安全解压 bundle（复用 unpack 信任边界）
+ * 并把任何声明的 context_packs 路由到 operator context-packs 库。bundle 无
+ * context_packs[] 时返回 null（no-op）。
  *
- * Target resolution uses context.root, exactly like the live
- * ContextPackLibraryService. A configured root replaces the default; bundle
- * routing must not silently create a second writable library.
+ * 目标解析用 context.root，与 live ContextPackLibraryService 完全一致。配置的 root
+ * 替换默认；bundle 路由绝不能静默创建第二个可写库。
  *
- * Mirror of routeSkillsAfterBootstrap / routePluginsAfterBootstrap /
- * routeWorkflowSpecsAfterBootstrap pattern: takes bundlePath only
- * (decoupled from installMeta per the 5f410eee B1 lesson; routing must
- * fire on the dual-override path too).
+ * routeSkillsAfterBootstrap / routePluginsAfterBootstrap /
+ * routeWorkflowSpecsAfterBootstrap 模式的镜像：只用 bundlePath
+ * （按 5f410eee B1 教训与 installMeta 解耦；路由在 dual-override 路径也必须触发）。
  */
 async function routeContextPacksAfterBootstrap(bundlePath: string): Promise<RouteContextPacksResult | null> {
   const targetContextPacksDir = new ContextPackSettingsStore().resolveOne("context.root").value as string;
@@ -492,23 +469,18 @@ async function routeContextPacksAfterBootstrap(bundlePath: string): Promise<Rout
 }
 
 /**
- * Item 6 / slice-05 Checkpoint 7.3e step 3: extract the bundle safely
- * (banked unpack trust boundary) and route any declared workflow_specs to
- * the operator workflow-specs library. Returns null when bundle has no
- * workflow_specs[] (no-op), no manifest, or workspaceSpecsRoot unresolved.
+ * Item 6 / slice-05 Checkpoint 7.3e step 3：安全解压 bundle（复用 unpack 信任边界）
+ * 并把任何声明的 workflow_specs 路由到 operator workflow-specs 库。bundle 无
+ * workflow_specs[]（no-op）、无 manifest 或 workspaceSpecsRoot 未解析时返回 null。
  *
- * Target resolution per the CALLER CONTRACT in
- * bundle-workflow-specs-router.ts: SettingsStore is the sole authority.
- * Resolved as nodePath.join(workspaceSpecsRoot, "workflows") — the path
- * that spec-library-workflow-scanner actually reads (startup.ts:903-916).
- * If SettingsStore cannot resolve workspaceSpecsRoot (settings not yet
- * initialized / config error), we return null and the install lifecycle
- * proceeds without workflow_specs routing — mirror of startup.ts:910-916
- * try/catch posture.
+ * 按 bundle-workflow-specs-router.ts 的 CALLER CONTRACT 解析目标：SettingsStore 是
+ * 唯一权威。解析为 nodePath.join(workspaceSpecsRoot, "workflows")——spec-library-
+ * workflow-scanner 实际读的路径（startup.ts:903-916）。若 SettingsStore 无法解析
+ * workspaceSpecsRoot（settings 未初始化 / config 错误），返回 null 且安装生命周期
+ * 不带 workflow_specs 路由继续——镜像 startup.ts:910-916 try/catch 姿态。
  *
- * Mirror of routeSkillsAfterBootstrap / routePluginsAfterBootstrap pattern:
- * takes bundlePath only (decoupled from installMeta per the 5f410eee B1
- * lesson; routing must fire on the dual-override path too).
+ * routeSkillsAfterBootstrap / routePluginsAfterBootstrap 模式的镜像：只用 bundlePath
+ * （按 5f410eee B1 教训与 installMeta 解耦；路由在 dual-override 路径也必须触发）。
  */
 async function routeWorkflowSpecsAfterBootstrap(bundlePath: string): Promise<RouteWorkflowSpecsResult | null> {
   let workspaceSpecsRoot: string | undefined;
@@ -516,7 +488,7 @@ async function routeWorkflowSpecsAfterBootstrap(bundlePath: string): Promise<Rou
     const settingsStore = new ContextPackSettingsStore();
     workspaceSpecsRoot = settingsStore.resolveConfig().workspaceSpecsRoot;
   } catch {
-    return null; // settings unresolvable; no-op routing
+    return null; // settings 不可解析；no-op 路由
   }
   if (!workspaceSpecsRoot) return null;
   const targetWorkflowSpecsDir = nodePath.join(workspaceSpecsRoot, "workflows");
@@ -546,12 +518,11 @@ async function routeWorkflowSpecsAfterBootstrap(bundlePath: string): Promise<Rou
 }
 
 /**
- * Item 6 / slice-05 Checkpoint 7.3d: extract the bundle safely (banked unpack
- * trust boundary) and route any declared plugin references to the operator
- * plugins library (<OPENRIG_HOME>/plugins/<id>/). Returns null when bundle
- * has no plugins[] (no-op). Mirror of routeSkillsAfterBootstrap pattern —
- * takes bundlePath only (decoupled from installMeta per the 5f410eee B1
- * lesson; routing must fire on the dual-override path too).
+ * Item 6 / slice-05 Checkpoint 7.3d：安全解压 bundle（复用 unpack 信任边界）并把任何
+ * 声明的 plugin 引用路由到 operator plugins 库（<OPENRIG_HOME>/plugins/<id>/）。
+ * bundle 无 plugins[] 时返回 null（no-op）。routeSkillsAfterBootstrap 模式的镜像——
+ * 只用 bundlePath（按 5f410eee B1 教训与 installMeta 解耦；路由在 dual-override
+ * 路径也必须触发）。
  */
 async function routePluginsAfterBootstrap(bundlePath: string): Promise<RoutePluginsResult | null> {
   const tmpDir = fs.mkdtempSync(nodePath.join(os.tmpdir(), "bundle-plugins-route-"));
@@ -588,7 +559,7 @@ async function routePluginsAfterBootstrap(bundlePath: string): Promise<RoutePlug
   }
 }
 
-/** Item 6 / slice-05 Checkpoint 7.3: real SkillsRouterFsOps backed by node:fs. */
+/** Item 6 / slice-05 Checkpoint 7.3：node:fs 支撑的真实 SkillsRouterFsOps。 */
 function skillsRouterFsOps(): SkillsRouterFsOps {
   return {
     exists: (p) => fs.existsSync(p),
@@ -599,24 +570,19 @@ function skillsRouterFsOps(): SkillsRouterFsOps {
 }
 
 /**
- * Item 6 / slice-05 Checkpoint 7.3: extract the bundle safely (banked unpack
- * trust boundary) and route legacy declared skill files to the package cache.
- * S04 keeps this package-shaped payload out of the managed skill catalog;
- * importing a complete harness skill into the catalog is a separate action.
- * Returns null when bundle has no skills[] (no-op).
+ * Item 6 / slice-05 Checkpoint 7.3：安全解压 bundle（复用 unpack 信任边界）并把 legacy
+ * 声明的 skill 文件路由到 package 缓存。S04 把这种 package 形状的 payload 排除在托管
+ * skill catalog 外；把完整 harness skill 导入 catalog 是单独动作。bundle 无 skills[]
+ * 时返回 null（no-op）。
  *
- * B1 repair (qitem-20260518220247-22f5257a): takes bundlePath only and does
- * its own safe unpack + parse. Previously coupled to installMeta from the
- * pre-check extraction, which is null when operator passes --skip-version-
- * check AND --force together; that incorrectly suppressed post-install
- * skills routing on the dual-override path. Skills routing is independent
- * of the pre-check decisions and should fire whenever an install completes
- * successfully with a bundle that declares skills.
+ * B1 修复（qitem-20260518220247-22f5257a）：只用 bundlePath 并自己做安全 unpack +
+ * parse。先前耦合到 pre-check 抽取的 installMeta，当 operator 同时传 --skip-version-check
+ * 与 --force 时它是 null；那错误地抑制了 dual-override 路径上的 post-install skills 路由。
+ * Skills 路由独立于 pre-check 决策，应在任何声明 skills 的 bundle 安装成功时触发。
  *
- * Best-effort: returns null on any extract/parse failure (caller has the
- * outer try/catch). Single unpack call per invocation; the manifest re-parse
- * is cheap vs. the unpack cost which is required either way to access the
- * skill source files for routing.
+ * Best-effort：任何抽取/解析失败返回 null（调用方有外层 try/catch）。每次调用一次
+ * unpack；manifest 重解析相对 unpack 成本很便宜，而 unpack 无论如何都要做才能访问
+ * skill 源文件做路由。
  */
 async function routeSkillsAfterBootstrap(bundlePath: string): Promise<RouteSkillsResult | null> {
   const tmpDir = fs.mkdtempSync(nodePath.join(os.tmpdir(), "bundle-skills-route-"));
@@ -644,7 +610,7 @@ async function routeSkillsAfterBootstrap(bundlePath: string): Promise<RouteSkill
   }
 }
 
-/** Item 4 / slice-05 Checkpoint 5.2: real BundleAuditFsOps backed by node:fs. */
+/** Item 4 / slice-05 Checkpoint 5.2：node:fs 支撑的真实 BundleAuditFsOps。 */
 function auditFsOps(): BundleAuditFsOps {
   return {
     appendFile: (p, c) => fs.appendFileSync(p, c, "utf-8"),
@@ -655,20 +621,17 @@ function auditFsOps(): BundleAuditFsOps {
 }
 
 /**
- * Audit file path resolved at call time via getDefaultOpenRigPath
- * ("bundle-audit.jsonl"). Function-level read (no module-level constant)
- * so OPENRIG_HOME env changes between requests / tests are honored.
+ * 审计文件路径在调用时经 getDefaultOpenRigPath（"bundle-audit.jsonl"）解析。
+ * 函数级读取（无模块级常量），使请求/测试之间 OPENRIG_HOME env 变化被遵守。
  */
 function bundleAuditPath(): string {
   return getDefaultOpenRigPath("bundle-audit.jsonl");
 }
 
 /**
- * Item 4 / slice-05 Checkpoint 5.3: append a bundle install audit record.
- * Best-effort — audit failures are logged via the eventBus shape but never
- * fail the install response (the install already happened or failed; the
- * audit is a side-channel record). bundleManifest is optional; when present,
- * provenance.source_host is mirrored into the record.
+ * Item 4 / slice-05 Checkpoint 5.3：追加 bundle 安装审计记录。Best-effort——审计失败经
+ * eventBus 形状记日志，但绝不使安装响应失败（安装已发生或已失败；审计是 side-channel
+ * 记录）。bundleManifest 可选；存在时 provenance.source_host 镜像进记录。
  */
 function writeInstallAudit(opts: {
   bundlePath: string;
@@ -696,51 +659,39 @@ function writeInstallAudit(opts: {
     if (provenance?.sourceHost) record.sourceHost = provenance.sourceHost;
     writer.append(record);
   } catch {
-    // Audit-write failure is side-channel; never fail the install response.
-    // Future enhancement: surface via eventBus (out of scope this commit).
+    // 审计写失败是 side-channel；绝不使安装响应失败。
+    // 未来增强：经 eventBus 呈现（本次提交范围外）。
   }
 }
 
 /**
- * Item 6 / slice-05 Checkpoint 7.5 (QA-20260601 A2 repair): consume an
- * author-supplied bundle.yaml at the source root and vendor the
- * declared cross-primitive content into the staging tree. Runs AFTER
- * the assembler has built staging (rig.yaml + agents/) and BEFORE
- * computeIntegrity so the vendored content lands in the integrity
- * manifest.
+ * Item 6 / slice-05 Checkpoint 7.5（QA-20260601 A2 修复）：消费源根处 author 提供的
+ * bundle.yaml，并把声明的 cross-primitive 内容 vendor 进 staging 树。在 assembler
+ * 建好 staging（rig.yaml + agents/）之后、computeIntegrity 之前运行，使 vendor 的内容
+ * 落进 integrity manifest。
  *
- * Auto-detect contract (per orch ruling, no new CLI flag): if a
- * bundle.yaml exists at the source root, parse it and consume the 5
- * cross-primitive fields (skills, plugins, workflow_specs,
- * context_packs, agent_images). Provenance + compatibility stay
- * request-body-only (caller-controlled at create time). If no
- * bundle.yaml at source root, no-op (existing behavior unchanged).
+ * Auto-detect 契约（按 orch 裁决，无新 CLI flag）：若源根存在 bundle.yaml，解析它并消费
+ * 5 个 cross-primitive 字段（skills、plugins、workflow_specs、context_packs、
+ * agent_images）。Provenance + compatibility 保持仅请求 body（create 时由调用方控制）。
+ * 源根无 bundle.yaml 则 no-op（既有行为不变）。
  *
- * Vendor semantics:
- * - Each declared path is resolved relative to source root.
- * - Both-sides containment: source path under sourceRoot, target path
- *   under staging (banked
+ * Vendor 语义：
+ * - 每个声明路径相对源根解析。
+ * - 双侧包含：源路径在 sourceRoot 下，目标路径在 staging 下（复用
  *   feedback_pre_existing_trust_boundary_reuse_canonical_helper
- *   addendum applied through 7.3a-g).
- * - Symlinks are FOLLOWED at create time and written as regular files
- *   to the staging tree (tar safety; banked pre-existing-trust-
- *   boundary lesson — never include a symlink entry in an archive).
- * - Per-kind shape: skills + workflow_specs are file paths (single
- *   file copy); plugins + context_packs (manifest.yaml path → parent
- *   dir) + agent_images are dir paths (recursive copy with symlink
- *   dereference).
- * - Throws on missing source path / path-containment violation /
- *   realpath escape (banked 79a89d40 B1: lexical containment alone is
- *   insufficient — symlinks under sourceRoot can target outside content;
- *   each declared path is realpath-validated, and dir vendoring pre-
- *   walks the tree with lstat to catch nested symlink escapes). The
- *   /create route's outer catch returns 500 with the message; if this
- *   maps poorly to operator UX, a follow-up can wrap to 400.
+ *   附录，贯穿 7.3a-g）。
+ * - symlink 在 create 时被跟随，作为常规文件写入 staging 树（tar 安全；复用既有
+ *   信任边界教训——归档中绝不包含 symlink 条目）。
+ * - 按种类形状：skills + workflow_specs 是文件路径（单文件拷贝）；plugins +
+ *   context_packs（manifest.yaml 路径→父目录）+ agent_images 是目录路径（递归拷贝
+ *   带 symlink 解引用）。
+ * - 缺源路径 / 路径包含违规 / realpath 逃逸时 throw（复用 79a89d40 B1：词法包含
+ *   本身不足——sourceRoot 下的 symlink 可指向外部内容；每个声明路径都经 realpath
+ *   校验，dir vendor 预先用 lstat 走树以捕获嵌套 symlink 逃逸）。/create 路由的外层
+ *   catch 带消息返回 500；若这对操作员 UX 映射不佳，后续可包成 400。
  *
- * Returns the cross-primitive blocks to populate on the manifest the
- * assembler returned. The /create route writes the manifest AFTER
- * populating these fields so the built bundle.yaml carries them
- * for the install side to route from.
+ * 返回 cross-primitive 块，以填充到 assembler 返回的 manifest 上。/create 路由在填充
+ * 这些字段后写 manifest，使构建的 bundle.yaml 携带它们供 install 侧路由。
  */
 interface AuthorBundleCrossPrimitives {
   skills?: string[];
@@ -753,34 +704,31 @@ interface AuthorBundleCrossPrimitives {
 function consumeAuthorBundleYaml(sourceRoot: string, staging: string): AuthorBundleCrossPrimitives {
   const authorBundlePath = nodePath.join(sourceRoot, "bundle.yaml");
   if (!fs.existsSync(authorBundlePath)) return {};
-  // Canonicalize sourceRoot before vendoring (banked 79a89d40 B1 guard
-  // catch: lexical containment + dereference allows symlinks under
-  // sourceRoot to escape). realpath the root once; every declared path's
-  // realpath must stay within this boundary.
+  // vendor 前规范化 sourceRoot（复用 79a89d40 B1 守卫 catch：词法包含 + 解引用允许
+  // sourceRoot 下的 symlink 逃逸）。对根 realpath 一次；每个声明路径的 realpath 必须
+  // 留在本边界内。
   const sourceRootReal = fs.realpathSync(sourceRoot);
   const stagingResolved = nodePath.resolve(staging);
 
-  /** Realpath-contain check: the actual file/dir behind `absPath` (after
-   * symlink resolution) must live under sourceRootReal. Catches symlinks
-   * whose targets escape the source tree even when the lexical path is
-   * inside sourceRoot. Throws on escape. */
+  /** Realpath 包含检查：`absPath` 背后的真实文件/目录（symlink 解析后）必须住在
+   * sourceRootReal 下。即使词法路径在 sourceRoot 内，也能捕获目标逃出源树的
+   * symlink。逃逸时 throw。 */
   const assertSourceRealContained = (absPath: string, kindLabel: string, declared: string): string => {
     let realPath: string;
     try {
       realPath = fs.realpathSync(absPath);
     } catch (err) {
-      throw new Error(`author bundle ${kindLabel} '${declared}' does not exist in source: ${(err as Error).message}`);
+      throw new Error(`author bundle ${kindLabel} '${declared}' 在源中不存在：${(err as Error).message}`);
     }
     if (realPath !== sourceRootReal && !realPath.startsWith(sourceRootReal + nodePath.sep)) {
-      throw new Error(`author bundle ${kindLabel} '${declared}' resolves outside bundle source root (symlink escape); rejected`);
+      throw new Error(`author bundle ${kindLabel} '${declared}' 解析到 bundle 源根外（symlink 逃逸）；已拒绝`);
     }
     return realPath;
   };
 
-  /** Pre-walk a directory tree with lstat; for every symlink encountered,
-   * realpath-check containment under sourceRootReal. Regular files and
-   * dirs need no special check (they're inherently contained — the
-   * problem class is symlinks escaping). Throws on any escape. */
+  /** 用 lstat 预走目录树；对每个遇到的 symlink，realpath 校验在 sourceRootReal 下包含。
+   * 常规文件和目录无需特殊检查（它们固有地被包含——问题类是 symlink 逃逸）。任何
+   * 逃逸都 throw。 */
   const assertNoSymlinkEscapeInTree = (dirAbs: string, kindLabel: string, declared: string): void => {
     const stack: string[] = [dirAbs];
     while (stack.length > 0) {
@@ -789,25 +737,24 @@ function consumeAuthorBundleYaml(sourceRoot: string, staging: string): AuthorBun
       try {
         entries = fs.readdirSync(cur, { withFileTypes: true });
       } catch {
-        // Unreadable dir — skip; cpSync will surface the failure if material
+        // 不可读目录——跳过；若实际有影响，cpSync 会呈现失败
         continue;
       }
       for (const entry of entries) {
         const entryAbs = nodePath.join(cur, entry.name);
         if (entry.isSymbolicLink()) {
-          // Realpath the symlink target; reject if escapes sourceRootReal
+          // 对 symlink 目标 realpath；若逃出 sourceRootReal 则拒绝
           let entryReal: string;
           try {
             entryReal = fs.realpathSync(entryAbs);
           } catch (err) {
-            throw new Error(`author bundle ${kindLabel} '${declared}' has unreadable symlink at '${nodePath.relative(sourceRootReal, entryAbs)}': ${(err as Error).message}`);
+            throw new Error(`author bundle ${kindLabel} '${declared}' 在 '${nodePath.relative(sourceRootReal, entryAbs)}' 有不可读 symlink：${(err as Error).message}`);
           }
           if (entryReal !== sourceRootReal && !entryReal.startsWith(sourceRootReal + nodePath.sep)) {
-            throw new Error(`author bundle ${kindLabel} '${declared}' contains nested symlink at '${nodePath.relative(sourceRootReal, entryAbs)}' escaping bundle source root; rejected`);
+            throw new Error(`author bundle ${kindLabel} '${declared}' 在 '${nodePath.relative(sourceRootReal, entryAbs)}' 含嵌套 symlink 逃出 bundle 源根；已拒绝`);
           }
-          // If the symlink target is a directory under sourceRoot, walk it
-          // (cpSync with dereference:true will follow it; we need to
-          // validate any nested symlinks too)
+          // 若 symlink 目标是 sourceRoot 下的目录，走它
+          // （带 dereference:true 的 cpSync 会跟随；我们也需要校验任何嵌套 symlink）
           try {
             const st = fs.statSync(entryReal);
             if (st.isDirectory()) stack.push(entryReal);
@@ -824,36 +771,35 @@ function consumeAuthorBundleYaml(sourceRoot: string, staging: string): AuthorBun
   const result: AuthorBundleCrossPrimitives = {};
 
   const vendorFile = (declared: string, kindLabel: string): void => {
-    if (!isRelativeSafePath(declared)) throw new Error(`author bundle ${kindLabel} path '${declared}' is not safe`);
+    if (!isRelativeSafePath(declared)) throw new Error(`author bundle ${kindLabel} 路径 '${declared}' 不安全`);
     const sourceAbs = nodePath.resolve(sourceRootReal, declared);
-    // Lexical containment + realpath containment (banked 79a89d40 B1)
+    // 词法包含 + realpath 包含（复用 79a89d40 B1）
     if (sourceAbs !== sourceRootReal && !sourceAbs.startsWith(sourceRootReal + nodePath.sep)) {
-      throw new Error(`author bundle ${kindLabel} path '${declared}' escapes bundle source root`);
+      throw new Error(`author bundle ${kindLabel} 路径 '${declared}' 逃出 bundle 源根`);
     }
-    if (!fs.existsSync(sourceAbs)) throw new Error(`author bundle ${kindLabel} '${declared}' does not exist in source`);
+    if (!fs.existsSync(sourceAbs)) throw new Error(`author bundle ${kindLabel} '${declared}' 在源中不存在`);
     assertSourceRealContained(sourceAbs, kindLabel, declared);
     const targetAbs = nodePath.resolve(staging, declared);
     if (!targetAbs.startsWith(stagingResolved + nodePath.sep)) {
-      throw new Error(`author bundle ${kindLabel} target '${declared}' escapes staging`);
+      throw new Error(`author bundle ${kindLabel} 目标 '${declared}' 逃出 staging`);
     }
-    // readFileSync follows the symlink; we already validated its realpath
-    // stays in sourceRootReal. Write as regular file (tar safety).
+    // readFileSync 跟随 symlink；我们已校验其 realpath 留在 sourceRootReal 内。
+    // 作为常规文件写（tar 安全）。
     const content = fs.readFileSync(sourceAbs);
     assertShippableSubstance([{ path: declared, bytes: content }]);
     fs.mkdirSync(nodePath.dirname(targetAbs), { recursive: true });
     fs.writeFileSync(targetAbs, content);
   };
   const vendorDir = (declared: string, kindLabel: string): void => {
-    if (!isRelativeSafePath(declared)) throw new Error(`author bundle ${kindLabel} path '${declared}' is not safe`);
+    if (!isRelativeSafePath(declared)) throw new Error(`author bundle ${kindLabel} 路径 '${declared}' 不安全`);
     const sourceAbs = nodePath.resolve(sourceRootReal, declared);
     if (sourceAbs !== sourceRootReal && !sourceAbs.startsWith(sourceRootReal + nodePath.sep)) {
-      throw new Error(`author bundle ${kindLabel} path '${declared}' escapes bundle source root`);
+      throw new Error(`author bundle ${kindLabel} 路径 '${declared}' 逃出 bundle 源根`);
     }
-    if (!fs.existsSync(sourceAbs)) throw new Error(`author bundle ${kindLabel} '${declared}' does not exist in source`);
-    // Realpath-validate the declared dir itself (catches symlink-to-outside-dir)
+    if (!fs.existsSync(sourceAbs)) throw new Error(`author bundle ${kindLabel} '${declared}' 在源中不存在`);
+    // 对声明的 dir 本身做 realpath 校验（捕获 symlink 指向外部目录）
     const sourceReal = assertSourceRealContained(sourceAbs, kindLabel, declared);
-    // Pre-walk the realpath-resolved dir to catch nested symlink escapes
-    // before cpSync dereferences anything
+    // 在 cpSync 解引用任何东西之前，预走 realpath 解析后的 dir 以捕获嵌套 symlink 逃逸
     assertNoSymlinkEscapeInTree(sourceReal, kindLabel, declared);
     const sources: Array<{ path: string; bytes: Buffer }> = [];
     const collectSources = (current: string, prefix: string): void => {
@@ -872,15 +818,14 @@ function consumeAuthorBundleYaml(sourceRoot: string, staging: string): AuthorBun
     assertShippableSubstance(sources);
     const targetAbs = nodePath.resolve(staging, declared);
     if (!targetAbs.startsWith(stagingResolved + nodePath.sep)) {
-      throw new Error(`author bundle ${kindLabel} target '${declared}' escapes staging`);
+      throw new Error(`author bundle ${kindLabel} 目标 '${declared}' 逃出 staging`);
     }
     fs.mkdirSync(nodePath.dirname(targetAbs), { recursive: true });
-    // dereference: true → symlinks followed (now validated safe) and
-    // written as regular files for tar safety
+    // dereference: true→ symlink 被跟随（现已校验安全）并作为常规文件写以保证 tar 安全
     fs.cpSync(sourceAbs, targetAbs, { recursive: true, dereference: true });
   };
 
-  // skills[] — file paths
+  // skills[]——文件路径。
   const rawSkills = authorParsed["skills"];
   if (Array.isArray(rawSkills) && rawSkills.length > 0) {
     const skills = rawSkills.filter((s): s is string => typeof s === "string" && s.length > 0);
@@ -888,7 +833,7 @@ function consumeAuthorBundleYaml(sourceRoot: string, staging: string): AuthorBun
     if (skills.length > 0) result.skills = skills;
   }
 
-  // plugins[] — dir paths via source.path
+  // plugins[]——经 source.path 的目录路径
   const rawPlugins = authorParsed["plugins"];
   if (Array.isArray(rawPlugins) && rawPlugins.length > 0) {
     const plugins: BundlePluginReference[] = [];
@@ -906,7 +851,7 @@ function consumeAuthorBundleYaml(sourceRoot: string, staging: string): AuthorBun
     if (plugins.length > 0) result.plugins = plugins;
   }
 
-  // workflow_specs[] — file paths
+  // workflow_specs[]——文件路径。
   const rawWorkflowSpecs = authorParsed["workflow_specs"];
   if (Array.isArray(rawWorkflowSpecs) && rawWorkflowSpecs.length > 0) {
     const workflowSpecs = rawWorkflowSpecs.filter((s): s is string => typeof s === "string" && s.length > 0);
@@ -914,19 +859,19 @@ function consumeAuthorBundleYaml(sourceRoot: string, staging: string): AuthorBun
     if (workflowSpecs.length > 0) result.workflowSpecs = workflowSpecs;
   }
 
-  // context_packs[] — manifest.yaml paths; vendor the parent dir
+  // context_packs[]——manifest.yaml 路径；vendor 父目录
   const rawContextPacks = authorParsed["context_packs"];
   if (Array.isArray(rawContextPacks) && rawContextPacks.length > 0) {
     const contextPacks = rawContextPacks.filter((s): s is string => typeof s === "string" && s.length > 0);
     for (const declared of contextPacks) {
       const parentRel = nodePath.dirname(declared);
-      if (parentRel === ".") continue; // declared at root; nothing meaningful to vendor
+      if (parentRel === ".") continue; // 在根声明；无有意义内容可 vendor
       vendorDir(parentRel, `context_pack parent of '${declared}'`);
     }
     if (contextPacks.length > 0) result.contextPacks = contextPacks;
   }
 
-  // agent_images[] — dir paths
+  // agent_images[]——目录路径。
   const rawAgentImages = authorParsed["agent_images"];
   if (Array.isArray(rawAgentImages) && rawAgentImages.length > 0) {
     const agentImages = rawAgentImages.filter((s): s is string => typeof s === "string" && s.length > 0);
@@ -937,7 +882,7 @@ function consumeAuthorBundleYaml(sourceRoot: string, staging: string): AuthorBun
   return result;
 }
 
-/** Scan the exact finalized tree that will be packed, including generated files. */
+/** 扫描最终将被打包的精确目录树，包括生成文件。 */
 function assertShippableStagingTree(staging: string): void {
   const sources: Array<{ path: string; bytes: Buffer }> = [];
   const walk = (current: string): void => {
@@ -951,7 +896,7 @@ function assertShippableStagingTree(staging: string): void {
           bytes: fs.readFileSync(absolute),
         });
       } else {
-        throw new Error(`Public artifact substance refusal: unsupported staged entry '${nodePath.relative(staging, absolute)}'`);
+        throw new Error(`公开产物内容被拒绝：不支持的暂存条目 '${nodePath.relative(staging, absolute)}'`);
       }
     }
   };
@@ -972,46 +917,44 @@ bundleRoutes.post("/create", async (c) => {
 
   const allowDrift = body["allowDrift"] === true;
 
-  // Item 1 / slice-05: build provenance from request body + inject daemonVersion server-side
+  // Item 1 / slice-05：从请求 body 构建 provenance + server 侧注入 daemonVersion
   const clientProvenance = provenanceFromRequestBody(body["provenance"]);
   let provenance: BundleProvenance | undefined = clientProvenance
     ? { ...clientProvenance, daemonVersion: getDaemonVersion() }
     : undefined;
 
-  // Item 2 / slice-05: build compatibility from request body (no server-side fields)
+  // Item 2 / slice-05：从请求 body 构建 compatibility（无 server 侧字段）
   const compatibility = compatibilityFromRequestBody(body["compatibility"]);
 
   if (!specPath || !bundleName || !bundleVersion || !outputPath) {
-    return c.json({ error: "specPath, bundleName, bundleVersion, and outputPath are required" }, 400);
+    return c.json({ error: "specPath、bundleName、bundleVersion、outputPath 为必填项" }, 400);
   }
 
   try {
-    // Read spec and detect format
+    // 读 spec 并检测格式
     const specYaml = fs.readFileSync(nodePath.resolve(specPath), "utf-8");
     const rawParsed = RigSpecCodec.parse(specYaml);
     const isPodAware = rawParsed && typeof rawParsed === "object" && Array.isArray((rawParsed as Record<string, unknown>).pods);
 
-    // VALIDATE BEFORE ASSESSING. A malformed spec has no trustworthy topology to compare, and a
-    // drift 409 raised on one would blame the rig for what is actually a broken file — sending the
-    // operator to reconcile a topology when the real answer is "this spec does not parse". Schema
-    // errors keep their existing 400 and return before the guard ever runs.
+    // 先校验再评估。畸形 spec 没有可信拓扑可比，对它抛 drift 409 会把文件损坏归咎于
+    // 工作组——让操作员去调和拓扑，而真正答案是"此 spec 解析不了"。Schema 错误保留
+    // 既有 400，在守卫运行前返回。
     if (isPodAware) {
       const podValidation = RigSpecSchema.validate(rawParsed);
-      if (!podValidation.valid) return c.json({ error: "Invalid pod-aware rig spec", errors: podValidation.errors }, 400);
+      if (!podValidation.valid) return c.json({ error: "非法 pod-aware 工作组 spec", errors: podValidation.errors }, 400);
     } else {
       const legacyValidation = LegacyRigSpecSchema.validate(rawParsed);
-      if (!legacyValidation.valid) return c.json({ error: "Invalid rig spec", errors: legacyValidation.errors }, 400);
+      if (!legacyValidation.valid) return c.json({ error: "非法工作组 spec", errors: legacyValidation.errors }, 400);
     }
 
-    // The bundle carries the SPEC verbatim and never consults the live DB, so when a rig's persisted
-    // topology has moved (no code path writes the spec back) an export ships a DIFFERENT rig than the
-    // one on record. Build B made that delta sayable; saying it on a 201 was not enough. A .rigbundle
-    // is a recovery artifact, and a warning stapled to a success is read at the one moment it is
-    // least affordable — so any non-conforming topology refuses here.
+    // bundle 逐字携带 SPEC，从不查 live DB，所以当工作组持久拓扑已变（无代码路径把 spec
+    // 写回）时，导出会 ship 与记录不同的工作组。Build B 让那个 delta 可被说出；在 201
+    // 上说还不够。.rigbundle 是恢复 artifact，钉在成功上的警告在最不该被读的时刻才被读——
+    // 所以任何不合规拓扑在此拒绝。
     //
-    // This throws rather than returning null when the repository read itself fails, and that is the
-    // point: an enforcement path that swallows a DB error would report "no drift" and export, which
-    // is the fail-OPEN this guard exists to remove. It fails closed through the 500 below.
+    // repository 读本身失败时它 throw 而非返回 null，这正是要点：吞掉 DB 错误的 enforcement
+    // 路径会报告"无 drift"并导出，那正是本守卫存在要移除的 fail-OPEN。它经下面的 500
+    // 失败关闭。
     const drift = assessSpecLiveDrift(rawParsed, getDeps(c).rigRepo);
     const driftWarning = drift ? bundleExportWarning(drift) : null;
     if (driftWarning) console.warn(`[bundle-create] ${driftWarning}`);
@@ -1020,11 +963,10 @@ bundleRoutes.post("/create", async (c) => {
       return c.json({ error: bundleExportRefusal(drift!) }, 409);
     }
 
-    // Overridden: the operator says they mean it, so the divergence rides INTO the artifact. An HTTP
-    // warning dies with the terminal that printed it; whoever restores this bundle months from now
-    // reads the manifest, and it must not present as a faithful snapshot of the rig.
+    // 被覆盖：操作员说他们认真要做，所以分歧带进 artifact。HTTP 警告随打印它的 terminal
+    // 一同消亡；几个月后谁恢复这个 bundle 读 manifest，它绝不能呈现为工作组的忠实快照。
     if (driftWarning && allowDrift) {
-      const stamp = `EXPORTED WITH --allow-drift: ${driftWarning}`;
+      const stamp = `以 --allow-drift 导出：${driftWarning}`;
       provenance = {
         ...(provenance ?? { daemonVersion: getDaemonVersion() }),
         notes: provenance?.notes ? `${provenance.notes} | ${stamp}` : stamp,
@@ -1032,18 +974,17 @@ bundleRoutes.post("/create", async (c) => {
     }
 
     if (isPodAware) {
-      // Pod-aware bundle creation
-      // Validated above, before the drift guard ran.
+      // Pod-aware bundle 创建
+      // 上面已校验，在 drift 守卫运行前。
       const effectiveRigRoot = rigRoot ? nodePath.resolve(rigRoot) : nodePath.dirname(nodePath.resolve(specPath));
       const tmpStaging = fs.mkdtempSync(nodePath.join(os.tmpdir(), "pod-bundle-create-"));
       try {
         const assembler = new PodBundleAssembler({ fsOps: podAssemblerFsOps() });
         const result = assembler.assemble({ rigRoot: effectiveRigRoot, rigSpecPath: nodePath.resolve(specPath), outputDir: tmpStaging, bundleName, bundleVersion, provenance, compatibility });
 
-        // Item 6 / Checkpoint 7.5 (QA-20260601 A2 repair): auto-detect
-        // author bundle.yaml at the rig source root; vendor declared
-        // cross-primitive content into staging + carry the fields onto
-        // the manifest. computeIntegrity below covers the vendored content.
+        // Item 6 / Checkpoint 7.5（QA-20260601 A2 修复）：在工作组源根 auto-detect
+        // author bundle.yaml；把声明的 cross-primitive 内容 vendor 进 staging + 把字段
+        // 带到 manifest。下面的 computeIntegrity 覆盖 vendor 的内容。
         const authorPrimitives = consumeAuthorBundleYaml(effectiveRigRoot, tmpStaging);
         if (authorPrimitives.skills) result.manifest.skills = authorPrimitives.skills;
         if (authorPrimitives.plugins) result.manifest.plugins = authorPrimitives.plugins;
@@ -1064,8 +1005,8 @@ bundleRoutes.post("/create", async (c) => {
       }
     }
 
-    // Legacy bundle creation
-    // Validated above, before the drift guard ran.
+    // Legacy bundle 创建
+    // 上面已校验，在 drift 守卫运行前。
     const spec = LegacyRigSpecSchema.normalize(rawParsed);
 
     const specDir = nodePath.dirname(nodePath.resolve(specPath));
@@ -1080,7 +1021,7 @@ bundleRoutes.post("/create", async (c) => {
       const includedSet = new Set(includePackages);
       const missing = [...allRefs].filter((r) => !includedSet.has(r));
       if (missing.length > 0) {
-        return c.json({ error: "Provided packages do not cover all rig spec package_refs", missing }, 400);
+        return c.json({ error: "提供的 packages 未覆盖工作组 spec 的所有 package_refs", missing }, 400);
       }
     }
 
@@ -1091,7 +1032,7 @@ bundleRoutes.post("/create", async (c) => {
       const result = resolvePackage(cleanRef, specDir, fsOps);
       if (!result.ok) {
         const errMsg = result.kind === "validation" ? result.errors.join("; ") : result.error;
-        return c.json({ error: `Failed to resolve package '${ref}': ${errMsg}` }, 400);
+        return c.json({ error: `解析 package '${ref}' 失败：${errMsg}` }, 400);
       }
       packages.push({
         name: result.resolved.manifest.name,
@@ -1109,10 +1050,9 @@ bundleRoutes.post("/create", async (c) => {
         specPath: nodePath.resolve(specPath), packages, outputDir: tmpStaging, bundleName, bundleVersion, provenance, compatibility,
       });
 
-      // Item 6 / Checkpoint 7.5 (QA-20260601 A2 repair, legacy path mirror):
-      // auto-detect author bundle.yaml in source dir; vendor + carry
-      // cross-primitive fields before integrity. Re-serialize bundle.yaml
-      // since the assembler already wrote one without these fields.
+      // Item 6 / Checkpoint 7.5（QA-20260601 A2 修复，legacy 路径镜像）：在源目录
+      // auto-detect author bundle.yaml；在 integrity 前 vendor + 带 cross-primitive
+      // 字段。重序列化 bundle.yaml，因为 assembler 已写了一个不含这些字段的。
       const legacyAuthorPrimitives = consumeAuthorBundleYaml(specDir, tmpStaging);
       const hasLegacyPrimitives = legacyAuthorPrimitives.skills || legacyAuthorPrimitives.plugins ||
         legacyAuthorPrimitives.workflowSpecs || legacyAuthorPrimitives.contextPacks || legacyAuthorPrimitives.agentImages;
@@ -1146,17 +1086,17 @@ bundleRoutes.post("/inspect", async (c) => {
   const body: Record<string, unknown> = await c.req.json().catch(() => ({}));
   const bundlePath = typeof body["bundlePath"] === "string" ? body["bundlePath"] : "";
 
-  if (!bundlePath) return c.json({ error: "bundlePath is required" }, 400);
+  if (!bundlePath) return c.json({ error: "bundlePath 为必填项" }, 400);
 
   let digestValid = false;
   try {
     const dr = verifyArchiveDigest(bundlePath);
     digestValid = dr.valid;
-  } catch { /* missing digest = invalid */ }
+  } catch { /* 缺 digest = 非法 */ }
 
   const tmpDir = fs.mkdtempSync(nodePath.join(os.tmpdir(), "bundle-inspect-"));
   try {
-    // Extract with safety pre-scan (same as unpack) but without content integrity verification
+    // 用安全预扫描抽取（同 unpack）但不做内容完整性验证
     const tar = await import("tar");
     const unsafeEntries: string[] = [];
     await tar.list({
@@ -1170,29 +1110,29 @@ bundleRoutes.post("/inspect", async (c) => {
       },
     });
     if (unsafeEntries.length > 0) {
-      return c.json({ error: `Unsafe archive entries: ${unsafeEntries.join("; ")}`, digestValid }, 200);
+      return c.json({ error: `不安全归档条目：${unsafeEntries.join("; ")}`, digestValid }, 200);
     }
     await tar.extract({ file: bundlePath, cwd: tmpDir });
 
     const manifestPath = nodePath.join(tmpDir, "bundle.yaml");
     if (!fs.existsSync(manifestPath)) {
-      return c.json({ error: "Bundle missing bundle.yaml", digestValid }, 200);
+      return c.json({ error: "bundle 缺 bundle.yaml", digestValid }, 200);
     }
     const manifestYaml = fs.readFileSync(manifestPath, "utf-8");
     const rawParsed = parsePodBundleManifest(manifestYaml) as Record<string, unknown>;
 
-    // Detect v2 (pod-aware) vs v1 (legacy)
+    // 检测 v2（pod-aware）vs v1（legacy）
     if (rawParsed && rawParsed["schema_version"] === 2) {
       const validation = validatePodBundleManifest(rawParsed);
       if (!validation.valid) {
-        return c.json({ error: `Invalid v2 manifest: ${validation.errors.join("; ")}`, digestValid }, 200);
+        return c.json({ error: `非法 v2 manifest：${validation.errors.join("; ")}`, digestValid }, 200);
       }
       const agents = (rawParsed["agents"] as Array<Record<string, unknown>>).map((a) => ({
         name: a["name"] as string,
         version: (a["version"] as string) ?? "",
         path: a["path"] as string,
       }));
-      // Extract integrity from raw manifest
+      // 从 raw manifest 抽 integrity
       const integritySection = rawParsed["integrity"] as { algorithm?: string; files?: Record<string, string> } | undefined;
       const podManifest = {
         schemaVersion: 2 as const,
@@ -1205,20 +1145,16 @@ bundleRoutes.post("/inspect", async (c) => {
           algorithm: integritySection.algorithm ?? "sha256",
           files: integritySection.files ?? {},
         } : undefined,
-        // Item 1 / slice-05: surface provenance in normalized camelCase so the
-        // /api/bundles/inspect contract is one shape regardless of v1 vs v2
-        // (v1 path normalizes through normalizeLegacyBundleManifest below).
-        // Field is optional; undefined when bundle has no provenance.
+        // Item 1 / slice-05：以规范化 camelCase 呈现 provenance，使
+        // /api/bundles/inspect 契约无论 v1 vs v2 都是一个形状（v1 路径经下面的
+        // normalizeLegacyBundleManifest 规范化）。字段可选；bundle 无 provenance 时 undefined。
         provenance: normalizeProvenanceBlock(rawParsed["provenance"]),
-        // Item 2 / slice-05: surface compatibility normalized to camelCase
-        // (same single-contract reason as provenance above). v1 already
-        // surfaces via the normalizer at the end of this handler.
+        // Item 2 / slice-05：以规范化 camelCase 呈现 compatibility（与上面 provenance
+        // 相同的单契约理由）。v1 已在本 handler 末尾经 normalizer 呈现。
         compatibility: normalizeCompatibilityBlock(rawParsed["compatibility"]),
-        // Item 6 / Checkpoint 7.5 / QA-20260601 C1 repair: surface the 5
-        // cross-primitive blocks normalized to camelCase so /inspect's
-        // contract carries the same shape v1's normalizer already
-        // surfaces. Raw YAML keys are snake_case; expose camelCase to
-        // match the rest of the v2 inspect contract.
+        // Item 6 / Checkpoint 7.5 / QA-20260601 C1 修复：以规范化 camelCase 呈现 5 个
+        // cross-primitive 块，使 /inspect 契约携带 v1 normalizer 已呈现的同形状。
+        // raw YAML key 是 snake_case；暴露 camelCase 以匹配 v2 inspect 契约其余部分。
         skills: Array.isArray(rawParsed["skills"])
           ? (rawParsed["skills"] as unknown[]).filter((s): s is string => typeof s === "string")
           : undefined,
@@ -1262,11 +1198,10 @@ bundleRoutes.post("/inspect", async (c) => {
   }
 });
 
-// GET /api/bundles/history — Item 4 / slice-05 Checkpoint 5.2
-// Returns the install audit JSONL records (optionally filtered by rig name
-// and / or since timestamp). Read-only — no audit-write side effects.
-// Empty audit file returns []. Reader fails-open on malformed JSONL lines
-// (forward-compat with future record-shape evolutions).
+// GET /api/bundles/history——Item 4 / slice-05 Checkpoint 5.2
+// 返回安装审计 JSONL 记录（可按工作组名和/或 since 时间戳过滤）。只读——无审计写
+// side effect。空审计文件返回 []。reader 对畸形 JSONL 行 fail-open（与未来记录形状
+// 演进的 forward-compat）。
 bundleRoutes.get("/history", async (c) => {
   const rig = c.req.query("rig");
   const since = c.req.query("since");
@@ -1281,7 +1216,7 @@ bundleRoutes.get("/history", async (c) => {
   return c.json({ records, total: records.length }, 200);
 });
 
-// POST /api/bundles/install — reuses full bootstrap lifecycle
+// POST /api/bundles/install——复用完整 bootstrap 生命周期
 bundleRoutes.post("/install", async (c) => {
   const { bootstrapOrchestrator, bootstrapRepo, eventBus, rigRepo } = getDeps(c);
   const body: Record<string, unknown> = await c.req.json().catch(() => ({}));
@@ -1289,42 +1224,38 @@ bundleRoutes.post("/install", async (c) => {
   const plan = body["plan"] === true;
   const autoApprove = body["autoApprove"] === true;
   const targetRoot = typeof body["targetRoot"] === "string" ? body["targetRoot"] : undefined;
-  // Item 2 / slice-05 Checkpoint 3.3: install-time compatibility check inputs
+  // Item 2 / slice-05 Checkpoint 3.3：安装时兼容性检查输入
   const skipVersionCheck = body["skipVersionCheck"] === true;
   const clientCliVersion = typeof body["cliVersion"] === "string" ? body["cliVersion"] : undefined;
-  // Item 3 / slice-05 Checkpoint 4.2: install-time conflict check inputs
+  // Item 3 / slice-05 Checkpoint 4.2：安装时冲突检查输入
   const force = body["force"] === true;
 
-  if (!bundlePath) return c.json({ error: "bundlePath is required" }, 400);
-  if (!plan && !targetRoot) return c.json({ error: "targetRoot is required for apply mode" }, 400);
+  if (!bundlePath) return c.json({ error: "bundlePath 为必填项" }, 400);
+  if (!plan && !targetRoot) return c.json({ error: "apply 模式下 targetRoot 为必填项" }, 400);
 
-  // Concurrency lock — runs BEFORE compat check so the existing 409
-  // semantic (concurrent install detection) is preserved verbatim.
+  // 并发锁——在 compat 检查前运行，使既有 409 语义（并发安装检测）逐字保留。
   if (!bootstrapOrchestrator.tryAcquire(bundlePath)) {
-    return c.json({ error: "Bundle install already in progress", code: "conflict" }, 409);
+    return c.json({ error: "bundle 安装已在进行中", code: "conflict" }, 409);
   }
 
   try {
-  // Item 2 / slice-05 Checkpoint 3.3: install-time compatibility check
-  // Runs AFTER the lock + BEFORE bootstrap delegation. Mismatch returns a
-  // 3-part error and exits the lifecycle (lock releases via the outer
-  // finally). Operator override via --skip-version-check (request body
-  // skipVersionCheck=true).
-  // Item 2 + Item 3 / slice-05: single safe extract pass yields both the
-  // bundle manifest (for compat check) and the rig name (for conflict check).
-  // Caller can skip the compat check via skipVersionCheck; the conflict check
-  // also runs from this same extract pass unless --force bypasses it.
+  // Item 2 / slice-05 Checkpoint 3.3：安装时兼容性检查
+  // 在锁之后 + bootstrap 委托之前运行。不匹配返回三段式错误并退出生命周期（锁经外层
+  // finally 释放）。操作员经 --skip-version-check 覆盖（请求 body skipVersionCheck=true）。
+  // Item 2 + Item 3 / slice-05：一次安全抽取 pass 同时产出 bundle manifest（compat 检查用）
+  // 和工作组名（冲突检查用）。调用方可经 skipVersionCheck 跳过 compat 检查；冲突检查也
+  // 从这同一抽取 pass 运行，除非 --force 绕过。
   let installMeta: { bundleManifest: Record<string, unknown>; rigName: string | undefined } | null = null;
   if (!skipVersionCheck || !force) {
     try {
       installMeta = await extractInstallTimeMetadata(bundlePath);
     } catch (err) {
       return c.json({
-        error: "Bundle install pre-check could not run (extraction failed)",
+        error: "bundle 安装 pre-check 无法运行（抽取失败）",
         detail: (err as Error).message,
         resolutions: [
-          "confirm the bundle path is correct and the archive is readable",
-          "pass --skip-version-check and --force to bypass both pre-checks (NOT recommended unless intentional)",
+          "确认 bundle 路径正确且归档可读",
+          "带 --skip-version-check 与 --force 绕过两项 pre-check（除非有意为之，不推荐）",
         ],
       }, 400);
     }
@@ -1335,23 +1266,22 @@ bundleRoutes.post("/install", async (c) => {
     const failures = checkBundleCompatibility(compatibility, getDaemonVersion(), clientCliVersion);
     if (failures) {
       return c.json({
-        error: "Bundle compatibility check failed",
+        error: "bundle 兼容性检查失败",
         failures,
         resolutions: [
-          "upgrade the affected runtime to the required version (recommended)",
-          "use a bundle with relaxed minimum requirements",
-          "pass --skip-version-check to bypass for an operator-explicit override (NOT recommended for routine use)",
+          "把受影响 runtime 升级到要求版本（推荐）",
+          "使用最低要求更宽松的 bundle",
+          "带 --skip-version-check 绕过以供操作员显式覆盖（日常使用不推荐）",
         ],
       }, 400);
     }
   }
 
-  // Item 3 / slice-05 Checkpoint 4.2: install-time conflict check
-  // Runs AFTER the compat check + BEFORE bootstrap delegation. Mismatch
-  // returns a 400 with the 3-part error shape (error + conflicts[] +
-  // resolutions[]). Operator override via --force (request body force=true).
-  // The check fails CLOSED on extraction failure (handled above) and
-  // fail-OPEN on missing rig name in the bundle (no rig name to compare).
+  // Item 3 / slice-05 Checkpoint 4.2：安装时冲突检查
+  // 在 compat 检查之后 + bootstrap 委托之前运行。不匹配返回带三段式错误形状的 400
+  // （error + conflicts[] + resolutions[]）。操作员经 --force 覆盖（请求 body force=true）。
+  // 检查在抽取失败时 fail CLOSED（上面已处理），在 bundle 缺工作组名时 fail-OPEN
+  // （无工作组名可比）。
   if (!force && installMeta && rigRepo) {
     const runningRigs = rigRepo.listRigs().map((r) => ({ rigId: r.id, name: r.name }));
     const report = detectBundleConflicts({
@@ -1360,18 +1290,18 @@ bundleRoutes.post("/install", async (c) => {
     });
     if (report.hasConflicts) {
       return c.json({
-        error: "Bundle install conflict check failed",
+        error: "bundle 安装冲突检查失败",
         conflicts: report.conflicts,
         resolutions: [
-          "stop the conflicting running rig and re-attempt install",
-          "use --force to bypass for an operator-explicit override (NOT recommended for routine use; conflicts may produce partial install state)",
+          "停掉冲突中的运行工作组并重试安装",
+          "用 --force 绕过以供操作员显式覆盖（日常使用不推荐；冲突可能产生部分安装状态）",
         ],
       }, 400);
     }
   }
 
   if (plan) {
-    // Plan mode: no run lifecycle
+    // Plan 模式：无运行生命周期
     try {
       const result = await bootstrapOrchestrator.bootstrap({
         mode: "plan", sourceRef: bundlePath, sourceKind: "rig_bundle",
@@ -1380,7 +1310,7 @@ bundleRoutes.post("/install", async (c) => {
         eventBus.emit({ type: "bootstrap.planned", runId: result.runId, sourceRef: bundlePath, stages: result.stages.length });
         return c.json(result, 200);
       }
-      // Plan failed — structured mapping (same as bootstrap plan route)
+      // Plan 失败——结构化映射（同 bootstrap plan 路由）
       eventBus.emit({ type: "bootstrap.failed", runId: result.runId, sourceRef: bundlePath, error: result.errors[0] ?? "plan failed" });
       const failedStage = result.stages.find((s: { status: string; detail?: unknown }) => s.status === "failed" || s.status === "blocked");
       let httpStatus: number = 500;
@@ -1397,7 +1327,7 @@ bundleRoutes.post("/install", async (c) => {
     }
   }
 
-  // Apply mode: full run lifecycle with bootstrap.started
+  // Apply 模式：带 bootstrap.started 的完整运行生命周期
   const run = bootstrapRepo.createRun("rig_bundle", bundlePath);
   bootstrapRepo.updateRunStatus(run.id, "running");
   eventBus.emit({ type: "bootstrap.started", runId: run.id, sourceRef: bundlePath });
@@ -1415,11 +1345,9 @@ bundleRoutes.post("/install", async (c) => {
         targetRigName: installMeta?.rigName, cliVersion: clientCliVersion,
         bundleManifest: installMeta?.bundleManifest,
       });
-      // Item 6 / Checkpoint 7.3: route any declared skills after successful
-      // install. Best-effort: a routing failure does NOT fail the install
-      // response (the install already succeeded; skills routing is a side-
-      // channel post-install step). Routing result included in response body
-      // so operators see what landed.
+      // Item 6 / Checkpoint 7.3：成功安装后路由任何声明的 skills。Best-effort：路由失败
+      // 不使安装响应失败（安装已成功；skills 路由是 side-channel post-install 步骤）。
+      // 路由结果含在响应 body 中，使操作员看到落了什么。
       let skillsRouting: RouteSkillsResult | null = null;
       let pluginsRouting: RoutePluginsResult | null = null;
       let workflowSpecsRouting: RouteWorkflowSpecsResult | null = null;
@@ -1428,27 +1356,27 @@ bundleRoutes.post("/install", async (c) => {
       try {
         skillsRouting = await routeSkillsAfterBootstrap(bundlePath);
       } catch {
-        // Side-channel failure; install already succeeded
+        // Side-channel 失败；安装已成功
       }
       try {
         pluginsRouting = await routePluginsAfterBootstrap(bundlePath);
       } catch {
-        // Side-channel failure; install already succeeded
+        // Side-channel 失败；安装已成功
       }
       try {
         workflowSpecsRouting = await routeWorkflowSpecsAfterBootstrap(bundlePath);
       } catch {
-        // Side-channel failure; install already succeeded
+        // Side-channel 失败；安装已成功
       }
       try {
         contextPacksRouting = await routeContextPacksAfterBootstrap(bundlePath);
       } catch {
-        // Side-channel failure; install already succeeded
+        // Side-channel 失败；安装已成功
       }
       try {
         agentImagesRouting = await routeAgentImagesAfterBootstrap(bundlePath);
       } catch {
-        // Side-channel failure; install already succeeded
+        // Side-channel 失败；安装已成功
       }
       const extras: Record<string, unknown> = {};
       if (skillsRouting) extras.skillsRouting = skillsRouting;

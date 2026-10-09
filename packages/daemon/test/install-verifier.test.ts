@@ -92,8 +92,8 @@ describe("InstallVerifier", () => {
     return result.installId;
   }
 
-  // Test 1: Clean install -> all checks pass
-  it("clean install -> all checks pass", () => {
+  // 测试 1：干净安装 → 所有检查通过。
+  it("干净安装 → 所有检查通过", () => {
     const installId = seedAndInstallSkill();
     const verifier = new InstallVerifier(installRepo, pkgRepo, realFs());
     const result = verifier.verify(installId);
@@ -107,10 +107,10 @@ describe("InstallVerifier", () => {
     }
   });
 
-  // Test 2: Missing target file -> verification failure
-  it("missing target file -> verification failure", () => {
+  // 测试 2：缺少目标文件 → 验证失败。
+  it("缺少目标文件 → 验证失败", () => {
     const installId = seedAndInstallSkill();
-    // Delete the target file
+    // 删除目标文件。
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
     fs.unlinkSync(targetPath);
 
@@ -123,8 +123,8 @@ describe("InstallVerifier", () => {
     expect(failedCheck!.passed).toBe(false);
   });
 
-  // Test 3: Modified target (hash mismatch) -> verification failure
-  it("modified target content -> verification failure", () => {
+  // 测试 3：目标已修改（hash 不匹配）→ 验证失败。
+  it("目标内容已修改 → 验证失败", () => {
     const installId = seedAndInstallSkill();
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
     fs.writeFileSync(targetPath, "# Tampered content", "utf-8");
@@ -138,11 +138,11 @@ describe("InstallVerifier", () => {
     expect(hashCheck!.passed).toBe(false);
   });
 
-  // Test 4: Missing managed block markers -> verification failure
-  it("guidance missing managed block markers -> verification failure", () => {
+  // 测试 4：缺少 managed block marker → 验证失败。
+  it("guidance 缺少 managed block marker → 验证失败", () => {
     const installId = seedAndInstallGuidance();
     const targetPath = path.join(repoRoot, "AGENTS.md");
-    // Overwrite with content missing markers
+    // 用缺少 marker 的内容覆盖。
     fs.writeFileSync(targetPath, "No markers here.", "utf-8");
 
     const verifier = new InstallVerifier(installRepo, pkgRepo, realFs());
@@ -154,8 +154,8 @@ describe("InstallVerifier", () => {
     expect(markerCheck!.passed).toBe(false);
   });
 
-  // Test 5: Backup integrity passes
-  it("backup integrity check passes for overwritten files", () => {
+  // 测试 5：备份完整性通过。
+  it("被覆盖文件的备份完整性检查通过", () => {
     const pkg = pkgRepo.createPackage({ name: "test-pkg", version: "1.0.0", sourceKind: "local_path", sourceRef: pkgRoot, manifestHash: "h", summary: "Test" });
     const srcPath = path.join(pkgRoot, "skills/foo/SKILL.md");
     fs.mkdirSync(path.dirname(srcPath), { recursive: true });
@@ -178,8 +178,8 @@ describe("InstallVerifier", () => {
     expect(backupCheck!.passed).toBe(true);
   });
 
-  // Test 6: Per-entry status with check details
-  it("verification result includes per-entry check details", () => {
+  // 测试 6：逐 entry status 带检查 detail。
+  it("验证结果包含逐 entry 检查 detail", () => {
     const installId = seedAndInstallSkill();
     const verifier = new InstallVerifier(installRepo, pkgRepo, realFs());
     const result = verifier.verify(installId);
@@ -194,10 +194,10 @@ describe("InstallVerifier", () => {
     }
   });
 
-  // Test 7: Install status != applied -> verification failure
-  it("install with status != applied -> verification failure", () => {
+  // 测试 7：安装 status != applied → 验证失败。
+  it("安装 status != applied → 验证失败", () => {
     const installId = seedAndInstallSkill();
-    // Manually set status to planned
+    // 手动把 status 设置为 planned。
     installRepo.updateInstallStatus(installId, "planned");
 
     const verifier = new InstallVerifier(installRepo, pkgRepo, realFs());
@@ -208,8 +208,8 @@ describe("InstallVerifier", () => {
     expect(result.statusCheck.actual).toBe("planned");
   });
 
-  // Test 8: Applied install with zero journal entries -> verification failure
-  it("applied install with no journal entries -> verification failure", () => {
+  // 测试 8：applied 安装没有 journal entry → 验证失败。
+  it("applied 安装没有 journal entry → 验证失败", () => {
     const pkg = pkgRepo.createPackage({ name: "test-pkg", version: "1.0.0", sourceKind: "local_path", sourceRef: pkgRoot, manifestHash: "h", summary: "Test" });
     const install = installRepo.createInstall(pkg.id, repoRoot, "project_shared");
     installRepo.updateInstallStatus(install.id, "applied");
@@ -220,25 +220,25 @@ describe("InstallVerifier", () => {
     expect(result.passed).toBe(false);
   });
 
-  // Test 9: Journal entry with missing after_hash -> verification failure
-  it("journal entry with missing after_hash -> verification failure", () => {
+  // 测试 9：journal entry 缺少 after_hash → 验证失败。
+  it("journal entry 缺少 after_hash → 验证失败", () => {
     const pkg = pkgRepo.createPackage({ name: "test-pkg", version: "1.0.0", sourceKind: "local_path", sourceRef: pkgRoot, manifestHash: "h", summary: "Test" });
     const install = installRepo.createInstall(pkg.id, repoRoot, "project_shared");
     installRepo.updateInstallStatus(install.id, "applied");
 
-    // Create a target file
+    // 创建目标文件。
     const targetPath = path.join(repoRoot, ".agents/skills/foo/SKILL.md");
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     fs.writeFileSync(targetPath, "Content", "utf-8");
 
-    // Manually create journal entry WITHOUT afterHash
+    // 手动创建不含 afterHash 的 journal entry。
     installRepo.createJournalEntry({
       installId: install.id,
       action: "copy",
       exportType: "skill",
       classification: "safe_projection",
       targetPath,
-      // No afterHash
+      // 不提供 afterHash。
     });
 
     const verifier = new InstallVerifier(installRepo, pkgRepo, realFs());
@@ -247,11 +247,11 @@ describe("InstallVerifier", () => {
     expect(result.passed).toBe(false);
     const hashCheck = result.entries[0]!.checks.find((c) => c.name === "content_hash" && !c.passed);
     expect(hashCheck).toBeDefined();
-    expect(hashCheck!.actual).toContain("missing");
+    expect(hashCheck!.actual).toContain("缺少");
   });
 
-  // Test 10: Backup exists but before_hash missing -> verification failure
-  it("backup exists but before_hash missing -> verification failure", () => {
+  // 测试 10：备份存在但缺少 before_hash → 验证失败。
+  it("备份存在但缺少 before_hash → 验证失败", () => {
     const pkg = pkgRepo.createPackage({ name: "test-pkg", version: "1.0.0", sourceKind: "local_path", sourceRef: pkgRoot, manifestHash: "h", summary: "Test" });
     const install = installRepo.createInstall(pkg.id, repoRoot, "project_shared");
     installRepo.updateInstallStatus(install.id, "applied");
@@ -264,7 +264,7 @@ describe("InstallVerifier", () => {
     fs.mkdirSync(path.dirname(backupPath), { recursive: true });
     fs.writeFileSync(backupPath, "Original", "utf-8");
 
-    // Create hash for after but NOT before
+    // 创建 after hash，但不创建 before hash。
     const crypto = require("node:crypto");
     const afterHash = crypto.createHash("sha256").update("Content").digest("hex");
 
@@ -276,7 +276,7 @@ describe("InstallVerifier", () => {
       targetPath,
       backupPath,
       afterHash,
-      // No beforeHash
+      // 不提供 beforeHash。
     });
 
     const verifier = new InstallVerifier(installRepo, pkgRepo, realFs());
@@ -285,6 +285,6 @@ describe("InstallVerifier", () => {
     expect(result.passed).toBe(false);
     const backupCheck = result.entries[0]!.checks.find((c) => c.name === "backup_hash" && !c.passed);
     expect(backupCheck).toBeDefined();
-    expect(backupCheck!.actual).toContain("missing");
+    expect(backupCheck!.actual).toContain("缺少");
   });
 });

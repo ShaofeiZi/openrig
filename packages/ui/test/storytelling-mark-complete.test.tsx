@@ -32,7 +32,7 @@ const baseSource: ProgressCardSource = {
 };
 
 function renderProgressCard(props: Parameters<typeof ProgressCard>[0]) {
-  // ProgressCard uses no router primitives directly; render plain.
+  // ProgressCard 不直接用 router 原语；普通渲染。
   return render(<ProgressCard {...props} />);
 }
 
@@ -44,7 +44,7 @@ describe("ProgressCard — Mark complete action (slice 18 Checkpoint E)", () => 
 
   it("renders Mark complete button when onMarkComplete is provided", () => {
     renderProgressCard({ source: baseSource, onMarkComplete: () => {} });
-    expect(screen.getByTestId("progress-card-mark-complete")).toBeTruthy();
+    expect(screen.getByTestId("progress-card-mark-complete").textContent).toContain("标记为完成");
   });
 
   it("clicking Mark complete calls onMarkComplete with the missionId", () => {
@@ -89,10 +89,10 @@ describe("buildStorytellingFeedItems — filter completed missions (slice 18 Che
     expect(items.filter((i) => i.kind === "progress")).toHaveLength(2);
   });
 
-  // velocity-guard 18.E BLOCKING-CONCERN repair (Blocker 2):
-  // PRD T8 requires status: complete frontmatter to hide the mission
-  // durably (survives localStorage reset). buildStorytellingFeedItems
-  // now filters on m.status === "complete" in addition to the local set.
+  // velocity-guard 18.E BLOCKING-CONCERN 修复（Blocker 2）：
+  // PRD T8 要求 status: complete frontmatter 持久隐藏 mission
+  //（存活 localStorage 重置）。buildStorytellingFeedItems
+  // 现除本地集合外还按 m.status === "complete" 过滤。
   describe("durable status-backed filter (slice 18.E repair)", () => {
     it("filters out missions with status === 'complete' even when localStorage is empty", () => {
       const withStatus: MissionRow[] = [
@@ -117,7 +117,7 @@ describe("buildStorytellingFeedItems — filter completed missions (slice 18 Che
     });
 
     it("status === 'complete' filter applies even when missionId is NOT in the local completedMissionIds set", () => {
-      // Survives localStorage clear: status: complete alone is enough to hide.
+      // 存活 localStorage 清空：仅 status: complete 即足够隐藏。
       const withStatus: MissionRow[] = [
         { name: "getting-started", path: "/m/getting-started", status: "complete" },
       ];

@@ -1,11 +1,9 @@
-// OPR.0.4.6.WF4 (C4) — the routing-history timeline (the FR-2 trail surface).
+// OPR.0.4.6.WF4（C4）——路由历史时间线（FR-2 轨迹界面）。
 //
-// The append-only step trail as a glanceable path (Temporal's event-group
-// discipline — grouped, status-colored, never a raw log dump), each row drills
-// in to its actor + closure evidence + packet lineage. The live frontier step
-// rides as a dashed "open" row below the closed trail. `?step=<id>` deep-links
-// (FR-3) auto-expand the matching trail row, or highlight the frontier when the
-// anchor IS the current step.
+// 将仅追加步骤轨迹呈现为可扫视路径（采用 Temporal 的事件分组纪律：分组、按状态着色，绝不直接
+// 倾倒原始日志）；每行可进入查看操作者、关闭证据和 packet 传承。实时前沿步骤以虚线“开放”行
+// 位于已关闭轨迹下方。`?step=<id>` 深链接（FR-3）会自动展开匹配轨迹行；若锚点就是当前步骤，
+// 则高亮前沿。
 
 import { useState } from "react";
 import { cn } from "../../lib/utils.js";
@@ -19,6 +17,13 @@ const EXIT_GLYPH: Record<string, { glyph: string; cls: string }> = {
   waiting: { glyph: "◐", cls: "text-on-surface-variant" },
   done: { glyph: "○", cls: "text-on-surface-variant" },
   failed: { glyph: "▲", cls: "text-red-700" },
+};
+
+const EXIT_LABEL: Record<string, string> = {
+  handoff: "已移交",
+  waiting: "等待中",
+  done: "已完成",
+  failed: "失败",
 };
 
 function fmtTime(iso: string): string {
@@ -53,7 +58,7 @@ function TrailRow({
         <span className="font-mono text-[11px] font-bold text-on-surface w-28 shrink-0">{entry.stepId}</span>
         <span className="font-mono text-[10px] text-on-surface-variant w-20 shrink-0">{entry.stepRole}</span>
         <span className={cn("font-mono text-[11px] w-20 shrink-0", exit.cls)}>
-          {exit.glyph} {entry.closureReason}
+          {exit.glyph} {EXIT_LABEL[entry.closureReason] ?? entry.closureReason}
         </span>
         <span className="min-w-0 flex-1 truncate text-[11px] text-on-surface-variant">{note ?? "—"}</span>
         <span className="hidden font-mono text-[10px] text-on-surface-variant lg:inline">{entry.actorSession}</span>
@@ -65,23 +70,23 @@ function TrailRow({
           className="space-y-1 border-t border-outline-variant/50 bg-surface-lowest/10 px-8 py-2 font-mono text-[10px]"
         >
           <p>
-            <span className="uppercase text-on-surface-variant">actor: </span>
+            <span className="uppercase text-on-surface-variant">操作者：</span>
             {entry.actorSession}
           </p>
           <p>
-            <span className="uppercase text-on-surface-variant">closed packet: </span>
+            <span className="uppercase text-on-surface-variant">已关闭工作包：</span>
             {entry.priorQitemId}
           </p>
           <p>
-            <span className="uppercase text-on-surface-variant">routed next: </span>
-            {entry.nextQitemId ?? "(terminal — no next packet)"}
+            <span className="uppercase text-on-surface-variant">下一路由：</span>
+            {entry.nextQitemId ?? "（终点——无下一工作包）"}
           </p>
           {entry.closureEvidence ? (
             <pre className="overflow-x-auto border border-outline-variant/40 bg-surface-lowest/20 p-2 text-[9px] leading-snug">
               {JSON.stringify(entry.closureEvidence, null, 2)}
             </pre>
           ) : (
-            <p className="text-on-surface-variant">(no closure evidence recorded)</p>
+            <p className="text-on-surface-variant">（未记录关闭证据）</p>
           )}
         </div>
       ) : null}
@@ -96,7 +101,7 @@ export function InstanceTrailTimeline({
 }: {
   trail: WorkflowStepTrailEntry[];
   instance: WorkflowInstanceWithDeadline;
-  /** `?step=<id>` deep-link target: auto-expand the matching closed row. */
+  /** `?step=<id>` 深链接目标：自动展开匹配的已关闭行。 */
   anchorStepId?: string | null;
 }) {
   const [expanded, setExpanded] = useState<string | null>(() => {
@@ -110,15 +115,15 @@ export function InstanceTrailTimeline({
   return (
     <div className="space-y-2">
       <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-on-surface-variant">
-        Routing History
+        路由历史
         <span className="ml-2 normal-case tracking-normal">
-          {trail.length} closed step{trail.length === 1 ? "" : "s"} · append-only trail · deterministic path
-          {instance.currentStepId ? ` → now at ${instance.currentStepId}` : ""}
+          {trail.length} 个已关闭步骤 · 只追加轨迹 · 确定性路径
+          {instance.currentStepId ? ` → 当前位于 ${instance.currentStepId}` : ""}
         </span>
       </div>
       {trail.length === 0 ? (
         <p className="font-mono text-[11px] text-on-surface-variant">
-          No steps closed yet — the entry packet is on the frontier.
+          尚无已关闭步骤——入口工作包仍位于前沿。
         </p>
       ) : (
         <ul className="divide-y divide-outline-variant/50 border border-outline-variant">
@@ -146,10 +151,10 @@ export function InstanceTrailTimeline({
           <span className="font-mono text-[11px] font-bold text-on-surface w-28 shrink-0">
             {instance.currentStepId}
           </span>
-          <span className="font-mono text-[11px] text-emerald-800 w-20 shrink-0">● open</span>
+          <span className="font-mono text-[11px] text-emerald-800 w-20 shrink-0">● 开放</span>
           <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-on-surface-variant">
-            frontier packet {instance.currentFrontier[0] ?? "(none)"}
-            {instance.deadline.evidence ? ` · held by ${instance.deadline.evidence.ownerSession}` : ""}
+            前沿工作包 {instance.currentFrontier[0] ?? "（无）"}
+            {instance.deadline.evidence ? ` · 由 ${instance.deadline.evidence.ownerSession} 持有` : ""}
           </span>
         </div>
       ) : null}

@@ -110,12 +110,11 @@ describe("rig reconcile-session", () => {
       await makeCmd().parseAsync(["node", "rig", "reconcile-session", "dev-impl@my-rig", "--no-launch"]);
     });
     const out = logs.join("\n");
-    expect(out).toContain("Reconciled dev-impl@my-rig into rig my-rig");
-    expect(out).toContain("no relaunch, no input sent");
-    expect(out).toContain("node id unchanged");
-    expect(out).toContain("Projection drift");
-    expect(out).toContain("runtime unverified");
-    expect(out).toContain("Conversation continuity: unverified");
+    expect(out).toContain("已把 dev-impl@my-rig 接回工作组 my-rig");
+    expect(out).toContain("未重启、未写入输入");
+    expect(out).toContain("节点 id 不变");
+    expect(out).toContain("投影漂移");
+    expect(out).toContain("会话连续性：unverified");
     expect(exitCode).toBeUndefined();
   });
 
@@ -133,7 +132,7 @@ describe("rig reconcile-session", () => {
       await makeCmd().parseAsync(["node", "rig", "reconcile-session", "dev-impl@my-rig", "--rig", "rig-1"]);
     });
     expect(exitCode).toBe(1);
-    expect(logs.join("\n")).toContain("--rig and --node must be provided together");
+    expect(logs.join("\n")).toContain("--rig 与 --node 必须同时提供。");
     expect(lastBody).toBeNull();
   });
 

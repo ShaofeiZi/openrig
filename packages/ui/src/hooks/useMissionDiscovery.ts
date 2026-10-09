@@ -1,50 +1,46 @@
-// V1 attempt-3 Phase 5 P5-5 — Filesystem-based Project tree mission discovery.
+// V1 attempt-3 Phase 5 P5-5 —— 基于文件系统的 Project 树任务发现。
 //
-// Walks `<workspace.root>/missions/` via the existing /api/files/list daemon
-// route (no new daemon endpoint per SC-29). Returns the list of mission
-// directories so ProjectTreeView can render them as tree nodes alongside
-// (or instead of) the railItem-grouped slice fallback. Per project-tree.md
-// L13–L46 the Project tree shape is workspace > mission > slice; the
-// canonical mission unit is a directory under workspace.root/missions/.
+// 通过既有 /api/files/list 后台服务路由遍历 `<workspace.root>/missions/`
+// （依 SC-29 不新增后台服务端点）。返回任务目录列表，ProjectTreeView 据此把它们渲染为树节点，
+// 与 railItem 分组的切片兜底并列（或取而代之）。依 project-tree.md L13–L46，Project 树形状为
+// workspace > mission > slice；规范任务单元是 workspace.root/missions/ 下的一个目录。
 //
-// Resolution chain:
-//   1. useSettings → workspace.root (absolute path)
-//   2. useFilesRoots → list of (name, path) allowlist roots
-//   3. find allowlist root whose `path` is a prefix of workspace.root
-//      (exact-equal preferred; "the workspace root" is the typical
-//      registration case)
-//   4. compute relative path from root → workspace.root/missions
-//   5. useFilesList(rootName, relPath) → mission directory entries
+// 解析链：
+//   1. useSettings → workspace.root（绝对路径）
+//   2. useFilesRoots → (name, path) 白名单根列表
+//   3. 找一个 `path` 是 workspace.root 前缀的白名单根
+//      （首选精确相等；“工作区根”是典型注册场景）
+//   4. 计算从根出发的相对路径 → workspace.root/missions
+//   5. useFilesList(rootName, relPath) → 任务目录条目
 //
-// When no suitable root is registered (operator hasn't added workspace.root
-// to OPENRIG_FILES_ALLOWLIST), returns { unavailable: true } so the UI can
-// degrade to the legacy railItem-grouped slice listing without crashing.
+// 当没有合适根被注册（操作者未把 workspace.root 加入
+// OPENRIG_FILES_ALLOWLIST）时返回 { unavailable: true }，使 UI 能退化为旧 railItem
+// 分组的切片列表而不崩溃。
 
 import { useFilesRoots, useFilesList } from "./useFiles.js";
 import { useWorkspaceName } from "./useWorkspaceName.js";
 
 export interface DiscoveredMission {
-  /** Mission directory name (e.g., "release-0-3-0"). */
+  /** 任务目录名（例如 "release-0-3-0"）。 */
   name: string;
-  /** Allowlist root name to use with /api/files/* endpoints. */
+  /** 供 /api/files/* 端点使用的白名单根名。 */
   root: string;
-  /** Path under root for this mission directory (e.g., "missions/foo"). */
+  /** 本任务目录在根下的路径（例如 "missions/foo"）。 */
   path: string;
 }
 
 export interface UseMissionDiscoveryResult {
   missions: DiscoveredMission[];
-  /** True when allowlist has no root containing workspace.root. */
+  /** 白名单中没有任何根包含 workspace.root 时为真。 */
   unavailable: boolean;
-  /** True while any underlying query is in flight. */
+  /** 任一底层查询进行中时为真。 */
   isLoading: boolean;
-  /** Hint text for the empty-state when unavailable. */
+  /** 不可用时空态的提示文案。 */
   hint: string | null;
 }
 
-/** Returns true when `parent` is a path-prefix of `child`, treating both as
- * absolute filesystem paths. Trailing slashes are tolerated; segment
- * boundaries enforced (so "/work" is NOT a prefix of "/workspace"). */
+/** 当 `parent` 是 `child` 的路径前缀（二者视为绝对文件系统路径）时返回 true。容忍尾部斜杠；
+ *  强制段边界（因此 "/work" 不是 "/workspace" 的前缀）。 */
 function isPathPrefix(parent: string, child: string): boolean {
   const p = parent.replace(/\/+$/, "");
   const c = child.replace(/\/+$/, "");
@@ -52,7 +48,7 @@ function isPathPrefix(parent: string, child: string): boolean {
   return c.startsWith(p + "/");
 }
 
-/** Compute the relative path inside a root: child = "<root>/<rel>" → "<rel>". */
+/** 计算根内的相对路径：child = "<root>/<rel>" → "<rel>"。 */
 function relativeUnder(rootPath: string, absChild: string): string {
   const p = rootPath.replace(/\/+$/, "");
   const c = absChild.replace(/\/+$/, "");
@@ -62,26 +58,24 @@ function relativeUnder(rootPath: string, absChild: string): string {
 }
 
 export function useMissionDiscovery(opts?: { enabled?: boolean }): UseMissionDiscoveryResult {
-  // OPR.0.4.6.MH2 guard-B1 — discovery walks the LOCAL filesystem
-  // (/api/files/roots + /api/files/list). Under a remote host selection
-  // the caller passes enabled:false and NO file request fires (a post-hoc
-  // result wrapper is not a gate — the hooks would already have fetched).
+  // OPR.0.4.6.MH2 guard-B1 —— 发现遍历本地文件系统
+  // （/api/files/roots + /api/files/list）。远程主机选择下调用方传 enabled:false、
+  // 不发任何文件请求（事后的结果包装不是门控——否则 hooks 早已抓取）。
   const enabled = opts?.enabled ?? true;
   const workspace = useWorkspaceName();
   const rootsQuery = useFilesRoots({ enabled });
   const rootsResp = enabled ? rootsQuery.data : undefined;
 
-  // Resolution: pick the best-matching root for workspace.root, if any.
+  // 解析：为 workspace.root 选最佳匹配根（若有）。
   let chosenRoot: { name: string; path: string } | null = null;
   if (workspace.root && rootsResp && "roots" in rootsResp) {
-    // Exact match preferred.
+    // 首选精确匹配。
     const exact = rootsResp.roots.find((r) => r.path === workspace.root);
     if (exact) {
       chosenRoot = exact;
     } else {
-      // Otherwise pick the deepest root that is a prefix of workspace.root
-      // (handles operator who registered ~/code as a root with workspace.root
-      // = ~/code/projects/openrig-work).
+      // 否则选是 workspace.root 前缀的最深根
+      // （处理把 ~/code 注册为根、workspace.root = ~/code/projects/openrig-work 的操作者）。
       const prefixed = rootsResp.roots
         .filter((r) => workspace.root && isPathPrefix(r.path, workspace.root))
         .sort((a, b) => b.path.length - a.path.length);
@@ -90,7 +84,7 @@ export function useMissionDiscovery(opts?: { enabled?: boolean }): UseMissionDis
     }
   }
 
-  // Compute the missions/ relative path from the chosen root.
+  // 从所选根计算 missions/ 的相对路径。
   const missionsRelPath =
     chosenRoot && workspace.root
       ? (() => {
@@ -104,8 +98,8 @@ export function useMissionDiscovery(opts?: { enabled?: boolean }): UseMissionDis
     missionsRelPath,
   );
 
-  // Disabled (remote selection): honest unavailable, zero file requests
-  // issued above (roots disabled ⇒ chosenRoot null ⇒ list disabled).
+  // 已禁用（远程选择）：如实不可用，上面未发任何文件请求
+  // （roots 禁用 ⇒ chosenRoot 为 null ⇒ list 禁用）。
   if (!enabled) {
     return {
       missions: [],
@@ -120,16 +114,16 @@ export function useMissionDiscovery(opts?: { enabled?: boolean }): UseMissionDis
     rootsQuery.isLoading ||
     (chosenRoot !== null && listQuery.isLoading);
 
-  // Unavailable cases:
-  //   - Settings unreachable (legacy v0.2.0 daemon without /api/config).
-  //   - No workspace.root configured.
-  //   - No allowlist root contains workspace.root (operator must register).
+  // 不可用情形：
+  //   - 设置不可达（无 /api/config 的旧版 v0.2.0 后台服务）。
+  //   - 未配置 workspace.root。
+  //   - 无白名单根包含 workspace.root（操作者须注册）。
   if (!workspace.settingsAvailable && !workspace.isLoading) {
     return {
       missions: [],
       unavailable: true,
       isLoading,
-      hint: "Daemon does not expose /api/config (likely v0.2.0). Upgrade to v0.3.0+ for live mission discovery.",
+      hint: "后台服务未暴露 /api/config（可能为 v0.2.0）。升级到 v0.3.0+ 以启用实时任务发现。",
     };
   }
   if (!workspace.root && !workspace.isLoading) {
@@ -137,7 +131,7 @@ export function useMissionDiscovery(opts?: { enabled?: boolean }): UseMissionDis
       missions: [],
       unavailable: true,
       isLoading,
-      hint: "Configure a workspace root: rig config set workspace.root <path>",
+      hint: "请配置工作区根：zrig config set workspace.root <path>",
     };
   }
   if (!chosenRoot && !rootsQuery.isLoading) {
@@ -145,18 +139,17 @@ export function useMissionDiscovery(opts?: { enabled?: boolean }): UseMissionDis
       missions: [],
       unavailable: true,
       isLoading,
-      hint: `No allowlist root contains workspace.root (${workspace.root}). Set OPENRIG_FILES_ALLOWLIST=<name>:<path> to register.`,
+      hint: `没有白名单根包含 workspace.root（${workspace.root}）。设置 OPENRIG_FILES_ALLOWLIST=<名称>:<路径> 以注册。`,
     };
   }
 
-  // listQuery may be in flight or errored; treat error as unavailable so the
-  // UI falls back gracefully without throwing.
+  // listQuery 可能进行中或出错；把错误视为不可用，使 UI 优雅兜底而不抛错。
   if (listQuery.isError) {
     return {
       missions: [],
       unavailable: true,
       isLoading,
-      hint: `Could not list ${missionsRelPath} under ${chosenRoot?.name}.`,
+      hint: `无法在 ${chosenRoot?.name} 下列出 ${missionsRelPath}。`,
     };
   }
 

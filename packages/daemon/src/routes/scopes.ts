@@ -1,9 +1,9 @@
 import { listProjects, selectedProject, projectReadResponse, projectMission, workSource, insideProject } from "../domain/workspace/project-read.js";
-// SCOPES VIEW (sealed plan d64d2f5c) — the store-direct read routes behind the scopes TUI.
-// GET /api/scopes?mission=X          -> mission slice summaries (cards/counts/locks)
-// GET /api/scopes/slice?mission=&slice= -> the full detail (intent/mini-reqs/contract+drops)
-// GET /api/scopes/narrative?mission=&slice= -> PROGRESS.md RAW for the `n` DISPLAY only
-// Data path: README frontmatter locks + proof/ C1 drops — never PROGRESS.md for counts.
+// SCOPES 视图（封存计划 d64d2f5c）—— scopes TUI 背后的直连存储读取路由。
+// GET /api/scopes?mission=X          -> mission slice 摘要（卡片/计数/锁）
+// GET /api/scopes/slice?mission=&slice= -> 完整细节（意图/mini-reqs/契约+drops）
+// GET /api/scopes/narrative?mission=&slice= -> 仅供 `n` 展示的 PROGRESS.md 原文
+// 数据路径：README frontmatter 锁 + proof/ C1 drops——计数绝不读 PROGRESS.md。
 import { Hono } from "hono";
 import { proofSourceObservation } from "../domain/proof/source-watch.js";
 import { createProofPolicyRead, readMissionReadiness } from "../domain/proof/judgments.js";
@@ -49,8 +49,8 @@ export function scopesRoutes(): Hono {
         if (selected) workSource(selected.root, path.join(r.root, missionName, "slices", dirName));
         const d = projectSliceScope(realFs, path.join(r.root, missionName, "slices", dirName), readPolicy);
         if (!d) return null;
-        // The TUI one-read hydrate: narrative CONTENT rides inline for the `n` DISPLAY —
-        // still never a data source (the projection never reads it for counts).
+        // TUI 单次读取水合：narrative 内容内联携带，仅供 `n` 展示——
+        // 仍绝不是数据源（投影做计数时从不读它）。
         const narrative = d.progressPath ? realFs.readFile(d.progressPath) : null;
         return { ...d, narrative, ...(selected ? { sourcePath: workSource(selected.root, path.join(r.root, missionName, "slices", dirName)) } : {}) };
       } catch (err) {
@@ -71,7 +71,7 @@ export function scopesRoutes(): Hono {
       if (!realFs.isDirectory(path.join(r.root, mission))) return c.json({ error: "mission_not_found", mission }, 404);
       return c.json(missionFor(mission));
     }
-    // No mission param: list every mission (the explorer tree); ?detail=1 upgrades rows to details.
+    // 无 mission 参数：列出所有 mission（浏览树）；?detail=1 把行升级为详情。
     const missionNames = realFs.listDir(r.root).filter((e) => realFs.isDirectory(path.join(r.root, e)));
     const readErrors: string[] = [];
     const sources: Record<string, string> = {};
@@ -110,7 +110,7 @@ export function scopesRoutes(): Hono {
     const p = path.join(r.root, mission, "slices", slice, "PROGRESS.md");
     if (selected) insideProject(selected.root, p);
     const content = realFs.readFile(p);
-    // The narrative DISPLAY (plan atom 3): raw artifact bytes; explicitly not a data source.
+    // narrative 展示（计划原子 3）：制品原始字节；明确不是数据源。
     return content !== null ? c.json({ path: p, content }) : c.json({ error: "narrative_not_found" }, 404);
   });
 

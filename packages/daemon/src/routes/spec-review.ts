@@ -9,7 +9,7 @@ export function specReviewRoutes(): Hono {
     const body = await c.req.json<{ yaml: string; sourceState?: SourceState }>();
 
     if (!body.yaml) {
-      return c.json({ error: "Missing required field: yaml" }, 400);
+      return c.json({ error: "缺少必填字段：yaml" }, 400);
     }
 
     try {
@@ -28,7 +28,7 @@ export function specReviewRoutes(): Hono {
     const body = await c.req.json<{ yaml: string; sourceState?: SourceState }>();
 
     if (!body.yaml) {
-      return c.json({ error: "Missing required field: yaml" }, 400);
+      return c.json({ error: "缺少必填字段：yaml" }, 400);
     }
 
     try {

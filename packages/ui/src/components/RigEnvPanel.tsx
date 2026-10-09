@@ -46,6 +46,14 @@ export function RigEnvPanel({ rigId, envData }: RigEnvPanelProps) {
     return "Unknown";
   }
 
+  /** 环境状态的中文展示标签（枚举值本身不变，仅渲染时映射）。 */
+  const ENV_STATE_LABEL_ZH: Record<string, string> = {
+    Healthy: "健康",
+    Degraded: "降级",
+    Stopped: "已停止",
+    Unknown: "未知",
+  };
+
   const envState = deriveEnvState();
 
   const fetchLogs = async () => {
@@ -55,7 +63,7 @@ export function RigEnvPanel({ rigId, envData }: RigEnvPanelProps) {
       const res = await fetch(`/api/rigs/${encodeURIComponent(rigId)}/env/logs?tail=100`);
       const data = await res.json() as { ok: boolean; output?: string; error?: string };
       if (!data.ok) {
-        setLogsError(data.error ?? "Failed to fetch logs");
+        setLogsError(data.error ?? "获取日志失败");
       } else {
         setLogs(data.output ?? "");
       }
@@ -76,7 +84,7 @@ export function RigEnvPanel({ rigId, envData }: RigEnvPanelProps) {
         body: JSON.stringify({}),
       });
       const data = await res.json() as { ok: boolean; error?: string };
-      setDownResult(data.ok ? "Environment stopped." : (data.error ?? "Failed to stop environment."));
+      setDownResult(data.ok ? "环境已停止。" : (data.error ?? "停止环境失败。"));
     } catch (err) {
       setDownResult((err as Error).message);
     } finally {
@@ -86,23 +94,23 @@ export function RigEnvPanel({ rigId, envData }: RigEnvPanelProps) {
 
   return (
     <div className="flex-1 overflow-y-auto" data-testid="env-panel">
-      {/* Overall env state */}
+      {/* 整体环境状态 */}
       <section className="px-4 py-3 border-b border-outline-variant">
-        <div className="font-mono text-[8px] text-on-surface-variant uppercase tracking-wider mb-1">Environment</div>
+        <div className="font-mono text-[8px] text-on-surface-variant uppercase tracking-wider mb-1">环境</div>
         <div data-testid="env-state" className={`font-mono text-[12px] font-bold ${
           envState === "Healthy" ? "text-green-700"
             : envState === "Degraded" ? "text-amber-600"
             : envState === "Stopped" ? "text-red-600"
             : "text-on-surface-variant"
         }`}>
-          {envState}
+          {ENV_STATE_LABEL_ZH[envState] ?? envState}
         </div>
       </section>
 
-      {/* Services */}
+      {/* 服务 */}
       {services.length > 0 && (
         <section className="px-4 py-3 border-b border-outline-variant">
-          <div className="font-mono text-[8px] text-on-surface-variant uppercase tracking-wider mb-2">Services</div>
+          <div className="font-mono text-[8px] text-on-surface-variant uppercase tracking-wider mb-2">服务</div>
           <div className="space-y-1">
             {services.map((svc) => (
               <div key={svc.name} className="flex items-center justify-between font-mono text-[10px]">
@@ -116,10 +124,10 @@ export function RigEnvPanel({ rigId, envData }: RigEnvPanelProps) {
         </section>
       )}
 
-      {/* Health gates */}
+      {/* 健康门禁 */}
       {waitFor.length > 0 && (
         <section className="px-4 py-3 border-b border-outline-variant">
-          <div className="font-mono text-[8px] text-on-surface-variant uppercase tracking-wider mb-2">Health Gates</div>
+          <div className="font-mono text-[8px] text-on-surface-variant uppercase tracking-wider mb-2">健康门禁</div>
           <div className="space-y-2">
             {waitFor.map((gate, index) => (
               <div key={`${formatWaitTarget(gate.target)}-${index}`} className="space-y-1 font-mono text-[10px]">
@@ -142,10 +150,10 @@ export function RigEnvPanel({ rigId, envData }: RigEnvPanelProps) {
         </section>
       )}
 
-      {/* Surfaces */}
+      {/* 面板 */}
       {surfaces && (surfaces.urls?.length || surfaces.commands?.length) && (
         <section className="px-4 py-3 border-b border-outline-variant">
-          <div className="font-mono text-[8px] text-on-surface-variant uppercase tracking-wider mb-2">Surfaces</div>
+          <div className="font-mono text-[8px] text-on-surface-variant uppercase tracking-wider mb-2">面板</div>
           <div className="space-y-1">
             {surfaces.urls?.map((u) => (
               <div key={u.name} className="flex items-center justify-between font-mono text-[10px]">
@@ -165,20 +173,20 @@ export function RigEnvPanel({ rigId, envData }: RigEnvPanelProps) {
         </section>
       )}
 
-      {/* Actions */}
+      {/* 操作 */}
       <section className="px-4 py-3 border-b border-outline-variant">
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => void fetchLogs()} disabled={logsLoading}>
-            {logsLoading ? "Loading..." : "View Logs"}
+            {logsLoading ? "加载中..." : "查看日志"}
           </Button>
           <Button variant="outline" size="sm" onClick={() => void stopEnv()} disabled={downPending}>
-            {downPending ? "Stopping..." : "Stop Env"}
+            {downPending ? "停止中..." : "停止环境"}
           </Button>
         </div>
         {downResult && <div className="mt-2 font-mono text-[9px] text-on-surface-variant">{downResult}</div>}
       </section>
 
-      {/* Logs output */}
+      {/* 日志输出 */}
       {logsError && (
         <section className="px-4 py-3">
           <div className="font-mono text-[9px] text-red-600">{logsError}</div>
@@ -186,9 +194,9 @@ export function RigEnvPanel({ rigId, envData }: RigEnvPanelProps) {
       )}
       {logs !== null && !logsError && (
         <section className="px-4 py-3">
-          <div className="font-mono text-[8px] text-on-surface-variant uppercase tracking-wider mb-2">Logs</div>
+          <div className="font-mono text-[8px] text-on-surface-variant uppercase tracking-wider mb-2">日志</div>
           <pre className="font-mono text-[9px] text-on-surface whitespace-pre-wrap break-all max-h-64 overflow-y-auto bg-background p-2 border border-outline-variant">
-            {logs || "(empty)"}
+            {logs || "（空）"}
           </pre>
         </section>
       )}

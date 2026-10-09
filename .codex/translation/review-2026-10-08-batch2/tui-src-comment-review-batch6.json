@@ -1,0 +1,20 @@
+{
+  "schema": "openrig.tui-src-comment-review-batch/v1",
+  "batch": 6,
+  "captured_at": "2026-10-09T19:25:00+08:00",
+  "depth": "full_comment_javascript_docstring_reviewed",
+  "owner": "s_000cae46uuw",
+  "natural_residual": 0,
+  "files": [
+    {"path": "packages/tui/src/config/config-model.ts", "status": "reviewed_no_change", "after_sha256": "f3a46a6328c193117545dc951cf710dd43289ceb1982ec8126867090e855009c", "classification": "0 English residual"},
+    {"path": "packages/tui/src/startup.ts", "status": "reviewed_no_change", "after_sha256": "c65e9022da14cfcc2ed51517364fab67043277becfa4911512b40d41cc762167", "classification": "0 English residual"},
+    {"path": "packages/tui/src/daemon-client.ts", "status": "reviewed_no_change", "after_sha256": "133885c4b30fa216500911d7f56a322d9a456a0f39d987e1240b59f7b26c310e", "classification": "0 English residual"},
+    {"path": "packages/tui/src/health/health-model.ts", "status": "reviewed_no_change", "after_sha256": "845ddca16697514b2303fc8b7caa4cb47bbbccc47f8ee078c69e2ce1663e4203", "classification": "0 English residual"},
+    {"path": "packages/tui/src/demo-data.ts", "status": "reviewed_no_change", "after_sha256": "9912b6ff4c97ace739523626d1a1ed6567b571e2aec1ce20db3c6d14320e3cba", "classification": "0 English residual"},
+    {"path": "packages/tui/src/commands/registry.ts", "status": "reviewed_no_change", "after_sha256": "b929f52bf96377a049667c0be7fde998b0c4d649f50c26f8cf4018ae6106789a", "classification": "0 English residual"},
+    {"path": "packages/tui/src/scopes/scopes-model.ts", "status": "reviewed_no_change", "after_sha256": "ef6f01c356d8ab66279098d150edb19afdea2deae846f5b6e40eda8a1163107c", "classification": "0 English residual"},
+    {"path": "packages/tui/src/pulse/pulse-model.ts", "status": "reviewed_no_change", "after_sha256": "4840cb5ff124d14105abe6ca5cf349d4e4770bbfb55aa090315b4166654bda41", "classification": "0 English residual"},
+    {"path": "packages/tui/src/types.ts", "status": "reviewed_no_change", "after_sha256": "9e48788c80fc76371a4400329cad1745c6b887a63a9153eccefe0690e24e85a8", "classification": "0 English residual"},
+    {"path": "packages/tui/src/main.ts", "status": "reviewed_no_change", "after_sha256": "bff4c99d8ec699caf15bf9e30864c5df319eb42cd4984911bcb862475519d399", "classification": "CLI usage string openrig-tui [--instance ...] machine retained"}
+  ]
+}

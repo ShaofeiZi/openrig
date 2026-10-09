@@ -1,5 +1,4 @@
-// Rig Context / Composable Context Injection v0 (PL-014) — library
-// service tests.
+// Rig Context / Composable Context Injection v0（PL-014）——library service 测试。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -20,7 +19,7 @@ function writePack(root: string, name: string, manifest: string, files: Record<s
   }
 }
 
-describe("ContextPackLibraryService", () => {
+describe("ContextPackLibraryService 上下文包库服务", () => {
   let tmp: string;
   let userRoot: string;
   let workspaceRoot: string;
@@ -36,7 +35,7 @@ describe("ContextPackLibraryService", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("scans a pack and emits a normalized entry", () => {
+  it("扫描 pack 并输出 normalized entry", () => {
     writePack(userRoot, "smoke", `
 name: smoke
 version: 1
@@ -67,7 +66,7 @@ files:
     expect(entry.derivedEstimatedTokens).toBe(entry.files[0]!.estimatedTokens);
   });
 
-  it("surfaces missing files with bytes=null instead of refusing the entry", () => {
+  it("以 bytes=null 呈现缺失文件，而非拒绝 entry", () => {
     writePack(userRoot, "missing", `
 name: missing
 version: 1
@@ -91,7 +90,7 @@ files:
     expect(absent.estimatedTokens).toBeNull();
   });
 
-  it("workspace root wins on collision (last in roots array)", () => {
+  it("发生 collision 时 workspace root 胜出（位于 roots array 最后）", () => {
     const sameManifest = `
 name: collision
 version: 1
@@ -114,12 +113,11 @@ files:
     expect(entry.sourcePath).toContain("/workspace/");
   });
 
-  // Slice-03 Atom 5 (colon-id strip, ruled contract §4) — the id is now
-  // `context-pack:<ref>`, so two distinct refs that happen to share a manifest
-  // name+version get DISTINCT ids and BOTH resolve. The legacy
-  // `context-pack:<name>:<version>` id silently SHADOWED this case (the two refs
-  // collapsed to one id in idIndex); the strip fixes that latent bug.
-  it("distinct refs sharing a manifest name+version get DISTINCT ids and both resolve", () => {
+  // Slice-03 Atom 5（colon-id strip，ruled contract §4）——id 现为 `context-pack:<ref>`，因此偶然
+  // 共享 manifest name+version 的两个不同 ref 会获得不同 id，且都能 resolve。legacy
+  // `context-pack:<name>:<version>` id 会静默 shadow 此 case（两个 ref 在 idIndex 中折叠为一个 id）；
+  // strip 修复了这个潜在 bug。
+  it("共享 manifest name+version 的不同 ref 获得不同 id，且都能 resolve", () => {
     const sameManifest = `
 name: dup
 version: 1
@@ -143,7 +141,7 @@ files:
     expect(a!.id).not.toBe(b!.id); // legacy name:version collapsed both to context-pack:dup:1
   });
 
-  it("captures parse errors instead of throwing them out of scan", () => {
+  it("捕获 parse error，而不是让它中断 scan", () => {
     writePack(userRoot, "broken", "{not valid yaml", { "notes.md": "x" });
     const lib = new ContextPackLibraryService({
       roots: [{ path: userRoot, sourceType: "user_file" }],
@@ -154,7 +152,7 @@ files:
     expect(result.errors[0]!.error).toContain("manifest_parse_error");
   });
 
-  it("ignores directories without manifest.yaml", () => {
+  it("忽略没有 manifest.yaml 的 directory", () => {
     mkdirSync(join(userRoot, "not-a-pack"));
     const lib = new ContextPackLibraryService({
       roots: [{ path: userRoot, sourceType: "user_file" }],
@@ -163,7 +161,7 @@ files:
     expect(result.count).toBe(0);
   });
 
-  it("re-scan reflects filesystem edits (workspace-surface reconciliation)", () => {
+  it("重新 scan 反映 filesystem edit（workspace-surface reconciliation）", () => {
     writePack(userRoot, "evolve", `
 name: evolve
 version: 1
@@ -177,7 +175,7 @@ files:
     });
     lib.scan();
     expect(lib.list()).toHaveLength(1);
-    // Operator edits the manifest to bump version.
+    // Operator 编辑 manifest 以提升 version。
     writeFileSync(join(userRoot, "evolve", "manifest.yaml"), `
 name: evolve
 version: 2
@@ -192,7 +190,7 @@ files:
     expect(list[0]!.version).toBe("2");
   });
 
-  it("resolveFileWithinPack rejects path-traversal attempts", () => {
+  it("resolveFileWithinPack 拒绝 path-traversal attempt", () => {
     writePack(userRoot, "guard", `
 name: guard
 version: 1
@@ -206,20 +204,20 @@ files:
     });
     lib.scan();
     const entry = lib.getByRef("guard")!;
-    expect(() => lib.resolveFileWithinPack(entry, "../etc/passwd")).toThrow(/inside the pack/);
-    expect(() => lib.resolveFileWithinPack(entry, "/abs")).toThrow(/inside the pack/);
+    expect(() => lib.resolveFileWithinPack(entry, "../etc/passwd")).toThrow(/位于 pack 目录内/);
+    expect(() => lib.resolveFileWithinPack(entry, "/abs")).toThrow(/位于 pack 目录内/);
   });
 });
 
-describe("contextPackId", () => {
-  it("builds the opaque context-pack:<ref> id (Atom 5 — ref is the identity)", () => {
+describe("contextPackId 标识构造", () => {
+  it("构建不透明 context-pack:<ref> id（Atom 5——ref 就是 identity）", () => {
     expect(contextPackId("packs/compaction-restore")).toBe("context-pack:packs/compaction-restore");
     expect(contextPackId("smoke")).toBe("context-pack:smoke");
   });
 });
 
-describe("estimateTokensFromBytes", () => {
-  it("uses the chars/4 heuristic", () => {
+describe("estimateTokensFromBytes 估算", () => {
+  it("使用 chars/4 heuristic", () => {
     expect(estimateTokensFromBytes(0)).toBe(0);
     expect(estimateTokensFromBytes(4)).toBe(1);
     expect(estimateTokensFromBytes(7)).toBe(2);
@@ -227,11 +225,10 @@ describe("estimateTokensFromBytes", () => {
   });
 });
 
-// Slice-03 lineage repair (R2 terminal HIGH-2): the version predicate must fire
-// on the LIVE ingestion path (scan → readPackEntry → parseManifest), not only in
-// a unit test. A forged version must be captured as a scan ERROR and NEVER
-// indexed as a resolvable entry.
-describe("ContextPackLibraryService — forged versions rejected live during scan (R2 HIGH-2)", () => {
+// Slice-03 lineage repair（R2 terminal HIGH-2）：version predicate 必须在 live ingestion 路径
+//（scan → readPackEntry → parseManifest）触发，而非只在 unit test 中触发。伪造 version 必须作为
+// scan ERROR 捕获，绝不能索引为可 resolve entry。
+describe("ContextPackLibraryService——scan 时在 live 路径拒绝伪造 version（R2 HIGH-2）", () => {
   let tmp: string;
   let userRoot: string;
 
@@ -244,7 +241,7 @@ describe("ContextPackLibraryService — forged versions rejected live during sca
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("indexes neither a colon-bearing nor an overlong version — both surface as scan errors", () => {
+  it("既不索引含 colon 的 version，也不索引过长 version——两者都呈现为 scan error", () => {
     writePack(userRoot, "colonver", "name: colonver\nversion: '1:0:0'\nfiles: []", {});
     writePack(userRoot, "longver", `name: longver\nversion: '${"a".repeat(300)}'\nfiles: []`, {});
     const lib = new ContextPackLibraryService({ roots: [{ path: userRoot, sourceType: "user_file" }] });

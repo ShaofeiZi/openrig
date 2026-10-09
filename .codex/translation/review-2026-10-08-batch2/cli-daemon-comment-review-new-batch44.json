@@ -1,0 +1,44 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch44",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/daemon/test/usage-samples-store.test.ts",
+      "before_sha256_16": "f9d157ae080b5c78",
+      "after_sha256_16": "b23cfc0cbeb3c303",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/user-settings-store.test.ts",
+      "before_sha256_16": "fed04093cccbb54f",
+      "after_sha256_16": "5bc3265afe6e2ccd",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/views-routes.test.ts",
+      "before_sha256_16": "d0aebcefee20bc00",
+      "after_sha256_16": "3ea8d791526f1319",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/workflow-reconciliation.test.ts",
+      "before_sha256_16": "0f3b7f98f595de38",
+      "after_sha256_16": "32670cad46659e94",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

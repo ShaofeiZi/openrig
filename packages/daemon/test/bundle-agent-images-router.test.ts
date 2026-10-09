@@ -1,12 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { routeAgentImages, type AgentImagesRouterFsOps, type RouteAgentImagesInput } from "../src/domain/bundle-agent-images-router.js";
 
-// Item 6 / slice-05 Checkpoint 7.3g step 2: bundle-agent-images-router
-// pure-function tests. PRD line 197: declared paths are agent-image
-// DIRECTORIES (not manifest paths — distinct from context_packs).
-// All 4 banked router-level catches (file-existence, isDirectory check
-// on manifest, declared-path-must-be-dir, basename collision) built in
-// from the first commit per banked discipline.
+// 第 6 项 / slice-05 Checkpoint 7.3g 第 2 步：bundle-agent-images-router 纯函数测试。PRD 第 197
+// 行规定声明路径是 agent-image 目录（不是 manifest 路径，与 context_packs 不同）。按照预存纪律，
+// 首次提交即包含 4 个预存路由层捕获：文件存在性、manifest 的 isDirectory 检查、声明路径必须为
+// 目录，以及 basename 冲突。
 
 function mockFs(initial: { dirs?: string[]; files?: string[] } = {}): AgentImagesRouterFsOps & {
   _copyCalls: Array<{ src: string; dest: string }>;
@@ -30,7 +28,7 @@ function mockFs(initial: { dirs?: string[]; files?: string[] } = {}): AgentImage
   };
 }
 
-/** Convenience: build a complete agent-image fixture (image dir + manifest.yaml file inside). */
+/** 便捷函数：构建完整 agent-image fixture（image 目录及其中的 manifest.yaml 文件）。 */
 function imageFixture(imageDir: string): { dirs: string[]; files: string[] } {
   return { dirs: [imageDir], files: [`${imageDir}/manifest.yaml`] };
 }
@@ -48,8 +46,8 @@ function makeInput(overrides?: Partial<RouteAgentImagesInput>): RouteAgentImages
 }
 
 describe("routeAgentImages", () => {
-  // A1: empty list → empty records + target dir mkdirp'd
-  it("empty declaredAgentImages produces empty records but still mkdirp's target", () => {
+  // A1：空 list 产生空 records，并创建目标目录。
+  it("空 declaredAgentImages 产生空 records，但仍创建目标目录", () => {
     const fs = mockFs();
     const result = routeAgentImages(makeInput(), fs);
     expect(result.records).toEqual([]);
@@ -58,8 +56,8 @@ describe("routeAgentImages", () => {
     expect(fs._mkdirpCalls).toContain(TARGET);
   });
 
-  // A2: routes one image: copyDir from sourceAbs (declared dir) to target/<basename>
-  it("routes one agent_image: declared dir copied to target/<basename>", () => {
+  // A2：路由一个 image：copyDir 从 sourceAbs（声明目录）复制到 target/<basename>。
+  it("路由一个 agent_image：把声明目录复制到 target/<basename>", () => {
     const fs = mockFs(imageFixture(`${BUNDLE_ROOT}/agent-images/seat-a`));
     const result = routeAgentImages(
       makeInput({ declaredAgentImages: ["agent-images/seat-a"] }),
@@ -75,8 +73,8 @@ describe("routeAgentImages", () => {
     });
   });
 
-  // A3: multiple distinct images route correctly
-  it("routes multiple distinct agent_images each to target/<basename>", () => {
+  // A3：正确路由多个不同 image。
+  it("把多个不同 agent_image 分别路由到 target/<basename>", () => {
     const fs = mockFs({
       dirs: [`${BUNDLE_ROOT}/agent-images/seat-a`, `${BUNDLE_ROOT}/agent-images/seat-b`],
       files: [
@@ -97,8 +95,8 @@ describe("routeAgentImages", () => {
     expect(fs._copyCalls).toHaveLength(2);
   });
 
-  // A4: declared source dir absent → status=missing
-  it("missing declared image dir → status=missing (honest-scoping)", () => {
+  // A4：声明的源目录缺失时 status=missing。
+  it("声明的 image 目录缺失时 status=missing（真实作用域）", () => {
     const fs = mockFs();
     const result = routeAgentImages(
       makeInput({ declaredAgentImages: ["agent-images/absent"] }),
@@ -110,8 +108,8 @@ describe("routeAgentImages", () => {
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // A5: unsafe source path escaping bundle workspace rejected
-  it("unsafe source path escaping bundle workspace → status=unsafe", () => {
+  // A5：拒绝逃逸 bundle workspace 的不安全源路径。
+  it("逃逸 bundle workspace 的不安全源路径产生 status=unsafe", () => {
     const fs = mockFs();
     const result = routeAgentImages(
       makeInput({ declaredAgentImages: ["../escape"] }),
@@ -122,10 +120,9 @@ describe("routeAgentImages", () => {
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // A6 (PRD-coherent discrimination): declared path exists but is a FILE
-  // not a directory. PRD line 197 says declared path is an agent-image
-  // DIRECTORY; if operator-declared path is a file, reject.
-  it("declared path exists but is a file (not directory) → status=not_directory", () => {
+  // A6（符合 PRD 的判别）：声明路径存在但为文件而非目录。PRD 第 197 行规定声明路径是
+  // agent-image 目录；操作员声明的路径为文件时拒绝。
+  it("声明路径存在但为文件（非目录）时 status=not_directory", () => {
     const fs = mockFs({ files: [`${BUNDLE_ROOT}/agent-images/seat-as-file`] });
     const result = routeAgentImages(
       makeInput({ declaredAgentImages: ["agent-images/seat-as-file"] }),
@@ -136,12 +133,12 @@ describe("routeAgentImages", () => {
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // A7 (banked d491eca9 lesson): image dir exists but manifest.yaml inside
-  // is absent. Consumer skips the image — false-positive routedCount class.
-  it("image dir exists but manifest.yaml inside is absent → status=not_manifest", () => {
+  // A7（预存 d491eca9 教训）：image 目录存在但其中缺少 manifest.yaml。消费者跳过该 image，
+  // 属于 routedCount 假阳性类别。
+  it("image 目录存在但其中缺少 manifest.yaml 时 status=not_manifest", () => {
     const fs = mockFs({
       dirs: [`${BUNDLE_ROOT}/agent-images/halfimage`],
-      // NO manifest.yaml file
+      // 没有 manifest.yaml 文件。
     });
     const result = routeAgentImages(
       makeInput({ declaredAgentImages: ["agent-images/halfimage"] }),
@@ -152,10 +149,9 @@ describe("routeAgentImages", () => {
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // A8 (banked 3cd581e3 lesson): image dir exists, manifest.yaml inside is
-  // itself a DIRECTORY (not file). Consumer's readFileSync throws — false-
-  // positive class. Reject.
-  it("image dir exists but manifest.yaml inside is itself a directory → status=not_manifest", () => {
+  // A8（预存 3cd581e3 教训）：image 目录存在，但其中 manifest.yaml 本身是目录而非文件。
+  // 消费者的 readFileSync 会抛错，属于假阳性类别，因此拒绝。
+  it("image 目录存在但其中 manifest.yaml 本身是目录时 status=not_manifest", () => {
     const fs = mockFs({
       dirs: [
         `${BUNDLE_ROOT}/agent-images/dirmanifest`,
@@ -171,9 +167,9 @@ describe("routeAgentImages", () => {
     expect(fs._copyCalls).toHaveLength(0);
   });
 
-  // A9 (banked 16ebb8af lesson): two declared images sharing basename →
-  // first wins (status=routed), second flagged status=conflict.
-  it("two declared images sharing basename → first routed, second conflict (truthful routedCount)", () => {
+  // A9（预存 16ebb8af 教训）：两个声明 image 共享 basename 时，第一个胜出（status=routed），
+  // 第二个标为 status=conflict。
+  it("两个声明 image 共享 basename 时第一个 routed、第二个 conflict（真实 routedCount）", () => {
     const fs = mockFs({
       dirs: [
         `${BUNDLE_ROOT}/a/seat-a`,
@@ -202,9 +198,8 @@ describe("routeAgentImages", () => {
     expect(fs._copyCalls[0]!.src).toBe(`${BUNDLE_ROOT}/a/seat-a`);
   });
 
-  // A10: mixed list — routed + missing + unsafe + not_directory +
-  // not_manifest + conflict aggregate
-  it("mixed declared list aggregates correctly across all rejection classes", () => {
+  // A10：混合列表，汇总 routed + missing + unsafe + not_directory + not_manifest + conflict。
+  it("混合声明列表正确汇总所有拒绝类别", () => {
     const fs = mockFs({
       dirs: [
         `${BUNDLE_ROOT}/agent-images/ok`,

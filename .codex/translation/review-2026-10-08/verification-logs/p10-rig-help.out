@@ -1,0 +1,95 @@
+用法： rig [选项] [命令]
+
+zrig 本地控制平面命令行
+
+选项：
+  -V, --version                                             输出版本号
+  -h, --help                                                显示帮助信息
+
+命令：
+  start [选项]                                                启动后台服务、校验内核，并恢复上次运行中的工作组
+  daemon                                                    管理 zrig 后台服务
+  status                                                    显示工作组状态
+  snapshot [选项] <rigId>                                     管理工作组快照
+  restore                                                   从快照恢复工作组
+  crash-cart [选项]                                           以后台服务宕机时的恢复判定 + 发现物输出为 JSON（只读）。
+  gateway                                                   网关：人类注册与连接器接口
+  parked [选项] [seat]                                        我们是否已驻留？推导式诊断：因欠工作而停摆的席位；HELD 仅在其记录的唤醒仍存活时才算健康
+  export [选项] <rigId>                                       导出工作组规范为 YAML
+  import [选项] <path>                                        从 YAML 导入工作组规格
+  ui                                                        UI 相关命令
+  tui [选项]                                                  打开任务控制台（默认独立打开；--shared 加入内核终端）
+  package                                                   管理智能体包（旧版）
+  bootstrap [选项] <spec>                                     根据规格文件引导启动一个工作组
+  requirements [选项] <spec>                                  检查工作组规范的依赖要求
+  discover [选项]                                             扫描未纳管的 tmux 会话
+  attach [选项]                                               把当前 shell 或智能体挂载到某个工作组节点
+  bind [选项] <discoveredId>                                  把发现的会话绑定到工作组节点（已有或新建）
+  adopt [选项] <path>                                         物化拓扑并绑定已发现的运行中会话
+  bundle                                                    管理工作组 bundle
+  up [选项] <source>                                          从 spec、库条目或 bundle 启动一个工作组或受管 app
+  down [选项] <rig>                                           拆除一个工作组
+  archive [选项] <rigId>                                      归档工作组（软归档、可逆：从默认视图隐藏，保留全部数据）。不是删除；用 'zrig unarchive' 撤销。
+  unarchive [选项] <rigId>                                    反归档一个工作组（'rig archive' 的逆操作）：使其回到默认视图。始终安全。
+  host                                                      管理多主机注册表（~/.openrig/hosts.yaml）
+  ps [选项]                                                   列出 rig 及其状态
+  mcp                                                       用于接入智能体的 MCP 服务器
+  agent                                                     管理智能体规格（agent spec）
+  spec                                                      管理工作组规范
+  transcript [选项] <session>                                 读取智能体 transcript 输出
+  send [选项] [session] [text]                                向智能体的终端发送一条消息
+  stream                                                    协作 L1 —— 只追加的 intake 流
+  queue                                                     协同 L3——自有工作队列 + inbox/outbox
+  slack                                                     Slack 连接器：配置 + 后台服务内子系统管理（S10）
+  project                                                   协调 L2——以智能体为后端的分类器，由后台服务强制租约 + 幂等 + 回收
+  view                                                      协作 L5 —— 由后台服务支撑的协作状态视图
+  terminal                                                  把 zrig 视图（智能体终端）作为窗格打开到终端提供方（herdr / cmux）
+  watchdog                                                  协调看门狗——后台服务原生调度器，用于提醒、产物闸门、工作流健康、空闲闸门与上下文用量
+  workflow                                                  后台服务原生工作流运行时——声明式 spec + transactional-scribe 步骤投影（PL-004 Phase D）
+  capture [选项] [session]                                    抓取智能体会话的终端输出
+  broadcast [选项] [text]                                     向多个智能体会话发送一条消息
+  walk [选项] <seat>                                          按节奏带领席位走过一系列上下文片段
+  ask [选项] <rig> <question>                                 用自然语言问题检索工作组历史转录
+  chatroom                                                  用于工作组内通信的聊天室
+  specs                                                     浏览、预览和管理 spec 库，包括受管 app
+  context                                                   浏览、预览、组合并管理操作者编写的 context pack
+  plugin                                                    检视插件（只读）
+  skill                                                     技能管理与审计
+  agent-image                                               浏览、快照并管理智能体镜像（PL-016）
+  fork [选项] <source-session>                                把运行中席位的上下文 fork 到新席位（拼装随附的 agent-image fork 路径）
+  workspace                                                 PL-007 工作区原语——带类型的工具。`validate` 遍历根目录并报告 frontmatter gap；`doctor` 跑 8 项工作区就绪诊断。
+  mode                                                      查看并显式设置带范围的运行姿态（human-led/delegated）与操作人员上下文模式。
+  policy                                                    教学并记录工作组级权限策略。zrig 不内置任何 allow/ask/deny 权限策略——harness 原生权限才是控制面。zrig 把姿态记录进 RigSpec；由 harness 原生权限强制执行——绝不运行时强制。（原先占用此名的 context-mode 动词现为：rig mode。）
+  whoami [选项]                                               展示 zrig 拓扑中当前受管身份
+  config [选项]                                               查看并修改 zrig 配置
+  file                                                      通过 ssh/rsync 在主机间传输文件（v0：只提供一个显式动词 copy）
+  preflight [选项]                                            检查本机是否满足运行 zrig 的条件
+  auth                                                      管理智能体认证档案（CLI 本地；运行时通过 --runtime 指定）。token 绝不打印、记录或存储。
+  provider                                                  提供方账号、用量信号，以及可中断安全的账号切换
+  usage                                                     按席位展示一段时间内的 token 遥测（序列 + top-N 消耗）——供监督检测器使用的事实数据
+  health [选项]                                               检查只读、可解释的系统健康记录
+  doctor [选项]                                               检查 zrig 安装健康状态
+  expand [选项] <rig-id> <pod-fragment-path>                  向运行中的工作组添加一个 Pod
+  add [选项] <rig-id> <pod-namespace> <member-fragment-path>  向运行中工作组的已有 Pod 添加一个成员
+  create [选项] <name>                                        无需编写规范即可创建单席位工作组
+  grow [选项] <rig-id> <members...>                           向运行中的工作组添加一个或多个席位
+  reconcile-session [选项] <session>                          把正在运行、手动恢复过的会话接回其持久化节点（不启动、不写入输入）
+  env                                                       查看并控制服务型工作组的环境服务与受管应用
+  unclaim [选项] <sessionRef>                                 释放已认领的会话，但不结束其 tmux 会话
+  release [选项] <rigId>                                      释放工作组中已认领的会话，而不结束 tmux 会话
+  launch [选项] <rigId> [nodeRef]                             在运行中的工作组里启动或重新启动一个节点
+  remove [选项] <rigId> <nodeRef>                             从运行中的工作组移除一个节点
+  shrink [选项] <rigId> <podRef>                              从运行中的工作组移除整个 Pod
+  destroy [选项]                                              销毁 zrig 本地状态以进行恢复
+  setup [选项]                                                为 zrig 准备本机
+  restore-check [选项]                                        检查各运行中工作组的恢复就绪度
+  restore-packet                                            按 v0 标准生成、读取并校验跨运行时恢复包
+  compact-plan [选项]                                         在不做任何压缩的前提下规划 Claude 原地压缩候选
+  compact [选项] <session>                                    为单个 Claude 席位手动执行引导式压缩流程（prep → /compact → restore → audit）
+  heartbeat [选项]                                            从队列文件展示工作流执行证明状态
+  seat                                                      检视 zrig 席位可观测状态
+  handover [选项] <seat>                                      把席位交给继任者：创建 -> 投递上下文 -> 校验连续性 -> 重新绑定
+  startup-proof                                             提交并查看启动定位校验证明
+  scope [选项]                                                scope 树原语：missions、slices、sub-slices（按 conventions/scope-and-versioning）
+  proof [选项]                                                捕获证据（add）、记录带归属的条目判定（judge）、读取派生就绪度（show）。捕获、策略接受、更高结果判定与发布相互独立。
+  help [command]                                            显示命令帮助

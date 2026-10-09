@@ -1,14 +1,12 @@
-// OPR.0.4.0.33 — pure, surgical markdown editors for PROGRESS rails.
+// OPR.0.4.0.33 —— 面向 PROGRESS 轨道的纯函数、外科手术式 markdown 编辑器。
 //
-// These back `rig scope ... progress`. They consume the UI parser
-// contract in packages/daemon/src/domain/progress/progress-indexer.ts:
-//   - title comes from the FIRST `# H1` only (frontmatter is skipped),
-//   - section hierarchy from `##`/`###`/`####` headings,
-//   - rows from `- [ ]` / `- [x]` / `- [~]` checkbox lines.
-// So every edit preserves the `# H1` + the YAML frontmatter verbatim
-// and writes rows in exactly that shape. The functions are pure (string
-// in, string out) so the command layer stays thin and the behavior is
-// unit-testable without a filesystem.
+// 这些函数为 `rig scope ... progress` 提供后端。它们消费
+// packages/daemon/src/domain/progress/progress-indexer.ts 的 UI 解析契约：
+//   - 标题只取自【第一个】`# H1`（跳过 frontmatter），
+//   - 章节层级来自 `##`/`###`/`####` 标题，
+//   - 行来自 `- [ ]` / `- [x]` / `- [~]` 复选框行。
+// 因此每次编辑都原样保留 `# H1` 与 YAML frontmatter，并严格按该形状写入行。
+// 函数是纯函数（字符串进、字符串出），使命令层保持纤薄，且行为无需文件系统即可单测。
 
 import { ScopeCliError } from "./types.js";
 
@@ -18,7 +16,7 @@ export const PROGRESS_STATUSES: ReadonlyArray<ProgressStatus> = ["active", "done
 
 export const DEFAULT_PROGRESS_SECTION = "Rail";
 
-/** Map a status word to the single indexer indicator character. */
+/** 把状态词映射为索引器使用的单个指示字符。 */
 export function statusIndicator(status: ProgressStatus): " " | "x" | "~" {
   switch (status) {
     case "active": return " ";
@@ -34,32 +32,39 @@ function indicatorToStatus(indicator: string): ProgressStatus {
   return "active";
 }
 
-/** Validate + narrow an arbitrary string to a ProgressStatus, or throw
- *  the 3-part error. The status vocabulary is the ONLY three the indexer
- *  understands. */
+/** 校验任意字符串并收窄为 ProgressStatus，否则抛出三段式错误。
+ *  状态词表就是索引器认识的那三个。 */
 export function parseStatus(raw: string): ProgressStatus {
   if ((PROGRESS_STATUSES as ReadonlyArray<string>).includes(raw)) {
     return raw as ProgressStatus;
   }
   throw new ScopeCliError({
-    fact: `Unknown --status "${raw}".`,
-    consequence: "No progress row was written.",
-    action: `Use one of: ${PROGRESS_STATUSES.join(", ")}.`,
+    fact: `未知的 --status "${raw}"。`,
+    consequence: "未写入任何进度行。",
+    action: `请使用以下之一：${PROGRESS_STATUSES.join(", ")}。`,
   });
 }
 
-// Indexer-aligned row matcher: optional indent, optional `- `/`* ` bullet,
-// `[ x ~]` indicator, then the row text.
+// 与索引器对齐的行匹配：可选缩进、可选 `- `/`* ` 项目符号、
+// `[ x ~]` 指示符，然后是行文本。
 const ROW_RE = /^(\s*)(?:[-*]\s+)?\[([ xX~])\]\s+(.+?)\s*$/;
 const HEADING_RE = /^(#{1,6})\s+(.+?)\s*$/;
+const SECTION_ALIASES: readonly (readonly string[])[] = [
+  ["Acceptance", "验收"],
+];
 
-/** Index of the first body line (after any leading YAML frontmatter). */
+function sectionNames(section: string): readonly string[] {
+  return SECTION_ALIASES.find((aliases) => aliases.some((alias) => alias.toLocaleLowerCase() === section.toLocaleLowerCase()))
+    ?? [section];
+}
+
+/** 正文第一行的下标（跳过任何开头的 YAML frontmatter 之后）。 */
 function bodyStartIndex(lines: string[]): number {
   if ((lines[0] ?? "").trim() !== "---") return 0;
   for (let i = 1; i < lines.length; i++) {
     if (lines[i]!.trim() === "---") return i + 1;
   }
-  return 0; // unterminated frontmatter — treat as no frontmatter
+  return 0; // frontmatter 未闭合——当作无 frontmatter
 }
 
 export interface ProgressEditResult {
@@ -68,40 +73,42 @@ export interface ProgressEditResult {
 }
 
 /**
- * Append a `- [<indicator>] <text>` row under `## <section>`.
- * - Creates the `## <section>` heading (appended after the last existing
- *   section) when it is absent.
- * - Idempotent: an identical (section, text, status) row is a no-op.
- * - Refuses to create a conflicting duplicate (same text, different
- *   status) — that is a `--set` operation, not an `--add`.
- * - Never touches the frontmatter, the `# H1`, or unrelated lines.
+ * 在 `## <section>` 下追加一行 `- [<指示符>] <文本>`。
+ * - 当 `## <section>` 不存在时创建它（追加到最后一个既有章节之后）。
+ * - 幂等：完全相同的（章节、文本、状态）行是无操作。
+ * - 拒绝创建冲突重复（同文本、不同状态）——那是 `--set` 操作，不是 `--add`。
+ * - 绝不触碰 frontmatter、`# H1` 或无关行。
  */
 export function addProgressRow(
   content: string,
   opts: { section: string; text: string; status: ProgressStatus },
 ): ProgressEditResult {
   const section = opts.section.trim();
+  const acceptedSectionNames = sectionNames(section);
   const text = opts.text.trim();
   if (!text) {
     throw new ScopeCliError({
-      fact: "The --add row text is empty.",
-      consequence: "No progress row was written.",
-      action: 'Pass a non-empty row, e.g. --add "Guard approved".',
+      fact: "--add 的行文本为空。",
+      consequence: "未写入任何进度行。",
+      action: '请传入非空行，例如 --add "Guard approved"。',
     });
   }
   const newRow = `- [${statusIndicator(opts.status)}] ${text}`;
   const lines = content.split("\n");
   const start = bodyStartIndex(lines);
 
-  // Locate the target section heading.
+  // 定位目标章节标题。
   let sectionIdx = -1;
   for (let i = start; i < lines.length; i++) {
     const h = lines[i]!.match(HEADING_RE);
-    if (h && h[2]!.trim() === section) { sectionIdx = i; break; }
+    if (h && acceptedSectionNames.some((name) => name.toLocaleLowerCase() === h[2]!.trim().toLocaleLowerCase())) {
+      sectionIdx = i;
+      break;
+    }
   }
 
   if (sectionIdx === -1) {
-    // Create the section, appended after the last existing content.
+    // 创建该章节，追加到最后一段既有内容之后。
     let end = lines.length;
     while (end > start && lines[end - 1]!.trim() === "") end--;
     const head = lines.slice(0, end);
@@ -109,27 +116,27 @@ export function addProgressRow(
     return { content: rebuilt, changed: true };
   }
 
-  // Section block = [sectionIdx+1, nextHeadingOrEOF).
+  // 章节块 = [sectionIdx+1, 下一个标题或 EOF)。
   let blockEnd = lines.length;
   for (let i = sectionIdx + 1; i < lines.length; i++) {
     if (HEADING_RE.test(lines[i]!)) { blockEnd = i; break; }
   }
 
-  // Idempotency / conflict scan within the section.
+  // 在章节内做幂等 / 冲突扫描。
   for (let i = sectionIdx + 1; i < blockEnd; i++) {
     const cb = lines[i]!.match(ROW_RE);
     if (cb && cb[3]!.trim() === text) {
       const current = indicatorToStatus(cb[2]!);
       if (current === opts.status) return { content, changed: false };
       throw new ScopeCliError({
-        fact: `A row "${text}" already exists in section "${section}" with status ${current}.`,
-        consequence: "Refusing to add a conflicting duplicate row.",
-        action: `Use: rig scope ... progress --set "${text}" --status ${opts.status} to change its status.`,
+        fact: `章节 "${section}" 中已存在状态为 ${current} 的行 "${text}"。`,
+        consequence: "拒绝追加冲突的重复行。",
+        action: `请用：zrig scope ... progress --set "${text}" --status ${opts.status} 来修改其状态。`,
       });
     }
   }
 
-  // Insert after the last non-blank line in the section block.
+  // 插入到章节块内最后一个非空行之后。
   let insertAt = sectionIdx + 1;
   for (let i = sectionIdx + 1; i < blockEnd; i++) {
     if (lines[i]!.trim() !== "") insertAt = i + 1;
@@ -139,14 +146,12 @@ export function addProgressRow(
 }
 
 /**
- * Rewrite the indicator of the single row whose trimmed text EXACTLY
- * matches `text`. Row selection is exact-trimmed-text (not line number,
- * not a generated id — the indexer mints neither).
- * - 0 matches → error (names the missing text).
- * - >1 matches → error (ambiguous; v0 refuses rather than guess).
- * - Idempotent: setting a row to its current status is a no-op.
- * - Rewrites ONLY the matched line's indicator char; the rest is
- *   preserved byte-for-byte.
+ * 重写【唯一】一行的指示符——其去空格后文本与 `text` 【完全】相等。
+ * 行选择按“去空格后精确文本”（不是行号，也不是生成的 id——索引器两者都不生成）。
+ * - 0 个匹配 → 报错（点出缺失的文本）。
+ * - >1 个匹配 → 报错（有歧义；v0 拒绝猜测）。
+ * - 幂等：把某行设为其当前状态是无操作。
+ * - 只重写匹配行的指示符字符；其余逐字节保留。
  */
 export function setProgressRow(
   content: string,
@@ -164,16 +169,16 @@ export function setProgressRow(
 
   if (matches.length === 0) {
     throw new ScopeCliError({
-      fact: `No progress row matches the exact text "${text}".`,
-      consequence: "Nothing was changed.",
-      action: 'Check the row text (exact, trimmed match), or add it with --add. List rows with: rig scope ... show.',
+      fact: `没有进度行与精确文本 "${text}" 匹配。`,
+      consequence: "未做任何改动。",
+      action: '请核对行文本（精确、去空格匹配），或用 --add 添加它。列出行：zrig scope ... show。',
     });
   }
   if (matches.length > 1) {
     throw new ScopeCliError({
-      fact: `${matches.length} rows match the text "${text}" (ambiguous).`,
-      consequence: "v0 refuses to guess which row to update; nothing was changed.",
-      action: "Make the row text unique, then retry.",
+      fact: `有 ${matches.length} 行匹配文本 "${text}"（有歧义）。`,
+      consequence: "v0 拒绝猜测要更新哪一行；未做任何改动。",
+      action: "请使行文本唯一后重试。",
     });
   }
 

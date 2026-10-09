@@ -1,11 +1,11 @@
-# Defect class: Seam-B posture preservation across a structural topology edit.
-# Marathon origin: adding/removing a member or pod recomputed permission posture and
-#   silently dropped an attached policy on an unrelated seat.
-# SEED (class: seam-b-posture-loss): the seeded regression makes the structural
-#   mutate path recompute posture from scratch, dropping `lead`'s attached policy.
-#   The post-mutate `expect policy_provenance` (unchanged for lead) MUST catch it —
-#   the diff shows expected policy=guarded/source=attach vs an observed default/none.
-# Deps: policy attach + mutate + policy_provenance surface (R-10). No emit.
+# 缺陷类别：跨结构性拓扑编辑保留 Seam-B 姿态。
+# Marathon 来源：添加/删除成员或 pod 时重新计算权限姿态，
+#   并静默丢弃了无关席位上已附加的策略。
+# SEED（class: seam-b-posture-loss）：种子回归使结构 mutate 路径从头重新计算姿态，
+#   丢弃 `lead` 已附加的策略。mutate 后的 `expect policy_provenance`
+#   （lead 应保持不变）必须发现它——diff 会展示预期 policy=guarded/source=attach
+#   与观察到的 default/none。
+# 依赖：policy attach + mutate + policy_provenance 界面（R-10）。不使用 emit。
 scenario: policy-posture-survives-structural-edit
 topology: ./policy-seat-stub.yaml
 steps:
@@ -18,7 +18,7 @@ steps:
       match:
         policy: guarded
         source: attach
-  # Structural edit elsewhere in the topology must NOT disturb lead's posture.
+  # 拓扑其他位置的结构编辑绝不能影响 lead 的姿态。
   - mutate: {op: add_member, pod: guarded, member: helper, runtime: stub}
   - expect:
       surface: policy_provenance

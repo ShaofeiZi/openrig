@@ -1,6 +1,6 @@
 import type { Migration } from "../migrate.js";
 
-/** Access paths for the rig review's recent roster and settled handoffs. */
+/** rig 评审中近期 roster 和已完成 handoff 的访问路径。 */
 export const reviewReadIndexesSchema: Migration = {
   name: "083_review_read_indexes.sql",
   sql: `

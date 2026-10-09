@@ -19,11 +19,11 @@ export interface ResolvedExports {
 }
 
 /**
- * Resolves package exports, optionally filtered by a role.
- * - When roleName is provided: filters skills/guidance to role references,
- *   keeps all agents, defers hooks referenced by role.
- * - When no roleName: returns all exports, defers all hooks/mcp.
- * - Context references are ignored (human-only docs).
+ * 解析 package export，可选按 role 过滤。
+ * - 提供 roleName 时：将 skill/guidance 过滤为 role reference，保留所有 agent，
+ *   延后 role 引用的 hook。
+ * - 未提供 roleName 时：返回所有 export，延后所有 hook/mcp。
+ * - 忽略 context reference（仅供人阅读的文档）。
  */
 export function resolveExports(
   manifest: PackageManifest,
@@ -35,18 +35,18 @@ export function resolveExports(
   const allHooks = manifest.exports.hooks ?? [];
   const allMcp = manifest.exports.mcp ?? [];
 
-  // No role → full package
+  // 无 role → 完整 package
   if (!roleName) {
     const deferred: DeferredExport[] = [
       ...allHooks.map((h) => ({
         exportType: "hook" as const,
         source: h.source,
-        reason: "Hooks deferred to Phase 5",
+        reason: "Hook 延后至 Phase 5",
       })),
       ...allMcp.map((m) => ({
         exportType: "mcp" as const,
         source: m.source,
-        reason: "MCP deferred to Phase 5",
+        reason: "MCP 延后至 Phase 5",
       })),
     ];
 
@@ -58,38 +58,38 @@ export function resolveExports(
     };
   }
 
-  // Find role
+  // 查找 role
   const role = manifest.roles?.find((r) => r.name === roleName);
   if (!role) {
-    throw new Error(`Role '${roleName}' not found in manifest`);
+    throw new Error(`manifest 中未找到 role '${roleName}'`);
   }
 
-  // Filter skills by role references
+  // 按 role reference 过滤 skill
   const roleSkillNames = new Set(role.skills ?? []);
   const skills = allSkills.filter((s) => roleSkillNames.has(s.name));
 
-  // Validate all referenced skills exist
+  // 校验所有引用的 skill 均存在
   for (const skillRef of role.skills ?? []) {
     if (!allSkills.some((s) => s.name === skillRef)) {
-      throw new Error(`Role '${roleName}' references nonexistent skill: '${skillRef}'`);
+      throw new Error(`Role '${roleName}' 引用了不存在的 skill：'${skillRef}'`);
     }
   }
 
-  // Filter guidance by role references
+  // 按 role reference 过滤 guidance
   const roleGuidanceNames = new Set(role.guidance ?? []);
   const guidance = allGuidance.filter((g) => roleGuidanceNames.has(g.name));
 
-  // Validate all referenced guidance exist
+  // 校验所有引用的 guidance 均存在
   for (const guidanceRef of role.guidance ?? []) {
     if (!allGuidance.some((g) => g.name === guidanceRef)) {
-      throw new Error(`Role '${roleName}' references nonexistent guidance: '${guidanceRef}'`);
+      throw new Error(`Role '${roleName}' 引用了不存在的 guidance：'${guidanceRef}'`);
     }
   }
 
-  // Agents: always included (all of them) regardless of role
+  // 无论 role 如何，始终包含全部 agent
   const agents = allAgents;
 
-  // Hooks: if role specifies hooks, only defer those; otherwise defer all
+  // hook：若 role 指定 hook，则只延后这些；否则全部延后
   const roleHookRefs = new Set(role.hooks ?? []);
   const deferred: DeferredExport[] = [];
 
@@ -98,21 +98,21 @@ export function resolveExports(
       deferred.push({
         exportType: "hook",
         source: hook.source,
-        reason: "Hooks deferred to Phase 5",
+        reason: "Hook 延后至 Phase 5",
       });
     }
   }
 
-  // MCP always deferred
+  // MCP 始终延后
   for (const mcp of allMcp) {
     deferred.push({
       exportType: "mcp",
       source: mcp.source,
-      reason: "MCP deferred to Phase 5",
+      reason: "MCP 延后至 Phase 5",
     });
   }
 
-  // Context is explicitly ignored (human-only docs)
+  // 显式忽略 context（仅供人阅读的文档）
 
   return { skills, guidance, agents, deferred };
 }

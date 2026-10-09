@@ -1,12 +1,11 @@
-// Operator Surface Reconciliation v0 — steering composition route.
+// 操作员表面对账 v0 —— steering 编排路由。
 //
-// Endpoint:
-//   GET /api/steering — composed payload for the /steering UI surface.
+// 端点：
+//   GET /api/steering —— /steering UI 表面的编排载荷。
 //
-// Per PRD § Item 1, returns priority-stack + roadmap-rail + lane-rails
-// in a single payload. The UI fetches in-motion + loop-state from
-// existing PL-005 endpoints and health gates from /api/health-summary
-// (kept separate so the steering composer stays narrow + testable).
+// 按 PRD § Item 1，在单个载荷中返回优先级栈 + roadmap 轨道 + lane 轨道。
+// UI 从既有 PL-005 端点取 in-motion + loop-state，从 /api/health-summary 取健康门
+// （保持分离，使 steering 编排器保持窄且可测）。
 
 import { Hono } from "hono";
 import type { SteeringComposer } from "../domain/steering/steering-composer.js";
@@ -24,7 +23,7 @@ export function steeringRoutes(): Hono {
     if (!composer.isReady()) {
       return c.json({
         error: "steering_workspace_not_configured",
-        hint: "Run rig config init-workspace, or set workspace.steering_path / OPENRIG_STEERING_PATH for non-canonical layouts, then restart the daemon.",
+        hint: "运行 zrig config init-workspace，或为非标准布局设置 workspace.steering_path / OPENRIG_STEERING_PATH，然后重启后台服务。",
       }, 503);
     }
     return c.json(composer.compose());

@@ -53,17 +53,17 @@ function isSelfReferential(source: string, skillPath: string): boolean {
   try {
     const resolved = resolve(trimmed);
     if (resolved === normalizedSkillPath || resolved === normalizedSkillMd) return true;
-  } catch { /* not a valid path */ }
+  } catch { /* 不是有效路径 */ }
 
   try {
     const resolvedFromSkill = resolve(skillPath, trimmed);
     if (resolvedFromSkill === normalizedSkillPath || resolvedFromSkill === normalizedSkillMd) return true;
-  } catch { /* not a valid path */ }
+  } catch { /* 不是有效路径 */ }
 
   try {
     const resolvedFromParent = resolve(dirname(skillPath), trimmed);
     if (resolvedFromParent === normalizedSkillPath || resolvedFromParent === normalizedSkillMd) return true;
-  } catch { /* not a valid path */ }
+  } catch { /* 不是有效路径 */ }
 
   if (trimmed.endsWith("/SKILL.md") && normalizedSkillMd.endsWith(trimmed)) return true;
   return false;
@@ -162,8 +162,8 @@ export function auditSkills(entries: SkillProvenanceEntry[], opts?: { mirrorDrif
       mirrorDriftFindings.push({
         class: "mirror_drift",
         file: change,
-        reason: "Product source differs from canonical mirror",
-        remediation: "Run scripts/mirror-skills.mjs to sync the canonical mirror",
+        reason: "产品 source 与 canonical mirror 不同",
+        remediation: "运行 scripts/mirror-skills.mjs 同步 canonical mirror",
       });
     }
   }
@@ -186,16 +186,16 @@ export function auditSkills(entries: SkillProvenanceEntry[], opts?: { mirrorDrif
         findings.push({
           class: "missing_provenance",
           file: join(entry.path, "SKILL.md"),
-          reason: "No source_ref or version in frontmatter metadata",
-          remediation: "Add metadata.openrig.source_ref or metadata.openrig.version to SKILL.md frontmatter",
+          reason: "frontmatter metadata 中没有 source_ref 或 version",
+          remediation: "在 SKILL.md frontmatter 中添加 metadata.openrig.source_ref 或 metadata.openrig.version",
         });
       }
       if (!owner) {
         findings.push({
           class: "missing_provenance",
           file: join(entry.path, "SKILL.md"),
-          reason: "No owner in frontmatter metadata",
-          remediation: "Add metadata.openrig.owner to SKILL.md frontmatter",
+          reason: "frontmatter metadata 中没有 owner",
+          remediation: "在 SKILL.md frontmatter 中添加 metadata.openrig.owner",
         });
       }
 
@@ -203,22 +203,22 @@ export function auditSkills(entries: SkillProvenanceEntry[], opts?: { mirrorDrif
         findings.push({
           class: "missing_verified",
           file: join(entry.path, "SKILL.md"),
-          reason: "No verified date in frontmatter",
-          remediation: "Add metadata.openrig.last_verified with date and metadata.openrig.source_evidence with the verification source",
+          reason: "frontmatter 中没有 verified 日期",
+          remediation: "添加带日期的 metadata.openrig.last_verified，以及指向验证来源的 metadata.openrig.source_evidence",
         });
       } else if (verified.status === "bare_verified") {
         findings.push({
           class: "bare_verified",
           file: join(entry.path, "SKILL.md"),
-          reason: `Verified date ${verified.date} has no evidence source -- a bare date cannot prove freshness`,
-          remediation: "Add metadata.openrig.source_evidence naming the real verification source (not the SKILL.md filepath)",
+          reason: `Verified 日期 ${verified.date} 没有 evidence source——只有日期无法证明 freshness`,
+          remediation: "添加 metadata.openrig.source_evidence，点名真实验证来源（而非 SKILL.md 文件路径）",
         });
       } else if (verified.status === "stale_verified") {
         findings.push({
           class: "stale_verified",
           file: join(entry.path, "SKILL.md"),
-          reason: `Verified date ${verified.date} is past the ${FRESHNESS_WINDOW_DAYS}-day freshness window`,
-          remediation: `Re-verify against ${verified.source} and update metadata.openrig.last_verified`,
+          reason: `Verified 日期 ${verified.date} 已超过 ${FRESHNESS_WINDOW_DAYS} 天 freshness window`,
+          remediation: `针对 ${verified.source} 重新验证，并更新 metadata.openrig.last_verified`,
         });
       }
     }

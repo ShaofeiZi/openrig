@@ -1,12 +1,11 @@
-// Slice 28 Checkpoint C-4 — skill docs-browser file hooks.
+// Slice 28 Checkpoint C-4 —— 技能文档浏览器的文件 hooks。
 //
-// Wraps the new daemon endpoints (SC-29 EXCEPTION #11 cumulative):
+// 封装新增的后台服务端点（SC-29 EXCEPTION #11 累计）：
 //   GET /api/skills/:id/files/list?path=<rel>  → useSkillFilesList
 //   GET /api/skills/:id/files/read?path=<rel>  → useSkillFilesRead
 //
-// Symmetric with usePluginFiles (slice 28 C-1). The daemon resolves the
-// skill's absolute path internally; UI passes only the skill id +
-// optional relative path within the skill folder.
+// 与 usePluginFiles 对称（slice 28 C-1）。技能的绝对路径由后台服务内部解析；
+// 界面只传技能 id + 技能文件夹内可选的相对路径。
 
 import { useQuery } from "@tanstack/react-query";
 import type { FileEntry } from "./useFiles.js";

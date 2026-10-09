@@ -1,6 +1,6 @@
-// S5 (OPR.0.5.4.7) — the three seat-lifecycle routes: HTTP status mapping per the
-// PRD (400 required-input, 404 not-found, 409 state conflicts, 502 tmux-layer) and
-// the pass-through of the service's named refusals (message + guidance + matches).
+// S5（OPR.0.5.4.7）——三条 seat-lifecycle 路由：按 PRD 映射 HTTP 状态
+//（400 required-input、404 not-found、409 state 冲突、502 tmux 层），
+// 并透传 service 的命名拒绝（message + guidance + matches）。
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
 import { createFullTestDb, createTestApp } from "./helpers/test-app.js";
@@ -32,10 +32,9 @@ describe("POST /api/seat/{set-model,stop,clean}/:seatRef", () => {
 
   function tmux() {
     const t = setup.tmuxAdapter as unknown as Record<string, ReturnType<typeof vi.fn>>;
-    // Fix r1 (row 9baac99f): the service consumes the CLASSIFIED probeSession.
-    // The shared test-app mock predates it; derive a positive-evidence probe
-    // from the test's hasSession mock (present/absent — the blip class is
-    // pinned against the REAL adapter in the service suite, not here).
+    // Fix r1（行 9baac99f）：service 消费 CLASSIFIED probeSession。
+    // 共享 test-app mock 早于它；从测试的 hasSession mock 派生正证据 probe
+    //（present/absent——blip 类在 service 套件中针对真实 adapter 钉死，不在此）。
     if (!t.probeSession) {
       t.probeSession = vi.fn(async (name: string) =>
         (await t.hasSession(name)) ? { state: "present" } : { state: "absent" });
@@ -51,14 +50,14 @@ describe("POST /api/seat/{set-model,stop,clean}/:seatRef", () => {
     });
   }
 
-  it("set-model 200: persists, echoes from/to/changed", async () => {
+  it("set-model 200：持久化，回显 from/to/changed", async () => {
     const { sessionName } = seedSeat();
     const res = await post("set-model", sessionName, { model: "claude-fable-5", reason: "alias migration", operator: "op@rig" });
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true, from: "fable", to: "claude-fable-5", changed: true });
   });
 
-  it("set-model 400 on missing model; 400 on missing reason", async () => {
+  it("set-model 缺 model 返回 400；缺 reason 返回 400", async () => {
     const { sessionName } = seedSeat();
     const noModel = await post("set-model", sessionName, { reason: "x" });
     expect(noModel.status).toBe(400);
@@ -68,12 +67,12 @@ describe("POST /api/seat/{set-model,stop,clean}/:seatRef", () => {
     expect((await noReason.json() as { code: string }).code).toBe("missing_reason");
   });
 
-  it("404 seat_not_found; 409 seat_ambiguous with matches", async () => {
+  it("404 seat_not_found；409 seat_ambiguous 带 matches", async () => {
     seedSeat();
     const missing = await post("set-model", "ghost@seat-rig", { model: "m", reason: "x" });
     expect(missing.status).toBe(404);
 
-    // Same logical id in a second rig → bare ref is ambiguous.
+    // 同一 logical id 在第二个 rig → 裸 ref 歧义。
     const rigB = setup.rigRepo.createRig("seat-rig-b");
     setup.rigRepo.addNode(rigB.id, "dev.impl", { runtime: "claude-code" });
     const ambiguous = await post("set-model", "dev.impl", { model: "m", reason: "x" });
@@ -83,7 +82,7 @@ describe("POST /api/seat/{set-model,stop,clean}/:seatRef", () => {
     expect(body.matches.length).toBe(2);
   });
 
-  it("stop 200 on a live seat; 409 session_not_live on a dead one; 502 on probe failure", async () => {
+  it("stop 在 live seat 返回 200；在死 seat 返回 409 session_not_live；probe 失败返回 502", async () => {
     const { sessionName } = seedSeat();
     tmux().hasSession.mockResolvedValue(true);
     tmux().killSession.mockResolvedValue({ ok: true });
@@ -103,7 +102,7 @@ describe("POST /api/seat/{set-model,stop,clean}/:seatRef", () => {
     expect((await probe.json() as { code: string }).code).toBe("tmux_probe_failed");
   });
 
-  it("clean 409 session_live on a live seat; 200 on a dead one; 409 nothing_to_clean when repeated", async () => {
+  it("clean 在 live seat 返回 409 session_live；在死 seat 返回 200；重复调用返回 409 nothing_to_clean", async () => {
     const { sessionName } = seedSeat();
     tmux().hasSession.mockResolvedValue(true);
     const live = await post("clean", sessionName, { reason: "x" });
@@ -120,14 +119,14 @@ describe("POST /api/seat/{set-model,stop,clean}/:seatRef", () => {
     expect((await again.json() as { code: string }).code).toBe("nothing_to_clean");
   });
 
-  it("launch requires explicit fresh=true", async () => {
+  it("launch 要求显式 fresh=true", async () => {
     const { sessionName } = seedSeat();
     const res = await post("launch", sessionName, { reason: "deliberate blank restart" });
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ ok: false, code: "fresh_required" });
   });
 
-  it("launch route forwards the explicit fresh/stop/reason contract and returns the service result", async () => {
+  it("launch 路由转发显式 fresh/stop/reason 契约并返回 service 结果", async () => {
     const launchFresh = vi.spyOn(SeatLifecycleService.prototype, "launchFresh").mockResolvedValue({
       ok: true,
       seat: { ref: "dev-impl@seat-rig", rigId: "rig-1", rigName: "seat-rig", logicalId: "dev.impl", podId: null, podNamespace: null, runtime: "codex" },

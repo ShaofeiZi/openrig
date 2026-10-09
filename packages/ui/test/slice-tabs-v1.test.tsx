@@ -1,14 +1,14 @@
-// Slice Story View v1 — focused tab tests for the 4 v1 dimensions.
+// Slice Story View v1——4 个 v1 维度的聚焦 tab 测试。
 //
 // Pins:
-//   - TimelineTab: spec-driven phase grouping (no v0 hardcoded legacy enum)
-//   - TimelineTab: untagged events render with neutral palette + label
-//   - AcceptanceTab: Current Step panel renders when bound; absent when not
-//   - AcceptanceTab: PROGRESS.md checkbox view still renders alongside
-//   - TopologyTab: spec graph renders nodes + edges + isCurrent/isEntry/
-//     isTerminal badges + loop-back edge styling when bound
-//   - TopologyTab: per-rig listing still renders alongside spec graph
-//   - TopologyTab: routingType="direct" carved-out — every edge has it
+//   - TimelineTab：spec 驱动 phase 分组（无 v0 硬编码 legacy enum）
+//   - TimelineTab：未 tagged 事件以中性 palette + label 渲染
+//   - AcceptanceTab：绑定时渲染 Current Step 面板；未绑定则无
+//   - AcceptanceTab：PROGRESS.md checkbox 视图仍并列渲染
+//   - TopologyTab：spec graph 渲染 nodes + edges + isCurrent/isEntry/
+//     isTerminal badge + 绑定时 loop-back edge 样式
+//   - TopologyTab：per-rig 列表仍与 spec graph 并列渲染
+//   - TopologyTab：routingType="direct" carved-out——每条 edge 都有
 
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
@@ -64,8 +64,8 @@ describe("PL-slice-story-view-v1 TimelineTab", () => {
       event({ kind: "transition.in-progress", phase: "qa", qitemId: "q-q" }),
     ];
     renderStory(<TimelineTab events={events} phaseDefinitions={SPEC_PHASES} />);
-    // Each row's phase chip uses the spec-declared label (which equals
-    // the actor_role for v1's projector default).
+    // 每行 phase chip 使用 spec 声明 label（等于 v1 projector 默认的
+    // actor_role）。
     expect(screen.getByTestId("story-row-phase-queue.created").textContent).toBe("discovery-router");
     expect(screen.getByTestId("story-row-phase-queue.handed_off").textContent).toBe("delivery-driver");
     expect(screen.getByTestId("story-row-phase-transition.in-progress").textContent).toBe("qa-tester");
@@ -75,17 +75,15 @@ describe("PL-slice-story-view-v1 TimelineTab", () => {
     const events = [event({ kind: "doc.edited", phase: null, qitemId: null })];
     renderStory(<TimelineTab events={events} phaseDefinitions={SPEC_PHASES} />);
     const chip = screen.getByTestId("story-row-phase-doc.edited");
-    expect(chip.textContent).toBe("untagged");
+    expect(chip.textContent).toBe("未标记");
     expect(chip.getAttribute("data-phase-id")).toBe("untagged");
     expect(chip.className).toContain("surface-low");
   });
 
   it("when phaseDefinitions is null (unbound slice), spec phase ids on events fall through exactly", () => {
-    // Edge case: an event somehow carries a phase id but the slice isn't
-    // bound. The chip falls back to displaying the raw phase id rather
-    // than crashing. (Realistic v1 scenario when a previously-bound slice
-    // loses its workflow_instance binding — events were tagged at fetch
-    // time, definitions weren't.)
+    // 边界情况：某事件携带 phase id 但 slice 未绑定。chip 回退显示原始
+    // phase id 而非崩溃。（真实 v1 场景：先前绑定的 slice 失去
+    // workflow_instance 绑定——事件在 fetch 时被 tagged，定义没有。）
     const events = [event({ kind: "queue.created", phase: "step-x" })];
     renderStory(<TimelineTab events={events} phaseDefinitions={null} />);
     expect(screen.getByTestId("story-row-phase-queue.created").textContent).toBe("step-x");
@@ -171,13 +169,13 @@ describe("PL-slice-story-view-v1 AcceptanceTab", () => {
     expect(screen.getByTestId("acceptance-current-step")).toBeDefined();
     expect(screen.getByTestId("acceptance-current-step-id").textContent).toBe("delivery");
     expect(screen.getByTestId("acceptance-current-step-objective").textContent).toContain("Implement the slice");
-    // allowed exits + allowed next steps both present.
+    // allowed exits + allowed next steps 都存在。
     const allowed = screen.getByTestId("acceptance-current-step-allowed-exits");
     expect(allowed.textContent).toContain("handoff");
     expect(allowed.textContent).toContain("waiting");
     expect(allowed.textContent).toContain("failed");
     expect(screen.getByTestId("acceptance-next-step-lifecycle")).toBeDefined();
-    // v0 checkbox view still rendering alongside.
+    // v0 checkbox 视图仍并列渲染。
     expect(screen.getByTestId("acceptance-list")).toBeDefined();
     expect(screen.getByTestId("acceptance-progress-bar")).toBeDefined();
   });
@@ -185,7 +183,7 @@ describe("PL-slice-story-view-v1 AcceptanceTab", () => {
   it("does NOT render Current Step panel when unbound (currentStep=null)", () => {
     render(<AcceptanceTab acceptance={acceptanceShape(null)} />);
     expect(screen.queryByTestId("acceptance-current-step")).toBeNull();
-    // v0 checkbox view still rendering — confirms fallback intact.
+    // v0 checkbox 视图仍渲染——确认 fallback 完整。
     expect(screen.getByTestId("acceptance-list")).toBeDefined();
   });
 
@@ -201,8 +199,8 @@ describe("PL-slice-story-view-v1 AcceptanceTab", () => {
     };
     render(<AcceptanceTab acceptance={acceptanceShape(cs)} />);
     const nextSteps = screen.getByTestId("acceptance-current-step-allowed-next-steps");
-    expect(nextSteps.textContent).toContain("terminal");
-    expect(screen.getByRole("img", { name: "Terminal" })).toBeDefined();
+    expect(nextSteps.textContent).toContain("终端");
+    expect(screen.getByRole("img", { name: "终端" })).toBeDefined();
   });
 });
 
@@ -243,18 +241,18 @@ describe("PL-slice-story-view-v1 TopologyTab", () => {
     expect(screen.getByTestId("topology-spec-graph").getAttribute("data-layout")).toBe("react-flow-dagre");
     expect(screen.getByTestId("slice-workflow-graph")).toBeDefined();
     expect(screen.getByTestId("topology-spec-name").textContent).toBe("test-loop");
-    // Per-step nodes rendered.
+    // per-step nodes 已渲染。
     expect(screen.getByTestId("spec-node-discovery")).toBeDefined();
     expect(screen.getByTestId("spec-node-delivery")).toBeDefined();
     expect(screen.getByTestId("spec-node-qa")).toBeDefined();
-    // Entry + current badges.
+    // entry + current badge。
     expect(screen.getByTestId("spec-node-discovery-entry-badge")).toBeDefined();
     expect(screen.getByTestId("spec-node-delivery-current-badge")).toBeDefined();
     expect(screen.queryByTestId("spec-node-qa-current-badge")).toBeNull();
-    // Edges, including loop-back.
+    // edges，含 loop-back。
     expect(screen.getByTestId("spec-edge-discovery-delivery").getAttribute("data-is-loop-back")).toBe("false");
     expect(screen.getByTestId("spec-edge-qa-discovery").getAttribute("data-is-loop-back")).toBe("true");
-    // Per-rig listing still rendering alongside.
+    // per-rig 列表仍并列渲染。
     expect(screen.getByTestId("topology-rig-listing")).toBeDefined();
     expect(screen.getByTestId("topology-rig-demo")).toBeDefined();
   });
@@ -281,7 +279,7 @@ describe("PL-slice-story-view-v1 TopologyTab", () => {
     const edge = screen.getByTestId("spec-edge-a-b");
     expect(edge.getAttribute("data-routing-type")).toBe("direct");
     expect(screen.getByTestId("spec-node-b-terminal-badge")).toBeDefined();
-    expect(screen.getByRole("img", { name: "Terminal" })).toBeDefined();
+    expect(screen.getByRole("img", { name: "终端" })).toBeDefined();
   });
 
   it("OPR.0.4.1.20: workflow-grammar — Workflow header, per-step state dot bound to isCurrent, read-only + reject->rework legend", async () => {
@@ -301,17 +299,16 @@ describe("PL-slice-story-view-v1 TopologyTab", () => {
     };
     render(makeRouter(topologyShape(sg)));
     await waitFor(() => expect(screen.getByTestId("topology-spec-graph")).toBeDefined());
-    // Tab content header renamed Topology -> Workflow (slice 20). The legacy
-    // capital-T "Topology" header word is gone (the lowercase "Open topology"
-    // rig-listing link is unrelated and untouched).
-    expect(screen.getByTestId("topology-tab").textContent).toContain("Workflow");
-    expect(screen.getByTestId("topology-tab").textContent).not.toContain("Topology");
-    // Read-only spec viz + reject->rework legend (a loop-back edge is present).
+    // Tab 内容 header 由 Topology 改名 Workflow（slice 20）。旧大写
+    // "Topology" header 词已消失（小写 "Open topology" rig-listing 链接无关
+    // 且未动）。
+    expect(screen.getByTestId("topology-tab").textContent).toContain("工作流");
+    // 只读 spec viz + reject->rework legend（存在 loop-back edge）。
     const panel = screen.getByTestId("topology-spec-graph").textContent?.toLowerCase() ?? "";
-    expect(panel).toContain("read-only");
-    expect(panel).toContain("reject");
-    // Topology-grammar card: dark header carries the step ROLE; the state dot
-    // is bound to isCurrent (only the current step is active).
+    expect(panel).toContain("只读");
+    expect(panel).toContain("拒绝");
+    // Topology-grammar card：dark header 携带 step ROLE；state dot 绑定
+    // isCurrent（仅当前 step active）。
     expect(screen.getByTestId("spec-node-plan").textContent).toContain("planner");
     expect(screen.getByTestId("spec-node-build-state-dot").getAttribute("data-active")).toBe("true");
     expect(screen.getByTestId("spec-node-plan-state-dot").getAttribute("data-active")).toBe("false");
@@ -324,8 +321,8 @@ describe("PL-slice-story-view-v1 TopologyTab", () => {
   });
 });
 
-// OPR.0.4.4.19 FR-2 — timeline labels prefer the qitem's summary; body
-// remains the drill-in payload.
+// OPR.0.4.4.19 FR-2——timeline label 优先 qitem 的 summary；body 仍是
+// drill-in payload。
 describe("OPR.0.4.4.19 FR-2 TimelineTab summary-first labels", () => {
   function qitem(overrides: Partial<QueueItemDetail>): QueueItemDetail {
     return {
@@ -359,7 +356,7 @@ describe("OPR.0.4.4.19 FR-2 TimelineTab summary-first labels", () => {
     renderStory(<TimelineTab events={events} phaseDefinitions={SPEC_PHASES} queueItemsById={byId} />);
     expect(screen.getByTestId("story-row-body-queue.created").textContent).toContain("agent-speak body");
     cleanup();
-    // No qitem at all → the event summary fallback (existing behavior preserved).
+    // 完全无 qitem -> event summary fallback（既有行为保留）。
     renderStory(<TimelineTab events={events} phaseDefinitions={SPEC_PHASES} />);
     expect(screen.getByTestId("story-row-body-queue.created").textContent).toContain("event-level summary");
   });

@@ -1,16 +1,16 @@
 import { describe, it, expect, vi } from "vitest";
 import { makePredecessorRecapResolver } from "../src/domain/predecessor-recap-resolver.js";
 
-// Production resolver for the seat-handover boot recap (the permanent claude-runtime leg of
-// scrollback preservation): given the departing seat's
-// node/runtime/session, resolve its provider record path (claude transcript_path / codex rollout_path)
-// and parse the last N exchanges. Pure + injected deps → unit-testable without a live daemon.
+// seat-handover boot recap 的 production resolver（scrollback preservation 的永久 claude-runtime
+// 环节）：给定 departing seat 的 node/runtime/session，解析其 provider record path
+//（Claude transcript_path / Codex rollout_path）及最后 N 次 exchange。纯函数 + 注入依赖，因此无需
+// live daemon 即可进行 unit test。
 
-describe("makePredecessorRecapResolver", () => {
-  it("claude: reads the sidecar record and parses the last-N exchanges (no codex probe)", () => {
+describe("makePredecessorRecapResolver 前任摘要解析", () => {
+  it("Claude：读取 sidecar record 并解析最后 N 次 exchange（不执行 Codex probe）", () => {
     const readClaudeRecord = vi.fn(() => ({ transcriptPath: "/home/.claude/projects/x/abc.jsonl", sessionId: "sid-1" }));
     const readCodexTranscriptPath = vi.fn(() => null);
-    const lookupResumeToken = vi.fn(() => "sid-1"); // predecessor token matches the sidecar owner
+    const lookupResumeToken = vi.fn(() => "sid-1"); // predecessor token 与 sidecar owner 匹配
     const parseExchanges = vi.fn(() => [
       { role: "user", content: "finish the atom" },
       { role: "assistant", content: "done" },
@@ -38,7 +38,7 @@ describe("makePredecessorRecapResolver", () => {
     });
   });
 
-  it("B16 ownership guard: a sidecar whose session_id is NOT the predecessor's returns a NAMED unavailable (never another tenure's recap)", () => {
+  it("B16 ownership guard：session_id 不属于 predecessor 的 sidecar 返回具名 unavailable（绝不返回另一 tenure 的 recap）", () => {
     const parseExchanges = vi.fn(() => [{ role: "user", content: "successor boot noise" }]);
     const resolve = makePredecessorRecapResolver({
       readClaudeRecord: () => ({ transcriptPath: "/p/successor.jsonl", sessionId: "successor-id" }),
@@ -51,13 +51,13 @@ describe("makePredecessorRecapResolver", () => {
 
     expect("unavailableReason" in out).toBe(true);
     if ("unavailableReason" in out) {
-      expect(out.unavailableReason).toContain("successo"); // names the colliding session id prefix
+      expect(out.unavailableReason).toContain("successo"); // 点名冲突 session id prefix
       expect(out.unavailableReason).toContain("predeces");
     }
-    expect(parseExchanges).not.toHaveBeenCalled(); // never parses the wrong tenure's record
+    expect(parseExchanges).not.toHaveBeenCalled(); // 绝不解析错误 tenure 的 record
   });
 
-  it("B16 fail-open: missing session_id or missing predecessor token skips the guard and resolves by path", () => {
+  it("B16 fail-open：缺少 session_id 或 predecessor token 时跳过 guard，并按 path 解析", () => {
     const resolve = makePredecessorRecapResolver({
       readClaudeRecord: () => ({ transcriptPath: "/p/abc.jsonl", sessionId: null }),
       readCodexTranscriptPath: () => null,
@@ -68,7 +68,7 @@ describe("makePredecessorRecapResolver", () => {
     expect("recap" in out).toBe(true);
   });
 
-  it("codex: looks up the departing resume token, reads the codex rollout_path, parses", () => {
+  it("Codex：查询 departing resume token，读取 Codex rollout_path 并解析", () => {
     const readClaudeRecord = vi.fn(() => ({ transcriptPath: null, sessionId: null }));
     const readCodexTranscriptPath = vi.fn(() => "/home/.codex/sessions/roll.jsonl");
     const lookupResumeToken = vi.fn(() => "codex-thread-xyz");
@@ -89,7 +89,7 @@ describe("makePredecessorRecapResolver", () => {
     expect(out).toEqual({ recap: [{ role: "assistant", content: "handing over" }], recordPath: "/home/.codex/sessions/roll.jsonl" });
   });
 
-  it("no record path resolves to a NAMED unavailable (parse not attempted)", () => {
+  it("无 record path 时解析为具名 unavailable（不尝试 parse）", () => {
     const parseExchanges = vi.fn(() => []);
     const resolve = makePredecessorRecapResolver({
       readClaudeRecord: () => ({ transcriptPath: null, sessionId: null }),
@@ -103,7 +103,7 @@ describe("makePredecessorRecapResolver", () => {
     expect(parseExchanges).not.toHaveBeenCalled();
   });
 
-  it("bounds each exchange's content at maxCharsPerExchange with a visible truncation marker", () => {
+  it("将每次 exchange content 限制在 maxCharsPerExchange，并显示 truncation marker", () => {
     const long = "x".repeat(800);
     const resolve = makePredecessorRecapResolver({
       readClaudeRecord: () => ({ transcriptPath: "/p/abc.jsonl", sessionId: null }),
@@ -119,12 +119,12 @@ describe("makePredecessorRecapResolver", () => {
     const out = resolve({ nodeId: "n", runtime: "claude-code", sessionName: "s" });
     if (!("recap" in out)) throw new Error("expected recap");
     expect(out.recap[0]).toEqual({ role: "user", content: "short" });
-    expect(out.recap[1]!.content).toHaveLength(100 + "… [truncated; full text in the predecessor record]".length);
+    expect(out.recap[1]!.content).toHaveLength(100 + "… [已截断；完整文本见前任记录]".length);
     expect(out.recap[1]!.content.startsWith("x".repeat(100))).toBe(true);
-    expect(out.recap[1]!.content).toContain("[truncated; full text in the predecessor record]");
+    expect(out.recap[1]!.content).toContain("[已截断；完整文本见前任记录]");
   });
 
-  it("caps per-exchange content at 500 chars by default (a pasted-file exchange must not flood the successor pane)", () => {
+  it("默认将每次 exchange content 限制在 500 字符（粘贴文件的 exchange 不得淹没 successor pane）", () => {
     const resolve = makePredecessorRecapResolver({
       readClaudeRecord: () => ({ transcriptPath: "/p/abc.jsonl", sessionId: null }),
       readCodexTranscriptPath: () => null,
@@ -135,11 +135,11 @@ describe("makePredecessorRecapResolver", () => {
     const out = resolve({ nodeId: "n", runtime: "claude-code", sessionName: "s" });
     if (!("recap" in out)) throw new Error("expected recap");
     expect(out.recap[0]!.content.startsWith("y".repeat(500))).toBe(true);
-    expect(out.recap[0]!.content).toContain("[truncated; full text in the predecessor record]");
+    expect(out.recap[0]!.content).toContain("[已截断；完整文本见前任记录]");
     expect(out.recap[0]!.content.length).toBeLessThan(600);
   });
 
-  it("a record with zero exchanges resolves to a NAMED unavailable citing the path (no fabrication)", () => {
+  it("零 exchange record 解析为引用 path 的具名 unavailable（不伪造）", () => {
     const resolve = makePredecessorRecapResolver({
       readClaudeRecord: () => ({ transcriptPath: "/p/empty.jsonl", sessionId: null }),
       readCodexTranscriptPath: () => null,

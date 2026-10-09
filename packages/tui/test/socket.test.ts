@@ -35,8 +35,8 @@ function ask(sockPath: string, lines: string[]): Promise<string[]> {
   });
 }
 
-describe("control-socket adapter (spike-adopted; arch boundary constraint)", () => {
-  it("deep-links a named screen through the ONE resolver/mutation path and replies with structured state", async () => {
+describe("control-socket 适配器（spike 采纳；架构边界约束）", () => {
+  it("经唯一 resolver/mutation 路径 deep-link 具名屏幕并回结构化状态", async () => {
     const view = createViewState({ instanceId: "tui-sock", getSnapshot: () => snap });
     open = await createControlSocket({ socketPath: shortSockPath(), view });
     const [reply] = await ask(open.path, ["agent dev50.driver"]);
@@ -47,7 +47,7 @@ describe("control-socket adapter (spike-adopted; arch boundary constraint)", () 
     expect(view.get().drill.at(-1)).toEqual({ kind: "agent", name: "dev50.driver" });
   });
 
-  it("answers a read-only state query (OBSERVE class)", async () => {
+  it("应答只读状态查询（OBSERVE 类）", async () => {
     const view = createViewState({ instanceId: "tui-sock", getSnapshot: () => snap });
     open = await createControlSocket({ socketPath: shortSockPath(), view });
     const [reply] = await ask(open.path, ["state"]);
@@ -56,28 +56,28 @@ describe("control-socket adapter (spike-adopted; arch boundary constraint)", () 
     expect(parsed.state.screen).toBe("topology");
   });
 
-  it("rejects non-grammar verbs with the grammar's NAMED error — the socket has NO verb surface beyond the one resolver (arch line 1+2)", async () => {
+  it("用 grammar 命名错误拒绝非 grammar 动词——socket 除唯一 resolver 外无动词面（架构线 1+2）", async () => {
     const view = createViewState({ instanceId: "tui-sock", getSnapshot: () => snap });
     open = await createControlSocket({ socketPath: shortSockPath(), view });
     const [reply] = await ask(open.path, ["resolve item-42"]);
     const parsed = JSON.parse(reply!);
     expect(parsed.ok).toBe(false);
-    expect(parsed.error).toMatch(/unknown command "resolve"/);
-    // and the state was NOT mutated by the rejected verb
+    expect(parsed.error).toMatch(/未知命令 "resolve"/);
+    // 且状态未被拒绝的动词变更
     expect(view.get().section).toBe("topology");
     expect(view.get().drill).toEqual([]);
   });
 
-  it("rejects a tab outside its content context and exposes the active view tab", async () => {
+  it("拒绝内容上下文外的 tab 并暴露活动视图 tab", async () => {
     const view = createViewState({ instanceId: "tui-sock", getSnapshot: () => snap });
     open = await createControlSocket({ socketPath: shortSockPath(), view });
     const [bad, good, state] = await ask(open.path, ["tab yaml", "spec openrig-build-rig", "state"]);
-    expect(JSON.parse(bad!).error).toMatch(/not available/);
+    expect(JSON.parse(bad!).error).toMatch(/不可用/);
     expect(JSON.parse(good!).viewTab).toBe("configuration");
     expect(JSON.parse(state!).state.viewTab).toBe("configuration");
   });
 
-  it("addresses the instance root and RECENT tab through the control socket", async () => {
+  it("经 control socket 寻址实例根与 RECENT tab", async () => {
     const view = createViewState({ instanceId: "tui-sock", getSnapshot: () => snap });
     open = await createControlSocket({ socketPath: shortSockPath(), view });
     const [host, recent, state] = await ask(open.path, ["host vm-host", "tab recent", "state"]);
@@ -86,13 +86,13 @@ describe("control-socket adapter (spike-adopted; arch boundary constraint)", () 
     expect(JSON.parse(state!).state).toMatchObject({ viewTab: "recent", drill: ["host:vm-host"] });
   });
 
-  it("refuses socket paths beyond the sun_path limit with a named error", async () => {
+  it("用命名错误拒绝超 sun_path 上限的 socket 路径", async () => {
     const view = createViewState({ instanceId: "tui-sock", getSnapshot: () => snap });
     const tooLong = path.join(os.tmpdir(), "x".repeat(MAX_SOCKET_PATH_BYTES + 1) + ".sock");
-    await expect(createControlSocket({ socketPath: tooLong, view })).rejects.toThrow(/socket path too long/);
+    await expect(createControlSocket({ socketPath: tooLong, view })).rejects.toThrow(/套接字路径过长/);
   });
 
-  it("defaults the socket home to $OPENRIG_HOME/run (herdr-style convention) and stays under the limit", () => {
+  it("默认 socket home 为 $OPENRIG_HOME/run（herdr 风格约定）且不超上限", () => {
     const p = defaultSocketPath("tui-1");
     expect(p).toMatch(/[/\\]run[/\\]tui-tui-1\.sock$/);
     expect(Buffer.byteLength(p)).toBeLessThanOrEqual(MAX_SOCKET_PATH_BYTES);

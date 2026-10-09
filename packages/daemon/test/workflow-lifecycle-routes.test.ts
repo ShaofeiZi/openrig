@@ -72,7 +72,7 @@ describe("S06 lifecycle HTTP surface", () => {
     ]));
   }
 
-  it("compiles read-only, instantiates once, replays once, and rejects changed source bytes", async () => {
+  it("以只读方式 compile、只 instantiate 一次、只 replay 一次，并拒绝已变更 source byte", async () => {
     const beforeCompile = counts();
     const compile = await app.request("/api/workflow/compile", {
       method: "POST",
@@ -142,7 +142,7 @@ describe("S06 lifecycle HTTP surface", () => {
     expect(runtime.specCache.getByNameVersion(firstBody.instance.workflowName, changedBody.instance.workflowVersion)?.spec.steps[0]?.objective).toBe("changed bytes");
   });
 
-  it("exposes packet-addressed route, occurrence-addressed resume, and global abort", async () => {
+  it("公开 packet-addressed route、occurrence-addressed resume 与 global abort", async () => {
     const specPath = join(root, "parallel.yaml");
     writeFileSync(specPath, PARALLEL_SPEC);
     const create = await app.request("/api/workflow/instantiate", {

@@ -13,7 +13,7 @@ async function main(): Promise<void> {
     .filter((node) => !logicalIdFilter || node.logicalId === logicalIdFilter);
 
   if (nodes.length === 0) {
-    console.error(`No agent nodes found for rig '${rig}'.`);
+    console.error(`工作组 '${rig}' 中未找到智能体节点。`);
     process.exitCode = 1;
     return;
   }
@@ -36,16 +36,16 @@ async function main(): Promise<void> {
   if (json) {
     console.log(JSON.stringify(summary, null, 2));
   } else {
-    console.log(`Native resume probe: ${rig}`);
+    console.log(`原生恢复探测：${rig}`);
     for (const result of results) {
       console.log(
         `- ${result.logicalId} [${result.runtime}] ${result.status}: ${result.detail}`
       );
       if (result.command) {
-        console.log(`  command: ${result.command}`);
+        console.log(`  命令：${result.command}`);
       }
       if (result.paneCommand) {
-        console.log(`  pane: ${result.paneCommand}`);
+        console.log(`  窗格：${result.paneCommand}`);
       }
     }
   }

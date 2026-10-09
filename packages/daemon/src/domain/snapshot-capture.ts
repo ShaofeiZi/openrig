@@ -34,19 +34,19 @@ export class SnapshotCapture {
 
   constructor(deps: SnapshotCaptureDeps) {
     if (deps.db !== deps.rigRepo.db) {
-      throw new Error("SnapshotCapture: rigRepo must share the same db handle");
+      throw new Error("SnapshotCapture：rigRepo 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.sessionRegistry.db) {
-      throw new Error("SnapshotCapture: sessionRegistry must share the same db handle");
+      throw new Error("SnapshotCapture：sessionRegistry 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.eventBus.db) {
-      throw new Error("SnapshotCapture: eventBus must share the same db handle");
+      throw new Error("SnapshotCapture：eventBus 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.snapshotRepo.db) {
-      throw new Error("SnapshotCapture: snapshotRepo must share the same db handle");
+      throw new Error("SnapshotCapture：snapshotRepo 必须共享同一个数据库句柄");
     }
     if (deps.db !== deps.checkpointStore.db) {
-      throw new Error("SnapshotCapture: checkpointStore must share the same db handle");
+      throw new Error("SnapshotCapture：checkpointStore 必须共享同一个数据库句柄");
     }
 
     this.db = deps.db;
@@ -58,18 +58,17 @@ export class SnapshotCapture {
   }
 
   captureSnapshot(rigId: string, kind: string, opts?: { intendedNodeIds?: string[] }): Snapshot {
-    // 1. Get rig with nodes, edges, bindings
+    // 1. 获取工作组及其节点、边和绑定。
     const rig = this.rigRepo.getRig(rigId);
     if (!rig) {
       throw new RigNotFoundError(rigId);
     }
 
-    // 2. Get sessions with resume metadata
+    // 2. 获取带恢复元数据的会话。
     const sessions = this.sessionRegistry.getSessionsForRig(rigId);
 
-    // 2b. OPR.0.5.7.1 D1 — capture the ACTIVE-OCCUPANT relation explicitly,
-    // through the ONE shared derivation (active-occupant.ts) that the live
-    // no-snapshot preview also uses, so the sibling paths cannot drift.
+    // 2b. OPR.0.5.7.1 D1 —— 通过实时无快照预览也使用的唯一共享派生逻辑
+    // （active-occupant.ts），显式捕获 ACTIVE-OCCUPANT 关系，避免同级路径发生漂移。
     const recorded = kind === "auto-rehydrate" ? readFreshOccupantRelations(this.db, rigId) : {};
     const activeSessionIdByNode = kind === "auto-rehydrate"
       ? deriveRehydrateSessionIdByNode(sessions, rig.nodes.map((n) => n.id), recorded)
@@ -86,13 +85,13 @@ export class SnapshotCapture {
       new Set(intendedNodeIds).size !== intendedNodeIds.length
       || intendedNodeIds.some((nodeId) => !allNodeIds.has(nodeId))
     ) {
-      throw new Error("Snapshot intended roster must contain unique node ids belonging to the target rig");
+      throw new Error("快照的预期名册必须包含属于目标工作组的唯一节点 ID");
     }
 
-    // 3. Get checkpoints as map (latest per node)
+    // 3. 以映射形式获取检查点（每个节点取最新一条）。
     const checkpoints = this.checkpointStore.getCheckpointsForRig(rigId);
 
-    // 4. Get pods + continuity state + startup context
+    // 4. 获取 pod、连续性状态和启动上下文。
     const podRows = this.db.prepare("SELECT * FROM pods WHERE rig_id = ?")
       .all(rigId) as Array<{ id: string; rig_id: string; namespace: string; label: string; summary: string | null; continuity_policy_json: string | null; created_at: string }>;
     const podIds = podRows.map((p) => p.id);
@@ -113,16 +112,16 @@ export class SnapshotCapture {
       } : null;
     }
 
-    // 4b. Get env receipt from services record if services exist
+    // 4b. 若存在服务记录，则从中获取环境回执。
     const servicesRecord = this.rigRepo.getServicesRecord(rigId);
     let envReceipt: import("./types.js").EnvReceipt | null = null;
     if (servicesRecord?.latestReceiptJson) {
       try {
         envReceipt = JSON.parse(servicesRecord.latestReceiptJson);
-      } catch { /* receipt_only — no checkpoint available */ }
+      } catch { /* receipt_only——没有可用检查点。 */ }
     }
 
-    // 5. Assemble SnapshotData
+    // 5. 组装 SnapshotData。
     const data: SnapshotData = {
       rig: rig.rig,
       nodes: rig.nodes,
@@ -146,7 +145,7 @@ export class SnapshotCapture {
       envReceipt,
     };
 
-    // 5. Atomic: persist snapshot + event in one transaction
+    // 5. 原子操作：在同一事务中持久化快照与事件。
     const txn = this.db.transaction(() => {
       const snapshot = this.snapshotRepo.createSnapshot(rigId, kind, data);
       const persistedEvent = this.eventBus.persistWithinTransaction({
@@ -160,7 +159,7 @@ export class SnapshotCapture {
 
     const { snapshot, persistedEvent } = txn();
 
-    // 6. Notify subscribers after commit (best-effort)
+    // 6. 提交后通知订阅方（尽力而为）。
     this.eventBus.notifySubscribers(persistedEvent);
 
     return snapshot;
@@ -174,11 +173,11 @@ export class SnapshotCapture {
     try {
       const parsed = JSON.parse(row.payload) as { intendedNodeIds?: unknown };
       if (!Array.isArray(parsed.intendedNodeIds) || !parsed.intendedNodeIds.every((id) => typeof id === "string")) {
-        throw new Error("latest topology roster event has no string intendedNodeIds array");
+        throw new Error("最新拓扑名册事件没有字符串 intendedNodeIds 数组");
       }
       return parsed.intendedNodeIds;
     } catch (error) {
-      throw new Error(`Cannot capture snapshot from malformed authoritative topology roster: ${(error as Error).message}`);
+      throw new Error(`无法从格式错误的权威拓扑名册捕获快照：${(error as Error).message}`);
     }
   }
 }

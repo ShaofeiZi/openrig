@@ -1,16 +1,12 @@
-// V0.3.1 slice 12 walk-item 1 — mission scope data layer.
+// V0.3.1 slice 12 walk-item 1——任务目标工作范围数据层。
 //
-// GET /api/missions/:missionId returns aggregated mission metadata:
-//   - missionId: echo of the requested id
-//   - missionPath: absolute filesystem path of the mission folder
-//                  (the parent of the slices folder containing the
-//                  matched slices)
-//   - slices: SliceListEntry[] filtered to entries with this missionId
+// GET /api/missions/:missionId 返回聚合后的任务目标 metadata：
+//   - missionId：回显请求 id
+//   - missionPath：任务目标目录的绝对文件系统路径，即包含匹配 slice 的 slices 目录之父目录
+//   - slices：筛选出 missionId 匹配项的 SliceListEntry[]
 //
-// The route does NOT itself read README.md / PROGRESS.md content —
-// the UI fetches those via the existing /api/files/read route through
-// the generalized useScopeMarkdown hook. This route is the mission
-// METADATA layer; the file content layer is reused.
+// 本路由不自行读取 README.md / PROGRESS.md 内容；UI 通过通用 useScopeMarkdown hook，
+// 经既有 /api/files/read 路由获取。这里是任务目标 metadata 层，复用文件内容层。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -98,7 +94,7 @@ afterEach(() => {
 });
 
 describe("GET /api/missions/:missionId", () => {
-  it("returns 200 with missionPath + slices filtered to the requested mission", async () => {
+  it("返回 200、missionPath，以及按请求任务目标筛选的 slices", async () => {
     writeSliceInMission(missionsRoot, "getting-started", "first-slice", { status: "active" });
     writeSliceInMission(missionsRoot, "getting-started", "second-slice", { status: "done" });
     writeSliceInMission(missionsRoot, "other-mission", "third-slice", { status: "active" });
@@ -116,7 +112,7 @@ describe("GET /api/missions/:missionId", () => {
     expect(body.slices.every((s) => s.missionId === "getting-started")).toBe(true);
   });
 
-  it("returns 404 when no slices exist for the missionId", async () => {
+  it("missionId 下不存在 slice 时返回 404", async () => {
     writeSliceInMission(missionsRoot, "getting-started", "first-slice", { status: "active" });
 
     const res = await app.request("/api/missions/unknown-mission");
@@ -125,7 +121,7 @@ describe("GET /api/missions/:missionId", () => {
     expect(body.error).toBe("mission_not_found");
   });
 
-  it("returns 503 when the indexer isn't wired", async () => {
+  it("indexer 未接线时返回 503", async () => {
     const bareApp = new Hono();
     bareApp.route("/api/missions", missionsRoutes());
     const res = await bareApp.request("/api/missions/anything");
@@ -134,7 +130,7 @@ describe("GET /api/missions/:missionId", () => {
     expect(body.error).toBe("slices_indexer_unavailable");
   });
 
-  it("returns 503 when the indexer is not ready (slices root not configured)", async () => {
+  it("indexer 未就绪（未配置 slices 根）时返回 503", async () => {
     const emptyIndexer = new SliceIndexer({
       slicesRoot: "",
       dogfoodEvidenceRoot: null,
@@ -147,7 +143,7 @@ describe("GET /api/missions/:missionId", () => {
     expect(body.error).toBe("slices_root_not_configured");
   });
 
-  it("only counts slices with the exact missionId (no substring match)", async () => {
+  it("只统计精确 missionId 匹配的 slice（不做子串匹配）", async () => {
     writeSliceInMission(missionsRoot, "release-0.3.1", "slice-a", { status: "active" });
     writeSliceInMission(missionsRoot, "release-0.3.1-followup", "slice-b", { status: "active" });
 
@@ -157,10 +153,9 @@ describe("GET /api/missions/:missionId", () => {
     expect(body.slices.map((s) => s.name)).toEqual(["slice-a"]);
   });
 
-  // V0.3.1 slice 13 walk-item 7 — mission frontmatter workflow_spec
-  // declaration + projected topology.
+  // V0.3.1 slice 13 walk-item 7——任务目标 frontmatter workflow_spec 声明与拓扑投影。
   describe("workflow_spec + topology (slice 13)", () => {
-    it("returns workflow_spec from mission README frontmatter when declared", async () => {
+    it("已声明时返回任务目标 README frontmatter 中的 workflow_spec", async () => {
       writeMissionReadme(missionsRoot, "getting-started", {
         status: "active",
         workflow_spec: "openrig-velocity@1.0",
@@ -175,7 +170,7 @@ describe("GET /api/missions/:missionId", () => {
       expect(body.workflow_spec).toEqual({ name: "openrig-velocity", version: "1.0" });
     });
 
-    it("returns workflow_spec: null when mission README has no declaration", async () => {
+    it("任务目标 README 未声明时返回 workflow_spec: null", async () => {
       writeMissionReadme(missionsRoot, "plain-mission", { status: "active" });
       writeSliceInMission(missionsRoot, "plain-mission", "child-slice", { status: "active" });
 
@@ -184,12 +179,12 @@ describe("GET /api/missions/:missionId", () => {
       expect(body.workflow_spec).toBeNull();
     });
 
-    it("returns topology.specGraph when workflow_spec declared AND the spec is in the cache", async () => {
-      // Migrate workflow_specs table for the spec cache to use.
+    it("已声明 workflow_spec 且缓存中存在 spec 时返回 topology.specGraph", async () => {
+      // 迁移 workflow_specs 表供 spec cache 使用。
       migrate(db, [workflowSpecsSchema]);
       const specCache = new WorkflowSpecCache(db);
 
-      // Hand-author a minimal spec file + cache it through.
+      // 手工编写最小 spec 文件并写入缓存。
       const specPath = path.join(cleanupRoot, "openrig-velocity.workflow.yaml");
       fs.writeFileSync(specPath, [
         "workflow:",
@@ -230,14 +225,14 @@ describe("GET /api/missions/:missionId", () => {
       expect(body.topology.specGraph!.nodes.length).toBeGreaterThan(0);
     });
 
-    it("returns topology: { specGraph: null } when workflow_spec declared but spec NOT in cache", async () => {
+    it("已声明 workflow_spec 但缓存中没有 spec 时返回 topology: { specGraph: null }", async () => {
       writeMissionReadme(missionsRoot, "unbound-mission", {
         status: "active",
         workflow_spec: "ghost-spec@9.9",
       });
       writeSliceInMission(missionsRoot, "unbound-mission", "child-slice", { status: "active" });
 
-      // No spec cache wired; the route falls through to specGraph: null.
+      // 未接入 spec cache；路由回退到 specGraph: null。
       const res = await app.request("/api/missions/unbound-mission");
       const body = (await res.json()) as {
         workflow_spec: { name: string } | null;

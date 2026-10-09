@@ -1,37 +1,28 @@
-# OpenRig 0.4.6 canonical single-rig RSI factory MVP (OPR.0.4.6.FAC2).
+# OpenRig 0.4.6 canonical 单 rig RSI 工厂 MVP（OPR.0.4.6.FAC2）。
 #
-# ONE rig + ONE workflow = the recursive-self-improvement factory MVP. The
-# in-band INNER LOOP is a bounded, engine-routed SDLC:
+# 一个 rig + 一个 workflow = 递归自我改进工厂 MVP。带内内循环是由引擎路由的有界 SDLC：
 #   plan → implement → qa_check → review → release
-# under the enforceable max_hops guard (WF-1 sanction); a failing check or
-# review routes back to implement for bounded remediation; exceptions route via
-# the WF-5 dial (orchestrator-first); the release leg PREPARES and holds the ship
-# decision at a human gate (publish is a human act). Runs on the shipped engine
-# with the v0 hardcode seam (target.rig baked + preferred_targets) — no binding
-# layer needed.
+# 受可执行的 max_hops 守卫约束（WF-1 许可）；检查或评审失败会路由回 implement 进行有界修复；
+# 异常通过 WF-5 拨盘路由（orchestrator 优先）；release 环节准备发布内容，并在人工 gate 挂起发布
+# 决策（publish 是人工行为）。运行于已发布引擎，使用 v0 硬编码接缝（固化 target.rig +
+# preferred_targets），无需绑定层。
 #
-# The RSI recursion is the DECOUPLED dogfood edge: the dogfood seat runs
-# out-of-band and continuously against the SHIPPED product (not a second QA on
-# the build artifact) and feeds its findings into the next plan — ungated, with
-# no loop-stop in the MVP. The exact continuous out-of-band runtime mechanism is
-# refined in a later release; here the inner loop is in-band and dogfood is the
-# out-of-band feed, referenced by the `dogfood` role below.
+# RSI 递归是解耦的 dogfood 边：dogfood 席位带外持续面向已发布产品运行（不是对构建产物做第二轮
+# QA），并把发现反馈到下一份计划；MVP 中无 gate、无循环停止。精确的持续带外 runtime 机制将在
+# 后续版本完善；此处内循环位于带内，dogfood 是带外输入，由下方 `dogfood` 角色引用。
 workflow:
   id: factory-rsi
   version: 1
   objective: >
-    Plan, build, check, review, and release one slice as a bounded,
-    deterministic, engine-routed inner loop on a single rig. Dogfood runs
-    out-of-band against the shipped product and feeds its findings into the next
-    plan — the RSI edge, with no human required.
+    在单个 rig 上，以有界、确定性且由引擎路由的内循环规划、构建、检查、评审和发布一个 slice。
+    Dogfood 带外面向已发布产品运行，并将发现反馈到下一份计划——这就是无需人工参与的 RSI 边。
   target:
     rig: factory-rsi
   entry:
     role: planner
   coordination_terminal_turn_rule: hot_potato
-  # Exceptions route orchestrator-first (the WF-5 v1.3 dial); the human knows
-  # at altitude via the awareness row. The orchestrator role below is the dial
-  # target — resolved through the same role→preferred_targets mechanism.
+  # 异常优先路由给 orchestrator（WF-5 v1.3 拨盘）；人工通过 awareness 行在高层获知。下方
+  # orchestrator 角色是拨盘目标，通过相同的 role→preferred_targets 机制解析。
   exception_routing:
     default: orchestrator
     orchestrator_role: orchestrator
@@ -54,10 +45,8 @@ workflow:
     orchestrator:
       skill_refs: [openrig-user, orchestration-team]
       preferred_targets: [orch-lead@factory-rsi]
-    # The dogfood role is DECOUPLED from the inner loop: it runs out-of-band
-    # against the SHIPPED product and feeds findings into the next plan (the RSI
-    # edge). It is intentionally NOT an inner-loop step here; the continuous
-    # out-of-band runtime mechanism is refined in a later release.
+    # dogfood 角色与内循环解耦：它带外面向已发布产品运行，并把发现反馈到下一份计划（RSI 边）。
+    # 此处有意不把它设为内循环步骤；持续带外 runtime 机制将在后续版本完善。
     dogfood:
       skill_refs: [openrig-user, dogfood, systematic-debugging]
       preferred_targets: [dogfood-tester@factory-rsi]
@@ -65,16 +54,15 @@ workflow:
     - id: plan
       actor_role: planner
       objective: >
-        Turn the current input — the product corpus on cycle 1, or the recorded
-        out-of-band dogfood findings thereafter — into ONE buildable slice spec.
-        The findings arrive as recorded closure evidence, never chat.
+        将当前输入——第 1 个周期的产品语料，或此后记录下来的带外 dogfood 发现——转化为一个
+        可构建的 slice spec。发现以记录下来的闭环证据到达，绝不通过聊天。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
         suggested_roles: [implementer]
     - id: implement
       actor_role: implementer
-      objective: Build the slice per the plan and produce proof for the check.
+      objective: 按计划构建 slice，并为检查产出证据。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
@@ -82,9 +70,8 @@ workflow:
     - id: qa_check
       actor_role: qa
       objective: >
-        Check the built artifact. Passing hands to review; a FAILING check (the
-        artifact's verdict, not the step's dysfunction) routes back to implement
-        for bounded remediation.
+        检查构建产物。通过则交给 review；检查失败（产物判定，而非步骤故障）则路由回 implement
+        进行有界修复。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
@@ -94,8 +81,7 @@ workflow:
     - id: review
       actor_role: reviewer
       objective: >
-        Review the artifact (cross-runtime diversity vs the builder). Passing
-        hands to the release prep; a failing review routes back to implement.
+        评审产物（与构建者采用跨 runtime 多样性）。通过则交给发布准备；评审失败则路由回 implement。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
         mode: require
@@ -105,32 +91,27 @@ workflow:
     - id: release_prep
       actor_role: release_manager
       objective: >
-        Prepare the release notes, docs/website updates, and the release PR, and
-        record the cycle's release evidence at `proof/PROOF.md` in the workspace
-        (the `evidence_ref` the sign-off gate points at). This is the
-        release-manager's ACTUAL work and it runs BEFORE any gate — the prepared
-        artifacts exist first; publish stays a human act (held at release_signoff).
+        准备发布说明、文档/网站更新与发布 PR，并在工作区的 `proof/PROOF.md` 记录本周期发布证据
+        （sign-off gate 指向的 `evidence_ref`）。这是 release-manager 的实际工作，且在所有 gate
+        之前运行——先有准备好的产物；publish 仍是人工行为（在 release_signoff 挂起）。
       allowed_exits: [handoff, waiting, failed]
       next_hop:
-        # Explicit step-id route (NOT suggested_roles): release_prep and
-        # release_signoff share the release_manager actor_role, so a role-based
-        # hop would be ambiguous (it would match the first release_manager step).
-        # The prepared artifacts therefore exist BEFORE the human gate below.
+        # 显式 step-id 路由（不是 suggested_roles）：release_prep 和 release_signoff 共用
+        # release_manager actor_role，因此基于角色的 hop 有歧义（会匹配第一个 release_manager
+        # 步骤）。所以准备好的产物会在下方人工 gate 之前存在。
         on:
           handoff: release_signoff
     - id: release_signoff
       actor_role: release_manager
       objective: >
-        Hold the ship decision at the human gate, against the release artifacts
-        already prepared in release_prep. Approval lets the human proceed to
-        publish; nothing is published automatically.
+        针对 release_prep 中已准备好的发布产物，在人工 gate 挂起发布决策。批准后由人工继续
+        publish；不会自动发布任何内容。
       allowed_exits: [done, waiting, failed]
       gate:
         target: human@kernel
-        summary: "RSI cycle clean; release artifacts prepared — sign off to publish (publish is a human act)."
-        # Workspace-relative pointer to the release evidence release_prep records
-        # (the same convention the shipped gated-release.yaml example uses); it is
-        # produced in the running workspace per cycle, not a slice file.
+        summary: "RSI 周期状态正常；发布产物已准备——请批准发布（publish 是人工行为）。"
+        # 指向 release_prep 所记录发布证据的工作区相对路径（与已发布 gated-release.yaml 示例
+        # 使用相同约定）；它在运行中的工作区按周期生成，不是 slice 文件。
         evidence_ref: proof/PROOF.md
       next_hop:
         mode: forbid
@@ -140,13 +121,12 @@ workflow:
     closure_required: true
     allowed_exits: [handoff, waiting, done, failed]
   loop_guards:
-    # ENFORCEABLE (integer >= 1) — sanctions the bounded remediation loops
-    # (qa_check→implement, review→implement); the WF-1 validator requires it and
-    # the Argo unbounded-recursion lesson demands it. A trip becomes a WF-5
-    # exception; a resume grants one more bounded window (WF-5 FR-4 livelock rail).
+    # 可强制执行（整数 >= 1）——许可有界修复循环（qa_check→implement、review→implement）；
+    # WF-1 验证器要求此项，Argo 无界递归教训也要求它。触发后成为 WF-5 异常；resume 会批准
+    # 一个新的有界窗口（WF-5 FR-4 活锁护栏）。
     max_hops: 20
     spawn_budget: 0
   closure:
-    success: RSI cycle clean; release candidate prepared and held at the human ship gate.
-    degraded: Cycle stopped with a named blocker or a bounded max_hops trip awaiting resume.
-    failed: Step failed as an exception; preserve the finding and route via the dial.
+    success: RSI 周期状态正常；发布候选项已准备，并在人工发布 gate 挂起。
+    degraded: 周期因明确的阻塞项或有界 max_hops 触发而停止，等待 resume。
+    failed: 步骤以异常形式失败；保留发现并通过拨盘路由。

@@ -18,10 +18,10 @@ function documentHeader(content: string): string {
 }
 
 /**
- * Derive expiry advisories for versioned capability deltas at a mission root.
- * The event is deliberately conjunctive: canon must name the exact delta in its
- * header AND a distinct successor file must exist. Missing or unreadable inputs
- * remain unknown/live and never turn the advisory into a gate.
+ * 在任务目标根目录为带版本的能力增量派生过期建议。
+ * 该事件刻意采用合取条件：canon 必须在其头部明确命名该增量，
+ * 且必须存在一个独立的后继文件。缺失或不可读的输入保持未知/存活状态，
+ * 绝不把建议变成门禁。
  */
 export function capabilityDeltaExpiryFindings(missionDir: string): AuditFinding[] {
   let filenames: string[];
@@ -69,8 +69,8 @@ export function capabilityDeltaExpiryFindings(missionDir: string): AuditFinding[
       kind: "expired_capability_delta",
       severity: "medium",
       path: deltaPath,
-      message: `Capability delta ${identity} reached its expiry event: canon header ${canonRef} names it and successor ${successorRef} exists; it is citable no more.`,
-      remediation: `Stop citing ${filename}; use the successor delta and archive this release-specific artifact when the release procedure calls for it.`,
+      message: `能力增量 ${identity} 已到达过期事件：canon 头部 ${canonRef} 命名了它，且后继文件 ${successorRef} 已存在；不再可被引用。`,
+      remediation: `停止引用 ${filename}；使用后继增量，并在发布流程要求时归档此发布专属产物。`,
     });
   }
   return findings;

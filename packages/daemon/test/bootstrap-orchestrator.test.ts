@@ -73,7 +73,7 @@ function createMockExec(responses: Record<string, string | Error>): ExecFn {
   }) as unknown as ExecFn;
 }
 
-// Minimal mock RigInstantiator that returns success
+// 返回成功的最小 mock RigInstantiator。
 function createMockInstantiator(db: Database.Database) {
   return {
     db,
@@ -198,8 +198,8 @@ describe("BootstrapOrchestrator", () => {
     });
   }
 
-  // T1: Plan mode returns plan, 0 bootstrap_actions rows
-  it("plan mode returns plan with zero bootstrap_actions rows", async () => {
+  // T1：plan 模式返回计划，bootstrap_actions 为 0 行。
+  it("plan 模式返回计划且 bootstrap_actions 为 0 行", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
     const orch = buildOrchestrator();
 
@@ -213,7 +213,7 @@ describe("BootstrapOrchestrator", () => {
     expect(actions).toHaveLength(0);
   });
 
-  it("pod-aware plan resolves selector-only skills from the configured catalog", async () => {
+  it("pod-aware plan 从已配置 catalog 解析仅 selector 指定的技能", async () => {
     const catalog = path.join(tmpDir, "managed-skills");
     const project = path.join(tmpDir, "project");
     fs.mkdirSync(path.join(tmpDir, "agents", "impl"), { recursive: true });
@@ -276,8 +276,8 @@ edges: []
     expect(resolveSkillsRoot).toHaveBeenCalledOnce();
   });
 
-  // T2: Apply --yes executes all stages
-  it("apply --yes executes all stages and completes", async () => {
+  // T2：apply --yes 执行全部 stage。
+  it("apply --yes 执行全部 stage 并完成", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
     const orch = buildOrchestrator();
 
@@ -289,8 +289,8 @@ edges: []
     expect(result.stages.some((s) => s.stage === "import_rig")).toBe(true);
   });
 
-  // T3: Runtime not_found -> blocked
-  it("missing required runtime blocks apply", async () => {
+  // T3：runtime not_found → blocked。
+  it("缺少必需 runtime 时阻止 apply", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
     const exec = createMockExec({}); // All commands fail
     const orch = buildOrchestrator({ exec });
@@ -298,11 +298,11 @@ edges: []
     const result = await orch.bootstrap({ mode: "apply", sourceRef: specPath, autoApprove: true });
 
     expect(result.status).toBe("failed");
-    expect(result.errors.some((e) => e.includes("not found"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("未找到"))).toBe(true);
   });
 
-  // T4: Missing requirement in plan
-  it("missing requirement appears in plan stage", async () => {
+  // T4：plan 中缺少 requirement。
+  it("缺失 requirement 会出现在 plan stage", async () => {
     const pkgDir = path.join(tmpDir, "test-pkg");
     const manifestWithReqs = `
 schema_version: 1
@@ -351,8 +351,8 @@ edges: []
     expect(planStage).toBeDefined();
   });
 
-  // T6: Package install uses Phase 4 engine
-  it("package install links to bootstrap via bootstrap_id", async () => {
+  // T6：package install 使用 Phase 4 engine。
+  it("package install 通过 bootstrap_id 关联 bootstrap", async () => {
     const pkgDir = path.join(tmpDir, "test-pkg");
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": "# Helper" });
 
@@ -364,15 +364,15 @@ edges: []
 
     expect(result.status).toBe("completed");
 
-    // Check package_installs has bootstrap_id set
+    // 检查 package_installs 已设置 bootstrap_id。
     const installs = db.prepare("SELECT * FROM package_installs WHERE bootstrap_id = ?")
       .all(result.runId) as Array<{ id: string; bootstrap_id: string }>;
     expect(installs.length).toBeGreaterThan(0);
     expect(installs[0]!.bootstrap_id).toBe(result.runId);
   });
 
-  // T9: Bootstrap run status transitions
-  it("bootstrap run persisted with correct status", async () => {
+  // T9：Bootstrap run 状态迁移。
+  it("bootstrap run 以正确状态持久化", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
     const orch = buildOrchestrator();
 
@@ -384,8 +384,8 @@ edges: []
     expect(run.rig_id).toBeTruthy();
   });
 
-  // T12: manual_only blocks apply
-  it("manual_only requirements block apply", async () => {
+  // T12：manual_only 阻止 apply。
+  it("manual_only requirement 阻止 apply", async () => {
     const pkgDir = path.join(tmpDir, "test-pkg");
     const manifestWithSysPkg = `
 schema_version: 1
@@ -410,7 +410,7 @@ requirements:
     const specYaml = SPEC_WITH_PACKAGES_YAML;
     const specPath = writeSpec(specYaml);
 
-    // Non-darwin platform so system_packages -> unsupported -> manual_only
+    // 非 darwin 平台，因此 system_packages → unsupported → manual_only。
     const exec = createMockExec({
       "tmux -V": "tmux 3.4",
       "claude --version": "claude 1.0.0",
@@ -438,11 +438,11 @@ requirements:
     const result = await orch.bootstrap({ mode: "apply", sourceRef: specPath, autoApprove: true });
 
     expect(result.status).toBe("failed");
-    expect(result.errors.some((e) => e.includes("manual-only"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("仅允许手动处理"))).toBe(true);
   });
 
-  // T15: Relative packageRef resolved against spec file directory
-  it("relative packageRef resolved against spec file directory", async () => {
+  // T15：相对 packageRef 按 spec 文件目录解析。
+  it("相对 packageRef 按 spec 文件目录解析", async () => {
     const subDir = path.join(tmpDir, "specs");
     fs.mkdirSync(subDir, { recursive: true });
     const pkgDir = path.join(subDir, "my-pkg");
@@ -470,8 +470,8 @@ edges: []
     expect(resolveStage?.status).toBe("ok");
   });
 
-  // T17: Mismatched db handle throws at construction
-  it("mismatched db handle throws at construction", () => {
+  // T17：db handle 不匹配时构造即抛错。
+  it("db handle 不匹配时构造即抛错", () => {
     const db2 = createDb();
     migrate(db2, ALL_MIGRATIONS);
 
@@ -487,13 +487,13 @@ edges: []
         rigInstantiator: { db } as any,
         fsOps: realFsOps(),
       });
-    }).toThrow(/same db handle/);
+    }).toThrow(/共享同一个数据库句柄/);
 
     db2.close();
   });
 
-  // T18: github: ref blocked
-  it("github: packageRef blocked with structured error", async () => {
+  // T18：阻止 github: ref。
+  it("github: packageRef 被结构化错误阻止", async () => {
     const specYaml = `
 schema_version: 1
 name: test-rig
@@ -511,11 +511,11 @@ edges: []
     const result = await orch.bootstrap({ mode: "plan", sourceRef: specPath });
 
     expect(result.status).toBe("failed");
-    expect(result.errors.some((e) => e.includes("Unsupported package ref scheme"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("不支持的软件包引用 scheme"))).toBe(true);
   });
 
-  // T14: Plan includes all stage types
-  it("plan includes runtime + requirement + install plan stages", async () => {
+  // T14：Plan 包含全部 stage 类型。
+  it("plan 包含 runtime、requirement 与 install plan stage", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
     const orch = buildOrchestrator();
 
@@ -529,8 +529,8 @@ edges: []
     expect(stageNames).toContain("build_install_plan");
   });
 
-  // T19: Bare apply without --yes and without approvedActionKeys blocks when external installs exist
-  it("bare apply blocks when external installs exist but no approval provided", async () => {
+  // T19：存在外部安装时，不带 --yes 和 approvedActionKeys 的裸 apply 会阻塞。
+  it("存在外部安装但未提供批准时，裸 apply 会阻塞", async () => {
     const pkgDir = path.join(tmpDir, "test-pkg");
     const manifestWithReqs = `
 schema_version: 1
@@ -561,16 +561,16 @@ requirements:
     });
     const orch = buildOrchestrator({ exec });
 
-    // Apply without --yes or approvedActionKeys
+    // 不带 --yes 或 approvedActionKeys 执行 apply。
     const result = await orch.bootstrap({ mode: "apply", sourceRef: specPath });
 
     expect(result.status).toBe("failed");
-    expect(result.errors.some((e) => e.includes("require approval"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("需要批准"))).toBe(true);
     expect(result.stages.some((s) => s.stage === "execute_external_installs" && s.status === "blocked")).toBe(true);
   });
 
-  // T5: Approved external install executed and journaled
-  it("approved external install executed and journaled to bootstrap_actions", async () => {
+  // T5：执行已批准外部安装，并写 journal。
+  it("执行已批准外部安装，并记录到 bootstrap_actions", async () => {
     const pkgDir = path.join(tmpDir, "test-pkg");
     const manifest = `
 schema_version: 1
@@ -609,8 +609,8 @@ requirements:
     expect(actions.some((a) => a.subject_name === "rg")).toBe(true);
   });
 
-  // T7: Rig import uses instantiator
-  it("rig import uses Phase 3 instantiator and journals result", async () => {
+  // T7：工作组 import 使用 instantiator。
+  it("工作组 import 使用 Phase 3 instantiator 并记录结果", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
     const orch = buildOrchestrator();
 
@@ -623,8 +623,8 @@ requirements:
     expect(importActions[0]!.status).toBe("completed");
   });
 
-  // T8: Partial external install failure continues
-  it("partial external install failure continues, status = partial", async () => {
+  // T8：部分外部安装失败后继续。
+  it("部分外部安装失败后继续，status = partial", async () => {
     const pkgDir = path.join(tmpDir, "test-pkg");
     const manifest = `
 schema_version: 1
@@ -658,14 +658,14 @@ requirements:
 
     const result = await orch.bootstrap({ mode: "apply", sourceRef: specPath, autoApprove: true });
 
-    // External install failure + rig import success -> partial
+    // 外部安装失败 + 工作组 import 成功 → partial。
     expect(result.status).toBe("partial");
-    // Rig import should still have happened
+    // 工作组 import 仍应发生。
     expect(result.stages.some((s) => s.stage === "import_rig" && s.status === "ok")).toBe(true);
   });
 
-  // T10: All actions journaled in seq order
-  it("all actions journaled in correct seq order", async () => {
+  // T10：全部 action 按 seq 顺序写 journal。
+  it("全部 action 以正确 seq 顺序写入 journal", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
     const orch = buildOrchestrator();
 
@@ -673,16 +673,16 @@ requirements:
 
     const actions = db.prepare("SELECT * FROM bootstrap_actions WHERE bootstrap_id = ? ORDER BY seq ASC")
       .all(result.runId) as Array<{ seq: number; action_kind: string }>;
-    // Should have at least runtime checks + rig_import
+    // 至少应包含 runtime check 与 rig_import。
     expect(actions.length).toBeGreaterThanOrEqual(2);
-    // Seq should be strictly increasing
+    // Seq 应严格递增。
     for (let i = 1; i < actions.length; i++) {
       expect(actions[i]!.seq).toBeGreaterThan(actions[i - 1]!.seq);
     }
   });
 
-  // T11: --yes auto-approves auto_approvable actions (with real external install)
-  it("--yes auto-approves auto_approvable action and executor runs it", async () => {
+  // T11：--yes 自动批准 auto_approvable action（含真实外部安装）。
+  it("--yes 自动批准 auto_approvable action，executor 执行它", async () => {
     const pkgDir = path.join(tmpDir, "test-pkg");
     const manifest = `
 schema_version: 1
@@ -715,16 +715,16 @@ requirements:
     }) as unknown as ExecFn;
     const orch = buildOrchestrator({ exec });
 
-    // Without --yes, this would block
+    // 若无 --yes，此处会阻塞。
     const result = await orch.bootstrap({ mode: "apply", sourceRef: specPath, autoApprove: true });
 
-    // --yes should have auto-approved and executor should have run brew install
+    // --yes 应自动批准，executor 应执行 brew install。
     expect(brewInstalls.length).toBeGreaterThanOrEqual(1);
     expect(brewInstalls[0]).toContain("missing-cli");
   });
 
-  // T16: Mixed seq ordering across orchestrator-journaled + executor-journaled rows (startSeq handoff)
-  it("mixed seq ordering across runtime_check + external_install + package_install + rig_import", async () => {
+  // T16：orchestrator 与 executor 写入行的混合 seq 顺序（startSeq 交接）。
+  it("runtime_check、external_install、package_install、rig_import 使用统一混合 seq 顺序", async () => {
     const pkgDir = path.join(tmpDir, "test-pkg");
     const manifest = `
 schema_version: 1
@@ -760,17 +760,17 @@ requirements:
     const actions = db.prepare("SELECT action_kind, seq FROM bootstrap_actions WHERE bootstrap_id = ? ORDER BY seq")
       .all(result.runId) as Array<{ action_kind: string; seq: number }>;
 
-    // Should have: runtime_check(s), requirement_check(s), external_install(s), package_install, rig_import
-    // All with strictly increasing seq and no gaps between orchestrator and executor rows
+    // 应包含 runtime_check、requirement_check、external_install、package_install、rig_import；
+    // 所有 seq 严格递增，orchestrator 与 executor 行之间无断档。
     const kinds = actions.map((a) => a.action_kind);
     expect(kinds).toContain("runtime_check");
     expect(kinds).toContain("external_install"); // Written by executor with startSeq
     expect(kinds).toContain("rig_import");
-    // Seq strictly increasing
+    // Seq 严格递增。
     for (let i = 1; i < actions.length; i++) {
       expect(actions[i]!.seq).toBeGreaterThan(actions[i - 1]!.seq);
     }
-    // Runtime checks before external_install before rig_import
+    // runtime check 先于 external_install，后者先于 rig_import。
     const firstRuntime = actions.findIndex((a) => a.action_kind === "runtime_check");
     const firstExternal = actions.findIndex((a) => a.action_kind === "external_install");
     const firstRigImport = actions.findIndex((a) => a.action_kind === "rig_import");
@@ -778,8 +778,8 @@ requirements:
     expect(firstExternal).toBeLessThan(firstRigImport);
   });
 
-  // T20: selective approvedActionKeys execution
-  it("apply with approvedActionKeys selects specific actions for execution", async () => {
+  // T20：选择性执行 approvedActionKeys。
+  it("apply 使用 approvedActionKeys 选择特定 action 执行", async () => {
     const pkgDir = path.join(tmpDir, "test-pkg");
     const manifest = `
 schema_version: 1
@@ -815,21 +815,21 @@ requirements:
     }) as unknown as ExecFn;
     const orch = buildOrchestrator({ exec });
 
-    // Approve only tool-a
+    // 只批准 tool-a。
     const result = await orch.bootstrap({
       mode: "apply",
       sourceRef: specPath,
       approvedActionKeys: ["external_install:cli_tool:tool-a"],
     });
 
-    // tool-a should be executed, tool-b should be skipped
+    // 应执行 tool-a，跳过 tool-b。
     const brewInstalls = execCalls.filter((c) => c.includes("brew install"));
     expect(brewInstalls.some((c) => c.includes("tool-a"))).toBe(true);
     expect(brewInstalls.some((c) => c.includes("tool-b"))).toBe(false);
   });
 
-  // T21: Unknown approved action keys with real external installs -> blocks
-  it("invalid approvedActionKeys with real installs still blocks", async () => {
+  // T21：真实外部安装中出现未知批准 action key → 阻塞。
+  it("真实安装使用无效 approvedActionKeys 时仍阻塞", async () => {
     const pkgDir = path.join(tmpDir, "test-pkg");
     const manifest = `
 schema_version: 1
@@ -860,7 +860,7 @@ requirements:
     });
     const orch = buildOrchestrator({ exec });
 
-    // Provide only invalid keys — should still block because no real actions are approved
+    // 只提供无效 key；没有真实 action 获批，因此仍应阻塞。
     const result = await orch.bootstrap({
       mode: "apply",
       sourceRef: specPath,
@@ -868,13 +868,13 @@ requirements:
     });
 
     expect(result.status).toBe("failed");
-    expect(result.errors.some((e) => e.includes("require approval"))).toBe(true);
-    expect(result.warnings.some((w) => w.includes("Unknown approved action key"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("需要批准"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("未知的已批准操作键"))).toBe(true);
   });
 
-  // T22: Overlapping requirements from two packages deduplicated
-  it("overlapping requirements from multiple packages deduplicated to one action", async () => {
-    // Create two packages that both require 'ripgrep'
+  // T22：两个 package 的重叠 requirement 去重。
+  it("多个 package 的重叠 requirement 去重为一个 action", async () => {
+    // 创建两个都依赖 'ripgrep' 的 package。
     const pkg1Dir = path.join(tmpDir, "pkg-a");
     const pkg2Dir = path.join(tmpDir, "pkg-b");
     const manifest1 = `
@@ -944,13 +944,13 @@ edges: []
     expect(result.status).toBe("planned");
     const planStage = result.stages.find((s) => s.stage === "build_install_plan");
     const detail = planStage?.detail as { actions: Array<{ requirementName: string }> };
-    // Should be deduplicated to 1 action for ripgrep, not 2
+    // ripgrep 应去重为 1 个 action，而不是 2 个。
     const ripgrepActions = detail.actions.filter((a) => a.requirementName === "ripgrep");
     expect(ripgrepActions).toHaveLength(1);
   });
 
-  // T23: plan probe_requirements.detail includes per-requirement results
-  it("plan probe_requirements detail includes per-requirement results with status", async () => {
+  // T23：plan probe_requirements.detail 包含逐 requirement 结果。
+  it("plan 的 probe_requirements detail 包含带 status 的逐 requirement 结果", async () => {
     const pkgDir = path.join(tmpDir, "test-pkg");
     const manifest = `
 schema_version: 1
@@ -999,9 +999,9 @@ requirements:
     expect(missingResult!.status).toBe("missing");
   });
 
-  // T24: Package install failure skips rig import (R1-F4.3)
-  it("package install failure skips rig import with status=failed", async () => {
-    // Create a package that will fail install (incompatible runtime)
+  // T24：Package 安装失败时跳过工作组 import（R1-F4.3）。
+  it("package 安装失败时跳过工作组 import，并设置 status=failed", async () => {
+    // 创建一个会因 runtime 不兼容而安装失败的 package。
     const pkgDir = path.join(tmpDir, "test-pkg");
     const manifest = `
 schema_version: 1
@@ -1025,30 +1025,30 @@ exports:
     const result = await orch.bootstrap({ mode: "apply", sourceRef: specPath, autoApprove: true });
 
     expect(result.status).toBe("failed");
-    // import_rig should be skipped
+    // 应跳过 import_rig。
     const importStage = result.stages.find((s) => s.stage === "import_rig");
     expect(importStage?.status).toBe("skipped");
-    expect(result.errors.some((e) => e.includes("skipped"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("已跳过"))).toBe(true);
   });
 
-  // === P7-T05: Bundle source tests ===
+  // === P7-T05：Bundle 来源测试 ===
 
-  // T25: Real bundle bootstrap happy path
-  it("bootstrap from rig_bundle resolves vendored packages", async () => {
-    // Create a real bundle
+  // T25：真实 bundle bootstrap 正常路径。
+  it("从 rig_bundle bootstrap 可解析 vendored package", async () => {
+    // 创建真实 bundle。
     const { LegacyBundleAssembler: BundleAssembler } = await import("../src/domain/bundle-assembler.js"); // TODO: AS-T12
     const { computeIntegrity, writeIntegrity } = await import("../src/domain/bundle-integrity.js");
     const { pack } = await import("../src/domain/bundle-archive.js");
     const { LegacyBundleSourceResolver: BundleSourceResolver } = await import("../src/domain/bundle-source-resolver.js"); // TODO: AS-T12
 
-    // Write package source
+    // 写入 package 来源。
     const pkgDir = path.join(tmpDir, "src-pkg");
     writePkg(pkgDir, VALID_MANIFEST_YAML, { "skills/helper/SKILL.md": "# Helper" });
 
-    // Write spec
+    // 写入 spec。
     const specPath = writeSpec(SPEC_WITH_PACKAGES_YAML);
 
-    // Assemble bundle
+    // 组装 bundle。
     const staging = path.join(tmpDir, "staging");
     const assembler = new BundleAssembler({
       fsOps: {
@@ -1064,7 +1064,7 @@ exports:
       packages: [{ name: "test-pkg", version: "1.0.0", sourcePath: pkgDir, originalSource: "./test-pkg", manifestHash: "h1" }],
     });
 
-    // Add integrity
+    // 添加完整性信息。
     const integrityFsOps = {
       readFile: (p: string) => fs.readFileSync(p, "utf-8"),
       readFileBuffer: (p: string) => fs.readFileSync(p),
@@ -1075,11 +1075,11 @@ exports:
     const integrity = computeIntegrity(staging, integrityFsOps);
     writeIntegrity(staging, integrity, integrityFsOps);
 
-    // Pack
+    // 打包。
     const bundlePath = path.join(tmpDir, "test.rigbundle");
     await pack(staging, bundlePath);
 
-    // Bootstrap from bundle
+    // 从 bundle 执行 bootstrap。
     const bundleResolver = new BundleSourceResolver({ fsOps: realFsOps() });
     const exec = createMockExec({
       "tmux -V": "tmux 3.4",
@@ -1111,13 +1111,13 @@ exports:
     expect(result.stages.some((s) => s.stage === "resolve_spec" && s.status === "ok")).toBe(true);
     expect(result.stages.some((s) => s.stage === "resolve_packages" && s.status === "ok")).toBe(true);
 
-    // Verify source_kind recorded
+    // 验证已记录 source_kind。
     const run = db.prepare("SELECT source_kind FROM bootstrap_runs WHERE id = ?")
       .get(result.runId) as { source_kind: string };
     expect(run.source_kind).toBe("rig_bundle");
 
-    // Verify temp dir was cleaned up by the orchestrator's finally block
-    // After the plan completes, no rigbundle- temp dirs should remain from this test
+    // 验证 orchestrator 的 finally 已清理临时目录。plan 完成后不应残留本测试创建的
+    // rigbundle- 临时目录。
     const tmpBase = os.tmpdir();
     const leakedDirs = fs.readdirSync(tmpBase).filter((d) =>
       d.startsWith("rigbundle-") && fs.existsSync(path.join(tmpBase, d, "bundle.yaml"))
@@ -1125,18 +1125,18 @@ exports:
     expect(leakedDirs).toHaveLength(0);
   });
 
-  // T26: rig_bundle with null resolver throws
-  it("rig_bundle with null bundleSourceResolver throws", async () => {
+  // T26：rig_bundle 的 resolver 为 null 时抛错。
+  it("rig_bundle 使用 null bundleSourceResolver 时抛错", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
     const orch = buildOrchestrator();
 
     await expect(
       orch.bootstrap({ mode: "plan", sourceRef: specPath, sourceKind: "rig_bundle" })
-    ).rejects.toThrow(/BundleSourceResolver required/);
+    ).rejects.toThrow(/需要 BundleSourceResolver/);
   });
 
-  // T26: bootstrap_runs records source_kind from options
-  it("bootstrap_runs records source_kind from options", async () => {
+  // T26：bootstrap_runs 从 options 记录 source_kind。
+  it("bootstrap_runs 从 options 记录 source_kind", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
     const orch = buildOrchestrator();
 
@@ -1147,12 +1147,12 @@ exports:
     expect(run.source_kind).toBe("rig_spec");
   });
 
-  it("rejects service-backed pod-bundle launch with honest error before instantiate", async () => {
+  it("实例化前以诚实错误拒绝服务后端 pod-bundle 启动", async () => {
     const { pack } = await import("../src/domain/bundle-archive.js");
     const { computeIntegrity } = await import("../src/domain/bundle-integrity.js");
     const { PodBundleSourceResolver } = await import("../src/domain/bundle-source-resolver.js");
 
-    // Build a minimal v2 pod bundle with a service-backed rig spec
+    // 构建一个带服务后端工作组 spec 的最小 v2 pod bundle。
     const staging = path.join(tmpDir, "svc-bundle-staging");
     fs.mkdirSync(staging, { recursive: true });
 
@@ -1179,7 +1179,7 @@ edges: []
 `.trim();
     fs.writeFileSync(path.join(staging, "rig.yaml"), svcSpecYaml);
     fs.writeFileSync(path.join(staging, "svc.compose.yaml"), "version: '3.8'\nservices:\n  vault:\n    image: hashicorp/vault:1.15\n");
-    // Compute integrity over content files before writing bundle.yaml
+    // 写入 bundle.yaml 前计算内容文件完整性。
     const integrityFsOps = {
       readFile: (p: string) => fs.readFileSync(p, "utf-8"),
       readFileBuffer: (p: string) => fs.readFileSync(p),
@@ -1205,7 +1205,7 @@ ${integrityYaml}
     const bundlePath = path.join(tmpDir, "svc-test.rigbundle");
     await pack(staging, bundlePath);
 
-    // Record existing podbundle- dirs before test
+    // 测试前记录既有 podbundle- 目录。
     const tmpBase = os.tmpdir();
     const preExistingDirs = new Set(fs.readdirSync(tmpBase).filter((d) => d.startsWith("podbundle-")));
 
@@ -1239,21 +1239,21 @@ ${integrityYaml}
     const result = await orch.bootstrap({ mode: "apply", sourceRef: bundlePath, sourceKind: "rig_bundle" });
 
     expect(result.status).toBe("failed");
-    expect(result.errors.some((e: string) => e.includes("Service-backed rigs cannot be launched from .rigbundle"))).toBe(true);
+    expect(result.errors.some((e: string) => e.includes("无法从 .rigbundle 归档启动由服务支持的 rig"))).toBe(true);
     const resolveStage = result.stages.find((s) => s.stage === "resolve_spec" && s.status === "failed");
     expect(resolveStage).toBeDefined();
     expect((resolveStage!.detail as Record<string, unknown>)["code"]).toBe("services_unsupported");
-    // Must NOT have called instantiate
+    // 不得调用 instantiate。
     expect(mockPodInstantiator.instantiate).not.toHaveBeenCalled();
-    // Temp dir must be cleaned up even on rejection — only check dirs created during this test
+    // 即使拒绝也必须清理临时目录；只检查本测试创建的目录。
     const postDirs = fs.readdirSync(tmpBase).filter((d) =>
       d.startsWith("podbundle-") && !preExistingDirs.has(d)
     );
     expect(postDirs).toHaveLength(0);
   });
 
-  // AS-T08b: pod-aware rig spec delegates to podInstantiator
-  it("pod-aware rig spec delegates to podInstantiator via bootstrap", async () => {
+  // AS-T08b：pod-aware 工作组 spec 委托给 podInstantiator。
+  it("pod-aware 工作组 spec 通过 bootstrap 委托给 podInstantiator", async () => {
     const podSpecYaml = `
 version: "0.2"
 name: pod-test-rig
@@ -1272,7 +1272,7 @@ edges: []
     const specPath = path.join(tmpDir, "pod-spec.yaml");
     fs.writeFileSync(specPath, podSpecYaml);
 
-    // Mock podInstantiator
+    // Mock podInstantiator。
     const mockPodInstantiator = {
       db,
       instantiate: vi.fn(async () => ({
@@ -1308,14 +1308,12 @@ edges: []
     expect(mockPodInstantiator.instantiate).toHaveBeenCalledTimes(1);
   });
 
-  // --- Conveyor-Trust Minimal Fix (OPR.0.3.2.CT) — guard verdict
+  // --- Conveyor-Trust 最小修复（OPR.0.3.2.CT）——guard 判定
   //     qitem-20260518082933 BLOCKER 1: mixed launched+attention_required
-  //     must NOT be surfaced as "completed"; orchestrator must route
-  //     attention_required nodes through a partial+blocked import_rig
-  //     stage carrying attentionNodes so the route can build the
-  //     3-part error.
+  //     绝不能显示为 "completed"；orchestrator 必须让 attention_required 节点经过
+  //     携带 attentionNodes 的 partial+blocked import_rig stage，使路由能构建三段式错误。
 
-  it("OPR.0.3.2.CT BLOCKER-1: mixed launched + attention_required → status=partial, import_rig stage=blocked with attentionNodes", async () => {
+  it("OPR.0.3.2.CT 阻断项 1：launched + attention_required 混合 → status=partial，import_rig stage=blocked 且携带 attentionNodes", async () => {
     const podSpecYaml = `
 version: "0.2"
 name: pod-mixed-rig
@@ -1378,7 +1376,7 @@ edges: []
 
     const result = await orch.bootstrap({ mode: "apply", sourceRef: specPath, sourceKind: "rig_spec" });
 
-    // BLOCKER-1: NOT "completed" when any node attention_required.
+    // 阻断项 1：任一节点 attention_required 时不能是 "completed"。
     expect(result.status).toBe("partial");
     expect(result.rigId).toBe("rig-mixed-1");
     const importStage = result.stages.find((s) => s.stage === "import_rig");
@@ -1386,15 +1384,15 @@ edges: []
     expect(importStage!.status).toBe("blocked");
     const detail = importStage!.detail as { code: string; message: string; attentionNodes: Array<{ logicalId: string; sessionName: string; evidence?: string }> };
     expect(detail.code).toBe("attention_required");
-    expect(detail.message).toMatch(/inspect/i);
-    expect(detail.message).not.toMatch(/approve and resume|NOT failed/);
+    expect(detail.message).toContain("检查受影响的会话");
+    expect(detail.message).not.toMatch(/批准并恢复|并非失败/);
     expect(detail.attentionNodes.length).toBe(1);
     expect(detail.attentionNodes[0]!.logicalId).toBe("dev.qa");
     expect(detail.attentionNodes[0]!.sessionName).toBe("dev-qa@pod-mixed-rig");
     expect(detail.attentionNodes[0]!.evidence).toBe("trust prompt visible");
   });
 
-  it("OPR.0.3.2.CT BLOCKER-1: all-launched (no attention, no failed) → status=completed, import_rig=ok (no regression)", async () => {
+  it("OPR.0.3.2.CT 阻断项 1：全部 launched（无 attention/failed）→ status=completed、import_rig=ok（无回归）", async () => {
     const podSpecYaml = `
 version: "0.2"
 name: pod-clean-rig
@@ -1453,7 +1451,7 @@ edges: []
     expect(importStage!.status).toBe("ok");
   });
 
-  it("OPR.0.3.2.CT BLOCKER-1: all-attention_required outcome → status=partial, import_rig=blocked, rigId preserved", async () => {
+  it("OPR.0.3.2.CT 阻断项 1：全部 attention_required → status=partial、import_rig=blocked，并保留 rigId", async () => {
     const podSpecYaml = `
 version: "0.2"
 name: pod-all-attention-rig
@@ -1472,8 +1470,8 @@ edges: []
     const specPath = path.join(tmpDir, "pod-all-attention-spec.yaml");
     fs.writeFileSync(specPath, podSpecYaml);
 
-    // PodRigInstantiator returns the new attention_required outcome
-    // (ok:false with rigId + attentionNodes) when ALL nodes are parked.
+    // 所有节点都 parked 时，PodRigInstantiator 返回新的 attention_required 结果：
+    // ok:false，并携带 rigId + attentionNodes。
     const mockPodInstantiator = {
       db,
       instantiate: vi.fn(async () => ({

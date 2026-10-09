@@ -1,9 +1,8 @@
-// Preview Terminal v0 (PL-018) — single-seat live terminal preview pane.
+// 预览终端 v0（PL-018）——单席位实时终端预览面板。
 //
-// Renders the seat's last N lines via /api/.../preview, auto-refreshing
-// at the operator-configured interval. Includes a Pin / Unpin button +
-// honest "preview unavailable" fallback when the daemon doesn't have
-// the route or the session is unbound.
+// 通过 /api/.../preview 渲染该席位最近 N 行，按操作者配置的间隔自动刷新。
+// 含固定/取消固定按钮，以及当后台服务没有该路由或会话未绑定时的诚实
+// “预览不可用”兜底。
 
 import { useNodePreview, isNodePreviewUnavailable } from "../../hooks/useNodePreview.js";
 import { usePreviewPins } from "./usePreviewPins.js";
@@ -12,13 +11,13 @@ interface PreviewPaneProps {
   rigId: string;
   rigName?: string;
   logicalId: string;
-  /** Optional: override line count from settings. */
+  /** 可选：覆盖设置中的行数。 */
   lines?: number;
-  /** Pause polling — useful for collapsed/hidden parents. */
+  /** 暂停轮询——父级折叠/隐藏时有用。 */
   paused?: boolean;
-  /** Opt out of the Pin button (e.g., when shown inside the Pinned stack). */
+  /** 不显示固定按钮（例如展示在已固定堆叠内部时）。 */
   hidePinButton?: boolean;
-  /** When set, preview shrinks to a compact density. */
+  /** 设置后，预览收缩为紧凑密度。 */
   compact?: boolean;
   testIdPrefix?: string;
 }
@@ -58,7 +57,7 @@ export function PreviewPane({
     >
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[9px] uppercase tracking-[0.10em] text-on-surface-variant truncate">
-          live preview · {logicalId}
+          实时预览 · {logicalId}
         </span>
         {!hidePinButton && (
           <button
@@ -68,24 +67,24 @@ export function PreviewPane({
             onClick={onTogglePin}
             className="font-mono text-[8px] uppercase border border-outline-variant px-1 py-0.5 hover:bg-surface-high shrink-0"
           >
-            {pinned ? "Unpin" : "Pin"}
+            {pinned ? "取消固定" : "固定"}
           </button>
         )}
       </div>
 
       {preview.isLoading && (
-        <div data-testid={`${testIdPrefix}-loading`} className="font-mono text-[9px] text-on-surface-variant">Loading…</div>
+        <div data-testid={`${testIdPrefix}-loading`} className="font-mono text-[9px] text-on-surface-variant">正在加载…</div>
       )}
       {preview.isError && (
         <div data-testid={`${testIdPrefix}-error`} className="font-mono text-[9px] text-red-600">
-          {(preview.error as Error)?.message ?? "Preview failed."}
+          {(preview.error as Error)?.message ?? "预览失败。"}
         </div>
       )}
       {isNodePreviewUnavailable(preview.data) && (
         <div data-testid={`${testIdPrefix}-unavailable`} className="font-mono text-[9px] text-on-surface-variant space-y-0.5">
-          <div>Preview unavailable: {preview.data.reason}.</div>
+          <div>预览不可用：{preview.data.reason}。</div>
           {preview.data.hint && <div className="text-on-surface-variant">{preview.data.hint}</div>}
-          <div className="text-on-surface-variant">Use <code>rig capture {logicalId}</code> from terminal as a fallback.</div>
+          <div className="text-on-surface-variant">可在终端用 <code>zrig capture {logicalId}</code> 作为回退。</div>
         </div>
       )}
       {!isNodePreviewUnavailable(preview.data) && preview.data && (
@@ -94,11 +93,11 @@ export function PreviewPane({
             data-testid={`${testIdPrefix}-content`}
             className={`font-mono text-[9px] text-on-surface bg-background px-2 py-1 ${heightClass} overflow-y-auto whitespace-pre-wrap break-all`}
           >
-            {preview.data.content || "(empty pane)"}
+            {preview.data.content || "（空面板）"}
           </pre>
           <div className="font-mono text-[8px] text-on-surface-variant flex justify-between">
-            <span>captured {new Date(preview.data.capturedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
-            <span>{preview.data.lines} lines</span>
+            <span>捕获于 {new Date(preview.data.capturedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+            <span>{preview.data.lines} 行</span>
           </div>
         </>
       )}

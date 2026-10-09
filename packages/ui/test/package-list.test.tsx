@@ -74,16 +74,16 @@ function renderPackageList() {
 }
 
 describe("PackageList", () => {
-  it("heading shows legacy package tools labeling", async () => {
+  it("页头显示旧版包工具标题", async () => {
     mockFetchPackages(MOCK_PACKAGES);
     renderPackageList();
 
     await waitFor(() => {
-      expect(screen.getByText("LEGACY PACKAGE TOOLS")).toBeTruthy();
+      expect(screen.getByText("旧版包工具")).toBeTruthy();
     });
   });
 
-  it("renders newest packages first so fresh installs are visible", async () => {
+  it("最新包排在最前，使新安装可见", async () => {
     mockFetchPackages(MOCK_PACKAGES);
     renderPackageList();
 
@@ -96,8 +96,8 @@ describe("PackageList", () => {
     expect(cards[1]!.textContent).toContain("acme-standards");
   });
 
-  // Test 1: Renders package cards with name, version, source
-  it("renders package cards with name, version, and source", async () => {
+  // 测试 1：渲染含名称、版本、来源的包卡片
+  it("渲染含名称、版本与来源的包卡片", async () => {
     mockFetchPackages(MOCK_PACKAGES);
     renderPackageList();
 
@@ -113,8 +113,8 @@ describe("PackageList", () => {
     expect(screen.getByText("v1.0.0")).toBeTruthy();
   });
 
-  // Test 2: Card shows install count and latest install status
-  it("card shows install count and latest install status", async () => {
+  // 测试 2：卡片显示安装次数与最近安装状态
+  it("卡片显示安装次数与最近安装状态", async () => {
     mockFetchPackages(MOCK_PACKAGES);
     renderPackageList();
 
@@ -126,11 +126,11 @@ describe("PackageList", () => {
     });
 
     const statuses = screen.getAllByTestId("install-status");
-    expect(statuses[0]!.textContent).toBe("ROLLED BACK");
-    expect(statuses[1]!.textContent).toBe("APPLIED");
+    expect(statuses[0]!.textContent).toBe("已回滚");
+    expect(statuses[1]!.textContent).toBe("已应用");
   });
 
-  it("empty state exposes import and bootstrap entry points without install-package CTA", async () => {
+  it("空态提供导入与引导入口，无安装包 CTA", async () => {
     mockFetchPackages([]);
     renderPackageList();
 
@@ -140,8 +140,8 @@ describe("PackageList", () => {
 
     const importBtn = screen.getByTestId("empty-import-btn");
     const bootstrapBtn = screen.getByTestId("empty-bootstrap-btn");
-    expect(importBtn.textContent).toContain("IMPORT RIGSPEC");
-    expect(bootstrapBtn.textContent).toContain("BOOTSTRAP");
+    expect(importBtn.textContent).toContain("导入 RigSpec");
+    expect(bootstrapBtn.textContent).toContain("引导初始化");
     expect(screen.queryByTestId("empty-install-btn")).toBeNull();
 
     act(() => { fireEvent.click(importBtn); });
@@ -151,7 +151,7 @@ describe("PackageList", () => {
     });
   });
 
-  it("empty state bootstrap CTA navigates to bootstrap flow", async () => {
+  it("空态引导 CTA 跳转到引导流程", async () => {
     mockFetchPackages([]);
     renderPackageList();
 
@@ -166,9 +166,9 @@ describe("PackageList", () => {
     });
   });
 
-  // Test 4: Loading skeleton
-  it("shows loading skeleton while fetching", async () => {
-    // Never resolve fetch
+  // 测试 4：加载骨架屏
+  it("拉取时显示加载骨架屏", async () => {
+    // 永不 resolve 的 fetch
     fetchMock.mockReturnValue(new Promise(() => {}));
     renderPackageList();
 
@@ -177,17 +177,21 @@ describe("PackageList", () => {
     });
   });
 
-  // Test 5: Error state
-  it("shows error state on fetch failure", async () => {
+  // 测试 5：错误态
+  it("拉取失败时显示错误态", async () => {
     mockFetchError();
     renderPackageList();
 
     await waitFor(() => {
       expect(screen.getByTestId("packages-error")).toBeTruthy();
     });
+    // 中文诊断前缀 + 保留底层错误内容（HTTP 500），前缀不替代原错误
+    const packagesError = screen.getByTestId("packages-error");
+    expect(packagesError.textContent).toContain("加载旧版包失败：");
+    expect(packagesError.textContent).toContain("HTTP 500");
   });
 
-  it("header import button navigates to import flow", async () => {
+  it("页头导入按钮跳转到导入流程", async () => {
     mockFetchPackages(MOCK_PACKAGES);
     renderPackageList();
 
@@ -203,7 +207,7 @@ describe("PackageList", () => {
     });
   });
 
-  it("header bootstrap button navigates to bootstrap flow", async () => {
+  it("页头引导按钮跳转到引导流程", async () => {
     mockFetchPackages(MOCK_PACKAGES);
     renderPackageList();
 
@@ -219,8 +223,8 @@ describe("PackageList", () => {
     });
   });
 
-  // Test 8: Card click navigates to package detail
-  it("card click navigates to package detail page", async () => {
+  // 测试 8：点卡片跳转到包详情
+  it("点卡片跳转到包详情页", async () => {
     mockFetchPackages(MOCK_PACKAGES);
 
     render(

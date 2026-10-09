@@ -1,0 +1,82 @@
+{
+"packages/daemon/src/domain/hosts/read-through.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/mission-control/notification-adapter-webhook.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/progress/progress-indexer.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/proof/source-watch.ts": [
+"daemon-core-a",
+"self_reported"
+],
+"packages/daemon/src/domain/mission-control/mission-control-action-log.ts": [
+"daemon-core-k",
+"self_reported"
+],
+"packages/daemon/src/domain/hosts/hosts-registry-writer.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/mission-control/notification-dispatcher.ts": [
+"daemon-core-g",
+"self_reported"
+],
+"packages/daemon/src/domain/mission-control/mission-control-read-layer.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/mission-control/mission-control-write-contract.ts": [
+"daemon-core-f",
+"validated"
+],
+"packages/daemon/src/domain/hosts/hosts-registry-reader.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/mission-control/notification-adapter-ntfy.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/provider/claude-usage-reader.ts": [
+"daemon-core-i",
+"self_reported"
+],
+"packages/daemon/src/domain/mission-control/notification-adapter-types.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/proof/judgments.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/provider/codex-auth-reader.ts": [
+"daemon-core-d",
+"self_reported"
+],
+"packages/daemon/src/domain/hosts/fanout-contract.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/mission-control/audit-browse.ts": [
+"daemon-core-h",
+"self_reported"
+],
+"packages/daemon/src/domain/mission-control/mission-control-fleet-cli-capability.ts": [
+"daemon-core-c",
+"self_reported"
+],
+"packages/daemon/src/domain/hosts/remote-daemon-http.ts": [
+"daemon-core-b",
+"self_reported"
+],
+"packages/daemon/src/domain/provider/host-usage-rollup.ts": [
+"daemon-core-b",
+"self_reported"
+]
+}

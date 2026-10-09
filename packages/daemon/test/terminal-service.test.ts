@@ -1,11 +1,11 @@
-// OPR.0.4.6.02 C3 — TerminalService orchestration (the ONE composer for every
-// view kind). Pure orchestration with injected deps + a fake provider:
-//  - view resolution precedence: mission:/slice: (read-only) · rig name +
-//    rig:<id> alias (interactive) · saved view (per-member read-only) · unknown;
-//  - the one shared {opened,absent,degraded} result shape for resolution
-//    failures too (unknown provider / view_required / view_not_found);
-//  - honest-partial: a dead local seat (has-session false) lands in absent[];
-//  - the composed view handed to the provider carries the composer's partition.
+// OPR.0.4.6.02 C3——TerminalService 编排（所有 view kind 的唯一 composer）。使用注入依赖与
+// fake provider 的纯编排：
+//  - view 解析优先级：mission:/slice:（只读）· rig 名 + rig:<id> 别名（交互式）· saved view
+//    （逐 member 只读）· unknown；
+//  - 解析失败（unknown provider / view_required / view_not_found）也使用同一个共享
+//    {opened,absent,degraded} 结果结构；
+//  - 如实呈现部分结果：死亡的本地 seat（has-session false）进入 absent[]；
+//  - 交给 provider 的组合 view 携带 composer 的 partition。
 
 import { describe, it, expect } from "vitest";
 import { TerminalService, type TerminalServiceDeps } from "../src/domain/terminal/terminal-service.js";
@@ -18,7 +18,7 @@ import type {
 } from "../src/domain/terminal/terminal-provider.js";
 import type { LiveSeatRow, SavedView } from "../src/domain/terminal/terminal-views-store.js";
 
-/** A provider that records the composed view it was handed and reports success. */
+/** 记录收到的组合 view 并报告成功的 provider。 */
 class RecordingProvider implements TerminalProvider {
   readonly name: string;
   lastView: ComposedView | null = null;
@@ -86,20 +86,20 @@ function makeDeps(overrides: Partial<TerminalServiceDeps> = {}): {
   return { deps, herdr, cmux };
 }
 
-describe("TerminalService — view resolution + one-shape result", () => {
-  it("opens a rig NAME as an interactive derived view (read-write panes)", async () => {
+describe("TerminalService——view 解析 + 统一结构结果", () => {
+  it("将 rig 名作为交互式派生 view 打开（读写 pane）", async () => {
     const { deps, herdr } = makeDeps();
     const svc = new TerminalService(deps);
     const res = await svc.openView({ view: "acme-build" });
     expect(res.provider).toBe("herdr");
     expect(res.ok).toBe(true);
     expect(res.opened).toEqual(["dev-driver@acme-build", "rev-r1@acme-build"]);
-    // interactive → no `-r` in the composed pane commands
+    // 交互式 → 组合 pane 命令中没有 `-r`。
     expect(herdr.lastView?.opened.every((p) => p.readOnly === false)).toBe(true);
     expect(herdr.lastView?.opened[0]?.paneCommand).toBe("tmux attach -t 'dev-driver@acme-build'");
   });
 
-  it("the rig:<id> alias form resolves the same rig (the rig-scoped route delegation)", async () => {
+  it("rig:<id> 别名形式解析到同一个 rig（rig 范围 route delegation）", async () => {
     const { deps, herdr } = makeDeps();
     const svc = new TerminalService(deps);
     const res = await svc.openView({ view: "rig:rig-id-1" });
@@ -108,7 +108,7 @@ describe("TerminalService — view resolution + one-shape result", () => {
     expect(res.opened.length).toBe(2);
   });
 
-  it("opens a pod:<rig>/<pod> as an interactive derived view (AC-5 launcher target)", async () => {
+  it("将 pod:<rig>/<pod> 作为交互式派生 view 打开（AC-5 launcher target）", async () => {
     const { deps, herdr } = makeDeps();
     const svc = new TerminalService(deps);
     const res = await svc.openView({ view: "pod:acme-build/dev" });
@@ -118,14 +118,14 @@ describe("TerminalService — view resolution + one-shape result", () => {
     expect(herdr.lastView?.id).toBe("pod:acme-build/dev");
   });
 
-  it("a malformed or unknown pod view → view_not_found", async () => {
+  it("畸形或未知 pod view → view_not_found", async () => {
     const { deps } = makeDeps();
     const svc = new TerminalService(deps);
     expect((await svc.openView({ view: "pod:acme-build" })).code).toBe("view_not_found"); // no /pod
     expect((await svc.openView({ view: "pod:acme-build/ghost" })).code).toBe("view_not_found"); // unknown pod
   });
 
-  it("opens mission:/slice: as a READ-ONLY derived view (cross-rig observational)", async () => {
+  it("将 mission:/slice: 作为只读派生 view 打开（跨 rig 观测）", async () => {
     const { deps, herdr } = makeDeps();
     const svc = new TerminalService(deps);
     const res = await svc.openView({ view: "mission:4.6" });
@@ -134,7 +134,7 @@ describe("TerminalService — view resolution + one-shape result", () => {
     expect(herdr.lastView?.opened[0]?.paneCommand).toContain("attach -r -t");
   });
 
-  it("opens a saved view with per-member read-only", async () => {
+  it("打开带逐 member 只读设置的 saved view", async () => {
     const { deps, herdr } = makeDeps();
     const svc = new TerminalService(deps);
     const res = await svc.openView({ view: "watchtower" });
@@ -144,7 +144,7 @@ describe("TerminalService — view resolution + one-shape result", () => {
     expect(byReadOnly["builder@acme-ops"]).toBe(false);
   });
 
-  it("routes to the named provider (cmux best-effort)", async () => {
+  it("路由到具名 provider（cmux best-effort）", async () => {
     const { deps, cmux } = makeDeps();
     const svc = new TerminalService(deps);
     const res = await svc.openView({ view: "acme-build", provider: "cmux" });
@@ -152,17 +152,17 @@ describe("TerminalService — view resolution + one-shape result", () => {
     expect(cmux.lastView).not.toBeNull();
   });
 
-  it("names a dead local seat in absent[] (honest-partial via has-session refine)", async () => {
+  it("在 absent[] 中点名死亡的本地 seat（通过 has-session 细化如实呈现部分结果）", async () => {
     const { deps } = makeDeps({ hasSession: (s) => s !== "rev-r1@acme-build" });
     const svc = new TerminalService(deps);
     const res = await svc.openView({ view: "acme-build" });
     expect(res.opened).toEqual(["dev-driver@acme-build"]);
     expect(res.absent.map((a) => a.seat)).toContain("rev-r1@acme-build");
-    // a partial-with-names open is still ok (disclosure, not failure)
+    // 带名称的部分 open 仍为 ok（披露，而非失败）。
     expect(res.ok).toBe(true);
   });
 
-  it("unknown view → the one shared shape with code view_not_found", async () => {
+  it("未知 view → 统一结构，code 为 view_not_found", async () => {
     const { deps } = makeDeps();
     const svc = new TerminalService(deps);
     const res = await svc.openView({ view: "no-such-thing" });
@@ -171,7 +171,7 @@ describe("TerminalService — view resolution + one-shape result", () => {
     expect(res.opened).toEqual([]);
   });
 
-  it("explicit rig:<x> that resolves nowhere is view_not_found (never falls through to saved)", async () => {
+  it("无法解析的显式 rig:<x> 为 view_not_found（绝不回退到 saved）", async () => {
     const { deps } = makeDeps();
     const svc = new TerminalService(deps);
     const res = await svc.openView({ view: "rig:watchtower" });
@@ -179,7 +179,7 @@ describe("TerminalService — view resolution + one-shape result", () => {
     expect(res.code).toBe("view_not_found");
   });
 
-  it("unknown provider → code unknown_provider (400-class), no composition", async () => {
+  it("未知 provider → code unknown_provider（400 类），不执行组合", async () => {
     const { deps } = makeDeps();
     const svc = new TerminalService(deps);
     const res = await svc.openView({ view: "acme-build", provider: "tmate" });
@@ -187,14 +187,14 @@ describe("TerminalService — view resolution + one-shape result", () => {
     expect(res.code).toBe("unknown_provider");
   });
 
-  it("empty view → code view_required", async () => {
+  it("空 view → code view_required", async () => {
     const { deps } = makeDeps();
     const svc = new TerminalService(deps);
     const res = await svc.openView({ view: "   " });
     expect(res.code).toBe("view_required");
   });
 
-  it("listViews returns saved views + openable rig names", async () => {
+  it("listViews 返回 saved view 和可打开的 rig 名", async () => {
     const { deps } = makeDeps();
     const svc = new TerminalService(deps);
     const res = await svc.listViews();
@@ -202,7 +202,7 @@ describe("TerminalService — view resolution + one-shape result", () => {
     expect(res.rigs).toEqual(["acme-build"]);
   });
 
-  it("status reports each provider; an unknown named provider is honestly unavailable", async () => {
+  it("status 报告每个 provider；未知具名 provider 如实标为 unavailable", async () => {
     const { deps } = makeDeps();
     const svc = new TerminalService(deps);
     const all = await svc.status();
@@ -212,8 +212,8 @@ describe("TerminalService — view resolution + one-shape result", () => {
   });
 });
 
-describe("one terminal catalog inventory", () => {
-  it("uses one batch for derived entries and preserves the complete default catalog", async () => {
+describe("统一 terminal catalog inventory", () => {
+  it("使用一个 batch 处理派生 entry，并保留完整默认 catalog", async () => {
     const normal = makeDeps();
     const expected = await new TerminalService(normal.deps).listViews(true);
     let batches = 0; let singles = 0;

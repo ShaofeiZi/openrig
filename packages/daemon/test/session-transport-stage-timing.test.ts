@@ -82,7 +82,7 @@ function mockTmux(overrides?: Partial<{
   } as unknown as TmuxAdapter;
 }
 
-describe("SessionTransport stage timing", () => {
+describe("SessionTransport stage timing 记录", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -111,7 +111,7 @@ describe("SessionTransport stage timing", () => {
     } as never);
   }
 
-  it("records the four real verify-path stages in source order with durations", async () => {
+  it("按 source 顺序记录四个真实 verify-path stage 及其 duration", async () => {
     const timer = new RecordingStageTimer();
     let captures = 0;
     const result = await transport(mockTmux({
@@ -129,7 +129,7 @@ describe("SessionTransport stage timing", () => {
     expect(timer.records.every((r) => r.outcome === "ok")).toBe(true);
   });
 
-  it("attributes a transport timeout/failure to its exact stage without adding a new timeout", async () => {
+  it("将 transport timeout/failure 归因到精确 stage，且不增加新 timeout", async () => {
     const timer = new RecordingStageTimer();
     const result = await transport(mockTmux({
       sendText: async () => ({ ok: false, code: "timeout", message: "tmux send timed out" }),
@@ -143,13 +143,16 @@ describe("SessionTransport stage timing", () => {
     ]);
   });
 
-  it("wires the recorder through createDaemon into the production SessionTransport", async () => {
+  it("通过 createDaemon 将 recorder 接入 production SessionTransport", async () => {
     const timer = new RecordingStageTimer();
     const oldNoKernel = process.env.OPENRIG_NO_KERNEL;
     process.env.OPENRIG_NO_KERNEL = "1";
     const daemon = await createTestDaemon({
       dbPath: ":memory:",
-      tmuxExec: async (command: string) => command.includes("capture-pane") ? "idle\n❯ " : "",
+      tmuxExec: async (command: string) => {
+        if (command.includes("list-panes")) return "%1|0|/tmp|80|24|1";
+        return command.includes("capture-pane") ? "idle\n❯ " : "";
+      },
       cmuxExec: async () => "",
       slowOpRecorder: timer,
     } as never);
@@ -161,7 +164,10 @@ describe("SessionTransport stage timing", () => {
       });
       const session = daemon.deps.sessionRegistry.registerSession(node.id, "dev-impl@composed-timing-rig");
       daemon.deps.sessionRegistry.updateStatus(session.id, "running");
-      daemon.deps.sessionRegistry.updateBinding(node.id, { tmuxSession: "dev-impl@composed-timing-rig" });
+      daemon.deps.sessionRegistry.updateBinding(node.id, {
+        tmuxSession: "dev-impl@composed-timing-rig",
+        tmuxPane: "%1",
+      });
 
       const result = await daemon.deps.sessionTransport!.send(
         "dev-impl@composed-timing-rig",

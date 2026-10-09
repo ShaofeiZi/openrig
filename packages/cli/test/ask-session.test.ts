@@ -98,7 +98,7 @@ describe("rig ask --session (L2 CLI)", () => {
       await makeCmd().parseAsync(["node", "rig", "ask", "my-rig", "SECRET_MARKER", "--session", "abc-123"]);
     });
     const out = logs.join("\n");
-    expect(out).toContain("Session: abc-123");
+    expect(out).toContain("问题：SECRET_MARKER");
     expect(out).toContain("SECRET_MARKER");
   });
 
@@ -108,6 +108,6 @@ describe("rig ask --session (L2 CLI)", () => {
     });
     const out = logs.join("\n");
     expect(out).toMatch(/token/i);
-    expect(out).toContain("[not found]");
+    expect(out).toContain("[未找到]");
   });
 });

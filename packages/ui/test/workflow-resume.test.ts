@@ -1,8 +1,7 @@
-// OPR.0.4.6.WF4 — guard blocker 1 regression. The instance-page Resume button is
-// the only in-scope web mutation (route-from-web is deferred). It is a thin client
-// of POST /api/workflow/:id/resume, which REQUIRES a structured `actorSession` and
-// returns 400 without it (routes/workflow.ts:266). This regression fails on the
-// prior empty-body POST.
+// OPR.0.4.6.WF4——guard blocker 1 回归。instance 页 Resume 按钮是
+// 范围内唯一 web 变更（route-from-web 延后）。它是 POST
+// /api/workflow/:id/resume 的瘦客户端，该 POST 要求结构化 `actorSession`，
+// 缺失则返回 400（routes/workflow.ts:266）。本回归在旧空 body POST 上失败。
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { postResume } from "../src/components/workflow/WorkflowInstancePage.js";
@@ -22,8 +21,8 @@ describe("WF-4 guard blocker 1: web Resume sends a structured actorSession", () 
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toContain("/api/workflow/01ABC/resume");
     expect(calls[0].init.method).toBe("POST");
-    // The body must be JSON with a NON-empty actorSession — the exact contract
-    // the route enforces (empty/absent → 400).
+    // body 必须是带非空 actorSession 的 JSON——路由强制的精确契约
+    //（空/缺失 → 400）。
     const body = JSON.parse(String(calls[0].init.body));
     expect(typeof body.actorSession).toBe("string");
     expect(body.actorSession.length).toBeGreaterThan(0);

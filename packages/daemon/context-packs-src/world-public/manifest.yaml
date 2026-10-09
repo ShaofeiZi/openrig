@@ -6,12 +6,21 @@ files:
   - path: start-here.md
     role: orientation
     summary: "Derive where you are, what to trust, and which context belongs in a world."
+  - path: start-here.zh-CN.md
+    role: orientation
+    summary: "推导自己身在何处、应信任什么，以及哪些上下文属于世界（简体中文）。"
   - path: build-your-world.md
     role: convention
     summary: "The minimal authoring convention and a book-world exercise."
+  - path: build-your-world.zh-CN.md
+    role: convention
+    summary: "最小编写约定与书籍世界练习（简体中文）。"
   - path: boundaries.md
     role: boundaries
     summary: "What this public world covers, excludes, and cannot decide."
+  - path: boundaries.zh-CN.md
+    role: boundaries
+    summary: "这个公开世界涵盖、排除以及无法决定的内容（简体中文）。"
   - path: claims.yaml
     role: claims
     summary: "Every authored claim mapped to a failing check or an explicit honesty flag."

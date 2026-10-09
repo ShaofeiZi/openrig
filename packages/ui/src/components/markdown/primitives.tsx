@@ -1,7 +1,6 @@
-// 0.3.1 slice 06 — spatial primitives used by kind layouts + fenced
-// block renderers. Honors OpenRig vellum tokens (no Thariq palette
-// literals); square corners except the 12px status dots; tactical
-// drafting aesthetic per project_v1_professional_grade_ship_gate.
+// 0.3.1 slice 06——供类型布局和围栏块渲染器使用的空间原语。遵循 zrig vellum 令牌，
+// 不使用 Thariq 色板字面量；除 12px 状态圆点外均为直角；按
+// project_v1_professional_grade_ship_gate 采用战术制图美学。
 
 import type {
   TimelineEntry,
@@ -13,25 +12,25 @@ import type {
 } from "./storytelling-primitives.js";
 
 // -----------------------------------------------------------------------------
-// Status → token mapping (shared across primitives)
+// 状态 → 令牌映射（原语间共享）
 // -----------------------------------------------------------------------------
 
 const STATUS_TOKENS: Record<TimelineStatus, { dot: string; ink: string; label: string }> = {
-  success: { dot: "bg-emerald-600", ink: "text-emerald-800", label: "SUCCESS" },
-  warning: { dot: "bg-amber-500", ink: "text-amber-800", label: "WARNING" },
-  danger:  { dot: "bg-red-600",    ink: "text-red-800",    label: "DANGER" },
-  info:    { dot: "bg-sky-600",    ink: "text-sky-800",    label: "INFO" },
-  muted:   { dot: "bg-outline",  ink: "text-on-surface",  label: "MUTED" },
+  success: { dot: "bg-emerald-600", ink: "text-emerald-800", label: "成功" },
+  warning: { dot: "bg-amber-500", ink: "text-amber-800", label: "警告" },
+  danger:  { dot: "bg-red-600",    ink: "text-red-800",    label: "危险" },
+  info:    { dot: "bg-sky-600",    ink: "text-sky-800",    label: "信息" },
+  muted:   { dot: "bg-outline",  ink: "text-on-surface",  label: "静默" },
 };
 
 const RISK_TOKENS: Record<RiskLevel, { ink: string; label: string }> = {
-  low:  { ink: "text-emerald-800", label: "LOW" },
-  med:  { ink: "text-amber-800",   label: "MED" },
-  high: { ink: "text-red-800",     label: "HIGH" },
+  low:  { ink: "text-emerald-800", label: "低" },
+  med:  { ink: "text-amber-800",   label: "中" },
+  high: { ink: "text-red-800",     label: "高" },
 };
 
 // -----------------------------------------------------------------------------
-// TLDRSlate — dark vellum slab; sits at top of a kind layout
+// TLDRSlate——深色 vellum 板，位于类型布局顶部
 // -----------------------------------------------------------------------------
 
 export function TLDRSlate({ children, testId = "primitive-tldr-slate" }: { children: React.ReactNode; testId?: string }) {
@@ -40,14 +39,14 @@ export function TLDRSlate({ children, testId = "primitive-tldr-slate" }: { child
       data-testid={testId}
       className="my-4 border border-on-surface bg-inverse-surface px-4 py-3 text-[12px] leading-relaxed text-background hard-shadow"
     >
-      <div className="mb-1 font-mono text-[8px] uppercase tracking-[0.18em] text-on-surface-variant">TL;DR</div>
+      <div className="mb-1 font-mono text-[8px] uppercase tracking-[0.18em] text-on-surface-variant">摘要</div>
       <div>{children}</div>
     </div>
   );
 }
 
 // -----------------------------------------------------------------------------
-// DotTimeline — vertical dot+line track for ordered events
+// DotTimeline——用于有序事件的纵向圆点加连线轨迹
 // -----------------------------------------------------------------------------
 
 export function DotTimeline({ entries, testId = "primitive-dot-timeline" }: { entries: TimelineEntry[]; testId?: string }) {
@@ -81,7 +80,7 @@ export function DotTimeline({ entries, testId = "primitive-dot-timeline" }: { en
 }
 
 // -----------------------------------------------------------------------------
-// StatCardBand — horizontal row of label/value/trend cards
+// StatCardBand——由标签/值/趋势卡片组成的横向行
 // -----------------------------------------------------------------------------
 
 const TREND_GLYPH = { up: "↑", flat: "—", down: "↓" } as const;
@@ -113,7 +112,7 @@ export function StatCardBand({ entries, testId = "primitive-stat-card-band" }: {
 }
 
 // -----------------------------------------------------------------------------
-// RiskTableGrid — risk × probability × impact × mitigation grid
+// RiskTableGrid——风险 × 概率 × 影响 × 缓解措施网格
 // -----------------------------------------------------------------------------
 
 export function RiskTableGrid({ entries, testId = "primitive-risk-table-grid" }: { entries: RiskTableEntry[]; testId?: string }) {
@@ -123,10 +122,10 @@ export function RiskTableGrid({ entries, testId = "primitive-risk-table-grid" }:
       <table className="w-full border-collapse border border-outline-variant text-[11px]">
         <thead>
           <tr className="bg-background">
-            <th className="border border-outline-variant px-2 py-1 text-left font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">Risk</th>
-            <th className="border border-outline-variant px-2 py-1 text-left font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">Prob</th>
-            <th className="border border-outline-variant px-2 py-1 text-left font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">Impact</th>
-            <th className="border border-outline-variant px-2 py-1 text-left font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">Mitigation</th>
+            <th className="border border-outline-variant px-2 py-1 text-left font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">风险</th>
+            <th className="border border-outline-variant px-2 py-1 text-left font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">概率</th>
+            <th className="border border-outline-variant px-2 py-1 text-left font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">影响</th>
+            <th className="border border-outline-variant px-2 py-1 text-left font-mono text-[9px] uppercase tracking-[0.12em] text-on-surface-variant">缓解</th>
           </tr>
         </thead>
         <tbody>
@@ -149,7 +148,7 @@ export function RiskTableGrid({ entries, testId = "primitive-risk-table-grid" }:
 }
 
 // -----------------------------------------------------------------------------
-// CompareTable — n-column comparison table
+// CompareTable——N 列对比表
 // -----------------------------------------------------------------------------
 
 export function CompareTable({ columns, rows, testId = "primitive-compare-table" }: { columns: string[]; rows: CompareRow[]; testId?: string }) {
@@ -181,7 +180,7 @@ export function CompareTable({ columns, rows, testId = "primitive-compare-table"
 }
 
 // -----------------------------------------------------------------------------
-// ActionChecklist — list of [done?] tasks
+// ActionChecklist——带完成状态的任务列表
 // -----------------------------------------------------------------------------
 
 export function ActionChecklist({ items, testId = "primitive-action-checklist" }: { items: Array<{ done: boolean; text: string }>; testId?: string }) {
@@ -207,7 +206,7 @@ export function ActionChecklist({ items, testId = "primitive-action-checklist" }
 }
 
 // -----------------------------------------------------------------------------
-// SummaryStrip — single-line summary row at top of a feature-shipped layout
+// SummaryStrip——功能已交付布局顶部的单行摘要
 // -----------------------------------------------------------------------------
 
 export function SummaryStrip({

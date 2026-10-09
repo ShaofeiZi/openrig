@@ -1,8 +1,7 @@
-// OPR.0.4.1.31 part B — the table Open-in-cmux button must SURFACE a failed
-// launch, not fail silently. Before the fix the button tracked only isPending,
-// so a real failure (no current cmux workspace, missing terminal bearer, etc.)
-// looked like "the button does nothing / never works" (the founder's daily pain).
-// This asserts the real failure path renders a visible, actionable error.
+// OPR.0.4.1.31 part B——table Open-in-cmux 按钮必须呈现失败启动，而非静默失败。
+// 修复前按钮只追踪 isPending，故真实失败（无当前 cmux workspace、缺 terminal bearer 等）
+// 看起来像"按钮没反应 / 从不工作"（founder 日常痛点）。
+// 此断言真实失败路径渲染可见、可操作的错误。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup, waitFor } from "@testing-library/react";
@@ -68,7 +67,7 @@ describe("OPR.0.4.1.31 — table Open-in-cmux surfaces failures (no silent no-op
 
     const { findByTestId, queryByTestId } = withQueryClient(<TopologyTableView />);
     const cmux = await findByTestId("topology-table-cmux-orch.lead");
-    // No error before the click.
+    // 点击前无错误。
     expect(queryByTestId("topology-table-cmux-error-orch.lead")).toBeNull();
 
     fireEvent.click(cmux);
@@ -76,7 +75,7 @@ describe("OPR.0.4.1.31 — table Open-in-cmux surfaces failures (no silent no-op
     const err = await findByTestId("topology-table-cmux-error-orch.lead");
     expect(err.getAttribute("role")).toBe("alert");
     expect(err.textContent).toContain("cmux has no current workspace");
-    // the button also reflects the error state (title/aria carry the message + retry affordance)
+    // 按钮也反映错误态（title/aria 携带消息 + 重试 affordance）
     expect((cmux as HTMLButtonElement).getAttribute("title")).toContain("cmux has no current workspace");
     expect((cmux as HTMLButtonElement).getAttribute("data-error")).toBe("true");
   });
@@ -96,7 +95,7 @@ describe("OPR.0.4.1.31 — table Open-in-cmux surfaces failures (no silent no-op
       const call = mockFetch.mock.calls.find((c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("/open-cmux"));
       expect(call).toBeDefined();
     });
-    // give the mutation a tick to settle; no error element should appear
+    // 给 mutation 一个 tick 稳定；不应出现错误元素
     await new Promise((r) => setTimeout(r, 20));
     expect(queryByTestId("topology-table-cmux-error-orch.lead")).toBeNull();
   });

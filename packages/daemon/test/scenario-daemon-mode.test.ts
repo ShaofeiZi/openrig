@@ -1,13 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// 51-04 step-3 — the daemon-standup OPT-IN seam at runScenarioFile. Container-mode is a
-// PURELY ADDITIVE opt-in: when the caller supplies no `daemon` spawner, the host-mode
-// path is byte-identical to pre-51-04 (spawnScenarioDaemon with { rigBin }); when it
-// supplies one, that override is used instead. This suite pins BOTH halves of that
-// contract — the fence that keeps the 51-02 host-mode contract byte-intact (no PM gate).
+// 51-04 第 3 步——runScenarioFile 上选择启用后台服务启动的接缝。容器模式是纯增量的
+// 选择启用：调用方未提供 `daemon` spawner 时，主机模式路径与 51-04 前字节完全一致
+//（以 { rigBin } 调用 spawnScenarioDaemon）；提供时则使用该覆盖。本套件固定契约的两面——
+// 这是保持 51-02 主机模式契约字节不变的防护（无 PM 门禁）。
 //
-// Isolated in its own file so the scenario-daemon module-mock (below) cannot contaminate
-// the other scenario-* suites.
+// 单独放在此文件中，避免下方 scenario-daemon 模块 mock 污染其他 scenario-* 套件。
 
 const { spawnScenarioDaemon } = vi.hoisted(() => ({ spawnScenarioDaemon: vi.fn() }));
 vi.mock("./helpers/scenario-daemon.js", async (importOriginal) => {
@@ -34,8 +32,8 @@ beforeEach(() => {
   spawnScenarioDaemon.mockResolvedValue(FAKE_DAEMON);
 });
 
-describe("defaultHostDaemon — the unchanged host-mode standup", () => {
-  it("forwards to spawnScenarioDaemon with exactly { rigBin } (byte-identical to line 195)", async () => {
+describe("defaultHostDaemon——保持不变的主机模式启动", () => {
+  it("恰好以 { rigBin } 转发到 spawnScenarioDaemon（与第 195 行字节完全一致）", async () => {
     const opts: RunScenarioFileOptions = { rigBin: "/path/to/rig" };
     const daemon = await defaultHostDaemon(scaffold, opts);
     expect(spawnScenarioDaemon).toHaveBeenCalledTimes(1);
@@ -44,46 +42,46 @@ describe("defaultHostDaemon — the unchanged host-mode standup", () => {
   });
 });
 
-describe("resolveScenarioDaemonSpawner — the additive opt-in selection", () => {
-  it("returns the host-mode default when no `daemon` override is supplied (fence)", () => {
+describe("resolveScenarioDaemonSpawner——增量选择启用", () => {
+  it("未提供 `daemon` 覆盖时返回主机模式默认值（防护）", () => {
     expect(resolveScenarioDaemonSpawner({ rigBin: "x" })).toBe(defaultHostDaemon);
   });
 
-  it("returns the caller's override when one is supplied (container-mode opt-in)", () => {
+  it("提供覆盖时返回调用方的覆盖（选择启用容器模式）", () => {
     const override: ScenarioDaemonSpawner = async () => FAKE_DAEMON;
     expect(resolveScenarioDaemonSpawner({ rigBin: "x", daemon: override })).toBe(override);
   });
 
-  it("does not invoke the host-mode spawner merely by resolving an override", () => {
+  it("仅解析覆盖时不调用主机模式 spawner", () => {
     const override: ScenarioDaemonSpawner = async () => FAKE_DAEMON;
     resolveScenarioDaemonSpawner({ rigBin: "x", daemon: override });
     expect(spawnScenarioDaemon).not.toHaveBeenCalled();
   });
 });
 
-describe("withImageId — container-mode results-ledger stamping (plan §4)", () => {
+describe("withImageId——容器模式结果台账标记（计划 §4）", () => {
   const baseRec: RunRecord = { scenario: "collision", verdict: "PASS" };
 
-  it("stamps the image manifest id onto every appended record when container-mode supplies one", () => {
+  it("容器模式提供 image manifest id 时，为每条追加记录标记该 id", () => {
     const sink = vi.fn();
     const wrapped = withImageId(sink, "sha256:abc");
     wrapped!({ ...baseRec });
     expect(sink).toHaveBeenCalledWith({ scenario: "collision", verdict: "PASS", imageId: "sha256:abc" });
   });
 
-  it("returns the ORIGINAL appendRecord unchanged when no image id is supplied (host-mode byte-intact)", () => {
+  it("未提供 image id 时原样返回 appendRecord（主机模式字节不变）", () => {
     const sink = vi.fn();
-    // Identity: host-mode gets back the exact same sink reference — the ledger rows
-    // are byte-for-byte what they were pre-51-04 (no imageId key added).
+    // 身份：主机模式取回完全相同的 sink 引用——台账行与 51-04 前逐字节一致
+    //（不添加 imageId 键）。
     expect(withImageId(sink, undefined)).toBe(sink);
     expect(withImageId(undefined, undefined)).toBeUndefined();
   });
 
-  it("returns undefined when an id is supplied but there is no sink (nothing to record into)", () => {
+  it("提供 id 但没有 sink 时返回 undefined（无处记录）", () => {
     expect(withImageId(undefined, "sha256:abc")).toBeUndefined();
   });
 
-  it("does not mutate the caller's record object (stamps a copy)", () => {
+  it("不修改调用方的记录对象（标记副本）", () => {
     const sink = vi.fn();
     const rec: RunRecord = { scenario: "collision", verdict: "PASS" };
     withImageId(sink, "sha256:abc")!(rec);

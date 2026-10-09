@@ -1,15 +1,15 @@
-// Preview Terminal v0 (PL-018) — rate limiter unit tests.
+// Preview Terminal v0（PL-018）——rate limiter 单元测试。
 
 import { describe, it, expect } from "vitest";
 import { PreviewRateLimiter } from "../src/domain/preview/preview-rate-limiter.js";
 
 describe("PreviewRateLimiter (PL-018)", () => {
-  it("returns null on first lookup for an unseen key", () => {
+  it("首次查询未见过的 key 时返回 null", () => {
     const r = new PreviewRateLimiter<string>(1000);
     expect(r.get("velocity-driver@x")).toBeNull();
   });
 
-  it("returns the cached payload within the rate-limit window", () => {
+  it("在 rate-limit 窗口内返回缓存 payload", () => {
     let now = 1000;
     const r = new PreviewRateLimiter<string>(500, () => now);
     r.set("k", "first");
@@ -19,7 +19,7 @@ describe("PreviewRateLimiter (PL-018)", () => {
     expect(r.get("k")?.payload).toBe("first");
   });
 
-  it("returns null once the window has elapsed", () => {
+  it("窗口结束后返回 null", () => {
     let now = 1000;
     const r = new PreviewRateLimiter<string>(500, () => now);
     r.set("k", "first");
@@ -27,17 +27,17 @@ describe("PreviewRateLimiter (PL-018)", () => {
     expect(r.get("k")).toBeNull();
   });
 
-  it("collapses concurrent requests for the same key into one cache hit", () => {
+  it("将同一 key 的并发请求合并为一次 cache hit", () => {
     let now = 1000;
     const r = new PreviewRateLimiter<string>(1000, () => now);
     r.set("k", "first");
-    // Rapid follow-on requests inside the window all see the cached payload.
+    // 窗口内快速跟进的请求都看到缓存 payload。
     expect(r.get("k")?.payload).toBe("first");
     now = 1500;
     expect(r.get("k")?.payload).toBe("first");
   });
 
-  it("clear removes the cache entry", () => {
+  it("clear 移除缓存条目", () => {
     let now = 1000;
     const r = new PreviewRateLimiter<string>(1000, () => now);
     r.set("k", "v");
@@ -45,7 +45,7 @@ describe("PreviewRateLimiter (PL-018)", () => {
     expect(r.get("k")).toBeNull();
   });
 
-  it("different keys have independent windows", () => {
+  it("不同 key 拥有独立窗口", () => {
     let now = 1000;
     const r = new PreviewRateLimiter<string>(500, () => now);
     r.set("a", "alpha");
@@ -55,7 +55,7 @@ describe("PreviewRateLimiter (PL-018)", () => {
     expect(r.get("a")?.payload).toBe("alpha");
     expect(r.get("b")?.payload).toBe("beta");
     now = 1501;
-    // a expired (started at 1000) but b (started at 1100) is still fresh
+    // a 已过期（始于 1000），但 b（始于 1100）仍 fresh。
     expect(r.get("a")).toBeNull();
     expect(r.get("b")?.payload).toBe("beta");
   });

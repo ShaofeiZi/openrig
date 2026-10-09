@@ -1,6 +1,6 @@
 import type { Migration } from "../migrate.js";
 
-/** W4 — durable, attributable human hold/authorize decisions for enforcers. */
+/** W4——供 enforcer 使用的持久、可归属人工 hold/authorize 决策。 */
 export const enforcerDecisionsSchema: Migration = {
   name: "068_enforcer_decisions.sql",
   sql: `

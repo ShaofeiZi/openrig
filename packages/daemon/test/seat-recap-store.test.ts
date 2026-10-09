@@ -1,12 +1,9 @@
-// OPR.0.5.3.5 RECAP atom (mini-req 7 / Q2 + Q2-Amendment 1) — the seat recap
-// store: the AUTHORED recap (decisions-with-rationale, written by the outgoing
-// occupant at the boundary) extending the shipped from-record boot recap's
-// name per the Q2 unify-what-exists ruling. Seat-homed beside LEARNED;
-// SUPERSEDED-CHAIN retention under the seat directory (newest is current,
-// predecessors kept, cleaned by seat-directory lifecycle, never a librarian);
-// the authoring contract validated ADVISORY on its CHECKABLE subset — findings
-// flag for review, never gate a handover (the D2 pattern: prose shape must not
-// block a boundary).
+// OPR.0.5.3.5 RECAP atom（mini-req 7 / Q2 + Q2-Amendment 1）——seat recap store：
+// AUTHORED recap 是在 boundary 由 outgoing occupant 编写的带 rationale 决策；按 Q2
+// unify-what-exists 裁定，扩展正式 from-record boot recap 的名称。它位于席位目录、与 LEARNED
+// 并列；在席位目录下保留 SUPERSEDED-CHAIN（最新项为 current，前任保留，由 seat-directory
+// lifecycle 清理，而非 librarian）。authoring contract 对可检查子集做 ADVISORY 验证；finding
+// 只标记 review，绝不 gate handover（D2 模式：prose shape 不得阻塞 boundary）。
 
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -26,8 +23,8 @@ let seatDir: string;
 beforeEach(() => { seatDir = mkdtempSync(join(tmpdir(), "s05-recap-")); });
 afterEach(() => rmSync(seatDir, { recursive: true, force: true }));
 
-describe("writeSeatRecap — superseded-chain retention (Q2-Amendment 1(b))", () => {
-  it("first write creates RECAP.md; a second write supersedes the first INTO the chain, byte-preserved", () => {
+describe("writeSeatRecap——superseded-chain 保留（Q2-Amendment 1(b)）", () => {
+  it("首次写入创建 RECAP.md；第二次写入把首份移入 chain 并逐字节保留", () => {
     let t = 1000;
     writeSeatRecap({ seatDir, content: "## Recent Decisions\nfirst era", now: () => t });
     t = 2000;
@@ -36,12 +33,11 @@ describe("writeSeatRecap — superseded-chain retention (Q2-Amendment 1(b))", ()
     const chain = listRecapChain(seatDir);
     expect(chain).toHaveLength(1);
     expect(readFileSync(chain[0]!.path, "utf-8")).toBe("## Recent Decisions\nfirst era");
-    // The chain lives UNDER the seat directory (seat-directory lifecycle owns
-    // cleanup) and its names sort by supersession time.
+    // chain 位于席位目录下，由 seat-directory lifecycle 负责清理；名称按 supersession 时间排序。
     expect(chain[0]!.path.startsWith(seatDir)).toBe(true);
   });
 
-  it("three eras: the chain lists oldest-first and the current file is always the newest", () => {
+  it("三个 era：chain 从最旧开始列出，current 文件始终最新", () => {
     let t = 1;
     for (const era of ["one", "two", "three"]) {
       writeSeatRecap({ seatDir, content: `## Recent Decisions\n${era}`, now: () => t++ });
@@ -54,12 +50,10 @@ describe("writeSeatRecap — superseded-chain retention (Q2-Amendment 1(b))", ()
     ]);
   });
 
-  it("r1 F1: SAME-MILLISECOND supersessions lose NOTHING — every predecessor stays byte-preserved", () => {
-    // r1's constructed break: renameSync onto an existing path REPLACES it, so
-    // two supersessions in one millisecond overwrote the first chain entry —
-    // the retention contract (byte-preserved, cleaned only by lifecycle)
-    // inverted, silently. now is INJECTABLE, so programmatic callers collide
-    // deterministically, not rarely.
+  it("r1 F1：同一毫秒内 supersession 不丢内容，每个 predecessor 均逐字节保留", () => {
+    // r1 构造的破坏：renameSync 到现有路径会替换它，因此同一毫秒的两次 supersession 覆盖首个
+    // chain entry，静默颠倒“逐字节保留、只由 lifecycle 清理”的 retention contract。now 可注入，
+    // 所以程序化调用方会确定性冲突，而不只是偶发。
     let t = 5000;
     writeSeatRecap({ seatDir, content: "## Decisions\nv1", now: () => t });
     t = 7777;
@@ -73,50 +67,48 @@ describe("writeSeatRecap — superseded-chain retention (Q2-Amendment 1(b))", ()
     expect(readFileSync(join(seatDir, "RECAP.md"), "utf-8")).toBe("## Decisions\nv3");
   });
 
-  it("r1 bonus property (pinned at their ask): a write that FAILS the gate leaves the current recap AND the chain untouched", () => {
+  it("r1 额外属性：未通过 gate 的写入不触碰 current recap 或 chain", () => {
     writeSeatRecap({ seatDir, content: "## Decisions\nstanding era", now: () => 1 });
     expect(() => writeSeatRecap({ seatDir, content: "## Same\na\n## Same\nb", now: () => 2 })).toThrow();
     expect(readFileSync(join(seatDir, "RECAP.md"), "utf-8")).toBe("## Decisions\nstanding era");
     expect(listRecapChain(seatDir)).toHaveLength(0);
   });
 
-  it("the current recap stays addressable: an unaddressable write is REJECTED loud (it could never compose)", () => {
-    // The recap is composed BY ADDRESS (seat:RECAP.md#...) — a recap that
-    // cannot resolve would fail every handover profile downstream, silently
-    // late. This is the one non-advisory gate, and it is structural, not
-    // prose-shaped: duplicate header paths / unterminated fences.
+  it("current recap 保持可寻址：明确拒绝无法寻址的写入，因为它永远无法 compose", () => {
+    // recap 按地址（seat:RECAP.md#...）compose；无法解析的 recap 会在下游让每个 handover
+    // profile 延迟且静默失败。这是唯一非 advisory gate，约束的是重复 header path / 未结束 fence
+    // 等结构，而不是 prose shape。
     expect(() => writeSeatRecap({ seatDir, content: "## Same\na\n## Same\nb", now: () => 1 }))
       .toThrow(/duplicate|addressab/i);
   });
 });
 
-describe("validateRecapContract — the CHECKABLE subset, advisory findings (Q2 authoring contract)", () => {
-  it("a contract-shaped recap yields no findings", () => {
+describe("validateRecapContract——可检查子集与 advisory finding（Q2 authoring contract）", () => {
+  it("符合 contract 结构的 recap 不产生 finding", () => {
     expect(validateRecapContract(GOOD_RECAP)).toEqual([]);
   });
 
-  it("flags a missing decisions section — conclusions without decisions is the lossy handoff shape", () => {
+  it("标记缺失 decisions section；只有结论而无决策属于有损 handoff", () => {
     const findings = validateRecapContract("## Status\nall done, trust me");
     expect(findings.some((f) => f.kind === "no-decisions-section")).toBe(true);
   });
 
-  it("flags a lowercase/variant unverified marker — one bad fact poisons every future turn, the marker must be findable", () => {
+  it("标记小写或变体 unverified marker；一个错误事实会污染之后每轮，marker 必须可查找", () => {
     const findings = validateRecapContract("## Recent Decisions\nchose X because Y.\n(unverified: the Y figure)");
     expect(findings.some((f) => f.kind === "nonstandard-unverified-marker")).toBe(true);
   });
 
-  it("findings NEVER throw — the contract advises, the boundary is not blocked on prose shape", () => {
+  it("finding 绝不抛错；contract 只给建议，boundary 不因 prose shape 阻塞", () => {
     expect(() => validateRecapContract("free prose, no headers at all")).not.toThrow();
   });
 });
 
-// BUILD FOLLOW-UP (r1 verdict bb00e850 obs; orch-lead row 17015088) — the
-// seat-ref parsing unifies on the CANONICAL parseSessionName (first-@ split,
-// the documented greedy-rig ruling) instead of a second lastIndexOf parser.
-// The safety floor is preserved: unresolved/mismatched refs fail with a
-// LABELED path, never a fuzzy match onto another seat.
-describe("resolveAuthoredRecapPointer — one-home seat-ref parsing (canonical parseSessionName)", () => {
-  it("two-part canonical ref resolves the seat dir (local control)", async () => {
+// BUILD FOLLOW-UP（r1 verdict bb00e850 obs；orch-lead row 17015088）——seat-ref 解析统一
+// 使用 canonical parseSessionName（按第一个 @ 分割，即已有文档的 greedy-rig 裁定），不再使用
+// 第二套 lastIndexOf parser。保留安全下限：无法解析/不匹配的 ref 以带标签路径失败，绝不模糊
+// 匹配到其他席位。
+describe("resolveAuthoredRecapPointer——单一归属的 seat-ref 解析（canonical parseSessionName）", () => {
+  it("两段 canonical ref 解析到席位目录（本地对照）", async () => {
     const { resolveAuthoredRecapPointer } = await import("../src/domain/context-packs/seat-recap-store.js");
     const { mkdirSync: mkd, writeFileSync: wf } = await import("node:fs");
     mkd(join(seatDir, "rigs", "r1", "seats", "s1"), { recursive: true });
@@ -125,11 +117,10 @@ describe("resolveAuthoredRecapPointer — one-home seat-ref parsing (canonical p
     expect(res).toEqual({ address: "seat:RECAP.md", chainLength: 0 });
   });
 
-  it("HOST-QUALIFIED three-part ref: seat is the FIRST segment (canonical first-@ split), degrading LABELED with the path tried", async () => {
-    // The discriminator: lastIndexOf('@') read seat='s1@r1' rig='host-x'; the
-    // canonical split reads member='s1' rig='r1@host-x' (greedy-rig BY DESIGN).
-    // Either way no directory exists — but the labeled path must reflect the
-    // CANONICAL parse so the absence text points at the true shape.
+  it("HOST-QUALIFIED 三段 ref：席位是首个 segment，并以尝试路径做带标签降级", async () => {
+    // 判别项：lastIndexOf('@') 会读成 seat='s1@r1' rig='host-x'；canonical split 按设计的
+    // greedy-rig 读成 member='s1' rig='r1@host-x'。两种方式都找不到目录，但带标签路径必须反映
+    // canonical parse，使 absence 文本指向真实结构。
     const { resolveAuthoredRecapPointer } = await import("../src/domain/context-packs/seat-recap-store.js");
     const res = resolveAuthoredRecapPointer("s1@r1@host-x", seatDir);
     expect("absentReason" in res).toBe(true);
@@ -137,7 +128,7 @@ describe("resolveAuthoredRecapPointer — one-home seat-ref parsing (canonical p
     expect(reason).toContain(join("rigs", "r1@host-x", "seats", "s1"));
   });
 
-  it("a malformed ref is a LABELED absence naming the parse verdict — never a throw, never a guess", async () => {
+  it("malformed ref 是点明 parse verdict 的带标签 absence，绝不抛错或猜测", async () => {
     const { resolveAuthoredRecapPointer } = await import("../src/domain/context-packs/seat-recap-store.js");
     for (const bad of ["noatsign", "@r1", "s1@"]) {
       const res = resolveAuthoredRecapPointer(bad, seatDir);

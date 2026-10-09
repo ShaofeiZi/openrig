@@ -1,0 +1,20 @@
+{
+  "schema": "openrig.tui-src-comment-review-batch/v1",
+  "batch": 1,
+  "captured_at": "2026-10-09T19:00:00+08:00",
+  "depth": "full_comment_javascript_docstring_reviewed",
+  "owner": "s_000cae46uuw",
+  "natural_residual": 0,
+  "files": [
+    {"path": "packages/tui/src/visual-layout.ts", "status": "reviewed_no_change", "after_sha256": "d7c60349e5138bac2f4f0ee508caec1529351fdae5b0e52016fe56379045b742", "classification": "comments already Chinese"},
+    {"path": "packages/tui/src/crash-cart/contract.ts", "status": "reviewed_no_change", "after_sha256": "89383e762e6283c63000e812a25b040efac7229bbe158508b91aed8d27307c86", "classification": "0 English residual"},
+    {"path": "packages/tui/src/crash-cart/start-daemon.ts", "status": "reviewed_no_change", "after_sha256": "64be943b5939cd616ad01091e7ac67efcee2110b872cdd81e89cc5bdf5077cd3", "classification": "0 English residual"},
+    {"path": "packages/tui/src/index.ts", "status": "reviewed_no_change", "after_sha256": "34a17e1ee848c6895ee87e13af5db92a8f586ed27f387bd326ca070da5c9c18b", "classification": "0 English residual"},
+    {"path": "packages/tui/src/refresh.ts", "status": "reviewed_no_change", "after_sha256": "b431c6b0a1b94c6c8702ff911fec80c270baa2c75718c520a137ee8726d35795", "classification": "0 English residual"},
+    {"path": "packages/tui/src/crash-cart/ledger-explorer.ts", "status": "reviewed_no_change", "after_sha256": "22cc2c9c24a5c436ee74f43e2ed157a2afbdb0363816eca924f44f264b01c087", "classification": "0 English residual"},
+    {"path": "packages/tui/src/topology/render-graph.ts", "status": "reviewed_no_change", "after_sha256": "f04ee99250676d6890fe8509732cc70b484f3ffe885dc94b9f2618e0bd02c132", "classification": "0 English residual"},
+    {"path": "packages/tui/src/sections.ts", "status": "reviewed_no_change", "after_sha256": "7f9ea77fc381ccc3eb264da826d7fff616032b95ddf228a4da9bb1bf3f318f93", "classification": "0 English residual"},
+    {"path": "packages/tui/src/topology/graph-types.ts", "status": "reviewed_no_change", "after_sha256": "cc2428d4cce8adb4faaa2f749fbfa838582686a57b6281ba9f1655b9d04fa98b", "classification": "0 English residual"},
+    {"path": "packages/tui/src/commands/completion.ts", "status": "reviewed_no_change", "after_sha256": "8b795a5f5710531dff58f4dc2f943ae75275bd5a2234ec4de8f15d53e1b9f84d", "classification": "0 English residual"}
+  ]
+}

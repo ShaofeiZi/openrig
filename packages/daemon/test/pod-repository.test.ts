@@ -4,7 +4,7 @@ import { createFullTestDb } from "./helpers/test-app.js";
 import { RigRepository } from "../src/domain/rig-repository.js";
 import { PodRepository } from "../src/domain/pod-repository.js";
 
-describe("PodRepository + RigRepository evolution (AS-T08a)", () => {
+describe("PodRepository + RigRepository 演进（AS-T08a）", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let podRepo: PodRepository;
@@ -19,8 +19,8 @@ describe("PodRepository + RigRepository evolution (AS-T08a)", () => {
     db.close();
   });
 
-  // T1: pod record persists and loads correctly
-  it("pod record persists and loads correctly", () => {
+  // T1：pod 记录可正确持久化和加载
+  it("正确持久化并加载 pod 记录", () => {
     const rig = rigRepo.createRig("test-rig");
     const pod = podRepo.createPod(rig.id, "dev", "Development", {
       summary: "Dev pod",
@@ -35,21 +35,21 @@ describe("PodRepository + RigRepository evolution (AS-T08a)", () => {
     expect(pod.continuityPolicyJson).toContain("enabled");
     expect(pod.createdAt).toBeDefined();
 
-    // Round-trip via getPod
+    // 通过 getPod 往返
     const loaded = podRepo.getPod(pod.id);
     expect(loaded).not.toBeNull();
     expect(loaded!.namespace).toBe("dev");
     expect(loaded!.label).toBe("Development");
     expect(loaded!.summary).toBe("Dev pod");
 
-    // getPodsForRig
+    // getPodsForRig 查询
     const pods = podRepo.getPodsForRig(rig.id);
     expect(pods).toHaveLength(1);
     expect(pods[0]!.id).toBe(pod.id);
   });
 
-  // T2: node creation persists agent_ref, profile, and pod_id
-  it("node creation persists agent_ref, profile, and pod_id", () => {
+  // T2：创建节点时持久化 agent_ref、profile 和 pod_id
+  it("创建节点时持久化 agent_ref、profile 和 pod_id", () => {
     const rig = rigRepo.createRig("test-rig");
     const pod = podRepo.createPod(rig.id, "dev", "Dev");
 
@@ -66,7 +66,7 @@ describe("PodRepository + RigRepository evolution (AS-T08a)", () => {
     expect(node.profile).toBe("tdd");
     expect(node.label).toBe("Implementer");
 
-    // Round-trip via getRig
+    // 通过 getRig 往返
     const full = rigRepo.getRig(rig.id);
     const loadedNode = full!.nodes.find((n) => n.logicalId === "impl");
     expect(loadedNode!.podId).toBe(pod.id);
@@ -74,8 +74,8 @@ describe("PodRepository + RigRepository evolution (AS-T08a)", () => {
     expect(loadedNode!.profile).toBe("tdd");
   });
 
-  // T3: resolved spec identity persists on node creation
-  it("resolved spec identity persists on node creation", () => {
+  // T3：创建节点时持久化已解析的 spec 身份
+  it("创建节点时持久化已解析的 spec 身份", () => {
     const rig = rigRepo.createRig("test-rig");
 
     const node = rigRepo.addNode(rig.id, "impl", {
@@ -89,7 +89,7 @@ describe("PodRepository + RigRepository evolution (AS-T08a)", () => {
     expect(node.resolvedSpecVersion).toBe("0.2");
     expect(node.resolvedSpecHash).toBe("sha256:abc123def456");
 
-    // Round-trip
+    // 往返验证
     const full = rigRepo.getRig(rig.id);
     const loaded = full!.nodes[0]!;
     expect(loaded.resolvedSpecName).toBe("implementer");
@@ -97,33 +97,33 @@ describe("PodRepository + RigRepository evolution (AS-T08a)", () => {
     expect(loaded.resolvedSpecHash).toBe("sha256:abc123def456");
   });
 
-  // T4: FK behavior between rig/pod/node matches design
-  it("FK behavior: pod with nonexistent rig throws, cross-rig pod_id throws, same-rig succeeds", () => {
-    // Pod FK on rig: nonexistent rig_id throws
+  // T4：rig/pod/node 之间的 FK 行为符合设计
+  it("FK 行为：不存在 rig 的 pod 抛错，跨 rig 的 pod_id 抛错，同 rig 时成功", () => {
+    // pod 指向 rig 的 FK：不存在的 rig_id 会抛错
     expect(() => podRepo.createPod("nonexistent-rig", "bad", "Bad")).toThrow();
 
-    // Create two rigs and a pod on rig A
+    // 创建两个 rig，并在 rig A 中创建一个 pod
     const rigA = rigRepo.createRig("rig-a");
     const rigB = rigRepo.createRig("rig-b");
     const podA = podRepo.createPod(rigA.id, "pod-a", "Pod A");
 
-    // Cross-rig pod_id: node on rig B with pod from rig A -> throws
+    // 跨 rig 的 pod_id：rig B 中的节点使用 rig A 的 pod -> 抛错
     expect(() => {
       rigRepo.addNode(rigB.id, "impl", { podId: podA.id });
-    }).toThrow(/different rig/);
+    }).toThrow(/另一个工作组/);
 
-    // Same-rig pod_id succeeds
+    // 同一 rig 的 pod_id 成功
     const node = rigRepo.addNode(rigA.id, "impl", { podId: podA.id });
     expect(node.podId).toBe(podA.id);
   });
 
-  // T5: deleting a pod or rig behaves correctly for member nodes
-  it("delete pod -> node.pod_id NULL; delete rig -> cascades pods + nodes", () => {
+  // T5：删除 pod 或 rig 时，成员节点行为正确
+  it("删除 pod -> node.pod_id 为 NULL；删除 rig -> 级联删除 pod + 节点", () => {
     const rig = rigRepo.createRig("test-rig");
     const pod = podRepo.createPod(rig.id, "dev", "Dev");
     const node = rigRepo.addNode(rig.id, "impl", { podId: pod.id, runtime: "claude-code" });
 
-    // Delete pod -> node.pod_id becomes NULL
+    // 删除 pod -> node.pod_id 变为 NULL
     podRepo.deletePod(pod.id);
     expect(podRepo.getPod(pod.id)).toBeNull();
 
@@ -131,15 +131,15 @@ describe("PodRepository + RigRepository evolution (AS-T08a)", () => {
     const loadedNode = full!.nodes.find((n) => n.logicalId === "impl");
     expect(loadedNode!.podId).toBeNull();
 
-    // Delete rig -> cascades pods and nodes
+    // 删除 rig -> 级联删除 pod 和节点
     const pod2 = podRepo.createPod(rig.id, "arch", "Arch");
     rigRepo.deleteRig(rig.id);
     expect(podRepo.getPodsForRig(rig.id)).toHaveLength(0);
     expect(rigRepo.getRig(rig.id)).toBeNull();
   });
 
-  // T6: repository methods use the shared DB handle correctly
-  it("repository methods use the shared DB handle", () => {
+  // T6：repository 方法正确使用共享 DB handle
+  it("repository 方法使用共享 DB handle", () => {
     expect(rigRepo.db).toBe(db);
     expect(podRepo.db).toBe(db);
     expect(rigRepo.db).toBe(podRepo.db);

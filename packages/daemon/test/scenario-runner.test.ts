@@ -7,11 +7,10 @@ import {
 } from "./helpers/scenario-runner.js";
 import type { RunRecord } from "./helpers/scenario-run-record.js";
 
-// Slice 51-02 — the runner CORE (dumb executor). Parse+validate happens upstream;
-// this runs a validated scenario's steps in order: actions via the injected
-// runAction, `expect` via poll-until-match over the injected observe. On the first
-// failed step it emits an expected-vs-last-observed DIFF, appends a FAIL run-record
-// row, and stops. All-pass → PASS + a PASS row. Zero heuristics.
+// Slice 51-02——runner CORE（无判断执行器）。上游完成 parse+validate；本模块按顺序运行已验证
+// scenario step：action 使用注入的 runAction，`expect` 在注入的 observe 上 poll-until-match。
+// 第一个失败 step 会输出 expected-vs-last-observed DIFF，追加 FAIL run-record row，并停止。
+// 全部通过则输出 PASS + 一条 PASS row。不使用启发式。
 
 function clock(stepMs = 1000) {
   let t = 0;
@@ -36,7 +35,7 @@ const scenario = (steps: unknown[], name = "s") =>
   (validateScenario({ scenario: name, topology: "fixtures/t.yaml", steps }) as { ok: true; scenario: never }).scenario;
 
 describe("parseDuration", () => {
-  it("parses relative durations to ms", () => {
+  it("把相对 duration 解析为毫秒", () => {
     expect(parseDuration("500ms")).toBe(500);
     expect(parseDuration("5s")).toBe(5000);
     expect(parseDuration("2m")).toBe(120000);
@@ -46,7 +45,7 @@ describe("parseDuration", () => {
 });
 
 describe("runValidatedScenario", () => {
-  it("runs actions in order and PASSes when every expect matches", async () => {
+  it("按顺序运行 action，并在每个 expect 匹配时通过", async () => {
     const deps = makeDeps({
       observe: vi.fn(async () => ({ state: "in-progress" })),
     });
@@ -58,12 +57,12 @@ describe("runValidatedScenario", () => {
     ]);
     const r = await runValidatedScenario(sc, deps);
     expect(r.verdict).toBe("PASS");
-    // actions ran in order
+    // action 按顺序运行。
     expect((deps.runAction as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])).toEqual(["up", "send", "down"]);
     expect(deps.records.at(-1)?.verdict).toBe("PASS");
   });
 
-  it("FAILs at the first expect that never matches, with a DIFF + an appended FAIL record", async () => {
+  it("首个始终不匹配的 expect 处失败，并输出 DIFF、追加 FAIL record", async () => {
     const deps = makeDeps({
       observe: vi.fn(async () => ({ state: "pending" })),
       now: clock(600), // elapses the 1000ms default after ~2 polls
@@ -78,7 +77,7 @@ describe("runValidatedScenario", () => {
     expect(r.failedStep).toBe(1);
     expect(r.diff).toContain("in-progress");
     expect(r.diff).toContain("pending");
-    // stopped before `down`
+    // 在 `down` 前停止。
     expect((deps.runAction as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])).toEqual(["up"]);
     const rec = deps.records.at(-1)!;
     expect(rec.verdict).toBe("FAIL");
@@ -86,7 +85,7 @@ describe("runValidatedScenario", () => {
     expect(rec.diff).toContain("pending");
   });
 
-  it("FAILs when an action returns a non-zero exit", async () => {
+  it("action 返回非零 exit 时失败", async () => {
     const deps = makeDeps({
       runAction: vi.fn(async (verb: string) => (verb === "send" ? { code: 1, stdout: "", stderr: "boom" } : { code: 0, stdout: "", stderr: "" })),
     });
@@ -97,7 +96,7 @@ describe("runValidatedScenario", () => {
     expect(r.diff).toContain("boom");
   });
 
-  it("supports the contains mode over a string surface", async () => {
+  it("支持字符串 surface 上的 contains 模式", async () => {
     const deps = makeDeps({ observe: vi.fn(async () => "...seat restored...") });
     const sc = scenario([{ expect: { surface: "pane", seat: "a@r", contains: "restored" } }]);
     expect((await runValidatedScenario(sc, deps)).verdict).toBe("PASS");
@@ -105,7 +104,7 @@ describe("runValidatedScenario", () => {
     expect((await runValidatedScenario(sc, deps2)).verdict).toBe("FAIL");
   });
 
-  it("honors a per-expect within override", async () => {
+  it("遵循逐 expect 的 within 覆盖", async () => {
     let polls = 0;
     const deps = makeDeps({
       observe: vi.fn(async () => { polls++; return { state: "pending" }; }),
@@ -113,7 +112,7 @@ describe("runValidatedScenario", () => {
     });
     const sc = scenario([{ expect: { surface: "queue", within: "250ms", match: { state: "x" } } }]);
     await runValidatedScenario(sc, deps);
-    // 250ms bound at 100ms/tick => ~3 polls, far fewer than the 1000ms default
+    // 250ms 边界、100ms/tick，大约轮询 3 次，远少于默认 1000ms。
     expect(polls).toBeLessThanOrEqual(4);
   });
 });

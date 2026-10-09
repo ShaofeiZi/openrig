@@ -61,19 +61,19 @@ async function setup(count = 30) {
   return { home, workspace, slice, proof, db, queue, source, projection, service, send, policy, assessment, dispose, readiness, setReady: (value: boolean) => { ready = value; }, time: (at: string) => { now = at; } };
 }
 
-it("automatically admits suspicion without a checkpoint or denominator; owner judgment confirms the same canonical episode", async () => {
+it("无需 checkpoint 或 denominator 即自动接纳 suspicion；owner judgment 确认同一 canonical episode", async () => {
   const t = await setup();
   const before = t.db.prepare("SELECT total_changes() AS n").get(); const bytes = readFileSync(t.proof);
   const first = t.projection.list().records[0]!;
   expect(first).toMatchObject({ status: "indeterminate", severity: "info", ceremony: { stage: "needs-diagnosis", transitionIds: expect.any(Array) } });
-  expect(first.explanation).toContain("no ratio is computed"); expect(first.explanation).not.toContain("30.0:1");
+  expect(first.explanation).toContain("未计算比例"); expect(first.explanation).not.toContain("30.0:1");
   expect(first.ceremony!.context.some((r) => r.path.endsWith("mission.yaml") && r.state === "available")).toBe(true);
   expect(t.db.prepare("SELECT total_changes() AS n").get()).toEqual(before);
   await Promise.all([t.service.evaluate("system:health", true), t.service.evaluate("system:health", true)]);
   const occurrence = t.service.list()[0]!;
   expect(t.service.list()).toHaveLength(1); expect(t.send).toHaveBeenCalledTimes(1);
-  expect(occurrence.packet.instructions).toContain("not the whole story");
-  expect(occurrence.packet.instructions).toContain("No separate checkpoint");
+  expect(occurrence.packet.instructions).toContain("并非事情的全貌");
+  expect(occurrence.packet.instructions).toContain("不需要单独检查点");
   expect(occurrence.authority).toContainEqual(expect.objectContaining({ level: "slice", state: "available" }));
   t.dispose(occurrence.row.qitemId, t.assessment());
   const confirmed = t.projection.get(first.id)!;
@@ -86,7 +86,7 @@ it("automatically admits suspicion without a checkpoint or denominator; owner ju
   expect(readFileSync(t.proof)).toEqual(bytes); expect(t.queue.getById("root")!.state).toBe("pending");
 });
 
-it("keeps proportionate/high-consequence assessment quiet and unknown progress honestly indeterminate", async () => {
+it("让 proportionate/high-consequence assessment 保持安静，并诚实地将未知进展标为 indeterminate", async () => {
   const t = await setup(); const id = (await t.service.evaluate("system:health", true)).actions[0]!.qitemId;
   t.dispose(id, t.assessment("indeterminate"));
   expect(t.projection.list().records[0]).toMatchObject({ status: "indeterminate", ceremony: { stage: "indeterminate" } });
@@ -97,22 +97,22 @@ it("keeps proportionate/high-consequence assessment quiet and unknown progress h
   await t.service.evaluate("system:health", true); expect(t.send).toHaveBeenCalledTimes(1);
 });
 
-it("small activity never mints a diagnosis; false positive does not invent a denominator", async () => {
+it("少量 activity 绝不生成 diagnosis；false positive 不虚构 denominator", async () => {
   const small = await setup(12); expect(small.projection.list().records).toEqual([]);
   expect((await small.service.evaluate("system:health", true)).actions).toEqual([]);
   const t = await setup(); const id = (await t.service.evaluate("system:health", true)).actions[0]!.qitemId;
   t.dispose(id, t.assessment("false-positive"));
   const clear = t.projection.list({ status: "cleared" }).records[0]!;
-  expect(clear.ceremony?.stage).toBe("cleared"); expect(clear.explanation).toContain("no ratio is computed");
+  expect(clear.ceremony?.stage).toBe("cleared"); expect(clear.explanation).toContain("未计算比例");
 });
 
-it("rejects stale basis, wrong custody, missing refs, duplicate outcomes and invented timestamps", async () => {
+it("拒绝 stale basis、错误 custody、缺失 ref、重复 outcome 与虚构 timestamp", async () => {
   const t = await setup(); const id = (await t.service.evaluate("system:health", true)).actions[0]!.qitemId;
   const a = t.assessment();
   expect(() => t.dispose(id, a, "peer@rig")).toThrow("owner_required");
   expect(() => t.dispose(id, { ...a, evidenceRefs: ["missing.md"] })).toThrow("evidence_unavailable");
-  expect(() => t.dispose(id, { ...a, outcomes: [...a.outcomes, ...a.outcomes] })).toThrow("unique");
-  expect(() => t.dispose(id, { ...a, outcomes: [{ ...a.outcomes[0]!, observedAt: "2026-01-01T00:00:00Z" }] })).toThrow("inside");
+  expect(() => t.dispose(id, { ...a, outcomes: [...a.outcomes, ...a.outcomes] })).toThrow("结果必须唯一");
+  expect(() => t.dispose(id, { ...a, outcomes: [{ ...a.outcomes[0]!, observedAt: "2026-01-01T00:00:00Z" }] })).toThrow("位于所评估的转换窗口内");
   writeFileSync(t.proof, "Changed accepted outcome evidence");
   expect(() => t.dispose(id, a)).toThrow("basis_changed");
   t.dispose(id, t.assessment());
@@ -121,7 +121,7 @@ it("rejects stale basis, wrong custody, missing refs, duplicate outcomes and inv
   expect(t.projection.list().records[0]!.explanation).not.toContain("30.0:1");
 });
 
-it("retains uncertainty and the episode boundary when a false-positive assessment names missing facts", async () => {
+it("false-positive assessment 点名 missing fact 时保留 uncertainty 与 episode boundary", async () => {
   const t = await setup(); const p = t.policy.read().policy;
   t.policy.apply({ ...p, human: { address: "operator@external", conditions: ["confirmed ceremony"] } }, "operator@rig");
   t.setReady(true);
@@ -147,7 +147,7 @@ it("retains uncertainty and the episode boundary when a false-positive assessmen
   expect(t.projection.get(first.id)).toMatchObject({ status: "cleared", ceremony: { stage: "cleared" } });
 });
 
-it("neither recursive diagnosis traffic nor prose closures become product progress; old source cannot wake", async () => {
+it("recursive diagnosis traffic 与 prose closure 都不会成为 product progress；旧 source 无法唤醒", async () => {
   const t = await setup(); await t.service.evaluate("system:health", true);
   const id = t.service.list()[0]!.row.qitemId;
   for (let i = 0; i < 25; i++) t.queue.update({ qitemId: id, actorSession: "owner@rig", transitionNote: "progress claimed, product shipped" });
@@ -159,7 +159,7 @@ it("neither recursive diagnosis traffic nor prose closures become product progre
 });
 
 
-it("a later qualifying interval after a cleared assessment gets a new episode; repeated reads keep both identities", async () => {
+it("cleared assessment 后出现的合格 interval 获得新 episode；重复 read 保留两个 identity", async () => {
   const t = await setup(); const id = (await t.service.evaluate("system:health", true)).actions[0]!.qitemId;
   const first = t.projection.list().records[0]!;
   t.dispose(id, t.assessment("false-positive"));
@@ -173,7 +173,7 @@ it("a later qualifying interval after a cleared assessment gets a new episode; r
   expect(t.service.list()).toHaveLength(2); expect(t.send).toHaveBeenCalledTimes(2);
 });
 
-it("confirmed policy sends one human request; suspicion, uncertainty, unavailable readiness and repeated evaluations cannot post", async () => {
+it("confirmed policy 发送一条 human request；suspicion、uncertainty、unavailable readiness 与重复 evaluation 均不能发布", async () => {
   const t = await setup(); const p = t.policy.read().policy;
   t.policy.apply({ ...p, human: { address: "operator@external", conditions: ["confirmed ceremony"] } }, "operator@rig");
   await t.service.evaluate("system:health", true);
@@ -203,7 +203,7 @@ it("confirmed policy sends one human request; suspicion, uncertainty, unavailabl
 });
 
 
-it("keeps distinct same-time family identities and refuses a changed transition basis", async () => {
+it("保留不同的 same-time family identity，并拒绝已变化的 transition basis", async () => {
   const t = await setup();
   const first = t.projection.list().records[0]!;
   const id = (await t.service.evaluate("system:health", true)).actions[0]!.qitemId;
@@ -217,23 +217,23 @@ it("keeps distinct same-time family identities and refuses a changed transition 
   expect(records.every((r) => r.startedAt === first.startedAt)).toBe(true);
 });
 
-it("cannot turn a clipped interval into a complete census or confirmation", async () => {
+it("不能将截断 interval 变成完整 census 或 confirmation", async () => {
   const t = await setup();
   t.db.prepare("UPDATE queue_transitions SET ts = '2026-09-01T00:00:00.000Z' WHERE transition_id = 1").run();
   const record = t.projection.list().records[0]!;
   expect(record.status).toBe("indeterminate"); expect(record.ceremony?.stage).toBe("indeterminate");
-  expect(record.explanation).toContain("before retained observation window");
+  expect(record.explanation).toContain("早于保留的观测窗口");
   expect((await t.service.evaluate("system:health", true)).actions).toEqual([]);
 });
 
 
-it("includes the typed workflow acceptance join after the queue closure without treating it as an outcome count", async () => {
+it("queue closure 后包含 typed workflow acceptance join，但不将其视为 outcome count", async () => {
   const t = await setup();
   t.db.prepare("INSERT INTO workflow_instances(instance_id,workflow_name,workflow_version,created_by_session,created_at) VALUES('run','journey','1','owner@rig','2026-09-05T12:00:00Z')").run();
   const acceptance = { acceptance: { candidate: "exact-candidate", verdict: "CLEAR", evidence_ref: t.proof } };
   t.db.prepare("INSERT INTO workflow_step_trails(trail_id,instance_id,step_id,step_role,closed_at,closure_reason,closure_evidence_json,actor_session,prior_qitem_id) VALUES('trail','run','accept','evaluator','2026-09-05T12:00:29.500Z','done',?,'owner@rig','root')").run(JSON.stringify(acceptance));
   const finding = t.projection.list().records[0]!;
   expect(finding.ceremony?.workflowReceipts).toEqual([{ trailId: "trail", instanceId: "run", stepId: "accept", qitemId: "root", closureReason: "done", actor: "owner@rig", at: "2026-09-05T12:00:29.500Z", evidence: acceptance }]);
-  expect(finding.ceremony?.stage).toBe("needs-diagnosis"); expect(finding.explanation).toContain("no ratio is computed");
+  expect(finding.ceremony?.stage).toBe("needs-diagnosis"); expect(finding.explanation).toContain("未计算比例");
   expect(finding.lastObservedAt).toBe("2026-09-05T12:00:29.500Z");
 });

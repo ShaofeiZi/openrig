@@ -1,9 +1,8 @@
-// Slice 18 — Undo toast for For-You per-card dismiss flow.
+// Slice 18 —— For-You 卡片级"关闭"流程的撤销 toast。
 //
-// Single-action transient surface: shows a label + Undo button for
-// a fixed window. Clicking Undo fires onUndo and suppresses the
-// pending expire callback. If the window elapses without click,
-// onExpire fires once and the toast caller is expected to unmount.
+// 单动作瞬时界面：在固定窗口内展示一个标签 + 撤销按钮。点击撤销会触发
+// onUndo 并挂起待到期的回调。若窗口超时未点击，则触发一次 onExpire，
+// 由 toast 调用方负责卸载。
 
 import { useEffect, useRef } from "react";
 
@@ -46,7 +45,7 @@ export function UndoToast({ label, onUndo, onExpire, durationMs }: UndoToastProp
         onClick={handleUndo}
         className="border border-stone-500 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-stone-50 hover:bg-stone-800 focus:outline-none focus:ring-1 focus:ring-stone-300"
       >
-        Undo
+        撤销
       </button>
     </div>
   );

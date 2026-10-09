@@ -1,10 +1,9 @@
-// OPR.0.5.0.18 — scope amend/re-stamp verb (kills the already_approved
-// Status-note workaround). Design of record: ARCH-SHAPING 9d64ceb6 v2 — a lock
-// is a point-in-time ATTESTATION; re-approval = a new reasoned attestation
-// superseding the prior, BOTH preserved in the append-only audit log. One
-// atomic verb: no unapprove window a renderer could observe.
+// OPR.0.5.0.18——scope amend/re-stamp verb，移除 already_approved Status-note workaround。
+// 记录设计：ARCH-SHAPING 9d64ceb6 v2——lock 是某一时点的 ATTESTATION；re-approval 是一份
+// 带理由的新 attestation，用来 supersede 旧项；两者都保存在 append-only audit log 中。整个
+// 操作是单一原子 verb，renderer 看不到 unapprove 窗口。
 //
-// New-file suite (the existing scope-approve.test.ts floor is added-never-edited).
+// 新文件测试套件；现有 scope-approve.test.ts 的下限只允许新增，不作编辑。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
@@ -28,7 +27,7 @@ function frontmatterOf(p: string): Record<string, unknown> {
   return match ? (YAML.parse(match[1]!) as Record<string, unknown>) : {};
 }
 
-describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
+describe("ScopeApproveService——re-approve/re-stamp（OPR.0.5.0.18）", () => {
   let db: Database.Database;
   let actionLog: MissionControlActionLog;
   let auditBrowse: MissionControlAuditBrowse;
@@ -53,8 +52,8 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     fs.mkdirSync(sliceDir, { recursive: true });
     readmePath = path.join(sliceDir, "README.md");
     fs.writeFileSync(readmePath, "---\nid: OPR.X.18\nstatus: building\n---\n\n# The slice\nbody prose stays intact\n");
-    // B14 — spec approvals refuse a contentless derived set; these tests premise a
-    // normal approve, so the fixture PRD carries authored prose.
+    // B14——spec approval 拒绝无内容的派生集合；这些测试以前提为普通 approve，因此 fixture
+    // PRD 携带 authored prose。
     fs.writeFileSync(path.join(sliceDir, "IMPLEMENTATION-PRD.md"), "---\ntitle: prd\n---\n\n# Spec\n\nauthored requirement prose\n");
   });
 
@@ -74,7 +73,7 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     return service().approve({ ...base, approvalScope: scope });
   }
 
-  it("re-stamps an approved spec ATOMICALLY: new stamp in frontmatter, priors count, NEW audit row with reason + provenance triple, prior attestation retrievable from the rows", () => {
+  it("原子 re-stamp 已批准 spec：frontmatter 新 stamp、prior 计数、带 reason + provenance triple 的新 audit row，且可从 row 取回旧 attestation", () => {
     const first = approveOnce("spec");
     const result = service().approve({
       ...base,
@@ -85,20 +84,20 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
       reason: "PRD §3 amended after guard round 2",
     });
 
-    // frontmatter = the CURRENT attestation + prior-count
+    // frontmatter = 当前 attestation + prior-count。
     const fm = frontmatterOf(readmePath);
     expect(fm["approved-spec-by"]).toBe("planner@rig");
     expect(fm["approved-spec-at"]).toBe(result.approvedAt);
     expect(fm["approved-spec-priors"]).toBe(1);
-    // body prose intact
+    // body prose 保持完整。
     expect(fs.readFileSync(readmePath, "utf8")).toContain("body prose stays intact");
 
-    // result reports the amendment
+    // result 报告 amendment。
     expect(result.reApproved).toBe(true);
     expect(result.priorApprovedBy).toBe("pm@rig");
     expect(result.priorApprovedAt).toBe(first.approvedAt);
 
-    // the append-only rows reconstruct the FULL history (both attestations)
+    // append-only row 可重建完整 history（两份 attestation）。
     const rows = auditBrowse.query({ scopeId: "OPR.X.18", approvalScope: "spec" }).rows;
     expect(rows).toHaveLength(2);
     const amendment = rows.find((r) => r.actionId === result.actionId)!;
@@ -110,12 +109,12 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     expect(notes["on_behalf_of"]).toBe("founder"); // authorizer
     expect(amendment.actorSession).toBe("planner@rig"); // acting agent
     expect(amendment.reason).toContain("PRD §3 amended after guard round 2");
-    // the PRIOR attestation row is untouched (append-only; nothing deleted)
+    // 旧 attestation row 不受影响；保持 append-only，不删除任何内容。
     const prior = rows.find((r) => r.actionId === first.actionId)!;
     expect((prior.auditNotes as Record<string, unknown>)["re_approval"]).toBeUndefined();
   });
 
-  it("the bare re-approve refusal still fires without the flag AND its message names the sanctioned verb", () => {
+  it("不带 flag 时仍触发裸 re-approve refusal，且消息点名允许的 verb", () => {
     approveOnce("spec");
     let caught: ScopeApproveError | null = null;
     try {
@@ -127,7 +126,7 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     expect(caught?.message).toMatch(/--re-approve --reason/);
   });
 
-  it("--re-approve without --reason refuses loudly, writing NOTHING", () => {
+  it("--re-approve 不带 --reason 时明确拒绝，且不写入任何内容", () => {
     approveOnce("spec");
     const before = fs.readFileSync(readmePath, "utf8");
     for (const badReason of [undefined, null, "", "   "]) {
@@ -143,7 +142,7 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     expect(auditBrowse.query({ scopeId: "OPR.X.18" }).rows).toHaveLength(1); // only the first approval
   });
 
-  it("re-approve on a scope with NO existing stamp refuses loudly (a 're' needs a prior)", () => {
+  it("对没有现有 stamp 的 scope 执行 re-approve 时明确拒绝，因为 re 操作需要 prior", () => {
     let caught: ScopeApproveError | null = null;
     try {
       service().approve({ ...base, approvalScope: "spec", reApprove: true, reason: "nothing to supersede" });
@@ -154,7 +153,7 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     expect(auditBrowse.query({ scopeId: "OPR.X.18" }).rows).toHaveLength(0);
   });
 
-  it("delivery-scope re-stamp works identically (same mechanics, delivery stamp fields)", () => {
+  it("delivery-scope re-stamp 行为一致，使用相同机制和 delivery stamp 字段", () => {
     const first = approveOnce("delivery");
     const result = service().approve({
       ...base,
@@ -173,7 +172,7 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     expect(rows).toHaveLength(2);
   });
 
-  it("audit-failure on a re-stamp restores the PRIOR frontmatter byte-identically (stamp + priors) and fails loud; the prior row survives", () => {
+  it("re-stamp 时 audit 失败会逐字节恢复旧 frontmatter（stamp + priors）并明确失败；旧 row 保留", () => {
     approveOnce("spec");
     const beforeBytes = fs.readFileSync(readmePath, "utf8");
     const failingLog = {
@@ -192,7 +191,7 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     expect(auditBrowse.query({ scopeId: "OPR.X.18" }).rows).toHaveLength(1); // first row intact, nothing deleted
   });
 
-  it("a SECOND re-stamp increments priors to 2 and the rows reconstruct all three attestations in order", () => {
+  it("第二次 re-stamp 把 priors 增至 2，row 可按顺序重建三份 attestation", () => {
     approveOnce("spec");
     service().approve({ ...base, approvalScope: "spec", reApprove: true, reason: "amendment one" });
     service().approve({ ...base, approvalScope: "spec", actorSession: "lead@rig", reApprove: true, reason: "amendment two" });
@@ -205,12 +204,12 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     expect(reasons).toEqual(expect.arrayContaining(["amendment one", "amendment two"]));
   });
 
-  it("a spec re-stamp RE-DERIVES the plan-lock artifact set (the amended PRD becomes the locked set)", () => {
+  it("spec re-stamp 重新派生 plan-lock artifact set，修改后的 PRD 成为 locked set", () => {
     fs.writeFileSync(path.join(sliceDir, "IMPLEMENTATION-PRD.md"), "---\nid: OPR.X.18\n---\n# PRD v1\n\nversion one requirements\n");
     approveOnce("spec");
     const fm1 = frontmatterOf(readmePath);
     expect(Array.isArray(fm1["locked-artifacts"])).toBe(true);
-    // amend the PRD, re-stamp: the locked set is derived FRESH at the new attestation
+    // 修改 PRD 后 re-stamp：在新 attestation 上重新派生 locked set。
     fs.writeFileSync(path.join(sliceDir, "IMPLEMENTATION-PRD.md"), "---\nid: OPR.X.18\n---\n# PRD v2 amended\n\nversion two requirements\n");
     service().approve({ ...base, approvalScope: "spec", reApprove: true, reason: "PRD amended" });
     const fm2 = frontmatterOf(readmePath);
@@ -218,7 +217,7 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     expect(fm2["approved-spec-priors"]).toBe(1);
   });
 
-  it("ROUTE: reApprove + reason ARRIVE through POST /api/scope/approve (values, not just options)", async () => {
+  it("ROUTE：reApprove + reason 通过 POST /api/scope/approve 到达，传递值而非只有 option", async () => {
     const { Hono } = await import("hono");
     const { scopeApproveRoutes } = await import("../src/routes/scope-approve.js");
     const indexerStub = { isReady: () => true, slicesRoot: missionsRoot };
@@ -230,8 +229,8 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     });
     app.route("/api/scope/approve", scopeApproveRoutes());
 
-    // P21 I1: the approver identity is the transport header (X-OpenRig-Session), stamped by the CLI
-    // from the seat env. The legit caller provides it; body.actorSession is the transitional claim.
+    // P21 I1：approver identity 是 transport header（X-OpenRig-Session），由 CLI 从席位 env
+    // 盖章。合法调用方提供它；body.actorSession 是过渡期 claim。
     const post = (body: Record<string, unknown>, session = "pm@rig") =>
       app.request("/api/scope/approve", {
         method: "POST",
@@ -241,15 +240,15 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
 
     const wire = { scopeTier: "slice", scopePath: base.scopePath, approvalScope: "spec", actorSession: "pm@rig" };
     expect((await post(wire)).status).toBe(201);
-    // bare repeat → 409 teaching the verb
+    // 裸重复 → 409，并指引 verb。
     const conflict = await post(wire);
     expect(conflict.status).toBe(409);
     expect(((await conflict.json()) as { message: string }).message).toMatch(/--re-approve --reason/);
-    // re-approve without reason → 400 reason_required (the value must ARRIVE to be judged)
+    // re-approve 不带 reason → 400 reason_required；值必须到达才能判断。
     const noReason = await post({ ...wire, reApprove: true });
     expect(noReason.status).toBe(400);
     expect(((await noReason.json()) as { error: string }).error).toBe("reason_required");
-    // full amendment through the wire → 201 with the amendment result fields
+    // 完整 amendment 穿过 wire → 201，并携带 amendment 结果字段。
     const ok = await post({ ...wire, actorSession: "planner@rig", reApprove: true, reason: "wire-level amend" }, "planner@rig");
     expect(ok.status).toBe(201);
     const okBody = (await ok.json()) as { reApproved: boolean; priorApprovedBy: string };
@@ -259,7 +258,7 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
     expect(rows.some((r) => (r.auditNotes as Record<string, unknown>)["reason"] === "wire-level amend")).toBe(true);
   });
 
-  it("P21 I1: the signing surface derives the approver from the transport header — deliver-and-label (401/409 retired)", async () => {
+  it("P21 I1：signing surface 从 transport header 派生 approver——deliver-and-label（401/409 已退役）", async () => {
     const { Hono } = await import("hono");
     const { scopeApproveRoutes } = await import("../src/routes/scope-approve.js");
     const indexerStub = { isReady: () => true, slicesRoot: missionsRoot };
@@ -278,33 +277,35 @@ describe("ScopeApproveService — re-approve/re-stamp (OPR.0.5.0.18)", () => {
       });
     const wire = { scopeTier: "slice", scopePath: base.scopePath, approvalScope: "spec" };
 
-    // (1) absent header + body actorSession → deliver-and-label under the claimed actor (claimed:v1), 201; NOT refused.
+    // (1) header 缺失 + body actorSession → 以 claimed actor（claimed:v1）deliver-and-label，
+    // 返回 201，不拒绝。
     const noHeader = await req({}, { ...wire, actorSession: "mallory@rig" });
     expect(noHeader.status).toBe(201);
     expect(frontmatterOf(readmePath)["provenance"]).toBe("claimed:v1");
 
-    // (2) header present + differing body actor → the wire SUPERSEDES (re-stamp under pm@rig, transport:v1); 409 retired.
-    // A re-stamp needs an explicit reason (the re-approve guard); the differing body actor is superseded, not refused.
+    // (2) header 存在 + body actor 不同 → wire SUPERSEDE（以 pm@rig、transport:v1 re-stamp）；
+    // 409 已退役。re-stamp 需要显式 reason（re-approve guard）；不同 body actor 被 supersede，
+    // 不被拒绝。
     const mismatch = await req({ "X-OpenRig-Session": "pm@rig" }, { ...wire, actorSession: "mallory@rig", reApprove: true, reason: "wire supersedes body" });
     expect(mismatch.status).toBe(201);
     expect(frontmatterOf(readmePath)["provenance"]).toBe("transport:v1"); // wire wins; mallory@rig superseded
 
-    // (3) header + NO body actorSession → the RECORDED approver is the transport identity, transport:v1.
+    // (3) header + 无 body actorSession → 记录的 approver 是 transport identity，transport:v1。
     const derived = await req({ "X-OpenRig-Session": "pm@rig" }, { ...wire, reApprove: true, reason: "re-derive" });
     expect(derived.status).toBe(201);
     expect(frontmatterOf(readmePath)["provenance"]).toBe("transport:v1");
   });
 
-  it("P21 I1 era-stamp: a DIRECT service approve (no transport chokepoint) leaves identity_provenance NULL — claimed-era, never fabricated", () => {
-    // The service records the actor faithfully but does NOT invent provenance: absence IS the claimed-era
-    // marker (the pre-P21/direct-caller row). No backfill, no re-label (house absent-never-fabricated).
+  it("P21 I1 era-stamp：直接 service approve（无 transport chokepoint）保持 identity_provenance NULL，即 claimed-era，绝不伪造", () => {
+    // service 如实记录 actor，但不发明 provenance：缺失本身就是 claimed-era marker（P21 之前的
+    // direct-caller row）。不 backfill、不重新标记（house absent-never-fabricated）。
     service().approve({ scopeTier: "slice", scopePath: base.scopePath, approvalScope: "spec", actorSession: "human@kernel" });
     const rows = auditBrowse.query({ scopeId: "OPR.X.18", approvalScope: "spec" }).rows;
     expect(rows[0]!.identityProvenance).toBeNull();
     expect(frontmatterOf(readmePath)["provenance"]).toBeUndefined();
   });
 
-  it("REGRESSION: a plain first-time approve carries NO amendment fields (byte-identical first-approve behavior)", () => {
+  it("回归：普通首次 approve 不携带 amendment 字段，保持逐字节相同的首次 approve 行为", () => {
     const result = approveOnce("spec");
     expect(result.reApproved).toBe(false);
     const fm = frontmatterOf(readmePath);

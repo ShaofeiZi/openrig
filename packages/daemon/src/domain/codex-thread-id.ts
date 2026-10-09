@@ -8,15 +8,15 @@ import { runAsyncSite } from "./sync-site-wrap.js";
 
 const execFileAsync = promisify(execFile);
 
-/** F1 (B12's completion): may return a plain value (test stubs stay sync) or a Promise — every
- *  caller awaits it, and the DEFAULT is async so the per-PID `ps eww` spawn no longer blocks the
- *  event loop (measured live: 28.9s/15min of burst blocking inside the 8-attempt capture loops). */
+/** F1（B12 完成项）：可返回 plain value（测试 stub 保持同步）或 Promise——每个 caller 都会 await；
+ *  默认实现为 async，使 per-PID `ps eww` spawn 不再阻塞 event loop（实测：8 次 capture loop 内，
+ *  15 分钟累计 burst blocking 28.9 秒）。 */
 export type ResolveHomeDirByPid = (pid: number) => Promise<string | undefined> | string | undefined;
 
 export async function defaultResolveHomeDirByPid(pid: number): Promise<string | undefined> {
   try {
-    // BSD/macOS `ps` supports `eww` to expose the full process environment.
-    // If OpenRig grows a Linux daemon target, this likely needs a /proc-based path.
+    // BSD/macOS `ps` 支持用 `eww` 暴露完整 process environment。若 zrig 增加 Linux daemon
+    // target，这里可能需要基于 /proc 的路径。
     const output = (await runAsyncSite("codex_thread_id.resolve_home", async () => {
       const { stdout } = await execFileAsync("ps", ["eww", "-p", String(pid), "-o", "command="], { encoding: "utf-8" });
       return stdout;
@@ -42,50 +42,37 @@ export function readCodexThreadIdFromCandidateHomes(
 }
 
 /**
- * OPR.0.5.3.10 (addendum) — thread-id resolution WITHOUT the per-call PID-home
- * subprocess. The measured amplifier: 298 `codex_thread_id.resolve_home` spans
- * in the last 500 slow spans (mean 8.24s, max 36.72s) — a `ps eww` per pid,
- * per attempt, per tick, when nearly every codex seat's logs live under the
- * DEFAULT home.
+ * OPR.0.5.3.10（补充）——无需每次调用 PID-home subprocess 的 thread-id 解析。实测放大器：
+ * 最近 500 个 slow span 中有 298 个 `codex_thread_id.resolve_home` span（平均 8.24 秒，最长
+ * 36.72 秒）——当几乎每个 codex seat 的 log 都位于默认 home 下时，每个 pid、每次 attempt、
+ * 每个 tick 都运行一次 `ps eww`。
  *
- * Order of costs:
- *   1. DEFAULT home first — a pure file/sqlite read, ZERO subprocess. Hit = done.
- *   2. Bounded PID-keyed cache of previously RESOLVED non-default homes — a
- *      pid's HOME does not change for the life of the process. Hit = file read.
- *   3. Only then the subprocess resolver — and its SUCCESS is cached (bounded,
- *      FIFO eviction). A FAILED resolution is never cached: the next call may
- *      retry (a dying `ps` under load must not poison the pid).
+ * 成本顺序：
+ *   1. 先查默认 home——纯 file/sqlite read，零 subprocess。命中即完成。
+ *   2. 查询有界、按 PID 索引的已解析非默认 home cache——process 生命周期内 pid 的 HOME 不变。
+ *      命中只需 file read。
+ *   3. 最后才调用 subprocess resolver——成功结果进入有界 FIFO cache。失败解析绝不缓存：下次
+ *      调用可重试（负载下濒死的 `ps` 不能污染 pid）。
  */
 export class CodexThreadIdResolver {
-  /** Bounded (pid,identity)→home cache of SUCCESSFUL resolutions — INCLUDING
-   *  the default home (a stable default-home pid with no thread log must not
-   *  re-run `ps eww` every poll). KEYED BY IDENTITY (r2 round-3): a reused
-   *  pid carries a different startedAt, so it structurally MISSES the retired
-   *  occupant's entry — no read-time mismatch check to get wrong, and a late
-   *  stale-probe completion writes only its own key, never clobbering the
-   *  newer occupant's.
+  /** 成功解析的有界 (pid,identity)→home cache——包括默认 home（若稳定的默认-home pid 没有
+   *  thread log，绝不能每次 poll 都重新运行 `ps eww`）。按 IDENTITY 索引（r2 round-3）：复用的 pid
+   *  携带不同 startedAt，因此从结构上 MISS 已退役 occupant 的 entry——不存在可能出错的 read-time
+   *  mismatch check；延迟完成的 stale probe 也只写自己的 key，绝不覆盖更新 occupant 的 entry。
    *
-   *  SETTLED entries never time-expire (e91d7a94 — the expiry-herd fix): a
-   *  probe that STARTED strictly after the identity's lstart second closed
-   *  observed the FINAL occupant of this (pid, lstart) key — same-pid
-   *  same-second reuse is impossible once the second passes, and a live
-   *  process's HOME cannot change — so the answer is valid for the key's
-   *  lifetime and is removed only by identity mismatch (a new key) or FIFO
-   *  size eviction. Probe START time is the predicate, NOT completion time
-   *  (orch-lead 22:39Z): a probe started inside the second can observe the
-   *  retired occupant and complete after it. UNSETTLED entries — probe
-   *  started inside the ambiguous second, unparseable identity, or
-   *  identity-less callers — expire after homeTtlMs (r2-B1/W-5.3-1): the
-   *  TTL is their staleness bound and the finite recovery path for the
-   *  same-second collision. */
+   *  SETTLED entry 永不过期（e91d7a94——expiry-herd 修复）：严格在 identity lstart 所在秒结束后
+   *  启动的 probe 观测到此（pid、lstart）key 的最终 occupant——该秒过去后，不可能再发生 same-pid
+   *  same-second reuse，且 live process 的 HOME 不会变化——所以答案在 key 生命周期内有效，只会
+   *  因 identity mismatch（新 key）或 FIFO size eviction 被移除。判定依据是 probe 开始时间，
+   *  不是完成时间（orch-lead 22:39Z）：在该秒内开始的 probe 可能观测到已退役 occupant，并在其后
+   *  完成。UNSETTLED entry——probe 在歧义秒内开始、identity 无法解析或 caller 无 identity——会在
+   *  homeTtlMs 后过期（r2-B1/W-5.3-1）：TTL 是其 staleness bound，也是 same-second collision 的
+   *  有限 recovery path。 */
   private readonly homeByKey = new Map<string, { home: string; at: number; settled: boolean }>();
-  /** In-flight home resolution, keyed by pid+IDENTITY (r2 round-3): a known
-   *  identity must never join a probe belonging to a different or
-   *  identity-less occupant — under the measured 8-36s probes a pid can be
-   *  reused MID-PROBE, and pid-only coalescing handed the new occupant the
-   *  retired occupant's answer before the completed-cache check could run.
-   *  Same (pid, identity) still coalesces onto ONE subprocess; a failure
-   *  rejects all waiters of that key and caches nothing. */
+  /** in-flight home resolution，按 pid+IDENTITY 索引（r2 round-3）：已知 identity 绝不能加入属于
+   *  不同或无 identity occupant 的 probe——在实测 8–36 秒的 probe 期间，pid 可在 probe 中途复用；
+   *  若仅按 pid 合并，会在 completed-cache check 运行前将已退役 occupant 的答案交给新 occupant。
+   *  相同（pid、identity）仍合并到一个 subprocess；failure 会 reject 该 key 的所有 waiter，且不缓存。 */
   private readonly inFlightByKey = new Map<string, Promise<string | undefined>>();
 
   constructor(
@@ -93,49 +80,45 @@ export class CodexThreadIdResolver {
       defaultHome?: string;
       resolveHomeDirByPid?: ResolveHomeDirByPid;
       readFromLogs?: (pid: number, homeDir: string) => string | undefined;
-      /** Bounded cache size; oldest-inserted evicts first. Default 256. */
+      /** 有界 cache size；最早插入者先 evict。默认 256。 */
       maxCachedPids?: number;
-      /** Freshness bound for UNSETTLED cache entries — identity-less
-       *  callers, unparseable identities, and probes that started inside
-       *  the identity's ambiguous lstart second. Past it the pid re-probes;
-       *  this is the finite recovery path for the same-second collision
-       *  (W-5.3-1). Settled entries never consult it. Default 60s.
-       *  (The former identityHomeTtlMs tier is gone — e91d7a94: ANY
-       *  periodic expiry of settled entries synchronizes an unnecessary
-       *  probe herd, measured live as resolve_home +20 in 1.5s.) */
+      /** UNSETTLED cache entry 的 freshness bound——适用于无 identity caller、无法解析的 identity，
+       *  以及在 identity 歧义 lstart 秒内启动的 probe。超过后 pid 会重新 probe；这是 same-second
+       *  collision 的有限 recovery path（W-5.3-1）。settled entry 从不查询它。默认 60 秒。
+       *  （旧 identityHomeTtlMs tier 已移除——e91d7a94：settled entry 的任何周期性 expiry 都会同步
+       *  引发不必要的 probe herd，实测为 1.5 秒内 resolve_home +20。） */
       homeTtlMs?: number;
-      /** Injectable clock (tests). */
+      /** 可注入 clock（测试用）。 */
       now?: () => number;
     } = {},
   ) {}
 
   /**
-   * Resolve a codex thread id for `pid`. IDENTITY IS REQUIRED (S10 follow-on, r1 owed item 3): the
-   * identity's start time gates every log read, so a retired occupant's rows never resolve for a
-   * reused pid. The ungated read — the pre-round-4 class S10 eliminated, safe today only by
-   * call-graph discipline — is reachable ONLY via resolveUngatedLegacy, so a NEW identity-less
-   * call site is a COMPILE error (the review-visible pin; see the codex-thread-id test).
+   * 为 `pid` 解析 codex thread id。IDENTITY 必填（S10 follow-on，r1 owed item 3）：identity start
+   * time 控制每次 log read，因此已退役 occupant 的 row 绝不会为复用 pid 解析成功。ungated read——
+   * S10 在 round 4 前消除、如今仅靠 call-graph discipline 保证安全的类别——只能通过
+   * resolveUngatedLegacy 到达，因此新增无 identity call site 会产生编译错误（review-visible pin；
+   * 见 codex-thread-id 测试）。
    */
   async resolve(pid: number, identity: string): Promise<string | undefined> {
     return this.resolveInternal(pid, identity);
   }
 
   /**
-   * EXPLICIT ungated escape hatch — reads WITHOUT the identity start-time gate (a reused pid can
-   * match a retired occupant's rows). Use ONLY for genuinely identity-less callers (tests, adoption
-   * paths that carry no census identity). Every new identity-less read must NAME this method; do
-   * not re-open resolve() to an optional identity. By construction its cache entries can never be
-   * SETTLED: it delegates with identity=undefined, so minTs is undefined, the settled predicate is
-   * false, and every entry it writes stays bounded by homeTtlMs (60s) — see the settled-permanence
-   * rule (e91d7a94) on the cache above.
+   * 显式 ungated escape hatch——读取时不使用 identity start-time gate（复用 pid 可能匹配已退役
+   * occupant 的 row）。仅用于真正无 identity 的 caller（测试、没有 census identity 的 adoption
+   * 路径）。每个新增无 identity read 都必须明确调用此方法；不得重新将 resolve() identity 改为
+   * optional。其 cache entry 按构造永远不会 SETTLED：它以 identity=undefined 委托，因此 minTs 为
+   * undefined、settled predicate 为 false，写入的每个 entry 都受 homeTtlMs（60 秒）限制——见上方
+   * cache 的 settled-permanence 规则（e91d7a94）。
    */
   async resolveUngatedLegacy(pid: number): Promise<string | undefined> {
     return this.resolveInternal(pid, undefined);
   }
 
   private async resolveInternal(pid: number, identity: string | undefined): Promise<string | undefined> {
-    // r2 round-4: the identity's start time gates EVERY log read — a retired
-    // occupant's rows predate the current occupant's start and never match.
+    // r2 round-4：identity start time 控制每次 log read——已退役 occupant 的 row 早于当前
+    // occupant start，因此永不匹配。
     const minTs = lstartToMinTs(identity);
     const readFromLogs = this.opts.readFromLogs
       ?? ((p: number, home: string) => readCodexThreadIdFromLogs(p, home, undefined, minTs));
@@ -143,15 +126,13 @@ export class CodexThreadIdResolver {
     const now = this.opts.now ?? Date.now;
     const ttl = this.opts.homeTtlMs ?? 60_000;
 
-    // 1. Default home: no subprocess.
+    // 1. 默认 home：无 subprocess。
     const fromDefault = readFromLogs(pid, defaultHome);
     if (fromDefault) return fromDefault;
 
-    // 2. FRESH cached home for this (pid, identity): no subprocess. A reused
-    //    pid carries a new identity and structurally MISSES here (r1's
-    //    remedy); identity-less callers get their own TTL-bounded slot. A
-    //    cached DEFAULT means the subprocess already answered "default" once
-    //    — step 1 covered it.
+    // 2. 此（pid、identity）的 fresh cached home：无 subprocess。复用 pid 携带新 identity，因而从
+    //    结构上在此 MISS（r1 remedy）；无 identity caller 获得自己的 TTL-bounded slot。cached DEFAULT
+    //    表示 subprocess 已回答过一次“default”——第 1 步已覆盖它。
     const key = `${pid}|${identity ?? ""}`;
     const cached = this.homeByKey.get(key);
     if (cached) {
@@ -161,21 +142,17 @@ export class CodexThreadIdResolver {
       this.homeByKey.delete(key);
     }
 
-    // 3. Subprocess resolution, coalesced by the SAME (pid, identity) key:
-    //    only callers holding the same identity share a probe (r2 round-3 —
-    //    under the measured 8-36s probes a pid can be reused MID-PROBE, and
-    //    pid-only coalescing handed the new occupant the retired occupant's
-    //    answer). A completion writes only its own key, so a late stale
-    //    probe never clobbers the newer occupant's entry.
+    // 3. subprocess resolution，按相同（pid、identity）key 合并：只有持有相同 identity 的 caller
+    //    共享 probe（r2 round-3——在实测 8–36 秒的 probe 期间，pid 可能中途复用；仅按 pid 合并会
+    //    将已退役 occupant 的答案交给新 occupant）。completion 只写自己的 key，因此延迟的 stale
+    //    probe 绝不会覆盖更新 occupant 的 entry。
     const inFlight = this.inFlightByKey.get(key);
     const homePromise = inFlight ?? (() => {
       const resolver = this.opts.resolveHomeDirByPid ?? defaultResolveHomeDirByPid;
-      // Settledness is decided by the probe's START time (orch-lead 22:39Z):
-      // only a probe started strictly AFTER the identity's lstart second
-      // closed is guaranteed to observe the final occupant of this key. A
-      // deferred probe that started inside the second may describe the
-      // retired occupant even if it completes later, so its entry keeps the
-      // short TTL. Coalesced waiters inherit the ORIGINAL probe's verdict.
+      // settledness 由 probe 开始时间决定（orch-lead 22:39Z）：只有严格在 identity lstart 所在秒
+      // 结束后启动的 probe，才保证观测到此 key 的最终 occupant。在该秒内启动的 deferred probe
+      // 即使更晚完成，也可能描述已退役 occupant，因此其 entry 保持短 TTL。合并的 waiter 继承原始
+      // probe 的 verdict。
       const settled = minTs !== undefined && now() >= (minTs + 1) * 1000;
       const p = Promise.resolve(resolver(pid)).then(
         (home) => {
@@ -184,7 +161,7 @@ export class CodexThreadIdResolver {
           return home;
         },
         (err) => {
-          // Honest failure: nothing cached, next call retries.
+          // 诚实失败：不缓存，下次调用重试。
           this.inFlightByKey.delete(key);
           throw err;
         },
@@ -207,13 +184,13 @@ export class CodexThreadIdResolver {
   }
 }
 
-// S10 follow-on item 3 — the REVIEW-VISIBLE pin, placed in src/ so the daemon typecheck gate
-// (packages/daemon/tsconfig.json excludes "test") ACTUALLY evaluates it. r1 finding 2026-08-23: the
-// earlier @ts-expect-error lived in an untypechecked test file and never fired. resolve()'s identity
-// must stay REQUIRED: if anyone re-opens it to an optional identity — reintroducing the pre-round-4
-// ungated class — its Parameters gain an optional slot, `ResolveRequiresIdentity` resolves to `never`,
-// `true` is no longer assignable, and `tsc --noEmit` on packages/daemon FAILS. resolveUngatedLegacy is
-// the ONLY identity-less read path. Acceptance (r1): re-open resolve() to optional identity -> tsc fails.
+// S10 follow-on 第 3 项——REVIEW-VISIBLE pin，放在 src/ 中使 daemon typecheck gate
+//（packages/daemon/tsconfig.json 排除 "test"）真正评估它。r1 finding 2026-08-23：此前
+// ts-expect-error 注解位于不参与 typecheck 的测试文件中，从未触发。resolve() identity 必须保持必填：
+// 若有人重新改为 optional identity——重新引入 round 4 前的 ungated 类——其 Parameters 会多出
+// optional slot，`ResolveRequiresIdentity` 解析为 `never`，`true` 不再可赋值，packages/daemon 上的
+// `tsc --noEmit` 会失败。resolveUngatedLegacy 是唯一无 identity read 路径。验收（r1）：将
+// resolve() 改回 optional identity -> tsc 失败。
 type ResolveRequiresIdentity =
   Parameters<CodexThreadIdResolver["resolve"]> extends [pid: number, identity: string] ? true : never;
 const _resolveRequiresIdentityPin: ResolveRequiresIdentity = true;
@@ -245,7 +222,7 @@ function readCodexThreadIdFromLogs(
     try {
       const db = new Database(dbPath, { readonly: true });
       try {
-        // Strict start-second gate preserves the existing PID reuse boundary.
+        // 严格 start-second gate 保留既有 PID reuse boundary。
         const rows = db.prepare(
           "SELECT DISTINCT thread_id FROM logs WHERE process_uuid LIKE ? AND thread_id IS NOT NULL AND ts > ?"
         ).all(`pid:${pid}:%`, minTs ?? 0) as Array<{ thread_id: string }>;
@@ -253,11 +230,11 @@ function readCodexThreadIdFromLogs(
       } finally {
         db.close();
       }
-    } catch { /* Missing logs provide no process identity. */ }
+    } catch { /* 缺失 log 不提供 process identity。 */ }
   }
   if (!loggedIds.size) return undefined;
-  // Native title generation logs another thread in the same process. Join only
-  // PID-owned IDs to retained CLI conversations; recency cannot identify the TUI.
+  // Native title generation 会在同一 process 中记录另一个 thread。只将 PID-owned ID 连接到 retained
+  // CLI conversation；recency 无法识别 TUI。
   const conversations = new Set<string>();
   for (const dbPath of resolveCodexDbPaths(homeDir, "state", exists)) {
     try {
@@ -268,20 +245,17 @@ function readCodexThreadIdFromLogs(
       } finally {
         db.close();
       }
-    } catch { /* Missing native state is not evidence of a conversation. */ }
+    } catch { /* 缺失 native state 不能证明存在 conversation。 */ }
   }
-  // Multiple retained conversations in one process need a stronger native signal.
+  // 同一 process 中有多个 retained conversation 时，需要更强的 native signal。
   return conversations.size === 1 ? [...conversations][0] : undefined;
 }
 
-/** Parse `ps lstart` ("Sun Aug 23 19:30:00 2026", local time) to epoch
- *  SECONDS. The reader gates STRICTLY (`ts > startTs`, r2 round-6): lstart
- *  carries no subsecond component, so ownership of a row INSIDE the start
- *  second is undecidable — retired A can log at ts == B.startTs in the same
- *  second B reuses the pid. The ambiguous second fails CLOSED (honest
- *  INDETERMINATE; a genuinely-current same-second row resolves one poll
- *  later), rows after it resolve. Unparseable → undefined (the caller falls
- *  back to the ungated read rather than inventing a gate). */
+/** 将 `ps lstart`（"Sun Aug 23 19:30:00 2026"，本地时间）解析为 epoch 秒。reader 使用严格
+ *  gate（`ts > startTs`，r2 round-6）：lstart 没有 subsecond，因此 start 所在秒内 row 的归属
+ *  无法判定——B 在同一秒复用 pid 时，已退役 A 可在 ts == B.startTs 写 log。歧义秒 fail closed
+ *  （诚实的 INDETERMINATE；真正 current 的 same-second row 会在下一次 poll 解析），其后的 row
+ *  正常解析。无法解析 → undefined（caller 回退到 ungated read，而非虚构 gate）。 */
 export function lstartToMinTs(identity: string | undefined): number | undefined {
   if (!identity) return undefined;
   const m = identity.match(/^\w{3}\s+(\w{3})\s+(\d+)\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})$/);
@@ -305,7 +279,7 @@ export function resolveCodexDbPaths(homeDir: string, kind: "logs" | "state", exi
       });
     }
   } catch {
-    // Best effort only; fall back to the historical filename below.
+    // 仅 best effort；回退到下方历史 filename。
   }
 
   if (discovered.length === 0) {

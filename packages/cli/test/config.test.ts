@@ -10,13 +10,12 @@ import { DaemonClient } from "../src/client.js";
 import { STATE_FILE, type DaemonState } from "../src/daemon-lifecycle.js";
 import type { StatusDeps } from "../src/commands/status.js";
 
-// config-store's DEFAULTS (module scope) resolve db/transcripts paths via
+// config-store 的 DEFAULTS（模块作用域）在 import 时即通过
 // getDefaultOpenRigPath → getOpenRigHome → readOpenRigEnv("OPENRIG_HOME",
-// "RIGGED_HOME"), read at IMPORT time — so an ambient home (primary OPENRIG_HOME
-// OR legacy RIGGED_HOME) freezes the default paths before any beforeEach can
-// scrub it, making "resolve() returns defaults" non-hermetic. vi.hoisted runs
-// BEFORE the module graph loads, so neutralizing BOTH aliases here binds the
-// default-resolution assertions to ~/.openrig deterministically.
+// "RIGGED_HOME") 解析 db/transcripts 路径——因此环境中的 home（主 OPENRIG_HOME
+// 或旧版 RIGGED_HOME）会在任何 beforeEach 清理之前冻结默认路径，使「resolve() 返回
+// 默认值」非隔离。vi.hoisted 在模块图加载之前运行，故在此同时中和两个别名，
+// 把默认解析断言确定性地绑定到 ~/.openrig。
 const { savedOpenrigHome, savedRiggedHome } = vi.hoisted(() => {
   const savedOpenrig = process.env["OPENRIG_HOME"];
   const savedRigged = process.env["RIGGED_HOME"];
@@ -37,7 +36,7 @@ describe("ConfigStore", () => {
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), "config-test-"));
-    // Save env vars we'll modify
+    // 保存将要修改的环境变量
     savedEnv = {
       OPENRIG_PORT: process.env["OPENRIG_PORT"],
       OPENRIG_HOST: process.env["OPENRIG_HOST"],
@@ -45,7 +44,7 @@ describe("ConfigStore", () => {
       OPENRIG_TRANSCRIPTS_ENABLED: process.env["OPENRIG_TRANSCRIPTS_ENABLED"],
       OPENRIG_TRANSCRIPTS_PATH: process.env["OPENRIG_TRANSCRIPTS_PATH"],
     };
-    // Clear env vars for clean tests
+    // 清理环境变量以保证测试隔离
     delete process.env["OPENRIG_PORT"];
     delete process.env["OPENRIG_HOST"];
     delete process.env["OPENRIG_DB"];
@@ -55,14 +54,14 @@ describe("ConfigStore", () => {
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
-    // Restore env vars
+    // 恢复环境变量
     for (const [key, val] of Object.entries(savedEnv)) {
       if (val === undefined) delete process.env[key];
       else process.env[key] = val;
     }
   });
 
-  // Test 1
+  // 测试 1
   it("resolve() returns defaults when no config file and no env", () => {
     const store = new ConfigStore(join(tmpDir, "config.json"));
     const config = store.resolve();
@@ -73,7 +72,7 @@ describe("ConfigStore", () => {
     expect(config.transcripts.path).toContain(".openrig/transcripts");
   });
 
-  // Test 2
+  // 测试 2
   it("resolve() reads config file values", () => {
     const configPath = join(tmpDir, "config.json");
     writeFileSync(configPath, JSON.stringify({ daemon: { port: 8888 }, transcripts: { enabled: false } }));
@@ -81,11 +80,11 @@ describe("ConfigStore", () => {
     const config = store.resolve();
     expect(config.daemon.port).toBe(8888);
     expect(config.transcripts.enabled).toBe(false);
-    // Unset keys still get defaults
+    // 未设置的键仍取默认值
     expect(config.daemon.host).toBe("127.0.0.1");
   });
 
-  // Test 3
+  // 测试 3
   it("resolve() env vars override config file", () => {
     const configPath = join(tmpDir, "config.json");
     writeFileSync(configPath, JSON.stringify({ daemon: { port: 8888 } }));
@@ -95,37 +94,37 @@ describe("ConfigStore", () => {
     expect(config.daemon.port).toBe(9999);
   });
 
-  // Test 4
+  // 测试 4
   it("get() returns resolved value for dotted key", () => {
     const store = new ConfigStore(join(tmpDir, "config.json"));
     expect(store.get("daemon.port")).toBe(7433);
   });
 
-  // Test 5
+  // 测试 5
   it("set() persists value and is readable", () => {
     const configPath = join(tmpDir, "config.json");
     const store = new ConfigStore(configPath);
     store.set("daemon.port", "7434");
     expect(store.get("daemon.port")).toBe(7434);
-    // Verify file was written
+    // 校验文件已写入
     const raw = JSON.parse(readFileSync(configPath, "utf-8"));
     expect(raw.daemon.port).toBe(7434);
   });
 
-  // Test 6
+  // 测试 6
   it("set() with invalid key throws listing valid keys", () => {
     const store = new ConfigStore(join(tmpDir, "config.json"));
-    expect(() => store.set("invalid.key", "value")).toThrow(/valid keys/i);
+    expect(() => store.set("invalid.key", "value")).toThrow(/有效键/);
     expect(() => store.set("invalid.key", "value")).toThrow(/daemon\.port/);
   });
 
-  // Test 7
+  // 测试 7
   it("resolve() with malformed config.json throws with fix/reset guidance", () => {
     const configPath = join(tmpDir, "config.json");
     writeFileSync(configPath, "not valid json{{{");
     const store = new ConfigStore(configPath);
-    expect(() => store.resolve()).toThrow(/malformed/i);
-    expect(() => store.resolve()).toThrow(/reset/i);
+    expect(() => store.resolve()).toThrow(/格式错误/);
+    expect(() => store.resolve()).toThrow(/重置/);
   });
 });
 
@@ -228,7 +227,7 @@ describe("getDaemonUrl", () => {
   });
 });
 
-// CLI command tests
+// CLI 命令测试
 function mockLifecycleDeps() {
   return {
     spawn: vi.fn(() => ({ pid: 1, unref: vi.fn() }) as never),
@@ -271,7 +270,7 @@ describe("Config CLI", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  // Test 8
+  // 测试 8
   it("rig config --json prints full resolved config", async () => {
     const cmd = configCommand(join(tmpDir, "config.json"));
     const prog = new Command();
@@ -300,7 +299,7 @@ describe("Config CLI", () => {
     expect(JSON.parse(logs.join("\n"))).toEqual({ value: 95, source: "default", defaultValue: 95 });
   });
 
-  // Test 9
+  // 测试 9
   it("rig config get transcripts.path prints resolved path", async () => {
     const cmd = configCommand(join(tmpDir, "config.json"));
     const prog = new Command();
@@ -357,19 +356,19 @@ describe("Config CLI", () => {
     }
   });
 
-  // Test 10
+  // 测试 10
   it("rig config --help includes subcommands and examples", () => {
     const cmd = configCommand(join(tmpDir, "config.json"));
-    // helpInformation() returns the core help; addHelpText appends at display time
+    // helpInformation() 返回核心帮助；addHelpText 在展示时追加
     const coreHelp = cmd.helpInformation();
-    // Verify core help has subcommands
+    // 校验核心帮助含子命令
     expect(coreHelp).toContain("get");
     expect(coreHelp).toContain("set");
     expect(coreHelp).toContain("reset");
-    // Verify the after-help text is registered (check the command's _helpAfterText)
+    // 校验 after-help 文本已注册（检查命令的 _helpAfterText）
     const afterText = (cmd as unknown as { _afterHelpList?: Array<{ text: string }> })._afterHelpList;
-    // Commander stores addHelpText content internally; verify our examples are in the command
-    // by checking description and options contain the essential info
+    // Commander 内部存储 addHelpText 内容；校验示例在命令中
+    // 通过检查 description 与 options 含关键信息来校验
     expect(coreHelp).toContain("config");
   });
 
@@ -384,25 +383,22 @@ describe("Config CLI", () => {
     });
     cmd.outputHelp();
     expect(combined).toContain("onboarding.default_pack.enabled");
-    expect(combined).toContain("default on");
+    expect(combined).toContain("默认开启");
   });
 
   // V0.3.1 slice 08 — HG-6: rig config --help text must enumerate every
-  // top-level dotted-prefix used in VALID_KEYS. The slice 08 verification
-  // pass caught a drift where ui.preview.* / agents.* / feed.subscriptions.* /
+  // VALID_KEYS 中使用的顶层点号前缀。slice 08 验证
+  // 发现漂移：ui.preview.* / agents.* / feed.subscriptions.* /
   // runtime.codex.* + workspace.projects_root/workspace.catalog_path +
   // workspace.operator_seat_name + transcripts.lines +
-  // transcripts.poll_interval_seconds were missing from the help "Keys:"
-  // section. This regression test extracts every top-level prefix from
-  // VALID_KEYS and asserts each appears (or its parent group appears) in
-  // the addHelpText after-text — guards against silent drift when new
-  // keys are added without updating help text.
+  // transcripts.poll_interval_seconds 在帮助「Keys:」段中缺失。
+  // 本回归测试从 VALID_KEYS 提取每个顶层前缀，并断言其出现（或其父分组出现）于
+  // addHelpText 的 after 文本——防止新增键却未更新帮助文本时的静默漂移。
   it("HG-6: rig config --help enumerates every VALID_KEYS top-level prefix", () => {
     const cmd = configCommand(join(tmpDir, "config.json"));
-    // Commander's `addHelpText("after", ...)` text is NOT included by
-    // `helpInformation()` — it's emitted via lifecycle hooks at help
-    // display time. Capture the full displayed help by routing
-    // `outputHelp()` through a custom writer.
+    // Commander 的 `addHelpText("after", ...)` 文本不会被 `helpInformation()`
+    // 包含——它在帮助展示时经生命周期 hook 输出。通过把 `outputHelp()`
+    // 路由到自定义 writer 来捕获完整展示的帮助。
     let combined = "";
     cmd.configureOutput({
       writeOut: (text) => {
@@ -412,14 +408,13 @@ describe("Config CLI", () => {
     });
     cmd.outputHelp();
 
-    // Top-level prefixes are the first dotted segment OR first-two
-    // segments for grouped namespaces like `ui.preview.*`,
-    // `feed.subscriptions.*`, `runtime.codex.*`.
+    // 顶层前缀是第一个点号段；对 `ui.preview.*`、`feed.subscriptions.*`、
+    // `runtime.codex.*` 这类分组命名空间取前两段。
     const prefixes = new Set<string>();
     for (const key of VALID_KEYS) {
       const parts = key.split(".");
-      // Group sub-namespaces under their second segment when there are
-      // 3+ segments (e.g. ui.preview.refresh_interval_seconds → "ui.preview").
+      // 当有 3+ 段时，把子命名空间归到第二段下
+      //（例如 ui.preview.refresh_interval_seconds → "ui.preview"）。
       if (parts.length >= 3) {
         prefixes.add(`${parts[0]}.${parts[1]}`);
       } else {

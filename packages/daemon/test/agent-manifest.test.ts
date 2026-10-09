@@ -75,9 +75,9 @@ profiles:
       runtime_resources: []
 `;
 
-describe("AgentSpec manifest parser + validator", () => {
-  // T1: valid agent.yaml parses and normalizes with correct defaults
-  it("valid spec parses, validates, and normalizes", () => {
+describe("AgentSpec manifest 解析器 + 校验器", () => {
+  // T1：有效 agent.yaml 可解析并使用正确默认值规范化。
+  it("有效 spec 可解析、校验和规范化", () => {
     const raw = parseAgentSpec(VALID_SPEC);
     const validation = validateAgentSpec(raw);
     expect(validation.valid).toBe(true);
@@ -89,7 +89,7 @@ describe("AgentSpec manifest parser + validator", () => {
     expect(spec.imports).toHaveLength(1);
     expect(spec.imports[0]!.ref).toBe("local:agents/acme-standards");
     expect(spec.startup.files).toHaveLength(2);
-    // Defaults applied
+    // 已应用默认值。
     expect(spec.startup.files[0]!.deliveryHint).toBe("auto");
     expect(spec.startup.files[1]!.deliveryHint).toBe("auto"); // defaulted
     expect(spec.startup.files[0]!.required).toBe(true);
@@ -102,8 +102,8 @@ describe("AgentSpec manifest parser + validator", () => {
     expect(spec.defaults?.lifecycle?.executionMode).toBe("interactive_resident");
   });
 
-  // T2: missing name or version fails with both errors
-  it("missing name or version fails with both errors reported", () => {
+  // T2：缺少 name 或 version 时失败并报告两个错误。
+  it("缺少 name 或 version 时失败并报告两个错误", () => {
     const raw = parseAgentSpec("summary: no name or version");
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
@@ -111,8 +111,8 @@ describe("AgentSpec manifest parser + validator", () => {
     expect(result.errors.some((e) => e.includes("version"))).toBe(true);
   });
 
-  // T3a: remote import source rejected
-  it("remote import source (github:) is rejected", () => {
+  // T3a：拒绝远程 import source。
+  it("拒绝远程 import source（github:）", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -121,11 +121,11 @@ imports:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/must start with "local:" or "path:"/);
+    expect(result.errors[0]).toMatch(/必须以 "local:" 或 "path:" 开头/);
   });
 
-  // T3b: local:/abs/path rejected
-  it("local: with absolute path is rejected", () => {
+  // T3b：拒绝 local:/abs/path。
+  it("拒绝带绝对路径的 local:", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -134,11 +134,11 @@ imports:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/local:.*relative path/);
+    expect(result.errors[0]).toMatch(/local:.*相对路径/);
   });
 
-  // T3c: path:relative/file rejected
-  it("path: with relative path is rejected", () => {
+  // T3c：拒绝 path:relative/file。
+  it("拒绝带相对路径的 path:", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -147,11 +147,11 @@ imports:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/path:.*absolute path/);
+    expect(result.errors[0]).toMatch(/path:.*绝对路径/);
   });
 
-  // T4: version range rejected
-  it("version range string is rejected", () => {
+  // T4：拒绝 version range。
+  it("拒绝 version range 字符串", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -161,11 +161,11 @@ imports:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/version ranges are not supported/);
+    expect(result.errors[0]).toMatch(/不支持版本范围/);
   });
 
-  // T5: shell startup action rejected
-  it("shell startup action is rejected", () => {
+  // T5：拒绝 shell startup action。
+  it("拒绝 shell startup action", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -177,11 +177,11 @@ startup:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/shell.*not supported/);
+    expect(result.errors[0]).toMatch(/不支持.*shell/);
   });
 
-  // T5b: missing idempotent field rejected
-  it("missing idempotent field on startup action is rejected", () => {
+  // T5b：拒绝缺少 idempotent 字段。
+  it("拒绝缺少 idempotent 字段的 startup action", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -193,11 +193,11 @@ startup:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("idempotent") && e.includes("required"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("idempotent") && e.includes("必填"))).toBe(true);
   });
 
-  // T5c: restore + idempotent=false rejected
-  it("non-idempotent action with restore in applies_on is rejected", () => {
+  // T5c：拒绝 restore + idempotent=false。
+  it("拒绝 applies_on 包含 restore 的非幂等 action", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -211,11 +211,11 @@ startup:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/non-idempotent.*must not apply on restore/);
+    expect(result.errors[0]).toMatch(/非幂等.*不得应用于 restore/);
   });
 
-  // T5d: non-idempotent action with fresh_start only accepted
-  it("non-idempotent action with fresh_start only is accepted", () => {
+  // T5d：接受仅用于 fresh_start 的非幂等 action。
+  it("接受仅用于 fresh_start 的非幂等 action", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -231,8 +231,8 @@ startup:
     expect(result.valid).toBe(true);
   });
 
-  // T6: wake_on_demand rejected
-  it("wake_on_demand execution mode is rejected", () => {
+  // T6：拒绝 wake_on_demand。
+  it("拒绝 wake_on_demand execution mode", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -242,11 +242,11 @@ defaults:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/wake_on_demand.*not supported/);
+    expect(result.errors[0]).toMatch(/不支持.*wake_on_demand/);
   });
 
-  // T7a: invalid compaction strategy rejected
-  it("invalid compaction strategy is rejected", () => {
+  // T7a：拒绝无效 compaction strategy。
+  it("拒绝无效 compaction strategy", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -259,8 +259,8 @@ defaults:
     expect(result.errors[0]).toMatch(/compaction_strategy/);
   });
 
-  // T7b: custom_prompt compaction strategy rejected
-  it("custom_prompt compaction strategy is rejected", () => {
+  // T7b：拒绝 custom_prompt compaction strategy。
+  it("拒绝 custom_prompt compaction strategy", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -273,47 +273,47 @@ defaults:
     expect(result.errors[0]).toMatch(/custom_prompt.*not supported/);
   });
 
-  // T8: path traversal in resource path rejected (forward + backslash)
-  it("path traversal in resource path is rejected", () => {
-    // Forward slash traversal
+  // T8：拒绝 resource path 中的路径穿越（正斜杠 + 反斜杠）。
+  it("拒绝 resource path 中的路径穿越", () => {
+    // 正斜杠穿越。
     const raw1 = parseAgentSpec("name: test\nversion: '1.0'\nresources:\n  skills:\n    - id: evil\n      path: '../escape/evil.md'");
     expect(validateAgentSpec(raw1).valid).toBe(false);
-    expect(validateAgentSpec(raw1).errors[0]).toMatch(/path traversal/);
+    expect(validateAgentSpec(raw1).errors[0]).toMatch(/路径穿越/);
 
-    // Backslash traversal — inject directly into parsed object to avoid YAML escape issues
+    // 反斜杠穿越——直接注入已解析对象，避免 YAML 转义问题。
     const raw2 = { name: "test", version: "1.0", resources: { skills: [{ id: "evil", path: "..\\escape\\evil.md" }] } };
     expect(validateAgentSpec(raw2).valid).toBe(false);
-    expect(validateAgentSpec(raw2).errors[0]).toMatch(/path traversal/);
+    expect(validateAgentSpec(raw2).errors[0]).toMatch(/路径穿越/);
   });
 
-  // T8b: absolute resource path rejected (Unix + Windows)
-  it("absolute resource path is rejected", () => {
-    // Unix absolute
+  // T8b：拒绝绝对 resource path（Unix + Windows）。
+  it("拒绝绝对 resource path", () => {
+    // Unix 绝对路径。
     const raw1 = parseAgentSpec("name: test\nversion: '1.0'\nresources:\n  skills:\n    - id: evil\n      path: /tmp/evil.md");
     expect(validateAgentSpec(raw1).valid).toBe(false);
-    expect(validateAgentSpec(raw1).errors[0]).toMatch(/absolute paths are not allowed/);
+    expect(validateAgentSpec(raw1).errors[0]).toMatch(/不允许使用绝对路径/);
 
-    // Windows drive letter — inject directly
+    // Windows 盘符——直接注入。
     const raw2 = { name: "test", version: "1.0", resources: { skills: [{ id: "evil", path: "C:\\evil.md" }] } };
     expect(validateAgentSpec(raw2).valid).toBe(false);
-    expect(validateAgentSpec(raw2).errors[0]).toMatch(/absolute paths are not allowed/);
+    expect(validateAgentSpec(raw2).errors[0]).toMatch(/不允许使用绝对路径/);
   });
 
-  // T9: path traversal in startup file path rejected
-  it("path traversal in startup file path is rejected", () => {
-    // Forward slash
+  // T9：拒绝 startup 文件路径中的路径穿越。
+  it("拒绝 startup 文件路径中的路径穿越", () => {
+    // 正斜杠。
     const raw1 = parseAgentSpec("name: test\nversion: '1.0'\nstartup:\n  files:\n    - path: '../evil.md'");
     expect(validateAgentSpec(raw1).valid).toBe(false);
-    expect(validateAgentSpec(raw1).errors[0]).toMatch(/path traversal/);
+    expect(validateAgentSpec(raw1).errors[0]).toMatch(/路径穿越/);
 
-    // Backslash — inject directly
+    // 反斜杠——直接注入。
     const raw2 = { name: "test", version: "1.0", startup: { files: [{ path: "..\\evil.md" }] } };
     expect(validateAgentSpec(raw2).valid).toBe(false);
-    expect(validateAgentSpec(raw2).errors[0]).toMatch(/path traversal/);
+    expect(validateAgentSpec(raw2).errors[0]).toMatch(/路径穿越/);
   });
 
-  // T9b: absolute startup file path rejected
-  it("absolute startup file path is rejected", () => {
+  // T9b：拒绝绝对 startup 文件路径。
+  it("拒绝绝对 startup 文件路径", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -323,11 +323,11 @@ startup:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/absolute paths are not allowed/);
+    expect(result.errors[0]).toMatch(/不允许使用绝对路径/);
   });
 
-  // T10: duplicate resource ids in one category fail
-  it("duplicate resource ids in one category fail", () => {
+  // T10：同一类别中 resource id 重复时失败。
+  it("同一类别中 resource id 重复时失败", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -340,11 +340,11 @@ resources:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/duplicate id "foo"/);
+    expect(result.errors[0]).toMatch(/ID "foo" 重复/);
   });
 
-  // T11: profile uses — unqualified missing fails, qualified accepted
-  it("profile uses: unqualified missing ref fails, qualified ref accepted", () => {
+  // T11：profile uses——未限定且缺失的 ref 失败；限定 ref 接受。
+  it("profile uses：未限定且缺失的 ref 失败，限定 ref 接受", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -359,13 +359,13 @@ profiles:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    // Unqualified "missing-skill" should fail
-    expect(result.errors.some((e) => e.includes('"missing-skill" not found'))).toBe(true);
-    // Qualified "imported-ns:remote-skill" should NOT produce an error
+    // 未限定的 "missing-skill" 应失败。
+    expect(result.errors.some((e) => e.includes('找不到资源 "missing-skill"'))).toBe(true);
+    // 限定的 "imported-ns:remote-skill" 不应产生错误。
     expect(result.errors.some((e) => e.includes("imported-ns:remote-skill"))).toBe(false);
   });
 
-  it("profile uses: imported unqualified skill is allowed when imports are declared", () => {
+  it("profile uses：声明 import 时允许已导入的未限定 skill", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -387,8 +387,8 @@ profiles:
     expect(result.errors).toEqual([]);
   });
 
-  // T12: runtime_resources without runtime field fail
-  it("runtime_resources without runtime field fail", () => {
+  // T12：缺少 runtime 字段的 runtime_resources 失败。
+  it("缺少 runtime 字段的 runtime_resources 失败", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -400,10 +400,10 @@ resources:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/runtime.*required/);
+    expect(result.errors[0]).toMatch(/runtime.*必填/);
   });
 
-  it("runtime_resources without type field fail", () => {
+  it("缺少 type 字段的 runtime_resources 失败", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -415,11 +415,11 @@ resources:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/type.*required/);
+    expect(result.errors[0]).toMatch(/type.*必填/);
   });
 
-  // T13: multiple errors reported together (including invalid enums)
-  it("multiple validation errors reported together", () => {
+  // T13：同时报告多个错误（包括无效 enum）。
+  it("同时报告多个校验错误", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -446,8 +446,8 @@ defaults:
     expect(result.errors.some((e) => e.includes("wake_on_demand"))).toBe(true);
   });
 
-  // T14a: startup.files as object (not array) is rejected
-  it("startup.files as object instead of array is rejected", () => {
+  // T14a：拒绝 object 而非 array 形式的 startup.files。
+  it("拒绝 object 而非 array 形式的 startup.files", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -457,11 +457,11 @@ startup:
 `);
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("files") && e.includes("array"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("files") && e.includes("数组"))).toBe(true);
   });
 
-  // T14b: profiles as array is rejected
-  it("profiles as array instead of map is rejected", () => {
+  // T14b：拒绝 array 而非 map 形式的 profiles。
+  it("拒绝 array 而非 map 形式的 profiles", () => {
     const raw = parseAgentSpec(`
 name: test
 version: "1.0"
@@ -473,8 +473,8 @@ profiles:
     expect(result.errors.some((e) => e.includes("profiles") && e.includes("map"))).toBe(true);
   });
 
-  // T14: parse -> validate -> normalize is deterministic
-  it("parse -> validate -> normalize is deterministic", () => {
+  // T14：parse → validate → normalize 具有确定性。
+  it("parse → validate → normalize 具有确定性", () => {
     const raw1 = parseAgentSpec(VALID_SPEC);
     const raw2 = parseAgentSpec(VALID_SPEC);
     const v1 = validateAgentSpec(raw1);
@@ -485,12 +485,10 @@ profiles:
     expect(n1).toEqual(n2);
   });
 
-  // Per-seat silence-window-seconds override.
-  // The AgentSpec parser preserves `profile.activity.silenceWindowSeconds`
-  // through normalization. Currently inert (the live poller uses the
-  // global 3s default); retained for a future per-seat-poller decision.
-  // Both YAML conventions (snake_case + camelCase) are accepted.
-  describe("profile.activity.silenceWindowSeconds normalization (slice 15 HG-7)", () => {
+  // 逐 seat silence-window-seconds 覆盖。AgentSpec parser 在规范化时保留
+  // `profile.activity.silenceWindowSeconds`。当前未生效（live poller 使用全局 3s 默认值）；为未来
+  // 逐 seat poller 决策保留。同时接受两种 YAML 约定（snake_case + camelCase）。
+  describe("profile.activity.silenceWindowSeconds 规范化（slice 15 HG-7）", () => {
     const baseSpec = (activityBlock: string) => `
 name: test-agent
 version: "1.0"
@@ -505,26 +503,26 @@ profiles:
 ${activityBlock}
 `;
 
-    it("accepts a valid integer override (snake_case yaml form)", () => {
+    it("接受有效整数覆盖（snake_case YAML 形式）", () => {
       const raw = parseAgentSpec(baseSpec(`    activity:\n      silence_window_seconds: 7`));
       const spec = normalizeAgentSpec(raw);
       expect(spec.profiles["default"]!.activity?.silenceWindowSeconds).toBe(7);
     });
 
-    it("accepts a valid integer override (camelCase form)", () => {
+    it("接受有效整数覆盖（camelCase 形式）", () => {
       const raw = parseAgentSpec(baseSpec(`    activity:\n      silenceWindowSeconds: 12`));
       const spec = normalizeAgentSpec(raw);
       expect(spec.profiles["default"]!.activity?.silenceWindowSeconds).toBe(12);
     });
 
-    it("accepts boundary values 1 and 3600", () => {
+    it("接受边界值 1 和 3600", () => {
       const lo = normalizeAgentSpec(parseAgentSpec(baseSpec(`    activity:\n      silence_window_seconds: 1`)));
       expect(lo.profiles["default"]!.activity?.silenceWindowSeconds).toBe(1);
       const hi = normalizeAgentSpec(parseAgentSpec(baseSpec(`    activity:\n      silence_window_seconds: 3600`)));
       expect(hi.profiles["default"]!.activity?.silenceWindowSeconds).toBe(3600);
     });
 
-    it("drops out-of-range values (0, 3601, -1) so the launcher default applies", () => {
+    it("丢弃越界值（0、3601、-1），使 launcher 默认值生效", () => {
       const zero = normalizeAgentSpec(parseAgentSpec(baseSpec(`    activity:\n      silence_window_seconds: 0`)));
       expect(zero.profiles["default"]!.activity).toBeUndefined();
       const tooBig = normalizeAgentSpec(parseAgentSpec(baseSpec(`    activity:\n      silence_window_seconds: 3601`)));
@@ -533,7 +531,7 @@ ${activityBlock}
       expect(negative.profiles["default"]!.activity).toBeUndefined();
     });
 
-    it("drops non-integer values (3.5, NaN, Infinity)", () => {
+    it("丢弃非整数值（3.5、NaN、Infinity）", () => {
       const fractional = normalizeAgentSpec(parseAgentSpec(baseSpec(`    activity:\n      silence_window_seconds: 3.5`)));
       expect(fractional.profiles["default"]!.activity).toBeUndefined();
       const nan = normalizeAgentSpec(parseAgentSpec(baseSpec(`    activity:\n      silence_window_seconds: .nan`)));
@@ -542,26 +540,25 @@ ${activityBlock}
       expect(inf.profiles["default"]!.activity).toBeUndefined();
     });
 
-    it("drops non-numeric values ('seven', null) — typesafe at the parser boundary", () => {
+    it("丢弃非数值（'seven'、null）——在 parser 边界保持类型安全", () => {
       const stringy = normalizeAgentSpec(parseAgentSpec(baseSpec(`    activity:\n      silence_window_seconds: "seven"`)));
       expect(stringy.profiles["default"]!.activity).toBeUndefined();
       const empty = normalizeAgentSpec(parseAgentSpec(baseSpec(`    activity: {}`)));
       expect(empty.profiles["default"]!.activity).toBeUndefined();
     });
 
-    it("absent activity block → spec.profiles.default.activity is undefined (launcher default applies)", () => {
+    it("activity block 缺席 → spec.profiles.default.activity 为 undefined（应用 launcher 默认值）", () => {
       const raw = normalizeAgentSpec(parseAgentSpec(baseSpec(``)));
       expect(raw.profiles["default"]!.activity).toBeUndefined();
     });
   });
 });
 
-// ─── OPR.0.5.6.20 P3 — compaction_strategy wiring (locked A1 compat rule) ───────
-// RED-FIRST: committed at pristine base f7301d6ba before the implementation commit.
-// At base: the four new values REJECT (closed old set), the alias cases carry no
-// advisory, and normalize emits the old spelling — each labeled per-case below.
+// ─── OPR.0.5.6.20 P3——compaction_strategy 接线（锁定 A1 兼容规则）───────
+// RED-FIRST：在实现提交前基于 pristine base f7301d6ba 提交。基线状态：四个新值被拒绝（旧封闭
+// 集合），alias 情形没有 advisory，normalize 输出旧拼写；下方逐项标注。
 
-describe("compaction_strategy — S20 four-mode wiring + A1 compat (OPR.0.5.6.20)", () => {
+describe("compaction_strategy——S20 四模式接线 + A1 兼容（OPR.0.5.6.20）", () => {
   const specWithStrategy = (v: string) => `
 version: "0.2"
 name: s20-fixture
@@ -573,7 +570,7 @@ profiles:
   default: {}
 `;
 
-  it("accepts all four new canonical values (RED at base: closed-set rejection)", () => {
+  it("接受全部四个新 canonical 值（基线 RED：封闭集合拒绝）", () => {
     for (const v of ["default-compaction", "managed-compaction", "handover", "apprentice-handover"]) {
       const result = validateAgentSpec(parseAgentSpec(specWithStrategy(v)));
       expect(result.errors).toEqual([]);
@@ -581,37 +578,37 @@ profiles:
     }
   });
 
-  it("harness_native: deprecated alias — validates WITH advisory, normalizes to default-compaction (RED at base: no advisory, old spelling normalized)", () => {
+  it("harness_native：已弃用 alias——校验带 advisory，规范化为 default-compaction（基线 RED：无 advisory，规范化为旧拼写）", () => {
     const raw = parseAgentSpec(specWithStrategy("harness_native"));
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(true);
-    expect((result.advisories ?? []).join(" ")).toMatch(/harness_native.*deprecated.*default-compaction/);
+    expect((result.advisories ?? []).join(" ")).toMatch(/harness_native.*已弃用.*default-compaction/);
     const spec = normalizeAgentSpec(raw);
     expect(spec.defaults.lifecycle.compactionStrategy).toBe("default-compaction");
   });
 
-  it("pod_continuity: deprecated alias — validates WITH advisory, normalizes to handover (RED at base: no advisory, old spelling normalized)", () => {
+  it("pod_continuity：已弃用 alias——校验带 advisory，规范化为 handover（基线 RED：无 advisory，规范化为旧拼写）", () => {
     const raw = parseAgentSpec(specWithStrategy("pod_continuity"));
     const result = validateAgentSpec(raw);
     expect(result.valid).toBe(true);
-    expect((result.advisories ?? []).join(" ")).toMatch(/pod_continuity.*deprecated.*handover/);
+    expect((result.advisories ?? []).join(" ")).toMatch(/pod_continuity.*已弃用.*handover/);
     const spec = normalizeAgentSpec(raw);
     expect(spec.defaults.lifecycle.compactionStrategy).toBe("handover");
   });
 
-  it("custom_prompt rejection is byte-identical to the shipped teaching error (regression floor — green at base)", () => {
+  it("custom_prompt 拒绝与已发布教学错误按字节一致（回归底线——基线为绿）", () => {
     const result = validateAgentSpec(parseAgentSpec(specWithStrategy("custom_prompt")));
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes('"custom_prompt" is not supported in v1'))).toBe(true);
   });
 
-  it("unknown values reject with a teaching error naming the CURRENT vocabulary (RED at base: error names only the old set)", () => {
+  it("未知值以点名当前词汇的教学错误拒绝（基线 RED：错误只点名旧集合）", () => {
     const result = validateAgentSpec(parseAgentSpec(specWithStrategy("yolo-mode")));
     expect(result.valid).toBe(false);
     expect(result.errors.join(" ")).toMatch(/default-compaction/);
   });
 
-  it("unspecified normalizes to default-compaction — today's behavior under the new name, F-6 authority (RED at base: harness_native)", () => {
+  it("未指定时规范化为 default-compaction——新名称下的当前行为，F-6 权威（基线 RED：harness_native）", () => {
     const raw = parseAgentSpec(`
 version: "0.2"
 name: s20-fixture
@@ -625,7 +622,7 @@ profiles:
   });
 });
 
-describe("continuity mechanic — AgentSpec lifecycle ingress (S20 A7/A8)", () => {
+describe("continuity mechanic——AgentSpec lifecycle ingress（S20 A7/A8）", () => {
   const specWithMechanic = (value: string) => `
 version: "0.2"
 name: mechanic-fixture
@@ -638,15 +635,15 @@ profiles:
   default: {}
 `;
 
-  it("accepts a canonical cross-rig seat address and preserves it", () => {
+  it("接受并保留 canonical 跨 rig seat address", () => {
     const raw = parseAgentSpec(specWithMechanic("operator-agent@kernel"));
     expect(validateAgentSpec(raw).valid).toBe(true);
     expect(normalizeAgentSpec(raw).defaults?.lifecycle?.mechanic).toBe("operator-agent@kernel");
   });
 
-  it("rejects a non-canonical mechanic address with a field-shaped error", () => {
+  it("以字段结构错误拒绝非 canonical mechanic address", () => {
     const result = validateAgentSpec(parseAgentSpec(specWithMechanic("operator-agent")));
     expect(result.valid).toBe(false);
-    expect(result.errors.join(" ")).toMatch(/lifecycle\.mechanic.*canonical.*seat@rig/i);
+    expect(result.errors.join(" ")).toMatch(/lifecycle\.mechanic.*规范.*seat@rig/i);
   });
 });

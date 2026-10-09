@@ -1,11 +1,11 @@
-// Slice 27 — Claude Compaction Policy form tests.
+// Slice 27——Claude 压缩策略表单测试。
 //
-// HG-9: form renders + persists settings.
-// Also covers:
-//   - opt-in default-off rendering (enabled toggle reflects current value)
-//   - threshold validation rejects out-of-range values without persisting
-//   - submit issues one POST per key against /api/config/:key
-//   - shows "Saved." indicator after successful submit
+// HG-9：表单渲染 + 持久化设置。
+// 另覆盖：
+//   - opt-in 默认关闭渲染（enabled 开关反映当前值）
+//   - 阈值校验拒绝越界值而不持久化
+//   - 提交对每个 key 发一次 POST 到 /api/config/:key
+//   - 成功提交后显示 "Saved." 指示
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
@@ -14,12 +14,12 @@ import { ClaudeCompactionPolicyForm } from "../src/components/system/ClaudeCompa
 
 const mockFetch = vi.fn();
 const DEFAULT_PRE_COMPACT_INSTRUCTION =
-  "Read the claude-compaction-restore skill and follow its \"If You Are About To Compact\" protocol.";
+  "阅读 claude-compaction-restore 技能，并遵循其中的‘即将压缩时’协议。";
 const DEFAULT_COMPACT_INSTRUCTION = "";
 const DEFAULT_RESTORE_INSTRUCTION =
-  "Read the claude-compaction-restore skill and follow its \"If You Just Compacted\" protocol.";
+  "阅读 claude-compaction-restore 技能，并遵循其中的‘刚完成压缩时’协议。";
 const DEFAULT_AUDIT_INSTRUCTION =
-  "Read the claude-compaction-restore skill and follow its \"Required Read-Depth Audit\" protocol.";
+  "阅读 claude-compaction-restore 技能，并遵循其中的‘必需阅读深度审计’协议。";
 const DEFAULT_EXTRA_INSTRUCTION_FILE_PATH =
   "/Users/test/.openrig/compaction/post-compact-extra.md";
 
@@ -91,8 +91,8 @@ describe("ClaudeCompactionPolicyForm — slice 27", () => {
     mockFetch.mockResolvedValue(jsonResponse(makeSettingsResponse()));
     render(createTestRouter({ component: () => <ClaudeCompactionPolicyForm />, path: "/" }));
 
-    // Form body waits for data; assert on input presence to confirm data
-    // has loaded before reading values.
+    // 表单 body 等待数据；断言 input 存在以确认数据
+    // 已加载后再读值。
     await waitFor(() => expect(screen.getByTestId("claude-compaction-enabled")).toBeDefined());
 
     const enabled = screen.getByTestId("claude-compaction-enabled") as HTMLInputElement;
@@ -178,7 +178,7 @@ describe("ClaudeCompactionPolicyForm — slice 27", () => {
     expect(findKey("policies.claude_compaction.pre_compact_instruction")?.init?.body as string).toContain("Read the claude-compaction-restore skill before compacting.");
     expect(findKey("policies.claude_compaction.compact_instruction")?.init?.body as string).toContain("Summarize decisions first.");
     expect(findKey("policies.claude_compaction.message_inline")?.init?.body as string).toContain("Reload the slice doc before resuming.");
-    // message_file_path posted with its default canonical skill file path.
+    // message_file_path 以其默认规范 skill 文件路径提交。
     expect(findKey("policies.claude_compaction.message_file_path")?.init?.body as string).toContain(
       DEFAULT_EXTRA_INSTRUCTION_FILE_PATH,
     );

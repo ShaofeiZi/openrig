@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch15",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/status.test.ts",
+      "before_sha256_16": "abdba329c123c1d6",
+      "after_sha256_16": "04216279959f8d65",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/ps-scope-metadata.test.ts",
+      "before_sha256_16": "672b9eeb1e34b02e",
+      "after_sha256_16": "f3f7781160b51923",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/context-pack-add-ref-safety.test.ts",
+      "before_sha256_16": "c7859fc8bc816e17",
+      "after_sha256_16": "b61f056b12eeafdb",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/ps-runtime-model-columns.test.ts",
+      "before_sha256_16": "0fb876f36ec5b18f",
+      "after_sha256_16": "b732ccb90f33d309",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/packaging-deps-mirror.test.ts",
+      "before_sha256_16": "a47bf1c56aae64a1",
+      "after_sha256_16": "8ac33b744a3b7880",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

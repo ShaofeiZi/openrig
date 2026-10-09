@@ -1,0 +1,94 @@
+{
+ "schema": "openrig.tui-comment-review-batch/v1",
+ "captured_at": "2026-10-08T23:58:01",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "comment-review-batch2",
+ "files": 10,
+ "changed": 7,
+ "reviewed_no_change": 3,
+ "complete": true,
+ "note": "10 扫描文件全 complete；grammar/presentation/production 0 英文注释；其余注释译简中。",
+ "rows": [
+  {
+   "path": "packages/tui/test/arrow-autoscroll.test.ts",
+   "status": "changed",
+   "before_sha256": "0239e63156ac01ce2465a5a9544fdab83fc9e019c92fed18e0d7ab95965d51f4",
+   "after_sha256": "4ab2afb478c4cb5514b91dc01f7bbc021081b06152a34aba4154f64eaa3cd42e",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、logicalId 形态、路由键保留未动"
+  },
+  {
+   "path": "packages/tui/test/grammar.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "5f4cc65add8e3e1a7d35dfc13fbde73b9204beea323eba7f8741c63370435284",
+   "after_sha256": "d029ef35ef7e3d365ed4c381d6fe10b71011f5cacaef2cd7b636a593c25639ca",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、logicalId 形态、路由键保留未动"
+  },
+  {
+   "path": "packages/tui/test/motion.test.ts",
+   "status": "changed",
+   "before_sha256": "02c25ae18c5b4932d59dc76f4e978953bd905870479d7c2ac7336a3cfca23418",
+   "after_sha256": "5c8024ac11e70f549e94482005a92af494553f633321a1c18e44d822d75e72be",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、logicalId 形态、路由键保留未动"
+  },
+  {
+   "path": "packages/tui/test/parity.test.ts",
+   "status": "changed",
+   "before_sha256": "e90768dc794536bfeb82dc6009a1aaf44efc147784409d2dde07268794d686a1",
+   "after_sha256": "2c823224aabb5a18ea3b96333e6d3c37b85c48519c0a9f8a3faa4e021c9731d9",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、logicalId 形态、路由键保留未动"
+  },
+  {
+   "path": "packages/tui/test/parity-content.test.ts",
+   "status": "changed",
+   "before_sha256": "a8be9e4b37c98b5983cae905d05fb9b97626f6326f3e30c4ae5ad5fb1e7ca43b",
+   "after_sha256": "25877cf9bb1f358f09e960bdd2a55e4036b0838140a93faacf46edd604a3554c",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、logicalId 形态、路由键保留未动"
+  },
+  {
+   "path": "packages/tui/test/polish-focus.test.ts",
+   "status": "changed",
+   "before_sha256": "dcd766279780ebbb9b973c6a25d7e0a8bfd9d67a90161a585bb0a4f7b5420ece",
+   "after_sha256": "9ce276f74fd7d3bff4845f92c0bb7adf8163f31e8bc1b55f3e8dd766ce500000",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、logicalId 形态、路由键保留未动"
+  },
+  {
+   "path": "packages/tui/test/presentation-guidance.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "543163c93a77b1cacc123fb4fee1d0db6a5e1d615d07460ed554126f05e9e04b",
+   "after_sha256": "a7de4923a3db4e79e422f6418ed3c75c074ed30fd8f746fc288199b2c59fa6ff",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、logicalId 形态、路由键保留未动"
+  },
+  {
+   "path": "packages/tui/test/production-composed-system.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "1790c7e5fbba142bd0060b31e1b743b56f943b47645fd31f57fbc93fba2def0d",
+   "after_sha256": "9ec2f36a58a6644e24b8104f00a0dcb298e41bad18cc31f002eb5f783d885d12",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、logicalId 形态、路由键保留未动"
+  },
+  {
+   "path": "packages/tui/test/pulse-live.test.ts",
+   "status": "changed",
+   "before_sha256": "49a3bae9e63b31c891f9c908a211af2d69441750c2bd25dc1a75e20a4f20420e",
+   "after_sha256": "f052b69da8ee209ebb146075631f8465b5c38cbf78f14faed5b20ec70b34a1d8",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、logicalId 形态、路由键保留未动"
+  },
+  {
+   "path": "packages/tui/test/pulse-view.test.ts",
+   "status": "changed",
+   "before_sha256": "3723c145f1e0f9b2ce10380b0b3adf76e3f4c031f8632c08883379de548775a5",
+   "after_sha256": "e0b8e665dcaac329ce33fb007a4530e2d9cb9f2c210389676f792e0fa5dafba5",
+   "natural_language_residual": 0,
+   "machine_classification": "ruling/qitem 哈希、SGR 控制序列、协议令牌、logicalId 形态、路由键保留未动"
+  }
+ ]
+}

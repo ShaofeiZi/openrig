@@ -20,7 +20,7 @@ function mockTmux(overrides?: {
   const tmux = {
     sendText: overrides?.sendText ?? vi.fn(async () => ({ ok: true as const })),
     sendKeys: overrides?.sendKeys ?? vi.fn(async () => ({ ok: true as const })),
-    // A ready prompt corroborates the foreground process; process name alone is insufficient.
+    // 就绪提示用于佐证前台进程；仅凭进程名不足以确认。
     getPaneCommand: overrides?.getPaneCommand ?? vi.fn(async () => "codex"),
     capturePaneContent: overrides?.capturePaneContent ?? vi.fn(async () => "OpenAI Codex (v0.0.0)\n› Ask Codex to do anything"),
     createSession: async () => ({ ok: true as const }),
@@ -35,29 +35,29 @@ function mockTmux(overrides?: {
 
 describe("CodexResumeAdapter", () => {
   describe("canResume", () => {
-    it("codex_id + token -> true", () => {
+    it("codex_id + token → true", () => {
       const adapter = new CodexResumeAdapter(mockTmux());
       expect(adapter.canResume("codex_id", "uuid-123")).toBe(true);
     });
 
-    it("codex_last WITHOUT token -> true", () => {
+    it("codex_last 不带 token → true", () => {
       const adapter = new CodexResumeAdapter(mockTmux());
       expect(adapter.canResume("codex_last", null)).toBe(true);
     });
 
-    it("no token + not codex_last -> false", () => {
+    it("无 token 且不是 codex_last → false", () => {
       const adapter = new CodexResumeAdapter(mockTmux());
       expect(adapter.canResume("codex_id", null)).toBe(false);
     });
 
-    it("claude_name -> false (cross-harness)", () => {
+    it("claude_name → false（跨 harness）", () => {
       const adapter = new CodexResumeAdapter(mockTmux());
       expect(adapter.canResume("claude_name", "token")).toBe(false);
     });
   });
 
   describe("resume", () => {
-    it("codex_id: sendText then sendKeys Enter", async () => {
+    it("codex_id：先 sendText，再 sendKeys Enter", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const tmux = mockTmux({ sendText, sendKeys });
@@ -73,7 +73,7 @@ describe("CodexResumeAdapter", () => {
       expect(sendText.mock.invocationCallOrder[0]).toBeLessThan(sendKeys.mock.invocationCallOrder[0]!);
     });
 
-    it("0.5.2-07: a SPEC-pinned model threads -m onto the legacy codex resume command", async () => {
+    it("0.5.2-07：SPEC 固定的 model 会把 -m 传入旧式 codex resume 命令", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const tmux = mockTmux({ sendText, sendKeys });
@@ -84,7 +84,7 @@ describe("CodexResumeAdapter", () => {
       expect(sendText.mock.calls[0]![1]).toBe("codex -s workspace-write -m 'gpt-5.4-cheap' resume 'uuid-123'");
     });
 
-    it("codex_last: sendText posture-preserving codex -s workspace-write resume --last", async () => {
+    it("codex_last：sendText 发送保留 posture 的 codex -s workspace-write resume --last", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const tmux = mockTmux({ sendText, sendKeys });
@@ -97,13 +97,13 @@ describe("CodexResumeAdapter", () => {
       expect(sendKeys).toHaveBeenCalledOnce();
     });
 
-    it("returns { ok: true } on success", async () => {
+    it("成功时返回 { ok: true }", async () => {
       const adapter = new CodexResumeAdapter(mockTmux());
       const result = await adapter.resume("r99-demo1-impl", "codex_id", "uuid-123", "/repo");
       expect(result).toEqual({ ok: true, appliedLaunch: CODEX_FLOOR_EFFECT });
     });
 
-    it("returns { ok: false, code: 'resume_failed' } on failure", async () => {
+    it("失败时返回 { ok: false, code: 'resume_failed' }", async () => {
       const sendText = vi.fn(async () => ({ ok: false as const, code: "session_not_found", message: "err" }));
       const adapter = new CodexResumeAdapter(mockTmux({ sendText }));
       const result = await adapter.resume("r99-demo1-impl", "codex_id", "uuid-123", "/repo");
@@ -111,21 +111,21 @@ describe("CodexResumeAdapter", () => {
       if (!result.ok) expect(result.code).toBe("resume_failed");
     });
 
-    it("resume_type=none -> { ok: false, code: 'no_resume' }", async () => {
+    it("resume_type=none → { ok: false, code: 'no_resume' }", async () => {
       const adapter = new CodexResumeAdapter(mockTmux());
       const result = await adapter.resume("r99-demo1-impl", "none", null, "/repo");
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.code).toBe("no_resume");
     });
 
-    it("no token + not codex_last -> { ok: false, code: 'no_resume' }", async () => {
+    it("无 token 且不是 codex_last → { ok: false, code: 'no_resume' }", async () => {
       const adapter = new CodexResumeAdapter(mockTmux());
       const result = await adapter.resume("r99-demo1-impl", "codex_id", null, "/repo");
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.code).toBe("no_resume");
     });
 
-    it("shell-sensitive token is quoted in command", async () => {
+    it("命令会引用含 shell 特殊字符的 token", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const adapter = new CodexResumeAdapter(mockTmux({ sendText, sendKeys }));
@@ -135,7 +135,7 @@ describe("CodexResumeAdapter", () => {
       expect(sendText.mock.calls[0]![1]).toBe("codex -s workspace-write resume 'uuid; rm -rf /'");
     });
 
-    it("profile-bearing resume uses -p flag after preflight passes", async () => {
+    it("带 profile 的 resume 在预检通过后使用 -p 参数", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const exec = vi.fn(async () => "[my-profile]\n");
@@ -147,7 +147,7 @@ describe("CodexResumeAdapter", () => {
       expect(sendText.mock.calls[0]![1]).toBe("codex -p 'my-profile' resume 'uuid-123'");
     });
 
-    it("profile preflight failure blocks resume before sendText", async () => {
+    it("profile 预检失败会在 sendText 前阻止 resume", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const exec = vi.fn(async () => { throw new Error("codex not found"); });
@@ -158,13 +158,13 @@ describe("CodexResumeAdapter", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.code).toBe("resume_failed");
-        expect(result.message).toContain("Profile preflight failed");
+        expect(result.message).toContain("Profile 预检失败");
       }
       expect(sendText).not.toHaveBeenCalled();
       expect(sendKeys).not.toHaveBeenCalled();
     });
 
-    it("sendKeys(Enter) fails after sendText -> C-c sent to clear buffer", async () => {
+    it("sendText 后 sendKeys(Enter) 失败时发送 C-c 清空缓冲区", async () => {
       const sendText = vi.fn(async () => ({ ok: true as const }));
       const sendKeys = vi.fn()
         .mockResolvedValueOnce({ ok: false as const, code: "session_not_found", message: "err" })
@@ -179,7 +179,7 @@ describe("CodexResumeAdapter", () => {
       expect(sendKeys.mock.calls[1]![1]).toEqual(["C-c"]);
     });
 
-    it("sendText fails -> NO C-c attempt", async () => {
+    it("sendText 失败时不尝试发送 C-c", async () => {
       const sendText = vi.fn(async () => ({ ok: false as const, code: "session_not_found", message: "err" }));
       const sendKeys = vi.fn(async () => ({ ok: true as const }));
       const adapter = new CodexResumeAdapter(mockTmux({ sendText, sendKeys }));
@@ -190,20 +190,20 @@ describe("CodexResumeAdapter", () => {
     });
   });
 
-  // verifyResume — closes the false-positive `resumed` gap that fire-and-forget
-  // left open. Mirrors ClaudeResumeAdapter.verifyResume; uses the existing
-  // Codex shape in assessNativeResumeProbe (no new probe patterns).
+  // verifyResume——补上 fire-and-forget 留下的 `resumed` 假阳性缺口。镜像
+  // ClaudeResumeAdapter.verifyResume，并复用 assessNativeResumeProbe 中现有 Codex 形状，
+  // 不增加新的 probe pattern。
   describe("verifyResume", () => {
     const fastOptions = { pollMs: 1, maxWaitMs: 5, sleep: async () => {} };
 
-    it("does not claim readiness from a Codex process name alone", async () => {
+    it("不会仅凭 Codex 进程名声称已就绪", async () => {
       const adapter = new CodexResumeAdapter(mockTmux({
         getPaneCommand: async () => "codex", capturePaneContent: async () => "",
       }), fastOptions);
       expect(await adapter.resume("pane", "codex_id", "same-id", "/repo")).toMatchObject({ ok: false, code: "resume_failed" });
     });
 
-    it("probe returns resumed (codex foreground and ready prompt) -> { ok: true }", async () => {
+    it("probe 返回 resumed（codex 前台进程且出现就绪提示）→ { ok: true }", async () => {
       const getPaneCommand = vi.fn(async () => "codex");
       const capturePaneContent = vi.fn(async () => "OpenAI Codex (v0.0.0)\n› Ask Codex to do anything");
       const adapter = new CodexResumeAdapter(
@@ -217,7 +217,7 @@ describe("CodexResumeAdapter", () => {
       expect(getPaneCommand).toHaveBeenCalled();
     });
 
-    it("probe sees Codex TUI banner (paneContent) -> { ok: true }", async () => {
+    it("probe 在 paneContent 中看到 Codex TUI banner → { ok: true }", async () => {
       const adapter = new CodexResumeAdapter(
         mockTmux({
           getPaneCommand: async () => "node",
@@ -231,7 +231,7 @@ describe("CodexResumeAdapter", () => {
       expect(result).toEqual({ ok: true, appliedLaunch: CODEX_FLOOR_EFFECT });
     });
 
-    it("probe sees `No saved session found` -> { ok: false, code: 'retry_fresh' }", async () => {
+    it("probe 看到 `No saved session found` → { ok: false, code: 'retry_fresh' }", async () => {
       const adapter = new CodexResumeAdapter(
         mockTmux({
           getPaneCommand: async () => "codex",
@@ -245,15 +245,14 @@ describe("CodexResumeAdapter", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.code).toBe("retry_fresh");
-        expect(result.message).toContain("no saved session");
+        expect(result.message).toContain("找不到所请求 token 对应的已保存 session");
       }
     });
 
-    it("pane falls back to shell after timeout -> { ok: false, code: 'retry_fresh' }", async () => {
+    it("pane 超时后回到 shell → { ok: false, code: 'retry_fresh' }", async () => {
       const adapter = new CodexResumeAdapter(
         mockTmux({
-          // Inconclusive during polls (unknown command, empty content), then
-          // shell on the final assessment.
+          // 轮询期间无法判定（未知命令、内容为空），最终评估时回到 shell。
           getPaneCommand: async () => "zsh",
           capturePaneContent: async () => "",
         }),
@@ -265,11 +264,11 @@ describe("CodexResumeAdapter", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.code).toBe("retry_fresh");
-        expect(result.message).toContain("returned to shell");
+        expect(result.message).toContain("返回 shell");
       }
     });
 
-    it("probe stays inconclusive (unknown pane) past timeout -> { ok: false, code: 'resume_failed' }", async () => {
+    it("probe 在超时后仍无法判定（未知 pane）→ { ok: false, code: 'resume_failed' }", async () => {
       const adapter = new CodexResumeAdapter(
         mockTmux({
           getPaneCommand: async () => "unknown-binary",
@@ -283,11 +282,11 @@ describe("CodexResumeAdapter", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.code).toBe("resume_failed");
-        expect(result.message).toContain("timed out");
+        expect(result.message).toContain("超时");
       }
     });
 
-    it("polls until resumed: first inconclusive, then Codex ready prompt -> { ok: true }", async () => {
+    it("轮询直至 resumed：首次无法判定，随后出现 Codex 就绪提示 → { ok: true }", async () => {
       let attempt = 0;
       const adapter = new CodexResumeAdapter(
         mockTmux({
@@ -303,10 +302,9 @@ describe("CodexResumeAdapter", () => {
       expect(attempt).toBeGreaterThanOrEqual(2);
     });
 
-    // Codex auth-refusal -> attention_required pass-through. Mirrors
-    // ClaudeResumeAdapter.verifyResume's evidence shape (last 12 pane lines).
-    // Closes the lifecycle scenario matrix slice's documented Codex deferral.
-    it("probe says attention_required (codex auth-refusal) -> { ok: false, code: 'attention_required', evidence }", async () => {
+    // Codex auth-refusal → 透传 attention_required。镜像 ClaudeResumeAdapter.verifyResume 的
+    // evidence 形状（pane 最后 12 行），补齐生命周期场景矩阵中已记录的 Codex 延后项。
+    it("probe 报告 attention_required（Codex auth-refusal）→ 返回失败与 evidence", async () => {
       const refusalPane = [
         "$ codex -s workspace-write resume 019d-token",
         "Error: Your access token could not be refreshed because you have since",
@@ -325,16 +323,15 @@ describe("CodexResumeAdapter", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.code).toBe("attention_required");
-        expect(result.message).toContain("sign in again");
-        // Evidence should be the last-12-lines tail of pane content
-        // (mirrors claude-resume.ts:97 shape exactly).
+        expect(result.message).toContain("重新登录");
+        // evidence 应为 pane 内容最后 12 行，与 claude-resume.ts:97 的形状完全一致。
         expect((result as { evidence?: string }).evidence).toBeDefined();
         expect((result as { evidence?: string }).evidence).toContain("access token could not be refreshed");
         expect((result as { evidence?: string }).evidence).toContain("Please sign in again");
       }
     });
 
-    it("attention_required does NOT trigger when only access-token phrase present (no operator instruction)", async () => {
+    it("只有 access-token 短语而无操作员指令时不触发 attention_required", async () => {
       const adapter = new CodexResumeAdapter(
         mockTmux({
           getPaneCommand: async () => "codex",
@@ -345,7 +342,7 @@ describe("CodexResumeAdapter", () => {
 
       const result = await adapter.resume("r99-demo1-impl", "codex_id", "uuid-123", "/repo");
 
-      // A ready prompt is still present; the auth-refusal pattern requires both anchors.
+      // 仍存在就绪提示；auth-refusal pattern 要求两个锚点同时出现。
       expect(result.ok).toBe(true);
     });
   });

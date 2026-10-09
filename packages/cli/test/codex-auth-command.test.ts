@@ -1,5 +1,5 @@
 // OPR.0.4.1.29 — command-level `rig auth` surface: --runtime axis + structured output wiring.
-// (Secret-leak coverage lives in codex-auth-leakhunt.test.ts; lib semantics in the other suites.)
+//（secret-leak 覆盖见 codex-auth-leakhunt.test.ts；lib 语义见其他 suite。）
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -14,7 +14,7 @@ beforeEach(() => {
 });
 afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
-// Capture stdout/stderr + the resulting process.exitCode for one invocation, never poisoning the runner.
+// 捕获一次调用的 stdout/stderr 及结果 process.exitCode，绝不污染 runner。
 async function run(subArgs: string[]): Promise<{ out: string; code: number | undefined }> {
   const chunks: string[] = [];
   const origLog = console.log;
@@ -47,10 +47,10 @@ describe("rig auth command surface (OPR.0.4.1.29)", () => {
 
   it("status reports structured presence fields (no secrets) on an empty CODEX_HOME", async () => {
     const { out } = await run(["status"]);
-    expect(out).toContain(`codex_home: ${home}`);
-    expect(out).toContain("active_auth_present: no");
-    expect(out).toContain("saved_profiles: 0");
-    expect(out).toContain("login_status: unavailable");
+    expect(out).toContain(`Codex 主目录：${home}`);
+    expect(out).toContain("当前认证存在：否");
+    expect(out).toContain("已保存档案：0");
+    expect(out).toContain("登录状态：unavailable");
   });
 
   it("save without an active auth.json fails with a structured reason + exit 1", async () => {
@@ -62,9 +62,9 @@ describe("rig auth command surface (OPR.0.4.1.29)", () => {
   it("seats output carries the labels-are-not-proof-of-live-account disclaimer", async () => {
     await run(["seats", "set", "--seat", "a@r", "--rig", "r", "--profile", "work"]);
     const { out } = await run(["seats", "list"]);
-    expect(out).toMatch(/not.*(proof|prove)|metadata/i);
+    expect(out).toMatch(/不.*(证明)|元数据/);
     const report = await run(["seats", "report"]);
-    expect(report.out).toMatch(/not.*(proof|prove)|metadata/i);
+    expect(report.out).toMatch(/不.*(证明)|元数据/);
   });
 
   it("invalid profile name fails closed (whitelist)", async () => {

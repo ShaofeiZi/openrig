@@ -1,11 +1,8 @@
-// OPR.0.3.3.20 — one-click approve (AC-2/AC-3, approve-only).
+// OPR.0.3.3.20——一键批准（AC-2/AC-3，仅 approve）。
 //
-// A single click on Approve records verb=approve with NO select+confirm step
-// and fires the existing optimistic instant receipt. route/deny stay in the
-// controlled select+confirm flow (no one-click path for input-needing verbs —
-// structural guard). The held-error path (no silent reset) covers the
-// one-click path too. Act-driven: the mutation fires on the click; there is
-// no timer anywhere in this path.
+// 单击“批准”即记录 verb=approve，不经过选择+确认步骤，并触发现有乐观即时回执。
+// route/deny 仍走受控的选择+确认流程；需要输入的动词没有一键路径，这是结构守卫。
+// 错误保留路径（不静默重置）同样覆盖一键路径。操作驱动：点击即触发变更，整条路径没有定时器。
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup, waitFor } from "@testing-library/react";
@@ -83,7 +80,7 @@ describe("VerbActions — one-click approve (OPR.0.3.3.20)", () => {
 
     fireEvent.click(getByTestId("mc-verb-approve"));
 
-    // No select step appeared — the confirm row never rendered.
+    // 未出现选择步骤，因此确认行从未渲染。
     expect(queryByTestId("mc-verb-submit")).toBeNull();
 
     await waitFor(() => expect(onOptimisticOutcome).toHaveBeenCalledTimes(1));
@@ -103,12 +100,12 @@ describe("VerbActions — one-click approve (OPR.0.3.3.20)", () => {
       oneClickVerbs: ["approve"],
     });
 
-    // Clicking deny SELECTS it (confirm row appears) — nothing fired.
+    // 点击 deny 只会选中它并显示确认行，不触发操作。
     fireEvent.click(getByTestId("mc-verb-deny"));
     expect(queryByTestId("mc-verb-submit")).not.toBeNull();
     expect(actionCalls).toHaveLength(0);
 
-    // Clicking route selects it too — needs a destination, nothing fired.
+    // 点击 route 同样只会选中；它需要目标，因此不会触发操作。
     fireEvent.click(getByTestId("mc-verb-route"));
     expect(queryByTestId("mc-verb-submit")).not.toBeNull();
     expect(actionCalls).toHaveLength(0);
@@ -120,14 +117,13 @@ describe("VerbActions — one-click approve (OPR.0.3.3.20)", () => {
       qitemId: "qitem-guard",
       actorSession: "human@host",
       enabledVerbs: ["approve", "deny", "route"],
-      // Misuse on purpose: the prop TYPE is approve-only, so misuse requires a
-      // cast — and the runtime allowlist must still refuse it.
+      // 故意误用：属性类型只允许 approve，因此误用必须强制转换，运行时白名单仍必须拒绝它。
       oneClickVerbs: ["route"] as unknown as Parameters<typeof VerbActions>[0]["oneClickVerbs"],
     });
 
     fireEvent.click(getByTestId("mc-verb-route"));
 
-    // Fell back to the controlled flow: selected, not fired.
+    // 回退到受控流程：已选中，但未触发。
     expect(queryByTestId("mc-verb-submit")).not.toBeNull();
     expect(actionCalls).toHaveLength(0);
   });
@@ -138,14 +134,14 @@ describe("VerbActions — one-click approve (OPR.0.3.3.20)", () => {
       qitemId: "qitem-guard-deny",
       actorSession: "human@host",
       enabledVerbs: ["approve", "deny", "route"],
-      // deny needs NO input — the approve-only ALLOWLIST (not the input rule)
-      // is what must refuse it (PRD scope + section S: approve-only).
+      // deny 不需要输入；必须由仅允许 approve 的白名单拒绝它，而非输入规则
+      //（PRD 范围 + S 节：仅 approve）。
       oneClickVerbs: ["deny"] as unknown as Parameters<typeof VerbActions>[0]["oneClickVerbs"],
     });
 
     fireEvent.click(getByTestId("mc-verb-deny"));
 
-    // Controlled select+confirm flow appeared; NO action call was made.
+    // 已出现受控选择+确认流程，但没有发出操作调用。
     expect(queryByTestId("mc-verb-submit")).not.toBeNull();
     expect(actionCalls).toHaveLength(0);
   });
@@ -179,7 +175,7 @@ describe("VerbActions — one-click approve (OPR.0.3.3.20)", () => {
     await waitFor(() => getByTestId("mc-verb-error"));
     expect(getByTestId("mc-verb-error").textContent).toContain("approve refused by daemon");
     expect(onOptimisticOutcome).not.toHaveBeenCalled();
-    // The verb buttons are still present and usable — nothing silently reset.
+    // 动词按钮仍存在且可用，没有任何内容被静默重置。
     expect(getByTestId("mc-verb-approve")).not.toBeNull();
   });
 });

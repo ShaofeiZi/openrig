@@ -1,8 +1,7 @@
-// OPR.0.4.4.11 — daemon-side remote single-rig leaf (FR-4).
+// OPR.0.4.4.11——daemon 侧 remote single-rig leaf（FR-4）。
 //
-// The leaf mirrors the CLI transport shape (bearer resolution + status
-// classification vocabulary) — these tests pin the mirrored semantics and
-// that failures surface the EXISTING classes, never a new taxonomy.
+// 此 leaf 镜像 CLI transport shape（bearer 解析 + status classification vocabulary）——
+// 这些测试固定镜像语义，并确保失败呈现既有 class，而非新 taxonomy。
 
 import { describe, it, expect } from "vitest";
 import { remoteUpLeaf } from "../src/domain/topology/remote-up-leaf.js";
@@ -24,8 +23,8 @@ function fetchStub(status: number, payload?: unknown, capture?: { url?: string; 
   }) as typeof fetch;
 }
 
-describe("remoteUpLeaf — bearer resolution (mirrors CLI resolveRemoteBearer)", () => {
-  it("bearer_env: missing/empty env is a permission-gate failure, no request sent", async () => {
+describe("remoteUpLeaf——bearer 解析（镜像 CLI resolveRemoteBearer）", () => {
+  it("bearer_env：缺失/空 env 是 permission-gate failure，且不发送请求", async () => {
     let called = false;
     const res = await remoteUpLeaf({ sourceRef: "r" }, HOST_ENV, {
       env: {},
@@ -40,27 +39,27 @@ describe("remoteUpLeaf — bearer resolution (mirrors CLI resolveRemoteBearer)",
     expect(called).toBe(false);
   });
 
-  it("bearer_file: unreadable and empty files are permission-gate failures", async () => {
+  it("bearer_file：不可读文件与空文件都是 permission-gate failure", async () => {
     const unreadable = await remoteUpLeaf({ sourceRef: "r" }, HOST_FILE, {
       readFile: () => {
         throw new Error("ENOENT");
       },
     });
     expect(unreadable.error).toContain("[permission-gate]");
-    expect(unreadable.error).toContain("not readable");
+    expect(unreadable.error).toContain("无法读取");
 
     const empty = await remoteUpLeaf({ sourceRef: "r" }, HOST_FILE, { readFile: () => "  " });
     expect(empty.error).toContain("[permission-gate]");
-    expect(empty.error).toContain("is empty");
+    expect(empty.error).toContain("为空");
   });
 });
 
-describe("remoteUpLeaf — the shipped POST /api/up transport", () => {
-  it("POSTs the body to {url}/api/up with the resolved bearer; 2xx is ok", async () => {
+describe("remoteUpLeaf——已交付的 POST /api/up transport", () => {
+  it("使用已解析 bearer 将 body POST 到 {url}/api/up；2xx 为成功", async () => {
     const capture: { url?: string; init?: RequestInit } = {};
     const res = await remoteUpLeaf(
       { sourceRef: "specs/factory.yaml", autoApprove: true },
-      HOST_FILE, // trailing-slash url — normalized
+      HOST_FILE, // trailing-slash URL——会被 normalize
       { readFile: () => "tok-123\n", fetchImpl: fetchStub(200, { status: "completed" }, capture) },
     );
     expect(res).toEqual({ ok: true });
@@ -70,7 +69,7 @@ describe("remoteUpLeaf — the shipped POST /api/up transport", () => {
     expect(JSON.parse(String(capture.init?.body))).toEqual({ sourceRef: "specs/factory.yaml", autoApprove: true });
   });
 
-  it("401/403 classifies permission-gate; 4xx/5xx classifies remote-command-failed with the remote error text verbatim", async () => {
+  it("401/403 归类为 permission-gate；4xx/5xx 归类为 remote-command-failed，并逐字保留 remote error text", async () => {
     const auth = await remoteUpLeaf({ sourceRef: "r" }, HOST_ENV, {
       env: { VPS_B_TOKEN: "t" },
       fetchImpl: fetchStub(401),
@@ -86,9 +85,8 @@ describe("remoteUpLeaf — the shipped POST /api/up transport", () => {
     expect(failed.error).toContain("HTTP 409: Already in progress for this source");
   });
 
-  it("R2-B1: a remote /api/up that NEVER settles returns a structured timeout failure instead of hanging the walk", async () => {
-    // fetch stub honors AbortSignal exactly as real fetch does: never
-    // resolves on its own, rejects with AbortError when the signal fires.
+  it("R2-B1：永不结束的 remote /api/up 返回结构化 timeout failure，而非挂起遍历", async () => {
+    // fetch stub 与真实 fetch 一样遵循 AbortSignal：自身永不 resolve，signal 触发时以 AbortError reject。
     let sawSignal = false;
     const neverSettling = ((url: string | URL | Request, init?: RequestInit) =>
       new Promise<Response>((_resolve, reject) => {
@@ -100,17 +98,16 @@ describe("remoteUpLeaf — the shipped POST /api/up transport", () => {
       fetchImpl: neverSettling,
       timeoutMs: 25,
     });
-    expect(sawSignal).toBe(true); // the abort path is actually wired to the request
+    expect(sawSignal).toBe(true); // abort 路径确实接入 request
     expect(res.ok).toBe(false);
     expect(res.error).toContain("[remote-daemon-unreachable]");
-    expect(res.error).toContain("timed out after 25ms");
+    expect(res.error).toContain("在 25ms 后超时");
     expect(res.error).toContain("vps-b");
   });
 
-  it("G-R2B1-1: failure HEADERS followed by a NEVER-COMPLETING error body still returns the structured timeout (deadline stays armed through body parse)", async () => {
-    // Guard's exact recipe: the response resolves with 500 headers and a
-    // body stream that never produces bytes — Response.json() stays pending
-    // forever unless the leaf bounds the parse itself.
+  it("G-R2B1-1：失败 header 后跟永不完成的 error body 时仍返回结构化 timeout（deadline 覆盖 body parse）", async () => {
+    // Guard 的精确复现方法：response 以 500 header resolve，但 body stream 永不产生 byte——
+    // 除非 leaf 自身限制 parse，否则 Response.json() 会永久 pending。
     const stalledBody = ((_url: string | URL | Request, _init?: RequestInit) =>
       Promise.resolve(
         new Response(new ReadableStream({ start() {} }), {
@@ -125,12 +122,12 @@ describe("remoteUpLeaf — the shipped POST /api/up transport", () => {
     });
     expect(res.ok).toBe(false);
     expect(res.error).toContain("[remote-daemon-unreachable]");
-    expect(res.error).toContain("timed out after 25ms");
-    expect(res.error).toContain("response headers arrived (HTTP 500)");
+    expect(res.error).toContain("在 25ms 后超时");
+    expect(res.error).toContain("response header 已到达（HTTP 500）");
     expect(res.error).toContain("vps-b");
   });
 
-  it("G-R2B1-1: a COMPLETE error body within the deadline still yields the classified failure with the remote text verbatim (no regression)", async () => {
+  it("G-R2B1-1：deadline 内完成的 error body 仍产生已分类 failure，并逐字保留 remote text", async () => {
     const res = await remoteUpLeaf({ sourceRef: "r" }, HOST_ENV, {
       env: { VPS_B_TOKEN: "t" },
       fetchImpl: fetchStub(500, { error: "boom from remote" }),
@@ -140,12 +137,12 @@ describe("remoteUpLeaf — the shipped POST /api/up transport", () => {
     expect(res.error).toContain("HTTP 500: boom from remote");
   });
 
-  it("R2-B1: the default deadline is the long-running rig-up budget, not the generic metadata default", async () => {
+  it("R2-B1：默认 deadline 使用长时 rig-up budget，而非通用 metadata 默认值", async () => {
     const { REMOTE_UP_TIMEOUT_MS } = await import("../src/domain/topology/remote-up-leaf.js");
     expect(REMOTE_UP_TIMEOUT_MS).toBe(120_000);
   });
 
-  it("network failure classifies remote-daemon-unreachable naming host + url", async () => {
+  it("network failure 归类为 remote-daemon-unreachable，并指出 host + URL", async () => {
     const res = await remoteUpLeaf({ sourceRef: "r" }, HOST_ENV, {
       env: { VPS_B_TOKEN: "t" },
       fetchImpl: (async () => {

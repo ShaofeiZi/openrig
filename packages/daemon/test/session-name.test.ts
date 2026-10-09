@@ -8,58 +8,58 @@ import {
 } from "../src/domain/session-name.js";
 
 describe("session-name", () => {
-  // Existing legacy tests
-  it("preserves managed rig stems that already match rNN-", () => {
+  // 现有旧版测试。
+  it("保留已匹配 rNN- 的受管 rig stem", () => {
     expect(deriveSessionName("r01", "orchestrator")).toBe("r01-orchestrator");
     expect(validateSessionName("r01-orchestrator")).toBe(true);
   });
 
-  it("normalizes ordinary rig names into a managed r00- stem", () => {
+  it("将普通 rig 名规范化为受管 r00- stem", () => {
     const derived = deriveSessionName("qa-dogfood-rig", "dev");
     expect(derived).toBe("r00-qa-dogfood-rig-dev");
     expect(validateSessionName(derived)).toBe(true);
   });
 
-  // NS-T01 tests
+  // NS-T01 测试。
 
-  // Test 1: deriveCanonicalSessionName produces {pod}-{member}@{rig}
-  it("deriveCanonicalSessionName produces canonical {pod}-{member}@{rig} format", () => {
+  // 测试 1：deriveCanonicalSessionName 生成 {pod}-{member}@{rig}。
+  it("deriveCanonicalSessionName 生成 canonical {pod}-{member}@{rig} 格式", () => {
     expect(deriveCanonicalSessionName("dev", "impl", "auth-feats")).toBe("dev-impl@auth-feats");
     expect(deriveCanonicalSessionName("orch1", "lead", "rigged-buildout")).toBe("orch1-lead@rigged-buildout");
     expect(deriveCanonicalSessionName("rev", "r1", "my.rig")).toBe("rev-r1@my.rig");
   });
 
-  // Test 2: deriveSessionName legacy path preserved
-  it("deriveSessionName legacy path still works for flat rigs", () => {
+  // 测试 2：保留 deriveSessionName 旧路径。
+  it("deriveSessionName 旧路径仍适用于 flat rig", () => {
     expect(deriveSessionName("qa-rig", "worker")).toBe("r00-qa-rig-worker");
     expect(deriveSessionName("r01", "dev")).toBe("r01-dev");
   });
 
-  // Test 3: validateSessionName accepts both legacy and canonical formats
-  it("validateSessionName accepts both legacy r\\d{2}- and canonical @-containing names", () => {
-    // Legacy
+  // 测试 3：validateSessionName 同时接受旧版和 canonical 格式。
+  it("validateSessionName 同时接受旧版 r\\d{2}- 和含 @ 的 canonical 名称", () => {
+    // 旧版。
     expect(validateSessionName("r01-foo")).toBe(true);
     expect(validateSessionName("r00-my-rig-worker")).toBe(true);
-    // Canonical
+    // Canonical。
     expect(validateSessionName("dev-impl@auth-feats")).toBe(true);
     expect(validateSessionName("orch1-lead@rigged-buildout")).toBe(true);
-    // Invalid
+    // 无效。
     expect(validateSessionName("")).toBe(false);
     expect(validateSessionName("no-format-at-all")).toBe(false);
     expect(validateSessionName("has spaces@rig")).toBe(false);
     expect(validateSessionName("dev-impl@rig with spaces")).toBe(false);
   });
 
-  // Test 4: validateSessionNameChars rejects invalid chars with per-character error
-  it("validateSessionNameChars rejects invalid characters with specific error", () => {
+  // 测试 4：validateSessionNameChars 拒绝无效字符，并给出逐字符错误。
+  it("validateSessionNameChars 拒绝无效字符并给出具体错误", () => {
     expect(validateSessionNameChars("valid-name_1", "pod name")).toBeNull();
-    expect(validateSessionNameChars("has.dot", "pod name")).toBeNull(); // dots allowed
+    expect(validateSessionNameChars("has.dot", "pod name")).toBeNull(); // 允许点。
 
     const err = validateSessionNameChars("my pod!", "pod name");
     expect(err).not.toBeNull();
     expect(err).toContain("pod name");
     expect(err).toContain("!");
-    expect(err).toContain("a-z, A-Z, 0-9, -, _, ., @");
+    expect(err).toContain("a-z、A-Z、0-9、-、_、.、@");
 
     const spaceErr = validateSessionNameChars("has space", "member name");
     expect(spaceErr).not.toBeNull();
@@ -67,19 +67,19 @@ describe("session-name", () => {
     expect(spaceErr).toContain(" ");
   });
 
-  // Test 5: @ present in canonical derivation, passes validateSessionName
-  it("canonical session name with @ passes validateSessionName", () => {
+  // 测试 5：canonical 派生结果含 @，可通过 validateSessionName。
+  it("含 @ 的 canonical session 名可通过 validateSessionName", () => {
     const name = deriveCanonicalSessionName("dev", "impl", "auth-feats");
     expect(name).toContain("@");
     expect(validateSessionName(name)).toBe(true);
   });
 
-  // Test 6: validateSessionComponents rejects empty components
-  it("validateSessionComponents rejects empty pod/member/rig with helpful error", () => {
+  // 测试 6：validateSessionComponents 拒绝空组件。
+  it("validateSessionComponents 拒绝空 pod/member/rig 并给出有效错误", () => {
     const emptyPod = validateSessionComponents("", "impl", "my-rig");
     expect(emptyPod.length).toBeGreaterThan(0);
     expect(emptyPod[0]).toContain("pod");
-    expect(emptyPod[0]).toContain("empty");
+    expect(emptyPod[0]).toContain("不得为空");
 
     const emptyMember = validateSessionComponents("dev", "", "my-rig");
     expect(emptyMember.length).toBeGreaterThan(0);
@@ -89,7 +89,7 @@ describe("session-name", () => {
     expect(emptyRig.length).toBeGreaterThan(0);
     expect(emptyRig[0]).toContain("rig");
 
-    // Valid
+    // 有效。
     expect(validateSessionComponents("dev", "impl", "auth-feats")).toEqual([]);
   });
 });

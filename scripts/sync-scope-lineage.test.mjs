@@ -1,7 +1,6 @@
-// OPR.0.5.0.18 — sync-scope-lineage guard: the generated daemon mirror stays in
-// lockstep with the canonical CLI derivation, drift dies loudly, and a canonical
-// mutation propagates to BOTH surfaces through one sync run (the structural kill
-// of the old copy-drift class).
+// OPR.0.5.0.18——sync-scope-lineage 守卫：生成的 daemon 镜像与 canonical CLI 推导严格同步，
+// 漂移响亮失败，一次 sync 运行即把一处 canonical 变更传播到两个表面
+// （从结构上干掉旧的“拷贝漂移”这一类问题）。
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -48,7 +47,7 @@ test("a hand-edited generated mirror is DRIFT: --check exits 1 naming the fix", 
     fs.appendFileSync(path.join(root, GENERATED), "\n// vandalized\n");
     const r = run(["--check"], { SYNC_LINEAGE_ROOT: root });
     assert.equal(r.code, 1);
-    assert.match(r.stderr ?? "", /DRIFT/);
+    assert.match(r.stderr ?? "", /漂移/);
     assert.match(r.stderr ?? "", /sync-scope-lineage\.mjs/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -64,9 +63,9 @@ test("a canonical mutation propagates to BOTH surfaces in one sync (the drift cl
       fs.readFileSync(canonicalPath, "utf8").replace("priors > 0", "priors > 0 /* mutated */"),
       "utf8",
     );
-    // Before the sync: the mirror does NOT carry the mutation (drift exists).
+    // sync 之前：镜像不携带该变更（漂移存在）。
     assert.equal(run(["--check"], { SYNC_LINEAGE_ROOT: root }).code, 1);
-    // One sync run: the mirror now carries it — both surfaces changed together.
+    // 一次 sync 运行后：镜像现在带上了它——两个表面一起改变。
     assert.equal(run([], { SYNC_LINEAGE_ROOT: root }).code, 0);
     const generated = fs.readFileSync(path.join(root, GENERATED), "utf8");
     assert.match(generated, /priors > 0 \/\* mutated \*\//);

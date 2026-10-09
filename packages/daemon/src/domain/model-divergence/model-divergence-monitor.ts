@@ -1,24 +1,21 @@
-// B8 / slice-07 A3 — MODEL-DIVERGENCE DETECTOR + four-channel proclamation (founder-ruled).
+// B8 / slice-07 A3——模型偏差检测器 + 四通道公告（创始人裁定）。
 //
-// DETECT THE DIVERGENCE, NOT THE CAUSES (pm-ruled): the trigger is one comparison — the runtime's
-// EFFECTIVE model vs the seat's PINNED model — at the earliest reliable read. No cause enumeration:
-// specimen #1 was model-invalid (400 silently degraded), specimen #2 was environment-invalid (a
-// missing --add-dir degraded the tier); a 400-handler catches one and misses the other, this
-// comparison catches both. The cause string, when known, rides the proclamation as DIAGNOSIS only.
+// 检测偏差，而不是枚举原因（PM 裁定）：在最早的可靠读取点，只比较运行时的 EFFECTIVE model
+// 与席位的 PINNED model。样本 #1 是 model-invalid（400 后静默降级），样本 #2 是 environment-invalid
+//（缺少 --add-dir 导致 tier 降级）；400 handler 只能捕获前者，而该比较能捕获两者。已知的原因字符串
+// 只作为 DIAGNOSIS 随公告传递，绝不作为触发条件。
 //
-// "AT READINESS", operationally: the check ARMS when a pinned seat's occupant generation appears
-// and FIRES at the first reliable effective-model read. A claude seat has no assistant turn at
-// readiness (the effective signal does not exist yet), so the monitor polls and each generation
-// stays PENDING until its runtime produces the signal — then exactly ONE verdict per generation.
-// Every-occurrence semantics live at the generation grain: every new occupant of a diverged seat
-// proclaims again (founder-classed every-occurrence, not digest), while one generation never spams.
+// “AT READINESS”的运行语义：拥有 pin 的席位出现 occupant generation 时开始监测，在首次可靠读取
+// effective model 时触发。Claude 席位在 ready 时还没有 assistant turn，因此 effective signal 尚不存在；
+// 监控器会持续轮询，每个 generation 在运行时产生 signal 前保持 PENDING，之后每个 generation
+// 恰好给出一个 verdict。every-occurrence 语义以 generation 为粒度：偏差席位的每个新 occupant 都会
+// 再次公告（创始人将其归为 every-occurrence，而非 digest），同一 generation 则绝不刷屏。
 //
-// FOUR CHANNELS, per the desk's target ruling (2026-08-21): orchestrator = the seat's own rig's
-// orch.* seats; operator = the seat resolved from the workspace operator config (derived, never
-// hardcoded — may be cross-host); oversight = the fleet oversight judgment seat (cross-host via the
-// registered route); human-via-Slack = NAMED DEFERRAL ("deferred: M1 not landed") until the M1
-// gateway contract lands — no shadow path. Every channel's delivery OUTCOME is recorded on the
-// proclamation event; an unreachable channel is a named failure/deferral, never a silence.
+// 四个通道遵循 desk 于 2026-08-21 的目标裁定：orchestrator = 席位所属工作组的 orch.* 席位；
+// operator = 从工作区 operator 配置解析出的席位（派生而非硬编码，可能跨主机）；oversight = fleet
+// oversight judgment 席位（通过已注册路由跨主机）；human-via-Slack = 在 M1 gateway 契约落地前的
+// 具名延期（`deferred: M1 not landed`），不设影子路径。每个通道的投递 OUTCOME 都记录在公告事件上；
+// 通道不可达时必须具名失败或延期，绝不静默。
 
 import { createHash } from "node:crypto";
 import { CANONICAL_MODEL_PINS } from "../spec-validation-advisory.js";
@@ -30,7 +27,7 @@ export interface PinnedSeat {
   rigName: string;
   runtime: string | null;
   pinnedModel: string;
-  /** Occupant generation (null = unknown; falls back to sessionName grain). */
+  /** Occupant generation；null 表示未知，此时回退到 sessionName 粒度。 */
   generation: string | null;
 }
 
@@ -54,60 +51,60 @@ export interface ModelDivergenceProclamation {
   channels: ChannelOutcome[];
 }
 
-/** D-a — the effective read carries a NAMED reason on every no-answer outcome, and may be async
- *  (the current-generation join reads the live process table). */
+/** D-a——effective read 的每种无结果 outcome 都携带具名原因，并且可以异步完成
+ *  （current-generation join 会读取实时 process table）。 */
 export type EffectiveModelRead = { ok: true; model: string } | { ok: false; reason: string };
 
 export interface ModelDivergenceMonitorDeps {
-  /** Every running canonical seat carrying a model pin (the detector's whole population). */
+  /** 所有携带 model pin 且正在运行的 canonical 席位，即检测器的完整总体。 */
   listPinnedSeats: () => PinnedSeat[];
-  /** Per-runtime effective read via the CURRENT GENERATION's own record (D-a: never a name/token
-   *  lookup that can silently cross a generation boundary). No-answer = named reason = pending.
-   *  OPR.0.5.3.10 mini-req 1: `cycle`, when passed, carries the POLL-SCOPED process lister — one
-   *  census for every seat in the pass, never a `ps` per seat. */
+  /** 通过 CURRENT GENERATION 自身记录执行逐运行时 effective read（D-a：绝不使用可能静默跨越
+   *  generation 边界的 name/token lookup）。无结果 = 具名原因 = pending。OPR.0.5.3.10 mini-req 1：
+   *  传入 `cycle` 时，它携带 POLL-SCOPED process lister；每轮为所有席位共享一次 census，
+   *  绝不对每个席位单独执行 `ps`。 */
   readEffectiveModel: (
     seat: PinnedSeat,
     cycle?: { listProcesses: () => Promise<Array<{ pid: number; ppid: number; command: string }>> },
   ) => Promise<EffectiveModelRead> | EffectiveModelRead;
-  /** OPR.0.5.3.10 — the shared census; when present, checkOnce() threads a cycle-scoped lister
-   *  into every readEffectiveModel call (lazy: a pass with every seat settled spawns nothing). */
+  /** OPR.0.5.3.10——共享 census。存在时，checkOnce() 将 cycle-scoped lister 传给每次
+   *  readEffectiveModel 调用；采用惰性执行，若本轮所有席位均已 settled，则不会生成进程。 */
   processCensus?: { cycleLister(): () => Promise<Array<{ pid: number; ppid: number; command: string }>> };
-  /** In-daemon send to a session (the watchdog delivery seam). */
+  /** 后台服务内向会话发送消息，即 watchdog 投递接缝。 */
   sendToSession: (sessionName: string, message: string, occurrenceId?: string) => Promise<{ ok: boolean; error?: string; outcome?: string }>;
-  /** The seat's own rig's orchestrator seats (session names). */
+  /** 席位所属工作组的 orchestrator 席位（会话名）。 */
   resolveOrchSeats: (rigName: string) => string[];
-  /** The configured operator seat (derived from config, never hardcoded). Null = unconfigured. */
+  /** 已配置的 operator 席位；从配置派生，绝不硬编码。null 表示未配置。 */
   resolveOperatorSeat: () => string | null;
-  /** The fleet oversight judgment seat (cross-host target), or null when unroutable. */
+  /** fleet oversight judgment 席位（跨主机目标）；无法路由时为 null。 */
   resolveOversightSeat: () => string | null;
-  /** Durable record of the proclamation + its per-channel outcomes. */
+  /** 公告及其逐通道 outcome 的持久记录。 */
   recordProclamation: (p: ModelDivergenceProclamation) => void;
-  /** Optional cause string when a rejection signal is known (diagnosis, NEVER the trigger). */
+  /** 已知拒绝 signal 时的可选原因字符串；只用于 diagnosis，绝不是触发条件。 */
   diagnose?: (seat: PinnedSeat) => string | null;
   now?: () => Date;
   warn?: (message: string) => void;
 }
 
-export const SLACK_DEFERRAL_LINE = "human-via-Slack: deferred: M1 not landed";
+export const SLACK_DEFERRAL_LINE = "human-via-Slack：已延期，M1 尚未落地";
 
-/** Polls a pinned generation may stay signal-less before it is loudly named as unchecked. */
+/** 有 pin 的 generation 在被显著标记为“未检查”前，允许连续无 signal 的轮询次数。 */
 export const PENDING_VISIBILITY_POLLS = 10;
 
 export function formatProclamation(p: Omit<ModelDivergenceProclamation, "channels">): string {
   return [
-    `MODEL DIVERGENCE on ${p.sessionName}: pinned=${p.pinnedModel} effective=${p.effectiveModel}`,
-    `The seat is RUNNING (graceful degrade held) but on a model nobody chose.`,
-    p.diagnosis ? `Diagnosis (informational): ${p.diagnosis}` : `Diagnosis: none captured — the divergence itself is the trigger.`,
-    `Detected ${p.detectedAt} (runtime ${p.runtime ?? "unknown"}, node ${p.nodeId}).`,
+    `${p.sessionName} 出现模型偏差：pinned=${p.pinnedModel} effective=${p.effectiveModel}`,
+    `该席位仍在运行（保持优雅降级），但使用的是无人选择的模型。`,
+    p.diagnosis ? `诊断（仅供参考）：${p.diagnosis}` : `诊断：未捕获原因；偏差本身就是触发条件。`,
+    `检测时间 ${p.detectedAt}（runtime ${p.runtime ?? "unknown"}，node ${p.nodeId}）。`,
   ].join("\n");
 }
 
 export class ModelDivergenceMonitor {
-  /** Generations already given their one verdict (match or proclaimed divergence). */
+  /** 已给出唯一 verdict 的 generation（匹配或已公告偏差）。 */
   private readonly settled = new Set<string>();
-  /** r1 B8 finding — OBSERVABLE PENDING: consecutive no-signal polls per generation. Detection
-   *  silence is the failure class one layer under channel silence: a seat whose effective model
-   *  never reads must be VISIBLE as never-checked, not skipped by a bare continue forever. */
+  /** r1 B8 finding——可观测 PENDING：每个 generation 连续无 signal 的轮询次数。检测静默是比
+   *  channel 静默低一层的失败类别：始终无法读取 effective model 的席位必须显式显示为未检查，
+   *  不能因裸 continue 而永久跳过。 */
   private readonly pendingPolls = new Map<string, number>();
   private readonly pendingReasons = new Map<string, string>();
   private readonly pendingWarned = new Set<string>();
@@ -121,7 +118,7 @@ export class ModelDivergenceMonitor {
   startPolling(intervalMs: number): void {
     if (this.timer) return;
     this.timer = setInterval(() => {
-      void this.checkOnce().catch((err) => this.warn(`[model-divergence] check failed: ${err instanceof Error ? err.message : String(err)}`));
+      void this.checkOnce().catch((err) => this.warn(`[model-divergence] 检查失败：${err instanceof Error ? err.message : String(err)}`));
     }, intervalMs);
     this.timer.unref?.();
   }
@@ -131,30 +128,28 @@ export class ModelDivergenceMonitor {
     this.timer = null;
   }
 
-  /** Pinned generations currently pending (no effective read yet) with their poll counts — the
-   *  observable face of detection-pending (tests + any future status surface). */
+  /** 当前 pending 的 pinned generation（尚无 effective read）及其轮询次数；这是 detection-pending
+   *  面向测试和未来状态界面的可观测形态。 */
   pendingSeats(): Array<{ key: string; polls: number; reason: string | null }> {
     return [...this.pendingPolls.entries()].map(([key, polls]) => ({ key, polls, reason: this.pendingReasons.get(key) ?? null }));
   }
 
-  /** One pass over the pinned population. Returns the proclamations fired this pass (for tests). */
+  /** 遍历一次 pinned 总体；返回本轮触发的公告，供测试使用。 */
   async checkOnce(): Promise<ModelDivergenceProclamation[]> {
     const fired: ModelDivergenceProclamation[] = [];
-    // OPR.0.5.3.10 mini-req 1 — at most ONE process census for the whole pass.
+    // OPR.0.5.3.10 mini-req 1——整轮最多执行一次 process census。
     const cycleList = this.deps.processCensus?.cycleLister();
     const cycle = cycleList ? { listProcesses: cycleList } : undefined;
     for (const seat of this.deps.listPinnedSeats()) {
       try {
         await this.checkSeat(seat, cycle, fired);
       } catch (err) {
-        // Defense-in-depth (row 3f66664a): a per-seat throw must NEVER truncate the pass. At the
-        // blocked sha a single comparison throw ended the whole detector silently. Report THIS seat
-        // as a detector error, loudly, and continue — every remaining pinned seat is still checked.
-        // The seat is not settled, so a transient throw self-heals next pass and a persistent one
-        // keeps surfacing instead of silently ending the detector.
+        // 纵深防御（row 3f66664a）：单个席位抛错绝不能截断整轮。blocked sha 上的一次比较异常曾
+        // 静默终止整个检测器。现在显著报告当前席位的检测错误并继续，确保剩余 pinned 席位仍被检查。
+        // 该席位不会 settled，因此瞬时异常会在下一轮自愈，持续异常则会持续呈现，而不是静默结束检测。
         this.warn(
-          `[model-divergence] check for ${seat.sessionName} (pin ${seat.pinnedModel}) THREW and was ` +
-          `skipped this pass — the remaining pinned seats are still checked: ` +
+          `[model-divergence] 检查 ${seat.sessionName}（pin ${seat.pinnedModel}）时抛错，` +
+          `本轮已跳过该席位；其余 pinned 席位仍会继续检查：` +
           `${err instanceof Error ? err.message : String(err)}`,
         );
       }
@@ -162,8 +157,8 @@ export class ModelDivergenceMonitor {
     return fired;
   }
 
-  /** One seat's check. Extracted so checkOnce can isolate a per-seat throw (defense-in-depth): a
-   *  throw here is caught per seat and never aborts the pass. Pushes any proclamation into `fired`. */
+  /** 单个席位的检查。抽取此方法，使 checkOnce 可隔离逐席位异常（纵深防御）：这里的异常按席位
+   *  捕获，绝不会中止整轮；产生的公告会写入 `fired`。 */
   private async checkSeat(
     seat: PinnedSeat,
     cycle: Parameters<ModelDivergenceMonitorDeps["readEffectiveModel"]>[1],
@@ -173,18 +168,17 @@ export class ModelDivergenceMonitor {
     if (this.settled.has(key)) return;
     const read = await this.deps.readEffectiveModel(seat, cycle);
     if (!read.ok) {
-      // PENDING, never assumed — and never invisible: past the threshold this generation is
-      // named ONCE as never-checked (r1 measured real codex rollouts whose signal sat outside
-      // the bounded read; without this line such a seat would be skipped silently forever).
+      // 保持 PENDING，绝不猜测，也绝不不可见。超过阈值后，此 generation 会被一次性具名标记为
+      // 未检查（r1 实测 Codex rollout 的 signal 可能落在有界读取之外；若无此行，该席位会永久静默跳过）。
       const polls = (this.pendingPolls.get(key) ?? 0) + 1;
       this.pendingPolls.set(key, polls);
       this.pendingReasons.set(key, read.reason);
       if (polls >= PENDING_VISIBILITY_POLLS && !this.pendingWarned.has(key)) {
         this.pendingWarned.add(key);
         this.warn(
-          `[model-divergence] ${seat.sessionName} (pin ${seat.pinnedModel}) has NO effective-model ` +
-          `read after ${polls} polls — this seat is pinned but UNCHECKED (${read.reason}). ` +
-          `A divergence here would currently be invisible.`,
+          `[model-divergence] ${seat.sessionName}（pin ${seat.pinnedModel}）经过 ${polls} 次轮询后仍无 ` +
+          `effective-model 读取结果；该席位已有 pin，但尚未检查（${read.reason}）。` +
+          `此处的偏差当前将不可见。`,
         );
       }
       return;
@@ -219,7 +213,7 @@ export class ModelDivergenceMonitor {
 
     const orchSeats = this.deps.resolveOrchSeats(seat.rigName);
     if (orchSeats.length === 0) {
-      channels.push({ channel: "orchestrator", target: null, status: "failed", detail: `no orch seats found in rig ${seat.rigName}` });
+      channels.push({ channel: "orchestrator", target: null, status: "failed", detail: `工作组 ${seat.rigName} 中未找到 orch 席位` });
     } else {
       for (const target of orchSeats) channels.push(await this.deliver("orchestrator", target, message, occurrenceId));
     }
@@ -227,22 +221,22 @@ export class ModelDivergenceMonitor {
     const operator = this.deps.resolveOperatorSeat();
     channels.push(operator
       ? await this.deliver("operator", operator, message, occurrenceId)
-      : { channel: "operator", target: null, status: "failed", detail: "no operator seat configured" });
+      : { channel: "operator", target: null, status: "failed", detail: "未配置 operator 席位" });
 
     const oversight = this.deps.resolveOversightSeat();
     channels.push(oversight
       ? await this.deliver("oversight", oversight, message, occurrenceId)
-      : { channel: "oversight", target: null, status: "deferred", detail: "deferred: no oversight route registered from this host" });
+      : { channel: "oversight", target: null, status: "deferred", detail: "已延期：当前主机未注册 oversight 路由" });
 
-    // DS2 (founder-locked transport): Slack rides ONLY the M1 gateway contract. Until M1 lands this
-    // channel refuses loudly with its named deferral — never an improvised shadow path.
+    // DS2（创始人锁定的 transport）：Slack 只能使用 M1 gateway 契约。M1 落地前，该通道通过具名延期
+    // 显著拒绝，绝不临时拼出影子路径。
     channels.push({ channel: "slack", target: null, status: "deferred", detail: SLACK_DEFERRAL_LINE });
 
     const proclamation: ModelDivergenceProclamation = { ...base, channels };
     try {
       this.deps.recordProclamation(proclamation);
     } catch (err) {
-      this.warn(`[model-divergence] proclamation record failed for ${seat.sessionName}: ${err instanceof Error ? err.message : String(err)}`);
+      this.warn(`[model-divergence] 记录 ${seat.sessionName} 的公告失败：${err instanceof Error ? err.message : String(err)}`);
     }
     return proclamation;
   }
@@ -250,34 +244,30 @@ export class ModelDivergenceMonitor {
   private async deliver(channel: ChannelOutcome["channel"], target: string, message: string, occurrenceId: string): Promise<ChannelOutcome> {
     try {
       const res = await this.deps.sendToSession(target, message, `guard-model-${occurrenceId}-${target}`);
-      if (res.outcome === "retained") return { channel, target, status: "retained", detail: "Typing guard: retained, not delivered." };
+      if (res.outcome === "retained") return { channel, target, status: "retained", detail: "输入保护：已保留，未投递。" };
       return res.ok
         ? { channel, target, status: "delivered" }
-        : { channel, target, status: "failed", detail: res.error ?? "send failed" };
+        : { channel, target, status: "failed", detail: res.error ?? "发送失败" };
     } catch (err) {
       return { channel, target, status: "failed", detail: err instanceof Error ? err.message : String(err) };
     }
   }
 }
 
-/** Pin comparison: canonicalize the PIN through the one shipped alias map, then EXACT,
- *  case-insensitive, after trimming (f7dfca0c, founder-steered). History on record: exact was
- *  ruled at build; a seat reversed it to whole-token alias matching; r2 reversed THAT back
- *  because generic token containment lets one pin bless multiple distinct models ("codex"
- *  matched gpt-5.6-codex AND gpt-5.1-codex-mini). The landed remedy is the explicit
- *  provider-aware mapping r2's ruling allowed for: CANONICAL_MODEL_PINS
- *  (spec-validation-advisory.ts) is the SINGLE mapping home — spec validation nudges pins
- *  toward canonical ids with it, and this detector canonicalizes the pinned string through the
- *  same data before comparing. Never add a second map here, and never token containment: an
- *  unknown alias or a fallback model canonicalizes to itself and still diverges. Raw
- *  pinned/effective strings travel untouched in any proclamation. */
+/** Pin 比较：先通过唯一已交付 alias map 规范化 PIN，再 trim 后执行不区分大小写的精确比较
+ *  （f7dfca0c，创始人指导）。历史记录：构建时裁定为精确比较；之后某席位改为完整 token alias
+ *  匹配；r2 又将其改回，因为通用 token 包含会让一个 pin 同时放行多个不同模型（`codex` 同时匹配
+ *  gpt-5.6-codex 与 gpt-5.1-codex-mini）。最终修复是 r2 裁定允许的显式、provider-aware mapping：
+ *  CANONICAL_MODEL_PINS（spec-validation-advisory.ts）是唯一映射归属。spec validation 用它提示 pin
+ *  采用 canonical ID，本检测器比较前也通过同一数据规范化 pinned 字符串。绝不能在此新增第二张 map，
+ *  也不能使用 token 包含；未知 alias 或 fallback model 规范化为自身后仍会产生偏差。公告中的原始
+ *  pinned/effective 字符串始终原样传递。 */
 export function modelsMatch(pinned: string, effective: string): boolean {
   const pin = pinned.trim().toLowerCase();
   const eff = effective.trim().toLowerCase();
   const canonicalPin = (CANONICAL_MODEL_PINS[pin] ?? pin).toLowerCase();
   return canonicalPin === eff;
 }
-// (The self-expiring CLAUDE_ALIAS_MIGRATION_BRIDGE and its SPEC_VALIDATION_CAPABILITIES sentinel
-// gate completed their arc and are DELETED per the bridge's own deletion contract: the 5.3
-// advisory landed, the bridge emptied, and f7dfca0c replaced the no-tolerance state with
-// canonicalization through the advisory's shipped map.)
+// 自到期 CLAUDE_ALIAS_MIGRATION_BRIDGE 及其 SPEC_VALIDATION_CAPABILITIES sentinel gate 已完成使命，
+// 按 bridge 自身删除契约移除：5.3 advisory 已落地，bridge 已清空，f7dfca0c 用基于已交付 advisory map
+// 的规范化替代了零容忍状态。

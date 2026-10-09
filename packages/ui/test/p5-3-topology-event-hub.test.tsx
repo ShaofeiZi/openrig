@@ -119,8 +119,8 @@ describe("P5.3 shared topology event hub", () => {
     expect(hubSrc.match(/new\s+EventSource/g) ?? []).toHaveLength(1);
   });
 
-  // slice-04 qitem-20260721000001-ps-stall-driver — U1 (regression pin; genuine RED
-  // at the test-only gate, green now) + U3 (GREEN pins).
+  // slice-04 qitem-20260721000001-ps-stall-driver——U1（回归锁；test-only
+  // 门禁曾真 RED，现绿）+ U3（GREEN 锁）。
   function renderSpied() {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
     const invalSpy = vi.spyOn(qc, "invalidateQueries");
@@ -141,7 +141,7 @@ describe("P5.3 shared topology event hub", () => {
       await act(async () => { await Promise.resolve(); await Promise.resolve(); });
       expect(instances).toHaveLength(1);
 
-      // Host-derived 594-event qualifying burst (the useActivityFeed ps+summary types).
+      // Host 派生的 594 事件合格突发（useActivityFeed ps+summary 类型）。
       const burst: Array<[string, number]> = [
         ["session.detached", 437], ["rig.deleted", 49], ["rig.expanded", 35],
         ["restore.completed", 35], ["node.claimed", 21], ["node.removed", 14], ["pod.deleted", 3],
@@ -160,11 +160,11 @@ describe("P5.3 shared topology event hub", () => {
       const countKey = (want: unknown[]) => calls.filter((k) => keyEq(k, want)).length;
       const countPrefix = (p0: string) => calls.filter((k) => Array.isArray(k) && k[0] === p0).length;
 
-      // Genuine RED at the test-only gate; regression now. Pre-fix, useActivityFeed
-      // invalidated ps + default-summary PER event (no debounce); now coalesced to one.
+      // test-only 门禁曾真 RED；现为回归。修复前 useActivityFeed
+      // 每个事件都失效 ps + default-summary（无 debounce）；现合并为一次。
       expect(countKey(["ps"])).toBe(1);
       expect(countKey(["rigs", "summary"])).toBe(1);
-      // GREEN pins that must survive the fix: distinct-key rig/discovery fan + the 100 feed cap.
+      // 修复后必须存活的 GREEN 锁：distinct-key rig/discovery fan + 100 feed 上限。
       expect(countPrefix("rig")).toBeGreaterThan(0);
       expect(countPrefix("discovery")).toBeGreaterThan(0);
       expect(Number(screen.getByTestId("hub-event-count").textContent)).toBe(100);

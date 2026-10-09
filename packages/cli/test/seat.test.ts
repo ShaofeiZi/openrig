@@ -242,10 +242,10 @@ describe("rig seat status", () => {
 
     const output = logs.join("\n");
     expect(exitCode).toBeUndefined();
-    expect(output).toContain("Occupant lifecycle: active");
-    expect(output).toContain("Continuity outcome: unknown");
-    expect(output).toContain("Handover result: none");
-    expect(output).toContain("Previous occupant: none");
+    expect(output).toContain("占用者生命周期：active");
+    expect(output).toContain("连续性结果：未知");
+    expect(output).toContain("交接结果：none");
+    expect(output).toContain("前一占用者：none");
   });
 
   it("returns a nonzero status for an unknown seat", async () => {
@@ -334,9 +334,9 @@ describe("rig seat status", () => {
 
     const output = logs.join("\n");
     expect(exitCode).toBeUndefined();
-    expect(output).toContain("Fresh occupant ready: dev.impl@seat-rig (dev-impl@seat-rig)");
-    expect(output).toContain("Generation: gen-fresh; model: gpt-5.6-codex");
-    expect(output).toContain("No continuity source was used; siblings and durable work were preserved.");
+    expect(output).toContain("全新占用者就绪：dev.impl@seat-rig（dev-impl@seat-rig）");
+    expect(output).toContain("世代：gen-fresh；模型：gpt-5.6-codex");
+    expect(output).toContain("未使用任何连续性来源；兄弟节点与持久化工作均已保留。");
   });
 
   it("handover --dry-run --json prints the stable planner shape", async () => {
@@ -382,10 +382,10 @@ describe("rig seat status", () => {
 
     const output = logs.join("\n");
     expect(exitCode).toBeUndefined();
-    expect(output).toContain("Seat handover dry run: dev-impl@seat-rig");
+    expect(output).toContain("席位交接演练：dev-impl@seat-rig");
     expect(output).toContain("Phase A - prepare successor");
     expect(output).toContain("Phase B - commit atomic seat rebind");
-    expect(output).toContain("No changes were made.");
+    expect(output).toContain("未做任何改动。");
   });
 
   it("handover requires --reason before contacting the daemon", async () => {
@@ -398,7 +398,7 @@ describe("rig seat status", () => {
 
     expect(exitCode).toBe(2);
     expect(paths).toEqual([]);
-    expect(errors.join("\n")).toContain("Missing required option: --reason <reason>");
+    expect(errors.join("\n")).toContain("缺少必填选项：--reason <reason>");
   });
 
   it("handover unknown seat prints inventory guidance", async () => {
@@ -471,14 +471,14 @@ describe("rig seat status", () => {
 
     const output = logs.join("\n");
     expect(exitCode).toBeUndefined();
-    expect(output).toContain("Seat handover complete: dev-impl@seat-rig");
-    expect(output).toContain("Source: discovered:disc-1");
-    expect(output).toContain("Previous occupant: dev-impl@seat-rig");
-    expect(output).toContain("Current occupant: successor-session");
-    expect(output).toContain("Seat binding and inventory provenance were updated.");
-    // startupContextDelivered:false — the message must include "startup context delivery" in the NOT-performed list.
-    expect(output).toContain("No conversation continuity, startup context delivery, provenance markdown, or session stop was performed.");
-    // ...and must NOT falsely claim a delivery happened.
+    expect(output).toContain("席位交接完成：dev-impl@seat-rig");
+    expect(output).toContain("来源：discovered:disc-1");
+    expect(output).toContain("前一占用者：dev-impl@seat-rig");
+    expect(output).toContain("当前占用者：successor-session");
+    expect(output).toContain("席位绑定与清单出处已更新。");
+    // startupContextDelivered:false——message 必须在未执行列表中含 "startup context delivery"。
+    expect(output).toContain("未做会话连续性、启动上下文投递、出处 markdown 或会话停止。");
+    // …且绝不得虚假声称发生了投递。
     expect(output).not.toContain("restore packet) was delivered");
   });
 
@@ -496,11 +496,11 @@ describe("rig seat status", () => {
     const output = logs.join("\n");
     expect(exitCode).toBeUndefined();
     // Source rendered honestly from result.source (not always discovered:<id>).
-    expect(output).toContain("Source: fresh");
-    expect(output).toContain("Current occupant: dev-impl@seat-rig-h1SUCCID0");
-    // The fresh path DID deliver context — the surface must say so, not deny it.
-    expect(output).toContain("The captured startup context (restore packet) was delivered to the successor.");
-    expect(output).not.toContain("No conversation continuity, startup context delivery,");
+    expect(output).toContain("来源：fresh");
+    expect(output).toContain("当前占用者：dev-impl@seat-rig-h1SUCCID0");
+    // 新路径确实投递了 context——表面必须如此说，而非否认。
+    expect(output).toContain("捕获的启动上下文（恢复包）已投递给继任者。");
+    expect(output).not.toContain("未做会话连续性、启动上下文投递、");
   });
 
   it("handover surfaces a loud step-named failure (successor_create_failed)", async () => {
@@ -543,7 +543,7 @@ describe("rig seat status", () => {
     expect(exitCode).toBeUndefined();
     expect(paths).toEqual(["/api/seat/handover/dev-impl%40seat-rig"]);
 
-    // --reason is enforced before any daemon contact.
+    // --reason 在任何 daemon 联系前强制。
     const paths2: string[] = [];
     const deps2 = makeDeps({ status: 200, data: HANDOVER_RESULT }, paths2);
     const { exitCode: exit2, errors } = await captureLogs(async () => {
@@ -551,11 +551,11 @@ describe("rig seat status", () => {
     });
     expect(exit2).toBe(2);
     expect(paths2).toEqual([]);
-    expect(errors.join("\n")).toContain("Missing required option: --reason <reason>");
+    expect(errors.join("\n")).toContain("缺少必填选项：--reason <reason>");
   });
 });
 
-// OPR.0.4.3.26 — seat-recovery switch-client VIEW retarget.
+// OPR.0.4.3.26——seat-recovery switch-client VIEW 重定向。
 const SWITCH_CLIENT_OK = {
   seat_ref: "dev-impl@seat-rig",
   session: "dev-impl@seat-rig",
@@ -597,8 +597,8 @@ describe("rig seat switch-client", () => {
     expect(exitCode).toBeUndefined();
     expect(paths).toEqual(["/api/seat/switch-client/dev-impl%40seat-rig"]);
     const output = logs.join("\n");
-    expect(output).toContain("Retargeted client /dev/ttys003 -> dev-impl@seat-rig:0");
-    expect(output).toContain("View only");
+    expect(output).toContain("已把客户端 /dev/ttys003 的视图重定向到 dev-impl@seat-rig");
+    expect(output).toContain("仅视图");
     expect(output).not.toContain("routing changed");
   });
 
@@ -643,7 +643,7 @@ describe("rig seat switch-client", () => {
 
     expect(exitCode).toBe(2);
     expect(paths).toEqual([]);
-    expect(errors.join("\n")).toContain("Invalid --to-window");
+    expect(errors.join("\n")).toContain("无效的 --to-window");
   });
 
   it("surfaces the ambiguous-client list on a 409 and exits nonzero", async () => {
@@ -652,7 +652,7 @@ describe("rig seat switch-client", () => {
       data: {
         ok: false,
         code: "ambiguous_client",
-        message: "Multiple attached clients; specify one with --client <name>.",
+        message: "存在多个已挂接客户端；请用 --client <name> 指定一个。",
         clients: [
           { name: "/dev/ttys003", session: "a" },
           { name: "/dev/ttys007", session: "b" },
@@ -666,7 +666,7 @@ describe("rig seat switch-client", () => {
 
     expect(exitCode).toBe(1);
     const out = errors.join("\n");
-    expect(out).toContain("Multiple attached clients");
+    expect(out).toContain("存在多个已挂接客户端");
     expect(out).toContain("/dev/ttys003");
     expect(out).toContain("/dev/ttys007");
   });
@@ -674,7 +674,7 @@ describe("rig seat switch-client", () => {
   it("maps a 502 switch failure to exit code 2", async () => {
     const deps = makeDepsCapturingBody({
       status: 502,
-      data: { ok: false, code: "switch_failed", message: "tmux switch-client failed: gone" },
+      data: { ok: false, code: "switch_failed", message: "tmux switch-client 失败：gone" },
     }, [], []);
 
     const { errors, exitCode } = await captureLogs(async () => {
@@ -682,6 +682,6 @@ describe("rig seat switch-client", () => {
     });
 
     expect(exitCode).toBe(2);
-    expect(errors.join("\n")).toContain("tmux switch-client failed");
+    expect(errors.join("\n")).toContain("tmux switch-client 失败");
   });
 });

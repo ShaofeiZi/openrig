@@ -1,11 +1,10 @@
-// RULING 1ae863d2 (2026-08-06 live false-hard-down incident) — CLI status honesty:
-// (1) 3-STATE daemon status per the C3 detector semantics (canonical:
-//     packages/daemon/src/domain/crash-cart-detect.ts — kept in lockstep): DOWN
-//     ("stopped") requires POSITIVE evidence (connection refused); a TIMEOUT NEVER
-//     promotes to stopped — it is "unverified".
-// (2) HOME-RESOLUTION HONESTY: an empty/stale resolved OPENRIG_HOME with a LIVE
-//     sibling home (or HOME-MOVED marker) must surface BOTH paths — never assert
-//     daemon-down from the wrong home.
+// 裁定 1ae863d2（2026-08-06 线上假硬宕事故）——CLI 状态诚实：
+// (1) 按 C3 检测器语义的三态 daemon 状态（canonical：
+//     packages/daemon/src/domain/crash-cart-detect.ts——保持同步）：DOWN
+//     ("stopped") 需确凿证据（连接被拒）；TIMEOUT 绝不提升为 stopped——它是
+//     "unverified"。
+// (2) HOME 解析诚实：已解析 OPENRIG_HOME 为空/陈旧且存在存活 sibling home
+//     （或 HOME-MOVED 标记）时，必须浮出两条路径——绝不得从错误 home 断言 daemon 宕机。
 import { describe, it, expect, vi } from "vitest";
 import { getDaemonStatus, type LifecycleDeps } from "../src/daemon-lifecycle.js";
 

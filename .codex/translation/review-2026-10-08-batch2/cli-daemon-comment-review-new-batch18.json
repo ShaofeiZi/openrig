@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch18",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/daemon/test/spec-md-shadowed-node.test.ts",
+      "before_sha256_16": "1284d0016a4b8a83",
+      "after_sha256_16": "b9d343ea573c53a7",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/daemon/test/coordination-integration.test.ts",
+      "before_sha256_16": "19e52a64edb568bf",
+      "after_sha256_16": "3a620996376452b2",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/restore-check.test.ts",
+      "before_sha256_16": "eb279f6cfa53f036",
+      "after_sha256_16": "3057d069d3d423c9",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/doctor.test.ts",
+      "before_sha256_16": "f7678b33752cf0fe",
+      "after_sha256_16": "38338d28dfc545eb",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/daemon-bind-provenance.test.ts",
+      "before_sha256_16": "4f5b89a4c719a454",
+      "after_sha256_16": "471f2730f7eaba52",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

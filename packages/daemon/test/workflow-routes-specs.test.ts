@@ -1,14 +1,13 @@
-// Built-in workflow specs — GET /api/workflow/specs route tests.
+// 内置 workflow 规范——GET /api/workflow/specs 路由测试。
 //
-// Drives the new specs route against a hand-mounted Hono app with a
-// bare WorkflowRuntime + the new isBuiltIn computation. Pins the
-// load-bearing behaviors:
+// 使用手工挂载的 Hono 应用、基础 WorkflowRuntime 和新的 isBuiltIn 计算来驱动新 specs 路由。
+// 固定以下关键行为：
 //
-//   - empty cache: { specs: [] }
-//   - mixed (built-in + operator) rows: isBuiltIn flag set per row
-//   - workflowBuiltinSpecsDir context unset: isBuiltIn=false for all
-//     (graceful fallback — surface still works, no indicator)
-//   - route-order: literal /specs not shadowed by /:instance_id catchall
+//   - 空 cache：{ specs: [] }
+//   - 混合（内置 + 操作者）行：逐行设置 isBuiltIn 标志
+//   - 未设置 workflowBuiltinSpecsDir 上下文：所有行 isBuiltIn=false
+//     （平稳回退——界面仍可用，只是不显示标记）
+//   - 路由顺序：字面路径 /specs 不会被 /:instance_id 通配路由遮蔽
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -34,7 +33,7 @@ import { workflowRoutes } from "../src/routes/workflow.js";
 const ALPHA_SPEC = `workflow:
   id: alpha-spec
   version: 1
-  objective: alpha test
+  objective: alpha 测试
   roles:
     a:
       preferred_targets: [a@r]
@@ -87,7 +86,7 @@ describe("GET /api/workflow/specs", () => {
     rmSync(cleanupRoot, { recursive: true, force: true });
   });
 
-  it("returns { specs: [] } when no specs are cached", async () => {
+  it("没有缓存规范时返回 { specs: [] }", async () => {
     const app = buildApp({ runtime, eventBus, builtinDir });
     const res = await app.request("/api/workflow/specs");
     expect(res.status).toBe(200);
@@ -95,7 +94,7 @@ describe("GET /api/workflow/specs", () => {
     expect(body.specs).toEqual([]);
   });
 
-  it("returns each cached spec with the canonical fields", async () => {
+  it("返回每个缓存规范及其标准字段", async () => {
     const operatorSpec = join(operatorDir, "alpha.yaml");
     writeFileSync(operatorSpec, ALPHA_SPEC);
     runtime.specCache.readThrough(operatorSpec);
@@ -112,7 +111,7 @@ describe("GET /api/workflow/specs", () => {
     });
   });
 
-  it("computes isBuiltIn=true for specs whose sourcePath is under builtinDir", async () => {
+  it("sourcePath 位于 builtinDir 下的规范会计算为 isBuiltIn=true", async () => {
     const builtinSpec = join(builtinDir, "alpha.yaml");
     writeFileSync(builtinSpec, ALPHA_SPEC);
     runtime.specCache.readThrough(builtinSpec);
@@ -122,24 +121,24 @@ describe("GET /api/workflow/specs", () => {
     expect(body.specs[0]?.isBuiltIn).toBe(true);
   });
 
-  it("isBuiltIn=false when workflowBuiltinSpecsDir context is unset (graceful)", async () => {
+  it("未设置 workflowBuiltinSpecsDir 上下文时 isBuiltIn=false（平稳降级）", async () => {
     const builtinSpec = join(builtinDir, "alpha.yaml");
     writeFileSync(builtinSpec, ALPHA_SPEC);
     runtime.specCache.readThrough(builtinSpec);
-    const app = buildApp({ runtime, eventBus });  // no builtinDir
+    const app = buildApp({ runtime, eventBus });  // 无 builtinDir
     const res = await app.request("/api/workflow/specs");
     const body = (await res.json()) as { specs: Array<{ isBuiltIn: boolean }> };
     expect(body.specs[0]?.isBuiltIn).toBe(false);
   });
 
-  it("mixed built-in + operator: each row gets the correct isBuiltIn flag", async () => {
+  it("混合内置 + 操作者规范时，每行都获得正确的 isBuiltIn 标志", async () => {
     const builtinPath = join(builtinDir, "alpha.yaml");
     writeFileSync(builtinPath, ALPHA_SPEC);
     runtime.specCache.readThrough(builtinPath);
 
-    // Operator authors a different spec at workspace path.
+    // 操作者在 workspace 路径编写另一个规范。
     const operatorPath = join(operatorDir, "beta.yaml");
-    writeFileSync(operatorPath, ALPHA_SPEC.replace(/alpha-spec/g, "beta-spec").replace(/alpha test/g, "beta test"));
+    writeFileSync(operatorPath, ALPHA_SPEC.replace(/alpha-spec/g, "beta-spec").replace(/alpha 测试/g, "beta 测试"));
     runtime.specCache.readThrough(operatorPath);
 
     const app = buildApp({ runtime, eventBus, builtinDir });
@@ -150,10 +149,9 @@ describe("GET /api/workflow/specs", () => {
     expect(byName.get("beta-spec")).toBe(false);
   });
 
-  it("does NOT mark sibling-suffix paths as built-in (false-positive guard)", async () => {
-    // Spec at path /tmp/.../builtin/workflow-specs-OTHER/foo.yaml should
-    // NOT be marked isBuiltIn just because its prefix matches the
-    // builtinDir string. The route uses path.sep boundary semantics.
+  it("不会将同级后缀路径标记为内置（误报守卫）", async () => {
+    // 路径 /tmp/.../builtin/workflow-specs-OTHER/foo.yaml 中的规范，不应仅因前缀匹配
+    // builtinDir 字符串就被标记为 isBuiltIn。路由使用 path.sep 边界语义。
     const siblingDir = `${builtinDir}-other`;
     mkdirSync(siblingDir, { recursive: true });
     const siblingPath = join(siblingDir, "alpha.yaml");
@@ -165,14 +163,14 @@ describe("GET /api/workflow/specs", () => {
     expect(body.specs[0]?.isBuiltIn).toBe(false);
   });
 
-  it("route-order: literal /specs is NOT shadowed by /:instance_id catchall", async () => {
-    // Without the route-order fix, GET /api/workflow/specs would hit the
-    // /:instance_id handler which returns 404 for "specs" as a fake id.
+  it("路由顺序：字面路径 /specs 不会被 /:instance_id 通配路由遮蔽", async () => {
+    // 若无路由顺序修复，GET /api/workflow/specs 会命中 /:instance_id handler，
+    // 后者会将 "specs" 当作虚假 id 并返回 404。
     const app = buildApp({ runtime, eventBus, builtinDir });
     const res = await app.request("/api/workflow/specs");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { specs: unknown };
-    // Has the specs envelope shape, not the instance-not-found error.
+    // 具有 specs 信封结构，而非实例未找到错误。
     expect(body).toHaveProperty("specs");
     expect(body).not.toHaveProperty("error");
   });

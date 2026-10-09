@@ -21,15 +21,15 @@ import { EventBus } from "../src/domain/event-bus.js";
 import type { TmuxAdapter, TmuxResult } from "../src/adapters/tmux.js";
 import { createFullTestDb } from "./helpers/test-app.js";
 
-describe("agent pane activity classifier", () => {
-  it("classifies active Working pane as agent_active", () => {
+describe("智能体 pane 活动分类器", () => {
+  it("把处于 Working 的活动 pane 分类为 agent_active", () => {
     const result = classifyPaneActivity("Working on task...\n⠋ Processing files\nesc to interrupt");
 
     expect(result.state).toBe("agent_active");
     expect(result.reason).toBe("mid_work_pattern");
   });
 
-  it("classifies numbered runtime prompts as attention, not idle", () => {
+  it("把带编号的 runtime 提示分类为 attention，而不是 idle", () => {
     const result = classifyPaneActivity([
       "› 1. Yes, continue",
       "  2. No, cancel",
@@ -41,7 +41,7 @@ describe("agent pane activity classifier", () => {
     expect(result.reason).toBe("selection_prompt");
   });
 
-  it("classifies numbered runtime prompts with a Codex footer as attention, not idle", () => {
+  it("把带 Codex footer 的编号 runtime 提示分类为 attention，而不是 idle", () => {
     const result = classifyPaneActivity([
       "Some runtime update requires a choice.",
       "",
@@ -56,7 +56,7 @@ describe("agent pane activity classifier", () => {
     expect(result.reason).toBe("selection_prompt");
   });
 
-  it("classifies idle Codex footer at the bottom as agent_idle", () => {
+  it("把底部的空闲 Codex footer 分类为 agent_idle", () => {
     const result = classifyPaneActivity([
       "› Summarize recent commits",
       "",
@@ -67,7 +67,7 @@ describe("agent pane activity classifier", () => {
     expect(result.reason).toBe("idle_status_bar");
   });
 
-  it("classifies idle Claude edit-accept footer at the bottom as agent_idle", () => {
+  it("把底部的空闲 Claude edit-accept footer 分类为 agent_idle", () => {
     const result = classifyPaneActivity([
       "❯ ",
       "  ⏵⏵ accept edits on (shift+tab to cycle)",
@@ -77,7 +77,7 @@ describe("agent pane activity classifier", () => {
     expect(result.reason).toBe("idle_status_bar");
   });
 
-  it("classifies typed Claude prompt text above an idle footer as attention, not idle", () => {
+  it("把空闲 footer 上方已输入的 Claude prompt 文本分类为 attention，而不是 idle", () => {
     const result = classifyPaneActivity([
       "❯ I am still typing a message",
       "  ⏵⏵ accept edits on (shift+tab to cycle)",
@@ -88,7 +88,7 @@ describe("agent pane activity classifier", () => {
     expect(result.evidence).toContain("still typing");
   });
 
-  it("does not treat a prior submitted Codex prompt separated from the footer by a blank as a draft", () => {
+  it("不把与 footer 隔着空行的历史已提交 Codex prompt 视为 draft", () => {
     const result = classifyPaneActivity([
       "› Summarize recent commits",
       "",
@@ -99,7 +99,7 @@ describe("agent pane activity classifier", () => {
     expect(result.reason).toBe("idle_status_bar");
   });
 
-  it("does not classify stale active scrollback as active when current idle footer is below it", () => {
+  it("下方存在当前 idle footer 时不把过期 active scrollback 分类为 active", () => {
     const result = classifyPaneActivity([
       "◦ Working (9m 26s • esc to interrupt) · 6 background terminals running",
       "",
@@ -114,7 +114,7 @@ describe("agent pane activity classifier", () => {
   it.each([
     "✶ Synthesizing… (6s · ↑ 284 tokens · thinking)",
     "✢ Reviewing... (3s · ↓ 107 tokens · thinking)",
-  ])("classifies Claude Code thinking status as agent_active without depending on the status verb: %s", (statusLine) => {
+  ])("不依赖状态动词，把 Claude Code thinking 状态分类为 agent_active：%s", (statusLine) => {
     const result = classifyPaneActivity([
       "⏺ Skill(openrig-user)",
       "  ⎿  Successfully loaded skill",
@@ -132,14 +132,14 @@ describe("agent pane activity classifier", () => {
     expect(result.evidence).toContain("thinking");
   });
 
-  it("does not classify tmux focus-events guidance as idle", () => {
+  it("不把 tmux focus-events 指引分类为 idle", () => {
     const result = classifyPaneActivity("tmux focus-events off · add 'set -g focus-events on' to ~/.tmux.conf and reattach");
 
     expect(result.state).toBe("unknown");
     expect(result.reason).toBe("no_activity_signal");
   });
 
-  it("does not classify stale idle footer as idle when current active work is below it", () => {
+  it("下方存在当前 active 工作时不把过期 idle footer 分类为 idle", () => {
     const result = classifyPaneActivity([
       "  gpt-5.5 xhigh fast · Context [████ ] · ~/code/projects/openrig",
       "",
@@ -151,7 +151,7 @@ describe("agent pane activity classifier", () => {
     expect(result.state).toBe("agent_active");
   });
 
-  it("classifies empty capture as unknown", () => {
+  it("把空 capture 分类为 unknown", () => {
     const result = classifyPaneActivity("\n\n");
 
     expect(result.state).toBe("unknown");
@@ -173,8 +173,8 @@ function mockTmux(overrides?: Partial<{
   const hasSession = overrides?.hasSession ?? (async () => true);
   return {
     hasSession,
-    // Derived classified probe (OPR.0.5.4.2): present/absent from the mock's
-    // hasSession; a throwing hasSession propagates (the fail-closed class).
+    // 派生分类 probe（OPR.0.5.4.2）：present/absent 来自 mock 的 hasSession；
+    // hasSession 抛错时向上传播（fail-closed 类别）。
     probeSession: async (name: string) =>
       (await hasSession(name)) ? { state: "present" as const } : { state: "absent" as const },
     sendText: overrides?.sendText ?? (async () => ({ ok: true as const })),
@@ -258,8 +258,8 @@ describe("SessionTransport", () => {
     return { rig, node, session };
   }
 
-  // Test 1: send calls sendText -> delay -> sendKeys C-m
-  it("send calls sendText then sendKeys C-m with delay", async () => {
+  // 测试 1：send 调用 sendText → 延迟 → sendKeys C-m。
+  it("send 先调用 sendText，延迟后再调用 sendKeys C-m", async () => {
     seedCanonicalRig();
     const callOrder: string[] = [];
     const tmux = mockTmux({
@@ -273,8 +273,8 @@ describe("SessionTransport", () => {
     expect(callOrder).toEqual(["sendText", "sendKeys:C-m"]);
   });
 
-  // Test 2: send to canonical session name resolves correctly
-  it("send to canonical session name resolves correctly", async () => {
+  // 测试 2：发送到规范 session 名时正确解析。
+  it("发送到规范 session 名时正确解析", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({ sendText: sendTextSpy });
@@ -285,8 +285,8 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).toHaveBeenCalledWith("dev-impl@my-rig", "message");
   });
 
-  // Test 3: send to legacy session name resolves correctly
-  it("send to legacy session name resolves correctly", async () => {
+  // 测试 3：发送到旧式 session 名时正确解析。
+  it("发送到旧式 session 名时正确解析", async () => {
     seedLegacyRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({ sendText: sendTextSpy });
@@ -297,20 +297,20 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).toHaveBeenCalledWith("r00-legacy-worker-a", "message");
   });
 
-  // Test 4: send to missing session returns error with guidance
-  it("send to missing session returns error with guidance", async () => {
+  // 测试 4：发送到不存在的 session 时返回带指引的错误。
+  it("发送到不存在的 session 时返回带指引的错误", async () => {
     const tmux = mockTmux({ hasSession: async () => false });
     const transport = createTransport(tmux);
 
     const result = await transport.send("nonexistent", "hello");
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("session_missing");
-    expect(result.error).toContain("not found");
-    expect(result.error).toContain("rig ps");
+    expect(result.error).toContain("未找到");
+    expect(result.error).toContain("zrig ps");
   });
 
-  // Test 5: send where sendKeys C-m fails returns "text visible but not submitted"
-  it("send where C-m fails returns submit_failed with guidance", async () => {
+  // 测试 5：sendKeys C-m 失败时返回“文本可见但未提交”。
+  it("发送 C-m 失败时返回带指引的 submit_failed", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       sendKeys: async () => ({ ok: false, code: "session_not_found", message: "session died" }),
@@ -320,12 +320,12 @@ describe("SessionTransport", () => {
     const result = await transport.send("dev-impl@my-rig", "hello");
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("submit_failed");
-    expect(result.error).toContain("visible");
-    expect(result.error).toContain("not submitted");
+    expect(result.error).toContain("已显示");
+    expect(result.error).toContain("未提交");
   });
 
-  // Test 6: send with verify captures pane and checks for text
-  it("send with verify checks pane for sent text", async () => {
+  // 测试 6：启用 verify 的 send 会捕获 pane 并检查已发送文本。
+  it("启用 verify 的 send 检查 pane 中是否出现已发送文本", async () => {
     seedCanonicalRig();
     let captureCount = 0;
     const tmux = mockTmux({
@@ -339,11 +339,11 @@ describe("SessionTransport", () => {
     const result = await transport.send("dev-impl@my-rig", "hello", { verify: true });
     expect(result.ok).toBe(true);
     expect(result.verified).toBe(true);
-    // OPR.99.0.6.3: a confirmed render is the strong positive outcome.
+    // OPR.99.0.6.3：已确认渲染是强正向 outcome。
     expect(result.outcome).toBe("delivered");
   });
 
-  it("send with verify does not false-positive on pre-existing pane content", async () => {
+  it("启用 verify 的 send 不会对 pane 中预先存在的内容产生假阳性", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => "prior output\nhello\n❯ ",
@@ -354,20 +354,19 @@ describe("SessionTransport", () => {
 
     expect(result.ok).toBe(true);
     expect(result.verified).toBe(false);
-    // OPR.99.0.6.3: text + Enter both succeeded, only the render re-confirm
-    // missed — the honest middle, NOT a failure.
+    // OPR.99.0.6.3：文本与 Enter 都成功，只是未能再次确认渲染；这是诚实的中间结果，
+    // 不是失败。
     expect(result.outcome).toBe("rendered-unconfirmed");
   });
 
-  // OPR.99.0.6.3 — honest delivery-outcome vocabulary
-  it("verify capture throwing after a successful send is the middle outcome, not a failure", async () => {
+  // OPR.99.0.6.3——诚实的 delivery-outcome 词汇。
+  it("成功发送后 verify capture 抛错属于中间 outcome，而不是失败", async () => {
     seedCanonicalRig();
     let captureCount = 0;
     const tmux = mockTmux({
       capturePaneContent: async () => {
         captureCount++;
-        // Pre-verify + mid-work captures succeed; the post-send verify capture throws
-        // (e.g. pane busy mid-redraw).
+        // 发送前验证与 mid-work capture 成功；发送后 verify capture 抛错，例如 pane 正忙于重绘。
         if (captureCount >= 3) throw new Error("pane busy");
         return "some output\n❯ ";
       },
@@ -380,21 +379,21 @@ describe("SessionTransport", () => {
     expect(result.outcome).toBe("rendered-unconfirmed");
   });
 
-  it("DISCRIMINATOR: a redraw-race send and a genuine transport failure surface differently", async () => {
+  it("判别器：重绘竞态发送与真实 transport 失败呈现不同结果", async () => {
     seedCanonicalRig();
-    // Redraw-race: send + submit succeed, post-capture cannot re-confirm.
+    // 重绘竞态：send + submit 成功，后续 capture 无法再次确认。
     const racyTmux = mockTmux({
       capturePaneContent: async () => "prior output\nhello\n❯ ",
     });
     const middle = await createTransport(racyTmux).send("dev-impl@my-rig", "hello", { verify: true });
 
-    // Genuine transport failure: Enter does not land.
+    // 真实 transport 失败：Enter 未送达。
     const brokenTmux = mockTmux({
       sendKeys: async () => ({ ok: false, code: "session_not_found", message: "session died" }),
     });
     const failure = await createTransport(brokenTmux).send("dev-impl@my-rig", "hello", { verify: true });
 
-    // The acceptance criterion: the two states are NOT equal in surfaced outcome.
+    // 验收条件：两种状态呈现的 outcome 不相同。
     expect(middle.ok).toBe(true);
     expect(middle.outcome).toBe("rendered-unconfirmed");
     expect(failure.ok).toBe(false);
@@ -402,7 +401,7 @@ describe("SessionTransport", () => {
     expect(middle.outcome).not.toBe(failure.outcome);
   });
 
-  it("send_failed and submit_failed carry outcome 'failed' (vocabulary symmetry, ok:false unchanged)", async () => {
+  it("send_failed 与 submit_failed 都携带 outcome 'failed'（词汇对称，ok:false 不变）", async () => {
     seedCanonicalRig();
     const noPaste = mockTmux({
       sendText: async () => ({ ok: false, code: "session_not_found", message: "gone" }),
@@ -421,7 +420,7 @@ describe("SessionTransport", () => {
     expect(submitFailed.outcome).toBe("failed");
   });
 
-  it("send without verify carries no outcome field (additive, verify-scoped)", async () => {
+  it("不启用 verify 的 send 不携带 outcome 字段（增量且仅限 verify）", async () => {
     seedCanonicalRig();
     const transport = createTransport(mockTmux());
     const result = await transport.send("dev-impl@my-rig", "hello");
@@ -429,9 +428,9 @@ describe("SessionTransport", () => {
     expect(result.outcome).toBeUndefined();
   });
 
-  // Test 7: send with mid-work detected → DELIVER WITH ADVISORY (OPR.0.4.3.28 fast-follow —
-  // mid_work downgraded from a hard refuse to a non-blocking advisory; busy is not a block).
-  it("send with mid-work detected DELIVERS with a non-blocking advisory (not a refusal)", async () => {
+  // 测试 7：检测到 mid-work 时仍交付并给出提示（OPR.0.4.3.28 fast-follow——mid_work
+  // 从硬拒绝降级为非阻塞 advisory；busy 不是 blocker）。
+  it("检测到 mid-work 时 send 仍交付并给出非阻塞提示，而非拒绝", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -442,14 +441,14 @@ describe("SessionTransport", () => {
 
     const result = await transport.send("dev-impl@my-rig", "hello");
     expect(result.ok).toBe(true);
-    expect(result.warning).toContain("mid-task");
-    expect(result.warning).toContain("busy is advisory");
+    expect(result.warning).toContain("正在任务中");
+    expect(result.warning).toContain("繁忙只是提示");
     expect(sendTextSpy).toHaveBeenCalled();
   });
 
-  // Test 8: --force on a mid-work pane still sends (now a back-compat no-op — the default path
-  // already delivers-with-advisory, so --force changes nothing but must not break).
-  it("send with mid-work + force still sends anyway (--force is a back-compat no-op now)", async () => {
+  // 测试 8：在 mid-work pane 上使用 --force 仍会发送（现在是向后兼容的空操作；默认路径
+  // 已经会带提示交付，因此 --force 不改变结果，但不能破坏流程）。
+  it("mid-work + force 时 send 仍发送（--force 现为向后兼容的空操作）", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -463,7 +462,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).toHaveBeenCalled();
   });
 
-  it("send with wait-for-idle waits through running pane activity and sends after idle", async () => {
+  it("带 wait-for-idle 的 send 等待 pane 活动结束，并在 idle 后发送", async () => {
     seedCanonicalRig();
     const callOrder: string[] = [];
     let captureCount = 0;
@@ -500,7 +499,7 @@ describe("SessionTransport", () => {
     expect(callOrder).toEqual(["capture", "capture", "sendText", "sendKeys"]);
   });
 
-  it("send with wait-for-idle waits through current Claude thinking evidence and sends after idle", async () => {
+  it("带 wait-for-idle 的 send 等待当前 Claude thinking 证据结束，并在 idle 后发送", async () => {
     seedCanonicalRig();
     const callOrder: string[] = [];
     let captureCount = 0;
@@ -554,7 +553,7 @@ describe("SessionTransport", () => {
     expect(callOrder).toEqual(["capture", "capture", "sendText", "sendKeys"]);
   });
 
-  it("send with wait-for-idle times out on running activity without sending text", async () => {
+  it("带 wait-for-idle 的 send 在活动持续运行时超时，且不发送文本", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -572,7 +571,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).not.toHaveBeenCalled();
   });
 
-  it("send with wait-for-idle times out on persistent Claude thinking evidence without sending text", async () => {
+  it("带 wait-for-idle 的 send 在 Claude thinking 证据持续存在时超时，且不发送文本", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -600,7 +599,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).not.toHaveBeenCalled();
   });
 
-  it("send with wait-for-idle hard-stops on attention prompts without sending text", async () => {
+  it("带 wait-for-idle 的 send 遇到 attention prompt 时硬停止，且不发送文本", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -630,7 +629,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).not.toHaveBeenCalled();
   });
 
-  it("send with wait-for-idle hard-stops on unknown capture evidence without sending text", async () => {
+  it("带 wait-for-idle 的 send 遇到未知 capture 证据时硬停止，且不发送文本", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -652,7 +651,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).not.toHaveBeenCalled();
   });
 
-  it("send with wait-for-idle prefers fresh hook activity and waits for hook idle", async () => {
+  it("带 wait-for-idle 的 send 优先使用新鲜 hook 活动，并等待 hook 转为 idle", async () => {
     seedCanonicalRig();
     const eventBus = new EventBus(db);
     const agentActivityStore = new AgentActivityStore({ db, eventBus });
@@ -692,7 +691,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).toHaveBeenCalled();
   });
 
-  it("send with wait-for-idle treats fresh UserPromptSubmit hook evidence as running", async () => {
+  it("带 wait-for-idle 的 send 把新鲜 UserPromptSubmit hook 证据视为 running", async () => {
     seedCanonicalRig();
     const eventBus = new EventBus(db);
     const agentActivityStore = new AgentActivityStore({ db, eventBus });
@@ -722,7 +721,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).not.toHaveBeenCalled();
   });
 
-  it("send with wait-for-idle hard-stops on fresh permission prompt hook evidence", async () => {
+  it("带 wait-for-idle 的 send 遇到新鲜 permission prompt hook 证据时硬停止", async () => {
     seedCanonicalRig();
     const eventBus = new EventBus(db);
     const agentActivityStore = new AgentActivityStore({ db, eventBus });
@@ -754,7 +753,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).not.toHaveBeenCalled();
   });
 
-  it("send with wait-for-idle treats fresh unknown hook evidence as unknown and does not fall through to pane idle", async () => {
+  it("带 wait-for-idle 的 send 把新鲜未知 hook 证据视为 unknown，不回退到 pane idle", async () => {
     seedCanonicalRig();
     const eventBus = new EventBus(db);
     const agentActivityStore = new AgentActivityStore({ db, eventBus });
@@ -783,7 +782,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).not.toHaveBeenCalled();
   });
 
-  it("send does not refuse on idle codex status lines truncated with unicode ellipsis", async () => {
+  it("send 不会因以 Unicode 省略号截断的空闲 Codex 状态行而拒绝", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -806,7 +805,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).toHaveBeenCalled();
   });
 
-  it("send does not refuse on idle prompt lines ending in ascii ellipsis", async () => {
+  it("send 不会因以 ASCII 省略号结尾的空闲 prompt 行而拒绝", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -821,7 +820,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).toHaveBeenCalled();
   });
 
-  it("send does not refuse when Working text is stale scrollback above an idle Codex prompt", async () => {
+  it("Working 文本只是 Codex 空闲 prompt 上方的旧 scrollback 时 send 不拒绝", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -842,7 +841,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).toHaveBeenCalled();
   });
 
-  it("send does not refuse when Working text is stale scrollback above an idle Claude Code prompt", async () => {
+  it("Working 文本只是 Claude Code 空闲 prompt 上方的旧 scrollback 时 send 不拒绝", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -863,7 +862,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).toHaveBeenCalled();
   });
 
-  it("send still refuses when prompt char line contains mid-work text (active Claude input)", async () => {
+  it("prompt 字符行包含 mid-work 文本（Claude 正在输入）时 send 仍拒绝", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => [
@@ -875,11 +874,11 @@ describe("SessionTransport", () => {
 
     const result = await transport.send("dev-impl@my-rig", "hello");
 
-    expect(result.ok).toBe(true); // OPR.0.4.3.28 fast-follow — mid_work downgraded to deliver-with-advisory
-    expect(result.warning).toContain("mid-task");
+    expect(result.ok).toBe(true); // OPR.0.4.3.28 fast-follow——mid_work 已降级为带提示交付。
+    expect(result.warning).toContain("正在任务中");
   });
 
-  it("send refuses when Codex trust-prompt choice line is the active pane content", async () => {
+  it("Codex trust-prompt 选项行是当前 pane 内容时 send 拒绝", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => [
@@ -892,14 +891,14 @@ describe("SessionTransport", () => {
 
     const result = await transport.send("dev-impl@my-rig", "hello");
 
-    // OPR.0.4.1.10: an interactive prompt now refuses with the precise target_needs_input (not the
-    // generic mid_work) so the prompt/permission guard is independent of --force.
+    // OPR.0.4.1.10：交互提示现在以精确的 target_needs_input 拒绝，而不是笼统的
+    // mid_work，使 prompt/permission guard 不依赖 --force。
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("target_needs_input");
     expect(result.activity?.state).toBe("needs_input");
   });
 
-  it("send refuses when a full-screen Codex trust prompt has blank padding below it", async () => {
+  it("全屏 Codex trust prompt 下方有空白填充时 send 拒绝", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => [
@@ -922,13 +921,13 @@ describe("SessionTransport", () => {
 
     const result = await transport.send("dev-impl@my-rig", "hello");
 
-    // OPR.0.4.1.10: trust prompt → target_needs_input (precise prompt/permission guard).
+    // OPR.0.4.1.10：trust prompt → target_needs_input（精确的 prompt/permission guard）。
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("target_needs_input");
     expect(result.activity?.state).toBe("needs_input");
   });
 
-  it("send refuses when Claude Code trust-prompt choice line is the active pane content", async () => {
+  it("Claude Code trust-prompt 选项行是当前 pane 内容时 send 拒绝", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => [
@@ -941,13 +940,13 @@ describe("SessionTransport", () => {
 
     const result = await transport.send("dev-impl@my-rig", "hello");
 
-    // OPR.0.4.1.10: trust prompt → target_needs_input (precise prompt/permission guard).
+    // OPR.0.4.1.10：trust prompt → target_needs_input（精确的 prompt/permission guard）。
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("target_needs_input");
     expect(result.activity?.state).toBe("needs_input");
   });
 
-  it("send still refuses when Working footer is present with no idle prompt below it", async () => {
+  it("存在 Working footer 且下方没有 idle prompt 时 send 仍拒绝", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => [
@@ -962,11 +961,11 @@ describe("SessionTransport", () => {
 
     const result = await transport.send("dev-impl@my-rig", "hello");
 
-    expect(result.ok).toBe(true); // OPR.0.4.3.28 fast-follow — mid_work downgraded to deliver-with-advisory
-    expect(result.warning).toContain("mid-task");
+    expect(result.ok).toBe(true); // OPR.0.4.3.28 fast-follow——mid_work 已降级为带提示交付。
+    expect(result.warning).toContain("正在任务中");
   });
 
-  it("send refuses when a Claude prompt draft is present above an idle footer", async () => {
+  it("Claude prompt draft 位于 idle footer 上方时 send 拒绝", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => [
@@ -978,21 +977,20 @@ describe("SessionTransport", () => {
 
     const result = await transport.send("dev-impl@my-rig", "/compact Preserve current task.");
 
-    // OPR.0.4.1.10: a prompt draft above the idle footer is an interactive-prompt state →
-    // target_needs_input (a stray send must not land on the human's in-progress input).
+    // OPR.0.4.1.10：idle footer 上方的 prompt draft 属于 interactive-prompt 状态 →
+    // target_needs_input；意外 send 不得落入人类正在输入的内容。
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("target_needs_input");
     expect(result.activity?.state).toBe("needs_input");
   });
 
-  // --- Realistic pane-fixture tests (test-infrastructure lane) ---
+  // --- 真实形态 pane fixture 测试（test-infrastructure lane）---
   //
-  // These use full-screen-shaped fixtures with blank padding, scrollback,
-  // status bars, and separator lines to match real tmux capturePaneContent
-  // output. Ensures the non-blank-window approach in looksLikeMidWork()
-  // handles realistic rendering, not just compact hand-written snippets.
+  // 这些测试使用带空白填充、scrollback、status bar 与分隔线的全屏形态 fixture，以匹配真实
+  // tmux capturePaneContent 输出，确保 looksLikeMidWork() 的非空窗口方法能处理真实渲染，
+  // 而不只是紧凑的手写片段。
 
-  /** Build a realistic pane fixture with terminal-geometry structure. */
+  /** 构建带终端几何结构的真实形态 pane fixture。 */
   function buildPaneFixture(opts: {
     scrollback?: string[];
     content: string[];
@@ -1007,15 +1005,12 @@ describe("SessionTransport", () => {
     return lines.join("\n");
   }
 
-  // NOTE: if the prior-idle Codex status bar ("gpt-5.4 ... Context [...]")
-  // remains in the last 3 non-blank lines during active work, the idle
-  // discriminator false-negatives (treats active-work as idle). In real
-  // renders the status bar from a prior idle state is typically many lines
-  // above the current working footer. This fixture models that realistic
-  // distance. A fixture where the stale status bar is only 1-2 non-blank
-  // lines above the working footer DOES expose a gap — filed as residual
-  // in the return handoff.
-  it("realistic: full-screen Codex active-working pane with scrollback + padding blocks", async () => {
+  // 注意：若先前 idle 的 Codex status bar（"gpt-5.4 ... Context [...]"）在活动工作期间
+  // 仍位于最后 3 个非空行内，idle 判别器会产生假阴性，把 active-work 当成 idle。真实渲染中，
+  // 先前 idle 状态的 status bar 通常位于当前 working footer 上方很多行。本 fixture 模拟这种
+  // 真实距离。若过期 status bar 仅在 working footer 上方 1–2 个非空行，会暴露一个缺口；该问题
+  // 已作为残留记录在返回交接中。
+  it("真实形态：带 scrollback 与 padding 的全屏 Codex active-working pane 会阻止发送", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => buildPaneFixture({
@@ -1043,11 +1038,11 @@ describe("SessionTransport", () => {
 
     const result = await transport.send("dev-impl@my-rig", "hello");
 
-    expect(result.ok).toBe(true); // OPR.0.4.3.28 fast-follow — mid_work downgraded to deliver-with-advisory
-    expect(result.warning).toContain("mid-task");
+    expect(result.ok).toBe(true); // OPR.0.4.3.28 fast-follow——mid_work 已降级为带提示交付。
+    expect(result.warning).toContain("正在任务中");
   });
 
-  it("realistic: full-screen Codex idle-at-prompt with stale Working in scrollback + padding allows", async () => {
+  it("真实形态：全屏 Codex 在 prompt 空闲且 scrollback 有旧 Working 时允许发送", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -1077,7 +1072,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).toHaveBeenCalled();
   });
 
-  it("realistic: full-screen Claude Code active-working pane with tool output + padding blocks", async () => {
+  it("真实形态：带工具输出与 padding 的全屏 Claude Code active-working pane 会阻止发送", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => buildPaneFixture({
@@ -1100,11 +1095,11 @@ describe("SessionTransport", () => {
 
     const result = await transport.send("dev-impl@my-rig", "hello");
 
-    expect(result.ok).toBe(true); // OPR.0.4.3.28 fast-follow — mid_work downgraded to deliver-with-advisory
-    expect(result.warning).toContain("mid-task");
+    expect(result.ok).toBe(true); // OPR.0.4.3.28 fast-follow——mid_work 已降级为带提示交付。
+    expect(result.warning).toContain("正在任务中");
   });
 
-  it("realistic: full-screen Claude Code idle-at-prompt with stale Working in scrollback + edit-bar allows", async () => {
+  it("真实形态：全屏 Claude Code 在 prompt 空闲且 scrollback 有旧 Working 与 edit-bar 时允许发送", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({
@@ -1134,7 +1129,7 @@ describe("SessionTransport", () => {
     expect(sendTextSpy).toHaveBeenCalled();
   });
 
-  it("realistic: full-screen Codex trust-prompt with multi-line instructions + heavy padding blocks", async () => {
+  it("真实形态：带多行说明与大量 padding 的全屏 Codex trust-prompt 会阻止发送", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => buildPaneFixture({
@@ -1156,19 +1151,17 @@ describe("SessionTransport", () => {
 
     const result = await transport.send("dev-impl@my-rig", "hello");
 
-    // OPR.0.4.1.10: full-screen trust prompt → target_needs_input (precise prompt/permission guard).
+    // OPR.0.4.1.10：全屏 trust prompt → target_needs_input（精确 prompt/permission guard）。
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("target_needs_input");
     expect(result.activity?.state).toBe("needs_input");
   });
 
-  it("realistic: short-burst Codex work with stale status bar in last 3 non-blank blocks", async () => {
-    // Short work burst: the Codex status bar from a prior idle state is only
-    // 2 non-blank lines above the active "Working" footer. Both appear in the
-    // last 3 non-blank lines. Current code false-negatives (allows) because
-    // the status bar matches IDLE_STATUS_BAR_PATTERNS. The fix should tighten
-    // the status-bar check to last-non-blank-line only so stale bars above
-    // active work don't override.
+  it("真实形态：短时 Codex 工作中，旧 status bar 位于最后 3 个非空块内", async () => {
+    // 短时工作：先前 idle 状态的 Codex status bar 只比 active "Working" footer 高 2 个
+    // 非空行，两者都位于最后 3 个非空行内。当前代码会出现假阴性（允许发送），因为 status bar
+    // 匹配 IDLE_STATUS_BAR_PATTERNS。修复应把 status-bar 检查收紧为仅最后一个非空行，
+    // 防止 active 工作上方的旧 status bar 覆盖当前状态。
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => buildPaneFixture({
@@ -1189,11 +1182,11 @@ describe("SessionTransport", () => {
 
     const result = await transport.send("dev-impl@my-rig", "hello");
 
-    expect(result.ok).toBe(true); // OPR.0.4.3.28 fast-follow — mid_work downgraded to deliver-with-advisory
-    expect(result.warning).toContain("mid-task");
+    expect(result.ok).toBe(true); // OPR.0.4.3.28 fast-follow——mid_work 已降级为带提示交付。
+    expect(result.warning).toContain("正在任务中");
   });
 
-  it("send to terminal session with foreground non-shell command refuses with mid_work", async () => {
+  it("向前台运行非 shell 命令的 terminal session 发送时，以 mid_work 拒绝", async () => {
     const rig = rigRepo.createRig("term-rig");
     const node = rigRepo.addNode(rig.id, "infra.ui", {
       role: "ui", runtime: "terminal",
@@ -1211,17 +1204,17 @@ describe("SessionTransport", () => {
     const transport = createTransport(tmux);
 
     const result = await transport.send("infra-ui@term-rig", "printf 'hello\\n'");
-    // OPR.0.4.3.28 fast-follow — a terminal foreground command maps to `running`, which now
-    // delivers-with-advisory (was: mid_work refuse + no send). Busy is not a block.
+    // OPR.0.4.3.28 fast-follow——terminal 前台命令映射为 `running`，现在会带提示交付
+    //（此前为 mid_work 拒绝且不发送）；busy 不是 blocker。
     expect(result.ok).toBe(true);
-    expect(result.warning).toContain("mid-task");
+    expect(result.warning).toContain("正在任务中");
     expect(sendTextSpy).toHaveBeenCalled();
   });
 
-  // Test 9: an UNEXPECTED probe throw (the fail-closed class — not the
-  // classified no-server path, which one-honest-resolution-path.test.ts covers
-  // with the real adapter) still surfaces as tmux_unavailable, honestly worded.
-  it("send when the probe throws unexpectedly returns tmux_unavailable with guidance", async () => {
+  // 测试 9：未预期的 probe 抛错属于 fail-closed 类别，不是已分类的 no-server 路径
+  //（后者由 one-honest-resolution-path.test.ts 使用真实适配器覆盖）；它仍如实呈现为
+  // tmux_unavailable。
+  it("probe 意外抛错时 send 返回带指引的 tmux_unavailable", async () => {
     const tmux = mockTmux({
       hasSession: async () => { throw new Error("no server running"); },
     });
@@ -1233,7 +1226,7 @@ describe("SessionTransport", () => {
     expect(result.error).toContain("tmux");
   });
 
-  it("send to external_cli target fails honestly before tmux transport", async () => {
+  it("向 external_cli 目标发送时在进入 tmux transport 前如实失败", async () => {
     seedExternalCliRig();
     const hasSessionSpy = vi.fn(async () => true);
     const transport = createTransport(mockTmux({ hasSession: hasSessionSpy }));
@@ -1246,8 +1239,8 @@ describe("SessionTransport", () => {
     expect(hasSessionSpy).not.toHaveBeenCalled();
   });
 
-  // Test 10: capture returns pane content
-  it("capture returns pane content for existing session", async () => {
+  // 测试 10：capture 返回 pane 内容。
+  it("capture 为已有 session 返回 pane 内容", async () => {
     seedCanonicalRig();
     const tmux = mockTmux({
       capturePaneContent: async () => "line1\nline2\nline3",
@@ -1259,7 +1252,7 @@ describe("SessionTransport", () => {
     expect(result.content).toContain("line1");
   });
 
-  it("capture for external_cli target fails honestly before tmux transport", async () => {
+  it("对 external_cli 目标执行 capture 时在进入 tmux transport 前如实失败", async () => {
     seedExternalCliRig();
     const hasSessionSpy = vi.fn(async () => true);
     const transport = createTransport(mockTmux({ hasSession: hasSessionSpy }));
@@ -1271,8 +1264,8 @@ describe("SessionTransport", () => {
     expect(hasSessionSpy).not.toHaveBeenCalled();
   });
 
-  // Test 11: resolveSessions by rig returns running sessions
-  it("resolveSessions by rig returns running sessions", async () => {
+  // 测试 11：按工作组 resolveSessions 返回运行中的 session。
+  it("按工作组调用 resolveSessions 返回运行中的 session", async () => {
     seedCanonicalRig();
     const transport = createTransport();
 
@@ -1284,10 +1277,10 @@ describe("SessionTransport", () => {
     }
   });
 
-  // Test 12: resolveSessions global returns all running sessions across all rigs
-  it("resolveSessions global returns all running sessions across all rigs", async () => {
-    seedCanonicalRig(); // rig "my-rig" with dev-impl@my-rig
-    seedLegacyRig();    // rig "r00-legacy" with r00-legacy-worker-a
+  // 测试 12：全局 resolveSessions 返回所有工作组中运行的 session。
+  it("全局调用 resolveSessions 返回所有工作组中运行的 session", async () => {
+    seedCanonicalRig(); // 工作组 "my-rig"，包含 dev-impl@my-rig。
+    seedLegacyRig();    // 工作组 "r00-legacy"，包含 r00-legacy-worker-a。
     seedExternalCliRig();
     const transport = createTransport();
 
@@ -1302,15 +1295,15 @@ describe("SessionTransport", () => {
     }
   });
 
-  // Test 13: resolveSessions by pod filters by logicalId prefix
-  it("resolveSessions by pod filters by logicalId prefix", async () => {
+  // 测试 13：按 pod resolveSessions 时根据 logicalId 前缀过滤。
+  it("按 pod 调用 resolveSessions 时根据 logicalId 前缀过滤", async () => {
     const rig = rigRepo.createRig("multi-rig");
-    // dev pod
+    // dev pod。
     const devNode = rigRepo.addNode(rig.id, "dev.impl", { role: "worker", runtime: "claude-code" });
     const devSess = sessionRegistry.registerSession(devNode.id, "dev-impl@multi-rig");
     sessionRegistry.updateStatus(devSess.id, "running");
     sessionRegistry.updateBinding(devNode.id, { tmuxSession: "dev-impl@multi-rig" });
-    // orch pod
+    // orch pod。
     const orchNode = rigRepo.addNode(rig.id, "orch.lead", { role: "orchestrator", runtime: "claude-code" });
     const orchSess = sessionRegistry.registerSession(orchNode.id, "orch-lead@multi-rig");
     sessionRegistry.updateStatus(orchSess.id, "running");
@@ -1325,7 +1318,7 @@ describe("SessionTransport", () => {
     }
   });
 
-  it("broadcast includes external_cli targets as explicit transport_unavailable failures", async () => {
+  it("broadcast 把 external_cli 目标列为显式 transport_unavailable 失败", async () => {
     seedCanonicalRig();
     seedExternalCliRig();
     const transport = createTransport();
@@ -1346,9 +1339,9 @@ describe("SessionTransport", () => {
     );
   });
 
-  // Send/broadcast header (ruling 03c35295) — the fan-out threads the scale scope + a Sent stamp
-  // through the daemon-side wrap, so every recipient's header carries the same envelope facts.
-  it("multi-send fan-out renders the FULL recipient list + a Sent stamp on each recipient's To header", async () => {
+  // Send/broadcast header（裁定 03c35295）：扇出通过 daemon 侧 wrapper 传递 scale scope 与
+  // Sent 标记，使每个收件人的 header 都携带相同 envelope 事实。
+  it("multi-send 扇出在每个收件人的 To header 中渲染完整收件人列表与 Sent 标记", async () => {
     seedCanonicalRig(); // dev-impl@my-rig
     seedLegacyRig(); // r00-legacy-worker-a
     const sent: string[] = [];
@@ -1363,13 +1356,13 @@ describe("SessionTransport", () => {
 
     expect(sent).toHaveLength(2);
     for (const text of sent) {
-      expect(text).toContain("To: dev-impl@my-rig, r00-legacy-worker-a"); // full list (WHO got it)
-      expect(text).toContain("Sent: 08-06 17:42Z"); // the transport stamp
+      expect(text).toContain("To: dev-impl@my-rig, r00-legacy-worker-a"); // 完整列表，说明谁收到。
+      expect(text).toContain("Sent: 08-06 17:42Z"); // transport 时间标记。
       expect(text).toContain("status");
     }
   });
 
-  it("raw broadcast (no envelopeSender) is delivered unwrapped — no header change", async () => {
+  it("raw broadcast（无 envelopeSender）不加 wrapper 直接交付，header 不变", async () => {
     seedCanonicalRig();
     const sent: string[] = [];
     const tmux = mockTmux({ sendText: async (_t, text) => { sent.push(text); return { ok: true }; } });
@@ -1378,30 +1371,30 @@ describe("SessionTransport", () => {
     await transport.broadcast({ rig: "my-rig" }, "raw ping", {});
 
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toBe("raw ping"); // unchanged (the --raw carve-out)
+    expect(sent[0]).toBe("raw ping"); // 保持不变（--raw 例外）。
   });
 
-  // ── GHOST-STAGE (h): delivered-at latency stamped at the WRITE moment ──
+  // ── GHOST-STAGE (h)：在写入时刻标记 delivered-at 延迟 ──
   const H_ENVELOPE =
-    'From: a@r\nTo: dev-impl@my-rig\nSent: 08-06 17:42Z\n---\nhi\n---\n↩ Reply: rig send a@r "..."';
+    'From: a@r\nTo: dev-impl@my-rig\nSent: 08-06 17:42Z\n---\nhi\n---\n↩ 回复：rig send a@r "..."';
 
-  it("(h) send() flags a delayed delivery on the Sent: line when the compose→write gap exceeds 10s", async () => {
+  it("(h) compose→write 间隔超过 10 秒时，send() 在 Sent 行标记延迟交付", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({ sendText: sendTextSpy });
-    // write-moment clock is 30s after the compose stamp (opts.stampISO)
+    // 写入时钟比 compose 标记（opts.stampISO）晚 30 秒。
     const transport = createTransport(tmux, { now: () => new Date("2026-08-06T17:42:39Z") });
     await transport.send("dev-impl@my-rig", H_ENVELOPE, { stampISO: "2026-08-06T17:42:09Z" });
     expect(sendTextSpy).toHaveBeenCalledTimes(1);
-    expect(sendTextSpy.mock.calls[0]![1]).toContain("Sent: 08-06 17:42Z · delivered +30s");
+    expect(sendTextSpy.mock.calls[0]![1]).toContain("Sent: 08-06 17:42Z · 已投递 +30s");
   });
 
-  it("(h) send() adds no delivered segment for a sub-threshold (3s) gap", async () => {
+  it("(h) 间隔低于阈值（3 秒）时 send() 不添加 delivered 片段", async () => {
     seedCanonicalRig();
     const sendTextSpy = vi.fn(async () => ({ ok: true as const }));
     const tmux = mockTmux({ sendText: sendTextSpy });
     const transport = createTransport(tmux, { now: () => new Date("2026-08-06T17:42:12Z") });
     await transport.send("dev-impl@my-rig", H_ENVELOPE, { stampISO: "2026-08-06T17:42:09Z" });
-    expect(sendTextSpy.mock.calls[0]![1]).not.toContain(" · delivered ");
+    expect(sendTextSpy.mock.calls[0]![1]).not.toContain(" · 已投递 ");
   });
 });

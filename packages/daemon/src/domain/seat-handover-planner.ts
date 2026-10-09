@@ -78,8 +78,8 @@ export class SeatHandoverPlanner {
       return {
         ok: false,
         code: "missing_reason",
-        message: "Missing required option: --reason <reason>",
-        guidance: "Provide an explicit handover reason, for example: --reason context-wall",
+        message: "缺少必填选项：--reason <reason>",
+        guidance: "请提供明确的 handover 原因，例如：--reason context-wall",
       };
     }
 
@@ -97,8 +97,8 @@ export class SeatHandoverPlanner {
       return {
         ok: false,
         code: "mutation_disabled",
-        message: "Seat handover mutation is not implemented in this slice.",
-        guidance: "Re-run with --dry-run to inspect the two-phase handover plan without changing topology.",
+        message: "此 slice 尚未实现 seat handover 修改操作。",
+        guidance: "请使用 --dry-run 重新运行，以便在不更改拓扑的情况下检查两阶段 handover 计划。",
       };
     }
 
@@ -117,23 +117,20 @@ export class SeatHandoverPlanner {
 
 
 /**
- * OPR.0.5.5.5 — the ONE source-capability table shared by the dry-run plan and
- * the mutation executor. The plan renders what a source DOES from this table
- * and the executor dispatches on the same rows, so the plan can never promise
- * a source the executor refuses (and vice versa). Adding a mode to
- * `SeatHandoverSourceMode` forces a row here (exhaustive Record).
+ * OPR.0.5.5.5——dry-run 计划与修改 executor 共享的唯一 source-capability 表。计划从此表渲染
+ * source 的实际行为，executor 也按相同行分发，因此计划绝不会承诺 executor 拒绝的 source，反之
+ * 亦然。向 `SeatHandoverSourceMode` 新增 mode 会强制在此添加一行（穷尽 Record）。
  */
 export const SEAT_HANDOVER_SOURCE_CAPABILITIES: Record<SeatHandoverSourceMode, {
-  /** True when the mutation path executes this source end-to-end. A false row
-   *  is the ONLY thing that may produce `source_not_supported`. */
+  /** 修改路径端到端执行此 source 时为 true。false 行是唯一可产生 `source_not_supported` 的情况。 */
   executes: boolean;
-  /** How the successor receives its context under this source. */
+  /** successor 在此 source 下接收上下文的方式。 */
   contextCarrier: string;
 }> = {
-  fresh: { executes: true, contextCarrier: "captured restore packet pasted to the fresh successor before commit" },
-  discovered: { executes: true, contextCarrier: "operator-prepared successor; nothing is delivered" },
-  fork: { executes: true, contextCarrier: "native fork of the resolved source conversation (the successor carries the incumbent context from its first byte; commit persists the NEW post-fork token)" },
-  rebuild: { executes: true, contextCarrier: "durable artifact chain (authored recap / LEARNED / restore record) delivered as a priming packet; the executed set and its gaps are recorded" },
+  fresh: { executes: true, contextCarrier: "提交前粘贴到新 successor 的已捕获 restore packet" },
+  discovered: { executes: true, contextCarrier: "操作员准备的 successor；不投递任何内容" },
+  fork: { executes: true, contextCarrier: "从已解析 source conversation 进行原生 fork（successor 从第一个字节起携带 incumbent 上下文；commit 持久化新的 fork 后 token）" },
+  rebuild: { executes: true, contextCarrier: "作为 priming packet 投递的持久 artifact 链（编写的 recap / LEARNED / restore 记录）；记录已执行集合及其缺口" },
 };
 
 export function parseHandoverSource(source?: string | null): { ok: true; source: SeatHandoverSource } | { ok: false; code: "invalid_source"; message: string; guidance: string } {
@@ -175,8 +172,8 @@ export function parseHandoverSource(source?: string | null): { ok: true; source:
   return {
     ok: false,
     code: "invalid_source",
-    message: `Invalid handover source "${raw}".`,
-    guidance: "Use --source fresh, --source rebuild, --source fork:<id>, or --source discovered:<id>.",
+    message: `无效的 handover source "${raw}"。`,
+    guidance: "请使用 --source fresh、--source rebuild、--source fork:<id> 或 --source discovered:<id>。",
   };
 }
 
@@ -218,62 +215,62 @@ function buildPlan(input: {
     phases: [
       {
         id: "prepare",
-        title: "Phase A - prepare successor with seat binding unchanged",
+        title: "阶段 A - 在 seat binding 不变的情况下准备 successor",
         bindingUnchangedUntilComplete: true,
         steps: [
           {
             id: "validate-seat",
-            title: "Validate seat",
-            description: "Confirm the seat exists and capture current occupant/status from node inventory.",
+            title: "校验 seat",
+            description: "确认 seat 存在，并从 node inventory 捕获当前 occupant/status。",
             willMutate: false,
           },
           {
             id: "capture-departing-context",
-            title: "Capture departing context",
-            description: "Would collect final pane state, queue state, and session log tail before successor creation.",
+            title: "捕获离任上下文",
+            description: "将在创建 successor 前收集最终 pane 状态、queue 状态和 session 日志尾部。",
             willMutate: false,
           },
           {
             id: "create-successor",
-            title: "Create successor occupant",
-            description: `Would create a successor using ${describeSource(input.source)} while leaving the current seat binding unchanged. Context carrier: ${SEAT_HANDOVER_SOURCE_CAPABILITIES[input.source.mode].contextCarrier}.`,
+            title: "创建 successor occupant",
+            description: `将在保持当前 seat binding 不变的情况下，使用${describeSource(input.source)}创建 successor。上下文载体：${SEAT_HANDOVER_SOURCE_CAPABILITIES[input.source.mode].contextCarrier}。`,
             willMutate: false,
           },
           {
             id: "verify-successor-readiness",
-            title: "Verify successor readiness",
-            description: "Would run runtime readiness checks before allowing any seat rebind.",
+            title: "验证 successor readiness",
+            description: "将在允许任何 seat rebind 前运行 runtime readiness 检查。",
             willMutate: false,
           },
         ],
       },
       {
         id: "commit",
-        title: "Phase B - commit atomic seat rebind after successor readiness",
+        title: "阶段 B - successor ready 后提交原子 seat rebind",
         bindingUnchangedUntilComplete: false,
         steps: [
           {
             id: "archive-departing-occupant",
-            title: "Archive departing occupant",
-            description: "Would mark the departing occupant lifecycle and preserve handover provenance.",
+            title: "归档离任 occupant",
+            description: "将标记离任 occupant lifecycle 并保留 handover provenance。",
             willMutate: false,
           },
           {
             id: "rebind-seat",
-            title: "Rebind seat",
-            description: "Would atomically point the stable seat identity at the successor session.",
+            title: "重新绑定 seat",
+            description: "将以原子方式把稳定 seat identity 指向 successor session。",
             willMutate: false,
           },
           {
             id: "deliver-startup-context",
-            title: "Deliver startup context",
-            description: "Would deliver handover context through startup orchestration.",
+            title: "投递启动上下文",
+            description: "将通过 startup 编排投递 handover 上下文。",
             willMutate: false,
           },
           {
             id: "record-provenance",
-            title: "Record provenance",
-            description: "Would finalize the handover record and append the pod shared session log.",
+            title: "记录 provenance",
+            description: "将完成 handover 记录并追加 pod 共享 session 日志。",
             willMutate: false,
           },
         ],
@@ -283,8 +280,8 @@ function buildPlan(input: {
 }
 
 function describeSource(source: SeatHandoverSource): string {
-  if (source.mode === "fork") return `fork source ${source.ref}`;
-  if (source.mode === "discovered") return `already-created discovered successor ${source.ref}`;
-  if (source.mode === "rebuild") return "artifact rebuild source";
-  return source.defaulted ? "the default fresh source" : "fresh source";
+  if (source.mode === "fork") return `分叉来源 ${source.ref}`;
+  if (source.mode === "discovered") return `已创建的发现型继任者 ${source.ref}`;
+  if (source.mode === "rebuild") return "产物重建来源";
+  return source.defaulted ? "默认全新来源" : "全新来源";
 }

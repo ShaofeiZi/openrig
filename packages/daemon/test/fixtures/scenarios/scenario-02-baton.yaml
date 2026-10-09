@@ -1,31 +1,29 @@
-# Scenario #2 — queue-baton-survives-restart (51-02 proof items 2 + 7).
+# 场景 #2——queue-baton-survives-restart（51-02 验证项 2 + 7）。
 #
-# PROVES: a claimed queue baton (in-progress + owner) SURVIVES a seat relaunch.
-# The runner drives the SHIPPED rig CLI on a live scenario-local daemon
-# (product-is-truth): up -> observe queue -> restart <seat> -> observe queue -> down.
+# 证明：已认领的队列 baton（in-progress + owner）能在席位重新启动后保留。
+# Runner 针对场景本地的实时后台服务驱动已发布 zrig CLI（以产品为准）：
+# up -> 观察队列 -> restart <seat> -> 观察队列 -> down。
 #
-# BATON PRECONDITION (fixture level). Per the locked grammar the scenario asserts
-# OBSERVABLES; the `env` block establishes PRECONDITIONS — there is no queue ACTION
-# verb (verb set = topology/seat + daemon:{op}). The pipeline runs these shipped
-# `rig queue` writes BEFORE the steps, so a reviewer sees exactly where the baton
-# comes from (queue state is daemon-side, independent of any seat process):
-#   OPENRIG_SESSION_NAME=harness@scn-baton    rig queue create --id baton-1 \
+# BATON 前置条件（fixture 层）。根据锁定语法，场景断言可观察结果；`env` 块建立前置
+# 条件——不存在 queue ACTION 动词（动词集合 = topology/seat + daemon:{op}）。pipeline
+# 会在步骤前执行以下已发布的 `zrig queue` 写入，因此审查者能准确看到 baton 来源
+#（队列状态位于后台服务侧，与任何席位进程无关）：
+#   OPENRIG_SESSION_NAME=harness@scn-baton    zrig queue create --id baton-1 \
 #       --destination dev-worker@scn-baton --summary "..."
-#   OPENRIG_SESSION_NAME=dev-worker@scn-baton rig queue claim baton-1 \
+#   OPENRIG_SESSION_NAME=dev-worker@scn-baton zrig queue claim baton-1 \
 #       --destination dev-worker@scn-baton
-# => qitem baton-1 is state=in-progress, owned by dev-worker@scn-baton, up front.
-# (Identity rides the env→transport header per P21 I3 — the old --source flag is
-# retired: deprecated + IGNORED by the shipped CLI. The `source:` field below is
-# the DECLARED provenance the pipeline carries as the per-call env identity.)
+# => qitem baton-1 从一开始就是 state=in-progress，owner 为 dev-worker@scn-baton。
+#（根据 P21 I3，身份通过 env→transport header 传递；旧 --source flag 已退役：已弃用，
+# 且已发布 CLI 会忽略它。下面的 `source:` 字段是 pipeline 作为逐调用 env 身份携带的
+# 声明来源。）
 #
-# DEFERRED ASSERTION (items-6-8 gate — VISIBLY annotated, NOT silently dropped):
-# the locked #2 also asserts `expect { surface: pane, seat: dev-worker,
-# contains: "restored" }` after the relaunch. The stub-runner at 13e26355 emits
-# only READY/EXITED; the `restore` seeded behavior that prints the "restored" pane
-# marker is A5 items 6-8 (dev-driver's NEXT queue pull, qitem 00bf5dbe). So this
-# one assertion is HELD here and lights up when items 6-8 land — the runner and
-# the rest of #2 are proven now. Ruling: orch-advisor Option A (2026-08-05);
-# record: FINDING-51-02-scenario2-restored-gate.md.
+# 延期断言（items-6-8 门禁——必须明确标注，不能静默丢弃）：
+# 锁定的 #2 还要求重新启动后断言 `expect { surface: pane, seat: dev-worker,
+# contains: "restored" }`。13e26355 的 stub-runner 只输出 READY/EXITED；打印
+# “restored”窗格标记的 `restore` 种子行为属于 A5 items 6-8（dev-driver 的下一次队列拉取，
+# qitem 00bf5dbe）。因此这一项断言暂时保留在这里，items 6-8 落地后即可启用；runner
+# 和 #2 的其余部分现已证明。裁定：orch-advisor Option A（2026-08-05）；
+# 记录：FINDING-51-02-scenario2-restored-gate.md。
 scenario: queue-baton-survives-restart
 topology: ./topo-stub-baton.yaml
 env:
@@ -37,7 +35,7 @@ env:
       claim: true
 steps:
   - up: {}
-  # the baton is in-progress + owned before we touch the seat
+  # 操作席位前，baton 已处于 in-progress 且已有 owner。
   - expect:
       surface: queue
       within: 20s
@@ -45,30 +43,24 @@ steps:
         - qitemId: baton-1
           state: in-progress
           destinationSession: dev-worker@scn-baton
-  # DAEMON restart — and the scope of that claim is deliberate.
+  # 后台服务重启——这一断言范围是有意选择的。
   #
-  # RATIFIED (orch-advisor, 2026-08-11): this proves a STRICTLY HARDER durability
-  # property than the locked #2 asks for. A seat relaunch never touches daemon
-  # state, so the locked form tests baton survival against a process that does not
-  # OWN the baton; this kills and re-spawns the process that owns the SQLite and
-  # shows the qitem byte-identical across it.
+  # 已批准（orch-advisor，2026-08-11）：这证明了比锁定 #2 要求严格得多的持久性。
+  # 席位重启从不触碰后台服务状态，因此锁定形式只测试 baton 能否跨越一个并不拥有它的进程；
+  # 此处则终止并重新生成拥有 SQLite 的进程，并证明 qitem 在这一过程中逐字节不变。
   #
-  # TWO DIFFERENT FAILURE MODES — do not read one as the other:
-  #   PROVEN here      — does the ROW survive its OWNER dying?
-  #   NOT proven here  — does a RELAUNCHED SEAT re-attach to its claimed baton,
-  #                      and does its pane show "restored"? That is what the
-  #                      locked #2 was aimed at, and it is UNTESTED.
+  # 两种不同的失败模式——不要混淆：
+  #   此处已证明——ROW 能否在其 OWNER 进程终止后保留？
+  #   此处未证明——重新启动的席位能否重新关联到已认领 baton，且其窗格是否显示
+  #                “restored”？这是锁定 #2 的目标，目前仍未测试。
   #
-  # The seat-relaunch half is not expressible with the shipped verb set: `rig
-  # launch` on a RUNNING node is a no-op ("already_running"), on a down node it
-  # needs a snapshot, and no snapshot-free per-seat kill+relaunch verb exists.
-  # That product gap — not a choice of convenience — is why the half is DEFERRED
-  # to A5 items 6-8, and the arch acceptance table's "expressible today" mark for
-  # row 2 is routed to PM as a 0.5.1 finding.
+  # 已发布动词集合无法表达席位重新启动这一半：对 RUNNING 节点执行 `zrig launch` 是 no-op
+  #（"already_running"）；对停止节点执行则需要快照；目前不存在无需快照的逐席位
+  # kill+relaunch 动词。这是产品缺口，不是为了方便而做的选择，因此该部分延期到 A5
+  # items 6-8；架构验收表第 2 行的“expressible today”标记作为 0.5.1 发现交给 PM。
   #
-  # The locked format keeps these verbs distinct (PRD line 20: neither routes
-  # through the other), so daemon-restart is NOT a substitute reading of the
-  # seat-level restart — it is a different, harder property standing beside it.
+  # 锁定格式要求这些动词彼此独立（PRD 第 20 行：二者互不路由），因此 daemon-restart
+  # 不能替代 seat-level restart；它是并列的另一项、更严格的性质。
   - daemon: { op: restart }
   - expect:
       surface: queue
@@ -77,5 +69,5 @@ steps:
         - qitemId: baton-1
           state: in-progress
           destinationSession: dev-worker@scn-baton
-  # DEFERRED (items-6-8): expect { surface: pane, seat: dev-worker, contains: restored }
+  # 延期（items-6-8）：expect { surface: pane, seat: dev-worker, contains: restored }
   - down: {}

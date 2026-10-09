@@ -24,7 +24,7 @@ export function useRigEvents(rigId: string | null): UseRigEventsResult {
     if (debounceTimerRef.current) return;
     debounceTimerRef.current = setTimeout(() => {
       debounceTimerRef.current = null;
-      // Only invalidate the graph query; this matches previous behavior.
+      // 只使图查询失效，与原有行为一致。
       queryClient.invalidateQueries({ queryKey: ["rig", rigId, "graph"] });
     }, DEBOUNCE_MS);
   }, [rigId, queryClient]);

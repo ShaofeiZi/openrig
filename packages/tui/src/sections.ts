@@ -1,6 +1,6 @@
 import type { SectionDef } from "./types.js";
 
-/** The sole section registry consumed by state and command parsing. */
+/** state 和命令解析消费的唯一分区注册表。 */
 export const SECTION_REGISTRY: readonly SectionDef[] = [
   {
     name: "topology",
@@ -28,5 +28,5 @@ export const SECTION_REGISTRY: readonly SectionDef[] = [
   { name: "connections", sourceRead: "GET /healthz + /api/gateway/connections (passive projection)", drillShape: "instance>human/routes>work" },
 ];
 
-/** Display grouping only; compatible configuration/connection coordinates remain. */
+/** 仅显示分组；兼容配置/连接坐标保持不变。 */
 export const SYSTEM_SECTIONS = ["system", "config", "connections"];

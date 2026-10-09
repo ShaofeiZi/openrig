@@ -143,7 +143,7 @@ export class InstallRepository {
     status?: string;
   }): JournalEntry {
     const id = ulid();
-    // Compute next seq for this install
+    // 计算本次安装的下一个序号。
     const maxSeq = this.db
       .prepare("SELECT MAX(seq) as max_seq FROM install_journal WHERE install_id = ?")
       .get(opts.installId) as { max_seq: number | null };

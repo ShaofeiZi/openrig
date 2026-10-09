@@ -1,72 +1,69 @@
-// B1 — Crash-cart RESTORE CONDUCTOR (daemon-side batch verb). Plan-locked
-// (workspace/missions/release-0.5.2/B1-CRASH-CART-CONDUCTOR-PLAN-2026-08-21, content-hash 84401cd4).
+// B1——Crash-cart RESTORE CONDUCTOR（daemon-side batch verb）。已锁定计划
+//（workspace/missions/release-0.5.2/B1-CRASH-CART-CONDUCTOR-PLAN-2026-08-21，content-hash 84401cd4）。
 //
-// Atom B — the conductor CORE. It restores the fleet's rigs in the founder's
-// order (kernel rig first, then the rest, sequential v1), COMPOSING the shipped
-// per-rig restore (findLatestRestoreUsable + RestoreOrchestrator.restore) via an
-// injectable `restoreRig` dep — it does NOT re-author restore logic. Best-effort:
-// one rig's failure never halts the fleet. Cancel is STOP-BEFORE-NEXT-RIG: the
-// in-flight rig runs to its own outcome; rigs not yet started become
-// `not_attempted` (Atom A/C wire discovery + the fleet rollup; Atom D the TUI ⏎).
+// Atom B——conductor core。它按 founder 指定顺序恢复 fleet 工作组（kernel 工作组优先，其余按序，
+// v1 串行），通过可注入 `restoreRig` 依赖组合已交付的 per-rig restore
+//（findLatestRestoreUsable + RestoreOrchestrator.restore），不重新实现 restore logic。best-effort：
+// 一个工作组失败绝不停止 fleet。cancel 采用 STOP-BEFORE-NEXT-RIG：in-flight 工作组运行到自身
+// outcome；尚未开始的工作组变为 `not_attempted`（Atom A/C wire discovery + fleet rollup；
+// Atom D 为 TUI ⏎）。
 
-/** The shipped closed per-rig union (never widened at the fleet layer). `not_attempted`
- *  is first-class — a rig the conductor did not reach (no usable snapshot, or cancelled). */
+/** 已交付的 closed per-rig union（绝不在 fleet layer 扩宽）。`not_attempted` 是一等状态——表示
+ *  conductor 未处理到的工作组（无可用 snapshot，或已取消）。 */
 export type PerRigOutcome = "fully_restored" | "partially_restored" | "failed" | "not_attempted";
 
-/** One rig's conductor result. `receiptRef` references the durable restore event/attempt
- *  seq (the ledger lineage) — the conductor RENDERS receipts, it never re-authors them. */
+/** 单个工作组的 conductor result。`receiptRef` 引用持久 restore event/attempt seq（ledger
+ *  lineage）——conductor 只渲染 receipt，绝不重新编写。 */
 export interface ConductorRigResult {
   rigId: string;
   outcome: PerRigOutcome;
   receiptRef?: string | number;
-  /** Per-rig triage rows (seats needing operator action) — the fleet
-   *  attention_required is the UNION of these across the sequence. */
+  /** per-rig triage row（需要 operator action 的 seat）——fleet attention_required 是整条
+   *  sequence 上这些 row 的并集。 */
   attention?: AttentionRow[];
-  /** R3 — for a `not_attempted` rig, WHY it was skipped (no honest gap left blank). */
+  /** R3——对于 `not_attempted` 工作组，说明跳过原因（不留下未解释空白）。 */
   reason?: string;
-  /** R3 — the operator action that would let this rig be restored next time. */
+  /** R3——使该工作组下次可恢复的 operator action。 */
   remediation?: string;
 }
 
 export interface RestoreConductorDeps {
-  /** Rigs in restore order — KERNEL FIRST (the supervisor), then the rest. */
+  /** 按恢复顺序排列的工作组——KERNEL（supervisor）优先，其余随后。 */
   listRigsInOrder: () => Array<{ rigId: string; isKernel: boolean }>;
-  /** Restore ONE rig. Default (wired at the route) = findLatestRestoreUsable(rigId) →
-   *  RestoreOrchestrator.restore(snapshotId) → rollupRestoreRigResult; a rig with no
-   *  usable snapshot returns `not_attempted` (never a silent older/partial substitute). */
+  /** 恢复一个工作组。默认值（在路由接线）= findLatestRestoreUsable(rigId) →
+   * RestoreOrchestrator.restore(snapshotId) → rollupRestoreRigResult；没有可用快照的工作组
+   * 返回 `not_attempted`，绝不静默替换为更旧或不完整的快照。 */
   restoreRig: (
     rigId: string,
   ) => Promise<{ outcome: PerRigOutcome; receiptRef?: string | number; attention?: AttentionRow[]; reason?: string; remediation?: string }>;
-  /** Cancel signal, polled at each rig BOUNDARY (stop-before-next-rig). Optional. */
+  /** cancel signal，在每个工作组边界轮询（stop-before-next-rig）。可选。 */
   isCancelled?: () => boolean;
 }
 
 export class RestoreConductor {
   constructor(private readonly deps: RestoreConductorDeps) {}
 
-  /** Restore the fleet, kernel-first, best-effort, honoring stop-before-next-rig cancel.
-   *  Returns the ordered per-rig sequence (Atom C aggregates it into the FleetRollup). */
+  /** 以 kernel-first、best-effort 方式恢复 fleet，并遵守 stop-before-next-rig cancel。返回有序的
+   *  per-rig sequence（Atom C 将其聚合为 FleetRollup）。 */
   async restoreFleet(opts?: { onRigDone?: (result: ConductorRigResult) => void }): Promise<ConductorRigResult[]> {
-    const rigs = this.deps.listRigsInOrder(); // kernel first, then the rest
+    const rigs = this.deps.listRigsInOrder(); // kernel 优先，其余随后
     const results: ConductorRigResult[] = [];
-    // Progress "stream": each rig's result is emitted as it completes so the
-    // route can update a pollable rollup while the fleet restore continues
-    // (the locked async shape — the route answers on-commit, never blocks to
-    // completion). onRigDone stubbed until wired below (RED-first).
+    // progress “stream”：每个工作组完成时发出 result，使 route 可在 fleet restore 继续运行期间
+    // 更新可轮询 rollup（锁定的 async shape——route 在 commit 时响应，绝不阻塞等待完成）。
+    // onRigDone 在下方接线前由 stub 提供（RED-first）。
     const record = (result: ConductorRigResult) => {
       results.push(result);
-      opts?.onRigDone?.(result); // emit progress as each rig completes
+      opts?.onRigDone?.(result); // 每个工作组完成时发出 progress
     };
     for (const rig of rigs) {
-      // Stop-before-next-rig: poll cancel at the rig BOUNDARY, before this rig
-      // starts. A rig already in flight is never interrupted; rigs not yet
-      // reached become `not_attempted` (honest, never silently dropped).
+      // stop-before-next-rig：在此工作组启动前，于工作组边界轮询 cancel。已 in-flight 的工作组
+      // 绝不中断；尚未处理到的工作组变为 `not_attempted`（诚实，绝不静默丢弃）。
       if (this.deps.isCancelled?.()) {
         record({
           rigId: rig.rigId,
           outcome: "not_attempted",
-          reason: "cancelled before this rig started (stop-before-next-rig)",
-          remediation: "re-run the fleet restore to attempt this rig",
+          reason: "此工作组启动前已取消（stop-before-next-rig）",
+          remediation: "重新运行 fleet restore 以尝试恢复此工作组",
         });
         continue;
       }
@@ -81,7 +78,7 @@ export class RestoreConductor {
           remediation: r.remediation,
         });
       } catch {
-        // Best-effort continue: one rig's failure never halts the fleet.
+        // best-effort 继续：一个工作组失败绝不停止 fleet。
         record({ rigId: rig.rigId, outcome: "failed" });
       }
     }
@@ -89,20 +86,18 @@ export class RestoreConductor {
   }
 }
 
-/** Deps for the DEFAULT per-rig restore — structurally typed so the conductor stays
- *  decoupled from the full orchestrator (the real wiring passes
- *  `snapshotRepo.findLatestRestoreUsable` and `RestoreOrchestrator.restore`, whose
- *  RestoreOutcome satisfies this shape). */
+/** 默认 per-rig restore 的依赖——使用结构类型，使 conductor 与完整 orchestrator 解耦（真实接线传入
+ *  `snapshotRepo.findLatestRestoreUsable` 与 `RestoreOrchestrator.restore`，其 RestoreOutcome 满足
+ *  此 shape）。 */
 export interface RestoreRigDeps {
-  /** Newest restore-usable snapshot for the rig, or null (→ `not_attempted`; never a silent substitute). */
+  /** 工作组最新的 restore-usable snapshot；null → `not_attempted`，绝不静默替代。 */
   findLatestRestoreUsable: (rigId: string) => { id: string } | null;
-  /** Optional richer selector. Production supplies it so the restore attempt
-   * records why crash-cart chose this source; legacy test/integration callers
-   * may keep the historical finder-only shape. */
+  /** 可选的 richer selector。production 提供它，使 restore attempt 记录 crash-cart 选择此 source
+   *  的原因；legacy test/integration caller 可保留历史 finder-only shape。 */
   selectRestoreUsable?: (rigId: string) =>
     | { ok: true; snapshot: { id: string }; selection: import("./types.js").RestoreSnapshotSelection }
     | { ok: false };
-  /** The shipped per-rig restore. `onAttemptStarted` yields the restore-started event seq = the receipt ref. */
+  /** 已交付 per-rig restore。`onAttemptStarted` 产生 restore-started event seq，即 receipt ref。 */
   restore: (
     snapshotId: string,
     opts?: {
@@ -112,23 +107,21 @@ export interface RestoreRigDeps {
   ) => Promise<{ ok: boolean; result?: { rigResult: PerRigOutcome; nodes?: RestoreNodeLite[] } }>;
 }
 
-// ── AMENDMENT 2 (stamped, body hash 72757e81) — the surviving-panes ADOPT branch ──
-// The contradiction it resolves: for a daemon-only crash (panes SURVIVE), restore()
-// fail-closes 409 `rig_not_stopped` BY DESIGN, yet the locked acceptance requires
-// resumable seats to RETURN in their panes — achievable only by ADOPTION. Per rig:
-// LIVE panes compose the SHIPPED reconcile/adopt + per-seat resume verification;
-// DEAD panes take the restore composition below byte-unchanged. R9 boundary: adoption
-// touches SESSION state only (bindings/sessions/events) — never queue state.
+// ── AMENDMENT 2（stamped，body hash 72757e81）——surviving-panes ADOPT 分支 ─────────
+// 它解决的矛盾：仅 daemon 崩溃（pane 存活）时，restore() 按设计以 409 `rig_not_stopped`
+// fail-close，但锁定 acceptance 要求 resumable seat 回到其 pane——只有 ADOPTION 能实现。对每个
+// 工作组：live pane 组合已交付 reconcile/adopt + per-seat resume verification；dead pane 逐字不变
+// 地走下方 restore composition。R9 边界：adoption 只触碰 SESSION state（binding/session/event），
+// 绝不触碰 queue state。
 
-/** One seat of the subset-launch result, structurally the shipped RestoreNodeResult
- *  subset the triage mapper reads. */
+/** subset-launch result 中的一个 seat；在结构上是 triage mapper 所读的已交付 RestoreNodeResult 子集。 */
 export interface AdoptSubsetSeat extends RestoreNodeLite {
   logicalId: string;
 }
 
-/** Structural slice of RestoreOrchestrator.launchNodeSubset's result — the shipped
- *  per-seat resume-verification machinery (FR-7: an unverifiable resume fail-closes
- *  to awaiting-decision carrying the exact `--fresh <logicalId>` remediation). */
+/** RestoreOrchestrator.launchNodeSubset result 的结构子集——已交付的 per-seat resume-verification
+ *  机制（FR-7：无法验证的 resume 会 fail-close 为 awaiting-decision，并携带精确
+ *  `--fresh <logicalId>` remediation）。 */
 export interface AdoptSubsetResult {
   ok: boolean;
   code?: string;
@@ -140,24 +133,22 @@ export interface AdoptSubsetResult {
 }
 
 export interface AdoptRigDeps {
-  /** The rig's DB-running sessions whose tmux panes are ALIVE — the same
-   *  classification restore's 409 guard runs (sessionRegistry rows ×
-   *  tmuxAdapter.hasSession); the conductor never invents a probe. */
+  /** 工作组中 DB-running 且 tmux pane 存活的 session——与 restore 的 409 guard 使用相同 classification
+   *  （sessionRegistry row × tmuxAdapter.hasSession）；conductor 绝不虚构 probe。 */
   probeLiveSessions: (rigId: string) => Promise<Array<{ sessionName: string; logicalId: string }>>;
-  /** The shipped no-launch adopt (ClaimService.reconcileSession — the
-   *  `rig reconcile-session` precedent): session state only, never input. */
+  /** 已交付的 no-launch adopt（ClaimService.reconcileSession——`zrig reconcile-session` 先例）：
+   *  只处理 session state，绝不输入。 */
   reconcileSession: (sessionName: string) => Promise<{ ok: boolean; code?: string; message?: string }>;
-  /** The rig's full seat roster (logical ids) — adoption's complement is what
-   *  per-seat resume verification must cover. */
+  /** 工作组完整 seat roster（logical id）——adoption 的补集正是 per-seat resume verification
+   *  必须覆盖的范围。 */
   listRigSeats: (rigId: string) => string[];
-  /** The shipped subset launcher over the NOT-adopted seats. */
+  /** 针对未 adopt seat 的已交付 subset launcher。 */
   launchNodeSubset: (rigId: string, logicalIds: string[]) => Promise<AdoptSubsetResult>;
 }
 
-/** LIVE-panes branch: adopt every surviving session, then per-seat resume
- *  verification for the rest, folding into the UNCHANGED closed union. A seat is
- *  OK iff it yields no triage row (attentionRowsFromNodes is the single non-OK
- *  authority, so the fold cannot invent a fifth outcome or a second mapping). */
+/** LIVE-panes 分支：adopt 每个 surviving session，再对其余项执行 per-seat resume verification，
+ *  并折叠到未改变的 closed union。seat 当且仅当不产生 triage row 时为 OK
+ *  （attentionRowsFromNodes 是唯一 non-OK authority，因此 fold 无法虚构第五种 outcome 或第二映射）。 */
 async function adoptLivePanesRig(
   rigId: string,
   live: Array<{ sessionName: string; logicalId: string }>,
@@ -174,18 +165,17 @@ async function adoptLivePanesRig(
       nodes.push({
         logicalId: seat.logicalId,
         status: "failed",
-        error: `adopt failed for surviving session "${seat.sessionName}": ${adopted.message ?? adopted.code ?? "unknown"}`,
+        error: `无法 adopt surviving session "${seat.sessionName}"：${adopted.message ?? adopted.code ?? "未知错误"}`,
       });
     }
   }
   if (adoptedIds.size === 0) {
-    // The stamped mis-probe analysis: probe-says-LIVE on a dead rig → adopt fails
-    // EMPTY (honest). Never proceed to launches on a rig the adoption itself just
-    // proved has no surviving session — re-running takes the restore path.
+    // stamped mis-probe analysis：对 dead 工作组 probe 得到 LIVE → adopt 为空失败（诚实）。adoption
+    // 刚证明没有 surviving session 后，绝不继续在该工作组 launch——重跑时走 restore 路径。
     return {
       outcome: "not_attempted",
-      reason: "probe saw live panes but no surviving session could be adopted (panes likely died between probe and adopt)",
-      remediation: "re-run the fleet restore — a genuinely stopped rig takes the snapshot-restore path",
+      reason: "probe 发现 live pane，但没有可 adopt 的 surviving session（pane 可能在 probe 与 adopt 之间退出）",
+      remediation: "重新运行 fleet restore——真正 stopped 的工作组会走 snapshot-restore 路径",
       attention: attentionRowsFromNodes(rigId, nodes),
     };
   }
@@ -195,38 +185,37 @@ async function adoptLivePanesRig(
     if (subset.ok) {
       for (const n of subset.launched ?? []) nodes.push(n);
       for (const a of subset.alreadyRunning ?? []) {
-        // r1 LOW: a seat whose ADOPT failed can still be proven LIVE by the launcher
-        // (it classifies targets against tmux itself). The seat is RUNNING — drop the
-        // stale adopt-failure node, or triage would name a running seat as its "need".
+        // r1 LOW：ADOPT 失败的 seat 仍可由 launcher 证明为 LIVE（它自行对照 tmux 分类 target）。
+        // 该 seat 正在 RUNNING——移除 stale adopt-failure node，否则 triage 会将 running seat 点名为
+        // “need”。
         const staleFailed = nodes.findIndex((n) => n.logicalId === a.logicalId && n.status === "failed");
         if (staleFailed >= 0) nodes.splice(staleFailed, 1);
         nodes.push({ logicalId: a.logicalId, status: "resumed" });
       }
       for (const f of subset.failedTargets ?? [])
-        nodes.push({ logicalId: f.logicalId, status: "failed", error: `resume verification could not run: ${f.reason}` });
+        nodes.push({ logicalId: f.logicalId, status: "failed", error: `无法运行 resume verification：${f.reason}` });
       for (const h of subset.held ?? [])
-        nodes.push({ logicalId: h.logicalId, status: "attention_required", attentionEvidence: `held from launch — ${h.reason}` });
+        nodes.push({ logicalId: h.logicalId, status: "attention_required", attentionEvidence: `从 launch 保持 held——${h.reason}` });
     } else {
-      // A whole-subset refusal (e.g. no usable snapshot) leaves every remaining seat
-      // unverified — each gets a NAMED row; silence here would be the round-10 gap again.
+      // whole-subset refusal（如无可用 snapshot）会让每个 remaining seat 保持 unverified——每个 seat
+      // 都获得具名 row；此处静默会再次造成 round-10 gap。
       for (const id of remaining)
-        nodes.push({ logicalId: id, status: "failed", error: `per-seat resume verification unavailable: ${subset.message ?? subset.code ?? "launch subset failed"}` });
+        nodes.push({ logicalId: id, status: "failed", error: `per-seat resume verification 不可用：${subset.message ?? subset.code ?? "launch subset 失败"}` });
     }
   }
   const attention = attentionRowsFromNodes(rigId, nodes);
-  // R6 closed union, per the amendment: all seats re-attached+verified →
-  // fully_restored; some non-resumable → partially_restored (their exact needs ride
-  // the triage rows). adoptedIds.size > 0 guarantees at least one OK seat here.
+  // 按 amendment 的 R6 closed union：所有 seat re-attached+verified → fully_restored；部分
+  // non-resumable → partially_restored（其精确 need 随 triage row 传递）。adoptedIds.size > 0
+  // 保证此处至少有一个 OK seat。
   return attention.length === 0
     ? { outcome: "fully_restored", attention }
     : { outcome: "partially_restored", attention };
 }
 
-/** Build the default `restoreRig` dep: COMPOSE findLatestRestoreUsable → restore →
- *  rigResult. A rig with no usable snapshot is `not_attempted` (restore never runs);
- *  a restore that fails outright is `failed`. Never re-authors restore logic.
- *  With `adoptDeps` wired (Amendment 2), a rig whose panes survived takes the ADOPT
- *  branch above; DEAD panes (and callers without adoptDeps) run unchanged. */
+/** 构建默认 `restoreRig` 依赖：组合 findLatestRestoreUsable → restore → rigResult。无可用
+ *  snapshot 的工作组为 `not_attempted`（不运行 restore）；restore 直接失败则为 `failed`。绝不重新
+ *  实现 restore logic。接入 `adoptDeps`（Amendment 2）时，pane 存活的工作组走上方 ADOPT 分支；
+ *  dead pane（以及无 adoptDeps 的 caller）保持原路径。 */
 export function createDefaultRestoreRig(
   _deps: RestoreRigDeps,
   adoptDeps?: AdoptRigDeps,
@@ -234,18 +223,18 @@ export function createDefaultRestoreRig(
   return async (rigId) => {
     if (adoptDeps) {
       const live = await adoptDeps.probeLiveSessions(rigId);
-      // Adopt has NO restore-attempt receipt: its ledger lineage is the
-      // node.reconciled events the shipped adopt emits per seat.
+      // Adopt 没有 restore-attempt receipt：其 ledger lineage 是已交付 adopt 按 seat 发出的
+      // node.reconciled 事件。
       if (live.length > 0) return adoptLivePanesRig(rigId, live, adoptDeps);
     }
     const selected = _deps.selectRestoreUsable?.(rigId);
     const snapshot = selected?.ok ? selected.snapshot : _deps.findLatestRestoreUsable(rigId);
     if (!snapshot)
-      // no usable snapshot — never a silent substitute; R3: carry WHY + the fix.
+      // 无可用 snapshot——绝不静默替代；R3：携带原因与修复方法。
       return {
         outcome: "not_attempted",
-        reason: "no restore-usable snapshot for this rig",
-        remediation: `take a snapshot (rig snapshot ${rigId}) or mark an existing one restore-usable`,
+        reason: "此工作组没有可用于 restore 的 snapshot",
+        remediation: `创建 snapshot（zrig snapshot ${rigId}），或将现有 snapshot 标记为 restore-usable`,
       };
     let receiptRef: number | undefined;
     const outcome = await _deps.restore(snapshot.id, {
@@ -254,26 +243,25 @@ export function createDefaultRestoreRig(
         receiptRef = attemptId;
       },
     });
-    // ok:true → result.rigResult; ok:false WITH a result (e.g. pre-restore validation
-    // fail → `not_attempted`) → its rigResult; ok:false with no result (a hard failure:
-    // snapshot/rig not found, rig not stopped, restore in progress) → `failed`.
+    // ok:true → result.rigResult；带 result 的 ok:false（如 pre-restore validation fail →
+    // `not_attempted`）→ 其 rigResult；无 result 的 ok:false（hard failure：snapshot/rig not found、
+    // 工作组未停止、恢复进行中）→ `failed`。
     const outcomeResult: PerRigOutcome = outcome.result?.rigResult ?? "failed";
-    // Triage rows for this rig's seats that need operator action (from the restore
-    // result's nodes) — the shipped per-rig attention, unioned at the fleet layer.
+    // 需要 operator action 的工作组 seat triage row（来自 restore result node）——已交付的 per-rig
+    // attention，在 fleet layer 取并集。
     const attention = outcome.result?.nodes ? attentionRowsFromNodes(rigId, outcome.result.nodes) : [];
     return { outcome: outcomeResult, receiptRef, attention };
   };
 }
 
 export interface RigOrderDeps {
-  /** All (non-archived) rigs on this host — the conductor's fleet scope, v1. */
+  /** 此 host 上所有未 archived 的工作组——conductor 的 fleet scope，v1。 */
   listRigs: () => Array<{ id: string; name: string }>;
 }
 
-/** R2 — the founder's order: the KERNEL rig (the supervisor, name "kernel") restores
- *  FIRST, then the remaining rigs in listRigs order. No kernel rig → all rigs, none
- *  flagged kernel (honest, never fabricated). This is the `listRigsInOrder` source the
- *  conductor consumes. */
+/** R2——founder 指定的顺序：先恢复 KERNEL 工作组（supervisor，名为 "kernel"），再按 listRigs
+ *  顺序恢复其余工作组。无 kernel 工作组 → 返回所有工作组，且均不标记 kernel（诚实，绝不伪造）。
+ *  这是 conductor 使用的 `listRigsInOrder` source。 */
 export function listRigsInKernelFirstOrder(
   deps: RigOrderDeps,
 ): Array<{ rigId: string; isKernel: boolean }> {
@@ -283,32 +271,31 @@ export function listRigsInKernelFirstOrder(
   return [...kernel, ...rest].map((r) => ({ rigId: r.id, isKernel: r.name === "kernel" }));
 }
 
-// ── Atom C — fleet rollup (PURE AGGREGATION, ARCH-RULING Q2) ──────────────────
+// ── Atom C——舰队汇总（纯聚合，架构裁定 Q2）────────────────────────────────
 
-/** A triage row: a seat + exactly what it needs (picker/auth/remediation), sourced
- *  from the shipped per-rig restore-check attention projection. The fleet
- *  `attention_required` is the UNION of these across rigs — a VIEW, not a parallel record. */
+/** triage row：seat + 其准确 need（picker/auth/remediation），来自已交付 per-rig restore-check
+ *  attention projection。fleet `attention_required` 是这些 row 在工作组间的并集——是 VIEW，
+ *  不是 parallel record。 */
 export interface AttentionRow {
   rigId: string;
   seat: string;
   need: string;
 }
 
-/** Fleet rollup — PURE AGGREGATION over the conductor's per-rig sequence. The per-rig
- *  outcome stays the shipped CLOSED union (never widened). NO fleet verdict is stored
- *  here — a stored verdict could drift from the per-rig truth; derive it on demand via
- *  {@link deriveFleetVerdict}. `not_attempted` is first-class (never folded into failed). */
+/** Fleet rollup——对 conductor per-rig sequence 的纯聚合。per-rig outcome 保持已交付 CLOSED union
+ *  （绝不扩宽）。此处不存储 fleet verdict——存储的 verdict 可能偏离 per-rig truth；通过
+ *  {@link deriveFleetVerdict} 按需派生。`not_attempted` 是一等状态（绝不折叠为 failed）。 */
 export interface FleetRollup {
   counts: Record<PerRigOutcome, number>;
   sequence: ConductorRigResult[];
   attention_required: AttentionRow[];
 }
 
-/** The fleet verdict is a DERIVED function of the counts — never a stored field. */
+/** fleet verdict 是 counts 的派生函数——绝不是存储字段。 */
 export type FleetVerdict = "all_fully_restored" | "all_failed" | "none_attempted" | "mixed";
 
-/** A restore node (structural subset of the shipped RestoreNodeResult) — enough to
- *  build a triage row from the seats that need operator action. */
+/** restore node（已交付 RestoreNodeResult 的结构子集）——足以为需要 operator action 的 seat 构建
+ *  分诊行。 */
 export interface RestoreNodeLite {
   logicalId: string;
   status: string;
@@ -316,9 +303,9 @@ export interface RestoreNodeLite {
   attentionEvidence?: string | null;
 }
 
-/** R5 — map a rig's restore nodes → triage rows: the seats needing operator action
- *  (a LIVE runtime prompt, an unresumable session, or a hard failure), each with its
- *  EXACT need. Running/resumed nodes are excluded. Never fabricates a need. */
+/** R5——将工作组 restore node 映射为 triage row：需要 operator action 的 seat（live runtime
+ *  prompt、无法 resume 的 session 或 hard failure），每项都携带精确 need。排除 running/resumed
+ *  node。绝不虚构 need。 */
 export function attentionRowsFromNodes(rigId: string, nodes: RestoreNodeLite[]): AttentionRow[] {
   const rows: AttentionRow[] = [];
   for (const n of nodes) {
@@ -327,28 +314,27 @@ export function attentionRowsFromNodes(rigId: string, nodes: RestoreNodeLite[]):
         rigId,
         seat: n.logicalId,
         need: n.attentionEvidence
-          ? `live runtime prompt — ${n.attentionEvidence}`
-          : "live runtime prompt (resume selection / auth) — needs operator",
+          ? `live runtime prompt——${n.attentionEvidence}`
+          : "live runtime prompt（resume selection / auth）——需要 operator",
       });
     } else if (n.status === "awaiting-decision") {
-      // BLOCKER 3 — preserve the shipped orchestrator's EXACT error/remediation (it carries the concrete
-      // `--fresh <logicalId>` command and reason); only fall back to the generic sentence when the node
-      // carried none. The exact need reaching the operator IS the door's "seat + exact need" acceptance.
+      // BLOCKER 3——保留已交付 orchestrator 的精确 error/remediation（含具体
+      // `--fresh <logicalId>` command 与原因）；仅在 node 未携带时回退到通用句。抵达 operator 的
+      // 精确 need 就是该 door 的“seat + exact need”验收条件。
       rows.push({
         rigId,
         seat: n.logicalId,
-        need: n.error ? n.error : "original session not resumable and no --fresh — choose fresh-prime or skip",
+        need: n.error ? n.error : "原始 session 无法 resume 且未指定 --fresh——请选择 fresh-prime 或跳过",
       });
     } else if (n.status === "failed") {
-      rows.push({ rigId, seat: n.logicalId, need: n.error ? `restore failed: ${n.error}` : "restore failed" });
+      rows.push({ rigId, seat: n.logicalId, need: n.error ? `restore 失败：${n.error}` : "restore 失败" });
     }
   }
   return rows;
 }
 
 export function aggregateFleetRollup(sequence: ConductorRigResult[]): FleetRollup {
-  // All four closed-union keys initialized — `not_attempted` is first-class, never
-  // absent and never folded into `failed`.
+  // 初始化全部四个 closed-union key——`not_attempted` 是一等状态，绝不缺失，也绝不折叠为 `failed`。
   const counts: Record<PerRigOutcome, number> = {
     fully_restored: 0,
     partially_restored: 0,
@@ -356,12 +342,12 @@ export function aggregateFleetRollup(sequence: ConductorRigResult[]): FleetRollu
     not_attempted: 0,
   };
   for (const r of sequence) counts[r.outcome] += 1;
-  // attention_required = the UNION of per-rig triage rows carried in the sequence (a view).
+  // attention_required = sequence 携带的 per-rig triage row 并集（view）。
   const attention_required = sequence.flatMap((r) => r.attention ?? []);
   return { counts, sequence, attention_required };
 }
 
-/** DERIVED f(counts) — computed, never stored (a stored verdict could drift). */
+/** 派生 f(counts)——计算而不存储（存储的 verdict 可能发生 drift）。 */
 export function deriveFleetVerdict(counts: Record<PerRigOutcome, number>): FleetVerdict {
   const total = counts.fully_restored + counts.partially_restored + counts.failed + counts.not_attempted;
   if (total === 0 || counts.not_attempted === total) return "none_attempted";

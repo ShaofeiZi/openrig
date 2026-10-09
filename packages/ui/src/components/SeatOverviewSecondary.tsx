@@ -1,18 +1,14 @@
-// V0.3.1 slice 25 second follow-on — cwd + current-work section.
+// V0.3.1 slice 25 第二次后续——cwd + 当前工作区。
 //
-// Visually separated from the SeatOverviewTable above. Renders the
-// two "wide" fields as labeled key-value rows in their own section
-// primitive so the eye reads them as distinct from the dense column
-// table.
+// 与上方 SeatOverviewTable 在视觉上分隔开。把两个"宽"字段渲染成
+// 独立区块里的"标签-值"行，让眼睛能把它们和密集列表区分开。
 //
-// Data sources (same NodeDetailData fields as the original
-// full-width rows):
-//   - cwd — data.cwd
-//   - current work — data.currentQitems[0]; rendered as qitemId +
-//     body excerpt; em-dash when no in-progress qitem
+// 数据来源（与原全宽行相同的 NodeDetailData 字段）：
+//   - cwd —— data.cwd
+//   - 当前工作 —— data.currentQitems[0]；渲染为 qitemId + 正文摘录；
+//     无进行中的 qitem 时用破折号占位
 //
-// CWD value carries `title={cwd}` so hovering reveals the full path
-// when the value cell truncates.
+// CWD 值带 `title={cwd}`，这样值单元格被截断时悬停可看到完整路径。
 
 import type { ReactNode } from "react";
 import type { NodeDetailData } from "../hooks/useNodeDetail.js";
@@ -55,7 +51,7 @@ export function SeatOverviewSecondary({ data }: SeatOverviewSecondaryProps) {
         />
         <Row
           fieldKey="current-work"
-          label="current work"
+          label="当前工作"
           value={currentWorkValue}
         />
       </dl>

@@ -1,11 +1,11 @@
-// OPR.0.4.1.29 — LEAK-HUNT keystone: THE secret-boundary gate test.
+// OPR.0.4.1.29——泄漏狩猎基石：秘密边界门测试。
 //
-// A sentinel "token" is planted in EVERY place a secret could live: the active auth file, a valid
-// saved profile, a MALFORMED saved profile (the JSON.parse-error path), AND a fake `codex` shim on
-// PATH that loudly emits the sentinel on both stdout and stderr. Every `rig auth` verb is then run
-// through the REAL command with DEFAULT loginStatus (so the real spawnSync stdio:"ignore" path is
-// exercised, not a stub), capturing BOTH console.log and console.error AND any thrown error/stack.
-// The sentinel must appear in NONE of that output — stdout, stderr, or exception — for any verb.
+// 在秘密可能存在的每一处植入哨兵 "token"：活动 auth 文件、有效的已保存
+// profile、畸形已保存 profile（JSON.parse 错误路径），以及 PATH 上一个在
+// stdout 与 stderr 都响亮输出哨兵的假 `codex` shim。随后以 DEFAULT loginStatus
+// 经真实命令运行每个 `rig auth` 动词（演练真实的 spawnSync stdio:"ignore" 路径，
+// 而非桩），同时捕获 console.log、console.error 及任何抛出的错误/堆栈。
+// 对任何动词，哨兵都不得出现在任何输出中——stdout、stderr 或异常。
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -14,7 +14,7 @@ import { spawnSync } from "node:child_process";
 import { authCommand } from "../src/commands/auth.js";
 import { resolveCodexHome, authSave, authSwitch, copyOntoFresh } from "../src/lib/codex-auth.js";
 
-// Distinctive, grep-proof: if this string ever lands in command output, the secret boundary broke.
+// 独特、抗 grep：若此串落入命令输出，秘密边界即告破。
 const SENTINEL = "SENTINEL_TOKEN_LEAK_a1b2c3d4_DO_NOT_PRINT";
 const NOW = () => "2026-06-26T00:00:00Z";
 
@@ -25,12 +25,12 @@ let origPath: string | undefined;
 beforeEach(() => {
   home = fs.mkdtempSync(path.join(os.tmpdir(), "codexauth-leak-"));
 
-  // Active auth file with the sentinel token (0600).
+  // 带哨兵 token 的活动 auth 文件（0600）。
   const active = path.join(home, "auth.json");
   fs.writeFileSync(active, JSON.stringify({ OPENAI_API_KEY: SENTINEL, tokens: { access_token: SENTINEL } }), { mode: 0o600 });
   fs.chmodSync(active, 0o600);
 
-  // Saved-profile dir (0700) with a VALID profile and a MALFORMED profile — both carry the sentinel.
+  // 已保存 profile 目录（0700），含一个有效 profile 与一个畸形 profile——二者都带哨兵。
   const profileDir = path.join(home, "auth-profiles");
   fs.mkdirSync(profileDir, { mode: 0o700 });
   fs.chmodSync(profileDir, 0o700);
@@ -42,7 +42,7 @@ beforeEach(() => {
   fs.writeFileSync(broken, `{ "OPENAI_API_KEY": "${SENTINEL}", this is not json`, { mode: 0o600 });
   fs.chmodSync(broken, 0o600);
 
-  // Fake `codex` on PATH that emits the sentinel on stdout AND stderr, non-zero exit.
+  // PATH 上的假 `codex`，在 stdout 与 stderr 都输出哨兵，非零退出。
   // defaultLoginStatus spawns it with stdio:"ignore" → both streams discarded → no leak path.
   binDir = fs.mkdtempSync(path.join(os.tmpdir(), "codexauth-bin-"));
   const shim = path.join(binDir, "codex");
@@ -115,8 +115,8 @@ describe("rig auth LEAK-HUNT keystone (OPR.0.4.1.29)", () => {
     }
     expect(all).not.toContain(SENTINEL);
     // Sanity: we actually captured real output (not silently empty), so the assertion is meaningful.
-    expect(all).toContain("codex_home:");
-    expect(all).toContain("saved_profile:");
+    expect(all).toContain("Codex 主目录：");
+    expect(all).toContain("已保存档案：");
     expect(all).toContain("malformed_json");
   });
 });
@@ -188,13 +188,13 @@ describe("rig auth LEAK-HUNT — hardlink + symlinked-parent escapes (rev1-r2)",
   });
 });
 
-// OPR.0.4.3.23 — secret-boundary B1: the check-then-use gap. The 0.4.1 guards are path-based
-// pre-checks followed by a copy that RE-RESOLVED the source path; a swap/crash/concurrent-legit-rig in
-// the window could redirect the read, copy a torn file, or briefly expose a wider-than-0600 temp
-// (CERT FIO45-C). copyOntoFresh now opens the source, validates ON THE FD (O_NOFOLLOW + fstat: regular,
-// nlink===1, dev/ino), reads from the fd, creates the dest temp O_EXCL at 0600, fsyncs, and renames as
-// the sole atomic publish. These tests exercise the fd layer directly (behind the path pre-checks) and
-// prove no secret escapes on the crash / partial-write / swap paths.
+// OPR.0.4.3.23——secret 边界 B1：先检查后使用的间隙。0.4.1 的守卫是基于路径的
+// 预检，随后的复制会重新解析源路径；窗口内的 swap/crash/并发合法 rig 可能重定向
+// 读取、复制撕裂的文件，或短暂暴露比 0600 更宽的临时文件（CERT FIO45-C）。
+// copyOntoFresh 现在打开源、在 FD 上校验（O_NOFOLLOW + fstat：常规、nlink===1、
+// dev/ino），从 fd 读取，以 O_EXCL 在 0600 创建目标临时文件，fsync，并以 rename
+// 作为唯一原子发布。这些测试直接演练 fd 层（位于路径预检之后），并证明在
+// crash / 部分写入 / swap 路径上没有 secret 泄漏。
 describe("rig auth LEAK-HUNT — fd-first check-then-use / crash-safety (OPR.0.4.3.23)", () => {
   let root: string;
   const orphans = (dir: string, base: string): string[] =>
@@ -277,7 +277,7 @@ describe("rig auth LEAK-HUNT — fd-first check-then-use / crash-safety (OPR.0.4
   it("a rename failure AFTER the temp is written cleans up the temp so no orphan carries the secret", () => {
     const src = path.join(root, "src.json");
     fs.writeFileSync(src, JSON.stringify({ k: SENTINEL }), { mode: 0o600 });
-    // dest is a non-empty directory → the temp is created + written, but renameSync(tmp, dest) fails.
+    // dest 是非空目录 → 临时文件被创建并写入，但 renameSync(tmp, dest) 失败。
     const dest = path.join(root, "dest-dir");
     fs.mkdirSync(dest);
     fs.writeFileSync(path.join(dest, "occupant"), "x");

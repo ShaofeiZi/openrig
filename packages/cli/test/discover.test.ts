@@ -103,7 +103,7 @@ describe("Discover + Claim CLI", () => {
       await prog.parseAsync(["node", "rig", "discover"]);
     });
 
-    expect(logs.some((l) => l.includes("DISCOVERED SESSIONS"))).toBe(true);
+    expect(logs.some((l) => l.includes("发现的会话"))).toBe(true);
     expect(logs.some((l) => l.includes("organic"))).toBe(true);
     expect(logs.some((l) => l.includes("claude-code"))).toBe(true);
   });
@@ -139,9 +139,9 @@ describe("Discover + Claim CLI", () => {
   });
 
   // T10: claim success
-  // claim test removed — claim command deleted in bind consolidation
+  // claim 测试已移除——claim 命令在 bind 合并中删除
 
-  // T12: discover with 500 response -> exit 1 with error
+  // T12：discover 500 响应 → 退出 1 并报错
   it("discover with scan failure returns exit 1 with error", async () => {
     const failServer = http.createServer((_, res) => {
       res.writeHead(500, { "Content-Type": "application/json" });
@@ -175,7 +175,7 @@ describe("Discover + Claim CLI", () => {
       await prog.parseAsync(["node", "rig", "bind", "ds-1", "--rig", "rig-1", "--node", "orch.lead"]);
     });
 
-    expect(logs.some((l) => l.includes("Bound discovery"))).toBe(true);
+    expect(logs.some((l) => l.includes("已把发现项"))).toBe(true);
     expect(logs.some((l) => l.includes("orch.lead"))).toBe(true);
   });
 });

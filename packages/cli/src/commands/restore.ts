@@ -8,14 +8,14 @@ const LONG_RUNNING_TIMEOUT_MS = 45_000;
 
 export function restoreCommand(depsOverride?: StatusDeps): Command {
   const cmd = new Command("restore")
-    .description("Restore a rig from a snapshot")
-    .addHelpText("after", "\nDirect restore: rig restore <snapshotId> --rig <rigId>");
+    .description("从快照恢复工作组")
+    .addHelpText("after", "\n直接恢复：zrig restore <snapshotId> --rig <rigId>");
   const getDeps = () => depsOverride ?? { lifecycleDeps: realDeps(), clientFactory: (url: string) => new DaemonClient(url) };
 
   cmd
     .command("apply <snapshotId>", { isDefault: true, hidden: true })
-    .description("Restore a rig from a snapshot")
-    .requiredOption("--rig <rigId>", "Rig ID to restore into")
+    .description("从快照恢复工作组")
+    .requiredOption("--rig <rigId>", "要恢复到的工作组 ID")
     .action(async (snapshotId: string, opts: { rig: string }) => {
       const deps = getDeps();
       const status = await getDaemonStatus(deps.lifecycleDeps);
@@ -25,12 +25,11 @@ export function restoreCommand(depsOverride?: StatusDeps): Command {
       const client = deps.clientFactory(getDaemonUrl(status));
       const rigId = opts.rig;
 
-      // L3: install a SIGINT/SIGTERM handler that prints an honest message —
-      // interrupting the CLI client does NOT stop daemon-side restore work.
-      // Cancellation as a daemon protocol is a separate slice; ship the
-      // message so operators are not surprised.
+      // L3：注册 SIGINT/SIGTERM 处理器并如实提示——中断 CLI 客户端并不会
+      // 停止后台服务侧的恢复工作。作为后台服务协议的取消能力是独立切片；
+      // 先把提示发出来，让操作人员不感到意外。
       const onSignal = () => {
-        console.error("Client interrupt received; daemon-side restore may continue. Use 'rig ps --nodes' or 'rig restore-check' to follow progress.");
+        console.error("已收到客户端中断；后台服务侧的恢复可能仍在继续。用 'zrig ps --nodes' 或 'zrig restore-check' 跟踪进度。");
         process.exit(1);
       };
       process.once("SIGINT", onSignal);
@@ -41,7 +40,7 @@ export function restoreCommand(depsOverride?: StatusDeps): Command {
         attemptId?: number;
         status?: string;
         rigId?: string;
-        // Pre-restore-started error path keeps the original payload shape.
+        // 恢复开始前的错误路径保持原有载荷结构。
         rigResult?: string;
         blockers?: RestoreBlocker[];
         nodes?: Array<{
@@ -67,7 +66,7 @@ export function restoreCommand(depsOverride?: StatusDeps): Command {
       );
 
       if (res.status === 404) {
-        console.error(`Snapshot "${snapshotId}" or rig "${rigId}" not found. List snapshots with: rig snapshot list --rig ${rigId}`);
+        console.error(`未找到快照 "${snapshotId}" 或工作组 "${rigId}"。列出快照：zrig snapshot list --rig ${rigId}`);
         process.exitCode = 1;
       } else if (res.status === 409) {
         if ((res.data as { code?: string }).code === "pre_restore_validation_failed") {
@@ -76,26 +75,25 @@ export function restoreCommand(depsOverride?: StatusDeps): Command {
           return;
         }
         if ((res.data as { code?: string }).code === "snapshot_unusable") {
-          console.error(`Restore refused: ${(res.data as { error?: string }).error ?? "the selected snapshot is not restore-usable"}. Choose a different snapshot.`);
+          console.error(`已拒绝恢复：${(res.data as { error?: string }).error ?? "所选快照不可用于恢复"}。请另选快照。`);
         } else {
-          console.error(`Restore conflict: ${(res.data as { error?: string }).error ?? "rig may still be running"}. Stop the rig first with: rig down ${rigId}`);
+          console.error(`恢复冲突：${(res.data as { error?: string }).error ?? "工作组可能仍在运行"}。请先停止工作组：zrig down ${rigId}`);
         }
         process.exitCode = 1;
       } else if (res.status >= 400) {
-        console.error(`Restore failed: ${(res.data as { error?: string }).error ?? "unknown error"} (HTTP ${res.status}). Check daemon logs or try a different snapshot.`);
+        console.error(`恢复失败：${(res.data as { error?: string }).error ?? "未知错误"}（HTTP ${res.status}）。请查看后台服务日志或换一个快照。`);
         process.exitCode = 1;
       } else if (res.data.attemptId !== undefined) {
-        // L3 success path: route returned 202 immediately after restore.started.
-        console.log(`Restore attempt id: ${res.data.attemptId}`);
-        console.log(`Status: ${res.data.status ?? "started"}`);
-        console.log("Daemon is restoring per-node in the background; follow progress with 'rig ps --nodes' or 'rig restore-check'.");
+        // L3 成功路径：restore.started 后路由立即返回 202。
+        console.log(`恢复尝试 id：${res.data.attemptId}`);
+        console.log(`状态：${res.data.status ?? "started"}`);
+        console.log("后台服务正在后台逐节点恢复；用 'zrig ps --nodes' 或 'zrig restore-check' 跟踪进度。");
       } else {
-        // Defensive: server responded ok=true but didn't include attemptId.
-        // Fall back to the legacy summary if it's present (back-compat with
-        // pre-L3 daemons during rolling upgrades).
-        console.log("Restore complete:");
+        // 防御性处理：服务器返回 ok=true 但未带 attemptId。
+        // 若存在旧版摘要则回退使用（滚动升级期间兼容 L3 之前的后台服务）。
+        console.log("恢复完成：");
         if (res.data.rigResult) {
-          console.log(`Rig result: ${res.data.rigResult}`);
+          console.log(`工作组结果：${res.data.rigResult}`);
         }
         const nodes = res.data.nodes ?? [];
         for (const node of nodes) {
@@ -115,9 +113,9 @@ export function restoreCommand(depsOverride?: StatusDeps): Command {
 
   cmd
     .command("status <attemptId>")
-    .description("Show the derived current receipt for one restore attempt")
-    .requiredOption("--rig <rigId>", "Rig ID containing the restore attempt")
-    .option("--json", "JSON output")
+    .description("展示某次恢复尝试当前推导的回执")
+    .requiredOption("--rig <rigId>", "包含该恢复尝试的工作组 ID")
+    .option("--json", "以 JSON 输出")
     .action(async (attemptId: string, opts: { rig: string; json?: boolean }) => {
       const deps = getDeps();
       const status = await getDaemonStatus(deps.lifecycleDeps);
@@ -135,7 +133,7 @@ export function restoreCommand(depsOverride?: StatusDeps): Command {
         unresolvedIntendedSeats?: Array<{ logicalId: string; status: string }>;
       }>(`/api/rigs/${encodeURIComponent(opts.rig)}/restore/status/${encodeURIComponent(attemptId)}`);
       if (res.status >= 400 || !res.data.ok) {
-        console.error(res.data.error ?? `Restore attempt status failed (HTTP ${res.status})`);
+        console.error(res.data.error ?? `恢复尝试状态查询失败（HTTP ${res.status}）`);
         process.exitCode = 1;
         return;
       }
@@ -143,14 +141,14 @@ export function restoreCommand(depsOverride?: StatusDeps): Command {
         console.log(JSON.stringify(res.data, null, 2));
         return;
       }
-      console.log(`Restore attempt ${res.data.attemptId ?? attemptId}`);
+      console.log(`恢复尝试 ${res.data.attemptId ?? attemptId}`);
       if (res.data.snapshotSelection) {
-        console.log(`Snapshot: ${res.data.snapshotSelection.snapshotId} (${res.data.snapshotSelection.kind}, ${res.data.snapshotSelection.mode})`);
-        console.log(`Selection: ${res.data.snapshotSelection.rationale}`);
+        console.log(`快照：${res.data.snapshotSelection.snapshotId}（${res.data.snapshotSelection.kind}，${res.data.snapshotSelection.mode}）`);
+        console.log(`选择依据：${res.data.snapshotSelection.rationale}`);
       }
-      console.log(`Original verdict: ${res.data.originalResult?.rigResult ?? "unknown"}`);
-      console.log(`Current intended-set verdict: ${res.data.currentIntendedSetVerdict ?? "unknown"}`);
-      console.log(`Intended: ${res.data.intendedRoster?.length ?? 0}; excluded historical: ${res.data.excludedNodes?.length ?? 0}; unresolved: ${res.data.unresolvedIntendedSeats?.length ?? 0}`);
+      console.log(`原始判定：${res.data.originalResult?.rigResult ?? "未知"}`);
+      console.log(`当前预期集合判定：${res.data.currentIntendedSetVerdict ?? "未知"}`);
+      console.log(`预期：${res.data.intendedRoster?.length ?? 0}；已排除历史：${res.data.excludedNodes?.length ?? 0}；未解决：${res.data.unresolvedIntendedSeats?.length ?? 0}`);
       for (const node of res.data.unresolvedIntendedSeats ?? []) console.log(`  ${node.logicalId}: ${node.status}`);
     });
 
@@ -169,9 +167,9 @@ interface RestoreBlocker {
 }
 
 function printRestoreNotAttempted(data: { rigResult?: string; blockers?: RestoreBlocker[]; error?: string }): void {
-  console.error(`Restore blocked: ${data.error ?? "pre-restore validation failed"}`);
+  console.error(`恢复被阻止：${data.error ?? "恢复前校验失败"}`);
   if (data.rigResult) {
-    console.error(`Rig result: ${data.rigResult}`);
+    console.error(`工作组结果：${data.rigResult}`);
   }
   printBlockers(data.blockers ?? []);
 }
@@ -180,8 +178,8 @@ function printBlockers(blockers: RestoreBlocker[]): void {
   for (const blocker of blockers) {
     const scope = blocker.logicalId ?? blocker.nodeId ?? blocker.target ?? blocker.code;
     console.error(`  ${scope}: ${blocker.message}`);
-    if (blocker.path) console.error(`    path: ${blocker.path}`);
-    console.error(`    remediation: ${blocker.remediation}`);
+    if (blocker.path) console.error(`    路径：${blocker.path}`);
+    console.error(`    修复措施：${blocker.remediation}`);
   }
 }
 
@@ -201,23 +199,23 @@ function printRecoveryGuidance(
 
   if (actionable.length === 0) return;
 
-  console.log("\nRecovery guidance:");
+  console.log("\n恢复指引：");
   for (const node of actionable) {
     console.log(`  ${node.logicalId}: ${node.recoveryGuidance!.summary}`);
     if (node.tmuxAttachCommand) {
-      console.log(`    attach: ${node.tmuxAttachCommand}`);
+      console.log(`    挂载：${node.tmuxAttachCommand}`);
     }
     if (node.canonicalSessionName) {
-      console.log(`    session: ${node.canonicalSessionName}`);
+      console.log(`    会话：${node.canonicalSessionName}`);
     }
     if (node.cwd) {
-      console.log(`    cwd: ${node.cwd}`);
+      console.log(`    工作目录：${node.cwd}`);
     }
     for (const command of node.recoveryGuidance!.commands) {
       console.log(`    $ ${command}`);
     }
     for (const note of node.recoveryGuidance!.notes) {
-      console.log(`    note: ${note}`);
+      console.log(`    备注：${note}`);
     }
   }
 }

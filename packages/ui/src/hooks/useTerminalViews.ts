@@ -1,7 +1,6 @@
-// OPR.0.4.6.2 (FR-5) — the saved-views + openable-rigs list for the terminal
-// launcher. GET /api/terminal/views → { saved, rigs } (the C3 canonical route).
-// Saved views are provider-agnostic and read at launch; derived views (rig /
-// mission / slice) are computed live and never appear here.
+// OPR.0.4.6.2（FR-5）——终端启动器使用的已保存视图与可打开工作组列表。
+// GET /api/terminal/views → { saved, rigs }（C3 规范路由）。已保存视图与 provider 无关，
+// 在启动时读取；派生视图（工作组/任务目标/slice）实时计算，绝不会出现在这里。
 
 import { useQuery } from "@tanstack/react-query";
 import { withHostParam } from "../lib/host-param.js";
@@ -23,7 +22,7 @@ export interface SavedViewDto {
 
 export interface TerminalViewsResponse {
   saved: SavedViewDto[];
-  /** Rig names openable as per-rig derived views. */
+  /** 可作为逐工作组派生视图打开的工作组名称。 */
   rigs: string[];
 }
 

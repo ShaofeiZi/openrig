@@ -1,7 +1,7 @@
-// OPR.0.4.1.24 — Workspace parent-altitude portfolio. Missions DERIVED from the
-// slice index (group by missionId/railItem), sorted most-recently-modified,
-// COLLAPSED by default; expanding a row LAZILY projects that mission's
-// MISSION_BRIEF.md Building + Needs-you glance (useMission -> useScopeMarkdown).
+// OPR.0.4.1.24——Workspace 父级高度 portfolio。Missions 由 slice 索引
+// 派生（按 missionId/railItem 分组），按最近修改排序，默认折叠；展开行
+// 惰性投影该 mission 的 MISSION_BRIEF.md Building + Needs-you 概览
+//（useMission -> useScopeMarkdown）。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor, fireEvent } from "@testing-library/react";
@@ -24,12 +24,12 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status });
 }
 
-// Two missions, varied recency: alpha is most-recent (has a MISSION_BRIEF), beta
-// is older (NO MISSION_BRIEF -> graceful empty glance).
-// Alpha is deliberately shaped so PROVEN (hasProofPacket) != DONE (status):
-// a1+a3 are proven (hasProofPacket) but still active; a2 is done but NOT
-// proven. proven=2, active=2, done=1 — so the rollup metric discriminates a
-// hasProofPacket count from a status==='done' count (rev1-r2 OPR.0.4.1.24).
+// 两个 mission，不同新近度：alpha 最近（有 MISSION_BRIEF），beta
+// 较旧（无 MISSION_BRIEF -> 优雅空概览）。
+// Alpha 故意成型使 PROVEN（hasProofPacket）!= DONE（status）：
+// a1+a3 proven（hasProofPacket）但仍 active；a2 done 但未
+// proven。proven=2、active=2、done=1——故 rollup 指标区分
+// hasProofPacket 计数与 status==='done' 计数（rev1-r2 OPR.0.4.1.24）。
 const SLICES = {
   slices: [
     { name: "a1", displayName: "Alpha one", railItem: "alpha", status: "active", rawStatus: "active", qitemCount: 3, hasProofPacket: true, lastActivityAt: "2026-06-23T20:00:00.000Z" },
@@ -47,7 +47,7 @@ function installMock(opts: { emptySlices?: boolean } = {}) {
   mockFetch.mockImplementation(async (input: unknown) => {
     const url = String(input);
     calls.push(url);
-    // MH-2: the selection-known files gate needs the hosts payload (local).
+    // MH-2：selection-known files 门禁需要 hosts payload（本地）。
     if (url.includes("/api/hosts")) return json({ ownName: "localhost", selected: "local", hosts: [] });
     if (url.includes("/api/slices?")) {
       return json(opts.emptySlices ? { slices: [], totalCount: 0, filter: "all" } : SLICES);
@@ -102,7 +102,7 @@ describe("OPR.0.4.1.24 — workspace portfolio", () => {
     await waitFor(() => expect(screen.getByTestId("workspace-portfolio")).toBeTruthy());
     expect(screen.getByTestId("portfolio-mission-alpha")).toBeTruthy();
     expect(screen.getByTestId("portfolio-mission-beta")).toBeTruthy();
-    // collapsed by default — no glance, and (lazy) no per-mission brief fetch yet.
+    // 默认折叠——无概览，且（惰性）尚无 per-mission brief 拉取。
     expect(screen.queryByTestId("portfolio-glance-alpha")).toBeNull();
     expect(listFetched("/api/missions/")).toBe(false);
     expect(listFetched("/api/files/")).toBe(false);
@@ -122,7 +122,7 @@ describe("OPR.0.4.1.24 — workspace portfolio", () => {
     await waitFor(() => expect(screen.getByTestId("portfolio-toggle-alpha")).toBeTruthy());
     fireEvent.click(screen.getByTestId("portfolio-toggle-alpha"));
     await waitFor(() => expect(screen.getByTestId("portfolio-glance-alpha")).toBeTruthy());
-    // the brief was fetched only on expand (lazy), and the Building/Needs-you prose rendered.
+    // brief 仅在展开时拉取（惰性），且 Building/Needs-you 散文已渲染。
     expect(listFetched("/api/missions/alpha")).toBe(true);
     expect(listFetched("missions%2Falpha%2FMISSION_BRIEF.md")).toBe(true);
     const glance = screen.getByTestId("portfolio-glance-alpha");
@@ -135,19 +135,19 @@ describe("OPR.0.4.1.24 — workspace portfolio", () => {
     await waitFor(() => expect(screen.getByTestId("portfolio-toggle-beta")).toBeTruthy());
     fireEvent.click(screen.getByTestId("portfolio-toggle-beta"));
     await waitFor(() => expect(screen.getByTestId("portfolio-glance-empty-beta")).toBeTruthy());
-    expect(screen.getByTestId("portfolio-glance-empty-beta").textContent).toMatch(/no mission_brief/i);
+    expect(screen.getByTestId("portfolio-glance-empty-beta").textContent).toMatch(/尚无 MISSION_BRIEF/);
   });
 
   it("AC-6: the collapsed row metric reads PROVEN (hasProofPacket), not done-status", async () => {
     renderPortfolio();
     await waitFor(() => expect(screen.getByTestId("portfolio-mission-alpha")).toBeTruthy());
     const row = screen.getByTestId("portfolio-mission-alpha");
-    // alpha: proven=2 (a1,a3 hasProofPacket), active=2 (a1,a3), slices=3, done=1 (a2).
-    // The metric must report the PROVEN count, matching the founder-approved mockup.
-    // Contiguous match proves BOTH the label word and the count come from
-    // hasProofPacket (2), not status==='done' (which would render "1 done · ...").
-    expect(row.textContent).toContain("2 proven · 2 active · 3 slices");
-    // Precise regression guard against the original "{doneCount} done · ..." form.
+    // alpha：proven=2（a1,a3 hasProofPacket）、active=2（a1,a3）、slices=3、done=1（a2）。
+    // 指标必须报 PROVEN 计数，匹配 founder 认可 mockup。
+    // 连续匹配证明标签词与计数均来自 hasProofPacket（2），
+    // 而非 status==='done'（那会渲染 "1 done · ..."）。
+    expect(row.textContent).toContain("2 个已校验 · 2 个活跃 · 3 个切片");
+    // 对原始 "{doneCount} done · ..." 形式的精确回归守卫。
     expect(row.textContent).not.toContain("done · ");
   });
 

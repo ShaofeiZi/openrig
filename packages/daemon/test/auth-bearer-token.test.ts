@@ -12,20 +12,20 @@ import {
 } from "../src/middleware/auth-bearer-token.js";
 import type { NetworkInterfaceInfo } from "node:os";
 
-describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
-  it("constantTimeEqual returns true for equal strings", () => {
+describe("auth-bearer-token 中间件（PL-005 阶段 B）", () => {
+  it("constantTimeEqual 对相同字符串返回 true", () => {
     expect(constantTimeEqual("abc", "abc")).toBe(true);
   });
 
-  it("constantTimeEqual returns false for different strings (same length)", () => {
+  it("constantTimeEqual 对长度相同但内容不同的字符串返回 false", () => {
     expect(constantTimeEqual("abc", "abd")).toBe(false);
   });
 
-  it("constantTimeEqual returns false for different lengths", () => {
+  it("constantTimeEqual 对长度不同的字符串返回 false", () => {
     expect(constantTimeEqual("abc", "abcd")).toBe(false);
   });
 
-  it("isLoopbackBind detects loopback host names", () => {
+  it("isLoopbackBind 能识别回环主机名", () => {
     expect(isLoopbackBind("127.0.0.1")).toBe(true);
     expect(isLoopbackBind("127.42.7.99")).toBe(true);
     expect(isLoopbackBind("localhost")).toBe(true);
@@ -33,23 +33,22 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
     expect(isLoopbackBind("[::1]")).toBe(true);
   });
 
-  it("isLoopbackBind treats non-loopback hosts as non-loopback", () => {
+  it("isLoopbackBind 将非回环主机判定为非回环", () => {
     expect(isLoopbackBind("0.0.0.0")).toBe(false);
     expect(isLoopbackBind("100.64.0.5")).toBe(false);
     expect(isLoopbackBind("10.0.0.1")).toBe(false);
     expect(isLoopbackBind("rig.local")).toBe(false);
   });
 
-  it("isLoopbackBind treats empty/undefined as non-loopback (safety default)", () => {
+  it("isLoopbackBind 将空值或 undefined 判定为非回环（安全默认值）", () => {
     expect(isLoopbackBind("")).toBe(false);
     expect(isLoopbackBind(undefined)).toBe(false);
     expect(isLoopbackBind(null)).toBe(false);
   });
 
-  // HARD-GATE audit row 8 (now async per auth-bearer-tailscale-trust slice).
-  // Note: 100.64.0.5 is now treated as tailscale (CGNAT) per the new model;
-  // the public-IP scenarios (0.0.0.0) still throw.
-  it("HARD-GATE: assertBindAuthInvariant throws when truly public bind has empty bearer", async () => {
+  // 硬门禁审计第 8 行（现根据 auth-bearer-tailscale-trust 分片改为异步）。
+  // 注意：新模型现在将 100.64.0.5 视为 tailscale（CGNAT）；公网 IP 场景（0.0.0.0）仍会抛错。
+  it("硬门禁：真正的公网绑定使用空 bearer 时，assertBindAuthInvariant 抛错", async () => {
     await expect(
       assertBindAuthInvariant({ host: "0.0.0.0", bearerToken: null }),
     ).rejects.toThrow(AuthBearerTokenStartupError);
@@ -58,7 +57,7 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
     ).rejects.toThrow(AuthBearerTokenStartupError);
   });
 
-  it("HARD-GATE: assertBindAuthInvariant passes when loopback bind even with empty bearer", async () => {
+  it("硬门禁：回环绑定即使 bearer 为空，assertBindAuthInvariant 也通过", async () => {
     await expect(
       assertBindAuthInvariant({ host: "127.0.0.1", bearerToken: null }),
     ).resolves.toBeUndefined();
@@ -67,7 +66,7 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("HARD-GATE: assertBindAuthInvariant passes when non-loopback has non-empty bearer", async () => {
+  it("硬门禁：非回环绑定具有非空 bearer 时，assertBindAuthInvariant 通过", async () => {
     await expect(
       assertBindAuthInvariant({ host: "0.0.0.0", bearerToken: "secret" }),
     ).resolves.toBeUndefined();
@@ -77,28 +76,28 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
   });
 
   // ==================================================================
-  // bug-fix slice: auth-bearer-tailscale-trust (2026-05-11)
+  // 缺陷修复分片：auth-bearer-tailscale-trust（2026-05-11）
   // ==================================================================
 
   describe("isTailscaleBind (CGNAT IPv4 + ULA IPv6)", () => {
-    it("matches CGNAT IPv4 100.64.0.0/10 — second octet 64..127 inclusive", () => {
+    it("匹配 CGNAT IPv4 100.64.0.0/10——第二个八位组包含 64..127", () => {
       expect(isTailscaleBind("100.64.0.0")).toBe(true);
       expect(isTailscaleBind("100.64.0.5")).toBe(true);
       expect(isTailscaleBind("100.95.124.51")).toBe(true);
       expect(isTailscaleBind("100.127.255.255")).toBe(true);
     });
 
-    it("rejects IPv4 outside CGNAT range (HG-3 boundary)", () => {
-      // Below: 100.63.x.x is NOT in 100.64.0.0/10
+    it("拒绝 CGNAT 范围外的 IPv4（HG-3 边界）", () => {
+      // 下界之外：100.63.x.x 不在 100.64.0.0/10 中
       expect(isTailscaleBind("100.63.255.255")).toBe(false);
-      // Above: 100.128.x.x is NOT in 100.64.0.0/10
+      // 上界之外：100.128.x.x 不在 100.64.0.0/10 中
       expect(isTailscaleBind("100.128.0.0")).toBe(false);
-      // First octet mismatch
+      // 第一个八位组不匹配
       expect(isTailscaleBind("101.64.0.0")).toBe(false);
       expect(isTailscaleBind("99.64.0.0")).toBe(false);
     });
 
-    it("rejects unrelated IPv4 (LAN, public, loopback)", () => {
+    it("拒绝无关 IPv4（局域网、公网、回环）", () => {
       expect(isTailscaleBind("127.0.0.1")).toBe(false);
       expect(isTailscaleBind("192.168.1.5")).toBe(false);
       expect(isTailscaleBind("10.0.0.1")).toBe(false);
@@ -106,23 +105,23 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
       expect(isTailscaleBind("0.0.0.0")).toBe(false);
     });
 
-    it("matches tailscale ULA IPv6 prefix fd7a:115c:a1e0::/48", () => {
+    it("匹配 tailscale ULA IPv6 前缀 fd7a:115c:a1e0::/48", () => {
       expect(isTailscaleBind("fd7a:115c:a1e0::1")).toBe(true);
       expect(isTailscaleBind("fd7a:115c:a1e0:ab12:3456:7890:abcd:ef01")).toBe(true);
-      // Bracketed form (URL-style)
+      // 带方括号形式（URL 风格）
       expect(isTailscaleBind("[fd7a:115c:a1e0::1]")).toBe(true);
-      // Case-insensitive
+      // 不区分大小写
       expect(isTailscaleBind("FD7A:115C:A1E0::1")).toBe(true);
     });
 
-    it("rejects unrelated IPv6 (other ULA, public, loopback)", () => {
+    it("拒绝无关 IPv6（其他 ULA、公网、回环）", () => {
       expect(isTailscaleBind("fd00::1")).toBe(false);
       expect(isTailscaleBind("fd7b:115c:a1e0::1")).toBe(false); // off by one in first segment
       expect(isTailscaleBind("::1")).toBe(false);
       expect(isTailscaleBind("2001:db8::1")).toBe(false);
     });
 
-    it("rejects empty / null / undefined / hostnames (resolver path handles those)", () => {
+    it("拒绝空值 / null / undefined / 主机名（由解析器路径处理）", () => {
       expect(isTailscaleBind("")).toBe(false);
       expect(isTailscaleBind(undefined)).toBe(false);
       expect(isTailscaleBind(null)).toBe(false);
@@ -132,36 +131,36 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
   });
 
   describe("resolveToIpOrNull", () => {
-    it("resolves a real loopback hostname to an IP", async () => {
+    it("将真实回环主机名解析为 IP", async () => {
       const ip = await resolveToIpOrNull("localhost");
-      // localhost resolves to 127.0.0.1 or ::1 depending on platform
+      // 根据平台不同，localhost 解析为 127.0.0.1 或 ::1。
       expect(ip).toBeTruthy();
       expect(typeof ip).toBe("string");
     });
 
-    it("returns null for an intentionally-unresolvable hostname (HG-4)", async () => {
+    it("对有意设置为无法解析的主机名返回 null（HG-4）", async () => {
       const ip = await resolveToIpOrNull("this-host-does-not-exist.invalid");
       expect(ip).toBeNull();
     });
   });
 
-  describe("assertBindAuthInvariant — 7 IMPL-PRD scenarios", () => {
-    // Scenario 1: Loopback bind, no bearer → OK
-    it("(1) loopback bind 127.0.0.1 with no bearer → OK", async () => {
+  describe("assertBindAuthInvariant——7 个 IMPL-PRD 场景", () => {
+    // 场景 1：回环绑定，无 bearer → 通过
+    it("(1) 回环绑定 127.0.0.1 且无 bearer → 通过", async () => {
       await expect(
         assertBindAuthInvariant({ host: "127.0.0.1", bearerToken: null }),
       ).resolves.toBeUndefined();
     });
 
-    // Scenario 2: Tailscale IPv4 bind, no bearer → OK
-    it("(2) tailscale IPv4 100.95.124.51 with no bearer → OK", async () => {
+    // 场景 2：Tailscale IPv4 绑定，无 bearer → 通过
+    it("(2) tailscale IPv4 100.95.124.51 且无 bearer → 通过", async () => {
       await expect(
         assertBindAuthInvariant({ host: "100.95.124.51", bearerToken: null }),
       ).resolves.toBeUndefined();
     });
 
-    // Scenario 3: Tailscale magicDNS hostname → OK (DNS resolves to tailscale IP)
-    it("(3) magicDNS hostname that resolves to tailscale IP → OK", async () => {
+    // 场景 3：Tailscale magicDNS 主机名 → 通过（DNS 解析为 tailscale IP）
+    it("(3) 解析为 tailscale IP 的 magicDNS 主机名 → 通过", async () => {
       const dns = await import("node:dns");
       const spy = vi.spyOn(dns.promises, "lookup").mockResolvedValue({ address: "100.95.124.51", family: 4 } as unknown as never);
       try {
@@ -173,51 +172,51 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
       }
     });
 
-    // Scenario 4: LAN bind, no bearer → THROW
-    it("(4) LAN bind 192.168.1.50 with no bearer → THROW", async () => {
+    // 场景 4：局域网绑定，无 bearer → 抛错
+    it("(4) 局域网绑定 192.168.1.50 且无 bearer → 抛错", async () => {
       await expect(
         assertBindAuthInvariant({ host: "192.168.1.50", bearerToken: null }),
       ).rejects.toThrow(AuthBearerTokenStartupError);
     });
 
-    // Scenario 5: 0.0.0.0 bind, no bearer → THROW
-    it("(5) wildcard 0.0.0.0 with no bearer → THROW", async () => {
+    // 场景 5：0.0.0.0 绑定，无 bearer → 抛错
+    it("(5) 通配地址 0.0.0.0 且无 bearer → 抛错", async () => {
       await expect(
         assertBindAuthInvariant({ host: "0.0.0.0", bearerToken: null }),
       ).rejects.toThrow(AuthBearerTokenStartupError);
     });
 
-    // Scenario 6: Public IP, no bearer → THROW
-    it("(6) public IP 203.0.113.45 (TEST-NET-3) with no bearer → THROW", async () => {
+    // 场景 6：公网 IP，无 bearer → 抛错
+    it("(6) 公网 IP 203.0.113.45（TEST-NET-3）且无 bearer → 抛错", async () => {
       await expect(
         assertBindAuthInvariant({ host: "203.0.113.45", bearerToken: null }),
       ).rejects.toThrow(AuthBearerTokenStartupError);
     });
 
-    // Scenario 7: DNS-fails hostname, no bearer → THROW
-    it("(7) DNS-unresolvable hostname with no bearer → THROW (HG-4)", async () => {
+    // 场景 7：DNS 解析失败的主机名，无 bearer → 抛错
+    it("(7) DNS 无法解析的主机名且无 bearer → 抛错（HG-4）", async () => {
       await expect(
         assertBindAuthInvariant({ host: "this-host-does-not-exist.invalid", bearerToken: null }),
       ).rejects.toThrow(AuthBearerTokenStartupError);
     });
 
-    // Existing-behavior preservation
-    it("LAN bind WITH bearer → OK (bearer covers explicit public/LAN opt-in)", async () => {
+    // 保留现有行为
+    it("局域网绑定带 bearer → 通过（bearer 覆盖显式公网/局域网选择）", async () => {
       await expect(
         assertBindAuthInvariant({ host: "192.168.1.50", bearerToken: "secret" }),
       ).resolves.toBeUndefined();
     });
 
-    it("Public IP WITH bearer → OK", async () => {
+    it("公网 IP 带 bearer → 通过", async () => {
       await expect(
         assertBindAuthInvariant({ host: "203.0.113.45", bearerToken: "secret" }),
       ).resolves.toBeUndefined();
     });
 
-    it("error message cites all 3 accepted paths (HG-10)", async () => {
+    it("错误消息列出全部 3 条可接受路径（HG-10）", async () => {
       try {
         await assertBindAuthInvariant({ host: "192.168.1.50", bearerToken: null });
-        expect.fail("should have thrown");
+        expect.fail("应当抛错");
       } catch (err) {
         const msg = (err as Error).message;
         expect(msg).toMatch(/loopback|127\.0\.0\.1|localhost/i);
@@ -226,12 +225,12 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
       }
     });
 
-    it("error message names hostname AND resolved IP when DNS resolves to public IP", async () => {
+    it("DNS 解析到公网 IP 时，错误消息同时列出主机名和解析后的 IP", async () => {
       const dns = await import("node:dns");
       const spy = vi.spyOn(dns.promises, "lookup").mockResolvedValue({ address: "203.0.113.45", family: 4 } as unknown as never);
       try {
         await assertBindAuthInvariant({ host: "external.example.com", bearerToken: null });
-        expect.fail("should have thrown");
+        expect.fail("应当抛错");
       } catch (err) {
         const msg = (err as Error).message;
         expect(msg).toContain("external.example.com");
@@ -254,7 +253,7 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
       } as NetworkInterfaceInfo;
     }
 
-    it("returns the tailscale IPv4 when a CGNAT-range interface is present", () => {
+    it("存在 CGNAT 范围接口时返回 tailscale IPv4", () => {
       const result = findTailscaleIpInInterfaces({
         lo0: [iface({ address: "127.0.0.1", internal: true })],
         en0: [iface({ address: "192.168.1.5" })],
@@ -263,14 +262,14 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
       expect(result).toBe("100.95.124.51");
     });
 
-    it("returns the tailscale ULA IPv6 when only the IPv6 tailnet address is present", () => {
+    it("仅存在 IPv6 tailnet 地址时返回 tailscale ULA IPv6", () => {
       const result = findTailscaleIpInInterfaces({
         utun4: [iface({ address: "fd7a:115c:a1e0::1", family: "IPv6" })],
       });
       expect(result).toBe("fd7a:115c:a1e0::1");
     });
 
-    it("returns null when no interface is in the tailnet range (HG-7 condition)", () => {
+    it("没有接口位于 tailnet 范围内时返回 null（HG-7 条件）", () => {
       const result = findTailscaleIpInInterfaces({
         lo0: [iface({ address: "127.0.0.1", internal: true })],
         en0: [iface({ address: "192.168.1.5" })],
@@ -278,21 +277,21 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
       expect(result).toBeNull();
     });
 
-    it("skips internal interfaces (loopback) even if the address looked CGNAT-shaped", () => {
-      // Defense in depth: an internal flag should win over IP match.
+    it("即使地址形似 CGNAT，也跳过内部接口（回环）", () => {
+      // 纵深防御：internal 标志应优先于 IP 匹配。
       const result = findTailscaleIpInInterfaces({
         lo0: [iface({ address: "100.95.124.51", internal: true })],
       });
       expect(result).toBeNull();
     });
 
-    it("ignores undefined interface entries gracefully", () => {
+    it("妥善忽略 undefined 接口条目", () => {
       const result = findTailscaleIpInInterfaces({ ghost: undefined });
       expect(result).toBeNull();
     });
   });
 
-  describe("middleware integration", () => {
+  describe("中间件集成", () => {
     function appWithMiddleware(token: string | null): Hono {
       const app = new Hono();
       app.use("*", authBearerTokenMiddleware({ expectedToken: token }));
@@ -300,24 +299,24 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
       return app;
     }
 
-    it("loopback-only mode (token=null) passes all requests", async () => {
+    it("仅回环模式（token=null）允许所有请求", async () => {
       const app = appWithMiddleware(null);
       const res = await app.request("/");
       expect(res.status).toBe(200);
     });
 
-    it("returns 401 with three-part body when Authorization missing", async () => {
+    it("缺少 Authorization 时返回包含三段式正文的 401", async () => {
       const app = appWithMiddleware("secret");
       const res = await app.request("/");
       expect(res.status).toBe(401);
       const body = (await res.json()) as Record<string, unknown>;
       expect(body.error).toBe("unauthorized");
-      expect(body.what_failed).toContain("missing Authorization header");
+      expect(body.what_failed).toContain("缺少 Authorization 请求头");
       expect(body.why_it_matters).toBeDefined();
       expect(body.what_to_do).toBeDefined();
     });
 
-    it("returns 401 when Authorization is not Bearer scheme", async () => {
+    it("Authorization 不是 Bearer 方案时返回 401", async () => {
       const app = appWithMiddleware("secret");
       const res = await app.request("/", {
         headers: { Authorization: "Basic dXNlcjpwYXNz" },
@@ -327,17 +326,17 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
       expect(body.what_failed).toContain("Bearer");
     });
 
-    it("returns 401 when Bearer token does not match", async () => {
+    it("Bearer token 不匹配时返回 401", async () => {
       const app = appWithMiddleware("secret");
       const res = await app.request("/", {
         headers: { Authorization: "Bearer wrong" },
       });
       expect(res.status).toBe(401);
       const body = (await res.json()) as { what_failed: string };
-      expect(body.what_failed).toContain("does not match");
+      expect(body.what_failed).toContain("不匹配");
     });
 
-    it("returns 200 when Bearer token matches", async () => {
+    it("Bearer token 匹配时返回 200", async () => {
       const app = appWithMiddleware("secret");
       const res = await app.request("/", {
         headers: { Authorization: "Bearer secret" },
@@ -345,7 +344,7 @@ describe("auth-bearer-token middleware (PL-005 Phase B)", () => {
       expect(res.status).toBe(200);
     });
 
-    it("accepts case-insensitive 'authorization' header (HTTP standard)", async () => {
+    it("接受不区分大小写的 authorization 标头（HTTP 标准）", async () => {
       const app = appWithMiddleware("secret");
       const res = await app.request("/", {
         headers: { authorization: "Bearer secret" },

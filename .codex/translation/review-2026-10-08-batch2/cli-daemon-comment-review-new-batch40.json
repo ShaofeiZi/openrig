@@ -1,0 +1,53 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch40",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "classification_source": "test-comment-classification-794-2026-10-08.json v2",
+  "files": [
+    {
+      "path": "packages/cli/test/check-abi.test.ts",
+      "before_sha256_16": "fffd2f70a24a2f3a",
+      "after_sha256_16": "404e8ff9638e0828",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/codex-auth-ops.test.ts",
+      "before_sha256_16": "486b8654a04e2560",
+      "after_sha256_16": "d1f79d7b682bab5f",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/codex-auth-seats.test.ts",
+      "before_sha256_16": "3aee3f597c881127",
+      "after_sha256_16": "4187a51cc1ff0d8c",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/daemon-lifecycle-status.test.ts",
+      "before_sha256_16": "28c86818c56f6882",
+      "after_sha256_16": "37d4c0c4707181fd",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/fetch-guard.test.ts",
+      "before_sha256_16": "e72b214f592baa20",
+      "after_sha256_16": "f5613b5d53e96d4d",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

@@ -48,14 +48,14 @@ describe("rig host add/list", () => {
   it("add writes the entry and teaches the doctor next step", async () => {
     const { out, exitCode } = await capture(() => run(["add", "--id", "vps-1", "--transport", "ssh", "--target", "vps-1.tailnet", "--user", "openrig"]));
     expect(exitCode).toBeUndefined();
-    expect(out.join("\n")).toContain("Added host 'vps-1' (ssh)");
+    expect(out.join("\n")).toContain("已添加主机 'vps-1'（ssh）");
     expect(out.join("\n")).toContain("rig host doctor vps-1");
   });
 
   it("add surfaces the loader's own validation error at add-time (both bearers)", async () => {
     const { err, exitCode } = await capture(() => run(["add", "--id", "h1", "--transport", "http", "--url", "http://x", "--bearer-env", "A", "--bearer-file", "/b"]));
     expect(exitCode).toBe(1);
-    expect(err.join("\n")).toContain("not both");
+    expect(err.join("\n")).toContain("不要两者都指定");
   });
 
   it("list renders pointers and NEVER a resolved secret value (qa1 hygiene guard)", async () => {
@@ -77,11 +77,11 @@ describe("rig host add/list", () => {
 });
 
 // ---------------------------------------------------------------------------
-// OPR.0.4.4.13 FR-1/FR-2 — doctor legs + posture (mocked deps; no network).
+// OPR.0.4.4.13 FR-1/FR-2——doctor 各腿 + posture（mock 依赖；无网络）。
 // ---------------------------------------------------------------------------
 describe("rig host doctor — stepwise distinct errors + three-valued posture", () => {
   // Same OPENRIG_HOME steering as the add/list suite: the doctor-CLI case
-  // seeds a registry via `host add` and must NEVER touch the operator's
+  // 经 `host add` 播种一个 registry，且绝不得触碰操作员的
   // real ~/.openrig (the shared-singleton doctrine).
   let dir: string;
   let savedHome: string | undefined;
@@ -158,7 +158,7 @@ describe("rig host doctor — stepwise distinct errors + three-valued posture", 
     expect(rows[0]).toMatchObject({ step: "transport-reachability", status: "pass" });
     expect(rows[1]).toMatchObject({ step: "remote-rig-binary", status: "pass" });
     expect(rows[2]).toMatchObject({ step: "remote-daemon-health", status: "unknown" });
-    expect(rows[2]!.detail).toContain("could not confirm");
+    expect(rows[2]!.detail).toContain("无法确认健康");
     expect(rows[2]!.detail).not.toContain("unreachable");
     expect(rows[2]!.fix).not.toContain("rig daemon start");
   });
@@ -192,7 +192,7 @@ describe("rig host doctor — stepwise distinct errors + three-valued posture", 
       expect(byStep[step]!.status, step).toBe("unknown");
       expect(byStep[step]!.fix, step).toBeTruthy();
     }
-    // no public addr given -> probes are unknown, never silently pass
+    // 未给 public addr → 探测为 unknown，绝不静默通过
     expect(byStep["public-daemon-port-unreachable"]!.status).toBe("unknown");
   });
 
@@ -204,7 +204,7 @@ describe("rig host doctor — stepwise distinct errors + three-valued posture", 
     expect(probe.detail).toContain("203.0.113.7:7433");
   });
 
-  // R2-B1 regressions — the two false-green classes, pinned.
+  // R2-B1 回归——两类假绿，钉住。
   it("posture: a DENY rule on tailscale0 must NOT pass the ingress item", async () => {
     const deps = depsFromScript((argv) => {
       const cmd = String(argv[2] ?? "");
@@ -214,7 +214,7 @@ describe("rig host doctor — stepwise distinct errors + three-valued posture", 
     const rows = await postureCheck(sshHost, deps);
     const ingress = rows.find((r) => r.step === "tailnet-ingress-allowed")!;
     expect(ingress.status).toBe("fail");
-    expect(ingress.detail).toContain("no ALLOW IN");
+    expect(ingress.detail).toContain("没有 ALLOW IN");
   });
 
   it("posture: daemon bound to a SPECIFIC public IP fails exactly like a wildcard", async () => {
@@ -264,7 +264,7 @@ describe("rig host doctor — stepwise distinct errors + three-valued posture", 
     const rows = await postureCheck(sshHost, deps);
     const ts = rows.find((r) => r.step === "tailscale-minimal-trust")!;
     expect(ts.status).toBe("fail");
-    expect(ts.detail).toContain("Tailscale SSH enabled: true");
+    expect(ts.detail).toContain("Tailscale SSH 已启用：true");
     expect(ts.fix).toContain("tailscale set --ssh=false");
   });
 
@@ -298,18 +298,18 @@ describe("rig host doctor — stepwise distinct errors + three-valued posture", 
     expect(reach.status).toBe("pass");
     const identity = rows.find((r) => r.step === "remote-identity")!;
     expect(identity.status).toBe("pass");
-    expect(identity.detail).toContain("anonymous");
+    expect(identity.detail).toContain("匿名");
     expect(identity.detail).not.toContain("authenticated");
   });
 
-  it("doctor over http: anonymous host that gets 401 is told to add a bearer to the hosts.yaml entry, NOT that a token is wrong", async () => {
+  it("doctor over http: anonymous host that gets 401 is told to add a bearer to the hosts.yaml entry, NOT that a token 不对", async () => {
     const anonHost: HostEntry = { id: "anon-h", transport: "http", url: "http://x" };
     const rows = await doctorLegs(anonHost, { run: async () => okRun(""), httpGet: async () => ({ status: 401, body: "no" }), tcpProbe: async () => "closed" });
     const reach = rows.find((r) => r.step === "transport-reachability")!;
     expect(reach.status).toBe("fail");
-    expect(reach.detail).toContain("requires Authorization");
+    expect(reach.detail).toContain("要求 Authorization");
     expect(reach.fix).toContain("hosts.yaml");
-    expect(reach.fix).not.toContain("token is wrong");
+    expect(reach.fix).not.toContain("token 不对");
     expect(reach.fix).not.toContain("rig host add");
   });
 
@@ -319,8 +319,8 @@ describe("rig host doctor — stepwise distinct errors + three-valued posture", 
     const rows = await doctorLegs(cfgHost, { run: async () => okRun(""), httpGet: async () => ({ status: 401, body: "no" }), tcpProbe: async () => "closed" });
     const reach = rows.find((r) => r.step === "transport-reachability")!;
     expect(reach.status).toBe("fail");
-    expect(reach.detail).toContain("rejected the bearer");
-    expect(reach.fix).toContain("token is wrong");
+    expect(reach.detail).toContain("拒绝了 bearer");
+    expect(reach.fix).toContain("token 不对");
   });
 
   it("doctor CLI: unknown host id is the DISTINCT registry error", async () => {
@@ -336,11 +336,11 @@ describe("rig host doctor — stepwise distinct errors + three-valued posture", 
     } finally { console.error = oe; }
     const code = process.exitCode; process.exitCode = oc;
     expect(code).toBe(1);
-    expect(err.join("\n")).toContain("registry:");
-    expect(err.join("\n")).toContain("unknown host id 'nope'");
+    expect(err.join("\n")).toContain("注册表：");
+    expect(err.join("\n")).toContain("未知主机 id 'nope'");
   });
 
-  // seed a registry for the doctor CLI test above
+  // 为上方 doctor CLI 测试播种一个 registry
   async function capturePrelude(): Promise<void> {
     const prog = new Command();
     prog.exitOverride();

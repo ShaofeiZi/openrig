@@ -3,7 +3,7 @@ name: demo-rig
 culture_file: culture.md
 pods:
   - id: orch
-    label: Orchestration
+    label: 编排
     members:
       - id: lead
         agent_ref: "local:agents/lead"
@@ -12,7 +12,7 @@ pods:
         cwd: .
     edges: []
   - id: dev
-    label: Development
+    label: 开发
     members:
       - id: impl
         agent_ref: "local:agents/impl"
@@ -34,7 +34,7 @@ pods:
         from: qa
         to: impl
   - id: rev
-    label: Review
+    label: 审查
     members:
       - id: r1
         agent_ref: "local:agents/r1"
@@ -51,7 +51,7 @@ pods:
         from: r1
         to: r2
   - id: infra
-    label: Infrastructure
+    label: 基础设施
     members:
       - id: daemon
         agent_ref: "builtin:terminal"
@@ -62,7 +62,7 @@ pods:
           files: []
           actions:
             - type: send_text
-              value: "rig status"
+              value: "zrig status"
               phase: after_ready
               idempotent: true
               applies_on: [fresh_start]

@@ -40,7 +40,7 @@ describe("SeatHandoverPlanner", () => {
     ])));
   }
 
-  it("builds a stable dry-run plan with current seat status and no mutations", () => {
+  it("使用当前 seat 状态构建稳定且无修改的 dry-run 计划", () => {
     seedSeat();
     const before = durableRows();
 
@@ -91,7 +91,7 @@ describe("SeatHandoverPlanner", () => {
     expect(durableRows()).toBe(before);
   });
 
-  it("defaults source to fresh and parses rebuild and fork sources", () => {
+  it("source 默认为 fresh，并可解析 rebuild 与 fork source", () => {
     expect(parseHandoverSource(null)).toMatchObject({
       ok: true,
       source: { mode: "fresh", ref: null, raw: "fresh", defaulted: true },
@@ -114,7 +114,7 @@ describe("SeatHandoverPlanner", () => {
     });
   });
 
-  it("requires a reason before planning", () => {
+  it("规划前要求提供 reason", () => {
     seedSeat();
 
     const result = planner.plan({ seatRef: "dev-impl@seat-rig", dryRun: true });
@@ -122,11 +122,11 @@ describe("SeatHandoverPlanner", () => {
     expect(result).toMatchObject({
       ok: false,
       code: "missing_reason",
-      message: "Missing required option: --reason <reason>",
+      message: "缺少必填选项：--reason <reason>",
     });
   });
 
-  it("returns seat lookup guidance for an unknown seat", () => {
+  it("对未知 seat 返回 seat 查找指引", () => {
     const result = planner.plan({
       seatRef: "missing@seat-rig",
       reason: "context-wall",
@@ -136,11 +136,11 @@ describe("SeatHandoverPlanner", () => {
     expect(result).toMatchObject({
       ok: false,
       code: "seat_not_found",
-      guidance: "List seats with: rig ps --nodes",
+      guidance: "使用 zrig ps --nodes 列出席位",
     });
   });
 
-  it("refuses non-dry-run mutation", () => {
+  it("拒绝非 dry-run 修改", () => {
     seedSeat();
 
     const result = planner.plan({
@@ -152,11 +152,11 @@ describe("SeatHandoverPlanner", () => {
     expect(result).toMatchObject({
       ok: false,
       code: "mutation_disabled",
-      message: "Seat handover mutation is not implemented in this slice.",
+      message: "此 slice 尚未实现 seat handover 修改操作。",
     });
   });
 
-  it("wires the daemon /api/seat/handover route", async () => {
+  it("接通后台服务 /api/seat/handover 路由", async () => {
     const setup = createTestApp(db);
     const rig = setup.rigRepo.createRig("seat-rig");
     const node = setup.rigRepo.addNode(rig.id, "dev.impl", { runtime: "codex" });

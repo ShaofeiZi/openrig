@@ -1,0 +1,42 @@
+{
+".github/ISSUE_TEMPLATE/bug_report.yml": [
+"entry",
+"done",
+"self_reported"
+],
+".github/ISSUE_TEMPLATE/config.yml": [
+"entry",
+"done",
+"self_reported"
+],
+".github/ISSUE_TEMPLATE/feature_request.yml": [
+"entry",
+"done",
+"self_reported"
+],
+".github/workflows/portability-report.yml": [
+"entry",
+"done",
+"self_reported"
+],
+"demo/rig.yaml": [
+"extras",
+"done",
+"self_reported"
+],
+"docs/reference/project-release-profile.yaml": [
+"extras",
+"done",
+"self_reported"
+],
+"packages/cli/src/release-surface/v0.3.2-affected-skills.fixture.yaml": [
+"extras",
+"done",
+"self_reported"
+],
+"packages/daemon/context-packs-src/onboarding-width/manifest.yaml": [
+"extras",
+"done",
+"self_reported"
+]
+}

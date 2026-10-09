@@ -1,8 +1,8 @@
-// Slice 24.D BLOCKING-CONCERN repair (secondary): the trailing slot
-// (e.g., "Launch in CMUX" button) must be a SIBLING of the tablist,
-// not a child. Tablist children should only be tabs; per ARIA, mixing
-// non-tab interactive children confuses keyboard navigation +
-// screen-readers. Test pins the structural contract.
+// Slice 24.D BLOCKING-CONCERN 修复（次要）：trailing 槽
+//（如"Launch in CMUX"按钮）必须是 tablist 的兄弟，
+// 而非子。Tablist 子应只含 tab；按 ARIA，混入
+// 非 tab 交互子会扰乱键盘导航 +
+// 屏幕阅读器。测试锚定结构契约。
 
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
@@ -47,15 +47,15 @@ describe("TopologyViewModeTabs trailing slot — a11y structure", () => {
     const trailing = screen.getByTestId("t2-trailing");
     const action = screen.getByTestId("my-action");
 
-    // Tablist nested under outer tab-bar
+    // Tablist 嵌套于外层 tab-bar 下
     expect(tabBar.contains(tablist)).toBe(true);
-    // Trailing slot nested under outer tab-bar
+    // Trailing 槽嵌套于外层 tab-bar 下
     expect(tabBar.contains(trailing)).toBe(true);
-    // CRITICAL a11y assertion: trailing is NOT a descendant of tablist.
-    // Tablist should only contain tabs; the trailing action should be
-    // a sibling of the tablist within the outer tab-bar wrapper.
+    // 关键 a11y 断言：trailing 不是 tablist 的后代。
+    // Tablist 应只含 tab；trailing 动作应是
+    // 外层 tab-bar 包装内 tablist 的兄弟。
     expect(tablist.contains(trailing)).toBe(false);
-    // The action button rendered inside trailing slot
+    // 渲染在 trailing 槽内的动作按钮
     expect(trailing.contains(action)).toBe(true);
   });
 
@@ -84,11 +84,10 @@ describe("TopologyViewModeTabs trailing slot — a11y structure", () => {
       />,
     );
     const tablist = screen.getByTestId("t4-tabs");
-    // Tablist children are the 2 tab buttons; trailing button is NOT
-    // among them.
+    // Tablist 子是 2 个 tab 按钮；trailing 按钮不在其中。
     const tabButtons = tablist.querySelectorAll('[role="tab"]');
     expect(tabButtons).toHaveLength(2);
-    // Trailing button has no role=tab and isn't inside tablist.
+    // Trailing 按钮无 role=tab 且不在 tablist 内。
     const trailingButton = screen.getByTestId("trailing-button");
     expect(trailingButton.getAttribute("role")).not.toBe("tab");
     expect(tablist.contains(trailingButton)).toBe(false);

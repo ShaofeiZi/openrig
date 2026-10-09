@@ -1,10 +1,10 @@
-// OPR.0.4.1.11.2 (FR-5) — deterministic artifact naming + placement for twin captures.
-// The capture wrapper (twin:capture) must place per-slice artifacts under a stable,
-// collision-safe, DETERMINISTIC layout so an artifact attaches to an IMPL-PRD and the
-// same input always yields the same paths (feeds FR-2's "deterministic naming" + D-1).
-// Convention grounded in the existing digital-twin/ practice (<surface>.intent.png /
-// .intent.html, per-slice folder); the exact root path + normalize-existing decision are
-// escalated (Open-Q3) — this resolver takes outRoot as a parameter so the policy is external.
+// OPR.0.4.1.11.2（FR-5）——twin 捕获的确定性产物命名 + 放置。
+// 捕获包装（twin:capture）必须把每 slice 产物放在稳定、
+// 防冲突、确定性布局下，使产物挂到某个 IMPL-PRD 且
+// 同一输入总产出同一路径（喂给 FR-2 的"确定性命名" + D-1）。
+// 约定根植于既有 digital-twin/ 实践（<surface>.intent.png /
+// .intent.html，每 slice 文件夹）；精确根路径 + normalize-existing 决策
+// 已升级（Open-Q3）——此 resolver 取 outRoot 为参数，使策略外置。
 import { describe, it, expect } from "vitest";
 import { resolveArtifactPaths } from "../twin/capture/artifact-paths.js";
 
@@ -17,8 +17,8 @@ describe("resolveArtifactPaths (OPR.0.4.1.11.2 FR-5: deterministic artifact nami
     expect(p.intentHtml).toBe("/work/digital-twin/demo-slice/topology-graph.intent.html");
     expect(p.intentPng).toBe("/work/digital-twin/demo-slice/topology-graph.intent.png");
     expect(p.changeDiff).toBe("/work/digital-twin/demo-slice/topology-graph.change.diff");
-    // FR-6: the proof-side (real shipped UI) artifact pairs with intent by the SAME base — directly
-    // comparable side by side, identical format, only .intent vs .proof differ.
+    // FR-6：proof 侧（真实已发布 UI）产物与 intent 按同一 base 配对——直接
+    // 并排可比，格式相同，仅 .intent 与 .proof 不同。
     expect(p.proofPng).toBe("/work/digital-twin/demo-slice/topology-graph.proof.png");
   });
 
@@ -33,9 +33,9 @@ describe("resolveArtifactPaths (OPR.0.4.1.11.2 FR-5: deterministic artifact nami
     expect(a).toEqual(b);
   });
 
-  // pm + brief1-curator RATIFIED the path as digital-twin/<slice-id>/ where slice-id is the
-  // dotted OPR id (e.g. opr-0.4.1.11.2). The slice folder must PRESERVE dots (filesystem-safe);
-  // only the surface base is fully slugified. (Surface tests above already lock the surface rule.)
+  // pm + brief1-curator 批准路径为 digital-twin/<slice-id>/，其中 slice-id 是
+  // 带点 OPR id（如 opr-0.4.1.11.2）。slice 文件夹必须保留点（文件系统安全）；
+  // 仅 surface base 完全 slugify。（上方 surface 测试已锁定 surface 规则。）
   it("preserves the dotted slice-id as the per-slice folder (ratified: digital-twin/<slice-id>/)", () => {
     const p = resolveArtifactPaths({ slice: "opr-0.4.1.11.2", surface: "Topology Graph", outRoot });
     expect(p.dir).toBe("/work/digital-twin/opr-0.4.1.11.2");

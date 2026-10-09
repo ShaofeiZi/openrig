@@ -1,26 +1,23 @@
-// PL-005 Phase A: Mission Control read layer.
+// PL-005 Phase A：Mission Control 读取层。
 //
-// Maps the 7 Mission Control views to data sources:
-//   - my-queue            → queue_items where destination_session = operator
+// 将 7 个 Mission Control 视图映射到数据来源：
+//   - my-queue            → queue_items，其中 destination_session = operator
 //                            AND tier='human-gate'
-//   - human-gate          → queue_items where tier='human-gate'
-//   - fleet               → shell out to `rig ps --nodes -A --json` (graceful
-//                            degradation per 4-sub-clause spec)
-//   - active-work         → queue_items where state in (pending, in-progress,
-//                            blocked) sorted by priority
-//   - recent-ships        → queue_items where state in (done, handed-off)
+//   - human-gate          → queue_items，其中 tier='human-gate'
+//   - fleet               → 通过 shell 调用 `zrig ps --nodes -A --json`
+//                            （按四项子条款规范优雅降级）
+//   - active-work         → queue_items，其中 state in (pending, in-progress,
+//                            blocked)，按 priority 排序
+//   - recent-ships        → queue_items，其中 state in (done, handed-off)
 //                            ORDER BY ts_updated DESC LIMIT 10
-//   - recently-active     → PL-004 Phase B ViewProjector built-in view
-//   - recent-observations → stream_items table (Phase A daemon-backed source)
-//                            with ~/.openrig/stream/<date>.jsonl as graceful
-//                            degradation fallback
+//   - recently-active     → PL-004 Phase B ViewProjector 内置视图
+//   - recent-observations → stream_items 表（Phase A 后台服务支撑的来源）
+//                            以 ~/.openrig/stream/<date>.jsonl 作为优雅降级回退
 //
-// Each row carries the 9-field phone-friendly content model (PRD § Acceptance
-// Criteria item 1; non-negotiable across all 7 views regardless of UI density).
+// 每行都携带 9 字段的移动端友好内容模型（PRD 验收标准第 1 项；无论 UI 密度如何，
+// 7 个视图都必须完整保留）。
 //
-// Source-of-truth integration: PL-004 daemon-backed coordination services
-// are the primary read path. Filesystem/CLI fallbacks are for graceful
-// degradation only.
+// 事实源集成：PL-004 后台服务支撑的协调服务是主读取路径；文件系统/CLI 回退仅用于优雅降级。
 
 import { loadHumanRegistry } from "../gateway/human-registry.js";
 import type Database from "better-sqlite3";
@@ -42,21 +39,19 @@ export const MISSION_CONTROL_VIEWS = [
 export type MissionControlViewName = (typeof MISSION_CONTROL_VIEWS)[number];
 
 /**
- * The 9-field phone-friendly content model. Per PRD § Acceptance
- * Criteria item 1, non-negotiable across all 7 views wherever
- * row-shaped status is shown. UI may render compact; JSON preserves
- * all 9 fields.
+ * 9 字段的移动端友好内容模型。按 PRD 验收标准第 1 项，所有展示行状状态的 7 个视图都必须
+ * 完整提供；UI 可以紧凑渲染，但 JSON 必须保留全部 9 个字段。
  *
- * 9 fields verbatim from PRD:
- *   1. rig/mission name
- *   2. current phase
+ * PRD 原样规定的 9 个字段：
+ *   1. 工作组/任务目标名称
+ *   2. 当前阶段
  *   3. active/idle/attention/blocked/degraded
  *   4. next-action
  *   5. pending-human-decision
- *   6. read-cost (full / skim/approve / summary-only)
- *   7. last-update timestamp
+ *   6. read-cost（full / skim/approve / summary-only）
+ *   7. last-update 时间戳
  *   8. confidence/freshness
- *   9. evidence link
+ *   9. evidence 链接
  */
 export interface CompactStatusRow {
   rigOrMissionName: string;
@@ -68,10 +63,10 @@ export interface CompactStatusRow {
   lastUpdate: string;
   confidenceFreshness: string | null;
   evidenceLink: string | null;
-  /** Carrier metadata (id used for verb actions). */
+  /** 承载 metadata；id 用于动词动作。 */
   qitemId?: string | null;
   rawSourceRef?: string | null;
-  /** Human-readable qitem context for phone decisions. */
+  /** 供移动端决策使用的人类可读 qitem 上下文。 */
   qitemSummary?: string | null;
   qitemBody?: string | null;
 }
@@ -80,8 +75,8 @@ export interface MissionControlReadResult {
   viewName: MissionControlViewName;
   rows: CompactStatusRow[];
   /**
-   * Per-view metadata. Includes "rigs running stale CLI" indicator on
-   * the fleet view (sub-clause 4 of graceful-degradation acceptance).
+   * 逐视图 metadata。fleet 视图包含“工作组正在运行过期 CLI”的指示器
+   *（优雅降级验收的第 4 子条款）。
    */
   meta: {
     rowCount: number;
@@ -97,13 +92,13 @@ interface ReadLayerDeps {
   viewProjector: ViewProjector;
   streamStore?: StreamStore;
   fleetCliCapability: MissionControlFleetCliCapability;
-  /** Operator's default human-seat session for `my-queue`. */
+  /** `my-queue` 使用的操作者默认人工席位会话。 */
   defaultOperatorSession?: string;
   now?: () => Date;
 }
 
-// Explicit operator selection remains supported. Without it, discover the single
-// registered human at read time; missing/ambiguous identity never widens my-queue.
+// 继续支持显式选择操作者。未显式选择时，在读取时发现唯一已登记人员；身份缺失或有歧义时，
+// 绝不扩大 my-queue 范围。
 const RECENT_SHIPS_LIMIT = 10;
 const ACTIVE_WORK_LIMIT = 50;
 const RECENT_OBSERVATIONS_LIMIT = 50;
@@ -130,10 +125,9 @@ export class MissionControlReadLayer {
     this.defaultOperatorSession = deps.defaultOperatorSession ?? "";
   }
 
-  /** V0.3.1 slice 05 — public getter for the resolved operator seat
-   *  session. Route handlers (listDestinations, audit history) read
-   *  this so the picker + audit filter always offer the configured
-   *  operator seat even when the kernel rig isn't booted yet. */
+  /** V0.3.1 slice 05——已解析 operator 席位会话的公开 getter。路由 handler
+   *（listDestinations、audit history）读取它，使 picker 与 audit filter 即使在 kernel
+   * 工作组尚未启动时也始终提供已配置的 operator 席位。 */
   getDefaultOperatorSession(): string {
     if (this.defaultOperatorSession) return this.defaultOperatorSession;
     const registry = loadHumanRegistry();
@@ -165,7 +159,7 @@ export class MissionControlReadLayer {
   private readMyQueue(operatorSession: string): MissionControlReadResult {
     if (!operatorSession) return {
       viewName: "my-queue", rows: [],
-      meta: { rowCount: 0, degradedFields: ["operator identity unavailable or ambiguous: inspect rig gateway human list --json and select an address"] },
+      meta: { rowCount: 0, degradedFields: ["操作者身份不可用或有歧义：请检查 zrig gateway human list --json 并选择地址"] },
     };
     const items = this.queueRepo.list({
       destinationSession: operatorSession,
@@ -241,7 +235,7 @@ export class MissionControlReadLayer {
   }
 
   private readRecentlyActive(): MissionControlReadResult {
-    // Delegates to PL-004 Phase B's built-in `recently-active` view.
+    // 委托给 PL-004 Phase B 内置的 `recently-active` 视图。
     const result = this.viewProjector.show("recently-active");
     const rows: CompactStatusRow[] = result.rows.map((row) =>
       builtinViewRowToCompactRow("recently-active", row),
@@ -276,8 +270,8 @@ function qitemToRow(
   opts: { defaultReadCost: CompactStatusRow["readCost"] },
 ): CompactStatusRow {
   const state = qitemStateToCompactState(q.state);
-  const nextAction = q.state === "blocked" ? `unblock: ${q.blockedOn ?? "external-gate"}` : null;
-  const pendingHumanDecision = q.tier === "human-gate" ? `${q.priority} human-gate item` : null;
+  const nextAction = q.state === "blocked" ? `解除阻塞：${q.blockedOn ?? "外部门禁"}` : null;
+  const pendingHumanDecision = q.tier === "human-gate" ? `${q.priority} 人工门禁项` : null;
   return {
     rigOrMissionName: q.destinationSession,
     currentPhase: q.tier ?? null,

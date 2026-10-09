@@ -1,11 +1,9 @@
-// LAYER 2 — mid content.
+// 第 2 层——中层内容。
 //
-// Smaller recognizable elements at full black. Sit between the two
-// sheets so they're slightly hazed (only the back sheet blurs them).
+// 用纯黑绘制较小的可识别元素。夹在两张纸之间，因此略带朦胧（只有后层纸把它们模糊）。
 //
-// hostname surfaces in two places (Field Report + Data Streams copy
-// blocks) so production reads the live host while the lab default
-// keeps 127.0.0.1.
+// hostname 出现在两处（Field Report + Data Streams 文案块），使生产环境显示实时主机，
+// 而 lab 默认保持 127.0.0.1。
 
 import { ScatteredMarks } from "./marks.js";
 
@@ -20,23 +18,23 @@ export function MidLayerContent({ hostname = "127.0.0.1" }: MidLayerContentProps
       aria-hidden="true"
       className="absolute inset-0 z-[10] overflow-hidden pointer-events-none select-none"
     >
-      {/* "06° Field Report" copy block — mid-left margin */}
+      {/* “06° 现场报告”文案块——中左边距 */}
       <div className="absolute top-[64%] left-[3%] font-mono text-[11px] text-on-surface leading-tight max-w-[180px]">
-        <div className="font-bold uppercase">▪ 06° Field Report</div>
+        <div className="font-bold uppercase">▪ 06° 现场报告</div>
         <div className="text-on-surface mt-1">
-          Operator session captured at field station {hostname} — release 0.3.1; daemon trace nominal.
+          操作员会话已在现场站 {hostname} 采集——发布 0.3.1；后台服务轨迹正常。
         </div>
       </div>
 
-      {/* "Data Streams" small text block */}
+      {/* “数据流”小字块 */}
       <div className="absolute bottom-[8%] left-[6%] font-mono text-[11px] text-on-surface leading-tight max-w-[180px]">
-        <div className="font-bold uppercase">Data Streams ⚠⚠</div>
+        <div className="font-bold uppercase">数据流 ⚠⚠</div>
         <div className="text-on-surface mt-1 text-[10px]">
-          x-axis(1) y-axis(2) z-axis(3) — synchronized at {hostname}
+          x 轴(1) y 轴(2) z 轴(3)——在 {hostname} 同步
         </div>
       </div>
 
-      {/* Scattered medium-scale marks */}
+      {/* 散落的中等尺度标记 */}
       <ScatteredMarks tier="mid" />
     </div>
   );

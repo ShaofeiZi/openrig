@@ -1,7 +1,6 @@
 /**
- * slice-07 R6 — the eval RUNNER. Drives each case through the provider, grades the captured
- * transcript at the deterministic DOOR, and produces the recorded grades + a summary. Pure
- * orchestration over the injected provider — no model access here.
+ * slice-07 R6——eval 运行器。把每个 case 经 provider 驱动跑一遍，在确定性 DOOR 处给捕获的
+ * transcript 打分，并产出记录的 grades + 汇总。对注入 provider 的纯编排——这里不访问模型。
  */
 
 import { grade, type EvalCase, type GradeResult } from "./eval-grader.js";
@@ -11,7 +10,7 @@ export interface CaseOutcome {
   case: EvalCase;
   transcript: string;
   grade: GradeResult;
-  /** Set when the provider failed to execute the case (distinct from a graded FAIL). */
+  /** provider 执行 case 失败时设置（与打分 FAIL 不同）。 */
   error?: string;
 }
 
@@ -24,7 +23,7 @@ export interface EvalRunSummary {
   outcomes: CaseOutcome[];
 }
 
-/** Run every case through the provider + door grader. Recorded grades ride each CaseOutcome. */
+/** 把每个 case 经 provider + door 打分器跑一遍。记录的 grades 随每个 CaseOutcome 携带。 */
 export async function runEvals(cases: EvalCase[], provider: EvalProvider): Promise<EvalRunSummary> {
   const outcomes: CaseOutcome[] = [];
 

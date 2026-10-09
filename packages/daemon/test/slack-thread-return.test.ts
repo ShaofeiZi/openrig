@@ -1,9 +1,7 @@
-// S10 LIVE ACCEPTANCE L2 (final shape after the founder root invariant, transitions
-// 10816/10817/10818): inside one instance the queue row source is BARE member@rig, so the
-// Slack thread map stores the bare seat and a founder thread reply routes straight to the
-// canonical session the queue accepts. The interim self-host localizer was deleted with the
-// root stamping; historical triple map rows are the operator adoption's one-time cleanup.
-// Synthetic fixtures only.
+// S10 LIVE ACCEPTANCE L2（founder root invariant 与 transition 10816/10817/10818 后的最终形态）：
+// 在同一 instance 中，queue row source 是裸 member@rig，因此 Slack thread map 存储裸 seat，
+// founder thread reply 会直接路由到 queue 接受的 canonical session。临时 self-host localizer 已随
+// root stamping 删除；历史 triple map row 是 operator adoption 的一次性清理项。仅使用合成 fixture。
 import { describe, it, expect } from "vitest";
 import Database from "better-sqlite3";
 import { migrate } from "../src/db/migrate.js";
@@ -31,8 +29,8 @@ function mapDb(): Database.Database {
   return db;
 }
 
-/** LIVE-MIRROR queue port: accepts only canonical bare member@rig destinations, exactly like
- *  the daemon topology validator (a triple greedy-parses to an unknown rig and is refused). */
+/** LIVE-MIRROR queue port：只接受 canonical 裸 member@rig destination，与 daemon topology
+ *  validator 完全一致（triple 会被贪婪解析为未知 rig 并拒绝）。 */
 function mirrorQueuePort() {
   const creates: { qitemId?: string; destination: string; tags?: string[] }[] = [];
   return {
@@ -47,10 +45,10 @@ function mirrorQueuePort() {
   };
 }
 
-describe("L2 return path — bare map seats route straight to the queue-accepted session", () => {
-  it("the founder reply on a mapped thread becomes EXACTLY ONE durable qitem to the bare local seat (never dead-lettered)", async () => {
+describe("L2 返回路径——裸 map seat 直接路由到 queue 接受的 session", () => {
+  it("mapped thread 上的 founder reply 恰好成为一条发往裸 local seat 的持久 qitem（绝不进入 dead letter）", async () => {
     const map = new ThreadSeatMap(mapDb(), clock);
-    // Post-root-invariant reality: the outbound row source is bare, so the map stores bare.
+    // root invariant 后的事实：outbound row source 是裸值，因此 map 也存储裸值。
     map.open({ threadTs: "T-ROOT", channel: "C1", human: "human-founder@external", seat: "orch-lead@v-openrig-build", conversationId: "q-root" });
     const port = mirrorQueuePort();
     const fs = memFs();
@@ -79,7 +77,7 @@ describe("L2 return path — bare map seats route straight to the queue-accepted
     expect(dead.readAll()).toHaveLength(0);
   });
 
-  it("a continuation failure retries the deterministic inbound row and resolves the original gate exactly once", async () => {
+  it("continuation 失败时重试确定性 inbound row，并恰好一次地解决原始 gate", async () => {
     const map = new ThreadSeatMap(mapDb(), clock);
     map.open({ threadTs: "T-ROOT", channel: "C1", human: "human-founder@external", seat: "orch-lead@v-openrig-build", conversationId: "q-root" });
     const fs = memFs();
@@ -93,7 +91,7 @@ describe("L2 return path — bare map seats route straight to the queue-accepted
         createQitem: async (input) => {
           creates++;
           const id = input.qitemId!;
-          created.add(id); // mirrors QueueRepository's idempotent same-id re-delivery
+          created.add(id); // 镜像 QueueRepository 对相同 id re-delivery 的幂等行为
           return id;
         },
       },
@@ -116,7 +114,7 @@ describe("L2 return path — bare map seats route straight to the queue-accepted
 
     expect(await router.retryDeadLetters()).toEqual({ retried: 1, landed: 1 });
     expect(created.size).toBe(1);
-    expect(creates).toBe(2); // retry reaches the idempotent create seam; no duplicate row exists
+    expect(creates).toBe(2); // retry 到达幂等 create seam；不存在重复 row
     expect(resolves).toBe(2);
     expect(dead.readAll()).toHaveLength(0);
     expect(seen.load().has("201.2")).toBe(true);

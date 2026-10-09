@@ -1,0 +1,93 @@
+{
+ "schema": "openrig.tui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:24:24",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "comment-review-batch8",
+ "files": 10,
+ "changed": 7,
+ "reviewed_no_change": 3,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/tui/test/live.test.ts",
+   "status": "changed",
+   "before_sha256": "82d7a801c9010f40a0f8492406f393dd7b550ad6a6ba42f584161363a2ae0bf4",
+   "after_sha256": "b9598860c9d6acc8a50d6a5cb986e4f44d71671c89440aa2604d37a8f8d9a1b7",
+   "natural_language_residual": 0,
+   "machine_classification": "b92c2a58/e858ee70/d64d2f5c、SSE、EXPL_W=30、row-model 键保留；paren 差为快照既有"
+  },
+  {
+   "path": "packages/tui/test/live-events.test.ts",
+   "status": "changed",
+   "before_sha256": "84016370ad2072a315ce83bc634e033a48ee995772d1429abd3e64086eb4ef48",
+   "after_sha256": "eb19a6e148d903d03f375904d0800ca0e72c87e9c9db96d4ec266b99aad2a3f4",
+   "natural_language_residual": 0,
+   "machine_classification": "b92c2a58/e858ee70/d64d2f5c、SSE、EXPL_W=30、row-model 键保留；paren 差为快照既有"
+  },
+  {
+   "path": "packages/tui/test/live-quiet-refresh.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "196ec60d574c83b66c8cd10e232909384ad97e7389925ec01ba8ff5e9f0d8e85",
+   "after_sha256": "88eeba4a88926add9cfb806f0da94c6bc0f17a2ae95b2f289c8ad167dd7f016b",
+   "natural_language_residual": 0,
+   "machine_classification": "b92c2a58/e858ee70/d64d2f5c、SSE、EXPL_W=30、row-model 键保留；paren 差为快照既有"
+  },
+  {
+   "path": "packages/tui/test/navigation-continuity.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "15fb1925a0f0e649cc471fe6a7eb1c35a10a0c4c723b43d6d0e34774d6276b83",
+   "after_sha256": "75a254fe56504dd558a5e5e87d99d148b3c77ae1fbb7e4707b133e5a95633575",
+   "natural_language_residual": 0,
+   "machine_classification": "b92c2a58/e858ee70/d64d2f5c、SSE、EXPL_W=30、row-model 键保留；paren 差为快照既有"
+  },
+  {
+   "path": "packages/tui/test/navigator-reskin.test.ts",
+   "status": "changed",
+   "before_sha256": "480c2911446fdb9f62c314bdad47e65255ca7fed552033079b371efcf7afe7cc",
+   "after_sha256": "01d4ed281ce1ec65b079cddd7cac68eade0229af5bbe95dd9490f2a3e8f6e44a",
+   "natural_language_residual": 0,
+   "machine_classification": "b92c2a58/e858ee70/d64d2f5c、SSE、EXPL_W=30、row-model 键保留；paren 差为快照既有"
+  },
+  {
+   "path": "packages/tui/test/reading-journey.test.ts",
+   "status": "reviewed_no_change",
+   "before_sha256": "48e5bd088de7461a846f0f9e641d72d6aa6e4db9bba3701550e3928b4965a046",
+   "after_sha256": "6d6bdb8f4e9c59355f6bbbac7d644deb8d11fc5f6ef2f7104822a2c78181fdf2",
+   "natural_language_residual": 0,
+   "machine_classification": "b92c2a58/e858ee70/d64d2f5c、SSE、EXPL_W=30、row-model 键保留；paren 差为快照既有"
+  },
+  {
+   "path": "packages/tui/test/refresh-activity.test.ts",
+   "status": "changed",
+   "before_sha256": "a45132e0de638c35d2a799fda436aaabb4aa786823b7bea133ee7bf3550b1439",
+   "after_sha256": "41a1050c64a1cdb6cb4dd44886f0dfb1ae8281fc3ef337934f9d4a4cf07e2e2d",
+   "natural_language_residual": 0,
+   "machine_classification": "b92c2a58/e858ee70/d64d2f5c、SSE、EXPL_W=30、row-model 键保留；paren 差为快照既有"
+  },
+  {
+   "path": "packages/tui/test/render-regressions.test.ts",
+   "status": "changed",
+   "before_sha256": "06373cac022772a089bb3a7cbcc0d5ba618371818d30421921d39ea05f79e5ce",
+   "after_sha256": "0db5e080372c75c5fa2fdb72d3f58b5b0e98ae437689cadc93137432777d6923",
+   "natural_language_residual": 0,
+   "machine_classification": "b92c2a58/e858ee70/d64d2f5c、SSE、EXPL_W=30、row-model 键保留；paren 差为快照既有"
+  },
+  {
+   "path": "packages/tui/test/round4.test.ts",
+   "status": "changed",
+   "before_sha256": "8930068302e550a670820052314f248dc686a782868412f99ea21ab654f9a68a",
+   "after_sha256": "6074bbb3288c8caf29cb968fe00351bd788af44ce6bf274750e1437e8955127a",
+   "natural_language_residual": 0,
+   "machine_classification": "b92c2a58/e858ee70/d64d2f5c、SSE、EXPL_W=30、row-model 键保留；paren 差为快照既有"
+  },
+  {
+   "path": "packages/tui/test/scopes-view.test.ts",
+   "status": "changed",
+   "before_sha256": "2bf359efa8f4df04dc5469bf579ec7a3ffabd5f797965eca72a382696dfaa0fe",
+   "after_sha256": "26d75024b7b3779db22d6d1986a065f302373a37fc1da3282a0ca33dd7742279",
+   "natural_language_residual": 0,
+   "machine_classification": "b92c2a58/e858ee70/d64d2f5c、SSE、EXPL_W=30、row-model 键保留；paren 差为快照既有"
+  }
+ ]
+}

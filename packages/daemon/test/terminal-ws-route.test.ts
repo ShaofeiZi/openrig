@@ -65,16 +65,16 @@ function rawUpgrade(path: string, extraHeaders?: Record<string, string>): Promis
   });
 }
 
-describe("terminal WebSocket route (production path)", () => {
-  it("valid token WS upgrade does NOT return 404 (the QA blocker regression)", async () => {
+describe("terminal WebSocket route（生产路径）", () => {
+  it("有效 token 的 WS upgrade 不返回 404（QA blocker 回归）", async () => {
     const result = await rawUpgrade(
       `/api/terminal/test-session?token=${TOKEN}`,
       { Origin: "http://127.0.0.1" },
     );
-    expect(result.statusCode, `expected non-404, got ${result.statusCode}: ${result.body}`).not.toBe(404);
+    expect(result.statusCode, `预期非 404，实际为 ${result.statusCode}：${result.body}`).not.toBe(404);
   });
 
-  it("missing token returns 401", async () => {
+  it("缺少 token 时返回 401", async () => {
     const result = await rawUpgrade(
       "/api/terminal/test-session",
       { Origin: "http://127.0.0.1" },
@@ -82,7 +82,7 @@ describe("terminal WebSocket route (production path)", () => {
     expect(result.statusCode).toBe(401);
   });
 
-  it("bad Origin returns 403", async () => {
+  it("Origin 无效时返回 403", async () => {
     const result = await rawUpgrade(
       `/api/terminal/test-session?token=${TOKEN}`,
       { Origin: "http://evil.example.com" },
@@ -90,7 +90,7 @@ describe("terminal WebSocket route (production path)", () => {
     expect(result.statusCode).toBe(403);
   });
 
-  it("wrong token returns 401", async () => {
+  it("token 错误时返回 401", async () => {
     const result = await rawUpgrade(
       `/api/terminal/test-session?token=wrong`,
       { Origin: "http://127.0.0.1" },
@@ -99,7 +99,7 @@ describe("terminal WebSocket route (production path)", () => {
   });
 });
 
-describe("terminal WebSocket input ordering", () => {
+describe("terminal WebSocket 输入顺序", () => {
   const ORDER_PORT = 19878;
   const ORDER_TOKEN = "order-test-token";
   let orderServer: ServerType;
@@ -134,12 +134,12 @@ describe("terminal WebSocket input ordering", () => {
     orderServer?.close();
   });
 
-  it("serializes rapid text messages before calling tmux", async () => {
+  it("调用 tmux 前按顺序串行化快速到达的文本消息", async () => {
     textCompletions.length = 0;
     const ws = new WebSocket(`ws://127.0.0.1:${ORDER_PORT}/api/terminal/order-test?token=${ORDER_TOKEN}`);
     await new Promise<void>((resolve, reject) => {
       ws.onopen = () => resolve();
-      ws.onerror = () => reject(new Error("websocket failed to open"));
+      ws.onerror = () => reject(new Error("WebSocket 打开失败"));
     });
 
     for (const text of ["e", "c", "h", "o"]) {
@@ -153,7 +153,7 @@ describe("terminal WebSocket input ordering", () => {
   });
 });
 
-describe("terminal WebSocket lifecycle (session death)", () => {
+describe("terminal WebSocket 生命周期（session 终止）", () => {
   const LIFECYCLE_PORT = 19877;
   const LIFECYCLE_TOKEN = "lifecycle-test-token";
   let lifecycleServer: ServerType;
@@ -185,7 +185,7 @@ describe("terminal WebSocket lifecycle (session death)", () => {
     lifecycleServer?.close();
   });
 
-  it("session death closes the WebSocket with code 1001", async () => {
+  it("session 终止时以 code 1001 关闭 WebSocket", async () => {
     sessionAlive = true;
     stopPipePaneCalls.length = 0;
 
@@ -204,17 +204,16 @@ describe("terminal WebSocket lifecycle (session death)", () => {
 
     const result = await closePromise;
     expect(result.code).toBe(1001);
-    expect(result.reason).toContain("tmux session terminated");
+    expect(result.reason).toContain("tmux session 已终止");
     await vi.waitFor(() => {
       expect(stopPipePaneCalls).toContain("death-test");
     }, { timeout: 2000 });
   }, 10000);
 });
 
-// OPR.0.4.0.38 - the broker behaviors at the real WebSocket route: multiple
-// subscribers of one session share ONE pipe and a fanned-out stream, and a
-// client resize message never reaches the pane (FR-7 fixed geometry).
-describe("terminal WebSocket broker (multi-subscriber route)", () => {
+// OPR.0.4.0.38——真实 WebSocket route 上的 broker 行为：同一 session 的多个订阅者共享
+// 一条 pipe 和扇出 stream，客户端 resize 消息绝不会到达 pane（FR-7 固定几何尺寸）。
+describe("terminal WebSocket broker（多订阅者 route）", () => {
   const BROKER_PORT = 19879;
   const BROKER_TOKEN = "broker-test-token";
   let brokerServer: ServerType;
@@ -260,11 +259,11 @@ describe("terminal WebSocket broker (multi-subscriber route)", () => {
     const ws = new WebSocket(`ws://127.0.0.1:${BROKER_PORT}/api/terminal/${session}?token=${BROKER_TOKEN}`);
     return new Promise((resolve, reject) => {
       ws.onopen = () => resolve(ws);
-      ws.onerror = () => reject(new Error("ws failed to open"));
+      ws.onerror = () => reject(new Error("WebSocket 打开失败"));
     });
   }
 
-  it("two subscribers of one session share ONE pipe-pane and both receive fanned-out output", async () => {
+  it("同一 session 的两个订阅者共享一条 pipe-pane，且都收到扇出输出", async () => {
     startPipePaneCalls.length = 0;
     capturedOutputPath = null;
     const aRecv: string[] = [];
@@ -275,7 +274,7 @@ describe("terminal WebSocket broker (multi-subscriber route)", () => {
     const b = await openWs("fanout-session");
     b.onmessage = (e) => { if (typeof e.data === "string") bRecv.push(e.data); };
 
-    // Give the second attach a beat to register on the existing broker.
+    // 给第二次 attach 留出片刻，使其注册到已有 broker。
     await new Promise<void>((r) => setTimeout(r, 80));
     expect(startPipePaneCalls.filter((n) => n === "fanout-session")).toHaveLength(1);
     expect(capturedOutputPath).toBeTruthy();
@@ -290,28 +289,27 @@ describe("terminal WebSocket broker (multi-subscriber route)", () => {
     b.close();
   }, 10000);
 
-  it("a client resize message never resizes the pane (FR-7): only the one canonical geometry call", async () => {
+  it("客户端 resize 消息绝不调整 pane 大小（FR-7），只执行一次规范几何尺寸调用", async () => {
     resizeWindowCalls.length = 0;
     const ws = await openWs("resize-session");
-    // One canonical-geometry resize happens at broker open.
+    // broker 打开时执行一次规范几何尺寸调整。
     await vi.waitFor(() => {
       expect(resizeWindowCalls).toHaveLength(1);
     }, { timeout: 1000 });
     expect(resizeWindowCalls[0]).toEqual({ cols: 90, rows: 27 });
 
     ws.send(JSON.stringify({ type: "resize", cols: 200, rows: 9 }));
-    // Give the message time to (not) be processed.
+    // 留出时间，验证消息未被处理。
     await new Promise<void>((r) => setTimeout(r, 120));
-    expect(resizeWindowCalls).toHaveLength(1); // unchanged - the resize was ignored
+    expect(resizeWindowCalls).toHaveLength(1); // 保持不变，resize 已被忽略。
 
     ws.close();
   }, 10000);
 });
 
-// OPR.0.4.0.38 - the detach-during-attach race (dev1-guard watchpoint #4): a
-// WebSocket that closes WHILE the async broker attach is still in flight must
-// not leave a phantom subscriber holding the pipe open.
-describe("terminal WebSocket detach-during-attach race", () => {
+// OPR.0.4.0.38——attach 期间 detach 的竞态（dev1-guard watchpoint #4）：WebSocket
+// 在异步 broker attach 仍进行时关闭，不得留下持有 pipe 的幽灵订阅者。
+describe("terminal WebSocket attach 期间 detach 的竞态", () => {
   const RACE_PORT = 19880;
   const RACE_TOKEN = "race-test-token";
   let raceServer: ServerType;
@@ -325,8 +323,7 @@ describe("terminal WebSocket detach-during-attach race", () => {
         hasSession: async () => true,
         setWindowOption: async () => ({ ok: true }),
         resizeWindow: async () => ({ ok: true }),
-        // Slow pipe-start widens the attach window so the client close lands
-        // while attach is still pending.
+        // 缓慢启动 pipe 以扩大 attach 窗口，确保客户端关闭发生在 attach 仍 pending 时。
         startPipePane: async (_name: string, outputPath: string) => {
           capturedOutputPath = outputPath;
           await new Promise((r) => setTimeout(r, 120));
@@ -351,18 +348,17 @@ describe("terminal WebSocket detach-during-attach race", () => {
     raceServer?.close();
   });
 
-  it("closing the WS mid-attach still tears the broker down (stops pipe, deletes temp - no leak)", async () => {
+  it("attach 中途关闭 WS 仍会拆除 broker（停止 pipe、删除临时文件且无泄漏）", async () => {
     stopPipePaneCalls.length = 0;
     capturedOutputPath = null;
 
     const ws = new WebSocket(`ws://127.0.0.1:${RACE_PORT}/api/terminal/race-session?token=${RACE_TOKEN}`);
-    // Close immediately on open - while the server's attach is still awaiting the
-    // 120ms startPipePane.
+    // 打开后立即关闭，此时服务端 attach 仍在等待 120ms 的 startPipePane。
     ws.onopen = () => { ws.close(); };
     await new Promise<void>((resolve) => { ws.onclose = () => resolve(); });
 
-    // Once attach resolves, the route must re-detach the closed subscriber, which
-    // (being the last/only one) tears the broker down: stop pipe + unlink temp.
+    // attach 完成后，route 必须再次 detach 已关闭的订阅者；由于它是最后/唯一订阅者，
+    // broker 随之拆除：停止 pipe 并 unlink 临时文件。
     await vi.waitFor(() => {
       expect(stopPipePaneCalls).toContain("race-session");
       expect(capturedOutputPath).toBeTruthy();
@@ -371,13 +367,11 @@ describe("terminal WebSocket detach-during-attach race", () => {
   }, 10000);
 });
 
-// OPR.0.4.4.20 delta-C — the send-at-open race (found by the slice-20 P2 VM
-// proof walk): the CHAT initialText frame is sent in the CLIENT's ws.onopen,
-// which lands while the server's onOpen is still awaiting the async broker
-// attach. Pre-fix, onMessage saw broker===null and silently dropped it — the
-// one pre-populated CHAT frame was lost every time attach was slower than the
-// client. The route must buffer early frames and drain them post-attach.
-describe("terminal WebSocket send-at-open buffering (initialText race)", () => {
+// OPR.0.4.4.20 delta-C——open 时发送的竞态（由 slice-20 P2 VM 证明流程发现）：CHAT 的
+// initialText frame 在客户端 ws.onopen 中发出，此时服务端 onOpen 仍等待异步 broker attach。
+// 修复前，onMessage 看到 broker===null 后会静默丢弃；只要 attach 比客户端慢，预填的唯一
+// CHAT frame 就会丢失。route 必须缓冲早到的 frame，并在 attach 后排空。
+describe("terminal WebSocket open 时发送的缓冲（initialText 竞态）", () => {
   const EARLY_PORT = 19881;
   const EARLY_TOKEN = "early-frame-test-token";
   let earlyServer: ServerType;
@@ -390,8 +384,8 @@ describe("terminal WebSocket send-at-open buffering (initialText race)", () => {
         hasSession: async () => true,
         setWindowOption: async () => ({ ok: true }),
         resizeWindow: async () => ({ ok: true }),
-        // Slow pipe-start widens the attach window so the client's at-open text
-        // frame reliably arrives while attach is still pending.
+        // 缓慢启动 pipe 以扩大 attach 窗口，确保客户端在 open 时发送的文本 frame 会在
+        // attach 仍 pending 时到达。
         startPipePane: async () => {
           await new Promise((r) => setTimeout(r, 120));
           return { ok: true };
@@ -415,12 +409,12 @@ describe("terminal WebSocket send-at-open buffering (initialText race)", () => {
     earlyServer?.close();
   });
 
-  it("a text frame sent at ws-open (attach in flight) is buffered and delivered, not dropped", async () => {
+  it("ws-open 时发送的文本 frame（attach 进行中）会被缓冲并交付，不会丢失", async () => {
     sentTexts.length = 0;
     const ws = new WebSocket(`ws://127.0.0.1:${EARLY_PORT}/api/terminal/early-session?token=${EARLY_TOKEN}`);
     const preamble = "[review fixture] Standing contract … user message begins here: ";
     ws.onopen = () => {
-      // Exactly what FocusedTerminal does: one text frame, immediately at open.
+      // 与 FocusedTerminal 完全一致：打开后立即发送一个文本 frame。
       ws.send(JSON.stringify({ type: "text", text: preamble }));
     };
     await vi.waitFor(() => {
@@ -429,7 +423,7 @@ describe("terminal WebSocket send-at-open buffering (initialText race)", () => {
     ws.close();
   }, 10000);
 
-  it("caps pre-attach buffering instead of accepting unbounded early frames", async () => {
+  it("限制 attach 前缓冲区，不接受无限量的早到 frame", async () => {
     sentTexts.length = 0;
     const ws = new WebSocket(`ws://127.0.0.1:${EARLY_PORT}/api/terminal/early-overflow?token=${EARLY_TOKEN}`);
     const closed = new Promise<{ code: number }>((resolve) => { ws.onclose = (evt) => resolve({ code: evt.code }); });

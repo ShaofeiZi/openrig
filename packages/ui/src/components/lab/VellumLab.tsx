@@ -1,13 +1,10 @@
-// Vellum Lab — design experiment surface at /lab/vellum-lab.
+// 羊皮纸实验室 —— /lab/vellum-lab 的设计实验界面。
 //
-// Post-refactor (2026-05-14): thin composition over the shared vellum
-// primitives in ../dashboard/vellum. The lab and the production
-// /dashboard surface render the SAME components — single source of
-// truth for the visual system.
+// 重构后（2026-05-14）：只是对 ../dashboard/vellum 下共享羊皮纸基元的薄组合。
+// 实验室与生产环境的 /dashboard 界面渲染同一批组件——视觉系统的唯一真源。
 //
-// The optional override props (backLayerOverride / vellumSheetOverride)
-// stay so the /lab/vellum-bg/* background experiment routes keep
-// working without forking the whole lab page.
+// 可选的覆盖 props（backLayerOverride / vellumSheetOverride）保留下来，让
+// /lab/vellum-bg/* 背景实验路由无需 fork 整个实验室页面即可继续工作。
 
 import type { ReactNode } from "react";
 import {
@@ -17,14 +14,12 @@ import {
 } from "../dashboard/vellum/index.js";
 
 interface VellumLabProps {
-  /** Optional back-content override — only renders if provided.
-   *  Default lab page is the SIMPLIFIED version (no back layer). The
-   *  /lab/vellum-bg/* experiment routes pass overrides to test
-   *  alternative back-layer compositions (topo lines / line art / etc). */
+  /** 可选的背景内容覆盖——仅在提供时渲染。
+   *  默认实验室页是简化版（无背景层）。/lab/vellum-bg/* 实验路由传入覆盖，
+   *  以测试备选的背景层组合（拓扑线 / 线条画 / 等）。 */
   backLayerOverride?: ReactNode;
-  /** Optional back-vellum-sheet override — only renders if provided.
-   *  Default lab page has no back sheet; experiment routes use this
-   *  to test diffusion levels paired with their back-layer override. */
+  /** 可选的背景羊皮纸层覆盖——仅在提供时渲染。
+   *  默认实验室页没有背景层；实验路由用它测试与各自背景层覆盖配对的扩散程度。 */
   vellumSheetOverride?: ReactNode;
 }
 
@@ -37,17 +32,17 @@ export function VellumLab({
       data-testid="vellum-lab"
       className="relative min-h-screen overflow-hidden"
     >
-      {/* Optional back layers — render only if explicitly provided */}
+      {/* 可选背景层——仅在显式提供时渲染 */}
       {backLayerOverride}
       {vellumSheetOverride}
 
-      {/* Mid content (marginalia + scattered marks) */}
+      {/* 中层内容（旁注 + 散落标记） */}
       <MidLayerContent />
 
-      {/* Top chrome (eyebrow, hero, footer, EYES EVERYWHERE, marks) */}
+      {/* 顶部框架（眉标、主视觉、页脚、EYES EVERYWHERE、标记） */}
       <TopLayerContent />
 
-      {/* Destinations (clickable launcher cards) */}
+      {/* 目的地（可点击的启动卡片） */}
       <DestinationsLayer />
     </div>
   );

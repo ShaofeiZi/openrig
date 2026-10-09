@@ -1,12 +1,11 @@
-// PL-016 hardening v0+1 — `rig agent-image create` --image-version flag
-// regression test.
+// PL-016 加固 v0+1——`rig agent-image create` --image-version 标志
+// 回归测试。
 //
-// Pins:
-//   - --image-version <v> propagates as body.version on the snapshot POST
-//   - --version on the per-command surface no longer shadows Commander's
-//     global --version (creating a separate per-command name resolves
-//     the collision; absence of `--version` as a per-command option is
-//     the contract this test enforces)
+// 锁定：
+//   - --image-version <v> 作为 body.version 传播到快照 POST
+//   - 每命令表面的 --version 不再遮蔽 Commander 的全局 --version
+//     （创建独立的每命令名以解决冲突；`--version` 不作为每命令选项存在，
+//     即本测试所强制的契约）
 
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import http from "node:http";
@@ -109,7 +108,7 @@ describe("rig agent-image create — --image-version flag", () => {
       clientFactory: (url) => new DaemonClient(url),
     }));
 
-    // Suppress console output for the test.
+    // 为本次测试抑制 console 输出。
     const origLog = console.log;
     console.log = () => {};
     try {

@@ -1,13 +1,12 @@
-// OPR.0.5.6.23 — silent-erasure remint (locked spec; desk territory ruling
-// 22:22Z extends member-b to the routes/agent-images.ts fork memberFragment
-// seam). Census: s23-session-source-leg-census.md beside this file.
+// OPR.0.5.6.23——silent-erasure remint（已锁定 spec；desk territory ruling 22:22Z
+// 将 member-b 扩展到 routes/agent-images.ts fork memberFragment seam）。
+// 清点见本文件旁的 s23-session-source-leg-census.md。
 //
-// Member (a): the codec serialize leg drops session_source.ref.version — a pin
-// that survives expand (post-S03) vanishes on a spec round-trip (the WAVE 1 R2
-// HOLD shape). Disclosed third member at the same seam: parse carries
-// compaction_strategy, serialize never emits it. Member (b): the fork-ingress
-// memberFragment drops node-carried model/role/restore_policy/label — a forked
-// seat silently loses its model pin (the 0.4.6.PI1 failure class).
+// Member (a)：codec serialize 分支丢弃 session_source.ref.version——可在 expand（S03 后）中
+// 保留的 pin 会在 spec 往返时消失（WAVE 1 R2 HOLD shape）。同一 seam 还发现第三项：parse
+// 携带 compaction_strategy，serialize 从不发出。Member (b)：fork-ingress memberFragment 丢弃
+// node 携带的 model/role/restore_policy/label——fork 后的 seat 会静默丢失 model pin
+//（0.4.6.PI1 failure class）。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
@@ -57,16 +56,16 @@ function roundTripMember(member: Partial<RigSpecPodMember> & { id: string }): { 
   return { yaml, member: normalized.pods[0]!.members[0]! };
 }
 
-describe("OPR.0.5.6.23 member (a) — codec round-trip preserves every optional sessionSource field", () => {
-  it("RT-VERSION: session_source.ref.version survives serialize -> parse -> normalize, and the YAML itself carries the key", () => {
+describe("OPR.0.5.6.23 member (a)——codec 往返保留每个可选 sessionSource 字段", () => {
+  it("RT-VERSION：session_source.ref.version 经 serialize -> parse -> normalize 后存留，YAML 本身也携带该 key", () => {
     const input: SessionSourceSpec = { mode: "agent_image", ref: { kind: "image_name", value: "starter", version: "1.2.3" } };
     const { yaml, member } = roundTripMember({ id: "impl", sessionSource: input });
-    // base RED: serialize emits kind/value only — version re-parses undefined
+    // 基线 RED：serialize 只发出 kind/value——重新 parse 后 version 为 undefined
     expect(member.sessionSource).toEqual(input);
     expect(yaml).toContain("version: 1.2.3"); // absence in every encoding: the YAML carries it
   });
 
-  it("KEYSET-PIN: for every union arm carrying every optional field, the serialized ref key-set equals the input ref key-set", () => {
+  it("KEYSET-PIN：对携带全部可选字段的每个 union arm，serialized ref key-set 等于 input ref key-set", () => {
     const arms: SessionSourceSpec[] = [
       { mode: "fork", ref: { kind: "native_id", value: "tok-1" } },
       { mode: "rebuild", ref: { kind: "artifact_set", value: ["a.md", "b.md"] } },
@@ -82,21 +81,20 @@ describe("OPR.0.5.6.23 member (a) — codec round-trip preserves every optional 
     }
   });
 
-  it("RT-COMPACTION (disclosed third member, same seam): member compaction_strategy survives the round-trip", () => {
-    // canonical vocabulary (agent-manifest.ts VALID_COMPACTION_STRATEGIES);
-    // a deprecated alias would be normalized on parse and mask the pin.
+  it("RT-COMPACTION（同一 seam 发现的第三项）：member compaction_strategy 经往返后存留", () => {
+    // canonical vocabulary（agent-manifest.ts VALID_COMPACTION_STRATEGIES）；deprecated alias
+    // 会在 parse 时 normalize，从而掩盖此 pin。
     const { yaml, member } = roundTripMember({ id: "impl", compactionStrategy: "managed-compaction" });
-    // base RED: schema parse carries it (:1058), the serialize leg never emits it
+    // 基线 RED：schema parse 携带它（:1058），serialize 分支从不发出
     expect(member.compactionStrategy).toBe("managed-compaction");
     expect(yaml).toContain("compaction_strategy: managed-compaction");
   });
 });
 
-describe("OPR.0.5.6.23 member (c) — the codec emits the optional top-level services family (desk ruling, transition 45061)", () => {
-  // Same class as member (a): parse accepts+normalizes services
-  // (rigspec-schema :109/:197), serialize omits it — export-YAML -> re-import
-  // silently drops the whole block. Fixture populates EVERY optional services
-  // field; the pin is explicit key/value preservation, never mere presence.
+describe("OPR.0.5.6.23 member (c)——codec 发出可选顶层 services family（desk ruling，transition 45061）", () => {
+  // 与 member (a) 同类：parse 接受并 normalize services（rigspec-schema :109/:197），serialize
+  // 却省略它——export-YAML -> re-import 会静默丢弃整个 block。fixture 填充每个可选 services
+  // field；此 pin 明确要求保留 key/value，而不只是存在即可。
   const servicesInput: RigServicesSpec = {
     kind: "compose",
     composeFile: "services/compose.yaml",
@@ -118,25 +116,25 @@ describe("OPR.0.5.6.23 member (c) — the codec emits the optional top-level ser
     ],
   };
 
-  it("RT-SERVICES: a nontrivial services family survives serialize -> YAML -> parse -> normalize with every key and value intact", () => {
+  it("RT-SERVICES：非平凡 services family 经 serialize -> YAML -> parse -> normalize 后所有 key/value 完整保留", () => {
     const spec: RigSpec = { ...rigWith({ id: "impl" }), services: servicesInput };
     const yaml = RigSpecCodec.serialize(spec);
     const parsed = RigSpecCodec.parse(yaml) as Record<string, unknown>;
     const validation = RigSpecSchema.validate(parsed);
     expect(validation.errors, `round-trip must stay schema-valid: ${validation.errors?.join("; ")}`).toEqual([]);
-    // base RED: serialize reads no spec.services — the YAML has no services key
+    // 基线 RED：serialize 不读取 spec.services——YAML 中没有 services key
     const rawServices = parsed["services"] as Record<string, unknown> | undefined;
     expect(rawServices, "the serialized YAML must carry the services block").toBeDefined();
     expect(Object.keys(rawServices ?? {}).sort(), "no services key may silently vanish").toEqual(
       ["checkpoints", "compose_file", "down_policy", "kind", "profiles", "project_name", "surfaces", "wait_for"]
     );
     const normalized = RigSpecSchema.normalize(parsed);
-    // value-level pin: deep-equal, not presence — the whole family round-trips
+    // value-level pin：要求 deep-equal，而非仅存在——整个 family 可往返
     expect(normalized.services).toEqual(servicesInput);
   });
 });
 
-describe("OPR.0.5.6.23 member (b) — fork-ingress memberFragment forwards every node-carried optional field", () => {
+describe("OPR.0.5.6.23 member (b)——fork-ingress memberFragment 转发每个 node 携带的可选字段", () => {
   let tmp: string;
   let specRoot: string;
   let db: Database.Database;
@@ -156,7 +154,7 @@ describe("OPR.0.5.6.23 member (b) — fork-ingress memberFragment forwards every
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("FORK-FRAGMENT: a source seat's model, role, restore_policy, and label ride the fork (the model pin is the 0.4.6.PI1 class)", async () => {
+  it("FORK-FRAGMENT：source seat 的 model、role、restore_policy 与 label 随 fork 传递（model pin 属于 0.4.6.PI1 类）", async () => {
     const rig = rigRepo.createRig("src-rig");
     const node = rigRepo.addNode(rig.id, "dev.impl", {
       runtime: "claude-code",
@@ -195,13 +193,13 @@ describe("OPR.0.5.6.23 member (b) — fork-ingress memberFragment forwards every
     expect(res.status).toBe(201);
     expect(addMember).toHaveBeenCalledTimes(1);
     const fragment = addMember.mock.calls[0]![2] as Record<string, unknown>;
-    // base RED: the fragment forwards only runtime/agent_ref/profile/cwd/
-    // codex_config_profile/permission_policy — these four are dropped.
+    // 基线 RED：fragment 只转发 runtime/agent_ref/profile/cwd/codex_config_profile/
+    // permission_policy——这四项会被丢弃。
     expect(fragment["model"]).toBe("claude-opus-5");
     expect(fragment["role"]).toBe("worker");
     expect(fragment["restore_policy"]).toBe("resume_if_possible");
     expect(fragment["label"]).toBe("Implementer");
-    // and the previously forwarded fields still ride (regression floor)
+    // 此前已转发的字段也仍会传递（回归底线）
     expect(fragment["agent_ref"]).toBe("local:agents/impl");
     expect(fragment["session_source"]).toMatchObject({ mode: "fork", ref: { kind: "native_id", value: "tok-native-1" } });
   });

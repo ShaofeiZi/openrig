@@ -1,0 +1,18 @@
+{
+"packages/cli/test/queue.test.ts": [
+"cli-b",
+"needs_review"
+],
+"packages/cli/test/daemon-lifecycle.test.ts": [
+"cli-core-a",
+"needs_review"
+],
+"packages/daemon/test/bundle-routes.test.ts": [
+"daemon-core-h",
+"needs_review"
+],
+"packages/cli/test/restore-packet.test.ts": [
+"cli-a",
+"needs_review"
+]
+}

@@ -4,25 +4,23 @@ import type { EventBus } from "./event-bus.js";
 import type { PersistedEvent } from "./types.js";
 
 /**
- * Classifier lease manager (PL-004 Phase B).
+ * 分类器租约管理器（PL-004 Phase B）。
  *
- * Daemon-enforced single-writer lease for the project (classifier) primitive.
- * Per PRD § L2 hard rule + slice IMPL § Guard Checkpoint Focus item 2:
+ * 后台服务为 project（classifier）原语强制执行的单写者租约。
+ * 依据 PRD § L2 硬规则与 slice IMPL 的 Guard Checkpoint Focus 条目 2：
  *
- * - Single-writer: at most one lease in `state='active'` at any time, enforced
- *   via partial UNIQUE index `idx_classifier_leases_active_singleton`.
- * - TTL-based expiry: every lease has an `expires_at` (acquired_at + ttlMs).
- * - Heartbeat: `last_heartbeat` is updated by the lease holder. Stale heartbeat
- *   past TTL signals deadness.
- * - Deadness detection: caller of `evaluateDeadness` is the project verb path
- *   OR a watchdog. The manager itself does NOT auto-reclaim — only marks
- *   `expired` when heartbeat is stale.
- * - Reclaim is OPERATOR-VERB ONLY: `rig project --reclaim-classifier
- *   [--if-dead]`. Daemon does NOT auto-reclaim. The reclaim path takes the
- *   active lease away from the previous holder and emits classifier.reclaimed.
+ * - 单写者：任何时刻最多只有一个 `state='active'` 的租约，由部分 UNIQUE 索引
+ *   `idx_classifier_leases_active_singleton` 强制保证。
+ * - 基于 TTL 过期：每个租约都有 `expires_at`（acquired_at + ttlMs）。
+ * - 心跳：租约持有者更新 `last_heartbeat`；超过 TTL 的陈旧心跳表示已失活。
+ * - 失活检测：`evaluateDeadness` 由 project 命令路径或看门狗调用。管理器本身不会
+ *   自动回收，只在心跳陈旧时标记 `expired`。
+ * - 回收只能由操作员命令执行：`zrig project --reclaim-classifier [--if-dead]`。
+ *   后台服务不会自动回收。回收路径从前任持有者手中收回 active 租约，并发送
+ *   classifier.reclaimed。
  *
- * Pattern mirrors Phase A's hot-potato-enforcer.ts shape: pure validation +
- * lifecycle methods, no Hono. Routes import this; this does not import routes.
+ * 结构沿用 Phase A 的 hot-potato-enforcer.ts：纯校验加生命周期方法，不依赖 Hono。
+ * 路由导入本模块，本模块不导入路由。
  */
 
 export const LEASE_STATES = ["active", "expired", "reclaimed"] as const;
@@ -61,25 +59,22 @@ export class ClassifierLeaseError extends Error {
 }
 
 /**
- * Default lease TTL: 15 minutes. Per PRD: "TTL-based"; concrete value is
- * implementation choice. 15 min is the operator-friendly midpoint between
- * stale-detection latency (longer = slower deadness signal) and unnecessary
- * heartbeat traffic (shorter = more wake-ups). Configurable via constructor
- * option for tests + future tuning.
+ * 默认租约 TTL 为 15 分钟。PRD 只规定“基于 TTL”，具体值由实现选择。15 分钟在
+ * 陈旧检测延迟（越长则失活信号越慢）与不必要心跳流量（越短则唤醒越多）之间取得
+ * 对操作员友好的平衡。可通过构造参数配置，便于测试及后续调优。
  */
 const DEFAULT_LEASE_TTL_MS = 15 * 60 * 1000;
 
 export interface ClassifierLeaseManagerOptions {
   ttlMs?: number;
-  /** For tests: inject a deterministic clock. Defaults to `() => new Date()`. */
+  /** 供测试注入确定性时钟；默认为 `() => new Date()`。 */
   now?: () => Date;
   /**
-   * Liveness check (per PRD: via whoami-service / node-inventory). Returns
-   * true if the session is still alive. The lease-manager calls this when
-   * evaluating deadness; if the function returns false AND the lease's
-   * heartbeat is stale, the lease is marked expired.
+   * 存活检查（依据 PRD，通过 whoami-service/node-inventory）。会话仍存活时返回
+   * true。租约管理器评估失活时调用它；仅当函数返回 false 且租约心跳已陈旧时，
+   * 才将租约标记为 expired。
    *
-   * Defaults to `() => true` (no liveness check; tests can stub).
+   * 默认为 `() => true`（不检查存活；测试可替换）。
    */
   isAlive?: (classifierSession: string) => boolean;
 }
@@ -104,32 +99,27 @@ export class ClassifierLeaseManager {
   }
 
   /**
-   * Wire post-construction liveness check (used by startup.ts when
-   * whoami-service is constructed later in the dep graph).
+   * 在构造后接入存活检查（startup.ts 在依赖图后段构造 whoami-service 时使用）。
    */
   attachIsAlive(check: (classifierSession: string) => boolean): void {
     this.isAlive = check;
   }
 
   /**
-   * Acquire the active lease for a classifier session. Fails with
-   * `lease_held` (409) if another session currently holds an active lease
-   * AND that session is alive. If the held lease is by a dead session, the
-   * caller should first invoke `evaluateDeadness` (which marks it expired)
-   * or use the operator reclaim path.
+   * 为分类器会话获取 active 租约。若其他仍存活的会话持有 active 租约，则以
+   * `lease_held`（409）失败。若租约持有会话已失活，调用方应先调用
+   * `evaluateDeadness` 将其标记过期，或使用操作员回收路径。
    *
-   * Idempotent for the SAME classifier_session while its lease is unexpired:
-   * re-calling acquire returns the existing lease unchanged (heartbeat is
-   * updated separately via `heartbeat`). If the holder's own lease has passed
-   * its TTL, acquire expires it and issues a NEW lease id, so a result bound to
-   * the old lease id can no longer be written (S02 P1).
+   * 同一 classifier_session 在租约未过期时重复获取具有幂等性：再次调用 acquire
+   * 会原样返回现有租约（心跳由 `heartbeat` 单独更新）。若持有者自己的租约超过
+   * TTL，acquire 会使其过期并签发新租约 ID，使绑定旧租约 ID 的结果无法再写入（S02 P1）。
    */
   acquire(classifierSession: string): ClassifierLease {
     const active = this.getActiveLease();
     if (active) {
       if (active.classifierSession === classifierSession) {
         if (!this.isPastTtl(active)) {
-          // Idempotent re-acquire by current holder.
+    // 当前持有者重复获取时保持幂等。
           return active;
         }
         return this.replaceExpiredOwnLease(active);
@@ -148,7 +138,7 @@ export class ClassifierLeaseManager {
     return this.getByIdOrThrow(leaseId);
   }
 
-  /** Expire the caller's own TTL-passed lease and issue a fresh one, atomically. */
+  /** 原子地使调用方自己的超时租约过期，并签发新租约。 */
   private replaceExpiredOwnLease(active: ClassifierLease): ClassifierLease {
     const leaseId = ulid();
     const nowIso = this.now().toISOString();
@@ -193,8 +183,8 @@ export class ClassifierLeaseManager {
   }
 
   /**
-   * Heartbeat from the lease holder. Updates `last_heartbeat` and extends
-   * `expires_at` by the TTL (sliding-window TTL semantics).
+   * 接收租约持有者心跳。更新 `last_heartbeat`，并按 TTL 延长 `expires_at`
+   * （滑动窗口 TTL 语义）。
    */
   heartbeat(leaseId: string, classifierSession: string): ClassifierLease {
     const lease = this.getById(leaseId);
@@ -213,8 +203,8 @@ export class ClassifierLeaseManager {
         `lease ${leaseId} is in state ${lease.state}; cannot heartbeat`,
       );
     }
-    // S02 P1: a lease past its TTL cannot be revived by a heartbeat. The holder
-    // must acquire again (which issues a new lease id for its own expired lease).
+    // S02 P1：超过 TTL 的租约不能通过心跳复活。持有者必须重新获取，这会为其
+    // 已过期租约签发新的租约 ID。
     if (this.isPastTtl(lease)) {
       throw new ClassifierLeaseError(
         "lease_expired",
@@ -239,18 +229,15 @@ export class ClassifierLeaseManager {
   }
 
   /**
-   * Evaluate deadness for the currently-active lease. If the lease's
-   * heartbeat is stale (now > expires_at) OR the holder is reported dead
-   * by `isAlive`, mark the lease expired and emit classifier.lease_expired
-   * + classifier.dead. Returns the (now-expired) lease, or null if no
-   * active lease exists or it remains alive.
+   * 评估当前 active 租约是否失活。若租约心跳陈旧（now > expires_at），或 `isAlive`
+   * 报告持有者已失活，则将租约标记过期并发送 classifier.lease_expired 与
+   * classifier.dead。返回已过期租约；若没有 active 租约或它仍存活则返回 null。
    *
-   * Called by: project verb path (before acquire, to clear dead leases),
-   * watchdog (periodic sweep), or operator-driven check.
+   * 调用方包括：project 命令路径（acquire 前清理失活租约）、看门狗（周期扫描）
+   * 或操作员触发的检查。
    *
-   * Per PRD: this method does NOT reclaim — it only marks expired. The
-   * next `acquire` call by ANY session can then succeed (since the partial
-   * UNIQUE on state='active' is now empty).
+   * 按 PRD，本方法不执行回收，只标记过期。之后任何会话的下一次 `acquire` 都可
+   * 成功，因为 state='active' 的部分 UNIQUE 索引此时为空。
    */
   evaluateDeadness(): ClassifierLease | null {
     const active = this.getActiveLease();
@@ -292,16 +279,15 @@ export class ClassifierLeaseManager {
   }
 
   /**
-   * Operator-verb reclaim. Per PRD § L2 hard rule: ONLY this path may take
-   * an active lease away from its holder. Daemon does NOT auto-reclaim.
+   * 操作人员动作 reclaim。按 PRD § L2 硬规则，只有此路径可从持有者手中收回活跃租约。
+   * 后台服务不会自动收回。
    *
-   * - If `ifDead`: only succeed when isAlive(holder) returns false. If the
-   *   holder is alive, refuse with `lease_still_active`.
-   * - If `!ifDead`: take the lease unconditionally.
+   * - 若 `ifDead`：仅当 isAlive(holder) 返回 false 时成功；持有者仍存活则以
+   *   `lease_still_active` 拒绝。
+   * - 若 `!ifDead`：无条件取得租约。
    *
-   * Marks the active lease state='reclaimed', records reclaimed_by_session
-   * + reclaim_reason, and emits classifier.reclaimed. The next acquire
-   * (by ANY session) can then succeed.
+   * 将 active 租约标记为 state='reclaimed'，记录 reclaimed_by_session 与
+   * reclaim_reason，并发送 classifier.reclaimed；之后任何会话均可再次 acquire。
    */
   reclaim(byClassifierSession: string, opts?: { ifDead?: boolean; reason?: string }): ClassifierLease {
     const active = this.getActiveLease();
@@ -348,14 +334,12 @@ export class ClassifierLeaseManager {
   }
 
   /**
-   * Validation hook used by project-classifier: returns the active lease
-   * iff the supplied session holds it, else throws. Centralizes the
-   * "must hold the lease to project" check.
+   * project-classifier 使用的校验钩子：仅当传入会话持有 active 租约时返回该租约，
+   * 否则抛出异常。它集中实现“执行 project 前必须持有租约”的检查。
    *
-   * With `leaseId` (S02 P1), the caller must also hold THAT lease: a result
-   * computed under a replaced lease is refused with `lease_mismatch`, even when
-   * the same session holds the new lease. Safe to call inside a write
-   * transaction (reads only).
+   * 传入 `leaseId`（S02 P1）时，调用方还必须持有该特定租约：即使同一会话持有新
+   * 租约，在已被替换租约下计算的结果也会以 `lease_mismatch` 拒绝。本方法只读，
+   * 可安全地在写事务内调用。
    */
   requireActiveHolder(classifierSession: string, leaseId?: string): ClassifierLease {
     const active = this.getActiveLease();

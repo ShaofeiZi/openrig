@@ -1,23 +1,19 @@
-// Slice Story View v0 + v1 — per-tab payload projector.
+// 切片故事视图 v0 + v1——逐页签载荷投影器。
 //
-// Given a SliceRecord (from SliceIndexer), this assembles the full
-// per-slice payload covering all six tabs: Story, Acceptance, Decisions,
-// Docs, Tests/Verification, Topology. Read-only; no mutations. Composes
-// already-shipped tables (queue_items, queue_transitions,
-// mission_control_actions, workflow_specs, workflow_instances,
-// workflow_step_trails) + slice docs on disk + dogfood-evidence.
+// 给定 SliceRecord（来自 SliceIndexer），组装覆盖全部六个 tab 的完整 per-slice payload：故事、验收、
+// 决策、文档、测试/验证、拓扑。只读，不执行 mutation。组合已交付 table（queue_items、
+// queue_transitions、mission_control_actions、workflow_specs、workflow_instances、
+// workflow_step_trails）+ 磁盘上的 slice doc + dogfood-evidence。
 //
-// v1 enrichment (per slices/slice-story-view-v1/IMPLEMENTATION-PRD.md):
-// when a workflow_instance is bound to the slice, four dimensions
-// activate — spec-graph topology, spec-driven phase tagging, current-
-// step + allowed exits in Acceptance, routing-type edge metadata
-// (default `direct` only at v1 per audit-row-6 carve-out).
+// v1 enrichment（见 slices/slice-story-view-v1/IMPLEMENTATION-PRD.md）：workflow_instance
+// 绑定到切片时启用四个维度——规格图拓扑、规格驱动的阶段标记、验收中的当前步骤与允许出口、
+// 路由类型边元数据（按 audit-row-6 例外规则，v1 仅默认
+// `direct`）。
 //
-// v0 hardcoded legacy phase taxonomy ("discovery"/"product-lab"/
-// "delivery"/"lifecycle"/"qa"/"other") is REMOVED at v1 per PRD § Write
-// Set Sketch. StoryEvent.phase is now an open-ended string-or-null:
-// when bound to a workflow_instance, the value is the spec-defined
-// step.id; otherwise null (UI groups under "Untagged").
+// 按 PRD § 写集草图，v1 已移除 v0 硬编码的旧阶段分类
+//（"discovery"/"product-lab"/"delivery"/"lifecycle"/"qa"/"other"）。StoryEvent.phase
+// 现在是开放 string 或 null：绑定 workflow_instance 时值为 spec 定义的 step.id；否则为 null
+//（UI 归入“未标记”）。
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -32,12 +28,11 @@ import {
 import {
   isScaffoldPlaceholderText,
   GENERIC_SCAFFOLD_ACCEPTANCE,
+  LEGACY_GENERIC_SCAFFOLD_ACCEPTANCE,
 } from "../scope/scaffold-placeholder.js";
-// VM-006 (progress-review-done-coherence): the QA-verdict union reuses
-// Review's OWN exported derivation pair + the ONE proof-artifact reader
-// (arch A1 one-home) — never a second derivation. Cycle-free: compose is
-// pure and proof-io imports only compose + node; nothing in review imports
-// slices.
+// VM-006（progress-review-done-coherence）：QA-verdict union 复用 Review 自己导出的 derivation pair
+// + 唯一 proof-artifact reader（arch A1 one-home）——绝不二次派生。无 cycle：compose 是纯函数，
+// proof-io 只 import compose + node；review 中没有内容 import slices。
 import {
   extractProofContractSelected,
   composeDelivered,
@@ -57,10 +52,8 @@ import {
 
 export interface StoryEvent {
   ts: string;
-  /** Spec-defined step.id when the event traces back through a workflow
-   *  step trail; null when the event is untagged (no trail mapping or
-   *  the slice has no bound workflow_instance). v1 removed the v0
-   *  hardcoded legacy phase enum. */
+  /** 事件通过工作流步骤轨迹追溯时的规格定义 step.id；事件未标记时为 null
+   *（无轨迹映射，或切片未绑定 workflow_instance）。v1 已移除 v0 硬编码的旧 phase 枚举。 */
   phase: string | null;
   kind: string;
   actorSession: string | null;
@@ -73,23 +66,18 @@ export interface AcceptanceItem {
   text: string;
   done: boolean;
   source: { file: string; line: number };
-  /** VM-006 (FR-4, additive): how `done` was derived on a slice with an
-   *  authored proof contract — the author's tick vs the QA-verdict lift.
-   *  Omitted entirely when the slice has no authored contract or the row is
-   *  not done; no consumer is required to read it. */
+  /** VM-006（FR-4，增量）：有已编写证明契约的切片如何派生 `done`——作者勾选与 QA 判定提升。
+   * 切片无已编写契约或行非 done 时完全省略；不要求使用方读取。 */
   doneVia?: "checkbox" | "qa-verdict";
 }
 
-/** VM-006 (arch PIN-C): the ONE key behind the acceptance dedup, the
- *  Progress↔Review join, and the FS-1 guard. VERBATIM the historical dedup
- *  expression — trim + casefold, and deliberately NO whitespace collapse.
+/** VM-006（arch PIN-C）：acceptance dedup、Progress↔Review join 与 FS-1 guard 背后的唯一 key。
+ *  逐字沿用历史 dedup expression——trim + casefold，并且刻意不折叠 whitespace。
  *
- *  Sharing a single helper across all three is what makes join-relation ==
- *  dedup-relation a fact of the code rather than a claim. A join key that is
- *  COARSER than the dedup key (e.g. one that strips inline images, so that
- *  `X ![shot](a.png)` and a plain `X` collapse together) maps two distinct
- *  acceptance rows onto one obligation and silently lifts the wrong row —
- *  that is the B1 collision this successor exists to kill. */
+ * 三处共享同一个辅助函数，才能让“联结关系等于去重关系”成为代码事实，而非口头声明。
+ * 若联结键比去重键更粗（例如移除行内图片，使 `X ![shot](a.png)` 与纯文本 `X` 折叠到一起），
+ * 就会把两条不同验收行映射到同一义务，并静默提升错误的行；后继实现正是为了消除这种
+ * B1 冲突。 */
 function textKey(text: string): string {
   return text.trim().toLowerCase();
 }
@@ -100,9 +88,8 @@ export interface AcceptancePayload {
   percentage: number;
   items: AcceptanceItem[];
   closureCallout: string | null;
-  /** v1 dimension #3: bound workflow_instance's current step + the
-   *  spec-declared allowed next steps. Null when the slice has no
-   *  bound instance (UI falls back to PROGRESS.md checkbox view only). */
+  /** v1 维度 #3：已绑定 workflow_instance 的当前步骤和规格声明的允许下一步。
+   * 切片无绑定实例时为 null（UI 只回退到 PROGRESS.md 复选框视图）。 */
   currentStep: CurrentStepPayload | null;
 }
 
@@ -122,23 +109,23 @@ export interface DocsTreeEntry {
   type: "file" | "dir";
   size: number | null;
   mtime: string | null;
-  /** Relative path under the slice folder. */
+  /** 切片目录下的相对路径。 */
   relPath: string;
 }
 
 export interface ProofPacketRendered {
   dirName: string;
-  /** Headline markdown file (latest mtime). */
+  /** 主 Markdown 文件（mtime 最新）。 */
   primaryMarkdown: { relPath: string; content: string } | null;
-  /** All other markdown files in the proof packet directory (latest-first). */
+  /** 证明包目录中的所有其他 Markdown 文件（最新优先）。 */
   additionalMarkdown: Array<{ relPath: string; content: string }>;
-  /** Screenshot relative paths suitable for /api/slices/:name/proof-asset/<path> serving. */
+  /** 适合由 /api/slices/:name/proof-asset/<path> 提供的截图相对路径。 */
   screenshots: string[];
-  /** Video relative paths suitable for the <video> player. */
+  /** 适合 <video> 播放器的视频相对路径。 */
   videos: string[];
-  /** Trace zip relative paths (download links only — not auto-rendered). */
+  /** 追踪 zip 相对路径（仅提供下载链接，不自动渲染）。 */
   traces: string[];
-  /** Heuristic pass/fail badge derived from primary markdown content. */
+  /** 从主 Markdown 内容启发式派生的通过/失败徽标。 */
   passFailBadge: "pass" | "fail" | "partial" | "unknown";
 }
 
@@ -150,11 +137,10 @@ export interface TopologyRigEntry {
 
 export interface TopologyPayload {
   affectedRigs: TopologyRigEntry[];
-  /** Total unique seats touching the slice across all rigs. */
+  /** 跨所有工作组触及此切片的唯一席位总数。 */
   totalSeats: number;
-  /** v1 dimension #1: workflow_spec graph (nodes + edges) when the
-   *  slice is bound to a workflow_instance. Null when unbound (UI falls
-   *  back to the v0 per-rig session listing). */
+  /** v1 维度 #1：切片绑定 workflow_instance 时的 workflow_spec 图（节点和边）。
+   * 未绑定时为 null（UI 回退到 v0 逐工作组会话列表）。 */
   specGraph: SpecGraphPayload | null;
 }
 
@@ -168,9 +154,8 @@ export interface WorkflowBindingPayload {
   hopCount: number;
   createdAt: string;
   completedAt: string | null;
-  /** Other workflow_instances also touching this slice's qitem set;
-   *  v1 picks the most recent as the primary binding (per PRD), and
-   *  exposes the rest here so the UI can render a "+N more" indicator. */
+  /** 同样触及此切片 qitem 集合的其他 workflow_instance；v1 按 PRD 选择最新项作为主绑定，
+   * 并在此暴露其余项，使 UI 可渲染“还有 N 个”指示器。 */
   additionalInstanceIds: string[];
 }
 
@@ -186,13 +171,13 @@ export interface SliceDetailPayload {
   qitemIds: string[];
   commitRefs: string[];
   lastActivityAt: string | null;
-  /** v1: bound workflow_instance metadata (most-recent if multiple),
-   *  null when no workflow_instance touches this slice's qitems. */
+  /** v1：bound workflow_instance metadata（多个时取最新）；没有 workflow_instance 触及此 slice
+   *  qitem 时为 null。 */
   workflowBinding: WorkflowBindingPayload | null;
   story: {
     events: StoryEvent[];
-    /** v1 dimension #2: spec-declared phase definitions when bound;
-     *  null when unbound (UI falls back to ungrouped chronological). */
+    /** v1 dimension #2：bound 时为 spec 声明的 phase definition；unbound 时为 null
+     *  （UI 回退到不分组的时间顺序）。 */
     phaseDefinitions: PhaseDefinition[] | null;
   };
   acceptance: AcceptancePayload;
@@ -205,10 +190,8 @@ export interface SliceDetailPayload {
 export interface SliceDetailProjectorOpts {
   db: Database.Database;
   indexer: SliceIndexer;
-  /** v1: optional WorkflowSpecCache used to resolve the bound
-   *  workflow_instance's spec for spec-graph + phase + current-step
-   *  projection. When omitted, the projector silently degrades to v0
-   *  behavior (everything renders as before; v1 fields are null). */
+  /** v1：可选 WorkflowSpecCache，用于解析 bound workflow_instance spec，以供 spec-graph + phase +
+   *  current-step projection。省略时 projector 静默降级为 v0 行为（所有内容照旧渲染；v1 字段为 null）。 */
   workflowSpecCache?: WorkflowSpecCache;
 }
 
@@ -228,11 +211,9 @@ export class SliceDetailProjector {
   }
 
   project(slice: SliceRecord): SliceDetailPayload {
-    // v1: resolve workflow_instance binding once; the bound spec drives
-    // four downstream dimensions (story phase tags, spec graph, current
-    // step, phase definitions). When unbound or when the spec is no
-    // longer cached (operator deleted the spec file, etc.), all v1
-    // fields return null and v0 fallbacks apply.
+    // v1：只解析一次 workflow_instance 绑定；已绑定规格驱动四个下游维度
+    //（故事阶段标记、规格图、当前步骤、阶段定义）。未绑定或规格不再缓存
+    //（例如操作人员删除规格文件）时，所有 v1 字段返回 null，并应用 v0 兜底。
     const bindingResult = findSliceWorkflowBinding(this.db, slice.qitemIds);
     const binding = bindingResult.primary;
     const spec = binding && this.workflowSpecCache
@@ -285,7 +266,7 @@ export class SliceDetailProjector {
     };
   }
 
-  // --- v1 helpers ---
+  // --- v1 helper ---
 
   private tryGetSpec(name: string, version: string) {
     if (!this.workflowSpecCache) return null;
@@ -298,11 +279,9 @@ export class SliceDetailProjector {
   }
 
   /**
-   * Builds a qitem_id → step_id map by reading the bound instance's
-   * workflow_step_trails. Each trail row's prior_qitem_id maps to the
-   * step that closed (`step_id`), and next_qitem_id maps to the
-   * subsequent step's first packet. Used by buildStory to tag each
-   * StoryEvent with the spec-defined phase the qitem traces back to.
+   * 读取 bound instance 的 workflow_step_trails，构建 qitem_id → step_id map。每个 trail row 的
+   * prior_qitem_id 映射到关闭它的 step（`step_id`），next_qitem_id 映射到后续 step 的首个 packet。
+   * buildStory 用它为每个 StoryEvent 标记 qitem 可追溯到的 spec-defined phase。
    */
   private buildTrailQitemToStepMap(instanceId: string): Map<string, string> {
     const map = new Map<string, string>();
@@ -317,37 +296,33 @@ export class SliceDetailProjector {
         next_qitem_id: string | null;
       }>;
       for (const t of trails) {
-        // The prior_qitem_id is the one that closed AT step_id —
-        // events for that qitem belong to step_id's phase.
+        // prior_qitem_id 是在 step_id 处关闭的 qitem——该 qitem 的 event 属于 step_id phase。
         map.set(t.prior_qitem_id, t.step_id);
       }
     } catch {
-      // workflow_step_trails absent — empty map (events untagged).
+      // workflow_step_trails 缺失——空 map（event 未标记）。
     }
     return map;
   }
 
-  // --- Story tab ---
+  // --- 故事 tab ---
 
   private buildStory(slice: SliceRecord, trailQitemToStep: Map<string, string>): StoryEvent[] {
     const events: StoryEvent[] = [];
-    // v1: phase tag = spec step.id from trail mapping (when bound),
-    // null otherwise. v0's hardcoded legacy phase taxonomy is gone.
+    // v1：已绑定时，阶段标记等于轨迹映射中的规格 step.id，否则为 null。
+    // v0 硬编码的旧阶段分类已移除。
     const phaseFor = (qitemId: string | null): string | null =>
       qitemId ? trailQitemToStep.get(qitemId) ?? null : null;
 
     if (slice.qitemIds.length > 0) {
       const placeholders = slice.qitemIds.map(() => "?").join(",");
 
-      // queue_items create/handoff snapshot rows. We use the row itself as
-      // a "create" event keyed on ts_created, plus per-row state field at
-      // ts_updated. queue_transitions provides the per-transition history.
+      // queue_items 创建/交接快照行。使用行自身作为按 ts_created 索引的“创建”事件，
+      // 并在 ts_updated 加入逐行状态字段。queue_transitions 提供逐次转换历史。
       try {
-        // OPR.0.4.1.18: SELECT * (not an explicit column list) so a queue_items
-        // schema that predates migration 044 (no `summary` column — e.g. minimal
-        // test fixtures) does not throw here; r.summary is then undefined and the
-        // degrade below kicks in. summary is optional in the row type for the
-        // same reason.
+        // OPR.0.4.1.18：使用 SELECT *（而非显式列清单），使迁移 044 之前的 queue_items 规范
+        //（没有 `summary` 列，例如最小测试夹具）不会在此抛错；此时 r.summary 为 undefined，
+        // 下方降级逻辑生效。行类型中的 summary 也因此为可选。
         const qrows = this.db.prepare(
           `SELECT * FROM queue_items WHERE qitem_id IN (${placeholders})`
         ).all(...slice.qitemIds) as Array<{
@@ -362,19 +337,18 @@ export class SliceDetailProjector {
             kind: "queue.created",
             actorSession: r.source_session,
             qitemId: r.qitem_id,
-            // OPR.0.4.1.18 (THE compat fix): prefer the authored human summary;
-            // degrade to source→dest + body-truncation when null/absent (pre-18
-            // qitems + any an author omitted). Keeps StoryEvent.summary non-null.
+            // OPR.0.4.1.18（兼容修复）：优先使用人工编写的摘要；为 null/缺失时
+            //（版本 18 之前的 qitem 或作者遗漏项）降级为来源→目标加正文截断。保持
+            // StoryEvent.summary 非 null。
             summary: r.summary ?? `${r.source_session} → ${r.destination_session}: ${truncate(r.body, 100)}`,
             detail: { tier: r.tier, state: r.state },
           });
         }
       } catch {
-        // queue_items absent — skip
+        // queue_items 缺失——跳过
       }
 
-      // queue_transitions (per-state-change log; append-only per PL-004
-      // Phase A schema).
+      // queue_transitions（per-state-change log；按 PL-004 Phase A schema append-only）。
       try {
         const trows = this.db.prepare(
           `SELECT qitem_id, ts, state, transition_note, actor_session, closure_reason
@@ -398,10 +372,10 @@ export class SliceDetailProjector {
           });
         }
       } catch {
-        // queue_transitions absent — skip
+        // queue_transitions 缺失——跳过
       }
 
-      // mission_control_actions (operator verbs; PL-005 Phase A migration 037).
+      // mission_control_actions（操作人员动作；PL-005 阶段 A 迁移 037）。
       try {
         const arows = this.db.prepare(
           `SELECT action_id, acted_at, qitem_id, action_verb, actor_session,
@@ -427,13 +401,12 @@ export class SliceDetailProjector {
           });
         }
       } catch {
-        // mission_control_actions absent — skip
+        // mission_control_actions 缺失——跳过
       }
     }
 
-    // Slice doc edits (mtimes inside the slice folder). v1: no phase tag
-    // — these aren't qitem-bound so they don't trace to a spec step.
-    // UI will group them under "Untagged" or render them without a tag.
+    // 切片文档编辑（切片目录内的 mtime）。v1：无阶段标记，因为它们不与 qitem 绑定，无法追溯到
+    // 规格步骤。UI 会将其归入“未标记”，或不带标记渲染。
     try {
       const sliceDir = slice.slicePath;
       const docEntries = fs.readdirSync(sliceDir, { withFileTypes: true });
@@ -446,16 +419,16 @@ export class SliceDetailProjector {
           kind: "doc.edited",
           actorSession: null,
           qitemId: null,
-          summary: `Doc edited: ${entry.name}`,
+          summary: `文档已编辑：${entry.name}`,
           detail: null,
         });
       }
     } catch {
-      // slice folder unreadable — skip
+      // slice folder 不可读——跳过
     }
 
-    // Proof packet emission — single event per packet using directory mtime.
-    // v1: also untagged (not qitem-bound).
+    // proof packet 发出——每个 packet 一条 event，使用 directory mtime。v1：同样未标记
+    //（不与 qitem 绑定）。
     if (slice.proofPacket) {
       events.push({
         ts: slice.proofPacket.mtime,
@@ -463,7 +436,7 @@ export class SliceDetailProjector {
         kind: "proof_packet.emitted",
         actorSession: null,
         qitemId: null,
-        summary: `Proof packet emitted: ${slice.proofPacket.dirName}`,
+        summary: `Proof packet 已发出：${slice.proofPacket.dirName}`,
         detail: {
           markdownCount: slice.proofPacket.markdownFiles.length,
           screenshotCount: slice.proofPacket.screenshots.length,
@@ -476,16 +449,15 @@ export class SliceDetailProjector {
     return events;
   }
 
-  // --- Acceptance tab ---
+  // --- 验收 tab ---
 
   private buildAcceptance(slice: SliceRecord, readiness: ScopeReadiness): Omit<AcceptancePayload, "currentStep"> {
     const items: AcceptanceItem[] = [];
-    // Parse README + IMPLEMENTATION-PRD + PROGRESS.md for [ ]/[x] checkbox lines.
-    // Source citation = file + 1-based line number so the operator can jump.
+    // 从 README、IMPLEMENTATION-PRD 和 PROGRESS.md 解析 [ ]/[x] 复选框行。来源引用由文件名和
+    // 从 1 开始的行号组成，使操作人员可直接跳转。
     const sliceDir = slice.slicePath;
-    // Scan the SELECTED node file once. Scanning both SPEC.md and README.md on a both-present node
-    // parses the shadowed file too, so every checkbox it shares with the live one becomes a second
-    // acceptance row — a duplicated or stale contract presented as the slice's own.
+    // 只扫描一次已选择的节点文件。若同时扫描并存的 SPEC.md 与 README.md，会连被遮蔽文件也解析，
+    // 使它与当前文件共享的每个复选框都变成第二条验收行，把重复或陈旧契约呈现为切片自身内容。
     const selectedNode = resolveNodeFile(sliceDir);
     const candidateFiles = [
       ...(selectedNode ? [path.basename(selectedNode)] : []),
@@ -493,10 +465,8 @@ export class SliceDetailProjector {
       "PROGRESS.md",
       "IMPLEMENTATION.md",
     ];
-    // VM-006: the PRD bytes are captured during this existing scan — zero new
-    // IO for the proof-contract extraction below. PM dogfood #1: the README
-    // bytes are captured the same way (this scan already reads them) so the
-    // contract extraction can apply the per-section selection.
+    // VM-006：在现有扫描中捕获 PRD 字节，下方证明契约提取不新增 IO。
+    // PM 自用验证 #1：以相同方式捕获 README 字节（本次扫描已读取），使契约提取可应用逐章节选择。
     let prdContent: string | null = null;
     let readmeContent: string | null = null;
     let specContent: string | null = null;
@@ -506,37 +476,30 @@ export class SliceDetailProjector {
       if (!fs.existsSync(full)) continue;
       const content = fs.readFileSync(full, "utf8");
       if (fname === "IMPLEMENTATION-PRD.md") prdContent = content;
-      // SPEC.md and the legacy README.md are the same role — whichever is present carries the
-      // node body the contract extraction below reads.
+      // SPEC.md 与旧 README.md 承担同一角色；存在的文件承载下方契约提取所读取的节点正文。
       if (isNodeFile(fname) && readmeContent === null) readmeContent = content;
-      // KI-5.3-2 second face: SPEC and README captured DISTINCTLY so the
-      // one-homed source selection labels honestly (spec vs readme) while the
-      // node-file precedence (SPEC first) is preserved by the selection order.
+      // KI-5.3-2 第二面：分别捕获 SPEC 与 README，使单一归属的来源选择如实标注
+      //（spec 与 readme），同时由选择顺序保留节点文件优先级（SPEC 优先）。
       if (fname === "SPEC.md") specContent = content;
       if (fname === "README.md") readmeFileContent = content;
-      // qitem-render-driver B — the SHARED logical-checkbox relation (the
-      // same parser Review's proof contract consumes). rawText carries any
-      // joined continuation and IS the VM-006 join key, so acceptance rows
-      // and promised items key off identical bytes by construction; a second
-      // parser here would silently desynchronize the QA-verdict lift.
+      // qitem-render-driver B——共享逻辑复选框关系（评审证明契约使用的同一解析器）。rawText
+      // 携带所有拼接的续行，且正是 VM-006 联结键，因此验收行与承诺项在结构上按相同字节索引；
+      // 此处若使用第二个解析器，会静默破坏 QA 判定提升的同步。
       for (const logical of parseLogicalCheckboxes(content)) {
-        // release-0.4.7 intent-stage (edit 1): scaffold-template placeholder
-        // rows are not acceptance items (shared grammar:
-        // ../scope/scaffold-placeholder.ts).
+        // release-0.4.7 意图阶段（编辑 1）：脚手架模板占位行不是验收项
+        //（共享语法：../scope/scaffold-placeholder.ts）。
         if (isScaffoldPlaceholderText(logical.rawText)) continue;
         items.push({
-          // rawText UNCHANGED — image-bearing rows keep their authored bytes,
-          // preserving the join relation.
+          // rawText 保持不变：带图片的行保留作者字节，从而维持联结关系。
           text: logical.rawText,
           done: logical.checked,
           source: { file: fname, line: logical.sourceLine },
         });
       }
     }
-    // release-0.4.7 intent-stage (edit 2): dedup by normalized text
-    // (casefold + trim). First occurrence wins for BOTH the source jump-link
-    // and the done-state — deterministic via the candidateFiles scan order
-    // (README > IMPLEMENTATION-PRD > PROGRESS > IMPLEMENTATION).
+    // release-0.4.7 意图阶段（编辑 2）：按规范化文本（大小写折叠 + trim）去重。来源跳转链接与
+    // 完成状态均以首次出现项为准，由 candidateFiles 扫描顺序确定
+    //（README > IMPLEMENTATION-PRD > PROGRESS > IMPLEMENTATION）。
     const seenText = new Set<string>();
     const deduped: AcceptanceItem[] = [];
     for (const item of items) {
@@ -545,50 +508,43 @@ export class SliceDetailProjector {
       seenText.add(key);
       deduped.push(item);
     }
-    // release-0.4.7 intent-stage (edit 3): skip the generic scaffold triple
-    // ONLY-WHILE-PRISTINE — all three slice-progress.md literals present,
-    // all unchecked, and they are the ONLY checkbox rows sourced from
-    // PROGRESS.md. ANY check, ANY text edit, or ANY added PROGRESS row makes
-    // them real (arch AR-6: strictest-pristine — over-count noise beats
-    // silent under-count of deliberately-kept items; deliberate-keep stays
-    // expressible by checking or editing any of the three).
+    // release-0.4.7 意图阶段（编辑 3）：仅在原封未动时跳过通用脚手架三项，即三个
+    // slice-progress.md 字面量都存在、均未勾选，且是 PROGRESS.md 唯一的复选框行。任意勾选、
+    // 文本编辑或新增 PROGRESS 行都会使它们成为真实项（架构 AR-6：最严格初始态；多计噪声优于
+    // 静默少计有意保留项，勾选或编辑任一项仍可表达有意保留）。
     const progressRows = deduped.filter((i) => i.source.file === "PROGRESS.md");
-    const pristineTriple =
-      progressRows.length === GENERIC_SCAFFOLD_ACCEPTANCE.length &&
-      progressRows.every((i) => !i.done) &&
-      GENERIC_SCAFFOLD_ACCEPTANCE.every((lit) => progressRows.some((i) => i.text === lit));
+    const pristineTriples = [
+      GENERIC_SCAFFOLD_ACCEPTANCE,
+      LEGACY_GENERIC_SCAFFOLD_ACCEPTANCE,
+    ];
+    const pristineTriple = progressRows.every((i) => !i.done)
+      && pristineTriples.some((triple) =>
+        progressRows.length === triple.length
+        && triple.every((lit) => progressRows.some((i) => i.text === lit)),
+      );
     let finalItems = pristineTriple
       ? deduped.filter((i) => i.source.file !== "PROGRESS.md")
       : deduped;
-    // VM-006 (progress-review-done-coherence): union the done-state for
-    // proof-contract rows — done = checkboxTicked OR qaVerified. Review
-    // derives `verified` from the QA passing verdict while the tick-state
-    // here never moves (`rig proof add` does not tick the authored box), so
-    // the two tabs disagreed about the same obligations.
+    // VM-006（进度、评审与完成一致性）：合并证明契约行的完成状态，即 done =
+    // checkboxTicked OR qaVerified。评审从 QA 通过判定派生 `verified`，而这里的勾选状态
+    // 永远不动（`zrig proof add` 不会勾选作者复选框），因此两个页签曾对同一义务得出
+    // 不同结论。
     //
-    // The join is a MULTIPLICITY-GATED 1:1 association on `textKey`, taken
-    // over the RAW authored text on BOTH sides (`promised.rawText` vs
-    // `item.text`). Raw-on-both is precisely what keeps the join relation
-    // identical to the dedup relation above. Joining the STRIPPED promised
-    // text against the raw row text would need a coarser comparator, and a
-    // coarser relation collapses two distinct rows onto one obligation — the
-    // B1 collision that false-lifted a non-contract row (guard BLOCKING on
-    // predecessor 0ec6411c).
+    // 联结是在 `textKey` 上受多重性守卫控制的 1:1 关联，取自两侧原始作者文本
+    //（`promised.rawText` 与 `item.text`）。两侧都使用原始文本，正是保证联结关系与上方去重关系
+    // 相同的原因。若用剥离后的承诺文本与原始行文本联结，就需要更粗粒度的比较器，而更粗的关系
+    // 会把两个不同行折叠到一个义务，并错误提升非契约行；这就是前代 0ec6411c 的守卫 BLOCKING
+    // 所指出的 B1 冲突。
     //
-    // The 1:1 gate — a key reaching >1 obligation OR >1 row lifts NOTHING —
-    // makes pm's FR-2 invariants structural rather than argued: (1) lift only
-    // via a 1:1 association to a single verified obligation, and (2) the
-    // Progress verified-lift count can never exceed Review's verified count.
-    // Under raw keys the guard's two collisions become distinctions, so the
-    // gate is armed-but-vacuous on real slices; its live purpose is the
-    // degenerate case of two byte-identical authored contract lines, where
-    // fail-closed (stay ACTIVE) beats a coin-flip lift (arch AR-6).
+    // 1:1 守卫：键对应多个义务或多行时不提升任何内容，从结构上保证 PM 的 FR-2 不变量，而非
+    // 依赖论证：(1) 仅通过与单个已验证义务的 1:1 关联提升；(2) 进度中的验证提升数量绝不超过
+    // 评审验证数量。使用原始键时，两种冲突彼此区分，因此守卫在真实切片上启用但不动作；
+    // 它实际用于两条逐字相同作者契约行的退化情况，此时失败关闭（保持 ACTIVE）优于随机提升
+    //（arch AR-6）。
     //
-    // NEVER sets done=false — the author's record is never reversed (FR-3).
-    // PM dogfood #1 — the SAME per-section selection Review compose uses
-    // (one selection rule, one grammar home): an authored README contract
-    // wins over a pristine scaffold-only PRD contract, so the VM-006 lift
-    // joins against the contract the author actually wrote.
+    // 永不设置 done=false，绝不逆转作者记录（FR-3）。PM 自用验证 #1：使用 Review compose
+    // 的同一逐章节选择（一个选择规则、一个语法归属）：已编写 README 契约优先于仍为初始脚手架的
+    // PRD 契约，因此 VM-006 提升会与作者实际编写的契约联结。
     const promised = extractProofContractSelected(prdContent, readmeFileContent, specContent).items;
     if (promised.length > 0) {
       const promisedByKey = new Map<string, number[]>();
@@ -605,19 +561,16 @@ export class SliceDetailProjector {
         if (at) at.push(item);
         else rowsByKey.set(k, [item]);
       }
-      // FS-1 guard (arch-endorsed): buildAcceptance runs per slice across a
-      // whole mission on the Progress tab, so the proof-dir read fires ONLY
-      // when an authored contract still has an unticked row — the union can
-      // only lift, so all-ticked and contract-free slices do ZERO extra IO.
-      // Keyed by the SAME textKey as the join: a guard on a different relation
-      // could skip the read for a row the join would then have lifted.
+      // FS-1 guard（arch-endorsed）：buildAcceptance 在“进度”tab 上跨整个 mission 按 slice 运行，
+      // 因此只有 authored contract 仍有 unticked row 时才读取 proof-dir——union 只能 lift，所以
+      // all-ticked 与 contract-free slice 不产生额外 IO。使用与 join 相同的 textKey：若 guard 使用
+      // 不同 relation，可能跳过 join 原本会 lift 的 row。
       const hasUntickedContractRow = finalItems.some(
         (i) => !i.done && promisedByKey.has(textKey(i.text)),
       );
       if (hasUntickedContractRow) {
-        // The ONE reader Review uses (arch A1 one-home) + Review's OWN join:
-        // composeDelivered binds `verified` to the promised INDEX, and we read
-        // items[i].verified back — the verdict is never re-derived here.
+        // Review 使用的唯一 reader（arch A1 one-home）+ Review 自己的 join：composeDelivered 将
+        // `verified` 绑定到 promised index，这里读取 items[i].verified——绝不再次派生 verdict。
         const delivered = composeDelivered(promised, readProofArtifacts(sliceDir));
         for (const item of finalItems) {
           if (item.done) continue;
@@ -635,14 +588,14 @@ export class SliceDetailProjector {
       }
     }
     if (readiness.configured) {
-      // Current acceptance is the selected contract. Other checkbox rows remain historical sources.
+      // 当前 acceptance 是已选择 contract。其他 checkbox row 保持为 historical source。
       finalItems = readiness.items.map(item => ({ text: item.text, done: !readiness.issues.length && item.state === "accepted", source: item.source }));
     }
     const total = finalItems.length;
     const done = finalItems.filter((i) => i.done).length;
     const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-    const closureCallout = readiness.configured ? `Current proof readiness: ${readiness.state} · ${readiness.revision.slice(0, 12)}` : slice.status === "done"
-      ? `Goal Met (status: ${slice.rawStatus ?? "done"})`
+    const closureCallout = readiness.configured ? `当前 proof readiness：${readiness.state} · ${readiness.revision.slice(0, 12)}` : slice.status === "done"
+      ? `目标已达成（status：${slice.rawStatus ?? "done"}）`
       : null;
     return {
       totalItems: total,
@@ -653,7 +606,7 @@ export class SliceDetailProjector {
     };
   }
 
-  // --- Decisions tab ---
+  // --- 决策 tab ---
 
   private buildDecisions(slice: SliceRecord): DecisionRow[] {
     if (slice.qitemIds.length === 0) return [];
@@ -686,7 +639,7 @@ export class SliceDetailProjector {
     }
   }
 
-  // --- Docs tab ---
+  // --- 文档 tab ---
 
   private buildDocsTree(slice: SliceRecord): DocsTreeEntry[] {
     const sliceDir = slice.slicePath;
@@ -717,7 +670,7 @@ export class SliceDetailProjector {
             relPath: rel,
           });
         } catch {
-          // skip
+          // 跳过
         }
       }
     };
@@ -726,14 +679,14 @@ export class SliceDetailProjector {
     return out;
   }
 
-  /** Read a single doc file from the slice folder for the Docs tab. Returns null if missing or outside the slice folder. */
+  /** 从 slice folder 读取单个 doc 文件供文档 tab 使用。文件缺失或超出 slice folder 时返回 null。 */
   readDoc(sliceName: string, relPath: string): string | null {
     const slice = this.indexer.get(sliceName);
     if (!slice) return null;
     const sliceDir = slice.slicePath;
     const resolved = path.resolve(sliceDir, relPath);
     if (!resolved.startsWith(`${path.resolve(sliceDir)}${path.sep}`) && resolved !== path.resolve(sliceDir)) {
-      // Path-traversal guard.
+      // 路径穿越守卫。
       return null;
     }
     try {
@@ -743,7 +696,7 @@ export class SliceDetailProjector {
     }
   }
 
-  // --- Tests / Verification tab ---
+  // --- 测试 / 验证 tab ---
 
   private buildTests(proofPacket: SliceProofPacket | null): SliceDetailPayload["tests"] {
     if (!proofPacket) {
@@ -780,9 +733,8 @@ export class SliceDetailProjector {
   }
 
   /**
-   * Read a proof-packet asset (markdown content or check existence of binary
-   * files like screenshots/videos). Path-traversal guarded by absPath prefix
-   * check.
+   * 读取 proof-packet asset（Markdown content，或检查 screenshot/video 等 binary file 是否
+   * 存在）。通过 absPath prefix 检查防止 path traversal。
    */
   readProofAsset(proofPacket: SliceProofPacket, relPath: string): string | null {
     const resolved = path.resolve(proofPacket.absPath, relPath);
@@ -796,7 +748,7 @@ export class SliceDetailProjector {
     }
   }
 
-  /** Returns the absolute on-disk path of a proof asset for binary serving. Path-traversal guarded. */
+  /** 返回 proof asset 的磁盘绝对路径以提供 binary serving。带 path-traversal guard。 */
   resolveProofAssetPath(proofPacket: SliceProofPacket, relPath: string): string | null {
     const resolved = path.resolve(proofPacket.absPath, relPath);
     if (!resolved.startsWith(`${path.resolve(proofPacket.absPath)}${path.sep}`)) {
@@ -811,7 +763,7 @@ export class SliceDetailProjector {
     }
   }
 
-  // --- Topology tab ---
+  // --- 拓扑 tab ---
 
   private buildTopology(slice: SliceRecord): Omit<TopologyPayload, "specGraph"> {
     if (slice.qitemIds.length === 0) {
@@ -835,9 +787,8 @@ export class SliceDetailProjector {
         }
       }
 
-      // Resolve rig display names from the rigs table when possible. If the
-      // rig isn't registered locally (e.g., session names from another host),
-      // we keep the parsed key as a placeholder rigId.
+      // 尽可能从 rigs table 解析工作组 display name。若工作组未在本地注册（例如来自其他 host 的
+      // session name），则保留 parsed key 作为 placeholder rigId。
       const rigNames = new Map<string, string>();
       try {
         const rigRows = this.db.prepare(
@@ -845,7 +796,7 @@ export class SliceDetailProjector {
         ).all() as Array<{ id: string; name: string }>;
         for (const r of rigRows) rigNames.set(r.name, r.id);
       } catch {
-        // rigs table unavailable — fall back to parsed key as both id and name.
+        // rigs table 不可用——回退为将 parsed key 同时用作 id 与 name。
       }
 
       const affectedRigs: TopologyRigEntry[] = [];
@@ -865,13 +816,12 @@ export class SliceDetailProjector {
     }
   }
 
-  // v1: classifyPhase() heuristic removed — phase tagging is now
-  // spec-driven (via workflow_step_trails join in buildTrailQitemToStepMap)
-  // or null (untagged) when no workflow_instance is bound. The v0
-  // hardcoded legacy phase taxonomy ("discovery"/"product-lab"/"delivery"/
-  // "lifecycle"/"qa"/"other" inferred from session-name substrings) is
-  // gone. Per slices/slice-story-view-v1/IMPLEMENTATION-PRD.md § Write
-  // Set Sketch — explicit deletion noted in commit message.
+  // v1：已移除 classifyPhase() heuristic——phase tagging 现在由 spec 驱动（通过
+  // buildTrailQitemToStepMap 中的 workflow_step_trails join）；未绑定 workflow_instance 时为 null
+  //（未标记）。v0 硬编码的旧阶段分类（根据会话名子串推断的
+  // "discovery"/"product-lab"/"delivery"/"lifecycle"/"qa"/"other"）已移除。遵循
+  // slices/slice-story-view-v1/IMPLEMENTATION-PRD.md § 写集草图，提交消息已明确
+  // 记录删除。
 }
 
 function truncate(s: string, n: number): string {
@@ -880,9 +830,8 @@ function truncate(s: string, n: number): string {
 }
 
 function sessionRigKey(session: string): string {
-  // Sessions are usually "<member>@<rig>" — the rig portion is the key.
-  // Non-canonical names (no @, legacy, malformed) are their own rig key.
-  // OPR.0.4.6.MH1 FR-8: the shared parse contract (greedy first-@ rig).
+  // Session 通常为 "<member>@<rig>"——rig 部分是 key。non-canonical name（无 @、legacy、
+  // malformed）自身作为 rig key。OPR.0.4.6.MH1 FR-8：共享 parse contract（从首个 @ 贪婪取 rig）。
   return sessionRigOf(session) ?? session;
 }
 

@@ -3,11 +3,11 @@ import { terminalExplorerRows } from "./terminals/terminal-model.js";
 import { CONFIG_CATEGORIES } from "./config/config-model.js";
 import { availableTabs } from "./commands/registry.js";
 import { DEFAULT_TIME_ZONE, resolveTimeZone } from "./time.js";
-// ONE instance-scoped view-state with ONE mutation path (dispatch) — PIN 1.
-// No module-level state anywhere in this file (FR-13). The section set is a
-// data registry, not a switch (FR-12). Ported from the Phase-0 spike verbatim
-// in shape: the parity-by-construction property lives in the reducer resolving
-// 'activate' against the SAME row model the renderer draws.
+// 一个实例范围视图状态带一个变更路径（dispatch）——PIN 1。
+// 此文件中无任何模块级状态（FR-13）。分区集是
+// 数据注册，非 switch（FR-12）。从 Phase-0 spike 逐字移植
+// 形状：构造对等属性存在于 reducer 解析
+// 'activate' 上，针对渲染器绘制的相同行模型。
 import type {
   Action,
   DrillSegment,
@@ -42,7 +42,7 @@ export interface CreateViewStateOptions {
 
 export function createViewState(options: CreateViewStateOptions): ViewStateStore {
   const { instanceId, sections = defaultSections(), getSnapshot = emptySnapshot } = options;
-  if (!instanceId) throw new Error("createViewState requires an instanceId (A2: instances are addressable)");
+  if (!instanceId) throw new Error("createViewState 需要 instanceId（A2：实例可寻址）");
 
   let state: ViewState = {
     instanceId,
@@ -59,10 +59,10 @@ export function createViewState(options: CreateViewStateOptions): ViewStateStore
     selection: 0,
     runningOf: null,
     viewTab: "table",
-    // FOUNDER FLIP (2026-08-04, amended spec a4ae4b24/0a989c0d): clean-box
-    // WAS solved (record at 99433fde) but font-dependence = brittleness —
-    // HATCHET is the default render; braille stays fully available behind
-    // the style verb (`style braille`), test-pinned both directions.
+    // 创建者翻转（2026-08-04，修订规范 a4ae4b24/0a989c0d）：净框
+    // 已解决（记录在 99433fde）但字体依赖 = 脆弱——
+    // HATCHET 是默认渲染；盲文仍完全可用，通过
+    // 样式动词（`style braille`），双向测试固定。
     graphStyle: "hatchet",
     contentOffset: 0,
     contentMaxOffset: 0,
@@ -90,10 +90,10 @@ export function createViewState(options: CreateViewStateOptions): ViewStateStore
     const previous = state;
     if (["attention-category", "attention-open", "terminal-preview", "project-select", "jump", "drill", "cross", "tab", "scopes-mission-open", "scopes-open", "health-open", "execution-open", "recent-open", "timezone", "config-category", "config-setting"].includes(action.type)) state = { ...state, file: null, externalUrl: null, recentOpen: null, timeZoneHelp: false, attentionOpen: null };
     state = reduce(state, action, getSnapshot());
-    // Connections is a side trip from work, including explorer/palette entry.
+    // 连接是工作的旁路，包括资源管理器/面板入口。
     if (action.type === "jump" && ![...SYSTEM_SECTIONS, "needs"].includes(action.section) && ![...SYSTEM_SECTIONS, "needs"].includes(previous.section)) state.history = [];
-    // A filter changes the current view; clearing it must not add the detail
-    // being left back onto history (Escape would then cycle forever).
+    // 过滤器变更当前视图；清除它绝不能将正在离开的详情
+    // 加回历史（Esc 将无限循环）。
     else if (!["back", "execution-close", "filter"].includes(action.type) && !state.lastError && location(previous) !== location(state)) {
       state.history = [...(previous.history ?? []), navigationFrame(previous)].slice(-50);
     }
@@ -127,7 +127,7 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
       return syncSelection({ ...resetContent({ ...next, section: "needs", attentionOpen: action.id, file: null, externalUrl: null, healthOpen: null }), focusedPane: "content" }, snap);
     case "attention-source": {
       const detail = snap.attentionRead?.detail;
-      if (!detail || detail.item.id !== next.attentionOpen || !detail.files.some(f => f.path === action.path)) return { ...next, lastError: "Source is no longer in the current Attention read" };
+      if (!detail || detail.item.id !== next.attentionOpen || !detail.files.some(f => f.path === action.path)) return { ...next, lastError: "源已不在当前待关注读取中" };
       const hash = action.path.indexOf("#");
       const target = fileTargetForPath(hash < 0 ? action.path : action.path.slice(0, hash), snap.fileRoots ?? []);
       if (target && hash >= 0) target.anchor = action.path.slice(hash + 1);
@@ -137,7 +137,7 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
     case "file-open":
       return { ...resetContent({ ...next, file: action.target, externalUrl: null, healthOpen: null, recentOpen: null, timeZoneHelp: false }), focusedPane: "content" };
     case "print-for-copy":
-      return state; // a terminal side effect run by main's perform; never a view-state change
+      return state; // 终端副作用由 main 的 perform 运行；绝非视图状态变更
     case "external-open":
       return { ...resetContent({ ...next, externalUrl: action.url, file: null, healthOpen: null, recentOpen: null, timeZoneHelp: false }), focusedPane: "content" };
     case "time-setting":
@@ -146,19 +146,19 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
       return resetContent({ ...next, timeZoneHelp: true, viewTab: "table", healthOpen: null });
     case "recent-open": {
       const row = snap.recentTransitions?.find((r) => r.transitionId === action.transitionId);
-      return row ? resetContent({ ...next, recentOpen: { ...row }, healthOpen: null }) : { ...next, lastError: "Event is outside the served Recent window" };
+      return row ? resetContent({ ...next, recentOpen: { ...row }, healthOpen: null }) : { ...next, lastError: "事件不在已服务近期窗口内" };
     }
     case "back": {
       const history = [...(state.history ?? [])];
       const frame = history.pop();
-      return frame ? { ...next, ...frame, history } : { ...next, notice: "No previous view" };
+      return frame ? { ...next, ...frame, history } : { ...next, notice: "无先前视图" };
     }
     case "noop":
       return next;
     case "error":
       return { ...next, lastError: action.message };
     case "config-category": {
-      if (!CONFIG_CATEGORIES.some((c) => c.id === action.category)) return { ...next, lastError: "Unknown CONFIG category" };
+      if (!CONFIG_CATEGORIES.some((c) => c.id === action.category)) return { ...next, lastError: "未知配置类别" };
       return syncSelection(resetContent({ ...next, section: "config", drill: [], viewTab: "table", configCategory: action.category, configKey: null, filter: "", healthOpen: null }), snap);
     }
     case "config-setting":
@@ -167,7 +167,7 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
       next.terminalView = null;
       next.terminalPage = 0;
       if (action.section === "needs") { next.attentionCategory = null; next.attentionOpen = null; next.file = null; next.externalUrl = null; next.recentOpen = null; next.timeZoneHelp = false; }
-      // scopes: jumping anywhere (incl. back to :scopes) closes the opened slice.
+      // scopes：跳转到任何位置（包括返回 :scopes）关闭已打开切片。
       if (action.section === "scopes") next.project = null;
       next.scopesMission = null;
       next.scopesSelected = null;
@@ -176,7 +176,7 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
       next.configCategory = null;
       next.configKey = null;
       if (!state.sections.some((s) => s.name === action.section))
-        return { ...next, lastError: `unknown section "${action.section}"` };
+        return { ...next, lastError: `未知分区 "${action.section}"` };
       return syncSelection(
         resetContent({ ...next, section: action.section, drill: [], filter: "", runningOf: null, viewTab: "table" }),
         snap,
@@ -184,20 +184,20 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
     }
     case "project-select": {
       const project = snap.projects?.projects.find(p => p.id === action.id);
-      if (!project) return { ...next, lastError: `Project ${action.id} is not in the current catalog` };
+      if (!project) return { ...next, lastError: `项目 ${action.id} 不在当前目录中` };
       return syncSelection(resetContent({ ...next, section: "scopes", project: { id: project.id, root: project.root }, drill: [], scopesMission: null, scopesSelected: null, executionOpen: null, scopesNarrative: false, filter: "", expanded: [], viewTab: "table" }), snap);
     }
     case "project-source": {
-      if (!state.project || snap.projectRead?.id !== state.project.id || snap.projectRead?.root !== state.project.root) return { ...next, lastError: "Selected project read is pending" };
+      if (!state.project || snap.projectRead?.id !== state.project.id || snap.projectRead?.root !== state.project.root) return { ...next, lastError: "所选项目读取挂起" };
       const entry = snap.projects?.projects.find(p => p.id === state.project!.id && p.root === state.project!.root);
       const missionSource = state.scopesMission ? snap.projectSources?.[state.scopesMission] : null;
       const sliceDir = state.scopesSelected?.slice ?? snap.sliceDetailName;
       const source = sliceDir && state.scopesMission ? snap.scopes?.find(m => m.mission === state.scopesMission)?.slices.find(s => s.dirName === sliceDir)?.sourcePath : missionSource ?? entry?.sourcePath;
-      if (!source) return { ...next, lastError: "Selected source is unavailable" };
+      if (!source) return { ...next, lastError: "所选源不可用" };
       return reduce(next, { type: "file-open", target: fileTargetForPath(source, snap.fileRoots ?? []) ?? { root: "", path: source } }, snap);
     }
     case "scopes-mission-open": {
-      if (snap.projects !== undefined && !state.project) return { ...next, lastError: "Choose a project first" };
+      if (snap.projects !== undefined && !state.project) return { ...next, lastError: "请先选择项目" };
       const key = `scopes-mission:${action.mission}`;
       const expanded = state.expanded.includes(key) ? state.expanded : [...state.expanded, key];
       return syncSelection(resetContent({ ...next, section: "scopes", drill: [], runningOf: null, viewTab: "table", filter: "", scopesMission: action.mission, scopesSelected: null, executionOpen: null, healthOpen: null, expanded }), snap);
@@ -209,7 +209,7 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
     case "scopes-narrative":
       return { ...next, scopesNarrative: !next.scopesNarrative };
     case "execution-open":
-      if (next.section !== "scopes" || !next.scopesMission) return { ...next, lastError: "Open a mission before following its workflow or work packet" };
+      if (next.section !== "scopes" || !next.scopesMission) return { ...next, lastError: "先打开任务目标再跟随其工作流或工作包" };
       return resetContent({ ...next, executionOpen: action.key });
     case "execution-close":
       return state.history?.length ? reduce(next, { type: "back" }, snap) : resetContent({ ...next, executionOpen: null });
@@ -229,10 +229,10 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
       return { ...next, palette: { ...next.palette, selection: sel } };
     }
     case "style": {
-      // slice-17: validated against the graph-style registry — the ONE
-      // failure surface for every input adapter (same rule as sections)
+      // slice-17：针对图样式注册表验证——每个输入适配器的
+      // 唯一失败面（与分区相同规则）
       if (!(GRAPH_STYLE_NAMES as readonly string[]).includes(action.name))
-        return { ...next, lastError: `unknown style "${action.name}" — known: ${GRAPH_STYLE_NAMES.join(", ")}` };
+        return { ...next, lastError: `未知样式 "${action.name}"——已知: ${GRAPH_STYLE_NAMES.join(", ")}` };
       return { ...next, graphStyle: action.name };
     }
     case "toggle-expand": {
@@ -242,11 +242,11 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
       return { ...next, expanded };
     }
     case "tab": {
-      // 5.2 Wave B — PULSE is a FLEET-WIDE top-level view (the mock's tab set),
-      // reachable from ANY content context, unlike the section-scoped tabs.
+      // 5.2 Wave B——PULSE 是全组顶级视图（mock 的标签集），
+      // 从任何内容上下文可达，不同于分区范围标签。
       if (action.tab === "pulse") return resetContent({ ...next, viewTab: "pulse", healthOpen: null });
       const allowed = availableTabs(state, snap);
-      if (!allowed.includes(action.tab)) return { ...next, lastError: `tab ${action.tab} is not available in this content context` };
+      if (!allowed.includes(action.tab)) return { ...next, lastError: `标签 ${action.tab} 在此内容上下文中不可用` };
       return { ...resetContent({ ...next, viewTab: action.tab }), healthOpen: null };
     }
     case "content-scroll":
@@ -261,7 +261,7 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
     case "copy-mode":
       return { ...next, copyMode: action.on ?? !state.copyMode };
     case "layout":
-      // Do not clamp a restored bookmark against another page's in-flight snapshot.
+      // 不要将恢复书签钳制在另一页的在飞快照上。
       if (state.file && JSON.stringify(state.file) !== JSON.stringify(snap.fileRead?.target)) return next;
       if (!state.file && state.section === "specs" && !snap.specsLoaded && (snap.fileRead || snap.config)) return next;
       return {
@@ -275,8 +275,8 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
       return { ...next, footerOn: action.on ?? !state.footerOn };
     case "act":
     case "startup":
-      // Acts are daemon writes executed by the driver loop, never view-state
-      // mutations — the view is untouched; the loop reports via 'notice'.
+      // 动作是后台服务写入，由驱动循环执行，绝非视图状态
+      // 变更——视图不被触碰；循环通过 'notice' 报告。
       return next;
     case "notice":
       return { ...next, notice: action.message };
@@ -290,10 +290,10 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
       return { ...next, selection: Math.min(Math.max(target, 0), count - 1) };
     }
     case "activate": {
-      // Enter activates the selected explorer row — resolved against the SAME
-      // row model the renderer draws, so keyboard and mouse cannot diverge.
+      // 回车激活所选资源管理器行——针对渲染器绘制的相同
+      // 行模型解析，因此键盘和鼠标不会分歧。
       const row = computeExplorerRows(state, snap)[state.selection];
-      if (!row) return { ...next, lastError: "nothing selected" };
+      if (!row) return { ...next, lastError: "未选择任何项" };
       return reduce(next, row.action, snap);
     }
     case "drill": {
@@ -301,9 +301,9 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
       if (drilled.lastError) return drilled;
       const sectionState = clearScopeCoordinatesOnSectionChange(state, drilled);
       const spec = action.resource === "spec" ? findSpec(snap, action.name) : null;
-      // filters are VIEW-scoped: a drill that crosses sections clears the old
-      // section's filter (founder direct-drive catch — a specs filter leaked
-      // into the topology table and blanked it)
+      // 过滤器是视图范围的：跨分区的钻取清除旧
+      // 分区的过滤器（创建者直接驱动捕获——规范过滤器泄漏
+      // 到拓扑表并将其置空）
       const filter = drilled.section === state.section ? drilled.filter : "";
       return syncSelection({ ...resetContent({ ...sectionState, filter, viewTab: spec?.kind === "rig" ? "configuration" : "table" }), healthOpen: null }, snap);
     }
@@ -315,7 +315,7 @@ function reduce(state: ViewState, action: Action, snap: FleetSnapshot): ViewStat
       return syncSelection({ ...sectionState, filter, healthOpen: null }, snap);
     }
     default:
-      return { ...next, lastError: "unknown action" };
+      return { ...next, lastError: "未知动作" };
   }
 }
 
@@ -338,19 +338,19 @@ function resetContent(state: ViewState): ViewState {
   return { ...state, contentOffset: 0, contentMaxOffset: 0, contentTargetCount: 0, contentSelection: 0, focusedPane: "explorer" };
 }
 
-/** The founder scroll fix (class-(b) focus-model defect): on a SCROLLABLE spec
- *  detail the body IS the meaningful surface, so reflexive ↑↓ scroll it —
- *  while the explorer holds focus (focus resets to explorer on every
- *  drill, which is why the reflexive keys used to drive the hidden tree). Gated
- *  on real scrollability (contentMaxOffset), so a non-overflowing spec detail
- *  keeps its link-hop / explorer behavior. The key ROUTING (input.ts) and the
- *  footer/indicator affordances (render.ts) both read this ONE predicate, so
- *  the hint can never again promise a gesture the keys don't perform. */
+/** 创建者滚动修复（类-(b) 焦点模型缺陷）：在可滚动规范
+ *  详情上，正文是有意义的面，因此反射式 ↑↓ 滚动它——
+ *  而资源管理器持有焦点（每次
+ *  钻取焦点重置到资源管理器，这就是反射式键过去驱动隐藏树的原因）。门控
+ *  在真实可滚动性（contentMaxOffset）上，因此非溢出规范详情
+ *  保留其链接跳转/资源管理器行为。键路由（input.ts）和
+ *  页脚/指示器提示（render.ts）都读取这个谓词，因此
+ *  提示绝不能再次承诺键不执行的手势。 */
 export function specDetailArrowsScroll(state: ViewState): boolean {
   return (!!state.file || !!state.externalUrl || (state.section === "specs" && state.drill.length > 0) || (state.section === "config" && !!state.configKey)) && state.contentMaxOffset > 0 && state.focusedPane !== "content";
 }
 
-/** The explorer key for the state's current location (drill leaf or section). */
+/** 状态当前位置的资源管理器键（钻取叶或分区）。 */
 export function locationKey(state: ViewState): string {
   if (state.section === "system") return "system:health";
   if (state.section === "terminals" && state.terminalView) return `terminal:${state.terminalView}`;
@@ -378,8 +378,8 @@ export function locationKey(state: ViewState): string {
   }
 }
 
-/** ROUND-4 items 2-4: after navigation the explorer highlight lands ON the
- * opened item and STAYS there — auto-expanding whatever level hides it. */
+/** ROUND-4 条目 2-4：导航后资源管理器高亮落在
+ * 已打开项上并停留——自动展开隐藏它的任何层级。 */
 function syncSelection(state: ViewState, snap: FleetSnapshot): ViewState {
   const expanded = new Set(state.expanded);
   const names = new Map(state.drill.map((seg) => [seg.kind, seg.name]));
@@ -396,7 +396,7 @@ function syncSelection(state: ViewState, snap: FleetSnapshot): ViewState {
   return index >= 0 ? { ...withExpansion, selection: index } : withExpansion;
 }
 
-// --- snapshot lookups (pure; no daemon calls here) ---
+// --- 快照查找（纯；此处无后台服务调用） ---
 
 function agentMatches(snap: FleetSnapshot, name: string, target?: { host: string; rig?: string; pod?: string }) {
   const matches = [];
@@ -418,7 +418,7 @@ export function findSpec(snap: FleetSnapshot, name: string) {
   return snap.specs.find((s) => s.name === name) ?? null;
 }
 
-/** Joins a Needs-You target (a session name) back to the topology agent. */
+/** 将需要你目标（会话名）联接回拓扑智能体。 */
 export function findAgentBySession(snap: FleetSnapshot, session: string, hostId?: string) {
   const matches = [];
   for (const host of snap.hosts)
@@ -456,7 +456,7 @@ export function agentsRunningSpecTargets(snap: FleetSnapshot, specName: string) 
 function drillTo(state: ViewState, resource: string, name: string, snap: FleetSnapshot, target?: { host: string; rig?: string; pod?: string }): ViewState {
   switch (resource) {
     case "host": {
-      if (!snap.hosts.some((h) => h.name === name)) return { ...state, lastError: `no such host "${name}"` };
+      if (!snap.hosts.some((h) => h.name === name)) return { ...state, lastError: `无此主机 "${name}"` };
       return { ...state, section: "topology", drill: [{ kind: "host", name }], selection: 0, runningOf: null };
     }
     case "rig": {
@@ -464,9 +464,9 @@ function drillTo(state: ViewState, resource: string, name: string, snap: FleetSn
       const rigName = qualified?.at(-1) ?? name;
       const hostName = qualified?.[0] ?? target?.host;
       const matches = rigMatches(snap, rigName, hostName);
-      if (matches.length > 1) return { ...state, lastError: `ambiguous rig "${name}" — use rig <host>/<rig>` };
+      if (matches.length > 1) return { ...state, lastError: `工作组歧义 "${name}"——使用 rig <主机>/<工作组>` };
       const found = matches[0];
-      if (!found) return { ...state, lastError: `no such rig "${name}"` };
+      if (!found) return { ...state, lastError: `无此工作组 "${name}"` };
       return {
         ...state,
         section: "topology",
@@ -488,7 +488,7 @@ function drillTo(state: ViewState, resource: string, name: string, snap: FleetSn
         for (const rig of host.rigs)
           for (const pod of rig.pods)
             if (pod.name === podName && (!hostName || host.name === hostName) && (!rigName || rig.name === rigName)) matches.push({ host, rig, pod });
-      if (matches.length > 1) return { ...state, lastError: `ambiguous pod "${name}" — use pod <host>/<rig>/<pod>` };
+      if (matches.length > 1) return { ...state, lastError: `席位歧义 "${name}"——使用 pod <主机>/<工作组>/<席位>` };
       const found = matches[0];
       if (found) return {
         ...state,
@@ -501,16 +501,16 @@ function drillTo(state: ViewState, resource: string, name: string, snap: FleetSn
         selection: 0,
         runningOf: null,
       };
-      return { ...state, lastError: `no such pod "${name}"` };
+      return { ...state, lastError: `无此席位 "${name}"` };
     }
     case "agent": {
       const qualified = !target ? parseQualifiedAgent(name) : null;
       const agentName = qualified?.name ?? name;
       const exactTarget = qualified?.target ?? target;
       const matches = agentMatches(snap, agentName, exactTarget);
-      if (matches.length > 1) return { ...state, lastError: `ambiguous agent "${name}" — use agent <host>/<rig>/<pod>/<agent>` };
+      if (matches.length > 1) return { ...state, lastError: `智能体歧义 "${name}"——使用 agent <主机>/<工作组>/<席位>/<智能体>` };
       const found = matches[0];
-      if (!found) return { ...state, lastError: `no such agent "${name}"` };
+      if (!found) return { ...state, lastError: `无此智能体 "${name}"` };
       const drill: DrillSegment[] = [
         { kind: "host", name: found.host.name },
         { kind: "rig", name: found.rig.name },
@@ -520,13 +520,13 @@ function drillTo(state: ViewState, resource: string, name: string, snap: FleetSn
       return { ...state, section: "topology", drill, selection: 0, runningOf: null };
     }
     case "spec": {
-      // Another section may intentionally omit Specs. Its absence there is not
-      // evidence that this source is missing; judge after the catalog read.
-      if (snap.specsLoaded && !findSpec(snap, name)) return { ...state, lastError: `no such spec "${name}"` };
+      // 另一分区可能有意省略规范。其在那里缺失不是
+      // 此源缺失的证据；在目录读取后判断。
+      if (snap.specsLoaded && !findSpec(snap, name)) return { ...state, lastError: `无此规范 "${name}"` };
       return { ...state, section: "specs", drill: [{ kind: "spec", name }], selection: 0, runningOf: null };
     }
     default:
-      return { ...state, lastError: `unknown resource "${resource}"` };
+      return { ...state, lastError: `未知资源 "${resource}"` };
   }
 }
 
@@ -546,10 +546,10 @@ function crossNav(state: ViewState, kind: "spec-of" | "running", name: string, s
     const qualified = !target ? parseQualifiedAgent(name) : null;
     const agentName = qualified?.name ?? name;
     const matches = agentMatches(snap, agentName, qualified?.target ?? target);
-    if (matches.length > 1) return { ...state, lastError: `ambiguous agent "${name}" — use spec-of <host>/<rig>/<pod>/<agent>` };
+    if (matches.length > 1) return { ...state, lastError: `智能体歧义 "${name}"——使用 spec-of <主机>/<工作组>/<席位>/<智能体>` };
     const found = matches[0];
-    if (!found) return { ...state, lastError: `no such agent "${name}"` };
-    if (!findSpec(snap, found.agent.spec)) return { ...state, lastError: `spec "${found.agent.spec}" not in the library` };
+    if (!found) return { ...state, lastError: `无此智能体 "${name}"` };
+    if (!findSpec(snap, found.agent.spec)) return { ...state, lastError: `规范 "${found.agent.spec}" 不在库中` };
     return resetContent({
       ...state,
       section: "specs",
@@ -559,12 +559,12 @@ function crossNav(state: ViewState, kind: "spec-of" | "running", name: string, s
       viewTab: "table",
     });
   }
-  if (!findSpec(snap, name)) return { ...state, lastError: `no such spec "${name}"` };
+  if (!findSpec(snap, name)) return { ...state, lastError: `无此规范 "${name}"` };
   return resetContent({ ...state, section: "topology", drill: [], runningOf: name, filter: "", selection: 0, viewTab: "table" });
 }
 
-// The explorer row model — pure function of (state, snapshot), shared by the
-// reducer ('activate') and the renderer (drawing + hit-map). One source of truth.
+// 资源管理器行模型——(状态, 快照) 的纯函数，被
+// reducer（'activate'）和渲染器（绘制 + 命中图）共享。一个事实源。
 export function computeExplorerRows(state: ViewState, snap: FleetSnapshot): ExplorerRow[] {
   const rows: ExplorerRow[] = [];
   for (const section of state.sections) {
@@ -572,14 +572,20 @@ export function computeExplorerRows(state: ViewState, snap: FleetSnapshot): Expl
     if (section.name === "config" || section.name === "connections") continue;
     const label =
       section.name === "topology"
-        ? "TOPOLOGY"
+        ? "拓扑"
         : section.name === "specs"
-          ? "SPECS"
+          ? "规范"
           : section.name === "needs"
-            ? "FEED"
-            : section.name === "scopes" ? "PROJECTS" : section.name.toUpperCase();
-    // A section changes view but has no independent collapse state. Do not draw
-    // a disclosure glyph that cannot be toggled.
+            ? "待关注"
+            : section.name === "scopes"
+              ? "项目"
+              : section.name === "terminals"
+                ? "终端"
+                : section.name === "system"
+                  ? "系统"
+                  : section.name.toUpperCase();
+    // 分区变更视图但无独立折叠状态。不绘制
+    // 无法切换的披露字形。
     rows.push({ label, action: { type: "jump", section: section.name }, key: `section:${section.name}` });
     if (!active) continue;
     if (section.name === "terminals") {
@@ -587,11 +593,11 @@ export function computeExplorerRows(state: ViewState, snap: FleetSnapshot): Expl
       continue;
     }
     if (section.name === "system") {
-      rows.push({ label: "  Health", key: "system:health", action: { type: "jump", section: "system" } },
-        { label: "  Configuration", key: "section:config", action: { type: "jump", section: "config" } });
+      rows.push({ label: "  健康", key: "system:health", action: { type: "jump", section: "system" } },
+        { label: "  配置", key: "section:config", action: { type: "jump", section: "config" } });
       if (state.section === "config") rows.push(...CONFIG_CATEGORIES.map((c) => ({ label: "    " + c.label, key: `config:${c.id}`, action: { type: "config-category" as const, category: c.id } })));
-      rows.push({ label: "  Connections", key: "section:connections", action: { type: "jump", section: "connections" } });
-      if (state.history?.length) rows.push({ label: "  Back", key: "system:back", action: { type: "back" } });
+      rows.push({ label: "  连接", key: "section:connections", action: { type: "jump", section: "connections" } });
+      if (state.history?.length) rows.push({ label: "  返回", key: "system:back", action: { type: "back" } });
       continue;
     }
     if (section.name === "scopes") {
@@ -601,16 +607,16 @@ export function computeExplorerRows(state: ViewState, snap: FleetSnapshot): Expl
         if (state.project?.id === project.id && state.project.root === project.root && snap.projectRead?.id === project.id && snap.projectRead.root === project.root)
           rows.push(...scopesExplorerRows(snap.scopes, new Set(state.expanded), "    "));
       }
-      if (state.history?.length) rows.push({ label: "  Back", key: "project:back", action: { type: "back" } });
+      if (state.history?.length) rows.push({ label: "  返回", key: "project:back", action: { type: "back" } });
       continue;
     }
     if (section.name === "topology") {
-      // ROUND-4 item 4: rigs + pods by default; agents appear when a pod is
-      // expanded (drilling a pod expands it) — "tighter visually".
+      // ROUND-4 条目 4：默认工作组 + 席位；智能体在席位
+      // 展开时出现（钻取席位展开它）——"视觉更紧凑"。
       const expanded = new Set(state.expanded);
       for (const host of snap.hosts) {
         rows.push({
-          label: `  ▾ ${host.name}${host.reachable ? "" : " (unreachable)"}`,
+          label: `  ▾ ${host.name}${host.reachable ? "" : " (不可达)"}`,
           action: { type: "drill", resource: "host", name: host.name },
           key: `host:${host.name}`,
         });
@@ -631,9 +637,9 @@ export function computeExplorerRows(state: ViewState, snap: FleetSnapshot): Expl
               key: podKey,
             });
             if (!open) continue;
-            // S19 round-4 (guard finding 4): the glyph derives from the SERVED
-            // status — active/idle/attention/unknown are visibly distinct and
-            // an offline seat is never dressed as a live ●
+            // S19 round-4（守卫发现 4）：字形来自已服务
+            // 状态——活跃/空闲/待关注/未知视觉区分，
+            // 离线席位绝不装扮为活跃 ●
             for (const agent of pod.agents)
               rows.push({
                 label: `        ${rowStatusGlyph(agent).glyph} ${agent.name}`,
@@ -646,18 +652,18 @@ export function computeExplorerRows(state: ViewState, snap: FleetSnapshot): Expl
     } else if (section.name === "specs") {
       const kinds = ["rig", "agent", "workflow"] as const;
       rows.push({
-        label: state.filter ? `/ filter: ${state.filter} · / replace · esc clear` : "/ filter specs…",
+        label: state.filter ? `/ 过滤: ${state.filter} · / 替换 · Esc 清除` : "/ 过滤规范…",
         action: { type: "filter", text: state.filter },
       });
-      // ROUND-4 item 3: RIG SPECS fully expanded; AGENT SPECS collapsed to the
-      // folder level by default ("there's too many, it fills it up").
+      // ROUND-4 条目 3：工作组规范完全展开；智能体规范默认
+      // 折叠到文件夹层级（"太多了，会填满"）。
       const expanded = new Set(state.expanded);
       for (const kind of kinds) {
         const list = snap.specs.filter((s) => s.kind === kind).filter((s) => !state.filter || s.name.includes(state.filter));
         if (list.length === 0) continue;
         const key = `specs-kind:${kind}`;
         const openKind = expanded.has(key) || !!state.filter;
-        rows.push({ label: `  ${openKind ? "▾" : "▸"} ${kind.toUpperCase()} SPECS (${list.length})`, action: { type: "toggle-expand", key }, disclosureAction: { type: "toggle-expand", key }, key });
+        rows.push({ label: `  ${openKind ? "▾" : "▸"} ${kind.toUpperCase()} 规范 (${list.length})`, action: { type: "toggle-expand", key }, disclosureAction: { type: "toggle-expand", key }, key });
         if (!openKind) continue;
         if (kind !== "agent") {
           for (const spec of list)
@@ -666,15 +672,15 @@ export function computeExplorerRows(state: ViewState, snap: FleetSnapshot): Expl
         }
         const groups = new Map<string, typeof list>();
         for (const spec of list) {
-          const namespace = spec.namespace ?? "(root)";
+          const namespace = spec.namespace ?? "(根)";
           const group = groups.get(namespace) ?? [];
           group.push(spec);
           groups.set(namespace, group);
         }
         for (const [namespace, specs] of [...groups.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-          // a filter search overrides collapse — matches must be visible
-          const open = namespace === "(root)" || expanded.has(`folder:${namespace}`) || !!state.filter;
-          if (namespace !== "(root)")
+          // 过滤器搜索覆盖折叠——匹配必须可见
+          const open = namespace === "(根)" || expanded.has(`folder:${namespace}`) || !!state.filter;
+          if (namespace !== "(根)")
             rows.push({
               label: `    ${open ? "▾" : "▸"} ${namespace}/ (${specs.length})`,
               action: { type: "toggle-expand", key: `folder:${namespace}` },
@@ -684,16 +690,16 @@ export function computeExplorerRows(state: ViewState, snap: FleetSnapshot): Expl
           if (!open) continue;
           for (const spec of specs)
             rows.push({
-              label: `${namespace === "(root)" ? "    " : "      "}▪ ${spec.name}`,
+              label: `${namespace === "(根)" ? "    " : "      "}▪ ${spec.name}`,
               action: { type: "drill", resource: "spec", name: spec.name },
               key: `spec:${spec.name}`,
             });
         }
       }
     } else if (section.name === "needs") {
-      rows.push({ label: "  Human requests", key: "attention-category:action", action: { type: "attention-category", category: "action" } },
-        { label: "  Updates", key: "attention-category:update", action: { type: "attention-category", category: "update" } });
-      if (state.history?.length) rows.push({ label: "  Back", key: "attention:back", action: { type: "back" } });
+      rows.push({ label: "  人类请求", key: "attention-category:action", action: { type: "attention-category", category: "action" } },
+        { label: "  更新", key: "attention-category:update", action: { type: "attention-category", category: "update" } });
+      if (state.history?.length) rows.push({ label: "  返回", key: "attention:back", action: { type: "back" } });
     }
   }
   return rows;

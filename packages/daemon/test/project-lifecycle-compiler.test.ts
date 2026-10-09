@@ -9,7 +9,7 @@ import { EventBus } from "../src/domain/event-bus.js";
 import { QueueRepository } from "../src/domain/queue-repository.js";
 import { WorkflowRuntime } from "../src/domain/workflow-runtime.js";
 
-describe("project lifecycle compiler", () => {
+describe("project lifecycle 编译器", () => {
   let root: string;
   let missionDir: string;
 
@@ -51,7 +51,7 @@ execution:
     return { db, runtime: new WorkflowRuntime({ db, eventBus: bus, queueRepo: queue }) };
   }
 
-  it("is deterministic and performs zero database writes", () => {
+  it("具有确定性且不执行数据库写入", () => {
     const subject = runtime();
     const before = {
       specs: (subject.db.prepare("select count(*) n from workflow_specs").get() as { n: number }).n,
@@ -76,7 +76,7 @@ execution:
     subject.db.close();
   });
 
-  it("keeps an invalid dependency graph inspectable but ineligible", () => {
+  it("使无效依赖图保持可检查，但不可执行", () => {
     writeFileSync(join(missionDir, "slices", "01-build", "slice.yaml"), `schema: openrig.slice/v0alpha1
 kind: slice
 metadata: { id: build }
@@ -92,12 +92,12 @@ execution:
     expect(result.eligible).toBe(false);
     expect(result.unknowns).toEqual(expect.arrayContaining([
       expect.stringContaining("[dependency_step_not_found]"),
-      "execution graph has no root step",
+      "execution graph 没有 root step",
     ]));
     subject.db.close();
   });
 
-  it("keeps an active slice without an execution contract inspectable but ineligible", () => {
+  it("使缺少 execution contract 的活跃 slice 保持可检查，但不可执行", () => {
     writeFileSync(join(missionDir, "slices", "01-build", "slice.yaml"), `schema: openrig.slice/v0alpha1
 kind: slice
 composition: { mission: ../../mission.yaml }
@@ -106,11 +106,11 @@ composition: { mission: ../../mission.yaml }
     const result = subject.runtime.compileLifecycle(missionDir, "release-op");
     expect(result.eligible).toBe(false);
     expect(result.workflowSpec).toBeNull();
-    expect(result.unknowns).toContain("slices/01-build/slice.yaml: execution contract missing");
+    expect(result.unknowns).toContain("slices/01-build/slice.yaml：缺少 execution contract");
     subject.db.close();
   });
 
-  it("includes a released slice in provenance without requiring an execution contract", () => {
+  it("在 provenance 中包含已发布 slice，且不要求 execution contract", () => {
     mkdirSync(join(missionDir, "slices", "00-released"), { recursive: true });
     writeFileSync(join(missionDir, "slices", "00-released", "slice.yaml"), `schema: openrig.slice/v0alpha1
 kind: slice
@@ -158,7 +158,7 @@ composition:
       members: "    - { ref: slices/99-missing/slice.yaml, order: 10 }",
       code: "lifecycle_member_missing",
     },
-  ])("refuses $name membership before actuation", ({ members, code, second }) => {
+  ])("在执行前拒绝 $name membership", ({ members, code, second }) => {
     if (second) {
       mkdirSync(join(missionDir, "slices", "02-other"), { recursive: true });
       writeFileSync(join(missionDir, "slices", "02-other", "slice.yaml"), `schema: openrig.slice/v0alpha1

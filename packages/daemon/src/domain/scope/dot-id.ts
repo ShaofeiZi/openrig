@@ -1,39 +1,36 @@
-// release-0.3.2 slice 12 — dot-ID grammar per
-// `openrig-work/conventions/scope-and-versioning/README.md` §1.
+// release-0.3.2 slice 12 —— 按
+// `openrig-work/conventions/scope-and-versioning/README.md` §1 的 dot-ID 语法。
 //
-// Grammar (v0 single-project):
-//   project  = <PFX>            (2-3 letter; v0 hardcodes "OPR")
+// 语法（v0 单项目）：
+//   project  = <PFX>            （2-3 个字母；v0 硬编码为 "OPR"）
 //   mission  = <PFX>.<ver>
 //   slice    = <PFX>.<ver>.<n>
 //   sub      = <PFX>.<ver>.<n>.<m>
 //
-// Version inference from mission folder name:
-//   release-X.Y[.Z]     → "X.Y[.Z]"         (release train)
-//   anything else       → "99.0.<m>" escape band (uniform-numeric;
-//                          NO alpha — convention §1 explicit)
+// 从 mission 目录名推断版本：
+//   release-X.Y[.Z]     → "X.Y[.Z]"         （发布列车）
+//   其他任何名字        → "99.0.<m>" 逃逸带（纯数字；
+//                          不带 alpha——约定 §1 明确要求）
 //
-// The escape-band <m> is assigned by scanning peer non-release missions
-// for an existing id and picking max+1. Releases keep their semver.
+// 逃逸带的 <m> 通过扫描同级非发布任务的既有 id，取 max+1 分配。
+// 发布任务保留其 semver。
 
 import type { DotId } from "./types.js";
 import { ScopeCliError } from "./types.js";
 
-/** Default project prefix for the OpenRig single-project workspace.
- *  Multi-project work waits for a real second project (convention §1). */
+/** OpenRig 单项目工作区的默认项目前缀。多项目工作需等待真正的第二个项目
+ *  （约定 §1）。 */
 export const DEFAULT_PROJECT_PREFIX = "OPR";
 
 const RELEASE_NAME_RE = /^release-(\d+\.\d+(?:\.\d+)?)$/;
-// Strict positional grammar: every segment is a number except for the
-// 2-3 letter project prefix at position 0. Accepts 2-5 numeric
-// segments after the prefix (mission has 2-3, slice has 3-4, sub-slice
-// has 4-5). Tier-aware parse helpers below split version/n/m correctly.
+// 严格的位置语法：除位置 0 的 2-3 字母项目前缀外，每一段都是数字。
+// 接受前缀后接 2-5 个数字段（mission 为 2-3，slice 为 3-4，sub-slice 为 4-5）。
+// 下面按层级解析的辅助函数会正确切分 version/n/m。
 const DOT_ID_RE = /^([A-Z]{2,3})\.(\d+(?:\.\d+){1,4})$/;
 
-/** Parse a dot-ID string into structured parts; returns null when the
- *  string doesn't conform to the §1 positional grammar. When `tier`
- *  is supplied, the trailing segments are peeled off into `n` (slice)
- *  or `n` + `m` (sub-slice). With no tier, all numeric segments are
- *  returned as `version` for backwards compatibility. */
+/** 把 dot-ID 字符串解析为结构化部分；当字符串不符合 §1 位置语法时返回 null。
+ *  提供 `tier` 时，末尾若干段会被切到 `n`（slice）或 `n` + `m`（sub-slice）。
+ *  不提供 tier 时，所有数字段都作为 `version` 返回，以保持向后兼容。 */
 export function parseDotId(
   raw: string,
   tier?: "mission" | "slice" | "sub-slice",
@@ -64,34 +61,28 @@ export function parseDotId(
   return { project, version: verSegs.join("."), n: Number(nSeg), m: Number(mSeg) };
 }
 
-/** Validate a mission-ver segments array against the §1 escape-band
- *  rule. The convention defines the non-release escape band as
- *  `<PFX>.99.0.<n>` — the `0` after `99` is FIXED. A version like
- *  `99.7.8` does NOT conform. Shared between isMissionDotId and the
- *  parent-version check inside isSliceDotId so both surfaces stay in
- *  lockstep. */
+/** 按 §1 逃逸带规则校验 mission 版本段数组。约定把非发布逃逸带定义为
+ *  `<PFX>.99.0.<n>`——`99` 后的那个 `0` 是【固定】的。像 `99.7.8` 这样的版本
+ *  不合法。isMissionDotId 与 isSliceDotId 内部的父版本校验共用本函数，
+ *  保证两处口径一致。 */
 function isValidMissionVerSegments(segs: string[]): boolean {
   if (segs.length < 2 || segs.length > 3) return false;
   if (segs[0] === "99") {
-    // Escape band: exactly [99, "0", "<ordinal>"]. The `0` segment is
-    // fixed; `<ordinal>` must be a non-empty numeric string.
+    // 逃逸带：恰好 [99, "0", "<序号>"]。`0` 段固定；<序号> 必须是非空数字串。
     return segs.length === 3 && segs[1] === "0" && /^\d+$/.test(segs[2] ?? "");
   }
   return true;
 }
 
-/** Depth-based tier discriminator. Per §1 the positional grammar
- *  is fixed:
- *    mission   = <PFX>.<ver>           (ver = 2-3 numeric segments;
- *                                       escape band is exactly 99.0.n)
- *    slice     = <PFX>.<ver>.<n>       (3-4 numeric segments)
- *    sub-slice = <PFX>.<ver>.<n>.<m>   (4-5 numeric segments)
- *  Where a mission shape OVERLAPS with a slice shape (e.g. release
- *  X.Y mission has 2 segments; release X.Y.Z mission has 3 segments
- *  which is also the slice shape for release X.Y missions) the tier
- *  is resolved by depth: mission caps at 3 numeric segments; slice
- *  always has 3-4; sub-slice has 4-5. Escape band is fully unambiguous
- *  because §1 fixes both the 99 marker AND the 0 segment that follows. */
+/** 基于深度的层级判别。按 §1，位置语法是固定的：
+ *    mission   = <PFX>.<ver>           （ver = 2-3 个数字段；
+ *                                       逃逸带恰好为 99.0.n）
+ *    slice     = <PFX>.<ver>.<n>       （3-4 个数字段）
+ *    sub-slice = <PFX>.<ver>.<n>.<m>   （4-5 个数字段）
+ *  当 mission 形状与 slice 形状【重叠】时（例如 release X.Y mission 有 2 段；
+ *  release X.Y.Z mission 有 3 段，这也正是 release X.Y mission 的 slice 形状），
+ *  层级由深度解决：mission 最多 3 个数字段；slice 恒为 3-4；sub-slice 为 4-5。
+ *  逃逸带完全无歧义，因为 §1 同时固定了 99 标记和其后的 0 段。 */
 export function isMissionDotId(raw: unknown): boolean {
   if (typeof raw !== "string") return false;
   const parsed = parseDotId(raw, "mission");
@@ -103,13 +94,12 @@ export function isSliceDotId(raw: unknown): boolean {
   if (typeof raw !== "string") return false;
   const parsed = parseDotId(raw, "slice");
   if (!parsed) return false;
-  // Slice = mission-ver + 1 ordinal. Parent ver must itself be a
-  // valid mission shape (including the escape-band exact-[99.0.n]
-  // rule — a parent like 99.7.8 is not a real mission).
+  // slice = mission 版本 + 1 个序号。父版本本身必须是合法的 mission 形状
+  // （包括逃逸带严格 [99.0.n] 规则——像 99.7.8 这样的父任务不是真正的 mission）。
   return isValidMissionVerSegments(parsed.version.split("."));
 }
 
-/** Render a DotId back to its canonical dot-string. */
+/** 把 DotId 渲染回规范的 dot 字符串。 */
 export function formatDotId(id: DotId): string {
   const parts = [id.project, id.version];
   if (id.n !== undefined) parts.push(String(id.n));
@@ -117,15 +107,13 @@ export function formatDotId(id: DotId): string {
   return parts.join(".");
 }
 
-/** Compose a slice ID by appending an ordinal to a parent mission ID. */
+/** 在父 mission id 后追加序号，组合出 slice id。 */
 export function sliceIdFromMission(missionId: string, n: number): string {
   return `${missionId}.${n}`;
 }
 
-/** Infer the (project, version) pair from a mission folder name when
- *  no explicit id is supplied. Release missions use their semver; any
- *  other name falls into the escape band where the caller supplies the
- *  next ordinal via the second arg. */
+/** 未显式提供 id 时，从 mission 目录名推断 (project, version)。
+ *  发布任务用其 semver；其他名字落入逃逸带，由调用方通过第二个参数给出下一个序号。 */
 export function inferMissionDotId(
   missionFolderName: string,
   escapeBandOrdinal: number | null,
@@ -137,17 +125,16 @@ export function inferMissionDotId(
   }
   if (escapeBandOrdinal === null) {
     throw new ScopeCliError({
-      fact: `Mission "${missionFolderName}" doesn't match the release-X.Y[.Z] pattern and no escape-band ordinal was supplied.`,
-      consequence: "No dot-ID could be inferred for this mission.",
-      action: "Pass an explicit ordinal, or rename the mission to release-X.Y.Z, or supply --id on the CLI.",
+      fact: `任务 "${missionFolderName}" 不匹配 release-X.Y[.Z] 模式，且未提供逃逸带序号。`,
+      consequence: "无法为该任务推断 dot-ID。",
+      action: "请传入显式序号，或把任务改名为 release-X.Y.Z，或在 CLI 上用 --id 指定。",
     });
   }
   return `${projectPrefix}.99.0.${escapeBandOrdinal}`;
 }
 
-/** Pick the next escape-band ordinal by scanning peer mission IDs.
- *  Looks for `<PFX>.99.0.<m>` shapes and returns max(m)+1, starting
- *  at 1 when no peer exists. */
+/** 通过扫描同级 mission id 选出下一个逃逸带序号。
+ *  查找 `<PFX>.99.0.<m>` 形状并返回 max(m)+1；无同级时从 1 开始。 */
 export function nextEscapeBandOrdinal(
   existingIds: ReadonlyArray<string | null>,
   projectPrefix: string = DEFAULT_PROJECT_PREFIX,
@@ -164,10 +151,9 @@ export function nextEscapeBandOrdinal(
   return max + 1;
 }
 
-/** Does this candidate string parse as a valid §1 dot-ID at ANY
- *  tier? Prefer the tier-specific isMissionDotId/isSliceDotId at use
- *  sites where the tier is known — depth alone doesn't disambiguate
- *  mission vs slice for release IDs with overlapping shapes. */
+/** 该候选字符串是否在【任意】层级都能解析为合法的 §1 dot-ID？
+ *  在已知层级的调用点优先用按层级的 isMissionDotId/isSliceDotId——
+ *  对形状重叠的发布 id，单凭深度无法区分 mission 与 slice。 */
 export function isConformantDotId(raw: unknown): boolean {
   return typeof raw === "string" && parseDotId(raw) !== null;
 }

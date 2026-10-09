@@ -1,0 +1,3092 @@
+{
+  "zero_total": 3068,
+  "docs": [
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/README.md",
+      "target": "docs/as-built/README.zh-CN.md",
+      "lines": 101,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture.md",
+      "target": "docs/as-built/architecture.zh-CN.md",
+      "lines": 57,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/adapters-and-runtimes.md",
+      "target": "docs/as-built/architecture/adapters-and-runtimes.zh-CN.md",
+      "lines": 228,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/agent-spec-and-startup.md",
+      "target": "docs/as-built/architecture/agent-spec-and-startup.zh-CN.md",
+      "lines": 232,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/architecture-rules-and-event-system.md",
+      "target": "docs/as-built/architecture/architecture-rules-and-event-system.zh-CN.md",
+      "lines": 216,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/content-surfaces.md",
+      "target": "docs/as-built/architecture/content-surfaces.zh-CN.md",
+      "lines": 320,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/coordination-primitive.md",
+      "target": "docs/as-built/architecture/coordination-primitive.zh-CN.md",
+      "lines": 242,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/daemon-core.md",
+      "target": "docs/as-built/architecture/daemon-core.zh-CN.md",
+      "lines": 260,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/lifecycle-snapshot-restore.md",
+      "target": "docs/as-built/architecture/lifecycle-snapshot-restore.zh-CN.md",
+      "lines": 214,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/living-notes-review.md",
+      "target": "docs/as-built/architecture/living-notes-review.zh-CN.md",
+      "lines": 205,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/mission-control.md",
+      "target": "docs/as-built/architecture/mission-control.zh-CN.md",
+      "lines": 165,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/packaging-bootstrap-bundles.md",
+      "target": "docs/as-built/architecture/packaging-bootstrap-bundles.zh-CN.md",
+      "lines": 143,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/plugin-agent-image-context-pack.md",
+      "target": "docs/as-built/architecture/plugin-agent-image-context-pack.zh-CN.md",
+      "lines": 357,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/transport-and-transcripts.md",
+      "target": "docs/as-built/architecture/transport-and-transcripts.zh-CN.md",
+      "lines": 242,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/workflow-runtime.md",
+      "target": "docs/as-built/architecture/workflow-runtime.zh-CN.md",
+      "lines": 509,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/architecture/workspace-primitive.md",
+      "target": "docs/as-built/architecture/workspace-primitive.zh-CN.md",
+      "lines": 414,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/cli-reference.md",
+      "target": "docs/as-built/cli-reference.zh-CN.md",
+      "lines": 1934,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/codemap.md",
+      "target": "docs/as-built/codemap.zh-CN.md",
+      "lines": 197,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/frontmatter-schema.md",
+      "target": "docs/as-built/frontmatter-schema.zh-CN.md",
+      "lines": 65,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/ui.md",
+      "target": "docs/as-built/ui.zh-CN.md",
+      "lines": 44,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/ui/library-specs-and-design-system.md",
+      "target": "docs/as-built/ui/library-specs-and-design-system.zh-CN.md",
+      "lines": 129,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/ui/project-and-for-you.md",
+      "target": "docs/as-built/ui/project-and-for-you.zh-CN.md",
+      "lines": 433,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/ui/shell-and-routing.md",
+      "target": "docs/as-built/ui/shell-and-routing.zh-CN.md",
+      "lines": 163,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-asbuilt",
+      "source": "docs/as-built/ui/topology.md",
+      "target": "docs/as-built/ui/topology.zh-CN.md",
+      "lines": 109,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-changelog",
+      "source": "CHANGELOG.md",
+      "target": "CHANGELOG.zh-CN.md",
+      "lines": 2868,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/cli/src/lib/scope-templates/backlog-deprecation.md",
+      "target": "packages/cli/src/lib/scope-templates/backlog-deprecation.zh-CN.md",
+      "lines": 45,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/cli/src/lib/scope-templates/bug-fix.md",
+      "target": "packages/cli/src/lib/scope-templates/bug-fix.zh-CN.md",
+      "lines": 49,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/cli/src/lib/scope-templates/mission-placeholder.md",
+      "target": "packages/cli/src/lib/scope-templates/mission-placeholder.zh-CN.md",
+      "lines": 31,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/cli/src/lib/scope-templates/release-feature.md",
+      "target": "packages/cli/src/lib/scope-templates/release-feature.zh-CN.md",
+      "lines": 37,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/guidance/CULTURE-default.md",
+      "target": "packages/daemon/assets/guidance/CULTURE-default.zh-CN.md",
+      "lines": 19,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/README.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/README.zh-CN.md",
+      "lines": 64,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/SKILL.zh-CN.md",
+      "lines": 158,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/templates/compact-instruction.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/templates/compact-instruction.zh-CN.md",
+      "lines": 1,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/templates/post-compact-restore-instruction.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/claude-compaction-restore/templates/post-compact-restore-instruction.zh-CN.md",
+      "lines": 1,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/messaging-the-human/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/messaging-the-human/SKILL.zh-CN.md",
+      "lines": 120,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/mission-slice-sop/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/mission-slice-sop/SKILL.zh-CN.md",
+      "lines": 108,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/LEARNED.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/LEARNED.zh-CN.md",
+      "lines": 42,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/PLAYBOOK.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/PLAYBOOK.zh-CN.md",
+      "lines": 4,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/SPEC.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/SPEC.zh-CN.md",
+      "lines": 54,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/retiring-and-inheriting-a-seat/CHANGELOG.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/retiring-and-inheriting-a-seat/CHANGELOG.zh-CN.md",
+      "lines": 22,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/SKILL.zh-CN.md",
+      "lines": 157,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/references/apprentice-evidence-toolkit.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/references/apprentice-evidence-toolkit.zh-CN.md",
+      "lines": 32,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/software-for-agents/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/software-for-agents/SKILL.zh-CN.md",
+      "lines": 19,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/assets/vm-preview-fixtures/README.md",
+      "target": "packages/daemon/assets/vm-preview-fixtures/README.zh-CN.md",
+      "lines": 26,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/context-packs-src/onboarding-width/public-what-you-can-do.md",
+      "target": "packages/daemon/context-packs-src/onboarding-width/public-what-you-can-do.zh-CN.md",
+      "lines": 687,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/context-packs-src/world-example/your-world.md",
+      "target": "packages/daemon/context-packs-src/world-example/your-world.zh-CN.md",
+      "lines": 54,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/policies/builtin/open.policy.md",
+      "target": "packages/daemon/policies/builtin/open.policy.zh-CN.md",
+      "lines": 24,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/policies/examples/my-cautious-dev.policy.md",
+      "target": "packages/daemon/policies/examples/my-cautious-dev.policy.zh-CN.md",
+      "lines": 40,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/apps/vault-specialist/skills/vault-user/SKILL.md",
+      "target": "packages/daemon/specs/agents/apps/vault-specialist/skills/vault-user/SKILL.zh-CN.md",
+      "lines": 64,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/conveyor/builder/guidance/role.md",
+      "target": "packages/daemon/specs/agents/conveyor/builder/guidance/role.zh-CN.md",
+      "lines": 31,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/conveyor/builder/startup/context.md",
+      "target": "packages/daemon/specs/agents/conveyor/builder/startup/context.zh-CN.md",
+      "lines": 9,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/conveyor/lead/guidance/role.md",
+      "target": "packages/daemon/specs/agents/conveyor/lead/guidance/role.zh-CN.md",
+      "lines": 32,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/conveyor/planner/startup/context.md",
+      "target": "packages/daemon/specs/agents/conveyor/planner/startup/context.zh-CN.md",
+      "lines": 21,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/conveyor/reviewer/guidance/role.md",
+      "target": "packages/daemon/specs/agents/conveyor/reviewer/guidance/role.zh-CN.md",
+      "lines": 30,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/factory-rsi/dogfood/guidance/role.md",
+      "target": "packages/daemon/specs/agents/factory-rsi/dogfood/guidance/role.zh-CN.md",
+      "lines": 37,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/factory-rsi/release-manager/guidance/role.md",
+      "target": "packages/daemon/specs/agents/factory-rsi/release-manager/guidance/role.zh-CN.md",
+      "lines": 40,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/review/independent-reviewer/guidance/role.md",
+      "target": "packages/daemon/specs/agents/review/independent-reviewer/guidance/role.zh-CN.md",
+      "lines": 22,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/core/messaging-the-human/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/messaging-the-human/SKILL.zh-CN.md",
+      "lines": 120,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/core/openrig-architect/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/openrig-architect/SKILL.zh-CN.md",
+      "lines": 371,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/core/openrig-cmux/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/openrig-cmux/SKILL.zh-CN.md",
+      "lines": 81,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/core/openrig-skills/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/openrig-skills/SKILL.zh-CN.md",
+      "lines": 118,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/core/openrig-software-factory/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/openrig-software-factory/SKILL.zh-CN.md",
+      "lines": 138,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/core/rig-bundles-and-shareable-artifacts/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/rig-bundles-and-shareable-artifacts/SKILL.zh-CN.md",
+      "lines": 101,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/pm/ui-mockup/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/pm/ui-mockup/SKILL.zh-CN.md",
+      "lines": 76,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/pods/orchestration-team/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/pods/orchestration-team/SKILL.zh-CN.md",
+      "lines": 269,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/process/agent-browser/LOCAL-INSIGHTS.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/agent-browser/LOCAL-INSIGHTS.zh-CN.md",
+      "lines": 160,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/process/dogfood/templates/dogfood-report-template.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/dogfood/templates/dogfood-report-template.zh-CN.md",
+      "lines": 53,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/defense-in-depth.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/defense-in-depth.zh-CN.md",
+      "lines": 122,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/root-cause-tracing.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/root-cause-tracing.zh-CN.md",
+      "lines": 169,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/process/test-driven-development/testing-anti-patterns.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/test-driven-development/testing-anti-patterns.zh-CN.md",
+      "lines": 299,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/agents/shared/skills/process/verification-before-completion/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/verification-before-completion/SKILL.zh-CN.md",
+      "lines": 155,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/rigs/focused/pm-team/CULTURE.md",
+      "target": "packages/daemon/specs/rigs/focused/pm-team/CULTURE.zh-CN.md",
+      "lines": 21,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/rigs/launch/conveyor/README.md",
+      "target": "packages/daemon/specs/rigs/launch/conveyor/README.zh-CN.md",
+      "lines": 33,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/rigs/launch/demo/CULTURE.md",
+      "target": "packages/daemon/specs/rigs/launch/demo/CULTURE.zh-CN.md",
+      "lines": 83,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/rigs/launch/first-project/CULTURE.md",
+      "target": "packages/daemon/specs/rigs/launch/first-project/CULTURE.zh-CN.md",
+      "lines": 39,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/rigs/launch/kernel/culture/CULTURE.md",
+      "target": "packages/daemon/specs/rigs/launch/kernel/culture/CULTURE.zh-CN.md",
+      "lines": 75,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/specs/rigs/preview/product-team/topology/rig/ORCHESTRATION-CRAFT.md",
+      "target": "packages/daemon/specs/rigs/preview/product-team/topology/rig/ORCHESTRATION-CRAFT.zh-CN.md",
+      "lines": 50,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/PROGRESS.md",
+      "target": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/PROGRESS.zh-CN.md",
+      "lines": 34,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/PROOF.md",
+      "target": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/PROOF.zh-CN.md",
+      "lines": 27,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/test/fixtures/self-host-live-legs/topologies/culture.md",
+      "target": "packages/daemon/test/fixtures/self-host-live-legs/topologies/culture.zh-CN.md",
+      "lines": 6,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/daemon/test/fixtures/walk-staged-specimen/piece-02-permission-self-sleep.md",
+      "target": "packages/daemon/test/fixtures/walk-staged-specimen/piece-02-permission-self-sleep.zh-CN.md",
+      "lines": 141,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/test-system/FORMAT-CONFORMANCE-NOTES.md",
+      "target": "packages/test-system/FORMAT-CONFORMANCE-NOTES.zh-CN.md",
+      "lines": 186,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/test-system/ROUTING.md",
+      "target": "packages/test-system/ROUTING.zh-CN.md",
+      "lines": 80,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/test-system/evals/fixtures/skills/core/human-in-the-loop/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/core/human-in-the-loop/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/test-system/evals/fixtures/skills/core/openrig-upgrade/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/core/openrig-upgrade/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/test-system/evals/fixtures/skills/core/topology-mutation-and-seat-management/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/core/topology-mutation-and-seat-management/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/test-system/evals/fixtures/skills/pm/requirements-writer/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/pm/requirements-writer/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-a",
+      "source": "packages/ui/twin/README.md",
+      "target": "packages/ui/twin/README.zh-CN.md",
+      "lines": 83,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/cli/src/lib/scope-templates/capability-delta.md",
+      "target": "packages/cli/src/lib/scope-templates/capability-delta.zh-CN.md",
+      "lines": 61,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/cli/src/lib/scope-templates/mission-release.md",
+      "target": "packages/cli/src/lib/scope-templates/mission-release.zh-CN.md",
+      "lines": 36,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/cli/src/lib/scope-templates/notes.md",
+      "target": "packages/cli/src/lib/scope-templates/notes.zh-CN.md",
+      "lines": 14,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/cli/src/lib/scope-templates/placeholder.md",
+      "target": "packages/cli/src/lib/scope-templates/placeholder.zh-CN.md",
+      "lines": 49,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/cli/src/lib/scope-templates/slice-progress.md",
+      "target": "packages/cli/src/lib/scope-templates/slice-progress.zh-CN.md",
+      "lines": 12,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/assets/continuity/apprentice-prepare.md",
+      "target": "packages/daemon/assets/continuity/apprentice-prepare.zh-CN.md",
+      "lines": 17,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/assets/onboarding/01-world-and-purpose.md",
+      "target": "packages/daemon/assets/onboarding/01-world-and-purpose.zh-CN.md",
+      "lines": 52,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/assets/onboarding/02-self-and-competent-action.md",
+      "target": "packages/daemon/assets/onboarding/02-self-and-competent-action.zh-CN.md",
+      "lines": 57,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/agent-operated-workflows/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/agent-operated-workflows/SKILL.zh-CN.md",
+      "lines": 81,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/forming-an-openrig-mental-model/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/forming-an-openrig-mental-model/SKILL.zh-CN.md",
+      "lines": 319,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/SKILL.zh-CN.md",
+      "lines": 397,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/NOTES.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/NOTES.zh-CN.md",
+      "lines": 9,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/openrig-skills/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/openrig-skills/SKILL.zh-CN.md",
+      "lines": 118,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/openrig-user/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/openrig-user/SKILL.zh-CN.md",
+      "lines": 1386,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/queue-handoff/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/queue-handoff/SKILL.zh-CN.md",
+      "lines": 191,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/refocusing/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/refocusing/SKILL.zh-CN.md",
+      "lines": 31,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/context-packs-src/world-public/boundaries.md",
+      "target": "packages/daemon/context-packs-src/world-public/boundaries.zh-CN.md",
+      "lines": 33,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/policies/builtin/yolo.policy.md",
+      "target": "packages/daemon/policies/builtin/yolo.policy.zh-CN.md",
+      "lines": 35,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/apps/vault-specialist/startup/context.md",
+      "target": "packages/daemon/specs/agents/apps/vault-specialist/startup/context.zh-CN.md",
+      "lines": 46,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/conveyor/planner/guidance/role.md",
+      "target": "packages/daemon/specs/agents/conveyor/planner/guidance/role.zh-CN.md",
+      "lines": 31,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/development/implementer/guidance/role.md",
+      "target": "packages/daemon/specs/agents/development/implementer/guidance/role.zh-CN.md",
+      "lines": 23,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/orchestration/orchestrator/guidance/role.md",
+      "target": "packages/daemon/specs/agents/orchestration/orchestrator/guidance/role.zh-CN.md",
+      "lines": 25,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/research/synthesizer/guidance/role.md",
+      "target": "packages/daemon/specs/agents/research/synthesizer/guidance/role.zh-CN.md",
+      "lines": 26,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/core/agent-starters/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/agent-starters/SKILL.zh-CN.md",
+      "lines": 134,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/core/agent-startup-and-context-ingestion/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/agent-startup-and-context-ingestion/SKILL.zh-CN.md",
+      "lines": 128,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/core/cross-host-rig-commands/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/cross-host-rig-commands/SKILL.zh-CN.md",
+      "lines": 124,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/core/human-in-the-loop/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/human-in-the-loop/SKILL.zh-CN.md",
+      "lines": 104,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/core/openrig-herdr/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/openrig-herdr/SKILL.zh-CN.md",
+      "lines": 153,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/core/session-source-fork/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/session-source-fork/SKILL.zh-CN.md",
+      "lines": 162,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/core/specification-system/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/specification-system/SKILL.zh-CN.md",
+      "lines": 103,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/core/topology-mutation-and-seat-management/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/topology-mutation-and-seat-management/SKILL.zh-CN.md",
+      "lines": 120,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/pm/backlog-capture/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/pm/backlog-capture/SKILL.zh-CN.md",
+      "lines": 43,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/pm/context-builder/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/pm/context-builder/SKILL.zh-CN.md",
+      "lines": 87,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/pm/exec-summary/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/pm/exec-summary/SKILL.zh-CN.md",
+      "lines": 84,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/pm/plan-review/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/pm/plan-review/SKILL.zh-CN.md",
+      "lines": 98,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/pods/development-team/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/pods/development-team/SKILL.zh-CN.md",
+      "lines": 57,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/pods/oversight-team/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/pods/oversight-team/SKILL.zh-CN.md",
+      "lines": 106,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/pods/review-team/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/pods/review-team/SKILL.zh-CN.md",
+      "lines": 216,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/process/agent-browser/OPENRIG.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/agent-browser/OPENRIG.zh-CN.md",
+      "lines": 40,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/SKILL.zh-CN.md",
+      "lines": 301,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/condition-based-waiting.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/systematic-debugging/condition-based-waiting.zh-CN.md",
+      "lines": 115,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/rigs/launch/conveyor/CULTURE.md",
+      "target": "packages/daemon/specs/rigs/launch/conveyor/CULTURE.zh-CN.md",
+      "lines": 34,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/rigs/launch/demo/project-example/README.md",
+      "target": "packages/daemon/specs/rigs/launch/demo/project-example/README.zh-CN.md",
+      "lines": 25,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/SPEC.md",
+      "target": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/SPEC.zh-CN.md",
+      "lines": 19,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/slices/01-shorten-first-run/PROOF.md",
+      "target": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/slices/01-shorten-first-run/PROOF.zh-CN.md",
+      "lines": 7,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/slices/01-shorten-first-run/SPEC.md",
+      "target": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/slices/01-shorten-first-run/SPEC.zh-CN.md",
+      "lines": 31,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/rigs/launch/factory-rsi/CULTURE.md",
+      "target": "packages/daemon/specs/rigs/launch/factory-rsi/CULTURE.zh-CN.md",
+      "lines": 47,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/rigs/launch/kernel/agents/advisor/lead/guidance/role.md",
+      "target": "packages/daemon/specs/rigs/launch/kernel/agents/advisor/lead/guidance/role.zh-CN.md",
+      "lines": 50,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/rigs/launch/kernel/agents/operator/agent/startup/context.md",
+      "target": "packages/daemon/specs/rigs/launch/kernel/agents/operator/agent/startup/context.zh-CN.md",
+      "lines": 62,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/rigs/launch/kernel/agents/queue/worker/startup/context.md",
+      "target": "packages/daemon/specs/rigs/launch/kernel/agents/queue/worker/startup/context.zh-CN.md",
+      "lines": 31,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/rigs/preview/product-team/CULTURE.md",
+      "target": "packages/daemon/specs/rigs/preview/product-team/CULTURE.zh-CN.md",
+      "lines": 96,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/specs/rigs/preview/product-team/topology/instance/CRAFT.md",
+      "target": "packages/daemon/specs/rigs/preview/product-team/topology/instance/CRAFT.zh-CN.md",
+      "lines": 24,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/IMPLEMENTATION-PRD.md",
+      "target": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/IMPLEMENTATION-PRD.zh-CN.md",
+      "lines": 79,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/proof/qa-PASS-shared-by-label.md",
+      "target": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/proof/qa-PASS-shared-by-label.zh-CN.md",
+      "lines": 25,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/daemon/test/fixtures/self-host-live-legs/RUNBOOK.md",
+      "target": "packages/daemon/test/fixtures/self-host-live-legs/RUNBOOK.zh-CN.md",
+      "lines": 244,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/test-system/evals/fixtures/skills/core/agent-startup-and-context-ingestion/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/core/agent-startup-and-context-ingestion/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/test-system/evals/fixtures/skills/core/rig-bundles-and-shareable-artifacts/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/core/rig-bundles-and-shareable-artifacts/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/test-system/evals/fixtures/skills/openrig-operating-model/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/openrig-operating-model/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/test-system/evals/fixtures/skills/process/systematic-debugging/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/process/systematic-debugging/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/test-system/evals/fixtures/skills/process/test-driven-development/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/process/test-driven-development/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/test-system/scripts/README.md",
+      "target": "packages/test-system/scripts/README.zh-CN.md",
+      "lines": 20,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-b",
+      "source": "packages/tui/README.md",
+      "target": "packages/tui/README.zh-CN.md",
+      "lines": 66,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/cli/src/lib/scope-templates/backlog-tech-debt.md",
+      "target": "packages/cli/src/lib/scope-templates/backlog-tech-debt.zh-CN.md",
+      "lines": 41,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/cli/src/lib/scope-templates/implementation-prd.md",
+      "target": "packages/cli/src/lib/scope-templates/implementation-prd.zh-CN.md",
+      "lines": 33,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/cli/src/lib/scope-templates/mission-progress.md",
+      "target": "packages/cli/src/lib/scope-templates/mission-progress.zh-CN.md",
+      "lines": 13,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/cli/src/lib/scope-templates/proof.md",
+      "target": "packages/cli/src/lib/scope-templates/proof.zh-CN.md",
+      "lines": 23,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/cli/src/lib/scope-templates/research.md",
+      "target": "packages/cli/src/lib/scope-templates/research.zh-CN.md",
+      "lines": 41,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/continuity/apprentice-cutover.md",
+      "target": "packages/daemon/assets/continuity/apprentice-cutover.zh-CN.md",
+      "lines": 19,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/guidance/openrig-start.md",
+      "target": "packages/daemon/assets/guidance/openrig-start.zh-CN.md",
+      "lines": 46,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/agent-operated-software/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/agent-operated-software/SKILL.zh-CN.md",
+      "lines": 95,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/applying-a-permission-policy/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/applying-a-permission-policy/SKILL.zh-CN.md",
+      "lines": 168,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/delegating-work/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/delegating-work/SKILL.zh-CN.md",
+      "lines": 43,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/loading-addressable-markdown/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/loading-addressable-markdown/SKILL.zh-CN.md",
+      "lines": 34,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/SOP.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/openrig-operating-model/templates/SOP.zh-CN.md",
+      "lines": 24,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/orienting-to-an-inherited-seat/CHANGELOG.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/orienting-to-an-inherited-seat/CHANGELOG.zh-CN.md",
+      "lines": 20,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/orienting-to-an-inherited-seat/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/orienting-to-an-inherited-seat/SKILL.zh-CN.md",
+      "lines": 250,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/refocusing/references/refocus.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/refocusing/references/refocus.zh-CN.md",
+      "lines": 22,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/retiring-and-inheriting-a-seat/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/retiring-and-inheriting-a-seat/SKILL.zh-CN.md",
+      "lines": 217,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/references/apprentice-successor-seat-cutover.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/references/apprentice-successor-seat-cutover.zh-CN.md",
+      "lines": 256,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/references/orchestrator-role.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/seat-continuity-and-handover/references/orchestrator-role.zh-CN.md",
+      "lines": 40,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/assets/plugins/openrig-core/skills/session-compaction-and-restore/SKILL.md",
+      "target": "packages/daemon/assets/plugins/openrig-core/skills/session-compaction-and-restore/SKILL.zh-CN.md",
+      "lines": 161,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/context-packs-src/onboarding-width/public-reference-material.md",
+      "target": "packages/daemon/context-packs-src/onboarding-width/public-reference-material.zh-CN.md",
+      "lines": 98,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/context-packs-src/world-public/build-your-world.md",
+      "target": "packages/daemon/context-packs-src/world-public/build-your-world.zh-CN.md",
+      "lines": 108,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/context-packs-src/world-public/start-here.md",
+      "target": "packages/daemon/context-packs-src/world-public/start-here.zh-CN.md",
+      "lines": 51,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/policies/builtin/locked.policy.md",
+      "target": "packages/daemon/policies/builtin/locked.policy.zh-CN.md",
+      "lines": 24,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/policies/builtin/standard.policy.md",
+      "target": "packages/daemon/policies/builtin/standard.policy.zh-CN.md",
+      "lines": 25,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/apps/vault-specialist/guidance/role.md",
+      "target": "packages/daemon/specs/agents/apps/vault-specialist/guidance/role.zh-CN.md",
+      "lines": 32,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/conveyor/lead/startup/context.md",
+      "target": "packages/daemon/specs/agents/conveyor/lead/startup/context.zh-CN.md",
+      "lines": 15,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/conveyor/reviewer/startup/context.md",
+      "target": "packages/daemon/specs/agents/conveyor/reviewer/startup/context.zh-CN.md",
+      "lines": 10,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/design/product-designer/guidance/role.md",
+      "target": "packages/daemon/specs/agents/design/product-designer/guidance/role.zh-CN.md",
+      "lines": 39,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/development/qa/guidance/role.md",
+      "target": "packages/daemon/specs/agents/development/qa/guidance/role.zh-CN.md",
+      "lines": 23,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/product-management/pm/guidance/role.md",
+      "target": "packages/daemon/specs/agents/product-management/pm/guidance/role.zh-CN.md",
+      "lines": 58,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/research/analyst/guidance/role.md",
+      "target": "packages/daemon/specs/agents/research/analyst/guidance/role.zh-CN.md",
+      "lines": 27,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/core/openrig-software-factory/references/worked-example.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/openrig-software-factory/references/worked-example.zh-CN.md",
+      "lines": 543,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/core/openrig-upgrade/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/openrig-upgrade/SKILL.zh-CN.md",
+      "lines": 266,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/core/rig-lifecycle/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/rig-lifecycle/SKILL.zh-CN.md",
+      "lines": 127,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/core/watchdog/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/core/watchdog/SKILL.zh-CN.md",
+      "lines": 120,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/pm/office-hours/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/pm/office-hours/SKILL.zh-CN.md",
+      "lines": 129,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/pm/requirements-writer/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/pm/requirements-writer/SKILL.zh-CN.md",
+      "lines": 119,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/process/agent-browser/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/agent-browser/SKILL.zh-CN.md",
+      "lines": 427,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/process/context-engineering/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/context-engineering/SKILL.zh-CN.md",
+      "lines": 479,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/process/dogfood/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/dogfood/SKILL.zh-CN.md",
+      "lines": 225,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/process/dogfood/references/issue-taxonomy.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/dogfood/references/issue-taxonomy.zh-CN.md",
+      "lines": 109,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/process/frontend-design/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/frontend-design/SKILL.zh-CN.md",
+      "lines": 50,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/agents/shared/skills/process/test-driven-development/SKILL.md",
+      "target": "packages/daemon/specs/agents/shared/skills/process/test-driven-development/SKILL.zh-CN.md",
+      "lines": 390,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/slices/01-shorten-first-run/PROGRESS.md",
+      "target": "packages/daemon/specs/rigs/launch/demo/project-example/missions/improve-onboarding/slices/01-shorten-first-run/PROGRESS.zh-CN.md",
+      "lines": 6,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/rigs/launch/kernel/agents/advisor/lead/startup/context.md",
+      "target": "packages/daemon/specs/rigs/launch/kernel/agents/advisor/lead/startup/context.zh-CN.md",
+      "lines": 37,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/rigs/launch/kernel/agents/operator/agent/guidance/role.md",
+      "target": "packages/daemon/specs/rigs/launch/kernel/agents/operator/agent/guidance/role.zh-CN.md",
+      "lines": 61,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/rigs/launch/kernel/agents/queue/worker/guidance/role.md",
+      "target": "packages/daemon/specs/rigs/launch/kernel/agents/queue/worker/guidance/role.zh-CN.md",
+      "lines": 41,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/rigs/preview/product-team/topology/rig/CRAFT.md",
+      "target": "packages/daemon/specs/rigs/preview/product-team/topology/rig/CRAFT.zh-CN.md",
+      "lines": 21,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/rigs/preview/product-team/topology/seats/dev1-qa/CRAFT.md",
+      "target": "packages/daemon/specs/rigs/preview/product-team/topology/seats/dev1-qa/CRAFT.zh-CN.md",
+      "lines": 15,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/rigs/preview/product-team/topology/seats/orch1-lead/CRAFT.md",
+      "target": "packages/daemon/specs/rigs/preview/product-team/topology/seats/orch1-lead/CRAFT.zh-CN.md",
+      "lines": 17,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/rigs/preview/product-team/topology/seats/rev1-r1/CRAFT.md",
+      "target": "packages/daemon/specs/rigs/preview/product-team/topology/seats/rev1-r1/CRAFT.zh-CN.md",
+      "lines": 17,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/specs/rigs/preview/product-team/topology/seats/rev1-r2/CRAFT.md",
+      "target": "packages/daemon/specs/rigs/preview/product-team/topology/seats/rev1-r2/CRAFT.zh-CN.md",
+      "lines": 15,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/README.md",
+      "target": "packages/daemon/test/fixtures/progress-review-done-coherence/03-shared-by-label/README.zh-CN.md",
+      "lines": 85,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/test/fixtures/scenarios/culture.md",
+      "target": "packages/daemon/test/fixtures/scenarios/culture.zh-CN.md",
+      "lines": 4,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/daemon/test/s23-session-source-leg-census.md",
+      "target": "packages/daemon/test/s23-session-source-leg-census.zh-CN.md",
+      "lines": 48,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/test-system/README.md",
+      "target": "packages/test-system/README.zh-CN.md",
+      "lines": 43,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/test-system/evals/README.md",
+      "target": "packages/test-system/evals/README.zh-CN.md",
+      "lines": 34,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/test-system/evals/fixtures/skills/core/cross-host-rig-commands/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/core/cross-host-rig-commands/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/test-system/evals/fixtures/skills/core/rig-lifecycle/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/core/rig-lifecycle/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/test-system/evals/fixtures/skills/core/watchdog/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/core/watchdog/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/test-system/evals/fixtures/skills/queue-handoff/content.md",
+      "target": "packages/test-system/evals/fixtures/skills/queue-handoff/content.zh-CN.md",
+      "lines": 5,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/test-system/scenarios/culture.md",
+      "target": "packages/test-system/scenarios/culture.zh-CN.md",
+      "lines": 2,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/tui/scripts/crash-cart-e2e-runbook.md",
+      "target": "packages/tui/scripts/crash-cart-e2e-runbook.zh-CN.md",
+      "lines": 61,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-packages-c",
+      "source": "packages/ui/twin/capture/README.md",
+      "target": "packages/ui/twin/capture/README.zh-CN.md",
+      "lines": 76,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/README.md",
+      "target": "docs/releases/README.zh-CN.md",
+      "lines": 105,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/_template.md",
+      "target": "docs/releases/_template.zh-CN.md",
+      "lines": 38,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.1.12.md",
+      "target": "docs/releases/v0.1.12.zh-CN.md",
+      "lines": 58,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.2.0.md",
+      "target": "docs/releases/v0.2.0.zh-CN.md",
+      "lines": 276,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.3.0.md",
+      "target": "docs/releases/v0.3.0.zh-CN.md",
+      "lines": 119,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.3.1.md",
+      "target": "docs/releases/v0.3.1.zh-CN.md",
+      "lines": 336,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.3.2.md",
+      "target": "docs/releases/v0.3.2.zh-CN.md",
+      "lines": 362,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.3.3.md",
+      "target": "docs/releases/v0.3.3.zh-CN.md",
+      "lines": 596,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.3.4.md",
+      "target": "docs/releases/v0.3.4.zh-CN.md",
+      "lines": 593,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.4.0.md",
+      "target": "docs/releases/v0.4.0.zh-CN.md",
+      "lines": 431,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.4.1.md",
+      "target": "docs/releases/v0.4.1.zh-CN.md",
+      "lines": 269,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.4.2.md",
+      "target": "docs/releases/v0.4.2.zh-CN.md",
+      "lines": 57,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.4.3.md",
+      "target": "docs/releases/v0.4.3.zh-CN.md",
+      "lines": 171,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.4.4.md",
+      "target": "docs/releases/v0.4.4.zh-CN.md",
+      "lines": 131,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.4.6.md",
+      "target": "docs/releases/v0.4.6.zh-CN.md",
+      "lines": 198,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.4.7.md",
+      "target": "docs/releases/v0.4.7.zh-CN.md",
+      "lines": 64,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.4.8.md",
+      "target": "docs/releases/v0.4.8.zh-CN.md",
+      "lines": 57,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.0.md",
+      "target": "docs/releases/v0.5.0.zh-CN.md",
+      "lines": 88,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.1.md",
+      "target": "docs/releases/v0.5.1.zh-CN.md",
+      "lines": 56,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.10.md",
+      "target": "docs/releases/v0.5.10.zh-CN.md",
+      "lines": 89,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.11.md",
+      "target": "docs/releases/v0.5.11.zh-CN.md",
+      "lines": 101,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.12.md",
+      "target": "docs/releases/v0.5.12.zh-CN.md",
+      "lines": 114,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.13.md",
+      "target": "docs/releases/v0.5.13.zh-CN.md",
+      "lines": 131,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.14.md",
+      "target": "docs/releases/v0.5.14.zh-CN.md",
+      "lines": 147,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.15.md",
+      "target": "docs/releases/v0.5.15.zh-CN.md",
+      "lines": 117,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.16.md",
+      "target": "docs/releases/v0.5.16.zh-CN.md",
+      "lines": 62,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.17.md",
+      "target": "docs/releases/v0.5.17.zh-CN.md",
+      "lines": 35,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.2.md",
+      "target": "docs/releases/v0.5.2.zh-CN.md",
+      "lines": 74,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.3.md",
+      "target": "docs/releases/v0.5.3.zh-CN.md",
+      "lines": 70,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.4.md",
+      "target": "docs/releases/v0.5.4.zh-CN.md",
+      "lines": 62,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.5.md",
+      "target": "docs/releases/v0.5.5.zh-CN.md",
+      "lines": 97,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.6.md",
+      "target": "docs/releases/v0.5.6.zh-CN.md",
+      "lines": 128,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.7.md",
+      "target": "docs/releases/v0.5.7.zh-CN.md",
+      "lines": 74,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.8.md",
+      "target": "docs/releases/v0.5.8.zh-CN.md",
+      "lines": 80,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.5.9.md",
+      "target": "docs/releases/v0.5.9.zh-CN.md",
+      "lines": 105,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-releases",
+      "source": "docs/releases/v0.6.0.md",
+      "target": "docs/releases/v0.6.0.zh-CN.md",
+      "lines": 213,
+      "words": 0,
+      "status": "done",
+      "val": "validated"
+    },
+    {
+      "owner": "docs-root",
+      "source": ".github/PULL_REQUEST_TEMPLATE.md",
+      "target": ".github/PULL_REQUEST_TEMPLATE.zh-CN.md",
+      "lines": 17,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": ".github/SUPPORT.md",
+      "target": ".github/SUPPORT.zh-CN.md",
+      "lines": 16,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "CODE_OF_CONDUCT.md",
+      "target": "CODE_OF_CONDUCT.zh-CN.md",
+      "lines": 75,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "CONTRIBUTING.md",
+      "target": "CONTRIBUTING.zh-CN.md",
+      "lines": 89,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "README.md",
+      "target": "README.zh-CN.md",
+      "lines": 362,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "SECURITY.md",
+      "target": "SECURITY.zh-CN.md",
+      "lines": 47,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/DESIGN.md",
+      "target": "docs/DESIGN.zh-CN.md",
+      "lines": 346,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/agent-spec.md",
+      "target": "docs/reference/agent-spec.zh-CN.md",
+      "lines": 457,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/agent-startup-guide.md",
+      "target": "docs/reference/agent-startup-guide.zh-CN.md",
+      "lines": 367,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/agent-state-taxonomy.md",
+      "target": "docs/reference/agent-state-taxonomy.zh-CN.md",
+      "lines": 101,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/chain-file-convention.md",
+      "target": "docs/reference/chain-file-convention.zh-CN.md",
+      "lines": 120,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/developing.md",
+      "target": "docs/reference/developing.zh-CN.md",
+      "lines": 39,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/edge-types.md",
+      "target": "docs/reference/edge-types.zh-CN.md",
+      "lines": 126,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/getting-started.md",
+      "target": "docs/reference/getting-started.zh-CN.md",
+      "lines": 454,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/health-diagnosis.md",
+      "target": "docs/reference/health-diagnosis.zh-CN.md",
+      "lines": 408,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/instance-layout.md",
+      "target": "docs/reference/instance-layout.zh-CN.md",
+      "lines": 106,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/knowledge-maturity.md",
+      "target": "docs/reference/knowledge-maturity.zh-CN.md",
+      "lines": 123,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/legacy-topology-migration.md",
+      "target": "docs/reference/legacy-topology-migration.zh-CN.md",
+      "lines": 52,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/lore-routing.md",
+      "target": "docs/reference/lore-routing.zh-CN.md",
+      "lines": 173,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/mission-install.md",
+      "target": "docs/reference/mission-install.zh-CN.md",
+      "lines": 224,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/planning-dial.md",
+      "target": "docs/reference/planning-dial.zh-CN.md",
+      "lines": 53,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/product-journey-sdlc.md",
+      "target": "docs/reference/product-journey-sdlc.zh-CN.md",
+      "lines": 343,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/product-management-pass.md",
+      "target": "docs/reference/product-management-pass.zh-CN.md",
+      "lines": 139,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/project-workspace.md",
+      "target": "docs/reference/project-workspace.zh-CN.md",
+      "lines": 159,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/refocus-channel.md",
+      "target": "docs/reference/refocus-channel.zh-CN.md",
+      "lines": 90,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/release-boundary.md",
+      "target": "docs/reference/release-boundary.zh-CN.md",
+      "lines": 120,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/rig-bundle.md",
+      "target": "docs/reference/rig-bundle.zh-CN.md",
+      "lines": 367,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/rig-spec.md",
+      "target": "docs/reference/rig-spec.zh-CN.md",
+      "lines": 580,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/scoped-operating-posture.md",
+      "target": "docs/reference/scoped-operating-posture.zh-CN.md",
+      "lines": 95,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/sdlc-conventions.md",
+      "target": "docs/reference/sdlc-conventions.zh-CN.md",
+      "lines": 368,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/slack-app-setup.md",
+      "target": "docs/reference/slack-app-setup.zh-CN.md",
+      "lines": 90,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/stream-classifier-worker.md",
+      "target": "docs/reference/stream-classifier-worker.zh-CN.md",
+      "lines": 244,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/wave-sdlc.md",
+      "target": "docs/reference/wave-sdlc.zh-CN.md",
+      "lines": 102,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "docs-root",
+      "source": "docs/reference/worktree-builds.md",
+      "target": "docs/reference/worktree-builds.zh-CN.md",
+      "lines": 39,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "assets/ui/screenshots/launch-happy-path/README.md",
+      "target": "assets/ui/screenshots/launch-happy-path/README.zh-CN.md",
+      "lines": 24,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "demo/README.md",
+      "target": "demo/README.zh-CN.md",
+      "lines": 130,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "demo/culture.md",
+      "target": "demo/culture.zh-CN.md",
+      "lines": 8,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "docker/testbed/runbooks/L0-resolve-inputs.md",
+      "target": "docker/testbed/runbooks/L0-resolve-inputs.zh-CN.md",
+      "lines": 54,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "docker/testbed/runbooks/L1-pty-allocation.md",
+      "target": "docker/testbed/runbooks/L1-pty-allocation.zh-CN.md",
+      "lines": 47,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "docker/testbed/runbooks/L2-tmux-server-lifecycle.md",
+      "target": "docker/testbed/runbooks/L2-tmux-server-lifecycle.zh-CN.md",
+      "lines": 55,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "docker/testbed/runbooks/L3-daemon-in-container.md",
+      "target": "docker/testbed/runbooks/L3-daemon-in-container.zh-CN.md",
+      "lines": 146,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "docker/testbed/runbooks/L4-hermetic-fail-closed.md",
+      "target": "docker/testbed/runbooks/L4-hermetic-fail-closed.zh-CN.md",
+      "lines": 51,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "docker/testbed/runbooks/L5-multi-host-and-51-09.md",
+      "target": "docker/testbed/runbooks/L5-multi-host-and-51-09.zh-CN.md",
+      "lines": 104,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "docker/testbed/runbooks/L6-container-runner-e2e.md",
+      "target": "docker/testbed/runbooks/L6-container-runner-e2e.zh-CN.md",
+      "lines": 142,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "docker/testbed/runbooks/README.md",
+      "target": "docker/testbed/runbooks/README.zh-CN.md",
+      "lines": 61,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "docker/testbed/stub-assets/culture.md",
+      "target": "docker/testbed/stub-assets/culture.zh-CN.md",
+      "lines": 6,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/CHANGELOG.md",
+      "target": "skills/CHANGELOG.zh-CN.md",
+      "lines": 47,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/README.md",
+      "target": "skills/README.zh-CN.md",
+      "lines": 78,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/agent-starters/SKILL.md",
+      "target": "skills/_canonical/core/agent-starters/SKILL.zh-CN.md",
+      "lines": 134,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/agent-startup-and-context-ingestion/SKILL.md",
+      "target": "skills/_canonical/core/agent-startup-and-context-ingestion/SKILL.zh-CN.md",
+      "lines": 128,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/cross-host-rig-commands/SKILL.md",
+      "target": "skills/_canonical/core/cross-host-rig-commands/SKILL.zh-CN.md",
+      "lines": 124,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/human-in-the-loop/SKILL.md",
+      "target": "skills/_canonical/core/human-in-the-loop/SKILL.zh-CN.md",
+      "lines": 104,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/messaging-the-human/SKILL.md",
+      "target": "skills/_canonical/core/messaging-the-human/SKILL.zh-CN.md",
+      "lines": 120,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/openrig-architect/SKILL.md",
+      "target": "skills/_canonical/core/openrig-architect/SKILL.zh-CN.md",
+      "lines": 371,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/openrig-cmux/SKILL.md",
+      "target": "skills/_canonical/core/openrig-cmux/SKILL.zh-CN.md",
+      "lines": 81,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/openrig-herdr/SKILL.md",
+      "target": "skills/_canonical/core/openrig-herdr/SKILL.zh-CN.md",
+      "lines": 153,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/openrig-skills/SKILL.md",
+      "target": "skills/_canonical/core/openrig-skills/SKILL.zh-CN.md",
+      "lines": 118,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/openrig-software-factory/SKILL.md",
+      "target": "skills/_canonical/core/openrig-software-factory/SKILL.zh-CN.md",
+      "lines": 138,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/openrig-software-factory/references/worked-example.md",
+      "target": "skills/_canonical/core/openrig-software-factory/references/worked-example.zh-CN.md",
+      "lines": 543,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/openrig-upgrade/SKILL.md",
+      "target": "skills/_canonical/core/openrig-upgrade/SKILL.zh-CN.md",
+      "lines": 266,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/rig-bundles-and-shareable-artifacts/SKILL.md",
+      "target": "skills/_canonical/core/rig-bundles-and-shareable-artifacts/SKILL.zh-CN.md",
+      "lines": 101,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/rig-lifecycle/SKILL.md",
+      "target": "skills/_canonical/core/rig-lifecycle/SKILL.zh-CN.md",
+      "lines": 127,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/session-source-fork/SKILL.md",
+      "target": "skills/_canonical/core/session-source-fork/SKILL.zh-CN.md",
+      "lines": 162,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/specification-system/SKILL.md",
+      "target": "skills/_canonical/core/specification-system/SKILL.zh-CN.md",
+      "lines": 103,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/topology-mutation-and-seat-management/SKILL.md",
+      "target": "skills/_canonical/core/topology-mutation-and-seat-management/SKILL.zh-CN.md",
+      "lines": 120,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/core/watchdog/SKILL.md",
+      "target": "skills/_canonical/core/watchdog/SKILL.zh-CN.md",
+      "lines": 120,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/pm/backlog-capture/SKILL.md",
+      "target": "skills/_canonical/pm/backlog-capture/SKILL.zh-CN.md",
+      "lines": 43,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/pm/context-builder/SKILL.md",
+      "target": "skills/_canonical/pm/context-builder/SKILL.zh-CN.md",
+      "lines": 87,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/pm/exec-summary/SKILL.md",
+      "target": "skills/_canonical/pm/exec-summary/SKILL.zh-CN.md",
+      "lines": 84,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/pm/office-hours/SKILL.md",
+      "target": "skills/_canonical/pm/office-hours/SKILL.zh-CN.md",
+      "lines": 129,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/pm/plan-review/SKILL.md",
+      "target": "skills/_canonical/pm/plan-review/SKILL.zh-CN.md",
+      "lines": 98,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/pm/requirements-writer/SKILL.md",
+      "target": "skills/_canonical/pm/requirements-writer/SKILL.zh-CN.md",
+      "lines": 119,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/pm/ui-mockup/SKILL.md",
+      "target": "skills/_canonical/pm/ui-mockup/SKILL.zh-CN.md",
+      "lines": 76,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/pods/development-team/SKILL.md",
+      "target": "skills/_canonical/pods/development-team/SKILL.zh-CN.md",
+      "lines": 57,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/pods/orchestration-team/SKILL.md",
+      "target": "skills/_canonical/pods/orchestration-team/SKILL.zh-CN.md",
+      "lines": 269,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/pods/oversight-team/SKILL.md",
+      "target": "skills/_canonical/pods/oversight-team/SKILL.zh-CN.md",
+      "lines": 106,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/pods/review-team/SKILL.md",
+      "target": "skills/_canonical/pods/review-team/SKILL.zh-CN.md",
+      "lines": 216,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/agent-browser/LOCAL-INSIGHTS.md",
+      "target": "skills/_canonical/process/agent-browser/LOCAL-INSIGHTS.zh-CN.md",
+      "lines": 160,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/agent-browser/OPENRIG.md",
+      "target": "skills/_canonical/process/agent-browser/OPENRIG.zh-CN.md",
+      "lines": 40,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/agent-browser/SKILL.md",
+      "target": "skills/_canonical/process/agent-browser/SKILL.zh-CN.md",
+      "lines": 427,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/context-engineering/SKILL.md",
+      "target": "skills/_canonical/process/context-engineering/SKILL.zh-CN.md",
+      "lines": 479,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/dogfood/SKILL.md",
+      "target": "skills/_canonical/process/dogfood/SKILL.zh-CN.md",
+      "lines": 225,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/dogfood/references/issue-taxonomy.md",
+      "target": "skills/_canonical/process/dogfood/references/issue-taxonomy.zh-CN.md",
+      "lines": 109,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/dogfood/templates/dogfood-report-template.md",
+      "target": "skills/_canonical/process/dogfood/templates/dogfood-report-template.zh-CN.md",
+      "lines": 53,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/frontend-design/SKILL.md",
+      "target": "skills/_canonical/process/frontend-design/SKILL.zh-CN.md",
+      "lines": 50,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/systematic-debugging/SKILL.md",
+      "target": "skills/_canonical/process/systematic-debugging/SKILL.zh-CN.md",
+      "lines": 301,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/systematic-debugging/condition-based-waiting.md",
+      "target": "skills/_canonical/process/systematic-debugging/condition-based-waiting.zh-CN.md",
+      "lines": 115,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/systematic-debugging/defense-in-depth.md",
+      "target": "skills/_canonical/process/systematic-debugging/defense-in-depth.zh-CN.md",
+      "lines": 122,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/systematic-debugging/root-cause-tracing.md",
+      "target": "skills/_canonical/process/systematic-debugging/root-cause-tracing.zh-CN.md",
+      "lines": 169,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/test-driven-development/SKILL.md",
+      "target": "skills/_canonical/process/test-driven-development/SKILL.zh-CN.md",
+      "lines": 390,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/test-driven-development/testing-anti-patterns.md",
+      "target": "skills/_canonical/process/test-driven-development/testing-anti-patterns.zh-CN.md",
+      "lines": 299,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "skills/_canonical/process/verification-before-completion/SKILL.md",
+      "target": "skills/_canonical/process/verification-before-completion/SKILL.zh-CN.md",
+      "lines": 155,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    },
+    {
+      "owner": "extras",
+      "source": "spike/tui-drivability/README.md",
+      "target": "spike/tui-drivability/README.zh-CN.md",
+      "lines": 22,
+      "words": 0,
+      "status": "done",
+      "val": "self_reported"
+    }
+  ]
+}

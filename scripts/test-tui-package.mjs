@@ -40,7 +40,7 @@ async function assertDelayedSplits(entry, pkgDir) {
         wait(1_000).then(() => "timeout"),
       ]);
       if (code === "timeout") child.kill("SIGTERM");
-      assert.equal(code, 0, `${label} split ${split}/${bytes.length} failed delayed packed-entry decoding: ${stderr}`);
+      assert.equal(code, 0, `${label} 分片 ${split}/${bytes.length} 延迟打包入口解码失败：${stderr}`);
     }
   }
 }
@@ -55,8 +55,8 @@ try {
   const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, "package.json"), "utf8"));
   assert.equal(pkg.bin["openrig-tui"], "tui/dist/main.js");
   const entry = path.join(pkgDir, pkg.bin["openrig-tui"]);
-  assert.ok(fs.existsSync(entry), "packed TUI entrypoint is missing");
-  assert.notEqual(fs.statSync(entry).mode & 0o111, 0, "packed TUI entrypoint is not executable");
+  assert.ok(fs.existsSync(entry), "打包后的 TUI 入口缺失");
+  assert.notEqual(fs.statSync(entry).mode & 0o111, 0, "打包后的 TUI 入口不可执行");
 
   fs.symlinkSync(path.join(root, "node_modules"), path.join(pkgDir, "node_modules"), "dir");
   const launched = spawnSync(process.execPath, [entry, "--demo", "--socket", path.join(temp, "tui.sock")], {
@@ -66,9 +66,9 @@ try {
     timeout: 10_000,
     env: process.env,
   });
-  assert.equal(launched.status, 0, launched.stderr || `packed TUI exited ${launched.status}`);
+  assert.equal(launched.status, 0, launched.stderr || `打包后的 TUI 退出码 ${launched.status}`);
   await assertDelayedSplits(entry, pkgDir);
-  console.log(`packed TUI launch PASS: ${packed[0].filename}`);
+  console.log(`打包后的 TUI 启动通过：${packed[0].filename}`);
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
 }

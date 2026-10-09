@@ -23,11 +23,11 @@ const PREPARE_TARGET_TOKENS = 600_000;
 const CUTOVER_TARGET_TOKENS = 900_000;
 
 export const CONTINUITY_POLICY_DOC = [
-  "Transcript bytes are a calibrated proxy, not tokens: measured density on this VM ranged 113K–153K tokens/MB and varies by session shape.",
-  "The conservative default uses the dense end of that range; a seat may supply its observed density when materializing its own registrations.",
-  "Retune threshold_bytes from a measured transcript-density sample for that seat; never copy the default blindly across session shapes.",
-  "The margin is the protection: sampling happens at a turn boundary, so a threshold tuned near the context wall can fire only after the safe window is already gone.",
-  "The first product-path run is still a separate adoption receipt; hand-rolled hook runs are design evidence, never proof this path executed.",
+  "转录字节数是经过校准的替代指标，不等于 token：此 VM 上测得的密度为每 MB 113K–153K token，并会随会话形态变化。",
+  "保守默认值取该范围的高密度端；席位在物化自身注册项时可以提供实测密度。",
+  "请根据该席位实测的转录密度样本重新调整 threshold_bytes；绝不要跨会话形态盲目复制默认值。",
+  "余量就是保护：采样发生在轮次边界，因此若阈值贴近上下文上限，触发时安全窗口可能已经消失。",
+  "首次走通产品路径仍需单独的采用回执；手工运行 hook 只能作为设计证据，绝不能证明此路径已经执行。",
 ].join(" ");
 
 export interface ContinuityPolicyMaterializationInput {
@@ -35,7 +35,7 @@ export interface ContinuityPolicyMaterializationInput {
   runtime: string;
   targetSession: string;
   watchedFilePath: string | null;
-  /** Explicit cutover executor. Required only by apprentice-handover. */
+  /** 显式切换执行者；仅 apprentice-handover 需要。 */
   mechanic?: string;
   tokensPerMegabyte?: number;
   registeredBySession?: string;
@@ -109,7 +109,7 @@ export interface ContinuityHistoryWriter {
 
 function thresholdBytes(targetTokens: number, tokensPerMegabyte: number): number {
   if (!Number.isFinite(tokensPerMegabyte) || tokensPerMegabyte <= 0) {
-    throw new Error("tokensPerMegabyte must be a positive calibrated value");
+    throw new Error("tokensPerMegabyte 必须是经过校准的正数");
   }
   return Math.floor((targetTokens / tokensPerMegabyte) * DECIMAL_MEGABYTE);
 }
@@ -167,7 +167,7 @@ export function materializeContinuityPolicy(
   }
   if (input.compactionStrategy === "apprentice-handover" && !input.mechanic) {
     throw new Error(
-      "mechanic is required for apprentice-handover; declare a canonical seat@rig at spec-default, profile, or member lifecycle level, then follow continuity/apprentice-cutover.md",
+      "apprentice-handover 必须提供 mechanic；请在 spec-default、profile 或成员生命周期层声明规范 seat@rig，然后遵循 continuity/apprentice-cutover.md",
     );
   }
   const density = input.tokensPerMegabyte ?? DEFAULT_DENSE_SESSION_TOKENS_PER_MB;
@@ -184,8 +184,8 @@ export function materializeContinuityPolicy(
   };
   if (input.compactionStrategy === "managed-compaction") {
     const prepareMessage = [
-      `Managed compaction preparation threshold crossed for ${input.targetSession}.`,
-      "Deposit continuity context now with rig context recap-write before the enforcer reaches its compaction threshold; this nudge prepares and never compacts.",
+      `${input.targetSession} 已超过托管压缩准备阈值。`,
+      "请在 enforcer 达到压缩阈值前立即运行 zrig context recap-write 保存连续性上下文；本次提醒只做准备，不会执行压缩。",
       CONTINUITY_POLICY_DOC,
     ].join("\n\n");
     return {
@@ -210,7 +210,7 @@ export function materializeContinuityPolicy(
   const prepareMessage = `${renderRung1IncumbentNotice(identity)}\n\n${CONTINUITY_POLICY_DOC}`;
   const cutoverBaton = renderRung2Baton(identity);
   const cutoverMessage = [
-    `Continuity cutover threshold crossed for ${input.targetSession}.`,
+    `${input.targetSession} 已超过连续性切换阈值。`,
     cutoverBaton.template,
   ].join("\n\n");
   return {
@@ -344,7 +344,7 @@ function continuityBatonQitemId(action: ContinuityCutoverAction): string {
   return `qitem-continuity-${safe(action.jobId)}-${safe(action.occupantGeneration)}`;
 }
 
-/** Existing QueueRepository.create is the only custody writer; the deterministic id makes retry identity. */
+/** 既有 QueueRepository.create 是唯一的托管权写入器；确定性 ID 保证重试身份一致。 */
 export async function createContinuityCutoverBaton(
   action: ContinuityCutoverAction,
   queue: ContinuityQueueWriter,
@@ -358,7 +358,7 @@ export async function createContinuityCutoverBaton(
   });
 }
 
-/** Append a post-restore width receipt to the one managed prep job for this occupant. */
+/** 将恢复后的宽度回执追加到该占用者唯一的托管准备任务。 */
 export function recordManagedWidthReceipt(
   input: {
     sessionName: string;
@@ -382,12 +382,12 @@ export function recordManagedWidthReceipt(
     job.specYaml.includes("generated_by: continuity-policy-materializer") &&
     job.specYaml.includes("continuity_mode: managed-compaction")
   );
-  // The shared enforcer also serves manual/default-mode compaction. No managed
-  // registration means this callback is outside A9 and intentionally writes nothing.
+  // 共享 enforcer 也服务手动/默认模式压缩。没有托管注册表示此回调不属于 A9，
+  // 因此刻意不写入任何内容。
   if (managed.length === 0) return null;
   if (managed.length !== 1) {
     throw new Error(
-      `continuity_width_receipt_job_ambiguous: expected one managed prep job for ${input.sessionName}; found ${managed.length}`,
+      `continuity_width_receipt_job_ambiguous: ${input.sessionName} 应有一个托管准备任务，实际找到 ${managed.length} 个` ,
     );
   }
   const job = managed[0]!;
@@ -396,7 +396,7 @@ export function recordManagedWidthReceipt(
     job.watchedFileGeneration !== input.occupantGeneration
   ) {
     throw new Error(
-      `continuity_width_receipt_generation_mismatch: ${job.jobId} is bound to ${job.watchedFileGeneration}, not ${input.occupantGeneration}`,
+      `continuity_width_receipt_generation_mismatch: ${job.jobId} 绑定到 ${job.watchedFileGeneration}，而不是 ${input.occupantGeneration}`,
     );
   }
   const receipt = buildWidthRecoveryReceipt({

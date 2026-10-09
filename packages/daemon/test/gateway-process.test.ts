@@ -7,10 +7,9 @@ import { runGatewayProcess, type GatewayProcessHandle } from "../src/domain/gate
 import { DispatchBuffer } from "../src/domain/gateway/dispatch-buffer.js";
 import { encodeGatewayMessage, decodeGatewayMessage, type CapabilityDescriptor, type OutboundDecision } from "../src/domain/gateway/protocol.js";
 
-// M1 A4a — the process BRAIN in-process (fast, fine-grained). This does NOT prove liveness
-// (a spawned process's silent-exit is masked by vitest's own event loop — that is proven by
-// gateway-spawn-e2e.test.ts). Here we prove the brain composes buffer+transport correctly:
-// on a re-dial it REPLAYS the un-Acked decision through the process layer (no-loss recovery).
+// M1 A4a——进程 BRAIN 的进程内测试（快速、细粒度）。这不能证明 liveness（派生进程静默退出会被
+// vitest 自身事件循环掩盖，该性质由 gateway-spawn-e2e.test.ts 证明）。此处证明 brain 正确组合
+// buffer 与 transport：重新拨号时，通过进程层重放未 Ack 的 decision（无损恢复）。
 
 const CAP: CapabilityDescriptor = {
   kind: "capability", connectorId: "slack-1", platform: "slack", protocolVersion: 1, ops: ["post_message"],
@@ -19,7 +18,7 @@ const CAP: CapabilityDescriptor = {
 interface Stub { server: Server; received: OutboundDecision[]; sockets: Socket[]; }
 function startStub(path: string, ackAll: boolean): Promise<Stub> {
   const received: OutboundDecision[] = []; const sockets: Socket[] = [];
-  try { if (existsSync(path)) unlinkSync(path); } catch { /* fresh */ }
+  try { if (existsSync(path)) unlinkSync(path); } catch { /* 保持初始状态。 */ }
   const server = createServer((sock) => {
     sockets.push(sock); sock.setEncoding("utf8"); sock.on("error", () => {});
     sock.write(encodeGatewayMessage(CAP));
@@ -42,16 +41,16 @@ const closeStub = (s: Stub): Promise<void> => new Promise((res) => { for (const 
 function waitFor(pred: () => boolean, ms = 4000): Promise<void> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
-    const iv = setInterval(() => { if (pred()) { clearInterval(iv); resolve(); } else if (Date.now() - start > ms) { clearInterval(iv); reject(new Error("waitFor timeout")); } }, 15);
+        const iv = setInterval(() => { if (pred()) { clearInterval(iv); resolve(); } else if (Date.now() - start > ms) { clearInterval(iv); reject(new Error("waitFor 超时")); } }, 15);
   });
 }
 
-describe("A4a runGatewayProcess (in-process brain)", () => {
+describe("A4a runGatewayProcess（进程内 brain）", () => {
   let home: string;
   let handle: GatewayProcessHandle | undefined;
   afterEach(() => { handle?.stop(); handle = undefined; if (home) rmSync(home, { recursive: true, force: true }); });
 
-  it("connects, exposes a live dispatcher, and stop() tears down", async () => {
+  it("连接后公开存活 dispatcher，stop() 可完成拆除", async () => {
     home = mkdtempSync(join(tmpdir(), "a4a-proc-"));
     const sockPath = join(home, "g.sock");
     const stub = await startStub(sockPath, true);
@@ -63,11 +62,11 @@ describe("A4a runGatewayProcess (in-process brain)", () => {
     await closeStub(stub);
   });
 
-  it("re-dials after an outage and REPLAYS the un-Acked decision (no-loss through the brain)", async () => {
+  it("故障后重新拨号并重放未 Ack 的 decision（通过 brain 无损恢复）", async () => {
     home = mkdtempSync(join(tmpdir(), "a4a-proc-"));
     const sockPath = join(home, "g.sock");
 
-    // round 1: connector never acks; dispatch d1 -> retained durably.
+    // 第 1 轮：connector 从不 ack；dispatch d1 后持久保留。
     const stub1 = await startStub(sockPath, false);
     handle = runGatewayProcess({ socketPath: sockPath, home, reconnectMs: 100 });
     await waitFor(() => handle!.connection()?.dispatcher.connectorId === "slack-1");
@@ -75,13 +74,13 @@ describe("A4a runGatewayProcess (in-process brain)", () => {
     expect(r.ok).toBe(true);
     await waitFor(() => stub1.received.length === 1);
     expect(new DispatchBuffer(home).pending().map((x) => x.decisionId)).toEqual([r.ok ? r.decisionId : ""]);
-    await closeStub(stub1); // OUTAGE
+    await closeStub(stub1); // 故障。
 
-    // round 2: a new connector (acks) comes up on the same path; the brain re-dials and the
-    // transport replays the un-Acked d1 on handshake -> connector re-receives -> acks -> drain.
+    // 第 2 轮：会 ack 的新 connector 在同一路径启动；brain 重新拨号，transport 在握手时重放
+    // 未 Ack 的 d1，connector 再次接收、ack 并排空。
     const stub2 = await startStub(sockPath, true);
-    await waitFor(() => stub2.received.length >= 1); // replayed after re-dial
-    await waitFor(() => new DispatchBuffer(home).pending().length === 0); // acked + drained: no loss
+    await waitFor(() => stub2.received.length >= 1); // 重新拨号后已重放。
+    await waitFor(() => new DispatchBuffer(home).pending().length === 0); // 已 ack 并排空：无丢失。
     await closeStub(stub2);
   });
 });

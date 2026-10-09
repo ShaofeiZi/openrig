@@ -1,8 +1,8 @@
-// OPR.0.4.4.19 FR-4/FR-5 — human-route enforcement (conventions C6 + C3).
+// OPR.0.4.4.19 FR-4/FR-5——人类路由强制规则（约定 C6 + C3）。
 //
-// The §5 scoping predicate is the COMPLETE trigger list (BR-1): tier
-// human-gate OR human-seat destination (the park leg is validated at the
-// blocked-transition path, FR-6). Everything off the predicate is untouched.
+// §5 的作用域谓词就是完整的触发列表（BR-1）：tier 为 human-gate 或目的地为
+// human-seat（park 分支在 blocked-transition 路径上校验，见 FR-6）。
+// 谓词未命中的所有情况均保持不变。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
@@ -21,48 +21,48 @@ import {
   validateHumanRoute,
 } from "../src/domain/human-route-enforcer.js";
 
-describe("human-route-enforcer (pure validator)", () => {
-  it("§5 predicate leg 1: tier=human-gate is human-routed", () => {
+describe("human-route-enforcer（纯校验器）", () => {
+  it("§5 谓词分支 1：tier=human-gate 会路由给人类", () => {
     const r = validateHumanRoute({ tier: "human-gate", destinationSession: "b@rig", summary: "s", evidenceRef: "e" });
     expect(r.ok).toBe(true);
     expect(r.ok && r.humanRouted).toBe(true);
   });
 
-  it("§5 predicate leg 2: human-seat destination is human-routed (strict regex)", () => {
+  it("§5 谓词分支 2：human-seat 目的地会路由给人类（严格正则）", () => {
     expect(isHumanSeatSession("human@kernel")).toBe(true);
     expect(isHumanSeatSession("human@host")).toBe(true);
     expect(isHumanSeatSession("human-review@kernel")).toBe(true);
-    // malformed / near-miss sessions are NOT human seats (no LIKE superset):
+    // 格式错误或近似匹配的 session 不是 human seat（不使用 LIKE 超集）：
     expect(isHumanSeatSession("human-@kernel")).toBe(false);
     expect(isHumanSeatSession("human-ish@other-rig")).toBe(false);
     expect(isHumanSeatSession("superhuman@kernel")).toBe(false);
     expect(isHumanSeatSession(null)).toBe(false);
   });
 
-  it("human-routed with both fields missing → error naming BOTH fields + why", () => {
+  it("路由给人类时两个字段均缺失 → 错误会列出两个字段及原因", () => {
     const r = validateHumanRoute({ tier: "human-gate", destinationSession: "b@rig", summary: null, evidenceRef: null });
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe("human_route_fields_required");
       expect(r.missingFields).toEqual(["summary", "evidence_ref"]);
-      expect(r.message).toContain("plain language");
-      expect(r.message).toContain("judge");
+      expect(r.message).toContain("自然语言");
+      expect(r.message).toContain("判断");
     }
   });
 
-  it("whitespace-only values count as missing", () => {
+  it("仅含空白字符的值视为缺失", () => {
     const r = validateHumanRoute({ tier: null, destinationSession: "human@kernel", summary: "   ", evidenceRef: "\t" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.missingFields).toEqual(["summary", "evidence_ref"]);
   });
 
-  it("BR-1: non-human-routed request validates NOTHING (ok regardless of fields)", () => {
+  it("BR-1：未路由给人类的请求不校验任何字段（无论字段如何都通过）", () => {
     const r = validateHumanRoute({ tier: "critical", destinationSession: "guard@rig", summary: null, evidenceRef: null });
     expect(r).toEqual({ ok: true, humanRouted: false });
   });
 });
 
-describe("QueueRepository human-route enforcement wiring (FR-4/FR-5)", () => {
+describe("QueueRepository 人类路由强制规则接线（FR-4/FR-5）", () => {
   let db: Database.Database;
   let repo: QueueRepository;
 
@@ -74,86 +74,86 @@ describe("QueueRepository human-route enforcement wiring (FR-4/FR-5)", () => {
 
   afterEach(() => db.close());
 
-  const ordinary = { sourceSession: "a@rig", destinationSession: "b@rig", body: "work", nudge: false as const };
+  const ordinary = { sourceSession: "a@rig", destinationSession: "b@rig", body: "工作", nudge: false as const };
 
-  it("create to a human seat without summary/evidence_ref is REJECTED with the structured error", async () => {
+  it("create 到 human seat 但缺少 summary/evidence_ref 时，以结构化错误拒绝", async () => {
     await expect(
-      repo.create({ sourceSession: "pm@rig", destinationSession: "human-review@kernel", body: "judge", nudge: false })
+      repo.create({ sourceSession: "pm@rig", destinationSession: "human-review@kernel", body: "判断", nudge: false })
     ).rejects.toMatchObject({ code: "human_route_fields_required" });
   });
 
-  it("create with tier=human-gate without the fields is REJECTED", async () => {
+  it("create 使用 tier=human-gate 但缺少字段时会被拒绝", async () => {
     await expect(
       repo.create({ ...ordinary, tier: "human-gate" })
     ).rejects.toThrow(QueueRepositoryError);
   });
 
-  it("human-routed create WITH both fields is accepted and persists them", async () => {
+  it("路由给人类的 create 同时提供两个字段时会被接受并持久化", async () => {
     const item = await repo.create({
       sourceSession: "pm@rig",
       destinationSession: "human-review@kernel",
-      body: "judge",
-      summary: "Approve the 0.4.4 cut",
+      body: "判断",
+      summary: "批准 0.4.4 版本",
       evidenceRef: "missions/x/PROOF.md",
       nudge: false,
     });
-    expect(item.summary).toBe("Approve the 0.4.4 cut");
+    expect(item.summary).toBe("批准 0.4.4 版本");
     expect(item.evidenceRef).toBe("missions/x/PROOF.md");
   });
 
-  it("handoff to a human seat requires the NEW item's own fields (never inherited)", async () => {
+  it("handoff 到 human seat 要求新 item 自带字段（绝不继承）", async () => {
     const src = await repo.create({
       ...ordinary,
-      summary: "source summary",
+      summary: "来源摘要",
       evidenceRef: "proof/source.md",
     });
-    // Source HAS both fields; the handoff omits them → still rejected.
+    // 来源 item 已有两个字段，但 handoff 未提供 → 仍会被拒绝。
     await expect(
       repo.handoff({ qitemId: src.qitemId, fromSession: "b@rig", toSession: "human-review@kernel", nudge: false })
     ).rejects.toMatchObject({ code: "human_route_fields_required" });
-    // Providing them on the handoff itself succeeds.
+    // 在 handoff 本身提供这两个字段即可成功。
     const result = await repo.handoff({
       qitemId: src.qitemId,
       fromSession: "b@rig",
       toSession: "human-review@kernel",
-      summary: "Please ratify",
+      summary: "请批准",
       evidenceRef: "proof/final.md",
       nudge: false,
     });
-    expect(result.created.summary).toBe("Please ratify");
+    expect(result.created.summary).toBe("请批准");
     expect(result.created.evidenceRef).toBe("proof/final.md");
   });
 
-  it("handoff inheriting human-gate TIER from the source also triggers enforcement", async () => {
+  it("handoff 从来源继承 human-gate tier 时也会触发强制规则", async () => {
     const src = await repo.create({
       ...ordinary,
       tier: "human-gate",
       summary: "s",
       evidenceRef: "e.md",
     });
-    // No tier override on the handoff → new item inherits human-gate → enforcement.
+    // handoff 未覆盖 tier → 新 item 继承 human-gate → 触发强制规则。
     await expect(
       repo.handoff({ qitemId: src.qitemId, fromSession: "b@rig", toSession: "c@rig", nudge: false })
     ).rejects.toMatchObject({ code: "human_route_fields_required" });
   });
 
-  it("handoffAndComplete to a human seat is enforced identically", async () => {
+  it("handoffAndComplete 到 human seat 时执行相同的强制规则", async () => {
     const src = await repo.create(ordinary);
     await expect(
       repo.handoffAndComplete({ qitemId: src.qitemId, fromSession: "b@rig", toSession: "human@kernel", nudge: false })
     ).rejects.toMatchObject({ code: "human_route_fields_required" });
   });
 
-  // ——— BR-1 zero-friction negatives (the guard's verification targets) ———
+  // ——— BR-1 零摩擦反例（guard 的验证目标）———
 
-  it("NEGATIVE: ordinary create without summary/evidence_ref is accepted exactly as before", async () => {
+  it("反例：普通 create 缺少 summary/evidence_ref 时仍与此前一样被接受", async () => {
     const item = await repo.create(ordinary);
     expect(item.state).toBe("pending");
     expect(item.summary).toBeNull();
     expect(item.evidenceRef).toBeNull();
   });
 
-  it("NEGATIVE: ordinary handoff without the fields is accepted; no new rejection path", async () => {
+  it("反例：普通 handoff 缺少字段时仍被接受，不新增拒绝路径", async () => {
     const src = await repo.create(ordinary);
     const result = await repo.handoff({ qitemId: src.qitemId, fromSession: "b@rig", toSession: "c@rig", nudge: false });
     expect(result.created.state).toBe("pending");
@@ -161,7 +161,7 @@ describe("QueueRepository human-route enforcement wiring (FR-4/FR-5)", () => {
     expect(result.created.evidenceRef).toBeNull();
   });
 
-  it("NEGATIVE: ordinary update/close paths gain no new requirement (closure contract unchanged)", async () => {
+  it("反例：普通 update/close 路径不新增要求（关闭契约不变）", async () => {
     const item = await repo.create(ordinary);
     repo.claim({ qitemId: item.qitemId, destinationSession: "b@rig" });
     const done = repo.update({
@@ -173,7 +173,7 @@ describe("QueueRepository human-route enforcement wiring (FR-4/FR-5)", () => {
     expect(done.state).toBe("done");
   });
 
-  it("NEGATIVE: near-miss destinations (regex non-matches) are NOT enforced", async () => {
+  it("反例：近似目的地（正则不匹配）不执行强制规则", async () => {
     const item = await repo.create({ ...ordinary, destinationSession: "human-ish@other-rig" });
     expect(item.state).toBe("pending");
     const item2 = await repo.create({ ...ordinary, destinationSession: "human-@kernel" });
@@ -181,7 +181,7 @@ describe("QueueRepository human-route enforcement wiring (FR-4/FR-5)", () => {
   });
 });
 
-describe("FR-6 park-on-human (leg-1) — enforcement + persistence + attention", () => {
+describe("FR-6 park-on-human（第 1 阶段）——强制规则、持久化与 attention", () => {
   let db: Database.Database;
   let repo: QueueRepository;
 
@@ -197,32 +197,32 @@ describe("FR-6 park-on-human (leg-1) — enforcement + persistence + attention",
     const item = await repo.create({
       sourceSession: "orch@rig",
       destinationSession: "driver@rig",
-      body: "build the thing",
+      body: "构建目标",
       nudge: false,
     });
     repo.claim({ qitemId: item.qitemId, destinationSession: "driver@rig" });
     return item;
   }
 
-  it("park on a human seat WITH park-time summary + evidence_ref succeeds, keeps ownership, requires no closure_reason, and PERSISTS both fields", async () => {
+  it("park 到 human seat 时提供 summary + evidence_ref 会成功、保留归属、不要求 closure_reason，并持久化两个字段", async () => {
     const item = await inProgressItem();
     const parked = repo.update({
       qitemId: item.qitemId,
       actorSession: "driver@rig",
       state: "blocked",
       blockedOn: "human-review@kernel",
-      summary: "Which hook-trust timing rule should ship?",
+      summary: "应发布哪一条 hook-trust 时序规则？",
       evidenceRef: "missions/x/slices/y/OPTIONS.md",
     });
     expect(parked.state).toBe("blocked");
-    expect(parked.destinationSession).toBe("driver@rig"); // owner keeps the potato
-    expect(parked.closureReason).toBeNull();              // non-terminal
+    expect(parked.destinationSession).toBe("driver@rig"); // owner 继续持有 hot potato
+    expect(parked.closureReason).toBeNull();              // 非终态
     const read = repo.getById(item.qitemId)!;
-    expect(read.summary).toBe("Which hook-trust timing rule should ship?");
+    expect(read.summary).toBe("应发布哪一条 hook-trust 时序规则？");
     expect(read.evidenceRef).toBe("missions/x/slices/y/OPTIONS.md");
   });
 
-  it("park on a human seat WITHOUT summary/evidence_ref is rejected naming both fields", async () => {
+  it("park 到 human seat 但缺少 summary/evidence_ref 时会被拒绝，并列出两个字段", async () => {
     const item = await inProgressItem();
     expect(() =>
       repo.update({
@@ -240,12 +240,12 @@ describe("FR-6 park-on-human (leg-1) — enforcement + persistence + attention",
     }
   });
 
-  it("an item already carrying both fields parks without re-entry (effective-value rule)", async () => {
+  it("已携带两个字段的 item 无需重复输入即可 park（生效值规则）", async () => {
     const item = await repo.create({
       sourceSession: "orch@rig",
       destinationSession: "driver@rig",
       body: "b",
-      summary: "carried from create",
+      summary: "从 create 携带",
       evidenceRef: "proof/carried.md",
       nudge: false,
     });
@@ -259,22 +259,22 @@ describe("FR-6 park-on-human (leg-1) — enforcement + persistence + attention",
     expect(parked.state).toBe("blocked");
   });
 
-  it("parked-on-human items are returned by the attention query (3rd predicate leg)", async () => {
+  it("parked-on-human item 会由 attention 查询返回（谓词第 3 个分支）", async () => {
     const item = await inProgressItem();
     repo.update({
       qitemId: item.qitemId,
       actorSession: "driver@rig",
       state: "blocked",
       blockedOn: "human-review@kernel",
-      summary: "decision owed",
+      summary: "待作决策",
       evidenceRef: "proof/x.md",
     });
     const attention = repo.listAttention();
     expect(attention.map((q) => q.qitemId)).toContain(item.qitemId);
   });
 
-  it("NEGATIVE: blocked on another QITEM requires nothing new and does NOT appear in attention", async () => {
-    const blocker = await repo.create({ sourceSession: "a@rig", destinationSession: "b@rig", body: "blocker", nudge: false });
+  it("反例：阻塞于另一个 qitem 不新增要求，也不会出现在 attention 中", async () => {
+    const blocker = await repo.create({ sourceSession: "a@rig", destinationSession: "b@rig", body: "阻塞项", nudge: false });
     const item = await inProgressItem();
     const parked = repo.update({
       qitemId: item.qitemId,
@@ -287,7 +287,7 @@ describe("FR-6 park-on-human (leg-1) — enforcement + persistence + attention",
     expect(attention.map((q) => q.qitemId)).not.toContain(item.qitemId);
   });
 
-  it("queue.updated event carries the park-time summary (FR-1 x FR-6, the P2 refresh contract)", async () => {
+  it("queue.updated 事件携带 park 时的 summary（FR-1 × FR-6，P2 刷新契约）", async () => {
     const bus = new EventBus(db);
     const repo2 = new QueueRepository(db, bus);
     const captured: Array<Record<string, unknown>> = [];
@@ -298,19 +298,19 @@ describe("FR-6 park-on-human (leg-1) — enforcement + persistence + attention",
       actorSession: "d@rig",
       state: "blocked",
       blockedOn: "human@kernel",
-      summary: "park-time summary",
+      summary: "park 时的摘要",
       evidenceRef: "proof/p.md",
     });
     const ev = captured.find((e) => e.type === "queue.updated");
     expect(ev).toBeDefined();
-    expect(ev!.summary).toBe("park-time summary");
+    expect(ev!.summary).toBe("park 时的摘要");
     expect(ev!.toState).toBe("blocked");
   });
 
-  // OPR.0.5.1 slice-51-06 D2: non-park summary/evidence used to be SILENTLY dropped (a data-loss
-  // trap); it is now a HARD REJECT before any mutation. The surface still stays tight (nothing
-  // persists on a non-park item) — now enforced loudly instead of silently.
-  it("NEGATIVE: non-park updates REJECT summary/evidence_ref inputs (surface stays tight, loudly)", async () => {
+  // OPR.0.5.1 slice-51-06 D2：过去会静默丢弃非 park 的 summary/evidence（数据丢失陷阱）；
+  // 现在会在任何变更前直接拒绝。接口面仍保持收紧（非 park item 不持久化任何内容），
+  // 但现在会明确拒绝，而不是静默处理。
+  it("反例：非 park 更新拒绝 summary/evidence_ref 输入（明确保持收紧的接口面）", async () => {
     const item = await inProgressItem();
     let err: unknown;
     try {
@@ -318,7 +318,7 @@ describe("FR-6 park-on-human (leg-1) — enforcement + persistence + attention",
         qitemId: item.qitemId,
         actorSession: "driver@rig",
         state: "in-progress",
-        summary: "should NOT persist",
+        summary: "不应持久化",
         evidenceRef: "should-not-persist.md",
       });
     } catch (e) { err = e; }
@@ -326,7 +326,7 @@ describe("FR-6 park-on-human (leg-1) — enforcement + persistence + attention",
     expect((err as QueueRepositoryError).code).toBe("summary_evidence_not_persistable");
     expect((err as QueueRepositoryError).meta?.invalidFields).toEqual(["summary", "evidenceRef"]);
     const read = repo.getById(item.qitemId)!;
-    expect(read.summary).toBeNull(); // nothing persisted (reject was before any write)
+    expect(read.summary).toBeNull(); // 未持久化任何内容（在写入前已拒绝）
     expect(read.evidenceRef).toBeNull();
   });
 });

@@ -1,22 +1,19 @@
-// OPR.0.4.6.02 C3 — the terminal-provider-ride daemon routes.
+// OPR.0.4.6.02 C3——terminal-provider-ride 后台服务路由。
 //
-// ONE canonical, NON-rig-scoped composer for EVERY view kind (arch R1 / guard
-// b1): `POST /api/terminal/open {provider, view}` + `GET /api/terminal/views` +
-// `GET /api/terminal/status`. The rig-scoped `POST /api/rigs/:rigId/terminal/
-// open` is a THIN ALIAS that composes `view = rig:<rigId>` and delegates to the
-// SAME `TerminalService` — zero composition logic of its own. The CLI and the
-// web-UI launcher both hit the canonical seam.
+// 面向每种 view 类型的唯一、规范、非 rig 范围的 composer（arch R1 / guard
+// b1）：`POST /api/terminal/open {provider, view}` + `GET /api/terminal/views` +
+// `GET /api/terminal/status`。rig 范围的 `POST /api/rigs/:rigId/terminal/open`
+// 是一个薄别名，它拼出 `view = rig:<rigId>` 并委托给同一个 `TerminalService`——
+// 自身零组合逻辑。CLI 与 web-UI 启动器都打这个规范接缝。
 //
-// The response body is ALWAYS the one shared `OpenViewResult { opened, absent,
-// degraded }` shape (arch Q3) — carried byte-identically here and in the CLI
-// JSON. HTTP status maps only the resolution outcome: bad input → 400, unknown
-// view → 404; a provider-unavailable or honest-partial is a 200 whose BODY
-// tells the truth (ok / opened / degraded), never an error status.
+// 响应体始终是同一个共享 `OpenViewResult { opened, absent, degraded }` 形状
+// （arch Q3）——在此处与 CLI JSON 中字节一致。HTTP 状态只映射解析结果：
+// 坏输入 → 400，未知 view → 404；provider 不可用或诚实部分结果是一个 200，
+// 其 BODY 说出真相（ok / opened / degraded），绝不是错误状态码。
 //
-// No new auth/trust surface (PRD "no new auth surface v1"): these routes mirror
-// the shipped cmux launch route's posture (which does not gate on the terminal
-// bearer token) — composing a view reads inventory and returns attach commands
-// the provider runs client-side; it mutates no daemon state.
+// 无新 auth/trust 表面（PRD「no new auth surface v1」）：这些路由镜像已交付
+// cmux 启动路由的姿态（它不按 terminal bearer token 门控）——组合一个 view 只读
+// inventory 并返回 provider 在客户端运行的 attach 命令；它不改变任何后台服务状态。
 
 import { Hono } from "hono";
 import type { TerminalService } from "../domain/terminal/terminal-service.js";
@@ -25,17 +22,17 @@ function getService(c: { get(key: string): unknown }): TerminalService | null {
   return (c.get("terminalService" as never) as TerminalService | undefined) ?? null;
 }
 
-/** Map a service OpenViewResult code to an HTTP status (body is always the full result). */
+/** 把服务 OpenViewResult code 映射到 HTTP 状态（body 始终是完整结果）。 */
 function statusForOpen(ok: boolean, code: string | undefined): 200 | 400 | 404 | 409 {
   if (ok) return 200;
   if (code === "view_required" || code === "unknown_provider") return 400;
   if (code === "view_not_found") return 404;
   if (code === "preview_changed") return 409;
-  // provider-unavailable / layout-unsupported / honest-partial: a truthful 200 body.
+  // provider 不可用 / layout 不支持 / 诚实部分结果：一个诚实的 200 body。
   return 200;
 }
 
-/** Parse the `{ provider?, view }` open body honestly (a non-object / missing view → structured 400 upstream). */
+/** 诚实地解析 `{ provider?, view }` open body（非对象 / 缺 view → 上游结构化 400）。 */
 function readOpenBody(raw: unknown): { provider?: string; view?: string; expectedPlan?: string } {
   if (raw === null || typeof raw !== "object") return {};
   const obj = raw as Record<string, unknown>;
@@ -45,7 +42,7 @@ function readOpenBody(raw: unknown): { provider?: string; view?: string; expecte
   return { ...(provider !== undefined ? { provider } : {}), ...(view !== undefined ? { view } : {}), ...(expectedPlan !== undefined ? { expectedPlan } : {}) };
 }
 
-/** The canonical, non-rig-scoped terminal route family. Mounted at `/api/terminal`. */
+/** 规范的、非 rig 范围的 terminal 路由族。挂载在 `/api/terminal`。 */
 export function terminalRoutes(): Hono {
   const app = new Hono();
 
@@ -56,7 +53,7 @@ export function terminalRoutes(): Hono {
     try {
       raw = await c.req.json();
     } catch {
-      return c.json({ error: "body_invalid", hint: "expected a JSON object { provider?, view }" }, 400);
+      return c.json({ error: "body_invalid", hint: "期望一个 JSON 对象 { provider?, view }" }, 400);
     }
     const { provider, view, expectedPlan } = readOpenBody(raw);
     const result = await svc.openView({ ...(provider !== undefined ? { provider } : {}), view: view ?? "", ...(expectedPlan !== undefined ? { expectedPlan } : {}) });
@@ -87,10 +84,9 @@ export function terminalRoutes(): Hono {
 }
 
 /**
- * The rig-scoped THIN ALIAS. Mounted at `/api/rigs/:rigId/terminal`, so `POST
- * /api/rigs/:rigId/terminal/open` composes `view = rig:<rigId>` and delegates
- * to the same canonical `TerminalService.openView` — no composition logic here
- * (arch R1 / guard b1). A `provider` may still ride in the body.
+ * rig 范围的薄别名。挂载在 `/api/rigs/:rigId/terminal`，因此 `POST
+ * /api/rigs/:rigId/terminal/open` 拼出 `view = rig:<rigId>` 并委托给同一个规范的
+ * `TerminalService.openView`——此处无组合逻辑（arch R1 / guard b1）。body 里仍可带 `provider`。
  */
 export const rigTerminalRoutes = new Hono();
 
@@ -106,7 +102,7 @@ rigTerminalRoutes.post("/open", async (c) => {
       provider = (raw as Record<string, unknown>)["provider"] as string;
     }
   } catch {
-    // An empty/absent body is fine for the alias — the view is the rig itself.
+    // 对别名来说空/缺失的 body 是可以的——view 就是该工作组本身。
   }
   const result = await svc.openView({ ...(provider !== undefined ? { provider } : {}), view: `rig:${rigId}` });
   return c.json(result, statusForOpen(result.ok, result.code));

@@ -1,24 +1,21 @@
-// OPR.0.5.3.5 Atom 3 — the composition algebra (locked SPEC, founder refinement):
+// OPR.0.5.3.5 Atom 3——组合代数（已锁定规范，创始人细化）：
 //
-//   FRESH           = the base walk (atoms tagged fresh)
-//   HANDOVER        = FRESH + the handover material (atoms tagged handover)
-//   POST-COMPACTION = the tagged subset of fresh + the handover material
+//   FRESH           = 基础遍历（标记 fresh 的 atom）
+//   HANDOVER        = FRESH + 交接材料（标记 handover 的 atom）
+//   POST-COMPACTION = fresh 的已标记子集 + 交接材料
 //
-// Every profile is CLOSED over requires (a subset profile must close — intake rule);
-// the runtime filter runs per mini-req 3 (claude and codex are never assumed to have
-// lost the same dimensions, so they compose different profiles from the SAME graph);
-// each piece resolves through the Atom-1 address machinery and carries a per-piece
-// SOURCE LABEL (Q2-Amendment 1: composition is multi-source by contract — library /
-// project tree / seat tree / mission tree — and every assembled piece names its source; the caller's
-// resolver decides the kind, this module labels). Budgets are evaluated AT COMPOSE
-// and on overage REPORT the amount and the priority-ordered drop candidates —
-// composition never silently truncates (mini-req 9; D2: budgets flag for review,
-// never silently govern).
+// 每个 profile 都必须对 requires 闭包（子集 profile 也必须闭合，这是接入规则）；runtime 过滤按
+// mini-req 3 执行：不能假定 claude 与 codex 丢失了相同维度，因此它们会从同一张图组合出不同
+// profile。每个 piece 都通过 Atom-1 地址机制解析，并携带逐 piece 的来源标签
+//（Q2 修订 1：组合按契约是多来源的——library / project tree / seat tree / mission tree；
+// 每个组装 piece 都标明来源，调用方 resolver 决定类型，本模块负责标记）。预算在组合时评估；
+// 超额时报告数量与按优先级排序的丢弃候选，组合本身绝不静默截断
+//（mini-req 9；D2：预算只提示审查，绝不静默支配结果）。
 //
-// PURE by contract, like the manifest parser: file text arrives through the caller's
-// readFile so the same algebra serves library packs today and configured tree roots
-// (project/seat/mission sources) when the wiring atom lands. Every failure is LOUD and names
-// the atom — a compose stops rather than thinning the walk (the Q1 rationale).
+// 与 manifest parser 一样，本模块按契约保持纯函数：文件文本通过调用方 readFile 传入，使同一套
+// 代数既服务当前 library pack，也能在接线 atom 落地后服务已配置的 tree root
+//（project/seat/mission 来源）。所有失败都必须明确点名 atom；组合会停止，而不是悄悄削薄遍历
+//（Q1 理由）。
 
 import type { ContextPackAtom, ContextPackProfile } from "./context-pack-types.js";
 import { estimateTokensFromBytes } from "./token-estimate.js";
@@ -36,15 +33,15 @@ export type ComposeRuntime = "claude" | "codex";
 export type SourceKind = "library" | "project" | "seat" | "mission";
 
 export interface ComposeInput {
-  /** The one atom graph (possibly gathered across sources by the caller). */
+  /** 唯一 atom 图；调用方可能从多个来源汇集而成。 */
   atoms: ContextPackAtom[];
   situation: ComposeSituation;
   runtime: ComposeRuntime;
-  /** Fail-loud file reader keyed by the address's pre-`#` ref. */
+  /** 以地址中 `#` 之前的 ref 为 key、失败时明确报错的文件读取器。 */
   readFile: (ref: string) => string;
-  /** The situation's token budget (D2 targets); omitted = no budget check. */
+  /** 当前 situation 的 token 预算（D2 目标）；省略表示不检查预算。 */
   budgetTokens?: number;
-  /** Source labelling per atom (Q2-Amendment 1); defaults to "library". */
+  /** 逐 atom 的来源标注（Q2 修订 1）；默认为 "library"。 */
   sourceKindFor?: (atom: ContextPackAtom) => SourceKind;
 }
 
@@ -54,11 +51,10 @@ export interface ComposedPiece {
   sourceKind: SourceKind;
   order: number;
   priority: ContextPackAtom["priority"];
-  /** The resolved bytes: the addressed span (Q1 full-span rule) or the whole file. */
+  /** 已解析文本：带地址时为目标完整区段（Q1 full-span 规则），否则为整个文件。 */
   text: string;
   estimatedTokens: number;
-  /** Present for named install profiles so the flattened delivery stream still
-   * carries the phase boundary an inspector saw before apply. */
+  /** 具名 install profile 才有，使扁平投递流仍携带应用前检查者看到的 phase 边界。 */
   phaseId?: string;
 }
 
@@ -75,20 +71,19 @@ export interface ComposedProfile {
   runtime: ComposeRuntime;
   pieces: ComposedPiece[];
   totalEstimatedTokens: number;
-  /** Present only for an explicitly selected manifest profile. */
+  /** 仅在显式选择 manifest profile 时存在。 */
   profileId?: string;
   phases?: ComposedProfilePhase[];
-  /** Present ONLY when the budget binds: the report, never a truncation. */
+  /** 仅预算触发时存在：它是一份报告，绝不是截断结果。 */
   budget?: {
     limitTokens: number;
     overageTokens: number;
-    /** What to drop FIRST, in drop order: optional, then recommended, then core;
-     *  larger pieces first within a tier (the biggest cheap win leads). */
+    /** 优先丢弃候选，顺序为 optional、recommended、core；同一层级先列较大的 piece。 */
     dropCandidates: Array<{ atomId: string; priority: ContextPackAtom["priority"]; estimatedTokens: number }>;
   };
 }
 
-/** Which situation tags select atoms for a profile, per the locked algebra. */
+/** 按已锁定代数，返回为 profile 选择 atom 的 situation tag。 */
 function selectionTags(situation: ComposeSituation): ComposeSituation[] {
   switch (situation) {
     case "fresh":
@@ -114,7 +109,7 @@ function resolvePieces(input: {
     try {
       fileText = input.readFile(ref);
     } catch (err) {
-      throw new ProfileComposeError(`atom '${a.id}' (${a.address}): source file '${ref}' is unreadable — ${(err as Error).message}`);
+      throw new ProfileComposeError(`atom '${a.id}'（${a.address}）：来源文件 '${ref}' 不可读——${(err as Error).message}`);
     }
     let text: string;
     if (headerPath.length === 0) {
@@ -158,7 +153,7 @@ export function composeProfile(input: ComposeInput): ComposedProfile {
   const { atoms, situation, runtime, readFile, budgetTokens, sourceKindFor } = input;
   const byId = new Map(atoms.map((a) => [a.id, a]));
 
-  // 1. SELECT by situation tag, then filter by runtime (an "any" atom serves both).
+  // 1. 先按 situation tag 选择，再按 runtime 过滤；"any" atom 同时服务两种运行时。
   const tags = selectionTags(situation);
   const runtimeFits = (a: ContextPackAtom): boolean => a.runtime === "any" || a.runtime === runtime;
   const selected = new Map<string, ContextPackAtom>();
@@ -166,9 +161,8 @@ export function composeProfile(input: ComposeInput): ComposedProfile {
     if (!a.profileOnly && a.situations.some((s) => tags.includes(s)) && runtimeFits(a)) selected.set(a.id, a);
   }
 
-  // 2. CLOSE over requires: a required atom joins the profile even when untagged.
-  //    A dependency that exists but is excluded by the RUNTIME filter is a broken
-  //    graph for this runtime — fail loud, never a quietly thinner walk.
+  // 2. 对 requires 做闭包：即使 required atom 未带 tag，也必须加入 profile。
+  //    若依赖存在但被 runtime 过滤排除，则该运行时对应的图已经损坏；必须明确失败，不能静默削薄遍历。
   const queue = [...selected.keys()];
   while (queue.length > 0) {
     const id = queue.pop()!;
@@ -176,12 +170,12 @@ export function composeProfile(input: ComposeInput): ComposedProfile {
       if (selected.has(req)) continue;
       const dep = byId.get(req);
       if (!dep) {
-        throw new ProfileComposeError(`atom '${id}' requires '${req}', which is not in the graph — the ${situation} profile cannot close.`);
+        throw new ProfileComposeError(`atom '${id}' 依赖 '${req}'，但图中不存在该 atom——${situation} profile 无法闭合。`);
       }
       if (!runtimeFits(dep)) {
         throw new ProfileComposeError(
-          `atom '${id}' requires '${req}', but '${req}' is declared runtime=${dep.runtime} and this compose targets runtime=${runtime} — ` +
-            `the closure would silently thin the ${situation} walk; fix the graph (retag '${req}' or drop the edge).`,
+          `atom '${id}' 依赖 '${req}'，但 '${req}' 声明为 runtime=${dep.runtime}，本次组合目标为 runtime=${runtime}——` +
+            `闭包会静默削薄 ${situation} 遍历；请修复图（重新标记 '${req}' 或删除该边）。`,
         );
       }
       selected.set(req, dep);
@@ -189,34 +183,32 @@ export function composeProfile(input: ComposeInput): ComposedProfile {
     }
   }
 
-  // 3. ORDER the walk (stable: order, then id — absorption depends on sequence).
+  // 3. 对遍历稳定排序：先按 order，再按 id；吸收结果依赖此顺序。
   const walk = [...selected.values()].sort((x, y) => x.order - y.order || x.id.localeCompare(y.id));
 
-  // 4. RESOLVE every piece through the one address machinery; label its source.
+  // 4. 通过唯一地址机制解析每个 piece，并标记其来源。
   const pieces = resolvePieces({ atoms: walk, readFile, sourceKindFor });
 
   const totalEstimatedTokens = pieces.reduce((sum, p) => sum + p.estimatedTokens, 0);
 
-  // 5. BUDGET report (mini-req 9): flag, never govern — all pieces stay.
+  // 5. 生成预算报告（mini-req 9）：只标记、不支配结果，所有 piece 均保留。
   const budget = budgetReport(pieces, budgetTokens);
 
   return { situation, runtime, pieces, totalEstimatedTokens, ...(budget !== undefined ? { budget } : {}) };
 }
 
-/** Compose one explicit manifest profile. Profiles change only selection and
- * sequence: every atom still resolves through the same source graph, while
- * project/mission/seat/task atoms are supplied by the route from configured
- * roots. */
+/** 组合一个显式 manifest profile。Profile 只改变选择与顺序：每个 atom 仍通过同一来源图解析；
+ * project/mission/seat/task atom 由路由从已配置根目录提供。 */
 export function composeNamedProfile(input: ComposeInput & {
   profile: ContextPackProfile;
   contextAtoms: Partial<Record<"project" | "mission" | "seat" | "slice", ContextPackAtom[]>>;
 }): ComposedProfile {
   const { profile, atoms, situation, runtime, readFile, sourceKindFor, budgetTokens, contextAtoms } = input;
   if (!profile.situations.includes(situation)) {
-    throw new ProfileComposeError(`profile '${profile.id}' does not apply to situation '${situation}'`);
+    throw new ProfileComposeError(`profile '${profile.id}' 不适用于 situation '${situation}'`);
   }
   if (!profile.runtimes.includes(runtime)) {
-    throw new ProfileComposeError(`profile '${profile.id}' does not apply to runtime '${runtime}'`);
+    throw new ProfileComposeError(`profile '${profile.id}' 不适用于 runtime '${runtime}'`);
   }
 
   const atomsById = new Map(atoms.map((atom) => [atom.id, atom]));
@@ -227,7 +219,7 @@ export function composeNamedProfile(input: ComposeInput & {
       kind = "atoms";
       selected = phase.atoms.map((atomId) => {
         const atom = atomsById.get(atomId);
-        if (!atom) throw new ProfileComposeError(`profile '${profile.id}' phase '${phase.id}' references missing atom '${atomId}'`);
+        if (!atom) throw new ProfileComposeError(`profile '${profile.id}' 的 phase '${phase.id}' 引用了缺失的 atom '${atomId}'`);
         return atom;
       });
     } else {
@@ -236,7 +228,7 @@ export function composeNamedProfile(input: ComposeInput & {
       for (const source of phase.context ?? []) {
         const sourceAtoms = contextAtoms[source];
         if (!sourceAtoms || sourceAtoms.length === 0) {
-          throw new ProfileComposeError(`profile '${profile.id}' phase '${phase.id}' needs ${source} context, but the caller did not supply its exact selection`);
+          throw new ProfileComposeError(`profile '${profile.id}' 的 phase '${phase.id}' 需要 ${source} context，但调用方没有提供其精确选择`);
         }
         selected.push(...sourceAtoms);
       }

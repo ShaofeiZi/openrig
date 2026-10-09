@@ -1,14 +1,12 @@
 import type { Migration } from "../migrate.js";
 
 /**
- * #25 — rigs.claude_managed_block_file column.
+ * #25——rigs.claude_managed_block_file 列。
  *
- * Holds the rig-level `managed_blocks.claude-code` selection (`CLAUDE.md` or
- * `CLAUDE.local.md`), written by RigRepository.setRigClaudeManagedBlockFile at
- * instantiate time. Startup delivery, teardown and export read it back, so
- * launch, restore replay, relaunch and added members write the same file.
- * Handover writes no guidance; the successor reads the existing file.
- * NULL = the CLAUDE.md default. Mirrors migration 056 (rigs.permission_policy).
+ * 保存 rig 级 `managed_blocks.claude-code` 选择（`CLAUDE.md` 或 `CLAUDE.local.md`），
+ * 实例化时由 RigRepository.setRigClaudeManagedBlockFile 写入。启动投递、销毁和导出会读回它，
+ * 因此 launch、restore replay、relaunch 和新增成员都会写入同一文件。Handover 不写指导内容；
+ * 继任者读取现有文件。NULL = CLAUDE.md 默认值。镜像迁移 056（rigs.permission_policy）。
  */
 export const rigClaudeManagedBlockFileSchema: Migration = {
   name: "085_rig_claude_managed_block_file.sql",

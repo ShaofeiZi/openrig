@@ -1,5 +1,5 @@
-// OPR.0.6.0.8 — the rig detail offers one action that opens the whole rig as terminal tiles, and
-// the command bar has `terminal <view>`. Both produce the existing open-terminal act.
+// OPR.0.6.0.8——rig 详情提供一个动作，把整个 rig 作为 terminal 窗格打开，且
+// command bar 有 `terminal <view>`。两者都产出既有的 open-terminal 动作。
 import { describe, expect, it } from "vitest";
 import { createViewState, computeExplorerRows } from "../src/state.js";
 import { parseCommand } from "../src/grammar.js";
@@ -8,6 +8,7 @@ import { decodeInput, resolveKeyAction } from "../src/input.js";
 import { demoSnapshot } from "../src/demo-data.js";
 import { COMMAND_REGISTRY } from "../src/commands/registry.js";
 import type { Action } from "../src/types.js";
+import { strWidth } from "../src/text-width.js";
 
 const snap = demoSnapshot();
 const RIG = "openrig-build";
@@ -20,7 +21,7 @@ function drilled() {
   return v;
 }
 
-describe("rig detail — term ▸ rig link", () => {
+describe("rig 详情——term ▸ rig 链接", () => {
   for (const size of [{ cols: 140, rows: 32 }, { cols: 60, rows: 20 }]) {
     it(`${size.cols}x${size.rows}: shown on the default tab, reachable by keys, and Enter opens the rig view`, () => {
       const v = drilled();
@@ -29,9 +30,9 @@ describe("rig detail — term ▸ rig link", () => {
       const resolve = (k: keyof typeof KEYS) => { const sc = draw(); return resolveKeyAction(decodeInput(KEYS[k])[0]!, v.get(), sc, computeExplorerRows(v.get(), snap).length); };
       const key = (k: keyof typeof KEYS) => { const a = resolve(k); if (a) v.dispatch(a); };
       const first = draw();
-      // Narrow panes truncate the row with "…" rather than wrap it; the link itself stays a target.
-      expect(first.lines.some((l) => l.includes(size.cols >= 100 ? `term ▸ rig ${RIG}` : "term ▸ rig"))).toBe(true);
-      for (const row of first.lines) expect(row.length).toBeLessThanOrEqual(size.cols);
+      // 窄窗格用 "…" 截断行而非换行；链接本身仍是目标。
+      expect(first.lines.some((l) => l.includes(size.cols >= 100 ? `终端 ▸ 工作组 ${RIG}` : "终端 ▸ 工作组"))).toBe(true);
+      for (const row of first.lines) expect(strWidth(row)).toBeLessThanOrEqual(size.cols);
       key("right");
       let enter: Action | null = null;
       for (let i = 0; i < 60 && !enter; i++) {
@@ -48,10 +49,10 @@ describe("rig detail — term ▸ rig link", () => {
     });
   }
 
-  it("clicking the link gives the same act; pod term ▸ links still open their pod", () => {
+  it("点链接给出相同 act；pod term ▸ 链接仍开其 pod", () => {
     const v = drilled();
     const sc = renderScreen(v.get(), snap, { cols: 140, rows: 32 });
-    const y = sc.lines.findIndex((l) => l.includes(`term ▸ rig ${RIG}`)) + 1;
+    const y = sc.lines.findIndex((l) => l.includes(`终端 ▸ 工作组 ${RIG}`)) + 1;
     const rigHits = sc.hitMap.filter((h) => h.y === y && h.action?.type === "act");
     expect(rigHits.map((h) => h.action)).toContainEqual(RIG_ACT);
     const podActs = sc.hitMap.filter((h) => h.action?.type === "act" && (h.action as { view?: string }).view?.startsWith(`pod:${RIG}/`));
@@ -59,19 +60,19 @@ describe("rig detail — term ▸ rig link", () => {
   });
 });
 
-describe("command bar — terminal <view>", () => {
-  it("builds the open-terminal act for a typed view", () => {
+describe("命令栏——terminal <view>", () => {
+  it("为 typed 视图构建 open-terminal act", () => {
     expect(parseCommand(`terminal rig:${RIG}`)).toEqual(RIG_ACT);
     expect(parseCommand("terminal saved:watch")).toEqual({ type: "act", act: "open-terminal", view: "saved:watch" });
   });
 
-  it("refuses without a view and completes rig views from the snapshot", () => {
+  it("无视图时拒绝，并从快照补全 rig 视图", () => {
     expect(parseCommand("terminal")).toMatchObject({ type: "error" });
     const entry = COMMAND_REGISTRY.find((c) => c.name === "terminal")!;
     expect(entry.complete!({ snapshot: snap } as never)).toContain(`rig:${RIG}`);
   });
 
-  it("does not replace the passive terminal-preview verb", () => {
+  it("不替换被动 terminal-preview 动词", () => {
     expect(parseCommand(`terminal-preview rig:${RIG}`)).toEqual({ type: "terminal-preview", view: `rig:${RIG}` });
   });
 });

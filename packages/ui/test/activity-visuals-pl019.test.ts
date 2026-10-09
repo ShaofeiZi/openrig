@@ -1,8 +1,6 @@
-// PL-019: shared activity visual mapping. Pure logic — no React, no DOM.
-// Validates the four-state palette + the staleness threshold + the
-// running-only animation rule (per orch design guidance: pulses not
-// blinking; needs_input is the static eye-catcher; idle/unknown are
-// motion-free).
+// PL-019：共享活动视觉映射。纯逻辑，不涉及 React 或 DOM。验证四状态调色板、过期阈值及
+// 仅 running 状态使用动画的规则；按编排设计指南，使用脉冲而非闪烁，needs_input 是静态
+// 视觉焦点，idle/unknown 不使用动效。
 
 import { describe, it, expect } from "vitest";
 import {

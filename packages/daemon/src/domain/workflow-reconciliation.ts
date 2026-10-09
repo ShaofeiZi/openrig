@@ -35,8 +35,8 @@ const sourcesOf = (instance: WorkflowInstance): LifecycleSourceDigest[] => Array
   : [];
 const caches = new WeakMap<Database.Database, Map<string, { signature: string; result: ReturnType<typeof compare> }>>();
 
-/** One derived comparison for CLI/TUI. Unchanged reads stat bound inputs,
- * not recompile every proof/manifest; replacement, deletion and revision invalidate it. */
+/** 供 CLI/TUI 使用的一份派生比较。输入未变时只 stat 已绑定输入，不重新编译每份 proof/manifest；
+ * 替换、删除或 revision 变化都会使结果失效。 */
 export function inspectGraph(db: Database.Database, instanceId: string): GraphReconciliation {
   return proposal(db, new WorkflowInstanceStore(db).getByIdOrThrow(instanceId)).view;
 }
@@ -69,31 +69,31 @@ function compare(db: Database.Database, instance: WorkflowInstance): { view: Gra
     composition: {
       mode,
       explanation: mode === "legacy-slices"
-        ? "Active slice execution contracts are executable steps; execution.depends_on supplies prerequisites. Membership order is advisory."
-        : "The project profile and mission extension/override define outer steps. Slice manifests bind sources and proof, not automatic nested children. Waves group agent planning; they do not schedule child work. Current packets and blockers carry actual custody.",
+        ? "活动 slice 执行契约就是可执行 step；execution.depends_on 提供前置条件，成员顺序仅供参考。"
+        : "项目 profile 与 mission extension/override 定义外层 step。Slice manifest 绑定来源和 proof，不会自动生成嵌套子项。Wave 用于组织智能体规划，不调度子工作。当前 packet 与 blocker 承载实际职责。",
       boundSlices: sourcesOf(instance).filter(s => s.kind === "slice").map(s => s.path),
       executableSteps: oldSpec?.steps.map(s => ({ id: s.id, dependsOn: s.depends_on ?? [] })) ?? [],
     },
-    nextAction: "rig workflow trace " + instance.instanceId,
+    nextAction: "zrig workflow trace " + instance.instanceId,
   };
   if (!binding || !instance.lifecycleOperationKey) {
-    view.reasons.push("This is not a manifest-bound lifecycle. Inspect its authored spec; lifecycle revision does not migrate arbitrary workflows.");
+    view.reasons.push("这不是 manifest 绑定的生命周期。请检查其已创作 spec；生命周期修订不会迁移任意 workflow。");
     return { view };
   }
   if (!Array.isArray(binding.sources) || sourcesOf(instance).length !== binding.sources.length) {
-    view.status = "unavailable"; view.reasons.push("Retained source bindings are malformed or incomplete; restore their provenance before revision.");
+    view.status = "unavailable"; view.reasons.push("保留的来源 binding 格式错误或不完整；修订前请恢复其 provenance。");
     return { view };
   }
   const missionPath = sourcesOf(instance).find(s => s.kind === "mission")?.path;
   if (!missionPath || !oldSpec) {
-    view.status = "unavailable"; view.reasons.push("Bound mission source or retained running specification is unavailable; restore that evidence before revision.");
+    view.status = "unavailable"; view.reasons.push("绑定的 mission 来源或保留的运行中 specification 不可用；修订前请恢复该证据。");
     return { view };
   }
   let compilation: LifecycleCompilation;
   try { compilation = compileProjectLifecycle({ missionPath, operationKey: instance.lifecycleOperationKey }); }
   catch (error) {
     view.status = "unavailable"; view.reasons.push(error instanceof Error ? error.message : String(error));
-    view.nextAction = "Repair the named authored input, then rig workflow revise " + instance.instanceId;
+    view.nextAction = "修复指定的已创作输入，然后运行 zrig workflow revise " + instance.instanceId;
     return { view };
   }
   view.proposedDigest = compilation.compiledInputDigest;
@@ -116,17 +116,17 @@ function compare(db: Database.Database, instance: WorkflowInstance): { view: Gra
   const store = new WorkflowInstanceStore(db);
   const live = store.listFrontierBindings(instance.instanceId);
   const protectedIds = new Set([...completed, ...live.map(row => row.stepId), ...store.listFailureOccurrences(instance.instanceId).map(row => row.stepId)]);
-  if (live.length !== instance.currentFrontier.length) view.reasons.push("Current frontier has missing or ambiguous step bindings; resolve custody before revision.");
-  if (!["active", "waiting"].includes(instance.status)) view.reasons.push("Instance is " + instance.status + "; retained terminal or failed history is not revised.");
+  if (live.length !== instance.currentFrontier.length) view.reasons.push("当前 frontier 存在缺失或有歧义的 step binding；修订前请先明确职责归属。");
+  if (!["active", "waiting"].includes(instance.status)) view.reasons.push("Instance 状态为 " + instance.status + "；不修订保留的终态或失败历史。");
   if (oldSpec.steps.some(s => s.depends_on === undefined || s.next_hop?.on) || proposed.steps.some(s => s.depends_on === undefined || s.next_hop?.on))
-    view.reasons.push("Only explicit dependency graphs without conditional jumps support in-place revision.");
+    view.reasons.push("只有不含条件跳转的显式依赖图支持原地修订。");
   const { steps: _oldSteps, exception_routing: oldRouting, ...oldContract } = graph(oldSpec);
   const { steps: _newSteps, exception_routing: newRouting, ...newContract } = graph(proposed);
-  if (!same(oldRouting, newRouting)) view.changes.push({ kind: "exception-routing-changed", ref: "exception_routing", fields: ["future occurrences only; existing obligations keep their owners"] });
-  if (!same(oldContract, newContract)) view.reasons.push("Workflow-wide routing, entry, policy or context contract changed; restore those fields and revise future steps separately.");
+  if (!same(oldRouting, newRouting)) view.changes.push({ kind: "exception-routing-changed", ref: "exception_routing", fields: ["仅影响未来 occurrence；现有 obligation 保留其 owner"] });
+  if (!same(oldContract, newContract)) view.reasons.push("Workflow 全局 routing、entry、policy 或 context 契约已变化；请恢复这些字段，并单独修订未来 step。");
   const oldRequired = (binding.graphSource as { requiredSteps?: string[] } | undefined)?.requiredSteps ?? [];
   for (const id of oldRequired) if (!compilation.graphSource.requiredSteps.includes(id))
-    view.reasons.push("Required obligation " + id + " cannot be removed.");
+    view.reasons.push("不能移除必需 obligation " + id + "。");
   const ancestors = (spec: WorkflowSpec, id: string, seen = new Set<string>()): Set<string> => {
     for (const parent of spec.steps.find(s => s.id === id)?.depends_on ?? []) {
       if (!seen.has(parent)) { seen.add(parent); ancestors(spec, parent, seen); }
@@ -136,39 +136,39 @@ function compare(db: Database.Database, instance: WorkflowInstance): { view: Gra
   for (const id of oldRequired) {
     const before = ancestors(oldSpec, id), after = ancestors(proposed, id);
     for (const parent of oldRequired) if (before.has(parent) && !after.has(parent))
-      view.reasons.push("Required order " + parent + " before " + id + " cannot be removed.");
+      view.reasons.push("不能移除必需顺序：" + parent + " 位于 " + id + " 之前。");
   }
   for (const step of proposed.steps) if (step.host && step.host !== "local")
-    view.reasons.push("Step " + step.id + " requires unsupported remote execution; keep a local supported target.");
+    view.reasons.push("Step " + step.id + " 要求不受支持的远程执行；请保留受支持的本地 target。");
   for (const step of oldSpec.steps) {
     const next = proposed.steps.find(s => s.id === step.id);
     if (!next) {
       view.changes.push({ kind: "step-removed", ref: step.id });
-      view.reasons.push("Step " + step.id + " cannot be removed; preserve its obligation and record an attributed disposition.");
+      view.reasons.push("不能移除 step " + step.id + "；请保留其 obligation 并记录归属明确的 disposition。");
     } else if (!same(step, next)) {
       view.changes.push({ kind: "step-changed", ref: step.id, fields: [...new Set([...Object.keys(step), ...Object.keys(next)])].filter(key => !same((step as unknown as Record<string, unknown>)[key], (next as unknown as Record<string, unknown>)[key])) });
-      if (protectedIds.has(step.id)) view.reasons.push("Step " + step.id + " already has completed, live or failed work. Its judgment/custody needs explicit reconsideration; restore this step and revise unstarted successors.");
+      if (protectedIds.has(step.id)) view.reasons.push("Step " + step.id + " 已有完成、运行中或失败的工作。其判断/职责归属需要显式重新考虑；请恢复此 step，并修订尚未开始的后继项。");
     }
   }
   for (const step of proposed.steps) if (!oldSpec.steps.some(s => s.id === step.id))
     view.changes.push({ kind: "step-added", ref: step.id });
-  // The existing projector creates successors when a prerequisite closes.
-  // Refuse a newly eligible root rather than invent a second scheduling path.
+  // 既有 projector 会在前置项关闭时创建继任者。拒绝新近符合条件的 root，
+  // 而不是虚构第二条调度路径。
   for (const step of proposed.steps) if (!protectedIds.has(step.id) && (step.depends_on ?? []).every(id => completed.has(id)))
-    view.reasons.push("Unstarted step " + step.id + " has no unfinished prerequisite to trigger it. Keep it dependent on outstanding work; this revision does not replay completed prerequisites.");
+    view.reasons.push("尚未开始的 step " + step.id + " 没有未完成前置项可触发它。请让它继续依赖待完成工作；本次修订不会重放已完成的前置项。");
   view.adopted = instance.compiledInputDigest === compilation.compiledInputDigest;
   view.compatible = view.reasons.length === 0;
   view.status = view.adopted ? "current" : !view.compatible ? "incompatible" : same(graph(oldSpec), graph(proposed)) ? "source-only" : "compatible";
-  view.nextAction = "rig workflow revise " + instance.instanceId;
+  view.nextAction = "zrig workflow revise " + instance.instanceId;
   if (!view.adopted && view.compatible) {
     view.operationKey = "revision-" + createHash("sha256").update(canonical([instance.instanceId, instance.version, compilation.compiledInputDigest])).digest("hex").slice(0, 24);
-    view.applyCommand = "rig workflow revise " + instance.instanceId + " --apply --expected-version " + instance.version + " --expected-digest " + compilation.compiledInputDigest + " --operation-key " + view.operationKey + " --actor-session <you> --reason <decision>";
+    view.applyCommand = "zrig workflow revise " + instance.instanceId + " --apply --expected-version " + instance.version + " --expected-digest " + compilation.compiledInputDigest + " --operation-key " + view.operationKey + " --actor-session <you> --reason <decision>";
   }
   return { view, compilation };
 }
 
-/** Native effect readback survives lost responses and later authored changes.
- * Receipts live in the existing instance binding; prior specs/step/queue history remain. */
+/** 原生 effect 回读能跨越响应丢失与之后的作者修改。回执存于既有 instance binding；
+ * 之前的 spec、step 和 queue 历史保持不变。 */
 export function recoverGraphOperation(db: Database.Database, key: string): { kind: string; receipt: Record<string, unknown>; instance: WorkflowInstance } | null {
   const store = new WorkflowInstanceStore(db);
   const created = store.getByLifecycleOperationKey(key);
@@ -187,23 +187,23 @@ export function reviseGraph(db: Database.Database, bus: EventBus, input: {
 }) {
   const fail = (message: string, details?: Record<string, unknown>): never => { throw new WorkflowInstanceError("lifecycle_revision_conflict", message, details); };
   if (typeof input.operationKey !== "string" || !input.operationKey.trim() || typeof input.actorSession !== "string" || !input.actorSession.trim() || typeof input.reason !== "string" || !input.reason.trim() || !Number.isSafeInteger(input.expectedVersion) || typeof input.expectedDigest !== "string" || !input.expectedDigest)
-    fail("Revision needs the inspected version/digest, stable operation key, actor and decision. Run rig workflow revise <instance>.");
+    fail("修订需要检查过的 version/digest、稳定 operation key、actor 和 decision。请运行 zrig workflow revise <instance>。");
   const prior = recoverGraphOperation(db, input.operationKey);
   if (prior) {
     if (prior.kind !== "revision" || prior.instance.instanceId !== input.instanceId ||
         prior.receipt.expectedVersion !== input.expectedVersion || prior.receipt.compiledInputDigest !== input.expectedDigest ||
         prior.receipt.actorSession !== input.actorSession || prior.receipt.reason !== input.reason)
-      fail("This operation key already records a different decision. Inspect rig workflow operation " + shellQuote(input.operationKey));
+      fail("此 operation key 已记录不同 decision。请检查 zrig workflow operation " + shellQuote(input.operationKey));
     return { ...prior, replayed: true };
   }
   let receipt!: Record<string, unknown>;
   bus.withNotifyEnvelope(register => {
-    if (recoverGraphOperation(db, input.operationKey)) fail("Operation committed concurrently; recover its exact key before another attempt.");
+    if (recoverGraphOperation(db, input.operationKey)) fail("Operation 已被并发提交；再次尝试前请恢复其精确 key。");
     const store = new WorkflowInstanceStore(db), instance = store.getByIdOrThrow(input.instanceId);
-    if (instance.version !== input.expectedVersion) fail("The instance progressed since inspection. Inspect again before choosing a revision.", { expectedVersion: input.expectedVersion, actualVersion: instance.version });
+    if (instance.version !== input.expectedVersion) fail("Instance 在检查后已推进。选择修订前请重新检查。", { expectedVersion: input.expectedVersion, actualVersion: instance.version });
     const { view, compilation } = proposal(db, instance, true);
-    if (view.proposedDigest !== input.expectedDigest) fail("Authored input changed since inspection. Inspect the new proposal before applying it.", { expectedDigest: input.expectedDigest, actualDigest: view.proposedDigest });
-    if (!view.compatible || view.adopted || !compilation?.workflowSpec) fail("Revision refused; existing work is preserved.", { reconciliation: view });
+    if (view.proposedDigest !== input.expectedDigest) fail("已创作输入在检查后发生变化。应用前请检查新 proposal。", { expectedDigest: input.expectedDigest, actualDigest: view.proposedDigest });
+    if (!view.compatible || view.adopted || !compilation?.workflowSpec) fail("修订被拒绝；现有工作已保留。", { reconciliation: view });
     const binding = instance.lifecycleBinding!;
     receipt = { operationKey: input.operationKey, instanceId: input.instanceId, expectedVersion: input.expectedVersion,
       previousDigest: instance.compiledInputDigest, previousVersion: instance.workflowVersion,

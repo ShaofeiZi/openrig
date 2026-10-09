@@ -64,7 +64,7 @@ packagesRoutes.post("/validate", async (c) => {
   const cwd = typeof body["cwd"] === "string" ? body["cwd"] : undefined;
 
   if (!sourceRef) {
-    return c.json({ valid: false, error: "sourceRef is required" }, 400);
+    return c.json({ valid: false, error: "sourceRef 为必填项" }, 400);
   }
 
   const result = resolvePackage(sourceRef, cwd, realFsOps());
@@ -110,21 +110,21 @@ packagesRoutes.post("/plan", async (c) => {
   const targetRoot = typeof body["targetRoot"] === "string" ? body["targetRoot"] : "";
   const runtimeInput = typeof body["runtime"] === "string" ? body["runtime"] : "claude-code";
   if (runtimeInput !== "claude-code" && runtimeInput !== "codex") {
-    return c.json({ error: `Unknown runtime: '${runtimeInput}'. Must be 'claude-code' or 'codex'` }, 400);
+    return c.json({ error: `未知运行时：'${runtimeInput}'。必须为 'claude-code' 或 'codex'` }, 400);
   }
   const runtime = runtimeInput as "claude-code" | "codex";
   const roleName = typeof body["roleName"] === "string" ? body["roleName"] : undefined;
   const allowMerge = body["allowMerge"] === true;
 
   if (!sourceRef || !targetRoot) {
-    return c.json({ error: "sourceRef and targetRoot are required" }, 400);
+    return c.json({ error: "sourceRef 和 targetRoot 为必填项" }, 400);
   }
 
   const fsOps = realFsOps();
   const result = resolvePackage(sourceRef, cwd, fsOps);
   if (!result.ok) {
     if (result.kind === "validation") {
-      return c.json({ error: "Invalid manifest", errors: result.errors }, 400);
+      return c.json({ error: "manifest 无效", errors: result.errors }, 400);
     }
     return c.json({ error: result.error }, 400);
   }
@@ -139,7 +139,7 @@ packagesRoutes.post("/plan", async (c) => {
     return c.json({ error: (err as Error).message, code: "plan_error" }, 400);
   }
 
-  // Build a set of approved entry keys for annotation
+  // 构建已批准条目 key 的集合用于标注
   const approvedKeys = new Set(policyResult.approved.map((e) => `${e.exportType}:${e.exportName}`));
   const rejectedKeys = new Set(policyResult.rejected.map((r) => `${r.entry.exportType}:${r.entry.exportName}`));
   const noOpKeys = new Set(refined.noOps.map((e) => `${e.exportType}:${e.exportName}`));
@@ -187,28 +187,28 @@ packagesRoutes.post("/install", async (c) => {
   const targetRoot = typeof body["targetRoot"] === "string" ? body["targetRoot"] : "";
   const installRuntimeInput = typeof body["runtime"] === "string" ? body["runtime"] : "claude-code";
   if (installRuntimeInput !== "claude-code" && installRuntimeInput !== "codex") {
-    return c.json({ error: `Unknown runtime: '${installRuntimeInput}'. Must be 'claude-code' or 'codex'` }, 400);
+    return c.json({ error: `未知运行时：'${installRuntimeInput}'。必须为 'claude-code' 或 'codex'` }, 400);
   }
   const runtime = installRuntimeInput as "claude-code" | "codex";
   const roleName = typeof body["roleName"] === "string" ? body["roleName"] : undefined;
   const allowMerge = body["allowMerge"] === true;
 
   if (!sourceRef || !targetRoot) {
-    return c.json({ error: "sourceRef and targetRoot are required" }, 400);
+    return c.json({ error: "sourceRef 和 targetRoot 为必填项" }, 400);
   }
 
-  // Resolve with structured error handling
+  // 以结构化错误处理进行解析
   const fsOps = realFsOps();
   const resolveResult = resolvePackage(sourceRef, cwd, fsOps);
   if (!resolveResult.ok) {
     if (resolveResult.kind === "validation") {
-      return c.json({ error: "Invalid manifest", errors: resolveResult.errors }, 400);
+      return c.json({ error: "manifest 无效", errors: resolveResult.errors }, 400);
     }
     return c.json({ error: resolveResult.error }, 400);
   }
   const resolved = resolveResult.resolved;
 
-  // Plan + detect conflicts
+  // 规划 + 检测冲突
   let plan, refined;
   try {
     const planner = new InstallPlanner(fsOps);
@@ -220,35 +220,35 @@ packagesRoutes.post("/install", async (c) => {
 
   const { eventBus } = getDeps(c);
 
-  // Check for content-level conflicts
+  // 检查内容级冲突
   if (refined.conflicts.length > 0) {
-    eventBus.emit({ type: "package.install_failed", packageName: resolved.manifest.name, code: "conflict_blocked", message: `${refined.conflicts.length} unresolved conflicts` });
+    eventBus.emit({ type: "package.install_failed", packageName: resolved.manifest.name, code: "conflict_blocked", message: `${refined.conflicts.length} 个未解决冲突` });
     return c.json({
-      error: "Unresolved conflicts",
+      error: "未解决的冲突",
       code: "conflict_blocked",
       conflicts: refined.conflicts.map((e) => e.conflict!),
     }, 409);
   }
 
-  // Apply policy
+  // 应用策略
   const policyResult = applyPolicy(refined, { allowMerge });
 
-  // If nothing approved → 422
+  // 若无批准任何条目 → 422
   if (policyResult.approved.length === 0) {
-    eventBus.emit({ type: "package.install_failed", packageName: resolved.manifest.name, code: "policy_rejected", message: "No entries approved by policy" });
+    eventBus.emit({ type: "package.install_failed", packageName: resolved.manifest.name, code: "policy_rejected", message: "策略未批准任何条目" });
     return c.json({
-      error: "No entries approved by policy",
+      error: "策略未批准任何条目",
       code: "policy_rejected",
       rejected: policyResult.rejected,
     }, 422);
   }
 
-  // Dedup package record — verify manifest hash matches if reusing
+  // 包记录去重——若复用则校验 manifest hash 是否一致
   const existing = packageRepo.findByNameVersion(resolved.manifest.name, resolved.manifest.version);
   if (existing && existing.manifestHash !== resolved.manifestHash) {
-    eventBus.emit({ type: "package.install_failed", packageName: resolved.manifest.name, code: "manifest_hash_mismatch", message: "Package already registered with different content" });
+    eventBus.emit({ type: "package.install_failed", packageName: resolved.manifest.name, code: "manifest_hash_mismatch", message: "包已登记但内容不同" });
     return c.json({
-      error: `Package '${resolved.manifest.name}' v${resolved.manifest.version} already registered with different content (manifest hash mismatch)`,
+      error: `包 '${resolved.manifest.name}' v${resolved.manifest.version} 已登记但内容不同（manifest hash 不匹配）`,
       code: "manifest_hash_mismatch",
       existingHash: existing.manifestHash,
       currentHash: resolved.manifestHash,
@@ -263,7 +263,7 @@ packagesRoutes.post("/install", async (c) => {
     summary: resolved.manifest.summary,
   });
 
-  // Apply
+  // 应用
   let result;
   try {
     result = installEngine.apply(policyResult, refined, pkg.id, targetRoot);
@@ -272,12 +272,12 @@ packagesRoutes.post("/install", async (c) => {
     return c.json({ error: (err as Error).message, code: "apply_error" }, 500);
   }
 
-  // Verify
+  // 校验
   const verification = installVerifier.verify(result.installId);
   if (!verification.passed) {
-    eventBus.emit({ type: "package.install_failed", packageName: resolved.manifest.name, code: "verification_failed", message: "Post-apply verification failed" });
+    eventBus.emit({ type: "package.install_failed", packageName: resolved.manifest.name, code: "verification_failed", message: "应用后校验失败" });
     return c.json({
-      error: "Post-apply verification failed",
+      error: "应用后校验失败",
       code: "verification_failed",
       installId: result.installId,
       verification,
@@ -312,11 +312,11 @@ packagesRoutes.post("/:installId/rollback", async (c) => {
 
   const install = installRepo.getInstall(installId);
   if (!install) {
-    return c.json({ error: "Install not found" }, 404);
+    return c.json({ error: "未找到安装记录" }, 404);
   }
 
   if (install.status !== "applied") {
-    return c.json({ error: "Install is not in applied state", code: "not_applied", status: install.status }, 409);
+    return c.json({ error: "安装不处于 applied 状态", code: "not_applied", status: install.status }, 409);
   }
 
   try {
@@ -329,8 +329,8 @@ packagesRoutes.post("/:installId/rollback", async (c) => {
   }
 });
 
-// GET /api/packages/summary — packages with install count + latest status
-// NOTE: Must be registered before GET / to avoid route collision
+// GET /api/packages/summary——带安装次数 + 最新状态的包
+// 注意：必须在 GET / 之前注册以避免路由冲突
 packagesRoutes.get("/summary", (c) => {
   const { packageRepo } = getDeps(c);
   return c.json(packageRepo.listPackageSummaries());
@@ -343,27 +343,27 @@ packagesRoutes.get("/", (c) => {
 });
 
 // GET /api/packages/installs/:installId/journal
-// NOTE: Must be registered before /:packageId/installs to avoid route collision
+// 注意：必须在 /:packageId/installs 之前注册以避免路由冲突
 packagesRoutes.get("/installs/:installId/journal", (c) => {
   const { installRepo } = getDeps(c);
   const installId = c.req.param("installId")!;
 
   const install = installRepo.getInstall(installId);
   if (!install) {
-    return c.json({ error: "Install not found" }, 404);
+    return c.json({ error: "未找到安装记录" }, 404);
   }
 
   return c.json(installRepo.getJournalEntries(installId));
 });
 
 // GET /api/packages/:packageId
-// NOTE: Registered after /summary and /installs/:installId/journal to avoid collision
+// 注意：在 /summary 和 /installs/:installId/journal 之后注册以避免冲突
 packagesRoutes.get("/:packageId", (c) => {
   const { packageRepo } = getDeps(c);
   const packageId = c.req.param("packageId")!;
   const pkg = packageRepo.getPackage(packageId);
   if (!pkg) {
-    return c.json({ error: "Package not found" }, 404);
+    return c.json({ error: "未找到包" }, 404);
   }
   return c.json(pkg);
 });
@@ -375,4 +375,4 @@ packagesRoutes.get("/:packageId/installs", (c) => {
   return c.json(installRepo.listInstallSummaries(packageId));
 });
 
-// NOTE: /api/packages/validate-agentspec was moved to /api/agents/validate (agents.ts)
+// 注意：/api/packages/validate-agentspec 已迁移到 /api/agents/validate（agents.ts）

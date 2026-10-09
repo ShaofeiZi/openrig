@@ -22,7 +22,7 @@ describe("TranscriptStore", () => {
   });
 
   describe("getTranscriptPath", () => {
-    it("returns deterministic {root}/{rigName}/{sessionName}.log", () => {
+    it("返回确定的 {root}/{rigName}/{sessionName}.log", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       const path = store.getTranscriptPath("my-rig", "dev-impl@my-rig");
       expect(path).toBe(join(tmpDir, "my-rig", "dev-impl@my-rig.log"));
@@ -30,30 +30,30 @@ describe("TranscriptStore", () => {
   });
 
   describe("ensureTranscriptDir", () => {
-    it("creates nested directory structure and returns true", () => {
+    it("创建嵌套目录结构并返回 true", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       const result = store.ensureTranscriptDir("my-rig");
       expect(result).toBe(true);
       expect(existsSync(join(tmpDir, "my-rig"))).toBe(true);
     });
 
-    it("returns false on permission error without throwing", () => {
+    it("遇到权限错误时返回 false 且不抛出异常", () => {
       const readonlyDir = join(tmpDir, "readonly");
       mkdirSync(readonlyDir);
       chmodSync(readonlyDir, 0o444);
       const store = new TranscriptStore({ transcriptsRoot: join(readonlyDir, "nested") });
       const result = store.ensureTranscriptDir("my-rig");
       expect(result).toBe(false);
-      // Restore permissions for cleanup
+      // 恢复权限以便清理。
       chmodSync(readonlyDir, 0o755);
     });
   });
 
   describe("writeBoundaryMarker", () => {
-    it("appends marker with ISO timestamp to file and returns true", () => {
+    it("向文件追加带 ISO 时间戳的标记并返回 true", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
-      // Create an existing transcript file with prior content
+      // 创建包含既有内容的转录文件。
       const filePath = store.getTranscriptPath("my-rig", "dev-impl@my-rig");
       writeFileSync(filePath, "prior content\n");
 
@@ -66,12 +66,10 @@ describe("TranscriptStore", () => {
       expect(content).toMatch(/---\n$/);
     });
 
-    it("returns false on filesystem error without throwing", () => {
-      // V1 pre-release Item 1: writeBoundaryMarker now mkdir's its
-      // parent on demand so a fresh rig directory is no longer a fail
-      // case. The remaining error path is mkdir running into a regular
-      // file where it expected a directory — reproducible cross-
-      // platform without permission-quirk tricks.
+    it("遇到文件系统错误时返回 false 且不抛出异常", () => {
+      // V1 预发布第 1 项：writeBoundaryMarker 现在按需创建父目录，因此全新工作组目录不再
+      // 导致失败。剩余错误路径是 mkdir 在预期目录处遇到普通文件——无需利用权限差异即可
+      // 跨平台复现。
       const collisionPath = join(tmpDir, "rig-name-collision");
       writeFileSync(collisionPath, "regular file in the way");
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
@@ -81,7 +79,7 @@ describe("TranscriptStore", () => {
   });
 
   describe("stripAnsi", () => {
-    it("removes ANSI escape sequences from spike doc examples", () => {
+    it("从 spike 文档示例中移除 ANSI 转义序列", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       const raw = "\x1b[1m\x1b[7m%\x1b[27m\x1b[1m\x1b[0m  \x1b[0m\x1b[27m\x1b[24m\x1b[Juser@example.test /tmp % \x1b[K\x1b[?2004hecho 'test'\x1b[?2004l";
       const stripped = store.stripAnsi(raw);
@@ -90,7 +88,7 @@ describe("TranscriptStore", () => {
       expect(stripped).toContain("echo 'test'");
     });
 
-    it("preserves readability for real TUI cursor-motion output", () => {
+    it("保持真实 TUI 光标移动输出的可读性", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       const raw = "\x1b[38;5;231m⏺\x1b[1C\x1b[39mTRANSCRIPT PROBE\x1b[1CACK\x1b[1C2026-03-31\r\x1b[2B\x1b[38;5;174m✳\x1b[39m \x1b[38;5;174mSchlepping… \x1b[39m                                                                   \r\x1b[1B   \r\x1b[2B\x1b[38;5;246m❯\u00a0\x1b[39m\x1b[7m \x1b[27m               \r\n\x1b]0;✳ Restore protocol start and read inventory\u0007\r\n\x1b[2C\x1b[38;5;246mesc\x1b[1Cto\x1b[1Cinterrupt\x1b[39m";
       const stripped = store.stripAnsi(raw);
@@ -100,7 +98,7 @@ describe("TranscriptStore", () => {
       expect(stripped).not.toContain("]0;");
     });
 
-    it("removes shell redraw noise from real transcript capture", () => {
+    it("从真实转录捕获中移除 shell 重绘噪声", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       const raw = "printf 'TRACK_A_SMOKE_LINE\\nPNS-T06 marker\\n'\x1b[1m\x1b[7m%\x1b[27m\x1b[1m\x1b[0m                                                                               \r  \r\r\x1b[0m\x1b[27m\x1b[24m\x1b[Juser@example.test rigged % \x1b[K\x1b[?2004hp\bprintf 'TRACK_A_SMOKE_LINE\\nPNS-T06 marker\\n'";
       const stripped = store.stripAnsi(raw);
@@ -113,28 +111,28 @@ describe("TranscriptStore", () => {
   });
 
   describe("enabled: false", () => {
-    it("skips write operations but path resolution still works", () => {
+    it("跳过写入操作，但路径解析仍正常工作", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir, enabled: false });
       expect(store.enabled).toBe(false);
-      // Path resolution still works
+      // 路径解析仍正常工作。
       expect(store.getTranscriptPath("my-rig", "dev@my-rig")).toBe(join(tmpDir, "my-rig", "dev@my-rig.log"));
-      // Write operations return false/skip
+      // 写入操作返回 false/skip。
       expect(store.ensureTranscriptDir("my-rig")).toBe(false);
       expect(store.writeBoundaryMarker("my-rig", "dev@my-rig", "test")).toBe(false);
-      // Directory was NOT created
+      // 未创建目录。
       expect(existsSync(join(tmpDir, "my-rig"))).toBe(false);
     });
   });
 
-  describe("path traversal safety", () => {
-    it("rig name '..' does not resolve outside transcript root", () => {
+  describe("路径穿越安全", () => {
+    it("工作组名称 '..' 不会解析到转录根目录之外", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       const path = store.getTranscriptPath("..", "dev@rig");
-      // Path must stay under the root, not resolve to parent
+      // 路径必须保持在根目录之下，不能解析到父目录。
       expect(path.startsWith(tmpDir + "/")).toBe(true);
     });
 
-    it("ensureTranscriptDir with '..' rig name returns false", () => {
+    it("工作组名称为 '..' 时 ensureTranscriptDir 返回 false", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       const result = store.ensureTranscriptDir("..");
       expect(result).toBe(false);
@@ -142,13 +140,13 @@ describe("TranscriptStore", () => {
   });
 
   describe("readTail", () => {
-    it("returns null on missing file without throwing", () => {
+    it("文件缺失时返回 null 且不抛出异常", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       const result = store.readTail("my-rig", "nonexistent-session", 10);
       expect(result).toBeNull();
     });
 
-    it("returns last N lines with ANSI stripped", () => {
+    it("返回移除 ANSI 后的最后 N 行", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -163,7 +161,7 @@ describe("TranscriptStore", () => {
       expect(lines[2]).toBe("line5");
     });
 
-    it("strips shell prompt prefixes from tailed transcript lines", () => {
+    it("从转录尾部行中移除 shell 提示符前缀", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -177,7 +175,7 @@ describe("TranscriptStore", () => {
       expect(result).toBe("echo SEND_ALPHA_OK\nSEND_ALPHA_OK\n");
     });
 
-    it("drops bare shell prompt lines from tailed transcript output", () => {
+    it("从转录尾部输出中丢弃裸 shell 提示符行", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -191,7 +189,7 @@ describe("TranscriptStore", () => {
       expect(result).toBe("echo OPS_SHELL_READY\necho RIG_BROADCAST_OK\nRIG_BROADCAST_OK\n");
     });
 
-    it("preserves terse legitimate output lines during tail cleanup", () => {
+    it("尾部清理时保留简短的合法输出行", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -205,7 +203,7 @@ describe("TranscriptStore", () => {
       expect(result).toBe("echo ACK\nACK\n");
     });
 
-    it("normalizes carriage-return prompt redraws before filtering shell prompt lines", () => {
+    it("过滤 shell 提示符行前规范化回车式提示重绘", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -219,7 +217,7 @@ describe("TranscriptStore", () => {
       expect(result).toBe("echo DEV_ALPHA_READY\nDEV_ALPHA_READY\n");
     });
 
-    it("drops TUI chrome and redraw fragments from transcript tails", () => {
+    it("从转录尾部丢弃 TUI 外框和重绘片段", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -269,7 +267,7 @@ describe("TranscriptStore", () => {
       expect(result).not.toContain("u  z");
     });
 
-    it("removes orphaned cursor-motion fragments that survive without the ESC byte", () => {
+    it("移除缺少 ESC 字节但仍残留的孤立光标移动片段", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -297,7 +295,7 @@ describe("TranscriptStore", () => {
       expect(result).not.toContain("[3C");
     });
 
-    it("drops repeated model status overlays from transcript tails", () => {
+    it("从转录尾部丢弃重复的模型状态浮层", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -325,7 +323,7 @@ describe("TranscriptStore", () => {
       expect(result).not.toContain("gpt-5.4 xhigh fast");
     });
 
-    it("preserves legitimate transcript sentences that mention overlay phrases", () => {
+    it("保留提及浮层短语的合法转录句子", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -345,7 +343,7 @@ describe("TranscriptStore", () => {
       expect(result).toContain("We were discussing the gpt-5.4 xhigh fast footer format yesterday.");
     });
 
-    it("drops startup splash/header lines from Claude Code and Codex sessions", () => {
+    it("丢弃 Claude Code 与 Codex 会话的启动欢迎页/标题行", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -369,18 +367,18 @@ describe("TranscriptStore", () => {
 
       expect(result).toContain("real semantic transcript content should survive");
       expect(result).toContain("and this line too");
-      // Branded headers removed
+      // 已移除品牌标题。
       expect(result).not.toContain("Claude Code v2.1.101");
       expect(result).not.toContain("Opus 4.6");
       expect(result).not.toContain("OpenAI Codex");
-      // Box-wrapped inner lines removed (model/directory/blank rows inside │...│)
+      // 已移除方框包裹的内部行（│...│ 内的模型/目录/空白行）。
       expect(result).not.toContain("model:");
       expect(result).not.toContain("directory:");
       expect(result).not.toContain("╭");
       expect(result).not.toContain("╰");
     });
 
-    it("preserves legitimate sentences that mention startup splash strings", () => {
+    it("保留提及启动欢迎页字符串的合法句子", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -400,7 +398,7 @@ describe("TranscriptStore", () => {
       expect(result).toContain("We tested against OpenAI Codex (v0.120.0) for comparison.");
     });
 
-    it("preserves standalone model/directory output lines without box-drawing wrappers", () => {
+    it("保留不带方框字符包装的独立 model/directory 输出行", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -415,14 +413,13 @@ describe("TranscriptStore", () => {
 
       const result = store.readTail("my-rig", "dev@my-rig", 20);
 
-      // Standalone model:/directory: without box wrappers survive —
-      // they could be legitimate command output or log entries
+      // 不带方框包装的独立 model:/directory: 会被保留——它们可能是合法命令输出或日志条目。
       expect(result).toContain("model: claude-opus-4-6");
       expect(result).toContain("directory: /Users/admin/code/projects/openrig");
       expect(result).toContain("The model configuration is set correctly.");
     });
 
-    it("preserves literal cursor-fragment tokens when they are mentioned as data", () => {
+    it("光标片段 token 作为数据被提及时原样保留", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -442,7 +439,7 @@ describe("TranscriptStore", () => {
   });
 
   describe("grep", () => {
-    it("returns matching lines with ANSI stripped", () => {
+    it("返回移除 ANSI 后的匹配行", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -455,7 +452,7 @@ describe("TranscriptStore", () => {
       expect(result![1]).toBe("decision final");
     });
 
-    it("matches against stripped logical lines from noisy shell capture", () => {
+    it("针对嘈杂 shell 捕获中清理后的逻辑行进行匹配", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("my-rig");
       const filePath = store.getTranscriptPath("my-rig", "dev@my-rig");
@@ -468,14 +465,14 @@ describe("TranscriptStore", () => {
       expect(result).toEqual(["printf 'TRACK_A_GROWTH_LINE\\\\n'"]);
     });
 
-    it("returns null on missing file without throwing", () => {
+    it("文件缺失时返回 null 且不抛出异常", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       const result = store.grep("my-rig", "nonexistent", "pattern");
       expect(result).toBeNull();
     });
   });
 
-  describe("large file performance", () => {
+  describe("大文件性能", () => {
     function writeLargeTranscript(filePath: string, totalLines: number, markerEvery: number) {
       const chunks: string[] = [];
       for (let i = 0; i < totalLines; i++) {
@@ -488,11 +485,11 @@ describe("TranscriptStore", () => {
       writeFileSync(filePath, chunks.join("\n") + "\n");
     }
 
-    it("readTail returns enough lines even when most raw lines are prompt noise", () => {
+    it("即使多数原始行是提示符噪声，readTail 也返回足够行数", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("noisy-rig");
       const filePath = store.getTranscriptPath("noisy-rig", "dev@noisy-rig");
-      // 8 prompt noise lines + 2 real lines
+      // 8 行提示符噪声 + 2 行真实内容。
       const lines = [
         "user@example.test rigged % ",
         "user@example.test rigged % ",
@@ -511,11 +508,11 @@ describe("TranscriptStore", () => {
       expect(result).toContain("KEEP_TWO");
     });
 
-    it("readTail handles multibyte UTF-8 characters at chunk boundaries", () => {
+    it("readTail 正确处理数据块边界上的多字节 UTF-8 字符", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("utf8-rig");
       const filePath = store.getTranscriptPath("utf8-rig", "dev-tail@utf8-rig");
-      // Write enough padding to push the multibyte char near a chunk boundary
+      // 写入足够填充，将多字节字符推到数据块边界附近。
       const padding = "X".repeat(16 * 1024 - 5); // just before 16KB boundary
       writeFileSync(filePath, padding + "\ncafé résumé\nlast line\n");
       const result = store.readTail("utf8-rig", "dev-tail@utf8-rig", 2);
@@ -524,11 +521,11 @@ describe("TranscriptStore", () => {
       expect(result).toContain("last line");
     });
 
-    it("grep matches multibyte UTF-8 characters correctly", () => {
+    it("grep 正确匹配多字节 UTF-8 字符", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("utf8-rig");
       const filePath = store.getTranscriptPath("utf8-rig", "dev@utf8-rig");
-      // Write lines with multibyte characters
+      // 写入包含多字节字符的行。
       writeFileSync(filePath, "hello world\ncafé résumé\nnormal line\nüber important\n");
       const result = store.grep("utf8-rig", "dev@utf8-rig", "é");
       expect(result).not.toBeNull();
@@ -536,7 +533,7 @@ describe("TranscriptStore", () => {
       expect(result![0]).toContain("café");
     });
 
-    it("readTail on large file returns correct last N lines without reading entire file", () => {
+    it("readTail 读取大文件时无需读取整个文件即可返回正确的最后 N 行", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("big-rig");
       const filePath = store.getTranscriptPath("big-rig", "dev@big-rig");
@@ -547,11 +544,11 @@ describe("TranscriptStore", () => {
       const lines = result!.split("\n").filter(Boolean);
       expect(lines.length).toBeLessThanOrEqual(5);
       expect(lines.length).toBeGreaterThan(0);
-      // Last lines should be from the end of the file
+      // 最后几行应来自文件末尾。
       expect(lines[lines.length - 1]).toContain("49999");
     });
 
-    it("grep on large file returns only matching lines without loading entire file", () => {
+    it("grep 读取大文件时无需加载整个文件，只返回匹配行", () => {
       const store = new TranscriptStore({ transcriptsRoot: tmpDir });
       store.ensureTranscriptDir("big-rig");
       const filePath = store.getTranscriptPath("big-rig", "dev@big-rig");
@@ -559,7 +556,7 @@ describe("TranscriptStore", () => {
 
       const result = store.grep("big-rig", "dev@big-rig", "MARKER_LINE");
       expect(result).not.toBeNull();
-      // Should find markers at 10000, 20000, 30000, 40000
+      // 应找到 10000、20000、30000、40000 处的标记。
       expect(result!.length).toBe(4);
       expect(result![0]).toBe("MARKER_LINE_10000");
       expect(result![3]).toBe("MARKER_LINE_40000");
@@ -567,12 +564,11 @@ describe("TranscriptStore", () => {
   });
 });
 
-// Hotfix addendum (r1 finding on candidate 753591407): the unchanged-content
-// write-suppression freezes the transcript file mtime on an idle seat, so a
-// health signal that reads mtime would falsely report capture_stale while
-// capture is running fine every tick. getIngestHealth must read the rotation's
-// in-memory last-capture time (mtime fallback only when no rotation records it).
-describe("TranscriptStore.getIngestHealth — liveness decoupled from mtime", () => {
+// 热修补充（r1 对候选项 753591407 的发现）：内容不变时抑制写入会冻结空闲席位的转录
+// 文件 mtime，因此读取 mtime 的健康信号会在每次捕获均正常运行时误报 capture_stale。
+// getIngestHealth 必须读取 rotation 的内存中最后捕获时间（仅在没有 rotation 记录时
+// 回退到 mtime）。
+describe("TranscriptStore.getIngestHealth——存活性与 mtime 解耦", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -583,7 +579,7 @@ describe("TranscriptStore.getIngestHealth — liveness decoupled from mtime", ()
     if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("reports capture_fresh for an idle seat whose write was suppressed but capture is still live", async () => {
+  it("空闲席位的写入被抑制但捕获仍存活时报告 capture_fresh", async () => {
     const store = new TranscriptStore({ transcriptsRoot: tmpDir, staleAfterMs: 1000 });
     const rig = "hrig";
     const session = "dev@hrig";
@@ -591,7 +587,7 @@ describe("TranscriptStore.getIngestHealth — liveness decoupled from mtime", ()
     const outputPath = store.getTranscriptPath(rig, session);
     const adapter = { capturePaneContent: vi.fn(async () => "static-pane\n") };
 
-    // Tick 1: writes the file and records liveness.
+    // Tick 1：写入文件并记录存活性。
     startTranscriptRotation(adapter as unknown as TmuxAdapter, session, outputPath, {
       lines: 1000,
       pollIntervalMs: 60_000,
@@ -599,21 +595,20 @@ describe("TranscriptStore.getIngestHealth — liveness decoupled from mtime", ()
     await new Promise((r) => setImmediate(r));
     expect(existsSync(outputPath)).toBe(true);
 
-    // Age the FILE mtime well past staleAfterMs (deterministic — no sleep).
+    // 将文件 mtime 调整到远超 staleAfterMs（确定性——无需 sleep）。
     const old = new Date(Date.now() - 60_000);
     utimesSync(outputPath, old, old);
 
-    // Tick 2: identical capture -> write SUPPRESSED (mtime stays 60s old),
-    // but liveness is refreshed to ~now.
+    // Tick 2：捕获内容相同 → 抑制写入（mtime 仍旧 60 秒），但存活性刷新到当前时间附近。
     startTranscriptRotation(adapter as unknown as TmuxAdapter, session, outputPath, {
       lines: 1000,
       pollIntervalMs: 60_000,
     });
     await new Promise((r) => setImmediate(r));
 
-    // The file mtime is stale ...
+    // 文件 mtime 已过期……
     expect(Date.now() - statSync(outputPath).mtimeMs).toBeGreaterThan(1000);
-    // ... but capture is live, so health reads the in-memory time, not mtime.
+    // ……但捕获仍存活，因此健康检查读取内存时间，而非 mtime。
     const health = store.getIngestHealth(rig, session);
     expect(health.reason).toBe("capture_fresh");
     expect(health.state).toBe("live");
@@ -621,7 +616,7 @@ describe("TranscriptStore.getIngestHealth — liveness decoupled from mtime", ()
     stopTranscriptRotation(session);
   });
 
-  it("falls back to mtime (capture_stale) when no rotation is recording for the session", () => {
+  it("会话没有 rotation 记录时回退到 mtime（capture_stale）", () => {
     const store = new TranscriptStore({ transcriptsRoot: tmpDir, staleAfterMs: 1000 });
     const rig = "hrig";
     const session = "orphan@hrig";
@@ -631,13 +626,13 @@ describe("TranscriptStore.getIngestHealth — liveness decoupled from mtime", ()
     const old = new Date(Date.now() - 60_000);
     utimesSync(outputPath, old, old);
 
-    // No rotation ever recorded this session -> getLastCaptureAt undefined -> mtime.
+    // 此会话从未由 rotation 记录 → getLastCaptureAt 为 undefined → 使用 mtime。
     const health = store.getIngestHealth(rig, session);
     expect(health.reason).toBe("capture_stale");
     expect(health.state).toBe("degraded");
   });
 
-  it("still reports capture_stale once rotation has STOPPED (liveness record dropped)", async () => {
+  it("rotation 停止（存活记录被删除）后仍报告 capture_stale", async () => {
     const store = new TranscriptStore({ transcriptsRoot: tmpDir, staleAfterMs: 1000 });
     const rig = "hrig";
     const session = "gone@hrig";
@@ -657,33 +652,32 @@ describe("TranscriptStore.getIngestHealth — liveness decoupled from mtime", ()
     expect(health.reason).toBe("capture_stale");
   });
 
-  // r2 HIGH-1: a successful capture whose required WRITE fails must not advertise
-  // freshness over the stale on-disk bytes. Liveness is recorded only for a
-  // completed healthy tick (after rename / on the unchanged early-return).
-  it("does NOT report capture_fresh when capture succeeds but the required write fails", async () => {
+  // r2 HIGH-1：捕获成功但必需写入失败时，不得针对磁盘上的过期字节宣称新鲜。仅在健康 tick
+  // 完成后记录存活性（rename 后，或内容未变而提前返回时）。
+  it("捕获成功但必需写入失败时不报告 capture_fresh", async () => {
     const store = new TranscriptStore({ transcriptsRoot: tmpDir, staleAfterMs: 1000 });
     const rig = "hrig";
     const session = "diskfull@hrig";
     store.ensureTranscriptDir(rig);
     const outputPath = store.getTranscriptPath(rig, session);
-    // Pre-existing nonempty transcript with OLD bytes, aged mtime.
+    // 预先存在的非空转录含旧字节，mtime 已过期。
     writeFileSync(outputPath, "old\n");
     const old = new Date(Date.now() - 60_000);
     utimesSync(outputPath, old, old);
-    // Make the containing dir non-writable so the tmp write/rename fails.
+    // 使所在目录不可写，让临时写入/重命名失败。
     const rigDir = join(tmpDir, rig);
     chmodSync(rigDir, 0o500);
     try {
-      // Capture returns CHANGED content -> not suppressed -> write attempted -> throws.
+      // 捕获返回已变化内容 → 不抑制 → 尝试写入 → 抛出异常。
       const adapter = { capturePaneContent: vi.fn(async () => "new-content\n") };
       startTranscriptRotation(adapter as unknown as TmuxAdapter, session, outputPath, {
         lines: 1000,
         pollIntervalMs: 60_000,
       });
       await new Promise((r) => setImmediate(r));
-      // The file still holds the OLD bytes (write failed) ...
+      // 文件仍保存旧字节（写入失败）……
       expect(readFileSync(outputPath, "utf8")).toBe("old\n");
-      // ... so health must be capture_stale (mtime fallback), NOT a false capture_fresh.
+      // ……因此健康状态必须为 capture_stale（mtime 回退），而非错误的 capture_fresh。
       expect(store.getIngestHealth(rig, session).reason).toBe("capture_stale");
     } finally {
       chmodSync(rigDir, 0o700); // restore so afterEach cleanup can remove tmpDir

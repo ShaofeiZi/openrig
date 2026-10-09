@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
 //
-// OPR.0.4.4.15 S15-5/6 — multi-host feed legs (unit tier; the DOM-level
-// chips/filter/status walk is the QA browser proof per the ux-change
-// standard).
+// OPR.0.4.4.15 S15-5/6——多主机 feed 环节（单元测试层；按 ux-change 标准，DOM 层的
+// 标签/筛选/状态巡检由 QA 浏览器证明覆盖）。
 //
-// Load-bearing pins here: (1) NO-BEARER negative — every URL the attention
-// hook touches is local-daemon-relative, no Authorization header, in BOTH
-// modes; (2) zero-config wire parity — aggregation off keeps today's
-// endpoint; (3) the SAME classifier path stamps hostId (no parallel remote
-// card model).
+// 此处的承重锁定项：(1) 无 bearer 的负向保证——两种模式下，待关注钩子访问的每个 URL
+// 都相对于本地后台服务，且不带 Authorization 头；(2) 零配置接线等价——关闭聚合时保留
+// 当前端点；(3) 同一分类器路径写入 hostId，不另建远程卡片模型。
 
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";

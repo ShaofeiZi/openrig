@@ -1,4 +1,4 @@
-// OPR.0.4.1.29 — seat->profile registry: product-native, METADATA only, NO resume_token (orch D2).
+// OPR.0.4.1.29——seat→profile registry：product-native，仅 METADATA，无 resume_token（orch D2）。
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -61,6 +61,6 @@ describe("auth seats registry (OPR.0.4.1.29)", () => {
   });
 
   it("exposes a not-proof-of-live-account disclaimer for command output", () => {
-    expect(SEAT_REGISTRY_DISCLAIMER).toMatch(/not.*(proof|prove)|metadata/i);
+    expect(SEAT_REGISTRY_DISCLAIMER).toMatch(/元数据|不能.*证明/);
   });
 });

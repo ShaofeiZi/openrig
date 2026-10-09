@@ -1,4 +1,4 @@
-// PL-005 Phase A: hook to fetch one Mission Control view from the daemon.
+// PL-005 A 阶段：从后台服务获取单个任务控制视图的 hook。
 import { useQuery } from "@tanstack/react-query";
 
 export const MISSION_CONTROL_VIEWS = [

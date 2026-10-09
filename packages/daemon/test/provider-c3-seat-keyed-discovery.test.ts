@@ -1,12 +1,12 @@
-// Slice-04 (OPR.0.5.0.4) C3 — PRODUCTION-ALTITUDE pin for the Claude provider_usage discovery
-// (PM Option A, per-SEAT). This SUPERSEDES the helper-only false-green (provider-service-impl.test.ts
-// "surfaces ... from the collectClaudeSignals dep" + provider-claude-usage-reader.test.ts hand-fed
-// account/cache stubs), which greened seat-keyed-unknown WITHOUT exercising production discovery.
+// Slice-04（OPR.0.5.0.4）C3——Claude provider_usage 发现的生产高度固定项
+//（PM 选项 A，逐席位）。它取代仅辅助层的假绿测试（provider-service-impl.test.ts
+//“从 collectClaudeSignals 依赖公开……” + provider-claude-usage-reader.test.ts 手动输入的
+// account/cache stub）；后者未触发生产发现流程，就让按席位 unknown 的测试变绿。
 //
-// The contract (Option A): a LIVE claude-code node-inventory seat with NO (or absent/malformed)
-// provider_usage cache must still emit a SEAT-keyed EXPLICIT unknown row — discovery is
-// node-inventory-driven, NOT cache-parse-dependent. Driven through the REAL ProviderServiceImpl
-// .getReadModel (the sealed C1 surface), never an injected signal.
+// 契约（选项 A）：存活的 claude-code node-inventory 席位即使没有 provider_usage 缓存
+//（或缓存缺失/格式错误），仍必须发出按席位索引、明确为 unknown 的行——发现由
+// node-inventory 驱动，而非依赖缓存解析。通过真实 ProviderServiceImpl.getReadModel
+//（已封闭的 C1 接口）驱动，绝不使用注入信号。
 
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
@@ -25,7 +25,7 @@ function emptyCodexHomeEnv(): NodeJS.ProcessEnv {
   return { CODEX_HOME: home } as NodeJS.ProcessEnv;
 }
 
-/** Seed a live claude-code seat into node-inventory (rig + pod + node + running session/binding). */
+/** 向 node-inventory 预置存活的 claude-code 席位（工作组 + pod + 节点 + 运行中会话/绑定）。 */
 function seedClaudeSeat(
   db: Database.Database,
   sessionName = "dev-impl@test-rig",
@@ -42,12 +42,12 @@ function seedClaudeSeat(
   db.prepare("INSERT OR REPLACE INTO bindings (id, node_id, tmux_session) VALUES (?, ?, ?)").run("bind-node-1", "node-1", sessionName);
 }
 
-describe("Slice-04 C3 — seat-keyed Claude provider_usage discovery (production-altitude, PM Option A)", () => {
-  it("a live claude-code seat with NO provider_usage cache yields a SEAT-keyed explicit-unknown via real getReadModel", async () => {
+describe("Slice-04 C3——按席位索引的 Claude provider_usage 发现（生产高度，PM 选项 A）", () => {
+  it("存活 claude-code 席位没有 provider_usage 缓存时，真实 getReadModel 仍返回按席位索引的显式 unknown", async () => {
     const db = createFullTestDb();
     seedClaudeSeat(db);
-    // collectClaudeSignals (the cache lane) is intentionally NOT provided — cache absent. Discovery
-    // must still emit the seat-keyed unknown from node-inventory. Real getReadModel, C1 surface unchanged.
+    // 有意不提供 collectClaudeSignals（缓存通道）——缓存缺失。发现仍必须从 node-inventory
+    // 发出按席位索引的 unknown。使用真实 getReadModel，C1 接口保持不变。
     const svc = new ProviderServiceImpl({ db, listRigs: () => [{ id: "rig-1" }], env: emptyCodexHomeEnv(), now: () => ASOF });
     const model = await svc.getReadModel();
 
@@ -62,14 +62,14 @@ describe("Slice-04 C3 — seat-keyed Claude provider_usage discovery (production
     expect(sig["usedPercent"], "never a fabricated zero").toBeUndefined();
   });
 
-  it("no claude-code seats (empty inventory) → no Claude signals (never a fabricated row)", async () => {
+  it("没有 claude-code 席位（清单为空）→ 没有 Claude 信号（绝不虚构行）", async () => {
     const db = createFullTestDb();
     const svc = new ProviderServiceImpl({ db, listRigs: () => [], env: emptyCodexHomeEnv(), now: () => ASOF });
     const model = await svc.getReadModel();
     expect(model.signals.filter((s) => s.provider === "claude")).toEqual([]);
   });
 
-  it("composes the shipped collector and production cache reader through real getReadModel", async () => {
+  it("通过真实 getReadModel 组合随附 collector 与生产缓存读取器", async () => {
     const root = fs.mkdtempSync(nodePath.join(os.tmpdir(), "provider-c3-altitude-"));
     try {
       const contextDir = nodePath.join(root, "context");
@@ -112,7 +112,7 @@ describe("Slice-04 C3 — seat-keyed Claude provider_usage discovery (production
     }
   });
 
-  it("an exited latest Claude session plus matching stale cache emits zero Claude signals", async () => {
+  it("最新 Claude 会话已退出且缓存相应过期时，不发出 Claude 信号", async () => {
     const root = fs.mkdtempSync(nodePath.join(os.tmpdir(), "provider-c3-exited-"));
     try {
       const contextDir = nodePath.join(root, "context");

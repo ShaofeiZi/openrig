@@ -3,30 +3,26 @@ import { inspectGraph } from "./workflow-reconciliation.js";
 import { createProofPolicyRead, readMissionReadiness, readProjectReadiness } from "./proof/judgments.js";
 import { lifecycleObligations, requiredLifecycleSteps } from "./lifecycle-obligations.js";
 import { QueueWakeRepository } from "./queue-wake-repository.js";
-// S27 (OPR.0.5.6.27) — the execution view: one JSON document answering the six
-// execution questions (who-where, sequencing, care-dial, done-ness-by-rung, park
-// honesty, parallelism health), EVERY field derived at read time.
+// S27（OPR.0.5.6.27）——执行视图：用一个 JSON 文档回答六个执行问题（谁在哪里、顺序、
+// 关注旋钮、各层完成度、暂存真实性、并行健康状态），每个字段都在读取时派生。
 //
-// The laws this module obeys (design contract, DESIGN-execution-view-data-contract):
-// - DERIVED, NEVER AUTHORED: no field is copied from a label a human wrote about
-//   state; volatile facts come from the DB, slice frontmatter, git, statfs, and
-//   the daemon's own build stamp — at read time, per call. No cache, no scheduler.
-// - INDETERMINATE FLOOR: an unreachable or unconfigured source renders the string
-//   "INDETERMINATE" (with a named basis), never idle/dead/done/false.
-// - THE LADDER IS THE SCHEMA: done-ness is five named rungs
-//   (locked/built/reviewed/folded/adopted); a single "done" boolean does not exist.
-// - PROJECTION, NOT AUTHORITY: every cell carries the row/artifact/command that
-//   makes it one command from source.
+// 本模块遵循的规则（设计契约 DESIGN-execution-view-data-contract）：
+// - 只派生，绝不采信人工状态文案：字段不会从人类编写的状态标签复制；易变事实来自数据库、
+//   切片 frontmatter、git、statfs 和后台服务自身构建戳，每次调用时读取；无缓存、无调度器。
+// - INDETERMINATE 底线：不可达或未配置的来源渲染字符串 "INDETERMINATE" 并说明依据，
+//   绝不渲染为 idle/dead/done/false。
+// - 阶梯即 schema：完成度由五个命名层级表示（locked/built/reviewed/folded/adopted），
+//   不存在单一 "done" 布尔值。
+// - 这是投影，不是权威源：每个单元格都携带对应行、产物或命令，距事实源只需一次命令。
 //
-// Data conventions consumed (landed with this slice):
-// - EC-1: slice frontmatter `depends_on:` + `SOFT-AFTER: [ids] — reason` line in
-//   the Territory section (exact regex below — a designated machine line, not
-//   prose scraping).
-// - EC-2: the latest queue row tagged `format:wave-map-v1` carries a fenced
-//   ```json block with {waves:[{id,slices,serialized_order?,review_model?}]}.
-//   Dial: frontmatter `approved-spec-dial`.
-// - EC-3: dispatch batons carry a body line `worktree_path=<path>`; rows without
-//   it join by naming only and are marked fragile_join.
+// 消费的数据约定（随此切片落地）：
+// - EC-1：切片 frontmatter 的 `depends_on:`，以及 Territory 分区中的
+//   `SOFT-AFTER: [ids] — reason` 行。下方使用精确正则；这是指定机器行，不是散文抓取。
+// - EC-2：带 `format:wave-map-v1` tag 的最新队列行携带 fenced ```json 块，结构为
+//   {waves:[{id,slices,serialized_order?,review_model?}]}；旋钮来自 frontmatter
+//   `approved-spec-dial`。
+// - EC-3：派发接力棒正文携带 `worktree_path=<path>` 行；缺失时只能按名称联接，并标记
+//   fragile_join。
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -47,16 +43,14 @@ export type Indeterminate = typeof INDETERMINATE;
 
 export interface ExecutionViewDeps {
   db: Database.Database;
-  /** The missions root (workspace.slices_root). Null => fs-derived sections floor
-   *  to INDETERMINATE; the queue-derived sections still answer. */
+  /** 任务目标根目录（workspace.slices_root）。为 null 时，文件系统派生分区降为
+   * INDETERMINATE；队列派生分区仍正常返回。 */
   slicesRoot: () => string | null;
-  /** THE one activity oracle (S19 locked contract): SeatActivityService's
-   *  ARBITRATED seat-keyed read — the same source rig ps, node inventory, and
-   *  parked-query consume. The vocabulary (working | idle-at-prompt | unknown)
-   *  and the separate needsInput {count, reason} pass through UNTRANSLATED —
-   *  this module never re-arbitrates. sessions.status and the parallel
-   *  AgentActivityStore ingest are NOT acceptable stand-ins (live specimen:
-   *  working lanes labeled `superseded`). Absent => INDETERMINATE floors. */
+  /** 唯一活动事实源（S19 锁定契约）：SeatActivityService 按席位仲裁后的读取，也是 zrig ps、
+   * 节点清单和暂存查询消费的同一来源。词汇（working | idle-at-prompt | unknown）及独立的
+   * needsInput {count, reason} 原样透传，本模块绝不重新仲裁。sessions.status 和平行的
+   * AgentActivityStore 摄取不能替代它（真实样本中工作泳道被标为 `superseded`）。缺失时降为
+   * INDETERMINATE。 */
   seatActivity?: {
     getSeatStateBySession(sessionName: string): {
       activity: "working" | "idle-at-prompt" | "unknown";
@@ -67,9 +61,9 @@ export interface ExecutionViewDeps {
   };
   now?: () => Date;
   buildInfo?: BuildInfo;
-  /** Injectable for tests. Same signature subset as node's execFileSync. */
+  /** 测试可注入；签名是 Node execFileSync 的同一子集。 */
   exec?: (cmd: string, args: string[]) => string;
-  /** Injectable rigs root for review-artifact scanning (tests). */
+  /** 扫描评审产物时可注入的工作组根目录（用于测试）。 */
   rigsRoot?: () => string;
 }
 
@@ -103,15 +97,15 @@ function parseTags(raw: string | null): string[] {
   }
 }
 
-/** EC-3 — the designated machine line, exact. */
+/** EC-3——指定机器行，必须精确匹配。 */
 const WORKTREE_LINE = /^worktree_path=(\S+)$/m;
-/** EC-1 — the designated soft-edge machine line, exact. */
+/** EC-1——指定软边机器行，必须精确匹配。 */
 const SOFT_AFTER_LINE = /^SOFT-AFTER:\s*\[([^\]]*)\]/m;
-/** EC-2 — the fenced JSON block in a wave-map row body. */
+/** EC-2——wave-map 行正文中的 fenced JSON 块。 */
 const WAVE_MAP_BLOCK = /```json\s*\n([\s\S]*?)\n```/;
 
-/** Frontmatter values arrive as raw strings from parseFrontmatter; EC-1 writes
- *  inline JSON arrays (`depends_on: ["OPR..."]`), so parse that shape here. */
+/** frontmatter 值由 parseFrontmatter 以原始字符串形式返回；EC-1 写入内联 JSON 数组
+ *（`depends_on: ["OPR..."]`），因此在此解析该结构。 */
 function parseArrayField(v: unknown): string[] | Indeterminate {
   if (Array.isArray(v)) return v.map(String);
   if (typeof v === "string" && v.trim().startsWith("[")) {
@@ -128,10 +122,9 @@ function parseArrayField(v: unknown): string[] | Indeterminate {
 const SLICE_TAG = /^slice:(.+)$/;
 const CANDIDATE_TAG = /^candidate:(.+)$/;
 
-/** Candidate identity is a COMMIT, not a string. Production carries mixed forms —
- *  abbreviated tags (`dced9edb0`), full 40-hex artifact fields, and annotated
- *  fields (`dced9edb0 (exact tip over base …)`). Extract the leading hex token;
- *  anything without one is malformed and floors excluded, never matched. */
+/** 候选身份是 commit，而不是普通字符串。生产数据包含混合形式：缩写 tag（`dced9edb0`）、
+ * 完整 40 位十六进制产物字段，以及带注释字段（`dced9edb0 (exact tip over base …)`）。
+ * 提取开头的十六进制 token；不含 token 的值视为格式错误并从底线中排除，绝不匹配。 */
 const SHA_TOKEN = /^([0-9a-fA-F]{7,40})(?:\b|$)/;
 function extractShaToken(raw: string | null): string | null {
   if (!raw) return null;
@@ -139,9 +132,8 @@ function extractShaToken(raw: string | null): string | null {
   return m?.[1] ? m[1].toLowerCase() : null;
 }
 
-/** Resolve a (possibly abbreviated) sha token to its full commit id via the repo
- *  context. Ambiguous or non-resolving tokens return null — raw prefix string
- *  equality is never accepted as commit identity. */
+/** 通过仓库上下文将可能缩写的 SHA token 解析为完整 commit ID。歧义或无法解析时返回
+ * null；绝不把原始前缀字符串相等视为 commit 身份相等。 */
 function resolveCommit(
   exec: (cmd: string, args: string[]) => string,
   repoCtx: string,
@@ -153,13 +145,13 @@ function resolveCommit(
   try {
     full = exec("git", ["-C", repoCtx, "rev-parse", "--verify", `${token}^{commit}`]).toLowerCase();
   } catch {
-    full = null; // ambiguous, unknown, or malformed at the object store — floors honestly
+    full = null; // 对象存储中歧义、未知或格式错误——如实降到底线。
   }
   cache.set(token, full);
   return full;
 }
 
-/** Numeric-aware compare of release-mission dir names (release-0.5.10 > release-0.5.6). */
+/** 按数字比较 release 任务目标目录名（release-0.5.10 > release-0.5.6）。 */
 function compareReleaseDirs(a: string, b: string): number {
   const nums = (s: string) => (s.match(/\d+/g) ?? []).map(Number);
   const na = nums(a);
@@ -178,7 +170,7 @@ function missionReferences(missionsRoot: string | null, mission: string): string
     const fm = parseFrontmatter(fs.readFileSync(path.join(missionsRoot, mission, "SPEC.md"), "utf8"));
     if (typeof fm["id"] === "string") references.add(fm["id"] as string);
   } catch {
-    // A missing mission SPEC is valid legacy state; the directory name still binds.
+    // 任务目标 SPEC 缺失是有效旧状态；目录名仍用于绑定。
   }
   return [...references];
 }
@@ -220,8 +212,8 @@ function readMissionSlices(missionsRoot: string, mission: string): SliceFacts[] 
   return out;
 }
 
-/** Locate the slice facts for a dep id, resolving out-of-mission deps to their
- *  own release dir by id prefix (OPR.0.5.5.x -> release-0.5.5). */
+/** 查找依赖 ID 的切片事实；任务目标外依赖按 ID 前缀解析到各自 release 目录
+ *（OPR.0.5.5.x → release-0.5.5）。 */
 function resolveDep(
   depId: string,
   current: SliceFacts[],
@@ -291,7 +283,7 @@ function lifecycleProjectAction(input: {
   acceptance: Record<string, unknown> | null;
   receiptRequired?: boolean;
 }): string {
-  const base = `rig workflow project --instance ${input.instanceId} --current-packet ${input.packetId} --exit <handoff|waiting|done|failed> --actor-session ${input.owner}${input.receiptRequired ? " --evidence-ref <agent-judged-receipt>" : ""}`;
+  const base = `zrig workflow project --instance ${input.instanceId} --current-packet ${input.packetId} --exit <handoff|waiting|done|failed> --actor-session ${input.owner}${input.receiptRequired ? " --evidence-ref <agent-judged-receipt>" : ""}`;
   if (!input.acceptance) return base;
   const verdicts = Array.isArray(input.acceptance["verdicts"])
     ? input.acceptance["verdicts"].filter((value): value is string => typeof value === "string")
@@ -301,10 +293,9 @@ function lifecycleProjectAction(input: {
 }
 
 /**
- * S06 lifecycle projection for the existing execution view. Mutable owner,
- * queue state, and blocker facts are joined from queue_items at read time;
- * lifecycle_binding_json carries identity/provenance only. Older databases
- * have no migration-079 columns and therefore return an honest empty list.
+ * 既有执行视图的 S06 生命周期投影。可变的所有者、队列状态和阻塞事实在读取时从
+ * queue_items 联接；lifecycle_binding_json 只携带身份/来源信息。旧数据库没有迁移 079
+ * 列，因此如实返回空列表。
  */
 function readLifecycleExecutions(db: Database.Database, mission: string, project?: string): Array<Record<string, unknown>> {
   if (!hasColumn(db, "workflow_instances", "lifecycle_binding_json")) return [];
@@ -349,8 +340,8 @@ function readLifecycleExecutions(db: Database.Database, mission: string, project
       const schedule = wake && wake.kind !== "blocker" && hasTable(db, "watchdog_jobs") ? db.prepare(
         `SELECT policy, interval_seconds, last_evaluation_at FROM watchdog_jobs WHERE job_id = ?`,
       ).get(wake.ref) ?? null : null;
-      if (matches.length !== 1) unknowns.push(`frontier packet ${packetId} has ${matches.length} step bindings`);
-      if (!packet) unknowns.push(`frontier packet ${packetId} has no queue row`);
+      if (matches.length !== 1) unknowns.push(`前沿包 ${packetId} 有 ${matches.length} 个步骤绑定`);
+      if (!packet) unknowns.push(`前沿包 ${packetId} 没有队列行`);
       const stepId = matches.length === 1 ? String(matches[0]!["step_id"]) : null;
       const step = stepId ? steps.find((candidate) => candidate["id"] === stepId) : undefined;
       const acceptance = step && isRecord(step["acceptance"]) ? step["acceptance"] : null;
@@ -391,7 +382,7 @@ function readLifecycleExecutions(db: Database.Database, mission: string, project
             failure["status"] === "unresolved" &&
             row["status"] !== "completed" &&
             row["status"] !== "aborted"
-            ? `rig workflow resume ${instanceId} --occurrence ${String(failure["occurrence_id"])} --actor-session <you>`
+            ? `zrig workflow resume ${instanceId} --occurrence ${String(failure["occurrence_id"])} --actor-session <you>`
             : null,
         }))
       : [];
@@ -439,16 +430,15 @@ function parseJsonStringList(value: unknown): string[] {
   }
 }
 
-/** The manifest arrangement is optional. Missing means compatibility fallback;
- * malformed means the same fallback plus ONE named warning cell in `sources`.
- * A valid manifest becomes the ordering/wave/dependency authority. */
+/** manifest arrangement 可选。缺失时使用兼容回退；格式错误时使用同一回退，并在
+ * `sources` 中增加一个明确警告单元格。有效 manifest 是顺序、wave 和依赖的权威来源。 */
 function readArrangement(missionsRoot: string, mission: string, slices: SliceFacts[]): ArrangementData {
   const missionRoot = path.join(missionsRoot, mission);
   const missionPath = path.join(missionRoot, "mission.yaml");
   if (!fs.existsSync(missionPath)) return { state: "missing", missionPath };
   try {
     const manifest = parseYaml(fs.readFileSync(missionPath, "utf8")) as unknown;
-    if (!isRecord(manifest)) throw new Error("root is not a mapping");
+    if (!isRecord(manifest)) throw new Error("根节点不是映射");
     const compositionMembers = validateMissionComposition(manifest, missionPath);
     const waveReview = new Map<string, string>();
     const waveBySlice = new Map<string, string>();
@@ -461,36 +451,36 @@ function readArrangement(missionsRoot: string, mission: string, slices: SliceFac
     };
     const arrangement = manifest["arrangement"];
     if (isRecord(arrangement)) for (const [field, label, key] of [
-      ["source", "Integration decision", "rule"],
-      ["planning_posture", "Planning posture", "rule"],
-      ["execution_posture", "Execution posture", "parallelism"],
-      ["integration_exit", "Shared acceptance", "rule"],
+      ["source", "集成决策", "rule"],
+      ["planning_posture", "规划姿态", "rule"],
+      ["execution_posture", "执行姿态", "parallelism"],
+      ["integration_exit", "共享验收", "rule"],
     ] as const) {
       const value = arrangement[field];
       if (isRecord(value)) addGuidance(label, value[key], `${field}.${key}`);
     }
     if (isRecord(arrangement) && arrangement["waves"] != null) {
-      if (!Array.isArray(arrangement["waves"])) throw new Error("arrangement.waves is not a list");
+      if (!Array.isArray(arrangement["waves"])) throw new Error("arrangement.waves 不是列表");
       for (const [index, rawWave] of arrangement["waves"].entries()) {
         if (!isRecord(rawWave) || typeof rawWave["id"] !== "string") {
-          throw new Error("arrangement.waves contains an invalid entry");
+          throw new Error("arrangement.waves 包含无效条目");
         }
         let waveSlices: unknown[];
         if (Array.isArray(rawWave["slices"])) {
           waveSlices = rawWave["slices"];
         } else if (isRecord(rawWave["lanes"])) {
           const lanes = Object.values(rawWave["lanes"]);
-          if (lanes.some((value) => !Array.isArray(value))) throw new Error("arrangement.waves lanes are not lists");
+          if (lanes.some((value) => !Array.isArray(value))) throw new Error("arrangement.waves 中的 lanes 不是列表");
           waveSlices = lanes.flatMap((value) => value as unknown[]);
         } else {
-          throw new Error("arrangement.waves entry has neither slices nor lanes");
+          throw new Error("arrangement.waves 条目既没有 slices 也没有 lanes");
         }
         if (waveSlices.some((value) => typeof value !== "string")) {
-          throw new Error("arrangement.waves contains a non-string slice id");
+          throw new Error("arrangement.waves 包含非字符串切片 ID");
         }
         for (const sliceId of waveSlices as string[]) waveBySlice.set(sliceId, rawWave["id"]);
         if (typeof rawWave["review_model"] === "string") waveReview.set(rawWave["id"], rawWave["review_model"]);
-        for (const [key, label] of [["admission", "Admission"], ["review", "Review"], ["exit", "Exit"]] as const)
+        for (const [key, label] of [["admission", "准入"], ["review", "评审"], ["exit", "退出"]] as const)
           addGuidance(label, rawWave[key], `waves[${index}].${key}`, rawWave["id"]);
       }
     }
@@ -500,17 +490,17 @@ function readArrangement(missionsRoot: string, mission: string, slices: SliceFac
       if (!member.active) continue;
       const ref = member.ref;
       const resolved = member.path;
-      if (path.basename(resolved) !== "slice.yaml") throw new Error(`slice ref must address slice.yaml: ${ref}`);
+      if (path.basename(resolved) !== "slice.yaml") throw new Error(`切片引用必须指向 slice.yaml：${ref}`);
       const relative = path.relative(fs.realpathSync(path.join(missionRoot, "slices")), resolved);
       const dir = relative.split(path.sep)[0];
-      if (!dir || dir === "..") throw new Error(`slice ref is outside slices/: ${ref}`);
+      if (!dir || dir === "..") throw new Error(`切片引用位于 slices/ 之外：${ref}`);
       const sliceManifest = parseYaml(fs.readFileSync(resolved, "utf8")) as unknown;
-      if (!isRecord(sliceManifest)) throw new Error(`${ref} root is not a mapping`);
+      if (!isRecord(sliceManifest)) throw new Error(`${ref} 的根节点不是映射`);
       const execution = sliceManifest["execution"];
-      if (execution != null && !isRecord(execution)) throw new Error(`${ref} execution is not a mapping`);
+      if (execution != null && !isRecord(execution)) throw new Error(`${ref} 的 execution 不是映射`);
       const dependsRaw = isRecord(execution) ? execution["depends_on"] : undefined;
       if (dependsRaw != null && (!Array.isArray(dependsRaw) || dependsRaw.some((v) => typeof v !== "string"))) {
-        throw new Error(`${ref} execution.depends_on is not a string list`);
+        throw new Error(`${ref} 的 execution.depends_on 不是字符串列表`);
       }
       const facts = slices.find((slice) => slice.dir === dir);
       const wave = isRecord(execution) && typeof execution["wave"] === "string"
@@ -576,8 +566,8 @@ interface ReviewArtifactFact {
   artifactType: string | null;
 }
 
-/** Scan rigs/<rig>/state/review… dirs for review artifacts naming this slice.
- *  Root resolution follows the shipped shared-docs precedent. */
+/** 扫描 rigs/<rig>/state/review… 目录，查找命名此切片的评审产物。根目录解析遵循已发布的
+ * shared-docs 先例。 */
 function scanReviewArtifacts(rigsRoot: string, sliceDirOrId: string[]): ReviewArtifactFact[] | Indeterminate {
   let rigs: string[];
   try {
@@ -638,7 +628,7 @@ function gitAncestor(exec: ExecutionViewDeps["exec"], repoCtx: string, sha: stri
     if (status === 1) {
       return { value: false, basis: `git -C ${repoCtx} merge-base --is-ancestor ${sha} ${ref} (exit 1)` };
     }
-    return { value: INDETERMINATE, basis: `merge-base failed in ${repoCtx}: ${(err as Error).message?.slice(0, 120)}` };
+    return { value: INDETERMINATE, basis: `${repoCtx} 中的 merge-base 失败：${(err as Error).message?.slice(0, 120)}` };
   }
 }
 
@@ -651,11 +641,9 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
 
   const missionsRoot = deps.slicesRoot();
 
-  // Default mission: the newest real in-progress mission on the board. The TUI
-  // asks without a mission before it has any mission state of its own; choosing
-  // the lexically newest directory can surface a planned future release instead
-  // of the mission people are actually executing. Explicit `?mission=` still
-  // wins, and the historical newest-directory behavior remains the fallback.
+  // 默认任务目标：看板上最新、真实进行中的任务目标。TUI 在自身尚无任务目标状态时会发起
+  // 无 mission 请求；若按字典序选择最新目录，可能显示计划中的未来 release，而不是人们
+  // 实际执行的任务目标。显式 `?mission=` 仍优先，历史上的最新目录行为保留为回退。
   let mission: string | Indeterminate = opts?.mission ?? INDETERMINATE;
   if (mission !== INDETERMINATE && missionsRoot) {
     const matches = resolveWorkNodeDirs(missionsRoot, mission);
@@ -668,7 +656,7 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
     for (const row of active) {
       if (opts?.project && !belongsToProject(row.tags, opts.project)) continue;
       const tag = parseTags(row.tags).find((value) => value.startsWith("mission:"));
-      // Canonical tags win; the conventional handoff line keeps older/body-only batons visible.
+      // 规范 tag 优先；约定的交接行使旧版或仅正文的接力棒仍然可见。
       const bodyMissions = [...new Set(
         [...(row.body?.matchAll(/^Mission:[ \t]+(\S+)[ \t]*$/gm) ?? [])].map((match) => match[1]!),
       )];
@@ -686,7 +674,7 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
       const newest = releases.sort(compareReleaseDirs)[releases.length - 1];
       if (newest) mission = newest;
     } catch {
-      /* stays INDETERMINATE */
+      /* 保持 INDETERMINATE。 */
     }
   }
 
@@ -694,7 +682,7 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
   const sliceIds = slices.map((s) => s.id).filter((x): x is string => x !== INDETERMINATE);
   const depCache = new Map<string, SliceFacts | null>();
 
-  // ---- queue rows bound to this mission (tag or body mention, per the binding law) ----
+  // ---- 绑定到此任务目标的队列行（按绑定规则，由 tag 或正文提及决定）----
   const missionLikes = mission === INDETERMINATE
     ? ["%"]
     : missionReferences(missionsRoot, mission).map((reference) => `%${reference}%`);
@@ -725,12 +713,11 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
     return bodySlices.length === 1 ? bodySlices[0]! : null;
   };
 
-  // ---- Q1: who is on what, where ----
+  // ---- Q1：谁在何处处理什么 ----
   const lanes: Record<string, unknown>[] = [];
-  // Repo context for the ladder's git legs: the first REACHABLE worktree_path
-  // carried by ANY row bound to this mission (worktrees share the repo's refs).
-  // In-progress lanes are preferred by trying them first below; this fallback
-  // scan means one historical EC-3 row is enough to make folded derivable.
+  // 阶梯 git 分支的仓库上下文：绑定到此任务目标的任意行所携带的第一个可达
+  // worktree_path（各 worktree 共享仓库 refs）。下方优先尝试进行中泳道；借助此回退扫描，
+  // 一条历史 EC-3 行就足以让 folded 可派生。
   let repoCtx: string | null = null;
   for (const r of rows) {
     const m = r.body?.match(WORKTREE_LINE);
@@ -740,7 +727,7 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
       repoCtx = m[1];
       break;
     } catch {
-      /* unreachable candidate — keep scanning */
+      /* 候选不可达——继续扫描。 */
     }
   }
   for (const r of rows.filter((r) => r.state === "in-progress")) {
@@ -754,7 +741,7 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
     let joinBasis: string;
     if (wtMatch?.[1]) {
       worktreePath = wtMatch[1];
-      joinBasis = "EC-3 worktree_path field on the row body";
+      joinBasis = "行正文中的 EC-3 worktree_path 字段";
       try {
         branch = exec("git", ["-C", worktreePath, "rev-parse", "--abbrev-ref", "HEAD"]);
         headSha = exec("git", ["-C", worktreePath, "rev-parse", "HEAD"]);
@@ -762,11 +749,11 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
       } catch {
         branch = INDETERMINATE;
         headSha = INDETERMINATE;
-        joinBasis += " (path unreachable at read time)";
+        joinBasis += "（读取时路径不可达）";
       }
     } else {
       fragileJoin = true;
-      joinBasis = "row/branch naming only (EC-3 field absent — legacy baton)";
+      joinBasis = "仅按行/分支名称联接（缺少 EC-3 字段——旧版接力棒）";
     }
     const arbitrated = deps.seatActivity?.getSeatStateBySession(r.destination_session) ?? null;
     const pickup = derivePickup({
@@ -793,19 +780,19 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
             needs_input: arbitrated.needsInput,
             decided_by: arbitrated.decidedBy,
             changed_at: arbitrated.changedAt,
-            source: "SeatActivityService arbitrated seat state (the one oracle; vocabulary passed through untranslated)",
+            source: "SeatActivityService 仲裁的席位状态（唯一事实源；状态词汇原样透传）",
           }
         : {
             activity: INDETERMINATE,
-            basis: deps.seatActivity ? "no arbitrated state for this seat" : "seat-activity oracle not wired on this deps set",
-            source: "SeatActivityService arbitrated seat state (no answer floors INDETERMINATE, never idle/dead)",
+            basis: deps.seatActivity ? "此席位没有仲裁状态" : "此依赖集合未接入 seat-activity 事实源",
+            source: "SeatActivityService 仲裁的席位状态（无结果时降为 INDETERMINATE，绝非 idle/dead）",
           },
       pickup,
       source: { qitem_id: r.qitem_id },
     });
   }
 
-  // ---- arrangement authority: mission/slice YAML, with legacy EC-2 fallback ----
+  // ---- arrangement 权威来源：mission/slice YAML，并以旧版 EC-2 回退 ----
   const waveMap = mission === INDETERMINATE
     ? { rowId: INDETERMINATE as Indeterminate, waves: [] }
     : readWaveMap(deps.db, missionReferences(missionsRoot, mission), opts?.project);
@@ -840,15 +827,15 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
     return null;
   };
 
-  // ---- Q4 ladder (also feeds Q2's deps-folded) ----
+  // ---- Q4 阶梯（也为 Q2 的 deps-folded 提供数据）----
   const rigsRoot = (deps.rigsRoot ?? resolveLegacyTopologyRigsRoot)();
   const commitCache = new Map<string, string | null>();
   const ladderOf = (facts: SliceFacts): Record<string, unknown> => {
     const fm = facts.frontmatter;
     const locked: Rung = typeof fm["approved-spec-at"] === "string"
       ? { value: true, basis: `frontmatter approved-spec-at=${fm["approved-spec-at"]}` }
-      : { value: false, basis: "no approved-spec-at in frontmatter" };
-    // built: latest candidate:<sha> tag on a row bound to this slice.
+      : { value: false, basis: "frontmatter 中没有 approved-spec-at" };
+    // built：绑定到此切片的行上最新的 candidate:<sha> tag。
     const candRows = rows
       .filter((r) => sliceOfRow(r) === facts.id || sliceOfRow(r) === facts.dir)
       .sort((a, b) => (a.ts_created < b.ts_created ? 1 : -1));
@@ -865,35 +852,32 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
       }
       if (candidateSha) break;
     }
-    // Candidate identity is COMMIT-AWARE: the tag token resolves to a full
-    // commit id through the repo context; raw prefix string equality is never
-    // commit identity.
+    // 候选身份感知 commit：tag token 通过仓库上下文解析为完整 commit ID；原始前缀字符串
+    // 相等绝不能视为 commit 身份相等。
     const builtToken = extractShaToken(candidateSha);
     const builtResolved = builtToken && repoCtx ? resolveCommit(exec, repoCtx, builtToken, commitCache) : null;
     const built = candidateSha
       ? {
           candidate_sha: builtToken ?? candidateSha,
           resolved_commit: builtResolved ?? INDETERMINATE,
-          basis: `candidate:* tag on row ${candidateRow}${builtResolved ? " (resolved to full commit via repo context)" : repoCtx ? " (token did not resolve to a commit)" : " (no repo context to resolve through)"}`,
+          basis: `行 ${candidateRow} 上的 candidate:* tag${builtResolved ? "（已通过仓库上下文解析为完整 commit）" : repoCtx ? "（token 未解析为 commit）" : "（没有可用于解析的仓库上下文）"}`,
         }
-      : { candidate_sha: INDETERMINATE, basis: "no candidate:* tag on any row bound to this slice (unbuilt and unrecorded are indistinguishable here)" };
-    // reviewed: registry artifacts naming this slice, SCOPED TO THE BUILT COMMIT —
-    // the contract is {legs+verdicts at sha}. Mixed production forms (abbreviated
-    // tags, full shas, annotated fields) join by RESOLVED commit; malformed,
-    // ambiguous, or non-resolving inputs are excluded with the reason carried —
-    // they neither clear nor poison.
+      : { candidate_sha: INDETERMINATE, basis: "绑定到此切片的任何行上都没有 candidate:* tag（此处无法区分未构建与未记录）" };
+    // reviewed：注册表中命名此切片、且限定到已构建 commit 的产物；契约为某 SHA 上的
+    // {legs+verdicts}。生产中的混合形式（缩写 tag、完整 SHA、带注释字段）按解析后的 commit
+    // 联接；格式错误、有歧义或无法解析的输入会附原因排除，既不放行也不污染结果。
     const artifacts = opts?.project ? INDETERMINATE : scanReviewArtifacts(rigsRoot, [facts.dir, ...(typeof facts.id === "string" ? [facts.id] : [])]);
     let reviewed: Record<string, unknown>;
     if (artifacts === INDETERMINATE) {
-      reviewed = { value: INDETERMINATE, basis: opts?.project ? "Global review artifacts have no project identity binding" : `review-artifact root unreadable (${rigsRoot})`, legs: [] };
+      reviewed = { value: INDETERMINATE, basis: opts?.project ? "全局评审产物没有项目身份绑定" : `评审产物根目录不可读（${rigsRoot}）`, legs: [] };
     } else if (!candidateSha || !builtToken) {
-      reviewed = { value: INDETERMINATE, basis: "no built candidate token to scope review legs to", legs: [] };
+      reviewed = { value: INDETERMINATE, basis: "没有可用于限定评审分支的已构建候选 token", legs: [] };
     } else if (!builtResolved) {
       reviewed = {
         value: INDETERMINATE,
         basis: repoCtx
-          ? `built token ${builtToken} did not resolve to a commit — identity join impossible`
-          : "no repo context to resolve candidate identity through",
+          ? `已构建 token ${builtToken} 未解析为 commit——无法联接身份`
+          : "没有可用于解析候选身份的仓库上下文",
         legs: [],
       };
     } else {
@@ -901,39 +885,39 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
       const atCommit = artifacts.filter((a) => {
         const token = extractShaToken(a.candidateSha);
         if (!token) {
-          excluded.push({ path: a.path, reason: "malformed candidate_sha (no sha token)" });
+          excluded.push({ path: a.path, reason: "candidate_sha 格式错误（没有 SHA token）" });
           return false;
         }
         const resolved = resolveCommit(exec, repoCtx!, token, commitCache);
         if (!resolved) {
-          excluded.push({ path: a.path, reason: `token ${token} did not resolve to a commit` });
+          excluded.push({ path: a.path, reason: `token ${token} 未解析为 commit` });
           return false;
         }
         return resolved === builtResolved;
       });
       reviewed = atCommit.length === 0
-        ? { value: INDETERMINATE, basis: `no review artifact resolves to the built commit ${builtResolved.slice(0, 9)} on the registry surface checked`, legs: [], excluded }
+        ? { value: INDETERMINATE, basis: `在已检查的注册表界面上，没有评审产物解析到已构建 commit ${builtResolved.slice(0, 9)}`, legs: [], excluded }
         : {
             value: atCommit.every((a) => ["CLEAR", "PASS"].includes(a.verdict)),
-            basis: `frontmatter verdicts at ${atCommit.length} artifact(s) joined by resolved commit ${builtResolved.slice(0, 9)}`,
+            basis: `${atCommit.length} 个产物上的 frontmatter verdict 通过解析后的 commit ${builtResolved.slice(0, 9)} 联接` ,
             legs: atCommit.map((a) => ({ path: a.path, verdict: a.verdict, candidate_sha: a.candidateSha, artifact_type: a.artifactType })),
             excluded,
           };
     }
-    // folded / adopted need a repo context — any reachable EC-3 worktree shares refs.
+    // folded / adopted 需要仓库上下文；任意可达 EC-3 worktree 都共享 refs。
     let folded: Rung;
     let adopted: Rung;
     if (!candidateSha) {
-      folded = { value: INDETERMINATE, basis: "no candidate sha to test" };
-      adopted = { value: INDETERMINATE, basis: "no candidate sha to test" };
+      folded = { value: INDETERMINATE, basis: "没有可供检查的候选 SHA" };
+      adopted = { value: INDETERMINATE, basis: "没有可供检查的候选 SHA" };
     } else if (!repoCtx) {
-      folded = { value: INDETERMINATE, basis: "no reachable repo context (no EC-3 worktree on the board)" };
-      adopted = { value: INDETERMINATE, basis: "no reachable repo context (no EC-3 worktree on the board)" };
+      folded = { value: INDETERMINATE, basis: "没有可达仓库上下文（看板上没有 EC-3 worktree）" };
+      adopted = { value: INDETERMINATE, basis: "没有可达仓库上下文（看板上没有 EC-3 worktree）" };
     } else {
       folded = gitAncestor(exec, repoCtx, builtResolved ?? candidateSha, "main");
       adopted = buildInfo.commit
         ? gitAncestor(exec, repoCtx, builtResolved ?? candidateSha, buildInfo.commit)
-        : { value: INDETERMINATE, basis: "daemon build stamp absent (dev run) — adopted rung underivable" };
+        : { value: INDETERMINATE, basis: "后台服务构建戳缺失（开发运行）——无法派生 adopted 层级" };
     }
     return { slice_id: facts.id, dir: facts.dir, locked, built, reviewed, folded, adopted };
   };
@@ -947,15 +931,15 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
 
   const q4 = slices.map((s) => ladderFor(s));
 
-  // ---- Q2 sequencing ----
+  // ---- Q2 顺序 ----
   const q2 = slices.map((s) => {
     const fm = s.frontmatter;
     const arranged = typeof s.id === "string" ? arrangementSlice(s.id, s.dir) : null;
     const dependsOn = arranged?.dependsOn ?? parseArrayField(fm["depends_on"]);
     const softMatch = s.body.match(SOFT_AFTER_LINE);
     const softAfter = softMatch?.[1] ? softMatch[1].split(",").map((x) => x.trim()).filter(Boolean) : [];
-    // Only LIVE rows can hold work blocked: stale blockedOn on a terminal row is
-    // record, not state, and must not govern dispatchability.
+    // 只有实时行才能表示工作受阻：终态行上过期的 blockedOn 是历史记录而不是当前状态，
+    // 不能决定是否可派发。
     const blockedRows = rows
       .filter((r) => (sliceOfRow(r) === s.id || sliceOfRow(r) === s.dir) && r.blocked_on
         && ["pending", "in-progress", "blocked"].includes(r.state))
@@ -965,41 +949,41 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
     let nextUpBasis: string;
     if (dependsOn === INDETERMINATE) {
       nextUp = INDETERMINATE;
-      nextUpBasis = "depends_on absent from frontmatter (EC-1 not applied here)";
+      nextUpBasis = "frontmatter 中缺少 depends_on（此处未应用 EC-1）";
     } else if (blockedRows.length > 0) {
       nextUp = false;
-      nextUpBasis = `blocked rows present (${blockedRows.map((b) => b.qitem_id).join(", ")})`;
+      nextUpBasis = `存在阻塞行（${blockedRows.map((b) => b.qitem_id).join(", ")}）`;
     } else if (claimedLane) {
       nextUp = false;
-      nextUpBasis = "already claimed in-progress";
+      nextUpBasis = "已认领且正在进行";
     } else if ((ladderFor(s)["folded"] as Rung).value === true) {
       nextUp = false;
-      nextUpBasis = "own candidate already folded to main — nothing left to dispatch";
+      nextUpBasis = "自身候选已合并到 main——没有剩余内容可派发";
     } else if ((ladderFor(s)["folded"] as Rung).value === INDETERMINATE) {
-      // Unknown own-completion must never read as dispatchable — INDETERMINATE
-      // is the honest verdict, not true (the S24/S25 live false-green class).
+      // 自身完成状态未知时绝不能显示为可派发；诚实判决是 INDETERMINATE，而不是 true
+      //（S24/S25 实时假绿类别）。
       nextUp = INDETERMINATE;
-      nextUpBasis = `own completion rung INDETERMINATE (${(ladderFor(s)["folded"] as Rung).basis})`;
+      nextUpBasis = `自身完成层级为 INDETERMINATE（${(ladderFor(s)["folded"] as Rung).basis}）`;
     } else {
       nextUp = true;
-      nextUpBasis = "unblocked, unclaimed";
+      nextUpBasis = "未阻塞且未认领";
       for (const dep of dependsOn) {
         const depFacts = resolveDep(dep, slices, missionsRoot, depCache);
         if (!depFacts) {
           nextUp = INDETERMINATE;
-          nextUpBasis = `dep ${dep} unresolvable on this missions root`;
+          nextUpBasis = `依赖 ${dep} 无法在此任务目标根目录解析`;
           break;
         }
         const depLadder = ladderFor(depFacts);
         const foldedRung = depLadder["folded"] as Rung;
         if (foldedRung.value === INDETERMINATE) {
           nextUp = INDETERMINATE;
-          nextUpBasis = `dep ${dep} folded-rung INDETERMINATE (${foldedRung.basis})`;
+          nextUpBasis = `依赖 ${dep} 的 folded 层级为 INDETERMINATE（${foldedRung.basis}）`;
           break;
         }
         if (foldedRung.value === false) {
           nextUp = false;
-          nextUpBasis = `dep ${dep} not folded`;
+          nextUpBasis = `依赖 ${dep} 尚未合并`;
           break;
         }
       }
@@ -1028,7 +1012,7 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
     };
   });
 
-  // ---- Q3 care dial ----
+  // ---- Q3 关注旋钮 ----
   const q3 = slices.map((s) => {
     const wave = typeof s.id === "string" ? waveOfSlice(s.id) : null;
     const dial = typeof s.frontmatter["approved-spec-dial"] === "string"
@@ -1044,12 +1028,12 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
         ...(typeof s.id === "string" && arrangementSlice(s.id, s.dir)
           ? { arrangement_path: arrangementSlice(s.id, s.dir)!.path }
           : {}),
-        dial: dial === INDETERMINATE ? "no approved-spec-dial frontmatter field" : `frontmatter approved-spec-dial at ${s.specPath}`,
+        dial: dial === INDETERMINATE ? "frontmatter 中没有 approved-spec-dial 字段" : `${s.specPath} 中的 frontmatter approved-spec-dial` ,
       },
     };
   });
 
-  // ---- Q5 park honesty ----
+  // ---- Q5 暂存真实性 ----
   const q5 = rows
     .filter((r) => r.state === "blocked" || (r.claimed_at && ["in-progress", "pending"].includes(r.state)))
     .map((r) => {
@@ -1066,9 +1050,8 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
       const wake = deps.db
         .prepare(`SELECT wake_ref, phase FROM queue_transition_wakes WHERE qitem_id = ? AND phase = 'armed' LIMIT 1`)
         .get(r.qitem_id) as { wake_ref: string; phase: string } | undefined;
-      // park_kind is a CLOSED enum from the DESIGN: deliberate-with-wake |
-      // stalled | indeterminate. Nothing else may leak in (the live artifact
-      // once emitted 'working' here), and the enum member is lowercase.
+      // park_kind 是 DESIGN 定义的封闭枚举：deliberate-with-wake | stalled | indeterminate。
+      // 不得泄漏其他值；实时产物曾在此错误发出 'working'。枚举成员必须为小写。
       let parkKind: "deliberate-with-wake" | "stalled" | "indeterminate";
       if (pickup.state === "parked" && wake) {
         parkKind = "deliberate-with-wake";
@@ -1084,21 +1067,20 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
         ...(pickup.evidence ? { pickup_evidence: pickup.evidence } : {}),
         park_kind: parkKind,
         park_kind_basis: wake
-          ? `armed wake ${wake.wake_ref} on queue_transition_wakes`
-          : "no armed wake row (deliberate-park-without-wake vs strand is underivable here — rig parked owns wake diagnosis)",
+          ? `queue_transition_wakes 上已武装唤醒 ${wake.wake_ref}`
+          : "没有已武装唤醒行（此处无法区分无唤醒的主动暂存与搁浅；工作组暂存逻辑负责唤醒诊断）",
         wake_target: wake?.wake_ref ?? null,
         age_minutes: ageMinutes,
         source: { qitem_id: r.qitem_id },
       };
     });
 
-  // ---- Q6 parallelism health ----
+  // ---- Q6 并行健康状态 ----
   const inProgressSeats = new Set(rows.filter((r) => r.state === "in-progress").map((r) => r.destination_session));
-  // Idle capacity: the ROSTER comes from sessions (names only); idleness comes
-  // from the ACTIVITY ORACLE — sessions.status is not consulted (it labeled
-  // live working lanes `superseded` on the real board).
+  // 空闲容量：名册来自 sessions（只取名称），空闲状态来自活动事实源；不读取 sessions.status
+  //（真实看板中它曾把实时工作泳道标为 `superseded`）。
   let idleSeats: number | Indeterminate = INDETERMINATE;
-  let idleBasis = "seat-activity oracle not wired on this deps set";
+  let idleBasis = "此依赖集合未接入 seat-activity 事实源";
   if (deps.seatActivity) {
     try {
       const roster = deps.db
@@ -1107,18 +1089,18 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
       idleSeats = roster.filter((s) => {
         if (inProgressSeats.has(s.session_name)) return false;
         const a = deps.seatActivity!.getSeatStateBySession(s.session_name);
-        // Capacity = arbitrated idle-at-prompt with NOTHING demanding input —
-        // a needs-input seat is waiting on someone, not available.
+        // 容量 = 仲裁状态为 idle-at-prompt 且没有任何输入需求；needs-input 席位在等待他人，
+        // 不属于可用容量。
         return !!a && a.activity === "idle-at-prompt" && a.needsInput.count === 0;
       }).length;
-      idleBasis = "arbitrated seat state idle-at-prompt with needsInput.count=0 over the sessions roster (names only), minus seats holding in-progress rows";
+      idleBasis = "在仅含名称的 sessions 名册中，仲裁席位状态为 idle-at-prompt 且 needsInput.count=0，并扣除持有进行中行的席位";
     } catch {
       idleSeats = INDETERMINATE;
-      idleBasis = "sessions roster unreadable";
+      idleBasis = "sessions 名册不可读";
     }
   }
   const heavyRow = rows.find((r) => r.state === "in-progress" && parseTags(r.tags).includes("heavy-slot"));
-  let dfMargin: Record<string, unknown> = { available_kib: INDETERMINATE, basis: "no readable path for statfs" };
+  let dfMargin: Record<string, unknown> = { available_kib: INDETERMINATE, basis: "没有可供 statfs 读取的路径" };
   const dfPath = repoCtx ?? missionsRoot;
   if (dfPath) {
     try {
@@ -1126,10 +1108,10 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
       dfMargin = {
         available_kib: Math.floor((st.bavail * st.bsize) / 1024),
         path: dfPath,
-        basis: "fs.statfsSync at read time",
+        basis: "读取时调用 fs.statfsSync",
       };
     } catch {
-      dfMargin = { available_kib: INDETERMINATE, path: dfPath, basis: "statfs failed" };
+      dfMargin = { available_kib: INDETERMINATE, path: dfPath, basis: "statfs 失败" };
     }
   }
   const readPolicy = createProofPolicyRead();
@@ -1138,29 +1120,29 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
     const derived = readiness?.slices.find(s => s.scope === sequenced.dir);
     if (!derived?.readiness.configured) continue;
     sequenced.next_up = derived.eligible === null ? INDETERMINATE : derived.eligible && derived.readiness.state !== "ready" && sequenced.work_rows.length === 0;
-    sequenced.next_up_basis = `Attributed proof readiness ${readiness!.revision}; dependency eligibility ${derived.eligible}`;
+    sequenced.next_up_basis = `带归因的证明就绪状态 ${readiness!.revision}；依赖资格 ${derived.eligible}`;
   }
   const q6 = {
     lanes_live: lanes.length,
     lanes_possible: q2.filter((s) => s.next_up === true).length,
     idle_seats_with_capacity: { value: idleSeats, basis: idleBasis },
     heavy_slot_holder: heavyRow
-      ? { value: heavyRow.qitem_id, basis: "in-progress row tagged heavy-slot" }
-      : { value: null, basis: "no in-progress row tagged heavy-slot — absence of the tag, not proof of an idle lane" },
+      ? { value: heavyRow.qitem_id, basis: "带 heavy-slot tag 的进行中行" }
+      : { value: null, basis: "没有带 heavy-slot tag 的进行中行——tag 缺失并不能证明泳道空闲" },
     df_margin: dfMargin,
   };
 
   return {
-    ...(opts?.project ? { project: opts.project, membership: "exact project:<id> queue tags and lifecycle identity; unscoped rows excluded" } : {}),
+    ...(opts?.project ? { project: opts.project, membership: "精确匹配 project:<id> 队列 tag 和生命周期身份；排除无工作范围行" } : {}),
     view: "execution",
     readiness,
     project_readiness: missionsRoot ? readProjectReadiness(missionsRoot, readPolicy) : null,
-    // Authored guidance is carried verbatim in meaning, never parsed into edges or acceptance.
+    // 编写的指导按原意携带，绝不解析为边或验收结果。
     planning_guidance: arrangement?.state === "valid" ? arrangement.guidance : [],
     mission,
     derived_at: derivedAt,
     sources: {
-      queue_db: { asof: asof(), basis: "queue_items/queue_transitions/queue_transition_wakes/sessions at read time" },
+      queue_db: { asof: asof(), basis: "读取时的 queue_items/queue_transitions/queue_transition_wakes/sessions" },
       slice_frontmatter: { root: missionsRoot ?? INDETERMINATE, asof: asof() },
       wave_map: {
         row: waveMap.rowId,
@@ -1172,7 +1154,7 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
             arrangement: {
               manifest: arrangement.missionPath,
               asof: asof(),
-              basis: "mission.yaml composition order + referenced slice.yaml execution fields",
+              basis: "mission.yaml 组合顺序 + 引用的 slice.yaml execution 字段",
             },
           }
         : arrangement?.state === "malformed"
@@ -1181,17 +1163,17 @@ export function buildExecutionView(deps: ExecutionViewDeps, opts?: { mission?: s
                 value: INDETERMINATE,
                 manifest: arrangement.missionPath,
                 asof: asof(),
-                basis: `mission.yaml arrangement malformed (${arrangement.warning}); fallback to legacy format:wave-map-v1 and SPEC frontmatter`,
+                basis: `mission.yaml arrangement 格式错误（${arrangement.warning}）；回退到旧版 format:wave-map-v1 和 SPEC frontmatter`,
               },
             }
           : {}),
-      git: { basis: repoCtx ? `per-lane git -C; repo context ${repoCtx}` : "no reachable repo context", asof: asof() },
+      git: { basis: repoCtx ? `逐泳道 git -C；仓库上下文 ${repoCtx}` : "没有可达仓库上下文", asof: asof() },
       build_info: { commit: buildInfo.commit ?? INDETERMINATE, asof: asof() },
       review_artifacts: { root: rigsRoot, asof: asof() },
       disk: { asof: asof() },
       workflow_lifecycle: {
         asof: asof(),
-        basis: "workflow_instances identity joined to packet bindings, failure occurrences, workflow spec, and current queue rows at read time",
+        basis: "读取时将 workflow_instances 身份与包绑定、失败事件、工作流 spec 及当前队列行联接",
       },
     },
     lifecycle_instances: lifecycleExecutions,

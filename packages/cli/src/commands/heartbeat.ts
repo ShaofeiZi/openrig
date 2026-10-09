@@ -108,27 +108,27 @@ const STATE_RANK: Record<HeartbeatExecutionState, number> = {
 
 export function heartbeatCommand(depsOverride?: HeartbeatDeps): Command {
   const cmd = new Command("heartbeat")
-    .description("Show workflow execution proof state from queue files")
+    .description("从队列文件展示工作流执行证明状态")
     .addHelpText("after", `
-Examples:
-  rig heartbeat --rig openrig-pm
-  rig heartbeat --rig openrig-pm --json
-  rig heartbeat --rig openrig-pm --nudge
+示例：
+  zrig heartbeat --rig openrig-pm
+  zrig heartbeat --rig openrig-pm --json
+  zrig heartbeat --rig openrig-pm --nudge
 
-Default mode is read-only. --nudge only sends informational proof instructions
-to stalled/unproven owners; it does not modify queue files or reroute work.`);
+默认模式为只读。--nudge 仅向 stalled/unproven 的负责人发送
+信息性证明提示；它不修改队列文件，也不重路由工作。`);
 
   cmd
-    .option("--rig <name>", "Limit to a single rig")
-    .option("--json", "JSON output for agents")
-    .option("--nudge", "Send informational nudges to stalled/unproven owners")
-    .option("--include-done", "Include done/handed-off queue items in output")
+    .option("--rig <name>", "限定到单个工作组")
+    .option("--json", "供智能体使用的 JSON 输出")
+    .option("--nudge", "向 stalled/unproven 的负责人发送信息性提醒")
+    .option("--include-done", "在输出中包含 done/已交接的队列项")
     .action(async (opts: { rig?: string; json?: boolean; nudge?: boolean; includeDone?: boolean }) => {
       const deps = depsOverride ?? {};
       const env = deps.env ?? process.env;
       const sharedDocsRoot = deps.sharedDocsRoot ?? resolveSharedDocsRoot(env);
       if (!sharedDocsRoot) {
-        console.error("rig heartbeat: cannot resolve shared-docs root. Set RIGX_SHARED_DOCS_ROOT.");
+        console.error("rig heartbeat：无法解析共享文档根目录。请设置 RIGX_SHARED_DOCS_ROOT。");
         process.exitCode = 1;
         return;
       }
@@ -273,12 +273,12 @@ export async function sendHeartbeatNudges(
 
   for (const item of targets) {
     const proofCopy = item.executionState === "stalled" && item.lastProof
-      ? `Last proof was ${formatAge(item.lastProof.ageSeconds)} ago.`
-      : `No proof-of-work since checkout${item.checkoutAgeSeconds == null ? "." : ` ${formatAge(item.checkoutAgeSeconds)} ago.`}`;
+      ? `最近一次证明在 ${formatAge(item.lastProof.ageSeconds)} 前。`
+      : `自领取以来无工作证明${item.checkoutAgeSeconds == null ? "。" : `（${formatAge(item.checkoutAgeSeconds)} 前领取）。`}`;
     const text = [
-      `[heartbeat-nudge] Your task \`${item.id}\` is ${item.executionState}. ${proofCopy}`,
-      "If actively working, add a task-specific proof note to your queue item naming the artifact.",
-      "If blocked, transition to blocked with reason. If pausing, transition to deferred with reason.",
+      `[heartbeat-nudge] 你的任务 \`${item.id}\` 当前为 ${item.executionState}。${proofCopy}`,
+      "若正在积极工作，请在你的队列项上补充一条针对该任务的证明笔记，并写明产物。",
+      "若受阻，请带原因转为 blocked。若要暂停，请带原因转为 deferred。",
     ].join(" ");
     const result = await send(item.session, text);
     results.push({ id: item.id, session: item.session, executionState: item.executionState, ...result });
@@ -471,27 +471,27 @@ function readPositiveInt(value: string | undefined, fallback: number): number {
 }
 
 function formatAge(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3_600) return `${Math.floor(seconds / 60)}m`;
-  if (seconds < 86_400) return `${Math.floor(seconds / 3_600)}h${Math.floor((seconds % 3_600) / 60)}m`;
-  return `${Math.floor(seconds / 86_400)}d${Math.floor((seconds % 86_400) / 3_600)}h`;
+  if (seconds < 60) return `${seconds}秒`;
+  if (seconds < 3_600) return `${Math.floor(seconds / 60)}分钟`;
+  if (seconds < 86_400) return `${Math.floor(seconds / 3_600)}小时${Math.floor((seconds % 3_600) / 60)}分钟`;
+  return `${Math.floor(seconds / 86_400)}天${Math.floor((seconds % 86_400) / 3_600)}小时`;
 }
 
 function printHumanHeartbeat(result: HeartbeatResult): void {
   const title = result.rigFilter
-    ? `WORKFLOW EXECUTION HEARTBEAT - ${result.rigFilter}`
-    : "WORKFLOW EXECUTION HEARTBEAT - all rigs";
+    ? `工作流执行心跳 - ${result.rigFilter}`
+    : "工作流执行心跳 - 全部工作组";
   console.log(title);
   console.log(
-    `items: ${result.summary.total} | proven-active: ${result.summary.provenActive} | checked-out: ${result.summary.checkedOut} | stalled: ${result.summary.stalled} | unproven: ${result.summary.unproven} | blocked: ${result.summary.blocked} | parked: ${result.summary.parked} | done: ${result.summary.done}`,
+    `项数：${result.summary.total} | 已证明活跃：${result.summary.provenActive} | 已领取：${result.summary.checkedOut} | 停滞：${result.summary.stalled} | 未证明：${result.summary.unproven} | 受阻：${result.summary.blocked} | 已驻留：${result.summary.parked} | 已完成：${result.summary.done}`,
   );
   if (result.items.length === 0) {
-    console.log("No workflow queue items found.");
+    console.log("未找到工作流队列项。");
   } else {
     console.log("");
-    console.log(`${"execution".padEnd(15)} ${"queue".padEnd(12)} ${"task".padEnd(32)} ${"owner".padEnd(28)} ${"proof".padEnd(12)} age`);
+    console.log(`${"执行态".padEnd(15)} ${"队列态".padEnd(12)} ${"任务".padEnd(32)} ${"负责人".padEnd(28)} ${"证明".padEnd(12)} 距今`);
     for (const item of result.items) {
-      const proof = item.lastProof ? `${formatAge(item.lastProof.ageSeconds)} ago` : "-";
+      const proof = item.lastProof ? `${formatAge(item.lastProof.ageSeconds)}前` : "-";
       const age = item.checkoutAgeSeconds == null ? "-" : formatAge(item.checkoutAgeSeconds);
       console.log(
         `${item.executionState.padEnd(15)} ${item.queueState.padEnd(12)} ${item.id.slice(0, 31).padEnd(32)} ${(item.rig + "/" + item.owner).padEnd(28)} ${proof.padEnd(12)} ${age}`,
@@ -501,9 +501,9 @@ function printHumanHeartbeat(result: HeartbeatResult): void {
 
   if (result.nudgeResults) {
     console.log("");
-    console.log(`Nudges: ${result.nudgeResults.length}`);
+    console.log(`提醒：${result.nudgeResults.length}`);
     for (const nudge of result.nudgeResults) {
-      console.log(`  ${nudge.session}: ${nudge.ok ? "sent" : "failed"} ${nudge.message}`);
+      console.log(`  ${nudge.session}：${nudge.ok ? "已发送" : "失败"} ${nudge.message}`);
     }
   }
 }

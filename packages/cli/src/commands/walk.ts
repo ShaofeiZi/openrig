@@ -1,11 +1,10 @@
 import { randomUUID } from "node:crypto";
-// Slice-03 Atom 6 (rig walk) — the pacing primitive. "Walk the seat through it":
-// deliver a sequence of context pieces into a seat's pane, spaced by --pace so
-// the agent can absorb each before the next. Its OWN top-level verb (not an
-// extension of `rig send`); push-direction, the walker leads and does not wait
-// for replies — the spacing does the work (SPEC-rig-context-rig-walk-composition
-// §3). --through takes a context ref (a pack → its ordered member pieces) OR a
-// raw file list; each piece is one send into the pane.
+// Slice-03 Atom 6（rig walk）——节奏原语。"带领席位走过它"：把一系列上下文片段
+// 投递进席位的窗格，按 --pace 间隔，使智能体在收到下一片前消化当前这片。
+// 它自己是顶层动词（不是 `rig send` 的扩展）；推送方向，带领者主导、不等待回复——
+// 间隔完成工作（SPEC-rig-context-rig-walk-composition §3）。--through 接受一个
+// 上下文引用（一个包 → 其有序成员片段）或一个原始文件列表；每个片段是一次
+// 对窗格的 send。
 
 import { Command } from "commander";
 import { analyzeWalkSuffix } from "../lib/walk-consumption.js";
@@ -24,17 +23,17 @@ interface RefPiecesWire {
 }
 
 export interface WalkDeps extends StatusDeps {
-  /** Test seam for the inter-piece pacing delay. */
+  /** 片段间节奏延迟的测试接缝。 */
   sleep?: (ms: number) => Promise<void>;
-  /** Test seams for local-file resolution. */
+  /** 本地文件解析的测试接缝。 */
   fileExists?: (path: string) => boolean;
   readFile?: (path: string) => string;
 }
 
 const DEFAULT_PACE_MS = 10_000;
 
-/** Parse a walk duration with an explicit unit: `10s` or `500ms`. Returns
- *  null on a malformed value; the default when undefined. */
+/** 解析带显式单位的 walk 时长：`10s` 或 `500ms`。格式错误返回
+ *  null；undefined 时返回默认值。 */
 export function parsePaceMs(value: string | undefined): number | null {
   if (value === undefined) return DEFAULT_PACE_MS;
   const m = /^(\d+(?:\.\d+)?)(ms|s)$/.exec(value.trim());
@@ -45,13 +44,13 @@ export function parsePaceMs(value: string | undefined): number | null {
 }
 
 export interface WalkPiece {
-  /** A human label for the piece (file path or pack member path). */
+  /** 该片的人类可读标签（文件路径或包成员路径）。 */
   label: string;
   content: string;
 }
 
 export function walkCommand(depsOverride?: WalkDeps): Command {
-  const cmd = new Command("walk").description("Walk a seat through a paced sequence of context pieces");
+  const cmd = new Command("walk").description("按节奏带领席位走过一系列上下文片段");
 
   const getDeps = (): WalkDeps => depsOverride ?? {
     lifecycleDeps: realDeps(),
@@ -59,45 +58,44 @@ export function walkCommand(depsOverride?: WalkDeps): Command {
   };
 
   cmd
-    .argument("<seat>", "Target session name (e.g. dev-impl@my-rig)")
-    .option("--through <items...>", "A context ref (a pack) OR a list of files to walk the seat through")
-    // Test-A (row 782b467a) — the walk/profile join: consume the AUTHORITATIVE
-    // composed profile (never a hand-authored piece list) and report delivered
-    // pieces BY IDENTITY so the profile set and the delivered set are
-    // exact-comparable. NO-COPY: the bytes sent are the bytes the profile served.
-    .option("--through-profile <ref>", "Walk the seat through a pack's COMPOSED PROFILE (requires --situation; the piece set comes from rig context profile, never hand-authored)")
-    .option("--situation <situation>", "With --through-profile: fresh | handover | post-compaction")
-    .option("--runtime <runtime>", "With --through-profile: claude | codex (default claude)")
-    .option("--profile <profile>", "With --through-profile: named install profile declared by the pack")
-    .option("--rig <rig>", "With --through-profile: the seat-tree grant (with --seat)")
-    .option("--seat-grant <seat>", "With --through-profile: the seat whose tree seat: atoms may read (with --rig)")
-    .option("--mission <mission>", "With --through-profile: the mission-tree grant")
-    .option("--slice <slice>", "With --through-profile: the slice-tree grant (with --mission)")
-    .option("--budget <tokens>", "With --through-profile: situation budget (reported, never truncated)")
-    .option("--pace <duration>", "Delay between pieces (e.g. 10s or 500ms; unit suffix required); default 10s")
-    // Mechanics-gate fix (desk ruling d9b3989a): send success means TYPED, not CONSUMED — every
-    // piece is verified BY EFFECT against the seat's generation record before the next is sent.
-    .option("--consume-timeout <duration>", "Per-piece consumption-verification window (e.g. 20s or 500ms; unit suffix required); default 20s")
-    .option("--consume-poll <duration>", "Consumption-verification poll interval (e.g. 1500ms or 2s; unit suffix required); default 1500ms")
-    // Turn-pacing (desk BLOCKING row 2ff16fa1): a piece sent into an OPEN turn is queued by the
-    // runtime and never becomes a distinct user turn — walk waits for the prior turn's closure.
-    .option("--turn-timeout <duration>", "Max wait for the seat's turn to CLOSE after a piece is consumed (e.g. 300s; unit suffix required); default 300s")
-    .option("--json", "JSON output")
+    .argument("<seat>", "目标会话名（例如 dev-impl@my-rig）")
+    .option("--through <items...>", "一个上下文引用（包）或要带领席位走过的文件列表")
+    // Test-A（row 782b467a）—— walk/profile 联结：消费权威的
+    // 组合 profile（绝不手工写片段列表），并按"身份"报告已投递片段，
+    // 使 profile 集合与已投递集合可精确比对。NO-COPY：发出的字节就是
+    // profile 提供的字节。
+    .option("--through-profile <ref>", "带领席位走过一个包的组合 PROFILE（需 --situation；片段集来自 rig context profile，绝不手工写）")
+    .option("--situation <situation>", "配合 --through-profile：fresh | handover | post-compaction")
+    .option("--runtime <runtime>", "配合 --through-profile：claude | codex（默认 claude）")
+    .option("--profile <profile>", "配合 --through-profile：包声明的命名安装 profile")
+    .option("--rig <rig>", "配合 --through-profile：席位树授权（配合 --seat）")
+    .option("--seat-grant <seat>", "配合 --through-profile：其 seat: atoms 可读的席位（配合 --rig）")
+    .option("--mission <mission>", "配合 --through-profile：任务目标树授权")
+    .option("--slice <slice>", "配合 --through-profile：切片树授权（配合 --mission）")
+    .option("--budget <tokens>", "配合 --through-profile：场景预算（仅报告，绝不截断）")
+    .option("--pace <duration>", "片段间隔（例如 10s 或 500ms；必须带单位后缀）；默认 10s")
+    // 机制门修复（desk 裁决 d9b3989a）：send 成功意味着"已输入"，而非"已消费"——每片
+    // 在发下一片前都按"效果"对照席位的生成记录校验。
+    .option("--consume-timeout <duration>", "每片消费校验窗口（例如 20s 或 500ms；必须带单位后缀）；默认 20s")
+    .option("--consume-poll <duration>", "消费校验轮询间隔（例如 1500ms 或 2s；必须带单位后缀）；默认 1500ms")
+    // 回合节奏（desk BLOCKING row 2ff16fa1）：发进一个开放回合的片段会被运行时排队，
+    // 绝不成为一个独立用户回合——walk 会等待前一回合关闭。
+    .option("--turn-timeout <duration>", "一片被消费后等待席位回合关闭的最长时间（例如 300s；必须带单位后缀）；默认 300s")
+    .option("--json", "JSON 输出")
     .addHelpText("after", `
-Examples:
-  rig walk dev-impl@my-rig --through packs/tui-onboarding --pace 12s
-  rig walk dev-impl@my-rig --through intro.md steps.md wrapup.md --pace 10s
+示例：
+  zrig walk dev-impl@my-rig --through packs/tui-onboarding --pace 12s
+  zrig walk dev-impl@my-rig --through intro.md steps.md wrapup.md --pace 10s
 
-When a generation record resolves, each complete piece and its corresponding
-Claude or Codex turn closure must appear before --pace and the next piece.
-Verification proves delivery and turn completion, not comprehension. An unavailable
-initial record is explicitly reported as unverified delivery.`)
+当生成记录可解析时，每个完整片段及其对应的 Claude 或 Codex 回合关闭
+都必须在 --pace 与下一片之前出现。校验证明的是投递与回合完成，而非理解。
+初始记录不可用时会显式报告为未验证投递。`)
     .action(async (seat: string, opts: { through?: string[]; throughProfile?: string; situation?: string; runtime?: string; profile?: string; rig?: string; seatGrant?: string; mission?: string; slice?: string; budget?: string; pace?: string; consumeTimeout?: string; consumePoll?: string; turnTimeout?: string; json?: boolean }) => {
       try {
         const deps = getDeps();
         const paceMs = parsePaceMs(opts.pace);
         if (paceMs === null) {
-          console.error(`Invalid --pace '${opts.pace}': use an explicit unit suffix, e.g. 10s or 500ms.`);
+          console.error(`无效的 --pace '${opts.pace}'：请使用显式单位后缀，例如 10s 或 500ms。`);
           process.exitCode = 1;
           return;
         }
@@ -105,11 +103,10 @@ initial record is explicitly reported as unverified delivery.`)
         const readFile = deps.readFile ?? ((p: string) => readFileSync(p, "utf-8"));
         const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
 
-        // Exactly ONE input form: --through (files or pack ref) or
-        // --through-profile (the composed profile). A mix is rejected loud
-        // before any send.
+        // 恰好一种输入形式：--through（文件或包引用）或
+        // --through-profile（组合 profile）。混用会在任何 send 前显式拒绝。
         if (opts.through && opts.throughProfile) {
-          console.error("Use either --through OR --through-profile, not both — the profile's piece set is authoritative and never hand-mixed.");
+          console.error("请选择 --through 或 --through-profile，不可混用——profile 的片段集是权威，绝不手工混合。");
           process.exitCode = 1;
           return;
         }
@@ -117,7 +114,7 @@ initial record is explicitly reported as unverified delivery.`)
         let pieces: WalkPiece[];
         if (opts.throughProfile) {
           if (!opts.situation) {
-            console.error("--through-profile requires --situation (fresh | handover | post-compaction).");
+            console.error("--through-profile 需要 --situation（fresh | handover | post-compaction）。");
             process.exitCode = 1;
             return;
           }
@@ -125,52 +122,52 @@ initial record is explicitly reported as unverified delivery.`)
           pieces = resolved.pieces;
           profileIdentity = resolved.identity;
         } else if (!opts.through) {
-          console.error("Provide --through <items...> or --through-profile <ref>.");
+          console.error("请提供 --through <items...> 或 --through-profile <ref>。");
           process.exitCode = 1;
           return;
         } else {
-        // --through is EITHER a raw file list (every item is an existing file) OR a
-        // single context ref (a pack → its ordered member pieces). A mix is rejected.
+        // --through 要么是原始文件列表（每项都是存在的文件），要么是单个
+        // 上下文引用（一个包 → 其有序成员片段）。混用会被拒绝。
         const items = opts.through;
         if (items.length > 0 && items.every((it) => fileExists(it))) {
           pieces = items.map((it) => ({ label: it, content: readFile(it) }));
         } else if (items.length === 1) {
           pieces = await resolveRefPieces(deps, items[0]!);
         } else {
-          console.error("--through takes either a single context ref OR a list of existing files (not a mix).");
+          console.error("--through 要么接受单个上下文引用，要么接受已有文件列表（不可混用）。");
           process.exitCode = 1;
           return;
         }
         }
         if (pieces.length === 0) {
-          console.error("Nothing to walk: --through resolved to zero pieces.");
+          console.error("无可走：--through 解析出零个片段。");
           process.exitCode = 1;
           return;
         }
 
         const client = await getClient(deps);
 
-        // --- Consumption verification BY EFFECT (mechanics-gate fix, desk ruling d9b3989a) ---
-        // Send success means TYPED, not CONSUMED: the paste + Enter can succeed at the tmux layer
-        // while the target TUI leaves the text STAGED at the prompt, and the next pieces coalesce.
-        // The effect source is the seat's current-generation record (the append-only conversation
-        // JSONL): a consumed piece appears as a complete user-role message.
-        // Same explicit-unit duration grammar as --pace (10s / 500ms); defaults 20s / 1.5s.
+        // --- 按效果做消费校验（机制门修复，desk 裁决 d9b3989a）---
+        // send 成功意味着"已输入"，而非"已消费"：粘贴+回车在 tmux 层成功，
+        // 但目标 TUI 可能把文本停留在提示符处，后续片段会合并。
+        // 效果来源是席位当前代记录（只追加的对话 JSONL）：已消费片段表现为
+        // 一条完整的 user 角色消息。
+        // 与 --pace 相同的显式单位时长语法（10s / 500ms）；默认 20s / 1.5s。
         const consumeTimeoutMs = opts.consumeTimeout !== undefined ? parsePaceMs(opts.consumeTimeout) : 20_000;
         const consumePollMs = opts.consumePoll !== undefined ? parsePaceMs(opts.consumePoll) : 1_500;
         const turnTimeoutMs = opts.turnTimeout !== undefined ? parsePaceMs(opts.turnTimeout) : 300_000;
         if (consumeTimeoutMs === null) {
-          console.error(`Invalid --consume-timeout '${opts.consumeTimeout}': use an explicit unit suffix, e.g. 20s or 500ms.`);
+          console.error(`无效的 --consume-timeout '${opts.consumeTimeout}'：请使用显式单位后缀，例如 20s 或 500ms。`);
           process.exitCode = 1;
           return;
         }
         if (consumePollMs === null) {
-          console.error(`Invalid --consume-poll '${opts.consumePoll}': use an explicit unit suffix, e.g. 1500ms or 2s.`);
+          console.error(`无效的 --consume-poll '${opts.consumePoll}'：请使用显式单位后缀，例如 1500ms 或 2s。`);
           process.exitCode = 1;
           return;
         }
         if (turnTimeoutMs === null) {
-          console.error(`Invalid --turn-timeout '${opts.turnTimeout}': use an explicit unit suffix, e.g. 300s or 500ms.`);
+          console.error(`无效的 --turn-timeout '${opts.turnTimeout}'：请使用显式单位后缀，例如 300s 或 500ms。`);
           process.exitCode = 1;
           return;
         }
@@ -181,22 +178,21 @@ initial record is explicitly reported as unverified delivery.`)
         const readRecord = async (sinceBytes?: number): Promise<{ status: number; data: RecordRead }> =>
           client.get<RecordRead>(sinceBytes === undefined ? recordPath : `${recordPath}?sinceBytes=${sinceBytes}`, { headers: terminalAuthHeaders() });
 
-        // One pre-walk record probe decides the mode. No record (unsupported runtime / no sidecar /
-        // a daemon without the route) → legacy delivery with a NAMED advisory: unverified is
-        // disclosed, never silent.
+        // 一次走前记录探测决定模式。无记录（不支持的运行时 / 无 sidecar /
+        // 后台服务无此路由）→ 带命名提示的旧版投递：未验证要明示，绝不静默。
         let preProbe: { status: number; data: RecordRead };
         try {
           preProbe = await readRecord();
         } catch (err) {
-          preProbe = { status: 0, data: { message: `generation-record probe failed: ${(err as Error).message}` } };
+          preProbe = { status: 0, data: { message: `生成记录探测失败：${(err as Error).message}` } };
         }
         const verifiable = preProbe.status === 200 && typeof preProbe.data.generationId === "string";
         if (!verifiable) {
-          console.error(`walk: consumption unverified for ${seat} — ${preProbe.data.message ?? preProbe.data.error ?? `generation record unavailable (HTTP ${preProbe.status})`}. Pieces are delivered without per-piece effect verification.`);
+          console.error(`walk：${seat} 的消费未验证 —— ${preProbe.data.message ?? preProbe.data.error ?? `生成记录不可用（HTTP ${preProbe.status}）`}。片段将在不做逐片效果校验的情况下投递。`);
         }
 
         const failPiece = (i: number, label: string, why: string): void => {
-          console.error(`walk aborted at piece ${i + 1}/${pieces.length} (${label}): ${why}`);
+          console.error(`walk 在第 ${i + 1}/${pieces.length} 片（${label}）中止：${why}`);
           if (profileIdentity) {
             console.log(JSON.stringify({ seat, delivered: profileIdentity.slice(0, i), expected: profileIdentity, aborted: profileIdentity[i] }));
           }
@@ -205,28 +201,28 @@ initial record is explicitly reported as unverified delivery.`)
 
         for (let i = 0; i < pieces.length; i++) {
           const piece = pieces[i]!;
-          const head = normalize(piece.content).slice(0, 64); // staging hint only, never receipt evidence
+          const head = normalize(piece.content).slice(0, 64); // 仅暂存提示，绝不当作回执证据
 
           let preLen = 0;
           let preGen: string | undefined;
           if (verifiable) {
             const pre = await readRecord();
             if (pre.status !== 200 || typeof pre.data.generationId !== "string") {
-              failPiece(i, piece.label, `the seat's generation record became unreadable before the send (${pre.data.message ?? pre.data.error ?? `HTTP ${pre.status}`}).`);
+              failPiece(i, piece.label, `发送前席位的生成记录变得不可读（${pre.data.message ?? pre.data.error ?? `HTTP ${pre.status}`}）。`);
               return;
             }
             if (pre.data.generationId !== preProbe.data.generationId) {
-              failPiece(i, piece.label, "the seat's generation changed between pieces; refusing to continue this walk into another generation.");
+              failPiece(i, piece.label, "片段之间席位的生成已改变；拒绝把本次 walk 继续进另一个生成。");
               return;
             }
             preGen = pre.data.generationId;
             preLen = pre.data.totalBytes ?? 0;
           }
 
-          // THE SEND. A thrown client error (a timeout) is NOT a failure yet — the daemon may have
-          // completed server-side; reconcile BY EFFECT below, never re-send (the fleet ledger's
-          // rule, productized). A definitive 4xx/5xx still aborts — EXCEPT submit_failed, which is
-          // exactly the staged-text state and takes the single-Enter retry path.
+          // 真正的 send。抛出的客户端错误（超时）还不算失败——后台服务可能已在
+          // 服务端完成；下面按效果对账，绝不重发（fleet 台账的规则，产品化）。
+          // 确定性的 4xx/5xx 仍中止——除了 submit_failed，它恰好就是已暂存文本状态，
+          // 走单次回车重试路径。
           let sendOutcome: "ok" | "staged-suspect" | { hardError: string } ;
           try {
             const res = await client.post<Record<string, unknown>>("/api/transport/send", {
@@ -235,7 +231,7 @@ initial record is explicitly reported as unverified delivery.`)
               deliveryId: randomUUID(),
             }, { headers: terminalAuthHeaders() });
             if (res.data?.["outcome"] === "retained") {
-              failPiece(i, piece.label, `retained, not delivered (${JSON.stringify(res.data["outboxIds"])}); no further pieces sent. Inspect with rig seat held-messages ${seat}.`);
+              failPiece(i, piece.label, `已保留、未投递（${JSON.stringify(res.data["outboxIds"])}）；未再发送后续片段。用 zrig seat held-messages ${seat} 查看。`);
               return;
             }
             if (res.status >= 400) {
@@ -247,10 +243,10 @@ initial record is explicitly reported as unverified delivery.`)
             } else sendOutcome = "ok";
           } catch (err) {
             if (!verifiable) {
-              failPiece(i, piece.label, `transport error with no way to reconcile by effect (no generation record): ${(err as Error).message}`);
+              failPiece(i, piece.label, `传输错误且无法按效果对账（无生成记录）：${(err as Error).message}`);
               return;
             }
-            console.error(`walk: piece ${i + 1}/${pieces.length} transport error (${(err as Error).message}) — reconciling by effect, not re-sending.`);
+            console.error(`walk：第 ${i + 1}/${pieces.length} 片传输错误（${(err as Error).message}）——按效果对账，不重发。`);
             sendOutcome = "staged-suspect";
           }
 
@@ -259,7 +255,7 @@ initial record is explicitly reported as unverified delivery.`)
               const deadline = Date.now() + consumeTimeoutMs;
               for (;;) {
                 const rec = await readRecord(preLen);
-                if (rec.status !== 200) throw new Error(`Generation record became unavailable: ${rec.data.message ?? rec.data.error ?? rec.status}. Consumption is unverified.`);
+                if (rec.status !== 200) throw new Error(`生成记录变得不可用：${rec.data.message ?? rec.data.error ?? rec.status}。消费未验证。`);
                 if (rec.status === 200 && typeof rec.data.generationId === "string") {
                   if (rec.data.generationId !== preGen) return "generation-rolled";
                   if ((rec.data.totalBytes ?? -1) < preLen) return "generation-rolled";
@@ -272,17 +268,17 @@ initial record is explicitly reported as unverified delivery.`)
 
             let verdict = await pollConsumed();
             if (verdict === "generation-rolled") {
-              failPiece(i, piece.label, "the seat's generation rolled mid-walk (a re-prime); the walk cannot continue into a different generation.");
+              failPiece(i, piece.label, "walk 中途席位生成发生滚动（重新 prime）；walk 无法进入另一个生成。");
               return;
             }
             if (verdict === "timeout") {
-              // Not consumed in the window. Staged? — one capture decides; staged takes EXACTLY ONE
-              // submit retry (a guarded bare Enter), then one more verification window, then loud.
+              // 窗口内未消费。是否已暂存？——一次捕获判定；已暂存则只做恰好一次
+              // submit 重试（受控的裸回车），再给一个校验窗口，然后大声报错。
               const cap = await client.post<Record<string, unknown>>("/api/transport/capture", { session: seat, lines: 50 }, { headers: terminalAuthHeaders() });
               const pane = (cap.data?.["content"] as string | undefined) ?? "";
-              // Staged evidence: the piece's own head (short pastes render inline, truncated) OR
-              // the TUI's pasted-text placeholder (large pastes render as "[Pasted text #N +X
-              // lines]", never their content — the real specimen's shape).
+              // 暂存证据：该片自己的开头（短粘贴内联渲染、截断）或 TUI 的
+              // 粘贴占位符（大粘贴渲染为 "[Pasted text #N +X lines]"，绝不显示内容——
+              // 真实样本的形态）。
               const stagedEvidence = cap.status === 200 && (
                 normalize(pane).includes(head.slice(0, 24)) ||
                 /\[Pasted text #\d+ \+\d+ lines\]/.test(pane)
@@ -291,52 +287,52 @@ initial record is explicitly reported as unverified delivery.`)
                 const enter = await client.post<Record<string, unknown>>("/api/transport/send", {
                   session: seat,
                   submitOnly: true,
-                  expectedStagedText: piece.content, // FULL bytes — the transport checks the rendered literal residual for contiguous containment
+                  expectedStagedText: piece.content, // 全量字节——传输层检查渲染出的字面残留是否连续包含
                   expectedStagedLineCount: piece.content.split("\n").length,
                 }, { headers: terminalAuthHeaders() });
                 if (enter.status >= 400) {
-                  failPiece(i, piece.label, `typed but not consumed; the single submit retry was refused (${(enter.data?.["error"] as string | undefined) ?? `HTTP ${enter.status}`}).`);
+                  failPiece(i, piece.label, `已输入但未消费；单次 submit 重试被拒（${(enter.data?.["error"] as string | undefined) ?? `HTTP ${enter.status}`}）。`);
                   return;
                 }
                 verdict = await pollConsumed();
                 if (verdict !== "consumed") {
-                  failPiece(i, piece.label, `typed and staged, but not consumed even after the single submit retry — the piece never entered the seat's conversation record. Not re-sending (one retry is the contract).`);
+                  failPiece(i, piece.label, `已输入并暂存，但即使单次 submit 重试后仍未消费——该片从未进入席位的对话记录。不重发（一次重试是约定）。`);
                   return;
                 }
               } else {
-                failPiece(i, piece.label, `send reported ${sendOutcome === "ok" ? "success" : "a transport error"} but the piece is neither consumed in the generation record nor staged in the pane — delivery lost; consumption verification fails this walk closed.`);
+                failPiece(i, piece.label, `send 报告${sendOutcome === "ok" ? "成功" : "传输错误"}，但该片既未在生成记录中消费、也未在窗格中暂存——投递丢失；本次 walk 的消费校验以失败告终。`);
                 return;
               }
             }
           }
 
-          // Wait for the matched native turn, including on the final piece. Receipt alone
-          // must not send the next piece into an open turn or certify a completed walk.
+          // 等待匹配的原生回合，包括最后一片。仅凭回执绝不能把下一片
+          // 发进一个开放回合，也不能据此认证一次完成的 walk。
           if (verifiable) {
             const turnDeadline = Date.now() + turnTimeoutMs;
             for (;;) {
               const rec = await readRecord(preLen);
               if (rec.status !== 200) {
-                failPiece(i, piece.label, `generation record became unavailable while waiting for turn closure: ${rec.data.message ?? rec.data.error ?? rec.status}.`);
+                failPiece(i, piece.label, `等待回合关闭期间生成记录变得不可用：${rec.data.message ?? rec.data.error ?? rec.status}。`);
                 return;
               }
               if (rec.status === 200 && typeof rec.data.generationId === "string") {
                 if (rec.data.generationId !== preGen || (rec.data.totalBytes ?? -1) < preLen) {
-                  failPiece(i, piece.label, "the seat's generation rolled while waiting for its turn to close.");
+                  failPiece(i, piece.label, "等待回合关闭期间席位的生成发生滚动。");
                   return;
                 }
                 if (analyzeWalkSuffix(rec.data.suffix ?? "", piece.content).turnClosed) break;
               }
               if (Date.now() >= turnDeadline) {
-                failPiece(i, piece.label, `consumed, but the seat's turn did not CLOSE within ${turnTimeoutMs}ms — refusing to send the next piece into an open turn (it would be queued, never a distinct user turn).`);
+                failPiece(i, piece.label, `已消费，但席位回合在 ${turnTimeoutMs}ms 内未关闭——拒绝把下一片发进开放回合（它会被排队，绝不成为独立用户回合）。`);
                 return;
               }
               await sleep(consumePollMs);
             }
           }
 
-          if (!opts.json) console.log(`[${i + 1}/${pieces.length}] ${verifiable ? "consumed" : "sent"} ${piece.label} → ${seat}`);
-          // Pace BETWEEN pieces only — never a trailing pause after the last.
+          if (!opts.json) console.log(`[${i + 1}/${pieces.length}] ${verifiable ? "已消费" : "已发送"} ${piece.label} → ${seat}`);
+          // 只在片段之间节奏——最后一片后绝不拖尾停顿。
           if (i < pieces.length - 1) await sleep(paceMs);
         }
         if (opts.json) {
@@ -344,7 +340,7 @@ initial record is explicitly reported as unverified delivery.`)
             ? { seat, delivered: profileIdentity, paceMs, consumptionVerified: verifiable }
             : { seat, pieces: pieces.length, paceMs, consumptionVerified: verifiable }));
         } else {
-          console.log(`Walked ${seat} through ${pieces.length} piece(s)${verifiable ? ", each consumption-verified by effect" : " (consumption unverified — no generation record)"}.`);
+          console.log(`已带领 ${seat} 走过 ${pieces.length} 个片段${verifiable ? "，每片均按效果校验消费" : "（消费未验证——无生成记录）"}。`);
         }
       } catch (err) {
         console.error((err as Error).message);
@@ -357,7 +353,7 @@ initial record is explicitly reported as unverified delivery.`)
   async function getClient(deps: WalkDeps): Promise<DaemonClient> {
     const status = await getDaemonStatus(deps.lifecycleDeps);
     if (status.state !== "running" || status.healthy === false) {
-      // B8-1b: epistemic-matched language via the one helper (down ≠ busy).
+      // B8-1b：通过同一个助手给出与认知状态匹配的措辞（宕 ≠ 忙）。
       const gm = statusGuardMessage(status); throw new Error(`${gm.fact} ${gm.action}`);
     }
     return deps.clientFactory(getDaemonUrl(status));
@@ -380,13 +376,13 @@ initial record is explicitly reported as unverified delivery.`)
       message?: string; error?: string;
     }>(`/api/context-packs/library/by-ref/profile?${params.toString()}`);
     if (res.status !== 200) {
-      throw new Error(res.data?.message ?? res.data?.error ?? `Daemon returned HTTP ${res.status} composing the profile.`);
+      throw new Error(res.data?.message ?? res.data?.error ?? `后台服务组合 profile 时返回 HTTP ${res.status}。`);
     }
     const profilePieces = res.data.pieces ?? [];
     return {
-      // NO-COPY: content is the SERVED text, byte-for-byte; the label carries
-      // the identity so aborts name the atom.
-      pieces: profilePieces.map((p) => ({ label: `${p.atomId} (${p.address})`, content: p.text })),
+      // NO-COPY：内容就是提供的文本，逐字节；标签携带身份，
+      // 便于中止时点名 atom。
+      pieces: profilePieces.map((p) => ({ label: `${p.atomId}（${p.address}）`, content: p.text })),
       identity: profilePieces.map((p) => ({ atomId: p.atomId, address: p.address })),
     };
   }
@@ -395,23 +391,22 @@ initial record is explicitly reported as unverified delivery.`)
     const client = await getClient(deps);
     const res = await client.get<RefPiecesWire>(`/api/context-packs/library/by-ref/pieces?ref=${encodeURIComponent(ref)}`);
     if (res.status === 404) {
-      throw new Error(`Context pack '${ref}' not found in library. Run 'rig context list' to see the available refs.`);
+      throw new Error(`库中未找到上下文包 '${ref}'。运行 'rig context list' 查看可用引用。`);
     }
     if (res.status === 400) {
-      throw new Error(res.data?.message ?? `Unsafe context ref '${ref}'.`);
+      throw new Error(res.data?.message ?? `不安全的上下文引用 '${ref}'。`);
     }
     if (res.status !== 200) {
-      throw new Error(`Daemon returned HTTP ${res.status} resolving ref '${ref}'.`);
+      throw new Error(`后台服务解析引用 '${ref}' 时返回 HTTP ${res.status}。`);
     }
-    // One abort contract for both input forms: a missing/unreadable member is
-    // known up-front (reported here before the first send), so — exactly like a
-    // missing local --through file — it aborts the walk BEFORE any send. No
-    // partial walk; the operator fixes the pack and re-runs.
+    // 两种输入形式共用同一条中止约定：缺失/不可读的成员是预先知道的
+    // （在首次 send 前在此报告），因此——和缺失本地 --through 文件完全一样——
+    // 它在任何 send 前中止 walk。不做部分 walk；操作者修好包后重跑。
     const missing = res.data.missingFiles ?? [];
     if (missing.length > 0) {
       throw new Error(
-        `Context pack '${ref}' has ${missing.length} missing/unreadable member(s): ${missing.map((m) => m.path).join(", ")}. ` +
-          `A walk delivers every member or none — fix the pack (or its files) and re-run. Nothing was sent.`,
+        `上下文包 '${ref}' 有 ${missing.length} 个缺失/不可读成员：${missing.map((m) => m.path).join(", ")}。` +
+          `walk 要么投递全部成员，要么一个都不投递——请修好该包（或其文件）后重跑。未发送任何内容。`,
       );
     }
     return (res.data.pieces ?? []).map((p) => ({ label: `${ref}:${p.path}`, content: p.content }));

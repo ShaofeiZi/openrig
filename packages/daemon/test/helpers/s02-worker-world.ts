@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-// Leaf-only fixture: no daemon startup, disk DB, terminal, scheduler or network.
+// 仅叶节点 fixture：不启动后台服务，不使用磁盘 DB、terminal、scheduler 或网络。
 import { createDb } from "../../src/db/connection.js";
 import { migrate } from "../../src/db/migrate.js";
 import { coreSchema } from "../../src/db/migrations/001_core_schema.js";

@@ -91,8 +91,14 @@ describe("Ask CLI", () => {
   let server: http.Server;
   let port: number;
   let lastBody: Record<string, unknown> | null;
+  let savedOpenRigUrl: string | undefined;
+  let savedRiggedUrl: string | undefined;
 
   beforeAll(async () => {
+    savedOpenRigUrl = process.env.OPENRIG_URL;
+    savedRiggedUrl = process.env.RIGGED_URL;
+    delete process.env.OPENRIG_URL;
+    delete process.env.RIGGED_URL;
     lastBody = null;
     server = http.createServer((req, res) => {
       let body = "";
@@ -133,7 +139,13 @@ describe("Ask CLI", () => {
     port = (server.address() as { port: number }).port;
   });
 
-  afterAll(() => { server.close(); });
+  afterAll(() => {
+    server.close();
+    if (savedOpenRigUrl === undefined) delete process.env.OPENRIG_URL;
+    else process.env.OPENRIG_URL = savedOpenRigUrl;
+    if (savedRiggedUrl === undefined) delete process.env.RIGGED_URL;
+    else process.env.RIGGED_URL = savedRiggedUrl;
+  });
 
   function makeCmd(): Command {
     const prog = new Command();
@@ -187,9 +199,9 @@ describe("Ask CLI", () => {
       await makeCmd().parseAsync(["node", "rig", "ask", "my-rig", "what did chat say about deployment?"]);
     });
     const output = logs.join("\n");
-    expect(output).toContain("Chat Evidence");
+    expect(output).toContain("聊天证据");
     expect(output).toContain("deployment checkpoint shared in chat");
-    expect(output).not.toContain("No transcript evidence found.");
+    expect(output).not.toContain("未找到转录证据。");
   });
 
   it("passes node identity context and prints structured peer answers cleanly", async () => {
@@ -202,7 +214,7 @@ describe("Ask CLI", () => {
         await makeCmd().parseAsync(["node", "rig", "ask", "my-rig", "who are my peers?"]);
       });
       const output = logs.join("\n");
-      expect(output).toContain("Structured Answer");
+      expect(output).toContain("结构化回答");
       expect(output).toContain("dev.qa");
       expect(output).toContain("rev1.r1");
       expect(lastBody?.nodeId).toBe("node-123");

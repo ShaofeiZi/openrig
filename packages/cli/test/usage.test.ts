@@ -1,7 +1,7 @@
-// 51-08 A4 — `rig usage` CLI (plan-lock rev-1, PM decision 4: the SAME projection
-// serves CLI + HTTP). Param-faithful daemon-backed grammar per the provider.ts
-// precedent: values must ARRIVE at the route (option-parity doctrine), --json is
-// verbatim, and the human render keeps the honest-unknown rail explicit.
+// 51-08 A4——`rig usage` CLI（plan-lock rev-1，PM 决定 4：同一 projection
+// 服务 CLI + HTTP）。按 provider.ts 先例的参数忠实 daemon 后台语法：
+// 值必须到达路由（option-parity 原则），--json 逐字，
+// 且人类渲染保持 honest-unknown 轨道显式。
 // RED-first: written before commands/usage.ts existed.
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import http from "node:http";
@@ -115,5 +115,14 @@ describe("rig usage CLI grammar (daemon-backed)", () => {
     expect(logs.join("\n")).toMatch(/--window/);
     expect(logs.join("\n")).toMatch(/1h|90m|2d/); // teaches the accepted forms
     expect(seen.length).toBe(0);
+  });
+
+  // 中文行为：人类渲染在 unknown rail 上输出"未知"中文提示
+  it("usage top 人类渲染在未知采样席位上输出中文'未知'", async () => {
+    const { logs } = await run(["top", "--window", "1h"], runningDeps(port));
+    const out = logs.join("\n");
+    expect(out).toContain("stale@r");
+    expect(out).toContain("未知");
+    expect(out).toContain("no_fresh_samples");
   });
 });

@@ -1,6 +1,6 @@
 name: orchestrator
 version: "1.0"
-description: Orchestrator lead — coordinates agents, monitors progress, bridges communication
+description: 编排负责人——协调智能体、监控进度并衔接沟通
 
 defaults:
   runtime: claude-code

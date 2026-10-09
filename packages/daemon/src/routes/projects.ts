@@ -16,13 +16,13 @@ import { ClassificationAttemptError } from "../domain/classification-attempts.js
 import { requireSenderIdentity, resolveRecordedProvenance } from "./require-sender-identity.js";
 
 /**
- * Coordination L2 — Project (Classifier) HTTP routes (PL-004 Phase B).
+ * 协调层 L2——Project（分类器）HTTP 路由（PL-004 Phase B）。
  *
- * Backs `rig project` CLI verb. Lease lifecycle endpoints + project
- * (idempotent classify) + operator-verb reclaim + SSE.
+ * 支撑 `zrig project` CLI 动词。租约生命周期端点 + project（幂等 classify）
+ * + operator 动词 reclaim + SSE。
  *
- * Per Phase A R1 SSE route-order lesson (slice IMPL § Audit Row 12):
- * SSE/static routes are mounted BEFORE the bare-param /:id catchall.
+ * 按 Phase A R1 SSE 路由顺序教训（slice IMPL § Audit Row 12）：
+ * SSE/静态路由挂载在裸参数 /:id catchall 之前。
  */
 export function projectsRoutes(): Hono {
   const app = new Hono();
@@ -40,17 +40,17 @@ export function projectsRoutes(): Hono {
     return c.get("eventBus" as never) as EventBus;
   }
 
-  // JSON is untrusted in shape, even where the session may use the claimed fallback.
-  // Never pass an object to the shared helper's string trim. Wire identity still wins.
+  // JSON 形状不可信，即便 session 可能使用所声称的 fallback。
+  // 绝不把对象传给共享 helper 的字符串 trim。wire 身份始终优先。
   function sender(c: Context, claim: unknown, field = "classifierSession") {
     if (!c.req.header("x-openrig-session")?.trim() && claim !== undefined && typeof claim !== "string") {
-      return { ok: false as const, response: c.json({ error: "invalid_field", field, message: `${field} must be a string` }, 400) };
+      return { ok: false as const, response: c.json({ error: "invalid_field", field, message: `${field} 必须是字符串` }, 400) };
     }
     const actor = requireSenderIdentity(c, { verb: "classification", bodyClaim: typeof claim === "string" ? claim : undefined });
     if (!actor.ok) return actor;
     const expected = c.req.query("expectedOccupant");
     if (expected !== undefined && classifierOccupant(c.get("db" as never) as Database.Database, actor.session)?.generation !== expected) {
-      return { ok: false as const, response: c.json({ error: "occupant_changed", message: "Classifier occupant is unavailable or changed; do not reuse its lease." }, 409) };
+      return { ok: false as const, response: c.json({ error: "occupant_changed", message: "分类器占用者不可用或已变更；不要复用其租约。" }, 409) };
     }
     return actor;
   }
@@ -90,22 +90,22 @@ export function projectsRoutes(): Hono {
         : 409;
       return c.json({ error: err.code, message: err.message, ...(err.meta ?? {}) }, status as 200);
     }
-    const message = err instanceof Error ? err.message : "internal error";
+    const message = err instanceof Error ? err.message : "内部错误";
     return c.json({ error: "internal_error", message }, 500);
   }
 
-  // No taxonomy or model judgment lives here: only current, identified source facts.
+  // 此处不做任何分类法或模型判断：只返回当前、已识别的源事实。
   app.get("/worker-sources", c => {
     const actor = sender(c, undefined);
     if (!actor.ok) return actor.response;
     const db = c.get("db" as never) as Database.Database;
     const occupant = classifierOccupant(db, actor.session);
-    if (!occupant) return c.json({ error: "occupant_unavailable", message: "A real running classifier occupant is required." }, 409);
+    if (!occupant) return c.json({ error: "occupant_unavailable", message: "需要一个真实运行中的分类器占用者。" }, 409);
     try {
       const project = selectedProject(c);
       if (!project) return c.json({ error: "project_required" }, 400);
       return c.json(classificationSources(db, project, occupant, c.get("streamStore" as never) as StreamStore));
-    } catch (error) { return c.json({ error: "candidate_sources_unavailable", message: error instanceof Error ? error.message : "source unavailable" }, 409); }
+    } catch (error) { return c.json({ error: "candidate_sources_unavailable", message: error instanceof Error ? error.message : "源不可用" }, 409); }
   });
 
   app.get("/shadow", c => {
@@ -124,14 +124,12 @@ export function projectsRoutes(): Hono {
     return c.json(capture ? await capture.stop() : {enabled: false, error: c.get("shadowCaptureError" as never) ?? null});
   });
 
-  // POST /lease/acquire — acquire active classifier lease for caller.
-  // R1 NOTE 3: optional `evaluateDeadnessFirst: true` causes the route to
-  // call evaluateDeadness BEFORE acquire, which clears stale TTL-expired or
-  // dead-holder leases. Without this opt-in, acquire returns 409 lease_held
-  // even when the holder is dead (the operator-verb reclaim path is the
-  // only other way to clear a dead lease without waiting for TTL+next
-  // evaluateDeadness call). Default OFF — operators / classifiers
-  // explicitly request the proactive cleanup.
+  // POST /lease/acquire——为调用方获取活跃分类器租约。
+  // R1 NOTE 3：可选 `evaluateDeadnessFirst: true` 使路由在 acquire 之前先调用
+  // evaluateDeadness，清除 TTL 过期或持有者已死的陈旧租约。不开启此 opt-in 时，
+  // 即便持有者已死 acquire 也返回 409 lease_held（operator 动词 reclaim 路径是
+  // 唯一另一种无需等待 TTL+下次 evaluateDeadness 调用即可清除死租约的方式）。
+  // 默认关闭——由 operator/分类器显式请求主动清理。
   app.post("/lease/acquire", async (c) => {
     const body = await c.req.json<{ classifierSession?: string; evaluateDeadnessFirst?: boolean }>().catch(() => ({} as never));
     const actor = sender(c, body.classifierSession);
@@ -147,7 +145,7 @@ export function projectsRoutes(): Hono {
     }
   });
 
-  // POST /lease/heartbeat — update last_heartbeat + extend expires_at.
+  // POST /lease/heartbeat——更新 last_heartbeat 并延长 expires_at。
   app.post("/lease/heartbeat", async (c) => {
     const body = await c.req.json<{ leaseId?: string; classifierSession?: string }>().catch(() => ({} as never));
     if (typeof body.leaseId !== "string" || !body.leaseId.trim()) return c.json({ error: "invalid_field", field: "leaseId" }, 400);
@@ -161,7 +159,7 @@ export function projectsRoutes(): Hono {
     }
   });
 
-  // POST /reclaim-classifier — operator-verb reclaim (per PRD § L2 hard rule).
+  // POST /reclaim-classifier——operator 动词 reclaim（按 PRD § L2 硬规则）。
   app.post("/reclaim-classifier", async (c) => {
     const body = await c.req.json<{
       byClassifierSession?: string;
@@ -181,7 +179,7 @@ export function projectsRoutes(): Hono {
     }
   });
 
-  // POST /project — project a stream item (idempotent on stream_item_id).
+  // POST /project——投影一个 stream item（按 stream_item_id 幂等）。
   app.post("/project", async (c) => {
     const body = await c.req.json<{
       streamItemId?: string;
@@ -203,7 +201,7 @@ export function projectsRoutes(): Hono {
       taxonomyVersion?: string;
       candidateSetVersion?: string;
     }>().catch(() => ({} as never));
-    if (!body.streamItemId) return c.json({ error: "streamItemId is required" }, 400);
+    if (!body.streamItemId) return c.json({ error: "streamItemId 为必填项" }, 400);
     const actor = sender(c, body.classifierSession);
     if (!actor.ok) return actor.response;
     try {
@@ -234,15 +232,15 @@ export function projectsRoutes(): Hono {
     }
   });
 
-  // ---- Attempt ledger (S02 P1) ----
-  // Literal paths; all mounted before /:projectId.
+  // ---- 尝试台账（S02 P1）----
+  // 字面路径；全部挂载在 /:projectId 之前。
   const attemptsUnavailable = (c: { json: (b: unknown, s?: number) => Response }) =>
-    c.json({ error: "attempt_ledger_unavailable", message: "classification attempt ledger is not wired in this daemon" }, 503);
+    c.json({ error: "attempt_ledger_unavailable", message: "本后台服务未接入分类 attempt ledger" }, 503);
 
   app.post("/attempts/begin", async (c) => {
     const ledger = getAttempts(c);
     if (!ledger) return attemptsUnavailable(c);
-    // The ledger validates remaining consumed fields after sender resolution.
+    // ledger 在 sender 解析后校验其余被消费字段。
     const body = await c.req.json<Record<string, unknown>>().catch(() => ({} as never));
     const actor = sender(c, body.classifierSession);
     if (!actor.ok) return actor.response;
@@ -264,11 +262,11 @@ export function projectsRoutes(): Hono {
     app.post(`/attempts/:attemptId/${verb}`, async (c) => {
       const ledger = getAttempts(c);
       if (!ledger) return attemptsUnavailable(c);
-      // The ledger shape-checks the remaining fields (invalid_field).
+      // ledger 对其余字段做形状校验（invalid_field）。
       const body = await c.req.json<Record<string, unknown>>().catch(() => ({} as never));
       const actor = sender(c, body.classifierSession);
       if (!actor.ok) return actor.response;
-      if (body.reason === undefined) return c.json({ error: "reason is required" }, 400);
+      if (body.reason === undefined) return c.json({ error: "reason 为必填项" }, 400);
       try {
         const input = {
           attemptId: c.req.param("attemptId"),
@@ -284,7 +282,7 @@ export function projectsRoutes(): Hono {
     });
   }
 
-  // GET /eligible — one bounded page of items to attempt now, in stream order.
+  // GET /eligible——按 stream 顺序返回当前可 attempt 的一页有界条目。
   app.get("/eligible", (c) => {
     if (c.req.query("expectedOccupant") !== undefined) { const actor = sender(c, undefined); if (!actor.ok) return actor.response; }
     const ledger = getAttempts(c);
@@ -303,8 +301,8 @@ export function projectsRoutes(): Hono {
     }
   });
 
-  // GET /lease — show active lease.
-  // MUST precede /:projectId so the literal path wins.
+  // GET /lease——显示活跃租约。
+  // 必须在 /:projectId 之前，使字面路径优先。
   app.get("/lease", (c) => {
     if (c.req.query("expectedOccupant") !== undefined) {
       const actor = sender(c, undefined); if (!actor.ok) return actor.response;
@@ -316,8 +314,8 @@ export function projectsRoutes(): Hono {
     return c.json(lease);
   });
 
-  // GET /list — list classifications with filters.
-  // MUST precede /:projectId so the literal path wins.
+  // GET /list——带过滤列出分类结果。
+  // 必须在 /:projectId 之前，使字面路径优先。
   app.get("/list", (c) => {
     const classifierSession = c.req.query("classifierSession") || undefined;
     const classificationDestination = c.req.query("classificationDestination") || undefined;
@@ -325,7 +323,7 @@ export function projectsRoutes(): Hono {
     const scopeRef = c.req.query("scopeRef") || undefined;
     const needsHumanRaw = c.req.query("needsHuman") || undefined;
     if (needsHumanRaw && !["true", "false", "unknown"].includes(needsHumanRaw)) {
-      return c.json({ error: "needsHuman filter must be true, false or unknown" }, 400);
+      return c.json({ error: "needsHuman 过滤值必须为 true、false 或 unknown" }, 400);
     }
     const needsHuman = needsHumanRaw as "true" | "false" | "unknown" | undefined;
     const limit = c.req.query("limit") ? Number.parseInt(c.req.query("limit")!, 10) : undefined;
@@ -333,9 +331,9 @@ export function projectsRoutes(): Hono {
     return c.json(items);
   });
 
-  // ---- SSE for project + classifier events ----
-  // MUST precede /:projectId so the literal `sse` and `watch` paths win
-  // over the bare-param route. Per Phase A R1 SSE route-order lesson.
+  // ---- project + 分类器事件的 SSE ----
+  // 必须在 /:projectId 之前，使字面 `sse` 和 `watch` 路径优先于裸参数路由。
+  // 按 Phase A R1 SSE 路由顺序教训。
   const sseHandler = (c: Parameters<typeof streamSSE>[0]) => {
     const eventBus = getEventBus(c);
     return streamSSE(c, async (stream) => {
@@ -361,7 +359,7 @@ export function projectsRoutes(): Hono {
   app.get("/sse", sseHandler);
   app.get("/watch", sseHandler);
 
-  // GET /:projectId — show one project (must come AFTER literal routes).
+  // GET /:projectId——显示单个 project（必须在字面路由之后）。
   app.get("/:projectId", (c) => {
     const projectId = c.req.param("projectId");
     const project = getClassifier(c).getById(projectId);

@@ -180,7 +180,7 @@ describe("rig adopt", () => {
     expect(exitCode).toBe(1);
     expect(bindRequests).toHaveLength(1);
     expect(logs.join("\n")).toContain("missing-session");
-    expect(logs.join("\n")).toContain("not found in active discovery");
+    expect(logs.join("\n")).toContain("在活跃发现中未找到会话");
   });
 
   it("supports machine-readable json output", async () => {
@@ -250,6 +250,6 @@ describe("rig adopt", () => {
 
     expect(exitCode).toBe(1);
     expect(bindRequests).toHaveLength(0);
-    expect(logs.join("\n")).toContain("Use either --bind or --bindings-file");
+    expect(logs.join("\n")).toContain("请选择 --bind 或 --bindings-file，二者不可同时使用。");
   });
 });

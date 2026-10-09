@@ -12,7 +12,7 @@ import { nodeSpecFieldsSchema } from "../src/db/migrations/007_node_spec_fields.
 import { rigArchiveSchema } from "../src/db/migrations/042_rig_archive.js";
 import { RigRepository } from "../src/domain/rig-repository.js";
 import { RigSpecPreflight } from "../src/domain/rigspec-preflight.js";
-import type { LegacyRigSpec as RigSpec } from "../src/domain/types.js"; // TODO: AS-T08b — migrate to pod-aware RigSpec
+import type { LegacyRigSpec as RigSpec } from "../src/domain/types.js"; // TODO：AS-T08b —— 迁移到 pod 感知的 RigSpec
 import type { TmuxAdapter } from "../src/adapters/tmux.js";
 import type { ExecFn } from "../src/adapters/tmux.js";
 
@@ -70,7 +70,7 @@ describe("RigSpecPreflight", () => {
     });
   }
 
-  it("all checks pass -> { ready: true, warnings: [], errors: [] }", async () => {
+  it("所有检查通过时返回 { ready: true, warnings: [], errors: [] }", async () => {
     const pf = createPreflight();
     const result = await pf.check(validSpec());
     expect(result.ready).toBe(true);
@@ -78,22 +78,22 @@ describe("RigSpecPreflight", () => {
     expect(result.errors).toEqual([]);
   });
 
-  it("rig name collision -> error", async () => {
-    rigRepo.createRig("r99"); // collision
+  it("工作组名称冲突时返回错误", async () => {
+    rigRepo.createRig("r99"); // 制造冲突
     const pf = createPreflight();
     const result = await pf.check(validSpec());
     expect(result.ready).toBe(false);
     expect(result.errors.some((e) => e.includes("r99"))).toBe(true);
   });
 
-  it("M1 A1 — a rig named a virtual-domain token ('external') is REFUSED (rig-slot reserved rail)", async () => {
+  it("M1 A1——拒绝使用虚拟域 token 'external' 作为工作组名称", async () => {
     const pf = createPreflight();
     const result = await pf.check(validSpec({ name: "external" }));
     expect(result.ready).toBe(false);
-    expect(result.errors.some((e) => e.includes("external") && /reserved|virtual-domain/i.test(e))).toBe(true);
+    expect(result.errors.some((e) => e.includes("external") && /保留|虚拟域/.test(e))).toBe(true);
   });
 
-  it("tmux session name collision -> error", async () => {
+  it("tmux 会话名称冲突时返回错误", async () => {
     const tmux = mockTmux({ "r99-worker": true });
     const pf = createPreflight({ tmux });
     const result = await pf.check(validSpec());
@@ -101,14 +101,14 @@ describe("RigSpecPreflight", () => {
     expect(result.errors.some((e) => e.includes("r99-worker"))).toBe(true);
   });
 
-  it("derived session name is normalized for ordinary rig names", async () => {
+  it("普通工作组名称派生出的会话名称经过规范化", async () => {
     const spec = validSpec({ name: "badname" });
     const pf = createPreflight();
     const result = await pf.check(spec);
-    expect(result.errors.some((e) => e.includes("session name"))).toBe(false);
+    expect(result.errors.some((e) => e.includes("会话名称"))).toBe(false);
   });
 
-  it("node cwd doesn't exist -> error", async () => {
+  it("节点 cwd 不存在时返回错误", async () => {
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", cwd: "/nonexistent/path/xyz" }],
     });
@@ -118,7 +118,7 @@ describe("RigSpecPreflight", () => {
     expect(result.errors.some((e) => e.includes("/nonexistent/path/xyz"))).toBe(true);
   });
 
-  it("claude-code probes 'claude --version' (exact command)", async () => {
+  it("claude-code 使用准确命令 'claude --version' 探测", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue("");
     const pf = createPreflight({ exec });
     await pf.check(validSpec({
@@ -129,7 +129,7 @@ describe("RigSpecPreflight", () => {
     expect(claudeCall![0]).toBe("claude --version");
   });
 
-  it("codex probes 'codex --version' (exact command)", async () => {
+  it("codex 使用准确命令 'codex --version' 探测", async () => {
     const exec = vi.fn<ExecFn>().mockResolvedValue("");
     const pf = createPreflight({ exec });
     await pf.check(validSpec({
@@ -140,7 +140,7 @@ describe("RigSpecPreflight", () => {
     expect(codexCall![0]).toBe("codex --version");
   });
 
-  it("runtime not available -> error", async () => {
+  it("运行时不可用时返回错误", async () => {
     const exec = vi.fn<ExecFn>().mockRejectedValue(new Error("not found"));
     const pf = createPreflight({ exec });
     const result = await pf.check(validSpec());
@@ -148,28 +148,28 @@ describe("RigSpecPreflight", () => {
     expect(result.errors.some((e) => e.includes("claude-code"))).toBe(true);
   });
 
-  it("cwd points to a file -> error", async () => {
-    // /etc/hosts is a file, not a directory
+  it("cwd 指向文件时返回错误", async () => {
+    // /etc/hosts 是文件而不是目录。
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", cwd: "/etc/hosts" }],
     });
     const pf = createPreflight();
     const result = await pf.check(spec);
     expect(result.ready).toBe(false);
-    expect(result.errors.some((e) => e.includes("/etc/hosts") && e.includes("directory"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("/etc/hosts") && e.includes("不是目录"))).toBe(true);
   });
 
-  it("cwd points to a directory -> passes cwd check", async () => {
+  it("cwd 指向目录时通过 cwd 检查", async () => {
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", cwd: "/tmp" }],
     });
     const pf = createPreflight();
     const result = await pf.check(spec);
-    // Should not have a cwd error (may have other errors like session name)
+    // 不应出现 cwd 错误，但可能有会话名称等其他错误。
     expect(result.errors.filter((e) => e.includes("cwd") || e.includes("/tmp"))).toHaveLength(0);
   });
 
-  it("multiple errors reported (2 bad cwds -> 2 errors)", async () => {
+  it("报告多个错误：两个无效 cwd 产生两个错误", async () => {
     const spec = validSpec({
       nodes: [
         { id: "worker-a", runtime: "claude-code", cwd: "/bad/path/a" },
@@ -181,7 +181,7 @@ describe("RigSpecPreflight", () => {
     expect(result.errors.filter((e) => e.includes("/bad/path")).length).toBe(2);
   });
 
-  it("cmux unavailable + spec has surfaceHint -> warning", async () => {
+  it("cmux 不可用且 spec 含 surfaceHint 时给出警告", async () => {
     const cmuxExec = vi.fn<ExecFn>().mockRejectedValue(new Error("not found"));
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", cwd: "/", surfaceHint: "tab:main" }],
@@ -191,7 +191,7 @@ describe("RigSpecPreflight", () => {
     expect(result.warnings.some((w) => w.toLowerCase().includes("cmux"))).toBe(true);
   });
 
-  it("cmux unavailable + spec has NO layout hints -> no warning", async () => {
+  it("cmux 不可用但 spec 没有布局提示时不警告", async () => {
     const cmuxExec = vi.fn<ExecFn>().mockRejectedValue(new Error("not found"));
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", cwd: "/" }],
@@ -201,16 +201,16 @@ describe("RigSpecPreflight", () => {
     expect(result.warnings.filter((w) => w.toLowerCase().includes("cmux"))).toHaveLength(0);
   });
 
-  it("node with no cwd -> no cwd check (passes)", async () => {
+  it("节点没有 cwd 时跳过 cwd 检查并通过", async () => {
     const spec = validSpec({
-      nodes: [{ id: "worker", runtime: "claude-code" }], // no cwd
+      nodes: [{ id: "worker", runtime: "claude-code" }], // 没有 cwd
     });
     const pf = createPreflight();
     const result = await pf.check(spec);
     expect(result.errors.filter((e) => e.includes("cwd"))).toHaveLength(0);
   });
 
-  it("tmux session name collision detected (derived name exists)", async () => {
+  it("派生名称已存在时检测到 tmux 会话名称冲突", async () => {
     const tmux = mockTmux({ "r99-worker": true });
     const pf = createPreflight({ tmux });
     const result = await pf.check(validSpec());
@@ -218,7 +218,7 @@ describe("RigSpecPreflight", () => {
     expect(result.errors.some((e) => e.includes("tmux") || e.includes("session"))).toBe(true);
   });
 
-  it("spec with workspace hint + cmux unavailable -> warning", async () => {
+  it("spec 含 workspace 提示但 cmux 不可用时给出警告", async () => {
     const cmuxExec = vi.fn<ExecFn>().mockRejectedValue(new Error("not found"));
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", cwd: "/", workspace: "review" }],
@@ -228,7 +228,7 @@ describe("RigSpecPreflight", () => {
     expect(result.warnings.some((w) => w.toLowerCase().includes("cmux"))).toBe(true);
   });
 
-  it("error + warning coexist: bad cwd + cmux unavailable with layout hint", async () => {
+  it("错误与警告并存：cwd 无效，且存在布局提示但 cmux 不可用", async () => {
     const cmuxExec = vi.fn<ExecFn>().mockRejectedValue(new Error("not found"));
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", cwd: "/nonexistent/bad", surfaceHint: "tab:x" }],
@@ -240,7 +240,7 @@ describe("RigSpecPreflight", () => {
     expect(result.warnings.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("cmux availability probed via 'cmux capabilities --json' (exact command)", async () => {
+  it("使用准确命令 'cmux capabilities --json' 探测 cmux 可用性", async () => {
     const cmuxExec = vi.fn<ExecFn>().mockResolvedValue("{}");
     const spec = validSpec({
       nodes: [{ id: "worker", runtime: "claude-code", cwd: "/", surfaceHint: "tab:x" }],
@@ -251,7 +251,7 @@ describe("RigSpecPreflight", () => {
   });
 });
 
-// -- Rebooted rig preflight (AgentSpec reboot) --
+// -- 重启版工作组预检（AgentSpec reboot）--
 
 import { rigPreflight, type RigPreflightInput } from "../src/domain/rigspec-preflight.js";
 import { RigSpecCodec } from "../src/domain/rigspec-codec.js";
@@ -286,8 +286,8 @@ function makeRigYaml(overrides?: Partial<PodRigSpec>): string {
 
 const RIG_ROOT = "/project/rigs/my-rig";
 
-describe("Rebooted rig preflight", () => {
-  it("resolves a selector-only profile from the configured managed skill catalog", async () => {
+describe("重启版工作组预检", () => {
+  it("从配置的受管 Skill 目录中解析仅含选择器的 profile", async () => {
     const root = fs.mkdtempSync(nodePath.join(os.tmpdir(), "openrig-preflight-skill-catalog-"));
     try {
       const rigRoot = nodePath.join(root, "rig");
@@ -362,14 +362,14 @@ profiles:
         }),
       });
       expect(missingResult.ready).toBe(false);
-      expect(missingResult.errors).toContain('dev.impl: Profile uses skills: "absent-skill" not found in resource pool');
+      expect(missingResult.errors).toContain('dev.impl: Profile 使用的 skills："absent-skill" 未在资源池中找到');
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
 
-  // T5: resolves all agent refs
-  it("resolves all agent refs successfully", async () => {
+  // T5：成功解析所有智能体引用。
+  it("成功解析所有智能体引用", async () => {
     const files: Record<string, string> = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: validAgentYaml("impl"),
     };
@@ -378,8 +378,8 @@ profiles:
     expect(result.errors).toEqual([]);
   });
 
-  // T5b: missing profile surfaces in preflight
-  it("catches missing profile", async () => {
+  // T5b：预检会显示 profile 缺失。
+  it("捕获缺失的 profile", async () => {
     const files: Record<string, string> = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: validAgentYaml("impl"),
     };
@@ -392,11 +392,11 @@ profiles:
     });
     const result = await rigPreflight({ rigSpecYaml: rigYaml, rigRoot: RIG_ROOT, fsOps: mockFs(files) });
     expect(result.ready).toBe(false);
-    expect(result.errors.some((e) => e.includes("nonexistent") && e.includes("not found"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("nonexistent") && e.includes("未找到"))).toBe(true);
   });
 
-  // T5c: invalid restore-policy narrowing surfaces
-  it("catches invalid restore-policy narrowing", async () => {
+  // T5c：显示无效的恢复策略收窄。
+  it("捕获无效的恢复策略收窄", async () => {
     const agentYaml = `name: impl\nversion: "1.0.0"\ndefaults:\n  lifecycle:\n    compaction_strategy: harness_native\n    restore_policy: checkpoint_only\nresources:\n  skills: []\nprofiles:\n  default:\n    uses:\n      skills: []`;
     const files: Record<string, string> = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: agentYaml,
@@ -410,11 +410,11 @@ profiles:
     });
     const result = await rigPreflight({ rigSpecYaml: rigYaml, rigRoot: RIG_ROOT, fsOps: mockFs(files) });
     expect(result.ready).toBe(false);
-    expect(result.errors.some((e) => e.includes("broadens"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("扩宽"))).toBe(true);
   });
 
-  // T6: unsupported runtime
-  it("reports unsupported runtime", async () => {
+  // T6：不支持的运行时。
+  it("报告不支持的运行时", async () => {
     const files: Record<string, string> = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: validAgentYaml("impl"),
     };
@@ -427,14 +427,14 @@ profiles:
     });
     const result = await rigPreflight({ rigSpecYaml: rigYaml, rigRoot: RIG_ROOT, fsOps: mockFs(files) });
     expect(result.ready).toBe(false);
-    expect(result.errors.some((e) => e.includes("unsupported runtime"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("不支持运行时"))).toBe(true);
   });
 
-  // Slice 51-01 stub-runtime — TEST-ONLY RED (undisputed mechanical FACT 1): a modern pod member
-  // with runtime: stub + a resolvable agent_ref must be ACCEPTED by preflight. RED now because
-  // SUPPORTED_RUNTIMES (rigspec-preflight.ts:133) omits "stub"; green once production adds it there.
-  // Encodes NO disputed hook/usage/compaction/packaging surface.
-  it("FACT1: accepts a modern pod member with runtime: stub + resolvable agent_ref [RED until SUPPORTED_RUNTIMES adds stub]", async () => {
+  // Slice 51-01 stub-runtime——仅测试的红灯（没有争议的机械事实 1）：runtime: stub 且
+  // agent_ref 可解析的现代 pod 成员必须通过预检。当前因 SUPPORTED_RUNTIMES
+  //（rigspec-preflight.ts）遗漏 "stub" 而为红，生产代码加入后转绿。这里不编码任何
+  // 有争议的 hook/usage/compaction/packaging 界面。
+  it("事实 1：准入 runtime: stub 且 agent_ref 可解析的现代 pod 成员", async () => {
     const files: Record<string, string> = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: validAgentYaml("impl"),
     };
@@ -446,26 +446,25 @@ profiles:
       }],
     });
     const result = await rigPreflight({ rigSpecYaml: rigYaml, rigRoot: RIG_ROOT, fsOps: mockFs(files) });
-    expect(result.ready, `preflight must accept runtime: stub; errors: ${JSON.stringify(result.errors)}`).toBe(true);
+    expect(result.ready, `预检必须准入 runtime: stub；错误：${JSON.stringify(result.errors)}`).toBe(true);
     expect(result.errors).toEqual([]);
   });
 
-  // T7: missing cwd
-  it("reports missing cwd", async () => {
+  // T7：缺少 cwd。
+  it("报告 cwd 缺失", async () => {
     const files: Record<string, string> = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: validAgentYaml("impl"),
     };
-    // Can't have empty cwd since RigSpec schema requires it — test with RigSpec that has cwd but empty
-    // Actually, cwd is required on RigSpecPodMember, so an empty cwd would fail schema validation.
-    // Let's verify the schema catches it.
+    // RigSpec schema 要求 cwd，无法提供空 cwd。RigSpecPodMember 的 cwd 为必填，
+    // 因此空值会在 schema 验证中失败；这里确认 schema 能捕获它。
     const rigYaml = `version: "0.2"\nname: test-rig\npods:\n  - id: dev\n    label: Dev\n    members:\n      - id: impl\n        agent_ref: "local:agents/impl"\n        profile: default\n        runtime: claude-code\n    edges: []\nedges: []`;
     const result = await rigPreflight({ rigSpecYaml: rigYaml, rigRoot: RIG_ROOT, fsOps: mockFs(files) });
     expect(result.ready).toBe(false);
     expect(result.errors.some((e) => e.includes("cwd"))).toBe(true);
   });
 
-  // T8: import collision as warning
-  it("rejects invalid session name characters in authored pod/member/rig names with per-component error", async () => {
+  // T8：导入冲突作为警告。
+  it("拒绝 pod/member/rig 名称中的无效会话字符，并逐组件报告错误", async () => {
     const rigYaml = makeRigYaml({
       name: "my rig",
       pods: [{
@@ -479,34 +478,34 @@ profiles:
     };
     const result = await rigPreflight({ rigSpecYaml: rigYaml, rigRoot: RIG_ROOT, fsOps: mockFs(files) });
     expect(result.ready).toBe(false);
-    // Per-component errors for pod, member, and rig name
-    expect(result.errors.some((e) => e.includes("pod name") && e.includes("dev 1") && e.includes(" "))).toBe(true);
-    expect(result.errors.some((e) => e.includes("member name") && e.includes("impl!") && e.includes("!"))).toBe(true);
-    expect(result.errors.some((e) => e.includes("rig name") && e.includes("my rig") && e.includes(" "))).toBe(true);
+    // pod、member 和工作组名称分别产生错误。
+    expect(result.errors.some((e) => e.includes("pod 名称") && e.includes("dev 1") && e.includes(" "))).toBe(true);
+    expect(result.errors.some((e) => e.includes("member 名称") && e.includes("impl!") && e.includes("!"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("rig 名称") && e.includes("my rig") && e.includes(" "))).toBe(true);
   });
 
-  it("reports import collision as warning", async () => {
+  it("将导入冲突报告为警告", async () => {
     const files: Record<string, string> = {
       [`${RIG_ROOT}/agents/impl/agent.yaml`]: `name: impl\nversion: "1.0.0"\nimports:\n  - ref: local:../lib\nresources:\n  skills:\n    - id: shared\n      path: skills/shared\nprofiles:\n  default:\n    uses:\n      skills: [shared]`,
       [`${RIG_ROOT}/agents/lib/agent.yaml`]: `name: lib\nversion: "1.0.0"\nresources:\n  skills:\n    - id: shared\n      path: skills/shared\nprofiles: {}`,
     };
     const result = await rigPreflight({ rigSpecYaml: makeRigYaml(), rigRoot: RIG_ROOT, fsOps: mockFs(files) });
     expect(result.ready).toBe(true);
-    expect(result.warnings.some((w) => w.includes("collision"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("冲突"))).toBe(true);
   });
 
-  it("fails honestly when builtin/library cwd resolves inside the OpenRig install without --cwd", async () => {
+  it("未提供 --cwd 且 builtin/library cwd 解析到 OpenRig 安装目录内时如实失败", async () => {
     const builtinRoot = nodePath.resolve(import.meta.dirname, "../src/../specs");
     const files: Record<string, string> = {
       [`${builtinRoot}/agents/impl/agent.yaml`]: validAgentYaml("impl"),
     };
     const result = await rigPreflight({ rigSpecYaml: makeRigYaml(), rigRoot: builtinRoot, fsOps: mockFs(files) });
     expect(result.ready).toBe(false);
-    expect(result.errors.some((e) => e.includes("inside the OpenRig installation"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("位于 zrig 安装目录"))).toBe(true);
     expect(result.errors.some((e) => e.includes("--cwd"))).toBe(true);
   });
 
-  it("accepts builtin/library specs when cwdOverride is provided", async () => {
+  it("提供 cwdOverride 时准入 builtin/library spec", async () => {
     const builtinRoot = nodePath.resolve(import.meta.dirname, "../src/../specs");
     const files: Record<string, string> = {
       [`${builtinRoot}/agents/impl/agent.yaml`]: validAgentYaml("impl"),

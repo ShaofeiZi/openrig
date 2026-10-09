@@ -1,32 +1,32 @@
 import type { ExecFn } from "../adapters/tmux.js";
 import { shellQuote } from "../adapters/shell-quote.js";
 
-/** Probe result status — matches Phase 5 spec */
+/** 探测结果状态，与 Phase 5 spec 一致。 */
 export type ProbeStatus = "installed" | "missing" | "unsupported" | "unknown";
 
-/** Input specification for a single requirement to probe */
+/** 单项待探测 requirement 的输入规范。 */
 export interface RequirementSpec {
   name: string;
   kind: "cli_tool" | "system_package";
   installHints?: Record<string, string>;
 }
 
-/** Result of probing a single requirement */
+/** 单项 requirement 的探测结果。 */
 export interface ProbeResult {
   name: string;
   kind: "cli_tool" | "system_package";
   status: ProbeStatus;
-  /** Version string when provider reports it (e.g. brew). Null for cli_tool probes. */
+  /** provider 报告的版本字符串（例如 brew）；cli_tool 探测时为 null。 */
   version: string | null;
-  /** Resolved binary path from `command -v`. Null for non-cli probes or missing tools. */
+  /** `command -v` 解析出的 binary 路径；非 CLI 探测或工具缺失时为 null。 */
   detectedPath: string | null;
-  /** Provider used for the probe (e.g. 'homebrew'). Null for generic CLI probes. */
+  /** 探测使用的 provider（例如 'homebrew'）；通用 CLI 探测时为 null。 */
   provider: string | null;
-  /** The exact command that was executed. Null if no probe was executed (unsupported). */
+  /** 实际执行的精确命令；未执行探测（unsupported）时为 null。 */
   command: string | null;
-  /** Install hints from the manifest — display only, never executed. */
+  /** manifest 中的安装提示，只用于展示，绝不执行。 */
   installHints: Record<string, string> | null;
-  /** Error message if probe failed or timed out. */
+  /** 探测失败或超时时的错误消息。 */
   error: string | null;
 }
 
@@ -38,8 +38,8 @@ interface ProbeOptions {
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 /**
- * Provider-backed probe registry for CLI tools and system packages.
- * Uses injected ExecFn — no real shell execution in tests.
+ * 由 provider 支撑的 CLI 工具与系统 package 探测 registry。使用注入的 ExecFn，测试中不执行
+ * 真实 shell。
  */
 export class RequirementsProbeRegistry {
   private exec: ExecFn;
@@ -53,8 +53,7 @@ export class RequirementsProbeRegistry {
   }
 
   /**
-   * Probe a CLI tool via `command -v`.
-   * Returns the resolved binary path in detectedPath, version stays null.
+   * 通过 `command -v` 探测 CLI 工具。解析出的 binary 路径写入 detectedPath，version 保持 null。
    */
   async probeCli(name: string): Promise<ProbeResult> {
     const cmd = `command -v ${shellQuote(name)}`;
@@ -78,11 +77,11 @@ export class RequirementsProbeRegistry {
         return {
           name, kind: "cli_tool", status: "unknown", version: null,
           detectedPath: null, provider: null, command: cmd,
-          installHints: null, error: "probe timed out",
+          installHints: null, error: "探测超时",
         };
       }
-      // Only treat "not found" / exit-code errors as genuinely missing.
-      // Other errors (EACCES, etc) are unknown — must not become auto_approvable.
+      // 只有 "not found" / exit-code 错误才视为确实缺失。EACCES 等其他错误属于 unknown，
+      // 不得变成 auto_approvable。
       if (msg.includes("not found") || msg.includes("No such") || msg.includes("exit code")) {
         return {
           name, kind: "cli_tool", status: "missing", version: null,
@@ -99,15 +98,14 @@ export class RequirementsProbeRegistry {
   }
 
   /**
-   * Probe a system package via Homebrew (`brew list --versions`).
-   * Parses version from output when available.
+   * 通过 Homebrew（`brew list --versions`）探测系统 package，并在输出可用时解析版本。
    */
   async probeBrew(name: string): Promise<ProbeResult> {
     const cmd = `brew list --versions ${shellQuote(name)}`;
     try {
       const stdout = await this.execWithTimeout(cmd);
       const trimmed = stdout.trim();
-      // brew list --versions outputs: "name 1.2.3" or "name 1.2.3 1.2.4"
+      // brew list --versions 输出 "name 1.2.3" 或 "name 1.2.3 1.2.4"。
       const parts = trimmed.split(/\s+/);
       const version = parts.length > 1 ? parts[parts.length - 1]! : null;
       return {
@@ -127,7 +125,7 @@ export class RequirementsProbeRegistry {
         return {
           name, kind: "system_package", status: "unknown", version: null,
           detectedPath: null, provider: "homebrew", command: cmd,
-          installHints: null, error: "probe timed out",
+          installHints: null, error: "探测超时",
         };
       }
       if (msg.includes("No such keg") || msg.includes("not found") || msg.includes("exit code")) {
@@ -146,8 +144,7 @@ export class RequirementsProbeRegistry {
   }
 
   /**
-   * Probe a single requirement. Routes to the appropriate provider.
-   * Preserves installHints from the spec onto the result.
+   * 探测单项 requirement，路由到合适的 provider，并把 spec 中的 installHints 保留到结果中。
    */
   async probeRequirement(spec: RequirementSpec): Promise<ProbeResult> {
     let result: ProbeResult;
@@ -184,7 +181,7 @@ export class RequirementsProbeRegistry {
       };
     }
 
-    // Preserve installHints from spec — display only, never executed
+    // 保留 spec 中的 installHints，只展示，绝不执行。
     if (spec.installHints) {
       result.installHints = spec.installHints;
     }
@@ -193,7 +190,7 @@ export class RequirementsProbeRegistry {
   }
 
   /**
-   * Probe all requirements in sequence. Returns results in input order.
+   * 依次探测所有 requirement，并按输入顺序返回结果。
    */
   async probeAll(specs: RequirementSpec[]): Promise<ProbeResult[]> {
     const results: ProbeResult[] = [];
@@ -207,7 +204,7 @@ export class RequirementsProbeRegistry {
     return Promise.race([
       this.exec(cmd),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("probe timed out")), this.timeoutMs)
+        setTimeout(() => reject(new Error("探测超时")), this.timeoutMs)
       ),
     ]);
   }

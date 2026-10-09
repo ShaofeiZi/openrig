@@ -1,22 +1,19 @@
-// GENERATED FILE — DO NOT EDIT.
-// Emitted by scripts/sync-scope-lineage.mjs from the canonical source:
+// 生成文件——请勿手改。
+// 由 scripts/sync-scope-lineage.mjs 从权威源发出：
 //   packages/cli/src/lib/scope/attestation-lineage.ts
-// Edit the canonical file, then run: node scripts/sync-scope-lineage.mjs
-// The scope-lineage-parity vitest pin fails if this mirror drifts.
+// 请修改权威源，再运行：node scripts/sync-scope-lineage.mjs
+// 若此镜像漂移，scope-lineage-parity vitest 固定用例将失败。
 
-// OPR.0.5.0.18 — the CANONICAL amendment-lineage derivation (ONE source of truth).
+// OPR.0.5.0.18——canonical amendment-lineage 推导（唯一真相源）。
 //
-// The re-stamp verb (`rig scope … approve --re-approve`) writes
-// `approved-spec-priors` / `approved-priors` atomically beside the current stamp,
-// so a filesystem-local audit can show lineage without DB access. Returns
-// undefined for never-amended scopes (first-approve output unchanged).
+// re-stamp 操作（`zrig scope … approve --re-approve`）在当前 stamp 旁以原子方式写入
+// `approved-spec-priors` / `approved-priors`，使 filesystem-local audit 无需访问 DB 即可显示
+// lineage。对从未修订的 scope 返回 undefined（first-approve output 保持不变）。
 //
-// SHARED ACROSS PACKAGES BY GENERATION: the daemon audit route consumes the
-// byte-identical body via packages/daemon/src/domain/scope/
-// attestation-lineage.generated.ts, emitted by `node scripts/sync-scope-lineage.mjs`
-// (the CLI→daemon import direction is barred, so the repo's mirror/codegen
-// convention carries it). EDIT THIS FILE ONLY, then run the sync — the
-// scope-lineage-parity pin fails if the two ever diverge.
+// 通过生成机制跨 package 共享：daemon audit route 使用由 `node scripts/sync-scope-lineage.mjs`
+// 生成的 packages/daemon/src/domain/scope/attestation-lineage.generated.ts，消费逐字节一致的
+// body（CLI→daemon 的 import 方向被禁止，因此由 repo 的 mirror/codegen 约定承载）。只编辑此文件，
+// 随后运行同步；两者一旦分叉，scope-lineage-parity pin 就会失败。
 
 export interface AttestationLineage {
   spec?: { by: string; at: string; priors: number };

@@ -1,0 +1,102 @@
+{
+"packages/daemon/src/adapters/claude-code-adapter.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/claude-resume.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/cmux-transport.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/cmux.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/codex-resume.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/codex-runtime-adapter.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/compose-services-adapter.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/adapters/pi-resume.ts": [
+"daemon-runtime",
+"validated",
+"done"
+],
+"packages/daemon/src/routes/telemetry.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/terminal-ws.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/terminal.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/transcripts.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/transport.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/up.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/views.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/wake-resolve.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/watchdog.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/whoami.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/workflow.ts": [
+"daemon-api",
+"self_reported",
+"done"
+],
+"packages/daemon/src/routes/workspace.ts": [
+"daemon-api",
+"self_reported",
+"done"
+]
+}

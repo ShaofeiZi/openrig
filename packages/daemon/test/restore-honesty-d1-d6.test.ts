@@ -1,21 +1,16 @@
-// OPR.0.5.7.1 — RESTORE HONESTY, narrowed repair child D1+D6a (amended SPEC
-// post-stamp sha256 a2fbcd795fa9bb215917027fc09d76628fd0308da480fd7ba803a0120b14ed61,
-// A1 independently re-stamped; desk ruling qitem-20260829080039-c47a571e).
+// OPR.0.5.7.1——恢复真实性，收窄后的修复子项 D1+D6a（修订后 SPEC 的 post-stamp sha256
+// a2fbcd795fa9bb215917027fc09d76628fd0308da480fd7ba803a0120b14ed61；A1 独立重新盖章；
+// desk 裁定 qitem-20260829080039-c47a571e）。
 //
-// D1 FOUR-WAY OCCUPANT TRUTH: the ONLY case where legacy inference may run is
-// the WHOLE activeSessionIdByNode field being absent (a pre-convention
-// snapshot). A PRESENT map with a null value, a MISSING node key, or a
-// DANGLING id each fails LOUDLY with zero resume and zero replacement
-// occupant — never newest-row-wins, never silently legacy. The fixture
-// premise is EXPLICIT: every snapshot rewrite states its relation mode;
-// nothing is cloned accidentally from capture.
+// D1 四路 OCCUPANT 事实：只有整个 activeSessionIdByNode 字段缺失（约定前 snapshot）时才能运行
+// legacy 推断。存在的 map 若含 null 值、缺失节点 key 或悬空 id，都应明确失败，resume 与替换 occupant
+// 均为零；绝不以最新行胜出，也绝不静默进入 legacy。fixture 前提必须显式：每次 snapshot 重写都声明
+// 自身 relation mode，不从 capture 意外克隆任何状态。
 //
-// D6a UNCONDITIONAL ZERO REPLAY: an exact resume cannot replay startup or
-// onboarding content, and replay-ONLY validation cannot block the resume
-// (the incident's own discriminator: continuity never needed the replay
-// container). A deliberate fresh launch still validates its replay inputs in
-// full. The former replay opt-in surface is REMOVED WHOLE — the absence pin
-// below proves no encoding of it survives in this child's source or tests.
+// D6a 无条件零 REPLAY：精确 resume 不能 replay startup 或 onboarding 内容，且仅 replay 的验证不能
+// 阻断 resume（该事故自身的判别项：continuity 从不需要 replay container）。有意的 fresh launch 仍会
+// 完整验证其 replay 输入。旧 replay opt-in surface 已整体移除；下方缺失固定项证明其任何编码都未在
+// 此子项源码或测试中残留。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
@@ -36,8 +31,7 @@ import type { CodexResumeAdapter } from "../src/adapters/codex-resume.js";
 import type { Snapshot } from "../src/domain/types.js";
 import { createFullTestDb } from "./helpers/test-app.js";
 
-// Hand-authored ULIDs where lexical order is the trap: OLD sorts before NEW,
-// so "latest = max id" (the retired defect) would pick NEW.
+// 手工编写的 ULID，其陷阱在于词法顺序：OLD 排在 NEW 前，因此已退役缺陷“latest = max id”会选 NEW。
 const ULID_OLD = "01ARZ3NDEKTSV4RRFFQ69G5AAA";
 const ULID_MID = "01ARZ3NDEKTSV4RRFFQ69G5MMM";
 const ULID_NEW = "01ARZ3NDEKTSV4RRFFQ69G5ZZZ";
@@ -72,8 +66,7 @@ function mockCodexResume(): CodexResumeAdapter {
   } as unknown as CodexResumeAdapter;
 }
 
-/** Content-channel spy adapter: `project` carries projection entries,
- *  `deliverStartup` carries startup files/actions. */
+/** 内容通道 spy adapter：`project` 携带 projection entry，`deliverStartup` 携带 startup 文件/action。 */
 function spyRuntimeAdapter() {
   return {
     runtime: "claude-code",
@@ -85,8 +78,7 @@ function spyRuntimeAdapter() {
   };
 }
 
-/** The relation mode a fixture DECLARES — no state is ever cloned by accident
- *  from capture (the hidden-premise defect the repair ruling named). */
+/** fixture 声明的 relation mode；绝不从 capture 意外克隆状态（修复裁定点名的隐藏前提缺陷）。 */
 type RelationMode =
   | { mode: "field-absent" }
   | { mode: "explicit-null" }
@@ -94,7 +86,7 @@ type RelationMode =
   | { mode: "explicit-id"; id: string }
   | { mode: "dangling-id"; id: string };
 
-describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a unconditional zero replay", () => {
+describe("OPR.0.5.7.1 修复子项——D1 四路 occupant 事实 + D6a 无条件零 replay", () => {
   let db: Database.Database;
   let rigRepo: RigRepository;
   let sessionRegistry: SessionRegistry;
@@ -144,8 +136,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     return { snap, nodeId: node.id };
   }
 
-  /** Rewrite the snapshot's session rows AND its relation state, both stated
-   *  explicitly by the caller. */
+  /** 重写 snapshot 的 session 行和 relation 状态；二者都由调用方显式声明。 */
   function rewriteSnapshot(
     snap: Snapshot,
     nodeId: string,
@@ -162,9 +153,8 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
       resumeToken: r.token,
       restorePolicy: "resume_if_possible",
     }));
-    // This suite pins compatibility with the predecessor relation field. A
-    // freshly captured snapshot also carries the new tri-state relation, so
-    // remove it before expressing each legacy relation premise below.
+    // 此套件固定与 predecessor relation 字段的兼容性。新捕获的 snapshot 也携带新的三态 relation，
+    // 因此在表达下方每个 legacy relation 前提之前将其移除。
     delete data.activeOccupantsByNode;
     switch (relation.mode) {
       case "field-absent":
@@ -183,7 +173,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     }
     db.prepare("UPDATE snapshots SET data = ? WHERE id = ?").run(JSON.stringify(data), snap.id);
     const updated = snapshotRepo.getSnapshot(snap.id);
-    if (!updated) throw new Error("expected updated snapshot");
+    if (!updated) throw new Error("预期得到更新后的 snapshot");
     return updated;
   }
 
@@ -203,14 +193,13 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
       expect(err.length).toBeGreaterThan(0);
       for (const term of naming ?? []) expect(err).toContain(term);
     }
-    // Zero resume, zero replacement occupant: the seat's sessions are exactly
-    // as the (stopped) prior state left them — nothing launched.
+    // 零 resume、零替换 occupant：席位 session 与此前停止状态留下的一致，没有启动任何内容。
     expect(claude.resume).not.toHaveBeenCalled();
   }
 
   // ------------------------------------------------------------------ D1 ---
 
-  it("D1-legacy-single: WHOLE field absent + a single row — legacy inference resolves it", async () => {
+  it("D1-legacy-single：整个字段缺失且只有一行时，legacy 推断可解析", async () => {
     const { snap, nodeId } = seedSnapshot();
     const fixed = rewriteSnapshot(snap, nodeId, [
       { id: ULID_OLD, status: "unknown", token: "tok-active" },
@@ -221,7 +210,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     expect(resumeTokenArg(claude)).toBe("tok-active");
   });
 
-  it("D1-legacy-uniquely-running: field absent + several rows — the uniquely-running row wins, never the newest ULID", async () => {
+  it("D1-legacy-uniquely-running：字段缺失且有多行时，唯一 running 行胜出，而非最新 ULID", async () => {
     const { snap, nodeId } = seedSnapshot();
     const fixed = rewriteSnapshot(snap, nodeId, [
       { id: ULID_OLD, status: "exited", token: "tok-oldest" },
@@ -234,7 +223,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     expect(resumeTokenArg(claude)).toBe("tok-active");
   });
 
-  it("D1-legacy-ambiguous: field absent + two running rows — loud unrecoverable, zero resume, zero replacement", async () => {
+  it("D1-legacy-ambiguous：字段缺失且有两个 running 行时明确不可恢复，零 resume、零替换", async () => {
     const { snap, nodeId } = seedSnapshot();
     const fixed = rewriteSnapshot(snap, nodeId, [
       { id: ULID_OLD, status: "running", token: "tok-a" },
@@ -245,7 +234,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     expectLoudUnrecoverable(result, claude, [ULID_OLD, ULID_NEW]);
   });
 
-  it("D1-explicit-hit: a valid explicit relation is consumed directly, no status inference", async () => {
+  it("D1-explicit-hit：有效显式 relation 直接消费，不做 status 推断", async () => {
     const { snap, nodeId } = seedSnapshot();
     const fixed = rewriteSnapshot(snap, nodeId, [
       { id: ULID_OLD, status: "detached", token: "tok-active" },
@@ -257,7 +246,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     expect(resumeTokenArg(claude)).toBe("tok-active");
   });
 
-  it("D1-present-null: PRESENT map + explicit null with historical rows — loud unrecoverable, never silently legacy", async () => {
+  it("D1-present-null：存在 map、显式 null 且有历史行时明确不可恢复，绝不静默 legacy", async () => {
     const { snap, nodeId } = seedSnapshot();
     const fixed = rewriteSnapshot(snap, nodeId, [
       { id: ULID_OLD, status: "running", token: "tok-a" },
@@ -268,7 +257,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     expectLoudUnrecoverable(result, claude);
   });
 
-  it("D1-missing-key: PRESENT map missing this node's key — loud unrecoverable, never silently legacy", async () => {
+  it("D1-missing-key：存在 map 但缺少此节点 key 时明确不可恢复，绝不静默 legacy", async () => {
     const { snap, nodeId } = seedSnapshot();
     const fixed = rewriteSnapshot(snap, nodeId, [
       { id: ULID_OLD, status: "running", token: "tok-a" },
@@ -278,7 +267,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     expectLoudUnrecoverable(result, claude);
   });
 
-  it("D1-dangling: a non-null relation naming no snapshot row — loud unrecoverable NAMING the offending relation", async () => {
+  it("D1-dangling：非 null relation 未指向任何 snapshot 行时明确不可恢复，并点名违规 relation", async () => {
     const { snap, nodeId } = seedSnapshot();
     const fixed = rewriteSnapshot(snap, nodeId, [
       { id: ULID_OLD, status: "running", token: "tok-a" },
@@ -288,18 +277,17 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     expectLoudUnrecoverable(result, claude, [ULID_GONE]);
   });
 
-  it("D1-absence-pin: the max-ULID reduce stays gone from the production source (second encoding)", () => {
+  it("D1-absence-pin：max-ULID reduce 持续从生产源码中消失（第二种编码）", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const source = fs.readFileSync(path.join(here, "../src/domain/restore-orchestrator.ts"), "utf8");
     const hits = source.match(/s\.id > latest\.id \? s : latest/g) ?? [];
     expect(hits).toHaveLength(0);
   });
 
-  it("D1-roundtrip: capture + JSON persistence preserves a valid explicit relation AND an explicit null", async () => {
-    // (a) exactly one RUNNING session row: capture records it as the occupant.
-    // (Desk ruling on 0ecd79a3: registerSession's default 'unknown' is a
-    // fixture premise, not an occupant — capture semantics stay
-    // exactly-one-running, so the fixture states the occupancy explicitly.)
+  it("D1-roundtrip：capture + JSON 持久化同时保留有效显式 relation 和显式 null", async () => {
+    // (a) 恰有一条 RUNNING session 行：capture 将其记录为 occupant。（0ecd79a3 的 desk 裁定：
+    // registerSession 默认的 'unknown' 是 fixture 前提，不是 occupant；capture 语义保持“恰有一条
+    // running”，因此 fixture 显式声明 occupancy。）
     const rigA = rigRepo.createRig("rt-a");
     const nodeA = rigRepo.addNode(rigA.id, "seat", { role: "worker", runtime: "claude-code" });
     const sessA = sessionRegistry.registerSession(nodeA.id, "r78-seat");
@@ -308,8 +296,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     const rawA = db.prepare("SELECT data FROM snapshots WHERE id = ?").get(snapA.id) as { data: string };
     expect(JSON.parse(rawA.data).activeSessionIdByNode[nodeA.id]).toBe(sessA.id);
 
-    // (b) several rows, none uniquely running: capture records an EXPLICIT
-    // null (ambiguous at source, recorded honestly) and JSON keeps it.
+    // (b) 多行且没有唯一 running：capture 记录显式 null（来源处有歧义，真实记录），JSON 保留它。
     const rigB = rigRepo.createRig("rt-b");
     const nodeB = rigRepo.addNode(rigB.id, "seat", { role: "worker", runtime: "claude-code" });
     const s1 = sessionRegistry.registerSession(nodeB.id, "r79-seat");
@@ -337,7 +324,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     actions: [{ type: "send_text", text: "STARTUP-GHOST-PROMPT", idempotent: true }],
   };
 
-  it("D6a-resume-unblocked: exact resume + MISSING required replay-only file SUCCEEDS and delivers zero content", async () => {
+  it("D6a-resume-unblocked：精确 resume + 缺失 required replay-only 文件仍成功，且零内容投递", async () => {
     const { snap, nodeId } = seedSnapshot({ startupContext: GHOST_CONTEXT });
     const fixed = rewriteSnapshot(snap, nodeId, [
       { id: ULID_OLD, status: "running", token: "tok-active" },
@@ -346,8 +333,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     const adapter = spyRuntimeAdapter();
     const result = await createOrchestrator({ claude }).restore(fixed.id, {
       adapters: { "claude-code": adapter },
-      // The required replay file does not exist. Replay-only validation must
-      // not block the resume: continuity never needed the replay container.
+      // required replay 文件不存在。仅 replay 的验证不得阻断 resume：continuity 从不需要 replay container。
       fsOps: { exists: (p) => !p.includes("never-read") },
     });
     expect(result.ok).toBe(true);
@@ -359,7 +345,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     expect(delivered.join("")).not.toContain("STARTUP-GHOST");
   });
 
-  it("D6a-fresh-still-validates: a deliberate fresh launch with the same missing required file still fails validation", async () => {
+  it("D6a-fresh-still-validates：有意 fresh launch 遇到同一缺失 required 文件时仍验证失败", async () => {
     const { snap, nodeId } = seedSnapshot({ startupContext: GHOST_CONTEXT });
     const fixed = rewriteSnapshot(snap, nodeId, [
       { id: ULID_OLD, status: "running", token: "tok-active" },
@@ -370,12 +356,12 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
       fsOps: { exists: (p) => !p.includes("never-read") },
       freshLogicalIds: ["seat"],
     });
-    // Deliberate fresh CONSUMES the replay inputs, so their validation stands.
+    // 有意 fresh 会消费 replay 输入，因此仍需验证。
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("pre_restore_validation_failed");
   });
 
-  it("D6a-zero-content-pin: exact resume with intact startup context still delivers ZERO content (launch leg intact)", async () => {
+  it("D6a-zero-content-pin：带完整 startup context 的精确 resume 仍零内容投递（launch 环节完整）", async () => {
     const { snap, nodeId } = seedSnapshot({ startupContext: GHOST_CONTEXT });
     const fixed = rewriteSnapshot(snap, nodeId, [
       { id: ULID_OLD, status: "running", token: "tok-active" },
@@ -391,7 +377,7 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     expect(projectedEntries).toHaveLength(0);
   });
 
-  it("D6a-fresh-replay-floor: a deliberate fresh launch keeps its startup replay when inputs exist", async () => {
+  it("D6a-fresh-replay-floor：输入存在时，有意 fresh launch 保留 startup replay", async () => {
     const { snap, nodeId } = seedSnapshot({ startupContext: GHOST_CONTEXT });
     const fixed = rewriteSnapshot(snap, nodeId, [
       { id: ULID_OLD, status: "running", token: "tok-active" },
@@ -400,18 +386,18 @@ describe("OPR.0.5.7.1 repair child — D1 four-way occupant truth + D6a uncondit
     const result = await createOrchestrator().restore(fixed.id, {
       adapters: { "claude-code": adapter },
       freshLogicalIds: ["seat"],
-      // every replay input exists on this path
+      // 此路径上的每个 replay 输入都存在。
     });
     expect(result.ok).toBe(true);
     const projectedEntries = (adapter.project.mock.calls[0]?.[0]?.entries ?? []) as unknown[];
     expect(projectedEntries.length).toBeGreaterThan(0);
   });
 
-  // -------------------------------------------------- opt-in surface gone ---
+  // -------------------------------------------------- opt-in surface 已移除 ---
 
-  it("D6a-optin-absence-pin: no encoding of the removed replay opt-in survives in this child's source or tests", () => {
+  it("D6a-optin-absence-pin：已移除 replay opt-in 的任何编码都不在此子项源码或测试中残留", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
-    // The identifier is constructed, never spelled contiguously here.
+    // 此标识符通过拼接构造，此处绝不连续拼写。
     const camel = ["startup", "Replay", "Opt", "In"].join("");
     const snake = ["startup", "replay", "opt", "in"].join("_");
     const kebab = ["startup", "replay", "opt", "in"].join("-");

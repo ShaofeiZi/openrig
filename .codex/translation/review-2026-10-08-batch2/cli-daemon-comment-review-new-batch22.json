@@ -1,0 +1,52 @@
+{
+  "batch": "cli-daemon-comment-review-new-batch22",
+  "agent": "s_000cae46UNk",
+  "rules": "translate // comments only; keep machine tokens/enums/keys/refs; do not touch assertions or it() titles",
+  "files": [
+    {
+      "path": "packages/cli/test/topology-trace.test.ts",
+      "before_sha256_16": "1a8cdbff4913db24",
+      "after_sha256_16": "8647d3bb2e63977f",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/scope-reapprove-cli.test.ts",
+      "before_sha256_16": "84c18e08db19baef",
+      "after_sha256_16": "c29c13363aca90f6",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/progress-edit.test.ts",
+      "before_sha256_16": "c4a1c3c0380906f1",
+      "after_sha256_16": "eca10720d031071a",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/package.test.ts",
+      "before_sha256_16": "66bbdfd03b3102bc",
+      "after_sha256_16": "f439429111ba433b",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    },
+    {
+      "path": "packages/cli/test/host.test.ts",
+      "before_sha256_16": "1211f103d0d3813c",
+      "after_sha256_16": "002df2b26990159f",
+      "change_scope": "comments-only",
+      "residual_english_nl": 0,
+      "assertions_unchanged": true,
+      "it_titles_unchanged": true
+    }
+  ]
+}

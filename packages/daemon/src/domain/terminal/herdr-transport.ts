@@ -1,58 +1,53 @@
-// OPR.0.4.6.02 FB4 — the herdr SOCKET transport (arm's-length AGPL boundary).
+// OPR.0.4.6.02 FB4——herdr SOCKET transport（arm's-length AGPL 边界）。
 //
-// herdr is an AGPL terminal multiplexer. OpenRig integrates it at ARM'S LENGTH:
-// we talk to its local unix-domain CONTROL SOCKET (a runtime IPC endpoint the
-// operator's installed herdr exposes) exactly the way we shell out to tmux/cmux
-// — a local IPC client, NEVER importing, linking, embedding, or vendoring herdr
-// code. This file only frames JSON on a socket the operator's herdr owns.
+// herdr 是 AGPL terminal multiplexer。OpenRig 与其保持独立集成：我们连接本地 unix-domain
+// CONTROL SOCKET（由 operator 安装的 herdr 暴露的 runtime IPC endpoint），方式与 shell out 到
+// tmux/cmux 完全一样——只是本地 IPC client，绝不 import、link、embed 或 vendor herdr 代码。
+// 此文件只在 operator 所拥有的 herdr socket 上组装 JSON frame。
 //
-// Why a socket, not the CLI (the FB4 correction): herdr 0.7.1 has NO `layout`
-// CLI command — the prior CLI transport (`herdr layout apply …`) could never
-// tile a view (the VM proof at e373f741 hit `herdr_layout_unsupported`). herdr
-// 0.7.1's layout mechanism is the socket JSON-RPC `layout.apply`, which the
-// slice research validated over the raw socket. The wire protocol here is
-// grounded in the VERBATIM captures preserved at
+// 为何使用 socket 而非 CLI（FB4 修正）：herdr 0.7.1 没有 `layout` CLI command——此前的 CLI
+// transport（`herdr layout apply …`）无法平铺 view（e373f741 的 VM proof 命中
+// `herdr_layout_unsupported`）。herdr 0.7.1 的 layout 机制是 socket JSON-RPC `layout.apply`，
+// slice research 已通过 raw socket 验证。这里的 wire protocol 以以下位置保存的逐字 capture 为依据：
 // research/herdr-socket-captures/herdr-phase3-*.json:
-//   - socket: ~/.config/herdr/herdr.sock (HERDR_SOCKET_PATH / HERDR_SESSION overrides)
-//   - framing: newline-delimited JSON (one object per line)
-//   - envelope: request {id,method,params} → success {id,result:{type,…}}
-//     (NOT JSON-RPC 2.0 — there is no `jsonrpc` field; some methods, e.g. ping,
-//      may answer with a bare {type,…})
-// The error-response envelope, the exact socket lifecycle, and workspace.create
-// were not captured verbatim; they are handled DEFENSIVELY here and are the
-// first-run-empirical items the fresh VM re-proof must confirm (unproven until
-// that proof artifact lands).
+//   - socket：~/.config/herdr/herdr.sock（可由 HERDR_SOCKET_PATH / HERDR_SESSION 覆盖）
+//   - framing：newline-delimited JSON（每行一个 object）
+//   - envelope：request {id,method,params} → success {id,result:{type,…}}
+//     （不是 JSON-RPC 2.0——没有 `jsonrpc` 字段；ping 等部分 method 可能返回裸 {type,…}）
+// error-response envelope、精确 socket lifecycle 与 workspace.create 未被逐字 capture；此处进行
+// 防御性处理，并将它们列为 fresh VM re-proof 必须确认的 first-run empirical 项（proof artifact
+// 落盘前仍未证实）。
 
 import net from "node:net";
 import { homedir } from "node:os";
 import path from "node:path";
 
-/** A herdr socket result body — always carries a `type` discriminator. */
+/** herdr socket result body——始终携带 `type` discriminator。 */
 export interface HerdrResult {
   type: string;
   [k: string]: unknown;
 }
 
 export interface HerdrProbeResult {
-  /** Is the herdr control socket reachable + answering `ping`? */
+  /** herdr control socket 是否可达且会响应 `ping`？ */
   alive: boolean;
   version: string | null;
   protocol: number | null;
 }
 
-/** One socket round-trip: send {id,method,params}, resolve the matching response body. */
+/** 一次 socket round-trip：发送 {id,method,params}，解析匹配的 response body。 */
 export type HerdrSocketRpc = (req: { id: string; method: string; params: unknown }) => Promise<HerdrResult>;
 
 export interface HerdrTransport {
-  /** Liveness + version/protocol via the socket `ping` (not the absent CLI). */
+  /** 通过 socket `ping`（而非不存在的 CLI）获取 liveness + version/protocol。 */
   probe(): Promise<HerdrProbeResult>;
-  /** Send a socket request; resolve the `result` body, reject on error / no result / unreachable. */
+  /** 发送 socket request；解析 `result` body，遇到 error / 无 result / 不可达时 reject。 */
   request(method: string, params: unknown): Promise<HerdrResult>;
 }
 
 export type HerdrTransportFactory = () => HerdrTransport;
 
-/** Resolve the herdr control socket path: env override → per-session → default. */
+/** 解析 herdr control socket path：env override → per-session → 默认值。 */
 export function resolveHerdrSocketPath(env: NodeJS.ProcessEnv = process.env): string {
   if (env["HERDR_SOCKET_PATH"]) return env["HERDR_SOCKET_PATH"] as string;
   const base = path.join(homedir(), ".config", "herdr");
@@ -60,7 +55,7 @@ export function resolveHerdrSocketPath(env: NodeJS.ProcessEnv = process.env): st
   return session ? path.join(base, "sessions", session, "herdr.sock") : path.join(base, "herdr.sock");
 }
 
-/** Extract a version token (e.g. from a ping result's `version`, or `herdr --version`). */
+/** 提取 version token（例如来自 ping result 的 `version` 或 `herdr --version`）。 */
 export function parseHerdrVersion(out: unknown): string | null {
   if (typeof out !== "string") return null;
   const m = out.match(/(\d+\.\d+\.\d+(?:[-.][0-9A-Za-z]+)*)/);
@@ -68,31 +63,29 @@ export function parseHerdrVersion(out: unknown): string | null {
 }
 
 /**
- * Normalize a parsed response line to its result body. Accepts BOTH the wrapped
- * `{id,result:{type,…}}` (layout.apply/workspace.create) and a bare `{type,…}`
- * (ping) shape, and treats an `{…,error:…}` (uncaptured shape, handled
- * defensively) or a shapeless line as an error.
+ * 将解析后的 response line 规范化为 result body。同时接受 wrapped
+ * `{id,result:{type,…}}`（layout.apply/workspace.create）与裸 `{type,…}`（ping）形态；
+ * 将 `{…,error:…}`（未 capture 的形态，防御性处理）或无结构 line 视为错误。
  */
 export function unwrapHerdrResponse(raw: unknown): HerdrResult {
   if (raw && typeof raw === "object") {
     const obj = raw as Record<string, unknown>;
     if (obj["error"] != null) {
       const e = obj["error"];
-      throw new Error(`herdr error: ${typeof e === "string" ? e : JSON.stringify(e)}`);
+      throw new Error(`herdr error（错误）：${typeof e === "string" ? e : JSON.stringify(e)}`);
     }
     const result = obj["result"];
     if (result && typeof result === "object") return result as HerdrResult;
     if (typeof obj["type"] === "string") return obj as HerdrResult; // bare {type,…} (e.g. pong)
   }
-  throw new Error(`herdr: unrecognized socket response ${JSON.stringify(raw)}`);
+  throw new Error(`herdr: unrecognized socket response（无法识别的 socket 响应）${JSON.stringify(raw)}`);
 }
 
 /**
- * The REAL unix-socket RPC (node:net). One-shot per request: connect, send one
- * newline-delimited JSON line, read lines until the one whose `id` matches (or a
- * bare typed response), then close. Rejects on ENOENT (herdr not running),
- * timeout, connection error, socket close before a response, or a herdr error.
- * Injectable so the adapter/tests never open a real socket.
+ * 真实 unix-socket RPC（node:net）。每个 request 一次连接：连接后发送一行 newline-delimited JSON，
+ * 读取 line 直到遇到 `id` 匹配的 response（或裸 typed response），然后关闭。遇到 ENOENT
+ *（herdr 未运行）、timeout、连接错误、response 前 socket 关闭或 herdr 错误时 reject。可注入，
+ * 因此 adapter/test 绝不会打开真实 socket。
  */
 export function createHerdrSocketRpc(
   socketPath: string = resolveHerdrSocketPath(),
@@ -111,7 +104,7 @@ export function createHerdrSocketRpc(
         fn();
       };
       const timer = setTimeout(
-        () => finish(() => reject(new Error(`herdr socket timeout after ${timeoutMs}ms (${socketPath})`))),
+        () => finish(() => reject(new Error(`herdr socket 在 ${timeoutMs}ms 后超时（${socketPath}）`))),
         timeoutMs,
       );
       conn.on("connect", () => conn.write(`${JSON.stringify(req)}\n`));
@@ -126,10 +119,10 @@ export function createHerdrSocketRpc(
           try {
             parsed = JSON.parse(line);
           } catch {
-            continue; // a partial/foreign line — keep reading
+            continue; // partial/foreign line——继续读取
           }
           const id = (parsed as { id?: unknown })?.id;
-          if (id != null && id !== req.id) continue; // a subscription/other message, not our reply
+          if (id != null && id !== req.id) continue; // subscription/其他消息，不是本次 reply
           try {
             const body = unwrapHerdrResponse(parsed);
             finish(() => resolve(body));
@@ -140,14 +133,13 @@ export function createHerdrSocketRpc(
         }
       });
       conn.on("error", (err) => finish(() => reject(err)));
-      conn.on("end", () => finish(() => reject(new Error("herdr socket closed before a response"))));
+      conn.on("end", () => finish(() => reject(new Error("herdr socket 在响应前已关闭"))));
     });
 }
 
 /**
- * The socket transport. `request` sends through the injected RPC with a fresh
- * id; `probe` sends `ping` and reads `{type:"pong",version,protocol}`
- * (unreachable / non-pong → alive:false, the honest answer).
+ * socket transport。`request` 使用 fresh id 通过注入的 RPC 发送；`probe` 发送 `ping` 并读取
+ * `{type:"pong",version,protocol}`（不可达 / 非 pong → alive:false，即诚实答案）。
  */
 export function createHerdrSocketTransport(rpc: HerdrSocketRpc): HerdrTransportFactory {
   return (): HerdrTransport => {

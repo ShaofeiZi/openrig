@@ -1,10 +1,9 @@
-// Hermeticity guard — WRITE-direction sibling of the gate's hermetic checker.
-// A cli TEST process must not be able to reach the LIVE daemon by default STATE_FILE
-// discovery; an unscoped WRITE (e.g. `rig broadcast`) would then leak into the live
-// topology. The guard fails LOUD when the resolved OpenRig home is not fixture-scoped.
+// 密闭性守卫——gate 密闭检查器的 WRITE 方向兄弟。cli TEST 进程默认经 STATE_FILE
+// 发现不得触达 LIVE daemon；一次未限定范围的 WRITE（如 `rig broadcast`）会泄漏进
+// 活拓扑。当已解析 OpenRig home 非 fixture 范围时，守卫大声失败。
 //
-// This is the KNOWN-NEGATIVE: a check that can only pass is not a check — so we prove
-// the guard FIRES on a deliberately-live home, and passes on a fixture home.
+// 这是已知负向：一个只能通过的检查不是检查——故我们证明
+// 守卫在故意活 home 上触发，在 fixture home 上通过。
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import os from "node:os";

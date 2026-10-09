@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 "use strict";
 
-// Refocus is deliberately a long-session feature, not startup orientation.
-// Claude observes transcript growth; both runtimes observe their exact
-// PostCompact event; either accepts an explicit request. Stop/PostCompact
-// retain due-state; context is consumed exclusively at a UserPromptSubmit
-// boundary where the harness can actually deliver additionalContext.
+// Refocus 有意设计为长会话功能，而非启动引导。Claude 观测转录增长；两个运行时都观测
+// 各自准确的 PostCompact 事件；二者都接受显式请求。Stop/PostCompact 保留到期状态；
+// 上下文只在 UserPromptSubmit 边界消费，因为此时 harness 才能真正投递 additionalContext。
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -53,7 +51,7 @@ function readConfiguredContent(home) {
     const failure = result.error?.message
       || result.stderr?.trim()
       || result.stdout?.trim()
-      || `rig context get exited ${result.status ?? "without a status"}`;
+      || `rig context get 已退出，状态：${result.status ?? "无状态"}`;
     return {
       content: null,
       contentRef,
@@ -82,20 +80,18 @@ function readConfiguredContent(home) {
 
   return {
     content: [
-      "1. What is the person actually trying to get? Not your current task — the outcome.",
-      "2. Does what you are doing RIGHT NOW move that? If you cannot say what a user gets, stop and say so.",
-      "3. What have you concluded without opening the file or running the thing?",
+      "1. 用户真正想得到什么？不要复述当前任务，要说明结果。",
+      "2. 你此刻所做的事是否推动了该结果？如果无法说明用户会得到什么，请停下并直说。",
+      "3. 哪些结论是在未打开文件或未实际运行对象的情况下得出的？",
     ].join("\n"),
     contentRef: "",
     failure: null,
   };
 }
 
-// A live seat carries no OPENRIG_REFOCUS_WORK_NODE, so the trace used to report an
-// unresolved work node while the daemon could already name the seat's typed baton. Ask it.
-// The explicit variable always wins and short-circuits the call; any failure here returns
-// null and leaves the pre-existing gap line intact, because refusing to answer is correct
-// and guessing a work node would silently re-point the whole trace.
+// 实时席位没有 OPENRIG_REFOCUS_WORK_NODE，因此过去即使后台服务已经能指出席位的类型化接力棒，
+// 追踪仍报告工作节点未解析；现在向后台服务查询。显式变量始终优先并短路调用；此处任何失败都
+// 返回 null，并保留原有缺口行，因为拒绝回答才是正确行为，猜测工作节点会静默重定向整条追踪。
 function deriveWorkStart() {
   if (process.env.OPENRIG_REFOCUS_WORK_NODE) return process.env.OPENRIG_REFOCUS_WORK_NODE;
   const result = spawnSync("rig", ["queue", "whoami", "--json"], {
@@ -134,8 +130,8 @@ function renderTrace() {
     maxBuffer: 16 * 1024 * 1024,
   });
   if (!result.error && result.status === 0 && result.stdout.trim()) return result.stdout.trim();
-  const reason = result.error?.message || result.stderr?.trim() || `trace exited ${result.status ?? "without a status"}`;
-  return `TRACE GAP — ${String(reason).replace(/\s+/g, " ").trim()}`;
+  const reason = result.error?.message || result.stderr?.trim() || `追踪已退出，状态：${result.status ?? "无状态"}`;
+  return `追踪缺口——${String(reason).replace(/\s+/g, " ").trim()}`;
 }
 
 (async () => {
@@ -146,8 +142,8 @@ function renderTrace() {
   const event = input.hook_event_name || "UserPromptSubmit";
   const harness = runtime();
 
-  // Fresh-session orientation is the default onboarding pack's job. Even a manually invoked hook must
-  // no-op here, so a stale registration cannot corrupt the world install.
+  // 新会话引导由默认 onboarding 包负责。即使手动调用钩子，此处也必须空操作，避免过期注册
+  // 损坏全局安装。
   if (event === "SessionStart") process.exit(0);
 
   const seat = process.env.OPENRIG_SESSION_NAME || "unknown-seat";
@@ -158,12 +154,10 @@ function renderTrace() {
 
   const stateDir = path.join(home, "refocus");
 
-  // OPR.0.5.6.25 — state keys to the OCCUPANT, not the seat. A seat-keyed file made
-  // a fresh occupant inherit its predecessor's lastBytes (permanently zero growth on
-  // exactly the seats that swap) and its pending delivery. Identity derives from the
-  // hook family's own fields; the guarded expression never evaluates basename on an
-  // absent value. The legacy `${seat}.json` is NEVER read, imported, or rewritten —
-  // it stays on disk as diagnosis/migration material only.
+  // OPR.0.5.6.25——状态以占位者而非席位为键。以席位为键的文件会让新占位者继承前任的
+  // lastBytes（恰好在发生换代的席位上永久零增长）及其待投递状态。身份由钩子族自身字段派生；
+  // 受守卫表达式绝不会对缺失值求 basename。旧版 `${seat}.json` 永远不读取、导入或重写，
+  // 只保留在磁盘上作为诊断/迁移材料。
   const sanitize = (raw) => String(raw).replace(/[^A-Za-z0-9@._-]/g, "_");
   const seatKey = sanitize(seat);
   const firstString = (...vals) => {
@@ -177,9 +171,8 @@ function renderTrace() {
       : null;
   const identity = firstString(input.session_id, input.sessionId, transcriptIdentity);
 
-  // Bounded, deterministic, collision-stable key: lossy sanitization or truncation
-  // appends a stable short hash of the full pre-sanitization identity, so distinct
-  // identities stay distinct and every path stays inside the state directory.
+  // 有界、确定且抗冲突的键：发生有损清理或截断时，追加清理前完整身份的稳定短哈希，
+  // 使不同身份仍保持区分，并确保所有路径留在状态目录内。
   const KEY_MAX = 64;
   const keyFor = (raw) => {
     const bounded = sanitize(raw).slice(0, KEY_MAX);
@@ -188,11 +181,9 @@ function renderTrace() {
     return `${bounded}__${suffix}`;
   };
 
-  // No-identity diagnostic sentinel: an ACTIVE-EPISODE marker only — never a
-  // baseline, growth claim, pending, or fire. "#" is outside the key character
-  // class, so no derived identity path can ever collide with it. First missing
-  // event records and surfaces once; repeats stay silent; a valid-identity event
-  // clears the marker so a later distinct episode surfaces once again.
+  // 无身份诊断哨兵：只表示 ACTIVE-EPISODE，绝不代表基线、增长声明、待处理或触发。
+  // "#" 不在键字符类中，因此任何派生身份路径都不会与它冲突。第一次缺失事件会记录并呈现
+  // 一次，重复事件保持静默；有效身份事件会清除标记，使后续独立回合可再次呈现一次。
   const sentinelFile = path.join(stateDir, `${seatKey}#no-identity-sentinel.json`);
   if (identity === null) {
     let sentinel = null;
@@ -202,7 +193,7 @@ function renderTrace() {
         fs.mkdirSync(stateDir, { recursive: true });
         fs.writeFileSync(sentinelFile, JSON.stringify({ activeEpisode: true, recordedAt: new Date().toISOString() }));
       } catch {}
-      process.stderr.write(`refocus: no session identity and no transcript path for ${seat} — measurement unavailable this episode\n`);
+      process.stderr.write(`refocus：席位 ${seat} 没有会话身份或转录路径——本回合无法测量\n`);
     }
     process.exit(0);
   }
@@ -224,23 +215,20 @@ function renderTrace() {
   };
 
   if (state === null) {
-    // First observation for this occupant: the baseline is its OWN current size —
-    // growth accumulates from here; nothing is inherited. A zero-size read means
-    // the transcript is absent/unreadable, which is instrument absence, not a
-    // baseline: record zero only when that is what was genuinely measured.
+    // 当前占位者的首次观测：以其自身当前大小为基线，从此处开始累计增长，不继承任何内容。
+    // 读数为零表示转录缺失或不可读，即监测数据缺失而非基线；只有真实测得零时才记录零。
     state = { lastBytes: size, baselineAt: new Date().toISOString() };
     persist();
   } else if (size > 0 && size < Number(state.lastBytes || 0)) {
-    // Shrink clears pending and resets the baseline BEFORE due computation. The
-    // reset itself emits no refocus, and a stale pending can never ride through a
-    // reset into a delivery. Advisory once per reset episode: the reset moment is
-    // the dedupe (afterwards lastBytes === size), and the marker records in state.
+    // 文件缩小时，在计算到期状态前清除 pending 并重置基线。重置本身不发出 refocus，过期
+    // pending 也绝不会穿过重置进入投递。每个重置回合只提示一次：重置时刻即去重点
+    //（之后 lastBytes === size），标记写入状态。
     delete state.pendingOn;
     delete state.pendingAt;
     state.lastReset = { at: new Date().toISOString(), fromBytes: Number(state.lastBytes || 0), toBytes: size };
     state.lastBytes = size;
     persist();
-    process.stderr.write(`refocus: transcript shrank for ${seat} — baseline reset, pending cleared\n`);
+    process.stderr.write(`refocus：席位 ${seat} 的转录已缩小——已重置基线并清除待处理状态\n`);
   }
 
   const lastBytes = Number(state.lastBytes || 0);
@@ -260,31 +248,29 @@ function renderTrace() {
     process.exit(0);
   }
 
-  // Run the public trace before resolving a context ref. Besides keeping the
-  // content ladder untouched, this makes `rig context get` the last resolver
-  // call and preserves the existing observable ref contract.
+  // 解析上下文 ref 前先运行公共追踪。除保持内容阶梯不变外，这还让 `rig context get` 成为
+  // 最后一次解析器调用，并保留既有可观测 ref 契约。
   const trace = renderTrace();
   const configured = readConfiguredContent(home);
   const why = onDemand
-    ? "on demand"
+    ? "按需触发"
     : state.pendingOn === "PostCompact"
-      ? "just compacted — your picture is lossy"
-      : `${Math.round(grown / 1e6 * 10) / 10}MB of work since your last refocus`;
+      ? "刚刚完成压缩——你掌握的信息可能有损"
+      : `距上次重新聚焦已新增 ${Math.round(grown / 1e6 * 10) / 10}MB 工作记录`;
 
   const body = configured.failure
     ? [
-        `REFOCUS CONTENT REF FAILED: ${configured.contentRef} — ${configured.failure}`,
+        `重新聚焦内容引用失败：${configured.contentRef}——${configured.failure}`,
         "",
-        "The configured source failed; use the shipped default below for this turn.",
+        "配置的来源失败；本轮请使用下方随附默认内容。",
         "",
         "",
       ]
     : configured.contentRef
-      ? [`REFOCUS CONTENT SOURCE: OPENRIG_REFOCUS_CONTENT_REF=${configured.contentRef}`, "", configured.content]
+      ? [`重新聚焦内容来源：OPENRIG_REFOCUS_CONTENT_REF=${configured.contentRef}`, "", configured.content]
       : [configured.content];
 
-  // A ref failure must still carry the generic default. Avoid recursing through
-  // the failed ref by reading the shipped file directly.
+  // ref 失败时仍必须携带通用默认内容。直接读取随附文件，避免递归经过失败的 ref。
   if (configured.failure) {
     try {
       body[4] = fs.readFileSync(
@@ -292,14 +278,14 @@ function renderTrace() {
         "utf8",
       ).trim();
     } catch {
-      body[4] = "1. What is the person actually trying to get?\n2. Does the current action move that outcome?\n3. What claim has not been checked at source?";
+      body[4] = "1. 用户真正想得到什么？\n2. 当前操作是否推动了该结果？\n3. 哪项结论尚未在来源处核验？";
     }
   }
 
   const payload = (configured.failure
     ? [...body, "", trace]
     : [
-        `REFOCUS (${why}). Answer briefly, out loud, before your next move:`,
+        `重新聚焦（${why}）。下一步操作前，请简短、明确地回答：`,
         "",
         trace,
         "",

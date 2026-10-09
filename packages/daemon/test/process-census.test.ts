@@ -1,12 +1,12 @@
-// OPR.0.5.3.10 mini-req 3 — the census contract: coalescing, freshness reuse,
-// honest failure. Deterministic (injected lister + clock).
+// OPR.0.5.3.10 mini-req 3——普查契约：合并、新鲜度复用与诚实失败。
+// 通过注入 lister 与 clock 保持确定性。
 import { describe, it, expect, vi } from "vitest";
 import { ProcessCensus } from "../src/domain/process-census.js";
 
 const ROWS = [{ pid: 1, ppid: 0, command: "init" }];
 
 describe("ProcessCensus", () => {
-  it("coalesces concurrent callers onto ONE in-flight enumeration", async () => {
+  it("把并发调用方合并到同一个在途枚举", async () => {
     let release!: (rows: typeof ROWS) => void;
     const list = vi.fn(() => new Promise<typeof ROWS>((r) => { release = r; }));
     const census = new ProcessCensus({ list, now: () => 0 });
@@ -18,7 +18,7 @@ describe("ProcessCensus", () => {
     expect(list).toHaveBeenCalledTimes(1);
   });
 
-  it("reuses a recent SUCCESSFUL census inside the freshness window; refetches after it", async () => {
+  it("在新鲜度窗口内复用最近成功的普查，窗口后重新获取", async () => {
     let t = 0;
     const list = vi.fn(async () => ROWS);
     const census = new ProcessCensus({ list, freshnessMs: 1000, now: () => t });
@@ -31,7 +31,7 @@ describe("ProcessCensus", () => {
     expect(list).toHaveBeenCalledTimes(2);
   });
 
-  it("a FAILED enumeration rejects every coalesced caller, caches nothing, and the next call retries", async () => {
+  it("枚举失败会拒绝所有合并调用方、不缓存结果，下一次调用重试", async () => {
     let calls = 0;
     const list = vi.fn(async () => {
       calls++;
@@ -43,12 +43,12 @@ describe("ProcessCensus", () => {
     const b = census.list();
     await expect(a).rejects.toThrow("ps ENOMEM");
     await expect(b).rejects.toThrow("ps ENOMEM");
-    // Failure was NOT cached as success: the next call actually retries.
+    // 失败没有被缓存成成功；下一次调用会真实重试。
     expect(await census.list()).toBe(ROWS);
     expect(list).toHaveBeenCalledTimes(2);
   });
 
-  it("cycleLister: at most one underlying census for the cycle, lazily — an idle cycle spawns nothing", async () => {
+  it("cycleLister：每轮最多一次底层普查且延迟执行；空闲轮次不 spawn 任何内容", async () => {
     const list = vi.fn(async () => ROWS);
     const census = new ProcessCensus({ list, freshnessMs: 0, now: (() => { let t = 0; return () => (t += 10_000); })() });
     const idle = census.cycleLister();
@@ -58,9 +58,9 @@ describe("ProcessCensus", () => {
     await cycle();
     await cycle();
     await cycle();
-    // freshness window is defeated by the advancing clock, yet the cycle memo holds: one fetch.
+    // 时钟前进会使新鲜度窗口失效，但本轮 memo 仍保持一次 fetch。
     expect(list).toHaveBeenCalledTimes(1);
-    // A NEW cycle fetches again (stale window).
+    // 新一轮会再次 fetch，因为窗口已陈旧。
     await census.cycleLister()();
     expect(list).toHaveBeenCalledTimes(2);
   });

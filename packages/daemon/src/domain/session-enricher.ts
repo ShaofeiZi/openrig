@@ -1,4 +1,4 @@
-/** Result of enriching a discovered session with config context */
+/** 使用 config context 补充已发现 session 后的结果 */
 export interface EnrichmentResult {
   skills: string[];
   claudeSkills: string[];
@@ -25,9 +25,8 @@ const EMPTY_RESULT: EnrichmentResult = {
 };
 
 /**
- * Config sniffing from a session's cwd. Checks for agent config
- * directories, guidance files, skills, and package manifests.
- * Pure filesystem reads — no exec, no adapters.
+ * 从 session 的 cwd 探测 config。检查 agent config directory、guidance file、skill 与
+ * package manifest。只读取 filesystem——不执行命令，不调用 adapter。
  */
 export class SessionEnricher {
   private fsExists: (path: string) => boolean;
@@ -38,7 +37,7 @@ export class SessionEnricher {
     this.fsReaddir = deps.fsReaddir;
   }
 
-  /** Enrich a session by sniffing config from its cwd. */
+  /** 通过探测 cwd 中的 config 补充 session 信息。 */
   enrich(cwd: string | null): EnrichmentResult {
     if (!cwd || !this.fsExists(cwd)) {
       return { ...EMPTY_RESULT, raw: {} };

@@ -33,8 +33,8 @@ interface PackageInstallServiceDeps {
 }
 
 /**
- * Reusable package install pipeline. Composes resolve -> plan -> detect -> policy -> dedup -> apply -> verify.
- * Used by both the packages route and the bootstrap orchestrator.
+ * 可复用 package 安装 pipeline。组合 resolve -> plan -> detect -> policy -> dedup -> apply -> verify。
+ * packages 路由与 bootstrap orchestrator 共同使用。
  */
 export class PackageInstallService {
   readonly db: import("better-sqlite3").Database;
@@ -44,19 +44,19 @@ export class PackageInstallService {
 
   constructor(deps: PackageInstallServiceDeps) {
     this.db = deps.packageRepo.db;
-    if (deps.installRepo.db !== this.db) throw new Error("PackageInstallService: installRepo must share the same db handle");
+    if (deps.installRepo.db !== this.db) throw new Error("PackageInstallService：installRepo 必须共享同一个数据库句柄");
     this.packageRepo = deps.packageRepo;
     this.installEngine = deps.installEngine;
     this.installVerifier = deps.installVerifier;
   }
 
   /**
-   * Run the full install pipeline for a single resolved package.
+   * 为单个已解析 package 运行完整安装 pipeline。
    */
   install(opts: PackageInstallOpts): PackageInstallOutcome {
     const { resolved, targetRoot, runtime, roleName, allowMerge, bootstrapId, fsOps } = opts;
 
-    // Plan + detect conflicts
+    // 规划并检测冲突。
     let plan, refined;
     try {
       const planner = new InstallPlanner(fsOps);
@@ -66,22 +66,22 @@ export class PackageInstallService {
       return { ok: false, code: "apply_error", message: (err as Error).message };
     }
 
-    // Check for content-level conflicts
+    // 检查内容级冲突。
     if (refined.conflicts.length > 0) {
-      return { ok: false, code: "conflict_blocked", message: `${refined.conflicts.length} unresolved conflicts` };
+      return { ok: false, code: "conflict_blocked", message: `${refined.conflicts.length} 个未解决冲突` };
     }
 
-    // Apply policy
+    // 应用 policy。
     const policyResult = applyPolicy(refined, { allowMerge: allowMerge ?? false });
 
     if (policyResult.approved.length === 0) {
-      return { ok: false, code: "policy_rejected", message: "No entries approved by policy" };
+      return { ok: false, code: "policy_rejected", message: "policy 未批准任何条目" };
     }
 
-    // Dedup package record
+    // 对 package record 去重。
     const existing = this.packageRepo.findByNameVersion(resolved.manifest.name, resolved.manifest.version);
     if (existing && existing.manifestHash !== resolved.manifestHash) {
-      return { ok: false, code: "manifest_hash_mismatch", message: `Package already registered with different content` };
+      return { ok: false, code: "manifest_hash_mismatch", message: "Package 已注册，但内容不同" };
     }
     const pkg = existing ?? this.packageRepo.createPackage({
       name: resolved.manifest.name,
@@ -92,7 +92,7 @@ export class PackageInstallService {
       summary: resolved.manifest.summary,
     });
 
-    // Apply
+    // 应用。
     let result: InstallResult;
     try {
       result = this.installEngine.apply(policyResult, refined, pkg.id, targetRoot, bootstrapId);
@@ -100,10 +100,10 @@ export class PackageInstallService {
       return { ok: false, code: "apply_error", message: (err as Error).message };
     }
 
-    // Verify
+    // 验证。
     const verification = this.installVerifier.verify(result.installId);
     if (!verification.passed) {
-      return { ok: false, code: "verification_failed", message: "Post-apply verification failed" };
+      return { ok: false, code: "verification_failed", message: "应用后验证失败" };
     }
 
     return {

@@ -1,89 +1,81 @@
-// Phase 3a slice 3.3 — Plugin Discovery Service.
+// Phase 3a slice 3.3 —— 插件发现服务。
 //
-// SC-29 EXCEPTION #8 declared verbatim:
-// "Slice 3.3 (UI plugin surface) requires daemon-side plugin-discovery-service
-// + 3 HTTP routes (GET /api/plugins, GET /api/plugins/:id, GET /api/plugins/:id/used-by)
-// as backing API. No additional state, no SQL migration, no mutation routes.
-// Read-only discovery surface aggregating filesystem-scan unions per
-// DESIGN.md §5.4. Per IMPL-PRD §3.3 'Code touches' this allocation is explicit;
-// documenting in compliance with banked SC-29 verbatim-declaration rule."
+// SC-29 例外 #8 声明：Slice 3.3（UI 插件界面）需要后台服务侧 plugin-discovery-service 和
+// 三条 HTTP 路由（GET /api/plugins、GET /api/plugins/:id、GET /api/plugins/:id/used-by）
+// 作为支撑 API。不新增状态、SQL 迁移或变更路由。只读发现界面按 DESIGN.md §5.4 聚合文件系统
+// 扫描并集。IMPL-PRD §3.3 的“代码改动”已明确分配此工作；此处按已记录的 SC-29 声明规则记载。
 //
-// What it does (DESIGN.md §5.4 — auto-discovery library = derived view):
-//   - Scans 3 filesystem roots for plugin manifests:
+// 功能说明（DESIGN.md §5.4——自动发现资料库属于派生视图）：
+//   - 扫描 3 个文件系统根目录中的插件清单：
 //       * ~/.openrig/plugins/<id>/                         (vendored)
 //       * ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/   (claude cache)
 //       * ~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/    (codex cache)
-//   - Returns aggregated list with provenance labels per source root.
-//   - For getPlugin(id), reads .claude-plugin/plugin.json and/or .codex-plugin/plugin.json
-//     and summarizes the tree (skills/, hooks, mcp_servers, etc.) so the UI
-//     viewer can show what the plugin ships without re-reading files.
-//   - For findUsedBy(id), parses agent.yaml files in the spec library and
-//     walks resources.plugins[].id to collect references. Operates on parsed
-//     YAML structure (NOT string-grep) so comments + adjacent text don't
-//     produce false positives.
+//   - 返回聚合列表，并按源根目录标注来源。
+//   - getPlugin(id) 读取 .claude-plugin/plugin.json 和/或
+//     .codex-plugin/plugin.json，并汇总目录树（skills/、hooks、mcp_servers 等），
+//     使 UI 查看器无需重新读取文件即可展示插件内容。
+//   - findUsedBy(id) 解析规范库中的 agent.yaml，遍历 resources.plugins[].id 收集
+//     引用。它操作解析后的 YAML 结构，而不是字符串搜索，因此注释和相邻文本不会
+//     产生假阳性。
 //
-// Branch-merge-friendly: this service operates on filesystem reads + parsed
-// YAML; doesn't depend on batch 1's PluginResource type from
-// plugin-primitive-v0 branch. The agent YAML structure it reads
-// (resources.plugins[].id + profile.uses.plugins[]) is exactly what batch 1
-// produces, so post-merge the service continues to work unchanged.
+// 便于分支合并：本服务只依赖文件系统读取和解析后的 YAML，不依赖
+// plugin-primitive-v0 分支第 1 批的 PluginResource 类型。它读取的 agent YAML
+// 结构（resources.plugins[].id + profile.uses.plugins[]）正是第 1 批生成的结构，
+// 因此合并后服务无需修改即可继续工作。
 
 import { existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { parse as parseYaml } from "yaml";
 
 export type PluginRuntime = "claude" | "codex";
-// Slice 3.3 fix-C — `rig-cwd` source per DESIGN §5.4 union (4th category):
-// rig-bundled `<cwd>/.claude/plugins/*` + `<cwd>/.codex/plugins/*` (the
-// projection target from IMPL-PRD §1.2). velocity-qa VM verify failure #3.
+// Slice 3.3 修复 C——按 DESIGN §5.4 联合集合加入第 4 类 `rig-cwd` 来源：工作组随附的
+// `<cwd>/.claude/plugins/*` 和 `<cwd>/.codex/plugins/*`，即 IMPL-PRD §1.2 的投影目标。
+// 对应 velocity-qa 虚拟机验证失败 #3。
 export type PluginSourceKind = "vendored" | "claude-cache" | "codex-cache" | "rig-cwd";
 
 export interface PluginEntry {
-  /** Stable id for routing (`openrig-core`, `<marketplace>:<plugin>:<version>`). */
+  /** 用于路由的稳定 ID（`openrig-core`、`<marketplace>:<plugin>:<version>`）。 */
   id: string;
-  /** Plugin's declared name from manifest. */
+  /** 插件在清单中声明的名称。 */
   name: string;
-  /** Plugin's declared version. */
+  /** 插件声明的版本。 */
   version: string;
-  /** Optional description from manifest. */
+  /** 清单中的可选描述。 */
   description: string | null;
-  /** Source root where this plugin was discovered. */
+  /** 发现此插件的源根目录。 */
   source: PluginSourceKind;
   /**
-   * Human-readable provenance label per DESIGN.md §5.4 + IMPL-PRD §3.2:
+   * 按 DESIGN.md §5.4 与 IMPL-PRD §3.2 定义的人类可读来源标签：
    *   - `vendored:<plugin>`
    *   - `claude-cache:<marketplace>/<plugin>/<version>`
    *   - `codex-cache:<marketplace>/<plugin>/<version>`
    */
   sourceLabel: string;
-  /** Which runtimes this plugin supports (presence of manifest dirs). */
+  /** 插件支持的运行时（根据清单目录是否存在判断）。 */
   runtimes: PluginRuntime[];
-  /** Filesystem path to the plugin root. */
+  /** 插件根目录的文件系统路径。 */
   path: string;
   /**
-   * mtime of the manifest file (used as a soft "last loaded" approximation
-   * for the UI list view; exact "loaded by runtime" timestamp is out of
-   * scope at v0).
+   * 清单文件的 mtime，用作 UI 列表视图中“最近加载”的近似值；精确的“由运行时加载”时间戳
+   * 不在 v0 范围内。
    */
   lastSeenAt: string | null;
   /**
-   * Slice 28 — number of skill folders shipped under `<plugin>/skills/`.
-   * Surfaced in the list response so the PluginsIndexPage can render a
-   * skill-count column without an N+1 detail fetch per plugin row.
-   * Counted at detectPlugin time (one readdir of skills/).
+   * Slice 28——`<plugin>/skills/` 下随包提供的技能目录数量。在列表响应中呈现，使
+   * PluginsIndexPage 无须为每个插件行执行一次 N+1 详情获取即可渲染技能数量列。
+   * 在 detectPlugin 时统计，只对 skills/ 执行一次 readdir。
    *
-   * SC-29 EXCEPTION #11 (slice 28 library-explorer-finishing):
-   * adds skillCount field to PluginEntry — additive shape change to
-   * the plugin discovery API contract. Per banked inline-ledger
-   * discipline; declared verbatim in routes/plugins.ts header.
+   * SC-29 例外 #11（slice 28 资料库浏览器收尾）：向 PluginEntry 添加 skillCount 字段，
+   * 属于插件发现 API 契约的增量形态变更。遵循已记录的行内台账纪律，并在
+   * routes/plugins.ts 文件头逐字声明。
    */
   skillCount: number;
 }
 
 export interface PluginManifestSummary {
-  /** Original manifest object from `<plugin>/.claude-plugin/plugin.json`. */
+  /** 来自 `<plugin>/.claude-plugin/plugin.json` 的原始清单对象。 */
   raw: Record<string, unknown>;
-  /** Convenience-extracted fields (best-effort; null if missing). */
+  /** 为便于使用而提取的字段（尽力而为；缺失时为 null）。 */
   name: string | null;
   version: string | null;
   description: string | null;
@@ -93,101 +85,95 @@ export interface PluginManifestSummary {
 }
 
 export interface PluginSkillSummary {
-  /** Skill folder name. */
+  /** 技能文件夹名称。 */
   name: string;
-  /** Path relative to plugin root. */
+  /** 相对于插件根目录的路径。 */
   relativePath: string;
 }
 
 export interface PluginHookSummary {
-  /** Which runtime this hook config targets. */
+  /** 此 hook 配置针对的运行时。 */
   runtime: PluginRuntime;
-  /** Path relative to plugin root. */
+  /** 相对于插件根目录的路径。 */
   relativePath: string;
-  /** Hook event names declared (best-effort parse). */
+  /** 声明的 hook 事件名（尽力解析）。 */
   events: string[];
 }
 
-// Slice 3.3 fix-A — MCP server discovery (DESIGN §5.7 + IMPL-PRD §3.2).
-// MCP servers shipped via plugins are handled by the runtime's plugin
-// loader; OpenRig only surfaces what the manifest declares so the UI
-// viewer can list "this plugin ships these MCP servers." Implementation:
-// read manifest.mcpServers (Claude/Codex spec key) and emit one summary
-// per declared server. Best-effort: when the field is missing or shaped
-// differently, we return [] rather than throwing.
+// Slice 3.3 修复 A——MCP 服务器发现（DESIGN §5.7 + IMPL-PRD §3.2）。
+// 插件随附的 MCP 服务器由运行时插件加载器处理；OpenRig 只呈现清单声明，使 UI
+// 查看器可以列出“此插件提供哪些 MCP 服务器”。实现方式：读取 manifest.mcpServers
+// （Claude/Codex 规范键），为每个声明的服务器生成一条摘要。尽力而为：字段缺失或
+// 结构不同时返回 []，而不是抛出异常。
 export interface PluginMcpServerSummary {
-  /** Which runtime manifest declared this MCP server. */
+  /** 声明此 MCP 服务器的运行时清单。 */
   runtime: PluginRuntime;
-  /** Server name (object key in the manifest's mcpServers map). */
+  /** 服务器名称（清单 mcpServers 映射中的对象键）。 */
   name: string;
-  /** Declared command if the entry is a stdio-style spec. */
+  /** 条目为 stdio 风格规范时声明的命令。 */
   command: string | null;
-  /** Declared transport (stdio/http/etc) if the entry exposes it. */
+  /** 条目公开传输方式时声明的 transport（stdio/http 等）。 */
   transport: string | null;
 }
 
 export interface PluginDetail {
-  /** The list-view entry. */
+  /** 列表视图条目。 */
   entry: PluginEntry;
-  /** Parsed `.claude-plugin/plugin.json` if present. */
+  /** 若存在，则为解析后的 `.claude-plugin/plugin.json`。 */
   claudeManifest: PluginManifestSummary | null;
-  /** Parsed `.codex-plugin/plugin.json` if present. */
+  /** 若存在，则为解析后的 `.codex-plugin/plugin.json`。 */
   codexManifest: PluginManifestSummary | null;
-  /** Skill folders shipped under `<plugin>/skills/`. */
+  /** `<plugin>/skills/` 下随插件提供的技能文件夹。 */
   skills: PluginSkillSummary[];
-  /** Hook configs shipped under `<plugin>/hooks/`. */
+  /** `<plugin>/hooks/` 下随插件提供的 hook 配置。 */
   hooks: PluginHookSummary[];
   /**
-   * MCP server declarations from claude/codex manifest's `mcpServers`
-   * field. Slice 3.3 fix-A — velocity-qa VM verify failure #1.
+   * 来自 Claude/Codex 清单 `mcpServers` 字段的 MCP 服务器声明。
+   * Slice 3.3 修复 A——velocity-qa 虚拟机验证失败 #1。
    */
   mcpServers: PluginMcpServerSummary[];
 }
 
 export interface AgentReference {
-  /** agent name (from agent.yaml `name` field). */
+  /** 智能体名称（来自 agent.yaml 的 `name` 字段）。 */
   agentName: string;
-  /** absolute path to agent.yaml. */
+  /** agent.yaml 的绝对路径。 */
   sourcePath: string;
-  /** profile names that include this plugin in their uses.plugins[]. */
+  /** 在 uses.plugins[] 中包含此插件的配置名称。 */
   profiles: string[];
 }
 
 export interface PluginDiscoveryServiceOpts {
-  /** Root directory for vendored OpenRig plugins (typically ~/.openrig/plugins). */
+  /** OpenRig 内置插件的根目录（通常为 ~/.openrig/plugins）。 */
   openrigPluginsDir: string;
-  /** Root directory for Claude Code plugin cache (typically ~/.claude/plugins/cache). */
+  /** Claude Code 插件缓存根目录（通常为 ~/.claude/plugins/cache）。 */
   claudeCacheDir: string;
-  /** Root directory for Codex plugin cache (typically ~/.codex/plugins/cache). */
+  /** Codex 插件缓存根目录（通常为 ~/.codex/plugins/cache）。 */
   codexCacheDir: string;
   /**
-   * Spec library directory containing agent.yaml files (recursively scanned).
-   * Typically the daemon's resolved spec library root. May be a single root
-   * for v0; expand to multi-root in a later slice if the spec library hooks
-   * its full root list through.
+   * 包含 agent.yaml 文件的规范库目录（递归扫描）。通常是后台服务解析出的规范库
+   * 根目录。v0 可只使用单个根；若规范库后续贯通完整根目录列表，可在后续切片扩展
+   * 为多个根。
    */
   specLibraryDir: string;
   /**
-   * Slice 3.3 fix-C — optional rig cwd roots whose `.claude/plugins/*` +
-   * `.codex/plugins/*` subdirectories get scanned for rig-bundled
-   * plugins (the projection target from IMPL-PRD §1.2). Default empty.
-   * Population at v0 is per-call via listPlugins({ cwdScanRoots }) from
-   * the API layer (?cwd=<path>); future slices may add automatic
-   * enumeration from running-rig state.
+   * Slice 3.3 修复 C——可选的工作组 cwd 根目录；扫描其中 `.claude/plugins/*` 和
+   * `.codex/plugins/*` 子目录，以发现工作组随附插件（IMPL-PRD §1.2 的投影目标）。默认为空。
+   * v0 由 API 层通过 listPlugins({ cwdScanRoots })（?cwd=<path>）逐调用填充；后续切片可增加
+   * 根据运行中工作组状态自动枚举。
    */
   cwdScanRoots?: string[];
 }
 
 export interface ListPluginsOpts {
-  /** Filter to plugins supporting a specific runtime. */
+  /** 筛选支持特定运行时的插件。 */
   runtimeFilter?: PluginRuntime;
-  /** Filter to plugins from a specific source root. */
+  /** 筛选来自特定源根目录的插件。 */
   sourceFilter?: PluginSourceKind;
   /**
-   * Slice 3.3 fix-C — per-call rig cwd roots; overrides constructor option.
-   * Each cwd contributes `<cwd>/.claude/plugins/*` + `<cwd>/.codex/plugins/*`
-   * discoveries labeled `rig-cwd:<plugin>`. The API layer passes a single
-   * `?cwd=<path>` query param down here.
+   * Slice 3.3 修复 C——逐调用工作组 cwd 根目录，覆盖构造器选项。每个 cwd 贡献
+   * `<cwd>/.claude/plugins/*` 和 `<cwd>/.codex/plugins/*` 的发现结果，并标记为
+   * `rig-cwd:<plugin>`。API 层向此处传递单个 `?cwd=<path>` 查询参数。
    */
   cwdScanRoots?: string[];
 }
@@ -208,7 +194,7 @@ export class PluginDiscoveryService {
   listPlugins(filterOpts: ListPluginsOpts = {}): PluginEntry[] {
     const out: PluginEntry[] = [];
 
-    // 1. Vendored OpenRig plugins.
+    // 1. OpenRig 内置插件。
     if (existsSync(this.opts.openrigPluginsDir)) {
       for (const entry of safeReaddir(this.opts.openrigPluginsDir)) {
         const pluginPath = join(this.opts.openrigPluginsDir, entry);
@@ -218,7 +204,7 @@ export class PluginDiscoveryService {
       }
     }
 
-    // 2. Claude Code cache: ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/
+    // 2. Claude Code 缓存：~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/
     if (existsSync(this.opts.claudeCacheDir)) {
       for (const marketplace of safeReaddir(this.opts.claudeCacheDir)) {
         const marketplacePath = join(this.opts.claudeCacheDir, marketplace);
@@ -238,7 +224,7 @@ export class PluginDiscoveryService {
       }
     }
 
-    // 3. Codex cache: ~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/
+    // 3. Codex 缓存：~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/
     if (existsSync(this.opts.codexCacheDir)) {
       for (const marketplace of safeReaddir(this.opts.codexCacheDir)) {
         const marketplacePath = join(this.opts.codexCacheDir, marketplace);
@@ -258,11 +244,9 @@ export class PluginDiscoveryService {
       }
     }
 
-    // 4. Slice 3.3 fix-C — rig-bundled cwd plugin roots.
-    // Per-call opts override constructor opts; effective cwd set is the
-    // union when both are present (per-call wins by replacement, NOT
-    // append-to-constructor, because the API layer's ?cwd=<path> intent
-    // is "ALL plugins this specific rig sees" — predictable + cacheable).
+    // 4. Slice 3.3 fix-C —— 工作组随 cwd 提供的插件根目录。
+    // 逐调用选项覆盖构造选项；若两者都存在，以逐调用值直接替换而非追加，因为 API
+    // 层 ?cwd=<path> 的意图是“此特定工作组可见的所有插件”，结果需可预测且可缓存。
     const effectiveCwds = filterOpts.cwdScanRoots ?? this.opts.cwdScanRoots ?? [];
     for (const cwd of effectiveCwds) {
       this.scanCwdBundledPlugins(cwd, out);
@@ -278,11 +262,9 @@ export class PluginDiscoveryService {
     return filtered;
   }
 
-  // Slice 3.3 fix-C — scan a single rig cwd for `.claude/plugins/*` +
-  // `.codex/plugins/*` bundles. Emits one PluginEntry per discovered
-  // plugin manifest (matches the same detection rule as the other
-  // source roots: presence of `.claude-plugin/plugin.json` and/or
-  // `.codex-plugin/plugin.json` inside the plugin folder).
+  // Slice 3.3 修复 C——扫描单个工作组 cwd 中的 `.claude/plugins/*` 和
+  // `.codex/plugins/*` 包。每发现一份插件清单就输出一个 PluginEntry；检测规则与其他来源根
+  // 相同，即插件目录内存在 `.claude-plugin/plugin.json` 和/或 `.codex-plugin/plugin.json`。
   private scanCwdBundledPlugins(cwd: string, out: PluginEntry[]): void {
     if (!existsSync(cwd)) return;
     const claudePluginsDir = join(cwd, ".claude", "plugins");
@@ -310,13 +292,11 @@ export class PluginDiscoveryService {
   }
 
   getPlugin(id: string): PluginDetail | null {
-    // Slice 3.3 fix-iteration — rig-cwd: IDs are self-resolvable.
-    // Pre-fix, getPlugin called this.listPlugins() (no opts), which
-    // excluded rig-cwd entries because cwdScanRoots is empty by default.
-    // Result: /api/plugins?cwd= returned a rig-cwd id, /api/plugins/:id
-    // 404'd on the same id (redo-guard-2 BLOCK item 1). Fix: parse the
-    // cwd out of the rig-cwd: prefix and pass it as cwdScanRoots so
-    // the entry is in the list. ID format constructed in
+    // Slice 3.3 修复迭代——rig-cwd: ID 可自行解析。修复前 getPlugin 调用不带选项的
+    // this.listPlugins()；由于 cwdScanRoots 默认为空，它会排除 rig-cwd 条目。结果是
+    // /api/plugins?cwd= 返回 rig-cwd ID，而 /api/plugins/:id 对同一 ID 返回 404。
+    // 修复方式：从 rig-cwd: 前缀解析 cwd，并作为 cwdScanRoots 传入，使条目出现在
+    // 列表中。ID 格式由以下位置构造：
     // scanCwdBundledPlugins:
     //   rig-cwd:<cwd>/.claude/plugins/<plugin>
     //   rig-cwd:<cwd>/.codex/plugins/<plugin>
@@ -362,7 +342,7 @@ export class PluginDiscoveryService {
       }
     }
 
-    // Slice 3.3 fix-A — MCP server discovery from each runtime's manifest.
+    // Slice 3.3 fix-A —— 从各运行时清单发现 MCP 服务器。
     const mcpServers: PluginMcpServerSummary[] = [
       ...readMcpServers(claudeManifest, "claude"),
       ...readMcpServers(codexManifest, "codex"),
@@ -391,15 +371,12 @@ export class PluginDiscoveryService {
     return refs;
   }
 
-  // -- helpers --
+  // -- 辅助函数 --
 
   /**
-   * Before openrig-core became the sole refocus provider, openrig-lab shipped
-   * the same registrations. Upgrade installs can retain that old lab plugin,
-   * so remove only its refocus commands before validating unknown conflicts.
-   * The hook registry is written first: an interrupted migration therefore
-   * leaves the obsolete provider disabled even if its manifest still points
-   * at the now-empty registry.
+   * openrig-core 成为唯一 refocus 提供方前，openrig-lab 曾提供相同登记。升级安装
+   * 可能保留旧 lab 插件，因此验证未知冲突前只移除其中的 refocus 命令。先写 hook
+   * 注册表：即使迁移中断，过时提供方仍保持禁用，哪怕其清单仍指向现已清空的注册表。
    */
   private retireObsoleteLabRefocusHooks(): void {
     const pluginPath = join(this.opts.openrigPluginsDir, OBSOLETE_LAB_PLUGIN_ID);
@@ -426,10 +403,9 @@ export class PluginDiscoveryService {
   }
 
   /**
-   * Runtime plugin loaders activate every vendored manifest, so the same hook
-   * registered by two plugins fires twice. Reject that load shape before the
-   * discovery service can describe it as healthy. Cache entries are excluded:
-   * multiple cached versions are inventory, not simultaneous providers.
+   * 运行时插件加载器会激活每份内置清单，因此两个插件登记同一 hook 会触发两次。
+   * 在发现服务将这种加载结构描述为健康前先拒绝它。缓存条目不参与判断：多个缓存
+   * 版本只是清单库存，不是同时运行的提供方。
    */
   private assertNoDuplicateVendoredHooks(): void {
     if (!existsSync(this.opts.openrigPluginsDir)) return;
@@ -479,7 +455,7 @@ export class PluginDiscoveryService {
     if (hasClaude) runtimes.push("claude");
     if (hasCodex) runtimes.push("codex");
 
-    // Read the first available manifest for name/version/description.
+    // 读取第一份可用清单以获取名称、版本和描述。
     const primaryManifestPath = hasClaude ? claudeManifestPath : codexManifestPath;
     const manifest = readManifest(primaryManifestPath);
     if (!manifest) return null;
@@ -497,11 +473,9 @@ export class PluginDiscoveryService {
       lastSeenAt = null;
     }
 
-    // Slice 28 — skillCount: count subdirectories under <plugin>/skills/.
-    // Matches the detail-side enumeration in getPlugin() which also
-    // collects subdirs under that path (no .md filtering at this level
-    // — every shipped skill folder counts, whether or not it has
-    // landed a SKILL.md yet).
+    // Slice 28 —— skillCount：统计 <plugin>/skills/ 下的子目录。与 getPlugin()
+    // 详情侧枚举一致，后者也会收集该路径下的子目录。此层不按 .md 过滤；每个随包
+    // 技能目录都计数，无论是否已经包含 SKILL.md。
     let skillCount = 0;
     const skillsDir = join(pluginPath, "skills");
     if (existsSync(skillsDir)) {
@@ -525,13 +499,10 @@ export class PluginDiscoveryService {
   }
 }
 
-// Slice 3.3 fix-iteration — parse cwd from a rig-cwd: id so getPlugin
-// can re-scan that cwd before the lookup. Returns the cwd in a
-// single-element array (caller passes as cwdScanRoots) or null when
-// the id is not a rig-cwd: id, can't be parsed, or both manifest dir
-// markers are absent. Tolerant of both `/.claude/plugins/` and
-// `/.codex/plugins/` markers (whichever appears first wins; in the
-// canonical id one of them is always present).
+// Slice 3.3 修复迭代——从 rig-cwd: ID 解析 cwd，使 getPlugin 可在查找前重新扫描该
+// cwd。以单元素数组返回 cwd（调用方将其作为 cwdScanRoots 传入）；ID 不是 rig-cwd:
+// 形式、无法解析或两种清单目录标记均缺失时返回 null。同时容忍
+// `/.claude/plugins/` 和 `/.codex/plugins/`，先出现者优先；规范 ID 中必有其一。
 const RIG_CWD_PREFIX = "rig-cwd:";
 const CLAUDE_MARKER = "/.claude/plugins/";
 const CODEX_MARKER = "/.codex/plugins/";
@@ -584,10 +555,10 @@ function readManifest(manifestPath: string): PluginManifestSummary | null {
   }
 }
 
-// Slice 3.3 fix-A — read MCP server declarations from a manifest's
-// `mcpServers` field. The Claude/Codex plugin spec convention is
-// mcpServers: { <name>: { command, args, transport, ... } }. We
-// surface the names + best-effort command/transport for the UI.
+// Slice 3.3 fix-A —— 从清单的 `mcpServers` 字段读取 MCP 服务器声明。Claude/Codex
+// 插件规范约定为
+// mcpServers: { <name>: { command, args, transport, ... } }。向 UI 呈现名称，并尽力提供
+// command/transport。
 function readMcpServers(
   manifest: PluginManifestSummary | null,
   runtime: PluginRuntime,
@@ -620,7 +591,7 @@ function extractHookEvents(hooksJsonPath: string): string[] {
       return Object.keys(data.hooks);
     }
   } catch {
-    // best-effort
+      // 尽力而为。
   }
   return [];
 }
@@ -757,7 +728,7 @@ function walkAgentYamls(rootDir: string): AgentYamlCandidate[] {
           const content = readFileSync(p, "utf8");
           out.push({ path: p, content });
         } catch {
-          // best-effort; skip unreadable files
+          // 尽力而为；跳过不可读文件。
         }
       }
     }
@@ -789,7 +760,7 @@ function readResourcesPlugins(spec: unknown): string[] {
     if (p && typeof p === "object" && typeof (p as Record<string, unknown>).id === "string") {
       ids.push((p as Record<string, unknown>).id as string);
     } else if (typeof p === "string") {
-      // tolerate shorthand string form for forward-compat
+      // 为向前兼容而容忍简写字符串形式。
       ids.push(p);
     }
   }

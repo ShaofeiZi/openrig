@@ -1,5 +1,4 @@
-// Rig Context / Composable Context Injection v0 (PL-014) — daemon
-// HTTP route tests.
+// Rig Context / Composable Context Injection v0（PL-014）——daemon HTTP 路由测试。
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
@@ -34,7 +33,7 @@ function writePack(root: string, name: string, manifest: string, files: Record<s
   }
 }
 
-describe("context-packs routes (PL-014)", () => {
+describe("context-packs 路由（PL-014）", () => {
   let tmp: string;
   let libRoot: string;
   let lib: ContextPackLibraryService;
@@ -64,13 +63,13 @@ describe("context-packs routes (PL-014)", () => {
     return app;
   }
 
-  it("GET /library returns 503 when service is not wired", async () => {
+  it("service 未接线时 GET /library 返回 503", async () => {
     const app = buildApp({ withLib: false });
     const res = await app.request("/api/context-packs/library");
     expect(res.status).toBe(503);
   });
 
-  it("GET /library returns the indexed packs", async () => {
+  it("GET /library 返回已索引的 pack", async () => {
     writePack(libRoot, "smoke", `
 name: smoke
 version: 1
@@ -89,7 +88,7 @@ files:
     expect(body[0]!.name).toBe("smoke");
   });
 
-  it("POST /library/sync re-indexes and returns the count + entries", async () => {
+  it("POST /library/sync 重新索引并返回 count + entry", async () => {
     writePack(libRoot, "p1", `
 name: p1
 version: 1
@@ -106,7 +105,7 @@ files:
     expect(body.entries[0]!.name).toBe("p1");
   });
 
-  it("POST /library/compose writes an ordered durable ref without requiring or calling transport", async () => {
+  it("POST /library/compose 写入有序 durable ref，无需或不调用 transport", async () => {
     const a = join(tmp, "a.md");
     const b = join(tmp, "b.md");
     writeFileSync(a, "A\n");
@@ -125,13 +124,13 @@ files:
     expect(body.ref).toBe("packs/qitem-brief");
     expect(body.entry.relativePath).toBe("packs/qitem-brief");
     expect(body.text).toBe("A\n\n\nB");
-    expect(body.text).not.toContain("# OpenRig Context Pack:");
-    expect(body.text).not.toContain("## File:");
+    expect(body.text).not.toContain("# zrig 上下文包：");
+    expect(body.text).not.toContain("## 文件：");
     expect(lib.getByRef("packs/qitem-brief")).not.toBeNull();
     expect(transport.calls).toEqual([]);
   });
 
-  it("POST /library/compose returns a structured unsafe_ref and performs no write", async () => {
+  it("POST /library/compose 返回结构化 unsafe_ref，且不写入", async () => {
     const a = join(tmp, "a.md");
     writeFileSync(a, "A");
     const app = buildApp({ withTransport: false });
@@ -143,12 +142,12 @@ files:
     expect(res.status).toBe(400);
     const body = await res.json() as { error: string; message: string };
     expect(body.error).toBe("unsafe_ref");
-    expect(body.message).toMatch(/unsafe pack ref/);
+    expect(body.message).toMatch(/不安全的 pack ref/);
     expect(existsSync(join(tmp, "escape"))).toBe(false);
     expect(transport.calls).toEqual([]);
   });
 
-  it("POST /library/compose returns the exact missing_files envelope", async () => {
+  it("POST /library/compose 返回精确 missing_files envelope", async () => {
     const missing = join(tmp, "absent.md");
     const app = buildApp({ withTransport: false });
     const res = await app.request("/api/context-packs/library/compose", {
@@ -162,14 +161,14 @@ files:
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({
       error: "missing_files",
-      message: `context composition source file(s) not found: ${missing}`,
+      message: `找不到 context 组合源文件：${missing}`,
       missingFiles: [missing],
     });
     expect(existsSync(join(libRoot, "packs", "missing"))).toBe(false);
     expect(transport.calls).toEqual([]);
   });
 
-  it("POST /library/compose returns missing_files for an empty source list", async () => {
+  it("POST /library/compose 对空 source list 返回 missing_files", async () => {
     const app = buildApp({ withTransport: false });
     const res = await app.request("/api/context-packs/library/compose", {
       method: "POST",
@@ -179,7 +178,7 @@ files:
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({
       error: "missing_files",
-      message: "context composition requires at least one --from file",
+      message: "context 组合至少需要一个 --from 文件",
       missingFiles: [],
     });
     expect(existsSync(join(libRoot, "packs", "empty"))).toBe(false);
@@ -187,7 +186,7 @@ files:
   });
 
   it.each([null, 7, []])(
-    "POST /library/compose rejects malformed source member %j with the structured 400 envelope",
+    "POST /library/compose 以结构化 400 envelope 拒绝格式错误的 source member %j",
     async (sourceMember) => {
       const app = buildApp({ withTransport: false });
       const res = await app.request("/api/context-packs/library/compose", {
@@ -198,16 +197,16 @@ files:
       expect(res.status).toBe(400);
       expect(await res.json()).toEqual({
         error: "invalid_compose_request",
-        message: "body must include { outRef, sources: [{ path, label }, ...] }",
+        message: "body 必须包含 { outRef, sources: [{ path, label }, ...] }",
       });
       expect(existsSync(join(libRoot, "packs", "malformed"))).toBe(false);
       expect(transport.calls).toEqual([]);
     },
   );
 
-  // Slice-03 Atom 5 — DEAD PATH: the colon-id `/library/:id[/preview|/send]`
-  // routes are removed. A pack still resolves by ref; the legacy addressing 404s.
-  it("colon-id /library/:id[/preview|/send] routes are removed → 404; by-ref still resolves", async () => {
+  // Slice-03 Atom 5——死路径：已移除 colon-id `/library/:id[/preview|/send]` 路由。
+  // pack 仍可按 ref 解析；legacy addressing 返回 404。
+  it("colon-id /library/:id[/preview|/send] 路由已移除 → 404；by-ref 仍可解析", async () => {
     writePack(libRoot, "p1", `
 name: p1
 version: 1
@@ -227,11 +226,11 @@ files:
       body: JSON.stringify({ destinationSession: "x@rig" }),
     });
     expect(send.status).toBe(404);
-    // ref-primary resolution is intact
+    // ref-primary 解析保持完好
     expect((await app.request(`/api/context-packs/library/by-ref?ref=${encodeURIComponent("p1")}`)).status).toBe(200);
   });
 
-  it("GET /library/by-ref/preview returns the assembled bundle", async () => {
+  it("GET /library/by-ref/preview 返回组合后的 bundle", async () => {
     writePack(libRoot, "preview-pack", `
 name: preview-pack
 version: 1
@@ -247,20 +246,20 @@ files:
     expect(res.status).toBe(200);
     const body = await res.json() as { id: string; bundleText: string; bundleBytes: number; missingFiles: unknown[] };
     expect(body.id).toBe("context-pack:preview-pack");
-    expect(body.bundleText).toContain("# OpenRig Context Pack: preview-pack v1");
+    expect(body.bundleText).toContain("# zrig 上下文包：preview-pack v1");
     expect(body.bundleText).toContain("BODY-A");
     expect(body.bundleBytes).toBeGreaterThan(0);
     expect(body.missingFiles).toEqual([]);
   });
 
-  it("GET /library/by-ref/preview 404s an absent ref, 400s an unsafe ref, 400s a missing ref", async () => {
+  it("GET /library/by-ref/preview 对缺失 ref 返回 404，对不安全/未提供 ref 返回 400", async () => {
     const app = buildApp();
     expect((await app.request(`/api/context-packs/library/by-ref/preview?ref=${encodeURIComponent("packs/absent")}`)).status).toBe(404);
     expect((await app.request(`/api/context-packs/library/by-ref/preview?ref=${encodeURIComponent("../escape")}`)).status).toBe(400);
     expect((await app.request(`/api/context-packs/library/by-ref/preview`)).status).toBe(400);
   });
 
-  it("is delivery-free: no send route, SessionTransport import, or transport call", async () => {
+  it("无 delivery：没有 send route、SessionTransport import 或 transport call", async () => {
     const app = buildApp();
     const response = await app.request(`/api/context-packs/library/by-ref/send?ref=${encodeURIComponent("dry")}`, {
       method: "POST",
@@ -274,10 +273,9 @@ files:
     expect(source).not.toMatch(/router\.post\([^\n]*\/send/);
   });
 
-  // Slice-03 ATOM 4 — the path-like-ref resolution/deletion surface. Refs carry
-  // '/', so they travel as a `?ref=` query (never a `:id` path segment). Both
-  // verbs flow through the sealed getByRef/removeByRef boundary.
-  it("GET /library/by-ref resolves a pack by its path-like ref (getByRef-backed)", async () => {
+  // Slice-03 ATOM 4——path-like-ref 解析/删除 surface。ref 包含 '/'，因此作为 `?ref=` query
+  // 传递（绝不作为 `:id` path segment）。两个操作都经过封闭的 getByRef/removeByRef boundary。
+  it("GET /library/by-ref 按 path-like ref 解析 pack（由 getByRef 支撑）", async () => {
     writePack(libRoot, join("packs", "smoke"), `
 name: smoke
 version: 1
@@ -296,22 +294,22 @@ files:
     expect(body.relativePath).toBe("packs/smoke");
   });
 
-  it("GET /library/by-ref returns a structured 400 unsafe_ref for a traversal ref", async () => {
+  it("GET /library/by-ref 对 traversal ref 返回结构化 400 unsafe_ref", async () => {
     const app = buildApp();
     const res = await app.request(`/api/context-packs/library/by-ref?ref=${encodeURIComponent("../escape")}`);
     expect(res.status).toBe(400);
     const body = await res.json() as { error: string; message: string };
     expect(body.error).toBe("unsafe_ref");
-    expect(body.message).toMatch(/unsafe pack ref/);
+    expect(body.message).toMatch(/不安全的 pack ref/);
   });
 
-  it("GET /library/by-ref returns 404 for a safe-but-absent ref", async () => {
+  it("GET /library/by-ref 对安全但不存在的 ref 返回 404", async () => {
     const app = buildApp();
     const res = await app.request(`/api/context-packs/library/by-ref?ref=${encodeURIComponent("packs/absent")}`);
     expect(res.status).toBe(404);
   });
 
-  it("GET /library/by-ref returns 400 when the ref query is missing", async () => {
+  it("GET /library/by-ref 缺少 ref query 时返回 400", async () => {
     const app = buildApp();
     const res = await app.request("/api/context-packs/library/by-ref");
     expect(res.status).toBe(400);
@@ -319,7 +317,7 @@ files:
     expect(body.error).toBe("ref_required");
   });
 
-  it("DELETE /library/by-ref removes a pack; the ref stops resolving", async () => {
+  it("DELETE /library/by-ref 删除 pack；随后无法解析该 ref", async () => {
     writePack(libRoot, join("packs", "smoke"), `
 name: smoke
 version: 1
@@ -340,7 +338,7 @@ files:
     expect(existsSync(join(libRoot, "packs", "smoke"))).toBe(false);
   });
 
-  it("DELETE /library/by-ref returns a structured 400 unsafe_ref with no mutation", async () => {
+  it("DELETE /library/by-ref 返回结构化 400 unsafe_ref，且不作修改", async () => {
     writePack(libRoot, join("packs", "keep"), `
 name: keep
 version: 1
@@ -359,7 +357,7 @@ files:
     expect(existsSync(join(libRoot, "packs", "keep"))).toBe(true);
   });
 
-  it("DELETE /library/by-ref returns 404 pack_not_found for a safe-but-absent ref", async () => {
+  it("DELETE /library/by-ref 对安全但不存在的 ref 返回 404 pack_not_found", async () => {
     const app = buildApp();
     const res = await app.request(`/api/context-packs/library/by-ref?ref=${encodeURIComponent("packs/absent")}`, { method: "DELETE" });
     expect(res.status).toBe(404);
@@ -367,7 +365,7 @@ files:
     expect(body.error).toBe("pack_not_found");
   });
 
-  it("DELETE /library/by-ref returns 403 pack_not_removable for a shipped builtin pack", async () => {
+  it("DELETE /library/by-ref 对已交付的 builtin pack 返回 403 pack_not_removable", async () => {
     const builtinRoot = join(tmp, "builtin");
     writePack(builtinRoot, join("packs", "shipped"), `
 name: shipped
@@ -389,8 +387,8 @@ files:
     expect(existsSync(join(builtinRoot, "packs", "shipped"))).toBe(true);
   });
 
-  // Slice-03 Atom 6 (rig walk) — ordered per-member contents for paced delivery.
-  it("GET /library/by-ref/pieces returns ordered member contents + reports missing members", async () => {
+  // Slice-03 Atom 6（zrig walk）——供 paced delivery 使用的有序逐 member 内容。
+  it("GET /library/by-ref/pieces 返回有序 member 内容，并报告缺失 member", async () => {
     writePack(libRoot, join("packs", "walkme"), `
 name: walkme
 version: 1
@@ -412,12 +410,12 @@ files:
     expect(body.pieces.map((p) => p.path)).toEqual(["intro.md", "steps.md"]);
     expect(body.pieces.map((p) => p.content)).toEqual(["INTRO-BODY", "STEPS-BODY"]);
     expect(body.missingFiles.map((m) => m.path)).toEqual(["gone.md"]);
-    // Atom 6b: `text` = whole plain content (present members joined by the compose separator "\n\n").
+    // Atom 6b：`text` = 完整 plain content（以 compose separator "\n\n" 连接存在的 member）。
     expect(body.text).toBe("INTRO-BODY\n\nSTEPS-BODY");
     expect(body.bytes).toBe(Buffer.byteLength("INTRO-BODY\n\nSTEPS-BODY"));
   });
 
-  it("GET /library/by-ref/pieces 404s an absent ref, 400s an unsafe ref, 400s a missing ref", async () => {
+  it("GET /library/by-ref/pieces 对缺失 ref 返回 404，对不安全/未提供 ref 返回 400", async () => {
     const app = buildApp();
     expect((await app.request(`/api/context-packs/library/by-ref/pieces?ref=${encodeURIComponent("packs/absent")}`)).status).toBe(404);
     expect((await app.request(`/api/context-packs/library/by-ref/pieces?ref=${encodeURIComponent("../escape")}`)).status).toBe(400);

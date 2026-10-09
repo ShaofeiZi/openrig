@@ -42,9 +42,9 @@ type WakeResolution =
   | { resolved: true; token: string; runtime: "claude" | "codex"; sessionId: number }
   | { resolved: false; reason: string; known: CliKnownTenure[] };
 
-/** Parse a --wake seat target with an optional trailing @<generation>. A seat is
- *  `member@rig` (one @); `member@rig@2` means generation 2. Only a purely-numeric
- *  final @-segment is treated as the generation. */
+/** 解析 --wake 的席位目标，末尾可带 @<generation>。席位写作
+ *  `member@rig`（一个 @）；`member@rig@2` 表示第 2 代。只有末尾纯数字的
+ *  @ 段才被视为代次。 */
 function parseSeatGen(target: string): { seat: string; generation?: number } {
   const parts = target.split("@");
   const last = parts[parts.length - 1]!;
@@ -76,41 +76,40 @@ interface AskCommandDeps extends StatusDeps {
 
 export function askCommand(depsOverride?: StatusDeps): Command {
   const cmd = new Command("ask")
-    .description("Search rig transcript history with a natural language question")
-    .argument("<rig>", "Rig name to search")
-    .argument("<question>", "Question to search for in transcripts")
-    .option("--json", "JSON output for agents")
-    .option("--seat <session-name>", "Scope the search to ONE seat's transcript across every generation that sat in it (cross-generation archaeology)")
-    .option("--session <token>", "Search ONE specific session's JSONL by its session token (read-only)")
-    .option("--wake <seat[@gen]|token>", "EXECUTES: wake a session (by seat[@generation] or raw resume token) — ask one question, get a snapshot answer, back to cold (runtime cost; explicit, never an implicit escalation from a search)")
-    .option("--runtime <runtime>", "runtime for --wake: claude (default) or codex")
-    .option("--wake-timeout <seconds>", "bounded wake timeout in seconds (default 180)")
+    .description("用自然语言问题检索工作组历史转录")
+    .argument("<rig>", "要检索的工作组名")
+    .argument("<question>", "要在转录中检索的问题")
+    .option("--json", "供智能体使用的 JSON 输出")
+    .option("--seat <session-name>", "把检索限定到某一个席位在历任代次中的转录（跨代考古）")
+    .option("--session <token>", "按会话 token 检索某一个会话的 JSONL（只读）")
+    .option("--wake <seat[@gen]|token>", "会执行操作：唤醒会话（按 seat[@代次] 或原始 resume token）——问一个问题、得到快照回答后回到冷态（有运行时开销；显式触发，绝不从检索隐式升级）")
+    .option("--runtime <runtime>", "--wake 使用的运行时：claude（默认）或 codex")
+    .option("--wake-timeout <seconds>", "唤醒超时上限（秒，默认 180）")
     .addHelpText("after", `
-rig ask is one verb for information about the PAST, three ways to reach it:
-  1. rig ask <rig> "<q>"                    search the whole rig's transcripts
-  2. rig ask <rig> "<q>" --seat <seat>      scope to ONE seat, across every
-                                            generation that sat in it (L1, read-only)
-  3. rig ask <rig> "<q>" --session <token>  search ONE session's JSONL by
-                                            token — "I have the token, find it" (L2, read-only)
-  4. rig ask <rig> "<q>" --wake <seat[@gen]|token>
-                                            WAKE that session (by seat[@generation]
-                                            or raw token), ask, get a snapshot
-                                            answer, back to cold (L3, EXECUTES)
+zrig ask 是面向"过去信息"的单一动词，有三种到达方式：
+  1. zrig ask <rig> "<q>"                    检索整个工作组的转录
+  2. zrig ask <rig> "<q>" --seat <seat>      限定到某一个席位在历任
+                                            代次中的转录（L1，只读）
+  3. zrig ask <rig> "<q>" --session <token>  按 token 检索某一个会话的
+                                            JSONL——"我有 token，找到它"（L2，只读）
+  4. zrig ask <rig> "<q>" --wake <seat[@gen]|token>
+                                            唤醒该会话（按 seat[@代次]
+                                            或原始 token），提问、得到快照
+                                            回答后回到冷态（L3，会执行）
 
-Levels 1-2 are read-only archaeology (cheap, safe). Level 3 (--wake) EXECUTES an
-agent — the only level with runtime cost. The answer is snapshot testimony:
-checked, not believed.
+L1-2 是只读考古（便宜、安全）。L3（--wake）会执行一个智能体——是唯一有运行时
+开销的级别。回答是快照证词：经过核查，而非照单全信。
 
-Examples:
-  rig ask my-rig "what decisions were made about deployment?"
-  rig ask my-rig "what did we decide" --seat dev-planner@my-rig
-  rig ask my-rig "SECRET_MARKER" --session 3f2a-...-9c1
-  rig ask my-rig "summarize the gateway plan" --wake 3f2a-...-9c1
+示例：
+  zrig ask my-rig "部署相关做了哪些决策？"
+  zrig ask my-rig "我们决定了什么" --seat dev-planner@my-rig
+  zrig ask my-rig "SECRET_MARKER" --session 3f2a-...-9c1
+  zrig ask my-rig "总结网关计划" --wake 3f2a-...-9c1
 
-Exit codes:
-  0  Success
-  1  Daemon not running
-  2  Failed to fetch data from daemon (or wake timed out)`);
+退出码：
+  0  成功
+  1  后台服务未运行
+  2  从后台服务获取数据失败（或唤醒超时）`);
 
   const getDeps = (): AskCommandDeps => (depsOverride as AskCommandDeps | undefined) ?? {
     lifecycleDeps: realDeps(),
@@ -120,10 +119,10 @@ Exit codes:
   cmd.action(async (rig: string, question: string, opts: { json?: boolean; seat?: string; session?: string; wake?: string; runtime?: string; wakeTimeout?: string }) => {
     const deps = getDeps();
 
-    // L3 — WAKE: EXECUTES the runtime headless. A raw token wakes CLI-locally; a
-    // seat[@gen] target is resolved to a token via the daemon first. Explicit
-    // --wake only — never an implicit escalation from a failed L1/L2 search, and
-    // an unresolvable seat REFUSES with teaching (never a guessed wake).
+    // L3 — WAKE：会无头执行运行时。原始 token 在 CLI 本地唤醒；
+    // seat[@代次] 目标先经后台服务解析为 token。仅显式 --wake——
+    // 绝不从失败的 L1/L2 检索隐式升级；无法解析的席位会带提示拒绝
+    // （绝不猜测唤醒）。
     if (opts.wake) {
       const target = opts.wake;
       const timeoutMs = opts.wakeTimeout ? Math.max(1, Number(opts.wakeTimeout)) * 1000 : undefined;
@@ -133,17 +132,17 @@ Exit codes:
 
       if (target.includes("@")) {
         const status = await getDaemonStatus(deps.lifecycleDeps);
-        // B8-1b chokepoint (missed-site fix): the shared guard renders the epistemic
-        // 3-part; the wake-specific escape hatch rides as a supplementary tip.
+        // B8-1b 关键节点（missed-site 修复）：共享守卫渲染认知三段式；
+        // 唤醒专属的兜底提示作为补充 tip 出现。
         if (!daemonStatusGuard(status)) {
-          console.error("  tip: seat resolution needs the daemon — or pass a raw session token to --wake.");
+          console.error("  提示：席位解析需要后台服务——或给 --wake 传原始会话 token。");
           return;
         }
         const client = deps.clientFactory(getDaemonUrl(status));
         const { seat, generation } = parseSeatGen(target);
         const res = await client.post<WakeResolution>("/api/wake-resolve", { seat, generation });
         if (res.status >= 400) {
-          console.error(`Failed to resolve seat (HTTP ${res.status}). Check daemon status with: rig status`);
+          console.error(`席位解析失败（HTTP ${res.status}）。用 zrig status 检查后台服务状态。`);
           process.exitCode = 2;
           return;
         }
@@ -151,9 +150,9 @@ Exit codes:
         if (!resolution.resolved) {
           console.error(resolution.reason);
           if (resolution.known && resolution.known.length > 0) {
-            console.error("Known tenures for this seat (newest first):");
+            console.error("该席位的已知任职记录（最新在前）：");
             for (const t of resolution.known) {
-              console.error(`  gen ${t.generation}: session ${t.sessionId}${t.tokenPresent ? "" : " (no resume token)"}  ${t.createdAt}`);
+              console.error(`  第 ${t.generation} 代：会话 ${t.sessionId}${t.tokenPresent ? "" : "（无 resume token）"}  ${t.createdAt}`);
             }
           }
           process.exitCode = 2;
@@ -178,9 +177,9 @@ Exit codes:
         process.exitCode = 2;
         return;
       }
-      console.log(`Woke ${runtime} session ${target} — snapshot answer (checked, not believed):`);
+      console.log(`已唤醒 ${runtime} 会话 ${target}——快照回答（经过核查，而非照单全信）：`);
       console.log("");
-      console.log(outcome.answer && outcome.answer.length > 0 ? outcome.answer : "(no answer returned)");
+      console.log(outcome.answer && outcome.answer.length > 0 ? outcome.answer : "（未返回回答）");
       return;
     }
 
@@ -199,7 +198,7 @@ Exit codes:
     });
 
     if (res.status >= 400) {
-      console.error(`Failed to query rig (HTTP ${res.status}). Check daemon status with: rig status`);
+      console.error(`查询工作组失败（HTTP ${res.status}）。用 zrig status 检查后台服务状态。`);
       process.exitCode = 2;
       return;
     }
@@ -211,32 +210,32 @@ Exit codes:
       return;
     }
 
-    // Human-readable output
-    console.log(`Question: ${result.question}`);
+    // 人类可读输出
+    console.log(`问题：${result.question}`);
     console.log("");
 
     if (result.rig) {
-      console.log(`Rig: ${result.rig.name}  [${result.rig.status}]  ${result.rig.runningCount}/${result.rig.nodeCount} nodes  uptime: ${result.rig.uptime ?? "—"}`);
+      console.log(`工作组：${result.rig.name}  [${result.rig.status}]  ${result.rig.runningCount}/${result.rig.nodeCount} 个节点  运行时长：${result.rig.uptime ?? "—"}`);
     } else {
-      console.log(`Rig: ${rig}  [not found]`);
+      console.log(`工作组：${rig}  [未找到]`);
     }
 
     if (result.seat) {
-      console.log(`Seat: ${result.seat.name}  (${result.seat.generations} generation(s) searched)`);
+      console.log(`席位：${result.seat.name}（已检索 ${result.seat.generations} 代）`);
       if (result.seat.advisory) {
         console.log(`  ⚠ ${result.seat.advisory}`);
       }
     }
 
     if (result.session) {
-      const loc = result.session.found ? (result.session.path ?? "found") : "not found";
-      console.log(`Session: ${result.session.token}  [${loc}]`);
+      const loc = result.session.found ? (result.session.path ?? "已找到") : "未找到";
+      console.log(`会话：${result.session.token}  [${loc}]`);
       if (result.session.advisory) {
         console.log(`  ⚠ ${result.session.advisory}`);
       }
     }
 
-    console.log(`Search: ${result.evidence.backend}`);
+    console.log(`检索后端：${result.evidence.backend}`);
     console.log("");
 
     if (result.guidance) {
@@ -246,8 +245,8 @@ Exit codes:
 
     if (result.evidence.excerpts.length > 0) {
       const heading = result.evidence.backend === "structured"
-        ? `Structured Answer (${result.evidence.excerpts.length} items):`
-        : `Transcript Evidence (${result.evidence.excerpts.length} matches):`;
+        ? `结构化回答（${result.evidence.excerpts.length} 条）：`
+        : `转录证据（${result.evidence.excerpts.length} 处匹配）：`;
       console.log(heading);
       for (const excerpt of result.evidence.excerpts) {
         console.log(`  - ${excerpt}`);
@@ -258,7 +257,7 @@ Exit codes:
       if (result.evidence.excerpts.length > 0) {
         console.log("");
       }
-      console.log(`Chat Evidence (${result.evidence.chatExcerpts.length} matches):`);
+      console.log(`聊天证据（${result.evidence.chatExcerpts.length} 处匹配）：`);
       for (const excerpt of result.evidence.chatExcerpts) {
         console.log(`  - ${excerpt}`);
       }
@@ -269,7 +268,7 @@ Exit codes:
       (!result.evidence.chatExcerpts || result.evidence.chatExcerpts.length === 0) &&
       !result.guidance
     ) {
-      console.log("No transcript evidence found.");
+      console.log("未找到转录证据。");
     }
   });
 

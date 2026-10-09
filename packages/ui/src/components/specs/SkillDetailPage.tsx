@@ -44,14 +44,13 @@ export function SkillDetailPage({
   const skillId = librarySkillIdFromToken(skillToken);
   const skill = skillId ? skills.find((entry) => entry.id === skillId) ?? null : null;
 
-  // Relative path within the skill folder. Empty string = skill root.
+  // 技能文件夹内的相对路径。空字符串 = 技能根。
   const [currentPath, setCurrentPath] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [defaultPicked, setDefaultPicked] = useState(false);
 
-  // Resolve fileToken into currentPath + selectedFile once the skill is
-  // available. fileToken's encoded path is relative to skill root post-C4
-  // (e.g., "SKILL.md" or "examples/basic.md").
+  // 技能可用后，把 fileToken 解析为 currentPath + selectedFile。fileToken 的编码路径
+  // 在 C4 之后相对于技能根（例如 "SKILL.md" 或 "examples/basic.md"）。
   useEffect(() => {
     if (!fileToken || !skill) return;
     const requestedRelPath = librarySkillFilePathFromToken(fileToken);
@@ -61,11 +60,10 @@ export function SkillDetailPage({
     setDefaultPicked(true);
   }, [fileToken, skill]);
 
-  // Daemon /api/skills/:id/files/list call (replaces /api/files/list).
+  // 后台服务 /api/skills/:id/files/list 调用（取代 /api/files/list）。
   const list = useSkillFilesList(skill?.id ?? null, currentPath);
 
-  // Auto-select SKILL.md at the skill root on first load (when no fileToken
-  // resolution happened).
+  // 首次加载时在技能根自动选中 SKILL.md（当未发生 fileToken 解析时）。
   useEffect(() => {
     if (defaultPicked) return;
     if (currentPath !== "") return;
@@ -81,8 +79,8 @@ export function SkillDetailPage({
     return (
       <div className="h-full bg-paper-grid px-6 py-5 lg:pl-[var(--workspace-left-offset,0px)] lg:pr-[var(--workspace-right-offset,0px)]">
         <EmptyState
-          label="LOADING SKILL"
-          description="Loading skill files from the daemon skill library."
+          label="正在加载技能"
+          description="正在从后台服务技能库加载技能文件。"
           variant="card"
           testId="skill-detail-loading"
         />
@@ -94,8 +92,8 @@ export function SkillDetailPage({
     return (
       <div className="h-full bg-paper-grid px-6 py-5 lg:pl-[var(--workspace-left-offset,0px)] lg:pr-[var(--workspace-right-offset,0px)]">
         <EmptyState
-          label="SKILL NOT FOUND"
-          description="The selected skill is not discoverable through the daemon skill library."
+          label="未找到技能"
+          description="所选技能无法在后台服务技能库中检索到。"
           variant="card"
           testId="skill-detail-not-found"
         />
@@ -109,7 +107,7 @@ export function SkillDetailPage({
       className="h-full overflow-hidden bg-paper-grid px-6 py-5 lg:pl-[var(--workspace-left-offset,0px)] lg:pr-[var(--workspace-right-offset,0px)]"
     >
       <header className="mb-4">
-        <SectionHeader tone="muted">Skill</SectionHeader>
+        <SectionHeader tone="muted">技能</SectionHeader>
         <div className="mt-1 flex flex-wrap items-baseline gap-3">
           <h1 className="font-headline text-2xl font-bold tracking-tight text-on-surface">
             {skill.name}
@@ -121,8 +119,7 @@ export function SkillDetailPage({
             {skill.source}
           </span>
         </div>
-        {/* Slice 29 HG-4 — surface the absolute on-disk path so operators
-            see where the daemon reads each skill from. */}
+        {/* Slice 29 HG-4——展示磁盘上的绝对路径，使操作者看到后台服务从何处读取每个技能。 */}
         <div
           data-testid="skill-detail-absolute-path"
           className="mt-1 font-mono text-[10px] text-on-surface-variant truncate"
@@ -148,15 +145,15 @@ export function SkillDetailPage({
           />
           {list.isLoading ? (
             <div data-testid="skill-detail-tree-loading" className="p-3 font-mono text-[10px] text-on-surface-variant">
-              Loading…
+              正在加载…
             </div>
           ) : list.isError ? (
             <div data-testid="skill-detail-tree-error" className="p-3 font-mono text-[10px] text-red-600">
-              {(list.error as Error)?.message ?? "Error loading directory."}
+              {(list.error as Error)?.message ?? "加载目录出错。"}
             </div>
           ) : !list.data || list.data.entries.length === 0 ? (
             <div data-testid="skill-detail-tree-empty" className="p-3 font-mono text-[10px] text-on-surface-variant">
-              Empty directory.
+              空目录。
             </div>
           ) : (
             <ul className="p-1">
@@ -206,7 +203,7 @@ export function SkillDetailPage({
         <main data-testid="skill-detail-viewer" className="flex-1 min-w-0 overflow-y-auto bg-surface-lowest">
           {!selectedFile ? (
             <div data-testid="skill-detail-viewer-no-selection" className="p-4 font-mono text-[10px] text-on-surface-variant">
-              Select a file from the tree.
+              请从树中选择一个文件。
             </div>
           ) : (
             <SkillFileContent skillId={skill.id} path={selectedFile} />
@@ -256,14 +253,14 @@ function SkillFileContent({ skillId, path }: { skillId: string; path: string }) 
   if (read.isLoading) {
     return (
       <div data-testid="skill-detail-viewer-loading" className="p-4 font-mono text-[10px] text-on-surface-variant">
-        Loading…
+        正在加载…
       </div>
     );
   }
   if (read.isError) {
     return (
       <div data-testid="skill-detail-viewer-error" className="p-4 font-mono text-[10px] text-red-600">
-        {(read.error as Error)?.message ?? "Error loading file."}
+        {(read.error as Error)?.message ?? "加载文件出错。"}
       </div>
     );
   }
@@ -284,8 +281,8 @@ function SkillFileContent({ skillId, path }: { skillId: string; path: string }) 
             data-testid="skill-detail-viewer-truncated"
             className="mb-3 mx-4 mt-4 border border-amber-400 bg-amber-50 px-3 py-2 font-mono text-[10px] text-amber-900"
           >
-            ⚠ Truncated at {Math.round((read.data.truncatedAtBytes ?? 0) / 1024)} KB — file is{" "}
-            {Math.round((read.data.totalBytes ?? read.data.size) / 1024)} KB total.
+            ⚠ 在 {Math.round((read.data.truncatedAtBytes ?? 0) / 1024)} KB 处截断——文件共{" "}
+            {Math.round((read.data.totalBytes ?? read.data.size) / 1024)} KB。
           </div>
         )}
         {ext === ".md" || ext === ".mdx" ? (

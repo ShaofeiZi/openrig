@@ -24,18 +24,18 @@ function fixture() {
   };
 }
 
-describe("native conversation identity excludes same-process auxiliary threads", () => {
-  it("resolves the first native conversation while title generation is the newest log activity", async () => {
+describe("原生 conversation identity 排除同进程辅助 thread", () => {
+  it("title 生成是最新日志活动时仍解析第一个原生 conversation", async () => {
     const f = fixture(); f.thread("conversation"); f.log("conversation"); f.log("title", start + 2);
     expect(await f.finish().resolve(60422, identity)).toBe("conversation");
   });
 
-  it.each(["no conversation", "unrelated process", "retired pid", "ambiguous start second", "non-CLI thread", "two conversations"])("refuses %s instead of selecting a recent rollout", async kind => {
+  it.each(["无 conversation", "无关进程", "退役 pid", "有歧义的启动秒", "非 CLI thread", "两个 conversation"])("拒绝%s，而不选择最近 rollout", async kind => {
     const f = fixture();
-    if (kind !== "no conversation") f.thread("conversation", kind === "non-CLI thread" ? "exec" : "cli");
-    f.log("conversation", kind === "retired pid" ? start - 1 : kind === "ambiguous start second" ? start : start + 1,
-      kind === "unrelated process" ? 99999 : 60422);
-    if (kind === "two conversations") { f.thread("second"); f.log("second", start + 2); }
+    if (kind !== "无 conversation") f.thread("conversation", kind === "非 CLI thread" ? "exec" : "cli");
+    f.log("conversation", kind === "退役 pid" ? start - 1 : kind === "有歧义的启动秒" ? start : start + 1,
+      kind === "无关进程" ? 99999 : 60422);
+    if (kind === "两个 conversation") { f.thread("second"); f.log("second", start + 2); }
     f.log("title", start + 3);
     expect(await f.finish().resolve(60422, identity)).toBeUndefined();
   });

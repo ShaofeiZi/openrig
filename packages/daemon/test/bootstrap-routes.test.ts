@@ -23,7 +23,7 @@ function getEvents(database: Database.Database): Array<{ type: string; payload: 
   return database.prepare("SELECT type, payload FROM events ORDER BY seq").all() as Array<{ type: string; payload: string }>;
 }
 
-describe("Bootstrap API routes", () => {
+describe("Bootstrap API 路由", () => {
   let db: Database.Database;
   let setup: ReturnType<typeof createTestApp>;
   let app: ReturnType<typeof createTestApp>["app"];
@@ -48,8 +48,8 @@ describe("Bootstrap API routes", () => {
     return specPath;
   }
 
-  // T1: POST /plan -> 200 + plan result
-  it("POST /api/bootstrap/plan returns structured plan", async () => {
+  // T1：POST /plan -> 200 + plan result
+  it("POST /api/bootstrap/plan 返回结构化 plan", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
 
     const res = await app.request("/api/bootstrap/plan", {
@@ -65,8 +65,8 @@ describe("Bootstrap API routes", () => {
     expect(body.stages.length).toBeGreaterThan(0);
   });
 
-  // T2: POST /apply completed -> 201
-  it("POST /api/bootstrap/apply completed returns 201", async () => {
+  // T2：POST /apply completed -> 201
+  it("POST /api/bootstrap/apply 完成时返回 201", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
 
     const res = await app.request("/api/bootstrap/apply", {
@@ -75,18 +75,17 @@ describe("Bootstrap API routes", () => {
       body: JSON.stringify({ sourceRef: specPath, autoApprove: true }),
     });
 
-    // Orchestrator uses mock tmux which may fail instantiation,
-    // but the route should return a structured response
+    // Orchestrator 使用 mock tmux，可能实例化失败，但 route 应返回结构化 response。
     const body = await res.json();
     expect(body.runId).toBeTruthy();
     expect(typeof body.status).toBe("string");
   });
 
-  // T3: GET /:id returns run with actions
-  it("GET /api/bootstrap/:id returns run with actions", async () => {
+  // T3：GET /:id 返回 run 及 action
+  it("GET /api/bootstrap/:id 返回 run 及 action", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
 
-    // Create a run via plan
+    // 通过 plan 创建 run
     const planRes = await app.request("/api/bootstrap/plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -101,11 +100,11 @@ describe("Bootstrap API routes", () => {
     expect(Array.isArray(body.actions)).toBe(true);
   });
 
-  // T4: GET / lists runs
-  it("GET /api/bootstrap lists runs", async () => {
+  // T4：GET / 列出 run
+  it("GET /api/bootstrap 列出 run", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
 
-    // Create a run
+    // 创建 run
     await app.request("/api/bootstrap/plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -119,8 +118,8 @@ describe("Bootstrap API routes", () => {
     expect(body.length).toBeGreaterThanOrEqual(1);
   });
 
-  // T5: Missing sourceRef -> 400
-  it("POST /api/bootstrap/plan with missing sourceRef returns 400", async () => {
+  // T5：缺少 sourceRef -> 400
+  it("POST /api/bootstrap/plan 缺少 sourceRef 时返回 400", async () => {
     const res = await app.request("/api/bootstrap/plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -132,9 +131,9 @@ describe("Bootstrap API routes", () => {
     expect(body.error).toContain("sourceRef");
   });
 
-  // T6: POST /apply with invalid sourceRef -> 400 failed response
-  it("POST /api/bootstrap/apply with invalid sourceRef returns 400", async () => {
-    // Invalid spec that will fail resolution during resolve_spec
+  // T6：POST /apply 使用无效 sourceRef -> 400 failed response
+  it("POST /api/bootstrap/apply 使用无效 sourceRef 时返回 400", async () => {
+    // 无效 spec 会在 resolve_spec 期间解析失败
     const specPath = path.join(tmpDir, "nonexistent.yaml");
 
     const res = await app.request("/api/bootstrap/apply", {
@@ -152,8 +151,8 @@ describe("Bootstrap API routes", () => {
     )).toBe(true);
   });
 
-  // T7: bootstrap.planned event emitted after plan
-  it("POST /api/bootstrap/plan emits bootstrap.planned event", async () => {
+  // T7：plan 后发出 bootstrap.planned event
+  it("POST /api/bootstrap/plan 发出 bootstrap.planned event", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
 
     await app.request("/api/bootstrap/plan", {
@@ -169,8 +168,8 @@ describe("Bootstrap API routes", () => {
     expect(payload.sourceRef).toBe(specPath);
   });
 
-  // T8: bootstrap.started + outcome events emitted after apply
-  it("POST /api/bootstrap/apply emits bootstrap.started event", async () => {
+  // T8：apply 后发出 bootstrap.started + outcome event
+  it("POST /api/bootstrap/apply 发出 bootstrap.started event", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
 
     await app.request("/api/bootstrap/apply", {
@@ -185,15 +184,15 @@ describe("Bootstrap API routes", () => {
     const payload = JSON.parse(startedEvents[0]!.payload);
     expect(payload.runId).toBeTruthy();
 
-    // Should also have a completion/failure event
+    // 还应有 completion/failure event
     const outcomeEvents = events.filter((e) =>
       e.type === "bootstrap.completed" || e.type === "bootstrap.partial" || e.type === "bootstrap.failed"
     );
     expect(outcomeEvents.length).toBe(1);
   });
 
-  // T9: Same-db-handle assertion for bootstrapRepo
-  it("createApp rejects mismatched bootstrapRepo db handle", () => {
+  // T9：bootstrapRepo 的 same-db-handle 断言
+  it("createApp 拒绝不匹配的 bootstrapRepo db handle", () => {
     const db2 = createDb();
     migrate(db2, ALL_MIGRATIONS);
 
@@ -204,8 +203,8 @@ describe("Bootstrap API routes", () => {
     db2.close();
   });
 
-  // T10: createDaemon startup wires bootstrap routes + Phase 5 deps
-  it("createDaemon wires bootstrap routes (GET /api/bootstrap returns 200)", async () => {
+  // T10：createDaemon startup 接入 bootstrap route + Phase 5 依赖
+  it("createDaemon 接入 bootstrap route（GET /api/bootstrap 返回 200）", async () => {
     db.close();
     const { createDaemon } = await import("../src/startup.js");
     const { app: daemonApp, db: daemonDb } = await createDaemon({ dbPath: ":memory:" });
@@ -220,8 +219,8 @@ describe("Bootstrap API routes", () => {
     }
   });
 
-  // T11: Apply sets running status before orchestrator work
-  it("POST /api/bootstrap/apply sets running status on bootstrap run", async () => {
+  // T11：apply 在 orchestrator 工作前设置 running status
+  it("POST /api/bootstrap/apply 在 bootstrap run 上设置 running status", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
 
     const res = await app.request("/api/bootstrap/apply", {
@@ -231,17 +230,16 @@ describe("Bootstrap API routes", () => {
     });
 
     const body = await res.json();
-    // The run should have been set to running then to final status
-    // Verify by checking the started event has the runId
+    // run 应先设为 running，再设为最终 status；通过 started event 带 runId 来验证。
     const startedEvents = getEvents(db).filter((e) => e.type === "bootstrap.started");
     expect(startedEvents.length).toBe(1);
     const startedPayload = JSON.parse(startedEvents[0]!.payload);
     expect(startedPayload.runId).toBe(body.runId);
   });
 
-  // T12: bootstrap.partial event emitted for partial outcomes
-  it("bootstrap.partial event type is valid in event union", () => {
-    // Structural test: the event type exists and can be emitted
+  // T12：partial outcome 发出 bootstrap.partial event
+  it("bootstrap.partial event type 在 event union 中有效", () => {
+    // 结构性测试：event type 存在且可发出
     setup.eventBus.emit({
       type: "bootstrap.partial",
       runId: "test-run",
@@ -257,8 +255,8 @@ describe("Bootstrap API routes", () => {
     expect(payload.failed).toBe(1);
   });
 
-  // T13: Failed plan returns 400 + no bootstrap.planned event (R2-H2)
-  it("POST /api/bootstrap/plan with nonexistent spec returns 400, no bootstrap.planned", async () => {
+  // T13：plan 失败返回 400，且无 bootstrap.planned event（R2-H2）
+  it("POST /api/bootstrap/plan 使用不存在 spec 时返回 400，且无 bootstrap.planned", async () => {
     const res = await app.request("/api/bootstrap/plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -269,18 +267,18 @@ describe("Bootstrap API routes", () => {
     const body = await res.json();
     expect(body.status).toBe("failed");
 
-    // Should NOT have emitted bootstrap.planned
+    // 不应发出 bootstrap.planned
     const plannedEvents = getEvents(db).filter((e) => e.type === "bootstrap.planned");
     expect(plannedEvents).toHaveLength(0);
 
-    // Should have emitted bootstrap.failed instead
+    // 应改为发出 bootstrap.failed
     const failedEvents = getEvents(db).filter((e) => e.type === "bootstrap.failed");
     expect(failedEvents.length).toBeGreaterThanOrEqual(1);
   });
 
-  // T14: Apply exception boundary — thrown error gets caught (R2-H3)
-  it("POST /api/bootstrap/apply catches thrown orchestrator error", async () => {
-    // Temporarily replace the orchestrator's bootstrap method with one that throws
+  // T14：apply exception boundary——捕获抛出的错误（R2-H3）
+  it("POST /api/bootstrap/apply 捕获 orchestrator 抛出的错误", async () => {
+    // 临时将 orchestrator bootstrap 方法替换为会抛错的实现
     const origBootstrap = setup.bootstrapOrchestrator.bootstrap.bind(setup.bootstrapOrchestrator);
     (setup.bootstrapOrchestrator as unknown as { bootstrap: unknown }).bootstrap = async () => {
       throw new Error("unexpected planner crash");
@@ -298,28 +296,28 @@ describe("Bootstrap API routes", () => {
     expect(body.status).toBe("failed");
     expect(body.error).toContain("unexpected planner crash");
 
-    // bootstrap.started should have been emitted (before the throw)
+    // 抛错前应已发出 bootstrap.started
     const startedEvents = getEvents(db).filter((e) => e.type === "bootstrap.started");
     expect(startedEvents.length).toBeGreaterThanOrEqual(1);
 
-    // bootstrap.failed should also have been emitted (exception boundary)
+    // 还应发出 bootstrap.failed（exception boundary）
     const failedEvents = getEvents(db).filter((e) => e.type === "bootstrap.failed");
     expect(failedEvents.length).toBeGreaterThanOrEqual(1);
 
-    // Run should be 'failed', not stuck in 'running'
+    // run 应为 failed，而不是卡在 running
     const run = db.prepare("SELECT status FROM bootstrap_runs WHERE id = ?")
       .get(body.runId) as { status: string };
     expect(run.status).toBe("failed");
 
-    // Restore
+    // 恢复原实现
     (setup.bootstrapOrchestrator as unknown as { bootstrap: unknown }).bootstrap = origBootstrap;
   });
 
-  // T15: Concurrency lock — second apply returns 409 with no run/started (R1-F4.6)
-  it("concurrent apply for same spec returns 409 with no run created", async () => {
+  // T15：concurrency lock——第二次 apply 返回 409，且不创建 run/started（R1-F4.6）
+  it("同一 spec 的并发 apply 返回 409，且不创建 run", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
 
-    // Acquire the lock manually
+    // 手工获取 lock
     setup.bootstrapOrchestrator.tryAcquire(specPath);
 
     const res = await app.request("/api/bootstrap/apply", {
@@ -332,20 +330,19 @@ describe("Bootstrap API routes", () => {
     const body = await res.json();
     expect(body.code).toBe("conflict");
 
-    // No bootstrap.started event should have been emitted for this request
-    // (The lock blocks before run creation)
+    // 此 request 不应发出 bootstrap.started event（lock 在创建 run 前阻塞）
     const startedEvents = getEvents(db).filter((e) => e.type === "bootstrap.started");
     expect(startedEvents).toHaveLength(0);
 
-    // Release for cleanup
+    // 释放以清理
     setup.bootstrapOrchestrator.release(specPath);
   });
 
-  // T16: Concurrent plan for same spec conflicts
-  it("concurrent plan for same spec returns 409", async () => {
+  // T16：同一 spec 的 concurrent plan 冲突
+  it("同一 spec 的 concurrent plan 返回 409", async () => {
     const specPath = writeSpec(SIMPLE_SPEC_YAML);
 
-    // Acquire the lock manually (simulating a concurrent plan in progress)
+    // 手工获取 lock（模拟正在执行的 concurrent plan）
     setup.bootstrapOrchestrator.tryAcquire(specPath);
 
     const res = await app.request("/api/bootstrap/plan", {

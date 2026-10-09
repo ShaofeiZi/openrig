@@ -1,15 +1,11 @@
-// UI Enhancement Pack v0 — path-safety helper tests.
+// UI Enhancement Pack v0——path-safety helper 测试。
 //
-// Pins the load-bearing fail-closed semantics of the file allowlist:
-//   - root_unknown rejection
-//   - .. escape rejection at the segment boundary (not substring)
-//   - absolute-path-as-relative-path rejection
-//   - symlink-escaping-root rejection (realpath check)
-//   - filename containing ".." substring (e.g., foo..bar) does NOT
-//     reject — only literal `..` segments do
-//   - the base case (path = "") resolves to the root itself
+// 固定 file allowlist 的关键 fail-closed 语义：root_unknown 拒绝；在 segment boundary
+// 拒绝 .. escape（而非 substring）；拒绝把 absolute path 当作 relative path；拒绝逃逸 root 的
+// symlink（realpath check）；包含 ".." substring 的 filename（例如 foo..bar）不会被拒绝，
+// 只有字面 `..` segment 会；base case（path = ""）解析到 root 自身。
 //
-// Pure unit tests — no Hono app, no daemon wiring.
+// 纯单元测试——无 Hono app，无 daemon 接线。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -23,12 +19,12 @@ import {
   resolveAllowedPath,
 } from "../src/domain/files/path-safety.js";
 
-describe("UI Enhancement Pack v0 — readAllowlistFromEnv", () => {
-  it("returns empty list when env unset", () => {
+describe("UI Enhancement Pack v0——readAllowlistFromEnv", () => {
+  it("env 未设置时返回空 list", () => {
     expect(readAllowlistFromEnv({})).toEqual([]);
   });
 
-  it("parses comma-separated name:path pairs", () => {
+  it("解析以逗号分隔的 name:path pair", () => {
     const list = readAllowlistFromEnv({
       OPENRIG_FILES_ALLOWLIST: "workspace:/abs/path1, openrig-hub: /abs/path2",
     });
@@ -37,14 +33,14 @@ describe("UI Enhancement Pack v0 — readAllowlistFromEnv", () => {
     expect(list[1]?.name).toBe("openrig-hub");
   });
 
-  it("ignores pairs with no colon, empty name, or non-absolute path", () => {
+  it("忽略无冒号、空 name 或非 absolute path 的 pair", () => {
     const list = readAllowlistFromEnv({
       OPENRIG_FILES_ALLOWLIST: "no-colon-here, :missing-name, name:relative-path, ok:/abs/ok",
     });
     expect(list.map((r) => r.name)).toEqual(["ok"]);
   });
 
-  it("dedupes by name (last wins)", () => {
+  it("按 name 去重（最后一项优先）", () => {
     const list = readAllowlistFromEnv({
       OPENRIG_FILES_ALLOWLIST: "x:/path/a, x:/path/b",
     });
@@ -52,7 +48,7 @@ describe("UI Enhancement Pack v0 — readAllowlistFromEnv", () => {
     expect(list[0]?.canonicalPath).toContain("/path/b");
   });
 
-  it("falls back to RIGGED_FILES_ALLOWLIST when OPENRIG_FILES_ALLOWLIST is empty", () => {
+  it("OPENRIG_FILES_ALLOWLIST 为空时回退到 RIGGED_FILES_ALLOWLIST", () => {
     const list = readAllowlistFromEnv({
       OPENRIG_FILES_ALLOWLIST: "",
       RIGGED_FILES_ALLOWLIST: "legacy:/abs/legacy",
@@ -61,7 +57,7 @@ describe("UI Enhancement Pack v0 — readAllowlistFromEnv", () => {
   });
 });
 
-describe("UI Enhancement Pack v0 — resolveAllowedPath", () => {
+describe("UI Enhancement Pack v0——resolveAllowedPath", () => {
   let tempDir: string;
   let allowlist: { name: string; canonicalPath: string }[];
 
@@ -70,76 +66,74 @@ describe("UI Enhancement Pack v0 — resolveAllowedPath", () => {
     mkdirSync(join(tempDir, "workspace", "subdir"), { recursive: true });
     writeFileSync(join(tempDir, "workspace", "STEERING.md"), "# steering");
     writeFileSync(join(tempDir, "workspace", "subdir", "nested.md"), "# nested");
-    // Outside-root file for symlink-escape test.
+    // symlink-escape 测试使用的 root 外文件。
     mkdirSync(join(tempDir, "outside-root"), { recursive: true });
     writeFileSync(join(tempDir, "outside-root", "secret.txt"), "secret");
-    // Canonicalize via realpath to match macOS /var → /private/var
-    // resolution; production code does the same in readAllowlistFromEnv.
+    // 通过 realpath canonicalize，以匹配 macOS /var → /private/var 解析；production code
+    // 在 readAllowlistFromEnv 中执行相同操作。
     allowlist = [{ name: "workspace", canonicalPath: realpathSync(join(tempDir, "workspace")) }];
   });
 
   afterEach(() => rmSync(tempDir, { recursive: true, force: true }));
 
-  it("resolves a relative path inside the root", () => {
+  it("解析 root 内的 relative path", () => {
     const resolved = resolveAllowedPath(allowlist, "workspace", "STEERING.md");
     expect(resolved).toBe(realpathSync(join(tempDir, "workspace", "STEERING.md")));
   });
 
-  it("resolves '' (empty path) to the root itself", () => {
+  it("将 ''（空 path）解析到 root 自身", () => {
     expect(resolveAllowedPath(allowlist, "workspace", "")).toBe(realpathSync(join(tempDir, "workspace")));
   });
 
-  it("rejects unknown root with code 'root_unknown'", () => {
+  it("以 code 'root_unknown' 拒绝未知 root", () => {
     expect(() => resolveAllowedPath(allowlist, "not-allowlisted", "any.md"))
-      .toThrowError(/allowlist root 'not-allowlisted' is not configured/);
+      .toThrowError(/未配置白名单根目录 'not-allowlisted'/);
     try { resolveAllowedPath(allowlist, "not-allowlisted", "any.md"); }
     catch (e) { expect((e as FilePathSafetyError).code).toBe("root_unknown"); }
   });
 
-  it("rejects '..' segment with code 'path_escape'", () => {
+  it("以 code 'path_escape' 拒绝 '..' segment", () => {
     expect(() => resolveAllowedPath(allowlist, "workspace", "../outside-root/secret.txt"))
-      .toThrowError(/contains a '\.\.' segment/);
+      .toThrowError(/包含 '\.\.' 分段/);
     try { resolveAllowedPath(allowlist, "workspace", "../outside-root/secret.txt"); }
     catch (e) { expect((e as FilePathSafetyError).code).toBe("path_escape"); }
   });
 
-  it("does NOT reject filenames containing '..' as a substring (e.g., foo..bar)", () => {
+  it("不拒绝以 '..' 为 substring 的 filename（例如 foo..bar）", () => {
     writeFileSync(join(tempDir, "workspace", "foo..bar.md"), "ok");
     const resolved = resolveAllowedPath(allowlist, "workspace", "foo..bar.md");
     expect(resolved).toBe(realpathSync(join(tempDir, "workspace", "foo..bar.md")));
   });
 
-  it("rejects an absolute path passed as relative", () => {
+  it("拒绝作为 relative path 传入的 absolute path", () => {
     expect(() => resolveAllowedPath(allowlist, "workspace", "/etc/passwd"))
-      .toThrowError(/must not be absolute/);
+      .toThrowError(/不能是绝对路径/);
     try { resolveAllowedPath(allowlist, "workspace", "/etc/passwd"); }
     catch (e) { expect((e as FilePathSafetyError).code).toBe("path_invalid"); }
   });
 
-  it("rejects symlink whose realpath escapes the root", () => {
-    // Create a symlink inside the workspace pointing OUTSIDE the root.
+  it("拒绝 realpath 逃逸 root 的 symlink", () => {
+    // 在 workspace 内创建指向 root 外的 symlink。
     symlinkSync(join(tempDir, "outside-root", "secret.txt"), join(tempDir, "workspace", "escape-link"));
     expect(() => resolveAllowedPath(allowlist, "workspace", "escape-link"))
-      .toThrowError(/falls outside allowlist root/);
+      .toThrowError(/位于白名单根目录.*之外/);
     try { resolveAllowedPath(allowlist, "workspace", "escape-link"); }
     catch (e) { expect((e as FilePathSafetyError).code).toBe("path_escape"); }
   });
 
-  it("does NOT match a sibling path with the same prefix (path.sep boundary)", () => {
-    // Allowlist root is ".../workspace"; a sibling ".../workspace-other"
-    // should NOT be reachable by passing path = "" or any relative path.
+  it("不匹配具有相同 prefix 的 sibling path（path.sep boundary）", () => {
+    // allowlist root 为 ".../workspace"；传入 path = "" 或任意 relative path 都不应
+    // 到达 sibling ".../workspace-other"。
     mkdirSync(join(tempDir, "workspace-other"), { recursive: true });
     writeFileSync(join(tempDir, "workspace-other", "leak.md"), "leak");
-    // The file resolves cleanly inside the right root if the path
-    // is relative to it; the wrong-root attack doesn't even get
-    // expressed without a mismatched root, so the test verifies the
-    // root-name mismatch instead.
+    // 若 path 相对于正确 root，文件可正常解析；没有 mismatched root 就无法表达 wrong-root attack，
+    // 因此测试改为验证 root-name mismatch。
     expect(() => resolveAllowedPath(allowlist, "workspace-other", "leak.md"))
-      .toThrowError(/'workspace-other' is not configured/);
+      .toThrowError(/未配置白名单根目录 'workspace-other'/);
   });
 });
 
-describe("UI Enhancement Pack v0 — resolveAllowedFile / resolveAllowedDirectory", () => {
+describe("UI Enhancement Pack v0——resolveAllowedFile / resolveAllowedDirectory", () => {
   let tempDir: string;
   let allowlist: { name: string; canonicalPath: string }[];
 
@@ -152,25 +146,25 @@ describe("UI Enhancement Pack v0 — resolveAllowedFile / resolveAllowedDirector
 
   afterEach(() => rmSync(tempDir, { recursive: true, force: true }));
 
-  it("resolveAllowedFile on a real file returns the absolute path", () => {
+  it("对真实文件调用 resolveAllowedFile 会返回绝对路径", () => {
     expect(resolveAllowedFile(allowlist, "ws", "real.md")).toBe(realpathSync(join(tempDir, "ws", "real.md")));
   });
 
-  it("resolveAllowedFile on a directory rejects with 'not_a_file'", () => {
+  it("对目录调用 resolveAllowedFile 会以 'not_a_file' 拒绝", () => {
     try { resolveAllowedFile(allowlist, "ws", "dir-only"); }
     catch (e) { expect((e as FilePathSafetyError).code).toBe("not_a_file"); }
   });
 
-  it("resolveAllowedFile on a missing path rejects with 'stat_failed'", () => {
+  it("对缺失路径调用 resolveAllowedFile 会以 'stat_failed' 拒绝", () => {
     try { resolveAllowedFile(allowlist, "ws", "ghost.md"); }
     catch (e) { expect((e as FilePathSafetyError).code).toBe("stat_failed"); }
   });
 
-  it("resolveAllowedDirectory on a real directory returns the absolute path", () => {
+  it("对真实目录调用 resolveAllowedDirectory 会返回绝对路径", () => {
     expect(resolveAllowedDirectory(allowlist, "ws", "dir-only")).toBe(realpathSync(join(tempDir, "ws", "dir-only")));
   });
 
-  it("resolveAllowedDirectory on a file rejects with 'not_a_directory'", () => {
+  it("对文件调用 resolveAllowedDirectory 会以 'not_a_directory' 拒绝", () => {
     try { resolveAllowedDirectory(allowlist, "ws", "real.md"); }
     catch (e) { expect((e as FilePathSafetyError).code).toBe("not_a_directory"); }
   });

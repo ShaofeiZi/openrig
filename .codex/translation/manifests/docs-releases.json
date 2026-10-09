@@ -1,0 +1,373 @@
+{
+  "owner": "docs-releases",
+  "created": "2026-09-29",
+  "style_spec": ".codex/translation/style-spec.md",
+  "rules": [
+    "Never modify business behavior; preserve protocol fields/enums/env vars/paths/external programs.",
+    "Docs: keep original, emit *.zh-CN.md companion; code: in-place comment translation.",
+    "Update status via .codex/translation/scripts/state.py before/after each file.",
+    "You OWN exactly these files; do not touch files owned by other owners."
+  ],
+  "files": [
+    {
+      "source_path": "docs/releases/README.md",
+      "target_path": "docs/releases/README.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 105,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 JSON/命令/路径/协议 verdict，用户可见品牌与命令改为 zrig；标题、围栏、格式自检通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/_template.md",
+      "target_path": "docs/releases/_template.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 38,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文发布模板；保留字段结构与占位版本；标题、围栏、格式自检通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.1.12.md",
+      "target_path": "docs/releases/v0.1.12.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 58,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留版本、SHA、提交主题和兼容包名，用户命令改为 zrig；标题、围栏、格式自检通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.2.0.md",
+      "target_path": "docs/releases/v0.2.0.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 276,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留字段/枚举/路径/SHA/提交主题，用户命令改为 zrig，历史兼容语境保真；标题、围栏、格式自检通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.3.0.md",
+      "target_path": "docs/releases/v0.3.0.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 119,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留技术标识、路径和状态字段，用户命令改为 zrig；标题、围栏、格式自检通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.3.1.md",
+      "target_path": "docs/releases/v0.3.1.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 336,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 ConfigStore key、路由、状态、迁移、路径和历史提交摘要，用户命令改为 zrig；标题、围栏、格式自检通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.3.2.md",
+      "target_path": "docs/releases/v0.3.2.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 362,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留枚举 rig、协议字段、迁移、路径及历史提交摘要，用户命令改为 zrig；标题、围栏、格式自检通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.3.3.md",
+      "target_path": "docs/releases/v0.3.3.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 596,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 HTTP/code/event/状态/路径/迁移和历史提交文字，用户命令改为 zrig；标题、围栏、表格、英文残留与原文未改动检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.3.4.md",
+      "target_path": "docs/releases/v0.3.4.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 593,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留五元状态、协议字段、路径、迁移及历史提交文字，用户命令改为 zrig；标题、围栏、表格、英文残留与原文未改动检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.4.0.md",
+      "target_path": "docs/releases/v0.4.0.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 431,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留四轴 CLI grammar、compact JSON schema、状态/配置/路径与历史提交文本，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.4.1.md",
+      "target_path": "docs/releases/v0.4.1.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 269,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留迁移 044、summary nullable/WARN 契约、路由、路径和协议字段，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.4.2.md",
+      "target_path": "docs/releases/v0.4.2.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 57,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 probe 次数/退避/healthz/状态与路径，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.4.3.md",
+      "target_path": "docs/releases/v0.4.3.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 171,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 needs_input、migration、resume marker、auth/security 与状态协议，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.4.4.md",
+      "target_path": "docs/releases/v0.4.4.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 131,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留多主机语义、Living Notes 协议、路径和版本后续项，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.4.6.md",
+      "target_path": "docs/releases/v0.4.6.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 198,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留迁移 049-054、exit code、目标语法、at-least-once/idempotent 和状态协议，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.4.7.md",
+      "target_path": "docs/releases/v0.4.7.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 64,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 maintenance-mode 定位、UNKNOWN/attention_required、API/路径和版本事实，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.4.8.md",
+      "target_path": "docs/releases/v0.4.8.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 57,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 Bash(rig down:*) 兼容规则、permission schema、HOME invariant 与 withdrawn 事实，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.0.md",
+      "target_path": "docs/releases/v0.5.0.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 88,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 permission-writer 保证、context_pack 拒绝语义、policy/schema/路径与 HOME 已知问题，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.1.md",
+      "target_path": "docs/releases/v0.5.1.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 56,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留测试系统能力边界、容器仅脚手架、seed 数量和 lineage 兼容事实，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.10.md",
+      "target_path": "docs/releases/v0.5.10.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 89,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 health finding 字段、indeterminate/absence 边界、connector receipt 语义与精确 commit/tree，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.11.md",
+      "target_path": "docs/releases/v0.5.11.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 101,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 release-candidate 状态、unverified 语义、512-codepoint preview、证据归属与发布门禁，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.12.md",
+      "target_path": "docs/releases/v0.5.12.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 114,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 proof judgment/readiness/publication 边界、workflow occurrence 恢复和候选验证限制，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.13.md",
+      "target_path": "docs/releases/v0.5.13.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 131,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 release-candidate unpublished 状态、1 MiB 限制、UNOBSERVED/UNMEASURED 和 Git 冲突保护语义，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.14.md",
+      "target_path": "docs/releases/v0.5.14.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 147,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 migration 081-084、读取/导航竞态、私有验证限定、timeout 与既有未修复项，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.15.md",
+      "target_path": "docs/releases/v0.5.15.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 117,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 Node 24/SQLite 限制、Pi 0.87.1/OpenRouter 验证边界、链接与 PR 归属，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.16.md",
+      "target_path": "docs/releases/v0.5.16.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 62,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 managed block 标记、文件选项与 git restore 的完整数据丢失警告，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | 已生成完整中文伴随版；保留 managed block 标记、文件选项与 git restore 全部未暂存变更警告，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.17.md",
+      "target_path": "docs/releases/v0.5.17.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 35,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 Bun 1.4.0、Node.js 22、postinstall 与 macOS arm64 验证边界，品牌改为 zrig；结构、格式、英文残留和原文未改检查通过 | 已生成完整中文伴随版；保留 Bun 1.4.0、Node.js 22、postinstall 与 macOS arm64 验证边界，品牌改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.2.md",
+      "target_path": "docs/releases/v0.5.2.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 74,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 migration 068-071 净效果、crash-cart 边界、staged-unsent 与真实 backlog，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.3.md",
+      "target_path": "docs/releases/v0.5.3.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 70,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留地址 grammar、ref/atom、MODEL DIVERGENCE、contractSource 及 eval 尚不可驱动边界，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.4.md",
+      "target_path": "docs/releases/v0.5.4.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 62,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 found/absent/indeterminate、staged/delivered、409 rig_name_running 和发布授权边界，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.5.md",
+      "target_path": "docs/releases/v0.5.5.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 97,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 ACTIVITY taxonomy、migration 072/073、false-positive 数量与尚不可驱动表格，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.6.md",
+      "target_path": "docs/releases/v0.5.6.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 128,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 compaction_strategy 四模式、receipt 三态、通知级别、migration 074-076 与上下文分类，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | 已生成完整中文伴随版；保留上下文分类、compaction 四模式、receipt/notification 协议、迁移 074-076 和 exactly-once 语义，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.7.md",
+      "target_path": "docs/releases/v0.5.7.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 74,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留拓扑声明、agent-image 来源、migration 077、切点 SHA 与发布门禁边界，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | 已生成完整中文伴随版；保留拓扑声明、agent-image 来源、migration 077、切点 SHA 与发布边界，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.8.md",
+      "target_path": "docs/releases/v0.5.8.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 80,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留恢复证据边界、migration 078、精确 commit/tree 与发布验收条件，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.5.9.md",
+      "target_path": "docs/releases/v0.5.9.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 105,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 instance layout、migration 079、snapshot/identity 真实性和精确 cut 证据，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    },
+    {
+      "source_path": "docs/releases/v0.6.0.md",
+      "target_path": "docs/releases/v0.6.0.zh-CN.md",
+      "category": "doc",
+      "status": "done",
+      "lines": 213,
+      "notes": "keep original; write companion *.zh-CN.md per style-spec | 本轮未覆盖，仍需翻译 | 已生成完整中文伴随版；保留 Node 22/24 破坏性要求、permission/typing-guard 状态、实验功能默认关闭、计费和验证限制，用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | 已生成完整中文伴随版；保留 Node 22/24 破坏性要求、逐席位 permission/typing-guard 协议、实验功能默认关闭与未验证/计费限制，并保留原锚点兼容；用户命令改为 zrig；结构、格式、英文残留和原文未改检查通过 | batch2-2026-10-08 逐段全文审读+证据(doc343-qualified-evidence-index)；packages只读0缺口；EN hash before/after未变",
+      "reason_class": "uncovered",
+      "validation_state": "passed"
+    }
+  ]
+}

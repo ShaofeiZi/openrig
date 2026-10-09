@@ -1,14 +1,13 @@
-// Slice 18 §3.5 — POST /api/missions/:missionId/complete tests.
+// Slice 18 §3.5——POST /api/missions/:missionId/complete 测试。
 //
-// The endpoint writes `status: complete` to the mission's README.md
-// frontmatter. Powers the Mark-complete action on storytelling cards
-// (Getting Started complete-and-hide flow). Behavior:
-//  - 200 + { missionId, status: "complete" } on success
-//  - Creates the frontmatter block when README has no frontmatter
-//  - Updates an existing status: X line in place
-//  - Adds a status line when frontmatter exists but lacks status
-//  - 404 when mission doesn't exist
-//  - Idempotent: calling complete twice still succeeds
+// endpoint 向任务目标 README.md frontmatter 写入 `status: complete`，为 storytelling card 的
+// Mark-complete action（Getting Started 完成并隐藏流程）提供能力。行为：
+//  - 成功时返回 200 + { missionId, status: "complete" }；
+//  - README 没有 frontmatter 时创建 block；
+//  - 原地更新现有 status: X 行；
+//  - frontmatter 存在但缺少 status 时新增 status 行；
+//  - 任务目标不存在时返回 404；
+//  - 幂等：调用 complete 两次仍成功。
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
@@ -67,12 +66,9 @@ beforeEach(() => {
   cleanupRoot = fs.mkdtempSync(path.join(os.tmpdir(), "missions-complete-"));
   missionsRoot = path.join(cleanupRoot, "missions");
   fs.mkdirSync(missionsRoot, { recursive: true });
-  // SliceIndexerOpts declares `db` (and dogfoodEvidenceRoot) as REQUIRED and
-  // startup always supplies them; this fixture previously omitted db and was
-  // only tolerated because the indexer swallowed the resulting error. A real
-  // in-memory DB satisfies the constructor contract. It is deliberately NOT
-  // migrated: an empty database exercises the structurally-absent
-  // queue_items degradation, which is the state this endpoint expects.
+  // SliceIndexerOpts 把 `db`（和 dogfoodEvidenceRoot）声明为必需，startup 始终提供它们。此
+  // fixture 以前省略 db，只因 indexer 吞掉了随之产生的错误才被容忍。真实内存 DB 满足构造器
+  // 契约；刻意不迁移，让空数据库覆盖 queue_items 结构性缺失的降级，也就是 endpoint 预期状态。
   db = createDb(":memory:");
   indexer = new SliceIndexer({ slicesRoot: missionsRoot, dogfoodEvidenceRoot: null, db });
 });
@@ -83,7 +79,7 @@ afterEach(() => {
 });
 
 describe("POST /api/missions/:missionId/complete", () => {
-  it("updates existing status: active to status: complete in README frontmatter", async () => {
+  it("在 README frontmatter 中把现有 status: active 更新为 status: complete", async () => {
     writeMissionReadme(
       missionsRoot,
       "getting-started",
@@ -104,7 +100,7 @@ describe("POST /api/missions/:missionId/complete", () => {
     expect(readme).not.toContain("status: active");
   });
 
-  it("adds status: complete to frontmatter when status field absent", async () => {
+  it("frontmatter 缺少 status 字段时添加 status: complete", async () => {
     writeMissionReadme(
       missionsRoot,
       "demo-mission",
@@ -121,7 +117,7 @@ describe("POST /api/missions/:missionId/complete", () => {
     expect(readme).toContain("id: demo-mission");
   });
 
-  it("creates a frontmatter block when README has no frontmatter at all", async () => {
+  it("README 完全没有 frontmatter 时创建 block", async () => {
     writeMissionReadme(missionsRoot, "no-fm", "# A mission with no frontmatter\n");
     writeSliceInMission(missionsRoot, "no-fm", "only-slice");
 
@@ -135,7 +131,7 @@ describe("POST /api/missions/:missionId/complete", () => {
     expect(readme).toContain("# A mission with no frontmatter");
   });
 
-  it("is idempotent — calling complete twice still returns 200 and status stays complete", async () => {
+  it("保持幂等：调用 complete 两次仍返回 200，status 保持 complete", async () => {
     writeMissionReadme(
       missionsRoot,
       "idempotent-mission",
@@ -154,7 +150,7 @@ describe("POST /api/missions/:missionId/complete", () => {
     expect(occurrences).toBe(1);
   });
 
-  it("GET /api/missions/:missionId returns status from frontmatter (slice 18 status surfacing)", async () => {
+  it("GET /api/missions/:missionId 从 frontmatter 返回 status（slice 18 状态呈现）", async () => {
     writeMissionReadme(
       missionsRoot,
       "has-status",
@@ -168,7 +164,7 @@ describe("POST /api/missions/:missionId/complete", () => {
     expect(body.status).toBe("complete");
   });
 
-  it("GET /api/missions/:missionId returns status=null when frontmatter has no status field", async () => {
+  it("frontmatter 没有 status 字段时 GET /api/missions/:missionId 返回 status=null", async () => {
     writeMissionReadme(
       missionsRoot,
       "no-status",
@@ -182,7 +178,7 @@ describe("POST /api/missions/:missionId/complete", () => {
     expect(body.status).toBeNull();
   });
 
-  it("after POST complete, subsequent GET returns status=complete (durable round-trip)", async () => {
+  it("POST complete 后，后续 GET 返回 status=complete（持久往返）", async () => {
     writeMissionReadme(
       missionsRoot,
       "round-trip",
@@ -203,7 +199,7 @@ describe("POST /api/missions/:missionId/complete", () => {
     expect(afterBody.status).toBe("complete");
   });
 
-  it("returns 404 when mission does not exist", async () => {
+  it("任务目标不存在时返回 404", async () => {
     const app = buildApp(indexer);
     const res = await app.request("/api/missions/nonexistent-mission/complete", { method: "POST" });
     expect(res.status).toBe(404);
@@ -211,14 +207,14 @@ describe("POST /api/missions/:missionId/complete", () => {
     expect(body.error).toBe("mission_not_found");
   });
 
-  it("returns 503 when SliceIndexer is unavailable", async () => {
+  it("SliceIndexer 不可用时返回 503", async () => {
     const app = new Hono();
     app.route("/api/missions", missionsRoutes());
     const res = await app.request("/api/missions/anything/complete", { method: "POST" });
     expect(res.status).toBe(503);
   });
 
-  it("preserves unrelated frontmatter fields when updating status", async () => {
+  it("更新 status 时保留无关 frontmatter 字段", async () => {
     writeMissionReadme(
       missionsRoot,
       "preserves",
@@ -239,10 +235,9 @@ describe("POST /api/missions/:missionId/complete", () => {
 });
 
 // ---------------------------------------------------------------------------
-// VM-005 B1 — write-side cache coherence (the narrow C-vii exception;
-// arch ruling b8d91aee…, plan v1.6.1 §J-1d, guard's repro shape verbatim).
-// Out-of-band file writes remain the 60s TTL regime by design — this seam
-// covers the daemon's OWN write path only (no watchers, no write-through).
+// VM-005 B1——写侧 cache coherence（窄 C-vii 例外；架构裁定 b8d91aee…，plan v1.6.1
+// §J-1d，逐字保留 guard repro 结构）。设计上，带外文件写入仍使用 60s TTL；本 seam 只覆盖
+// 后台服务自身写路径，不使用 watcher 或 write-through。
 // ---------------------------------------------------------------------------
 
 type SidecarBody = { missions: Record<string, { authoredStatus: string | null; readiness: unknown }> };
@@ -256,7 +251,7 @@ function buildAppWithSlices(ix: SliceIndexer): Hono {
   const app = new Hono();
   app.use("*", async (c, next) => {
     c.set("sliceIndexer" as never, ix);
-    // the list path touches only the indexer; a stub satisfies getDeps
+    // list 路径只触碰 indexer；stub 即可满足 getDeps。
     c.set("sliceDetailProjector" as never, {} as never);
     await next();
   });
@@ -265,14 +260,14 @@ function buildAppWithSlices(ix: SliceIndexer): Hono {
   return app;
 }
 
-describe("VM-005 B1 — read-after-write coherence at the daemon's own API", () => {
-  it("hot GET /api/slices → POST complete → IMMEDIATE detail + slices BOTH read complete; second POST idempotent", async () => {
+describe("VM-005 B1——后台服务自身 API 的 read-after-write coherence", () => {
+  it("hot GET /api/slices → POST complete → detail + slices 立即都读到 complete；第二次 POST 幂等", async () => {
     writeMissionReadme(missionsRoot, "relx", "---\nid: relx\nstatus: active\n---\n# Relx\n");
     writeSliceInMission(missionsRoot, "relx", "target");
     const app = buildAppWithSlices(indexer);
 
-    // Prime the sidecar HOT — deliberately NO ?refresh=1 (refresh would
-    // full-invalidate and mask the seam; the defect lives on the hot path).
+    // 把 sidecar 预热；刻意不加 ?refresh=1，因为 refresh 会 full-invalidate 并掩盖 seam，
+    // 缺陷存在于 hot path。
     const primed = await app.request("/api/slices?filter=all");
     expect(primed.status).toBe(200);
     expect(((await primed.json()) as SidecarBody).missions["relx"]).toEqual({ authoredStatus: "active", readiness: legacyReadiness });
@@ -280,21 +275,21 @@ describe("VM-005 B1 — read-after-write coherence at the daemon's own API", () 
     const post = await app.request("/api/missions/relx/complete", { method: "POST" });
     expect(post.status).toBe(200);
 
-    // IMMEDIATELY (no refresh, no TTL wait): both payloads carry the new word.
+    // 立即读取（不 refresh、不等待 TTL）：两个 payload 都携带新值。
     const detail = await app.request("/api/missions/relx");
     expect(detail.status).toBe(200);
     expect(((await detail.json()) as { status?: string | null }).status).toBe("complete");
     const hot = await app.request("/api/slices?filter=all");
     expect(((await hot.json()) as SidecarBody).missions["relx"]).toEqual({ authoredStatus: "complete", readiness: legacyReadiness });
 
-    // Idempotent second POST: still 200, sidecar still coherent.
+    // 幂等的第二次 POST：仍返回 200，sidecar 仍 coherent。
     const again = await app.request("/api/missions/relx/complete", { method: "POST" });
     expect(again.status).toBe(200);
     const hot2 = await app.request("/api/slices?filter=all");
     expect(((await hot2.json()) as SidecarBody).missions["relx"]).toEqual({ authoredStatus: "complete", readiness: legacyReadiness });
   });
 
-  it("NEGATIVE: listing + detail caches SURVIVE the complete-write invalidation (drop-the-blob, never full-flush)", async () => {
+  it("负向：listing + detail cache 不受 complete-write invalidation 影响，只丢 blob，绝不 full-flush", async () => {
     writeMissionReadme(missionsRoot, "relx", "---\nstatus: active\n---\n# Relx\n");
     writeSliceInMission(missionsRoot, "relx", "target");
     const app = buildAppWithSlices(indexer);
@@ -303,10 +298,10 @@ describe("VM-005 B1 — read-after-write coherence at the daemon's own API", () 
     indexer.missionAuthoredStatuses(); // primes the sidecar
     const post = await app.request("/api/missions/relx/complete", { method: "POST" });
     expect(post.status).toBe(200);
-    // Reference equality: the SAME cached instances = those caches survived.
+    // 引用相等：同一 cached instance 表明这些 cache 保留下来。
     expect(indexer.list()).toBe(listBefore);
     expect(indexer.get("target")).toBe(recordBefore);
-    // ...while the sidecar rebuilt from disk with the new word.
+    // 同时 sidecar 从磁盘用新值重建。
     expect(indexer.missionAuthoredStatuses()["relx"]).toEqual({ authoredStatus: "complete" });
   });
 });

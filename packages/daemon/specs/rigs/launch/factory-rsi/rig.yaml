@@ -2,21 +2,17 @@ version: "0.2"
 name: factory-rsi
 culture_file: CULTURE.md
 summary: >
-  The single-rig RSI factory MVP (OPR.0.4.6.FAC2): ONE rig whose seats map 1:1
-  to the `factory-rsi` workflow — the inner loop plans, builds, checks, and
-  reviews one slice, then prepares its release. Dogfood is decoupled: it
-  continuously uses the SHIPPED product out-of-band and feeds findings back into
-  the next plan — the recursive-self-improvement edge, with no human required in
-  the loop. Run it with `rig up factory-rsi`, then instantiate the `factory-rsi`
-  workflow and watch the loop close. Seats inherit their runtime's default
-  model; qa, review, and dogfood run on the alternate runtime for cross-runtime
-  diversity against the builder.
+  单工作组 RSI 工厂 MVP（OPR.0.4.6.FAC2）：一个工作组，其席位与 `factory-rsi` 工作流
+  一一映射；内循环规划、构建、检查并评审一个 slice，随后准备发布。Dogfood 与主循环解耦：
+  它在主流程之外持续使用已交付产品，并把发现反馈给下一轮计划，形成递归自我改进边，无需人类
+  参与循环。使用 `zrig up factory-rsi` 运行，再实例化 `factory-rsi` 工作流并观察闭环。席位继承
+  对应运行时的默认模型；QA、评审和 dogfood 使用与构建者不同的运行时，以获得跨运行时多样性。
 
-# Seven pods, one member each, so every canonical session name is
-# `<pod>-<member>@factory-rsi` and matches the workflow's preferred_targets 1:1.
+# 七个 Pod 各含一个成员，因此每个规范会话名均为 `<pod>-<member>@factory-rsi`，并与工作流的
+# preferred_targets 一一对应。
 pods:
   - id: plan
-    label: Planning
+    label: 规划
     members:
       - id: planner
         agent_ref: "local:../../../agents/conveyor/planner"
@@ -26,7 +22,7 @@ pods:
     edges: []
 
   - id: build
-    label: Build
+    label: 构建
     members:
       - id: implementer
         agent_ref: "local:../../../agents/development/implementer"
@@ -36,7 +32,7 @@ pods:
     edges: []
 
   - id: check
-    label: Check
+    label: 检查
     members:
       - id: qa
         agent_ref: "local:../../../agents/development/qa"
@@ -46,7 +42,7 @@ pods:
     edges: []
 
   - id: review
-    label: Review
+    label: 评审
     members:
       - id: reviewer
         agent_ref: "local:../../../agents/review/independent-reviewer"
@@ -66,7 +62,7 @@ pods:
     edges: []
 
   - id: release
-    label: Release
+    label: 发布
     members:
       - id: manager
         agent_ref: "local:../../../agents/factory-rsi/release-manager"
@@ -76,7 +72,7 @@ pods:
     edges: []
 
   - id: orch
-    label: Orchestration
+    label: 编排
     members:
       - id: lead
         agent_ref: "local:../../../agents/orchestration/orchestrator"
@@ -85,9 +81,8 @@ pods:
         cwd: "."
     edges: []
 
-# The orchestrator delegates across the pipeline; review and check can observe
-# the build. Workflow ROUTING is the `factory-rsi` spec's job (the engine
-# routes the loop-close); these edges are topology hints, not the routing.
+# 编排智能体沿流水线委派任务；评审与检查可以观察构建。工作流路由由 `factory-rsi` 规范负责
+#（引擎为闭环执行路由）；这些边只是拓扑提示，不承担路由。
 edges:
   - kind: delegates_to
     from: orch.lead

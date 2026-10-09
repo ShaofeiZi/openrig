@@ -1,9 +1,9 @@
-// OPR.0.3.3.20 — manage-by-exception ordering (AC-1).
+// OPR.0.3.3.20——manage-by-exception 排序（AC-1）。
 //
-// sortFeedByDecisionBand lifts ALL action-required/approval cards above
-// progress/observation/shipped on the classified/merged output, preserving
-// newest-first WITHIN each band. A two-band stable partition — NOT a
-// priority-ranking engine (no score fields, no card mutation).
+// sortFeedByDecisionBand 在分类/合并输出上把所有 action-required/approval 卡片
+// 提到 progress/observation/shipped 之上，并在每个 band 内保持
+// 最新优先。这是双 band 稳定分区——非
+// 优先级排序引擎（无分数字段，无卡片变更）。
 
 import { describe, it, expect } from "vitest";
 import { sortFeedByDecisionBand, type FeedCard, type FeedCardKind } from "../src/lib/feed-classifier.js";
@@ -42,7 +42,7 @@ describe("sortFeedByDecisionBand (AC-1)", () => {
     const sorted = sortFeedByDecisionBand(cards);
     const kinds = sorted.map((c) => c.kind);
 
-    // The decision band is entirely before the first non-decision card.
+    // decision band 完全在首张非 decision 卡片之前。
     const firstNonDecision = kinds.findIndex((k) => k !== "action-required" && k !== "approval");
     expect(kinds.slice(0, firstNonDecision)).toEqual(expect.arrayContaining(["approval", "action-required"]));
     expect(kinds.slice(firstNonDecision)).not.toContain("action-required");

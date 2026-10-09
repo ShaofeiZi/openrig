@@ -1,33 +1,28 @@
-// OPR.0.4.4.11 — the daemon-side remote single-rig leaf (FR-4).
+// OPR.0.4.4.11——daemon 侧 remote single-rig leaf（FR-4）。
 //
-// A host-placed topology entry launches by POSTing the SHIPPED remote-up
-// surface: POST {host.url}/api/up with the same body shape the CLI's
-// --host path sends. Since OPR.0.4.4.15 this is a THIN CONSUMER of the
-// shared daemon→daemon transport core (domain/hosts/remote-daemon-http.ts
-// — arch cell 1: ONE copy of the security-adjacent bearer/bounded-abort/
-// classification code for the whole P3/P4 family). This module keeps its
-// shipped error-string surface byte-for-byte; only the transport plumbing
-// moved. The failure classes remain the EXISTING ones ([permission-gate] /
-// [remote-command-failed] / [remote-daemon-unreachable]) — no new taxonomy
-// (FR-4 negative AC).
+// 放置于 host 的 topology entry 通过 POST 已交付的 remote-up surface 启动：
+// POST {host.url}/api/up，body shape 与 CLI --host 路径发送的相同。自 OPR.0.4.4.15 起，
+// 这里是共享 daemon→daemon transport core（domain/hosts/remote-daemon-http.ts）的轻量 consumer
+//（arch cell 1：整个 P3/P4 family 只保留一份与安全相关的 bearer/bounded-abort/classification
+// 代码）。此 module 保持已交付的 error-string surface 逐字节不变，仅移动 transport 接线。
+// failure class 仍是既有的 [permission-gate] / [remote-command-failed] /
+// [remote-daemon-unreachable]——不增加 taxonomy（FR-4 负向 AC）。
 
 import type { HttpHostEntry } from "../hosts/hosts-registry-reader.js";
 import { remoteJsonRequest } from "../hosts/remote-daemon-http.js";
 
 export interface RemoteUpLeafDeps {
-  /** Injected for tests; defaults to global fetch. */
+  /** 测试时可注入；默认使用 global fetch。 */
   fetchImpl?: typeof fetch;
   env?: Record<string, string | undefined>;
   readFile?: (path: string) => string;
-  /** Bounded remote-up deadline (rev1-r2 R2-B1). Defaults to the
-   *  long-running rig-up budget — remote bootstrap legitimately runs
-   *  minutes, but never forever. Passed EXPLICITLY to the shared core
-   *  (the deadline class is this call-site's decision, per the arch
-   *  required-argument sharpening). */
+  /** 有界 remote-up deadline（rev1-r2 R2-B1）。默认使用长时 rig-up budget——remote
+   *  bootstrap 合理地可能运行数分钟，但不能永久运行。显式传给 shared core
+   *  （按 arch required-argument 收紧要求，deadline class 由此 call site 决定）。 */
   timeoutMs?: number;
 }
 
-/** Matches the CLI's LONG_RUNNING_UP_TIMEOUT_MS for standalone remote ups. */
+/** 与 CLI 的 LONG_RUNNING_UP_TIMEOUT_MS 一致，用于独立 remote up。 */
 export const REMOTE_UP_TIMEOUT_MS = 120_000;
 
 export interface RemoteUpBody {
@@ -35,11 +30,9 @@ export interface RemoteUpBody {
   autoApprove?: boolean;
 }
 
-/** POST the placed entry to the remote daemon's shipped /api/up. Returns the
- *  launcher's normalized {ok, error?} shape; the remote daemon's own error
- *  text rides through verbatim where available. Never hangs: the shared
- *  core holds ONE deadline through request AND body parse (the G-R2B1-1
- *  class is structurally closed there). */
+/** 将放置后的 entry POST 到 remote daemon 已交付的 /api/up。返回 launcher 的 normalized
+ *  {ok, error?} shape；可用时逐字传递 remote daemon 自身的 error text。绝不无限挂起：
+ *  shared core 使用同一个 deadline 覆盖 request 与 body parse（G-R2B1-1 类在此结构性关闭）。 */
 export async function remoteUpLeaf(
   body: RemoteUpBody,
   host: HttpHostEntry,
@@ -61,25 +54,25 @@ export async function remoteUpLeaf(
     case "bearer":
       return { ok: false, error: `[permission-gate] ${res.detail}` };
     case "timeout":
-      // R2-B1 / G-R2B1-1: a stalled remote /api/up — before OR after
-      // headers — is a STRUCTURED per-entry failure, never a hung walk.
+      // R2-B1 / G-R2B1-1：remote /api/up 无论在 header 前后卡住，都会成为结构化的
+      // per-entry failure，而非挂起整个遍历。
       return res.phase === "body"
         ? {
             ok: false,
-            error: `[remote-daemon-unreachable] POST ${url} timed out after ${timeoutMs}ms for host ${host.id}: response headers arrived (HTTP ${res.status}) but the error body never completed`,
+            error: `[remote-daemon-unreachable] 向 host ${host.id} POST ${url} 在 ${timeoutMs}ms 后超时：response header 已到达（HTTP ${res.status}），但 error body 始终未完成`,
           }
         : {
             ok: false,
-            error: `[remote-daemon-unreachable] POST ${url} timed out after ${timeoutMs}ms for host ${host.id}: the remote daemon never settled the request within the rig-up budget`,
+            error: `[remote-daemon-unreachable] 向 host ${host.id} POST ${url} 在 ${timeoutMs}ms 后超时：remote daemon 未在 rig-up budget 内结束请求`,
           };
     case "network":
-      return { ok: false, error: `[remote-daemon-unreachable] POST ${url} failed for host ${host.id}: ${res.detail}` };
+      return { ok: false, error: `[remote-daemon-unreachable] 向 host ${host.id} POST ${url} 失败：${res.detail}` };
     case "http": {
-      // Same classification vocabulary as the CLI transport (classifyHttpFailedStep).
+      // 使用与 CLI transport（classifyHttpFailedStep）相同的 classification vocabulary。
       const status = res.status ?? 0;
       const cls = status === 401 || status === 403 ? "permission-gate" : status >= 400 && status < 600 ? "remote-command-failed" : "remote-daemon-unreachable";
       const detail = res.detail ? `HTTP ${res.status}: ${res.detail}` : `HTTP ${res.status}`;
-      return { ok: false, error: `[${cls}] remote up on host ${host.id} failed: ${detail}` };
+      return { ok: false, error: `[${cls}] host ${host.id} 上的 remote up 失败：${detail}` };
     }
   }
 }

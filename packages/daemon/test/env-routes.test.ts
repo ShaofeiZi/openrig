@@ -21,8 +21,8 @@ function createApp(deps: {
   return app;
 }
 
-describe("env routes", () => {
-  it("GET /api/rigs/:rigId/env returns hasServices false when no record", async () => {
+describe("env 路由", () => {
+  it("没有记录时 GET /api/rigs/:rigId/env 返回 hasServices false", async () => {
     const app = createApp({ getServicesRecord: () => null });
     const res = await app.request("/api/rigs/rig-1/env");
     expect(res.status).toBe(200);
@@ -32,7 +32,7 @@ describe("env routes", () => {
     expect(body["surfaces"]).toBeUndefined();
   });
 
-  it("GET /api/rigs/:rigId/env returns surfaces from specJson for service-backed rigs", async () => {
+  it("对于服务支撑的 rig，GET /api/rigs/:rigId/env 返回 specJson 中的 surfaces", async () => {
     const specJson = JSON.stringify({
       kind: "compose",
       compose_file: "svc.compose.yaml",
@@ -94,7 +94,7 @@ describe("env routes", () => {
     updatedAt: "2026-04-09T00:00:00Z",
   };
 
-  it("GET /env returns probeStatus=stale with probeError when captureReceipt throws", async () => {
+  it("captureReceipt 抛出异常时，GET /env 返回 probeStatus=stale 和 probeError", async () => {
     const app = createApp({
       getServicesRecord: () => SERVICE_RECORD,
       captureReceipt: () => { throw new Error("compose ps failed: connection refused"); },
@@ -107,13 +107,13 @@ describe("env routes", () => {
     expect(body["hasServices"]).toBe(true);
     expect(body["probeStatus"]).toBe("stale");
     expect(body["probeError"]).toContain("connection refused");
-    // Cached receipt is still returned
+    // 仍返回缓存的 receipt
     const receipt = body["receipt"] as Record<string, unknown>;
     expect(receipt).toBeDefined();
     expect(receipt["capturedAt"]).toBe("2026-04-09T11:00:00Z");
   });
 
-  it("GET /env returns probeStatus=fresh when captureReceipt succeeds", async () => {
+  it("captureReceipt 成功时 GET /env 返回 probeStatus=fresh", async () => {
     const freshReceipt = { kind: "compose", services: [{ name: "vault", status: "running", health: "healthy" }], capturedAt: "2026-04-09T12:00:00Z" };
     const app = createApp({
       getServicesRecord: () => SERVICE_RECORD,
@@ -130,10 +130,10 @@ describe("env routes", () => {
     expect(receipt["capturedAt"]).toBe("2026-04-09T12:00:00Z");
   });
 
-  it("GET /env returns probeStatus=no_orchestrator when serviceOrchestrator is absent", async () => {
+  it("serviceOrchestrator 缺失时 GET /env 返回 probeStatus=no_orchestrator", async () => {
     const app = createApp({
       getServicesRecord: () => SERVICE_RECORD,
-      // no captureReceipt → serviceOrchestrator is undefined
+      // 没有 captureReceipt → serviceOrchestrator 为 undefined
     });
 
     const res = await app.request("/api/rigs/rig-1/env");
@@ -142,13 +142,13 @@ describe("env routes", () => {
     expect(body["ok"]).toBe(true);
     expect(body["probeStatus"]).toBe("no_orchestrator");
     expect(body["probeError"]).toBeUndefined();
-    // Cached receipt still returned
+    // 仍返回缓存的 receipt
     const receipt = body["receipt"] as Record<string, unknown>;
     expect(receipt).toBeDefined();
     expect(receipt["capturedAt"]).toBe("2026-04-09T11:00:00Z");
   });
 
-  it("GET /env returns probeStatus=stale when captureReceipt returns null", async () => {
+  it("captureReceipt 返回 null 时 GET /env 返回 probeStatus=stale", async () => {
     const app = createApp({
       getServicesRecord: () => SERVICE_RECORD,
       captureReceipt: () => null,
@@ -159,16 +159,16 @@ describe("env routes", () => {
     const body = await res.json() as Record<string, unknown>;
     expect(body["ok"]).toBe(true);
     expect(body["hasServices"]).toBe(true);
-    // null probe is NOT fresh — services record may have disappeared
+    // null 探测结果不属于 fresh——services 记录可能已消失
     expect(body["probeStatus"]).not.toBe("fresh");
     expect(body["probeStatus"]).toBe("stale");
-    expect(body["probeError"]).toContain("no receipt");
-    // Cached receipt preserved
+    expect(body["probeError"]).toContain("探测未返回回执");
+    // 保留缓存的 receipt
     const receipt = body["receipt"] as Record<string, unknown>;
     expect(receipt["capturedAt"]).toBe("2026-04-09T11:00:00Z");
   });
 
-  it("POST /env/down with volumes=true passes policyOverride=down_and_volumes to teardown", async () => {
+  it("带 volumes=true 的 POST /env/down 向 teardown 传递 policyOverride=down_and_volumes", async () => {
     let capturedOpts: unknown = undefined;
     const app = createApp({
       getServicesRecord: () => SERVICE_RECORD,
@@ -190,7 +190,7 @@ describe("env routes", () => {
     expect((capturedOpts as Record<string, unknown>)["policyOverride"]).toBe("down_and_volumes");
   });
 
-  it("POST /env/down without volumes does not pass policyOverride", async () => {
+  it("不带 volumes 的 POST /env/down 不传递 policyOverride", async () => {
     let capturedOpts: unknown = undefined;
     const app = createApp({
       getServicesRecord: () => SERVICE_RECORD,
@@ -209,7 +209,7 @@ describe("env routes", () => {
     expect(capturedOpts).toBeUndefined();
   });
 
-  it("GET /env does not include probeStatus when hasServices is false", async () => {
+  it("hasServices 为 false 时 GET /env 不包含 probeStatus", async () => {
     const app = createApp({ getServicesRecord: () => null });
     const res = await app.request("/api/rigs/rig-1/env");
     const body = await res.json() as Record<string, unknown>;

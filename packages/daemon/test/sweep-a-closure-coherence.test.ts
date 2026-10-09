@@ -1,9 +1,8 @@
-// SWEEP-a (shape f2576102) — closure/blocked-field coherence: an accept-path either
-// takes effect or fails LOUD; incoherent fields NEVER silently persist.
-// Admits-map (CORRECTED from live schema use — the workflow park writers pass
-// state:"blocked"+closureReason:"blocked_on" at workflow-runtime.ts:587/1013):
-// closure_reason/target admit on done, OR on blocked when closureReason==="blocked_on"
-// (the park-record form); blocked_on admits only on state blocked. Surfaced to PM.
+// SWEEP-a（shape f2576102）——closure/blocked-field 一致性：accept path 要么生效，要么显著失败；
+// 不一致字段绝不静默持久化。Admits map（根据 live schema 使用修正——workflow park writer 在
+// workflow-runtime.ts:587/1013 传入 state:"blocked" + closureReason:"blocked_on"）：
+// closure_reason/target 在 done 时允许，或在 blocked 且 closureReason==="blocked_on" 时允许
+//（park-record 形式）；blocked_on 只在 state 为 blocked 时允许。已向 PM 呈现。
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createDb } from "../src/db/connection.js";
@@ -20,7 +19,7 @@ import { queueItemEvidenceRefSchema } from "../src/db/migrations/048_queue_item_
 import { EventBus } from "../src/domain/event-bus.js";
 import { QueueRepository, QueueRepositoryError } from "../src/domain/queue-repository.js";
 
-describe("SWEEP-a — closure/blocked coherence guard", () => {
+describe("SWEEP-a——closure/blocked 一致性 guard", () => {
   let db: Database.Database;
   let repo: QueueRepository;
   let id: string;
@@ -33,26 +32,26 @@ describe("SWEEP-a — closure/blocked coherence guard", () => {
   });
   afterEach(() => db.close());
 
-  it("closure_reason on state=in-progress REJECTS loud, nothing persisted", async () => {
+  it("state=in-progress 上的 closure_reason 被显著拒绝，不持久化任何内容", async () => {
     let err: unknown;
     try { await repo.update({ qitemId: id, actorSession: "a@rig", state: "in-progress", closureReason: "denied" } as never); }
     catch (e) { err = e; }
     expect(err).toBeInstanceOf(QueueRepositoryError);
     expect((err as QueueRepositoryError).code).toBe("closure_fields_not_admitted");
-    expect(repo.getById(id)!.closureReason).toBeNull(); // NO write
+    expect(repo.getById(id)!.closureReason).toBeNull(); // 无写入。
     expect(repo.getById(id)!.state).toBe("pending");
   });
 
-  it("blocked_on on state=done REJECTS loud", async () => {
+  it("state=done 上的 blocked_on 被显著拒绝", async () => {
     let err: unknown;
     try { await repo.update({ qitemId: id, actorSession: "a@rig", state: "done", closureReason: "canceled", blockedOn: "x@rig" } as never); }
     catch (e) { err = e; }
     expect(err).toBeInstanceOf(QueueRepositoryError);
     expect((err as QueueRepositoryError).code).toBe("blocked_on_not_admitted");
-    expect(repo.getById(id)!.state).toBe("pending"); // the whole update rejected
+    expect(repo.getById(id)!.state).toBe("pending"); // 整个 update 被拒绝。
   });
 
-  it("CONTROL: done+closure stays green; the blocked park-record form stays green (workflow writers)", async () => {
+  it("对照：done+closure 保持绿色；blocked park-record 形式保持绿色（workflow writer）", async () => {
     await repo.update({ qitemId: id, actorSession: "a@rig", state: "blocked", closureReason: "blocked_on", closureTarget: "gate@rig", blockedOn: "gate@rig" } as never);
     expect(repo.getById(id)!.state).toBe("blocked");
     expect(repo.getById(id)!.blockedOn).toBe("gate@rig");

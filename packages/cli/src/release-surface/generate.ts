@@ -1,10 +1,9 @@
-// OPR.0.3.3.13.1 - sample-diff generator entry.
+// OPR.0.3.3.13.1 —— sample-diff 生成器入口。
 //
-// Runnable after `npm run build`:
+// `npm run build` 之后可运行：
 //   node dist/release-surface/generate.js --from v0.3.1 --to v0.3.2 --out <path>
-// Emits the deterministic release-surface diff to --out (or stdout). Not wired
-// into the shipped `rig` binary (that placement is a 13.3 decision); this is the
-// POC proof-artifact generator.
+// 把确定性的发布面 diff 输出到 --out（或 stdout）。未接入发布的 `rig` 二进制
+// （该部署属于 13.3 的决定）；这是 POC 证明产物生成器。
 
 import fs from "node:fs";
 
@@ -35,14 +34,14 @@ export function main(argv: string[]): number {
     const yaml = diffToYaml(diff);
     if (args.out) {
       fs.writeFileSync(args.out, yaml);
-      process.stderr.write(`release-surface diff written to ${args.out}\n`);
+      process.stderr.write(`发布面 diff 已写入 ${args.out}\n`);
     } else {
       process.stdout.write(yaml);
     }
     return 0;
   } catch (err) {
     if (err instanceof SurfaceParserError) {
-      process.stderr.write(`Error: ${err.fact}\n${err.consequence}\n${err.action}\n`);
+      process.stderr.write(`错误：${err.fact}\n${err.consequence}\n${err.action}\n`);
       return 1;
     }
     throw err;

@@ -1,13 +1,13 @@
-// Preview Terminal v0 (PL-018) — preview route tests.
+// Preview Terminal v0（PL-018）——preview 路由测试。
 //
-// Pins the load-bearing behaviors:
-//   - GET /api/rigs/:rigId/nodes/:logicalId/preview returns content + lines + capturedAt
-//   - rate limiter caches subsequent requests within the window
-//   - 503 when SessionTransport is unavailable
-//   - 404 when rig/node missing
-//   - 409 when session is unbound
-//   - GET /api/sessions/:sessionName/preview alias works
-//   - lines query param is clamped + defaulted
+// 固定关键行为：
+//   - GET /api/rigs/:rigId/nodes/:logicalId/preview 返回 content + lines + capturedAt；
+//   - rate limiter 缓存窗口内的后续请求；
+//   - SessionTransport 不可用时返回 503；
+//   - rig/node 缺失时返回 404；
+//   - session 未绑定时返回 409；
+//   - GET /api/sessions/:sessionName/preview alias 可用；
+//   - lines query param 会限制范围并提供默认值。
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
@@ -79,7 +79,7 @@ describe("GET /api/rigs/:rigId/nodes/:logicalId/preview (PL-018)", () => {
     };
   });
 
-  it("returns content + lines + capturedAt", async () => {
+  it("返回 content + lines + capturedAt", async () => {
     const app = buildApp({ rigRepo, sessionTransport: transport });
     const res = await app.request("/api/rigs/r-1/nodes/driver/preview?lines=50");
     expect(res.status).toBe(200);
@@ -90,7 +90,7 @@ describe("GET /api/rigs/:rigId/nodes/:logicalId/preview (PL-018)", () => {
     expect(body.capturedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  it("rate limiter caches subsequent requests within the window", async () => {
+  it("rate limiter 缓存窗口内的后续请求", async () => {
     const limiter = new PreviewRateLimiter<unknown>(60_000);
     const app = buildApp({ rigRepo, sessionTransport: transport, rateLimiter: limiter });
     await app.request("/api/rigs/r-1/nodes/driver/preview?lines=50");
@@ -99,7 +99,7 @@ describe("GET /api/rigs/:rigId/nodes/:logicalId/preview (PL-018)", () => {
     expect(transport.calls.length).toBe(1);
   });
 
-  it("different lines query values use distinct cache keys", async () => {
+  it("不同 lines query 值使用不同 cache key", async () => {
     const limiter = new PreviewRateLimiter<unknown>(60_000);
     const app = buildApp({ rigRepo, sessionTransport: transport, rateLimiter: limiter });
     await app.request("/api/rigs/r-1/nodes/driver/preview?lines=50");
@@ -109,43 +109,43 @@ describe("GET /api/rigs/:rigId/nodes/:logicalId/preview (PL-018)", () => {
     expect(transport.calls[1].lines).toBe(200);
   });
 
-  it("clamps lines to a sensible upper bound (1000)", async () => {
+  it("把 lines 限制在合理上限 1000", async () => {
     const app = buildApp({ rigRepo, sessionTransport: transport });
     await app.request("/api/rigs/r-1/nodes/driver/preview?lines=99999");
     expect(transport.calls[0].lines).toBe(1000);
   });
 
-  it("defaults lines to 50 when missing or non-numeric", async () => {
+  it("lines 缺失或不是数字时默认为 50", async () => {
     const app = buildApp({ rigRepo, sessionTransport: transport });
     await app.request("/api/rigs/r-1/nodes/driver/preview");
     expect(transport.calls[0].lines).toBe(50);
     transport.calls.length = 0;
 
-    // Use a fresh limiter so the second request isn't served from cache
+    // 使用全新 limiter，避免第二个请求从 cache 返回。
     const app2 = buildApp({ rigRepo, sessionTransport: transport });
     await app2.request("/api/rigs/r-1/nodes/driver/preview?lines=banana");
     expect(transport.calls[0].lines).toBe(50);
   });
 
-  it("503 when SessionTransport unavailable", async () => {
+  it("SessionTransport 不可用时返回 503", async () => {
     const app = buildApp({ rigRepo, sessionTransport: null });
     const res = await app.request("/api/rigs/r-1/nodes/driver/preview");
     expect(res.status).toBe(503);
   });
 
-  it("404 when rig is missing", async () => {
+  it("工作组缺失时返回 404", async () => {
     const app = buildApp({ rigRepo, sessionTransport: transport });
     const res = await app.request("/api/rigs/missing/nodes/driver/preview");
     expect(res.status).toBe(404);
   });
 
-  it("404 when node is missing", async () => {
+  it("节点缺失时返回 404", async () => {
     const app = buildApp({ rigRepo, sessionTransport: transport });
     const res = await app.request("/api/rigs/r-1/nodes/nonexistent/preview");
     expect(res.status).toBe(404);
   });
 
-  it("409 when node has no tmux session bound", async () => {
+  it("节点没有绑定 tmux session 时返回 409", async () => {
     const app = buildApp({ rigRepo, sessionTransport: transport });
     const res = await app.request("/api/rigs/r-1/nodes/guard/preview");
     expect(res.status).toBe(409);
@@ -153,7 +153,7 @@ describe("GET /api/rigs/:rigId/nodes/:logicalId/preview (PL-018)", () => {
     expect(body.error).toBe("session_unbound");
   });
 
-  it("502 surfaces capture failures with structured reason + hint", async () => {
+  it("capture 失败时以 502 呈现结构化 reason + hint", async () => {
     transport.response = { ok: false, sessionName: "x", reason: "session_missing", error: "Session not found" };
     const app = buildApp({ rigRepo, sessionTransport: transport });
     const res = await app.request("/api/rigs/r-1/nodes/driver/preview");
@@ -171,7 +171,7 @@ describe("GET /api/sessions/:sessionName/preview (PL-018 alias)", () => {
     transport = new FakeSessionTransport();
   });
 
-  it("session-keyed alias returns same payload shape", async () => {
+  it("以 session 为 key 的 alias 返回相同 payload 结构", async () => {
     const app = buildApp({ rigRepo: { getRig: () => null }, sessionTransport: transport });
     const res = await app.request("/api/sessions/velocity-driver%40openrig-velocity/preview?lines=10");
     expect(res.status).toBe(200);
@@ -180,7 +180,7 @@ describe("GET /api/sessions/:sessionName/preview (PL-018 alias)", () => {
     expect(transport.calls[0].sessionName).toBe("velocity-driver@openrig-velocity");
   });
 
-  it("503 when SessionTransport unavailable on alias too", async () => {
+  it("alias 上 SessionTransport 不可用时同样返回 503", async () => {
     const app = buildApp({ rigRepo: { getRig: () => null }, sessionTransport: null });
     const res = await app.request("/api/sessions/x/preview");
     expect(res.status).toBe(503);

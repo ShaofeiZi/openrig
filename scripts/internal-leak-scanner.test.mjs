@@ -38,8 +38,8 @@ test("scanner reports case-insensitive text tokens with file, token, line, and r
   });
   assert.match(scanner.buildInternalLeakMessage(findings), /skills\/public\/SKILL\.md/);
   assert.match(scanner.buildInternalLeakMessage(findings), /operator-agent@/);
-  assert.match(scanner.buildInternalLeakMessage(findings), /line 2/i);
-  assert.match(scanner.buildInternalLeakMessage(findings), /sidecar|fence|genericize|host-only/i);
+  assert.match(scanner.buildInternalLeakMessage(findings), /第 2 行/);
+  assert.match(scanner.buildInternalLeakMessage(findings), /sidecar|围栏|泛化|宿主侧/i);
 });
 
 test("scanner honors an allowed-context substring on the same line only", async () => {

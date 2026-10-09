@@ -6,8 +6,8 @@ import { renderScreen } from "../src/render.js";
 import { demoSnapshot } from "../src/demo-data.js";
 import type { ViewState } from "../src/types.js";
 
-// PIN 1: command / mouse / keyboard are adapters over ONE dispatch. Parity is
-// proven by reaching the IDENTICAL state through each input kind.
+// PIN 1：command / mouse / keyboard 都是同一 dispatch 之上的适配器。对等性
+// 经每种输入到达相同状态来证明。
 
 const snap = demoSnapshot();
 
@@ -20,8 +20,8 @@ function comparable(state: ViewState) {
   return rest;
 }
 
-describe("parity by construction (FR-7 / PIN 1)", () => {
-  it("command vs mouse click on the explorer reach identical state", () => {
+describe("构造即对等（FR-7 / PIN 1）", () => {
+  it("explorer 上命令 vs 鼠标点击到达相同状态", () => {
     const byCommand = fresh("cmd");
     const byMouse = fresh("ui");
 
@@ -40,7 +40,7 @@ describe("parity by construction (FR-7 / PIN 1)", () => {
     expect(comparable(byMouse.get())).toEqual(comparable(byCommand.get()));
   });
 
-  it("command vs keyboard (arrows + enter) reach identical state", () => {
+  it("命令 vs 键盘（箭头+enter）到达相同状态", () => {
     const byCommand = fresh("cmd");
     const byKeys = fresh("kbd");
 
@@ -58,27 +58,27 @@ describe("parity by construction (FR-7 / PIN 1)", () => {
     expect(comparable(byKeys.get())).toEqual(comparable(byCommand.get()));
   });
 
-  it("renders the agents table with fixed-width columns and right-aligned numerics (honest-unknown as —)", () => {
+  it("以固定宽列与右对齐数字渲染 agents 表（honest-unknown 显示 —）", () => {
     const s = fresh("t");
     s.dispatch(parseCommand("rig openrig-build"));
     const screen = renderScreen(s.get(), snap, { cols: 140, rows: 30 });
-    const header = screen.lines.find((l) => l.includes("SEAT") && l.includes("STATE"));
+    const header = screen.lines.find((l) => l.includes("席位") && l.includes("状态"));
     expect(header).toBeDefined();
-    const rows = screen.lines.filter((l) => l.includes("term ▸") && /\b(working|idle|needs you|unknown)\b/.test(l));
+    const rows = screen.lines.filter((l) => l.includes("终端 ▸") && /(工作中|空闲|需要你|未知)/.test(l));
     expect(rows.length).toBeGreaterThanOrEqual(2);
     for (const row of rows) {
-      expect(row).toMatch(/(?:\d+%[\u25aa▫]{3}|—)\s+(?:working|idle|needs you|unknown)/);
+      expect(row).toMatch(/(?:\d+%[\u25aa▫]{3}|—)\s+(?:工作中|空闲|需要你|未知)/);
     }
   });
 
-  it("keeps STATUS verbatim from the snapshot — never fabricated (PIN 2 render leg)", () => {
+  it("STATUS 逐字取自快照——绝不伪造（PIN 2 渲染腿）", () => {
     const s = fresh("t");
     s.dispatch(parseCommand("rig openrig-build"));
     const screen = renderScreen(s.get(), snap, { cols: 140, rows: 30 });
     const qaRow = screen.lines.find((l) => /\? qa\s/.test(l));
     expect(qaRow).toBeDefined();
-    expect(qaRow).toMatch(/unknown/);
+    expect(qaRow).toMatch(/未知/);
     const deadRow = screen.lines.find((l) => /\b(?:◐ )?lead\s/.test(l));
-    expect(deadRow).toMatch(/needs you/);
+    expect(deadRow).toMatch(/需要你/);
   });
 });

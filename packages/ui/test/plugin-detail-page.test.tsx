@@ -1,16 +1,15 @@
-// PluginDetailPage state + content tests.
+// PluginDetailPage 状态 + 内容测试。
 //
-// Slice 28 Checkpoint C-2 refactored PluginDetailPage to use the new
-// daemon endpoints /api/plugins/:id/files/{list,read} (SC-29 EXCEPTION
-// #11) to render a real file-browser tree of the plugin folder. The
-// virtual structured-data tree from C-shell is gone; structured data
-// (manifest fields, hook events, MCP servers, used-by list) appears
-// via direct file viewing OR via the header strip metadata (skillCount
-// + usedBy count).
+// Slice 28 Checkpoint C-2 重构 PluginDetailPage 以用新
+// daemon 端点 /api/plugins/:id/files/{list,read}（SC-29 EXCEPTION
+// #11）渲染 plugin 文件夹的真实 file-browser 树。C-shell 的
+// 虚拟 structured-data 树消失；structured data（manifest 字段、hook
+// 事件、MCP servers、used-by 列表）经直接文件查看或 header strip
+// 元数据（skillCount + usedBy 计数）呈现。
 //
-// Loading + not-found tests preserved. Content tests rewritten for the
-// real-file-tree shape. Comprehensive docs-browser coverage (folder
-// navigation, viewer content) lives in slice-28-detail-pages.test.tsx.
+// Loading + not-found 测试保留。内容测试为 real-file-tree 形状重写。
+// 综合 docs-browser 覆盖（folder 导航、viewer 内容）在
+// slice-28-detail-pages.test.tsx。
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -140,17 +139,17 @@ describe("PluginDetailPage", () => {
     renderPluginDetail("openrig-core");
 
     expect(await screen.findByTestId("plugin-detail-page")).toBeDefined();
-    // Header content preserved across the C-2 refactor.
+    // Header 内容跨 C-2 重构保留。
     expect(screen.getByRole("heading", { name: "openrig-core" })).toBeDefined();
     expect(screen.getByText("v0.1.0")).toBeDefined();
     expect(screen.getByText("Canonical OpenRig content")).toBeDefined();
     expect(screen.getByTestId("plugin-detail-runtime-claude")).toBeDefined();
     expect(screen.getByTestId("plugin-detail-runtime-codex")).toBeDefined();
     expect(screen.getByText("vendored:openrig-core")).toBeDefined();
-    expect(screen.getByTestId("plugin-detail-skill-count").textContent).toBe("2 skills");
-    expect(screen.getByTestId("plugin-detail-used-by-count").textContent).toBe("used by 2 agents");
+    expect(screen.getByTestId("plugin-detail-skill-count").textContent).toBe("2 个技能");
+    expect(screen.getByTestId("plugin-detail-used-by-count").textContent).toBe("被 2 个智能体使用");
 
-    // Real file-browser tree lists plugin root files/dirs from daemon.
+    // 真实 file-browser 树从 daemon 列出 plugin 根 files/dirs。
     await waitFor(() => {
       expect(screen.getByTestId("plugin-detail-tree-entry-README.md")).toBeDefined();
     });
@@ -158,7 +157,7 @@ describe("PluginDetailPage", () => {
     expect(screen.getByTestId("plugin-detail-tree-entry-hooks")).toBeDefined();
     expect(screen.getByTestId("plugin-detail-tree-entry-.claude-plugin")).toBeDefined();
 
-    // README.md auto-selected on entry; markdown body visible.
+    // 进入时 README.md 自动选中；markdown body 可见。
     await waitFor(() => {
       expect(screen.getByText(/Canonical content/)).toBeDefined();
     });
@@ -200,8 +199,8 @@ describe("PluginDetailPage", () => {
     });
     renderPluginDetail("skinny");
     expect(await screen.findByTestId("plugin-detail-page")).toBeDefined();
-    expect(screen.getByTestId("plugin-detail-skill-count").textContent).toBe("0 skills");
-    expect(screen.getByTestId("plugin-detail-used-by-count").textContent).toBe("used by 0 agents");
+    expect(screen.getByTestId("plugin-detail-skill-count").textContent).toBe("0 个技能");
+    expect(screen.getByTestId("plugin-detail-used-by-count").textContent).toBe("被 0 个智能体使用");
     await waitFor(() => {
       expect(screen.getByTestId("plugin-detail-tree-empty")).toBeDefined();
     });

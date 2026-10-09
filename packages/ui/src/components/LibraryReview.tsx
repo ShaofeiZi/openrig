@@ -2,16 +2,15 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { WorkspacePage } from "./WorkspacePage.js";
-// OPR.0.4.6.WF4 (C3b) — the workflow shape renderer now lives in its own module
-// (extracted from this file); this page imports it. SliceWorkflowGraph untouched.
+// OPR.0.4.6.WF4 (C3b)——工作流形态渲染器现已独立成模块
+// （从本文件抽出）；本页导入它。SliceWorkflowGraph 未改动。
 import { WorkflowTopologyGraph } from "./workflow/WorkflowTopologyGraph.js";
 import { WorkflowInstancesBand } from "./workflow/WorkflowInstancesBand.js";
-// V1 attempt-3 Phase 5 P5-1: file references in context-pack + agent-image
-// "Files" / "Supplementary files" lists become FileReferenceTrigger-wrapped
-// rows so click → FileViewer in drawer. Per content-drawer.md L23-L34
-// auto-open trigger contract. Content arrives later (Phase 5 P5-5/P5-6
-// data-fetch wiring may add live content); FileViewer empty-state covers
-// the no-content interim.
+// V1 attempt-3 Phase 5 P5-1：context-pack + agent-image 的
+// “文件”/“补充文件”列表中的文件引用改为 FileReferenceTrigger 包裹的行，
+// 使点击 → 抽屉中的 FileViewer。按 content-drawer.md L23-L34 的自动打开触发契约。
+// 内容稍后到达（Phase 5 P5-5/P5-6 数据取接可能加实时内容）；FileViewer 空态覆盖
+// 无内容的过渡阶段。
 import { FileReferenceTrigger } from "./drawer-triggers/FileReferenceTrigger.js";
 import { ForkNowAction } from "./agent-images/ForkNowAction.js";
 import {
@@ -55,7 +54,7 @@ interface LibraryReviewProps {
 function ProvenanceBadge({ sourcePath, sourceState }: { sourcePath: string; sourceState: string }) {
   return (
     <div className="font-mono text-[9px] text-on-surface-variant" data-testid="library-provenance">
-      Source: {sourcePath} · {sourceState}
+      来源：{sourcePath} · {sourceState}
     </div>
   );
 }
@@ -69,18 +68,18 @@ function LibraryAgentReviewPage({ review }: { review: LibraryAgentReview }) {
     <WorkspacePage>
       <div data-testid="library-review-agent" className="space-y-6">
         <WorkflowHeader
-          eyebrow="Library — Agent Spec"
+          eyebrow="库 — 智能体规格"
           title={review.name}
-          description={review.description ?? "Agent spec from library."}
-          actions={<Button variant="outline" size="sm" onClick={() => navigate({ to: "/agents/validate" })}>Validate</Button>}
+          description={review.description ?? "来自库的智能体规格。"}
+          actions={<Button variant="outline" size="sm" onClick={() => navigate({ to: "/agents/validate" })}>校验</Button>}
         />
         <ProvenanceBadge sourcePath={review.sourcePath} sourceState={review.sourceState} />
 
         <WorkflowSummaryGrid>
-          <WorkflowSummaryCard label="Format" value="AgentSpec" testId="lib-agent-format" />
-          <WorkflowSummaryCard label="Version" value={review.version} testId="lib-agent-version" />
-          <WorkflowSummaryCard label="Profiles" value={profiles.length} testId="lib-agent-profiles" />
-          <WorkflowSummaryCard label="Skills" value={resources.skills.length} testId="lib-agent-skills" />
+          <WorkflowSummaryCard label="格式" value="AgentSpec" testId="lib-agent-format" />
+          <WorkflowSummaryCard label="版本" value={review.version} testId="lib-agent-version" />
+          <WorkflowSummaryCard label="配置档" value={profiles.length} testId="lib-agent-profiles" />
+          <WorkflowSummaryCard label="技能" value={resources.skills.length} testId="lib-agent-skills" />
         </WorkflowSummaryGrid>
 
         <AgentSpecDisplay
@@ -107,7 +106,7 @@ function LibraryRigReviewContent({ review }: { review: LibraryRigReview }) {
     if (!agentRef.startsWith("local:")) return null;
     const refPath = agentRef.slice("local:".length);
 
-    // Resolve the ref path against the rig's source directory
+    // 按工作组源目录解析 ref 路径
     const rigDir = review.sourcePath.replace(/\/[^/]+$/, "");
     const segments = `${rigDir}/${refPath}`.split("/");
     const resolved: string[] = [];
@@ -117,7 +116,7 @@ function LibraryRigReviewContent({ review }: { review: LibraryRigReview }) {
     }
     const resolvedDir = "/" + resolved.join("/");
 
-    // Match against library entries by sourcePath prefix (agent dir contains agent.yaml)
+    // 按 sourcePath 前缀匹配库条目（agent 目录含 agent.yaml）
     return agentEntries.find((entry) => entry.sourcePath.startsWith(resolvedDir + "/")) ?? null;
   };
 
@@ -125,9 +124,9 @@ function LibraryRigReviewContent({ review }: { review: LibraryRigReview }) {
     <WorkspacePage>
       <div data-testid="library-review-rig" className="space-y-6">
         <WorkflowHeader
-          eyebrow={review.services ? "Library — Managed App" : "Library — Rig Spec"}
+          eyebrow={review.services ? "库 — 托管应用" : "库 — 工作组规格"}
           title={review.name}
-          description={review.summary ?? "Rig spec from library."}
+          description={review.summary ?? "来自库的工作组规格。"}
           actions={
             <div className="flex gap-2">
               {review.services && (
@@ -146,45 +145,45 @@ function LibraryRigReviewContent({ review }: { review: LibraryRigReview }) {
                     window.setTimeout(() => setSetupPromptCopied(false), 2000);
                   })()}
                 >
-                  {setupPromptCopied ? "Copied" : "Copy Setup Prompt"}
+                  {setupPromptCopied ? "已复制" : "复制安装提示词"}
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={() => navigate({ to: "/import" })}>Import</Button>
+              <Button variant="outline" size="sm" onClick={() => navigate({ to: "/import" })}>导入</Button>
             </div>
           }
         />
         <ProvenanceBadge sourcePath={review.sourcePath} sourceState={review.sourceState} />
 
         <WorkflowSummaryGrid>
-          <WorkflowSummaryCard label="Format" value={review.format === "pod_aware" ? "Pod-Aware" : "Legacy"} testId="lib-rig-format" />
+          <WorkflowSummaryCard label="格式" value={review.format === "pod_aware" ? "Pod 感知" : "旧版"} testId="lib-rig-format" />
           {review.services && (
-            <WorkflowSummaryCard label="Type" value="Agent-Managed App" testId="lib-rig-type" />
+            <WorkflowSummaryCard label="类型" value="智能体托管应用" testId="lib-rig-type" />
           )}
           {review.services && reviewPods.length > 0 && (() => {
             const specialistPod = reviewPods.find((p) => p.members.some((m) => m.id === "specialist"));
             if (!specialistPod) return null;
             return (
               <WorkflowSummaryCard
-                label="Specialist Agent"
+                label="专家智能体"
                 value={`${specialistPod.id}.specialist`}
                 testId="lib-rig-specialist"
               />
             );
           })()}
           <WorkflowSummaryCard
-            label={review.format === "pod_aware" ? "Pods" : "Nodes"}
+            label={review.format === "pod_aware" ? "Pod" : "节点"}
             value={review.format === "pod_aware" ? reviewPods.length : reviewNodes.length}
             testId="lib-rig-pods"
           />
           <WorkflowSummaryCard
-            label="Members"
+            label="成员"
             value={review.format === "pod_aware"
               ? reviewPods.reduce((sum, p) => sum + p.members.length, 0)
               : reviewNodes.length}
             testId="lib-rig-members"
           />
           <WorkflowSummaryCard
-            label="Edges"
+            label="边"
             value={reviewEdges.length + (review.format === "pod_aware"
               ? reviewPods.reduce((sum, p) => sum + (p.edges?.length ?? 0), 0)
               : 0)}
@@ -211,15 +210,13 @@ function LibraryRigReviewContent({ review }: { review: LibraryRigReview }) {
 }
 
 export function LibraryReview({ entryId }: LibraryReviewProps) {
-  // PL-014: context_packs live at /api/context-packs/library and have
-  // an id prefix of "context-pack:". Dispatch to the pack-specific
-  // review page before invoking useLibraryReview (which would 404
-  // against the spec-library route for context-pack ids).
+  // PL-014：context_packs 位于 /api/context-packs/library，id 前缀 "context-pack:"。
+  // 在调用 useLibraryReview 前分发到包专属评审页（后者对 context-pack id 会 404，
+  // 因走的是 spec-library 路由）。
   if (entryId.startsWith("context-pack:")) {
     return <LibraryContextPackReviewPage entryId={entryId} />;
   }
-  // PL-016: agent_images live at /api/agent-images/library with id
-  // prefix "agent-image:".
+  // PL-016：agent_images 位于 /api/agent-images/library，id 前缀 "agent-image:"。
   if (entryId.startsWith("agent-image:")) {
     return <LibraryAgentImageReviewPage entryId={entryId} />;
   }
@@ -233,7 +230,7 @@ function LibrarySpecReview({ entryId }: LibraryReviewProps) {
   if (isLoading) {
     return (
       <WorkspacePage>
-        <div className="font-mono text-[10px] text-on-surface-variant">Loading spec review...</div>
+        <div className="font-mono text-[10px] text-on-surface-variant">正在加载规格评审…</div>
       </WorkspacePage>
     );
   }
@@ -242,8 +239,8 @@ function LibrarySpecReview({ entryId }: LibraryReviewProps) {
     return (
       <WorkspacePage>
         <div data-testid="library-review-error" className="space-y-4">
-          <WorkflowHeader eyebrow="Library" title="Spec Not Found" description={(error as Error)?.message ?? "Could not load spec."} />
-          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>Back to Library</Button>
+          <WorkflowHeader eyebrow="库" title="未找到规格" description={(error as Error)?.message ?? "无法加载规格。"} />
+          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>返回库</Button>
         </div>
       </WorkspacePage>
     );
@@ -260,7 +257,7 @@ function LibrarySpecReview({ entryId }: LibraryReviewProps) {
   return <LibraryRigReviewContent review={review as LibraryRigReview} />;
 }
 
-// --- Workflows in Spec Library v0: workflow review variant ---
+// --- 规格库 v0 中的工作流：工作流评审变体 ---
 
 
 function LibraryWorkflowReviewPage({ review }: { review: LibraryWorkflowReview }) {
@@ -304,9 +301,9 @@ function LibraryWorkflowReviewPage({ review }: { review: LibraryWorkflowReview }
     <WorkspacePage>
       <div data-testid="library-review-workflow" className="space-y-6">
         <WorkflowHeader
-          eyebrow={review.isBuiltIn ? "Library — Workflow (Built-in)" : "Library — Workflow"}
+          eyebrow={review.isBuiltIn ? "库 — 工作流（内置）" : "库 — 工作流"}
           title={`${review.name} v${review.version}`}
-          description={review.purpose ?? "Workflow spec from library."}
+          description={review.purpose ?? "来自库的工作流规格。"}
           actions={
             <div className="flex gap-2 items-center">
               {isThisLensActive ? (
@@ -317,7 +314,7 @@ function LibraryWorkflowReviewPage({ review }: { review: LibraryWorkflowReview }
                   onClick={() => void deactivate()}
                   disabled={busy}
                 >
-                  {busy ? "..." : "Deactivate Lens"}
+                  {busy ? "…" : "停用镜头"}
                 </Button>
               ) : (
                 <Button
@@ -327,10 +324,10 @@ function LibraryWorkflowReviewPage({ review }: { review: LibraryWorkflowReview }
                   onClick={() => void activate()}
                   disabled={busy}
                 >
-                  {busy ? "..." : "Activate as Lens"}
+                  {busy ? "…" : "激活为镜头"}
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>Back</Button>
+              <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>返回</Button>
             </div>
           }
         />
@@ -338,29 +335,29 @@ function LibraryWorkflowReviewPage({ review }: { review: LibraryWorkflowReview }
         {error && <div data-testid="workflow-lens-error" className="font-mono text-[10px] text-red-600">{error}</div>}
 
         <WorkflowSummaryGrid>
-          <WorkflowSummaryCard label="Format" value="WorkflowSpec" testId="lib-wf-format" />
-          <WorkflowSummaryCard label="Version" value={review.version} testId="lib-wf-version" />
-          <WorkflowSummaryCard label="Roles" value={review.rolesCount} testId="lib-wf-roles" />
-          <WorkflowSummaryCard label="Steps" value={review.stepsCount} testId="lib-wf-steps" />
-          <WorkflowSummaryCard label="Target Rig" value={review.targetRig ?? "(any)"} testId="lib-wf-target-rig" />
-          <WorkflowSummaryCard label="Source" value={review.isBuiltIn ? "built-in" : "user file"} testId="lib-wf-source" />
+          <WorkflowSummaryCard label="格式" value="WorkflowSpec" testId="lib-wf-format" />
+          <WorkflowSummaryCard label="版本" value={review.version} testId="lib-wf-version" />
+          <WorkflowSummaryCard label="角色" value={review.rolesCount} testId="lib-wf-roles" />
+          <WorkflowSummaryCard label="步骤" value={review.stepsCount} testId="lib-wf-steps" />
+          <WorkflowSummaryCard label="目标工作组" value={review.targetRig ?? "（任意）"} testId="lib-wf-target-rig" />
+          <WorkflowSummaryCard label="来源" value={review.isBuiltIn ? "内置" : "用户文件"} testId="lib-wf-source" />
         </WorkflowSummaryGrid>
 
         <div data-testid="workflow-terminal-rule" className="flex items-center gap-2 border border-outline-variant/40 bg-surface-lowest/10 px-3 py-2 font-mono text-[10px] text-on-surface">
           <ToolMark tool="terminal" size="xs" decorative />
-          <span className="text-on-surface-variant uppercase tracking-[0.16em] text-[8px]">Coordination Terminal Turn:</span>
+          <span className="text-on-surface-variant uppercase tracking-[0.16em] text-[8px]">协调终端回合：</span>
           {review.terminalTurnRule}
         </div>
 
         <WorkflowTopologyGraph topology={review.topology} />
 
-        {/* OPR.0.4.6.WF4 (C4) — the A-lite "runs of THIS spec" instances band.
-            quietWhenEmpty: renders NOTHING at zero instances, so a spec with no
-            live runs is byte-identical to the shipped Library page (zero-regression). */}
+        {/* OPR.0.4.6.WF4 (C4)——A-lite “本规格的运行”实例带。
+            quietWhenEmpty：零实例时不渲染任何内容，使无实时运行的规格与发布的
+            库页面字节一致（零回归）。 */}
         <WorkflowInstancesBand workflowName={review.name} workflowVersion={review.version} testId="library-instances-band" />
 
         <div className="space-y-2">
-          <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-on-surface-variant">Steps</div>
+          <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-on-surface-variant">步骤</div>
           <div className="space-y-1">
             {review.steps.map((step) => (
               <div
@@ -375,12 +372,12 @@ function LibraryWorkflowReviewPage({ review }: { review: LibraryWorkflowReview }
                 {step.objective && <div className="mt-1 text-[10px] text-on-surface-variant leading-tight">{step.objective}</div>}
                 {step.allowedNextSteps.length > 0 && (
                   <div className="mt-1 font-mono text-[9px] text-on-surface-variant">
-                    next: {step.allowedNextSteps.map((n) => `${n.stepId} (${n.role})`).join(", ")}
+                    下一步：{step.allowedNextSteps.map((n) => `${n.stepId} (${n.role})`).join(", ")}
                   </div>
                 )}
                 {step.allowedExits.length > 0 && (
                   <div className="font-mono text-[9px] text-on-surface-variant">
-                    exits: {step.allowedExits.join(", ")}
+                    出口：{step.allowedExits.join(", ")}
                   </div>
                 )}
               </div>
@@ -392,20 +389,19 @@ function LibraryWorkflowReviewPage({ review }: { review: LibraryWorkflowReview }
   );
 }
 
-// --- Rig Context / Composable Context Injection v0 (PL-014):
-//     context_pack review page ---
+// --- Rig 上下文 / 可组合上下文注入 v0（PL-014）：context_pack 评审页 ---
 
 function LibraryContextPackReviewPage({ entryId }: { entryId: string }) {
   const navigate = useNavigate();
   const { data: packs = [], isLoading: packsLoading, error: packsError } = useContextPackLibrary();
   const entry = packs.find((p) => p.id === entryId) ?? null;
-  // Atom 5: preview addresses by the pack's path-like ref, not its opaque id.
+  // Atom 5：预览按包的路径形 ref 寻址，而非其不透明 id。
   const { data: preview, isLoading: previewLoading } = useContextPackPreview(entry ? entry.relativePath : null);
 
   if (packsLoading) {
     return (
       <WorkspacePage>
-        <div className="font-mono text-[10px] text-on-surface-variant">Loading context pack…</div>
+        <div className="font-mono text-[10px] text-on-surface-variant">正在加载上下文包…</div>
       </WorkspacePage>
     );
   }
@@ -414,11 +410,11 @@ function LibraryContextPackReviewPage({ entryId }: { entryId: string }) {
       <WorkspacePage>
         <div data-testid="library-review-error" className="space-y-4">
           <WorkflowHeader
-            eyebrow="Library"
-            title="Context Pack Not Found"
-            description={(packsError as Error)?.message ?? `No context pack with id ${entryId}.`}
+            eyebrow="资料库"
+            title="未找到上下文包"
+            description={(packsError as Error)?.message ?? `没有 id 为 ${entryId} 的上下文包。`}
           />
-          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>Back to Library</Button>
+          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>返回库</Button>
         </div>
       </WorkspacePage>
     );
@@ -442,32 +438,32 @@ function ContextPackReviewBody({
     <WorkspacePage>
       <div data-testid="library-review-context-pack" className="space-y-4">
         <WorkflowHeader
-          eyebrow={`Library — Context Pack${entry.sourceType === "builtin" ? " (built-in)" : ""}`}
+          eyebrow={`库 — 上下文包${entry.sourceType === "builtin" ? "（内置）" : ""}`}
           title={entry.name}
-          description={entry.purpose ?? "Operator-authored composable context bundle."}
+          description={entry.purpose ?? "操作手撰写的可组合上下文包。"}
           actions={
-            <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>Back to Library</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>返回库</Button>
           }
         />
 
         <WorkflowSummaryGrid>
-          <WorkflowSummaryCard label="Version" value={entry.version} testId="lib-pack-version" />
-          <WorkflowSummaryCard label="Files" value={entry.files.length} testId="lib-pack-files" />
+          <WorkflowSummaryCard label="版本" value={entry.version} testId="lib-pack-version" />
+          <WorkflowSummaryCard label="文件" value={entry.files.length} testId="lib-pack-files" />
           <WorkflowSummaryCard
-            label="Tokens (~)"
+            label="Token（约）"
             value={String(entry.derivedEstimatedTokens)}
             testId="lib-pack-tokens"
           />
-          <WorkflowSummaryCard label="Source" value={entry.sourceType} testId="lib-pack-source" />
+          <WorkflowSummaryCard label="来源" value={entry.sourceType} testId="lib-pack-source" />
         </WorkflowSummaryGrid>
 
         <div data-testid="lib-pack-source-path" className="font-mono text-[9px] text-on-surface-variant">
-          path: {entry.sourcePath}
+          路径：{entry.sourcePath}
         </div>
 
         <section className="border border-outline-variant/40 bg-surface-lowest/[0.08]">
           <header className="border-b border-outline-variant bg-background px-3 py-2 font-mono text-[10px] uppercase tracking-[0.10em] text-on-surface-variant">
-            Files
+            文件
           </header>
           <ul data-testid="lib-pack-file-list" className="divide-y divide-outline-variant">
             {entry.files.map((f) => {
@@ -487,10 +483,10 @@ function ContextPackReviewBody({
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="font-bold truncate underline decoration-dotted decoration-outline">{f.path}</span>
                       <span className="font-mono text-[8px] text-on-surface-variant shrink-0">
-                        role: {f.role}
+                        角色：{f.role}
                         {missing
-                          ? " · MISSING"
-                          : ` · ${f.bytes}B · ~${f.estimatedTokens} tokens`}
+                          ? " · 缺失"
+                          : ` · ${f.bytes}B · 约 ${f.estimatedTokens} tokens`}
                       </span>
                     </div>
                     {f.summary && (
@@ -505,16 +501,16 @@ function ContextPackReviewBody({
 
         <section className="border border-outline-variant/40 bg-surface-lowest/[0.08]">
           <header className="border-b border-outline-variant bg-background px-3 py-2 font-mono text-[10px] uppercase tracking-[0.10em] text-on-surface-variant">
-            Bundle preview
+            包预览
           </header>
           {previewLoading && (
-            <div className="px-3 py-2 font-mono text-[9px] text-on-surface-variant">Loading bundle…</div>
+            <div className="px-3 py-2 font-mono text-[9px] text-on-surface-variant">正在加载包…</div>
           )}
           {preview && (
             <>
               {preview.missingFiles.length > 0 && (
                 <div data-testid="lib-pack-missing-warning" className="px-3 py-2 font-mono text-[9px] text-red-700 border-b border-outline-variant">
-                  Warning: {preview.missingFiles.length} file{preview.missingFiles.length === 1 ? "" : "s"} referenced by manifest but missing on disk.
+                  警告：清单引用了 {preview.missingFiles.length} 个文件，但磁盘上缺失。
                 </div>
               )}
               <pre
@@ -531,9 +527,8 @@ function ContextPackReviewBody({
   );
 }
 
-// --- Fork Primitive + Starter Agent Images v0 (PL-016): agent-image
-//     review variant. Shows manifest + statistics badges + lineage +
-//     Use-as-starter snippet + Pin/Unpin button. ---
+// --- Fork 原语 + 起点智能体镜像 v0（PL-016）：agent-image 评审变体。
+//     展示清单 + 统计徽章 + 谱系 + 用作起点片段 + 固定/取消固定按钮。 ---
 
 function LibraryAgentImageReviewPage({ entryId }: { entryId: string }) {
   const navigate = useNavigate();
@@ -544,7 +539,7 @@ function LibraryAgentImageReviewPage({ entryId }: { entryId: string }) {
   if (imagesLoading) {
     return (
       <WorkspacePage>
-        <div className="font-mono text-[10px] text-on-surface-variant">Loading agent image…</div>
+        <div className="font-mono text-[10px] text-on-surface-variant">正在加载智能体镜像…</div>
       </WorkspacePage>
     );
   }
@@ -553,11 +548,11 @@ function LibraryAgentImageReviewPage({ entryId }: { entryId: string }) {
       <WorkspacePage>
         <div data-testid="library-review-error" className="space-y-4">
           <WorkflowHeader
-            eyebrow="Library"
-            title="Agent Image Not Found"
-            description={(imagesError as Error)?.message ?? `No agent image with id ${entryId}.`}
+            eyebrow="资料库"
+            title="未找到智能体镜像"
+            description={(imagesError as Error)?.message ?? `没有 id 为 ${entryId} 的智能体镜像。`}
           />
-          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>Back to Library</Button>
+          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>返回库</Button>
         </div>
       </WorkspacePage>
     );
@@ -601,9 +596,9 @@ function AgentImageReviewBody({
     <WorkspacePage>
       <div data-testid="library-review-agent-image" className="space-y-4">
         <WorkflowHeader
-          eyebrow={`Library — Agent Image${entry.sourceType === "builtin" ? " (built-in)" : ""}`}
+          eyebrow={`库 — 智能体镜像${entry.sourceType === "builtin" ? "（内置）" : ""}`}
           title={`${entry.name} v${entry.version}`}
-          description={entry.notes ?? `Snapshot of ${entry.sourceSeat}.`}
+          description={entry.notes ?? `${entry.sourceSeat} 的快照。`}
           actions={
             <div className="flex gap-2">
               <Button
@@ -613,40 +608,39 @@ function AgentImageReviewBody({
                 onClick={() => void onTogglePin()}
                 disabled={pinMutation.isPending}
               >
-                {entry.pinned ? "Unpin" : "Pin"}
+                {entry.pinned ? "取消固定" : "固定"}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>Back to Library</Button>
+              <Button variant="outline" size="sm" onClick={() => navigate({ to: "/specs" })}>返回库</Button>
             </div>
           }
         />
 
         <WorkflowSummaryGrid>
           <WorkflowSummaryCard
-            label="Runtime"
+            label="运行时"
             value={<RuntimeBadge runtime={entry.runtime} size="sm" compact variant="inline" />}
             testId="lib-image-runtime"
           />
-          <WorkflowSummaryCard label="Forks" value={String(entry.stats.forkCount)} testId="lib-image-forks" />
-          <WorkflowSummaryCard label="Tokens (~)" value={String(entry.derivedEstimatedTokens)} testId="lib-image-tokens" />
-          <WorkflowSummaryCard label="Size" value={`${entry.stats.estimatedSizeBytes}B`} testId="lib-image-size" />
+          <WorkflowSummaryCard label="分叉" value={String(entry.stats.forkCount)} testId="lib-image-forks" />
+          <WorkflowSummaryCard label="Token（约）" value={String(entry.derivedEstimatedTokens)} testId="lib-image-tokens" />
+          <WorkflowSummaryCard label="大小" value={`${entry.stats.estimatedSizeBytes}B`} testId="lib-image-size" />
         </WorkflowSummaryGrid>
 
         <div data-testid="lib-image-source" className="font-mono text-[9px] text-on-surface-variant space-y-0.5">
-          <div>source seat: {entry.sourceSeat}</div>
-          {/* Surface source_cwd so operators see
-            * WHERE the parent session was created. Older
-            * manifests render "(unknown)" honestly. */}
-          <div data-testid="lib-image-source-cwd">source cwd: {entry.sourceCwd ?? "(unknown — pre-Finding-2 manifest)"}</div>
-          <div>created: {entry.createdAt}</div>
-          <div>last used: {entry.stats.lastUsedAt ?? "never"}</div>
-          <div>path: {entry.sourcePath}</div>
-          <div data-testid="lib-image-pinned" className={entry.pinned ? "text-amber-700 font-bold" : ""}>pinned: {String(entry.pinned)}</div>
+          <div>来源席位：{entry.sourceSeat}</div>
+          {/* 展示 source_cwd，使操作手看到父会话是在
+            * 何处创建的。较旧的清单诚实地渲染 "(unknown)"。 */}
+          <div data-testid="lib-image-source-cwd">来源工作目录：{entry.sourceCwd ?? "（未知——Finding-2 之前的清单）"}</div>
+          <div>创建：{entry.createdAt}</div>
+          <div>最近使用：{entry.stats.lastUsedAt ?? "从未"}</div>
+          <div>路径：{entry.sourcePath}</div>
+          <div data-testid="lib-image-pinned" className={entry.pinned ? "text-amber-700 font-bold" : ""}>已固定：{String(entry.pinned)}</div>
         </div>
 
         {entry.lineage.length > 0 && (
           <section data-testid="lib-image-lineage" className="border border-outline-variant/40 bg-surface-lowest/[0.08]">
             <header className="border-b border-outline-variant bg-background px-3 py-2 font-mono text-[10px] uppercase tracking-[0.10em] text-on-surface-variant">
-              Lineage
+              谱系
             </header>
             <div className="px-3 py-2 font-mono text-[10px] text-on-surface">
               {entry.lineage.join(" → ")} → <span className="font-bold">{entry.name}</span>
@@ -658,7 +652,7 @@ function AgentImageReviewBody({
 
         <section data-testid="lib-image-starter-snippet" className="border border-outline bg-surface-lowest px-3 py-3 space-y-2">
           <div className="flex items-center justify-between">
-            <div className="font-mono text-[10px] uppercase tracking-[0.10em] text-on-surface">Use as starter</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.10em] text-on-surface">用作起点</div>
             <Button
               variant="outline"
               size="sm"
@@ -666,14 +660,13 @@ function AgentImageReviewBody({
               onClick={() => void onCopySnippet()}
               disabled={!preview?.starterSnippet}
             >
-              {snippetCopied ? "Copied" : "Copy snippet"}
+              {snippetCopied ? "已复制" : "复制片段"}
             </Button>
           </div>
           <div className="font-mono text-[9px] text-on-surface-variant">
-            Paste into your agent.yaml's session_source. The instantiator resolves the image
-            via the daemon AgentImageLibraryService at startup time.
+            粘贴到你的 agent.yaml 的 session_source。实例化器在启动时经后台服务 AgentImageLibraryService 解析该镜像。
           </div>
-          {previewLoading && <div className="font-mono text-[9px] text-on-surface-variant">Loading snippet…</div>}
+          {previewLoading && <div className="font-mono text-[9px] text-on-surface-variant">正在加载片段…</div>}
           {preview?.starterSnippet && (
             <pre
               data-testid="lib-image-snippet-text"
@@ -691,7 +684,7 @@ function AgentImageReviewBody({
         {entry.files.length > 0 && (
           <section className="border border-outline-variant/40 bg-surface-lowest/[0.08]">
             <header className="border-b border-outline-variant bg-background px-3 py-2 font-mono text-[10px] uppercase tracking-[0.10em] text-on-surface-variant">
-              Supplementary files
+              补充文件
             </header>
             <ul className="divide-y divide-outline-variant">
               {entry.files.map((f) => (
@@ -708,8 +701,8 @@ function AgentImageReviewBody({
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="font-bold truncate underline decoration-dotted decoration-outline">{f.path}</span>
                       <span className="font-mono text-[8px] text-on-surface-variant shrink-0">
-                        role: {f.role}
-                        {f.bytes === null ? " · MISSING" : ` · ${f.bytes}B`}
+                        角色：{f.role}
+                        {f.bytes === null ? " · 缺失" : ` · ${f.bytes}B`}
                       </span>
                     </div>
                     {f.summary && <div className="mt-0.5 text-on-surface-variant text-[9px]">{f.summary}</div>}

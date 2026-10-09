@@ -5,40 +5,35 @@ import { runSyncSite } from "./sync-site-wrap.js";
 export interface TmuxOptionDefaultsDeps {
   tmuxAdapter: TmuxAdapter;
   /**
-   * OPR.0.4.6.02 S1 — reads the daemon's tmux option defaults at APPLY time.
-   * Resolved fresh per call (from the SettingsStore in startup) so an
-   * operator's `terminal.status_bar` flip applies to FUTURE launches only.
-   * Defaults to `statusBar: false` (bar hidden) when omitted.
+   * OPR.0.4.6.02 S1——在应用时读取后台服务的 tmux 选项默认值。每次调用都从启动阶段的
+   * SettingsStore 重新解析，使操作员切换 `terminal.status_bar` 时只影响未来启动。
+   * 省略时默认为 `statusBar: false`（隐藏状态栏）。
    */
   readTmuxOptionDefaults?: () => { statusBar: boolean };
   /**
-   * OPR.0.4.6.02 S1 — platform selector for the server-scope `copy-command`
-   * table. Defaults to `process.platform`; injectable for the scope tests.
+   * OPR.0.4.6.02 S1——服务端范围 `copy-command` 表的平台选择器。默认为
+   * `process.platform`，可在范围测试中注入。
    */
   platform?: NodeJS.Platform;
   /**
-   * OPR.0.4.6.02 S1 — cheap `command -v <bin>` probe for the linux
-   * copy-command fallback chain. Defaults to a real shell probe; injectable
-   * for deterministic tests.
+   * OPR.0.4.6.02 S1——Linux copy-command 回退链使用的轻量 `command -v <bin>` 探测。
+   * 默认为真实 shell 探测，可在确定性测试中注入。
    */
   hasCommand?: (bin: string) => boolean;
 }
 
 /**
- * OPR.0.4.6.02 S1 — applies the daemon's tmux option defaults to a
- * FRESHLY-CREATED session. Shared by `NodeLauncher` (the launch path) and
- * `SuccessorSessionLauncher` (the fresh seat-handover successor path) so
- * every fresh operator/agent seat gets consistent mouse/status/clipboard
- * defaults (orch C1 scope ruling: fold fresh successors in via ONE helper).
+ * OPR.0.4.6.02 S1——把后台服务的 tmux 选项默认值应用到新建会话。
+ * `NodeLauncher`（启动路径）与 `SuccessorSessionLauncher`（全新席位移交后继路径）共享此逻辑，
+ * 使每个新操作员/智能体席位获得一致的 mouse/status/clipboard 默认值
+ *（orch C1 范围裁定：通过同一个辅助函数纳入全新后继）。
  *
- * Scope discipline (guard b2): SESSION-scope options (`mouse`, `status`) are
- * applied ONLY to the just-created session name passed in — never a
- * pre-existing/discovered session — so the never-retro-flip rail (BR-1)
- * holds and a `terminal.status_bar` flip affects future launches only.
- * SERVER-scope options (`set-clipboard`, `copy-command`) are asserted ONCE
- * per daemon lifetime via the shared memo on this single instance; a daemon
- * RESTART re-asserts (a fresh applier). Callers MUST only invoke this after
- * a successful `createSession` on a freshly-created session.
+ * 范围纪律（guard b2）：会话范围选项（`mouse`、`status`）只应用到传入的刚创建会话名，
+ * 绝不作用于既有/发现的会话，从而守住“不追溯翻转”规则（BR-1），让
+ * `terminal.status_bar` 变更只影响未来启动。服务端范围选项（`set-clipboard`、
+ * `copy-command`）通过此单例上的共享记忆，在每次后台服务生命周期中只断言一次；
+ * 后台服务重启后会由新的应用器重新断言。调用方必须仅在新会话成功执行
+ * `createSession` 后调用此函数。
  */
 export class TmuxOptionDefaultsApplier {
   private tmuxAdapter: TmuxAdapter;
@@ -55,24 +50,20 @@ export class TmuxOptionDefaultsApplier {
   }
 
   /**
-   * Apply the option defaults to a JUST-CREATED session. `mouse` is always
-   * on; the inner status bar follows the `terminal.status_bar` config key
-   * (default off), read at apply time so a flip applies to FUTURE launches
-   * only (this touches only `sessionName`). Then assert the server-scope
-   * defaults once per daemon lifetime.
+   * 把选项默认值应用到刚创建的会话。`mouse` 始终开启；内部状态栏跟随
+   * `terminal.status_bar` 配置键（默认关闭），并在应用时读取，因此切换只影响未来启动
+   *（只触碰 `sessionName`）。随后在每次后台服务生命周期中断言一次服务端范围默认值。
    *
-   * Returns the list of non-fatal warnings (empty when all sets succeed) so
-   * the caller can fold them into its own launch-warning channel. NEVER
-   * throws for an option-set failure — a seat without mouse-scroll is
-   * degraded, not dead (and a handover successor must not be handover-fatal
-   * over a cosmetic option).
+   * 返回非致命警告列表；全部设置成功时为空，调用方可将其并入自身启动警告通道。
+   * 选项设置失败绝不抛错——没有鼠标滚动的席位只是降级而非失效，移交后继也不能因
+   * 外观选项失败而让移交整体失败。
    */
   async applyToFreshSession(sessionName: string): Promise<string[]> {
     const warnings: string[] = [];
 
     const mouse = await this.tmuxAdapter.setSessionOption(sessionName, "mouse", "on");
     if (!mouse.ok) {
-      warnings.push(`tmux "mouse" option not set for ${sessionName}: ${mouse.message}`);
+      warnings.push(`未能为 ${sessionName} 设置 tmux "mouse" 选项：${mouse.message}`);
     }
 
     let statusBar = false;
@@ -83,7 +74,7 @@ export class TmuxOptionDefaultsApplier {
     }
     const status = await this.tmuxAdapter.setSessionOption(sessionName, "status", statusBar ? "on" : "off");
     if (!status.ok) {
-      warnings.push(`tmux "status" option not set for ${sessionName}: ${status.message}`);
+      warnings.push(`未能为 ${sessionName} 设置 tmux "status" 选项：${status.message}`);
     }
 
     await this.ensureServerDefaults(warnings);
@@ -91,49 +82,45 @@ export class TmuxOptionDefaultsApplier {
   }
 
   /**
-   * Assert the SERVER-scope tmux defaults (`set-clipboard on` + the
-   * per-platform `copy-command`) on the daemon's OWN tmux server, ONCE per
-   * daemon lifetime. Written only through `setServerOption` (`set-option
-   * -s`) — never a `-t` session target (guard b2 scope contract).
+   * 在后台服务自己的 tmux server 上断言服务端范围默认值（`set-clipboard on` +
+   * 各平台 `copy-command`），每次后台服务生命周期只执行一次。仅通过
+   * `setServerOption`（`set-option -s`）写入，绝不使用 `-t` 会话目标
+   *（guard b2 范围契约）。
    *
-   * Per-process memoization means a daemon RESTART re-asserts these (a fresh
-   * applier instance): an operator's manual `copy-command` / `set-clipboard`
-   * override does NOT survive a daemon restart — the named off-switch
-   * follow-up is the customization path. Re-running is harmless (idempotent
-   * set of the same values); the memo is an optimization, not a correctness
-   * gate.
+   * 逐进程记忆意味着后台服务重启时会由新应用器重新断言：操作员手动覆盖的
+   * `copy-command` / `set-clipboard` 不会跨重启保留，具名关闭开关的后续实现才是
+   * 定制路径。重复执行不会造成问题（幂等设置相同值）；该记忆只是优化，不是正确性门禁。
    */
   private async ensureServerDefaults(warnings: string[]): Promise<void> {
     if (this.serverDefaultsAsserted) return;
-    // Set first so concurrent applies don't double-assert; either way the
-    // sets are idempotent.
+    // 先置位，避免并发 apply 重复断言；即使重复，设置本身也是幂等的。
     this.serverDefaultsAsserted = true;
 
     const clip = await this.tmuxAdapter.setServerOption("set-clipboard", "on");
     if (!clip.ok) {
-      warnings.push(`tmux "set-clipboard" server option not set: ${clip.message}`);
+      warnings.push(`未能设置 tmux server 选项 "set-clipboard"：${clip.message}`);
     }
 
     const copyCommand = resolveCopyCommand(this.platform, this.hasCommand);
     if (copyCommand !== null) {
       const cc = await this.tmuxAdapter.setServerOption("copy-command", copyCommand);
       if (!cc.ok) {
-        warnings.push(`tmux "copy-command" server option not set: ${cc.message}`);
+        warnings.push(`未能设置 tmux server 选项 "copy-command"：${cc.message}`);
       }
     }
   }
 }
 
 /**
- * OPR.0.4.6.02 S1 — the per-platform tmux `copy-command` table (arch rail
- * b). Ref: the tmux "Clipboard" wiki — `copy-command` is the shell command
- * tmux pipes a copy-mode selection into to reach the system clipboard.
+ * OPR.0.4.6.02 S1——各平台 tmux `copy-command` 表（架构轨 b）。参考 tmux
+ * “Clipboard” wiki：`copy-command` 是 tmux 将复制模式选区通过管道传给系统剪贴板的
+ * shell 命令。
  *  - darwin → `pbcopy`
- *  - linux  → `wl-copy` if present, else `xclip -selection clipboard -i`,
- *             else UNSET (null) — fall back to `set-clipboard on` OSC 52.
- *  - other  → UNSET (null).
- * Pure: platform + a `command -v` probe in, the command string (or null)
- * out. One table, no side effects — the applier decides whether to write.
+ *  - linux  → 存在 `wl-copy` 时使用它，否则用 `xclip -selection clipboard -i`；
+ *             都不存在则不设置（null），回退到 `set-clipboard on` OSC 52。
+ *  - 其他平台 → 不设置（null）。
+ * 纯逻辑：输入 platform 与 `command -v` 探测，输出命令字符串或 null。单一表、无副作用，
+ * 是否写入由应用器决定。
  */
 export function resolveCopyCommand(
   platform: NodeJS.Platform,
@@ -149,9 +136,9 @@ export function resolveCopyCommand(
 }
 
 /**
- * OPR.0.4.6.02 S1 — default `command -v <bin>` probe (POSIX shell builtin).
- * Returns true when the binary resolves on PATH. Cheap + best-effort; any
- * failure (spawn error, non-shell env) reads as absent.
+ * OPR.0.4.6.02 S1——默认的 `command -v <bin>` 探测（POSIX shell 内建命令）。
+ * 二进制可从 PATH 解析时返回 true。该探测轻量且尽力而为；任何失败
+ *（spawn 错误、非 shell 环境）都视为不存在。
  */
 function defaultHasCommand(bin: string): boolean {
   try {

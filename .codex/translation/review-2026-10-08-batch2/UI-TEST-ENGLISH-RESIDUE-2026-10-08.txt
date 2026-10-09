@@ -1,0 +1,36 @@
+
+=== packages/ui/test/bundle-inspector.test.tsx ===
+L22 describe标题: BundleInspector
+L24 it标题: shows manifest name, version, and rig_spec
+L40 it标题: shows integrity status as PASS or FAIL
+L54 it标题: renders package list
+L70 it标题: shows install button after inspection
+L84 it标题: v2 manifest renders agents list instead of packages
+L107 注释: Should show agents, not packages
+L113 注释: Should NOT show package-list
+L122 注释: gate must fail this test.
+L123 it标题: renders provenance block with all fields when manifest carries provenance
+L166 注释: gate must fail this test.
+L167 it标题: renders compatibility block with all fields when manifest carries compatibility
+L199 注释: without provenance or compatibility blocks does NOT render those sections.
+L201 it标题: does NOT render provenance or compatibility blocks when manifest omits them (backward compat)
+L211 注释: Manifest summary still renders (regression baseline)
+L214 注释: New blocks must NOT be present
+L220 it标题: shows error on inspect failure
+L239 describe标题: Bundle activity feed events
+L244 it标题: bundle.created uses bg-accent color and correct summary
+
+=== packages/ui/test/package-list.test.tsx ===
+L76 describe标题: PackageList
+L77 it标题: heading shows legacy package tools labeling
+L86 it标题: renders newest packages first so fresh installs are visible
+L100 it标题: renders package cards with name, version, and source
+L117 it标题: card shows install count and latest install status
+L133 it标题: empty state exposes import and bootstrap entry points without install-package CTA
+L154 it标题: empty state bootstrap CTA navigates to bootstrap flow
+L170 it标题: shows loading skeleton while fetching
+L171 注释: Never resolve fetch
+L181 it标题: shows error state on fetch failure
+L194 it标题: header import button navigates to import flow
+L210 it标题: header bootstrap button navigates to bootstrap flow
+L227 it标题: card click navigates to package detail page

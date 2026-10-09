@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T01:29:13",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch15",
+ "files": 10,
+ "changed": 7,
+ "reviewed_no_change": 3,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/review-approve-scope-path.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "c35e9e8a50eedb14cada8822ab86d6f43db696c7db35b4413c62c0845331ef94",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、OPR.0.4.1.19/0.4.6.WF4/0.4.6.MH5 C5/0.3.2.17、BR-12、HG-6/7/8、chain_of_record/handedOffFrom、QueryClientProvider/TanStack Router、ProgressiveTerminal/xterm、ui.preview.max_pins、routes/hosts.ts、registryError/SSOT、ConceptCard kind:concept 保留"
+  },
+  {
+   "path": "packages/ui/test/story-graph-model.test.ts",
+   "status": "changed",
+   "after_sha256": "922185f5681270e07b31d853279cb53ffefa8a190c3c943b521ddbc7e81c2a06",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、OPR.0.4.1.19/0.4.6.WF4/0.4.6.MH5 C5/0.3.2.17、BR-12、HG-6/7/8、chain_of_record/handedOffFrom、QueryClientProvider/TanStack Router、ProgressiveTerminal/xterm、ui.preview.max_pins、routes/hosts.ts、registryError/SSOT、ConceptCard kind:concept 保留"
+  },
+  {
+   "path": "packages/ui/test/verb-actions-optimistic-error.test.tsx",
+   "status": "changed",
+   "after_sha256": "880cd2b148a0c281a59a7b1acd2a8900d3ef1d0aff8c424616c1405b22f06c05",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、OPR.0.4.1.19/0.4.6.WF4/0.4.6.MH5 C5/0.3.2.17、BR-12、HG-6/7/8、chain_of_record/handedOffFrom、QueryClientProvider/TanStack Router、ProgressiveTerminal/xterm、ui.preview.max_pins、routes/hosts.ts、registryError/SSOT、ConceptCard kind:concept 保留"
+  },
+  {
+   "path": "packages/ui/test/topology-perf-table-large-n.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "4a64c1c75bdf2e91557de662b790ce2799a034af34aba268924a5052bf0c340a",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、OPR.0.4.1.19/0.4.6.WF4/0.4.6.MH5 C5/0.3.2.17、BR-12、HG-6/7/8、chain_of_record/handedOffFrom、QueryClientProvider/TanStack Router、ProgressiveTerminal/xterm、ui.preview.max_pins、routes/hosts.ts、registryError/SSOT、ConceptCard kind:concept 保留"
+  },
+  {
+   "path": "packages/ui/test/foryou-bare-approve-chat.test.tsx",
+   "status": "changed",
+   "after_sha256": "634486de149ab7f626bea78a7467a51201de3b25af84c22b6c2f8b5aada97494",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、OPR.0.4.1.19/0.4.6.WF4/0.4.6.MH5 C5/0.3.2.17、BR-12、HG-6/7/8、chain_of_record/handedOffFrom、QueryClientProvider/TanStack Router、ProgressiveTerminal/xterm、ui.preview.max_pins、routes/hosts.ts、registryError/SSOT、ConceptCard kind:concept 保留"
+  },
+  {
+   "path": "packages/ui/test/workflow-render-parity.test.tsx",
+   "status": "changed",
+   "after_sha256": "e0381881a1bb3aaa6e06e214588992f4cfe45556a0def5661a7a03b547b34511",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、OPR.0.4.1.19/0.4.6.WF4/0.4.6.MH5 C5/0.3.2.17、BR-12、HG-6/7/8、chain_of_record/handedOffFrom、QueryClientProvider/TanStack Router、ProgressiveTerminal/xterm、ui.preview.max_pins、routes/hosts.ts、registryError/SSOT、ConceptCard kind:concept 保留"
+  },
+  {
+   "path": "packages/ui/test/preview-pane.test.tsx",
+   "status": "changed",
+   "after_sha256": "c0e46cb75815c9ac166fc7ee1c15313351b619a5e3bc0b6cdc8bac3d18af2a07",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、OPR.0.4.1.19/0.4.6.WF4/0.4.6.MH5 C5/0.3.2.17、BR-12、HG-6/7/8、chain_of_record/handedOffFrom、QueryClientProvider/TanStack Router、ProgressiveTerminal/xterm、ui.preview.max_pins、routes/hosts.ts、registryError/SSOT、ConceptCard kind:concept 保留"
+  },
+  {
+   "path": "packages/ui/test/fleet-band.test.tsx",
+   "status": "changed",
+   "after_sha256": "c91b1788761a11e2bca53c13150789196ca5f25d94652d2b8ed9080ef91c8a66",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、OPR.0.4.1.19/0.4.6.WF4/0.4.6.MH5 C5/0.3.2.17、BR-12、HG-6/7/8、chain_of_record/handedOffFrom、QueryClientProvider/TanStack Router、ProgressiveTerminal/xterm、ui.preview.max_pins、routes/hosts.ts、registryError/SSOT、ConceptCard kind:concept 保留"
+  },
+  {
+   "path": "packages/ui/test/p5-subscription-toggle.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "18eb1be32ecc538363c5f007c3477377a6e5f045379d68a3495878aad7b113c5",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、OPR.0.4.1.19/0.4.6.WF4/0.4.6.MH5 C5/0.3.2.17、BR-12、HG-6/7/8、chain_of_record/handedOffFrom、QueryClientProvider/TanStack Router、ProgressiveTerminal/xterm、ui.preview.max_pins、routes/hosts.ts、registryError/SSOT、ConceptCard kind:concept 保留"
+  },
+  {
+   "path": "packages/ui/test/storytelling-cards.test.tsx",
+   "status": "changed",
+   "after_sha256": "1051fceabd52bb5e50e85046d6ebfde8dc18df591f38e9429f215fc12d0f84d6",
+   "natural_language_residual": 0,
+   "machine_classification": "@vitest-environment jsdom、OPR.0.4.1.19/0.4.6.WF4/0.4.6.MH5 C5/0.3.2.17、BR-12、HG-6/7/8、chain_of_record/handedOffFrom、QueryClientProvider/TanStack Router、ProgressiveTerminal/xterm、ui.preview.max_pins、routes/hosts.ts、registryError/SSOT、ConceptCard kind:concept 保留"
+  }
+ ]
+}

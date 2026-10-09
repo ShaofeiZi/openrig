@@ -1,0 +1,83 @@
+{
+ "schema": "openrig.ui-comment-review-batch/v1",
+ "captured_at": "2026-10-09T00:53:31",
+ "owner": "s_000cae46uuw",
+ "depth": "full_comment_title_failure_message_reviewed",
+ "batch": "ui-comment-review-batch7",
+ "files": 10,
+ "changed": 8,
+ "reviewed_no_change": 2,
+ "complete": true,
+ "rows": [
+  {
+   "path": "packages/ui/test/p5-human-seat-card.test.tsx",
+   "status": "changed",
+   "after_sha256": "cac37711435776616606218d2c8910d4709fb4b28a67572dae954e360b8d49b2",
+   "natural_language_residual": 0,
+   "machine_classification": "P5-8/OPR.0.4.1.31/0.4.4.20、BR-12、Slice 16/26 HG-5/7、role=tablist、8250d702、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/opr-0.4.1.31-hybrid-cmux-error.test.tsx",
+   "status": "changed",
+   "after_sha256": "e213112d817df4f80a1a241e328fcd68bfe53fa222714b2b66f5d10d20d84c03",
+   "natural_language_residual": 0,
+   "machine_classification": "P5-8/OPR.0.4.1.31/0.4.4.20、BR-12、Slice 16/26 HG-5/7、role=tablist、8250d702、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/focused-terminal-initial-text.test.tsx",
+   "status": "changed",
+   "after_sha256": "6fbb56428e8b5a420323eadc76e66b79ec34f9bf71a1cc068fb3331b4a0cc21e",
+   "natural_language_residual": 0,
+   "machine_classification": "P5-8/OPR.0.4.1.31/0.4.4.20、BR-12、Slice 16/26 HG-5/7、role=tablist、8250d702、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/storytelling-wires.test.tsx",
+   "status": "changed",
+   "after_sha256": "a829ca2dc46d8292a094f3d1d5dd2da6712299d680557c33e08b64fb3b16768c",
+   "natural_language_residual": 0,
+   "machine_classification": "P5-8/OPR.0.4.1.31/0.4.4.20、BR-12、Slice 16/26 HG-5/7、role=tablist、8250d702、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/prooftab-state-copy.test.tsx",
+   "status": "changed",
+   "after_sha256": "244441d9e94c495512aa555fb00a696216939008dda61a0a87e18e600b733a5b",
+   "natural_language_residual": 0,
+   "machine_classification": "P5-8/OPR.0.4.1.31/0.4.4.20、BR-12、Slice 16/26 HG-5/7、role=tablist、8250d702、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/file-link.test.tsx",
+   "status": "changed",
+   "after_sha256": "b39f208f3692cd26513cd417e75fcadc383e9603efd5c4aa171bdcb55bd32d64",
+   "natural_language_residual": 0,
+   "machine_classification": "P5-8/OPR.0.4.1.31/0.4.4.20、BR-12、Slice 16/26 HG-5/7、role=tablist、8250d702、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/slice-16-typography-vellum.test.tsx",
+   "status": "changed",
+   "after_sha256": "c9145eb0c4747625acd089808bbf562a9808ca33820f3976be98ad20f31a2f56",
+   "natural_language_residual": 0,
+   "machine_classification": "P5-8/OPR.0.4.1.31/0.4.4.20、BR-12、Slice 16/26 HG-5/7、role=tablist、8250d702、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/use-files-list-focus-refetch.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "80ecf9f04b9536e8b55d10bb212e3d1be09f8285ce1d4c0a8f274182b9f2699d",
+   "natural_language_residual": 0,
+   "machine_classification": "P5-8/OPR.0.4.1.31/0.4.4.20、BR-12、Slice 16/26 HG-5/7、role=tablist、8250d702、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/host-config-card.test.tsx",
+   "status": "reviewed_no_change",
+   "after_sha256": "b06e4fa0944156a059c9319d8f22074ece6dafecce3d35e5477ac70f543e5b36",
+   "natural_language_residual": 0,
+   "machine_classification": "P5-8/OPR.0.4.1.31/0.4.4.20、BR-12、Slice 16/26 HG-5/7、role=tablist、8250d702、@vitest-environment jsdom 保留"
+  },
+  {
+   "path": "packages/ui/test/settings-pages.test.tsx",
+   "status": "changed",
+   "after_sha256": "59795c8a5ed1c972819a53e59cedef3b2af7ee241c39248e033e327f4686b4ab",
+   "natural_language_residual": 0,
+   "machine_classification": "P5-8/OPR.0.4.1.31/0.4.4.20、BR-12、Slice 16/26 HG-5/7、role=tablist、8250d702、@vitest-environment jsdom 保留"
+  }
+ ]
+}
